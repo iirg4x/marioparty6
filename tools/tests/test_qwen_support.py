@@ -1,5 +1,6 @@
 """Pure public evidence tests; optional loopback replay uses no model/retail."""
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -95,6 +96,7 @@ class RunnerReplayTests(unittest.TestCase):
         self.prompt = self.root / "prompt.txt"
         self.prompt.write_text(groups.render_decision_prompt(self.packet), encoding="utf-8")
         self.body = answer(self.packet)
+        self.validator = Path(groups.__file__).resolve()
         self.finish = "stop"
         self.calls = []
         self.slot_count = 4
@@ -155,7 +157,7 @@ class RunnerReplayTests(unittest.TestCase):
             str(Path(os.environ["MP6_QWEN_SUPPORT_ROOT"])/"run-job.ps1"),
             "-PromptFile", str(self.prompt), "-OutputDirectory", str(self.root/"answer"),
             "-JobId", "replay", "-Backend", "llama-cpp", "-DecisionPacket", str(self.packet_path),
-            "-ValidatorScript", str(Path(groups.__file__).resolve()),
+            "-ValidatorScript", str(self.validator),
             "-Endpoint", f"http://127.0.0.1:{self.server.server_port}/v1/chat/completions"],
             capture_output=True, text=True, timeout=30)
 
@@ -168,6 +170,9 @@ class RunnerReplayTests(unittest.TestCase):
         metrics = json.loads(before)
         self.assertEqual(metrics["state"], "completed")
         self.assertEqual(metrics["validation_status"], "valid_finding")
+        self.assertFalse(metrics["validator_revalidated"])
+        self.assertEqual(metrics["validator_initial_sha256"], metrics["validator_final_sha256"])
+        self.assertEqual(metrics["validator_sha256"], metrics["validator_final_sha256"])
         self.assertEqual(metrics["think"], "xhigh")
         self.assertEqual(metrics["num_predict"], -1)
         self.assertNotIn("max_tokens", self.calls[0])
@@ -185,6 +190,116 @@ class RunnerReplayTests(unittest.TestCase):
         self.assertTrue((out/"replay.rejected-answer.txt").exists())
         self.assertEqual(json.loads((out/"replay.metrics.json").read_bytes())["state"], "rejected")
         self.assertFalse((out/"replay.lock").exists())
+
+    def validator_replay(self, edit, finish="stop"):
+        # Isolated forwarding validator; never edit the shared production validator.
+        original = self.validator
+        self.validator = self.root / "validator.py"
+        code = f"import runpy\nrunpy.run_path({str(original)!r}, run_name='__main__')\n"
+        self.validator.write_text(code, encoding="utf-8")
+        initial = hashlib.sha256(self.validator.read_bytes()).hexdigest()
+        self.after_reasoning = lambda body: edit(code)
+        self.finish = finish
+        result = self.invoke()
+        metrics = json.loads((self.root / "answer/replay.metrics.json").read_bytes())
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(metrics["validator_initial_sha256"], initial)
+        self.assertFalse((self.root / "answer/replay.lock").exists())
+        return result, metrics
+
+    def test_compatible_validator_stream_edit_revalidates_without_http_retry(self):
+        log = self.root / "checks.txt"
+        def edit(code):
+            self.validator.write_text(
+                "import sys\nfrom pathlib import Path\n"
+                f"with Path({str(log)!r}).open('a') as log: log.write(sys.argv[1] + '\\n')\n" + code,
+                encoding="utf-8")
+        result, metrics = self.validator_replay(edit)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(metrics["validator_revalidated"])
+        self.assertNotEqual(metrics["validator_initial_sha256"], metrics["validator_final_sha256"])
+        self.assertEqual(metrics["validator_sha256"], hashlib.sha256(self.validator.read_bytes()).hexdigest())
+        self.assertEqual(log.read_text().splitlines(), ["--check-support-prompt", "--check-support-answer"])
+        self.assertEqual(metrics["state"], "completed")
+
+    def test_incompatible_validator_stream_edit_rejects_original_prompt(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            "import sys\nif '--check-support-prompt' in sys.argv: sys.exit(2)\n" + code,
+            encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertFalse(metrics["validator_revalidated"])
+        self.assertFalse((self.root / "answer/replay.answer.txt").exists())
+
+    def test_validator_mutation_during_revalidation_fails_closed(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            "from pathlib import Path\np=Path(__file__)\np.write_text(p.read_text()+'# mutation\\n')\n" + code,
+            encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertIn("Validator changed during validation", metrics["error"])
+
+    def test_incompatible_validator_stream_edit_rejects_final_answer(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            "import sys\nif '--check-support-answer' in sys.argv: sys.exit(2)\n" + code,
+            encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertFalse(metrics["validator_revalidated"])
+        self.assertFalse((self.root / "answer/replay.answer.txt").exists())
+
+    def test_zero_exit_incompatible_validator_receipt_rejected(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            "import sys\nif '--check-support-answer' in sys.argv:\n"
+            "    print('{\"status\":\"rejected\"}'); sys.exit(0)\n" + code,
+            encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertFalse(metrics["validator_revalidated"])
+        self.assertIn("Incompatible decision validator receipt", metrics["error"])
+        self.assertFalse((self.root / "answer/replay.answer.txt").exists())
+
+    def test_zero_exit_empty_prompt_validator_receipt_rejected(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            "print('{}')\n", encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertFalse(metrics["validator_revalidated"])
+        self.assertIn("Incompatible decision validator receipt", metrics["error"])
+
+    def test_validator_mutation_during_answer_revalidation_fails_closed(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            "import sys\nfrom pathlib import Path\n"
+            "if '--check-support-answer' in sys.argv:\n"
+            "    p=Path(__file__); p.write_text(p.read_text()+'# mutation\\n')\n" + code,
+            encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertFalse(metrics["validator_revalidated"])
+        self.assertIn("Validator changed during validation", metrics["error"])
+
+    def test_packet_stream_drift_even_with_compatible_validator_rejected(self):
+        def edit(code):
+            self.validator.write_text(code + "# compatible\n", encoding="utf-8")
+            self.packet_path.write_text(self.packet_path.read_text() + " ", encoding="utf-8")
+        result, metrics = self.validator_replay(edit)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertIn("original prompt changed", metrics["error"])
+
+    def test_prompt_stream_drift_rejected_even_with_stable_validator(self):
+        result, metrics = self.validator_replay(lambda code: self.prompt.write_text(
+            self.prompt.read_text() + " ", encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
+
+    def test_compatible_validator_edit_does_not_admit_partial_completion(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            code + "# compatible\n", encoding="utf-8"), finish="length")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "failed")
+        self.assertFalse(metrics["validator_revalidated"])
+        self.assertFalse((self.root / "answer/replay.answer.txt").exists())
 
     def test_changed_prompt_rejected_before_http(self):
         self.prompt.write_text("unbound replacement prompt", encoding="utf-8")

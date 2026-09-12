@@ -174,13 +174,17 @@ def _digest(value: Any) -> str:
 
 
 def decision_packet(document: dict, function: str, source: str, start: int, end: int,
-                    question: str, row_start: int, row_end: int, *, max_bytes: int = 18000) -> dict:
+                    question: str, row_start: int, row_end: int, *, max_bytes: int = 18000,
+                    producer_sites: list[int] | None = None, producer_limit: int = 16) -> dict:
     """One factual support decision, not an open-ended function rewrite.
 
     Include the complete function's call/branch census even when arithmetic is
     excerpted. Matrix's unchanged straight-line memcpy was previously replaced
     by an invented loop after a worker saw only selected mismatching rows.
     Reasoning/output limits are deliberately not part of this interface.
+    Optional producer_sites are explicit selected-row questions for the existing
+    block-local slicer; their definitions may precede row_start. The shared byte
+    cap includes this context, and omitted context leaves legacy packets intact.
     """
     lines = source.splitlines()
     if not isinstance(question, str) or not question.strip() or len(question) > 800:
@@ -194,6 +198,12 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
     streams = [frontier.focus._rows(symbol, function) for symbol in symbols]
     if not 0 <= row_start <= row_end < max(map(len, streams)):
         raise ValueError("invalid inclusive decision machine range")
+    if producer_sites is not None and (
+            not isinstance(producer_sites, list) or not producer_sites
+            or any(type(i) is not int or not row_start <= i <= row_end for i in producer_sites)
+            or len(set(producer_sites)) != len(producer_sites)
+            or type(producer_limit) is not int or not 1 <= producer_limit <= 64):
+        raise ValueError("producer sites must be unique selected row IDs; limit must be 1..64")
     census = {}
     for side, symbol, stream in zip(("target", "candidate"), symbols, streams):
         calls, branches = [], []
@@ -221,6 +231,10 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
                               for i in range(row_start, row_end+1)],
               "omitted_aligned_rows": max(map(len, streams)) - (row_end-row_start+1),
               "source_causality_proven": False, "authority_advanced": False}
+    if producer_sites is not None:
+        result["producer_context"] = {
+            side: producer_slice(stream, producer_sites, limit=producer_limit)
+            for side, stream in zip(("target", "candidate"), streams)}
     result["packet_sha256"] = _digest(result)
     if len(json.dumps(result, ensure_ascii=False).encode()) > max_bytes:
         raise ValueError("decision packet exceeds byte budget; narrow the question, not model reasoning")
@@ -245,6 +259,10 @@ def render_decision_prompt(packet: dict) -> str:
             '"evidence_rows":[0],"missing_evidence":null}. '
             "Cite only row IDs present below. For insufficient use a nonempty missing_evidence string. "
             "Astra reviews the finding and owns any source decision/compile; this answer grants no authority.\n"
+            + ("Optional producer_context contains bounded same-block physical definitions, not source "
+               "ownership or cross-CFG/call inference. UNKNOWN and truncated dependencies remain missing "
+               "evidence; cite only supplied nodes, not dangling definition_row references.\n"
+               if "producer_context" in packet else "")
             + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
 
 
@@ -259,6 +277,40 @@ def validate_decision_packet(packet: dict) -> None:
             or not isinstance(packet.get("paired_rows"), list) or not packet["paired_rows"]
             or set(packet.get("machine_census", {})) != {"target", "candidate"}):
         raise ValueError("incomplete decision packet")
+    if "producer_context" in packet:
+        context = packet["producer_context"]
+        if not isinstance(context, dict) or set(context) != {"target", "candidate"}:
+            raise ValueError("invalid decision producer context")
+        selected = {row["row"] for row in packet["paired_rows"]}
+        for sliced in context.values():
+            if (not isinstance(sliced, dict) or type(sliced.get("node_limit")) is not int
+                    or not 4 <= sliced["node_limit"] <= 256 or sliced["node_limit"] % 4
+                    or type(sliced.get("truncated")) is not bool
+                    or not isinstance(sliced.get("sites"), list) or not sliced["sites"]
+                    or any(type(i) is not int or i not in selected for i in sliced["sites"])
+                    or len(set(sliced["sites"])) != len(sliced["sites"])
+                    or len(sliced["sites"]) > sliced["node_limit"] // 4
+                    or not isinstance(sliced.get("nodes"), list)
+                    or len(sliced["nodes"]) > sliced["node_limit"]
+                    or sliced.get("scope") != "block-local physical definitions; memory identity and source causality UNKNOWN"):
+                raise ValueError("invalid decision producer context bounds/scope")
+            ids = []
+            for node in sliced["nodes"]:
+                if (not isinstance(node, dict) or type(node.get("row")) is not int
+                        or not 0 <= node["row"] <= max(sliced["sites"])
+                        or not isinstance(node.get("instruction"), str)
+                        or not isinstance(node.get("uses"), list)):
+                    raise ValueError("invalid decision producer node")
+                ids.append(node["row"])
+                for use in node["uses"]:
+                    if (not isinstance(use, dict) or not isinstance(use.get("register"), str)
+                            or ("definition_row" in use and (type(use["definition_row"]) is not int
+                                or not 0 <= use["definition_row"] < node["row"]))
+                            or ("definition_row" not in use and (use.get("status") != "UNKNOWN"
+                                or not isinstance(use.get("reason"), str)))):
+                        raise ValueError("invalid decision producer dependency")
+            if ids != sorted(set(ids)):
+                raise ValueError("duplicate/unordered decision producer nodes")
 
 
 def validate_decision_answer(packet: dict, answer: dict) -> dict:
@@ -273,6 +325,8 @@ def validate_decision_answer(packet: dict, answer: dict) -> dict:
         raise ValueError("decision answer lacks status/finding")
     cited = answer["evidence_rows"]
     available = {row["row"] for row in packet["paired_rows"]}
+    for sliced in packet.get("producer_context", {}).values():
+        available.update(node["row"] for node in sliced["nodes"])
     for stream in packet["machine_census"].values():
         available.update(site["row"] for kind in ("calls", "branches_including_return") for site in stream[kind])
     if (not isinstance(cited, list) or any(type(i) is not int or i not in available for i in cited)
@@ -307,7 +361,8 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
     records = {}
     boundary = {"status": "UNKNOWN", "reason": "CFG/function entry"}
     loads = {"lwz", "lhz", "lha", "lbz", "lfs", "lfd"}
-    arithmetic = {"mr", "fmr", "add", "addi", "addis", "subf", "mullw", "mulli",
+    update_loads = {"lwzu", "lfsu", "lfdu"}
+    arithmetic = {"mr", "fmr", "add", "addi", "addis", "subi", "subf", "mullw", "mulli",
                   "slwi", "srwi", "srawi", "rlwinm", "clrlwi", "clrlslwi", "neg", "extsh", "extsb",
                   "and", "andi.", "or", "xor", "fadd", "fadds", "fsub", "fsubs",
                   "fmul", "fmuls", "fdiv", "fdivs", "fneg", "fabs", "frsp"}
@@ -326,12 +381,23 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
         op, operands = parts
         registers = frontier._register_tokens(",".join(operands))
         record = {"row": index, "instruction": row["instruction"]["formatted"], "uses": []}
-        supported = op in loads | arithmetic | harmless | {"li", "lis"}
-        is_def = op in loads | arithmetic | {"li", "lis"}
+        # Update forms define two values: loaded RT/FRT and EA in RA. Capture
+        # the old RA use before publishing either definition. Only numeric
+        # D-form addresses are understood here; symbolic/illegal forms stop.
+        update = None
+        if op in update_loads and len(operands) == 2:
+            update = re.fullmatch(r"(-?(?:0x[0-9a-f]+|\d+))\((r(?:[12]?\d|3[01]))\)", operands[1])
+            destination = r"r(?:[12]?\d|3[01])" if op == "lwzu" else r"f(?:[12]?\d|3[01])"
+            if (not update or not re.fullmatch(destination, operands[0])
+                    or update[2] == "r0" or (op == "lwzu" and operands[0] == update[2])
+                    or not -32768 <= int(update[1], 0) <= 32767):
+                update = None
+        supported = op in loads | arithmetic | harmless | {"li", "lis"} or update is not None
+        is_def = op in loads | arithmetic | {"li", "lis"} or update is not None
         uses = registers[1:] if is_def else registers
         if op in {"li", "lis"}:
             uses = []
-        if op in {"addi", "addis"} and len(operands) > 1 and operands[1] == "r0":
+        if op in {"addi", "addis", "subi"} and len(operands) > 1 and operands[1] == "r0":
             uses = []  # PPC RA=0 is a literal zero here, not the r0 value.
         if op in loads and len(operands) > 1 and operands[1].endswith("(r0)"):
             uses = []
@@ -343,6 +409,11 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
             record["memory_root"] = ({"base": match[2], "offset": int(match[1], 0),
                                        "zero_base": match[2] == "r0", "alias_identity": "UNKNOWN"} if match else
                                       {"status": "UNKNOWN", "reason": "symbolic/unsupported address"})
+        if update is not None:
+            record["memory_root"] = {"base": update[2], "offset": int(update[1], 0),
+                                     "zero_base": False, "alias_identity": "UNKNOWN"}
+            record["base_update"] = {"register": update[2], "operation": "old_base_plus_offset",
+                                     "offset": int(update[1], 0)}
         if not supported:
             reason = "call boundary" if op in {"bl", "bla", "bctrl", "blrl"} else "CFG boundary" if op.startswith("b") else "unsupported opcode"
             record.update(status="UNKNOWN", reason=reason)
@@ -351,6 +422,8 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
         elif is_def and registers:
             record["defines"] = registers[0]
             definitions[registers[0]] = index
+            if update is not None:
+                definitions[update[2]] = index
         records[index] = record
     selected = sites[:limit]
     pending = list(selected)

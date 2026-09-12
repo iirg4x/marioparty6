@@ -21,6 +21,62 @@ def report(left, right):
 
 
 class CausalGroupsTests(unittest.TestCase):
+    def decision(self, rows, start, end, **kwargs):
+        return groups.decision_packet(report(rows, rows), "f", "void f(void) {}", 1, 1,
+                                      "Where is this value defined?", start, end, **kwargs)
+
+    def test_decision_optional_producers_and_citations(self):
+        rows = [row("lwz r3, 12(r29)", 0), row("addi r4, r3, 4", 4)]
+        plain = self.decision(rows, 1, 1)
+        self.assertNotIn("producer_context", plain)
+        self.assertNotIn("Optional producer_context", groups.render_decision_prompt(plain))
+        packet = self.decision(rows, 1, 1, producer_sites=[1])
+        sliced = packet["producer_context"]["target"]
+        self.assertEqual([n["row"] for n in sliced["nodes"]], [0, 1])
+        self.assertEqual(sliced["nodes"][1]["uses"], [{"register": "r3", "definition_row": 0}])
+        self.assertEqual(sliced["nodes"][0]["uses"][0]["status"], "UNKNOWN")
+        self.assertIn("Optional producer_context", groups.render_decision_prompt(packet))
+        answer = dict(status="supported", function="f", packet_sha256=packet["packet_sha256"],
+                      answer="The add uses the row 0 load.", evidence_rows=[0], missing_evidence=None)
+        groups.validate_decision_answer(packet, answer)
+        answer["packet_sha256"] = plain["packet_sha256"]
+        with self.assertRaisesRegex(ValueError, "missing/duplicate"):
+            groups.validate_decision_answer(plain, answer)
+
+    def test_decision_producers_stop_at_boundaries_and_unknowns(self):
+        for boundary, reason in (("bl helper", "call boundary"), ("b 0x8", "CFG/function entry"),
+                                 ("mystery r3", "unsupported opcode")):
+            packet = self.decision([row("li r3, 1", 0), row(boundary, 4), row("mr r4, r3", 8)],
+                                   2, 2, producer_sites=[2])
+            groups.validate_decision_packet(packet)
+            nodes = packet["producer_context"]["target"]["nodes"]
+            self.assertEqual([n["row"] for n in nodes], [2])
+            self.assertEqual(nodes[0]["uses"][0]["reason"], reason)
+
+    def test_decision_producer_budgets_and_validation(self):
+        rows = [row("addi r3, r3, 1", i*4) for i in range(10)]
+        packet = self.decision(rows, 9, 9, producer_sites=[9], producer_limit=1)
+        sliced = packet["producer_context"]["target"]
+        self.assertTrue(sliced["truncated"])
+        self.assertEqual(len(sliced["nodes"]), 4)
+        groups.validate_decision_packet(packet)
+        answer = dict(status="supported", function="f", packet_sha256=packet["packet_sha256"],
+                      answer="Missing producer is not citation evidence.", evidence_rows=[5], missing_evidence=None)
+        with self.assertRaisesRegex(ValueError, "missing/duplicate"):
+            groups.validate_decision_answer(packet, answer)
+        plain = self.decision(rows, 9, 9)
+        budget = len(json.dumps(plain, ensure_ascii=False).encode()) + 50
+        self.decision(rows, 9, 9, max_bytes=max(1000, budget))
+        with self.assertRaisesRegex(ValueError, "byte budget"):
+            self.decision(rows, 9, 9, producer_sites=[9], max_bytes=max(1000, budget))
+        for sites, limit in (([], 16), ([8], 16), ([9, 9], 16), ([True], 16), ([9], 65)):
+            with self.assertRaises(ValueError):
+                self.decision(rows, 9, 9, producer_sites=sites, producer_limit=limit)
+        sliced["node_limit"] = 1000
+        packet["packet_sha256"] = groups._digest({k: v for k, v in packet.items() if k != "packet_sha256"})
+        with self.assertRaisesRegex(ValueError, "bounds/scope"):
+            groups.validate_decision_packet(packet)
+
     def test_constant_copy_recognizes_a_reaching_value_not_source_identity(self):
         for op in ("addi r4, r5, 0x0", "mr r4, r5"):
             left = [row("li r5, 0", 0), row(op, 4), row("stw r4, 0(r3)", 8)]
@@ -165,6 +221,43 @@ class CausalGroupsTests(unittest.TestCase):
             result = groups.producer_slice([row("li r3, 1", 0), row(text, 4), row("mr r4, r3", 8)], [2])
             self.assertEqual(result["nodes"][-1]["uses"][0]["reason"], reason)
             self.assertNotIn("definition_row", result["nodes"][-1]["uses"][0])
+
+    def test_producer_subi_and_update_load_pre_update_base(self):
+        for op, dest in (("lwzu", "r4"), ("lfsu", "f4"), ("lfdu", "f4")):
+            rows = [row("li r3, 16", 0), row("subi r3, r3, 4", 4),
+                    row(f"{op} {dest}, -0x4(r3)", 8), row("addi r5, r3, 8", 12),
+                    row(f"{'mr' if op == 'lwzu' else 'fmr'} { 'r6' if op == 'lwzu' else 'f6'}, {dest}", 16)]
+            nodes = groups.producer_slice(rows, [3, 4])["nodes"]
+            self.assertEqual(nodes[1]["uses"], [{"register": "r3", "definition_row": 0}])
+            self.assertEqual(nodes[2]["uses"], [{"register": "r3", "definition_row": 1}])
+            self.assertEqual(nodes[2]["defines"], dest)
+            self.assertEqual(nodes[2]["base_update"], {"register": "r3", "operation": "old_base_plus_offset", "offset": -4})
+            self.assertEqual(nodes[2]["memory_root"]["alias_identity"], "UNKNOWN")
+            self.assertEqual(nodes[3]["uses"], [{"register": "r3", "definition_row": 2}])
+            self.assertEqual(nodes[4]["uses"], [{"register": dest, "definition_row": 2}])
+            groups.validate_decision_packet(self.decision(rows, 3, 4, producer_sites=[3, 4]))
+        self.assertEqual(groups.producer_slice([row("subi r3, r0, 4", 0)], [0])["nodes"][0]["uses"], [])
+
+    def test_producer_update_rejects_illegal_or_unparsed_forms(self):
+        for instruction in ("lwzu r3, 4(r3)", "lwzu r4, 4(r0)", "lfsu f4, 4(r0)",
+                            "lfdu f4, label(r3)", "lwzu f4, 4(r3)", "lfsu r4, 4(r3)",
+                            "lwzu r4, 65536(r3)", "lwzu r4, 4(r32)"):
+            nodes = groups.producer_slice([row("li r3, 1", 0), row(instruction, 4),
+                                           row("mr r5, r3", 8)], [1, 2])["nodes"]
+            self.assertEqual(nodes[0]["status"], "UNKNOWN")
+            self.assertNotIn("base_update", nodes[0])
+            self.assertEqual(nodes[1]["uses"][0]["reason"], "unsupported opcode")
+
+    def test_producer_update_does_not_cross_calls_or_cfg(self):
+        for boundary in ("bl helper", "b 0xc"):
+            rows = [row("li r3, 1", 0), row(boundary, 4), row("lfsu f0, 4(r3)", 8),
+                    row("addi r4, r3, 4", 12)]
+            nodes = groups.producer_slice(rows, [2, 3])["nodes"]
+            self.assertEqual(nodes[0]["uses"][0]["status"], "UNKNOWN")
+            if boundary.startswith("bl "):
+                self.assertEqual(nodes[1]["uses"][0]["definition_row"], 2)
+            else:
+                self.assertEqual(nodes[1]["uses"][0]["status"], "UNKNOWN")
 
     def test_producer_branch_entry_alias_and_symbolic_memory(self):
         rows = [row("li r3, 1", 0), row("b 0xc", 4, branch_dest="12"), row("li r3, 2", 8),

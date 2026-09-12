@@ -1,6 +1,7 @@
 #include "gssdk/triggerlr.h"
 
-#include <math.h>
+extern f32 floorf(f32 value);
+extern f32 ceilf(f32 value);
 
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
@@ -9,9 +10,9 @@ extern f32 logf_check(f32 value);
 
 s32 Voicing_AddSignal(TriggerLR *block, s16 *input)
 {
+    s32 result = 0;
     s16 *output = block->subsamplerOutput;
     s16 *outputEnd = output + block->frameLength;
-    s32 result = 0;
 
     if (Subsampler_Process(block, input) != 0) {
         result = 1;
@@ -31,9 +32,9 @@ s32 Voicing_AddSignal(TriggerLR *block, s16 *input)
     return result;
 }
 
-void Voicing_MaintainNoiseEner(TriggerLR *block)
+static inline f32 Voicing_LogEnergy(TriggerLR *block, u32 lag)
 {
-    u32 *energy = block->energyWrite - 1;
+    u32 *energy = block->energyWrite - 1 - lag;
     f32 energySum = 0.0f;
     u32 i;
 
@@ -46,8 +47,12 @@ void Voicing_MaintainNoiseEner(TriggerLR *block)
             energy += block->historyLength;
         }
     }
+    return logf_check(energySum);
+}
 
-    *block->noiseEnergyWrite++ = logf_check(energySum);
+void Voicing_MaintainNoiseEner(TriggerLR *block)
+{
+    *block->noiseEnergyWrite++ = Voicing_LogEnergy(block, 0);
     if (block->noiseEnergyWrite >= block->noiseEnergyEnd) {
         block->noiseEnergyWrite = block->noiseEnergyHistory;
     }
@@ -63,9 +68,9 @@ f32 Voicing_GetMaxVoicing(TriggerLR *block)
     f32 noiseLog;
     f32 currentEnergy;
     f32 laggedEnergy;
-    f32 maximumCorrelation = 0.0f;
+    f32 maximumCorrelation;
     f32 maximumVoicing = 0.0f;
-    u32 bestLag = 0;
+    u32 bestLag;
     u32 lag;
     u32 i;
 
@@ -79,35 +84,25 @@ f32 Voicing_GetMaxVoicing(TriggerLR *block)
     }
     noiseLog = logf_check(noiseMean);
 
-    {
-        u32 *energy = block->energyWrite - 1;
-        f32 energySum = 0.0f;
+    currentEnergy = Voicing_LogEnergy(block, 0);
 
-        if (energy < block->energyHistory) {
-            energy += block->historyLength;
-        }
-        for (i = 0; i < block->frameLength; i++) {
-            energySum += *energy--;
-            if (energy < block->energyHistory) {
-                energy += block->historyLength;
-            }
-        }
-        currentEnergy = logf_check(energySum);
-    }
-
-    if (currentEnergy >= noiseLog + block->voicingThreshold &&
-        currentEnergy >= block->minimumLogEnergy) {
+    if (!(currentEnergy < noiseLog + block->voicingThreshold ||
+          currentEnergy < block->minimumLogEnergy)) {
+        maximumCorrelation = 0.0f;
+        bestLag = 0;
         for (lag = block->minimumLag; lag <= block->maximumLag; lag++) {
             f32 correlation = 0.0f;
             u32 phase;
 
             for (phase = 0; phase < 4; phase++) {
-                s16 *first = block->signalWrite - 1 - phase;
-                s16 *second = block->signalWrite - 1 - phase - lag;
+                s16 *start = block->signalWrite - 1 - phase;
+                s16 *first = start;
+                s16 *second;
 
                 if (first < block->signalHistory) {
                     first += block->historyLength;
                 }
+                second = start - lag;
                 if (second < block->signalHistory) {
                     second += block->historyLength;
                 }
@@ -134,31 +129,17 @@ f32 Voicing_GetMaxVoicing(TriggerLR *block)
             }
         }
 
-        {
-            u32 *energy = block->energyWrite - 1 - bestLag;
-            f32 energySum = 0.0f;
+        laggedEnergy = Voicing_LogEnergy(block, bestLag);
 
-            if (energy < block->energyHistory) {
-                energy += block->historyLength;
-            }
-            for (i = 0; i < block->frameLength; i++) {
-                energySum += *energy--;
-                if (energy < block->energyHistory) {
-                    energy += block->historyLength;
-                }
-            }
-            laggedEnergy = logf_check(energySum);
-        }
-
-        if (laggedEnergy >= noiseLog + block->voicingThreshold &&
-            laggedEnergy >= block->minimumLogEnergy) {
-            f32 laggedSignalEnergy =
-                0.5f * logf_check(expf(laggedEnergy) - noiseMean);
-            f32 currentSignalEnergy =
-                0.5f * logf_check(expf(currentEnergy) - noiseMean);
+        if (!(laggedEnergy < noiseLog + block->voicingThreshold ||
+              laggedEnergy < block->minimumLogEnergy)) {
+            noiseLog = logf_check(expf(laggedEnergy) - noiseMean);
+            noiseLog *= 0.5f;
+            maximumVoicing = logf_check(expf(currentEnergy) - noiseMean);
+            maximumVoicing *= 0.5f;
 
             maximumVoicing = logf_check(maximumCorrelation) -
-                             currentSignalEnergy - laggedSignalEnergy;
+                             maximumVoicing - noiseLog;
         }
     }
     return maximumVoicing;
@@ -168,13 +149,15 @@ void Voicing_Reset(TriggerLR *block)
 {
     block->signalWrite = block->signalHistory;
     while (block->signalWrite < block->signalEnd) {
-        *block->signalWrite++ = 0;
+        *block->signalWrite = 0;
+        block->signalWrite++;
     }
     block->signalWrite = block->signalHistory;
 
     block->energyWrite = block->energyHistory;
     while (block->energyWrite < block->energyEnd) {
-        *block->energyWrite++ = 0;
+        *block->energyWrite = 0;
+        block->energyWrite++;
     }
     block->energyWrite = block->energyHistory;
 
@@ -191,14 +174,15 @@ s32 InitVoicing(TriggerLR *block)
     f32 frameDuration;
     f32 sampleRate;
     f32 minimumLogEnergy;
+    f32 voicingThreshold;
     u32 result = 0;
 
-    block->frameLength = block->maximumLag = block->minimumLag = 0;
-    block->signalEnd = block->signalWrite = block->signalHistory = NULL;
-    block->energyEnd = block->energyWrite = block->energyHistory = NULL;
-    block->noiseEnergyEnd = block->noiseEnergyHistory =
-        block->noiseEnergyWrite = NULL;
-    block->noiseEnergyCapacity = block->noiseEnergyCount = 0;
+    block->minimumLag = block->maximumLag = block->frameLength = 0;
+    block->signalHistory = block->signalWrite = block->signalEnd = NULL;
+    block->energyHistory = block->energyWrite = block->energyEnd = NULL;
+    block->noiseEnergyWrite = block->noiseEnergyHistory =
+        block->noiseEnergyEnd = NULL;
+    block->noiseEnergyCount = block->noiseEnergyCapacity = 0;
 
     minimumPeriod = _tosGetProfileFloat(block, 24, 0.005f);
     maximumPeriod = _tosGetProfileFloat(block, 25, 0.014f);
@@ -206,25 +190,24 @@ s32 InitVoicing(TriggerLR *block)
     sampleRate = _tosGetProfileFloat(block, 27, 11000.0f);
     minimumLogEnergy = _tosGetProfileFloat(block, 29, -1000.0f);
 
+    voicingThreshold = _tosGetProfileFloat(block, 28, 6.0f);
+    voicingThreshold *= 0.23025851f;
     block->minimumLogEnergy = minimumLogEnergy;
-    block->voicingThreshold =
-        _tosGetProfileFloat(block, 28, 6.0f) * 0.23025851f;
+    block->voicingThreshold = voicingThreshold;
     block->minimumLag =
-        (u32)floorf(minimumPeriod * sampleRate * 0.5f);
+        (u32)floorf((minimumPeriod *= sampleRate) * 0.5f);
     block->maximumLag =
-        (u32)ceilf(maximumPeriod * sampleRate * 0.5f);
+        (u32)ceilf((maximumPeriod *= sampleRate) * 0.5f);
     block->frameLength =
-        (u32)ceilf(frameDuration * sampleRate * 0.5f);
+        (u32)ceilf((frameDuration *= sampleRate) * 0.5f);
     block->historyLength = block->maximumLag + block->frameLength;
 
-    block->signalHistory =
+    block->signalWrite = block->signalHistory =
         heap_Calloc(context->heap, block->historyLength, sizeof(s16));
-    block->signalWrite = block->signalHistory;
     block->signalEnd = block->signalHistory + block->historyLength;
 
-    block->energyHistory =
+    block->energyWrite = block->energyHistory =
         heap_Calloc(context->heap, block->historyLength, sizeof(u32));
-    block->energyWrite = block->energyHistory;
     block->energyEnd = block->energyHistory + block->historyLength;
 
     block->noiseEnergyCapacity = 16;

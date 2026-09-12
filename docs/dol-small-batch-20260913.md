@@ -75,6 +75,99 @@ file size or a high percentage. Keep the full current machine slice and the
 compact rejected source classes in future support packets; do not ask a fresh
 model to rediscover a known neutral conversion or helper boundary.
 
+## Voicing: three function gains retained
+
+The owner now has **4/6 strict/data-exact functions**, up from 1/6. Its original
+2320-byte `.text` is now the target size, **2168 bytes**. No exact sibling was
+lost. This is a retained partial owner, not a new Matching owner or main push.
+
+| Function | Before | Retained strict/data | Target/source bytes |
+| --- | ---: | ---: | ---: |
+| Voicing_AddSignal | 95.277780% | 100% | 216/216 |
+| Voicing_MaintainNoiseEner | 96.818184% | 100% | 220/220 |
+| Voicing_GetMaxVoicing | 88.858490% | 99.481130% | 848/848 |
+| Voicing_Reset | 80% | 100% | 160/160 |
+| InitVoicing | 66.205300% | 99.801320% | 604/604 |
+| Voicing_Free | 100% | 100% | 120/120 |
+
+Reset's real slot store must precede publishing the advanced ring cursor.
+Correcting that source order made Reset exact and stopped its wrong inlined
+body from bloating InitVoicing. The initializer also needs the actual `floorf`
+and `ceilf` float interfaces: the prior math header expanded floorf through
+double floor and did not declare ceilf. Typed calls, target field-publication
+order, last-use period-to-sample conversion, and live allocator-result chains
+removed 128 excess InitVoicing bytes. AddSignal's outcome initialization belongs
+before its two buffer captures.
+
+The repeated backwards ring-energy traversals were an **inline helper source
+boundary**, not three unrelated register problems. The ordinary
+`static inline Voicing_LogEnergy(block, lag)` reconstruction made
+MaintainNoiseEner exact, removed GetMaxVoicing's last extra instruction, and
+fixed the return-value/guard boundary. No forced-inline pragma, ASM, padding,
+fake local, or compiler-option change was added. The helper name is descriptive
+reconstruction, not a claim of recovered original naming. The remaining
+GetMaxVoicing mismatch is a saved-FPR allocation/reuse problem; InitVoicing has
+three multiplication operand rows. Do not repeat the neutral isolated operand
+swap or shared-zero test, or the regressing separate period-conversion helper.
+
+Retained source SHA-256:
+`a35102b37deefdee356425780b73086ae589587aa44006c6278c97744c17db0f`.
+Object: `81f0e67059233708e41ce406cabb1d7583ad8b9ca1c558a672434e449b6bec5b`.
+Strict/data: `1aa7f5f50cfae9044274d265cd7850568124774aacfc8aec7dcdeb752f243743`.
+Proof: `build/small-first-20260913/voicing-inline-energy-helper/frontier-proof.json`.
+Independent compilation of the retained live source reproduced that object.
+
+AddSignal, Reset and Free have raw exact physical receipts. MaintainNoiseEner's
+three relocations agree under the already implemented, explicitly recorded
+DTK 0.9.2 instruction-site convention: two SDA21 records address the instruction
+versus its halfword. Raw offset identity is **not** claimed. The `.sdata2`
+payload is byte-identical for 60 bytes; the target has a four-byte alignment
+tail, confirmed by the existing section-tail diagnostic. No fake data producer
+was added. Final source-selected link/promotion remains pending owner closure.
+Batch count remains **1/10**, local **348/396**, main **347/396**.
+
+## Cursor producer context and Qwen validation reliability
+
+`recovery_causal_groups.producer_slice` now understands `subi` and numeric
+`lwzu/lfsu/lfdu` updates. It distinguishes the loaded value from the updated
+cursor and binds each use to the pre-update base. Invalid/symbolic update
+forms and unknown CFG entries remain explicit UNKNOWN. Existing
+`decision_packet` accepts optional, bounded `producer_sites` context; legacy
+output is unchanged. On current Smoother evidence it resolves rows 118/123's
+old/new cursor relationship and rows 120/128's actual load producers. This is
+better input for the named source decision, **not a newly discovered source
+gain**. The full prior packet already included the setup statements.
+Actual-use receipt: `build/dol-small-next-20260913/smoother-producer-context-replay.json`
+(SHA-256 `cc034be32bae4025825c669d627721b993e7bbb07164d181514c402b72c2059e`).
+It verifies 12 target/candidate dependency links with a 16,315-byte packet.
+
+The installed Qwen runner no longer wastes a naturally completed inference
+solely because the validator was updated while it ran. For validator-only
+drift it validates the original exact prompt and final answer with the current
+validator, pinning/rechecking all hashes. Prompt/packet drift, incompatible
+validation, mid-validation mutation, partial completion, and exit-zero empty
+or rejected validator receipts still fail closed. There is no HTTP retry,
+model restart, output cap, or reasoning reduction. Old rejected job receipts
+are not rewritten. Primary review remains required: syntactic validity does
+not prove a factual finding.
+
+Installed runner SHA-256:
+`2f70d9916f9698c1d23ddcfd04ff1e2e589c4c21071e8df41f6b2ff10d9d96a0`
+at `C:/Users/Anony/.codex/tools/qwen-support/run-job.ps1`; usage is documented in
+the adjacent README. The 26 fake-HTTP replay tests pass, including one-request
+validator-only drift, cancellation, four real concurrent slots, and malformed
+validation statuses. The causal/header/section-tail suites pass 93 tests (one
+platform skip), for **119 tests total, one skipped**. These tests do not run a
+model or owner compiler.
+
+This round's two real Qwen jobs finished naturally but were rejected by the
+old validator-drift behavior. Their raw answers were reviewed without retry:
+Pitch's proposed cached single rate conversion contradicts the two target
+conversions and is not compiled; Smoother confirmed the existing column-base
+recomputation but supplied no new winning source change. They are not credited
+with the Voicing gains. The runner fix addresses wasted inference, not model
+translation accuracy by itself.
+
 ## Actual-header selection and compact compiler output
 
 The reusable proof checkout had an older `gssdk/triggerlr.h` declaring
