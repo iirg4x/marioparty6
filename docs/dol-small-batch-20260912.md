@@ -1,5 +1,56 @@
 # Small DOL batch, 2026-09-12
 
+## Language dispatch table retained: 67/76 instruction-exact
+
+The current language-data owner now defines all **76 functions**: **67 are
+strict/data exact; 66 also have exact physical relocations**. This turn adds
+`FillLanguageVirtualTable` at **44/44 bytes, 3/3 physical relocations** and
+reconstructs the typed 316-byte table: all 75 function-pointer slots and four
+null slots agree with the retail dispatch identities. The two identically
+named target getters are checked by their distinct byte ranges; slot 0x4c
+selects WarpFactors, while slot 0x50 selects SpeechUnit. This corrects the
+descriptive header names without editing the target input. No external source
+calls these now-private accessors directly.
+
+`_langGetpExtraEventContext` retains **87.034485 -> 95.836205**, shrinking
+496 to the target **464 bytes**. The tone pointer uses its existing final-offset
+predecessor, restoring a real inline boundary in this consumer. Separating the
+16-bit product from the promoted aligned count restores the missing truncation
+instruction; no fake storage or register hint is used. `_cdbGetCodeBookSize`
+also retains **81.0 -> 81.42857**, unchanged at 136 versus target140 bytes,
+through its ordinary conditional probability-column value. All prior exact
+functions and already-exact physical channels survive. Four independent old/new
+header consumer compiles (`dpgenuw`, `dpscruw`, `vq1500`, `gender`) produce
+byte-identical objects. The live-source rebuild reproduces the selected
+allocated sections, strict/data metrics, and independently checked relocations.
+
+Live source `bc19d49c39920d4b988741d96de722aac818e50749ddc752f50f8020f30404b3`;
+header `1d85951a445d96f801c258d76d860c2af8b8a19b62594e6228de80e9ad3e2465`;
+object `00594ae8cf6d33d22605d3219cc07b0a84d59217993b4711767477e09a2a8636`;
+strict `551b03cf33dbdc38a6b5df8ead509a7081ca97a29918ff525cdedbbc40063f42`;
+data `57e5c609e94c17380cb4e7ea62453a4b0b54f15f797e599b6d4fe103f3010333`.
+Compact proof: `build/language-table-20260912/frozen/langdata/retained-frontier.json`
+and `build/language-table-20260912/consumer-proof/result.json`.
+Nine functions, provider-address alignment, and the source-selected link remain;
+this is **not** a seventh closed owner. The verified pending batch stays **6/10**.
+
+Speed corrections applied rather than waiting for more broad worker analyses:
+the existing private batch preparer now uses up to four validated Qwen slots,
+not its stale two-client default. Reuse the existing decision-first packet mode
+for a named missing relationship; primary-only freezes/compiles remain independent.
+The broad language-layout jobs completed but invented extra call arguments from
+stale volatile registers; one also reversed `subf`/lost a returned pointer.
+These findings were not source authority and did not discover the gains above.
+The maintained decision prompt now explicitly preserves these PPC dataflow
+rules. This is a tested prompting guard, not a claim of automatic correctness
+or measured new model throughput; highest uncapped reasoning is unchanged.
+
+Compact constraints for continuation: typed training-pointer/getter composition
+is object-neutral; direct m2c arithmetic flattens away target accumulation
+boundaries, and signed local dimensions do not repair that. Do not repeat these
+cells. The constructor/table and independent header checks were compiled in
+parallel; proof reused the objects instead of rerunning discovery.
+
 ## Grouped language-data reconstruction: 29 new exact functions
 
 `langdata.c` now retains **37 newly implemented functions**. Of these,

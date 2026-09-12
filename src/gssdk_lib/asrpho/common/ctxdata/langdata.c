@@ -1,184 +1,185 @@
 #include "types.h"
 
 #include "gssdk/langdata.h"
+#include "string.h"
 
-BOOL _langCheckDataType(LanguageData *language)
+static BOOL _langCheckDataType(LanguageData *language)
 {
     return language->data->dataType == 0x1003;
 }
 
-u32 _langGetSize(LanguageData *language)
+static u32 _langGetSize(LanguageData *language)
 {
     return language->data->size;
 }
 
-void *_langGetVersionInfo(LanguageData *language)
+static void *_langGetVersionInfo(LanguageData *language)
 {
     return language->data->versionInfo;
 }
 
-u32 _langGetNbrCodeBook(LanguageData *language)
+static u32 _langGetNbrCodeBook(LanguageData *language)
 {
     return language->data->nbrCodeBook;
 }
 
-u32 _langGetNbrState(LanguageData *language)
+static u32 _langGetNbrState(LanguageData *language)
 {
     return language->data->nbrState;
 }
 
-u32 _langGetNbrPhenome(LanguageData *language)
+static u32 _langGetNbrPhenome(LanguageData *language)
 {
     return language->data->nbrErgodicPhenomes +
            language->data->nbrNonErgodicPhenomes;
 }
 
-u32 _langGetAdaptSilState(LanguageData *language)
+static u32 _langGetAdaptSilState(LanguageData *language)
 {
     return language->data->adaptSilState;
 }
 
-u32 _langGetNbrErgodicStates(LanguageData *language)
+static u32 _langGetNbrErgodicStates(LanguageData *language)
 {
     return language->data->nbrErgodicStates;
 }
 
-u32 _langGetNbrStateErgodicStates(LanguageData *language)
+static u32 _langGetNbrStateErgodicStates(LanguageData *language)
 {
     return language->data->nbrStateErgodicStates;
 }
 
-u32 _langGetNbrErgodicPhenomes(LanguageData *language)
+static u32 _langGetNbrErgodicPhenomes(LanguageData *language)
 {
     return language->data->nbrErgodicPhenomes;
 }
 
-u32 _langGetNbrStateErgodicPhenomes(LanguageData *language)
+static u32 _langGetNbrStateErgodicPhenomes(LanguageData *language)
 {
     return language->data->nbrStateErgodicPhenomes;
 }
 
-u32 _langGetNbrNonErgodicPhenomes(LanguageData *language)
+static u32 _langGetNbrNonErgodicPhenomes(LanguageData *language)
 {
     return language->data->nbrNonErgodicPhenomes;
 }
 
-u32 _langGetSilencePhenome(LanguageData *language)
+static u32 _langGetSilencePhenome(LanguageData *language)
 {
     return language->data->silencePhenome;
 }
 
-u32 _langGetUWSilencePhenome(LanguageData *language)
+static u32 _langGetUWSilencePhenome(LanguageData *language)
 {
     return language->data->userWordSilencePhenome;
 }
 
-u32 _langGetSingleWordGarbagePhenome(LanguageData *language)
+static u32 _langGetSingleWordGarbagePhenome(LanguageData *language)
 {
     return language->data->singleWordGarbagePhenome;
 }
 
-u32 _langGetSentenceGarbagePhenome(LanguageData *language)
+static u32 _langGetSentenceGarbagePhenome(LanguageData *language)
 {
     return language->data->sentenceGarbagePhenome;
 }
 
-u32 _langGetAnySpeechGarbagePhenome(LanguageData *language)
+static u32 _langGetAnySpeechGarbagePhenome(LanguageData *language)
 {
     return language->data->anySpeechGarbagePhenome;
 }
 
-u32 _langGetNbrSpeechUnit(LanguageData *language)
+static u32 _langGetNbrSpeechUnit(LanguageData *language)
 {
     return language->data->nbrSpeechUnit;
 }
 
-u32 _langGetNbrWarpFactors(LanguageData *language)
+static u32 _langGetNbrWarpFactors(LanguageData *language)
 {
     return language->data->nbrWarpFactors;
 }
 
-u32 _langGetNbrSpeechUnitClass(LanguageData *language)
+static u32 _langGetNbrSpeechUnitClass(LanguageData *language)
 {
     return language->data->nbrSpeechUnitClass;
 }
 
-u32 _langGetNbrTones(LanguageData *language)
+static u32 _langGetNbrTones(LanguageData *language)
 {
     return language->data->nbrTones;
 }
 
-u32 _langGetUserWordSpeechUnitClass(LanguageData *language)
+static u32 _langGetUserWordSpeechUnitClass(LanguageData *language)
 {
     return language->data->userWordSpeechUnitClass;
 }
 
-u32 _langGetNbrTransWord(LanguageData *language)
+static u32 _langGetNbrTransWord(LanguageData *language)
 {
     return language->data->nbrTransWord;
 }
 
-u32 _langGetNbrPhenUserWordTraining(LanguageData *language)
+static u32 _langGetNbrPhenUserWordTraining(LanguageData *language)
 {
     return language->data->nbrPhenUserWordTraining;
 }
 
-s32 _langGetRecogWTP(LanguageData *language)
+static s32 _langGetRecogWTP(LanguageData *language)
 {
     return language->data->recogWTP;
 }
 
-s32 _langGetSpellingWTP(LanguageData *language)
+static s32 _langGetSpellingWTP(LanguageData *language)
 {
     return language->data->spellingWTP;
 }
 
-u32 _cdbGetCodeBookDim(CodeBookData *codeBook)
+static u32 _cdbGetCodeBookDim(CodeBookData *codeBook)
 {
     return codeBook->dimension;
 }
 
-u32 _cdbGetFirstCdbSize(CodeBookData *codeBook)
+static u32 _cdbGetFirstCdbSize(CodeBookData *codeBook)
 {
     return codeBook->firstSize;
 }
 
-u32 _cdbGetNbrInSecSearch(CodeBookData *codeBook)
+static u32 _cdbGetNbrInSecSearch(CodeBookData *codeBook)
 {
     return codeBook->nbrInSecondSearch;
 }
 
-u32 _cdbGetSecondCdbSize(CodeBookData *codeBook)
+static u32 _cdbGetSecondCdbSize(CodeBookData *codeBook)
 {
     return codeBook->secondSize;
 }
 
-u32 _cdbGetCompStart(CodeBookData *codeBook)
+static u32 _cdbGetCompStart(CodeBookData *codeBook)
 {
     return codeBook->compressedStart;
 }
 
-u32 _cdbGetNbrGastone(CodeBookData *codeBook)
+static u32 _cdbGetNbrGastone(CodeBookData *codeBook)
 {
     return codeBook->nbrGastone;
 }
 
-u16 _langGetSilPhenome(LanguageData *language)
+static u16 _langGetSilPhenome(LanguageData *language)
 {
     return language->data->silencePhenome;
 }
 
-void *_langGetpWarpFactors(LanguageData *language)
+static void *_langGetpWarpFactors(LanguageData *language)
 {
     return language->data->payload;
 }
 
-void *_langGetpGastone(LanguageData *language)
+static void *_langGetpGastone(LanguageData *language)
 {
     return language->data->payload + language->data->nbrWarpFactors * 8;
 }
 
-void *_langGetpErgodicStates(LanguageData *language)
+static void *_langGetpErgodicStates(LanguageData *language)
 {
     LanguageDataV2 *data = language->data;
 
@@ -186,7 +187,7 @@ void *_langGetpErgodicStates(LanguageData *language)
            data->nbrState * data->nbrCodeBook * 2;
 }
 
-void *_langGetpErgodicPhenomes(LanguageData *language)
+static void *_langGetpErgodicPhenomes(LanguageData *language)
 {
     LanguageDataV2 *data = language->data;
 
@@ -196,7 +197,7 @@ void *_langGetpErgodicPhenomes(LanguageData *language)
            data->nbrStateErgodicStates * 2;
 }
 
-void *_langGetpErgodicPenalty(LanguageData *language)
+static void *_langGetpErgodicPenalty(LanguageData *language)
 {
     LanguageDataV2 *data = language->data;
 
@@ -209,32 +210,10 @@ void *_langGetpErgodicPenalty(LanguageData *language)
     return (u8 *)data + bytes + sizeof(LanguageDataV2);
 }
 
-/* Layout names are descriptive; field widths and boundaries are target-backed. */
-typedef struct TransWordData {
-    u32 nbrWords;
-    u32 nbrItems;
-    u16 lex[];
-} TransWordData;
+static u32 _cdbGetCodeBookSize(LanguageData *language, CodeBookData *codeBook);
+static u32 _transwGetSize(LanguageData *language, TransWordData *words);
 
-typedef struct ExtraEventData {
-    s32 leadingPenalty;
-    s32 trailingPenalty;
-    s32 rejectionPenalty;
-    s32 rejectionPathPenalty;
-    u32 silencePhenome;
-    u32 nbrItems;
-    u32 nbrPronunciations;
-    u32 leadingWordIndex;
-    u32 trailingWordIndex;
-    u32 rejectionWordIndex;
-    u16 items[];
-} ExtraEventData;
-
-
-u32 _cdbGetCodeBookSize(LanguageData *language, CodeBookData *codeBook);
-u32 _transwGetSize(LanguageData *language, TransWordData *words);
-
-CodeBookData *_langGetpCodeBook(LanguageData *language, u32 index)
+static CodeBookData *_langGetpCodeBook(LanguageData *language, u32 index)
 {
     LanguageDataV2 *data = language->data;
     u32 bytes;
@@ -255,7 +234,7 @@ CodeBookData *_langGetpCodeBook(LanguageData *language, u32 index)
     return codeBook;
 }
 
-u32 *_langGetpSpeechUnit(LanguageData *language)
+static u32 *_langGetpSpeechUnit(LanguageData *language)
 {
     u32 count = language->data->nbrCodeBook;
     if (language->data->flags & 4) {
@@ -264,13 +243,13 @@ u32 *_langGetpSpeechUnit(LanguageData *language)
     return (u32 *)_langGetpCodeBook(language, count);
 }
 
-u32 _langGetSizeSpeechUnits(LanguageData *language)
+static u32 _langGetSizeSpeechUnits(LanguageData *language)
 {
     LanguageDataV2 *data = language->data;
     return _langGetpSpeechUnit(language)[data->nbrSpeechUnit];
 }
 
-TransWordData *_langGetpTransWord(LanguageData *language)
+static TransWordData *_langGetpTransWord(LanguageData *language)
 {
     LanguageDataV2 *data = language->data;
     u32 *speechUnits = _langGetpSpeechUnit(language);
@@ -278,13 +257,13 @@ TransWordData *_langGetpTransWord(LanguageData *language)
         + speechUnits[data->nbrSpeechUnit] * 2 - (u8 *)data + 3) & ~3));
 }
 
-u16 *_langGetpPhenUserWordTraining(LanguageData *language)
+static u16 *_langGetpPhenUserWordTraining(LanguageData *language)
 {
     TransWordData *words = _langGetpTransWord(language);
     return (u16 *)((u8 *)words + _transwGetSize(language, words));
 }
 
-u16 *_langGetpDimensionsOfToneConversionMatrix(LanguageData *language)
+static u16 *_langGetpDimensionsOfToneConversionMatrix(LanguageData *language)
 {
     u8 *end = (u8 *)(_langGetpPhenUserWordTraining(language)
         + language->data->nbrPhenUserWordTraining);
@@ -294,23 +273,23 @@ u16 *_langGetpDimensionsOfToneConversionMatrix(LanguageData *language)
     return (u16 *)end;
 }
 
-u16 *_langGetpOffsetForFinals(LanguageData *language)
+static u16 *_langGetpOffsetForFinals(LanguageData *language)
 {
     return _langGetpDimensionsOfToneConversionMatrix(language) + 3;
 }
 
-u16 *_langGetpToneConversionMatrix(LanguageData *language)
+static u16 *_langGetpToneConversionMatrix(LanguageData *language)
 {
-    return _langGetpDimensionsOfToneConversionMatrix(language) + 4;
+    return _langGetpOffsetForFinals(language) + 1;
 }
 
-ExtraEventData *_langGetpExtraEventContext(LanguageData *language)
+static ExtraEventData *_langGetpExtraEventContext(LanguageData *language)
 {
     if (language->data->nbrTones != 0) {
         u16 *dimensions = _langGetpDimensionsOfToneConversionMatrix(language);
-        u16 count = dimensions[0] * dimensions[1] * dimensions[2];
+        u32 count = (u16)(dimensions[0] * dimensions[1] * dimensions[2]);
         count = (count + 3) & ~3;
-        return (ExtraEventData *)(_langGetpToneConversionMatrix(language) + count);
+        return (ExtraEventData *)(_langGetpToneConversionMatrix(language) + (u16)count);
     } else {
         u8 *end = (u8 *)_langGetpDimensionsOfToneConversionMatrix(language);
         u32 offset = (u32)end - (u32)language;
@@ -318,7 +297,7 @@ ExtraEventData *_langGetpExtraEventContext(LanguageData *language)
     }
 }
 
-BOOL _langIsNormalPhenome(LanguageData *language, u16 phenome)
+static BOOL _langIsNormalPhenome(LanguageData *language, u16 phenome)
 {
     if (phenome < language->data->nbrErgodicPhenomes) {
         return FALSE;
@@ -326,22 +305,22 @@ BOOL _langIsNormalPhenome(LanguageData *language, u16 phenome)
     return TRUE;
 }
 
-u32 _langCheckBitField(LanguageData *language, u32 bitField)
+static BOOL _langCheckBitField(LanguageData *language, u32 bitField)
 {
     return language->data->flags & bitField;
 }
 
-u16 *_transwGetpTransWordLex(TransWordData *words)
+static u16 *_transwGetpTransWordLex(TransWordData *words)
 {
     return words->lex;
 }
 
-u16 *_transwGetpBeginOfTransWords(TransWordData *words)
+static u16 *_transwGetpBeginOfTransWords(TransWordData *words)
 {
     return _transwGetpTransWordLex(words) + words->nbrItems;
 }
 
-u32 _transwGetSize(LanguageData *language, TransWordData *words)
+static u32 _transwGetSize(LanguageData *language, TransWordData *words)
 {
     u32 bytes = sizeof(TransWordData) + words->nbrItems * sizeof(u16);
     bytes += (language->data->nbrTransWord + 1) * sizeof(u16);
@@ -349,16 +328,13 @@ u32 _transwGetSize(LanguageData *language, TransWordData *words)
     return bytes;
 }
 
-u32 _cdbGetCodeBookSize(LanguageData *language, CodeBookData *codeBook)
+static u32 _cdbGetCodeBookSize(LanguageData *language, CodeBookData *codeBook)
 {
     u32 probColumns;
     u32 bytes;
 
-    if (_langCheckBitField(language, 1)) {
-        probColumns = (codeBook->nbrGastone + 1) / 2;
-    } else {
-        probColumns = codeBook->nbrGastone;
-    }
+    probColumns = (_langCheckBitField(language, 1))
+        ? (codeBook->nbrGastone + 1) / 2 : codeBook->nbrGastone;
     bytes = codeBook->dimension * codeBook->firstSize * sizeof(f32);
     bytes += codeBook->firstSize * codeBook->nbrInSecondSearch * sizeof(u32);
     bytes += codeBook->dimension * codeBook->secondSize * sizeof(f32);
@@ -372,25 +348,25 @@ u32 _cdbGetCodeBookSize(LanguageData *language, CodeBookData *codeBook)
     return bytes;
 }
 
-f32 *_cdbGetpFirstCdb(CodeBookData *codeBook)
+static f32 *_cdbGetpFirstCdb(CodeBookData *codeBook)
 {
     return (f32 *)(codeBook + 1);
 }
 
-u32 *_cdbGetpIndexInSecCdb(CodeBookData *codeBook)
+static u32 *_cdbGetpIndexInSecCdb(CodeBookData *codeBook)
 {
     return (u32 *)((u8 *)codeBook + sizeof(CodeBookData)
         + codeBook->dimension * codeBook->firstSize * sizeof(f32));
 }
 
-f32 *_cdbGetpSecondCdb(CodeBookData *codeBook)
+static f32 *_cdbGetpSecondCdb(CodeBookData *codeBook)
 {
     return (f32 *)((u8 *)codeBook + sizeof(CodeBookData)
         + codeBook->dimension * codeBook->firstSize * sizeof(f32)
         + codeBook->firstSize * codeBook->nbrInSecondSearch * sizeof(u32));
 }
 
-u8 *_cdbGetpProbMatrix(CodeBookData *codeBook)
+static u8 *_cdbGetpProbMatrix(CodeBookData *codeBook)
 {
     return (u8 *)codeBook + sizeof(CodeBookData)
         + codeBook->dimension * codeBook->firstSize * sizeof(f32)
@@ -399,7 +375,7 @@ u8 *_cdbGetpProbMatrix(CodeBookData *codeBook)
         + codeBook->secondSize * sizeof(u32);
 }
 
-f32 *_cdbGetpSmoothMatrix(LanguageData *language, CodeBookData *codeBook)
+static f32 *_cdbGetpSmoothMatrix(LanguageData *language, CodeBookData *codeBook)
 {
     u32 probColumns;
     u32 bytes;
@@ -422,7 +398,7 @@ f32 *_cdbGetpSmoothMatrix(LanguageData *language, CodeBookData *codeBook)
     return (f32 *)((u8 *)codeBook + bytes);
 }
 
-u32 _cdbGetProbMatrixSize(LanguageData *language, CodeBookData *codeBook)
+static u32 _cdbGetProbMatrixSize(LanguageData *language, CodeBookData *codeBook)
 {
     u32 probColumns;
 
@@ -434,46 +410,133 @@ u32 _cdbGetProbMatrixSize(LanguageData *language, CodeBookData *codeBook)
     return codeBook->secondSize * probColumns;
 }
 
-u32 _cdbGetSmoothMatrixSize(CodeBookData *codeBook)
+static u32 _cdbGetSmoothMatrixSize(CodeBookData *codeBook)
 {
     return codeBook->secondSize * codeBook->secondSize * sizeof(f32);
 }
 
-s32 _exevGetLeading_NBS_penalty(ExtraEventData *data) { return data->leadingPenalty; }
-s32 _exevGetTrailing_NBS_penalty(ExtraEventData *data) { return data->trailingPenalty; }
-s32 _exevGetRejection_NBS_penalty(ExtraEventData *data) { return data->rejectionPenalty; }
-s32 _exevGetRejection_NBS_path_penalty(ExtraEventData *data) { return data->rejectionPathPenalty; }
-u32 _exevGetExtraEventSilencePhenome(ExtraEventData *data) { return data->silencePhenome; }
-u32 _exevGetNbrItemsInLexicon(ExtraEventData *data) { return data->nbrItems; }
-u32 _exevGetNbrOfPronunciations(ExtraEventData *data) { return data->nbrPronunciations; }
-u32 _exevGetLeading_NBS_WordIndex(ExtraEventData *data) { return data->leadingWordIndex; }
-u32 _exevGetTrailing_NBS_WordIndex(ExtraEventData *data) { return data->trailingWordIndex; }
-u32 _exevGetRejection_NBS_WordIndex(ExtraEventData *data) { return data->rejectionWordIndex; }
+static s32 _exevGetLeading_NBS_penalty(ExtraEventData *data) { return data->leadingPenalty; }
+static s32 _exevGetTrailing_NBS_penalty(ExtraEventData *data) { return data->trailingPenalty; }
+static s32 _exevGetRejection_NBS_penalty(ExtraEventData *data) { return data->rejectionPenalty; }
+static s32 _exevGetRejection_NBS_path_penalty(ExtraEventData *data) { return data->rejectionPathPenalty; }
+static u32 _exevGetExtraEventSilencePhenome(ExtraEventData *data) { return data->silencePhenome; }
+static u32 _exevGetNbrItemsInLexicon(ExtraEventData *data) { return data->nbrItems; }
+static u32 _exevGetNbrOfPronunciations(ExtraEventData *data) { return data->nbrPronunciations; }
+static u32 _exevGetLeading_NBS_WordIndex(ExtraEventData *data) { return data->leadingWordIndex; }
+static u32 _exevGetTrailing_NBS_WordIndex(ExtraEventData *data) { return data->trailingWordIndex; }
+static u32 _exevGetRejection_NBS_WordIndex(ExtraEventData *data) { return data->rejectionWordIndex; }
 
-u16 *_exevGetpBeginOfItems(ExtraEventData *data)
+static u16 *_exevGetpBeginOfItems(ExtraEventData *data)
 {
     return data->items;
 }
 
-u32 *_exevGetpBeginOfWords(ExtraEventData *data)
+static u32 *_exevGetpBeginOfWords(ExtraEventData *data)
 {
     u32 count = data->nbrItems;
     count += count & 1;
     return (u32 *)((u8 *)data + sizeof(ExtraEventData) + count * sizeof(u16));
 }
 
-void *_exevGetpBeginOfProns(ExtraEventData *data)
+static void *_exevGetpBeginOfProns(ExtraEventData *data)
 {
     return NULL;
 }
 
-s32 _GetNbrStatesInPhenome(u16 *states, u16 phenome)
+static s32 _GetNbrStatesInPhenome(u16 *states, u16 phenome)
 {
     return states[phenome + 1] - states[phenome];
 }
 
-s32 _ConvPhenomesToStates(u16 *states, u16 phenome, u16 **output)
+static s32 _ConvPhenomesToStates(u16 *states, u16 phenome, u16 **output)
 {
     *output = states + states[phenome];
     return states[phenome + 1] - states[phenome];
+}
+
+static const LanguageData _LangVirtualTable = {
+    NULL,
+    _langCheckDataType,
+    _langGetSize,
+    _langGetVersionInfo,
+    _langGetNbrCodeBook,
+    _langGetNbrState,
+    _langGetNbrPhenome,
+    NULL,
+    _langGetAdaptSilState,
+    _langGetNbrErgodicStates,
+    _langGetNbrStateErgodicStates,
+    _langGetNbrErgodicPhenomes,
+    _langGetNbrStateErgodicPhenomes,
+    _langGetNbrNonErgodicPhenomes,
+    _langGetSilencePhenome,
+    _langGetUWSilencePhenome,
+    _langGetSingleWordGarbagePhenome,
+    _langGetSentenceGarbagePhenome,
+    _langGetAnySpeechGarbagePhenome,
+    _langGetNbrWarpFactors,
+    _langGetNbrSpeechUnit,
+    _langGetNbrSpeechUnitClass,
+    _langGetNbrTones,
+    _langGetUserWordSpeechUnitClass,
+    _langGetNbrTransWord,
+    _langGetNbrPhenUserWordTraining,
+    _langGetRecogWTP,
+    _langGetSpellingWTP,
+    _cdbGetCodeBookDim,
+    _cdbGetFirstCdbSize,
+    _cdbGetNbrInSecSearch,
+    _cdbGetSecondCdbSize,
+    _cdbGetCompStart,
+    _cdbGetNbrGastone,
+    _langGetpWarpFactors,
+    _langGetpGastone,
+    NULL,
+    _langGetSilPhenome,
+    _langGetpErgodicStates,
+    _langGetpErgodicPhenomes,
+    _langGetpErgodicPenalty,
+    _langGetpCodeBook,
+    _langGetpSpeechUnit,
+    _langGetpTransWord,
+    _langGetSizeSpeechUnits,
+    NULL,
+    _langGetpPhenUserWordTraining,
+    _langGetpDimensionsOfToneConversionMatrix,
+    _langGetpOffsetForFinals,
+    _langGetpToneConversionMatrix,
+    _langGetpExtraEventContext,
+    _langIsNormalPhenome,
+    _langCheckBitField,
+    _GetNbrStatesInPhenome,
+    _ConvPhenomesToStates,
+    _cdbGetCodeBookSize,
+    _cdbGetProbMatrixSize,
+    _cdbGetSmoothMatrixSize,
+    _cdbGetpFirstCdb,
+    _cdbGetpIndexInSecCdb,
+    _cdbGetpSecondCdb,
+    _cdbGetpProbMatrix,
+    _cdbGetpSmoothMatrix,
+    _transwGetSize,
+    _transwGetpTransWordLex,
+    _transwGetpBeginOfTransWords,
+    _exevGetLeading_NBS_penalty,
+    _exevGetTrailing_NBS_penalty,
+    _exevGetRejection_NBS_penalty,
+    _exevGetRejection_NBS_path_penalty,
+    _exevGetExtraEventSilencePhenome,
+    _exevGetNbrItemsInLexicon,
+    _exevGetNbrOfPronunciations,
+    _exevGetLeading_NBS_WordIndex,
+    _exevGetTrailing_NBS_WordIndex,
+    _exevGetRejection_NBS_WordIndex,
+    _exevGetpBeginOfWords,
+    _exevGetpBeginOfProns,
+    _exevGetpBeginOfItems,
+};
+
+void FillLanguageVirtualTable(LanguageData *language)
+{
+    memcpy(language, &_LangVirtualTable, sizeof(LanguageData));
 }

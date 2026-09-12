@@ -42,6 +42,26 @@ typedef struct CodeBookData {
     u32 nbrGastone;
 } CodeBookData;
 
+typedef struct TransWordData {
+    u32 nbrWords;
+    u32 nbrItems;
+    u16 lex[];
+} TransWordData;
+
+typedef struct ExtraEventData {
+    s32 leadingPenalty;
+    s32 trailingPenalty;
+    s32 rejectionPenalty;
+    s32 rejectionPathPenalty;
+    u32 silencePhenome;
+    u32 nbrItems;
+    u32 nbrPronunciations;
+    u32 leadingWordIndex;
+    u32 trailingWordIndex;
+    u32 rejectionWordIndex;
+    u16 items[];
+} ExtraEventData;
+
 typedef struct LanguageData LanguageData;
 typedef void (*LanguageDataMethod)(void);
 
@@ -65,8 +85,8 @@ struct LanguageData {
     u32 (*getSingleWordGarbagePhenome)(LanguageData *language);
     u32 (*getSentenceGarbagePhenome)(LanguageData *language);
     u32 (*getAnySpeechGarbagePhenome)(LanguageData *language);
+    u32 (*getNbrWarpFactors)(LanguageData *language);
     u32 (*getNbrSpeechUnit)(LanguageData *language);
-    LanguageDataMethod reserved50;
     u32 (*getNbrSpeechUnitClass)(LanguageData *language);
     u32 (*getNbrTones)(LanguageData *language);
     u32 (*getUserWordSpeechUnitClass)(LanguageData *language);
@@ -80,21 +100,53 @@ struct LanguageData {
     u32 (*getSecondCdbSize)(CodeBookData *codeBook);
     u32 (*getCompStart)(CodeBookData *codeBook);
     u32 (*getNbrGastone)(CodeBookData *codeBook);
-    u32 *(*getpWarpFactors)(LanguageData *language);
+    void *(*getpWarpFactors)(LanguageData *language);
     void *(*getpGastone)(LanguageData *language);
     LanguageDataMethod reserved90;
     u16 (*getSilPhenome)(LanguageData *language);
     void *(*getpErgodicStates)(LanguageData *language);
-    u16 *(*getpErgodicPhenomes)(LanguageData *language);
+    void *(*getpErgodicPhenomes)(LanguageData *language);
     void *(*getpErgodicPenalty)(LanguageData *language);
     CodeBookData *(*getpCodeBook)(LanguageData *language, u32 index);
-    LanguageDataMethod reservedA8[10];
+    u32 *(*getpSpeechUnit)(LanguageData *language);
+    TransWordData *(*getpTransWord)(LanguageData *language);
+    u32 (*getSizeSpeechUnits)(LanguageData *language);
+    LanguageDataMethod reservedB4;
+    u16 *(*getpPhenUserWordTraining)(LanguageData *language);
+    u16 *(*getpDimensionsOfToneConversionMatrix)(LanguageData *language);
+    u16 *(*getpOffsetForFinals)(LanguageData *language);
+    u16 *(*getpToneConversionMatrix)(LanguageData *language);
+    ExtraEventData *(*getpExtraEventContext)(LanguageData *language);
+    BOOL (*isNormalPhenome)(LanguageData *language, u16 phenome);
     BOOL (*checkBitField)(LanguageData *language, u32 bitField);
-    LanguageDataMethod reservedD4[5];
+    s32 (*getNbrStatesInPhenome)(u16 *states, u16 phenome);
+    s32 (*convPhenomesToStates)(u16 *states, u16 phenome, u16 **output);
+    u32 (*getCodeBookSize)(LanguageData *language, CodeBookData *codeBook);
+    u32 (*getProbMatrixSize)(LanguageData *language, CodeBookData *codeBook);
+    u32 (*getSmoothMatrixSize)(CodeBookData *codeBook);
     f32 *(*getpFirstCdb)(CodeBookData *codeBook);
     u32 *(*getpIndexInSecCdb)(CodeBookData *codeBook);
     f32 *(*getpSecondCdb)(CodeBookData *codeBook);
-    LanguageDataMethod reservedF4[18];
+    u8 *(*getpProbMatrix)(CodeBookData *codeBook);
+    f32 *(*getpSmoothMatrix)(LanguageData *language, CodeBookData *codeBook);
+    u32 (*transWordGetSize)(LanguageData *language, TransWordData *words);
+    u16 *(*transWordGetpLex)(TransWordData *words);
+    u16 *(*transWordGetpBeginOfWords)(TransWordData *words);
+    s32 (*exevGetLeadingPenalty)(ExtraEventData *data);
+    s32 (*exevGetTrailingPenalty)(ExtraEventData *data);
+    s32 (*exevGetRejectionPenalty)(ExtraEventData *data);
+    s32 (*exevGetRejectionPathPenalty)(ExtraEventData *data);
+    u32 (*exevGetSilencePhenome)(ExtraEventData *data);
+    u32 (*exevGetNbrItems)(ExtraEventData *data);
+    u32 (*exevGetNbrPronunciations)(ExtraEventData *data);
+    u32 (*exevGetLeadingWordIndex)(ExtraEventData *data);
+    u32 (*exevGetTrailingWordIndex)(ExtraEventData *data);
+    u32 (*exevGetRejectionWordIndex)(ExtraEventData *data);
+    u32 *(*exevGetpBeginOfWords)(ExtraEventData *data);
+    void *(*exevGetpBeginOfProns)(ExtraEventData *data);
+    u16 *(*exevGetpBeginOfItems)(ExtraEventData *data);
 };
+
+void FillLanguageVirtualTable(LanguageData *language);
 
 #endif

@@ -27,6 +27,18 @@ def answer(p):
 
 
 class DecisionTests(unittest.TestCase):
+    def test_prompt_preserves_ppc_return_identity_and_does_not_invent_arguments(self):
+        p = packet()
+        before = copy.deepcopy(p)
+        prompt = groups.render_decision_prompt(p)
+        self.assertIn("subf d,a,b computes b-a", prompt)
+        self.assertIn("r3 after a pointer-returning call is not the old r3 input", prompt)
+        self.assertIn("does not by itself prove an extra call argument", prompt)
+        self.assertIn("Use supplied source/callee signatures", prompt)
+        self.assertEqual(p, before)
+        self.assertFalse(p["authority_advanced"])
+        self.assertNotIn("max_tokens", prompt)
+
     def test_complete_control_census_outside_excerpt_prevents_hidden_loop_assumption(self):
         p = packet()
         self.assertEqual([r["row"] for r in p["paired_rows"]], [0])
