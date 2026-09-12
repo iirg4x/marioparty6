@@ -115,13 +115,10 @@ u16 *_contextGetpLex(ContextData *context)
 
 u16 *_contextGetpBeginOfWords(ContextData *context)
 {
-    ContextDataV2 *data = context->data;
-    u32 count = data->nbrItem + data->nbrPron;
-    u8 *words;
+    u32 count = _contextGetNbrItem(context) + _contextGetNbrPron(context);
 
     count += count & 1;
-    words = (u8 *)data + count * sizeof(u16);
-    return (u16 *)(words + offsetof(ContextDataV2, lex));
+    return _contextGetpLex(context) + count;
 }
 
 void *_contextGetpWordProp(ContextData *context)

@@ -31,6 +31,7 @@ static void ProcessMedian(
     f32 sample;
     f32 *output;
     u32 i;
+    u32 halfCount;
 
     if (*input != NULL) {
         node = &block->nodes[block->ringIndex];
@@ -106,14 +107,14 @@ static void ProcessMedian(
             }
         }
 
-        block->ringIndex++;
-        if (block->ringIndex == block->capacity) {
+        if (++block->ringIndex == block->capacity) {
             block->ringIndex = 0;
         }
 
         block->count++;
         block->median = block->minimum;
-        for (i = 0; i < (block->count >> 1); i++) {
+        halfCount = block->count >> 1;
+        for (i = 0; i < halfCount; i++) {
             block->median = block->median->higher;
         }
 
@@ -156,7 +157,7 @@ u32 InitMedian(TosBaseBlock *baseBlock)
     block->maximum = NULL;
     block->median = NULL;
 
-    block->base.input->inputSize = 0x18;
+    block->base.input->inputSize = 24;
     block->base.output->outputSize = sizeof(f32);
 
     block->capacity = _tosGetProfileU32(block, 1, 1);

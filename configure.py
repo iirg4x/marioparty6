@@ -972,7 +972,7 @@ config.libs = [
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/dist16.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/genfilt.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flfxblks/lkahead.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/median.c"),
+            Object(Matching, "gssdk_lib/asrpho/common/blocks/flfxblks/median.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/pitchco.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/shs_vuv.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/slidhist.c"),

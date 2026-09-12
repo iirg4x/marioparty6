@@ -93,3 +93,49 @@ final edits: 38 tests, one opt-in fixture skipped, no failures.
 Promote the two recovered source files together and the reviewed configuration
 changes together; never merge the investigation branch into main. Tooling and
 this notebook stay private to the recovery workspace.
+
+## Larger-batch continuation
+
+The first two owners and their configuration/progress updates are merged in
+public PRs 34 and 35; main is `a1aa433`, DOL 337/396. Do not count pending
+champions as already promoted.
+
+Median is additionally closed at 4/4 functions, 1136 code bytes, 13/13 physical
+relocations, strict/data 100. The one substantive candidate snapshots the
+median traversal bound before the loop and consumes the ring-index increment
+in its comparison. This enables the target's eight-way loop unrolling and
+removes the ring-index reload. It closes ProcessMedian from 78.95 to 100 without
+changing its three exact siblings. Decimal 24 preserves the existing input-size
+domain; it is not a newly inferred semantic name.
+
+Normal Ninja reproduces `c30/median.o` exactly, SHA256
+`1ab00fea31260597737849c1dcbf895823e3c2c59793a478530b939ed151868b`;
+source SHA256 `1e31147597336285bd591c044d317fd6a15f63315ab5089cbfabc2cf500271cc`.
+The real three-owner source-selected build and direct comparison pass all 137
+retail outputs. The verified local frontier is now DOL 338/396, code
+1853024/2173968 (85.24%), data unchanged at 96.58%; full project 377/926.
+Median remains retained for the next public batch, not yet in main.
+
+Smoothing now retains 75.15 -> 95.48 with exact target size 856 and both exact
+siblings preserved (`c30/smoother.json`). The source cause was not a collection
+of independent register rows: preserve the beta snapshot, decrement the active
+index before its store, snapshot the matrix end, preserve the input end/column
+relation, save the diagonal scalar across elimination, and chain the final
+dimension restoration. The column lifetime shares beta's register after its
+last use. Its declaration boundary plus the spline/working-matrix identities
+close the saved-register cycle. The remaining frame and volatile-loop owner
+differences are unresolved; do not mark this owner Matching.
+
+Context BeginOfWords becomes instruction-exact using the existing typed
+accessor composition, retaining the static virtual-table gain. WordProp and
+Syntax's flattened-source champions are preserved; subsequent cursor/grouping
+probes were neutral or worse. Current `c32/ctxdata.json` binds the composed
+champion. It remains an incomplete owner.
+
+Throughput rule for this batch: compare the actual live source, not a stale
+main-derived cached object. A single initial current-source sweep exposed that
+the existing SlidingHisto_Init gain was absent from the old proof baseline;
+that is recovered historical progress, not a new crack. Prefer a coherent
+structural reconstruction such as Median's bound snapshot over repeatedly
+probing isolated high-score register colors. Parallel support is bounded by a
+specific source question, not an exhaustive inventory or a consensus gate.

@@ -105,59 +105,65 @@ void smtDestruct(Smoother *smoother, TosContext *context)
 
 u32 Smoothing(Smoother *smoother, f32 *input)
 {
-    FloatMatrix *workingQrSpline = smoother->workingQrSpline;
+    u32 column;
     FloatMatrix *spline = smoother->spline;
+    FloatMatrix *workingQrSpline = smoother->workingQrSpline;
+    FloatMatrix *qrSpline = smoother->qrSpline;
+    FloatMatrix *beta = smoother->beta;
     FloatMatrix *inputVector = smoother->input;
     FloatMatrix *coefficients = smoother->coefficients;
     IntMatrix *activeColumns = smoother->activeColumns;
-    u32 column;
     u32 i;
 
-    mtxFillCopy(workingQrSpline, smoother->qrSpline);
+    mtxFillCopy(workingQrSpline, qrSpline);
     inputVector->values = input;
     inputVector->valuesEnd = input + inputVector->elementCount;
     mtxCompress(
         inputVector,
         mtxMax(inputVector) - smoother->rejectionThreshold);
 
-    if (QrPreMult(workingQrSpline, smoother->beta, inputVector) != 0) {
+    if ((s32)QrPreMult(workingQrSpline, beta, inputVector) != 0) {
         return 1;
     }
 
-    for (i = activeColumns->columns; i != 0; i--) {
-        activeColumns->values[i - 1] = i - 1;
+    i = activeColumns->columns;
+    while (i != 0) {
+        i--;
+        activeColumns->values[i] = i;
     }
 
     column = 3;
     while (column > 2) {
         f32 *coefficient;
         f32 *inputValue;
+        f32 *matrixEnd;
 
         column = workingQrSpline->columns;
         coefficient = coefficients->values + coefficients->rows;
-        inputValue = inputVector->values + column;
+        inputValue = inputVector->values + inputVector->rows;
+        inputValue -= inputVector->rows - column;
+        matrixEnd = workingQrSpline->values +
+                    workingQrSpline->rows * column;
 
         for (; column != 0; column--) {
-            f32 *diagonal;
+            f32 diagonal;
             f32 *matrixValue;
             f32 *nextCoefficient;
 
             coefficient--;
             inputValue--;
-            *coefficient = *inputValue;
-
-            diagonal =
+            matrixValue =
                 workingQrSpline->values +
-                (column - 1) * workingQrSpline->rows + (column - 1);
-            matrixValue = diagonal + workingQrSpline->rows;
-            nextCoefficient = coefficient + 1;
-            while (matrixValue <
-                   workingQrSpline->values +
-                       workingQrSpline->rows * workingQrSpline->columns) {
-                *coefficient -= *matrixValue * *nextCoefficient++;
+                (column - 1) * workingQrSpline->rows + column;
+            diagonal = *--matrixValue;
+            nextCoefficient = coefficient;
+            *coefficient = *inputValue;
+            matrixValue += workingQrSpline->rows;
+            while (matrixValue < matrixEnd) {
+                *coefficient -= *matrixValue * *++nextCoefficient;
                 matrixValue += workingQrSpline->rows;
             }
-            *coefficient /= *diagonal;
+            *coefficient /= diagonal;
 
             if (*coefficient > 0.0f && column > 2) {
                 break;
@@ -165,7 +171,7 @@ u32 Smoothing(Smoother *smoother, f32 *input)
         }
 
         if (column != 0) {
-            if (QrDeleteCol(
+            if ((s32)QrDeleteCol(
                     workingQrSpline, inputVector, column - 1) != 0) {
                 return 1;
             }
@@ -192,8 +198,7 @@ u32 Smoothing(Smoother *smoother, f32 *input)
         }
     }
 
-    workingQrSpline->columns = spline->columns;
-    coefficients->rows = spline->columns;
-    activeColumns->columns = spline->columns;
+    activeColumns->columns = coefficients->rows =
+        workingQrSpline->columns = spline->columns;
     return 0;
 }
