@@ -122,6 +122,25 @@ def _sidecars() -> set[str]:
         progress_gate.CATEGORY_PROGRESS_PATHS.values())
 
 
+def _readme_branch(branch: str) -> bool:
+    return branch.startswith("project/readme-")
+
+
+def _readme_changes(root: Path, base: str, head: str) -> None:
+    """Public-authored README only; never an AI-source transfer exception."""
+    _clean_tree(root, head)
+    if not _changes(root, base, head) <= {"README.md"}:
+        raise HookError("README branch may change only README.md")
+    blob = subprocess.run(("git", "show", f"{head}:README.md"), cwd=root,
+                          capture_output=True, check=False)
+    if blob.returncode or len(blob.stdout) > 65536 or b"\0" in blob.stdout:
+        raise HookError("README must be a UTF-8 text blob no larger than 64 KiB")
+    try:
+        blob.stdout.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HookError("README must be UTF-8 text") from exc
+
+
 def _manifests(tool_root: Path) -> list[dict[str, Any]]:
     result = []
     common = _common(tool_root)
@@ -204,6 +223,16 @@ def _public_range(tool_root: Path, root: Path, branch: str, head: str,
     main = _commit(root, "refs/heads/main")
     _clean_tree(root, main)
     _clean_tree(root, head)
+    if _readme_branch(branch):
+        base = _run(root, "git", "merge-base", main, head)
+        _clean_tree(root, base)
+        previous = base
+        for commit in _run(root, "git", "rev-list", "--reverse", f"{base}..{head}").splitlines():
+            if _run(root, "git", "show", "-s", "--format=%P", commit) != previous:
+                raise HookError("README branch requires linear clean-main ancestry")
+            _readme_changes(root, previous, commit)
+            previous = commit
+        return base
     manifests = _manifests(tool_root)
     if branch == "main":
         if not remote_base or set(remote_base) == {"0"}:
@@ -219,6 +248,8 @@ def _public_range(tool_root: Path, root: Path, branch: str, head: str,
         for commit in _run(root, "git", "rev-list", f"{base}..{head}").splitlines():
             _clean_tree(root, commit)
         for path in _changes(root, base, head) - _sidecars():
+            if path == "README.md":
+                continue
             try:
                 recovered._normalise_path(path)
             except recovered.PromotionError:
@@ -303,6 +334,9 @@ def run_hook(kind: str, *, root: Path, tool_root: Path, common: Path, stdin: str
             base = _public_range(tool_root, root, branch, head, check_progress=False)
             tree = _run(root, "git", "write-tree")
             _clean_tree(root, tree)
+            if _readme_branch(branch):
+                _readme_changes(root, head, tree)
+                return
             if not _changes(root, head, tree) <= _sidecars():
                 raise HookError("clean promotion edits require a fresh verified promotion; only progress sidecars may follow")
             if branch.startswith("project/"):

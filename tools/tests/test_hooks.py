@@ -179,6 +179,32 @@ class HookTests(unittest.TestCase):
         with self.assertRaises(HookError):
             install_hooks(self.clean)
 
+    def test_readme_only_clean_branch_commit_and_push_without_source_manifest(self):
+        docs = self.temp / "readme worktree"
+        run(self.root, "git", "worktree", "add", "-qb", "project/readme-test", str(docs), "main")
+        self.write("README.md", "# Project\nBuild and source layout.\n", docs)
+        run(docs, "git", "add", "README.md")
+        self.assertPass(self.hook("pre-commit", "", root=docs))
+        self.commit(docs, "Clarify README")
+        head = run(docs, "git", "rev-parse", "HEAD")
+        self.assertPass(self.hook(root=docs, lines=self.ref(head, "project/readme-test")))
+        self.assertPass(self.hook(root=docs, lines=self.ref(head, "main", self.base)))
+        self.write("src/game/example.c", "int Example(void) { return 9; }\n", docs)
+        run(docs, "git", "add", "src/game/example.c")
+        self.assertRejected(self.hook("pre-commit", "", root=docs), "only README.md")
+        self.commit(docs, "Illegal mixed source")
+        head = run(docs, "git", "rev-parse", "HEAD")
+        self.assertRejected(self.hook(root=docs, lines=self.ref(head, "project/readme-test")), "only README.md")
+        self.assertFalse(self.log.exists())
+
+    def test_readme_branch_rejects_binary_and_workspace_leakage(self):
+        docs = self.temp / "readme worktree"
+        run(self.root, "git", "worktree", "add", "-qb", "project/readme-test", str(docs), "main")
+        self.write("README.md", "binary\0payload", docs)
+        run(docs, "git", "add", "README.md")
+        self.assertRejected(self.hook("pre-commit", "", root=docs), "UTF-8 text")
+        self.assertRejected(self.hook(lines=self.ref(self.source, "project/readme-test")), "AI workspace files")
+
     def test_stale_proof_policy_and_unrelated_malformed_manifest(self):
         self.write("build/promotion/unrelated/manifest.json", "{broken")
         self.assertPass(self.hook())
