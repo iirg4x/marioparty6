@@ -534,14 +534,17 @@ static u32 ControlTriggerLR(
 static u32 InitTriggerLR(TosBaseBlock *baseBlock)
 {
     TriggerLR *block = (TriggerLR *)baseBlock;
+    u32 result = 0;
     TosContext *context = baseBlock->context;
     f32 sensitivityScale;
+    f32 histogramOffset;
+    f32 voicingThreshold;
 
-    baseBlock->input[1].inputSize = 0x18;
     baseBlock->input[2].inputSize = sizeof(f32);
     baseBlock->input[3].inputSize = sizeof(f32);
+    baseBlock->input[1].inputSize = 0x18;
 
-    block->minimumSpeechFrames = _tosGetProfileU32(block, 1, 6);
+    block->minimumSpeechFrames = _tosGetProfileU32(baseBlock, 1, 6);
     block->minimumSpeechMilliseconds = block->minimumSpeechFrames * 10;
     block->consecutiveEnergeticLimit = _tosGetProfileU32(block, 2, 3);
     block->silenceFrameLimit = _tosGetProfileU32(block, 3, 15);
@@ -559,7 +562,7 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock)
     block->peakActivityThresholdLog =
         logf_check(_tosGetProfileFloat(block, 10, 100.0f));
     block->noiseFloorOffsetLog =
-        (f32)abs((s32)_tosGetProfileU32(block, 6, 17)) * 0.23025851f;
+        0.23025851f * (f32)abs((s32)_tosGetProfileU32(block, 6, 17));
     block->sensitivityMinimum = _tosGetProfileU32(block, 18, 0);
     block->sensitivityMaximum = _tosGetProfileU32(block, 19, 100);
     block->histogramOffsetMinimum =
@@ -575,31 +578,35 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock)
     sensitivityScale =
         (f32)(block->sensitivity - block->sensitivityMinimum) /
         (f32)(block->sensitivityMaximum - block->sensitivityMinimum);
-    block->histogramThresholdOffsetLog =
+    histogramOffset =
         ((f32)block->histogramOffsetMinimum +
             sensitivityScale *
                 (f32)(block->histogramOffsetMaximum -
                     block->histogramOffsetMinimum)) *
         0.23025851f;
-    block->voicingDecisionThreshold = logf_check(
+    voicingThreshold =
         block->voicingThresholdMinimum +
         sensitivityScale *
             (block->voicingThresholdMaximum -
-                block->voicingThresholdMinimum));
+                block->voicingThresholdMinimum);
+    block->histogramThresholdOffsetLog = histogramOffset;
+    block->voicingDecisionThreshold = logf_check(voicingThreshold);
     block->histogramQuantile =
         _tosGetProfileFloat(block, 15, 0.5f);
     block->histogramUpdateFrames = _tosGetProfileU32(block, 16, 100);
     block->histogramValid = 0;
 
     if (SlidingHisto_Init(block)) {
-        return 1;
+        result = 1;
+        goto done;
     }
 
     block->voicingDecisionHistory =
         heap_Calloc(context->heap, 3, sizeof(f32));
     if (block->voicingDecisionHistory == NULL) {
         _tosErrorLog(block, 2);
-        return 1;
+        result = 1;
+        goto done;
     }
     block->voicingDecisionHistoryWrite =
         block->voicingDecisionHistory;
@@ -607,7 +614,8 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock)
         block->voicingDecisionHistory + 3;
 
     if (InitVoicing(block)) {
-        return 1;
+        result = 1;
+        goto done;
     }
 
     baseBlock->input[0].inputSize =
@@ -616,7 +624,8 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock)
     block->holdInputQueuesAfterTrigger = 1;
     block->endSilenceFrames = _tosGetProfileU32(block, 17, 50);
     block->endSilenceMilliseconds = block->endSilenceFrames * 10;
-    return 0;
+done:
+    return result;
 }
 
 TosBaseBlock *ConstructTriggerLR(TosContext *context, u32 blockIndex)

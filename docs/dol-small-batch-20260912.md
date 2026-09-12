@@ -375,3 +375,13 @@ Its later InitViterbi definition-move suggestion was stale and not compiled:
 the primary had already solved that inlining boundary by the real peeled loop.
 Two fresh bounded Qwen questions cover the remaining Exev control owner cycle
 and TriggerLR FindSpeech structure; neither is a source-authority gate.
+
+The next InitTriggerLR reconstruction retains **87.9375 -> 98.370834**:
+target input initialization order, a live common error-result lifetime, and
+both interpolation values computed before their destination stores. Size moves
+952 -> 964 against target 960; this remains a partial, with a smaller absolute
+size discrepancy and no exact sibling losses. Its evidence is
+`build/dol-trigger-followup-20260912/trigglr/init-status-*`. The Process gain is
+unchanged. Chaining the equal input-size assignments was neutral; a conditional
+call expression merged a required Process test and regressed, so neither is
+retained. No flags, padding, assembly, or interface changes were introduced.
