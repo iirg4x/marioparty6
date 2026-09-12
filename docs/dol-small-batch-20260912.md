@@ -1,5 +1,67 @@
 # Small DOL batch, 2026-09-12
 
+## Latest DpGenUw frontier: source identity across phases
+
+`DynProgUserWords` now retains **94.39237 -> 98.36512** strict/data,
+**1456 -> 1468 bytes**, equal to the retail function size. The other eleven
+functions remain strict/data 100%; this is still **11/12**, not an owner
+closure. Main remains 337/396; the verified promotion batch remains **4/10**.
+The active source and immutable `formatted.c` are byte-identical, SHA-256
+`8e2decd58bc553d44cb1be81c9e5041e39caa6c2f61c26af992562b6a593a669`.
+Candidate object SHA-256:
+`fa493462e9c8267ac363869a45a7f2767d45ce1da080c8d6df37b79a957d9101`.
+Evidence is under `build/dol-dpgenuw-boundaries-20260912/recurrence/`, with
+`formatted-{strict,data,verification}.json` as the current proof. The old
+`recurrence/binding.json` binds the pre-integration source and must not be
+reused for a new probe without refreshing its live-source binding.
+
+Retained causal sequence:
+
+- `state-selection`: the repeated minimum/maximum word-state scans became
+  small shared C helpers. This made the complete initial minimum scan exact
+  and restored the two later result-pointer copies: 95.96458%, 132 rows.
+- `reused-path-node`: one genuine working backtrace pointer is reused while
+  constructing the transition and final paths. The former separate inlined
+  producer identities had incorrectly coalesced the first result with its
+  retained transition snapshot. Explicit reuse restored both missing copies
+  and the r20-r31 save set: 96.711174%, 1464 bytes.
+- `phase-creation`: after that source-identity correction, the remaining
+  saved-register cycle mapped directly to the now-complete live scalar
+  creation order. Ordering those real declarations by their evidenced phases
+  gave 97.378746%; no dummy owner, operand matrix, or register directive.
+- `silence-state`: a distinct live silence-state pointer, rather than reusing
+  the generic traversal cursor, restored the last missing address-result
+  copy and the exact 1468-byte size. Its ordering relative to the selected
+  entry pointer closes their volatile-register cycle.
+- `silence-score-domain`: the second silence-state score is a real shared
+  signed-16-bit field snapshot consumed by both comparisons. Widening this
+  owner to s32 added an unwanted copy; its actual field domain retains the
+  gain. The unused AddUserWordBacktrace reconstruction was removed and the
+  retained source was formatted/recompiled without a score change.
+
+Current remainder: 67 aligned rows (64 ARG, one insert, one delete, one
+replace), including frame 0x68 versus target 0x58; a repeated r4/r5 cycle
+rooted in finalBacktrace; second previous-backtrace r20 versus target r23;
+and the remaining silence distribution/score load chronology. Independent
+physical changes in DynProgUserWords and three callers remain unclosed;
+they include local function placement from reconstructed helpers. No
+source-selected linked exactness or promotion is claimed for DpGenUw.
+
+Compact rejected constraints: a second allocation-helper layer stayed
+outlined and regressed to 88.68%; a shared caller alias alone, state-versus-
+previous helper input, reference-count wrapper, and chained score assignment
+were instruction-neutral on their bound bases. A state getter alone lost
+an instruction. Merging the final-path assignment after the branch regressed
+to 94.75%. None of these results bans a different source cause. The typed
+working-node reuse, not generic aliases or another getter, supplied the gain.
+
+Two local Qwen jobs ran concurrently while the primary compiled. They returned
+bounded observations about state-pointer chronology and caller-owned path
+snapshots, not a verified winning patch. No consensus or worker wait gate was
+introduced. For speed, prioritize reconstruction of shared versus distinct
+live values before repeated equivalent helper/alias spellings, and retain
+the actual compiler result rather than a confident source prediction.
+
 ## Matrix closure and current throughput decision
 
 Matrix is now **12/12 strict/data exact**, with **25/25 effective relocation

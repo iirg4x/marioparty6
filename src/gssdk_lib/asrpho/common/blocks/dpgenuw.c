@@ -368,23 +368,34 @@ static inline void ReleaseBacktrace(
     }
 }
 
-static DpGenUwBacktrace *AddUserWordBacktrace(
-    DpGenUw *block, DpGenUwBacktrace *previous, u16 distribution)
+static DpGenUwState *BestUserWordState(DpGenUw *block)
 {
-    DpGenUwBacktrace *backtrace = block->freeBacktraces;
+    DpGenUwState *best = block->states;
+    DpGenUwState *state = &block->states[1];
+    u16 stateIndex;
 
-    if (backtrace->next == NULL) {
-        block->freeBacktraces = AllocateBacktrace(block, backtrace);
-    } else {
-        block->freeBacktraces = backtrace->next;
+    for (stateIndex = 1; stateIndex < DPGENUW_WORD_STATE_COUNT;
+         stateIndex++, state++) {
+        if (state->score < best->score) {
+            best = state;
+        }
     }
-    backtrace->next = previous;
-    previous->references++;
-    backtrace->distribution = distribution;
-    backtrace->references = 0;
-    backtrace->frame = block->frame;
-    block->activeBacktraceCount++;
-    return backtrace;
+    return best;
+}
+
+static DpGenUwState *WorstUserWordState(DpGenUw *block)
+{
+    DpGenUwState *worst = block->states;
+    DpGenUwState *state = &block->states[1];
+    u16 stateIndex;
+
+    for (stateIndex = 1; stateIndex < DPGENUW_WORD_STATE_COUNT;
+         stateIndex++, state++) {
+        if (state->score >= worst->score) {
+            worst = state;
+        }
+    }
+    return worst;
 }
 
 static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
@@ -392,15 +403,19 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
     DpGenUwState *state;
     DpGenUwState *bestWordState;
     DpGenUwState *worstWordState;
+    DpGenUwState *silenceState;
     DpGenUwState *entryState;
-    DpGenUwBacktrace *transitionBacktrace;
-    DpGenUwBacktrace *finalBacktrace;
-    u16 bestWordDistribution;
-    u16 entryDistribution;
+    DpGenUwBacktrace *backtrace;
     s32 normalization;
-    s16 silenceScore;
     s32 wordEntryScore;
     s32 entryScore;
+    s16 finalSilenceScore;
+    u16 bestWordDistribution;
+    u16 entryDistribution;
+    s16 silenceScore;
+    DpGenUwBacktrace *transitionBacktrace;
+    u32 wordIndex;
+    DpGenUwBacktrace *finalBacktrace;
     u16 stateIndex;
 
     state = block->states;
@@ -411,53 +426,75 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
         }
     }
 
-    bestWordState = block->states;
-    state = &block->states[1];
-    for (stateIndex = 1; stateIndex < DPGENUW_WORD_STATE_COUNT;
-         stateIndex++, state++) {
-        if (state->score < bestWordState->score) {
-            bestWordState = state;
-        }
-    }
+    bestWordState = BestUserWordState(block);
 
-    state = &block->states[DPGENUW_WORD_STATE_COUNT];
+    silenceState = &block->states[DPGENUW_WORD_STATE_COUNT];
     normalization = bestWordState->score;
     bestWordDistribution = bestWordState->distribution;
     wordEntryScore =
         normalization + block->wordTransitionPenalty;
 
-    if (state->score < normalization) {
-        normalization = state->score;
+    if (silenceState->score < normalization) {
+        normalization = silenceState->score;
     }
 
-    entryScore = state->score + block->silenceTransitionPenalty;
+    entryScore = silenceState->score + block->silenceTransitionPenalty;
     if (entryScore < wordEntryScore) {
-        entryDistribution = state->distribution;
-        entryState = state;
+        entryDistribution = silenceState->distribution;
+        entryState = silenceState;
     } else {
         entryScore = wordEntryScore;
         entryDistribution = bestWordDistribution;
         entryState = bestWordState;
     }
 
-    silenceScore = scores[state->distribution];
-    if (state[1].score < normalization) {
-        normalization = state[1].score;
+    silenceScore = scores[silenceState->distribution];
+    finalSilenceScore = silenceState[1].score;
+    if (finalSilenceScore < normalization) {
+        normalization = finalSilenceScore;
     }
-    if (state[1].score + block->silenceTransitionPenalty < entryScore) {
+    if (finalSilenceScore + block->silenceTransitionPenalty < entryScore) {
         entryScore =
-            state[1].score + block->silenceTransitionPenalty;
-        entryDistribution = state[1].distribution;
-        entryState = &state[1];
+            finalSilenceScore + block->silenceTransitionPenalty;
+        entryDistribution = silenceState[1].distribution;
+        entryState = &silenceState[1];
     }
 
-    transitionBacktrace = AddUserWordBacktrace(
-        block, entryState->backtrace, entryDistribution);
-    transitionBacktrace->references++;
+    {
+        DpGenUwBacktrace *previous = entryState->backtrace;
+
+        backtrace = block->freeBacktraces;
+        if (backtrace->next == NULL) {
+            block->freeBacktraces = AllocateBacktrace(block, backtrace);
+        } else {
+            block->freeBacktraces = backtrace->next;
+        }
+        backtrace->next = previous;
+        previous->references++;
+        backtrace->distribution = entryDistribution;
+        backtrace->references = 0;
+        backtrace->frame = block->frame;
+        block->activeBacktraceCount++;
+        transitionBacktrace = backtrace;
+        transitionBacktrace->references++;
+    }
 
     if (bestWordDistribution != entryDistribution) {
-        finalBacktrace = AddUserWordBacktrace(
-            block, bestWordState->backtrace, bestWordDistribution);
+        DpGenUwBacktrace *previous = bestWordState->backtrace;
+
+        backtrace = block->freeBacktraces;
+        if (backtrace->next == NULL) {
+            block->freeBacktraces = AllocateBacktrace(block, backtrace);
+        } else {
+            block->freeBacktraces = backtrace->next;
+        }
+        backtrace->next = previous;
+        previous->references++;
+        backtrace->distribution = bestWordDistribution;
+        backtrace->references = 0;
+        backtrace->frame = block->frame;
+        block->activeBacktraceCount++;
+        finalBacktrace = backtrace;
         finalBacktrace->references++;
     } else {
         finalBacktrace = transitionBacktrace;
@@ -465,8 +502,6 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
     }
 
     state = block->states;
-    {
-    u32 wordIndex;
     for (wordIndex = 0; wordIndex < DPGENUW_WORD_STATE_COUNT;
          wordIndex++, state++) {
         if (state->score < entryScore) {
@@ -487,7 +522,6 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
 
         scores[state->distribution] = 1024;
     }
-    }
 
     state->score = state->score + silenceScore - normalization;
     if (state[1].score <= wordEntryScore) {
@@ -505,50 +539,30 @@ static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
     }
     block->finalScore = (u16)state[1].score;
 
-    worstWordState = block->states;
-    state = &block->states[1];
-    for (stateIndex = 1; stateIndex < DPGENUW_WORD_STATE_COUNT;
-         stateIndex++, state++) {
-        if (state->score >= worstWordState->score) {
-            worstWordState = state;
-        }
-    }
+    worstWordState = WorstUserWordState(block);
 
     {
-    u32 distributionIndex;
-    u16 *distributionCursor = block->stateDistributions;
-    for (distributionIndex = 0;
-         distributionIndex < block->userWordDistributionCount;
-         distributionIndex++, distributionCursor++) {
-        u16 distribution = *distributionCursor;
-        s32 candidateScore =
-            entryScore + scores[distribution] - normalization;
+        u16 *distributionCursor = block->stateDistributions;
+        for (wordIndex = 0;
+             wordIndex < block->userWordDistributionCount;
+             wordIndex++, distributionCursor++) {
+            u16 distribution = *distributionCursor;
+            s32 candidateScore =
+                entryScore + scores[distribution] - normalization;
 
-        if (candidateScore < worstWordState->score) {
-            DpGenUwBacktrace *oldBacktrace =
-                worstWordState->backtrace;
+            if (candidateScore < worstWordState->score) {
+                DpGenUwBacktrace *oldBacktrace =
+                    worstWordState->backtrace;
 
-            worstWordState->score = candidateScore;
-            worstWordState->distribution = distribution;
-            worstWordState->backtrace = transitionBacktrace;
-            transitionBacktrace->references++;
-            ReleaseBacktrace(block, oldBacktrace);
+                worstWordState->score = candidateScore;
+                worstWordState->distribution = distribution;
+                worstWordState->backtrace = transitionBacktrace;
+                transitionBacktrace->references++;
+                ReleaseBacktrace(block, oldBacktrace);
 
-            worstWordState = block->states;
-            state = &block->states[1];
-            {
-                u16 worstStateIndex;
-
-                for (worstStateIndex = 1;
-                     worstStateIndex < DPGENUW_WORD_STATE_COUNT;
-                     worstStateIndex++, state++) {
-                    if (state->score >= worstWordState->score) {
-                        worstWordState = state;
-                    }
-                }
+                worstWordState = WorstUserWordState(block);
             }
         }
-    }
     }
 
     ReleaseBacktrace(block, transitionBacktrace);
