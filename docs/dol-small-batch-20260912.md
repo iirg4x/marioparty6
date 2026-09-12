@@ -1,11 +1,51 @@
 # Small DOL batch, 2026-09-12
 
+## Stationarity closure: recover the range operation before register spelling
+
+Stationarity is now **4/4 strict/data exact** with all three exact siblings
+preserved. `ProcessStationarity` keeps its retail 424-byte extent; the last
+seven argument rows closed when the history min/max scan became an ordinary
+`StationarityRange` C helper. The actual source distinction is the isolated
+range computation and its returned difference, not a maximum-variable rename.
+The helper name is an inferred semantic name, not a recovered original symbol.
+No assembly, storage padding, compiler hint, or external interface change.
+
+Normal source-selected Ninja/MWLD passed all **137 retail checksums**, including
+direct DOL byte equality. All **21/21 relocation applications** are accounted
+for: raw GC1.2.5n SDA21 sites use the separately checked DTK instruction-site
+convention; six constructor HA/LO references preserve the same local functions
+after MWLD strips the unused 64-byte standalone helper. Their linked halfwords
+were checked against the final function addresses. The three live constants
+are byte-exact; the target's extra four-byte zero split gap is ordinary linked
+alignment, not source padding. These are linked equivalences, not raw object
+identity claims.
+
+Source SHA-256 `3b80ca70c2a1c2bf9b4bb5879ae6f6150500b4f10e7f67b1a3fdbe311794e6d5`;
+normal object `2c09ed9b65ed3a8cdcfa6e527143672d506135ee9f82576c06d96d3bb2ffd4af`.
+Evidence: `build/qwen-final-tail-decisions-20260912/statio/final-link-proof.json`,
+`normal-physical.json`, and `normal-ninja-{strict,data}.json`.
+The real DOL remains SHA-256
+`172ae27aa6fcc9074de286b07ae4ac9f9152175fa913fffc3f5b8365e139ffec`.
+The local ten-owner batch is now **5/10** (Median, FFT, Window, Matrix,
+Stationarity), or **342/396** in the proof workspace. Public main is still
+**337/396**; no smaller promotion batch was pushed.
+
+Throughput lesson: Matrix's column-address helper and Stationarity's range
+helper both closed their final mismatch families in the first structural
+probe after earlier local-variable approaches. This supports prioritizing
+meaningful helper/automatic-inline boundaries in similar residuals, not a
+universal helper template. Four Qwen support questions continued independently;
+the primary did not wait for the Stationarity answer before testing the fix.
+Compilation and final link are not the demonstrated bottleneck. Reduce repeated
+source hypotheses and worker wait time; do not inflate worker count, context,
+or proof volume and call that throughput.
+
 ## Latest DpGenUw frontier: source identity across phases
 
 `DynProgUserWords` now retains **94.39237 -> 98.36512** strict/data,
 **1456 -> 1468 bytes**, equal to the retail function size. The other eleven
 functions remain strict/data 100%; this is still **11/12**, not an owner
-closure. Main remains 337/396; the verified promotion batch remains **4/10**.
+closure. Main remains 337/396; Stationarity above advances the batch to **5/10**.
 The active source and immutable `formatted.c` are byte-identical, SHA-256
 `8e2decd58bc553d44cb1be81c9e5041e39caa6c2f61c26af992562b6a593a669`.
 Candidate object SHA-256:
@@ -235,10 +275,10 @@ policy. No static current-percentage claim is added to either README.
 ## Active completion goal
 
 Recover every remaining main DOL owner and promote verified source closures in
-batches, using Qwen-only parallel support. Current fetched main `a1aa433` has
-337/396 Matching DOL owners (59 remaining); FFT, Median, Window and Matrix are verified
+batches, using Qwen-only parallel support. Current fetched main `5c7bca5` has
+337/396 Matching DOL owners (59 remaining); FFT, Median, Window, Matrix and Stationarity are verified
 locally and pending promotion. User requirement: promote exactly 10 verified owners per
-batch (except the final remainder). Current batch is 4/10 ready. Do not push a
+batch (except the final remainder). Current batch is 5/10 ready. Do not push a
 smaller intermediate source/status batch or count function partials as owners.
 Pivot among eligible owners when a particular residual stalls; retain completed
 owners safely while filling the same batch.
