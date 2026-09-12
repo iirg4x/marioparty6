@@ -25,7 +25,9 @@ Two existing-tool changes address actual time lost in this batch:
   A .gitkeep directory or main.dol without m699Dll.rel is diagnosed directly,
   rather than discovered after configuration. Complete central inputs pass.
 
-Both affected suites passed **45 tests**. The live non-compile regression
+Both affected suites passed **46 tests**, including all15 combinations of
+header/reference/response-file inputs against object/receipt/log destinations;
+aliases reject before any input is overwritten. The live non-compile regression
 receipt is `build/dol-batch/preflight-gap-live-check-20260913.json`.
 These checks prevent known wasted setup/source probes; they do not claim a
 new owner gain or automatic source reconstruction. No new standalone tool,

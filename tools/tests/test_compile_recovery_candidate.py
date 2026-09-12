@@ -153,6 +153,47 @@ class CandidateCompileTests(unittest.TestCase):
         run.assert_not_called()
         self.assertTrue(self.output.read_bytes().startswith(b'previous'))
 
+    def test_include_dependency_aliases_reject_before_any_mutation(self):
+        external = self.external_headers()
+        # Cover output itself and both logs/receipt, plus the scratch object
+        # removed before launch. Each dependency is outside legacy tool inputs.
+        products = [self.output, self.output.with_suffix('.o.receipt.json'),
+                    self.output.with_suffix('.o.stdout.log'),
+                    self.output.with_suffix('.o.stderr.log'), self.scratch/'build/test.o']
+        for kind in ('reference', 'response', 'searched'):
+            for product in products:
+                with self.subTest(kind=kind, product=product.name):
+                    self.seed_products()
+                    command = [sys.executable, '-i', str(external)]
+                    references = None
+                    output, obj_rel = self.output, 'build/test.o'
+                    if kind == 'reference':
+                        product.write_bytes((external/'snd.h').read_bytes())
+                        references = {'snd.h': product}
+                    elif kind == 'response':
+                        product.write_text(f'-i "{external}"', encoding='utf-8')
+                        command = [sys.executable, '@'+str(product)]
+                    else:
+                        isolated = self.scratch/'build'/('headers-'+product.name)
+                        isolated.mkdir(exist_ok=True)
+                        product = isolated/product.name
+                        product.write_bytes(b'header dependency')
+                        if product.name == 'test.o':
+                            obj_rel = product.relative_to(self.scratch).as_posix()
+                        else:
+                            output = isolated/'candidate.o'
+                        command = [sys.executable, '-i', str(product.parent)]
+                    before = self.snapshot()
+                    with mock.patch.object(cc, 'compiler_lock') as lock, \
+                            mock.patch.object(cc.bounded_process, 'run') as run:
+                        with self.assertRaisesRegex(ValueError, 'aliases an (input|include dependency)'):
+                            cc.compile_candidate(root=self.root, scratch=self.scratch, source=self.source,
+                                output=output, source_relpath='src/test.c', object_relpath=obj_rel,
+                                command=command, tools=[], reference_headers=references)
+                    lock.assert_not_called()
+                    run.assert_not_called()
+                    self.assertEqual(self.snapshot(), before)
+
     def test_response_mutation_during_compile_never_publishes(self):
         self.external_headers()
         response = self.scratch/'args.rsp'

@@ -302,7 +302,15 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
                                 tools=tools, command_descriptor=command_descriptor,
                                 reference_headers=reference_headers)
     command = context['command']
+    includes = context['actual_includes']
+    dependencies = {Path(p) for p in includes['response_files']}
+    dependencies.update(Path(binding['reference']) for binding in includes['references'].values())
+    dependencies.update(Path(entry['path']) / name
+                        for entry in includes['search'] for name in entry['files'])
+    if obj in dependencies:
+        raise ValueError(f'scratch object aliases an include dependency: {obj}')
     inputs = {source, live, staged, obj, *(Path(p) for p in context['tools'])}
+    inputs.update(dependencies)
     if context['command_descriptor'] is not None:
         inputs.add(Path(context['command_descriptor']['path']))
     for product in (output, receipt_path, stdout_path, stderr_path):
