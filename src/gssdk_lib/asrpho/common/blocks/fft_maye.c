@@ -60,11 +60,11 @@ static const REAL sintab[] = {
     .00004793689960306688454900399049465887274686668768,
 };
 
-#define SQRT2 (2 * .70710678118654752440084436210484)
+#define SQRT2 (2 * .70710678118654752440084436210484f)
 
-void fht(REAL *fz, int n)
+void fht(REAL *fz, u32 n)
 {
-    int k, k1, k2, k3, k4, kx;
+    u32 k, k1, k2, k3, k4, kx;
     REAL *fi, *fn, *gi;
     TRIG_VARS;
 
@@ -132,7 +132,7 @@ void fht(REAL *fz, int n)
 
     do {
         REAL s1, c1;
-        int ii;
+        u32 ii;
         k += 2;
         k1 = 1 << k;
         k2 = k1 << 1;
@@ -209,16 +209,16 @@ void fht(REAL *fz, int n)
     } while (k4 < n);
 }
 
-void realfft(int n, REAL *real)
+void realfft(u32 n, REAL *real)
 {
     REAL a, b;
-    int i, j, k;
+    u32 i, j, k;
 
     fht(real, n);
     for (i = 1, j = n - 1, k = n / 2; i < k; i++, j--) {
         a = real[i];
         b = real[j];
-        real[j] = (a - b) * .5;
-        real[i] = (a + b) * .5;
+        real[j] = (a - b) * .5f;
+        real[i] = (a + b) * .5f;
     }
 }

@@ -21,6 +21,67 @@ def report(left, right):
 
 
 class CausalGroupsTests(unittest.TestCase):
+    def test_numeric_domains_fft_unsigned_and_single(self):
+        left = [row("cmplwi r3, 2", 0), row("srwi r4, r3, 1", 4),
+                row("fmuls f0, f1, f2", 8), row("lfs f2, 0(r2)", 12)]
+        right = [row("cmpwi r3, 2", 0), row("srawi r4, r3, 1", 4),
+                 row("fmul f0, f1, f2", 8), row("lfd f2, 0(r2)", 12)]
+        evidence = groups.summarize_groups(report(left, right), "f")["numeric_domain_evidence"]
+        signals = {s["family"]: s for s in evidence["signals"]}
+        self.assertEqual(signals["integer"]["target_domain"], "unsigned")
+        self.assertEqual(signals["integer"]["row_count"], 2)
+        self.assertEqual(signals["arithmetic"]["target_domain"], "single")
+        self.assertEqual(signals["load"]["review_priority"], "support_only")
+        self.assertEqual(evidence["source_type_identity"], "UNKNOWN")
+
+    def test_domain_reverse_and_mixed_directions(self):
+        left = [row("cmpw r3, r4", 0), row("cmplw r3, r4", 4)]
+        right = list(reversed(left))
+        signals = groups.numeric_domain_evidence(left, right)["signals"]
+        self.assertEqual({s["target_domain"] for s in signals}, {"signed", "unsigned"})
+        self.assertTrue(all(s["mixed_direction"] and s["review_priority"] == "support_only" for s in signals))
+        double = groups.numeric_domain_evidence([row("fdiv f0, f1, f2", 0)], [row("fdivs f0, f1, f2", 0)])
+        self.assertEqual(double["signals"][0]["target_domain"], "double")
+
+    def test_domain_missing_unchanged_inserted_and_bounded(self):
+        left = [row("cmplwi r3, 1", 0), {}, row("cmpwi r3, 1", 8),
+                {**row("cmplwi r3, 1", 12), "diff_kind": "DIFF_DELETE"}]
+        right = [{}, row("cmpwi r3, 1", 4), row("cmpwi r4, 1", 8), row("cmpwi r3, 1", 12)]
+        self.assertEqual(groups.numeric_domain_evidence(left, right)["signals"], [])
+        many = groups.numeric_domain_evidence([row("cmplwi r3, 1", i*4) for i in range(20)],
+                                             [row("cmpwi r3, 1", i*4) for i in range(20)])["signals"][0]
+        self.assertEqual(many["row_count"], 20)
+        self.assertEqual(len(many["sites"]), 12)
+        self.assertTrue(many["sites_truncated"])
+
+    def test_owner_counts_and_no_physical_closure_claim(self):
+        doc = report([row("cmplwi r3, 1", 0)], [row("cmpwi r3, 1", 0)])
+        for side in ("left", "right"):
+            exact = copy.deepcopy(doc[side]["symbols"][0])
+            exact.update(name="already_exact", instructions=[row("blr", 0)])
+            doc[side]["symbols"].append(exact)
+        result = groups.summarize_owner(doc)
+        self.assertEqual((result["instruction_exact_count"], result["remaining_count"]), (1, 1))
+        self.assertTrue(result["residuals"][0]["domain_review_first"])
+        self.assertFalse(result["owner_closed"])
+        self.assertFalse(result["physical_proof"])
+
+    def test_support_excerpt_is_bound_and_does_not_dump_full_stream(self):
+        left = [row("cmplwi r3, 1", 0)] + [row("blr", i*4) for i in range(1, 100)]
+        right = [row("cmpwi r3, 1", 0)] + copy.deepcopy(left[1:])
+        right[90] = row("li r3, 0", 360)
+        source = "float unrelated;\nvoid f(void) { }\nfloat other;\n"
+        result = groups.support_packet(report(left, right), "f", source, 2, 2)
+        self.assertEqual(result["source_excerpt"], "void f(void) { }")
+        self.assertEqual(result["source_sha256"], hashlib.sha256(source.encode()).hexdigest())
+        self.assertEqual(result["omitted_residual_row_count"], 1)
+        self.assertLess(len(result["paired_rows"]), 10)
+        self.assertNotIn("unrelated", json.dumps(result))
+        with self.assertRaisesRegex(ValueError, "narrow"):
+            groups.support_packet(report(left, right), "f", "a"*10000, 1, 1, max_bytes=1000)
+        with self.assertRaises(ValueError):
+            groups.support_packet(report(left, right), "f", source, 0, 1)
+
     def test_producer_field_order_and_downstream_use(self):
         left = [row("lwz r4, 0x28(r30)", 0), row("lwz r3, 0x2c(r30)", 4), row("add r6, r5, r3", 8)]
         right = [row("lwz r4, 0x2c(r30)", 0), row("lwz r3, 0x28(r30)", 4), row("add r4, r5, r4", 8)]

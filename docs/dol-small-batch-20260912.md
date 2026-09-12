@@ -1,5 +1,48 @@
 # Small DOL batch, 2026-09-12
 
+## FFT owner closure and speed gaps (latest)
+
+`fft_maye` now closes both functions in one coherent unsigned/f32-domain cell:
+`fht` 85.01944 -> 100 (1884 -> 1852 bytes), `realfft` 53.844036 -> 100
+(352 -> 436 bytes). Signed lengths/indices produced arithmetic shifts and signed
+comparisons. Unsuffixed SQRT2 and half literals introduced double evaluation,
+extra rounding and the wrong automatic unrolling. The unsigned caller lengths,
+target compare/shift forms and single-precision arithmetic justify the changes;
+no register hints, assembly, invented storage or literal-value changes were used.
+
+Both strict/data channels are exact. Target relocation applications are exact:
+fht 9/9 and realfft 2/2; raw GC1.2.5n SDA21 +2 representation remains separately
+reported. The only header consumer, fftmod, is object-behavior/physical unchanged.
+Normal Ninja/MWLD with FFT and Median source selected passes all 137 checksums.
+The proof checkout reports DOL 339/396 (57 remaining), 1855312/2173968 code and
+692920/717328 data. This is a verified local batch, not yet a main count.
+
+Evidence: `build/dol-fft-domain-20260912/fft/owner-proof.json`, domain strict/data
+reports and per-function physical receipts; `consumer/domain-verification.json`.
+
+The existing `tools/recovery_causal_groups.py` now adds:
+
+- Direction-specific signedness/evaluation-precision evidence. Repeated compares,
+  shifts and single/double arithmetic are surfaced before opaque register tails.
+  Loads alone and mixed directions remain weak; no exact source variable is inferred.
+- `--owner-summary`: whole-object exact/remaining counts and domain-review priority,
+  without claiming a completed owner from instruction matching alone.
+- `--support-source FILE --source-lines START:END`: one bounded source question,
+  first mismatch plus domain examples, hashes and explicit omitted-row counts.
+  Oversized excerpts are rejected with narrowing guidance, not silently clipped.
+
+The tool replay identifies both FFT domains and reports 0/2 -> 2/2. It encodes
+the source decision independently made during this closure; it did not discover
+the already-authored winning candidate. The actual realfft support excerpt is
+6232 bytes. The active packet builder uses this API for bounded jobs and refuses
+whole prompts above 28000 bytes; local Qwen reasoning/output limits remain uncapped.
+The previous TriggerLR job exhausted its 65536 context (no final answer) after
+1170 seconds. Two new narrow xhigh support jobs completed naturally in 119 and
+102 seconds. These are different tasks, not a controlled speedup benchmark.
+
+The README now separates public build/progress information from recovery-internal
+policy. No static current-percentage claim is added to either README.
+
 ## Active completion goal
 
 Recover every remaining main DOL owner and promote verified source closures in

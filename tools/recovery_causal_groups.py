@@ -24,6 +24,132 @@ def ranking_tuple(summary: dict, *, exact_function_count: int = 0,
             len(summary["groups"]), -score)
 
 
+def numeric_domain_evidence(left: list[dict], right: list[dict]) -> dict:
+    """Observe evaluation-domain differences, not source types or rewrite proof.
+
+    GC1.2.5n FFT exposed why register/row-count triage alone is insufficient:
+    signed length arithmetic and promoted double literals changed unrolling and
+    a large downstream register schedule in both functions of one owner.
+    """
+    pairs = {("cmplw", "cmpw"): ("integer", "unsigned"),
+             ("cmplwi", "cmpwi"): ("integer", "unsigned"),
+             ("srwi", "srawi"): ("integer", "unsigned"),
+             ("fmuls", "fmul"): ("arithmetic", "single"),
+             ("fadds", "fadd"): ("arithmetic", "single"),
+             ("fsubs", "fsub"): ("arithmetic", "single"),
+             ("fdivs", "fdiv"): ("arithmetic", "single"),
+             ("lfs", "lfd"): ("load", "single")}
+    reverse = {"unsigned": "signed", "single": "double"}
+    pairs.update({(b, a): (family, reverse[direction])
+                  for (a, b), (family, direction) in list(pairs.items())})
+    buckets: dict[tuple, list[dict]] = {}
+    for index, (target, candidate) in enumerate(zip(left, right)):
+        if not isinstance(target, dict) or not isinstance(candidate, dict):
+            continue
+        if any(not isinstance(row.get("instruction"), dict)
+               or not isinstance(row["instruction"].get("formatted"), str)
+               for row in (target, candidate)):
+            continue
+        if any(row.get("diff_kind") in {"DIFF_INSERT", "DIFF_DELETE"}
+               for row in (target, candidate)):
+            continue
+        parts = [frontier._instruction_parts(row) for row in (target, candidate)]
+        if not all(parts) or (parts[0][0], parts[1][0]) not in pairs:
+            continue
+        # Malformed mnemonic-only rows are not evidence; operands may legitimately
+        # be different physical registers due to the domain-induced cascade.
+        if not all(part[1] for part in parts):
+            continue
+        family, direction = pairs[(parts[0][0], parts[1][0])]
+        buckets.setdefault((family, direction), []).append({
+            "row": index, "target": target["instruction"]["formatted"],
+            "candidate": candidate["instruction"]["formatted"]})
+    signals = []
+    for (family, direction), sites in sorted(buckets.items()):
+        category = "integer" if family == "integer" else "floating"
+        mixed = any(("integer" if other == "integer" else "floating") == category
+                    and other_direction != direction for other, other_direction in buckets)
+        signals.append({"family": family, "target_domain": direction,
+                        "row_count": len(sites), "sites": sites[:12],
+                        "sites_truncated": len(sites) > 12,
+                        "mixed_direction": mixed,
+                        "review_priority": "support_only" if family == "load" or mixed else "source_domain",
+                        "source_review": (
+                            "Inspect length/index declarations, shifts/divisions and caller domains."
+                            if category == "integer" else
+                            "Inspect literal suffixes, casts, operand types and public prototypes; load width alone is insufficient."),
+                        "cause_proven": False})
+    return {"signals": signals, "source_type_identity": "UNKNOWN",
+            "next_action": "Review the indicated expressions and consumers together before local register permutations; compile one coherent candidate, not blanket type changes.",
+            "authority_advanced": False}
+
+
+def summarize_owner(document: dict) -> dict:
+    """Small whole-object view: count closures and surface shared domain clues."""
+    symbols = frontier.focus._symbols(document, "left", "strict")
+    functions = [s for s in symbols if s.get("instructions")]
+    residuals, exact = [], []
+    for symbol in functions:
+        summary = summarize_groups(document, symbol["name"])
+        if summary["instruction_exact"]:
+            exact.append(symbol["name"])
+            continue
+        signals = summary["numeric_domain_evidence"]["signals"]
+        residuals.append({"function": symbol["name"],
+                          "target_bytes": symbol.get("size"),
+                          "score": symbol.get("match_percent"),
+                          "residual_rows": summary["coverage"]["residual_rows"],
+                          "size_exact": summary["size_exact"],
+                          "domain_signals": signals,
+                          "domain_review_first": any(s["review_priority"] == "source_domain" for s in signals)})
+    residuals.sort(key=lambda r: (not r["domain_review_first"], r["residual_rows"], r["function"]))
+    return {"schema": "recovery_owner_triage/v1", "functions_total": len(functions),
+            "instruction_exact_count": len(exact), "remaining_count": len(residuals),
+            "instruction_exact_functions": exact, "residuals": residuals,
+            "ordering": "domain-review evidence before opaque register tails, then residual rows; advisory, not expected time or proof",
+            "owner_closed": False, "physical_proof": False, "authority_advanced": False}
+
+
+def support_packet(document: dict, function: str, source: str, start: int, end: int,
+                   *, radius: int = 4, max_bytes: int = 24000) -> dict:
+    """Bound one support question without reducing local-model reasoning limits.
+
+    Keep the original TU/object for compilation. This is an analysis excerpt,
+    with complete omitted-row counts and bindings, never a synthetic compiler TU.
+    """
+    lines = source.splitlines()
+    if not (1 <= start <= end <= len(lines)) or not 0 <= radius <= 16:
+        raise ValueError("invalid source range or row radius")
+    if not 1000 <= max_bytes <= 64000:
+        raise ValueError("support byte budget must be 1000..64000")
+    summary = summarize_groups(document, function)
+    streams = [frontier.focus._rows(frontier._stack_function(
+        frontier.focus._symbols(document, side, "strict"), function, side), function)
+        for side in ("left", "right")]
+    sites = sorted({m["row"] for g in summary["groups"] for m in g["members"]})
+    # The first causal question plus repeated domain examples; never all 1000
+    # instructions. Report how much was omitted so support cannot infer absence.
+    centers = sites[:1] + [s["sites"][0]["row"] for s in summary["numeric_domain_evidence"]["signals"]]
+    selected = sorted({i for center in centers for i in range(max(0, center-radius),
+                      min(max(map(len, streams)), center+radius+1))})
+    rows = [{"row": i, **{side: (stream[i].get("instruction") or {}).get("formatted")
+                          if i < len(stream) else None
+                          for side, stream in zip(("target", "candidate"), streams)}} for i in selected]
+    result = {"schema": "recovery_support_excerpt/v1", "function": function,
+              "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+              "report_sha256": hashlib.sha256(json.dumps(document, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+              "report_hash_scope": "canonical parsed JSON", "source_lines": [start, end],
+              "source_excerpt": "\n".join(lines[start-1:end]), "paired_rows": rows,
+              "residual_row_count": len(sites), "omitted_residual_row_count": len(set(sites)-set(selected)),
+              "numeric_domain_evidence": summary["numeric_domain_evidence"],
+              "scope": "one source decision; excerpt is incomplete, request a named missing span if needed; no filesystem or compiler access",
+              "authority_advanced": False}
+    size = len(json.dumps(result, ensure_ascii=False).encode("utf-8"))
+    if size > max_bytes:
+        raise ValueError(f"support excerpt {size} bytes exceeds {max_bytes}; narrow the source range/question, do not dispatch a full TU")
+    return result
+
+
 def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> dict:
     """Bounded block-local physical-register DAG; no source/alias inference.
 
@@ -223,6 +349,7 @@ def summarize_groups(document: dict, function: str, *, producers: int = 0) -> di
               "diagnostic_only": True, "physical_proof": False, "authority_advanced": False,
               "source_emission_authorized": False}
     result["group_semantics"] = "observational relation buckets, not independent defects or proven causes"
+    result["numeric_domain_evidence"] = numeric_domain_evidence(left, right)
     if result["first_machine_divergence"]:
         result["first_machine_divergence"].pop("context", None)
     result["ranking_tuple"] = ranking_tuple(result)
@@ -285,23 +412,40 @@ def compare_groups(before: dict, after: dict) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strict", type=Path, required=True)
-    parser.add_argument("--function", required=True)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--function")
+    mode.add_argument("--owner-summary", action="store_true")
     parser.add_argument("--before", type=Path)
+    parser.add_argument("--support-source", type=Path)
+    parser.add_argument("--source-lines", help="inclusive START:END for the bounded support question")
+    parser.add_argument("--support-max-bytes", type=int, default=24000)
     parser.add_argument("--producers", type=int, default=0, metavar="LIMIT",
                         help="optional block-local producer slice, 1..64 residual sites")
     args = parser.parse_args(argv)
     try:
-        def read(path: Path) -> dict:
+        def read_document(path: Path) -> dict:
             with path.open("rb") as stream:
                 raw = stream.read(frontier.REPORT_LIMIT + 1)
             if len(raw) > frontier.REPORT_LIMIT:
                 raise ValueError(f"report exceeds limit: {path}")
             if not 0 <= args.producers <= 64:
                 raise ValueError("producers must be between 0 and 64")
-            return summarize_groups(frontier.load_json(raw), args.function, producers=args.producers)
-        result = read(args.strict)
+            return frontier.load_json(raw)
+        if (args.support_source or args.source_lines) and (not args.function or not args.support_source or not args.source_lines or args.before):
+            raise ValueError("support excerpt requires --function, --support-source and --source-lines; no --before")
+        if args.owner_summary and args.before:
+            raise ValueError("--before requires --function")
+        document = read_document(args.strict)
+        if args.support_source:
+            start, end = map(int, args.source_lines.split(":"))
+            result = support_packet(document, args.function, args.support_source.read_text(encoding="utf-8"),
+                                    start, end, max_bytes=args.support_max_bytes)
+        elif args.owner_summary:
+            result = summarize_owner(document)
+        else:
+            result = summarize_groups(document, args.function, producers=args.producers)
         if args.before:
-            result["comparison"] = compare_groups(read(args.before), result)
+            result["comparison"] = compare_groups(summarize_groups(read_document(args.before), args.function), result)
         print(json.dumps(result, sort_keys=True, separators=(",", ":")))
         return 0
     except (ValueError, OSError, TypeError, KeyError) as exc:
