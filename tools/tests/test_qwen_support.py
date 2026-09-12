@@ -87,6 +87,7 @@ class RunnerReplayTests(unittest.TestCase):
         self.calls = []
         self.slot_count = 4
         self.concurrency_barrier = None
+        self.after_reasoning = None
         self.active = self.peak_active = 0
         self.active_lock = threading.Lock()
         owner = self
@@ -103,7 +104,8 @@ class RunnerReplayTests(unittest.TestCase):
                                             for i in range(owner.slot_count)]).encode())
 
             def do_POST(self):
-                owner.calls.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+                request_body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                owner.calls.append(request_body)
                 with owner.active_lock:
                     owner.active += 1
                     owner.peak_active = max(owner.peak_active, owner.active)
@@ -117,11 +119,18 @@ class RunnerReplayTests(unittest.TestCase):
                     {"choices":[{"delta":{"content":json.dumps(owner.body)},"finish_reason":None}]},
                     {"choices":[{"delta":{},"finish_reason":owner.finish}],
                      "usage":{"prompt_tokens":10,"completion_tokens":20,"total_tokens":30}}]
-                for event in events:
-                    self.wfile.write(("data: "+json.dumps(event)+"\n\n").encode())
-                self.wfile.write(b"data: [DONE]\n\n")
-                with owner.active_lock:
-                    owner.active -= 1
+                try:
+                    for index, event in enumerate(events):
+                        self.wfile.write(("data: "+json.dumps(event)+"\n\n").encode())
+                        self.wfile.flush()
+                        if index == 0 and owner.after_reasoning:
+                            owner.after_reasoning(request_body)
+                    self.wfile.write(b"data: [DONE]\n\n")
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                    pass
+                finally:
+                    with owner.active_lock:
+                        owner.active -= 1
 
         self.server = ThreadingHTTPServer(("127.0.0.1",0), Handler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -176,6 +185,48 @@ class RunnerReplayTests(unittest.TestCase):
         out = self.root/"answer"
         self.assertFalse((out/"replay.answer.txt").exists())
         self.assertEqual(json.loads((out/"replay.metrics.json").read_bytes())["state"], "failed")
+
+    def test_caller_cancellation_before_http_has_no_admitted_answer(self):
+        out = self.root / "answer"
+        out.mkdir()
+        (out / "replay.cancel").write_text("Owner already closed", encoding="utf-8")
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.calls, [])
+        metrics = json.loads((out / "replay.metrics.json").read_bytes())
+        self.assertEqual(metrics["state"], "cancelled")
+        self.assertFalse(metrics["natural_completion"])
+        self.assertFalse((out / "replay.answer.txt").exists())
+        self.assertFalse((out / "replay.lock").exists())
+
+    def test_cancellation_does_not_overwrite_completed_finding(self):
+        self.assertEqual(self.invoke().returncode, 0)
+        out = self.root / "answer"
+        before = (out / "replay.metrics.json").read_bytes()
+        (out / "replay.cancel").write_text("No more work needed", encoding="utf-8")
+        self.assertNotEqual(self.invoke().returncode, 0)
+        self.assertEqual((out / "replay.metrics.json").read_bytes(), before)
+        self.assertEqual(len(self.calls), 1)
+
+    def test_cancel_one_streaming_question_preserves_other_batch_job(self):
+        jobs = []
+        for name in ("obsolete", "useful"):
+            prompt = self.root / (name + ".txt")
+            prompt.write_text(name, encoding="utf-8")
+            jobs.append({"id":name, "prompt_file":str(prompt),
+                         "output_dir":str(self.root/name)})
+        def cancel_obsolete(body):
+            if body["messages"][0]["content"] == "obsolete":
+                (self.root / "obsolete/obsolete.cancel").write_text("Resolved locally", encoding="utf-8")
+        self.after_reasoning = cancel_obsolete
+        result = self.batch(jobs, endpoint=f"http://127.0.0.1:{self.server.server_port}/v1/chat/completions")
+        self.assertNotEqual(result.returncode, 0)
+        states = {j["id"]:j["state"] for j in json.loads((self.root/"jobs.json.status.json").read_bytes())["jobs"]}
+        self.assertEqual(states, {"obsolete":"cancelled", "useful":"completed"})
+        self.assertFalse((self.root/"obsolete/obsolete.answer.txt").exists())
+        self.assertFalse((self.root/"obsolete/obsolete.lock").exists())
+        self.assertTrue((self.root/"useful/useful.answer.txt").exists())
+        self.assertEqual(len(self.calls), 2)
 
     def batch(self, jobs, **fields):
         path = self.root/"jobs.json"

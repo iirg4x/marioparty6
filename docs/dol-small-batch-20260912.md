@@ -19,6 +19,14 @@ decision question and paired evidence for new support, not a whole-function
 rewrite. Genfilt and Undersampler now use the existing validated decision
 packet path while primary compilation proceeds independently.
 
+The existing local Qwen runner now supports an exact per-job `.cancel`
+marker: superseded work releases its request without killing the server or
+other jobs, and cannot publish a partial answer as success. Fifteen replay
+tests pass, including cancelling one of two concurrent requests while the
+other completes. This adds no approval round or model-generation limit.
+Keep the marker action next to the actual question-resolution/owner-closure
+decision so obsolete jobs do not consume another half-hour unnoticed.
+
 The broad Smoothing answer proposed replacing a column-relative pointer by
 `matrixEnd - rows + column`. This is not equivalent after the first iteration:
 matrixEnd stays fixed while column decreases. Reject it without a compile.
