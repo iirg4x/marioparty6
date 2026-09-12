@@ -10,14 +10,18 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 21.63% | 42.37% | 374 / 926 |
-| Main DOL | 85.10% | 96.57% | 335 / 396 |
+| Entire project | 21.64% | 42.38% | 376 / 926 |
+| Main DOL | 85.18% | 96.58% | 337 / 396 |
 | REL modules | 8.17% | 8.03% | 39 / 530 |
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
 owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
+
+The QR transform and DCT lifting speech owners are now Matching, with all
+seven functions exact and both source objects selected in the retail-identical
+build.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one
