@@ -1,6 +1,38 @@
 # Small DOL batch, 2026-09-12
 
-## FFT owner closure and speed gaps (latest)
+## Window owner closure (latest)
+
+Window is **5/5 strict/data exact**, 3068 code bytes and **31/31 effective
+relocations**. GC1.2.5n raw SDA21 offsets are kept distinct from DTK instruction
+application equivalence. Normal Ninja/MWLD with Median, FFT and Window selected
+from source passes all 137 retail checksums and direct DOL byte equality. The
+local proof count is now **340/396**; main remains 337/396 pending the ten-owner
+batch. Source SHA256: `fa71d99535244b2a863f67389c3ad35fc02c6e92f96bdd7cc143bae7fdc0d347`.
+
+InitWindow needed f32 integer conversion before the existing double-angle
+formula, the chained window-length store/result, and the post-store frame-length
+field consumer. WindowFlush needed the unoffset history snapshot across the
+queue call and subtraction afterward. ProcessWindow needed one live pointer
+snapshot consumed by both the zero store and memcpy; this removed its extra
+reload. With operation/size topology closed, existing pointer declaration
+chronology closed ProcessWindow. The final Flush cycle needed distinct live
+previous-frame-copy and windowing-read cursors. Reordering the late assignments
+alone was neutral; it was not retained. No fake locals, hints or assembly.
+
+Evidence: `build/dol-window-final-20260912/window/owner-proof.json`,
+`final-link-proof.json`, `normal-physical.json`; the retained intermediate
+source/object pairs are in `build/dol-window-{flow,closure}-20260912/window/`.
+
+The initial compact Qwen packets hid the late extra-load cause behind early
+register/branch differences. Both returned hypotheses were rejected on actual
+call/value semantics before compilation. The existing support-excerpt tool now
+includes bounded first added/deleted-operation contexts and category/size facts.
+The baseline ProcessWindow replay includes rows128-132 and the adjacent memcpy
+consumer; it explains an already solved cause, not a new tool-discovered gain.
+31 focused tests pass (one private-fixture skip). The preceding full public
+agent gate against 9acec84 passed; private retail proof remains separate.
+
+## FFT owner closure and speed gaps
 
 `fft_maye` now closes both functions in one coherent unsigned/f32-domain cell:
 `fht` 85.01944 -> 100 (1884 -> 1852 bytes), `realfft` 53.844036 -> 100
@@ -47,9 +79,12 @@ policy. No static current-percentage claim is added to either README.
 
 Recover every remaining main DOL owner and promote verified source closures in
 batches, using Qwen-only parallel support. Current fetched main `a1aa433` has
-337/396 Matching DOL owners (59 remaining); Median is additionally verified
-locally and pending promotion. Aim for 3-5 ready owners per batch, without
-holding a verified batch indefinitely for a difficult unrelated residual.
+337/396 Matching DOL owners (59 remaining); FFT, Median and Window are verified
+locally and pending promotion. User requirement: promote exactly 10 verified owners per
+batch (except the final remainder). Current batch is 3/10 ready. Do not push a
+smaller intermediate source/status batch or count function partials as owners.
+Pivot among eligible owners when a particular residual stalls; retain completed
+owners safely while filling the same batch.
 Partial gains remain in the protected local champion, not counted as main
 closures. Finish only when main's full DOL owner census and source-selected
 retail link pass. No fixed crack-rate guarantee is made.

@@ -87,9 +87,17 @@ def numeric_domain_evidence(left: list[dict], right: list[dict]) -> dict:
 def summarize_owner(document: dict) -> dict:
     """Small whole-object view: count closures and surface shared domain clues."""
     symbols = frontier.focus._symbols(document, "left", "strict")
+    candidate_symbols = frontier.focus._symbols(document, "right", "strict")
     functions = [s for s in symbols if s.get("instructions")]
     residuals, exact = [], []
     for symbol in functions:
+        if frontier._stack_function(candidate_symbols, symbol["name"], "candidate") is None:
+            residuals.append({"function": symbol["name"], "target_bytes": symbol.get("size"),
+                              "score": None, "residual_rows": len(symbol["instructions"]),
+                              "size_exact": False, "domain_signals": [], "domain_review_first": False,
+                              "status": "candidate_symbol_missing",
+                              "next_action": "Reconstruct the missing function; no matched instruction pair exists for domain diagnosis."})
+            continue
         summary = summarize_groups(document, symbol["name"])
         if summary["instruction_exact"]:
             exact.append(symbol["name"])
@@ -127,9 +135,15 @@ def support_packet(document: dict, function: str, source: str, start: int, end: 
         frontier.focus._symbols(document, side, "strict"), function, side), function)
         for side in ("left", "right")]
     sites = sorted({m["row"] for g in summary["groups"] for m in g["members"]})
-    # The first causal question plus repeated domain examples; never all 1000
-    # instructions. Report how much was omitted so support cannot infer absence.
+    # An early branch displacement/register cycle can hide the actual extra
+    # load much later (Window's first-frame memcpy). Include the first concrete
+    # added/deleted operation of each kind, not just the first differing row.
+    structural = {}
+    for group in summary["groups"]:
+        if group["kind"] in {"added_instruction", "deleted_instruction", "added_move", "deleted_move"}:
+            structural[group["kind"]] = min(structural.get(group["kind"], group["first"]["row"]), group["first"]["row"])
     centers = sites[:1] + [s["sites"][0]["row"] for s in summary["numeric_domain_evidence"]["signals"]]
+    centers += list(structural.values())
     selected = sorted({i for center in centers for i in range(max(0, center-radius),
                       min(max(map(len, streams)), center+radius+1))})
     rows = [{"row": i, **{side: (stream[i].get("instruction") or {}).get("formatted")
@@ -140,6 +154,8 @@ def support_packet(document: dict, function: str, source: str, start: int, end: 
               "report_sha256": hashlib.sha256(json.dumps(document, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
               "report_hash_scope": "canonical parsed JSON", "source_lines": [start, end],
               "source_excerpt": "\n".join(lines[start-1:end]), "paired_rows": rows,
+              "structural_context_anchors": structural,
+              "category_rows": summary["category_rows"], "size_exact": summary["size_exact"],
               "residual_row_count": len(sites), "omitted_residual_row_count": len(set(sites)-set(selected)),
               "numeric_domain_evidence": summary["numeric_domain_evidence"],
               "scope": "one source decision; excerpt is incomplete, request a named missing span if needed; no filesystem or compiler access",

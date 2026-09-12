@@ -76,6 +76,15 @@ class CausalGroupsTests(unittest.TestCase):
         self.assertFalse(result["owner_closed"])
         self.assertFalse(result["physical_proof"])
 
+    def test_owner_missing_candidate_is_a_residual_not_a_crash_or_match(self):
+        doc = report([row("blr", 0)], [row("blr", 0)])
+        doc["right"]["symbols"] = []
+        result = groups.summarize_owner(doc)
+        self.assertEqual((result["instruction_exact_count"], result["remaining_count"]), (0, 1))
+        self.assertEqual(result["residuals"][0]["status"], "candidate_symbol_missing")
+        self.assertIsNone(result["residuals"][0]["score"])
+        self.assertFalse(result["owner_closed"])
+
     def test_support_excerpt_is_bound_and_does_not_dump_full_stream(self):
         left = [row("cmplwi r3, 1", 0)] + [row("blr", i*4) for i in range(1, 100)]
         right = [row("cmpwi r3, 1", 0)] + copy.deepcopy(left[1:])
@@ -91,6 +100,19 @@ class CausalGroupsTests(unittest.TestCase):
             groups.support_packet(report(left, right), "f", "a"*10000, 1, 1, max_bytes=1000)
         with self.assertRaises(ValueError):
             groups.support_packet(report(left, right), "f", source, 0, 1)
+
+    def test_support_retains_late_extra_load_behind_early_register_cycle(self):
+        left = [row("mr r4, r3", 0)] + [row("nop", i*4) for i in range(1, 120)]
+        right = copy.deepcopy(left)
+        right[0] = row("mr r5, r3", 0)
+        left[90] = {}
+        right[90] = row("lwz r4, 0x2c(r31)", 360)
+        result = groups.support_packet(report(left, right), "f", "void f(void) {}", 1, 1)
+        self.assertEqual(result["structural_context_anchors"], {"added_instruction": 90})
+        self.assertTrue({0, 89, 90, 91}.issubset({r["row"] for r in result["paired_rows"]}))
+        self.assertEqual(result["omitted_residual_row_count"], 0)
+        self.assertFalse(result["size_exact"])
+        self.assertLess(len(result["paired_rows"]), 20)
 
     def test_producer_field_order_and_downstream_use(self):
         left = [row("lwz r4, 0x28(r30)", 0), row("lwz r3, 0x2c(r30)", 4), row("add r6, r5, r3", 8)]
