@@ -58,7 +58,7 @@ def numeric_domain_evidence(left: list[dict], right: list[dict]) -> dict:
             continue
         # Malformed mnemonic-only rows are not evidence; operands may legitimately
         # be different physical registers due to the domain-induced cascade.
-        if not all(part[1] for part in parts):
+        if not all(any(operand.strip() for operand in part[1]) for part in parts):
             continue
         family, direction = pairs[(parts[0][0], parts[1][0])]
         buckets.setdefault((family, direction), []).append({
@@ -438,7 +438,11 @@ def main(argv: list[str] | None = None) -> int:
         document = read_document(args.strict)
         if args.support_source:
             start, end = map(int, args.source_lines.split(":"))
-            result = support_packet(document, args.function, args.support_source.read_text(encoding="utf-8"),
+            with args.support_source.open("rb") as stream:
+                source_bytes = stream.read(1024 * 1024 + 1)
+            if len(source_bytes) > 1024 * 1024:
+                raise ValueError("support source exceeds 1 MiB; select a smaller source input")
+            result = support_packet(document, args.function, source_bytes.decode("utf-8"),
                                     start, end, max_bytes=args.support_max_bytes)
         elif args.owner_summary:
             result = summarize_owner(document)

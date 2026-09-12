@@ -43,6 +43,16 @@ class CausalGroupsTests(unittest.TestCase):
         double = groups.numeric_domain_evidence([row("fdiv f0, f1, f2", 0)], [row("fdivs f0, f1, f2", 0)])
         self.assertEqual(double["signals"][0]["target_domain"], "double")
 
+    def test_domain_opcode_families_and_malformed_instructions(self):
+        for single, double in (("fmuls", "fmul"), ("fadds", "fadd"), ("fsubs", "fsub"), ("fdivs", "fdiv")):
+            with self.subTest(op=single):
+                result = groups.numeric_domain_evidence([row(single+" f0, f1, f2", 0)],
+                                                       [row(double+" f0, f1, f2", 0)])
+                self.assertEqual(result["signals"][0]["target_domain"], "single")
+        for malformed in (None, {"instruction": None}, {"instruction": {"formatted": 3}},
+                          {"instruction": "bad"}, row("cmplwi", 0)):
+            self.assertEqual(groups.numeric_domain_evidence([malformed], [row("cmpwi r3, 1", 0)])["signals"], [])
+
     def test_domain_missing_unchanged_inserted_and_bounded(self):
         left = [row("cmplwi r3, 1", 0), {}, row("cmpwi r3, 1", 8),
                 {**row("cmplwi r3, 1", 12), "diff_kind": "DIFF_DELETE"}]
@@ -70,7 +80,7 @@ class CausalGroupsTests(unittest.TestCase):
         left = [row("cmplwi r3, 1", 0)] + [row("blr", i*4) for i in range(1, 100)]
         right = [row("cmpwi r3, 1", 0)] + copy.deepcopy(left[1:])
         right[90] = row("li r3, 0", 360)
-        source = "float unrelated;\nvoid f(void) { }\nfloat other;\n"
+        source = "float unrelated;\r\nvoid f(void) { }\r\nfloat other;\r\n"
         result = groups.support_packet(report(left, right), "f", source, 2, 2)
         self.assertEqual(result["source_excerpt"], "void f(void) { }")
         self.assertEqual(result["source_sha256"], hashlib.sha256(source.encode()).hexdigest())
