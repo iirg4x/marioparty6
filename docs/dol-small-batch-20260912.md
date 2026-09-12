@@ -79,6 +79,16 @@ the GC1.3 context diagnostic regressed and is not retained.
 - Undersampler int/u32 narrowing/reuse probes, DelayBlock zero spelling,
   Stationarity scope/direct-load forms and VQ comma initialization were neutral
   or worse. Their live sources are restored. None exhausts its function.
+- CombinerProcess preparation for the next batch retains 87.40 -> 97.55%
+  with target size restored to 840 bytes: consume the first input sample once
+  and delay the band-dependent pointer advance until after the scalar header
+  writes. Its sibling initialization loop experiment regressed and was restored.
+  Current binding is `build/dol-batch/c16/combiner.json`; this partial owner is
+  not selected in the present source promotion.
+
+The public agent gate passed, including the full workflow suite and live-input
+review. Both affected tooling test modules were additionally rerun after the
+final edits: 38 tests, one opt-in fixture skipped, no failures.
 
 Promote the two recovered source files together and the reviewed configuration
 changes together; never merge the investigation branch into main. Tooling and

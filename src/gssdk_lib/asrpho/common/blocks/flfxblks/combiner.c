@@ -70,14 +70,16 @@ static void CombinerProcess(
         f32 *previous2 = block->history[(index + 6) & 7];
         f32 *previous3 = block->history[(index + 5) & 7];
         f32 *previous4 = block->history[(index + 4) & 7];
-        f32 *delta = previous2 + block->bandCount + 3;
+        f32 *delta = previous2 + 1;
+        f32 firstSample = *input++;
         s32 i;
 
+        input++;
         block->frameCount++;
-        current[0] = input[0];
+        current[0] = firstSample;
         outputSource = previous3 + 1;
         previous2[1] = 0.2f *
-                       (2.0f * input[0] + previous1[0] - previous3[0] -
+                       (2.0f * firstSample + previous1[0] - previous3[0] -
                         2.0f * previous4[0]);
         previous3[2] = previous2[1] - previous4[1];
 
@@ -85,7 +87,7 @@ static void CombinerProcess(
         previous1 += 3;
         previous3 += 3;
         previous4 += 3;
-        input += 2;
+        delta += block->bandCount + 2;
         for (i = 0; i < block->bandCount; i++) {
             *current++ = *input;
             *delta++ = 0.375f *
