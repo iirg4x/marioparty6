@@ -108,10 +108,71 @@ class EvidenceContainmentTests(unittest.TestCase):
                 bundle._prepare_output_root(root, disposable / "other")
 
 
+class RetailPreflightTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.config = self.root / "config/GP6E01/config.yml"
+        self.config.parent.mkdir(parents=True)
+        self.config.write_text(
+            "object: orig/GP6E01/sys/main.dol\n"
+            "symbols: config/symbols.txt\n"
+            "modules:\n- object: orig/GP6E01/files/dll/m699Dll.rel\n"
+            "  splits: config/splits.txt\n"
+            "extract:\n- binary: generated.bin\n", encoding="utf-8")
+        self.central = self.root / "central"
+        self.central.mkdir()
+        (self.central / ".gitkeep").touch()
+        self.toolchain = {"orig": {"path_object": self.central}}
+
+    def assert_preflight_failure(self, message):
+        with patch.object(bundle, "_run") as run, patch.object(bundle.shutil, "copytree") as copy:
+            with self.assertRaisesRegex(bundle.EvidenceError, message):
+                bundle._ensure_configured(self.root, self.toolchain, bundle.DEFAULT_NINJA)
+            run.assert_not_called()
+            copy.assert_not_called()
+        self.assertFalse((self.root / "orig").exists())
+
+    def test_placeholder_tree_reports_all_missing_inputs_before_copy_or_launch(self):
+        self.assert_preflight_failure("missing configured inputs: orig/GP6E01/sys/main.dol, orig/GP6E01/files/dll/m699Dll.rel")
+
+    def test_main_present_does_not_hide_missing_rel(self):
+        (self.central / "sys").mkdir()
+        (self.central / "sys/main.dol").write_bytes(b"dol")
+        self.assert_preflight_failure("missing configured inputs: orig/GP6E01/files/dll/m699Dll.rel$")
+
+    def test_complete_inputs_pass_without_metadata_or_generated_outputs(self):
+        for rel in ("sys/main.dol", "files/dll/m699Dll.rel"):
+            path = self.central / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"retail")
+        (self.root / "build.ninja").touch()
+        (self.root / "objdiff.json").write_text("{}")
+        with patch.object(bundle, "_run") as run:
+            copied = bundle._ensure_configured(self.root, self.toolchain, bundle.DEFAULT_NINJA)
+            run.assert_not_called()
+        self.assertTrue((copied / "files/dll/m699Dll.rel").is_file())
+        bundle._remove_staged_retail(copied)
+
+    def test_malformed_or_outside_object_paths_fail_without_work(self):
+        for raw in ("", "null", "../external.rel", "orig/GP6E01/../external.rel",
+                    "orig/OTHER/sys/main.dol", "C:/external.rel", "orig/GP6E01/sys/main.dol:stream",
+                    "[orig/GP6E01/sys/main.dol]", "*alias"):
+            with self.subTest(raw=raw):
+                self.config.write_text(f"object: {raw}\n", encoding="utf-8")
+                self.assert_preflight_failure("invalid configured retail input")
+        self.config.write_text("object: orig/GP6E01/sys/main.dol\nmodules: [bad]\n")
+        self.assert_preflight_failure("unsupported DTK modules")
+
+
 class RealEvidenceFixtureTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
+        config = self.root / "config/GP6E01/config.yml"
+        config.parent.mkdir(parents=True)
+        config.write_text("object: orig/GP6E01/sys/main.dol\n", encoding="utf-8")
         self.assembler = shutil.which("powerpc-eabi-as") or r"C:\devkitPro\devkitPPC\bin\powerpc-eabi-as.exe"
         self.readelf = shutil.which("powerpc-eabi-readelf") or r"C:\devkitPro\devkitPPC\bin\powerpc-eabi-readelf.exe"
         if not OBJDFF.is_file() or not Path(self.assembler).is_file() or not Path(self.readelf).is_file():
@@ -296,6 +357,11 @@ class RealEvidenceFixtureTests(unittest.TestCase):
         required_retail = central_orig / "files" / "dll" / "m699Dll.rel"
         required_retail.parent.mkdir(parents=True)
         required_retail.write_bytes(b"retail dependency")
+        (central_orig / "sys").mkdir()
+        (central_orig / "sys/main.dol").write_bytes(b"dol")
+        (self.root / "config/GP6E01/config.yml").write_text(
+            "object: orig/GP6E01/sys/main.dol\nmodules:\n"
+            "- object: orig/GP6E01/files/dll/m699Dll.rel\n", encoding="utf-8")
         source = self.root / "src" / "focus.s"
         source.parent.mkdir()
         shutil.copyfile(self.root / "focus.s", source)

@@ -8,6 +8,7 @@ import hashlib
 import json
 import math
 import os
+import shlex
 from pathlib import Path
 import shutil
 import sys
@@ -105,8 +106,98 @@ def _resolved_command(command: list[str], scratch: Path) -> list[str]:
     return command
 
 
+def include_context(command: list[str], scratch: Path,
+                    references: dict[str, Path] | None = None) -> dict:
+    """Bind explicit search roots, not a claim of preprocessor dependency tracing.
+
+    Reference keys are include spellings (e.g. musyx/snd.h), values intended
+    files. SDK-only roots need no reference. Relative response paths and include
+    roots use the compiler working directory, including nested response files.
+    """
+    executable = Path(command[0]).stem.lower()
+    opaque = executable in {'powershell', 'pwsh', 'cmd', 'sh', 'bash', 'ninja', 'make'}
+    opaque = opaque or any(a.lower() in {'-file', '-command'} for a in command[1:])
+    opaque = opaque or (executable.startswith('python') and command[1:2] == ['-c'])
+    responses = {}
+
+    def expand(args, active=()):
+        result = []
+        for arg in args:
+            if not arg.startswith('@'):
+                result.append(arg)
+                continue
+            path = (scratch / arg[1:].strip('"')).resolve()
+            if path in active or len(active) >= 16:
+                raise ValueError(f'cyclic or over-nested compiler response file: {path}')
+            if not path.is_file():
+                raise ValueError(f'missing compiler response file: {path}')
+            raw = path.read_bytes()
+            if len(raw) > 1024 * 1024:
+                raise ValueError(f'compiler response file exceeds 1 MiB: {path}')
+            responses[str(path)] = hashlib.sha256(raw).hexdigest()
+            # Preserve Windows backslashes; double quotes group spaces.
+            lexer = shlex.shlex(raw.decode('utf-8-sig'), posix=True)
+            lexer.whitespace_split = True
+            lexer.commenters = ''
+            lexer.escape = ''
+            result.extend(expand(list(lexer), (*active, path)))
+        return result
+
+    args = [] if opaque else expand(command[1:])
+    search = []
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        flag = next((f for f in ('-I+', '-i', '-I') if arg == f), None)
+        if flag:
+            index += 1
+            if index == len(args) or args[index].startswith('-'):
+                raise ValueError(f'missing include path after {flag}')
+            value = args[index]
+        elif arg.startswith('-I+'):
+            flag, value = '-I+', arg[3:]
+        elif arg.startswith('-I') and arg != '-I-':
+            flag, value = '-I', arg[2:]
+        else:
+            index += 1
+            continue
+        path = (scratch / value).resolve()
+        if not path.is_dir():
+            raise ValueError(f'missing compiler include directory ({flag}): {path}')
+        search.append({'flag': flag, 'path': str(path), 'files': tree(path)})
+        index += 1
+    bound = {}
+    for name, reference in (references or {}).items():
+        if Path(name).is_absolute() or '..' in Path(name).parts:
+            raise ValueError(f'reference include name must be relative: {name}')
+        reference = Path(reference).resolve()
+        if not reference.is_file():
+            raise ValueError(f'missing reference header: {reference}')
+        if opaque:
+            raise ValueError(f'cannot resolve reference header {name} through opaque compiler command')
+        selected = None
+        for entry in search:
+            candidate = Path(entry['path']) / name
+            if entry['flag'] == '-I+' and any(
+                    rel != Path(name).as_posix() and rel.endswith('/'+Path(name).as_posix())
+                    for rel in entry['files']):
+                raise ValueError(f'recursive include resolution is ambiguous for reference {name}: {entry["path"]}')
+            if candidate.is_file():
+                selected = candidate
+                break
+        if selected is None:
+            raise ValueError(f'reference header absent from explicit include search: {name}')
+        if digest(selected) != digest(reference):
+            raise ValueError(f'actual header differs from reference: {name}: {selected} != {reference}')
+        bound[name] = {'actual': str(selected), 'reference': str(reference), 'sha256': digest(reference)}
+    return {'coverage': 'opaque-command' if opaque else 'explicit-search-roots-only',
+            'limitations': 'Not a dependency trace: implicit/system/source-local paths and recursive search resolution are not inferred.',
+            'search': search, 'response_files': responses, 'references': bound}
+
+
 def preflight_context(*, root: Path, scratch: Path, command: list[str],
-                      tools: list[Path], command_descriptor: Path | None = None) -> dict:
+                      tools: list[Path], command_descriptor: Path | None = None,
+                      reference_headers: dict[str, Path] | None = None) -> dict:
     """Read-only context used identically by CLI preflight and compilation."""
     root = Path(os.path.abspath(root))
     scratch = safe(scratch, root)
@@ -123,6 +214,7 @@ def preflight_context(*, root: Path, scratch: Path, command: list[str],
     return {'headers': headers, 'generated_headers': tree(scratch / 'build/GP6E01/include'),
             'tools': {str(p): digest(p) for p in sorted(tool_paths)},
             'command': command, 'command_descriptor': descriptor,
+            'actual_includes': include_context(command, scratch, reference_headers),
             'environment_sha256': hashlib.sha256(json.dumps(dict(os.environ), sort_keys=True).encode()).hexdigest()}
 
 
@@ -192,7 +284,8 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
                       source_relpath: str, object_relpath: str, command: list[str],
                       tools: list[Path], timeout: float = 120,
                       mutex_name: str = 'Global\\CodexBoardCapspecialCandidateCompile',
-                      command_descriptor: Path | None = None) -> dict:
+                      command_descriptor: Path | None = None,
+                      reference_headers: dict[str, Path] | None = None) -> dict:
     root = Path(os.path.abspath(root))
     scratch = safe(scratch, root)
     source, output = safe(source, root), safe(output, root / 'build')
@@ -206,7 +299,8 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError('positive finite compiler timeout required')
     context = preflight_context(root=root, scratch=scratch, command=command,
-                                tools=tools, command_descriptor=command_descriptor)
+                                tools=tools, command_descriptor=command_descriptor,
+                                reference_headers=reference_headers)
     command = context['command']
     inputs = {source, live, staged, obj, *(Path(p) for p in context['tools'])}
     if context['command_descriptor'] is not None:
@@ -217,7 +311,8 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
             raise ValueError(f'compiler output aliases an input: {product}')
     with compiler_lock(root, mutex_name, timeout):
         if preflight_context(root=root, scratch=scratch, command=command,
-                             tools=tools, command_descriptor=command_descriptor) != context:
+                             tools=tools, command_descriptor=command_descriptor,
+                             reference_headers=reference_headers) != context:
             raise ValueError('compiler context changed before launch')
         candidate = source.read_bytes()
         if len(candidate) > 4*1024*1024:
@@ -260,6 +355,12 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
             descriptor = context['command_descriptor']
             if descriptor is not None and digest(Path(descriptor['path'])) != descriptor['sha256']:
                 raise RuntimeError(f'command JSON changed during compilation: {descriptor["path"]}')
+            try:
+                current_includes = include_context(command, scratch, reference_headers)
+            except (ValueError, OSError) as exc:
+                raise RuntimeError(f'actual compiler include context changed during compilation: {exc}') from exc
+            if current_includes != context['actual_includes']:
+                raise RuntimeError('actual compiler include context changed during compilation')
             if not obj.is_file() or not 0 < obj.stat().st_size <= 16*1024*1024:
                 raise RuntimeError('compiler did not produce a bounded nonempty object')
             data = obj.read_bytes()
@@ -267,6 +368,7 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
                        'context_sha256': context_sha, 'object_sha256': hashlib.sha256(data).hexdigest(),
                        'command': command, 'tools': context['tools'],
                        'command_descriptor': descriptor,
+                       'actual_includes': context['actual_includes'],
                        'header_set_sha256': hashlib.sha256(json.dumps(headers, sort_keys=True).encode()).hexdigest(),
                        'generated_header_set_sha256': hashlib.sha256(json.dumps(context['generated_headers'], sort_keys=True).encode()).hexdigest(),
                        'object_size': len(data), 'seconds': time.monotonic()-start,
@@ -295,6 +397,8 @@ def main() -> int:
     parser.add_argument('--output')
     parser.add_argument('--preflight', action='store_true')
     parser.add_argument('--tool', action='append', default=[])
+    parser.add_argument('--reference-header', action='append', default=[], metavar='INCLUDE=FILE',
+                        help='bind an explicit-search include spelling to an intended header (repeatable)')
     parser.add_argument('--timeout', type=float, default=120)
     parser.add_argument('--mutex-name', default='Global\\CodexBoardCapspecialCandidateCompile')
     args = parser.parse_args()
@@ -305,6 +409,12 @@ def main() -> int:
             raise ValueError('positive finite compiler timeout required')
         descriptor = path(args.command_json) if args.command_json else None
         tool_paths = [path(p) for p in args.tool]
+        references = {}
+        for value in args.reference_header:
+            name, separator, filename = value.partition('=')
+            if not separator or not name or not filename or name in references:
+                raise ValueError(f'invalid or duplicate --reference-header: {value}')
+            references[name] = path(filename)
         if descriptor is not None:
             command = load_command_json(descriptor)
         else:
@@ -318,7 +428,8 @@ def main() -> int:
             if not staged.is_file():
                 raise ValueError(f'missing scratch source: {staged}')
             context = preflight_context(root=root, scratch=scratch, command=command,
-                                        tools=tool_paths, command_descriptor=descriptor)
+                                        tools=tool_paths, command_descriptor=descriptor,
+                                        reference_headers=references)
             print(json.dumps({'status': 'context preflight passed; no compiler launched or source changed',
                               'context_sha256': context_digest(context), 'context': context,
                               'command': context['command'], 'tools': context['tools'],
@@ -330,7 +441,8 @@ def main() -> int:
                                    output=path(args.output), source_relpath=args.source_relpath,
                                    object_relpath=args.object_relpath, command=command,
                                    tools=tool_paths, timeout=args.timeout,
-                                   mutex_name=args.mutex_name, command_descriptor=descriptor)
+                                   mutex_name=args.mutex_name, command_descriptor=descriptor,
+                                   reference_headers=references)
         print(json.dumps(result, sort_keys=True))
         return 0
     except (OSError, ValueError, RuntimeError) as exc:

@@ -413,7 +413,76 @@ def _remove_staged_retail(retail_copy: Path) -> None:
         raise EvidenceError("staged retail cleanup left unexpected paths")
 
 
+def _preflight_retail_inputs(root: Path, toolchain: Mapping[str, Any]) -> None:
+    """Check DTK's block-form input records against the already sealed tree.
+
+    This project has no YAML dependency. Accept its explicit object records,
+    not arbitrary YAML aliases/flow mappings, and never scan extract.binary,
+    symbols or splits (those are outputs/metadata, not retail inputs).
+    """
+    config = root / "config" / "GP6E01" / "config.yml"
+    _assert_no_indirection(config)
+    try:
+        lines = config.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise EvidenceError(f"invalid DTK config {config}: {exc}") from exc
+    inputs: list[str] = []
+    in_modules = False
+    modules_seen = False
+    main_seen = False
+    for number, line in enumerate(lines, 1):
+        body = line.split("#", 1)[0].rstrip()
+        if not body.strip():
+            continue
+        label = f"{config}:{number}"
+        if body.startswith("modules:"):
+            if body != "modules:" or modules_seen:
+                raise EvidenceError(f"unsupported DTK modules record: {label}")
+            in_modules = True
+            modules_seen = True
+            continue
+        if in_modules and body.startswith("-"):
+            if not body.startswith("- object:"):
+                raise EvidenceError(f"unsupported DTK module record: {label}")
+        elif body and not body[0].isspace():
+            in_modules = False
+        match = re.fullmatch(r"(object:|- object:)\s*(.*)", body)
+        if match is None:
+            if re.search(r"\bobject\s*:", body):
+                raise EvidenceError(f"unsupported DTK object record: {label}")
+            continue
+        if match[1] == "object:":
+            if main_seen:
+                raise EvidenceError(f"duplicate DTK main object: {label}")
+            main_seen = True
+        elif not in_modules:
+            raise EvidenceError(f"DTK module object outside modules: {label}")
+        raw = match[2]
+        if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "\"'":
+            raw = raw[1:-1]
+        parts = raw.split("/")
+        if (not re.fullmatch(r"orig/GP6E01/[A-Za-z0-9_./-]+", raw)
+                or any(part in {"", ".", ".."} for part in parts)
+                or not raw.endswith((".dol", ".rel"))):
+            raise EvidenceError(f"invalid configured retail input at {label}: {raw!r}")
+        inputs.append(raw)
+    if not main_seen:
+        raise EvidenceError(f"DTK config lacks main object: {config}")
+    central = toolchain["orig"]["path_object"]
+    _assert_no_indirection(central)
+    missing = []
+    for raw in dict.fromkeys(inputs):
+        path = central.joinpath(*raw.split("/")[2:])
+        _assert_no_indirection(path, missing_leaf=True)
+        _inside(central, path, "configured retail input")
+        if not path.is_file():
+            missing.append(raw)
+    if missing:
+        raise EvidenceError("central sealed retail tree missing configured inputs: " + ", ".join(missing))
+
+
 def _ensure_configured(root: Path, toolchain: Mapping[str, Any], ninja: Path) -> Path:
+    _preflight_retail_inputs(root, toolchain)
     build_ninja = root / "build.ninja"
     objdiff_config = root / "objdiff.json"
     orig = root / "orig"
@@ -737,6 +806,9 @@ def _run_phase_impl(
         raise EvidenceError("readelf path is not the central manifest pin")
     if ninja.resolve() != toolchain["ninja"]["path_object"]:
         raise EvidenceError("Ninja path is not the central manifest pin")
+    # Fail before even version-probe subprocesses; _ensure_configured repeats
+    # the cheap check immediately before staging for its direct callers.
+    _preflight_retail_inputs(root, toolchain)
     objdiff_tool = _verify_objdiff(objdiff.resolve())
     readelf_tool = _verify_readelf(readelf.resolve())
     ninja_tool = _verify_ninja(ninja.resolve())

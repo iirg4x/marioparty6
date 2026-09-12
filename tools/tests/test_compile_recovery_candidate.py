@@ -73,6 +73,114 @@ class CandidateCompileTests(unittest.TestCase):
         self.assertEqual((self.root/'src/test.c').read_bytes(), b'live')
         self.assertTrue(self.output.with_suffix('.o.receipt.json').is_file())
 
+    def external_headers(self):
+        external = self.root/'external sdk'
+        external.mkdir()
+        for name, data in [('dspvoice.h', b'MUSYX2.0.4'),
+                           ('snd.h', b'float sndSqrt(float); float sndCos(float);')]:
+            (self.root/'include'/name).write_bytes(data)
+            (self.scratch/'include'/name).write_bytes(data)
+            (external/name).write_bytes(data)
+        return external
+
+    def test_actual_external_stale_headers_rejected_and_corrected_pass(self):
+        external = self.external_headers()
+        self.write_command([sys.executable, '-i', str(external)])
+        for name in ('dspvoice.h', 'snd.h'):
+            with self.subTest(name=name):
+                original = (external/name).read_bytes()
+                (external/name).write_bytes(b'stale header')
+                with mock.patch.object(cc.bounded_process, 'run') as run:
+                    result, _, stderr = self.cli('--command-json', 'build/compiler-command.json',
+                        '--reference-header', f'{name}=include/{name}', *self.compile_options)
+                self.assertEqual(result, 2)
+                self.assertIn(str(external/name), stderr)
+                self.assertIn('differs from reference', stderr)
+                run.assert_not_called()
+                (external/name).write_bytes(original)
+        with mock.patch.object(cc.bounded_process, 'run', side_effect=self.mocked_compile):
+            result, stdout, stderr = self.cli('--command-json', 'build/compiler-command.json',
+                '--reference-header', 'snd.h=include/snd.h', *self.compile_options)
+        self.assertEqual(result, 0, stderr)
+        self.assertEqual(json.loads(stdout)['actual_includes']['search'][0]['path'], str(external.resolve()))
+
+    def test_actual_external_mutation_prevents_publication(self):
+        external = self.external_headers()
+        self.write_command([sys.executable, '-I'+str(external)])
+        def mutate(command, **kwargs):
+            result = self.mocked_compile(command, **kwargs)
+            (external/'snd.h').write_bytes(b'changed during compile')
+            return result
+        with mock.patch.object(cc.bounded_process, 'run', side_effect=mutate):
+            result, _, stderr = self.cli('--command-json', 'build/compiler-command.json', *self.compile_options)
+        self.assertEqual(result, 2)
+        self.assertIn('actual compiler include context changed', stderr)
+        self.assertFalse(self.output.exists())
+        self.assertFalse(self.output.with_suffix('.o.receipt.json').exists())
+        self.assertEqual((self.scratch/'src/test.c').read_bytes(), b'original scratch')
+
+    def test_response_search_order_and_missing_path(self):
+        external = self.external_headers()
+        response = self.scratch/'args.rsp'
+        response.write_text(f'-I+ "{external}" -I include -i "{external}"', encoding='utf-8')
+        context = cc.include_context([sys.executable, '@args.rsp'], self.scratch)
+        self.assertEqual([p['path'] for p in context['search']],
+                         [str(external.resolve()), str((self.scratch/'include').resolve()), str(external.resolve())])
+        self.assertEqual([p['flag'] for p in context['search']], ['-I+', '-I', '-i'])
+        self.assertEqual(context['response_files'][str(response.resolve())], cc.digest(response))
+        with self.assertRaisesRegex(ValueError, 'missing compiler include directory') as error:
+            cc.include_context([sys.executable, '-i', 'missing-headers'], self.scratch)
+        self.assertIn(str(self.scratch/'missing-headers'), str(error.exception))
+
+    def test_opaque_script_does_not_claim_inferred_coverage(self):
+        result = cc.include_context(['powershell.exe', '-NoProfile', '-File', 'script.ps1'], self.scratch)
+        self.assertEqual(result['coverage'], 'opaque-command')
+        self.assertEqual(result['search'], [])
+
+    def test_external_mutation_between_preflight_and_lock_never_launches(self):
+        external = self.external_headers()
+        self.write_command([sys.executable, '-i', str(external)])
+        self.seed_products()
+        def enter(*args):
+            (external/'snd.h').write_bytes(b'changed before launch')
+        lock = mock.MagicMock()
+        lock.__enter__.side_effect = enter
+        with mock.patch.object(cc, 'compiler_lock', return_value=lock), \
+                mock.patch.object(cc.bounded_process, 'run') as run:
+            result, _, stderr = self.cli('--command-json', 'build/compiler-command.json', *self.compile_options)
+        self.assertEqual(result, 2)
+        self.assertIn('context changed before launch', stderr)
+        run.assert_not_called()
+        self.assertTrue(self.output.read_bytes().startswith(b'previous'))
+
+    def test_response_mutation_during_compile_never_publishes(self):
+        self.external_headers()
+        response = self.scratch/'args.rsp'
+        response.write_text('-i include', encoding='utf-8')
+        self.write_command([sys.executable, '@args.rsp'])
+        def mutate(command, **kwargs):
+            result = self.mocked_compile(command, **kwargs)
+            response.write_text('-i include -i include', encoding='utf-8')
+            return result
+        with mock.patch.object(cc.bounded_process, 'run', side_effect=mutate):
+            result, _, stderr = self.cli('--command-json', 'build/compiler-command.json', *self.compile_options)
+        self.assertEqual(result, 2)
+        self.assertIn('include context changed', stderr)
+        self.assertFalse(self.output.exists())
+
+    def test_reference_respects_shadowing_order_and_recursive_ambiguity(self):
+        external = self.external_headers()
+        (external/'snd.h').write_bytes(b'stale')
+        reference = {'snd.h': self.root/'include/snd.h'}
+        with self.assertRaisesRegex(ValueError, 'differs from reference'):
+            cc.include_context(['mwcc', '-c', '-i', str(external), '-Iinclude'], self.scratch, reference)
+        result = cc.include_context(['mwcc', '-c', '-Iinclude', '-i', str(external)], self.scratch, reference)
+        self.assertEqual(result['references']['snd.h']['actual'], str(self.scratch/'include/snd.h'))
+        (external/'nested').mkdir()
+        (external/'nested/snd.h').write_bytes(b'another version')
+        with self.assertRaisesRegex(ValueError, 'recursive include resolution is ambiguous'):
+            cc.include_context(['mwcc', '-I+', str(external), '-Iinclude'], self.scratch, reference)
+
     def test_failure_never_reuses_previous_output(self):
         self.output.write_bytes(b'stale')
         with self.assertRaisesRegex(RuntimeError, 'bad compile'):

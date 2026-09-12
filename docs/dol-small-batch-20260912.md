@@ -1,5 +1,36 @@
 # Small DOL batch, 2026-09-12
 
+## Ten-owner batch merged; observed preflight gaps fixed (2026-09-13)
+
+Main `086a3a84fac9d928c9176df3624582fd28befd45` includes source PR #37 and
+supporting/progress PR #38: **347/396 DOL owners Matching, 49 remaining**.
+The batch contains 99 functions across ten owners. The separate clean
+main-derived supporting build passed all137 checksum checks and reproduced
+the retail DOL; progress consistency tests and public CI passed. Earlier
+"pending" snapshots below are historical, not current promotion status.
+
+Two existing-tool changes address actual time lost in this batch:
+
+- `compile_recovery_candidate.py` now records ordered explicit compiler
+  include roots and response-file hashes, checks them before/after compilation,
+  and accepts repeatable `--reference-header INCLUDE=FILE` bindings. A current
+  scratch/include no longer hides a stale external include directory when the
+  relevant header is reference-bound. The real hardware invocation passes with
+  the corrected DSPvoice/snd headers; an isolated overlay of the original proof
+  headers is rejected before compilation. The scratch runner now uses that
+  check. This is explicit-path evidence, not a complete preprocessor trace:
+  opaque scripts and implicit/source-local lookup remain explicitly identified.
+- `crack_evidence_bundle.py` checks every configured block-form DTK DOL/REL
+  input against the sealed retail tree before staging or launching commands.
+  A .gitkeep directory or main.dol without m699Dll.rel is diagnosed directly,
+  rather than discovered after configuration. Complete central inputs pass.
+
+Both affected suites passed **45 tests**. The live non-compile regression
+receipt is `build/dol-batch/preflight-gap-live-check-20260913.json`.
+These checks prevent known wasted setup/source probes; they do not claim a
+new owner gain or automatic source reconstruction. No new standalone tool,
+candidate-approval gate, or raw-history requirement was added.
+
 ## Hardware closed: ten-owner batch ready (2026-09-13)
 
 Final source review: named allocator constants replace raw hexadecimal spelling,
