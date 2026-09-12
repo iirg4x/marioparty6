@@ -21,6 +21,43 @@ def report(left, right):
 
 
 class CausalGroupsTests(unittest.TestCase):
+    def test_constant_copy_recognizes_a_reaching_value_not_source_identity(self):
+        for op in ("addi r4, r5, 0x0", "mr r4, r5"):
+            left = [row("li r5, 0", 0), row(op, 4), row("stw r4, 0(r3)", 8)]
+            right = [row("li r5, 0", 0), row("li r4, 0", 4), row("stw r4, 0(r3)", 8)]
+            result = groups.constant_copy_evidence(left, right)
+            self.assertEqual(len(result["signals"]), 1)
+            self.assertEqual(result["signals"][0]["producer_row"], 0)
+            self.assertEqual(result["signals"][0]["row"], 1)
+            self.assertFalse(result["signals"][0]["cause_proven"])
+            self.assertFalse(result["authority_advanced"])
+
+    def test_constant_copy_rejects_unknown_redefined_or_different_values(self):
+        for middle in ("bl f", "b 0x8", "lwz r5, 0(r3)", "addi r5, r5, 1", "li r5, 1"):
+            left = [row("li r5, 0", 0), row(middle, 4), row("addi r4, r5, 0", 8)]
+            right = copy.deepcopy(left)
+            right[2] = row("li r4, 0", 8)
+            self.assertEqual(groups.constant_copy_evidence(left, right)["signals"], [], middle)
+        self.assertEqual(groups.constant_copy_evidence([row("mr r4, r5", 0)], [row("li r4, 0", 0)])["signals"], [])
+
+    def test_constant_copy_respects_powerpc_zero_base_and_actual_copy(self):
+        for target in ("addi r4, r0, 0", "addi r4, r5, 1", "addi r5, r5, 0", "mr r6, r5"):
+            left = [row("li r5, 0", 0), row("li r0, 0", 4), row(target, 8)]
+            right = copy.deepcopy(left)
+            right[2] = row("li r4, 0", 8)
+            self.assertEqual(groups.constant_copy_evidence(left, right)["signals"], [])
+
+    def test_constant_copy_bounded_negative_values_and_owner_routing(self):
+        left = [row("li r5, -0x1", 0)] + [row("mr r4, r5", i*4) for i in range(1, 21)]
+        right = [row("li r5, -0x1", 0)] + [row("li r4, -1", i*4) for i in range(1, 21)]
+        result = groups.constant_copy_evidence(left, right)
+        self.assertEqual(len(result["signals"]), 16)
+        self.assertTrue(result["sites_truncated"])
+        self.assertTrue(all(s["value"] == -1 for s in result["signals"]))
+        owner = groups.summarize_owner(report(left[:2], right[:2]))
+        self.assertEqual(len(owner["residuals"][0]["constant_copy_signals"]), 1)
+        self.assertFalse(owner["owner_closed"])
+
     def test_numeric_domains_fft_unsigned_and_single(self):
         left = [row("cmplwi r3, 2", 0), row("srwi r4, r3, 1", 4),
                 row("fmuls f0, f1, f2", 8), row("lfs f2, 0(r2)", 12)]

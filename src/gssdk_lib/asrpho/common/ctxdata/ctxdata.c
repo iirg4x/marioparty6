@@ -121,14 +121,19 @@ u16 *_contextGetpBeginOfWords(ContextData *context)
     return _contextGetpLex(context) + count;
 }
 
+static u32 PaddedHalfwordCount(u32 count)
+{
+    count += count & 1;
+    return count;
+}
+
 void *_contextGetpWordProp(ContextData *context)
 {
     ContextDataV2 *data = context->data;
-    u32 lexCount = data->nbrItem + data->nbrPron;
+    u32 lexCount = PaddedHalfwordCount(data->nbrItem + data->nbrPron);
     u32 wordPropCount;
     u32 *wordProp;
 
-    lexCount += lexCount & 1;
     wordPropCount = data->nbrPron + data->nbrWord;
     wordProp = (u32 *)(data->lex + lexCount);
     return wordProp + wordPropCount + 2;

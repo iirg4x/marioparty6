@@ -39,8 +39,8 @@ static void ProcessPitchWindow(
             block->historyWrite = block->history;
         }
 
-        output = qEnQueueOne(block->base.output->queue);
         window = block->window;
+        output = qEnQueueOne(block->base.output->queue);
         for (frame = 0; frame < block->frameCount; frame++) {
             for (sample = 0; sample < block->frameLength; sample++) {
                 *output++ = *block->historyRead++ * *window++;
@@ -57,18 +57,24 @@ static void ProcessPitchWindow(
     }
 }
 
+static void FillPitchHistory(PitchWindow *block, s32 value)
+{
+    u16 i;
+
+    for (i = 0; i < block->windowLength; i++) {
+        *block->historyWrite++ = value;
+    }
+}
+
 static u32 ControlPitchWindow(
     TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
 {
     PitchWindow *block = (PitchWindow *)baseBlock;
-    u16 i;
 
     switch ((u8)command) {
     case 200:
         block->historyWrite = block->history;
-        for (i = 0; i < block->windowLength; i++) {
-            *block->historyWrite++ = 0;
-        }
+        FillPitchHistory(block, 0);
         block->historyRead = block->history;
         block->historyWrite =
             block->history + (block->frameCount - 1) * block->frameLength;
@@ -128,8 +134,7 @@ static u32 InitPitchWindow(TosBaseBlock *baseBlock)
     inputFrameLength = (u16)_tosGetProfileU32(block, 3, 110);
     inputSampleRate = (u16)_tosGetProfileU32(block, 4, 11000);
 
-    windowLength = sampleRate * windowDuration + 0.5;
-    block->windowLength = windowLength;
+    windowLength = block->windowLength = sampleRate * windowDuration + 0.5;
     inputWindowLength = 0.5 + windowDuration * inputSampleRate;
     if ((u32)inputWindowLength % inputFrameLength != 0) {
         _tosErrorLog(block, 100);

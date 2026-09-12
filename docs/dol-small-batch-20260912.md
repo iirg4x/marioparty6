@@ -1,5 +1,54 @@
 # Small DOL batch, 2026-09-12
 
+## Reused causal lesson: two PitchWindow functions gained, faster triage
+
+PitchWindow now retains **3/5 strict/data exact functions**, up from 1/5.
+`ProcessPitchWindow` closes **93.51219 -> 100%, 320 -> 328 bytes** by
+capturing the real window pointer before the queue call, as the target does.
+`ControlPitchWindow` closes **99.016396 -> 100%, 244 bytes** by expressing
+its existing advancing history-fill loop as `FillPitchHistory(block, value)`.
+This directly reuses the DelayBlock value-parameter lesson; it is not a
+register alias, forced inline directive, or changed loop behavior.
+Both functions have **3/3 effective target relocation applications**:
+Process uses the separately checked DTK instruction-site convention; Control
+is raw-exact. The pre-existing exact constructor remains instruction-exact.
+
+`InitPitchWindow` improves **96.65254 -> 99.78814%, 476 -> 472 bytes**.
+The ordinary chained `windowLength = block->windowLength = ...` keeps one
+conversion result rather than two stack conversions. Four FPR argument rows
+remain. `CreateWindow` is unchanged at 81.52747%; this is **not a seventh owner
+closure** and there is no new main/promotion count. Initializer/local-function
+physical closure still requires the remaining owner work and real link.
+The retained source SHA-256 is
+`e878f4dbdbcb3a699d33c1580c63beb2cc21ac81cea051ed7efb085f03dbf554`;
+object `e002ef5da4dfbb8d5ab0c898dfc56c506312dc18836e87a8c71d8bc39500ff21`.
+Evidence: `build/qwen-next-owner-causes-20260912/pitchwin/fill-and-length-owners-*`
+and its named target-physical receipts. Live source equals the frozen candidate.
+
+CtxData separately retains **81.86667 -> 82.2%** for `_contextGetpWordProp`,
+60 bytes, zero relocations, and all **19 exact siblings** preserved. Its
+aligned-halfword count is a real arithmetic operation; helper name inferred.
+The typed-section and byte-base rewrites did not improve it and are not live.
+Evidence: `build/qwen-tail-structure-20260912/ctxdata/word-alignment-champion-*`.
+
+The existing causal-group tool now recognizes a same-block `li` producer
+copied by target `addi ...,0`/`mr` where the candidate independently emits `li`.
+It directs review to a real consumed argument/inline boundary, never asserts
+original source identity or automatically inserts a helper. Calls, joins,
+unknown/redefined producers, unequal constants, and PPC `addi` zero-base
+semantics fail closed. It reproduces the DelayBlock/PitchWindow clue and
+recognizes its disappearance in both exact results; these are measured-case
+replays, not newly discovered gains. **106 related tests pass, one skipped**.
+The current cached-owner scan found no additional eligible copy pattern, so
+this is not advertised as unlocking every remaining owner.
+
+Four independent Qwen decisions ran while primary source work continued.
+Once PitchWindow Control closed, its now-obsolete question was cancelled;
+the other three completed without interruption. Their conservative findings
+did not produce the retained PitchWindow changes. Primary-only freezes now
+skip Qwen prompt generation entirely in the existing local preparation script,
+so a local compile is no longer blocked by a support-prompt byte budget.
+
 ## DelayBlock closure: a real fill parameter explains the last copy
 
 DelayBlock is **4/4 strict/data exact**, with all three protected siblings

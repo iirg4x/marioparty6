@@ -103,18 +103,20 @@ def summarize_owner(document: dict) -> dict:
             exact.append(symbol["name"])
             continue
         signals = summary["numeric_domain_evidence"]["signals"]
+        copies = summary["constant_copy_evidence"]["signals"]
         residuals.append({"function": symbol["name"],
                           "target_bytes": symbol.get("size"),
                           "score": symbol.get("match_percent"),
                           "residual_rows": summary["coverage"]["residual_rows"],
                           "size_exact": summary["size_exact"],
                           "domain_signals": signals,
+                          "constant_copy_signals": copies,
                           "domain_review_first": any(s["review_priority"] == "source_domain" for s in signals)})
-    residuals.sort(key=lambda r: (not r["domain_review_first"], r["residual_rows"], r["function"]))
+    residuals.sort(key=lambda r: (not (r["domain_review_first"] or r.get("constant_copy_signals")), r["residual_rows"], r["function"]))
     return {"schema": "recovery_owner_triage/v1", "functions_total": len(functions),
             "instruction_exact_count": len(exact), "remaining_count": len(residuals),
             "instruction_exact_functions": exact, "residuals": residuals,
-            "ordering": "domain-review evidence before opaque register tails, then residual rows; advisory, not expected time or proof",
+            "ordering": "domain/constant-copy review evidence before opaque register tails, then residual rows; advisory, not expected time or proof",
             "owner_closed": False, "physical_proof": False, "authority_advanced": False}
 
 
@@ -480,6 +482,7 @@ def summarize_groups(document: dict, function: str, *, producers: int = 0) -> di
               "source_emission_authorized": False}
     result["group_semantics"] = "observational relation buckets, not independent defects or proven causes"
     result["numeric_domain_evidence"] = numeric_domain_evidence(left, right)
+    result["constant_copy_evidence"] = constant_copy_evidence(left, right)
     if result["first_machine_divergence"]:
         result["first_machine_divergence"].pop("context", None)
     result["ranking_tuple"] = ranking_tuple(result)
@@ -488,6 +491,70 @@ def summarize_groups(document: dict, function: str, *, producers: int = 0) -> di
         result["producer_slice"] = {side: producer_slice(stream, sites, limit=producers)
                                     for side, stream in zip(("target", "candidate"), rows)}
     return result
+
+
+def constant_copy_evidence(left: list[dict], right: list[dict]) -> dict:
+    """Recognize a proven block-local constant copy, not its original C cause.
+
+    DelayBlock and PitchWindow used the same live fill-value parameter. Generic
+    opcode triage had obscured that clue. Reuse the existing definition slicer;
+    never propagate constants through calls, joins, or unsupported operations.
+    """
+    candidates = []
+    for index, (target, candidate) in enumerate(zip(left, right)):
+        if not isinstance(target, dict) or not isinstance(candidate, dict):
+            continue
+        tp, cp = frontier._instruction_parts(target), frontier._instruction_parts(candidate)
+        if not tp or not cp or cp[0] != "li" or len(cp[1]) != 2:
+            continue
+        if tp[0] == "mr" and len(tp[1]) == 2:
+            destination, source = tp[1]
+        elif tp[0] == "addi" and len(tp[1]) == 3:
+            destination, source, offset = tp[1]
+            try:
+                if int(offset, 0) != 0 or source == "r0":
+                    continue
+            except ValueError:
+                continue
+        else:
+            continue
+        if (destination != cp[1][0] or destination == source
+                or not re.fullmatch(r"r(?:[0-9]|[12][0-9]|3[01])", source)):
+            continue
+        try:
+            immediate = int(cp[1][1], 0)
+        except ValueError:
+            continue
+        candidates.append((index, destination, source, immediate))
+    signals = []
+    selected = candidates[:16]
+    if selected and all(isinstance(row, dict) for row in left):
+        sliced = producer_slice(left, [item[0] for item in selected], limit=16)
+        nodes = {node["row"]: node for node in sliced["nodes"]}
+        for index, destination, source, immediate in selected:
+            use = next((u for u in nodes.get(index, {}).get("uses", [])
+                        if u["register"] == source), {})
+            definition = use.get("definition_row")
+            if definition not in nodes:
+                continue
+            producer = frontier._instruction_parts(left[definition])
+            if not producer or producer[0] != "li" or len(producer[1]) != 2:
+                continue
+            try:
+                if int(producer[1][1], 0) != immediate:
+                    continue
+            except ValueError:
+                continue
+            signals.append({"row": index, "producer_row": definition,
+                            "value": immediate, "source_register": source,
+                            "destination_register": destination,
+                            "target": left[index]["instruction"]["formatted"],
+                            "candidate": right[index]["instruction"]["formatted"],
+                            "kind": "constant_copy_vs_literal", "cause_proven": False})
+    return {"signals": signals, "sites_truncated": len(candidates) > 16,
+            "scope": "same-block reaching li definition; no source identity or retention proof",
+            "source_review": "Inspect a real consumed argument/automatic-inline boundary, such as a fill-value operation, before constant or register spellings. The copy alone does not prove a helper; do not add dead aliases or force registers.",
+            "authority_advanced": False}
 
 
 def compare_groups(before: dict, after: dict) -> dict:
