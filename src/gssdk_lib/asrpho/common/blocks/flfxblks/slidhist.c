@@ -19,9 +19,9 @@ void SlidingHisto_NewItem(TriggerLR *block, f32 item)
     } else if (item < block->histogramMinimum) {
         bin = 0;
     } else {
-        item -= block->histogramMinimum;
         bin = (s32)floorf(
-            (item + block->histogramBinWidth * 0.5f) /
+            (block->histogramBinWidth * 0.5f +
+             (item - block->histogramMinimum)) /
             block->histogramBinWidth);
     }
 

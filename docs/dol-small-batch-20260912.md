@@ -89,9 +89,10 @@ Partial gains remain in the protected local champion, not counted as main
 closures. Finish only when main's full DOL owner census and source-selected
 retail link pass. No fixed crack-rate guarantee is made.
 
-Next batch uses two genuine Qwen slots on SlidingHisto_NewItem and CreateWindow;
-the primary continues independent reconstruction. Current packets and queue:
-`build/qwen-dol-next-batch-20260912/`. The GenderFilter constructor's two direct
+Current local Qwen support uses two genuine slots on ConstructGenderFilter and
+imtxDeleteCol while the primary continues reconstruction. Packets and queue:
+`build/qwen-owner-next-20260912/`. Earlier SlidingHisto_NewItem/CreateWindow
+packets are retained measurements, not active jobs. The GenderFilter constructor's two direct
 hypotheses did not supply a gain: nonconstant narrowed aggregate initialization
 is rejected by GC1.2.5n, and a separate full-width profile-result owner regresses
 79.0 -> 53.19355 and 124 -> 128 bytes. Original source and its three exact
@@ -514,3 +515,29 @@ account for this gain. Evidence: `build/dol-trigger-coupled-20260912/trigglr/`
 `build/dol-trigger-header-20260912/*/status-return-verification.json`.
 Init and Control still fail full target physical equivalence, despite matching
 43/43 and 27/27 inventories; no final link or new owner promotion is claimed.
+
+### DpGenUwProcess and bounded continuation
+
+DpGenUwProcess improves **95.60227 -> 100 strict/data**, 348 -> target352 bytes.
+The target first-frame lookup reads the block's silence distribution, not the
+selected state's distribution. The one DynProgUserWords consumer tests a signed
+status; correcting that static return type preserves width and provider code.
+The closed loop's counter/cursor declaration and increment chronology complete
+the remaining two rows. The owner is now **6/12 instruction-exact**, five prior
+exact functions preserved; physical target inventory is10/10 but effective
+relocation identity is not yet exact, so this is not a closed/promotable owner.
+Live source equals `build/dol-dpgenuw-owner-20260912/dpgenuw/loop-order.c`;
+its strict/data, verification and target physical receipt are adjacent.
+
+SlidingHisto_NewItem retains **95.21667 -> 95.38333** with unchanged size,
+physical applications and all six exact siblings. The direct bin-center
+expression restores the subtraction destination but not the remaining schedule
+or frame. Evidence: `build/dol-slidhist-owner-20260912/slidhist/bin-center-*`.
+
+Bounded negative constraints: a separate constructed-block return local in
+GenderFilter is neutral; parameter-to-element-offset reuse in imtxDeleteCol
+regresses; moving Stationarity's existing scan-value declaration to function
+entry is neutral; direct composition of existing ContextData tail accessors
+regresses and still merges the target's duplicated count load. None replaces
+the champion or exhausts its function. Artifacts are under
+`build/qwen-owner-next-20260912/` and `build/dol-small-tail-20260912/`.

@@ -359,7 +359,7 @@ static inline void ReleaseBacktrace(
     }
 }
 
-static u32 DynProgUserWords(DpGenUw *block, s16 *scores)
+static s32 DynProgUserWords(DpGenUw *block, s16 *scores)
 {
     DpGenUwState *state;
     DpGenUwState *bestWordState;
@@ -562,16 +562,15 @@ static void DpGenUwProcess(
     s16 *scores = inputs[0];
 
     if (scores != NULL) {
-        s16 *score = scores;
         s32 distributionIndex;
+        s16 *score = scores;
 
         for (distributionIndex = 0;
              distributionIndex < block->ergodicDistributionCount;
-             distributionIndex++) {
+             distributionIndex++, score++) {
             if (distributionIndex != block->silenceDistribution) {
                 *score = 1020;
             }
-            score++;
         }
 
         block->frame++;
@@ -579,7 +578,7 @@ static void DpGenUwProcess(
             DpGenUwState *state =
                 &block->states[DPGENUW_WORD_STATE_COUNT];
 
-            state->score = scores[state->distribution];
+            state->score = scores[block->silenceDistribution];
             block->bestScore = state->score;
         } else if (DynProgUserWords(block, scores) != 0) {
             _tosErrorLog(block, 0x77);
