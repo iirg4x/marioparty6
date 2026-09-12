@@ -166,6 +166,120 @@ def support_packet(document: dict, function: str, source: str, start: int, end: 
     return result
 
 
+def _digest(value: Any) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"),
+                                    ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def decision_packet(document: dict, function: str, source: str, start: int, end: int,
+                    question: str, row_start: int, row_end: int, *, max_bytes: int = 18000) -> dict:
+    """One factual support decision, not an open-ended function rewrite.
+
+    Include the complete function's call/branch census even when arithmetic is
+    excerpted. Matrix's unchanged straight-line memcpy was previously replaced
+    by an invented loop after a worker saw only selected mismatching rows.
+    Reasoning/output limits are deliberately not part of this interface.
+    """
+    lines = source.splitlines()
+    if not isinstance(question, str) or not question.strip() or len(question) > 800:
+        raise ValueError("one concrete decision question is required (1..800 characters)")
+    if not 1 <= start <= end <= len(lines) or not 1000 <= max_bytes <= 64000:
+        raise ValueError("invalid decision source range or byte budget")
+    symbols = [frontier._stack_function(frontier.focus._symbols(document, side, "strict"),
+                                       function, side) for side in ("left", "right")]
+    if any(symbol is None for symbol in symbols):
+        raise ValueError("decision function missing")
+    streams = [frontier.focus._rows(symbol, function) for symbol in symbols]
+    if not 0 <= row_start <= row_end < max(map(len, streams)):
+        raise ValueError("invalid inclusive decision machine range")
+    census = {}
+    for side, symbol, stream in zip(("target", "candidate"), symbols, streams):
+        calls, branches = [], []
+        for index, row in enumerate(stream):
+            parts = frontier._instruction_parts(row)
+            if not parts:
+                continue
+            op = parts[0]
+            site = {"row": index, "instruction": row["instruction"]["formatted"]}
+            if op in {"bl", "bla", "bctrl", "blrl"}:
+                calls.append(site)
+            elif op.startswith("b"):
+                branches.append(site)
+        census[side] = {"bytes": symbol.get("size"),
+                        "instruction_count": sum(bool(row.get("instruction")) for row in stream),
+                        "calls": calls, "branches_including_return": branches}
+    result = {"schema": "recovery_support_decision/v1", "function": function,
+              "question": question.strip(), "source_sha256": hashlib.sha256(source.encode()).hexdigest(),
+              "report_sha256": _digest(document), "report_hash_scope": "canonical parsed JSON",
+              "source_lines": [start, end], "source_excerpt": "\n".join(lines[start-1:end]),
+              "machine_census": census,
+              "paired_rows": [{"row": i, **{side: (stream[i].get("instruction") or {}).get("formatted")
+                                            if i < len(stream) else None
+                                            for side, stream in zip(("target", "candidate"), streams)}}
+                              for i in range(row_start, row_end+1)],
+              "omitted_aligned_rows": max(map(len, streams)) - (row_end-row_start+1),
+              "source_causality_proven": False, "authority_advanced": False}
+    result["packet_sha256"] = _digest(result)
+    if len(json.dumps(result, ensure_ascii=False).encode()) > max_bytes:
+        raise ValueError("decision packet exceeds byte budget; narrow the question, not model reasoning")
+    return result
+
+
+def render_decision_prompt(packet: dict) -> str:
+    validate_decision_packet(packet)
+    return ("Answer the ONE stated compiler/source question using only this bound evidence. "
+            "Do not solve the entire function, invent a new algorithm, write a patch, or list experiments. "
+            "The call/branch census covers the whole function; the paired arithmetic rows may be partial. "
+            "Machine facts do not prove unique original C. If the question needs missing evidence, return "
+            "insufficient and name that evidence; do not speculate until a rewrite seems plausible. "
+            "Finish once the question is answered. Return only JSON with exactly these fields: "
+            '{"status":"supported or insufficient","function":"name","packet_sha256":"copied hash",'
+            '"answer":"concise finding, distinguish fact from hypothesis",'
+            '"evidence_rows":[0],"missing_evidence":null}. '
+            "Cite only row IDs present below. For insufficient use a nonempty missing_evidence string. "
+            "Astra reviews the finding and owns any source decision/compile; this answer grants no authority.\n"
+            + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
+
+
+def validate_decision_packet(packet: dict) -> None:
+    if (not isinstance(packet, dict) or packet.get("schema") != "recovery_support_decision/v1"
+            or packet.get("authority_advanced") is not False
+            or packet.get("source_causality_proven") is not False
+            or packet.get("packet_sha256") != _digest({k: v for k, v in packet.items() if k != "packet_sha256"})):
+        raise ValueError("invalid or changed decision packet")
+    if (not isinstance(packet.get("function"), str) or not packet["function"]
+            or not isinstance(packet.get("question"), str) or not packet["question"].strip()
+            or not isinstance(packet.get("paired_rows"), list) or not packet["paired_rows"]
+            or set(packet.get("machine_census", {})) != {"target", "candidate"}):
+        raise ValueError("incomplete decision packet")
+
+
+def validate_decision_answer(packet: dict, answer: dict) -> dict:
+    """Mechanical citation/identity checks, never automatic truth/retention."""
+    validate_decision_packet(packet)
+    keys = {"status", "function", "packet_sha256", "answer", "evidence_rows", "missing_evidence"}
+    if not isinstance(answer, dict) or set(answer) != keys:
+        raise ValueError("decision answer must use the exact JSON contract; patches are not findings")
+    if answer["function"] != packet["function"] or answer["packet_sha256"] != packet["packet_sha256"]:
+        raise ValueError("decision answer function/packet binding differs")
+    if answer["status"] not in {"supported", "insufficient"} or not isinstance(answer["answer"], str) or not answer["answer"].strip():
+        raise ValueError("decision answer lacks status/finding")
+    cited = answer["evidence_rows"]
+    available = {row["row"] for row in packet["paired_rows"]}
+    for stream in packet["machine_census"].values():
+        available.update(site["row"] for kind in ("calls", "branches_including_return") for site in stream[kind])
+    if (not isinstance(cited, list) or any(type(i) is not int or i not in available for i in cited)
+            or len(set(cited)) != len(cited)):
+        raise ValueError("decision answer cites missing/duplicate rows")
+    if answer["status"] == "supported" and (not cited or answer["missing_evidence"] is not None):
+        raise ValueError("supported finding needs citations and no missing evidence")
+    if answer["status"] == "insufficient" and (not isinstance(answer["missing_evidence"], str) or not answer["missing_evidence"].strip()):
+        raise ValueError("insufficient finding must identify missing evidence")
+    return {"status": "valid_finding" if answer["status"] == "supported" else "insufficient_evidence",
+            "packet_sha256": packet["packet_sha256"], "answer_sha256": _digest(answer),
+            "factual_correctness": "requires primary review", "authority_advanced": False}
+
+
 def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> dict:
     """Bounded block-local physical-register DAG; no source/alias inference.
 
@@ -427,10 +541,13 @@ def compare_groups(before: dict, after: dict) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--strict", type=Path, required=True)
+    parser.add_argument("--strict", type=Path)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--function")
     mode.add_argument("--owner-summary", action="store_true")
+    mode.add_argument("--check-support-answer", type=Path)
+    mode.add_argument("--check-support-prompt", type=Path)
+    parser.add_argument("--decision-packet", type=Path)
     parser.add_argument("--before", type=Path)
     parser.add_argument("--support-source", type=Path)
     parser.add_argument("--source-lines", help="inclusive START:END for the bounded support question")
@@ -439,6 +556,20 @@ def main(argv: list[str] | None = None) -> int:
                         help="optional block-local producer slice, 1..64 residual sites")
     args = parser.parse_args(argv)
     try:
+        if args.check_support_answer or args.check_support_prompt:
+            if not args.decision_packet:
+                raise ValueError("support check requires --decision-packet")
+            packet = frontier.load_json(args.decision_packet.read_bytes())
+            if args.check_support_answer:
+                result = validate_decision_answer(packet, frontier.load_json(args.check_support_answer.read_bytes()))
+            else:
+                if args.check_support_prompt.read_text(encoding="utf-8") != render_decision_prompt(packet):
+                    raise ValueError("prompt differs from its decision packet")
+                result = {"status": "valid_prompt", "packet_sha256": packet["packet_sha256"]}
+            print(json.dumps(result, separators=(",", ":")))
+            return 0
+        if not args.strict:
+            raise ValueError("report operation requires --strict")
         def read_document(path: Path) -> dict:
             with path.open("rb") as stream:
                 raw = stream.read(frontier.REPORT_LIMIT + 1)

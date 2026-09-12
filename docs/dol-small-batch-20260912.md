@@ -541,3 +541,51 @@ entry is neutral; direct composition of existing ContextData tail accessors
 regresses and still merges the target's duplicated count load. None replaces
 the champion or exhausts its function. Artifacts are under
 `build/qwen-owner-next-20260912/` and `build/dol-small-tail-20260912/`.
+# Qwen decision-first validation and DpGenUw gain — 2026-09-12
+
+The support workflow now uses one factual source/compiler question instead of
+asking a worker to invent a complete matching patch. The existing causal-group
+tool builds a source/report-bound packet with selected arithmetic rows and the
+whole function's call/branch census. Its finding checker validates JSON shape,
+packet/function identity and cited rows; factual correctness remains a primary
+review, not an automatic source-admission decision. Highest Qwen reasoning and
+uncapped generation are unchanged. The installed run-job/run-batch wrappers at
+`C:/Users/Anony/.codex/tools/qwen-support/` validate prompts before inference,
+keep malformed/stale/truncated answers separate, reject duplicate prompts, and
+reuse identically bound completed findings without overwriting their evidence.
+
+Real current-artifact trial: Matrix's prior broad rewrite took 1067.739 seconds
+and proposed a nonexistent loop/count fix. The decision-first job took 64.308
+seconds and correctly found one memcpy/no loop and no unique source cause.
+This is a different, narrower question at the same reasoning setting, not a
+universal model speedup claim. InitBacktrace's pointer recurrence finding took
+383.522 seconds and was correct. A repeat manifest reused both answers in
+0.669 seconds with no inference. Focused tests including installed-runner fake
+HTTP replays: 47 tests, one private fixture skipped.
+
+In parallel, primary reconstruction changed InitBacktrace's indexed links into
+a walking pointer, moved the pointer increment into the loop update, and put
+the existing chunk counter declaration before the loop's invariant owners.
+The sequence was 39.852940%/404 bytes -> 71.794120%/300 -> a countdown diagnostic
+95.661766%/276 -> ascending cursor-update 99.044120%/272 -> final 100%/272.
+The countdown diagnostic was not retained. The final source is ordinary C,
+uses every existing owner, and preserves the link traversal and final sentinel.
+Six exact siblings survive; DpGenUw is now 7/12 instruction-exact, not a closed
+owner. InitBacktrace's independent target physical receipt passes. Provider
+size movement changes three downstream local-call relocations; whole-owner
+and source-selected linked proof remain pending, and no main Matching credit
+was added. Qwen corroborated the target recurrence after the primary had
+already compiled the structural improvement; it did not discover the gain.
+
+Evidence: `build/qwen-decision-workflow-20260912/backtrace/chunk-owner-*`,
+`InitBacktrace-target-physical.json`, and both `answer/` directories.
+Source SHA256 `378221d36ee0055eddc3a8a55a3764f3d7426712d43b5c105957fb201c23c6d5`;
+candidate object `82e66984bd0644b3d729cc75a3520a23943cc343fc3bcdc3b3ba53622b603776`.
+
+The user-requested public README rewrite was independently committed on a clean
+main-derived documentation branch and merged by PR #36, CI passing. Main merge
+`5c7bca500f64f67544bb3dd08ed64f8a7204c79c`; published README blob
+`3809209f5c31ca58c764b1b2acb653d586903ce0` equals the reviewed public draft.
+The hook's README-only branch path rejects mixed source/config and private
+workspace content; it does not relax recovered-source promotion. No tooling
+crossed into main. Ten-owner source batching remains in force (3/10 ready).

@@ -160,11 +160,11 @@ static void FreeBacktrace(DpGenUw *block)
 
 static DpGenUwBacktrace *InitBacktrace(DpGenUw *block)
 {
+    u16 chunkIndex;
     u32 backtracesPerChunk =
         block->backtraceChunkBytes / sizeof(DpGenUwBacktrace);
     u32 lastBacktraceIndex = backtracesPerChunk - 1;
     DpGenUwBacktrace *lastBacktrace = NULL;
-    u16 chunkIndex;
 
     for (chunkIndex = 0; chunkIndex < block->backtraceChunkCount;
          chunkIndex++) {
@@ -177,11 +177,10 @@ static DpGenUwBacktrace *InitBacktrace(DpGenUw *block)
         }
 
         for (backtraceIndex = 0; backtraceIndex < lastBacktraceIndex;
-             backtraceIndex++) {
-            backtraces[backtraceIndex].next =
-                &backtraces[backtraceIndex + 1];
+             backtraceIndex++, backtraces++) {
+            backtraces->next = backtraces + 1;
         }
-        lastBacktrace = &backtraces[backtraceIndex];
+        lastBacktrace = backtraces;
     }
 
     if (lastBacktrace != NULL) {
