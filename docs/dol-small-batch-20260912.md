@@ -1,5 +1,37 @@
 # Small DOL batch, 2026-09-12
 
+## NMWException closed: seven verified owners in the pending batch
+
+The unchanged `Runtime.PPCEABI.H/NMWException.cpp` is **8/8 strict/data exact**
+with its object-local compiler corrected from GC/2.6 to **GC/1.3.2**.
+`__construct_array` changes from 252 to the retail 248 bytes and 93.854836%
+to 100%; the other seven functions stay exact. All five code relocations are
+physically exact, and `.text`, `.sdata`, `extab`, and `extabindex` are 100%.
+The production build uses that source object, not the target fallback.
+The DOL is retail-identical, SHA-256
+`172ae27aa6fcc9074de286b07ae4ac9f9152175fa913fffc3f5b8365e139ffec`,
+and all 137 container checksum checks pass. Proof workspace DOL status is
+**344/396**; public main has not been advanced by this local proof.
+
+The pending batch is **7/10**: Median, FFT, Window, Matrix, Stationarity,
+DelayBlock, and NMWException. LangData partials remain committed but paused in
+favor of smaller owner closures. No source change was needed for NMWException;
+the build-profile correction will use the separate supporting-change promotion.
+Evidence: `build/small-runtime-20260912/nmw/live-proof.json`,
+`live-physical.json`, `live-strict.json`, and `live-data.json`.
+
+Source SHA-256 is `1e2501aa30ba251af1565a2f8d0449389815b0d4ecf30ee7d567a90a1d0ce403`;
+production object SHA-256 is
+`7824a19eb725dae0f7f49770e38ae10714737f8679014d42d32e683505943a94`.
+GC/2.7 reproduces the old mismatch; moving pointer creation before the guard
+object is neutral. This supersedes the old wave24 source-shape blocker:
+check an SDK object's compiler provenance before treating an isolated allocator
+or optimizer difference as missing source. A profile correction requires full
+owner/section/link proof; do not apply GC/1.3.2 indiscriminately to other owners.
+
+Current bounded CtxData accessor-chain probes and Undersampler delayed/direct
+quotient probes did not improve their champions; no source was retained.
+
 ## Language dispatch table retained: 67/76 instruction-exact
 
 The current language-data owner now defines all **76 functions**: **67 are

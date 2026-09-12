@@ -387,8 +387,9 @@ config.libs = [
                 ],
             ),
             Object(
-                NonMatching,
+                Matching,
                 "Runtime.PPCEABI.H/NMWException.cpp",
+                mw_version="GC/1.3.2",
                 extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"],
             ),
             Object(Matching, "Runtime.PPCEABI.H/ptmf.c"),
