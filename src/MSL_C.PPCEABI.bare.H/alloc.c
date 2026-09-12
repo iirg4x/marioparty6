@@ -108,66 +108,6 @@ static SubBlock* SubBlock_merge_prev(SubBlock* block, SubBlock** start)
     return block;
 }
 
-static void SubBlock_merge_next(SubBlock* block, SubBlock** start)
-{
-    SubBlock* next;
-    unsigned long size;
-
-    next = (SubBlock*)((char*)block + SubBlock_size(block));
-    if (!SubBlock_is_free(next)) {
-        return;
-    }
-
-    size = SubBlock_size(block) + SubBlock_size(next);
-    SubBlock_set_size(block, size);
-
-    if (SubBlock_is_free(block)) {
-        *(unsigned long*)((char*)block + size) &= ~4;
-    } else {
-        *(unsigned long*)((char*)block + size) |= 4;
-    }
-
-    if (*start == next) {
-        *start = (*start)->next;
-    }
-    if (*start == next) {
-        *start = 0;
-    }
-
-    next->next->prev = next->prev;
-    next->prev->next = next->next;
-}
-
-static void Block_link(Block* block, SubBlock* subBlock)
-{
-    unsigned long size;
-    SubBlock** start;
-
-    size = SubBlock_size(subBlock);
-    subBlock->size &= ~2;
-    *(unsigned long*)((char*)subBlock + size) &= ~4;
-    *(unsigned long*)((char*)subBlock + size - sizeof(unsigned long)) = size;
-
-    start = &Block_start(block);
-    if (*start != 0) {
-        subBlock->prev = (*start)->prev;
-        subBlock->prev->next = subBlock;
-        subBlock->next = *start;
-        (*start)->prev = subBlock;
-        *start = subBlock;
-        *start = SubBlock_merge_prev(*start, start);
-        SubBlock_merge_next(*start, start);
-    } else {
-        *start = subBlock;
-        subBlock->prev = subBlock;
-        subBlock->next = subBlock;
-    }
-
-    if (block->max_size < SubBlock_size(*start)) {
-        block->max_size = SubBlock_size(*start);
-    }
-}
-
 static void SubBlock_construct(
     SubBlock* block, unsigned long size, Block* owner,
     int previousAllocated, int allocated)
@@ -267,6 +207,66 @@ static SubBlock* Block_subBlock(Block* block, unsigned long size)
     Block_start(block) = subBlock->next;
     Block_unlink(block, subBlock);
     return subBlock;
+}
+
+static void Block_link(Block* block, SubBlock* subBlock)
+{
+    unsigned long size;
+    SubBlock** start;
+
+    size = SubBlock_size(subBlock);
+    subBlock->size &= ~2;
+    *(unsigned long*)((char*)subBlock + size) &= ~4;
+    *(unsigned long*)((char*)subBlock + size - sizeof(unsigned long)) = size;
+
+    start = &Block_start(block);
+    if (*start != 0) {
+        subBlock->prev = (*start)->prev;
+        subBlock->prev->next = subBlock;
+        subBlock->next = *start;
+        (*start)->prev = subBlock;
+        *start = subBlock;
+        *start = SubBlock_merge_prev(*start, start);
+        SubBlock_merge_next(*start, start);
+    } else {
+        *start = subBlock;
+        subBlock->prev = subBlock;
+        subBlock->next = subBlock;
+    }
+
+    if (block->max_size < SubBlock_size(*start)) {
+        block->max_size = SubBlock_size(*start);
+    }
+}
+
+static void SubBlock_merge_next(SubBlock* block, SubBlock** start)
+{
+    SubBlock* next;
+    unsigned long size;
+
+    next = (SubBlock*)((char*)block + SubBlock_size(block));
+    if (!SubBlock_is_free(next)) {
+        return;
+    }
+
+    size = SubBlock_size(block) + SubBlock_size(next);
+    SubBlock_set_size(block, size);
+
+    if (SubBlock_is_free(block)) {
+        *(unsigned long*)((char*)block + size) &= ~4;
+    } else {
+        *(unsigned long*)((char*)block + size) |= 4;
+    }
+
+    if (*start == next) {
+        *start = (*start)->next;
+    }
+    if (*start == next) {
+        *start = 0;
+    }
+
+    next->next->prev = next->prev;
+    next->prev->next = next->next;
 }
 
 static void Block_construct(Block* block, unsigned long size)
@@ -435,8 +435,9 @@ static void FixBlock_construct(
 {
     unsigned long entrySize;
     unsigned long count;
-    unsigned long i;
-    FixSubBlock* entry;
+    unsigned long i = 0;
+    char* cursor;
+    char* nextCursor;
 
     block->prev = previous;
     block->next = next;
@@ -446,14 +447,15 @@ static void FixBlock_construct(
 
     entrySize = fixedPoolSizes[poolIndex] + 4;
     count = bufferSize / entrySize;
-    entry = first;
-    for (i = 0; i < count - 1; i++) {
-        entry->block = block;
-        entry->next = (FixSubBlock*)((char*)entry + entrySize);
-        entry = entry->next;
+    cursor = (char*)first;
+    for (; i < count - 1; i++) {
+        nextCursor = cursor + entrySize;
+        ((FixSubBlock*)cursor)->block = block;
+        ((FixSubBlock*)cursor)->next = (FixSubBlock*)nextCursor;
+        cursor = nextCursor;
     }
-    entry->block = block;
-    entry->next = 0;
+    ((FixSubBlock*)cursor)->block = block;
+    ((FixSubBlock*)cursor)->next = 0;
     block->start = first;
     block->allocated = 0;
 }
@@ -653,9 +655,9 @@ static void* pool_allocate_clear(MemPool* pool, unsigned long size)
     return ptr;
 }
 
-void* calloc(size_t count, size_t size)
+void* malloc(size_t size)
 {
-    return pool_allocate_clear(get_malloc_pool(), size * count);
+    return pool_allocate(get_malloc_pool(), size);
 }
 
 void free(void* ptr)
@@ -663,7 +665,7 @@ void free(void* ptr)
     pool_free(get_malloc_pool(), ptr);
 }
 
-void* malloc(size_t size)
+void* calloc(size_t count, size_t size)
 {
-    return pool_allocate(get_malloc_pool(), size);
+    return pool_allocate_clear(get_malloc_pool(), size * count);
 }

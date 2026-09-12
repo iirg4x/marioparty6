@@ -1,5 +1,46 @@
 # Small DOL batch, 2026-09-12
 
+## Allocator closed: eighth verified owner (2026-09-13)
+
+`MSL_C.PPCEABI.bare.H/alloc.c` is now source-selected `Matching`: **11/11
+instruction bodies**, **50/50 relocation sites/types/resolved link targets**,
+strict/data 100% after explicit authenticated symbol-name reconciliation,
+and a byte-identical retail DOL. All **137 container checksums pass**.
+Proof workspace DOL status is **345/396**. Public main is not advanced by
+this local proof; the pending batch is now **8/10**: Median, FFT, Window,
+Matrix, Stationarity, DelayBlock, NMWException, and Allocator.
+
+The last constructor needed a byte-buffer cursor and a live byte successor,
+computed before initializing the header. Typed-node iteration had encouraged
+eight-pointer precomputation or field reloads; two byte cursors plus the
+correct calculation/store order restore the actual eight-way compiler unroll
+without manual unrolling, register hints, or assembly. The body is **296/296
+bytes with zero diff rows**, preserving the other ten functions.
+
+The first real link then exposed definition-order differences. With GC/1.3
+deferred inlining, public definitions `malloc`, `free`, `calloc` and helper
+definitions `Block_subBlock`, `Block_link`, `SubBlock_merge_next` emit in the
+required reverse order. Moving unchanged definitions restored the retail
+layout and closed every DOL byte. No linker ordering override was added.
+
+The original target remains untouched. Six placeholder function names and
+three data names are bound to the same source-selected linked addresses; a
+disposable names-only target view supplies strict comparison. Original raw
+function bytes and physical relocation offsets/types are checked separately.
+The linker strips unused helper bodies and retains the target guard alignment
+(four source bytes within the target's eight-byte split); no source padding
+was added. The inherited opaque `MemPool` storage remains naming/type detail,
+not an invented new layout. Semantic helper names are recovered descriptions,
+not a claim of surviving retail local names.
+
+Source SHA-256: `bd7e9570402cdb99acf51bfad07ffc5f197c7e73e463718b6294df16f1c45a02`.
+Production object: `26e8a807c2ed8ed5890117c031f4d743b6911266d5b024bc5a32fb56d8bc5926`.
+DOL: `172ae27aa6fcc9074de286b07ae4ac9f9152175fa913fffc3f5b8365e139ffec`.
+Proofs: `build/small-profile-msl-20260912/alloc/live-proof.json`,
+`live-physical.json`, `live-strict.json`, and `live-data.json`.
+Qwen's bounded constructor question was cancelled after the primary solved
+and verified it; no waiting or consensus gate was introduced.
+
 ## Small-owner allocator frontier: 10/11 instruction-exact (2026-09-13)
 
 Prioritize estimated remaining closure work, not merely source-file size:
