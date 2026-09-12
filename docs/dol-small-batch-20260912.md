@@ -2,6 +2,15 @@
 
 ## Hardware closed: ten-owner batch ready (2026-09-13)
 
+Final source review: named allocator constants replace raw hexadecimal spelling,
+and DelayBlock's two redundant one-byte padding members were removed in favor
+of natural C alignment. Both complete production objects remain byte-identical.
+Window's existing halfword at bytes56..57 remains explicitly unresolved: target
+stores at52/54/58/60 and the80-byte allocation authenticate the gap, not its
+semantic identity. The SDK's volatile ITD table and this one real unknown field
+have narrowly documented source-quality entries; no general gate is disabled.
+Evidence: `build/dol-batch/presentation-cleanup-20260913.json`.
+
 `musyx/runtime/hardware.c` is source-selected Matching: **44/44 raw instruction
 bodies**, strict/data 100% after authenticated symbol-name reconciliation,
 **178/178 physical sites/types/resolved targets**, and the retail-identical DOL.

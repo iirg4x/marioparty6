@@ -14,10 +14,8 @@ u8 *readPtr;
 u8 *writePtr;
 u8 *bufferEnd;
 u8 priming;
-u8 reserved41;
 u16 filledFrames;
 u8 flushActive;
-u8 reserved45;
 u16 flushRemaining;
 } DelayBlock;
 

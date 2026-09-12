@@ -2,6 +2,24 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "window-existing-unresolved-halfword",
+      "classification": "authenticated",
+      "path": "src/gssdk_lib/asrpho/common/blocks/flblocks/window.c",
+      "kind": "source_shape",
+      "rules": ["synthetic_padding"],
+      "rationale": "SCOPE: only the existing Window.reserved38 halfword at bytes56..57. The target InitWindow stores windowLength at52, frameLength at54, overlapLength at58, and frameCount at60; ConstructWindow allocates80 bytes. The two untouched bytes are an unresolved field between live halfwords, not a fake stack owner or source alignment adjustment. No meaning or original field name is claimed. Five exact function bodies,31 effective relocations and the source-selected retail link authenticate the consumed layout. Unnecessary one-byte DelayBlock padding fields were removed separately and produce byte-identical objects; this exception does not cover them or any other field.",
+      "evidence": ["src/gssdk_lib/asrpho/common/blocks/flblocks/window.c", "build/dol-window-final-20260912/window/final-link-proof.json", "build/dol-window-final-20260912/window/normal-ninja-strict.json", "docs/dol-small-batch-20260912.md"]
+    },
+    {
+      "id": "musyx-hardware-sdk-volatile-itd-table",
+      "classification": "authenticated",
+      "path": "src/musyx/runtime/hardware.c",
+      "kind": "source_shape",
+      "rules": ["volatile"],
+      "rationale": "SCOPE: only itdOffTab's SDK volatile const qualification. Clean AxioDL/musyx adc8df9a959f1e37f71bdf3155e229f9f87ad166 hardware blob8251f3bded9ab42c00f00060d11346b00014e1e3 declares this same table volatile const. The retail hwSetVolume has two real indexed halfword reads for the stereo-delay consumers; dropping volatile coalesces them and loses four bytes. Restoring the SDK qualification closes44/44 raw bodies,178 physical sites/types/resolved targets and the retail-identical source-selected DOL. No other volatile object or register forcing is authorized.",
+      "evidence": ["src/musyx/runtime/hardware.c", "build/small-remaining-baseline-20260913/musyx/runtime/hardware/sdk-table-qualification/live-proof.json", "build/small-remaining-baseline-20260913/musyx/runtime/hardware/sdk-table-qualification/live-physical.json", "docs/dol-small-batch-20260912.md"]
+    },
+    {
       "id": "gamework-existing-common-save-tail",
       "classification": "authenticated",
       "path": "include/game/gamework.h",
