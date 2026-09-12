@@ -32,7 +32,7 @@
 #define HW_SAMPLE_TYPE_SHIFT 24
 #define HW_SAMPLE_ID_NONE ((u32)4294967295U)
 
-static const u16 itdOffTab[128] = {
+static volatile const u16 itdOffTab[128] = {
     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,
     2,  3,  3,  3,  3,  3,  4,  4,  4,  4,  5,  5,  5,  6,  6,  6,  7,  7,  7,  8,  8,  8,
     9,  9,  9,  10, 10, 10, 11, 11, 12, 12, 12, 13, 13, 13, 14, 14, 15, 15, 15, 16, 16, 17,
@@ -351,7 +351,7 @@ void hwSetFilter(u32 v, u8 mode, u16 coefA, u16 coefB) {
 }
 #endif
 
-static inline void SetupITD(DSPvoice* dsp_vptr, u8 pan) {
+static void SetupITD(DSPvoice* dsp_vptr, u8 pan) {
   dsp_vptr->itdShiftL = itdOffTab[pan];
   dsp_vptr->itdShiftR = 32 - itdOffTab[pan];
   dsp_vptr->changed[0] |= HW_CHANGED_ITD;

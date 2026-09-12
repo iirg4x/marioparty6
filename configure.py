@@ -574,7 +574,7 @@ config.libs = [
             Object(Matching, "musyx/runtime/snd_math.c"),
             Object(Matching, "musyx/runtime/snd_midictrl.c"),
             Object(Matching, "musyx/runtime/snd_service.c"),
-            Object(NonMatching, "musyx/runtime/hardware.c"),
+            Object(Matching, "musyx/runtime/hardware.c"),
             Object(Matching, "musyx/runtime/dsp_import.c"),
             Object(Matching, "musyx/runtime/hw_aramdma.c"),
             Object(Matching, "musyx/runtime/hw_dolphin.c"),

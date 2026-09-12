@@ -1,5 +1,40 @@
 # Small DOL batch, 2026-09-12
 
+## Hardware closed: ten-owner batch ready (2026-09-13)
+
+`musyx/runtime/hardware.c` is source-selected Matching: **44/44 raw instruction
+bodies**, strict/data 100% after authenticated symbol-name reconciliation,
+**178/178 physical sites/types/resolved targets**, and the retail-identical DOL.
+All **137 container checksums pass**; the proof workspace is **347/396** DOL
+owners. Pending batch: **10/10**, not yet a main promotion.
+
+The decisive cause was SDK interface drift, not a register puzzle. The old
+proof headers lacked the 2.0.1+ DSPvoice filter member and the floating-return
+sndSqrt/sndCos declarations. Correct headers remove fourteen unwanted conversion
+instructions and restore the 248-byte voice stride. The SDK's volatile const
+ITD lookup restores the target's two actual table reads, closing the last four
+bytes. Its ordinary static helper spelling is code-neutral. No new assembly,
+padding, fake local or register hint was introduced.
+
+Donor: clean AxioDL/musyx `adc8df9a959f1e37f71bdf3155e229f9f87ad166`;
+hardware blob `8251f3bded9ab42c00f00060d11346b00014e1e3`, dspvoice header
+`d2401bc9b1df83fa3f249d396bb704cf58f1d2be`, snd header
+`b73a20fdf8c914a0cbc04d8674f61428b5beb90e`. Qwen independently identified the
+stale filter interface; the primary completed the source and link corrections.
+
+The exact relocation sites authenticate the SDK global names. `salHooks` is
+the genuine eight-byte two-callback object; its old second-word label becomes
+the +4 field rather than a fake separate global. Canonical target metadata
+changes no allocated target bytes. Two final sdata alignment bytes and sixteen
+unreferenced weak-sqrtf constant bytes are handled by the real linker, not
+source padding or a header suppression hack.
+
+Source SHA-256: `8c497e96fd162b3ed1303298eb27233e64d86c56e5bd1cc94333802fdd83a06e`.
+Object SHA-256: `bec8491939c426a5b6bc9d6a996701e4cdf65c9b9b6930d5acc140326367fa0e`.
+Original target: `e914981e1e09f2016f0f860dcb69b61cae43fc4af69c9d0d4e47132c6738629f`.
+DOL: `172ae27aa6fcc9074de286b07ae4ac9f9152175fa913fffc3f5b8365e139ffec`.
+Evidence: `build/small-remaining-baseline-20260913/musyx/runtime/hardware/sdk-table-qualification/live-*`.
+
 ## StdReverb closed: ninth verified owner (2026-09-13)
 
 `musyx/runtime/StdReverb/reverb.c` is source-selected `Matching`: **5/5
