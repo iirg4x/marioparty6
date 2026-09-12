@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-void fht(f32 *values, int length);
-void realfft(int length, f32 *values);
+void fht(f32 *values, u32 length);
+void realfft(u32 length, f32 *values);
 
 #endif

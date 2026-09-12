@@ -30,15 +30,18 @@ extern f32 cosf(f32 value);
 static void WindowFlush(Window *block)
 {
     u16 frameLength = block->frameLength;
-    f32 *history = block->historyWrite - frameLength;
+    f32 *previousFrame = block->historyWrite;
+    f32 *output;
     f32 *window = block->window;
-    f32 *output = qEnQueueOne(block->base.output->queue);
     f32 *windowEnd;
+    f32 *history;
 
-    if (history < block->history) {
-        history = block->historyEnd - frameLength;
+    output = qEnQueueOne(block->base.output->queue);
+    previousFrame -= frameLength;
+    if (previousFrame < block->history) {
+        previousFrame = block->historyEnd - frameLength;
     }
-    memcpy(block->historyWrite, history, frameLength * sizeof(f32));
+    memcpy(block->historyWrite, previousFrame, frameLength * sizeof(f32));
     *block->historyWrite = (f32)block->firstSample - (f32)block->lastSample;
 
     block->historyWrite += frameLength;
@@ -77,8 +80,8 @@ static void ProcessWindow(
 {
     Window *block = (Window *)baseBlock;
     s16 *input = inputs[0];
-    f32 *history;
     f32 *window;
+    f32 *history;
     f32 *output;
     f32 *windowEnd;
     f32 previous;
@@ -106,8 +109,9 @@ static void ProcessWindow(
         }
 
         if (block->firstFrame != 0) {
-            *block->historyWrite = 0.0f;
-            memcpy(history, block->historyWrite, frameLength * sizeof(f32));
+            f32 *firstFrameHistory = block->historyWrite;
+            *firstFrameHistory = 0.0f;
+            memcpy(history, firstFrameHistory, frameLength * sizeof(f32));
             history += frameLength;
             if (history == block->historyEnd) {
                 history = block->history;
@@ -185,8 +189,7 @@ static u32 InitWindow(TosBaseBlock *baseBlock)
 
     frameLength = (u16)_tosGetProfileU32(block, 1, 110);
     block->frameLength = frameLength;
-    windowLength = (u16)_tosGetProfileU32(block, 2, 330);
-    block->windowLength = windowLength;
+    windowLength = block->windowLength = (u16)_tosGetProfileU32(block, 2, 330);
     block->overlapLength = (windowLength - frameLength) / 2;
 
     if (frameLength > windowLength || windowLength > frameLength * 3) {
@@ -197,7 +200,7 @@ static u32 InitWindow(TosBaseBlock *baseBlock)
     block->base.output->outputSize = windowLength * sizeof(f32);
     block->frameCount = 3;
     block->history = heap_Calloc(
-        context->heap, frameLength * 3, sizeof(f32));
+        context->heap, block->frameLength * 3, sizeof(f32));
     block->window = heap_Calloc(context->heap, windowLength, sizeof(f32));
     if (block->history == NULL || block->window == NULL) {
         _tosErrorLog(block, 2);
@@ -209,7 +212,7 @@ static u32 InitWindow(TosBaseBlock *baseBlock)
     for (i = 0; i < windowLength; i++) {
         block->window[i] =
             0.54f -
-            0.46f * cosf((6.283185308 * i) / (windowLength - 1));
+            0.46f * cosf((6.283185308 * (f32)i) / (f32)(windowLength - 1));
     }
 
     block->previousSample = 0.0f;
