@@ -1,5 +1,49 @@
 # Small DOL batch, 2026-09-12
 
+## Reconstruction-first throughput: missing result callback recovered
+
+`asrspi_cbResult` is now implemented in ordinary C and retained at
+**97.75284% strict/data**, from an undefined source stub. The reconstructed
+function is **1404/1408 bytes**, with **34/34 relocation occurrences**;
+relocation placement is not yet exact. All six pre-existing exact callbacks
+remain strict/data/physical exact. This is a substantive partial recovery,
+not a seventh verified owner or a main promotion.
+
+GNU PowerPC disassembly plus m2c supplied the control-flow starting point.
+The pinned DTK object-disassembler failed on this split object, so the
+existing GNU disassembler was used, with named relocations preserved for
+m2c. Untyped m2c output omitted allocator arguments and incorrectly made
+the allocation-size loops appear empty: the reconstruction therefore binds
+function signatures and real result/detail layouts to the target loads,
+stores, calls, and strides instead of treating raw decompiler output as C.
+
+The first compiler-tested implementation was already **96.11648%**, at
+1408 bytes. Correctly expressing the linked-list successor as the next
+typed entry removed an unnecessary integer multiply; ordinary initialization
+and loop boundaries improved the retained result to 97.75284%. Two Qwen
+layout questions run independently of primary reconstruction and compilation;
+no consensus or permit waits are imposed. The unresolved 56-byte frame
+difference, source lifetimes, and one copy remain genuine reconstruction
+questions: no padding, forced-register qualifiers, assembly, or invented
+storage was added to hide them. Descriptive field/type names are inferred,
+not claimed to be original SDK names.
+
+The shared `gsapi.h` update replaces only opaque reserved ranges with the
+observed fields. Independent old/new-header compiles of `extaudio.c` and
+`ctxfuncs.c` produce byte-identical objects. Callback source SHA-256:
+`1c6f0e33278f69eb150626c9027bfd45f96630e26767943aa5e6e0a54603d406`;
+header `8f345a808524f48ba55e4ed2c3adf121496f9c2312fa8d486bfa160e93b72b61`;
+object `80b07eeb21110e38478d38c5b606bc8ebe8b2ecce4e9b0d9e39d6c009b2c9772`.
+Evidence: `build/callback-current-20260912/callbacks/retained-*`,
+`frontier-proof.json`, and the named target-physical receipts.
+
+Practical speed rule: after a closed-register cause becomes underdetermined,
+prefer a missing body whose operations and data layout can be reconstructed
+directly. Use m2c with real signatures/types, compile that reconstruction
+immediately, and retain the gain while support questions continue. This run
+demonstrates new source recovery; it does not establish a universal rate or
+claim that local token generation is free of GPU/time costs.
+
 ## Reused causal lesson: two PitchWindow functions gained, faster triage
 
 PitchWindow now retains **3/5 strict/data exact functions**, up from 1/5.
