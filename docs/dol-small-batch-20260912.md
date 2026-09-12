@@ -1,5 +1,48 @@
 # Small DOL batch, 2026-09-12
 
+## Small-owner allocator frontier: 10/11 instruction-exact (2026-09-13)
+
+Prioritize estimated remaining closure work, not merely source-file size:
+small near-complete owners and bounded SDK profile corrections precede the
+large LangData tail. The verified pending batch remains **7/10 owners**.
+
+`MSL_C.PPCEABI.bare.H/alloc.c` now has **10/11 raw instruction-byte matches
+and data-mode 100% functions** with the object-local **GC/1.3** compiler.
+The owner remains `NonMatching`: only `SubBlock_merge_next` and
+`Block_subBlock` currently also pass strict and raw physical comparison;
+eight instruction-exact functions still require target/source symbol, data,
+and final source-selected link reconciliation. This is retained progress,
+not an eleventh or eighth owner closure.
+
+The compiler correction resolves widespread GC/2.6 scheduling differences;
+GC/1.3.2 does not reproduce this target. Natural source repairs remove the
+non-retail empty-block store, separate the allocator's real early guards,
+join its two allocation results through one live result, and restore the
+`calloc` multiply order. `allocate_from_fixed_pools` improved from
+97.831856% strict to 99.867256% (data 100%, raw 452-byte equality): removing
+the unnecessary local table pointer closed the broad register cycle; placing
+the allocation result declaration before its maximum-count peer closed the
+remaining two-owner cycle. The three strict rows now concern helper names,
+not differing instructions. All nine earlier byte-exact functions survive.
+
+`FixBlock_construct` is the only remaining code residual: 296/296 bytes,
+68.756760%. Following its initialized next field retains the target frame
+and size but emits reloads where retail forwards the pointer. Direct cursor
+progression, a previous-entry local, and integer-address spelling recover
+the unwanted eight-pointer precomputation/frame and are not retained. This
+is an unroller/source-boundary question, not a reason to permute registers.
+
+Retained source SHA-256:
+`588b31862bd32905f231141f172ec3e4886bdf8786a9f12dba13cae1765e7e4e`.
+Candidate object:
+`d3d2efda1963272d34b970d06779d5a915e93c7a606e745e8f1b270310b087ac`.
+Target object:
+`34fe30352c290b352cb0d44b44f0c1b1d6063d30c6e6451e797e170a3ae00db3`.
+Compact proof: `build/small-profile-msl-20260912/alloc/retained-frontier.json`.
+The existing opaque pool storage/initialization guard, source ordering, and
+symbol names still need final provenance/link review; no padding, assembly,
+shared-header edit, or linker proof is claimed for this partial.
+
 ## Small-owner priority: Exev initializer retained, 4/6 exact
 
 Smallest credible owner closures take priority over the 76-function LangData

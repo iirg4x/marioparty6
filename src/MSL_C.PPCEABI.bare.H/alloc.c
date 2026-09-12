@@ -242,7 +242,6 @@ static SubBlock* Block_subBlock(Block* block, unsigned long size)
 
     start = Block_start(block);
     if (start == 0) {
-        block->max_size = 0;
         return 0;
     }
 
@@ -438,7 +437,6 @@ static void FixBlock_construct(
     unsigned long count;
     unsigned long i;
     FixSubBlock* entry;
-    FixSubBlock* nextEntry;
 
     block->prev = previous;
     block->next = next;
@@ -450,10 +448,9 @@ static void FixBlock_construct(
     count = bufferSize / entrySize;
     entry = first;
     for (i = 0; i < count - 1; i++) {
-        nextEntry = (FixSubBlock*)((char*)entry + entrySize);
         entry->block = block;
-        entry->next = nextEntry;
-        entry = nextEntry;
+        entry->next = (FixSubBlock*)((char*)entry + entrySize);
+        entry = entry->next;
     }
     entry->block = block;
     entry->next = 0;
@@ -474,15 +471,13 @@ static void* allocate_from_fixed_pools(
 
     fixed = &pool->fixed[poolIndex];
     if (fixed->head == 0 || fixed->head->start == 0) {
-        const unsigned long* poolSizes;
         unsigned long count;
-        unsigned long maximumCount;
         void* memory;
+        unsigned long maximumCount;
         unsigned long maximumFreeSize;
         unsigned long memorySize;
 
-        poolSizes = fixedPoolSizes;
-        count = 0xFEC / (poolSizes[poolIndex] + 4);
+        count = 0xFEC / (fixedPoolSizes[poolIndex] + 4);
         if (count > 0x100) {
             count = 0x100;
         }
@@ -490,14 +485,14 @@ static void* allocate_from_fixed_pools(
 
         while (count >= 10) {
             memory = soft_allocate_from_var_pools(
-                pool, count * (poolSizes[poolIndex] + 4) + 0x14,
+                pool, count * (fixedPoolSizes[poolIndex] + 4) + 0x14,
                 &maximumFreeSize);
             if (memory != 0) {
                 break;
             }
             if (maximumFreeSize > 0x14) {
                 count = (maximumFreeSize - 0x14)
-                    / (poolSizes[poolIndex] + 4);
+                    / (fixedPoolSizes[poolIndex] + 4);
             } else {
                 count = 0;
             }
@@ -505,7 +500,7 @@ static void* allocate_from_fixed_pools(
 
         if (memory == 0 && count < maximumCount) {
             memory = allocate_from_var_pools(
-                pool, maximumCount * (poolSizes[poolIndex] + 4) + 0x14);
+                pool, maximumCount * (fixedPoolSizes[poolIndex] + 4) + 0x14);
             if (memory == 0) {
                 return 0;
             }
@@ -611,16 +606,22 @@ static MemPool* get_malloc_pool(void)
 static void* pool_allocate(MemPool* pool, unsigned long size)
 {
     MemPoolObject* object;
+    void* result;
 
-    if (size == 0 || size > 0xFFFFFFCF) {
+    if (size == 0) {
+        return 0;
+    }
+    if (size > 0xFFFFFFCF) {
         return 0;
     }
 
     object = (MemPoolObject*)pool;
     if (size <= 68) {
-        return allocate_from_fixed_pools(object, size);
+        result = allocate_from_fixed_pools(object, size);
+    } else {
+        result = allocate_from_var_pools(object, size);
     }
-    return allocate_from_var_pools(object, size);
+    return result;
 }
 
 static void pool_free(MemPool* pool, void* ptr)
@@ -654,7 +655,7 @@ static void* pool_allocate_clear(MemPool* pool, unsigned long size)
 
 void* calloc(size_t count, size_t size)
 {
-    return pool_allocate_clear(get_malloc_pool(), count * size);
+    return pool_allocate_clear(get_malloc_pool(), size * count);
 }
 
 void free(void* ptr)

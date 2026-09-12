@@ -428,7 +428,7 @@ config.libs = [
         "host": False,
         "objects": [
             Object(Matching, "MSL_C.PPCEABI.bare.H/abort_exit.c"),
-            Object(NonMatching, "MSL_C.PPCEABI.bare.H/alloc.c"),
+            Object(NonMatching, "MSL_C.PPCEABI.bare.H/alloc.c", mw_version="GC/1.3"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/errno.c"),
             Object(Matching, "MSL_C.PPCEABI.bare.H/ansi_files.c"),
             Object(
