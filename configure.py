@@ -377,7 +377,7 @@ config.libs = [
                 extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"],
             ),
             Object(
-                NonMatching,
+                Matching,
                 "Runtime.PPCEABI.H/NewMore.cp",
                 extra_cflags=[
                     "-Cpp_exceptions on",

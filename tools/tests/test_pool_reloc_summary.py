@@ -3,6 +3,8 @@ from __future__ import annotations
 import base64
 import copy
 import json
+import hashlib
+import struct
 import subprocess
 import sys
 import tempfile
@@ -582,6 +584,93 @@ class PoolRelocSummaryTests(unittest.TestCase):
             second = subprocess.run(command, check=True, capture_output=True, text=True).stdout
         self.assertEqual(first, second)
         self.assertEqual(len(json.loads(first)["decoder_sha256"]), 64)
+
+
+class SectionTailTests(unittest.TestCase):
+    def elf(self, path: Path, raw: bytes, *, name: str = "real_provider", relocation: bool = False) -> Path:
+        names = b"\0.rodata\0.shstrtab\0.strtab\0.symtab\0.rela.rodata\0"
+        strings = b"\0" + name.encode() + b"\0"
+        symbols = bytes(16) + struct.pack(">IIIBBH", 1, 0, len(raw), 0x11, 0, 1)
+        chunks = [b"", raw, names, strings, symbols, bytes(12) if relocation else b""]
+        image = bytearray(52 + 40 * len(chunks))
+        image[:7] = b"\x7fELF\x01\x02\x01"
+        struct.pack_into(">HHI", image, 16, 1, 20, 1)
+        struct.pack_into(">I", image, 32, 52)
+        struct.pack_into(">HHH", image, 46, 40, len(chunks), 2)
+        for i, chunk in enumerate(chunks):
+            label = [b"", b".rodata", b".shstrtab", b".strtab", b".symtab", b".rela.rodata"][i]
+            struct.pack_into(">IIIIIIIIII", image, 52 + 40 * i,
+                             names.index(label) if label else 0, [0, 1, 3, 3, 2, 4][i],
+                             0, 0, len(image), len(chunk), 3 if i == 4 else 4 if i == 5 else 0,
+                             1 if i == 5 else 0, 4 if i == 1 else 1, 16 if i == 4 else 12 if i == 5 else 0)
+            image.extend(chunk)
+        path.write_bytes(image)
+        return path
+
+    def test_provider_fit_and_hash_binding(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            target = self.elf(root / "target.o", b"ab" + bytes(22))
+            candidate = self.elf(root / "candidate.o", b"ab")
+            provider = self.elf(root / "provider.o", bytes(12))
+            result = module.diagnose_section_tail(target, candidate, [provider])
+            self.assertEqual(result["status"], "inspect_split_boundary")
+            self.assertEqual(result["leading_alignment_gap"], 6)
+            self.assertEqual(result["matches"][0]["trailing_alignment_gap"], 4)
+            self.assertEqual(result["matches"][0]["symbol_size"], 12)
+            for entry, path in zip(result["objects"], [target, candidate, provider]):
+                self.assertEqual(entry["sha256"], hashlib.sha256(path.read_bytes()).hexdigest())
+            self.assertFalse(result["ownership_authenticated"])
+            self.assertFalse(result["authority_advanced"])
+            self.assertEqual(module.diagnose_section_tail(candidate, candidate, [])["status"], "identical")
+            command = [sys.executable, str(Path(module.__file__)), "section-tail", str(target), str(candidate), "--provider", str(provider)]
+            cli = json.loads(subprocess.run(command, check=True, capture_output=True, text=True).stdout)
+            self.assertEqual(cli["status"], result["status"])
+            self.assertNotIn("decoder_sha256", cli)
+            self.assertEqual(cli["decoder_code_sha256"], hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest())
+            result_digest = cli.pop("result_sha256")
+            self.assertEqual(result_digest, module._canonical_sha256(cli))
+            payload = b"actual value"
+            self.elf(provider, payload)
+            self.elf(target, b"ab" + bytes(6) + payload + bytes(4))
+            self.assertEqual(module.diagnose_section_tail(target, candidate, [provider])["status"], "inspect_split_boundary")
+
+    def test_alignment_and_rejections(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            candidate = self.elf(root / "candidate.o", b"ab")
+            provider = self.elf(root / "provider.o", bytes(12))
+            target = self.elf(root / "target.o", b"ab" + bytes(6))
+            self.assertEqual(module.diagnose_section_tail(target, candidate, [])["status"], "alignment_only")
+            target = self.elf(target, b"ab" + bytes(22))
+            other = self.elf(root / "other.o", bytes(12), name="other")
+            self.assertEqual(module.diagnose_section_tail(target, candidate, [provider, other])["status"], "ambiguous")
+            for label, options in [("wrong_bytes", {"raw": b"wrong bytes!"}),
+                                   ("missing_symbol", {"raw": bytes(12), "name": ""}),
+                                   ("relocation", {"raw": bytes(12), "relocation": True})]:
+                with self.subTest(label=label):
+                    self.elf(provider, **options)
+                    self.assertEqual(module.diagnose_section_tail(target, candidate, [provider])["status"], "unknown")
+            self.assertEqual(module.diagnose_section_tail(target, candidate, [], alignment=3)["reason"], "unsafe_alignment")
+            self.assertEqual(module.diagnose_section_tail(target, candidate, [], section=".missing")["reason"], "missing_or_ambiguous_section")
+            self.elf(target, b"ab" + bytes(22), relocation=True)
+            self.assertEqual(module.diagnose_section_tail(target, candidate, [])["reason"], "relocations_in_compared_section")
+            self.elf(target, b"wrong")
+            self.assertEqual(module.diagnose_section_tail(target, candidate, [])["reason"], "target_prefix_mismatch")
+
+    def test_malformed_object_cli_has_clean_deterministic_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "malformed.o"
+            path.write_bytes(b"not ELF")
+            command = [sys.executable, str(Path(module.__file__)), "section-tail", str(path), str(path)]
+            first = subprocess.run(command, capture_output=True, text=True)
+            second = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(first.returncode, 2)
+            self.assertEqual(first.stderr, second.stderr)
+            self.assertIn("cannot parse object", first.stderr)
+            self.assertIn(str(path), first.stderr)
+            self.assertNotIn("Traceback", first.stderr)
+            self.assertEqual(first.stdout, "")
 
 
 if __name__ == "__main__":

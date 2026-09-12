@@ -22,6 +22,7 @@ import hashlib
 import json
 import math
 import struct
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -1369,6 +1370,9 @@ def _canonical_sha256(value: Mapping[str, Any]) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ["section-tail"]:
+        return section_tail_main(arguments[1:])
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path)
     parser.add_argument("function")
@@ -1388,6 +1392,132 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(str(exc))
     result["decoder_sha256"] = _canonical_sha256(result)
     print(json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def diagnose_section_tail(
+    target: Path, candidate: Path, providers: Sequence[Path], *,
+    section: str = ".rodata", alignment: int = 8,
+) -> dict[str, Any]:
+    """Inspect an explicitly supplied adjacent provider, never certify ownership.
+
+    Alignment is a caller-supplied split/link hypothesis, not inferred from zeros.
+    Only complete, single named STT_OBJECT provider sections are considered.
+    Any relocation section covering compared data is conservatively rejected.
+    """
+    if __package__ in {None, ""}:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from tools.crack_evidence_bundle import EvidenceError, _parse_elf_structure
+
+    if len(providers) > 16:
+        raise PoolDecodeError("section-tail accepts at most 16 explicit providers")
+    parsed = []
+    for path in [target, candidate, *providers]:
+        try:
+            parsed.append(_parse_elf_structure(Path(path)))
+        except EvidenceError as exc:
+            raise PoolDecodeError(f"cannot parse object {path}: {exc}") from exc
+    result: dict[str, Any] = {
+        "schema": "section_tail_provider_diagnostic/v1", "status": "unknown",
+        "section": section, "alignment_hypothesis": alignment,
+        "objects": [p["object"] for p in parsed], "authority_advanced": False,
+        "ownership_authenticated": False, "function_bodies_checked": False,
+        "matches": [],
+    }
+
+    def stop(reason: str) -> dict[str, Any]:
+        result["reason"] = reason
+        return result
+
+    if alignment < 1 or alignment > 4096 or alignment & (alignment - 1):
+        return stop("unsafe_alignment")
+    sections = []
+    for obj in parsed:
+        if struct.unpack_from(">H", obj["data"], 16)[0] != 1:
+            return stop("input_is_not_relocatable_object")
+        found = [(i, s) for i, s in enumerate(obj["sections"]) if s["name"] == section]
+        if len(found) != 1:
+            return stop("missing_or_ambiguous_section")
+        index, sec = found[0]
+        raw = obj["data"]
+        shoff = struct.unpack_from(">I", raw, 32)[0]
+        native_align = struct.unpack_from(">I", raw, shoff + index * 40 + 32)[0]
+        if native_align < 1 or native_align & (native_align - 1) or native_align > alignment:
+            return stop("unsafe_alignment")
+        if sec["type"] != 1 or sec["offset"] + sec["size"] > len(raw):
+            return stop("unsupported_or_truncated_section")
+        if any(s["type"] in {4, 9} and s["info"] == index and s["size"] for s in obj["sections"]):
+            return stop("relocations_in_compared_section")
+        sections.append((index, raw[sec["offset"]:sec["offset"] + sec["size"]]))
+    target_bytes, candidate_bytes = sections[0][1], sections[1][1]
+    result.update(target_section_size=len(target_bytes), candidate_section_size=len(candidate_bytes))
+    if not target_bytes.startswith(candidate_bytes):
+        return stop("target_prefix_mismatch")
+    result["identical_prefix"] = True
+    tail = target_bytes[len(candidate_bytes):]
+    result.update(tail_size=len(tail), tail_sha256=hashlib.sha256(tail).hexdigest())
+    if len(tail) > 256:
+        return stop("tail_exceeds_256_byte_diagnostic_bound")
+    result["tail_hex"] = tail.hex()
+    aligned = (len(candidate_bytes) + alignment - 1) & -alignment
+    gap = aligned - len(candidate_bytes)
+    result.update(provider_start_offset=aligned, leading_alignment_gap=gap)
+    if len(target_bytes) == len(candidate_bytes):
+        result["status"] = "identical"
+        return stop("no_section_tail")
+    if len(target_bytes) == aligned and not any(tail):
+        result["status"] = "alignment_only"
+        return stop("tail_consistent_with_explicit_alignment_only")
+    if aligned > len(target_bytes) or any(tail[:gap]):
+        return stop("target_alignment_gap_mismatch")
+    for obj, (index, raw) in zip(parsed[2:], sections[2:]):
+        symbols = [s for s in obj["symbols"] if s["section"] == index and s["info"] & 15 == 1 and s["size"] > 0]
+        if len(symbols) != 1:
+            continue
+        sym = symbols[0]
+        if not sym["name"] or sym["value"] != 0 or sym["size"] != len(raw):
+            continue
+        end = aligned + len(raw)
+        if ((end + alignment - 1) & -alignment) != len(target_bytes):
+            continue
+        if target_bytes[aligned:end] != raw or any(target_bytes[end:]):
+            continue
+        result["matches"].append({
+            "object": obj["object"], "symbol": sym["name"], "symbol_type": "STT_OBJECT",
+            "symbol_info": sym["info"], "symbol_size": sym["size"],
+            "symbol_section_offset": sym["value"], "bytes_hex": raw.hex(),
+            "trailing_alignment_gap": len(target_bytes) - end,
+            "all_zero_bytes": not any(raw),
+        })
+    if len(result["matches"]) > 1:
+        result["status"] = "ambiguous"
+        return stop("multiple_indistinguishable_provider_hypotheses")
+    if not result["matches"]:
+        return stop("no_complete_named_provider_byte_match")
+    result["status"] = "inspect_split_boundary"
+    result["recommended_investigation"] = (
+        "Inspect the adjacent provider split using source/symbol and linked evidence. "
+        "Byte agreement (especially zeros) does not authenticate ownership; do not invent padding."
+    )
+    return stop("explicit_provider_symbol_and_bytes_fit_tail_plus_alignment")
+
+
+def section_tail_main(argv: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser(description="Read-only adjacent-provider section-tail investigation")
+    parser.add_argument("target", type=Path)
+    parser.add_argument("candidate", type=Path)
+    parser.add_argument("--provider", action="append", type=Path, default=[])
+    parser.add_argument("--section", default=".rodata")
+    parser.add_argument("--alignment", type=int, default=8, help="explicit split/link alignment hypothesis (default: 8)")
+    args = parser.parse_args(argv)
+    try:
+        result = diagnose_section_tail(args.target, args.candidate, args.provider,
+                                       section=args.section, alignment=args.alignment)
+    except (OSError, ValueError, struct.error, IndexError) as exc:
+        parser.error(str(exc))
+    result["decoder_code_sha256"] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    result["result_sha256"] = _canonical_sha256(result)
+    print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 
 
