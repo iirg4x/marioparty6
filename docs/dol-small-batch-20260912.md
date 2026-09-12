@@ -1,5 +1,42 @@
 # Small DOL batch, 2026-09-12
 
+## DelayBlock closure: a real fill parameter explains the last copy
+
+DelayBlock is **4/4 strict/data exact**, with all three protected siblings
+preserved. `ControlDelayBlock`'s sole remaining replacement (`li r4,0`
+versus target `addi r4,r5,0`) closed when the existing fill loop became
+the ordinary `FillDelayBlock(block, value)` C operation, called with zero.
+The compiler automatically inlines it. This is a real consumed parameter,
+not a zero alias or register directive; no assembly or fabricated storage.
+The target-backed loop repeatedly writes the current write pointer without
+advancing it. That inherited behavior is intentionally unchanged; this is
+not a memset of the whole buffer. The helper name is inferred, not original.
+
+The first structural fill-parameter probe matched at 228 bytes; the formatted
+source reproduced it. Normal Ninja/MWLD passes **137/137 retail checksums**
+and direct DOL equality. All **19/19 relocation applications** are proven:
+15 raw-identical entries plus four constructor HA/LO entries addressing the
+same exact local functions after normal MWLD strips the unused 36-byte
+standalone helper. Their final linked halfwords were independently checked.
+No constant/data sections exist in this object. This is linked equivalence,
+not an assertion that every raw object byte/offset is identical.
+
+Source SHA-256 `150764f785409abdeaaf8ca616cdaa2f2f6a705cd756bab4e552d7d765893708`;
+normal object `987cd649f7b105d023c3d8205dec9285ea8c18b8f95899e670a589f811f9dd35`;
+strict/data `b7cd57b964e1a659438c90637849606bc8a2feb5f75133f4c668e6abb926fef2`.
+Evidence: `build/qwen-parallel-20260912/delaybl/closure-*`,
+`normal-physical.json`, and `final-link-proof.json`.
+The source-selected DOL is still SHA-256
+`172ae27aa6fcc9074de286b07ae4ac9f9152175fa913fffc3f5b8365e139ffec`.
+
+The batch is **6/10 verified owners**: Median, FFT, Window, Matrix,
+Stationarity, DelayBlock. Proof workspace DOL is **343/396**; public main
+is still **337/396**. Do not push fewer than ten or count partials as owners.
+Three independent Qwen questions were running while this closure was made;
+no worker answer or approval was awaited. The lesson is to recognize the
+semantic parameter/automatic-inline boundary before repeating constant or
+register spellings, not to wrap arbitrary assignments in helpers.
+
 ## Smoothing retained gain and next throughput correction
 
 Smoothing retains **96.556076 -> 97.88785** strict/data at the same
@@ -310,7 +347,7 @@ policy. No static current-percentage claim is added to either README.
 
 Recover every remaining main DOL owner and promote verified source closures in
 batches, using Qwen-only parallel support. Current fetched main `5c7bca5` has
-337/396 Matching DOL owners (59 remaining); FFT, Median, Window, Matrix and Stationarity are verified
+337/396 Matching DOL owners (59 remaining); FFT, Median, Window, Matrix, Stationarity and DelayBlock are verified
 locally and pending promotion. User requirement: promote exactly 10 verified owners per
 batch (except the final remainder). Current batch is 5/10 ready. Do not push a
 smaller intermediate source/status batch or count function partials as owners.

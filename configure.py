@@ -943,7 +943,7 @@ config.libs = [
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/spi1600.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/train.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/userword.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/common/blocks/delaybl.c"),
+            Object(Matching, "gssdk_lib/asrpho/common/blocks/delaybl.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/dpgenuw.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/dpscruw.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/exev_dp.c"),
