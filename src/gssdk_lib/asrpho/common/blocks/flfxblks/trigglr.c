@@ -19,32 +19,35 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock);
 
 static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
 {
+    s32 result = 0;
     f32 *featureValues = (f32 *)inputs[1];
-    f32 activity = featureValues[0];
-    f32 onsetMetric = *(f32 *)inputs[2];
-    f32 peakMetric = *(f32 *)inputs[3];
-    f32 histogramThreshold =
+    f32 rawThreshold =
         featureValues[3] + block->noiseFloorOffsetLog;
+    f32 histogramThreshold;
+    f32 onsetMetric = *(f32 *)inputs[2];
+    f32 activity = featureValues[0];
+    f32 peakMetric = *(f32 *)inputs[3];
     f32 energyThreshold;
 
-    if (histogramThreshold < block->energyFloorLog) {
-        histogramThreshold = block->energyFloorLog;
-    }
+    histogramThreshold = rawThreshold > block->energyFloorLog
+        ? rawThreshold : block->energyFloorLog;
     if (!block->histogramValid) {
         block->histogramLowerQuantile =
             histogramThreshold + block->histogramThresholdOffsetLog;
     }
 
-    energyThreshold =
+    rawThreshold =
         block->histogramLowerQuantile - block->histogramThresholdOffsetLog;
-    if (energyThreshold < histogramThreshold) {
+    if (rawThreshold > histogramThreshold) {
+        energyThreshold = rawThreshold;
+    } else {
         energyThreshold = histogramThreshold;
     }
 
     switch (block->speechState) {
     case 0:
-        if (block->triggerLookbackFrames > block->triggerLookbackLimit) {
-            block->triggerLookbackFrames = block->triggerLookbackLimit;
+        if (block->triggerLookbackFrames > block->silenceFrameLimit) {
+            block->triggerLookbackFrames = block->silenceFrameLimit;
         }
 
         if (onsetMetric > block->onsetThresholdLog) {
@@ -86,8 +89,7 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
 
     case 1:
         if (!block->voicingCriterionMet) {
-            block->voicingDecisionHistoryWrite++;
-            if (block->voicingDecisionHistoryWrite ==
+            if (++block->voicingDecisionHistoryWrite >=
                 block->voicingDecisionHistoryEnd) {
                 block->voicingDecisionHistoryWrite =
                     block->voicingDecisionHistory;
@@ -96,12 +98,11 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
         }
 
         if (onsetMetric > block->activityThresholdLog) {
-            if (block->histogramCandidatePeak < peakMetric) {
-                block->histogramCandidatePeak = peakMetric;
-            }
-            if (block->peakActivityLog < onsetMetric) {
-                block->peakActivityLog = onsetMetric;
-            }
+            block->histogramCandidatePeak =
+                peakMetric > block->histogramCandidatePeak
+                    ? peakMetric : block->histogramCandidatePeak;
+            block->peakActivityLog = onsetMetric > block->peakActivityLog
+                ? onsetMetric : block->peakActivityLog;
             block->candidateFrames++;
 
             if (activity >= energyThreshold) {
@@ -111,11 +112,9 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
                 block->consecutiveEnergeticFrames = 0;
             }
 
-            if (!block->consecutiveCriterionMet &&
+            block->consecutiveCriterionMet = block->consecutiveCriterionMet ||
                 block->consecutiveEnergeticFrames >=
-                    block->consecutiveEnergeticLimit) {
-                block->consecutiveCriterionMet = 1;
-            }
+                    block->consecutiveEnergeticLimit;
 
             if (activity >= energyThreshold &&
                 !block->voicingCriterionMet) {
@@ -130,7 +129,6 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
                     Voicing_GetMaxVoicing(block);
                 first = block->voicingDecisionHistory[0];
                 second = block->voicingDecisionHistory[1];
-                third = block->voicingDecisionHistory[2];
                 if (first < second) {
                     low = first;
                     high = second;
@@ -138,6 +136,7 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
                     low = second;
                     high = first;
                 }
+                third = block->voicingDecisionHistory[2];
                 if (third > high) {
                     median = high;
                 } else if (third > low) {
@@ -150,13 +149,11 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
                 }
             }
 
-            if (!block->energyCriterionMet &&
+            block->energyCriterionMet = block->energyCriterionMet || (
                 block->candidateFrames >= block->minimumSpeechFrames &&
                 block->peakActivityLog >
                     block->peakActivityThresholdLog &&
-                block->histogramCandidatePeak >= histogramThreshold) {
-                block->energyCriterionMet = 1;
-            }
+                block->histogramCandidatePeak >= histogramThreshold);
 
             if (block->candidateFrames >= block->histogramUpdateFrames &&
                 block->energyCriterionMet) {
@@ -184,8 +181,7 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
 
     case 2:
         if (!block->voicingCriterionMet) {
-            block->voicingDecisionHistoryWrite++;
-            if (block->voicingDecisionHistoryWrite ==
+            if (++block->voicingDecisionHistoryWrite >=
                 block->voicingDecisionHistoryEnd) {
                 block->voicingDecisionHistoryWrite =
                     block->voicingDecisionHistory;
@@ -196,9 +192,9 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
         if (onsetMetric > block->onsetThresholdLog) {
             block->speechState = 1;
             block->candidateFrames = 1;
-            if (block->histogramCandidatePeak < peakMetric) {
-                block->histogramCandidatePeak = peakMetric;
-            }
+            block->histogramCandidatePeak =
+                peakMetric > block->histogramCandidatePeak
+                    ? peakMetric : block->histogramCandidatePeak;
             block->peakActivityLog = onsetMetric;
             block->energyCriterionMet = 0;
             block->consecutiveCriterionMet = 0;
@@ -218,7 +214,6 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
                     Voicing_GetMaxVoicing(block);
                 first = block->voicingDecisionHistory[0];
                 second = block->voicingDecisionHistory[1];
-                third = block->voicingDecisionHistory[2];
                 if (first < second) {
                     low = first;
                     high = second;
@@ -226,6 +221,7 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
                     low = second;
                     high = first;
                 }
+                third = block->voicingDecisionHistory[2];
                 if (third > high) {
                     median = high;
                 } else if (third > low) {
@@ -238,13 +234,13 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
                 }
             }
         } else {
-            block->silenceFrames++;
-            if (block->silenceFrames > block->silenceFrameLimit) {
+            if (++block->silenceFrames > block->silenceFrameLimit) {
                 block->speechState = 0;
                 if (block->activitySeen &&
                     _tosControl(
-                        &block->base, 0xCA, block->frameCount, 70)) {
-                    return 1;
+                        &block->base, 0xCA, 70, block->frameCount)) {
+                    result = 1;
+                    break;
                 }
                 if (!block->histogramUpdated &&
                     block->energyCriterionMet) {
@@ -262,11 +258,10 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
 
     case 3:
         if (onsetMetric > block->activityThresholdLog) {
-            if (block->histogramCandidatePeak < peakMetric) {
-                block->histogramCandidatePeak = peakMetric;
-            }
-            block->candidateFrames++;
-            if (block->candidateFrames >= block->histogramUpdateFrames) {
+            block->histogramCandidatePeak =
+                peakMetric > block->histogramCandidatePeak
+                    ? peakMetric : block->histogramCandidatePeak;
+            if (++block->candidateFrames >= block->histogramUpdateFrames) {
                 SlidingHisto_NewItem(block, block->histogramCandidatePeak);
                 block->histogramUpdated = 1;
                 block->histogramValid = 1;
@@ -286,12 +281,11 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
         if (onsetMetric > block->onsetThresholdLog) {
             block->speechState = 3;
             block->candidateFrames++;
-            if (block->histogramCandidatePeak < peakMetric) {
-                block->histogramCandidatePeak = peakMetric;
-            }
+            block->histogramCandidatePeak =
+                peakMetric > block->histogramCandidatePeak
+                    ? peakMetric : block->histogramCandidatePeak;
         } else {
-            block->silenceFrames++;
-            if (block->silenceFrames > block->silenceFrameLimit) {
+            if (++block->silenceFrames > block->silenceFrameLimit) {
                 block->speechState = 0;
                 if (!block->histogramUpdated) {
                     SlidingHisto_NewItem(
@@ -307,7 +301,7 @@ static s32 TriggerLR_FindSpeech(TriggerLR *block, void **inputs)
         break;
     }
 
-    return 0;
+    return result;
 }
 
 static void ProcessTriggerLR(
@@ -385,6 +379,9 @@ static u32 ControlTriggerLR(
     u8 *sessionBuffer;
     u32 queueControlFailed;
     f32 sensitivityScale;
+    f32 histogramOffset;
+    f32 voicingThreshold;
+    u32 sessionBytes;
 
     switch ((u8)command) {
     case 0x64:
@@ -423,11 +420,45 @@ static u32 ControlTriggerLR(
                 return 0;
             }
         }
-        return 1;
+        break;
 
-    case 0x65:
-        *(u32 **)argument = &block->speechStartFrame;
-        return 1;
+    case 0x67:
+        controlData = (TriggerLRControlData *)argument;
+        block->resetStartsInputQueues =
+            controlData->resetStartsInputQueues;
+        block->holdInputQueuesAfterTrigger =
+            controlData->holdInputQueuesAfterTrigger;
+        block->sensitivity = controlData->sensitivity;
+
+        sensitivityScale =
+            (f32)(block->sensitivity - block->sensitivityMinimum) /
+            (f32)(block->sensitivityMaximum - block->sensitivityMinimum);
+        histogramOffset =
+            ((f32)block->histogramOffsetMinimum +
+                sensitivityScale *
+                    (f32)(block->histogramOffsetMaximum -
+                        block->histogramOffsetMinimum)) *
+            0.23025851f;
+        voicingThreshold =
+            block->voicingThresholdMinimum +
+            sensitivityScale *
+                (block->voicingThresholdMaximum -
+                    block->voicingThresholdMinimum);
+        block->histogramThresholdOffsetLog = histogramOffset;
+        block->voicingDecisionThreshold = logf_check(voicingThreshold);
+        block->endSilenceMilliseconds =
+            controlData->endSilenceMilliseconds;
+        block->minimumSpeechMilliseconds =
+            controlData->minimumSpeechMilliseconds;
+        block->endSilenceFrames = block->endSilenceMilliseconds / 10;
+        block->minimumSpeechFrames =
+            block->minimumSpeechMilliseconds / 10;
+        block->energyFloorDbHundredths =
+            controlData->energyFloorDbHundredths;
+        block->energyFloorLog =
+            27.37f +
+            (f32)block->energyFloorDbHundredths / 4.3429446f / 100.0f;
+        break;
 
     case 0x66:
         controlData = (TriggerLRControlData *)argument;
@@ -442,56 +473,24 @@ static u32 ControlTriggerLR(
             block->minimumSpeechMilliseconds;
         controlData->energyFloorDbHundredths =
             block->energyFloorDbHundredths;
-        return 1;
+        break;
 
-    case 0x67:
-        controlData = (TriggerLRControlData *)argument;
-        block->resetStartsInputQueues =
-            controlData->resetStartsInputQueues;
-        block->holdInputQueuesAfterTrigger =
-            controlData->holdInputQueuesAfterTrigger;
-        block->endSilenceMilliseconds =
-            controlData->endSilenceMilliseconds;
-        block->sensitivity = controlData->sensitivity;
-        block->minimumSpeechMilliseconds =
-            controlData->minimumSpeechMilliseconds;
-        block->energyFloorDbHundredths =
-            controlData->energyFloorDbHundredths;
-
-        sensitivityScale =
-            (f32)(block->sensitivity - block->sensitivityMinimum) /
-            (f32)(block->sensitivityMaximum - block->sensitivityMinimum);
-        block->histogramThresholdOffsetLog =
-            ((f32)block->histogramOffsetMinimum +
-                sensitivityScale *
-                    (f32)(block->histogramOffsetMaximum -
-                        block->histogramOffsetMinimum)) *
-            0.23025851f;
-        block->voicingDecisionThreshold = logf_check(
-            block->voicingThresholdMinimum +
-            sensitivityScale *
-                (block->voicingThresholdMaximum -
-                    block->voicingThresholdMinimum));
-        block->endSilenceFrames = block->endSilenceMilliseconds / 10;
-        block->minimumSpeechFrames =
-            block->minimumSpeechMilliseconds / 10;
-        block->energyFloorLog =
-            27.37f +
-            (f32)block->energyFloorDbHundredths / 4.3429446f / 100.0f;
-        return 1;
+    case 0x65:
+        *(u32 **)argument = &block->speechStartFrame;
+        break;
 
     case 0x68:
         block->triggerEventMode = (u32)argument;
-        return 1;
+        break;
 
     case 0x69:
         sessionOffset = (u32 *)argumentSize;
         sessionBuffer = (u8 *)argument;
-        SlidingHisto_Clear(block);
-        Voicing_Reset(block);
-        block->histogramValid = 0;
         if (sessionBuffer != NULL) {
             sessionBuffer += *sessionOffset;
+            SlidingHisto_Clear(block);
+            Voicing_Reset(block);
+            block->histogramValid = 0;
             block->histogramValid = *(u32 *)sessionBuffer;
             SlidingHisto_PutSession(
                 block, (SlidingHistoSessionData *)(sessionBuffer + 4));
@@ -500,9 +499,14 @@ static u32 ControlTriggerLR(
                     SlidingHisto_LowerQuantile(
                         block, block->histogramQuantile);
             }
+            sessionBytes = SlidingHisto_sizeof_SessionData(block) + 4;
+            *sessionOffset += sessionBytes;
+        } else {
+            SlidingHisto_Clear(block);
+            Voicing_Reset(block);
+            block->histogramValid = 0;
         }
-        *sessionOffset += 4 + SlidingHisto_sizeof_SessionData(block);
-        return 1;
+        break;
 
     case 0x6A:
         sessionOffset = (u32 *)argumentSize;
@@ -513,22 +517,27 @@ static u32 ControlTriggerLR(
             SlidingHisto_GetSession(
                 block, (SlidingHistoSessionData *)(sessionBuffer + 4));
         }
-        *sessionOffset += 4 + SlidingHisto_sizeof_SessionData(block);
-        return 1;
+        sessionBytes = SlidingHisto_sizeof_SessionData(block) + 4;
+        *sessionOffset += sessionBytes;
+        break;
 
-    case 0xFF:
+    case 0xFF: {
+        TosContext *context = block->base.context;
         if (block->voicingDecisionHistory != NULL) {
             heap_Free(
-                block->base.context->heap,
+                context->heap,
                 block->voicingDecisionHistory);
         }
         SlidingHisto_Free(block);
         Voicing_Free(block);
         tosBaseBlockDestruct(block);
-        return 1;
+        break;
+    }
+    default:
+        return 0;
     }
 
-    return 0;
+    return 1;
 }
 
 static u32 InitTriggerLR(TosBaseBlock *baseBlock)

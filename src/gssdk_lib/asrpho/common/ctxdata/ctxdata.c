@@ -126,13 +126,12 @@ void *_contextGetpWordProp(ContextData *context)
     ContextDataV2 *data = context->data;
     u32 lexCount = data->nbrItem + data->nbrPron;
     u32 wordPropCount;
-    u8 *wordProp;
+    u32 *wordProp;
 
     lexCount += lexCount & 1;
     wordPropCount = data->nbrPron + data->nbrWord;
-    wordProp = (u8 *)data + lexCount * sizeof(u16);
-    wordProp += offsetof(ContextDataV2, lex);
-    return wordProp + (wordPropCount + 2) * sizeof(u32);
+    wordProp = (u32 *)(data->lex + lexCount);
+    return wordProp + wordPropCount + 2;
 }
 
 void *_contextGetpSyntax(ContextData *context)

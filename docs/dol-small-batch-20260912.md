@@ -385,3 +385,32 @@ size discrepancy and no exact sibling losses. Its evidence is
 unchanged. Chaining the equal input-size assignments was neutral; a conditional
 call expression merged a required Process test and regressed, so neither is
 retained. No flags, padding, assembly, or interface changes were introduced.
+
+### TriggerLR retained continuation, 2026-09-12
+
+FindSpeech is now **98.512474**, with the exact 1764-byte function size and
+16/16 instruction-application-equivalent relocations (raw SDA21 placement is
+reported separately). The reconstruction fixes the event argument order,
+lookback-limit consumer, Boolean accumulation, ring bounds, and delayed third
+median input. Its saved-FPR cycle, median selection and frame remain open.
+ControlTriggerLR improves **65.55597 -> 99.406715**, retaining 1072 bytes:
+target switch order/common return, parameter-consumer chronology, distinct
+nullable session paths, session-size accumulation and destructor context
+snapshot restore the control flow. Its 27/27 relocation inventory is not yet
+exact, and interpolation/frame differences remain. Init stays 98.370834;
+Process stays 99.85981; the exact constructor is preserved.
+
+Seven additional real 32-bit flags now use signed comparisons without layout
+changes. All three other header consumers (voicing, subsamp, slidhist) compiled
+with the frozen overlay have unchanged function and physical results. Evidence:
+`build/qwen-dol-trigger-interpolation-20260912/trigglr/median-late-*`,
+`build/dol-trigger-reset-20260912/overlay/`, and
+`build/dol-trigger-header-20260912/*/reset-flag-verification.json`.
+
+The typed WordProp accessor also retains **66.933334 -> 81.86667**, 60/60
+bytes, 0/0 exact relocations, and all 19 exact ctxdata siblings. Evidence:
+`build/dol-current-context-accessors-20260912/ctxdata/typed-layout-*`.
+Qwen's subsequent staged byte-layout proposal regressed to 80.333336 and was
+not retained. Median helper outlining and early result reuse likewise did not
+replace the protected source. These are partial owner gains, not new Matching
+owners or main promotions.
