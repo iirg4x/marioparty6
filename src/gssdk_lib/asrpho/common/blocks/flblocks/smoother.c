@@ -140,10 +140,10 @@ u32 Smoothing(Smoother *smoother, f32 *input)
 
         column = workingQrSpline->columns;
         coefficient = coefficients->values + coefficients->rows;
-        inputValue = inputVector->values + inputVector->rows;
+        inputValue = (inputVector->values + inputVector->rows) -
+                     (inputVector->rows - column);
         matrixEnd = workingQrSpline->values +
                     workingQrSpline->rows * column;
-        inputValue -= inputVector->rows - column;
 
         for (; column != 0; column--) {
             f32 diagonal;
