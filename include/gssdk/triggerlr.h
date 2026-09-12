@@ -140,7 +140,7 @@ TRIGGERLR_LAYOUT_ASSERT(
 void SlidingHisto_NewItem(TriggerLR *block, f32 item);
 f32 SlidingHisto_LowerQuantile(TriggerLR *block, f32 quantile);
 void SlidingHisto_Clear(TriggerLR *block);
-u32 SlidingHisto_Init(TriggerLR *block);
+s32 SlidingHisto_Init(TriggerLR *block);
 void SlidingHisto_Free(TriggerLR *block);
 u32 SlidingHisto_sizeof_SessionData(TriggerLR *block);
 void SlidingHisto_PutSession(

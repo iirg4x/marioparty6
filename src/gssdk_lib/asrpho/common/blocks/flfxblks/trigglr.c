@@ -318,7 +318,7 @@ static void ProcessTriggerLR(
     if (block->processMode == 0) {
         s16 *input = (s16 *)inputs[0];
         if (Voicing_AddSignal(block, input)) {
-            return;
+            goto done;
         }
         if (++block->triggerLookbackFrames > block->triggerLookbackLimit) {
             block->triggerLookbackFrames = block->triggerLookbackLimit;
@@ -326,12 +326,12 @@ static void ProcessTriggerLR(
     }
 
     if (TriggerLR_FindSpeech(block, inputs)) {
-        return;
+        goto done;
     }
 
     if (block->processMode == 0) {
         if (block->speechState != 3) {
-            return;
+            goto done;
         }
 
         block->speechStartFrame =
@@ -340,18 +340,18 @@ static void ProcessTriggerLR(
             !qQueueControl(
                 block->base.input[0].queue, 8,
                 block->base.input[0].outputSize, NULL)) {
-            return;
+            goto done;
         }
 
         if (block->triggerEventMode) {
             if (_tosControl(baseBlock, 0xCB,
                     block->triggerLookbackFrames, block->frameCount)) {
-                return;
+                goto done;
             }
         } else {
             if (_tosControl(baseBlock, 0xC8,
                     block->triggerLookbackFrames, block->frameCount)) {
-                return;
+                goto done;
             }
         }
 
@@ -364,10 +364,12 @@ static void ProcessTriggerLR(
         block->silenceFrames > block->endSilenceFrames) {
         block->speechActive = 0;
         if (_tosControl(baseBlock, 0xC9, block->frameCount, 0)) {
-            return;
+            goto done;
         }
         block->processMode = 2;
     }
+done:
+    return;
 }
 
 static u32 ControlTriggerLR(
@@ -433,18 +435,16 @@ static u32 ControlTriggerLR(
         sensitivityScale =
             (f32)(block->sensitivity - block->sensitivityMinimum) /
             (f32)(block->sensitivityMaximum - block->sensitivityMinimum);
-        histogramOffset =
-            ((f32)block->histogramOffsetMinimum +
-                sensitivityScale *
-                    (f32)(block->histogramOffsetMaximum -
-                        block->histogramOffsetMinimum)) *
-            0.23025851f;
+        histogramOffset = (f32)block->histogramOffsetMinimum;
+        histogramOffset += sensitivityScale *
+            (f32)(block->histogramOffsetMaximum - block->histogramOffsetMinimum);
         voicingThreshold =
             block->voicingThresholdMinimum +
             sensitivityScale *
                 (block->voicingThresholdMaximum -
-                    block->voicingThresholdMinimum);
-        block->histogramThresholdOffsetLog = histogramOffset;
+                   block->voicingThresholdMinimum);
+        histogramOffset *= 0.23025851f;
+       block->histogramThresholdOffsetLog = histogramOffset;
         block->voicingDecisionThreshold = logf_check(voicingThreshold);
         block->endSilenceMilliseconds =
             controlData->endSilenceMilliseconds;
@@ -571,7 +571,7 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock)
     block->peakActivityThresholdLog =
         logf_check(_tosGetProfileFloat(block, 10, 100.0f));
     block->noiseFloorOffsetLog =
-        0.23025851f * (f32)abs((s32)_tosGetProfileU32(block, 6, 17));
+        (f32)abs((s32)_tosGetProfileU32(block, 6, 17)) * 0.23025851f;
     block->sensitivityMinimum = _tosGetProfileU32(block, 18, 0);
     block->sensitivityMaximum = _tosGetProfileU32(block, 19, 100);
     block->histogramOffsetMinimum =
@@ -587,18 +587,16 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock)
     sensitivityScale =
         (f32)(block->sensitivity - block->sensitivityMinimum) /
         (f32)(block->sensitivityMaximum - block->sensitivityMinimum);
-    histogramOffset =
-        ((f32)block->histogramOffsetMinimum +
-            sensitivityScale *
-                (f32)(block->histogramOffsetMaximum -
-                    block->histogramOffsetMinimum)) *
-        0.23025851f;
+    histogramOffset = (f32)block->histogramOffsetMinimum;
+    histogramOffset += sensitivityScale *
+        (f32)(block->histogramOffsetMaximum - block->histogramOffsetMinimum);
     voicingThreshold =
         block->voicingThresholdMinimum +
         sensitivityScale *
             (block->voicingThresholdMaximum -
-                block->voicingThresholdMinimum);
-    block->histogramThresholdOffsetLog = histogramOffset;
+               block->voicingThresholdMinimum);
+    histogramOffset *= 0.23025851f;
+   block->histogramThresholdOffsetLog = histogramOffset;
     block->voicingDecisionThreshold = logf_check(voicingThreshold);
     block->histogramQuantile =
         _tosGetProfileFloat(block, 15, 0.5f);

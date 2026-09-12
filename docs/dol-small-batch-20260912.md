@@ -414,3 +414,25 @@ Qwen's subsequent staged byte-layout proposal regressed to 80.333336 and was
 not retained. Median helper outlining and early result reuse likewise did not
 replace the protected source. These are partial owner gains, not new Matching
 owners or main promotions.
+
+ProcessTriggerLR subsequently became **100% strict/data, 428/428 bytes, 7/7
+raw/effective physical relocations**. A real common error exit (`goto done`)
+preserves the two separate call-result tests and corrects the remaining branch
+orientation; the previously rejected shared result variable had merged them.
+Evidence: `build/dol-trigger-terminal-20260912/trigglr/process-exit-*`.
+This raises TriggerLR to 2/5 exact functions, not whole-owner closure.
+
+The next shared interpolation reconstruction separates histogram interpolation
+from the final unit conversion and reuses its accumulator. Control improves to
+**99.81343**, 1072/1072, exact 0x50 frame, eight register-only rows. Init
+improves to **98.975**, still 964 versus target 960. The intermediate explicit
+range variables regressed but exposed the frame cause; they were not retained.
+The status return of SlidingHisto_Init is now s32, supported by its signed retail
+caller test and its 0/1 implementation. Provider, voicing and subsamp remain
+object/physical unchanged; all exact siblings survive. Header width/ABI is
+unchanged. Reversing the noise-floor product alone was neutral and does not
+account for this gain. Evidence: `build/dol-trigger-coupled-20260912/trigglr/`
+`interpolation-accumulator-*`, `build/dol-trigger-status-20260912/overlay/`, and
+`build/dol-trigger-header-20260912/*/status-return-verification.json`.
+Init and Control still fail full target physical equivalence, despite matching
+43/43 and 27/27 inventories; no final link or new owner promotion is claimed.

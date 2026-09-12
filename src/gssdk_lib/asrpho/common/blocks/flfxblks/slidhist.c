@@ -72,14 +72,14 @@ void SlidingHisto_Clear(TriggerLR *block)
     }
 }
 
-u32 SlidingHisto_Init(TriggerLR *block)
+s32 SlidingHisto_Init(TriggerLR *block)
 {
     TosContext *context = block->base.context;
     f32 minimum;
     f32 maximum;
     u32 *bin;
     s32 *history;
-    u32 result = 0;
+    s32 result = 0;
 
     minimum = _tosGetProfileFloat(block, 12, 6.5f);
     maximum = _tosGetProfileFloat(block, 13, 27.0f);
