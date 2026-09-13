@@ -336,6 +336,76 @@ class CausalGroupsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.decision(rows, 0, 1, decision_mode="anything")
 
+    def test_hypothesis_guidance_distinguishes_unproved_from_forbidden(self):
+        rows = [row("lwz r3, 0(r3)", 0), row("blr", 4)]
+        packet = self.decision(rows, 0, 1, decision_mode="source-hypothesis")
+        before = copy.deepcopy(packet)
+        prompt = groups.render_decision_prompt(packet)
+        for guidance in ("absence of proved causality, not an admission requirement",
+                         "source-to-compiler ownership proof is not required",
+                         "Real used typed locals or aggregate snapshots",
+                         "coupled source boundaries", "actual supplied inputs, types and consumers",
+                         "fake/dead locals or numeric register shaping",
+                         "untested predictions, not guaranteed gains",
+                         "If no grounded cause is available, return insufficient"):
+            self.assertIn(guidance, prompt)
+        self.assertEqual(packet, before)
+        self.assertIs(packet["source_causality_proven"], False)
+        self.assertIs(packet["authority_advanced"], False)
+        fact = self.decision(rows, 0, 1)
+        self.assertNotIn("Real used typed locals", groups.render_decision_prompt(fact))
+        document = report(rows, [])
+        document["right"]["symbols"] = []
+        target_only = groups.decision_packet(document, "f", "int context;", 1, 1,
+                                            "Describe loads.", 0, 1, allow_missing_candidate=True)
+        self.assertNotIn("Real used typed locals", groups.render_decision_prompt(target_only))
+
+    def test_uncertain_used_local_hypothesis_and_insufficient_keep_no_authority(self):
+        rows = [row("lwz r4, 0(r3)", 0), row("lwz r3, 4(r3)", 4),
+                row("add r3, r4, r3", 8), row("blr", 12)]
+        source = "typedef struct Pair { unsigned a, b; } Pair;\nunsigned f(Pair *p) { return p->a + p->b; }"
+        packet = groups.decision_packet(report(rows, rows), "f", source, 1, 2,
+                                        "Can a real input snapshot affect load scheduling?", 0, 3,
+                                        decision_mode="source-hypothesis")
+        original = copy.deepcopy(packet)
+        answer = dict(status="hypothesis", function="f", packet_sha256=packet["packet_sha256"],
+                      answer={"cause": "A typed snapshot of the supplied pair feeds both sum operands.",
+                              "prediction": "Rows 0 and 1 may schedule the two input loads together.",
+                              "source_change": {"before": "return p->a + p->b;",
+                                                "after": "Pair values = *p; return values.a + values.b;"}},
+                      evidence_rows=[0, 1],
+                      missing_evidence="No source-to-compiler ownership proof; compiler outcome untested.")
+        receipt = groups.validate_decision_answer(packet, answer)
+        self.assertEqual(receipt["finding_status"], "hypothesis")
+        self.assertIs(receipt["authority"], False)
+        self.assertIs(receipt["review_required"], True)
+        insufficient = {**answer, "status": "insufficient", "answer": "No grounded cause selected.",
+                        "evidence_rows": [], "missing_evidence": "Caller alias constraints are unavailable."}
+        receipt = groups.validate_decision_answer(packet, insufficient)
+        self.assertEqual(receipt["status"], "insufficient_evidence")
+        self.assertIs(receipt.get("authority", False), False)
+        self.assertEqual(packet, original)
+        self.assertIs(packet["source_causality_proven"], False)
+        self.assertIs(packet["authority_advanced"], False)
+
+    def test_saved_codebook_insufficient_remains_valid_read_only(self):
+        folder = Path(__file__).resolve().parents[2] / "build/qwen-lang-cause-next-20260913/codebook-flags-reload"
+        paths = [folder / "decision.json", folder / "answer/codebook-flags-reload.answer.txt"]
+        if not all(path.is_file() for path in paths):
+            self.skipTest("local codebook support artifacts unavailable")
+        raw = [path.read_bytes() for path in paths]
+        packet, answer = map(json.loads, raw)
+        self.assertEqual(packet["packet_sha256"],
+                         "c7575d03735a87b7e19d23a1452f4fd388c0734db65d7f8d22443da9dd92d228")
+        self.assertEqual(answer["status"], "insufficient")
+        self.assertIn("source_causality_proven is false", answer["missing_evidence"])
+        receipt = groups.validate_decision_answer(packet, answer)
+        self.assertEqual(receipt["status"], "insufficient_evidence")
+        self.assertIs(receipt.get("authority", False), False)
+        self.assertIs(packet["authority_advanced"], False)
+        self.assertIn("not an admission requirement", groups.render_decision_prompt(packet))
+        self.assertEqual([path.read_bytes() for path in paths], raw)
+
     def test_existing_mel_fact_packet_replay(self):
         folder = Path(__file__).resolve().parents[2] / "build/qwen-mel-decisions-20260913/process-cursor"
         if not folder.is_dir():

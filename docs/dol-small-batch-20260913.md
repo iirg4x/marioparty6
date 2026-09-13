@@ -147,6 +147,43 @@ over-collapsed it to 124 bytes and was rejected. Reconstructing a probability
 pointer boundary or duplicating the tone traversal also regressed and was not
 retained. These findings constrain those source hypotheses, not the functions.
 
+## Keep compiler results usable, and hypotheses genuinely testable
+
+Both active scratch drivers (`small-remaining-baseline.py` and
+`small-first-cell.py` under `build/model-support-test/`) now use the existing
+`tools.bounded_process` implementation for compiler and objdiff calls. Baseline
+compilation has a 120-second deadline; candidate compilation and objdiff have
+60-second deadlines, with concurrently drained, bounded diagnostic output and
+process-tree termination. This does not cap Qwen inference or change compiler
+flags. Verified source/header/object bindings are atomically saved **before**
+report generation and score summarization, so a rendering failure cannot erase
+a usable compile. Report-only recovery never compiles or retroactively invents
+missing historical bindings.
+
+Fifteen driver/scenario fixtures and existing read-only replay checks pass,
+including compiler/objdiff hangs, report/census failure, and source/header drift.
+A real unchanged-source baseline reproduced retained langdata source `a7223284`
+and object `d3000e9f`, with a current binding at
+`build/small-remaining-baseline-20260913/gssdk_lib/asrpho/common/ctxdata/langdata/retained-data-snapshot/binding.json`.
+The updated candidate driver also ran a distinct field-snapshot composition
+successfully and preserved its binding. That source cell regressed to 83.91428%
+at 140 bytes; it is not retained, and the 84.77143% champion remains intact.
+
+The completed Qwen codebook reply cited `source_causality_proven=false` as part
+of its reason for supplying no hypothesis. Hypothesis-mode guidance now
+explicitly distinguishes **unproved** from **forbidden**: actual used typed
+locals, aggregate snapshots, and coupled source boundaries may be proposed
+from supplied types/consumers, with uncertainty. A compiler ownership trace is
+not a prerequisite for an ordinary experiment. Fake/dead storage, numeric
+register shaping, and invented ABI remain prohibited. Validation, legitimate
+`insufficient` replies, and legacy fact/target-only prompts are unchanged.
+The saved reply remains valid and is not rewritten or credited with the
+independently found source gain. This removes misleading guidance; improved
+model proposal quality has not yet been demonstrated.
+
+The affected causal/Qwen/bounded-process/compiler suites pass **122 tests,
+22 skipped**. These reliability and prompting fixes are not new owner closures.
+
 ## NewMore: closed by the real adjacent provider
 
 `Runtime.PPCEABI.H/NewMore.cp` is now source-selected and exact: five functions,
