@@ -4,28 +4,27 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **348/396**, **1/10** batch owners.
 
-## Context functions: 4/15 to 13/15 exact
+## Context functions: 4/15 to 14/15 exact
 
 The small `gssdk_lib/gsapi/ctxfuncs.c` owner originally had ten missing source
-functions. All fifteen bodies are now reconstructed; **13/15** pass strict,
+functions. All fifteen bodies are now reconstructed; **14/15** pass strict,
 data and independent raw physical checks. No exact sibling was lost. The
 complete source `.text` is the retail **2500 bytes** and all **52 relocation
-occurrences** agree. Two functions remain nonexact, so this is a retained
+occurrences** agree. One function remains nonexact, so this is a retained
 partial owner, not a Matching promotion or a new DOL-link claim.
 
 New exact functions: `SessionDataExport`, `SessionDataImport`,
 `ContextActivateParams`, `ContextDeActivate`, `ContextGetParam`,
-`ContextSetParam`, `ContextSetWrdData`, `ContextUnLoad`, and `ContextSetGcdData`.
-The four previously exact bodies remain exact. Remaining strict/data scores:
-`ContextActivate` **99.8375%** and `ContextGetAction` **99.42308%**.
-Activate has an eight-byte frame difference; GetAction has an eight-row index/result-base
-cycle in its first-match scan. No padding or fake local was added to fix frames.
+`ContextSetParam`, `ContextSetWrdData`, `ContextUnLoad`, `ContextSetGcdData`, and
+`ContextGetAction`. The four previously exact bodies remain exact. The only
+remaining strict/data score is `ContextActivate` **99.8375%**, with an eight-byte
+frame difference. No padding or fake local was added to fix frames.
 
-Live source `fda0c328c3e41f8ed316d502484ad1eff256e85b87c530f3a9981b66d31a92ca`;
-object `ba05e59dea29297af031a07dbb92ed05f51b1ee99fdd7b1fe9642330fbaeeaeb`;
+Live source `287d97bc744637770d88c0ddc1b1e745016e7f30d54e2c87d64f9a182ad2ff99`;
+object `6b8031617c2b845c1c5b3849ac7fb5e6dd02bc539dcfc6334386464dac4a833b`;
 target `aa14666733e8e64cdd22786dc385e75659a45f7100733ef0c1670917bdc01211`;
-strict/data `f23881ef6b99a051ebb1c696d085045c69cf9cdd88946fe2a15af375a7e065e7`.
-Proof: `build/small-first-20260913/gsctx-chunk-field-snapshot/frontier-proof.json`.
+strict/data `7f768111ea9c060982fb9b46eaa2a045ce0ff0b0245b86de158d3b30c42545d2`.
+Proof: `build/small-first-20260913/gsctx-case-three-limit-only/frontier-proof.json`.
 The owner is still unpromoted; main and batch counts above are unchanged.
 
 The productive path was target assembly plus m2c reconstruction, actual callee
@@ -64,9 +63,19 @@ and both field consumers independently justify this particular source shape.
 
 Subsequent first-match early return, direct action-pointer consumption,
 countdown scan, shared indexed scan position, and case-local indexed extents
-did not improve GetAction; the live 13/15 champion remains intact. The optional
+did not improve GetAction; the then-live 13/15 champion was preserved. The optional
 export's assignment-condition spelling was object-neutral. Qwen's delayed Mel
 block lifetime was tested in valid C89 scope and was also object-neutral.
+
+GetAction then closed with one new, primary-reviewed Qwen hypothesis: give only
+the case-3 first-match scan its own live `limit = table->count`, retaining the
+original function-scope `count` for case 4. Splitting both scan bounds had already
+failed; that did not test this asymmetric lifetime relationship. This single
+compile made **312/312 bytes raw exact**, strict/data 100%, without changing any
+of the other fourteen bodies or the owner's 52 physical relocation occurrences.
+All thirteen previously exact siblings survive. The new local is the real loop
+extent, not a register-only alias. Qwen supplied bounded support; the primary
+distinguished the hypothesis from the earlier failure and verified retention.
 
 Source-fidelity caveat: the target `SessionDataExport` writes the allocated
 header before its null check. The reconstruction preserves that legacy order;
@@ -178,8 +187,10 @@ not a prerequisite for an ordinary experiment. Fake/dead storage, numeric
 register shaping, and invented ABI remain prohibited. Validation, legitimate
 `insufficient` replies, and legacy fact/target-only prompts are unchanged.
 The saved reply remains valid and is not rewritten or credited with the
-independently found source gain. This removes misleading guidance; improved
-model proposal quality has not yet been demonstrated.
+independently found source gain. Subsequent actual use of the updated guidance
+produced the case-3-only GetAction hypothesis above, and primary review plus one
+compile verified a new exact function. That is one demonstrated useful proposal,
+not proof of a general model quality improvement or an automated matching engine.
 
 The affected causal/Qwen/bounded-process/compiler suites pass **122 tests,
 22 skipped**. These reliability and prompting fixes are not new owner closures.

@@ -265,13 +265,14 @@ s32 ContextGetAction(GSLoadedContext *context, GSActionObservation *observation,
         u32 index;
         u32 *actions;
         u32 *keys;
+        u32 limit;
 
-        count = table->count;
+        limit = table->count;
         index = 0;
         actions = (u32 *)((u8 *)table + table->actionsOffset);
         keys = (u32 *)((u8 *)table + table->keysOffset);
 
-        for (; index < count; index++) {
+        for (; index < limit; index++) {
             if (key == keys[index]) {
                 *action = actions[index];
                 break;
