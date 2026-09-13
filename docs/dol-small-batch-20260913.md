@@ -1,8 +1,41 @@
 # Small DOL batch — 2026-09-13
 
-## m621: typed call context and terminal-return guidance (17/66 selected)
+## m621: broad first-compile census and five-function utility gain
 
-The current retained m621 frontier is **17/66 source-selected application
+All **37 previously undrafted address-named functions** received an isolated
+m2c/MWCC first compile in **8.794 seconds**: **18 compiled**, **4 reached raw
+objdiff 100%**, and **19 reported compiler/context failures**. These are scratch
+diagnostics, not 37 source recoveries. The census records source/object hashes,
+compiler diagnostics, diff counts, and m2c placeholder use; canonical source was
+unchanged. A macro-backed raw match is never automatically retained.
+Evidence: `build/minigame-recovery-20260913/m621/first-compile-remainder/census.json`.
+
+The immediate canonical follow-up compiled **five utility functions together**
+and matched all five: `fn_1_52D4`, `fn_1_5328`, `fn_1_5340`, `fn_1_5350`, and
+`fn_1_537C`. Target `sth/lha` proves the coin parameter is `s16`, not the inferred
+`s32`. The float wrapper calls a double absolute-value helper and rounds on return;
+the helper uses the existing compiler `__fabs` intrinsic, with no inline assembly.
+The corrected header preserved all four exact round callbacks.
+
+The retained source-selected count is now **22 functions**, up from 17, and
+**2,604 code bytes including startup**. Strict instructions, independent physical
+relocations, linked sections, the retail-identical REL, and all **137 checksums**
+pass. This remains a partial module, not a whole-minigame/main closure. The
+66-entry address-function census still includes the apparent runtime conversion
+helper at `fn_1_5384`; do not count a future runtime reclassification as game-code
+recovery. Forty-four census entries remain outside the selected source units.
+Current proof: `build/minigame-recovery-20260913/m621/entry-proof/receipt.json`.
+
+Operational correction: first-compile all independent remaining drafts before
+serially polishing a residual. Group resulting failures by missing prototypes,
+record/array types, and unsupported decompiler syntax; repair shared context and
+compile the affected group together. Do not wait for donor research or complete
+record recovery to measure unrelated drafts. Placeholder-assisted syntax probes
+remain isolated; canonical retention still uses natural source and the proof ladder.
+
+## m621: earlier typed call context and terminal-return guidance (17/66 selected)
+
+At private commit `f57fe63`, the retained m621 frontier was **17/66 source-selected application
 functions**, up from 13. The four round callbacks (`fn_1_5F0`, `fn_1_70C`,
 `fn_1_778`, `fn_1_A5C`) add **1,372 code bytes**, for **2,428 including startup**.
 Independent strict/physical comparison, linked section bytes, the retail REL,

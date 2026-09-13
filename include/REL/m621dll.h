@@ -90,7 +90,10 @@ void fn_1_1BF4(OMOBJ *obj);
 void fn_1_215C(OMOBJ *obj);
 void fn_1_27A0(void);
 void fn_1_5054(OMOBJ *obj);
-void fn_1_52D4(s32 playerNo, s32 coins);
+void fn_1_52D4(s32 playerNo, s16 coins);
 void fn_1_5328(s32 playerNo, s32 score);
+s16 fn_1_5340(void);
+float fn_1_5350(float value);
+double fn_1_537C(double value);
 
 #endif

@@ -21,3 +21,6 @@ REL/m621dll/audio.c:
 
 REL/m621dll/round.c:
 	.text       start:0x000005F0 end:0x00000B4C
+
+REL/m621dll/utility.c:
+	.text       start:0x000052D4 end:0x00005384
