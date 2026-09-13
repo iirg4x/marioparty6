@@ -10,9 +10,9 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 22.43% | 43.41% |
+| Entire project | 22.50% | 43.46% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 8.57% | 8.29% |
+| REL modules | 8.66% | 8.37% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
 **1 is fully source-selected** (`m616dll`) and **81 remain**. This scope is distinct
@@ -23,11 +23,12 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-The latest batch recovers **m670dll pillar and CPU controllers**: two source
-owners, seven gameplay functions, and 6,508 additional selected code bytes.
-Together with its earlier recovered owners, m670 now selects **11,140 / 19,924
-code bytes (55.91%)** from source. Its rebuilt REL is retail-identical; unfinished
-regions still use original objects. This is not a whole-minigame source closure.
+The latest batch recovers **m670dll initialization and sequence controllers**:
+four source owners, sixteen application functions, and 8,784 additional selected
+code bytes. Together with its earlier recovered owners, m670 now selects **all
+19,924 code bytes (100%)** from source. Its rebuilt REL is retail-identical.
+The 32-byte response data record and shared BSS region still use original
+objects, so this is not yet a whole-minigame source closure.
 The preceding m651 batch remains selected at 18,204 code bytes, with its entry
 BSS unresolved. The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
