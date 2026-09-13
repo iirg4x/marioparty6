@@ -75,6 +75,94 @@ file size or a high percentage. Keep the full current machine slice and the
 compact rejected source classes in future support packets; do not ask a fresh
 model to rediscover a known neutral conversion or helper boundary.
 
+## Mel: source reconstruction gains and remaining causes
+
+The retained live owner still has **2/5 exact functions**; no new owner closure
+is counted. Both exact siblings survive. Improvements are retained in the
+working branch, not promoted to main:
+
+| Function | Original strict/data | Retained strict/data | Target/source bytes |
+| --- | ---: | ---: | ---: |
+| ProcessMel | 93.5% | 93.5% | 440/440 |
+| ControlMel | 72.53488% | 99.30232% | 344/344 |
+| MelInitBands | 93.87539% | 99.43302% | 1284/1284 |
+| InitMel | 100% | 100% | 108/108 |
+| ConstructMel | 100% | 100% | 68/68 |
+
+Control's repeated teardown is an ordinary inline helper with a live cached
+context. The command-1 caller retains its independent guard. Reading the actual
+fourth argument's float payload directly removes the extra copied local home;
+logical status inversion removes the nonretail negate. Its only remaining
+instruction difference is the final byte-to-word return extension. The actual
+callback interface remains u32: changing the function to u8 was rejected by the
+compiler, not hidden with a function-pointer cast or shared-header change.
+
+MelInitBands needed unsigned bin-count arithmetic, the real profile narrowing,
+direct band-ordinal consumers, and one selected triangular-weight store.
+Indexed center-frequency stores remove an artificial extra cursor, closing 29
+more rows. Owner `.text` shrank from 2296 to the target **2244 bytes**;
+`.sdata2` shrank from 104 to the target **96 byte-identical bytes**. The compiler
+stays pinned to GC/1.2.5n. No forced inline, ASM, register directive, padding,
+or invented storage was added. Descriptive helper/local names remain
+reconstructions, not recovered original identities.
+
+Live source SHA-256:
+`276b306f9d15742b8207505565f6c2032e1b7b3dbb2ab3849f3043d9f5dbc2df`.
+Object: `d6534eb282c920b9a2faba1abcbeee6b8f582d872addc270bd6bda9c29b6598c`.
+Strict/data: `ae336f553d56003095517eab1b66c5685e41d937d76a4911c3f6c50d4d020bbc`.
+Proof: `build/small-first-20260913/mel-indexed-centers/frontier-proof.json`.
+A fresh compile of live source reproduced that object at
+`build/small-remaining-baseline-20260913/gssdk_lib/asrpho/common/blocks/flblocks/mel/retained-indexed-centers/`.
+Control's 10 relocations and both exact siblings' receipts are raw exact.
+ProcessMel and MelInitBands retain physical differences; no new source-linked
+DOL proof is claimed. Batch stays **1/10**, local **348/396**, main **347/396**.
+
+Remaining useful constraints: MelInitBands' 52 ARG rows include an 8-byte frame
+delta and FPR/volatile-owner cycles. A direct two-arm limit assignment fixes
+the frame but adds a move; default-limit assignment removes a target branch.
+Neither replaced the champion. Putting the ternary directly in the loop
+condition regresses; ordinary inline-minimum and frequency-for forms are
+instruction-neutral. ProcessMel's signed index is object-neutral, indexed
+output regresses, and an accumulation helper closes only three rows without
+solving the owner cycle. These constrain those measured hypotheses, not the
+whole functions or distinct coupled source causes.
+
+## Concrete support proposals and recoverable score summaries
+
+The existing `recovery_causal_groups.decision_packet` now has an opt-in
+`decision_mode="source-hypothesis"`. Default factual packets/prompts remain
+byte-compatible. A hypothesis must cite supplied rows, state uncertainty, and
+provide one `source_change={before, after}`: the before text must occur exactly
+once in the sealed excerpt and the after text must be nonempty and different.
+It may express coupled statements; it is not an automatically applied patch,
+compiler instruction, or retention decision. The primary must still reject
+ABI guesses, fake operations, known-neutral repeats, and unsupported claims.
+
+This closes a real prompt defect observed on Mel: factual-only support demanded
+unknowable original-source identity; the first permissive hypothesis replay
+then merely redescribed the existing u8 return and loop index. Those two real
+answers are not source gains. The tightened prompt asks for a concrete new
+replacement or `insufficient`, rather than accepting prose as a next source
+decision. Installed Qwen receipt compatibility is preserved (`valid_finding`
+with explicit hypothesis/review/no-authority fields); schema validity does not
+prove the proposal will match. New real replay:
+`build/qwen-mel-source-change-20260913/`.
+
+`summarize_match_scores` in that same tracked module is now shared by the
+baseline and candidate scratch drivers. Missing target/candidate functions,
+null/alias scores, and duplicate names cannot crash halfway through a census
+or turn missing source into an exact result. Score exactness is explicitly
+separate from physical/instruction proof. Both drivers' `--report-only` mode
+reads retained objects/reports without compiling or rewriting historical
+bindings. It recovers the ctxfuncs census (15 functions, 4 score-exact, 11
+residuals), including ten absent source functions, from the existing artifacts.
+Unavailable old bindings stay unavailable; no provenance is fabricated.
+
+Affected causal/header/pool tests: **96 run, one skipped**. Both-driver fixtures
+also verify object/report/binding preservation on successful recovery,
+malformed JSON, and mismatched object bindings. No compiler or model is run by
+those fixtures. Tool results and retained source gains are counted separately.
+
 ## Voicing: three function gains retained
 
 The owner now has **4/6 strict/data-exact functions**, up from 1/6. Its original

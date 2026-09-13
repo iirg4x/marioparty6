@@ -84,6 +84,37 @@ def numeric_domain_evidence(left: list[dict], right: list[dict]) -> dict:
             "authority_advanced": False}
 
 
+def summarize_match_scores(document: dict) -> dict:
+    """Name-bound score census only; null/alias scores never imply exactness.
+
+    This lightweight path intentionally requires no disassembly interpretation
+    and performs no file writes, builds, or repair of a report's bindings.
+    """
+    sides = [[s for s in frontier.focus._symbols(document, side, "strict")
+              if s.get("instructions")] for side in ("left", "right")]
+    for symbols in sides:
+        names = [s["name"] for s in symbols]
+        if len(set(names)) != len(names):
+            raise ValueError("ambiguous duplicate function names in score census")
+    right = {s["name"]: s for s in sides[1]}
+    scores = {}
+    for symbol in sides[0]:
+        candidate = right.get(symbol["name"])
+        score = symbol.get("match_percent")
+        status = ("missing_candidate" if candidate is None else
+                  "unscored" if score is None else "score_exact" if score == 100 else "mismatch")
+        scores[symbol["name"]] = {"target_bytes": symbol.get("size"),
+                                  "candidate_bytes": candidate.get("size") if candidate else None,
+                                  "score": score, "status": status}
+    return {"functions": len(scores),
+            "exact": sum(s["status"] == "score_exact" for s in scores.values()),
+            "function_scores": scores,
+            "residuals": {name: s for name, s in scores.items() if s["status"] != "score_exact"},
+            "candidate_only": {name: {"candidate_bytes": s.get("size"),
+                                      "score": s.get("match_percent"), "status": "missing_target"}
+                               for name, s in right.items() if name not in scores}}
+
+
 def summarize_owner(document: dict) -> dict:
     """Small whole-object view: count closures and surface shared domain clues."""
     symbols = frontier.focus._symbols(document, "left", "strict")
@@ -175,8 +206,9 @@ def _digest(value: Any) -> str:
 
 def decision_packet(document: dict, function: str, source: str, start: int, end: int,
                     question: str, row_start: int, row_end: int, *, max_bytes: int = 18000,
-                    producer_sites: list[int] | None = None, producer_limit: int = 16) -> dict:
-    """One factual support decision, not an open-ended function rewrite.
+                    producer_sites: list[int] | None = None, producer_limit: int = 16,
+                    decision_mode: str = "fact") -> dict:
+    """One bounded support decision, not an open-ended function rewrite.
 
     Include the complete function's call/branch census even when arithmetic is
     excerpted. Matrix's unchanged straight-line memcpy was previously replaced
@@ -185,7 +217,11 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
     Optional producer_sites are explicit selected-row questions for the existing
     block-local slicer; their definitions may precede row_start. The shared byte
     cap includes this context, and omitted context leaves legacy packets intact.
+    decision_mode='source-hypothesis' explicitly permits a single uncertain
+    natural-C cause proposal. Default fact packets and prompts remain unchanged.
     """
+    if decision_mode not in {"fact", "source-hypothesis"}:
+        raise ValueError("unknown decision mode")
     lines = source.splitlines()
     if not isinstance(question, str) or not question.strip() or len(question) > 800:
         raise ValueError("one concrete decision question is required (1..800 characters)")
@@ -231,6 +267,8 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
                               for i in range(row_start, row_end+1)],
               "omitted_aligned_rows": max(map(len, streams)) - (row_end-row_start+1),
               "source_causality_proven": False, "authority_advanced": False}
+    if decision_mode == "source-hypothesis":
+        result["decision_mode"] = decision_mode
     if producer_sites is not None:
         result["producer_context"] = {
             side: producer_slice(stream, producer_sites, limit=producer_limit)
@@ -243,6 +281,40 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
 
 def render_decision_prompt(packet: dict) -> str:
     validate_decision_packet(packet)
+    if packet.get("decision_mode") == "source-hypothesis":
+        return (
+            "Answer the ONE stated compiler/source question from this bound evidence. You may propose "
+            "at most ONE natural-C source cause, explicitly uncertain, with a prediction for supplied "
+            "row IDs. Original-source identity or uniqueness is not required to propose a cause and "
+            "must never be claimed. Do not merely restate register differences if evidence supports a "
+            "source-level cause. If no grounded cause is available, return insufficient. "
+            "Respect the whole-function call/branch census even when paired rows are partial. "
+            "Propose ONE concrete new natural-C replacement for Astra review; it may contain coupled "
+            "statements. Honor known-neutral constraints supplied in the question. Return insufficient "
+            "if no concrete new source change is supported, rather than restating existing source. "
+            "Do not invent loops, fake locals/storage/operations, ABI/signatures, syntax "
+            "matrices, or alternative proposals. PowerPC subf d,a,b computes b-a. "
+            "Respect volatile clobbers and actual return values at calls; an argument-register value "
+            "alone does not prove an extra argument. UNKNOWN/truncated producer context is not proof "
+            "of source ownership or cross-CFG/call dataflow. "
+            "Return only JSON with exactly these fields: "
+            '{"status":"hypothesis or supported or insufficient","function":"name",'
+            '"packet_sha256":"copied hash","answer":"concise finding",'
+            '"evidence_rows":[0],"missing_evidence":null}. '
+            "For hypothesis, answer must be one object instead of a string, with exactly "
+            '{"cause":"one natural-C cause","prediction":"expected effect on cited rows",'
+            '"source_change":{"before":"exact unique substring of source_excerpt",'
+            '"after":"proposed replacement"}}; '
+            "before must occur exactly once in the sealed source_excerpt; after must be nonempty "
+            "and different. This is only a proposal, never an applied patch or authority to act. "
+            "evidence_rows must be nonempty supplied row IDs predicted to change, and missing_evidence "
+            "must be a nonempty uncertainty/limitation string. For supported use a factual string, "
+            "nonempty citations and null missing_evidence. For insufficient use a string and nonempty "
+            "missing_evidence. Cite only supplied paired/census/producer-node row IDs. "
+            "Astra alone chooses and tests any cause; this answer grants no patch, compile, retention, "
+            "or promotion authority. Semantic plausibility and the single-cause rule require primary "
+            "review, not merely schema validation.\n"
+            + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
     return ("Answer the ONE stated compiler/source question using only this bound evidence. "
             "Do not solve the entire function, invent a new algorithm, write a patch, or list experiments. "
             "The call/branch census covers the whole function; the paired arithmetic rows may be partial. "
@@ -272,6 +344,8 @@ def validate_decision_packet(packet: dict) -> None:
             or packet.get("source_causality_proven") is not False
             or packet.get("packet_sha256") != _digest({k: v for k, v in packet.items() if k != "packet_sha256"})):
         raise ValueError("invalid or changed decision packet")
+    if "decision_mode" in packet and packet["decision_mode"] != "source-hypothesis":
+        raise ValueError("invalid decision mode")
     if (not isinstance(packet.get("function"), str) or not packet["function"]
             or not isinstance(packet.get("question"), str) or not packet["question"].strip()
             or not isinstance(packet.get("paired_rows"), list) or not packet["paired_rows"]
@@ -321,7 +395,21 @@ def validate_decision_answer(packet: dict, answer: dict) -> dict:
         raise ValueError("decision answer must use the exact JSON contract; patches are not findings")
     if answer["function"] != packet["function"] or answer["packet_sha256"] != packet["packet_sha256"]:
         raise ValueError("decision answer function/packet binding differs")
-    if answer["status"] not in {"supported", "insufficient"} or not isinstance(answer["answer"], str) or not answer["answer"].strip():
+    hypothesis = answer["status"] == "hypothesis" and packet.get("decision_mode") == "source-hypothesis"
+    if hypothesis:
+        proposal = answer["answer"]
+        if (not isinstance(proposal, dict) or set(proposal) != {"cause", "prediction", "source_change"}
+                or any(not isinstance(proposal[key], str) or not proposal[key].strip()
+                       for key in ("cause", "prediction"))):
+            raise ValueError("hypothesis needs one cause and row-effect prediction")
+        change = proposal["source_change"]
+        if (not isinstance(change, dict) or set(change) != {"before", "after"}
+                or any(not isinstance(value, str) or not value.strip() for value in change.values())
+                or change["before"] == change["after"]
+                or not isinstance(packet.get("source_excerpt"), str)
+                or packet["source_excerpt"].count(change["before"]) != 1):
+            raise ValueError("hypothesis needs one unique bound before and different nonempty after")
+    elif answer["status"] not in {"supported", "insufficient"} or not isinstance(answer["answer"], str) or not answer["answer"].strip():
         raise ValueError("decision answer lacks status/finding")
     cited = answer["evidence_rows"]
     available = {row["row"] for row in packet["paired_rows"]}
@@ -336,9 +424,14 @@ def validate_decision_answer(packet: dict, answer: dict) -> dict:
         raise ValueError("supported finding needs citations and no missing evidence")
     if answer["status"] == "insufficient" and (not isinstance(answer["missing_evidence"], str) or not answer["missing_evidence"].strip()):
         raise ValueError("insufficient finding must identify missing evidence")
-    return {"status": "valid_finding" if answer["status"] == "supported" else "insufficient_evidence",
+    if hypothesis and (not cited or not isinstance(answer["missing_evidence"], str)
+                       or not answer["missing_evidence"].strip()):
+        raise ValueError("hypothesis needs predicted rows and explicit uncertainty")
+    return {"status": "valid_finding" if hypothesis or answer["status"] == "supported" else "insufficient_evidence",
             "packet_sha256": packet["packet_sha256"], "answer_sha256": _digest(answer),
-            "factual_correctness": "requires primary review", "authority_advanced": False}
+            "factual_correctness": "requires primary review", "authority_advanced": False,
+            **({"finding_status": "hypothesis", "review_required": True, "authority": False}
+               if hypothesis else {})}
 
 
 def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> dict:

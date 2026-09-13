@@ -6,6 +6,9 @@ import json
 import os
 from pathlib import Path
 import unittest
+import tempfile
+import subprocess
+import sys
 
 from tools import recovery_causal_groups as groups
 
@@ -21,6 +24,94 @@ def report(left, right):
 
 
 class CausalGroupsTests(unittest.TestCase):
+    def test_score_census_missing_null_and_aliases(self):
+        def symbol(name, score):
+            return {"name": name, "instructions": [row("blr", 0)], "size": "4", "match_percent": score}
+        document = {"left": {"symbols": [symbol("exact", 100), symbol("missing", 100),
+                                          symbol("null", None), symbol("alias", None)]},
+                    "right": {"symbols": [symbol("exact", 100), symbol("null", 100),
+                                           symbol("alias", 100), symbol("extra", 100)]}}
+        result = groups.summarize_match_scores(document)
+        self.assertEqual(result["exact"], 1)
+        self.assertEqual(result["functions"], 4)
+        self.assertEqual(result["residuals"]["missing"]["status"], "missing_candidate")
+        self.assertIsNone(result["residuals"]["missing"]["candidate_bytes"])
+        self.assertEqual(result["residuals"]["null"]["status"], "unscored")
+        self.assertIsNone(result["residuals"]["alias"]["score"])
+        self.assertEqual(result["candidate_only"]["extra"]["status"], "missing_target")
+        document["right"]["symbols"].append(symbol("exact", 100))
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            groups.summarize_match_scores(document)
+
+    def test_source_hypothesis_opt_in_and_legacy_compatibility(self):
+        rows = [row("li r3, 0", 0), row("blr", 4)]
+        plain = self.decision(rows, 0, 1)
+        explicit = self.decision(rows, 0, 1, decision_mode="fact")
+        self.assertEqual(plain, explicit)
+        self.assertNotIn("decision_mode", plain)
+        self.assertEqual(groups.render_decision_prompt(plain), groups.render_decision_prompt(explicit))
+        packet = self.decision(rows, 0, 1, decision_mode="source-hypothesis")
+        answer = dict(status="hypothesis", function="f", packet_sha256=packet["packet_sha256"],
+                      answer={"cause": "Reuse an existing zero initialization value.",
+                              "prediction": "Row 0 may use the shared producer.",
+                              "source_change": {"before": "void f(void) {}", "after": "void f(void) { return; }"}},
+                      evidence_rows=[0], missing_evidence="Compiler outcome is untested; source identity unknown.")
+        receipt = groups.validate_decision_answer(packet, answer)
+        self.assertEqual(receipt["status"], "valid_finding")
+        self.assertEqual(receipt["finding_status"], "hypothesis")
+        self.assertIs(receipt["review_required"], True)
+        self.assertIs(receipt["authority"], False)
+        with tempfile.TemporaryDirectory() as temporary:
+            packet_path = Path(temporary) / "decision.json"
+            answer_path = Path(temporary) / "answer.json"
+            packet_path.write_text(json.dumps(packet), encoding="utf-8")
+            answer_path.write_text(json.dumps(answer), encoding="utf-8")
+            output = subprocess.check_output(
+                [sys.executable, str(Path(groups.__file__)), "--decision-packet", str(packet_path),
+                 "--check-support-answer", str(answer_path)], text=True)
+            self.assertEqual(json.loads(output), receipt)
+        self.assertIn("at most ONE natural-C", groups.render_decision_prompt(packet))
+        legacy_answer = {**answer, "packet_sha256": plain["packet_sha256"]}
+        with self.assertRaises(ValueError):
+            groups.validate_decision_answer(plain, legacy_answer)
+        for status, missing in (("supported", None), ("insufficient", "Need a definition")):
+            groups.validate_decision_answer(packet, {**answer, "status": status,
+                                                     "answer": "A factual finding.", "missing_evidence": missing})
+        for changes in ({"evidence_rows": []}, {"evidence_rows": [90]}, {"evidence_rows": [0, 0]},
+                        {"missing_evidence": None}, {"answer": "Unstructured speculation"},
+                        {"answer": {"cause": "x", "prediction": ""}},
+                        {"packet_sha256": plain["packet_sha256"]}):
+            with self.assertRaises(ValueError):
+                groups.validate_decision_answer(packet, {**answer, **changes})
+        for change in ({"before": "absent", "after": "new"},
+                       {"before": "void", "after": "new"},
+                       {"before": "void f(void) {}", "after": "void f(void) {}"},
+                       {"before": "void f(void) {}", "after": " "},
+                       {"before": "", "after": "new"}):
+            with self.assertRaisesRegex(ValueError, "unique bound"):
+                groups.validate_decision_answer(packet, {**answer, "answer": {
+                    **answer["answer"], "source_change": change}})
+        tampered = {**plain, "decision_mode": "source-hypothesis"}
+        with self.assertRaises(ValueError):
+            groups.validate_decision_packet(tampered)
+        tampered = {**packet, "decision_mode": "anything"}
+        tampered["packet_sha256"] = groups._digest({k: v for k, v in tampered.items() if k != "packet_sha256"})
+        with self.assertRaises(ValueError):
+            groups.validate_decision_packet(tampered)
+        with self.assertRaises(ValueError):
+            self.decision(rows, 0, 1, decision_mode="anything")
+
+    def test_existing_mel_fact_packet_replay(self):
+        folder = Path(__file__).resolve().parents[2] / "build/qwen-mel-decisions-20260913/process-cursor"
+        if not folder.is_dir():
+            self.skipTest("local bounded replay artifacts unavailable")
+        packet = json.loads((folder / "decision.json").read_text())
+        prompt = groups.render_decision_prompt(packet)
+        self.assertEqual(hashlib.sha256(prompt.encode()).hexdigest(),
+                         "85783f9a38c219d7738bc63a042148c9679d72b87aa465e625a1739e7718ddf2")
+        answer = json.loads((folder / "answer/process-cursor.answer.txt").read_text())
+        self.assertEqual(groups.validate_decision_answer(packet, answer)["status"], "valid_finding")
+
     def decision(self, rows, start, end, **kwargs):
         return groups.decision_packet(report(rows, rows), "f", "void f(void) {}", 1, 1,
                                       "Where is this value defined?", start, end, **kwargs)

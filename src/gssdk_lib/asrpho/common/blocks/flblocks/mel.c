@@ -6,7 +6,7 @@ typedef struct Mel {
     TosBaseBlock base;
     u32 bandCount;
     f32 **weights;
-    s32 *firstBins;
+    u32 *firstBins;
     u32 *binCounts;
     f32 sampleScale;
 } Mel;
@@ -51,39 +51,37 @@ static void ProcessMel(
     }
 }
 
+static inline void MelFreeBands(Mel *block)
+{
+    if (block->weights != NULL) {
+        TosContext *context = block->base.context;
+        u32 band;
+
+        for (band = 0; band < block->bandCount; band++) {
+            heap_Free(context->heap, block->weights[band]);
+        }
+        heap_Free(context->heap, block->weights);
+        heap_Free(context->heap, block->firstBins);
+        heap_Free(context->heap, block->binCounts);
+        block->weights = NULL;
+    }
+}
+
 static u32 ControlMel(
     TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
 {
     Mel *block = (Mel *)baseBlock;
-    MelControlValue controlValue;
-    u32 result = 1;
-    u32 band;
-
-    controlValue.bits = argumentSize;
+    u8 result = 1;
     switch ((u8)command) {
     case 1:
         if (block->weights != NULL) {
-            for (band = 0; band < block->bandCount; band++) {
-                heap_Free(block->base.context->heap, block->weights[band]);
-            }
-            heap_Free(block->base.context->heap, block->weights);
-            heap_Free(block->base.context->heap, block->firstBins);
-            heap_Free(block->base.context->heap, block->binCounts);
-            block->weights = NULL;
+            MelFreeBands(block);
         }
-        result = MelInitBands(block, controlValue.value) == 0;
+        result = !MelInitBands(block, *(f32 *)&argumentSize);
         break;
 
     case 255:
-        if (block->weights != NULL) {
-            for (band = 0; band < block->bandCount; band++) {
-                heap_Free(block->base.context->heap, block->weights[band]);
-            }
-            heap_Free(block->base.context->heap, block->weights);
-            heap_Free(block->base.context->heap, block->firstBins);
-            heap_Free(block->base.context->heap, block->binCounts);
-            block->weights = NULL;
-        }
+        MelFreeBands(block);
         tosBaseBlockDestruct(block);
         break;
 
@@ -98,15 +96,14 @@ static u8 MelInitBands(Mel *block, f32 sampleScale)
 {
     TosContext *context = block->base.context;
     f32 maximumFrequency;
-    u16 skippedBands;
-    u16 binCount;
+    u32 skippedBands;
+    u32 binCount;
     f32 *frequencyBins;
     f32 *frequencyBin;
     f32 binWidth;
     f32 frequency;
     f32 linearEnd;
     f32 *centerFrequencies;
-    f32 *centerFrequency;
     u32 band;
 
     maximumFrequency = _tosGetProfileFloat(block, 2, 4000.0f);
@@ -120,10 +117,10 @@ static u8 MelInitBands(Mel *block, f32 sampleScale)
         return 1;
     }
 
-    binWidth = maximumFrequency / (binCount - 1);
+    frequencyBin = frequencyBins;
+    binWidth = maximumFrequency / (binCount - 1U);
     linearEnd = maximumFrequency > 1000.0f ? 1000.0f : maximumFrequency;
     frequency = 0.0f;
-    frequencyBin = frequencyBins;
     while (frequency < linearEnd) {
         *frequencyBin++ = frequency / (100.0f * sampleScale);
         frequency += binWidth;
@@ -151,7 +148,7 @@ static u8 MelInitBands(Mel *block, f32 sampleScale)
     }
     block->bandCount -= skippedBands;
 
-    if (block->bandCount != _tosGetProfileU32(block, 4, 21)) {
+    if (block->bandCount != (u16)_tosGetProfileU32(block, 4, 21)) {
         return 1;
     }
 
@@ -163,7 +160,7 @@ static u8 MelInitBands(Mel *block, f32 sampleScale)
     }
 
     block->firstBins =
-        heap_Calloc(context->heap, block->bandCount, sizeof(s32));
+        heap_Calloc(context->heap, block->bandCount, sizeof(u32));
     if (block->firstBins == NULL) {
         _tosErrorLog(block, 100);
         heap_Free(context->heap, block->weights);
@@ -189,18 +186,16 @@ static u8 MelInitBands(Mel *block, f32 sampleScale)
         return 1;
     }
 
-    centerFrequency = centerFrequencies;
-    for (band = 0; band < block->bandCount; band++, centerFrequency++) {
-        u32 melBand = band + skippedBands;
-        f32 bandPosition = (f32)(melBand + 1);
+    for (band = 0; band < block->bandCount; band++) {
+        f32 bandPosition = (f32)(band + skippedBands + 1);
         u32 bin;
 
         block->binCounts[band] = 0;
         block->firstBins[band] = -1;
-        if (melBand < 10) {
-            *centerFrequency = 100.0f * bandPosition;
+        if (band + skippedBands < 10) {
+            centerFrequencies[band] = 100.0f * bandPosition;
         } else {
-            *centerFrequency =
+            centerFrequencies[band] =
                 1000.0f *
                 powf(
                     2.0f,
@@ -230,15 +225,13 @@ static u8 MelInitBands(Mel *block, f32 sampleScale)
         {
             f32 *weight = block->weights[band];
 
-            for (bin = 0; bin < block->binCounts[band]; bin++, weight++) {
+            for (bin = 0; bin < block->binCounts[band]; bin++) {
                 f32 value =
                     frequencyBins[block->firstBins[band] + bin];
 
-                if (value < bandPosition) {
-                    *weight = 1.0f - bandPosition + value;
-                } else {
-                    *weight = 1.0f - value + bandPosition;
-                }
+                *weight++ = value < bandPosition
+                    ? 1.0f - bandPosition + value
+                    : 1.0f - value + bandPosition;
             }
         }
     }
