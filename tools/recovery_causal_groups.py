@@ -1050,6 +1050,71 @@ def validate_decision_packet(packet: dict) -> None:
                 raise ValueError("duplicate/unordered decision producer nodes")
 
 
+def review_source_store_counts(before: str, after: str) -> dict:
+    """Advisory syntax census, not C semantics, alias/type proof or admission.
+
+    Only a single zero-based contiguous indexed run and a newly declared
+    advancing destination pointer are recognized. Unsupported fragments are
+    UNKNOWN, including control flow, calls, nested scopes and string literals.
+    """
+    result = {"status": "UNKNOWN", "warnings": [], "authority": False,
+              "scope": "straight-line syntactic store counts only; semantic equivalence UNKNOWN"}
+    ident = r"[A-Za-z_][A-Za-z_0-9]*"
+    path = rf"{ident}(?:\s*(?:->|\.)\s*{ident})*"
+    atom = rf"(?:{path}|0|[1-9][0-9]*)"
+
+    def statements(text: str) -> list[str] | None:
+        if len(text) > 32768 or "\\" in text or "??" in text:
+            return None  # No translation-phase splicing/trigraph assumptions.
+        tokens = re.compile(r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.S)
+        # Retain a poison token for literals; their contents never become code.
+        text = tokens.sub(lambda m: " " if m[0].startswith("/") else "@", text).strip()
+        if text.startswith("{") and text.endswith("}"):
+            text = text[1:-1].strip()
+        if not text.endswith(";") or re.search(r"[{}()#@'\"\\]", text):
+            return None
+        items = [item.strip() for item in text[:-1].split(";")]
+        return items if 0 < len(items) <= 256 and all(items) else None
+
+    old, new = statements(before), statements(after)
+    if old is None or new is None:
+        return result
+    canonical = lambda value: re.sub(r"\s+", "", value)
+    alias = re.fullmatch(rf"{ident}\s*\*+\s*({ident})\s*=\s*({path})", new[0])
+    if not alias:
+        return result
+    pointer, base = alias[1], canonical(alias[2])
+    indices, counts = [], [0, 0]
+    for side, items in enumerate((old, new[1:])):
+        for statement in items:
+            indexed = re.fullmatch(rf"({path})\s*\[\s*(0|[1-9][0-9]{{0,5}})\s*\]\s*=\s*({atom})", statement)
+            advancing = re.fullmatch(rf"\*\s*{re.escape(pointer)}\s*\+\+\s*=\s*({atom})", statement)
+            if side == 0 and indexed and canonical(indexed[1]) == base:
+                indices.append(int(indexed[2]))
+                counts[side] += 1
+            elif side == 1 and advancing:
+                counts[side] += 1
+            else:
+                simple = re.fullmatch(rf"({path})\s*(?:=|\+=)\s*({atom})", statement)
+                if not simple:
+                    return result
+                lhs = canonical(simple[1])
+                # No explicit mutation of the selected base or its prefixes.
+                if lhs == base or base.startswith(lhs + "->") or base.startswith(lhs + "."):
+                    return result
+                if re.search(rf"\b{re.escape(pointer)}\b", statement):
+                    return result
+    if len(indices) < 2 or indices != list(range(len(indices))) or not counts[1]:
+        return result
+    result.update(status="observed", array_base=base, destination_pointer=pointer,
+                  before_store_count=counts[0], after_store_count=counts[1])
+    if counts[0] != counts[1]:
+        result["warnings"].append(
+            f"Store-count mismatch: {counts[0]} indexed stores become {counts[1]} advancing-pointer stores; "
+            "review the proposed rewrite for omitted or extra initialization. This is not semantic proof.")
+    return result
+
+
 def validate_decision_answer(packet: dict, answer: dict) -> dict:
     """Mechanical citation/identity checks, never automatic truth/retention."""
     validate_decision_packet(packet)
@@ -1093,7 +1158,8 @@ def validate_decision_answer(packet: dict, answer: dict) -> dict:
     return {"status": "valid_finding" if hypothesis or answer["status"] == "supported" else "insufficient_evidence",
             "packet_sha256": packet["packet_sha256"], "answer_sha256": _digest(answer),
             "factual_correctness": "requires primary review", "authority_advanced": False,
-            **({"finding_status": "hypothesis", "review_required": True, "authority": False}
+            **({"finding_status": "hypothesis", "review_required": True, "authority": False,
+                "source_review": review_source_store_counts(change["before"], change["after"])}
                if hypothesis else {})}
 
 
@@ -1125,6 +1191,8 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16,
     records = {}
     boundary = {"status": "UNKNOWN", "reason": "CFG/function entry"}
     loads = {"lwz", "lhz", "lha", "lbz", "lfs", "lfd"}
+    indexed_loads = {"lwzx", "lhzx", "lhax", "lbzx", "lfsx", "lfdx"}
+    indexed_stores = {"stwx", "sthx", "stbx", "stfsx", "stfdx"}
     update_loads = {"lwzu", "lfsu", "lfdu"}
     arithmetic = {"mr", "fmr", "add", "addi", "addis", "subi", "subf", "mullw", "mulli",
                   "srawi", "neg", "extsh", "extsb",
@@ -1188,9 +1256,28 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16,
                 rotate = all(0 <= value <= 31 for value in values)
                 if rotate_op == "clrlslwi":
                     rotate = rotate and values[1] <= values[0]
-        supported = op in loads | arithmetic | harmless | {"li", "lis"} or update is not None or rotate or divide
-        is_def = op in loads | arithmetic | {"li", "lis"} or update is not None or rotate or divide
+        # Indexed addressing exposes ordinary physical base/index inputs; it
+        # does not identify the loaded value or prove aliasing. RA=0 is the
+        # literal zero base, while RB=0 still reads the r0 register. Keep all
+        # update-indexed forms out until their second definition is modeled.
+        indexed = False
+        if op in indexed_loads | indexed_stores and len(operands) == 3:
+            value_class = "f" if op in {"lfsx", "lfdx", "stfsx", "stfdx"} else "r"
+            indexed = (re.fullmatch(value_class + r"(?:[0-9]|[12][0-9]|3[01])", operands[0]) is not None
+                       and all(re.fullmatch(r"r(?:[0-9]|[12][0-9]|3[01])", arg) for arg in operands[1:]))
+        # Loading the link register for an indirect call reads its GPR without
+        # clobbering other GPR/FPR values. LR identity/call-target provenance
+        # remains outside this slice; call preservation still needs its model.
+        link_write = (op == "mtlr" and len(operands) == 1
+                      and re.fullmatch(r"r(?:[0-9]|[12][0-9]|3[01])", operands[0]) is not None)
+        supported = op in loads | arithmetic | harmless | {"li", "lis"} or update is not None or rotate or divide or indexed or link_write
+        is_def = op in loads | arithmetic | {"li", "lis"} or update is not None or rotate or divide or (indexed and op in indexed_loads)
         uses = registers[1:] if is_def else registers
+        if indexed:
+            uses = ([] if op in indexed_loads else [operands[0]])
+            if operands[1] != "r0":
+                uses.append(operands[1])
+            uses.append(operands[2])
         if op in {"li", "lis"}:
             uses = []
         if op in {"addi", "addis", "subi"} and len(operands) > 1 and operands[1] == "r0":
@@ -1210,6 +1297,9 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16,
                                      "zero_base": False, "alias_identity": "UNKNOWN"}
             record["base_update"] = {"register": update[2], "operation": "old_base_plus_offset",
                                      "offset": int(update[1], 0)}
+        if indexed:
+            record["memory_root"] = {"base": operands[1], "index": operands[2],
+                                     "zero_base": operands[1] == "r0", "alias_identity": "UNKNOWN"}
         if not supported:
             reason = "call boundary" if op in {"bl", "bla", "bctrl", "blrl"} else "CFG boundary" if op.startswith("b") else "unsupported opcode"
             record.update(status="UNKNOWN", reason=reason)

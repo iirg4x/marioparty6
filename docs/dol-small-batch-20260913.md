@@ -4,6 +4,39 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **350/396**, **3/10** batch owners.
 
+## Active Exev dependencies and Qwen rewrite checks repaired
+
+The existing `recovery_causal_groups.py` producer slicer now models validated
+non-update indexed GPR/FPR loads and stores. It records base/index dependencies
+without inventing memory identity; RA=`r0` is a zero base while RB=`r0` is a
+register input. Stores do not define their value register. Validated `mtlr`
+reads its GPR without discarding unrelated definitions; indirect call targets
+remain unproved, and call preservation still requires the explicit ABI model.
+Malformed operands and update-indexed forms remain UNKNOWN.
+
+Read-only replay on Exev report
+`12df75035c9e7900a4553f65a2a8dfec5777476429e986f8e11f1288acf519fd`
+now retains the dependencies at rows **21, 22, 73 and 82**, previously dropped
+as unsupported. Both streams converge in four unique-CFG passes. In particular,
+the cache bases at73/82 bind to definition13; the transition-table loads bind
+their base to18. Conflicting loop-carried indices and unknown call results
+remain UNKNOWN. This repairs input visibility, not source-cause inference.
+
+The same existing tool's Qwen answer checker now adds a narrow advisory
+store-count review for straight-line indexed-to-advancing-pointer rewrites.
+It catches the actual completed Combiner initialization answer's **8 -> 7**
+stores. Comments do not count; unsupported control flow, aliases or literals
+remain UNKNOWN. A matching count is not semantic-equivalence proof, and the
+checker does not grant retention authority. The primary corrected the omitted
+eighth store before compiling; that corrected rewrite was object-neutral.
+Neither this fix nor the Exev replay is counted as a new crack.
+
+Affected regression suites: **165 tests, 23 optional skips, pass**; the explicit
+actual-Exev replay also passes. Both Qwen jobs in
+`build/qwen-exev-comb-small-20260913/` are complete. Exev's suggested endpoint
+assignment swap does not explain the observed dataflow and was not compiled.
+The retained Combiner source gain below remains unchanged.
+
 ## Combiner: retained source gain using the repaired comparison
 
 `CombinerProcess` improved **97.547620 -> 98.190475%** strict/data with
@@ -38,10 +71,11 @@ Exev's entry-context snapshot also regressed and did not replace its champion.
 
 The earlier Smoother Qwen job `06b18baf...` completed; its proposed `valuesEnd`
 substitution contradicts the target's explicit rows/base construction and was
-rejected before compilation. Current independent Qwen support is limited to
-Combiner initialization (`3c54f13c...`) and Exev transition traversal
-(`f00b7e40...`) under `build/qwen-exev-comb-small-20260913/`. Neither is a gate
-on continued primary reconstruction. Batch remains 3/10; main remains 347/396.
+rejected before compilation. Independent Qwen support for Combiner initialization
+(`3c54f13c...`) and Exev transition traversal (`f00b7e40...`) subsequently
+completed under `build/qwen-exev-comb-small-20260913/`, with the results recorded
+above. Neither was a gate on primary reconstruction. Batch remains 3/10;
+main remains 347/396.
 
 ## Success-path producers and scheduling comparisons
 
