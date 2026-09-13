@@ -1567,3 +1567,42 @@ Proof: `build/minigame-recovery-20260913/m670/sequence-proof/`, particularly
 `receipt.json`, `linked-strict.json`, and `batch-delivery-proof.json`.
 The final REL SHA-256 remains
 `f2cbf290f7bed55ee1531b7a866fe9f7f7a4adb4e10cd768a413a871afc6346f`.
+
+## m670 full source-selected storage closure
+
+The final link now has no original-object fallback. All 19,924 code bytes,
+all initialized data, and the complete 1,156-byte BSS section come from the
+nine selected source owners. The 28 application functions, their normalized
+physical relocation streams, all four main sections, and the final retail
+REL are exact; all 137 project checksums pass. The additional storage recovered
+in this step is 32 initialized bytes and 1,140 BSS bytes.
+
+The constructor owns the existing M670WORK allocation. The pillar controller
+owns the two existing arrays and height/speed scalars. A real GC1.3.2 storage
+compile established natural four-byte alignment, reverse BSS definition order,
+and the absence of a compiler-created extra word after a 24-int array. The
+known 936-byte work object and two 96-byte arrays were first linked separately;
+this recovered 1,128 bytes without changing the unexplained region. That
+intermediate also passed all retail checksums.
+
+The final declarations are deliberately an inferred storage reconstruction,
+not proof of unique original types. The contiguous timer allocation is
+represented as 25 ints, of which only 24 have observed users. The initialized
+32-byte record is represented by eight null character pointers; only index 1
+has an observed pointer store. These are the existing live allocations, not
+new scalar padding, an opaque byte tail, or new runtime operations. The unused
+slot types and original declared capacities remain source-shape debt: the
+binary cannot distinguish every compatible original declaration. The earlier
+warning against claiming those types as recovered fact still applies. No
+semantic names or sentinel role are invented for the unused storage.
+
+A bounded relocation census of every same-game microphone-listener module
+found no further user or matching record that establishes a more specific
+type. It is therefore not used as donor proof. All original-data fallback
+inputs are gone, but this binary/source-selection result must not be presented
+as recovery of original unused-field semantics.
+
+Proof: `build/minigame-recovery-20260913/m670/storage-proof/`, including
+`linked-strict.json` and `batch-delivery-proof.json`. The actual source-selected
+link rule is included in the latter. Main promotion independently rebuilds
+the exact source and split blobs from clean main before publishing progress.
