@@ -10,9 +10,9 @@
         "percent": 22.499439
       },
       "data": {
-        "matched": 803713,
+        "matched": 804885,
         "total": 1849324,
-        "percent": 43.459826
+        "percent": 43.523201
       }
     },
     "dol": {
@@ -36,9 +36,9 @@
         "percent": 8.660125
       },
       "data": {
-        "matched": 94705,
+        "matched": 95877,
         "total": 1131996,
-        "percent": 8.366196
+        "percent": 8.46973
       }
     }
   }
