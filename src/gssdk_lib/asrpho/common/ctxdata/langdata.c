@@ -330,10 +330,11 @@ static u32 _transwGetSize(LanguageData *language, TransWordData *words)
 
 static u32 _cdbGetCodeBookSize(LanguageData *language, CodeBookData *codeBook)
 {
+    LanguageDataV2 *data = language->data;
     u32 probColumns;
     u32 bytes;
 
-    probColumns = (_langCheckBitField(language, 1))
+    probColumns = ((data->flags & 1))
         ? (codeBook->nbrGastone + 1) / 2 : codeBook->nbrGastone;
     bytes = codeBook->dimension * codeBook->firstSize * sizeof(f32);
     bytes += codeBook->firstSize * codeBook->nbrInSecondSearch * sizeof(u32);
@@ -341,7 +342,7 @@ static u32 _cdbGetCodeBookSize(LanguageData *language, CodeBookData *codeBook)
     bytes += codeBook->secondSize * sizeof(u32);
     bytes += codeBook->secondSize * probColumns;
     bytes += sizeof(CodeBookData);
-    if (_langCheckBitField(language, 2)) {
+    if ((data->flags & 2)) {
         bytes = (bytes + 3) & ~3;
         bytes += codeBook->secondSize * codeBook->secondSize * sizeof(f32);
     }

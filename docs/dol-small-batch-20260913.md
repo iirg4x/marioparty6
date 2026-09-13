@@ -127,6 +127,26 @@ All pre-existing object/report hashes are preserved. The causal/Qwen suite
 passes **80 tests, 22 skipped**, including an actual langdata report replay.
 This removes a real analysis blocker without adding another tool or model run.
 
+The repaired census was then used for a retained source gain:
+`_cdbGetCodeBookSize` **81.42857 -> 84.77143% strict/data**, **136 -> 140
+bytes** (the retail size). A real `LanguageDataV2 *data` snapshot shared by both
+flag tests restores the target's second flags load. There is no volatile,
+synthetic write, ABI change, or new helper. All **75 other function bodies**
+and allocated data payloads are byte-identical to the previous candidate;
+all **66 score-exact siblings** survive. The changed function has no
+relocations and its physical check is exact. This is a partial gain, not a
+new exact function, owner closure, or source-linked DOL claim.
+
+Retained source `a7223284d02bd39778f4cccdff6edea140b2106e264e75043b8a48d19c71e530`;
+object `d3000e9fb88f200590d40afde62996f778524859ead831391f259aef23acf275`;
+strict `b78646696902987215c1703190127733a0a700ed01d25b52b3aa6ec2316606ce`;
+data `05d32b6dd10ba208ce55d7bcdf1b01d60064319148db7ba888244c7868fb144f`.
+Proof: `build/small-first-20260913/lang-codebook-data-snapshot/frontier-proof.json`.
+Replacing the subsequent incremental size calculation with one expression
+over-collapsed it to 124 bytes and was rejected. Reconstructing a probability
+pointer boundary or duplicating the tone traversal also regressed and was not
+retained. These findings constrain those source hypotheses, not the functions.
+
 ## NewMore: closed by the real adjacent provider
 
 `Runtime.PPCEABI.H/NewMore.cp` is now source-selected and exact: five functions,
