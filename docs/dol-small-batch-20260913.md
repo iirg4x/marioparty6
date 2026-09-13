@@ -4,7 +4,66 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **349/396**, **2/10** batch owners.
 
-## Current queue gain and measured-constraint tooling
+## Current queue frontier: 11/16, two exercised tool fixes
+
+The current retained `mqueue.c` advances **5/16 -> 11/16 strict/data instruction
+matches**. Six newly exact raw function bodies also pass independent physical
+relocation checks: `qDeQueueOne` (80 bytes, no relocations), `qCheckInputQueues`
+(256, none), `qFreeUnusedElemements` (292, 1/1), `qQueueReset` (204, 1/1),
+`qQueueReDimension` (196, 2/2), and `qQueueConstruct` (140, 2/2).
+All five prior exact bodies survive; eight other raw bodies and allocated data
+are unchanged. Two partials improve: `qCheckDeQueueOne` **87.22414 -> 94.655174**,
+and `qUpdateReadPtrsAndIncNbrOfEnqueues` **93.46835 -> 95.81013**, with the latter
+restored to the retail 316 bytes. **Five instruction-nonexact functions remain;
+this is not an owner closure or main promotion.**
+
+The causes were normal pointer traversal instead of array-index loop spelling,
+advancing a live cursor before freeing its old node, a shared free-list slot
+owner, and the original byte-domain constructor arguments plus a one-element
+trailing reader array. The explicit nonzero-size/profile fallback in ReDimension
+preserves the target's independent result lifetime. No assembly, forced
+register, padding, flag change, or dead temporary was introduced.
+
+Live source SHA-256 `bacae1e46c1529fcde963cb95de05fd3db69f9a6c42ba5e5fc2b57ed872ba1e6`;
+live header `64ff786b9849362c72970745fd84ee34d2109ed9ee1822a5b754da6e37d4c2bb`;
+object `03b89c2f60859e55472f614032d1c13c69cb7f45b2a5171804f5631a5f897d4e`;
+strict/data `cf094df0caa2097af32c0fef1cd83e46b35dc45f2763ff2a27a673e073c63194`.
+The formatted live source independently reproduces the isolated object's hash.
+Proof: `build/small-first-20260913/mqueue-byte-owner-construction/frontier-proof.json`
+and its `production-binding.json`.
+
+All six direct header consumers were built against old/new declarations. Five
+objects are byte-identical. TinyOS's one affected caller needed the same real
+byte queue-index domain: the composed change improves `ConstructQueue`
+**82.32667 -> 82.69334**, preserves its 580-byte size and all 24 other function
+scores, and reproduces object `55e4289a62f07f156786438653ee1e22bd5357cc3b112172f41c14a16aba814f`
+from live source `233ed06b4d4fc90766da1dfd186c5ab94213937279e5755872f289a7f7016098`.
+The intermediate header-only caller regression was not retained.
+
+Two existing tools were extended and used on this work:
+
+- `recovery_causal_groups.compare_match_frontiers(before, after)` / CLI
+  `--owner-summary --baseline-strict BEFORE --strict AFTER` flags mixed gains,
+  lost score-exact siblings, and closed-size regressions. It exposed the first
+  free-cursor family's two new exact functions alongside an Update regression;
+  the retained composition uses the stronger prior Update body. Scores remain
+  advisory, not raw/physical proof or automatic retention authority.
+- `compile_recovery_candidate.include_context`, `preflight_context`, and
+  `compile_candidate` accept explicit `header_overlays` descriptors with logical
+  `name`, resolved `candidate`/`reference` paths and both SHA-256 values. Default
+  stale-header rejection remains strict; duplicate, unused, wrongly resolved,
+  or drifting overlays fail. This removed the actual precompile blocker on the
+  queue tail experiment without mutating the live header; subsequent byte-domain
+  reconstruction closed the constructor. Selected and reference headers remain
+  recorded separately. It is a Python API, not a blanket CLI skip-preflight flag.
+
+Combined affected verification: **124 tests pass, 2 existing optional skips**.
+Both Qwen support jobs completed: its free-cursor hypothesis helped; its trailing
+array observation was conditional. Astra selected and checked the typed slot,
+byte argument domains, caller repair and retained composition. Intermediate
+regressions remain compact source constraints, not function bans.
+
+## Earlier queue gain and measured-constraint tooling
 
 `mqueue.c` advances **3/16 -> 5/16 strict/data instruction matches**.
 `qQueueJumpBack` (268 bytes) and `qQueueJumpBackOne` (192 bytes) both use
@@ -21,8 +80,8 @@ This is **not owner closure**. JumpBackOne has no relocations and is fully
 function-exact. JumpBack's single call has the correct site/type/symbol but
 `qFreeUnusedElemements` still lies at candidate `.text+2924` versus retail
 `+2984`; its physical/link closure awaits the remaining queue reconstruction.
-Eleven instruction-nonexact functions remain. Main and the ten-owner count
-do not advance for this partial frontier.
+That checkpoint left eleven instruction-nonexact functions; the current 11/16
+frontier is above. Main and the ten-owner count do not advance for partials.
 
 Two concrete tooling gaps were fixed and exercised here:
 

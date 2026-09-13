@@ -46,11 +46,10 @@ static inline void FreeQueueElement(
     u32 size = queue->elementSize + sizeof(TosQueueElement);
 
     if (size < 0x20) {
-        FastAllocator *allocator = &queue->context->queueAllocator;
-        u32 words = (size + 3) >> 2;
+        void **freeList = &queue->context->queueAllocator.freeLists[(size + 3) >> 2];
 
-        element->next = allocator->freeLists[words];
-        allocator->freeLists[words] = element;
+        element->next = *freeList;
+        *freeList = element;
     } else {
         heap_Free(queue->context->heap, element);
     }
@@ -291,19 +290,19 @@ TosQueue *qQueueInitEx(
 TosQueue *qQueueReDimension(TosQueue *queue, u16 elementSize)
 {
     TosQueueElement *element;
-    TosQueueElement *next;
+    TosQueueElement *old;
+    u16 newElementSize;
 
     element = queue->head;
-    if (elementSize == 0) {
-        elementSize = (u16)_tosGetProfileU32(queue, 2, -1);
-    }
+    newElementSize = elementSize != 0
+        ? elementSize : (u16)_tosGetProfileU32(queue, 2, -1);
     while (element != NULL) {
-        next = element->next;
-        FreeQueueElement(queue, element);
-        element = next;
+        old = element;
+        element = element->next;
+        FreeQueueElement(queue, old);
     }
     queue->head = NULL;
-    queue->elementSize = elementSize;
+    queue->elementSize = newElementSize;
     return queue;
 }
 
@@ -419,8 +418,7 @@ void *qEnQueueOne(TosQueue *queue)
 
 void *qDeQueueOne(TosQueue *queue, u32 reader)
 {
-    TosQueueElement **readPointer = &queue->readPointers[reader];
-    TosQueueElement *element = *readPointer;
+    TosQueueElement *element = queue->readPointers[reader];
 
     if (element == (TosQueueElement *)&queue->head || element == NULL ||
         element == (TosQueueElement *)queue) {
@@ -428,9 +426,9 @@ void *qDeQueueOne(TosQueue *queue, u32 reader)
     }
 
     if (element->next != NULL) {
-        *readPointer = element->next;
+        queue->readPointers[reader] = element->next;
     } else {
-        *readPointer = (TosQueueElement *)queue;
+        queue->readPointers[reader] = (TosQueueElement *)queue;
     }
     return element->data;
 }
@@ -438,7 +436,7 @@ void *qDeQueueOne(TosQueue *queue, u32 reader)
 void qFreeUnusedElemements(TosQueue *queue)
 {
     TosQueueElement *element = queue->head;
-    TosQueueElement *next;
+    TosQueueElement *old;
     u32 reader;
 
     if (element == NULL) {
@@ -464,11 +462,15 @@ void qFreeUnusedElemements(TosQueue *queue)
         if (reader != queue->readerCount) {
             break;
         }
-        next = element->next;
-        FreeQueueElement(queue, element);
-        element = next;
+        old = element;
+        element = element->next;
+        FreeQueueElement(queue, old);
     }
-    queue->head = element;
+    if (element == NULL) {
+        queue->head = NULL;
+    } else {
+        queue->head = element;
+    }
 }
 
 u8 qCheckDeQueueOne(
@@ -482,61 +484,62 @@ u8 qCheckDeQueueOne(
     }
 
     for (i = 0; i < inputCount; i++) {
-        if (inputs[i].queue != NULL) {
-            elements[i] = qDeQueueOne(
-                inputs[i].queue, inputs[i].outputSize);
-        } else {
-            elements[i] = NULL;
+        void *element = NULL;
+
+        if (inputs->queue != NULL) {
+            element = qDeQueueOne(inputs->queue, inputs->outputSize);
         }
+        *elements++ = element;
+        inputs++;
     }
     return 1;
 }
 
 u8 qCheckInputQueues(TosQueuePort *inputs, u32 inputCount)
 {
+    TosQueuePort *end = inputs + inputCount;
     TosQueue *queue;
     TosQueueElement *reader;
     u8 waiting = 1;
-    u32 i;
 
-    for (i = 0; i < inputCount; i++) {
-        queue = inputs[i].queue;
+    for (; inputs < end; inputs++) {
+        queue = inputs->queue;
         if (queue != NULL) {
-            reader = queue->readPointers[inputs[i].outputSize];
-            if (reader != NULL &&
-                reader != QUEUE_READER_DISABLED(queue)) {
-                waiting = reader == QUEUE_READER_WAITING(queue);
-                i++;
+            reader = queue->readPointers[inputs->outputSize];
+            if (reader != NULL && reader != QUEUE_READER_DISABLED(queue)) {
+                waiting = queue->readPointers[inputs->outputSize] == QUEUE_READER_WAITING(queue);
                 break;
             }
         }
     }
 
-    for (; i < inputCount; i++) {
-        queue = inputs[i].queue;
+    for (inputs++; inputs < end; inputs++) {
+        queue = inputs->queue;
         if (queue != NULL) {
-            reader = queue->readPointers[inputs[i].outputSize];
-            if (reader != NULL &&
-                reader != QUEUE_READER_DISABLED(queue) &&
-                waiting != (reader == QUEUE_READER_WAITING(queue))) {
-                return 0;
+            reader = queue->readPointers[inputs->outputSize];
+            if (reader != NULL && reader != QUEUE_READER_DISABLED(queue) &&
+                waiting != (u8)(reader == QUEUE_READER_WAITING(queue))) {
+                break;
             }
         }
     }
-    return waiting == 0;
+    if (inputs != end) {
+        return 0;
+    }
+    return !waiting;
 }
 
 void qQueueReset(TosQueue *queue)
 {
     TosQueueElement *element;
-    TosQueueElement *next;
+    TosQueueElement *old;
     u32 i;
 
     element = queue->head;
     while (element != NULL) {
-        next = element->next;
-        FreeQueueElement(queue, element);
-        element = next;
+        old = element;
+        element = element->next;
+        FreeQueueElement(queue, old);
     }
 
     for (i = 0; i < queue->readerCount; i++) {
@@ -561,18 +564,19 @@ u32 qQueueNbrElements(TosQueue *queue)
 }
 
 TosQueue *qQueueConstruct(
-    TosContext *context, u32 queueIndex, u32 readerCount)
+    TosContext *context, u8 queueIndex, u8 readerCount)
 {
-    struct TosQueueProfile {
-        TosContext *context;
-        u8 queueIndex;
-    } profile;
     TosQueue *queue;
 
     queue = heap_Calloc(
         context->heap, 1,
-        sizeof(TosQueue) + (u8)readerCount * sizeof(TosQueueElement *));
+        sizeof(TosQueue) + (readerCount - 1) * sizeof(TosQueueElement *));
     if (queue == NULL) {
+        struct TosQueueProfile {
+            TosContext *context;
+            u8 queueIndex;
+        } profile;
+
         profile.context = context;
         profile.queueIndex = queueIndex;
         _tosErrorLog(&profile, 2);

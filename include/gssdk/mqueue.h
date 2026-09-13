@@ -19,7 +19,7 @@ struct TosQueue {
     u8 state;
     u8 readerCount;
     TosQueueElement *head;
-    TosQueueElement *readPointers[];
+    TosQueueElement *readPointers[1];
 };
 
 extern u8 qQueueControl(
@@ -41,6 +41,6 @@ extern u8 qCheckInputQueues(TosQueuePort *inputs, u32 inputCount);
 extern void qQueueReset(TosQueue *queue);
 extern u32 qQueueNbrElements(TosQueue *queue);
 extern TosQueue *qQueueConstruct(
-    TosContext *context, u32 queueIndex, u32 readerCount);
+    TosContext *context, u8 queueIndex, u8 readerCount);
 
 #endif

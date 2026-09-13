@@ -108,7 +108,8 @@ def _resolved_command(command: list[str], scratch: Path) -> list[str]:
 
 def include_context(command: list[str], scratch: Path,
                     references: dict[str, Path] | None = None,
-                    reference_include_roots: list[Path] | None = None) -> dict:
+                    reference_include_roots: list[Path] | None = None,
+                    header_overlays: list[dict[str, str]] | None = None) -> dict:
     """Bind explicit search roots, not a claim of preprocessor dependency tracing.
 
     Reference keys are include spellings (e.g. musyx/snd.h), values intended
@@ -117,6 +118,10 @@ def include_context(command: list[str], scratch: Path,
     An optional reference root binds every file by its root-relative spelling;
     absent spellings fail closed. Selection still covers explicit roots only,
     not source-local/system precedence or recursive-search ordering.
+    Optional header_overlays name exact logical headers with candidate,
+    candidate_sha256, reference and reference_sha256 fields. Paths must be
+    absolute resolved paths, and both hashes are checked freshly on each call.
+    Declarations authorize only that selected header; unused entries fail.
     """
     executable = Path(command[0]).stem.lower()
     opaque = executable in {'powershell', 'pwsh', 'cmd', 'sh', 'bash', 'ninja', 'make'}
@@ -180,6 +185,29 @@ def include_context(command: list[str], scratch: Path,
             if name in intended and digest(Path(intended[name])) != sha:
                 raise ValueError(f'conflicting reference headers for {name}: {intended[name]} != {root / name}')
             intended.setdefault(name, root / name)
+    overlays = {}
+    for overlay in header_overlays or []:
+        fields = {'name', 'candidate', 'candidate_sha256', 'reference', 'reference_sha256'}
+        if not isinstance(overlay, dict) or set(overlay) != fields or not all(
+                isinstance(value, str) and value for value in overlay.values()):
+            raise ValueError(f'invalid header overlay descriptor: {overlay!r}')
+        name = overlay['name']
+        if (Path(name).is_absolute() or '..' in Path(name).parts or
+                Path(name).as_posix() != name or '\\' in name or ':' in name):
+            raise ValueError(f'header overlay name must be an exact relative include spelling: {name}')
+        if name in overlays:
+            raise ValueError(f'duplicate header overlay: {name}')
+        for role in ('candidate', 'reference'):
+            path = Path(overlay[role])
+            if not path.is_absolute() or str(path.resolve()) != overlay[role]:
+                raise ValueError(f'header overlay {role} path must be resolved: {name}: {path}')
+            if not path.is_file():
+                raise ValueError(f'missing header overlay {role}: {name}: {path}')
+            if digest(path) != overlay[role + '_sha256']:
+                raise ValueError(f'stale header overlay {role} hash: {name}: {path}')
+        if name not in intended:
+            raise ValueError(f'unused header overlay: {name}')
+        overlays[name] = dict(overlay)
     bound = {}
     for name, reference in intended.items():
         if Path(name).is_absolute() or '..' in Path(name).parts:
@@ -201,19 +229,34 @@ def include_context(command: list[str], scratch: Path,
                 break
         if selected is None:
             raise ValueError(f'reference header absent from explicit include search: {name}')
-        if digest(selected) != digest(reference):
+        actual_sha, reference_sha = digest(selected), digest(reference)
+        overlay = overlays.get(name)
+        if overlay is not None:
+            if (str(selected.resolve()) != overlay['candidate'] or
+                    str(reference) != overlay['reference']):
+                raise ValueError(f'header overlay path mismatch: {name}: {selected} != {reference}')
+            if (actual_sha != overlay['candidate_sha256'] or
+                    reference_sha != overlay['reference_sha256']):
+                raise ValueError(f'header overlay hash changed during resolution: {name}')
+        elif actual_sha != reference_sha:
             raise ValueError(f'actual header differs from reference: {name}: {selected} != {reference}')
-        bound[name] = {'actual': str(selected), 'reference': str(reference), 'sha256': digest(reference)}
-    return {'coverage': 'opaque-command' if opaque else 'explicit-search-roots-only',
+        bound[name] = {'actual': str(selected), 'reference': str(reference), 'sha256': reference_sha}
+        if overlay is not None:
+            bound[name]['actual_sha256'] = actual_sha
+    context = {'coverage': 'opaque-command' if opaque else 'explicit-search-roots-only',
             'limitations': 'Not a dependency trace: implicit/system/source-local paths and recursive search resolution are not inferred.',
             'search': search, 'response_files': responses, 'references': bound,
             'reference_roots': reference_roots}
+    if overlays:
+        context['header_overlays'] = overlays
+    return context
 
 
 def preflight_context(*, root: Path, scratch: Path, command: list[str],
                       tools: list[Path], command_descriptor: Path | None = None,
                       reference_headers: dict[str, Path] | None = None,
-                      reference_include_roots: list[Path] | None = None) -> dict:
+                      reference_include_roots: list[Path] | None = None,
+                      header_overlays: list[dict[str, str]] | None = None) -> dict:
     """Read-only context used identically by CLI preflight and compilation."""
     root = Path(os.path.abspath(root))
     scratch = safe(scratch, root)
@@ -230,7 +273,7 @@ def preflight_context(*, root: Path, scratch: Path, command: list[str],
     return {'headers': headers, 'generated_headers': tree(scratch / 'build/GP6E01/include'),
             'tools': {str(p): digest(p) for p in sorted(tool_paths)},
             'command': command, 'command_descriptor': descriptor,
-            'actual_includes': include_context(command, scratch, reference_headers, reference_include_roots),
+            'actual_includes': include_context(command, scratch, reference_headers, reference_include_roots, header_overlays),
             'environment_sha256': hashlib.sha256(json.dumps(dict(os.environ), sort_keys=True).encode()).hexdigest()}
 
 
@@ -302,7 +345,8 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
                       mutex_name: str = 'Global\\CodexBoardCapspecialCandidateCompile',
                       command_descriptor: Path | None = None,
                       reference_headers: dict[str, Path] | None = None,
-                      reference_include_roots: list[Path] | None = None) -> dict:
+                      reference_include_roots: list[Path] | None = None,
+                      header_overlays: list[dict[str, str]] | None = None) -> dict:
     root = Path(os.path.abspath(root))
     scratch = safe(scratch, root)
     source, output = safe(source, root), safe(output, root / 'build')
@@ -318,7 +362,8 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
     context = preflight_context(root=root, scratch=scratch, command=command,
                                 tools=tools, command_descriptor=command_descriptor,
                                 reference_headers=reference_headers,
-                                reference_include_roots=reference_include_roots)
+                                reference_include_roots=reference_include_roots,
+                                header_overlays=header_overlays)
     command = context['command']
     includes = context['actual_includes']
     dependencies = {Path(p) for p in includes['response_files']}
@@ -341,7 +386,8 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
         if preflight_context(root=root, scratch=scratch, command=command,
                              tools=tools, command_descriptor=command_descriptor,
                              reference_headers=reference_headers,
-                             reference_include_roots=reference_include_roots) != context:
+                             reference_include_roots=reference_include_roots,
+                             header_overlays=header_overlays) != context:
             raise ValueError('compiler context changed before launch')
         candidate = source.read_bytes()
         if len(candidate) > 4*1024*1024:
@@ -385,7 +431,7 @@ def compile_candidate(*, root: Path, scratch: Path, source: Path, output: Path,
             if descriptor is not None and digest(Path(descriptor['path'])) != descriptor['sha256']:
                 raise RuntimeError(f'command JSON changed during compilation: {descriptor["path"]}')
             try:
-                current_includes = include_context(command, scratch, reference_headers, reference_include_roots)
+                current_includes = include_context(command, scratch, reference_headers, reference_include_roots, header_overlays)
             except (ValueError, OSError) as exc:
                 raise RuntimeError(f'actual compiler include context changed during compilation: {exc}') from exc
             if current_includes != context['actual_includes']:

@@ -213,6 +213,69 @@ def summarize_match_scores(document: dict) -> dict:
     return result
 
 
+def compare_match_frontiers(before: dict, after: dict) -> dict:
+    """Compare reported scores only; no retention, instruction or closure proof.
+
+    Unique function names bridge reports. Report-local duplicate indices cannot.
+    Unknown scores never become numerical gains, including a new 100 score.
+    Detail lists are bounded; counts always cover the entire target census.
+    """
+    old, new = (summarize_match_scores(document) for document in (before, after))
+    if old.get("duplicate_names") or new.get("duplicate_names"):
+        raise ValueError("ambiguous cross-report duplicate function identities; report-local indices cannot bridge reports")
+    left, right = old["function_scores"], new["function_scores"]
+    if left.keys() != right.keys():
+        raise ValueError("incompatible target function set")
+    buckets = {key: [] for key in ("new_score_exact", "lost_score_exact", "improved",
+                                   "regressed", "changed_size", "unscored_changes")}
+    unchanged = score_unchanged = unscored = closed_size_regressions = 0
+    for name in sorted(left):
+        a, b = left[name], right[name]
+        sizes = [frontier.focus._integer(row["target_bytes"]) for row in (a, b)]
+        if None in sizes or sizes[0] != sizes[1]:
+            raise ValueError(f"incompatible or unavailable target size: {name}")
+        row = {"function": name, "before_score": a["score"], "after_score": b["score"],
+               "target_bytes": sizes[0], "before_bytes": a["candidate_bytes"],
+               "after_bytes": b["candidate_bytes"]}
+        known = all(item["status"] in {"score_exact", "mismatch"}
+                    and type(item["score"]) in (int, float)
+                    and 0 <= item["score"] <= 100 for item in (a, b))
+        if known:
+            if b["score"] > a["score"]:
+                buckets["improved"].append(row)
+                if b["score"] == 100:
+                    buckets["new_score_exact"].append(row)
+            elif b["score"] < a["score"]:
+                buckets["regressed"].append(row)
+            else:
+                score_unchanged += 1
+        else:
+            unscored += 1
+            if (a["score"], a["status"]) != (b["score"], b["status"]):
+                buckets["unscored_changes"].append(dict(row, before_status=a["status"], after_status=b["status"]))
+        if a["status"] == "score_exact" and b["status"] != "score_exact":
+            buckets["lost_score_exact"].append(row)
+        if a["candidate_bytes"] != b["candidate_bytes"]:
+            was_closed = frontier.focus._integer(a["candidate_bytes"]) == sizes[0]
+            now_closed = frontier.focus._integer(b["candidate_bytes"]) == sizes[0]
+            regression = was_closed and not now_closed
+            closed_size_regressions += int(regression)
+            buckets["changed_size"].append(dict(row, closed_size_regression=regression))
+        if a == b:
+            unchanged += 1
+    return {"schema": "recovery_match_frontier_transition/v1", "functions": len(left),
+            **{key: rows[:24] for key, rows in buckets.items()},
+            "counts": {**{key: len(rows) for key, rows in buckets.items()},
+                       "unchanged": unchanged, "score_unchanged": score_unchanged,
+                       "unscored_comparisons": unscored,
+                       "closed_size_regressions": closed_size_regressions},
+            "details_limit": 24, "details_truncated": any(len(rows) > 24 for rows in buckets.values()),
+            "mixed_gain_regression": bool(buckets["improved"] and (
+                buckets["regressed"] or buckets["lost_score_exact"] or closed_size_regressions)),
+            "comparison_scope": "reported function scores and sizes only; unknown scores are not gains; no retention or closure proof",
+            "authority_advanced": False}
+
+
 def summarize_owner(document: dict) -> dict:
     """Small whole-object view: count closures and surface shared domain clues."""
     symbols = frontier.focus._symbols(document, "left", "strict")
@@ -1048,6 +1111,8 @@ def compare_groups(before: dict, after: dict) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strict", type=Path)
+    parser.add_argument("--baseline-strict", type=Path,
+                        help="compare score frontiers only, with --strict and --owner-summary")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--function")
     mode.add_argument("--owner-summary", action="store_true")
@@ -1067,6 +1132,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="optional block-local producer slice, 1..64 residual sites")
     args = parser.parse_args(argv)
     try:
+        if args.baseline_strict and (not args.strict or not args.owner_summary or args.before
+                or args.support_source or args.source_lines or args.decision_packet or args.producers
+                or args.decision_question or args.decision_rows or args.decision_mode or args.known_measurements):
+            raise ValueError("--baseline-strict requires only --strict and --owner-summary")
         decision_options = any(value is not None for value in (
             args.decision_question, args.decision_rows, args.decision_mode, args.known_measurements))
         if decision_options and not (args.function and args.support_source and args.source_lines
@@ -1102,7 +1171,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.owner_summary and args.before:
             raise ValueError("--before requires --function")
         document = read_document(args.strict)
-        if args.support_source:
+        if args.baseline_strict:
+            result = compare_match_frontiers(read_document(args.baseline_strict), document)
+        elif args.support_source:
             start, end = map(int, args.source_lines.split(":"))
             with args.support_source.open("rb") as stream:
                 source_bytes = stream.read(1024 * 1024 + 1)

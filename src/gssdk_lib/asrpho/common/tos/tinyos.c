@@ -204,7 +204,7 @@ static u8 ConstructBlock(
 }
 
 static u8 ConstructQueue(
-    TosContext *context, u32 queueIndex, u32 queueNumber)
+    TosContext *context, u8 queueIndex, u32 queueNumber)
 {
     const TosQueueWriterDefinition *writer;
     const TosQueueReaderDefinition *reader;
