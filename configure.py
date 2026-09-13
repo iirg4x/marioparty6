@@ -1289,6 +1289,19 @@ config.libs = [
         },
     ),
     Rel(
+        "m670dll",
+        objects={
+            Object(Matching, "REL/m670dll/prolog.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m670dll/actor.c", extra_cflags=["-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m670dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"],
+            ),
+        },
+    ),
+    Rel(
         "mdsingdll",
         objects={
             Object(NonMatching, "REL/mdsingdll/mdsing.c"),
