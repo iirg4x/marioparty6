@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Mario Party 6 recovery ledger with module coverage and function evidence"
+    />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23151e26%22%2F%3E%3Cpath%20d%3D%22M8%2023V15h4v8zm6%200V10h4v13zm6%200V6h4v17z%22%20fill%3D%22%2365d6b3%22%2F%3E%3C%2Fsvg%3E" />
+    <title>MP6 / Recovery Ledger</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#library">Skip to module ledger</a>
+
+    <div class="app-shell">
+      <header class="masthead">
+        <div class="masthead-grid">
+          <div>
+            <h1>Mario Party 6 recovery</h1>
+            <p class="masthead-copy">Delivered main · GP6E01</p>
+            <p class="connection-state" id="connection-state" data-tone="muted">Reading published snapshot</p>
+          </div>
+
+          <div class="masthead-actions">
+            <p class="local-note">
+              <span class="local-mark" aria-hidden="true"></span>
+              Repository snapshot
+            </p>
+            <button class="button button-primary" id="refresh-button" type="button">
+              <span aria-hidden="true">↻</span>
+              Reload snapshot
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="app-banner" id="app-banner" role="status" aria-live="polite" hidden></div>
+
+      <section class="receipt-band" aria-labelledby="receipt-heading">
+        <div class="section-intro receipt-intro">
+          <p class="section-index">01 / RECEIPT</p>
+          <h2 id="receipt-heading">The commit in view</h2>
+          <p>
+            Every number below belongs to the same committed main snapshot.
+          </p>
+        </div>
+
+        <dl class="receipt-list">
+          <div class="receipt-item receipt-commit">
+            <dt>Main commit</dt>
+            <dd>
+              <code id="receipt-commit">Unavailable</code>
+              <span class="receipt-subline" id="receipt-subject">No snapshot loaded</span>
+            </dd>
+          </div>
+          <div class="receipt-item">
+            <dt>Committed at</dt>
+            <dd>
+              <time id="receipt-committed-at">Unavailable</time>
+              <span class="receipt-subline mono" id="receipt-committed-raw">—</span>
+            </dd>
+          </div>
+          <div class="receipt-item">
+            <dt>Snapshot captured</dt>
+            <dd>
+              <time id="receipt-refreshed-at">Unavailable</time>
+              <span class="receipt-subline mono" id="receipt-refreshed-raw">—</span>
+            </dd>
+          </div>
+          <div class="receipt-item receipt-remote">
+            <dt>Snapshot source</dt>
+            <dd>
+              <span id="receipt-remote">Unavailable</span>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <main id="main-content" aria-busy="true">
+        <section class="coverage-section" aria-labelledby="coverage-heading">
+          <div class="section-heading-row">
+            <div class="section-intro">
+              <p class="section-index">02 / COVERAGE</p>
+              <h2 id="coverage-heading">The recovery ledger</h2>
+              <p>
+              Code and data are measured independently. Whole-module counts and
+              recorded function counts are shown separately.
+              </p>
+            </div>
+            <p class="coverage-aside" id="coverage-aside">Awaiting committed evidence</p>
+          </div>
+          <div class="summary-ribbon" id="summary-ribbon" aria-live="polite"></div>
+          <details class="counting-note" id="counting-note" hidden>
+            <summary>
+              <span>How progress is counted</span>
+              <span class="counting-note-status" id="counting-note-status">Reconciliation unavailable</span>
+              <span class="counting-note-chevron" aria-hidden="true">›</span>
+            </summary>
+            <div class="counting-note-body" id="counting-note-body"></div>
+          </details>
+        </section>
+
+        <section class="library-section" id="library" aria-labelledby="library-heading">
+          <div class="section-heading-row library-heading-row">
+            <div class="section-intro">
+              <p class="section-index">03 / LIBRARY</p>
+              <h2 id="library-heading">Whole-module library</h2>
+              <p>
+                Search names, IDs, paths, aliases, and function evidence. Select
+                a row to open its source-owner ledger.
+              </p>
+            </div>
+            <div class="library-total" id="library-total">0 modules</div>
+          </div>
+
+          <form class="filter-bar" id="filter-form" role="search">
+            <label class="search-control">
+              <span>Find a module</span>
+              <span class="search-input-wrap">
+                <span class="search-glyph" aria-hidden="true">⌕</span>
+                <input
+                  id="module-search"
+                  name="q"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Title, ID, path, or function"
+                  aria-controls="module-list"
+                />
+              </span>
+            </label>
+
+            <label class="select-control">
+              <span>State</span>
+              <select id="state-filter" name="state" aria-controls="module-list">
+                <option value="all">All states</option>
+                <option value="complete">Complete</option>
+                <option value="partial">Partial</option>
+                <option value="notRecovered">Not recovered</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
+            </label>
+
+            <label class="select-control">
+              <span>Kind</span>
+              <select id="kind-filter" name="kind" aria-controls="module-list">
+                <option value="all">DOL + REL</option>
+                <option value="DOL">DOL</option>
+                <option value="REL">REL</option>
+              </select>
+            </label>
+
+            <label class="select-control">
+              <span>Family</span>
+              <select id="category-filter" name="category" aria-controls="module-list">
+                <option value="all">All families</option>
+                <option value="minigame">Minigame</option>
+                <option value="mode">Mode</option>
+                <option value="board">Board</option>
+                <option value="system">System</option>
+              </select>
+            </label>
+
+            <label class="select-control">
+              <span>Function state</span>
+              <select id="function-filter" name="function-state" aria-controls="module-list owner-results">
+                <option value="all">All functions</option>
+                <option value="remaining">Unmatched</option>
+                <option value="matching">Source selected</option>
+                <option value="unknown">Unavailable</option>
+              </select>
+            </label>
+
+            <button class="button button-quiet" id="clear-filters" type="button">Clear</button>
+          </form>
+
+          <div class="ledger-layout">
+            <div class="module-library" aria-live="polite">
+              <div class="library-caption">
+                <span id="library-caption">Whole modules</span>
+                <span class="library-caption-note">Select a module for owner evidence</span>
+              </div>
+              <div class="table-wrap">
+                <table class="module-table">
+                  <caption class="visually-hidden">Recovery status by whole game module</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Module</th>
+                      <th scope="col">Kind / family</th>
+                      <th scope="col" class="numeric-heading">Code</th>
+                      <th scope="col" class="numeric-heading">Data</th>
+                      <th scope="col">State</th>
+                    </tr>
+                  </thead>
+                  <tbody id="module-list"></tbody>
+                </table>
+              </div>
+              <div class="empty-strip" id="module-empty" hidden>
+                No modules match this search and filter set.
+              </div>
+              <div class="empty-strip" id="snapshot-empty" hidden>
+                The published snapshot could not be loaded. Try reloading it.
+              </div>
+            </div>
+
+            <dialog class="detail-panel" id="module-detail" aria-labelledby="detail-heading" tabindex="-1">
+              <div class="detail-placeholder" id="detail-placeholder">
+                <span class="detail-mark" aria-hidden="true">＋</span>
+                <p class="section-index">MODULE DETAIL</p>
+                <h3>Select a whole module</h3>
+                <p>
+                  The selected source owners, functions, metrics, and evidence
+                  will appear here.
+                </p>
+              </div>
+              <div id="detail-content" hidden></div>
+            </dialog>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer">
+        <p>
+          Completion means committed source-selection evidence. It is not an
+          independent byte-identical proof; original-object fallback is excluded.
+          Data coverage includes initialized data and BSS. A BSS gate may keep a
+          module partial even when its displayed data percentage is high.
+        </p>
+        <p class="mono">Published snapshot · local repository refreshes are published separately</p>
+      </footer>
+    </div>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
