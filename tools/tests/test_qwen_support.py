@@ -173,6 +173,10 @@ class RunnerReplayTests(unittest.TestCase):
         self.assertFalse(metrics["validator_revalidated"])
         self.assertEqual(metrics["validator_initial_sha256"], metrics["validator_final_sha256"])
         self.assertEqual(metrics["validator_sha256"], metrics["validator_final_sha256"])
+        self.assertEqual(metrics["prompt_validator_sha256"], metrics["validator_initial_sha256"])
+        launch = (out/"replay.prompt-validation.json").read_bytes()
+        self.assertEqual(metrics["prompt_validation_sha256"], hashlib.sha256(launch).hexdigest())
+        self.assertEqual(json.loads(launch)["status"], "valid_prompt")
         self.assertEqual(metrics["think"], "xhigh")
         self.assertEqual(metrics["num_predict"], -1)
         self.assertNotIn("max_tokens", self.calls[0])
@@ -219,16 +223,70 @@ class RunnerReplayTests(unittest.TestCase):
         self.assertTrue(metrics["validator_revalidated"])
         self.assertNotEqual(metrics["validator_initial_sha256"], metrics["validator_final_sha256"])
         self.assertEqual(metrics["validator_sha256"], hashlib.sha256(self.validator.read_bytes()).hexdigest())
-        self.assertEqual(log.read_text().splitlines(), ["--check-support-prompt", "--check-support-answer"])
+        self.assertEqual(log.read_text().splitlines(), ["--check-support-answer"])
         self.assertEqual(metrics["state"], "completed")
 
-    def test_incompatible_validator_stream_edit_rejects_original_prompt(self):
+    def test_new_renderer_does_not_revalidate_original_launch_prompt(self):
         result, metrics = self.validator_replay(lambda code: self.validator.write_text(
             "import sys\nif '--check-support-prompt' in sys.argv: sys.exit(2)\n" + code,
             encoding="utf-8"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(metrics["state"], "completed")
+        self.assertTrue(metrics["validator_revalidated"])
+        self.assertEqual(metrics["prompt_validator_sha256"], metrics["validator_initial_sha256"])
+        self.assertNotEqual(metrics["prompt_validator_sha256"], metrics["validator_final_sha256"])
+        self.assertTrue((self.root / "answer/replay.answer.txt").exists())
+
+    def test_actual_renderer_body_drift_keeps_one_request(self):
+        self.validator = self.root / "validator.py"
+        code = Path(groups.__file__).read_text(encoding="utf-8").replace(
+            "import sys\n", f"import sys\nsys.path.insert(0, {str(Path(groups.__file__).resolve().parents[1])!r})\n")
+        self.validator.write_text(code, encoding="utf-8")
+        self.after_reasoning = lambda body: self.validator.write_text(
+            code.replace("Do not solve the entire function", "New renderer guidance for future jobs"), encoding="utf-8")
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        metrics = json.loads((self.root / "answer/replay.metrics.json").read_bytes())
+        self.assertEqual(len(self.calls), 1)
+        self.assertTrue(metrics["validator_revalidated"])
+        self.assertNotEqual(metrics["prompt_validator_sha256"], metrics["validator_final_sha256"])
+
+    def test_missing_launch_receipt_rejects(self):
+        self.after_reasoning = lambda body: (self.root / "answer/replay.prompt-validation.json").unlink()
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        metrics = json.loads((self.root / "answer/replay.metrics.json").read_bytes())
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertIn("launch prompt-validation receipt", metrics["error"])
+        self.assertEqual(len(self.calls), 1)
+
+    def test_changed_launch_receipt_rejects(self):
+        self.after_reasoning = lambda body: (self.root / "answer/replay.prompt-validation.json").write_text(
+            '{}', encoding="utf-8")
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        metrics = json.loads((self.root / "answer/replay.metrics.json").read_bytes())
+        self.assertEqual(metrics["state"], "rejected")
+        self.assertIn("launch prompt-validation receipt", metrics["error"])
+        self.assertEqual(len(self.calls), 1)
+
+    def test_final_receipt_wrong_packet_identity_rejected(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            "print('{\"status\":\"valid_finding\",\"packet_sha256\":\"wrong\"}')\n", encoding="utf-8"))
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(metrics["state"], "rejected")
-        self.assertFalse(metrics["validator_revalidated"])
+        self.assertIn("Incompatible decision validator receipt", metrics["error"])
+
+    def test_packet_validation_drift_rejected_at_answer(self):
+        result, metrics = self.validator_replay(lambda code: self.validator.write_text(
+            "import sys\n"
+            f"sys.path.insert(0, {str(Path(groups.__file__).resolve().parents[1])!r})\n"
+            "from tools import recovery_causal_groups as g\n"
+            "def reject_packet(packet): raise ValueError('incompatible packet schema')\n"
+            "g.validate_decision_packet = reject_packet\n"
+            "raise SystemExit(g.main())\n", encoding="utf-8"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(metrics["state"], "rejected")
         self.assertFalse((self.root / "answer/replay.answer.txt").exists())
 
     def test_validator_mutation_during_revalidation_fails_closed(self):

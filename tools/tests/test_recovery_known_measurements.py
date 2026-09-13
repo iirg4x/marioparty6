@@ -16,7 +16,11 @@ DIALECT_GUIDANCE = (
     "Honor the supplied language dialect. When C99/mixed-declaration support is not "
     "established, put declarations at block entry; a natural nested block may keep a "
     "legitimate used snapshot local to its use. Do not change language flags to make "
-    "a hypothesis compile. "
+    "a hypothesis compile. Preserve the pinned legacy compiler: GC/1.2.5n has rejected "
+    "nonconstant local aggregate initialization with 'illegal constant expression'; when "
+    "that compiler rejects this form, use ordinary field assignments after the declaration "
+    "for the legitimate used aggregate. This is a compiler-specific caution, not a claim "
+    "that all C90 compilers forbid it or a source-hypothesis admission rule. "
 )
 
 
@@ -27,6 +31,10 @@ class KnownMeasurementsTests(unittest.TestCase):
         prompt = groups.render_decision_prompt(packet)
         self.assertEqual(prompt.count(DIALECT_GUIDANCE), 1)
         self.assertIn("Real used typed locals or aggregate snapshots", prompt)
+        self.assertIn("ordinary field assignments after the declaration", prompt)
+        self.assertIn("not a claim that all C90 compilers forbid it", prompt)
+        self.assertEqual(groups.render_decision_prompt(json.loads(json.dumps(packet))), prompt)
+        groups.validate_decision_packet(packet)
         self.assertEqual(packet, before)
         self.assertNotIn(DIALECT_GUIDANCE, groups.render_decision_prompt(self.packet()))
 

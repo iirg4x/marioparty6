@@ -4,6 +4,58 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **350/396**, **3/10** batch owners.
 
+## FFTMod: four additional exact functions retained
+
+FFTMod improved from **1/6 to 5/6** strict/data and raw instruction matches.
+CalcPowerSpec (1056 bytes), CalcAmplitudeSpec (796), ProcessFFTMod (400),
+InitFFTMod (632), and the protected ControlFFTMod (164) are exact. The entire
+72-byte `.sdata2` payload is exact. A fresh live-source rebuild reproduced the
+candidate object. No owner closure or linked FFTMod proof is claimed yet:
+ConstructFFTMod remains 156/156 bytes with only its incoming context copy
+`mr` versus `addi ...,0` differing (three aligned objdiff rows).
+
+The source causes were concrete: cursor advancement around the first spectrum
+sample, f32 logarithm conversion before f64 scaling, the real `floorf` provider
+and SDK math-header visibility, FFT-length snapshot lifetime, corrected
+FFT-length/frequency/sample-rate formula, and the target's two-arm clamp value
+boundaries. A typed FFTMod initialization receiver removes an unnecessary
+base-to-derived copy. Existing SDK callback casts preserve the pointer ABI;
+no new shared prototype, compiler flags, assembly, or padding was introduced.
+
+Retained source `9bc09143dee3ca39055bdc815fb57101ea6e3590bf8b70848f31f5cbf0c9872d`;
+object `d079dc75c1301aa2fae0e4cca979d12f6491685a1e8c56d785fb394a7e4e34b0`;
+strict/data `f7f158d7288de38f2bfed9ef5581cdcc4db72ee8a6751a733568fb7f1521ebc2`.
+Proof: `build/small-first-20260913/fft-typed-init-receiver/frontier-proof.json`.
+All 57 relocation applications agree, including the explicitly recorded DTK
+0.9.2 SDA21 instruction/halfword convention; raw physical-offset identity is
+not claimed for those 26 mappings. Final linked application remains pending.
+
+## Two concrete Qwen compatibility gaps fixed
+
+The existing recovery prompt now records the observed GC/1.2.5n rejection of
+nonconstant local aggregate initialization and suggests ordinary field
+assignments without changing compiler flags. This is a compiler-specific
+caution, not a universal C90 restriction or source-admission rule. The real
+FFTMod initializer attempt supplied the acceptance case; it did not compile
+and was not retained. The guidance/fact compatibility suite passes 69 tests
+(one optional skip).
+
+The installed Qwen runner preserves the successful launch-time prompt receipt,
+its validator identity, and immutable prompt/packet hashes. On natural
+completion it checks the answer and packet with a stable current validator;
+it no longer rerenders an already validated prompt with a changed template.
+Incompatible answer/packet validation or any prompt/packet/receipt mutation
+still rejects. Thirty-one fake-HTTP tests pass without inference or retries.
+Runner: `C:/Users/Anony/.codex/tools/qwen-support/run-job.ps1`, SHA-256
+`ffde5c6872e13baa26fee82206d66bcf10b2878a2689ccec35a8573c701ae9b2`.
+
+Actual Exev job `exev-indexed-source-boundary` completed naturally in 771.489s
+but the old runner rejected it because the renderer changed during inference.
+Its preserved answer independently validates with the current checker. The
+old rejection receipt is untouched; no inference was repeated and no source
+gain is credited to that proposal without measurement. This fixes wasted
+completed work, not source-cause accuracy by itself.
+
 ## Active Exev dependencies and Qwen rewrite checks repaired
 
 The existing `recovery_causal_groups.py` producer slicer now models validated

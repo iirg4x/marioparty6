@@ -1,6 +1,6 @@
 #include "types.h"
 
-#include <math.h>
+#include "dolphin/math.h"
 #include <string.h>
 
 #include "gssdk/fft.h"
@@ -24,6 +24,7 @@ typedef struct FFTMod {
 extern void *heap_Alloc(void *heap, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 extern f32 logf_check(f32 value);
+extern f32 floorf(f32 value);
 
 static f32 CalcPowerSpec(FFTMod *block, f32 *input, f32 *output)
 {
@@ -33,13 +34,12 @@ static f32 CalcPowerSpec(FFTMod *block, f32 *input, f32 *output)
     f32 *powerStart = output + block->firstPowerBin;
     f32 *powerEnd = output + block->lastPowerBin;
     f32 *spectrumEnd = output + block->fftLength / 2;
+    f32 firstSample = *real++;
 
-    *output = *real * *real;
-    if (output == powerStart) {
+    *output = firstSample * firstSample;
+    if (output++ == powerStart) {
         power += *powerStart++;
     }
-    real++;
-    output++;
 
     while (output < powerStart) {
         *output++ = *real * *real + *imaginary * *imaginary;
@@ -70,11 +70,10 @@ static void CalcAmplitudeSpec(FFTMod *block, f32 *input, f32 *output)
     f32 *spectrumEnd = output + block->fftLength / 2;
 
     *output = sqrtf(*real * *real);
-    if (output == powerStart) {
+    real++;
+    if (output++ == powerStart) {
         powerStart++;
     }
-    real++;
-    output++;
 
     while (output < powerStart) {
         *output++ = sqrtf(*real * *real + *imaginary * *imaginary);
@@ -128,7 +127,7 @@ static void ProcessFFTMod(
 
             qEnQueue(block->base.output->queue, &logPower, 1);
             powerLevel =
-                (s16)(100.0 * 4.3429446f * (logPower - 27.37f));
+                (s16)(100.0 * (4.3429446f * (logPower - 27.37f)));
             if (powerLevel > 1800) {
                 powerLevel = 1800;
             }
@@ -171,63 +170,53 @@ static u32 ControlFFTMod(
     return 1;
 }
 
-static u32 InitFFTMod(TosBaseBlock *baseBlock)
+static u32 InitFFTMod(FFTMod *block)
 {
-    FFTMod *block = (FFTMod *)baseBlock;
-    TosContext *context = baseBlock->context;
-    s16 sampleRate;
+    TosContext *context = block->base.context;
+    s16 sampleRate = (s16)_tosGetProfileU32(block, 3, 5500);
+    u32 fftLength;
     f32 frequency;
     f32 scale;
-
-    sampleRate = (s16)_tosGetProfileU32(block, 3, 5500);
-    block->fftLength = (u16)_tosGetProfileU32(block, 4, 512);
+    fftLength = block->fftLength = (u16)_tosGetProfileU32(block, 4, 512);
     block->inputLength = (u16)_tosGetProfileU32(block, 6, 512);
-    if (block->inputLength > block->fftLength) {
+    if (block->inputLength > fftLength) {
         return 1;
     }
 
-    if (block->fftLength > block->inputLength) {
+    if (fftLength > block->inputLength) {
         block->padInput = 1;
         block->paddingBytes =
-            (block->fftLength - block->inputLength) * sizeof(f32);
+            (fftLength - block->inputLength) * sizeof(f32);
         block->buffer =
-            heap_Alloc(context->heap, block->fftLength * sizeof(f32));
+            heap_Alloc(context->heap, fftLength * sizeof(f32));
     }
 
     block->base.input->inputSize = block->inputLength * sizeof(f32);
     if (block->powerSpectrum == 0) {
         block->base.output->outputSize =
-            (block->fftLength / 2 + 1) * sizeof(f32);
+            (fftLength / 2 + 1) * sizeof(f32);
     } else {
         block->base.output->outputSize = sizeof(f32);
         block->base.output[1].outputSize =
-            (block->fftLength / 2 + 1) * sizeof(f32);
+            (fftLength / 2 + 1) * sizeof(f32);
     }
 
     frequency = _tosGetProfileFloat(block, 1, 300.0f);
-    scale = 2.0f * block->fftLength;
     block->firstPowerBin =
-        (u32)floorf((sampleRate * frequency) / scale);
-    if (block->firstPowerBin == 0) {
-        block->firstPowerBin = 0;
-    }
-    if (block->firstPowerBin >= block->fftLength / 2 - 1) {
-        block->firstPowerBin = block->fftLength / 2 - 2;
-    }
+        (u32)floorf((block->fftLength * frequency) / (scale = 2.0f * sampleRate));
+    block->firstPowerBin = block->firstPowerBin != 0 ? block->firstPowerBin : 0;
+    block->firstPowerBin = block->firstPowerBin < block->fftLength / 2 - 1
+        ? block->firstPowerBin : block->fftLength / 2 - 2;
 
     frequency = _tosGetProfileFloat(block, 2, 4500.0f);
     block->lastPowerBin =
         (u32)floorf(
             0.9999f + (block->fftLength * frequency) / scale);
-    if (block->lastPowerBin == 0) {
-        block->lastPowerBin = 0;
-    }
-    if (block->lastPowerBin >= block->fftLength / 2 - 1) {
-        block->lastPowerBin = block->fftLength / 2 - 2;
-    }
-    if (block->lastPowerBin <= block->firstPowerBin) {
-        block->lastPowerBin = block->firstPowerBin;
-    }
+    block->lastPowerBin = block->lastPowerBin != 0 ? block->lastPowerBin : 0;
+    block->lastPowerBin = block->lastPowerBin < block->fftLength / 2 - 1
+        ? block->lastPowerBin : block->fftLength / 2 - 2;
+    block->lastPowerBin = block->lastPowerBin > block->firstPowerBin
+        ? block->lastPowerBin : block->firstPowerBin;
 
     block->powerFloor = _tosGetProfileFloat(block, 5, 0.0f);
     return 0;
@@ -248,7 +237,7 @@ void *ConstructFFTMod(TosContext *context, u32 blockIndex)
         (u8)_tosGetProfileU32(&profileBlock, 7, 1);
     block = (FFTMod *)tosBaseBlockConstruct(
         context, blockIndex, 1, powerSpectrum != 0 ? 2 : 1,
-        ProcessFFTMod, InitFFTMod, ControlFFTMod, sizeof(FFTMod));
+        ProcessFFTMod, (TosInitFunction)InitFFTMod, ControlFFTMod, sizeof(FFTMod));
     block->powerSpectrum = powerSpectrum;
     return block;
 }
