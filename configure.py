@@ -1292,6 +1292,10 @@ config.libs = [
         "m670dll",
         objects={
             Object(Matching, "REL/m670dll/prolog.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m670dll/sequence.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m670dll/seqparam.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m670dll/init.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m670dll/pattern.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m670dll/actor.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m670dll/pillar.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m670dll/cpu.c", extra_cflags=["-pooldata off"]),
