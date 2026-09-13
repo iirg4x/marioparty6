@@ -190,6 +190,82 @@ def declared_functions(text: str) -> dict[str, list[dict]]:
     return result
 
 
+def _target_stack_captures(rows: list, label_rows: set[int]) -> list[dict]:
+    """Narrow, whole-function straight-line review aid, not dead-store analysis.
+
+    Only adjacent computed-value/call-result stores are candidates. Branches,
+    stack escapes, unsupported instructions and overlapping accesses make the
+    observation unknown. Ordinary calls can consume outgoing stack arguments:
+    absence of an explicit reload here proves neither unused storage nor a
+    local-slot classification, source identity, or callee behavior.
+    """
+    def record(i):
+        return {'row': i, 'byte_offset': i * 4, 'instruction': rows[i][2]}
+
+    widths = {'lbz': 1, 'lhz': 2, 'lha': 2, 'lwz': 4, 'lfs': 4, 'lfd': 8,
+              'stb': 1, 'sth': 2, 'stw': 4, 'stfs': 4, 'stfd': 8}
+    ordinary = {'li', 'lis', 'mr', 'mflr', 'mtlr', 'extsh', 'extsb', 'add',
+                'addi', 'mulli', 'slwi', 'clrlwi', 'cmpwi', 'cmplwi', 'cmpw',
+                'cmplw', 'andi.', 'ori', 'or', 'subf', 'fmr', 'fadds', 'fmuls',
+                'fsubs', 'fcmpu', 'nop'}
+    uncertainties, accesses = [], []
+    frame = None
+    for i, (op, args, _) in enumerate(rows):
+        if i == 0 and op == 'stwu' and len(args) == 2 and args[0] == 'r1':
+            match = re.fullmatch(r'(-?(?:0x[0-9a-f]+|\d+))\(r1\)', args[1])
+            if match and int(match[1], 0) < 0:
+                frame = -int(match[1], 0)
+                continue
+        if op == 'blr' and i == len(rows) - 1:
+            continue
+        if op == 'bl' and len(args) == 1 and re.fullmatch(r'[A-Za-z_$][\w$]*', args[0]):
+            if args[0].startswith(('_save', '_rest')):
+                uncertainties.append((i, 'compiler helper stack effects'))
+            continue
+        if (op == 'addi' and args[:2] == ['r1', 'r1'] and len(args) == 3
+                and frame is not None and args[2] in {str(frame), hex(frame)}
+                and i == len(rows) - 2 and rows[-1][0] == 'blr'):
+            continue
+        if op in widths and len(args) == 2:
+            memory = re.fullmatch(r'(-?(?:0x[0-9a-f]+|\d+))\(r1\)', args[1])
+            if memory:
+                accesses.append((i, int(memory[1], 0), widths[op], op.startswith('l')))
+                if args[0] == 'r1':
+                    uncertainties.append((i, 'stack pointer read/write'))
+                continue
+            if re.search(r'\br1\b', ','.join(args)) or not re.fullmatch(r'.+\(r\d+\)', args[1]):
+                uncertainties.append((i, 'unresolved memory/stack alias'))
+            continue
+        if op not in ordinary or re.search(r'\br1\b', ','.join(args)):
+            uncertainties.append((i, 'control flow, unsupported instruction or stack alias'))
+    if not rows or rows[-1][0] != 'blr' or frame is None:
+        uncertainties.append((0, 'missing canonical frame/terminal return'))
+    result = []
+    for i, offset, width, is_load in accesses:
+        op, args, _ = rows[i]
+        if is_load or not i or op not in {'stw', 'stfs'} or offset < 8 or frame is None or offset + width > frame:
+            continue
+        prev_op, prev_args, _ = rows[i - 1]
+        call = prev_op == 'bl' and args[0] in {'r3', 'f1'}
+        computed = prev_op == 'add' and prev_args and prev_args[0] == args[0]
+        if not (call or computed) or i in label_rows:
+            continue
+        overlaps = [j for j, start, size, _ in accesses
+                    if j > i and start < offset + width and offset < start + size]
+        issues = list(uncertainties)
+        if overlaps:
+            issues.append((overlaps[0], 'overlapping later stack read/write'))
+        result.append({'store': record(i), 'producer': record(i - 1),
+            'call': record(i - 1) if call else None,
+            'stack_offset': offset, 'width_bytes': width,
+            'status': 'unknown' if issues else 'no_direct_reload_observed',
+            'uncertainty_count': len(issues),
+            'uncertainties': [{'at': record(j), 'reason': why} for j, why in issues[:8]],
+            'scope': 'complete supplied function; explicit straight-line stack accesses only',
+            'review': 'No direct reload observed is not unused-storage or local-slot proof: calls may consume outgoing stack arguments. Review target-observed stores against source/decompiler output; never infer padding, fake locals, or original-source authentication.'})
+    return result
+
+
 def target_integer_shapes(assembly: str, function: str) -> dict:
     """Target-only MWCC reconstruction cues, available before any C compile.
 
@@ -367,6 +443,7 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
             'promoted_captures': captures, 'narrowed_captures': narrowed,
             'loop_nesting': nesting, 'return_transfers': returns,
             'array_index_strides': array_indices,
+            'stack_capture_reviews': _target_stack_captures(rows, label_rows),
             'indexed_stack_bases': stack_bases, 'immediate_masks': masks,
             'caveat': 'Target cues, not original C types or source mappings. Review real consumers, header types and compiler mode. Never infer declaration order solely from stack offsets.',
             'authority_advanced': False, 'source_patch_emitted': False}

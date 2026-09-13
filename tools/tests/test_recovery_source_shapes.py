@@ -271,6 +271,84 @@ class SourceShapesTests(unittest.TestCase):
         constraints.update(source_sha256=hashlib.sha256(rebased).hexdigest(), rebind_exact_statements=True)
         self.assertEqual(len(shapes.enumerate_shapes(rebased, 'F', ['sequence_result_consumer'], constraints)), 1)
 
+    def chain_constraints(self, source, first=b'team = GwPlayerConf[i].grpNo;',
+                          second=b'lbl_1_bss_BC[i].teamNo = team;'):
+        statements = []
+        for text in (first, second):
+            pos = source.index(text)
+            statements.append(dict(original=text, start_byte=pos, end_byte=pos+len(text),
+                                   sha256=hashlib.sha256(text).hexdigest()))
+        return dict(source_sha256=hashlib.sha256(source).hexdigest(), local='team',
+            mode='chained_field_capture', compatible_value_conversions=True,
+            field_stability_reviewed=True, closed_macro_context=True,
+            nonvolatile_scalar_reads_reviewed=True, local_no_alias_reviewed=True,
+            field_bases_stable_reviewed=True, index_stability_reviewed=True,
+            stable_field_bases=['GwPlayerConf', 'lbl_1_bss_BC'], immutable_indices=['i'],
+            reviewed_identical_conversion_types={'team': 's16', 'GwPlayerConf[i].grpNo': 's16',
+                                                 'lbl_1_bss_BC[i].teamNo': 's16'},
+            observed_target_rationale='Reviewed shared-value producer closes the target GPR cycle; replay, not discovery.',
+            statements=statements)
+
+    def test_reviewed_chained_field_capture(self):
+        source = (b'void F(void){ int i; s16 team; for(i=0;i<4;i++){ '
+                  b'team = GwPlayerConf[i].grpNo; lbl_1_bss_BC[i].teamNo = team; Use(team); }}')
+        row = shapes.enumerate_shapes(source, 'F', ['sequence_result_consumer'], self.chain_constraints(source))[0]
+        self.assertIn(b'team = lbl_1_bss_BC[i].teamNo = GwPlayerConf[i].grpNo;', row['candidate_source'])
+        self.assertEqual(len(row['edits']), 1)
+        self.assertIn(b's16 team;', row['candidate_source'])
+        self.assertFalse(row['authority_advanced'])
+        for key in ('closed_macro_context', 'nonvolatile_scalar_reads_reviewed', 'local_no_alias_reviewed',
+                    'field_bases_stable_reviewed', 'index_stability_reviewed', 'observed_target_rationale',
+                    'immutable_indices', 'stable_field_bases', 'reviewed_identical_conversion_types'):
+            invalid = self.chain_constraints(source)
+            del invalid[key]
+            with self.assertRaises(ValueError, msg=key):
+                shapes.enumerate_shapes(source, 'F', ['sequence_result_consumer'], invalid)
+        invalid = self.chain_constraints(source)
+        invalid['reviewed_identical_conversion_types']['lbl_1_bss_BC[i].teamNo'] = 'int'
+        with self.assertRaises(ValueError):
+            shapes.enumerate_shapes(source, 'F', ['sequence_result_consumer'], invalid)
+        for old, new in ((b's16 team;', b'int team;'), (b's16 team;', b'volatile s16 team;'),
+                         (b's16 team;', b's16 team; { s16 team; }'),
+                         (b'int i;', b'volatile int i;'), (b'int i;', b'int i; { int i; }'),
+                         (b's16 team;', b's16 team; int GwPlayerConf;'),
+                         (b's16 team;', b's16 team; Escape(&i);'),
+                         (b's16 team;', b's16 team; Escape(&(team));'),
+                         (b'; lbl_1', b'; i++; lbl_1'), (b'; lbl_1', b'; Work(); lbl_1')):
+            changed = source.replace(old, new)
+            with self.assertRaises(ValueError, msg=str(new)):
+                shapes.enumerate_shapes(changed, 'F', ['sequence_result_consumer'], self.chain_constraints(changed))
+        for first, second in ((b'team = GwPlayerConf[i++].grpNo;', b'lbl_1_bss_BC[i].teamNo = team;'),
+                              (b'team = Get();', b'lbl_1_bss_BC[i].teamNo = team;'),
+                              (b'team = GwPlayerConf[i].grpNo;', b'lbl_1_bss_BC[team].teamNo = team;'),
+                              (b'team = GwPlayerConf[i].grpNo;', b'Get()[i].teamNo = team;')):
+            changed = b'void F(void){ int i; s16 team; '+first+b' '+second+b' }'
+            with self.assertRaises(ValueError):
+                shapes.enumerate_shapes(changed, 'F', ['sequence_result_consumer'], self.chain_constraints(changed, first, second))
+        invalid = self.chain_constraints(source)
+        invalid['statements'][0]['sha256'] = '0'*64
+        with self.assertRaises(ValueError):
+            shapes.enumerate_shapes(source, 'F', ['sequence_result_consumer'], invalid)
+        invalid = self.chain_constraints(source)
+        invalid['source_sha256'] = '0'*64
+        with self.assertRaises(ValueError):
+            shapes.enumerate_shapes(source, 'F', ['sequence_result_consumer'], invalid)
+
+    def test_m635_chained_capture_immutable_source_replay(self):
+        import os
+        import subprocess
+        if os.environ.get('SOURCE_SHAPES_M635_REPLAY') != '1':
+            self.skipTest('explicit local immutable m635 source replay not selected')
+        root = Path(__file__).resolve().parents[2]
+        source = subprocess.check_output(['git', 'show',
+            '17f1a17bd0e685ec7f1bfc9e4aa6ab1d485f1f2f:src/REL/m635dll/players.c'], cwd=root)
+        row = shapes.enumerate_shapes(source, 'fn_1_2954', ['sequence_result_consumer'], self.chain_constraints(source))[0]
+        self.assertIn(b'team = lbl_1_bss_BC[i].teamNo = GwPlayerConf[i].grpNo;', row['candidate_source'])
+        current = (root/'src/REL/m635dll/graphics.c').read_bytes()
+        self.assertEqual(shapes.fingerprint_function(row['candidate_source'], 'fn_1_2954')['token_sha256'],
+                         shapes.fingerprint_function(current, 'fn_1_2954')['token_sha256'])
+        print('m635 immutable chained-capture replay:', row['source_sha256'], row['candidate_sha256'])
+
     def test_sequence_rejects_stale_nonadjacent_or_unknown_ownership(self):
         base = b'void F(void){ int value; value = Get(p++); work->field = value; }'
         for source in (base.replace(b'; work', b'; SideEffect(); work'), base.replace(b'int value;', b'')):

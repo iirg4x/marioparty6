@@ -12,47 +12,16 @@ REL/m635dll/prolog.c:
 
 REL/m635dll/m635.c:
 	.text       start:0x000000A0 end:0x00000408
-	.data       start:0x00000078 end:0x000000A0
+	.data       start:0x00000000 end:0x000000A0
 
 REL/m635dll/logic.c:
 	.text       start:0x00000408 end:0x00001774
 	.rodata     start:0x00000010 end:0x00000040
 
-REL/m635dll/scene.c:
-	.text       start:0x00001774 end:0x00002018
-
-REL/m635dll/sprite_init.c:
-	.text       start:0x00002018 end:0x00002268
-
-REL/m635dll/sprite_hit.c:
-	.text       start:0x00002268 end:0x00002330
-
-REL/m635dll/sprites.c:
-	.text       start:0x00002330 end:0x000027E4
-
-REL/m635dll/sprite_state.c:
-	.text       start:0x000027E4 end:0x00002954
-
-REL/m635dll/players.c:
-	.text       start:0x00002954 end:0x00002F40
-
-REL/m635dll/player_state.c:
-	.text       start:0x00002F40 end:0x000030C8
-
-REL/m635dll/motion.c:
-	.text       start:0x000031BC end:0x000032E0
-
-REL/m635dll/position.c:
-	.text       start:0x000032E0 end:0x000033FC
-
-REL/m635dll/models.c:
-	.text       start:0x00003AC4 end:0x00004114
-
-REL/m635dll/moving.c:
-	.text       start:0x00004114 end:0x0000448C
-
-REL/m635dll/model_visibility.c:
-	.text       start:0x0000448C end:0x000044BC
+REL/m635dll/graphics.c:
+	.text       start:0x00001774 end:0x000044BC
+	.rodata     start:0x00000040 end:0x000000C8
+	.data       start:0x000000A0 end:0x00000458
 
 REL/m635dll/runtime.c:
 	.text       start:0x000044BC end:0x00004F00

@@ -197,6 +197,42 @@ class IntegerShapeTests(unittest.TestCase):
     def shapes(self, body):
         return decompctx.target_integer_shapes('.fn example, global\n' + body + '\n.endfn example\n', 'example')
 
+    def test_no_direct_reload_stack_captures_require_fidelity_review(self):
+        body = ('stwu r1, -0x20(r1)\nadd r0, r3, r4\nstw r0, 8(r1)\n'
+                'bl MotionMax\nstfs f1, 12(r1)\nbl Work\naddi r1, r1, 0x20\nblr')
+        cues = self.shapes(body)['stack_capture_reviews']
+        self.assertEqual([c['stack_offset'] for c in cues], [8, 12])
+        self.assertEqual([c['status'] for c in cues], ['no_direct_reload_observed'] * 2)
+        self.assertEqual(cues[0]['producer']['row'], 1)
+        self.assertIsNone(cues[0]['call'])
+        self.assertEqual(cues[1]['call']['instruction'], 'bl MotionMax')
+        self.assertEqual(cues[1]['store']['byte_offset'], 16)
+        self.assertIn('fake locals', cues[0]['review'])
+        for middle in ('lwz r3, 8(r1)', 'lbz r3, 9(r1)', 'stfd f0, 8(r1)',
+                       'addi r3, r1, 8', 'mr r31, r1', 'lwzx r3, r1, r4',
+                       'b .L_join\n.L_join:', 'beq .L_join\n.L_join:',
+                       'bl _restgpr_24', 'bctrl', 'mystery r3, r4'):
+            changed = body.replace('bl Work', middle)
+            result = self.shapes(changed)['stack_capture_reviews']
+            self.assertEqual(result[0]['status'], 'unknown', middle)
+            self.assertTrue(result[0]['uncertainties'], middle)
+        self.assertEqual(self.shapes(body.replace('blr', 'nop'))['stack_capture_reviews'][0]['status'], 'unknown')
+        # Aliasing before a store is also uncertainty, not just its suffix.
+        changed = body.replace('add r0, r3, r4', 'mr r30, r1\nadd r0, r3, r4')
+        self.assertEqual(self.shapes(changed)['stack_capture_reviews'][0]['status'], 'unknown')
+        # Saved-register and LR traffic is not a computed/call capture.
+        self.assertEqual(self.shapes('stwu r1, -32(r1)\nmflr r0\nstw r0, 8(r1)\n'
+                                    'stw r31, 28(r1)\naddi r1, r1, 32\nblr')['stack_capture_reviews'], [])
+
+    def test_outgoing_stack_argument_is_not_claimed_unused_or_local(self):
+        body = ('stwu r1, -32(r1)\nbl Produce\nstw r3, 8(r1)\n'
+                'bl ManyArgs\naddi r1, r1, 32\nblr')
+        cue = self.shapes(body)['stack_capture_reviews'][0]
+        self.assertEqual(cue['status'], 'no_direct_reload_observed')
+        self.assertIn('not unused-storage or local-slot proof', cue['review'])
+        self.assertIn('calls may consume outgoing stack arguments', cue['review'])
+        self.assertNotIn('unconsumed_target_store', str(cue))
+
     def test_loop_width_not_call_argument_width(self):
         body = '''li r31, 0
 b .L_test

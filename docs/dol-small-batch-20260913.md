@@ -1,6 +1,81 @@
 # Small DOL batch — 2026-09-13
 
-## m635: first-pass corrections and 33 source-selected functions
+## m635: 52/52 application functions and first-pass shared-value guidance
+
+The current retained local frontier is **52/52 application functions**, up from
+33/52. All 20,224 code bytes, including startup/runtime, are source-selected;
+all initialized `.rodata`/`.data` bytes are reconstructed. Independent function
+relocations, linked section bytes, the retail-identical m635 REL, and all 137
+project checksums pass. The remaining fallback is **332 bytes of `.bss`**:
+this is not yet whole-module source closure or a main-progress advancement.
+The current receipt is
+`build/minigame-recovery-20260913/m635/entry-proof/receipt.json`.
+
+The causal corrections were structural and shared-value changes, not register
+permutations:
+
+- Restored one graphics translation unit in target definition order. Earlier
+  helpers are visible to the later callers under ordinary automatic inlining;
+  their calls, inline bodies, and real literal producers now agree together.
+  The 12 obsolete fragment files were removed; their earlier bodies remain in
+  Git. No C-file includes, inline directives, literal seeders, or assembly were
+  added. The graphics unit's 952 initialized data bytes matched on its first
+  composed compile. Its leading 16-byte weak `sqrtf` constant contribution is
+  deduplicated by the normal source-selected link; full linked `.rodata` is exact.
+- `fn_1_2954` had one three-owner GPR cycle. Declaration/scope alternatives were
+  neutral. Reusing the actual field-store result,
+  `team = lbl_1_bss_BC[i].teamNo = GwPlayerConf[i].grpNo`, closed all ten code
+  differences while preserving the 916-byte body. The local and both fields
+  are independently declared `s16`; the indexed bases and local index are
+  stable across the two original statements. This repeats the shared-producer
+  lesson, not a rule to chain every assignment.
+- The missing `fn_1_2F08` setter matched on its first compile. New `fn_1_33FC`
+  matched instruction shape on its first compile, with literal ownership closed
+  by the composed TU. `fn_1_30C8` and its automatic expansion in `fn_1_3738`
+  needed one coupled local-declaration correction for the two observed captures;
+  it fixed both standalone and inline stack homes. These are narrower claims
+  than saying all 19 newly selected functions were discovered in one compile.
+- The two observed producers in `fn_1_30C8` are a player pointer calculation
+  and `CharMotionMaxTimeGet` result. The target stores both and does not directly
+  reload them; the same producers recur in the inline caller. Their recovered
+  assignments remain explicitly reviewed source-shape debt, not proof of the
+  original spelling or permission to create fake storage. The Boolean return
+  and third player argument of `fn_1_3B7C` are established by the standalone and
+  inline call sites; the third parameter is unused by that callee.
+
+Two existing tools now carry these lessons into the next draft:
+
+1. `decompctx.target_integer_shapes` adds bounded `stack_capture_reviews` before
+   compilation. It flags computed-pointer/call-result stores with no observed
+   direct reload so m2c simplification can be reviewed against the real target.
+   It does **not** infer an unused local: a callee may consume an outgoing stack
+   argument. Branches, alias/escape uncertainty, overlapping stack accesses,
+   unsupported instructions, or an incomplete frame/return keep the result
+   unknown. Actual standalone/inline target packets retain that distinction.
+2. `recovery_source_shapes.sequence_result_consumer` adds optional
+   `mode=chained_field_capture`; default comma behavior is unchanged. It composes
+   one reviewed shared-value pair and requires exact source/statement bindings,
+   matching conversion types, stable indexed field bases, and explicit target
+   rationale. Side effects, escaped or shadowed locals/indexes, changed types,
+   stale bytes, and a local-dependent lvalue are rejected. Immutable replay from
+   `17f1a17:src/REL/m635dll/players.c` produces the current `fn_1_2954` token
+   stream. This is verified composition of a known gain, not automatic discovery.
+
+Before the first compile of a similar family: use the real preprocessed headers,
+review target loop/capture widths and producer stores, reconstruct helper
+visibility/TU data ownership, and compose coupled creation/consumer changes when
+the evidence connects them. Compile the coherent family, not artificially
+isolated functions with a different inline/pool context. No new approval gate
+or universal first-compile guarantee is introduced.
+
+Validation: eight affected tool suites pass **165 tests, two skipped**; the
+explicit immutable chained-capture replay also passes. Tool hashes, target cues,
+and logs are bound in `entry-proof/first-pass-tooling.json`. The full workflow
+suite was not rerun for these bounded changes. The unresolved BSS question is
+four bytes between the 92-byte work record's last known byte and the next
+object; preserve that uncertainty instead of adding invented struct padding.
+
+## Previous m635 frontier: first-pass corrections and 33 functions
 
 The retained local frontier is now **33/52 application functions**, up from
 26/52. Seven additional functions are source-selected: `fn_1_2F40`,

@@ -445,8 +445,94 @@ def indexed_base_snapshot(source, function, constraints):
              'sha256': _sha(array.encode()), 'replacement': name.encode()}]
 
 
+def _review_chained_field_capture(source, raw, nodes, first, local, read, field, constraints):
+    """Check the deliberately narrow array[index].field shared-value chain.
+
+    External field types, macro expansion and alias ownership are caller review
+    assertions bound to these exact source bytes, not inferred C type facts.
+    """
+    if constraints.get('source_sha256') != _sha(source):
+        raise ValueError('chained capture source binding is stale')
+    flags = ('closed_macro_context', 'nonvolatile_scalar_reads_reviewed',
+             'local_no_alias_reviewed', 'field_bases_stable_reviewed',
+             'index_stability_reviewed')
+    if any(constraints.get(k) is not True for k in flags):
+        raise ValueError('closed macro/nonvolatile/alias/base/index review required')
+    evidence = constraints.get('observed_target_rationale')
+    if not isinstance(evidence, str) or not evidence.strip() or len(evidence) > 2048:
+        raise ValueError('explicit bounded observed target rationale required')
+    textof = lambda n: raw[n.start_byte:n.end_byte]
+
+    def array_field(node):
+        if node.type != 'field_expression':
+            raise ValueError('plain array[index].field capture required')
+        array = node.child_by_field_name('argument')
+        member = node.child_by_field_name('field')
+        if array.type != 'subscript_expression' or raw[array.end_byte:member.start_byte].strip() != b'.':
+            raise ValueError('direct array member capture required')
+        base, index = array.child_by_field_name('argument'), array.child_by_field_name('index')
+        if base.type != 'identifier' or index.type != 'identifier':
+            raise ValueError('plain immutable index and stable base identifiers required')
+        if local.encode() in (textof(base), textof(index)):
+            raise ValueError('local-dependent field read/lvalue unsupported')
+        return textof(base).decode(), textof(index).decode()
+
+    source_base, source_index = array_field(read)
+    target_base, target_index = array_field(field)
+    if source_index != target_index or source_base == target_base:
+        raise ValueError('one shared index and distinct reviewed bases required')
+    if constraints.get('stable_field_bases') != sorted([source_base, target_base]):
+        raise ValueError('exact stable field base review required')
+    if constraints.get('immutable_indices') != [source_index]:
+        raise ValueError('exact interval-immutable index review required')
+    for declaration in nodes:
+        if declaration.type in {'declaration', 'parameter_declaration'} and any(
+                c.type == 'identifier' and textof(c).decode() in {source_base, target_base}
+                for c in _nodes(declaration)):
+            raise ValueError('locally declared/shadowed field base unsupported')
+    types = constraints.get('reviewed_identical_conversion_types')
+    expected = {local, textof(read).decode(), textof(field).decode()}
+    if (not isinstance(types, dict) or set(types) != expected
+            or any(not isinstance(t, str) for t in types.values()) or len(set(types.values())) != 1):
+        raise ValueError('identical reviewed local/read/field conversion types required')
+    typ = types[local]
+    if not isinstance(typ, str) or not re.fullmatch(r'[A-Za-z_]\w*(?: [A-Za-z_]\w*)*', typ):
+        raise ValueError('ordinary reviewed scalar type required')
+    if set(typ.split()) & {'volatile', 'const', 'static', 'extern', 'struct', 'union'}:
+        raise ValueError('qualified or aggregate capture type unsupported')
+
+    def ordinary_local(name, required_type=None):
+        ident = name.encode()
+        declarations = [n for n in nodes if n.type in {'declaration', 'parameter_declaration'}
+                        and any(c.type == 'identifier' and textof(c) == ident for c in _nodes(n))]
+        if len(declarations) != 1:
+            raise ValueError('unique unshadowed ordinary local/index required')
+        decl = declarations[0]
+        normalized = b' '.join(textof(decl).split())
+        pattern = (re.escape(required_type.encode()) if required_type else rb'(?:int|short|long|s16|s32|u16|u32)')
+        if (decl.type != 'declaration' or not re.fullmatch(pattern + rb'\s+' + re.escape(ident) + rb'\s*;', normalized)
+                or decl.parent.type != 'compound_statement' or decl.end_byte > first.start_byte
+                or not (decl.parent.start_byte <= first.start_byte < decl.parent.end_byte)):
+            raise ValueError('ordinary enclosing declaration/type binding required')
+        # A plain local cannot change through an escaped pointer in this mode.
+        for node in nodes:
+            if node.type == 'pointer_expression' and textof(node).lstrip().startswith(b'&'):
+                operand = node.child_by_field_name('argument')
+                while operand is not None and operand.type == 'parenthesized_expression':
+                    operand = next((c for c in operand.named_children if c.type != 'comment'), None)
+                if operand is not None and operand.type == 'identifier' and textof(operand) == ident:
+                    raise ValueError('address-taken local/index unsupported')
+    ordinary_local(local, typ)
+    ordinary_local(source_index)
+
+
 def sequence_result_consumer(source, function, constraints):
-    """One reviewed adjacent assignment pair; exact original text supports rebinding."""
+    """One reviewed adjacent assignment pair; exact original text supports rebinding.
+
+    Default comma mode retains local=call sequencing. Optional
+    chained_field_capture reuses an observed field-store value as the local's
+    producer, under explicit identical-type and stable-index review.
+    """
     start, _, raw, nodes = _island(source, function)
     if constraints.get('compatible_value_conversions') is not True or constraints.get('field_stability_reviewed') is not True:
         raise ValueError('reviewed conversion compatibility and field stability required')
@@ -482,7 +568,18 @@ def sequence_result_consumer(source, function, constraints):
     al, ar = a.child_by_field_name('left'), a.child_by_field_name('right')
     bl, br = b.child_by_field_name('left'), b.child_by_field_name('right')
     textof = lambda n: raw[n.start_byte:n.end_byte]
-    if any(textof(e.child_by_field_name('operator')) != b'=' for e in (a,b)) or al.type != 'identifier' or textof(al) != local.encode() or br.type != 'identifier' or textof(br) != local.encode() or ar.type != 'call_expression':
+    mode = constraints.get('mode', 'comma')
+    if mode not in {'comma', 'chained_field_capture'}:
+        raise ValueError('unknown result-consumer mode')
+    if any(textof(e.child_by_field_name('operator')) != b'=' for e in (a,b)) or al.type != 'identifier' or textof(al) != local.encode() or br.type != 'identifier' or textof(br) != local.encode():
+        raise ValueError('expected local=producer then field=local')
+    if mode == 'chained_field_capture':
+        _review_chained_field_capture(source, raw, nodes, first, local, ar, bl, constraints)
+        middle = raw[first.end_byte:second.start_byte]
+        replacement = textof(al)+b' = '+textof(bl)+b' = '+textof(ar)+b';'+middle
+        return [{'start_byte': start+first.start_byte, 'end_byte': start+second.end_byte,
+                 'sha256': _sha(raw[first.start_byte:second.end_byte]), 'replacement': replacement}]
+    if ar.type != 'call_expression':
         raise ValueError('expected local=call then field=local')
     if ar.child_by_field_name('function').type != 'identifier':
         raise ValueError('direct call required')
@@ -709,6 +806,9 @@ def enumerate_shapes(source_bytes, function, approved_families, source_constrain
                 'function': function,
                 'reviewed_owner_mapping': source_constraints['integer_owner_sites'],
                 'reviewed_scalar_aliases': source_constraints['reviewed_scalar_aliases']}
+        if family == 'sequence_result_consumer' and source_constraints.get('mode') == 'chained_field_capture':
+            results[-1]['rationale'] = 'Reviewed chained-field capture replay/composition; not original-source or compiler-match proof.'
+            results[-1]['observed_target_rationale'] = source_constraints['observed_target_rationale']
     return results
 
 

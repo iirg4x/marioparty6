@@ -1,6 +1,19 @@
 #include "REL/m635dll.h"
 #include "game/audio.h"
 #include "game/wipe.h"
+#include "game/pad.h"
+
+u16 lbl_1_data_0[6] = {
+    PAD_BUTTON_A, PAD_BUTTON_B, PAD_BUTTON_X, PAD_BUTTON_Y,
+    PAD_BUTTON_TRIGGER_L, PAD_BUTTON_TRIGGER_R
+};
+char lbl_1_data_C[6] = { 'A', 'B', 'X', 'Y', 'L', 'R' };
+s16 lbl_1_data_12[4][2] = { { 60, 30 }, { 55, 25 }, { 40, 15 }, { 32, 6 } };
+OM_CAMERA_VIEW lbl_1_data_24[3] = {
+    { { 0, 180, -500 }, { -13, 0, 0 }, 1500 },
+    { { -200, 180, -320 }, { -13, 0, 0 }, 1500 },
+    { { 200, 180, -320 }, { -13, 0, 0 }, 1500 }
+};
 
 MGSEQ_PARAM lbl_1_data_78 = {
     300, 0, fn_1_F0, fn_1_134, fn_1_164, fn_1_1AC, fn_1_224,
