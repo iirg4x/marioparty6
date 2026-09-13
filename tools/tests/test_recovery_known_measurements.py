@@ -1,5 +1,6 @@
 """Selected historical source constraints are sealed observations, not proof reuse."""
 import copy
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -12,6 +13,67 @@ from tools.tests.test_recovery_causal_groups import report, row
 
 
 class KnownMeasurementsTests(unittest.TestCase):
+    def test_comparison_direction_roles_and_alignment_caveat(self):
+        left = [row("stw r0, 0xc(r1)", 0), {}, row("lwz r3,0(r1)", 4), row("blr", 8)]
+        right = [{}, row("mr r30,r3", 0), row("lwz r4,0(r1)", 4), row("blr", 8)]
+        packet = groups.decision_packet(report(left, right), "f", "void f(void) { use(data); }",
+                                        1, 1, "Which return boundary differs?", 0, 3,
+                                        decision_mode="source-hypothesis")
+        facts = packet["comparison_direction"]
+        self.assertEqual([r["observation"] for r in facts["rows"]],
+                         ["missing_from_candidate", "extra_in_candidate", "paired_difference"])
+        self.assertEqual(facts["different_alignment_count"], 3)
+        self.assertEqual(facts["target_role"], "immutable_reference")
+        prompt = groups.render_decision_prompt(packet)
+        for text in ("only candidate C may change", "Do not optimize target to resemble candidate",
+                     "not remove the target instruction", "Alignment can pair different operations",
+                     "no row alone proves a semantic addition/deletion"):
+            self.assertIn(text, prompt)
+        for mutate in (lambda d: d.update(target_role="editable_C", candidate_role="immutable_reference"),
+                       lambda d: d["rows"][0].update(observation="extra_in_candidate")):
+            changed = copy.deepcopy(packet)
+            mutate(changed["comparison_direction"])
+            changed["packet_sha256"] = groups._digest({k: v for k, v in changed.items() if k != "packet_sha256"})
+            with self.assertRaisesRegex(ValueError, "comparison direction"):
+                groups.validate_decision_packet(changed)
+
+    def test_direction_bounds_and_legacy_prompt_cache_identity(self):
+        packet = self.packet(decision_mode="source-hypothesis")
+        del packet["comparison_direction"]
+        packet["packet_sha256"] = groups._digest({k: v for k, v in packet.items() if k != "packet_sha256"})
+        self.assertEqual(packet["packet_sha256"], "849f29447a9f1d65e821b00b5e2d0ff41b252e75c4ed6831cca41bc729ad0f74")
+        prompt = groups.render_decision_prompt(packet)
+        self.assertEqual(hashlib.sha256(prompt.encode()).hexdigest(),
+                         "9a9bc6330e7ec8b4347f4f6e3472ddc6914933f65475eb0f9557b3e160cd4dfe")
+        self.assertNotIn("COMPARISON DIRECTION", prompt)
+        self.assertNotIn("comparison_direction", self.packet())
+        facts = groups._comparison_direction([{"row": i, "target": "blr", "candidate": None} for i in range(100)])
+        self.assertEqual(len(facts["rows"]), 64)
+        self.assertEqual(facts["selected_row_count"], 100)
+        self.assertTrue(facts["rows_truncated"])
+        late = groups._comparison_direction(
+            [{"row": i, "target": "mr r3,r4", "candidate": "mr r3,r4"} for i in range(80)]
+            + [{"row": 80, "target": "stw r0,12(r1)", "candidate": None}])
+        self.assertEqual(late["rows"], [{"row": 80, "observation": "missing_from_candidate"}])
+        self.assertFalse(late["rows_truncated"])
+        new = self.packet(decision_mode="source-hypothesis", question="q" * 800)
+        budget = len(json.dumps(new, ensure_ascii=False).encode())
+        self.packet(decision_mode="source-hypothesis", question="q" * 800, max_bytes=budget)
+        with self.assertRaisesRegex(ValueError, "byte budget"):
+            self.packet(decision_mode="source-hypothesis", question="q" * 800, max_bytes=budget - 1)
+
+    def test_actual_allocation_packet_direction_and_legacy_prompt(self):
+        folder = Path(__file__).resolve().parents[2] / "build/qwen-mqueue-remaining-20260913/queue-allocation-return"
+        if not (folder / "decision.json").is_file():
+            self.skipTest("local original allocation packet unavailable")
+        packet = json.loads((folder / "decision.json").read_bytes())
+        self.assertNotIn("comparison_direction", packet)
+        self.assertEqual(groups.render_decision_prompt(packet), (folder / "prompt.txt").read_text())
+        actual = next(r for r in packet["paired_rows"] if r["row"] == 29)
+        self.assertEqual(actual, {"row": 29, "target": "stw r0, 0xc(r1)", "candidate": None})
+        facts = groups._comparison_direction(packet["paired_rows"])
+        self.assertEqual(next(r for r in facts["rows"] if r["row"] == 29)["observation"], "missing_from_candidate")
+
     def measurement(self):
         return {"function": "f",
                 "source_fragment": "wordPropCount = data->nbrPron + data->nbrWord + 2;",

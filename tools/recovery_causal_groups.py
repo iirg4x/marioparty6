@@ -213,8 +213,44 @@ def summarize_match_scores(document: dict) -> dict:
     return result
 
 
+def _prologue_frame(symbol: dict | None) -> dict:
+    """Observe one immediate stwu frame in a bounded ABI prologue, not alloca.
+
+    No setup is unknown, not a zero-byte frame. Stop at the first body/control
+    instruction; competing stack definitions in the prologue are ambiguous.
+    """
+    unknown = {"bytes": None, "status": "unknown"}
+    if not symbol:
+        return dict(unknown, reason="missing symbol")
+    setups = []
+    for index, row in enumerate(symbol.get("instructions", [])[:32]):
+        if (isinstance(row, dict) and row.get("instruction") is None
+                and row.get("diff_kind") in {"DIFF_INSERT", "DIFF_DELETE"}):
+            continue  # objdiff alignment gap, not a machine instruction
+        parts = frontier._instruction_parts(row)
+        if parts is None:
+            return dict(unknown, reason="unrecognized prologue instruction")
+        opcode, operands = parts
+        if opcode == "stwu":
+            offset = frontier._stack_operand_offset(operands[1]) if len(operands) == 2 else None
+            if len(operands) != 2 or operands[0] != "r1" or offset is None or not -32768 <= offset < 0:
+                return dict(unknown, reason="unrecognized frame setup")
+            setups.append({"bytes": -offset, "row": index,
+                           "instruction": f"stwu r1,{offset}(r1)"})
+            if len(setups) > 1:
+                return dict(unknown, reason="ambiguous multiple frame setups")
+        elif (operands and operands[0] == "r1" and opcode not in {"stw", "stmw", "cmpw", "cmplw", "cmpwi", "cmplwi"}) or opcode == "stwux":
+            return dict(unknown, reason="unrecognized or competing stack definition")
+        elif opcode not in {"mflr", "stw", "stmw", "stfd"}:
+            break
+    else:
+        if len(symbol.get("instructions", [])) > 32:
+            return dict(unknown, reason="prologue scan limit reached")
+    return dict(setups[0], status="observed") if setups else dict(unknown, reason="no recognized prologue setup")
+
+
 def compare_match_frontiers(before: dict, after: dict) -> dict:
-    """Compare reported scores only; no retention, instruction or closure proof.
+    """Compare scores, sizes and observed frames; never retention/closure proof.
 
     Unique function names bridge reports. Report-local duplicate indices cannot.
     Unknown scores never become numerical gains, including a new 100 score.
@@ -227,8 +263,12 @@ def compare_match_frontiers(before: dict, after: dict) -> dict:
     if left.keys() != right.keys():
         raise ValueError("incompatible target function set")
     buckets = {key: [] for key in ("new_score_exact", "lost_score_exact", "improved",
-                                   "regressed", "changed_size", "unscored_changes")}
+                                   "regressed", "changed_size", "unscored_changes", "frame_transitions")}
     unchanged = score_unchanged = unscored = closed_size_regressions = 0
+    closed_frame_regressions = unknown_frames = 0
+    symbols = [{side: {s["name"]: s for s in frontier.focus._symbols(document, side, "strict")
+                       if s.get("instructions")}
+                for side in ("left", "right")} for document in (before, after)]
     for name in sorted(left):
         a, b = left[name], right[name]
         sizes = [frontier.focus._integer(row["target_bytes"]) for row in (a, b)]
@@ -237,6 +277,29 @@ def compare_match_frontiers(before: dict, after: dict) -> dict:
         row = {"function": name, "before_score": a["score"], "after_score": b["score"],
                "target_bytes": sizes[0], "before_bytes": a["candidate_bytes"],
                "after_bytes": b["candidate_bytes"]}
+        frames = {label: _prologue_frame(symbols[report][side].get(name))
+                  for label, report, side in (("target", 0, "left"), ("after_target", 1, "left"),
+                                              ("baseline", 0, "right"), ("candidate", 1, "right"))}
+        target, after_target, baseline, candidate = (frames[k]["bytes"] for k in
+                                                     ("target", "after_target", "baseline", "candidate"))
+        frame_known = None not in (target, after_target, baseline, candidate) and target == after_target
+        frame_regression = baseline == target and candidate != target if frame_known else None
+        transition = ("closed_frame_regression" if frame_regression else
+                      "exact_frame_preserved" if baseline == candidate == target else
+                      "frame_closed" if candidate == target else
+                      "unchanged_open_frame" if baseline == candidate else "changed_open_frame") if frame_known else "unknown"
+        row.update(target_frame_bytes=target, baseline_frame_bytes=baseline,
+                   candidate_frame_bytes=candidate, frame_transition=transition,
+                   closed_frame_regression=frame_regression)
+        # Row positions and decimal/hex spellings are not frame transitions.
+        frame_keys = {label: (fact["bytes"], fact["status"], fact.get("reason"))
+                      for label, fact in frames.items()}
+        frame_changed = (frame_keys["target"] != frame_keys["after_target"]
+                         or frame_keys["baseline"] != frame_keys["candidate"])
+        if a != b or frame_changed:
+            buckets["frame_transitions"].append(dict(row, frame_facts=frames))
+        closed_frame_regressions += int(frame_regression is True)
+        unknown_frames += int(not frame_known)
         known = all(item["status"] in {"score_exact", "mismatch"}
                     and type(item["score"]) in (int, float)
                     and 0 <= item["score"] <= 100 for item in (a, b))
@@ -261,18 +324,21 @@ def compare_match_frontiers(before: dict, after: dict) -> dict:
             regression = was_closed and not now_closed
             closed_size_regressions += int(regression)
             buckets["changed_size"].append(dict(row, closed_size_regression=regression))
-        if a == b:
+        if a == b and not frame_changed:
             unchanged += 1
     return {"schema": "recovery_match_frontier_transition/v1", "functions": len(left),
             **{key: rows[:24] for key, rows in buckets.items()},
             "counts": {**{key: len(rows) for key, rows in buckets.items()},
                        "unchanged": unchanged, "score_unchanged": score_unchanged,
                        "unscored_comparisons": unscored,
-                       "closed_size_regressions": closed_size_regressions},
+                       "closed_size_regressions": closed_size_regressions,
+                       "closed_frame_regressions": closed_frame_regressions,
+                       "frame_comparisons": len(left),
+                       "unknown_frame_comparisons": unknown_frames},
             "details_limit": 24, "details_truncated": any(len(rows) > 24 for rows in buckets.values()),
             "mixed_gain_regression": bool(buckets["improved"] and (
-                buckets["regressed"] or buckets["lost_score_exact"] or closed_size_regressions)),
-            "comparison_scope": "reported function scores and sizes only; unknown scores are not gains; no retention or closure proof",
+                buckets["regressed"] or buckets["lost_score_exact"] or closed_size_regressions or closed_frame_regressions)),
+            "comparison_scope": "reported function scores, sizes and bounded prologue frame observations; unknowns are not gains; no retention or closure proof",
             "authority_advanced": False}
 
 
@@ -442,6 +508,33 @@ def _known_measurement_context(entries: list[dict], function: str) -> dict:
     return context
 
 
+def _comparison_direction(paired_rows: list[dict]) -> dict:
+    """Bounded alignment facts, never source causes or instruction edit commands."""
+    facts = []
+    differences = 0
+    for row in paired_rows:
+        if (not isinstance(row, dict) or type(row.get("row")) is not int
+                or row["row"] < 0 or any(side not in row or
+                    (row[side] is not None and not isinstance(row[side], str))
+                    for side in ("target", "candidate"))):
+            raise ValueError("invalid comparison direction paired row")
+        target, candidate = row["target"], row["candidate"]
+        kind = ("missing_from_candidate" if target is not None and candidate is None else
+                "extra_in_candidate" if target is None and candidate is not None else
+                "empty_alignment" if target is None else
+                "paired_same_text" if target == candidate else "paired_difference")
+        if kind in {"empty_alignment", "paired_same_text"}:
+            continue
+        differences += 1
+        if len(facts) < 64:
+            facts.append({"row": row["row"], "observation": kind})
+    return {"target_role": "immutable_reference", "candidate_role": "editable_C",
+            "rows": facts, "selected_row_count": len(paired_rows),
+            "different_alignment_count": differences,
+            "row_limit": 64, "rows_truncated": differences > 64,
+            "scope": "alignment observations only; not semantic equivalence, source causes or edit commands"}
+
+
 def decision_packet(document: dict, function: str, source: str, start: int, end: int,
                     question: str, row_start: int, row_end: int, *, max_bytes: int = 18000,
                     producer_sites: list[int] | None = None, producer_limit: int = 16,
@@ -522,6 +615,7 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
               "source_causality_proven": False, "authority_advanced": False}
     if decision_mode == "source-hypothesis":
         result["decision_mode"] = decision_mode
+        result["comparison_direction"] = _comparison_direction(result["paired_rows"])
     if candidate_missing:
         result.update(candidate_missing=True, source_excerpt_role="context")
         addresses = []
@@ -609,6 +703,15 @@ def render_decision_prompt(packet: dict) -> str:
             "Astra alone chooses and tests any cause; this answer grants no patch, compile, retention, "
             "or promotion authority. Semantic plausibility and the single-cause rule require primary "
             "review, not merely schema validation.\n"
+            + ("COMPARISON DIRECTION: target is the immutable desired reference; only candidate C "
+               "may change. Do not optimize target to resemble candidate. A target-only aligned row "
+               "is missing_from_candidate: the candidate must reproduce the desired target behavior, "
+               "not remove the target instruction. A candidate-only row is extra_in_candidate: "
+               "extra current behavior at that alignment, not desired target behavior. Paired "
+               "differences are observations, not rewrite commands. Alignment can pair different "
+               "operations or split moved instructions into gaps; no row alone proves a semantic "
+               "addition/deletion, source cause, or required C statement. Review the supplied "
+               "context and preserve uncertainty.\n" if "comparison_direction" in packet else "")
             + known_context + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
     return (("TARGET-ONLY factual support: the candidate function is missing. Candidate rows are null "
              "and its census is unavailable, not an empty implementation or exact comparison. "
@@ -667,6 +770,10 @@ def validate_decision_packet(packet: dict) -> None:
                 or context.get("suppress_compile") is not False):
             raise ValueError("invalid advisory known measurement context")
         _known_measurement_context(context["entries"], packet["function"])
+    if "comparison_direction" in packet:
+        if (packet.get("decision_mode") != "source-hypothesis"
+                or packet["comparison_direction"] != _comparison_direction(packet["paired_rows"])):
+            raise ValueError("comparison direction differs from supplied paired rows or mode")
     if "candidate_missing" in packet or "source_excerpt_role" in packet:
         if (packet.get("candidate_missing") is not True or packet.get("source_excerpt_role") != "context"
                 or "decision_mode" in packet

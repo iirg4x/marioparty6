@@ -23,7 +23,7 @@ struct TosQueue {
 };
 
 extern u8 qQueueControl(
-    TosQueue *queue, u32 command, u16 value, void *argument);
+    TosQueue *queue, u32 command, u32 value, void *argument);
 extern u8 qQueueJumpBack(TosQueue *queue, u16 count);
 extern u8 qQueueJumpBackOne(TosQueue *queue, u16 reader, u16 count);
 extern TosQueue *qQueueInit(TosQueue *queue);

@@ -676,7 +676,7 @@ u8 tosCallControlFunc(
         if (wasEnabled == 0 && result == 0) {
             result = 1;
         }
-        return result;
+        goto done;
     }
 
     queueNumber =
@@ -688,9 +688,10 @@ u8 tosCallControlFunc(
     }
 
     if (queue != NULL) {
-        return qQueueControl(
-            queue, target->command, (u16)argument0,
+        result = qQueueControl(
+            queue, target->command, argument0,
             (void *)argument1);
+        goto done;
     }
 
     if (target->command == TOS_CONTROL_CONSTRUCT) {
@@ -704,9 +705,11 @@ u8 tosCallControlFunc(
             ConstructQueue(
                 context, target->ownerIndex, queueNumber);
         }
-        return 1;
     }
-    return 1;
+    result = 1;
+
+done:
+    return result;
 }
 
 u8 tosInit(

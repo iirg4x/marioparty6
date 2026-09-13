@@ -9,7 +9,7 @@
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 extern u8 qQueueControl(
-    TosQueue *queue, u32 command, u16 elementSize, void *argument);
+    TosQueue *queue, u32 command, u32 elementSize, void *argument);
 extern f32 logf_check(f32 value);
 
 typedef struct SpecSub {

@@ -10,7 +10,7 @@ extern TosQueue *qQueueInitEx(
     TosQueue *queue, u16 elementSize, u8 initializeReaders,
     u16 maxElements);
 extern u8 qQueueControl(
-    TosQueue *queue, u32 command, u16 elementSize, void *argument);
+    TosQueue *queue, u32 command, u32 elementSize, void *argument);
 extern void qQueueReset(TosQueue *queue);
 extern void qFreeUnusedElemements(TosQueue *queue);
 extern f32 HLnOnePlusExpHFloat(f32 value);

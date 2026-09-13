@@ -59,11 +59,12 @@ static void qUpdateReadPtrsAndIncNbrOfEnqueues(
     TosQueue *queue, TosQueueElement *firstNewElement);
 
 u8 qQueueControl(
-    TosQueue *queue, u32 command, u16 value, void *argument)
+    TosQueue *queue, u32 command, u32 value, void *argument)
 {
     TosQueueElement *reader;
     u32 i;
     u32 inactiveReaders;
+    u8 success = 1;
 
     switch ((u8)command) {
     case 1:
@@ -78,14 +79,34 @@ u8 qQueueControl(
         for (i = 0; i < queue->readerCount; i++) {
             queue->readPointers[i] = QUEUE_READER_WAITING(queue);
         }
-        return qQueueJumpBack(queue, queue->maxElements);
+        success = qQueueJumpBack(queue, queue->maxElements);
+        break;
     case 3:
         queue->state = QUEUE_STATE_ACTIVE;
         for (i = 0; i < queue->readerCount; i++) {
             queue->readPointers[i] = QUEUE_READER_WAITING(queue);
         }
         if (queue->maxElements != 0) {
-            return qQueueJumpBack(queue, value);
+            success = qQueueJumpBack(queue, value);
+        }
+        break;
+    case 7:
+        queue->state = QUEUE_STATE_ACTIVE;
+        reader = queue->readPointers[value];
+        if (reader == NULL || reader == QUEUE_READER_DISABLED(queue)) {
+            queue->readPointers[value] = QUEUE_READER_WAITING(queue);
+            if (queue->maxElements != 0) {
+                success = qQueueJumpBackOne(
+                    queue, value, (u16)(u32)argument);
+            }
+        }
+        break;
+    case 5:
+    case 10:
+        queue->state = QUEUE_STATE_ACTIVE;
+        reader = queue->readPointers[value];
+        if (reader == NULL || reader == QUEUE_READER_DISABLED(queue)) {
+            queue->readPointers[value] = QUEUE_READER_WAITING(queue);
         }
         break;
     case 4:
@@ -98,72 +119,49 @@ u8 qQueueControl(
             }
         }
         break;
-    case 5:
-    case 10:
-        queue->state = QUEUE_STATE_ACTIVE;
-        reader = queue->readPointers[value];
-        if (reader == NULL || reader == QUEUE_READER_DISABLED(queue)) {
-            queue->readPointers[value] = QUEUE_READER_WAITING(queue);
-        }
-        break;
-    case 6:
-        queue->readPointers[value] = NULL;
-        inactiveReaders = 0;
-        for (i = 0; i < queue->readerCount; i++) {
-            reader = queue->readPointers[i];
-            if (reader == NULL || reader == QUEUE_READER_DISABLED(queue)) {
-                inactiveReaders++;
-            } else {
-                break;
-            }
-        }
-        if (inactiveReaders == queue->readerCount) {
-            queue->state = QUEUE_STATE_IDLE;
-        }
-        break;
-    case 7:
-        queue->state = QUEUE_STATE_ACTIVE;
-        reader = queue->readPointers[value];
-        if (reader == NULL || reader == QUEUE_READER_DISABLED(queue)) {
-            queue->readPointers[value] = QUEUE_READER_WAITING(queue);
-        }
-        if (queue->maxElements != 0) {
-            return qQueueJumpBackOne(
-                queue, value, (u16)(u32)argument);
-        }
-        break;
-    case 8:
-        queue->readPointers[value] = QUEUE_READER_DISABLED(queue);
-        inactiveReaders = 0;
-        for (i = 0; i < queue->readerCount; i++) {
-            reader = queue->readPointers[i];
-            if (reader == NULL || reader == QUEUE_READER_DISABLED(queue)) {
-                inactiveReaders++;
-            } else {
-                break;
-            }
-        }
-        if (inactiveReaders == queue->readerCount) {
-            queue->state = QUEUE_STATE_IDLE;
-        }
-        break;
     case 9:
         queue->state = QUEUE_STATE_IDLE;
         for (i = 0; i < queue->readerCount; i++) {
             queue->readPointers[i] = QUEUE_READER_DISABLED(queue);
         }
         break;
+    case 6:
+        queue->readPointers[value] = NULL;
+        for (inactiveReaders = 0; inactiveReaders < queue->readerCount;
+             inactiveReaders++) {
+            reader = queue->readPointers[inactiveReaders];
+            if (reader != NULL && reader != QUEUE_READER_DISABLED(queue)) {
+                break;
+            }
+        }
+        if (inactiveReaders == queue->readerCount) {
+            queue->state = QUEUE_STATE_IDLE;
+        }
+        break;
+    case 8:
+        queue->readPointers[value] = QUEUE_READER_DISABLED(queue);
+        for (inactiveReaders = 0; inactiveReaders < queue->readerCount;
+             inactiveReaders++) {
+            reader = queue->readPointers[inactiveReaders];
+            if (reader != NULL && reader != QUEUE_READER_DISABLED(queue)) {
+                break;
+            }
+        }
+        if (inactiveReaders == queue->readerCount) {
+            queue->state = QUEUE_STATE_IDLE;
+        }
+        break;
     case 248:
         break;
     case 255:
         if (DestructQueue(queue) != 0) {
-            return 0;
+            success = 0;
         }
         break;
     default:
-        return 0;
+        success = 0;
     }
-    return 1;
+    return success;
 }
 
 u8 qQueueJumpBack(TosQueue *queue, u16 count)
@@ -312,22 +310,22 @@ static void qUpdateReadPtrsAndIncNbrOfEnqueues(
     TosQueueElement *element;
     TosQueueElement *next;
     u32 elementCount;
-    u32 removeCount;
     u32 i;
     u32 reader;
 
     if (queue->maxElements != 0) {
-        elementCount = 0;
-        element = queue->head;
-        while (element != NULL) {
-            element = element->next;
-            elementCount++;
+        {
+            TosQueueElement *scan;
+            for (scan = element = queue->head, elementCount = 0;
+                 scan != NULL; elementCount++) {
+                scan = scan->next;
+            }
         }
 
         if (elementCount > queue->maxElements) {
-            removeCount = elementCount - queue->maxElements;
-            element = queue->head;
-            for (i = 0; i < removeCount; i++) {
+            elementCount -= queue->maxElements;
+            for (i = 0; i < elementCount; i++) {
+                next = element;
                 for (reader = 0; reader < queue->readerCount; reader++) {
                     if (queue->readPointers[reader] == element) {
                         break;
@@ -336,9 +334,8 @@ static void qUpdateReadPtrsAndIncNbrOfEnqueues(
                 if (reader < queue->readerCount) {
                     break;
                 }
-                next = element->next;
-                FreeQueueElement(queue, element);
-                element = next;
+                element = element->next;
+                FreeQueueElement(queue, next);
             }
             queue->head = element;
         }
@@ -487,7 +484,21 @@ u8 qCheckDeQueueOne(
         void *element = NULL;
 
         if (inputs->queue != NULL) {
-            element = qDeQueueOne(inputs->queue, inputs->outputSize);
+            TosQueue *queue = inputs->queue;
+            TosQueueElement **readPointer = &queue->readPointers[inputs->outputSize];
+            TosQueueElement *node = *readPointer;
+
+            if (node == QUEUE_READER_DISABLED(queue) || node == NULL ||
+                node == QUEUE_READER_WAITING(queue)) {
+                element = NULL;
+            } else {
+                if (node->next != NULL) {
+                    *readPointer = node->next;
+                } else {
+                    *readPointer = QUEUE_READER_WAITING(queue);
+                }
+                element = node->data;
+            }
         }
         *elements++ = element;
         inputs++;

@@ -4,7 +4,57 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **349/396**, **2/10** batch owners.
 
-## Current queue frontier: 11/16, two exercised tool fixes
+## Current queue frontier: 12/16; frame and model-direction gaps fixed
+
+`qUpdateReadPtrsAndIncNbrOfEnqueues` is newly exact: **316 retail bytes,
+strict/data 100%, 1/1 physical relocations**, with all eleven exact siblings
+preserved. The real head snapshot is shared by count traversal and removal;
+an independent scan cursor counts nodes, and the live removal cursor advances
+before freeing its old node. This closes the remaining lifetime/frame cascade
+without synthetic storage. The stronger composition is retained, not the
+higher-scoring intermediate that enlarged the already-exact frame.
+
+Further retained gains: `qQueueControl` **61.06 -> 98.42** and
+`qCheckDeQueueOne` **94.655174 -> 98.965515**. Control needed the true full-width
+operation argument, case-specific domains, common success return and correctly
+guarded reader activation. Batch dequeue needed direct consumption of the
+reader slot, without altering the separately exact public dequeue helper.
+Four instruction-nonexact queue functions remain; **this is not owner closure**.
+
+All six direct header consumers were checked. TinyOS's full-width forwarding
+and shared result path improve `ConnectInQtoBlock` **71.666664 -> 79.95238** and
+`tosCallControlFunc` **91.875 -> 96.29808** (420 -> 416 retail bytes). The other
+five consumer objects are unchanged, including the corrected local declarations
+in Acne and SpecSub. No exact sibling was lost.
+
+Current queue source `386f7062dc622cab41d306106650ad47390593b477076d76a21a497e57550286`,
+header `f3b47c6ea766582b0a48574cbc689102de58bfc3c3c5b9aa37cc8fea274f9b5d`,
+object `fa29f31215499d5f1ae022048377b7c8a639d0bd241103dc4b65c067bb060bcc`,
+strict/data `005d5cb5618dc5b707cd17ef8192ff93016e49505fb418c5426fe95d963a962c`.
+TinyOS source `d829529f3ee6829faba84df0331311ff28e382c75d36f2d1ff81350723ac5de0`,
+object `7a896605e9dbe88d8f10022afa693eef9b673fba47975eaac5f9137f39ee98e1`.
+Live-source rebuilds reproduced the isolated hashes. Aggregate proof:
+`build/small-first-20260913/mqueue-batch-reader-slot/control-frontier-proof.json`.
+
+Two additional improvements extend the existing causal tool, not new tools:
+
+- Frontier comparison now detects closed **stack-frame** regressions. The actual
+  count-loop intermediate improved 95.81013 -> 98.03797 at unchanged 316 bytes,
+  but grew frame 40 -> 48 against target 40. The tool flags that mixed result;
+  the retained exact candidate preserves frame 40. Unknown prologues stay unknown.
+- New source-hypothesis packets bind explicit immutable-target/editable-candidate
+  direction facts for differing aligned rows. Validation recomputes them and
+  rejects rehashed swapped facts; late differences remain inside the bounded
+  excerpt. Legacy packet/prompt identities are preserved. This addresses the
+  completed Qwen allocation reply's reversed interpretation of a target-only
+  stack store. That proposal was rejected without a compile. Direction metadata
+  is not a guarantee that the model's causal proposal is correct.
+
+Affected verification: **133 tests run, OK, 2 optional skips**. Both later Qwen
+jobs completed; neither supplied a retained new source cell. Astra reconstructed
+and verified these gains directly. Main/batch counts remain **347/396 and 2/10**.
+
+## Previous queue frontier: 11/16, two exercised tool fixes
 
 The current retained `mqueue.c` advances **5/16 -> 11/16 strict/data instruction
 matches**. Six newly exact raw function bodies also pass independent physical
