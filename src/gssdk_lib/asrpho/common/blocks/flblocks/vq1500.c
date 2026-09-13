@@ -106,13 +106,14 @@ static u8 GetLabel(VqCodeBook *codeBook, f32 *input)
 
     {
         u32 *indices;
+        s32 fineIndex;
         f32 *vector;
         f32 *inputValue;
 
         indices = codeBook->secondCodeBookIndices +
                   codeBook->secondSearchCount * label;
         minimum = FLT_MAX;
-        for (i = 0; i < codeBook->secondSearchCount; i++) {
+        for (fineIndex = 0; fineIndex < codeBook->secondSearchCount; fineIndex++) {
             vector = codeBook->secondCodeBook + *indices++;
             inputValue = input;
             difference = *inputValue++ - *vector++;

@@ -967,7 +967,7 @@ config.libs = [
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/spline.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/specsub.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/vad.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/vq1500.c"),
+            Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/vq1500.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/window.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/combiner.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/dist16.c"),

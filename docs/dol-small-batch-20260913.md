@@ -2,7 +2,55 @@
 
 Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
-Current locally verified frontier: **349/396**, **2/10** batch owners.
+Current locally verified frontier: **350/396**, **3/10** batch owners.
+
+## Vq1500 closed; queue gain retained; GC1.3 scratch mapping repaired
+
+`vq1500` is **9/9 strict/data and raw-instruction exact**, 1,264 text bytes,
+with all eight previously exact siblings unchanged. `GetLabel`'s six-register
+operand differences closed by giving the fine-search enumeration its own
+`fineIndex`, instead of reusing the coarse-search index. The two real search
+phases keep independent index lifetimes; no arithmetic, ABI, fake storage,
+assembly, pragma, or compiler flag changes were needed. Source
+`319fced430e52b2b01d0420b2a11099f08ca960f6dd479b60fa34968abc727ee`, object
+`830c8c5f0e5a15ad7f66a9b22eb363d8154470a38773620ddf6350b1f92b52d2`, strict/data
+`797976233d9794389caa7c4e1ac41f33d7f5dc2a836dac61b5f846d06850c290`.
+
+The 25 relocation applications are verified, not falsely described as raw
+offset equality: two SDA21 records in `GetLabel` use the MWCC halfword site
+versus DTK's instruction-start site, with identical instruction/target values.
+The sole 4-byte float pool is unchanged; target `.sdata2` has four additional
+zero bytes named `gap_11_802C2E44_sdata2`. The real source-selected MWLD link
+proves both equivalences: retail-identical DOL `172ae27a...`, **137/137**
+checksums. Full bounded proof:
+`build/small-first-20260913/vq-fine-search-index-lifetime/closure-proof.json`.
+The Matching gate is retained locally; main is still **347/396**, pending the
+ten-owner batch. Indexed fine lookup grew code; moving both cursor/counter into
+the for-loop changed scheduling. Neither failure rejected the distinct
+fine-index lifetime that actually closed the owner.
+
+Qwen's corrected known-measurement packet completed with a new live
+`firstNewElement` snapshot for the reader update and return payload. The primary
+placed it in a C90 block (the proposed mixed declaration is unsupported by the
+actual compiler). This improves `qEnQueueOne` **92.878784 -> 96.818184**, preserving
+264 bytes, all 15 other raw bodies, data and 14 exact/physical siblings.
+Only the late-versus-early allocator word-count shift remains (three aligned
+rows); the unrelated reader function remains 98.965515. Live source
+`d11a449308a00816987313e43c8a43f37b83ef86f6c033306417cd6eff373075`, object
+`841c3faa333876c8ef9ff10cddc8b6e22de8c2fb97afb8caab4b0fcc6a3ac1f7`, strict/data
+`c53b9a106794d508d9d21ea3f5e73332690bc5eaeb1b6e02c83a01e9050c79eb`.
+`build/small-first-20260913/mqueue-first-new-element-block/frontier-proof.json`
+binds the live-source reproduction. This is a retained partial, not queue owner
+closure. No Qwen inference remains pending.
+
+Actual configure exposed the missing GC/1.3 scratch mapping. `tools/project.py`
+now maps it to `mwcc_242_53`, authenticated by the installed compiler's
+2.4.2 build53 version and decomp.me's compiler registry, never by aliasing to
+GC/1.3.2. Three focused generated-config tests pass (library/object overrides,
+DOL/REL, unchanged1.3.2 and unsupported-version behavior); actual proof-workspace
+configuration emits valid scratch mappings for all 30 GC/1.3 units without the
+warning. This repairs access to scratch comparison for those owners, not a
+claim that the mapping itself matched code.
 
 ## Constraint-comparison gap closed; champion remains 14/16
 

@@ -412,18 +412,21 @@ void *qEnQueueOne(TosQueue *queue)
         AllocateQueueElement(queue, (void **)&allocation);
         element = allocation;
     }
-    tail = queue->head;
-    if (tail != NULL) {
-        while (tail->next != NULL) {
-            tail = tail->next;
+    {
+        TosQueueElement *firstNewElement = element;
+        tail = queue->head;
+        if (tail != NULL) {
+            while (tail->next != NULL) {
+                tail = tail->next;
+            }
+            tail->next = element;
+        } else {
+            queue->head = element;
         }
-        tail->next = element;
-    } else {
-        queue->head = element;
+        element->next = NULL;
+        qUpdateReadPtrsAndIncNbrOfEnqueues(queue, firstNewElement);
+        return firstNewElement->data;
     }
-    element->next = NULL;
-    qUpdateReadPtrsAndIncNbrOfEnqueues(queue, element);
-    return element->data;
 }
 
 void *qDeQueueOne(TosQueue *queue, u32 reader)
