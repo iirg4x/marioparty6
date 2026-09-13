@@ -1521,3 +1521,49 @@ not a valid census. Only m670 changed in the actual DTK configs, from four to
 ten units (+6). Use fixed code/data byte denominators and the registry's 82
 numbered minigame modules; m616 is fully source-selected, leaving 81. Splitting
 a fallback span creates build objects, not newly discovered minigames.
+
+## m670 initialization and sequence batch
+
+Sixteen additional application functions (8,784 bytes) now pass the actual
+source-selected retail link: three in initialization and thirteen sequence,
+microphone-response, panning, and result functions. Four new source owners are
+selected: init, pattern, sequence, and seqparam. m670 now selects all 19,924
+code bytes from source, with all 137 project checksums passing. This is not
+yet a full module-source closure: the original 32-byte data record at .data
+0x28 and the shared BSS region from 0x10 remain fallback inputs.
+
+Constructor closure came from the live chained creator assignment
+`players[i] = player = MgPlayerCreate(...)`. It preserved the returned player
+and global consumer together and resolved the j/player saved-register cycle.
+Declaration/scope changes alone had been neutral. The 160-byte positional
+sound helper required conversion of screen.x to int before division by five.
+Five pattern arrays and their pointer table occupy their own normally aligned
+data owner; that TU boundary supplies the target five-byte gap after the
+context filename without manual string padding or a dead producer.
+
+The result function needed source lifetime reconstruction, not individual
+register substitutions: survivorCount and shadowPlayer belong to the outer
+function scope, while count belongs to the winner-collection branch. The
+three live name arrays precede the result position aggregate. Those changes
+closed both register cycles and the array/vector home exchange. Three static
+sequence counters are emitted in reverse declaration order; preserving their
+target order closed twelve actual REL relocation bytes after code already
+looked exact. Static linkage is supported by their exclusively local users.
+
+Source-shape debt is explicit: fn_1_5AC contains the target's unused integer
+initialized to one. Its store is visible in retail, not newly introduced
+padding. The raw microphone callback argument uses the existing u16-pointer
+API and a typed response view authenticated by the same-game provider's
+status/confidence/count/value-pointer fields. No inline assembly is added.
+
+Qwen independently reviewed bounded sequence and storage facts while the
+primary reconstructed and compiled. It did not choose the source campaign.
+The four unobserved bytes after the 24 used pillar-delay entries do not prove
+a 25-element array; the 32-byte data record's sole pointer store does not
+prove the remaining field types. Do not invent these merely to claim a
+whole-minigame closure. All code gains are retained independently.
+
+Proof: `build/minigame-recovery-20260913/m670/sequence-proof/`, particularly
+`receipt.json`, `linked-strict.json`, and `batch-delivery-proof.json`.
+The final REL SHA-256 remains
+`f2cbf290f7bed55ee1531b7a866fe9f7f7a4adb4e10cd768a413a871afc6346f`.
