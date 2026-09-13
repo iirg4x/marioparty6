@@ -12,7 +12,39 @@ from tools import recovery_causal_groups as groups
 from tools.tests.test_recovery_causal_groups import report, row
 
 
+DIALECT_GUIDANCE = (
+    "Honor the supplied language dialect. When C99/mixed-declaration support is not "
+    "established, put declarations at block entry; a natural nested block may keep a "
+    "legitimate used snapshot local to its use. Do not change language flags to make "
+    "a hypothesis compile. "
+)
+
+
 class KnownMeasurementsTests(unittest.TestCase):
+    def test_source_hypothesis_dialect_guidance_preserves_local_snapshots(self):
+        packet = self.packet(decision_mode="source-hypothesis")
+        before = copy.deepcopy(packet)
+        prompt = groups.render_decision_prompt(packet)
+        self.assertEqual(prompt.count(DIALECT_GUIDANCE), 1)
+        self.assertIn("Real used typed locals or aggregate snapshots", prompt)
+        self.assertEqual(packet, before)
+        self.assertNotIn(DIALECT_GUIDANCE, groups.render_decision_prompt(self.packet()))
+
+    def test_actual_enqueue_one_packet_dialect_render_is_read_only(self):
+        path = (Path(__file__).resolve().parents[2]
+                / "build/qwen-mqueue-enqueueone-known-20260913/queue-single-scheduling/decision.json")
+        if not path.is_file():
+            self.skipTest("local original enqueue-one packet unavailable")
+        original = path.read_bytes()
+        packet = json.loads(original)
+        before = copy.deepcopy(packet)
+        self.assertEqual(packet["function"], "qEnQueueOne")
+        prompt = groups.render_decision_prompt(packet)
+        self.assertIn(DIALECT_GUIDANCE, prompt)
+        self.assertEqual(packet, before)
+        self.assertEqual(path.read_bytes(), original)
+        self.assertTrue(prompt.endswith(json.dumps(packet, ensure_ascii=False, separators=(",", ":"))))
+
     def test_comparison_direction_roles_and_alignment_caveat(self):
         left = [row("stw r0, 0xc(r1)", 0), {}, row("lwz r3,0(r1)", 4), row("blr", 8)]
         right = [{}, row("mr r30,r3", 0), row("lwz r4,0(r1)", 4), row("blr", 8)]
@@ -43,7 +75,7 @@ class KnownMeasurementsTests(unittest.TestCase):
         packet["packet_sha256"] = groups._digest({k: v for k, v in packet.items() if k != "packet_sha256"})
         self.assertEqual(packet["packet_sha256"], "849f29447a9f1d65e821b00b5e2d0ff41b252e75c4ed6831cca41bc729ad0f74")
         prompt = groups.render_decision_prompt(packet)
-        self.assertEqual(hashlib.sha256(prompt.encode()).hexdigest(),
+        self.assertEqual(hashlib.sha256(prompt.replace(DIALECT_GUIDANCE, "").encode()).hexdigest(),
                          "9a9bc6330e7ec8b4347f4f6e3472ddc6914933f65475eb0f9557b3e160cd4dfe")
         self.assertNotIn("COMPARISON DIRECTION", prompt)
         self.assertNotIn("comparison_direction", self.packet())
@@ -68,7 +100,8 @@ class KnownMeasurementsTests(unittest.TestCase):
             self.skipTest("local original allocation packet unavailable")
         packet = json.loads((folder / "decision.json").read_bytes())
         self.assertNotIn("comparison_direction", packet)
-        self.assertEqual(groups.render_decision_prompt(packet), (folder / "prompt.txt").read_text())
+        self.assertEqual(groups.render_decision_prompt(packet).replace(DIALECT_GUIDANCE, ""),
+                         (folder / "prompt.txt").read_text())
         actual = next(r for r in packet["paired_rows"] if r["row"] == 29)
         self.assertEqual(actual, {"row": 29, "target": "stw r0, 0xc(r1)", "candidate": None})
         facts = groups._comparison_direction(packet["paired_rows"])

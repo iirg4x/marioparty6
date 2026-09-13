@@ -52,6 +52,24 @@ configuration emits valid scratch mappings for all 30 GC/1.3 units without the
 warning. This repairs access to scratch comparison for those owners, not a
 claim that the mapping itself matched code.
 
+The active Qwen declaration failure also revealed a reusable prompt gap.
+The existing source-hypothesis renderer now explicitly honors the supplied
+dialect, uses block-entry declarations when mixed declarations are unsupported
+or unestablished, allows legitimate nested-block snapshots, and forbids changing
+language flags to make a proposal compile. Fact-mode and historical packet
+bytes remain unchanged; the actual saved queue packet was rendered read-only
+in the regression test. This is guidance plus a primary syntax review, not a
+claim that text prompting guarantees valid code.
+
+The next two Qwen jobs are independent, current-source-bound support for the
+remaining allocator scheduling and reader lifetime causes. They include actual
+measured counterexamples and the new dialect guidance, under
+`build/qwen-mqueue-last-two-snapshot-20260913`. Word packet `e22728fd...`
+(27,071 prompt bytes), reader packet `08a63922...` (25,318 bytes). No inference
+limit changed. Primary's unconditional index-before-word-count cell compiled
+object-identical to the retained snapshot and was not applied; it is included
+as a measured constraint rather than another proposed winning cell.
+
 ## Constraint-comparison gap closed; champion remains 14/16
 
 `recovery_causal_groups.py --function NAME --baseline-strict OLD --strict NEW`
