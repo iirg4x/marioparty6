@@ -1,5 +1,45 @@
 # Small DOL batch — 2026-09-13
 
+## Active scope: minigame throughput, not a DOL percentage prerequisite
+
+The user switched immediately to minigames. Standalone DOL recovery is paused;
+recover a DOL dependency only when an active minigame needs it. Two already
+verified local MusyX closures remain preserved, not yet published.
+
+The current-main selections over the available DTK split inventory contain 136
+REL modules, 113 with unmatched code, including 82 numbered modules. The 597
+unmatched code-bearing object instances are not 597 separate DLLs; automatic
+section splits are not authenticated original C translation units. The bound
+operational census is `build/minigame-recovery-20260913/backlog-census.json`.
+It is a ranking input, not a regenerated public progress or closure proof.
+
+First ten small real numbered targets, by remaining code: m616dll, m651dll,
+m670dll, m635dll, m621dll, m657Dll, m629Dll, m612dll, m640dll, m659Dll. Begin
+source/type support for later targets while the primary integrates the active
+one; do not wait for a worker consensus or open new owner chats. Two Qwen jobs
+for the first two application functions of m651dll/m670dll are running under
+`build/minigame-recovery-20260913/next-small-support`; their inputs are bounded
+target assembly, m2c hypotheses and current header declarations. They do not
+own canonical source. Reuse existing runtime, API, compile/diff and final-link
+capabilities. Batch by common source/compiler context, not blind source edits
+or owner-count inflation. Completion remains source-selected retail REL proof.
+
+Immediate measured use on m616: fix the missing no-input switch arm, preserve
+the loaded pad value before masking, and materialize the live motion table
+after the preceding motion call. `fn_1_4C0` improves 95.39939 -> 97.44932 with
+unchanged default compiler settings; all eleven prior 100% symbols survive.
+The existing `-pooldata off` context used by several already-matched RELs is a
+separate diagnostic, not a silently adopted production flag. It removes the
+candidate-only cached section-base chains across three functions: fn_1_160
+94.20465 -> 99.76744, fn_1_1590 90.384964 -> 98.64812, and the corrected
+fn_1_4C0 97.44932 -> 99.924355 (2644/2644 bytes, only ten data/string/jumptable
+attribution rows). Evidence is the default and `pooldata-off/latest-compile.json`
+under `build/minigame-recovery-20260913/m616`. No new whole REL closure or
+Matching flag is claimed. Next resolve actual TU/pool ownership before local
+register changes. A bounded initializer declaration/width trial restored the
+vector homes but worsened that diagnostic and was not retained; it is not a
+reason to exhaust the function.
+
 Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **350/396**, **3/10** batch owners.

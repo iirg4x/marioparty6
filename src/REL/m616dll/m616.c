@@ -212,9 +212,13 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                     choice = 0;
                 }
             } else {
-                u16 buttons = HuPadBtn[lbl_1_bss_10.padNos[player]]
-                    & (PAD_BUTTON_A | PAD_BUTTON_B | PAD_BUTTON_TRIGGER_L | PAD_BUTTON_TRIGGER_R);
+                u16 buttons;
+
+                buttons = HuPadBtn[lbl_1_bss_10.padNos[player]];
+                buttons &= PAD_BUTTON_A | PAD_BUTTON_B | PAD_BUTTON_TRIGGER_L | PAD_BUTTON_TRIGGER_R;
                 switch (buttons & ~lbl_1_bss_10.previousButtons[player]) {
+                case 0:
+                    break;
                 case PAD_BUTTON_A:
                     choice = 1;
                     break;
@@ -262,11 +266,13 @@ void fn_1_4C0(s16 mode, s16 frameNo)
     case 3:
         if (lbl_1_bss_10.sequenceFrame == 0) {
             for (player = 0; player < 4; player++) {
-                s32 motions[5] = { 7, 0, 1, 2, 3 };
-
                 fn_1_22BC(player, 0, HU3D_MOTATTR_LOOP);
-                if (lbl_1_bss_10.choices[player] != 0) {
-                    fn_1_215C(player, motions[lbl_1_bss_10.choices[player]]);
+                {
+                    s32 motions[5] = { 7, 0, 1, 2, 3 };
+
+                    if (lbl_1_bss_10.choices[player] != 0) {
+                        fn_1_215C(player, motions[lbl_1_bss_10.choices[player]]);
+                    }
                 }
             }
         } else if (lbl_1_bss_10.sequenceFrame >= 60) {
