@@ -1119,3 +1119,34 @@ packets. Do not repeat that broad dispatch: subsequent questions must use the
 existing `decision_packet`/`render_decision_prompt` plus manifest validator,
 one missing fact and current paired rows, as documented by the installed Qwen
 runner. Unvalidated prose is support only, never retention proof.
+# Current priority: minigames immediately
+
+The user subsequently superseded the 90% threshold: start minigame closures
+now; match another DOL owner only when it is needed by the selected minigame.
+The two verified MusyX closures below remain preserved locally. No further
+standalone DOL experiments or speech reconstruction are scheduled. The two
+speech Qwen jobs were interrupted when changing scope. Four merged public
+GitHub branches were deleted after verifying their exact heads are ancestors
+of main c099504; all their content remains on main. Unmerged tooling and the
+active recovery branch were preserved.
+
+## Superseded target: DOL 90%, then minigames
+
+The user's latest instruction on September 13 supersedes the earlier 100% DOL
+priority: reach at least 90% verified DOL code on main, then switch to minigame
+owner closures. Do not continue polishing DOL tails beyond that threshold.
+Current verified local progress is 1,908,148 / 2,173,968 code bytes (87.77%),
+352 / 396 owners, leaving 48,424 bytes to the threshold. Main remains 350 / 396
+until the Stream/DSP batch is published. The five remaining non-speech owners
+contain 43,720 bytes; adding the 5,272-byte speech context-conversion owner would
+cross 90%. This is a selection path, not a promise that these owners are easy.
+Prefer another demonstrably faster complete-owner path if evidence changes.
+
+The unchanged-source Qwen floating-format packet failed at its 65,536-token
+context boundary: 46,567 prompt tokens and 18,969 generated tokens, no final
+answer. No answer was admitted. Two smaller reconstruction packets now use
+m2c output and only their relevant target functions (11.6 KB / 18.1 KB), while
+the primary continues independently. A GCC unroll pragma from the completed
+integer-formatting answer was rejected; its useful loop-location evidence was
+retained. The natural post-increment loop probe and MSM resume-read consumer
+probe were both object-neutral; neither changed live source.

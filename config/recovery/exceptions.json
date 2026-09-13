@@ -2,6 +2,24 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "musyx-stream-sdk-frequency-inline-depth",
+      "classification": "authenticated",
+      "path": "src/musyx/runtime/stream.c",
+      "kind": "source_shape",
+      "rules": ["compiler_pragma"],
+      "rationale": "Limited to the inherited push/inline_depth(3)/pop around sndStreamFrq. The same scoped directive and function occur in AxioDL MusyX source commit adc8df9a959f1e37f71bdf3155e229f9f87ad166. It was not introduced to close streamHandle. All 18 target functions, 349 linked relocation sites, data and the source-selected retail DOL are exact. No unrelated pragma or compiler control is authorized.",
+      "evidence": ["docs/dol-small-batch-20260913.md", "build/small-first-20260913/stream-dolphin-math-context/live-proof.json", "https://github.com/AxioDL/musyx/blob/adc8df9a959f1e37f71bdf3155e229f9f87ad166/src/musyx/runtime/stream.c"]
+    },
+    {
+      "id": "musyx-dolphin-sdk-interrupt-state",
+      "classification": "authenticated",
+      "path": "src/musyx/runtime/hw_dolphin.c",
+      "kind": "source_shape",
+      "rules": ["volatile"],
+      "rationale": "Limited to the seven existing SDK interrupt/DSP state globals oldState, hwIrqLevel, salDspInitIsDone, salLastTick, salLogicActive, salLogicIsWaiting and salDspIsDone. Their volatile declarations and interrupt callback consumers occur in the authenticated MusyX donor. No volatile was added for matching; the only API repair is salStartDsp's SDK u16 command-buffer pointer. All Matching consumers and the source-selected DOL/136 REL containers were verified.",
+      "evidence": ["docs/dol-small-batch-20260913.md", "build/small-first-20260913/dsp-target-streaming-formats/live-proof.json", "https://github.com/AxioDL/musyx/blob/adc8df9a959f1e37f71bdf3155e229f9f87ad166/src/musyx/runtime/hw_dolphin.c"]
+    },
+    {
       "id": "ctxfuncs-consumed-record-layouts",
       "classification": "authenticated",
       "path": "src/gssdk_lib/gsapi/ctxfuncs.c",
