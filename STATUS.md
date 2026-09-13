@@ -10,8 +10,8 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 21.83% | 42.43% | 386 / 926 |
-| Main DOL | 86.25% | 96.71% | 347 / 396 |
+| Entire project | 21.86% | 42.44% | 389 / 926 |
+| Main DOL | 86.43% | 96.74% | 350 / 396 |
 | REL modules | 8.17% | 8.03% | 39 / 530 |
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -19,8 +19,8 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-The latest batch enables ten additional signal-processing, runtime, and audio
-owners, covering 99 functions. There are **49 main DOL build objects** left
+The latest batch enables context management, vector quantization, and runtime
+allocation support, covering 29 functions. There are **46 main DOL build objects** left
 nonmatching. All newly enabled source objects participate in the verified
 retail-identical build.
 
