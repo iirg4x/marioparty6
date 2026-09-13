@@ -42,20 +42,26 @@ typedef struct M670Work_s {
     s16 soloPlayer;
     s16 soloPad;
     s16 soloCharacter;
-    unsigned int state;
+    int state;
     int playerState[4];
     OMOBJ *playerObjects[4];
     OMOBJ *pillarObject;
     int remainingPlayers;
     M670CPU cpu[4];
-    s16 micContext;
+    u16 micContext;
     MGTIMER *timer;
     int pattern;
     int music;
 } M670WORK;
 
 extern M670WORK lbl_1_bss_10;
+extern float lbl_1_bss_3B8[24];
+extern int lbl_1_bss_418[24];
+extern float lbl_1_bss_47C, lbl_1_bss_480;
+extern s8 *lbl_1_data_250[6];
 
+BOOL fn_1_1460(HuVecF *src, HuVecF *dst);
+void fn_1_15B8(int soundId, HuVecF *pos);
 void fn_1_1658(void);
 void fn_1_22F0(int pillarNo, float height);
 void fn_1_2384(MGACTOR *actor, int playerNo);
@@ -63,5 +69,11 @@ void fn_1_2460(int playerNo, int state);
 void fn_1_2690(OMOBJ *obj);
 void fn_1_28E8(OMOBJ *obj);
 void fn_1_2A24(unsigned int state);
+int fn_1_2DE8(HuVecF *pos);
+float fn_1_2EF4(int pillarNo);
+int fn_1_2F44(HuVecF *pos);
+void fn_1_3098(OMOBJ *obj);
+void fn_1_3B30(void);
+void fn_1_3BDC(void);
 
 #endif
