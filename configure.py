@@ -377,7 +377,7 @@ config.libs = [
                 extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"],
             ),
             Object(
-                NonMatching,
+                Matching,
                 "Runtime.PPCEABI.H/NewMore.cp",
                 extra_cflags=[
                     "-Cpp_exceptions on",
@@ -927,7 +927,7 @@ config.libs = [
         "objects": [
             Object(Matching, "gssdk_lib/gsapi/sid/sid.c"),
             Object(NonMatching, "gssdk_lib/gsapi/callbacks.c"),
-            Object(NonMatching, "gssdk_lib/gsapi/ctxfuncs.c"),
+            Object(Matching, "gssdk_lib/gsapi/ctxfuncs.c"),
             Object(Matching, "gssdk_lib/gsapi/extaudio.c"),
             Object(NonMatching, "gssdk_lib/gsapi/gsapi.c"),
             Object(Matching, "gssdk_lib/gsapi/mathusage.c"),
@@ -967,7 +967,7 @@ config.libs = [
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/spline.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/specsub.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/vad.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/vq1500.c"),
+            Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/vq1500.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/window.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/combiner.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/dist16.c"),
