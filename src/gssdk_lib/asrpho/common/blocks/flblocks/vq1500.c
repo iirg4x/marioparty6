@@ -5,13 +5,14 @@
 #include "gssdk/langdata.h"
 #include "gssdk/tos.h"
 
+#define VQ_DEFAULT_INPUT_ELEMENTS 38
+
 typedef struct VqCodeBook {
     u8 dimension;
     u8 firstCodeBookSize;
     u8 secondSearchCount;
     u8 secondCodeBookSize;
     u16 compressedStart;
-    u16 reserved06;
     f32 *firstCodeBook;
     u32 *secondCodeBookIndices;
     f32 *secondCodeBook;
@@ -20,7 +21,6 @@ typedef struct VqCodeBook {
 typedef struct Vq1500 {
     TosBaseBlock base;
     u8 codeBookCount;
-    u8 reserved29[3];
     VqCodeBook *codeBooks;
 } Vq1500;
 
@@ -33,7 +33,7 @@ static void FreeVq1500(Vq1500 *block);
 static u32 InitVq1500Process(TosBaseBlock *baseBlock)
 {
     baseBlock->input->inputSize =
-        _tosGetProfileU32(baseBlock, 1, 0x26) * sizeof(f32);
+        _tosGetProfileU32(baseBlock, 1, VQ_DEFAULT_INPUT_ELEMENTS) * sizeof(f32);
     baseBlock->output->outputSize =
         (u8)_tosGetProfileU32(baseBlock, 2, 4);
     return 0;
@@ -106,13 +106,14 @@ static u8 GetLabel(VqCodeBook *codeBook, f32 *input)
 
     {
         u32 *indices;
+        s32 fineIndex;
         f32 *vector;
         f32 *inputValue;
 
         indices = codeBook->secondCodeBookIndices +
                   codeBook->secondSearchCount * label;
         minimum = FLT_MAX;
-        for (i = 0; i < codeBook->secondSearchCount; i++) {
+        for (fineIndex = 0; fineIndex < codeBook->secondSearchCount; fineIndex++) {
             vector = codeBook->secondCodeBook + *indices++;
             inputValue = input;
             difference = *inputValue++ - *vector++;

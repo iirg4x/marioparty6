@@ -1027,7 +1027,10 @@ void __nwa__FUl(void);
 void __ptmf_test(void);
 void __ptmf_scall(void);
 void __dla__FPv(void);
-void lbl_802166D8(void);
+/* Branch-target declaration for the legacy ASM export thunk below. MWCC's
+ * inline assembler requires a function operand for b; the provider in ptmf.c
+ * is the const PTMF data object, not a callable C function. */
+void __ptmf_null(void);
 void __ptmf_cmpr(void);
 void HuDataDirCancelAsync(void);
 void HuDataDirCloseAsync(void);
@@ -7005,7 +7008,7 @@ asm void _kerent(void) {
     entry _kerjmp___dla__FPv
     b __dla__FPv
     entry _kerjmp_lbl_802166D8
-    b lbl_802166D8
+    b __ptmf_null
     entry _kerjmp___ptmf_cmpr
     b __ptmf_cmpr
     entry _kerjmp_HuDataDirCancelAsync
