@@ -10,19 +10,20 @@ This snapshot was generated from a verified full-project retail build with `tool
 
 | Area | Code | Data | Matching build objects |
 | --- | ---: | ---: | ---: |
-| Entire project | 21.86% | 42.44% | 389 / 926 |
-| Main DOL | 86.43% | 96.74% | 350 / 396 |
-| REL modules | 8.17% | 8.03% | 39 / 530 |
+| Entire project | 22.19% | 43.33% | 397 / 932 |
+| Main DOL | 87.77% | 98.84% | 352 / 396 |
+| REL modules | 8.29% | 8.16% | 45 / 536 |
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
 owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-The latest batch enables context management, vector quantization, and runtime
-allocation support, covering 29 functions. There are **46 main DOL build objects** left
-nonmatching. All newly enabled source objects participate in the verified
-retail-identical build.
+The latest batch recovers minigame **m616dll**, including all 22 application
+functions and its existing compiler-runtime integration. Its 19,788-byte REL
+is retail-identical. MusyX Stream and DSP control add another 33 functions.
+There are **44 main DOL build objects** left nonmatching. All newly enabled
+source objects participate in the verified retail-identical build.
 
 `Matching build objects` is a reconstruction/configuration metric, not a count
 of semantic owners in the original game. Its denominator can increase when one
