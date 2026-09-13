@@ -16,7 +16,8 @@ typedef struct M670MicResponse_s {
     s16 *values;
 } M670MICRESPONSE;
 
-extern char *lbl_1_data_28[];
+/* The recognition callback writes entry 1; the other entries remain null. */
+char *lbl_1_data_28[8] = {0};
 
 static int lbl_1_bss_8;
 static int lbl_1_bss_4;

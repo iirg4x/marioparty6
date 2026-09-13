@@ -1,4 +1,10 @@
 #include "REL/m670dll.h"
+
+float lbl_1_bss_480;
+float lbl_1_bss_47C;
+/* Only the first 24 timer entries are updated by the pillar loops. */
+int lbl_1_bss_418[25];
+float lbl_1_bss_3B8[24];
 #include "game/audio.h"
 #include "game/frand.h"
 #include "game/mg/seqman.h"
