@@ -4,6 +4,92 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **348/396**, **1/10** batch owners.
 
+## Context functions: 4/15 to 12/15 exact
+
+The small `gssdk_lib/gsapi/ctxfuncs.c` owner originally had ten missing source
+functions. All fifteen bodies are now reconstructed; **12/15** pass strict,
+data and independent raw physical checks. No exact sibling was lost. The
+complete source `.text` is the retail **2500 bytes** and all **52 relocation
+occurrences** agree. Three functions remain nonexact, so this is a retained
+partial owner, not a Matching promotion or a new DOL-link claim.
+
+New exact functions: `SessionDataExport`, `SessionDataImport`,
+`ContextActivateParams`, `ContextDeActivate`, `ContextGetParam`,
+`ContextSetParam`, `ContextSetWrdData`, and `ContextUnLoad`.
+The four previously exact bodies remain exact. Remaining strict/data scores:
+`ContextActivate` **99.8375%**, `ContextGetAction` **99.42308%**,
+`ContextSetGcdData` **99.92391%**. The two lifecycle/parser tails are uniform
+eight-byte frame differences; GetAction has an eight-row index/result-base
+cycle in its first-match scan. No padding or fake local was added to fix frames.
+
+Live source `5ffce16c12a548e8c648d8eeb5e440b6fb30e61d9f47ed2a57f2b81b3869a66a`;
+object `7f2898d90f8edcfedd9b48216e33a7cfaf97093db2db1082b87eab95911fbe3c`;
+target `aa14666733e8e64cdd22786dc385e75659a45f7100733ef0c1670917bdc01211`;
+strict/data `88c8218522fd3284024b8b571866e5b8b8a0902310f11e8466a961d8e7c62359`.
+Proof: `build/small-first-20260913/gsctx-indexed-action-arrays/frontier-proof.json`.
+The owner is still unpromoted; main and batch counts above are unchanged.
+
+The productive path was target assembly plus m2c reconstruction, actual callee
+interfaces and consumer layouts, then ordinary indexed C. m2c's inferred
+argument counts were not accepted blindly: the real `Wrd*` source and reaching
+argument registers resolve the missing second/third arguments. The private
+record/field names are descriptive reconstructions, not recovered original
+names. Runtime and loaded-context layouts are separate; no shared ABI guess,
+ASM, compiler-option change or artificial storage is involved.
+
+`ContextActivateParams` demonstrates the useful next source question. Retail
+iterates input IDs 0..17, but the actual 18-entry `TranslateParamTable` contains
+one 255 sentinel, so only 17 output entries exist. Correcting output capacity
+and the inclusive loop limit fixed the frame/domain. Replacing the explicit
+output cursor with `parameters[count]` let the compiler create its genuine
+induction temporary and closed the last seven register rows. GetAction likewise
+improved 87.333336 -> 97.051285 -> 99.42308 by snapshotting the repeatedly used
+count and using indexed source/result arrays. A last-match loop needs the
+snapshot because output can alias the table; an early-exit scan does not prove
+the same source owner. Local declaration, signed-index and initialization-order
+variants that produced the same object are recorded as neutral constraints,
+not reasons to exhaust or freeze the function.
+
+Source-fidelity caveat: the target `SessionDataExport` writes the allocated
+header before its null check. The reconstruction preserves that legacy order;
+this is not a claim that the original allocation-failure path is memory-safe.
+
+## Missing-function tools repaired and used
+
+- Existing `tools/decompctx.py` now exports pure `adapt_target_function` for
+  GNU target disassembly when pinned DTK's ELF disassembler fails. It checks
+  ELF32 big-endian PowerPC identity, function bytes/counts, branch destinations,
+  complete relocation census, REL24 link-bit and immediate/memory forms. It
+  does not infer signatures, invoke a compiler, edit source or prove a match.
+  Existing include-flattener/CLI behavior is unchanged. The scratch caller now
+  uses this implementation, explicit target/tool hashes and subprocess deadlines
+  rather than a duplicated parser or optimization-disabled assertions.
+- The adapter produced usable m2c input for all ten missing functions after
+  the DTK panic. The promoted converter was exercised on current Params/Gcd
+  targets; both m2c invocations succeeded. All 13 adapter/context tests pass,
+  including all fifteen actual ctxfuncs targets, the old 352-instruction callback
+  and a real SDA21 target. That replay validates the converter, not a new crack.
+- Existing `recovery_causal_groups.decision_packet` accepts opt-in
+  `allow_missing_candidate=True` for factual reconstruction support. It emits
+  real target rows, explicit null/unavailable candidate evidence, and marks the
+  source excerpt as context, never a fabricated function body. Source-replacement
+  mode is rejected when the candidate is absent.
+- Real Qwen use revealed a second gap: without addresses it swapped the two
+  switch arms despite citing valid row numbers. New target-only packets bind
+  each instruction address and direct-branch destination to included row IDs.
+  Actual replay proves `0x4c0 -> row35` and `0x510 -> row55`; rehashed swapped
+  mappings and partial maps fail validation. Older in-flight packets retain
+  byte-identical prompts and factual validation, so a validator update does not
+  discard ongoing inference. New packets always include the address facts.
+
+The two target-only Qwen jobs run in parallel with primary reconstruction;
+neither is a compile/consensus gate. The incorrect action-layout answer was
+rejected by primary review. Their schema validity is not semantic proof and
+none of the eight new exact functions is credited to an unverified model claim.
+Affected tooling suite: **119 tests run, 23 skipped** (platform/opt-in cases);
+the explicit local adapter replay separately passes **13/13**. The gaps are
+fixed in existing tools, not a new recovery engine.
+
 ## NewMore: closed by the real adjacent provider
 
 `Runtime.PPCEABI.H/NewMore.cp` is now source-selected and exact: five functions,

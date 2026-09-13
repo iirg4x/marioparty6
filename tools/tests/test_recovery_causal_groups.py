@@ -24,6 +24,132 @@ def report(left, right):
 
 
 class CausalGroupsTests(unittest.TestCase):
+    def test_legacy_target_only_prompt_and_answer_compatibility(self):
+        root = Path(__file__).resolve().parents[2]
+        folder = root / "build/qwen-gsctx-reconstruction-20260913/gcd-chunks"
+        if not (folder / "decision.json").is_file():
+            self.skipTest("local original gcd packet unavailable")
+        packet = json.loads((folder / "decision.json").read_bytes())
+        self.assertNotIn("target_instruction_addresses", packet)
+        self.assertEqual(groups.render_decision_prompt(packet), (folder / "prompt.txt").read_text())
+        answer_path = folder / "answer/gcd-chunks.answer.txt"
+        # While the real answer is still running, exercise its unchanged contract
+        # with a deterministic factual finding bound to the actual original packet.
+        answer = (json.loads(answer_path.read_bytes()) if answer_path.is_file() else
+                  dict(status="supported", function=packet["function"], packet_sha256=packet["packet_sha256"],
+                       answer="The supplied target row 0 is " + packet["paired_rows"][0]["target"],
+                       evidence_rows=[0], missing_evidence=None))
+        self.assertIn(groups.validate_decision_answer(packet, answer)["status"],
+                      {"valid_finding", "insufficient_evidence"})
+        for field, value in (("target_instruction_addresses", []), ("target_branch_destinations", []),
+                             ("row_address", 0)):
+            changed = copy.deepcopy(packet)
+            if field == "row_address":
+                changed["paired_rows"][0]["target_address"] = value
+            else:
+                changed[field] = value
+            changed["packet_sha256"] = groups._digest({k: v for k, v in changed.items() if k != "packet_sha256"})
+            with self.assertRaises(ValueError):
+                groups.validate_decision_packet(changed)
+
+    def test_target_only_branch_address_map_and_omissions(self):
+        rows = [row("beq 0x8", 0), row("b 0x20", 4), row("blr", 8)]
+        document = report(rows, [])
+        document["right"]["symbols"] = []
+        packet = groups.decision_packet(document, "f", "int context;", 1, 1,
+                                        "Map branch destinations.", 0, 1, allow_missing_candidate=True)
+        self.assertEqual(packet["paired_rows"][1]["target_address"], 4)
+        facts = packet["target_branch_destinations"]
+        self.assertEqual(facts[0], dict(row=0, destination_address=8, destination_row=None, status="omitted"))
+        self.assertEqual(facts[1]["status"], "external")
+        self.assertEqual(len(facts), 2)  # Return is not a direct branch destination.
+        groups.validate_decision_packet(packet)
+        changed = copy.deepcopy(packet)
+        changed["target_branch_destinations"][0].update(destination_row=1, status="included")
+        changed["packet_sha256"] = groups._digest({k: v for k, v in changed.items() if k != "packet_sha256"})
+        with self.assertRaisesRegex(ValueError, "mapping differs"):
+            groups.validate_decision_packet(changed)
+        changed = copy.deepcopy(packet)
+        changed["paired_rows"][0]["target_address"] = 4
+        changed["packet_sha256"] = groups._digest({k: v for k, v in changed.items() if k != "packet_sha256"})
+        with self.assertRaisesRegex(ValueError, "row/address"):
+            groups.validate_decision_packet(changed)
+        rows[0]["instruction"]["branch_dest"] = "4"
+        with self.assertRaisesRegex(ValueError, "branch text/address"):
+            groups.decision_packet(document, "f", "int context;", 1, 1,
+                                   "Map branch destinations.", 0, 1, allow_missing_candidate=True)
+
+    def test_actual_action_layout_target_address_replay(self):
+        root = Path(__file__).resolve().parents[2]
+        old_path = root / "build/qwen-gsctx-reconstruction-20260913/action-layout/decision.json"
+        report_path = root / "build/small-first-20260913/gsctx-session-params/strict.json"
+        if not old_path.is_file() or not report_path.is_file():
+            self.skipTest("local action-layout acceptance artifacts unavailable")
+        old = json.loads(old_path.read_bytes())
+        document = json.loads(report_path.read_bytes())
+        self.assertEqual(groups._digest(document), old["report_sha256"])
+        packet = groups.decision_packet(document, old["function"], old["source_excerpt"],
+                                        1, len(old["source_excerpt"].splitlines()), old["question"],
+                                        0, 77, allow_missing_candidate=True, max_bytes=24000)
+        facts = {f["row"]: f for f in packet["target_branch_destinations"]}
+        self.assertEqual(facts[18], dict(row=18, destination_address=0x4c0, destination_row=35, status="included"))
+        self.assertEqual(facts[25], dict(row=25, destination_address=0x510, destination_row=55, status="included"))
+        groups.validate_decision_packet(packet)
+        packet["target_branch_destinations"][next(i for i, f in enumerate(packet["target_branch_destinations"]) if f["row"] == 18)]["destination_row"] = 55
+        packet["packet_sha256"] = groups._digest({k: v for k, v in packet.items() if k != "packet_sha256"})
+        with self.assertRaisesRegex(ValueError, "mapping differs"):
+            groups.validate_decision_packet(packet)
+
+    def test_target_only_fact_decision(self):
+        rows = [row("li r3, 1", 0), row("bl helper", 4), row("blr", 8)]
+        document = report(rows, rows)
+        document["right"]["symbols"] = []
+        def packet(**options):
+            return groups.decision_packet(document, "f", "int helper(int value);", 1, 1,
+                                          "Which supplied value reaches helper?", 0, 1, **options)
+        with self.assertRaisesRegex(ValueError, "function missing"):
+            packet()
+        result = packet(allow_missing_candidate=True, producer_sites=[1])
+        groups.validate_decision_packet(result)
+        self.assertTrue(result["candidate_missing"])
+        self.assertEqual(result["source_excerpt_role"], "context")
+        self.assertEqual(result["source_excerpt"], "int helper(int value);")
+        self.assertEqual([r["target"] for r in result["paired_rows"]], ["li r3, 1", "bl helper"])
+        self.assertTrue(all(r["candidate"] is None for r in result["paired_rows"]))
+        self.assertEqual(result["machine_census"]["candidate"]["status"], "unavailable")
+        self.assertIsNone(result["machine_census"]["candidate"]["instruction_count"])
+        self.assertEqual(set(result["producer_context"]), {"target"})
+        self.assertIn("TARGET-ONLY factual support", groups.render_decision_prompt(result))
+        answer = dict(status="supported", function="f", packet_sha256=result["packet_sha256"],
+                      answer="The row 0 constant reaches the row 1 call.", evidence_rows=[0, 1], missing_evidence=None)
+        groups.validate_decision_answer(result, answer)
+        with self.assertRaises(ValueError):
+            groups.validate_decision_answer(result, {**answer, "evidence_rows": [3]})
+        with self.assertRaises(ValueError):
+            groups.validate_decision_answer(result, {**answer, "status": "hypothesis"})
+        with self.assertRaisesRegex(ValueError, "fact mode"):
+            packet(allow_missing_candidate=True, decision_mode="source-hypothesis")
+        for mutate in (lambda p: p.update(decision_mode="source-hypothesis"),
+                       lambda p: p["paired_rows"][0].update(candidate="li r3, 1"),
+                       lambda p: p["machine_census"]["candidate"].update(instruction_count=0)):
+            changed = copy.deepcopy(result)
+            mutate(changed)
+            changed["packet_sha256"] = groups._digest({k: v for k, v in changed.items() if k != "packet_sha256"})
+            with self.assertRaisesRegex(ValueError, "target-only"):
+                groups.validate_decision_packet(changed)
+        with self.assertRaisesRegex(ValueError, "byte budget"):
+            packet(allow_missing_candidate=True, max_bytes=1000)
+        document["left"]["symbols"] = []
+        with self.assertRaisesRegex(ValueError, "function missing"):
+            packet(allow_missing_candidate=True)
+
+    def test_existing_decisions_ignore_missing_candidate_opt_in(self):
+        rows = [row("blr", 0)]
+        plain = self.decision(rows, 0, 0)
+        opted = self.decision(rows, 0, 0, allow_missing_candidate=True)
+        self.assertEqual(plain, opted)
+        self.assertEqual(groups.render_decision_prompt(plain), groups.render_decision_prompt(opted))
+
     def test_score_census_missing_null_and_aliases(self):
         def symbol(name, score):
             return {"name": name, "instructions": [row("blr", 0)], "size": "4", "match_percent": score}

@@ -204,10 +204,44 @@ def _digest(value: Any) -> str:
                                     ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
+def _target_only_branch_facts(packet: dict) -> list[dict]:
+    """Resolve only reported addresses; no case meanings or CFG inference."""
+    addresses = packet.get("target_instruction_addresses")
+    if (not isinstance(addresses, list) or not addresses
+            or any(a is not None and (type(a) is not int or a < 0) for a in addresses)
+            or len([a for a in addresses if a is not None]) != len({a for a in addresses if a is not None})):
+        raise ValueError("invalid target instruction addresses")
+    selected = set()
+    for row in packet["paired_rows"]:
+        index = row.get("row")
+        if (type(index) is not int or not 0 <= index < len(addresses) or index in selected
+                or "target_address" not in row or row["target_address"] != addresses[index]):
+            raise ValueError("target row/address binding differs")
+        selected.add(index)
+    by_address = {address: i for i, address in enumerate(addresses) if address is not None}
+    included_text = {row["row"]: row["target"] for row in packet["paired_rows"]}
+    facts = []
+    for site in packet["machine_census"]["target"]["branches_including_return"]:
+        if (type(site.get("row")) is not int or not 0 <= site["row"] < len(addresses)
+                or (site["row"] in included_text and site["instruction"] != included_text[site["row"]])):
+            raise ValueError("target branch census differs from supplied rows")
+        branch = frontier._branch_instruction(site["instruction"], site["row"])
+        if branch is None:
+            continue
+        destination = branch["destination"]
+        index = by_address.get(destination)
+        status = ("unresolved" if destination is None else
+                  "included" if index in selected else "omitted" if index is not None else
+                  "external" if all(a is not None for a in addresses) else "external_or_unreported")
+        facts.append({"row": site["row"], "destination_address": destination,
+                      "destination_row": index if status == "included" else None, "status": status})
+    return facts
+
+
 def decision_packet(document: dict, function: str, source: str, start: int, end: int,
                     question: str, row_start: int, row_end: int, *, max_bytes: int = 18000,
                     producer_sites: list[int] | None = None, producer_limit: int = 16,
-                    decision_mode: str = "fact") -> dict:
+                    decision_mode: str = "fact", allow_missing_candidate: bool = False) -> dict:
     """One bounded support decision, not an open-ended function rewrite.
 
     Include the complete function's call/branch census even when arithmetic is
@@ -219,9 +253,13 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
     cap includes this context, and omitted context leaves legacy packets intact.
     decision_mode='source-hypothesis' explicitly permits a single uncertain
     natural-C cause proposal. Default fact packets and prompts remain unchanged.
+    allow_missing_candidate permits target-only factual evidence with supplied
+    source context, never a fabricated candidate body or hypothesis replacement.
     """
     if decision_mode not in {"fact", "source-hypothesis"}:
         raise ValueError("unknown decision mode")
+    if type(allow_missing_candidate) is not bool:
+        raise ValueError("allow_missing_candidate must be boolean")
     lines = source.splitlines()
     if not isinstance(question, str) or not question.strip() or len(question) > 800:
         raise ValueError("one concrete decision question is required (1..800 characters)")
@@ -229,9 +267,12 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
         raise ValueError("invalid decision source range or byte budget")
     symbols = [frontier._stack_function(frontier.focus._symbols(document, side, "strict"),
                                        function, side) for side in ("left", "right")]
-    if any(symbol is None for symbol in symbols):
+    candidate_missing = symbols[1] is None
+    if symbols[0] is None or (candidate_missing and not allow_missing_candidate):
         raise ValueError("decision function missing")
-    streams = [frontier.focus._rows(symbol, function) for symbol in symbols]
+    if candidate_missing and decision_mode != "fact":
+        raise ValueError("target-only decisions require fact mode; no candidate body exists")
+    streams = [frontier.focus._rows(symbol, function) if symbol is not None else [] for symbol in symbols]
     if not 0 <= row_start <= row_end < max(map(len, streams)):
         raise ValueError("invalid inclusive decision machine range")
     if producer_sites is not None and (
@@ -242,6 +283,10 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
         raise ValueError("producer sites must be unique selected row IDs; limit must be 1..64")
     census = {}
     for side, symbol, stream in zip(("target", "candidate"), symbols, streams):
+        if symbol is None:
+            census[side] = {"bytes": None, "instruction_count": None, "calls": [],
+                            "branches_including_return": [], "status": "unavailable"}
+            continue
         calls, branches = [], []
         for index, row in enumerate(stream):
             parts = frontier._instruction_parts(row)
@@ -269,10 +314,30 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
               "source_causality_proven": False, "authority_advanced": False}
     if decision_mode == "source-hypothesis":
         result["decision_mode"] = decision_mode
+    if candidate_missing:
+        result.update(candidate_missing=True, source_excerpt_role="context")
+        addresses = []
+        for index, row in enumerate(streams[0]):
+            instruction = row.get("instruction") or {}
+            try:
+                address = frontier._parse_access_offset(instruction.get("address"))
+            except (ValueError, TypeError):
+                address = None
+            addresses.append(address)
+            branch = frontier._branch_instruction(instruction.get("formatted"), index)
+            if branch is not None and instruction.get("branch_dest") is not None:
+                supplied = frontier._parse_access_offset(instruction["branch_dest"])
+                if branch["destination"] != supplied:
+                    raise ValueError("target branch text/address differs")
+        result["target_instruction_addresses"] = addresses
+        for row in result["paired_rows"]:
+            row["target_address"] = addresses[row["row"]]
+        result["target_branch_destinations"] = _target_only_branch_facts(result)
     if producer_sites is not None:
         result["producer_context"] = {
             side: producer_slice(stream, producer_sites, limit=producer_limit)
-            for side, stream in zip(("target", "candidate"), streams)}
+            for side, stream in zip(("target", "candidate"), streams)
+            if side != "candidate" or not candidate_missing}
     result["packet_sha256"] = _digest(result)
     if len(json.dumps(result, ensure_ascii=False).encode()) > max_bytes:
         raise ValueError("decision packet exceeds byte budget; narrow the question, not model reasoning")
@@ -315,7 +380,19 @@ def render_decision_prompt(packet: dict) -> str:
             "or promotion authority. Semantic plausibility and the single-cause rule require primary "
             "review, not merely schema validation.\n"
             + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
-    return ("Answer the ONE stated compiler/source question using only this bound evidence. "
+    return (("TARGET-ONLY factual support: the candidate function is missing. Candidate rows are null "
+             "and its census is unavailable, not an empty implementation or exact comparison. "
+             "source_excerpt is context declarations, not the missing function's source body. "
+             "Answer only supplied ABI/layout/control-flow evidence questions; do not propose source "
+             "changes or treat context as an implementation. Real target rows/calls/branches are the "
+             "only machine evidence; preserve uncertainty about unsupplied callee signatures.\n"
+             if packet.get("candidate_missing") else "")
+            + ("target_address and target_branch_destinations bind branch addresses to supplied row IDs; "
+             "use this mapping rather than guessing case labels from row order. Destination rows marked "
+             "omitted/external/unresolved are not supplied instruction evidence. These are address facts, "
+             "not inferred switch-case meanings or new authority.\n"
+             if "target_branch_destinations" in packet else "")
+            + "Answer the ONE stated compiler/source question using only this bound evidence. "
             "Do not solve the entire function, invent a new algorithm, write a patch, or list experiments. "
             "The call/branch census covers the whole function; the paired arithmetic rows may be partial. "
             "PowerPC dataflow: subf d,a,b computes b-a. At a call, track volatile-register clobbers "
@@ -351,9 +428,24 @@ def validate_decision_packet(packet: dict) -> None:
             or not isinstance(packet.get("paired_rows"), list) or not packet["paired_rows"]
             or set(packet.get("machine_census", {})) != {"target", "candidate"}):
         raise ValueError("incomplete decision packet")
+    if "candidate_missing" in packet or "source_excerpt_role" in packet:
+        if (packet.get("candidate_missing") is not True or packet.get("source_excerpt_role") != "context"
+                or "decision_mode" in packet
+                or packet["machine_census"]["candidate"] != {
+                    "bytes": None, "instruction_count": None, "calls": [],
+                    "branches_including_return": [], "status": "unavailable"}
+                or any(not isinstance(row, dict) or row.get("candidate", "absent") is not None
+                       for row in packet["paired_rows"])):
+            raise ValueError("invalid target-only decision evidence/mode")
+        has_mapping = ("target_instruction_addresses" in packet or "target_branch_destinations" in packet
+                       or any("target_address" in row for row in packet["paired_rows"]))
+        if has_mapping:
+            if packet.get("target_branch_destinations") != _target_only_branch_facts(packet):
+                raise ValueError("target branch destination mapping differs from supplied rows/addresses")
     if "producer_context" in packet:
         context = packet["producer_context"]
-        if not isinstance(context, dict) or set(context) != {"target", "candidate"}:
+        expected_sides = {"target"} if packet.get("candidate_missing") else {"target", "candidate"}
+        if not isinstance(context, dict) or set(context) != expected_sides:
             raise ValueError("invalid decision producer context")
         selected = {row["row"] for row in packet["paired_rows"]}
         for sliced in context.values():
