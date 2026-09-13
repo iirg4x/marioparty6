@@ -4,18 +4,18 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **September 13, 2026**
+Last published full-project snapshot: **September 14, 2026**
 
 Byte percentages were generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 22.51% | 43.53% |
+| Entire project | 22.70% | 43.61% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 8.67% | 8.48% |
+| REL modules | 8.90% | 8.61% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**3 are fully source-selected** (`m616dll`, `m651dll`, `m670dll`) and **79 remain**. This scope is distinct
+**4 are fully source-selected** (`m616dll`, `m621dll`, `m651dll`, `m670dll`) and **78 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,14 +23,13 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m651dll is now fully source-selected**: all 19,228 code bytes, initialized data,
-and BSS come from four source owners, with no original-object fallback.
-All 38 application functions and their effective physical relocations match;
-the rebuilt REL is byte-identical to retail. This step selects the remaining
-1,024 entry-code bytes and 128 data/BSS bytes. The counter allocation's unused
-capacity is inferred from its target span and typed accesses; its original
-declaration is not uniquely known. m670 remains fully source-selected, with
-the same previously disclosed uncertainty about unused storage capacities.
+**m621dll is now fully source-selected**: all 24,008 code bytes and 1,410
+data/BSS bytes come from four source objects, with no original-object fallback.
+All 65 application functions and their effective physical relocations match;
+the rebuilt REL is byte-identical to retail. Unaccessed record bytes remain
+explicitly unknown, and an unreferenced three-float initializer has an inferred
+vector type rather than a claimed original name or type. m651 and m670 retain
+their previously disclosed uncertainty about unused storage capacities.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
 
