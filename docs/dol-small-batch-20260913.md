@@ -2,30 +2,32 @@
 
 Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
-Current locally verified frontier: **348/396**, **1/10** batch owners.
+Current locally verified frontier: **349/396**, **2/10** batch owners.
 
-## Context functions: 4/15 to 14/15 exact
+## Context functions: closed, 15/15 exact
 
 The small `gssdk_lib/gsapi/ctxfuncs.c` owner originally had ten missing source
-functions. All fifteen bodies are now reconstructed; **14/15** pass strict,
+functions. All fifteen bodies are now reconstructed; **15/15** pass strict,
 data and independent raw physical checks. No exact sibling was lost. The
 complete source `.text` is the retail **2500 bytes** and all **52 relocation
-occurrences** agree. One function remains nonexact, so this is a retained
-partial owner, not a Matching promotion or a new DOL-link claim.
+occurrences** agree. The owner is now locally source-selected Matching. A real
+MWCC/MWLD rebuild passes all **137 retail checksums** (DOL and 136 RELs); the
+production object reproduces the isolated candidate hash. It is closure 2/10
+in the pending batch, not a main push.
 
 New exact functions: `SessionDataExport`, `SessionDataImport`,
 `ContextActivateParams`, `ContextDeActivate`, `ContextGetParam`,
 `ContextSetParam`, `ContextSetWrdData`, `ContextUnLoad`, `ContextSetGcdData`, and
-`ContextGetAction`. The four previously exact bodies remain exact. The only
-remaining strict/data score is `ContextActivate` **99.8375%**, with an eight-byte
-frame difference. No padding or fake local was added to fix frames.
+`ContextGetAction`, and `ContextActivate`. The four previously exact bodies
+remain exact. No padding or fake local was added to fix frames.
 
-Live source `287d97bc744637770d88c0ddc1b1e745016e7f30d54e2c87d64f9a182ad2ff99`;
-object `6b8031617c2b845c1c5b3849ac7fb5e6dd02bc539dcfc6334386464dac4a833b`;
+Live source `483b8ff2fe4a08ae3ac9b043f1b2ad55da6f74b9b1bb57be29190e2dc7d5a35b`;
+object `5cf28b795285b65215a189d792bd47deffc8425e5e2b1ba36a9b8ecd7e6011d7`;
 target `aa14666733e8e64cdd22786dc385e75659a45f7100733ef0c1670917bdc01211`;
-strict/data `7f768111ea9c060982fb9b46eaa2a045ce0ff0b0245b86de158d3b30c42545d2`.
-Proof: `build/small-first-20260913/gsctx-case-three-limit-only/frontier-proof.json`.
-The owner is still unpromoted; main and batch counts above are unchanged.
+strict/data `3a7c0e38f6391fa4206577b6237285a921df2dd856a1f4d56f6e20b60be07784`.
+Proof: `build/small-first-20260913/gsctx-import-result-boundary/frontier-proof.json`.
+DOL SHA-256 `172ae27aa6fcc9074de286b07ae4ac9f9152175fa913fffc3f5b8365e139ffec`.
+Main remains 347/396 until the source-only batch promotion.
 
 The productive path was target assembly plus m2c reconstruction, actual callee
 interfaces and consumer layouts, then ordinary indexed C. m2c's inferred
@@ -76,6 +78,21 @@ of the other fourteen bodies or the owner's 52 physical relocation occurrences.
 All thirteen previously exact siblings survive. The new local is the real loop
 extent, not a register-only alias. Qwen supplied bounded support; the primary
 distinguished the hypothesis from the earlier failure and verified retention.
+
+Activate's remaining 13 frame/home rows then closed by preserving the unsigned
+`SessionDataImport` return as a block-local `u32 sessionStatus` before assigning
+the caller's signed `result`. This is the real SDK-to-API result boundary, not
+an added array, alignment directive or unused local. It restores the 48-byte
+frame and session home at 0x18 while retaining all 80 target instructions and
+all fourteen exact siblings. An earlier unsigned-import ternary normalization
+changed the frame but regressed its standalone callee and register owners; it
+was not retained. The caller conversion boundary solved the cause without that
+callee edit. No original variable name or compiler virtual ID is claimed.
+
+Both final closures used the existing compile/objdiff/physical tools. The
+updated hypothesis guidance contributed one useful Qwen proposal; the primary
+independently chose the import boundary. These outcomes do not justify a new
+matching engine or copying either source shape without its real consumers.
 
 Source-fidelity caveat: the target `SessionDataExport` writes the allocated
 header before its null check. The reconstruction preserves that legacy order;

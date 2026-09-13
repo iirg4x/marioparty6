@@ -188,7 +188,9 @@ s32 ContextActivate(GSContext *runtime, GSLoadedContext *context)
             result = ContextActivateParams(runtime, context);
         }
         if (runtime->sessionInitialized && result >= 0) {
-            result = SessionDataImport(runtime, session, 0);
+            u32 sessionStatus = SessionDataImport(runtime, session, 0);
+
+            result = sessionStatus;
         }
         runtime->sessionInitialized = 1;
     }
