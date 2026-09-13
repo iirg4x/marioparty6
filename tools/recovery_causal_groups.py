@@ -16,6 +16,38 @@ if __package__ in {None, ""}:
 from tools import recovery_frontier as frontier
 
 
+_PRODUCER_SCOPE = "block-local physical definitions; memory identity and source causality UNKNOWN"
+_EABI_PRODUCER_SCOPE = "conditional PPC EABI call-preserved physical definitions; CFG joins stop; memory identity and source causality UNKNOWN"
+
+
+def _producer_call_model(mode: str) -> dict | None:
+    if mode == "conservative":
+        return None
+    if mode != "ppc-eabi":
+        raise ValueError("unknown producer call model")
+    # Ordinary allocatable callee-save subset, not reserved r1/r2/r13.
+    # FPR range agrees with frontier._abi_pair; full EABI register table:
+    # https://compcert.org/doc/html/compcert.powerpc.Conventions1.html
+    return {"name": "ppc-eabi", "assumption": "recognized calls obey PowerPC EABI and return normally",
+            "preserved_registers": [f"{kind}{i}" for kind in ("r", "f") for i in range(14, 32)],
+            "untracked": "reserved registers, CR, XER, LR, CTR, FPSCR and memory effects",
+            "callee_conformance_proven": False}
+
+
+def _recognized_eabi_call(op: str, operands: list[str]) -> bool:
+    """Syntax recognition only; caller explicitly assumes ABI conformance."""
+    if op in {"bctrl", "blrl"}:
+        return operands == [""]
+    if op not in {"bl", "bla"} or len(operands) != 1:
+        return False
+    destination = operands[0]
+    if re.fullmatch(r"(?:0x[0-9a-f]+|[0-9]+)", destination):
+        address = int(destination, 16 if destination.startswith("0x") else 10)
+        return 0 <= address <= 0xffffffff and address % 4 == 0
+    return (re.fullmatch(r"[a-z_$][a-z0-9_.$]*", destination) is not None
+            and re.fullmatch(r"(?:r|f|cr)[0-9]+|lr|ctr", destination) is None)
+
+
 def ranking_tuple(summary: dict, *, exact_function_count: int = 0,
                   protected_loss_count: int = 0, score: float = 0.0) -> tuple:
     """Lower is better. Diagnostic ordering, never a retention/proof gate."""
@@ -538,6 +570,7 @@ def _comparison_direction(paired_rows: list[dict]) -> dict:
 def decision_packet(document: dict, function: str, source: str, start: int, end: int,
                     question: str, row_start: int, row_end: int, *, max_bytes: int = 18000,
                     producer_sites: list[int] | None = None, producer_limit: int = 16,
+                    producer_call_model: str = "conservative",
                     decision_mode: str = "fact", allow_missing_candidate: bool = False,
                     known_measurements: list[dict] | None = None) -> dict:
     """One bounded support decision, not an open-ended function rewrite.
@@ -549,6 +582,8 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
     Optional producer_sites are explicit selected-row questions for the existing
     block-local slicer; their definitions may precede row_start. The shared byte
     cap includes this context, and omitted context leaves legacy packets intact.
+    producer_call_model='ppc-eabi' conditionally retains ordinary callee-save
+    register definitions across syntactically recognized returning ABI calls.
     decision_mode='source-hypothesis' explicitly permits a single uncertain
     natural-C cause proposal. Default fact packets and prompts remain unchanged.
     allow_missing_candidate permits target-only factual evidence with supplied
@@ -559,6 +594,8 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
     """
     if decision_mode not in {"fact", "source-hypothesis"}:
         raise ValueError("unknown decision mode")
+    if _producer_call_model(producer_call_model) is not None and producer_sites is None:
+        raise ValueError("producer call model requires producer sites")
     if type(allow_missing_candidate) is not bool:
         raise ValueError("allow_missing_candidate must be boolean")
     lines = source.splitlines()
@@ -637,7 +674,7 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
         result["target_branch_destinations"] = _target_only_branch_facts(result)
     if producer_sites is not None:
         result["producer_context"] = {
-            side: producer_slice(stream, producer_sites, limit=producer_limit)
+            side: producer_slice(stream, producer_sites, limit=producer_limit, call_model=producer_call_model)
             for side, stream in zip(("target", "candidate"), streams)
             if side != "candidate" or not candidate_missing}
     if known_measurements is not None:
@@ -797,8 +834,15 @@ def validate_decision_packet(packet: dict) -> None:
         expected_sides = {"target"} if packet.get("candidate_missing") else {"target", "candidate"}
         if not isinstance(context, dict) or set(context) != expected_sides:
             raise ValueError("invalid decision producer context")
+        if len({json.dumps(sliced.get("call_model"), sort_keys=True)
+                for sliced in context.values() if isinstance(sliced, dict)}) > 1:
+            raise ValueError("inconsistent decision producer call models")
         selected = {row["row"] for row in packet["paired_rows"]}
         for sliced in context.values():
+            call_model = sliced.get("call_model") if isinstance(sliced, dict) else None
+            if isinstance(sliced, dict) and "call_model" in sliced and call_model != _producer_call_model("ppc-eabi"):
+                raise ValueError("invalid decision producer call model")
+            expected_scope = _EABI_PRODUCER_SCOPE if call_model is not None else _PRODUCER_SCOPE
             if (not isinstance(sliced, dict) or type(sliced.get("node_limit")) is not int
                     or not 4 <= sliced["node_limit"] <= 256 or sliced["node_limit"] % 4
                     or type(sliced.get("truncated")) is not bool
@@ -808,7 +852,7 @@ def validate_decision_packet(packet: dict) -> None:
                     or len(sliced["sites"]) > sliced["node_limit"] // 4
                     or not isinstance(sliced.get("nodes"), list)
                     or len(sliced["nodes"]) > sliced["node_limit"]
-                    or sliced.get("scope") != "block-local physical definitions; memory identity and source causality UNKNOWN"):
+                    or sliced.get("scope") != expected_scope):
                 raise ValueError("invalid decision producer context bounds/scope")
             ids = []
             for node in sliced["nodes"]:
@@ -876,14 +920,18 @@ def validate_decision_answer(packet: dict, answer: dict) -> dict:
                if hypothesis else {})}
 
 
-def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> dict:
+def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16,
+                   call_model: str = "conservative") -> dict:
     """Bounded block-local physical-register DAG; no source/alias inference.
 
     Native trace slicing needs a compiler capture; frontier's definition state
     only answers must-defined FPRs. Reuse its objdiff/branch parsers here.
+    Default calls erase every definition. Explicit ppc-eabi mode assumes ABI
+    compliance for recognized calls; no memory or return-value facts follow.
     """
     if not 1 <= limit <= 64:
         raise ValueError("producer limit must be between 1 and 64")
+    model = _producer_call_model(call_model)
     branches, addresses = frontier._branch_rows(rows)
     entries = {0}
     for branch in branches:
@@ -898,11 +946,16 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
     loads = {"lwz", "lhz", "lha", "lbz", "lfs", "lfd"}
     update_loads = {"lwzu", "lfsu", "lfdu"}
     arithmetic = {"mr", "fmr", "add", "addi", "addis", "subi", "subf", "mullw", "mulli",
-                  "slwi", "srwi", "srawi", "rlwinm", "clrlwi", "clrlslwi", "neg", "extsh", "extsb",
+                  "srawi", "neg", "extsh", "extsb",
                   "and", "andi.", "or", "xor", "fadd", "fadds", "fsub", "fsubs",
                   "fmul", "fmuls", "fdiv", "fdivs", "fneg", "fabs", "frsp"}
     harmless = {"nop", "cmpw", "cmplw", "cmpwi", "cmplwi", "fcmpo", "fcmpu",
                 "stw", "sth", "stb", "stfs", "stfd", "mtctr"}
+    # Immediate rotate/mask forms overwrite RA and read RS, including r0.
+    # Dot forms have the same GPR flow; this slice does not track CR/XER.
+    rotate_counts = {"slwi": 3, "srwi": 3, "rlwinm": 5,
+                     "clrlwi": 3, "clrrwi": 3, "clrlslwi": 4}
+    divides = {"divw", "divwu", "divwo", "divwuo"}
     for index, row in enumerate(rows):
         if index in entries:
             definitions = {}
@@ -914,6 +967,14 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
                 boundary = {"status": "UNKNOWN", "reason": "unsupported/label boundary", "row": index}
             continue
         op, operands = parts
+        # The shared parser's word boundary leaves a terminal record-bit dot
+        # in operand zero. Normalize only this explicit, validated family.
+        if ((op in rotate_counts or op in divides) and operands
+                and re.match(r"^\s*" + op + r"\.\s", row["instruction"]["formatted"], re.IGNORECASE)):
+            dotted = re.fullmatch(r"\.\s+(.+)", operands[0])
+            if dotted:
+                op += "."
+                operands = [dotted[1], *operands[1:]]
         registers = frontier._register_tokens(",".join(operands))
         record = {"row": index, "instruction": row["instruction"]["formatted"], "uses": []}
         # Update forms define two values: loaded RT/FRT and EA in RA. Capture
@@ -927,8 +988,27 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
                     or update[2] == "r0" or (op == "lwzu" and operands[0] == update[2])
                     or not -32768 <= int(update[1], 0) <= 32767):
                 update = None
-        supported = op in loads | arithmetic | harmless | {"li", "lis"} or update is not None
-        is_def = op in loads | arithmetic | {"li", "lis"} or update is not None
+        rotate = False
+        rotate_op = op.removesuffix(".")
+        # Quotient dependencies only: no value/domain or divide-by-zero
+        # inference. Overflow/record forms also write untracked XER/CR state.
+        divide = (rotate_op in divides and len(operands) == 3
+                  and all(re.fullmatch(r"r(?:[0-9]|[12][0-9]|3[01])", value)
+                          for value in operands))
+        if rotate_op in rotate_counts and len(operands) == rotate_counts[rotate_op]:
+            # Reject symbolic immediates, invalid registers and masks rather
+            # than admitting an apparent destination from token extraction.
+            if (all(re.fullmatch(r"r(?:[0-9]|[12][0-9]|3[01])", value)
+                    for value in operands[:2])
+                    and all(re.fullmatch(r"(?:0x[0-9a-f]+|[0-9]+)", value)
+                            for value in operands[2:])):
+                values = [int(value, 16 if value.startswith("0x") else 10)
+                          for value in operands[2:]]
+                rotate = all(0 <= value <= 31 for value in values)
+                if rotate_op == "clrlslwi":
+                    rotate = rotate and values[1] <= values[0]
+        supported = op in loads | arithmetic | harmless | {"li", "lis"} or update is not None or rotate or divide
+        is_def = op in loads | arithmetic | {"li", "lis"} or update is not None or rotate or divide
         uses = registers[1:] if is_def else registers
         if op in {"li", "lis"}:
             uses = []
@@ -952,7 +1032,9 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
         if not supported:
             reason = "call boundary" if op in {"bl", "bla", "bctrl", "blrl"} else "CFG boundary" if op.startswith("b") else "unsupported opcode"
             record.update(status="UNKNOWN", reason=reason)
-            definitions = {}
+            definitions = ({register: definition for register, definition in definitions.items()
+                            if register in model["preserved_registers"]}
+                           if model is not None and _recognized_eabi_call(op, operands) else {})
             boundary = {"status": "UNKNOWN", "reason": reason, "row": index}
         elif is_def and registers:
             record["defines"] = registers[0]
@@ -971,15 +1053,19 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16) -> di
         pending.extend(use["definition_row"] for use in records[index]["uses"] if "definition_row" in use)
     return {"sites": selected, "nodes": [included[i] for i in sorted(included)],
             "truncated": len(sites) > limit or bool(pending), "node_limit": limit * 4,
-            "scope": "block-local physical definitions; memory identity and source causality UNKNOWN"}
+            "scope": _EABI_PRODUCER_SCOPE if model is not None else _PRODUCER_SCOPE,
+            **({"call_model": model} if model is not None else {})}
 
 
-def summarize_groups(document: dict, function: str, *, producers: int = 0) -> dict[str, Any]:
+def summarize_groups(document: dict, function: str, *, producers: int = 0,
+                     producer_call_model: str = "conservative") -> dict[str, Any]:
     """Summarize canonical objdiff aligned rows using existing frontier parsers.
 
     Group IDs use target addresses (insertions use the next target address).
     Register relation buckets are observations, not independently proven causes.
     """
+    if _producer_call_model(producer_call_model) is not None and not producers:
+        raise ValueError("producer call model requires producers")
     symbols = [frontier.focus._symbols(document, side, "strict") for side in ("left", "right")]
     selected = [frontier._stack_function(items, function, side)
                 for items, side in zip(symbols, ("target", "candidate"))]
@@ -1101,7 +1187,7 @@ def summarize_groups(document: dict, function: str, *, producers: int = 0) -> di
     result["ranking_tuple"] = ranking_tuple(result)
     if producers:
         sites = sorted({m["row"] for group in groups for m in group["members"]})
-        result["producer_slice"] = {side: producer_slice(stream, sites, limit=producers)
+        result["producer_slice"] = {side: producer_slice(stream, sites, limit=producers, call_model=producer_call_model)
                                     for side, stream in zip(("target", "candidate"), rows)}
     return result
 
@@ -1318,8 +1404,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="explicit selected observation entries JSON; decision generation only, no artifact discovery")
     parser.add_argument("--producers", type=int, default=0, metavar="LIMIT",
                         help="optional block-local producer slice, 1..64 residual sites")
+    parser.add_argument("--producer-call-model", choices=("conservative", "ppc-eabi"), default="conservative",
+                        help="opt-in conditional EABI preservation; requires --producers")
     args = parser.parse_args(argv)
     try:
+        if args.producer_call_model != "conservative" and (
+                not args.function or not args.producers or args.before or args.baseline_strict
+                or (args.support_source and not args.decision_question)):
+            raise ValueError("producer call model requires function producers or decision producers")
         if args.baseline_strict and (not args.strict or not (args.owner_summary or args.function) or args.before
                 or args.support_source or args.source_lines or args.decision_packet or args.producers
                 or args.decision_question or args.decision_rows or args.decision_mode or args.known_measurements):
@@ -1385,6 +1477,9 @@ def main(argv: list[str] | None = None) -> int:
                 result = decision_packet(document, args.function, source_bytes.decode("utf-8"),
                     start, end, args.decision_question, row_start, row_end,
                     max_bytes=args.support_max_bytes, decision_mode=args.decision_mode or "fact",
+                    producer_sites=(list(range(row_start, row_end + 1))[:args.producers]
+                                    if args.producer_call_model != "conservative" else None),
+                    producer_limit=args.producers or 16, producer_call_model=args.producer_call_model,
                     known_measurements=known)
             else:
                 result = support_packet(document, args.function, source_bytes.decode("utf-8"),
@@ -1392,7 +1487,8 @@ def main(argv: list[str] | None = None) -> int:
         elif args.owner_summary:
             result = summarize_owner(document)
         else:
-            result = summarize_groups(document, args.function, producers=args.producers)
+            result = summarize_groups(document, args.function, producers=args.producers,
+                                      producer_call_model=args.producer_call_model)
         if args.before:
             result["comparison"] = compare_groups(summarize_groups(read_document(args.before), args.function), result)
         print(json.dumps(result, sort_keys=True, separators=(",", ":")))

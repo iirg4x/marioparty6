@@ -4,6 +4,42 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **350/396**, **3/10** batch owners.
 
+## Active producer gaps repaired; no new source gain in this round
+
+The existing `recovery_causal_groups.py` slicer was dropping the actual queue
+`clrrwi` and undersampler `divw` producers as unsupported opcodes. It now
+validates rotate/mask aliases and integer divides (including record/overflow
+spellings), preserves their register dependencies, and rejects malformed forms.
+On queue report `c53b9a10...`, target rows **18 -> 20 -> 22 -> 23** remain linked;
+row24 also traces its word-count input to18. This reveals the shared size value
+instead of treating two independent UNKNOWNs as source owners.
+
+An explicit `--producer-call-model ppc-eabi --producers LIMIT` option preserves
+known ordinary nonvolatile GPR/FPR14-31 definitions across recognized calls.
+The default remains conservative. The assumption is hash-bound in the packet;
+callee conformance is **not** claimed proven. Reserved registers, memory,
+CR/XER and unknown CFG joins are not inferred. Actual `InitUndersampler` report
+`0049279c...` now traces division25's input to conversion10 across calls15/20;
+the quotient use37 remains UNKNOWN at CFG entry34. Thus a normal call no longer
+hides that known input when the appropriate ABI model is explicitly selected.
+**124 affected tests pass, 22 optional skips**; both active reports were checked
+read-only. No compiler flags, source code or Matching gates change in this fix.
+
+Completed Qwen jobs `89007` and `84148` supplied no additional retained gain:
+the queue provider helper regressed an exact sibling; the port snapshot grew
+the frame without resolving the owner cycle; the constructor's profile-context
+consumer removed12 required bytes. The packed-u16 record proposal was rejected
+before compilation for questionable pointer arithmetic and insufficient new
+evidence. Callback typed-context and cursor-loop probes also regressed; their
+compact constraints are under `build/small-first-20260913`. None bans a function.
+
+The repaired producer output is in the next two actual Qwen packets under
+`build/qwen-repaired-producers-20260913`: undersampler `661c0810...` (27,004 prompt
+bytes), callback local extent `70e948a8...` (33,039 bytes). Both are running in
+session52654, with current source hashes and selected measured constraints.
+Inference limits are unchanged. The retained queue source remains `d11a4493...`;
+local/main totals remain350/347. Tool coverage is not counted as a crack.
+
 ## Vq1500 closed; queue gain retained; GC1.3 scratch mapping repaired
 
 `vq1500` is **9/9 strict/data and raw-instruction exact**, 1,264 text bytes,
