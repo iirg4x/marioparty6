@@ -86,6 +86,26 @@
     { key: "boards", label: "Boards", detail: "Board modules" },
   ];
 
+  const DOL_GROUP_DEFS = [
+    { key: "game", label: "Game engine", roots: ["game", "libhu"] },
+    { key: "board", label: "Board engine", roots: ["board"] },
+    { key: "sdk", label: "Dolphin SDK", roots: ["dolphin"] },
+    { key: "speech", label: "Speech recognition", roots: ["gssdk_lib"] },
+    { key: "audio", label: "Audio", roots: ["musyx", "msm"] },
+    {
+      key: "runtime",
+      label: "C / C++ runtime",
+      roots: ["msl_c.ppceabi.bare.h", "runtime.ppceabi.h"],
+    },
+    {
+      key: "debug",
+      label: "Debug support",
+      roots: ["trk_minnow_dolphin", "odemuexi2", "amcstubs", "odenotstub"],
+    },
+    { key: "compression", label: "Compression", roots: ["zlib"] },
+    { key: "other", label: "Other", roots: [] },
+  ];
+
   const state = {
     snapshot: null,
     modules: [],
@@ -96,6 +116,8 @@
     categoryFilter: "all",
     functionFilter: "all",
     functionQuery: "",
+    detailGroup: "all",
+    detailTrigger: null,
     loading: false,
     hasLoaded: false,
   };
@@ -114,6 +136,7 @@
     receiptRemote: document.getElementById("receipt-remote"),
     coverageAside: document.getElementById("coverage-aside"),
     summary: document.getElementById("summary-ribbon"),
+    dolLedger: document.getElementById("dol-ledger"),
     countingNote: document.getElementById("counting-note"),
     countingNoteStatus: document.getElementById("counting-note-status"),
     countingNoteBody: document.getElementById("counting-note-body"),
@@ -491,7 +514,7 @@
 
   function renderSummary(snapshot) {
     if (!elements.summary) return;
-    elements.summary.innerHTML = SUMMARY_DEFS.map((definition) => {
+    elements.summary.innerHTML = SUMMARY_DEFS.filter((definition) => definition.key !== "dol").map((definition) => {
       const summary = snapshot?.summary?.[definition.key];
       if (!summary) {
         return `<article class="summary-entry summary-missing">
@@ -548,6 +571,94 @@
     </div>`;
   }
 
+  function firstPathComponent(path) {
+    return asText(path)
+      .replace(/\\/g, "/")
+      .split("/")
+      .map((part) => part.trim())
+      .find(Boolean)
+      ?.toLowerCase() || "";
+  }
+
+  function dolGroupKey(owner) {
+    const component = firstPathComponent(owner?.path);
+    return DOL_GROUP_DEFS.find((definition) => definition.roots.includes(component))?.key || "other";
+  }
+
+  function aggregateMetric(owners, key) {
+    if (!owners.length) return null;
+    let matched = 0;
+    let total = 0;
+    for (const owner of owners) {
+      const metric = owner[key];
+      if (!metric || !Number.isFinite(metric.matched) || !Number.isFinite(metric.total)) return null;
+      matched += metric.matched;
+      total += metric.total;
+    }
+    return {
+      matched,
+      total,
+      percent: total > 0 ? (matched / total) * 100 : null,
+    };
+  }
+
+  function countDolFunctions(owners) {
+    const counts = { matching: 0, remaining: 0, unknown: 0 };
+    for (const owner of owners) {
+      for (const fn of owner.functions) {
+        if (Object.prototype.hasOwnProperty.call(counts, fn.state)) counts[fn.state] += 1;
+        else counts.unknown += 1;
+      }
+    }
+    return {
+      ...counts,
+      total: counts.matching + counts.remaining + counts.unknown,
+    };
+  }
+
+  function countDolFiles(owners) {
+    const counts = { matching: 0, remaining: 0, unknown: 0 };
+    for (const owner of owners) {
+      if (owner.selection === "matching") counts.matching += 1;
+      else if (owner.selection === "remaining") counts.remaining += 1;
+      else counts.unknown += 1;
+    }
+    return {
+      ...counts,
+      total: counts.matching + counts.remaining + counts.unknown,
+    };
+  }
+
+  function dolGroupEntries(module) {
+    if (!module || module.kind !== "DOL") return [];
+    const groups = new Map(DOL_GROUP_DEFS.map((definition) => [definition.key, {
+      key: definition.key,
+      label: definition.label,
+      owners: [],
+    }]));
+    for (const owner of module.owners) groups.get(dolGroupKey(owner)).owners.push(owner);
+    return Array.from(groups.values())
+      .filter((group) => group.owners.length)
+      .map((group) => ({
+        ...group,
+        code: aggregateMetric(group.owners, "code"),
+        data: aggregateMetric(group.owners, "data"),
+        files: countDolFiles(group.owners),
+        functions: countDolFunctions(group.owners),
+      }));
+  }
+
+  function dolGroupEntry(module, key) {
+    if (!module || module.kind !== "DOL" || key === "all") return null;
+    return dolGroupEntries(module).find((group) => group.key === key) || null;
+  }
+
+  function dolModule(snapshot = state.snapshot) {
+    return snapshot?.modules?.find((module) => module.kind === "DOL" && module.id === "main.dol")
+      || snapshot?.modules?.find((module) => module.kind === "DOL")
+      || null;
+  }
+
   function renderCountingNote(snapshot) {
     if (!elements.countingNote || !elements.countingNoteBody || !elements.countingNoteStatus) return;
     if (!snapshot) {
@@ -590,6 +701,78 @@
     elements.countingNote.hidden = false;
   }
 
+  function renderDolLedger(snapshot) {
+    const ledger = elements.dolLedger;
+    if (!ledger) return;
+    const dol = dolModule(snapshot);
+    if (!dol) {
+      ledger.hidden = true;
+      ledger.innerHTML = "";
+      return;
+    }
+
+    const files = countDolFiles(dol.owners);
+    const functions = countDolFunctions(dol.owners);
+    const groups = dolGroupEntries(dol).sort((a, b) =>
+      (b.functions.remaining - a.functions.remaining) || a.label.localeCompare(b.label));
+    const functionUnknown = functions.unknown
+      ? ` · ${formatNumber(functions.unknown)} unavailable`
+      : "";
+    const fileUnknown = files.unknown
+      ? ` · ${formatNumber(files.unknown)} unavailable`
+      : "";
+    const rows = groups.map((group) => `<tr class="dol-row">
+      <td class="dol-name">
+        <button class="dol-group-select" type="button" data-dol-group="${escapeHtml(group.key)}" aria-label="Inspect DOL ${escapeHtml(group.label)}">
+          <strong>${escapeHtml(group.label)}</strong><span aria-hidden="true">›</span>
+        </button>
+        <span class="dol-file-count">${formatNumber(group.files.matching)} / ${formatNumber(group.files.total)} source files selected</span>
+      </td>
+      <td class="dol-metric" data-label="Code">${metricCompactHtml(group.code, { label: `${group.label} code` })}</td>
+      <td class="dol-metric" data-label="Data">${metricCompactHtml(group.data, { label: `${group.label} data` })}</td>
+      <td class="dol-selected" data-label="Functions selected"><strong>${formatNumber(group.functions.matching)}</strong> / ${formatNumber(group.functions.total)}</td>
+      <td class="dol-remaining" data-label="Unmatched">${formatNumber(group.functions.remaining)}${group.functions.unknown ? `<small>${formatNumber(group.functions.unknown)} unavailable</small>` : ""}</td>
+    </tr>`).join("");
+
+    ledger.hidden = false;
+    ledger.innerHTML = `<div class="dol-heading section-heading-row">
+      <div class="section-intro">
+        <h2 id="dol-heading">DOL · Main executable</h2>
+        <p>See what remains in the engine, board system, SDK, and supporting libraries.</p>
+      </div>
+      <div class="dol-actions">
+        <button class="button button-primary" type="button" data-dol-group="all" data-dol-functions="remaining">Unmatched functions</button>
+        <button class="button button-quiet" type="button" data-dol-group="all" data-dol-functions="all">Browse source files</button>
+      </div>
+    </div>
+    <div class="dol-overview">
+      <div class="dol-progress">
+        <div><span>Code</span>${metricHtml(dol.code, { label: "DOL code coverage" })}</div>
+        <div><span>Data</span>${metricHtml(dol.data, { label: "DOL data coverage" })}</div>
+      </div>
+      <div class="dol-totals">
+        <div class="dol-stat">
+          <span>Functions selected</span>
+          <strong>${formatNumber(functions.matching)} <small>/ ${formatNumber(functions.total)}</small></strong>
+          <span class="dol-remaining-count">${formatNumber(functions.remaining)} unmatched functions${functionUnknown}</span>
+        </div>
+        <div class="dol-stat">
+          <span>Source files selected</span>
+          <strong>${formatNumber(files.matching)} <small>/ ${formatNumber(files.total)}</small></strong>
+          <span class="dol-remaining-count">${formatNumber(files.remaining)} files remaining${fileUnknown}</span>
+        </div>
+      </div>
+    </div>
+    <div class="dol-groups table-wrap">
+      <table class="dol-table">
+        <caption>DOL recovery by subsystem</caption>
+        <thead><tr><th scope="col">Subsystem</th><th scope="col">Code</th><th scope="col">Data</th><th scope="col">Functions selected</th><th scope="col">Unmatched</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5"><p class="inline-unavailable">No DOL source-owner evidence is recorded.</p></td></tr>'}</tbody>
+      </table>
+    </div>
+    <p class="dol-note">Subsystem totals are grouped by source file. Function status follows committed source selection.</p>`;
+  }
+
   function searchableText(module) {
     const owners = module.owners.flatMap((owner) => [
       owner.path,
@@ -620,10 +803,18 @@
     return state.functionFilter === "all" || fn.state === state.functionFilter;
   }
 
-  function filteredOwnerFunctions(owner) {
+  function ownerPathMatches(owner) {
     const query = state.functionQuery.trim().toLowerCase();
+    return Boolean(query) && owner.path.toLowerCase().includes(query);
+  }
+
+  function filteredOwnerFunctions(owner, options = {}) {
+    const query = state.functionQuery.trim().toLowerCase();
+    const selectedModule = state.modules.find((module) => module.id === state.selectedId);
+    const allowOwnerPath = options.allowOwnerPath ?? selectedModule?.kind === "DOL";
+    const pathMatch = allowOwnerPath && ownerPathMatches(owner);
     return owner.functions.filter((fn) => functionStateMatches(fn)
-      && (!query || `${fn.name} ${fn.address}`.toLowerCase().includes(query)));
+      && (!query || pathMatch || `${fn.name} ${fn.address}`.toLowerCase().includes(query)));
   }
 
   function functionFilterLabel() {
@@ -683,10 +874,10 @@
     </li>`;
   }
 
-  function ownerHtml(owner, index) {
+  function ownerHtml(owner, index, options = {}) {
     const selection = selectionMeta(owner.selection);
     const title = owner.path || `Owner ${index + 1}`;
-    const functions = filteredOwnerFunctions(owner);
+    const functions = filteredOwnerFunctions(owner, options);
     return `<details class="owner-entry">
       <summary>
         <span class="owner-summary-path mono">${escapeHtml(title)}</span>
@@ -714,13 +905,23 @@
 
   function renderFunctionResults(module) {
     if (!module) return;
+    const isDol = module.kind === "DOL";
+    const group = isDol ? dolGroupEntry(module, state.detailGroup) : null;
+    const scopedOwners = group ? group.owners : module.owners;
     const filtering = state.functionFilter !== "all" || state.functionQuery.trim() !== "";
-    const owners = module.owners.filter((owner) => !filtering || filteredOwnerFunctions(owner).length > 0);
-    const total = module.owners.reduce((count, owner) => count + owner.functions.length, 0);
-    const shown = owners.reduce((count, owner) => count + filteredOwnerFunctions(owner).length, 0);
-    setText(document.getElementById("function-result-count"), `Showing ${formatNumber(shown)} of ${formatNumber(total)} recorded functions · ${functionFilterLabel()}`);
+    const owners = scopedOwners.filter((owner) => {
+      const functions = filteredOwnerFunctions(owner, { allowOwnerPath: isDol });
+      const pathMatch = isDol && ownerPathMatches(owner);
+      return !filtering || functions.length > 0 || (pathMatch && state.functionFilter === "all");
+    });
+    const total = scopedOwners.reduce((count, owner) => count + owner.functions.length, 0);
+    const shown = owners.reduce((count, owner) => count + filteredOwnerFunctions(owner, { allowOwnerPath: isDol }).length, 0);
+    const scopeLabel = isDol
+      ? `${group ? group.label : "All DOL subsystems"} · ${formatNumber(owners.length)} of ${formatNumber(scopedOwners.length)} source files`
+      : "Whole module";
+    setText(document.getElementById("function-result-count"), `Showing ${formatNumber(shown)} of ${formatNumber(total)} recorded functions · ${functionFilterLabel()} · ${scopeLabel}`);
     const results = document.getElementById("owner-results");
-    if (results) results.innerHTML = owners.length ? owners.map(ownerHtml).join("")
+    if (results) results.innerHTML = owners.length ? owners.map((owner, index) => ownerHtml(owner, index, { allowOwnerPath: isDol })).join("")
       : `<div class="inline-empty">${total ? "No functions match these filters in this module." : "No function-level evidence is recorded for this module."}</div>`;
     if (elements.detail?.open) animateResults(results);
   }
@@ -761,6 +962,11 @@
       : module.title
         ? `Unverified label supplied: ${module.title}`
         : "Human-readable title unavailable";
+    const isDol = module.kind === "DOL";
+    const dolGroups = isDol ? dolGroupEntries(module) : [];
+    if (!isDol || (state.detailGroup !== "all" && !dolGroups.some((group) => group.key === state.detailGroup))) {
+      state.detailGroup = "all";
+    }
     const matchingOwners = module.owners.filter((owner) => owner.selection === "matching").length;
     const remainingOwners = module.owners.filter((owner) => owner.selection === "remaining").length;
     const provenance = module.provenance;
@@ -792,11 +998,15 @@
     <section class="detail-section owners-section" aria-labelledby="owners-heading">
       <div class="detail-section-heading"><div><p class="section-index">SOURCE EVIDENCE</p><h4 id="owners-heading">Owners and functions</h4></div><span class="detail-section-count">${module.owners.length ? `${module.owners.length} owner${module.owners.length === 1 ? "" : "s"}` : "Unavailable"}</span></div>
       <p class="detail-section-copy">Unmatched means the committed source owner is not selected. Unavailable functions have insufficient evidence. These labels follow owner selection; independent per-function objdiff proof is unavailable. Coverage totals above always describe the whole module.</p>
-      <div class="function-filter-bar">
-        <label><span>Find a function</span><input id="function-search" type="search" placeholder="Function name or address" autocomplete="off" value="${escapeHtml(state.functionQuery)}" aria-controls="owner-results" /></label>
+      <div class="function-filter-bar${isDol ? " with-dol-group" : ""}">
+        <label><span>${isDol ? "Find a file or function" : "Find a function"}</span><input id="function-search" type="search" placeholder="${isDol ? "File path, function, or address" : "Function name or address"}" autocomplete="off" value="${escapeHtml(state.functionQuery)}" aria-controls="owner-results" /></label>
         <label><span>Show functions</span><select id="detail-function-filter" aria-controls="module-list owner-results">
           ${[["all", "All functions"], ["remaining", "Unmatched"], ["matching", "Source selected"], ["unknown", "Unavailable"]].map(([value, label]) => `<option value="${value}"${state.functionFilter === value ? " selected" : ""}>${label}</option>`).join("")}
         </select></label>
+        ${isDol ? `<label><span>Subsystem</span><select id="detail-dol-group" aria-controls="owner-results">
+          <option value="all"${state.detailGroup === "all" ? " selected" : ""}>All DOL subsystems</option>
+          ${dolGroups.map((group) => `<option value="${escapeHtml(group.key)}"${state.detailGroup === group.key ? " selected" : ""}>${escapeHtml(group.label)}</option>`).join("")}
+        </select></label>` : ""}
       </div>
       <p class="function-result-count" id="function-result-count" role="status"></p>
       <div class="owner-list" id="owner-results"></div>
@@ -821,6 +1031,7 @@
     renderReceipt(snapshot);
     renderSummary(snapshot);
     renderCountingNote(snapshot);
+    renderDolLedger(snapshot);
     renderModuleList(snapshot);
     renderDetail(state.modules.find((module) => module.id === state.selectedId) || null);
   }
@@ -830,25 +1041,54 @@
     if (!module) return;
     if (state.selectedId !== module.id) state.functionQuery = "";
     state.selectedId = module.id;
+    state.detailGroup = "all";
+    state.detailTrigger = options.trigger?.isConnected ? options.trigger : null;
     renderModuleList(state.snapshot);
     renderDetail(module);
-
   }
 
   function clearSelection() {
     cancelDetailExit();
     const previousId = state.selectedId;
+    const previousTrigger = state.detailTrigger;
     state.selectedId = null;
+    state.detailGroup = "all";
+    state.detailTrigger = null;
     renderModuleList(state.snapshot);
     renderDetail(null);
-    Array.from(document.querySelectorAll('[data-select-module]'))
-      .find((button) => button.dataset.selectModule === previousId)?.focus({ preventScroll: true });
+    const fallback = Array.from(document.querySelectorAll('[data-select-module]'))
+      .find((button) => button.dataset.selectModule === previousId);
+    const focusTarget = previousTrigger?.isConnected ? previousTrigger : fallback;
+    focusTarget?.focus({ preventScroll: true });
+  }
+
+  function openDolDetail(groupKey = "all", functionState = "all", trigger = null) {
+    const module = dolModule();
+    if (!module) return;
+    const validGroup = groupKey === "all" || dolGroupEntry(module, groupKey) ? groupKey : "all";
+    const validFunctionState = ["all", "remaining", "matching", "unknown"].includes(functionState)
+      ? functionState
+      : "all";
+    state.selectedId = module.id;
+    state.detailGroup = validGroup;
+    state.detailTrigger = trigger?.isConnected ? trigger : null;
+    state.functionQuery = "";
+    state.functionFilter = validFunctionState;
+    if (elements.functionFilter) elements.functionFilter.value = validFunctionState;
+    renderModuleList(state.snapshot);
+    renderDetail(module);
+  }
+
+  function handleDolLedgerClick(event) {
+    const trigger = event.target.closest("[data-dol-group]");
+    if (!trigger || !elements.dolLedger?.contains(trigger)) return;
+    openDolDetail(trigger.dataset.dolGroup, trigger.dataset.dolFunctions || "all", trigger);
   }
 
   function handleSelection(event) {
     const trigger = event.target.closest("[data-select-module]");
     if (!trigger) return;
-    selectModule(trigger.dataset.selectModule, { scroll: true });
+    selectModule(trigger.dataset.selectModule, { scroll: true, trigger });
   }
 
   function updateFilters() {
@@ -866,6 +1106,7 @@
     state.categoryFilter = "all";
     state.functionFilter = "all";
     state.functionQuery = "";
+    state.detailGroup = "all";
     if (elements.search) elements.search.value = "";
     if (elements.stateFilter) elements.stateFilter.value = "all";
     if (elements.kindFilter) elements.kindFilter.value = "all";
@@ -914,6 +1155,8 @@
       state.hasLoaded = true;
       if (!state.selectedId || !state.modules.some((module) => module.id === state.selectedId)) {
         state.selectedId = null;
+        state.detailGroup = "all";
+        state.detailTrigger = null;
       }
       renderSnapshot();
       setBanner(isRefresh ? "Published snapshot reloaded." : "Published snapshot loaded.", "success");
@@ -950,6 +1193,7 @@
     elements.categoryFilter?.addEventListener("change", updateFilters);
     elements.functionFilter?.addEventListener("change", (event) => updateFunctionFilter(event.target.value));
     elements.clearFilters?.addEventListener("click", clearFilters);
+    elements.dolLedger?.addEventListener("click", handleDolLedgerClick);
     elements.moduleList?.addEventListener("click", handleSelection);
     elements.detail?.addEventListener("cancel", (event) => {
       event.preventDefault();
@@ -970,6 +1214,14 @@
     });
     elements.detailContent?.addEventListener("change", (event) => {
       if (event.target.id === "detail-function-filter") updateFunctionFilter(event.target.value);
+      if (event.target.id === "detail-dol-group") {
+        const module = state.modules.find((candidate) => candidate.id === state.selectedId);
+        if (module?.kind !== "DOL") return;
+        state.detailGroup = event.target.value === "all" || dolGroupEntry(module, event.target.value)
+          ? event.target.value
+          : "all";
+        renderFunctionResults(module);
+      }
     });
     document.addEventListener("keydown", handleGlobalKeydown);
   }
@@ -1001,6 +1253,7 @@
         if (input.moduleId !== undefined && !module) throw new Error("Unknown module ID.");
         clearSelection();
         clearFilters();
+        state.detailGroup = "all";
         updateFunctionFilter(input.functionState);
         if (module) {
           selectModule(module.id);

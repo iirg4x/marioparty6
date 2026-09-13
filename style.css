@@ -388,3 +388,102 @@ body.dialog-open { overflow: hidden; }
   .detail-panel .function-line { grid-template-columns: minmax(0,1fr) auto; }
   .detail-panel .function-name { grid-column: 1 / -1; }
 }
+
+/* DOL progress is shown by source subsystem, separately from REL containers. */
+.summary-ribbon { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.summary-entry { grid-column: span 2; }
+.summary-entry:nth-child(-n+2) { grid-column: span 3; }
+.dol-section { margin-top: 32px; }
+.dol-heading { align-items: center; }
+.dol-heading p { margin-top: 6px; max-width: 650px; color: var(--muted); font-size: 13px; }
+.dol-actions { display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+.dol-overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 11px 11px 0 0;
+  background: var(--surface);
+}
+.dol-progress { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.dol-progress > div { min-width: 0; }
+.dol-progress > div > span:first-child { color: var(--secondary); font-size: 12px; }
+.dol-progress .metric { margin-top: 5px; }
+.dol-progress .metric strong { font-size: 28px; }
+.dol-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; border-left: 1px solid var(--line); padding-left: 32px; }
+.dol-stat { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dol-stat > span:first-child { color: var(--secondary); font-size: 12px; }
+.dol-stat > strong { font-size: 28px; line-height: 1.35; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.025em; color: var(--accent); }
+.dol-stat > strong small { font-size: 16px; font-weight: 450; color: var(--muted); white-space: nowrap; }
+.dol-remaining-count { color: var(--amber); font-size: 12px; }
+.dol-groups { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 11px 11px; background: var(--surface); }
+.dol-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.dol-table caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.dol-table th { padding: 12px 20px; text-align: right; color: var(--muted); background: var(--control); font-size: 12px; font-weight: 500; }
+.dol-table th:first-child { width: 30%; text-align: left; }
+.dol-table th:last-child { width: 13%; }
+.dol-table td { padding: 14px 20px; border-top: 1px solid var(--line-soft); text-align: right; vertical-align: middle; font-size: 13px; font-variant-numeric: tabular-nums; }
+.dol-table td:first-child { text-align: left; }
+.dol-table .compact-metric { align-items: flex-end; }
+.dol-table .compact-metric strong { font-size: 16px; }
+.dol-table .compact-metric small { font-size: 11px; }
+.dol-group-select { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; color: var(--text); text-align: left; font-size: 14px; line-height: 1.5; }
+.dol-group-select strong { font-weight: 600; }
+.dol-group-select > span:last-child { color: var(--muted); font-size: 18px; }
+.dol-group-select:hover { color: var(--accent); }
+.dol-group-select:active { opacity: .75; }
+.dol-file-count { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+.dol-selected { color: var(--secondary); }
+.dol-selected strong { color: var(--accent); font-weight: 600; }
+.dol-remaining { color: var(--amber); font-weight: 600; }
+.dol-remaining small { display: block; color: var(--muted); font-weight: 400; }
+.dol-note { margin-top: 10px; color: var(--muted); font-size: 12px; }
+.function-filter-bar.with-dol-group { grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); }
+@media (hover: hover) {
+  .dol-row:hover { background: var(--surface-raised); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dol-overview, .dol-groups { animation: surface-enter 420ms cubic-bezier(.2,.7,.2,1) both; }
+  .dol-groups { animation-delay: 60ms; }
+  .dol-row { transition: background-color 160ms ease; }
+}
+@media (max-width: 1100px) {
+  .dol-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .dol-overview { gap: 24px; }
+  .dol-totals { padding-left: 24px; gap: 16px; }
+  .dol-table th, .dol-table td { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 900px) {
+  .summary-ribbon { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary-entry, .summary-entry:nth-child(-n+2) { grid-column: auto; }
+  .summary-entry:last-child { grid-column: 1 / -1; }
+  .dol-overview { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .dol-totals { padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--line); gap: 24px; }
+  .dol-table th:first-child { width: 29%; }
+  .dol-table th:last-child { width: 15%; }
+}
+@media (max-width: 760px) {
+  .function-filter-bar.with-dol-group { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .function-filter-bar.with-dol-group > label:first-child { grid-column: 1 / -1; }
+  .dol-overview { padding: 20px; }
+  .dol-groups { overflow: visible; }
+  .dol-table, .dol-table tbody { display: block; }
+  .dol-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .dol-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; padding: 20px; border-top: 1px solid var(--line); }
+  .dol-table td { display: block; padding: 0; border: 0; text-align: left; min-width: 0; }
+  .dol-name { grid-column: 1 / -1; }
+  .dol-table td[data-label]::before { display: block; content: attr(data-label); margin-bottom: 4px; color: var(--muted); font-size: 11px; font-weight: 400; }
+  .dol-table .compact-metric { align-items: flex-start; }
+  .dol-group-select { font-size: 15px; }
+  .dol-file-count { font-size: 12px; }
+  .dol-selected, .dol-remaining { font-size: 16px !important; }
+}
+@media (max-width: 580px) {
+  .summary-ribbon { grid-template-columns: minmax(0, 1fr); }
+  .summary-entry, .summary-entry:nth-child(-n+2), .summary-entry:last-child { grid-column: auto; }
+  .dol-actions { width: 100%; }
+  .dol-actions .button { flex: 1; padding-left: 10px; padding-right: 10px; font-size: 12px; }
+  .dol-stat > strong, .dol-progress .metric strong { font-size: 26px; }
+  .dol-stat > strong small { font-size: 14px; }
+}
