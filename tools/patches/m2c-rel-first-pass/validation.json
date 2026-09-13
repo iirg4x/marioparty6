@@ -1,0 +1,1443 @@
+{
+  "schema": "m2c_rel_first_pass_acceptance/v1",
+  "selection": "8 per category; deterministic SHA ordering; max 2 per module; no candidate results used",
+  "census_sha256": "ff399a36222729d9e2679738b1cfdd6bb889c7d885d4be0c66154a99b976c338",
+  "function_count": 48,
+  "module_count": 30,
+  "comparison": "Same frozen context, assembly, target, flags and MWCC; translator path only differs.",
+  "totals": {
+    "cases": 48,
+    "before_compiled": 16,
+    "after_compiled": 32,
+    "newly_compiled": 16,
+    "compile_regressions": 0,
+    "score_gains": 8,
+    "score_losses": 0,
+    "unchanged_objects": 8,
+    "before_raw100": 8,
+    "after_raw100": 8
+  },
+  "groups": {
+    "aggregate": {
+      "cases": 8,
+      "before_compiled": 0,
+      "after_compiled": 0,
+      "newly_compiled": 0,
+      "compile_regressions": 0,
+      "score_gains": 0,
+      "score_losses": 0,
+      "unchanged_objects": 0,
+      "before_raw100": 0,
+      "after_raw100": 0
+    },
+    "char": {
+      "cases": 8,
+      "before_compiled": 0,
+      "after_compiled": 7,
+      "newly_compiled": 7,
+      "compile_regressions": 0,
+      "score_gains": 0,
+      "score_losses": 0,
+      "unchanged_objects": 0,
+      "before_raw100": 0,
+      "after_raw100": 0
+    },
+    "declarations": {
+      "cases": 8,
+      "before_compiled": 0,
+      "after_compiled": 2,
+      "newly_compiled": 2,
+      "compile_regressions": 0,
+      "score_gains": 0,
+      "score_losses": 0,
+      "unchanged_objects": 0,
+      "before_raw100": 0,
+      "after_raw100": 0
+    },
+    "exact-control": {
+      "cases": 8,
+      "before_compiled": 8,
+      "after_compiled": 8,
+      "newly_compiled": 0,
+      "compile_regressions": 0,
+      "score_gains": 0,
+      "score_losses": 0,
+      "unchanged_objects": 8,
+      "before_raw100": 8,
+      "after_raw100": 8
+    },
+    "pointer": {
+      "cases": 8,
+      "before_compiled": 0,
+      "after_compiled": 7,
+      "newly_compiled": 7,
+      "compile_regressions": 0,
+      "score_gains": 0,
+      "score_losses": 0,
+      "unchanged_objects": 0,
+      "before_raw100": 0,
+      "after_raw100": 0
+    },
+    "precision": {
+      "cases": 8,
+      "before_compiled": 8,
+      "after_compiled": 8,
+      "newly_compiled": 0,
+      "compile_regressions": 0,
+      "score_gains": 8,
+      "score_losses": 0,
+      "unchanged_objects": 0,
+      "before_raw100": 0,
+      "after_raw100": 0
+    }
+  },
+  "cases": [
+    {
+      "case": "m699Dll:fn_1_14778",
+      "group": "aggregate",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "5af22689f8d571e986d6537d5cae52e43f62d9e9279126a4f9b0aefb3113fcf7",
+        "object_sha256": null,
+        "target_sha256": "4424d01639cecc3516b8840d66b68bd3c7f88960864eabb5ef401eca6b57f497",
+        "result_sha256": "3b7ffe217c475db820775112a9c030e43f36c0a48a601ae0047355c955d3c9c1"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "5af22689f8d571e986d6537d5cae52e43f62d9e9279126a4f9b0aefb3113fcf7",
+        "object_sha256": null,
+        "target_sha256": "4424d01639cecc3516b8840d66b68bd3c7f88960864eabb5ef401eca6b57f497",
+        "result_sha256": "24486ef9bedb1d8cc625c700b14c41c0e3e4ca407bbb0169a887da8cb7fa2c80"
+      }
+    },
+    {
+      "case": "mgmfreedll:fn_1_1400",
+      "group": "aggregate",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "c15c873a41a9290f4516d83f09e7cefe00e97f11e1aabd3469287fdc21cbebff",
+        "object_sha256": null,
+        "target_sha256": "0e9ea96fb5dae3963402481b4306d49f4e76df0d5db2e388b2d2cc6cb22e7208",
+        "result_sha256": "7cc43f532acbd2bce61561f2937bad7879157eb3ef59635eb96d81ab9704867e"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "c15c873a41a9290f4516d83f09e7cefe00e97f11e1aabd3469287fdc21cbebff",
+        "object_sha256": null,
+        "target_sha256": "0e9ea96fb5dae3963402481b4306d49f4e76df0d5db2e388b2d2cc6cb22e7208",
+        "result_sha256": "39fe2a60ecd0b381a3f682e4546e2cc64412a318f411f7224b29131755cbe7b2"
+      }
+    },
+    {
+      "case": "resultDll:fn_1_766C",
+      "group": "aggregate",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "b3e1393df68a415856be049741d02e11d200b512f92543217a4936e35a8d7672",
+        "object_sha256": null,
+        "target_sha256": "7829e9382de92a011a9f2eeb2a10d77328db6a8a015bff65e39c6446f67d43d5",
+        "result_sha256": "940175882f8aebd4c71cfe7ee27a42fcd0a33907eb031f4f2448e9bb04032726"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "39d4be77dcd8a5b157e5e8197f5609999416fe12dc875076c6c4271b0aec3f36",
+        "object_sha256": null,
+        "target_sha256": "7829e9382de92a011a9f2eeb2a10d77328db6a8a015bff65e39c6446f67d43d5",
+        "result_sha256": "a4d6307c93b20f96e0c86555deb89973e8d054b834d6c013371fc195c1b6f421"
+      }
+    },
+    {
+      "case": "endingdll:fn_1_11694",
+      "group": "aggregate",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "ab59215902635c2c01f1b072141e9e8d4688515e6e288bf04d6a2e941dcc403d",
+        "object_sha256": null,
+        "target_sha256": "b35e5969b59326d80b19a513daafa4706aa4a2ff6211bb170606ad88ad01ddcc",
+        "result_sha256": "c1495c54a316d8a6c5caf1c46753b1928a57e8e091ba5418428cf14a5f0cebb8"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "3a65a063f07020eea30084b1dd7f95a67480076b63f19de0d3a630c6e0420464",
+        "object_sha256": null,
+        "target_sha256": "b35e5969b59326d80b19a513daafa4706aa4a2ff6211bb170606ad88ad01ddcc",
+        "result_sha256": "1e2bfa1e66e8671a8698996473b10bc1cbcfa243bd06689ae97a9bbb759626c9"
+      }
+    },
+    {
+      "case": "m666dll:fn_1_2458",
+      "group": "aggregate",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "303e0a7d69e8a0ad3d8bfbd36005271cd122881c5151a8af04b3e8060d54646e",
+        "object_sha256": null,
+        "target_sha256": "3d4d7699dca2a0f463698056b32e5f139eeb1c7fbb532413b236d4dc6e0622cf",
+        "result_sha256": "c149db1307644fcc688152845331dbf22a15e511d80eaa6126b272b88117e575"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "9fccd7f09b9565889d209313f39eca5c1509f7305b9350886045fde986d5588f",
+        "object_sha256": null,
+        "target_sha256": "3d4d7699dca2a0f463698056b32e5f139eeb1c7fbb532413b236d4dc6e0622cf",
+        "result_sha256": "c2142adf30b3d433f52bcecaad7cadac87a1274253a7401dc1a7d30326829209"
+      }
+    },
+    {
+      "case": "m665dll:fn_1_BFD8",
+      "group": "aggregate",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "f23b8c5185995ddbba62490a8813686a1e6f95e995aec25ca6c229ce0706a129",
+        "object_sha256": null,
+        "target_sha256": "7b52fc8745688b8e27bd905efd6e13f9450abd86815472731c83e12ab93090dc",
+        "result_sha256": "bfa55f52e47fdd31ccc3be7a90f2bfe6c270e607d691eeb1a59adca8fbda9ef2"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "f23b8c5185995ddbba62490a8813686a1e6f95e995aec25ca6c229ce0706a129",
+        "object_sha256": null,
+        "target_sha256": "7b52fc8745688b8e27bd905efd6e13f9450abd86815472731c83e12ab93090dc",
+        "result_sha256": "ce45bd9822f93adf5a95c472fc4f8c06a980363abd7c943f67b614610d93ce6d"
+      }
+    },
+    {
+      "case": "resultDll:fn_1_1074",
+      "group": "aggregate",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "5ec05a28b07710221bf1656c8f036c9ba8c5edfb7ba9c3d680a358e1316dec8d",
+        "object_sha256": null,
+        "target_sha256": "7829e9382de92a011a9f2eeb2a10d77328db6a8a015bff65e39c6446f67d43d5",
+        "result_sha256": "4aeeef98495885488fa1d0baac0810711e01e796d9b2441968098227df626613"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "4fe191d155c95d6de680690c1a91f6060838b91a5664e2f7b5deeedeb078ca4c",
+        "object_sha256": null,
+        "target_sha256": "7829e9382de92a011a9f2eeb2a10d77328db6a8a015bff65e39c6446f67d43d5",
+        "result_sha256": "3adedfd25cd07dff28433d53239ba8073a40a0fe88fea06aa7a7de37ad1a6d9c"
+      }
+    },
+    {
+      "case": "m666dll:fn_1_81E4",
+      "group": "aggregate",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "a60d775331294d81aeb9df83e88cd5268101334ca309e4ceffbbd80f547bbb1d",
+        "object_sha256": null,
+        "target_sha256": "3d4d7699dca2a0f463698056b32e5f139eeb1c7fbb532413b236d4dc6e0622cf",
+        "result_sha256": "ef54b5bcd977cffe40f57b319ac5ca0450e9c19e9e282cb43107a7e95eb6cf8b"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "8e51a50eb8da810c410c32e69704c1586a3912ea96de1ed8371486364e9c06f9",
+        "object_sha256": null,
+        "target_sha256": "3d4d7699dca2a0f463698056b32e5f139eeb1c7fbb532413b236d4dc6e0622cf",
+        "result_sha256": "a1597eff1bc64ec3c645c2a0368a98719eeff70d6ac8660fad295cd46b614b18"
+      }
+    },
+    {
+      "case": "m675Dll:fn_1_81A8",
+      "group": "char",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "34309c59aee92eb7358b8682b85be44845780fbc5bc8e77284206fa88db9121f",
+        "object_sha256": null,
+        "target_sha256": "0df06b6c94cb4f6a1ce0c5b9d0ca0e75d9a0dd90c7d596be20f8b48068309353",
+        "result_sha256": "9afbe2c4738a0b33c2078cf315e8116f6f2b521b9efc5af084f4855f316cb040"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "1e228dab196e34cbfafcce60bd34797a69b25b457f83eff7b3c12a4c0347bc2a",
+        "object_sha256": null,
+        "target_sha256": "0df06b6c94cb4f6a1ce0c5b9d0ca0e75d9a0dd90c7d596be20f8b48068309353",
+        "result_sha256": "0b976cd0fb288a5cd42bcaf68b997895a8d6b1b16d69959d4e5222fd4134f4d8"
+      }
+    },
+    {
+      "case": "m665dll:fn_1_200",
+      "group": "char",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "b4bf1997c27cb144daf08b4d155926da2068f615cce4dae3d21a91c86b1a063c",
+        "object_sha256": null,
+        "target_sha256": "7b52fc8745688b8e27bd905efd6e13f9450abd86815472731c83e12ab93090dc",
+        "result_sha256": "3f5e567455e92565fc422d6bd26155d4819ea197939cd3829b0888028c97914a"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 92.26582,
+        "size": "340",
+        "target_size": "316",
+        "diffcount": 8,
+        "source_sha256": "69e13f3fa13ca3a59f8a0ae75bf55539ced3db77aaf6573df580bd398150bea3",
+        "object_sha256": "ad1be491bd656ec3e6af0b59dd11b0233d5fdca9656bbada238f72a1d39f6f3f",
+        "target_sha256": "7b52fc8745688b8e27bd905efd6e13f9450abd86815472731c83e12ab93090dc",
+        "result_sha256": "43d5a9c0656917d6c393afadd05818dc01849ca70edf75f68372e88c928a10cb"
+      }
+    },
+    {
+      "case": "m602Dll:fn_1_A074",
+      "group": "char",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "688c59c87a644ea42f678bdb917c35a971377c8661fc0c9a3811fc5b918e9bfe",
+        "object_sha256": null,
+        "target_sha256": "1a66f59f2c5ed298a5b80cca5033f393bb8ac58dc70a04e73ae7d033f082332b",
+        "result_sha256": "8c5d8158547f00722c0bda661ff7683b23eb3d1cdff5c8b30a058d1b426cd743"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 90.24665,
+        "size": "1460",
+        "target_size": "1492",
+        "diffcount": 93,
+        "source_sha256": "543a408957613509304b59788333f3802476f3fc2d614fea3850697e0eaca24d",
+        "object_sha256": "55ec4038c8960b4885f8a2873f841092bce20cc20fbba06193ead9db6db0c7b4",
+        "target_sha256": "1a66f59f2c5ed298a5b80cca5033f393bb8ac58dc70a04e73ae7d033f082332b",
+        "result_sha256": "d4892fbbfb1e2b45979da2df1b98672ac38c38f22eb1607ca1679b060fcd891f"
+      }
+    },
+    {
+      "case": "m647dll:fn_1_6F88",
+      "group": "char",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "92cd54e4c5cd2afe4892f5df7e92e9935ce347377faa263838d1559ebe5f9276",
+        "object_sha256": null,
+        "target_sha256": "257faa58953e39cb23ea9150c8067dacd3b351c9c48310be9cd39b9ba3cb31fc",
+        "result_sha256": "92a2061e191c7781f025788f8e0faffcdbdeb989cafb20c53b0a13f7035bc02e"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 58.82353,
+        "size": "688",
+        "target_size": "680",
+        "diffcount": 106,
+        "source_sha256": "66c7135945a5a4ef0cc34c3517234b72df0c76d575904b0e0836e8b1edef24f7",
+        "object_sha256": "cb15bd951964645bd5be586f0b3ea236af7f0778ecbb482a62510f26e79c9900",
+        "target_sha256": "257faa58953e39cb23ea9150c8067dacd3b351c9c48310be9cd39b9ba3cb31fc",
+        "result_sha256": "7ea4f23a43edeab5ce315aa66c09f2f715836470077aef93ca2ed4b220d785a6"
+      }
+    },
+    {
+      "case": "m604DLL:fn_1_DC6C",
+      "group": "char",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "ca1963f0e4f49cf7c6690d14d3a89a975d230687bea55908de4e41ec15075ae9",
+        "object_sha256": null,
+        "target_sha256": "680e45666831cf4200255302e14b1de4125595f64b24f0783314e3d12fb7d47b",
+        "result_sha256": "81f5be47b67a079b798cabcf85005ab84286f003e9b7e5a22a00b82b1a1a7086"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 0.0,
+        "size": "168",
+        "target_size": "144",
+        "diffcount": 52,
+        "source_sha256": "69a21ff1e516281c6633fc949cd1d783f6495854731d41842bb541a852334b6c",
+        "object_sha256": "3de2a92b82e5008d7d57401ba323e25f19b79ad9df83a23fc9a061b4c78a4075",
+        "target_sha256": "680e45666831cf4200255302e14b1de4125595f64b24f0783314e3d12fb7d47b",
+        "result_sha256": "c8e877e0d0b9ef9941eb298ee42e6b1d65d69712a68a621d8d6cfd911630fd3d"
+      }
+    },
+    {
+      "case": "mgmfreedll:fn_1_0",
+      "group": "char",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "8dcfa4ea32c47aaf439cbefe75b9d4b9a4ce22bf55c4c525fc7c7e2f0cc2743d",
+        "object_sha256": null,
+        "target_sha256": "0e9ea96fb5dae3963402481b4306d49f4e76df0d5db2e388b2d2cc6cb22e7208",
+        "result_sha256": "b836ff5e43fbfce495150da1b26acf51c4bce9d33f8980eadf835da3ca252df2"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 53.019047,
+        "size": "548",
+        "target_size": "420",
+        "diffcount": 81,
+        "source_sha256": "1e09f79b16c350e032f718a0027f582b66710ca16ce7fc69d203708aea907562",
+        "object_sha256": "f3756c7114742c3f13059c8746bddfe9103f3a521f79521346cf322a87ea5bcf",
+        "target_sha256": "0e9ea96fb5dae3963402481b4306d49f4e76df0d5db2e388b2d2cc6cb22e7208",
+        "result_sha256": "3b5c1302adee0dea5d911be87f3baff81d89c1a2cdb0795fd005d520403d2ece"
+      }
+    },
+    {
+      "case": "m647dll:fn_1_34A0",
+      "group": "char",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "9b1a93ed62e97f03b019f7d4d5bbd2b5521fb54ae219bc4ef3712f9638e29086",
+        "object_sha256": null,
+        "target_sha256": "257faa58953e39cb23ea9150c8067dacd3b351c9c48310be9cd39b9ba3cb31fc",
+        "result_sha256": "93254b57bee3a9f73350df33d569b9b6f0e99029456a0ab334e7d2e3ee835fb3"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 65.61539,
+        "size": "180",
+        "target_size": "156",
+        "diffcount": 18,
+        "source_sha256": "67ecb89f7ca8572f03d5f74293803ee5d6919f0fce6fdf1a7b67f3d3f01dc6cb",
+        "object_sha256": "823b0d62c8fc4ce9962789a613f525f8b5362f99c097b50fac416f50ea04d8bf",
+        "target_sha256": "257faa58953e39cb23ea9150c8067dacd3b351c9c48310be9cd39b9ba3cb31fc",
+        "result_sha256": "deb8a535488219f9aad39c4e0bdad22311e65c9990f793132f16fdada18635a1"
+      }
+    },
+    {
+      "case": "resultDll:fn_1_A0",
+      "group": "char",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "56c503a075f341e467ea7dec810de9913d5ba5f3e5e57dc7303a4fa8d6792d3e",
+        "object_sha256": null,
+        "target_sha256": "7829e9382de92a011a9f2eeb2a10d77328db6a8a015bff65e39c6446f67d43d5",
+        "result_sha256": "dd153f41a870b267b4f02752dd135ed3ee95952a61555cee40e4bcb1eec8dbb8"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 88.85855,
+        "size": "1272",
+        "target_size": "1216",
+        "diffcount": 127,
+        "source_sha256": "db0bf70678b8bc85ef2ecd6ed15485b1a1461168802ff709e15ece789ab3677d",
+        "object_sha256": "640888ab123917a13b4a3a72774b1d9fb5253ad1936dd757cb95b86a322595ae",
+        "target_sha256": "7829e9382de92a011a9f2eeb2a10d77328db6a8a015bff65e39c6446f67d43d5",
+        "result_sha256": "ef57f0409bf0c56d4105da7841f36a9a824f16d3b1e8cfebdb7d058c85bae2a6"
+      }
+    },
+    {
+      "case": "m624DLL:fn_1_D388",
+      "group": "declarations",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "a492bf7aaaf2e58f76381266673403554bba480a84c7c44c9d4e406b133523b7",
+        "object_sha256": null,
+        "target_sha256": "456726c0a7e7996179539992d72a73546010852e47617f95b3ba8f3ed6786fcb",
+        "result_sha256": "30efeb0b0d35da6747389636f03539b9c1a6ae78c7dba7b038e7835ce0fb6d9e"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 99.42857,
+        "size": "168",
+        "target_size": "168",
+        "diffcount": 24,
+        "source_sha256": "2e3b5278ab07dc3b9310d73688c159b12263ff0d80cc0ff6e9cb6b7ba0267a4a",
+        "object_sha256": "f91c272003e202fcd27cd705b4d2f298653d82f4153d34fece05cf20fae656fe",
+        "target_sha256": "456726c0a7e7996179539992d72a73546010852e47617f95b3ba8f3ed6786fcb",
+        "result_sha256": "598d63262b56e7951dc9b6508e317d97ef837584a3cc07624caa1a1f84950412"
+      }
+    },
+    {
+      "case": "m634DLL:fn_1_2486C",
+      "group": "declarations",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "ae9bc8a757967a7c475da44b791eedb330982318f739c140439fb99cbea9836a",
+        "object_sha256": null,
+        "target_sha256": "43f28699875ee5583a42478ff3d2ac6f6c8f7814dbedf102a88aa703ac2d32f2",
+        "result_sha256": "6263ec32bf774a3778350d7cd00d650ead832e5bae977ce475f1a6dd1d0e23a5"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 29.411764,
+        "size": "216",
+        "target_size": "204",
+        "diffcount": 61,
+        "source_sha256": "9e11fe6ddb364c41e8ebb6f9ece91396dd02ef5068cd7dd296eaffeeb025654c",
+        "object_sha256": "99d6560d02e6aa60b28aa1f3c628b3ee4c70403c7aeedfa9fb5ac3d96beefa21",
+        "target_sha256": "43f28699875ee5583a42478ff3d2ac6f6c8f7814dbedf102a88aa703ac2d32f2",
+        "result_sha256": "92d122176802acdfb3b2936f9cbb237ba88a6b899e08cfb32530614665d0ae1c"
+      }
+    },
+    {
+      "case": "m634DLL:fn_1_D9B0",
+      "group": "declarations",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "0fdf71847fc9b843e36c566dcc9e23536bcf04fd26dc4e4453f11c7c84434c49",
+        "object_sha256": null,
+        "target_sha256": "43f28699875ee5583a42478ff3d2ac6f6c8f7814dbedf102a88aa703ac2d32f2",
+        "result_sha256": "395e12971932a93c0ffd875a8084c4630046fcd3fdc3b9effc9b273745fbb560"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "04bade6d63f9c4d2703f4452fef2a84564becd3317c37132918e17b25739939f",
+        "object_sha256": null,
+        "target_sha256": "43f28699875ee5583a42478ff3d2ac6f6c8f7814dbedf102a88aa703ac2d32f2",
+        "result_sha256": "1e5bc97d6d1c55a64d590cb9909d057f3fb9b631386edbfee87f139be4f4014d"
+      }
+    },
+    {
+      "case": "m665dll:fn_1_2158",
+      "group": "declarations",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "50b175e39614baaa5b878af1def0f6b8a15369efa4273d3fb22570d01f5ce4f8",
+        "object_sha256": null,
+        "target_sha256": "7b52fc8745688b8e27bd905efd6e13f9450abd86815472731c83e12ab93090dc",
+        "result_sha256": "6580674a6cd83a7702348eda38030609437f241fe75559f756b04bec4ee8eeab"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "1dc9fe91def1040d0e250f61db27884a46dc9fb47433ecf38226a6b0004fa0e9",
+        "object_sha256": null,
+        "target_sha256": "7b52fc8745688b8e27bd905efd6e13f9450abd86815472731c83e12ab93090dc",
+        "result_sha256": "19324cce586533d8293b5502732f054bc3a1b50dffb521b690ad01111ab316bc"
+      }
+    },
+    {
+      "case": "mdbankdll:fn_1_2F80",
+      "group": "declarations",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "3c822c065c2dbf1a9d3fb039c0103b1fcc28fc29e782506db3152344fbea70f2",
+        "object_sha256": null,
+        "target_sha256": "96cb08a89142bf69813786cf5f13833e6942b23c1dd7127b38f624d0d8f254a1",
+        "result_sha256": "a1f68f3da3384ca1d0ee344485d370d3320afc4396288cec6a0cd99fbe71508d"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "3c822c065c2dbf1a9d3fb039c0103b1fcc28fc29e782506db3152344fbea70f2",
+        "object_sha256": null,
+        "target_sha256": "96cb08a89142bf69813786cf5f13833e6942b23c1dd7127b38f624d0d8f254a1",
+        "result_sha256": "14bc5f2223ab0a93fc20f5757ca73674756351479ab14ad8bd7a725c19c42297"
+      }
+    },
+    {
+      "case": "mgmbingodll:fn_1_34B0",
+      "group": "declarations",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "42b2eaebe751d6b9b4d7863036a803b2b876a90757c4b23824a4bad79c9bb155",
+        "object_sha256": null,
+        "target_sha256": "8a709327cbd2ab4392c36ab67f393d3083034987726e053229d9f43cf8dd7ce0",
+        "result_sha256": "7ec610b51d55d6e001d29a350504b1de73868fef1c0dced0e47fc7daa11e9bd3"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "d3812158ec48a7071bb9d60838afa3530f6d799b93438578862609bd0e904e9e",
+        "object_sha256": null,
+        "target_sha256": "8a709327cbd2ab4392c36ab67f393d3083034987726e053229d9f43cf8dd7ce0",
+        "result_sha256": "9f886da6c4be6a33585391e52f8ca8d111d559e5bd1489fc448f85d0257b2fbe"
+      }
+    },
+    {
+      "case": "m673DLL:fn_1_7560",
+      "group": "declarations",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "165b3db0bf0f8b6ac135009eecd78623c5d0c92415c8ad8d90287641902acc14",
+        "object_sha256": null,
+        "target_sha256": "507586ffe4358b39aca2a3ff1f56c318ece9d0bd2279a17158bed2159b73e8d0",
+        "result_sha256": "092f751ea79b656419657d04c1109fefdd0562f41b504eeeb07b1f7a7d8fab90"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "165b3db0bf0f8b6ac135009eecd78623c5d0c92415c8ad8d90287641902acc14",
+        "object_sha256": null,
+        "target_sha256": "507586ffe4358b39aca2a3ff1f56c318ece9d0bd2279a17158bed2159b73e8d0",
+        "result_sha256": "d78406f4e2a1043756e60401efbb8cd9e081706e4954813793bb72889349c1de"
+      }
+    },
+    {
+      "case": "m672DLL:fn_1_11BB0",
+      "group": "declarations",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "1f15981cfa48bca651f2dbb6185122d01f61d9f07b59176ceb85152d47efb2fb",
+        "object_sha256": null,
+        "target_sha256": "6e98c69b3d726d138fbc6c87c691d698abb13ed4009ec3ba87c45a8ef230e3be",
+        "result_sha256": "00fd6274c18d87cae389cff90a240e0e06d554cf45ae36d0d9f675ea49f537ba"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "6e26360241b9d3254f560d8929db7b32d118cffe75d018ffdbdcb9f365a14330",
+        "object_sha256": null,
+        "target_sha256": "6e98c69b3d726d138fbc6c87c691d698abb13ed4009ec3ba87c45a8ef230e3be",
+        "result_sha256": "0e01c24df8b569a858a4bbea41f72b8db1a0aa6e124ed5206f836e68da28c39b"
+      }
+    },
+    {
+      "case": "m603DLL:fn_1_1C984",
+      "group": "exact-control",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "52",
+        "target_size": "52",
+        "diffcount": 0,
+        "source_sha256": "5797520c3ed46777e426ecaac5131fa3dade1aa8b595c9fc0994d33c31dcd8a0",
+        "object_sha256": "6af2ecf6b88bd39ff5c3950ec8570d69aa115ab8c402d65089e9c27118f988ae",
+        "target_sha256": "e9c632b0e6e8977b94b60b96ce66534da9b0fe1cdc75218f574953c711ca6213",
+        "result_sha256": "b9a4a0aa5ad5396f03a65305c3f68f32d441aae1113c60586583ef98001f0ea3"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "52",
+        "target_size": "52",
+        "diffcount": 0,
+        "source_sha256": "5797520c3ed46777e426ecaac5131fa3dade1aa8b595c9fc0994d33c31dcd8a0",
+        "object_sha256": "6af2ecf6b88bd39ff5c3950ec8570d69aa115ab8c402d65089e9c27118f988ae",
+        "target_sha256": "e9c632b0e6e8977b94b60b96ce66534da9b0fe1cdc75218f574953c711ca6213",
+        "result_sha256": "55da2b2e14459928920307695ad47685b36f538b0a3d6f00a4acba71b7e1c503"
+      }
+    },
+    {
+      "case": "m639DLL:fn_1_1F8C0",
+      "group": "exact-control",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "c81bcbf5ca786f7f19a29cee7de0b9e5ec2b73e544be8e3000024862edf7a544",
+        "object_sha256": "7d78ffb4692771b69701ae9386dffc1f7024290f934d6613bff4c0720bfa2fed",
+        "target_sha256": "5cc3e1e90d2eeb6927a890ebdd943482bc0fcf85fe9fcbf5ac5afd1f4c700b21",
+        "result_sha256": "c7b6e53177d563d8ec11e8c65d8d5812035927a3d2c48bebbd685dacf64c65e1"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "c81bcbf5ca786f7f19a29cee7de0b9e5ec2b73e544be8e3000024862edf7a544",
+        "object_sha256": "7d78ffb4692771b69701ae9386dffc1f7024290f934d6613bff4c0720bfa2fed",
+        "target_sha256": "5cc3e1e90d2eeb6927a890ebdd943482bc0fcf85fe9fcbf5ac5afd1f4c700b21",
+        "result_sha256": "a21d80662836a1023e3cc9a927c002fa23c216c3bc8c0ffafb1839d270131e1a"
+      }
+    },
+    {
+      "case": "m672DLL:fn_1_1F934",
+      "group": "exact-control",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "7aac9f4e4bf24751c7b72c284233d2a0242f477196fe639de5a7b37480078f14",
+        "object_sha256": "307a83982c8f78bf2542dc6ba0a95c12e46183af270386f8f832558b276d1afd",
+        "target_sha256": "6e98c69b3d726d138fbc6c87c691d698abb13ed4009ec3ba87c45a8ef230e3be",
+        "result_sha256": "a9fb69c584f43eee6dd2ddeabc4dcd141ec2e5ad610a28e23d2c5707e05c31a1"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "7aac9f4e4bf24751c7b72c284233d2a0242f477196fe639de5a7b37480078f14",
+        "object_sha256": "307a83982c8f78bf2542dc6ba0a95c12e46183af270386f8f832558b276d1afd",
+        "target_sha256": "6e98c69b3d726d138fbc6c87c691d698abb13ed4009ec3ba87c45a8ef230e3be",
+        "result_sha256": "92cf5249a66c42dcc0883a774364e658f63244b7d5ffb89aad5d569c99df60e6"
+      }
+    },
+    {
+      "case": "m653DLL:fn_1_2396C",
+      "group": "exact-control",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "b18416457a50309ec07cd3a0af14f1143204d0554d46c9d74e040a79900d4853",
+        "object_sha256": "013927364cb798fdbe23f22da94328feae1247679cec915057d617191b085fd7",
+        "target_sha256": "e127c3137410b9c5557264e0184d6c5704c04e51b6e49f5a04c1f51a717505e8",
+        "result_sha256": "b2345459a50e8f8efdca0124aad578fe64651c1e6e899a5f2aa099da866ac8e5"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "b18416457a50309ec07cd3a0af14f1143204d0554d46c9d74e040a79900d4853",
+        "object_sha256": "013927364cb798fdbe23f22da94328feae1247679cec915057d617191b085fd7",
+        "target_sha256": "e127c3137410b9c5557264e0184d6c5704c04e51b6e49f5a04c1f51a717505e8",
+        "result_sha256": "fdbd6a771f2643488e853c1fba0bee8892cf209fe26f7ce8c625c5cdfd30a14f"
+      }
+    },
+    {
+      "case": "m669DLL:fn_1_F0",
+      "group": "exact-control",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "36",
+        "target_size": "36",
+        "diffcount": 0,
+        "source_sha256": "b959cf96f136ff6520b1e8f42726638cb2723c2a7c39210ae4ceae89496b6379",
+        "object_sha256": "971074b6f2a231e719baa80f8def22dfd4f1cf616d590a036cca1ee621f57052",
+        "target_sha256": "9463ac78863944b11347a62a373e1bb4cd8da70314f3ea69be424bb5cad30883",
+        "result_sha256": "08fcfee606a00b80c4f16d03576400f54ef2041090074786e087ebe3d2ddaa1b"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "36",
+        "target_size": "36",
+        "diffcount": 0,
+        "source_sha256": "b959cf96f136ff6520b1e8f42726638cb2723c2a7c39210ae4ceae89496b6379",
+        "object_sha256": "971074b6f2a231e719baa80f8def22dfd4f1cf616d590a036cca1ee621f57052",
+        "target_sha256": "9463ac78863944b11347a62a373e1bb4cd8da70314f3ea69be424bb5cad30883",
+        "result_sha256": "f728873ab17e0f2950dd88be92f1d69e14219508298dbccca1caf86fb1e2934f"
+      }
+    },
+    {
+      "case": "m624DLL:fn_1_1EB3C",
+      "group": "exact-control",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "36",
+        "target_size": "36",
+        "diffcount": 0,
+        "source_sha256": "4103b5ab5020a7523401c4339589734dba0b5edaaba10ad2fb59cfcbde56945b",
+        "object_sha256": "cc194c6f956d77947cf682169336c164e8f18faf5c0da9f95a3a28b42b3bfaee",
+        "target_sha256": "456726c0a7e7996179539992d72a73546010852e47617f95b3ba8f3ed6786fcb",
+        "result_sha256": "4cd1aa27d2869c82a0b3b12f5e3b96f14b6e15dcb9f47b8c1389f5865ebcdc13"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "36",
+        "target_size": "36",
+        "diffcount": 0,
+        "source_sha256": "4103b5ab5020a7523401c4339589734dba0b5edaaba10ad2fb59cfcbde56945b",
+        "object_sha256": "cc194c6f956d77947cf682169336c164e8f18faf5c0da9f95a3a28b42b3bfaee",
+        "target_sha256": "456726c0a7e7996179539992d72a73546010852e47617f95b3ba8f3ed6786fcb",
+        "result_sha256": "50281e27aa5f56971792ddae893717e2cc0761a164f82c8e3f0e8a0635651569"
+      }
+    },
+    {
+      "case": "m673DLL:fn_1_20EEC",
+      "group": "exact-control",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "1c5e456d50d5fd7f1063457f2afa63e5acfe816513500ff2aab482cea22ec961",
+        "object_sha256": "24a179d7c0ccdc5edfd089df37c348ab62301827d8f61dd3e0300cab08ef9c97",
+        "target_sha256": "507586ffe4358b39aca2a3ff1f56c318ece9d0bd2279a17158bed2159b73e8d0",
+        "result_sha256": "9f9fd85036358c6c65f6afd188c26c8615f0c2b1905d18163809ac8412079025"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "1c5e456d50d5fd7f1063457f2afa63e5acfe816513500ff2aab482cea22ec961",
+        "object_sha256": "24a179d7c0ccdc5edfd089df37c348ab62301827d8f61dd3e0300cab08ef9c97",
+        "target_sha256": "507586ffe4358b39aca2a3ff1f56c318ece9d0bd2279a17158bed2159b73e8d0",
+        "result_sha256": "d60c5f10bec6ebb5c773391588515d0bd4fe70f0ed7648e8e115b4ee6cce9a86"
+      }
+    },
+    {
+      "case": "m624DLL:fn_1_1A550",
+      "group": "exact-control",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "35bb1c5c4e8097d037a457b2c77590b66b4ab8da834e0877dac6c6e9b12f4585",
+        "object_sha256": "d3478c5d36700d44ee6473c48dbb5c943ba924478ae97810405949f595b6c11f",
+        "target_sha256": "456726c0a7e7996179539992d72a73546010852e47617f95b3ba8f3ed6786fcb",
+        "result_sha256": "2923b338e2778808d30e551273b70107ec6ccf4188ebb9f6337915132657dcb8"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 100.0,
+        "size": "48",
+        "target_size": "48",
+        "diffcount": 0,
+        "source_sha256": "35bb1c5c4e8097d037a457b2c77590b66b4ab8da834e0877dac6c6e9b12f4585",
+        "object_sha256": "d3478c5d36700d44ee6473c48dbb5c943ba924478ae97810405949f595b6c11f",
+        "target_sha256": "456726c0a7e7996179539992d72a73546010852e47617f95b3ba8f3ed6786fcb",
+        "result_sha256": "417faca99162b40d0c08fa4ff7ca72d37a2e4f007016fa78f8a33ee1dec0a507"
+      }
+    },
+    {
+      "case": "m603DLL:fn_1_1D4E0",
+      "group": "pointer",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "b4e742577e94f9d59435c63f5641c051e1aa89fcd1785dfdab5b3fbad43709ab",
+        "object_sha256": null,
+        "target_sha256": "e9c632b0e6e8977b94b60b96ce66534da9b0fe1cdc75218f574953c711ca6213",
+        "result_sha256": "54d4a450b25ec107a143a42969cfd8e376353ddbf2fe85b565b66628a0f82380"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 84.82906,
+        "size": "472",
+        "target_size": "468",
+        "diffcount": 75,
+        "source_sha256": "bcfe2c68e0a1282bb1f63f8d52924d7d0a790db15febac9ea27bf52c0e2c9d24",
+        "object_sha256": "9183b5fd7af8ff8c66d703667242d2098f26c7567b2ff6e2b0dff31bc314ba09",
+        "target_sha256": "e9c632b0e6e8977b94b60b96ce66534da9b0fe1cdc75218f574953c711ca6213",
+        "result_sha256": "e93debdf032d0343e1d138c275c28ab8e09fa47e3fbb81518dd7be5a84f8dc0f"
+      }
+    },
+    {
+      "case": "m648DLL:fn_1_1F118",
+      "group": "pointer",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "ec19f305347b1d5d6c14749ee41f5e4f65cd66067032f687e171592f6ffbd841",
+        "object_sha256": null,
+        "target_sha256": "0801cf95287a1254acc48b148b7ab6a2cbf0735678920927f385797a49c0dad4",
+        "result_sha256": "f3bf60c39424468d02ff50d11b5d5b1ae7110a6b08e20d98b46d67699ba671a7"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 84.42478,
+        "size": "456",
+        "target_size": "452",
+        "diffcount": 72,
+        "source_sha256": "5d9d472d1e52c89760c8d68c2e974e8c9ad689dec1bc5e4b310ef0511508cb5d",
+        "object_sha256": "340c73f9d18377ca8950a24ecd4b6a8584bcad3255b26728202b66e0d12e9661",
+        "target_sha256": "0801cf95287a1254acc48b148b7ab6a2cbf0735678920927f385797a49c0dad4",
+        "result_sha256": "4a62e33aee3d5c30318755c922a6ac367c00fb3a868a507738f488e04cc40205"
+      }
+    },
+    {
+      "case": "m699Dll:fn_1_114A0",
+      "group": "pointer",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "65827f2b43ac4284bac2706b14a9def9c28408c35f3221802338dcde55db6530",
+        "object_sha256": null,
+        "target_sha256": "4424d01639cecc3516b8840d66b68bd3c7f88960864eabb5ef401eca6b57f497",
+        "result_sha256": "d8eee9f7f535843524ac522f7e346adceaa9e14555e0e469dc30d86d6ca932e1"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 88.5618,
+        "size": "332",
+        "target_size": "356",
+        "diffcount": 56,
+        "source_sha256": "6ae58b1c266824ece1980457f4d6a03ccd70ead854cf7148eff2746edd6f3278",
+        "object_sha256": "59f596b290bfdb8646fd8c4151eabd5adf132609b1a721bf4f42abbe97e2b431",
+        "target_sha256": "4424d01639cecc3516b8840d66b68bd3c7f88960864eabb5ef401eca6b57f497",
+        "result_sha256": "a145f72403f4f57ef9687671d0f1eddf0bac195fa406e4d7270120721865fc71"
+      }
+    },
+    {
+      "case": "m672DLL:fn_1_1BB50",
+      "group": "pointer",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "fade97097bc401f8288900581178ab6d528e05e94d8a8609716efbbfd0331c5a",
+        "object_sha256": null,
+        "target_sha256": "6e98c69b3d726d138fbc6c87c691d698abb13ed4009ec3ba87c45a8ef230e3be",
+        "result_sha256": "2bffa0ca5dfa68179913d7b0c3cdfeab8f7211151ff5ae3cd567a8967b2becb5"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 70.029854,
+        "size": "224",
+        "target_size": "268",
+        "diffcount": 54,
+        "source_sha256": "69b6374c8fc204b217223c0cac65fc223b9183966870858701e9b41008637290",
+        "object_sha256": "400cf437e8f01fa907bbf43ccba404eba03a35b57083f87fe4d06d54b54a50d2",
+        "target_sha256": "6e98c69b3d726d138fbc6c87c691d698abb13ed4009ec3ba87c45a8ef230e3be",
+        "result_sha256": "762ccefd26a97adeb172cdb20b8a2210fb466fc4c1c0cece9754760addc4a8ad"
+      }
+    },
+    {
+      "case": "m654DLL:fn_1_6B78",
+      "group": "pointer",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "9725f4818746271fd8262701a46d449fa4a993a531b7fb256fbdf449caa48247",
+        "object_sha256": null,
+        "target_sha256": "c4af1df586f256b170e6be2048c61dbc4f2ce8ae744b15727cbccdcda380c4a3",
+        "result_sha256": "55901180e5ad7c836f3236b6676dc813801c03c6fae0ed8edb27f2f6a1e6f414"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 81.44681,
+        "size": "376",
+        "target_size": "376",
+        "diffcount": 49,
+        "source_sha256": "ae3d144a1fa0ee75e526159fbfb886715ae35dd6b27e8483a8a7f4c6d1e89bb7",
+        "object_sha256": "9e1c75ba4ba817e821ae55754d2dae285a86008a10f0ecdc0cec6cdabe41941c",
+        "target_sha256": "c4af1df586f256b170e6be2048c61dbc4f2ce8ae744b15727cbccdcda380c4a3",
+        "result_sha256": "a3302c5ba648bee82ee03ae3d3b4f158c569365fd53ebbc47a09442c1f81f854"
+      }
+    },
+    {
+      "case": "m639DLL:fn_1_C4C",
+      "group": "pointer",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "85c768232dadba0b892b10b6ccefafcfa2ed01e9ae15545f23c72e02036a5ae4",
+        "object_sha256": null,
+        "target_sha256": "5cc3e1e90d2eeb6927a890ebdd943482bc0fcf85fe9fcbf5ac5afd1f4c700b21",
+        "result_sha256": "af07074b9316a2bacd37f79ab4465ccd38d7fa0b63388b3ee7f90ea6e8c8cccd"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "d9bca09275ad3fd8eb67492d77b76f541c0f7b7583024203ccd7607aa8b5e5b8",
+        "object_sha256": null,
+        "target_sha256": "5cc3e1e90d2eeb6927a890ebdd943482bc0fcf85fe9fcbf5ac5afd1f4c700b21",
+        "result_sha256": "b2532a66a7941f4696a3e8507cec1ea362f2d6d9ba7c4cef92a4cb5f72842708"
+      }
+    },
+    {
+      "case": "m676Dll:fn_1_BE3C",
+      "group": "pointer",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "d18f0a3d6b0a4c75ef98ac9463928334caaddb57dad763b1e11d1f6917c6eeae",
+        "object_sha256": null,
+        "target_sha256": "476e12121e1e7c1bed264999ab1d8ebb9c1ddb943882ce291c742347ed732837",
+        "result_sha256": "8b790dfb17c9374fab6d35562a4ede1ee35cdb24ab2c47301b8ec4c66892e439"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 79.744446,
+        "size": "352",
+        "target_size": "360",
+        "diffcount": 57,
+        "source_sha256": "f4a7b5cccd684a5758e783185e6099a189a239731176d4c08f42d2df16f3a4ab",
+        "object_sha256": "27407894380fce133fd31a2170b10748c2df25af2e02d1a274bc2b6a7be7d195",
+        "target_sha256": "476e12121e1e7c1bed264999ab1d8ebb9c1ddb943882ce291c742347ed732837",
+        "result_sha256": "ab592b54185129c318ce458b67f9ae00d7af627624c3c7a99bb595e888afca09"
+      }
+    },
+    {
+      "case": "w02Dll:fn_1_125C0",
+      "group": "pointer",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "score": null,
+        "size": null,
+        "target_size": null,
+        "diffcount": null,
+        "source_sha256": "d54e63d3753d831beb31235e62decafb2ba4b37d972051e779a99450688415f3",
+        "object_sha256": null,
+        "target_sha256": "7a6fe6cbd3bf0ff0645a25543520be28a7747c9b84acd067feac40d5df37e49f",
+        "result_sha256": "2b974f73124895fa07df14421363b539f26c9324b0ee7ac23674fefda4edd1fa"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 59.152542,
+        "size": "236",
+        "target_size": "236",
+        "diffcount": 25,
+        "source_sha256": "f59627cadfe18c3af6ffb2b49b09df4b67882123bc0d815d43a727f0daeab184",
+        "object_sha256": "522bae6bcafd2c1a58e90962e695a21462a5a34432671a181c160379a7ac3a79",
+        "target_sha256": "7a6fe6cbd3bf0ff0645a25543520be28a7747c9b84acd067feac40d5df37e49f",
+        "result_sha256": "ebaf9cc7914c7a46e3757a2b8312eb9bdc8cd162e5efad89f408df3c5998b845"
+      }
+    },
+    {
+      "case": "m613Dll:fn_1_10DB4",
+      "group": "precision",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 91.32353,
+        "size": "136",
+        "target_size": "136",
+        "diffcount": 15,
+        "source_sha256": "e85b2724d0729d735da86ef6e36d84ce530ffefc25a57ebca71cdd55f764e626",
+        "object_sha256": "004f3e9e57e8bf279e1bc45d72d691c0a20d6a32bb19b007bcf3b159391b26c1",
+        "target_sha256": "035abaf8b448b66a32f83c4fce73b2768b48e8b511446a0ffc5e9e32b4fdedad",
+        "result_sha256": "310cdad8e84ee4f3299ba2759e7dfbbc3e09c9053d7a6353c9a91d3225f71651"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 96.911766,
+        "size": "136",
+        "target_size": "136",
+        "diffcount": 19,
+        "source_sha256": "63e29cf01f79fda2946f02b2c69adc39cde3711de6184478c0b2e4ce4e7cd33f",
+        "object_sha256": "eaab5fa714ad4414873efe05cb71b5854a5b13baa33a803dba46774a3cc8a112",
+        "target_sha256": "035abaf8b448b66a32f83c4fce73b2768b48e8b511446a0ffc5e9e32b4fdedad",
+        "result_sha256": "c39e5fee0d9f2a71dd737fdf412be3d6d06e1936a42820784322a5ce42df2d84"
+      }
+    },
+    {
+      "case": "mgmdecathlondll:fn_1_FB2C",
+      "group": "precision",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 97.790695,
+        "size": "344",
+        "target_size": "344",
+        "diffcount": 27,
+        "source_sha256": "e998c11c5557077afa7126c4df0f8c474a8f8802d83a3fc814325455380179ce",
+        "object_sha256": "a56d3f212ff4a41f2a88f5339e2272749d2af38e9fa5d990a8ee817078f02462",
+        "target_sha256": "aabad1c93a074eccfb32f01c3e1ded44dd1208b0e08bf68d99612d788ec47833",
+        "result_sha256": "4a2b7fbf3980c33603f50853e175a5c6b3159110a547e2d5ca76200fe1a3c93d"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 98.43023,
+        "size": "344",
+        "target_size": "344",
+        "diffcount": 27,
+        "source_sha256": "bf9a26325334302c599061f2490b061ad493906e4f12cfb60811b4f6e266b21b",
+        "object_sha256": "77c06e5fb4a5fb2f7d5db84a4dba79c53efd61557857c697d1e77944b768c2af",
+        "target_sha256": "aabad1c93a074eccfb32f01c3e1ded44dd1208b0e08bf68d99612d788ec47833",
+        "result_sha256": "199c24362a9d0cb3a6adf8d4845d8844f80bb21a016283a7951008ccc77b42a8"
+      }
+    },
+    {
+      "case": "mgmbattledll:fn_1_1AF5C",
+      "group": "precision",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 95.2381,
+        "size": "344",
+        "target_size": "336",
+        "diffcount": 31,
+        "source_sha256": "16ee5bde5e1653ff32be60139a6b26605ce5f9dcd2766984dfe12f3f83041409",
+        "object_sha256": "a1c81ddb5d3be76329ee41b30266debd8d998438136306f04fe39dde4e7c6ed4",
+        "target_sha256": "b6bec6640b05a63eae6e5273061d65634c12ce0488ed1bfcef0afb62d055e859",
+        "result_sha256": "61d25c4d4dbe5a3f7c0f9fb2fab7aae048574f30ec15330d9a127dce1f2995dc"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 95.89286,
+        "size": "344",
+        "target_size": "336",
+        "diffcount": 31,
+        "source_sha256": "9652334c82f80181f9986447b846648fbab7bc5113d1167b67557710b9301c80",
+        "object_sha256": "ef20c4eca9ecb31d1acadf128c346347708bd6b53cfbbe8fc4f1e9ebee872eae",
+        "target_sha256": "b6bec6640b05a63eae6e5273061d65634c12ce0488ed1bfcef0afb62d055e859",
+        "result_sha256": "c8f12bcc7951c9fa8d02dcd1d8d848876468a0fcd3342579fd269809e7eaa6fd"
+      }
+    },
+    {
+      "case": "m641Dll:fn_1_146B8",
+      "group": "precision",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 97.790695,
+        "size": "344",
+        "target_size": "344",
+        "diffcount": 27,
+        "source_sha256": "3fb522f7e16d785a31a535518288f6e36d6ad5fccd21c87932c946a4dc991efa",
+        "object_sha256": "4c0073eaa0e121dfd98ac1bf258fcfe27d1e80773fcef6aeecfd7c1480653aab",
+        "target_sha256": "dfe235f194ac83876685c4fcfd93f7bd7e4f498ed533c139899bbdb90743cb68",
+        "result_sha256": "807ed2575d0e18c7637ecbfc3126806c60ce94d46fc72402d7d95c268c534334"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 98.43023,
+        "size": "344",
+        "target_size": "344",
+        "diffcount": 27,
+        "source_sha256": "5a2af14f0597c1d48f6ae5d5a984f508245e27362add1495e3ca17c68743e04b",
+        "object_sha256": "8d88831a20ae72319195cc815564c1b066590a5d884866ad507bb4af1ff8d0e4",
+        "target_sha256": "dfe235f194ac83876685c4fcfd93f7bd7e4f498ed533c139899bbdb90743cb68",
+        "result_sha256": "7ac0a3576d5b947834ad3e37a29162ae4e3495664fc850a8903a334171ba4932"
+      }
+    },
+    {
+      "case": "mgmtournamentdll:fn_1_E378",
+      "group": "precision",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 97.790695,
+        "size": "344",
+        "target_size": "344",
+        "diffcount": 27,
+        "source_sha256": "149cee6ed09bd463bb0ab5705e22d70ac1a296a5b0d5ed057d82561d28f0718d",
+        "object_sha256": "b25a680ac88ddf83e2862d98db0af8a710a07bc29bee618dadfbc91557393ab8",
+        "target_sha256": "020e2ce806ac344ad83177a4e0e297f7b52fa195d3e0069363a74d86b2110d40",
+        "result_sha256": "75fbecec2b659db134e2fa61b19fe97968522b50515ea05054917d5df5118ec8"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 98.43023,
+        "size": "344",
+        "target_size": "344",
+        "diffcount": 27,
+        "source_sha256": "8593be1bcfc43d4b3801d4457af84b8ffebac896ed91f96da4024e657f4a2b4d",
+        "object_sha256": "1b65d702220011d8663351d71e0717bd9464938a862cf81123e429a78d622b52",
+        "target_sha256": "020e2ce806ac344ad83177a4e0e297f7b52fa195d3e0069363a74d86b2110d40",
+        "result_sha256": "876f9791457626187de9394912c3ba01ea4b188f11ffc841b1a9bcb35df870b9"
+      }
+    },
+    {
+      "case": "m613Dll:fn_1_10C5C",
+      "group": "precision",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 97.790695,
+        "size": "344",
+        "target_size": "344",
+        "diffcount": 27,
+        "source_sha256": "2604262b4a06e68f86dc684ff5c7206f850d87d26a19f6b185652610bab50e21",
+        "object_sha256": "9ac320735f4b2de35a04f276c73c61dd551b600290a768ec71138446fb5b3a3e",
+        "target_sha256": "035abaf8b448b66a32f83c4fce73b2768b48e8b511446a0ffc5e9e32b4fdedad",
+        "result_sha256": "09bd38af4936fd99da6d9fda6eadda4a50b424e3d71df62aa6cb6ca2a577b78a"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 98.43023,
+        "size": "344",
+        "target_size": "344",
+        "diffcount": 27,
+        "source_sha256": "2f25e3bb6e2bada3d59aad0142905f79cbd030dc568eca0dca75bc24caed0d56",
+        "object_sha256": "85d1be279b9d64e2b429a4d368694cc2bfdd5c878d31f9c31ff62772e30cf35b",
+        "target_sha256": "035abaf8b448b66a32f83c4fce73b2768b48e8b511446a0ffc5e9e32b4fdedad",
+        "result_sha256": "d0cc5d0042e1075a6dc5ad38484d15342aa68eb75c0b12be46550efe96ddceb7"
+      }
+    },
+    {
+      "case": "m675Dll:fn_1_2064",
+      "group": "precision",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 93.070175,
+        "size": "472",
+        "target_size": "456",
+        "diffcount": 52,
+        "source_sha256": "1ffd8afbc16108652605941588966740dd88d54c828413bf499f90a76509f64f",
+        "object_sha256": "62eba372154b4a5def2f0add584d76c68a5cad75d96502f31cdb619bbd562189",
+        "target_sha256": "0df06b6c94cb4f6a1ce0c5b9d0ca0e75d9a0dd90c7d596be20f8b48068309353",
+        "result_sha256": "f1a778c1086cc061f50cb188b35333b5d60d05c3e563c77e7c16c6906aed6c26"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 95.87719,
+        "size": "464",
+        "target_size": "456",
+        "diffcount": 48,
+        "source_sha256": "6f7a2528e71a161cf52c19ae8dc2fa67271bdf675bac7e249de867837b2c48d2",
+        "object_sha256": "d7aee40bff7fa7842b49e16f94ed745977bfb797e9d61d8412fe8931861e395e",
+        "target_sha256": "0df06b6c94cb4f6a1ce0c5b9d0ca0e75d9a0dd90c7d596be20f8b48068309353",
+        "result_sha256": "a96735ce497fd6cb486a03d599ff24f4d9425f82c27612226585640e72e98b8e"
+      }
+    },
+    {
+      "case": "m627dll:fn_1_3590",
+      "group": "precision",
+      "before": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 98.169014,
+        "size": "572",
+        "target_size": "568",
+        "diffcount": 22,
+        "source_sha256": "0539c17bda4c71b2c534938bfc3b01ffb25acfcee1eef7c886ad1977efc0d3e8",
+        "object_sha256": "5686e5966f5bd18b281003827e867db3ef49b17dd0cf45d82a8944754cc749ce",
+        "target_sha256": "da2bc297acbe7eb0e38ad09b492ff0a3a07eadcd4c30b535d7f34f9910900617",
+        "result_sha256": "915aaf88e9df5b26f3aedbf87e54d92366855b229fa9781553b6f2534378842b"
+      },
+      "after": {
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "score": 98.556335,
+        "size": "572",
+        "target_size": "568",
+        "diffcount": 22,
+        "source_sha256": "5f40b73b9f56350436e782078c997401711b6e4c48060f9edaf6f1c610a4cfbc",
+        "object_sha256": "2428e4a26bdf48dece3e32074f08b90f41e08422c3424402d12d81bfa75a8685",
+        "target_sha256": "da2bc297acbe7eb0e38ad09b492ff0a3a07eadcd4c30b535d7f34f9910900617",
+        "result_sha256": "f8af819173328268314b42032c7feaeb4a4e0f649f4672f117ce25fb04b90418"
+      }
+    }
+  ],
+  "new_raw_exact_functions": 0,
+  "owner_closure_claimed": false,
+  "source_promotion": false
+}

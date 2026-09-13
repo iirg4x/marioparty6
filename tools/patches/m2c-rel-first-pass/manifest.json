@@ -1,0 +1,253 @@
+{
+  "schema": "m2c_rel_first_pass_patch/v1",
+  "upstream": "https://github.com/matt-kempster/m2c",
+  "baseline_revision": "4b2bb9110321a97df458566d8a9d55290aba443a",
+  "baseline_note": "Includes pre-existing local MWCC/parser and pointer fixes; validate working-file hashes, not revision alone.",
+  "required_baseline_files": {
+    "m2c.py": "e2a9b0aaf84bdff2d57befa40ce8c3da29cb0545bd129daa06dd4b2ad96fa811",
+    "m2c_macros.h": "aa617fc06435b3ef4657bf000a755b594517d73544c46efd19de01f35d980507",
+    "run_tests.py": "8dfe99a24b5fad9611e28dd40c143d8ab5d835a4c8ba5f8368fcb7d5e569388d",
+    "website.py": "f17f4647fca56e28c790f7a097fb1d8b500da61d3d9ae07a2c8de8621d988ba5",
+    "m2c/arch_arm.py": "f4ca26298f3d7b226f9f939923c87cd0a25aad82ccb8e5328a56569a67838b7f",
+    "m2c/arch_mips.py": "1a60fe605ddfaa0143a82d44ff46a10fae478411c32542f46c252698d524a50c",
+    "m2c/arch_ppc.py": "fb594f52554636014378cac737aaf11fd61c63308c6abef206ab1acb5b5b4378",
+    "m2c/arch_sh.py": "0df7476a25fb201e8d2e4846e089654d204a8ae6042422252b3219800a2897fc",
+    "m2c/asm_file.py": "f90cae1b1dbe2a28611bd5d17e7d4d9ddb8bb96366ae61554a29099c6c17c60f",
+    "m2c/asm_instruction.py": "9496e34663947374d53a02fc5cbf31dd54c6aa9a255e408d1b2bfc006b9cc718",
+    "m2c/asm_pattern.py": "ca3467f73d2ae65ee1edc4bf7309db0afb92fc31c1356d5ae904abe52242af0d",
+    "m2c/c_types.py": "3be4d838cd6a2adbacd27617aef701c411c6e7c1bfefbe7615639dd3552836d5",
+    "m2c/demangle_codewarrior.py": "4e85e7a28e375d3de31e1d9d29788b61a782b5b4d4e612690b4bd54885e78e8c",
+    "m2c/error.py": "96feba368319d2562867fd00caaf71f5b8c65db14dc41234f988bb812be70de2",
+    "m2c/evaluate.py": "a4392ac6c55334e8167797258525573b2be4654d673f437900b2efc95845c0b4",
+    "m2c/flow_graph.py": "61f642301fbe8dd042a44f991309f1abd7b90ce0f77525ecdda3ebc79f56d538",
+    "m2c/if_statements.py": "182e321adf576f70f7b8d047b9a36b1bc22a6a79e03461a9740138dd53b8e472",
+    "m2c/instruction.py": "a42b5c9b407594cd54a27c2a1be3fd9dcd701f24d6ed62a0bfc6b807150624ec",
+    "m2c/ir_pattern.py": "d67a28068697e38067ad87306298aa7a7b174ddf843591b74ffa3c94f00a120a",
+    "m2c/main.py": "2548e0301b88ec29cd798183442580f283a448b2b2ccfd8e408443a7773f3218",
+    "m2c/options.py": "636b35ed7dfae73a4394113b06c9b17255ec587c266a4fc12ff121333f92169f",
+    "m2c/translate.py": "5107f2f4b92bd26488f33e9772a1bb6d2331a22f3a57dda40f44f4f3b52bae19",
+    "m2c/types.py": "9eea735f4fff7a5ba423bda57a346eb46580ad290d5dd1dbf93ecacdc88bd6e6",
+    "m2c/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "m2c_pycparser/ast_transforms.py": "193318954816997779c09572a2f5d8d6acf302a8f1cc2a55560d3aeb874a181b",
+    "m2c_pycparser/c_ast.py": "b40c0438c39623438855a80615963bdb25fd34913bed6b598f7bbefd77e08ba0",
+    "m2c_pycparser/c_generator.py": "d0a72b9c226ea93f3fb25ee7cf2d2764e95860343b6238e3ebe5cd17e11058ce",
+    "m2c_pycparser/c_lexer.py": "06caa87173799f7220dba91247c80f2b41d4d87dac2ffcfe514d6c1b1a8b6ac9",
+    "m2c_pycparser/c_parser.py": "c52ec9c79f54a19114068cd22de2116e9e8fce221d59beae2deaab43a9bf1f98",
+    "m2c_pycparser/lextab.py": "dbeb70995430e1377b896f328114cd99f78ea50960ae4df65164a87e31930094",
+    "m2c_pycparser/plyparser.py": "fcbe2c896728a2cd2efbebbd00d0c901e1cbed1ac3f3d4be9733f00084bfe461",
+    "m2c_pycparser/test.py": "324c5e1fe28f294689b741bbb7e5423e3b5a53b1f482ff164999f2e0359435ac",
+    "m2c_pycparser/yacctab.py": "11416bcc44236a091996d1b4b86afc20838010355aaf6724489ca06edac7be04",
+    "m2c_pycparser/_ast_gen.py": "bf4f8311b98f798f01f446e9b6372eb2b5f5d9de169ef03e6fedc15c356b2107",
+    "m2c_pycparser/_build_tables.py": "ec885b7cc032fe35243e6fb2c7864e8bb8da4d8cdf6549c0d456f14d0a1a91af",
+    "m2c_pycparser/__init__.py": "964eb50430364d134cf84bfb4beb437168d8924d350976ef416a9227e149186a",
+    "tests/add_test.py": "4cb256b0559b853bba280ae93f83000d68e0d04a232827449b86b178f4b0514f",
+    "tests/elf_file.py": "b1466c0d0d8f97c67f00c077c69a25c608311ad25d5f1c128a1078f580ea8ae7",
+    "tests/ppc_disasm.py": "9bcd37c2f52466b874749dda6e736b6eb174485b075861b392be78512d090a3c",
+    "tests/unit/test_arm.py": "8819aea3700d5920a0adca66bfa5d7cd2d8bff08c50a530a16fe60046abd4e29",
+    "tests/unit/test_mwcc_context.py": "3a7d7518768921bec0a0c2778f9405f1e95d47a68e97cfb0990fe480cbc6e38d",
+    "tests/unit/test_mwcc_extensions.py": "5f4dfd829f5eb3da5e76cd02417e4d540d0b16f6ef718d0a5f01175338d2b35b",
+    "tests/unit/test_pointer_arithmetic.py": "5c22c478ba893ce2f55a7545a4bac07d92e864f6cb05f7eb1848802664cfac09",
+    "tests/unit/test_ppc.py": "45f86ca38565551bff2adbf8129a13ea86584daf86002f6f8d7799fcb841b2cc",
+    "tests/unit/test_ppc_cror.py": "058935f576cb7c0a2fafdf6448c5e43d501e41338d98552c3513bbc90014e66f",
+    "tests/unit/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "m2c_pycparser/ply/cpp.py": "52d0b7ca54d6a79ff530a03e3cb0aec0a411f3348e9e51ae18621dce3f314bdf",
+    "m2c_pycparser/ply/ctokens.py": "30a92c9cde344de84f86055fc422618e3fc18cbf78ddaa6b78004a633f9b9746",
+    "m2c_pycparser/ply/lex.py": "ac2322d328e56668c7e523578ff61db3557148391a1b6b614bbdf9d58bdf37e2",
+    "m2c_pycparser/ply/yacc.py": "79ab520e444b811afa5f7fa1a0393f49042fd3ae51d0174bd8aedf439e028153",
+    "m2c_pycparser/ply/ygen.py": "d8960d798b6b3f3d49ccb48b3b77781ac4bccc953c8d8fc8fc2475548f605ab0",
+    "m2c_pycparser/ply/__init__.py": "ab8b3ce90c11b1845adb42fdb9e4b17e1fa13e28697ed0630cebd86b6fd24b66",
+    "m2c_pycparser/tests/test_c_ast.py": "83152e0c74cf8d1d0a03ea6fd9eb436a6c3a2733ac6a459d01aa4d6c39f928c9",
+    "m2c_pycparser/tests/test_c_generator.py": "80ddcb92b4f74c20c1dd4cdf67e08496f02a471f17b15b34914d0a659c8cc219",
+    "m2c_pycparser/tests/test_c_lexer.py": "830d8ae2fdca15e99f75d3138b82a36aac0e8edf8e25b11e22f3f74f93bbcedc",
+    "m2c_pycparser/tests/test_c_parser.py": "808933ebb115a98076ec939e4a229f7952543d024d4fba4844faae6977436dce",
+    "m2c_pycparser/tests/test_general.py": "aa9e25bf27eff907c085b38663fddb61f92714458173118f2868bc80fe904442",
+    "m2c_pycparser/tests/test_util.py": "72930740cca53e5d74b8fb4c5b0d10042e559149abcf0a5454ef8c2f6ccc984e",
+    "m2c_pycparser/tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "files": [
+    {
+      "path": "m2c/arch_ppc.py",
+      "before_sha256": "fb594f52554636014378cac737aaf11fd61c63308c6abef206ab1acb5b5b4378",
+      "after_sha256": "0cd9914a50d2fd9620a8a02c1c836519fe586af0411071c2e6f7f30f93a07f2f",
+      "bytes": 69886,
+      "after_newline": "lf"
+    },
+    {
+      "path": "m2c/evaluate.py",
+      "before_sha256": "a4392ac6c55334e8167797258525573b2be4654d673f437900b2efc95845c0b4",
+      "after_sha256": "43a0594989ac1ee5b4872dcb20d7e89cfed91523432e55e8853a8b52b1e18bc9",
+      "bytes": 60689,
+      "after_newline": "lf"
+    },
+    {
+      "path": "m2c/translate.py",
+      "before_sha256": "5107f2f4b92bd26488f33e9772a1bb6d2331a22f3a57dda40f44f4f3b52bae19",
+      "after_sha256": "b9a538e1c117dce4b28044407592c22169d761e6b3a873ce51384a2311975d06",
+      "bytes": 198147,
+      "after_newline": "lf"
+    },
+    {
+      "path": "m2c/types.py",
+      "before_sha256": "9eea735f4fff7a5ba423bda57a346eb46580ad290d5dd1dbf93ecacdc88bd6e6",
+      "after_sha256": "33c5751607da10f1570008c3e9c2ee37277d9f8416853909429c5c7749a05a5f",
+      "bytes": 67905,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/end_to_end/complicated_context/irix-g-out.c",
+      "before_sha256": "ae8c44f4d73a284f0ce1e3fd6d4d362e44b788843239f6e804b7ad3a6a91a7c4",
+      "after_sha256": "e0913921241f77a77531e43043e39695dafee70e406d9a3c92b0c2fdbc47b6e2",
+      "bytes": 464,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/complicated_context/irix-o2-out.c",
+      "before_sha256": "1414ac253685cb4356363744ec75d00cd55eeba9f1ca3d0030d890137176e503",
+      "after_sha256": "a411de1be524e50e3251de9913fc273305cfac4f338fec61b2b9188d43237baf",
+      "bytes": 421,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/custom_stack/irix-o2-out.c",
+      "before_sha256": "2fca8f776e44a78d0aeed36bdfaeb56ffddf70685357f87859300d2c4a7a11ec",
+      "after_sha256": "7d55366b1349b972e04dfb4eb472d20a88fe88cdc7fae5278100bf5796c693b8",
+      "bytes": 910,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/doubles/mwcc-o4p-out.c",
+      "before_sha256": "1bf1a6266890e915090799737251c7b8bae3b6d9ee9d7e095cbe7d51da6dc237",
+      "after_sha256": "ee5ed591ba0298bad3496cea29ec56cab69b2a6c4cd86e4bce7840dc77aa86a7",
+      "bytes": 330,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/gcc-division/agbcc-o2-out.c",
+      "before_sha256": "8f7c1b2029f06621b95ef8563f399bd3453ef27521faec938130d70d30e02448",
+      "after_sha256": "2761dc56ca94237fda76855012a3e71533628118fcfef51034f3fdab32f8c1d3",
+      "bytes": 9346,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/gcc-division/irix-g-out.c",
+      "before_sha256": "49f41b69319fa450c8fbb7c73fb484620e7eeadab4c359b8c63fa09c6f183c78",
+      "after_sha256": "8fa1e408f6cbe85b891d293a58a7fac1e9940c182b6b4613d375e2d6562d2e2f",
+      "bytes": 6536,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/gcc-division/irix-o2-out.c",
+      "before_sha256": "49f41b69319fa450c8fbb7c73fb484620e7eeadab4c359b8c63fa09c6f183c78",
+      "after_sha256": "8fa1e408f6cbe85b891d293a58a7fac1e9940c182b6b4613d375e2d6562d2e2f",
+      "bytes": 6536,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/gcc-division/mwcc-o4p-out.c",
+      "before_sha256": "31c7ef2f613b942efa494b18cb8106617ed55f68a5540bd665cae2dfccd0bfe0",
+      "after_sha256": "2201b172d9d78add4d7eaf9c799256506c12e0e37ad9982043fd2d2a91cb8e83",
+      "bytes": 11467,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/gcc-division/mwcc27-o4p-out.c",
+      "before_sha256": "10c053147d46f07e9809943a8748d0bf5f61b55be232af3bc42fa7379c7073e6",
+      "after_sha256": "c789ce541e34484c1510aa271b5cbc7cd4e70378f92d1a615d0427ca8da9ced7",
+      "bytes": 12659,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/global_decls/irix-o2-allglobals-out.c",
+      "before_sha256": "bf5dcae442775c884b4edb05c5ad3a79a9a3bbe3d8168c40f3feb23cdb5214b3",
+      "after_sha256": "4c0edd69b3192949e3c9a55e5c80a67d11e58c303a4aea5bde7b38d8338f6ce7",
+      "bytes": 1305,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/known_called_function/agbcc-o2-out.c",
+      "before_sha256": "9508cf8cecab3c9a66ca97d8b8edbd2f563c8348cdefc33857c706a95143708e",
+      "after_sha256": "d5244265de15a4a92b3498b47e6f0663a897ca232d4dc482ec538a4226035907",
+      "bytes": 171,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/known_called_function/irix-g-out.c",
+      "before_sha256": "71d8f3f55e690d4e442f5afdd180994b5a4bfb5f774af283af5ef6f326331e6b",
+      "after_sha256": "5acb86da589bcd087fb2197aba6c6da0cf821f548b885d2dfbabc30678f0d96e",
+      "bytes": 163,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/known_called_function/irix-o2-out.c",
+      "before_sha256": "56eb74644f90fef35bf6a1c9605d44d05847ccdd2a6ff46520a31c9743400d6f",
+      "after_sha256": "dca157d7f226e682a73835d37241adbfa6bf1bdf813fdb71a976f759720cd1f4",
+      "bytes": 171,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/known_called_function/mwcc-o4p-out.c",
+      "before_sha256": "503528612f2bc7c72d0c0a38461f2d31e7e461ab46d51b6ac4f1c87e069f1953",
+      "after_sha256": "a1b6db4addc6bb15de3c9dd561a2313736e74c90005480e3b349da9300e38438",
+      "bytes": 171,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/end_to_end/large-struct-member-address/manual-out.c",
+      "before_sha256": "18af611bafddf1ec0cdc6989a1fffe74c59cf1ee75547eccb61dbe99fe273bc1",
+      "after_sha256": "265be3dacc484c5b5c7a49bb380224824e8182730b0b35f39e55ebcfdff7e485",
+      "bytes": 114,
+      "after_newline": "crlf"
+    },
+    {
+      "path": "tests/unit/test_incomplete_pointer_offsets.py",
+      "before_sha256": null,
+      "after_sha256": "480d08235b651fe4ced2cfe9aa71b9ee64d90e1eab63196753230bc221445c60",
+      "bytes": 4527,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/unit/test_inferred_array_consumer.py",
+      "before_sha256": null,
+      "after_sha256": "61563c14e733cc0bda5d1e6fe67b1f27d061ef55f5557c4a7cb5e92fedb37418",
+      "bytes": 7239,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/unit/test_plain_char.py",
+      "before_sha256": null,
+      "after_sha256": "298b4356f383f258b14495b4c8c749c30651fff05209dbbd05a004ddbaf47cd7",
+      "bytes": 1464,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/unit/test_pointer_arithmetic.py",
+      "before_sha256": "5c22c478ba893ce2f55a7545a4bac07d92e864f6cb05f7eb1848802664cfac09",
+      "after_sha256": "5a50cddc165f2e211250846a8ce2e5d026e28a301b0a715bc43fda79c580605f",
+      "bytes": 12587,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/unit/test_ppc_float_compare_precision.py",
+      "before_sha256": null,
+      "after_sha256": "f9bf6118657e3a4b3bfb7660357cb3528850634d8d5cd3184a1b854b90e73d37",
+      "bytes": 7674,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/unit/test_stack_declarations.py",
+      "before_sha256": null,
+      "after_sha256": "32bf10c4e02ea7bed323a95d8bf3e37b39c2eba083675e82d4a40b8513bac4c9",
+      "bytes": 4966,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/unit/test_zero_offset_access.py",
+      "before_sha256": null,
+      "after_sha256": "b1743b2d59ede07a543f1dfdbe98d897e7ec8ba7b3a0e4001153d14d8a7f2d19",
+      "bytes": 1435,
+      "after_newline": "lf"
+    }
+  ],
+  "patch_sha256": "9187182074fe1f7a14e9b90aa7b51a60a5c8235ecbd274ae9367f8dafc72b662",
+  "matching_credit": false
+}

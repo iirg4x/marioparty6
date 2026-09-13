@@ -1,0 +1,1318 @@
+diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
+--- a/m2c/arch_ppc.py
++++ b/m2c/arch_ppc.py
+@@ -100,6 +100,19 @@
+ from .types import FunctionSignature, Type
+ 
+ 
++def ppc_float_compare(left: Expression, op: str, right: Expression) -> BinaryOp:
++    # Unlike MIPS c.*.s/c.*.d, PPC fcmp[u/o] does not select an operand
++    # precision. Both lfs- and lfd-produced values are compared as held in
++    # the FPRs. Constrain floatness separately, without narrowing a known
++    # double or making an unknown-width producer inherit its peer's width.
++    return BinaryOp(
++        left=as_type(left, Type.floatish(), True),
++        op=op,
++        right=as_type(right, Type.floatish(), True),
++        type=Type.boolean(),
++    )
++
++
+ class FcmpoCrorPattern(SimpleAsmPattern):
+     """
+     For floating point, `x <= y` and `x >= y` use `cror` to OR together the `cr0_eq`
+@@ -1810,12 +1823,12 @@
+         "cmplwi": lambda a, op: BinaryOp.uintptr_cmp(a.reg(1), op, a.s16_imm(2)),
+         # Floating point
+         # TODO: There is a difference in how these two instructions handle NaN
+-        "fcmpo": lambda a, op: BinaryOp.fcmp(a.reg(1), op, a.reg(2)),
+-        "fcmpu": lambda a, op: BinaryOp.fcmp(a.reg(1), op, a.reg(2)),
+-        "fcmpo.lte.fictive": lambda a, op: BinaryOp.fcmp(
++        "fcmpo": lambda a, op: ppc_float_compare(a.reg(1), op, a.reg(2)),
++        "fcmpu": lambda a, op: ppc_float_compare(a.reg(1), op, a.reg(2)),
++        "fcmpo.lte.fictive": lambda a, op: ppc_float_compare(
+             a.reg(1), op if op != "==" else "<=", a.reg(2)
+         ),
+-        "fcmpo.gte.fictive": lambda a, op: BinaryOp.fcmp(
++        "fcmpo.gte.fictive": lambda a, op: ppc_float_compare(
+             a.reg(1), op if op != "==" else ">=", a.reg(2)
+         ),
+     }
+diff --git a/m2c/evaluate.py b/m2c/evaluate.py
+--- a/m2c/evaluate.py
++++ b/m2c/evaluate.py
+@@ -134,6 +134,11 @@
+     )
+     if array_expr is not None:
+         return array_expr
++    # Indexed loads/stores build their address directly, bypassing handle_add_real.
++    if isinstance(uw_var, BinaryOp) and uw_var.op == "+":
++        byte_address = defer_incomplete_pointer_add(uw_var, stack_info, Type.ptr(type))
++        if byte_address is not None:
++            var = byte_address
+     field_path, field_type, _ = var.type.get_deref_field(offset, target_size=size)
+     if field_path is not None:
+         field_type.unify(type)
+@@ -429,6 +434,36 @@
+         return AddressOf(var, type=var.type.reference())
+     else:
+         return add_imm(output_reg, source, imm, args)
++
++
++def needs_byte_pointer_offset(type: Type) -> bool:
++    """Object pointers without a C element size still have machine byte offsets."""
++    if not type.is_pointer():
++        return False
++    target = type.get_pointer_target()
++    return target is None or target.is_void() or (
++        target.is_struct() and not target.get_size_bytes()
++    )
++
++
++def defer_incomplete_pointer_add(
++    expr: BinaryOp, stack_info: StackInfo, result_type: Type
++) -> Optional[Expression]:
++    global_info = stack_info.global_info
++    if not getattr(global_info, "valid_syntax", False) or getattr(global_info, "skip_casts", False):
++        return None
++    for base, offset in ((expr.left, expr.right), (expr.right, expr.left)):
++        if needs_byte_pointer_offset(base.type) and not offset.type.is_pointer_or_array():
++            if isinstance(offset, Literal) and global_info.arch.is_likely_partial_offset(offset.value):
++                continue
++            return DeferredPointerOffset(
++                base,
++                offset.value if isinstance(offset, Literal) else offset,
++                stack_info,
++                type=result_type,
++                legacy_expr=expr,
++            )
++    return None
+ 
+ 
+ def add_imm(
+@@ -469,6 +504,17 @@
+         # immediate.
+         dest_var = stack_info.get_planned_var(output_reg, args.instruction_ref)
+         arch = stack_info.global_info.arch
++        if (
++            valid_pointer_syntax
++            and needs_byte_pointer_offset(source.type)
++            and (not isinstance(imm, Literal) or not arch.is_likely_partial_offset(imm.value))
++        ):
++            return DeferredPointerOffset(
++                source,
++                imm.value if isinstance(imm, Literal) else imm,
++                stack_info,
++                type=Type.ptr(),
++            )
+         inplace = dest_var is not None and var_for_expr(source) == dest_var
+         if (
+             isinstance(imm, Literal)
+@@ -1325,6 +1371,9 @@
+     array_expr = array_access_from_add(expr, 0, stack_info, target_size=None, ptr=True)
+     if array_expr is not None:
+         return array_expr
++    byte_address = defer_incomplete_pointer_add(expr, stack_info, type)
++    if byte_address is not None:
++        return byte_address
+     return expr
+ 
+ 
+diff --git a/m2c/translate.py b/m2c/translate.py
+--- a/m2c/translate.py
++++ b/m2c/translate.py
+@@ -392,6 +392,19 @@
+         return self.param_names.get(loc)
+ 
+     def add_local_var(self, var: LocalVar) -> None:
++        # A stack access may name an array element or a nested member. Register
++        # its owning stack field, not that subobject: only the field has a
++        # top-level declaration and the complete aggregate type.
++        if var.path is not None and len(var.path) > 2:
++            assert self.stack_pointer_type is not None
++            stack_type = self.stack_pointer_type.get_pointer_target()
++            assert stack_type is not None
++            stack_struct = stack_type.get_struct_declaration()
++            assert stack_struct is not None
++            for field in stack_struct.fields_containing_offset(var.value):
++                if field.name == var.path[1]:
++                    var = LocalVar(field.offset, type=field.type, path=var.path[:2])
++                    break
+         if any(v.value == var.value for v in self.local_vars):
+             return
+         self.local_vars.append(var)
+@@ -514,7 +527,34 @@
+             if store:
+                 self.weak_stack_var_types[location] = field_type
+ 
+-            return LocalVar(location, type=field_type, path=field_path)
++            if field_path is None and self.global_info.valid_syntax:
++                # A partial access to a scalar (for example the low word of a
++                # stored double) has no named subfield. Keep the actual storage
++                # owner and express the byte-offset access through it instead
++                # of producing an undeclared unksp local.
++                stack_type = self.stack_pointer_type.get_pointer_target()
++                assert stack_type is not None
++                stack_struct = stack_type.get_struct_declaration()
++                assert stack_struct is not None
++                fields = stack_struct.fields_containing_offset(location)
++                if fields:
++                    owner = fields[0]
++                    local = LocalVar(
++                        owner.offset, type=owner.type, path=[0, owner.name]
++                    )
++                    self.add_local_var(local)
++                    return StructAccess(
++                        struct_var=AddressOf(local, type=owner.type.reference()),
++                        offset=location - owner.offset,
++                        target_size=None,
++                        field_path=None,
++                        stack_info=self,
++                        type=field_type,
++                    )
++
++            return LocalVar(
++                location, type=field_type, path=field_path, stack_info=self
++            )
+ 
+     def maybe_get_register_var(self, reg: Register) -> Optional[Var]:
+         return self.reg_vars.get(reg)
+@@ -1228,10 +1268,16 @@
+                 type=self.type,
+             ).format(fmt)
+ 
+-        # For comparisons to a Literal, cast the Literal to the type of the lhs
++        # For comparisons to a Literal, cast the Literal to the type of the lhs.
++        # Floating operands retain their own producer precision: C promotes a
++        # mixed float/double comparison numerically, not by reinterpreting bits.
+         # (This is not done with complex expressions to avoid propagating incorrect
+         # type information: end-of-array pointers are particularly bad.)
+-        if self.op in ("==", "!=") and isinstance(right_expr, Literal):
++        if (
++            self.op in ("==", "!=")
++            and isinstance(right_expr, Literal)
++            and not self.is_floating()
++        ):
+             right_expr = elide_literal_casts(as_type(right_expr, left_expr.type, True))
+ 
+         # For commutative, left-associative operations, strip unnecessary parentheses.
+@@ -1446,9 +1492,17 @@
+     value: int
+     type: Type = field(compare=False)
+     path: Optional[AccessPath] = field(compare=False)
++    stack_info: Optional[StackInfo] = field(default=None, compare=False, repr=False)
+ 
+     def dependencies(self) -> List[Expression]:
+         return []
++
++    def use(self) -> None:
++        # A live load still needs a declaration when the assembly contains no
++        # store or address-taking operation for this stack slot. Do not add an
++        # initializer, and do not register unused loads or callee-save slots.
++        if self.stack_info is not None and self.stack_info.global_info.valid_syntax:
++            self.stack_info.add_local_var(self)
+ 
+     def format(self, fmt: Formatter) -> str:
+         fallback_name = f"unksp{format_hex(self.value)}"
+@@ -1627,9 +1681,12 @@
+ 
+         field_path: Optional[AccessPath] = self.late_field_path()
+ 
++        pointee = var.type.get_pointer_target()
++        untyped_dereference = (pointee is None or pointee.is_void())
++
+         if field_path is not None and field_path != [0]:
+             has_nonzero_access = True
+-        elif fmt.valid_syntax and (self.offset != 0 or has_nonzero_access):
++        elif fmt.valid_syntax and (self.offset != 0 or has_nonzero_access or untyped_dereference):
+             offset_str = fmt.format_int(self.offset)
+             return f"M2C_FIELD({var.format(fmt)}, {Type.ptr(self.type).format(fmt)}, {offset_str})"
+         else:
+@@ -1896,7 +1953,13 @@
+                     right=Literal(self.offset // target_size),
+                     type=self.type,
+                 )
+-        if not complete_base_struct and not concrete_result:
++        # An unknown pointee does not make a machine byte offset unknown.
++        # Standard C (including MWCC) forbids void*/incomplete-type arithmetic;
++        # keep the address semantics explicit without inventing an object layout.
++        byte_addressable_base = base.type.is_pointer() and (
++            base_target is None or not base_target.is_function()
++        )
++        if not complete_base_struct and not concrete_result and not byte_addressable_base:
+             return self.legacy()
+ 
+         if (
+diff --git a/m2c/types.py b/m2c/types.py
+--- a/m2c/types.py
++++ b/m2c/types.py
+@@ -157,6 +157,9 @@
+     uf_parent: Optional[TypeData] = None
+ 
+     sign: int = ANY_SIGN  # K_INT
++    # Plain char is a distinct C type, not a spelling of signed char. Keep
++    # context-provided character types through inference (notably char* APIs).
++    plain_char: bool = False
+     ptr_to: Optional[Type] = None  # K_PTR | K_ARRAY
+     fn_sig: Optional[FunctionSignature] = None  # K_FN
+     array_dim: Optional[int] = None  # K_PTR | K_ARRAY
+@@ -257,12 +260,6 @@
+             assert kind & TypeData.K_INTPTR
+         if enum is not None:
+             assert kind == TypeData.K_INT
+-        if x.ptr_to is not None and y.ptr_to is not None:
+-            if not x.ptr_to.unify(y.ptr_to, seen=seen):
+-                return False
+-        if x.fn_sig is not None and y.fn_sig is not None:
+-            if not x.fn_sig.unify(y.fn_sig, seen=seen):
+-                return False
+         if x.array_dim is not None and y.array_dim is not None:
+             if kind == TypeData.K_ARRAY:
+                 if x.array_dim != y.array_dim:
+@@ -271,9 +268,6 @@
+                 assert kind == TypeData.K_PTR
+                 if x.array_dim != y.array_dim:
+                     array_dim = 0
+-        if x.struct is not None and y.struct is not None:
+-            if not x.struct.unify(y.struct, seen=seen):
+-                return False
+         if x.enum is not None and y.enum is not None:
+             if x.enum != y.enum:
+                 return False
+@@ -281,10 +275,23 @@
+             # Disallow recursive structs: if y is a struct that has a newly added
+             # field of (yet unknown) type x, don't allow unifying x and y.
+             return False
++        # Check outer constraints before unifying children: an inferred child
++        # aggregate may adopt its consumer's known identity on success.
++        if x.ptr_to is not None and y.ptr_to is not None:
++            if not x.ptr_to.unify(y.ptr_to, seen=seen):
++                return False
++        if x.fn_sig is not None and y.fn_sig is not None:
++            if not x.fn_sig.unify(y.fn_sig, seen=seen):
++                return False
++        if x.struct is not None and y.struct is not None:
++            if not x.struct.unify(y.struct, seen=seen):
++                return False
++            struct = x.struct.canonical()
+         x.kind = kind
+         x.likely_kind = likely_kind
+         x.size_bits = size_bits
+         x.sign = sign
++        x.plain_char |= y.plain_char
+         x.ptr_to = ptr_to
+         x.fn_sig = fn_sig
+         x.array_dim = array_dim
+@@ -295,9 +302,10 @@
+         return True
+ 
+     def data(self) -> TypeData:
+-        if self._data.uf_parent is None:
+-            return self._data
+-        self._data = self._data.get_representative()
++        if self._data.uf_parent is not None:
++            self._data = self._data.get_representative()
++        if self._data.struct is not None:
++            self._data.struct = self._data.struct.canonical()
+         return self._data
+ 
+     def is_float(self) -> bool:
+@@ -814,6 +822,8 @@
+                 align=[],
+             )
+ 
++        if data.plain_char and size_bits == 8:
++            return simple_ctype("char")
+         return simple_ctype(f"{sign}{size_bits}")
+ 
+     def format(self, fmt: Formatter) -> str:
+@@ -991,6 +1001,7 @@
+ 
+     @staticmethod
+     def struct(st: StructDeclaration) -> Type:
++        st = st.canonical()
+         size_bits = st.size * 8 if st.size is not None else None
+         return Type(TypeData(kind=TypeData.K_STRUCT, size_bits=size_bits, struct=st))
+ 
+@@ -1084,6 +1095,10 @@
+                 return Type.void()
+             size_bits = 8 * primitive_size(inner_type)
+             assert size_bits > 0
++            if names == ["char"]:
++                # The compiler's char-signedness flag decides its arithmetic
++                # interpretation; instruction constraints may still narrow it.
++                return Type(TypeData(kind=TypeData.K_INT, size_bits=8, plain_char=True))
+             sign = TypeData.UNSIGNED if "unsigned" in names else TypeData.SIGNED
+             return Type(TypeData(kind=TypeData.K_INT, size_bits=size_bits, sign=sign))
+         assert_never(real_ctype)
+@@ -1317,6 +1332,13 @@
+     is_union: bool = False
+     is_stack: bool = False
+     preferred_union_field: Optional[str] = None
++    inferred: bool = False
++    _canonical: Optional[StructDeclaration] = field(default=None, repr=False)
++
++    def canonical(self) -> StructDeclaration:
++        # Only an inferred record can alias a non-inferred record, so aliases
++        # are one hop and cannot form cycles, even under reverse unification.
++        return self._canonical or self
+ 
+     def min_size(self) -> int:
+         if self.size is not None:
+@@ -1335,9 +1357,47 @@
+         *,
+         seen: Optional[Set[TypeData]] = None,
+     ) -> bool:
+-        # NB: Currently, the only structs that exist are defined from ctypes in the typemap,
+-        # so for now we can use reference equality to check if two structs are compatible.
+-        return self is other
++        left, right = self.canonical(), other.canonical()
++        if left is right:
++            return True
++
++        for inferred, known in ((left, right), (right, left)):
++            if (
++                not inferred.inferred
++                or known.inferred
++                or inferred.fields
++                or inferred.bitfields
++                or inferred.has_bitfields
++                or inferred.is_stack
++                or inferred.is_union
++                or known.is_stack
++                or known.is_union
++                or known.bitfields
++                or known.has_bitfields
++                or not known.fields
++                or any(not field.known for field in known.fields)
++                or inferred.size is None
++                or inferred.size <= 0
++                or inferred.size != known.size
++                # Alignment 1 is the unknown() default, not evidence of a
++                # packed layout. Preserve any stronger observed constraint.
++                or inferred.align not in (1, known.align)
++            ):
++                continue
++            assert known.size is not None
++            if any(
++                field.offset < 0
++                or field.type.get_size_bytes() is None
++                or field.offset + (field.type.get_size_bytes() or 0) > known.size
++                for field in known.fields
++            ):
++                continue
++            # The empty record expresses only a stride, not a C tag identity.
++            # Adopt the actual consumer's record without copying/inventing
++            # fields or changing any context-defined declaration.
++            inferred._canonical = known
++            return True
++        return False
+ 
+     def fields_containing_offset(self, offset: int) -> List[StructField]:
+         """Return the list of StructFields which contain the given offset (in bytes)"""
+@@ -1581,6 +1641,7 @@
+             tag_name=tag_name,
+             new_field_prefix=typepool.unknown_field_prefix,
+             preferred_union_field=preferred_field,
++            inferred=True,
+         )
+         typepool.add_struct(decl, tag_name)
+         return decl
+diff --git a/tests/end_to_end/complicated_context/irix-g-out.c b/tests/end_to_end/complicated_context/irix-g-out.c
+--- a/tests/end_to_end/complicated_context/irix-g-out.c
++++ b/tests/end_to_end/complicated_context/irix-g-out.c
+@@ -1,6 +1,6 @@
+ s16 test(struct SomeStruct *arg, u8 should, f64 union_arg_unk0, ? union_arg_unk4, ...) {
+     f64 sp0;
+-    s8 temp_a1;
++    char temp_a1;
+ 
+     temp_a1 = should & 0xFF;
+     sp0 = union_arg_unk0;
+diff --git a/tests/end_to_end/complicated_context/irix-o2-out.c b/tests/end_to_end/complicated_context/irix-o2-out.c
+--- a/tests/end_to_end/complicated_context/irix-o2-out.c
++++ b/tests/end_to_end/complicated_context/irix-o2-out.c
+@@ -1,5 +1,5 @@
+ s16 test(struct SomeStruct *arg, u8 should, ? union_arg_unk0, ? union_arg_unk4, ...) {
+-    s8 temp_t6;
++    char temp_t6;
+ 
+     temp_t6 = should & 0xFF;
+     if (temp_t6 != 0) {
+diff --git a/tests/end_to_end/custom_stack/irix-o2-out.c b/tests/end_to_end/custom_stack/irix-o2-out.c
+--- a/tests/end_to_end/custom_stack/irix-o2-out.c
++++ b/tests/end_to_end/custom_stack/irix-o2-out.c
+@@ -5,13 +5,13 @@
+     /* 0x30 */ s32 c;
+     /* 0x34 */ s16 b;
+     /* 0x36 */ char pad36[1];
+-    /* 0x37 */ s8 a;
++    /* 0x37 */ char a;
+ };                                                  /* size = 0x38 */
+ 
+-? func_00400090(s8 *);                              /* static */
++? func_00400090(char *);                            /* static */
+ 
+ s32 test(struct Vec *v) {
+-    s8 a;
++    char a;
+     s16 b;
+     s32 c;
+     struct Vec *d;
+@@ -19,10 +19,10 @@
+     s32 temp_t4;
+ 
+     func_00400090(&a);
+-    func_00400090((s8 *) &b);
+-    func_00400090((s8 *) &c);
+-    func_00400090((s8 *) &d);
+-    func_00400090((s8 *) &e);
++    func_00400090((char *) &b);
++    func_00400090((char *) &c);
++    func_00400090((char *) &d);
++    func_00400090((char *) &e);
+     a = v->x + v->y;
+     b = v->x + v->z;
+     temp_t4 = v->y + v->z;
+diff --git a/tests/end_to_end/doubles/mwcc-o4p-out.c b/tests/end_to_end/doubles/mwcc-o4p-out.c
+--- a/tests/end_to_end/doubles/mwcc-o4p-out.c
++++ b/tests/end_to_end/doubles/mwcc-o4p-out.c
+@@ -5,7 +5,7 @@
+     f64 var_f1;
+ 
+     temp_f1 = ((farg0 * (f64) arg0) + (farg0 / farg1)) - 7.0;
+-    if (((f32) temp_f1 < (f32) farg1) || ((f32) temp_f1 == (f32) farg1) || ((f32) temp_f1 > (bitwise f32) 9.0)) {
++    if ((temp_f1 < farg1) || (temp_f1 == farg1) || (temp_f1 > 9.0)) {
+         var_f1 = 5.0;
+     } else {
+         var_f1 = 6.0;
+diff --git a/tests/end_to_end/gcc-division/agbcc-o2-out.c b/tests/end_to_end/gcc-division/agbcc-o2-out.c
+--- a/tests/end_to_end/gcc-division/agbcc-o2-out.c
++++ b/tests/end_to_end/gcc-division/agbcc-o2-out.c
+@@ -1,5 +1,5 @@
+ void test(u32 a) {
+-    test_s8((s8) (u8) a);
++    test_s8((char) a);
+     test_s16((s16) a);
+     test_s32_div((s32) a);
+     test_s32_mod((s32) a);
+@@ -7,22 +7,22 @@
+     test_u32_mod(a);
+ }
+ 
+-void test_s8(s8 c) {
++void test_s8(char c) {
+     unksp0 = c;
+-    foo((u8) unksp0 >> 1);
+-    foo((u32) (u8) ((u8) unksp0 / 3U));
+-    foo((u32) (u8) ((u8) unksp0 / 5U));
+-    foo((u32) (u8) ((u8) unksp0 / 7U));
+-    foo((u32) (u8) ((u8) unksp0 / 10U));
+-    foo((u32) (u8) ((u8) unksp0 / 100U));
+-    foo((u32) (u8) ((u8) unksp0 / 255U));
+-    foo(1 & (u8) unksp0);
+-    foo((u32) (u8) ((u8) unksp0 % 3U));
+-    foo((u32) (u8) ((u8) unksp0 % 5U));
+-    foo((u32) (u8) ((u8) unksp0 % 7U));
+-    foo((u32) (u8) ((u8) unksp0 % 10U));
+-    foo((u32) (u8) ((u8) unksp0 % 100U));
+-    foo((u32) (u8) ((u8) unksp0 % 255U));
++    foo((char) unksp0 >> 1);
++    foo((u32) (u8) ((char) unksp0 / 3U));
++    foo((u32) (u8) ((char) unksp0 / 5U));
++    foo((u32) (u8) ((char) unksp0 / 7U));
++    foo((u32) (u8) ((char) unksp0 / 10U));
++    foo((u32) (u8) ((char) unksp0 / 100U));
++    foo((u32) (u8) ((char) unksp0 / 255U));
++    foo(1 & unksp0);
++    foo((u32) (u8) ((char) unksp0 % 3U));
++    foo((u32) (u8) ((char) unksp0 % 5U));
++    foo((u32) (u8) ((char) unksp0 % 7U));
++    foo((u32) (u8) ((char) unksp0 % 10U));
++    foo((u32) (u8) ((char) unksp0 % 100U));
++    foo((u32) (u8) ((char) unksp0 % 255U));
+ }
+ 
+ void test_s16(s16 h) {
+diff --git a/tests/end_to_end/gcc-division/irix-g-out.c b/tests/end_to_end/gcc-division/irix-g-out.c
+--- a/tests/end_to_end/gcc-division/irix-g-out.c
++++ b/tests/end_to_end/gcc-division/irix-g-out.c
+@@ -1,5 +1,5 @@
+ void test(u32 a) {
+-    test_s8((s8) a);
++    test_s8((char) a);
+     test_s16((s16) a);
+     test_s32_div((s32) a);
+     test_s32_mod((s32) a);
+@@ -7,7 +7,7 @@
+     test_u32_mod(a);
+ }
+ 
+-void test_s8(s8 c) {
++void test_s8(char c) {
+     foo((u32) (c / 2));
+     foo((u32) (c / 3));
+     foo((u32) (c / 5));
+diff --git a/tests/end_to_end/gcc-division/irix-o2-out.c b/tests/end_to_end/gcc-division/irix-o2-out.c
+--- a/tests/end_to_end/gcc-division/irix-o2-out.c
++++ b/tests/end_to_end/gcc-division/irix-o2-out.c
+@@ -1,5 +1,5 @@
+ void test(u32 a) {
+-    test_s8((s8) a);
++    test_s8((char) a);
+     test_s16((s16) a);
+     test_s32_div((s32) a);
+     test_s32_mod((s32) a);
+@@ -7,7 +7,7 @@
+     test_u32_mod(a);
+ }
+ 
+-void test_s8(s8 c) {
++void test_s8(char c) {
+     foo((u32) (c / 2));
+     foo((u32) (c / 3));
+     foo((u32) (c / 5));
+diff --git a/tests/end_to_end/gcc-division/mwcc-o4p-out.c b/tests/end_to_end/gcc-division/mwcc-o4p-out.c
+--- a/tests/end_to_end/gcc-division/mwcc-o4p-out.c
++++ b/tests/end_to_end/gcc-division/mwcc-o4p-out.c
+@@ -1,5 +1,5 @@
+ void test(u32 a) {
+-    test_s8((s8) a);
++    test_s8((char) a);
+     test_s16((s16) a);
+     test_s32_div((s32) a);
+     test_s32_mod((s32) a);
+@@ -7,8 +7,8 @@
+     test_u32_mod(a);
+ }
+ 
+-void test_s8(s8 c) {
+-    s8 sp8;
++void test_s8(char c) {
++    char sp8;
+ 
+     sp8 = c;
+     foo((u32) ((s8) (u8) sp8 / 2));
+diff --git a/tests/end_to_end/gcc-division/mwcc27-o4p-out.c b/tests/end_to_end/gcc-division/mwcc27-o4p-out.c
+--- a/tests/end_to_end/gcc-division/mwcc27-o4p-out.c
++++ b/tests/end_to_end/gcc-division/mwcc27-o4p-out.c
+@@ -1,5 +1,5 @@
+ void test(u32 a) {
+-    test_s8((s8) a);
++    test_s8((char) a);
+     test_s16((s16) a);
+     test_s32_div((s32) a);
+     test_s32_mod((s32) a);
+@@ -7,8 +7,8 @@
+     test_u32_mod(a);
+ }
+ 
+-void test_s8(s8 c) {
+-    s8 sp8;
++void test_s8(char c) {
++    char sp8;
+     u32 temp_r3;
+ 
+     sp8 = c;
+diff --git a/tests/end_to_end/global_decls/irix-o2-allglobals-out.c b/tests/end_to_end/global_decls/irix-o2-allglobals-out.c
+--- a/tests/end_to_end/global_decls/irix-o2-allglobals-out.c
++++ b/tests/end_to_end/global_decls/irix-o2-allglobals-out.c
+@@ -26,7 +26,7 @@
+ struct A *static_A_ptr = &static_A;
+ s32 static_array[3] = { 2, 4, 6 };
+ s16 unused_static_array[3] = { -8, 0x000A, 0x000C };
+-s8 unused_static_string[4] = "abc";
++char unused_static_string[4] = "abc";
+ s32 static_int;
+ s32 static_bss_array[3];
+ struct A static_bss_A;
+diff --git a/tests/end_to_end/known_called_function/agbcc-o2-out.c b/tests/end_to_end/known_called_function/agbcc-o2-out.c
+--- a/tests/end_to_end/known_called_function/agbcc-o2-out.c
++++ b/tests/end_to_end/known_called_function/agbcc-o2-out.c
+@@ -1,4 +1,4 @@
+-void test(s32 x, s16* y, s32 z, s8* r, s16* s, s32* t, s32* u) {
++void test(s32 x, s16* y, s32 z, char* r, s16* s, s32* t, s32* u) {
+     s32* var_r0;
+ 
+     var_r0 = NULL;
+diff --git a/tests/end_to_end/known_called_function/irix-g-out.c b/tests/end_to_end/known_called_function/irix-g-out.c
+--- a/tests/end_to_end/known_called_function/irix-g-out.c
++++ b/tests/end_to_end/known_called_function/irix-g-out.c
+@@ -1,4 +1,4 @@
+-void test(s32 x, s16* y, s32 z, s8* r, s16* s, s32* t, s32* u) {
++void test(s32 x, s16* y, s32 z, char* r, s16* s, s32* t, s32* u) {
+     s32* sp1C;
+ 
+     sp1C = NULL;
+diff --git a/tests/end_to_end/known_called_function/irix-o2-out.c b/tests/end_to_end/known_called_function/irix-o2-out.c
+--- a/tests/end_to_end/known_called_function/irix-o2-out.c
++++ b/tests/end_to_end/known_called_function/irix-o2-out.c
+@@ -1,4 +1,4 @@
+-void test(s32 x, s16 *y, s32 z, s8 *r, s16 *s, s32 *t, s32 *u) {
++void test(s32 x, s16 *y, s32 z, char *r, s16 *s, s32 *t, s32 *u) {
+     s32 *var_s0;
+ 
+     var_s0 = NULL;
+diff --git a/tests/end_to_end/known_called_function/mwcc-o4p-out.c b/tests/end_to_end/known_called_function/mwcc-o4p-out.c
+--- a/tests/end_to_end/known_called_function/mwcc-o4p-out.c
++++ b/tests/end_to_end/known_called_function/mwcc-o4p-out.c
+@@ -1,4 +1,4 @@
+-void test(s32 x, s16 *y, s32 z, s8 *r, s16 *s, s32 *t, s32 *u) {
++void test(s32 x, s16 *y, s32 z, char *r, s16 *s, s32 *t, s32 *u) {
+     s32 *var_r3;
+ 
+     var_r3 = NULL;
+diff --git a/tests/end_to_end/large-struct-member-address/manual-out.c b/tests/end_to_end/large-struct-member-address/manual-out.c
+--- a/tests/end_to_end/large-struct-member-address/manual-out.c
++++ b/tests/end_to_end/large-struct-member-address/manual-out.c
+@@ -1,4 +1,4 @@
+-? foo(s8 *);                                        /* extern */
++? foo(char *);                                      /* extern */
+ 
+ void test(struct A *a) {
+     foo(&a->b);
+diff --git a/tests/unit/test_incomplete_pointer_offsets.py b/tests/unit/test_incomplete_pointer_offsets.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_incomplete_pointer_offsets.py
+@@ -0,0 +1,71 @@
++import unittest
++
++from m2c.asm_instruction import Register
++from m2c.evaluate import add_imm, deref, handle_add_real
++from m2c.options import Formatter
++from m2c.translate import BinaryOp, DeferredPointerOffset, GlobalSymbol, Literal
++from m2c.types import StructDeclaration, Type
++from tests.unit import test_pointer_arithmetic as support
++
++
++class TestIncompletePointerOffsets(unittest.TestCase):
++    def test_constant_void_and_incomplete_offsets(self):
++        incomplete = Type.struct(StructDeclaration(
++            size=None, align=4, new_field_prefix='unk', typedef_name='M621Effect'))
++        for type in (Type.ptr(Type.void()), Type.ptr(incomplete)):
++            with self.subTest(type=type):
++                base = GlobalSymbol('record', type)
++                expr = add_imm(Register('r3'), base, Literal(28),
++                               support.TestPointerArithmetic._args(valid_syntax=True))
++                self.assertIsInstance(expr, DeferredPointerOffset)
++                self.assertIn('((u8 *) record + 0x1C)', expr.format(Formatter(valid_syntax=True)))
++                self.assertIsNone(incomplete.get_size_bytes())
++
++    def test_forward_declaration_zero_size_uses_byte_offset(self):
++        # Context forward declarations currently carry a zero-size sentinel.
++        record = StructDeclaration(size=0, align=1, new_field_prefix='unk', typedef_name='M621Effect')
++        base = GlobalSymbol('lbl_1_bss_20', Type.ptr(Type.struct(record)))
++        index = BinaryOp.sint(GlobalSymbol('var_r30', Type.s32()), '*', Literal(4))
++        expr = handle_add_real(base, index, support.TestPointerArithmetic._args(valid_syntax=True))
++        self.assertIsInstance(expr, DeferredPointerOffset)
++        self.assertEqual(expr.format(Formatter(valid_syntax=True)),
++                         '(M621Effect *) ((u8 *) lbl_1_bss_20 + ((s32) var_r30 * 4))')
++        self.assertEqual(record.fields, [])
++
++    def test_indexed_memory_address_bypassing_add_handler_is_typed(self):
++        for width, scale, typename in ((2, 2, 'u16'), (4, 4, 'u32')):
++            with self.subTest(width=width):
++                base = GlobalSymbol('buffer', Type.ptr(Type.void()))
++                index = BinaryOp.sint(GlobalSymbol('index', Type.s32()), '*', Literal(scale))
++                raw_address = BinaryOp.intptr(base, '+', index)
++                args = support.TestPointerArithmetic._args(valid_syntax=True)
++                access = deref(raw_address, {}, args.stack_info, size=width, store=True)
++                access.type.unify(Type.u16() if width == 2 else Type.u32())
++                self.assertEqual(access.format(Formatter(valid_syntax=True)),
++                                 f'*({typename} *) ((u8 *) buffer + ((s32) index * {scale}))')
++
++    def test_indexed_offsets_and_commuted_operands_keep_byte_scale(self):
++        incomplete = Type.struct(StructDeclaration(
++            size=None, align=4, new_field_prefix='unk', typedef_name='M621Effect'))
++        for type, scale in ((Type.ptr(Type.void()), 2), (Type.ptr(incomplete), 4)):
++            for commuted in (False, True):
++                base = GlobalSymbol('buffer', type)
++                index = BinaryOp.sint(GlobalSymbol('index', Type.s32()), '*', Literal(scale))
++                lhs, rhs = (index, base) if commuted else (base, index)
++                expr = handle_add_real(lhs, rhs, support.TestPointerArithmetic._args(valid_syntax=True))
++                self.assertIsInstance(expr, DeferredPointerOffset)
++                text = expr.format(Formatter(valid_syntax=True))
++                self.assertIn('(u8 *) buffer', text)
++                self.assertIn(f'index * {scale}', text)
++                self.assertEqual(expr.format(Formatter()), expr.legacy_expr.format(Formatter()))
++
++    def test_default_skip_casts_partial_and_known_stride_unchanged(self):
++        base = GlobalSymbol('buffer', Type.ptr(Type.void()))
++        for options in ({'valid_syntax': False}, {'valid_syntax': True, 'skip_casts': True},
++                        {'valid_syntax': True, 'partial': True}):
++            expr = add_imm(Register('r3'), base, Literal(28), support.TestPointerArithmetic._args(**options))
++            self.assertNotIsInstance(expr, DeferredPointerOffset)
++            self.assertEqual(expr.format(Formatter()), '(buffer + 0x1C)')
++        expr = add_imm(Register('r3'), GlobalSymbol('words', Type.ptr(Type.u32())),
++                       Literal(16), support.TestPointerArithmetic._args(valid_syntax=True))
++        self.assertEqual(expr.format(Formatter(valid_syntax=True)), '(words + 4)')
+diff --git a/tests/unit/test_inferred_array_consumer.py b/tests/unit/test_inferred_array_consumer.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_inferred_array_consumer.py
+@@ -0,0 +1,164 @@
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++from m2c.options import Formatter
++from m2c.types import StructDeclaration, Type, TypePool
++
++
++class InferredArrayConsumerTests(unittest.TestCase):
++    @staticmethod
++    def inferred(*, size=12, align=1):
++        return StructDeclaration.unknown(
++            TypePool("unk", True), size, "_struct_points_0xC", align=align
++        )
++
++    @staticmethod
++    def point(*, name="Point3d", size=12, align=4):
++        return StructDeclaration(
++            size=size,
++            align=align,
++            new_field_prefix="unk",
++            typedef_name=name,
++            fields=[
++                StructDeclaration.StructField(Type.f32(), i * 4, axis, True)
++                for i, axis in enumerate(("x", "y", "z"))
++            ],
++        )
++
++    def test_empty_stride_type_adopts_consumer_in_both_orders(self):
++        for reverse in (False, True):
++            with self.subTest(reverse=reverse):
++                inferred, known = self.inferred(), self.point()
++                element = Type.struct(inferred)
++                old_binding = Type.struct(inferred)
++                array = Type.array(element, 2)
++                actual, expected = array.reference(), Type.ptr(Type.struct(known))
++                left, right = (expected, actual) if reverse else (actual, expected)
++                self.assertTrue(left.unify(right))
++                self.assertIs(element.get_struct_declaration(), known)
++                self.assertIs(old_binding.get_struct_declaration(), known)
++                self.assertIs(Type.struct(inferred).get_struct_declaration(), known)
++                self.assertEqual(array.to_decl("points", Formatter()), "Point3d points[2]")
++                self.assertEqual([field.name for field in known.fields], ["x", "y", "z"])
++
++    def test_known_records_and_context_forward_declarations_never_merge(self):
++        known = self.point()
++        for other in (
++            self.point(name="Other"),
++            StructDeclaration(12, 4, "unk", tag_name="EmptyKnown"),
++            StructDeclaration(0, 1, "unk", tag_name="Forward"),
++        ):
++            with self.subTest(other=other):
++                self.assertFalse(Type.struct(other).unify(Type.struct(known)))
++                self.assertIs(Type.struct(other).get_struct_declaration(), other)
++                self.assertIs(Type.struct(known).get_struct_declaration(), known)
++
++    def test_conflicting_or_unproven_extent_and_alignment_rejected(self):
++        for size, align in ((16, 1), (None, 1), (12, 8), (12, 2)):
++            with self.subTest(size=size, align=align):
++                inferred, known = self.inferred(size=size, align=align), self.point()
++                self.assertFalse(Type.struct(inferred).unify(Type.struct(known)))
++                self.assertIs(Type.struct(inferred).get_struct_declaration(), inferred)
++
++    def test_observed_fields_stack_and_union_records_rejected(self):
++        for kind in ("field", "bitfield", "stack", "union"):
++            with self.subTest(kind=kind):
++                inferred, known = self.inferred(), self.point()
++                if kind == "field":
++                    inferred.try_add_field(Type.f32(), 0, "unk0", 4)
++                elif kind == "bitfield":
++                    inferred.has_bitfields = True
++                elif kind == "stack":
++                    inferred.is_stack = True
++                else:
++                    inferred.is_union = True
++                self.assertFalse(Type.struct(inferred).unify(Type.struct(known)))
++
++    def test_repeated_reverse_adoption_cannot_create_alias_cycles(self):
++        first, second, known = self.inferred(), self.inferred(), self.point()
++        self.assertFalse(Type.struct(first).unify(Type.struct(second)))
++        self.assertFalse(Type.struct(second).unify(Type.struct(first)))
++        self.assertTrue(Type.struct(first).unify(Type.struct(known)))
++        self.assertTrue(Type.struct(known).unify(Type.struct(first)))
++        self.assertTrue(Type.struct(second).unify(Type.struct(first)))
++        self.assertTrue(Type.struct(first).unify(Type.struct(second)))
++        for record in (first, second, known):
++            self.assertIs(Type.struct(record).get_struct_declaration(), known)
++        other_known = self.point(name="OtherPoint")
++        self.assertFalse(Type.struct(first).unify(Type.struct(other_known)))
++        self.assertIs(Type.struct(first).get_struct_declaration(), known)
++
++    def test_conflicting_array_dimensions_do_not_adopt_element(self):
++        inferred, known = self.inferred(), self.point()
++        self.assertFalse(
++            Type.array(Type.struct(inferred), 2).unify(Type.array(Type.struct(known), 3))
++        )
++        self.assertIs(Type.struct(inferred).get_struct_declaration(), inferred)
++
++    def test_recursive_or_incomplete_consumer_constraints_do_not_adopt(self):
++        inferred, known = self.inferred(), self.point()
++        element = Type.struct(inferred)
++        element.data().new_field_within.add(known)
++        self.assertFalse(element.unify(Type.struct(known)))
++        self.assertIs(element.get_struct_declaration(), inferred)
++        for member_type, offset in ((Type.any(), 0), (Type.f32(), 12)):
++            with self.subTest(offset=offset):
++                inferred, known = self.inferred(), self.point()
++                known.fields = [
++                    StructDeclaration.StructField(member_type, offset, "field", True)
++                ]
++                self.assertFalse(Type.struct(inferred).unify(Type.struct(known)))
++                self.assertIs(Type.struct(inferred).get_struct_declaration(), inferred)
++
++    def test_real_consumer_recovers_array_declaration_and_initializer(self):
++        assembly = """.section .text
++.global sample
++sample:
++    stwu r1, -0x10(r1)
++    mflr r0
++    stw r0, 0x14(r1)
++    mulli r0, r3, 12
++    lis r4, points@ha
++    addi r4, r4, points@l
++    add r4, r4, r0
++    li r3, 7
++    bl set_position
++    lwz r0, 0x14(r1)
++    mtlr r0
++    addi r1, r1, 0x10
++    blr
++.section .data
++.balign 4
++.global points
++points:
++    .4byte 0x3f800000, 0x40000000, 0x40400000
++    .4byte 0x40800000, 0x40a00000, 0x40c00000
++"""
++        context = """typedef struct Point3d { float x, y, z; } Point3d;
++void set_position(int model, Point3d *position);
++void sample(int index);
++"""
++        root = Path(__file__).resolve().parents[2]
++        with tempfile.TemporaryDirectory() as directory:
++            asm_path = Path(directory) / "sample.s"
++            ctx_path = Path(directory) / "ctx.c"
++            asm_path.write_text(assembly, encoding="utf-8")
++            ctx_path.write_text(context, encoding="utf-8")
++            proc = subprocess.run(
++                [sys.executable, str(root / "m2c.py"), "-t", "ppc-mwcc-c",
++                 "--valid-syntax", "--no-cache", "--context", str(ctx_path),
++                 str(asm_path)],
++                capture_output=True, text=True,
++            )
++        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
++        self.assertIn("Point3d points[2] =", proc.stdout)
++        self.assertIn("1.0f, 2.0f, 3.0f", proc.stdout)
++        self.assertIn("4.0f, 5.0f, 6.0f", proc.stdout)
++        self.assertNotIn("_struct_points", proc.stdout)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/unit/test_plain_char.py b/tests/unit/test_plain_char.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_plain_char.py
+@@ -0,0 +1,35 @@
++import unittest
++
++from m2c.c_types import TypeMap, basic_type
++from m2c.options import Formatter
++from m2c.types import Type, TypePool
++
++
++class PlainCharTests(unittest.TestCase):
++    def ctype(self, *names):
++        return Type.ctype(basic_type(list(names)), TypeMap('', 4), TypePool('unk', False))
++
++    def test_context_char_pointer_and_array_survive(self):
++        char = self.ctype('char')
++        self.assertEqual(Type.ptr(char).to_decl('p', Formatter()), 'char *p')
++        self.assertEqual(Type.array(char, 18).to_decl('s', Formatter()), 'char s[0x12]')
++
++    def test_explicit_signed_and_unsigned_remain_distinct(self):
++        self.assertEqual(self.ctype('signed', 'char').format(Formatter()), 's8')
++        self.assertEqual(self.ctype('unsigned', 'char').format(Formatter()), 'u8')
++        self.assertFalse(Type.s8().unify(Type.u8()))
++
++    def test_plain_char_survives_union_find_in_both_orders(self):
++        for reverse in (False, True):
++            char, inferred = self.ctype('char'), Type.int_of_size(8)
++            self.assertTrue(char.unify(inferred) if reverse else inferred.unify(char))
++            self.assertEqual(char.format(Formatter()), 'char')
++            self.assertEqual(inferred.format(Formatter()), 'char')
++
++    def test_not_a_universal_byte_rewrite(self):
++        self.assertEqual(Type.int_of_size(8).format(Formatter()), 's8')
++        self.assertFalse(self.ctype('char').unify(Type.s32()))
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/tests/unit/test_pointer_arithmetic.py b/tests/unit/test_pointer_arithmetic.py
+--- a/tests/unit/test_pointer_arithmetic.py
++++ b/tests/unit/test_pointer_arithmetic.py
+@@ -245,6 +245,27 @@
+         self.assertIs(raw_offset.type._data, raw_data)
+         self.assertEqual(raw_offset.type.get_size_bits(), 32)
+ 
++    def test_void_pointer_byte_offset_without_known_result(self) -> None:
++        for pointer_type in (Type.ptr(), Type.ptr(Type.void())):
++            for offset, expected in ((12, '(void *) ((u8 *) buffer + 0xC)'),
++                                     (-12, '(void *) ((u8 *) buffer - 0xC)')):
++                expression = DeferredPointerOffset(
++                    GlobalSymbol('buffer', pointer_type), offset,
++                    cast(StackInfo, SimpleNamespace()), type=pointer_type,
++                    normalize_by_pointee=True,
++                )
++                self.assertEqual(expression.format(Formatter(valid_syntax=True)), expected)
++                self.assertEqual(pointer_type.format(Formatter()), 'void *')
++
++    def test_void_pointer_increment_does_not_collapse_to_illegal_compound(self) -> None:
++        args = self._args(valid_syntax=True)
++        stack_info = cast(StackInfo, args.stack_info)
++        source, pointer_var = self._late_temp('buffer', Type.ptr(Type.void()), stack_info)
++        args.stack_info.get_planned_var = lambda *_args: pointer_var
++        expression = add_imm(Register('r0'), source, Literal(12), cast(InstrArgs, args))
++        self.assertEqual(format_assignment(pointer_var, expression, Formatter(valid_syntax=True)),
++                         'buffer = (void *) ((u8 *) buffer + 0xC);')
++
+     def test_default_and_skip_casts_keep_raw_pointer_offset_spelling(self) -> None:
+         pointer_type = Type.ptr(Type.u32())
+         expression = DeferredPointerOffset(
+diff --git a/tests/unit/test_ppc_float_compare_precision.py b/tests/unit/test_ppc_float_compare_precision.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_ppc_float_compare_precision.py
+@@ -0,0 +1,145 @@
++import struct
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++from m2c.arch_ppc import PpcArch, ppc_float_compare
++from m2c.options import Formatter
++from m2c.translate import BinaryOp, Cast, GlobalSymbol, Literal
++from m2c.types import Type
++
++
++class PpcFloatComparePrecisionTests(unittest.TestCase):
++    def test_known_operand_precisions_are_independent(self) -> None:
++        for left_bits, right_bits in ((32, 32), (64, 64), (32, 64), (64, 32)):
++            with self.subTest(left=left_bits, right=right_bits):
++                left = GlobalSymbol("left", Type.f32() if left_bits == 32 else Type.f64())
++                right = GlobalSymbol("right", Type.f32() if right_bits == 32 else Type.f64())
++                result = ppc_float_compare(left, "<", right)
++                self.assertIs(result.left, left)
++                self.assertIs(result.right, right)
++                self.assertEqual(left.type.get_size_bits(), left_bits)
++                self.assertEqual(right.type.get_size_bits(), right_bits)
++                self.assertEqual(result.format(Formatter()), "(left < right)")
++                self.assertTrue(result.is_floating())
++
++    def test_double_literal_bits_and_width_are_preserved(self) -> None:
++        for value in (0.001, 0.000001, 1.0):
++            with self.subTest(value=value):
++                bits = int.from_bytes(struct.pack(">d", value), "big")
++                literal = Literal(bits, Type.f64())
++                result = ppc_float_compare(GlobalSymbol("value", Type.f32()), "==", literal)
++                self.assertIsInstance(result.right, Literal)
++                self.assertEqual(result.right.value, bits)
++                self.assertEqual(result.right.type.get_size_bits(), 64)
++                self.assertNotIn("bitwise", result.format(Formatter()).lower())
++                self.assertNotIsInstance(result.right, Cast)
++
++    def test_unknown_precision_is_not_inferred_from_peer(self) -> None:
++        unknown = GlobalSymbol("unknown", Type.any_reg())
++        known = GlobalSymbol("known", Type.f64())
++        result = ppc_float_compare(unknown, "<", known)
++        self.assertTrue(unknown.type.is_float())
++        self.assertIsNone(unknown.type.get_size_bits())
++        self.assertEqual(known.type.get_size_bits(), 64)
++        self.assertTrue(unknown.type.unify(Type.f32()))
++        self.assertEqual(result.left.type.get_size_bits(), 32)
++        self.assertEqual(result.right.type.get_size_bits(), 64)
++
++    def test_mixed_literal_comparisons_keep_bits_for_both_operand_orders(self) -> None:
++        for value_bits, literal_bits in ((32, 64), (64, 32)):
++            for op in ("==", "!=", "<", ">", "<=", ">="):
++                for reverse in (False, True):
++                    with self.subTest(value=value_bits, literal=literal_bits, op=op, reverse=reverse):
++                        value = GlobalSymbol("value", Type.f32() if value_bits == 32 else Type.f64())
++                        bits = int.from_bytes(struct.pack(">f" if literal_bits == 32 else ">d", 0.001), "big")
++                        literal = Literal(bits, Type.f32() if literal_bits == 32 else Type.f64())
++                        left, right = (literal, value) if reverse else (value, literal)
++                        result = ppc_float_compare(left, op, right)
++                        formatted_op = op.translate(str.maketrans("<>", "><")) if reverse else op
++                        expected = "0.001f" if literal_bits == 32 else "0.001"
++                        self.assertEqual(result.format(Formatter()), f"(value {formatted_op} {expected})")
++                        self.assertEqual(literal.value, bits)
++                        self.assertEqual(literal.type.get_size_bits(), literal_bits)
++                        self.assertEqual(value.type.get_size_bits(), value_bits)
++
++    def test_ordered_negation_keeps_unordered_semantics(self) -> None:
++        result = ppc_float_compare(GlobalSymbol("left", Type.f32()), "<",
++                                   GlobalSymbol("right", Type.f64()))
++        self.assertEqual(result.negated().format(Formatter()), "!(left < right)")
++
++    def test_ppc_compare_emitters_preserve_precision_and_ordered_predicates(self) -> None:
++        class Args:
++            def __init__(self):
++                self.values = {1: GlobalSymbol("left", Type.f64()),
++                               2: GlobalSymbol("right", Type.f32())}
++
++            def reg(self, index):
++                return self.values[index]
++
++        for mnemonic, equality in (("fcmpu", "=="), ("fcmpo", "=="),
++                                   ("fcmpo.lte.fictive", "<="),
++                                   ("fcmpo.gte.fictive", ">=")):
++            with self.subTest(mnemonic=mnemonic):
++                result = PpcArch.instrs_ppc_compare[mnemonic](Args(), "==")
++                self.assertEqual(result.op, equality)
++                self.assertEqual(result.left.type.get_size_bits(), 64)
++                self.assertEqual(result.right.type.get_size_bits(), 32)
++                self.assertNotIn("M2C_BITWISE", result.format(Formatter()))
++
++    def test_shared_single_precision_compare_still_enforces_its_width(self) -> None:
++        result = BinaryOp.fcmp(GlobalSymbol("left", Type.f32()), "==",
++                               GlobalSymbol("right", Type.f32()))
++        self.assertEqual(result.left.type.get_size_bits(), 32)
++        self.assertEqual(result.right.type.get_size_bits(), 32)
++
++    def test_assembly_float_double_and_mixed_loads_keep_literal_precision(self) -> None:
++        root = Path(__file__).resolve().parents[2]
++        template = """.section .text
++.global compare
++compare:
++    {load} f0, constant@sda21(r2)
++    fcmpu cr0, {left}, {right}
++    {branch} .Lyes
++    li r3, 0
++    blr
++.Lyes:
++    li r3, 1
++    blr
++.section .sdata2
++.balign 8
++constant:
++    {constant}
++"""
++        with tempfile.TemporaryDirectory() as directory:
++            asm = Path(directory) / "compare.s"
++            context = Path(directory) / "context.h"
++            for argument, load, constant, expected in (
++                ("float", "lfs", ".float 0.001", "0.001f"),
++                ("double", "lfd", ".double 0.001", "0.001"),
++                ("float", "lfd", ".double 0.001", "0.001"),
++                ("double", "lfs", ".float 0.001", "0.001f"),
++            ):
++                for reverse in (False, True):
++                    for branch in ("beq", "bgt"):
++                        with self.subTest(argument=argument, load=load, reverse=reverse, branch=branch):
++                            left, right = ("f0", "f1") if reverse else ("f1", "f0")
++                            asm.write_text(template.format(load=load, constant=constant, left=left,
++                                                           right=right, branch=branch), encoding="utf-8")
++                            context.write_text(f"int compare({argument} value);\n", encoding="utf-8")
++                            process = subprocess.run(
++                                [sys.executable, str(root / "m2c.py"), "-t", "ppc-mwcc-c",
++                                 "--no-cache", "--valid-syntax", "--context", str(context), str(asm)],
++                                capture_output=True, text=True,
++                            )
++                            self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
++                            self.assertNotIn("M2C_BITWISE", process.stdout)
++                            self.assertNotIn("M2C_ERROR", process.stdout)
++                            op = "!=" if branch == "beq" else "<" if reverse else ">"
++                            self.assertIn(f"value {op} {expected})", process.stdout)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/unit/test_stack_declarations.py b/tests/unit/test_stack_declarations.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_stack_declarations.py
+@@ -0,0 +1,133 @@
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from types import SimpleNamespace
++
++from m2c.options import Formatter, Target
++from m2c.translate import LocalVar, StackInfo, as_type
++from m2c.types import StructDeclaration, Type
++
++
++class StackDeclarationTests(unittest.TestCase):
++    @staticmethod
++    def stack_info(field_type, *, valid_syntax=True):
++        layout = StructDeclaration(
++            size=0x40,
++            align=4,
++            new_field_prefix="sp",
++            is_stack=True,
++            fields=[StructDeclaration.StructField(field_type, 8, "sp8", True)],
++        )
++        return StackInfo(
++            function=None,
++            persistent_state=None,
++            global_info=SimpleNamespace(
++                arch=SimpleNamespace(arch=Target.ArchEnum.PPC),
++                valid_syntax=valid_syntax,
++            ),
++            flow_graph=None,
++            allocated_stack_size=0x40,
++            stack_pointer_type=Type.ptr(Type.struct(layout)),
++        )
++
++    def test_array_elements_register_the_whole_array_once(self):
++        info = self.stack_info(Type.array(Type.s32(), 4))
++        for offset in (12, 8, 16, 20, 8):
++            element = info.get_stack_var(offset, store=False)
++            self.assertIsInstance(element, LocalVar)
++            info.add_local_var(element)
++        self.assertEqual(len(info.local_vars), 1)
++        local = info.local_vars[0]
++        self.assertEqual(local.value, 8)
++        self.assertEqual(local.toplevel_decl(Formatter()), "s32 sp8[4]")
++
++    def test_nested_matrix_declares_full_extent(self):
++        info = self.stack_info(Type.array(Type.array(Type.f32(), 4), 3))
++        info.add_local_var(info.get_stack_var(8, store=False))
++        self.assertEqual(
++            info.local_vars[0].toplevel_decl(Formatter()), "f32 sp8[3][4]"
++        )
++
++    def test_partial_scalar_read_uses_existing_stack_object(self):
++        info = self.stack_info(Type.f64())
++        low_word = as_type(info.get_stack_var(12, store=False), Type.u32(), True)
++        self.assertEqual(
++            low_word.format(Formatter(valid_syntax=True)),
++            "M2C_FIELD(&sp8, u32 *, 4)",
++        )
++        self.assertEqual(len(info.local_vars), 1)
++        self.assertEqual(info.local_vars[0].toplevel_decl(Formatter()), "f64 sp8")
++
++    def test_legacy_partial_read_keeps_unknown_spelling(self):
++        info = self.stack_info(Type.f64(), valid_syntax=False)
++        low_word = as_type(info.get_stack_var(12, store=False), Type.u32(), True)
++        self.assertEqual(low_word.format(Formatter()), "unkspC")
++
++    def test_saved_register_slot_is_not_declared(self):
++        info = self.stack_info(Type.array(Type.s32(), 4))
++        info.callee_save_reg_region = (0x30, 0x40)
++        saved = info.get_stack_var(0x30, store=False)
++        self.assertIsNone(saved.path)
++        saved.use()
++        self.assertEqual(info.local_vars, [])
++
++    def test_only_live_read_only_stack_locals_are_declared(self):
++        info = self.stack_info(Type.u32())
++        used = info.get_stack_var(8, store=False)
++        unused = info.get_stack_var(0x20, store=False)
++        used.use()
++        self.assertEqual(len(info.local_vars), 1)
++        self.assertEqual(info.local_vars[0].toplevel_decl(Formatter()), "u32 sp8")
++        self.assertNotEqual(unused.value, info.local_vars[0].value)
++
++    def test_unknown_array_extent_is_not_fabricated(self):
++        info = self.stack_info(Type.array(Type.s16(), None))
++        info.get_stack_var(8, store=False).use()
++        self.assertEqual(info.local_vars[0].toplevel_decl(Formatter()), "s16 sp8[]")
++
++    def test_translation_with_array_only_element_references(self):
++        assembly = """.section .text
++.global sample
++sample:
++    stwu r1, -0x20(r1)
++    mflr r0
++    stw r0, 0x24(r1)
++    li r0, 3
++    stw r0, 0xc(r1)
++    addi r3, r1, 8
++    bl consume
++    lwz r0, 0x24(r1)
++    mtlr r0
++    addi r1, r1, 0x20
++    blr
++"""
++        context = """struct _m2c_stack_sample {
++    char pad[8];
++    int entries[4];
++    char end[8];
++};
++void consume(int *values);
++void sample(void);
++"""
++        root = Path(__file__).resolve().parents[2]
++        with tempfile.TemporaryDirectory() as directory:
++            asm_path = Path(directory) / "sample.s"
++            ctx_path = Path(directory) / "ctx.c"
++            asm_path.write_text(assembly, encoding="utf-8")
++            ctx_path.write_text(context, encoding="utf-8")
++            proc = subprocess.run(
++                [sys.executable, str(root / "m2c.py"), "-t", "ppc-mwcc-c",
++                 "--valid-syntax", "--no-cache", "--context", str(ctx_path),
++                 str(asm_path)],
++                capture_output=True, text=True,
++            )
++        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
++        self.assertEqual(proc.stdout.count("s32 entries[4];"), 1, proc.stdout)
++        self.assertIn("entries[1] = 3;", proc.stdout)
++        self.assertNotIn("unksp", proc.stdout)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/tests/unit/test_zero_offset_access.py b/tests/unit/test_zero_offset_access.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_zero_offset_access.py
+@@ -0,0 +1,36 @@
++import unittest
++from types import SimpleNamespace
++
++from m2c.options import Formatter
++from m2c.translate import GlobalSymbol, StructAccess
++from m2c.types import Type
++
++
++class ZeroOffsetAccessTests(unittest.TestCase):
++    def access(self, base, value):
++        return StructAccess(
++            struct_var=GlobalSymbol('buffer', base), offset=0,
++            target_size=value.get_size_bytes(), field_path=None,
++            stack_info=SimpleNamespace(has_nonzero_access=lambda _var: False),
++            type=value,
++        )
++
++    def test_void_pointer_uses_instruction_access_type(self):
++        for base in (Type.ptr(), Type.ptr(Type.void())):
++            for value, expected in ((Type.s16(), 's16 *'), (Type.f32(), 'f32 *'),
++                                    (Type.ptr(), 'void **')):
++                access = self.access(base, value)
++                self.assertEqual(access.format(Formatter(valid_syntax=True)),
++                                 f'M2C_FIELD(buffer, {expected}, 0)')
++                self.assertEqual(base.format(Formatter()), 'void *')
++
++    def test_known_typed_pointer_stays_direct(self):
++        self.assertEqual(self.access(Type.ptr(Type.s32()), Type.s32()).format(
++            Formatter(valid_syntax=True)), '*buffer')
++
++    def test_diagnostic_mode_remains_unchanged(self):
++        self.assertEqual(self.access(Type.ptr(), Type.s32()).format(Formatter()), '*buffer')
++
++
++if __name__ == '__main__':
++    unittest.main()
