@@ -64,13 +64,31 @@ typedef struct M635PositionStep {
     s16 frames;
 } M635PositionStep;
 
+typedef struct M635Motion {
+    u32 dataNum;
+    u32 attr;
+} M635Motion;
+
+typedef struct M635Sprite {
+    s16 group;
+    s16 state;
+    s16 timer;
+    s16 member;
+    float scale;
+    /* Unaccessed storage in the target's four 16-byte records; type unknown. */
+    u8 unk_0C[4];
+} M635Sprite;
+
 extern M635Work lbl_1_bss_4;
 extern OMOBJMAN *lbl_1_bss_64;
 extern M635MovingModel lbl_1_bss_68;
+extern M635Sprite lbl_1_bss_74[4];
 extern s16 lbl_1_bss_B4[2][2];
 extern M635Player lbl_1_bss_BC[4];
 extern MGSEQ_PARAM lbl_1_data_78;
 extern M635PositionStep lbl_1_data_2E8[21];
+extern HuVecF lbl_1_data_F8[4];
+extern M635Motion lbl_1_data_158[6];
 
 void fn_1_A0(void);
 void fn_1_F0(s16 mode, s16 frameNo);
@@ -98,9 +116,12 @@ void fn_1_1774(OMOBJMAN *objman);
 void fn_1_195C(void);
 void fn_1_2014(void);
 void fn_1_2018(void);
+void fn_1_2268(s16 team, s16 player);
 void fn_1_2330(void);
 void fn_1_25EC(s16 team, s16 player, s16 state);
 s16 fn_1_27E4(s16 team, s16 player);
+void fn_1_280C(s16 team, s16 player, s16 member);
+void fn_1_28A8(s16 team, s16 player);
 void fn_1_2904(void);
 void fn_1_2954(void);
 void fn_1_2CE8(void);

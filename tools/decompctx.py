@@ -223,9 +223,42 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
         rows.append((match[1], [a.strip() for a in (match[2] or '').split(',')], line))
     def record(i):
         return {'row': i, 'instruction': rows[i][2]}
-    loops, loads, captures, returns, stack_bases, masks = [], [], [], [], [], []
+    loops, loads, captures, narrowed, returns, stack_bases, masks, array_indices = [], [], [], [], [], [], [], []
+    # GNU adapter output labels every instruction. Only referenced branch
+    # destinations are CFG boundaries; decorative labels are not joins.
+    label_rows = {labels[arg] for opcode, operands, _ in rows
+                  if opcode.startswith('b') for arg in operands if arg in labels}
     saved = re.compile(r'r(?:1[4-9]|2\d|3[01])$')
     for i, (op, args, _) in enumerate(rows):
+        # Consecutive MWCC two-dimensional word-array address formation. Keep
+        # the actual owner order: equal dimension lengths do not make the two
+        # subscript meanings interchangeable (e.g. day/night versus team).
+        if (op == 'slwi' and i + 6 < len(rows)
+                and not any(j in label_rows for j in range(i + 1, i + 7))):
+            window = rows[i:i + 7]
+            if [r[0] for r in window] == ['slwi', 'lis', 'addi', 'add', 'slwi', 'add', 'lwz']:
+                a, b, c, d, e, f, g = [r[1] for r in window]
+                if ([len(x) for x in (a, b, c, d, e, f, g)] == [3, 2, 3, 3, 3, 3, 2]
+                        and b[1].endswith('@ha') and c[2] == b[1][:-3] + '@l'
+                        and c[1] == b[0] and d[1:] == [c[0], a[0]]
+                        and f[1:] == [d[0], e[0]] and g[1] in {'0(' + f[0] + ')', '0x0(' + f[0] + ')'}):
+                    try:
+                        outer_shift, inner_shift = int(a[2], 0), int(e[2], 0)
+                    except ValueError:
+                        outer_shift, inner_shift = -1, -1
+                    # Address-building temporaries must not kill the second
+                    # index before it is scaled, or the first scale before use.
+                    if (2 < outer_shift <= 10 and inner_shift == 2
+                            and a[0] not in {b[0], c[0]}
+                            and e[1] not in {a[0], b[0], c[0], d[0]}):
+                        array_indices.append({'symbol': b[1][:-3], 'source_class': 'nested_array_index_order',
+                            'outer_index_register': a[1], 'inner_index_register': e[1],
+                            'row_stride_bytes': 1 << outer_shift, 'element_stride_bytes': 4,
+                            'columns': 1 << (outer_shift - 2),
+                            'outer_scale': record(i), 'inner_scale': record(i + 4), 'load': record(i + 6),
+                            'outer_producer': record(i - 1) if i and rows[i - 1][1]
+                                and rows[i - 1][1][0] == a[1] and rows[i - 1][0] in {'lha', 'lhz', 'lwz', 'lbz'} else None,
+                            'reason': 'Preserve row-stride owner before element-stride owner; source names/types need the real global/member mapping.'})
         if op in {'lhz', 'lhzx', 'lha', 'lhax'} and len(args) >= 2:
             loads.append({**record(i), 'memory_bits': 16,
                           'extension': 'signed' if op.startswith('lha') else 'unsigned',
@@ -235,6 +268,13 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
                 # an all-path lifetime or semantic source-owner proof.
                 for j in range(i + 1, min(len(rows), i + 65)):
                     next_op, operands, _ = rows[j]
+                    # A lexical scan must not join producers across a CFG join
+                    # or branch. Ordinary ABI calls preserve these saved GPRs;
+                    # indirect calls and restore helpers are not covered here.
+                    if j in label_rows or (next_op.startswith('b') and next_op != 'bl'):
+                        break
+                    if next_op == 'bl' and (not operands or operands[0].startswith('_restgpr_')):
+                        break
                     if next_op in {'mulli', 'slwi'} and len(operands) == 3 and operands[1] == args[0]:
                         captures.append({'register': args[0], 'load': record(i), 'use': record(j),
                             'source_class': 'promoted_int_capture',
@@ -242,6 +282,19 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
                             'scope': 'lexical producer/use cue; review source assignment and incoming branches'})
                         break
                     if next_op in {'extsh', 'extsb', 'clrlwi'} and args[0] in operands[1:]:
+                        if (next_op == 'extsh' and len(operands) == 2
+                                and operands[1] == args[0] and j + 1 < len(rows)
+                                and j + 1 not in label_rows):
+                            use_op, use_args, _ = rows[j + 1]
+                            if ((use_op in {'mulli', 'slwi'} and len(use_args) == 3
+                                 and use_args[1] == operands[0])
+                                    or (use_op == 'cmpwi' and len(use_args) == 2
+                                        and use_args[0] == operands[0])):
+                                narrowed.append({'register': args[0], 'load': record(i),
+                                    'narrowing': record(j), 'use': record(j + 1),
+                                    'source_class': 'signed_short_capture',
+                                    'reason': 'The saved halfword value is narrowed again before arithmetic/comparison; do not widen it solely because lha already extends.',
+                                    'scope': 'single lexical region; casts and actual source types still require review'})
                         break
                     if next_op in {'blr', 'bctr', 'blrl', 'bctrl', 'lmw'}:
                         break
@@ -283,6 +336,17 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
                       'narrowing': record(i-2) if kind == 'signed_short_counter' else None,
                       'branch': record(i),
                       'reason': 'Use the loop comparison width; call-argument casts do not determine counter width.'})
+    nesting = []
+    for loop in loops:
+        parents = [outer for outer in loops
+                   if outer['body_row'] < loop['body_row']
+                   and loop['branch']['row'] < outer['branch']['row']]
+        if parents:
+            parent = min(parents, key=lambda outer: outer['branch']['row'] - outer['body_row'])
+            nesting.append({'inner_register': loop['register'], 'outer_register': parent['register'],
+                'inner_body_row': loop['body_row'], 'outer_body_row': parent['body_row'],
+                'reason': 'Nested target back-edge intervals: review nested source loops before flattening indices.',
+                'scope': 'lexical back-edge containment, not a full CFG/dominance proof'})
     # The final straight-line epilogue cannot prove a return type, but does
     # distinguish an explicit signed narrowing from a saved-value transfer.
     for i, (op, _, _) in enumerate(rows):
@@ -300,7 +364,9 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
     return {'schema': 'decomp_target_integer_shapes/v1', 'function': function,
             'assembly_sha256': hashlib.sha256(assembly.encode()).hexdigest(),
             'instruction_count': len(rows), 'loops': loops, 'halfword_loads': loads,
-            'promoted_captures': captures, 'return_transfers': returns,
+            'promoted_captures': captures, 'narrowed_captures': narrowed,
+            'loop_nesting': nesting, 'return_transfers': returns,
+            'array_index_strides': array_indices,
             'indexed_stack_bases': stack_bases, 'immediate_masks': masks,
             'caveat': 'Target cues, not original C types or source mappings. Review real consumers, header types and compiler mode. Never infer declaration order solely from stack offsets.',
             'authority_advanced': False, 'source_patch_emitted': False}

@@ -230,6 +230,76 @@ blr'''
         self.assertEqual(len(facts['immediate_masks']), 1)
         self.assertFalse(facts['authority_advanced'])
 
+    def test_saved_halfword_narrowing_is_not_promoted(self):
+        body = 'lha r29, 2(r3)\nbl check\nextsh r0, r29\nmulli r4, r0, 36\nblr'
+        facts = self.shapes(body)
+        self.assertEqual(facts['promoted_captures'], [])
+        cue = facts['narrowed_captures'][0]
+        self.assertEqual(cue['register'], 'r29')
+        self.assertEqual(cue['source_class'], 'signed_short_capture')
+        self.assertEqual(cue['narrowing']['row'], 2)
+        self.assertEqual(cue['use']['row'], 3)
+        self.assertEqual(self.shapes(body.replace('mulli r4, r0, 36', 'mulli r4, r5, 36'))['narrowed_captures'], [])
+        joined = body.replace('mulli r4, r0, 36', '.L_join:\nmulli r4, r0, 36').replace('blr', 'b .L_join')
+        self.assertEqual(self.shapes(joined)['narrowed_captures'], [])
+
+    def test_capture_scan_does_not_cross_branches_joins_or_restore(self):
+        for middle in ('b .L_end', 'beq .L_end', '.L_join:', 'bl _restgpr_28', 'bctrl'):
+            end = 'b .L_join' if middle == '.L_join:' else 'blr'
+            facts = self.shapes('lha r29, 2(r3)\n' + middle + '\nmulli r4, r29, 36\n.L_end:\n'+end)
+            self.assertEqual(facts['promoted_captures'], [])
+            self.assertEqual(facts['narrowed_captures'], [])
+
+    def test_nested_loops_keep_independent_widths(self):
+        facts = self.shapes('''li r31, 0
+b .L_outer_test
+.L_outer:
+li r30, 0
+b .L_inner_test
+.L_inner:
+bl work
+addi r30, r30, 1
+.L_inner_test:
+extsh r0, r30
+cmpwi r0, 3
+blt .L_inner
+addi r31, r31, 1
+.L_outer_test:
+cmpwi r31, 2
+blt .L_outer
+blr''')
+        self.assertEqual({x['register']: x['source_class'] for x in facts['loops']},
+                         {'r30': 'signed_short_counter', 'r31': 'int_counter'})
+        self.assertEqual(len(facts['loop_nesting']), 1)
+        self.assertEqual(facts['loop_nesting'][0]['inner_register'], 'r30')
+        self.assertEqual(facts['loop_nesting'][0]['outer_register'], 'r31')
+
+    def test_array_owner_order_comes_from_strides_not_equal_dimensions(self):
+        body = '''lha r0, 84(r3)
+slwi r4, r0, 3
+lis r3, files@ha
+addi r0, r3, files@l
+add r3, r0, r4
+slwi r0, r30, 2
+add r3, r3, r0
+lwz r3, 0(r3)
+blr'''
+        cue = self.shapes(body)['array_index_strides'][0]
+        self.assertEqual(cue['symbol'], 'files')
+        self.assertEqual((cue['outer_index_register'], cue['inner_index_register']), ('r0', 'r30'))
+        self.assertEqual((cue['row_stride_bytes'], cue['element_stride_bytes'], cue['columns']), (8, 4, 2))
+        self.assertEqual(cue['outer_producer']['row'], 0)
+        for wrong in (body.replace('files@l', 'other@l'),
+                      body.replace('slwi r0, r30, 2', 'slwi r0, r4, 2'),
+                      body.replace('add r3, r0, r4', '.L_join:\nadd r3, r0, r4').replace('blr', 'b .L_join'),
+                      body.replace('lwz r3, 0(r3)', 'lha r3, 0(r3)'),
+                      body.replace('slwi r4, r0, 3', 'slwi r4, r0, invalid')):
+            self.assertEqual(self.shapes(wrong)['array_index_strides'], [])
+        decorated = '\n'.join('.L_row_%d:\n%s' % (i, line) for i, line in enumerate(body.splitlines()))
+        self.assertEqual(self.shapes(decorated)['array_index_strides'], self.shapes(body)['array_index_strides'])
+        captured = 'lha r29, 2(r3)\n.L_decorative:\nmulli r4, r29, 36\nblr'
+        self.assertEqual(len(self.shapes(captured)['promoted_captures']), 1)
+
     def test_ambiguous_or_non_loop_not_promoted(self):
         self.assertEqual(self.shapes('cmpwi r31, 2\nblt .L_end\n.L_end:\nblr')['loops'], [])
         self.assertEqual(self.shapes('li r31, 0\n.L_body:\naddi r31, r31, 2\ncmpwi r31, 2\nblt .L_body\nblr')['loops'], [])

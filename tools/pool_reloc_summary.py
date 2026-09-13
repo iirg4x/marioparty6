@@ -8,6 +8,9 @@ bits owned by a differently named/ordered pool symbol.  This read-only tool
 resolves both sides, decodes the literal using the consumer instruction, and
 groups the paired rows by causal mismatch class.
 
+Aligned references to externally defined data retain unknown bytes; agreeing
+instruction and relocation contracts are not proof of the external definition.
+
 The output is diagnostic evidence only.  It never authenticates a source name,
 advances match authority, or recommends inventing a label merely to steer the
 compiler pool.
@@ -255,12 +258,21 @@ def _owner_record(
     name = _symbol_name(symbol, index)
     raw = _decode_data(symbol)
     membership = _section_membership(symbols)
+    flags = symbol.get("flags") if symbol is not None else None
+    external = bool(
+        symbol is not None
+        and symbol.get("kind") is None
+        and isinstance(flags, Mapping)
+        and flags.get("global") is True
+        and not any(key in symbol for key in ("address", "size", "data_diff"))
+    )
     return {
         "symbol_index": index,
         "name": name,
         "owner_class": _owner_class(name),
         "kind": symbol.get("kind") if symbol is not None else None,
-        "section": membership.get(index) if index is not None else None,
+        "external": external,
+        "section": membership.get(index) if index is not None and not external else None,
         "address": _int(symbol.get("address")) if symbol is not None else None,
         "size_bytes": _int(symbol.get("size")) if symbol is not None else None,
         "bytes": raw.hex() if raw is not None else None,
@@ -295,17 +307,40 @@ def _function_pair(
     return left, right, target, candidate
 
 
+def _relocation_row(
+    side: Mapping[str, Any], row: Mapping[str, Any], row_index: int
+) -> dict[str, Any] | None:
+    relocation = _relocation(row)
+    if relocation is None:
+        return None
+    instruction = _instruction(row) or {}
+    formatted = _formatted(row)
+    return {
+        "row": row_index,
+        "instruction_address": _int(instruction.get("address")),
+        "instruction": formatted,
+        "instruction_parts": instruction.get("parts"),
+        "instruction_size": _int(instruction.get("size")),
+        "diff_kind": row.get("diff_kind", instruction.get("diff_kind")),
+        "relocation": {
+            "type": str(relocation.get("type_name", "unknown")),
+            "type_code": _int(relocation.get("type")),
+            "addend": _int(relocation.get("addend", 0)),
+        },
+        "owner": _owner_record(side, relocation.get("target_symbol"), formatted=formatted),
+    }
+
+
 def _pool_rows(side: Mapping[str, Any], function: Mapping[str, Any]) -> dict[int, dict[str, Any]]:
     rows: dict[int, dict[str, Any]] = {}
     for row_index, row in enumerate(_sequence(function.get("instructions"))):
         if not isinstance(row, Mapping):
             continue
-        relocation = _relocation(row)
-        if relocation is None:
+        record = _relocation_row(side, row, row_index)
+        if record is None:
             continue
-        formatted = _formatted(row)
-        type_name = str(relocation.get("type_name", "unknown"))
-        owner = _owner_record(side, relocation.get("target_symbol"), formatted=formatted)
+        formatted = record["instruction"]
+        owner = record["owner"]
         name = str(owner["name"])
         section = str(owner.get("section") or "").lower()
         typed = owner.get("typed") if isinstance(owner.get("typed"), Mapping) else {}
@@ -324,19 +359,76 @@ def _pool_rows(side: Mapping[str, Any], function: Mapping[str, Any]) -> dict[int
         )
         if not is_pool:
             continue
-        instruction = _instruction(row) or {}
-        rows[row_index] = {
-            "row": row_index,
-            "instruction_address": _int(instruction.get("address")),
-            "instruction": formatted,
-            "diff_kind": row.get("diff_kind", instruction.get("diff_kind")),
-            "relocation": {
-                "type": type_name,
-                "addend": _int(relocation.get("addend"), 0),
-            },
-            "owner": owner,
-        }
+        rows[row_index] = record
     return rows
+
+
+def _paired_pool_rows(
+    target_side: Mapping[str, Any],
+    candidate_side: Mapping[str, Any],
+    target_function: Mapping[str, Any],
+    candidate_function: Mapping[str, Any],
+) -> tuple[dict[int, dict[str, Any]], dict[int, dict[str, Any]]]:
+    target_rows = _pool_rows(target_side, target_function)
+    candidate_rows = _pool_rows(candidate_side, candidate_function)
+    # Objdiff's aligned row, not a symbol-name search, supplies the counterpart.
+    # An external reference is relevant only beside an already detected data owner.
+    for side, function, rows, other_rows in (
+        (candidate_side, candidate_function, candidate_rows, target_rows),
+        (target_side, target_function, target_rows, candidate_rows),
+    ):
+        instructions = _sequence(function.get("instructions"))
+        for row_index in sorted(set(other_rows) - set(rows)):
+            if other_rows[row_index]["owner"].get("kind") != "SYMBOL_OBJECT":
+                continue
+            row = instructions[row_index] if row_index < len(instructions) else None
+            record = _relocation_row(side, row, row_index) if isinstance(row, Mapping) else None
+            if record is not None and record["owner"]["external"]:
+                record["external_counterpart"] = True
+                rows[row_index] = record
+    return target_rows, candidate_rows
+
+
+def _external_reference_classification(
+    target: Mapping[str, Any], candidate: Mapping[str, Any]
+) -> tuple[str, list[str], str, str]:
+    differences = ["literal_bytes_unresolved", "external_definition_unresolved"]
+    t_reloc, c_reloc = target["relocation"], candidate["relocation"]
+    if t_reloc.get("type") != c_reloc.get("type") or (
+        t_reloc.get("type_code") is not None
+        and c_reloc.get("type_code") is not None
+        and t_reloc["type_code"] != c_reloc["type_code"]
+    ):
+        differences.append("relocation_type")
+    if t_reloc.get("addend") != c_reloc.get("addend"):
+        differences.append("relocation_addend")
+    if target["owner"].get("name") != candidate["owner"].get("name"):
+        differences.append("owner_name")
+    if any(target.get(key) != candidate.get(key) for key in (
+        "instruction", "instruction_parts", "instruction_size"
+    )):
+        differences.append("instruction_identity")
+    if len(differences) > 2:
+        classification = (
+            "relocation_type_mismatch" if "relocation_type" in differences
+            else "relocation_addend_mismatch" if "relocation_addend" in differences
+            else "external_data_reference_mismatch"
+        )
+        return (
+            classification, differences, "changed_external_data_consumer_contract",
+            "Inspect the aligned instruction, operands, and relocation target/contract; external bytes remain unproved.",
+        )
+    if not target.get("instruction") or t_reloc.get("type") == "unknown" or t_reloc.get("addend") is None:
+        differences.append("consumer_contract_unresolved")
+        return (
+            "unresolved_pool_bytes", differences, "insufficient_value_evidence",
+            "Recover the missing instruction/relocation evidence and external definition before deciding equivalence.",
+        )
+    return (
+        "unresolved_external_data_reference", differences,
+        "aligned_consumer_contract_with_unresolved_external_data",
+        "The aligned instruction and named relocation contract agree; verify the external definition and linked ownership/bytes before claiming equivalence.",
+    )
 
 
 def _classification(target: Mapping[str, Any] | None, candidate: Mapping[str, Any] | None) -> tuple[str, list[str], str, str]:
@@ -354,6 +446,8 @@ def _classification(target: Mapping[str, Any] | None, candidate: Mapping[str, An
             "missing_or_extra_pool_consumer",
             "Inspect the earliest source/CFG or expression-shape divergence that omitted the target consumer.",
         )
+    if target.get("external_counterpart") or candidate.get("external_counterpart"):
+        return _external_reference_classification(target, candidate)
     t_reloc = target["relocation"]
     c_reloc = candidate["relocation"]
     t_owner = target["owner"]
@@ -523,6 +617,8 @@ def _compact_side(item: Mapping[str, Any] | None) -> dict[str, Any] | None:
         "owner": {
             "name": owner.get("name"),
             "owner_class": owner.get("owner_class"),
+            "kind": owner.get("kind"),
+            "external": owner.get("external"),
             "section": owner.get("section"),
             "address": owner.get("address"),
             "size_bytes": owner.get("size_bytes"),
@@ -782,8 +878,7 @@ def _all_function_pool_pairs(
         target = target_symbols[target_index]
         if target.get("kind") != "SYMBOL_FUNCTION" or target.get("name") != name:
             continue
-        target_rows = _pool_rows(target_side, target)
-        candidate_rows = _pool_rows(candidate_side, candidate)
+        target_rows, candidate_rows = _paired_pool_rows(target_side, candidate_side, target, candidate)
         for row in sorted(set(target_rows) | set(candidate_rows)):
             pair = _pair_record(row, target_rows.get(row), candidate_rows.get(row))
             pair["function"] = name
@@ -1211,6 +1306,36 @@ def _tu_pool_chronology_family(
     }
 
 
+def _bounded_diagnostic_detail(
+    value: Mapping[str, Any], *, group_limit: int, row_limit: int
+) -> dict[str, Any]:
+    """Clip presentation only, after all diagnoses and full census counts exist."""
+    group_fields = {
+        "owners": "owner_count",
+        "consumers": "consumer_function_count",
+        "affected_functions": "affected_function_count",
+        "producer_edit_functions": "producer_edit_function_count",
+        "downstream_body_edit_suppressed_functions": "downstream_body_edit_suppressed_function_count",
+    }
+    row_fields = {"rows": "row_count", "focus_rows": "focus_row_count"}
+    result = dict(value)
+    for key, item in value.items():
+        if isinstance(item, Mapping):
+            result[key] = _bounded_diagnostic_detail(item, group_limit=group_limit, row_limit=row_limit)
+        elif key in group_fields or key in row_fields:
+            items = _sequence(item)
+            limit = row_limit if key in row_fields else group_limit
+            count_key = row_fields.get(key) or group_fields[key]
+            result.setdefault(count_key, len(items))
+            result[f"{key}_omitted"] = max(0, len(items) - limit)
+            result[key] = [
+                _bounded_diagnostic_detail(entry, group_limit=group_limit, row_limit=row_limit)
+                if isinstance(entry, Mapping) else entry
+                for entry in items[:limit]
+            ]
+    return result
+
+
 def decode_function(
     report: Mapping[str, Any],
     function: str,
@@ -1228,8 +1353,7 @@ def decode_function(
     if isinstance(row_limit, bool) or not isinstance(row_limit, int) or row_limit < 1:
         raise PoolDecodeError("row_limit must be a positive integer")
     left, right, target_function, candidate_function = _function_pair(report, function.strip())
-    target_rows = _pool_rows(left, target_function)
-    candidate_rows = _pool_rows(right, candidate_function)
+    target_rows, candidate_rows = _paired_pool_rows(left, right, target_function, candidate_function)
     all_pairs = [
         _pair_record(row, target_rows.get(row), candidate_rows.get(row))
         for row in sorted(set(target_rows) | set(candidate_rows))
@@ -1251,7 +1375,9 @@ def decode_function(
         "literal_value_mismatch": 3,
         "target_only_pool_consumer": 4,
         "candidate_only_pool_consumer": 4,
+        "external_data_reference_mismatch": 4,
         "unresolved_pool_bytes": 5,
+        "unresolved_external_data_reference": 5,
         "owner_identity_mismatch": 6,
         "owner_chronology_mismatch": 7,
         "exact_pool_contract": 8,
@@ -1292,7 +1418,7 @@ def decode_function(
         all_pairs,
         all_tu_pairs=all_tu_pairs,
     )
-    return {
+    result = {
         "schema": SCHEMA,
         "schema_version": 1,
         "function": function.strip(),
@@ -1316,6 +1442,10 @@ def decode_function(
                     "body_value_equivalent_pool_chronology_only",
                 }
             ),
+            "unresolved_value_or_contract_count": sum(
+                1 for item in pairs
+                if item["classification"] in {"unresolved_pool_bytes", "unresolved_external_data_reference"}
+            ),
             "semantic_or_contract_mismatch_count": sum(
                 1
                 for item in pairs
@@ -1325,6 +1455,8 @@ def decode_function(
                     "exact_relocation_mapping_with_object_local_owner_identity",
                     "body_value_equivalent_owner_identity_only",
                     "body_value_equivalent_pool_chronology_only",
+                    "aligned_consumer_contract_with_unresolved_external_data",
+                    "insufficient_value_evidence",
                 }
             ),
         },
@@ -1350,6 +1482,9 @@ def decode_function(
         "include_exact": include_exact,
         "authority_advanced": False,
     }
+    for key in ("tu_owner_consumer_census", "tu_pool_chronology_diagnosis", "tu_pool_chronology_family"):
+        result[key] = _bounded_diagnostic_detail(result[key], group_limit=group_limit, row_limit=row_limit)
+    return result
 
 
 def load_report(path: Path) -> Mapping[str, Any]:
@@ -1377,8 +1512,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("report", type=Path)
     parser.add_argument("function")
     parser.add_argument("--include-exact", action="store_true")
-    parser.add_argument("--group-limit", type=int, default=DEFAULT_GROUP_LIMIT)
-    parser.add_argument("--row-limit", type=int, default=DEFAULT_ROW_LIMIT)
+    parser.add_argument("--group-limit", type=int, default=DEFAULT_GROUP_LIMIT,
+                        help="maximum groups and owner/function census details (totals remain complete)")
+    parser.add_argument("--row-limit", type=int, default=DEFAULT_ROW_LIMIT,
+                        help="maximum rows per group or diagnostic census detail")
     args = parser.parse_args(argv)
     try:
         result = decode_function(

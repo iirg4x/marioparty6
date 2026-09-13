@@ -1,6 +1,89 @@
 # Small DOL batch — 2026-09-13
 
-## m635: target-guided first-pass widths and a 26-function frontier
+## m635: first-pass corrections and 33 source-selected functions
+
+The retained local frontier is now **33/52 application functions**, up from
+26/52. Seven additional functions are source-selected: `fn_1_2F40`,
+`fn_1_448C`, `fn_1_2268`, `fn_1_27E4`, `fn_1_280C`, `fn_1_28A8`, and
+`fn_1_2904`. Six were zero-row instruction matches on their first compile;
+`fn_1_28A8` needed its real sprite-pointer snapshot restored after m2c folded
+the address directly into the field access. This is measured target-guided
+reconstruction, not a guarantee or a claim that a generator discovered all C.
+
+The current-main-based isolated source-selected build verifies all 33 function
+bodies and their independent physical relocations, all allocated section bytes
+and BSS extent, and all 137 retail checksum entries. The selected code is
+9,924/20,224 bytes including startup/runtime. Nineteen application functions
+and 10,300 original code bytes still use fallback: **m635 is not closed and
+main has not been advanced by this partial proof**. Compact receipt remains
+`build/minigame-recovery-20260913/m635/entry-proof/receipt.json`.
+
+The existing target preflight was corrected and extended, without another
+workflow or permission gate:
+
+- A saved halfword narrowed again before arithmetic/comparison is reported
+  separately from an already-promoted int capture. Lexical capture scans stop
+  at real branch destinations, branches, indirect calls and register restores;
+  decorative GNU instruction labels are not mistaken for CFG joins.
+- Back-edge containment records nested loops and their independent comparison
+  widths. Actual `fn_1_2954` has four int-counter loops, including three nested
+  player/motion initialization loops. A short field or call argument does not
+  narrow the surrounding loop. The fresh sprite initializer's five loops are
+  likewise int despite m2c's short suggestion for one reused counter.
+- Consecutive two-dimensional word-array address formation records the row
+  stride owner before the element stride owner. In `fn_1_195C`, both resource
+  tables are `[night][team]` with 8/4-byte strides, not `[team][night]`. The
+  two dimensions both being length two had concealed the transposition.
+  The rule validates the same-symbol relocation pair and register chain; it
+  does not invent source names, declarations, or table dimensions beyond the
+  observed row stride.
+- The pool decoder now retains aligned external data references as unresolved
+  when definition bytes are unavailable. On the current scene report, 114
+  literal-owner differences have identical values; the other 47 references
+  have matching instruction/relocation contracts but external definition
+  bytes remain unknown. They are no longer mislabeled missing consumers or
+  counted as demonstrated semantic mismatches. Changed operands, symbols,
+  relocation types/addends, and genuinely absent consumers remain failures.
+  This is diagnostic classification, not a waiver of linked data proof.
+- Pool census/chronology details now honor the existing group/row limits and
+  report omissions while preserving total counts. The real 2/2-limited scene
+  report shrank from 163,732 to 13,620 JSON characters (91.7%), excluding the
+  CLI file digest. Existing SDA-specific classification is unchanged.
+
+Acceptance: actual-target preflight covers the narrowed position capture,
+all four player loops/two nesting relationships, both resource table strides,
+and prospective sprite/motion loops. The affected eight-tool test group passes
+142 tests, two skipped. No full workflow suite was run for these bounded edits.
+The first sprite batch matched four functions immediately; its larger
+initializer matched instruction shape/size with only literal-owner rows.
+The sprite update's live button-member capture before the switch and its empty
+state-zero case were missed by m2c and still required primary source review.
+Do not mistake successful width guidance for full ownership/CFG reconstruction.
+
+Working source retained separately as NonMatching now covers the camera,
+scene/player initialization and movement, sprite animation, motion helpers,
+model animations and moving model. Most are instruction/size-aligned with
+remaining shared literal-pool ownership. Player initialization still has a
+three-owner GPR cycle. Preserve their real original graphics-TU producer order
+when composing the remaining functions; do not seed/export float labels to
+make independent fragments look exact. Temporary partial splits must not
+interleave code ranges from two object files: that creates a DTK link-order
+cycle. The retained split boundaries are contiguous and source-selected.
+
+Layout disclosure: `M635Sprite` represents the target's four 16-byte records.
+Group/state/timer/member/scale consumers establish offsets 0/2/4/6/8. The last
+four bytes are explicitly unknown byte storage, not an invented semantic field
+or local register-shaping pad. The exact record extent, index stride and linked
+BSS are recorded in `m635/sprite-layout-proof.json`; the source-quality exception
+is limited to that real unaccessed tail. No inline assembly was introduced.
+
+Qwen support did not finish the prior two jobs: the old runner/server were
+gone, not silently still thinking. Restart attempts at 4/2/1 slots all failed
+the existing 768-MiB GPU-headroom check and terminated their own server. No
+partial answer was admitted and no resource safety setting was weakened.
+The primary continued reconstruction without waiting for unavailable support.
+
+## Previous m635 frontier: target-guided widths and 26 functions
 
 The local m635 source frontier now contains 26 of 52 application functions:
 10 entry callbacks, 13 logic functions, and three position helpers. The position

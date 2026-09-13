@@ -2,6 +2,15 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "m635-sprite-record-unaccessed-tail",
+      "classification": "authenticated",
+      "path": "include/REL/m635dll.h",
+      "kind": "source_shape",
+      "rules": ["opaque_blob"],
+      "rationale": "SCOPE: only M635Sprite.unk_0C[4]. The retail m635 PLF object lbl_1_bss_74 occupies 64 bytes before lbl_1_bss_B4; fn_1_2018 and fn_1_2904 iterate four records using a 16-byte index stride. Consumed fields are group at 0, state at 2, timer at 4, member at 6 and float scale at 8. Bytes 12..15 have no recovered field meaning and are represented as unaccessed byte storage, not invented local padding, a new producer, or an asserted original field type. The independently matched sprite helpers preserve these target-backed consumer offsets and the source-selected link preserves the retail BSS extent. No other opaque range, fixed-register storage or synthetic source is covered.",
+      "evidence": ["config/dll/rels/m635dll/symbols.txt", "src/REL/m635dll/sprite_init.c", "src/REL/m635dll/sprite_hit.c", "src/REL/m635dll/sprite_state.c", "build/minigame-recovery-20260913/m635/sprite-layout-proof.json", "build/minigame-recovery-20260913/m635/entry-proof/receipt.json", "docs/dol-small-batch-20260913.md"]
+    },
+    {
       "id": "musyx-stream-sdk-frequency-inline-depth",
       "classification": "authenticated",
       "path": "src/musyx/runtime/stream.c",

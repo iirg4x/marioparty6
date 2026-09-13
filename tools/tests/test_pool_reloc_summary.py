@@ -260,6 +260,30 @@ def _external_pool_family_report() -> dict[str, object]:
     return {"left": {"symbols": target_symbols}, "right": {"symbols": candidate_symbols}}
 
 
+def _external_data_report() -> dict[str, object]:
+    instruction = _instruction("lis r3, lbl_data@ha", 3, type_name="R_PPC_ADDR16_HA")
+    instruction["instruction"].update({
+        "size": 4,
+        "parts": [{"opcode": {"mnemonic": "lis", "opcode": 264}},
+                  {"arg": {"opaque": "r3"}}, {"arg": {"reloc": True}}],
+    })
+    instruction["instruction"]["relocation"]["type"] = 6
+    function = {"name": "ExternalFocus", "kind": "SYMBOL_FUNCTION", "size": "4",
+                "target_symbol": 1, "instructions": [instruction]}
+    return {
+        "left": {"symbols": [
+            {"name": "[.text]", "kind": "SYMBOL_SECTION"}, copy.deepcopy(function),
+            {"name": "[.data]", "kind": "SYMBOL_SECTION"},
+            _symbol("lbl_data", bytes.fromhex("43fa000044fa000043c80000"), 0),
+        ]},
+        "right": {"symbols": [
+            {"name": "[.text]", "kind": "SYMBOL_SECTION"}, copy.deepcopy(function),
+            {"name": "unused_external", "flags": {"global": True}},
+            {"name": "lbl_data", "flags": {"global": True}},
+        ]},
+    }
+
+
 class PoolRelocSummaryTests(unittest.TestCase):
     def test_decodes_owner_only_groups_and_mwcc_bias(self) -> None:
         result = module.decode_function(_report(), "PoolFocus")
@@ -370,6 +394,137 @@ class PoolRelocSummaryTests(unittest.TestCase):
             ["PoolFocus", "ev_CapKettouStart"],
         )
         self.assertFalse(census["authority_advanced"])
+
+    def test_external_data_counterpart_retains_unknown_bytes_not_exactness(self) -> None:
+        for reverse in (False, True):
+            with self.subTest(reverse=reverse):
+                report = _external_data_report()
+                if reverse:
+                    report["left"], report["right"] = report["right"], report["left"]
+                result = module.decode_function(report, "ExternalFocus")
+                group = result["groups"][0]
+                self.assertEqual(group["classification"], "unresolved_external_data_reference")
+                self.assertIn("literal_bytes_unresolved", group["differences"])
+                self.assertEqual(result["summary"]["unresolved_value_or_contract_count"], 1)
+                self.assertEqual(result["summary"]["semantic_or_contract_mismatch_count"], 0)
+                self.assertEqual(result["summary"]["value_equivalent_owner_only_count"], 0)
+                undefined, defined = ("target", "candidate") if reverse else ("candidate", "target")
+                self.assertIsNone(group[undefined]["owner"]["bytes"])
+                self.assertIsNone(group[undefined]["owner"]["typed"])
+                self.assertTrue(group[undefined]["owner"]["external"])
+                self.assertEqual(group[defined]["owner"]["bytes"], "43fa000044fa000043c80000")
+                self.assertEqual(result["target"]["pool_consumer_count"], 1)
+                self.assertEqual(result["candidate"]["pool_consumer_count"], 1)
+                self.assertFalse(result["authority_advanced"])
+
+    def test_external_data_changed_consumer_contract_is_not_suppressed(self) -> None:
+        mutations = {
+            "register": (lambda row, owner: row.update({"formatted": "lis r4, lbl_data@ha"}),
+                         "external_data_reference_mismatch", "instruction_identity"),
+            "opcode_parts": (lambda row, owner: row["parts"][0]["opcode"].update({"opcode": 999}),
+                             "external_data_reference_mismatch", "instruction_identity"),
+            "instruction_size": (lambda row, owner: row.update({"size": 8}),
+                                 "external_data_reference_mismatch", "instruction_identity"),
+            "reloc_type": (lambda row, owner: row["relocation"].update({"type_name": "R_PPC_ADDR32"}),
+                           "relocation_type_mismatch", "relocation_type"),
+            "reloc_type_code": (lambda row, owner: row["relocation"].update({"type": 4}),
+                                "relocation_type_mismatch", "relocation_type"),
+            "reloc_addend": (lambda row, owner: row["relocation"].update({"addend": 4}),
+                             "relocation_addend_mismatch", "relocation_addend"),
+            "owner_name": (lambda row, owner: owner.update({"name": "lbl_other_data"}),
+                           "external_data_reference_mismatch", "owner_name"),
+        }
+        for name, (mutate, classification, difference) in mutations.items():
+            with self.subTest(name=name):
+                report = _external_data_report()
+                symbols = report["right"]["symbols"]
+                mutate(symbols[1]["instructions"][0]["instruction"], symbols[3])
+                result = module.decode_function(report, "ExternalFocus")
+                self.assertEqual(result["groups"][0]["classification"], classification)
+                self.assertIn(difference, result["groups"][0]["differences"])
+                self.assertEqual(result["summary"]["semantic_or_contract_mismatch_count"], 1)
+
+    def test_external_data_missing_consumer_and_invalid_symbol_remain_errors(self) -> None:
+        for mutation in ("missing_row", "missing_reloc", "invalid_owner", "not_external"):
+            with self.subTest(mutation=mutation):
+                report = _external_data_report()
+                symbols = report["right"]["symbols"]
+                instruction = symbols[1]["instructions"][0]["instruction"]
+                if mutation == "missing_row":
+                    symbols[1]["instructions"].clear()
+                elif mutation == "missing_reloc":
+                    instruction.pop("relocation")
+                elif mutation == "invalid_owner":
+                    instruction["relocation"]["target_symbol"] = 999
+                else:
+                    symbols[3]["flags"]["global"] = False
+                result = module.decode_function(report, "ExternalFocus")
+                self.assertEqual(result["groups"][0]["classification"], "target_only_pool_consumer")
+                self.assertEqual(result["summary"]["semantic_or_contract_mismatch_count"], 1)
+
+    def test_external_data_missing_instruction_evidence_does_not_pair_by_label(self) -> None:
+        report = _external_data_report()
+        for side in ("left", "right"):
+            report[side]["symbols"][1]["instructions"][0]["instruction"]["formatted"] = ""
+        result = module.decode_function(report, "ExternalFocus")
+        self.assertEqual(result["groups"][0]["classification"], "unresolved_pool_bytes")
+        self.assertIn("consumer_contract_unresolved", result["groups"][0]["differences"])
+
+    def test_diagnostic_limits_preserve_census_totals_and_interpretation(self) -> None:
+        report = _report()
+        for side in ("left", "right"):
+            symbols = report[side]["symbols"]
+            symbols[1]["instructions"] *= 5
+            for index in range(6):
+                function = copy.deepcopy(symbols[1])
+                function["name"] = f"Other{index}"
+                symbols.append(function)
+        full = module.decode_function(report, "PoolFocus", group_limit=100, row_limit=100)
+        small = module.decode_function(report, "PoolFocus", group_limit=2, row_limit=2)
+        self.assertEqual(small["summary"], full["summary"])
+        census = small["tu_owner_consumer_census"]
+        self.assertEqual(census["owner_count"], 5)
+        self.assertEqual(census["owners_omitted"], 3)
+        self.assertEqual(len(census["owners"]), 2)
+        for owner, unbounded in zip(census["owners"], full["tu_owner_consumer_census"]["owners"]):
+            self.assertEqual(owner["interpretation"], unbounded["interpretation"])
+            self.assertEqual(owner["focus_row_count"], len(unbounded["focus_rows"]))
+            self.assertEqual(owner["focus_rows_omitted"], owner["focus_row_count"] - 2)
+            self.assertEqual(len(owner["focus_rows"]), 2)
+            for side in ("target", "candidate"):
+                detail = owner[side]
+                self.assertEqual(detail["consumer_function_count"], 7)
+                self.assertEqual(detail["consumer_relocation_count"], unbounded[side]["consumer_relocation_count"])
+                self.assertEqual(detail["consumers_omitted"], 5)
+                self.assertEqual(len(detail["consumers"]), 2)
+                for consumer in detail["consumers"]:
+                    self.assertEqual(len(consumer["rows"]), 2)
+                    self.assertEqual(consumer["rows_omitted"], consumer["count"] - 2)
+        zero = module.decode_function(report, "PoolFocus", group_limit=0, row_limit=1)
+        self.assertEqual(zero["summary"], full["summary"])
+        self.assertEqual(zero["tu_owner_consumer_census"]["owners"], [])
+        self.assertEqual(zero["tu_owner_consumer_census"]["owners_omitted"], 5)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "report.json"
+            path.write_text(json.dumps(report), encoding="utf-8")
+            command = [sys.executable, str(Path(module.__file__)), str(path), "PoolFocus",
+                       "--group-limit", "2", "--row-limit", "2"]
+            first = subprocess.run(command, check=True, capture_output=True, text=True).stdout
+            second = subprocess.run(command, check=True, capture_output=True, text=True).stdout
+        self.assertEqual(first, second)
+        self.assertLess(len(first), 15000)
+
+    def test_chronology_and_family_census_details_are_also_bounded(self) -> None:
+        result = module.decode_function(_external_pool_family_report(), "DownstreamC", group_limit=1, row_limit=1)
+        diagnosis = result["tu_pool_chronology_diagnosis"]
+        self.assertEqual(len(diagnosis["affected_consumer"]["rows"]), 1)
+        self.assertEqual(diagnosis["affected_consumer"]["rows_omitted"], 1)
+        family = result["tu_pool_chronology_family"]
+        self.assertEqual(family["affected_function_count"], 3)
+        self.assertEqual(len(family["affected_functions"]), 1)
+        self.assertEqual(family["affected_functions_omitted"], 2)
+        self.assertEqual(len(family["downstream_body_edit_suppressed_functions"]), 1)
+        self.assertEqual(family["downstream_body_edit_suppressed_functions_omitted"], 2)
 
     def test_detects_exact_weak_sqrtf_prefix_and_predicts_section_shift(self) -> None:
         report = _report()
