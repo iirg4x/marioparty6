@@ -1431,3 +1431,47 @@ Compact proof and working reconstruction:
 history tree. Shared work-layout unknown slots and original TU/data ownership
 still require integration proof; **no m670 module closure or main progress is
 claimed**. Twenty focused context tests run successfully (one explicit-local replay skipped).
+
+## m670 motion/collision owner batch
+
+The next selected batch is `m670dll/prolog.c`, `actor.c`, and the existing
+compiler-runtime implementation. This is **three source owners, not three
+minigames**. The five actor functions recover 1,844 gameplay bytes. Unfinished
+initialization, sequence, pillar, and CPU code remain original-object inputs;
+their useful local reconstructions are retained separately.
+
+The actor owner is bounded by target evidence: code 0x22F0..0x2A24, constants
+0x130..0x148, strings 0x268..0x288. The next source region begins with fresh
+eight-byte data alignment at the shout string and restarts its literal pool.
+No helper was split out simply to create another closure count. Target data
+alignment supplies the seven trailing string bytes and four constant bytes;
+the C source contains no synthetic padding or added data producers.
+
+Primary reconstruction closed the five functions together from typed m2c and
+the actual target. Important coupled fixes were the full-width player-index
+interface and its automatic inline consumers, the explicit one-case state
+switch and live player snapshot, and the face-normal/position aggregate homes.
+The target really passes `modelId < 0` to `Hu3DMotionShiftIDGet`; changing it to
+a comparison of the call result would alter retail behavior. The target also
+contains the otherwise-unused player-number copy and object snapshot retained
+in the source. Those are disclosed target-emitted operations, not new padding
+or fabricated register owners. Unobserved work fields remain honestly unknown;
+the header does not allocate or seed them.
+
+Verification: a detached checkout from main 30dd8a6 built the three source
+objects into the actual m670 PLF, with all other regions still original.
+The linked strict objdiff has zero differing symbols, and **all 137 retail
+checksums pass**. The complete m670 REL is byte-identical, SHA-256
+`f2cbf290f7bed55ee1531b7a866fe9f7f7a4adb4e10cd768a413a871afc6346f`.
+Raw split-object reports still expose anonymous-pool names, coalesced weak
+sqrt constants, and section-tail alignment; these are not presented as raw
+object-file equality. The source-selected linked proof resolves every physical
+byte and relocation. Evidence is under
+`build/minigame-recovery-20260913/m670/project-proof/receipt.json` and
+`linked-strict.json`.
+
+Four bounded Qwen fact packets ran in parallel without holding the primary's
+compile path. All returned a model-server error after roughly sixteen minutes,
+with no final answer; no generated claim from that batch was admitted. The
+primary completed this actor group independently. Do not repeatedly submit the
+same failed batch or count waiting/analysis as a recovery gain.
