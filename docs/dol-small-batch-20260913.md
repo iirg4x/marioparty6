@@ -2,6 +2,31 @@
 
 ## m651 gameplay batch: verified gains without blocking on entry BSS
 
+Delivered through PRs 43 and 44 at main
+`30dd8a6c3064e13eb98d15e41c0690aea571253f`. Exact promoted blobs were checked
+against main; public progress is 400/936 objects, 22.34% code, and 43.40% data.
+Both merged topic branches were deleted with exact-head leases. The clean main
+checkout fast-forwarded successfully. This delivery adds three recovered owners,
+not a whole-module closure. The paired proof and delivery receipt are under
+`build/promotion/m651-gameplay-20260913/`.
+
+The next m670 support batch gives four concurrent local Qwen/xhigh workers 16
+small functions: sequence helpers (4), callbacks (5), motion (3), and tail
+helpers (4). Each immutable packet is approximately 9-11 KB with selected m2c
+bodies, relevant instructions, and API context. Manifest:
+`build/minigame-recovery-20260913/m670/qwen/reconstruction-4way-v1.json`.
+These requests are running, not validated gains. Do not resubmit the completed
+m670 entry packet. Compile useful answers as they arrive rather than awaiting
+batch consensus; primary owns larger state machines and integration.
+
+Primary context repair is retained separately in `m670/typed/`: include the
+actual `game/mg/actman.h` and source-backed mic-provider declarations before
+re-running m2c. The first generic context omitted those interfaces, creating
+stale-register ghost arguments and array-of-pointer guesses. All 28 application
+functions decompile without errors with the repaired context. Use that typed
+context to reconcile the currently running answers, without overwriting their
+sealed prompts or treating inferred structures as canonical layouts.
+
 The minigame-first pass reconstructed all 38 application functions. The complete
 scratch source link has zero application instruction differences. The final
 paired CPU-delay residual closed in both creation and update through the normal
@@ -1340,3 +1365,69 @@ the primary continues independently. A GCC unroll pragma from the completed
 integer-formatting answer was rejected; its useful loop-location evidence was
 retained. The natural post-increment loop probe and MSM resume-read consumer
 probe were both object-neutral; neither changed live source.
+
+## Shared minigame initialization context: reusable repair
+
+REL `_prolog`/`_epilog` and the selected compiler runtime are already verified
+in the delivered m616/m651 modules. No constructor-runtime defect was found;
+m651's unresolved eight-byte entry BSS extent remains a separate source-ownership
+problem. Do not add padding or call it a runtime fix.
+
+The active m670 initializer instead exposed missing shared API context. Extend
+the existing `tools/decompctx.py`, rather than creating another recovery engine:
+
+```text
+python tools/decompctx.py build/.../context.i --calls-from build/.../target.s --provider src/game/mic.c -o build/.../call-context.json
+```
+
+Feed **actual compiler-preprocessed context** to this optional read-only audit.
+It lists uncovered direct calls, actual header/provider declaration locations
+and hashes, and all header alternatives. Include suggestions are not automatic
+ABI approval. Macro-generated and old non-prototype declarations remain explicit;
+unsupported cases do not become guessed signatures. A narrow additional cue
+flags a context-declared `void` local helper whose standalone target explicitly
+copies a saved-register result to r3 in its final call-free return tail. Review
+the return and inline callers; the cue does not infer a C return type.
+
+Live use identified **21 missing external API declarations** in m670's initial
+context. `game/mg/actman.h` provides the real actor/player construction types.
+New `include/game/mic.h` supplies eight declarations and the response callback
+typedef from the current `src/game/mic.c` definitions. Corrected context covers
+80 external calls instead of 59. The remaining 18 are fourteen compiler save/
+restore helpers and four legacy empty-parameter declarations, explicitly not
+new unknown gameplay prototypes. The local Qwen packet generator now takes
+call declarations from the preprocessed context, including transitive headers,
+instead of scanning only its directly listed header files. No model setting or
+output limit was changed, and completed packet identities were not rewritten.
+
+Independent provider check: compiling the current mic provider with its local
+callback typedef replaced by the public header is **object-byte-identical** to
+the unchanged provider: `3a3f9d870e633258c65993f7ac039edb82bcbef149b7a1d13142cc582a3bdfe6`.
+The live provider itself was not modified. Proof:
+`build/minigame-recovery-20260913/m670/mic-header-check/result.json`.
+
+Applied source results, not merely audit output:
+
+- m670 CPU initialization `fn_1_3B30`: **172/172 bytes, zero objdiff rows**
+  using the actual MGPLAYER pointer and shared record layout.
+- Normalization `fn_1_1460`: the erroneous `void` context was flagged; target
+  has a common Boolean result. Reconstructing it and the target unsigned random
+  conversions brings the helper to **344/344 bytes** with matching instruction
+  operands; 27 reported constant-pool attribution rows remain in this isolated
+  TU. It is not declared fully matching.
+- Main construction `fn_1_1658`: preserving the live light-creation result and
+  restoring the right-associated collision-model publication chain raises
+  **95.254340 -> 98.641440%**, reducing **390 -> 196** reported rows. Size is
+  **3220 versus 3224** target bytes. The source evidence, not a register-number
+  permutation, selected these creation/consumer changes. Header discovery alone
+  did not choose the C repair.
+
+Current working source/object:
+`b9c2e0bb3917c83ad13d4cc53fad2b8e394194e8b0ae566aea0dd18c2cbf4c6a` /
+`5b5102267d55931ca0f946657476e3ec1380f73b3c64454d753c55b50c45d393`.
+Compact proof and working reconstruction:
+`build/minigame-recovery-20260913/m670/constructor-context-result.json` and
+`constructor-check.c`. Preserve them as the active reconstruction, not a new
+history tree. Shared work-layout unknown slots and original TU/data ownership
+still require integration proof; **no m670 module closure or main progress is
+claimed**. Twenty focused context tests run successfully (one explicit-local replay skipped).

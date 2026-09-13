@@ -18,6 +18,7 @@
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import sys
@@ -136,6 +137,148 @@ def _atomic(path, text):
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
+
+
+def _mask_c(text: str) -> str:
+    """Keep offsets/lines while removing comments, literals and directives."""
+    pattern = r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\''
+    masked = re.sub(pattern, lambda m: re.sub(r'[^\n]', ' ', m[0]), text, flags=re.S)
+    return re.sub(r'^[ \t]*#(?:[^\n\\]|\\[^\n]|\\\n)*',
+                  lambda m: re.sub(r'[^\n]', ' ', m[0]), masked, flags=re.M)
+
+
+def declared_functions(text: str) -> dict[str, list[dict]]:
+    """Locate ordinary C declarations/definitions, never infer a signature.
+
+    This deliberately small scanner is a discovery aid, not a C/C++ parser.
+    Macros, K&R definitions and unsupported declarators remain unresolved.
+    The actual compiler must preprocess every proposed include before m2c.
+    """
+    masked = _mask_c(text)
+    result: dict[str, list[dict]] = {}
+    depth, start = 0, 0
+    # extern "C" wrappers are transparent; other braces enclose types/bodies.
+    wrappers: list[int] = []
+    for match in re.finditer(r'[;{}]', masked):
+        token, end = match[0], match.start()
+        visible = depth == len(wrappers)
+        fragment = masked[start:end].strip()
+        if visible and token in ';{':
+            declaration = re.fullmatch(
+                r'([\w\s*]+?)\b([A-Za-z_]\w*)\s*\((.*)\)\s*', fragment, re.S)
+            if declaration:
+                prefix, name, arguments = declaration.groups()
+                words = set(re.findall(r'\w+', prefix))
+                if not words.intersection({'return', 'typedef', 'if', 'while', 'for', 'switch', 'else'}):
+                    offset = start + len(masked[start:end]) - len(masked[start:end].lstrip())
+                    result.setdefault(name, []).append({
+                        'line': text.count('\n', 0, offset) + 1,
+                        'declaration': re.sub(r'\s+', ' ', text[offset:end]).strip(),
+                        'definition': token == '{',
+                        'prototyped': bool(arguments.strip()),
+                    })
+            if token == '{' and fragment == 'extern':
+                wrappers.append(depth)
+        if token == '{':
+            depth += 1
+        elif token == '}':
+            depth -= 1
+            if wrappers and depth == wrappers[-1]:
+                wrappers.pop()
+        if depth == len(wrappers):
+            start = match.end()
+    return result
+
+
+def discover_call_context(root: Path, assembly: str, context: str,
+                          providers=()) -> dict:
+    """Find missing direct-call prototypes and their real header/provider sites.
+
+    A header hit is an include suggestion, not an ABI proof. All alternatives
+    remain visible; no arbitrary first match or source-text-to-prototype rewrite.
+    This is read-only and shared across constructors, callbacks and normal code.
+    """
+    root = Path(root).resolve()
+    code = re.sub(r'/\*.*?\*/|#[^\n]*', '', assembly, flags=re.S)
+    calls = sorted(set(re.findall(r'\bbl\s+([A-Za-z_$][\w$]*)\b', code)))
+    locals_ = set(re.findall(r'^\s*\.fn\s+([\w$]+)', code, re.M))
+    locals_.update(re.findall(r'^\s*([A-Za-z_$][\w$]*):', code, re.M))
+    visible = declared_functions(context)
+    runtime = {name for name in calls if re.fullmatch(r'_(?:save|rest)gpr_(?:1[4-9]|2\d|3[01])', name)}
+    missing = [name for name in calls if name not in locals_ and name not in runtime
+               and not any(row['prototyped'] for row in visible.get(name, []))]
+    files = sorted(path for path in (root / 'include').rglob('*.h') if path.is_file())
+    for provider in providers:
+        path = (root / provider).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            raise ContextError('Provider must be an existing file inside root: ' + str(path))
+        files.append(path)
+    if len(files) > 4096:
+        raise ContextError('Call-context file limit exceeded')
+    candidates: dict[str, list[dict]] = {name: [] for name in missing}
+    read_bytes = 0
+    for path in dict.fromkeys(files):
+        resolved = path.resolve()
+        if not resolved.is_relative_to(root):
+            raise ContextError('Context dependency escapes root: ' + str(path))
+        if resolved.stat().st_size > 32 * 1024 * 1024 - read_bytes:
+            raise ContextError('Call-context input size limit exceeded: ' + str(path))
+        raw = resolved.read_bytes()
+        read_bytes += len(raw)
+        if read_bytes > 32 * 1024 * 1024:
+            raise ContextError('Call-context input size limit exceeded')
+        text = raw.decode('utf-8', errors='replace')
+        if not any(re.search(r'\b' + re.escape(name) + r'\b', text) for name in missing):
+            continue
+        declarations = declared_functions(text)
+        relative = resolved.relative_to(root).as_posix()
+        for name in missing:
+            for row in declarations.get(name, []):
+                if not row['prototyped']:
+                    continue
+                candidates[name].append({**row, 'path': relative,
+                    'sha256': hashlib.sha256(raw).hexdigest(),
+                    'role': 'header' if relative.startswith('include/') else 'provider'})
+    include_hints = sorted({row['path'][8:] for rows in candidates.values()
+                            for row in rows if row['role'] == 'header'})
+    return_warnings = []
+    for body in re.finditer(r'^\s*\.fn\s+([\w$]+)[^\n]*\n(.*?)^\s*\.endfn', code, re.M | re.S):
+        name = body[1]
+        declarations = visible.get(name, [])
+        if not any(re.match(r'(?:(?:extern|static|inline)\s+)*void\s+' + re.escape(name) + r'\b',
+                            row['declaration']) for row in declarations):
+            continue
+        instructions = [line.strip() for line in body[2].splitlines()
+                        if line.strip() and not line.strip().endswith(':')]
+        # A deliberately narrow cue: an explicit saved-GPR result transfer in
+        # the final call-free return tail. Not generic return-type inference.
+        tail = []
+        for instruction in reversed(instructions):
+            if re.match(r'b(?:l|ctr)\b', instruction) and not re.search(r'_(?:rest|save)gpr_', instruction):
+                break
+            tail.append(instruction)
+        last_write = next((line for line in tail if re.match(
+            r'(?:mr|li|lis|addi|addis|lwz|lha|lhz|lbz|add|subf|mullw|rlwinm|or|xor|andi\.)\s+r3,', line)), '')
+        transfer = last_write if re.fullmatch(r'mr\s+r3,\s*r(?:1[4-9]|2\d|3[01])', last_write) else None
+        if transfer and 'blr' in tail:
+            return_warnings.append({'function': name, 'instruction': transfer,
+                'context_declarations': declarations,
+                'reason': 'void context conflicts with an explicit saved-register result transfer; '
+                          'review the standalone helper return and its inlined callers. '
+                          'This cue alone does not establish a return type.'})
+    return {'schema': 'decomp_call_context/v1',
+            'assembly_sha256': hashlib.sha256(assembly.encode()).hexdigest(),
+            'context_sha256': hashlib.sha256(context.encode()).hexdigest(),
+            'calls': calls, 'local_calls': sorted(set(calls) & locals_),
+            'compiler_helper_calls': sorted(runtime),
+            'covered_calls': [name for name in calls if name not in locals_ and name not in missing and name not in runtime],
+            'missing': candidates, 'include_hints': include_hints,
+            'present_without_prototype': [name for name in missing if name in visible],
+            'return_warnings': return_warnings,
+            'unresolved': [name for name, rows in candidates.items() if not rows and name not in visible],
+            'caveat': 'Discovery only. Preprocess chosen headers with the actual compiler; '
+                      'provider definitions and header alternatives require review. '
+                      'No signature, constructor layout, or call arguments are inferred.'}
 
 
 def adapt_target_function(data, metadata, disassembly, relocation_table, function):
@@ -339,10 +482,27 @@ def main(argv=None):
         help="""Dependency file""",
     )
     parser.add_argument("--root", type=Path, default=Path(root_dir), help="Source/include/output root")
+    parser.add_argument("--calls-from", type=Path,
+                        help="Audit direct calls in target assembly against c_file (a compiler-preprocessed context); output JSON")
+    parser.add_argument("--provider", action="append", default=[],
+                        help="Root-relative provider C file to inspect for APIs missing public headers; repeatable")
     args = parser.parse_args(argv)
 
     deps = []
     try:
+        if args.calls_from:
+            report = discover_call_context(args.root,
+                (args.root / args.calls_from).read_text(encoding='utf-8'),
+                (args.root / args.c_file).read_text(encoding='utf-8'), args.provider)
+            _atomic(args.root / args.output, json.dumps(report, indent=2) + '\n')
+            print(f"Call context: {len(report['covered_calls'])} covered; "
+                  f"{len(report['missing'])} need context/prototype review; {len(report['unresolved'])} unresolved; "
+                  f"{len(report['compiler_helper_calls'])} compiler save/restore helpers. "
+                  f"{len(report['return_warnings'])} return-contract warnings. "
+                  f"Report: {args.output}")
+            return 0
+        if args.provider:
+            raise ContextError('--provider requires --calls-from')
         output = import_c_file(args.c_file, deps, root=args.root)
         dependency_text = sanitize_path(args.output) + ":" + "".join(f" \\\n\t{sanitize_path(dep)}" for dep in deps)
         _atomic(args.root / args.output, output)

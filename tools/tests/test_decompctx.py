@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import hashlib
+import json
 import re
 import subprocess
 import tempfile
@@ -83,6 +84,84 @@ class ContextTests(unittest.TestCase):
         self.assertEqual(decompctx.main(['--root', str(self.root), 'src/a.c', '-d', 'ctx.d']), 0)
         self.assertIn('void A(void);', (self.root/'ctx.c').read_text())
         self.assertIn('include/api.h', (self.root/'ctx.d').read_text().replace('\\', '/'))
+
+    def test_call_context_finds_real_headers_and_provider_without_guessing(self):
+        self.write('include/actor.h', 'typedef struct Actor Actor;\nActor *ActorCreate(int n);\n')
+        self.write('src/mic.c', 'short MicCreate(char *path) { return 0; }\n')
+        asm = '.fn init, global\nbl ActorCreate\nbl MicCreate\nbl init\nbl Unknown\n'
+        result = decompctx.discover_call_context(self.root, asm, '', ['src/mic.c'])
+        self.assertEqual(result['include_hints'], ['actor.h'])
+        self.assertEqual(result['unresolved'], ['Unknown'])
+        self.assertEqual(result['local_calls'], ['init'])
+        provider = result['missing']['MicCreate'][0]
+        self.assertEqual(provider['declaration'], 'short MicCreate(char *path)')
+        self.assertEqual(provider['role'], 'provider')
+        self.assertTrue(provider['definition'])
+        self.assertEqual(provider['sha256'], hashlib.sha256((self.root/'src/mic.c').read_bytes()).hexdigest())
+        corrected = decompctx.discover_call_context(self.root, asm,
+            'Actor *ActorCreate(int n);\nshort MicCreate(char *path);\n')
+        self.assertEqual(corrected['covered_calls'], ['ActorCreate', 'MicCreate'])
+
+    def test_function_scanner_ignores_calls_comments_macros_and_nonprototypes(self):
+        text = '''/* void Fake(int n); */
+#define BAD(x) Fake(x)
+typedef void (*Callback)(int n);
+extern "C" {
+void Real(
+    int n, void (*callback)(int));
+int Old();
+int Local(void) { Real(1, 0); return Missing(1); }
+}
+'''
+        rows = decompctx.declared_functions(text)
+        self.assertEqual(set(rows), {'Real', 'Old', 'Local'})
+        self.assertEqual(len(rows['Real']), 1)
+        self.assertEqual(rows['Real'][0]['line'], 5)
+        self.assertFalse(rows['Old'][0]['prototyped'])
+        result = decompctx.discover_call_context(self.root, 'bl Old\nbl Real', text)
+        self.assertEqual(result['covered_calls'], ['Real'])
+        self.assertEqual(result['unresolved'], [])
+        self.assertEqual(result['present_without_prototype'], ['Old'])
+
+    def test_call_context_preserves_conflicting_alternatives(self):
+        self.write('include/a.h', 'void Create(int n);\n')
+        self.write('include/b.h', 'int Create(float n);\n')
+        rows = decompctx.discover_call_context(self.root, 'bl Create', '')['missing']['Create']
+        self.assertEqual([row['declaration'] for row in rows], ['void Create(int n)', 'int Create(float n)'])
+
+    def test_call_context_cli_and_provider_containment(self):
+        self.write('src/context.i', 'void Present(void);\n')
+        self.write('src/target.s', 'bl Present\nbl Missing\n')
+        self.assertEqual(decompctx.main(['src/context.i', '--root', str(self.root),
+            '--calls-from', 'src/target.s', '-o', 'calls.json']), 0)
+        self.assertEqual(json.loads((self.root/'calls.json').read_text())['unresolved'], ['Missing'])
+        with self.assertRaisesRegex(decompctx.ContextError, 'Provider'):
+            decompctx.discover_call_context(self.root, '', '', ['../escape.c'])
+
+    def test_local_void_helper_saved_result_warns_without_inventing_signature(self):
+        asm = '.fn Normalize, global\nbl PSVECNormalize\nli r30, 1\nmr r3, r30\nlwz r30, 8(r1)\nblr\n.endfn Normalize\n'
+        result = decompctx.discover_call_context(self.root, asm,
+            'void Normalize(Vec *src, Vec *dst);\n')
+        self.assertEqual(result['return_warnings'][0]['function'], 'Normalize')
+        self.assertNotIn('suggested_return_type', result['return_warnings'][0])
+        self.assertEqual(decompctx.discover_call_context(self.root, asm,
+            'int Normalize(Vec *src, Vec *dst);\n')['return_warnings'], [])
+        # A later real call overwrites r3: this does not support the cue.
+        self.assertEqual(decompctx.discover_call_context(self.root,
+            asm.replace('lwz r30, 8(r1)', 'bl RealCall\nlwz r30, 8(r1)'),
+            'void Normalize(Vec *src, Vec *dst);\n')['return_warnings'], [])
+        self.assertEqual(decompctx.discover_call_context(self.root,
+            asm.replace('lwz r30, 8(r1)', 'li r3, 0\nlwz r30, 8(r1)'),
+            'void Normalize(Vec *src, Vec *dst);\n')['return_warnings'], [])
+
+    def test_header_named_directory_is_not_read_as_file(self):
+        (self.root/'include/Runtime.H').mkdir()
+        self.assertEqual(decompctx.discover_call_context(self.root, 'bl Missing', '')['unresolved'], ['Missing'])
+
+    def test_compiler_save_restore_helpers_are_not_missing_application_prototypes(self):
+        result = decompctx.discover_call_context(self.root, 'bl _savegpr_22\nbl _restgpr_22\nbl Unknown', '')
+        self.assertEqual(result['compiler_helper_calls'], ['_restgpr_22', '_savegpr_22'])
+        self.assertEqual(result['unresolved'], ['Unknown'])
 
 
 META = '''  0 .text 00000014 00000000 00000000 00000034 2**2
