@@ -2,13 +2,22 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "m621-environment-unaccessed-prefix",
+      "classification": "authenticated",
+      "path": "src/REL/m621dll/gameplay.c",
+      "kind": "source_shape",
+      "rules": ["opaque_blob"],
+      "rationale": "SCOPE: only M621Environment_s.unk_00[4]. The target fn_1_5F0 creates the environment with a 16-byte allocation. fn_1_D28 consumes obj->data and stores the omAddObjEx pointer at offset4, model/motion halfwords at8/10/12. Bytes0..3 have no recovered access and remain explicitly unknown bytes, not an asserted original array or an invented semantic type. All65 application functions, physical relocations, linked section bytes and the retail REL are independently exact. This is an existing heap-record prefix, not a new local, pad seeder or register-shaping construct; no other opaque storage is covered.",
+      "evidence": ["src/REL/m621dll/gameplay.c", "build/minigame-recovery-20260913/m621/fn_1_5F0.s", "build/minigame-recovery-20260913/m621/fn_1_D28.s", "build/minigame-recovery-20260913/m621/application-proof/receipt.json", "docs/dol-small-batch-20260913.md"]
+    },
+    {
       "id": "m621-target-part-unrecovered-halfword-range",
       "classification": "authenticated",
       "path": "include/REL/m621dll.h",
       "kind": "source_shape",
       "rules": ["opaque_blob"],
       "rationale": "SCOPE: only M621TargetPart.unk_1C[2]. Target fn_1_27A0 allocates 304 bytes; fn_1_3084 creates part records at offset52 with stride36, with actor at part+24. fn_1_2E10 consumes that actor and stores the Hu3DModelLink halfword result at part+30, and other consumers use effectNo at part+32. Bytes28..29 between these consumed fields remain unrecovered and are represented honestly as bytes, not asserted to have originally been an array or assigned an invented semantic type. The gap is within an existing heap record, not new stack storage, padding to tune register allocation, or a synthetic producer. The source-selected initializer reproduces the 304-byte allocation; all selected functions and linked retail sections remain exact. No other opaque field or source manipulation is covered.",
-      "evidence": ["src/REL/m621dll/target_init.c", "src/REL/m621dll/target_hit.c", "build/minigame-recovery-20260913/m621/target-part-layout-proof.json", "build/minigame-recovery-20260913/m621/entry-proof/receipt.json", "docs/dol-small-batch-20260913.md"]
+      "evidence": ["src/REL/m621dll/gameplay.c", "build/minigame-recovery-20260913/m621/target-part-layout-proof.json", "build/minigame-recovery-20260913/m621/application-proof/receipt.json", "docs/dol-small-batch-20260913.md"]
     },
     {
       "id": "m635-sprite-record-unaccessed-tail",

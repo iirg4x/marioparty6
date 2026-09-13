@@ -1,6 +1,72 @@
 # Small DOL batch — 2026-09-13
 
-## m621: five target-initialization functions verified (30 selected)
+## m621: complete source-selected private recovery (65/65 application functions)
+
+On 2026-09-14 the retained 30-function frontier advanced to **65/65 application
+functions**, plus the existing shared SDK runtime and startup. All **24,008 code
+bytes**, **432 read-only bytes**, **898 initialized-data bytes**, and **80 BSS
+bytes** are selected from source. The module link contains only `prolog.o`,
+`m621.o`, `gameplay.o`, and `runtime.o`: **no original fallback object** remains.
+The entire linked REL is retail-identical, all65 application functions have
+zero strict rows and independently exact physical relocations, and all137
+project checksums pass. Runtime signatures are verified independently by their
+relative address, size, bytes and relocations against the target; SDK names are
+not attributed to a surviving retail symbol table.
+
+This is a fully verified private recovery, **not yet a main promotion**. Evidence
+is `build/minigame-recovery-20260913/m621/application-proof/receipt.json`;
+its source/support hashes, linked report, per-function physical counts, runtime
+mapping and no-fallback link rule bind the result. The recovered module still
+uses address-placeholder names where original names are unavailable.
+
+### First-compile gaps that materially affected this closure
+
+- Correct isolated instruction bodies did not imply a correct source-unit layout.
+  Nineteen small units duplicated literal pools: target432 read-only bytes grew
+  to936. Consolidating the52 gameplay bodies restores shared producers. The
+  retained13-function entry unit must remain separate because it requires the
+  allocator's automatic-inline expansion.
+- The gameplay unit requires the verified owner-local `-inline noauto` profile:
+  `auto` expanded target-out-of-line helpers; global `off` incorrectly removed
+  the entry inline clone. This is the existing
+  `gc26-owner-profile-noauto-replaces-dont-inline-regions` diagnostic applied
+  narrowly to the GC1.3.2 unit and verified across every caller, not a universal
+  flag or proof of original compiler settings. There are no source inline
+  pragmas or hand-written game assembly.
+- In `fn_1_2E68`, the loop index is signed32 and narrows only at the helper call.
+  A halfword local had emitted four extra sign extensions:420 bytes became the
+  target404 bytes. This is consumer-driven type recovery, not a register tweak.
+- BSS ownership is reconstructed from real consumers and source-unit boundaries.
+  The entry manager pointer occupies four bytes; the next unit begins at8 by
+  normal section alignment. Gameplay tentative definitions emit in reverse
+  declaration order under the pinned compiler; their verified order restores
+  every target global address and80-byte total without phantom globals/padding.
+- Data is typed resource tables, hook-name strings, vector initializers and live
+  flags. Correcting their complete producer family avoids adding a standalone
+  string object that would insert four alignment bytes. The four-player resource
+  table is32 bytes, not the44-byte extent inferred before splitting its neighbor.
+
+The52 gameplay bodies were mechanically consolidated with a bijective function
+token check before the18 obsolete working fragments were removed. Eight of
+those fragments existed in the preceding commit; their prior versions remain
+in Git. The consolidated file replaces them without duplicated live code.
+
+Source-shape limitations remain disclosed independently of byte exactness:
+the16-byte environment record's first4 bytes and two bytes in each36-byte target
+part have no recovered access; their bounded exceptions are retained. The player
+snapshot in `fn_1_1240` and cleanup countdown in `fn_1_4CB0` are target-observed
+but their later semantic consumers are not recovered. The separate unreferenced
+initializer at dataBC..C8 is represented as `HuVecF {0,1,0}` from its three
+float words; original type/name are not claimed. It is actual nonzero target
+data, not an extension of the resource table or added alignment storage.
+
+The broader all-REL translation fixes are committed separately as6253e9d:
+167 affected cases yielded102 additional compiling drafts and21 improved
+scores, with478 m2c tests passing and eight exact controls unchanged. These
+benchmark gains are not owner-closure credit. m621 is the real source/link
+integration result following that work, and is not attributed solely to m2c.
+
+## Earlier m621 frontier: five target-initialization functions (30 selected)
 
 On 2026-09-14, the contiguous `fn_1_26A4` through `fn_1_29E8` group
 added **five source-selected functions and 944 bytes**. The module now has

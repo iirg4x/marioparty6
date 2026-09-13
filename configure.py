@@ -1279,11 +1279,17 @@ config.libs = [
         objects={
             Object(Matching, "REL/m621dll/prolog.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m621dll/m621.c", extra_cflags=["-pooldata off"]),
-            Object(NonMatching, "REL/m621dll/audio.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m621dll/round.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m621dll/target_init.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m621dll/effect.c", extra_cflags=["-pooldata off"]),
-            Object(Matching, "REL/m621dll/utility.c", extra_cflags=["-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m621dll/gameplay.c",
+                extra_cflags=["-pooldata off", "-inline noauto"],
+            ),
+            Object(
+                Matching,
+                "REL/m621dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"],
+            ),
         },
     ),
     Rel(

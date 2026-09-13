@@ -14,19 +14,14 @@ REL/m621dll/m621.c:
 	.text       start:0x000000A0 end:0x00000420
 	.rodata     start:0x00000010 end:0x00000058
 	.data       start:0x00000000 end:0x00000030
+	.bss        start:0x00000000 end:0x00000008
 
-REL/m621dll/audio.c:
-	.text       start:0x00000420 end:0x000005F0
-	.rodata     start:0x00000058 end:0x0000007C
+REL/m621dll/gameplay.c:
+	.text       start:0x00000420 end:0x00005384
+	.rodata     start:0x00000058 end:0x00000198
+	.data       start:0x00000030 end:0x00000382
+	.bss        start:0x00000008 end:0x00000050
 
-REL/m621dll/round.c:
-	.text       start:0x000005F0 end:0x00000B4C
-
-REL/m621dll/target_init.c:
-	.text       start:0x000026A4 end:0x00002A54
-
-REL/m621dll/effect.c:
-	.text       start:0x00005054 end:0x000052D4
-
-REL/m621dll/utility.c:
-	.text       start:0x000052D4 end:0x00005384
+REL/m621dll/runtime.c:
+	.text       start:0x00005384 end:0x00005DC8
+	.rodata     start:0x00000198 end:0x000001B0

@@ -5,6 +5,8 @@
 #include "game/memory.h"
 #include "string.h"
 
+OMOBJMAN *lbl_1_bss_0;
+
 MGSEQ_PARAM lbl_1_data_0 = {
     30, 1, fn_1_2E0, fn_1_358, fn_1_35C, fn_1_3B8, fn_1_3BC,
     fn_1_410, fn_1_414, fn_1_418, fn_1_41C
