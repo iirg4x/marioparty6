@@ -687,8 +687,7 @@
     const selection = selectionMeta(owner.selection);
     const title = owner.path || `Owner ${index + 1}`;
     const functions = filteredOwnerFunctions(owner);
-    const filtering = state.functionFilter !== "all" || state.functionQuery.trim() !== "";
-    return `<details class="owner-entry"${filtering || owner.selection === "matching" ? " open" : ""}>
+    return `<details class="owner-entry">
       <summary>
         <span class="owner-summary-path mono">${escapeHtml(title)}</span>
         <span class="owner-summary-meta">${selectionPill(owner.selection)}<span class="owner-chevron" aria-hidden="true">›</span></span>
