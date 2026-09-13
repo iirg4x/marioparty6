@@ -19,25 +19,24 @@ enum {
 #define QUEUE_READER_WAITING(queue) ((TosQueueElement *)(queue))
 #define QUEUE_READER_DISABLED(queue) \
     ((TosQueueElement *)&(queue)->head)
-static inline TosQueueElement *AllocateQueueElement(TosQueue *queue)
+static inline void AllocateQueueElement(TosQueue *queue, void **allocation)
 {
     u32 size = queue->elementSize + sizeof(TosQueueElement);
-    TosQueueElement *element;
 
     if (size < 0x20) {
-        FastAllocator *allocator = &queue->context->queueAllocator;
         u32 words = (size + 3) >> 2;
+        void **freeList = &queue->context->queueAllocator.freeLists[words];
 
-        element = allocator->freeLists[words];
-        if (element != NULL) {
-            allocator->freeLists[words] = element->next;
+        if (*freeList != NULL) {
+            *allocation = *freeList;
+            *freeList = *(void **)*freeList;
         } else {
-            element = fastallo_AllocateMemoryFromChunk(allocator, words);
+            FastAllocator *allocator = &queue->context->queueAllocator;
+            *allocation = fastallo_AllocateMemoryFromChunk(allocator, (u16)words);
         }
     } else {
-        element = heap_Alloc(queue->context->heap, size);
+        *allocation = heap_Alloc(queue->context->heap, size);
     }
-    return element;
 }
 
 static inline void FreeQueueElement(
@@ -63,7 +62,6 @@ u8 qQueueControl(
 {
     TosQueueElement *reader;
     u32 i;
-    u32 inactiveReaders;
     u8 success = 1;
 
     switch ((u8)command) {
@@ -127,27 +125,27 @@ u8 qQueueControl(
         break;
     case 6:
         queue->readPointers[value] = NULL;
-        for (inactiveReaders = 0; inactiveReaders < queue->readerCount;
-             inactiveReaders++) {
-            reader = queue->readPointers[inactiveReaders];
+        for (i = 0; i < queue->readerCount;
+             i++) {
+            reader = queue->readPointers[i];
             if (reader != NULL && reader != QUEUE_READER_DISABLED(queue)) {
                 break;
             }
         }
-        if (inactiveReaders == queue->readerCount) {
+        if (i == queue->readerCount) {
             queue->state = QUEUE_STATE_IDLE;
         }
         break;
     case 8:
         queue->readPointers[value] = QUEUE_READER_DISABLED(queue);
-        for (inactiveReaders = 0; inactiveReaders < queue->readerCount;
-             inactiveReaders++) {
-            reader = queue->readPointers[inactiveReaders];
+        for (i = 0; i < queue->readerCount;
+             i++) {
+            reader = queue->readPointers[i];
             if (reader != NULL && reader != QUEUE_READER_DISABLED(queue)) {
                 break;
             }
         }
-        if (inactiveReaders == queue->readerCount) {
+        if (i == queue->readerCount) {
             queue->state = QUEUE_STATE_IDLE;
         }
         break;
@@ -354,22 +352,33 @@ u32 qEnQueue(TosQueue *queue, void *elements, u32 count)
     TosQueueElement *element;
     TosQueueElement *tail;
     TosQueueElement *firstNewElement = NULL;
-    u8 *source = (u8 *)elements;
     u32 i;
+    u8 *source;
+
+    source = (u8 *)elements;
 
     if (queue->state == QUEUE_STATE_IDLE && queue->maxElements == 0) {
         return 0;
     }
 
-    tail = queue->head;
-    if (tail != NULL) {
-        while (tail->next != NULL) {
-            tail = tail->next;
+    {
+        TosQueueElement *scan = queue->head;
+        if (scan != NULL) {
+            while (scan->next != NULL) {
+                scan = scan->next;
+            }
+            tail = scan;
+        } else {
+            tail = NULL;
         }
     }
 
     for (i = 0; i < count; i++) {
-        element = AllocateQueueElement(queue);
+        {
+            TosQueueElement *allocation;
+            AllocateQueueElement(queue, (void **)&allocation);
+            element = allocation;
+        }
         if (firstNewElement == NULL) {
             firstNewElement = element;
         }
@@ -398,7 +407,11 @@ void *qEnQueueOne(TosQueue *queue)
         return NULL;
     }
 
-    element = AllocateQueueElement(queue);
+    {
+        TosQueueElement *allocation;
+        AllocateQueueElement(queue, (void **)&allocation);
+        element = allocation;
+    }
     tail = queue->head;
     if (tail != NULL) {
         while (tail->next != NULL) {

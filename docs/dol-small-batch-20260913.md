@@ -4,7 +4,55 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **349/396**, **2/10** batch owners.
 
-## Current queue frontier: 12/16; frame and model-direction gaps fixed
+## Current queue frontier: 14/16, all fourteen raw/physical exact
+
+Two more functions are retained: `qEnQueue` **356 bytes, 4/4 relocations** and
+`qQueueControl` **800 bytes, 4/4 relocations**, both strict/data/raw exact.
+The control fix removes the earlier four-byte provider shift; independent
+checks now prove **all fourteen instruction-exact functions physically exact**,
+not just the two new bodies. All previous exact siblings survive and allocated
+data is unchanged. `qEnQueueOne` additionally improves **80.78788 -> 92.878784**
+and restores its retail 264 bytes. It and `qCheckDeQueueOne` (98.965515, 232 bytes)
+are the two remaining instruction-nonexact functions. This is still not owner
+closure or a main promotion; the ten-owner batch remains **2/10**.
+
+The source causes were connected, not a register matrix:
+
+- The allocator writes through a real generic output interface into a local
+  typed allocation result before the caller consumes the node. This explains
+  the retail result stores and alias-sensitive free-list reload. The retained
+  source uses the old-C `(void **)&allocation` interface, not a forced stack
+  slot, volatile, register qualifier, padding or assembly. It is a reconstructed
+  implementation-specific allocator boundary, not a claim of portable generic
+  pointer-to-pointer conversion or recovered original local names.
+- The tail-search cursor and the saved append tail are separate live values.
+  Restoring the explicit null result and traversal/result boundary supplied the
+  missing twelve bytes. Once operations, homes and CFG matched, the actual
+  index-before-byte-cursor declaration order closed the final saved-owner cycle.
+- Control's apparent zero/CSE problem came from a redundant loop-index identity.
+  Reusing the existing index across mutually exclusive switch scans matched
+  without coupling a numeric counter to a null pointer. Qwen had returned
+  insufficient evidence for this case; that did not exhaust the function.
+
+The proposed `u16` allocator prototype improved caller scheduling but changed
+the already-Matching provider (276 -> 272 bytes), so it was rejected. Capturing
+the actual allocator before the caller's existing `u16` argument conversion
+produced the same winning caller object **without any header/provider change**.
+The other Qwen proposal duplicated a slot/index expression and grew the closed
+dequeue frame 40 -> 48; the frame-aware comparison catches that regression.
+Neither that proposal nor its neutral declaration-only refinement was retained.
+
+Live source `f771bc792accabc4516158f14db00df743ccf61a698527683ba62a423c5292da`,
+object `6e9089cb2a0d9a222da29d33ee9163d5a77284ddbbcbe00f2c4bd02ac0f4fabc`,
+strict/data `878c1c8844bfc620e899c3ff1d88266b1f923639add9539c8fbfbce706b37ff8`.
+The live-source compiler run reproduced the isolated object. Proof and all
+fourteen relocation counts are in
+`build/small-first-20260913/mqueue-control-shared-loop-index/frontier-proof.json`
+and `exact-function-physical-counts.json`. The earlier allocation checkpoint's
+one local `qUpdateReadPtrsAndIncNbrOfEnqueues` target shift (1968 -> 1972) is now
+closed by Control's size fix. Full owner linking remains a final closure gate.
+
+## Previous queue frontier: 12/16; frame and model-direction gaps fixed
 
 `qUpdateReadPtrsAndIncNbrOfEnqueues` is newly exact: **316 retail bytes,
 strict/data 100%, 1/1 physical relocations**, with all eleven exact siblings
