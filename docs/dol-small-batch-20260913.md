@@ -4,6 +4,45 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **350/396**, **3/10** batch owners.
 
+## Combiner: retained source gain using the repaired comparison
+
+`CombinerProcess` improved **97.547620 -> 98.190475%** strict/data with
+**840/840 bytes** and its exact 32-byte frame preserved. The real history-row
+selection index is reused for the subsequent band traversals, in the signed
+domain required by their comparisons. This keeps the first loop's zero-init
+after history selection and restores the input-header advance chronology.
+The target-anchored comparison reports **4 resolved, 27 persisting, 0 introduced**
+observations. The primary selected the source change; the tool measured its
+effect rather than discovering or proving the original spelling.
+
+The live rebuild reproduces source
+`e47efc7e90c620912d5932b264fcee38e4a6b2941e916cdc31c4a1a98282495d`, object
+`0f4d6e8eb43dd818970fe5e4d1b90e9116b989f3a5377d60b38316b5ab83dd74`, and
+strict/data report `300e39c9fe036561216887c2a46294cf9dd6529d22d519fb5f61f2aefe7d55ed`.
+All three other function bodies, allocated data, and every candidate physical
+relocation inventory are unchanged. Both previously exact siblings remain
+raw-exact. Process's existing physical mismatch remains; no owner closure or
+new linked proof is claimed. Compact proof:
+`build/small-first-20260913/comb-shared-history-band-index/frontier-proof.json`.
+The organicity checker reports 100/100; source review independently confirms
+real sequential index uses, without padding, flags, ABI changes, or fake locals.
+
+A distinct direct derivative-cell cursor composition closed the remaining
+large cursor cycle, but folded two input advances and shrank 840 to 836 bytes.
+Its 7-row diagnostic is **not retained** despite the higher scalar score
+(report `3d7bb843...`, object `e3bcc260...`). Advancing that cursor in a separate
+statement regressed further; a real energy-reader helper left the 836-byte
+body unchanged. Keep only this compact constraint: the productive pointer
+consumer and the input-header value boundary must be reconciled together.
+Exev's entry-context snapshot also regressed and did not replace its champion.
+
+The earlier Smoother Qwen job `06b18baf...` completed; its proposed `valuesEnd`
+substitution contradicts the target's explicit rows/base construction and was
+rejected before compilation. Current independent Qwen support is limited to
+Combiner initialization (`3c54f13c...`) and Exev transition traversal
+(`f00b7e40...`) under `build/qwen-exev-comb-small-20260913/`. Neither is a gate
+on continued primary reconstruction. Batch remains 3/10; main remains 347/396.
+
 ## Success-path producers and scheduling comparisons
 
 The existing slicer now offers `--producer-flow-model unique-cfg` alongside

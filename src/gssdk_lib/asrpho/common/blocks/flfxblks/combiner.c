@@ -64,7 +64,7 @@ static void CombinerProcess(
     TosQueue *outputQueue = baseBlock->output->queue;
 
     if (input != NULL) {
-        u16 index = block->historyIndex;
+        s32 index = block->historyIndex;
         f32 *current = block->history[index & 7];
         f32 *previous1 = block->history[(index + 7) & 7];
         f32 *previous2 = block->history[(index + 6) & 7];
@@ -72,7 +72,6 @@ static void CombinerProcess(
         f32 *previous4 = block->history[(index + 4) & 7];
         f32 *delta = previous2 + 1;
         f32 firstSample = *input++;
-        s32 i;
 
         input++;
         block->frameCount++;
@@ -88,7 +87,7 @@ static void CombinerProcess(
         previous3 += 3;
         previous4 += 3;
         delta += block->bandCount + 2;
-        for (i = 0; i < block->bandCount; i++) {
+        for (index = 0; index < block->bandCount; index++) {
             *current++ = *input;
             *delta++ = 0.375f *
                        (2.0f * *input++ + *previous1++ - *previous3++ -
@@ -97,7 +96,7 @@ static void CombinerProcess(
 
         delta -= block->bandCount;
         previous3 += block->bandCount;
-        for (i = 0; i < block->bandCount; i++) {
+        for (index = 0; index < block->bandCount; index++) {
             *previous3++ = *delta++ - *previous4++;
         }
     }
