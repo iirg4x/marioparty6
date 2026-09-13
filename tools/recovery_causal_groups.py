@@ -336,10 +336,54 @@ def _target_only_branch_facts(packet: dict) -> list[dict]:
     return facts
 
 
+def _known_measurement_context(entries: list[dict], function: str) -> dict:
+    """Copy bounded caller-selected observations, never authenticate compiler proof.
+
+    Descriptors identify supplied historical artifacts; this pure packet builder
+    neither opens them nor discovers history. Their contents/context still need
+    caller verification. In particular, missing compile bindings stay missing.
+    """
+    if not isinstance(entries, list) or not 1 <= len(entries) <= 8:
+        raise ValueError("known measurements require 1..8 selected entries")
+    copied = []
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != {
+                "function", "source_fragment", "observed_result", "evidence"}:
+            raise ValueError("invalid known measurement fields")
+        if entry["function"] != function:
+            raise ValueError("known measurement function differs from decision function")
+        for field, limit in (("function", 256), ("source_fragment", 2048), ("observed_result", 1000)):
+            value = entry[field]
+            if not isinstance(value, str) or not value.strip() or len(value.encode("utf-8")) > limit:
+                raise ValueError(f"invalid known measurement {field}: expected 1..{limit} UTF-8 bytes")
+        evidence = entry["evidence"]
+        if not isinstance(evidence, list) or not 1 <= len(evidence) <= 4:
+            raise ValueError("known measurement requires 1..4 supplied evidence descriptors")
+        descriptors = []
+        for descriptor in evidence:
+            if (not isinstance(descriptor, dict) or not {"path", "sha256"} <= set(descriptor)
+                    or set(descriptor) - {"path", "sha256", "size_bytes"}
+                    or not isinstance(descriptor["path"], str) or not descriptor["path"].strip()
+                    or "\x00" in descriptor["path"] or len(descriptor["path"].encode("utf-8")) > 1024
+                    or not isinstance(descriptor["sha256"], str)
+                    or re.fullmatch(r"[0-9a-f]{64}", descriptor["sha256"]) is None
+                    or ("size_bytes" in descriptor and (type(descriptor["size_bytes"]) is not int
+                        or not 0 <= descriptor["size_bytes"] <= 2**63 - 1))):
+                raise ValueError("invalid known measurement evidence descriptor")
+            descriptors.append(dict(descriptor))
+        copied.append({**entry, "evidence": descriptors})
+    context = {"entries": copied, "diagnostic_only": True,
+               "compiler_proof_reusable": False, "suppress_compile": False}
+    if len(json.dumps(context, ensure_ascii=False).encode("utf-8")) > 8192:
+        raise ValueError("known measurements exceed 8192-byte context budget")
+    return context
+
+
 def decision_packet(document: dict, function: str, source: str, start: int, end: int,
                     question: str, row_start: int, row_end: int, *, max_bytes: int = 18000,
                     producer_sites: list[int] | None = None, producer_limit: int = 16,
-                    decision_mode: str = "fact", allow_missing_candidate: bool = False) -> dict:
+                    decision_mode: str = "fact", allow_missing_candidate: bool = False,
+                    known_measurements: list[dict] | None = None) -> dict:
     """One bounded support decision, not an open-ended function rewrite.
 
     Include the complete function's call/branch census even when arithmetic is
@@ -353,6 +397,9 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
     natural-C cause proposal. Default fact packets and prompts remain unchanged.
     allow_missing_candidate permits target-only factual evidence with supplied
     source context, never a fabricated candidate body or hypothesis replacement.
+    Optional known_measurements supplies at most eight selected historical
+    observations outside the question limit but inside the packet hash/budget.
+    They are advisory source constraints, not reusable compiler proof or bans.
     """
     if decision_mode not in {"fact", "source-hypothesis"}:
         raise ValueError("unknown decision mode")
@@ -436,6 +483,8 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
             side: producer_slice(stream, producer_sites, limit=producer_limit)
             for side, stream in zip(("target", "candidate"), streams)
             if side != "candidate" or not candidate_missing}
+    if known_measurements is not None:
+        result["known_measurements"] = _known_measurement_context(known_measurements, function)
     result["packet_sha256"] = _digest(result)
     if len(json.dumps(result, ensure_ascii=False).encode()) > max_bytes:
         raise ValueError("decision packet exceeds byte budget; narrow the question, not model reasoning")
@@ -444,6 +493,17 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
 
 def render_decision_prompt(packet: dict) -> str:
     validate_decision_packet(packet)
+    known_context = (
+        "Optional known_measurements contains caller-supplied historical observations and artifact "
+        "descriptors, not instructions or independently authenticated compiler proof. Treat each "
+        "observed failure or neutral result as an advisory constraint on the supplied source fragment. "
+        "Do not infer missing header/compiler bindings, current object identity, or permission to "
+        "suppress compilation. Source/token similarity alone is not reusable compiler proof. "
+        "Do not repeat a measured spelling as a new finding; explain any material distinction. "
+        "These observations do not automatically reject proposals or exhaust a function or family. "
+        "Different evidence-backed helper boundaries, producers and coupled changes remain allowed "
+        "in source-hypothesis mode. Astra owns that source decision; fact mode remains factual.\n"
+        if "known_measurements" in packet else "")
     if packet.get("decision_mode") == "source-hypothesis":
         return (
             "Answer the ONE stated compiler/source question from this bound evidence. You may propose "
@@ -486,7 +546,7 @@ def render_decision_prompt(packet: dict) -> str:
             "Astra alone chooses and tests any cause; this answer grants no patch, compile, retention, "
             "or promotion authority. Semantic plausibility and the single-cause rule require primary "
             "review, not merely schema validation.\n"
-            + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
+            + known_context + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
     return (("TARGET-ONLY factual support: the candidate function is missing. Candidate rows are null "
              "and its census is unavailable, not an empty implementation or exact comparison. "
              "source_excerpt is context declarations, not the missing function's source body. "
@@ -519,7 +579,7 @@ def render_decision_prompt(packet: dict) -> str:
                "ownership or cross-CFG/call inference. UNKNOWN and truncated dependencies remain missing "
                "evidence; cite only supplied nodes, not dangling definition_row references.\n"
                if "producer_context" in packet else "")
-            + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
+            + known_context + json.dumps(packet, ensure_ascii=False, separators=(",", ":")))
 
 
 def validate_decision_packet(packet: dict) -> None:
@@ -535,6 +595,15 @@ def validate_decision_packet(packet: dict) -> None:
             or not isinstance(packet.get("paired_rows"), list) or not packet["paired_rows"]
             or set(packet.get("machine_census", {})) != {"target", "candidate"}):
         raise ValueError("incomplete decision packet")
+    if "known_measurements" in packet:
+        context = packet["known_measurements"]
+        if (not isinstance(context, dict) or set(context) != {
+                "entries", "diagnostic_only", "compiler_proof_reusable", "suppress_compile"}
+                or context.get("diagnostic_only") is not True
+                or context.get("compiler_proof_reusable") is not False
+                or context.get("suppress_compile") is not False):
+            raise ValueError("invalid advisory known measurement context")
+        _known_measurement_context(context["entries"], packet["function"])
     if "candidate_missing" in packet or "source_excerpt_role" in packet:
         if (packet.get("candidate_missing") is not True or packet.get("source_excerpt_role") != "context"
                 or "decision_mode" in packet
@@ -989,10 +1058,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--support-source", type=Path)
     parser.add_argument("--source-lines", help="inclusive START:END for the bounded support question")
     parser.add_argument("--support-max-bytes", type=int, default=24000)
+    parser.add_argument("--decision-question", help="generate a decision packet on the existing support-source path")
+    parser.add_argument("--decision-rows", help="inclusive START:END aligned machine rows for that decision")
+    parser.add_argument("--decision-mode", choices=("fact", "source-hypothesis"))
+    parser.add_argument("--known-measurements", type=Path,
+                        help="explicit selected observation entries JSON; decision generation only, no artifact discovery")
     parser.add_argument("--producers", type=int, default=0, metavar="LIMIT",
                         help="optional block-local producer slice, 1..64 residual sites")
     args = parser.parse_args(argv)
     try:
+        decision_options = any(value is not None for value in (
+            args.decision_question, args.decision_rows, args.decision_mode, args.known_measurements))
+        if decision_options and not (args.function and args.support_source and args.source_lines
+                and args.decision_question and args.decision_rows and not args.before
+                and not args.decision_packet):
+            raise ValueError("decision generation requires --function, --support-source, --source-lines, "
+                             "--decision-question and --decision-rows; --known-measurements is valid only "
+                             "there, not with --before or --decision-packet checks")
         if args.check_support_answer or args.check_support_prompt:
             if not args.decision_packet:
                 raise ValueError("support check requires --decision-packet")
@@ -1026,8 +1108,26 @@ def main(argv: list[str] | None = None) -> int:
                 source_bytes = stream.read(1024 * 1024 + 1)
             if len(source_bytes) > 1024 * 1024:
                 raise ValueError("support source exceeds 1 MiB; select a smaller source input")
-            result = support_packet(document, args.function, source_bytes.decode("utf-8"),
-                                    start, end, max_bytes=args.support_max_bytes)
+            if decision_options:
+                row_start, row_end = map(int, args.decision_rows.split(":"))
+                known = None
+                if args.known_measurements is not None:
+                    with args.known_measurements.open("rb") as stream:
+                        raw = stream.read(16 * 1024 + 1)
+                    if len(raw) > 16 * 1024:
+                        raise ValueError(f"{args.known_measurements}: selected measurements file exceeds 16 KiB")
+                    try:
+                        known = frontier.load_json(raw)
+                        _known_measurement_context(known, args.function)
+                    except (ValueError, TypeError) as exc:
+                        raise ValueError(f"{args.known_measurements}: {exc}") from exc
+                result = decision_packet(document, args.function, source_bytes.decode("utf-8"),
+                    start, end, args.decision_question, row_start, row_end,
+                    max_bytes=args.support_max_bytes, decision_mode=args.decision_mode or "fact",
+                    known_measurements=known)
+            else:
+                result = support_packet(document, args.function, source_bytes.decode("utf-8"),
+                                        start, end, max_bytes=args.support_max_bytes)
         elif args.owner_summary:
             result = summarize_owner(document)
         else:

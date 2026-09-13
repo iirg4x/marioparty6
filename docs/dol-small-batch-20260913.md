@@ -4,6 +4,62 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **349/396**, **2/10** batch owners.
 
+## Current queue gain and measured-constraint tooling
+
+`mqueue.c` advances **3/16 -> 5/16 strict/data instruction matches**.
+`qQueueJumpBack` (268 bytes) and `qQueueJumpBackOne` (192 bytes) both use
+one common success return, with the actual operation guarded by `count != 0`.
+This closes the first branch mismatch and removes each candidate-only
+eight-byte early-return sequence. One composed compile, no control matrix;
+all fourteen other bodies and allocated data are byte-unchanged. The three
+previous exact siblings survive. Source `2e5241907d31d49bf04078bb489122121a05fc83c5b5466a166d0fd91fab2a1a`,
+object `d481431787c4fb23625f446b89fd86de097f74e977499495f77a3e6bea0aa7d8`;
+strict/data `990f42f8064f5c2edbb245a97ed5f1c1c85c8eff0d1b9a1ecede86b0cc4a4ccb`.
+Proof: `build/small-first-20260913/mqueue-common-jump-success/frontier-proof.json`.
+
+This is **not owner closure**. JumpBackOne has no relocations and is fully
+function-exact. JumpBack's single call has the correct site/type/symbol but
+`qFreeUnusedElemements` still lies at candidate `.text+2924` versus retail
+`+2984`; its physical/link closure awaits the remaining queue reconstruction.
+Eleven instruction-nonexact functions remain. Main and the ten-owner count
+do not advance for this partial frontier.
+
+Two concrete tooling gaps were fixed and exercised here:
+
+- `recovery_causal_groups.decision_packet(..., known_measurements=...)`
+  now carries up to eight explicitly selected compact observations outside
+  the 800-character question, inside the packet hash and shared byte budget.
+  The existing CLI accepts `--decision-question`, `--decision-rows`,
+  `--decision-mode source-hypothesis`, and `--known-measurements SELECTED.json`
+  on its existing `--strict/--function/--support-source/--source-lines` path.
+  Existing packets/prompts remain compatible. Observations are advisory,
+  not cached compiler proof or function/family bans; different helper or
+  coupled changes remain available. Select relevant measurements before the
+  next Qwen request, rather than squeezing them out of its short question.
+- The active scratch compiler now captures and checks wrapper/compiler bytes
+  and the target hash before/after execution. Full argv stays in its compact
+  retained summary, not repeated in console output. The actual queue gain
+  was compiled through these fresh bindings. Old summaries are not upgraded
+  into newly authenticated receipts.
+
+Real acceptance: existing function fingerprints identify the byte-identical
+ctxdata `group-property-count` / `ctx-word-property-extent` source recurrence.
+Both selected count/header measurements now appear in a **12,913-byte** Qwen
+prompt (`build/known-measurements-acceptance-20260913/decision.json`, packet
+`2a2f06891c31a289be02170ba36c7ff65c69f92c3d0d37b44235a536ac3e4db6`).
+The older compiler/include binding is incomplete and its raw object differs,
+so no cached proof is claimed. This acceptance used no new inference/compile.
+The active support builders pass these selected observations through; existing
+dispatched packets were not overwritten. Ninety affected tooling tests pass
+(22 existing optional skips), plus the bounded scratch-driver fixtures.
+
+Compact non-gain constraints: ctxdata cached outer-record + nested-region
+composition restored Syntax's 80 bytes but regressed WordProp; genfilt's real
+byte-return input-query helper restored 124 bytes but regressed scheduling;
+Combiner's eight-row initialization loop was unrolled to 296 bytes but added
+eight frame bytes and left the cursor cycle. None replaced a live champion.
+These observations constrain those exact hypotheses, not their entire owners.
+
 ## Context functions: closed, 15/15 exact
 
 The small `gssdk_lib/gsapi/ctxfuncs.c` owner originally had ten missing source

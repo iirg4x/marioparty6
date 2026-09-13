@@ -173,33 +173,31 @@ u8 qQueueJumpBack(TosQueue *queue, u16 count)
     u32 elementCount;
     u32 i;
 
-    if (count == 0) {
-        return 1;
-    }
-
-    elementCount = 0;
-    element = queue->head;
-    while (element != NULL) {
-        element = element->next;
-        elementCount++;
-    }
-    if (elementCount < count) {
-        return 0;
-    }
-
-    element = queue->head;
-    elementCount -= count;
-    for (i = 0; i < elementCount; i++) {
-        element = element->next;
-    }
-
-    for (i = 0; i < queue->readerCount; i++) {
-        if (queue->readPointers[i] != QUEUE_READER_DISABLED(queue) &&
-            queue->readPointers[i] != NULL) {
-            queue->readPointers[i] = element;
+    if (count != 0) {
+        elementCount = 0;
+        element = queue->head;
+        while (element != NULL) {
+            element = element->next;
+            elementCount++;
         }
+        if (elementCount < count) {
+            return 0;
+        }
+
+        element = queue->head;
+        elementCount -= count;
+        for (i = 0; i < elementCount; i++) {
+            element = element->next;
+        }
+
+        for (i = 0; i < queue->readerCount; i++) {
+            if (queue->readPointers[i] != QUEUE_READER_DISABLED(queue) &&
+                queue->readPointers[i] != NULL) {
+                queue->readPointers[i] = element;
+            }
+        }
+        qFreeUnusedElemements(queue);
     }
-    qFreeUnusedElemements(queue);
     return 1;
 }
 
@@ -209,26 +207,24 @@ u8 qQueueJumpBackOne(TosQueue *queue, u16 reader, u16 count)
     u32 elementCount;
     u32 i;
 
-    if (count == 0) {
-        return 1;
-    }
+    if (count != 0) {
+        elementCount = 0;
+        element = queue->head;
+        while (element != NULL) {
+            element = element->next;
+            elementCount++;
+        }
+        if (elementCount < count) {
+            return 0;
+        }
 
-    elementCount = 0;
-    element = queue->head;
-    while (element != NULL) {
-        element = element->next;
-        elementCount++;
+        element = queue->head;
+        elementCount -= count;
+        for (i = 0; i < elementCount; i++) {
+            element = element->next;
+        }
+        queue->readPointers[reader] = element;
     }
-    if (elementCount < count) {
-        return 0;
-    }
-
-    element = queue->head;
-    elementCount -= count;
-    for (i = 0; i < elementCount; i++) {
-        element = element->next;
-    }
-    queue->readPointers[reader] = element;
     return 1;
 }
 
