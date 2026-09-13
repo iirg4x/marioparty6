@@ -64,7 +64,7 @@ typedef struct M651Player {
 } M651Player;
 
 extern OMOBJMAN *lbl_1_bss_0;
-extern s16 lbl_1_bss_4;
+extern s16 lbl_1_bss_4[6];
 extern float lbl_1_bss_10;
 extern M651Work14 lbl_1_bss_14;
 extern M651Work64 lbl_1_bss_64;
