@@ -13,6 +13,11 @@ project checksums pass. Runtime signatures are verified independently by their
 relative address, size, bytes and relocations against the target; SDK names are
 not attributed to a surviving retail symbol table.
 
+The public-ready build configuration selects only this completed module; the
+unfinished m635 selector remains in its verified snapshot at d8166b7, with its
+source, private builds and partial-gain evidence preserved. It must not be
+silently included in m621's supporting promotion.
+
 This is a fully verified private recovery, **not yet a main promotion**. Evidence
 is `build/minigame-recovery-20260913/m621/application-proof/receipt.json`;
 its source/support hashes, linked report, per-function physical counts, runtime
