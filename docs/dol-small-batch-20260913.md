@@ -4,7 +4,42 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **350/396**, **3/10** batch owners.
 
-## Active producer gaps repaired; no new source gain in this round
+## Success-path producers and scheduling comparisons
+
+The existing slicer now offers `--producer-flow-model unique-cfg` alongside
+`--producers` and the optional `--producer-call-model ppc-eabi`. It propagates
+only unanimous physical definitions over recognized edges after convergence.
+Conflicting definitions, unsupported effects/edges, unresolved destinations,
+forward/cyclic dependencies and bounded-analysis exhaustion stay UNKNOWN.
+Default block-local output is unchanged; no source identity is inferred.
+
+Actual undersampler report `0049279c...` now connects quotient25 to use37:
+target `r5`, candidate `r4`. Branch28 reaches the success block34; the error
+arm's logging call exits past that block. Both streams converge in two passes.
+This closes the earlier artificial CFG-entry UNKNOWN, not the source mismatch.
+
+`compare_function_constraints` also no longer aborts when two inserted
+instructions share one target boundary. It reports that whole boundary as
+unresolved and compares the remaining target sites. The actual Smoothing
+`smoother-input-end-recurrence` replay yields 12 resolved, 30 persisting and
+4 introduced observations, plus one unresolved two-instruction boundary.
+Its score regression **97.887850 -> 95.481310%** and unchanged open frame
+remain explicit: those resolved observations are not a retained gain.
+Ambiguous neutral replay produces no invented resolutions. Detail limits
+retain full counts while bounding groups/rows. Fact prompts now describe the
+selected CFG/EABI scope instead of contradicting the supplied dependencies;
+legacy no-model prompt text is unchanged. **138 tests pass, 22 skips**.
+
+Current source work is not credited as closure: the Qwen factor snapshot
+compiled to the unchanged undersampler report; the callback proposal to cache
+the allocation extent contradicts target rows93-98's post-call reload and
+recomputation and was rejected before compilation. Sliding bin-helper/clear
+boundaries were neutral; sample normalization and a separate Smoother element
+counter regressed and were not retained. Exact siblings/champions are untouched.
+Qwen's current Smoother structural question is packet `06b18baf...`, under
+`build/qwen-smoother-source-boundary-20260913/`; its task is not a tooling gate.
+
+## Earlier producer gaps repaired
 
 The existing `recovery_causal_groups.py` slicer was dropping the actual queue
 `clrrwi` and undersampler `divw` producers as unsupported opcodes. It now

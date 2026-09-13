@@ -18,6 +18,104 @@ from tools.tests.test_recovery_causal_groups import row, report
 
 
 class RotateProducerTests(unittest.TestCase):
+    def test_fact_prompt_describes_only_the_selected_producer_scope(self):
+        rows = [row("li r31, 4", 0), row("beq 0x8", 4), row("mr r3, r31", 8)]
+        def prompt(**options):
+            packet = groups.decision_packet(report(rows, rows), "f", "void f(void) {}", 1, 1,
+                "Trace the value", 2, 2, producer_sites=[2], **options)
+            return groups.render_decision_prompt(packet).split('{"schema"', 1)[0]
+        legacy = prompt()
+        self.assertIn("bounded same-block physical definitions", legacy)
+        self.assertEqual(legacy, prompt(producer_flow_model="block-local"))
+        cfg = prompt(producer_flow_model="unique-cfg")
+        self.assertIn("bounded unique-CFG physical definitions", cfg)
+        self.assertNotIn("same-block", cfg)
+        eabi = prompt(producer_call_model="ppc-eabi")
+        self.assertIn("conditionally preserves physical definitions", eabi)
+        self.assertIn("CFG entries still stop", eabi)
+        self.assertNotIn("cross-CFG/call inference", eabi)
+
+    def cfg_slice(self, texts, sites, **kwargs):
+        rows = [row(text, i * 4) for i, text in enumerate(texts)]
+        return groups.producer_slice(rows, sites, flow_model="unique-cfg", **kwargs)
+
+    def test_cfg_diamond_unique_agreement_and_disagreement(self):
+        texts = ["li r5, 9", "beq 0x10", "nop", "b 0x14", "nop", "mr r3, r5", "blr"]
+        result = self.cfg_slice(texts, [5])
+        self.assertEqual(result["nodes"][-1]["uses"], [{"register": "r5", "definition_row": 0}])
+        self.assertEqual(result["flow_model"]["status"], "converged")
+        texts[4] = "li r5, 9"  # Same literal, distinct definition: never merge IDs.
+        result = self.cfg_slice(texts, [5])
+        self.assertNotIn("definition_row", result["nodes"][-1]["uses"][0])
+
+    def test_cfg_error_path_does_not_reach_success_use(self):
+        texts = ["divw r5, r31, r0", "beq 0x10", "bl _tosErrorLog", "b 0x14",
+                 "clrlslwi r0, r5, 18, 2", "blr"]
+        result = self.cfg_slice(texts, [4], call_model="ppc-eabi")
+        self.assertEqual(result["nodes"][-1]["uses"], [{"register": "r5", "definition_row": 0}])
+        texts[3] = "b 0x10"  # Error call now joins, clobbering volatile quotient.
+        result = self.cfg_slice(texts, [4], call_model="ppc-eabi")
+        self.assertNotIn("definition_row", result["nodes"][-1]["uses"][0])
+
+    def test_cfg_calls_preserve_only_opted_in_callee_saved_definitions(self):
+        texts = ["li r31, 9", "beq 0x10", "bl helper", "b 0x14", "nop", "mr r3, r31", "blr"]
+        self.assertNotIn("definition_row", self.cfg_slice(texts, [5])["nodes"][-1]["uses"][0])
+        self.assertEqual(self.cfg_slice(texts, [5], call_model="ppc-eabi")["nodes"][-1]["uses"][0]["definition_row"], 0)
+        texts[2] = "mystery r3"
+        self.assertNotIn("definition_row", self.cfg_slice(texts, [5], call_model="ppc-eabi")["nodes"][-1]["uses"][0])
+
+    def test_cfg_loops_reach_fixed_point_before_publishing(self):
+        texts = ["li r5, 9", "mr r3, r5", "bne 0x4", "blr"]
+        self.assertEqual(self.cfg_slice(texts, [1])["nodes"][-1]["uses"][0]["definition_row"], 0)
+        texts = ["li r5, 9", "mr r3, r5", "li r5, 7", "bne 0x4", "blr"]
+        self.assertNotIn("definition_row", self.cfg_slice(texts, [1])["nodes"][-1]["uses"][0])
+        texts = ["b 0x8", "mr r3, r5", "li r5, 7", "b 0x4"]
+        result = self.cfg_slice(texts, [1])
+        self.assertEqual(result["nodes"][-1]["uses"][0]["reason"], "CFG loop-carried or forward definition")
+
+    def test_cfg_unknown_edges_unreachable_rows_and_limits(self):
+        for branch in ("bctr", "bc 12, 2, 0x8", "beq 0x100", "beq r3", "bctrl r3"):
+            result = self.cfg_slice(["li r5, 9", branch, "mr r3, r5"], [2])
+            self.assertEqual(result["flow_model"]["status"], "UNKNOWN")
+            self.assertNotIn("definition_row", result["nodes"][-1]["uses"][0])
+        result = self.cfg_slice(["b 0xc", "li r5, 9", "mr r3, r5", "blr"], [2])
+        self.assertEqual(result["nodes"][-1]["uses"][0]["reason"], "CFG row unreachable from function entry")
+        result = self.cfg_slice(["li r5, 9", "mr r3, r5"], [1], cfg_iterations=1)
+        self.assertEqual(result["flow_model"]["status"], "UNKNOWN")
+        self.assertIn("iteration limit", result["nodes"][-1]["uses"][0]["reason"])
+        result = self.cfg_slice(["li r5, 9"] * 2049, [2048])
+        self.assertIn("row limit", result["flow_model"]["reason"])
+        for value in (0, 257, True):
+            with self.assertRaises(ValueError):
+                self.cfg_slice([], [], cfg_iterations=value)
+
+    def test_cfg_alignment_and_ambiguous_branch_metadata(self):
+        rows = [row("li r5, 9", 0), {}, row("beq 0x8", 4), row("mr r3, r5", 8)]
+        result = groups.producer_slice(rows, [3], flow_model="unique-cfg")
+        self.assertEqual(result["nodes"][-1]["uses"][0]["definition_row"], 0)
+        rows[2]["instruction"]["branch_dest"] = "0"
+        result = groups.producer_slice(rows, [3], flow_model="unique-cfg")
+        self.assertIn("conflicting branch destination", result["flow_model"]["reason"])
+        rows = [row("li r5, 9", 0), row("mr r3, r5", 0)]
+        result = groups.producer_slice(rows, [1], flow_model="unique-cfg")
+        self.assertIn("duplicate", result["flow_model"]["reason"])
+        with self.assertRaises(ValueError):
+            groups.producer_slice(rows, [1], flow_model="other")
+
+    def test_cfg_decision_model_seal_and_default_compatibility(self):
+        rows = [row("li r5, 9", 0), row("beq 0x8", 4), row("mr r3, r5", 8)]
+        default = groups.producer_slice(rows, [2])
+        self.assertEqual(default, groups.producer_slice(rows, [2], flow_model="block-local"))
+        packet = groups.decision_packet(report(rows, rows), "f", "void f(void) {}", 1, 1,
+                                        "Trace the value", 2, 2, producer_sites=[2], producer_flow_model="unique-cfg")
+        groups.validate_decision_packet(packet)
+        for field, value in (("name", "other"), ("source_causality_proven", True), ("iteration_limit", 0)):
+            broken = copy.deepcopy(packet)
+            broken["producer_context"]["target"]["flow_model"][field] = value
+            broken["packet_sha256"] = groups._digest({k: v for k, v in broken.items() if k != "packet_sha256"})
+            with self.assertRaises(ValueError):
+                groups.validate_decision_packet(broken)
+
     def test_eabi_call_preservation_is_opt_in_and_clears_volatile_values(self):
         for call in ("bl _tosGetProfileU32", "bla 0x100", "bctrl", "blrl"):
             with self.subTest(call=call):
@@ -97,6 +195,8 @@ class RotateProducerTests(unittest.TestCase):
             self.assertEqual(default, run(base + ["--producer-call-model", "conservative"]))
             modeled = run(base + ["--producer-call-model", "ppc-eabi"])
             self.assertIn("call_model", modeled["producer_slice"]["target"])
+            modeled_cfg = run(base + ["--producer-call-model", "ppc-eabi", "--producer-flow-model", "unique-cfg"])
+            self.assertEqual(modeled_cfg["producer_slice"]["target"]["flow_model"]["status"], "converged")
             decision = base + ["--support-source", str(source), "--source-lines", "1:1",
                                "--decision-question", "Trace the value", "--decision-rows", "2:2"]
             self.assertNotIn("producer_context", run(decision))
@@ -104,6 +204,9 @@ class RotateProducerTests(unittest.TestCase):
             groups.validate_decision_packet(packet)
             nodes = packet["producer_context"]["target"]["nodes"]
             self.assertEqual(nodes[-1]["uses"], [{"register": "r31", "definition_row": 0}])
+            packet = run(decision + ["--producer-call-model", "ppc-eabi", "--producer-flow-model", "unique-cfg"])
+            groups.validate_decision_packet(packet)
+            self.assertEqual(packet["producer_context"]["target"]["flow_model"]["status"], "converged")
 
     def test_divide_reads_both_gprs_before_defining_quotient(self):
         for op in ("divw", "divwu", "divwo", "divwuo"):
@@ -206,14 +309,15 @@ def bound_report_check(path: Path) -> None:
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--bound-report":
         bound_report_check(Path(sys.argv[2]))
-    elif len(sys.argv) in {5, 6} and sys.argv[1] == "--slice-report":
+    elif 5 <= len(sys.argv) <= 8 and sys.argv[1] == "--slice-report":
         raw = Path(sys.argv[2]).read_bytes()
         document = groups.frontier.load_json(raw)
         symbol = groups.frontier._stack_function(
-            groups.frontier.focus._symbols(document, "left", "strict"), sys.argv[3], "left")
+            groups.frontier.focus._symbols(document, sys.argv[7] if len(sys.argv) == 8 else "left", "strict"), sys.argv[3], "selected")
         rows = groups.frontier.focus._rows(symbol, sys.argv[3])
         print(json.dumps({"report_sha256": hashlib.sha256(raw).hexdigest(),
                           "slice": groups.producer_slice(rows, list(map(int, sys.argv[4].split(","))),
-                                                         call_model=sys.argv[5] if len(sys.argv) == 6 else "conservative")}))
+                                                         call_model=sys.argv[5] if len(sys.argv) >= 6 else "conservative",
+                                                         flow_model=sys.argv[6] if len(sys.argv) >= 7 else "block-local")}))
     else:
         unittest.main()

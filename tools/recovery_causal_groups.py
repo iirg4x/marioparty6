@@ -18,6 +18,7 @@ from tools import recovery_frontier as frontier
 
 _PRODUCER_SCOPE = "block-local physical definitions; memory identity and source causality UNKNOWN"
 _EABI_PRODUCER_SCOPE = "conditional PPC EABI call-preserved physical definitions; CFG joins stop; memory identity and source causality UNKNOWN"
+_CFG_PRODUCER_SCOPE = "unique reaching physical definitions over modeled CFG edges; call model conditional when supplied; memory identity and source causality UNKNOWN"
 
 
 def _producer_call_model(mode: str) -> dict | None:
@@ -46,6 +47,148 @@ def _recognized_eabi_call(op: str, operands: list[str]) -> bool:
         return 0 <= address <= 0xffffffff and address % 4 == 0
     return (re.fullmatch(r"[a-z_$][a-z0-9_.$]*", destination) is not None
             and re.fullmatch(r"(?:r|f|cr)[0-9]+|lr|ctr", destination) is None)
+
+
+def _check_producer_flow(mode: str, iteration_limit: int) -> None:
+    if mode not in ("block-local", "unique-cfg"):
+        raise ValueError("unknown producer flow model")
+    if type(iteration_limit) is not int or not 1 <= iteration_limit <= 256:
+        raise ValueError("producer CFG iteration limit must be 1..256")
+
+
+def _unique_cfg_producers(rows: list[dict], records: dict[int, dict],
+                          call_model: dict | None, iteration_limit: int) -> dict:
+    """Must-agree physical definitions, with no branch-predicate evaluation.
+
+    Reuse the parsed local records as kill/gen effects. None is not-yet-reached;
+    an empty mapping is reached but unknown. Iterate to convergence before
+    publishing dependencies, so backedges cannot leave optimistic first-pass
+    facts. Cyclic/forward dependencies remain UNKNOWN rather than inventing IDs.
+    """
+    metadata = {"name": "unique-cfg", "status": "converged", "reason": None,
+                "iterations": 0, "iteration_limit": iteration_limit,
+                "source_causality_proven": False}
+
+    def fail(reason: str) -> dict:
+        metadata.update(status="UNKNOWN", reason=reason)
+        for record in records.values():
+            record["uses"] = [{"register": use["register"], "status": "UNKNOWN", "reason": reason}
+                              for use in record["uses"]]
+        return metadata
+
+    if len(rows) > 2048:
+        return fail("CFG row limit exceeded (2048)")
+    _, addresses = frontier._branch_rows(rows)
+    if any(len(indices) != 1 for indices in addresses.values()):
+        return fail("CFG ambiguous duplicate instruction addresses")
+    successors: dict[int, list[int]] = {}
+    conditional = {"beq", "bne", "blt", "ble", "bgt", "bge", "bso", "bns", "bdnz", "bdz"}
+    for index, row in enumerate(rows):
+        following = [index + 1] if index + 1 < len(rows) else []
+        successors[index] = following
+        if row.get("label"):
+            return fail(f"CFG unmodeled label entry at row {index}")
+        parts = frontier._instruction_parts(row)
+        if parts is None:
+            continue  # Empty alignment rows pass through; unparsed records kill.
+        op, operands = parts
+        text = row["instruction"]["formatted"]
+        if not op.startswith("b"):
+            continue
+        if _recognized_eabi_call(op, operands):
+            continue
+        if op == "blr" and operands == [""]:
+            successors[index] = []
+            continue
+        branch = frontier._branch_instruction(text, index)
+        if branch is None:
+            return fail(f"CFG unmodeled or malformed call at row {index}")
+        mnemonic = branch["opcode"].rstrip("+-")
+        if mnemonic not in conditional | {"b", "ba"}:
+            return fail(f"CFG indirect or unmodeled branch at row {index}")
+        # Strict grammar, not a destination guessed from the final operand.
+        match = re.fullmatch(r"\s*[a-z]+[+-]?\s+(?:(cr[0-7]),\s*)?(0x[0-9a-f]+|[0-9]+)\s*", text.lower())
+        if (not match or (match[1] and mnemonic in {"b", "ba", "bdnz", "bdz"})
+                or (mnemonic in {"b", "ba"} and re.match(r"\s*[a-z]+[+-]", text.lower()))):
+            return fail(f"CFG malformed branch operands at row {index}")
+        destination = int(match[2], 16 if match[2].startswith("0x") else 10)
+        supplied = row["instruction"].get("branch_dest")
+        if supplied is not None:
+            try:
+                if frontier._parse_access_offset(supplied) != destination:
+                    return fail(f"CFG conflicting branch destination at row {index}")
+            except (ValueError, TypeError):
+                return fail(f"CFG invalid branch destination at row {index}")
+        if destination not in addresses:
+            return fail(f"CFG unresolved branch destination at row {index}")
+        successors[index] = addresses[destination] + (following if mnemonic in conditional else [])
+
+    predecessors: dict[int, list[int]] = {i: [] for i in range(len(rows))}
+    for source, targets in successors.items():
+        for target in targets:
+            predecessors[target].append(source)
+    reachable, pending = set(), [0] if rows else []
+    while pending:
+        index = pending.pop()
+        if index not in reachable:
+            reachable.add(index)
+            pending.extend(successors[index])
+    outputs: dict[int, dict[str, int] | None] = {i: None for i in reachable}
+
+    def incoming(index: int) -> dict[str, int] | None:
+        states = ([{}] if index == 0 else []) + [outputs[p] for p in predecessors[index]
+                                               if p in outputs and outputs[p] is not None]
+        if not states:
+            return None
+        return {register: definition for register, definition in states[0].items()
+                if all(state.get(register) == definition for state in states[1:])}
+
+    for iteration in range(1, iteration_limit + 1):
+        changed = False
+        for index in sorted(reachable):
+            state = incoming(index)
+            if state is None:
+                continue
+            record = records.get(index)
+            parts = frontier._instruction_parts(rows[index])
+            if record is None:
+                if rows[index].get("instruction"):
+                    state = {}
+            elif record.get("status") == "UNKNOWN":
+                op, operands = parts
+                if _recognized_eabi_call(op, operands):
+                    state = ({r: d for r, d in state.items() if r in call_model["preserved_registers"]}
+                             if call_model is not None else {})
+                elif not op.startswith("b"):
+                    state = {}
+                # Recognized branches leave GPR/FPR values unchanged.
+            elif "defines" in record:
+                state[record["defines"]] = index
+                if "base_update" in record:
+                    state[record["base_update"]["register"]] = index
+            if outputs[index] != state:
+                outputs[index] = state
+                changed = True
+        metadata["iterations"] = iteration
+        if not changed:
+            break
+    else:
+        return fail("CFG iteration limit reached; no reaching definitions published")
+    for index, record in records.items():
+        state = incoming(index) if index in reachable else None
+        uses = []
+        for use in record["uses"]:
+            register = use["register"]
+            definition = state.get(register) if state is not None else None
+            if definition is not None and definition < index:
+                uses.append({"register": register, "definition_row": definition})
+            else:
+                reason = ("CFG row unreachable from function entry" if state is None else
+                          "CFG loop-carried or forward definition" if definition is not None else
+                          "CFG incoming definitions disagree or unavailable")
+                uses.append({"register": register, "status": "UNKNOWN", "reason": reason})
+        record["uses"] = uses
+    return metadata
 
 
 def ranking_tuple(summary: dict, *, exact_function_count: int = 0,
@@ -571,6 +714,7 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
                     question: str, row_start: int, row_end: int, *, max_bytes: int = 18000,
                     producer_sites: list[int] | None = None, producer_limit: int = 16,
                     producer_call_model: str = "conservative",
+                    producer_flow_model: str = "block-local", producer_cfg_iterations: int = 128,
                     decision_mode: str = "fact", allow_missing_candidate: bool = False,
                     known_measurements: list[dict] | None = None) -> dict:
     """One bounded support decision, not an open-ended function rewrite.
@@ -584,6 +728,8 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
     cap includes this context, and omitted context leaves legacy packets intact.
     producer_call_model='ppc-eabi' conditionally retains ordinary callee-save
     register definitions across syntactically recognized returning ABI calls.
+    producer_flow_model='unique-cfg' publishes only converged, unanimous
+    reaching definitions over recognized edges; uncertainty remains explicit.
     decision_mode='source-hypothesis' explicitly permits a single uncertain
     natural-C cause proposal. Default fact packets and prompts remain unchanged.
     allow_missing_candidate permits target-only factual evidence with supplied
@@ -596,6 +742,9 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
         raise ValueError("unknown decision mode")
     if _producer_call_model(producer_call_model) is not None and producer_sites is None:
         raise ValueError("producer call model requires producer sites")
+    _check_producer_flow(producer_flow_model, producer_cfg_iterations)
+    if producer_flow_model != "block-local" and producer_sites is None:
+        raise ValueError("producer flow model requires producer sites")
     if type(allow_missing_candidate) is not bool:
         raise ValueError("allow_missing_candidate must be boolean")
     lines = source.splitlines()
@@ -674,7 +823,8 @@ def decision_packet(document: dict, function: str, source: str, start: int, end:
         result["target_branch_destinations"] = _target_only_branch_facts(result)
     if producer_sites is not None:
         result["producer_context"] = {
-            side: producer_slice(stream, producer_sites, limit=producer_limit, call_model=producer_call_model)
+            side: producer_slice(stream, producer_sites, limit=producer_limit, call_model=producer_call_model,
+                                 flow_model=producer_flow_model, cfg_iterations=producer_cfg_iterations)
             for side, stream in zip(("target", "candidate"), streams)
             if side != "candidate" or not candidate_missing}
     if known_measurements is not None:
@@ -782,7 +932,18 @@ def render_decision_prompt(packet: dict) -> str:
             '"evidence_rows":[0],"missing_evidence":null}. '
             "Cite only row IDs present below. For insufficient use a nonempty missing_evidence string. "
             "Astra reviews the finding and owns any source decision/compile; this answer grants no authority.\n"
-            + ("Optional producer_context contains bounded same-block physical definitions, not source "
+            + ("Optional producer_context uses bounded unique-CFG physical definitions only when its "
+               "flow_model is converged. Those definitions agree across all modeled incoming paths; "
+               "any call preservation depends on the explicit call_model assumption. This is not "
+               "source ownership or memory-alias inference. UNKNOWN and truncated dependencies remain "
+               "missing evidence; cite only supplied nodes, not dangling definition_row references.\n"
+               if any("flow_model" in sliced for sliced in packet.get("producer_context", {}).values()) else
+               "Optional producer_context conditionally preserves physical definitions across recognized "
+               "calls under its explicit call_model assumption. CFG entries still stop this mode; it "
+               "does not infer source ownership or memory aliases. UNKNOWN and truncated dependencies "
+               "remain missing evidence; cite only supplied nodes, not dangling definition_row references.\n"
+               if any("call_model" in sliced for sliced in packet.get("producer_context", {}).values()) else
+               "Optional producer_context contains bounded same-block physical definitions, not source "
                "ownership or cross-CFG/call inference. UNKNOWN and truncated dependencies remain missing "
                "evidence; cite only supplied nodes, not dangling definition_row references.\n"
                if "producer_context" in packet else "")
@@ -837,12 +998,25 @@ def validate_decision_packet(packet: dict) -> None:
         if len({json.dumps(sliced.get("call_model"), sort_keys=True)
                 for sliced in context.values() if isinstance(sliced, dict)}) > 1:
             raise ValueError("inconsistent decision producer call models")
+        if len({"flow_model" in sliced for sliced in context.values() if isinstance(sliced, dict)}) > 1:
+            raise ValueError("inconsistent decision producer flow modes")
         selected = {row["row"] for row in packet["paired_rows"]}
         for sliced in context.values():
             call_model = sliced.get("call_model") if isinstance(sliced, dict) else None
             if isinstance(sliced, dict) and "call_model" in sliced and call_model != _producer_call_model("ppc-eabi"):
                 raise ValueError("invalid decision producer call model")
             expected_scope = _EABI_PRODUCER_SCOPE if call_model is not None else _PRODUCER_SCOPE
+            if isinstance(sliced, dict) and "flow_model" in sliced:
+                flow = sliced["flow_model"]
+                if (not isinstance(flow, dict) or set(flow) != {"name", "status", "reason", "iterations", "iteration_limit", "source_causality_proven"}
+                        or flow.get("name") != "unique-cfg" or flow.get("status") not in {"converged", "UNKNOWN"}
+                        or flow.get("source_causality_proven") is not False
+                        or type(flow.get("iteration_limit")) is not int or not 1 <= flow["iteration_limit"] <= 256
+                        or type(flow.get("iterations")) is not int or not 0 <= flow["iterations"] <= flow["iteration_limit"]
+                        or (flow["status"] == "converged" and (flow["reason"] is not None or flow["iterations"] == 0))
+                        or (flow["status"] == "UNKNOWN" and (not isinstance(flow["reason"], str) or not flow["reason"]))):
+                    raise ValueError("invalid decision producer flow model")
+                expected_scope = _CFG_PRODUCER_SCOPE
             if (not isinstance(sliced, dict) or type(sliced.get("node_limit")) is not int
                     or not 4 <= sliced["node_limit"] <= 256 or sliced["node_limit"] % 4
                     or type(sliced.get("truncated")) is not bool
@@ -863,6 +1037,9 @@ def validate_decision_packet(packet: dict) -> None:
                     raise ValueError("invalid decision producer node")
                 ids.append(node["row"])
                 for use in node["uses"]:
+                    if ("flow_model" in sliced and sliced["flow_model"]["status"] == "UNKNOWN"
+                            and isinstance(use, dict) and "definition_row" in use):
+                        raise ValueError("unconverged/unknown CFG context publishes a definition")
                     if (not isinstance(use, dict) or not isinstance(use.get("register"), str)
                             or ("definition_row" in use and (type(use["definition_row"]) is not int
                                 or not 0 <= use["definition_row"] < node["row"]))
@@ -921,17 +1098,21 @@ def validate_decision_answer(packet: dict, answer: dict) -> dict:
 
 
 def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16,
-                   call_model: str = "conservative") -> dict:
+                   call_model: str = "conservative", flow_model: str = "block-local",
+                   cfg_iterations: int = 128) -> dict:
     """Bounded block-local physical-register DAG; no source/alias inference.
 
     Native trace slicing needs a compiler capture; frontier's definition state
     only answers must-defined FPRs. Reuse its objdiff/branch parsers here.
     Default calls erase every definition. Explicit ppc-eabi mode assumes ABI
     compliance for recognized calls; no memory or return-value facts follow.
+    unique-cfg separately opts into bounded must-agree flow propagation. No
+    optimistic iteration, indirect edge, or cyclic dependency is published.
     """
     if not 1 <= limit <= 64:
         raise ValueError("producer limit must be between 1 and 64")
     model = _producer_call_model(call_model)
+    _check_producer_flow(flow_model, cfg_iterations)
     branches, addresses = frontier._branch_rows(rows)
     entries = {0}
     for branch in branches:
@@ -1042,6 +1223,7 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16,
             if update is not None:
                 definitions[update[2]] = index
         records[index] = record
+    flow = _unique_cfg_producers(rows, records, model, cfg_iterations) if flow_model == "unique-cfg" else None
     selected = sites[:limit]
     pending = list(selected)
     included = {}
@@ -1053,12 +1235,14 @@ def producer_slice(rows: list[dict], sites: list[int], *, limit: int = 16,
         pending.extend(use["definition_row"] for use in records[index]["uses"] if "definition_row" in use)
     return {"sites": selected, "nodes": [included[i] for i in sorted(included)],
             "truncated": len(sites) > limit or bool(pending), "node_limit": limit * 4,
-            "scope": _EABI_PRODUCER_SCOPE if model is not None else _PRODUCER_SCOPE,
+            "scope": _CFG_PRODUCER_SCOPE if flow is not None else _EABI_PRODUCER_SCOPE if model is not None else _PRODUCER_SCOPE,
+            **({"flow_model": flow} if flow is not None else {}),
             **({"call_model": model} if model is not None else {})}
 
 
 def summarize_groups(document: dict, function: str, *, producers: int = 0,
-                     producer_call_model: str = "conservative") -> dict[str, Any]:
+                     producer_call_model: str = "conservative", producer_flow_model: str = "block-local",
+                     producer_cfg_iterations: int = 128) -> dict[str, Any]:
     """Summarize canonical objdiff aligned rows using existing frontier parsers.
 
     Group IDs use target addresses (insertions use the next target address).
@@ -1066,6 +1250,9 @@ def summarize_groups(document: dict, function: str, *, producers: int = 0,
     """
     if _producer_call_model(producer_call_model) is not None and not producers:
         raise ValueError("producer call model requires producers")
+    _check_producer_flow(producer_flow_model, producer_cfg_iterations)
+    if producer_flow_model != "block-local" and not producers:
+        raise ValueError("producer flow model requires producers")
     symbols = [frontier.focus._symbols(document, side, "strict") for side in ("left", "right")]
     selected = [frontier._stack_function(items, function, side)
                 for items, side in zip(symbols, ("target", "candidate"))]
@@ -1187,7 +1374,8 @@ def summarize_groups(document: dict, function: str, *, producers: int = 0,
     result["ranking_tuple"] = ranking_tuple(result)
     if producers:
         sites = sorted({m["row"] for group in groups for m in group["members"]})
-        result["producer_slice"] = {side: producer_slice(stream, sites, limit=producers, call_model=producer_call_model)
+        result["producer_slice"] = {side: producer_slice(stream, sites, limit=producers, call_model=producer_call_model,
+                                                       flow_model=producer_flow_model, cfg_iterations=producer_cfg_iterations)
                                     for side, stream in zip(("target", "candidate"), rows)}
     return result
 
@@ -1329,7 +1517,7 @@ def compare_function_constraints(before: dict, after: dict, function: str) -> di
             raise ValueError(f"ambiguous target addresses: {function}")
         streams.append(identities)
         mismatch = {m["row"]: group for group in summary["groups"] for m in group["members"]}
-        census, ordinal, inserted = {}, 0, set()
+        census, ordinal, inserted = {}, 0, {}
         for index, (target, candidate) in enumerate(zip(left, right)):
             ti, ci = target.get("instruction"), candidate.get("instruction")
             if not ti and not ci:
@@ -1338,12 +1526,13 @@ def compare_function_constraints(before: dict, after: dict, function: str) -> di
                 key = ("target", identities[ordinal])
                 ordinal += 1
             else:
-                # Multiple insertions at one boundary cannot be paired across reports.
+                # Occurrences distinguish storage within this report only;
+                # multiple rows at one boundary cannot be paired across reports.
                 boundary = identities[ordinal] if ordinal < len(identities) else ("end",)
                 key = ("before_target", boundary)
-                if key in inserted:
-                    raise ValueError(f"ambiguous aligned insertions: {function}: shared boundary")
-                inserted.add(key)
+                occurrence = inserted.get(key, 0)
+                inserted[key] = occurrence + 1
+                key = (*key, occurrence)
             if index in mismatch:
                 group = mismatch[index]
                 census[key] = {"kind": group["kind"], "relation": group["relation"],
@@ -1355,11 +1544,36 @@ def compare_function_constraints(before: dict, after: dict, function: str) -> di
     if streams[0] != streams[1] or summaries[0]["target_binding"] != summaries[1]["target_binding"]:
         raise ValueError(f"incompatible target/function instruction identity: {function}")
     old, new = censuses
+    insertion_boundaries = []
+    for census in censuses:
+        boundaries = {}
+        for key, observation in census.items():
+            if key[0] == "before_target":
+                boundaries.setdefault(key[:2], []).append((key, observation))
+        insertion_boundaries.append(boundaries)
+    unresolved = []
+    for boundary in sorted(insertion_boundaries[0].keys() | insertion_boundaries[1].keys(), key=repr):
+        sides = [groups.get(boundary, []) for groups in insertion_boundaries]
+        if max(map(len, sides)) <= 1:
+            continue
+        # A singleton opposite multiple insertions is ambiguous too. Exclude
+        # the entire boundary, not only its later ordinal, from gain counts.
+        observations = {}
+        for label, census, entries in zip(("before", "after"), censuses, sides):
+            observations[label] = [entry for _, entry in entries][:12]
+            observations[label + "_count"] = len(entries)
+            observations[label + "_truncated"] = len(entries) > 12
+            for key, _ in entries:
+                del census[key]
+        unresolved.append(dict(observations,
+            reason="multiple candidate-only rows share target boundary; cross-report pairing unknown"))
     buckets = {"resolved": [], "persisting": [], "introduced": []}
     for key in sorted(old.keys() | new.keys(), key=repr):
         state = "persisting" if key in old and key in new else "resolved" if key in old else "introduced"
         buckets[state].append({"before": old.get(key), "after": new.get(key)})
-    grouped, details_truncated = {}, False
+    grouped = {}
+    details_truncated = len(unresolved) > 24 or any(
+        group["before_truncated"] or group["after_truncated"] for group in unresolved)
     for state, sites in buckets.items():
         groups = {}
         for site in sites:
@@ -1374,6 +1588,8 @@ def compare_function_constraints(before: dict, after: dict, function: str) -> di
                 separators=(",", ":")).encode()).hexdigest()
                 for label, doc in zip(("baseline_canonical_json", "candidate_canonical_json"), (before, after))},
             "constraint_groups": grouped,
+            "unresolved_insertion_groups": unresolved[:24],
+            "unresolved_insertion_group_count": len(unresolved),
             "counts": {state: len(sites) for state, sites in buckets.items()},
             "details_truncated": details_truncated,
             "score_size_frame_gates": compare_match_frontiers(before, after),
@@ -1406,9 +1622,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="optional block-local producer slice, 1..64 residual sites")
     parser.add_argument("--producer-call-model", choices=("conservative", "ppc-eabi"), default="conservative",
                         help="opt-in conditional EABI preservation; requires --producers")
+    parser.add_argument("--producer-flow-model", choices=("block-local", "unique-cfg"), default="block-local")
+    parser.add_argument("--producer-cfg-iterations", type=int, default=128)
     args = parser.parse_args(argv)
     try:
-        if args.producer_call_model != "conservative" and (
+        if (args.producer_call_model != "conservative" or args.producer_flow_model != "block-local") and (
                 not args.function or not args.producers or args.before or args.baseline_strict
                 or (args.support_source and not args.decision_question)):
             raise ValueError("producer call model requires function producers or decision producers")
@@ -1478,8 +1696,9 @@ def main(argv: list[str] | None = None) -> int:
                     start, end, args.decision_question, row_start, row_end,
                     max_bytes=args.support_max_bytes, decision_mode=args.decision_mode or "fact",
                     producer_sites=(list(range(row_start, row_end + 1))[:args.producers]
-                                    if args.producer_call_model != "conservative" else None),
+                                    if args.producer_call_model != "conservative" or args.producer_flow_model != "block-local" else None),
                     producer_limit=args.producers or 16, producer_call_model=args.producer_call_model,
+                    producer_flow_model=args.producer_flow_model, producer_cfg_iterations=args.producer_cfg_iterations,
                     known_measurements=known)
             else:
                 result = support_packet(document, args.function, source_bytes.decode("utf-8"),
@@ -1488,7 +1707,8 @@ def main(argv: list[str] | None = None) -> int:
             result = summarize_owner(document)
         else:
             result = summarize_groups(document, args.function, producers=args.producers,
-                                      producer_call_model=args.producer_call_model)
+                                      producer_call_model=args.producer_call_model,
+                                      producer_flow_model=args.producer_flow_model, producer_cfg_iterations=args.producer_cfg_iterations)
         if args.before:
             result["comparison"] = compare_groups(summarize_groups(read_document(args.before), args.function), result)
         print(json.dumps(result, sort_keys=True, separators=(",", ":")))

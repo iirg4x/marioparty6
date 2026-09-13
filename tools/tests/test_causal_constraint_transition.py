@@ -39,8 +39,10 @@ class ConstraintTransitionTests(unittest.TestCase):
         self.assertEqual(result['counts'], dict(resolved=0, persisting=2, introduced=1))
         new['left']['symbols'][0]['instructions'].insert(1, {})
         new['right']['symbols'][0]['instructions'].insert(1, row('li r7, 0', 1))
-        with self.assertRaisesRegex(ValueError, 'ambiguous aligned insertions'):
-            groups.compare_function_constraints(old, new, 'f')
+        result = groups.compare_function_constraints(old, new, 'f')
+        self.assertEqual(result['counts'], dict(resolved=0, persisting=2, introduced=0))
+        self.assertEqual(result['unresolved_insertion_group_count'], 1)
+        self.assertEqual(result['unresolved_insertion_groups'][0]['after_count'], 2)
 
     def test_incompatible_target_and_ambiguous_deletion(self):
         old, new = self.pair()
