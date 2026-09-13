@@ -1130,6 +1130,75 @@ GitHub branches were deleted after verifying their exact heads are ancestors
 of main c099504; all their content remains on main. Unmerged tooling and the
 active recovery branch were preserved.
 
+### Minigame m616dll: first current-target reconstruction
+
+Selected the smallest nonempty numbered module in the current retail inventory:
+m616dll, 12,252 text bytes including compiler runtime. Empty placeholders are
+not recovery gains. Target PLF SHA256 is
+`48aaa5c45888ba7333c5a3cb7cf7feacba9628a3768cb1b976393f234a560261`.
+The application has 22 functions from fn_1_A0 through fn_1_2580. The following
+fn_1_2598 is an unsigned floating-conversion runtime signature, not a gameplay
+function to reconstruct with hand-written assembly.
+
+The first canonical C reconstruction and 460-byte work layout are in
+`src/REL/m616dll/m616.c` and `include/REL/m616dll.h`. They are deliberately not
+configured Matching and have not been promoted. Existing historical prefix and
+helper fragments remain untouched until the final canonical source ownership
+is proved; do not configure them together with duplicate canonical bodies.
+
+Actual current-target compilation reports 11/22 functions at 100% objdiff:
+fn_1_A0, fn_1_104, fn_1_140, fn_1_4BC, fn_1_135C, fn_1_1360,
+fn_1_1364, fn_1_139C, fn_1_20D8, fn_1_2104, fn_1_2580.
+Four of these had preexisting unconfigured source fragments; seven are newly
+reconstructed bodies (680 target bytes, including three real empty callbacks).
+These are object-symbol observations, not new whole-module or main progress.
+There is no source-selected REL proof yet. Ordinary natural C recovered the
+500-byte timing callback without a source-shape probe.
+
+Main fn_1_4C0 improved 87.97125 -> 95.39939 by correcting the decompiler-inferred
+short loop counter to the actual full-width counter and reusing its genuine
+player iteration across phases. The winner sequence fn_1_F78 is 99.948715,
+CPU selection fn_1_23B0 99.913795; both have only a string relocation pair left
+in the current comparison. Init fn_1_1590 is 90.384964. No asm/pragma/volatile/
+register-control changes were introduced. GC1.3.2 is the configured REL default;
+the same 18-function intermediate on GC2.6 was instruction-identical and did
+not settle the compiler identity. Keep that uncertainty explicit.
+
+Next cause, not a syntax search: reconstruct source-file/data ownership.
+Retail has distinct equal-zero producers at rodata+0x10, +0xA0, +0xD0 around
+the main/init/helper regions, plus initialized tables after their strings and
+the position global before the main work global. The current single-TU first
+pass pools those differently and introduces a cached string-section base in
+fn_1_160/main/init. Investigate the actual TU boundaries/definition chronology
+before declaration/register changes or compiler-flag overrides. A three-region
+main/init/utility partition is a hypothesis, not an authenticated split yet.
+The local initializer vector at retail rodata+0x90 has emitted initialization
+but no observed later use; preserve this bounded target finding rather than
+inventing a consumer or calling an invented padding array authentic source.
+
+Tool use: m2c with canonical compiler-preprocessed headers successfully supplied
+the starting bodies. Its switch parser initially failed because DTK jump-table
+entries use `fn_1_4C0+offset`; resolving these exact targets to local instruction
+labels in generated assembly (no binary/source mutation) produced the complete
+switch. Current compact evidence and reusable local compile/context commands:
+`build/minigame-recovery-20260913/m616/`,
+`build/model-support-test/compile-m616.py`, and
+`build/model-support-test/m616-m2c-context.py`. These are generated experiment
+support, not newly shipped tooling. Qwen's two bounded read-only jobs are under
+that folder's `qwen-batch.json`; the primary did not wait for consensus and
+reconstructed the owner while they ran. Check their actual terminal output
+before reuse; elapsed time is not an answer or failure.
+
+Added the missing Hu3DMotionTimingHookReset declaration to game/hu3d.h from its
+existing identical definition in game/hsfmotion.c:578. No DOL implementation
+changed. Affected-consumer/link verification remains part of integration.
+
+GitHub cleanup is complete: the four merged project/recovery branches for
+`dol-context-vq-runtime-20260913` and `dol-small-ten-20260913` were deleted with
+exact-head leases. Fresh ls-remote shows only main, the active recovery branch,
+recovery-context-workflow and recovery-tool-review-fixes. The last two are
+unmerged tooling, not safe-to-discard merged branches. Open PR census was empty.
+
 ## Superseded target: DOL 90%, then minigames
 
 The user's latest instruction on September 13 supersedes the earlier 100% DOL

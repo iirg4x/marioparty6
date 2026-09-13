@@ -749,6 +749,7 @@ void Hu3DMotionNoMotSet(HU3D_MODELID modelId, char *objName, u32 forceAttr);
 void Hu3DMotionNoMotReset(HU3D_MODELID modelId, char *objName, u32 forceAttr);
 void Hu3DMotionForceSet(HU3D_MODELID modelId, char *objName, u32 forceAttr, float value);
 void Hu3DMotionTimingHookSet(HU3D_MODELID modelId, HU3D_TIMING_HOOK timingHook);
+void Hu3DMotionTimingHookReset(HU3D_MODELID modelId);
 void Hu3DMotionAttrSet(HU3D_MOTIONID motId, u16 attr);
 void Hu3DMotionAttrReset(HU3D_MOTIONID motId, u16 attr);
 void Hu3DMotionNext(HU3D_MODELID modelId);
