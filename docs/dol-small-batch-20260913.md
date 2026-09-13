@@ -1,5 +1,71 @@
 # Small DOL batch — 2026-09-13
 
+## m635: target-guided first-pass widths and a 26-function frontier
+
+The local m635 source frontier now contains 26 of 52 application functions:
+10 entry callbacks, 13 logic functions, and three position helpers. The position
+helpers (`fn_1_32E0`, `fn_1_3340`, `fn_1_33F8`) were 3/3 raw-instruction exact
+on their first compile. Source-selected code is 8,916/20,224 bytes including
+startup/runtime; 11,308 bytes still use original-object fallback. This is not a
+whole-module closure or a main-progress claim. Proof is kept compactly at
+`build/minigame-recovery-20260913/m635/entry-proof/receipt.json`.
+
+The existing tools now carry the reusable corrections into the next draft:
+
+- `decompctx.target_integer_shapes` runs on the target before candidate
+  compilation. The existing call-context report and GNU-to-m2c adapter include
+  its results automatically. It separates a loop's comparison width from
+  narrowing performed only for a callee argument; records signed/unsigned
+  halfword loads, already-extended saved-value captures, final return transfers,
+  stack-array bases and immediate masks. These are instruction-backed cues,
+  not inferred original declarations or a prerequisite permission gate.
+- `recovery_source_shapes` now accepts `target_integer_width`. Given the
+  reviewed real source-owner/target-register association, exact assembly hash
+  and existing scalar typedef context, it emits one composed local-type repair.
+  It supports bounded zero-based unit-step loops and a signed-halfword load
+  promoted into a real int local. It rejects escaped, shadowed, modified,
+  ambiguous, stale, or unsupported owners. No generated padding, new local,
+  register directive, syntax matrix, compile or retention authority is added.
+- Feed the actual preprocessed header context to m2c, then review these target
+  cues before compiling the function batch. A halfword field does not make all
+  locals receiving it short; a short API parameter does not make its loop
+  counter short. Likewise `lhz`/`lhzx` constrain memory interpretation but do
+  not alone prove a complete C type. Resolve masks, array identities and live
+  snapshots through their consumers instead of universal declaration-order
+  rules. Keep the target's natural TU/pool boundaries.
+
+Measured retrospective replay: reconstructing the four earlier width mistakes
+in `fn_1_D84` and `fn_1_F44`, the generator restored all four declarations in
+one emitted batch compile. All 13 logic functions were instruction-exact. This
+is a known-case regression replay, **not** four newly discovered gains or a
+blind first-pass benchmark. The source-owner mappings were primary-reviewed;
+the engine chose width from target comparisons/uses, without function-name
+rules. Receipt: `m635/first-pass-width-replay/receipt.json` under the same build
+directory. The initial failed draft was not archived verbatim; this replay
+explicitly records a reconstructed width-failure fixture.
+
+Prospective use: the new position helper has int loop counters but a short
+captured player index (the target explicitly narrows it again). The preflight
+correctly distinguished it from F44's int captures. Astra wrote the natural C,
+with bounded Qwen ABI support; the tool checked the widths, not the entire
+algorithm. First compile matched all three helpers. This is evidence of useful
+first-pass guidance, not a guarantee that similar functions always match.
+
+Other logic corrections remain source reasoning, not claimed automatic fixes:
+unsigned button-index fields and return type; a typed complemented button mask;
+live pad/player/character/button stack arrays; the captured night flag; the
+team-array base captured before the model-reset call; and the literal-producer
+boundary at `fn_1_1774`. The width tool does not solve arbitrary allocator or
+translation-unit layout mismatches.
+
+Verification also exposed avoidable memory pressure in the existing evidence
+reader: `read(limit + 1)` reserved the 32/64 MiB ceiling even for tiny files.
+It now sizes the read from the opened file, rejects oversize inputs before
+allocation, and rejects growth/shrinkage during the read. Size-limit and
+allocation regressions are tested. The local full-link helper also bounds DTK's
+Rayon worker count after the machine refused its default thread-pool allocation;
+this changes neither compiler flags nor source evidence.
+
 ## m651 gameplay batch: verified gains without blocking on entry BSS
 
 Delivered through PRs 43 and 44 at main

@@ -13,6 +13,40 @@ from tools.tests.test_focus_symbol_report import _report
 from tools.tests.test_recovery_object_inventory import _write_pool_elf
 
 
+class EvidenceReadAllocationTests(unittest.TestCase):
+    def test_tiny_evidence_does_not_allocate_the_entire_ceiling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            path = root / 'tiny.json'
+            path.write_bytes(b'123')
+            with path.open('rb') as stream:
+                wrapper = mock.MagicMock(wraps=stream)
+                wrapper.__enter__.return_value = wrapper
+                wrapper.__exit__.return_value = False
+                with mock.patch.object(Path, 'open', return_value=wrapper):
+                    raw, desc = frontier.read_bound(root, path, 64 * 1024 * 1024)
+                wrapper.read.assert_called_once_with(4)
+                self.assertEqual(raw, b'123')
+                self.assertEqual(desc['size_bytes'], 3)
+
+    def test_oversize_and_size_drift_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            path = root / 'evidence'
+            path.write_bytes(b'123')
+            for returned, limit in ((b'12', 64), (b'1234', 64), (b'123', 2)):
+                with path.open('rb') as stream:
+                    wrapper = mock.MagicMock(wraps=stream)
+                    wrapper.__enter__.return_value = wrapper
+                    wrapper.__exit__.return_value = False
+                    wrapper.read.return_value = returned
+                    with mock.patch.object(Path, 'open', return_value=wrapper):
+                        with self.assertRaises(ValueError):
+                            frontier.read_bound(root, path, limit)
+                    if limit == 2:
+                        wrapper.read.assert_not_called()
+
+
 def _access_row(address: int, text: str, diff_kind: str | None = None) -> dict[str, object]:
     row: dict[str, object] = {
         "instruction": {"address": str(address), "formatted": text, "size": 4}

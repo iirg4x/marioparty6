@@ -193,6 +193,52 @@ DATA = bytes(ELF_HEADER) + CODE
 adapt = decompctx.adapt_target_function
 source = Path(__file__)
 
+class IntegerShapeTests(unittest.TestCase):
+    def shapes(self, body):
+        return decompctx.target_integer_shapes('.fn example, global\n' + body + '\n.endfn example\n', 'example')
+
+    def test_loop_width_not_call_argument_width(self):
+        body = '''li r31, 0
+b .L_test
+.L_body:
+extsh r3, r31
+bl callback
+addi r31, r31, 1
+.L_test:
+cmpwi r31, 2
+blt .L_body
+blr'''
+        first = self.shapes(body)['loops'][0]
+        self.assertEqual(first['source_class'], 'int_counter')
+        self.assertIsNone(first['narrowing'])
+        second = self.shapes(body.replace('cmpwi r31, 2', 'extsh r0, r31\ncmpwi r0, 2'))['loops'][0]
+        self.assertEqual(second['source_class'], 'signed_short_counter')
+        self.assertEqual(second['register'], 'r31')
+
+    def test_load_width_is_not_local_width(self):
+        facts = self.shapes('lha r29, 2(r3)\nbl check\nmulli r4, r29, 264\nblr')
+        self.assertEqual(facts['halfword_loads'][0]['extension'], 'signed')
+        self.assertEqual(facts['promoted_captures'][0]['source_class'], 'promoted_int_capture')
+        for middle in ('extsh r0, r29', 'li r29, 4', 'bctr', 'lmw r28, 8(r1)'):
+            self.assertEqual(self.shapes('lha r29, 2(r3)\n'+middle+'\nmulli r4, r29, 264\nblr')['promoted_captures'], [])
+
+    def test_unsigned_load_return_and_stack_mask_cues(self):
+        facts = self.shapes('lhzx r30, r4, r5\naddi r4, r1, 20\nandi. r0, r0, 65439\nmr r3, r30\nlwz r30, 24(r1)\nblr')
+        self.assertEqual(facts['halfword_loads'][0]['extension'], 'unsigned')
+        self.assertEqual(facts['return_transfers'][0]['kind'], 'mr')
+        self.assertEqual(len(facts['indexed_stack_bases']), 1)
+        self.assertEqual(len(facts['immediate_masks']), 1)
+        self.assertFalse(facts['authority_advanced'])
+
+    def test_ambiguous_or_non_loop_not_promoted(self):
+        self.assertEqual(self.shapes('cmpwi r31, 2\nblt .L_end\n.L_end:\nblr')['loops'], [])
+        self.assertEqual(self.shapes('li r31, 0\n.L_body:\naddi r31, r31, 2\ncmpwi r31, 2\nblt .L_body\nblr')['loops'], [])
+        with self.assertRaises(ValueError):
+            self.shapes('.L_x:\n.L_x:\nblr')
+        with self.assertRaises(ValueError):
+            decompctx.target_integer_shapes('.fn other\nblr\n.endfn', 'example')
+
+
 class AdapterTests(unittest.TestCase):
     def test_target_identity_fail_closed(self):
         for offset, value in ((0, 0), (4, 2), (5, 1), (6, 0), (17, 2),

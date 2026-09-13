@@ -190,6 +190,122 @@ def declared_functions(text: str) -> dict[str, list[dict]]:
     return result
 
 
+def target_integer_shapes(assembly: str, function: str) -> dict:
+    """Target-only MWCC reconstruction cues, available before any C compile.
+
+    This is deliberately not C type inference. A sign-extending load specifies
+    memory interpretation; a loop's compare specifies its observable narrowing.
+    They need not specify the same width as a local that holds the loaded value.
+    Only immediate, instruction-backed patterns receive a source-class hint.
+    """
+    if not isinstance(assembly, str) or len(assembly.encode()) > 8 * 1024 * 1024:
+        raise ContextError('Bounded target assembly required')
+    if not re.fullmatch(r'[A-Za-z_$][\w$]*', function):
+        raise ContextError('Invalid target function')
+    code = re.sub(r'/\*.*?\*/|#[^\n]*', '', assembly, flags=re.S)
+    bodies = re.findall(r'^\s*\.fn\s+' + re.escape(function)
+                        + r'\s*[^\n]*\n(.*?)^\s*\.endfn\b', code, re.M | re.S)
+    if len(bodies) != 1:
+        raise ContextError('Missing/ambiguous target function: ' + function)
+    rows, labels = [], {}
+    for line in bodies[0].splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if re.fullmatch(r'[.\w$]+:', line):
+            if line[:-1] in labels:
+                raise ContextError('Duplicate target label')
+            labels[line[:-1]] = len(rows)
+            continue
+        match = re.fullmatch(r'([a-z][a-z0-9_.+-]*)(?:\s+(.+))?', line)
+        if not match or len(rows) >= 8192:
+            raise ContextError('Unsupported/bounds-exceeded target assembly row: ' + line)
+        rows.append((match[1], [a.strip() for a in (match[2] or '').split(',')], line))
+    def record(i):
+        return {'row': i, 'instruction': rows[i][2]}
+    loops, loads, captures, returns, stack_bases, masks = [], [], [], [], [], []
+    saved = re.compile(r'r(?:1[4-9]|2\d|3[01])$')
+    for i, (op, args, _) in enumerate(rows):
+        if op in {'lhz', 'lhzx', 'lha', 'lhax'} and len(args) >= 2:
+            loads.append({**record(i), 'memory_bits': 16,
+                          'extension': 'signed' if op.startswith('lha') else 'unsigned',
+                          'destination': args[0]})
+            if saved.fullmatch(args[0]):
+                # A direct multiply before any next write is a local cue, not
+                # an all-path lifetime or semantic source-owner proof.
+                for j in range(i + 1, min(len(rows), i + 65)):
+                    next_op, operands, _ = rows[j]
+                    if next_op in {'mulli', 'slwi'} and len(operands) == 3 and operands[1] == args[0]:
+                        captures.append({'register': args[0], 'load': record(i), 'use': record(j),
+                            'source_class': 'promoted_int_capture',
+                            'reason': 'Halfword load already extends the value; arithmetic consumes the saved value without another narrowing.',
+                            'scope': 'lexical producer/use cue; review source assignment and incoming branches'})
+                        break
+                    if next_op in {'extsh', 'extsb', 'clrlwi'} and args[0] in operands[1:]:
+                        break
+                    if next_op in {'blr', 'bctr', 'blrl', 'bctrl', 'lmw'}:
+                        break
+                    if operands and operands[0] == args[0] and not next_op.startswith(('st', 'cmp', 'b')):
+                        break
+        if op == 'addi' and len(args) == 3 and args[1] == 'r1':
+            stack_bases.append(record(i))
+        if op == 'andi.' and len(args) == 3:
+            masks.append(record(i))
+        if op not in {'blt', 'blt+', 'blt-'} or len(args) != 1 or i < 2:
+            continue
+        body = labels.get(args[0])
+        if body is None or body >= i:
+            continue
+        cmp_op, cmp_args, _ = rows[i-1]
+        if cmp_op != 'cmpwi' or len(cmp_args) != 2:
+            continue
+        try:
+            limit = int(cmp_args[1], 0)
+        except ValueError:
+            continue
+        counter, kind, compare_start = cmp_args[0], 'int_counter', i-1
+        prev_op, prev_args, _ = rows[i-2]
+        if prev_op == 'extsh' and len(prev_args) == 2 and prev_args[0] == counter:
+            counter, kind, compare_start = prev_args[1], 'signed_short_counter', i-2
+        if not saved.fullmatch(counter) or not 0 < limit < 32767:
+            continue
+        increment = compare_start-1
+        if increment < body or rows[increment][:2] not in (
+                ('addi', [counter, counter, '1']), ('addi', [counter, counter, '0x1'])):
+            continue
+        initializers = [j for j in range(body) if rows[j][:2] in (
+            ('li', [counter, '0']), ('li', [counter, '0x0']))]
+        if not initializers:
+            continue
+        loops.append({'register': counter, 'source_class': kind, 'limit': limit,
+                      'body_row': body, 'initialization': record(initializers[-1]),
+                      'increment': record(increment), 'compare': record(i-1),
+                      'narrowing': record(i-2) if kind == 'signed_short_counter' else None,
+                      'branch': record(i),
+                      'reason': 'Use the loop comparison width; call-argument casts do not determine counter width.'})
+    # The final straight-line epilogue cannot prove a return type, but does
+    # distinguish an explicit signed narrowing from a saved-value transfer.
+    for i, (op, _, _) in enumerate(rows):
+        if op != 'blr':
+            continue
+        for j in range(i-1, max(-1, i-24), -1):
+            tail_op, args, _ = rows[j]
+            if tail_op.startswith('b'):
+                break
+            if args and args[0] == 'r3' and not tail_op.startswith(('st', 'cmp')):
+                if tail_op in {'mr', 'extsh', 'clrlwi'}:
+                    returns.append({**record(j), 'kind': tail_op,
+                                    'source_register': args[1] if len(args) > 1 else None})
+                break
+    return {'schema': 'decomp_target_integer_shapes/v1', 'function': function,
+            'assembly_sha256': hashlib.sha256(assembly.encode()).hexdigest(),
+            'instruction_count': len(rows), 'loops': loops, 'halfword_loads': loads,
+            'promoted_captures': captures, 'return_transfers': returns,
+            'indexed_stack_bases': stack_bases, 'immediate_masks': masks,
+            'caveat': 'Target cues, not original C types or source mappings. Review real consumers, header types and compiler mode. Never infer declaration order solely from stack offsets.',
+            'authority_advanced': False, 'source_patch_emitted': False}
+
+
 def discover_call_context(root: Path, assembly: str, context: str,
                           providers=()) -> dict:
     """Find missing direct-call prototypes and their real header/provider sites.
@@ -266,6 +382,14 @@ def discover_call_context(root: Path, assembly: str, context: str,
                 'reason': 'void context conflicts with an explicit saved-register result transfer; '
                           'review the standalone helper return and its inlined callers. '
                           'This cue alone does not establish a return type.'})
+    integer_shapes, shape_issues = [], []
+    for name in dict.fromkeys(re.findall(r'^\s*\.fn\s+([\w$]+)', code, re.M)):
+        try:
+            integer_shapes.append(target_integer_shapes(assembly, name))
+        except ContextError as exc:
+            # A useful missing-prototype census must still work on an assembly
+            # fragment. Optional shape analysis cannot gate reconstruction.
+            shape_issues.append({'function': name, 'status': 'UNKNOWN', 'reason': str(exc)})
     return {'schema': 'decomp_call_context/v1',
             'assembly_sha256': hashlib.sha256(assembly.encode()).hexdigest(),
             'context_sha256': hashlib.sha256(context.encode()).hexdigest(),
@@ -275,6 +399,7 @@ def discover_call_context(root: Path, assembly: str, context: str,
             'missing': candidates, 'include_hints': include_hints,
             'present_without_prototype': [name for name in missing if name in visible],
             'return_warnings': return_warnings,
+            'target_integer_shapes': integer_shapes, 'integer_shape_issues': shape_issues,
             'unresolved': [name for name, rows in candidates.items() if not rows and name not in visible],
             'caveat': 'Discovery only. Preprocess chosen headers with the actual compiler; '
                       'provider definitions and header alternatives require review. '
@@ -451,10 +576,14 @@ def adapt_target_function(data, metadata, disassembly, relocation_table, functio
         if '<' in inst or inst.startswith(('.long', '.word')):
             raise ValueError('unresolved/unsupported instruction: ' + inst)
         assembly.extend([f'.L_{function}_{address:x}:', f'/* {address:08x} */ {inst}'])
-    return '\n'.join(assembly) + '\n', {'function': function, 'bytes': size,
+    text = '\n'.join(assembly) + '\n'
+    shapes = target_integer_shapes('.fn ' + function + ', global\n'
+                                   + '\n'.join(assembly[3:]) + '\n.endfn\n', function)
+    return text, {'function': function, 'bytes': size,
         'target_sha256': hashlib.sha256(data).hexdigest(),
         'inference_caveat': 'm2c source and call arguments remain inferred; no callee signatures supplied',
         'instructions': len(instructions), 'internal_branches': branch_count,
+        'target_integer_shapes': shapes,
         'instruction_bytes_sha256': hashlib.sha256(expected).hexdigest(), 'relocations': rows_reloc}
 
 

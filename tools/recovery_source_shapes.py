@@ -16,7 +16,91 @@ import tree_sitter_c
 from tools.recovery_call_contract_repair import _function_span
 from tools import recovery_snapshot_repair as snapshot
 
-FAMILIES = {"snapshot_point_use", "loop_predicate_guards", "sequence_result_consumer", "indexed_base_snapshot", "sequence_scalar_argument", "shared_initializer_producer"}
+FAMILIES = {"snapshot_point_use", "loop_predicate_guards", "sequence_result_consumer", "indexed_base_snapshot", "sequence_scalar_argument", "shared_initializer_producer", "target_integer_width"}
+
+
+def target_integer_width(source, function, constraints):
+    """Compose local-width repairs from target facts and reviewed owner mappings.
+
+    Never choose a physical register for C. The caller binds an existing source
+    owner to a target register; decompctx identifies its observable use pattern.
+    Only simple bounded counters and promoted signed-halfword captures qualify.
+    """
+    from tools.decompctx import target_integer_shapes
+    assembly = constraints.get('target_assembly')
+    if not isinstance(assembly, str) or _sha(assembly.encode()) != constraints.get('target_assembly_sha256'):
+        raise ValueError('target assembly hash mismatch')
+    if constraints.get('reviewed_owner_mapping') is not True:
+        raise ValueError('reviewed source-to-target owner mapping required')
+    sites = constraints.get('integer_owner_sites')
+    if not isinstance(sites, list) or not 1 <= len(sites) <= 16:
+        raise ValueError('1..16 integer owner mappings required')
+    aliases = {'int': 'int', 'short': 'short', 's16': 'short'}
+    if constraints.get('reviewed_scalar_aliases') != {'s16': 'short'}:
+        raise ValueError('reviewed s16 = signed short context required')
+    facts = target_integer_shapes(assembly, function)
+    start, _, raw, nodes = _island(source, function)
+    edits, seen = [], set()
+    for site in sites:
+        name, register = site.get('name'), site.get('register')
+        if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z_]\w*', name) or name in seen:
+            raise ValueError('unique source owner name required')
+        seen.add(name)
+        declarations = [n for n in nodes if n.type == 'declaration' and any(
+            c.type == 'identifier' and raw[c.start_byte:c.end_byte].decode() == name
+            for c in _nodes(n))]
+        if len(declarations) != 1:
+            raise ValueError('owner must have one plain local declaration: ' + name)
+        decl = declarations[0]
+        if decl.parent.type != 'compound_statement' or decl.parent.parent.type != 'function_definition':
+            raise ValueError('owner must be an unshadowed function local')
+        if not re.fullmatch(rb'(?:int|short|s16)\s+' + name.encode() + rb'\s*;', raw[decl.start_byte:decl.end_byte]):
+            raise ValueError('qualified, shared or initialized declaration unsupported')
+        typ = decl.child_by_field_name('type')
+        current = raw[typ.start_byte:typ.end_byte].decode()
+        if re.search(rb'&\s*' + name.encode() + rb'\b', raw):
+            raise ValueError('address-exposed integer owner')
+        matches = [f for f in facts['loops'] if f['register'] == register]
+        if matches:
+            kinds = {f['source_class'] for f in matches}
+            loops = [n for n in nodes if n.type == 'for_statement'
+                     and n.child_by_field_name('initializer') is not None and
+                     re.fullmatch(rb'\s*' + name.encode() + rb'\s*=\s*0\s*;?',
+                         raw[n.child_by_field_name('initializer').start_byte:n.child_by_field_name('initializer').end_byte])]
+            if len(kinds) != 1 or len(loops) != len(matches):
+                raise ValueError('ambiguous source/target loop mapping')
+            for loop, fact in zip(loops, sorted(matches, key=lambda f: f['body_row'])):
+                cond, update = loop.child_by_field_name('condition'), loop.child_by_field_name('update')
+                if cond is None or update is None or not re.fullmatch(
+                        rb'\s*' + name.encode() + rb'\s*<\s*' + str(fact['limit']).encode() + rb'\s*;?',
+                        raw[cond.start_byte:cond.end_byte]) or not re.fullmatch(
+                        rb'\s*(?:' + name.encode() + rb'\s*\+\+|\+\+\s*' + name.encode() + rb')\s*',
+                        raw[update.start_byte:update.end_byte]):
+                    raise ValueError('only matching zero-based bounded unit-step loops qualify')
+            # Reject any additional mutation, e.g. a body assignment that
+            # invalidates the small non-overflowing counter domain.
+            writes = [n for n in nodes if n.type in {'assignment_expression', 'update_expression'}
+                      and re.match(rb'(?:\+\+\s*)?' + name.encode() + rb'\b', raw[n.start_byte:n.end_byte])]
+            if len(writes) != 2 * len(loops):
+                raise ValueError('additional counter mutation')
+            replacement = 's16' if kinds == {'signed_short_counter'} else 'int'
+        else:
+            captures = [f for f in facts['promoted_captures'] if f['register'] == register
+                        and f['load']['instruction'].split()[0] in {'lha', 'lhax'}]
+            assignments = [n for n in nodes if n.type == 'assignment_expression'
+                           and re.match(rb'^' + name.encode() + rb'\b', raw[n.start_byte:n.end_byte])]
+            if len(captures) != 1 or len(assignments) != 1 or site.get('reviewed_assignment_type') != 'short':
+                raise ValueError('unique signed-halfword capture and reviewed assignment type required')
+            if not re.match(rb'^' + name.encode() + rb'\s*=(?!=)', raw[assignments[0].start_byte:assignments[0].end_byte]):
+                raise ValueError('plain captured-value assignment required')
+            if any(n.type == 'update_expression' and re.search(rb'\b' + name.encode() + rb'\b', raw[n.start_byte:n.end_byte]) for n in nodes):
+                raise ValueError('mutating captured owner')
+            replacement = 'int'
+        if aliases[current] != aliases.get(replacement, replacement):
+            edits.append({'start_byte': start+typ.start_byte, 'end_byte': start+typ.end_byte,
+                          'sha256': _sha(raw[typ.start_byte:typ.end_byte]),
+                          'replacement': replacement.encode()})
+    return edits
 
 
 def analyze_shared_initializers(source_bytes, function, *, closed_macro_context=False,
@@ -596,6 +680,10 @@ def enumerate_shapes(source_bytes, function, approved_families, source_constrain
             edits = shared_initializer_producer(source_bytes, function, source_constraints)
             if not edits:
                 continue
+        elif family == 'target_integer_width':
+            edits = target_integer_width(source_bytes, function, source_constraints)
+            if not edits:
+                continue
         else:
             edits = _guards(source_bytes, function, source_constraints)
         edits.sort(key=lambda e: (e["start_byte"], e["end_byte"]))
@@ -611,8 +699,16 @@ def enumerate_shapes(source_bytes, function, approved_families, source_constrain
                         "source_sha256": before["source_sha256"], "candidate_sha256": _sha(candidate),
                         "constraint_id": source_constraints.get("id", family), "edits": public_edits,
                         "binding": before, "fingerprint": after,
-                        "rationale": "reviewed existing-owner shape; evaluation order and source types retained",
-                        "authority_advanced": False})
+                         "rationale": ("target-guided local integer width; reviewed real owner and bounded value domain"
+                                       if family == 'target_integer_width' else
+                                       "reviewed existing-owner shape; evaluation order and source types retained"),
+                         "authority_advanced": False})
+        if family == 'target_integer_width':
+            results[-1]['target_evidence'] = {
+                'assembly_sha256': source_constraints['target_assembly_sha256'],
+                'function': function,
+                'reviewed_owner_mapping': source_constraints['integer_owner_sites'],
+                'reviewed_scalar_aliases': source_constraints['reviewed_scalar_aliases']}
     return results
 
 

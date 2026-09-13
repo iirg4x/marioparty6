@@ -125,9 +125,14 @@ def local(root: Path, path: Path) -> Path:
 def read_bound(root: Path, path: Path, limit: int) -> tuple[bytes, dict]:
     path = local(root, path)
     with path.open("rb") as stream:
-        raw = stream.read(limit + 1)
-    if len(raw) > limit:
-        raise ValueError(f"evidence exceeds {limit} bytes: {path}")
+        # BufferedReader.read(n) can reserve n bytes even for tiny fixtures.
+        # Allocate from this open file's actual size, not a 32/64 MiB ceiling.
+        size = os.fstat(stream.fileno()).st_size
+        if size > limit:
+            raise ValueError(f"evidence exceeds {limit} bytes: {path}")
+        raw = stream.read(size + 1)
+        if len(raw) != size or os.fstat(stream.fileno()).st_size != size:
+            raise ValueError(f"evidence size changed while reading: {path}")
     return raw, {"path": path.relative_to(root).as_posix(), "size_bytes": len(raw),
                  "sha256": hashlib.sha256(raw).hexdigest()}
 

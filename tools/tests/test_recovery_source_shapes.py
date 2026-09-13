@@ -5,6 +5,56 @@ from tools import recovery_source_shapes as shapes
 
 
 class SourceShapesTests(unittest.TestCase):
+    def integer_candidate(self, source, body, sites, **extra):
+        assembly = '.fn F, global\n' + body + '\n.endfn F\n'
+        constraints = dict(source_sha256=hashlib.sha256(source).hexdigest(),
+            target_assembly=assembly, target_assembly_sha256=hashlib.sha256(assembly.encode()).hexdigest(),
+            reviewed_owner_mapping=True, reviewed_scalar_aliases={'s16': 'short'}, integer_owner_sites=sites)
+        constraints.update(extra)
+        return shapes.enumerate_shapes(source, 'F', ['target_integer_width'], constraints)
+
+    def test_target_counter_width_repairs_and_contrasting_call_cast(self):
+        body = 'li r31, 0\nb .L_test\n.L_body:\nextsh r3, r31\nbl Use\naddi r31, r31, 1\n.L_test:\ncmpwi r31, 2\nblt .L_body\nblr'
+        for name in ('index', 'member'):
+            source = f'void F(void) {{ s16 {name}; for ({name} = 0; {name} < 2; {name}++) {{ Use({name}); }} }}'.encode()
+            sites = [{'name': name, 'register': 'r31'}]
+            wide = self.integer_candidate(source, body, sites)[0]['source']
+            self.assertIn(f'int {name};'.encode(), wide)
+            narrow_body = body.replace('cmpwi r31, 2', 'extsh r0, r31\ncmpwi r0, 2')
+            self.assertEqual(self.integer_candidate(wide, narrow_body, sites)[0]['source'], source)
+            self.assertEqual(self.integer_candidate(source, narrow_body, sites), [])
+
+    def test_promoted_capture_preserves_real_assignment(self):
+        source = b'void F(void) { s16 player; player = work->player; Use(array[player]); }'
+        body = 'lha r28, 2(r3)\nbl Check\nmulli r4, r28, 36\nblr'
+        sites = [{'name': 'player', 'register': 'r28', 'reviewed_assignment_type': 'short'}]
+        result = self.integer_candidate(source, body, sites)[0]
+        self.assertEqual(result['source'], source.replace(b's16 player;', b'int player;'))
+        self.assertEqual(len(result['edits']), 1)
+        self.assertFalse(result['authority_advanced'])
+        self.assertEqual(result['target_evidence']['function'], 'F')
+        for replacement in (b'player += 1; Use(array[player]);', b'player++; Use(array[player]);'):
+            with self.assertRaises(ValueError):
+                self.integer_candidate(source.replace(b'Use(array[player]);', replacement), body, sites)
+        with self.assertRaises(ValueError):
+            self.integer_candidate(source, body.replace('lha ', 'lhz '), sites)
+
+    def test_width_repair_rejects_unsafe_or_ambiguous_source(self):
+        body = 'li r31, 0\n.L_body:\naddi r31, r31, 1\ncmpwi r31, 2\nblt .L_body\nblr'
+        source = b'void F(void) { s16 i; for (i = 0; i < 2; i++) { Use(i); } }'
+        sites = [{'name': 'i', 'register': 'r31'}]
+        for invalid in (source.replace(b'Use(i)', b'Use(&i)'),
+                        source.replace(b'Use(i)', b'i = 100'),
+                        source.replace(b's16 i;', b'volatile s16 i;'),
+                        source.replace(b'i < 2', b'i < 3'),
+                        source.replace(b'Use(i);', b'int i = 3; Use(i);')):
+            with self.assertRaises(ValueError):
+                self.integer_candidate(invalid, body, sites)
+        with self.assertRaisesRegex(ValueError, 'hash mismatch'):
+            self.integer_candidate(source, body, sites, target_assembly_sha256='0'*64)
+        with self.assertRaisesRegex(ValueError, 'mapping required'):
+            self.integer_candidate(source, body, sites, reviewed_owner_mapping=False)
+
     def test_capspecial_pre_win_function_ranks_shared_producer_not_local_register(self):
         # Frozen PRE-win function, not the winning patch as generator input.
         # Full pre-win TU: 4f6607ce1d17d2d9b9fb547cd8a9556952c77745f53c124c6f66444aa7cb25ac.
