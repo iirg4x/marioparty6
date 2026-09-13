@@ -1,6 +1,6 @@
 # Small DOL batch — 2026-09-13
 
-## m621: complete source-selected private recovery (65/65 application functions)
+## m621: complete source-selected recovery on main (65/65 application functions)
 
 On 2026-09-14 the retained 30-function frontier advanced to **65/65 application
 functions**, plus the existing shared SDK runtime and startup. All **24,008 code
@@ -18,8 +18,16 @@ unfinished m635 selector remains in its verified snapshot at d8166b7, with its
 source, private builds and partial-gain evidence preserved. It must not be
 silently included in m621's supporting promotion.
 
-This is a fully verified private recovery, **not yet a main promotion**. Evidence
-is `build/minigame-recovery-20260913/m621/application-proof/receipt.json`;
+Delivered through source PR55 and project/progress PR56 on 2026-09-14. Main is
+`61badb7980b8906bfbe82db41f7660445afdcf31`; the paired clean-main build reproduced
+the private PLF byte-for-byte and passed all137 retail checksums. Promoted source
+and support blobs were rechecked in main, the clean main worktree fast-forwarded,
+and only the two fully merged delivery branches were deleted. The consistent
+registered-module census is **4/82 complete, 78 remaining**: m616, m621, m651 and
+m670. Project code/data are22.70%/43.61%; REL code/data are8.90%/8.61%.
+
+Delivery evidence is `build/promotion/m621-complete-20260914/delivered.json`.
+Recovery evidence is `build/minigame-recovery-20260913/m621/application-proof/receipt.json`;
 its source/support hashes, linked report, per-function physical counts, runtime
 mapping and no-fallback link rule bind the result. The recovered module still
 uses address-placeholder names where original names are unavailable.
