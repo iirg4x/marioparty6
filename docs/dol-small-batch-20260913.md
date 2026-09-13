@@ -23,6 +23,17 @@ interfaces and dependencies, and use Qwen for disjoint bounded source
 questions while the primary chooses and measures changes. No consensus gate,
 new lane, flag tournament, or general tool project is implied.
 
+Current inventory after these closures: 44 owners / 265,820 code bytes remain.
+The speech library owns 39 / 222,100 bytes; 15 of those have no source file,
+covering 147,324 bytes (55% of all remaining code). The other five owners are
+GeckoException, MIC, printf, msmsys, and msmstream (43,720 bytes). Their closure
+would reach about 89.78%, not 100%; the missing-source reconstruction track
+cannot be deferred behind endless near-match polishing. Reused/current
+baselines are in `build/dol-batch/current-dol-fast-path.json` and
+`build/small-remaining-baseline-20260913/*/sdk-selection-eb7/`. MIC is 36/41
+score-exact, msmsys 19/23, msmstream 24/28. Those are selection facts, not new
+closures or promises that the remaining source causes are trivial.
+
 Stream's one reconstruction restored SDK sample-cursor versus ADPCM byte-offset
 lifetimes in `streamHandle`; it closed all 44 register-cycle rows. Its
 remaining pool-owner rows closed by including the real Dolphin math header,
