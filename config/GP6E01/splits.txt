@@ -957,7 +957,7 @@ Runtime.PPCEABI.H/NewMore.cp:
 	extab       start:0x80005720 end:0x80005738
 	extabindex  start:0x80005830 end:0x80005854
 	.text       start:0x800EDAE4 end:0x800EDBF8
-	.rodata     start:0x80216678 end:0x802166E8
+	.rodata     start:0x80216678 end:0x802166D8
 	.data       start:0x80245350 end:0x80245380
 	.sdata      start:0x802BFB38 end:0x802BFB50
 
@@ -969,6 +969,7 @@ Runtime.PPCEABI.H/NMWException.cpp:
 
 Runtime.PPCEABI.H/ptmf.c:
 	.text       start:0x800EE0E4 end:0x800EE178
+	.rodata     start:0x802166D8 end:0x802166E8
 
 Runtime.PPCEABI.H/runtime.c:
 	.text       start:0x800EE178 end:0x800EE854
