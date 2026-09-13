@@ -163,6 +163,49 @@ int Local(void) { Real(1, 0); return Missing(1); }
         self.assertEqual(result['compiler_helper_calls'], ['_restgpr_22', '_savegpr_22'])
         self.assertEqual(result['unresolved'], ['Unknown'])
 
+    def test_local_prototype_gap_is_distinct_and_typed_context_closes_it(self):
+        asm = ('.fn fn_1_A5C, global\nbl fn_1_5328\nbl MgScorePosSet\nblr\n.endfn fn_1_A5C\n'
+               '.fn fn_1_5328, global\nblr\n.endfn fn_1_5328\n')
+        (self.root/'include/game/mg').mkdir(parents=True)
+        self.write('include/game/mg/score.h', 'void MgScorePosSet(int x, int y);\n')
+        self.write('include/local.h', 'void fn_1_5328(s32 playerNo, s32 score);\n')
+        self.write('src/local.c', 'void fn_1_5328(s32 playerNo, s32 score) { Work(playerNo, score); }\n')
+        result = decompctx.discover_call_context(self.root, asm, '', ['src/local.c'])
+        local = result['local_prototype_review']
+        self.assertEqual(set(result['missing']), {'MgScorePosSet'})
+        self.assertEqual(result['include_hints'], ['game/mg/score.h'])
+        self.assertEqual(set(local['missing']), {'fn_1_5328'})
+        self.assertEqual(local['include_hints'], ['local.h'])
+        self.assertEqual([r['role'] for r in local['missing']['fn_1_5328']], ['header', 'provider'])
+        self.assertEqual(local['missing']['fn_1_5328'][0]['declaration'], 'void fn_1_5328(s32 playerNo, s32 score)')
+        self.assertEqual(local['missing']['fn_1_5328'][0]['line'], 1)
+        self.assertFalse(local['authority_advanced'])
+        self.assertIn('argument count', local['caveat'])
+        closed = decompctx.discover_call_context(self.root, asm,
+            'void fn_1_5328(s32 playerNo, s32 score);\n')['local_prototype_review']
+        self.assertEqual(closed['missing'], {})
+        self.assertEqual(closed['covered_calls'], ['fn_1_5328'])
+        old = decompctx.discover_call_context(self.root, asm, 'void fn_1_5328();\n')['local_prototype_review']
+        self.assertEqual(old['present_without_prototype'], ['fn_1_5328'])
+
+    def test_unresolved_local_prototype_does_not_become_external(self):
+        asm = '.fn Caller, global\nbl Local\nbl _savegpr_24\nblr\n.endfn Caller\n.fn Local, global\nblr\n.endfn Local\n'
+        result = decompctx.discover_call_context(self.root, asm, '')
+        self.assertEqual(result['missing'], {})
+        self.assertEqual(result['unresolved'], [])
+        self.assertEqual(result['local_prototype_review']['unresolved'], ['Local'])
+        self.assertEqual(result['local_prototype_review']['missing'], {'Local': []})
+
+    def test_local_callee_overwrite_does_not_infer_argument_count(self):
+        asm = ('.fn Caller, global\naddi r3, r1, 8\nbl fn_1_27A0\nblr\n.endfn Caller\n'
+               '.fn fn_1_27A0, global\nli r3, 0\nbl Work\nblr\n.endfn fn_1_27A0\n')
+        review = decompctx.discover_call_context(self.root, asm, '')['local_prototype_review']
+        self.assertEqual(review['missing'], {'fn_1_27A0': []})
+        self.assertNotIn('inferred_signature', review)
+        closed = decompctx.discover_call_context(self.root, asm, 'void fn_1_27A0(void);')['local_prototype_review']
+        self.assertEqual(closed['covered_calls'], ['fn_1_27A0'])
+        self.assertEqual(closed['missing'], {})
+
 
 META = '''  0 .text 00000014 00000000 00000000 00000034 2**2
 00000000 g     F .text 00000014 f
@@ -196,6 +239,28 @@ source = Path(__file__)
 class IntegerShapeTests(unittest.TestCase):
     def shapes(self, body):
         return decompctx.target_integer_shapes('.fn example, global\n' + body + '\n.endfn example\n', 'example')
+
+    def test_terminal_branch_requires_immediate_shared_canonical_epilogue(self):
+        body = ('stwu r1, -16(r1)\nmflr r0\nstw r0, 20(r1)\nstw r31, 12(r1)\n'
+                'cmpwi r3, 0\nbne .L_exit\nbl Work\nb .L_exit\n.L_exit:\n'
+                'lwz r31, 12(r1)\nlwz r0, 20(r1)\nmtlr r0\naddi r1, r1, 16\nblr')
+        cue = self.shapes(body)['terminal_branch_reviews'][0]
+        self.assertEqual(cue['branch']['row'], 7)
+        self.assertEqual(cue['epilogue_start']['row'], 8)
+        self.assertEqual(cue['target_label'], '.L_exit')
+        self.assertIn('does not distinguish return from goto', cue['review'])
+        for old, new in (('b .L_exit\n.L_exit:', 'b .L_exit\nnop\n.L_exit:'),
+                         ('bne .L_exit', 'nop'), ('mtlr r0', 'li r3, 0'),
+                         ('addi r1, r1, 16', 'addi r1, r1, 32'),
+                         ('lwz r31, 12(r1)', 'lwz r31, 8(r1)'),
+                         ('b .L_exit\n.L_exit:', 'beq .L_exit\n.L_exit:'),
+                         ('b .L_exit\n.L_exit:', '.L_loop:\nb .L_loop\n.L_exit:'),
+                         ('blr', 'bctr')):
+            self.assertEqual(self.shapes(body.replace(old, new))['terminal_branch_reviews'], [])
+        helper = body.replace('stw r31, 12(r1)', 'addi r11, r1, 16\nbl _savegpr_27').replace(
+            'lwz r31, 12(r1)', 'addi r11, r1, 16\nbl _restgpr_27')
+        self.assertEqual(len(self.shapes(helper)['terminal_branch_reviews']), 1)
+        self.assertEqual(self.shapes(helper.replace('_savegpr_27', '_savegpr_28'))['terminal_branch_reviews'], [])
 
     def test_no_direct_reload_stack_captures_require_fidelity_review(self):
         body = ('stwu r1, -0x20(r1)\nadd r0, r3, r4\nstw r0, 8(r1)\n'

@@ -1280,6 +1280,7 @@ config.libs = [
             Object(Matching, "REL/m621dll/prolog.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m621dll/m621.c", extra_cflags=["-pooldata off"]),
             Object(NonMatching, "REL/m621dll/audio.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m621dll/round.c", extra_cflags=["-pooldata off"]),
         },
     ),
     Rel(

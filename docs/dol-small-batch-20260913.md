@@ -1,15 +1,66 @@
 # Small DOL batch — 2026-09-13
 
-## m621: first-compile entry batch and shared-pool dependency guidance
+## m621: typed call context and terminal-return guidance (17/66 selected)
 
-The first canonical m621 compile has **15/16 application functions at raw
+The current retained m621 frontier is **17/66 source-selected application
+functions**, up from 13. The four round callbacks (`fn_1_5F0`, `fn_1_70C`,
+`fn_1_778`, `fn_1_A5C`) add **1,372 code bytes**, for **2,428 including startup**.
+Independent strict/physical comparison, linked section bytes, the retail REL,
+and all **137 checksums** pass. Forty-nine application functions remain original
+fallback. This is a verified partial module, not a whole-minigame/main closure.
+Current proof: `build/minigame-recovery-20260913/m621/entry-proof/receipt.json`.
+
+The round group's first raw draft was not exact. It exposed three repeatable
+first-pass input problems, corrected together on the next compile:
+
+- `fn_1_5F0` needs an `int` loop counter; the store narrows only the player-number
+  field. The existing target loop-width cue distinguishes this from the real
+  short counters in `fn_1_778`. An inferred field width is not a local type.
+- Local calls need verified prototypes too. m2c inferred an argument to
+  `fn_1_27A0` from the surviving global-address register, although the callee
+  overwrites it before use. It similarly invented a third argument to
+  `fn_1_5328`. The recovered contracts are `void(void)` and two integer
+  parameters, respectively; they were checked against their callees.
+- Three final conditional branches reach the immediately following epilogue.
+  Ordinary explicit returns inside those conditional regions reproduce them.
+  Removing such returns as redundant loses a target instruction under this MWCC
+  configuration.
+
+`decompctx.discover_call_context` now reports local missing prototypes separately
+from external API/header discovery. It never synthesizes argument counts.
+`target_integer_shapes` adds a narrowly checked terminal-branch review cue with
+the actual branch/epilogue/conditional-predecessor rows. This does not prove
+return versus goto, original names, or guarantee first-compile exactness.
+The actual MWCC-preprocessed context now includes the real `game/mg/score.h`
+contracts and the recovered module records. The preparation path runs this
+preflight before m2c instead of merely having an unused diagnostic available.
+
+The first draft of the camera/player-state group is retained as working source,
+not selected Matching. Four of those callbacks are raw instruction-exact; the
+other five now differ only in equal-valued literal ownership. Reconstructing the
+helper's mixed float/integer parameter order fixed two caller schedules together;
+`from = to = pos` fixed the ray endpoint copy chain. Neither is a universal
+template. Camera `fn_1_CEC` retains the target's unused typed `obj->data` capture
+as disclosed source-shape debt; no new fake store or assembly was introduced.
+
+Focused verification: **67 tests, 66 passed and one optional replay skipped**,
+including the existing Qwen runner's safe error diagnostics. Three prior broad
+support jobs exhausted the shared KV cache (131,075 active tokens versus
+131,072 total), not their individual 65K limits. New narrow questions run two
+at once with xhigh and uncapped generation unchanged; no model restart/retry or
+partial answer admission. Error receipts now distinguish this cause without
+persisting arbitrary server text. This reliability fix earns no matching credit.
+Replay: `build/minigame-recovery-20260913/m621/entry-proof/context-pass.json`.
+
+## m621: earlier first-compile entry batch and shared-pool dependency guidance
+
+At private commit `e9ec074`, the first canonical m621 compile had **15/16 application functions at raw
 objdiff 100%**. The 13-function entry unit has no instruction differences and
-now passes independent physical relocation comparison, a source-selected link,
+passed independent physical relocation comparison, a source-selected link,
 retail-identical m621 REL, and all **137 project checksums**. This retains 1,056
 source-selected code bytes including startup, with **13/66 application functions
-selected**. The other 53 application functions and 22,952 code bytes remain
-original fallback; this is not a complete minigame or a main-progress advance.
-Proof: `build/minigame-recovery-20260913/m621/entry-proof/receipt.json`.
+selected** at that checkpoint. The newer 17/66 frontier above supersedes its
+partial source-selection counts; neither is a complete minigame/main advance.
 
 The first draft used the real preprocessed API contracts, ordinary typed vector
 initializers at their target creation point, and the actual earlier object

@@ -98,6 +98,7 @@ class RunnerReplayTests(unittest.TestCase):
         self.body = answer(self.packet)
         self.validator = Path(groups.__file__).resolve()
         self.finish = "stop"
+        self.server_error = None
         self.calls = []
         self.slot_count = 4
         self.concurrency_barrier = None
@@ -133,6 +134,8 @@ class RunnerReplayTests(unittest.TestCase):
                     {"choices":[{"delta":{"content":json.dumps(owner.body)},"finish_reason":None}]},
                     {"choices":[{"delta":{},"finish_reason":owner.finish}],
                      "usage":{"prompt_tokens":10,"completion_tokens":20,"total_tokens":30}}]
+                if owner.server_error is not None:
+                    events.insert(2, {"error": owner.server_error})
                 try:
                     for index, event in enumerate(events):
                         self.wfile.write(("data: "+json.dumps(event)+"\n\n").encode())
@@ -194,6 +197,44 @@ class RunnerReplayTests(unittest.TestCase):
         self.assertTrue((out/"replay.rejected-answer.txt").exists())
         self.assertEqual(json.loads((out/"replay.metrics.json").read_bytes())["state"], "rejected")
         self.assertFalse((out/"replay.lock").exists())
+
+    def test_sse_context_error_retains_safe_diagnosis_without_partial_answer(self):
+        self.server_error = {'message': 'Context size has been exceeded. SECRET_PROMPT',
+                             'type': 'server_error', 'code': 500}
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        out = self.root/'answer'
+        raw = (out/'replay.metrics.json').read_text()
+        metrics = json.loads(raw)
+        self.assertEqual(metrics['state'], 'failed')
+        self.assertEqual(metrics['server_error_class'], 'context_capacity_exceeded')
+        self.assertEqual(metrics['server_error_code'], 500)
+        self.assertEqual(metrics['server_error_type'], 'server_error')
+        self.assertIn('shared KV residency', metrics['server_error_detail'])
+        self.assertTrue(metrics['server_error_message_redacted'])
+        self.assertFalse(metrics['natural_completion'])
+        self.assertNotIn('SECRET_PROMPT', raw + result.stderr)
+        for suffix in ('answer.txt', 'answer.pending', 'rejected-answer.txt', 'lock'):
+            self.assertFalse((out/('replay.'+suffix)).exists())
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(metrics['think'], 'xhigh')
+        self.assertEqual(metrics['num_predict'], -1)
+        self.assertEqual(metrics['num_ctx'], 65536)
+
+    def test_sse_unknown_error_does_not_copy_arbitrary_server_fields(self):
+        self.server_error = {'message': 'SECRET_PROMPT '*1000,
+                             'type': 'SECRET_TYPE', 'code': 'SECRET_CODE'}
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        raw = (self.root/'answer/replay.metrics.json').read_text()
+        metrics = json.loads(raw)
+        self.assertEqual(metrics['server_error_class'], 'server_error_unknown')
+        self.assertNotIn('server_error_type', metrics)
+        self.assertNotIn('server_error_code', metrics)
+        self.assertNotIn('SECRET_', raw + result.stderr)
+        self.assertLess(len(metrics['error']), 300)
+        self.assertFalse((self.root/'answer/replay.answer.txt').exists())
+        self.assertEqual(len(self.calls), 1)
 
     def validator_replay(self, edit, finish="stop"):
         # Isolated forwarding validator; never edit the shared production validator.

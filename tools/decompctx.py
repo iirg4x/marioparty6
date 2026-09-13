@@ -299,6 +299,54 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
         rows.append((match[1], [a.strip() for a in (match[2] or '').split(',')], line))
     def record(i):
         return {'row': i, 'instruction': rows[i][2]}
+    terminal_branches = []
+    # A narrow MWCC terminal shape: b to the very next instruction, a shared
+    # conditional exit, then only verified frame/LR/GPR restoration and blr.
+    # This is a review cue, not a return-vs-goto/source-spelling determination.
+    def stack_offset(operand):
+        match = re.fullmatch(r'(-?(?:0x[0-9a-f]+|\d+))\(r1\)', operand)
+        return int(match[1], 0) if match else None
+    frame = None
+    if rows and rows[0][0] == 'stwu' and len(rows[0][1]) == 2 and rows[0][1][0] == 'r1':
+        offset = stack_offset(rows[0][1][1])
+        frame = -offset if offset is not None and offset < 0 else None
+    if frame and len(rows) >= 7 and rows[-1][0] == 'blr':
+        epilogue = len(rows) - 4
+        tail = rows[epilogue:]
+        if (tail[0][0] == 'lwz' and len(tail[0][1]) == 2 and tail[0][1][0] == 'r0'
+                and stack_offset(tail[0][1][1]) == frame + 4
+                and tail[1][:2] == ('mtlr', ['r0'])
+                and tail[2][0] == 'addi' and tail[2][1] in (['r1', 'r1', str(frame)], ['r1', 'r1', hex(frame)])
+                and any(op == 'stw' and args == ['r0', tail[0][1][1]] for op, args, _ in rows[:6])):
+            helper = None
+            if (epilogue >= 2 and rows[epilogue-1][0] == 'bl'
+                    and len(rows[epilogue-1][1]) == 1
+                    and re.fullmatch(r'_restgpr_(?:1[4-9]|2\d|3[01])', rows[epilogue-1][1][0])
+                    and rows[epilogue-2][0] == 'addi'
+                    and rows[epilogue-2][1] in (['r11', 'r1', str(frame)], ['r11', 'r1', hex(frame)])):
+                helper = rows[epilogue-1][1][0]
+                if any(op == 'bl' and args == [helper.replace('_restgpr_', '_savegpr_')]
+                       for op, args, _ in rows[:8]):
+                    epilogue -= 2
+            if helper is None:
+                while epilogue > 0:
+                    op, args, _ = rows[epilogue-1]
+                    if (op != 'lwz' or len(args) != 2 or not re.fullmatch(r'r(?:1[4-9]|2\d|3[01])', args[0])
+                            or stack_offset(args[1]) is None or not 8 <= stack_offset(args[1]) < frame
+                            or not any(saved_op == 'stw' and saved_args == args for saved_op, saved_args, _ in rows[:20])):
+                        break
+                    epilogue -= 1
+            branch = epilogue - 1
+            if branch >= 0 and rows[branch][0] == 'b' and len(rows[branch][1]) == 1:
+                label = rows[branch][1][0]
+                conditionals = [i for i, (op, args, _) in enumerate(rows[:branch])
+                                if re.fullmatch(r'b(?:eq|ne|lt|le|gt|ge)(?:[+-])?', op) and args == [label]]
+                if labels.get(label) == epilogue and conditionals:
+                    terminal_branches.append({'branch': record(branch), 'target_label': label,
+                        'epilogue_start': record(epilogue), 'terminal_return': record(len(rows)-1),
+                        'conditional_predecessors': [record(i) for i in conditionals[:8]],
+                        'conditional_predecessor_count': len(conditionals),
+                        'review': 'Final unconditional branch reaches the immediately following shared epilogue. Review an explicit return at the end of the conditional source region; this does not distinguish return from goto or guarantee original spelling, return type, or argument count.'})
     loops, loads, captures, narrowed, returns, stack_bases, masks, array_indices = [], [], [], [], [], [], [], []
     # GNU adapter output labels every instruction. Only referenced branch
     # destinations are CFG boundaries; decorative labels are not joins.
@@ -444,6 +492,7 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
             'loop_nesting': nesting, 'return_transfers': returns,
             'array_index_strides': array_indices,
             'stack_capture_reviews': _target_stack_captures(rows, label_rows),
+            'terminal_branch_reviews': terminal_branches,
             'indexed_stack_bases': stack_bases, 'immediate_masks': masks,
             'caveat': 'Target cues, not original C types or source mappings. Review real consumers, header types and compiler mode. Never infer declaration order solely from stack offsets.',
             'authority_advanced': False, 'source_patch_emitted': False}
@@ -466,6 +515,10 @@ def discover_call_context(root: Path, assembly: str, context: str,
     runtime = {name for name in calls if re.fullmatch(r'_(?:save|rest)gpr_(?:1[4-9]|2\d|3[01])', name)}
     missing = [name for name in calls if name not in locals_ and name not in runtime
                and not any(row['prototyped'] for row in visible.get(name, []))]
+    local_calls = sorted((set(calls) & locals_) - runtime)
+    local_missing = [name for name in local_calls
+                     if not any(row['prototyped'] for row in visible.get(name, []))]
+    sought = sorted(set(missing) | set(local_missing))
     files = sorted(path for path in (root / 'include').rglob('*.h') if path.is_file())
     for provider in providers:
         path = (root / provider).resolve()
@@ -474,7 +527,7 @@ def discover_call_context(root: Path, assembly: str, context: str,
         files.append(path)
     if len(files) > 4096:
         raise ContextError('Call-context file limit exceeded')
-    candidates: dict[str, list[dict]] = {name: [] for name in missing}
+    candidates: dict[str, list[dict]] = {name: [] for name in sought}
     read_bytes = 0
     for path in dict.fromkeys(files):
         resolved = path.resolve()
@@ -487,17 +540,19 @@ def discover_call_context(root: Path, assembly: str, context: str,
         if read_bytes > 32 * 1024 * 1024:
             raise ContextError('Call-context input size limit exceeded')
         text = raw.decode('utf-8', errors='replace')
-        if not any(re.search(r'\b' + re.escape(name) + r'\b', text) for name in missing):
+        if not any(re.search(r'\b' + re.escape(name) + r'\b', text) for name in sought):
             continue
         declarations = declared_functions(text)
         relative = resolved.relative_to(root).as_posix()
-        for name in missing:
+        for name in sought:
             for row in declarations.get(name, []):
                 if not row['prototyped']:
                     continue
                 candidates[name].append({**row, 'path': relative,
                     'sha256': hashlib.sha256(raw).hexdigest(),
                     'role': 'header' if relative.startswith('include/') else 'provider'})
+    local_candidates = {name: candidates[name] for name in local_missing}
+    candidates = {name: candidates[name] for name in missing}
     include_hints = sorted({row['path'][8:] for rows in candidates.values()
                             for row in rows if row['role'] == 'header'})
     return_warnings = []
@@ -540,6 +595,19 @@ def discover_call_context(root: Path, assembly: str, context: str,
             'compiler_helper_calls': sorted(runtime),
             'covered_calls': [name for name in calls if name not in locals_ and name not in missing and name not in runtime],
             'missing': candidates, 'include_hints': include_hints,
+            'local_prototype_review': {
+                'covered_calls': [name for name in local_calls if name not in local_missing],
+                'missing': local_candidates,
+                'present_without_prototype': [name for name in local_missing if name in visible],
+                'unresolved': [name for name, rows in local_candidates.items() if not rows and name not in visible],
+                'include_hints': sorted({row['path'][8:] for rows in local_candidates.values()
+                                         for row in rows if row['role'] == 'header'}),
+                'caveat': 'Same-assembly local calls still need visible typed context for decompilation. '
+                          'Review existing callee declarations and bodies; live registers alone do not '
+                          'prove argument count or validate decompiler-inferred extra arguments. '
+                          'Assembly membership does not authenticate an original TU. '
+                          'Discovery only, not a compilation gate or signature inference.',
+                'authority_advanced': False},
             'present_without_prototype': [name for name in missing if name in visible],
             'return_warnings': return_warnings,
             'target_integer_shapes': integer_shapes, 'integer_shape_issues': shape_issues,
