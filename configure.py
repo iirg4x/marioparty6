@@ -1259,6 +1259,22 @@ config.libs = [
         },
     ),
     Rel(
+        "m616dll",
+        objects={
+            Object(Matching, "REL/m616dll/prolog.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m616dll/m616.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m616dll/init.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m616dll/utility.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m616dll/cpu.c", extra_cflags=["-pooldata off"]),
+            Object(
+                Matching,
+                "REL/m616dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"],
+            ),
+        },
+    ),
+    Rel(
         "mdsingdll",
         objects={
             Object(NonMatching, "REL/mdsingdll/mdsing.c"),

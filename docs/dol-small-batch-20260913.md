@@ -1,5 +1,43 @@
 # Small DOL batch — 2026-09-13
 
+## m616dll closed from source
+
+The first selected numbered minigame now rebuilds to the exact 19,788-byte
+retail REL. Both SHA-256 values are
+`75c0261ec53a59ec57fc0daa7460c1963d8649e928a446bae47f4220fb84a231`.
+Canonical source comprises the startup file, four application translation
+units and the existing compiler runtime. All 22 application functions and the
+runtime/startup paths are verified by the real CodeWarrior/DTK source-selected
+link. Receipt: `build/minigame-recovery-20260913/m616/source-link/receipt.json`.
+This is a local closure, not a claim that main has already been updated.
+
+The batch-sized gain came from source context, not isolated register edits:
+independent literal producers and naturally aligned string regions identified
+four application files. Reconstructing those boundaries, retaining real table
+ownership, and using the already-established REL `-pooldata off` setting took
+the combined object from 11 to 21 score-exact application functions while
+making all initialized section bytes match. GC1.3.2 and GC2.6 generated the
+same application instructions in the tested context; use the existing REL
+default, not a claim that the original compiler version was uniquely inferred.
+
+Initialization then closed through its real value producer:
+`character = work.characterNos[i] = GwPlayerConf[i].charNo`, with the int
+character owner and actual vector declaration/lifetime layout. Correcting
+width/layout alone improved some constraints but left a larger allocator
+cascade; the shared-state capture removed it without fake storage, callbacks,
+assembly or register controls. The three remaining objdiff color-byte rows
+were DTK's one-byte symbol-size annotation for the four-byte GXColor. The
+HuVecF symbol is 12 bytes plus natural next-file alignment, not a 16-byte fake
+vector. Both are corrected in the split metadata; the complete REL was already
+byte-identical before those annotation repairs.
+
+For following minigames: reconstruct source-file/literal ownership and reuse
+the existing runtime before tuning individual function allocation. Qwen's
+completed first helper answers were not credited with this crack; raw-offset
+and variadic-argument guesses were rejected against actual source consumers.
+Next-target support continues in parallel, without making it an approval gate.
+Older milestone sections below remain chronological, not current status.
+
 ## Active scope: minigame throughput, not a DOL percentage prerequisite
 
 The user switched immediately to minigames. Standalone DOL recovery is paused;

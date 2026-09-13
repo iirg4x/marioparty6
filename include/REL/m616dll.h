@@ -45,6 +45,8 @@ typedef struct M616Work {
 
 extern M616Work lbl_1_bss_10;
 
+void Hu3DMotionTimingHookReset(HU3D_MODELID modelId);
+
 s32 fn_1_A0(s32 streamNo, s32 bgmId);
 void fn_1_104(s32 streamNo);
 void fn_1_140(s16 mode, s16 frameNo);
