@@ -4,29 +4,28 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **348/396**, **1/10** batch owners.
 
-## Context functions: 4/15 to 12/15 exact
+## Context functions: 4/15 to 13/15 exact
 
 The small `gssdk_lib/gsapi/ctxfuncs.c` owner originally had ten missing source
-functions. All fifteen bodies are now reconstructed; **12/15** pass strict,
+functions. All fifteen bodies are now reconstructed; **13/15** pass strict,
 data and independent raw physical checks. No exact sibling was lost. The
 complete source `.text` is the retail **2500 bytes** and all **52 relocation
-occurrences** agree. Three functions remain nonexact, so this is a retained
+occurrences** agree. Two functions remain nonexact, so this is a retained
 partial owner, not a Matching promotion or a new DOL-link claim.
 
 New exact functions: `SessionDataExport`, `SessionDataImport`,
 `ContextActivateParams`, `ContextDeActivate`, `ContextGetParam`,
-`ContextSetParam`, `ContextSetWrdData`, and `ContextUnLoad`.
+`ContextSetParam`, `ContextSetWrdData`, `ContextUnLoad`, and `ContextSetGcdData`.
 The four previously exact bodies remain exact. Remaining strict/data scores:
-`ContextActivate` **99.8375%**, `ContextGetAction` **99.42308%**,
-`ContextSetGcdData` **99.92391%**. The two lifecycle/parser tails are uniform
-eight-byte frame differences; GetAction has an eight-row index/result-base
+`ContextActivate` **99.8375%** and `ContextGetAction` **99.42308%**.
+Activate has an eight-byte frame difference; GetAction has an eight-row index/result-base
 cycle in its first-match scan. No padding or fake local was added to fix frames.
 
-Live source `5ffce16c12a548e8c648d8eeb5e440b6fb30e61d9f47ed2a57f2b81b3869a66a`;
-object `7f2898d90f8edcfedd9b48216e33a7cfaf97093db2db1082b87eab95911fbe3c`;
+Live source `fda0c328c3e41f8ed316d502484ad1eff256e85b87c530f3a9981b66d31a92ca`;
+object `ba05e59dea29297af031a07dbb92ed05f51b1ee99fdd7b1fe9642330fbaeeaeb`;
 target `aa14666733e8e64cdd22786dc385e75659a45f7100733ef0c1670917bdc01211`;
-strict/data `88c8218522fd3284024b8b571866e5b8b8a0902310f11e8466a961d8e7c62359`.
-Proof: `build/small-first-20260913/gsctx-indexed-action-arrays/frontier-proof.json`.
+strict/data `f23881ef6b99a051ebb1c696d085045c69cf9cdd88946fe2a15af375a7e065e7`.
+Proof: `build/small-first-20260913/gsctx-chunk-field-snapshot/frontier-proof.json`.
 The owner is still unpromoted; main and batch counts above are unchanged.
 
 The productive path was target assembly plus m2c reconstruction, actual callee
@@ -49,6 +48,25 @@ snapshot because output can alias the table; an early-exit scan does not prove
 the same source owner. Local declaration, signed-index and initialization-order
 variants that produced the same object are recorded as neutral constraints,
 not reasons to exhaust or freeze the function.
+
+`ContextSetGcdData` then closed in two cheap, causally connected compiles.
+Its real on-disk chunk header is an eight-byte `{type, size}` record. A local
+whole-header copy explained the missing frame extent but added four nonretail
+stack instructions (368 -> 384 bytes); that regression was not retained.
+Assigning the same two live header fields separately let MWCC forward both
+values while preserving the record's stack extent: **368/368 bytes, 100%
+strict/data, 3/3 raw physical relocations**, all twelve exact siblings preserved.
+No padding, unused field, fabricated aggregate, or compiler switch was added.
+This is a bounded reconstruction lesson: a frame-only residual can be caused
+by a genuine scalar-forwarded record, not necessarily a missing scalar local.
+It is not a rule to wrap arbitrary locals in structs. The eight-byte data record
+and both field consumers independently justify this particular source shape.
+
+Subsequent first-match early return, direct action-pointer consumption,
+countdown scan, shared indexed scan position, and case-local indexed extents
+did not improve GetAction; the live 13/15 champion remains intact. The optional
+export's assignment-condition spelling was object-neutral. Qwen's delayed Mel
+block lifetime was tested in valid C89 scope and was also object-neutral.
 
 Source-fidelity caveat: the target `SessionDataExport` writes the allocated
 header before its null check. The reconstruction preserves that legacy order;

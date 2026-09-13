@@ -356,13 +356,15 @@ s32 ContextSetGcdData(GSLoadedContext *context, GSDataChunk *data)
     }
     cursor = (u8 *)context->gcdData + sizeof(GSDataChunk);
     while (cursor != (u8 *)context->gcdData + size) {
-        u32 chunkSize = ((GSDataChunk *)cursor)->size;
-        s32 type = ((GSDataChunk *)cursor)->type;
+        GSDataChunk chunk;
 
-        if (chunkSize == 0) {
+        chunk.size = ((GSDataChunk *)cursor)->size;
+        chunk.type = ((GSDataChunk *)cursor)->type;
+
+        if (chunk.size == 0) {
             return 0x80CC0003;
         }
-        switch (type) {
+        switch (chunk.type) {
         case 1:
             context->parameters = (GSContextParamState *)cursor;
             if (context->parameters->size != sizeof(GSContextParamState)) {
@@ -381,7 +383,7 @@ s32 ContextSetGcdData(GSLoadedContext *context, GSDataChunk *data)
         default:
             return 0x80CC0003;
         }
-        cursor += chunkSize;
+        cursor += chunk.size;
     }
     return 0;
 }
