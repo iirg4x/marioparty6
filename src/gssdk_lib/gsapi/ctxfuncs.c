@@ -1,5 +1,14 @@
 #include "gssdk/gsapi.h"
 
+#define GS_ERROR_FLAG (1U << 31)
+#define GS_CONTEXT_ERROR_BASE (GS_ERROR_FLAG | (204U << 16))
+#define GS_CONTEXT_ERROR_3 (GS_CONTEXT_ERROR_BASE | 3U)
+#define GS_CONTEXT_ERROR_8 (GS_CONTEXT_ERROR_BASE | 8U)
+#define GS_CONTEXT_ERROR_9 (GS_CONTEXT_ERROR_BASE | 9U)
+#define GS_CONTEXT_OUT_OF_MEMORY (GS_CONTEXT_ERROR_BASE | 134U)
+#define GS_SESSION_IMPORT_FAILURE (204U << 16)
+#define GS_GCD_CHUNK_TYPE ('G' | ('C' << 8) | ('D' << 16) | (' ' << 24))
+
 typedef struct GSContextParamState {
     u32 type;
     u32 size;
@@ -42,13 +51,13 @@ typedef struct GSActionWord {
 } GSActionWord;
 
 typedef struct GSActionPath {
-    u8 reserved00[0x1C];
+    u8 reserved00[28];
     GSActionWord *word;
 } GSActionPath;
 
 typedef struct GSActionResult {
     s32 score;
-    u8 reserved04[0x10];
+    u8 reserved04[16];
     GSActionPath *path;
 } GSActionResult;
 
@@ -71,11 +80,11 @@ typedef struct GSLoadedContext {
 
 typedef struct GSContext {
     void *engine;
-    u8 reserved04[0x2C];
+    u8 reserved04[44];
     GSLoadedContext *data30;
-    u8 reserved34[0xC];
+    u8 reserved34[12];
     GSLoadedContext *data40;
-    u8 reserved44[0x1C];
+    u8 reserved44[28];
     s32 sessionInitialized;
 } GSContext;
 
@@ -108,7 +117,7 @@ s32 ContextSetActiveWords(GSContext *context, GSLoadedContext *activeWords);
 
 static inline BOOL IsError(u32 result)
 {
-    return result >= 0x80000000 ? TRUE : FALSE;
+    return result >= GS_ERROR_FLAG ? TRUE : FALSE;
 }
 
 s32 SessionDataExport(GSContext *context, GSSessionData **output)
@@ -128,7 +137,7 @@ s32 SessionDataExport(GSContext *context, GSSessionData **output)
     session->size = size;
     session->data = session + 1;
     if (session == NULL) {
-        return 0x80CC0086;
+        return GS_CONTEXT_OUT_OF_MEMORY;
     }
     result = asrspi_ExportSessionData(context->engine, 1, session->data, &size);
     if (result < 0) {
@@ -147,7 +156,7 @@ u32 SessionDataImport(GSContext *context, GSSessionData *session, s32 release)
     u32 result = asrspi_ActivateSessionData(context->engine, session->data);
 
     if (IsError(result)) {
-        result = 0xCC0000;
+        result = GS_SESSION_IMPORT_FAILURE;
     }
     if (release) {
         SessionDataFree(session);
@@ -254,7 +263,7 @@ s32 ContextGetAction(GSLoadedContext *context, GSActionObservation *observation,
     }
     table = context->actions;
     if (table == NULL) {
-        return 0x80CC0009;
+        return GS_CONTEXT_ERROR_9;
     }
     key = observation->result->path->word->key;
     switch (table->type) {
@@ -307,10 +316,10 @@ s32 ContextGetParam(GSLoadedContext *context, u32 parameter, u32 *value)
     GSContextParamState *parameters = context->parameters;
 
     if (parameters == 0) {
-        return 0x80CC0008;
+        return GS_CONTEXT_ERROR_8;
     }
     if ((parameters->validParameters & (1U << parameter)) == 0) {
-        return 0x80CC0008;
+        return GS_CONTEXT_ERROR_8;
     }
 
     *value = parameters->values[parameter];
@@ -348,14 +357,14 @@ s32 ContextSetGcdData(GSLoadedContext *context, GSDataChunk *data)
         context->actions = NULL;
         return 0;
     }
-    if (data->type != 0x20444347) {
-        return 0x80CC0003;
+    if (data->type != GS_GCD_CHUNK_TYPE) {
+        return GS_CONTEXT_ERROR_3;
     }
     context->gcdData = data;
     context->actions = NULL;
     size = context->gcdData->size;
     if (size <= sizeof(GSDataChunk)) {
-        return 0x80CC0003;
+        return GS_CONTEXT_ERROR_3;
     }
     cursor = (u8 *)context->gcdData + sizeof(GSDataChunk);
     while (cursor != (u8 *)context->gcdData + size) {
@@ -365,13 +374,13 @@ s32 ContextSetGcdData(GSLoadedContext *context, GSDataChunk *data)
         chunk.type = ((GSDataChunk *)cursor)->type;
 
         if (chunk.size == 0) {
-            return 0x80CC0003;
+            return GS_CONTEXT_ERROR_3;
         }
         switch (chunk.type) {
         case 1:
             context->parameters = (GSContextParamState *)cursor;
             if (context->parameters->size != sizeof(GSContextParamState)) {
-                return 0x80CC0003;
+                return GS_CONTEXT_ERROR_3;
             }
             break;
         case 2:
@@ -384,7 +393,7 @@ s32 ContextSetGcdData(GSLoadedContext *context, GSDataChunk *data)
             context->actions = (GSActionTable *)cursor;
             break;
         default:
-            return 0x80CC0003;
+            return GS_CONTEXT_ERROR_3;
         }
         cursor += chunk.size;
     }
@@ -396,7 +405,7 @@ s32 ContextSetParam(GSLoadedContext *context, u32 parameter, u32 value)
     if (context->parameters == 0) {
         context->parameters = heap_Calloc(gGSAPI.heap, 1, sizeof(GSContextParamState));
         if (context->parameters == 0) {
-            return 0x80CC0086;
+            return GS_CONTEXT_OUT_OF_MEMORY;
         }
     }
     context->parameters->validParameters |= 1U << parameter;
@@ -414,7 +423,7 @@ s32 ContextSetWrdData(GSLoadedContext *context, WrdData *data)
         if (context->wordList == NULL) {
             context->wordList = heap_Alloc(gGSAPI.heap, sizeof(WrdWordList));
             if (context->wordList == NULL) {
-                return 0x80CC0086;
+                return GS_CONTEXT_OUT_OF_MEMORY;
             }
         }
         WrdCreateWordList(gGSAPI.heap, context->wordList, context->wrdData);

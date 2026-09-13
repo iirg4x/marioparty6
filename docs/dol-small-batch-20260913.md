@@ -4,6 +4,32 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **350/396**, **3/10** batch owners.
 
+## Delivery checkpoint and source presentation
+
+At the user's roughly twelve-hour checkpoint, only three owners were closed.
+The ten-owner target was not met. Byte-small/high-percentage register tails
+consumed disproportionate effort; file size alone is not a reliable closure
+cost estimate. Prefer concrete full-owner reconstruction/SDK opportunities,
+keep partial champions, and reassess low-yield tails instead of expanding
+instrumentation indefinitely. A verified subset is being prepared for delivery;
+no main progress is claimed before the clean promotion and retail checks pass.
+
+Public-source cleanup names the observed GS context status domain, expresses
+the GCD tag with its characters, and uses the real default VQ input length.
+Unneeded VQ alignment members were removed; ordinary C alignment preserves
+the exact field offsets. Existing opaque context intervals remain explicitly
+unresolved and are covered only by their target-consumer evidence, not invented
+field semantics. Numeric extent presentation does not resize them.
+
+Fresh actual-compiler rebuilds reproduce both previously exact objects:
+ctxfuncs source `b075db43c8ec7c8518e4a0f3f3949cefd8614f3a98046de3a34e52e7a238f944`
+-> object `5cf28b795285b65215a189d792bd47deffc8425e5e2b1ba36a9b8ecd7e6011d7`;
+vq1500 source `553b8901e4c45234c6d48f8a0057638bf7425a94aa73908d1f7ef1e96863ece8`
+-> object `830c8c5f0e5a15ad7f66a9b22eb363d8154470a38773620ddf6350b1f92b52d2`.
+`include/gssdk/gsapi.h` changes only equivalent integer array extent spellings
+from the already verified header. Transition receipt:
+`build/dol-batch/three-public-presentation/verified.json`.
+
 ## FFTMod: four additional exact functions retained
 
 FFTMod improved from **1/6 to 5/6** strict/data and raw instruction matches.

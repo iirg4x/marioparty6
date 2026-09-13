@@ -12,27 +12,27 @@ typedef s32 (*GSGetSamplesCallback)(void *source, void *samples,
 
 typedef struct GSAPIState {
     void *heap;
-    u8 reserved04[0x14];
+    u8 reserved04[20];
     GSNotifyCallback resultCallback;
     GSNotifyCallback notify;
     GSGetSamplesCallback getSamples;
-    u8 reserved24[0x38];
+    u8 reserved24[56];
     s32 resultThreshold;
-    u8 reserved60[0x20];
+    u8 reserved60[32];
     u32 resultDetails;
-    u8 reserved84[0xC];
+    u8 reserved84[12];
     u32 sessionDataCount;
 } GSAPIState;
 
 typedef struct GSCallbackContext {
     void *engine;
     u32 flags;
-    u8 reserved08[0x28];
+    u8 reserved08[40];
     struct GSContext *context;
     struct GSResult *results;
-    u8 reserved38[0xC];
+    u8 reserved38[12];
     u32 value44;
-    u8 reserved48[0xC];
+    u8 reserved48[12];
     u32 callbackActive;
     u8 reserved58[4];
     s32 stopped;

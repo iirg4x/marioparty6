@@ -2,6 +2,24 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "ctxfuncs-consumed-record-layouts",
+      "classification": "authenticated",
+      "path": "src/gssdk_lib/gsapi/ctxfuncs.c",
+      "kind": "source_shape",
+      "rules": ["synthetic_padding"],
+      "rationale": "SCOPE: existing unresolved fields only: GSActionWord bytes0..7 before key8; GSActionPath bytes0..27 before word28; GSActionResult bytes4..19 before path20; GSActionObservation bytes0..7 before result8; GSLoadedContext bytes20..27 before wordList28 and word32 between wordList/words36; GSContext bytes4..47,52..63,68..95 before data30/data40/sessionInitialized at48/64/96. These are required consumed target field offsets, not added codegen storage or a claim of original field meanings. All15 raw exact bodies,52 relocation sites and the real source-selected retail DOL bind the layout. Source presentation only names status values and spells identical array extents in decimal; it does not resize/reinterpret these ranges. No other padding or owner is covered.",
+      "evidence": ["src/gssdk_lib/gsapi/ctxfuncs.c", "build/small-first-20260913/gsctx-import-result-boundary/frontier-proof.json", "build/small-first-20260913/gsctx-import-result-boundary/strict.json", "docs/dol-small-batch-20260913.md"]
+    },
+    {
+      "id": "gsapi-consumed-context-layouts",
+      "classification": "authenticated",
+      "path": "include/gssdk/gsapi.h",
+      "kind": "source_shape",
+      "rules": ["synthetic_padding"],
+      "rationale": "SCOPE: the existing unresolved ranges in GSAPIState and GSCallbackContext only. State live offsets heap0/resultCallback24/notify28/getSamples32/resultThreshold92/resultDetails128/sessionDataCount144 and callback offsets engine0/flags4/context48/results52/value4468/callbackActive84/stopped92 are target-consumed. The intervening ranges have no established field identity and are not new stack owners. Recovery populated previously opaque ranges without moving their already consumed offsets; presentation changes identical array extents from hexadecimal to decimal only. The exact ctxfuncs proof, current callback target accesses, old/new callback object checks and source-selected full link bind the layout. No original semantic meaning is claimed for unresolved ranges and no unrelated field is authorized.",
+      "evidence": ["include/gssdk/gsapi.h", "src/gssdk_lib/gsapi/ctxfuncs.c", "src/gssdk_lib/gsapi/callbacks.c", "build/callback-current-20260912/callbacks/ctxfuncs-header-old.o", "build/callback-current-20260912/callbacks/ctxfuncs-header-new.o", "build/small-first-20260913/gsctx-import-result-boundary/frontier-proof.json"]
+    },
+    {
       "id": "window-existing-unresolved-halfword",
       "classification": "authenticated",
       "path": "src/gssdk_lib/asrpho/common/blocks/flblocks/window.c",
