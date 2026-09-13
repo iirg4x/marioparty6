@@ -1215,11 +1215,88 @@ def compare_groups(before: dict, after: dict) -> dict:
             "cause_proven": False, "authority_advanced": False}
 
 
+def compare_function_constraints(before: dict, after: dict, function: str) -> dict:
+    """Target-address anchored observations; fewer rows do not authorize retention."""
+    summaries = [summarize_groups(doc, function) for doc in (before, after)]
+    streams, censuses = [], []
+    for document, summary in zip((before, after), summaries):
+        selected = [frontier._stack_function(frontier.focus._symbols(document, side, "strict"),
+                    function, side) for side in ("left", "right")]
+        left, right = [frontier.focus._rows(symbol, function) for symbol in selected]
+        if len(left) != len(right):
+            raise ValueError(f"ambiguous aligned deletions: {function}: unequal row counts")
+        identities = []
+        for row in left:
+            ins = row.get("instruction")
+            if not ins:
+                continue
+            address = frontier.focus._integer(ins.get("address"))
+            text = ins.get("formatted")
+            if address is None or not isinstance(text, str) or not text.strip():
+                raise ValueError(f"unavailable target address/opcode identity: {function}")
+            identities.append((address, text, json.dumps(ins.get("parts", []), sort_keys=True)))
+        if len({key[0] for key in identities}) != len(identities):
+            raise ValueError(f"ambiguous target addresses: {function}")
+        streams.append(identities)
+        mismatch = {m["row"]: group for group in summary["groups"] for m in group["members"]}
+        census, ordinal, inserted = {}, 0, set()
+        for index, (target, candidate) in enumerate(zip(left, right)):
+            ti, ci = target.get("instruction"), candidate.get("instruction")
+            if not ti and not ci:
+                raise ValueError(f"ambiguous aligned deletions: {function}: empty pair {index}")
+            if ti:
+                key = ("target", identities[ordinal])
+                ordinal += 1
+            else:
+                # Multiple insertions at one boundary cannot be paired across reports.
+                boundary = identities[ordinal] if ordinal < len(identities) else ("end",)
+                key = ("before_target", boundary)
+                if key in inserted:
+                    raise ValueError(f"ambiguous aligned insertions: {function}: shared boundary")
+                inserted.add(key)
+            if index in mismatch:
+                group = mismatch[index]
+                census[key] = {"kind": group["kind"], "relation": group["relation"],
+                    "target_address": ti.get("address") if ti else None,
+                    "anchor": key[0], "boundary": key[1][0],
+                    "target": ti.get("formatted") if ti else None,
+                    "candidate": ci.get("formatted") if ci else None}
+        censuses.append(census)
+    if streams[0] != streams[1] or summaries[0]["target_binding"] != summaries[1]["target_binding"]:
+        raise ValueError(f"incompatible target/function instruction identity: {function}")
+    old, new = censuses
+    buckets = {"resolved": [], "persisting": [], "introduced": []}
+    for key in sorted(old.keys() | new.keys(), key=repr):
+        state = "persisting" if key in old and key in new else "resolved" if key in old else "introduced"
+        buckets[state].append({"before": old.get(key), "after": new.get(key)})
+    grouped, details_truncated = {}, False
+    for state, sites in buckets.items():
+        groups = {}
+        for site in sites:
+            signature = tuple(json.dumps((site[side]["kind"], site[side]["relation"]))
+                              if site[side] else None for side in ("before", "after"))
+            groups.setdefault(signature, []).append(site)
+        details_truncated |= len(groups) > 24 or any(len(members) > 12 for members in groups.values())
+        grouped[state] = [{"row_count": len(members), "sites": members[:12],
+                           "sites_truncated": len(members) > 12} for members in groups.values()][:24]
+    return {"function": function, "target_binding": summaries[0]["target_binding"],
+            "report_sha256": {label: hashlib.sha256(json.dumps(doc, sort_keys=True,
+                separators=(",", ":")).encode()).hexdigest()
+                for label, doc in zip(("baseline_canonical_json", "candidate_canonical_json"), (before, after))},
+            "constraint_groups": grouped,
+            "counts": {state: len(sites) for state, sites in buckets.items()},
+            "details_truncated": details_truncated,
+            "score_size_frame_gates": compare_match_frontiers(before, after),
+            "structural_hazards": [s["structural_hazard_count"] for s in summaries],
+            "comparison_scope": "same target address/opcode sites; persisting may change category/expression; insertions are boundary observations, not target repairs",
+            "cause_proven": False, "retention_authorized": False, "authority_advanced": False}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strict", type=Path)
     parser.add_argument("--baseline-strict", type=Path,
-                        help="compare score frontiers only, with --strict and --owner-summary")
+                        help="compare score frontiers (--owner-summary) or target constraints (--function)")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--function")
     mode.add_argument("--owner-summary", action="store_true")
@@ -1239,10 +1316,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="optional block-local producer slice, 1..64 residual sites")
     args = parser.parse_args(argv)
     try:
-        if args.baseline_strict and (not args.strict or not args.owner_summary or args.before
+        if args.baseline_strict and (not args.strict or not (args.owner_summary or args.function) or args.before
                 or args.support_source or args.source_lines or args.decision_packet or args.producers
                 or args.decision_question or args.decision_rows or args.decision_mode or args.known_measurements):
-            raise ValueError("--baseline-strict requires only --strict and --owner-summary")
+            raise ValueError("--baseline-strict requires only --strict and --owner-summary or --function")
         decision_options = any(value is not None for value in (
             args.decision_question, args.decision_rows, args.decision_mode, args.known_measurements))
         if decision_options and not (args.function and args.support_source and args.source_lines
@@ -1279,7 +1356,9 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("--before requires --function")
         document = read_document(args.strict)
         if args.baseline_strict:
-            result = compare_match_frontiers(read_document(args.baseline_strict), document)
+            baseline = read_document(args.baseline_strict)
+            result = (compare_function_constraints(baseline, document, args.function) if args.function
+                      else compare_match_frontiers(baseline, document))
         elif args.support_source:
             start, end = map(int, args.source_lines.split(":"))
             with args.support_source.open("rb") as stream:

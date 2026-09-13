@@ -175,9 +175,16 @@ class FrontierTransitionTests(unittest.TestCase):
                     code = groups.main(["--strict", str(path), "--owner-summary", *extra])
                 self.assertEqual(code, 0)
                 self.assertEqual(json.loads(output.getvalue()), expected)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(groups.main(["--strict", str(path), "--function", "f",
+                                              "--baseline-strict", str(path)]), 0)
+            self.assertEqual(json.loads(output.getvalue()),
+                             groups.compare_function_constraints(document, document, "f"))
             with contextlib.redirect_stderr(io.StringIO()):
                 self.assertEqual(groups.main(["--strict", str(path), "--function", "f",
-                                              "--baseline-strict", str(path)]), 2)
+                                              "--baseline-strict", str(path),
+                                              "--before", str(path)]), 2)
 
 
 if __name__ == "__main__":

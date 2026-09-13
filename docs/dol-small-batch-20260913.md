@@ -4,6 +4,38 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **349/396**, **2/10** batch owners.
 
+## Constraint-comparison gap closed; champion remains 14/16
+
+`recovery_causal_groups.py --function NAME --baseline-strict OLD --strict NEW`
+now compares mismatches by target instruction address/identity, not candidate
+row numbers or percentage alone. It reports resolved, persisting and introduced
+observations while preserving score, size, frame and sibling-regression gates.
+Ambiguous target/alignment identities reject comparison. Output is bounded and
+advisory; it neither invents source causes nor authorizes retention.
+
+Active acceptance: `mqueue-control-shared-loop-index` versus
+`mqueue-batch-slot-cursor` resolves **eight** node/slot use sites, preserves two
+nonexact address sites, and introduces two address/boundary observations.
+The worse **98.965515 -> 96.27586** score remains a regression, despite equal
+232-byte size/40-byte frame. This exposes a useful constraint for reconstruction,
+not a newly discovered gain. No source change from this round is retained.
+
+Compact new constraints: capturing the reader index before node/slot construction
+still grows the frame to48; countdown only changes the zero-count branch; the
+typed reader-operation helper, node-validation assignment and next-node snapshot
+are object-identical to the champion. Moving the allocation word count into
+`u16` at creation loses the exact enqueue sibling and shrinks both bodies.
+Their bound outputs are under `build/small-first-20260913/mqueue-*`; none of
+these observations exhausts the function or prohibits a distinct causal change.
+
+The Qwen scheduling answer repeated the earlier direct typed-output proposal.
+No repeat compile was spent. Its caller had omitted the existing selected-known-
+measurements facility; the corrected packet now binds three relevant actual
+source/object/report observations (including the output-lifetime regression),
+with no new model tool or inference limit. Packet `c592f387b0721d08b7aed15d0ec89f99df633b0a2301d98ad8444aa29e992431`
+is 25,910 prompt bytes. The new support run is pending; no accuracy improvement
+or recovered function is claimed from preparing it.
+
 ## Current queue frontier: 14/16, all fourteen raw/physical exact
 
 Two more functions are retained: `qEnQueue` **356 bytes, 4/4 relocations** and
