@@ -1,5 +1,43 @@
 # Small DOL batch — 2026-09-13
 
+## m621: three effect functions verified; all-REL first compiles running
+
+On 2026-09-14, `fn_1_5054`, `fn_1_5168`, and `fn_1_51F4` became
+source-selected: **25 functions**, **3,244 code bytes including startup**, and
+**41 address-census entries still using original fallback**. All 25 selected
+functions pass strict instruction and independent physical-relocation comparison;
+the linked REL is retail-identical and all **137 project checksums pass**. This
+does not close the whole module or advance main by itself.
+
+The first-compile failures shared one missing record: the 84-byte allocation is
+21 four-byte entries, each containing a signed-short active flag and model ID.
+The constructor, update callback, and free-slot consumer establish the stride,
+widths, and uses. Correcting that record and the ordinary four-resource creation
+loop matched all three functions on the first corrected compile, adding 640
+source-selected bytes. Qwen supplied a bounded layout investigation; the primary
+checked the target accesses and implemented the source.
+
+The effect globals remain original-data fallback with typed external declarations.
+Moving them into the new partial translation unit shifted alignment and static
+emission order; that data ownership was not retained or counted as recovered C.
+The resource table's verified four pairs occupy 32 bytes at `.data+0x9C`; the
+following 12 bytes at `.data+0xBC` are a separate unrecovered object, not a fifth
+pair or invented padding. The source-selected link preserves both exactly.
+
+The all-REL batch inventories **136 modules**, queues **25,078 unselected
+function drafts in 110 modules**, and skips 26 modules with no eligible functions.
+The first segment attempted 1,985 drafts: 1,253 compiled and 205 placeholder-free
+raw 100% candidates were saved. These include small/runtime functions and are
+not verified owner closures. Its 23,093 remaining jobs continue against frozen
+headers, contexts, assembly, and target objects so ordinary source recovery can
+run concurrently. Two workers retain compact results and bounded raw-match
+sources/objects, not full per-function report history. Publication remains manual
+and proof-backed; no scratch candidate is automatically selected on main.
+
+Current proof: `build/minigame-recovery-20260913/m621/entry-proof/receipt.json`.
+Batch: `build/rel-first-compile-20260913/phase3/manifest.json`; aggregate status:
+`python build/model-support-test/rel-first-batch-status.py`.
+
 ## m621: broad first-compile census and five-function utility gain
 
 All **37 previously undrafted address-named functions** received an isolated

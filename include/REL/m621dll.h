@@ -53,6 +53,9 @@ extern s16 lbl_1_bss_8;
 extern s32 lbl_1_bss_C;
 extern M621Player *lbl_1_bss_10[4];
 extern M621Effect *lbl_1_bss_20;
+extern HU3D_MOTIONID lbl_1_bss_24[4];
+extern HU3D_MODELID lbl_1_bss_2C[4];
+extern s32 lbl_1_data_9C[4][2];
 extern M621Environment *lbl_1_bss_4C;
 
 void *fn_1_A0(s32 priority, u32 size, OMOBJ_FUNC callback);
