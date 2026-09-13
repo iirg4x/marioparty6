@@ -21,7 +21,7 @@ void *salAIBufferBase = NULL;
 static u8 salAIBufferIndex = 0;
 static SND_SOME_CALLBACK userCallback = NULL;
 
-#define DMA_BUFFER_LEN 0x280
+#define DMA_BUFFER_LEN 640
 
 u32 salGetStartDelay(void);
 
@@ -76,7 +76,7 @@ u32 salInitAi(SND_SOME_CALLBACK callback, u32 unk, u32 *outFreq)
         userCallback = callback;
         AIRegisterDMACallback(salCallback);
         AIInitDMA(OSCachedToPhysical(salAIBufferBase) + (salAIBufferIndex * DMA_BUFFER_LEN), DMA_BUFFER_LEN);
-        synthInfo.numSamples = 0x20;
+        synthInfo.numSamples = 32;
         *outFreq = 32000;
         MUSY_DEBUG("MusyX AI interface initialized.\n");
         return TRUE;
@@ -113,10 +113,10 @@ u32 salInitDsp(u32 flags)
     dsp_task.iram_length = dspSlaveLength;
     dsp_task.iram_addr = 0;
     dsp_task.dram_mmem_addr = (u16 *)dram_image;
-    dsp_task.dram_length = 0x2000;
+    dsp_task.dram_length = 8192;
     dsp_task.dram_addr = 0;
-    dsp_task.dsp_init_vector = 0x10;
-    dsp_task.dsp_resume_vector = 0x30;
+    dsp_task.dsp_init_vector = 16;
+    dsp_task.dsp_resume_vector = 48;
     dsp_task.init_cb = dspInitCallback;
     dsp_task.res_cb = dspResumeCallback;
     dsp_task.done_cb = NULL;
@@ -141,12 +141,12 @@ u32 salExitDsp(void)
     return TRUE;
 }
 
-void salStartDsp(s16 *cmdList)
+void salStartDsp(u16 *cmdList)
 {
     salDspIsDone = FALSE;
     PPCSync();
-    MUSY_ASSERT(((u32)cmdList & 0x1F) == 0);
-    DSPSendMailToDSP(dspCmdFirstSize | 0xBABE0000);
+    MUSY_ASSERT(((u32)cmdList & 31) == 0);
+    DSPSendMailToDSP(dspCmdFirstSize | 3133014016U);
     while (DSPCheckMailToDSP()) {
     }
     DSPSendMailToDSP((u32)cmdList);
