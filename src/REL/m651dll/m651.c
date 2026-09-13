@@ -4,7 +4,8 @@
 #include "game/flag.h"
 #include "math.h"
 
-s16 lbl_1_bss_4;
+/* Only the first counter slot has observed gameplay users. */
+s16 lbl_1_bss_4[6];
 OMOBJMAN *lbl_1_bss_0;
 s16 lbl_1_data_0[6] = { -1, -1, -1, -1, 260, 0 };
 s32 lbl_1_data_C = -1;
@@ -24,7 +25,7 @@ void fn_1_B0(s16 playerNo)
 {
     if (lbl_1_data_0[playerNo] != -1) {
         lbl_1_data_0[playerNo] = -1;
-        lbl_1_bss_4++;
+        lbl_1_bss_4[0]++;
     }
 }
 
@@ -75,7 +76,7 @@ void fn_1_268(s16 mode, s16 frameNo)
             lbl_1_data_C = -1;
         }
         fn_1_62C();
-        if (lbl_1_bss_4 == 2) {
+        if (lbl_1_bss_4[0] == 2) {
             MgSeqDrawSet();
         } else {
             MgSeqWinnerSet(lbl_1_data_0[0], lbl_1_data_0[1], lbl_1_data_0[2], lbl_1_data_0[3]);

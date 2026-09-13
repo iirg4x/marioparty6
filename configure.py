@@ -1278,7 +1278,7 @@ config.libs = [
         "m651dll",
         objects={
             Object(Matching, "REL/m651dll/prolog.c", extra_cflags=["-pooldata off"]),
-            Object(NonMatching, "REL/m651dll/m651.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m651dll/m651.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m651dll/players.c", extra_cflags=["-pooldata off"]),
             Object(
                 Matching,

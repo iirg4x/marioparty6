@@ -1606,3 +1606,31 @@ Proof: `build/minigame-recovery-20260913/m670/storage-proof/`, including
 `linked-strict.json` and `batch-delivery-proof.json`. The actual source-selected
 link rule is included in the latter. Main promotion independently rebuilds
 the exact source and split blobs from clean main before publishing progress.
+
+## m651 full source-selected closure
+
+All 38 application functions now use the reconstructed source link, including
+the fourteen entry/sequence functions previously left behind an original-object
+fallback. The entry instructions were already exact. The remaining discrepancy
+was the extent of the live zero-initialized counter allocation: its target span
+is twelve bytes before the next owner's storage, while a scalar short left an
+eight-byte downstream shift after ordinary linker alignment.
+
+The counter is represented as six shorts, with only element zero consumed by
+the observed increment and comparison. This preserves the existing allocation
+and its actual s16 access type without new runtime operations. The unused
+capacity is an inferred storage interpretation, not evidence of six original
+counter semantics or a uniquely recovered declaration. The unused initialized
+entry-table tail also retains its separately documented grouping uncertainty.
+Neither a byte-identical link nor an address-derived label establishes original
+names or unused-field semantics.
+
+The complete source-selected standalone REL is byte-identical, SHA-256
+`a873512645afe699544ff7a07a498939747585f5af94dd001b58395356f3fd48`.
+The final proof additionally checks all 38 application functions, normalized
+physical relocation streams, all sections, no original-object linker inputs,
+and the project's 137 retail checksums from a current-main-based checkout.
+The newly selected entry contributes 1,024 code bytes and 128 data/BSS bytes;
+the whole module selects all 19,228 code bytes. Compact proof is under
+`build/minigame-recovery-20260913/m651/complete-proof/`. Source/type uncertainty
+is separate from the verified binary and source-selection results.
