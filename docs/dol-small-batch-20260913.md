@@ -4,6 +4,61 @@ Main starts at `086a3a84fac9d928c9176df3624582fd28befd45`, **347/396**
 Matching DOL owners. This is the next ten-owner batch, not ten new closures.
 Current locally verified frontier: **350/396**, **3/10** batch owners.
 
+## Highest-payoff SDK closures: Stream and DSP control
+
+Main `c0995049eff7a1eb9008497892b269c10c9e6a16` contains the delivered
+NewMore/ctxfuncs/Vq1500 batch: 350/396 DOL owners, 86.43% code. The next
+clean-main-based source-selected build closes two more owners: Stream 18/18
+and DSP control 15/15. Its 137 retail checksums pass; verified local progress
+is 352/396, 87.77% code (1,908,148/2,173,968 bytes), 98.84% data
+(709,008/717,328 bytes). These two owners are not yet promoted to main.
+
+The change in selection matters: optimize credible complete-owner paths and
+verified bytes per active hour, not proximity to 100% or the smallest object.
+Do not spend another long run cycling tiny saved-register tails while larger
+SDK owners have a single shared source cause. Keep their partial champions.
+Missing speech-recognition owners still require m2c/target reconstruction;
+SDK donor availability is not a prerequisite. Group those by real shared
+interfaces and dependencies, and use Qwen for disjoint bounded source
+questions while the primary chooses and measures changes. No consensus gate,
+new lane, flag tournament, or general tool project is implied.
+
+Stream's one reconstruction restored SDK sample-cursor versus ADPCM byte-offset
+lifetimes in `streamHandle`; it closed all 44 register-cycle rows. Its
+remaining pool-owner rows closed by including the real Dolphin math header,
+which avoids the unrelated weak Newton constants from the generic math header.
+All 18 instruction bodies and 349 relocation applications match. Three unused
+SDK functions are naturally stripped. The `.sbss` two-byte and `.sdata2`
+four-byte tails are ordinary linker alignment, not source padding.
+
+- Source `ccccf7ac0bd422f98cc1ef19db4643a4cff976536f9cc40980db847d38e4d14b`
+- Production object `84931cdf5dc8a8a4598327b0cfa130c387749de7e95a6d9accc7cf3392114f7d`
+- Proof `build/small-first-20260913/stream-dolphin-math-context/live-proof.json`
+
+DSP control's first hypothesis removed only the later SDK format-6 extension
+absent from every retail dispatch/loop path, and restored the actual eight
+`salMalloc` call consumers. It removes the entire 156-byte excess: 15/15
+functions, 13,780 instruction bytes, 604 relocation applications. Six local
+SDK helper names are authenticated by equal raw bodies and linked destinations,
+not guessed from addresses. The real low-pass parameter block and unsigned
+DSP command-list type complete its headers; the actual existing two-hook
+allocator and byte-voice callback interfaces stay unchanged. The necessary
+`salStartDsp` unsigned-pointer definition agrees with the SDK and changes no
+linked bytes. All affected Matching consumers remain retail-identical.
+
+- Source `1afff6574da19d7ea7a6e20f1b42e60fc6f9fad6d6bc2249d4d1002235e0969c`
+- Production object `832956d56f5bba5f7191b69beebc69ce14753035ef89f68a62c3d93b6ba0d5ff`
+- Proof `build/small-first-20260913/dsp-target-streaming-formats/live-proof.json`
+
+The SDK donor is `AxioDL/musyx` at
+`adc8df9a959f1e37f71bdf3155e229f9f87ad166`; source shape is still checked
+against this game's target. Existing Stream inline depth is SDK-backed;
+neither closure added ASM, fake owners, register controls, or changed flags.
+No new production recovery tool was needed. Completed Qwen SDK jobs supported
+the same causes; primary reconstruction and measurement made the decisions.
+Qwen now analyzes two separate MSL formatting causes in
+`build/qwen-printf-support-20260913`; do not restart running jobs by elapsed time.
+
 ## Delivery checkpoint and source presentation
 
 At the user's roughly twelve-hour checkpoint, only three owners were closed.

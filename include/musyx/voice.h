@@ -217,13 +217,7 @@ extern u8 voiceListInsert;
 extern u8 voiceListRoot;
 
 void vsInit(); /* extern */
-u32 vsSampleStartNotify(
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
-    u32 voiceID
-#else
-    u8 voice
-#endif
-);
+u32 vsSampleStartNotify(u8 voice);
 void vsSampleEndNotify(u32 pubID);
 void vsSampleUpdates();
 

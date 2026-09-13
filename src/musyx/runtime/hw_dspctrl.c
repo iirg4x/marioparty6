@@ -364,11 +364,7 @@ DSPvoice* dspVoice = NULL;
 
 SND_MESSAGE_CALLBACK salMessageCallback = NULL;
 
-#if MUSY_VERSION <= MUSY_VERSION_CHECK(2, 0, 1)
 #define SAL_MALLOC salMalloc
-#else
-#define SAL_MALLOC salMallocPhysical
-#endif
 
 bool salInitDspCtrl(u8 numVoices, u8 numStudios, u32 defaultStudioDPL2) {
   u32 i;         // r31
@@ -913,9 +909,6 @@ void salBuildCommandList(s16* dest, u32 nsDelay) {
             dsp_vptr->virtualSampleID = -1;
             switch (dsp_vptr->smp_info.compType) {
             case 5:
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
-            case 6:
-#endif
               dsp_vptr->vSampleInfo.loopBufferLength = 0;
               dsp_vptr->virtualSampleID = salSynthSendMessage(dsp_vptr, 2);
               if (dsp_vptr->vSampleInfo.loopBufferLength == 0) {
@@ -1004,9 +997,6 @@ void salBuildCommandList(s16* dest, u32 nsDelay) {
               dsp_vptr->playInfo.posLo = 0;
             } break;
             case 2:
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
-            case 6:
-#endif
             {
               u8 i; // r1+0x10
               pb->addr.format = 0xA;
@@ -1018,11 +1008,6 @@ void salBuildCommandList(s16* dest, u32 nsDelay) {
               addr = dsp_vptr->smp_info.offset + (base = (u32)dsp_vptr->smp_info.addr >> 1);
               dsp_vptr->playInfo.posHi = dsp_vptr->smp_info.offset;
               dsp_vptr->playInfo.posLo = 0;
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
-              if (dsp_vptr->smp_info.compType == 6) {
-                pb->loopType = 1;
-              }
-#endif
             } break;
             default:
               MUSY_ASSERT(FALSE);
@@ -1057,13 +1042,6 @@ void salBuildCommandList(s16* dest, u32 nsDelay) {
                 endAddr = base + bn * 16 + 2 + bo;
                 dsp_vptr->vSampleInfo.inLoopBuffer = 0;
               } break;
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
-              case 6: {
-                loopAddr = (u32)dsp_vptr->vSampleInfo.loopBufferAddr >> 1;
-                endAddr = dsp_vptr->smp_info.loop + dsp_vptr->smp_info.loopLength + base - 1;
-                dsp_vptr->vSampleInfo.inLoopBuffer = 0;
-              } break;
-#endif
               case 2:
               case 3:
               default:
@@ -1104,9 +1082,6 @@ void salBuildCommandList(s16* dest, u32 nsDelay) {
                 zeroAddr = dspARAMZeroBuffer;
                 break;
               case 2:
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2) // MUSYXTODO
-              case 6:
-#endif
 #if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 1) // MUSYXTODO
                 tmp_addr = base + dsp_vptr->smp_info.length - 1;
 #else
@@ -1219,18 +1194,6 @@ void salBuildCommandList(s16* dest, u32 nsDelay) {
               dsp_vptr->vSampleInfo.inLoopBuffer = 1;
             }
           }
-#if MUSY_VERSION >= MUSY_VERSION_CHECK(2, 0, 2)
-          else if (dsp_vptr->smp_info.compType == 6) {
-            if ((dsp_vptr->vSampleInfo.inLoopBuffer == 0) && (pb->streamLoopCnt != 0)) {
-              tmp_addr = ((u32)dsp_vptr->vSampleInfo.loopBufferAddr >> 1) +
-                         (dsp_vptr->vSampleInfo.loopBufferLength - 1);
-              dsp_vptr->smp_info.addr = dsp_vptr->vSampleInfo.loopBufferAddr;
-              pb->addr.endAddressHi = tmp_addr >> 16;
-              pb->addr.endAddressLo = tmp_addr;
-              dsp_vptr->vSampleInfo.inLoopBuffer = 1;
-            }
-          }
-#endif
           if ((dsp_vptr->smp_info.loopLength == 0) &&
               (dsp_vptr->playInfo.posHi >= dsp_vptr->smp_info.length)) {
             salSynthSendMessage(dsp_vptr, 0);
