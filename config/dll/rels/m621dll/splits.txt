@@ -22,6 +22,9 @@ REL/m621dll/audio.c:
 REL/m621dll/round.c:
 	.text       start:0x000005F0 end:0x00000B4C
 
+REL/m621dll/target_init.c:
+	.text       start:0x000026A4 end:0x00002A54
+
 REL/m621dll/effect.c:
 	.text       start:0x00005054 end:0x000052D4
 

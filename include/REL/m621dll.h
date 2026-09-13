@@ -11,6 +11,37 @@ typedef struct M621Target_s M621Target;
 typedef struct M621Effect_s M621Effect;
 typedef struct M621Environment_s M621Environment;
 
+typedef struct M621TargetPart_s {
+    s16 state;
+    s16 timer;
+    u32 mask;
+    HuVecF velocity;
+    HU3D_MODELID model;
+    MGACTOR *actor;
+    /* Unaccessed bytes within each target-authenticated 36-byte part. */
+    u8 unk_1C[2];
+    HU3D_MODELID effectModel;
+    s16 effectNo;
+} M621TargetPart;
+
+struct M621Target_s {
+    s16 targetNo;
+    s16 state;
+    s32 timer;
+    s16 initialF;
+    s16 partCount;
+    s16 turnTimer;
+    float headRotation;
+    float rotation;
+    float turnRandom;
+    HuVecF pos;
+    float height;
+    s16 positionNo;
+    HU3D_MODELID model;
+    MGACTOR *actor;
+    M621TargetPart part[7];
+};
+
 typedef struct {
     s16 unk_00;
     s16 timer;
@@ -56,6 +87,16 @@ extern M621Effect *lbl_1_bss_20;
 extern HU3D_MOTIONID lbl_1_bss_24[4];
 extern HU3D_MODELID lbl_1_bss_2C[4];
 extern s32 lbl_1_data_9C[4][2];
+extern HU3D_MOTIONID lbl_1_bss_34;
+extern HU3D_MODELID lbl_1_bss_36;
+extern HU3D_MODELID lbl_1_bss_38;
+extern HU3D_MODELID lbl_1_bss_3A;
+extern HU3D_MODELID lbl_1_bss_3C;
+extern HU3D_MODELID lbl_1_bss_3E;
+extern M621Target *lbl_1_bss_40[3];
+extern s32 lbl_1_data_74[2][3];
+extern HuVecF lbl_1_data_30;
+extern u32 lbl_1_data_2AC;
 extern M621Environment *lbl_1_bss_4C;
 
 void *fn_1_A0(s32 priority, u32 size, OMOBJ_FUNC callback);
@@ -91,8 +132,26 @@ void fn_1_1A3C(OMOBJ *obj);
 void fn_1_1B5C(OMOBJ *obj);
 void fn_1_1BF4(OMOBJ *obj);
 void fn_1_215C(OMOBJ *obj);
+u32 fn_1_26A4(void);
+void fn_1_270C(u32 mask);
+s16 fn_1_272C(void);
 void fn_1_27A0(void);
+void fn_1_29E8(OMOBJ *obj);
+void fn_1_2A54(M621Player *player, M621Target *target);
+void fn_1_2C6C(M621Player *player, M621Target *target, s16 index);
+void fn_1_2E10(M621TargetPart *part);
+int fn_1_2E68(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b);
+int fn_1_2FFC(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b);
+void fn_1_3024(MGACTOR *actor, int param);
+void fn_1_3084(M621Target *target);
+void fn_1_3678(OMOBJ *obj);
+void fn_1_390C(OMOBJ *obj);
+void fn_1_3A78(OMOBJ *obj);
+void fn_1_3E18(OMOBJ *obj);
+void fn_1_47B4(OMOBJ *obj);
+void fn_1_4CB0(OMOBJ *obj);
 void fn_1_5054(OMOBJ *obj);
+void fn_1_51F4(s16 effectNo, HuVecF *pos);
 void fn_1_52D4(s32 playerNo, s16 coins);
 void fn_1_5328(s32 playerNo, s32 score);
 s16 fn_1_5340(void);

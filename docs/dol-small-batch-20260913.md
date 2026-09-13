@@ -1,5 +1,34 @@
 # Small DOL batch — 2026-09-13
 
+## m621: five target-initialization functions verified (30 selected)
+
+On 2026-09-14, the contiguous `fn_1_26A4` through `fn_1_29E8` group
+added **five source-selected functions and 944 bytes**. The module now has
+**30 selected functions**, **4,188 code bytes including startup**, and
+**36 address-census entries still using original fallback**. All 30 pass strict
+instruction and independent physical-relocation checks; the complete linked REL
+is retail-identical and all **137 project checksums pass**. This is retained
+partial source recovery, not a whole-minigame closure or a main update.
+
+The constructor's actual API prototypes and target-consumed layout resolve a
+304-byte target record with seven 36-byte parts beginning at offset52. A signed
+32-bit loop counter is narrowed only when stored into the target-number field;
+copying that field's halfword width into the counter had created extra extsh
+instructions. The bit-count helper's clamped return is an ordinary ternary, which
+preserves the target's promoted conditional expression and final short return.
+The state callback uses the actual `MGSEQ_MODE_FADEIN` value and its explicit
+terminal return. These target-backed changes close the entire five-function group.
+
+The part record's bytes28..29 remain explicitly unrecovered. Target consumers
+prove the actor pointer at24 and model-ID halfword at30; the byte range is not
+claimed to have originally been an array. A narrowly scoped source-shape review
+records that distinction in `config/recovery/exceptions.json` and
+`build/minigame-recovery-20260913/m621/target-part-layout-proof.json`.
+`target_hit.c` is a working reconstruction only: it is not selected as Matching,
+and its pool attribution and automatic-inline differences earn no extra credit.
+
+Current linked proof: `build/minigame-recovery-20260913/m621/entry-proof/receipt.json`.
+
 ## m621: three effect functions verified; all-REL first compiles running
 
 On 2026-09-14, `fn_1_5054`, `fn_1_5168`, and `fn_1_51F4` became
