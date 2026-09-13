@@ -12,6 +12,8 @@
 
 extern MGSEQ_PARAM lbl_1_data_0;
 
+M670WORK lbl_1_bss_10;
+
 int lbl_1_data_78[6] = {
     DATANUM(DATA_m670, 10), DATANUM(DATA_m670, 15),
     DATANUM(DATA_m670, 20), DATANUM(DATA_m670, 25),

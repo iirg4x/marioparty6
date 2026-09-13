@@ -56,7 +56,7 @@ typedef struct M670Work_s {
 
 extern M670WORK lbl_1_bss_10;
 extern float lbl_1_bss_3B8[24];
-extern int lbl_1_bss_418[24];
+extern int lbl_1_bss_418[25];
 extern float lbl_1_bss_47C, lbl_1_bss_480;
 extern s8 *lbl_1_data_250[6];
 
