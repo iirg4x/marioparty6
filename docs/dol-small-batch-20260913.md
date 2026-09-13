@@ -1,5 +1,48 @@
 # Small DOL batch — 2026-09-13
 
+## m651 gameplay batch: verified gains without blocking on entry BSS
+
+The minigame-first pass reconstructed all 38 application functions. The complete
+scratch source link has zero application instruction differences. The final
+paired CPU-delay residual closed in both creation and update through the normal
+signed jitter expression `(rand8() % 2 - 1) + delayTable[difficulty]`; moving the
+subtraction to the table or outside the sum had not reproduced the target.
+
+The publishable batch selects `players.c` (24/24 application functions),
+`prolog.c`, and the existing compiler `runtime.c`. Together these account for
+18,204 of the module's 19,228 code bytes. A fresh main-based project build selects
+those three source objects and passes all 137 retail checksums; the 33,308-byte
+m651 REL is retail-identical, SHA-256
+`a873512645afe699544ff7a07a498939747585f5af94dd001b58395356f3fd48`.
+Receipt: `build/minigame-recovery-20260913/m651/project-proof/receipt.json`.
+
+This is **not** a whole-module source closure. `m651.c` stays NonMatching and its
+14 instruction-exact functions remain local. Its BSS is eight bytes short. After
+correcting the compiler's reverse global-definition allocation order, all 696
+remaining effective-relocation differences are the same eight-byte displacement
+into gameplay BSS. Changing the output section's alignment does not fix it;
+main-TU pool-data mode regresses code and does not provide the missing storage.
+The unused initialized data at offset 8 and the unreferenced BSS extent still
+need ownership evidence. No padding, fake BSS array, or altered linker address is
+being promoted to make this file appear complete.
+
+The speedup was shared reconstruction: one actual type context for all m2c
+bodies, typed model/motion arrays, natural per-function local tables and original
+definition order, named live call results, and an early real module link. That
+link resolves pooled-string annotation differences without source label hacks.
+The five-element typed model/motion arrays are supported by loop extents and
+Hu3D API consumers, not opaque tail storage. Unknown scalar fields retain offset
+names. The initializer in `fn_1_13D8` includes a target-backed unconsumed zero
+store; its original semantic name is unknown and is disclosed as `unused`.
+
+Qwen was support only and did not choose retained source. Large grouped prompts
+hit their context limit or spent many minutes without an answer. A reused batch
+manifest also caused a status-writer collision; later requests used a unique
+manifest and two small independent questions. Neither answer discovered the
+winning expression. Keep tokenized prompt headroom, unique immutable job paths,
+and small missing-decision packets; do not wait for support on already solved
+functions. These local observations do not warrant another mandatory tool gate.
+
 ## m616dll closed from source
 
 The first selected numbered minigame now rebuilds to the exact 19,788-byte
