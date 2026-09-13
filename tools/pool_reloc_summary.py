@@ -794,6 +794,96 @@ def _census_side(
     }
 
 
+def _partial_unit_dependencies(
+    target_side: Mapping[str, Any], candidate_side: Mapping[str, Any],
+    owners: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Summarize the full existing census before presentation truncation.
+
+    Definition presence is object-report evidence, never a source/TU census.
+    Missing instruction evidence or nonunique owner/function mapping is unknown.
+    """
+    target_symbols, candidate_symbols = _symbols(target_side), _symbols(candidate_side)
+    dependencies: list[dict[str, Any]] = []
+    absent_all: set[str] = set()
+    unknown_all: set[str] = set()
+    for entry in owners:
+        target = entry.get("target") or {}
+        candidate = entry.get("candidate") or {}
+        index = target.get("symbol_index")
+        reasons = []
+        if (index is None or not target.get("name") or not candidate.get("name")
+                or candidate.get("symbol_index") is None):
+            reasons.append("missing_owner_mapping")
+        for side, detail in ((target_symbols, target), (candidate_symbols, candidate)):
+            if detail.get("name") and sum(s.get("name") == detail["name"] for s in side) != 1:
+                reasons.append("ambiguous_owner_identity")
+        counterparts = {((o.get("candidate") or {}).get("symbol_index")) for o in owners
+                        if (o.get("target") or {}).get("symbol_index") == index}
+        if len(counterparts) != 1:
+            reasons.append("ambiguous_focus_owner_mapping")
+        left_bytes, right_bytes = target.get("bytes"), candidate.get("bytes")
+        equal = None
+        if left_bytes is None or right_bytes is None:
+            reasons.append("missing_owner_bytes")
+        elif not reasons:
+            equal = left_bytes == right_bytes and target.get("size_bytes") == candidate.get("size_bytes")
+        absent, represented, unknown = [], [], []
+        for consumer in target.get("consumers", []):
+            name = consumer["function"]
+            targets = [s for s in target_symbols if s.get("name") == name]
+            candidates = [s for s in candidate_symbols if s.get("name") == name]
+            target_index = target_symbols.index(targets[0]) if len(targets) == 1 else None
+            mapped = [s for s in candidate_symbols if target_index is not None
+                      and _int(s.get("target_symbol")) == target_index]
+            if (len(targets) != 1 or len(candidates) > 1 or len(mapped) > 1
+                    or any(s.get("name") != name for s in mapped)):
+                unknown.append(name)
+            elif not candidates or candidates[0].get("kind") != "SYMBOL_FUNCTION":
+                absent.append(name)
+            elif (not _sequence(candidates[0].get("instructions"))
+                  or _int(candidates[0].get("target_symbol")) != target_index):
+                unknown.append(name)
+            else:
+                represented.append(name)
+        absent_all.update(absent)
+        unknown_all.update(unknown)
+        if unknown:
+            reasons.append("missing_or_ambiguous_function_definition_mapping")
+        dependencies.append({
+            "status": "unknown" if reasons else "observed",
+            "unknown_reasons": sorted(set(reasons)),
+            "target_owner": {k: target.get(k) for k in
+                             ("symbol_index", "name", "section", "address", "size_bytes", "bytes", "typed")},
+            "candidate_owner": {k: candidate.get(k) for k in
+                                ("symbol_index", "name", "section", "address", "size_bytes", "bytes", "typed")},
+            "owner_bytes_equal": equal,
+            "focus_classifications": entry["focus_classifications"],
+            "focus_rows": entry["focus_rows"],
+            "absent_candidate_definitions": sorted(set(absent)),
+            "represented_candidate_definitions": sorted(set(represented)),
+            "unknown_candidate_definitions": sorted(set(unknown)),
+        })
+    return {
+        "status": "unknown" if any(d["status"] == "unknown" for d in dependencies) else
+                  "partial_object_dependencies_observed" if absent_all else "no_absent_definitions_observed",
+        "dependency_owner_count": sum(bool(d["absent_candidate_definitions"]) for d in dependencies),
+        "unknown_owner_count": sum(d["status"] == "unknown" for d in dependencies),
+        "equal_owner_bytes_count": sum(d["owner_bytes_equal"] is True for d in dependencies),
+        "different_owner_bytes_count": sum(d["owner_bytes_equal"] is False for d in dependencies),
+        "absent_candidate_definitions": sorted(absent_all),
+        "unknown_candidate_definitions": sorted(unknown_all),
+        # Put actionable shared-owner observations before ordinary represented
+        # owners, so a small presentation budget does not hide the named case.
+        "dependency_owners": sorted(dependencies, key=lambda d: (
+            not bool(d["absent_candidate_definitions"]), d["status"] != "unknown",
+            d["target_owner"].get("symbol_index") is None,
+            d["target_owner"].get("symbol_index") or -1)),
+        "review": "Object-subset linkage investigation: check source-selected split/link dependencies before selecting the pool owner. These names can guide investigation, not prove a sufficient exact batch. Absent candidate definitions are not unrecovered-source evidence. This does not authenticate an original TU or recommend label aliases/patches.",
+        "authority_advanced": False,
+    }
+
+
 def _tu_owner_consumer_census(
     target_side: Mapping[str, Any],
     candidate_side: Mapping[str, Any],
@@ -807,6 +897,7 @@ def _tu_owner_consumer_census(
         candidate_owner = candidate.get("owner") if candidate and isinstance(candidate.get("owner"), Mapping) else {}
         grouped[(_int(target_owner.get("symbol_index")), _int(candidate_owner.get("symbol_index")))].append(pair)
     owners: list[dict[str, Any]] = []
+    visible: list[dict[str, Any]] = []
     for (target_index, candidate_index), owner_pairs in sorted(
         grouped.items(), key=lambda item: (item[0][0] is None, item[0][0] or -1, item[0][1] is None, item[0][1] or -1)
     ):
@@ -843,9 +934,17 @@ def _tu_owner_consumer_census(
                 "candidate": candidate_census,
             }
         )
+        nonexact = [p for p in owner_pairs if p["classification"] not in {"exact_pool_contract", "mapped_pool_contract"}]
+        if nonexact:
+            visible.append({**owners[-1], "focus_rows": sorted(int(p["row"]) for p in nonexact),
+                            "focus_classifications": sorted({str(p["classification"]) for p in nonexact})})
+    dependencies = _partial_unit_dependencies(target_side, candidate_side, owners)
+    # Preserve the existing mismatch-only census while using all focus pairs
+    # for the new dependency summary (including exact owner references).
     return {
-        "status": "available" if owners else "none",
-        "owners": owners,
+        "status": "available" if visible else "none",
+        "owners": visible,
+        "partial_unit_dependencies": dependencies,
         "authority_advanced": False,
     }
 
@@ -1316,6 +1415,10 @@ def _bounded_diagnostic_detail(
         "affected_functions": "affected_function_count",
         "producer_edit_functions": "producer_edit_function_count",
         "downstream_body_edit_suppressed_functions": "downstream_body_edit_suppressed_function_count",
+        "dependency_owners": "observed_owner_count",
+        "absent_candidate_definitions": "absent_candidate_definition_count",
+        "represented_candidate_definitions": "represented_candidate_definition_count",
+        "unknown_candidate_definitions": "unknown_candidate_definition_count",
     }
     row_fields = {"rows": "row_count", "focus_rows": "focus_row_count"}
     result = dict(value)
@@ -1466,11 +1569,7 @@ def decode_function(
         "tu_owner_consumer_census": _tu_owner_consumer_census(
             left,
             right,
-            [
-                pair
-                for pair in all_pairs
-                if pair["classification"] not in {"exact_pool_contract", "mapped_pool_contract"}
-            ],
+            all_pairs,
         ),
         "tu_pool_chronology_diagnosis": chronology_diagnosis,
         "tu_pool_chronology_family": _tu_pool_chronology_family(

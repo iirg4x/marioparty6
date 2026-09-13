@@ -395,6 +395,76 @@ class PoolRelocSummaryTests(unittest.TestCase):
         )
         self.assertFalse(census["authority_advanced"])
 
+    def partial_report(self):
+        report = _report()
+        for side in ('left', 'right'):
+            report[side]['symbols'][1]['instructions'] = report[side]['symbols'][1]['instructions'][:2]
+        for name in ('OtherA', 'OtherB'):
+            report['left']['symbols'].append({'name': name, 'kind': 'SYMBOL_FUNCTION',
+                'size': '4', 'instructions': [_instruction('lfs f1, lbl_zero@sda21', 3)]})
+        # An undefined reference is not a candidate function definition.
+        report['right']['symbols'].append({'name': 'OtherA', 'kind': 'SYMBOL_UNKNOWN'})
+        return report
+
+    def partial_summary(self, report, **limits):
+        return module.decode_function(report, 'PoolFocus', **limits)['tu_owner_consumer_census']['partial_unit_dependencies']
+
+    def test_partial_unit_shared_literal_and_definition_presence(self):
+        report = self.partial_report()
+        summary = self.partial_summary(report)
+        self.assertEqual(summary['status'], 'partial_object_dependencies_observed')
+        self.assertEqual(summary['absent_candidate_definitions'], ['OtherA', 'OtherB'])
+        self.assertEqual(summary['dependency_owner_count'], 1)
+        owner = summary['dependency_owners'][0]
+        self.assertTrue(owner['owner_bytes_equal'])
+        self.assertEqual(owner['target_owner']['bytes'], '00000000')
+        self.assertEqual(owner['represented_candidate_definitions'], ['PoolFocus'])
+        self.assertIn('source-selected split/link', summary['review'])
+        self.assertIn('not unrecovered-source evidence', summary['review'])
+        self.assertFalse(summary['authority_advanced'])
+        report['right']['symbols'].pop()
+        for index in (8, 9):
+            report['right']['symbols'].append({**copy.deepcopy(report['left']['symbols'][index]), 'target_symbol': index})
+        self.assertEqual(self.partial_summary(report)['status'], 'no_absent_definitions_observed')
+        self.assertEqual(self.partial_summary(report)['absent_candidate_definitions'], [])
+
+    def test_partial_unit_unknown_mapping_bytes_and_changed_bits(self):
+        report = self.partial_report()
+        report['right']['symbols'][3] = _symbol('@10', bytes.fromhex('3f800000'), 4)
+        summary = self.partial_summary(report)
+        self.assertFalse(summary['dependency_owners'][0]['owner_bytes_equal'])
+        self.assertEqual(summary['equal_owner_bytes_count'], 0)
+        self.assertEqual(summary['different_owner_bytes_count'], 1)
+        report['right']['symbols'][3].pop('data_diff')
+        self.assertEqual(self.partial_summary(report)['status'], 'unknown')
+        self.assertIsNone(self.partial_summary(report)['dependency_owners'][0]['owner_bytes_equal'])
+        report = self.partial_report()
+        report['right']['symbols'].append(copy.deepcopy(report['right']['symbols'][3]))
+        summary = self.partial_summary(report)
+        self.assertEqual(summary['status'], 'unknown')
+        self.assertIn('ambiguous_owner_identity', summary['dependency_owners'][0]['unknown_reasons'])
+        report = self.partial_report()
+        report['right']['symbols'][-1] = {**copy.deepcopy(report['left']['symbols'][8])}
+        self.assertEqual(self.partial_summary(report)['unknown_candidate_definitions'], ['OtherA'])
+
+    def test_partial_unit_totals_survive_truncation_and_exact_focus_filter(self):
+        report = self.partial_report()
+        full = self.partial_summary(report)
+        small = self.partial_summary(report, group_limit=1, row_limit=1)
+        self.assertEqual(small['absent_candidate_definition_count'], 2)
+        self.assertEqual(small['absent_candidate_definitions_omitted'], 1)
+        self.assertEqual(small['dependency_owner_count'], full['dependency_owner_count'])
+        self.assertEqual(small['dependency_owners'][0]['focus_row_count'], 2)
+        zero = self.partial_summary(report, group_limit=0)
+        self.assertEqual(zero['dependency_owners'], [])
+        self.assertEqual(zero['dependency_owners_omitted'], 1)
+        self.assertEqual(zero['absent_candidate_definition_count'], 2)
+        report['right']['symbols'][3] = copy.deepcopy(report['left']['symbols'][3])
+        report['right']['symbols'][3]['target_symbol'] = 3
+        exact = self.partial_summary(report)
+        self.assertEqual(exact['absent_candidate_definitions'], ['OtherA', 'OtherB'])
+        self.assertEqual(exact, self.partial_summary(report))
+
     def test_external_data_counterpart_retains_unknown_bytes_not_exactness(self) -> None:
         for reverse in (False, True):
             with self.subTest(reverse=reverse):
@@ -512,7 +582,7 @@ class PoolRelocSummaryTests(unittest.TestCase):
             first = subprocess.run(command, check=True, capture_output=True, text=True).stdout
             second = subprocess.run(command, check=True, capture_output=True, text=True).stdout
         self.assertEqual(first, second)
-        self.assertLess(len(first), 15000)
+        self.assertLess(len(first), 22000)  # Includes bounded partial-unit dependency observations.
 
     def test_chronology_and_family_census_details_are_also_bounded(self) -> None:
         result = module.decode_function(_external_pool_family_report(), "DownstreamC", group_limit=1, row_limit=1)

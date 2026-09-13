@@ -1,5 +1,54 @@
 # Small DOL batch — 2026-09-13
 
+## m621: first-compile entry batch and shared-pool dependency guidance
+
+The first canonical m621 compile has **15/16 application functions at raw
+objdiff 100%**. The 13-function entry unit has no instruction differences and
+now passes independent physical relocation comparison, a source-selected link,
+retail-identical m621 REL, and all **137 project checksums**. This retains 1,056
+source-selected code bytes including startup, with **13/66 application functions
+selected**. The other 53 application functions and 22,952 code bytes remain
+original fallback; this is not a complete minigame or a main-progress advance.
+Proof: `build/minigame-recovery-20260913/m621/entry-proof/receipt.json`.
+
+The first draft used the real preprocessed API contracts, ordinary typed vector
+initializers at their target creation point, and the actual earlier object
+creator definition. The constant-size creator call auto-inlined naturally in
+`fn_1_2E0`; no copied inline assembly, manual inline expansion, storage filler,
+or compile-control directives were needed. The thirteen entry bodies were not
+changed after their first successful compile. The verified source retains
+address-derived function names where original names are unknown.
+
+The sixteenth draft function, spatial audio `fn_1_420`, already has the correct
+372-byte instruction sequence. The existing typed pool decoder resolves all
+**36 reported rows** to equal literal bytes and owner identities, with zero
+semantic/contract or unknown-value rows. Selecting its pool into a partial link
+exposed a real shared dependency rather than an arithmetic mismatch. The audio
+draft is preserved as `NonMatching`, not falsely counted as source-selected.
+
+The existing `pool_reloc_summary` census now includes bounded
+`partial_unit_dependencies`, calculated before output truncation. On the actual
+first-compile object, it identifies two shared pool owners and five target
+consumer functions absent as definitions from that object:
+
+- `40.0f`: `fn_1_13EC`, `fn_1_215C`.
+- `360.0f`: `fn_1_3084`, `fn_1_3E18`, `fn_1_47B4`.
+
+That is an object-subset dependency observation, not evidence that those
+functions have no source, proof of their original TU, or a guarantee that five
+functions alone close the link. Missing or ambiguous owner/function mappings
+remain unknown; different bytes never become value-equivalent. The useful
+first-pass action is to inspect the source-selected split/link family before
+selecting a pooled provider, leaving the already-correct audio body untouched.
+It must not introduce label aliases or another source authorization gate.
+
+Focused validation and the real replay are recorded in
+`build/minigame-recovery-20260913/m621/entry-proof/first-pass-tooling.json`.
+This change prevents a specific unnecessary body-edit/link detour; no universal
+first-compile match guarantee is claimed. m635 remains at the independently
+verified 52/52 application frontier below; the four-byte BSS ownership question
+has not been resolved by inventing storage.
+
 ## m635: 52/52 application functions and first-pass shared-value guidance
 
 The current retained local frontier is **52/52 application functions**, up from
