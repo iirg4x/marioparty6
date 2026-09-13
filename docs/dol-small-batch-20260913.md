@@ -108,6 +108,25 @@ Affected tooling suite: **119 tests run, 23 skipped** (platform/opt-in cases);
 the explicit local adapter replay separately passes **13/13**. The gaps are
 fixed in existing tools, not a new recovery engine.
 
+## Duplicate-symbol census repaired on the next small owner
+
+The unchanged `langdata` compile succeeded, but its score census stopped on
+two distinct target functions both named `_langGetNbrSpeechUnit`. The existing
+`summarize_match_scores` now preserves each report-local symbol index, checks
+reciprocal pair indices, and distinguishes separate extents from same-extent
+aliases. Unique-name output is unchanged. An unpaired or null-scored symbol
+stays unresolved; neither names nor identical bytes transfer an exact score.
+
+Read-only replay of the existing report yields **76 target function symbols:
+66 score-exact, nine mismatches, one unpaired**. Candidate
+`_langGetNbrWarpFactors` remains candidate-only. The second target extent at
+`0xEC` has the same twelve bytes as that candidate, but this is not original
+symbol-name evidence or a new crack. No object was rebuilt just to recover the
+census; the absent old compile binding remains explicitly unavailable.
+All pre-existing object/report hashes are preserved. The causal/Qwen suite
+passes **80 tests, 22 skipped**, including an actual langdata report replay.
+This removes a real analysis blocker without adding another tool or model run.
+
 ## NewMore: closed by the real adjacent provider
 
 `Runtime.PPCEABI.H/NewMore.cp` is now source-selected and exact: five functions,

@@ -169,6 +169,115 @@ class CausalGroupsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate"):
             groups.summarize_match_scores(document)
 
+    def duplicate_score_report(self):
+        # Actual langdata shape: two target extents share a name; the second
+        # has no objdiff pair, despite a differently named candidate at 0xEC.
+        def symbol(name, address, **metadata):
+            return {"name": name, "address": str(address), "size": "12",
+                    "kind": "SYMBOL_FUNCTION", "flags": {"local": True},
+                    "instructions": [row("lwz r3, 0x0(r3)", address),
+                                     row("lwz r3, 0xcc(r3)", address + 4),
+                                     row("blr", address + 8)], **metadata}
+        section = {"name": "[.text]", "kind": "SYMBOL_SECTION"}
+        first = symbol("_langGetNbrSpeechUnit", 224, target_symbol=1, match_percent=100.0)
+        second = symbol("_langGetNbrSpeechUnit", 236)
+        return {side: {"sections": [{"name": ".text", "kind": "SECTION_CODE"}],
+                       "symbols": copy.deepcopy(symbols)}
+                for side, symbols in (("left", [section, first, second]),
+                                      ("right", [section, first, symbol("_langGetNbrWarpFactors", 236)]))}
+
+    def test_score_census_separate_duplicate_extents_preserves_unpaired(self):
+        document = self.duplicate_score_report()
+        original = copy.deepcopy(document)
+        result = groups.summarize_match_scores(document)
+        self.assertEqual(document, original)
+        self.assertEqual((result["functions"], result["exact"]), (2, 1))
+        first = result["function_scores"]["_langGetNbrSpeechUnit@left.symbols[1]"]
+        second = result["residuals"]["_langGetNbrSpeechUnit@left.symbols[2]"]
+        self.assertEqual(first["candidate_symbol_index"], 1)  # Unfiltered index, not function ordinal.
+        self.assertEqual(first["pairing"], "reciprocal_report_indices")
+        self.assertEqual(second["status"], "unpaired_target")
+        self.assertIsNone(second["score"])
+        self.assertIsNone(second["candidate_bytes"])
+        self.assertEqual(result["candidate_only"]["_langGetNbrWarpFactors"]["status"], "missing_target")
+        duplicate = result["duplicate_names"]["left"]["_langGetNbrSpeechUnit"]
+        self.assertEqual(duplicate["classification"], "separate_extents")
+        self.assertEqual([m["address"] for m in duplicate["members"]], [224, 236])
+        self.assertEqual(result["census_unit"], "function_symbols")
+        # An unbound score must not borrow the first duplicate's valid pair.
+        document["left"]["symbols"][2]["match_percent"] = 100
+        changed = groups.summarize_match_scores(document)
+        self.assertEqual(changed["exact"], 1)
+        self.assertEqual(changed["residuals"]["_langGetNbrSpeechUnit@left.symbols[2]"]["score"], 100)
+
+    def test_score_census_same_extent_aliases_never_transfer_null_score(self):
+        document = self.duplicate_score_report()
+        for side in ("left", "right"):
+            document[side]["symbols"][2] = copy.deepcopy(document[side]["symbols"][1])
+            document[side]["symbols"][2]["target_symbol"] = 2
+        document["left"]["symbols"][2].pop("match_percent")
+        result = groups.summarize_match_scores(document)
+        self.assertEqual((result["functions"], result["exact"]), (2, 1))
+        self.assertEqual(result["candidate_only"], {})
+        self.assertEqual(result["residuals"]["_langGetNbrSpeechUnit@left.symbols[2]"]["status"], "unscored")
+        for side in ("left", "right"):
+            self.assertEqual(result["duplicate_names"][side]["_langGetNbrSpeechUnit"]["classification"],
+                             "same_extent_aliases")
+        # Same addresses in an unspecified section do not establish aliases.
+        document["left"].pop("sections")
+        with self.assertRaisesRegex(ValueError, "ambiguous duplicate"):
+            groups.summarize_match_scores(document)
+
+    def test_score_census_duplicate_conflicts_refused(self):
+        for pair in (True, -1, 100, 0, 2):
+            document = self.duplicate_score_report()
+            document["left"]["symbols"][1]["target_symbol"] = pair
+            with self.subTest(pair=pair), self.assertRaisesRegex(ValueError, "duplicate function pairing"):
+                groups.summarize_match_scores(document)
+        document = self.duplicate_score_report()
+        document["right"]["symbols"][1]["target_symbol"] = 2
+        with self.assertRaisesRegex(ValueError, "duplicate function pairing"):
+            groups.summarize_match_scores(document)
+        # A reverse-only pair is conflicting evidence, not candidate-only data.
+        document = self.duplicate_score_report()
+        document["left"]["symbols"][1].pop("target_symbol")
+        with self.assertRaisesRegex(ValueError, "duplicate function pairing"):
+            groups.summarize_match_scores(document)
+        document = self.duplicate_score_report()
+        second = document["left"]["symbols"][2]
+        second.update(address="224", instructions=[row("blr", 224)])
+        with self.assertRaisesRegex(ValueError, "conflicting alias evidence"):
+            groups.summarize_match_scores(document)
+        # Partially overlapping extents are not aliases or separate functions.
+        second["address"] = "228"
+        with self.assertRaisesRegex(ValueError, "ambiguous duplicate"):
+            groups.summarize_match_scores(document)
+
+    def test_score_census_duplicate_candidate_keeps_unpaired_identity(self):
+        document = self.duplicate_score_report()
+        document["left"]["symbols"][2]["name"] = "_langGetNbrWarpFactors"
+        document["right"]["symbols"][2]["name"] = "_langGetNbrSpeechUnit"
+        result = groups.summarize_match_scores(document)
+        self.assertEqual(result["exact"], 1)
+        self.assertEqual(result["candidate_only"]["_langGetNbrSpeechUnit@right.symbols[2]"]["status"],
+                         "missing_target")
+        self.assertEqual(result["residuals"]["_langGetNbrWarpFactors"]["status"], "missing_candidate")
+
+    def test_actual_langdata_duplicate_score_replay(self):
+        root = Path(__file__).resolve().parents[2]
+        folder = root / "build/small-remaining-baseline-20260913/gssdk_lib/asrpho/common/ctxdata/langdata/next-small-census"
+        report_path = folder / "base.json"
+        if not report_path.is_file():
+            self.skipTest("local langdata duplicate census artifact unavailable")
+        raw = report_path.read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                         "551b03cf33dbdc38a6b5df8ead509a7081ca97a29918ff525cdedbbc40063f42")
+        result = groups.summarize_match_scores(json.loads(raw))
+        self.assertEqual((result["functions"], result["exact"], len(result["residuals"])), (76, 66, 10))
+        self.assertEqual(result["residuals"]["_langGetNbrSpeechUnit@left.symbols[19]"]["status"], "unpaired_target")
+        self.assertEqual(set(result["candidate_only"]), {"_langGetNbrWarpFactors"})
+        self.assertEqual(report_path.read_bytes(), raw)
+
     def test_source_hypothesis_opt_in_and_legacy_compatibility(self):
         rows = [row("li r3, 0", 0), row("blr", 4)]
         plain = self.decision(rows, 0, 1)

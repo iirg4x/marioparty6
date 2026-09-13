@@ -84,35 +84,133 @@ def numeric_domain_evidence(left: list[dict], right: list[dict]) -> dict:
             "authority_advanced": False}
 
 
+def _score_census_duplicates(document: dict, sides: list[list[dict]]) -> dict:
+    """Classify duplicate names without merging symbols or transferring scores."""
+    duplicates = {}
+    for side, symbols in zip(("left", "right"), sides):
+        code_sections = [s for s in document[side].get("sections", [])
+                         if s.get("kind") == "SECTION_CODE"]
+        by_name = {}
+        for index, symbol in enumerate(symbols):
+            if symbol.get("instructions"):
+                by_name.setdefault(symbol["name"], []).append((index, symbol))
+        for name, entries in by_name.items():
+            if len(entries) < 2:
+                continue
+            extents = []
+            for index, symbol in entries:
+                instructions = [r["instruction"] for r in symbol["instructions"]
+                                if r.get("instruction")]
+                address = frontier.focus._integer(symbol.get("address"))
+                if address is None and instructions:
+                    address = frontier.focus._integer(instructions[0].get("address"))
+                size = frontier.focus._integer(symbol.get("size"))
+                if address is None or address < 0 or size is None or size <= 0:
+                    raise ValueError(f"ambiguous duplicate function extent: {side}.{name}")
+                extents.append((address, size))
+            same_extent = len(set(extents)) == 1
+            disjoint = all(a + size <= b or b + other_size <= a
+                           for i, (a, size) in enumerate(extents)
+                           for b, other_size in extents[i + 1:])
+            # A shared address in an unspecified/multi-code-section object is
+            # not sufficient alias evidence. Even confirmed aliases stay as
+            # separate symbol entries, including their null scores/bindings.
+            same_instructions = all(s["instructions"] == entries[0][1]["instructions"]
+                                    for _, s in entries[1:])
+            if same_extent and len(code_sections) == 1 and same_instructions:
+                classification = "same_extent_aliases"
+            elif disjoint:
+                classification = "separate_extents"
+            else:
+                raise ValueError(f"ambiguous duplicate function extents or conflicting alias evidence: {side}.{name}")
+            duplicates.setdefault(side, {})[name] = {
+                "classification": classification,
+                "members": [{"identity": f"{name}@{side}.symbols[{index}]",
+                             "symbol_index": index, "address": address, "bytes": size}
+                            for (index, _), (address, size) in zip(entries, extents)]}
+    return duplicates
+
+
 def summarize_match_scores(document: dict) -> dict:
-    """Name-bound score census only; null/alias scores never imply exactness.
+    """Function-symbol score census; null/alias scores never imply exactness.
 
     This lightweight path intentionally requires no disassembly interpretation
     and performs no file writes, builds, or repair of a report's bindings.
+    Unique-name keys/rows retain the legacy API. Names duplicated on either side
+    use report-local symbol-table identities and reciprocal objdiff pair indices,
+    never a name/extent guess. Alias entries are classified, not collapsed.
+    ``score_exact`` is only the reported score, not instruction/physical proof.
     """
-    sides = [[s for s in frontier.focus._symbols(document, side, "strict")
-              if s.get("instructions")] for side in ("left", "right")]
-    for symbols in sides:
-        names = [s["name"] for s in symbols]
-        if len(set(names)) != len(names):
-            raise ValueError("ambiguous duplicate function names in score census")
-    right = {s["name"]: s for s in sides[1]}
+    sides = [frontier.focus._symbols(document, side, "strict") for side in ("left", "right")]
+    duplicates = _score_census_duplicates(document, sides)
+    duplicate_names = {name for names in duplicates.values() for name in names}
+    for side_index, symbols in enumerate(sides):
+        other = sides[1 - side_index]
+        for index, symbol in enumerate(symbols):
+            pair = symbol.get("target_symbol")
+            if not symbol.get("instructions") or symbol["name"] not in duplicate_names or pair is None:
+                continue
+            if (type(pair) is not int or not 0 <= pair < len(other)
+                    or not other[pair].get("instructions")
+                    or type(other[pair].get("target_symbol")) is not int
+                    or other[pair]["target_symbol"] != index):
+                side = ("left", "right")[side_index]
+                raise ValueError(f"ambiguous duplicate function pairing: {side}.{symbol['name']} at symbol {index}")
+    right = {s["name"]: (i, s) for i, s in enumerate(sides[1])
+             if s.get("instructions") and s["name"] not in duplicate_names}
+    def identity(side, index, symbol):
+        name = symbol["name"]
+        return f"{name}@{side}.symbols[{index}]" if name in duplicate_names else name
+
     scores = {}
-    for symbol in sides[0]:
-        candidate = right.get(symbol["name"])
+    paired = set()
+    for index, symbol in enumerate(sides[0]):
+        if not symbol.get("instructions"):
+            continue
+        name = symbol["name"]
+        candidate_index, candidate = right.get(name, (None, None))
+        if name in duplicate_names and symbol.get("target_symbol") is not None:
+            candidate_index = symbol["target_symbol"]
+            candidate = sides[1][candidate_index]
+        if candidate is not None:
+            if candidate_index in paired:
+                raise ValueError(f"ambiguous duplicate candidate binding: right symbol {candidate_index}")
+            paired.add(candidate_index)
         score = symbol.get("match_percent")
-        status = ("missing_candidate" if candidate is None else
+        status = ("unpaired_target" if candidate is None and name in duplicate_names else
+                  "missing_candidate" if candidate is None else
                   "unscored" if score is None else "score_exact" if score == 100 else "mismatch")
-        scores[symbol["name"]] = {"target_bytes": symbol.get("size"),
-                                  "candidate_bytes": candidate.get("size") if candidate else None,
-                                  "score": score, "status": status}
-    return {"functions": len(scores),
+        key = identity("left", index, symbol)
+        if key in scores:
+            raise ValueError(f"ambiguous duplicate census identity: {key}")
+        scores[key] = {"target_bytes": symbol.get("size"),
+                       "candidate_bytes": candidate.get("size") if candidate else None,
+                       "score": score, "status": status}
+        if name in duplicate_names:
+            scores[key].update(function=name, target_symbol_index=index,
+                               candidate_symbol_index=candidate_index,
+                               candidate_function=candidate["name"] if candidate else None,
+                               pairing="reciprocal_report_indices" if candidate else "unpaired")
+    candidate_only = {}
+    for index, symbol in enumerate(sides[1]):
+        if not symbol.get("instructions") or index in paired:
+            continue
+        key = identity("right", index, symbol)
+        if key in candidate_only:
+            raise ValueError(f"ambiguous duplicate census identity: {key}")
+        candidate_only[key] = {"candidate_bytes": symbol.get("size"),
+                               "score": symbol.get("match_percent"), "status": "missing_target"}
+        if symbol["name"] in duplicate_names:
+            candidate_only[key].update(function=symbol["name"], candidate_symbol_index=index)
+    result = {"functions": len(scores),
             "exact": sum(s["status"] == "score_exact" for s in scores.values()),
             "function_scores": scores,
             "residuals": {name: s for name, s in scores.items() if s["status"] != "score_exact"},
-            "candidate_only": {name: {"candidate_bytes": s.get("size"),
-                                      "score": s.get("match_percent"), "status": "missing_target"}
-                               for name, s in right.items() if name not in scores}}
+            "candidate_only": candidate_only}
+    if duplicates:
+        result.update(duplicate_names=duplicates, census_unit="function_symbols",
+                      identity_scope="indices in the supplied report's unfiltered symbol tables; not cross-report identities")
+    return result
 
 
 def summarize_owner(document: dict) -> dict:
