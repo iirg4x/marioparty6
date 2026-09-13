@@ -1293,6 +1293,8 @@ config.libs = [
         objects={
             Object(Matching, "REL/m670dll/prolog.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m670dll/actor.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m670dll/pillar.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m670dll/cpu.c", extra_cflags=["-pooldata off"]),
             Object(
                 Matching,
                 "REL/m670dll/runtime.c",

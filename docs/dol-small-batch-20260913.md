@@ -1475,3 +1475,49 @@ compile path. All returned a model-server error after roughly sixteen minutes,
 with no final answer; no generated claim from that batch was admitted. The
 primary completed this actor group independently. Do not repeatedly submit the
 same failed batch or count waiting/analysis as a recovery gain.
+
+## m670 pillar and CPU batch
+
+The next two complete source regions are `pillar.c` (five functions, 4,364 code
+bytes) and `cpu.c` (two functions, 2,144 bytes). All seven functions were
+reconstructed from typed m2c plus target dataflow, not historical donor bodies.
+The actual source-selected PLF has zero differing symbols, the m670 REL is
+retail-identical, and all 137 project checksums pass. The prior actor, startup,
+and runtime selection remains exact. Total selected m670 code becomes 11,140 /
+19,924 bytes; this is still not a full minigame closure.
+
+The useful source decisions were structural: recover four-element candidate
+position/index arrays, reuse the insertion index for the nearest-choice pass,
+keep difficulty branches with their separate live conditional results, and
+preserve the old/new timer snapshot before testing a negative-to-nonnegative
+transition. m2c incorrectly rendered that last comparison as an impossible
+test of one current value. In the pillar rise phase, snapshotting height before
+its compound increment reproduced the target live scalar producer. Correcting
+the work-state signedness removed seven incorrect unsigned CPU comparisons.
+
+Target-emitted redundancy is disclosed, not silently normalized: the CPU
+difficulty timer is overwritten after the switch (the random calls still
+occur); pillar state four computes a completion flag but advances without using
+it; state five retains an unused floating frame snapshot. These operations are
+observed directly in the target, not fabricated storage. Four-element CPU
+arrays are supported by actual frame homes, four-way selection, and the five
+pattern tables containing each of six values exactly four times.
+
+One small Qwen factual check completed while the primary independently built
+the CPU controller. It confirmed array addressing and register reuse but could
+not prove the unnamed zero constant without data. The primary had the data and
+full source context. The second question was cancelled when the complete
+pillar source-selected link made that narrower investigation obsolete.
+
+Proof: `build/minigame-recovery-20260913/m670/gameplay-proof/receipt.json` and
+`linked-strict.json`. These are final linked comparisons, not claims of raw
+object-file equality. Unfinished constructor work separately gained exact
+3,224-byte size after the microphone handle became unsigned (target clrlwi
+at creation and lhz at consumption); its remaining register cycle is not
+part of this selected batch.
+
+Reporting correction: the prior public 540-to-548 REL object denominator was
+not a valid census. Only m670 changed in the actual DTK configs, from four to
+ten units (+6). Use fixed code/data byte denominators and the registry's 82
+numbered minigame modules; m616 is fully source-selected, leaving 81. Splitting
+a fallback span creates build objects, not newly discovered minigames.
