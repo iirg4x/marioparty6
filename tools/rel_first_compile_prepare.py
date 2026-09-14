@@ -72,9 +72,10 @@ def builtin_declaration_supplement(context, names):
     for name in names:
         rows = declarations.get(name, [])
         unique = {row['declaration'] for row in rows if row['prototyped'] and not row['definition']}
-        if len(unique) != 1 or any(row['definition'] for row in rows):
+        equivalent = {re.sub(r'\bextern\b|\s+', '', declaration) for declaration in unique}
+        if len(equivalent) != 1 or any(row['definition'] for row in rows):
             return None
-        declaration = next(iter(unique))
+        declaration = min(unique, key=lambda value: (len(value), value))
         rest = re.sub(r'\b'+re.escape(name)+r'\b', '', declaration)
         if not set(re.findall(r'[A-Za-z_]\w*', rest)) <= {
             'extern', 'const', 'volatile', 'void', 'char', 'short', 'int',
@@ -88,7 +89,10 @@ def extend_call_context(*, root, assembly, context_path, prefix_path, output_bas
     """Add uniquely discovered providers under the caller's unchanged compiler flags.
 
     Conflicting headers are not included. A narrow declaration-only fallback
-    copies builtin-only prototypes into m2c context, not the source prefix.
+    copies builtin-only prototypes into both context and source prefix after
+    preprocessing that prefix to verify the effective declarations agree.
+    The measured external-abs exception also disables an active source macro
+    using the exact provider prototype, only when the target calls external abs.
     """
     text = Path(context_path).read_text(encoding='utf-8')
     prefix = Path(prefix_path).read_text(encoding='utf-8')
@@ -139,7 +143,32 @@ def extend_call_context(*, root, assembly, context_path, prefix_path, output_bas
             if supplement is None:
                 record['mode'] = 'unresolved-provider-conflict'
             else:
+                check_source = Path(str(output_base)+f'-provider-{number}-prefix-declarations.h')
+                check_output = check_source.with_suffix('.i')
+                check_source.write_text(prefix+'\n'+supplement, encoding='utf-8')
+                try:
+                    preprocess(check_source, check_output)
+                    checked = check_output.read_text(encoding='utf-8')
+                    expected = decompctx.declared_functions(supplement)
+                    actual = decompctx.declared_functions(checked)
+                    compatible = not provider_conflicts(text, checked) and all(
+                        {row['declaration'] for row in actual.get(name, [])} ==
+                        {row['declaration'] for row in expected[name]} for name in names)
+                except RuntimeError:
+                    compatible = False
+                # abs has its separately verified active-macro exception below;
+                # never undefine other macros to make a supplement compile.
+                if not compatible and names != ['abs']:
+                    record['mode'] = 'unresolved-prefix-declaration-conflict'
+                    records.append(record)
+                    continue
                 record['mode'] = 'm2c-context-only-declarations'
+                if compatible:
+                    prefix += '\n'+supplement
+                    record['mode'] = 'context-and-prefix-declarations'
+                    record['prefix_probe_path'] = str(check_source)
+                    record['prefix_probe_sha256'] = sha(check_source)
+                    record['prefix_preprocessed_sha256'] = sha(check_output)
                 record['declarations'] = supplement
                 record['omitted_provider_bodies'] = sorted(name for name, rows in visible.items()
                                                            if any(r['definition'] for r in rows))
@@ -150,11 +179,51 @@ def extend_call_context(*, root, assembly, context_path, prefix_path, output_bas
             prefix += '\n#include "'+header+'"\n'
             text = expanded_text+'\n'+''.join(supplements)
         records.append(record)
+    # A visible declaration alone is insufficient: source-prefix macros can
+    # replace a target's external call. abs is the bounded, measured case; do
+    # not disable unrelated macros or infer declarations from register usage.
+    external_abs = 'abs' in discovery['calls'] and 'abs' not in discovery['local_calls']
+    if external_abs:
+        probe = Path(str(output_base)+'-abs-macro.h')
+        probe_output = probe.with_suffix('.i')
+        marker = 'M2C_EXTERNAL_ABS_MACRO_ACTIVE'
+        probe.write_text(prefix+'\n#if defined(abs)\n'+marker+'\n#endif\n', encoding='utf-8')
+        preprocess(probe, probe_output)
+        if marker in probe_output.read_text(encoding='utf-8'):
+            provider = Path(root)/'include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h'
+            provider_hash = sha(provider)
+            source = Path(str(output_base)+'-abs-declaration.h')
+            expanded = source.with_suffix('.i')
+            source.write_text('#include "'+provider.resolve().as_posix()+'"\n', encoding='utf-8')
+            preprocess(source, expanded)
+            if sha(provider) != provider_hash:
+                raise ValueError('provider changed during preprocessing: '+str(provider))
+            declaration = builtin_declaration_supplement(expanded.read_text(encoding='utf-8'), ['abs'])
+            if declaration is None or re.sub(r'\s+', '', declaration) != 'intabs(int);':
+                raise ValueError('external abs macro requires the exact provider int abs(int) prototype')
+            if provider_conflicts(text, text+'\n'+declaration):
+                raise ValueError('external abs prototype conflicts with current context')
+            prefix += '\n/* Target calls external abs; retain the provider declaration, not the macro. */\n#undef abs\n'+declaration
+            if 'abs' not in decompctx.declared_functions(text):
+                text += '\n'+declaration
+            records.append({'header': provider.relative_to(Path(root)/'include').as_posix(),
+                            'calls': ['abs'], 'mode': 'external-call-macro-supplement',
+                            'declarations': declaration, 'undefined_macros': ['abs'],
+                            'provider_sha256': provider_hash,
+                            'source_path': str(source), 'source_sha256': sha(source),
+                            'preprocessed_path': str(expanded), 'preprocessed_sha256': sha(expanded),
+                            'macro_probe_path': str(probe), 'macro_probe_sha256': sha(probe),
+                            'macro_probe_output_sha256': sha(probe_output),
+                            'assembly_sha256': discovery['assembly_sha256'],
+                            'preprocessing_environment': 'standalone-provider-same-flags',
+                            'omitted_provider_bodies': sorted(name for name, rows in
+                                decompctx.declared_functions(expanded.read_text(encoding='utf-8')).items()
+                                if any(row['definition'] for row in rows))})
     result = {'providers': records, 'unresolved_external_calls': unresolved,
               'unresolved_local_calls': discovery['local_prototype_review']['unresolved'],
               'base_context_sha256': sha(context_path), 'base_prefix_sha256': sha(prefix_path),
               'compiler_flags_sha256': hashlib.sha256(json.dumps(compiler_flags).encode()).hexdigest()}
-    if not any(row['mode'] in {'header-include', 'm2c-context-only-declarations'} for row in records):
+    if not any(row['mode'] in {'header-include', 'm2c-context-only-declarations', 'context-and-prefix-declarations', 'external-call-macro-supplement'} for row in records):
         return str(context_path), str(prefix_path), result
     final_context = Path(str(output_base)+'-calls.i')
     final_prefix = Path(str(output_base)+'-calls-prefix.h')

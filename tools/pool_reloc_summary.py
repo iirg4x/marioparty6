@@ -363,6 +363,168 @@ def _pool_rows(side: Mapping[str, Any], function: Mapping[str, Any]) -> dict[int
     return rows
 
 
+def _section_data_window(section: Mapping[str, Any], start: int, width: int) -> bytes | None:
+    """Read a small, uniquely covered window without decoding an entire section."""
+    output, present = bytearray(width), bytearray(width)
+    cursor = 0
+    for entry in _sequence(section.get("data_diff")):
+        if not isinstance(entry, Mapping):
+            return None
+        size = _int(entry.get("size"))
+        offset = _int(entry.get("offset", entry.get("address")), cursor)
+        encoded = entry.get("data")
+        if size is None or size < 0 or offset is None or offset < 0:
+            return None
+        cursor = offset + size
+        lo, hi = max(start, offset), min(start + width, cursor)
+        if lo >= hi:
+            continue
+        if (entry.get("kind") in {"DIFF_DELETE", "DIFF_INSERT"}
+                or not isinstance(encoded, str) or len(encoded) != 4 * ((size + 2) // 3)):
+            return None
+        first = ((lo - offset) // 3) * 3
+        last = ((hi - offset + 2) // 3) * 3
+        try:
+            raw = base64.b64decode(encoded[first // 3 * 4:last // 3 * 4], validate=True)
+        except (binascii.Error, ValueError):
+            return None
+        raw = raw[lo - offset - first:hi - offset - first]
+        if len(raw) != hi - lo:
+            return None
+        for index, byte in enumerate(raw, lo - start):
+            if present[index]:
+                return None
+            output[index], present[index] = byte, 1
+    return bytes(output) if all(present) else None
+
+
+def _unique_owner_span(side: Mapping[str, Any], section_name: str, start: int, width: int) -> bytes | None:
+    """Require section bytes and one complete object extent per covered byte."""
+    sections = [section for section in _sequence(side.get("sections"))
+                if isinstance(section, Mapping) and section.get("name") == section_name]
+    if len(sections) != 1 or not 0 < width <= MAX_LITERAL_BYTES:
+        return None
+    section = sections[0]
+    size = _int(section.get("size"))
+    if size is None or start < 0 or start + width > size:
+        return None
+    raw = _section_data_window(section, start, width)
+    if raw is None:
+        return None
+    symbols = _symbols(side)
+    membership = _section_membership(symbols)
+    coverage = bytearray(width)
+    for index, symbol in enumerate(symbols):
+        if membership.get(index) != section_name or symbol.get("kind") != "SYMBOL_OBJECT":
+            continue
+        # Objdiff's protobuf JSON omits zero addresses on leading objects.
+        # Referenced owners themselves still need a resolved address above.
+        address, extent = _int(symbol.get("address", 0)), _int(symbol.get("size"))
+        if address is None or (extent is None and address < start + width) or (extent is not None and extent < 0):
+            return None
+        if extent is None:
+            continue
+        lo, hi = max(start, address), min(start + width, address + extent)
+        if lo >= hi:
+            continue
+        data = _decode_data(symbol)
+        if data is None or data[lo - address:hi - address] != raw[lo - start:hi - start]:
+            return None
+        for offset in range(lo - start, hi - start):
+            if coverage[offset]:
+                return None
+            coverage[offset] = 1
+    return raw if all(coverage) else None
+
+
+def _annotate_split_owner_reference(
+    target_side: Mapping[str, Any], candidate_side: Mapping[str, Any],
+    target: dict[str, Any], candidate: dict[str, Any],
+) -> None:
+    """Narrow diagnostic for split labels, never a relocation waiver."""
+    owners = [target["owner"], candidate["owner"]]
+    section = owners[0].get("section")
+    if (section not in {".rodata", ".data"}
+            or any(owner.get("kind") != "SYMBOL_OBJECT" or owner.get("section") != section for owner in owners)):
+        return
+    if tuple(owners[0].get(k) for k in ("address", "size_bytes")) == tuple(
+            owners[1].get(k) for k in ("address", "size_bytes")):
+        return
+    relocation = target["relocation"]
+    if relocation["type"] != candidate["relocation"]["type"]:
+        return
+    opcode = _opcode(target["instruction"])
+    synthetic = relocation["type"] == "R_PPC_NONE" and opcode in {"lbz", "lhz"}
+    address_reference = (relocation["type"], opcode) in {
+        ("R_PPC_ADDR16_HA", "lis"), ("R_PPC_ADDR16_LO", "addi")}
+    if not (synthetic or address_reference):
+        return
+    if section == ".data" and not address_reference:
+        return
+    parts = target.get("instruction_parts")
+    if (not isinstance(parts, list) or not parts or parts != candidate.get("instruction_parts")
+            or target.get("instruction_size") != 4 or candidate.get("instruction_size") != 4
+            or (synthetic and target["instruction"] != candidate["instruction"])
+            or any(row.get("diff_kind") not in {None, "DIFF_NONE", "DIFF_ARG_MISMATCH"}
+                   for row in (target, candidate))
+            or (address_reference and any(row.get("diff_kind") not in {None, "DIFF_NONE"}
+                                          for row in (target, candidate)))):
+        return
+    if synthetic:
+        if any(row["relocation"].get("type_code") not in {None, 0} for row in (target, candidate)):
+            return
+    elif any(row["relocation"].get("type_code") != {"lis": 6, "addi": 4}[opcode]
+             for row in (target, candidate)):
+        return
+    kind = "synthetic_load" if synthetic else "address_relocation"
+    for row in (target, candidate):
+        row["effective_reference"] = {"status": "UNKNOWN", "kind": kind,
+                                      "reason": "unresolved_or_ambiguous_owner_extent_or_section_bytes"}
+    if any(not isinstance(owner.get(k), int) for owner in owners for k in ("address", "size_bytes")):
+        return
+    if any(owner["size_bytes"] <= 0 for owner in owners):
+        return
+    offsets = [row["relocation"].get("addend") for row in (target, candidate)]
+    if any(not isinstance(offset, int) for offset in offsets):
+        return
+    effective = [owner["address"] + offset for owner, offset in zip(owners, offsets)]
+    width = {"lbz": 1, "lhz": 2}.get(opcode, 0)
+    if effective[0] != effective[1]:
+        for row in (target, candidate):
+            row.pop("effective_reference")
+        return
+    if any(offset < 0 or offset + max(width, 1) > owner["size_bytes"]
+           for owner, offset in zip(owners, offsets)):
+        return
+    if section == ".data":
+        # HA/LO constructs an address, not a load with the symbol's full width.
+        # Equal common bytes do not prove a different-sized pointee or padding.
+        # Keep that debt UNKNOWN; never turn a known common-byte change into it.
+        raw = [owner.get("bytes") for owner in owners]
+        common = min(len(value) for value in raw) if all(isinstance(value, str) for value in raw) else 0
+        if (owners[0]["address"] != owners[1]["address"] or offsets[0] != offsets[1]
+                or not common or raw[0][:common] != raw[1][:common]):
+            for row in (target, candidate):
+                row.pop("effective_reference")
+            return
+        for row in (target, candidate):
+            row["effective_reference"].update(
+                section=section, section_offset=effective[0],
+                reason="address_materialization_does_not_establish_pointee_extent")
+        return
+    start = min(owner["address"] for owner in owners)
+    end = max(owner["address"] + owner["size_bytes"] for owner in owners)
+    for side, row in ((target_side, target), (candidate_side, candidate)):
+        raw = _unique_owner_span(side, section, start, end - start)
+        if raw is not None:
+            row["effective_reference"] = {
+                "status": "resolved", "kind": kind, "section": section,
+                "section_offset": effective[0], "access_width_bytes": width or None,
+                "access_bytes": raw[effective[0] - start:effective[0] - start + width].hex() if width else None,
+                "span_start": start, "span_width_bytes": end - start, "span_bytes": raw.hex(),
+            }
+
+
 def _paired_pool_rows(
     target_side: Mapping[str, Any],
     candidate_side: Mapping[str, Any],
@@ -386,6 +548,8 @@ def _paired_pool_rows(
             if record is not None and record["owner"]["external"]:
                 record["external_counterpart"] = True
                 rows[row_index] = record
+    for row in sorted(set(target_rows) & set(candidate_rows)):
+        _annotate_split_owner_reference(target_side, candidate_side, target_rows[row], candidate_rows[row])
     return target_rows, candidate_rows
 
 
@@ -471,6 +635,21 @@ def _classification(target: Mapping[str, Any] | None, candidate: Mapping[str, An
         differences.append("owner_section")
     if t_owner.get("address") != c_owner.get("address"):
         differences.append("owner_offset")
+    effective = [target.get("effective_reference"), candidate.get("effective_reference")]
+    if all(isinstance(item, Mapping) for item in effective):
+        if any(item.get("status") != "resolved" for item in effective):
+            return ("unresolved_pool_bytes", differences + ["effective_reference_unresolved"],
+                    "insufficient_value_evidence",
+                    "Recover unique object extents and section bytes before interpreting the split-owner annotation.")
+        if effective[0]["span_bytes"] != effective[1]["span_bytes"]:
+            return ("literal_value_mismatch", differences + ["effective_span_value"],
+                    "semantic_literal_mismatch",
+                    "The resolved section spans differ; inspect the actual bytes consumed despite identical instructions.")
+        classification = ("synthetic_annotation_equivalent" if effective[0]["kind"] == "synthetic_load"
+                          else "split_owner_address_equivalent")
+        return (classification, differences, "resolved_split_owner_annotation_only",
+                "Identical instruction contracts resolve to the same section offset and uniquely covered bytes; "
+                "no literal/type/index edit is indicated. Diagnostic only: physical ownership and source-selected link proof remain required.")
     if not differences:
         return (
             "exact_pool_contract",
@@ -602,6 +781,8 @@ def _group_key(pair: Mapping[str, Any]) -> tuple[Any, ...]:
         c_reloc.get("type"),
         t_reloc.get("addend"),
         c_reloc.get("addend"),
+        json.dumps(target.get("effective_reference"), sort_keys=True),
+        json.dumps(candidate.get("effective_reference"), sort_keys=True),
     )
 
 
@@ -610,7 +791,7 @@ def _compact_side(item: Mapping[str, Any] | None) -> dict[str, Any] | None:
         return None
     owner = item.get("owner") if isinstance(item.get("owner"), Mapping) else {}
     relocation = item.get("relocation") if isinstance(item.get("relocation"), Mapping) else {}
-    return {
+    result = {
         "instruction": item.get("instruction"),
         "diff_kind": item.get("diff_kind"),
         "relocation": dict(relocation),
@@ -627,6 +808,9 @@ def _compact_side(item: Mapping[str, Any] | None) -> dict[str, Any] | None:
             "consumer_type": owner.get("consumer_type"),
         },
     }
+    if "effective_reference" in item:
+        result["effective_reference"] = dict(item["effective_reference"])
+    return result
 
 
 def _section_size(side: Mapping[str, Any], name: str) -> int | None:
@@ -1485,6 +1669,8 @@ def decode_function(
         "owner_chronology_mismatch": 7,
         "exact_pool_contract": 8,
         "mapped_pool_contract": 8,
+        "synthetic_annotation_equivalent": 8,
+        "split_owner_address_equivalent": 8,
     }
     ordered = sorted(
         grouped.values(),
@@ -1537,6 +1723,8 @@ def decode_function(
         "summary": {
             "paired_or_unpaired_rows": len(pairs),
             "classification_counts": dict(sorted(classifications.items())),
+            "annotation_equivalent_count": sum(
+                item["interpretation"] == "resolved_split_owner_annotation_only" for item in pairs),
             "value_equivalent_owner_only_count": sum(
                 1
                 for item in pairs
@@ -1560,6 +1748,7 @@ def decode_function(
                     "body_value_equivalent_pool_chronology_only",
                     "aligned_consumer_contract_with_unresolved_external_data",
                     "insufficient_value_evidence",
+                    "resolved_split_owner_annotation_only",
                 }
             ),
         },

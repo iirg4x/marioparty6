@@ -315,7 +315,20 @@ diff --git a/m2c/main.py b/m2c/main.py
      elif options.target.arch == Target.ArchEnum.ARM:
          if options.target.platform == Target.PlatformEnum.GBA:
              arch = ArmGbaArch()
-@@ -576,6 +580,15 @@
+@@ -204,7 +208,11 @@
+             try:
+                 flow_graph.reset_block_info()
+                 decomp.state.info = translate_to_ast(
+-                    decomp.function, flow_graph, options, global_info
++                    decomp.function,
++                    flow_graph,
++                    options,
++                    global_info,
++                    infer_stack_arrays=True,
+                 )
+             except Exception as e:
+                 decomp.state = e
+@@ -576,6 +584,15 @@
          "Default is mips-ido-c, `ppc` is an alias for ppc-mwcc-c++, and `arm` for arm-gcc-c.",
      )
      group.add_argument(
@@ -331,7 +344,7 @@ diff --git a/m2c/main.py b/m2c/main.py
          "--passes",
          "-P",
          dest="passes",
-@@ -690,6 +703,11 @@
+@@ -690,6 +707,11 @@
      )
  
      args = parser.parse_args(flags)
@@ -343,7 +356,7 @@ diff --git a/m2c/main.py b/m2c/main.py
      reg_vars = args.reg_vars.split(",") if args.reg_vars else []
      preproc_defines: Dict[str, Optional[int]] = {d: None for d in args.undefined}
      for d in args.defined:
-@@ -774,6 +792,7 @@
+@@ -774,6 +796,7 @@
          backwards_bss=args.backwards_bss,
          disable_gc=args.disable_gc,
          union_field_overrides=union_field_overrides,
@@ -703,7 +716,234 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
          source = self.regs.current_instr_ref()
          call: Expression = FuncCall(
-@@ -4987,6 +5199,31 @@
+@@ -4354,6 +4566,217 @@
+         for child in reversed(state.node.immediately_dominates):
+             if not isinstance(child, TerminalNode):
+                 translate_stack.append((state, child))
++
++
++def infer_bounded_stack_arrays(stack_info: StackInfo) -> None:
++    """Refine unsized stack arrays from a proven simple counted store loop.
++
++    Run only in a discarded preliminary pass: pruning the resulting overlap
++    changes field paths, so existing expressions must be translated again.
++    This is a minimum observed extent, not a guess from neighboring locals.
++    """
++    if stack_info.stack_pointer_type is None:
++        return
++    stack_type = stack_info.stack_pointer_type.get_pointer_target()
++    assert stack_type is not None
++    layout = stack_type.get_struct_declaration()
++    assert layout is not None
++
++    def unwrap_index(expr: Expression, bound: int) -> Optional[Expression]:
++        expr = unwrap_deep(expr)
++        while isinstance(expr, Cast):
++            bits = expr.type.get_size_bits()
++            # Both the largest index and the terminating value must survive
++            # every conversion. Use the signed limit even for unsigned types.
++            if not expr.type.is_int() or bits is None or bound >= 1 << (bits - 1):
++                return None
++            expr = unwrap_deep(expr.expr)
++        return expr
++
++    def local_base(expr: Expression) -> Optional[LocalVar]:
++        expr = unwrap_deep(expr)
++        # During the first pass the newly inferred array may still be wrapped
++        # as a dereference of its original scalar address.
++        if (
++            isinstance(expr, StructAccess)
++            and expr.offset == 0
++            and expr.field_path == [0]
++        ):
++            expr = unwrap_deep(expr.struct_var)
++        if isinstance(expr, AddressOf) and isinstance(expr.expr, LocalVar):
++            return expr.expr
++        return None
++
++    # Collect every indexed use, including ones outside the candidate loop.
++    # An unbounded second use must not be hidden by the first loop's extent.
++    accesses: Dict[int, List[Tuple[Node, ArrayAccess]]] = {}
++    escaped: Set[int] = set()
++    raw_stack_escape = False
++
++    def visit(expr: Expression, node: Node, seen: Set[int]) -> None:
++        nonlocal raw_stack_escape
++        expr = unwrap_deep(expr)
++        if id(expr) in seen:
++            return
++        seen.add(id(expr))
++        if isinstance(expr, GlobalSymbol) and expr.c_symbol_name == "sp":
++            raw_stack_escape = True
++        if isinstance(expr, ArrayAccess):
++            base = local_base(expr.ptr)
++            if base is not None:
++                accesses.setdefault(base.value, []).append((node, expr))
++                visit(expr.index, node, seen)
++                return
++        if isinstance(expr, AddressOf) and isinstance(expr.expr, LocalVar):
++            escaped.add(expr.expr.value)
++        elif isinstance(expr, AddressOf) and isinstance(expr.expr, ArrayAccess):
++            base = local_base(expr.expr.ptr)
++            if base is not None:
++                escaped.add(base.value)
++        for child in expr.dependencies():
++            visit(child, node, seen)
++
++    for node in stack_info.flow_graph.nodes:
++        block = _get_optional_block_info(node)
++        if block is None:
++            continue
++        seen: Set[int] = set()
++        for stmt in block.to_write:
++            if isinstance(stmt, StoreStmt):
++                visit(stmt.dest, node, seen)
++                visit(stmt.source, node, seen)
++            elif isinstance(stmt, (EvalOnceStmt, ExprStmt, SetNaivePhiStmt)):
++                # Unused pointer temporaries do not constitute escapes.
++                if not isinstance(stmt, EvalOnceStmt) or stmt.should_write():
++                    visit(stmt.expr, node, seen)
++        for expr in (block.return_value, block.branch_condition):
++            if expr is not None:
++                visit(expr, node, seen)
++
++    if raw_stack_escape:
++        return
++
++    for head in stack_info.flow_graph.nodes:
++        loop = head.loop
++        if (
++            not isinstance(head, ConditionalNode)
++            or loop is None
++            or len(loop.nodes) != 2
++        ):
++            continue
++        body = head.conditional_edge
++        if (
++            not isinstance(body, BasicNode)
++            or loop.nodes != {head, body}
++            or body.successor is not head
++            or body.parents != [head]
++            or head.fallthrough_edge in loop.nodes
++        ):
++            continue
++        preheaders = [node for node in head.parents if node not in loop.nodes]
++        if len(preheaders) != 1:
++            continue
++        condition = get_block_info(head).branch_condition
++        if condition is None:
++            continue
++        cond = simplify_condition(condition)
++        if not isinstance(cond, BinaryOp) or cond.op != "<":
++            continue
++        limit = unwrap_deep(cond.right)
++        if not isinstance(limit, Literal) or limit.value <= 0:
++            continue
++        bound = limit.value
++        phi = unwrap_index(cond.left, bound)
++        if not isinstance(phi, (NaivePhiExpr, PlannedPhiExpr)):
++            continue
++        bits = phi.type.get_size_bits()
++        if not phi.type.is_int() or bits is None or bound >= 1 << (bits - 1):
++            continue
++        regs = get_block_info(head).final_register_states
++        induction = [
++            reg for reg, data in regs.contents.items() if unwrap_deep(data.value) is phi
++        ]
++        if len(induction) != 1:
++            continue
++        reg = induction[0]
++        start = get_block_info(preheaders[0]).final_register_states.get_raw(reg)
++        step = get_block_info(body).final_register_states.get_raw(reg)
++        if start is None or step is None or unwrap_index(start, bound) != Literal(0):
++            continue
++        update = unwrap_index(step, bound)
++        if (
++            not isinstance(update, BinaryOp)
++            or update.op != "+"
++            or unwrap_index(update.left, bound) is not phi
++            or unwrap_index(update.right, bound) != Literal(1)
++        ):
++            continue
++        for stmt in get_block_info(body).to_write:
++            if not isinstance(stmt, StoreStmt) or not isinstance(
++                stmt.dest, ArrayAccess
++            ):
++                continue
++            access = stmt.dest
++            base = local_base(access.ptr)
++            if base is None or base.value in escaped:
++                continue
++            owner = next((f for f in layout.fields if f.offset == base.value), None)
++            if owner is None or owner.known:
++                continue
++            element, dim = owner.type.get_array()
++            size = element.get_size_bytes() if element is not None else None
++            if (
++                dim is not None
++                or element is None
++                or not element.is_reg()
++                or element.is_likely_float()
++                or element.is_pointer()
++                or size not in (2, 4)
++            ):
++                continue
++            end = base.value + bound * size
++            # A pointer to an earlier stack field may describe a larger object
++            # spanning this range. Its consumer's extent is not proven here.
++            if any(offset < end for offset in escaped):
++                continue
++            if base.value in stack_info.weak_stack_var_locations:
++                continue
++            if end > stack_info.allocated_stack_size or any(
++                stack_info.in_callee_save_reg_region(offset)
++                for offset in range(base.value, end)
++            ):
++                continue
++            if any(
++                node is not body or unwrap_index(use.index, bound) is not phi
++                for node, use in accesses.get(base.value, [])
++            ):
++                continue
++            if unwrap_index(access.index, bound) is not phi:
++                continue
++            # Only equally sized inferred scalar fields may be coalesced. A
++            # header-provided object, byte overlap, or conflicting storage type
++            # is evidence against this array model, not permission to pad it.
++            overlaps = [
++                f
++                for f in layout.fields
++                if f is not owner
++                and f.offset < end
++                and f.offset + (f.type.get_size_bytes() or 1) > base.value
++            ]
++            if any(
++                f.known
++                or not f.type.is_reg()
++                or f.type.is_likely_float()
++                or f.type.is_pointer()
++                or not (f.type.data().kind & element.data().kind)
++                or f.type.get_size_bytes() != size
++                or (f.offset - base.value) % size
++                or f.offset < base.value
++                or f.offset in stack_info.weak_stack_var_locations
++                for f in overlaps
++            ):
++                continue
++            owner.type.unify(Type.array(element, bound))
+ 
+ 
+ def resolve_types_late(stack_info: StackInfo) -> None:
+@@ -4951,6 +5374,8 @@
+     flow_graph: FlowGraph,
+     options: Options,
+     global_info: GlobalInfo,
++    *,
++    infer_stack_arrays: bool = False,
+ ) -> FunctionInfo:
+     """
+     Given a function, produce a FlowGraph that both contains control-flow
+@@ -4987,6 +5412,31 @@
      return_blocks: List[BlockInfo] = []
      translate_all_blocks(state, used_naive_phis, return_blocks, options)
  
@@ -735,6 +975,15 @@ diff --git a/m2c/translate.py b/m2c/translate.py
      arch = global_info.arch
  
      # Guess return register and mark returns (we should really base this on
+@@ -5030,6 +5480,8 @@
+                 param.name = arg.format(Formatter())
+ 
+     resolve_types_late(stack_info)
++    if infer_stack_arrays:
++        infer_bounded_stack_arrays(stack_info)
+ 
+     if options.pdb_translate:
+         import pdb
 diff --git a/m2c/types.py b/m2c/types.py
 --- a/m2c/types.py
 +++ b/m2c/types.py
@@ -2017,6 +2266,262 @@ new file mode 100644
 +        outputs['bindings'] = {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
 +                               for path in (context, target)}
 +        print(json.dumps(outputs, indent=2))
++    else:
++        unittest.main()
+diff --git a/tests/unit/test_stack_array_extent.py b/tests/unit/test_stack_array_extent.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_stack_array_extent.py
+@@ -0,0 +1,251 @@
++"""Bounded stack-array inference; no retail input is needed by the unit tests."""
++
++import argparse
++import hashlib
++import json
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++
++TRANSLATOR = Path(__file__).resolve().parents[2] / "m2c.py"
++CONTEXT = "int produce(short); int sample(int); void consume(int *);"
++ASSEMBLY = """.section .text
++.global sample
++sample:
++    stwu r1, -0x30(r1)
++    mflr r0
++    stw r0, 0x34(r1)
++    stw r30, 0x28(r1)
++    stw r29, 0x24(r1)
++    mr r29, r3
++    li r0, 77
++    stw r0, 0x18(r1)
++    li r30, 0
++    b .Ltest
++.Lbody:
++    extsh r3, r30
++    bl produce
++    extsh r0, r30
++    slwi r0, r0, 2
++    addi r4, r1, 0x10
++    stwx r3, r4, r0
++    addi r30, r30, 1
++.Ltest:
++    extsh r0, r30
++    cmpwi r0, 2
++    blt .Lbody
++    lwz r3, 0x10(r1)
++    lwz r0, 0x14(r1)
++    add r3, r3, r0
++    lwz r0, 0x18(r1)
++    add r3, r3, r0
++    lwz r29, 0x24(r1)
++    lwz r30, 0x28(r1)
++    lwz r0, 0x34(r1)
++    mtlr r0
++    addi r1, r1, 0x30
++    blr
++"""
++
++
++def decompile(
++    asm_path, context_path, *, translator=TRANSLATOR, extra=(), function="sample"
++):
++    argv = [
++        sys.executable,
++        "-B",
++        str(translator),
++        "-t",
++        "ppc-mwcc-c",
++        "--ppc-abi",
++        "gekko-eabi",
++        "--valid-syntax",
++        "--no-cache",
++        "--context",
++        str(context_path),
++        "-f",
++        function,
++        *extra,
++        str(asm_path),
++    ]
++    proc = subprocess.run(argv, capture_output=True, text=True, timeout=30)
++    return argv, proc
++
++
++class StackArrayExtentTests(unittest.TestCase):
++    def generate(self, assembly=ASSEMBLY, context=CONTEXT, extra=()):
++        with tempfile.TemporaryDirectory() as directory:
++            asm_path, ctx_path = (
++                Path(directory) / "sample.s",
++                Path(directory) / "context.c",
++            )
++            asm_path.write_text(assembly, encoding="utf-8")
++            ctx_path.write_text(context, encoding="utf-8")
++            _, proc = decompile(asm_path, ctx_path, extra=extra)
++        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
++        return proc.stdout
++
++    def test_bounded_write_coalesces_fixed_load_and_preserves_neighbor(self):
++        output = self.generate()
++        self.assertIn("s32 sp10[2];", output)
++        self.assertIn("sp10[1]", output)
++        self.assertNotIn("sp14", output)
++        self.assertIn("s32 sp18;", output)
++        self.assertIn("sp18 = 0x4D;", output)
++
++    def test_extent_is_taken_from_the_bound_not_hardcoded(self):
++        output = self.generate(ASSEMBLY.replace("cmpwi r0, 2", "cmpwi r0, 3"))
++        self.assertIn("s32 sp10[3];", output)
++        self.assertIn("sp10[2]", output)
++        self.assertNotIn("sp18", output)
++
++    def test_adjacency_without_indexed_store_does_not_make_array(self):
++        output = self.generate(ASSEMBLY.replace("stwx r3, r4, r0", "stw r3, 0x10(r1)"))
++        self.assertNotIn("sp10[", output)
++        self.assertIn("s32 sp14;", output)
++
++    def test_unknown_start_is_not_a_zero_based_range(self):
++        output = self.generate(ASSEMBLY.replace("li r30, 0", "mr r30, r29"))
++        self.assertIn("sp10[];", output)
++        self.assertIn("sp14;", output)
++
++    def test_nonunit_step_is_not_a_complete_range(self):
++        output = self.generate(ASSEMBLY.replace("addi r30, r30, 1", "addi r30, r30, 2"))
++        self.assertIn("sp10[];", output)
++
++    def test_index_must_be_the_tested_induction_value(self):
++        output = self.generate(
++            ASSEMBLY.replace("extsh r0, r30\n    slwi", "extsh r0, r29\n    slwi")
++        )
++        self.assertIn("sp10[];", output)
++
++    def test_overflowing_narrow_counter_is_not_a_bounded_range(self):
++        output = self.generate(ASSEMBLY.replace("cmpwi r0, 2", "cmplwi r0, 32768"))
++        self.assertIn("sp10[];", output)
++
++    def test_byte_overlap_is_not_absorbed(self):
++        output = self.generate(
++            ASSEMBLY.replace("li r30, 0", "stb r0, 0x15(r1)\n    li r30, 0")
++        )
++        self.assertIn("sp10[];", output)
++
++    def test_escaped_base_and_neighbor_block_inference(self):
++        for offset in ("0x8", "0x10", "0x14"):
++            with self.subTest(offset=offset):
++                output = self.generate(
++                    ASSEMBLY.replace(
++                        "li r30, 0",
++                        f"addi r3, r1, {offset}\n    bl consume\n    li r30, 0",
++                    )
++                )
++                self.assertNotIn("sp10[2];", output)
++
++    def test_another_unbounded_indexed_use_blocks_extent(self):
++        output = self.generate(
++            ASSEMBLY.replace(
++                "    lwz r3, 0x10(r1)",
++                "    slwi r0, r29, 2\n    addi r4, r1, 0x10\n    stwx r3, r4, r0\n    lwz r3, 0x10(r1)",
++            )
++        )
++        self.assertIn("sp10[];", output)
++
++    def test_indexed_element_address_escape_blocks_extent(self):
++        output = self.generate(
++            ASSEMBLY.replace(
++                "stwx r3, r4, r0",
++                "stwx r3, r4, r0\n    add r3, r4, r0\n    bl consume",
++            )
++        )
++        self.assertNotIn("sp10[2];", output)
++
++    def test_raw_stack_pointer_escape_blocks_inference(self):
++        output = self.generate(
++            ASSEMBLY.replace("li r30, 0", "mr r3, r1\n    bl consume\n    li r30, 0")
++        )
++        self.assertIn("sp10[];", output)
++
++    def test_context_array_and_neighbor_are_not_overwritten(self):
++        context = (
++            CONTEXT
++            + """
++struct _m2c_stack_sample {
++    char reserved[16];
++    int entries[1];
++    int neighbor;
++    int tail;
++    char end[20];
++};
++"""
++        )
++        output = self.generate(context=context)
++        self.assertIn("s32 entries[1];", output)
++        self.assertNotIn("entries[2];", output)
++        self.assertIn("s32 neighbor;", output)
++
++    def test_single_pass_does_not_change_cached_field_paths(self):
++        output = self.generate(extra=("--passes", "1"))
++        self.assertIn("sp10[];", output)
++        self.assertIn("sp14;", output)
++
++
++def replay(root, baseline):
++    """Optional real target replay. Artifacts stay in this scratch checkout."""
++    asm_path = root / "build/minigame-recovery-20260913/m657/fn_1_D28.s"
++    ctx_path = root / "build/minigame-recovery-20260913/m657/context.i"
++    destination = TRANSLATOR.parent / "stack-array-replay"
++    destination.mkdir(exist_ok=True)
++    record = {
++        "inputs": {
++            str(path): hashlib.sha256(path.read_bytes()).hexdigest()
++            for path in (asm_path, ctx_path)
++        },
++        "runs": {},
++    }
++    for label, translator in (("before", baseline), ("after", TRANSLATOR)):
++        argv, proc = decompile(
++            asm_path, ctx_path, translator=translator, function="fn_1_D28"
++        )
++        path = destination / (label + ".c")
++        path.write_text(proc.stdout, encoding="utf-8")
++        record["runs"][label] = {
++            "argv": argv,
++            "exit": proc.returncode,
++            "stderr": proc.stderr,
++            "source": str(path),
++            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
++            "translator_sha256": {
++                str(source): hashlib.sha256(source.read_bytes()).hexdigest()
++                for source in (
++                    translator,
++                    translator.parent / "m2c/main.py",
++                    translator.parent / "m2c/translate.py",
++                )
++            },
++        }
++        if proc.returncode:
++            raise RuntimeError(proc.stdout + proc.stderr)
++        if label == "after":
++            assert "s32 sp10[2];" in proc.stdout and "sp14" not in proc.stdout
++            assert "sp10[1]" in proc.stdout
++    assert record["inputs"] == {
++        str(path): hashlib.sha256(path.read_bytes()).hexdigest()
++        for path in (asm_path, ctx_path)
++    }, "Live inputs changed during replay"
++    (destination / "replay.json").write_text(
++        json.dumps(record, indent=2), encoding="utf-8"
++    )
++    print(json.dumps(record, indent=2))
++
++
++if __name__ == "__main__":
++    if "--live-root" in sys.argv:
++        parser = argparse.ArgumentParser()
++        parser.add_argument("--live-root", type=Path, required=True)
++        parser.add_argument("--baseline", type=Path, required=True)
++        args = parser.parse_args()
++        replay(args.live_root, args.baseline)
 +    else:
 +        unittest.main()
 diff --git a/tests/unit/test_stack_declarations.py b/tests/unit/test_stack_declarations.py

@@ -1,5 +1,43 @@
 # Small DOL batch — 2026-09-13
 
+## 2026-09-14 follow-up: active stack/header gaps and retained m657 code
+
+Three existing capabilities were improved against active m657 evidence, rather
+than starting another all-REL compile sweep:
+
+- m2c recovers a bounded indexed stack array through the actual induction loop.
+  The same actual-header D28 draft goes from incomplete `s32 sp10[]` (MWCC2)
+  to compiling at87.7156%,856/872 bytes. Fourteen bound/escape/overlap tests
+  accompany the change. This is a compile fix, not a recovered function.
+- The preparer gives exact builtin-only fallback prototypes to both m2c and
+  the compiler, and preserves a target external `abs` call against the active
+  stdlib macro. Historical saf `exp` and live D28 preprocessing reproduce both
+  faults. No shared math header or ABI was changed.
+- The pool diagnostic separates proved split-symbol annotations from real byte,
+  type and address differences. This must not change proof scores or waive
+  physical/source-link verification.
+
+Primary source reconstruction in `src/REL/m657Dll/m657.c` is retained at
+**23/30 zero-row implemented symbols**, from16 before this follow-up; all prior
+zero-row symbols remain. Seven new zero-row bodies comprise the1,236-byte result
+state,136-byte sprite constructor,116-byte sprite hide loop,436-byte sprite setup,
+460-byte inlined setup callback, and two4-byte empty callbacks. The five nonempty
+bodies total2,384 bytes. D28 is872/872 at99.6789%, with one actual sign-extension
+row and two synthetic short-array annotations remaining. Definitions of HUD data
+stay near their consumer after earlier function-created string/jump-table pools;
+placing them first had displaced those real producers and was corrected.
+
+The source remains private reconstruction, not Matching/configured source on
+main. The module still has unreconstructed gameplay and data/BSS ownership;
+**no complete minigame or project percentage gain is claimed here**. Current
+compile binding is `build/minigame-recovery-20260913/m657/latest-compile.json`.
+Paired draft/compiler evidence is
+`build/rel-gap-fixes/stack-array-actual-header/result.json`.
+Installed eabi5 verifies32 patched files and passes515 translator tests in the
+captured four-worker run. An earlier uncaptured default-parallel failure remains
+unexplained, not fixed or silently credited. Package instructions and precise
+limitations are in `tools/patches/m2c-rel-first-pass/README.md`.
+
 ## m621: complete source-selected recovery on main (65/65 application functions)
 
 On 2026-09-14 the retained 30-function frontier advanced to **65/65 application

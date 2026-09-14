@@ -75,18 +75,18 @@ holdout or the later call-interface sample below.
 ## Install and use
 
 The current verified installation is
-`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi4/m2c.py`.
+`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi5/m2c.py`.
 Use this path for new REL preparation and reconstruction. The original installed
 m2c and the already-running all-REL baseline were deliberately left unchanged.
 
 To recreate it in a **new** directory:
 
 ```text
-rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi4
+rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi5
 ```
 
 The installer preserves the source installation, rejects baseline drift, applies
-the portable patch, and verifies all 31 changed output files. It never modifies
+the portable patch, and verifies all 32 changed output files. It never modifies
 game source, configures a build, or publishes matching status.
 
 For a new batch use `tools/rel_first_compile_prepare.py --help`, supplying the
@@ -116,8 +116,9 @@ Compilation and raw similarity are not strict/data/physical/source-link proof.
 - The preparer discovers unique **external** header providers through existing
   `decompctx`. It never imports another REL's same-named `fn_1_*` declaration.
   Conflicting bodies/macros stay out; only exact builtin-only declarations can
-  supplement translator context without altering source includes. Ambiguity
-  remains explicit. Bulk header lookup skips unrelated function-shape analysis.
+  supplement both translator context and the private compiler prefix after a
+  same-flags preprocessing compatibility check. Ambiguity remains explicit.
+  Bulk header lookup skips unrelated function-shape analysis.
 - The opt-in Gekko profile uses independent r3-r10/f1-f8 argument banks and
   real outgoing stack slots beginning at +8. A ninth float is not f9. Unsupported
   non-word spills and absent/stale writes are errors, not guessed arguments.
@@ -160,3 +161,43 @@ disabled/enabled: `m657Dll:fn_1_47EC` changes from an illegal pointer-to-float
 variadic conversion to compiling at 64.320755% raw (216 versus 212 target bytes).
 It is a translation-correctness improvement, not an exact function. An unrelated
 inferred integer vararg and incomplete layouts remain visible.
+
+## Active-recovery follow-up: stack extents and compiler-visible declarations
+
+The next measured failure was not fixed by adding another declaration: m2c
+inferred an unsized indexed local and treated its second element as a separate
+scalar. The existing preliminary translation now uses its natural-loop/phi
+graph to recover the minimum observed extent of a zero-start, unit-step,
+constant-bounded store loop. D28 becomes `s32 sp10[2]`; former `sp14` consumers
+refer to `sp10[1]`. Context-owned fields, escapes, unknown/nonunit bounds, narrow
+overflow and overlapping/incompatible storage remain unresolved. Neighboring
+stack addresses alone never establish an array.
+
+With identical actual headers, target and GC1.3.2 flags, m657 D28 changes from
+MWCC's incomplete-array error to **856/872 bytes, 87.7156% raw**. This fixes a
+compile barrier, not the entire source shape. Primary reconstruction separately
+reaches **872/872, 99.6789%** with natural result/character/player arrays and the
+external `abs` interface; do not credit that manual reconstruction to m2c.
+
+Two actual-header gaps are also fixed in the existing preparer:
+
+- Builtin-only declaration fallback now reaches the compiler prefix as well as
+  m2c context. Historical saf `exp` proved why: m2c omitted its redeclaration,
+  leaving the compiler without `double exp(double)`. Equivalent extern/spacing
+  duplicates are accepted; conflicting prototypes and provider bodies are not.
+- When the target explicitly calls external `abs`, an active private-prefix
+  `abs` macro is disabled and the exact existing MSL prototype is retained.
+  The m657 preprocessing replay changes two `__abs` expansions back to two
+  `abs` calls. Other macros and shared headers are untouched.
+
+Installed eabi5 passes **515 tests** (413 end-to-end and 102 unit), including
+14 new array-bound cases; preparer/freezer passes13. One earlier default-parallel
+installed run returned514/515 with its failure text truncated; the captured
+four-worker run passed515/515 without edits. No intermittent-parser fix is
+claimed. Keep bounded captured diagnostics rather than masking such failures.
+
+The companion `pool_reloc_summary.py` change distinguishes proven split-symbol
+annotation equivalence from actual literal/type changes. It does not alter
+objdiff scores, physical receipts, source selection or promotion requirements.
+The active m657 reconstruction has23 zero-row functions among30 implemented
+symbols; it remains an incomplete module with no new whole-owner closure.

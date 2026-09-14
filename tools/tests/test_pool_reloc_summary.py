@@ -102,6 +102,44 @@ def _report() -> dict[str, object]:
     return {"left": {"symbols": target_symbols}, "right": {"symbols": candidate_symbols}}
 
 
+def _split_annotation_report(width: int = 1) -> dict[str, object]:
+    raw = bytes.fromhex("12345678")
+    def side(split):
+        label = "lbl_color" if split else "@color"
+        rows = []
+        for opcode, reloc in (("lis", "R_PPC_ADDR16_HA"), ("addi", "R_PPC_ADDR16_LO")):
+            suffix = "@ha" if opcode == "lis" else "@l"
+            formatted = f"lis r3, {label}{suffix}" if opcode == "lis" else f"addi r3, r3, {label}{suffix}"
+            row = _instruction(formatted, 3, type_name=reloc)
+            row.pop("diff_kind")
+            row["instruction"].update(size=4, parts=[{"opcode": {"mnemonic": opcode}},
+                {"arg": {"opaque": "r3"}}, {"arg": {"reloc": True}}, {"basic": suffix}])
+            row["instruction"]["relocation"]["type"] = 6 if opcode == "lis" else 4
+            rows.append(row)
+        for offset in range(0, 4, width):
+            opcode = "lbz" if width == 1 else "lhz"
+            owner = 4 if split and offset else 3
+            addend = offset - width if split and offset else offset
+            row = _instruction(f"{opcode} r0, 0x{offset:x}(r3)", owner,
+                               type_name="R_PPC_NONE", addend=addend)
+            row["instruction"].update(size=4, parts=[{"opcode": {"mnemonic": opcode}},
+                {"arg": {"opaque": "r0"}}, {"arg": {"signed": str(offset)}},
+                {"arg": {"opaque": "r3"}}])
+            if offset == 0:
+                row.pop("diff_kind")
+            rows.append(row)
+        function = {"name": "Split", "kind": "SYMBOL_FUNCTION", "size": str(len(rows) * 4),
+                    "instructions": rows, "target_symbol": 1}
+        symbols = [{"name": "[.text]", "kind": "SYMBOL_SECTION"}, function,
+                   {"name": "[.rodata]", "kind": "SYMBOL_SECTION", "size": "4"}]
+        symbols.append(_symbol(label, raw[:width] if split else raw, 0))
+        if split:
+            symbols.append(_symbol("gap_rodata", raw[width:], width))
+        return {"symbols": symbols, "sections": [{"name": ".rodata", "size": "4",
+                "data_diff": [{"size": "4", "data": base64.b64encode(raw).decode()}]}]}
+    return {"left": side(True), "right": side(False)}
+
+
 def _chronology_report() -> dict[str, object]:
     target_symbols: list[dict[str, object]] = [
         {"name": "[.text]", "kind": "SYMBOL_SECTION"},
@@ -285,6 +323,131 @@ def _external_data_report() -> dict[str, object]:
 
 
 class PoolRelocSummaryTests(unittest.TestCase):
+    @staticmethod
+    def address_extent_report():
+        report = _split_annotation_report()
+        for key, side in report.items():
+            side["symbols"][1]["instructions"] = side["symbols"][1]["instructions"][:2]
+            side["symbols"][2]["name"] = "[.data]"
+            raw = b"winnner : %d\n\0" + (b"\0\0" if key == "left" else b"")
+            side["symbols"][3:] = [_symbol("lbl_string" if key == "left" else "@string", raw, 84)]
+            side["sections"] = []  # The pointee extent cannot be proved from HA/LO alone.
+        return report
+
+    def test_undiffed_data_address_extent_is_unknown_not_load_type_mismatch(self):
+        for reverse in (False, True):
+            report = self.address_extent_report()
+            if reverse:
+                report["left"], report["right"] = report["right"], report["left"]
+            result = module.decode_function(report, "Split")
+            self.assertEqual(result["summary"]["classification_counts"], {"unresolved_pool_bytes": 2})
+            self.assertEqual(result["summary"]["semantic_or_contract_mismatch_count"], 0)
+            self.assertEqual(result["summary"]["annotation_equivalent_count"], 0)
+            self.assertFalse(result["authority_advanced"])
+            reference = result["groups"][0]["target"]["effective_reference"]
+            self.assertEqual(reference["section_offset"], 84)
+            self.assertEqual(reference["reason"], "address_materialization_does_not_establish_pointee_extent")
+
+    def test_data_address_extent_does_not_hide_known_bytes_or_relocation_changes(self):
+        for mutation in ("bytes", "diff_kind", "addend", "instruction"):
+            with self.subTest(mutation=mutation):
+                report = self.address_extent_report()
+                side = report["right"]
+                if mutation == "bytes":
+                    side["symbols"][3] = _symbol("@string", b"changed : %d\n\0", 84)
+                else:
+                    row = side["symbols"][1]["instructions"][0]
+                    if mutation == "diff_kind":
+                        row["diff_kind"] = "DIFF_ARG_MISMATCH"
+                    elif mutation == "addend":
+                        row["instruction"]["relocation"]["addend"] = 1
+                    else:
+                        row["instruction"]["parts"][1]["arg"]["opaque"] = "r4"
+                result = module.decode_function(report, "Split")
+                self.assertGreater(result["summary"]["semantic_or_contract_mismatch_count"], 0)
+                self.assertEqual(result["summary"]["annotation_equivalent_count"], 0)
+
+    def test_split_byte_color_annotation_is_diagnostic_not_semantic_or_exact(self):
+        result = module.decode_function(_split_annotation_report(), "Split")
+        self.assertEqual(result["summary"]["classification_counts"], {
+            "split_owner_address_equivalent": 2, "synthetic_annotation_equivalent": 4})
+        self.assertEqual(result["summary"]["semantic_or_contract_mismatch_count"], 0)
+        self.assertEqual(result["summary"]["annotation_equivalent_count"], 6)
+        self.assertFalse(result["authority_advanced"])
+        load = next(g for g in result["groups"] if g["classification"] == "synthetic_annotation_equivalent"
+                    and g["target"]["effective_reference"]["section_offset"] == 1)
+        self.assertEqual(load["target"]["effective_reference"]["access_bytes"], "34")
+        self.assertEqual(load["target"]["relocation"]["addend"], 0)
+        self.assertEqual(load["candidate"]["relocation"]["addend"], 1)
+        self.assertIn("link proof remain required", load["recommended_source_axis"])
+
+    def test_split_short_array_resolves_actual_second_element_width(self):
+        result = module.decode_function(_split_annotation_report(2), "Split")
+        self.assertEqual(result["summary"]["classification_counts"], {
+            "split_owner_address_equivalent": 2, "synthetic_annotation_equivalent": 2})
+        load = next(g for g in result["groups"] if g["classification"] == "synthetic_annotation_equivalent"
+                    and g["target"]["effective_reference"]["section_offset"] == 2)
+        self.assertEqual(load["target"]["effective_reference"]["access_width_bytes"], 2)
+        self.assertEqual(load["target"]["effective_reference"]["access_bytes"], "5678")
+
+    def test_split_annotation_reads_small_window_past_sparse_zero_address_object(self):
+        report = _split_annotation_report(2)
+        for side in report.values():
+            for symbol in side["symbols"]:
+                if symbol.get("kind") == "SYMBOL_OBJECT":
+                    symbol["address"] = str(int(symbol["address"]) + 104)
+            leading = _symbol("pad_zero", bytes(8), 0)
+            leading.pop("address")  # Proto JSON elides the zero scalar.
+            side["symbols"].append(leading)
+            raw = bytes(104) + bytes.fromhex("12345678") + bytes(84)
+            side["sections"][0].update(size="192", data_diff=[{
+                "size": "192", "data": base64.b64encode(raw).decode()}])
+        result = module.decode_function(report, "Split")
+        self.assertEqual(result["summary"]["annotation_equivalent_count"], 4)
+        self.assertEqual(result["summary"]["semantic_or_contract_mismatch_count"], 0)
+
+    def test_split_annotation_changed_actual_bytes_remain_a_literal_mismatch(self):
+        report = _split_annotation_report(2)
+        raw = bytes.fromhex("12345679")
+        report["right"]["symbols"][3]["data_diff"][0]["data"] = base64.b64encode(raw).decode()
+        report["right"]["sections"][0]["data_diff"][0]["data"] = base64.b64encode(raw).decode()
+        result = module.decode_function(report, "Split")
+        self.assertEqual(result["summary"]["annotation_equivalent_count"], 0)
+        self.assertEqual(result["summary"]["classification_counts"], {"literal_value_mismatch": 4})
+        self.assertEqual(result["summary"]["semantic_or_contract_mismatch_count"], 4)
+
+    def test_split_annotation_unknown_extent_or_ambiguous_bytes_stays_unknown(self):
+        for mutation in ("extent", "section", "overlap", "contradiction"):
+            with self.subTest(mutation=mutation):
+                report = _split_annotation_report(2)
+                if mutation == "extent":
+                    report["left"]["symbols"][4].pop("size")
+                elif mutation == "section":
+                    report["left"]["sections"][0].pop("data_diff")
+                elif mutation == "overlap":
+                    report["left"]["symbols"].append(_symbol("alias", b"\x56\x78", 2))
+                else:
+                    report["left"]["sections"][0]["data_diff"][0]["data"] = "EjRWeQ=="
+                result = module.decode_function(report, "Split")
+                self.assertEqual(result["summary"]["annotation_equivalent_count"], 0)
+                self.assertEqual(result["summary"]["unresolved_value_or_contract_count"], 4)
+                self.assertEqual(result["summary"]["semantic_or_contract_mismatch_count"], 0)
+
+    def test_split_annotation_does_not_suppress_changed_instruction_or_effective_offset(self):
+        for mutation in ("instruction", "offset", "real_relocation"):
+            with self.subTest(mutation=mutation):
+                report = _split_annotation_report(2)
+                row = report["right"]["symbols"][1]["instructions"][3]
+                if mutation == "instruction":
+                    row["instruction"]["formatted"] = "lhz r0, 0x0(r3)"
+                    row["instruction"]["parts"][2]["arg"]["signed"] = "0"
+                elif mutation == "offset":
+                    row["instruction"]["relocation"]["addend"] = 0
+                else:
+                    row["instruction"]["relocation"].update(type_name="R_PPC_ADDR16_LO", type=4)
+                result = module.decode_function(report, "Split")
+                self.assertGreater(result["summary"]["semantic_or_contract_mismatch_count"], 0)
+
     def test_decodes_owner_only_groups_and_mwcc_bias(self) -> None:
         result = module.decode_function(_report(), "PoolFocus")
         self.assertEqual(result["schema"], module.SCHEMA)

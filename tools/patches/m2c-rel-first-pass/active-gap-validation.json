@@ -1,0 +1,273 @@
+{
+  "schema": "rel_active_gap_acceptance/v1",
+  "matching_credit": false,
+  "scope": "Targeted compiler/diagnostic tests and separately retained partial source; no whole-owner closure.",
+  "package": {
+    "path": "tools/patches/m2c-rel-first-pass/manifest.json",
+    "sha256": "3d613925be9768158ecc4a7e30a88f9fb47f6560bcdc1db04e80ab63588317dc",
+    "bytes": 15242
+  },
+  "installed": "C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi5/m2c.py",
+  "tests": {
+    "installed_passed": 515,
+    "installed_log": {
+      "path": "build/rel-gap-fixes/eabi5-installed-tests.log",
+      "sha256": "e67631c00c89af00ff600650fa4338923d937d8109cf21a3f5b2956892c5bd75",
+      "bytes": 18295
+    },
+    "initial_default_parallel_run": "514/515; failed-case text truncated and cause unresolved",
+    "workflow_focused_passed": 62
+  },
+  "stack_array": {
+    "receipt": {
+      "path": "build/rel-gap-fixes/stack-array-actual-header/result.json",
+      "sha256": "49803ca368a5fdfe46aee0298d71037b66c63bfc4c4b08f4731e3c9a4a738ebb",
+      "bytes": 8458
+    },
+    "inputs": {
+      "D:\\Games\\Emulation\\GameCube-Wii\\mp6-board-single-final-astra-20260911\\build\\rel-first-compile-20260913\\inputs\\m657Dll.s": "35a7f518ab4adc7831af7183902a0283c648265b73dd1f0ead65c507da0050e5",
+      "D:\\Games\\Emulation\\GameCube-Wii\\mp6-project-board-star-proof-20260911\\build\\GP6E01\\m657Dll\\m657Dll.plf": "7fc2220955e2b582bda7435c0848e19d238ea0325edb580249e86727f4527073",
+      "D:\\Games\\Emulation\\GameCube-Wii\\mp6-board-single-final-astra-20260911\\build\\rel-gap-fixes\\stack-array-actual-header\\provider-calls.i": "64daf585cd7e0c81b7704650c02efe857abd7103ce883b7679d5e410b3164ef8",
+      "D:\\Games\\Emulation\\GameCube-Wii\\mp6-board-single-final-astra-20260911\\build\\rel-gap-fixes\\stack-array-actual-header\\provider-calls-prefix.h": "ace16d8b690241b46355b4d14e4c4b52e9aacb60566fcb85652d97116eb78024",
+      "D:\\Games\\Emulation\\GameCube-Wii\\mp6-board-single-final-astra-20260911\\include\\REL\\m657Dll.h": "2a594038a1555cd3f157892696491719fa9dfe82c1a502ce03b3b51881493195"
+    },
+    "cases": [
+      {
+        "case": "before",
+        "translator": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-eabi4\\m2c.py",
+        "translator_exit": 0,
+        "source_sha256": "28d14e2fa373dcf27f1c2540f499a8ed38f06b31dc327555fcf9797fd53271c7",
+        "compile_exit": 2,
+        "diagnostic": "### mwcceppc.exe Compiler:\n#    File: ..\\mp6-board-single-final-astra-20260911\\build\\rel-gap-fixes\\stack-array-actual-header\\before.c\n# -----------------------------------------------------------------------------\n#      42:      s32 sp10[];\n#   Error:                ^\n#   data type is incomplete\n#   Too many errors printed, aborting program\n\nUser break, cancelled...\n"
+      },
+      {
+        "case": "after",
+        "translator": "D:\\Games\\Emulation\\GameCube-Wii\\mp6-board-single-final-astra-20260911\\build\\rel-gap-fixes\\m2c\\m2c.py",
+        "translator_exit": 0,
+        "source_sha256": "7cbcba15319b6d5c6cf907ca4ca4b779529afd595a61b3c0b092dbe1581548d9",
+        "compile_exit": 0,
+        "diagnostic": "",
+        "object_sha256": "c6734eb9a270580e7cb75c90a35e033164e7b0fa4aa1ad160649cdeffb839a97",
+        "target_bytes": "872",
+        "candidate_bytes": "856",
+        "raw_match": 87.7156,
+        "diff_rows": 70
+      }
+    ]
+  },
+  "prefix": {
+    "exp": {
+      "path": "build/rel-gap-fixes/context-preflight/saf-double-prefix4/evidence.json",
+      "sha256": "cfaebfd1d3f1fd7142221113ba3b93d26d9785449949b050d0023c4a2418d9d4",
+      "bytes": 3589
+    },
+    "abs": {
+      "path": "build/rel-gap-fixes/context-preflight/m657-abs-macro4/evidence.json",
+      "sha256": "3c38028b620dd18e1d7bc8fb9654c8608bda9b9a8485995a6730d7d087b652a8",
+      "bytes": 3578
+    },
+    "actual_compiler_preprocessing": true,
+    "inferred_header_abi": false
+  },
+  "pool": {
+    "receipt": {
+      "path": "build/minigame-recovery-20260913/m657/pool-annotation-diagnostic-replay.json",
+      "sha256": "e1c83a53304a0e16a7ffbcea02965f05f40cd39124871ef63c25b5d70786e294",
+      "bytes": 5830
+    },
+    "functions": [
+      {
+        "function": "fn_1_5C8",
+        "before": {
+          "classification_counts": {
+            "literal_type_mismatch": 3,
+            "relocation_addend_mismatch": 3
+          },
+          "paired_or_unpaired_rows": 6,
+          "semantic_or_contract_mismatch_count": 6,
+          "unresolved_value_or_contract_count": 0,
+          "value_equivalent_owner_only_count": 0
+        },
+        "after": {
+          "annotation_equivalent_count": 6,
+          "classification_counts": {
+            "split_owner_address_equivalent": 2,
+            "synthetic_annotation_equivalent": 4
+          },
+          "paired_or_unpaired_rows": 6,
+          "semantic_or_contract_mismatch_count": 0,
+          "unresolved_value_or_contract_count": 0,
+          "value_equivalent_owner_only_count": 0
+        }
+      },
+      {
+        "function": "fn_1_784",
+        "before": {
+          "classification_counts": {
+            "literal_type_mismatch": 3,
+            "relocation_addend_mismatch": 3
+          },
+          "paired_or_unpaired_rows": 6,
+          "semantic_or_contract_mismatch_count": 6,
+          "unresolved_value_or_contract_count": 0,
+          "value_equivalent_owner_only_count": 0
+        },
+        "after": {
+          "annotation_equivalent_count": 6,
+          "classification_counts": {
+            "split_owner_address_equivalent": 2,
+            "synthetic_annotation_equivalent": 4
+          },
+          "paired_or_unpaired_rows": 6,
+          "semantic_or_contract_mismatch_count": 0,
+          "unresolved_value_or_contract_count": 0,
+          "value_equivalent_owner_only_count": 0
+        }
+      },
+      {
+        "function": "fn_1_D28",
+        "before": {
+          "classification_counts": {
+            "literal_type_mismatch": 10,
+            "relocation_addend_mismatch": 2
+          },
+          "paired_or_unpaired_rows": 12,
+          "semantic_or_contract_mismatch_count": 12,
+          "unresolved_value_or_contract_count": 0,
+          "value_equivalent_owner_only_count": 0
+        },
+        "after": {
+          "annotation_equivalent_count": 8,
+          "classification_counts": {
+            "split_owner_address_equivalent": 4,
+            "synthetic_annotation_equivalent": 4,
+            "unresolved_pool_bytes": 4
+          },
+          "paired_or_unpaired_rows": 12,
+          "semantic_or_contract_mismatch_count": 0,
+          "unresolved_value_or_contract_count": 4,
+          "value_equivalent_owner_only_count": 0
+        }
+      }
+    ],
+    "diagnostic_only": true
+  },
+  "retained_source": {
+    "source": {
+      "path": "src/REL/m657Dll/m657.c",
+      "sha256": "ecdf6cd74fb6acded3ff8a6ea776d4c39e663f0ab2ed65c8e82f14b2ac2aed46",
+      "bytes": 12487
+    },
+    "header": {
+      "path": "include/REL/m657Dll.h",
+      "sha256": "2a594038a1555cd3f157892696491719fa9dfe82c1a502ce03b3b51881493195",
+      "bytes": 2452
+    },
+    "object": {
+      "path": "build/minigame-recovery-20260913/m657/m657.o",
+      "sha256": "d8878c6b89d0e4183b7953a9791b8b59a5fce1147b98870e27866fa116c12eec",
+      "bytes": 18576
+    },
+    "report": {
+      "path": "build/minigame-recovery-20260913/m657/m657-report.json",
+      "sha256": "0ba959f06ffb40c2636b28c740dbb31300cb88ac32fd69f03161939063d1d11d",
+      "bytes": 1925939
+    },
+    "zero_row_symbols": [
+      {
+        "name": "fn_1_0",
+        "bytes": 108
+      },
+      {
+        "name": "fn_1_6C",
+        "bytes": 4
+      },
+      {
+        "name": "fn_1_70",
+        "bytes": 76
+      },
+      {
+        "name": "fn_1_258",
+        "bytes": 404
+      },
+      {
+        "name": "fn_1_3EC",
+        "bytes": 4
+      },
+      {
+        "name": "fn_1_3F0",
+        "bytes": 56
+      },
+      {
+        "name": "fn_1_428",
+        "bytes": 16
+      },
+      {
+        "name": "fn_1_438",
+        "bytes": 396
+      },
+      {
+        "name": "fn_1_5C4",
+        "bytes": 4
+      },
+      {
+        "name": "fn_1_6E0",
+        "bytes": 4
+      },
+      {
+        "name": "fn_1_B10",
+        "bytes": 196
+      },
+      {
+        "name": "fn_1_C74",
+        "bytes": 44
+      },
+      {
+        "name": "fn_1_CA0",
+        "bytes": 136
+      },
+      {
+        "name": "fn_1_1090",
+        "bytes": 1236
+      },
+      {
+        "name": "fn_1_1564",
+        "bytes": 84
+      },
+      {
+        "name": "fn_1_15B8",
+        "bytes": 4
+      },
+      {
+        "name": "fn_1_15BC",
+        "bytes": 4
+      },
+      {
+        "name": "fn_1_4E58",
+        "bytes": 136
+      },
+      {
+        "name": "fn_1_4EE0",
+        "bytes": 4
+      },
+      {
+        "name": "fn_1_5020",
+        "bytes": 116
+      },
+      {
+        "name": "fn_1_5094",
+        "bytes": 436
+      },
+      {
+        "name": "fn_1_5248",
+        "bytes": 460
+      },
+      {
+        "name": "fn_1_5414",
+        "bytes": 4
+      }
+    ],
+    "whole_module_complete": false,
+    "linked_proof_complete": false
+  }
+}
