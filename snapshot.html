@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Mario Party 6 recovery ledger with module coverage and function evidence"
+    />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23151e26%22%2F%3E%3Cpath%20d%3D%22M8%2023V15h4v8zm6%200V10h4v13zm6%200V6h4v17z%22%20fill%3D%22%2365d6b3%22%2F%3E%3C%2Fsvg%3E" />
+    <title>Snapshot &amp; counting | MP6 Recovery Ledger</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body data-page="snapshot">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <div class="app-shell">
+      <header class="masthead">
+        <div class="masthead-grid">
+          <div>
+            <h1><a class="brand-link" href="./">Mario Party 6 recovery</a></h1>
+            <p class="masthead-copy">Delivered main · GP6E01</p>
+            <p class="connection-state" id="connection-state" data-tone="muted">Reading published snapshot</p>
+          </div>
+
+          <div class="masthead-actions">
+            <button class="button button-primary" id="refresh-button" type="button">
+              <span aria-hidden="true">↻</span>
+              Reload snapshot
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="./">Overview</a>
+        <a href="./dol.html">DOL</a>
+        <a href="./modules.html">Modules</a>
+        <a href="./snapshot.html" aria-current="page">Snapshot</a>
+      </nav>
+
+      <div class="app-banner" id="app-banner" role="status" aria-live="polite" hidden></div>
+
+      <main id="main-content" aria-busy="true" tabindex="-1">
+        <section class="section-intro" aria-labelledby="snapshot-heading">
+          <p class="section-index">SNAPSHOT</p>
+          <h2 id="snapshot-heading">Snapshot &amp; counting</h2>
+          <p>Source commit, capture time, and how recovery is measured.</p>
+        </section>
+
+        <section class="receipt-band" aria-labelledby="receipt-heading">
+          <div class="section-intro receipt-intro">
+            <p class="section-index">SOURCE</p>
+            <h2 id="receipt-heading">The commit in view</h2>
+            <p>Every page uses this committed main snapshot.</p>
+          </div>
+
+          <dl class="receipt-list">
+            <div class="receipt-item receipt-commit">
+              <dt>Main commit</dt>
+              <dd>
+                <code id="receipt-commit">Unavailable</code>
+                <span class="receipt-subline" id="receipt-subject">No snapshot loaded</span>
+              </dd>
+            </div>
+            <div class="receipt-item">
+              <dt>Committed at</dt>
+              <dd>
+                <time id="receipt-committed-at">Unavailable</time>
+                <span class="receipt-subline mono" id="receipt-committed-raw">—</span>
+              </dd>
+            </div>
+            <div class="receipt-item">
+              <dt>Snapshot captured</dt>
+              <dd>
+                <time id="receipt-refreshed-at">Unavailable</time>
+                <span class="receipt-subline mono" id="receipt-refreshed-raw">—</span>
+              </dd>
+            </div>
+            <div class="receipt-item receipt-remote">
+              <dt>Snapshot source</dt>
+              <dd>
+                <span id="receipt-remote">Unavailable</span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <details class="counting-note" id="counting-note" hidden>
+          <summary>
+            <span>How progress is counted</span>
+            <span class="counting-note-status" id="counting-note-status">Reconciliation unavailable</span>
+            <span class="counting-note-chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="counting-note-body" id="counting-note-body"></div>
+        </details>
+
+        <p class="snapshot-explanation">
+          Completion means committed source-selection evidence. It is not an
+          independent byte-identical proof; original-object fallback is excluded.
+          Data coverage includes initialized data and BSS. A BSS gate may keep a
+          module partial even when its displayed data percentage is high.
+        </p>
+      </main>
+
+      <footer class="app-footer">
+        <p>Published recovery snapshot.</p>
+        <a href="./snapshot.html">Snapshot &amp; counting details</a>
+      </footer>
+    </div>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

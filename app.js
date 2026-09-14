@@ -1,6 +1,19 @@
 (() => {
   "use strict";
 
+  const page = document.body?.dataset.page || "overview";
+  const legacyPages = {
+    "#dol-ledger": "./dol.html",
+    "#library": "./modules.html",
+    "#receipt-heading": "./snapshot.html",
+    "#counting-note": "./snapshot.html",
+  };
+  const legacyTarget = page === "overview" && legacyPages[window.location?.hash];
+  if (legacyTarget) {
+    window.location.replace(new URL(legacyTarget, window.location.href));
+    return;
+  }
+
   const SNAPSHOT_ENDPOINT = "./snapshot.json";
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const resultAnimations = new WeakMap();
@@ -124,6 +137,7 @@
 
   const elements = {
     main: document.getElementById("main-content"),
+    pageLoading: document.getElementById("page-loading"),
     banner: document.getElementById("app-banner"),
     connection: document.getElementById("connection-state"),
     refresh: document.getElementById("refresh-button"),
@@ -851,6 +865,7 @@
   }
 
   function renderModuleList(snapshot) {
+    if (!elements.moduleList) return;
     const allModules = snapshot?.modules || [];
     const filtered = filteredModules().sort(moduleSort);
     const hasSnapshot = state.hasLoaded && Boolean(snapshot);
@@ -944,7 +959,7 @@
   }
 
   function renderDetail(module) {
-    if (!elements.detailContent || !elements.detailPlaceholder) return;
+    if (!elements.detail || !elements.detailContent || !elements.detailPlaceholder) return;
     cancelDetailExit();
     if (!module) {
       elements.detailPlaceholder.hidden = false;
@@ -1032,6 +1047,12 @@
     renderSummary(snapshot);
     renderCountingNote(snapshot);
     renderDolLedger(snapshot);
+    if (elements.pageLoading) {
+      elements.pageLoading.hidden = Boolean(dolModule(snapshot));
+      elements.pageLoading.textContent = state.hasLoaded
+        ? "No DOL breakdown is available in this snapshot."
+        : "Loading the DOL breakdown…";
+    }
     renderModuleList(snapshot);
     renderDetail(state.modules.find((module) => module.id === state.selectedId) || null);
   }
@@ -1227,7 +1248,7 @@
   }
 
   function registerPageTools() {
-    if (!document.modelContext?.registerTool) return;
+    if (!elements.moduleList || !elements.detail || !document.modelContext?.registerTool) return;
     const lifecycle = new AbortController();
     window.addEventListener("pagehide", () => lifecycle.abort(), { once: true });
     const tool = {

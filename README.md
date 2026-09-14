@@ -8,6 +8,11 @@ then **gh-pages** and **/(root)**.
 
 Expected project-site address: https://iirg4x.github.io/marioparty6/
 
+Pages: [overview](https://iirg4x.github.io/marioparty6/),
+[DOL breakdown](https://iirg4x.github.io/marioparty6/dol.html),
+[module library](https://iirg4x.github.io/marioparty6/modules.html), and
+[snapshot/counting details](https://iirg4x.github.io/marioparty6/snapshot.html).
+
 The dashboard uses relative asset URLs so it also works below the repository path.
 No build or dependencies are required. The `.nojekyll` file disables Jekyll processing.
 

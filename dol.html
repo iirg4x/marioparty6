@@ -8,10 +8,10 @@
       content="Mario Party 6 recovery ledger with module coverage and function evidence"
     />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23151e26%22%2F%3E%3Cpath%20d%3D%22M8%2023V15h4v8zm6%200V10h4v13zm6%200V6h4v17z%22%20fill%3D%22%2365d6b3%22%2F%3E%3C%2Fsvg%3E" />
-    <title>Overview | MP6 Recovery Ledger</title>
+    <title>DOL breakdown | MP6 Recovery Ledger</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body data-page="overview">
+  <body data-page="dol">
     <a class="skip-link" href="#main-content">Skip to content</a>
 
     <div class="app-shell">
@@ -33,8 +33,8 @@
       </header>
 
       <nav class="site-nav" aria-label="Main navigation">
-        <a href="./" aria-current="page">Overview</a>
-        <a href="./dol.html">DOL</a>
+        <a href="./">Overview</a>
+        <a href="./dol.html" aria-current="page">DOL</a>
         <a href="./modules.html">Modules</a>
         <a href="./snapshot.html">Snapshot</a>
       </nav>
@@ -42,22 +42,22 @@
       <div class="app-banner" id="app-banner" role="status" aria-live="polite" hidden></div>
 
       <main id="main-content" aria-busy="true" tabindex="-1">
-        <section class="coverage-section" aria-labelledby="coverage-heading">
-          <div class="section-heading-row">
-            <div class="section-intro">
-              <p class="section-index">OVERVIEW</p>
-              <h2 id="coverage-heading">Recovery overview</h2>
-              <p>Whole-game progress at a glance. Open DOL or Modules to explore the details.</p>
-            </div>
-            <p class="coverage-aside" id="coverage-aside">Awaiting committed evidence</p>
-          </div>
-          <div class="summary-ribbon" id="summary-ribbon" aria-live="polite"></div>
-        </section>
+        <div class="page-loading" id="page-loading" role="status">Loading the DOL breakdown…</div>
 
-        <div class="page-shortcuts" aria-label="Explore the ledger">
-          <a class="button button-primary" href="./dol.html">Explore DOL</a>
-          <a class="button button-quiet" href="./modules.html">Browse modules</a>
-        </div>
+        <section class="dol-section" id="dol-ledger" aria-labelledby="dol-heading" hidden></section>
+
+        <dialog class="detail-panel" id="module-detail" aria-labelledby="detail-heading" tabindex="-1">
+          <div class="detail-placeholder" id="detail-placeholder">
+            <span class="detail-mark" aria-hidden="true">＋</span>
+            <p class="section-index">MODULE DETAIL</p>
+            <h3>Select a whole module</h3>
+            <p>
+              The selected source owners, functions, metrics, and evidence
+              will appear here.
+            </p>
+          </div>
+          <div id="detail-content" hidden></div>
+        </dialog>
       </main>
 
       <footer class="app-footer">
