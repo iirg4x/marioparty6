@@ -10,12 +10,12 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 22.70% | 43.61% |
+| Entire project | 22.86% | 43.70% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 8.90% | 8.61% |
+| REL modules | 9.10% | 8.75% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**4 are fully source-selected** (`m616dll`, `m621dll`, `m651dll`, `m670dll`) and **78 remain**. This scope is distinct
+**5 are fully source-selected** (`m616dll`, `m621dll`, `m635dll`, `m651dll`, `m670dll`) and **77 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,13 +23,14 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m621dll is now fully source-selected**: all 24,008 code bytes and 1,410
-data/BSS bytes come from four source objects, with no original-object fallback.
-All 65 application functions and their effective physical relocations match;
-the rebuilt REL is byte-identical to retail. Unaccessed record bytes remain
-explicitly unknown, and an unreferenced three-float initializer has an inferred
-vector type rather than a claimed original name or type. m651 and m670 retain
-their previously disclosed uncertainty about unused storage capacities.
+**m635dll is now fully source-selected**: all 20,224 code bytes and 1,668
+data/BSS bytes come from five source objects, with no original-object fallback.
+All 52 application functions and their effective physical relocations match;
+the rebuilt REL is byte-identical to retail. One unreferenced four-byte BSS
+interval is explicitly represented as unknown byte storage; its original type,
+purpose, and padding-versus-allocation identity remain unknown. Previously
+completed modules retain their disclosed uncertainty about unaccessed records,
+unused storage capacities, and inferred initializer types.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
 
