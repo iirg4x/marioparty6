@@ -49,6 +49,12 @@ The source revision and snapshot generation time are visible on the Snapshot pag
 Recovery completion follows committed source selection and range coverage; it is
 not an independent per-function objdiff or byte-identical binary proof.
 
+**Size units** switches coverage and function sizes between Auto, bytes, KB, MB,
+GB, and TB. Auto selects a readable unit for each value or ratio; fixed units apply
+across pages and module details. Units are decimal (1 KB = 1,000 bytes), and exact
+byte counts remain available on each value. The preference is saved in the browser;
+changing it preserves filters, expanded details, and the shared snapshot.
+
 ## Cleanup Index
 
 Cleanup candidates can be searched and filtered by file, family, and category,

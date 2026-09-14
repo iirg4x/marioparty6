@@ -25,6 +25,17 @@
           </div>
 
           <div class="masthead-actions">
+            <label class="size-unit-control">
+              <span>Size units</span>
+              <select id="size-unit-select" data-size-unit-select title="Decimal units: 1 KB = 1,000 bytes. Exact byte counts are available on each value.">
+                <option value="auto">Auto</option>
+                <option value="B">Bytes</option>
+                <option value="KB">KB</option>
+                <option value="MB">MB</option>
+                <option value="GB">GB</option>
+                <option value="TB">TB</option>
+              </select>
+            </label>
             <button class="button button-primary" id="refresh-button" type="button" disabled aria-busy="true">
               <span class="button-spinner" aria-hidden="true"></span>
               <span>Check for updates</span>

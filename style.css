@@ -48,6 +48,10 @@ h5 { font-size: 13px; font-weight: 600; }
 .masthead-grid { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .masthead-copy { margin-top: 6px; color: var(--muted); font-size: 13px; }
 .masthead-actions { display: flex; align-items: center; gap: 20px; }
+.size-unit-control { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.size-unit-control select { width: 88px; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--control); color: var(--text); font-size: 13px; cursor: pointer; }
+.size-unit-control select:hover { border-color: #506575; }
+.detail-size-control { display: flex; justify-content: flex-end; margin-top: 14px; }
 .local-note { display: flex; align-items: center; gap: 7px; color: var(--secondary); font-size: 12px; white-space: nowrap; }
 .local-mark { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
 .connection-state { color: var(--muted); font-size: 12px; }
@@ -270,7 +274,7 @@ summary::-webkit-details-marker { display: none; }
 @media (max-width: 580px) {
   .masthead { padding-top: 20px; }
   .masthead-grid { flex-wrap: wrap; gap: 16px; }
-  .masthead-actions { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
+  .masthead-actions { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
   .summary-ribbon { grid-template-columns: minmax(0,1fr); gap: 12px; }
   .summary-entry { padding: 18px; }
   .summary-entry-head > span { display: block; }
@@ -520,6 +524,7 @@ body.dialog-open { overflow: hidden; }
 
 /* These placeholders ship in the HTML, before the script or snapshot loads. */
 #main-content { min-height: calc(100svh - 300px); }
+#main-content:focus { outline: none; }
 #refresh-button > span[aria-hidden] { width: 13px; flex: 0 0 13px; }
 .skeleton-line, .skeleton-label, .skeleton-value, .skeleton-title,
 .skeleton-control, .skeleton-button { display: block; width: 100%; height: 12px; border-radius: 4px; background: #263641; }

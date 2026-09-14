@@ -18,10 +18,20 @@
   const SNAPSHOT_MANIFEST_ENDPOINT = "./snapshot-version.json";
   const SNAPSHOT_CACHE = "mp6-recovery-snapshot-v3";
   const SNAPSHOT_CHECK_INTERVAL = 5 * 60 * 1000;
+  const SIZE_UNIT_STORAGE_KEY = "mp6-recovery-size-unit";
+  const SIZE_UNITS = Object.freeze([
+    { key: "B", label: "B", factor: 1 },
+    { key: "KB", label: "KB", factor: 1e3 },
+    { key: "MB", label: "MB", factor: 1e6 },
+    { key: "GB", label: "GB", factor: 1e9 },
+    { key: "TB", label: "TB", factor: 1e12 },
+  ]);
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const resultAnimations = new WeakMap();
   let detailExit = null;
   let activeView = null;
+  let navigationViews = null;
+  let sizeUnitPreference = "auto";
   let snapshotRevision = 0;
   let pageToolLifecycle = null;
   let snapshotLoadPromise = null;
@@ -206,6 +216,7 @@
     const defaults = Object.fromEntries(viewFields.map((key) => [key, state[key]]));
     const views = new Map();
     const pendingViews = new Map();
+    navigationViews = views;
     let navigationId = 0;
     activeView = { main: elements.main, title: document.title, page, revision: -1, bound: true, filters: { ...defaults }, scroll: 0 };
     views.set(page, activeView);
@@ -327,6 +338,182 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
+  }
+
+  function normalizeSizeUnit(value) {
+    const normalized = asText(value).toUpperCase();
+    return normalized === "AUTO" || SIZE_UNITS.some((unit) => unit.key === normalized)
+      ? normalized === "AUTO" ? "auto" : normalized
+      : "auto";
+  }
+
+  function sizeUnitDefinition(value = sizeUnitPreference) {
+    if (value === "auto") return SIZE_UNITS[0];
+    return SIZE_UNITS.find((unit) => unit.key === value) || SIZE_UNITS[0];
+  }
+
+  function readSizeUnitPreference() {
+    try {
+      return normalizeSizeUnit(window.localStorage?.getItem(SIZE_UNIT_STORAGE_KEY));
+    } catch {
+      return "auto";
+    }
+  }
+
+  function persistSizeUnitPreference(value) {
+    try {
+      window.localStorage?.setItem(SIZE_UNIT_STORAGE_KEY, value);
+    } catch {
+      // Unit choice is a convenience; storage failures should not affect the ledger.
+    }
+  }
+
+  function chooseByteUnit(values, requested = sizeUnitPreference) {
+    const explicit = normalizeSizeUnit(requested);
+    if (explicit !== "auto") return sizeUnitDefinition(explicit);
+    const largest = values
+      .filter((value) => Number.isFinite(value))
+      .reduce((max, value) => Math.max(max, Math.abs(value)), 0);
+    let index = 0;
+    while (index < SIZE_UNITS.length - 1 && largest >= SIZE_UNITS[index + 1].factor) index += 1;
+    return SIZE_UNITS[index];
+  }
+
+  function formatScaledByteNumber(value, unit) {
+    if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+    if (value !== 0 && Math.abs(value / unit.factor) < 0.001) return "<0.001";
+    return (value / unit.factor).toLocaleString("en-US", {
+      maximumFractionDigits: unit.key === "B" ? 0 : 3,
+    });
+  }
+
+  function formatByteAmount(value, requested = sizeUnitPreference) {
+    const numeric = finiteNumber(value);
+    if (numeric === null) return "—";
+    const unit = requested && typeof requested === "object"
+      ? requested
+      : requested === "auto" ? chooseByteUnit([numeric]) : sizeUnitDefinition(requested);
+    return `${formatScaledByteNumber(numeric, unit)} ${unit.label}`;
+  }
+
+  function exactByteAmount(value) {
+    const numeric = finiteNumber(value);
+    return numeric === null ? "byte value unavailable" : `${formatNumber(numeric)} bytes`;
+  }
+
+  function exactByteRatio(matched, total) {
+    if (matched === null && total === null) return "Byte values unavailable";
+    if (total === 0) return "Byte values unavailable (zero-byte total)";
+    return `${exactByteAmount(matched)} / ${exactByteAmount(total)}`;
+  }
+
+  function byteRatioText(matched, total, requested = sizeUnitPreference) {
+    if (matched === null && total === null) return "Unavailable";
+    if (total === 0) return "Unavailable";
+    const unit = chooseByteUnit([matched, total], requested);
+    return `${formatByteAmount(matched, unit)} / ${formatByteAmount(total, unit)}`;
+  }
+
+  function metricRatio(metric) {
+    if (!metric) return "Unavailable";
+    return byteRatioText(metric.matched, metric.total);
+  }
+
+  function metricByteAttributes(metric, label, percent, ratio) {
+    const matched = metric.matched === null ? "" : metric.matched;
+    const total = metric.total === null ? "" : metric.total;
+    const exact = exactByteRatio(metric.matched, metric.total);
+    const accessible = `${label} ${percent}, ${ratio}. Exact: ${exact}.`;
+    return `data-byte-ratio data-byte-matched="${escapeHtml(matched)}" data-byte-total="${escapeHtml(total)}" data-byte-label="${escapeHtml(label)}" data-byte-percent="${escapeHtml(percent)}" title="${escapeHtml(exact)}" aria-label="${escapeHtml(accessible)}"`;
+  }
+
+  function sizeUnitOptionsHtml() {
+    const options = [
+      ["auto", "Auto"],
+      ["B", "Bytes"],
+      ["KB", "KB"],
+      ["MB", "MB"],
+      ["GB", "GB"],
+      ["TB", "TB"],
+    ];
+    return options.map(([value, label]) => `<option value="${value}"${sizeUnitPreference === value ? " selected" : ""}>${label}</option>`).join("");
+  }
+
+  function nodesMatching(root, selector) {
+    try {
+      return root?.querySelectorAll ? Array.from(root.querySelectorAll(selector)) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function byteValueNode(node) {
+    return node?.querySelector?.("[data-byte-value]") || node;
+  }
+
+  function updateByteRatioNode(node) {
+    const matched = finiteNumber(node.dataset?.byteMatched);
+    const total = finiteNumber(node.dataset?.byteTotal);
+    const label = asText(node.dataset?.byteLabel, "metric");
+    const percent = asText(node.dataset?.bytePercent, "Unavailable");
+    const ratio = byteRatioText(matched, total);
+    const exact = exactByteRatio(matched, total);
+    const value = byteValueNode(node);
+    if (value) value.textContent = ratio;
+    node.title = exact;
+    node.setAttribute?.("aria-label", `${label} ${percent}, ${ratio}. Exact: ${exact}.`);
+  }
+
+  function updateByteSizeNode(node) {
+    const bytes = finiteNumber(node.dataset?.bytes);
+    const label = asText(node.dataset?.byteLabel, "Function size");
+    const display = formatByteAmount(bytes);
+    const exact = exactByteAmount(bytes);
+    const value = byteValueNode(node);
+    if (value) value.textContent = display;
+    node.title = `${label}: ${exact}`;
+    node.setAttribute?.("aria-label", `${label}: ${exact}. Displayed as ${display}.`);
+  }
+
+  function syncSizeUnitControls(root = document) {
+    for (const control of nodesMatching(root, "[data-size-unit-select]")) {
+      control.value = sizeUnitPreference;
+      control.setAttribute?.("aria-label", "Size units");
+      control.title = "Decimal units: 1 KB = 1,000 bytes. Exact byte counts are available on each value.";
+    }
+  }
+
+  function sizeDisplayRoots() {
+    const roots = [document];
+    if (navigationViews?.values) {
+      for (const view of navigationViews.values()) {
+        const root = view?.main;
+        if (root && root !== elements.main && root.isConnected !== true) roots.push(root);
+      }
+    }
+    return Array.from(new Set(roots));
+  }
+
+  function applySizeUnitPreference() {
+    for (const root of sizeDisplayRoots()) {
+      syncSizeUnitControls(root);
+      for (const node of nodesMatching(root, "[data-byte-ratio]")) updateByteRatioNode(node);
+      for (const node of nodesMatching(root, "[data-byte-size]")) updateByteSizeNode(node);
+    }
+  }
+
+  function setSizeUnit(value) {
+    const next = normalizeSizeUnit(value);
+    sizeUnitPreference = next;
+    persistSizeUnitPreference(next);
+    applySizeUnitPreference();
+    return next;
+  }
+
+  function handleSizeUnitChange(event) {
+    const control = event.target?.closest?.("[data-size-unit-select]");
+    if (!control) return;
+    setSizeUnit(control.value);
   }
 
   function normalizeState(value) {
@@ -508,13 +695,6 @@
     return `${value.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
   }
 
-  function metricRatio(metric) {
-    if (!metric) return "Unavailable";
-    if (metric.matched === null && metric.total === null) return "Unavailable";
-    if (metric.total === 0) return "Unavailable";
-    return `${formatNumber(metric.matched)} / ${formatNumber(metric.total)}`;
-  }
-
   function metricHtml(metric, options = {}) {
     const label = options.label || "metric";
     if (!metric) {
@@ -522,11 +702,12 @@
     }
     const percent = formatPercent(metric.percent);
     const ratio = metricRatio(metric);
+    const attributes = metricByteAttributes(metric, label, percent, ratio);
     const meter = metric.percent === null
       ? '<span class="metric-meter is-unavailable" aria-hidden="true"><i></i></span>'
       : `<span class="metric-meter" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, metric.percent))}%"></i></span>`;
-    return `<span class="metric" aria-label="${escapeHtml(label)} ${escapeHtml(percent)}, ${escapeHtml(ratio)}">
-      <strong>${escapeHtml(percent)}</strong>${meter}<small>${escapeHtml(ratio)}</small>
+    return `<span class="metric" ${attributes}>
+      <strong>${escapeHtml(percent)}</strong>${meter}<small data-byte-value>${escapeHtml(ratio)}</small>
     </span>`;
   }
 
@@ -535,9 +716,12 @@
     if (!metric) {
       return `<span class="compact-metric compact-unavailable" aria-label="${escapeHtml(label)} unavailable">Unavailable</span>`;
     }
-    return `<span class="compact-metric" aria-label="${escapeHtml(label)} ${escapeHtml(formatPercent(metric.percent))}, ${escapeHtml(metricRatio(metric))}">
-      <strong>${escapeHtml(formatPercent(metric.percent))}</strong>
-      <small>${escapeHtml(metricRatio(metric))}</small>
+    const percent = formatPercent(metric.percent);
+    const ratio = metricRatio(metric);
+    const attributes = metricByteAttributes(metric, label, percent, ratio);
+    return `<span class="compact-metric" ${attributes}>
+      <strong>${escapeHtml(percent)}</strong>
+      <small data-byte-value>${escapeHtml(ratio)}</small>
     </span>`;
   }
 
@@ -1020,10 +1204,18 @@
   }
 
   function ownerFunctionHtml(fn) {
+    const size = fn.size === null
+      ? '<span class="function-size mono">size unavailable</span>'
+      : (() => {
+          const display = formatByteAmount(fn.size);
+          const exact = exactByteAmount(fn.size);
+          const label = `${fn.name} size`;
+          return `<span class="function-size mono" data-byte-size data-byte-value data-bytes="${escapeHtml(fn.size)}" data-byte-label="${escapeHtml(label)}" title="${escapeHtml(`${label}: ${exact}`)}" aria-label="${escapeHtml(`${label}: ${exact}. Displayed as ${display}.`)}">${escapeHtml(display)}</span>`;
+        })();
     return `<li class="function-line" data-function-state="${escapeHtml(fn.state)}">
       <span class="function-name mono" title="${escapeHtml(fn.name)}">${escapeHtml(fn.name)}</span>
       <span class="function-address mono">${escapeHtml(fn.address)}</span>
-      <span class="function-size mono">${fn.size === null ? "size unavailable" : `${escapeHtml(formatNumber(fn.size))} B`}</span>
+      ${size}
       ${functionStatePill(fn.state)}
     </li>`;
   }
@@ -1147,6 +1339,7 @@
       <div class="detail-metric"><span>Data coverage</span>${metricHtml(module.data, { label: `${title} data coverage` })}</div>
       <div class="detail-metric"><span>BSS subset</span>${metricHtml(module.bss, { label: `${title} BSS` })}</div>
     </div>
+    <label class="size-unit-control detail-size-control"><span>Size units</span><select id="detail-size-unit-select" data-size-unit-select title="Decimal units: 1 KB = 1,000 bytes. Exact byte counts are available on each value">${sizeUnitOptionsHtml()}</select></label>
     <p class="detail-metric-note">Data includes initialized data and BSS. BSS is shown separately because its gate can keep a module partial.</p>
     ${module.aliases.length ? `<div class="detail-line"><span>Aliases</span><span class="alias-list">${module.aliases.map((alias) => `<code>${escapeHtml(alias)}</code>`).join("")}</span></div>` : ""}
     <section class="detail-section owners-section" aria-labelledby="owners-heading">
@@ -1726,6 +1919,7 @@
 
   function bindGlobalEvents() {
     elements.refresh?.addEventListener("click", () => loadSnapshot(true));
+    document.addEventListener("change", handleSizeUnitChange);
     document.addEventListener("keydown", handleGlobalKeydown);
     window.addEventListener("pagehide", () => {
       stopSnapshotFreshness();
@@ -1786,9 +1980,11 @@
     } catch { /* Unsupported registrations leave the normal controls available. */ }
   }
 
+  sizeUnitPreference = readSizeUnitPreference();
   initializeNavigation();
   bindGlobalEvents();
   bindEvents();
+  applySizeUnitPreference();
   registerPageTools();
   loadSnapshot(false);
 })();
