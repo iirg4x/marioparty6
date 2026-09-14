@@ -38,7 +38,10 @@ static M657Shadow lbl_1_data_134 = {
     { 0.0f, 0.0f, 1.0f },
     0.7f, 240, 25, 25, 25
 };
-static HU3D_MOTIONID lbl_1_data_170[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
+/* Target data has an unreferenced -1 halfword before the motion-table base.
+ * Its original purpose is unknown; the live table starts at .data+0x172. */
+static s16 lbl_1_data_170 = -1;
+static HU3D_MOTIONID lbl_1_data_172[7] = { -1, -1, -1, -1, -1, -1, -1 };
 
 void fn_1_2018(OMOBJMAN *objman)
 {
@@ -132,7 +135,7 @@ void fn_1_23F4(OMOBJ *obj)
     for (i = 0; i < 3; i++) {
         motion = obj->mtnId[i+3] = Hu3DJointMotion(body,
             HuDataSelHeapReadNum(lbl_1_data_128[i], HU_MEMNUM_OVL, HEAP_MODEL));
-        (&lbl_1_data_170[1])[i] = motion;
+        lbl_1_data_172[i] = motion;
     }
     Hu3DModelShadowSet(body);
     Hu3DMotionSet(body, motion);
