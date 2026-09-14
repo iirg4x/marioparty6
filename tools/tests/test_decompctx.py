@@ -102,6 +102,16 @@ class ContextTests(unittest.TestCase):
             'Actor *ActorCreate(int n);\nshort MicCreate(char *path);\n')
         self.assertEqual(corrected['covered_calls'], ['ActorCreate', 'MicCreate'])
 
+    def test_provider_only_discovery_skips_unrelated_shape_analysis(self):
+        self.write('include/api.h', 'void API(int);\n')
+        asm = '.fn callback, global\nbl API\nblr\n.endfn\n'
+        full = decompctx.discover_call_context(self.root, asm, '')
+        with patch.object(decompctx, 'target_integer_shapes', side_effect=AssertionError('unneeded shape pass')):
+            small = decompctx.discover_call_context(self.root, asm, '', include_shapes=False)
+        for key in ('calls', 'missing', 'include_hints', 'local_prototype_review'):
+            self.assertEqual(small[key], full[key])
+        self.assertEqual(small['target_integer_shapes'], [])
+
     def test_function_scanner_ignores_calls_comments_macros_and_nonprototypes(self):
         text = '''/* void Fake(int n); */
 #define BAD(x) Fake(x)

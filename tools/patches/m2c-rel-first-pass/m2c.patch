@@ -38,10 +38,117 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
              a.reg(1), op if op != "==" else ">=", a.reg(2)
          ),
      }
+@@ -1830,9 +1843,14 @@
+         else:
+             return f"farg{reg_num - 1}"
+ 
++    # Keep the historical convention as the default. Platform subclasses must
++    # also select their own argument_regs for instruction inputs and inference.
++    first_stack_arg_offset = 0
++
+     # Duplicated by MipseeArch.function_abi
+-    @staticmethod
++    @classmethod
+     def function_abi(
++        cls,
+         fn_sig: FunctionSignature,
+         likely_regs: Dict[Register, bool],
+         *,
+@@ -1842,12 +1860,12 @@
+         candidate_slots: List[AbiArgSlot] = []
+ 
+         # $rX & $fX regs can be interspersed in function args, unlike in the MIPS O32 ABI
+-        intptr_regs = [r for r in PpcArch.argument_regs if r.register_name[0] != "f"]
+-        float_regs = [r for r in PpcArch.argument_regs if r.register_name[0] == "f"]
++        intptr_regs = [r for r in cls.argument_regs if r.register_name[0] != "f"]
++        float_regs = [r for r in cls.argument_regs if r.register_name[0] == "f"]
+ 
+         if fn_sig.params_known:
+             ind = 0
+-            stack_offset = 0
++            stack_offset = cls.first_stack_arg_offset
+             for param in fn_sig.params:
+                 # TODO: Support structs as parameters/return type, and 64-bit values
+                 # passed on the stack.
+@@ -1879,7 +1897,7 @@
+                     )
+                     ind += 1
+         else:
+-            for ind, reg in enumerate(PpcArch.argument_regs):
++            for ind, reg in enumerate(cls.argument_regs):
+                 if reg.register_name[0] != "f":
+                     candidate_slots.append(
+                         AbiArgSlot(ArgLoc(None, ind, reg), Type.intptr())
+@@ -1904,11 +1922,11 @@
+                 # earlier registers for the first member of that subset.
+                 pass
+             else:
+-                # Only r3-r10/f1-f13 can be used for arguments
++                # Only the selected profile's argument registers are eligible.
+                 regname = reg.register_name
+                 prev_reg = Register(f"{regname[0]}{int(regname[1:])-1}")
+                 if (
+-                    prev_reg in PpcArch.argument_regs
++                    prev_reg in cls.argument_regs
+                     and prev_reg not in valid_extra_regs
+                 ):
+                     continue
+@@ -1945,3 +1963,43 @@
+                 Cast(expr, reinterpret=True, silent=False, type=Type.u64())
+             ),
+         }
++
++
++class PpcGekkoArch(PpcArch):
++    """Opt-in Gekko hard-float scalar argument profile.
++
++    GPR and FPR arguments use independent cursors: floats do not reserve GPR
++    shadow slots. Overflow begins after the 8-byte linkage area. In particular,
++    an int plus nine float parameters uses r3, f1-f8, then a float at sp+8.
++    The base class's aggregate/64-bit and variadic inference limitations remain;
++    selecting this profile is not a claim of complete EABI support.
++    """
++
++    argument_regs = [Register(f"r{i}") for i in range(3, 11)] + [
++        Register(f"f{i}") for i in range(1, 9)
++    ]
++    first_stack_arg_offset = 8
++    stack_args_from_locals = True
++    # Inherit temp_regs: f9-f13 are still caller-saved, not preserved registers.
++
++    @classmethod
++    def function_abi(
++        cls,
++        fn_sig: FunctionSignature,
++        likely_regs: Dict[Register, bool],
++        *,
++        for_call: bool,
++    ) -> Abi:
++        abi = super().function_abi(fn_sig, likely_regs, for_call=for_call)
++        # The inherited allocator advances overflow slots by one word. Do not
++        # silently use that layout for a double, aggregate, or unknown extent,
++        # or assume the byte placement of a smaller scalar inside a stack word.
++        if any(
++            slot.loc.offset is not None
++            and slot.type.get_size_bytes() != 4
++            for slot in abi.arg_slots
++        ):
++            raise DecompFailure(
++                "gekko-eabi currently supports only word-sized stack argument slots"
++            )
++        return abi
 diff --git a/m2c/evaluate.py b/m2c/evaluate.py
 --- a/m2c/evaluate.py
 +++ b/m2c/evaluate.py
-@@ -134,6 +134,11 @@
+@@ -41,6 +41,7 @@
+     LocalVar,
+     Lwl,
+     NodeState,
++    PassedInArg,
+     RawSymbolRef,
+     RegExpression,
+     RegInfo,
+@@ -134,6 +135,11 @@
      )
      if array_expr is not None:
          return array_expr
@@ -53,7 +160,40 @@ diff --git a/m2c/evaluate.py b/m2c/evaluate.py
      field_path, field_type, _ = var.type.get_deref_field(offset, target_size=size)
      if field_path is not None:
          field_type.unify(type)
-@@ -429,6 +434,36 @@
+@@ -408,6 +414,18 @@
+     return handle_addi_real(args.reg_ref(0), source_reg, source, imm, args)
+ 
+ 
++class AddressTakenStackArg(PassedInArg):
++    """An above-frame address is not an argument until its value is used.
++
++    Keep the lazy marker on the pointee so &arg/dereference simplification
++    cannot lose it. Unused save/restore helper address setup needs no argument.
++    """
++
++    def use(self) -> None:
++        self.stack_info.add_argument(self)
++        super().use()
++
++
+ def handle_addi_real(
+     output_reg: Register,
+     source_reg: Optional[Register],
+@@ -423,12 +441,49 @@
+             # Changing sp. Just ignore that.
+             return source
+         # Keep track of all local variables that we take addresses of.
+-        var = stack_info.get_stack_var(imm.value, store=False)
++        if (stack_info.location_above_stack(imm.value)
++                and not stack_info.in_callee_save_reg_region(imm.value)):
++            value, arg = stack_info.get_argument_above_stack(
++                imm.value - stack_info.allocated_stack_size)
++            lazy = AddressTakenStackArg(arg.loc, stack_info=stack_info, type=arg.type)
++            var = lazy if value is arg else as_type(lazy, value.type, True)
++        else:
++            var = stack_info.get_stack_var(imm.value, store=False)
+         if isinstance(var, LocalVar):
+             stack_info.add_local_var(var)
          return AddressOf(var, type=var.type.reference())
      else:
          return add_imm(output_reg, source, imm, args)
@@ -90,7 +230,7 @@ diff --git a/m2c/evaluate.py b/m2c/evaluate.py
  
  
  def add_imm(
-@@ -469,6 +504,17 @@
+@@ -469,6 +524,17 @@
          # immediate.
          dest_var = stack_info.get_planned_var(output_reg, args.instruction_ref)
          arch = stack_info.global_info.arch
@@ -108,7 +248,7 @@ diff --git a/m2c/evaluate.py b/m2c/evaluate.py
          inplace = dest_var is not None and var_for_expr(source) == dest_var
          if (
              isinstance(imm, Literal)
-@@ -1325,6 +1371,9 @@
+@@ -1325,6 +1391,9 @@
      array_expr = array_access_from_add(expr, 0, stack_info, target_size=None, ptr=True)
      if array_expr is not None:
          return array_expr
@@ -118,10 +258,109 @@ diff --git a/m2c/evaluate.py b/m2c/evaluate.py
      return expr
  
  
+diff --git a/m2c/main.py b/m2c/main.py
+--- a/m2c/main.py
++++ b/m2c/main.py
+@@ -25,7 +25,7 @@
+ from .types import TypePool
+ from .arch_arm import ArmArch, ArmGbaArch
+ from .arch_mips import MipsArch, MipseeArch
+-from .arch_ppc import PpcArch
++from .arch_ppc import PpcArch, PpcGekkoArch
+ from .arch_sh import Sh2Arch
+ 
+ 
+@@ -94,7 +94,11 @@
+         else:
+             arch = MipsArch()
+     elif options.target.arch == Target.ArchEnum.PPC:
+-        arch = PpcArch()
++        arch = (
++            PpcGekkoArch()
++            if options.ppc_abi == Options.PpcAbiEnum.GEKKO_EABI
++            else PpcArch()
++        )
+     elif options.target.arch == Target.ArchEnum.ARM:
+         if options.target.platform == Target.PlatformEnum.GBA:
+             arch = ArmGbaArch()
+@@ -576,6 +580,15 @@
+         "Default is mips-ido-c, `ppc` is an alias for ppc-mwcc-c++, and `arm` for arm-gcc-c.",
+     )
+     group.add_argument(
++        "--ppc-abi",
++        type=Options.PpcAbiEnum,
++        choices=list(Options.PpcAbiEnum),
++        default=Options.PpcAbiEnum.LEGACY,
++        help="PPC argument ABI: legacy preserves the existing f1-f13 behavior; "
++        "gekko-eabi uses independent r3-r10/f1-f8 argument banks and stack "
++        "overflow starting at sp+8 (validated with GameCube MWCC callers).",
++    )
++    group.add_argument(
+         "--passes",
+         "-P",
+         dest="passes",
+@@ -690,6 +703,11 @@
+     )
+ 
+     args = parser.parse_args(flags)
++    if (
++        args.ppc_abi != Options.PpcAbiEnum.LEGACY
++        and args.target.arch != Target.ArchEnum.PPC
++    ):
++        parser.error("--ppc-abi requires a PPC target")
+     reg_vars = args.reg_vars.split(",") if args.reg_vars else []
+     preproc_defines: Dict[str, Optional[int]] = {d: None for d in args.undefined}
+     for d in args.defined:
+@@ -774,6 +792,7 @@
+         backwards_bss=args.backwards_bss,
+         disable_gc=args.disable_gc,
+         union_field_overrides=union_field_overrides,
++        ppc_abi=args.ppc_abi,
+     )
+ 
+ 
+diff --git a/m2c/options.py b/m2c/options.py
+--- a/m2c/options.py
++++ b/m2c/options.py
+@@ -143,6 +143,10 @@
+ 
+ @dataclass
+ class Options:
++    class PpcAbiEnum(ChoicesEnum):
++        LEGACY = "legacy"
++        GEKKO_EABI = "gekko-eabi"
++
+     class GlobalDeclsEnum(ChoicesEnum):
+         ALL = "all"
+         USED = "used"
+@@ -195,6 +199,7 @@
+     backwards_bss: bool
+     disable_gc: bool
+     union_field_overrides: Dict[str, str]
++    ppc_abi: PpcAbiEnum = PpcAbiEnum.LEGACY
+ 
+     def formatter(self) -> Formatter:
+         return Formatter(
 diff --git a/m2c/translate.py b/m2c/translate.py
 --- a/m2c/translate.py
 +++ b/m2c/translate.py
-@@ -392,6 +392,19 @@
+@@ -84,6 +84,7 @@
+ 
+     home_space_size: int
+     base_return_regs: List[Tuple[Register, bool]]
++    stack_args_from_locals: bool = False
+ 
+     @abc.abstractmethod
+     def arg_name(self, loc: ArgLoc) -> str: ...
+@@ -305,6 +306,7 @@
+     callee_save_reg_region: Tuple[int, int] = (0, 0)
+     unique_type_map: Dict[Tuple[str, object], Type] = field(default_factory=dict)
+     local_vars: List[LocalVar] = field(default_factory=list)
++    folded_call_arg_offsets: Set[int] = field(default_factory=set)
+     temp_vars: List[Var] = field(default_factory=list)
+     naive_phi_vars: List[NaivePhiExpr] = field(default_factory=list)
+     reg_vars: Dict[Register, Var] = field(default_factory=dict)
+@@ -392,6 +394,19 @@
          return self.param_names.get(loc)
  
      def add_local_var(self, var: LocalVar) -> None:
@@ -141,7 +380,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
          if any(v.value == var.value for v in self.local_vars):
              return
          self.local_vars.append(var)
-@@ -514,7 +527,34 @@
+@@ -514,7 +529,34 @@
              if store:
                  self.weak_stack_var_types[location] = field_type
  
@@ -177,7 +416,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def maybe_get_register_var(self, reg: Register) -> Optional[Var]:
          return self.reg_vars.get(reg)
-@@ -1228,10 +1268,16 @@
+@@ -1228,10 +1270,16 @@
                  type=self.type,
              ).format(fmt)
  
@@ -196,7 +435,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              right_expr = elide_literal_casts(as_type(right_expr, left_expr.type, True))
  
          # For commutative, left-associative operations, strip unnecessary parentheses.
-@@ -1446,9 +1492,17 @@
+@@ -1446,9 +1494,17 @@
      value: int
      type: Type = field(compare=False)
      path: Optional[AccessPath] = field(compare=False)
@@ -214,7 +453,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def format(self, fmt: Formatter) -> str:
          fallback_name = f"unksp{format_hex(self.value)}"
-@@ -1627,9 +1681,12 @@
+@@ -1627,9 +1683,12 @@
  
          field_path: Optional[AccessPath] = self.late_field_path()
  
@@ -228,7 +467,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              offset_str = fmt.format_int(self.offset)
              return f"M2C_FIELD({var.format(fmt)}, {Type.ptr(self.type).format(fmt)}, {offset_str})"
          else:
-@@ -1896,7 +1953,13 @@
+@@ -1896,7 +1955,13 @@
                      right=Literal(self.offset // target_size),
                      type=self.type,
                  )
@@ -243,6 +482,207 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              return self.legacy()
  
          if (
+@@ -3634,6 +3699,7 @@
+         default_factory=dict
+     )
+     subroutine_args: Dict[int, Expression] = field(default_factory=dict)
++    call_arg_local_writes: Set[LocalVar] = field(default_factory=set)
+     in_pattern: bool = False
+ 
+     to_write: List[Union[Statement]] = field(default_factory=list)
+@@ -3891,6 +3957,8 @@
+             # ignore the type of the stack variable. The same stack slot
+             # might be used to preserve values of different types.
+             self.local_var_writes[dest] = (reg, raw_value, False)
++            if self.stack_info.global_info.arch.stack_args_from_locals:
++                self.call_arg_local_writes.add(dest)
+ 
+         if (
+             isinstance(dest, (LocalVar, PassedInArg))
+@@ -3941,6 +4009,120 @@
+             ):
+                 return True
+         return False
++
++    def _fold_known_stack_arg(self, local: LocalVar) -> Optional[Expression]:
++        """Consume a stable copy into an otherwise write-only outgoing slot."""
++        info = self.stack_info
++        size = local.type.get_size_bytes()
++        if (
++            size is None
++            or local.path is None
++            or len(local.path) != 2
++            or local.value < info.global_info.arch.home_space_size
++            or local.value + size > info.subroutine_arg_top
++        ):
++            # The existing whole-function boundary includes every direct stack
++            # load and address-taking operation. Such slots are real C storage,
++            # not merely a copy into the call's outgoing area.
++            return None
++
++        _, original, force = self.local_var_writes[local]
++        source_value = early_unwrap(original)
++        snapshot = transparent_unwrap(original)
++        if force or not (
++            isinstance(source_value, (Literal, LocalVar))
++            or isinstance(snapshot, EvalOnceExpr) and snapshot.uses_var()
++        ):
++            # Use the same mutation bookkeeping as stack-spill restoration, but
++            # decline complex/indirect reads or values that need forced capture.
++            return None
++
++        copy_index: Optional[int] = None
++        for index in range(len(self.to_write) - 1, -1, -1):
++            statement = self.to_write[index]
++            if isinstance(statement, StoreStmt):
++                if statement.dest != local:
++                    # Even an apparently unrelated intervening store can alias
++                    # the source. Keep the explicit snapshot in that case.
++                    return None
++                copy_index = index
++                break
++            if isinstance(statement, ExprStmt):
++                return None
++        if copy_index is None:
++            return None
++
++        if isinstance(source_value, LocalVar):
++            producer = original
++            while isinstance(producer, EvalOnceExpr) and isinstance(
++                producer.wrapped_expr, EvalOnceExpr
++            ):
++                producer = producer.wrapped_expr
++            load_index = next(
++                (
++                    index
++                    for index, statement in enumerate(self.to_write[:copy_index])
++                    if isinstance(statement, EvalOnceStmt)
++                    and statement.expr is producer
++                ),
++                None,
++            )
++            if not isinstance(producer, EvalOnceExpr) or load_index is None:
++                return ErrorExpr("Unable to prove stored stack arg source lifetime")
++            if any(
++                isinstance(statement, (StoreStmt, ExprStmt))
++                or (
++                    isinstance(statement, EvalOnceStmt)
++                    and statement.expr.emit_exactly_once
++                )
++                for statement in self.to_write[load_index + 1 : copy_index]
++            ):
++                # Exact-local force bookkeeping does not cover every partial
++                # or indirect alias write. Capture the authentic load at its
++                # existing IR position, and retain the outgoing copy. Merely
++                # declining the fold would still reread the changed local.
++                producer.force()
++                return None
++            if source_value.path is None or len(source_value.path) != 2:
++                return None
++
++        # Unknown copies/escapes of the stack pointer are not covered by the
++        # direct load/address boundary. Do not infer a private outgoing slot in
++        # their presence. Ordinary frame adjustments and direct addressing are
++        # already represented by the stack analysis.
++        for node in info.flow_graph.nodes:
++            for inst in node.block.instructions:
++                if not any(
++                    isinstance(arg, Register) and info.is_stack_reg(arg)
++                    for arg in inst.args
++                ):
++                    continue
++                if (
++                    inst.arch_mnemonic(info.global_info.arch) == "ppc:addi"
++                    and isinstance(inst.args[2], AsmLiteral)
++                ):
++                    if (
++                        isinstance(source_value, LocalVar)
++                        and not info.is_stack_reg(inst.args[0])
++                        and info.is_stack_reg(inst.args[1])
++                        and inst.args[2].value
++                        < source_value.value + (source_value.type.get_size_bytes() or size)
++                    ):
++                        # Do not move a local read through a potentially escaped
++                        # address. The conservative range includes aggregate
++                        # bases before this scalar field, not just exact &local.
++                        return None
++                    continue
++                if (
++                    inst.arch_mnemonic(info.global_info.arch) == "ppc:stwu"
++                    and inst.args[0] == info.global_info.arch.stack_pointer_reg
++                ):
++                    continue
++                return None
++
++        del self.to_write[copy_index]
++        info.folded_call_arg_offsets.add(local.value)
++        return original
+ 
+     def make_function_call(
+         self, fn_target: Expression, outputs: List[Location]
+@@ -4008,6 +4190,22 @@
+                     expr = self.subroutine_args.pop(offset)
+                 else:
+                     expr = ErrorExpr(f"Unable to find stack arg {offset:#x} in block")
++                    if arch.stack_args_from_locals:
++                        # PPC keeps outgoing stores as locals rather than
++                        # guessing an argument region. A known ABI slot can
++                        # read that real storage, but only after an exact-size
++                        # write in this block since the last call. Do not
++                        # manufacture an uninitialized local or split an
++                        # overlapping object.
++                        local = self.stack_info.get_stack_var(offset, store=False)
++                        if (
++                            isinstance(local, LocalVar)
++                            and local in self.local_var_writes
++                            and local in self.call_arg_local_writes
++                            and slot.type.get_size_bytes() is not None
++                            and local.type.get_size_bytes() == slot.type.get_size_bytes()
++                        ):
++                            expr = self._fold_known_stack_arg(local) or local
+             func_args.append(
+                 CommentExpr.wrap(as_type(expr, slot.type, True), prefix=slot.comment)
+             )
+@@ -4037,6 +4235,7 @@
+ 
+         # Reset subroutine_args, for the next potential function call.
+         self.subroutine_args.clear()
++        self.call_arg_local_writes.clear()
+ 
+         source = self.regs.current_instr_ref()
+         call: Expression = FuncCall(
+@@ -4987,6 +5186,31 @@
+     return_blocks: List[BlockInfo] = []
+     translate_all_blocks(state, used_naive_phis, return_blocks, options)
+ 
++    if stack_info.folded_call_arg_offsets:
++        # A physical slot can serve several calls. Remove its C declaration only
++        # when every remaining store has also been consumed; the fold's whole-
++        # function stack boundary has already ruled out other reads/escapes.
++        remaining: Set[int] = set()
++        for node in flow_graph.nodes:
++            block_info = _get_optional_block_info(node)
++            if block_info is not None:
++                remaining.update(
++                    statement.dest.value
++                    for statement in block_info.to_write
++                    if isinstance(statement, StoreStmt)
++                    and isinstance(statement.dest, LocalVar)
++                )
++        stack_info.local_vars = [
++            local
++            for local in stack_info.local_vars
++            if local.value not in stack_info.folded_call_arg_offsets
++            or local.type.get_size_bytes() is None
++            or any(
++                local.value <= offset < local.value + (local.type.get_size_bytes() or 0)
++                for offset in remaining
++            )
++        ]
++
+     arch = global_info.arch
+ 
+     # Guess return register and mark returns (we should really base this on
 diff --git a/m2c/types.py b/m2c/types.py
 --- a/m2c/types.py
 +++ b/m2c/types.py
@@ -1137,6 +1577,325 @@ new file mode 100644
 +
 +if __name__ == "__main__":
 +    unittest.main()
+diff --git a/tests/unit/test_ppc_gekko_abi.py b/tests/unit/test_ppc_gekko_abi.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_ppc_gekko_abi.py
+@@ -0,0 +1,233 @@
++import contextlib
++import io
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++
++from m2c.arch_ppc import PpcArch, PpcGekkoArch
++from m2c.asm_instruction import Register
++from m2c.error import DecompFailure
++from m2c.main import parse_flags
++from m2c.options import Options
++from m2c.types import FunctionParam, FunctionSignature, Type
++
++
++def signature(types, variadic=False):
++    return FunctionSignature(return_type=Type.void(), params_known=True,
++                             params=[FunctionParam(type=t) for t in types],
++                             is_variadic=variadic)
++
++
++def locations(arch, types, for_call=True):
++    slots = arch.function_abi(signature(types), {}, for_call=for_call).arg_slots
++    return [slot.loc.reg.register_name if slot.loc.reg else slot.loc.offset
++            for slot in slots]
++
++
++class PpcGekkoAbiTests(unittest.TestCase):
++    def test_ninth_float_is_stack8_for_call_and_callee(self):
++        for for_call in (False, True):
++            types = [Type.s32()] + [Type.f32() for _ in range(10)]
++            self.assertEqual(locations(PpcGekkoArch, types, for_call),
++                             ['r3'] + [f'f{i}' for i in range(1, 9)] + [8, 12])
++            self.assertEqual(locations(PpcArch, types, for_call),
++                             ['r3'] + [f'f{i}' for i in range(1, 11)])
++
++    def test_no_gpr_shadow_for_float_register_arguments(self):
++        types = [Type.f32(), Type.s32(), Type.f64(), Type.s32()]
++        self.assertEqual(locations(PpcGekkoArch, types), ['f1', 'r3', 'f2', 'r4'])
++        self.assertEqual(locations(PpcArch, types), ['f1', 'r3', 'f2', 'r4'])
++        types = [Type.s32() for _ in range(9)] + [Type.f32() for _ in range(9)]
++        self.assertEqual(locations(PpcGekkoArch, types),
++                         [f'r{i}' for i in range(3, 11)] + [8] +
++                         [f'f{i}' for i in range(1, 9)] + [12])
++
++    def test_unimplemented_nonword_overflow_fails_closed(self):
++        types = [Type.f64() for _ in range(9)]
++        with self.assertRaisesRegex(DecompFailure, 'word-sized stack argument'):
++            locations(PpcGekkoArch, types)
++        self.assertEqual(locations(PpcArch, types), [f'f{i}' for i in range(1, 10)])
++
++    def test_f9_f13_not_arguments_but_still_clobbered(self):
++        likely = {reg: True for reg in PpcArch.argument_regs}
++        for sig in (FunctionSignature(), signature([], variadic=True)):
++            abi = PpcGekkoArch.function_abi(sig, likely, for_call=True)
++            regs = [slot.loc.reg for slot in abi.possible_slots]
++            self.assertNotIn(Register('f9'), regs)
++            self.assertIn(Register('f8'), regs)
++        for i in range(9, 14):
++            self.assertIn(Register(f'f{i}'), PpcGekkoArch.temp_regs)
++            self.assertNotIn(Register(f'f{i}'), PpcGekkoArch.saved_regs)
++
++    def test_option_is_explicit_and_rejects_non_ppc(self):
++        options = parse_flags(['-t', 'ppc-mwcc-c', 'dummy.s'])
++        self.assertEqual(options.ppc_abi, Options.PpcAbiEnum.LEGACY)
++        options = parse_flags(['-t', 'ppc-mwcc-c', '--ppc-abi', 'gekko-eabi', 'dummy.s'])
++        self.assertEqual(options.ppc_abi, Options.PpcAbiEnum.GEKKO_EABI)
++        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
++            parse_flags(['--ppc-abi', 'gekko-eabi', 'dummy.s'])
++
++    def decompile_call(self, store='stfs f0, 8(r1)', profile='gekko-eabi', count=9,
++                       after='', extra_context=''):
++        root = Path(__file__).resolve().parents[2]
++        params = ', '.join(['int'] + ['float'] * count)
++        context = (f'void sink({params});\nvoid barrier(void);\n'
++                   'int scalar(void);\nvoid caller(void);\n' + extra_context)
++        asm = '''.section .text
++.global caller
++caller:
++    stwu r1, -32(r1)
++    mflr r0
++    stw r0, 36(r1)
++    lis r4, values@ha
++    addi r4, r4, values@l
++    lfs f0, 0(r4)
++    STORE
++    li r3, 1
++    lis r4, values@ha
++    addi r4, r4, values@l
++    LOADS
++    bl sink
++    AFTER
++    lwz r0, 36(r1)
++    mtlr r0
++    addi r1, r1, 32
++    blr
++.section .rodata
++.global values
++values:
++    .float 9.0
++    .float 2.0
++'''
++        loads = '\n    '.join(f'lfs f{i}, 0(r4)' for i in range(1, 9))
++        asm = asm.replace('STORE', store).replace('LOADS', loads).replace('AFTER', after)
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory)
++            (path / 'input.s').write_text(asm)
++            (path / 'context.h').write_text(context)
++            cmd = [sys.executable, str(root / 'm2c.py'), '-t', 'ppc-mwcc-c',
++                   '--no-cache', '--valid-syntax', '--context', str(path / 'context.h'),
++                   '--ppc-abi', profile, str(path / 'input.s')]
++            proc = subprocess.run(cmd, capture_output=True, text=True)
++            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
++            return proc.stdout
++
++    def test_outgoing_ninth_float_consumes_existing_stack_store(self):
++        result = self.decompile_call()
++        self.assertNotIn('M2C_ERROR', result)
++        self.assertNotIn('sp8', result)
++        self.assertIn('9.0f, 9.0f);', result)
++        legacy = self.decompile_call(profile='legacy')
++        self.assertIn('Read from unset register $f9', legacy)
++
++    def test_incoming_ninth_float_maps_to_named_stack_parameter(self):
++        root = Path(__file__).resolve().parents[2]
++        context = 'float incoming(int mask, ' + ', '.join(
++            f'float a{i}' for i in range(1, 10)) + ');\n'
++        asm = '.section .text\n.global incoming\nincoming:\n    lfs f1, 8(r1)\n    blr\n'
++        with tempfile.TemporaryDirectory() as directory:
++            path = Path(directory)
++            (path / 'input.s').write_text(asm)
++            (path / 'context.h').write_text(context)
++            proc = subprocess.run(
++                [sys.executable, str(root / 'm2c.py'), '-t', 'ppc-mwcc-c',
++                 '--no-cache', '--valid-syntax', '--ppc-abi', 'gekko-eabi',
++                 '--context', str(path / 'context.h'), str(path / 'input.s')],
++                capture_output=True, text=True)
++            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
++            self.assertNotIn('M2C_ERROR', proc.stdout)
++            self.assertIn('return a9;', proc.stdout)
++
++    def test_missing_or_stale_stack_store_retains_diagnostic(self):
++        for store in ('', 'stfs f0, 12(r1)', 'stfs f0, 8(r1)\n    bl barrier',
++                      'stfd f0, 8(r1)'):
++            with self.subTest(store=store):
++                result = self.decompile_call(store=store)
++                self.assertIn('Unable to find stack arg 0x8 in block', result)
++
++    def test_stored_integer_bits_are_reinterpreted_not_numeric_conversion(self):
++        result = self.decompile_call(store='bl scalar\n    stw r3, 8(r1)')
++        self.assertNotIn('M2C_ERROR', result)
++        self.assertIn('M2C_BITWISE(f32, sp8)', result)
++        self.assertNotIn('(f32) sp8', result)
++
++    def test_stable_local_copy_is_consumed_without_second_stack_owner(self):
++        store = ('lwz r5, 0(r4)\n    stw r5, 16(r1)\n'
++                 '    lfs f0, 16(r1)\n    stfs f0, 8(r1)')
++        result = self.decompile_call(store=store)
++        self.assertNotIn('M2C_ERROR', result)
++        self.assertNotIn('sp8', result)
++        self.assertIn('9.0f, sp10);', result)
++
++    def test_mutation_and_alias_ambiguity_keep_explicit_snapshot(self):
++        copy = ('lwz r5, 0(r4)\n    stw r5, 16(r1)\n'
++                '    lfs f0, 16(r1)\n    stfs f0, 8(r1)')
++        cases = [
++            (copy + '\n    lfs f0, 4(r4)\n    stfs f0, 16(r1)', ''),
++            (copy + '\n    stw r5, 20(r1)', ''),
++            (copy + '\n    addi r5, r1, 8', ''),
++            (copy + '\n    addi r5, r1, 16', ''),
++            (copy + '\n    addi r5, r1, 17', ''),
++            (copy + '\n    mr r5, r1', ''),
++            (copy, 'lfs f0, 8(r1)'),
++        ]
++        for store, after in cases:
++            with self.subTest(store=store, after=after):
++                result = self.decompile_call(store=store, after=after)
++                self.assertNotIn('M2C_ERROR', result)
++                self.assertIn('sp8 = sp10;', result)
++                self.assertIn('9.0f, sp8);', result)
++
++    def test_partial_mutation_before_outgoing_copy_preserves_original_load(self):
++        setup = ('lwz r5, 0(r4)\n    stw r5, 16(r1)\n'
++                 '    lfs f0, 16(r1)\n    li r5, 0\n    ')
++        for mutation in ('stb r5, 17(r1)',
++                         'addi r6, r1, 17\n    stb r5, 0(r6)'):
++            with self.subTest(mutation=mutation):
++                result = self.decompile_call(
++                    store=setup + mutation + '\n    stfs f0, 8(r1)')
++                self.assertNotIn('M2C_ERROR', result)
++                self.assertIn('temp_f0 = sp10;', result)
++                self.assertIn('sp8 = temp_f0;', result)
++                self.assertIn('9.0f, sp8);', result)
++                self.assertLess(result.index('temp_f0 = sp10;'),
++                                result.index('sp8 = temp_f0;'))
++                self.assertLess(result.index('temp_f0 = sp10;'),
++                                result.index('M2C_FIELD(&sp10'))
++
++    def test_call_between_load_and_copy_keeps_the_original_capture(self):
++        store = ('lwz r5, 0(r4)\n    stw r5, 16(r1)\n'
++                 '    stfd f14, 24(r1)\n    lfs f14, 16(r1)\n'
++                 '    bl barrier\n    stfs f14, 8(r1)')
++        result = self.decompile_call(store=store, after='lfd f14, 24(r1)')
++        self.assertNotIn('M2C_ERROR', result)
++        self.assertIn('temp_f14 = sp10;', result)
++        self.assertIn('sp8 = temp_f14;', result)
++        self.assertIn('9.0f, sp8);', result)
++        self.assertLess(result.index('temp_f14 = sp10;'), result.index('barrier();'))
++
++    def test_unconsumed_store_keeps_its_existing_declaration(self):
++        result = self.decompile_call(store='stfs f0, 8(r1)\n    stfs f0, 8(r1)')
++        self.assertNotIn('M2C_ERROR', result)
++        self.assertIn('f32 sp8;', result)
++        self.assertEqual(result.count('sp8 = 9.0f;'), 1)
++        self.assertIn('9.0f, 9.0f);', result)
++
++    def test_named_stack_aggregate_is_not_replaced_by_an_outgoing_scalar(self):
++        context = ('struct _m2c_stack_caller { char reserved[8]; '
++                   'float outgoing[2]; char padding[16]; };')
++        result = self.decompile_call(extra_context=context)
++        self.assertNotIn('M2C_ERROR', result)
++        self.assertIn('f32 outgoing[2];', result)
++        self.assertIn('outgoing[0] = 9.0f;', result)
++        self.assertIn('9.0f, outgoing[0]);', result)
++
++    def test_eight_float_control_is_identical_between_profiles(self):
++        self.assertEqual(self.decompile_call(store='', count=8),
++                         self.decompile_call(store='', count=8, profile='legacy'))
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/tests/unit/test_ppc_stack_bookkeeping.py b/tests/unit/test_ppc_stack_bookkeeping.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_ppc_stack_bookkeeping.py
+@@ -0,0 +1,76 @@
++import subprocess
++import re
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++
++class StackBookkeepingTests(unittest.TestCase):
++    def translate(self, body, context='void sample(void);', profile='legacy'):
++        root = Path(__file__).resolve().parents[2]
++        assembly = '''.section .text
++.global sample
++sample:
++    stwu r1, -0x40(r1)
++    mflr r0
++    stw r0, 0x44(r1)
++'''+body+'''
++    lwz r0, 0x44(r1)
++    mtlr r0
++    addi r1, r1, 0x40
++    blr
++'''
++        with tempfile.TemporaryDirectory() as tmp:
++            asm, ctx = Path(tmp)/'sample.s', Path(tmp)/'ctx.c'
++            asm.write_text(assembly); ctx.write_text(context)
++            result = subprocess.run([sys.executable, str(root/'m2c.py'), '-t', 'ppc-mwcc-c',
++                '--ppc-abi', profile, '--no-cache', '--context', str(ctx), str(asm)],
++                capture_output=True, text=True)
++        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
++        return result.stdout
++
++    def test_unused_save_helper_address_does_not_add_argument(self):
++        for profile in ('legacy', 'gekko-eabi'):
++            for frame in (0x30, 0x40, 0x50):
++                # Offset 0x40 matches this synthetic frame; the other offsets
++                # cover an unused local and a genuinely above-frame address.
++                text = self.translate(f'    addi r11, r1, {frame}\n    bl _savegpr_27', profile=profile)
++                self.assertIn('void sample(void)', text)
++                self.assertNotIn('arg_sp', text)
++
++    def test_used_above_frame_load_is_preserved(self):
++        for profile in ('legacy', 'gekko-eabi'):
++            text = self.translate('    addi r4, r1, 0x48\n    lwz r3, 0(r4)',
++                                  'int sample();', profile)
++            self.assertIn('arg_sp8', text)
++            self.assertIn('return arg_sp8;', text)
++
++    def test_used_above_frame_address_passed_to_callee_is_preserved(self):
++        for profile in ('legacy', 'gekko-eabi'):
++            text = self.translate('    addi r3, r1, 0x48\n    bl consume',
++                                  'void consume(int *p); void sample();', profile)
++            self.assertIn('consume(&arg_sp8);', text)
++            self.assertIn('s32 arg_sp8', text)
++
++
++if __name__ == '__main__':
++    if len(sys.argv) == 3 and sys.argv[1] == '--live-root':
++        project = Path(sys.argv[2])
++        translator = Path(__file__).resolve().parents[2]/'m2c.py'
++        context = project/'build/rel-gap-fixes/m657-compiler-acceptance/provider-calls.i'
++        target = project/'build/minigame-recovery-20260913/m657/target.s'
++        command = [sys.executable, str(translator), '-t', 'ppc-mwcc-c', '--ppc-abi', 'gekko-eabi',
++                   '--no-cache', '--context', str(context)]
++        names = ('fn_1_438', 'fn_1_D28', 'fn_1_23F4')
++        for name in names:
++            command += ['-f', name]
++        result = subprocess.run(command+[str(target)], capture_output=True, text=True)
++        assert result.returncode == 0, result.stdout+result.stderr
++        for name in names:
++            signatures = re.findall(r'^void '+name+r'\([^\n]*\)', result.stdout, re.M)
++            assert len(signatures) == 1 and 'arg_sp' not in signatures[0], signatures
++            print(signatures[0])
++        print('saved_reg_r24 remains:', 'saved_reg_r24' in result.stdout)
++    else:
++        unittest.main()
 diff --git a/tests/unit/test_stack_declarations.py b/tests/unit/test_stack_declarations.py
 new file mode 100644
 --- /dev/null

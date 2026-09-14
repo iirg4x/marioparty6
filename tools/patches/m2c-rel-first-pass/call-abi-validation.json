@@ -1,0 +1,582 @@
+{
+  "schema": "rel_call_abi_acceptance/v1",
+  "scope": "Targeted compiler measurements, not an all-REL rerun or recovered source.",
+  "tool_install": {
+    "schema": "m2c_rel_first_pass_install/v1",
+    "source": "C:\\Users\\Anony\\.codex\\tools\\m2c",
+    "destination": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-eabi3",
+    "manifest_sha256": "3e2bd9c2c11fe927c9230070c537dd94ca4a0ca3002eca7511a9e5cd3eac2640",
+    "patch_sha256": "fc0562e4a0c9cddc940b8a02a84bb7328763befa0b1a547966f94aaec74e6544",
+    "files_verified": 30,
+    "source_unchanged": true,
+    "matching_credit": false
+  },
+  "validation": {
+    "installed": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-eabi3",
+    "manifest_sha256": "3e2bd9c2c11fe927c9230070c537dd94ca4a0ca3002eca7511a9e5cd3eac2640",
+    "passed": 497,
+    "skipped": 0,
+    "failed": 0,
+    "total": 497,
+    "units": 84,
+    "log_sha256": "41a3df2d446265157009973b9227ab6f25146f6ea8e05c546a15f3d80ee8e14b",
+    "new_output_goldens_changed": 0
+  },
+  "external_header_sample": {
+    "selection": "First 12 external-call compile failures in original then phase3 census, at most two per module; frozen before new results.",
+    "original_census_sha256": "802665cfeda35a1c1afb08059a8f28cf3912529fafd80e6990c92e647dc6aed9",
+    "phase3_census_sha256": "de9d350dc6ff8d94c68aaf906eac2ee2c224513d87155f987f60228d73f93345",
+    "comparison": "Same installed translator, target objects, flags and selected functions. Only actual-provider context/prefix differ.",
+    "receipt_path": "build\\rel-gap-fixes\\provider-compile-acceptance-installed\\results.json",
+    "receipt_sha256": "9b948a37b26a0c489dcf14fdb3823ddefa8ff783a28382c7e6389431fdcd2921",
+    "before_compiled": 0,
+    "after_compiled": 11,
+    "count": 12,
+    "raw100": 0,
+    "cases": [
+      {
+        "module": "ttwarsdll",
+        "function": "fn_1_D88",
+        "missing_call": "print8",
+        "before": {
+          "source_sha256": "0891c06acf301c414bdc5ceb696594794d7267f825860603c34b15e3a5fa97d6",
+          "object_sha256": null,
+          "target_sha256": "eb6593b2b6731af9e48a167502821715db150c776a1181dab0e042a60156c0ed",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "45143c3a5cebc29d999e0840501354038ac50d4d3de789a99b8b4b9febbd2554",
+          "object_sha256": "1a2b88de7f2b64c381b4c34cf456b38ec5be016d532e8da5ac4ea20c1525a009",
+          "target_sha256": "eb6593b2b6731af9e48a167502821715db150c776a1181dab0e042a60156c0ed",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 99.41406,
+          "target_size": "512",
+          "size": "512",
+          "diffcount": 15,
+          "syntax_placeholders": []
+        }
+      },
+      {
+        "module": "ttwarsdll",
+        "function": "fn_1_31E8",
+        "missing_call": "print8",
+        "before": {
+          "source_sha256": "d54db40877225650122a683b0b11e4c91e94a6ba17e002e399a1e0e51f28e749",
+          "object_sha256": null,
+          "target_sha256": "eb6593b2b6731af9e48a167502821715db150c776a1181dab0e042a60156c0ed",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK",
+            "M2C_UNK32"
+          ]
+        },
+        "after": {
+          "source_sha256": "5ef1d3e1119852e511eedf669a49607ec164f05fd537a25894ea67c765acaed2",
+          "object_sha256": "20b58ced75e2a31ebf89bd5dd61c0a497ccda32867d4e330cf1526dca574950b",
+          "target_sha256": "eb6593b2b6731af9e48a167502821715db150c776a1181dab0e042a60156c0ed",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 84.9021,
+          "target_size": "572",
+          "size": "600",
+          "diffcount": 44,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK"
+          ]
+        }
+      },
+      {
+        "module": "miraclebookdll",
+        "function": "fn_1_4EFC",
+        "missing_call": "espKill",
+        "before": {
+          "source_sha256": "2634cc5cedabf8c62957a98eed2945292bbcaf2cf360327df20a0f8c03542cec",
+          "object_sha256": null,
+          "target_sha256": "53c6c6207c08e3e041775d77abe7adc2080d94df27c60dfc850e0d87cc920830",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "c3618104bb9d89977462cdf17c8de5b740f5086a9abf09c5d017dddc725fdead",
+          "object_sha256": "84faea773f97746d03a84a74ff24f1258a62f6693a5236b9982c7f09b1585a0b",
+          "target_sha256": "53c6c6207c08e3e041775d77abe7adc2080d94df27c60dfc850e0d87cc920830",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 72.42593,
+          "target_size": "216",
+          "size": "232",
+          "diffcount": 31,
+          "syntax_placeholders": []
+        }
+      },
+      {
+        "module": "miraclebookdll",
+        "function": "fn_1_5ED0",
+        "missing_call": "espDispOn",
+        "before": {
+          "source_sha256": "1292c3ac634c174f33d2095d6f5259bcaedc2dd8238f19e0a4bac8541df8a101",
+          "object_sha256": null,
+          "target_sha256": "53c6c6207c08e3e041775d77abe7adc2080d94df27c60dfc850e0d87cc920830",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "2e55469d8d3406de47387cb936663060b880ac510e9d10c33f5c610bbc78e1d5",
+          "object_sha256": "ce9423cb824a7cc58cff24f193266ea893bfdb803e460d862b4f89ddd8dcfd91",
+          "target_sha256": "53c6c6207c08e3e041775d77abe7adc2080d94df27c60dfc850e0d87cc920830",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 69.811966,
+          "target_size": "468",
+          "size": "484",
+          "diffcount": 65,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK"
+          ]
+        }
+      },
+      {
+        "module": "m601Dll",
+        "function": "fn_1_5CC",
+        "missing_call": "print8",
+        "before": {
+          "source_sha256": "04918d31561925a7010bb01cdfff5e7f45ff415b7ec8db21edb9d08740244204",
+          "object_sha256": null,
+          "target_sha256": "90b3b0b595d8026d86a10dfaec57cd33d53f3be7e2d49b12e98baba6db97b4ce",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "c17447c86362d4277a26487e622e48aa9826ac3f29973af7c2c004eed8d24c30",
+          "object_sha256": "766a48b682eb6c69777de0e1dfa24f620a29b24fb5b48342c708f78e32356116",
+          "target_sha256": "90b3b0b595d8026d86a10dfaec57cd33d53f3be7e2d49b12e98baba6db97b4ce",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 90.29843,
+          "target_size": "1528",
+          "size": "1624",
+          "diffcount": 175,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        }
+      },
+      {
+        "module": "m662dll",
+        "function": "fn_1_3258",
+        "missing_call": "print8",
+        "before": {
+          "source_sha256": "86f84be1e00e267b14c715c0fa1ea5169d9b377408485e3b66fd3ac94c146b18",
+          "object_sha256": null,
+          "target_sha256": "696b204ad80673e2a241df024a083a82a5afb1a527ad64f476017a072e1666d1",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "30e0a349f60d9264e7decf8189bb4c9ccfcfc135f5ac46a52b78689bbdd65224",
+          "object_sha256": null,
+          "target_sha256": "696b204ad80673e2a241df024a083a82a5afb1a527ad64f476017a072e1666d1",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_FIELD"
+          ]
+        }
+      },
+      {
+        "module": "m614Dll",
+        "function": "fn_1_5CC",
+        "missing_call": "print8",
+        "before": {
+          "source_sha256": "55760331f8ec25975a5e99b78f10e7b4a2c05a0be981a69bfe54da306998e7b9",
+          "object_sha256": null,
+          "target_sha256": "43104ffefdf85cfbad74599eff86bc69d160e1e6b3a7d4d5f907dc949b8dc2b4",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "c1be8c843c159e39c864802a45a51a87cda765ec9db705cafc02cf6277d3ca63",
+          "object_sha256": "d308b7cf223181e4a3f16d8f06f7f459d08ce08a32952373429d894719325529",
+          "target_sha256": "43104ffefdf85cfbad74599eff86bc69d160e1e6b3a7d4d5f907dc949b8dc2b4",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 87.69811,
+          "target_size": "2120",
+          "size": "2212",
+          "diffcount": 276,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        }
+      },
+      {
+        "module": "resultDll",
+        "function": "fn_1_86B0",
+        "missing_call": "espKill",
+        "before": {
+          "source_sha256": "a6e40d37191d81f4b11ec953845e32459797b120989ffb9f2247e6d380d8fa96",
+          "object_sha256": null,
+          "target_sha256": "7829e9382de92a011a9f2eeb2a10d77328db6a8a015bff65e39c6446f67d43d5",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "be263457bf204825558200adcfbdd3bf494815595cedfe898e7b55568a1f792d",
+          "object_sha256": "6e16f9b127385ff4924e1b87d4c85d3a18321140d190d12518354682a2d0be1a",
+          "target_sha256": "7829e9382de92a011a9f2eeb2a10d77328db6a8a015bff65e39c6446f67d43d5",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 74.92453,
+          "target_size": "424",
+          "size": "468",
+          "diffcount": 45,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK"
+          ]
+        }
+      },
+      {
+        "module": "w06Dll",
+        "function": "fn_1_92C8",
+        "missing_call": "mbObjKill",
+        "before": {
+          "source_sha256": "a5d3c137f2fda529d5cea991652848558ce2a23614c64f7864c7b3964a09b5a6",
+          "object_sha256": null,
+          "target_sha256": "688e788704fcf610a44e13ca9cb180874ea85c9d9a0704c9a31ac4eed2c4ef4d",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "7c27cc596ad375b9d7bf3f2370fdfafe052a904dd04248966dc4e1917262be1f",
+          "object_sha256": "b95dfbbb648db0e2347b78fef9ac83a89c2041c06a4b0bcae9533cadac06a240",
+          "target_sha256": "688e788704fcf610a44e13ca9cb180874ea85c9d9a0704c9a31ac4eed2c4ef4d",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 91.57895,
+          "target_size": "152",
+          "size": "152",
+          "diffcount": 4,
+          "syntax_placeholders": [
+            "M2C_FIELD"
+          ]
+        }
+      },
+      {
+        "module": "w06Dll",
+        "function": "fn_1_99C",
+        "missing_call": "mbObjKill",
+        "before": {
+          "source_sha256": "6a78a9ac6841c9ffe04ee5f660d4960219ada9e16964dd00b4aacaeccc7b2c06",
+          "object_sha256": null,
+          "target_sha256": "688e788704fcf610a44e13ca9cb180874ea85c9d9a0704c9a31ac4eed2c4ef4d",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "94242b96f76fdefaf9758f889ed294cdf0bd9619614c4a7d8eff8a4c6d361079",
+          "object_sha256": "e6b03b466120b4f3058ec231cf70e40c2b5d46d16988d74960325759c93aaf93",
+          "target_sha256": "688e788704fcf610a44e13ca9cb180874ea85c9d9a0704c9a31ac4eed2c4ef4d",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 82.90909,
+          "target_size": "308",
+          "size": "328",
+          "diffcount": 19,
+          "syntax_placeholders": [
+            "M2C_FIELD",
+            "M2C_UNK"
+          ]
+        }
+      },
+      {
+        "module": "mgmfreedll",
+        "function": "fn_1_171C",
+        "missing_call": "HuTHPClose",
+        "before": {
+          "source_sha256": "ba268db49768dac0f0855f5c62d16f58f25244ebfdd68fd7cc39327b1effa91b",
+          "object_sha256": null,
+          "target_sha256": "0e9ea96fb5dae3963402481b4306d49f4e76df0d5db2e388b2d2cc6cb22e7208",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "ca2550b278e575595b1f1065933777ba7579c687efeff72d146d6cf67c6ef6ab",
+          "object_sha256": "4db4d13fa9ba7f8761f76a6904e380f8c403b58f2719315c7d067565e9ddcdd9",
+          "target_sha256": "0e9ea96fb5dae3963402481b4306d49f4e76df0d5db2e388b2d2cc6cb22e7208",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 78.62069,
+          "target_size": "116",
+          "size": "124",
+          "diffcount": 8,
+          "syntax_placeholders": []
+        }
+      },
+      {
+        "module": "mgmfreedll",
+        "function": "fn_1_5E4C",
+        "missing_call": "HuWinKill",
+        "before": {
+          "source_sha256": "022e1a5dc35bfd9f99d2009ca6158a63f68b1aa2f2986bafe821cfd92c0198fd",
+          "object_sha256": null,
+          "target_sha256": "0e9ea96fb5dae3963402481b4306d49f4e76df0d5db2e388b2d2cc6cb22e7208",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 2,
+          "objdiff_exitcode": null,
+          "score": null,
+          "target_size": null,
+          "size": null,
+          "diffcount": null,
+          "syntax_placeholders": [
+            "M2C_UNK"
+          ]
+        },
+        "after": {
+          "source_sha256": "e3eafba093ae56464f668b2d93c86d2f40d176fbdf4a3b27a1487a48a44e4b1b",
+          "object_sha256": "ad64ffabbf9238035f7f9505192ef3ee0845c681d84bfff4bab73c8ccbba9c7c",
+          "target_sha256": "0e9ea96fb5dae3963402481b4306d49f4e76df0d5db2e388b2d2cc6cb22e7208",
+          "m2c_exitcode": 0,
+          "compile_exitcode": 0,
+          "objdiff_exitcode": 0,
+          "score": 65.01588,
+          "target_size": "252",
+          "size": "268",
+          "diffcount": 42,
+          "syntax_placeholders": []
+        }
+      }
+    ]
+  },
+  "m657_abi_sample": {
+    "receipt_path": "build\\rel-gap-fixes\\m657-compiler-acceptance-final\\results.json",
+    "receipt_sha256": "91b0668a6d8f3ef803cf8f62266ea305190656f28d3aa120cb9c82ecd75cc1a4",
+    "comparison": "Previous patched m2c legacy vs current installed gekko-eabi with same actual header/assembly/target/flags; provider before/after pairs use current translator.",
+    "cases": [
+      {
+        "function": "fn_1_258",
+        "case": "abi-before",
+        "source_sha256": "eb6966b0255132328835d14bf01baf8399fefd591192a75e5e23570daaa843a6",
+        "object_sha256": "ed9f71a91b246f654fa5b0a79d9fc1696d6f539bf9355dbd466cb0bbbc54d9aa",
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "raw_match": 77.564354,
+        "target_bytes": "404",
+        "candidate_bytes": "468",
+        "diff_rows": 54,
+        "unset_f9": true
+      },
+      {
+        "function": "fn_1_258",
+        "case": "abi-after",
+        "source_sha256": "ba5807584a844badcfa06e3b9ea9be8feee724c30b468cb9a07ce5c61469c2e3",
+        "object_sha256": "5f8984e6997fd301144bed2985e84e0aa2a66b2f693d0b4269e395fab7f792d0",
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "raw_match": 76.72277,
+        "target_bytes": "404",
+        "candidate_bytes": "452",
+        "diff_rows": 55,
+        "unset_f9": false
+      },
+      {
+        "function": "fn_1_438",
+        "case": "abi-before",
+        "source_sha256": "c8bec4811b2419258b6e121776e9f126f3418a160c6fb0ca23492412c01b306a",
+        "object_sha256": null,
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "raw_match": null,
+        "target_bytes": null,
+        "candidate_bytes": null,
+        "diff_rows": null,
+        "unset_f9": true
+      },
+      {
+        "function": "fn_1_438",
+        "case": "abi-after",
+        "source_sha256": "771e4c8213c146ce4b6a8babde16efce7da03a5b2fc00f7360cbb8446539c4d2",
+        "object_sha256": "46ebcca3100b6c0cfda99f0d7f2b87eca621ecc285a43acd3158149f2ee53ad7",
+        "m2c_exitcode": 0,
+        "compile_exitcode": 0,
+        "raw_match": 18.787878,
+        "target_bytes": "396",
+        "candidate_bytes": "500",
+        "diff_rows": 128,
+        "unset_f9": false
+      },
+      {
+        "function": "fn_1_D28",
+        "case": "provider-before",
+        "source_sha256": "1e30fe8553ad54e28c702173ac6025af03ff38432d19934a5cbb82aeec3496a0",
+        "object_sha256": null,
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "raw_match": null,
+        "target_bytes": null,
+        "candidate_bytes": null,
+        "diff_rows": null,
+        "unset_f9": false
+      },
+      {
+        "function": "fn_1_D28",
+        "case": "provider-after",
+        "source_sha256": "377a625dde9b90d335eb8fc20ebc0f249471a464e0488ee351efb5f2b3e95798",
+        "object_sha256": null,
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "raw_match": null,
+        "target_bytes": null,
+        "candidate_bytes": null,
+        "diff_rows": null,
+        "unset_f9": false
+      },
+      {
+        "function": "fn_1_23F4",
+        "case": "provider-before",
+        "source_sha256": "c61e54fccccbe3d34703a9864272aa5fa63b2fc5d6f09c1a4d6105916998fef0",
+        "object_sha256": null,
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "raw_match": null,
+        "target_bytes": null,
+        "candidate_bytes": null,
+        "diff_rows": null,
+        "unset_f9": false
+      },
+      {
+        "function": "fn_1_23F4",
+        "case": "provider-after",
+        "source_sha256": "e38f87d499c9e2a9be31c2b53224b45e4231bd6a4f0135cc0fb096f470faf4d0",
+        "object_sha256": null,
+        "m2c_exitcode": 0,
+        "compile_exitcode": 2,
+        "raw_match": null,
+        "target_bytes": null,
+        "candidate_bytes": null,
+        "diff_rows": null,
+        "unset_f9": false
+      }
+    ],
+    "interpretation": "fn_1_258 corrects missing ninth argument and shrinks 468 to452 bytes but raw score77.564354 to76.722770 is not a score gain. fn_1_438 now compiles but only18.787878% raw. Local aggregate and loop-PHI gaps remain."
+  },
+  "remaining_gaps": [
+    "unknown heap and local aggregate layouts",
+    "bounded stack-array inference",
+    "impossible zero-trip loop PHIs importing saved registers",
+    "source structure/lifetime and definition chronology"
+  ],
+  "owner_closures": 0,
+  "source_promotion": false,
+  "matching_credit": false
+}

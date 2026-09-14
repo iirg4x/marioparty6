@@ -499,12 +499,13 @@ def target_integer_shapes(assembly: str, function: str) -> dict:
 
 
 def discover_call_context(root: Path, assembly: str, context: str,
-                          providers=()) -> dict:
+                          providers=(), *, include_shapes=True) -> dict:
     """Find missing direct-call prototypes and their real header/provider sites.
 
     A header hit is an include suggestion, not an ABI proof. All alternatives
     remain visible; no arbitrary first match or source-text-to-prototype rewrite.
     This is read-only and shared across constructors, callbacks and normal code.
+    Bulk header preparation can omit unrelated per-function shape analysis.
     """
     root = Path(root).resolve()
     code = re.sub(r'/\*.*?\*/|#[^\n]*', '', assembly, flags=re.S)
@@ -581,7 +582,8 @@ def discover_call_context(root: Path, assembly: str, context: str,
                           'review the standalone helper return and its inlined callers. '
                           'This cue alone does not establish a return type.'})
     integer_shapes, shape_issues = [], []
-    for name in dict.fromkeys(re.findall(r'^\s*\.fn\s+([\w$]+)', code, re.M)):
+    shape_names = dict.fromkeys(re.findall(r'^\s*\.fn\s+([\w$]+)', code, re.M)) if include_shapes else ()
+    for name in shape_names:
         try:
             integer_shapes.append(target_integer_shapes(assembly, name))
         except ContextError as exc:

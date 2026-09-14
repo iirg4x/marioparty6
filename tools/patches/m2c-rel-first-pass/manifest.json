@@ -68,22 +68,36 @@
     {
       "path": "m2c/arch_ppc.py",
       "before_sha256": "fb594f52554636014378cac737aaf11fd61c63308c6abef206ab1acb5b5b4378",
-      "after_sha256": "0cd9914a50d2fd9620a8a02c1c836519fe586af0411071c2e6f7f30f93a07f2f",
-      "bytes": 69886,
+      "after_sha256": "7be5de3f38420c081f533342110d5ffcd08a607ef6e1330aedfde97edf21526e",
+      "bytes": 71653,
       "after_newline": "lf"
     },
     {
       "path": "m2c/evaluate.py",
       "before_sha256": "a4392ac6c55334e8167797258525573b2be4654d673f437900b2efc95845c0b4",
-      "after_sha256": "43a0594989ac1ee5b4872dcb20d7e89cfed91523432e55e8853a8b52b1e18bc9",
-      "bytes": 60689,
+      "after_sha256": "45b48bf1cb6f9c6fec16df729fd18f028d4d5710af1c092fc0e82e3c0d30d62c",
+      "bytes": 61513,
+      "after_newline": "lf"
+    },
+    {
+      "path": "m2c/main.py",
+      "before_sha256": "2548e0301b88ec29cd798183442580f283a448b2b2ccfd8e408443a7773f3218",
+      "after_sha256": "4b0bc19af6fffe3c2c2aa4695c8c63e04b5ff01c4bfea84f6ab12a5837822c83",
+      "bytes": 27412,
+      "after_newline": "lf"
+    },
+    {
+      "path": "m2c/options.py",
+      "before_sha256": "636b35ed7dfae73a4394113b06c9b17255ec587c266a4fc12ff121333f92169f",
+      "after_sha256": "55b09b75daadd5a2b001aa9370a7495339bf4a979880fb95cf7b559495ba3014",
+      "bytes": 9833,
       "after_newline": "lf"
     },
     {
       "path": "m2c/translate.py",
       "before_sha256": "5107f2f4b92bd26488f33e9772a1bb6d2331a22f3a57dda40f44f4f3b52bae19",
-      "after_sha256": "b9a538e1c117dce4b28044407592c22169d761e6b3a873ce51384a2311975d06",
-      "bytes": 198147,
+      "after_sha256": "2da80b812fe597a22beec6198f17575f7064bc5d247ea67a7bfd5fba1ec11daa",
+      "bytes": 205821,
       "after_newline": "lf"
     },
     {
@@ -234,6 +248,20 @@
       "after_newline": "lf"
     },
     {
+      "path": "tests/unit/test_ppc_gekko_abi.py",
+      "before_sha256": null,
+      "after_sha256": "7dbf5327f83d9b1c1e5e9482ee50143121026ec4e4ebd63b4c5a93119a25eb3b",
+      "bytes": 10825,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/unit/test_ppc_stack_bookkeeping.py",
+      "before_sha256": null,
+      "after_sha256": "5ed5bd3962ab70c1adac61d558e24952bf6ef05d0a537f220796c2ccc8fca503",
+      "bytes": 3357,
+      "after_newline": "lf"
+    },
+    {
       "path": "tests/unit/test_stack_declarations.py",
       "before_sha256": null,
       "after_sha256": "32bf10c4e02ea7bed323a95d8bf3e37b39c2eba083675e82d4a40b8513bac4c9",
@@ -248,6 +276,6 @@
       "after_newline": "lf"
     }
   ],
-  "patch_sha256": "9187182074fe1f7a14e9b90aa7b51a60a5c8235ecbd274ae9367f8dafc72b662",
+  "patch_sha256": "fc0562e4a0c9cddc940b8a02a84bb7328763befa0b1a547966f94aaec74e6544",
   "matching_credit": false
 }
