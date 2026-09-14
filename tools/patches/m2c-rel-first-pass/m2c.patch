@@ -447,6 +447,55 @@ diff --git a/m2c/if_statements.py b/m2c/if_statements.py
      switch_index = add_labels_for_switch(
          context,
          start,
+@@ -1388,6 +1451,39 @@
+     return body
+ 
+ 
++def mwcc_terminal_switch_breaks(context: Context, body: Body) -> None:
++    """Keep a flat terminal switch's single physical return as a shared exit.
++
++    Scope this spelling choice to Gekko MWCC. Separate physical returns, a
++    value-returning function, nested control flow, and nonterminal switches
++    retain the existing reconstruction. In particular this is not a global
++    early-return rewrite or an instruction-count-based source substitution.
++    """
++    options = context.options
++    if (options.target.arch != Target.ArchEnum.PPC
++            or options.target.compiler != Target.CompilerEnum.MWCC
++            or options.ppc_abi != Options.PpcAbiEnum.GEKKO_EABI or not context.is_void):
++        return
++    exits = {
++        (inst.meta.filename, inst.meta.lineno)
++        for node in context.flow_graph.nodes
++        for inst in node.block.instructions
++        if inst.mnemonic == "blr" and not inst.meta.synthetic
++    }
++    if len(exits) != 1:
++        return
++    visible = [statement for statement in body.statements if statement.should_write()]
++    if not visible or not isinstance(visible[-1], SwitchStatement):
++        return
++    case_body = visible[-1].body
++    if any(not isinstance(statement, (SimpleStatement, LabelStatement))
++           for statement in case_body.statements):
++        return
++    for statement in case_body.statements:
++        if isinstance(statement, SimpleStatement) and statement.contents == "return;":
++            statement.contents = "break;"
++
++
+ def build_body(context: Context, options: Options) -> Body:
+     start_node: Node = context.flow_graph.entry_node()
+     terminal_node: Node = context.flow_graph.terminal_node()
+@@ -1419,6 +1515,8 @@
+             f"bug: did not emit code for node #{node.name()}; contents below:"
+         )
+         emit_node(context, node, body)
++
++    mwcc_terminal_switch_breaks(context, body)
+ 
+     # Label switch nodes
+     index = 0
 diff --git a/m2c/main.py b/m2c/main.py
 --- a/m2c/main.py
 +++ b/m2c/main.py
@@ -2684,6 +2733,96 @@ new file mode 100644
 +        print('saved_reg_r24 remains:', 'saved_reg_r24' in result.stdout)
 +    else:
 +        unittest.main()
+diff --git a/tests/unit/test_ppc_terminal_switch.py b/tests/unit/test_ppc_terminal_switch.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_ppc_terminal_switch.py
+@@ -0,0 +1,85 @@
++"""A flat void MWCC switch with one physical epilogue keeps that shared exit."""
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++TRANSLATOR = Path(__file__).resolve().parents[2] / "m2c.py"
++ASM = """.section .text
++.global move
++move:
++    cmpwi r3, 3
++    beq .Lthree
++    bge .Lhigh
++    cmpwi r3, 1
++    beq .Lone
++    bge .Ltwo
++    b .Lend
++.Lhigh:
++    cmpwi r3, 5
++    bge .Lend
++    b .Lfour
++.Lone:
++    lwz r6, 0(r4)
++    subi r0, r6, 1
++    stw r0, 0(r4)
++    b .Lend
++.Ltwo:
++    lwz r6, 0(r4)
++    addi r0, r6, 1
++    stw r0, 0(r4)
++    b .Lend
++.Lthree:
++    lwz r6, 0(r5)
++    subi r0, r6, 1
++    stw r0, 0(r5)
++    b .Lend
++.Lfour:
++    lwz r6, 0(r5)
++    addi r0, r6, 1
++    stw r0, 0(r5)
++.Lend:
++    blr
++"""
++
++
++class PpcTerminalSwitchTests(unittest.TestCase):
++    def generate(self, asm=ASM, context="void move(int, int *, int *);", abi="gekko-eabi"):
++        with tempfile.TemporaryDirectory() as tmp:
++            a, c = Path(tmp)/"input.s", Path(tmp)/"context.c"
++            a.write_text(asm)
++            c.write_text(context)
++            result = subprocess.run([sys.executable, "-B", str(TRANSLATOR),
++                "-t", "ppc-mwcc-c", "--ppc-abi", abi, "--no-cache", "--context", str(c),
++                "-f", "move", str(a)], capture_output=True, text=True, timeout=30)
++        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
++        self.assertNotIn("Error occurred", result.stdout)
++        return result.stdout
++
++    def test_single_exit_uses_breaks(self):
++        out = self.generate()
++        self.assertIn("switch (", out)
++        self.assertEqual(out.count("break;"), 4)
++        self.assertNotIn("return;", out)
++
++    def test_distinct_physical_return_is_not_rewritten(self):
++        out = self.generate(ASM.replace("    b .Lend\n.Ltwo:", "    blr\n.Ltwo:"))
++        self.assertIn("return;", out)
++
++    def test_code_after_switch_preserves_early_return(self):
++        out = self.generate(ASM.replace(".Lend:\n    blr", ".Lend:\n    li r0, 9\n    stw r0, 0(r4)\n    blr"))
++        self.assertIn("9", out)
++        self.assertIn("switch (", out)
++
++    def test_value_return_preserved(self):
++        out = self.generate(ASM.replace(".Lend:\n    blr", ".Lend:\n    li r3, 7\n    blr"),
++                            "int move(int, int *, int *);")
++        self.assertIn("return 7;", out)
++
++    def test_legacy_output_unchanged(self):
++        self.assertIn("return;", self.generate(abi="legacy"))
++
++
++if __name__ == "__main__":
++    unittest.main()
 diff --git a/tests/unit/test_ppc_variadic_cr1.py b/tests/unit/test_ppc_variadic_cr1.py
 new file mode 100644
 --- /dev/null

@@ -82,8 +82,8 @@
     {
       "path": "m2c/if_statements.py",
       "before_sha256": "182e321adf576f70f7b8d047b9a36b1bc22a6a79e03461a9740138dd53b8e472",
-      "after_sha256": "1fa4365355db864979651129ef9db6d8aceb30b51f8f027283dd07c51b924d0e",
-      "bytes": 63420,
+      "after_sha256": "c36faadab93e53ed9a3b99e865661572bda141bb643c0656a52b38a2e264470d",
+      "bytes": 64952,
       "after_newline": "lf"
     },
     {
@@ -283,6 +283,13 @@
       "after_newline": "lf"
     },
     {
+      "path": "tests/unit/test_ppc_terminal_switch.py",
+      "before_sha256": null,
+      "after_sha256": "9c5db5c03b6b56f7daef3a2cbed93850f16e914fbd351e6cceb66f6c150f120c",
+      "bytes": 2488,
+      "after_newline": "lf"
+    },
+    {
       "path": "tests/unit/test_ppc_variadic_cr1.py",
       "before_sha256": null,
       "after_sha256": "ab40d37dccad049b292d16d481fa495e1fe853f89cca3bf8659ef667a4697724",
@@ -311,6 +318,6 @@
       "after_newline": "lf"
     }
   ],
-  "patch_sha256": "47ddf861127751f3922f46c70225b9258d9a9a320053c5e0fcb705b568f0968d",
+  "patch_sha256": "1812e624b4486fe8b278130c7f5d46a7733d978f35c7dc93f35a7928b4771605",
   "matching_credit": false
 }

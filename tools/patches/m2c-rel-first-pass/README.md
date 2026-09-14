@@ -75,20 +75,20 @@ holdout or the later call-interface sample below.
 ## Install and use
 
 The current verified installation is
-`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi7/m2c.py`.
+`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi8/m2c.py`.
 Use this path for new REL preparation and reconstruction. The original installed
 m2c and the already-running all-REL baseline were deliberately left unchanged.
 
-The portable package includes the late-pointer and call-copy boundary fixes
-below. The eabi7 installation verifies the same package hashes. To install in a
+The portable package includes the terminal-switch, late-pointer and call-copy
+boundary fixes below. The eabi8 installation verifies the same package hashes. To install in a
 **new directory**:
 
 ```text
-rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi7-new
+rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi8-new
 ```
 
 The installer preserves the source installation, rejects baseline drift, applies
-the portable patch, and verifies all 35 changed output files. It never modifies
+the portable patch, and verifies all 36 changed output files. It never modifies
 game source, configures a build, or publishes matching status. Destinations may
 be nested inside another checkout: patch application disables parent repository
 discovery and inherited Git repository variables without creating a repository.
@@ -174,7 +174,30 @@ The fresh eabi7 copy passes **531/531 tests**: 413 end-to-end and 118 unit tests
 without golden rewrites. The four new cases cover call-only short/byte copies,
 genuinely narrow arithmetic, and context-defined short storage. Original m2c,
 eabi6 and active batch manifests remain unchanged. Compact paired bindings are
-in `narrow-call-validation.json`; use eabi7 for newly prepared work.
+in `narrow-call-validation.json`; this fix is also included in eabi8.
+
+## Active-recovery follow-up: flat terminal switches with a shared return
+
+m612's two direction helpers have one physical `blr`, but the generated flat
+switch placed `return;` in every case. MWCC emitted an extra instruction in each
+function. The Gekko MWCC renderer now uses `break;` for that narrowly identified
+terminal void-switch shape. It counts original instruction locations, not
+duplicated CFG return nodes. Value-returning functions, multiple physical returns,
+nested control flow, nonterminal switches and legacy mode retain existing output.
+
+With identical actual headers and GC1.3.2 flags, **unedited generated C** changes
+`m612dll:fn_1_5E90` from 100/96 bytes and one row to **96/96, zero rows**;
+`fn_1_5EF0` changes from 108/104 and one row to **104/104, zero rows**. The
+installed eabi8 reproduces both scratch source/object hashes. This automates the
+primary's verified reconstruction lesson; it did not discover that lesson by
+itself. Both natural helpers are retained in `src/REL/m612dll/movement.c`.
+The module is still incomplete; no whole-module or main progress is credited.
+
+All **536 translator tests pass** (413 end-to-end, 123 unit) without golden
+rewrites. Five new cases cover the positive shape and its exclusion gates.
+Package hashes and the paired compiler result are in
+`terminal-switch-validation.json`. New preparation uses eabi8; previous
+installations and already-running manifests remain unchanged.
 
 ## Follow-up: actual call interfaces and stack arguments
 

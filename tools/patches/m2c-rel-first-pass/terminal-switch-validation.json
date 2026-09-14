@@ -1,0 +1,22 @@
+{
+  "schema": "m2c_terminal_switch_validation/v1",
+  "installed_path": "C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi8/m2c.py",
+  "patch_sha256": "1812e624b4486fe8b278130c7f5d46a7733d978f35c7dc93f35a7928b4771605",
+  "manifest_sha256": "900ff3682a33f8156a7abb8ad0bd37109a5680ead0e22003c7af77781e031f46",
+  "verified_files": 36,
+  "tests": {"end_to_end": 413, "unit": 123, "passed": 536, "failed": 0, "golden_changes": 0},
+  "target_sha256": "3bcd5200d6db034632079da89f032c0744a108966949b5efcb1463361770826f",
+  "paired_result": "build/rel-gap-fixes/terminal-switch-acceptance/result.json",
+  "before_source_sha256": "783fae20ce111b4fc05773c04f4618156aa3b2f98ee83b29a37491db449f5c39",
+  "before_object_sha256": "7b99d2d26eaa15068bccc900ef72775abb58e2a483c73cd53a22d98ab489665c",
+  "after_source_sha256": "cf8d0702f6c78205685a225b465ecbebd4ac3d641fa482a9a15f86143b51a511",
+  "after_object_sha256": "6b550513987bb293aa287cde1a5ed1a418e3cb81c8bd9b35fdf7f6c5d1d245c3",
+  "functions": [
+    {"name": "fn_1_5E90", "target_bytes": 96, "before_bytes": 100, "after_bytes": 96, "before_rows": 1, "after_rows": 0},
+    {"name": "fn_1_5EF0", "target_bytes": 104, "before_bytes": 108, "after_bytes": 104, "before_rows": 1, "after_rows": 0}
+  ],
+  "manual_generated_source_edits": 0,
+  "primary_discovered_rule": true,
+  "module_complete": false,
+  "main_progress_credit": false
+}
