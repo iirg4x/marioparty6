@@ -1322,6 +1322,18 @@ config.libs = [
         },
     ),
     Rel(
+        "m657Dll",
+        objects={
+            Object(Matching, "REL/m657Dll/m657.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m657Dll/arena.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m657Dll/player.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m657Dll/score.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m657Dll/com.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m657Dll/hud.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m657Dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+        },
+    ),
+    Rel(
         "m670dll",
         objects={
             Object(Matching, "REL/m670dll/prolog.c", extra_cflags=["-pooldata off"]),

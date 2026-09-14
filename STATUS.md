@@ -10,12 +10,12 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 22.86% | 43.70% |
+| Entire project | 23.06% | 43.77% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 9.10% | 8.75% |
+| REL modules | 9.34% | 8.87% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**5 are fully source-selected** (`m616dll`, `m621dll`, `m635dll`, `m651dll`, `m670dll`) and **77 remain**. This scope is distinct
+**6 are fully source-selected** (`m616dll`, `m621dll`, `m635dll`, `m651dll`, `m657Dll`, `m670dll`) and **76 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,14 +23,14 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m635dll is now fully source-selected**: all 20,224 code bytes and 1,668
-data/BSS bytes come from five source objects, with no original-object fallback.
-All 52 application functions and their effective physical relocations match;
-the rebuilt REL is byte-identical to retail. One unreferenced four-byte BSS
-interval is explicitly represented as unknown byte storage; its original type,
-purpose, and padding-versus-allocation identity remain unknown. Previously
-completed modules retain their disclosed uncertainty about unaccessed records,
-unused storage capacities, and inferred initializer types.
+**m657Dll is now fully source-selected**: all 24,156 code bytes and 1,292
+data/BSS bytes come from seven source objects, with no original-object fallback.
+All 89 application instruction bodies and physical relocation payloads match;
+the complete 35,264-byte REL is byte-identical to retail. Twelve unreferenced
+initialized zero bytes are represented as documented unknown storage with
+maintainer approval; their original type and purpose remain unknown. Six
+unaccessed heap-record ranges retain explicit unknown fields. Earlier modules
+retain their disclosures, including M635's four-byte unknown BSS interval.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
 

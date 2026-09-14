@@ -5,3 +5,42 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m657Dll/m657.c:
+	.text       start:0x00000000 end:0x000015C0
+	.rodata     start:0x00000000 end:0x000000C0
+	.data       start:0x00000000 end:0x00000080
+	.bss        start:0x00000000 end:0x00000028
+
+REL/m657Dll/arena.c:
+	.text       start:0x000015C0 end:0x00002018
+	.rodata     start:0x000000C0 end:0x000000D0
+	.data       start:0x00000080 end:0x000000D8
+	.bss        start:0x00000028 end:0x00000030
+
+REL/m657Dll/player.c:
+	.text       start:0x00002018 end:0x00003E1C
+	.rodata     start:0x000000D0 end:0x00000140
+	.data       start:0x000000D8 end:0x000001E8
+	.bss        start:0x00000030 end:0x00000038
+
+REL/m657Dll/score.c:
+	.text       start:0x00003E1C end:0x00004570
+	.rodata     start:0x00000140 end:0x00000150
+	.data       start:0x000001E8 end:0x000001F8
+	.bss        start:0x00000038 end:0x00000040
+
+REL/m657Dll/com.c:
+	.text       start:0x00004570 end:0x00004E58
+	.data       start:0x000001F8 end:0x00000280
+	.bss        start:0x00000040 end:0x00000048
+
+REL/m657Dll/hud.c:
+	.text       start:0x00004E58 end:0x00005418
+	.rodata     start:0x00000150 end:0x00000158
+	.data       start:0x00000280 end:0x00000348
+	.bss        start:0x00000048 end:0x0000004C
+
+REL/m657Dll/runtime.c:
+	.text       start:0x00005418 end:0x00005E5C
+	.rodata     start:0x00000158 end:0x00000170
