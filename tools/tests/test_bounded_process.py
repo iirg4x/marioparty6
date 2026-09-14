@@ -71,6 +71,65 @@ class BoundedProcessTests(unittest.TestCase):
         sleep.assert_called_once_with(.01)
         self.assertEqual(job.handle, 123)
 
+    def test_windows_job_waits_process_handles_even_when_accounting_is_zero(self):
+        job = object.__new__(bp._WindowsJob)
+        job.handle = 123
+        job.process_handles = [101, 102]
+        job.api = mock.Mock()
+        job.api.WaitForSingleObject.return_value = 0
+        with mock.patch.object(job, 'active_processes', return_value=0) as active, \
+                mock.patch.object(bp.time, 'monotonic', side_effect=[10, 10.25, 10.75]):
+            job.wait_empty(timeout=1)
+        self.assertEqual(job.api.WaitForSingleObject.call_args_list,
+                         [mock.call(101, 750), mock.call(102, 250)])
+        active.assert_called_once()
+        job.api.CloseHandle.assert_not_called()
+        job.close()
+        self.assertEqual(job.api.CloseHandle.call_args_list,
+                         [mock.call(101), mock.call(102), mock.call(123)])
+
+    def test_windows_process_handle_timeout_shares_one_deadline(self):
+        job = object.__new__(bp._WindowsJob)
+        job.handle = 123
+        job.process_handles = [101, 102]
+        job.api = mock.Mock()
+        job.api.WaitForSingleObject.side_effect = [0, 258]
+        with mock.patch.object(job, 'active_processes', return_value=0) as active, \
+                mock.patch.object(bp.time, 'monotonic', side_effect=[10, 10.25, 10.75]):
+            with self.assertRaisesRegex(bp.ProcessLimitError, 'process did not signal'):
+                job.wait_empty(timeout=1)
+        self.assertEqual(job.api.WaitForSingleObject.call_args_list,
+                         [mock.call(101, 750), mock.call(102, 250)])
+        active.assert_not_called()
+
+    def test_windows_job_process_snapshot_rejects_reused_pid(self):
+        job = object.__new__(bp._WindowsJob)
+        job.handle = 123
+        job.process_handles = []
+        job.api = mock.Mock()
+        job.api.OpenProcess.side_effect = [101, 102]
+        def membership(handle, owned_job, result):
+            self.assertEqual(owned_job, 123)
+            result._obj.value = handle == 101
+            return 1
+        job.api.IsProcessInJob.side_effect = membership
+        with mock.patch.object(job, 'process_ids', return_value=[11, 12]):
+            job.capture_process_handles()
+        self.assertEqual(job.api.OpenProcess.call_args_list,
+                         [mock.call(0x101000, False, 11), mock.call(0x101000, False, 12)])
+        self.assertEqual(job.process_handles, [101])
+        job.api.CloseHandle.assert_called_once_with(102)
+
+    def test_windows_job_still_terminates_if_process_snapshot_fails(self):
+        job = object.__new__(bp._WindowsJob)
+        job.handle = 123
+        job.api = mock.Mock()
+        job.api.TerminateJobObject.return_value = 1
+        with mock.patch.object(job, 'capture_process_handles', side_effect=OSError('snapshot sentinel')):
+            with self.assertRaisesRegex(OSError, 'snapshot sentinel'):
+                job.terminate()
+        job.api.TerminateJobObject.assert_called_once_with(123, 1)
+
     @unittest.skipUnless(os.name == 'nt', 'Windows job cleanup')
     def test_windows_job_drain_failure_preserves_primary_exception(self):
         for diagnostic in (OSError('query sentinel'), bp.ProcessLimitError('drain timeout sentinel')):
@@ -97,14 +156,15 @@ class BoundedProcessTests(unittest.TestCase):
     def test_windows_descendant_cwd_released_repeatedly(self):
         child = 'from pathlib import Path; import time; Path("ready").touch(); time.sleep(20)'
         code = f'import subprocess,sys; subprocess.Popen([sys.executable,"-c",{child!r}])'
-        for iteration in range(10):
+        for iteration in range(20):
             with self.subTest(iteration=iteration), tempfile.TemporaryDirectory(dir=self.root) as directory:
                 cwd = Path(directory)
                 def child_ready():
                     if (cwd/'ready').exists():
                         raise RuntimeError('descendant is ready')
-                with self.assertRaisesRegex(RuntimeError, 'descendant is ready'):
+                with self.assertRaisesRegex(RuntimeError, 'descendant is ready') as caught:
                     bp.run([sys.executable, '-c', code], cwd=cwd, timeout=3, check=child_ready)
+                self.assertFalse(getattr(caught.exception, '__notes__', []))
                 self.assertFalse(any(t.name.startswith('recovery-pipe-') for t in threading.enumerate()))
             # Each context above removes the child's actual cwd immediately,
             # without retries, sleeps, or deferred tempfile cleanup.

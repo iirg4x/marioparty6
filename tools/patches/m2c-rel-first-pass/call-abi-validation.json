@@ -685,5 +685,43 @@
     "bogus_floating_arguments_removed": 3,
     "functions": 2,
     "source_promotion": false
+  },
+  "variadic_compiler_acceptance": {
+    "receipt_sha256": "977485a4cb3801dcd586f7d297f66c24666703ba50a82e0e625476d31318755e",
+    "cases": [
+      {
+        "case": "before",
+        "m2c_rc": 0,
+        "source_sha256": "5dfe0073c425e402eb75e544f46ce46ab6449cee310b54aee03ffef779d56ae9",
+        "target_sha256": "7fc2220955e2b582bda7435c0848e19d238ea0325edb580249e86727f4527073",
+        "calls": [
+          "OSReport(lbl_1_data_228);",
+          "OSReport(lbl_1_data_253, (u32) (u64) temp_ret, M2C_BITWISE(f32, temp_ret));"
+        ],
+        "compile_exitcode": 2,
+        "diagnostic": "### mwcceppc.exe Compiler:\r\n#    File: ..\\mp6-board-single-final-astra-20260911\\build\\rel-gap-fixes\\variadic-installed-compiler-complete\\before\\candidate.c\r\n# -----------------------------------------------------------------------------\r\n#     257: ((f32)(temp_ret))\r\n#   Error:                 ^\r\n#   illegal explicit conversion from 'void **' to\r\n#   'float'\r\n#   Too many errors printed, aborting program\r\n\r\nUser break, cancelled...\r\n"
+      },
+      {
+        "case": "after",
+        "m2c_rc": 0,
+        "source_sha256": "5a35140fc8f3b7a1e7a9be60c113bfd7fcc9d6b4ef534f7de738fd026881c6f6",
+        "target_sha256": "7fc2220955e2b582bda7435c0848e19d238ea0325edb580249e86727f4527073",
+        "calls": [
+          "OSReport(lbl_1_data_228);",
+          "OSReport(lbl_1_data_253, (u32) (u64) temp_ret);"
+        ],
+        "compile_exitcode": 0,
+        "diagnostic": "",
+        "object_sha256": "3f2ea1e9598771f3274df95b3de6eae443f6ff274468517ba1ccd997be0a4fd9",
+        "objdiff_rc": 0,
+        "score": 64.320755,
+        "target_size": "212",
+        "size": "216",
+        "diffcount": 30
+      }
+    ],
+    "matching_credit": false,
+    "method": "same installed translator and flags; only CR1 inference filter toggled",
+    "interpretation": "fn_1_47EC no longer invents an illegal pointer-to-float vararg; now compiles at64.320755% raw. Unrelated inferred integer vararg and layouts remain unresolved; no match claim."
   }
 }

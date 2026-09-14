@@ -170,7 +170,7 @@ def attempt(manifest, module, name, worker, binding):
         if any(sha(p) != binding['files'][p] for p in watched):
             raise ValueError('input drift before dispatch')
         abi_args = abi_arguments(manifest)
-        argv = [sys.executable, manifest['m2c'], '-t', 'ppc-mwcc-c', *abi_args, '--knr', '--valid-syntax', '--force-decimal', '--context', manifest['context_path'], '-f', name, *module['assembly_paths']]
+        argv = [sys.executable, manifest['m2c'], '-t', 'ppc-mwcc-c', *abi_args, '--knr', '--valid-syntax', '--force-decimal', '--stacktrace', '--context', manifest['context_path'], '-f', name, *module['assembly_paths']]
         rc, reason, diagnostic = run_process(argv, manifest['proof_root'], scratch)
         row.update(m2c_exitcode=rc, diagnostic=reason or diagnostic)
         with (scratch / 'stdout.log').open('rb') as draft_file:

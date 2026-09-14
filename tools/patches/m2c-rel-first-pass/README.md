@@ -100,6 +100,9 @@ rtk proxy python tools/rel_first_compile_batch.py build/<batch>/manifest.json --
 
 The runner preserves bounded scratch use and resumable census results, binds
 translator implementation inputs once per run, and does not promote raw scores.
+It requests m2c stack traces so the bounded failure diagnostic preserves parser
+causes; an intermittent parser failure is still unresolved, not silently retried
+or credited as a source result.
 Use `tools/rel_first_compile_freeze.py` for a drained continuation. Neither tool
 changes an active manifest or grants source promotion. Keep compact champions
 and useful diagnostics; do not retain full per-function objdiff JSON history.
@@ -151,3 +154,9 @@ the 12-case sample, using their existing baseline census rather than compiling
 controls again. **Five now compile**, with `miraclebookdll:fn_1_4FD4` at 96.41157%
 raw; no raw-100 result or owner closure. The remaining failure is an unsized local
 stack array, not missing call context.
+
+The CR1 compiler acceptance uses the same translator with only that filter
+disabled/enabled: `m657Dll:fn_1_47EC` changes from an illegal pointer-to-float
+variadic conversion to compiling at 64.320755% raw (216 versus 212 target bytes).
+It is a translation-correctness improvement, not an exact function. An unrelated
+inferred integer vararg and incomplete layouts remain visible.

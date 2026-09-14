@@ -49,7 +49,14 @@ class _WindowsJob:
         self.api.QueryInformationJobObject.argtypes = [w.HANDLE, ctypes.c_int, ctypes.c_void_p,
                                                       w.DWORD, ctypes.POINTER(w.DWORD)]
         self.api.QueryInformationJobObject.restype = w.BOOL
+        self.api.OpenProcess.argtypes = [w.DWORD, w.BOOL, w.DWORD]
+        self.api.OpenProcess.restype = w.HANDLE
+        self.api.IsProcessInJob.argtypes = [w.HANDLE, w.HANDLE, ctypes.POINTER(w.BOOL)]
+        self.api.IsProcessInJob.restype = w.BOOL
+        self.api.WaitForSingleObject.argtypes = [w.HANDLE, w.DWORD]
+        self.api.WaitForSingleObject.restype = w.DWORD
         self.api.CloseHandle.argtypes = [w.HANDLE]
+        self.process_handles: list[int] = []
         self.handle = self.api.CreateJobObjectW(None, None)
         if not self.handle:
             raise ctypes.WinError(ctypes.get_last_error())
@@ -70,8 +77,62 @@ class _WindowsJob:
             raise
 
     def terminate(self):
+        # A job's ActiveProcesses can reach zero before process teardown has
+        # released its cwd. Keep verified process objects alive for a real wait.
+        snapshot_error = None
+        try:
+            self.capture_process_handles()
+        except Exception as exc:
+            snapshot_error = exc
         if not self.api.TerminateJobObject(self.handle, 1):
-            raise ctypes.WinError(ctypes.get_last_error())
+            error = ctypes.WinError(ctypes.get_last_error())
+            if snapshot_error is not None:
+                error.add_note(f'Windows job process snapshot: {snapshot_error}')
+            raise error
+        if snapshot_error is not None:
+            raise snapshot_error
+
+    def process_ids(self) -> list[int]:
+        if not self.handle:
+            raise RuntimeError('cannot query a closed owned Windows job')
+        capacity = 16
+        deadline = time.monotonic() + 3
+        while capacity <= 4096:
+            class ProcessIds(ctypes.Structure):
+                _fields_ = [('assigned', ctypes.c_uint32), ('count', ctypes.c_uint32),
+                            ('ids', ctypes.c_size_t * capacity)]
+            info = ProcessIds()
+            ok = self.api.QueryInformationJobObject(
+                self.handle, 3, ctypes.byref(info), ctypes.sizeof(info), None)
+            if ok and info.count == info.assigned and info.count <= capacity:
+                return list(info.ids[:info.count])
+            if not ok and ctypes.get_last_error() != 234:  # ERROR_MORE_DATA
+                raise ctypes.WinError(ctypes.get_last_error())
+            if time.monotonic() >= deadline:
+                raise ProcessLimitError('Windows job process snapshot timed out')
+            capacity = max(capacity * 2, info.assigned)
+        raise ProcessLimitError('Windows job process snapshot exceeded 4096 processes')
+
+    def capture_process_handles(self) -> None:
+        from ctypes import wintypes as w
+        for pid in self.process_ids():
+            # SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION. No kill access
+            # is requested, and reused PIDs must still belong to this exact job.
+            handle = self.api.OpenProcess(0x100000 | 0x1000, False, pid)
+            if not handle:
+                if ctypes.get_last_error() == 87:  # Process already gone.
+                    continue
+                raise ctypes.WinError(ctypes.get_last_error())
+            try:
+                owned = w.BOOL()
+                if not self.api.IsProcessInJob(handle, self.handle, ctypes.byref(owned)):
+                    raise ctypes.WinError(ctypes.get_last_error())
+                if owned.value:
+                    self.process_handles.append(handle)
+                    handle = None
+            finally:
+                if handle:
+                    self.api.CloseHandle(handle)
 
     def active_processes(self) -> int:
         if not self.handle:
@@ -86,6 +147,13 @@ class _WindowsJob:
     def wait_empty(self, timeout: float = 3) -> None:
         """Termination is asynchronous; pipe EOF does not release descendant cwd."""
         deadline = time.monotonic() + timeout
+        for handle in getattr(self, 'process_handles', ()):
+            milliseconds = max(0, math.ceil((deadline - time.monotonic()) * 1000))
+            status = self.api.WaitForSingleObject(handle, milliseconds)
+            if status == 0xFFFFFFFF:  # WAIT_FAILED
+                raise ctypes.WinError(ctypes.get_last_error())
+            if status != 0:  # WAIT_OBJECT_0 signals completed process teardown.
+                raise ProcessLimitError(f'Windows job process did not signal within {timeout:g} seconds')
         while True:
             active = self.active_processes()
             if not active:
@@ -97,6 +165,9 @@ class _WindowsJob:
             time.sleep(min(0.01, remaining))
 
     def close(self):
+        for handle in self.process_handles:
+            self.api.CloseHandle(handle)
+        self.process_handles.clear()
         if self.handle:
             self.api.CloseHandle(self.handle)
             self.handle = None

@@ -41,7 +41,7 @@ class BatchTests(unittest.TestCase):
                 (scratch/'stdout.log').write_text('synthetic failure')
                 return 1, '', ''
             expected = [sys.executable, str(inp), '-t', 'ppc-mwcc-c', '--knr',
-                        '--valid-syntax', '--force-decimal', '--context', str(inp), '-f', 'f', str(inp)]
+                        '--valid-syntax', '--force-decimal', '--stacktrace', '--context', str(inp), '-f', 'f', str(inp)]
             for profile in (None, 'legacy', 'gekko-eabi'):
                 selected = manifest if profile is None else {**manifest, 'ppc_abi': profile}
                 with patch.object(batch, 'run_process', side_effect=fake) as run:
