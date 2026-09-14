@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Mario Party 6 source cleanup index for pointer access, casts, and match workarounds"
+    />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23151e26%22%2F%3E%3Cpath%20d%3D%22M8%2023V15h4v8zm6%200V10h4v13zm6%200V6h4v17z%22%20fill%3D%22%2365d6b3%22%2F%3E%3C%2Fsvg%3E" />
+    <title>Cleanup index | MP6 Recovery Ledger</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./cleanup.css" />
+  </head>
+  <body data-page="cleanup">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    <div class="app-shell">
+      <header class="masthead">
+        <div class="masthead-grid">
+          <div>
+            <h1><a class="brand-link" href="./">Mario Party 6 recovery</a></h1>
+            <p class="masthead-copy">Delivered main · GP6E01</p>
+            <p class="connection-state" id="connection-state" data-tone="muted">Reading published snapshot</p>
+          </div>
+
+          <div class="masthead-actions">
+            <button class="button button-primary" id="refresh-button" type="button" disabled aria-busy="true">
+              <span class="button-spinner" aria-hidden="true"></span>
+              <span>Reload snapshot</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="./">Overview</a>
+        <a href="./dol.html">DOL</a>
+        <a href="./modules.html">Modules</a>
+        <a href="./cleanup.html" aria-current="page">Cleanup</a>
+        <a href="./snapshot.html">Snapshot</a>
+      </nav>
+
+      <noscript><p class="app-banner">JavaScript is needed to load this snapshot.</p></noscript>
+
+      <div class="app-banner" id="app-banner" role="status" aria-live="polite" hidden></div>
+
+      <main id="main-content" aria-busy="true" tabindex="-1">
+        <div id="page-skeleton">
+          <p class="visually-hidden" role="status">Loading cleanup index…</p>
+          <div aria-hidden="true">
+            <section class="cleanup-index cleanup-skeleton-index">
+              <div class="cleanup-heading section-heading-row">
+                <div class="section-intro">
+                  <p class="section-index">CLEANUP</p>
+                  <h2>Source cleanup index</h2>
+                  <p>Indexed source expressions for pointer access, casts, and compiler directives.</p>
+                </div>
+                <div class="cleanup-heading-actions skeleton-actions">
+                  <span class="button button-quiet skeleton-button"></span>
+                  <span class="skeleton-line skeleton-short cleanup-commit-skeleton"></span>
+                </div>
+              </div>
+
+              <div class="cleanup-summary">
+                <article class="cleanup-summary-card skeleton-card">
+                  <span class="skeleton-label"></span>
+                  <strong class="skeleton-value"></strong>
+                  <span class="skeleton-line skeleton-short"></span>
+                </article>
+                <article class="cleanup-summary-card skeleton-card">
+                  <span class="skeleton-label"></span>
+                  <strong class="skeleton-value"></strong>
+                  <span class="skeleton-line skeleton-short"></span>
+                </article>
+                <article class="cleanup-summary-card skeleton-card">
+                  <span class="skeleton-label"></span>
+                  <strong class="skeleton-value"></strong>
+                  <span class="skeleton-line skeleton-short"></span>
+                </article>
+              </div>
+
+              <div class="cleanup-workbench">
+                <aside class="cleanup-facets">
+                  <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-control"></span></div>
+                  <div class="cleanup-facet-skeleton skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-line"></span><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="cleanup-facet-skeleton skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-line"></span><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></div>
+                </aside>
+                <div class="cleanup-results">
+                  <div class="cleanup-toolbar skeleton-stack"><span class="skeleton-control"></span><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="cleanup-file-list skeleton-stack"><div class="cleanup-file-skeleton skeleton-line"></div><div class="cleanup-file-skeleton skeleton-line"></div><div class="cleanup-file-skeleton skeleton-line"></div><div class="cleanup-file-skeleton skeleton-line"></div><div class="cleanup-file-skeleton skeleton-line"></div></div>
+                </div>
+              </div>
+
+              <div class="cleanup-methodology-skeleton skeleton-note"></div>
+            </section>
+          </div>
+        </div>
+
+        <div id="page-content" hidden>
+          <section class="cleanup-index" id="cleanup-index" aria-labelledby="cleanup-heading">
+            <div class="cleanup-heading section-heading-row">
+              <div class="section-intro">
+                <p class="section-index">CLEANUP</p>
+                <h2 id="cleanup-heading">Source cleanup index</h2>
+                <p>
+                  Search the pinned scan for pointer access, casts, and compiler directives.
+                </p>
+                <p class="cleanup-intro-note">Rows are syntactic candidates for review, not proof that code is wrong or must change.</p>
+              </div>
+                <div class="cleanup-heading-actions">
+                  <a class="button button-quiet" id="cleanup-download" href="#" download="cleanup_index.tsv" aria-disabled="true">Download TSV</a>
+                  <p class="cleanup-commit-note">Scan commit <a id="cleanup-commit-link" href="#" aria-disabled="true">—</a></p>
+                </div>
+            </div>
+
+            <div class="cleanup-summary" id="cleanup-summary" aria-live="polite">
+              <article class="cleanup-summary-card">
+                <span>Indexed sites</span>
+                <strong id="cleanup-site-count">—</strong>
+                <small id="cleanup-site-note">Awaiting cleanup scan</small>
+              </article>
+              <article class="cleanup-summary-card">
+                <span>Source files</span>
+                <strong id="cleanup-file-count">—</strong>
+                <small id="cleanup-file-note">Files represented by sites</small>
+              </article>
+              <article class="cleanup-summary-card">
+                <span>Scanned files</span>
+                <strong id="cleanup-scanned-count">—</strong>
+                <small id="cleanup-scanned-note">Pinned source census</small>
+              </article>
+            </div>
+
+            <div class="cleanup-workbench">
+              <aside class="cleanup-facets" aria-label="Cleanup filters">
+                <form class="cleanup-search-form" id="cleanup-search-form" role="search">
+                  <label for="cleanup-search">Find a cleanup site</label>
+                  <span class="cleanup-search-wrap">
+                    <span class="search-glyph" aria-hidden="true">⌕</span>
+                    <input id="cleanup-search" name="cleanup-search" type="search" autocomplete="off" placeholder="Path, category, detail, or snippet" aria-controls="cleanup-list" />
+                  </span>
+                  <span class="cleanup-search-hint">Search matches every word.</span>
+                </form>
+
+                <details class="cleanup-filter-disclosure" id="cleanup-filters-disclosure" open>
+                  <summary>Filter by type or directory</summary>
+                  <div class="cleanup-facet-fields">
+                <fieldset class="cleanup-facet" id="cleanup-family-facet">
+                  <legend>Family</legend>
+                  <div class="cleanup-facet-list" id="cleanup-family-facets"></div>
+                </fieldset>
+
+                <fieldset class="cleanup-facet" id="cleanup-category-facet">
+                  <legend>Category</legend>
+                  <div class="cleanup-facet-list" id="cleanup-category-facets"></div>
+                </fieldset>
+
+                <fieldset class="cleanup-facet" id="cleanup-directory-facet">
+                  <legend>Directory</legend>
+                  <div class="cleanup-facet-list" id="cleanup-directory-facets"></div>
+                </fieldset>
+                  </div>
+                </details>
+              </aside>
+
+              <div class="cleanup-results" aria-live="polite">
+                <div class="cleanup-toolbar" id="cleanup-toolbar">
+                  <div class="cleanup-toolbar-status">
+                    <p id="cleanup-result-count" role="status">No cleanup scan loaded.</p>
+                    <p id="cleanup-result-note">Groups stay closed until you open one.</p>
+                  </div>
+                  <div class="cleanup-toolbar-controls">
+                    <label class="cleanup-sort-control" for="cleanup-sort">
+                      <span>Sort</span>
+                      <select id="cleanup-sort" name="cleanup-sort">
+                        <option value="count">Most sites</option>
+                        <option value="path">Path</option>
+                      </select>
+                    </label>
+                    <div class="cleanup-view-control" role="group" aria-label="Result view">
+                      <span>View</span>
+                      <div class="cleanup-view-buttons">
+                        <button class="button button-quiet" id="cleanup-view-file" type="button" aria-pressed="true">By file</button>
+                        <button class="button button-quiet" id="cleanup-view-flat" type="button" aria-pressed="false">Flat list</button>
+                      </div>
+                    </div>
+                    <button class="button button-quiet cleanup-bulk-button" id="cleanup-expand-all" type="button" disabled title="Narrow the filters to expand groups">Expand all</button>
+                    <button class="button button-quiet cleanup-bulk-button" id="cleanup-collapse-all" type="button" disabled>Collapse all</button>
+                    <button class="button button-quiet cleanup-reset" id="cleanup-reset" type="button">Clear filters</button>
+                  </div>
+                </div>
+
+                <div id="cleanup-list" class="cleanup-file-list"></div>
+                <div class="empty-strip" id="cleanup-empty" hidden>
+                  No cleanup sites match this search and filter set.
+                </div>
+                <div class="empty-strip" id="cleanup-unavailable" hidden>
+                  This snapshot has no cleanup index. Reload the published snapshot when a scan is available.
+                </div>
+                <div class="cleanup-more" id="cleanup-more" hidden>
+                  <p id="cleanup-more-note"></p>
+                  <button class="button button-quiet" id="cleanup-show-more" type="button">Show more</button>
+                </div>
+              </div>
+            </div>
+
+            <details class="cleanup-methodology" id="cleanup-methodology">
+              <summary>
+                <span>How cleanup candidates are counted</span>
+                <span class="cleanup-methodology-status" id="cleanup-methodology-status">Scan notes unavailable</span>
+                <span class="cleanup-methodology-chevron" aria-hidden="true">›</span>
+              </summary>
+              <div class="cleanup-methodology-body" id="cleanup-methodology-body"></div>
+            </details>
+          </section>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <p>Published recovery snapshot.</p>
+        <a href="./snapshot.html">Snapshot &amp; counting details</a>
+      </footer>
+    </div>
+
+    <script src="./cleanup.js" defer></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

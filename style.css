@@ -563,8 +563,8 @@ body.dialog-open { overflow: hidden; }
 @media (max-width: 580px) {
   .masthead { padding-bottom: 16px; }
   .masthead-actions { width: auto; }
-  .site-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-bottom: 22px; }
-  .site-nav a { padding: 8px 4px; font-size: 13px; }
+  .site-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 22px; }
+  .site-nav a { padding: 8px 2px; font-size: 12px; }
   .page-shortcuts a { flex: 1; }
   [data-page="snapshot"] .receipt-list { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; }
   [data-page="snapshot"] .receipt-item { padding: 16px; border-right: 0; }

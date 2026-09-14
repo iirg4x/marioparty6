@@ -15,7 +15,7 @@
   }
 
   const SNAPSHOT_ENDPOINT = "./snapshot.json";
-  const SNAPSHOT_CACHE = "mp6-recovery-snapshot-v1";
+  const SNAPSHOT_CACHE = "mp6-recovery-snapshot-v2";
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const resultAnimations = new WeakMap();
   let detailExit = null;
@@ -188,6 +188,7 @@
       ["overview", new URL("./", root)],
       ["dol", new URL("dol.html", root)],
       ["modules", new URL("modules.html", root)],
+      ["cleanup", new URL("cleanup.html", root)],
       ["snapshot", new URL("snapshot.html", root)],
     ]);
     const viewFields = ["query", "stateFilter", "kindFilter", "categoryFilter", "functionFilter"];
@@ -474,6 +475,9 @@
         return result;
       }, {}),
       modules,
+      cleanup: isObject(value.cleanup) && value.cleanup.commit === value.commit
+        ? value.cleanup
+        : null,
       notes: Array.isArray(value.notes)
         ? value.notes.map((note) => asText(note)).filter(Boolean)
         : [],
@@ -1175,6 +1179,7 @@
     }
     renderModuleList(snapshot);
     renderDetail(state.modules.find((module) => module.id === state.selectedId) || null);
+    window.MP6Cleanup?.render(snapshot);
     if (activeView) activeView.revision = snapshotRevision;
   }
 
@@ -1380,6 +1385,7 @@
   }
 
   function bindEvents() {
+    window.MP6Cleanup?.bind(elements.main);
     elements.form?.addEventListener("submit", (event) => event.preventDefault());
     elements.search?.addEventListener("input", updateFilters);
     elements.stateFilter?.addEventListener("change", updateFilters);
