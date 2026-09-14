@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const page = document.body?.dataset.page || "overview";
+  let page = document.body?.dataset.page || "overview";
   const legacyPages = {
     "#dol-ledger": "./dol.html",
     "#library": "./modules.html",
@@ -19,9 +19,12 @@
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const resultAnimations = new WeakMap();
   let detailExit = null;
+  let activeView = null;
+  let snapshotRevision = 0;
+  let pageToolLifecycle = null;
 
   function animateResults(element) {
-    if (!element || state.loading || reducedMotion.matches || !element.animate) return;
+    if (!element || state.loading || state.navigating || reducedMotion.matches || !element.animate) return;
     resultAnimations.get(element)?.cancel();
     resultAnimations.set(element, element.animate(
       [{ opacity: .55 }, { opacity: 1 }],
@@ -133,10 +136,12 @@
     detailGroup: "all",
     detailTrigger: null,
     loading: false,
+    navigating: false,
     hasLoaded: false,
   };
 
-  const elements = {
+  function findElements() {
+    return {
     main: document.getElementById("main-content"),
     skeleton: document.getElementById("page-skeleton"),
     content: document.getElementById("page-content"),
@@ -172,7 +177,119 @@
     detail: document.getElementById("module-detail"),
     detailPlaceholder: document.getElementById("detail-placeholder"),
     detailContent: document.getElementById("detail-content"),
-  };
+    };
+  }
+  let elements = findElements();
+
+  function initializeNavigation() {
+    if (!document.querySelector || !window.history?.pushState || typeof DOMParser === "undefined") return;
+    const root = new URL("./", window.location.href);
+    const routes = new Map([
+      ["overview", new URL("./", root)],
+      ["dol", new URL("dol.html", root)],
+      ["modules", new URL("modules.html", root)],
+      ["snapshot", new URL("snapshot.html", root)],
+    ]);
+    const viewFields = ["query", "stateFilter", "kindFilter", "categoryFilter", "functionFilter"];
+    const defaults = Object.fromEntries(viewFields.map((key) => [key, state[key]]));
+    const views = new Map();
+    const pendingViews = new Map();
+    let navigationId = 0;
+    activeView = { main: elements.main, title: document.title, page, revision: -1, bound: true, filters: { ...defaults }, scroll: 0 };
+    views.set(page, activeView);
+
+    function routeFor(url) {
+      if (url.origin !== root.origin || url.search || url.hash) return null;
+      if (url.pathname === new URL("index.html", root).pathname) return "overview";
+      for (const [id, target] of routes) if (url.pathname === target.pathname) return id;
+      return null;
+    }
+
+    function getView(id) {
+      if (views.has(id)) return Promise.resolve(views.get(id));
+      if (pendingViews.has(id)) return pendingViews.get(id);
+      const request = (async () => {
+        const response = await fetch(routes.get(id).href, { headers: { Accept: "text/html" } });
+        if (!response.ok) throw new Error("Page unavailable");
+        const parsed = new DOMParser().parseFromString(await response.text(), "text/html");
+        const main = parsed.getElementById("main-content");
+        if (parsed.body.dataset.page !== id || !main?.querySelector("#page-content")) throw new Error("Invalid page");
+        const view = { main: document.importNode(main, true), title: parsed.title, page: id, revision: -1, bound: false, filters: { ...defaults }, scroll: 0 };
+        views.set(id, view);
+        return view;
+      })();
+      pendingViews.set(id, request);
+      request.finally(() => pendingViews.delete(id)).catch(() => {});
+      return request;
+    }
+
+    async function navigate(id, url, fromHistory = false) {
+      const requestId = ++navigationId;
+      if (id === page) return;
+      let next;
+      try { next = await getView(id); } catch {
+        if (requestId === navigationId) window.location.assign(url.href);
+        return;
+      }
+      if (requestId !== navigationId) return;
+
+      // Keep the previous view on screen until its replacement is ready.
+      state.navigating = true;
+      try {
+        cancelDetailExit();
+        if (state.selectedId) clearSelection();
+        activeView.main.getAnimations?.({ subtree: true }).forEach((animation) => animation.cancel());
+        activeView.filters = Object.fromEntries(viewFields.map((key) => [key, state[key]]));
+        activeView.scroll = window.scrollY;
+        Object.assign(state, next.filters, { selectedId: null, detailTrigger: null, detailGroup: "all", functionQuery: "" });
+        activeView.main.replaceWith(next.main);
+        activeView = next;
+        page = id;
+        document.body.dataset.page = id;
+        document.title = next.title;
+        elements = findElements();
+        if (!next.bound) { bindEvents(); next.bound = true; }
+        if (state.hasLoaded && next.revision !== snapshotRevision) renderSnapshot();
+        if (state.hasLoaded) {
+          elements.skeleton.hidden = true;
+          elements.content.hidden = false;
+        }
+        elements.main.setAttribute("aria-busy", String(state.loading));
+        for (const link of document.querySelectorAll(".site-nav a")) {
+          if (routeFor(new URL(link.href)) === id) link.setAttribute("aria-current", "page");
+          else link.removeAttribute("aria-current");
+        }
+        registerPageTools();
+        if (!fromHistory) window.history.pushState({ ...window.history.state, mp6Page: id }, "", url.href);
+        window.scrollTo({ top: fromHistory ? next.scroll : 0, left: 0, behavior: "instant" });
+        elements.main.focus({ preventScroll: true });
+      } finally {
+        state.navigating = false;
+      }
+    }
+
+    window.history.replaceState({ ...window.history.state, mp6Page: page }, "", window.location.href);
+    window.history.scrollRestoration = "manual";
+    document.addEventListener("click", (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target.closest?.("a[href]");
+      if (!link || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+      const url = new URL(link.href);
+      const id = routeFor(url);
+      if (!id) return;
+      event.preventDefault();
+      void navigate(id, url);
+    });
+    window.addEventListener("popstate", () => {
+      const url = new URL(window.location.href);
+      const routeUrl = new URL(url);
+      routeUrl.search = "";
+      routeUrl.hash = "";
+      const id = routeFor(routeUrl);
+      if (id) void navigate(id, url, true);
+    });
+    for (const id of routes.keys()) if (id !== page) void getView(id).catch(() => {});
+  }
 
   function isObject(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -1058,6 +1175,7 @@
     }
     renderModuleList(snapshot);
     renderDetail(state.modules.find((module) => module.id === state.selectedId) || null);
+    if (activeView) activeView.revision = snapshotRevision;
   }
 
   function selectModule(id, options = {}) {
@@ -1226,6 +1344,7 @@
       state.snapshot = snapshot;
       state.modules = snapshot.modules;
       state.hasLoaded = true;
+      snapshotRevision += 1;
       if (!state.selectedId || !state.modules.some((module) => module.id === state.selectedId)) {
         state.selectedId = null;
         state.detailGroup = "all";
@@ -1261,7 +1380,6 @@
   }
 
   function bindEvents() {
-    elements.refresh?.addEventListener("click", () => loadSnapshot(true));
     elements.form?.addEventListener("submit", (event) => event.preventDefault());
     elements.search?.addEventListener("input", updateFilters);
     elements.stateFilter?.addEventListener("change", updateFilters);
@@ -1299,13 +1417,20 @@
         renderFunctionResults(module);
       }
     });
+  }
+
+  function bindGlobalEvents() {
+    elements.refresh?.addEventListener("click", () => loadSnapshot(true));
     document.addEventListener("keydown", handleGlobalKeydown);
+    window.addEventListener("pagehide", () => pageToolLifecycle?.abort());
   }
 
   function registerPageTools() {
+    pageToolLifecycle?.abort();
+    pageToolLifecycle = null;
     if (!elements.moduleList || !elements.detail || !document.modelContext?.registerTool) return;
     const lifecycle = new AbortController();
-    window.addEventListener("pagehide", () => lifecycle.abort(), { once: true });
+    pageToolLifecycle = lifecycle;
     const tool = {
       name: "filter_recovery_functions",
       title: "Filter recovery functions",
@@ -1345,6 +1470,8 @@
     } catch { /* Unsupported registrations leave the normal controls available. */ }
   }
 
+  initializeNavigation();
+  bindGlobalEvents();
   bindEvents();
   registerPageTools();
   loadSnapshot(false);

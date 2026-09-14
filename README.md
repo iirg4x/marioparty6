@@ -16,6 +16,10 @@ Pages: [overview](https://iirg4x.github.io/marioparty6/),
 The dashboard uses relative asset URLs so it also works below the repository path.
 No build or dependencies are required. The `.nojekyll` file disables Jekyll processing.
 
+Normal navigation keeps the same document and shared snapshot in memory. The other
+page templates preload in the background, and visited pages retain their rendered
+content and filters. Back/forward navigation and direct page URLs remain supported.
+
 It includes the dark theme, animations, module/function filters, function counts,
 and scrollable module-detail dialogs. Source-selected functions follow committed
 owner selection; they are not independent per-function objdiff proofs.
