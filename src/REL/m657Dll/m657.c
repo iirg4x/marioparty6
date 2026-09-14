@@ -4,6 +4,7 @@
 #include "game/audio.h"
 #include "game/wipe.h"
 #include "game/esprite.h"
+#include "game/gamemes.h"
 #include "string.h"
 #include "math.h"
 
@@ -417,6 +418,32 @@ void fn_1_4E58(OMOBJMAN *objman)
 
 void fn_1_4EE0(void)
 {
+}
+
+extern HuVec2f lbl_1_data_338[2];
+
+void fn_1_4EE4(s16 team)
+{
+    OMOBJ *obj = lbl_1_bss_30[team];
+    M657PlayerView *player;
+    M657SpriteWork *sprites;
+    M657Player *work = obj->data;
+    float height;
+    float fraction;
+    float range;
+    float offset;
+
+    player = &work->player;
+    sprites = lbl_1_bss_48->data;
+    height = player->pos.y;
+    range = 366.0f;
+    if (height > 1547.0f) {
+        height = 1547.0f;
+    }
+    fraction = (1547.0f - height) / 1547.0f;
+    offset = range * fraction;
+    espPosSet(sprites->playerSprites[team], lbl_1_data_338[team].x,
+        offset + lbl_1_data_338[team].y);
 }
 
 void fn_1_5020(void)

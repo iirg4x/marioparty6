@@ -75,18 +75,18 @@ holdout or the later call-interface sample below.
 ## Install and use
 
 The current verified installation is
-`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi5/m2c.py`.
+`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi6/m2c.py`.
 Use this path for new REL preparation and reconstruction. The original installed
 m2c and the already-running all-REL baseline were deliberately left unchanged.
 
 To recreate it in a **new** directory:
 
 ```text
-rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi5
+rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi6
 ```
 
 The installer preserves the source installation, rejects baseline drift, applies
-the portable patch, and verifies all 32 changed output files. It never modifies
+the portable patch, and verifies all 34 changed output files. It never modifies
 game source, configures a build, or publishes matching status.
 
 For a new batch use `tools/rel_first_compile_prepare.py --help`, supplying the
@@ -199,5 +199,34 @@ claimed. Keep bounded captured diagnostics rather than masking such failures.
 The companion `pool_reloc_summary.py` change distinguishes proven split-symbol
 annotation equivalence from actual literal/type changes. It does not alter
 objdiff scores, physical receipts, source selection or promotion requirements.
-The active m657 reconstruction has23 zero-row functions among30 implemented
-symbols; it remains an incomplete module with no new whole-owner closure.
+At that follow-up, the m657 reconstruction had23 zero-row functions among30
+implemented symbols; it remained incomplete with no new whole-owner closure.
+
+## Active-recovery follow-up: an empty terminal switch case
+
+The PPC/MWCC irregular-switch recovery now retains one compiler-evidenced empty
+terminal case. The rule requires exactly three contiguous nonempty lower cases,
+the same selector, and an otherwise empty `cmpwi`/unconditional-branch tail to
+the common void return. Incoming bounds below the dead exclusive upper bound
+must contain exactly one value. It does not infer labels from plain gotos,
+multiple-value ranges, noncontiguous cases, different selectors, side effects,
+or another compiler profile. Explicit equality dispatch for case 4 stays case 4.
+
+For `m657Dll:fn_1_1F6C`, unedited old/new drafts compiled with identical actual
+headers, target and GC1.3.2 flags both occupy **200/172 bytes**. Retaining
+`case 3: break` improves **29 to 23 mismatch rows**, or **77.441864% to
+82.37209% raw**. This is a partial translation gain, not an exact function.
+The separately reconstructed source reaches **172/172 bytes and zero rows**;
+that manual result is not credited to the generated draft. A single isolated
+case-4 control produced 176 bytes and one mismatch row, retaining the extra
+equality branch that is absent from the target. These constraints support the
+narrow rule, not unique original-source spelling for arbitrary switches.
+
+Installed eabi6 passes **523/523 tests** (413 end-to-end and 110 unit), including
+all eight portable switch regressions. The unit test requires no project files
+or private compiler; compiler replay receipts remain under ignored `build/`.
+The installer verifies all 34 cumulative changed files against the original
+pinned baseline. `active-gap-validation.json` binds the package, captured test
+log and paired compiler evidence. An earlier scratch run had one unrelated ABI
+runtime diagnostic failure; its focused 16 tests and the captured full rerun
+passed without ABI changes. No intermittent-runtime fix or new closure is claimed.

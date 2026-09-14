@@ -80,6 +80,13 @@
       "after_newline": "lf"
     },
     {
+      "path": "m2c/if_statements.py",
+      "before_sha256": "182e321adf576f70f7b8d047b9a36b1bc22a6a79e03461a9740138dd53b8e472",
+      "after_sha256": "1fa4365355db864979651129ef9db6d8aceb30b51f8f027283dd07c51b924d0e",
+      "bytes": 63420,
+      "after_newline": "lf"
+    },
+    {
       "path": "m2c/main.py",
       "before_sha256": "2548e0301b88ec29cd798183442580f283a448b2b2ccfd8e408443a7773f3218",
       "after_sha256": "16ac2125c3843241ffd585028c46e2b78b15847ca5f9bc22d3e107d9385880fb",
@@ -213,6 +220,13 @@
       "after_newline": "crlf"
     },
     {
+      "path": "tests/unit/test_empty_switch_tail.py",
+      "before_sha256": null,
+      "after_sha256": "05e64d4155d9ec998f5ad760ca56029ed4d761b3f204d47af7b77c1983f38309",
+      "bytes": 4050,
+      "after_newline": "lf"
+    },
+    {
       "path": "tests/unit/test_incomplete_pointer_offsets.py",
       "before_sha256": null,
       "after_sha256": "480d08235b651fe4ced2cfe9aa71b9ee64d90e1eab63196753230bc221445c60",
@@ -290,6 +304,6 @@
       "after_newline": "lf"
     }
   ],
-  "patch_sha256": "4db10e5f03e4ad8d1eb259e9e64dd9a19540b71be6d827fe8390c3eb14d8fdcf",
+  "patch_sha256": "bed419cd249dde35dec74e0fb42f053ab1e2a2d919a6eae30c5e38a2a46866c7",
   "matching_credit": false
 }

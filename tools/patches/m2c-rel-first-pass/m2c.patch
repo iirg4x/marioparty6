@@ -290,6 +290,107 @@ diff --git a/m2c/evaluate.py b/m2c/evaluate.py
      return expr
  
  
+diff --git a/m2c/if_statements.py b/m2c/if_statements.py
+--- a/m2c/if_statements.py
++++ b/m2c/if_statements.py
+@@ -22,6 +22,7 @@
+     SwitchNode,
+     TerminalNode,
+ )
++from .asm_instruction import Register
+ from .options import Options, Target
+ from .translate import (
+     BinaryOp,
+@@ -766,6 +767,51 @@
+     return (cond, if_node, else_node)
+ 
+ 
++def mwcc_empty_switch_tail(
++    context: Context, node: Node, end: Node, bounds: Bounds, selector: Expression
++) -> Optional[int]:
++    """Recognize MWCC's dead exclusive upper bound for one empty last case.
++
++    A noncontiguous empty case retains an equality branch. Do not reinterpret
++    such branches, plain empty gotos, or a range containing several values.
++    The caller also requires three contiguous nonempty cases below this singleton.
++    """
++    if (
++        context.options.target.arch != Target.ArchEnum.PPC
++        or context.options.target.compiler != Target.CompilerEnum.MWCC
++        or not isinstance(node, BasicNode)
++        or not isinstance(end, (ReturnNode, TerminalNode))
++    ):
++        return None
++    exit_node = node.successor
++    # Flow-graph construction may duplicate the common return epilogue.
++    if not isinstance(exit_node, ReturnNode) or not (
++        exit_node is end or exit_node.terminal is end
++    ):
++        return None
++    exit_info = get_block_info(exit_node)
++    if exit_info.statements_to_write() or exit_info.return_value is not None:
++        return None
++    instructions = list(node.block.instructions)
++    if len(instructions) != 2 or [inst.mnemonic for inst in instructions] != ["cmpwi", "b"]:
++        return None
++    comparison = get_block_info(node).final_register_states.get_raw(Register("cr0_lt"))
++    if comparison is None:
++        return None
++    cond = simplify_condition(comparison)
++    if (
++        not isinstance(cond, BinaryOp)
++        or cond.op != "<"
++        or early_unwrap_ints(cond.left) != selector
++        or not isinstance(cond.right, Literal)
++    ):
++        return None
++    values = bounds.at_most(cond.right.value - 1).values(max_count=1)
++    if values is None or len(values) != 1 or values[0] != cond.right.value - 1:
++        return None
++    return values[0]
++
++
+ def try_build_irregular_switch(
+     context: Context, start: Node, end: Node
+ ) -> Optional[SwitchStatement]:
+@@ -821,6 +867,7 @@
+     default_node: Optional[Node] = None
+     # Number of "irregular" comparison nodes used (SwitchNodes & ConditionalNodes that aren't guards)
+     irregular_comparison_count = 0
++    empty_tail_cases: List[int] = []
+ 
+     while node_queue:
+         node, bounds = node_queue.pop()
+@@ -838,6 +885,9 @@
+             # this node together with one outside the original interval. So, this node
+             # may fail the `start not in node.dominators` check below.
+             # Otherwise, treat these like empty BasicNodes.
++            empty_case = mwcc_empty_switch_tail(context, node, end, bounds, uw_var_expr)
++            if empty_case is not None:
++                empty_tail_cases.append(empty_case)
+             nodes_to_mark_emitted.add(node)
+             if isinstance(node, BasicNode):
+                 node_queue.append((node.successor, bounds))
+@@ -961,6 +1011,19 @@
+     ):
+         return None
+ 
++    # Check the entire comparison tree before using a dead tail bound. Earlier
++    # labels may have been visited after the upper subtree. This deliberately
++    # declines noncontiguous case sets and multiple candidate empty tails.
++    if len(empty_tail_cases) == 1 and len(cases) == 3:
++        empty_case = empty_tail_cases[0]
++        labels = sorted(cases)
++        if (
++            labels[-1] + 1 == empty_case
++            and labels == list(range(labels[0], empty_case))
++            and all(not is_empty_goto(target, end) for target in cases.values())
++        ):
++            cases[empty_case] = end
++
+     switch_index = add_labels_for_switch(
+         context,
+         start,
 diff --git a/m2c/main.py b/m2c/main.py
 --- a/m2c/main.py
 +++ b/m2c/main.py
@@ -1412,6 +1513,147 @@ diff --git a/tests/end_to_end/large-struct-member-address/manual-out.c b/tests/e
  
  void test(struct A *a) {
      foo(&a->b);
+diff --git a/tests/unit/test_empty_switch_tail.py b/tests/unit/test_empty_switch_tail.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_empty_switch_tail.py
+@@ -0,0 +1,136 @@
++"""Portable regression coverage for MWCC's dead switch-tail comparison."""
++
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++
++TRANSLATOR = Path(__file__).resolve().parents[2] / "m2c.py"
++ASSEMBLY = """.section .text
++.global sample
++sample:
++    stwu r1, -0x10(r1)
++    mflr r0
++    stw r0, 0x14(r1)
++    stw r31, 0xc(r1)
++    mr r31, r3
++    lha r0, 0(r31)
++    cmpwi r0, 2
++    beq .Lcase2
++    bge .Ltail
++    cmpwi r0, 0
++    beq .Lcase0
++    bge .Lcase1
++    b .Lend
++.Ltail:
++    cmpwi r0, 4
++    b .Lend
++.Lcase0:
++    lha r3, 0(r31)
++    addi r0, r3, 1
++    sth r0, 0(r31)
++    b .Lend
++.Lcase1:
++    lha r3, 0(r31)
++    addi r0, r3, 1
++    sth r0, 0(r31)
++    b .Lend
++.Lcase2:
++    bl action
++.Lend:
++    lwz r31, 0xc(r1)
++    lwz r0, 0x14(r1)
++    mtlr r0
++    addi r1, r1, 0x10
++    blr
++"""
++
++
++class EmptySwitchTailTests(unittest.TestCase):
++    def generate(self, asm=ASSEMBLY, target="ppc-mwcc-c"):
++        with tempfile.TemporaryDirectory() as directory:
++            assembly, context = (
++                Path(directory) / "sample.s",
++                Path(directory) / "context.c",
++            )
++            assembly.write_text(asm, encoding="utf-8")
++            context.write_text(
++                "void sample(short *); void action(void);", encoding="utf-8"
++            )
++            proc = subprocess.run(
++                [
++                    sys.executable,
++                    "-B",
++                    str(TRANSLATOR),
++                    "-t",
++                    target,
++                    "--no-cache",
++                    "--valid-syntax",
++                    "--context",
++                    str(context),
++                    str(assembly),
++                ],
++                capture_output=True,
++                text=True,
++                timeout=30,
++            )
++        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
++        return proc.stdout
++
++    def test_exact_dispatch_retains_empty_case_three(self):
++        output = self.generate()
++        self.assertIn("case 3:\n        break;", output)
++        self.assertIn("case 0:", output)
++        self.assertIn("case 1:", output)
++        self.assertIn("case 2:", output)
++
++    def test_explicit_noncontiguous_case_four_is_not_changed_to_three(self):
++        output = self.generate(
++            ASSEMBLY.replace(
++                "cmpwi r0, 4\n    b .Lend", "cmpwi r0, 4\n    beq .Lend\n    b .Lend"
++            )
++        )
++        self.assertIn("case 4:", output)
++        self.assertNotIn("case 3:", output)
++
++    def test_dead_tail_without_compare_has_no_inferred_case(self):
++        output = self.generate(ASSEMBLY.replace("    cmpwi r0, 4\n", ""))
++        self.assertNotIn("case 3:", output)
++
++    def test_nonsingleton_tail_range_is_left_unresolved(self):
++        output = self.generate(ASSEMBLY.replace("cmpwi r0, 4", "cmpwi r0, 5"))
++        self.assertNotIn("case 3:", output)
++        self.assertNotIn("case 4:", output)
++
++    def test_other_selector_is_not_a_bound(self):
++        output = self.generate(ASSEMBLY.replace("cmpwi r0, 4", "cmpwi r31, 4"))
++        self.assertNotIn("case 3:", output)
++
++    def test_noncontiguous_recovered_cases_do_not_imply_a_terminal_label(self):
++        assembly = ASSEMBLY.replace("cmpwi r0, 2", "cmpwi r0, 5").replace(
++            "cmpwi r0, 4", "cmpwi r0, 7"
++        )
++        assembly = assembly.replace(
++            "    bge .Lcase1", "    cmpwi r0, 2\n    beq .Lcase1"
++        )
++        output = self.generate(assembly)
++        self.assertIn("case 5:", output)
++        self.assertNotIn("case 6:", output)
++
++    def test_tail_effect_is_preserved_not_turned_into_break(self):
++        output = self.generate(
++            ASSEMBLY.replace("cmpwi r0, 4", "sth r0, 2(r31)\n    cmpwi r0, 4")
++        )
++        self.assertNotIn("case 3:", output)
++        self.assertIn("M2C_FIELD(arg0, s16 *, 2) = temp_r0;", output)
++
++    def test_other_compiler_does_not_inherit_mwcc_rule(self):
++        output = self.generate(target="ppc-gcc-c")
++        self.assertNotIn("case 3:", output)
++
++
++if __name__ == "__main__":
++    unittest.main()
++
 diff --git a/tests/unit/test_incomplete_pointer_offsets.py b/tests/unit/test_incomplete_pointer_offsets.py
 new file mode 100644
 --- /dev/null

@@ -1,5 +1,44 @@
 # Small DOL batch — 2026-09-13
 
+## 2026-09-14: m657 gameplay checkpoint and empty-switch translation
+
+The new source checkpoint has **82 implemented symbols, 61 zero-row symbols,
+and 82 exact code sizes**, across main/camera/HUD, score, arena, CPU and player
+units. The previous 23 zero-row symbols remain intact. This is primary typed-C
+reconstruction from actual instructions and m2c drafts, not an automated m2c
+success rate or a whole-minigame closure. No Matching flag, main promotion or
+project-percentage credit was added.
+
+The latest player helper batch reaches 12/17 zero-row on its first compile.
+The other five now have exact instruction layout and pool-reference differences.
+One inlined motion helper was 172 bytes too short because the draft had propagated
+literal motion 1/2 through two inline bodies. Retail retains a shared live motion
+index. Restoring its real assignment/use boundary shrank 111 diff rows to 16;
+the caller's integer index, narrowed by the short helper parameter, closed the
+last two missing sign extensions, leaving 12 pool-reference rows at 600/600 bytes.
+Do not replace such a producer with literal call arguments just because the
+decompiler constant-propagated its value. Header record offsets were verified
+against consumers; unaccessed heap ranges are explicit temporary reconstruction
+debt. Target-backed unused template captures are not claimed to be original
+Hudson spelling.
+
+A separate m2c fix preserves MWCC's empty terminal switch case when its exact
+comparison tree proves a singleton last case. The unedited actual-header
+`fn_1_1F6C` draft improves 29→23 rows, 77.441864→82.37209%, at 200/172 bytes.
+The manually reconstructed 172-byte zero-row function is separate; the translator
+does not earn that exactness. Tests and replay are packaged under
+`tools/patches/m2c-rel-first-pass`.
+
+Current compact source/object/report bindings:
+`build/minigame-recovery-20260913/m657/source-checkpoint.json`, SHA256
+`80bd16fe5fe52861a2659f4abd91af9ed8a1e05f2bbfe7ff61deb9386648e2d5`.
+Target PLF SHA256 `7fc2220955e2b582bda7435c0848e19d238ea0325edb580249e86727f4527073`.
+Nine application bodies remain unreconstructed: 2018, 21CC, 23F4, 2748, 2F90, 31CC,
+32F4, 3468, 3B50. The census also lists 5418, which is the compiler's
+`__cvt_fp2unsigned` runtime body, not a tenth gameplay function. Complete those
+consumers before finalizing the provisional translation-unit/data/BSS boundaries.
+Pool ownership and source-selected retail REL linking remain open.
+
 ## 2026-09-14 follow-up: active stack/header gaps and retained m657 code
 
 Three existing capabilities were improved against active m657 evidence, rather

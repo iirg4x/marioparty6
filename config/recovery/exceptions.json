@@ -2,6 +2,15 @@
   "schema_version": 1,
   "exceptions": [
     {
+      "id": "m657-incomplete-heap-record-views",
+      "classification": "temporary",
+      "path": "include/REL/m657Dll.h",
+      "kind": "source_shape",
+      "rules": ["opaque_blob"],
+      "rationale": "SCOPE: unaccessed byte spans only in the target-allocated camera (28), player (152), CPU-work (24), score-team (28) and arena (32) records. Access widths, offsets, allocation sizes and typed consumers are reconstructed from the current retail m657 target; these unknown bytes do not claim original arrays or semantic types. The 82 implemented symbols retain exact target code sizes and 61 have zero raw diff rows. The module is incomplete and NOT source-linked/Matching. This temporary checkpoint permits honest unknown heap fields, not new stack padding, register shaping or promotion. Removal condition: finish the remaining player consumers and source-selected data/BSS/link proof, then replace each span with verified fields or separately review the precise still-unaccessed intervals; do not retain this whole-header temporary exception at promotion.",
+      "evidence": ["include/REL/m657Dll.h", "src/REL/m657Dll/player.c", "src/REL/m657Dll/arena.c", "src/REL/m657Dll/score.c", "src/REL/m657Dll/com.c", "build/rel-first-compile-20260913/inputs/m657Dll.s", "build/minigame-recovery-20260913/m657/source-checkpoint.json", "docs/dol-small-batch-20260913.md"]
+    },
+    {
       "id": "m621-environment-unaccessed-prefix",
       "classification": "authenticated",
       "path": "src/REL/m621dll/gameplay.c",

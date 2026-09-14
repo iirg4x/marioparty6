@@ -4,18 +4,30 @@
   "scope": "Targeted compiler/diagnostic tests and separately retained partial source; no whole-owner closure.",
   "package": {
     "path": "tools/patches/m2c-rel-first-pass/manifest.json",
-    "sha256": "3d613925be9768158ecc4a7e30a88f9fb47f6560bcdc1db04e80ab63588317dc",
-    "bytes": 15242
+    "sha256": "6fe04826acd00a5023c1cc8455b37acd1ca63512de4eced703062a74bb70ed4d",
+    "bytes": 15759
   },
-  "installed": "C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi5/m2c.py",
+  "installed": "C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi6/m2c.py",
   "tests": {
-    "installed_passed": 515,
+    "installed_passed": 523,
+    "installed_end_to_end_passed": 413,
+    "installed_unit_passed": 110,
+    "portable_switch_passed": 8,
     "installed_log": {
-      "path": "build/rel-gap-fixes/eabi5-installed-tests.log",
-      "sha256": "e67631c00c89af00ff600650fa4338923d937d8109cf21a3f5b2956892c5bd75",
-      "bytes": 18295
+      "path": "build/rel-gap-fixes/eabi6-installed-tests.log",
+      "sha256": "74c59af173dfc9b00560dd11167635892fff71a8fa9ddd519b0c27f37b667e0c",
+      "bytes": 18373
     },
-    "initial_default_parallel_run": "514/515; failed-case text truncated and cause unresolved",
+    "prior_eabi5": {
+      "installed_passed": 515,
+      "installed_log": {
+        "path": "build/rel-gap-fixes/eabi5-installed-tests.log",
+        "sha256": "e67631c00c89af00ff600650fa4338923d937d8109cf21a3f5b2956892c5bd75",
+        "bytes": 18295
+      },
+      "initial_default_parallel_run": "514/515; failed-case text truncated and cause unresolved"
+    },
+    "initial_switch_scratch_run": "522/523; unrelated existing ABI test emitted Error: 'I' at lfs instead of its expected diagnostic. Focused ABI 16/16 and captured scratch full 523/523 passed without ABI changes; no runtime fix claimed.",
     "workflow_focused_passed": 62
   },
   "stack_array": {
@@ -54,6 +66,70 @@
         "diff_rows": 70
       }
     ]
+  },
+  "empty_switch_tail": {
+    "function": "m657Dll:fn_1_1F6C",
+    "matching_credit": false,
+    "rule": "PPC/MWCC only: exactly three contiguous nonempty cases, one same-selector cmpwi/b tail to an empty common void return, and a singleton intersection of incoming bounds with the exclusive upper bound.",
+    "limits": "No inference for explicit equality case 4, plain gotos, noncontiguous labels, ambiguous ranges, other selectors, side effects or other compilers. This is a compiler-shape constraint, not unique original-source spelling.",
+    "receipt": {
+      "path": "build/rel-gap-fixes/m2c/empty-switch-tail-replay/actual-pair.json",
+      "sha256": "2146eb59074f98d6d63c1476d2ed3aa48b590041c877fc0fd26a1c8a6a91eca7",
+      "bytes": 7745
+    },
+    "bindings": {
+      "assembly_sha256": "6f1ac1b8b7e9794aeea8c4cf1d0e02e9aee43fa58230aa06a4cb5b475211cfa8",
+      "target_sha256": "7fc2220955e2b582bda7435c0848e19d238ea0325edb580249e86727f4527073",
+      "actual_prefix_sha256": "064e61502f50c7086b6eb2f867a1e29f93d6f58e3b3ac1a20a51937f4dc10b0d",
+      "actual_context_sha256": "bee0852982a812026a859d46cc156a36b4619d9b482f7e7d6ffdabe8c92b2b5f",
+      "compiler_sha256": "7cbae0a5bd81e07d7fa8975bbc4e969b5dea265cc29c5ee6bae0453a6e25f225",
+      "identical_actual_headers_target_flags": true,
+      "unedited_generated_drafts": true
+    },
+    "cases": [
+      {
+        "case": "before_eabi5",
+        "translator_code_sha256": "182e321adf576f70f7b8d047b9a36b1bc22a6a79e03461a9740138dd53b8e472",
+        "source_sha256": "d54c564e459858b3f1234a88656f90dcc6529abd92b3373a2997963926df650b",
+        "object_sha256": "4c13d5d3e4dce79496ccc943ec04660c2a4c2f22f7f194f43fc27965048bfee2",
+        "compile_exit": 0,
+        "candidate_bytes": 200,
+        "target_bytes": 172,
+        "raw_match": 77.441864,
+        "diff_rows": 29
+      },
+      {
+        "case": "after_scratch_identical_installed_eabi6_code",
+        "translator_code_sha256": "1fa4365355db864979651129ef9db6d8aceb30b51f8f027283dd07c51b924d0e",
+        "source_sha256": "cb9ec4c1c83ee8ed09b7ace1534868bcdc86a2915ccdf3e1a1a7dc6bfefeae17",
+        "object_sha256": "08d0b5297a0bada517141794e55984f604b6b34632090dbb43a1657236ca22e5",
+        "compile_exit": 0,
+        "candidate_bytes": 200,
+        "target_bytes": 172,
+        "raw_match": 82.37209,
+        "diff_rows": 23
+      }
+    ],
+    "explicit_case_four_control": {
+      "receipt": {
+        "path": "build/rel-gap-fixes/m2c/empty-switch-tail-replay/case4.json",
+        "sha256": "518e40faeb9f1e016492d12e71526876e2c17faff7a207b2a5d08b654cf60252",
+        "bytes": 2867
+      },
+      "candidate_bytes": 176,
+      "target_bytes": 172,
+      "diff_rows": 1,
+      "result": "Retains an extra equality branch absent from the target; isolated source snapshot, not live source."
+    },
+    "separate_manual_reconstruction": {
+      "source_sha256": "d8bdb1c237ec6dde7deeacba9c779920040f9b185d264c5c355ed3e4278cdfd4",
+      "object_sha256": "7da99a418350a4af4b09897c3cb2f9b7badfbebf3067ab863cd5b94aac4deea5",
+      "candidate_bytes": 172,
+      "target_bytes": 172,
+      "diff_rows": 0,
+      "generated_draft_credit": false,
+      "scope": "Primary's independently reconstructed arena source, not the unedited m2c output or whole-owner closure."
+    }
   },
   "prefix": {
     "exp": {
