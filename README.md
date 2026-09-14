@@ -21,7 +21,11 @@ and scrollable module-detail dialogs. Source-selected functions follow committed
 owner selection; they are not independent per-function objdiff proofs.
 
 `snapshot.json` is a published recovery snapshot, with its source commit and capture
-time visible on the page. The Reload button rereads this file. To update progress,
+time visible on the page. All four pages share one browser-cached snapshot. Normal
+navigation reuses it without another snapshot request; Reload snapshot explicitly
+fetches and replaces the shared copy. A failed reload keeps the previous copy.
+If browser storage is unavailable, loading falls back to a network request.
+To update progress,
 replace it with a newly verified export using the same schema, then push to this
 branch. It does not access a developer's local repository or rebuild the game.
 

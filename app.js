@@ -15,6 +15,7 @@
   }
 
   const SNAPSHOT_ENDPOINT = "./snapshot.json";
+  const SNAPSHOT_CACHE = "mp6-recovery-snapshot-v1";
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const resultAnimations = new WeakMap();
   let detailExit = null;
@@ -1157,13 +1158,62 @@
     return body;
   }
 
-  async function fetchSnapshot(endpoint, options) {
-    const response = await fetch(endpoint, {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-      ...options,
-    });
-    return normalizeSnapshot(await readJson(response));
+  function cacheableSnapshot(value) {
+    return isObject(value) && Number(value.schemaVersion) === 1
+      && Array.isArray(value.modules) && typeof value.commit === "string" && Boolean(value.commit);
+  }
+
+  async function fetchSnapshot(endpoint, refresh = false) {
+    // The absolute URL isolates this repository's shared snapshot from other sites.
+    const url = new URL(endpoint, window.location.href).href;
+    const readOrFetch = async () => {
+      let cache = null;
+      try {
+        if (window.caches) cache = await window.caches.open(SNAPSHOT_CACHE);
+      } catch { /* Storage may be disabled. */ }
+      if (cache && !refresh) {
+        try {
+          const saved = await cache.match(url);
+          if (saved) {
+            const value = await readJson(saved);
+            if (cacheableSnapshot(value)) return normalizeSnapshot(value);
+          }
+        } catch { /* Replace unreadable cache entries with a fresh snapshot. */ }
+      }
+
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      const savedResponse = cache ? response.clone() : null;
+      const value = await readJson(response);
+      const snapshot = normalizeSnapshot(value);
+      if (!cacheableSnapshot(value)) throw new Error("The site returned an incomplete snapshot.");
+      if (cache) {
+        try {
+          await cache.put(url, savedResponse);
+        } catch {
+          // Do not let later pages reuse an older copy after a successful refresh.
+          try { await cache.delete(url); } catch { /* Loading still works without writable storage. */ }
+        }
+      }
+      return snapshot;
+    };
+
+    // Simultaneous tabs share the first fetch where cross-tab locks are supported.
+    const locks = window.navigator?.locks;
+    if (locks?.request) {
+      let entered = false;
+      try {
+        return await locks.request(`${SNAPSHOT_CACHE}:${url}`, () => {
+          entered = true;
+          return readOrFetch();
+        });
+      } catch (error) {
+        if (entered) throw error;
+      }
+    }
+    return readOrFetch();
   }
 
   async function loadSnapshot(isRefresh = false) {
@@ -1172,7 +1222,7 @@
     setBanner("", "info");
     setConnection(isRefresh ? "Reloading published snapshot" : "Reading published snapshot", "muted");
     try {
-      const snapshot = await fetchSnapshot(SNAPSHOT_ENDPOINT);
+      const snapshot = await fetchSnapshot(SNAPSHOT_ENDPOINT, isRefresh);
       state.snapshot = snapshot;
       state.modules = snapshot.modules;
       state.hasLoaded = true;
