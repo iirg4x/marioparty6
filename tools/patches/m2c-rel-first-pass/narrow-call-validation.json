@@ -1,0 +1,52 @@
+{
+  "schema": "m2c_narrow_call_validation/v1",
+  "patch_sha256": "47ddf861127751f3922f46c70225b9258d9a9a320053c5e0fcb705b568f0968d",
+  "manifest_sha256": "30c10beaeb59abf32b1f932853a2c3233bd9305eee2dcc35d6e7425b5544b7af",
+  "local_worker_answer_sha256": "41359ac62a6104e018ca2128025e4cf82d1dfd55d9ae00d07170e489881f68a0",
+  "function": "m621dll:fn_1_2E68",
+  "paired": {
+    "inputs": {
+      "D:\\Games\\Emulation\\GameCube-Wii\\mp6-board-single-final-astra-20260911\\build\\minigame-recovery-20260913\\m621\\fn_1_2E68.s": "a424198486408f3d90641781551e4f7c065b675541f7010112413036627ac1f9",
+      "D:\\Games\\Emulation\\GameCube-Wii\\mp6-board-single-final-astra-20260911\\build\\minigame-recovery-20260913\\m621\\context.i": "3d9f2a7cdfb9e7483fd60023184825e16c1bfa904547c41ed95887e763311041",
+      "D:\\Games\\Emulation\\GameCube-Wii\\mp6-project-board-star-proof-20260911\\build\\GP6E01\\m621dll\\m621dll.plf": "a03d979b18bab19a6847388d0bd4f506b0f08aa450b3e4f29ec232b9468a114b"
+    },
+    "runs": [
+      {
+        "label": "before",
+        "source_sha256": "22eab422b56545cfc6c74bdc6ad818220540917dc33fffbd15b661e085e5a1df",
+        "object_sha256": "e12d31d3a72b73bab155cb3381795bb35c1311c58f68630874c0df3d429f50bc",
+        "report_sha256": "a484eb532a13870bfc9d186a261e99299aa7dd8cada8014d91d3ee14825b74ec",
+        "translator": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-late-pointer-check\\m2c.py",
+        "arch_sha256": "0982fd97730853787c4011f22dffffc5026a752f4731e185f1a23880d6b58231",
+        "size": "428",
+        "target_size": "404",
+        "score": 85.544556,
+        "rows": 20
+      },
+      {
+        "label": "after",
+        "source_sha256": "a55641690beb96552ec09a7078ebb2112542f3159a08cd08d4b2a5e83c4c0154",
+        "object_sha256": "d2f078a944f00378038f210ff03dd8957c4fdf559ef5d578966a0ff0f0256eb5",
+        "report_sha256": "4a176f227b120b54420e1221abb0df70951ca649dee0ad2e41f1ef101fe2beb2",
+        "translator": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-eabi7\\m2c.py",
+        "arch_sha256": "036324fb5575f897ac252d135043050c5a3959a8f59710c70541e7c9fef04a35",
+        "size": "412",
+        "target_size": "404",
+        "score": 90.24753,
+        "rows": 12
+      }
+    ],
+    "canonical_source_modified": false
+  },
+  "tests": {
+    "end_to_end_passed": 413,
+    "unit_passed": 118,
+    "total_passed": 531,
+    "failed": 0,
+    "golden_rewrites": 0
+  },
+  "scope": "PPC extsh/extsb call-only copy typing; no producer narrowing during use/format",
+  "equal_precompile_correction": "Both arms change generated s32 fn_1_2E68 to context int fn_1_2E68; MP6 s32 aliases long. Independent formatting gap not fixed.",
+  "matching_credit": false,
+  "new_owner_closures": 0
+}

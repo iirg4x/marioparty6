@@ -68,15 +68,15 @@
     {
       "path": "m2c/arch_ppc.py",
       "before_sha256": "fb594f52554636014378cac737aaf11fd61c63308c6abef206ab1acb5b5b4378",
-      "after_sha256": "0982fd97730853787c4011f22dffffc5026a752f4731e185f1a23880d6b58231",
-      "bytes": 72934,
+      "after_sha256": "036324fb5575f897ac252d135043050c5a3959a8f59710c70541e7c9fef04a35",
+      "bytes": 73805,
       "after_newline": "lf"
     },
     {
       "path": "m2c/evaluate.py",
       "before_sha256": "a4392ac6c55334e8167797258525573b2be4654d673f437900b2efc95845c0b4",
       "after_sha256": "1a564101bb51be45bca5d4d09fc1a7909d3307eb027e7dd199e24cba98fb7c36",
-      "bytes": 61513,
+      "bytes": 62030,
       "after_newline": "lf"
     },
     {
@@ -103,8 +103,8 @@
     {
       "path": "m2c/translate.py",
       "before_sha256": "5107f2f4b92bd26488f33e9772a1bb6d2331a22f3a57dda40f44f4f3b52bae19",
-      "after_sha256": "2dfe6a73fafa98be28a0afe6ff0709e39c31d272adde76ca88b76711620dda3c",
-      "bytes": 215173,
+      "after_sha256": "95dc3b86d67451e075ae0b609ae85d48531e4f7d459394d25309d41a5cbd3260",
+      "bytes": 216902,
       "after_newline": "lf"
     },
     {
@@ -230,7 +230,7 @@
       "path": "tests/unit/test_incomplete_pointer_offsets.py",
       "before_sha256": null,
       "after_sha256": "e81c69ffb17744bad3284be0811b9b4eb6515f662d33a88894438b607c43bc43",
-      "bytes": 4527,
+      "bytes": 7025,
       "after_newline": "lf"
     },
     {
@@ -252,6 +252,13 @@
       "before_sha256": "5c22c478ba893ce2f55a7545a4bac07d92e864f6cb05f7eb1848802664cfac09",
       "after_sha256": "5a50cddc165f2e211250846a8ce2e5d026e28a301b0a715bc43fda79c580605f",
       "bytes": 12587,
+      "after_newline": "lf"
+    },
+    {
+      "path": "tests/unit/test_ppc_extsh_call_only.py",
+      "before_sha256": null,
+      "after_sha256": "c61f7343b0336ac500acb8bf792f0eb93a90380c20b331376b495589e2bebe44",
+      "bytes": 2957,
       "after_newline": "lf"
     },
     {
@@ -304,6 +311,6 @@
       "after_newline": "lf"
     }
   ],
-  "patch_sha256": "32cf3bfff4ba6228d8d354348232f593d4a5e78fe08ff64ab1d71cc39ed8e723",
+  "patch_sha256": "47ddf861127751f3922f46c70225b9258d9a9a320053c5e0fcb705b568f0968d",
   "matching_credit": false
 }

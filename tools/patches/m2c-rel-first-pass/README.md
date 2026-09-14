@@ -75,20 +75,20 @@ holdout or the later call-interface sample below.
 ## Install and use
 
 The current verified installation is
-`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi6/m2c.py`.
+`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi7/m2c.py`.
 Use this path for new REL preparation and reconstruction. The original installed
 m2c and the already-running all-REL baseline were deliberately left unchanged.
 
-The portable package now also contains the narrowly tested late-pointer
-follow-up below; it is not byte-identical to the released eabi6 installation.
-To test that package in a **new directory**:
+The portable package includes the late-pointer and call-copy boundary fixes
+below. The eabi7 installation verifies the same package hashes. To install in a
+**new directory**:
 
 ```text
-rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-late-pointer-new
+rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi7-new
 ```
 
 The installer preserves the source installation, rejects baseline drift, applies
-the portable patch, and verifies all 34 changed output files. It never modifies
+the portable patch, and verifies all 35 changed output files. It never modifies
 game source, configures a build, or publishes matching status. Destinations may
 be nested inside another checkout: patch application disables parent repository
 discovery and inherited Git repository variables without creating a repository.
@@ -143,12 +143,38 @@ type. Thus grouped execution is verified, **not** a claim that unedited m2c now
 reproduces the 52-function recovered source or its 432-byte literal pool.
 Compact live results: `build/rel-gap-fixes/grouped-first-acceptance/`.
 
-The separate narrow-call Qwen patch did not improve the paired current m621
-`fn_1_2E68` draft: both remained 428/404 bytes and 20 differences. It is not in
-this portable package. A local-worker correction is investigating the preceding
-short-load/arithmetic/phi boundary. The paired test also requires the same
-context-prototype spelling correction on both drafts (`int`, not the project's
-`s32` alias for `long`); that distinct formatting gap is not claimed fixed.
+The first narrow-call Qwen proposal was neutral: both paired current m621
+`fn_1_2E68` drafts remained 428/404 bytes and 20 differences. The revised,
+measured fix below is now included; the neutral attempt is not credited as a gain.
+
+## Active-recovery follow-up: narrow call copies versus full-width owners
+
+In m621 `fn_1_2E68`, a full-width loop counter feeds arithmetic and comparison;
+only a copied outgoing call argument is sign-extended to short. Type inference
+incorrectly let that call copy narrow the counter itself. Merely disabling
+unification at cast creation was insufficient: `Cast.use()` and formatting
+reintroduced the same constraint later.
+
+The PPC instruction-use graph now recognizes an `extsh`/`extsb` destination
+whose complete observed uses are outgoing call inputs. Its existing cast keeps
+the narrow call type without unifying the producer during creation, use or
+formatting. Arithmetic/comparison uses and context-owned narrow storage retain
+normal inference; this does not rewrite the shared MIPS/ARM cast path. A missing
+or mixed use set does not qualify. Local Qwen supplied the revised implementation
+and focused tests; the primary integrated and compiled it against actual headers.
+
+Paired current m621 compilation improves **428 -> 412 bytes** against a 404-byte
+target, **20 -> 12 rows**, and **85.544556 -> 90.247530% raw**. The installed
+package reproduces the scratch result's source/object/report hashes. This is a
+translation gain on an already recovered minigame, not a new closure. Both arms
+apply the same context-prototype spelling correction (`int`, not MP6's `s32`
+alias for `long`); that independent formatting gap remains unresolved.
+
+The fresh eabi7 copy passes **531/531 tests**: 413 end-to-end and 118 unit tests,
+without golden rewrites. The four new cases cover call-only short/byte copies,
+genuinely narrow arithmetic, and context-defined short storage. Original m2c,
+eabi6 and active batch manifests remain unchanged. Compact paired bindings are
+in `narrow-call-validation.json`; use eabi7 for newly prepared work.
 
 ## Follow-up: actual call interfaces and stack arguments
 

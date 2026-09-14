@@ -1,10 +1,41 @@
 diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
 --- a/m2c/arch_ppc.py
 +++ b/m2c/arch_ppc.py
-@@ -100,6 +100,19 @@
+@@ -48,6 +48,7 @@
+     ArgLoc,
+     BinaryOp,
+     Cast,
++    NonUnifyingCast,
+     ErrorExpr,
+     ExprStmt,
+     Expression,
+@@ -98,6 +99,40 @@
+ )
+ from .flow_graph import ArchFlowGraph, FlowGraph, InstrRef, RefSet
  from .types import FunctionSignature, Type
- 
- 
++
++
++def ppc_extend_integer(a: InstrArgs, target: Type) -> Expression:
++    # An outgoing extension is a conversion of a copy, not evidence that all
++    # uses of its full-width producer (including a loop phi) are narrow.
++    ref = a.instruction_ref
++    dst = a.reg_ref(0)
++    uses = a.stack_info.flow_graph.instr_uses[ref].get(dst)
++    call_only = bool(uses) and all(
++        isinstance(use, InstrRef)
++        and use.instruction.function_target is not None
++        and dst in use.instruction.inputs
++        for use in uses
++    )
++    if call_only:
++        base = as_type(a.reg(1), target, silent=False, unify=False)
++        if isinstance(base, Cast):
++            return NonUnifyingCast(expr=base.expr, type=base.type,
++                                  reinterpret=base.reinterpret, silent=base.silent)
++        return base
++    return as_type(a.reg(1), target, silent=False)
++
++
 +def ppc_float_compare(left: Expression, op: str, right: Expression) -> BinaryOp:
 +    # Unlike MIPS c.*.s/c.*.d, PPC fcmp[u/o] does not select an operand
 +    # precision. Both lfs- and lfd-produced values are compared as held in
@@ -16,12 +47,10 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
 +        right=as_type(right, Type.floatish(), True),
 +        type=Type.boolean(),
 +    )
-+
-+
+ 
+ 
  class FcmpoCrorPattern(SimpleAsmPattern):
-     """
-     For floating point, `x <= y` and `x >= y` use `cror` to OR together the `cr0_eq`
-@@ -1526,7 +1539,7 @@
+@@ -1526,7 +1561,7 @@
          "stmw",
          "lmw",
          # `{crclr,crset} 6` are used as part of the ABI for floats & varargs
@@ -30,7 +59,18 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
          "crclr",
          "crset",
      }
-@@ -1810,12 +1823,12 @@
+@@ -1709,8 +1744,8 @@
+             )
+         ),
+         "srawi": lambda a: handle_shift_right(a, signed=True),
+-        "extsb": lambda a: as_type(a.reg(1), Type.s8(), silent=False),
+-        "extsh": lambda a: as_type(a.reg(1), Type.s16(), silent=False),
++        "extsb": lambda a: ppc_extend_integer(a, Type.s8()),
++        "extsh": lambda a: ppc_extend_integer(a, Type.s16()),
+         "cntlzw": lambda a: UnaryOp("CLZ", a.reg(1), type=Type.intish()),
+         # Load Immediate
+         "li": lambda a: a.full_imm(1),
+@@ -1810,12 +1845,12 @@
          "cmplwi": lambda a, op: BinaryOp.uintptr_cmp(a.reg(1), op, a.s16_imm(2)),
          # Floating point
          # TODO: There is a difference in how these two instructions handle NaN
@@ -47,7 +87,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
              a.reg(1), op if op != "==" else ">=", a.reg(2)
          ),
      }
-@@ -1830,9 +1843,37 @@
+@@ -1830,9 +1865,37 @@
          else:
              return f"farg{reg_num - 1}"
  
@@ -86,7 +126,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
          fn_sig: FunctionSignature,
          likely_regs: Dict[Register, bool],
          *,
-@@ -1842,12 +1883,12 @@
+@@ -1842,12 +1905,12 @@
          candidate_slots: List[AbiArgSlot] = []
  
          # $rX & $fX regs can be interspersed in function args, unlike in the MIPS O32 ABI
@@ -102,7 +142,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
              for param in fn_sig.params:
                  # TODO: Support structs as parameters/return type, and 64-bit values
                  # passed on the stack.
-@@ -1879,7 +1920,7 @@
+@@ -1879,7 +1942,7 @@
                      )
                      ind += 1
          else:
@@ -111,7 +151,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
                  if reg.register_name[0] != "f":
                      candidate_slots.append(
                          AbiArgSlot(ArgLoc(None, ind, reg), Type.intptr())
-@@ -1904,11 +1945,11 @@
+@@ -1904,11 +1967,11 @@
                  # earlier registers for the first member of that subset.
                  pass
              else:
@@ -125,7 +165,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
                      and prev_reg not in valid_extra_regs
                  ):
                      continue
-@@ -1945,3 +1986,43 @@
+@@ -1945,3 +2008,43 @@
                  Cast(expr, reinterpret=True, silent=False, type=Type.u64())
              ),
          }
@@ -603,7 +643,49 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              right_expr = elide_literal_casts(as_type(right_expr, left_expr.type, True))
  
          # For commutative, left-associative operations, strip unnecessary parentheses.
-@@ -1446,9 +1500,17 @@
+@@ -1392,6 +1446,41 @@
+         if fn_sig:
+             return f"(({self.type.format(fmt)}) {self.expr.format(fmt)})"
+ 
++        return f"({self.type.format(fmt)}) {self.expr.format(fmt)}"
++
++
++class NonUnifyingCast(Cast):
++    """A conversion of a copy which cannot narrow its shared producer."""
++
++    def _exact_omittable(self) -> bool:
++        if not self.reinterpret:
++            return False
++        if not (self.expr.type.is_int() and self.type.is_int()):
++            return False
++        src_size = self.expr.type.get_size_bits()
++        dst_size = self.type.get_size_bits()
++        if src_size is None or dst_size is None or src_size != dst_size:
++            return False
++        return self.expr.type.is_signed() == self.type.is_signed()
++
++    def use(self) -> None:
++        Expression.use(self)
++
++    def needed_for_store(self) -> bool:
++        return not self._exact_omittable()
++
++    def should_wrap_transparently(self) -> bool:
++        return False
++
++    def format(self, fmt: Formatter) -> str:
++        if self.reinterpret and self.expr.type.is_float() != self.type.is_float():
++            if fmt.valid_syntax:
++                return f"M2C_BITWISE({self.type.format(fmt)}, {self.expr.format(fmt)})"
++            return f"(bitwise {self.type.format(fmt)}) {self.expr.format(fmt)}"
++        if fmt.skip_casts or self._exact_omittable():
++            return self.expr.format(fmt)
++        if self.type.get_function_pointer_signature():
++            return f"(({self.type.format(fmt)}) {self.expr.format(fmt)})"
+         return f"({self.type.format(fmt)}) {self.expr.format(fmt)}"
+ 
+ 
+@@ -1446,9 +1535,17 @@
      value: int
      type: Type = field(compare=False)
      path: Optional[AccessPath] = field(compare=False)
@@ -621,7 +703,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def format(self, fmt: Formatter) -> str:
          fallback_name = f"unksp{format_hex(self.value)}"
-@@ -1627,9 +1689,12 @@
+@@ -1627,9 +1724,12 @@
  
          field_path: Optional[AccessPath] = self.late_field_path()
  
@@ -635,7 +717,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              offset_str = fmt.format_int(self.offset)
              return f"M2C_FIELD({var.format(fmt)}, {Type.ptr(self.type).format(fmt)}, {offset_str})"
          else:
-@@ -1836,6 +1901,7 @@
+@@ -1836,6 +1936,7 @@
      type: Type = field(compare=False, default_factory=Type.intptr)
      legacy_expr: Optional[Expression] = field(compare=False, default=None)
      normalize_by_pointee: bool = field(compare=False, default=False)
@@ -643,7 +725,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def dependencies(self) -> List[Expression]:
          ret = [self.base]
-@@ -1868,6 +1934,12 @@
+@@ -1868,6 +1969,12 @@
              return self.legacy()
  
          base_target = base.type.get_pointer_target()
@@ -656,7 +738,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
          base_struct = (
              base_target.get_struct_declaration() if base_target is not None else None
          )
-@@ -1896,7 +1968,13 @@
+@@ -1896,7 +2003,13 @@
                      right=Literal(self.offset // target_size),
                      type=self.type,
                  )
@@ -671,7 +753,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              return self.legacy()
  
          if (
-@@ -3634,6 +3712,7 @@
+@@ -3634,6 +3747,7 @@
          default_factory=dict
      )
      subroutine_args: Dict[int, Expression] = field(default_factory=dict)
@@ -679,7 +761,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
      in_pattern: bool = False
  
      to_write: List[Union[Statement]] = field(default_factory=list)
-@@ -3891,6 +3970,8 @@
+@@ -3891,6 +4005,8 @@
              # ignore the type of the stack variable. The same stack slot
              # might be used to preserve values of different types.
              self.local_var_writes[dest] = (reg, raw_value, False)
@@ -688,7 +770,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
          if (
              isinstance(dest, (LocalVar, PassedInArg))
-@@ -3941,6 +4022,120 @@
+@@ -3941,6 +4057,120 @@
              ):
                  return True
          return False
@@ -809,7 +891,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def make_function_call(
          self, fn_target: Expression, outputs: List[Location]
-@@ -3995,6 +4190,13 @@
+@@ -3995,6 +4225,13 @@
              else:
                  likely_regs[reg] = True
  
@@ -823,7 +905,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
          abi = arch.function_abi(fn_sig, likely_regs, for_call=True)
  
          func_args: List[Expression] = []
-@@ -4008,6 +4210,22 @@
+@@ -4008,6 +4245,22 @@
                      expr = self.subroutine_args.pop(offset)
                  else:
                      expr = ErrorExpr(f"Unable to find stack arg {offset:#x} in block")
@@ -846,7 +928,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              func_args.append(
                  CommentExpr.wrap(as_type(expr, slot.type, True), prefix=slot.comment)
              )
-@@ -4037,6 +4255,7 @@
+@@ -4037,6 +4290,7 @@
  
          # Reset subroutine_args, for the next potential function call.
          self.subroutine_args.clear()
@@ -854,7 +936,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
          source = self.regs.current_instr_ref()
          call: Expression = FuncCall(
-@@ -4354,6 +4573,217 @@
+@@ -4354,6 +4608,217 @@
          for child in reversed(state.node.immediately_dominates):
              if not isinstance(child, TerminalNode):
                  translate_stack.append((state, child))
@@ -1072,7 +1154,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
  
  def resolve_types_late(stack_info: StackInfo) -> None:
-@@ -4951,6 +5381,8 @@
+@@ -4951,6 +5416,8 @@
      flow_graph: FlowGraph,
      options: Options,
      global_info: GlobalInfo,
@@ -1081,7 +1163,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  ) -> FunctionInfo:
      """
      Given a function, produce a FlowGraph that both contains control-flow
-@@ -4987,6 +5419,31 @@
+@@ -4987,6 +5454,31 @@
      return_blocks: List[BlockInfo] = []
      translate_all_blocks(state, used_naive_phis, return_blocks, options)
  
@@ -1113,7 +1195,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
      arch = global_info.arch
  
      # Guess return register and mark returns (we should really base this on
-@@ -5030,6 +5487,8 @@
+@@ -5030,6 +5522,8 @@
                  param.name = arg.format(Formatter())
  
      resolve_types_late(stack_info)
@@ -2049,6 +2131,90 @@ diff --git a/tests/unit/test_pointer_arithmetic.py b/tests/unit/test_pointer_ari
      def test_default_and_skip_casts_keep_raw_pointer_offset_spelling(self) -> None:
          pointer_type = Type.ptr(Type.u32())
          expression = DeferredPointerOffset(
+diff --git a/tests/unit/test_ppc_extsh_call_only.py b/tests/unit/test_ppc_extsh_call_only.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_ppc_extsh_call_only.py
+@@ -0,0 +1,79 @@
++"""Outgoing PPC narrow copies must not narrow independent full-width uses."""
++import subprocess
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++
++TRANSLATOR = Path(__file__).resolve().parents[2] / "m2c.py"
++CONTEXT = "short next_short(void); void consumer(int, void *, short);"
++ASSEMBLY = """.section .text
++.global fn_short_call
++fn_short_call:
++    stwu r1, -0x18(r1)
++    mflr r0
++    stw r0, 0x1c(r1)
++    stw r29, 0x14(r1)
++    bl next_short
++    subi r29, r3, 1
++    b .Lshort_test
++.Lshort_body:
++    mulli r3, r29, 36
++    li r4, 0
++    extsh r5, r29
++    bl consumer
++    subi r29, r29, 1
++.Lshort_test:
++    cmpwi r29, 0
++    bge .Lshort_body
++    li r3, 0
++    lwz r29, 0x14(r1)
++    lwz r0, 0x1c(r1)
++    mtlr r0
++    addi r1, r1, 0x18
++    blr
++"""
++
++
++class PpcExtshCallOnlyTests(unittest.TestCase):
++    def generate(self, assembly=ASSEMBLY, context=CONTEXT):
++        with tempfile.TemporaryDirectory() as tmp:
++            asm, ctx = Path(tmp)/"sample.s", Path(tmp)/"context.c"
++            asm.write_text(assembly, encoding="utf-8")
++            ctx.write_text(context, encoding="utf-8")
++            proc = subprocess.run([sys.executable, "-B", str(TRANSLATOR),
++                "-t", "ppc-mwcc-c", "--ppc-abi", "gekko-eabi", "--valid-syntax",
++                "--no-cache", "--context", str(ctx), "-f", "fn_short_call", str(asm)],
++                capture_output=True, text=True, timeout=30)
++        self.assertEqual(proc.returncode, 0, proc.stdout+proc.stderr)
++        self.assertNotIn("Error occurred", proc.stdout)
++        return proc.stdout
++
++    def test_outgoing_copy_does_not_narrow_loop_counter(self):
++        out = self.generate()
++        self.assertRegex(out, r"(?:s32|int) var_r29\b")
++        self.assertNotRegex(out, r"(?:s16|short) var_r29\b")
++        self.assertRegex(out, r"\((?:s16|short)\) var_r29\b")
++        self.assertIn("consumer", out)
++
++    def test_narrow_arithmetic_and_comparison_stay_narrow(self):
++        asm = ASSEMBLY.replace("mulli r3, r29, 36", "extsh r0, r29\n    mulli r3, r0, 36")
++        asm = asm.replace("cmpwi r29, 0", "extsh r0, r29\n    cmpwi r0, 0")
++        self.assertRegex(self.generate(asm), r"(?:s16|short) var_r29\b")
++
++    def test_byte_call_conversion_preserves_full_width_counter(self):
++        asm = ASSEMBLY.replace("extsh r5, r29", "extsb r5, r29")
++        out = self.generate(asm, CONTEXT.replace("void *, short", "void *, signed char"))
++        self.assertRegex(out, r"(?:s32|int) var_r29\b")
++        self.assertRegex(out, r"\((?:s8|signed char)\) var_r29\b")
++
++    def test_context_short_storage_stays_short(self):
++        asm = ASSEMBLY.replace("li r3, 0\n    lwz r29", "lis r3, result@ha\n    sth r29, result@l(r3)\n    li r3, 0\n    lwz r29")
++        out = self.generate(asm, CONTEXT+"\nextern short result;")
++        self.assertIn("result =", out)
++        self.assertNotIn("extern s32 result", out)
++        self.assertNotIn("extern int result", out)
++
++
++if __name__ == "__main__":
++    unittest.main()
 diff --git a/tests/unit/test_ppc_float_compare_precision.py b/tests/unit/test_ppc_float_compare_precision.py
 new file mode 100644
 --- /dev/null
