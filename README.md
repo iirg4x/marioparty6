@@ -1,56 +1,60 @@
 # Mario Party 6 Recovery Ledger
 
-Static recovery dashboard for the `iirg4x/marioparty6` repository.
+[Open the recovery ledger](https://iirg4x.github.io/marioparty6/).
 
-This directory is ready to be the root of a dedicated `gh-pages` branch.
-In the repository's **Settings → Pages**, choose **Deploy from a branch**,
-then **gh-pages** and **/(root)**.
+The site updates automatically after a push to `main` or `gh-pages`. The
+`Recovery ledger` GitHub Actions workflow reads one committed revision of `main`,
+generates recovery progress and the Cleanup Index together, and deploys a GitHub
+Pages artifact. A game build and local game files are not required.
 
-Expected project-site address: https://iirg4x.github.io/marioparty6/
+## Deployment
 
-Pages: [overview](https://iirg4x.github.io/marioparty6/),
-[DOL breakdown](https://iirg4x.github.io/marioparty6/dol.html),
-[module library](https://iirg4x.github.io/marioparty6/modules.html),
-[cleanup index](https://iirg4x.github.io/marioparty6/cleanup.html), and
-[snapshot/counting details](https://iirg4x.github.io/marioparty6/snapshot.html).
+In **Settings → Pages**, the publishing source is **GitHub Actions**. Keep
+`.github/workflows/recovery-ledger.yml` on both `main` and `gh-pages`: the copy on
+`main` observes source updates; the copy on `gh-pages` observes website updates.
+The `github-pages` environment must allow deployments from both branches.
 
-The dashboard uses relative asset URLs so it also works below the repository path.
-No build or dependencies are required. The `.nojekyll` file disables Jekyll processing.
+The workflow checks out the site from `gh-pages` and source from `main`. Only the
+explicit HTML, JavaScript, CSS, and generated JSON files enter the public artifact.
+The **Run workflow** action can refresh the site manually. A failed build leaves
+the last successful deployment available.
 
-Normal navigation keeps the same document and shared snapshot in memory. The other
-page templates preload in the background, and visited pages retain their rendered
-content and filters. Back/forward navigation and direct page URLs remain supported.
-
-It includes the dark theme, animations, module/function filters, function counts,
-and scrollable module-detail dialogs. Source-selected functions follow committed
-owner selection; they are not independent per-function objdiff proofs.
-
-`snapshot.json` is a published recovery snapshot, with its source commit and capture
-time visible on the page. All five pages share one browser-cached snapshot. Normal
-navigation reuses it without another snapshot request; Reload snapshot explicitly
-fetches and replaces the shared copy. A failed reload keeps the previous copy.
-If browser storage is unavailable, loading falls back to a network request.
-To update progress,
-replace it with a newly verified export using the same schema, then push to this
-branch. It does not access a developer's local repository or rebuild the game.
-
-The Cleanup Index groups source cleanup candidates by file, family, and category.
-It supports searching source excerpts, sorting, a flat list, and filtered TSV export.
-These are syntactic review candidates, not confirmed defects or unmatched functions.
-The index is embedded in the same `snapshot.json`; it reads the exact commit recorded
-in that snapshot, and source links remain pinned to that revision.
-
-To regenerate cleanup metadata after replacing the recovery snapshot, run:
+For a local generation:
 
 ```sh
-python tools/cleanup_index.py --repo /path/to/marioparty6 --snapshot snapshot.json
+python tools/build_snapshot.py --repo /path/to/marioparty6 --commit FULL_COMMIT_SHA --metadata source-metadata.json --output public
 ```
 
-The generator reads committed Git objects without modifying the source checkout.
-Review the generated metadata and push the updated snapshot to this branch.
+The generator reads committed Git objects without executing source configuration
+or changing the source checkout. `source-metadata.json` retains binary SHA-1 and
+DTK-version-bound code/data budgets and module names. Changes to the original
+binary hash or DTK version require renewed size evidence; affected modules are
+shown as unavailable until that evidence is updated. Data includes BSS.
 
-This branch contains dashboard code, progress metadata, and short excerpts from
-public committed source. No game binaries, machine-specific repository paths, or
-credentials are included.
-GitHub Pages for this public repository is public; the private ChatGPT Site remains
-separate and is not affected by deploying this branch.
+## Shared snapshot
+
+All five pages share one in-memory snapshot and browser cache. Navigation keeps
+the document, rendered content, and filters. Page templates preload in the
+background; direct URLs and browser back/forward remain supported.
+
+The browser shows cached progress immediately and checks `snapshot-version.json`
+at startup, periodically while visible, and on returning to the tab. When a new
+revision is available, it loads and validates `snapshot.json` before replacing the
+shared snapshot. Navigation itself never requests snapshot data. **Check for
+updates** performs an explicit refresh; failed background checks keep existing
+content visible. Updates become available after the GitHub Actions deployment
+finishes, rather than immediately when a commit is pushed.
+
+The source revision and snapshot generation time are visible on the Snapshot page.
+Recovery completion follows committed source selection and range coverage; it is
+not an independent per-function objdiff or byte-identical binary proof.
+
+## Cleanup Index
+
+Cleanup candidates can be searched and filtered by file, family, and category,
+shown as file groups or a flat list, and exported as TSV. These are syntactic review
+candidates, not confirmed defects or unmatched functions. The index uses the same
+commit as recovery progress, and source links remain pinned to that revision.
+
+The site contains public progress metadata and short excerpts from public source.
+No game binaries, machine-specific repository paths, or credentials are included.

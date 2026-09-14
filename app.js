@@ -15,13 +15,24 @@
   }
 
   const SNAPSHOT_ENDPOINT = "./snapshot.json";
-  const SNAPSHOT_CACHE = "mp6-recovery-snapshot-v2";
+  const SNAPSHOT_MANIFEST_ENDPOINT = "./snapshot-version.json";
+  const SNAPSHOT_CACHE = "mp6-recovery-snapshot-v3";
+  const SNAPSHOT_CHECK_INTERVAL = 5 * 60 * 1000;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const resultAnimations = new WeakMap();
   let detailExit = null;
   let activeView = null;
   let snapshotRevision = 0;
   let pageToolLifecycle = null;
+  let snapshotLoadPromise = null;
+  let snapshotCheckPromise = null;
+  let snapshotFreshnessTimer = null;
+  let snapshotFreshnessStarted = false;
+  let snapshotFreshnessStopped = false;
+  let lastSnapshotCheckAt = 0;
+  let snapshotManifest = null;
+  let snapshotRevisionDigest = null;
+  let lastSnapshotRead = null;
 
   function animateResults(element) {
     if (!element || state.loading || state.navigating || reducedMotion.matches || !element.animate) return;
@@ -601,6 +612,10 @@
     if (elements.connection) elements.connection.dataset.tone = tone;
   }
 
+  function shortCommit(commit = state.snapshot?.commit) {
+    return commit ? commit.slice(0, 7) : "unknown";
+  }
+
   function setBanner(message, tone = "info") {
     if (!elements.banner) return;
     elements.banner.textContent = message;
@@ -614,8 +629,8 @@
       elements.refresh.disabled = isLoading;
       elements.refresh.setAttribute("aria-busy", String(isLoading));
       elements.refresh.innerHTML = isLoading
-        ? '<span class="button-spinner" aria-hidden="true"></span>Reload snapshot'
-        : '<span aria-hidden="true">↻</span>Reload snapshot';
+        ? '<span class="button-spinner" aria-hidden="true"></span>Check for updates'
+        : '<span aria-hidden="true">↻</span>Check for updates';
     }
     if (elements.main) elements.main.setAttribute("aria-busy", String(isLoading));
   }
@@ -1286,41 +1301,187 @@
       && Array.isArray(value.modules) && typeof value.commit === "string" && Boolean(value.commit);
   }
 
+  function cryptoSubtle() {
+    return window.crypto?.subtle || globalThis.crypto?.subtle || null;
+  }
+
+  function isSha(value, length) {
+    return typeof value === "string" && new RegExp(`^[0-9a-f]{${length}}$`, "i").test(value);
+  }
+
+  function normalizeManifest(value) {
+    if (!isObject(value) || Number(value.schemaVersion) !== 1) {
+      throw new Error("The site returned an invalid snapshot manifest.");
+    }
+    const commit = asText(value.commit);
+    const revision = asText(value.revision).toLowerCase();
+    const generatedAt = asText(value.generatedAt);
+    if (!isSha(commit, 40) || !isSha(revision, 64) || !generatedAt || Number.isNaN(new Date(generatedAt).getTime())) {
+      throw new Error("The site returned an incomplete snapshot manifest.");
+    }
+    return { schemaVersion: 1, commit, revision, generatedAt };
+  }
+
+  function cloneResponse(response) {
+    return response && typeof response.clone === "function" ? response.clone() : null;
+  }
+
+  async function responseRevision(response) {
+    const subtle = cryptoSubtle();
+    if (!subtle?.digest || !response || typeof response.clone !== "function") return null;
+    try {
+      const copy = response.clone();
+      if (typeof copy.arrayBuffer !== "function") return null;
+      const digest = await subtle.digest("SHA-256", await copy.arrayBuffer());
+      return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    } catch {
+      return null;
+    }
+  }
+
+  function snapshotMatchesManifest(record, manifest) {
+    if (!record?.snapshot || !manifest || record.snapshot.commit !== manifest.commit) return false;
+    if (!cryptoSubtle()) return true;
+    return Boolean(record.revision) && record.revision.toLowerCase() === manifest.revision;
+  }
+
+  async function readSnapshotRecord(response, manifest = null) {
+    const cacheResponse = cloneResponse(response);
+    const revisionPromise = responseRevision(response);
+    const value = await readJson(response);
+    if (!cacheableSnapshot(value)) throw new Error("The site returned an incomplete snapshot.");
+    if (isObject(value.cleanup) && value.cleanup.commit !== value.commit) {
+      throw new Error("Snapshot cleanup data does not match its source commit.");
+    }
+    const record = {
+      snapshot: normalizeSnapshot(value),
+      revision: await revisionPromise,
+      response: cacheResponse,
+    };
+    if (manifest && record.snapshot.commit !== manifest.commit) {
+      throw new Error("Snapshot commit does not match its manifest.");
+    }
+    if (manifest && cryptoSubtle() && !record.revision) {
+      throw new Error("Snapshot revision could not be verified.");
+    }
+    if (manifest && !snapshotMatchesManifest(record, manifest)) {
+      throw new Error("Snapshot revision does not match its manifest.");
+    }
+    return record;
+  }
+
+  async function openSnapshotCache() {
+    try {
+      if (window.caches) return await window.caches.open(SNAPSHOT_CACHE);
+    } catch { /* Storage may be disabled. */ }
+    return null;
+  }
+
+  async function readCachedSnapshotRecord(cache, url) {
+    if (!cache) return null;
+    try {
+      const saved = await cache.match(url);
+      return saved ? await readSnapshotRecord(saved) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function cacheSnapshotResponse(cache, url, response) {
+    if (!cache || !response) return false;
+    try {
+      await cache.put(url, cloneResponse(response) || response);
+      return true;
+    } catch {
+      // A cache write is an optimization; a validated network response still renders.
+      return false;
+    }
+  }
+
+  async function cacheManifestResponse(cache, url, response) {
+    if (!cache || !response) return false;
+    try {
+      await cache.put(url, cloneResponse(response) || response);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function cacheValidatedPair(cache, snapshotUrl, snapshotResponse, manifestUrl, manifestResponse) {
+    if (!cache || !snapshotResponse || !manifestResponse) return false;
+    let previousSnapshot = null;
+    let previousManifest = null;
+    try {
+      previousSnapshot = await cache.match(snapshotUrl);
+      previousManifest = await cache.match(manifestUrl);
+    } catch {
+      return false;
+    }
+    try {
+      await cache.put(snapshotUrl, cloneResponse(snapshotResponse) || snapshotResponse);
+      await cache.put(manifestUrl, cloneResponse(manifestResponse) || manifestResponse);
+      return true;
+    } catch {
+      // Restore both entries when a storage provider fails halfway through the pair.
+      try {
+        if (previousSnapshot) await cache.put(snapshotUrl, previousSnapshot);
+        else await cache.delete(snapshotUrl);
+      } catch { /* Best effort rollback. */ }
+      try {
+        if (previousManifest) await cache.put(manifestUrl, previousManifest);
+        else await cache.delete(manifestUrl);
+      } catch { /* Best effort rollback. */ }
+      return false;
+    }
+  }
+
+  async function fetchManifest() {
+    const url = new URL(SNAPSHOT_MANIFEST_ENDPOINT, window.location.href).href;
+    const response = await fetch(url, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    const responseCopy = cloneResponse(response);
+    const manifest = normalizeManifest(await readJson(response));
+    return { manifest, response: responseCopy, url };
+  }
+
+  async function fetchNetworkSnapshot(manifest) {
+    const url = new URL(SNAPSHOT_ENDPOINT, window.location.href).href;
+    const response = await fetch(url, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    return {
+      ...(await readSnapshotRecord(response, manifest)),
+      url,
+    };
+  }
+
   async function fetchSnapshot(endpoint, refresh = false) {
     // The absolute URL isolates this repository's shared snapshot from other sites.
     const url = new URL(endpoint, window.location.href).href;
     const readOrFetch = async () => {
-      let cache = null;
-      try {
-        if (window.caches) cache = await window.caches.open(SNAPSHOT_CACHE);
-      } catch { /* Storage may be disabled. */ }
+      // Avoid an extra microtask on cache-less hosts so the initial fetch starts
+      // synchronously with the load request (useful for a stable skeleton state).
+      const cache = window.caches ? await openSnapshotCache() : null;
       if (cache && !refresh) {
-        try {
-          const saved = await cache.match(url);
-          if (saved) {
-            const value = await readJson(saved);
-            if (cacheableSnapshot(value)) return normalizeSnapshot(value);
-          }
-        } catch { /* Replace unreadable cache entries with a fresh snapshot. */ }
+        const record = await readCachedSnapshotRecord(cache, url);
+        if (record) {
+          lastSnapshotRead = { fromCache: true, revision: record.revision };
+          return record.snapshot;
+        }
       }
 
       const response = await fetch(url, {
         cache: "no-store",
         headers: { Accept: "application/json" },
       });
-      const savedResponse = cache ? response.clone() : null;
-      const value = await readJson(response);
-      const snapshot = normalizeSnapshot(value);
-      if (!cacheableSnapshot(value)) throw new Error("The site returned an incomplete snapshot.");
-      if (cache) {
-        try {
-          await cache.put(url, savedResponse);
-        } catch {
-          // Do not let later pages reuse an older copy after a successful refresh.
-          try { await cache.delete(url); } catch { /* Loading still works without writable storage. */ }
-        }
-      }
-      return snapshot;
+      const record = await readSnapshotRecord(response);
+      lastSnapshotRead = { fromCache: false, revision: record.revision };
+      await cacheSnapshotResponse(cache, url, record.response);
+      return record.snapshot;
     };
 
     // Simultaneous tabs share the first fetch where cross-tab locks are supported.
@@ -1339,42 +1500,180 @@
     return readOrFetch();
   }
 
-  async function loadSnapshot(isRefresh = false) {
-    if (state.loading) return;
-    setLoading(true);
-    setBanner("", "info");
-    setConnection(isRefresh ? "Reloading published snapshot" : "Reading published snapshot", "muted");
-    try {
-      const snapshot = await fetchSnapshot(SNAPSHOT_ENDPOINT, isRefresh);
-      state.snapshot = snapshot;
-      state.modules = snapshot.modules;
-      state.hasLoaded = true;
-      snapshotRevision += 1;
-      if (!state.selectedId || !state.modules.some((module) => module.id === state.selectedId)) {
-        state.selectedId = null;
-        state.detailGroup = "all";
-        state.detailTrigger = null;
-      }
-      renderSnapshot();
-      setBanner(isRefresh ? "Published snapshot reloaded." : "Published snapshot loaded.", "success");
-      setConnection("Published snapshot loaded", "success");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not read the published snapshot.";
-      if (state.snapshot) {
-        setBanner(`Refresh failed: ${message} Previous snapshot remains in view.`, "error");
-        setConnection("Refresh failed · previous snapshot", "error");
-      } else {
-        state.hasLoaded = true;
-        renderSnapshot();
-        setBanner(message, "error");
-        setConnection("Snapshot unavailable", "error");
-      }
-    } finally {
-      // Render behind the static skeleton, then reveal everything in one paint.
-      if (elements.skeleton) elements.skeleton.hidden = true;
-      if (elements.content) elements.content.hidden = false;
-      setLoading(false);
+  function adoptSnapshot(snapshot) {
+    state.snapshot = snapshot;
+    state.modules = snapshot.modules;
+    state.hasLoaded = true;
+    snapshotRevision += 1;
+    if (!state.selectedId || !state.modules.some((module) => module.id === state.selectedId)) {
+      state.selectedId = null;
+      state.detailGroup = "all";
+      state.detailTrigger = null;
     }
+    renderSnapshot();
+  }
+
+  async function currentSnapshotRecord(cache, snapshotUrl) {
+    if (!state.snapshot) return readCachedSnapshotRecord(cache, snapshotUrl);
+    if (snapshotRevisionDigest) {
+      return { snapshot: state.snapshot, revision: snapshotRevisionDigest, response: null };
+    }
+    const cached = await readCachedSnapshotRecord(cache, snapshotUrl);
+    if (cached?.snapshot.commit === state.snapshot.commit) {
+      snapshotRevisionDigest = cached.revision;
+      return cached;
+    }
+    return { snapshot: state.snapshot, revision: null, response: null };
+  }
+
+  async function refreshSnapshotPair(force = false) {
+    const manifestResult = await fetchManifest();
+    const { manifest, response: manifestResponse, url: manifestUrl } = manifestResult;
+    const snapshotUrl = new URL(SNAPSHOT_ENDPOINT, window.location.href).href;
+    const cache = await openSnapshotCache();
+    const current = await currentSnapshotRecord(cache, snapshotUrl);
+    if (!force && snapshotMatchesManifest(current, manifest)) {
+      snapshotManifest = manifest;
+      if (current.revision) snapshotRevisionDigest = current.revision;
+      await cacheManifestResponse(cache, manifestUrl, manifestResponse);
+      return { updated: false, manifest, cached: true };
+    }
+
+    const latest = await fetchNetworkSnapshot(manifest);
+    const cached = await cacheValidatedPair(
+      cache,
+      snapshotUrl,
+      latest.response,
+      manifestUrl,
+      manifestResponse,
+    );
+    snapshotManifest = manifest;
+    snapshotRevisionDigest = latest.revision;
+    adoptSnapshot(latest.snapshot);
+    return { updated: true, manifest, cached };
+  }
+
+  function snapshotUpdateError() {
+    if (state.snapshot) {
+      setConnection(`Update unavailable · cached ${shortCommit()}`, "muted");
+    } else {
+      setConnection("Snapshot unavailable", "error");
+    }
+  }
+
+  function checkSnapshotFreshness(force = false, options = {}) {
+    const quiet = options.quiet !== false;
+    if (snapshotCheckPromise) return snapshotCheckPromise;
+    if (snapshotLoadPromise) return snapshotLoadPromise.then(() => false);
+    if (snapshotFreshnessStopped && !force) return Promise.resolve(false);
+    if (!force && document.visibilityState === "hidden") return Promise.resolve(false);
+    const now = Date.now();
+    if (!force && now - lastSnapshotCheckAt < SNAPSHOT_CHECK_INTERVAL) return Promise.resolve(false);
+    lastSnapshotCheckAt = now;
+
+    const task = (async () => {
+      try {
+        const result = await refreshSnapshotPair(force);
+        if (result.updated) {
+          setBanner("", "info");
+          setConnection(`Snapshot auto-updated · ${shortCommit(result.manifest.commit)}`, "success");
+        } else {
+          setConnection(`Snapshot current · ${shortCommit(result.manifest.commit)}`, "success");
+        }
+        return result.updated;
+      } catch {
+        snapshotUpdateError();
+        if (!quiet) throw error;
+        return false;
+      }
+    })();
+    snapshotCheckPromise = task;
+    const clear = () => {
+      if (snapshotCheckPromise === task) snapshotCheckPromise = null;
+    };
+    task.then(clear, clear);
+    return task;
+  }
+
+  function stopSnapshotFreshness() {
+    snapshotFreshnessStopped = true;
+    if (snapshotFreshnessTimer !== null) {
+      const clear = window.clearInterval || globalThis.clearInterval;
+      if (typeof clear === "function") clear(snapshotFreshnessTimer);
+      snapshotFreshnessTimer = null;
+    }
+  }
+
+  function handleSnapshotVisibility() {
+    if (document.visibilityState === "hidden") return;
+    void checkSnapshotFreshness(false, { quiet: true });
+  }
+
+  function handleSnapshotFocus() {
+    void checkSnapshotFreshness(false, { quiet: true });
+  }
+
+  function startSnapshotFreshness() {
+    if (snapshotFreshnessStarted || snapshotFreshnessStopped) return;
+    snapshotFreshnessStarted = true;
+    document.addEventListener?.("visibilitychange", handleSnapshotVisibility);
+    window.addEventListener?.("focus", handleSnapshotFocus);
+    const interval = window.setInterval || globalThis.setInterval;
+    if (typeof interval === "function") {
+      snapshotFreshnessTimer = interval(() => {
+        void checkSnapshotFreshness(false, { quiet: true });
+      }, SNAPSHOT_CHECK_INTERVAL);
+    }
+    void checkSnapshotFreshness(false, { quiet: true });
+  }
+
+  function loadSnapshot(isRefresh = false) {
+    if (snapshotLoadPromise) return snapshotLoadPromise;
+    const task = (async () => {
+      if (state.loading) return;
+      setLoading(true);
+      setBanner("", "info");
+      setConnection(isRefresh ? "Checking for the latest snapshot" : "Loading snapshot", "muted");
+      try {
+        if (isRefresh) {
+          if (snapshotCheckPromise) await snapshotCheckPromise.catch(() => {});
+          const result = await refreshSnapshotPair(true);
+          lastSnapshotCheckAt = Date.now();
+          setBanner("Snapshot reloaded.", "success");
+          setConnection(`Snapshot current · ${shortCommit(result.manifest.commit)}`, "success");
+        } else {
+          const snapshot = await fetchSnapshot(SNAPSHOT_ENDPOINT, false);
+          snapshotRevisionDigest = lastSnapshotRead?.revision || null;
+          adoptSnapshot(snapshot);
+          setBanner("Snapshot loaded.", "success");
+          setConnection(`Snapshot loaded · ${shortCommit(snapshot.commit)}`, "success");
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not read the snapshot.";
+        if (state.snapshot) {
+          setBanner(`Refresh failed: ${message} Previous snapshot remains in view.`, "error");
+          setConnection(`Refresh failed · cached ${shortCommit()}`, "error");
+        } else {
+          state.hasLoaded = true;
+          renderSnapshot();
+          setBanner(message, "error");
+          setConnection("Snapshot unavailable", "error");
+        }
+      } finally {
+        // Render behind the static skeleton, then reveal everything in one paint.
+        if (elements.skeleton) elements.skeleton.hidden = true;
+        if (elements.content) elements.content.hidden = false;
+        setLoading(false);
+      }
+    })();
+    snapshotLoadPromise = task;
+    const clear = () => {
+      if (snapshotLoadPromise !== task) return;
+      snapshotLoadPromise = null;
+      if (!isRefresh) startSnapshotFreshness();
+    };
+    task.then(clear, clear);
+    return task;
   }
 
   function handleGlobalKeydown(event) {
@@ -1428,7 +1727,10 @@
   function bindGlobalEvents() {
     elements.refresh?.addEventListener("click", () => loadSnapshot(true));
     document.addEventListener("keydown", handleGlobalKeydown);
-    window.addEventListener("pagehide", () => pageToolLifecycle?.abort());
+    window.addEventListener("pagehide", () => {
+      stopSnapshotFreshness();
+      pageToolLifecycle?.abort();
+    });
   }
 
   function registerPageTools() {
