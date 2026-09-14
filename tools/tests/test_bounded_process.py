@@ -5,6 +5,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 from tools import bounded_process as bp
 from tools import owner_campaign as campaign
 from tools import owner_campaign_measure as measure
@@ -47,6 +48,77 @@ class BoundedProcessTests(unittest.TestCase):
         with self.assertRaises(bp.ProcessLimitError):
             bp.run([sys.executable, '-c', code], cwd=self.root, timeout=.3)
         self.assertFalse(any(t.name.startswith('recovery-pipe-') for t in threading.enumerate()))
+
+    def test_windows_job_waits_for_asynchronous_active_count(self):
+        job = object.__new__(bp._WindowsJob)
+        job.handle = 123
+        with mock.patch.object(job, 'active_processes', side_effect=[2, 1, 0]) as active, \
+                mock.patch.object(bp.time, 'monotonic', side_effect=[10, 10.01, 10.02]), \
+                mock.patch.object(bp.time, 'sleep') as sleep:
+            job.wait_empty(timeout=1)
+        self.assertEqual(active.call_count, 3)
+        self.assertEqual(sleep.call_args_list, [mock.call(.01), mock.call(.01)])
+        self.assertEqual(job.handle, 123)
+
+    def test_windows_job_drain_timeout_is_bounded_and_keeps_handle(self):
+        job = object.__new__(bp._WindowsJob)
+        job.handle = 123
+        with mock.patch.object(job, 'active_processes', return_value=2), \
+                mock.patch.object(bp.time, 'monotonic', side_effect=[10, 10.5, 11]), \
+                mock.patch.object(bp.time, 'sleep') as sleep:
+            with self.assertRaisesRegex(bp.ProcessLimitError, '2 active processes'):
+                job.wait_empty(timeout=1)
+        sleep.assert_called_once_with(.01)
+        self.assertEqual(job.handle, 123)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows job cleanup')
+    def test_windows_job_drain_failure_preserves_primary_exception(self):
+        for diagnostic in (OSError('query sentinel'), bp.ProcessLimitError('drain timeout sentinel')):
+            with self.subTest(diagnostic=diagnostic):
+                primary = RuntimeError('storage sentinel')
+                def fail():
+                    raise primary
+                close = bp._WindowsJob.close
+                with mock.patch.object(bp._WindowsJob, 'wait_empty', side_effect=diagnostic), \
+                        mock.patch.object(bp._WindowsJob, 'close', autospec=True, side_effect=close) as closed:
+                    with self.assertRaises(RuntimeError) as caught:
+                        self.run_child('import time; time.sleep(20)', check=fail)
+                self.assertIs(caught.exception, primary)
+                self.assertTrue(any(str(diagnostic) in note for note in primary.__notes__))
+                closed.assert_called_once()
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows job cleanup')
+    def test_windows_job_drain_failure_on_success_is_reported(self):
+        with mock.patch.object(bp._WindowsJob, 'wait_empty', side_effect=OSError('query sentinel')):
+            with self.assertRaisesRegex(bp.ProcessLimitError, 'Windows job drain failed: query sentinel'):
+                self.run_child('pass')
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows descendant cwd release')
+    def test_windows_descendant_cwd_released_repeatedly(self):
+        child = 'from pathlib import Path; import time; Path("ready").touch(); time.sleep(20)'
+        code = f'import subprocess,sys; subprocess.Popen([sys.executable,"-c",{child!r}])'
+        for iteration in range(10):
+            with self.subTest(iteration=iteration), tempfile.TemporaryDirectory(dir=self.root) as directory:
+                cwd = Path(directory)
+                def child_ready():
+                    if (cwd/'ready').exists():
+                        raise RuntimeError('descendant is ready')
+                with self.assertRaisesRegex(RuntimeError, 'descendant is ready'):
+                    bp.run([sys.executable, '-c', code], cwd=cwd, timeout=3, check=child_ready)
+                self.assertFalse(any(t.name.startswith('recovery-pipe-') for t in threading.enumerate()))
+            # Each context above removes the child's actual cwd immediately,
+            # without retries, sleeps, or deferred tempfile cleanup.
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows descendant cwd release')
+    def test_windows_success_drains_non_pipe_descendant(self):
+        child = 'from pathlib import Path; import time; Path("ready").touch(); time.sleep(20)'
+        code = ('import subprocess,sys,time; from pathlib import Path; '
+                f'subprocess.Popen([sys.executable,"-c",{child!r}], '
+                'stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n'
+                'while not Path("ready").exists(): time.sleep(.01)')
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            result = bp.run([sys.executable, '-c', code], cwd=Path(directory), timeout=3)
+            self.assertEqual(result.returncode, 0)
 
     def test_constraint_exception_survives(self):
         def fail():

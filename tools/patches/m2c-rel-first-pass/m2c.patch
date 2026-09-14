@@ -21,6 +21,15 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
  class FcmpoCrorPattern(SimpleAsmPattern):
      """
      For floating point, `x <= y` and `x >= y` use `cror` to OR together the `cr0_eq`
+@@ -1526,7 +1539,7 @@
+         "stmw",
+         "lmw",
+         # `{crclr,crset} 6` are used as part of the ABI for floats & varargs
+-        # For now, we can ignore them (and later use them to help in function_abi)
++        # No C statement; filter_variadic_registers consumes their ABI evidence.
+         "crclr",
+         "crset",
+     }
 @@ -1810,12 +1823,12 @@
          "cmplwi": lambda a, op: BinaryOp.uintptr_cmp(a.reg(1), op, a.s16_imm(2)),
          # Floating point
@@ -38,10 +47,33 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
              a.reg(1), op if op != "==" else ">=", a.reg(2)
          ),
      }
-@@ -1830,9 +1843,14 @@
+@@ -1830,9 +1843,37 @@
          else:
              return f"farg{reg_num - 1}"
  
++    def filter_variadic_registers(
++        self, instructions: List[Instruction], likely_regs: Dict[Register, bool]
++    ) -> None:
++        # Never carry CR evidence across a control-flow join or call. Only
++        # walk past instructions known not to write CR; unknown writers stop
++        # the search. This filters inferred slots, not fixed prototype slots.
++        harmless = {'li', 'lis', 'addi', 'addis', 'mr', 'nop',
++                    'lwz', 'lhz', 'lha', 'lbz', 'lfs', 'lfd',
++                    'stw', 'sth', 'stb', 'stfs', 'stfd'}
++        for inst in reversed(instructions):
++            if inst.mnemonic in ('crclr', 'crset') and len(inst.args) == 1:
++                bit = inst.args[0]
++                is_bit6 = (isinstance(bit, AsmLiteral) and bit.value == 6) or (
++                    isinstance(bit, Register) and bit.register_name == 'cr1eq') or (
++                    isinstance(bit, AsmGlobalSymbol) and bit.symbol_name == 'cr1eq')
++                if is_bit6 and inst.mnemonic == 'crclr':
++                    for reg in list(likely_regs):
++                        if reg.register_name.startswith('f'):
++                            del likely_regs[reg]
++                return
++            if inst.mnemonic not in harmless or inst.function_target:
++                return
++
 +    # Keep the historical convention as the default. Platform subclasses must
 +    # also select their own argument_regs for instruction inputs and inference.
 +    first_stack_arg_offset = 0
@@ -54,7 +86,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
          fn_sig: FunctionSignature,
          likely_regs: Dict[Register, bool],
          *,
-@@ -1842,12 +1860,12 @@
+@@ -1842,12 +1883,12 @@
          candidate_slots: List[AbiArgSlot] = []
  
          # $rX & $fX regs can be interspersed in function args, unlike in the MIPS O32 ABI
@@ -70,7 +102,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
              for param in fn_sig.params:
                  # TODO: Support structs as parameters/return type, and 64-bit values
                  # passed on the stack.
-@@ -1879,7 +1897,7 @@
+@@ -1879,7 +1920,7 @@
                      )
                      ind += 1
          else:
@@ -79,7 +111,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
                  if reg.register_name[0] != "f":
                      candidate_slots.append(
                          AbiArgSlot(ArgLoc(None, ind, reg), Type.intptr())
-@@ -1904,11 +1922,11 @@
+@@ -1904,11 +1945,11 @@
                  # earlier registers for the first member of that subset.
                  pass
              else:
@@ -93,7 +125,7 @@ diff --git a/m2c/arch_ppc.py b/m2c/arch_ppc.py
                      and prev_reg not in valid_extra_regs
                  ):
                      continue
-@@ -1945,3 +1963,43 @@
+@@ -1945,3 +1986,43 @@
                  Cast(expr, reinterpret=True, silent=False, type=Type.u64())
              ),
          }
@@ -344,15 +376,21 @@ diff --git a/m2c/options.py b/m2c/options.py
 diff --git a/m2c/translate.py b/m2c/translate.py
 --- a/m2c/translate.py
 +++ b/m2c/translate.py
-@@ -84,6 +84,7 @@
+@@ -84,6 +84,13 @@
  
      home_space_size: int
      base_return_regs: List[Tuple[Register, bool]]
 +    stack_args_from_locals: bool = False
++
++    def filter_variadic_registers(
++        self, instructions: List[Instruction], likely_regs: Dict[Register, bool]
++    ) -> None:
++        """Apply explicit callsite ABI evidence, if this architecture has any."""
++        pass
  
      @abc.abstractmethod
      def arg_name(self, loc: ArgLoc) -> str: ...
-@@ -305,6 +306,7 @@
+@@ -305,6 +312,7 @@
      callee_save_reg_region: Tuple[int, int] = (0, 0)
      unique_type_map: Dict[Tuple[str, object], Type] = field(default_factory=dict)
      local_vars: List[LocalVar] = field(default_factory=list)
@@ -360,7 +398,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
      temp_vars: List[Var] = field(default_factory=list)
      naive_phi_vars: List[NaivePhiExpr] = field(default_factory=list)
      reg_vars: Dict[Register, Var] = field(default_factory=dict)
-@@ -392,6 +394,19 @@
+@@ -392,6 +400,19 @@
          return self.param_names.get(loc)
  
      def add_local_var(self, var: LocalVar) -> None:
@@ -380,7 +418,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
          if any(v.value == var.value for v in self.local_vars):
              return
          self.local_vars.append(var)
-@@ -514,7 +529,34 @@
+@@ -514,7 +535,34 @@
              if store:
                  self.weak_stack_var_types[location] = field_type
  
@@ -416,7 +454,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def maybe_get_register_var(self, reg: Register) -> Optional[Var]:
          return self.reg_vars.get(reg)
-@@ -1228,10 +1270,16 @@
+@@ -1228,10 +1276,16 @@
                  type=self.type,
              ).format(fmt)
  
@@ -435,7 +473,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              right_expr = elide_literal_casts(as_type(right_expr, left_expr.type, True))
  
          # For commutative, left-associative operations, strip unnecessary parentheses.
-@@ -1446,9 +1494,17 @@
+@@ -1446,9 +1500,17 @@
      value: int
      type: Type = field(compare=False)
      path: Optional[AccessPath] = field(compare=False)
@@ -453,7 +491,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def format(self, fmt: Formatter) -> str:
          fallback_name = f"unksp{format_hex(self.value)}"
-@@ -1627,9 +1683,12 @@
+@@ -1627,9 +1689,12 @@
  
          field_path: Optional[AccessPath] = self.late_field_path()
  
@@ -467,7 +505,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              offset_str = fmt.format_int(self.offset)
              return f"M2C_FIELD({var.format(fmt)}, {Type.ptr(self.type).format(fmt)}, {offset_str})"
          else:
-@@ -1896,7 +1955,13 @@
+@@ -1896,7 +1961,13 @@
                      right=Literal(self.offset // target_size),
                      type=self.type,
                  )
@@ -482,7 +520,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              return self.legacy()
  
          if (
-@@ -3634,6 +3699,7 @@
+@@ -3634,6 +3705,7 @@
          default_factory=dict
      )
      subroutine_args: Dict[int, Expression] = field(default_factory=dict)
@@ -490,7 +528,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
      in_pattern: bool = False
  
      to_write: List[Union[Statement]] = field(default_factory=list)
-@@ -3891,6 +3957,8 @@
+@@ -3891,6 +3963,8 @@
              # ignore the type of the stack variable. The same stack slot
              # might be used to preserve values of different types.
              self.local_var_writes[dest] = (reg, raw_value, False)
@@ -499,7 +537,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
          if (
              isinstance(dest, (LocalVar, PassedInArg))
-@@ -3941,6 +4009,120 @@
+@@ -3941,6 +4015,120 @@
              ):
                  return True
          return False
@@ -620,7 +658,21 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def make_function_call(
          self, fn_target: Expression, outputs: List[Location]
-@@ -4008,6 +4190,22 @@
+@@ -3995,6 +4183,13 @@
+             else:
+                 likely_regs[reg] = True
+ 
++        if fn_sig.is_variadic:
++            preceding = []
++            for instruction in self.node.block.instructions:
++                if instruction is call_instr.instruction:
++                    break
++                preceding.append(instruction)
++            arch.filter_variadic_registers(preceding, likely_regs)
+         abi = arch.function_abi(fn_sig, likely_regs, for_call=True)
+ 
+         func_args: List[Expression] = []
+@@ -4008,6 +4203,22 @@
                      expr = self.subroutine_args.pop(offset)
                  else:
                      expr = ErrorExpr(f"Unable to find stack arg {offset:#x} in block")
@@ -643,7 +695,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              func_args.append(
                  CommentExpr.wrap(as_type(expr, slot.type, True), prefix=slot.comment)
              )
-@@ -4037,6 +4235,7 @@
+@@ -4037,6 +4248,7 @@
  
          # Reset subroutine_args, for the next potential function call.
          self.subroutine_args.clear()
@@ -651,7 +703,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
          source = self.regs.current_instr_ref()
          call: Expression = FuncCall(
-@@ -4987,6 +5186,31 @@
+@@ -4987,6 +5199,31 @@
      return_blocks: List[BlockInfo] = []
      translate_all_blocks(state, used_naive_phis, return_blocks, options)
  
@@ -1894,6 +1946,77 @@ new file mode 100644
 +            assert len(signatures) == 1 and 'arg_sp' not in signatures[0], signatures
 +            print(signatures[0])
 +        print('saved_reg_r24 remains:', 'saved_reg_r24' in result.stdout)
++    else:
++        unittest.main()
+diff --git a/tests/unit/test_ppc_variadic_cr1.py b/tests/unit/test_ppc_variadic_cr1.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_ppc_variadic_cr1.py
+@@ -0,0 +1,66 @@
++import unittest
++import sys
++import json
++import hashlib
++import subprocess
++from pathlib import Path
++if __package__ in {None, ''}:
++    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
++from tests.unit import test_ppc_stack_bookkeeping as support
++
++
++class VariadicCR1Tests(unittest.TestCase):
++    def translate(self, marker, context='void report(int tag, int value, ...); void sample(void);'):
++        return support.StackBookkeepingTests().translate(
++            '    bl unknown\n'+marker+'\n    li r3, 7\n    li r4, 8\n    bl report', context)
++
++    def test_clear_removes_only_variadic_fpr_candidate(self):
++        for marker in ('crclr 6', 'crclr cr1eq'):
++            text = self.translate('    '+marker)
++            self.assertIn('report(7, 8);', text)
++
++    def test_set_and_unknown_keep_float_candidate(self):
++        for marker in ('', '    crset 6', '    crclr 5'):
++            text = self.translate(marker)
++            self.assertIn('report(7, 8,', text)
++
++    def test_intervening_call_or_join_discards_clear(self):
++        for marker in ('    crclr 6\n    bl unknown2',
++                       '    crclr 6\n    cmpwi r3, 0\n    beq .Lend\n.Lend:'):
++            text = self.translate(marker)
++            self.assertIn('report(7, 8,', text)
++
++    def test_fixed_float_parameter_survives_clear(self):
++        text = self.translate('    crclr 6', 'void report(int tag, int value, float fp, ...); void sample(void);')
++        self.assertIn('report(7, 8,', text)
++
++
++if __name__ == '__main__':
++    if len(sys.argv) > 2 and sys.argv[1] == '--decompile':
++        mode = sys.argv[2]
++        if mode == 'before':
++            from m2c.arch_ppc import PpcArch
++            PpcArch.filter_variadic_registers = lambda *args: None
++        sys.argv = ['m2c']+sys.argv[3:]
++        from m2c.main import main
++        main()
++    elif len(sys.argv) == 3 and sys.argv[1] == '--live-root':
++        project = Path(sys.argv[2])
++        context = project/'build/rel-gap-fixes/m657-compiler-acceptance-final/provider-calls.i'
++        target = project/'build/rel-first-compile-20260913/inputs/m657Dll.s'
++        outputs = {}
++        for mode in ('before', 'after'):
++            result = subprocess.run([sys.executable, __file__, '--decompile', mode,
++                '-t', 'ppc-mwcc-c', '--ppc-abi', 'gekko-eabi', '--valid-syntax', '--no-cache',
++                '--context', str(context), '-f', 'fn_1_D28', '-f', 'fn_1_47EC', str(target)],
++                capture_output=True, text=True)
++            assert result.returncode == 0, result.stdout+result.stderr
++            outputs[mode] = {'sha256': hashlib.sha256(result.stdout.encode()).hexdigest(),
++                            'calls': [line.strip() for line in result.stdout.splitlines() if 'OSReport(' in line]}
++        assert any('M2C_BITWISE' in line for line in outputs['before']['calls'])
++        assert not any('M2C_BITWISE' in line for line in outputs['after']['calls'])
++        outputs['bindings'] = {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
++                               for path in (context, target)}
++        print(json.dumps(outputs, indent=2))
 +    else:
 +        unittest.main()
 diff --git a/tests/unit/test_stack_declarations.py b/tests/unit/test_stack_declarations.py

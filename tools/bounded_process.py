@@ -21,7 +21,7 @@ class ProcessLimitError(RuntimeError):
 class _WindowsJob:
     """Assign a suspended child before it can spawn, then resume it.
 
-    Closing this owned job kills descendants even after the launcher exits.
+    Drain this owned job before closing it, even after the launcher exits.
     """
     def __init__(self, process):
         from ctypes import wintypes as w
@@ -34,12 +34,21 @@ class _WindowsJob:
             _fields_ = [('basic', Basic), ('io', ctypes.c_uint64*6),
                         ('process_memory', ctypes.c_size_t), ('job_memory', ctypes.c_size_t),
                         ('peak_process', ctypes.c_size_t), ('peak_job', ctypes.c_size_t)]
+        class Accounting(ctypes.Structure):
+            _fields_ = [('user_time', ctypes.c_int64), ('kernel_time', ctypes.c_int64),
+                        ('period_user_time', ctypes.c_int64), ('period_kernel_time', ctypes.c_int64),
+                        ('page_faults', w.DWORD), ('total_processes', w.DWORD),
+                        ('active_processes', w.DWORD), ('terminated_processes', w.DWORD)]
+        self.accounting_type = Accounting
         self.api = ctypes.WinDLL('kernel32', use_last_error=True)
         self.api.CreateJobObjectW.argtypes = [ctypes.c_void_p, w.LPCWSTR]
         self.api.CreateJobObjectW.restype = w.HANDLE
         self.api.SetInformationJobObject.argtypes = [w.HANDLE, ctypes.c_int, ctypes.c_void_p, w.DWORD]
         self.api.AssignProcessToJobObject.argtypes = [w.HANDLE, w.HANDLE]
         self.api.TerminateJobObject.argtypes = [w.HANDLE, w.UINT]
+        self.api.QueryInformationJobObject.argtypes = [w.HANDLE, ctypes.c_int, ctypes.c_void_p,
+                                                      w.DWORD, ctypes.POINTER(w.DWORD)]
+        self.api.QueryInformationJobObject.restype = w.BOOL
         self.api.CloseHandle.argtypes = [w.HANDLE]
         self.handle = self.api.CreateJobObjectW(None, None)
         if not self.handle:
@@ -63,6 +72,29 @@ class _WindowsJob:
     def terminate(self):
         if not self.api.TerminateJobObject(self.handle, 1):
             raise ctypes.WinError(ctypes.get_last_error())
+
+    def active_processes(self) -> int:
+        if not self.handle:
+            raise RuntimeError('cannot query a closed owned Windows job')
+        accounting = self.accounting_type()
+        # JobObjectBasicAccountingInformation, not the calling process's job.
+        if not self.api.QueryInformationJobObject(
+                self.handle, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return accounting.active_processes
+
+    def wait_empty(self, timeout: float = 3) -> None:
+        """Termination is asynchronous; pipe EOF does not release descendant cwd."""
+        deadline = time.monotonic() + timeout
+        while True:
+            active = self.active_processes()
+            if not active:
+                return
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ProcessLimitError(f'Windows job did not drain after {timeout:g} seconds '
+                                        f'({active} active processes)')
+            time.sleep(min(0.01, remaining))
 
     def close(self):
         if self.handle:
@@ -155,14 +187,19 @@ def run(argv: Sequence[str], *, cwd: Path, timeout: float,
     except BaseException as exc:
         failure = exc
     finally:
-        if failure is not None:
+        # Closing a Windows job already killed any surviving descendants on the
+        # successful path. Start that cleanup explicitly so it can be awaited.
+        if failure is not None or job is not None:
             try:
                 if job is not None:
                     job.terminate()
                 else:
                     terminate_tree(process)
             except Exception as exc:
-                failure.add_note(f'process-tree cleanup: {exc}')
+                if failure is None:
+                    failure = ProcessLimitError(f'process-tree cleanup failed: {exc}')
+                else:
+                    failure.add_note(f'process-tree cleanup: {exc}')
                 if process.poll() is None:
                     process.kill()
         try:
@@ -171,6 +208,14 @@ def run(argv: Sequence[str], *, cwd: Path, timeout: float,
             if failure is None:
                 failure = ProcessLimitError('process did not terminate')
             failure.add_note(str(exc))
+        if job is not None:
+            try:
+                job.wait_empty()
+            except Exception as exc:
+                if failure is None:
+                    failure = ProcessLimitError(f'Windows job drain failed: {exc}')
+                else:
+                    failure.add_note(f'Windows job drain: {exc}')
         for thread in threads:
             thread.join(timeout=1)
         if any(t.is_alive() for t in threads):

@@ -75,18 +75,18 @@ holdout or the later call-interface sample below.
 ## Install and use
 
 The current verified installation is
-`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi3/m2c.py`.
+`C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi4/m2c.py`.
 Use this path for new REL preparation and reconstruction. The original installed
 m2c and the already-running all-REL baseline were deliberately left unchanged.
 
 To recreate it in a **new** directory:
 
 ```text
-rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi3
+rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi4
 ```
 
 The installer preserves the source installation, rejects baseline drift, applies
-the portable patch, and verifies all 30 changed output files. It never modifies
+the portable patch, and verifies all 31 changed output files. It never modifies
 game source, configures a build, or publishes matching status.
 
 For a new batch use `tools/rel_first_compile_prepare.py --help`, supplying the
@@ -124,8 +124,13 @@ Compilation and raw similarity are not strict/data/physical/source-link proof.
   escapes preserve the original captured value, not a later reread.
 - Unused save/restore address bookkeeping no longer creates a fake `arg_sp0`.
   Real incoming loads and address-passed parameters still register normally.
+- An explicit cleared CR1 variadic-call flag excludes inferred floating varargs.
+  Known fixed floating parameters remain intact; unknown/set flags, intervening
+  clobbers and block joins retain conservative inference. This removes phantom
+  floating arguments from the actual m657 `OSReport` calls without guessing from
+  format strings.
 
-Final installed tests: **497/497**, including **84 unit tests**. No additional
+Final installed tests: **501/501**, including **88 unit tests**. No additional
 golden rewrites were needed for this follow-up.
 
 Actual paired external-header sample: **0/12 -> 11/12 compile**, with identical
@@ -140,3 +145,9 @@ translation shrinks fn_1_258 from 468 to 452 bytes, but its raw score changes
 18.787878%. These ABI fixes remove incorrect translation; they do not solve
 missing record layouts, loops, stack arrays or source lifetimes. Preserve that
 distinction when deciding the next reconstruction task.
+
+The four-worker follow-up selected six additional external-call failures outside
+the 12-case sample, using their existing baseline census rather than compiling
+controls again. **Five now compile**, with `miraclebookdll:fn_1_4FD4` at 96.41157%
+raw; no raw-100 result or owner closure. The remaining failure is an unsized local
+stack array, not missing call context.

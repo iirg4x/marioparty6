@@ -68,8 +68,8 @@
     {
       "path": "m2c/arch_ppc.py",
       "before_sha256": "fb594f52554636014378cac737aaf11fd61c63308c6abef206ab1acb5b5b4378",
-      "after_sha256": "7be5de3f38420c081f533342110d5ffcd08a607ef6e1330aedfde97edf21526e",
-      "bytes": 71653,
+      "after_sha256": "0982fd97730853787c4011f22dffffc5026a752f4731e185f1a23880d6b58231",
+      "bytes": 72934,
       "after_newline": "lf"
     },
     {
@@ -96,8 +96,8 @@
     {
       "path": "m2c/translate.py",
       "before_sha256": "5107f2f4b92bd26488f33e9772a1bb6d2331a22f3a57dda40f44f4f3b52bae19",
-      "after_sha256": "2da80b812fe597a22beec6198f17575f7064bc5d247ea67a7bfd5fba1ec11daa",
-      "bytes": 205821,
+      "after_sha256": "09d9488e4307196135b3b9f57dcb18e9bf3426da911584545d8957bc7c414c18",
+      "bytes": 206364,
       "after_newline": "lf"
     },
     {
@@ -262,6 +262,13 @@
       "after_newline": "lf"
     },
     {
+      "path": "tests/unit/test_ppc_variadic_cr1.py",
+      "before_sha256": null,
+      "after_sha256": "ab40d37dccad049b292d16d481fa495e1fe853f89cca3bf8659ef667a4697724",
+      "bytes": 3140,
+      "after_newline": "lf"
+    },
+    {
       "path": "tests/unit/test_stack_declarations.py",
       "before_sha256": null,
       "after_sha256": "32bf10c4e02ea7bed323a95d8bf3e37b39c2eba083675e82d4a40b8513bac4c9",
@@ -276,6 +283,6 @@
       "after_newline": "lf"
     }
   ],
-  "patch_sha256": "fc0562e4a0c9cddc940b8a02a84bb7328763befa0b1a547966f94aaec74e6544",
+  "patch_sha256": "844b8310fe69b8839987dc6afa4cae92c27ea042f8b9a5895366ae419b47f566",
   "matching_credit": false
 }

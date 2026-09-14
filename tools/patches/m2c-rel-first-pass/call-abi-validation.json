@@ -4,29 +4,29 @@
   "tool_install": {
     "schema": "m2c_rel_first_pass_install/v1",
     "source": "C:\\Users\\Anony\\.codex\\tools\\m2c",
-    "destination": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-eabi3",
-    "manifest_sha256": "3e2bd9c2c11fe927c9230070c537dd94ca4a0ca3002eca7511a9e5cd3eac2640",
-    "patch_sha256": "fc0562e4a0c9cddc940b8a02a84bb7328763befa0b1a547966f94aaec74e6544",
-    "files_verified": 30,
+    "destination": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-eabi4",
+    "manifest_sha256": "de14b83c5cd44a2e96509262f3239a9e7997ba71b484d68cf3404a909c0d134e",
+    "patch_sha256": "844b8310fe69b8839987dc6afa4cae92c27ea042f8b9a5895366ae419b47f566",
+    "files_verified": 31,
     "source_unchanged": true,
     "matching_credit": false
   },
   "validation": {
-    "installed": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-eabi3",
-    "manifest_sha256": "3e2bd9c2c11fe927c9230070c537dd94ca4a0ca3002eca7511a9e5cd3eac2640",
-    "passed": 497,
+    "installed": "C:\\Users\\Anony\\.codex\\tools\\m2c-rel-20260914-eabi4",
+    "manifest_sha256": "de14b83c5cd44a2e96509262f3239a9e7997ba71b484d68cf3404a909c0d134e",
+    "passed": 501,
     "skipped": 0,
     "failed": 0,
-    "total": 497,
-    "units": 84,
-    "log_sha256": "41a3df2d446265157009973b9227ab6f25146f6ea8e05c546a15f3d80ee8e14b",
+    "total": 501,
+    "units": 88,
+    "log_sha256": "ee3f0628e14e2f750f0d22870611f3552f12851ced1ac4fd1c890175fd648413",
     "new_output_goldens_changed": 0
   },
   "external_header_sample": {
     "selection": "First 12 external-call compile failures in original then phase3 census, at most two per module; frozen before new results.",
     "original_census_sha256": "802665cfeda35a1c1afb08059a8f28cf3912529fafd80e6990c92e647dc6aed9",
     "phase3_census_sha256": "de9d350dc6ff8d94c68aaf906eac2ee2c224513d87155f987f60228d73f93345",
-    "comparison": "Same installed translator, target objects, flags and selected functions. Only actual-provider context/prefix differ.",
+    "comparison": "Same eabi2 translator, target objects, flags and selected functions. Only actual-provider context/prefix differ; preserved historical measurement.",
     "receipt_path": "build\\rel-gap-fixes\\provider-compile-acceptance-installed\\results.json",
     "receipt_sha256": "9b948a37b26a0c489dcf14fdb3823ddefa8ff783a28382c7e6389431fdcd2921",
     "before_compiled": 0,
@@ -461,7 +461,7 @@
   "m657_abi_sample": {
     "receipt_path": "build\\rel-gap-fixes\\m657-compiler-acceptance-final\\results.json",
     "receipt_sha256": "91b0668a6d8f3ef803cf8f62266ea305190656f28d3aa120cb9c82ecd75cc1a4",
-    "comparison": "Previous patched m2c legacy vs current installed gekko-eabi with same actual header/assembly/target/flags; provider before/after pairs use current translator.",
+    "comparison": "Previous patched m2c legacy vs installed eabi3 gekko-eabi with same actual header/assembly/target/flags; preserved measurement before CR1 follow-up.",
     "cases": [
       {
         "function": "fn_1_258",
@@ -578,5 +578,112 @@
   ],
   "owner_closures": 0,
   "source_promotion": false,
-  "matching_credit": false
+  "matching_credit": false,
+  "external_header_followup": {
+    "selection": "Remaining unique external-call failures in already-prepared modules, excluding initial 12; frozen before new results, no recompiled controls.",
+    "receipt_sha256": "017e459fc896967fbcf47e3f6aa96aab4ce10b15773241c3a0b6bd01bd241bd0",
+    "count": 6,
+    "before_compiled": 0,
+    "after_compiled": 5,
+    "raw100": 0,
+    "cases": [
+      {
+        "module": "miraclebookdll",
+        "function": "fn_1_479C",
+        "source_sha256": "03663b8a9010b4cf9d41162f0e7410455f1b76a942445024215511dc5855d345",
+        "object_sha256": "dde9e86859ae56cc39feae0d7501655224d25d611636b02cbfffd80f13622da3",
+        "score": 83.394615,
+        "target_size": "1784",
+        "size": "1932",
+        "diffcount": 270,
+        "compile_exitcode": 0,
+        "syntax_placeholders": [
+          "M2C_FIELD",
+          "M2C_UNK"
+        ]
+      },
+      {
+        "module": "miraclebookdll",
+        "function": "fn_1_4FD4",
+        "source_sha256": "9f0d5e1b1c4da3dc195963cc7b94077c13f65f6a1cea50aaea1a165cc9a738a2",
+        "object_sha256": "807f00a457d5b50bfbf1ab89c82b7bffc6614714b6ad077b77ae2f5a27dc2a0b",
+        "score": 96.41157,
+        "target_size": "2352",
+        "size": "2352",
+        "diffcount": 125,
+        "compile_exitcode": 0,
+        "syntax_placeholders": [
+          "M2C_FIELD",
+          "M2C_UNK"
+        ]
+      },
+      {
+        "module": "miraclebookdll",
+        "function": "fn_1_7998",
+        "source_sha256": "d10bbf124907fec3952c8f4b182797076ff499da8f69a025d2bbc50fdf8bf5c5",
+        "object_sha256": "19ef02e268451274ddb64b9a69f52fa9d2336ec484e6925ac703a7758d9887fc",
+        "score": 84.5774,
+        "target_size": "4212",
+        "size": "4448",
+        "diffcount": 755,
+        "compile_exitcode": 0,
+        "syntax_placeholders": [
+          "M2C_FIELD",
+          "M2C_UNK"
+        ]
+      },
+      {
+        "module": "w06Dll",
+        "function": "fn_1_BD4",
+        "source_sha256": "65ae6e562d803e13049a4588e9b71d7e34d9d43dba7d149bb6c736bf3bc9d5ea",
+        "object_sha256": "7a0b8f53c577b178bfa8b071949765d312223f72859915be830711fcd26d9f06",
+        "score": 83.49859,
+        "target_size": "1420",
+        "size": "1332",
+        "diffcount": 142,
+        "compile_exitcode": 0,
+        "syntax_placeholders": []
+      },
+      {
+        "module": "mgmfreedll",
+        "function": "fn_1_6F48",
+        "source_sha256": "34dd7c1806b2a61f17fadd1ddfcb38866dbf23d3f656a4761b979aeefedfcbd2",
+        "object_sha256": "3552731b15c6185d04d7554c715859918ae95b7e7b6c0e8403dde76777ff8a36",
+        "score": 67.9078,
+        "target_size": "564",
+        "size": "580",
+        "diffcount": 84,
+        "compile_exitcode": 0,
+        "syntax_placeholders": []
+      },
+      {
+        "module": "w06Dll",
+        "function": "fn_1_7100",
+        "source_sha256": "4d1635e5bf2285f10da20ea24a6f5d5d18fae0035699794229b5971c11ede7e8",
+        "object_sha256": null,
+        "score": null,
+        "target_size": null,
+        "size": null,
+        "diffcount": null,
+        "compile_exitcode": 2,
+        "syntax_placeholders": [
+          "M2C_BITWISE",
+          "M2C_ERROR",
+          "M2C_FIELD",
+          "M2C_STRUCT_COPY",
+          "M2C_UNK"
+        ]
+      }
+    ]
+  },
+  "variadic_cr1_replay": {
+    "method": "Installed eabi4 optional unit replay toggles only the filter on actual m657 D28 and47EC assembly/context; not compiler or matching proof.",
+    "before_draft_sha256": "b0e02492c00a7d9536711078b0a9b09a7784137023c1d7b718a8d6ff4159ef82",
+    "after_draft_sha256": "dae082f19b37dfbbd0b3dd0e84bc895b7b28fc99c77f7a85edd921d39859912c",
+    "context_sha256": "0ac5aecabc192adf30a75374441f8a83bb99b97f20221e26df019da79c186ee2",
+    "assembly_sha256": "35a7f518ab4adc7831af7183902a0283c648265b73dd1f0ead65c507da0050e5",
+    "bogus_floating_arguments_removed": 3,
+    "functions": 2,
+    "source_promotion": false
+  }
 }
