@@ -33,12 +33,12 @@ void fn_1_3EA8(s16 team)
     score->running = FALSE;
 }
 
-s32 fn_1_3EEC(s16 team)
+s32 fn_1_3EEC(s32 team)
 {
     M657ScoreTeam *score;
     M657ScoreWork *work = lbl_1_bss_38->data;
 
-    score = &work->teams[team];
+    score = &work->teams[(s16)team];
     return score->frames;
 }
 
@@ -188,4 +188,3 @@ void fn_1_42F4(OMOBJ *obj)
         }
     }
 }
-

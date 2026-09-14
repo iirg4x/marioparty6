@@ -5,6 +5,10 @@
 
 OMOBJ *lbl_1_bss_28;
 
+char lbl_1_data_8C[5][10] = {
+    "col", "post_R", "post_L", "post_R_C", "post_L_C"
+};
+
 void fn_1_15C0(OMOBJMAN *objman)
 {
     OMOBJ *obj;
