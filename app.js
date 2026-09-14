@@ -1581,7 +1581,7 @@
           setConnection(`Snapshot current · ${shortCommit(result.manifest.commit)}`, "success");
         }
         return result.updated;
-      } catch {
+      } catch (error) {
         snapshotUpdateError();
         if (!quiet) throw error;
         return false;
@@ -1730,6 +1730,14 @@
     window.addEventListener("pagehide", () => {
       stopSnapshotFreshness();
       pageToolLifecycle?.abort();
+    });
+    window.addEventListener("pageshow", (event) => {
+      if (!event.persisted || !snapshotFreshnessStopped) return;
+      // Browser back/forward may restore this document without running startup.
+      snapshotFreshnessStopped = false;
+      snapshotFreshnessStarted = false;
+      startSnapshotFreshness();
+      registerPageTools();
     });
   }
 
