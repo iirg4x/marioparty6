@@ -234,5 +234,203 @@ class BatchTests(unittest.TestCase):
             self.assertIsNone(row['objdiff_exitcode'])
             self.assertFalse(batch.eligible(row))
 
+    def test_group_attempt_one_compile_shared_artifacts_and_order(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inp = root / 'input'
+            inp.write_text('prefix')
+            m2c = root / 'm2c.py'
+            m2c.write_text('translator')
+            objdiff = root / 'objdiff.exe'
+            objdiff.write_text('diff')
+            module = dict(name='m', target_path=str(inp), assembly_paths=[str(inp)], functions=['a', 'b'])
+            manifest = dict(output_root=str(root), prefix_path=str(inp), context_path=str(inp),
+                            m2c=str(m2c), objdiff=str(objdiff), proof_root=str(root), flags=[])
+            binding = {'files': {str(inp): batch.sha(inp)}}
+            calls = []
+
+            def fake(argv, cwd, scratch, *args):
+                argv = list(map(str, argv))
+                calls.append(argv)
+                if '-f' in argv:
+                    (scratch / 'stdout.log').write_text('void a(void) {} void b(void) {}')
+                    return 0, '', ''
+                if 'mwcceppc' in ' '.join(argv):
+                    (scratch / 'candidate.o').write_bytes(b'obj')
+                    return 0, '', ''
+                if 'objdiff' in argv[0]:
+                    report = {'left': {'symbols': [
+                        {'name': 'a', 'target_symbol': 0, 'size': 4, 'match_percent': 100,
+                         'instructions': [{'diff_kind': 'DIFF_NONE'}]},
+                        {'name': 'b', 'target_symbol': 1, 'size': 8, 'match_percent': 50,
+                         'instructions': [{'diff_kind': 'DIFF_REPLACE'}]}]},
+                       'right': {'symbols': [{'size': 4}, {'size': 8}]}}
+                    (scratch / 'report.json').write_text(json.dumps(report))
+                    return 0, '', ''
+                raise AssertionError('unexpected process: ' + repr(argv))
+
+            def f_options(argv):
+                found = []
+                i = 0
+                while i < len(argv) - 1:
+                    if argv[i] == '-f':
+                        found.append(argv[i + 1])
+                        i += 2
+                    else:
+                        i += 1
+                return found
+
+            with patch.object(batch, 'run_process', side_effect=fake) as run:
+                rows, src, obj = batch.attempt_group(manifest, module, ['a', 'b'], 'g', 0, binding)
+            self.assertEqual(run.call_count, 3)
+            self.assertEqual(f_options(calls[0]), ['a', 'b'])
+            self.assertEqual([row['function'] for row in rows], ['a', 'b'])
+            self.assertEqual([row['score'] for row in rows], [100, 50])
+            self.assertEqual([row['diffcount'] for row in rows], [0, 1])
+            self.assertTrue(batch.eligible(rows[0]))
+            self.assertFalse(batch.eligible(rows[1]))
+            self.assertEqual(rows[0]['source_sha256'], rows[1]['source_sha256'])
+            self.assertEqual(rows[0]['object_sha256'], rows[1]['object_sha256'])
+            self.assertNotIn(None, (rows[0]['source_sha256'], rows[0]['object_sha256']))
+            self.assertEqual(rows[0]['translation_group'], 'g')
+            self.assertEqual(rows[1]['translation_group'], 'g')
+
+            calls.clear()
+            with patch.object(batch, 'run_process', side_effect=fake) as run:
+                singleton_rows, _, _ = batch.attempt_group(manifest, module, ['a'], 's', 0, binding)
+            self.assertEqual(run.call_count, 3)
+            self.assertEqual(f_options(calls[0]), ['a'])
+            self.assertEqual(singleton_rows[0]['translation_group'], 's')
+
+            calls.clear()
+            with patch.object(batch, 'run_process', side_effect=fake) as run:
+                ungrouped_row, _, _ = batch.attempt(manifest, module, 'a', 0, binding)
+            self.assertEqual(run.call_count, 3)
+            self.assertIsNone(ungrouped_row['translation_group'])
+
+    def test_group_validation_rejects_before_processes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            inp = root / 'input'
+            inp.write_text('x')
+            cases = [
+                [{'name': 'g', 'functions': ['a']}, {'name': 'g', 'functions': ['b']}],
+                [{'name': 'g1', 'functions': ['a']}, {'name': 'g2', 'functions': ['a']}],
+                [{'name': 'g', 'functions': ['x']}],
+                [{'name': '1bad', 'functions': ['a']}],
+                [{'name': 'g', 'functions': []}],
+                [{'name': 'g', 'functions': ['a', 'a']}],
+            ]
+            with patch.object(batch, 'bindings', side_effect=AssertionError('binding ran')) as bind, \
+                 patch.object(batch, 'run_process') as run, \
+                 patch.object(batch, 'attempt') as attempt, \
+                 patch.object(batch, 'attempt_group') as attempt_group:
+                for groups in cases:
+                    with self.subTest(groups=groups):
+                        manifest = dict(schema='rel_first_compile_batch/v1', root=str(root), proof_root=str(root),
+                                       m2c=str(inp), objdiff=str(inp), context_path=str(inp), prefix_path=str(inp),
+                                       output_root=str(root / 'build' / 'run'),
+                                       modules=[dict(name='m', target_path=str(inp), assembly_paths=[str(inp)],
+                                                     functions=['a', 'b'], translation_groups=groups)])
+                        mp = root / 'manifest.json'
+                        mp.write_text(json.dumps(manifest))
+                        with patch.object(sys, 'argv', ['batch', str(mp)]), \
+                                contextlib.redirect_stdout(io.StringIO()), \
+                                self.assertRaises(ValueError):
+                            batch.main()
+                        bind.assert_not_called()
+                        run.assert_not_called()
+                        attempt.assert_not_called()
+                        attempt_group.assert_not_called()
+                        bind.reset_mock()
+                        run.reset_mock()
+                        attempt.reset_mock()
+                        attempt_group.reset_mock()
+
+    def test_group_resume_all_and_partial(self):
+        for mode in ('all', 'partial'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                inp = root / 'input'
+                inp.write_text('prefix')
+                m2c = root / 'm2c.py'
+                m2c.write_text('t')
+                objdiff = root / 'objdiff.exe'
+                objdiff.write_text('d')
+                self.tool_files(root)
+                out = root / 'build' / 'run'
+                out.mkdir(parents=True, exist_ok=True)
+                module = dict(name='m', target_path=str(inp), assembly_paths=[str(inp)], functions=['a', 'b'],
+                              translation_groups=[{'name': 'g', 'functions': ['a', 'b']}])
+                manifest = dict(schema='rel_first_compile_batch/v1', root=str(root), proof_root=str(root),
+                                m2c=str(m2c), objdiff=str(objdiff), context_path=str(inp), prefix_path=str(inp),
+                                output_root=str(out), modules=[module])
+                mp = root / 'manifest.json'
+                mp.write_text(json.dumps(manifest))
+                calls = []
+
+                def fake_group(manifest_arg, module_arg, functions_arg, group_arg, worker_arg, binding_arg):
+                    calls.append((group_arg, list(functions_arg), worker_arg))
+                    rows = []
+                    for fn in functions_arg:
+                        rows.append(dict(module='m', function=fn, translation_group=group_arg,
+                                         m2c_exitcode=0, compile_exitcode=1, objdiff_exitcode=None,
+                                         score=None, size=None, diffcount=None, diagnostic='synthetic',
+                                         syntax_placeholders=[], decompile_errors=False,
+                                         source_sha256=None, object_sha256=None))
+                    return rows, out / 'worker-0' / 'candidate.c', out / 'worker-0' / 'candidate.o'
+
+                census = out / 'census.jsonl'
+                if mode == 'all':
+                    with patch.object(batch, 'attempt_group', side_effect=fake_group):
+                        with patch.object(sys, 'argv', ['batch', str(mp)]), contextlib.redirect_stdout(io.StringIO()):
+                            batch.main()
+                        self.assertEqual(calls, [('g', ['a', 'b'], 0)])
+                        self.assertEqual(len(census.read_text(encoding='utf-8').splitlines()), 2)
+                        calls.clear()
+                        with patch.object(sys, 'argv', ['batch', str(mp), '--resume']), contextlib.redirect_stdout(io.StringIO()):
+                            batch.main()
+                    self.assertEqual(calls, [])
+                    self.assertEqual(len(census.read_text(encoding='utf-8').splitlines()), 2)
+                else:
+                    binding = batch.bindings(manifest, mp)
+                    batch.atomic(out / 'bindings.json', binding)
+                    row_a = dict(module='m', function='a', translation_group='g',
+                                 m2c_exitcode=0, compile_exitcode=0, objdiff_exitcode=0,
+                                 score=100, size=4, diffcount=0, diagnostic='',
+                                 syntax_placeholders=[], decompile_errors=False,
+                                 source_sha256=None, object_sha256=None)
+                    census.write_text(json.dumps(row_a) + '\n', encoding='utf-8')
+                    with patch.object(batch, 'attempt_group', side_effect=fake_group):
+                        with patch.object(sys, 'argv', ['batch', str(mp), '--resume']), contextlib.redirect_stdout(io.StringIO()):
+                            batch.main()
+                    self.assertEqual(calls, [('g', ['a', 'b'], 0)])
+                    lines = [json.loads(line) for line in census.read_text(encoding='utf-8').splitlines()]
+                    self.assertEqual(len(lines), 2)
+                    self.assertEqual(sum(1 for row in lines if row['function'] == 'a'), 1)
+                    self.assertEqual(sum(1 for row in lines if row['function'] == 'b'), 1)
+
+    def test_partial_group_retention_reuses_storage_at_the_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            retained = root / 'retained'; retained.mkdir()
+            source, obj = root / 'input.c', root / 'input.o'
+            source.write_bytes(b'source'); obj.write_bytes(b'object')
+            def row(name):
+                return dict(module='m', function=name, translation_group='g',
+                            m2c_exitcode=0, compile_exitcode=0, objdiff_exitcode=0,
+                            score=100, syntax_placeholders=[], decompile_errors=False)
+            a, b = row('a'), row('b')
+            with patch.object(batch, 'LIMIT', 12):
+                count = batch.retain_rows([a], source, obj, retained, root, 0)
+                self.assertEqual(count, 12)
+                self.assertEqual(batch.retain_rows([b], source, obj, retained, root, count), 12)
+            self.assertEqual(a['retained_source'], b['retained_source'])
+            self.assertEqual(a['retained_object'], b['retained_object'])
+            self.assertEqual(len(list(retained.iterdir())), 2)
+            obj.write_bytes(b'drift!')
+            with self.assertRaisesRegex(ValueError, 'immutable retained artifact collision'):
+                batch.retain_rows([row('b')], source, obj, retained, root, 12)
+
 if __name__ == '__main__':
     unittest.main()

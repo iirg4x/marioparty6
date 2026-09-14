@@ -79,15 +79,21 @@ The current verified installation is
 Use this path for new REL preparation and reconstruction. The original installed
 m2c and the already-running all-REL baseline were deliberately left unchanged.
 
-To recreate it in a **new** directory:
+The portable package now also contains the narrowly tested late-pointer
+follow-up below; it is not byte-identical to the released eabi6 installation.
+To test that package in a **new directory**:
 
 ```text
-rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi6
+rtk proxy C:/Python313/python.exe tools/patches/m2c-rel-first-pass/install.py --source C:/Users/Anony/.codex/tools/m2c --destination C:/Users/Anony/.codex/tools/m2c-rel-20260914-late-pointer-new
 ```
 
 The installer preserves the source installation, rejects baseline drift, applies
 the portable patch, and verifies all 34 changed output files. It never modifies
-game source, configures a build, or publishes matching status.
+game source, configures a build, or publishes matching status. Destinations may
+be nested inside another checkout: patch application disables parent repository
+discovery and inherited Git repository variables without creating a repository.
+Automatic Git newline conversion is disabled before the package's explicit
+newline restoration and hash verification.
 
 For a new batch use `tools/rel_first_compile_prepare.py --help`, supplying the
 verified link directory, real flags JSON, this `--m2c`, `--ppc-abi gekko-eabi`,
@@ -110,6 +116,39 @@ and useful diagnostics; do not retain full per-function objdiff JSON history.
 Unknown heap layouts, larger stack-array bounds, missing project-specific
 interfaces, loops and inline structure remain genuine reconstruction work.
 Compilation and raw similarity are not strict/data/physical/source-link proof.
+
+## Explicit grouped first compiles
+
+The existing batch runner accepts optional per-module groups, for example:
+
+```json
+"translation_groups": [{"name": "gameplay", "functions": ["fn_1_420", "fn_1_594"]}]
+```
+
+Each group is one ordered multi-function m2c invocation, one compiler invocation,
+and one objdiff invocation. Members keep separate function metrics but share the
+source/object hashes; storage is retained once. Groups must be explicitly chosen
+from known module functions, with no duplicate/overlapping membership. Ungrouped
+functions are unchanged. Resume skips a complete group and reruns an incomplete
+group without appending duplicate completed rows. Complete a partial group with
+`--resume` before freezing a new phase; freezing must not change its TU context.
+No TU boundaries or compiler flags are guessed, and no new closure credit follows.
+
+Local Qwen supplied the implementation and tests; primary review simplified the
+retention path, fixed resumed storage accounting, and protected the freezer.
+The real m621 two-function acceptance used exactly three processes and shared
+artifacts with independent results. The 52-function gameplay attempt used one
+translation and one compile, but still fails on an incomplete inferred table
+type. Thus grouped execution is verified, **not** a claim that unedited m2c now
+reproduces the 52-function recovered source or its 432-byte literal pool.
+Compact live results: `build/rel-gap-fixes/grouped-first-acceptance/`.
+
+The separate narrow-call Qwen patch did not improve the paired current m621
+`fn_1_2E68` draft: both remained 428/404 bytes and 20 differences. It is not in
+this portable package. A local-worker correction is investigating the preceding
+short-load/arithmetic/phi boundary. The paired test also requires the same
+context-prototype spelling correction on both drafts (`int`, not the project's
+`s32` alias for `long`); that distinct formatting gap is not claimed fixed.
 
 ## Follow-up: actual call interfaces and stack arguments
 
@@ -230,3 +269,39 @@ pinned baseline. `active-gap-validation.json` binds the package, captured test
 log and paired compiler evidence. An earlier scratch run had one unrelated ABI
 runtime diagnostic failure; its focused 16 tests and the captured full rerun
 passed without ABI changes. No intermittent-runtime fix or new closure is claimed.
+
+## Bounded follow-up: a pointer type learned after address creation
+
+The actual eabi6 residual `m649Dll:fn_1_688C` still emitted `arg0 + 16`
+and `arg0 + 40` despite declaring `arg0` as `void *`. At `add_imm`, the
+base was not yet known to be a pointer, so it bypassed the existing pointer
+handler. Later consumer inference changed its type without revisiting that
+routing decision. This is distinct from the already-fixed indexed-store path.
+
+Constant non-partial additions on an initially unknown base now retain their
+machine byte displacement until formatting. Only a final void/incomplete object
+pointer triggers byte-address lowering; complete typed pointers and integer
+expressions retain the existing behavior. Default diagnostic output, skipped
+casts, zero offsets and partial relocation immediates are unchanged. No record
+fields or sizes are invented. The two calls now pass `(Point3d *) ((u8 *) arg0 +
+16)` and the corresponding 40-byte address.
+
+With the same frozen context, target and compiler flags, regenerated eabi6
+fails MWCC with `illegal type`; the new draft compiles at **88/88 bytes,
+2 mismatch rows, 94.545456% raw**. `M2C_FIELD` remains and no recovery closure
+is claimed. The frozen flags also contain a missing, unused `include-2` directory;
+the before diagnostic records that warning. This is one paired function, not a
+new result for the original 167-case first batch or the solved stack-array cases.
+
+The new copy at `C:/Users/Anony/.codex/tools/m2c-rel-20260914-late-pointer-check`
+passed installer verification of all 34 cumulative output hashes and **23 focused
+pointer tests**, including four new late-typing tests. Original m2c and eabi6 were
+not modified; no default rollout or full-suite result is claimed. An initial
+installation inside this project failed hash verification because Git applied
+no files from that nested checkout directory; the rejected copy remains under
+ignored `build/rel-gap-fixes/late-pointer-package-check`. The installer now fixes
+that independent limitation; fresh external and nested installations under both
+MSYS and native Windows Git verified the same 34 hashes. Focused tests include
+hostile inherited repository variables and `autocrlf=true`.
+Compact evidence is in `late-pointer-validation.json`; full paired bindings
+remain under ignored `build/rel-gap-fixes/late-pointer-acceptance/results.json`.

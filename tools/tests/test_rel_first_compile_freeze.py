@@ -58,4 +58,17 @@ class FreezeTests(unittest.TestCase):
             self.assertIn('phase2', Path(result['prefix_path']).read_text())
             self.assertEqual((root / 'outside.h').read_text(), 'typedef int frozen;')
 
+    def test_groups_keep_their_complete_translation_context(self):
+        groups = [{'name': 'first', 'functions': ['a', 'b']},
+                  {'name': 'second', 'functions': ['c', 'd']}]
+        modules = [{'name': 'm', 'functions': ['a', 'b', 'c', 'd', 'e'],
+                    'translation_groups': groups}]
+        rows = [{'module': 'm', 'function': n} for n in ['a', 'b']]
+        remaining = freeze.remaining(modules, rows)
+        self.assertEqual(remaining[0]['functions'], ['c', 'd', 'e'])
+        self.assertEqual(remaining[0]['translation_groups'], [groups[1]])
+        self.assertEqual(modules[0]['translation_groups'], groups)
+        with self.assertRaisesRegex(ValueError, 'partial translation group.*--resume'):
+            freeze.remaining(modules, rows[:1])
+
 if __name__ == '__main__': unittest.main()

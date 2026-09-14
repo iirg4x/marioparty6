@@ -280,7 +280,23 @@ diff --git a/m2c/evaluate.py b/m2c/evaluate.py
          inplace = dest_var is not None and var_for_expr(source) == dest_var
          if (
              isinstance(imm, Literal)
-@@ -1325,6 +1391,9 @@
+@@ -525,6 +591,15 @@
+         return Literal(source.value + imm.value)
+     else:
+         # Regular binary addition.
++        if (valid_pointer_syntax and source.type.could_be_pointer()
++                and isinstance(imm, Literal)
++                and not global_info.arch.is_likely_partial_offset(imm.value)):
++            # Calls/consumers can identify an initially unknown base as void*
++            # after this instruction. Preserve the byte displacement until then.
++            return DeferredPointerOffset(
++                source, imm.value, stack_info, type=Type.intptr(),
++                late_incomplete_only=True,
++            )
+         return BinaryOp.intptr(left=source, op="+", right=imm)
+ 
+ 
+@@ -1325,6 +1400,9 @@
      array_expr = array_access_from_add(expr, 0, stack_info, target_size=None, ptr=True)
      if array_expr is not None:
          return array_expr
@@ -619,7 +635,28 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              offset_str = fmt.format_int(self.offset)
              return f"M2C_FIELD({var.format(fmt)}, {Type.ptr(self.type).format(fmt)}, {offset_str})"
          else:
-@@ -1896,7 +1961,13 @@
+@@ -1836,6 +1901,7 @@
+     type: Type = field(compare=False, default_factory=Type.intptr)
+     legacy_expr: Optional[Expression] = field(compare=False, default=None)
+     normalize_by_pointee: bool = field(compare=False, default=False)
++    late_incomplete_only: bool = field(compare=False, default=False)
+ 
+     def dependencies(self) -> List[Expression]:
+         ret = [self.base]
+@@ -1868,6 +1934,12 @@
+             return self.legacy()
+ 
+         base_target = base.type.get_pointer_target()
++        if self.late_incomplete_only and not (
++            base.type.is_pointer()
++            and (base_target is None or base_target.is_void()
++                 or (base_target.is_struct() and not base_target.get_size_bytes()))
++        ):
++            return self.legacy()
+         base_struct = (
+             base_target.get_struct_declaration() if base_target is not None else None
+         )
+@@ -1896,7 +1968,13 @@
                      right=Literal(self.offset // target_size),
                      type=self.type,
                  )
@@ -634,7 +671,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              return self.legacy()
  
          if (
-@@ -3634,6 +3705,7 @@
+@@ -3634,6 +3712,7 @@
          default_factory=dict
      )
      subroutine_args: Dict[int, Expression] = field(default_factory=dict)
@@ -642,7 +679,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
      in_pattern: bool = False
  
      to_write: List[Union[Statement]] = field(default_factory=list)
-@@ -3891,6 +3963,8 @@
+@@ -3891,6 +3970,8 @@
              # ignore the type of the stack variable. The same stack slot
              # might be used to preserve values of different types.
              self.local_var_writes[dest] = (reg, raw_value, False)
@@ -651,7 +688,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
          if (
              isinstance(dest, (LocalVar, PassedInArg))
-@@ -3941,6 +4015,120 @@
+@@ -3941,6 +4022,120 @@
              ):
                  return True
          return False
@@ -772,7 +809,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
      def make_function_call(
          self, fn_target: Expression, outputs: List[Location]
-@@ -3995,6 +4183,13 @@
+@@ -3995,6 +4190,13 @@
              else:
                  likely_regs[reg] = True
  
@@ -786,7 +823,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
          abi = arch.function_abi(fn_sig, likely_regs, for_call=True)
  
          func_args: List[Expression] = []
-@@ -4008,6 +4203,22 @@
+@@ -4008,6 +4210,22 @@
                      expr = self.subroutine_args.pop(offset)
                  else:
                      expr = ErrorExpr(f"Unable to find stack arg {offset:#x} in block")
@@ -809,7 +846,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
              func_args.append(
                  CommentExpr.wrap(as_type(expr, slot.type, True), prefix=slot.comment)
              )
-@@ -4037,6 +4248,7 @@
+@@ -4037,6 +4255,7 @@
  
          # Reset subroutine_args, for the next potential function call.
          self.subroutine_args.clear()
@@ -817,7 +854,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
          source = self.regs.current_instr_ref()
          call: Expression = FuncCall(
-@@ -4354,6 +4566,217 @@
+@@ -4354,6 +4573,217 @@
          for child in reversed(state.node.immediately_dominates):
              if not isinstance(child, TerminalNode):
                  translate_stack.append((state, child))
@@ -1035,7 +1072,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  
  
  def resolve_types_late(stack_info: StackInfo) -> None:
-@@ -4951,6 +5374,8 @@
+@@ -4951,6 +5381,8 @@
      flow_graph: FlowGraph,
      options: Options,
      global_info: GlobalInfo,
@@ -1044,7 +1081,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
  ) -> FunctionInfo:
      """
      Given a function, produce a FlowGraph that both contains control-flow
-@@ -4987,6 +5412,31 @@
+@@ -4987,6 +5419,31 @@
      return_blocks: List[BlockInfo] = []
      translate_all_blocks(state, used_naive_phis, return_blocks, options)
  
@@ -1076,7 +1113,7 @@ diff --git a/m2c/translate.py b/m2c/translate.py
      arch = global_info.arch
  
      # Guess return register and mark returns (we should really base this on
-@@ -5030,6 +5480,8 @@
+@@ -5030,6 +5487,8 @@
                  param.name = arg.format(Formatter())
  
      resolve_types_late(stack_info)
@@ -1658,7 +1695,7 @@ diff --git a/tests/unit/test_incomplete_pointer_offsets.py b/tests/unit/test_inc
 new file mode 100644
 --- /dev/null
 +++ b/tests/unit/test_incomplete_pointer_offsets.py
-@@ -0,0 +1,71 @@
+@@ -0,0 +1,113 @@
 +import unittest
 +
 +from m2c.asm_instruction import Register
@@ -1670,6 +1707,48 @@ new file mode 100644
 +
 +
 +class TestIncompletePointerOffsets(unittest.TestCase):
++    def test_late_unknown_base_becomes_void_pointer(self):
++        for offset in (16, -16):
++            base = GlobalSymbol('record', Type.intptr())
++            expr = add_imm(Register('r3'), base, Literal(offset),
++                           support.TestPointerArithmetic._args(valid_syntax=True))
++            self.assertIsInstance(expr, DeferredPointerOffset)
++            base.type.unify(Type.ptr(Type.void()))
++            text = expr.format(Formatter(valid_syntax=True))
++            self.assertIn('(u8 *) record', text)
++            self.assertIn('+ 0x10' if offset > 0 else '- 0x10', text)
++            self.assertNotIn('(u8 *)', expr.format(Formatter()))
++            self.assertNotIn('(u8 *)', expr.format(Formatter(valid_syntax=True, skip_casts=True)))
++
++    def test_late_incomplete_record_does_not_invent_fields(self):
++        record = StructDeclaration(size=0, align=1, new_field_prefix='unk', typedef_name='Record')
++        base = GlobalSymbol('record', Type.intptr())
++        expr = add_imm(Register('r3'), base, Literal(16),
++                       support.TestPointerArithmetic._args(valid_syntax=True))
++        base.type.unify(Type.ptr(Type.struct(record)))
++        self.assertIn('(u8 *) record', expr.format(Formatter(valid_syntax=True)))
++        self.assertEqual(record.fields, [])
++        self.assertEqual(record.size, 0)
++
++    def test_late_integer_and_sized_pointer_keep_existing_spelling(self):
++        for final_type in (Type.s32(), Type.ptr(Type.u32())):
++            base = GlobalSymbol('value', Type.intptr())
++            expr = add_imm(Register('r3'), base, Literal(16),
++                           support.TestPointerArithmetic._args(valid_syntax=True))
++            base.type.unify(final_type)
++            self.assertEqual(expr.format(Formatter(valid_syntax=True)), '(value + 0x10)')
++
++    def test_late_unknown_exclusions_keep_binary_expression(self):
++        for options in ({'valid_syntax': False}, {'valid_syntax': True, 'skip_casts': True},
++                        {'valid_syntax': True, 'partial': True}):
++            base = GlobalSymbol('record', Type.intptr())
++            expr = add_imm(Register('r3'), base, Literal(16),
++                           support.TestPointerArithmetic._args(**options))
++            self.assertNotIsInstance(expr, DeferredPointerOffset)
++        base = GlobalSymbol('record', Type.intptr())
++        self.assertIs(add_imm(Register('r3'), base, Literal(0),
++                            support.TestPointerArithmetic._args(valid_syntax=True)), base)
++
 +    def test_constant_void_and_incomplete_offsets(self):
 +        incomplete = Type.struct(StructDeclaration(
 +            size=None, align=4, new_field_prefix='unk', typedef_name='M621Effect'))

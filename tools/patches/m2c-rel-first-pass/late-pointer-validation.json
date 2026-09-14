@@ -1,0 +1,35 @@
+{
+  "schema": "m2c_late_pointer_validation/v1",
+  "function": "m649Dll:fn_1_688C",
+  "scope": "One regenerated paired native case; no full suite, firstbatch rescore, or rollout",
+  "patch_sha256": "32cf3bfff4ba6228d8d354348232f593d4a5e78fe08ff64ab1d71cc39ed8e723",
+  "manifest_sha256": "ec0db1886442a474967b222d7bfc11db436aa12cc9637eaf642081f892040c8c",
+  "target_sha256": "940cc7885262c1fa66cb267d22f73e46b260eb4e92dd851b7e014c258bf5a636",
+  "before": {
+    "translator": "C:/Users/Anony/.codex/tools/m2c-rel-20260914-eabi6/m2c.py",
+    "source_sha256": "41516f45c5c6b632ff67c5c7c846aa5d8a4764b16a5fe2b951a4b462ab7b6756",
+    "compile_exitcode": 2,
+    "error": "Hu3DModelPosSetV(arg1, arg0 + 16): illegal type"
+  },
+  "after": {
+    "source_sha256": "6d62cc7465b7a30d2b3771184fec21895acab3bbad56fa901abced44bd3fe496",
+    "object_sha256": "9424f6a3421978c37c5c6ac0bb18c27a1acfca8cdbfb53f0507e991efcd5ab1a",
+    "compile_exitcode": 0,
+    "objdiff_exitcode": 0,
+    "raw_score": 94.545456,
+    "size": 88,
+    "target_size": 88,
+    "mismatch_rows": 2,
+    "remaining_placeholders": ["M2C_FIELD"]
+  },
+  "focused_tests": {
+    "command": "C:/Python313/python.exe -m unittest tests.unit.test_incomplete_pointer_offsets tests.unit.test_pointer_arithmetic tests.unit.test_zero_offset_access -v",
+    "passed": 23,
+    "new_tests": 4,
+    "installed_copy": "C:/Users/Anony/.codex/tools/m2c-rel-20260914-late-pointer-check",
+    "cumulative_install_files_verified": 34
+  },
+  "local_full_bindings": "build/rel-gap-fixes/late-pointer-acceptance/results.json",
+  "source_installations_unchanged": true,
+  "matching_credit": false
+}

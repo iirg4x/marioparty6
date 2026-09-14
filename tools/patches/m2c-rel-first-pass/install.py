@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,6 +26,22 @@ def child(root: Path, name: str) -> Path:
     if not path.resolve().is_relative_to(root.resolve()):
         raise ValueError('package path escapes root: ' + name)
     return path
+
+
+def apply_environment(destination: Path) -> dict[str, str]:
+    """Apply relative to this copied tree, never an ambient parent repository."""
+    env = os.environ.copy()
+    for name in ('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE',
+                 'GIT_PREFIX', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES'):
+        env.pop(name, None)
+    # git apply supports a missing explicit Git directory without creating one.
+    # The copied tree excludes .git. Selecting that absent directory prevents
+    # parent discovery (and works with both native Windows and MSYS Git, whose
+    # GIT_CEILING_DIRECTORIES path syntaxes differ).
+    if (destination / '.git').exists():
+        raise ValueError('copied destination unexpectedly contains .git: ' + str(destination))
+    env['GIT_DIR'] = str(destination.resolve() / '.git')
+    return env
 
 
 def install(source: Path, destination: Path) -> dict:
@@ -60,7 +77,8 @@ def install(source: Path, destination: Path) -> dict:
         if item['before_sha256'] is not None:
             path.write_bytes(path.read_bytes().replace(b'\r\n', b'\n'))
     for args in (['--check'], []):
-        process = subprocess.run(['git', 'apply', *args, str(patch)], cwd=destination,
+        process = subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', *args, str(patch)], cwd=destination,
+                                 env=apply_environment(destination),
                                  capture_output=True, text=True, timeout=30)
         if process.returncode:
             raise ValueError('patch application failed; unused destination preserved: '

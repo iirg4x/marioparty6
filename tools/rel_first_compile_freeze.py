@@ -28,7 +28,25 @@ def remaining(modules, rows):
     known = {(m['name'], n) for m in modules for n in m['functions']}
     if not done <= known or len(done) != len(rows):
         raise ValueError('census contains unknown or duplicate results')
-    return [{**m, 'functions': [n for n in m['functions'] if (m['name'], n) not in done]} for m in modules if any((m['name'], n) not in done for n in m['functions'])]
+    result = []
+    for module in modules:
+        pending = [n for n in module['functions'] if (module['name'], n) not in done]
+        if not pending:
+            continue
+        updated = {**module, 'functions': pending}
+        if module.get('translation_groups') is not None:
+            groups = []
+            for group in module['translation_groups']:
+                members = group['functions']
+                left = [n for n in members if n in pending]
+                if left and len(left) != len(members):
+                    raise ValueError('partial translation group must finish with --resume before freeze: '
+                                     + module['name'] + ':' + group['name'])
+                if left:
+                    groups.append(group)
+            updated['translation_groups'] = groups
+        result.append(updated)
+    return result
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)

@@ -156,53 +156,8 @@ def run_process(argv, cwd, scratch, timeout=90, report=None):
     return proc.returncode, reason, (tail(stdout) + tail(stderr))[-2800:]
 
 def attempt(manifest, module, name, worker, binding):
-    manifest = {**manifest, **{k: module[k] for k in ('context_path', 'prefix_path') if k in module}}
-    scratch = Path(manifest['output_root']) / ('worker-' + str(worker))
-    clean_scratch(scratch)
-    start = time.monotonic()
-    row = {'module': module['name'], 'function': name, 'source_sha256': None, 'object_sha256': None,
-           'target_sha256': binding['files'][module['target_path']], 'syntax_placeholders': [],
-           'm2c_exitcode': None, 'compile_exitcode': None, 'objdiff_exitcode': None,
-           'score': None, 'size': None, 'diffcount': None, 'diagnostic': ''}
-    src, obj, report = scratch / 'candidate.c', scratch / 'candidate.o', scratch / 'report.json'
-    try:
-        watched = job_watch_paths(manifest, module)
-        if any(sha(p) != binding['files'][p] for p in watched):
-            raise ValueError('input drift before dispatch')
-        abi_args = abi_arguments(manifest)
-        argv = [sys.executable, manifest['m2c'], '-t', 'ppc-mwcc-c', *abi_args, '--knr', '--valid-syntax', '--force-decimal', '--stacktrace', '--context', manifest['context_path'], '-f', name, *module['assembly_paths']]
-        rc, reason, diagnostic = run_process(argv, manifest['proof_root'], scratch)
-        row.update(m2c_exitcode=rc, diagnostic=reason or diagnostic)
-        with (scratch / 'stdout.log').open('rb') as draft_file:
-            draft = draft_file.read(4 * 1024 * 1024).decode('utf-8', errors='replace')
-        row['syntax_placeholders'] = placeholders(draft)
-        row['decompile_errors'] = bool(re.search(r'Error occurred|decompil(?:ation|e) error', draft, re.I))
-        src.write_text(Path(manifest['prefix_path']).read_text(encoding='utf-8') + '\n' + draft, encoding='utf-8')
-        row['source_sha256'] = sha(src)
-        if rc or reason:
-            return row, src, obj
-        proof = Path(manifest['proof_root'])
-        argv = [proof / 'build/tools/sjiswrap.exe', proof / 'build/compilers/GC/1.3.2/mwcceppc.exe', *manifest['flags'], '-c', src, '-o', obj]
-        rc, reason, diagnostic = run_process(argv, proof, scratch)
-        row.update(compile_exitcode=rc, diagnostic=reason or diagnostic)
-        if rc or reason or not obj.is_file():
-            if not rc and not obj.is_file():
-                row['diagnostic'] = 'compiler succeeded but object missing'
-            return row, src, obj
-        row['object_sha256'] = sha(obj)
-        rc, reason, diagnostic = run_process([manifest['objdiff'], 'diff', '-1', module['target_path'], '-2', obj, '-o', report, '--format', 'json'], proof, scratch, 45, report)
-        row.update(objdiff_exitcode=rc, diagnostic=reason or diagnostic)
-        if not rc and not reason:
-            row.update(parse_report(json.loads(report.read_text(encoding='utf-8')), name))
-        if any(sha(p) != binding['files'][p] for p in watched):
-            row['score'] = None
-            raise ValueError('input drift during attempt')
-    except Exception as exc:
-        row['diagnostic'] = (type(exc).__name__ + ': ' + str(exc))[-2800:]
-    finally:
-        report.unlink(missing_ok=True)
-        row['seconds'] = round(time.monotonic() - start, 3)
-    return row, src, obj
+    rows, src, obj = attempt_functions(manifest, module, [name], None, worker, binding)
+    return rows[0], src, obj
 
 def worker_count(value):
     try:
@@ -218,6 +173,183 @@ def abi_arguments(manifest):
     if abi not in ('legacy', 'gekko-eabi'):
         raise ValueError('unsupported PPC argument ABI: ' + str(abi))
     return ['--ppc-abi', abi] if abi != 'legacy' else []
+
+def group_name_valid(name):
+    return isinstance(name, str) and bool(re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name))
+
+def validate_translation_groups(module):
+    raw = module.get('translation_groups')
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise ValueError('translation_groups must be a list')
+    valid_functions = set(module.get('functions') or [])
+    names = set()
+    grouped = set()
+    groups = []
+    for group in raw:
+        if not isinstance(group, dict):
+            raise ValueError('translation group must be an object')
+        name = group.get('name')
+        if not group_name_valid(name):
+            raise ValueError('invalid translation group name: %r' % (name,))
+        if name in names:
+            raise ValueError('duplicate translation group name: ' + name)
+        names.add(name)
+        functions = group.get('functions')
+        if not isinstance(functions, list) or not functions:
+            raise ValueError('translation group functions must be a non-empty list: ' + name)
+        seen = set()
+        normalized = []
+        for function in functions:
+            if not isinstance(function, str):
+                raise ValueError('translation group function must be a string')
+            if function not in valid_functions:
+                raise ValueError('translation group unknown function: ' + function)
+            if function in seen:
+                raise ValueError('translation group duplicate function: ' + function)
+            if function in grouped:
+                raise ValueError('translation function assigned to multiple groups: ' + function)
+            seen.add(function)
+            grouped.add(function)
+            normalized.append(function)
+        groups.append({'name': name, 'functions': normalized})
+    return groups
+
+def translation_argv(manifest, module, functions):
+    function_args = []
+    for function in functions:
+        function_args.extend(('-f', function))
+    return [sys.executable, manifest['m2c'], '-t', 'ppc-mwcc-c', *abi_arguments(manifest),
+            '--knr', '--valid-syntax', '--force-decimal', '--stacktrace',
+            '--context', manifest['context_path'], *function_args, *module['assembly_paths']]
+
+def attempt_functions(manifest, module, functions, group, worker, binding):
+    manifest = {**manifest, **{k: module[k] for k in ('context_path', 'prefix_path') if k in module}}
+    scratch = Path(manifest['output_root']) / ('worker-' + str(worker))
+    clean_scratch(scratch)
+    start = time.monotonic()
+    rows = []
+    for name in functions:
+        rows.append({
+            'module': module['name'],
+            'function': name,
+            'translation_group': group,
+            'source_sha256': None,
+            'object_sha256': None,
+            'target_sha256': binding['files'][module['target_path']],
+            'syntax_placeholders': [],
+            'm2c_exitcode': None,
+            'compile_exitcode': None,
+            'objdiff_exitcode': None,
+            'score': None,
+            'size': None,
+            'diffcount': None,
+            'diagnostic': ''
+        })
+    src, obj, report = scratch / 'candidate.c', scratch / 'candidate.o', scratch / 'report.json'
+    try:
+        watched = job_watch_paths(manifest, module)
+        if any(sha(p) != binding['files'][p] for p in watched):
+            raise ValueError('input drift before dispatch')
+        argv = translation_argv(manifest, module, functions)
+        rc, reason, diagnostic = run_process(argv, manifest['proof_root'], scratch)
+        row_diagnostic = reason or diagnostic
+        for row in rows:
+            row.update(m2c_exitcode=rc, diagnostic=row_diagnostic)
+        with (scratch / 'stdout.log').open('rb') as draft_file:
+            draft = draft_file.read(4 * 1024 * 1024).decode('utf-8', errors='replace')
+        syntax_placeholders = placeholders(draft)
+        decompile_errors = bool(re.search(r'Error occurred|decompil(?:ation|e) error', draft, re.I))
+        for row in rows:
+            row['syntax_placeholders'] = syntax_placeholders
+            row['decompile_errors'] = decompile_errors
+        src.write_text(Path(manifest['prefix_path']).read_text(encoding='utf-8') + '\n' + draft, encoding='utf-8')
+        source_hash = sha(src)
+        for row in rows:
+            row['source_sha256'] = source_hash
+        if rc or reason:
+            return rows, src, obj
+        proof = Path(manifest['proof_root'])
+        argv = [proof / 'build/tools/sjiswrap.exe', proof / 'build/compilers/GC/1.3.2/mwcceppc.exe',
+                *manifest.get('flags', []), '-c', src, '-o', obj]
+        rc, reason, diagnostic = run_process(argv, proof, scratch)
+        row_diagnostic = reason or diagnostic
+        for row in rows:
+            row.update(compile_exitcode=rc, diagnostic=row_diagnostic)
+        if rc or reason or not obj.is_file():
+            if not rc and not obj.is_file():
+                for row in rows:
+                    row['diagnostic'] = 'compiler succeeded but object missing'
+            return rows, src, obj
+        object_hash = sha(obj)
+        for row in rows:
+            row['object_sha256'] = object_hash
+        rc, reason, diagnostic = run_process([manifest['objdiff'], 'diff', '-1', module['target_path'], '-2', obj,
+                                              '-o', report, '--format', 'json'], proof, scratch, 45, report)
+        row_diagnostic = reason or diagnostic
+        for row in rows:
+            row.update(objdiff_exitcode=rc, diagnostic=row_diagnostic)
+        if not rc and not reason:
+            report_data = None
+            try:
+                report_data = json.loads(report.read_text(encoding='utf-8'))
+            except Exception as exc:
+                for row in rows:
+                    row['diagnostic'] = (type(exc).__name__ + ': ' + str(exc))[-2800:]
+            if report_data is not None:
+                for row in rows:
+                    try:
+                        row.update(parse_report(report_data, row['function']))
+                    except Exception as exc:
+                        row['diagnostic'] = (type(exc).__name__ + ': ' + str(exc))[-2800:]
+                        row['score'] = None
+        if any(sha(p) != binding['files'][p] for p in watched):
+            for row in rows:
+                row['score'] = None
+            raise ValueError('input drift during attempt')
+    except Exception as exc:
+        for row in rows:
+            row['diagnostic'] = (type(exc).__name__ + ': ' + str(exc))[-2800:]
+    finally:
+        report.unlink(missing_ok=True)
+        for row in rows:
+            row['seconds'] = round(time.monotonic() - start, 3)
+    return rows, src, obj
+
+def attempt_group(manifest, module, functions, group, worker, binding):
+    return attempt_functions(manifest, module, list(functions), group, worker, binding)
+
+def retain_rows(rows, src, obj, retained, out, retained_bytes):
+    """Keep one shared pair for a group; resumed members do not pay twice."""
+    selected = [row for row in rows if eligible(row)]
+    if not selected or not src.is_file() or not obj.is_file():
+        return retained_bytes
+    first = selected[0]
+    group = first.get('translation_group')
+    identity = (first['module'] + ':translation_group:' + group if group is not None
+                else first['module'] + ':' + first['function'])
+    stem = hashlib.sha256(identity.encode()).hexdigest()[:24]
+    pairs = [(kind, path, retained / (stem + path.suffix))
+             for kind, path in [('source', src), ('object', obj)]]
+    added_bytes = 0
+    for _, path, dest in pairs:
+        if dest.exists():
+            if sha(dest) != sha(path):
+                raise ValueError('immutable retained artifact collision: ' + str(dest))
+        else:
+            added_bytes += path.stat().st_size
+    if retained_bytes + added_bytes > LIMIT:
+        for row in selected:
+            row['retention_skipped'] = '128MiB cap'
+        return retained_bytes
+    for kind, path, dest in pairs:
+        if not dest.exists():
+            with dest.open('xb') as dest_file, path.open('rb') as source_file:
+                shutil.copyfileobj(source_file, dest_file)
+        for row in selected:
+            row['retained_' + kind] = str(dest.relative_to(out))
+    return retained_bytes + added_bytes
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -244,6 +376,9 @@ def main():
         for p in [mod['target_path'], *mod['assembly_paths']]:
             if not Path(p).is_absolute():
                 raise ValueError('absolute input path required: ' + p)
+    groups_by_module = {}
+    for module in m['modules']:
+        groups_by_module[id(module)] = validate_translation_groups(module)
     binding = bindings(m, args.manifest)
     out.mkdir(parents=True, exist_ok=True)
     snapshot, census = out / 'bindings.json', out / 'census.jsonl'
@@ -268,7 +403,17 @@ def main():
         raise ValueError('existing batch; use --resume')
     else:
         atomic(snapshot, binding)
-    pending = iter((mod, name) for mod, name in jobs if (mod['name'], name) not in done)
+    units = []
+    for module in m['modules']:
+        groups = groups_by_module[id(module)]
+        grouped = {function for group in groups for function in group['functions']}
+        for name in module['functions']:
+            if name not in grouped and (module['name'], name) not in done:
+                units.append(('function', module, name))
+        for group in groups:
+            if any((module['name'], function) not in done for function in group['functions']):
+                units.append(('group', module, group['functions'], group['name']))
+    pending = iter(units)
     retained = out / 'retained'
     retained.mkdir(exist_ok=True)
     retained_bytes = sum(p.stat().st_size for p in retained.iterdir() if p.is_file())
@@ -281,35 +426,38 @@ def main():
         def dispatch(worker):
             if (out / 'STOP').exists():
                 return
-            job = next(pending, None)
-            if job:
-                active[pool.submit(attempt, m, *job, worker, binding)] = worker
+            unit = next(pending, None)
+            if unit is None:
+                return
+            if unit[0] == 'function':
+                _, module, name = unit
+                active[pool.submit(attempt, m, module, name, worker, binding)] = worker
+            else:
+                _, module, functions, group_name = unit
+                active[pool.submit(attempt_group, m, module, functions, group_name, worker, binding)] = worker
         for worker in range(args.workers):
             dispatch(worker)
         while active:
             completed, _ = futures.wait(active, return_when=futures.FIRST_COMPLETED)
             for future in completed:
                 worker = active.pop(future)
-                row, src, obj = future.result()
-                if eligible(row) and src.exists() and obj.exists():
-                    size = src.stat().st_size + obj.stat().st_size
-                    if retained_bytes + size <= LIMIT:
-                        stem = hashlib.sha256((row['module'] + ':' + row['function']).encode()).hexdigest()[:24]
-                        for kind, path in [('source', src), ('object', obj)]:
-                            dest = retained / (stem + path.suffix)
-                            if dest.exists():
-                                if sha(dest) != sha(path):
-                                    raise ValueError('immutable retained artifact collision: ' + str(dest))
-                            else:
-                                with dest.open('xb') as dest_file, path.open('rb') as source_file:
-                                    shutil.copyfileobj(source_file, dest_file)
-                            row['retained_' + kind] = str(dest.relative_to(out))
-                        retained_bytes += size
-                    else:
-                        row['retention_skipped'] = '128MiB cap'
-                log.write(json.dumps(row) + '\n')
-                log.flush()
-                done[(row['module'], row['function'])] = row
+                result = future.result()
+                if isinstance(result[0], list):
+                    rows, src, obj = result
+                else:
+                    row, src, obj = result
+                    rows = [row]
+                new_rows = []
+                for row in rows:
+                    key = (row['module'], row['function'])
+                    if key not in done:
+                        new_rows.append(row)
+                if new_rows:
+                    retained_bytes = retain_rows(new_rows, src, obj, retained, out, retained_bytes)
+                    for row in new_rows:
+                        log.write(json.dumps(row) + '\n')
+                        log.flush()
+                        done[(row['module'], row['function'])] = row
                 state = progress()
                 if len(done) % 25 == 0:
                     print(json.dumps(state), flush=True)
