@@ -4,18 +4,18 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **September 14, 2026**
+Last published full-project snapshot: **September 15, 2026**
 
 Byte percentages were generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 23.06% | 43.77% |
+| Entire project | 23.28% | 44.19% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 9.34% | 8.87% |
+| REL modules | 9.60% | 9.56% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**6 are fully source-selected** (`m616dll`, `m621dll`, `m635dll`, `m651dll`, `m657Dll`, `m670dll`) and **76 remain**. This scope is distinct
+**7 are fully source-selected** (`m612dll`, `m616dll`, `m621dll`, `m635dll`, `m651dll`, `m657Dll`, `m670dll`) and **75 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,14 +23,15 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m657Dll is now fully source-selected**: all 24,156 code bytes and 1,292
-data/BSS bytes come from seven source objects, with no original-object fallback.
-All 89 application instruction bodies and physical relocation payloads match;
-the complete 35,264-byte REL is byte-identical to retail. Twelve unreferenced
-initialized zero bytes are represented as documented unknown storage with
-maintainer approval; their original type and purpose remain unknown. Six
-unaccessed heap-record ranges retain explicit unknown fields. Earlier modules
-retain their disclosures, including M635's four-byte unknown BSS interval.
+**m612dll is now fully source-selected**: all 27,312 code bytes and 7,866
+data/BSS bytes come from four source objects, with no original-object fallback.
+All 29 application instruction bodies and physical relocation payloads match;
+the complete REL is byte-identical to retail. A two-byte scene interval and
+three BSS allocation extents retain explicitly documented unknown storage with
+maintainer approval; their original types and capacities are not established.
+The scene interval is not claimed to be alignment padding. Earlier modules
+retain their disclosures, including M635's four-byte unknown BSS interval and
+M657's twelve-byte initialized interval and unaccessed heap-record ranges.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
 
