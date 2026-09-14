@@ -1,0 +1,74 @@
+name: Recovery ledger
+
+on:
+  push:
+    branches: [main, gh-pages]
+  pull_request:
+    paths:
+      - .github/workflows/recovery-ledger.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: recovery-ledger-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read committed main
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Read website and snapshot tools
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: gh-pages
+          path: site
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Generate one current recovery and cleanup snapshot
+        shell: bash
+        run: |
+          python site/tools/build_snapshot.py \
+            --repo source \
+            --commit "$(git -C source rev-parse HEAD)" \
+            --metadata site/source-metadata.json \
+            --output public
+
+      - name: Assemble static site
+        shell: bash
+        run: |
+          cp site/{.nojekyll,index.html,dol.html,modules.html,cleanup.html,snapshot.html,app.js,cleanup.js,style.css,cleanup.css} public/
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: public
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish current ledger
+        id: deployment
+        uses: actions/deploy-pages@v5.0.1
