@@ -20,7 +20,7 @@
   let detailExit = null;
 
   function animateResults(element) {
-    if (!element || reducedMotion.matches || !element.animate) return;
+    if (!element || state.loading || reducedMotion.matches || !element.animate) return;
     resultAnimations.get(element)?.cancel();
     resultAnimations.set(element, element.animate(
       [{ opacity: .55 }, { opacity: 1 }],
@@ -137,6 +137,8 @@
 
   const elements = {
     main: document.getElementById("main-content"),
+    skeleton: document.getElementById("page-skeleton"),
+    content: document.getElementById("page-content"),
     pageLoading: document.getElementById("page-loading"),
     banner: document.getElementById("app-banner"),
     connection: document.getElementById("connection-state"),
@@ -490,7 +492,7 @@
       elements.refresh.disabled = isLoading;
       elements.refresh.setAttribute("aria-busy", String(isLoading));
       elements.refresh.innerHTML = isLoading
-        ? '<span class="button-spinner" aria-hidden="true"></span>Reading snapshot'
+        ? '<span class="button-spinner" aria-hidden="true"></span>Reload snapshot'
         : '<span aria-hidden="true">↻</span>Reload snapshot';
     }
     if (elements.main) elements.main.setAttribute("aria-busy", String(isLoading));
@@ -1167,7 +1169,7 @@
   async function loadSnapshot(isRefresh = false) {
     if (state.loading) return;
     setLoading(true);
-    setBanner(isRefresh ? "Reloading the published snapshot…" : "Reading the published snapshot…", "info");
+    setBanner("", "info");
     setConnection(isRefresh ? "Reloading published snapshot" : "Reading published snapshot", "muted");
     try {
       const snapshot = await fetchSnapshot(SNAPSHOT_ENDPOINT);
@@ -1194,6 +1196,9 @@
         setConnection("Snapshot unavailable", "error");
       }
     } finally {
+      // Render behind the static skeleton, then reveal everything in one paint.
+      if (elements.skeleton) elements.skeleton.hidden = true;
+      if (elements.content) elements.content.hidden = false;
       setLoading(false);
     }
   }
@@ -1292,6 +1297,5 @@
 
   bindEvents();
   registerPageTools();
-  renderSnapshot();
   loadSnapshot(false);
 })();

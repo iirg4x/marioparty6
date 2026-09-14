@@ -24,9 +24,9 @@
           </div>
 
           <div class="masthead-actions">
-            <button class="button button-primary" id="refresh-button" type="button">
-              <span aria-hidden="true">↻</span>
-              Reload snapshot
+            <button class="button button-primary" id="refresh-button" type="button" disabled aria-busy="true">
+              <span class="button-spinner" aria-hidden="true"></span>
+              <span>Reload snapshot</span>
             </button>
           </div>
         </div>
@@ -39,25 +39,74 @@
         <a href="./snapshot.html">Snapshot</a>
       </nav>
 
+      <noscript><p class="app-banner">JavaScript is needed to load this snapshot.</p></noscript>
+
       <div class="app-banner" id="app-banner" role="status" aria-live="polite" hidden></div>
 
       <main id="main-content" aria-busy="true" tabindex="-1">
-        <div class="page-loading" id="page-loading" role="status">Loading the DOL breakdown…</div>
-
-        <section class="dol-section" id="dol-ledger" aria-labelledby="dol-heading" hidden></section>
-
-        <dialog class="detail-panel" id="module-detail" aria-labelledby="detail-heading" tabindex="-1">
-          <div class="detail-placeholder" id="detail-placeholder">
-            <span class="detail-mark" aria-hidden="true">＋</span>
-            <p class="section-index">MODULE DETAIL</p>
-            <h3>Select a whole module</h3>
-            <p>
-              The selected source owners, functions, metrics, and evidence
-              will appear here.
-            </p>
+        <div id="page-skeleton">
+          <p class="visually-hidden" role="status">Loading DOL breakdown…</p>
+          <div aria-hidden="true">
+            <section class="dol-section">
+              <div class="dol-heading section-heading-row">
+                <div class="section-intro">
+                  <h2>DOL · Main executable</h2>
+                  <p>See what remains in the engine, board system, SDK, and supporting libraries.</p>
+                </div>
+                <div class="dol-actions skeleton-actions">
+                  <span class="button button-primary skeleton-button"></span>
+                  <span class="button button-quiet skeleton-button"></span>
+                </div>
+              </div>
+              <div class="dol-overview">
+                <div class="dol-progress">
+                  <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                  <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                </div>
+                <div class="dol-totals">
+                  <div class="dol-stat skeleton-stack"><span class="skeleton-label"></span><strong class="skeleton-line skeleton-value"></strong><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="dol-stat skeleton-stack"><span class="skeleton-label"></span><strong class="skeleton-line skeleton-value"></strong><span class="skeleton-line skeleton-short"></span></div>
+                </div>
+              </div>
+              <div class="dol-groups table-wrap">
+                <table class="dol-table">
+                  <caption>DOL recovery by subsystem</caption>
+                  <thead><tr><th scope="col">Subsystem</th><th scope="col">Code</th><th scope="col">Data</th><th scope="col">Functions selected</th><th scope="col">Unmatched</th></tr></thead>
+                  <tbody>
+                    <tr class="dol-row"><td class="dol-name"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-label"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-selected"><span class="skeleton-line skeleton-short"></span></td><td class="dol-remaining"><span class="skeleton-line skeleton-short"></span></td></tr>
+                    <tr class="dol-row"><td class="dol-name"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-label"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-selected"><span class="skeleton-line skeleton-short"></span></td><td class="dol-remaining"><span class="skeleton-line skeleton-short"></span></td></tr>
+                    <tr class="dol-row"><td class="dol-name"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-label"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-selected"><span class="skeleton-line skeleton-short"></span></td><td class="dol-remaining"><span class="skeleton-line skeleton-short"></span></td></tr>
+                    <tr class="dol-row"><td class="dol-name"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-label"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-selected"><span class="skeleton-line skeleton-short"></span></td><td class="dol-remaining"><span class="skeleton-line skeleton-short"></span></td></tr>
+                    <tr class="dol-row"><td class="dol-name"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-label"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-selected"><span class="skeleton-line skeleton-short"></span></td><td class="dol-remaining"><span class="skeleton-line skeleton-short"></span></td></tr>
+                    <tr class="dol-row"><td class="dol-name"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-label"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-selected"><span class="skeleton-line skeleton-short"></span></td><td class="dol-remaining"><span class="skeleton-line skeleton-short"></span></td></tr>
+                    <tr class="dol-row"><td class="dol-name"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-label"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-selected"><span class="skeleton-line skeleton-short"></span></td><td class="dol-remaining"><span class="skeleton-line skeleton-short"></span></td></tr>
+                    <tr class="dol-row"><td class="dol-name"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-label"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-metric"><span class="skeleton-line"></span></td><td class="dol-selected"><span class="skeleton-line skeleton-short"></span></td><td class="dol-remaining"><span class="skeleton-line skeleton-short"></span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="dol-note"><span class="skeleton-line skeleton-short"></span></p>
+            </section>
           </div>
-          <div id="detail-content" hidden></div>
-        </dialog>
+        </div>
+
+        <div id="page-content" hidden>
+          <div class="page-loading" id="page-loading" role="status">Loading the DOL breakdown…</div>
+
+          <section class="dol-section" id="dol-ledger" aria-labelledby="dol-heading" hidden></section>
+
+          <dialog class="detail-panel" id="module-detail" aria-labelledby="detail-heading" tabindex="-1">
+            <div class="detail-placeholder" id="detail-placeholder">
+              <span class="detail-mark" aria-hidden="true">＋</span>
+              <p class="section-index">MODULE DETAIL</p>
+              <h3>Select a whole module</h3>
+              <p>
+                The selected source owners, functions, metrics, and evidence
+                will appear here.
+              </p>
+            </div>
+            <div id="detail-content" hidden></div>
+          </dialog>
+        </div>
       </main>
 
       <footer class="app-footer">

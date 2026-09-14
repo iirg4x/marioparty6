@@ -24,9 +24,9 @@
           </div>
 
           <div class="masthead-actions">
-            <button class="button button-primary" id="refresh-button" type="button">
-              <span aria-hidden="true">↻</span>
-              Reload snapshot
+            <button class="button button-primary" id="refresh-button" type="button" disabled aria-busy="true">
+              <span class="button-spinner" aria-hidden="true"></span>
+              <span>Reload snapshot</span>
             </button>
           </div>
         </div>
@@ -39,24 +39,95 @@
         <a href="./snapshot.html">Snapshot</a>
       </nav>
 
+      <noscript><p class="app-banner">JavaScript is needed to load this snapshot.</p></noscript>
+
       <div class="app-banner" id="app-banner" role="status" aria-live="polite" hidden></div>
 
       <main id="main-content" aria-busy="true" tabindex="-1">
-        <section class="coverage-section" aria-labelledby="coverage-heading">
-          <div class="section-heading-row">
-            <div class="section-intro">
-              <p class="section-index">OVERVIEW</p>
-              <h2 id="coverage-heading">Recovery overview</h2>
-              <p>Whole-game progress at a glance. Open DOL or Modules to explore the details.</p>
+        <div id="page-skeleton">
+          <p class="visually-hidden" role="status">Loading overview…</p>
+          <div aria-hidden="true">
+            <section class="coverage-section">
+              <div class="section-heading-row">
+                <div class="section-intro">
+                  <p class="section-index">OVERVIEW</p>
+                  <h2>Recovery overview</h2>
+                  <p>Whole-game progress at a glance. Open DOL or Modules to explore the details.</p>
+                </div>
+                <p class="coverage-aside">Published official totals · current snapshot</p>
+              </div>
+              <div class="summary-ribbon">
+                <article class="summary-entry skeleton-card">
+                  <div class="summary-entry-head"><h3>Overall</h3><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-metrics">
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                  </div>
+                  <div class="summary-counts"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-functions"><div class="summary-functions-heading">Functions</div><div class="summary-function-counts"><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span></div></div>
+                </article>
+                <article class="summary-entry skeleton-card">
+                  <div class="summary-entry-head"><h3>REL</h3><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-metrics">
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                  </div>
+                  <div class="summary-counts"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-functions"><div class="summary-functions-heading">Functions</div><div class="summary-function-counts"><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span></div></div>
+                </article>
+                <article class="summary-entry skeleton-card">
+                  <div class="summary-entry-head"><h3>Modes</h3><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-metrics">
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                  </div>
+                  <div class="summary-counts"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-functions"><div class="summary-functions-heading">Functions</div><div class="summary-function-counts"><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span></div></div>
+                </article>
+                <article class="summary-entry skeleton-card">
+                  <div class="summary-entry-head"><h3>Minigames</h3><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-metrics">
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                  </div>
+                  <div class="summary-counts"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-functions"><div class="summary-functions-heading">Functions</div><div class="summary-function-counts"><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span></div></div>
+                </article>
+                <article class="summary-entry skeleton-card">
+                  <div class="summary-entry-head"><h3>Boards</h3><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-metrics">
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                    <div class="skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-value"></span><span class="skeleton-line"></span></div>
+                  </div>
+                  <div class="summary-counts"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="summary-functions"><div class="summary-functions-heading">Functions</div><div class="summary-function-counts"><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span><span><strong class="skeleton-line skeleton-label"></strong><span class="skeleton-line skeleton-short"></span></span></div></div>
+                </article>
+              </div>
+            </section>
+            <div class="page-shortcuts skeleton-actions" aria-label="Explore the ledger">
+              <span class="skeleton-button"></span>
+              <span class="skeleton-button"></span>
             </div>
-            <p class="coverage-aside" id="coverage-aside">Awaiting committed evidence</p>
           </div>
-          <div class="summary-ribbon" id="summary-ribbon" aria-live="polite"></div>
-        </section>
+        </div>
 
-        <div class="page-shortcuts" aria-label="Explore the ledger">
-          <a class="button button-primary" href="./dol.html">Explore DOL</a>
-          <a class="button button-quiet" href="./modules.html">Browse modules</a>
+        <div id="page-content" hidden>
+          <section class="coverage-section" aria-labelledby="coverage-heading">
+            <div class="section-heading-row">
+              <div class="section-intro">
+                <p class="section-index">OVERVIEW</p>
+                <h2 id="coverage-heading">Recovery overview</h2>
+                <p>Whole-game progress at a glance. Open DOL or Modules to explore the details.</p>
+              </div>
+              <p class="coverage-aside" id="coverage-aside">Awaiting committed evidence</p>
+            </div>
+            <div class="summary-ribbon" id="summary-ribbon" aria-live="polite"></div>
+          </section>
+
+          <div class="page-shortcuts" aria-label="Explore the ledger">
+            <a class="button button-primary" href="./dol.html">Explore DOL</a>
+            <a class="button button-quiet" href="./modules.html">Browse modules</a>
+          </div>
         </div>
       </main>
 

@@ -19,7 +19,7 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scrollbar-gutter: stable; }
 body { margin: 0; background: var(--canvas); color: var(--text); font: 16px/1.5 var(--sans); }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
@@ -325,19 +325,10 @@ summary::-webkit-details-marker { display: none; }
 
 /* Short, purposeful motion keeps the ledger readable while it responds. */
 @media (prefers-reduced-motion: no-preference) {
-  .masthead, .receipt-band { animation: surface-enter 420ms cubic-bezier(.2,.7,.2,1) both; }
-  .receipt-band { animation-delay: 50ms; }
   .summary-entry {
-    --card-delay: 0ms;
-    animation: surface-enter 460ms cubic-bezier(.2,.7,.2,1) var(--card-delay) both;
     transition: translate 180ms ease, border-color 180ms ease, background-color 180ms ease;
   }
-  .summary-entry:nth-child(2) { --card-delay: 45ms; }
-  .summary-entry:nth-child(3) { --card-delay: 90ms; }
-  .summary-entry:nth-child(4) { --card-delay: 135ms; }
-  .summary-entry:nth-child(5) { --card-delay: 180ms; }
-  .summary-entry:nth-child(6) { --card-delay: 225ms; }
-  .metric-meter i { transform-origin: left; animation: coverage-fill 700ms cubic-bezier(.2,.7,.2,1) var(--card-delay, 0ms) both; }
+  .detail-panel .metric-meter i { transform-origin: left; animation: coverage-fill 700ms cubic-bezier(.2,.7,.2,1) both; }
   .button, .icon-button { transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease; }
   .button:active:not(:disabled), .icon-button:active { transform: scale(.97); }
   input, select { transition: border-color 160ms ease, background-color 160ms ease, outline-color 160ms ease; }
@@ -353,7 +344,6 @@ summary::-webkit-details-marker { display: none; }
     .function-line:hover { background-color: #1b2d36; }
   }
 }
-@keyframes surface-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes content-enter { from { opacity: .35; } to { opacity: 1; } }
 @keyframes coverage-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes dialog-enter { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -444,8 +434,6 @@ body.dialog-open { overflow: hidden; }
   .dol-row:hover { background: var(--surface-raised); }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .dol-overview, .dol-groups { animation: surface-enter 420ms cubic-bezier(.2,.7,.2,1) both; }
-  .dol-groups { animation-delay: 60ms; }
   .dol-row { transition: background-color 160ms ease; }
 }
 @media (max-width: 1100px) {
@@ -514,7 +502,8 @@ body.dialog-open { overflow: hidden; }
 }
 .site-nav a:hover { color: var(--text); background: var(--surface); }
 .site-nav a[aria-current="page"] { color: var(--accent); background: var(--accent-wash); border-color: #36584f; }
-main > .dol-section, main > .library-section { margin-top: 0; }
+#page-content > .dol-section, #page-content > .library-section,
+#page-skeleton .dol-section, #page-skeleton .library-section { margin-top: 0; }
 .page-shortcuts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 .page-shortcuts a { text-decoration: none; }
 .page-loading { padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; color: var(--muted); }
@@ -528,6 +517,46 @@ main > .dol-section, main > .library-section { margin-top: 0; }
 [data-page="snapshot"] .receipt-subline, [data-page="snapshot"] #receipt-remote { white-space: normal; overflow-wrap: anywhere; }
 [data-page="snapshot"] .counting-note { border: 1px solid var(--line); border-radius: 9px; padding: 0 20px; background: var(--surface); }
 .snapshot-explanation { margin-top: 20px; max-width: 860px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+
+/* These placeholders ship in the HTML, before the script or snapshot loads. */
+#main-content { min-height: calc(100svh - 300px); }
+#refresh-button > span[aria-hidden] { width: 13px; flex: 0 0 13px; }
+.skeleton-line, .skeleton-label, .skeleton-value, .skeleton-title,
+.skeleton-control, .skeleton-button { display: block; width: 100%; height: 12px; border-radius: 4px; background: #263641; }
+.skeleton-short { width: 45%; }
+.skeleton-title { width: 60%; height: 20px; }
+.skeleton-value { width: 55%; height: 32px; }
+.skeleton-stack { display: grid; gap: 10px; min-width: 0; }
+.skeleton-card { min-height: 320px; }
+.skeleton-control { height: 40px; width: 100%; border-radius: 6px; }
+.skeleton-label { height: 12px; width: 60%; }
+.skeleton-note { height: 64px; margin-top: 20px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+.skeleton-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.skeleton-button { width: 150px; height: 40px; border-radius: 7px; }
+#page-skeleton .summary-entry:hover { translate: none; border-color: var(--line); }
+#page-skeleton .summary-counts { min-height: 36px; }
+#page-skeleton .filter-bar .skeleton-stack { gap: 6px; }
+#page-skeleton .filter-bar .skeleton-label { height: 21px; }
+#page-skeleton .filter-bar > .skeleton-button { width: 64px; }
+#page-skeleton .module-table td { height: 96px; }
+#page-skeleton .dol-table td { height: 79px; }
+#page-skeleton td > span + span { margin-top: 8px; }
+#page-skeleton .receipt-item { min-height: 76px; }
+#page-skeleton .receipt-item .skeleton-label { height: 18px; }
+#page-skeleton .receipt-item dd { gap: 8px; }
+@media (max-width: 760px) {
+  #page-skeleton .dol-table td { height: auto; min-height: 40px; }
+}
+@media (max-width: 580px) {
+  #page-skeleton .module-table td { height: auto; min-height: 34px; }
+  #page-skeleton .filter-bar > .skeleton-button { width: 100%; }
+  #page-skeleton .receipt-item { min-height: 94px; }
+  #page-skeleton .receipt-commit { min-height: 114px; }
+  #page-skeleton .receipt-remote { min-height: 74px; }
+  [data-page="snapshot"] .skeleton-note { height: 80px; }
+  .skeleton-actions { width: 100%; }
+  .skeleton-button { flex: 1; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .site-nav a { transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease; }
 }

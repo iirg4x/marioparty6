@@ -24,9 +24,9 @@
           </div>
 
           <div class="masthead-actions">
-            <button class="button button-primary" id="refresh-button" type="button">
-              <span aria-hidden="true">↻</span>
-              Reload snapshot
+            <button class="button button-primary" id="refresh-button" type="button" disabled aria-busy="true">
+              <span class="button-spinner" aria-hidden="true"></span>
+              <span>Reload snapshot</span>
             </button>
           </div>
         </div>
@@ -39,125 +39,181 @@
         <a href="./snapshot.html">Snapshot</a>
       </nav>
 
+      <noscript><p class="app-banner">JavaScript is needed to load this snapshot.</p></noscript>
+
       <div class="app-banner" id="app-banner" role="status" aria-live="polite" hidden></div>
 
       <main id="main-content" aria-busy="true" tabindex="-1">
-        <section class="library-section" id="library" aria-labelledby="library-heading">
-          <div class="section-heading-row library-heading-row">
-            <div class="section-intro">
-              <p class="section-index">03 / LIBRARY</p>
-              <h2 id="library-heading">Whole-module library</h2>
-              <p>
-                Search names, IDs, paths, aliases, and function evidence. Select
-                a row to open its source-owner ledger.
-              </p>
-            </div>
-            <div class="library-total" id="library-total">0 modules</div>
+        <div id="page-skeleton">
+          <p class="visually-hidden" role="status">Loading module library…</p>
+          <div aria-hidden="true">
+            <section class="library-section">
+              <div class="section-heading-row library-heading-row">
+                <div class="section-intro">
+                  <p class="section-index">03 / LIBRARY</p>
+                  <h2>Whole-module library</h2>
+                  <p>
+                    Search names, IDs, paths, aliases, and function evidence. Select
+                    a row to open its source-owner ledger.
+                  </p>
+                </div>
+                <div class="library-total"><span class="skeleton-line skeleton-short"></span></div>
+              </div>
+
+              <div class="filter-bar">
+                <div class="search-control skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-control"></span></div>
+                <div class="select-control skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-control"></span></div>
+                <div class="select-control skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-control"></span></div>
+                <div class="select-control skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-control"></span></div>
+                <div class="select-control skeleton-stack"><span class="skeleton-label"></span><span class="skeleton-control"></span></div>
+                <span class="button button-quiet skeleton-button"></span>
+              </div>
+
+              <div class="ledger-layout">
+                <div class="module-library">
+                  <div class="library-caption"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></div>
+                  <div class="table-wrap">
+                    <table class="module-table">
+                      <caption class="visually-hidden">Recovery status by whole game module</caption>
+                      <thead>
+                        <tr><th scope="col">Module</th><th scope="col">Kind / family</th><th scope="col" class="numeric-heading">Code</th><th scope="col" class="numeric-heading">Data</th><th scope="col">State</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr class="module-row"><td class="module-cell"><span class="module-title-line"><strong class="skeleton-line"></strong></span><span class="skeleton-line skeleton-label"></span></td><td class="module-family"><span class="skeleton-line skeleton-label"></span><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-state"><span class="skeleton-line skeleton-short"></span></td></tr>
+                        <tr class="module-row"><td class="module-cell"><span class="module-title-line"><strong class="skeleton-line"></strong></span><span class="skeleton-line skeleton-label"></span></td><td class="module-family"><span class="skeleton-line skeleton-label"></span><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-state"><span class="skeleton-line skeleton-short"></span></td></tr>
+                        <tr class="module-row"><td class="module-cell"><span class="module-title-line"><strong class="skeleton-line"></strong></span><span class="skeleton-line skeleton-label"></span></td><td class="module-family"><span class="skeleton-line skeleton-label"></span><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-state"><span class="skeleton-line skeleton-short"></span></td></tr>
+                        <tr class="module-row"><td class="module-cell"><span class="module-title-line"><strong class="skeleton-line"></strong></span><span class="skeleton-line skeleton-label"></span></td><td class="module-family"><span class="skeleton-line skeleton-label"></span><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-state"><span class="skeleton-line skeleton-short"></span></td></tr>
+                        <tr class="module-row"><td class="module-cell"><span class="module-title-line"><strong class="skeleton-line"></strong></span><span class="skeleton-line skeleton-label"></span></td><td class="module-family"><span class="skeleton-line skeleton-label"></span><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-state"><span class="skeleton-line skeleton-short"></span></td></tr>
+                        <tr class="module-row"><td class="module-cell"><span class="module-title-line"><strong class="skeleton-line"></strong></span><span class="skeleton-line skeleton-label"></span></td><td class="module-family"><span class="skeleton-line skeleton-label"></span><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-state"><span class="skeleton-line skeleton-short"></span></td></tr>
+                        <tr class="module-row"><td class="module-cell"><span class="module-title-line"><strong class="skeleton-line"></strong></span><span class="skeleton-line skeleton-label"></span></td><td class="module-family"><span class="skeleton-line skeleton-label"></span><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-state"><span class="skeleton-line skeleton-short"></span></td></tr>
+                        <tr class="module-row"><td class="module-cell"><span class="module-title-line"><strong class="skeleton-line"></strong></span><span class="skeleton-line skeleton-label"></span></td><td class="module-family"><span class="skeleton-line skeleton-label"></span><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-metric numeric-cell"><span class="skeleton-line skeleton-short"></span></td><td class="module-state"><span class="skeleton-line skeleton-short"></span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </section>
           </div>
+        </div>
 
-          <form class="filter-bar" id="filter-form" role="search">
-            <label class="search-control">
-              <span>Find a module</span>
-              <span class="search-input-wrap">
-                <span class="search-glyph" aria-hidden="true">⌕</span>
-                <input
-                  id="module-search"
-                  name="q"
-                  type="search"
-                  autocomplete="off"
-                  placeholder="Title, ID, path, or function"
-                  aria-controls="module-list"
-                />
-              </span>
-            </label>
-
-            <label class="select-control">
-              <span>State</span>
-              <select id="state-filter" name="state" aria-controls="module-list">
-                <option value="all">All states</option>
-                <option value="complete">Complete</option>
-                <option value="partial">Partial</option>
-                <option value="notRecovered">Not recovered</option>
-                <option value="unavailable">Unavailable</option>
-              </select>
-            </label>
-
-            <label class="select-control">
-              <span>Kind</span>
-              <select id="kind-filter" name="kind" aria-controls="module-list">
-                <option value="all">DOL + REL</option>
-                <option value="DOL">DOL</option>
-                <option value="REL">REL</option>
-              </select>
-            </label>
-
-            <label class="select-control">
-              <span>Family</span>
-              <select id="category-filter" name="category" aria-controls="module-list">
-                <option value="all">All families</option>
-                <option value="minigame">Minigame</option>
-                <option value="mode">Mode</option>
-                <option value="board">Board</option>
-                <option value="system">System</option>
-              </select>
-            </label>
-
-            <label class="select-control">
-              <span>Function state</span>
-              <select id="function-filter" name="function-state" aria-controls="module-list owner-results">
-                <option value="all">All functions</option>
-                <option value="remaining">Unmatched</option>
-                <option value="matching">Source selected</option>
-                <option value="unknown">Unavailable</option>
-              </select>
-            </label>
-
-            <button class="button button-quiet" id="clear-filters" type="button">Clear</button>
-          </form>
-
-          <div class="ledger-layout">
-            <div class="module-library" aria-live="polite">
-              <div class="library-caption">
-                <span id="library-caption">Whole modules</span>
-                <span class="library-caption-note">Select a module for owner evidence</span>
-              </div>
-              <div class="table-wrap">
-                <table class="module-table">
-                  <caption class="visually-hidden">Recovery status by whole game module</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Module</th>
-                      <th scope="col">Kind / family</th>
-                      <th scope="col" class="numeric-heading">Code</th>
-                      <th scope="col" class="numeric-heading">Data</th>
-                      <th scope="col">State</th>
-                    </tr>
-                  </thead>
-                  <tbody id="module-list"></tbody>
-                </table>
-              </div>
-              <div class="empty-strip" id="module-empty" hidden>
-                No modules match this search and filter set.
-              </div>
-              <div class="empty-strip" id="snapshot-empty" hidden>
-                The published snapshot could not be loaded. Try reloading it.
-              </div>
-            </div>
-
-            <dialog class="detail-panel" id="module-detail" aria-labelledby="detail-heading" tabindex="-1">
-              <div class="detail-placeholder" id="detail-placeholder">
-                <span class="detail-mark" aria-hidden="true">＋</span>
-                <p class="section-index">MODULE DETAIL</p>
-                <h3>Select a whole module</h3>
+        <div id="page-content" hidden>
+          <section class="library-section" id="library" aria-labelledby="library-heading">
+            <div class="section-heading-row library-heading-row">
+              <div class="section-intro">
+                <p class="section-index">03 / LIBRARY</p>
+                <h2 id="library-heading">Whole-module library</h2>
                 <p>
-                  The selected source owners, functions, metrics, and evidence
-                  will appear here.
+                  Search names, IDs, paths, aliases, and function evidence. Select
+                  a row to open its source-owner ledger.
                 </p>
               </div>
-              <div id="detail-content" hidden></div>
-            </dialog>
-          </div>
-        </section>
+              <div class="library-total" id="library-total">0 modules</div>
+            </div>
+
+            <form class="filter-bar" id="filter-form" role="search">
+              <label class="search-control">
+                <span>Find a module</span>
+                <span class="search-input-wrap">
+                  <span class="search-glyph" aria-hidden="true">⌕</span>
+                  <input
+                    id="module-search"
+                    name="q"
+                    type="search"
+                    autocomplete="off"
+                    placeholder="Title, ID, path, or function"
+                    aria-controls="module-list"
+                  />
+                </span>
+              </label>
+
+              <label class="select-control">
+                <span>State</span>
+                <select id="state-filter" name="state" aria-controls="module-list">
+                  <option value="all">All states</option>
+                  <option value="complete">Complete</option>
+                  <option value="partial">Partial</option>
+                  <option value="notRecovered">Not recovered</option>
+                  <option value="unavailable">Unavailable</option>
+                </select>
+              </label>
+
+              <label class="select-control">
+                <span>Kind</span>
+                <select id="kind-filter" name="kind" aria-controls="module-list">
+                  <option value="all">DOL + REL</option>
+                  <option value="DOL">DOL</option>
+                  <option value="REL">REL</option>
+                </select>
+              </label>
+
+              <label class="select-control">
+                <span>Family</span>
+                <select id="category-filter" name="category" aria-controls="module-list">
+                  <option value="all">All families</option>
+                  <option value="minigame">Minigame</option>
+                  <option value="mode">Mode</option>
+                  <option value="board">Board</option>
+                  <option value="system">System</option>
+                </select>
+              </label>
+
+              <label class="select-control">
+                <span>Function state</span>
+                <select id="function-filter" name="function-state" aria-controls="module-list owner-results">
+                  <option value="all">All functions</option>
+                  <option value="remaining">Unmatched</option>
+                  <option value="matching">Source selected</option>
+                  <option value="unknown">Unavailable</option>
+                </select>
+              </label>
+
+              <button class="button button-quiet" id="clear-filters" type="button">Clear</button>
+            </form>
+
+            <div class="ledger-layout">
+              <div class="module-library" aria-live="polite">
+                <div class="library-caption">
+                  <span id="library-caption">Whole modules</span>
+                  <span class="library-caption-note">Select a module for owner evidence</span>
+                </div>
+                <div class="table-wrap">
+                  <table class="module-table">
+                    <caption class="visually-hidden">Recovery status by whole game module</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Module</th>
+                        <th scope="col">Kind / family</th>
+                        <th scope="col" class="numeric-heading">Code</th>
+                        <th scope="col" class="numeric-heading">Data</th>
+                        <th scope="col">State</th>
+                      </tr>
+                    </thead>
+                    <tbody id="module-list"></tbody>
+                  </table>
+                </div>
+                <div class="empty-strip" id="module-empty" hidden>
+                  No modules match this search and filter set.
+                </div>
+                <div class="empty-strip" id="snapshot-empty" hidden>
+                  The published snapshot could not be loaded. Try reloading it.
+                </div>
+              </div>
+
+              <dialog class="detail-panel" id="module-detail" aria-labelledby="detail-heading" tabindex="-1">
+                <div class="detail-placeholder" id="detail-placeholder">
+                  <span class="detail-mark" aria-hidden="true">＋</span>
+                  <p class="section-index">MODULE DETAIL</p>
+                  <h3>Select a whole module</h3>
+                  <p>
+                    The selected source owners, functions, metrics, and evidence
+                    will appear here.
+                  </p>
+                </div>
+                <div id="detail-content" hidden></div>
+              </dialog>
+            </div>
+          </section>
+        </div>
       </main>
 
       <footer class="app-footer">

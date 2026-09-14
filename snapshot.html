@@ -24,9 +24,9 @@
           </div>
 
           <div class="masthead-actions">
-            <button class="button button-primary" id="refresh-button" type="button">
-              <span aria-hidden="true">↻</span>
-              Reload snapshot
+            <button class="button button-primary" id="refresh-button" type="button" disabled aria-busy="true">
+              <span class="button-spinner" aria-hidden="true"></span>
+              <span>Reload snapshot</span>
             </button>
           </div>
         </div>
@@ -39,68 +39,95 @@
         <a href="./snapshot.html" aria-current="page">Snapshot</a>
       </nav>
 
+      <noscript><p class="app-banner">JavaScript is needed to load this snapshot.</p></noscript>
+
       <div class="app-banner" id="app-banner" role="status" aria-live="polite" hidden></div>
 
       <main id="main-content" aria-busy="true" tabindex="-1">
-        <section class="section-intro" aria-labelledby="snapshot-heading">
-          <p class="section-index">SNAPSHOT</p>
-          <h2 id="snapshot-heading">Snapshot &amp; counting</h2>
-          <p>Source commit, capture time, and how recovery is measured.</p>
-        </section>
+        <div id="page-skeleton">
+          <p class="visually-hidden" role="status">Loading snapshot details…</p>
+          <div aria-hidden="true">
+            <section class="section-intro">
+              <p class="section-index">SNAPSHOT</p>
+              <h2>Snapshot &amp; counting</h2>
+              <p>Source commit, capture time, and how recovery is measured.</p>
+            </section>
 
-        <section class="receipt-band" aria-labelledby="receipt-heading">
-          <div class="section-intro receipt-intro">
-            <p class="section-index">SOURCE</p>
-            <h2 id="receipt-heading">The commit in view</h2>
-            <p>Every page uses this committed main snapshot.</p>
+            <section class="receipt-band">
+              <dl class="receipt-list">
+                <div class="receipt-item receipt-commit"><dt><span class="skeleton-label"></span></dt><dd class="skeleton-stack"><span class="skeleton-line"></span><span class="skeleton-line skeleton-short"></span></dd></div>
+                <div class="receipt-item"><dt><span class="skeleton-label"></span></dt><dd class="skeleton-stack"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></dd></div>
+                <div class="receipt-item"><dt><span class="skeleton-label"></span></dt><dd class="skeleton-stack"><span class="skeleton-line skeleton-short"></span><span class="skeleton-line skeleton-short"></span></dd></div>
+                <div class="receipt-item receipt-remote"><dt><span class="skeleton-label"></span></dt><dd class="skeleton-stack"><span class="skeleton-line"></span></dd></div>
+              </dl>
+            </section>
+
+            <div class="skeleton-note"></div>
+            <p class="snapshot-explanation skeleton-stack"><span class="skeleton-line"></span><span class="skeleton-line skeleton-short"></span></p>
           </div>
+        </div>
 
-          <dl class="receipt-list">
-            <div class="receipt-item receipt-commit">
-              <dt>Main commit</dt>
-              <dd>
-                <code id="receipt-commit">Unavailable</code>
-                <span class="receipt-subline" id="receipt-subject">No snapshot loaded</span>
-              </dd>
-            </div>
-            <div class="receipt-item">
-              <dt>Committed at</dt>
-              <dd>
-                <time id="receipt-committed-at">Unavailable</time>
-                <span class="receipt-subline mono" id="receipt-committed-raw">—</span>
-              </dd>
-            </div>
-            <div class="receipt-item">
-              <dt>Snapshot captured</dt>
-              <dd>
-                <time id="receipt-refreshed-at">Unavailable</time>
-                <span class="receipt-subline mono" id="receipt-refreshed-raw">—</span>
-              </dd>
-            </div>
-            <div class="receipt-item receipt-remote">
-              <dt>Snapshot source</dt>
-              <dd>
-                <span id="receipt-remote">Unavailable</span>
-              </dd>
-            </div>
-          </dl>
-        </section>
+        <div id="page-content" hidden>
+          <section class="section-intro" aria-labelledby="snapshot-heading">
+            <p class="section-index">SNAPSHOT</p>
+            <h2 id="snapshot-heading">Snapshot &amp; counting</h2>
+            <p>Source commit, capture time, and how recovery is measured.</p>
+          </section>
 
-        <details class="counting-note" id="counting-note" hidden>
-          <summary>
-            <span>How progress is counted</span>
-            <span class="counting-note-status" id="counting-note-status">Reconciliation unavailable</span>
-            <span class="counting-note-chevron" aria-hidden="true">›</span>
-          </summary>
-          <div class="counting-note-body" id="counting-note-body"></div>
-        </details>
+          <section class="receipt-band" aria-labelledby="receipt-heading">
+            <div class="section-intro receipt-intro">
+              <p class="section-index">SOURCE</p>
+              <h2 id="receipt-heading">The commit in view</h2>
+              <p>Every page uses this committed main snapshot.</p>
+            </div>
 
-        <p class="snapshot-explanation">
-          Completion means committed source-selection evidence. It is not an
-          independent byte-identical proof; original-object fallback is excluded.
-          Data coverage includes initialized data and BSS. A BSS gate may keep a
-          module partial even when its displayed data percentage is high.
-        </p>
+            <dl class="receipt-list">
+              <div class="receipt-item receipt-commit">
+                <dt>Main commit</dt>
+                <dd>
+                  <code id="receipt-commit">Unavailable</code>
+                  <span class="receipt-subline" id="receipt-subject">No snapshot loaded</span>
+                </dd>
+              </div>
+              <div class="receipt-item">
+                <dt>Committed at</dt>
+                <dd>
+                  <time id="receipt-committed-at">Unavailable</time>
+                  <span class="receipt-subline mono" id="receipt-committed-raw">—</span>
+                </dd>
+              </div>
+              <div class="receipt-item">
+                <dt>Snapshot captured</dt>
+                <dd>
+                  <time id="receipt-refreshed-at">Unavailable</time>
+                  <span class="receipt-subline mono" id="receipt-refreshed-raw">—</span>
+                </dd>
+              </div>
+              <div class="receipt-item receipt-remote">
+                <dt>Snapshot source</dt>
+                <dd>
+                  <span id="receipt-remote">Unavailable</span>
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <details class="counting-note" id="counting-note" hidden>
+            <summary>
+              <span>How progress is counted</span>
+              <span class="counting-note-status" id="counting-note-status">Reconciliation unavailable</span>
+              <span class="counting-note-chevron" aria-hidden="true">›</span>
+            </summary>
+            <div class="counting-note-body" id="counting-note-body"></div>
+          </details>
+
+          <p class="snapshot-explanation">
+            Completion means committed source-selection evidence. It is not an
+            independent byte-identical proof; original-object fallback is excluded.
+            Data coverage includes initialized data and BSS. A BSS gate may keep a
+            module partial even when its displayed data percentage is high.
+          </p>
+        </div>
       </main>
 
       <footer class="app-footer">
