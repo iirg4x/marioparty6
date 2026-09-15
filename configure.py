@@ -1356,6 +1356,16 @@ config.libs = [
         },
     ),
     Rel(
+        "m630dll",
+        objects={
+            Object(Matching, "REL/m630dll/prolog.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m630dll/sequence.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m630dll/game.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m630dll/player.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m630dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+        },
+    ),
+    Rel(
         "m670dll",
         objects={
             Object(Matching, "REL/m670dll/prolog.c", extra_cflags=["-pooldata off"]),
