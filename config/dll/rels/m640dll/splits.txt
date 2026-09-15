@@ -5,3 +5,22 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m640dll/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/m640dll/sequence.c:
+	.text       start:0x000000A0 end:0x0000086C
+	.rodata     start:0x00000000 end:0x00000040
+	.data       start:0x00000000 end:0x00000028
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m640dll/game.c:
+	.text       start:0x0000086C end:0x00006240
+	.rodata     start:0x00000040 end:0x000002A0
+	.data       start:0x00000028 end:0x000002B1
+	.bss        start:0x00000008 end:0x0000056C
+
+REL/m640dll/runtime.c:
+	.text       start:0x00006240 end:0x00006C84
+	.rodata     start:0x000002A0 end:0x000002B8
