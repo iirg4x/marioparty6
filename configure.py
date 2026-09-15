@@ -1343,6 +1343,19 @@ config.libs = [
         },
     ),
     Rel(
+        "m659Dll",
+        objects={
+            Object(Matching, "REL/m659Dll/globals.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m659Dll/camera.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m659Dll/player.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m659Dll/objects.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m659Dll/collision.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m659Dll/scene.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m659Dll/com.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m659Dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+        },
+    ),
+    Rel(
         "m670dll",
         objects={
             Object(Matching, "REL/m670dll/prolog.c", extra_cflags=["-pooldata off"]),
