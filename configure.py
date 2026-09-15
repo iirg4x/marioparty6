@@ -1331,6 +1331,17 @@ config.libs = [
         },
     ),
     Rel(
+        "m656DLL",
+        objects={
+            Object(Matching, "REL/m656DLL/prolog.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m656DLL/sequence.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m656DLL/matrix.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m656DLL/collision.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m656DLL/game.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m656DLL/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+        },
+    ),
+    Rel(
         "m657Dll",
         objects={
             Object(Matching, "REL/m657Dll/m657.c", extra_cflags=["-pooldata off"]),

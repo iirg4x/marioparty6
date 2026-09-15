@@ -5,3 +5,30 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m656DLL/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/m656DLL/sequence.c:
+	.text       start:0x000000A0 end:0x0000025C
+	.rodata     start:0x00000000 end:0x00000010
+	.data       start:0x00000000 end:0x00000028
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m656DLL/matrix.c:
+	.text       start:0x0000025C end:0x000022FC
+	.rodata     start:0x00000010 end:0x00000060
+
+REL/m656DLL/collision.c:
+	.text       start:0x000022FC end:0x00004F4C
+	.rodata     start:0x00000060 end:0x00000088
+
+REL/m656DLL/game.c:
+	.text       start:0x00004F4C end:0x0000961C
+	.rodata     start:0x00000088 end:0x00000220
+	.data       start:0x00000028 end:0x000006CA
+	.bss        start:0x00000008 end:0x000000B4
+
+REL/m656DLL/runtime.c:
+	.text       start:0x0000961C end:0x0000A060
+	.rodata     start:0x00000220 end:0x00000238
