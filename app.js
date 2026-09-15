@@ -2031,10 +2031,11 @@
         if (module) {
           selectModule(module.id);
           state.functionQuery = input.functionQuery || "";
-          document.getElementById("function-search").value = state.functionQuery;
+          const search = document.getElementById("function-search");
+          if (search) search.value = state.functionQuery;
           renderFunctionResults(module);
         }
-        return { modules: elements.libraryCaption.textContent, functions: module ? document.getElementById("function-result-count").textContent : null };
+        return { modules: elements.libraryCaption.textContent, functions: module?.state === "empty" ? "0 functions · verified empty REL" : module ? document.getElementById("function-result-count")?.textContent : null };
       },
     };
     try {
