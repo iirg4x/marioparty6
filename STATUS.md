@@ -10,12 +10,12 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 24.28% | 44.76% |
+| Entire project | 24.61% | 44.90% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 10.82% | 10.49% |
+| REL modules | 11.22% | 10.71% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**11 are fully source-selected** (`m612dll`, `m616dll`, `m621dll`, `m630dll`, `m635dll`, `m640dll`, `m650dll`, `m651dll`, `m657Dll`, `m659Dll`, `m670dll`) and **71 remain**. This scope is distinct
+**12 are fully source-selected** (`m612dll`, `m616dll`, `m621dll`, `m630dll`, `m635dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m670dll`) and **70 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,14 +23,15 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m650dll is now fully source-selected**: all 32,568 code bytes and 3,209
-data/BSS bytes come from five source objects, with no original-object fallback.
-All 57 application instruction bodies and both startup functions match their
+**m656DLL is now fully source-selected**: all 41,056 code bytes and 2,486
+data/BSS bytes come from six source objects, with no original-object fallback.
+All 99 application instruction bodies and both startup functions match their
 effective physical relocations; the complete REL is byte-identical to retail.
-Unknown record intervals and unreferenced storage are explicitly documented.
-One unused player-value evaluation preserves a retail conversion whose original
-source purpose remains unknown. The matrix hook preserves disclosed retail
-four-row writes through a three-row matrix; this is not a portable safety fix.
+Unknown record intervals are documented without claiming their original types.
+The unused collision entry preserves disclosed parameter-home overreads and a
+branch that does not copy its computed point to the output. Camera setup retains
+an unused work capture; the look matrix retains its nine-float initialization.
+These preserve observed retail behavior, not portable safety fixes.
 Earlier modules retain their storage and legacy-behavior disclosures in source.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
