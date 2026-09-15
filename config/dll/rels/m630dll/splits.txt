@@ -5,3 +5,26 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m630dll/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/m630dll/sequence.c:
+	.text       start:0x000000A0 end:0x000004E8
+	.rodata     start:0x00000000 end:0x00000098
+	.data       start:0x00000000 end:0x00000028
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m630dll/game.c:
+	.text       start:0x000004E8 end:0x000078A4
+	.rodata     start:0x00000098 end:0x00000318
+	.data       start:0x00000028 end:0x0000009C
+	.bss        start:0x00000008 end:0x00000838
+
+REL/m630dll/player.c:
+	.text       start:0x000078A4 end:0x0000804C
+	.rodata     start:0x00000318 end:0x00000370
+
+REL/m630dll/runtime.c:
+	.text       start:0x0000804C end:0x00008A90
+	.rodata     start:0x00000370 end:0x00000388

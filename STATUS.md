@@ -10,12 +10,12 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 23.51% | 44.27% |
+| Entire project | 23.80% | 44.44% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 9.89% | 9.68% |
+| REL modules | 10.23% | 9.96% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**8 are fully source-selected** (`m612dll`, `m616dll`, `m621dll`, `m635dll`, `m651dll`, `m657Dll`, `m659Dll`, `m670dll`) and **74 remain**. This scope is distinct
+**9 are fully source-selected** (`m612dll`, `m616dll`, `m621dll`, `m630dll`, `m635dll`, `m651dll`, `m657Dll`, `m659Dll`, `m670dll`) and **73 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,15 +23,19 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m659Dll is now fully source-selected**: all 29,064 code bytes and 1,388
-data/BSS bytes come from eight source objects, with no original-object fallback.
-All 92 application instruction bodies and both startup functions match their
+**m630dll is now fully source-selected**: all 35,472 code bytes and 3,164
+data/BSS bytes come from five source objects, with no original-object fallback.
+All 36 application instruction bodies and both startup functions match their
 physical relocation payloads; the complete REL is byte-identical to retail.
-Unobserved record intervals and a 62-byte initialized block are explicitly
+Unobserved record intervals and eight unreferenced BSS bytes are explicitly
 documented unknown storage with maintainer approval, not claimed original
-types or alignment padding. Target-generated color/string symbol annotations
+types or alignment padding. Target-generated color symbol annotations
 remain distinct from the verified instruction, physical and linked equality.
-Earlier modules retain their storage disclosures, including M612's scene/BSS
+The recovered source also discloses the target's missing default assignment on
+a CPU probability-table miss and its unused adjusted-position calculation;
+this is matching recovery, not a portability fix for those legacy behaviors.
+Earlier modules retain their storage disclosures, including M659's initialized
+block, M612's scene/BSS
 intervals, M635's four-byte BSS interval, and M657's initialized and heap ranges.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
