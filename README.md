@@ -49,6 +49,20 @@ The source revision and snapshot generation time are visible on the Snapshot pag
 Recovery completion follows committed source selection and range coverage; it is
 not an independent per-function objdiff or byte-identical binary proof.
 
+**Verified empty** identifies a linker-only retail REL with no functions or
+recoverable code/data. This requires reviewed target-header and section metadata
+bound to the configured retail SHA-1, pinned DTK version, and committed split/symbol
+fingerprints. The shared validator checks the null constructor/destructor tables,
+absent text/BSS/imports/entrypoints, and complete file layout. Module names and
+zero-byte budgets alone never establish this state; missing or stale evidence
+remains unavailable. Empty modules are counted separately from complete modules,
+and their percentages are not applicable. File size and linker-table bytes do not
+add recovery credit. `tools/rel_metadata.py` is shared by the static and local
+snapshot builders; no retail payload is copied into a snapshot or site artifact.
+
+Run the metadata/classification regressions with
+`python -m unittest discover -s tools/tests -p test_rel_metadata.py`.
+
 **Size units** switches coverage and function sizes between Auto, bytes, KB, MB,
 GB, and TB. Auto selects a readable unit for each value or ratio; fixed units apply
 across pages and module details. Units are decimal (1 KB = 1,000 bytes), and exact

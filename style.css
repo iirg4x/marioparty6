@@ -525,6 +525,14 @@ body.dialog-open { overflow: hidden; }
 /* These placeholders ship in the HTML, before the script or snapshot loads. */
 #main-content { min-height: calc(100svh - 300px); }
 #main-content:focus { outline: none; }
+.state-empty { color: #b7c9e7; background: #202d3c; border-color: #3c506a; }
+.metric-empty strong { color: var(--secondary); }
+.empty-rel-facts { display: flex; flex-wrap: wrap; gap: 24px; margin: 20px 0; }
+.empty-rel-facts dt { color: var(--muted); font-size: 12px; }
+.empty-rel-facts dd { margin: 5px 0 0; font-variant-numeric: tabular-nums; }
+.empty-rel-evidence p { color: var(--secondary); line-height: 1.65; }
+.empty-rel-evidence summary { cursor: pointer; color: var(--secondary); }
+.empty-target-hash { overflow-wrap: anywhere; font-size: 12px; }
 #refresh-button > span[aria-hidden] { width: 13px; flex: 0 0 13px; }
 .skeleton-line, .skeleton-label, .skeleton-value, .skeleton-title,
 .skeleton-control, .skeleton-button { display: block; width: 100%; height: 12px; border-radius: 4px; background: #263641; }
@@ -577,3 +585,6 @@ body.dialog-open { overflow: hidden; }
   [data-page="snapshot"] .receipt-item:nth-child(n+3) { padding-top: 16px; }
   [data-page="snapshot"] .counting-note { padding: 0 16px; }
 }
+
+.metric-empty { display: inline-flex; flex-direction: column; gap: 5px; }
+.metric-empty > small { display: block; margin-top: 5px; }

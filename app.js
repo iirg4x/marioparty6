@@ -100,6 +100,12 @@
       description: "No source-selection recovery has been recorded for this module.",
       tone: "not-recovered",
     },
+    empty: {
+      label: "Verified empty",
+      shortLabel: "Verified empty",
+      description: "Validated target metadata shows a linker-only REL with no recoverable implementation.",
+      tone: "empty",
+    },
     unavailable: {
       label: "Unavailable",
       shortLabel: "Unavailable",
@@ -520,6 +526,7 @@
     const raw = asText(value).replace(/[\s_-]+/g, "").toLowerCase();
     if (raw === "complete" || raw === "matching") return "complete";
     if (raw === "partial") return "partial";
+    if (raw === "empty") return "empty";
     if (raw === "notrecovered" || raw === "missing" || raw === "none") {
       return "notRecovered";
     }
@@ -554,6 +561,37 @@
     }
     if (matched === null && total === null && percent === null) return null;
     return { matched, total, percent };
+  }
+
+  function nonNegativeInteger(value) {
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
+
+  function normalizeEmptyEvidence(value) {
+    if (!isObject(value) || asText(value.classification).toLowerCase() !== "verified-empty-rel") return null;
+    const targetSha1 = asText(value.targetSha1).toLowerCase();
+    if (!/^[0-9a-f]{40}$/.test(targetSha1)) return null;
+    const fileBytes = nonNegativeInteger(value.fileBytes);
+    const linkerBytes = nonNegativeInteger(value.linkerBytes);
+    const recoverableCodeBytes = nonNegativeInteger(value.recoverableCodeBytes);
+    const recoverableDataBytes = nonNegativeInteger(value.recoverableDataBytes);
+    const functionCount = nonNegativeInteger(value.functionCount);
+    const imports = nonNegativeInteger(value.imports);
+    const entrypoints = nonNegativeInteger(value.entrypoints);
+    if ([fileBytes, linkerBytes, recoverableCodeBytes, recoverableDataBytes, functionCount, imports, entrypoints].some((number) => number === null)) return null;
+    if (fileBytes !== 156 || linkerBytes !== 8) return null;
+    if (recoverableCodeBytes !== 0 || recoverableDataBytes !== 0 || functionCount !== 0 || imports !== 0 || entrypoints !== 0) return null;
+    return {
+      classification: "verified-empty-rel",
+      targetSha1,
+      fileBytes,
+      linkerBytes,
+      recoverableCodeBytes,
+      recoverableDataBytes,
+      functionCount,
+      imports,
+      entrypoints,
+    };
   }
 
   function normalizeSources(value) {
@@ -603,6 +641,10 @@
       ? source.category
       : "system";
     const kind = source.kind === "DOL" ? "DOL" : source.kind === "REL" ? "REL" : "REL";
+    const requestedState = normalizeState(source.state);
+    const noRecoverableBytes = [source.code, source.data, source.bss].every((metric) => isObject(metric) && metric.matched === 0 && metric.total === 0 && metric.percent === null);
+    const emptyEvidence = source.kind === "REL" && requestedState === "empty" && noRecoverableBytes && Array.isArray(source.owners) && source.owners.length === 0
+      ? normalizeEmptyEvidence(source.emptyEvidence) : null;
     const provenance = isObject(source.provenance) ? source.provenance : {};
     return {
       id,
@@ -620,7 +662,8 @@
       code: normalizeMetric(source.code),
       data: normalizeMetric(source.data),
       bss: normalizeMetric(source.bss),
-      state: normalizeState(source.state),
+      state: emptyEvidence ? "empty" : requestedState === "empty" ? "unavailable" : requestedState,
+      emptyEvidence,
       owners: Array.isArray(source.owners)
         ? source.owners.map(normalizeOwner).filter(Boolean)
         : [],
@@ -643,6 +686,7 @@
             complete: finiteNumber(counts.complete),
             partial: finiteNumber(counts.partial),
             notRecovered: finiteNumber(counts.notRecovered),
+            empty: finiteNumber(counts.empty),
             unavailable: finiteNumber(counts.unavailable),
           }
         : null,
@@ -697,6 +741,7 @@
 
   function metricHtml(metric, options = {}) {
     const label = options.label || "metric";
+    if (options.empty) return emptyMetricHtml(label);
     if (!metric) {
       return `<span class="metric metric-unavailable" aria-label="${escapeHtml(label)} unavailable">Unavailable</span>`;
     }
@@ -713,6 +758,7 @@
 
   function metricCompactHtml(metric, options = {}) {
     const label = options.label || "metric";
+    if (options.empty) return emptyMetricHtml(label, true);
     if (!metric) {
       return `<span class="compact-metric compact-unavailable" aria-label="${escapeHtml(label)} unavailable">Unavailable</span>`;
     }
@@ -796,6 +842,21 @@
     if (elements.connection) elements.connection.dataset.tone = tone;
   }
 
+  function emptyMetricHtml(label, compact = false) {
+    return `<span class="${compact ? "compact-metric" : "metric"} metric-empty"><strong data-byte-size data-byte-value data-bytes="0" data-byte-label="${escapeHtml(label)}" title="0 recoverable bytes">${escapeHtml(formatByteAmount(0))}</strong><small>Not applicable</small></span>`;
+  }
+
+  function emptyContentsHtml(module) {
+    const evidence = module.emptyEvidence;
+    return `<section class="detail-section empty-rel-evidence" aria-labelledby="empty-rel-heading">
+      <div class="detail-section-heading"><h4 id="empty-rel-heading">Linker-only REL</h4><span>0 functions</span></div>
+      <p>This retail file contains only null <code>.ctors</code> and <code>.dtors</code> tables. There is no implementation to recover.</p>
+      <dl class="empty-rel-facts"><div><dt>Retail file</dt><dd>${evidence.fileBytes} B</dd></div><div><dt>Linker tables</dt><dd>${evidence.linkerBytes} B</dd></div><div><dt>Recoverable bytes</dt><dd>0 B</dd></div></dl>
+      <p class="detail-metric-note">File and linker-table bytes are excluded from recovery totals. This adds no recovered functions or completed minigame.</p>
+      <details><summary>Verified target</summary><p class="mono empty-target-hash">SHA-1 ${escapeHtml(evidence.targetSha1)}</p><p>Target structure is bound to the committed retail hash and split/symbol metadata. No text, BSS, imports, or entrypoints.</p></details>
+    </section>`;
+  }
+
   function shortCommit(commit = state.snapshot?.commit) {
     return commit ? commit.slice(0, 7) : "unknown";
   }
@@ -845,6 +906,7 @@
     if (counts.complete !== null) parts.push(`<span class="count-complete">${escapeHtml(formatNumber(counts.complete))} complete</span>`);
     if (counts.partial !== null) parts.push(`<span class="count-partial">${escapeHtml(formatNumber(counts.partial))} partial</span>`);
     if (counts.notRecovered !== null) parts.push(`<span>${escapeHtml(formatNumber(counts.notRecovered))} not recovered</span>`);
+    if (counts.empty !== null && counts.empty > 0) parts.push(`<span class="count-empty">${escapeHtml(formatNumber(counts.empty))} verified empty</span>`);
     if (counts.unavailable !== null) parts.push(`<span>${escapeHtml(formatNumber(counts.unavailable))} unavailable</span>`);
     return `<span class="summary-counts">${parts.length ? parts.join('<i aria-hidden="true">·</i>') : "Whole-module counts unavailable"}</span>`;
   }
@@ -1177,12 +1239,12 @@
           <span class="module-title-line"><strong>${escapeHtml(title)}</strong>${module.titleVerified ? '<span class="verified-mark" title="Verified game mapping" aria-label="Verified game mapping">✓</span>' : ""}</span>
           <span class="module-id mono">${escapeHtml(displayId(module))}</span>
         </button>
-        <span class="module-title-note">${escapeHtml(titleNote)}</span>
+        <span class="module-title-note">${module.state === "empty" ? "0 functions · linker-only" : escapeHtml(titleNote)}</span>
         ${state.functionFilter !== "all" ? `<span class="module-title-note function-match-count">${formatNumber(module.owners.reduce((count, owner) => count + owner.functions.filter(functionStateMatches).length, 0))} ${escapeHtml(functionFilterLabel().toLowerCase())} functions</span>` : ""}
       </td>
       <td class="module-family"><span class="kind-label">${escapeHtml(module.kind)}</span><span>${escapeHtml(categoryLabel(module.category))}</span></td>
-      <td class="module-metric numeric-cell" data-label="Code">${metricCompactHtml(module.code, { label: `${title} code` })}</td>
-      <td class="module-metric numeric-cell" data-label="Data">${metricCompactHtml(module.data, { label: `${title} data` })}</td>
+      <td class="module-metric numeric-cell" data-label="Code">${metricCompactHtml(module.code, { label: `${title} recoverable code`, empty: module.state === "empty" })}</td>
+      <td class="module-metric numeric-cell" data-label="Data">${metricCompactHtml(module.data, { label: `${title} recoverable data`, empty: module.state === "empty" })}</td>
       <td class="module-state">${statePill(module.state, { short: true })}</td>
     </tr>`;
   }
@@ -1331,18 +1393,18 @@
     </div>
     <div class="detail-state-row">
       ${statePill(module.state)}
-      <span class="owner-count"><strong>${matchingOwners}</strong> source-selected owner${matchingOwners === 1 ? "" : "s"}</span>
+      <span class="owner-count">${module.state === "empty" ? "<strong>0</strong> functions" : `<strong>${matchingOwners}</strong> source-selected owner${matchingOwners === 1 ? "" : "s"}`}</span>
       ${remainingOwners ? `<span class="owner-count remaining-count"><strong>${remainingOwners}</strong> remaining owner${remainingOwners === 1 ? "" : "s"}</span>` : ""}
     </div>
     <div class="detail-metric-grid">
-      <div class="detail-metric"><span>Code coverage</span>${metricHtml(module.code, { label: `${title} code coverage` })}</div>
-      <div class="detail-metric"><span>Data coverage</span>${metricHtml(module.data, { label: `${title} data coverage` })}</div>
-      <div class="detail-metric"><span>BSS subset</span>${metricHtml(module.bss, { label: `${title} BSS` })}</div>
+      <div class="detail-metric"><span>${module.state === "empty" ? "Recoverable code" : "Code coverage"}</span>${metricHtml(module.code, { label: `${title} code coverage`, empty: module.state === "empty" })}</div>
+      <div class="detail-metric"><span>${module.state === "empty" ? "Recoverable data" : "Data coverage"}</span>${metricHtml(module.data, { label: `${title} data coverage`, empty: module.state === "empty" })}</div>
+      <div class="detail-metric"><span>BSS subset</span>${metricHtml(module.bss, { label: `${title} BSS`, empty: module.state === "empty" })}</div>
     </div>
     <label class="size-unit-control detail-size-control"><span>Size units</span><select id="detail-size-unit-select" data-size-unit-select title="Decimal units: 1 KB = 1,000 bytes. Exact byte counts are available on each value">${sizeUnitOptionsHtml()}</select></label>
-    <p class="detail-metric-note">Data includes initialized data and BSS. BSS is shown separately because its gate can keep a module partial.</p>
+    <p class="detail-metric-note">${module.state === "empty" ? "Percentages do not apply to a verified empty target." : "Data includes initialized data and BSS. BSS is shown separately because its gate can keep a module partial."}</p>
     ${module.aliases.length ? `<div class="detail-line"><span>Aliases</span><span class="alias-list">${module.aliases.map((alias) => `<code>${escapeHtml(alias)}</code>`).join("")}</span></div>` : ""}
-    <section class="detail-section owners-section" aria-labelledby="owners-heading">
+    ${module.state === "empty" ? emptyContentsHtml(module) : `<section class="detail-section owners-section" aria-labelledby="owners-heading">
       <div class="detail-section-heading"><div><p class="section-index">SOURCE EVIDENCE</p><h4 id="owners-heading">Owners and functions</h4></div><span class="detail-section-count">${module.owners.length ? `${module.owners.length} owner${module.owners.length === 1 ? "" : "s"}` : "Unavailable"}</span></div>
       <p class="detail-section-copy">Unmatched means the committed source owner is not selected. Unavailable functions have insufficient evidence. These labels follow owner selection; independent per-function objdiff proof is unavailable. Coverage totals above always describe the whole module.</p>
       <div class="function-filter-bar${isDol ? " with-dol-group" : ""}">
@@ -1357,13 +1419,13 @@
       </div>
       <p class="function-result-count" id="function-result-count" role="status"></p>
       <div class="owner-list" id="owner-results"></div>
-    </section>
-    <section class="detail-section provenance-section" aria-labelledby="provenance-heading">
+    </section>`}
+    ${module.state === "empty" ? "" : `<section class="detail-section provenance-section" aria-labelledby="provenance-heading">
       <div class="detail-section-heading"><div><p class="section-index">TRACE</p><h4 id="provenance-heading">Provenance</h4></div></div>
       ${provenance.sources.length ? `<ul class="source-list">${provenance.sources.map(sourceHtml).join("")}</ul>` : '<p class="inline-unavailable">Provenance sources unavailable.</p>'}
       ${provenance.evidence ? `<p class="evidence-copy">${escapeHtml(provenance.evidence)}</p>` : ""}
-    </section>
-    ${module.notes.length ? `<section class="detail-section notes-section" aria-labelledby="notes-heading"><div class="detail-section-heading"><div><p class="section-index">NOTES</p><h4 id="notes-heading">Caveats</h4></div></div><ul class="notes-list">${module.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul></section>` : ""}`;
+    </section>`}
+    ${module.state !== "empty" && module.notes.length ? `<section class="detail-section notes-section" aria-labelledby="notes-heading"><div class="detail-section-heading"><div><p class="section-index">NOTES</p><h4 id="notes-heading">Caveats</h4></div></div><ul class="notes-list">${module.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul></section>` : ""}`;
     renderFunctionResults(module);
     if (!elements.detail.open) {
       elements.detail.showModal();

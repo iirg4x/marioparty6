@@ -34,6 +34,13 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 
+_rel_spec = importlib.util.spec_from_file_location("mp6_rel_metadata", Path(__file__).with_name("rel_metadata.py"))
+assert _rel_spec and _rel_spec.loader
+_rel_metadata = importlib.util.module_from_spec(_rel_spec)
+_rel_spec.loader.exec_module(_rel_metadata)
+verified_empty_evidence = _rel_metadata.verified_empty_evidence
+
+
 COMMIT_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 HASH_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 DTK_RE = re.compile(r"^v?([0-9]+(?:\.[0-9]+)*)$", re.IGNORECASE)
@@ -438,6 +445,7 @@ def _load_metadata(path: Path) -> dict:
             # Metadata is a reviewed public input.  JSON round-tripping here
             # prevents callers from mutating the source document in place.
             "provenance": json.loads(json.dumps(provenance, ensure_ascii=False)),
+            "target": json.loads(json.dumps(value.get("target"))),
         }
     return {"schemaVersion": 1, "baselineCommit": baseline.lower(), "modules": normalized}
 
@@ -509,7 +517,7 @@ def _aggregate(modules: Sequence[dict], label: str) -> dict:
         "total": len(modules),
         **{
             state: sum(module.get("state") == state for module in modules)
-            for state in ("complete", "partial", "notRecovered", "unavailable")
+            for state in ("complete", "partial", "notRecovered", "empty", "unavailable")
         },
     }
     metrics = {
@@ -622,6 +630,11 @@ def _assemble_module(
 
     selected_owner_count = sum(owner["selection"] == "matching" for owner in owners.values())
     all_owners_selected = all(owner["selection"] == "matching" for owner in owners.values())
+    empty_evidence = None
+    if usable and module_id != "main.dol" and not entry["code"] and not entry["data"] and not owners and not unresolved:
+        empty_evidence = verified_empty_evidence(
+            entry.get("target"), record["hash"], files[record["splits"]], files[record["symbols"]]
+        )
     complete = bool(
         usable
         and code is not None
@@ -634,6 +647,8 @@ def _assemble_module(
     )
     if not usable:
         state = "unavailable"
+    elif empty_evidence:
+        state = "empty"
     elif not entry["code"] and not entry["data"]:
         state = "unavailable"
     elif complete:
@@ -652,8 +667,10 @@ def _assemble_module(
         notes.append("Pinned DTK version does not match reviewed metadata; totals are withheld.")
     if not usable:
         notes.append("Owner ranges remain visible, but percentage and whole-module completion evidence is unavailable.")
+    elif empty_evidence:
+        notes.append("Hash-verified retail REL contains only null .ctors and .dtors linker tables: 0 functions and 0 recoverable code/data bytes. File and linker-table bytes are separate from recovery totals; percentages do not apply.")
     elif not entry["code"] and not entry["data"]:
-        notes.append("This container has no measured recoverable code/data and is not counted complete.")
+        notes.append("Zero measured code/data alone does not establish an empty target. Verified target-structure evidence is unavailable.")
 
     normalized_registered = {value.lower() for value in registered}
     title_entry = entry or {
@@ -676,6 +693,7 @@ def _assemble_module(
         "data": data,
         "bss": _metric(selected_bytes["bss"], totals["bss"]) if usable and all_owners_selected and not unresolved else None,
         "state": state,
+        "emptyEvidence": empty_evidence,
         "owners": list(owners.values()),
         "notes": notes,
         "sizeEvidenceAvailable": usable,
@@ -789,6 +807,7 @@ def build_snapshot(
         "Headlines reuse progress/GP6E01.json from this exact commit.",
         "Source-selected means the committed normal configuration marks an owner Matching. Original-object fallback earns no recovery credit.",
         "Complete requires every reviewed code/data byte and every source owner selected. Compiler translation units and split objects are never counted as whole modules.",
+        "Verified empty RELs are counted separately: authenticated null linker tables contain zero functions and zero recoverable bytes. Their percentages are not applicable, and they add no completed implementation or minigame.",
         "Functions inherit committed source-owner selection. Unresolved symbol ranges remain unknown; this is not independent per-function objdiff proof.",
         "The builder reads committed Git objects and never executes configure.py, builds the game, or consults a developer checkout or retail binary.",
         "Reviewed module titles and provenance are supplied by the public metadata file; unresolved containers retain their IDs.",
