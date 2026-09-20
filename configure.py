@@ -1284,6 +1284,15 @@ config.libs = [
         },
     ),
     Rel(
+        "m618dll",
+        objects={
+            Object(Matching, "REL/m618dll/prolog.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m618dll/sequence.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m618dll/game.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m618dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+        },
+    ),
+    Rel(
         "m621dll",
         objects={
             Object(Matching, "REL/m621dll/prolog.c", extra_cflags=["-pooldata off"]),
