@@ -4,18 +4,18 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **September 15, 2026**
+Last published full-project snapshot: **September 20, 2026**
 
 Byte percentages were generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 24.61% | 44.90% |
+| Entire project | 25.04% | 45.04% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 11.22% | 10.71% |
+| REL modules | 11.74% | 10.95% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**12 are fully source-selected** (`m612dll`, `m616dll`, `m621dll`, `m630dll`, `m635dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m670dll`) and **70 remain**. This scope is distinct
+**13 are fully source-selected** (`m612dll`, `m616dll`, `m618dll`, `m621dll`, `m630dll`, `m635dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m670dll`) and **69 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,15 +23,14 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m656DLL is now fully source-selected**: all 41,056 code bytes and 2,486
-data/BSS bytes come from six source objects, with no original-object fallback.
-All 99 application instruction bodies and both startup functions match their
-effective physical relocations; the complete REL is byte-identical to retail.
-Unknown record intervals are documented without claiming their original types.
-The unused collision entry preserves disclosed parameter-home overreads and a
-branch that does not copy its computed point to the output. Camera setup retains
-an unused work capture; the look matrix retains its nine-float initialization.
-These preserve observed retail behavior, not portable safety fixes.
+**m618dll is now fully source-selected**: all 52,904 code bytes and 2,652
+data/BSS bytes come from four source objects, with no original-object fallback.
+All 30 application functions and both startup functions match instructions and
+effective physical relocations. All six sections and the complete 88,408-byte
+REL are byte-identical to retail. The existing compiler-runtime implementation
+is reused; no game-function assembly was added. Unknown record/BSS intervals
+and an observed initialization with no surviving read are explicitly documented,
+without claiming their original declarations or purposes.
 Earlier modules retain their storage and legacy-behavior disclosures in source.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
