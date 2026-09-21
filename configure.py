@@ -1386,6 +1386,20 @@ config.libs = [
         },
     ),
     Rel(
+        "m608dll",
+        objects={
+            Object(Matching, "REL/m608dll/prolog.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m608dll/sequence.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m608dll/setup.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m608dll/helpers.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m608dll/score.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m608dll/sprite.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m608dll/ai.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m608dll/data.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m608dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+        },
+    ),
+    Rel(
         "m632dll",
         objects={
             Object(Matching, "REL/m632dll/prolog.c", extra_cflags=["-pooldata off"]),
