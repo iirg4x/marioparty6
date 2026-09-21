@@ -5,3 +5,45 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m602Dll/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/m602Dll/sequence.c:
+	.text       start:0x000000A0 end:0x00000D54
+	.rodata     start:0x00000000 end:0x00000048
+	.data       start:0x00000000 end:0x000000E8
+	.bss        start:0x00000000 end:0x00000018
+
+REL/m602Dll/support.c:
+	.text       start:0x00000D54 end:0x00001770
+	.rodata     start:0x00000048 end:0x00000060
+	.bss        start:0x00000018 end:0x00000020
+
+REL/m602Dll/stage.c:
+	.text       start:0x00001770 end:0x0000411C
+	.rodata     start:0x00000060 end:0x000000F0
+	.data       start:0x000000E8 end:0x00000278
+	.bss        start:0x00000020 end:0x000001A0
+
+REL/m602Dll/effect.c:
+	.text       start:0x0000411C end:0x00004CD0
+	.rodata     start:0x000000F0 end:0x00000118
+	.data       start:0x00000278 end:0x000003D0
+	.bss        start:0x000001A0 end:0x00000248
+
+REL/m602Dll/player.c:
+	.text       start:0x00004CD0 end:0x00009ED8
+	.rodata     start:0x00000118 end:0x000001A0
+	.data       start:0x000003D0 end:0x000004B0
+	.bss        start:0x00000248 end:0x00000478
+
+REL/m602Dll/ui.c:
+	.text       start:0x00009ED8 end:0x0000ACB8
+	.rodata     start:0x000001A0 end:0x000001C8
+	.data       start:0x000004B0 end:0x0000053C
+	.bss        start:0x00000478 end:0x000004A2
+
+REL/m602Dll/runtime.c:
+	.text       start:0x0000ACB8 end:0x0000B6FC
+	.rodata     start:0x000001C8 end:0x000001E0
