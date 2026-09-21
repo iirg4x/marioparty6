@@ -5,3 +5,46 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m608dll/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/m608dll/sequence.c:
+	.text       start:0x000000A0 end:0x000043C8
+	.rodata     start:0x00000000 end:0x00000088
+	.data       start:0x00000000 end:0x00000260
+	.bss        start:0x00000000 end:0x00003DF0
+
+REL/m608dll/setup.c:
+	.text       start:0x000043C8 end:0x00005DA4
+	.rodata     start:0x00000088 end:0x00000180
+	.data       start:0x00000260 end:0x000002F8
+
+REL/m608dll/helpers.c:
+	.text       start:0x00005DA4 end:0x00006150
+	.rodata     start:0x00000180 end:0x00000198
+	.data       start:0x000002F8 end:0x00000410
+
+REL/m608dll/score.c:
+	.text       start:0x00006150 end:0x00006828
+	.rodata     start:0x00000198 end:0x000001B0
+	.data       start:0x00000410 end:0x000004B0
+	.bss        start:0x00003DF0 end:0x00003E68
+
+REL/m608dll/sprite.c:
+	.text       start:0x00006828 end:0x000069F4
+	.rodata     start:0x000001B0 end:0x000001B8
+	.data       start:0x000004B0 end:0x000004C8
+	.bss        start:0x00003E68 end:0x00003E80
+
+REL/m608dll/ai.c:
+	.text       start:0x000069F4 end:0x00006CB4
+	.data       start:0x000004C8 end:0x000004F0
+
+REL/m608dll/data.c:
+	.data       start:0x000004F0 end:0x00000700
+	.bss        start:0x00003E80 end:0x000042D8
+
+REL/m608dll/runtime.c:
+	.text       start:0x00006CB4 end:0x000076F8
+	.rodata     start:0x000001B8 end:0x000001D0
