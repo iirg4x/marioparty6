@@ -10,12 +10,12 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 25.81% | 46.36% |
+| Entire project | 26.19% | 46.53% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 12.68% | 13.11% |
+| REL modules | 13.13% | 13.38% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**16 are fully source-selected** (`m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m630dll`, `m632dll`, `m635dll`, `m637dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m670dll`) and **66 remain**. This scope is distinct
+**17 are fully source-selected** (`m602Dll`, `m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m630dll`, `m632dll`, `m635dll`, `m637dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m670dll`) and **65 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,16 +23,14 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m608dll is now fully source-selected**: all 30,456 code bytes, 464
-readonly bytes, 1,792 initialized-data bytes, and 17,112 BSS bytes come from
-nine source objects, with no original-object fallback. All 52 application
-functions match instructions and effective physical relocations. All six
-sections and the complete REL, including all 2,641 relocation records, are
-byte-identical to retail. Existing startup and compiler runtime sources are
-reused; no game-function assembly was added. Unconsumed storage is documented
-without claiming an original type or purpose. The sprite allocation-failure
-path retains two observed inverse index updates whose original intent is
-unknown.
+**m602Dll is now fully source-selected** from eight source objects, with no
+original-object fallback. All 90 application functions and both startup functions
+match instructions and effective physical relocations. All six linked sections
+and the complete 77,676-byte REL, including all 3,587 relocation records, are
+byte-identical to retail. Existing SDK and compiler runtime helpers are reused;
+no game-function assembly was added. Unconsumed storage, including an unread
+four-byte UI frame prefix, is documented without claiming an original type or
+purpose.
 Earlier modules retain their storage and legacy-behavior disclosures in source.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
