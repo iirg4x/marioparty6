@@ -10,12 +10,12 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 25.57% | 45.32% |
+| Entire project | 25.81% | 46.36% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 12.38% | 11.40% |
+| REL modules | 12.68% | 13.11% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**15 are fully source-selected** (`m612dll`, `m616dll`, `m618dll`, `m621dll`, `m630dll`, `m632dll`, `m635dll`, `m637dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m670dll`) and **67 remain**. This scope is distinct
+**16 are fully source-selected** (`m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m630dll`, `m632dll`, `m635dll`, `m637dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m670dll`) and **66 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,17 +23,16 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m632dll is now fully source-selected**: all 32,168 code bytes, 1,288
-readonly bytes, 1,173 initialized-data bytes, and 1,148 BSS bytes come from six
-source objects, with no original-object fallback. All 28 application functions,
-both startup functions, and three sorting helpers match instructions and
-effective physical relocations. All six sections, including both four-byte
-constructor/destructor sections, and the complete source-selected REL are
-byte-identical to retail. The existing compiler runtime is reused; no
-game-function assembly was added. The 48-byte unconsumed initialized block is
-preserved as documented unknown storage, without claiming an original type or
-purpose. Existing nominal integer distinctions and signed-byte reads remain
-explicit in the recovered source.
+**m608dll is now fully source-selected**: all 30,456 code bytes, 464
+readonly bytes, 1,792 initialized-data bytes, and 17,112 BSS bytes come from
+nine source objects, with no original-object fallback. All 52 application
+functions match instructions and effective physical relocations. All six
+sections and the complete REL, including all 2,641 relocation records, are
+byte-identical to retail. Existing startup and compiler runtime sources are
+reused; no game-function assembly was added. Unconsumed storage is documented
+without claiming an original type or purpose. The sprite allocation-failure
+path retains two observed inverse index updates whose original intent is
+unknown.
 Earlier modules retain their storage and legacy-behavior disclosures in source.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
