@@ -1424,6 +1424,16 @@ config.libs = [
         },
     ),
     Rel(
+        "m638Dll",
+        objects={
+            Object(Matching, "REL/m638Dll/prolog.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m638Dll/game.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m638Dll/player.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m638Dll/scheduler.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m638Dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+        },
+    ),
+    Rel(
         "m640dll",
         objects={
             Object(Matching, "REL/m640dll/prolog.c", extra_cflags=["-pooldata off"]),

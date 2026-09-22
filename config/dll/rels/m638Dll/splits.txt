@@ -5,3 +5,25 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m638Dll/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/m638Dll/game.c:
+	.text       start:0x000000A0 end:0x000067EC
+	.rodata     start:0x00000000 end:0x000001B0
+	.data       start:0x00000000 end:0x00000548
+	.bss        start:0x00000000 end:0x00000018
+
+REL/m638Dll/player.c:
+	.text       start:0x000067EC end:0x000075BC
+	.rodata     start:0x000001B0 end:0x00000258
+	.data       start:0x00000548 end:0x0000055C
+
+REL/m638Dll/scheduler.c:
+	.text       start:0x000075BC end:0x00007830
+	.bss        start:0x00000018 end:0x00000A24
+
+REL/m638Dll/runtime.c:
+	.text       start:0x00007830 end:0x00008274
+	.rodata     start:0x00000258 end:0x00000270
