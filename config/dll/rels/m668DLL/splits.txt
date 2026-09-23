@@ -5,3 +5,67 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m668DLL/startup.c:
+	.text       start:0x00000000 end:0x00000118
+
+REL/m668DLL/object_start.c:
+	.text       start:0x00000118 end:0x00000158
+
+REL/m668DLL/sequence_hooks.c:
+	.text       start:0x00000158 end:0x00000178
+
+REL/m668DLL/object_alloc.c:
+	.text       start:0x00000178 end:0x00000220
+
+REL/m668DLL/math_constants.c:
+	.rodata     start:0x00000000 end:0x00000060
+
+REL/m668DLL/data.c:
+	.data       start:0x00000000 end:0x000000B0
+	.bss        start:0x00000000 end:0x00000648
+
+REL/m668DLL/acos.c:
+	.text       start:0x00000220 end:0x000002B4
+
+REL/m668DLL/magnitude.c:
+	.text       start:0x000002B4 end:0x000003D4
+
+REL/m668DLL/vectors.c:
+	.text       start:0x000003D4 end:0x000004DC
+
+REL/m668DLL/normalize.c:
+	.text       start:0x000004DC end:0x000006BC
+
+REL/m668DLL/scale.c:
+	.text       start:0x000006BC end:0x00000788
+
+REL/m668DLL/vector_basis.c:
+	.text       start:0x00000788 end:0x00000E80
+
+REL/m668DLL/vector_angles.c:
+	.text       start:0x00000E80 end:0x0000150C
+
+REL/m668DLL/rotation.c:
+	.text       start:0x0000150C end:0x0000164C
+
+REL/m668DLL/matrix.c:
+	.text       start:0x0000164C end:0x000016FC
+
+REL/m668DLL/geometry.c:
+	.text       start:0x000016FC end:0x00001844
+	.rodata     start:0x00000060 end:0x00000068
+
+REL/m668DLL/vector_bound.c:
+	.text       start:0x00001844 end:0x000018B4
+
+REL/m668DLL/accessors.c:
+	.text       start:0x000018B4 end:0x000018E4
+
+REL/m668DLL/callbacks.c:
+	.text       start:0x000018E4 end:0x000081A4
+	.rodata     start:0x00000068 end:0x00000340
+
+REL/m668DLL/runtime.c:
+	.text       start:0x000081A4 end:0x00008BE8
+	.rodata     start:0x00000340 end:0x00000358
