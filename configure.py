@@ -1424,6 +1424,21 @@ config.libs = [
         },
     ),
     Rel(
+        "m633dll",
+        objects={
+            Object(Matching, "REL/m633dll/prolog.c", mw_version=config.linker_version, extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/early.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/input_model.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/audio_helper.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/setup.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/model_id.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/middle.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/angle.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/camera.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+        },
+    ),
+    Rel(
         "m638Dll",
         objects={
             Object(Matching, "REL/m638Dll/prolog.c", extra_cflags=["-pooldata off"]),
