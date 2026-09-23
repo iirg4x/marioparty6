@@ -4,18 +4,18 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **September 23, 2026**
+Last published full-project snapshot: **September 24, 2026**
 
 Byte percentages were generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 26.74% | 46.99% |
+| Entire project | 27.03% | 47.13% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 13.80% | 14.13% |
+| REL modules | 14.15% | 14.36% |
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**19 are fully source-selected** (`m602Dll`, `m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m630dll`, `m632dll`, `m633dll`, `m635dll`, `m637dll`, `m638Dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m670dll`) and **63 remain**. This scope is distinct
+**20 are fully source-selected** (`m602Dll`, `m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m630dll`, `m632dll`, `m633dll`, `m635dll`, `m637dll`, `m638Dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m668DLL`, `m670dll`) and **62 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
@@ -23,14 +23,14 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**m633dll is now fully source-selected** from ten source objects, with no
-original-object fallback. All 44 application functions and their 2,291 effective
-relocation records match. All six linked sections and the complete 54,640-byte
-REL are byte-identical to retail. Existing SDK and compiler runtime helpers are
-reused; no game-function assembly was added. Consumed-layout views and unknown
-storage intervals are documented without claiming original record names, field
-types, or purposes. One local helper has an unspecified word return that every
-observed caller discards; its original return declaration remains unknown.
+**m668DLL is now fully source-selected** from twenty native source objects,
+with no original-object fallback. All 91 functions, including startup and SDK
+runtime helpers, match instructions and effective relocations. All six linked
+sections and the complete 53,328-byte REL are retail-identical. Shared callback
+constants are pooled naturally in their translation unit. Math helpers preserve
+the SDK's float-result rounding behavior; no game-function assembly or object
+rewriting was added. Consumed-layout views and unknown storage intervals remain
+documented without claiming original record names, field types, or purposes.
 Earlier modules retain their storage and legacy-behavior disclosures in source.
 The main DOL has **352 / 396 build objects Matching**, with **44** left.
 All newly enabled source objects participate in the verified retail-identical build.
