@@ -91,6 +91,7 @@ class ProjectConfig:
         self.rel_ldscript_replacements: Dict[
             str, List[Tuple[str, str]]
         ] = {}  # Per-REL replacements applied to a derived DTK linker script
+        self.rel_pool_exports: Dict[str, List[Dict[str, Any]]] = {}
         self.shift_jis = (
             True  # Convert source files from UTF-8 to Shift JIS automatically
         )
@@ -499,6 +500,13 @@ def generate_build_ninja(
     build_host_path = build_path / "host"
     build_config_path = build_path / "config.json"
 
+    if config.rel_pool_exports:
+        n.rule(
+            name="resolve_pool_exports",
+            command=f'$python "{config.tools_dir / "rel_link.py"}" resolve-pool-exports --input $in --output $out --bindings "$bindings"',
+            description="RESOLVE NATIVE POOL EXPORTS $out",
+        )
+
     def map_path(path: Path) -> Path:
         return path.parent / (path.name + ".MAP")
 
@@ -509,6 +517,7 @@ def generate_build_ninja(
             self.ldscript: Optional[Path] = Path(config["ldscript"])
             self.entry = config["entry"]
             self.inputs: List[str] = []
+            self.unit_objects = {unit["name"]: unit["object"] for unit in config.get("units", [])}
 
         def add(self, obj: Path) -> None:
             self.inputs.append(serialize_path(obj))
@@ -553,8 +562,60 @@ def generate_build_ninja(
             else:
                 preplf_path = build_path / self.name / f"{self.name}.preplf"
                 plf_path = build_path / self.name / f"{self.name}.plf"
+                native_groups = config.rel_pool_exports.get(self.name, [])
+                from .rel_link import data_pool_exports, validate_pool_text_members, validate_split_code
+                from .rel_link import _parse_elf_structure
+                text_groups = validate_pool_text_members(native_groups, self.name)
+                pool_exports = data_pool_exports(native_groups, self.name)
+                link_inputs = list(self.inputs)
+                for export in pool_exports:
+                    if export.get('pool_source'):
+                        from .rel_link import validate_split_pool
+                        pool_path = Path(self.unit_objects[export['pool_source']])
+                        validate_split_pool(pool_path, export)
+                        matching_inputs = [item for item in link_inputs if Path(item) == pool_path]
+                        if len(matching_inputs) != 1:
+                            raise ValueError('Separate native pool replacement must select one retail input')
+                        link_inputs.remove(matching_inputs[0])
+                text_members = {}
+                for source, members in text_groups.items():
+                    native = build_src_path / Path(source).with_suffix('.o')
+                    if serialize_path(native) not in self.inputs or source not in self.unit_objects:
+                        raise ValueError('Native pool text group provider must be source-selected')
+                    for member in members:
+                        member_target = Path(self.unit_objects[member['source']])
+                        validate_split_code(member_target)
+                        matching = [item for item in link_inputs if Path(item) == member_target]
+                        if len(matching) != 1:
+                            raise ValueError('Native text member must replace exactly one target input')
+                        link_inputs.remove(matching[0])
+                        text_members[member['source']] = (native, member['section'])
+                link_script = self.ldscript
+                if text_members:
+                    text_entries = []
+                    for unit, target_object in self.unit_objects.items():
+                        if unit in text_members:
+                            obj, section = text_members[unit]
+                        else:
+                            target_info = _parse_elf_structure(Path(target_object))
+                            if not any(s['name'] == '.text' and s['size'] for s in target_info['sections']):
+                                continue
+                            native = build_src_path / Path(unit).with_suffix('.o')
+                            obj = native if serialize_path(native) in self.inputs else Path(target_object)
+                            section = '.text'
+                        text_entries.append(f'            "{obj.name}"({section})')
+                    script_text = self.ldscript.read_text(encoding='utf-8')
+                    placeholder = '.text ALIGN(0x4):{}'
+                    if script_text.count(placeholder) != 1:
+                        raise ValueError('Native text group requires one default text placement clause')
+                    script_text = script_text.replace(placeholder,
+                        '.text ALIGN(0x4):{\n' + '\n'.join(text_entries) + '\n        }')
+                    link_script = self.ldscript.with_suffix('.source-groups.lcf')
+                    if not link_script.exists() or link_script.read_text(encoding='utf-8') != script_text:
+                        link_script.write_text(script_text, encoding='utf-8')
+                raw_plf_path = plf_path.with_suffix(".unbound.plf") if pool_exports else plf_path
                 preplf_ldflags = "$ldflags -sdata 0 -sdata2 0 -r"
-                plf_ldflags = f"$ldflags -sdata 0 -sdata2 0 -r1 -lcf {serialize_path(self.ldscript)}"
+                plf_ldflags = f"$ldflags -sdata 0 -sdata2 0 -r1 -lcf {serialize_path(link_script)}"
                 if self.entry:
                     plf_ldflags += f" -m {self.entry}"
                     # -strip_partial is only valid with -m
@@ -571,19 +632,49 @@ def generate_build_ninja(
                 n.build(
                     outputs=preplf_path,
                     rule="link",
-                    inputs=self.inputs,
+                    inputs=link_inputs,
                     implicit=mwld_implicit,
                     implicit_outputs=preplf_map,
                     variables={"ldflags": preplf_ldflags},
                 )
                 n.build(
-                    outputs=plf_path,
+                    outputs=raw_plf_path,
                     rule="link",
-                    inputs=self.inputs,
-                    implicit=[self.ldscript, preplf_path, *mwld_implicit],
+                    inputs=link_inputs,
+                    implicit=[link_script, preplf_path, *mwld_implicit],
                     implicit_outputs=plf_map,
                     variables={"ldflags": plf_ldflags},
                 )
+                if pool_exports:
+                    bindings = []
+                    binding_inputs = []
+                    for export in pool_exports:
+                        source = export["source"]
+                        native = build_src_path / Path(source).with_suffix(".o")
+                        if serialize_path(native) not in self.inputs or source not in self.unit_objects:
+                            raise ValueError(f"Pool export provider is not a selected native unit: {source}")
+                        target = Path(self.unit_objects[source])
+                        bindings.append({**{key: value for key, value in export.items() if key not in ("source", "pool_source", "text_members")},
+                                         "native_object": str(native), "target_object": str(target)})
+                        binding_inputs.extend([native, target])
+                        if export.get('pool_source'):
+                            pool_target = Path(self.unit_objects[export['pool_source']])
+                            bindings[-1]['target_pool_object'] = str(pool_target)
+                            binding_inputs.append(pool_target)
+                        if source in text_groups:
+                            members = []
+                            for member in text_groups[source]:
+                                member_target = Path(self.unit_objects[member['source']])
+                                members.append({'target_object': str(member_target),
+                                                'native_section': member['section']})
+                                binding_inputs.append(member_target)
+                            bindings[-1]['target_code_members'] = members
+                    bindings_path = plf_path.with_suffix(".pool-exports.json")
+                    bindings_path.parent.mkdir(parents=True, exist_ok=True)
+                    bindings_path.write_text(json.dumps(bindings, indent=2) + "\n", encoding="utf-8")
+                    n.build(outputs=plf_path, rule="resolve_pool_exports", inputs=raw_plf_path,
+                            implicit=[bindings_path, *binding_inputs, config.tools_dir / "rel_link.py"],
+                            variables={"bindings": serialize_path(bindings_path)})
             n.newline()
 
     link_outputs: List[Path] = []
@@ -996,6 +1087,7 @@ def generate_build_ninja(
             configure_script,
             python_lib,
             python_lib_dir / "ninja_syntax.py",
+            python_lib_dir / "rel_link.py",
             *(config.reconfig_deps or [])
         ],
     )
