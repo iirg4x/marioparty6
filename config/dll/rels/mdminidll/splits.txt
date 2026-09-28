@@ -5,3 +5,752 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/mdminidll/window_audio_callback.c:
+	.text       start:0x00000000 end:0x000001A4
+
+REL/mdminidll/mode_available_1a4.c:
+	.text       start:0x000001A4 end:0x00000558
+
+REL/mdminidll/mode_options.c:
+	.text       start:0x00000558 end:0x000006CC
+
+REL/mdminidll/character_motion_load.c:
+	.text       start:0x000006CC end:0x0000081C
+
+REL/mdminidll/character_motion_prepare_81c.c:
+	.text       start:0x0000081C end:0x00000A4C
+
+REL/mdminidll/resources.c:
+	.text       start:0x00000A4C end:0x00000C90
+
+REL/mdminidll/player_config_apply_c90.c:
+	.text       start:0x00000C90 end:0x00000F10
+
+REL/mdminidll/minigame_overlay_enter.c:
+	.text       start:0x00000F10 end:0x000010AC
+
+REL/mdminidll/scalar_ease.c:
+	.text       start:0x000010AC end:0x00001310
+
+REL/mdminidll/scalar_approach.c:
+	.text       start:0x00001310 end:0x00001340
+	.rodata     start:0x00000000 end:0x00000010
+
+REL/mdminidll/opacity_pool_6c:
+	.rodata     start:0x0000006C end:0x00000070
+
+REL/mdminidll/opacity_pool_74:
+	.rodata     start:0x00000074 end:0x00000078
+
+REL/mdminidll/scalar_sine_pool_80:
+	.rodata     start:0x00000080 end:0x00000084
+
+REL/mdminidll/scalar_arc_pool_90:
+	.rodata     start:0x00000090 end:0x00000094
+
+REL/mdminidll/vector_approach.c:
+	.text       start:0x00001340 end:0x00001484
+
+REL/mdminidll/scalar_sine_1484.c:
+	.text       start:0x00001484 end:0x0000156C
+
+REL/mdminidll/scalar_lerp.c:
+	.text       start:0x0000156C end:0x000015B0
+
+REL/mdminidll/model_move_15b0.c:
+	.text       start:0x000015B0 end:0x00001918
+
+REL/mdminidll/model_turn_1918.c:
+	.text       start:0x00001918 end:0x00001A58
+
+REL/mdminidll/model_path_1a58.c:
+	.text       start:0x00001A58 end:0x00001ED8
+
+REL/mdminidll/scalar_arc_1ed8.c:
+	.text       start:0x00001ED8 end:0x00001FAC
+
+REL/mdminidll/model_trajectory_update_1fac:
+	.text       start:0x00001FAC end:0x00002400
+
+REL/mdminidll/player_config.c:
+	.text       start:0x00002400 end:0x00002514
+
+REL/mdminidll/camera_copy.c:
+	.text       start:0x00002514 end:0x000025B4
+
+REL/mdminidll/camera_approach_25b4:
+	.text       start:0x000025B4 end:0x00002868
+
+REL/mdminidll/camera_callback.c:
+	.text       start:0x00002868 end:0x00002878
+
+REL/mdminidll/camera_debug_2878:
+	.text       start:0x00002878 end:0x00002F88
+
+REL/mdminidll/camera_dispatch.c:
+	.text       start:0x00002F88 end:0x000030A4
+
+REL/mdminidll/camera_create.c:
+	.text       start:0x000030A4 end:0x00003240
+
+REL/mdminidll/camera_release.c:
+	.text       start:0x00003240 end:0x0000329C
+
+REL/mdminidll/light_create.c:
+	.text       start:0x0000329C end:0x000033C8
+
+REL/mdminidll/light_release.c:
+	.text       start:0x000033C8 end:0x00003404
+
+REL/mdminidll/window_visibility.c:
+	.text       start:0x00003404 end:0x000034E4
+
+REL/mdminidll/window_wait.c:
+	.text       start:0x000034E4 end:0x00003520
+
+REL/mdminidll/window_messages.c:
+	.text       start:0x00003520 end:0x00003720
+
+REL/mdminidll/window_create.c:
+	.text       start:0x00003720 end:0x00003948
+
+REL/mdminidll/window_kill.c:
+	.text       start:0x00003948 end:0x000039A4
+
+REL/mdminidll/window_select.c:
+	.text       start:0x000039A4 end:0x00003B10
+
+REL/mdminidll/window_close_reset.c:
+	.text       start:0x00003B10 end:0x00003BCC
+
+REL/mdminidll/angle_wrap_94:
+	.rodata     start:0x00000094 end:0x00000098
+
+REL/mdminidll/negative_angle_pool_98:
+	.rodata     start:0x00000098 end:0x0000009C
+
+REL/mdminidll/trajectory_weight_pool_9c:
+	.rodata     start:0x0000009C end:0x000000A0
+
+REL/mdminidll/opacity_pool_a0:
+	.rodata     start:0x000000A0 end:0x000000A4
+
+REL/mdminidll/camera_target_pool_b8:
+	.rodata     start:0x000000B8 end:0x000000C0
+
+REL/mdminidll/scalar_model_pool_c0:
+	.rodata     start:0x000000C0 end:0x000000C8
+
+REL/mdminidll/opacity_pool_c8:
+	.rodata     start:0x000000C8 end:0x000000CC
+
+REL/mdminidll/opacity_pool_f0:
+	.rodata     start:0x000000F0 end:0x000000F4
+
+REL/mdminidll/trajectory_duration_pool_128:
+	.rodata     start:0x00000128 end:0x0000012C
+
+REL/mdminidll/model_scale_pool_16c:
+	.rodata     start:0x0000016C end:0x00000170
+
+REL/mdminidll/opacity_pool_170:
+	.rodata     start:0x00000170 end:0x00000178
+
+REL/mdminidll/model_scale_pool_178:
+	.rodata     start:0x00000178 end:0x0000017C
+
+REL/mdminidll/direction_math_pool_220:
+	.rodata     start:0x00000220 end:0x00000230
+
+REL/mdminidll/model_selection_pool_230:
+	.rodata     start:0x00000230 end:0x00000238
+
+REL/mdminidll/particle_render_pool_288:
+	.rodata     start:0x00000288 end:0x000002F8
+
+REL/mdminidll/particle_zero_2f8:
+	.rodata     start:0x000002F8 end:0x00000300
+
+REL/mdminidll/particle_rays_pool_300:
+	.rodata     start:0x00000300 end:0x00000328
+
+REL/mdminidll/particle_origin_328:
+	.rodata     start:0x00000328 end:0x0000032C
+
+REL/mdminidll/particle_spiral_pool_32c:
+	.rodata     start:0x0000032C end:0x00000360
+
+REL/mdminidll/particle_scatter_360:
+	.rodata     start:0x00000360 end:0x00000378
+
+REL/mdminidll/particle_inverse_pool_388:
+	.rodata     start:0x00000388 end:0x0000038C
+
+REL/mdminidll/particle_palette_pool_3b0:
+	.rodata     start:0x000003B0 end:0x000003C4
+
+REL/mdminidll/particle_palette_pool_3c4:
+	.rodata     start:0x000003C4 end:0x000003E4
+
+REL/mdminidll/particle_palette_pool_3e4:
+	.rodata     start:0x000003E4 end:0x00000400
+
+REL/mdminidll/active_window_wait.c:
+	.text       start:0x00003BCC end:0x00003C2C
+
+REL/mdminidll/active_window_choice.c:
+	.text       start:0x00003C2C end:0x00003D24
+
+REL/mdminidll/active_window_messages.c:
+	.text       start:0x00003D24 end:0x00004150
+
+REL/mdminidll/secondary_window_message.c:
+	.text       start:0x00004150 end:0x00004380
+
+REL/mdminidll/shadow_setup.c:
+	.text       start:0x00004380 end:0x00004434
+
+REL/mdminidll/callback_4434.c:
+	.text       start:0x00004434 end:0x00004438
+
+REL/mdminidll/sprite_group_attr.c:
+	.text       start:0x00004438 end:0x00004538
+
+REL/mdminidll/sprite_groups_create_4538.c:
+	.text       start:0x00004538 end:0x0000478C
+
+REL/mdminidll/callback_478c.c:
+	.text       start:0x0000478C end:0x00004790
+
+REL/mdminidll/object_trajectory_4790:
+	.text       start:0x00004790 end:0x00004BE0
+
+REL/mdminidll/object_trajectory_4be0.c:
+	.text       start:0x00004BE0 end:0x00004CE4
+
+REL/mdminidll/object_transition.c:
+	.text       start:0x00004CE4 end:0x00004D98
+
+REL/mdminidll/object_motion_delay.c:
+	.text       start:0x00004D98 end:0x00004E40
+
+REL/mdminidll/object_motion_reset.c:
+	.text       start:0x00004E40 end:0x00004EB4
+
+REL/mdminidll/model_trajectory_update_4eb4:
+	.text       start:0x00004EB4 end:0x00005434
+
+REL/mdminidll/object_trajectory_5434.c:
+	.text       start:0x00005434 end:0x000055B0
+
+REL/mdminidll/object_turn_55b0.c:
+	.text       start:0x000055B0 end:0x00005B48
+
+REL/mdminidll/object_motion_gate.c:
+	.text       start:0x00005B48 end:0x00005BF4
+
+REL/mdminidll/object_scene_reset_5bf4.c:
+	.text       start:0x00005BF4 end:0x00005EC0
+
+REL/mdminidll/object_release.c:
+	.text       start:0x00005EC0 end:0x00005F6C
+
+REL/mdminidll/model_trajectory_update_5f6c:
+	.text       start:0x00005F6C end:0x00006520
+
+REL/mdminidll/object_trajectory_start_6520.c:
+	.text       start:0x00006520 end:0x000066F4
+
+REL/mdminidll/model_opacity_begin_66f4:
+	.text       start:0x000066F4 end:0x000068F0
+
+REL/mdminidll/player_models_reveal_68f0.c:
+	.text       start:0x000068F0 end:0x00006B74
+
+REL/mdminidll/motion_grid_create.c:
+	.text       start:0x00006B74 end:0x00006D14
+
+REL/mdminidll/motion_grid_release.c:
+	.text       start:0x00006D14 end:0x00006DC4
+
+REL/mdminidll/sprite_opacity_hide_6dc4:
+	.text       start:0x00006DC4 end:0x00006F58
+
+REL/mdminidll/sprite_group_reveal.c:
+	.text       start:0x00006F58 end:0x00007014
+
+REL/mdminidll/object_reset.c:
+	.text       start:0x00007014 end:0x00007048
+
+REL/mdminidll/secondary_models_create_7048.c:
+	.text       start:0x00007048 end:0x000071E8
+
+REL/mdminidll/secondary_object_release:
+	.text       start:0x000071E8 end:0x00007280
+
+REL/mdminidll/sprite_group_select_7280.c:
+	.text       start:0x00007280 end:0x00007384
+
+REL/mdminidll/secondary_state.c:
+	.text       start:0x00007384 end:0x000073B4
+
+REL/mdminidll/sprite_group_place.c:
+	.text       start:0x000073B4 end:0x00007414
+
+REL/mdminidll/model_opacity_7414:
+	.text       start:0x00007414 end:0x0000765C
+
+REL/mdminidll/animation_select.c:
+	.text       start:0x0000765C end:0x00007700
+
+REL/mdminidll/object_states.c:
+	.text       start:0x00007700 end:0x00007754
+
+REL/mdminidll/model_opacity_update_7754:
+	.text       start:0x00007754 end:0x00007C4C
+
+REL/mdminidll/sprite_setup_7c4c:
+	.text       start:0x00007C4C end:0x00007E90
+
+REL/mdminidll/object_animation_pair_release:
+	.text       start:0x00007E90 end:0x00007F8C
+
+REL/mdminidll/sprite_row_reveal_7f8c.c:
+	.text       start:0x00007F8C end:0x00008188
+
+REL/mdminidll/scalar_row_reset.c:
+	.text       start:0x00008188 end:0x000081B0
+
+REL/mdminidll/sprite_bank.c:
+	.text       start:0x000081B0 end:0x000081FC
+
+REL/mdminidll/sprite_projection_81fc:
+	.text       start:0x000081FC end:0x00008430
+
+REL/mdminidll/rows_reset.c:
+	.text       start:0x00008430 end:0x000084D4
+
+REL/mdminidll/callback_84d4.c:
+	.text       start:0x000084D4 end:0x000084D8
+
+REL/mdminidll/sprite_project_position.c:
+	.text       start:0x000084D8 end:0x00008694
+
+REL/mdminidll/sprite_hide.c:
+	.text       start:0x00008694 end:0x000086F0
+
+REL/mdminidll/sprite_activate.c:
+	.text       start:0x000086F0 end:0x00008764
+
+REL/mdminidll/sprite_scale_update.c:
+	.text       start:0x00008764 end:0x00008888
+
+REL/mdminidll/sprite_reset.c:
+	.text       start:0x00008888 end:0x00008914
+
+REL/mdminidll/position_offset.c:
+	.text       start:0x00008914 end:0x0000899C
+
+REL/mdminidll/model_sprite_layout_899c.c:
+	.text       start:0x0000899C end:0x00008B70
+
+REL/mdminidll/model_sprite_reset.c:
+	.text       start:0x00008B70 end:0x00008C08
+
+REL/mdminidll/model_sprite_update_8c08.c:
+	.text       start:0x00008C08 end:0x000090C8
+
+REL/mdminidll/player_models_create_90c8.c:
+	.text       start:0x000090C8 end:0x000092C0
+
+REL/mdminidll/player_object_release.c:
+	.text       start:0x000092C0 end:0x00009348
+
+REL/mdminidll/model_neighbor_search.c:
+	.text       start:0x00009348 end:0x00009730
+
+REL/mdminidll/model_neighbors.c:
+	.text       start:0x00009730 end:0x000097D8
+
+REL/mdminidll/direction_choice_97d8:
+	.text       start:0x000097D8 end:0x00009D58
+
+REL/mdminidll/model_animation_set:
+	.text       start:0x00009D58 end:0x00009E8C
+
+REL/mdminidll/model_place.c:
+	.text       start:0x00009E8C end:0x00009F24
+
+REL/mdminidll/model_spin_grow_9f24:
+	.text       start:0x00009F24 end:0x0000A330
+
+REL/mdminidll/model_transition_a330:
+	.text       start:0x0000A330 end:0x0000A700
+
+REL/mdminidll/model_position_scale_a700:
+	.text       start:0x0000A700 end:0x0000ACF0
+
+REL/mdminidll/model_animation_turn_acf0:
+	.text       start:0x0000ACF0 end:0x0000B078
+
+REL/mdminidll/model_yaw_b078:
+	.text       start:0x0000B078 end:0x0000B2E0
+
+REL/mdminidll/sequence_state.c:
+	.text       start:0x0000B2E0 end:0x0000B310
+
+REL/mdminidll/sequence_done.c:
+	.text       start:0x0000B310 end:0x0000B348
+
+REL/mdminidll/sequence_run.c:
+	.text       start:0x0000B348 end:0x0000B3E0
+
+REL/mdminidll/model_animation_create.c:
+	.text       start:0x0000B3E0 end:0x0000B610
+
+REL/mdminidll/model_animation_release.c:
+	.text       start:0x0000B610 end:0x0000B6EC
+
+REL/mdminidll/player_count_selection_b6ec:
+	.text       start:0x0000B6EC end:0x0000C6A8
+
+REL/mdminidll/sequence_complete.c:
+	.text       start:0x0000C6A8 end:0x0000C6D8
+
+REL/mdminidll/sequence_icons_done.c:
+	.text       start:0x0000C6D8 end:0x0000C770
+
+REL/mdminidll/model_player_select_c770:
+	.text       start:0x0000C770 end:0x0000D09C
+
+REL/mdminidll/model_spin_shrink_d09c:
+	.text       start:0x0000D09C end:0x0000D450
+
+REL/mdminidll/model_rotation.c:
+	.text       start:0x0000D450 end:0x0000D554
+
+REL/mdminidll/player_selection_d554:
+	.text       start:0x0000D554 end:0x0000DD00
+
+REL/mdminidll/model_choice_layout_dd00.c:
+	.text       start:0x0000DD00 end:0x0000DF64
+
+REL/mdminidll/player_model_reset_df64.c:
+	.text       start:0x0000DF64 end:0x0000E0B0
+
+REL/mdminidll/player_animation_reset_e0b0:
+	.text       start:0x0000E0B0 end:0x0000E1C0
+
+REL/mdminidll/computer_player_selection_e1c0:
+	.text       start:0x0000E1C0 end:0x0000F0A8
+
+REL/mdminidll/slot_select_f0a8.c:
+	.text       start:0x0000F0A8 end:0x0000F52C
+
+REL/mdminidll/player_model_reset_f52c.c:
+	.text       start:0x0000F52C end:0x0000F6F8
+
+REL/mdminidll/model_config_enter_f6f8:
+	.text       start:0x0000F6F8 end:0x0000FCC0
+
+REL/mdminidll/model_config_exit_fcc0:
+	.text       start:0x0000FCC0 end:0x000105DC
+
+REL/mdminidll/model_player_transition_105dc:
+	.text       start:0x000105DC end:0x000109D4
+
+REL/mdminidll/model_transition_109d4.c:
+	.text       start:0x000109D4 end:0x00010DCC
+
+REL/mdminidll/model_approach_10dcc.c:
+	.text       start:0x00010DCC end:0x000110EC
+
+REL/mdminidll/model_row_setup.c:
+	.text       start:0x000110EC end:0x000111C0
+
+REL/mdminidll/model_choice_tick_111c0.c:
+	.text       start:0x000111C0 end:0x000118A0
+
+REL/mdminidll/projected_icons_init_118a0.c:
+	.text       start:0x000118A0 end:0x00011B0C
+
+REL/mdminidll/model_rotation_transition_11b0c:
+	.text       start:0x00011B0C end:0x00011E14
+
+REL/mdminidll/model_selection_11e14:
+	.text       start:0x00011E14 end:0x0001240C
+
+REL/mdminidll/sequence_tick.c:
+	.text       start:0x0001240C end:0x000124A0
+
+REL/mdminidll/model_mode_exit_124a0:
+	.text       start:0x000124A0 end:0x00012E88
+
+REL/mdminidll/model_exit_transition_12e88:
+	.text       start:0x00012E88 end:0x0001325C
+
+REL/mdminidll/model_mode_exit_1325c:
+	.text       start:0x0001325C end:0x0001406C
+
+REL/mdminidll/model_player_exit_1406c:
+	.text       start:0x0001406C end:0x00014484
+
+REL/mdminidll/model_player_exit_reset_14484:
+	.text       start:0x00014484 end:0x000148B4
+
+REL/mdminidll/model_mode_enter_148b4:
+	.text       start:0x000148B4 end:0x000157B4
+
+REL/mdminidll/scene_objects_release.c:
+	.text       start:0x000157B4 end:0x000159BC
+
+REL/mdminidll/scene_cleanup.c:
+	.text       start:0x000159BC end:0x00015B3C
+
+REL/mdminidll/overlay_cleanup_return.c:
+	.text       start:0x00015B3C end:0x00015CD8
+
+REL/mdminidll/exit_check.c:
+	.text       start:0x00015CD8 end:0x00015D30
+
+REL/mdminidll/window_sprite_reveal.c:
+	.text       start:0x00015D30 end:0x00015E0C
+
+REL/mdminidll/scene_exit_15e0c:
+	.text       start:0x00015E0C end:0x00016400
+
+REL/mdminidll/scene_create_16400.c:
+	.text       start:0x00016400 end:0x00016F28
+
+REL/mdminidll/mode_entry.c:
+	.text       start:0x00016F28 end:0x000171F4
+
+REL/mdminidll/startup.c:
+	.text       start:0x000171F4 end:0x00017294
+
+REL/mdminidll/camera_target_17294:
+	.text       start:0x00017294 end:0x000175F8
+
+REL/mdminidll/camera_transition_update.c:
+	.text       start:0x000175F8 end:0x00017820
+
+REL/mdminidll/camera_transition_start.c:
+	.text       start:0x00017820 end:0x00017894
+
+REL/mdminidll/player_models_reset_17894.c:
+	.text       start:0x00017894 end:0x00017E78
+
+REL/mdminidll/mode_fade_in.c:
+	.text       start:0x00017E78 end:0x00017EF4
+
+REL/mdminidll/window_transition_17ef4.c:
+	.text       start:0x00017EF4 end:0x000181CC
+
+REL/mdminidll/window_choice_181cc:
+	.text       start:0x000181CC end:0x000184D4
+
+REL/mdminidll/window_transition_184d4:
+	.text       start:0x000184D4 end:0x00018650
+
+REL/mdminidll/window_transition_18650.c:
+	.text       start:0x00018650 end:0x00018A5C
+
+REL/mdminidll/mode_selection_18a5c:
+	.text       start:0x00018A5C end:0x000198A0
+
+REL/mdminidll/player_status.c:
+	.text       start:0x000198A0 end:0x00019940
+
+REL/mdminidll/mode_selection_19940:
+	.text       start:0x00019940 end:0x0001A58C
+
+REL/mdminidll/player_selection.c:
+	.text       start:0x0001A58C end:0x0001A6C0
+
+REL/mdminidll/mode_selection_1a6c0:
+	.text       start:0x0001A6C0 end:0x0001BCAC
+
+REL/mdminidll/mode_selection_run_1bcac.c:
+	.text       start:0x0001BCAC end:0x0001BF60
+
+REL/mdminidll/mode_selection_1bf60:
+	.text       start:0x0001BF60 end:0x0001D640
+
+REL/mdminidll/mode_choice_1d640:
+	.text       start:0x0001D640 end:0x0001E1AC
+
+REL/mdminidll/mode_exit_1e1ac:
+	.text       start:0x0001E1AC end:0x0001E86C
+
+REL/mdminidll/mode_driver_1e86c:
+	.text       start:0x0001E86C end:0x0001F3AC
+
+REL/mdminidll/particle_sine_1f3ac.c:
+	.text       start:0x0001F3AC end:0x0001F494
+
+REL/mdminidll/particle_scalar_lerp.c:
+	.text       start:0x0001F494 end:0x0001F4D8
+
+REL/mdminidll/particle_scalar_approach.c:
+	.text       start:0x0001F4D8 end:0x0001F508
+
+REL/mdminidll/texture_copy.c:
+	.text       start:0x0001F508 end:0x0001F574
+
+REL/mdminidll/material_hook_1f574.c:
+	.text       start:0x0001F574 end:0x0001F9F4
+
+REL/mdminidll/layer_effect_tick.c:
+	.text       start:0x0001F9F4 end:0x0001FAF4
+
+REL/mdminidll/layer_effect_start.c:
+	.text       start:0x0001FAF4 end:0x0001FBE8
+
+REL/mdminidll/layer_effect_create.c:
+	.text       start:0x0001FBE8 end:0x0001FDCC
+
+REL/mdminidll/layer_model_release.c:
+	.text       start:0x0001FDCC end:0x0001FE7C
+
+REL/mdminidll/object_create.c:
+	.text       start:0x0001FE7C end:0x0001FECC
+
+REL/mdminidll/layer_release.c:
+	.text       start:0x0001FECC end:0x0001FFA8
+
+REL/mdminidll/layer_effect_position.c:
+	.text       start:0x0001FFA8 end:0x00020068
+
+REL/mdminidll/particle_render_20068:
+	.text       start:0x00020068 end:0x00020A24
+
+REL/mdminidll/layer_hook.c:
+	.text       start:0x00020A24 end:0x00020A74
+
+REL/mdminidll/particle_activate_20a74:
+	.text       start:0x00020A74 end:0x00020B74
+
+REL/mdminidll/particle_fade_update_20b74:
+	.text       start:0x00020B74 end:0x00020E34
+
+REL/mdminidll/particle_model_create.c:
+	.text       start:0x00020E34 end:0x00020F48
+
+REL/mdminidll/model_kill_20f48.c:
+	.text       start:0x00020F48 end:0x00020F74
+
+REL/mdminidll/particle_place_20f74.c:
+	.text       start:0x00020F74 end:0x0002105C
+
+REL/mdminidll/particle_rays_2105c:
+	.text       start:0x0002105C end:0x000215A4
+
+REL/mdminidll/particle_setup_four_215a4:
+	.text       start:0x000215A4 end:0x00021764
+
+REL/mdminidll/model_kill_21764.c:
+	.text       start:0x00021764 end:0x000217BC
+
+REL/mdminidll/particle_reset.c:
+	.text       start:0x000217BC end:0x0002185C
+
+REL/mdminidll/particle_spiral_2185c:
+	.text       start:0x0002185C end:0x00021FE8
+
+REL/mdminidll/particle_model_create_21fe8.c:
+	.text       start:0x00021FE8 end:0x000220E8
+
+REL/mdminidll/model_kill_220e8.c:
+	.text       start:0x000220E8 end:0x00022114
+
+REL/mdminidll/particle_position.c:
+	.text       start:0x00022114 end:0x000221E0
+
+REL/mdminidll/particle_scatter_221e0:
+	.text       start:0x000221E0 end:0x00022AC8
+
+REL/mdminidll/particle_group_create.c:
+	.text       start:0x00022AC8 end:0x00022C5C
+
+REL/mdminidll/model_kill_22c5c.c:
+	.text       start:0x00022C5C end:0x00022CB4
+
+REL/mdminidll/model_visible_22cb4.c:
+	.text       start:0x00022CB4 end:0x00022D30
+
+REL/mdminidll/particle_controls:
+	.text       start:0x00022D30 end:0x00022EBC
+
+REL/mdminidll/particle_byte_update_22ebc:
+	.text       start:0x00022EBC end:0x00023334
+
+REL/mdminidll/particle_pair_create.c:
+	.text       start:0x00023334 end:0x000234A0
+
+REL/mdminidll/model_kill_234a0.c:
+	.text       start:0x000234A0 end:0x000234F8
+
+REL/mdminidll/model_visible_234f8.c:
+	.text       start:0x000234F8 end:0x00023574
+
+REL/mdminidll/hook_update_pair_23574:
+	.text       start:0x00023574 end:0x000236AC
+
+REL/mdminidll/particle_stop:
+	.text       start:0x000236AC end:0x00023700
+
+REL/mdminidll/particle_update_23700:
+	.text       start:0x00023700 end:0x00023D00
+
+REL/mdminidll/particle_pair_create_alt.c:
+	.text       start:0x00023D00 end:0x00023E6C
+
+REL/mdminidll/model_kill_23e6c.c:
+	.text       start:0x00023E6C end:0x00023EC4
+
+REL/mdminidll/particle_pair_controls_23ec4:
+	.text       start:0x00023EC4 end:0x00024288
+
+REL/mdminidll/model_row_visibility.c:
+	.text       start:0x00024288 end:0x0002433C
+
+REL/mdminidll/hook_update_grid_2433c:
+	.text       start:0x0002433C end:0x000244A4
+
+REL/mdminidll/particle_row_stop.c:
+	.text       start:0x000244A4 end:0x00024524
+
+REL/mdminidll/particle_update_24524:
+	.text       start:0x00024524 end:0x00024AD0
+
+REL/mdminidll/particle_grid_create.c:
+	.text       start:0x00024AD0 end:0x00024CFC
+
+REL/mdminidll/model_grid_release.c:
+	.text       start:0x00024CFC end:0x00024D80
+
+REL/mdminidll/particle_setup_24d80.c:
+	.text       start:0x00024D80 end:0x000257D0
+
+REL/mdminidll/scene_models_release.c:
+	.text       start:0x000257D0 end:0x000259FC
+
+REL/mdminidll/particle_color_259fc.c:
+	.text       start:0x000259FC end:0x00025BF4
+
+REL/mdminidll/particle_palette_activate_25bf4:
+	.text       start:0x00025BF4 end:0x00025EF0
+
+REL/mdminidll/particle_palette_burst_25ef0:
+	.text       start:0x00025EF0 end:0x00026394
+
+REL/mdminidll/particle_layer_reset.c:
+	.text       start:0x00026394 end:0x00026454
+
+REL/mdminidll/particle_palette_rows_26454:
+	.text       start:0x00026454 end:0x000267B0
+
+REL/mdminidll/runtime.c:
+	.text       start:0x000267B0 end:0x000271F4
+	.rodata     start:0x00000400 end:0x00000418

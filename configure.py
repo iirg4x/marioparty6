@@ -334,6 +334,88 @@ config.rel_ldscript_replacements = {
     ],
 }
 
+config.rel_ldscript_replacements["mdminidll"] = [
+        (
+            "        .rodata ALIGN(0x8):{}",
+            """        .rodata ALIGN(0x8):{
+            scalar_approach.o(.rodata)
+            auto_03_00000010_rodata.o(.rodata)
+            scalar_approach.o(.rodata.opacity_one)
+            auto_03_00000070_rodata.o(.rodata)
+            scalar_approach.o(.rodata.opacity_zero)
+            auto_03_00000078_rodata.o(.rodata)
+            scalar_approach.o(.rodata.scalar_sine_1484)
+            auto_03_00000084_rodata.o(.rodata)
+            scalar_approach.o(.rodata.scalar_arc_1ed8)
+            angle_wrap_94.o(.rodata)
+            scalar_approach.o(.rodata.player_count_selection_b6ec)
+            scalar_approach.o(.rodata.model_trajectory_update_5f6c)
+            scalar_approach.o(.rodata.opacity_ten)
+            auto_03_000000A4_rodata.o(.rodata)
+            scalar_approach.o(.rodata.camera_target_17294)
+            scalar_approach.o(.rodata.model_signed_bias)
+            scalar_approach.o(.rodata.opacity_thirty)
+            auto_03_000000CC_rodata.o(.rodata)
+            scalar_approach.o(.rodata.opacity_inverse)
+            auto_03_000000F4_rodata.o(.rodata)
+            scalar_approach.o(.rodata.object_trajectory_4790)
+            auto_03_0000012C_rodata.o(.rodata)
+            scalar_approach.o(.rodata.model_scale_16c)
+            scalar_approach.o(.rodata.opacity_bias)
+            scalar_approach.o(.rodata.model_scale_178)
+            auto_03_0000017C_rodata.o(.rodata)
+            scalar_approach.o(.rodata.choice_math)
+            scalar_approach.o(.rodata.model_selection_11e14)
+            auto_03_00000238_rodata.o(.rodata)
+            particle_sine_1f3ac.o(.rodata)
+            particle_sine_1f3ac.o(.rodata.particle_zero_2f8)
+            particle_sine_1f3ac.o(.rodata.particle_rays_2105c)
+            particle_sine_1f3ac.o(.rodata.particle_origin_328)
+            particle_sine_1f3ac.o(.rodata.particle_spiral_2185c)
+            particle_sine_1f3ac.o(.rodata.particle_scatter_221e0)
+            auto_03_00000378_rodata.o(.rodata)
+            particle_sine_1f3ac.o(.rodata.particle_inverse)
+            auto_03_0000038C_rodata.o(.rodata)
+            particle_sine_1f3ac.o(.rodata.particle_palette_activation)
+            particle_sine_1f3ac.o(.rodata.particle_palette_burst)
+            particle_sine_1f3ac.o(.rodata.particle_palette_rows)
+            auto_03_00000400_rodata.o(.rodata)
+            runtime.o(.rodata)
+        }""",
+        ),
+    ]
+
+config.rel_pool_exports["mdminidll"] = [
+        {'source': 'REL/mdminidll/object_release.c', 'text_members': [{'source': 'REL/mdminidll/secondary_object_release', 'section': '.text.secondary_object_release'}, {'source': 'REL/mdminidll/object_animation_pair_release', 'section': '.text.object_animation_pair_release'}, {'source': 'REL/mdminidll/scene_exit_15e0c', 'section': '.text.scene_exit'}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/scalar_sine_pool_80', 'symbol': 'lbl_1_rodata_80', 'section': '.rodata', 'native_section': '.rodata.scalar_sine_1484', 'native_offset': 0, 'linked_offset': 128, 'size': 4},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/scalar_arc_pool_90', 'symbol': 'lbl_1_rodata_90', 'section': '.rodata', 'native_section': '.rodata.scalar_arc_1ed8', 'native_offset': 0, 'linked_offset': 144, 'size': 4},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'text_members': [{'source': 'REL/mdminidll/particle_scalar_lerp.c', 'section': '.text.pool_1f494'}, {'source': 'REL/mdminidll/particle_scalar_approach.c', 'section': '.text.pool_1f4d8'}, {'source': 'REL/mdminidll/material_hook_1f574.c', 'section': '.text.pool_1f574'}, {'source': 'REL/mdminidll/layer_effect_tick.c', 'section': '.text.pool_1f9f4'}, {'source': 'REL/mdminidll/layer_effect_start.c', 'section': '.text.pool_1faf4'}, {'source': 'REL/mdminidll/layer_effect_create.c', 'section': '.text.pool_1fbe8'}, {'source': 'REL/mdminidll/particle_render_20068', 'section': '.text.pool_20068'}, {'source': 'REL/mdminidll/particle_fade_update_20b74', 'section': '.text.pool_20b74'}, {'source': 'REL/mdminidll/particle_setup_four_215a4', 'section': '.text.pool_215a4'}, {'source': 'REL/mdminidll/particle_update_23700', 'section': '.text.pool_23700'}, {'source': 'REL/mdminidll/particle_update_24524', 'section': '.text.pool_24524'}, {'source': 'REL/mdminidll/particle_setup_24d80.c', 'section': '.text.pool_24d80'}, {'source': 'REL/mdminidll/particle_activate_20a74', 'section': '.text.particle_activate'}, {'source': 'REL/mdminidll/particle_byte_update_22ebc', 'section': '.text.particle_byte_update'}, {'source': 'REL/mdminidll/hook_update_pair_23574', 'section': '.text.hook_update_pair'}, {'source': 'REL/mdminidll/hook_update_grid_2433c', 'section': '.text.hook_update_grid'}, {'source': 'REL/mdminidll/particle_controls', 'section': '.text.particle_controls'}, {'source': 'REL/mdminidll/particle_stop', 'section': '.text.particle_stop'}, {'source': 'REL/mdminidll/particle_pair_controls_23ec4', 'section': '.text.particle_pair_controls'}, {'source': 'REL/mdminidll/particle_color_259fc.c', 'section': '.text.particle_color'}, {'source': 'REL/mdminidll/particle_place_20f74.c', 'section': '.text.particle_place'}, {'source': 'REL/mdminidll/particle_palette_activate_25bf4', 'section': '.text.particle_palette_activation'}, {'source': 'REL/mdminidll/particle_position.c', 'section': '.text.particle_position'}, {'source': 'REL/mdminidll/particle_palette_burst_25ef0', 'section': '.text.particle_palette_burst'}, {'source': 'REL/mdminidll/particle_row_stop.c', 'section': '.text.particle_row_stop'}, {'source': 'REL/mdminidll/model_row_visibility.c', 'section': '.text.model_row_visibility'}, {'source': 'REL/mdminidll/particle_palette_rows_26454', 'section': '.text.particle_palette_rows'}, {'source': 'REL/mdminidll/particle_spiral_2185c', 'section': '.text.particle_spiral_2185c'}, {'source': 'REL/mdminidll/particle_scatter_221e0', 'section': '.text.particle_scatter_221e0'}, {'source': 'REL/mdminidll/particle_rays_2105c', 'section': '.text.particle_rays_2105c'}], 'pool_source': 'REL/mdminidll/particle_render_pool_288', 'symbol': 'lbl_1_rodata_288', 'section': '.rodata', 'native_offset': 0, 'linked_offset': 648, 'size': 112, 'members': [{'symbol': 'lbl_1_rodata_288', 'offset': 0, 'size': 4}, {'symbol': 'lbl_1_rodata_290', 'offset': 8, 'size': 8}, {'symbol': 'lbl_1_rodata_298', 'offset': 16, 'size': 4}, {'symbol': 'lbl_1_rodata_2A0', 'offset': 24, 'size': 8}, {'symbol': 'lbl_1_rodata_2A8', 'offset': 32, 'size': 4}, {'symbol': 'lbl_1_rodata_2AC', 'offset': 36, 'size': 4}, {'symbol': 'lbl_1_rodata_2B0', 'offset': 40, 'size': 4}, {'symbol': 'lbl_1_rodata_2B4', 'offset': 44, 'size': 4}, {'symbol': 'lbl_1_rodata_2B8', 'offset': 48, 'size': 4}, {'symbol': 'lbl_1_rodata_2BC', 'offset': 52, 'size': 4}, {'symbol': 'lbl_1_rodata_2C0', 'offset': 56, 'size': 4}, {'symbol': 'lbl_1_rodata_2C4', 'offset': 60, 'size': 4}, {'symbol': 'lbl_1_rodata_2C8', 'offset': 64, 'size': 4}, {'symbol': 'lbl_1_rodata_2CC', 'offset': 68, 'size': 4}, {'symbol': 'lbl_1_rodata_2D0', 'offset': 72, 'size': 4}, {'symbol': 'lbl_1_rodata_2D4', 'offset': 76, 'size': 4}, {'symbol': 'lbl_1_rodata_2D8', 'offset': 80, 'size': 4}, {'symbol': 'lbl_1_rodata_2DC', 'offset': 84, 'size': 4}, {'symbol': 'lbl_1_rodata_2E0', 'offset': 88, 'size': 4}, {'symbol': 'lbl_1_rodata_2E8', 'offset': 96, 'size': 8}, {'symbol': 'lbl_1_rodata_2F0', 'offset': 104, 'size': 8}]},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_palette_pool_3e4', 'symbol': 'lbl_1_rodata_3E4', 'section': '.rodata', 'native_section': '.rodata.particle_palette_rows', 'native_offset': 0, 'linked_offset': 996, 'size': 28, 'members': [{'symbol': 'lbl_1_rodata_3E4', 'offset': 0, 'size': 28}]},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_spiral_pool_32c', 'symbol': 'lbl_1_rodata_32C', 'section': '.rodata', 'native_section': '.rodata.particle_spiral_2185c', 'native_offset': 0, 'linked_offset': 812, 'size': 52, 'members': [{'symbol': 'lbl_1_rodata_32C', 'offset': 0, 'size': 4}, {'symbol': 'lbl_1_rodata_330', 'offset': 4, 'size': 4}, {'symbol': 'lbl_1_rodata_334', 'offset': 8, 'size': 4}, {'symbol': 'lbl_1_rodata_338', 'offset': 12, 'size': 4}, {'symbol': 'lbl_1_rodata_33C', 'offset': 16, 'size': 4}, {'symbol': 'lbl_1_rodata_340', 'offset': 20, 'size': 4}, {'symbol': 'lbl_1_rodata_344', 'offset': 24, 'size': 4}, {'symbol': 'lbl_1_rodata_348', 'offset': 28, 'size': 4}, {'symbol': 'lbl_1_rodata_34C', 'offset': 32, 'size': 4}, {'symbol': 'lbl_1_rodata_350', 'offset': 36, 'size': 4}, {'symbol': 'lbl_1_rodata_354', 'offset': 40, 'size': 4}, {'symbol': 'lbl_1_rodata_358', 'offset': 44, 'size': 4}, {'symbol': 'lbl_1_rodata_35C', 'offset': 48, 'size': 4}]},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_zero_2f8', 'symbol': 'lbl_1_rodata_2F8', 'section': '.rodata', 'native_section': '.rodata.particle_zero_2f8', 'native_offset': 0, 'linked_offset': 760, 'size': 8, 'members': [{'symbol': 'lbl_1_rodata_2F8', 'offset': 0, 'size': 8}]},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_origin_328', 'symbol': 'lbl_1_rodata_328', 'section': '.rodata', 'native_section': '.rodata.particle_origin_328', 'native_offset': 0, 'linked_offset': 808, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_328', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_scatter_360', 'symbol': 'lbl_1_rodata_360', 'section': '.rodata', 'native_section': '.rodata.particle_scatter_221e0', 'native_offset': 0, 'linked_offset': 864, 'size': 24, 'members': [{'symbol': 'lbl_1_rodata_360', 'offset': 0, 'size': 4}, {'symbol': 'lbl_1_rodata_364', 'offset': 4, 'size': 4}, {'symbol': 'lbl_1_rodata_368', 'offset': 8, 'size': 8}, {'symbol': 'lbl_1_rodata_370', 'offset': 16, 'size': 4}, {'symbol': 'lbl_1_rodata_374', 'offset': 20, 'size': 4}]},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_rays_pool_300', 'symbol': 'lbl_1_rodata_300', 'section': '.rodata', 'native_section': '.rodata.particle_rays_2105c', 'native_offset': 0, 'linked_offset': 768, 'size': 40, 'members': [{'symbol': 'lbl_1_rodata_300', 'offset': 0, 'size': 4}, {'symbol': 'lbl_1_rodata_304', 'offset': 4, 'size': 4}, {'symbol': 'lbl_1_rodata_308', 'offset': 8, 'size': 4}, {'symbol': 'lbl_1_rodata_30C', 'offset': 12, 'size': 4}, {'symbol': 'lbl_1_rodata_310', 'offset': 16, 'size': 4}, {'symbol': 'lbl_1_rodata_318', 'offset': 24, 'size': 8}, {'symbol': 'lbl_1_rodata_320', 'offset': 32, 'size': 8}]},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_inverse_pool_388', 'symbol': 'lbl_1_rodata_388', 'section': '.rodata', 'native_section': '.rodata.particle_inverse', 'native_offset': 0, 'linked_offset': 904, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_388', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/opacity_pool_6c', 'symbol': 'lbl_1_rodata_6C', 'section': '.rodata', 'native_section': '.rodata.opacity_one', 'native_offset': 0, 'linked_offset': 108, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_6C', 'offset': 0, 'size': 4}], 'text_members': [{'source': 'REL/mdminidll/scalar_lerp.c', 'section': '.text.opacity_156c'}, {'source': 'REL/mdminidll/object_motion_reset.c', 'section': '.text.opacity_4e40'}, {'source': 'REL/mdminidll/camera_create.c', 'section': '.text.opacity_30a4'}, {'source': 'REL/mdminidll/object_turn_55b0.c', 'section': '.text.opacity_55b0'}, {'source': 'REL/mdminidll/model_opacity_begin_66f4', 'section': '.text.opacity_66f4'}, {'source': 'REL/mdminidll/model_opacity_7414', 'section': '.text.opacity_7414'}, {'source': 'REL/mdminidll/model_opacity_update_7754', 'section': '.text.opacity_7754'}, {'source': 'REL/mdminidll/model_animation_set', 'section': '.text.model_animation_set'}, {'source': 'REL/mdminidll/player_animation_reset_e0b0', 'section': '.text.player_animation_reset'}, {'source': 'REL/mdminidll/model_player_transition_105dc', 'section': '.text.model_player_transition'}, {'source': 'REL/mdminidll/model_player_exit_1406c', 'section': '.text.model_player_exit'}, {'source': 'REL/mdminidll/model_player_exit_reset_14484', 'section': '.text.model_player_exit_reset'}, {'source': 'REL/mdminidll/model_position_scale_a700', 'section': '.text.model_position_scale'}, {'source': 'REL/mdminidll/model_exit_transition_12e88', 'section': '.text.model_exit_transition'}, {'source': 'REL/mdminidll/sprite_projection_81fc', 'section': '.text.sprite_projection'}, {'source': 'REL/mdminidll/sprite_setup_7c4c', 'section': '.text.sprite_setup'}, {'source': 'REL/mdminidll/model_yaw_b078', 'section': '.text.model_yaw'}, {'source': 'REL/mdminidll/model_rotation_transition_11b0c', 'section': '.text.model_rotation_transition'}, {'source': 'REL/mdminidll/model_transition_109d4.c', 'section': '.text.model_transition_root'}, {'source': 'REL/mdminidll/model_transition_a330', 'section': '.text.model_transition_a330'}, {'source': 'REL/mdminidll/sprite_group_attr.c', 'section': '.text.sprite_group_attributes'}, {'source': 'REL/mdminidll/sprite_opacity_hide_6dc4', 'section': '.text.sprite_opacity_hide_6dc4'}, {'source': 'REL/mdminidll/window_visibility.c', 'section': '.text.window_visibility'}, {'source': 'REL/mdminidll/window_messages.c', 'section': '.text.window_messages'}, {'source': 'REL/mdminidll/window_select.c', 'section': '.text.window_select'}, {'source': 'REL/mdminidll/active_window_messages.c', 'section': '.text.active_window_messages'}, {'source': 'REL/mdminidll/active_window_choice.c', 'section': '.text.active_window_choice'}, {'source': 'REL/mdminidll/window_choice_181cc', 'section': '.text.window_choice_181cc'}, {'source': 'REL/mdminidll/direction_choice_97d8', 'section': '.text.direction_choice_97d8'}, {'source': 'REL/mdminidll/sprite_group_select_7280.c', 'section': '.text.sprite_group_select'}, {'source': 'REL/mdminidll/model_row_setup.c', 'section': '.text.model_row_setup'}, {'source': 'REL/mdminidll/model_selection_11e14', 'section': '.text.model_selection_11e14'}, {'source': 'REL/mdminidll/model_spin_shrink_d09c', 'section': '.text.model_spin_shrink_d09c'}, {'source': 'REL/mdminidll/vector_approach.c', 'section': '.text.vector_approach'}, {'source': 'REL/mdminidll/camera_approach_25b4', 'section': '.text.camera_25b4'}, {'source': 'REL/mdminidll/model_animation_turn_acf0', 'section': '.text.model_animation_turn_acf0'}, {'source': 'REL/mdminidll/model_player_select_c770', 'section': '.text.model_player_select_c770'}, {'source': 'REL/mdminidll/camera_target_17294', 'section': '.text.camera_target_17294'}, {'source': 'REL/mdminidll/model_config_enter_f6f8', 'section': '.text.model_config_enter_f6f8'}, {'source': 'REL/mdminidll/model_config_exit_fcc0', 'section': '.text.model_config_exit_fcc0'}, {'source': 'REL/mdminidll/model_mode_exit_124a0', 'section': '.text.model_mode_exit_124a0'}, {'source': 'REL/mdminidll/model_spin_grow_9f24', 'section': '.text.model_spin_grow_9f24'}, {'source': 'REL/mdminidll/sprite_row_reveal_7f8c.c', 'section': '.text.sprite_row_reveal'}, {'source': 'REL/mdminidll/model_mode_enter_148b4', 'section': '.text.model_mode_enter_148b4'}, {'source': 'REL/mdminidll/scalar_ease.c', 'section': '.text.scalar_ease'}, {'source': 'REL/mdminidll/model_trajectory_update_5f6c', 'section': '.text.model_trajectory_update_5f6c'}, {'source': 'REL/mdminidll/window_wait.c', 'section': '.text.mode_driver_34e4'}, {'source': 'REL/mdminidll/window_close_reset.c', 'section': '.text.mode_driver_3b10'}, {'source': 'REL/mdminidll/active_window_wait.c', 'section': '.text.mode_driver_3bcc'}, {'source': 'REL/mdminidll/object_motion_gate.c', 'section': '.text.mode_driver_5b48'}, {'source': 'REL/mdminidll/object_reset.c', 'section': '.text.mode_driver_7014'}, {'source': 'REL/mdminidll/sequence_run.c', 'section': '.text.mode_driver_b348'}, {'source': 'REL/mdminidll/window_transition_17ef4.c', 'section': '.text.mode_driver_17ef4'}, {'source': 'REL/mdminidll/window_transition_18650.c', 'section': '.text.mode_driver_18650'}, {'source': 'REL/mdminidll/mode_selection_run_1bcac.c', 'section': '.text.mode_driver_1bcac'}, {'source': 'REL/mdminidll/mode_driver_1e86c', 'section': '.text.mode_driver_1e86c'}, {'source': 'REL/mdminidll/model_trajectory_update_4eb4', 'section': '.text.model_trajectory_update_4eb4'}, {'source': 'REL/mdminidll/model_trajectory_update_1fac', 'section': '.text.model_trajectory_update_1fac'}, {'source': 'REL/mdminidll/mode_choice_1d640', 'section': '.text.mode_choice_1d640'}, {'source': 'REL/mdminidll/camera_debug_2878', 'section': '.text.camera_debug_2878'}, {'source': 'REL/mdminidll/scalar_sine_1484.c', 'section': '.text.scalar_sine_1484'}, {'source': 'REL/mdminidll/scalar_arc_1ed8.c', 'section': '.text.scalar_arc_1ed8'}, {'source': 'REL/mdminidll/object_trajectory_4790', 'section': '.text.object_trajectory_4790'}, {'source': 'REL/mdminidll/scalar_row_reset.c', 'section': '.text.scalar_row_reset_8188'}, {'source': 'REL/mdminidll/position_offset.c', 'section': '.text.position_offset_8914'}, {'source': 'REL/mdminidll/model_sprite_reset.c', 'section': '.text.model_sprite_reset_8b70'}, {'source': 'REL/mdminidll/model_sprite_layout_899c.c', 'section': '.text.model_sprite_layout_899c'}, {'source': 'REL/mdminidll/model_rotation.c', 'section': '.text.model_rotation_d450'}, {'source': 'REL/mdminidll/player_selection_d554', 'section': '.text.player_selection_d554'}, {'source': 'REL/mdminidll/sprite_project_position.c', 'section': '.text.sprite_project_position'}, {'source': 'REL/mdminidll/sprite_bank.c', 'section': '.text.sprite_bank_81b0'}, {'source': 'REL/mdminidll/computer_player_selection_e1c0', 'section': '.text.computer_player_selection_e1c0'}, {'source': 'REL/mdminidll/player_count_selection_b6ec', 'section': '.text.player_count_selection_b6ec'}, {'source': 'REL/mdminidll/model_mode_exit_1325c', 'section': '.text.model_mode_exit_1325c'}, {'source': 'REL/mdminidll/player_config.c', 'section': '.text.mode_player_config'}, {'source': 'REL/mdminidll/secondary_window_message.c', 'section': '.text.mode_secondary_window'}, {'source': 'REL/mdminidll/sequence_done.c', 'section': '.text.mode_ready_b310'}, {'source': 'REL/mdminidll/player_selection.c', 'section': '.text.mode_player_selection'}, {'source': 'REL/mdminidll/mode_selection_18a5c', 'section': '.text.mode_selection_18a5c'}, {'source': 'REL/mdminidll/mode_selection_1a6c0', 'section': '.text.mode_selection_1a6c0'}, {'source': 'REL/mdminidll/mode_selection_1bf60', 'section': '.text.mode_selection_1bf60'}, {'source': 'REL/mdminidll/mode_selection_19940', 'section': '.text.mode_selection_19940'}, {'source': 'REL/mdminidll/window_transition_184d4', 'section': '.text.mode_driver_184d4'}, {'source': 'REL/mdminidll/mode_exit_1e1ac', 'section': '.text.mode_exit_1e1ac'}, {'source': 'REL/mdminidll/camera_callback.c', 'section': '.text.camera_callback_2868'}, {'source': 'REL/mdminidll/object_trajectory_5434.c', 'section': '.text.object_trajectory_5434'}, {'source': 'REL/mdminidll/object_trajectory_start_6520.c', 'section': '.text.object_trajectory_start_6520'}, {'source': 'REL/mdminidll/player_config_apply_c90.c', 'section': '.text.player_config_apply_c90'}, {'source': 'REL/mdminidll/resources.c', 'section': '.text.resources_a4c'}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/trajectory_weight_pool_9c', 'symbol': 'lbl_1_rodata_9C', 'section': '.rodata', 'native_section': '.rodata.model_trajectory_update_5f6c', 'native_offset': 0, 'linked_offset': 156, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_9C', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/negative_angle_pool_98', 'symbol': 'lbl_1_rodata_98', 'section': '.rodata', 'native_section': '.rodata.player_count_selection_b6ec', 'native_offset': 0, 'linked_offset': 152, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_98', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/trajectory_duration_pool_128', 'symbol': 'lbl_1_rodata_128', 'section': '.rodata', 'native_section': '.rodata.object_trajectory_4790', 'native_offset': 0, 'linked_offset': 296, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_128', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/camera_target_pool_b8', 'symbol': 'lbl_1_rodata_B8', 'section': '.rodata', 'native_section': '.rodata.camera_target_17294', 'native_offset': 0, 'linked_offset': 184, 'size': 8, 'members': [{'symbol': 'lbl_1_rodata_B8', 'offset': 0, 'size': 4}, {'symbol': 'lbl_1_rodata_BC', 'offset': 4, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/model_scale_pool_16c', 'symbol': 'lbl_1_rodata_16C', 'section': '.rodata', 'native_section': '.rodata.model_scale_16c', 'native_offset': 0, 'linked_offset': 364, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_16C', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/model_scale_pool_178', 'symbol': 'lbl_1_rodata_178', 'section': '.rodata', 'native_section': '.rodata.model_scale_178', 'native_offset': 0, 'linked_offset': 376, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_178', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/model_selection_pool_230', 'symbol': 'lbl_1_rodata_230', 'section': '.rodata', 'native_section': '.rodata.model_selection_11e14', 'native_offset': 0, 'linked_offset': 560, 'size': 8, 'members': [{'symbol': 'lbl_1_rodata_230', 'offset': 0, 'size': 4}, {'symbol': 'lbl_1_rodata_234', 'offset': 4, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/direction_math_pool_220', 'symbol': 'lbl_1_rodata_220', 'section': '.rodata', 'native_section': '.rodata.choice_math', 'native_offset': 0, 'linked_offset': 544, 'size': 16, 'members': [{'symbol': 'lbl_1_rodata_220', 'offset': 0, 'size': 8}, {'symbol': 'lbl_1_rodata_228', 'offset': 8, 'size': 8}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/opacity_pool_74', 'symbol': 'lbl_1_rodata_74', 'section': '.rodata', 'native_section': '.rodata.opacity_zero', 'native_offset': 0, 'linked_offset': 116, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_74', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/opacity_pool_a0', 'symbol': 'lbl_1_rodata_A0', 'section': '.rodata', 'native_section': '.rodata.opacity_ten', 'native_offset': 0, 'linked_offset': 160, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_A0', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/opacity_pool_c8', 'symbol': 'lbl_1_rodata_C8', 'section': '.rodata', 'native_section': '.rodata.opacity_thirty', 'native_offset': 0, 'linked_offset': 200, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_C8', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/opacity_pool_f0', 'symbol': 'lbl_1_rodata_F0', 'section': '.rodata', 'native_section': '.rodata.opacity_inverse', 'native_offset': 0, 'linked_offset': 240, 'size': 4, 'members': [{'symbol': 'lbl_1_rodata_F0', 'offset': 0, 'size': 4}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'pool_source': 'REL/mdminidll/opacity_pool_170', 'symbol': 'lbl_1_rodata_170', 'section': '.rodata', 'native_section': '.rodata.opacity_bias', 'native_offset': 0, 'linked_offset': 368, 'size': 8, 'members': [{'symbol': 'lbl_1_rodata_170', 'offset': 0, 'size': 8}]},
+        {'source': 'REL/mdminidll/scalar_approach.c', 'symbol': 'lbl_1_rodata_C0', 'section': '.rodata', 'native_offset': 0, 'linked_offset': 192, 'size': 8, 'pool_source': 'REL/mdminidll/scalar_model_pool_c0', 'native_section': '.rodata.model_signed_bias'},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_palette_pool_3b0', 'symbol': 'lbl_1_rodata_3B0', 'section': '.rodata', 'native_section': '.rodata.particle_palette_activation', 'native_offset': 0, 'linked_offset': 944, 'size': 20, 'members': [{'symbol': 'lbl_1_rodata_3B0', 'offset': 0, 'size': 20}]},
+        {'source': 'REL/mdminidll/particle_sine_1f3ac.c', 'pool_source': 'REL/mdminidll/particle_palette_pool_3c4', 'symbol': 'lbl_1_rodata_3C4', 'section': '.rodata', 'native_section': '.rodata.particle_palette_burst', 'native_offset': 0, 'linked_offset': 964, 'size': 32, 'members': [{'symbol': 'lbl_1_rodata_3C4', 'offset': 0, 'size': 20}, {'symbol': 'lbl_1_rodata_3D8', 'offset': 20, 'size': 4}, {'symbol': 'lbl_1_rodata_3DC', 'offset': 24, 'size': 4}, {'symbol': 'lbl_1_rodata_3E0', 'offset': 28, 'size': 4}]},
+    ]
+
 # Helper function for Dolphin libraries
 def DolphinLib(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
     return {
@@ -1645,6 +1727,134 @@ config.libs = [
                 extra_cflags=["-pool off"],
             ),
         },
+    ),
+    Rel(
+        "mdminidll",
+        objects=[
+            Object(Matching, "REL/mdminidll/startup.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/runtime.c", mw_version=config.linker_version, extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata off"]),
+            Object(Matching, "REL/mdminidll/camera_copy.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/camera_dispatch.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/camera_release.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/mode_options.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/mode_entry.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/mode_fade_in.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/active_window_wait.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/window_wait.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sprite_groups_create_4538.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/player_status.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/player_object_release.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sequence_icons_done.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sequence_tick.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_visible_22cb4.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_reset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_layer_reset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_grid_release.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_grid_create.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/slot_select_f0a8.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/model_rotation.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/scalar_approach.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/scalar_ease.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/scalar_sine_1484.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/scalar_arc_1ed8.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_sine_1f3ac.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_turn_1918.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_move_15b0.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_path_1a58.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/scalar_row_reset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/rows_reset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sprite_activate.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/light_create.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/object_transition.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sprite_group_reveal.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/secondary_models_create_7048.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/player_model_reset_df64.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/player_models_create_90c8.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/player_model_reset_f52c.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/mode_selection_run_1bcac.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/window_transition_17ef4.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/window_transition_18650.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/player_models_reset_17894.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/window_audio_callback.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/mode_available_1a4.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_approach_10dcc.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/sprite_row_reveal_7f8c.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/window_sprite_reveal.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/object_motion_gate.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sprite_group_place.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/position_offset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_choice_tick_111c0.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_place.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_neighbor_search.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_neighbors.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_animation_create.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/scene_create_16400.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_animation_release.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/player_selection.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/motion_grid_release.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/layer_model_release.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/secondary_window_message.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/shadow_setup.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_visible_234f8.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/sequence_run.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/light_release.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/sprite_bank.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sprite_hide.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/exit_check.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/player_config.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/object_reset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/secondary_state.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/object_states.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sprite_reset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sequence_state.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sequence_complete.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/sequence_done.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/scene_objects_release.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/layer_release.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/animation_select.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/window_kill.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/texture_copy.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/object_release.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/callback_4434.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/callback_478c.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/callback_84d4.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/layer_hook.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/object_create.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_kill_20f48.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_kill_220e8.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_kill_21764.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_kill_22c5c.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_kill_234a0.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_kill_23e6c.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/window_create.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/window_close_reset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/scene_cleanup.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/overlay_cleanup_return.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/camera_transition_start.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/camera_transition_update.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/scene_models_release.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_pair_create.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_pair_create_alt.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/motion_grid_create.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/model_sprite_reset.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_group_create.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/character_motion_load.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/character_motion_prepare_81c.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_model_create.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/minigame_overlay_enter.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/object_motion_delay.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/sprite_scale_update.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/sprite_project_position.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/particle_model_create_21fe8.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/object_trajectory_4be0.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/object_scene_reset_5bf4.c", extra_cflags=["-pooldata off"]),
+            Object(NonMatching, "REL/mdminidll/model_sprite_layout_899c.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_sprite_update_8c08.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/model_choice_layout_dd00.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/player_models_reveal_68f0.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/projected_icons_init_118a0.c", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/mdminidll/layer_effect_position.c", extra_cflags=["-pooldata off"]),
+        ],
     ),
 ]
 
