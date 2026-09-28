@@ -307,8 +307,8 @@ HUWINID HuWinCreate(float posX, float posY, s16 winW, s16 winH, s16 frame)
     if(frame < 0 || frame >= HUWIN_FRAME_MAX) {
         frame = HUWIN_FRAME_DEFAULT;
     }
-    winW = (winW+15)&0xFFF0;
-    winH = (winH+15)&0xFFF0;
+    winW = (winW+15)&65520;
+    winH = (winH+15)&65520;
     winP->winW = winW;
     winP->winH = winH;
     if(posX == HUWIN_POS_CENTER) {
@@ -555,7 +555,7 @@ u32 HuWinMesMaxNumGet(u32 dirNum)
 void *HuWinMesDataPtrGet(void *data, u32 messNum)
 {
     u32 dir = messNum >> 16;
-    u32 num = messNum & 0xFFFF;
+    u32 num = messNum & 65535;
     u32 *messData = data;
     if(dir >= *messData) {
         OSReport("Error: Message Dir Over\n");
@@ -675,8 +675,8 @@ static u8 winBGMake(ANIMDATA *bgAnim)
 
     w = bgAnim->bmp->sizeX;
     h = bgAnim->bmp->sizeY;
-    blockW = (w+7) & 0xF8;
-    blockH = (h+3) & 0xFC;
+    blockW = (w+7) & 248;
+    blockH = (h+3) & 252;
     bmpData = bgAnim->bmp->data = HuMemDirectMallocNum(HEAP_HEAP, blockW*blockH, HU_MEMNUM_OVL);
     for(i=0; i<h; i++) {
         if(i == 0) {
@@ -684,29 +684,29 @@ static u8 winBGMake(ANIMDATA *bgAnim)
                 if(j == 0) {
                     bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0;
                 } else if(j == w-1) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0x10;
+                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 16;
                 } else {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0x70;
+                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 112;
                 }
             }
         } else if(i == h-1) {
             for(j = 0; j < w; j++) {
                 if(j == 0) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0x20;
+                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 32;
                 } else if(j == w - 1) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0x30;
+                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 48;
                 } else {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0x60;
+                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 96;
                 }
             }
         } else {
             for(j = 0; j < w; j++) {
                 if(j == 0) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0x40;
+                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 64;
                 } else if(j == w-1) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0x50;
+                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 80;
                 } else {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0x80;
+                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 128;
                 }
             }
         }
@@ -1009,7 +1009,7 @@ static BOOL HuWinCR(HUWIN *winP)
         ret = FALSE;
     }
     
-    if(winP->messData[0] == 0x0A) {
+    if(winP->messData[0] == 10) {
         ofs = 1;
     } else {
         ofs = 0;
@@ -1527,7 +1527,7 @@ void HuWinMesSet(HUWINID winId, u32 messNum)
     HUWIN *winP = &winData[winId];
     s16 messW;
     winP->stat = HUWIN_STAT_DRAWMES;
-    if(!(messNum & 0x80000000)) {
+    if(!(messNum & 2147483648U)) {
         if(!messDataPtr) {
             OSReport("Error: No Message\n");
             return;
@@ -1560,7 +1560,7 @@ void HuWinInsertMesSet(HUWINID winId, u32 messNum, s16 insertMesNo)
 {
     HUWIN *winP = &winData[winId];
     s16 messW;
-    if(!(messNum & 0x80000000)) {
+    if(!(messNum & 2147483648U)) {
         if(!messDataPtr) {
             OSReport("Error: No Message\n");
             return;
@@ -1613,7 +1613,7 @@ int HuWinAtoi(char *str)
     s = str;
     while(*s) {
         if(*s >= '0' && *s <= '9') {
-            digit[len++] = *s & 0xF;
+            digit[len++] = *s & 15;
         }
         switch(*s) {
             case 14:
@@ -1643,7 +1643,7 @@ static char *HuWinPluralGet(char *str, char **singular, char **plural)
     s16 i;
     s16 j;
     while(*str) {
-        if(*str == 0x0A || *str == 0x0B || *str == 0xFF) {
+        if(*str == 10 || *str == 11 || *str == 255) {
             break;
         }
         for(i=0; i<10; i++) {
@@ -1689,7 +1689,7 @@ static char *HuWinMesCopy(HUWINID winId, char *messP)
     }
     winP->mesCopy = out = HuMemDirectMalloc(HEAP_HEAP, len*2);
     for(in=messP; *in;) {
-        if(*in == 0x19) {
+        if(*in == 25) {
             *out = *in;
             out++;
             in++;
@@ -1751,14 +1751,14 @@ s16 HuWinChoiceSet(HUWINID winId, s16 choiceNo)
     }
     if(choiceNo != -1) {
         while(choiceNo < winP->choiceNum) {
-            if(!(winP->choiceData[choiceNo].stat & 0x1)) {
+            if(!(winP->choiceData[choiceNo].stat & 1)) {
                 break;
             }
             choiceNo++;
         }
         if(choiceNo == winP->choiceNum) {
             for(choiceNo=0; choiceNo<winP->choiceNum; choiceNo++) {
-                if(!(winP->choiceData[choiceNo].stat & 0x1)) {
+                if(!(winP->choiceData[choiceNo].stat & 1)) {
                     break;
                 }
             }
@@ -1918,7 +1918,7 @@ void _HuWinComKeySet(s32 keyP1, s32 keyP2, s32 keyP3, s32 keyP4, s16 time)
     winComKeyBuf[comKeyIdx].key[3] = keyP4;
     winComKeyBuf[comKeyIdx].time = time;
     comKeyIdx++;
-    comKeyIdx &= 0xFF;
+    comKeyIdx &= 255;
 }
 
 void HuWinComKeyGet(HUWINID winId, u32 *key)
@@ -1947,7 +1947,7 @@ void HuWinComKeyGet(HUWINID winId, u32 *key)
         winComKeyBuf[comKeyIdxNow].time--;
         if(winComKeyBuf[comKeyIdxNow].time <= 0) {
             comKeyIdxNow++;
-            comKeyIdxNow &= 0xFF;
+            comKeyIdxNow &= 255;
         }
     }
 }
@@ -1980,7 +1980,7 @@ void HuWinMesMaxSizeGet(s16 messCnt, HuVec2f *maxSize, ...)
     }
     winTabSize = 24;
     cancelCRF = FALSE;
-    maxSize->x = (winMaxWidth+31)&0xFFF0;
+    maxSize->x = (winMaxWidth+31)&65520;
     maxSize->y = winMaxHeight+16;
     va_end(vaList);
 }
@@ -2015,7 +2015,7 @@ void HuWinMesMaxSizeBetGet(HuVec2f *maxSize, u32 messStart, u32 messEnd)
     }
     winTabSize = 24;
     cancelCRF = FALSE;
-    maxSize->x = (winMaxWidth+31)&0xFFF0;
+    maxSize->x = (winMaxWidth+31)&65520;
     maxSize->y = winMaxHeight+16;
 }
 
@@ -2030,7 +2030,7 @@ static s32 GetMesMaxSizeSub(u32 messNum)
     BOOL crF = FALSE;
     s16 messDataF;
     
-    if(messNum > 0x80000000) {
+    if(messNum > 2147483648U) {
         messDataF = FALSE;
         messData = (char *)messNum;
     } else {
@@ -2164,7 +2164,7 @@ static s32 GetMesMaxSizeSub2(HUWIN *winP, void *data)
                 break;
                 
             case 10:
-                if(!(winP->attr & 0x100)) {
+                if(!(winP->attr & 256)) {
                     charW = 0;
                     messEnd = TRUE;
                 }
@@ -2221,7 +2221,7 @@ s16 HuWinKeyWaitNumGet(u32 messNum)
 {
     s16 waitNum;
     char *messData;
-    if(messNum > 0x80000000) {
+    if(messNum > 2147483648U) {
         messData = (char *)messNum;
     } else {
         messData = HuWinMesPtrGet(messNum);
@@ -2252,7 +2252,7 @@ void HuWinDisablePlayerReset(HUWINID winId, u8 playerBit)
     winP->disablePlayer &= ~playerBit;
 }
 
-void HuWinCallbackStub(HUWINID winId, u32 mess, char c)
+void HuWinCallbackStub(HUWINID winId, u32 mess, s16 c)
 {
     (void)mess;
     &winData[winId];
