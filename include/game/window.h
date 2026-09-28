@@ -34,7 +34,7 @@
 #define HUWIN_PLAYER_2 (1 << 1)
 #define HUWIN_PLAYER_3 (1 << 2)
 #define HUWIN_PLAYER_4 (1 << 3)
-#define HUWIN_PLAYER_ALL 0xF
+#define HUWIN_PLAYER_ALL 15
 
 #define HUWIN_ATTR_NONE 0
 #define HUWIN_ATTR_OUTLINE (1 << 0)
@@ -74,7 +74,7 @@
 
 typedef s16 HUWINID;
 
-typedef void (*HUWIN_CALLBACK)(HUWINID winId, u32 mess, char c);
+typedef void (*HUWIN_CALLBACK)(HUWINID winId, u32 mess, s16 c);
 
 typedef struct WinCharEntry_s {
     u8 color;
@@ -224,7 +224,7 @@ s16 HuWinKeyWaitNumGet(u32 messNum);
 void HuWinPushKeySet(HUWINID winId, s16 pushKey);
 void HuWinDisablePlayerSet(HUWINID winId, u8 playerBit);
 void HuWinDisablePlayerReset(HUWINID winId, u8 playerBit);
-void HuWinCallbackStub(HUWINID winId, u32 mess, char c);
+void HuWinCallbackStub(HUWINID winId, u32 mess, s16 c);
 void HuWinCallbackSet(HUWINID winId, HUWIN_CALLBACK cb);
 
 HUWINID HuWinExCreate(float x, float y, s16 w, s16 h, s16 speakerNo);
