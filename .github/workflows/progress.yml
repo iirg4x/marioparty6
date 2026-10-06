@@ -45,7 +45,8 @@ jobs:
       - name: Verify README exposes all progress badges
         shell: bash
         run: |
-          grep -q 'progress%2Fall.json' README.md
+          grep -q 'decomp.dev/iirg4x/marioparty6.svg?mode=shield&measure=code' README.md
+          grep -q 'decomp.dev/iirg4x/marioparty6.svg?mode=shield&measure=data' README.md
           grep -q 'progress%2Fdol.json' README.md
           grep -q 'progress%2Fdlls.json' README.md
 
