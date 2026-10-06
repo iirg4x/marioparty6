@@ -1,8 +1,10 @@
 # Mario Party 6
 
-[![Code Progress]][status] [![DOL Progress]][status] [![REL Progress]][status]
+[![Code Progress]][progress] [![Data Progress]][progress] [![DOL Progress]][status] [![REL Progress]][status]
 
-[Code Progress]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fall.json
+[Code Progress]: https://decomp.dev/iirg4x/marioparty6.svg?mode=shield&measure=code&label=Code
+[Data Progress]: https://decomp.dev/iirg4x/marioparty6.svg?mode=shield&measure=data&label=Data
+[progress]: https://decomp.dev/iirg4x/marioparty6
 [DOL Progress]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdol.json
 [REL Progress]: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fiirg4x%2Fmarioparty6%2Fmain%2Fprogress%2Fdlls.json
 [status]: STATUS.md
@@ -16,9 +18,10 @@ distribute game assets or original binaries.
 
 ## Progress
 
-The badges and [STATUS.md](STATUS.md) show generated progress from main.
-The DOL is the main executable; RELs are runtime-loaded modules, also called
-DLLs by the game. They are not Windows DLLs.
+Live progress, with history and per-module detail, is on
+[decomp.dev][progress]. The DOL and REL badges and [STATUS.md](STATUS.md) show
+generated progress from main. The DOL is the main executable; RELs are
+runtime-loaded modules, also called DLLs by the game. They are not Windows DLLs.
 
 Source completion and a matching build are different: unrecovered files can
 still be linked from original objects. A retail-identical build does **not**
@@ -54,7 +57,10 @@ python tools/build.py
 
 Configuration downloads the project's pinned tools and compilers when needed.
 `tools/build.py` runs Ninja and refreshes the progress badge files when progress
-changes.
+changes. It also regenerates `progress/report.json`, the
+[objdiff](https://github.com/encounter/objdiff) progress report that
+decomp.dev reads; GitHub's runners have no game files, so the report is built
+locally and committed, and a workflow uploads it on each push to main.
 
 Verify the built files against the retail checksums:
 
