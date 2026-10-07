@@ -1,3 +1,5 @@
+/* Message Checker REL: browses message directories and displays each entry. */
+/* Pad input changes the directory, entry, or language shown in the message windows. */
 #include "dolphin.h"
 #include "game/gamework.h"
 #include "game/object.h"
@@ -16,10 +18,12 @@ static void fn_1_110(void);
 static void fn_1_188(void);
 static void fn_1_828(u32 messNum, HuVec2f *size);
 
+/* Object manager passed to the browser child task when the overlay starts. */
 static OMOBJMAN *objman;
 
 void ObjectSetup(void);
 
+/* REL startup entry: runs registered constructors before setting up the checker. */
 int _prolog(void)
 {
     const VoidFunc *ctors = _ctors;
@@ -32,6 +36,7 @@ int _prolog(void)
     return 0;
 }
 
+/* REL shutdown entry: runs registered destructors as the overlay unloads. */
 void _epilog(void)
 {
     const VoidFunc *dtors = _dtors;
@@ -42,6 +47,7 @@ void _epilog(void)
     }
 }
 
+/* Called by _prolog after constructors to initialize windows and start the browser task. */
 void ObjectSetup(void)
 {
     OSReport("******* Message Checker *********\n");
@@ -50,7 +56,7 @@ void ObjectSetup(void)
     HuPrcChildCreate(fn_1_110, 1000, 12288, 0, objman);
 }
 
-/* Writable: the checker normalizes '_' and strips any filename suffix in place. */
+/* Mutable message-directory names in display order; '_' becomes '=' and '.' truncates lookup names. */
 char *lbl_1_data_494[] = {
     "001_chara_name",
     "002_sys_guide",
@@ -130,6 +136,7 @@ char *lbl_1_data_494[] = {
     NULL,
 };
 
+/* Message IDs used by the language label window, indexed by GwLanguage. */
 u32 lbl_1_data_5C4[] = {
     MESSNUM(MESS_LANGUAGE, 1),
     MESSNUM(MESS_LANGUAGE, 1),
@@ -139,6 +146,7 @@ u32 lbl_1_data_5C4[] = {
     MESSNUM(MESS_LANGUAGE, 13),
 };
 
+/* Child task started by ObjectSetup: shows the browser between wipes, then returns the REL. */
 static void fn_1_110(void)
 {
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 30);
@@ -160,6 +168,7 @@ static void fn_1_110(void)
     }
 }
 
+/* Called by the child after the opening wipe; displays messages and handles pad input for language, navigation, and exit. */
 static void fn_1_188(void)
 {
     char messNoText[8];
@@ -321,6 +330,7 @@ static void fn_1_188(void)
     }
 }
 
+/* Called before each entry window; reads stored dimensions for the directory and entry indices packed in messNum. */
 static void fn_1_828(u32 messNum, HuVec2f *size)
 {
     u32 dirNo = messNum >> 16;
