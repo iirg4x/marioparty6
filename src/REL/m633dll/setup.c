@@ -1,24 +1,26 @@
+/* Player object callbacks for controlling the rotating obstacle and handling hits. */
 #include "REL/m633dll.h"
 
+/* Creates two moving segments from the stage nozzle and plays their launch sound. */
 void fn_1_258C(void)
 {
-    Point3d sp14;
-    Point3d sp8;
-    f32 temp_f1;
+    Point3d nozzlePosition;
+    Point3d nozzleDirection;
+    f32 nozzleDistance;
 
-    Hu3DModelObjPosGet(lbl_1_bss_0.unk110, lbl_1_data_160, &sp14);
-    sp14.y -= 50.0f;
-    sp8 = sp14;
-    PSVECNormalize(&sp8, &sp8);
-    lbl_1_bss_0.unk198 = 90;
-    fn_1_5ED0(&sp14, &sp8);
-    temp_f1 = PSVECMag(&sp14);
-    sp14.x += sp8.x * -(2.0f * temp_f1);
-    sp14.z += sp8.z * -(2.0f * temp_f1);
-    sp8.x = -sp8.x;
-    sp8.z = -sp8.z;
-    fn_1_5ED0(&sp14, &sp8);
-    HuAudFXPlay(1849);
+    Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &nozzlePosition);
+    nozzlePosition.y -= 50.0f;
+    nozzleDirection = nozzlePosition;
+    PSVECNormalize(&nozzleDirection, &nozzleDirection);
+    lbl_1_bss_0.segmentUpdateCountdown = 90;
+    fn_1_5ED0(&nozzlePosition, &nozzleDirection);
+    nozzleDistance = PSVECMag(&nozzlePosition);
+    nozzlePosition.x += nozzleDirection.x * -(2.0f * nozzleDistance);
+    nozzlePosition.z += nozzleDirection.z * -(2.0f * nozzleDistance);
+    nozzleDirection.x = -nozzleDirection.x;
+    nozzleDirection.z = -nozzleDirection.z;
+    fn_1_5ED0(&nozzlePosition, &nozzleDirection);
+    HuAudFXPlay(M633_SEGMENT_SPAWN_SE_ID);
 }
 
 void fn_1_26B4(OMOBJ *obj)
@@ -26,244 +28,247 @@ void fn_1_26B4(OMOBJ *obj)
 
 }
 
+/* Creates a segment when the arena reaches phase 2 and waits for live segments to expire. */
 void fn_1_26B8(OMOBJ *obj)
 {
-    Point3d sp18;
-    Point3d spC;
+    Point3d nozzleDirection;
+    Point3d nozzlePosition;
     MGPLAYER *player;
-    s16 sp8;
+    s16 playerModelId;
     u32 playerNo;
-    f32 temp_f1;
+    f32 nozzleDistance;
 
     playerNo = obj->work[0];
-    player = lbl_1_bss_0.unk040[playerNo];
-    sp8 = player->actor->mdlId;
+    player = lbl_1_bss_0.players[playerNo];
+    playerModelId = player->actor->mdlId;
     switch (obj->work[1]) {
     case 0:
         fn_1_70A8(0);
         obj->work[1] = 1;
         break;
     case 1:
-        if (lbl_1_bss_0.unk10C == 2) {
-            Hu3DModelObjPosGet(lbl_1_bss_0.unk110, lbl_1_data_160, &spC);
-            spC.y -= 50.0f;
-            sp18 = spC;
-            PSVECNormalize(&sp18, &sp18);
-            lbl_1_bss_0.unk198 = 90;
-            fn_1_5ED0(&spC, &sp18);
-            temp_f1 = PSVECMag(&spC);
-            spC.x += sp18.x * -(2.0f * temp_f1);
-            spC.z += sp18.z * -(2.0f * temp_f1);
-            sp18.x = -sp18.x;
-            sp18.z = -sp18.z;
-            fn_1_5ED0(&spC, &sp18);
-            HuAudFXPlay(1849);
+        if (lbl_1_bss_0.arenaPhase == 2) {
+            Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &nozzlePosition);
+            nozzlePosition.y -= 50.0f;
+            nozzleDirection = nozzlePosition;
+            PSVECNormalize(&nozzleDirection, &nozzleDirection);
+            lbl_1_bss_0.segmentUpdateCountdown = 90;
+            fn_1_5ED0(&nozzlePosition, &nozzleDirection);
+            nozzleDistance = PSVECMag(&nozzlePosition);
+            nozzlePosition.x += nozzleDirection.x * -(2.0f * nozzleDistance);
+            nozzlePosition.z += nozzleDirection.z * -(2.0f * nozzleDistance);
+            nozzleDirection.x = -nozzleDirection.x;
+            nozzleDirection.z = -nozzleDirection.z;
+            fn_1_5ED0(&nozzlePosition, &nozzleDirection);
+            HuAudFXPlay(M633_SEGMENT_SPAWN_SE_ID);
             obj->work[1] = 2;
             fn_1_70A8(1);
         }
         break;
     case 2:
-        if (lbl_1_bss_0.unk108 == 0) {
+        if (lbl_1_bss_0.segmentCount == 0) {
             obj->work[1] = 4;
         }
         break;
     }
 }
 
+/* Per-frame player control: turns the arena models and checks active players near either point measured from its nozzle. */
 void fn_1_28A4(OMOBJ *obj)
 {
-    Point3d sp80;
-    Point3d sp74;
-    Point3d sp68;
-    Point3d sp5C;
-    Point3d sp50;
-    Point3d sp44;
-    Point3d sp38;
-    Point3d sp2C;
-    Point3d sp20;
-    Point3d sp14;
-    Point3d sp8;
-    f32 temp_f31;
-    f32 temp_f30;
-    f32 temp_f29;
-    f32 temp_f28;
-    s32 var_r31;
-    u32 temp_r30;
-    u16 var_r29;
-    MGPLAYER *temp_r28;
-    s32 var_r27;
-    s32 var_r26;
-    s32 var_r25;
-    u16 var_r24;
-    u16 var_r23;
-    u16 var_r22;
+    Point3d oppositeNozzlePosition;
+    Point3d oppositeNozzleDirection;
+    Point3d segmentNozzlePosition;
+    Point3d secondNozzlePosition;
+    Point3d segmentNozzleDirection;
+    Point3d playerPosition;
+    Point3d playerToNozzleDelta;
+    Point3d eliminatedPlayerPosition;
+    Point3d nozzleDirection;
+    Point3d nozzlePosition;
+    Point3d projectedPlayerPosition;
+    f32 segmentDistance;
+    f32 oppositeNozzleDistance;
+    f32 offsetNozzleDistance;
+    f32 nozzleDistance;
+    s32 playerIndex;
+    u32 playerNo;
+    u16 buttonMask;
+    MGPLAYER *player;
+    s32 soundPanning;
+    s32 collisionResult;
+    s32 buttonChanged;
+    u16 buttonState;
+    u16 pressedButtonState;
+    u16 directionButtonMask;
     s16 modelId;
     s32 sound;
 
 
-    temp_r30 = obj->work[0];
-    if (GwPlayerConf[temp_r30].type != 0) {
-        var_r24 = lbl_1_bss_0.unkAD0;
-        var_r23 = lbl_1_bss_0.unkAD2;
+    playerNo = obj->work[0];
+    if (GwPlayerConf[playerNo].type != 0) {
+        buttonState = lbl_1_bss_0.aiButtons;
+        pressedButtonState = lbl_1_bss_0.aiPressedButtons;
     } else {
-        var_r24 = HuPadBtn[lbl_1_bss_0.unk060[temp_r30]];
-        var_r23 = HuPadBtnDown[lbl_1_bss_0.unk060[temp_r30]];
+        buttonState = HuPadBtn[lbl_1_bss_0.padNumbers[playerNo]];
+        pressedButtonState = HuPadBtnDown[lbl_1_bss_0.padNumbers[playerNo]];
     }
-    if (lbl_1_bss_0.unk108 == 0) {
-        var_r22 = 24576;
-        var_r29 = var_r24 & var_r22;
-        var_r25 = 0;
-        if (var_r29 == var_r22) {
-            var_r29 = 0;
+    if (lbl_1_bss_0.segmentCount == 0) {
+        directionButtonMask = PAD_BUTTON_TRIGGER_L | PAD_BUTTON_TRIGGER_R;
+        buttonMask = buttonState & directionButtonMask;
+        buttonChanged = 0;
+        if (buttonMask == directionButtonMask) {
+            buttonMask = 0;
         }
-        if (lbl_1_bss_0.unk0F4 != var_r29) {
-            var_r25 = 1;
+        if (lbl_1_bss_0.previousDirectionButtons != buttonMask) {
+            buttonChanged = 1;
         }
-        lbl_1_bss_0.unk0F4 = var_r29;
-        if (var_r29 == 8192) {
-            lbl_1_bss_0.unk194 += 358.0f;
-            if (var_r25 != 0) {
-                CharMotionShiftSet((s16) lbl_1_bss_0.unk050[temp_r30], lbl_1_bss_0.unk040[temp_r30]->omObj->mtnId[12], 6.0f, 6.0f, 1073741828U);
-                Hu3DMotionShiftSet(lbl_1_bss_0.unk110, lbl_1_bss_0.unk116[0], 6.0f, 6.0f, 1073741828U);
+        lbl_1_bss_0.previousDirectionButtons = buttonMask;
+        if (buttonMask == PAD_BUTTON_TRIGGER_R) {
+            lbl_1_bss_0.arenaYawDegrees += 358.0f;
+            if (buttonChanged != 0) {
+                CharMotionShiftSet((s16) lbl_1_bss_0.characterNumbers[playerNo], lbl_1_bss_0.players[playerNo]->omObj->mtnId[12], 6.0f, 6.0f, HU3D_MOTATTR_REV);
+                Hu3DMotionShiftSet(lbl_1_bss_0.rotatingStageModelId, lbl_1_bss_0.stageAuxiliaryIds[0], 6.0f, 6.0f, HU3D_MOTATTR_REV);
             }
-            if (lbl_1_bss_0.unkAE4 == -1) {
-                lbl_1_bss_0.unkAE4 = HuAudFXPlay(1852);
+            if (lbl_1_bss_0.rotationSoundHandle == -1) {
+                lbl_1_bss_0.rotationSoundHandle = HuAudFXPlay(M633_ROTATION_CONTROL_SE_ID);
             }
-        } else if (var_r29 == 16384) {
-            lbl_1_bss_0.unk194 += 2.0f;
-            if (var_r25 != 0) {
-                Hu3DModelAttrReset((s16) lbl_1_bss_0.unk040[temp_r30]->actor->mdlId, 1073741828U);
-                CharMotionShiftSet((s16) lbl_1_bss_0.unk050[temp_r30], lbl_1_bss_0.unk040[temp_r30]->omObj->mtnId[12], 6.0f, 6.0f, 0U);
-                Hu3DMotionShiftSet(lbl_1_bss_0.unk110, lbl_1_bss_0.unk116[0], 6.0f, 6.0f, 0U);
+        } else if (buttonMask == PAD_BUTTON_TRIGGER_L) {
+            lbl_1_bss_0.arenaYawDegrees += 2.0f;
+            if (buttonChanged != 0) {
+                Hu3DModelAttrReset((s16) lbl_1_bss_0.players[playerNo]->actor->mdlId, HU3D_MOTATTR_REV);
+                CharMotionShiftSet((s16) lbl_1_bss_0.characterNumbers[playerNo], lbl_1_bss_0.players[playerNo]->omObj->mtnId[12], 6.0f, 6.0f, 0U);
+                Hu3DMotionShiftSet(lbl_1_bss_0.rotatingStageModelId, lbl_1_bss_0.stageAuxiliaryIds[0], 6.0f, 6.0f, 0U);
             }
-            if (lbl_1_bss_0.unkAE4 == -1) {
-                lbl_1_bss_0.unkAE4 = HuAudFXPlay(1852);
+            if (lbl_1_bss_0.rotationSoundHandle == -1) {
+                lbl_1_bss_0.rotationSoundHandle = HuAudFXPlay(M633_ROTATION_CONTROL_SE_ID);
             }
         } else {
-            temp_r28 = lbl_1_bss_0.unk040[temp_r30];
-            modelId = temp_r28->actor->mdlId;
-            if ((Hu3DMotionShiftIDGet(modelId) < 0) && (temp_r28->omObj->mtnId[13] != Hu3DMotionIDGet(modelId))) {
-                CharMotionShiftSet(temp_r28->charNo, temp_r28->omObj->mtnId[13], 0.0f, 6.0f, 0U);
-                Hu3DMotionShiftSet(lbl_1_bss_0.unk110, lbl_1_bss_0.unk114, 0.0f, 6.0f, 0U);
+            player = lbl_1_bss_0.players[playerNo];
+            modelId = player->actor->mdlId;
+            if ((Hu3DMotionShiftIDGet(modelId) < 0) && (player->omObj->mtnId[13] != Hu3DMotionIDGet(modelId))) {
+                CharMotionShiftSet(player->charNo, player->omObj->mtnId[13], 0.0f, 6.0f, 0U);
+                Hu3DMotionShiftSet(lbl_1_bss_0.rotatingStageModelId, lbl_1_bss_0.stageIdleMotionId, 0.0f, 6.0f, 0U);
             }
-            if (lbl_1_bss_0.unkAE4 != -1) {
-                HuAudFXStop(lbl_1_bss_0.unkAE4);
-                lbl_1_bss_0.unkAE4 = -1;
+            if (lbl_1_bss_0.rotationSoundHandle != -1) {
+                HuAudFXStop(lbl_1_bss_0.rotationSoundHandle);
+                lbl_1_bss_0.rotationSoundHandle = -1;
             }
         }
-        while (lbl_1_bss_0.unk194 >= 360.0f) {
-            lbl_1_bss_0.unk194 -= 360.0f;
+        while (lbl_1_bss_0.arenaYawDegrees >= 360.0f) {
+            lbl_1_bss_0.arenaYawDegrees -= 360.0f;
         }
-        Hu3DModelRotSet(lbl_1_bss_0.unk110, 0.0f, lbl_1_bss_0.unk194, 0.0f);
-        Hu3DModelRotSet(lbl_1_bss_0.unk112, 0.0f, lbl_1_bss_0.unk194, 0.0f);
-        var_r29 = var_r23;
-        if ((lbl_1_bss_0.unk10C == 2) && ((s32) (var_r29 & 256) != 0)) {
-            Hu3DModelObjPosGet(lbl_1_bss_0.unk110, lbl_1_data_160, &sp14);
-            sp14.y -= 50.0f;
-            sp20 = sp14;
-            PSVECNormalize(&sp20, &sp20);
-            lbl_1_bss_0.unk198 = 90;
-            fn_1_5ED0(&sp14, &sp20);
-            temp_f28 = PSVECMag(&sp14);
-            sp14.x += sp20.x * -(2.0f * temp_f28);
-            sp14.z += sp20.z * -(2.0f * temp_f28);
-            sp20.x = -sp20.x;
-            sp20.z = -sp20.z;
-            fn_1_5ED0(&sp14, &sp20);
-            HuAudFXPlay(1849);
+        Hu3DModelRotSet(lbl_1_bss_0.rotatingStageModelId, 0.0f, lbl_1_bss_0.arenaYawDegrees, 0.0f);
+        Hu3DModelRotSet(lbl_1_bss_0.secondRotatingModelId, 0.0f, lbl_1_bss_0.arenaYawDegrees, 0.0f);
+        buttonMask = pressedButtonState;
+        if ((lbl_1_bss_0.arenaPhase == 2) && ((s32) (buttonMask & PAD_BUTTON_A) != 0)) {
+            Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &nozzlePosition);
+            nozzlePosition.y -= 50.0f;
+            nozzleDirection = nozzlePosition;
+            PSVECNormalize(&nozzleDirection, &nozzleDirection);
+            lbl_1_bss_0.segmentUpdateCountdown = 90;
+            fn_1_5ED0(&nozzlePosition, &nozzleDirection);
+            nozzleDistance = PSVECMag(&nozzlePosition);
+            nozzlePosition.x += nozzleDirection.x * -(2.0f * nozzleDistance);
+            nozzlePosition.z += nozzleDirection.z * -(2.0f * nozzleDistance);
+            nozzleDirection.x = -nozzleDirection.x;
+            nozzleDirection.z = -nozzleDirection.z;
+            fn_1_5ED0(&nozzlePosition, &nozzleDirection);
+            HuAudFXPlay(M633_SEGMENT_SPAWN_SE_ID);
             fn_1_70A8(1);
-            omVibrate((s16) temp_r30, 20, 4, 4);
-            if (lbl_1_bss_0.unkAE4 != -1) {
-                HuAudFXStop(lbl_1_bss_0.unkAE4);
-                lbl_1_bss_0.unkAE4 = -1;
+            omVibrate((s16) playerNo, 20, 4, 4);
+            if (lbl_1_bss_0.rotationSoundHandle != -1) {
+                HuAudFXStop(lbl_1_bss_0.rotationSoundHandle);
+                lbl_1_bss_0.rotationSoundHandle = -1;
             }
         }
-        Hu3DModelObjPosGet(lbl_1_bss_0.unk110, lbl_1_data_160, &sp80);
-        sp74 = sp80;
-        PSVECNormalize(&sp74, &sp74);
-        temp_f30 = PSVECMag(&sp80);
-        sp80.x += sp74.x * -(2.0f * temp_f30);
-        sp80.z += sp74.z * -(2.0f * temp_f30);
-        Hu3DModelPosSetV(lbl_1_bss_0.unk180[1], &sp80);
-        Hu3DModelObjPosGet(lbl_1_bss_0.unk110, lbl_1_data_160, &sp68);
-        Hu3DModelObjPosGet(lbl_1_bss_0.unk110, lbl_1_data_160, &sp50);
-        PSVECNormalize(&sp50, &sp50);
-        temp_f29 = PSVECMag(&sp68);
-        sp5C.x = sp68.x + (sp50.x * -(2.0f * temp_f29));
-        sp5C.y = sp68.y = 0.0f;
-        sp5C.z = sp68.z + (sp50.z * -(2.0f * temp_f29));
-        var_r31 = 0;
-        while (var_r31 < 4) {
-            sp44 = lbl_1_bss_0.unk040[var_r31]->actor->pos;
-            var_r26 = 0;
-            sp44.y = 0.0f;
-            if ((lbl_1_bss_0.unk070[var_r31] != 0) && (lbl_1_bss_0.unk080[var_r31] == 0)) {
-                PSVECSubtract(&sp68, &sp44, &sp38);
-                temp_f31 = PSVECMag(&sp38);
-                if (temp_f31 < lbl_1_bss_0.unkA34) {
-                    var_r26 += 1;
+        Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &oppositeNozzlePosition);
+        oppositeNozzleDirection = oppositeNozzlePosition;
+        PSVECNormalize(&oppositeNozzleDirection, &oppositeNozzleDirection);
+        oppositeNozzleDistance = PSVECMag(&oppositeNozzlePosition);
+        oppositeNozzlePosition.x += oppositeNozzleDirection.x * -(2.0f * oppositeNozzleDistance);
+        oppositeNozzlePosition.z += oppositeNozzleDirection.z * -(2.0f * oppositeNozzleDistance);
+        Hu3DModelPosSetV(lbl_1_bss_0.nozzleModelIds[1], &oppositeNozzlePosition);
+        Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &segmentNozzlePosition);
+        Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &segmentNozzleDirection);
+        PSVECNormalize(&segmentNozzleDirection, &segmentNozzleDirection);
+        offsetNozzleDistance = PSVECMag(&segmentNozzlePosition);
+        secondNozzlePosition.x = segmentNozzlePosition.x + (segmentNozzleDirection.x * -(2.0f * offsetNozzleDistance));
+        secondNozzlePosition.y = segmentNozzlePosition.y = 0.0f;
+        secondNozzlePosition.z = segmentNozzlePosition.z + (segmentNozzleDirection.z * -(2.0f * offsetNozzleDistance));
+        playerIndex = 0;
+        while (playerIndex < 4) {
+            playerPosition = lbl_1_bss_0.players[playerIndex]->actor->pos;
+            collisionResult = 0;
+            playerPosition.y = 0.0f;
+            if ((lbl_1_bss_0.outsideGroupZero[playerIndex] != 0) && (lbl_1_bss_0.playerRemoved[playerIndex] == 0)) {
+                PSVECSubtract(&segmentNozzlePosition, &playerPosition, &playerToNozzleDelta);
+                segmentDistance = PSVECMag(&playerToNozzleDelta);
+                if (segmentDistance < lbl_1_bss_0.nozzleCollisionRadius) {
+                    collisionResult += 1;
                 }
-                PSVECSubtract(&sp5C, &sp44, &sp38);
-                temp_f31 = PSVECMag(&sp38);
-                if (temp_f31 < lbl_1_bss_0.unkA34) {
-                    var_r26 += 1;
+                PSVECSubtract(&secondNozzlePosition, &playerPosition, &playerToNozzleDelta);
+                segmentDistance = PSVECMag(&playerToNozzleDelta);
+                if (segmentDistance < lbl_1_bss_0.nozzleCollisionRadius) {
+                    collisionResult += 1;
                 }
-                if (var_r26 != 0) {
-                    OSReport(lbl_1_data_177, temp_f31);
-                    MgPlayerAttrSet(lbl_1_bss_0.unk040[var_r31], 1U);
-                    MgPlayerDespawn(lbl_1_bss_0.unk040[var_r31]);
-                    lbl_1_bss_0.unk080[var_r31] = 1;
-                    lbl_1_bss_0.unk0E0 -= 1;
-                    lbl_1_bss_0.unk0E4[var_r31]->objFunc = fn_1_34B0;
-                    sp2C = lbl_1_bss_0.unk040[var_r31]->actor->pos;
-                    Hu3D3Dto2D(&sp44, 1, &sp8);
-                    var_r27 = (s32) sp8.x;
-                    var_r27 /= 5;
-                    if ((s32) var_r27 < 48) {
-                        var_r27 = 48;
-                    } else if ((s32) var_r27 > 127) {
-                        var_r27 = 127;
+                if (collisionResult != 0) {
+                    OSReport(lbl_1_data_177, segmentDistance);
+                    MgPlayerAttrSet(lbl_1_bss_0.players[playerIndex], 1U);
+                    MgPlayerDespawn(lbl_1_bss_0.players[playerIndex]);
+                    lbl_1_bss_0.playerRemoved[playerIndex] = 1;
+                    lbl_1_bss_0.activePlayerCount -= 1;
+                    lbl_1_bss_0.playerObjects[playerIndex]->objFunc = fn_1_34B0;
+                    eliminatedPlayerPosition = lbl_1_bss_0.players[playerIndex]->actor->pos;
+                    Hu3D3Dto2D(&playerPosition, 1, &projectedPlayerPosition);
+                    soundPanning = (s32) projectedPlayerPosition.x;
+                    soundPanning /= 5;
+                    if ((s32) soundPanning < 48) {
+                        soundPanning = 48;
+                    } else if ((s32) soundPanning > 127) {
+                        soundPanning = 127;
                     }
-                    sound = HuAudFXPlay(1851);
-                    HuAudFXPanning(sound, (s16) var_r27);
+                    sound = HuAudFXPlay(M633_PLAYER_ELIMINATION_SE_ID);
+                    HuAudFXPanning(sound, (s16) soundPanning);
                 }
             }
-            var_r31 += 1;
+            playerIndex += 1;
         }
     }
 }
 
+/* Per-frame callback for the other player slots; after the segment phase, restores their idle motion. */
 void fn_1_32C0(OMOBJ *obj)
 {
-    Point3d sp8;
+    Point3d playerPosition;
     MGPLAYER *player;
     s16 model;
     u32 playerNo;
 
     playerNo = obj->work[0];
-    player = lbl_1_bss_0.unk040[playerNo];
+    player = lbl_1_bss_0.players[playerNo];
     model = player->actor->mdlId;
     switch (obj->work[1]) {
     case 0:
-        sp8 = player->actor->pos;
-        Hu3DModelPosSetV(model, &sp8);
+        playerPosition = player->actor->pos;
+        Hu3DModelPosSetV(model, &playerPosition);
         obj->work[1] = 1;
         obj->work[2] = 0;
         break;
     case 1:
-        if (lbl_1_bss_0.unk108 != 0) {
+        if (lbl_1_bss_0.segmentCount != 0) {
             obj->work[2] += 1;
             if ((u32) obj->work[2] >= 30U) {
                 obj->work[1] = 3;
                 obj->work[2] = 0;
-                CharMotionShiftSet(lbl_1_bss_0.unk040[playerNo]->charNo, lbl_1_bss_0.unk040[playerNo]->omObj->mtnId[14], 0.0f, 6.0f, 0U);
+                CharMotionShiftSet(lbl_1_bss_0.players[playerNo]->charNo, lbl_1_bss_0.players[playerNo]->omObj->mtnId[14], 0.0f, 6.0f, 0U);
             }
         }
     case 2:
         break;
     case 3:
         if ((Hu3DMotionShiftIDGet(model) == -1) && (Hu3DMotionEndCheck(model) != 0)) {
-            CharMotionShiftSet(lbl_1_bss_0.unk040[playerNo]->charNo, lbl_1_bss_0.unk040[playerNo]->omObj->mtnId[0], 0.0f, 6.0f, 0U);
+            CharMotionShiftSet(lbl_1_bss_0.players[playerNo]->charNo, lbl_1_bss_0.players[playerNo]->omObj->mtnId[0], 0.0f, 6.0f, 0U);
             obj->work[1] = 4;
         }
         break;
@@ -280,11 +285,12 @@ void fn_1_34AC(OMOBJ *obj)
 
 }
 
+/* Starts the hit reaction after a player is removed, then hands animation updates to fn_1_36BC. */
 void fn_1_34B0(OMOBJ *obj)
 {
-    Point3d sp20;
-    Point3d sp14;
-    Point3d sp8;
+    Point3d knockbackDirection;
+    Point3d projectedPosition;
+    Point3d playerPosition;
     s32 effect;
     s32 panning;
     u32 playerNo;
@@ -292,18 +298,18 @@ void fn_1_34B0(OMOBJ *obj)
     playerNo = obj->work[0];
     omVibrate((s16) playerNo, 60, 20, 0);
     obj->objFunc = fn_1_36BC;
-    sp20 = lbl_1_bss_0.unk040[playerNo]->actor->pos;
-    PSVECNormalize(&sp20, &sp20);
-    lbl_1_bss_0.unk090[playerNo] = sp20;
-    lbl_1_bss_0.unk0C0[playerNo] = 0;
-    lbl_1_bss_0.unk0D0[playerNo] = 40.0f;
-    CharMotionShiftSet(lbl_1_bss_0.unk040[playerNo]->charNo,
-                       lbl_1_bss_0.unk040[playerNo]->omObj->mtnId[11],
+    knockbackDirection = lbl_1_bss_0.players[playerNo]->actor->pos;
+    PSVECNormalize(&knockbackDirection, &knockbackDirection);
+    lbl_1_bss_0.hitDirections[playerNo] = knockbackDirection;
+    lbl_1_bss_0.hitUpdateCounts[playerNo] = 0;
+    lbl_1_bss_0.hitVerticalOffsets[playerNo] = 40.0f;
+    CharMotionShiftSet(lbl_1_bss_0.players[playerNo]->charNo,
+                       lbl_1_bss_0.players[playerNo]->omObj->mtnId[11],
                        0.0f, 5.0f, 0U);
-    sp8 = lbl_1_bss_0.unk040[playerNo]->actor->pos;
-    effect = CharFXPlay((s16) lbl_1_bss_0.unk050[playerNo], 576);
-    Hu3D3Dto2D(&sp8, 1, &sp14);
-    panning = (s32) sp14.x;
+    playerPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
+    effect = CharFXPlay((s16) lbl_1_bss_0.characterNumbers[playerNo], 576);
+    Hu3D3Dto2D(&playerPosition, 1, &projectedPosition);
+    panning = (s32) projectedPosition.x;
     panning /= 5;
     if (panning < 48) {
         panning = 48;

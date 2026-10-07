@@ -1,6 +1,7 @@
+/* Creates and advances the moving line hazards that cross the arena. */
 #include "REL/m633dll.h"
 
-/* The word return is unused by every caller; no return value is defined. */
+/* Adds a moving arena segment at the given start position and direction. */
 int fn_1_5ED0(Point3d *pos, Point3d *dir)
 {
     OMOBJ *obj;
@@ -9,229 +10,231 @@ int fn_1_5ED0(Point3d *pos, Point3d *dir)
 
     dir->y = 0.0f;
     angle = (180.0 * (atan2(dir->x, dir->z) / 3.141592653589793)) - 90.0;
-    obj = omAddObjEx(lbl_1_bss_0.unk000, 10000, 1, 0, 0, fn_1_60F4);
+    obj = omAddObjEx(lbl_1_bss_0.workProcess, 10000, 1, 0, 0, fn_1_60F4);
     obj->grpNo = -1;
     obj->memberNo = 0;
-    segment = &lbl_1_bss_0.unk19C[lbl_1_bss_0.unk108];
-    segment->unk08 = *pos;
-    segment->unk20 = *pos;
-    segment->unk14 = *dir;
+    segment = &lbl_1_bss_0.segments[lbl_1_bss_0.segmentCount];
+    segment->startPosition = *pos;
+    segment->endPosition = *pos;
+    segment->direction = *dir;
     obj->work[0] = (u32)segment;
-    obj->mdlId[0] = Hu3DModelLink(lbl_1_bss_0.unk11A);
+    obj->mdlId[0] = Hu3DModelLink(lbl_1_bss_0.segmentBaseModelId);
     Hu3DModelLayerSet(obj->mdlId[0], 6);
     omSetRot(obj, 0.0f, angle, 0.0f);
     omSetTra(obj, pos->x, pos->y, pos->z);
     omSetSca(obj, 1.0f, 0.0f, 0.0f);
     Hu3DModelScaleSet(obj->mdlId[0], 1.0f, 0.0f, 0.0f);
-    segment->unk04 = 0;
-    lbl_1_bss_0.unk108 += 1;
+    segment->reflected = 0;
+    lbl_1_bss_0.segmentCount += 1;
 }
 
+/* Advances one segment, checks wall reflections and player hits, then removes it when its animation ends. */
 void fn_1_60F4(OMOBJ *obj)
 {
-    MGACTOR_COLMAP_POLY spEC;
-    Point3d spE0;
-    Point3d spD4;
+    MGACTOR_COLMAP_POLY wallCollision;
+    Point3d segmentMotionVector;
+    Point3d proposedSegmentEnd;
     Point3d reflectedPos;
-    Point3d spBC;
+    Point3d wallNormal;
     Point3d modelPos;
-    Point3d spA4;
-    Point3d sp98;
-    Point3d sp8C;
-    Point3d sp80;
-    Point3d sp74;
-    Point3d sp68;
-    Point3d sp5C;
-    Point3d sp50;
-    Point3d sp44;
-    Point3d sp38;
-    Point3d sp2C;
-    Point3d sp20;
-    Point3d sp14;
-    Point3d sp8;
-    f32 temp_f1;
-    f32 temp_f30;
-    f32 temp_f29;
-    f32 temp_f27;
-    f32 var_f31;
-    s16 temp_r26;
-    s32 var_r30;
-    M633Segment *temp_r31;
+    Point3d playerPosition;
+    Point3d segmentStart;
+    Point3d segmentEnd;
+    Point3d segmentDirection;
+    Point3d playerOffsetFromStart;
+    Point3d closestPointToPlayer;
+    Point3d hitPlayerPosition;
+    Point3d laterPlayerPosition;
+    Point3d laterSegmentStart;
+    Point3d laterSegmentEnd;
+    Point3d laterSegmentDirection;
+    Point3d laterPlayerOffsetFromStart;
+    Point3d laterClosestPointToPlayer;
+    Point3d soundPosition;
+    f32 segmentLength;
+    f32 segmentScale;
+    f32 segmentDistance;
+    f32 segmentRetractionScale;
+    f32 segmentAppearanceScale;
+    s16 endpointModelId;
+    s32 playerNo;
+    M633Segment *segment;
 
-    temp_r31 = (M633Segment *) obj->work[0];
-    switch (temp_r31->unk04) {
+    segment = (M633Segment *) obj->work[0];
+    switch (segment->reflected) {
     case 1:
         break;
     case 0:
-        spE0.x = 22.5f * temp_r31->unk14.x;
-        spE0.y = 22.5f * temp_r31->unk14.y;
-        spE0.z = 22.5f * temp_r31->unk14.z;
-        spD4.x = temp_r31->unk20.x + spE0.x;
-        spD4.y = temp_r31->unk20.y + spE0.y;
-        spD4.z = temp_r31->unk20.z + spE0.z;
-        if ((MgActorColMapPolyGet(&temp_r31->unk20, &spD4, 1U, &spEC) == 1) && (spBC = *(Point3d *)((HSF_FACE *)spEC.obj->mesh.face->data)[spEC.triNo].nbt, (((u32) (spEC.code & 128) == 0) != 0)) && (PSVECDotProduct(&temp_r31->unk14, &spBC) <= 0.0f)) {
-            C_VECReflect(&temp_r31->unk14, &spBC, &spE0);
-            reflectedPos.x = spEC.pos.x + spE0.x;
-            reflectedPos.y = spEC.pos.y + spE0.y;
-            reflectedPos.z = spEC.pos.z + spE0.z;
-            fn_1_5ED0(&reflectedPos, &spE0);
-            temp_r31->unk04 = 1;
-            temp_r31->unk20 = spEC.pos;
-            Hu3DModelAttrSet(lbl_1_bss_0.unk11C[temp_r31->unk00], 1U);
-            lbl_1_bss_0.unkAD4 = 1;
+        segmentMotionVector.x = 22.5f * segment->direction.x;
+        segmentMotionVector.y = 22.5f * segment->direction.y;
+        segmentMotionVector.z = 22.5f * segment->direction.z;
+        proposedSegmentEnd.x = segment->endPosition.x + segmentMotionVector.x;
+        proposedSegmentEnd.y = segment->endPosition.y + segmentMotionVector.y;
+        proposedSegmentEnd.z = segment->endPosition.z + segmentMotionVector.z;
+        if ((MgActorColMapPolyGet(&segment->endPosition, &proposedSegmentEnd, 1U, &wallCollision) == 1) && (wallNormal = *(Point3d *)((HSF_FACE *)wallCollision.obj->mesh.face->data)[wallCollision.triNo].nbt, (((u32) (wallCollision.code & 128) == 0) != 0)) && (PSVECDotProduct(&segment->direction, &wallNormal) <= 0.0f)) {
+            C_VECReflect(&segment->direction, &wallNormal, &segmentMotionVector);
+            reflectedPos.x = wallCollision.pos.x + segmentMotionVector.x;
+            reflectedPos.y = wallCollision.pos.y + segmentMotionVector.y;
+            reflectedPos.z = wallCollision.pos.z + segmentMotionVector.z;
+            fn_1_5ED0(&reflectedPos, &segmentMotionVector);
+            segment->reflected = 1;
+            segment->endPosition = wallCollision.pos;
+            Hu3DModelAttrSet(lbl_1_bss_0.segmentEndpointModelIds[segment->endpointModelIndex], HU3D_ATTR_DISPOFF);
+            lbl_1_bss_0.segmentReflectionSoundPending = 1;
         } else {
-            temp_r31->unk20 = spD4;
+            segment->endPosition = proposedSegmentEnd;
         }
         break;
     }
-    if (temp_r31->unk04 == 0) {
-        var_f31 = 1.0f;
-        if (lbl_1_bss_0.unk198 <= 0) {
-            var_f31 = (f32) (lbl_1_bss_0.unk198 + 6) / 6.0f;
-            var_f31 += 0.2f;
-            if (var_f31 > 1.0f) {
-                var_f31 = 1.0f;
+    if (segment->reflected == 0) {
+        segmentAppearanceScale = 1.0f;
+        if (lbl_1_bss_0.segmentUpdateCountdown <= 0) {
+            segmentAppearanceScale = (f32) (lbl_1_bss_0.segmentUpdateCountdown + 6) / 6.0f;
+            segmentAppearanceScale += 0.2f;
+            if (segmentAppearanceScale > 1.0f) {
+                segmentAppearanceScale = 1.0f;
             }
         }
-        modelPos = temp_r31->unk20;
-        temp_r26 = lbl_1_bss_0.unk11C[temp_r31->unk00];
-        Hu3DModelPosSet(temp_r26, modelPos.x, (70.0f + modelPos.y) - (70.0f * (1.0f - var_f31)), modelPos.z);
-        Hu3DModelScaleSet(temp_r26, var_f31, var_f31, var_f31);
-        Hu3DModelAttrReset(temp_r26, 1U);
+        modelPos = segment->endPosition;
+        endpointModelId = lbl_1_bss_0.segmentEndpointModelIds[segment->endpointModelIndex];
+        Hu3DModelPosSet(endpointModelId, modelPos.x, (70.0f + modelPos.y) - (70.0f * (1.0f - segmentAppearanceScale)), modelPos.z);
+        Hu3DModelScaleSet(endpointModelId, segmentAppearanceScale, segmentAppearanceScale, segmentAppearanceScale);
+        Hu3DModelAttrReset(endpointModelId, HU3D_ATTR_DISPOFF);
     }
-    if (lbl_1_bss_0.unk198 <= 0) {
-        if (lbl_1_bss_0.unk198 < -6) {
-            lbl_1_bss_0.unk108 -= 1;
-            if ((lbl_1_bss_0.unk108 == 0) && (lbl_1_bss_0.unkADC == 0)) {
+    if (lbl_1_bss_0.segmentUpdateCountdown <= 0) {
+        if (lbl_1_bss_0.segmentUpdateCountdown < -6) {
+            lbl_1_bss_0.segmentCount -= 1;
+            if ((lbl_1_bss_0.segmentCount == 0) && (lbl_1_bss_0.preventArenaRestart == 0)) {
                 fn_1_70A8(0);
             }
-            Hu3DModelAttrSet(lbl_1_bss_0.unk11C[temp_r31->unk00], 1U);
+            Hu3DModelAttrSet(lbl_1_bss_0.segmentEndpointModelIds[segment->endpointModelIndex], HU3D_ATTR_DISPOFF);
             Hu3DModelKill(*obj->mdlId);
             *obj->mdlId = -1;
-            omDelObjEx(lbl_1_bss_0.unk000, obj);
+            omDelObjEx(lbl_1_bss_0.workProcess, obj);
             return;
         }
-        temp_f27 = (f32) (lbl_1_bss_0.unk198 + 6) / 6.0f;
-        PSVECSubtract(&temp_r31->unk20, &temp_r31->unk08, &spE0);
-        temp_f1 = PSVECMag(&spE0);
-        omSetSca(obj, temp_f1 / 100.0f, temp_f27, temp_f27);
-        Hu3DModelScaleSet(*obj->mdlId, temp_f1 / 100.0f, temp_f27, temp_f27);
-        var_r30 = 0;
-        while (var_r30 < 4) {
-            spA4 = lbl_1_bss_0.unk040[var_r30]->actor->pos;
-            sp98 = temp_r31->unk08;
-            sp8C = temp_r31->unk20;
-            if ((s32) lbl_1_bss_0.unk070[var_r30] != 0) {
-                f32 temp_f26;
+        segmentRetractionScale = (f32) (lbl_1_bss_0.segmentUpdateCountdown + 6) / 6.0f;
+        PSVECSubtract(&segment->endPosition, &segment->startPosition, &segmentMotionVector);
+        segmentLength = PSVECMag(&segmentMotionVector);
+        omSetSca(obj, segmentLength / 100.0f, segmentRetractionScale, segmentRetractionScale);
+        Hu3DModelScaleSet(*obj->mdlId, segmentLength / 100.0f, segmentRetractionScale, segmentRetractionScale);
+        playerNo = 0;
+        while (playerNo < 4) {
+            playerPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
+            segmentStart = segment->startPosition;
+            segmentEnd = segment->endPosition;
+            if ((s32) lbl_1_bss_0.outsideGroupZero[playerNo] != 0) {
+                f32 playerDistance;
                 f32 hitRadius;
 
-                hitRadius = 90.0f * temp_f27;
-                spA4.y = sp98.y = sp8C.y = 0.0f;
-                PSVECSubtract(&sp8C, &sp98, &sp80);
-                PSVECSubtract(&spA4, &sp98, &sp74);
-                temp_f30 = PSVECDotProduct(&sp80, &sp74);
-                temp_f26 = PSVECMag(&sp80);
-                if ((temp_f30 >= 0.0f) && (temp_f30 <= (temp_f26 * temp_f26))) {
-                    PSVECNormalize(&sp80, &sp80);
-                    temp_f30 = PSVECDotProduct(&sp74, &sp80);
-                    sp68.x = sp98.x + (temp_f30 * sp80.x);
-                    sp68.y = sp98.y + (temp_f30 * sp80.y);
-                    sp68.z = sp98.z + (temp_f30 * sp80.z);
-                    PSVECSubtract(&sp68, &spA4, &sp68);
-                    temp_f26 = PSVECMag(&sp68);
-                    if (temp_f26 < hitRadius) {
-                        if ((s32) lbl_1_bss_0.unk080[var_r30] == 0) {
-                            OSReport(lbl_1_data_1A0, temp_f26);
-                            MgPlayerAttrSet(lbl_1_bss_0.unk040[var_r30], 1U);
-                            MgPlayerDespawn(lbl_1_bss_0.unk040[var_r30]);
-                            lbl_1_bss_0.unk080[var_r30] = 1;
-                            lbl_1_bss_0.unk0E0 -= 1;
-                            (lbl_1_bss_0.unk0E4[var_r30])->objFunc = fn_1_34B0;
-                            sp5C = lbl_1_bss_0.unk040[var_r30]->actor->pos;
-                            fn_1_24EC(1851, &sp5C);
+                hitRadius = 90.0f * segmentRetractionScale;
+                playerPosition.y = segmentStart.y = segmentEnd.y = 0.0f;
+                PSVECSubtract(&segmentEnd, &segmentStart, &segmentDirection);
+                PSVECSubtract(&playerPosition, &segmentStart, &playerOffsetFromStart);
+                segmentScale = PSVECDotProduct(&segmentDirection, &playerOffsetFromStart);
+                playerDistance = PSVECMag(&segmentDirection);
+                if ((segmentScale >= 0.0f) && (segmentScale <= (playerDistance * playerDistance))) {
+                    PSVECNormalize(&segmentDirection, &segmentDirection);
+                    segmentScale = PSVECDotProduct(&playerOffsetFromStart, &segmentDirection);
+                    closestPointToPlayer.x = segmentStart.x + (segmentScale * segmentDirection.x);
+                    closestPointToPlayer.y = segmentStart.y + (segmentScale * segmentDirection.y);
+                    closestPointToPlayer.z = segmentStart.z + (segmentScale * segmentDirection.z);
+                    PSVECSubtract(&closestPointToPlayer, &playerPosition, &closestPointToPlayer);
+                    playerDistance = PSVECMag(&closestPointToPlayer);
+                    if (playerDistance < hitRadius) {
+                        if ((s32) lbl_1_bss_0.playerRemoved[playerNo] == 0) {
+                            OSReport(lbl_1_data_1A0, playerDistance);
+                            MgPlayerAttrSet(lbl_1_bss_0.players[playerNo], 1U);
+                            MgPlayerDespawn(lbl_1_bss_0.players[playerNo]);
+                            lbl_1_bss_0.playerRemoved[playerNo] = 1;
+                            lbl_1_bss_0.activePlayerCount -= 1;
+                            (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_34B0;
+                            hitPlayerPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
+                            fn_1_24EC(M633_PLAYER_ELIMINATION_SE_ID, &hitPlayerPosition);
                         }
                     }
                 }
             }
-            var_r30 += 1;
+            playerNo += 1;
         }
         return;
     }
-    if (lbl_1_bss_0.unk198 > 1) {
+    if (lbl_1_bss_0.segmentUpdateCountdown > 1) {
         f32 unitScale;
 
         unitScale = 1.0f;
-        PSVECSubtract(&temp_r31->unk20, &temp_r31->unk08, &spE0);
-        temp_f1 = PSVECMag(&spE0);
-        omSetSca(obj, temp_f1 / 100.0f, unitScale, unitScale);
-        Hu3DModelScaleSet(*obj->mdlId, temp_f1 / 100.0f, unitScale, unitScale);
-        var_r30 = 0;
-        while (var_r30 < 4) {
-            sp50 = lbl_1_bss_0.unk040[var_r30]->actor->pos;
-            sp44 = temp_r31->unk08;
-            sp38 = temp_r31->unk20;
-            if ((s32) lbl_1_bss_0.unk070[var_r30] != 0) {
-                f32 temp_f24;
+        PSVECSubtract(&segment->endPosition, &segment->startPosition, &segmentMotionVector);
+        segmentLength = PSVECMag(&segmentMotionVector);
+        omSetSca(obj, segmentLength / 100.0f, unitScale, unitScale);
+        Hu3DModelScaleSet(*obj->mdlId, segmentLength / 100.0f, unitScale, unitScale);
+        playerNo = 0;
+        while (playerNo < 4) {
+            laterPlayerPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
+            laterSegmentStart = segment->startPosition;
+            laterSegmentEnd = segment->endPosition;
+            if ((s32) lbl_1_bss_0.outsideGroupZero[playerNo] != 0) {
+                f32 collisionRadius;
                 f32 hitRadius;
 
                 hitRadius = 90.0f * unitScale;
-                sp50.y = sp44.y = sp38.y = 0.0f;
-                PSVECSubtract(&sp38, &sp44, &sp2C);
-                PSVECSubtract(&sp50, &sp44, &sp20);
-                temp_f29 = PSVECDotProduct(&sp2C, &sp20);
-                temp_f24 = PSVECMag(&sp2C);
-                if ((temp_f29 >= 0.0f) && (temp_f29 <= (temp_f24 * temp_f24))) {
-                    PSVECNormalize(&sp2C, &sp2C);
-                    temp_f29 = PSVECDotProduct(&sp20, &sp2C);
-                    sp14.x = sp44.x + (temp_f29 * sp2C.x);
-                    sp14.y = sp44.y + (temp_f29 * sp2C.y);
-                    sp14.z = sp44.z + (temp_f29 * sp2C.z);
-                    PSVECSubtract(&sp14, &sp50, &sp14);
-                    temp_f24 = PSVECMag(&sp14);
-                    if ((temp_f24 < hitRadius) && ((s32) lbl_1_bss_0.unk080[var_r30] == 0)) {
-                        OSReport(lbl_1_data_1A0, temp_f24);
-                        MgPlayerAttrSet(lbl_1_bss_0.unk040[var_r30], 1U);
-                        MgPlayerDespawn(lbl_1_bss_0.unk040[var_r30]);
-                        CharMotionShiftSet((lbl_1_bss_0.unk040[var_r30])->charNo, (((lbl_1_bss_0.unk040[var_r30])->omObj)->mtnId)[11], 0.0f, 5.0f, 0U);
-                        lbl_1_bss_0.unk080[var_r30] = 1;
-                        lbl_1_bss_0.unk0E0 -= 1;
-                        (lbl_1_bss_0.unk0E4[var_r30])->objFunc = fn_1_34B0;
-                        sp8 = lbl_1_bss_0.unk040[var_r30]->actor->pos;
-                        fn_1_24EC(1851, &sp8);
+                laterPlayerPosition.y = laterSegmentStart.y = laterSegmentEnd.y = 0.0f;
+                PSVECSubtract(&laterSegmentEnd, &laterSegmentStart, &laterSegmentDirection);
+                PSVECSubtract(&laterPlayerPosition, &laterSegmentStart, &laterPlayerOffsetFromStart);
+                segmentDistance = PSVECDotProduct(&laterSegmentDirection, &laterPlayerOffsetFromStart);
+                collisionRadius = PSVECMag(&laterSegmentDirection);
+                if ((segmentDistance >= 0.0f) && (segmentDistance <= (collisionRadius * collisionRadius))) {
+                    PSVECNormalize(&laterSegmentDirection, &laterSegmentDirection);
+                    segmentDistance = PSVECDotProduct(&laterPlayerOffsetFromStart, &laterSegmentDirection);
+                    laterClosestPointToPlayer.x = laterSegmentStart.x + (segmentDistance * laterSegmentDirection.x);
+                    laterClosestPointToPlayer.y = laterSegmentStart.y + (segmentDistance * laterSegmentDirection.y);
+                    laterClosestPointToPlayer.z = laterSegmentStart.z + (segmentDistance * laterSegmentDirection.z);
+                    PSVECSubtract(&laterClosestPointToPlayer, &laterPlayerPosition, &laterClosestPointToPlayer);
+                    collisionRadius = PSVECMag(&laterClosestPointToPlayer);
+                    if ((collisionRadius < hitRadius) && ((s32) lbl_1_bss_0.playerRemoved[playerNo] == 0)) {
+                        OSReport(lbl_1_data_1A0, collisionRadius);
+                        MgPlayerAttrSet(lbl_1_bss_0.players[playerNo], 1U);
+                        MgPlayerDespawn(lbl_1_bss_0.players[playerNo]);
+                        CharMotionShiftSet((lbl_1_bss_0.players[playerNo])->charNo, (((lbl_1_bss_0.players[playerNo])->omObj)->mtnId)[11], 0.0f, 5.0f, 0U);
+                        lbl_1_bss_0.playerRemoved[playerNo] = 1;
+                        lbl_1_bss_0.activePlayerCount -= 1;
+                        (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_34B0;
+                        soundPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
+                        fn_1_24EC(M633_PLAYER_ELIMINATION_SE_ID, &soundPosition);
                     }
                 }
             }
-            var_r30 += 1;
+            playerNo += 1;
         }
     }
 }
 
+/* Updates the arena motion phase and progress during sequence callbacks. */
 void fn_1_6DE8(void)
 {
     s32 i, finished;
-    switch (lbl_1_bss_0.unk10C) {
+    switch (lbl_1_bss_0.arenaPhase) {
     case 3:
-        lbl_1_bss_0.unkA34 = 0.0f;
+        lbl_1_bss_0.nozzleCollisionRadius = 0.0f;
         break;
     case 2:
-        lbl_1_bss_0.unkA34 = 90.0f;
+        lbl_1_bss_0.nozzleCollisionRadius = 90.0f;
         break;
     case 0:
         finished = 0;
         for (i = 0; i < 2; i++) {
-            if (Hu3DMotionEndCheck(lbl_1_bss_0.unk180[i]) == 1) {
+            if (Hu3DMotionEndCheck(lbl_1_bss_0.nozzleModelIds[i]) == 1) {
                 fn_1_70A8(2);
                 finished = 1;
             } else if (i == 0) {
                 float time, maxTime;
-                maxTime = Hu3DMotionMotionMaxTimeGet(lbl_1_bss_0.unk180[i]);
-                time = Hu3DMotionTimeGet(lbl_1_bss_0.unk180[i]);
-                lbl_1_bss_0.unkA34 = (90.0f * time) / maxTime;
+                maxTime = Hu3DMotionMotionMaxTimeGet(lbl_1_bss_0.nozzleModelIds[i]);
+                time = Hu3DMotionTimeGet(lbl_1_bss_0.nozzleModelIds[i]);
+                lbl_1_bss_0.nozzleCollisionRadius = (90.0f * time) / maxTime;
             }
         }
-        if (finished && lbl_1_bss_0.unkADC == 0) {
+        if (finished && lbl_1_bss_0.preventArenaRestart == 0) {
             for (i = 0; i < 4; i++) {
-                if (lbl_1_bss_0.unk070[i] == 0) {
+                if (lbl_1_bss_0.outsideGroupZero[i] == 0) {
                     omVibrate((s16)i, 20, 7, 3);
                     break;
                 }
@@ -240,86 +243,82 @@ void fn_1_6DE8(void)
         break;
     case 1:
         for (i = 0; i < 2; i++) {
-            if (Hu3DMotionEndCheck(lbl_1_bss_0.unk180[i]) == 1) {
+            if (Hu3DMotionEndCheck(lbl_1_bss_0.nozzleModelIds[i]) == 1) {
                 fn_1_70A8(3);
             } else if (i == 0) {
                 float time, maxTime;
-                maxTime = Hu3DMotionMotionMaxTimeGet(lbl_1_bss_0.unk180[i]);
-                time = Hu3DMotionTimeGet(lbl_1_bss_0.unk180[i]);
-                lbl_1_bss_0.unkA34 = (90.0f * time) / maxTime;
+                maxTime = Hu3DMotionMotionMaxTimeGet(lbl_1_bss_0.nozzleModelIds[i]);
+                time = Hu3DMotionTimeGet(lbl_1_bss_0.nozzleModelIds[i]);
+                lbl_1_bss_0.nozzleCollisionRadius = (90.0f * time) / maxTime;
             }
         }
         break;
     }
-    if (lbl_1_bss_0.unkA34 > 90.0f) {
-        lbl_1_bss_0.unkA34 = 90.0f;
+    if (lbl_1_bss_0.nozzleCollisionRadius > 90.0f) {
+        lbl_1_bss_0.nozzleCollisionRadius = 90.0f;
     }
 }
 
-void fn_1_70A8(s32 arg0)
+/* Switches the arena phase motion and visibility set after timer or segment events. */
+void fn_1_70A8(s32 phase)
 {
-    s16 var_r30;
-    s32 var_r29;
-    s32 var_r28;
-    s16 var_r27;
-    s16 var_r26;
-    s16 var_r25;
+    s16 visibleModelIndex;
+    s32 modelIndex;
+    s32 loopsMotion;
+    s16 leftMotion;
+    s16 rightMotion;
+    s16 stageMotion;
 
-    /* var_r25 is not initialized on entry. */
-    /* var_r26 is not initialized on entry. */
-    /* var_r27 is not initialized on entry. */
-    /* var_r28 is not initialized on entry. */
-    /* var_r30 is not initialized on entry. */
-    switch (arg0) {                                 /* irregular */
+    switch (phase) {
     case 3:
-        var_r28 = 1;
-        var_r27 = lbl_1_bss_0.unk184[arg0];
-        var_r26 = lbl_1_bss_0.unk18C[arg0];
-        var_r25 = *lbl_1_bss_0.unk030->mtnId;
-        var_r30 = 0;
+        loopsMotion = 1;
+        leftMotion = lbl_1_bss_0.firstNozzleMotionIds[phase];
+        rightMotion = lbl_1_bss_0.secondNozzleMotionIds[phase];
+        stageMotion = *lbl_1_bss_0.object->mtnId;
+        visibleModelIndex = 0;
         break;
     case 2:
-        var_r28 = 1;
-        var_r27 = lbl_1_bss_0.unk184[arg0];
-        var_r26 = lbl_1_bss_0.unk18C[arg0];
-        var_r25 = lbl_1_bss_0.unk030->mtnId[2];
-        var_r30 = 2;
+        loopsMotion = 1;
+        leftMotion = lbl_1_bss_0.firstNozzleMotionIds[phase];
+        rightMotion = lbl_1_bss_0.secondNozzleMotionIds[phase];
+        stageMotion = lbl_1_bss_0.object->mtnId[2];
+        visibleModelIndex = 2;
         break;
     case 0:
-        var_r28 = 0;
-        var_r27 = lbl_1_bss_0.unk184[arg0];
-        var_r26 = lbl_1_bss_0.unk18C[arg0];
-        var_r25 = lbl_1_bss_0.unk030->mtnId[1];
-        var_r30 = 1;
+        loopsMotion = 0;
+        leftMotion = lbl_1_bss_0.firstNozzleMotionIds[phase];
+        rightMotion = lbl_1_bss_0.secondNozzleMotionIds[phase];
+        stageMotion = lbl_1_bss_0.object->mtnId[1];
+        visibleModelIndex = 1;
         break;
     case 1:
-        var_r28 = 0;
-        var_r27 = lbl_1_bss_0.unk184[arg0];
-        var_r26 = lbl_1_bss_0.unk18C[arg0];
-        var_r25 = lbl_1_bss_0.unk030->mtnId[3];
-        var_r30 = 3;
+        loopsMotion = 0;
+        leftMotion = lbl_1_bss_0.firstNozzleMotionIds[phase];
+        rightMotion = lbl_1_bss_0.secondNozzleMotionIds[phase];
+        stageMotion = lbl_1_bss_0.object->mtnId[3];
+        visibleModelIndex = 3;
         break;
     }
-    Hu3DMotionSet(lbl_1_bss_0.unk180[0], var_r27);
-    Hu3DMotionSet(lbl_1_bss_0.unk180[1], var_r26);
-    Hu3DMotionSet(*lbl_1_bss_0.unk030->mdlId, var_r25);
-    var_r29 = 0;
-    while (var_r29 < 4) {
-        Hu3DModelAttrSet(lbl_1_bss_0.unk034[var_r29], 1U);
-        var_r29 += 1;
+    Hu3DMotionSet(lbl_1_bss_0.nozzleModelIds[0], leftMotion);
+    Hu3DMotionSet(lbl_1_bss_0.nozzleModelIds[1], rightMotion);
+    Hu3DMotionSet(*lbl_1_bss_0.object->mdlId, stageMotion);
+    modelIndex = 0;
+    while (modelIndex < 4) {
+        Hu3DModelAttrSet(lbl_1_bss_0.arenaPhaseModelIds[modelIndex], HU3D_ATTR_DISPOFF);
+        modelIndex += 1;
     }
-    Hu3DModelAttrReset(lbl_1_bss_0.unk034[var_r30], 1U);
-    Hu3DMotionTimeSet(lbl_1_bss_0.unk034[var_r30], 0.0f);
-    if (var_r28 != 0) {
-        Hu3DModelAttrSet(lbl_1_bss_0.unk180[0], 1073741825U);
-        Hu3DModelAttrSet(lbl_1_bss_0.unk180[1], 1073741825U);
-        Hu3DModelAttrSet(*lbl_1_bss_0.unk030->mdlId, 1073741825U);
-        Hu3DModelAttrSet(lbl_1_bss_0.unk034[var_r30], 1073741825U);
+    Hu3DModelAttrReset(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], HU3D_ATTR_DISPOFF);
+    Hu3DMotionTimeSet(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], 0.0f);
+    if (loopsMotion != 0) {
+        Hu3DModelAttrSet(lbl_1_bss_0.nozzleModelIds[0], HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrSet(lbl_1_bss_0.nozzleModelIds[1], HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrSet(*lbl_1_bss_0.object->mdlId, HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrSet(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], HU3D_MOTATTR_LOOP);
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_0.unk180[0], 1073741825U);
-        Hu3DModelAttrReset(lbl_1_bss_0.unk180[1], 1073741825U);
-        Hu3DModelAttrReset(*lbl_1_bss_0.unk030->mdlId, 1073741825U);
-        Hu3DModelAttrReset(lbl_1_bss_0.unk034[var_r30], 1073741825U);
+        Hu3DModelAttrReset(lbl_1_bss_0.nozzleModelIds[0], HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrReset(lbl_1_bss_0.nozzleModelIds[1], HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrReset(*lbl_1_bss_0.object->mdlId, HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrReset(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], HU3D_MOTATTR_LOOP);
     }
-    lbl_1_bss_0.unk10C = arg0;
+    lbl_1_bss_0.arenaPhase = phase;
 }
