@@ -1,3 +1,4 @@
+/* Motion Check preview for character models and joint motions, with camera and lighting controls and shadow setup. */
 #include "game/object.h"
 #include "game/hu3d.h"
 #include "game/pad.h"
@@ -14,6 +15,7 @@ extern const VoidFunc _dtors[];
 
 extern void ObjectSetup(void);
 
+/* Start Motion Check by running constructors and creating its preview scene. */
 int _prolog(void) {
     const VoidFunc* ctors = _ctors;
     while (*ctors != 0) {
@@ -24,6 +26,7 @@ int _prolog(void) {
     return 0;
 }
 
+/* Shut down Motion Check by running its registered destructors. */
 void _epilog(void) {
     const VoidFunc* dtors = _dtors;
     while (*dtors != 0) {
@@ -35,9 +38,11 @@ void _epilog(void) {
 #define MOTION_MAX 216
 
 enum {
+    /* Use the signed substick's high bits for coarser center movement. */
     MOTCHK_SUBSTICK_AXIS_MASK = 248,
 };
 
+/* Selection order in this table is the motion number shown by the preview. */
 static char *MotNameTbl[MOTION_MAX] = {
     "c000m1_300",
     "c000m1_301",
@@ -257,16 +262,20 @@ static char *MotNameTbl[MOTION_MAX] = {
     "c000m1_eye"
 };
 
+/* Object-manager handles for the camera update and viewport callback. */
 static OMOBJ *CameraObj;
 static OMOBJ *OutViewObj;
 u32 lbl_1_bss_50[8];
 u32 lbl_1_bss_48[2];
+/* Set by CharTimingHook and drawn as the timing marker in the preview HUD. */
 int TimingHookMode;
 OMOBJMAN *MotChkObjMan;
 HU3D_LIGHTID MotChkLightId;
+/* Model variants and their selected and idle motions for the current character. */
 static int CharMdlId[4];
 static int CharMotId[4];
 static int CharMotIdleId[4];
+/* Selected character ID, motion-table index and visible model variant. */
 static int CharNo;
 static int CharMotNo;
 static int CharMdlNo;
@@ -274,6 +283,7 @@ static int CharMdlNo;
 void CameraMain(OMOBJ *obj);
 void MotChkMain(void);
 
+/* Called by _prolog to create the preview camera, process and scene lighting. */
 void ObjectSetup(void)
 {
     OSReport("******* Motion Check ObjectSetup *********\n");
@@ -301,6 +311,7 @@ static void CreateChar(s16 charNo, s16 motNo, s16 mdlNo);
 static void LoadCharMotion(s16 charNo, s16 motNo, s16 mdlNo);
 static void KillChar(s16 charNo);
 
+/* Child process created by ObjectSetup; after the wipe, handle preview controls and HUD each frame. */
 void MotChkMain(void)
 {
     s16 i;
@@ -389,6 +400,7 @@ void MotChkMain(void)
     }
 }
 
+/* Character IDs index this table to select the character's data directory. */
 unsigned int CharDirTbl[GW_CHARA_KINOPIKO+1] = {
     DATA_mario,
     DATA_luigi,
@@ -408,6 +420,7 @@ unsigned int CharDirTbl[GW_CHARA_KINOPIKO+1] = {
 
 static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF);
 
+/* Called at preview startup or character change to load four models and their selected and idle motions. */
 static void CreateChar(s16 charNo, s16 motNo, s16 mdlNo)
 {
     s16 i;
@@ -439,11 +452,13 @@ static void CreateChar(s16 charNo, s16 motNo, s16 mdlNo)
 
 }
 
+/* Animation callback installed by CreateChar; store its result for MotChkMain's HUD marker. */
 static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF)
 {
     TimingHookMode = (lagF) ? 1 : 2;
 }
 
+/* Called by MotChkMain's A/B controls to change motion on all models and show the chosen variant. */
 static void LoadCharMotion(s16 charNo, s16 motNo, s16 mdlNo)
 {
     s16 i;
@@ -469,6 +484,7 @@ static void LoadCharMotion(s16 charNo, s16 motNo, s16 mdlNo)
     Hu3DModelDispOn(CharMdlId[mdlNo]);
 }
 
+/* Called before MotChkMain changes character; close its data directory and release models and motions. */
 static void KillChar(s16 charNo)
 {
     s16 i;
@@ -482,6 +498,7 @@ static void KillChar(s16 charNo)
     }
 }
 
+/* Object callback registered by ObjectSetup; apply controller orbit, zoom and pan each update. */
 void CameraMain(OMOBJ *obj)
 {
     HuVecF pos;
@@ -498,6 +515,7 @@ void CameraMain(OMOBJ *obj)
         omOvlReturn(1);
         return;
     }
+    /* Main-stick readings orbit the camera; the triggers adjust its distance. */
     CRot.x += HuPadStkY[0]/20;
     CRot.y += HuPadStkX[0]/20;
     CZoom += HuPadTrigL[0]/2;
@@ -512,6 +530,7 @@ void CameraMain(OMOBJ *obj)
     dir.y = HuCos(CRot.x);
     dir.z = (HuCos(CRot.y) * HuSin(CRot.x));
     rotZ = CRot.z;
+    /* Apply camera roll to the up direction used for vertical panning. */
     yOfs.x = dir.x * (offset.x * offset.x + (1.0f - offset.x * offset.x) * HuCos(rotZ))
         + dir.y * (offset.x * offset.y * (1.0f - HuCos(rotZ)) - offset.z * HuSin(rotZ))
         + dir.z * (offset.x * offset.z * (1.0f - HuCos(rotZ)) + offset.y * HuSin(rotZ));
@@ -523,6 +542,7 @@ void CameraMain(OMOBJ *obj)
     yOfs.z = dir.z * (offset.z * offset.z + (1.0f - offset.z * offset.z) * HuCos(rotZ))
         + (dir.x * (offset.x * offset.z * (1.0 - HuCos(rotZ)) - offset.y * HuSin(rotZ))
         + dir.y * (offset.y * offset.z * (1.0 - HuCos(rotZ)) + offset.x * HuSin(rotZ)));
+    /* This perpendicular direction is the horizontal substick pan axis. */
     VECCrossProduct(&dir, &offset, &offset);
     VECNormalize(&offset, &offset);
     stickPos = (HuPadSubStkX[0] & MOTCHK_SUBSTICK_AXIS_MASK);
