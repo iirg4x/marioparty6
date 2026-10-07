@@ -1,7 +1,7 @@
+/* Updates pillar models and player actors during the microphone round. */
 #include "REL/m670dll.h"
 #include "game/charman.h"
-#include "game/mg/seqman.h"
-
+#include "game/mg/seqman.h" /* Setup and round updates place a pillar and its collision model at the requested height. */
 void fn_1_22F0(int pillarNo, float height)
 {
     HuVecF pos = lbl_1_bss_10.pillarPos[pillarNo];
@@ -9,7 +9,7 @@ void fn_1_22F0(int pillarNo, float height)
     Hu3DModelPosSetV(lbl_1_bss_10.pillarModel[pillarNo], &pos);
     Hu3DModelPosSetV(lbl_1_bss_10.collisionModel[pillarNo], &pos);
 }
-
+/* MgPlayerCreate uses this collision hook to move players away from marked floor polygons in play. */
 void fn_1_2384(MGACTOR *actor, int playerNo)
 {
     int player = playerNo;
@@ -23,7 +23,7 @@ void fn_1_2384(MGACTOR *actor, int playerNo)
         MgActorPosSetRaw(actor, &pos);
     }
 }
-
+/* Sequence, CPU, and actor updates use this to change a player's motion or retire that player. */
 void fn_1_2460(int playerNo, int state)
 {
     MGPLAYER *player;
@@ -58,7 +58,7 @@ void fn_1_2460(int playerNo, int state)
     }
     lbl_1_bss_10.playerState[playerNo] = state;
 }
-
+/* The solo player's per-frame object callback advances the call animation and moves the result model. */
 void fn_1_2690(OMOBJ *obj)
 {
     int playerNo = obj->work[0];
@@ -66,7 +66,7 @@ void fn_1_2690(OMOBJ *obj)
     HuVecF pos;
     switch (lbl_1_bss_10.playerState[playerNo]) {
     case 2:
-        /* The model-ID comparison is the argument to the shift-ID query. */
+        /* The shift query receives whether the model ID is negative. */
         if (Hu3DMotionShiftIDGet(player->actor->mdlId < 0)
             && Hu3DMotionEndCheck(player->actor->mdlId)
             && player->omObj->mtnId[7] == Hu3DMotionIDGet(player->actor->mdlId)) {
@@ -89,7 +89,7 @@ void fn_1_2690(OMOBJ *obj)
         break;
     }
 }
-
+/* Each non-solo player's callback retires that player after falling below the playfield. */
 void fn_1_28E8(OMOBJ *obj)
 {
     int playerNo = obj->work[0];

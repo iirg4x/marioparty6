@@ -1,5 +1,5 @@
+/* Maps the game's sequence phases to the microphone pillar round handlers. */
 #include "game/mg/seqman.h"
-
 void fn_1_1F8(s16 mode, s16 frameNo);
 void fn_1_218(s16 mode, s16 frameNo);
 void fn_1_42C(s16 mode, s16 frameNo);

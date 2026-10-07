@@ -1,3 +1,4 @@
+/* Builds the camera, pillars, players, microphone context, and sequence for the microgame. */
 #include "REL/m670dll.h"
 #include "game/main.h"
 #include "game/audio.h"
@@ -8,8 +9,9 @@
 #include "game/mg/seqman.h"
 #include "game/frand.h"
 #include "game/mic.h"
+#include "game/window.h"
 #include "datadir_enum.h"
-
+#define M670_MCSELWIN_POS_TOP -10002.0f
 extern MGSEQ_PARAM lbl_1_data_0;
 
 M670WORK lbl_1_bss_10;
@@ -19,6 +21,7 @@ int lbl_1_data_78[6] = {
     DATANUM(DATA_m670, 20), DATANUM(DATA_m670, 25),
     DATANUM(DATA_m670, 30), DATANUM(DATA_m670, 35)
 };
+/* Four motion resources are listed for each of the six pillar types. */
 int lbl_1_data_90[6][4] = {
     {DATANUM(DATA_m670, 11), DATANUM(DATA_m670, 12), DATANUM(DATA_m670, 13), DATANUM(DATA_m670, 14)},
     {DATANUM(DATA_m670, 16), DATANUM(DATA_m670, 17), DATANUM(DATA_m670, 18), DATANUM(DATA_m670, 19)},
@@ -39,7 +42,7 @@ unsigned int lbl_1_data_110[12] = {
     DATANUM(DATA_mariomot, 7), DATANUM(DATA_mariomot, 94),
     DATANUM(DATA_mariomot, 23), DATANUM(DATA_mariomot, 34), 0, 0
 };
-
+/* Scene setup and CPU movement use this to normalize a direction, generating one if it is near zero. */
 BOOL fn_1_1460(HuVecF *src, HuVecF *dst)
 {
     BOOL valid;
@@ -55,7 +58,7 @@ BOOL fn_1_1460(HuVecF *src, HuVecF *dst)
     }
     return valid;
 }
-
+/* The pillar update uses this to play a sound with left-right panning from a world position. */
 void fn_1_15B8(int sound, HuVecF *pos)
 {
     HuVecF screen;
@@ -72,7 +75,7 @@ void fn_1_15B8(int sound, HuVecF *pos)
     handle = HuAudFXPlay(sound);
     HuAudFXPanning(handle, pan);
 }
-
+/* Called by the overlay prolog to create the playfield, players, microphone listener, and sequence. */
 void fn_1_1658(void)
 {
     MGACTOR_PARAM param;
@@ -219,7 +222,8 @@ void fn_1_1658(void)
     lbl_1_bss_10.timer = MgTimerCreate(0);
     Hu3DZClearLayerSet(5);
     HuMCInit(0);
-    HuMCSelWinCreate(-10000.0f, -10002.0f);
+    /* The selection-window helper maps this y sentinel to 40 pixels from the top. */
+    HuMCSelWinCreate(HUWIN_POS_CENTER, M670_MCSELWIN_POS_TOP);
     lbl_1_bss_10.micContext = HuMCContextCreate("/mic/ctx/m670_words");
     fn_1_3B30();
     lbl_1_bss_10.music = -1;
