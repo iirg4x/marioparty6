@@ -1,3 +1,4 @@
+/* Sorting helpers used to rank candidate cells for CPU movement. */
 /*-
  * Copyright (c) 1992, 1993
  * The Regents of the University of California. All rights reserved.
@@ -29,7 +30,7 @@
 
 #include <stddef.h>
 
-/* The retail REL gives these anonymous provider functions these addresses. */
+
 #define swapfunc fn_1_63D4
 #define med3 fn_1_646C
 #define qsort fn_1_6574
