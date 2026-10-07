@@ -11,75 +11,75 @@ void fn_1_4C8C(HU3D_MODEL *modelP, Mtx *mtx)
 /* Called during fn_1_3934 scene setup; creates one camera-2 hook and initializes CPU timers and gridA weights. */
 void fn_1_4C90(void)
 {
-    s32 value9;
+    s32 index;
     s16 model;
 
     model = Hu3DHookFuncCreate(fn_1_4C8C);
     Hu3DModelCameraSet(model, 2U);
-    value9 = 0;
-    while (value9 < 4) {
-        lbl_1_bss_0.playerTimer[value9] = 0;
-                lbl_1_bss_0.playerTimer[value9] = 0;
-        value9 += 1;
+    index = 0;
+    while (index < 4) {
+        lbl_1_bss_0.playerTimer[index] = 0;
+                lbl_1_bss_0.playerTimer[index] = 0;
+        index += 1;
     }
-    value9 = 0;
-    while (value9 < 64) {
-        lbl_1_bss_0.gridA[value9] = 128;
-        value9 += 1;
+    index = 0;
+    while (index < 64) {
+        lbl_1_bss_0.gridA[index] = 128;
+        index += 1;
     }
 }
 
 /* Called by fn_1_535C during gameplay updates to build the 8-by-8 obstacle-weight map. */
 void fn_1_4D48(void)
 {
-    Point3d localValue0;
-    int value3;
-    int temporary2;
-    int temporary1;
-    int value5;
-    int value4;
-    int value7;
-    int value6;
-    int value9;
-    u8 *value8;
+    Point3d collisionPosition;
+    int collisionIndex;
+    int cellX;
+    int cellZ;
+    int actorCellX;
+    int actorCellZ;
+    int spreadX;
+    int spreadZ;
+    int cellIndex;
+    u8 *patternData;
     int found; /* Set when a collision actor occupies the current cell. */
 
-    value8 = lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
-    value9 = 0;
-    while (value9 < 64) {
-        lbl_1_bss_0.gridB[value9] = 10;
+    patternData = lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
+    cellIndex = 0;
+    while (cellIndex < 64) {
+        lbl_1_bss_0.gridB[cellIndex] = 10;
         /* Fill base weights before adding the obstacle map. */
-        value8 += 1;
-        value9 += 1;
+        patternData += 1;
+        cellIndex += 1;
     }
-    value8 = lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
-    value9 = 0;
-    while (value9 < 64) {
-        temporary2 = value9 % 8;
-        temporary1 = value9 / 8;
-        if (((s8) value8[0] >= 2) && ((s8) value8[0] <= 3)) {
-            lbl_1_bss_0.gridB[value9] += 255;
+    patternData = lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
+    cellIndex = 0;
+    while (cellIndex < 64) {
+        cellX = cellIndex % 8;
+        cellZ = cellIndex / 8;
+        if (((s8) patternData[0] >= 2) && ((s8) patternData[0] <= 3)) {
+            lbl_1_bss_0.gridB[cellIndex] += 255;
         } else {
             found = 0;
-            value3 = 0;
-            while (value3 < lbl_1_bss_0.collisionCount) {
-                localValue0 = lbl_1_bss_0.collisionActors[value3]->pos;
-                value5 = (s32) ((400.0f + localValue0.x) / 100.0f);
-                value4 = (s32) ((400.0f + localValue0.z) / 100.0f);
-                if (value5 < 0) {
-                    value5 = 0;
+            collisionIndex = 0;
+            while (collisionIndex < lbl_1_bss_0.collisionCount) {
+                collisionPosition = lbl_1_bss_0.collisionActors[collisionIndex]->pos;
+                actorCellX = (s32) ((400.0f + collisionPosition.x) / 100.0f);
+                actorCellZ = (s32) ((400.0f + collisionPosition.z) / 100.0f);
+                if (actorCellX < 0) {
+                    actorCellX = 0;
                 }
-                if (value5 >= 8) {
-                    value5 = 7;
+                if (actorCellX >= 8) {
+                    actorCellX = 7;
                 }
-                if (value4 < 0) {
-                    value4 = 0;
+                if (actorCellZ < 0) {
+                    actorCellZ = 0;
                 }
-                if (value4 >= 8) {
-                    value4 = 7;
+                if (actorCellZ >= 8) {
+                    actorCellZ = 7;
                 }
-                if ((temporary2 == value5) && (temporary1 == value4)) {
-                    int localValue2[121] = {
+                if ((cellX == actorCellX) && (cellZ == actorCellZ)) {
+                    int spreadWeights[121] = {
                         4,4,4,4,8,8,8,8,4,4,4,
                         4,4,4,8,16,16,16,16,8,4,4,
                         4,4,8,16,32,32,32,32,16,4,4,
@@ -92,93 +92,93 @@ void fn_1_4D48(void)
                         4,4,4,8,16,16,16,8,4,4,4,
                         4,4,4,4,8,8,8,4,4,4,4
                     };
-                    value6 = -5;
-                    while (value6 <= 5) {
-                        value7 = -5;
-                        while (value7 <= 5) {
-                            if (((s32) (temporary2 + value7) >= 0) && ((s32) (temporary2 + value7) < 8) && ((s32) (temporary1 + value6) >= 0) && ((s32) (temporary1 + value6) < 8)) {
-                                lbl_1_bss_0.gridB[temporary2 + value7 + (temporary1 + value6) * 8] += localValue2[(value7 + 5) + (value6 + 5) * 11];
+                    spreadZ = -5;
+                    while (spreadZ <= 5) {
+                        spreadX = -5;
+                        while (spreadX <= 5) {
+                            if (((s32) (cellX + spreadX) >= 0) && ((s32) (cellX + spreadX) < 8) && ((s32) (cellZ + spreadZ) >= 0) && ((s32) (cellZ + spreadZ) < 8)) {
+                                lbl_1_bss_0.gridB[cellX + spreadX + (cellZ + spreadZ) * 8] += spreadWeights[(spreadX + 5) + (spreadZ + 5) * 11];
                             }
-                            value7 += 1;
+                            spreadX += 1;
                         }
-                        value6 += 1;
+                        spreadZ += 1;
                     }
                     found = 1;
                 }
-                value3 += 1;
+                collisionIndex += 1;
             }
         }
-        value8 += 1;
-        value9 += 1;
+        patternData += 1;
+        cellIndex += 1;
     }
-    value9 = 0;
-    while (value9 < 64) {
-        if (lbl_1_bss_0.gridB[value9] < 0) {
-            lbl_1_bss_0.gridB[value9] = 0;
-        } else if (lbl_1_bss_0.gridB[value9] > 255) {
-            lbl_1_bss_0.gridB[value9] = 255;
+    cellIndex = 0;
+    while (cellIndex < 64) {
+        if (lbl_1_bss_0.gridB[cellIndex] < 0) {
+            lbl_1_bss_0.gridB[cellIndex] = 0;
+        } else if (lbl_1_bss_0.gridB[cellIndex] > 255) {
+            lbl_1_bss_0.gridB[cellIndex] = 255;
         }
-        value9 += 1;
+        cellIndex += 1;
     }
 }
 
 /* Called by fn_1_597C for a group-1 CPU player to add nearby group-1 players to gridA and clamp its weights. */
-void fn_1_50A0(s32 parameter0)
+void fn_1_50A0(s32 playerIndex)
 {
-    int localValue3[25] = {
+    int neighborWeights[25] = {
         0,0,16,0,0, 0,16,32,16,0, 16,32,64,32,16,
         0,16,32,16,0, 0,0,16,0,0
     };
-    Point3d localValue1;
-    int value9;
-    int value8;
-    int value7;
-    int value6;
-    int value5;
+    Point3d playerPosition;
+    int otherPlayerIndex;
+    int deltaX;
+    int deltaZ;
+    int playerGridX;
+    int playerGridZ;
     MGPLAYER *player;
 
     memcpy(lbl_1_bss_0.gridA, lbl_1_bss_0.gridB, sizeof(lbl_1_bss_0.gridA));
-    value9 = 0;
-    while (value9 < 4) {
-        if ((value9 != parameter0) && (lbl_1_bss_0.group[value9] == 1) && (lbl_1_bss_0.playerState[value9] == 0)) {
-            player = lbl_1_bss_0.players[value9];
-            localValue1 = player->actor->pos;
-            value6 = (s32) ((400.0f + localValue1.x) / 100.0f);
-            value5 = (s32) ((400.0f + localValue1.z) / 100.0f);
-            if (value6 < 0) {
-                value6 = 0;
+    otherPlayerIndex = 0;
+    while (otherPlayerIndex < 4) {
+        if ((otherPlayerIndex != playerIndex) && (lbl_1_bss_0.group[otherPlayerIndex] == 1) && (lbl_1_bss_0.playerState[otherPlayerIndex] == 0)) {
+            player = lbl_1_bss_0.players[otherPlayerIndex];
+            playerPosition = player->actor->pos;
+            playerGridX = (s32) ((400.0f + playerPosition.x) / 100.0f);
+            playerGridZ = (s32) ((400.0f + playerPosition.z) / 100.0f);
+            if (playerGridX < 0) {
+                playerGridX = 0;
             }
-            if (value6 >= 8) {
-                value6 = 7;
+            if (playerGridX >= 8) {
+                playerGridX = 7;
             }
-            if (value5 < 0) {
-                value5 = 0;
+            if (playerGridZ < 0) {
+                playerGridZ = 0;
             }
-            if (value5 >= 8) {
-                value5 = 7;
+            if (playerGridZ >= 8) {
+                playerGridZ = 7;
             }
-            value7 = -2;
-            while (value7 <= 2) {
-                value8 = -2;
-                while (value8 <= 2) {
-                    if (((s32) (value6 + value8) >= 0) && ((s32) (value6 + value8) < 8) && ((s32) (value5 + value7) >= 0) && ((s32) (value5 + value7) < 8)) {
-                        lbl_1_bss_0.gridA[value6 + value8 + (value5 + value7) * 8] += localValue3[(value8 + 2) + (value7 + 2) * 5];
+            deltaZ = -2;
+            while (deltaZ <= 2) {
+                deltaX = -2;
+                while (deltaX <= 2) {
+                    if (((s32) (playerGridX + deltaX) >= 0) && ((s32) (playerGridX + deltaX) < 8) && ((s32) (playerGridZ + deltaZ) >= 0) && ((s32) (playerGridZ + deltaZ) < 8)) {
+                        lbl_1_bss_0.gridA[playerGridX + deltaX + (playerGridZ + deltaZ) * 8] += neighborWeights[(deltaX + 2) + (deltaZ + 2) * 5];
                     }
-                    value8 += 1;
+                    deltaX += 1;
                 }
-                value7 += 1;
+                deltaZ += 1;
             }
         }
-        value9 += 1;
+        otherPlayerIndex += 1;
     }
-    value9 = 0;
-    while (value9 < 64) {
-        if ((s32) lbl_1_bss_0.gridA[value9] < 0) {
-            lbl_1_bss_0.gridA[value9] = 0;
-        } else if ((s32) lbl_1_bss_0.gridA[value9] > 255) {
-            lbl_1_bss_0.gridA[value9] = 255;
+    otherPlayerIndex = 0;
+    while (otherPlayerIndex < 64) {
+        if ((s32) lbl_1_bss_0.gridA[otherPlayerIndex] < 0) {
+            lbl_1_bss_0.gridA[otherPlayerIndex] = 0;
+        } else if ((s32) lbl_1_bss_0.gridA[otherPlayerIndex] > 255) {
+            lbl_1_bss_0.gridA[otherPlayerIndex] = 255;
         }
-        value9 += 1;
+        otherPlayerIndex += 1;
     }
 }
 
@@ -202,169 +202,168 @@ void fn_1_535C(void)
 }
 
 /* Called by fn_1_535C for a group-0 CPU player to choose its free-movement direction. */
-void fn_1_5400(s32 parameter0)
+void fn_1_5400(s32 playerIndex)
 {
-    Point3d localValue5;
-    Point3d localValue4;
-    Point3d localValue3;
-    Point3d localValue1;
-    MGPLAYER *localValue0;
-    f32 temporaryFloat0;
-    s32 temporary0;
-    s32 value7;
-    u32 value8;
-    MGACTOR *temporary4;
+    Point3d direction;
+    Point3d targetPosition;
+    Point3d collisionCenter;
+    Point3d currentDirection;
+    MGPLAYER *player;
+    f32 randomAngle;
+    s32 targetPlayerIndex;
+    s32 collisionIndex;
+    u32 chancePercent;
+    MGACTOR *collisionActor;
 
-    localValue0 = lbl_1_bss_0.players[parameter0];
-    switch (GwPlayerConf[parameter0].comDif) {
+    player = lbl_1_bss_0.players[playerIndex];
+    switch (GwPlayerConf[playerIndex].comDif) {
     case 0:
-        value8 = 30U;
+        chancePercent = 30U;
         break;
     case 1:
-        value8 = 15U;
+        chancePercent = 15U;
         break;
     case 2:
-        value8 = 5U;
+        chancePercent = 5U;
         break;
     case 3:
-        value8 = 0U;
+        chancePercent = 0U;
         break;
     }
-    if ((s32) lbl_1_bss_0.playerTimer[parameter0] < 0) {
-        if (frandmod(100) < value8) {
-            lbl_1_bss_0.playerAIState[parameter0] = 0;
-            lbl_1_bss_0.playerTimer[parameter0] = (s32) (frandmod(60) + 30);
+    if ((s32) lbl_1_bss_0.playerTimer[playerIndex] < 0) {
+        if (frandmod(100) < chancePercent) {
+            lbl_1_bss_0.playerAIState[playerIndex] = 0;
+            lbl_1_bss_0.playerTimer[playerIndex] = (s32) (frandmod(60) + 30);
         } else {
-            lbl_1_bss_0.playerAIState[parameter0] = 1;
-            switch (GwPlayerConf[parameter0].comDif) {
+            lbl_1_bss_0.playerAIState[playerIndex] = 1;
+            switch (GwPlayerConf[playerIndex].comDif) {
             case 0:
-                value8 = 20U;
+                chancePercent = 20U;
                 break;
             case 1:
-                value8 = 30U;
+                chancePercent = 30U;
                 break;
             case 2:
-                value8 = 55U;
+                chancePercent = 55U;
                 break;
             case 3:
-                value8 = 80U;
+                chancePercent = 80U;
                 break;
             }
-            if (frandmod(100) < value8) {
-                localValue3.x = localValue3.y = localValue3.z = 0.0f;
-                value7 = 0;
-                while (value7 < (s32) lbl_1_bss_0.collisionCount) {
-                    temporary4 = lbl_1_bss_0.collisionActors[value7];
-                    localValue3.x += temporary4->pos.x;
-                    localValue3.z += temporary4->pos.z;
-                    value7 += 1;
+            if (frandmod(100) < chancePercent) {
+                collisionCenter.x = collisionCenter.y = collisionCenter.z = 0.0f;
+                collisionIndex = 0;
+                while (collisionIndex < (s32) lbl_1_bss_0.collisionCount) {
+                    collisionActor = lbl_1_bss_0.collisionActors[collisionIndex];
+                    collisionCenter.x += collisionActor->pos.x;
+                    collisionCenter.z += collisionActor->pos.z;
+                    collisionIndex += 1;
                 }
-                localValue3.x /= (f32) lbl_1_bss_0.collisionCount;
-                localValue3.z /= (f32) lbl_1_bss_0.collisionCount;
+                collisionCenter.x /= (f32) lbl_1_bss_0.collisionCount;
+                collisionCenter.z /= (f32) lbl_1_bss_0.collisionCount;
                 do {
-                    temporary0 = frandmod(4);
-                } while (lbl_1_bss_0.group[temporary0] != 1 || lbl_1_bss_0.playerState[temporary0] != 0);
+                    targetPlayerIndex = frandmod(4);
+                } while (lbl_1_bss_0.group[targetPlayerIndex] != 1 || lbl_1_bss_0.playerState[targetPlayerIndex] != 0);
                 {
-                    MGPLAYER *selectedPlayer = lbl_1_bss_0.players[temporary0];
-                    localValue4 = selectedPlayer->actor->pos;
+                    MGPLAYER *selectedPlayer = lbl_1_bss_0.players[targetPlayerIndex];
+                    targetPosition = selectedPlayer->actor->pos;
                 }
-                PSVECSubtract(&localValue4, &localValue3, &localValue5);
-                localValue5.z = -localValue5.z;
-                if (PSVECMag(&localValue5) >= 0.01f) {
-                    PSVECNormalize(&localValue5, &localValue5);
+                PSVECSubtract(&targetPosition, &collisionCenter, &direction);
+                direction.z = -direction.z;
+                if (PSVECMag(&direction) >= 0.01f) {
+                    PSVECNormalize(&direction, &direction);
                 }
-                lbl_1_bss_0.playerDirection[parameter0] = localValue5;
-                lbl_1_bss_0.playerTimer[parameter0] = (s32) (frandmod(20) + 20);
+                lbl_1_bss_0.playerDirection[playerIndex] = direction;
+                lbl_1_bss_0.playerTimer[playerIndex] = (s32) (frandmod(20) + 20);
             } else {
-                temporaryFloat0 = (f32) (u32) frandmod(360);
-                localValue5.x = (f32) (cos((3.141592653589793 * (f64) temporaryFloat0) / 180.0) - sin((3.141592653589793 * (f64) temporaryFloat0) / 180.0));
-                localValue5.y = 0.0f;
-                localValue5.z = (f32) (sin((3.141592653589793 * (f64) temporaryFloat0) / 180.0) + cos((3.141592653589793 * (f64) temporaryFloat0) / 180.0));
-                PSVECNormalize(&localValue5, &localValue5);
-                lbl_1_bss_0.playerDirection[parameter0] = localValue5;
-                lbl_1_bss_0.playerTimer[parameter0] = (s32) (frandmod(60) + 30);
+                randomAngle = (f32) (u32) frandmod(360);
+                direction.x = (f32) (cos((3.141592653589793 * (f64) randomAngle) / 180.0) - sin((3.141592653589793 * (f64) randomAngle) / 180.0));
+                direction.y = 0.0f;
+                direction.z = (f32) (sin((3.141592653589793 * (f64) randomAngle) / 180.0) + cos((3.141592653589793 * (f64) randomAngle) / 180.0));
+                PSVECNormalize(&direction, &direction);
+                lbl_1_bss_0.playerDirection[playerIndex] = direction;
+                lbl_1_bss_0.playerTimer[playerIndex] = (s32) (frandmod(60) + 30);
             }
         }
     }
-    switch (lbl_1_bss_0.playerAIState[parameter0]) {
+    switch (lbl_1_bss_0.playerAIState[playerIndex]) {
     case 0:
         break;
     case 1:
-        localValue1 = lbl_1_bss_0.playerDirection[parameter0];
-        lbl_1_bss_0.cpuStickX = 28.0f * localValue1.x;
-        lbl_1_bss_0.cpuStickZ = 28.0f * localValue1.z;
+        currentDirection = lbl_1_bss_0.playerDirection[playerIndex];
+        lbl_1_bss_0.cpuStickX = 28.0f * currentDirection.x;
+        lbl_1_bss_0.cpuStickZ = 28.0f * currentDirection.z;
         break;
     }
-    lbl_1_bss_0.playerTimer[parameter0]--;
+    lbl_1_bss_0.playerTimer[playerIndex]--;
 }
 
 /* Called by fn_1_535C for a group-1 CPU player to choose grid movement and write its pad input. */
-void fn_1_597C(s32 parameter0)
+void fn_1_597C(s32 playerIndex)
 {
     Point3d pos;
     Point3d direction;
-    MGPLAYER *temporary3;
-    int value4;
-    int value3;
-    int value6;
-    int value9;
-    int value8;
+    MGPLAYER *player;
+    int buttonDownMask;
+    int buttonMask;
+    int neighborHeat;
+    int gridX;
+    int gridZ;
 
-    temporary3 = lbl_1_bss_0.players[parameter0];
-    pos = temporary3->actor->pos;
-    value9 = (s32) ((400.0f + pos.x) / 100.0f);
-    value8 = (s32) ((400.0f + pos.z) / 100.0f);
-    if (value9 < 0) {
-        value9 = 0;
+    player = lbl_1_bss_0.players[playerIndex];
+    pos = player->actor->pos;
+    gridX = (s32) ((400.0f + pos.x) / 100.0f);
+    gridZ = (s32) ((400.0f + pos.z) / 100.0f);
+    if (gridX < 0) {
+        gridX = 0;
     }
-    if (value9 >= 8) {
-        value9 = 7;
+    if (gridX >= 8) {
+        gridX = 7;
     }
-    if (value8 < 0) {
-        value8 = 0;
+    if (gridZ < 0) {
+        gridZ = 0;
     }
-    if (value8 >= 8) {
-        value8 = 7;
+    if (gridZ >= 8) {
+        gridZ = 7;
     }
-    fn_1_50A0(parameter0);
-    switch (lbl_1_bss_0.playerAIState[parameter0]) {
+    fn_1_50A0(playerIndex);
+    switch (lbl_1_bss_0.playerAIState[playerIndex]) {
     case 0:
-        if ((s32) lbl_1_bss_0.gridA[value9 + (value8 * 8)] >= (s32) lbl_1_data_198[GwPlayerConf[parameter0].comDif]) {
-            lbl_1_bss_0.playerAIState[parameter0] = 2;
-            fn_1_5D34(parameter0);
+        if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >= (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
+            lbl_1_bss_0.playerAIState[playerIndex] = 2;
+            fn_1_5D34(playerIndex);
         }
         break;
     case 2:
-        value4 = 0;
-        value3 = 0;
-        if ((s32) lbl_1_bss_0.gridA[value9 + (value8 * 8)] >= (s32) lbl_1_data_198[GwPlayerConf[parameter0].comDif]) {
-            fn_1_5D34(parameter0);
-            goto block_28;
+        buttonDownMask = 0;
+        buttonMask = 0;
+        if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >= (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
+            fn_1_5D34(playerIndex);
+        } else {
+            neighborHeat = 0;
+            if ((s32) (gridX - 1) >= 0) {
+                neighborHeat += lbl_1_bss_0.gridA[(gridX - 1) + (gridZ * 8)];
+            }
+            if ((s32) (gridX + 1) < 8) {
+                neighborHeat += lbl_1_bss_0.gridA[(gridX + 1) + (gridZ * 8)];
+            }
+            if ((s32) (gridZ - 1) >= 0) {
+                neighborHeat += lbl_1_bss_0.gridA[gridX + ((gridZ - 1) * 8)];
+            }
+            if ((s32) (gridZ + 1) < 8) {
+                neighborHeat += lbl_1_bss_0.gridA[gridX + ((gridZ + 1) * 8)];
+            }
+            if (neighborHeat < (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
+                lbl_1_bss_0.playerAIState[playerIndex] = 0;
+                return;
+            }
         }
-        value6 = 0;
-        if ((s32) (value9 - 1) >= 0) {
-            value6 += lbl_1_bss_0.gridA[(value9 - 1) + (value8 * 8)];
+        direction = lbl_1_bss_0.playerDirection[playerIndex];
+        if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >= 144) {
+            buttonDownMask = PAD_BUTTON_A;
+            buttonMask = PAD_BUTTON_A;
         }
-        if ((s32) (value9 + 1) < 8) {
-            value6 += lbl_1_bss_0.gridA[(value9 + 1) + (value8 * 8)];
-        }
-        if ((s32) (value8 - 1) >= 0) {
-            value6 += lbl_1_bss_0.gridA[value9 + ((value8 - 1) * 8)];
-        }
-        if ((s32) (value8 + 1) < 8) {
-            value6 += lbl_1_bss_0.gridA[value9 + ((value8 + 1) * 8)];
-        }
-        if (value6 < (s32) lbl_1_data_198[GwPlayerConf[parameter0].comDif]) {
-            lbl_1_bss_0.playerAIState[parameter0] = 0;
-            return;
-        }
-block_28:
-        direction = lbl_1_bss_0.playerDirection[parameter0];
-        if ((s32) lbl_1_bss_0.gridA[value9 + (value8 * 8)] >= 144) {
-            value4 = 256;
-            value3 = 256;
-        }
-        MgPlayerPadSet(temporary3, (s32) (56.0f * direction.x), (s32) (56.0f * -direction.z), value4, value3);
+        MgPlayerPadSet(player, (s32) (56.0f * direction.x), (s32) (56.0f * -direction.z), buttonDownMask, buttonMask);
         break;
     case 1:
         break;
@@ -372,34 +371,34 @@ block_28:
 }
 
 /* Called by fn_1_597C when the risk threshold is reached to update that player's grid direction. */
-void fn_1_5D34(s32 parameter0)
+void fn_1_5D34(s32 playerIndex)
 {
     Point3d pos;
     Point3d direction;
-    s32 localValue1;
-    s32 localValue0;
+    s32 targetGridX;
+    s32 targetGridZ;
     f32 floatValue0;
-    s32 value9;
-    s32 value8;
+    s32 currentGridX;
+    s32 currentGridZ;
     MGPLAYER *player;
 
-    player = lbl_1_bss_0.players[parameter0];
+    player = lbl_1_bss_0.players[playerIndex];
     pos = player->actor->pos;
-    value9 = (s32) ((400.0f + pos.x) / 100.0f);
-    value8 = (s32) ((400.0f + pos.z) / 100.0f);
-    if (value9 < 0) {
-        value9 = 0;
+    currentGridX = (s32) ((400.0f + pos.x) / 100.0f);
+    currentGridZ = (s32) ((400.0f + pos.z) / 100.0f);
+    if (currentGridX < 0) {
+        currentGridX = 0;
     }
-    if (value9 >= 8) {
-        value9 = 7;
+    if (currentGridX >= 8) {
+        currentGridX = 7;
     }
-    if (value8 < 0) {
-        value8 = 0;
+    if (currentGridZ < 0) {
+        currentGridZ = 0;
     }
-    if (value8 >= 8) {
-        value8 = 7;
+    if (currentGridZ >= 8) {
+        currentGridZ = 7;
     }
-    switch (GwPlayerConf[parameter0].comDif) {
+    switch (GwPlayerConf[playerIndex].comDif) {
     case 0:
         floatValue0 = 128.0f;
         break;
@@ -413,119 +412,119 @@ void fn_1_5D34(s32 parameter0)
         floatValue0 = 16.0f;
         break;
     }
-    if ((fn_1_604C(parameter0, value9, value8, &localValue1, &localValue0) != 0) && ((value9 != localValue1) || (value8 != localValue0)) && ((f32) lbl_1_bss_0.gridA[value9 + value8 * 8] >= floatValue0)) {
-        direction.x = (f32) (localValue1 - value9);
+    if ((fn_1_604C(playerIndex, currentGridX, currentGridZ, &targetGridX, &targetGridZ) != 0) && ((currentGridX != targetGridX) || (currentGridZ != targetGridZ)) && ((f32) lbl_1_bss_0.gridA[currentGridX + currentGridZ * 8] >= floatValue0)) {
+        direction.x = (f32) (targetGridX - currentGridX);
         direction.y = 0.0f;
-        direction.z = (f32) (localValue0 - value8);
+        direction.z = (f32) (targetGridZ - currentGridZ);
         PSVECNormalize(&direction, &direction);
-        lbl_1_bss_0.playerDirection[parameter0] = direction;
+        lbl_1_bss_0.playerDirection[playerIndex] = direction;
     }
 }
 
 /* Comparator passed to qsort in fn_1_604C; orders candidates by their distance-weighted cost. */
 int fn_1_5FE4(const void *a, const void *b)
 {
-    const M632GridCandidate *parameter0 = a;
-    const M632GridCandidate *parameter1 = b;
-    if ((parameter0->distance == parameter1->distance) && (parameter0->cost == parameter1->cost)) {
+    const M632GridCandidate *candidateA = a;
+    const M632GridCandidate *candidateB = b;
+    if ((candidateA->distance == candidateB->distance) && (candidateA->cost == candidateB->cost)) {
         return 0;
     }
-    if (parameter0->cost < parameter1->cost) {
+    if (candidateA->cost < candidateB->cost) {
         return -1;
     }
     return 1;
 }
 
 /* Called by fn_1_5D34 to rank the 8-by-8 cells, compare candidates with active group-1 player positions, and report whether selection changed. */
-s32 fn_1_604C(s32 parameter0, s32 parameter1, s32 parameter2, s32 *parameter3, s32 *parameter4)
+s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *selectedZ)
 {
-    M632GridCandidate localValue4[64];
-    Point3d localValue3;
-    Point3d localValue1;
-    M632GridCandidate *value9;
+    M632GridCandidate candidates[64];
+    Point3d otherPlayerPosition;
+    Point3d candidateOffset;
+    M632GridCandidate *candidate;
     f32 floatValue0;
-    s32 value0;
-    s32 value2;
-    s32 value1;
-    s32 value5;
-    s32 value7;
-    s32 value6;
-    s32 value8;
+    s32 selectionChanged;
+    s32 activeGroupPlayerCount;
+    s32 candidateAvailable;
+    s32 otherPlayerIndex;
+    s32 otherPlayerGridX;
+    s32 otherPlayerGridZ;
+    s32 candidateIndex;
 
-    value9 = &localValue4[0];
-    if (parameter1 < 0) {
-        parameter1 = 0;
+    candidate = &candidates[0];
+    if (startX < 0) {
+        startX = 0;
     }
-    if (parameter1 >= 8) {
-        parameter1 = 7;
+    if (startX >= 8) {
+        startX = 7;
     }
-    if (parameter2 < 0) {
-        parameter2 = 0;
+    if (startZ < 0) {
+        startZ = 0;
     }
-    if (parameter2 >= 8) {
-        parameter2 = 7;
+    if (startZ >= 8) {
+        startZ = 7;
     }
-    value6 = 0;
-    while (value6 < 8) {
-        value7 = 0;
-        while (value7 < 8) {
-            localValue1.x = (f32) (value7 - parameter1);
-            localValue1.y = 0.0f;
-            localValue1.z = (f32) (value6 - parameter2);
-            value9->x = value7;
-            value9->z = value6;
-            value9->distance = PSVECMag(&localValue1);
-            floatValue0 = value9->distance;
+    otherPlayerGridZ = 0;
+    while (otherPlayerGridZ < 8) {
+        otherPlayerGridX = 0;
+        while (otherPlayerGridX < 8) {
+            candidateOffset.x = (f32) (otherPlayerGridX - startX);
+            candidateOffset.y = 0.0f;
+            candidateOffset.z = (f32) (otherPlayerGridZ - startZ);
+            candidate->x = otherPlayerGridX;
+            candidate->z = otherPlayerGridZ;
+            candidate->distance = PSVECMag(&candidateOffset);
+            floatValue0 = candidate->distance;
             if (floatValue0 < 1.0f) {
                 floatValue0 = 1.0f;
             }
-            value9->cost = (s32) ((f32) lbl_1_bss_0.gridA[value7 + value6 * 8] * floatValue0);
-            value9 += 1;
-            value7 += 1;
+            candidate->cost = (s32) ((f32) lbl_1_bss_0.gridA[otherPlayerGridX + otherPlayerGridZ * 8] * floatValue0);
+            candidate += 1;
+            otherPlayerGridX += 1;
         }
-        value6 += 1;
+        otherPlayerGridZ += 1;
     }
-    fn_1_6574(&localValue4[0], 64U, sizeof(localValue4[0]), fn_1_5FE4);
-    value9 = &localValue4[0];
-    value1 = 0;
-    value2 = 0;
-    value8 = 0;
-    while (value8 < 4) {
-        if ((lbl_1_bss_0.group[value8] == 1) && (lbl_1_bss_0.playerState[value8] == 0)) {
-            value2 += 1;
+    fn_1_6574(&candidates[0], 64U, sizeof(candidates[0]), fn_1_5FE4);
+    candidate = &candidates[0];
+    candidateAvailable = 0;
+    activeGroupPlayerCount = 0;
+    candidateIndex = 0;
+    while (candidateIndex < 4) {
+        if ((lbl_1_bss_0.group[candidateIndex] == 1) && (lbl_1_bss_0.playerState[candidateIndex] == 0)) {
+            activeGroupPlayerCount += 1;
         }
-        value8 += 1;
+        candidateIndex += 1;
     }
-    value8 = 0;
-    while (value8 < 64) {
-        if (value2 > 1) {
-            value5 = 0;
-            while (value5 < 4) {
-                if ((lbl_1_bss_0.group[value5] == 1) && (lbl_1_bss_0.playerState[value5] == 0) && (value5 != parameter0)) {
-                    localValue3 = lbl_1_bss_0.players[value5]->actor->pos;
-                    value7 = (s32) ((400.0f + localValue3.x) / 100.0f);
-                    value6 = (s32) ((400.0f + localValue3.z) / 100.0f);
-                    if ((value7 != value9->x) || (value6 != value9->z)) {
-                        value1 = 1;
+    candidateIndex = 0;
+    while (candidateIndex < 64) {
+        if (activeGroupPlayerCount > 1) {
+            otherPlayerIndex = 0;
+            while (otherPlayerIndex < 4) {
+                if ((lbl_1_bss_0.group[otherPlayerIndex] == 1) && (lbl_1_bss_0.playerState[otherPlayerIndex] == 0) && (otherPlayerIndex != playerIndex)) {
+                    otherPlayerPosition = lbl_1_bss_0.players[otherPlayerIndex]->actor->pos;
+                    otherPlayerGridX = (s32) ((400.0f + otherPlayerPosition.x) / 100.0f);
+                    otherPlayerGridZ = (s32) ((400.0f + otherPlayerPosition.z) / 100.0f);
+                    if ((otherPlayerGridX != candidate->x) || (otherPlayerGridZ != candidate->z)) {
+                        candidateAvailable = 1;
                         break;
                     }
                 }
-                value5 += 1;
+                otherPlayerIndex += 1;
             }
         } else {
-            value1 = 1;
+            candidateAvailable = 1;
         }
-        if (value1 != 0) {
-            *parameter3 = value9->x;
-            *parameter4 = value9->z;
+        if (candidateAvailable != 0) {
+            *selectedX = candidate->x;
+            *selectedZ = candidate->z;
             break;
         }
-        value9 += 1;
-        value8 += 1;
+        candidate += 1;
+        candidateIndex += 1;
     }
-    value0 = 1;
-    if ((*parameter3 == parameter1) && (*parameter4 == parameter2)) {
-        value0 = 0;
+    selectionChanged = 1;
+    if ((*selectedX == startX) && (*selectedZ == startZ)) {
+        selectionChanged = 0;
     }
-    return value0;
+    return selectionChanged;
 }

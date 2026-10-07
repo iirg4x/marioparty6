@@ -25,6 +25,13 @@
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #include <stddef.h>
 
+#define M632_ARENA_COLLISION_SE_ID 1846 /* Sound played when arena collision checks report a hit. */
+#define M632_PLAYER_ELIMINATION_SE_ID 1847 /* Sound played when an arena collision knocks out a player. */
+#define M632_OPENING_SEQUENCE_CUE_SE_ID 1848 /* Sound played at frame 98 of the opening sequence. */
+#define M632_PLAY_MODE_BGM_STREAM_ID 73 /* Background music stream started by the sequence callback when allowed. */
+#define M632_INTRO_CHARACTER_SE_ID 581 /* Character effect played at setup and used for opening voice selection. */
+#define M632_GROUP1_INTRO_SE_ID 576 /* Character effect played for group 1 at opening frame 112. */
+
 #define fn_1_7364 __cvt_fp2unsigned
 #define fn_1_75B8 __div2u
 #define fn_1_76A4 __div2i
@@ -111,9 +118,9 @@ extern s32 lbl_1_data_198[4];
 /* Cell patterns used to build each arena layout's obstacle map. */
 extern u8 *lbl_1_data_2A8[4];
 extern M632State lbl_1_bss_0;
-s32 fn_1_A0(s32 parameter0, s32 parameter1);
-void fn_1_104(s32 parameter0);
-void fn_1_140(s32 parameter0, s32 parameter1);
+s32 fn_1_A0(s32 streamHandle, s32 streamId);
+void fn_1_104(s32 streamHandle);
+void fn_1_140(s32 playerIndex, s32 cameraId);
 void fn_1_21C(s16 mode, s16 frameNo);
 void fn_1_240(OMOBJ *obj);
 void fn_1_3E0(OMOBJ *obj);
@@ -132,12 +139,12 @@ void fn_1_3934(void);
 void fn_1_4C8C(HU3D_MODEL *modelP, Mtx *mtx);
 void fn_1_4C90(void);
 void fn_1_4D48(void);
-void fn_1_50A0(s32 parameter0);
+void fn_1_50A0(s32 playerIndex);
 void fn_1_535C(void);
-void fn_1_5400(s32 parameter0);
-void fn_1_597C(s32 parameter0);
-void fn_1_5D34(s32 parameter0);
-int fn_1_5FE4(const void *a, const void *b);
-s32 fn_1_604C(s32 parameter0, s32 parameter1, s32 parameter2, s32 *parameter3, s32 *parameter4);
+void fn_1_5400(s32 playerIndex);
+void fn_1_597C(s32 playerIndex);
+void fn_1_5D34(s32 playerIndex);
+int fn_1_5FE4(const void *candidateA, const void *candidateB);
+s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *selectedZ);
 
 #endif
