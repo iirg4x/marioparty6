@@ -1,3 +1,4 @@
+/* This overlay lists minigames and modes, with character, player and 3D sound setup screens. */
 #include "dolphin.h"
 #include "game/object.h"
 #include "game/gamework.h"
@@ -20,8 +21,10 @@
 
 extern s32 rand8(void);
 
+/* The selector has thirteen pages with ten visible rows per page. */
 #define SM_PAGE_MAX 13
 #define SM_PAGE_SIZE 10
+/* Character choice cycles through the first eleven playable characters. */
 #define SM_CHAR_MAX 11
 
 #define SM_KEY_UP (1 << 0)
@@ -60,6 +63,7 @@ typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
+/* Each list row is enabled or disabled and carries its label and overlay ID. */
 typedef struct sm_entry {
     u16 on;
     char *name;
@@ -83,6 +87,7 @@ static char *smCharNameTbl[14] = {
     "MinikoopaB",
 };
 
+/* Rows shown by the selector; disabled rows remain visible but cannot be selected. */
 static SMEntry smPageData[SM_PAGE_MAX * SM_PAGE_SIZE] = {
     { TRUE, "601:PIKATTO HIPDROP", DLL_m601dll },
     { TRUE, "602:HAYAOSI MACHIGAI SAGASI", DLL_m602dll },
@@ -216,6 +221,7 @@ static SMEntry smPageData[SM_PAGE_MAX * SM_PAGE_SIZE] = {
     { TRUE, "***:MESS CHECK", DLL_meschkdll },
 };
 
+/* One character-selection camera is assigned to each player viewport. */
 static u32 smCharSelCamBitTbl[] = { HU3D_CAM0, HU3D_CAM1, HU3D_CAM2, HU3D_CAM3 };
 
 static u32 lbl_1_data_844[] = { 0, 1, 2, 3, 4, 5 };
@@ -223,13 +229,17 @@ static u32 lbl_1_data_844[] = { 0, 1, 2, 3, 4, 5 };
 static char *smDvdMusTbl[] = { "sound/mu_016a.dvd", "sound/mu_047a.dvd", "sound/mu_052a.dvd", "sound/mu_054a.dvd", "sound/mu_101a.dvd",
     "sound/mu_108a.dvd", "sound/mu002a.dvd", "" };
 
-/* ---------------- .bss group A ---------------- */
+/* The menu stores its current page and cursor; each page remembers its previous cursor row. */
+/* Current page index (0 through SM_PAGE_MAX - 1). */
 static s16 smPage;
 static s16 smCursorNoPrev[SM_PAGE_MAX];
+/* Objects owned by the selector and its four-view character preview. */
 static OMOBJ *smMainObj;
 static OMOBJ *smOutViewObj;
 static GW_PLAYER_CONF smPlayerConf[4];
+/* Current row within smPage (0 through SM_PAGE_SIZE - 1). */
 static s16 smCursorNo;
+/* Stores the list row cursor when leaving this selector, including when opening a mode. */
 static s16 smChar1Prev = -1;
 static u16 smPadBtnDown;
 static u16 smPadDStk;
@@ -237,33 +247,35 @@ static u16 smPadDStkDown;
 static u16 smPadBtnDownAll[4];
 static u16 smPadDStkAll[4];
 static u16 smPadDStkDownAll[4];
+/* Previous directional-repeat state, used to derive one-frame press edges. */
 static u16 smPadDStkAllPrev[4] = {};
 
-/* forward declarations (address order) */
-void ObjectSetup(void);                 /* ObjectSetup */
-static void SMCopyConfig(GW_PLAYER_CONF *dst, GW_PLAYER_CONF *src); /* SMCopyConfig */
-static void SMBtnRead(void);         /* SMBtnRead */
-static void SMPagePrint(void);         /* SMPagePrint */
-static void SMPageNoAdd(s16 num);      /* SMPageNoAdd */
-static void SMCursorNoAdd(s16 num);      /* SMCursorNoAdd */
-static void SMInit(OMOBJ *obj);   /* SMInit */
-static void SMMain(OMOBJ *obj);  /* SMMain */
-static void SMGroupSet(int pos);     /* SMGroupSet */
-static s16 SMCharNoAdd(s16 playerNo, s16 num); /* SMCharNoAdd */
-static void SMCharMdlKill(void);        /* SMCharMdlKill */
-static void SMCharComSet(void);        /* SMCharComSet */
-static void SMCharSelInit(OMOBJ *obj);  /* SMCharSelInit */
-static void SMCharSelMain(OMOBJ *obj);  /* SMCharSelMain */
-static void SMExit(OMOBJ *obj);  /* SMExit */
-static void SMPlayerConfPrint(void);        /* SMPlayerConfPrint */
-static void SMPlayerConfInit(OMOBJ *obj);  /* SMPlayerConfInit */
-static void SMPlayerConfMain(OMOBJ *obj);  /* SMPlayerConfMain */
-static void SMRandMain(OMOBJ *obj);  /* SMRandMain */
-static void SMStub(void);        /* SMStub */
-static void SMSound3DInit(OMOBJ *obj);  /* SMSound3DInit */
-static void SMSound3DExec(OMOBJ *obj);  /* SMSound3DExec */
-static void SMSound3DPrint(void);        /* SMSound3DPrint */
+/* Object callbacks below run from the overlay manager during screen updates. */
+void ObjectSetup(void);
+static void SMCopyConfig(GW_PLAYER_CONF *dst, GW_PLAYER_CONF *src);
+static void SMBtnRead(void);
+static void SMPagePrint(void);
+static void SMPageNoAdd(s16 num);
+static void SMCursorNoAdd(s16 num);
+static void SMInit(OMOBJ *obj);
+static void SMMain(OMOBJ *obj);
+static void SMGroupSet(int pos);
+static s16 SMCharNoAdd(s16 playerNo, s16 num);
+static void SMCharMdlKill(void);
+static void SMCharComSet(void);
+static void SMCharSelInit(OMOBJ *obj);
+static void SMCharSelMain(OMOBJ *obj);
+static void SMExit(OMOBJ *obj);
+static void SMPlayerConfPrint(void);
+static void SMPlayerConfInit(OMOBJ *obj);
+static void SMPlayerConfMain(OMOBJ *obj);
+static void SMRandMain(OMOBJ *obj);
+static void SMStub(void);
+static void SMSound3DInit(OMOBJ *obj);
+static void SMSound3DExec(OMOBJ *obj);
+static void SMSound3DPrint(void);
 
+/* The overlay loader calls this entry point to run constructors and create the selector objects. */
 int _prolog(void)
 {
     const VoidFunc *ctor;
@@ -276,6 +288,7 @@ int _prolog(void)
     return 0;
 }
 
+/* The overlay loader calls this entry point during unload to run registered destructors. */
 void _epilog(void)
 {
     const VoidFunc *dtor;
@@ -285,6 +298,7 @@ void _epilog(void)
     }
 }
 
+/* Creates the minigame list and four-player preview objects, then initializes the board-session settings. */
 void ObjectSetup(void)
 {
     static char *funcId = "SMOBJECTSETUP\n";
@@ -337,6 +351,7 @@ void ObjectSetup(void)
     HuMemHeapDump(HuMemHeapPtrGet(HEAP_MODEL), -1);
 }
 
+/* Copies the four player records when entering or leaving character selection. */
 static void SMCopyConfig(GW_PLAYER_CONF *dst, GW_PLAYER_CONF *src)
 {
     int i;
@@ -345,6 +360,7 @@ static void SMCopyConfig(GW_PLAYER_CONF *dst, GW_PLAYER_CONF *src)
     }
 }
 
+/* Called by each active screen callback to combine four controllers and record directional press edges for this frame. */
 static void SMBtnRead(void)
 {
     int i;
@@ -372,6 +388,7 @@ static void SMBtnRead(void)
     }
 }
 
+/* Draws the current page of minigames and modes, with disabled rows dimmed and the current row highlighted. */
 static void SMPagePrint(void)
 {
     int i;
@@ -395,6 +412,7 @@ static void SMPagePrint(void)
     }
 }
 
+/* Moves to the next page containing an enabled row and restores that page’s remembered cursor. */
 static void SMPageNoAdd(s16 num)
 {
     s16 page;
@@ -431,6 +449,7 @@ static void SMPageNoAdd(s16 num)
     }
 }
 
+/* Moves the list cursor to the next enabled row on the current page, wrapping at either end. */
 static void SMCursorNoAdd(s16 num)
 {
     s16 pos;
@@ -448,6 +467,7 @@ static void SMCursorNoAdd(s16 num)
     (void)pos;
 }
 
+/* Runs once after the selector object is created; copies player settings, repairs duplicate characters and chooses the initial list row. */
 static void SMInit(OMOBJ *obj)
 {
     int i, j;
@@ -490,6 +510,7 @@ static void SMInit(OMOBJ *obj)
     obj->objFunc = SMMain;
 }
 
+/* Runs each frame on the list screen to draw the list and handle page, row, character, player-setup, sound-setup and exit inputs. */
 static void SMMain(OMOBJ *obj)
 {
     SMBtnRead();
@@ -531,6 +552,7 @@ static void SMMain(OMOBJ *obj)
     }
 }
 
+/* Updates default player groups when the highlighted overlay changes, using that minigame’s group type. */
 static void SMGroupSet(int pos)
 {
     int i;
@@ -582,9 +604,11 @@ static void SMGroupSet(int pos)
     }
 }
 
-/* ---------------- .bss group B ---------------- */
+/* Character preview models and per-player selection state. */
 static HU3D_MODELID smCharMdlId[SM_CHAR_MAX];
+/* TRUE once that player has confirmed their character. */
 static s16 smCharSelEndF[4];
+/* Nonzero for a playable character already assigned to a human player. */
 static s16 smCharOnF[SM_CHAR_MAX];
 
 #define SM_CHAR_FILE_STRIDE 2
@@ -628,6 +652,7 @@ static int smCharMotFileTbl[SM_CHAR_FILE_COUNT] = {
     SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPAB),
 };
 
+/* Finds the next character not already assigned to a human player when selection changes or duplicate settings are repaired. */
 static s16 SMCharNoAdd(s16 playerNo, s16 num)
 {
     int i;
@@ -657,6 +682,7 @@ static s16 SMCharNoAdd(s16 playerNo, s16 num)
     return charNo;
 }
 
+/* Releases the character preview models when character selection is cancelled. */
 static void SMCharMdlKill(void)
 {
     int i;
@@ -665,6 +691,7 @@ static void SMCharMdlKill(void)
     }
 }
 
+/* Assigns each COM player an unused character after all human players confirm their choices. */
 static void SMCharComSet(void)
 {
     int i;
@@ -687,6 +714,7 @@ static void SMCharComSet(void)
     }
 }
 
+/* Loads the character models and motions when the character screen opens, then installs its per-frame callback. */
 static void SMCharSelInit(OMOBJ *obj)
 {
     int i;
@@ -704,6 +732,7 @@ static void SMCharSelInit(OMOBJ *obj)
     obj->objFunc = SMCharSelMain;
 }
 
+/* Runs each frame on the character screen to process each human player’s choice and draw the four preview panels. */
 static void SMCharSelMain(OMOBJ *obj)
 {
     int i;
@@ -822,6 +851,7 @@ static void SMCharSelMain(OMOBJ *obj)
     }
 }
 
+/* Runs after the character screen finishes its outgoing wipe; waits for data reads, records the selected minigame and opens its instruction or overlay screen. */
 static void SMExit(OMOBJ *obj)
 {
     int mg;
@@ -854,9 +884,12 @@ static void SMExit(OMOBJ *obj)
 
 static char *smPlayerConfStrTbl[] = { "PLAYER:%d", " PAD%d:%s", "PADNO:%d", "  GRP:%d", "  DIF:%s" };
 
-/* ---------------- .bss group C ---------------- */
+/* Player-setup screen: selected player, selected field, and edit mode. */
+/* 0 selects a player; 1 edits that player’s highlighted setting. */
 static s16 smPlayerConfEditF;
+/* Selected player index, from 0 through 3. */
 static s16 smPlayerConfNo;
+/* Setting index: type, controller, group, then computer difficulty (0 through 3). */
 static s16 smPlayerConfChoiceNo;
 
 #define DO_HILITE(option)                                                                                                                              \
@@ -871,6 +904,7 @@ static s16 smPlayerConfChoiceNo;
         (void)color;                                                                                                                                   \
     } while (0)
 
+/* Draws the four-player setup screen and highlights the selected player or setting. */
 static void SMPlayerConfPrint(void)
 {
     int i;
@@ -920,6 +954,7 @@ static void SMPlayerConfPrint(void)
 
 #undef DO_HILITE
 
+/* Resets the player-setup cursor when that screen opens and installs its per-frame callback. */
 static void SMPlayerConfInit(OMOBJ *obj)
 {
     smPlayerConfEditF = 0;
@@ -928,6 +963,7 @@ static void SMPlayerConfInit(OMOBJ *obj)
     obj->objFunc = SMPlayerConfMain;
 }
 
+/* Runs each frame on the player-setup screen to edit player settings, return to the list, or shuffle the four player groups with Start. */
 static void SMPlayerConfMain(OMOBJ *obj)
 {
     int offset;
@@ -1041,6 +1077,7 @@ static void SMPlayerConfMain(OMOBJ *obj)
     }
 }
 
+/* The auxiliary object callback registered by ObjectSetup; it advances the random generator once each frame. */
 static void SMRandMain(OMOBJ *obj)
 {
     rand8();
@@ -1048,12 +1085,16 @@ static void SMRandMain(OMOBJ *obj)
 
 static void SMStub(void) {}
 
-/* ---------------- .bss group D ---------------- */
+/* 3D sound setup selection and the currently edited effect values. */
+/* Selected effect-table index; left edits clamp it at zero, lookups also occur on entry, and this source has no upper clamp. */
 static s16 smEmiCompDataNo;
+/* Effect compensation loads unchanged on entry; edits clamp it to -127 through 127. */
 static s16 smEmiCompVal;
+/* Selected sound setting index, from 0 through 7. */
 static s16 smSound3DNo;
 s16 lbl_1_bss_0;
 
+/* Loads the selected sound effect’s current compensation value when the 3D sound screen opens. */
 static void SMSound3DInit(OMOBJ *obj)
 {
     MSMSE *se = msmSeGetIndexPtr(smEmiCompDataNo);
@@ -1061,6 +1102,7 @@ static void SMSound3DInit(OMOBJ *obj)
     obj->objFunc = SMSound3DExec;
 }
 
+/* Runs each frame on the 3D sound screen to adjust audio settings, reset the selected value to zero with Start, or return with B. */
 static void SMSound3DExec(OMOBJ *obj)
 {
     float speed;
@@ -1194,6 +1236,7 @@ static void SMSound3DExec(OMOBJ *obj)
         }                                                                                                                                              \
     } while (0)
 
+/* Draws the eight 3D sound settings and highlights the setting currently selected for editing. */
 static void SMSound3DPrint(void)
 {
     char *onOffStr[] = { " ON", "OFF" };
