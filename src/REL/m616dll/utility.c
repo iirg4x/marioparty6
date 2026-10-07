@@ -1,3 +1,4 @@
+/* Camera and character-motion helpers shared by M616's sequence callbacks. */
 #include "REL/m616dll.h"
 #include "game/audio.h"
 #include "game/charman.h"
@@ -27,6 +28,7 @@ extern M616CpuParam lbl_1_data_2B0[4];
 extern s32 lbl_1_data_2D0[3];
 
 M616Work lbl_1_bss_10;
+/* Replace the active camera with the indexed motion and reset its elapsed-time tracking. */
 void fn_1_1FF4(s32 index)
 {
     HU3D_MODELID model;
@@ -44,16 +46,19 @@ void fn_1_1FF4(s32 index)
     OSReport("start camera motion ... idx:%d time:%f\n", index, lbl_1_bss_10.cameraMaxTime);
 }
 
+/* Used by the opening callback to test whether the active camera motion has ended. */
 BOOL fn_1_20D8(void)
 {
     return Hu3DMotionEndCheck(lbl_1_bss_10.activeCameraModel);
 }
 
+/* Set the selected shared player model to one of its loaded motions. */
 void fn_1_2104(s32 playerNo, s32 motionNo)
 {
     Hu3DMotionSet(lbl_1_bss_10.playerModels[playerNo], lbl_1_bss_10.playerMotions[motionNo]);
 }
 
+/* Change a player's base model motion when needed; motion 12 is always restarted. */
 void fn_1_215C(s32 playerNo, s32 motionNo)
 {
     if (motionNo == 12 || lbl_1_bss_10.playerBaseMotions[playerNo][motionNo]
@@ -66,12 +71,14 @@ void fn_1_215C(s32 playerNo, s32 motionNo)
     }
 }
 
+/* Set the center gear model motion for a round outcome. */
 void fn_1_2254(s32 motionNo)
 {
     Hu3DMotionSet(lbl_1_bss_10.centerModel, lbl_1_bss_10.centerMotions[motionNo]);
     OSReport("gear motion time ... %f\n", Hu3DMotionMaxTimeGet(lbl_1_bss_10.centerModel));
 }
 
+/* Shift a character to the requested motion when it changes; motion 10 always starts a new shift. */
 void fn_1_22BC(s32 playerNo, s32 motionNo, u32 attr)
 {
     HU3D_MOTIONID motion;

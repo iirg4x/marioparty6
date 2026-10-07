@@ -1,3 +1,4 @@
+/* Builds M616's camera, stage, character, and timer resources before starting its game sequence. */
 #include "REL/m616dll.h"
 #include "game/audio.h"
 #include "game/charman.h"
@@ -25,6 +26,7 @@ extern s32 lbl_1_data_24C[13];
 extern unsigned int lbl_1_data_280[12];
 extern M616CpuParam lbl_1_data_2B0[4];
 extern s32 lbl_1_data_2D0[3];
+/* Called from the REL prolog after constructors; create resources and register the sequence callbacks. */
 void fn_1_1590(void)
 {
     s32 i;
@@ -54,10 +56,10 @@ void fn_1_1590(void)
     for (i = 0; i < 17; i++) {
         lbl_1_bss_10.cameraMotions[i] = Hu3DMotionCreateData(lbl_1_data_1F0[i]);
     }
-    lbl_1_bss_10.unk_CC = Hu3DModelCreateData(DATANUM(DATA_m616, 20));
-    Hu3DModelShadowSet(lbl_1_bss_10.unk_CC);
-    lbl_1_bss_10.unk_CE = Hu3DModelCreateData(DATANUM(DATA_m616, 12));
-    Hu3DModelShadowSet(lbl_1_bss_10.unk_CE);
+    lbl_1_bss_10.playerHookRoot = Hu3DModelCreateData(DATANUM(DATA_m616, 20));
+    Hu3DModelShadowSet(lbl_1_bss_10.playerHookRoot);
+    lbl_1_bss_10.openingMotionModel = Hu3DModelCreateData(DATANUM(DATA_m616, 12));
+    Hu3DModelShadowSet(lbl_1_bss_10.openingMotionModel);
     lbl_1_bss_10.resultModels[0] = Hu3DModelCreateData(DATANUM(DATA_m616, 41));
     lbl_1_bss_10.resultModels[1] = Hu3DModelCreateData(DATANUM(DATA_m616, 42));
     lbl_1_bss_10.resultModels[2] = Hu3DModelCreateData(DATANUM(DATA_m616, 43));
@@ -80,10 +82,10 @@ void fn_1_1590(void)
                 Hu3DJointMotionData(lbl_1_bss_10.playerBaseModels[i], lbl_1_data_24C[j]);
         }
     }
-    Hu3DModelHookSet(lbl_1_bss_10.unk_CC, "p1daiiti", lbl_1_bss_10.playerBaseModels[0]);
-    Hu3DModelHookSet(lbl_1_bss_10.unk_CC, "p2daiiti", lbl_1_bss_10.playerBaseModels[1]);
-    Hu3DModelHookSet(lbl_1_bss_10.unk_CC, "p3daiiti", lbl_1_bss_10.playerBaseModels[2]);
-    Hu3DModelHookSet(lbl_1_bss_10.unk_CC, "p4daiiti", lbl_1_bss_10.playerBaseModels[3]);
+    Hu3DModelHookSet(lbl_1_bss_10.playerHookRoot, "p1daiiti", lbl_1_bss_10.playerBaseModels[0]);
+    Hu3DModelHookSet(lbl_1_bss_10.playerHookRoot, "p2daiiti", lbl_1_bss_10.playerBaseModels[1]);
+    Hu3DModelHookSet(lbl_1_bss_10.playerHookRoot, "p3daiiti", lbl_1_bss_10.playerBaseModels[2]);
+    Hu3DModelHookSet(lbl_1_bss_10.playerHookRoot, "p4daiiti", lbl_1_bss_10.playerBaseModels[3]);
     lbl_1_bss_10.centerModel = Hu3DModelCreateData(DATANUM(DATA_m616, 15));
     for (i = 0; i < 3; i++) {
         lbl_1_bss_10.centerMotions[i] = Hu3DJointMotionData(lbl_1_bss_10.centerModel, lbl_1_data_2D0[i]);
@@ -98,10 +100,10 @@ void fn_1_1590(void)
     for (i = 0; i < 4; i++) {
         Hu3DModelShadowMapObjSet(lbl_1_bss_10.playerModels[i], "p1neji_sha");
     }
-    Hu3DModelHookSet(lbl_1_bss_10.unk_CC, "p1nejiiti", lbl_1_bss_10.playerModels[0]);
-    Hu3DModelHookSet(lbl_1_bss_10.unk_CC, "p2nejiiti", lbl_1_bss_10.playerModels[1]);
-    Hu3DModelHookSet(lbl_1_bss_10.unk_CC, "p3nejiiti", lbl_1_bss_10.playerModels[2]);
-    Hu3DModelHookSet(lbl_1_bss_10.unk_CC, "p4nejiiti", lbl_1_bss_10.playerModels[3]);
+    Hu3DModelHookSet(lbl_1_bss_10.playerHookRoot, "p1nejiiti", lbl_1_bss_10.playerModels[0]);
+    Hu3DModelHookSet(lbl_1_bss_10.playerHookRoot, "p2nejiiti", lbl_1_bss_10.playerModels[1]);
+    Hu3DModelHookSet(lbl_1_bss_10.playerHookRoot, "p3nejiiti", lbl_1_bss_10.playerModels[2]);
+    Hu3DModelHookSet(lbl_1_bss_10.playerHookRoot, "p4nejiiti", lbl_1_bss_10.playerModels[3]);
     fn_1_2104(0, 0);
     fn_1_2104(1, 0);
     fn_1_2104(2, 0);

@@ -1,3 +1,4 @@
+/* CPU choice and reaction-delay selection used at the start of M616 rounds. */
 #include "REL/m616dll.h"
 #include "game/audio.h"
 #include "game/charman.h"
@@ -25,6 +26,7 @@ extern s32 lbl_1_data_24C[13];
 extern unsigned int lbl_1_data_280[12];
 extern M616CpuParam lbl_1_data_2B0[4];
 extern s32 lbl_1_data_2D0[3];
+/* Called when a round begins; choose a nonzero answer and its input frame for each CPU player. */
 void fn_1_23B0(void)
 {
     s32 player;
@@ -53,6 +55,7 @@ void fn_1_23B0(void)
     }
 }
 
+/* The round callback reads the CPU's selected answer through this accessor. */
 s32 fn_1_2580(s32 playerNo)
 {
     return lbl_1_bss_10.cpuChoices[playerNo];
