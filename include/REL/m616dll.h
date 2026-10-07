@@ -1,3 +1,4 @@
+/* Shared state for M616's timed choice sequence and its camera and character models. */
 #ifndef M616DLL_H
 #define M616DLL_H
 
@@ -22,8 +23,10 @@ typedef struct M616Work {
     HU3D_MOTIONID centerMotions[3];
     HU3D_MODELID playerModels[4];
     HU3D_MOTIONID playerMotions[6];
-    HU3D_MODELID unk_CC;
-    HU3D_MODELID unk_CE;
+    /* Model that owns the named attachment points for the four player models. */
+    HU3D_MODELID playerHookRoot;
+    /* Model carrying the P1stmov object and timing hook during the opening animation. */
+    HU3D_MODELID openingMotionModel;
     s32 characterNos[4];
     s32 padNos[4];
     HU3D_MODELID characterModels[4];
@@ -35,7 +38,7 @@ typedef struct M616Work {
     s32 scores[4];
     s32 roundNo;
     MGTIMER *timer;
-    s32 timingState;
+    s32 timingState; /* Opening motion event handled by fn_1_139C. */
     HU3D_MODELID resultModels[4];
     HuVecF shadowPos;
     HuVecF shadowTarget;

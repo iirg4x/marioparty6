@@ -1,3 +1,4 @@
+/* M616's timed four-player choice rounds, character presentation, sequence transitions, and choice, result, and motion-completion sounds. */
 #include "REL/m616dll.h"
 #include "game/audio.h"
 #include "game/charman.h"
@@ -12,6 +13,13 @@
 #include "game/frand.h"
 #include "datadir_enum.h"
 #include <string.h>
+
+/* Sounds for choice changes, results, and completed character motions. */
+#define M616_SFX_CHOICE_CHANGED 1741
+#define M616_SFX_RESULT_FIRST 1742
+#define M616_SFX_RESULT_SECOND 1743
+#define M616_SFX_MOTION_COMPLETE_FIRST 1745
+#define M616_SFX_MOTION_COMPLETE_SECOND 1744
 
 
 typedef struct M616CpuParam {
@@ -32,6 +40,7 @@ MGSEQ_PARAM lbl_1_data_0 = {
     fn_1_F78, fn_1_1284, fn_1_135C, fn_1_1360
 };
 
+/* Start the requested BGM when no stream is active and a game-message effect is playing. */
 s32 fn_1_A0(s32 streamNo, s32 bgmId)
 {
     s32 result = streamNo;
@@ -44,6 +53,7 @@ s32 fn_1_A0(s32 streamNo, s32 bgmId)
     return result;
 }
 
+/* Called by the sequence exit callback to fade the active streamed track. */
 void fn_1_104(s32 streamNo)
 {
     if (streamNo != -1) {
@@ -51,11 +61,13 @@ void fn_1_104(s32 streamNo)
     }
 }
 
+/* Sequence callback that advances immediately to the next mode. */
 void fn_1_140(s16 mode, s16 frameNo)
 {
     MgSeqModeNext();
 }
 
+/* Sequence callback for the opening player animation; transfers its object motion to the character. */
 void fn_1_160(s16 mode, s16 frameNo)
 {
     s32 player;
@@ -74,17 +86,17 @@ void fn_1_160(s16 mode, s16 frameNo)
                 fn_1_22BC(player, 0, HU3D_MOTATTR_LOOP);
             } else {
                 fn_1_22BC(player, 4, HU3D_MOTATTR_LOOP);
-                Hu3DMotionTimeSet(lbl_1_bss_10.unk_CE, 0.0f);
-                Hu3DMotionTimingHookSet(lbl_1_bss_10.unk_CE, fn_1_139C);
+                Hu3DMotionTimeSet(lbl_1_bss_10.openingMotionModel, 0.0f);
+                Hu3DMotionTimingHookSet(lbl_1_bss_10.openingMotionModel, fn_1_139C);
             }
         }
         fn_1_1FF4(0);
         lbl_1_bss_10.timingState = 0;
         MgSeqModeChangeOff();
-        lbl_1_bss_10.streamNo = HuAudSStreamPlay(83);
+        lbl_1_bss_10.streamNo = HuAudSStreamPlay(MSM_STREAM_MGMUS_25);
     }
     model = lbl_1_bss_10.characterModels[0];
-    Hu3DModelObjMtxGet(lbl_1_bss_10.unk_CE, "P1stmov", matrix);
+    Hu3DModelObjMtxGet(lbl_1_bss_10.openingMotionModel, "P1stmov", matrix);
     Hu3DMtxTransGet(matrix, &pos);
     Hu3DMtxRotGet(matrix, &rot);
     Hu3DMtxScaleGet(matrix, &scale);
@@ -92,15 +104,15 @@ void fn_1_160(s16 mode, s16 frameNo)
     Hu3DModelRotSetV(model, &rot);
     Hu3DModelScaleSetV(model, &scale);
     OSReport("pos %f, %f, %f\n", pos.x, pos.y, pos.z);
-    Hu3DModelObjPosGet(lbl_1_bss_10.unk_CE, "P1stmov", &lbl_1_bss_0);
+    Hu3DModelObjPosGet(lbl_1_bss_10.openingMotionModel, "P1stmov", &lbl_1_bss_0);
     if (fn_1_20D8()) {
         HU3D_MODELID character;
         HuVecF origin;
         HuVecF rotation;
         HuVecF unitScale;
 
-        Hu3DMotionTimingHookReset(lbl_1_bss_10.unk_CE);
-        Hu3DModelHookReset(lbl_1_bss_10.unk_CE);
+        Hu3DMotionTimingHookReset(lbl_1_bss_10.openingMotionModel);
+        Hu3DModelHookReset(lbl_1_bss_10.openingMotionModel);
         Hu3DModelHookSet(lbl_1_bss_10.playerModels[0], "P1st",
             lbl_1_bss_10.characterModels[0]);
         character = lbl_1_bss_10.characterModels[0];
@@ -132,6 +144,7 @@ void fn_1_4BC(s16 mode, s16 frameNo)
 {
 }
 
+/* Per-frame round callback: gathers choices, scores unique answers, and advances or starts another round. */
 void fn_1_4C0(s16 mode, s16 frameNo)
 {
     s32 player;
@@ -219,7 +232,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                 fn_1_22BC(player, 10, 0);
                 omVibrate(player, 10, 7, 3);
                 fn_1_215C(player, 12);
-                HuAudFXPlay(1741);
+                HuAudFXPlay(M616_SFX_CHOICE_CHANGED);
             }
             lbl_1_bss_10.choices[player] = choice;
             motion = lbl_1_bss_10.characterMotions[player][10];
@@ -306,8 +319,8 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                     }
                 }
                 fn_1_2254(0);
-                HuAudFXPlay(1742);
-                HuAudFXPlay(1743);
+                HuAudFXPlay(M616_SFX_RESULT_FIRST);
+                HuAudFXPlay(M616_SFX_RESULT_SECOND);
                 lbl_1_bss_10.sequenceState = 5;
                 lbl_1_bss_10.sequenceFrame = 0;
             } else {
@@ -338,8 +351,8 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                 }
             }
             if (player == 4) {
-                HuAudFXPlay(1745);
-                HuAudFXPlay(1744);
+                HuAudFXPlay(M616_SFX_MOTION_COMPLETE_FIRST);
+                HuAudFXPlay(M616_SFX_MOTION_COMPLETE_SECOND);
                 for (player = 0; player < 4; player++) {
                     if (lbl_1_bss_10.scores[player] == 3) {
                         break;
@@ -364,6 +377,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
     }
 }
 
+/* At sequence exit, stop the streamed track before the result mode begins. */
 void fn_1_F14(s16 mode, s16 frameNo)
 {
     if (frameNo == 0) {
@@ -372,6 +386,7 @@ void fn_1_F14(s16 mode, s16 frameNo)
     }
 }
 
+/* Result callback: records players reaching three points, presents the outcome, then advances when motions end. */
 void fn_1_F78(s16 mode, s16 frameNo)
 {
     s32 i;
@@ -409,8 +424,8 @@ void fn_1_F78(s16 mode, s16 frameNo)
             }
             if (motion != -1) {
                 fn_1_2254(motion);
-                HuAudFXPlay(1742);
-                HuAudFXPlay(1743);
+                HuAudFXPlay(M616_SFX_RESULT_FIRST);
+                HuAudFXPlay(M616_SFX_RESULT_SECOND);
             }
             mask = 0;
             {
@@ -431,13 +446,14 @@ void fn_1_F78(s16 mode, s16 frameNo)
             }
         }
         if (i == 4) {
-            HuAudFXPlay(1745);
-            HuAudFXPlay(1744);
+            HuAudFXPlay(M616_SFX_MOTION_COMPLETE_FIRST);
+            HuAudFXPlay(M616_SFX_MOTION_COMPLETE_SECOND);
             MgSeqModeNext();
         }
     }
 }
 
+/* Result-mode entry callback: starts the winner or non-winner pose for each player. */
 void fn_1_1284(s16 mode, s16 frameNo)
 {
     s32 player;
@@ -464,11 +480,13 @@ void fn_1_1360(s16 mode, s16 frameNo)
 {
 }
 
+/* Object-manager callback that samples the active camera motion time each update. */
 void fn_1_1364(OMOBJ *object)
 {
     lbl_1_bss_10.cameraTime = Hu3DMotionTimeGet(lbl_1_bss_10.activeCameraModel);
 }
 
+/* Timing hook installed on the opening animation model to drive its character events. */
 void fn_1_139C(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL lagF)
 {
     if (lagF == TRUE) {
