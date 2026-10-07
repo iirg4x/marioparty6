@@ -1,3 +1,4 @@
+/* Sequence callbacks and shared labels for the 633biribiri minigame. */
 #include "REL/m633dll.h"
 
 MGSEQ_PARAM lbl_1_data_0 = {
@@ -52,45 +53,45 @@ char lbl_1_data_188[24] = "633biribiri-nozzleNull";
 
 char lbl_1_data_1A0[24] = "hit!!!!!!!!(%f)\n";
 
-s32 lbl_1_data_1B8[6] = { 6029324, 6029325, 6029326, 6029327, 6029332, 6029333 };
+s32 lbl_1_data_1B8[6] = { DATANUM(DATA_m633, 12), DATANUM(DATA_m633, 13), DATANUM(DATA_m633, 14), DATANUM(DATA_m633, 15), DATANUM(DATA_m633, 20), DATANUM(DATA_m633, 21) };
 
-s32 lbl_1_data_1D0[4] = { 6029337, 6029339, 6029338, 6029336 };
+s32 lbl_1_data_1D0[4] = { DATANUM(DATA_m633, 25), DATANUM(DATA_m633, 27), DATANUM(DATA_m633, 26), DATANUM(DATA_m633, 24) };
 
 unsigned int lbl_1_data_1E0[16] = {
-    9633792,
-    9633793,
-    9633794,
-    9633795,
-    9633796,
-    9633798,
-    9633832,
-    9633827,
-    9633802,
-    9633801,
-    9633822,
-    9633812,
-    9633853,
-    9306198,
-    9633816,
+    DATANUM(DATA_mariomot, 0),
+    DATANUM(DATA_mariomot, 1),
+    DATANUM(DATA_mariomot, 2),
+    DATANUM(DATA_mariomot, 3),
+    DATANUM(DATA_mariomot, 4),
+    DATANUM(DATA_mariomot, 6),
+    DATANUM(DATA_mariomot, 40),
+    DATANUM(DATA_mariomot, 35),
+    DATANUM(DATA_mariomot, 10),
+    DATANUM(DATA_mariomot, 9),
+    DATANUM(DATA_mariomot, 30),
+    DATANUM(DATA_mariomot, 20),
+    DATANUM(DATA_mariomot, 61),
+    DATANUM(DATA_mario, 86),
+    DATANUM(DATA_mariomot, 24),
     0,
 };
 
 unsigned int lbl_1_data_220[16] = {
-    9633792,
-    9633793,
-    9633794,
-    9633795,
-    9633796,
-    9633830,
-    9633832,
-    9633827,
-    9633802,
-    9633801,
-    9633822,
-    9633812,
-    9633853,
-    9306198,
-    9633816,
+    DATANUM(DATA_mariomot, 0),
+    DATANUM(DATA_mariomot, 1),
+    DATANUM(DATA_mariomot, 2),
+    DATANUM(DATA_mariomot, 3),
+    DATANUM(DATA_mariomot, 4),
+    DATANUM(DATA_mariomot, 38),
+    DATANUM(DATA_mariomot, 40),
+    DATANUM(DATA_mariomot, 35),
+    DATANUM(DATA_mariomot, 10),
+    DATANUM(DATA_mariomot, 9),
+    DATANUM(DATA_mariomot, 30),
+    DATANUM(DATA_mariomot, 20),
+    DATANUM(DATA_mariomot, 61),
+    DATANUM(DATA_mario, 86),
+    DATANUM(DATA_mariomot, 24),
     0,
 };
 
@@ -102,24 +103,27 @@ u32 lbl_1_data_280[4] = { 15U, 25U, 40U, 100U };
 
 M633Work lbl_1_bss_0;
 
-s32 fn_1_A0(s32 arg0, s32 arg1)
+/* Starts the requested BGM when no stream is active and the sequence message state permits music. */
+s32 fn_1_A0(s32 streamHandle, s32 bgmId)
 {
     s32 result;
 
-    result = arg0;
+    result = streamHandle;
     if (result == -1 && (GameMesStatGet(MgSeqGameMesIdGet()) & 16) != 0) {
-        result = HuAudBGMPlay((s16) arg1);
+        result = HuAudBGMPlay((s16) bgmId);
     }
     return result;
 }
 
-void fn_1_104(s32 arg0)
+/* Fades an active sequence stream out; fn_1_AB0 uses this when the result phase begins. */
+void fn_1_104(s32 streamHandle)
 {
-    if (arg0 != -1) {
-        HuAudSStreamFadeOut(arg0, 100);
+    if (streamHandle != -1) {
+        HuAudSStreamFadeOut(streamHandle, 100);
     }
 }
 
+/* Updates each character voice pan from its projected screen position during sequence callbacks. */
 void fn_1_140(void)
 {
     Point3d pos;
@@ -128,7 +132,7 @@ void fn_1_140(void)
     s32 player;
 
     for (player = 0; player < 4; player++) {
-        pos = lbl_1_bss_0.unk040[player]->actor->pos;
+        pos = lbl_1_bss_0.players[player]->actor->pos;
         Hu3D3Dto2D(&pos, 1, &projected);
         pan = (s32) projected.x;
         pan /= 5;
@@ -137,10 +141,11 @@ void fn_1_140(void)
         } else if (pan > 96) {
             pan = 96;
         }
-        CharModelVoicePanSet((s16) lbl_1_bss_0.unk050[player], (s16) pan);
+        CharModelVoicePanSet((s16) lbl_1_bss_0.characterNumbers[player], (s16) pan);
     }
 }
 
+/* Sequence callback: advances actors and voice panning, then moves to the next mode. */
 void fn_1_224(s16 mode, s16 frameNo)
 {
     MgActorExec();
@@ -148,139 +153,144 @@ void fn_1_224(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
-void fn_1_310(s16 arg1, s16 frameNo)
+/* Starts the opening camera motion, installs per-slot callbacks on entry, and advances when the waiting slots report completion. */
+void fn_1_310(s16 mode, s16 frameNo)
 {
-    s32 var_r28;
-    s32 var_r31;
+    s32 completedPlayerCount;
+    s32 playerNo;
 
-    var_r28 = 0;
+    completedPlayerCount = 0;
     fn_1_6DE8();
-    lbl_1_bss_0.unk198 -= 1;
-    if (lbl_1_bss_0.unkAD4 != 0) {
-        HuAudFXPlay(1850);
+    lbl_1_bss_0.segmentUpdateCountdown -= 1;
+    if (lbl_1_bss_0.segmentReflectionSoundPending != 0) {
+        HuAudFXPlay(M633_SEGMENT_WALL_REFLECTION_SE_ID);
     }
-    lbl_1_bss_0.unkAD4 = 0;
+    lbl_1_bss_0.segmentReflectionSoundPending = 0;
     MgActorExec();
     fn_1_140();
-    lbl_1_bss_0.unkADC = 1;
+    lbl_1_bss_0.preventArenaRestart = 1;
     if (frameNo == 0) {
         fn_1_7E70(0);
-        var_r31 = 0;
-        while (var_r31 < 4) {
-            if ((s32) lbl_1_bss_0.unk070[var_r31] != 0) {
-                (lbl_1_bss_0.unk0E4[var_r31])->objFunc = fn_1_32C0;
+        playerNo = 0;
+        while (playerNo < 4) {
+            if ((s32) lbl_1_bss_0.outsideGroupZero[playerNo] != 0) {
+                (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_32C0;
             } else {
-                (lbl_1_bss_0.unk0E4[var_r31])->objFunc = fn_1_26B8;
+                (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_26B8;
             }
-            var_r31 += 1;
+            playerNo += 1;
         }
         return;
     }
     if (fn_1_7F40() != 0) {
-        var_r31 = 0;
-        while (var_r31 < 4) {
-            if (((s32) lbl_1_bss_0.unk070[var_r31] == 0) && ((u32) (lbl_1_bss_0.unk0E4[var_r31])->work[1] == 4U)) {
-                var_r28 += 1;
+        playerNo = 0;
+        while (playerNo < 4) {
+            if (((s32) lbl_1_bss_0.outsideGroupZero[playerNo] == 0) && ((u32) (lbl_1_bss_0.playerObjects[playerNo])->work[1] == 4U)) {
+                completedPlayerCount += 1;
             }
-            var_r31 += 1;
+            playerNo += 1;
         }
-        if (var_r28 == 3) {
+        if (completedPlayerCount == 3) {
             MgSeqModeNext();
         }
     }
 }
 
+/* Sequence callback that starts BGM once and updates actors and their voice panning. */
 void fn_1_55C(s16 mode, s16 frameNo)
 {
-    lbl_1_bss_0.unkAE0 = fn_1_A0(lbl_1_bss_0.unkAE0, 75);
+    lbl_1_bss_0.bgmHandle = fn_1_A0(lbl_1_bss_0.bgmHandle, 75);
     MgActorExec();
     fn_1_140();
 }
 
-void fn_1_690(s16 arg1, s16 frameNo)
+/* Starts the round, updates players, actors, and the arena, then advances when everyone is eliminated or time expires. */
+void fn_1_690(s16 mode, s16 frameNo)
 {
     s16 model;
-    Point3d sp24;
-    MGPLAYER *temp_r30;
-    s32 var_r31;
+    Point3d spawnPosition;
+    MGPLAYER *player;
+    s32 playerNo;
 
     if (frameNo == 0) {
         fn_1_7E70(1);
         fn_1_70A8(0);
-        var_r31 = 0;
-        while (var_r31 < 4) {
-            lbl_1_bss_0.unk080[var_r31] = 0;
-            if ((s32) lbl_1_bss_0.unk070[var_r31] == 0) {
-                (lbl_1_bss_0.unk0E4[var_r31])->objFunc = fn_1_28A4;
+        playerNo = 0;
+        while (playerNo < 4) {
+            lbl_1_bss_0.playerRemoved[playerNo] = 0;
+            if ((s32) lbl_1_bss_0.outsideGroupZero[playerNo] == 0) {
+                (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_28A4;
             } else {
-                model = (s16) lbl_1_bss_0.unk040[var_r31]->actor->mdlId;
-                Hu3DModelPosGet(model, &sp24);
-                MgPlayerSpawn(lbl_1_bss_0.unk040[var_r31], &sp24);
-                (lbl_1_bss_0.unk0E4[var_r31])->objFunc = fn_1_34AC;
-                CharMotionShiftSet((lbl_1_bss_0.unk040[var_r31])->charNo, *((lbl_1_bss_0.unk040[var_r31])->omObj)->mtnId, 0.0f, 6.0f, 0U);
+                model = (s16) lbl_1_bss_0.players[playerNo]->actor->mdlId;
+                Hu3DModelPosGet(model, &spawnPosition);
+                MgPlayerSpawn(lbl_1_bss_0.players[playerNo], &spawnPosition);
+                (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_34AC;
+                CharMotionShiftSet((lbl_1_bss_0.players[playerNo])->charNo, *((lbl_1_bss_0.players[playerNo])->omObj)->mtnId, 0.0f, 6.0f, 0U);
             }
-            var_r31 += 1;
+            playerNo += 1;
         }
-        MgTimerParamSet(lbl_1_bss_0.unk02C, 1800, 0, 0);
-        MgTimerModeOnSet(lbl_1_bss_0.unk02C, 1);
-        MgTimerRecordDispOn(lbl_1_bss_0.unk02C);
-        lbl_1_bss_0.unkAD4 = 0;
-        lbl_1_bss_0.unkAD8 = 0;
+        MgTimerParamSet(lbl_1_bss_0.timer, 1800, 0, 0);
+        MgTimerModeOnSet(lbl_1_bss_0.timer, 1);
+        MgTimerRecordDispOn(lbl_1_bss_0.timer);
+        lbl_1_bss_0.segmentReflectionSoundPending = 0;
+        lbl_1_bss_0.aiTurning = 0;
     }
-    lbl_1_bss_0.unkADC = 0;
-    var_r31 = 0;
-    while (var_r31 < 4) {
-        fn_1_3830(var_r31);
-        var_r31 += 1;
+    lbl_1_bss_0.preventArenaRestart = 0;
+    playerNo = 0;
+    while (playerNo < 4) {
+        fn_1_3830(playerNo);
+        playerNo += 1;
     }
-    if (lbl_1_bss_0.unkAD4 != 0) {
-        HuAudFXPlay(1850);
+    if (lbl_1_bss_0.segmentReflectionSoundPending != 0) {
+        HuAudFXPlay(M633_SEGMENT_WALL_REFLECTION_SE_ID);
     }
     MgActorExec();
     fn_1_140();
     fn_1_6DE8();
-    lbl_1_bss_0.unk198 -= 1;
-    lbl_1_bss_0.unkAD4 = 0;
-    if ((lbl_1_bss_0.unk0E0 == 0) || (MgTimerDoneCheck(lbl_1_bss_0.unk02C) != 0)) {
-        var_r31 = 0;
-        while (var_r31 < 4) {
-            temp_r30 = lbl_1_bss_0.unk040[var_r31];
-            MgPlayerDespawn(temp_r30);
-            if ((s32) lbl_1_bss_0.unk070[var_r31] == 0) {
-                CharMotionShiftSet(temp_r30->charNo, *temp_r30->omObj->mtnId, 0.0f, 6.0f, 0U);
-                (lbl_1_bss_0.unk0E4[var_r31])->objFunc = fn_1_26B4;
-            } else if ((s32) lbl_1_bss_0.unk080[var_r31] == 0) {
-                CharMotionShiftSet(temp_r30->charNo, *temp_r30->omObj->mtnId, 0.0f, 6.0f, 0U);
+    lbl_1_bss_0.segmentUpdateCountdown -= 1;
+    lbl_1_bss_0.segmentReflectionSoundPending = 0;
+    if ((lbl_1_bss_0.activePlayerCount == 0) || (MgTimerDoneCheck(lbl_1_bss_0.timer) != 0)) {
+        playerNo = 0;
+        while (playerNo < 4) {
+            player = lbl_1_bss_0.players[playerNo];
+            MgPlayerDespawn(player);
+            if ((s32) lbl_1_bss_0.outsideGroupZero[playerNo] == 0) {
+                CharMotionShiftSet(player->charNo, *player->omObj->mtnId, 0.0f, 6.0f, 0U);
+                (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_26B4;
+            } else if ((s32) lbl_1_bss_0.playerRemoved[playerNo] == 0) {
+                CharMotionShiftSet(player->charNo, *player->omObj->mtnId, 0.0f, 6.0f, 0U);
             }
-            var_r31 += 1;
+            playerNo += 1;
         }
         MgSeqModeNext();
     }
 }
 
-void fn_1_AB0(s16 arg1, s16 frameNo)
+/* Result transition callback: fades audio, stops the looping effect, and counts down before the sequence advances. */
+void fn_1_AB0(s16 mode, s16 frameNo)
 {
 
-    lbl_1_bss_0.unkADC = 1;
+    lbl_1_bss_0.preventArenaRestart = 1;
     MgActorExec();
     fn_1_140();
     if (frameNo == 0) {
-        fn_1_104(lbl_1_bss_0.unkAE0);
-        if (lbl_1_bss_0.unkAE4 != -1) {
-            HuAudFXStop(lbl_1_bss_0.unkAE4);
-            lbl_1_bss_0.unkAE4 = -1;
+        fn_1_104(lbl_1_bss_0.bgmHandle);
+        if (lbl_1_bss_0.rotationSoundHandle != -1) {
+            HuAudFXStop(lbl_1_bss_0.rotationSoundHandle);
+            lbl_1_bss_0.rotationSoundHandle = -1;
         }
     }
-    if (MgTimerDoneCheck(lbl_1_bss_0.unk02C) == 0) {
-        MgTimerRecordDispOff(lbl_1_bss_0.unk02C);
+    if (MgTimerDoneCheck(lbl_1_bss_0.timer) == 0) {
+        MgTimerRecordDispOff(lbl_1_bss_0.timer);
     }
-    if (lbl_1_bss_0.unk198 > 0) {
-        lbl_1_bss_0.unk198 = 0;
+    if (lbl_1_bss_0.segmentUpdateCountdown > 0) {
+        lbl_1_bss_0.segmentUpdateCountdown = 0;
         return;
     }
-    lbl_1_bss_0.unk198 -= 1;
+    lbl_1_bss_0.segmentUpdateCountdown -= 1;
 }
 
+/* Sequence results callback: places surviving characters, selects winners, awards coins, and advances the sequence. */
 void fn_1_C78(s16 mode, s16 frameNo)
 {
     s16 winners[4] = { -1, -1, -1, -1 };
@@ -308,7 +318,7 @@ void fn_1_C78(s16 mode, s16 frameNo)
             HuPrcVSleep();
         }
 
-        switch (lbl_1_bss_0.unk0E0) {
+        switch (lbl_1_bss_0.activePlayerCount) {
         case 1:
             results = oneResult;
             break;
@@ -322,27 +332,27 @@ void fn_1_C78(s16 mode, s16 frameNo)
 
         resultCount = 0;
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            player = lbl_1_bss_0.unk040[playerNo];
-            if (lbl_1_bss_0.unk070[playerNo] == 0) {
-                (lbl_1_bss_0.unk0E4[playerNo])->objFunc = fn_1_26B4;
-                Hu3DModelRotSet(lbl_1_bss_0.unk110, 0.0f, 0.0f, 0.0f);
-                Hu3DModelRotSet(lbl_1_bss_0.unk112, 0.0f, 0.0f, 0.0f);
-                Hu3DMotionSet(lbl_1_bss_0.unk110, lbl_1_bss_0.unk114);
-            } else if (lbl_1_bss_0.unk080[playerNo] == 0) {
-                Hu3DModelObjPosGet(lbl_1_bss_0.unk03E, results[resultCount], &pos);
+            player = lbl_1_bss_0.players[playerNo];
+            if (lbl_1_bss_0.outsideGroupZero[playerNo] == 0) {
+                (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_26B4;
+                Hu3DModelRotSet(lbl_1_bss_0.rotatingStageModelId, 0.0f, 0.0f, 0.0f);
+                Hu3DModelRotSet(lbl_1_bss_0.secondRotatingModelId, 0.0f, 0.0f, 0.0f);
+                Hu3DMotionSet(lbl_1_bss_0.rotatingStageModelId, lbl_1_bss_0.stageIdleMotionId);
+            } else if (lbl_1_bss_0.playerRemoved[playerNo] == 0) {
+                Hu3DModelObjPosGet(lbl_1_bss_0.placementModelId, results[resultCount], &pos);
                 Hu3DModelPosSetV((s16)player->actor->mdlId, &pos);
-                Hu3DModelAttrReset((s16)player->actor->mdlId, 1U);
-                CharMotionSet((s16)lbl_1_bss_0.unk050[playerNo],
+                Hu3DModelAttrReset((s16)player->actor->mdlId, HU3D_ATTR_DISPOFF);
+                CharMotionSet((s16)lbl_1_bss_0.characterNumbers[playerNo],
                     *((player)->omObj)->mtnId);
                 Hu3DModelRotSet((s16)player->actor->mdlId, 0.0f, 0.0f, 0.0f);
                 resultCount++;
             }
         }
 
-        Hu3DModelAttrSet(lbl_1_bss_0.unk180[0], 1U);
-        Hu3DModelAttrSet(lbl_1_bss_0.unk180[1], 1U);
+        Hu3DModelAttrSet(lbl_1_bss_0.nozzleModelIds[0], HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrSet(lbl_1_bss_0.nozzleModelIds[1], HU3D_ATTR_DISPOFF);
         fn_1_70A8(3);
-        if (lbl_1_bss_0.unk0E0 == 0) {
+        if (lbl_1_bss_0.activePlayerCount == 0) {
             fn_1_7E70(2);
         } else {
             fn_1_7E70(3);
@@ -354,14 +364,14 @@ void fn_1_C78(s16 mode, s16 frameNo)
         }
 
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            lbl_1_bss_0.unk0F8[playerNo] = 0;
+            lbl_1_bss_0.winnerFlags[playerNo] = 0;
         }
 
-        if (lbl_1_bss_0.unk0E0 == 0) {
+        if (lbl_1_bss_0.activePlayerCount == 0) {
             for (playerNo = 0; playerNo < 4; playerNo++) {
-                if (lbl_1_bss_0.unk070[playerNo] == 0) {
-                    winners[0] = (s16)lbl_1_bss_0.unk050[playerNo];
-                    lbl_1_bss_0.unk0F8[playerNo] = 1;
+                if (lbl_1_bss_0.outsideGroupZero[playerNo] == 0) {
+                    winners[0] = (s16)lbl_1_bss_0.characterNumbers[playerNo];
+                    lbl_1_bss_0.winnerFlags[playerNo] = 1;
                     playerBonus[playerNo] = 10;
                     break;
                 }
@@ -369,9 +379,9 @@ void fn_1_C78(s16 mode, s16 frameNo)
         } else {
             resultCount = 0;
             for (playerNo = 0; playerNo < 4; playerNo++) {
-                if (lbl_1_bss_0.unk070[playerNo] != 0) {
-                    winners[resultCount++] = (s16)lbl_1_bss_0.unk050[playerNo];
-                    lbl_1_bss_0.unk0F8[playerNo] = 1;
+                if (lbl_1_bss_0.outsideGroupZero[playerNo] != 0) {
+                    winners[resultCount++] = (s16)lbl_1_bss_0.characterNumbers[playerNo];
+                    lbl_1_bss_0.winnerFlags[playerNo] = 1;
                     playerBonus[playerNo] = 10;
                 }
             }
@@ -380,7 +390,7 @@ void fn_1_C78(s16 mode, s16 frameNo)
         MgSeqWinnerSet(winners[0], winners[1], winners[2], winners[3]);
         for (playerNo = 0; playerNo < 4; playerNo++) {
             coinBonus = playerBonus[playerNo];
-            if (_CheckFlag(65551U) == 0) {
+            if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
                 GwPlayer[playerNo].mgCoinBonus = coinBonus;
             }
         }
@@ -388,6 +398,7 @@ void fn_1_C78(s16 mode, s16 frameNo)
     }
 }
 
+/* Final sequence callback: plays the winner or non-winner motion for each remaining player. */
 void fn_1_118C(s16 mode, s16 frameNo)
 {
     s32 playerNo;
@@ -396,14 +407,14 @@ void fn_1_118C(s16 mode, s16 frameNo)
 
     if (frameNo == 0) {
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            player = lbl_1_bss_0.unk040[playerNo];
-            if (lbl_1_bss_0.unk080[playerNo] == 0) {
-                if (lbl_1_bss_0.unk0F8[playerNo] == 1) {
+            player = lbl_1_bss_0.players[playerNo];
+            if (lbl_1_bss_0.playerRemoved[playerNo] == 0) {
+                if (lbl_1_bss_0.winnerFlags[playerNo] == 1) {
                     motion = 5;
                 } else {
                     motion = 6;
                 }
-                CharMotionShiftSet((s16)lbl_1_bss_0.unk050[playerNo],
+                CharMotionShiftSet((s16)lbl_1_bss_0.characterNumbers[playerNo],
                     player->omObj->mtnId[motion], 0.0f, 6.0f, 0);
             }
         }

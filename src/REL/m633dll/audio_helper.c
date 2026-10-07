@@ -1,5 +1,7 @@
+/* Positions minigame sound effects in stereo from their world-space source. */
 #include "REL/m633dll.h"
 
+/* Plays a sound at a world position and clamps its screen-derived pan to the effect range 48–127. */
 void fn_1_24EC(s32 soundId, Point3d *pos)
 {
     Point3d projected;
