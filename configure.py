@@ -1197,7 +1197,7 @@ config.libs = [
             Object(
                 Matching,
                 "REL/selmenuDll/selmenu.c",
-                mw_version=config.linker_version,
+                mw_version="GC/1.3.2",
                 extra_cflags=["-pooldata off"],
             ),
             Object(
@@ -1205,7 +1205,7 @@ config.libs = [
                 "REL/selmenuDll/runtime.c",
                 source="REL/selmenuDll/runtime.c",
                 mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-DMP6_SELMENU_RUNTIME=1"],
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
             ),
         },
     ),
