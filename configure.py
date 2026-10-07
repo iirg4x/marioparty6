@@ -1305,7 +1305,7 @@ config.libs = [
             Object(
                 Matching,
                 "REL/meschkdll/meschkdll.c",
-                mw_version=config.linker_version,
+                mw_version="GC/1.3.2",
                 extra_cflags=["-pooldata off"],
             ),
             Object(
