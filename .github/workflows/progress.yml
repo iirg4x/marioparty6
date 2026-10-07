@@ -56,8 +56,14 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         shell: bash
         run: |
-          if git diff "$BASE_SHA...HEAD" -- configure.py | grep -Eq '^[+-].*Object\((Matching|NonMatching)'; then
-            if ! git diff --name-only "$BASE_SHA...HEAD" | grep -q '^progress/'; then
+          # Each object's status and path, ignoring formatting, comments and compiler options.
+          selections() {
+            git show "$1:configure.py" | tr -d ' \t\r\n' | grep -oE 'Object\((Matching|NonMatching),"[^"]+"' | sort
+          }
+          base=$(git merge-base "$BASE_SHA" HEAD)
+          if ! cmp -s <(selections "$base") <(selections HEAD); then
+            changed=$(git diff --name-only "$base" HEAD)
+            if ! grep -q '^progress/' <<< "$changed"; then
               echo 'Matching status changed, but the committed progress snapshot was not refreshed.'
               echo 'Run: python tools/build.py'
               exit 1
