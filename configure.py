@@ -1509,7 +1509,7 @@ config.libs = [
     Rel(
         "m633dll",
         objects={
-            Object(Matching, "REL/m633dll/prolog.c", mw_version=config.linker_version, extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/m633dll/prolog.c", mw_version="GC/1.3.2", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m633dll/early.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m633dll/input_model.c", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/m633dll/audio_helper.c", extra_cflags=["-pooldata off"]),
