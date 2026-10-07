@@ -1,13 +1,13 @@
+/* Initializes and updates computer-controlled players during the microphone pillar round. */
 #include "REL/m670dll.h"
 #include "game/frand.h"
 #include "game/gamework.h"
 #include "game/pad.h"
-
+/* Scene setup calls this after creating players to initialize each computer player's round state. */
 void fn_1_3B30(void)
 {
     int i;
     M670CPU *cpu;
-
     for (i = 0; i < 4; i++) {
         if (GwPlayerConf[i].type == 1) {
             cpu = &lbl_1_bss_10.cpu[i];
@@ -21,7 +21,7 @@ void fn_1_3B30(void)
         }
     }
 }
-
+/* The main round hook calls this each frame to choose words, move computer players, and press A. */
 void fn_1_3BDC(void)
 {
     int i, j;

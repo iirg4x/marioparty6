@@ -1,5 +1,5 @@
+/* Stores five layouts that assign a word type to each of the 24 pillar positions. */
 #include "REL/m670dll.h"
-
 s8 lbl_1_data_1D8[24] = {
     0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5
 };

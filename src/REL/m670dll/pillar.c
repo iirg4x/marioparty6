@@ -1,14 +1,20 @@
+/* Runs the shared pillar animations and per-frame movement for the microphone round. */
 #include "REL/m670dll.h"
 
 float lbl_1_bss_480;
 float lbl_1_bss_47C;
-/* Only the first 24 timer entries are updated by the pillar loops. */
+/* Pillar heights and wait counters use indices 0 through 23, one for each playfield pillar. */
 int lbl_1_bss_418[25];
 float lbl_1_bss_3B8[24];
 #include "game/audio.h"
 #include "game/frand.h"
 #include "game/mg/seqman.h"
-
+#define M670_SE_PILLAR_LAMP_CUE 2199
+#define M670_SE_PILLAR_DROP 2200
+#define M670_SE_PILLAR_RISE_COMPLETE 2201
+#define M670_SE_ROUND_CYCLE_CUE 2198
+#define M670_SE_PILLAR_CYCLE_CUE 2203
+/* Sequence and pillar updates call this to start a word animation, lower pillars, or reset a round. */
 void fn_1_2A24(unsigned int state)
 {
     int i;
@@ -51,7 +57,7 @@ void fn_1_2A24(unsigned int state)
                     Hu3DMotionSet(lbl_1_bss_10.pillarModel[i], lbl_1_bss_10.pillarMotion[i][3]);
                 }
             }
-            HuAudFXPlay(2199);
+            HuAudFXPlay(M670_SE_PILLAR_LAMP_CUE);
         }
         break;
     case 5:
@@ -81,7 +87,7 @@ void fn_1_2A24(unsigned int state)
     }
     lbl_1_bss_10.state = state;
 }
-
+/* CPU movement calls this to find the pillar nearest a player on the playfield plane. */
 int fn_1_2DE8(HuVecF *pos)
 {
     int i, nearest;
@@ -103,7 +109,7 @@ int fn_1_2DE8(HuVecF *pos)
     }
     return nearest;
 }
-
+/* CPU movement reads the current model height for its nearest pillar. */
 float fn_1_2EF4(int pillarNo)
 {
     HU3D_MODELID model = lbl_1_bss_10.pillarModel[pillarNo];
@@ -111,7 +117,7 @@ float fn_1_2EF4(int pillarNo)
     Hu3DModelPosGet(model, &pos);
     return pos.y;
 }
-
+/* CPU decisions use this to check whether the nearest pillar is at its standing height. */
 int fn_1_2F44(HuVecF *pos)
 {
     int pillarNo;
@@ -122,7 +128,7 @@ int fn_1_2F44(HuVecF *pos)
     Hu3DModelPosGet(model, &pillarPos);
     return 100.0f - pillarPos.y < 1.0f;
 }
-
+/* The pillar object's per-frame callback raises, drops, and resets pillars as the round state changes. */
 void fn_1_3098(OMOBJ *obj)
 {
     int i;
@@ -149,7 +155,7 @@ void fn_1_3098(OMOBJ *obj)
                 for (i = 0; i < 4; i++) {
                     omVibrate(i, 20, 4, 4);
                 }
-                HuAudFXPlay(2201);
+                HuAudFXPlay(M670_SE_PILLAR_RISE_COMPLETE);
             }
             lbl_1_bss_47C = 0.0f;
         }
@@ -218,7 +224,7 @@ void fn_1_3098(OMOBJ *obj)
                 done = 0;
             }
         }
-        /* Retail computes this flag but advances without testing it. */
+        /* State 5 starts the next pillar drop once this state is reached. */
         fn_1_2A24(5);
         break;
     }
@@ -261,7 +267,7 @@ void fn_1_3098(OMOBJ *obj)
                     oldTime = lbl_1_bss_418[i];
                     lbl_1_bss_418[i] += 1.0f;
                     if (oldTime < 0 && lbl_1_bss_418[i] >= 0) {
-                        fn_1_15B8(2200, &lbl_1_bss_10.pillarPos[i]);
+                        fn_1_15B8(M670_SE_PILLAR_DROP, &lbl_1_bss_10.pillarPos[i]);
                     }
                 }
             }
@@ -277,8 +283,8 @@ void fn_1_3098(OMOBJ *obj)
             break;
         }
         if (obj->work[0] == 30) {
-            HuAudFXPlay(2198);
-            HuAudFXPlay(2203);
+            HuAudFXPlay(M670_SE_ROUND_CYCLE_CUE);
+            HuAudFXPlay(M670_SE_PILLAR_CYCLE_CUE);
         }
         obj->work[0]--;
         break;
@@ -307,7 +313,7 @@ void fn_1_3098(OMOBJ *obj)
         if (done) {
             fn_1_2460(lbl_1_bss_10.soloPlayer, 1);
             fn_1_2A24(2);
-            HuAudFXPlay(2201);
+            HuAudFXPlay(M670_SE_PILLAR_RISE_COMPLETE);
         } else {
             obj->work[0]++;
         }

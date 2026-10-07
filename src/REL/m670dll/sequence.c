@@ -1,3 +1,4 @@
+/* Drives the microphone prompt, pillar rounds, and results sequence for this microgame. */
 #include "REL/m670dll.h"
 #include "game/main.h"
 #include "game/audio.h"
@@ -7,7 +8,10 @@
 #include "game/mg/seqman.h"
 #include "game/mic.h"
 #include "game/wipe.h"
-
+#include "messdir_enum.h"
+#define M670_BGM_MICROPHONE_ROUND 73
+#define M670_SE_ROUND_CYCLE_CUE 2198
+#define M670_SE_WORD_RECOGNIZED 2202
 typedef struct M670MicResponse_s {
     s16 status;
     u16 confidence;
@@ -15,14 +19,13 @@ typedef struct M670MicResponse_s {
     s16 unk06;
     s16 *values;
 } M670MICRESPONSE;
-
-/* The recognition callback writes entry 1; the other entries remain null. */
+/* The microphone selection window uses this table to label the recognized word. */
 char *lbl_1_data_28[8] = {0};
 
 static int lbl_1_bss_8;
 static int lbl_1_bss_4;
 static int lbl_1_bss_0;
-
+/* HuMCListenerCreate calls this for each microphone response during the main round. */
 void fn_1_A0(u16 *response)
 {
     if (((M670MICRESPONSE *)response)->status != 0 || ((M670MICRESPONSE *)response)->count == 0) {
@@ -40,30 +43,30 @@ void fn_1_A0(u16 *response)
             case 5: lbl_1_bss_10.selectedWord = 5; break;
             }
             fn_1_2460(lbl_1_bss_10.soloPlayer, 2);
-            HuAudFXPlay(2202);
+            HuAudFXPlay(M670_SE_WORD_RECOGNIZED);
         }
     }
 }
-
+/* The init hook advances to the next sequence mode. */
 void fn_1_1F8(s16 mode, s16 frameNo)
 {
     MgSeqModeNext();
 }
-
+/* The fade-in hook starts the opening camera and pillar animation before play. */
 void fn_1_218(s16 mode, s16 frameNo)
 {
     if (frameNo == 0) {
         lbl_1_bss_8 = 0;
         Hu3DCameraMotionStart(lbl_1_bss_10.cameraMotion[0], 1);
-        HuMCSelWinItemSet(4522007, 6, lbl_1_bss_10.soloPad);
+        HuMCSelWinItemSet(MESSNUM(MESS_MIC_MIN_665, 23), 6, lbl_1_bss_10.soloPad);
         fn_1_2A24(1);
     }
     if (frameNo == 50) {
-        HuAudFXPlay(2198);
+        HuAudFXPlay(M670_SE_ROUND_CYCLE_CUE);
     }
     MgActorExec();
 }
-
+/* The start hook calls this after message playback, so background music begins without overlapping it. */
 int fn_1_2AC(int music, int id)
 {
     int result = music;
@@ -72,14 +75,14 @@ int fn_1_2AC(int music, int id)
     }
     return result;
 }
-
+/* The finish hook fades out the background stream started for the round. */
 void fn_1_310(int music)
 {
     if (music != -1) {
         HuAudSStreamFadeOut(music, 100);
     }
 }
-
+/* Sequence and results updates call this to pan each character voice from its screen position. */
 void fn_1_34C(void)
 {
     int i, pan;
@@ -97,7 +100,7 @@ void fn_1_34C(void)
         CharModelVoicePanSet(lbl_1_bss_10.characterNo[i], pan);
     }
 }
-
+/* The start hook resets the word choice, raises the pillars, and updates the scene each frame. */
 void fn_1_42C(s16 mode, s16 frameNo)
 {
     int i;
@@ -108,11 +111,11 @@ void fn_1_42C(s16 mode, s16 frameNo)
             fn_1_22F0(i, 100.0f);
         }
     }
-    lbl_1_bss_10.music = fn_1_2AC(lbl_1_bss_10.music, 73);
+    lbl_1_bss_10.music = fn_1_2AC(lbl_1_bss_10.music, M670_BGM_MICROPHONE_ROUND);
     MgActorExec();
     fn_1_34C();
 }
-
+/* The main hook runs the timed round, handles microphone input, and advances when players finish. */
 void fn_1_5AC(s16 mode, s16 frameNo)
 {
     int i;
@@ -198,7 +201,7 @@ void fn_1_5AC(s16 mode, s16 frameNo)
     MgActorExec();
     fn_1_34C();
 }
-
+/* The finish hook fades the music once, then continues actor and voice-pan updates. */
 void fn_1_B4C(s16 mode, s16 frameNo)
 {
     if (frameNo == 0) {
@@ -207,7 +210,7 @@ void fn_1_B4C(s16 mode, s16 frameNo)
     MgActorExec();
     fn_1_34C();
 }
-
+/* The pre-winner hook stages the winning players and camera before moving to the winner phase. */
 void fn_1_C68(s16 mode, s16 frameNo)
 {
     int i, survivorCount, slot;
@@ -299,7 +302,7 @@ void fn_1_C68(s16 mode, s16 frameNo)
         }
     }
 }
-
+/* The winner hook selects each surviving player's result motion on entry to the phase. */
 void fn_1_12C4(s16 mode, s16 frameNo)
 {
     int i, motion;
@@ -322,11 +325,11 @@ void fn_1_12C4(s16 mode, s16 frameNo)
         }
     }
 }
-
+/* No separate action runs in the sequence fade-out hook. */
 void fn_1_1428(s16 mode, s16 frameNo)
 {
 }
-
+/* The close hook releases the microphone response window when the sequence ends. */
 void fn_1_142C(s16 mode, s16 frameNo)
 {
     if (frameNo == 0) {
