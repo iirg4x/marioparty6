@@ -1,3 +1,4 @@
+/* Board setup and the chain event sequence for the S03 board. */
 #include "dolphin.h"
 #include "math.h"
 
@@ -16,6 +17,7 @@
 #include "game/hu3d.h"
 #include "game/memory.h"
 #include "game/object.h"
+#include "game/wipe.h"
 #include "datanum/charmot.h"
 #include "msm_se.h"
 #include "string.h"
@@ -49,57 +51,60 @@ enum {
 };
 
 typedef struct S03ParticleWork {
-    s32 modelId;       // offset 0
-    s32 index;          // offset 4
-    HuVecF pos;        // offset 8
-    HuVecF basePos;    // offset 20
-    HuVecF rot;        // offset 32
-    HuVecF scale;      // offset 44
-    HuVecF angle;      // offset 56
-    HuVecF worldPos;   // offset 68
-    HuVecF worldPos2;  // offset 80
+    /* Cached transforms and board-space positions for the chain particle model. */
+    s32 modelId;
+    s32 index;          /* Slot in the particle array. */
+    HuVecF pos;
+    HuVecF basePos;
+    HuVecF rot;
+    HuVecF scale;
+    HuVecF angle;
+    HuVecF worldPos;    /* Particle positions used at each end of the chain step. */
+    HuVecF worldPos2;
 } S03ParticleWork;
 
+/* Frame-counted path used while the player is carried through the board event. */
 typedef struct S03MoveWork {
-    s32 playerNo;      // offset 0
-    s32 timer;         // offset 4
-    s32 duration;      // offset 8
-    s32 startDelay;    // offset 12
-    HuVecF startPos;   // offset 16
-    HuVecF controlPos; // offset 28
-    HuVecF endPos;     // offset 40
+    s32 playerNo;
+    s32 timer;         /* Elapsed update frames. */
+    s32 duration;      /* Total update frames. */
+    s32 startDelay;    /* Frames before the carried-player motion changes. */
+    HuVecF startPos;   /* Start point for the board-space Bezier path. */
+    HuVecF controlPos; /* Control point for the board-space Bezier path. */
+    HuVecF endPos;     /* End point for the board-space Bezier path. */
 } S03MoveWork;
 
 typedef struct S03Work {
-    s16 modelId;
-    s16 pathModelId[2];
-    s16 unk_06;
+    s16 modelId;                  /* Main S03 board model. */
+    s16 pathModelId[2];           /* The two animated paths beside the event. */
+    s16 chainAttachedModelId;     /* Character model attached to the chain hook. */
     s16 chainModelId;
     s16 sourceModelId;
     s16 markerModelId;
     s16 eventModelId;
-    HuVecF chainPos;
+    HuVecF chainPos;              /* Initial ch_h1 joint translation on the source model. */
     HuVecF chainEndPos;
-    s32 state;
-    s32 captureFlag;       // offset 44
-    s32 substate;
-    HuVecF rotation;
-    HuVecF scale;
-    HuVecF targetPos;
-    OMOBJ *effectObj;             // offset 88
-    S03ParticleWork *particleWork; // offset 92
-    float effectAngle;
-    HuVecF playerOffset;          // offset 100
-    u32 unk_70;
+    s32 state;                    /* Held player number, or -1 when no player is held. */
+    s32 captureFlag;              /* 0 until playerOffset is sampled; then 1. */
+    s32 substate;                  /* Chain effect: 0 idle, 1 sway, 2 sway and grow. */
+    HuVecF rotation;               /* Chain effect phase angles in degrees. */
+    HuVecF scale;                  /* Per-axis chain sway amplitude. */
+    HuVecF targetPos;              /* Initial kusari_h1 joint offset on the chain model. */
+    OMOBJ *effectObj;              /* Player-follow object active during the event. */
+    S03ParticleWork *particleWork; /* Particle model state for the chain effect. */
+    float effectAngle;              /* Additional rotation in degrees applied to the source model pose. */
+    HuVecF playerOffset;           /* Captured player offset from the source model's ch_h1 joint. */
+    u32 unk_70;                    /* Not read by this board's C code. */
 } S03Work;
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-extern OMOBJ *lbl_1_bss_0;
-extern S03Work lbl_1_bss_4;
-extern u32 *lbl_1_bss_78;
+extern OMOBJ *lbl_1_bss_0;        /* Active player-path update object. */
+extern S03Work lbl_1_bss_4;       /* Main S03 event state. */
+extern u32 *lbl_1_bss_78;         /* Board save-data buffer. */
 extern BOOL mbSaveNewF;
 
+/* Fixed board-space positions, camera values and model-joint names used by S03. */
 extern HuVecF lbl_1_data_0;
 extern HuVecF lbl_1_data_C;
 extern HuVecF lbl_1_data_18[2];
@@ -171,6 +176,7 @@ void mbev_CapPlayerMotShiftSet(int playerNo, int motionNo, u32 attr,
     BOOL waitF);
 void omVibrate(s16 playerNo, s16 time, s16 amp, s16 mode);
 
+/* The REL loader calls this entry point to run constructors and register S03. */
 int _prolog(void)
 {
     const VoidFunc *ctors = _ctors;
@@ -183,6 +189,7 @@ int _prolog(void)
     return 0;
 }
 
+/* The REL loader calls this entry point during unload to run registered destructors. */
 void _epilog(void)
 {
     const VoidFunc *dtors = _dtors;
@@ -193,12 +200,14 @@ void _epilog(void)
     }
 }
 
+/* The REL startup path disables party mode and installs the S03 board callbacks. */
 void fn_1_A0(void)
 {
     GWPartySet(FALSE);
     mbObjectSetup(S03_BOARD_NO, fn_1_F4, fn_1_5EC);
 }
 
+/* Called by mbObjectSetup on board entry; creates the S03 models, paths and event hooks. */
 void fn_1_F4(void)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -299,15 +308,17 @@ void fn_1_F4(void)
     mbMapCameraSet(NULL, &lbl_1_data_C, 9800.0f);
     mbMapHookSet(fn_1_768);
     mbOpeningInstHookSet(fn_1_634);
-    omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, -1, fn_1_5F0);
+    omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, OM_GRP_NONE, fn_1_5F0);
     HuDataDirClose(DATANUM(DATA_s03, 0));
     mbOpeningViewSet(&lbl_1_data_30, &lbl_1_data_3C, lbl_1_data_48);
 }
 
+/* Called by mbObjectSetup on board exit; this board has no additional close action. */
 void fn_1_5EC(void)
 {
 }
 
+/* Runs each object-manager frame and removes the board watcher after the board exits. */
 void fn_1_5F0(OMOBJ *obj)
 {
     if (mbExitCheck()) {
@@ -316,10 +327,12 @@ void fn_1_5F0(OMOBJ *obj)
     }
 }
 
+/* Registered as the opening-instruction hook; S03 adds no instruction here. */
 void fn_1_634(void)
 {
 }
 
+/* Called when a player starts moving; the marked masu launches the S03 chain event. */
 int fn_1_638(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
@@ -331,6 +344,7 @@ int fn_1_638(int playerNo, s16 id)
     return 0;
 }
 
+/* Called when a player finishes moving; S03 has no extra move-end action. */
 int fn_1_69C(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
@@ -338,6 +352,7 @@ int fn_1_69C(int playerNo, s16 id)
     return 0;
 }
 
+/* Called for the board's hatena-space callback and starts its event on marked spaces. */
 int fn_1_6CC(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
@@ -348,6 +363,7 @@ int fn_1_6CC(int playerNo, s16 id)
     return 0;
 }
 
+/* Called by the board light setup hook to enable light information on the main model. */
 void fn_1_728(void)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -355,14 +371,17 @@ void fn_1_728(void)
     Hu3DModelLightInfoSet(mbObjModelIDGet(work->modelId), TRUE);
 }
 
+/* Called by the board light reset hook; S03 has no extra light reset action. */
 void fn_1_764(void)
 {
 }
 
+/* Called when the map changes; S03 does not add a map-transition action. */
 void fn_1_768(BOOL enterF)
 {
 }
 
+/* Called for marked hatena spaces; places the event model at the linked masu and starts the player's path from the triggering masu. */
 void fn_1_76C(int playerNo, s16 id)
 {
     S03Work *work;
@@ -425,7 +444,7 @@ void fn_1_76C(int playerNo, s16 id)
     }
     startMasu = time;
 
-    omVibrate((s16)playerNo, 20, 4, 4);
+    omVibrate((s16)playerNo, S03_VIBRATION_TIME, 4, 4);
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f,
         8.0f, HU3D_MOTATTR_LOOP);
     masuPos.x = masuPos.z = 0.0f;
@@ -455,7 +474,7 @@ void fn_1_76C(int playerNo, s16 id)
         }
         if (time == 24) {
             lbl_1_bss_0 = omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0,
-                -1, fn_1_1238);
+                OM_GRP_NONE, fn_1_1238);
             mbPlayerMotionSet(playerNo, 9, HU3D_MOTATTR_NONE);
             moveWork = lbl_1_bss_0->data = HuMemDirectMallocNum(
                 HEAP_HEAP, sizeof(*moveWork), HU_MEMNUM_OVL);
@@ -496,7 +515,7 @@ void fn_1_76C(int playerNo, s16 id)
             mbev_CapEffRingAdd(ringObj, ringPosPtr, ringRotPtr,
                 ringScalePtr, 1, S03_RING_HIT_TIME, 2, colorPtr);
             mbAudFXPlay(MSM_SE_SBRD_15);
-            omVibrate((s16)playerNo, 20, 7, 3);
+            omVibrate((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
         }
         HuPrcVSleep();
     }
@@ -530,7 +549,7 @@ void fn_1_76C(int playerNo, s16 id)
         mbPlayerMtxSet(playerNo, &matrixX);
         HuPrcVSleep();
     }
-    omVibrate((s16)playerNo, 20, 20, 0);
+    omVibrate((s16)playerNo, S03_VIBRATION_TIME, 20, 0);
     mbAudFXPlay(MSM_SE_GUIDE_71);
     {
         explodeObj = mbev_CapEffExplodeCreate();
@@ -567,6 +586,7 @@ void fn_1_76C(int playerNo, s16 id)
     mbev_CapEffRingKill(ringObj);
 }
 
+/* Spawned during the hatena sequence; advances the player along a Bezier path each frame. */
 void fn_1_1238(OMOBJ *obj)
 {
     S03MoveWork *moveWork = obj->data;
@@ -599,6 +619,7 @@ void fn_1_1238(OMOBJ *obj)
     }
 }
 
+/* Called by the move-start callback on marked masus; runs the chain event and writes the single-event return state. */
 void fn_1_1450(int playerNo, s16 id)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -728,13 +749,13 @@ void fn_1_1450(int playerNo, s16 id)
         dustPos = targetPos;
         dustPosPtr = &dustPos;
         mbev_CapEffDustHeavyAdd(explodeObj, dustPosPtr);
-        omVibrate((s16)playerNo, 20, 20, 0);
+        omVibrate((s16)playerNo, S03_VIBRATION_TIME, 20, 0);
         mbev_CapPlayerMotShiftWait(playerNo, 9, HU3D_MOTATTR_NONE, TRUE);
-        mbCameraFocusObjSet(-1);
+        mbCameraFocusObjSet(HU3D_MODELID_NONE);
         mbPlayerMotionShiftSet(playerNo, playerMotion[2],
             0.0f, 8.0f, HU3D_MOTATTR_LOOP);
 
-        moveObj = omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, -1,
+        moveObj = omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, OM_GRP_NONE,
             fn_1_22F8);
         work->effectObj = moveObj;
         moveObj->work[0] = playerNo;
@@ -751,22 +772,22 @@ void fn_1_1450(int playerNo, s16 id)
         readStat = mbBGRead(DATANUM(DATA_capsulechar1, 0));
         HuPrcSleep(S03_CAPSULE_LOAD_DELAY);
         mbBGReadWait(readStat);
-        work->unk_06 = mbObjCreate(DATANUM(DATA_capsulechar1, 0), NULL,
+        work->chainAttachedModelId = mbObjCreate(DATANUM(DATA_capsulechar1, 0), NULL,
             FALSE);
-        mbObjDispSet(work->unk_06, FALSE);
+        mbObjDispSet(work->chainAttachedModelId, FALSE);
         HuPrcVSleep();
-        mbObjMotionCreate(work->unk_06, DATANUM(DATA_capsulechar1, 1));
+        mbObjMotionCreate(work->chainAttachedModelId, DATANUM(DATA_capsulechar1, 1));
         HuPrcVSleep();
-        mbObjMotionCreate(work->unk_06, DATANUM(DATA_capsulechar1, 3));
+        mbObjMotionCreate(work->chainAttachedModelId, DATANUM(DATA_capsulechar1, 3));
         HuPrcVSleep();
         HuDataDirClose(DATANUM(DATA_capsulechar1, 0));
-        mbObjMotionSet(work->unk_06, 1, HU3D_MOTATTR_LOOP);
-        mbObjHookSet(work->chainModelId, lbl_1_data_84, work->unk_06);
+        mbObjMotionSet(work->chainAttachedModelId, 1, HU3D_MOTATTR_LOOP);
+        mbObjHookSet(work->chainModelId, lbl_1_data_84, work->chainAttachedModelId);
         mbObjPosGet(work->sourceModelId, &modelPos);
         fn_1_2858(&modelPos, &pos);
         mbObjPosSetV(work->chainModelId, &pos);
         mbObjDispSet(work->chainModelId, TRUE);
-        mbObjDispSet(work->unk_06, TRUE);
+        mbObjDispSet(work->chainAttachedModelId, TRUE);
         moveObj->work[2] = 1;
         while (work->effectObj) {
             HuPrcVSleep();
@@ -787,13 +808,13 @@ void fn_1_1450(int playerNo, s16 id)
         HuPrcSleep(S03_MOVE_START_DELAY);
         mbAudFXDelaySet(S03_MOVE_START_DELAY);
         mbAudFXPlay(MSM_SE_GUIDE_47);
-        mbev_CapPlayerMotShiftSet(work->unk_06, 2, HU3D_MOTATTR_NONE,
+        mbev_CapPlayerMotShiftSet(work->chainAttachedModelId, 2, HU3D_MOTATTR_NONE,
             TRUE);
-        mbObjMotionShiftSet(work->unk_06, 1, 0.0f,
+        mbObjMotionShiftSet(work->chainAttachedModelId, 1, 0.0f,
             8.0f, HU3D_MOTATTR_LOOP);
         mbPlayerMotionShiftSet(playerNo, playerMotion[0], 0,
             8.0f, HU3D_MOTATTR_NONE);
-        omVibrate((s16)playerNo, 20, 7, 3);
+        omVibrate((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
         work->substate++;
     }
 
@@ -850,11 +871,12 @@ void fn_1_1450(int playerNo, s16 id)
                     / 180.0));
         mbObjPosSetV(work->chainModelId, &pos);
         if (time == S03_SWING_FRAMES) {
-            mbWipeSpecialCreate(1, 6, S03_SWING_FRAMES);
+            mbWipeSpecialCreate(WIPE_MODE_IN, WIPE_TYPE_WHITE,
+                S03_SWING_FRAMES);
         }
         if (time == S03_CAPSULE_LOAD_DELAY) {
-            mbMusFadeOutSpeed(0, S03_MUSIC_FADE_SPEED);
-            mbMusFadeOutSpeed(1, S03_MUSIC_FADE_SPEED);
+            mbMusFadeOutSpeed(MB_MUS_CHAN_BG, S03_MUSIC_FADE_SPEED);
+            mbMusFadeOutSpeed(MB_MUS_CHAN_FG, S03_MUSIC_FADE_SPEED);
         }
         HuPrcVSleep();
     }
@@ -868,6 +890,7 @@ void fn_1_1450(int playerNo, s16 id)
     mbSingleReturnWrite();
 }
 
+/* Object-manager update spawned by the chain event; guides the player to the event target. */
 void fn_1_22F8(OMOBJ *obj)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -941,6 +964,7 @@ void fn_1_22F8(OMOBJ *obj)
     mbPlayerRotSetV(playerNo, &playerRot);
 }
 
+/* Called during board setup to allocate and initialize the chain particle model. */
 void fn_1_2670(void)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -973,6 +997,7 @@ void fn_1_2670(void)
     work->effectAngle = 90.0f * (float)(4 - (i % 4));
 }
 
+/* Called as the chain enters the event; positions its particle and starts its frame updater. */
 void fn_1_2858(const HuVecF *pos, HuVecF *out)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -997,9 +1022,10 @@ void fn_1_2858(const HuVecF *pos, HuVecF *out)
     }
     *out = particle->worldPos;
     PSVECSubtract(out, &work->targetPos, out);
-    omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, -1, fn_1_2A20);
+    omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, OM_GRP_NONE, fn_1_2A20);
 }
 
+/* Runs each object-manager frame to pose the chain particle and, during capture, the player. */
 void fn_1_2A20(OMOBJ *obj)
 {
     S03Work *work = &lbl_1_bss_4;
