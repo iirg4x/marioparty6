@@ -1296,7 +1296,7 @@ config.libs = [
     Rel(
         "actmanDLL",
         objects={
-            Object(Matching, "REL/actmanDLL/actman.c", mw_version=config.linker_version),
+            Object(Matching, "REL/actmanDLL/actman.c", mw_version="GC/1.3.2"),
         },
     ),
     Rel(
