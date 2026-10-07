@@ -1673,7 +1673,6 @@ config.libs = [
             Object(
                 Matching,
                 "REL/s03Dll/s03.c",
-                mw_version=config.linker_version,
             ),
             Object(
                 Matching,
