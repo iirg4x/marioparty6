@@ -1,3 +1,5 @@
+/* S02 board overlay: scenery setup and special-space events. */
+
 #define Hu3DModelLightInfoSet Hu3DModelLightInfoSet_Header
 #define Hu3DModelObjMtxGet Hu3DModelObjMtxGet_Header
 
@@ -22,27 +24,31 @@
 
 typedef void (*VoidFunc)(void);
 
+/* Each route pair keeps the models used by its board-space event. */
 typedef struct S02PairModelIds {
     s32 modelId[4];
 } S02PairModelIds;
 
+/* Hook name used to locate the move-event model's player attachment point. */
 typedef struct S02DataB4 {
     char hook[12];
     s32 modelId[2];
 } S02DataB4;
 
+/* Data numbers for the two secondary models used by route events. */
 typedef struct S02DataC8 {
     s32 modelId[2];
     HuVecF pos[2];
 } S02DataC8;
 
+/* Model IDs and event state retained while the S02 board is active. */
 typedef struct S02Work {
-    s32 modelId[3];
+    s32 modelId[3]; /* First three scene models. */
     s32 modelIdC;
-    s32 eventModelId;
+    s32 eventModelId; /* Animation model used by the move-start event. */
     s32 modelId14;
     s32 modelId18;
-    s32 mapObjId[12];
+    s32 mapObjId[12]; /* Scenery segments moved by the scroll callback. */
     s32 modelId4C;
     s32 unk_50;
     s32 unk_54;
@@ -50,8 +56,8 @@ typedef struct S02Work {
     s32 modelId5C;
     s32 effectModelId;
     s32 modelId64;
-    S02PairModelIds pair[2];
-    s32 modelId88;
+    S02PairModelIds pair[2]; /* The two paired-space routes. */
+    s32 modelId88; /* Model shown for the route-event finish effect. */
     s32 modelId8C;
 } S02Work;
 
@@ -143,6 +149,7 @@ void mbWipeFadeOut(void);
 void mbSingleReturnWrite(void);
 int mbBoardDataNumGet(int dataNum);
 
+/* Overlay entry: run static constructors, then register the S02 board setup. */
 int _prolog(void)
 {
     const VoidFunc *ctors = _ctors;
@@ -155,6 +162,7 @@ int _prolog(void)
     return 0;
 }
 
+/* Overlay exit: run registered destructors before the board module unloads. */
 void _epilog(void)
 {
     const VoidFunc *dtors = _dtors;
@@ -165,12 +173,14 @@ void _epilog(void)
     }
 }
 
+/* Selects the S02 board and registers its setup and close callbacks. */
 void S02OverlayInitialize(void)
 {
     GwSystem.partyF = FALSE;
     mbObjectSetup(7, fn_1_F4, S02ObjectClose);
 }
 
+/* Board setup callback: install board hooks, camera, audio, and scene models. */
 void fn_1_F4(void)
 {
     s16 *modelId = &lbl_1_bss_0;
@@ -194,15 +204,17 @@ void fn_1_F4(void)
     S02SceneModelsCreate();
     mbCameraNearFarSet(100.0f, 80000.0f);
     mbOpeningViewSet(&lbl_1_data_6C, &lbl_1_data_78, lbl_1_data_84);
-    HuAudSndGrpSet(29);
+    HuAudSndGrpSet(MSM_GRP_SBRD);
     HuDataDirClose(DATANUM(DATA_s02, 0));
     (void)boardNo;
 }
 
+/* Board object close callback; it performs no per-object cleanup. */
 void S02ObjectClose(OMOBJ *obj)
 {
 }
 
+/* Per-frame scenery callback: advance the 12 map segments and wrap them at the route edge. */
 void S02MapObjectScrollUpdate(OMOBJ *obj)
 {
     HuVecF pos;
@@ -221,6 +233,7 @@ void S02MapObjectScrollUpdate(OMOBJ *obj)
     }
 }
 
+/* Move-start hook: run the S02 model event when the starting space has attribute bit 16. */
 int S02MasuAttr16Handler(int playerNo, s16 id)
 {
     u32 attr = mbMasuMAttrGet(id);
@@ -231,11 +244,13 @@ int S02MasuAttr16Handler(int playerNo, s16 id)
     return 0;
 }
 
+/* Move-end hook; it currently returns without applying extra board behavior. */
 int fn_1_3EC(int playerNo, s16 id)
 {
     return 0;
 }
 
+/* Question-space hook: run the paired-route event for spaces with attribute bits 1 or 4. */
 int S02MasuAttr5Handler(int playerNo, s16 id)
 {
     u32 attr = mbMasuMAttrGet(id);
@@ -246,15 +261,18 @@ int S02MasuAttr5Handler(int playerNo, s16 id)
     return 0;
 }
 
+/* Player-turn setup hook; it currently adds no turn-specific work. */
 void fn_1_450(int playerNo)
 {
 }
 
+/* Player-turn close hook: restore both paired-route models to their starting state. */
 void S02PairModelsResetEvent(int playerNo)
 {
     S02PairModelsReset();
 }
 
+/* Enables light information on the primary model when the board light hook runs. */
 void S02PrimaryModelLightInfoEnable(void)
 {
     s16 *modelId = &lbl_1_bss_0;
@@ -262,15 +280,18 @@ void S02PrimaryModelLightInfoEnable(void)
     Hu3DModelLightInfoSet(mbObjModelIDGet(modelId[0]), TRUE);
 }
 
+/* Board light reset callback; no additional reset is performed here. */
 void fn_1_4B0(void)
 {
 }
 
+/* Map enter/exit hook; the board currently ignores the transition flag. */
 void fn_1_4B4(BOOL enterF)
 {
     (void)enterF;
 }
 
+/* Move-start event: play the board animation, move the player through its camera shot, and return to the board. */
 void fn_1_4B8(int playerNo, s16 id)
 {
     s32 motionId[2];
@@ -305,7 +326,7 @@ void fn_1_4B8(int playerNo, s16 id)
     mbObjMotionSpeedSet((s16)s02Work.effectModelId, 2.0f);
     HuPrcSleep(10);
     mbObjMotionSpeedSet((s16)s02Work.eventModelId, 1.5f);
-    sound = mbAudFXPlay(1553);
+    sound = mbAudFXPlay(MSM_SE_SBRD_12);
     omVibrate((s16)playerNo, 200, 4, 4);
 
     while (mbObjMotionTimeGet((s16)s02Work.eventModelId)
@@ -357,6 +378,7 @@ void fn_1_4B8(int playerNo, s16 id)
     mbSingleReturnWrite();
 }
 
+/* Creates and positions the scenery, route pairs, and models used by S02 events. */
 void S02SceneModelsCreate(void)
 {
     HuVecF pos;
@@ -364,62 +386,62 @@ void S02SceneModelsCreate(void)
     s32 i;
 
     for (i = 0; i < 3; i++) {
-        modelId = (s16)mbObjCreate(13107203 + i, NULL, FALSE);
+        modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 3) + i, NULL, FALSE);
         s02Work.modelId[i] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 1.0f);
-        mbObjAttrSet(modelId, 1073741825);
+        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
     }
 
-    modelId = (s16)mbObjCreate(13107211, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 11), NULL, FALSE);
     s02Work.modelIdC = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, 1073741825);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 
-    modelId = (s16)mbObjCreate(13107212, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 12), NULL, FALSE);
     s02Work.eventModelId = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
 
-    modelId = (s16)mbObjCreate(13107213, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 13), NULL, FALSE);
     s02Work.modelId14 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, 1073741825);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 
-    modelId = (s16)mbObjCreate(13107214, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 14), NULL, FALSE);
     s02Work.modelId5C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, 1073741825);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 
-    modelId = (s16)mbObjCreate(13107215, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 15), NULL, FALSE);
     s02Work.effectModelId = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjHookSet((s16)s02Work.modelId5C, lbl_1_data_244,
         (s16)s02Work.effectModelId);
 
-    modelId = (s16)mbObjCreate(13107216, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 16), NULL, FALSE);
     s02Work.modelId64 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    mbObjAttrSet(modelId, 1073741825);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 
-    modelId = (s16)mbObjCreate(13107217, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 17), NULL, FALSE);
     s02Work.modelId18 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, 1073741825);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
     mbObjDispSet(modelId, FALSE);
 
     for (i = 0; i < 12; i++) {
-        modelId = (s16)mbObjCreate(13107218, NULL, TRUE);
+        modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 18), NULL, TRUE);
         s02Work.mapObjId[i] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 1.0f);
-        mbObjAttrSet(modelId, 1073741825);
+        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
         pos = s02MapObjectInitialPositions[i];
         pos.x += 1500.0f;
         pos.z += 200.0f;
@@ -434,20 +456,20 @@ void S02SceneModelsCreate(void)
         + ((200.0f + s02MapObjectInitialPositions[0].z) - s02MapObjectInitialPositions[11].z))
         / 6000.0f;
 
-    modelId = (s16)mbObjCreate(13107219, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 19), NULL, FALSE);
     s02Work.modelId4C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, 1073741825);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 
-    modelId = (s16)mbObjCreate(13107221, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 21), NULL, FALSE);
     s02Work.modelId58 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, 1073741825);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 
     for (i = 0; i < 2; i++) {
-        modelId = (s16)mbObjCreate(13107222 + i, NULL, FALSE);
+        modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 22) + i, NULL, FALSE);
         s02Work.pair[i].modelId[0] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 0.0f);
@@ -458,9 +480,9 @@ void S02SceneModelsCreate(void)
         s02Work.pair[i].modelId[2] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 1.0f);
-        mbObjAttrSet(modelId, 1073741825);
+        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 
-        modelId = (s16)mbObjCreate(13107210, NULL, TRUE);
+        modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 10), NULL, TRUE);
         s02Work.pair[i].modelId[3] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 0.0f);
@@ -468,18 +490,19 @@ void S02SceneModelsCreate(void)
             (s16)s02Work.pair[i].modelId[3]);
     }
 
-    modelId = (s16)mbObjCreate(mbBoardDataNumGet(327771), NULL, FALSE);
+    modelId = (s16)mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_board, 91)), NULL, FALSE);
     s02Work.modelId88 = modelId;
     mbObjPosSet(modelId, 0.0f, 0.0f, 0.0f);
     mbObjDispSet(modelId, FALSE);
 
-    modelId = (s16)mbObjCreate(13107206, NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 6), NULL, FALSE);
     s02Work.modelId8C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, 1073741825);
+    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 }
 
+/* Paired-space event: animate the selected route and move the player to its paired destination. */
 void fn_1_1120(int playerNo, s16 id)
 {
     ANIMDATA *anim;
@@ -551,7 +574,7 @@ void fn_1_1120(int playerNo, s16 id)
     mbObjMotionSpeedSet((s16)pairObj.modelId[3], 1.0f);
     mbCameraShakeSet(66, 50.0f);
     omVibrate((s16)playerNo, 90, 4, 4);
-    mbAudFXPlay(1552);
+    mbAudFXPlay(MSM_SE_SBRD_11);
     HuPrcSleep(6);
 
     particleModel1 = mbParticleCreate(anim, 128);
@@ -636,7 +659,7 @@ void fn_1_1120(int playerNo, s16 id)
     mbObjPosSetV((s16)s02Work.modelId88, &pos3D);
     mbObjAlphaSet((s16)s02Work.modelId88, 255);
     mbObjDispSet((s16)s02Work.modelId88, TRUE);
-    mbAudFXPlay(1113);
+    mbAudFXPlay(MSM_SE_BRD00_109);
     mbCameraShakeSet(30, 30.000002f);
     for (i = 0; i < 30; i++) {
         float ratio;
@@ -671,6 +694,7 @@ void fn_1_1120(int playerNo, s16 id)
     mbWipeFadeOut();
 }
 
+/* Restores both paired-route models after a player-turn event. */
 void S02PairModelsReset(void)
 {
     s32 i;
@@ -697,6 +721,7 @@ void fn_1_1DC4(void)
 {
 }
 
+/* Particle update hook for the route event's radial burst. */
 void fn_1_1DC8(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     MBPARTICLEDATA *data;
@@ -795,11 +820,15 @@ char lbl_1_data_20[4][16] = {
     "itemhook_6",
     "itemhook_7"
 };
+/* Position passed to the board's map camera. */
 HuVecF lbl_1_data_60 = { 0.0f, 0.0f, 300.0f };
 HuVecF lbl_1_data_6C = { -46.0f, 0.0f, 0.0f };
 HuVecF lbl_1_data_78 = { 1000.0f, 1500.0f, 3100.0f };
+/* Zoom distance passed to the opening board view. */
 float lbl_1_data_84 = 7500.0f;
+/* Reference point used to decide when a scenery segment wraps. */
 HuVecF lbl_1_data_88 = { 4906.0f, -3125.0f, -2167.0f };
+/* World position assigned to a segment after it reaches the route edge. */
 HuVecF lbl_1_data_94 = { -5880.0f, -3125.0f, 2640.0f };
 HuVecF lbl_1_data_A0 = { -10.0f, 0.0f, 0.0f };
 s32 lbl_1_data_AC[2] = {
@@ -817,6 +846,7 @@ S02DataC8 lbl_1_data_C8 = {
         { 990.0f, 100.0f, 2860.0f }
     }
 };
+/* Initial world positions of the 12 scenery segments along the route. */
 HuVecF s02MapObjectInitialPositions[12] = {
     { 4906.0f, -3125.0f, -2167.0f },
     { 4000.0f, -3125.0f, -1700.0f },
@@ -831,6 +861,7 @@ HuVecF s02MapObjectInitialPositions[12] = {
     { -4012.0f, -3125.0f, 1992.0f },
     { -5013.0f, -3125.0f, 2255.0f }
 };
+/* Initial rotations corresponding to the 12 scenery segments. */
 HuVecF lbl_1_data_178[12] = {
     { 0.0f, 0.0f, 0.0f },
     { 0.0f, 10.0f, 0.0f },
@@ -845,36 +876,46 @@ HuVecF lbl_1_data_178[12] = {
     { 120.0f, 0.0f, 150.0f },
     { 0.0f, -300.0f, 0.0f }
 };
+/* Initial positions of the two route models. */
 HuVecF lbl_1_data_208[2] = {
     { 612.6f, -143.0f, -355.0f },
     { 1409.6f, -143.0f, 1449.0f }
 };
+/* Initial rotations used when placing the route models. */
 HuVecF lbl_1_data_220[3] = {
     { 0.0f, -59.0f, 0.0f },
     { 0.0f, -59.0f, 0.0f },
     { 55.1f, 0.0f, 25.0f }
 };
 char lbl_1_data_244[8] = "m12hook";
+/* Attribute IDs used to find each paired destination space. */
 s32 lbl_1_data_24C[2] = { 2, 8 };
 s32 lbl_1_data_254[3] = {
     CHARMOT_HSF_c000m1_318,
     CHARMOT_HSF_c000m1_345,
     CHARMOT_HSF_c000m1_323
 };
+/* Particle burst origins for the two route events. */
 HuVecF lbl_1_data_260[2] = {
     { 612.6f, -143.0f, -355.0f },
     { 1409.6f, -143.0f, 1449.0f }
 };
+/* Reset positions for the two route models. */
 HuVecF lbl_1_data_278[2] = {
     { 612.6f, -143.0f, -355.0f },
     { 1409.6f, -143.0f, 1449.0f }
 };
+/* Reset rotations for the two route models. */
 HuVecF lbl_1_data_290[2] = {
     { 0.0f, -59.0f, 0.0f },
     { 0.0f, -59.0f, 0.0f }
 };
 
+/* Model IDs for scenery and event objects while the S02 board is active. */
 S02Work s02Work;
+/* The first entry controls when the particle event may restart its burst. */
 s32 lbl_1_bss_10[3];
+/* World-space movement applied to every scenery segment on each scroll update. */
 HuVecF s02MapScrollDelta;
+/* Model ID for the board's primary lighted model. */
 s16 lbl_1_bss_0;
