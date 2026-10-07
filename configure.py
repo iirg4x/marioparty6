@@ -1288,7 +1288,7 @@ config.libs = [
             Object(
                 Matching,
                 "REL/sequencedll/sequence.c",
-                mw_version=config.linker_version,
+                mw_version="GC/1.3.2",
                 extra_cflags=["-pooldata off"],
             ),
         },
