@@ -249,7 +249,7 @@ static inline GW_MESS_SPEED GWMessSpeedGet(void)
     if (GwSystem.messSpeed == GW_MESS_SPEED_MAX) {
         GwSystem.messSpeed = GW_MESS_SPEED_NORMAL;
     }
-    return GwSystem.messSpeed;
+    return (GW_MESS_SPEED)GwSystem.messSpeed;
 }
 
 static inline void GWMessSpeedSet(GW_MESS_SPEED value)
@@ -280,7 +280,7 @@ static inline GW_SAVE_MODE GWSaveModeGet(void)
     if (GwSystem.saveMode == GW_SAVE_MODE_MAX) {
 		GWSaveModeSet(GW_SAVE_MODE_NEVER);
     }
-    return GwSystem.saveMode;
+    return (GW_SAVE_MODE)GwSystem.saveMode;
 }
 
 static inline BOOL GWPartyGet(void)
@@ -300,7 +300,7 @@ static inline BOOL GWTeamFGet(void)
 
 static inline GW_PLAYER_COM_DIF GWStoryComDifGet(void)
 {
-    return GwSystem.storyComDif;
+    return (GW_PLAYER_COM_DIF)GwSystem.storyComDif;
 }
 
 static inline void GWSingleMgWinInc(GW_PLAYER_COM_DIF comDif)
