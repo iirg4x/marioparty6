@@ -1,3 +1,4 @@
+/* Builds the minigame result screen, including player summaries and character cues. */
 #include <string.h>
 
 #include "datadir_enum.h"
@@ -18,6 +19,10 @@
 
 #include "REL/mdpresultDll.h"
 
+#define MDRESULT_STREAM_RESULT 34
+#define MDRESULT_STREAM_WINNER 35
+#define MDRESULT_STREAM_WINNER_AFTERGLOW 36
+
 typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
@@ -35,13 +40,13 @@ float fn_1_1FF48(float start, float end, float time, float duration);
 float fn_1_1FE74(float start, float end, float time, float duration);
 void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
     GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);
-void fn_1_26CF8(s16 index, HuVecF *position, float value);
+void fn_1_26CF8(s16 index, HuVecF *position, float verticalAccel);
 float fn_1_1FC94(float start, float end, float time, float duration);
 void fn_1_2001C(HU3D_MODELID modelId, const HuVecF *first,
     const HuVecF *second);
 void fn_1_20108(HUSPR_GROUPID groupId, s32 attr);
-void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 value);
-void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 value);
+void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number);
+void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 number);
 void fn_1_25E6C(s16 index, s16 parManId, HuVecF *velocity,
     float accelX, u8 *color);
 void fn_1_26070(s16 index, s16 parManId, HuVecF *velocity,
@@ -83,7 +88,7 @@ void fn_1_6290(OMOBJ *obj);
 void fn_1_7590(OMOBJ *obj);
 void fn_1_8184(OMOBJ *obj);
 void fn_1_8470(OMOBJ *obj);
-void fn_1_8B70(s32 value);
+void fn_1_8B70(s32 graphMode);
 void fn_1_8F28(OMOBJ *obj);
 void fn_1_A85C(OMOBJ *obj);
 void fn_1_A984(void);
@@ -100,8 +105,8 @@ s16 fn_1_C9A0(void);
 void fn_1_CAEC(OMOBJ *obj);
 void fn_1_BB60(OMOBJ *obj);
 void fn_1_3CC(void);
-void fn_1_1018C(s32 unused, MDRESULT_CAMERA_WORK *work);
-void fn_1_10270(s32 unused, MDRESULT_CAMERA_WORK *work);
+void fn_1_1018C(s32 ignoredCallbackArg, MDRESULT_CAMERA_WORK *work);
+void fn_1_10270(s32 ignoredCallbackArg, MDRESULT_CAMERA_WORK *work);
 void fn_1_1860(OMOBJ *obj);
 void fn_1_1F308(void);
 void fn_1_1AAF8(void);
@@ -146,10 +151,10 @@ void fn_1_1E19C(void);
 void fn_1_1E47C(void);
 void fn_1_20188(HUSPR_GROUPID groupId, s32 attr);
 void fn_1_25DB0(s16 index, HuVecF *position, float alpha);
-void fn_1_25D0C(float value);
+void fn_1_25D0C(float colorIndex);
 void fn_1_25FF4(s16 index);
 void fn_1_25B90(void);
-void fn_1_26EAC(float value);
+void fn_1_26EAC(float ignoredValue);
 void fn_1_26F74(void);
 void fn_1_1F3D4(void);
 void fn_1_1F7FC(void);
@@ -247,7 +252,6 @@ extern float lbl_1_bss_50;
 
 extern GXColor lbl_1_data_75C[4];
 
-
 void fn_1_120(HUWINID winId, u32 mess, s16 index);
 void fn_1_16C4(MDRESULT_CAMERA_WORK *camera);
 void fn_1_1714(MDRESULT_CAMERA_WORK *camera);
@@ -293,7 +297,7 @@ void fn_1_4E68(OMOBJ *obj);
 void fn_1_50C0(OMOBJ *obj);
 void fn_1_52C4(OMOBJ *obj);
 void fn_1_5360(OMOBJ *obj);
-void fn_1_5A60(float value);
+void fn_1_5A60(float verticalDrift);
 void fn_1_6C7C(OMOBJ *obj);
 void fn_1_7518(OMOBJ *obj);
 void fn_1_7560(s16 state, u8 flag);
@@ -310,7 +314,7 @@ void fn_1_CD04(OMOBJ *obj);
 void fn_1_CE18(OMOBJ *obj);
 void fn_1_CE60(void);
 void fn_1_CE9C(void);
-void fn_1_D30C(float value);
+void fn_1_D30C(float exitProgress);
 void fn_1_D40C(void);
 void fn_1_F0E0(OMOBJ *obj);
 void fn_1_F138(void);
@@ -334,6 +338,7 @@ void fn_1_1E1B4(OMOBJ *obj);
 s32 fn_1_1E4B8(HuVec2f *originA, HuVec2f *directionA, HuVec2f *originB,
     HuVec2f *directionB, HuVec2f *intersection);
 
+/* Result character callbacks use this to play one of two voice clips for the character index. */
 void fn_1_0(s16 index, s16 table)
 {
     MDRESULT_S16_TABLE_22 sounds = { {
@@ -347,9 +352,11 @@ void fn_1_0(s16 index, s16 table)
     HuAudFXPlay(sounds.values[table][index]);
 }
 
+/* Suppresses repeated message sounds, then selects the indexed effect; the configured message gets
+ * a pan based on its slot, while the fallback is unpanned. */
 void fn_1_120(HUWINID winId, u32 mess, s16 index)
 {
-    MDRESULT_MESSAGE_NUMBERS messNum = { { 917504, -1 } };
+    MDRESULT_MESSAGE_NUMBERS messNum = { { MESSNUM(MESS_PARTY_RESULTS, 0), -1 } };
     MDRESULT_FX_NUMBERS fxNum = { {
         949, 950, 951, 952, 953, 954, 955, -1,
         941, 942, 943, 944, 945, 946, 947, -1,
@@ -377,6 +384,8 @@ void fn_1_120(HUWINID winId, u32 mess, s16 index)
     }
 }
 
+/* Maps an unordered pair of character indexes to its blast5 message resource, returning the table's
+ * final entry when no pair matches. */
 s32 fn_1_2CC(s16 first, s16 second)
 {
     MDRESULT_BYTE_TABLE_110 table = { {
@@ -406,6 +415,8 @@ s32 fn_1_2CC(s16 first, s16 second)
     return DATANUM(DATA_blast5, 0) + i;
 }
 
+/* Runs during result-scene startup: stores board settings, orders players for team mode, and
+ * prepares character messages and player or team statistics. */
 void fn_1_3CC(void)
 {
     MDRESULT_BSS_1278_WORK *work = &lbl_1_bss_1278;
@@ -444,12 +455,12 @@ void fn_1_3CC(void)
     i = 0;
     character = lbl_1_bss_1248;
     for (; i < 4; i++, character++) {
-        character->unk_00 = order[i];
-        character->unk_02 = GwPlayerConf[character->unk_00].grpNo;
-        character->unk_04 = GwPlayerConf[character->unk_00].type;
-        character->unk_06 = GwPlayerConf[character->unk_00].comDif;
-        character->character = GwPlayerConf[character->unk_00].charNo;
-        character->unk_0A = GwPlayerConf[character->unk_00].padNo;
+        character->playerIndex = order[i];
+        character->groupNo = GwPlayerConf[character->playerIndex].grpNo;
+        character->playerType = GwPlayerConf[character->playerIndex].type;
+        character->computerDifficulty = GwPlayerConf[character->playerIndex].comDif;
+        character->character = GwPlayerConf[character->playerIndex].charNo;
+        character->padNo = GwPlayerConf[character->playerIndex].padNo;
     }
 
     work->messages[0] = lbl_1_data_5F4[lbl_1_bss_1248[0].character];
@@ -495,9 +506,12 @@ void fn_1_3CC(void)
             lbl_1_bss_10D4[i].playerIndex = order[i * 2];
             lbl_1_bss_10D4[i].teamIndex = i;
             lbl_1_bss_10D4[i].rank = i;
-            lbl_1_bss_10D4[i].star = GwPlayer[order[i * 2]].star + GwPlayer[order[(i * 2) + 1]].star;
-            lbl_1_bss_10D4[i].values[15] = GwPlayer[order[i * 2]].handicap + GwPlayer[order[(i * 2) + 1]].handicap;
-            lbl_1_bss_10D4[i].coin = GwPlayer[order[i * 2]].coin + GwPlayer[order[(i * 2) + 1]].coin;
+            lbl_1_bss_10D4[i].star =
+                GwPlayer[order[i * 2]].star + GwPlayer[order[(i * 2) + 1]].star;
+            lbl_1_bss_10D4[i].values[15] =
+                GwPlayer[order[i * 2]].handicap + GwPlayer[order[(i * 2) + 1]].handicap;
+            lbl_1_bss_10D4[i].coin =
+                GwPlayer[order[i * 2]].coin + GwPlayer[order[(i * 2) + 1]].coin;
             lbl_1_bss_10D4[i].values[0] = GwPlayer[order[i * 2]].coinTotalMg
                 + GwPlayer[order[(i * 2) + 1]].coinTotalMg;
             lbl_1_bss_10D4[i].values[1] = GwPlayer[order[i * 2]].capsuleUseNum
@@ -532,6 +546,7 @@ void fn_1_3CC(void)
     }
 }
 
+/* Copies the target center, rotation, and zoom directly into the active camera values. */
 void fn_1_16C4(MDRESULT_CAMERA_WORK *camera)
 {
     memcpy(&camera->center, &camera->targetCenter, sizeof(HuVecF));
@@ -539,6 +554,7 @@ void fn_1_16C4(MDRESULT_CAMERA_WORK *camera)
     camera->zoom = camera->targetZoom;
 }
 
+/* Copies the active center, rotation, and zoom back into the camera targets. */
 void fn_1_1714(MDRESULT_CAMERA_WORK *camera)
 {
     memcpy(&camera->targetCenter, &camera->center, sizeof(HuVecF));
@@ -546,6 +562,8 @@ void fn_1_1714(MDRESULT_CAMERA_WORK *camera)
     camera->targetZoom = camera->zoom;
 }
 
+/* Moves the camera center, rotation, and zoom toward their targets by the supplied interpolation
+ * weight. */
 void fn_1_1764(MDRESULT_CAMERA_WORK *camera, float weight)
 {
     fn_1_1FB50(&camera->center, &camera->targetCenter, weight);
@@ -553,6 +571,7 @@ void fn_1_1764(MDRESULT_CAMERA_WORK *camera, float weight)
     camera->zoom = fn_1_1F8BC(camera->zoom, camera->targetZoom, weight);
 }
 
+/* The result guide installs its view-update callback here after changing screens. */
 void fn_1_17D4(MDRESULT_CAMERA_CALLBACK callback)
 {
     MDRESULT_CAMERA_WORK *camera = &lbl_1_bss_12BC;
@@ -560,6 +579,7 @@ void fn_1_17D4(MDRESULT_CAMERA_CALLBACK callback)
     camera->callback = callback;
 }
 
+/* Runs the installed camera callback during the camera object's update, when one is set. */
 void fn_1_17F4(OMOBJ *obj, MDRESULT_CAMERA_WORK *camera)
 {
     if (camera->callback) {
@@ -567,13 +587,16 @@ void fn_1_17F4(OMOBJ *obj, MDRESULT_CAMERA_WORK *camera)
     }
 }
 
+/* Stores the result-camera mode selected by the result sequence. */
 void fn_1_1840(s16 mode)
 {
     MDRESULT_CAMERA_WORK *camera = &lbl_1_bss_12BC;
 
-    camera->mode = mode;
+    camera->cameraMode = mode;
 }
 
+/* Copies the result camera values to the engine globals, then calls omOutView to update camera 0's
+ * pose. */
 void fn_1_1860(OMOBJ *obj)
 {
     MDRESULT_CAMERA_WORK *camera = &lbl_1_bss_12BC;
@@ -589,6 +612,8 @@ void fn_1_1860(OMOBJ *obj)
     omOutView(obj);
 }
 
+/* Initializes result camera 1 and its opening view, then attaches fn_1_1860 to the object manager
+ * to update the camera pose. */
 void fn_1_1930(MDRESULT_CAMERA_CALLBACK callback)
 {
     MDRESULT_CAMERA_WORK *camera = &lbl_1_bss_12BC;
@@ -611,6 +636,8 @@ void fn_1_1930(MDRESULT_CAMERA_CALLBACK callback)
     camera->obj = omAddObjEx(lbl_1_bss_0, 256, 0, 0, -1, fn_1_1860);
 }
 
+/* Tears down result camera 1, removes its camera-update object when present, and clears the saved
+ * object handle. */
 void fn_1_1AA4(void)
 {
     MDRESULT_CAMERA_WORK *camera = &lbl_1_bss_12BC;
@@ -622,6 +649,8 @@ void fn_1_1AA4(void)
     camera->obj = NULL;
 }
 
+/* Result-scene startup creates two static global lights from the listed positions and directions,
+ * using translucent white. */
 void fn_1_1B00(void)
 {
     HuVecF pos[2] = {
@@ -644,12 +673,15 @@ void fn_1_1B00(void)
     Hu3DGLightStaticSet(lbl_1_bss_130E[1], TRUE);
 }
 
+/* Releases both global lights created for the result scene. */
 void fn_1_1C34(void)
 {
     Hu3DGLightKill(lbl_1_bss_130E[0]);
     Hu3DGLightKill(lbl_1_bss_130E[1]);
 }
 
+/* Shows the selected result window; slot 0 uses display toggling and other slots use the
+ * extended-window open path. */
 void fn_1_1C70(s16 winNo)
 {
     if (winNo == 0) {
@@ -659,6 +691,8 @@ void fn_1_1C70(s16 winNo)
     }
 }
 
+/* Hides the selected result window; slot 0 uses display toggling and other slots use the
+ * extended-window close path. */
 void fn_1_1CE0(s16 winNo)
 {
     if (winNo == 0) {
@@ -673,6 +707,8 @@ void fn_1_1D50(s16 winNo)
     HuWinMesWait(lbl_1_bss_1304[winNo]);
 }
 
+/* Sets or clears HUWIN_ATTR_NOCANCEL for the selected window, then returns its choice query using
+ * -1 as the fallback argument. */
 s16 fn_1_1D8C(s16 winNo, s16 mode)
 {
     if (mode != 0) {
@@ -683,6 +719,8 @@ s16 fn_1_1D8C(s16 winNo, s16 mode)
     return HuWinChoiceGet(lbl_1_bss_1304[winNo], -1);
 }
 
+/* Centers a result message and sets its speed; changing the message ID clears the sound callback's
+ * cached ID. */
 void fn_1_1E28(s16 winNo, s32 messNum, s16 speed)
 {
     HuWinAttrSet(lbl_1_bss_1304[winNo], HUWIN_ATTR_ALIGN_CENTER);
@@ -693,12 +731,15 @@ void fn_1_1E28(s16 winNo, s32 messNum, s16 speed)
     }
 }
 
+/* Clears the selected window's home message before inserting the requested message at insertPos. */
 void fn_1_1EE4(s16 winNo, s32 messNum, s16 insertPos)
 {
     HuWinHomeClear(lbl_1_bss_1304[winNo]);
     HuWinInsertMesSet(lbl_1_bss_1304[winNo], messNum, insertPos);
 }
 
+/* Creates five hidden result-message windows, assigns their layout/transparency settings, and
+ * registers the message-sound callback on each. */
 void fn_1_1F54(void)
 {
     s16 i;
@@ -738,6 +779,7 @@ void fn_1_1F54(void)
     }
 }
 
+/* Deletes the five result-message windows and then kills any remaining active window. */
 void fn_1_2208(void)
 {
     s16 i;
@@ -748,6 +790,8 @@ void fn_1_2208(void)
     HuWinAllKill();
 }
 
+/* Switches the active result-message window, closing the previous slot and clearing the cached
+ * message when the slot changes. */
 void fn_1_2264(s16 winNo)
 {
     if (lbl_1_data_646[0] != -1 && lbl_1_data_646[0] != winNo) {
@@ -760,6 +804,7 @@ void fn_1_2264(s16 winNo)
     }
 }
 
+/* Closes the active result-message window and resets its window and message sentinels. */
 void fn_1_23C0(void)
 {
     if (lbl_1_data_646[0] != -1) {
@@ -769,6 +814,7 @@ void fn_1_23C0(void)
     lbl_1_data_64C[0] = -1;
 }
 
+/* Waits for the active result-message window's current message when a window is selected. */
 void fn_1_246C(void)
 {
     if (lbl_1_data_646[0] != -1) {
@@ -776,6 +822,8 @@ void fn_1_246C(void)
     }
 }
 
+/* Forwards a choice query to the active result-message window, or returns zero when none is
+ * selected. */
 s16 fn_1_24CC(s16 mode)
 {
     if (lbl_1_data_646[0] != -1) {
@@ -784,6 +832,8 @@ s16 fn_1_24CC(s16 mode)
     return 0;
 }
 
+/* Selects a result-message window and sets its centered message only when its cached message ID
+ * differs. */
 void fn_1_258C(s16 winNo, s32 messNum, s16 speed)
 {
     fn_1_2264(winNo);
@@ -793,12 +843,15 @@ void fn_1_258C(s16 winNo, s32 messNum, s16 speed)
     }
 }
 
+/* Selects a result-message window and inserts the requested message at the specified position. */
 void fn_1_27A4(s16 winNo, s32 messNum, s16 insertPos)
 {
     fn_1_2264(winNo);
     fn_1_1EE4(lbl_1_data_646[0], messNum, insertPos);
 }
 
+/* Shows the separate guidance window at the selected vertical position and updates its message only
+ * when the ID changes. */
 void fn_1_295C(s32 messNum, s16 positionF)
 {
     if (lbl_1_data_646[1] == -1) {
@@ -819,6 +872,7 @@ void fn_1_295C(s32 messNum, s16 positionF)
     }
 }
 
+/* Closes the guidance window and resets its window and message sentinels. */
 void fn_1_2B44(void)
 {
     if (lbl_1_data_646[1] != -1) {
@@ -828,6 +882,7 @@ void fn_1_2B44(void)
     lbl_1_data_64C[1] = -1;
 }
 
+/* Creates the shadow projection used beneath the result-scene models. */
 void fn_1_2BF0(void)
 {
     Vec shadowPos = { 0.0f, 3000.0f, 600.0f };
@@ -843,6 +898,8 @@ void fn_1_2CA4(void)
 {
 }
 
+/* Loads the result-screen sprite animations, creates their groups, and places the configured
+ * sprites. */
 void fn_1_2CA8(void)
 {
     MDRESULT_SPRITE_INFO *desc;
@@ -879,6 +936,8 @@ void fn_1_2ED0(void)
 {
 }
 
+/* Converts the selected on-screen result position to world coordinates for the character entry
+ * animation. */
 void fn_1_2ED4(s16 index)
 {
     HuVecF positions[8] = {
@@ -900,6 +959,8 @@ void fn_1_2ED4(s16 index)
     lbl_1_bss_109C[0].z = world.z;
 }
 
+/* Places and reveals the result entry model at its screen position, saving the resulting world
+ * position for its transition. */
 void fn_1_2F80(s16 index)
 {
     OMOBJ *obj = lbl_1_bss_30;
@@ -926,6 +987,7 @@ void fn_1_2F80(s16 index)
     Hu3DModelAttrReset(obj->mdlId[0], HU3D_ATTR_DISPOFF);
 }
 
+/* Hides the result entry model after its animation finishes. */
 void fn_1_30C4(void)
 {
     OMOBJ *obj = lbl_1_bss_30;
@@ -933,6 +995,8 @@ void fn_1_30C4(void)
     Hu3DModelAttrSet(obj->mdlId[0], HU3D_ATTR_DISPOFF);
 }
 
+/* Moves the result entry model toward its saved position and eases its rotation and scale;
+ * installed as that model object update. */
 void fn_1_3104(OMOBJ *obj)
 {
     Vec transform;
@@ -950,6 +1014,8 @@ void fn_1_3104(OMOBJ *obj)
     Hu3DModelScaleSetV(obj->mdlId[0], &transform);
 }
 
+/* Creates the result entry model, pauses its automatic model update, hides the current result
+ * model, and assigns fn_1_3104 as its update. */
 void fn_1_31F8(OMOBJ *obj)
 {
     OMOBJ *activeObj;
@@ -968,6 +1034,7 @@ void fn_1_31F8(OMOBJ *obj)
     obj->objFunc = fn_1_3104;
 }
 
+/* Kills the entry model and motion and removes its object from the result object manager. */
 void fn_1_3304(OMOBJ *obj)
 {
     if (obj) {
@@ -978,6 +1045,8 @@ void fn_1_3304(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Starts the selected character motion; motion 7 also plays the character voice, and motion 8 is
+ * limited to frames 30 through 90. */
 void fn_1_3364(s16 index, s16 motion, float end, s32 attr)
 {
     OMOBJ *obj = lbl_1_bss_C;
@@ -998,6 +1067,8 @@ void fn_1_3364(s16 index, s16 motion, float end, s32 attr)
     }
 }
 
+/* Waits for each character motion to finish, starts its looping idle motion, and clears the update
+ * callback when all four are ready. */
 void fn_1_3668(OMOBJ *obj)
 {
     s16 i;
@@ -1018,6 +1089,7 @@ void fn_1_3668(OMOBJ *obj)
     }
 }
 
+/* Resets the four character completion flags and installs fn_1_3668 to wait for their motions. */
 void fn_1_378C(void)
 {
     s16 i;
@@ -1029,6 +1101,8 @@ void fn_1_378C(void)
     obj->objFunc = fn_1_3668;
 }
 
+/* Returns all four result characters to their looping idle motion and clears their update
+ * callback. */
 void fn_1_37EC(void)
 {
     OMOBJ *obj = lbl_1_bss_C;
@@ -1040,6 +1114,8 @@ void fn_1_37EC(void)
     obj->objFunc = NULL;
 }
 
+/* Runs the result particle entrance: first moves eight particles along Bezier paths, then places
+ * them at orbit centers and animates their paired circular paths. */
 void fn_1_3894(OMOBJ *obj)
 {
     MDRESULT_MOVE_WORK *move;
@@ -1140,6 +1216,7 @@ void fn_1_3894(OMOBJ *obj)
     }
 }
 
+/* Gradually lowers the four orbit paths, clamping their vertical offset at -20 scene units. */
 void fn_1_3E98(void)
 {
     MDRESULT_MOVE_WORK *work;
@@ -1154,6 +1231,8 @@ void fn_1_3E98(void)
     }
 }
 
+/* Reads the two result models hook positions into the particle paths, waits 30 frames, then
+ * installs fn_1_3894 as the particle animation callback. */
 void fn_1_3F20(OMOBJ *obj)
 {
     MDRESULT_MOVE_WORK *move;
@@ -1201,6 +1280,8 @@ void fn_1_3F20(OMOBJ *obj)
     obj->objFunc = fn_1_3894;
 }
 
+/* Captures the character and result-model positions, initializes eight particle paths and their
+ * colors, then starts the opening motion and installs fn_1_3F20 as the update callback. */
 void fn_1_4124(void)
 {
     OMOBJ *obj = lbl_1_bss_C;
@@ -1281,6 +1362,8 @@ void fn_1_4124(void)
     obj->objFunc = fn_1_3F20;
 }
 
+/* Creates four character models and their result motions, places them using the individual or team
+ * layout, and clears the temporary setup callback. */
 void fn_1_4694(OMOBJ *obj)
 {
     MDRESULT_CHARACTER_WORK *characterWork;
@@ -1291,20 +1374,27 @@ void fn_1_4694(OMOBJ *obj)
     characterWork = &lbl_1_bss_1248[i];
     for (; i < 4; i++, characterWork++) {
         obj->mdlId[i] = CharModelCreate(characterWork->character, 2);
-        obj->mtnId[i] = CharMotionCreate(characterWork->character, 9633792);
-        obj->mtnId[i + 4] = CharMotionCreate(characterWork->character, 9633803);
+        obj->mtnId[i] = CharMotionCreate(characterWork->character, DATA_mariomot);
+        obj->mtnId[i + 4] = CharMotionCreate(characterWork->character,
+            DATANUM(DATA_mariomot, 11));
         obj->mtnId[i + 8] = Hu3DJointMotion(obj->mdlId[i],
-            HuDataSelHeapReadNum(characterWork->character + 9961488,
+            HuDataSelHeapReadNum(characterWork->character + DATA_mdpresult + 16,
                 HU_MEMNUM_OVL, HEAP_MODEL));
         obj->mtnId[i + 12] = Hu3DJointMotion(obj->mdlId[i],
-            HuDataSelHeapReadNum(characterWork->character + 9961499,
+            HuDataSelHeapReadNum(characterWork->character + DATA_mdpresult + 27,
                 HU_MEMNUM_OVL, HEAP_MODEL));
-        obj->mtnId[i + 16] = CharMotionCreate(characterWork->character, 9633826);
-        obj->mtnId[i + 20] = CharMotionCreate(characterWork->character, 9633828);
-        obj->mtnId[i + 24] = CharMotionCreate(characterWork->character, 9633829);
-        obj->mtnId[i + 28] = CharMotionCreate(characterWork->character, 9633833);
-        obj->mtnId[i + 32] = CharMotionCreate(characterWork->character, 9633879);
-        obj->mtnId[i + 36] = CharMotionCreate(characterWork->character, 9633799);
+        obj->mtnId[i + 16] = CharMotionCreate(characterWork->character,
+            DATANUM(DATA_mariomot, 34));
+        obj->mtnId[i + 20] = CharMotionCreate(characterWork->character,
+            DATANUM(DATA_mariomot, 36));
+        obj->mtnId[i + 24] = CharMotionCreate(characterWork->character,
+            DATANUM(DATA_mariomot, 37));
+        obj->mtnId[i + 28] = CharMotionCreate(characterWork->character,
+            DATANUM(DATA_mariomot, 41));
+        obj->mtnId[i + 32] = CharMotionCreate(characterWork->character,
+            DATANUM(DATA_mariomot, 87));
+        obj->mtnId[i + 36] = CharMotionCreate(characterWork->character,
+            DATANUM(DATA_mariomot, 7));
         Hu3DModelLayerSet(obj->mdlId[i], 1);
         Hu3DMotionShiftSet(obj->mdlId[i], obj->mtnId[i], 0.0f,
             0.0f, HU3D_MOTATTR_LOOP);
@@ -1321,6 +1411,7 @@ void fn_1_4694(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Kills the four character models and removes their object from the result object manager. */
 void fn_1_49C8(OMOBJ *obj)
 {
     s16 i;
@@ -1340,6 +1431,8 @@ void fn_1_49C8(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Speeds up the character motion for 30 frames, then restores normal speed and starts its looping
+ * motion. */
 void fn_1_4A9C(OMOBJ *obj)
 {
     Hu3DMotionSpeedSet(obj->mdlId[0], 2.0f);
@@ -1352,6 +1445,8 @@ void fn_1_4A9C(OMOBJ *obj)
     }
 }
 
+/* Starts the character transition motion and installs fn_1_4A9C to restore the idle motion after
+ * the transition. */
 void fn_1_4B44(void)
 {
     OMOBJ *obj = lbl_1_bss_4;
@@ -1362,6 +1457,8 @@ void fn_1_4B44(void)
     obj->objFunc = fn_1_4A9C;
 }
 
+/* Runs the character motion speed-up interval, then restores normal speed and starts the next
+ * looping motion. */
 void fn_1_4BB8(OMOBJ *obj)
 {
     Hu3DMotionSpeedSet(obj->mdlId[0], 2.0f);
@@ -1374,6 +1471,7 @@ void fn_1_4BB8(OMOBJ *obj)
     }
 }
 
+/* Starts the next result-character motion and resets its transition timer. */
 void fn_1_4C60(void)
 {
     OMOBJ *obj = lbl_1_bss_8;
@@ -1384,6 +1482,8 @@ void fn_1_4C60(void)
     obj->objFunc = fn_1_4BB8;
 }
 
+/* Creates the left-side 3D result emblem, attaches its five motions, and places it in the result
+ * scene. */
 void fn_1_4CD4(OMOBJ *obj)
 {
     s16 i;
@@ -1410,6 +1510,7 @@ void fn_1_4CD4(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Releases the left-side result emblem motions and model, then removes its object. */
 void fn_1_4E68(OMOBJ *obj)
 {
     s16 i;
@@ -1424,6 +1525,8 @@ void fn_1_4E68(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Creates the right-side 3D result emblem and its five motions, attaches its secondary model, and
+ * places it in the result scene. */
 void fn_1_4EF0(OMOBJ *obj)
 {
     s16 i;
@@ -1452,6 +1555,8 @@ void fn_1_4EF0(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Releases the right-side result emblem, its attached model, and motions, then removes its
+ * object. */
 void fn_1_50C0(OMOBJ *obj)
 {
     s16 i;
@@ -1468,6 +1573,8 @@ void fn_1_50C0(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Creates the two board scenery models, starts their looping motions, and adds texture scrolling to
+ * the lower model. */
 void fn_1_5160(OMOBJ *obj)
 {
     s16 i;
@@ -1489,6 +1596,7 @@ void fn_1_5160(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Stops texture scrolling and releases both board scenery models and their motions. */
 void fn_1_52C4(OMOBJ *obj)
 {
     s16 i;
@@ -1504,6 +1612,8 @@ void fn_1_52C4(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Places the three principal result models and initializes their bobbing state and randomized cycle
+ * length. */
 void fn_1_5360(OMOBJ *obj)
 {
     HuVecF positions[3] = {
@@ -1523,6 +1633,7 @@ void fn_1_5360(OMOBJ *obj)
     }
 }
 
+/* Bobs the first principal model vertically and slowly spins the other two principal models. */
 void fn_1_5484(OMOBJ *obj)
 {
     HuVecF position;
@@ -1555,6 +1666,8 @@ void fn_1_5484(OMOBJ *obj)
     Hu3DModelRotSetV(obj->mdlId[modelIndex], &position);
 }
 
+/* Randomizes the size and position of five falling background models and clears their shared
+ * vertical drift. */
 void fn_1_5690(OMOBJ *obj)
 {
     HuVecF position;
@@ -1576,6 +1689,8 @@ void fn_1_5690(OMOBJ *obj)
     lbl_1_bss_44 = 0.0f;
 }
 
+/* Moves five falling background models by the shared vertical drift and respawns each one below the
+ * scene after it falls past the bottom. */
 void fn_1_5860(OMOBJ *obj)
 {
     HuVecF position;
@@ -1600,38 +1715,41 @@ void fn_1_5860(OMOBJ *obj)
     }
 }
 
-void fn_1_5A60(float value)
+/* Sets the shared vertical drift applied to the falling background models. */
+void fn_1_5A60(float verticalDrift)
 {
-    lbl_1_bss_44 = value;
+    lbl_1_bss_44 = verticalDrift;
 }
 
+/* Chooses a left-to-right travel direction and randomized drift for one floating result model. */
 void fn_1_5A70(OMOBJ *obj, s16 index)
 {
     MDRESULT_MODEL_EFFECT_WORK *work;
 
     work = &lbl_1_bss_ADC[index + 8];
     work->state = rand8() % 2;
-    work->unk_0C = (frandmod(10) - 5) * 0.2f;
-    work->unk_10 = (frandmod(10) - 5) * 0.2f;
-    work->unk_14 = (frandmod(10) - 5) * 0.2f;
+    work->rotationSpeedX = (frandmod(10) - 5) * 0.2f;
+    work->rotationSpeedY = (frandmod(10) - 5) * 0.2f;
+    work->rotationSpeedZ = (frandmod(10) - 5) * 0.2f;
     if (work->state == 0) {
         Hu3DModelPosSet(obj->mdlId[index + 8], -1000.0f,
             frandmod(200) + 400,
             -1250 - (index * 200));
-        work->unk_18 = frandmod(3) + 1;
-        work->unk_1C = (frandmod(10) - 5) * 0.01f;
-        work->unk_20 = 0.0f;
+        work->horizontalSpeed = frandmod(3) + 1;
+        work->verticalDrift = (frandmod(10) - 5) * 0.01f;
+        work->depthSpeed = 0.0f;
     } else {
         Hu3DModelPosSet(obj->mdlId[index + 8], 1000.0f,
             frandmod(200) + 400,
             -1250 - (index * 200));
-        work->unk_18 = -(frandmod(3) + 1);
-        work->unk_1C = (frandmod(10) - 5) * 0.1f;
-        work->unk_20 = 0.0f;
+        work->horizontalSpeed = -(frandmod(3) + 1);
+        work->verticalDrift = (frandmod(10) - 5) * 0.1f;
+        work->depthSpeed = 0.0f;
     }
-    work->unk_24 = frandmod(1000) + 1500.0f;
+    work->horizontalLimit = frandmod(1000) + 1500.0f;
 }
 
+/* Initializes the three floating result models and assigns their starting positions. */
 void fn_1_5E18(OMOBJ *obj)
 {
     s16 i;
@@ -1643,6 +1761,8 @@ void fn_1_5E18(OMOBJ *obj)
     }
 }
 
+/* Moves three floating result models horizontally across the scene, respawns them at their travel
+ * limits, changes selected motions, and applies their per-frame rotation. */
 void fn_1_6290(OMOBJ *obj)
 {
     HuVecF position;
@@ -1652,36 +1772,36 @@ void fn_1_6290(OMOBJ *obj)
     for (i = 0; i < 3; i++) {
         work = &lbl_1_bss_ADC[i + 8];
         Hu3DModelPosGet(obj->mdlId[i + 8], &position);
-        position.x += work->unk_18;
-        position.y += work->unk_1C + lbl_1_bss_44;
-        position.z += work->unk_20;
+        position.x += work->horizontalSpeed;
+        position.y += work->verticalDrift + lbl_1_bss_44;
+        position.z += work->depthSpeed;
         Hu3DModelPosSetV(obj->mdlId[i + 8], &position);
 
         if (work->state == 0) {
-            if (position.x > work->unk_24) {
+            if (position.x > work->horizontalLimit) {
                 MDRESULT_MODEL_EFFECT_WORK *resetWork;
 
                 resetWork = &lbl_1_bss_ADC[i + 8];
                 resetWork->state = rand8() % 2;
-                resetWork->unk_0C = (frandmod(10) - 5) * 0.2f;
-                resetWork->unk_10 = (frandmod(10) - 5) * 0.2f;
-                resetWork->unk_14 = (frandmod(10) - 5) * 0.2f;
+                resetWork->rotationSpeedX = (frandmod(10) - 5) * 0.2f;
+                resetWork->rotationSpeedY = (frandmod(10) - 5) * 0.2f;
+                resetWork->rotationSpeedZ = (frandmod(10) - 5) * 0.2f;
                 if (resetWork->state == 0) {
                     Hu3DModelPosSet(obj->mdlId[i + 8],
                         -1000.0f, frandmod(200) + 400,
                         -1250 - (i * 200));
-                    resetWork->unk_18 = frandmod(3) + 1;
-                    resetWork->unk_1C = (frandmod(10) - 5) * 0.01f;
-                    resetWork->unk_20 = 0.0f;
+                    resetWork->horizontalSpeed = frandmod(3) + 1;
+                    resetWork->verticalDrift = (frandmod(10) - 5) * 0.01f;
+                    resetWork->depthSpeed = 0.0f;
                 } else {
                     Hu3DModelPosSet(obj->mdlId[i + 8],
                         1000.0f, frandmod(200) + 400,
                         -1250 - (i * 200));
-                    resetWork->unk_18 = -(frandmod(3) + 1);
-                    resetWork->unk_1C = (frandmod(10) - 5) * 0.1f;
-                    resetWork->unk_20 = 0.0f;
+                    resetWork->horizontalSpeed = -(frandmod(3) + 1);
+                    resetWork->verticalDrift = (frandmod(10) - 5) * 0.1f;
+                    resetWork->depthSpeed = 0.0f;
                 }
-                resetWork->unk_24 = frandmod(1000) + 1500.0f;
+                resetWork->horizontalLimit = frandmod(1000) + 1500.0f;
                 if (i == 1) {
                     Hu3DMotionShiftSet(obj->mdlId[9],
                         obj->mtnId[rand8() % 3], 0.0f,
@@ -1693,30 +1813,30 @@ void fn_1_6290(OMOBJ *obj)
                 }
             }
         } else {
-            if (position.x < -work->unk_24) {
+            if (position.x < -work->horizontalLimit) {
                 MDRESULT_MODEL_EFFECT_WORK *resetWork;
 
                 resetWork = &lbl_1_bss_ADC[i + 8];
                 resetWork->state = rand8() % 2;
-                resetWork->unk_0C = (frandmod(10) - 5) * 0.2f;
-                resetWork->unk_10 = (frandmod(10) - 5) * 0.2f;
-                resetWork->unk_14 = (frandmod(10) - 5) * 0.2f;
+                resetWork->rotationSpeedX = (frandmod(10) - 5) * 0.2f;
+                resetWork->rotationSpeedY = (frandmod(10) - 5) * 0.2f;
+                resetWork->rotationSpeedZ = (frandmod(10) - 5) * 0.2f;
                 if (resetWork->state == 0) {
                     Hu3DModelPosSet(obj->mdlId[i + 8],
                         -1000.0f, frandmod(200) + 400,
                         -1250 - (i * 200));
-                    resetWork->unk_18 = frandmod(3) + 1;
-                    resetWork->unk_1C = (frandmod(10) - 5) * 0.01f;
-                    resetWork->unk_20 = 0.0f;
+                    resetWork->horizontalSpeed = frandmod(3) + 1;
+                    resetWork->verticalDrift = (frandmod(10) - 5) * 0.01f;
+                    resetWork->depthSpeed = 0.0f;
                 } else {
                     Hu3DModelPosSet(obj->mdlId[i + 8],
                         1000.0f, frandmod(200) + 400,
                         -1250 - (i * 200));
-                    resetWork->unk_18 = -(frandmod(3) + 1);
-                    resetWork->unk_1C = (frandmod(10) - 5) * 0.1f;
-                    resetWork->unk_20 = 0.0f;
+                    resetWork->horizontalSpeed = -(frandmod(3) + 1);
+                    resetWork->verticalDrift = (frandmod(10) - 5) * 0.1f;
+                    resetWork->depthSpeed = 0.0f;
                 }
-                resetWork->unk_24 = frandmod(1000) + 1500.0f;
+                resetWork->horizontalLimit = frandmod(1000) + 1500.0f;
                 if (i == 1) {
                     Hu3DMotionShiftSet(obj->mdlId[9],
                         obj->mtnId[rand8() % 3], 0.0f,
@@ -1730,13 +1850,15 @@ void fn_1_6290(OMOBJ *obj)
         }
 
         Hu3DModelRotGet(obj->mdlId[i + 8], &position);
-        position.x += work->unk_0C;
-        position.y += work->unk_10;
-        position.z += work->unk_14;
+        position.x += work->rotationSpeedX;
+        position.y += work->rotationSpeedY;
+        position.z += work->rotationSpeedZ;
         Hu3DModelRotSetV(obj->mdlId[i + 8], &position);
     }
 }
 
+/* Object update installed by fn_1_6CB8; advances the three floating models while their movement
+ * flag is clear. */
 void fn_1_6C7C(OMOBJ *obj)
 {
     if (obj->work[0] == 0) {
@@ -1744,6 +1866,8 @@ void fn_1_6C7C(OMOBJ *obj)
     }
 }
 
+/* Creates the central result model, its three neighboring models, and three floating models, then
+ * installs fn_1_6C7C as their object update. */
 void fn_1_6CB8(OMOBJ *obj)
 {
     s16 i;
@@ -1759,7 +1883,6 @@ void fn_1_6CB8(OMOBJ *obj)
     Hu3DMotionShiftSet(obj->mdlId[i], obj->mtnId[i],
         0.0f, 0.0f, HU3D_MOTATTR_LOOP);
     Hu3DModelAttrSet(obj->mdlId[i], HU3D_ATTR_DISPOFF);
-
 
     for (i = 0; i < 3; i++) {
         obj->mdlId[i + 2] = Hu3DModelCreate(HuDataSelHeapReadNum(
@@ -1783,7 +1906,6 @@ void fn_1_6CB8(OMOBJ *obj)
         Hu3DModelLayerSet(obj->mdlId[i + 8], 1);
     }
 
-
     fn_1_5E18(obj);
 
     for (i = 0; i < 3; i++) {
@@ -1802,6 +1924,7 @@ void fn_1_6CB8(OMOBJ *obj)
     obj->objFunc = fn_1_6C7C;
 }
 
+/* Removes the temporary result object from the object manager. */
 void fn_1_7518(OMOBJ *obj)
 {
     if (obj) {
@@ -1810,6 +1933,7 @@ void fn_1_7518(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Stores the active color-effect state and player mask for the four result characters. */
 void fn_1_7560(s16 state, u8 flag)
 {
     OMOBJ *obj = lbl_1_bss_28;
@@ -1818,6 +1942,8 @@ void fn_1_7560(s16 state, u8 flag)
     obj->work[1] = flag;
 }
 
+/* Object update installed by fn_1_8184; changes the four character material colors for the active
+ * effect state and follows their individual or team positions. */
 void fn_1_7590(OMOBJ *obj)
 {
     s16 i;
@@ -1900,7 +2026,6 @@ void fn_1_7590(OMOBJ *obj)
         hsf = modelData->hsf;
         material = hsf->material;
 
-
         lbl_1_bss_ABC[i].current[0] = (u8)fn_1_1F8BC(
             (float)lbl_1_bss_ABC[i].current[0],
             (float)lbl_1_bss_ABC[i].target[0],
@@ -1963,6 +2088,8 @@ void fn_1_7590(OMOBJ *obj)
     }
 }
 
+/* Creates four hidden character display models, reveals four individual or two team models, and
+ * installs fn_1_7590 as their update. */
 void fn_1_8184(OMOBJ *obj)
 {
     s16 i;
@@ -1995,6 +2122,7 @@ void fn_1_8184(OMOBJ *obj)
     obj->objFunc = fn_1_7590;
 }
 
+/* Kills the four character display models and motions and removes their object. */
 void fn_1_83E0(OMOBJ *obj)
 {
     s16 i;
@@ -2009,13 +2137,15 @@ void fn_1_83E0(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Object update installed by fn_1_8B70; raises the selected star or coin models, places their
+ * number sprites, then animates the models and digits out. */
 void fn_1_8470(OMOBJ *obj)
 {
     s16 offsets[3] = { -20, 0, 20 };
     s16 j;
     s16 base;
     s16 count;
-    s16 value;
+    s16 groupIndex;
     s16 i;
     HuVecF position;
     HuVecF screen;
@@ -2023,25 +2153,25 @@ void fn_1_8470(OMOBJ *obj)
     if (lbl_1_bss_1278.values[3] == 0) {
         base = 0;
         count = 4;
-        value = (s16)obj->work[3];
+        groupIndex = (s16)obj->work[3];
     } else {
         base = 1;
         count = 2;
-        value = (s16)obj->work[3];
+        groupIndex = (s16)obj->work[3];
     }
 
     switch ((s32)obj->work[2]) {
     case 0:
         for (i = 0; i < count; i++) {
-            Hu3DModelPosGet(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelPosGet(obj->mdlId[i + (4 * groupIndex)], &position);
             position.y = fn_1_1FC94(0.0f, 325.0f,
                 (float)obj->work[0], (float)obj->work[1]);
-            Hu3DModelPosSetV(obj->mdlId[i + (4 * value)], &position);
-            Hu3DModelRotGet(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelPosSetV(obj->mdlId[i + (4 * groupIndex)], &position);
+            Hu3DModelRotGet(obj->mdlId[i + (4 * groupIndex)], &position);
             position.y = fn_1_1FC94(-1080.0f, 0.0f,
                 (float)obj->work[0], (float)obj->work[1]);
-            Hu3DModelRotSetV(obj->mdlId[i + (4 * value)], &position);
-            if (value == 0) {
+            Hu3DModelRotSetV(obj->mdlId[i + (4 * groupIndex)], &position);
+            if (groupIndex == 0) {
                 position.x = position.y = position.z = fn_1_1FC94(
                     0.0f, 1.0f,
                     (float)obj->work[0], (float)obj->work[1]);
@@ -2050,7 +2180,7 @@ void fn_1_8470(OMOBJ *obj)
                     0.0f, 0.9f,
                     (float)obj->work[0], (float)obj->work[1]);
             }
-            Hu3DModelScaleSetV(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelScaleSetV(obj->mdlId[i + (4 * groupIndex)], &position);
         }
         if (++obj->work[0] > obj->work[1]) {
             obj->work[0] = 0;
@@ -2058,7 +2188,7 @@ void fn_1_8470(OMOBJ *obj)
             obj->work[2] = 1;
             for (i = 0; i < count; i++) {
                 fn_1_25FF4(i);
-                Hu3DModelPosGet(obj->mdlId[i + (4 * value)], &position);
+                Hu3DModelPosGet(obj->mdlId[i + (4 * groupIndex)], &position);
                 Hu3D3Dto2D(&position, 1, &screen);
                 HuSprGrpPosSet(lbl_1_bss_11A0[i], screen.x, screen.y);
             }
@@ -2066,14 +2196,15 @@ void fn_1_8470(OMOBJ *obj)
         break;
     case 1:
         for (i = 0; i < count; i++) {
-            Hu3DModelPosGet(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelPosGet(obj->mdlId[i + (4 * groupIndex)], &position);
+            // Both endpoints match, so the model keeps its assigned horizontal slot.
             position.x = fn_1_1FC94(
                 lbl_1_data_0[i + (4 * base)].x,
                 lbl_1_data_0[i + (4 * base)].x,
                 (float)obj->work[0], (float)obj->work[1]);
             position.y = fn_1_1FC94(325.0f, 345.0f,
                 (float)obj->work[0], (float)obj->work[1]);
-            Hu3DModelPosSetV(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelPosSetV(obj->mdlId[i + (4 * groupIndex)], &position);
             for (j = 0; j < 3; j++) {
                 position.x = fn_1_1FC94(0.0f,
                     (float)offsets[j], (float)obj->work[0],
@@ -2092,12 +2223,14 @@ void fn_1_8470(OMOBJ *obj)
     }
 
     for (i = 0; i < count; i++) {
-        Hu3DModelPosGet(obj->mdlId[i + (4 * value)], &position);
+        Hu3DModelPosGet(obj->mdlId[i + (4 * groupIndex)], &position);
         fn_1_26070(i, -1, &position, -1.0f, NULL);
     }
 }
 
-void fn_1_8B70(s32 value)
+/* Starts the star or coin result display for the selected player group and installs fn_1_8470 to
+ * animate it. */
+void fn_1_8B70(s32 graphMode)
 {
     OMOBJ *obj = lbl_1_bss_18;
     HuVecF position;
@@ -2122,19 +2255,19 @@ void fn_1_8B70(s32 value)
     obj->work[0] = 0;
     obj->work[1] = 50;
     obj->work[2] = 0;
-    obj->work[3] = (s16)value;
+    obj->work[3] = (s16)graphMode;
 
     for (i = 0; i < count; i++) {
-        Hu3DModelPosSet(obj->mdlId[i + (4 * (s16)value)],
+        Hu3DModelPosSet(obj->mdlId[i + (4 * (s16)graphMode)],
             lbl_1_data_0[i + (4 * base)].x, 0.0f,
             lbl_1_data_0[i + (4 * base)].z - 20.0f);
-        Hu3DModelScaleSet(obj->mdlId[i + (4 * (s16)value)],
+        Hu3DModelScaleSet(obj->mdlId[i + (4 * (s16)graphMode)],
             0.0f, 0.0f, 0.0f);
-        Hu3DModelAttrReset(obj->mdlId[i + (4 * (s16)value)],
+        Hu3DModelAttrReset(obj->mdlId[i + (4 * (s16)graphMode)],
             HU3D_ATTR_DISPOFF);
         {
             GXColor color = { 255, 255, 255, 0 };
-        Hu3DModelPosGet(obj->mdlId[i + (4 * (s16)value)], &position);
+        Hu3DModelPosGet(obj->mdlId[i + (4 * (s16)graphMode)], &position);
         fn_1_25E6C(i, 1, &position, 50.0f,
             (u8 *)&color);
         }
@@ -2147,7 +2280,7 @@ void fn_1_8B70(s32 value)
         HuSprGrpScaleSet(lbl_1_bss_11A0[i], 1.0f,
             1.0f);
         fn_1_20188(lbl_1_bss_11A0[i], 4);
-        if ((s16)value == 0) {
+        if ((s16)graphMode == 0) {
             fn_1_20208(lbl_1_bss_11A0[i], 0, star[i]);
         } else {
             fn_1_20208(lbl_1_bss_11A0[i], 0, coin[i]);
@@ -2156,12 +2289,14 @@ void fn_1_8B70(s32 value)
     obj->objFunc = fn_1_8470;
 }
 
+/* Object update installed by fn_1_95A4; moves the selected star or coin models and number sprites
+ * offscreen, then hides the models. */
 void fn_1_8F28(OMOBJ *obj)
 {
     s16 offsets[3] = { -20, 0, 20 };
     s16 base;
     s16 count;
-    s16 value;
+    s16 groupIndex;
     s16 i;
     s16 j;
     HuVecF position;
@@ -2169,17 +2304,18 @@ void fn_1_8F28(OMOBJ *obj)
     if (lbl_1_bss_1278.values[3] == 0) {
         base = 0;
         count = 4;
-        value = (s16)obj->work[3];
+        groupIndex = (s16)obj->work[3];
     } else {
         base = 1;
         count = 2;
-        value = (s16)obj->work[3];
+        groupIndex = (s16)obj->work[3];
     }
 
     switch ((s32)obj->work[2]) {
     case 0:
         for (i = 0; i < count; i++) {
-            Hu3DModelPosGet(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelPosGet(obj->mdlId[i + (4 * groupIndex)], &position);
+            // Both endpoints match, so the model keeps its assigned horizontal slot.
             position.x = fn_1_1FD7C(
                 lbl_1_data_0[i + (4 * base)].x,
                 lbl_1_data_0[i + (4 * base)].x,
@@ -2187,7 +2323,7 @@ void fn_1_8F28(OMOBJ *obj)
             position.y = fn_1_1FC94(345.0f,
                 325.0f, (float)obj->work[0],
                 (float)obj->work[1]);
-            Hu3DModelPosSetV(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelPosSetV(obj->mdlId[i + (4 * groupIndex)], &position);
             for (j = 0; j < 3; j++) {
                 position.x = fn_1_1FD7C((float)offsets[j],
                     0.0f, (float)obj->work[0],
@@ -2207,7 +2343,7 @@ void fn_1_8F28(OMOBJ *obj)
                 HuVecF effectPosition;
 
                 GXColor color = { 255, 255, 255, 0 };
-                Hu3DModelPosGet(obj->mdlId[i + (4 * value)], &effectPosition);
+                Hu3DModelPosGet(obj->mdlId[i + (4 * groupIndex)], &effectPosition);
                 fn_1_25E6C(i, 1, &effectPosition, 50.0f,
                     (u8 *)&color);
             }
@@ -2218,21 +2354,21 @@ void fn_1_8F28(OMOBJ *obj)
         break;
     case 1:
         for (i = 0; i < count; i++) {
-            Hu3DModelPosGet(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelPosGet(obj->mdlId[i + (4 * groupIndex)], &position);
             position.y = fn_1_1FD7C(325.0f,
                 750.0f, (float)obj->work[0],
                 (float)obj->work[1]);
-            Hu3DModelPosSetV(obj->mdlId[i + (4 * value)], &position);
-            Hu3DModelRotGet(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelPosSetV(obj->mdlId[i + (4 * groupIndex)], &position);
+            Hu3DModelRotGet(obj->mdlId[i + (4 * groupIndex)], &position);
             position.y = fn_1_1FD7C(0.0f,
                 1080.0f, (float)obj->work[0],
                 (float)obj->work[1]);
-            Hu3DModelRotSetV(obj->mdlId[i + (4 * value)], &position);
+            Hu3DModelRotSetV(obj->mdlId[i + (4 * groupIndex)], &position);
         }
         if (++obj->work[0] > obj->work[1]) {
             obj->objFunc = NULL;
             for (i = 0; i < count; i++) {
-                Hu3DModelAttrSet(obj->mdlId[i + (4 * value)],
+                Hu3DModelAttrSet(obj->mdlId[i + (4 * groupIndex)],
                     HU3D_ATTR_DISPOFF);
                 fn_1_25FF4(i);
             }
@@ -2241,11 +2377,12 @@ void fn_1_8F28(OMOBJ *obj)
     }
 
     for (i = 0; i < count; i++) {
-        Hu3DModelPosGet(obj->mdlId[i + (4 * value)], &position);
+        Hu3DModelPosGet(obj->mdlId[i + (4 * groupIndex)], &position);
         fn_1_26070(i, -1, &position, -1.0f, NULL);
     }
 }
 
+/* Starts the star or coin result exit animation by resetting its timer and installing fn_1_8F28. */
 void fn_1_95A4(void)
 {
     OMOBJ *obj = lbl_1_bss_18;
@@ -2256,6 +2393,8 @@ void fn_1_95A4(void)
     obj->objFunc = fn_1_8F28;
 }
 
+/* Creates the four star and four coin display models, starts their looping motions, and prepares
+ * the corresponding digit sprite groups. */
 void fn_1_95E8(OMOBJ *obj)
 {
     s16 i;
@@ -2286,6 +2425,7 @@ void fn_1_95E8(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Kills the eight star and coin display motions and models and removes their object. */
 void fn_1_9850(OMOBJ *obj)
 {
     s16 i;
@@ -2300,6 +2440,7 @@ void fn_1_9850(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Waits until the star or coin display object clears its update callback. */
 void fn_1_98E0(void)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2309,6 +2450,8 @@ void fn_1_98E0(void)
     } while (obj->objFunc != NULL);
 }
 
+/* Object update callback installed by fn_1_9EBC; moves selected characters along their 60-frame
+ * entrance paths and creates particle effects for the follow-up motion. */
 void fn_1_9924(OMOBJ *obj)
 {
     MDRESULT_MOVE_WORK *work;
@@ -2409,6 +2552,8 @@ void fn_1_9924(OMOBJ *obj)
         -1.0f, NULL);
 }
 
+/* Builds the selected character entrance path from the chosen player mask, starts the entrance
+ * sound, and installs fn_1_9924 to animate it. */
 void fn_1_9EBC(s16 count, u8 mask)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2477,10 +2622,12 @@ void fn_1_9EBC(s16 count, u8 mask)
         }
     }
     HuAudFXStop(lbl_1_bss_1298);
-    HuAudFXPlay(1173);
+    HuAudFXPlay(MSM_SE_MENU_06);
     obj->objFunc = fn_1_9924;
 }
 
+/* Animates a selected result emblem from its entrance into a drifting hold, updating its particle
+ * effect from the model position. */
 void fn_1_A2B4(OMOBJ *obj)
 {
     MDRESULT_MOVE_WORK *work;
@@ -2543,6 +2690,8 @@ void fn_1_A2B4(OMOBJ *obj)
         acceleration, NULL);
 }
 
+/* Initializes a selected result emblem at its starting scale and position, configures its color
+ * effect, plays the entrance sound, and installs fn_1_A2B4. */
 void fn_1_A624(s16 index)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2574,10 +2723,12 @@ void fn_1_A624(s16 index)
         fn_1_25E6C((s16)(obj->work[3] + 4), 2, &position,
             1.0f, &color.values[obj->work[3] * 4]);
     }
-    lbl_1_bss_1298 = HuAudFXPlay(1172);
+    lbl_1_bss_1298 = HuAudFXPlay(MSM_SE_MENU_05);
     obj->objFunc = fn_1_A2B4;
 }
 
+/* Moves the selected result emblem out along its Bezier path, then hides it and stops its
+ * particles. */
 void fn_1_A85C(OMOBJ *obj)
 {
     MDRESULT_MOVE_WORK *work = &lbl_1_bss_8EC[obj->work[3]];
@@ -2597,6 +2748,8 @@ void fn_1_A85C(OMOBJ *obj)
         -1.0f, NULL);
 }
 
+/* Builds the exit path for the selected emblem, plays its exit sound, and installs fn_1_A85C to
+ * animate it. */
 void fn_1_A984(void)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2610,10 +2763,12 @@ void fn_1_A984(void)
         600.0f);
     fn_1_1F868(&work->target, 0.0f, 500.0f,
         1000.0f);
-    HuAudFXPlay(1174);
+    HuAudFXPlay(MSM_SE_MENU_07);
     obj->objFunc = fn_1_A85C;
 }
 
+/* Creates the three main result models and four secondary models, initially hidden for the later
+ * emblem sequence. */
 void fn_1_AA7C(OMOBJ *obj)
 {
     s16 i;
@@ -2644,6 +2799,7 @@ void fn_1_AA7C(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Kills the seven result models and motions and removes their object. */
 void fn_1_AD04(OMOBJ *obj)
 {
     s16 i;
@@ -2658,6 +2814,8 @@ void fn_1_AD04(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Reveals the rank models for one player at a step in the team ranking sequence; the incoming step
+ * is advanced by two before choosing its phase and model. */
 void fn_1_AD94(s16 player, s16 step)
 {
     OMOBJ *obj = lbl_1_bss_24;
@@ -2690,6 +2848,7 @@ void fn_1_AD94(s16 player, s16 step)
     }
 }
 
+/* Hides all 22 ranking models for the two teams. */
 void fn_1_AFF4(void)
 {
     OMOBJ *obj = lbl_1_bss_24;
@@ -2700,6 +2859,8 @@ void fn_1_AFF4(void)
     }
 }
 
+/* Creates the two sets of 11 hidden ranking models, using the final model in each set for the team
+ * total. */
 void fn_1_B05C(OMOBJ *obj)
 {
     s16 i;
@@ -2721,6 +2882,7 @@ void fn_1_B05C(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Kills the two sets of 11 ranking models and removes their object. */
 void fn_1_B178(OMOBJ *obj)
 {
     s16 j;
@@ -2737,6 +2899,8 @@ void fn_1_B178(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Draws four distinct score values from 0 through 8; if team totals tie, replaces them with one of
+ * two fixed non-tied arrangements. */
 void fn_1_B220(void)
 {
     s16 shuffled[9];
@@ -2774,6 +2938,8 @@ void fn_1_B220(void)
     }
 }
 
+/* Starts a ranking emitter for the selected rank model; converts its one-based rank argument to a
+ * zero-based emitter slot. */
 void fn_1_B454(OMOBJ *obj, s16 index, HuVecF *pos)
 {
     index--;
@@ -2783,6 +2949,8 @@ void fn_1_B454(OMOBJ *obj, s16 index, HuVecF *pos)
     Hu3DModelPosSetV(obj->mdlId[index + 4], pos);
 }
 
+/* Animates active ranking emblems by rotating and blending their mesh vertices from saved
+ * upper-to-lower weights. */
 void fn_1_B510(OMOBJ *obj)
 {
     HU3D_MODEL *model = NULL;
@@ -2857,6 +3025,8 @@ void fn_1_B510(OMOBJ *obj)
     }
 }
 
+/* Saves each ranking model mesh vertex and its normalized vertical weight, then selects the four
+ * distinct rank scores. */
 void fn_1_B8E8(OMOBJ *obj)
 {
     HU3D_MODEL *model = NULL;
@@ -2911,6 +3081,7 @@ void fn_1_B8E8(OMOBJ *obj)
     fn_1_B220();
 }
 
+/* Frees the saved mesh-vertex buffers used by the ranking emblems. */
 void fn_1_BACC(void)
 {
     s16 i;
@@ -2923,6 +3094,8 @@ void fn_1_BACC(void)
     }
 }
 
+/* Runs each rank reveal and input sequence, showing the emblem, playing reveal and finish sounds,
+ * and returning the model to idle. */
 void fn_1_BB60(OMOBJ *obj)
 {
     s16 i;
@@ -2947,8 +3120,8 @@ void fn_1_BB60(OMOBJ *obj)
             Hu3DModelTPLvlSet(obj->mdlId[i], time);
             Hu3DModelAttrReset(obj->mdlId[i], HU3D_ATTR_DISPOFF);
             if (++state->time > state->delay) {
-                HuAudFXPlay(1007);
-                lbl_1_bss_12A0[i] = HuAudFXPlay(1005);
+                HuAudFXPlay(MSM_SE_BRD00_03);
+                lbl_1_bss_12A0[i] = HuAudFXPlay(MSM_SE_BRD00_01);
                 state->state = 2;
                 state->time = 0.0f;
                 state->delay = (float)((rand8() % 120) + 60);
@@ -2956,9 +3129,9 @@ void fn_1_BB60(OMOBJ *obj)
             break;
 
         case 2:
-            if ((character->unk_04 == 0 &&
-                (HuPadBtnDown[character->unk_0A] & PAD_BUTTON_A)) ||
-                (character->unk_04 != 0 && ++state->time > state->delay)) {
+            if ((character->playerType == 0 &&
+                (HuPadBtnDown[character->padNo] & PAD_BUTTON_A)) ||
+                (character->playerType != 0 && ++state->time > state->delay)) {
                 state->state = 3;
                 state->time = 0.0f;
                 state->delay = 27.0f;
@@ -2969,7 +3142,7 @@ void fn_1_BB60(OMOBJ *obj)
         case 3:
             if (++state->time > state->delay) {
                 HuAudFXStop(lbl_1_bss_12A0[i]);
-                HuAudFXPlay(1008);
+                HuAudFXPlay(MSM_SE_BRD00_04);
                 state->state = 4;
                 state->time = 0.0f;
                 state->delay = 15.0f;
@@ -3011,6 +3184,8 @@ void fn_1_BB60(OMOBJ *obj)
     fn_1_B510(obj);
 }
 
+/* Starts the rank reveal for each player selected by the mask and installs fn_1_BB60 as the reveal
+ * update. */
 void fn_1_C23C(u8 mask)
 {
     MDRESULT_STATE_WORK *work;
@@ -3031,6 +3206,7 @@ void fn_1_C23C(u8 mask)
     obj->objFunc = fn_1_BB60;
 }
 
+/* Hides the 13 rank models and clears the rank reveal update. */
 void fn_1_C358(void)
 {
     s16 i;
@@ -3043,6 +3219,8 @@ void fn_1_C358(void)
     obj->objFunc = NULL;
 }
 
+/* Fades and separates the four ranked models, then displays the two team totals and waits before
+ * continuing. */
 void fn_1_C414(void)
 {
     HU3D_MODELID models[4];
@@ -3075,11 +3253,14 @@ void fn_1_C414(void)
             Hu3DModelRotSetV(models[i], &position);
         }
     }
+    // Team totals use the combined score of each pair of players.
     fn_1_AD94(0, lbl_1_bss_8AC[0].score + lbl_1_bss_8AC[1].score);
     fn_1_AD94(1, lbl_1_bss_8AC[2].score + lbl_1_bss_8AC[3].score);
     HuPrcSleep(60);
 }
 
+/* Waits for all four rank reveal sequences to finish, then returns the winning team or
+ * highest-scoring player index. */
 s16 fn_1_C9A0(void)
 {
     s16 bestScore = 0;
@@ -3122,6 +3303,8 @@ s16 fn_1_C9A0(void)
     return result;
 }
 
+/* Creates four rank-character models and nine ranking emblem models, then saves their mesh vertex
+ * data for later animation. */
 void fn_1_CAEC(OMOBJ *obj)
 {
     s16 i;
@@ -3149,6 +3332,8 @@ void fn_1_CAEC(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Frees the saved vertex buffers, kills all 13 rank models and motions, and removes their
+ * object. */
 void fn_1_CD04(OMOBJ *obj)
 {
     s16 j;
@@ -3164,11 +3349,13 @@ void fn_1_CD04(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Clears the active object update callback. */
 void fn_1_CE0C(OMOBJ *obj)
 {
     obj->objFunc = NULL;
 }
 
+/* Removes the supplied temporary object from the result object manager. */
 void fn_1_CE18(OMOBJ *obj)
 {
     if (obj) {
@@ -3177,12 +3364,15 @@ void fn_1_CE18(OMOBJ *obj)
     obj = NULL;
 }
 
+/* Hides the secondary board model and the shared particle effect. */
 void fn_1_CE60(void)
 {
     Hu3DModelAttrSet(lbl_1_bss_14->mdlId[1], HU3D_ATTR_DISPOFF);
     fn_1_26F74();
 }
 
+/* Moves the result scenery and display models downward, shifts the particle layers, and changes the
+ * result camera mode for the scene exit. */
 void fn_1_CE9C(void)
 {
     OMOBJ *obj;
@@ -3262,13 +3452,15 @@ void fn_1_CE9C(void)
     }
     fn_1_25D0C(-40.0f);
     camera = &lbl_1_bss_12BC;
-    camera->mode = 6;
+    camera->cameraMode = 6;
 }
 
-void fn_1_D30C(float value)
+/* Blends the scenery scroll, particle layers, background drift, and camera mode according to the
+ * exit progress. */
+void fn_1_D30C(float exitProgress)
 {
     OMOBJ *obj = lbl_1_bss_10;
-    float weight = 1.0f - value;
+    float weight = 1.0f - exitProgress;
 
     fn_1_26EAC(-50.0f * weight);
     Hu3DTexScrollPosMoveSet(obj->work[1], 0.0f,
@@ -3278,6 +3470,7 @@ void fn_1_D30C(float value)
     fn_1_1840(6.0f * weight);
 }
 
+/* Stops the scenery texture scroll and resets the particle color indexes. */
 void fn_1_D40C(void)
 {
     OMOBJ *obj = lbl_1_bss_10;
@@ -3288,6 +3481,8 @@ void fn_1_D40C(void)
     fn_1_25D0C(0.0f);
 }
 
+/* Object update that sequences the character motions, scrolls the result scenery away, and orbits
+ * the four characters before lowering them from view. */
 void fn_1_D48C(OMOBJ *obj)
 {
     MDRESULT_FLOAT_TABLE_8 orbitTable = {{
@@ -3387,6 +3582,8 @@ void fn_1_D48C(OMOBJ *obj)
     }
 }
 
+/* Starts the four result characters moving around the particle paths and begins the corresponding
+ * entrance animation. */
 void fn_1_DC38(s16 index)
 {
     OMOBJ *obj = lbl_1_bss_2C;
@@ -3434,11 +3631,13 @@ void fn_1_DC38(s16 index)
         }
     }
     fn_1_4124();
-    HuAudFXPlay(1183);
-    HuAudFXPlay(1184);
+    HuAudFXPlay(MSM_SE_MENU_16);
+    HuAudFXPlay(MSM_SE_MENU_17);
     obj->objFunc = fn_1_D48C;
 }
 
+/* Object update installed by fn_1_E658; moves selected characters into the result pose, scrolls the
+ * scene out over 180 frames, and restores the next result effects. */
 void fn_1_DED4(OMOBJ *obj)
 {
     MDRESULT_MOVE_WORK *move;
@@ -3513,6 +3712,7 @@ void fn_1_DED4(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Moves each result character along its configured approach path and rotates it into position. */
 void fn_1_E658(s16 index)
 {
     MDRESULT_MOVE_WORK *first;
@@ -3570,6 +3770,8 @@ void fn_1_E658(s16 index)
     obj->objFunc = fn_1_DED4;
 }
 
+/* Releases the result character, emblem, and board-scene models used by the different result
+ * views. */
 void fn_1_E9E8(void)
 {
     fn_1_49C8(lbl_1_bss_C);
@@ -3593,6 +3795,8 @@ void fn_1_E9E8(void)
     fn_1_1AA4();
 }
 
+/* Waits for the outgoing wipe to finish, releases the result overlay objects, then returns control
+ * to the board. */
 void fn_1_F0A4(OMOBJ *obj)
 {
     if (!WipeCheck()) {
@@ -3601,6 +3805,7 @@ void fn_1_F0A4(OMOBJ *obj)
     }
 }
 
+/* Removes the temporary result-screen object from the object manager. */
 void fn_1_F0E0(OMOBJ *obj)
 {
     if (omSysExitReq != 0) {
@@ -3609,6 +3814,7 @@ void fn_1_F0E0(OMOBJ *obj)
     }
 }
 
+/* Hides the result sprites, restores their draw priorities, and clears the active sprite groups. */
 void fn_1_F138(void)
 {
     s16 i;
@@ -3621,6 +3827,8 @@ void fn_1_F138(void)
     HuPrcSleep(5);
 }
 
+/* Runs the board result scene, waits for its interaction flow, then removes the overlay and returns
+ * control to the board. */
 void fn_1_F1C4(void)
 {
     s16 add;
@@ -3649,7 +3857,7 @@ void fn_1_F1C4(void)
             OSReport(lbl_1_data_6F7, i, lbl_1_bss_1248[i].character,
                 lbl_1_bss_10D4[i].rank);
             if (lbl_1_bss_10D4[i].rank == 0
-                && lbl_1_bss_1248[i].unk_04 == 0) {
+                && lbl_1_bss_1248[i].playerType == 0) {
                 GWCharPlayNumInc(lbl_1_bss_1248[i].character,
                     lbl_1_bss_1278.values[0]);
             }
@@ -3662,11 +3870,11 @@ void fn_1_F1C4(void)
                 lbl_1_bss_1248[(i * 2) + 1].character,
                 lbl_1_bss_10D4[i].rank);
             if (lbl_1_bss_10D4[i].rank == 0) {
-                if (lbl_1_bss_1248[i * 2].unk_04 == 0) {
+                if (lbl_1_bss_1248[i * 2].playerType == 0) {
                     GWCharPlayNumInc(lbl_1_bss_1248[i * 2].character,
                         lbl_1_bss_1278.values[0]);
                 }
-                if (lbl_1_bss_1248[(i * 2) + 1].unk_04 == 0) {
+                if (lbl_1_bss_1248[(i * 2) + 1].playerType == 0) {
                     GWCharPlayNumInc(
                         lbl_1_bss_1248[(i * 2) + 1].character,
                         lbl_1_bss_1278.values[0]);
@@ -3683,6 +3891,8 @@ void fn_1_F1C4(void)
     }
 }
 
+/* Initializes the result overlay object manager, camera, windows, lighting, models, effects, and
+ * input state. */
 void fn_1_F548(void)
 {
     lbl_1_bss_0 = omInitObjMan(27, MDRESULT_OBJECT_MANAGER_PRIORITY);
@@ -3737,6 +3947,7 @@ void fn_1_10098(void)
     HuDataDirCloseAll();
 }
 
+/* Waits for the result overlay setup process to finish. */
 void fn_1_100B8(void)
 {
     OSReport(lbl_1_data_719);
@@ -3744,6 +3955,7 @@ void fn_1_100B8(void)
     fn_1_F548();
 }
 
+/* Runs the overlay constructors and starts its initial result-screen process. */
 int _prolog(void)
 {
     const VoidFunc *ctor = _ctors;
@@ -3756,6 +3968,7 @@ int _prolog(void)
     return 0;
 }
 
+/* Runs the overlay destructors during module shutdown. */
 void _epilog(void)
 {
     const VoidFunc *dtor = _dtors;
@@ -3766,7 +3979,8 @@ void _epilog(void)
     }
 }
 
-void fn_1_1018C(s32 unused, MDRESULT_CAMERA_WORK *work)
+/* Moves the result camera center and zoom toward the values stored in its camera work record. */
+void fn_1_1018C(s32 ignoredCallbackArg, MDRESULT_CAMERA_WORK *work)
 {
     work->targetCenter.x = 0.0f;
     work->targetCenter.y = 65.0f;
@@ -3781,7 +3995,9 @@ void fn_1_1018C(s32 unused, MDRESULT_CAMERA_WORK *work)
         work->zoom, work->targetZoom, 15.0f);
 }
 
-void fn_1_10270(s32 unused, MDRESULT_CAMERA_WORK *work)
+/* Camera callback used during the result screen transition; updates the stored camera pose from its
+ * current target. */
+void fn_1_10270(s32 ignoredCallbackArg, MDRESULT_CAMERA_WORK *work)
 {
     work->center.x = 0.0f;
     work->center.y = 65.0f;
@@ -3792,6 +4008,8 @@ void fn_1_10270(s32 unused, MDRESULT_CAMERA_WORK *work)
     work->zoom = 2150.0f;
 }
 
+/* Starts the next character motion, shows its result message, and waits for the message before
+ * returning success. */
 s32 fn_1_102E4(void)
 {
     OMOBJ *first;
@@ -3807,11 +4025,13 @@ s32 fn_1_102E4(void)
         0.0f, 10.0f, 0);
     second->work[3] = 0;
     second->objFunc = fn_1_4BB8;
-    fn_1_258C(4, 917504, 1);
+    fn_1_258C(4, MESSNUM(MESS_PARTY_RESULTS, 0), 1);
     fn_1_246C();
     return TRUE;
 }
 
+/* Plays the first result-screen celebration sequence and waits for its dialogue and animation to
+ * finish. */
 s32 fn_1_105CC(void)
 {
     OMOBJ *first;
@@ -3823,9 +4043,9 @@ s32 fn_1_105CC(void)
         0.0f, 10.0f, 0);
     first->work[3] = 0;
     first->objFunc = fn_1_4A9C;
-    fn_1_258C(3, 917505, 1);
+    fn_1_258C(3, MESSNUM(MESS_PARTY_RESULTS, 1), 1);
     fn_1_246C();
-    HuAudFXPlay(1168);
+    HuAudFXPlay(MSM_SE_MENU_01);
     fn_1_8B70(0);
     HuPrcSleep(60);
     second = lbl_1_bss_4;
@@ -3833,7 +4053,7 @@ s32 fn_1_105CC(void)
         0.0f, 10.0f, 0);
     second->work[3] = 0;
     second->objFunc = fn_1_4A9C;
-    fn_1_258C(3, 917506, 1);
+    fn_1_258C(3, MESSNUM(MESS_PARTY_RESULTS, 2), 1);
     fn_1_246C();
     third = lbl_1_bss_18;
     third->work[0] = 0;
@@ -3841,11 +4061,13 @@ s32 fn_1_105CC(void)
     third->work[2] = 0;
     third->objFunc = fn_1_8F28;
     HuPrcSleep(10);
-    HuAudFXPlay(1169);
+    HuAudFXPlay(MSM_SE_MENU_02);
     HuPrcSleep(50);
     return TRUE;
 }
 
+/* Plays the next result-screen sequence, showing the player or team result messages and waiting for
+ * the character motions. */
 s32 fn_1_10B34(void)
 {
     OMOBJ *first;
@@ -3857,9 +4079,9 @@ s32 fn_1_10B34(void)
         0.0f, 10.0f, 0);
     first->work[3] = 0;
     first->objFunc = fn_1_4BB8;
-    fn_1_258C(2, 917507, 1);
+    fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 3), 1);
     fn_1_246C();
-    HuAudFXPlay(1170);
+    HuAudFXPlay(MSM_SE_MENU_03);
     fn_1_8B70(1);
     HuPrcSleep(60);
     second = lbl_1_bss_8;
@@ -3867,7 +4089,7 @@ s32 fn_1_10B34(void)
         0.0f, 10.0f, 0);
     second->work[3] = 0;
     second->objFunc = fn_1_4BB8;
-    fn_1_258C(2, 917508, 1);
+    fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 4), 1);
     fn_1_246C();
     third = lbl_1_bss_18;
     third->work[0] = 0;
@@ -3875,11 +4097,13 @@ s32 fn_1_10B34(void)
     third->work[2] = 0;
     third->objFunc = fn_1_8F28;
     HuPrcSleep(10);
-    HuAudFXPlay(1171);
+    HuAudFXPlay(MSM_SE_MENU_04);
     HuPrcSleep(50);
     return TRUE;
 }
 
+/* Finds the players or teams tied for the highest value in the selected statistic and writes their
+ * bits to mask; an all-zero statistic produces no winners. */
 s16 fn_1_1109C(s16 index, u8 *mask)
 {
     s16 scores[4];
@@ -3912,6 +4136,7 @@ s16 fn_1_1109C(s16 index, u8 *mask)
             *mask |= 1 << i;
         }
     }
+    // A zero result is treated as no winner, even if several players share zero.
     if (maxScore == 0) {
         winnerCount = 0;
         *mask = 0;
@@ -3919,6 +4144,8 @@ s16 fn_1_1109C(s16 index, u8 *mask)
     return winnerCount;
 }
 
+/* Shows one bonus-star statistic, announces ties, animates the tied characters, and awards a star
+ * to each non-total tie winner. */
 void fn_1_11208(s16 index)
 {
     s16 i;
@@ -3990,9 +4217,9 @@ void fn_1_11208(s16 index)
         fn_1_7560(3, 0);
         HuPrcSleep(60);
         if (count == 0 || count == 4) {
-            HuAudFXPlay(1176);
+            HuAudFXPlay(MSM_SE_MENU_09);
         } else {
-            HuAudFXPlay(1175);
+            HuAudFXPlay(MSM_SE_MENU_08);
         }
         fn_1_7560(2, mask);
         for (i = 0; i < 4; i++) {
@@ -4077,9 +4304,9 @@ void fn_1_11208(s16 index)
         fn_1_9EBC(count, mask);
         HuPrcSleep(60);
         if (count == 0 || count == 2) {
-            HuAudFXPlay(1176);
+            HuAudFXPlay(MSM_SE_MENU_09);
         } else {
-            HuAudFXPlay(1175);
+            HuAudFXPlay(MSM_SE_MENU_08);
         }
         fn_1_7560(2, mask);
 
@@ -4179,6 +4406,8 @@ void fn_1_11208(s16 index)
     fn_1_37EC();
 }
 
+/* Starts the next result character motion, shows its message, waits for it, and closes the active
+ * result window. */
 s32 fn_1_1295C(void)
 {
     OMOBJ *obj = lbl_1_bss_8;
@@ -4187,20 +4416,22 @@ s32 fn_1_1295C(void)
         0.0f, 10.0f, 0);
     obj->work[3] = 0;
     obj->objFunc = fn_1_4BB8;
-    fn_1_258C(2, 917527, 1);
+    fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 23), 1);
     fn_1_246C();
     fn_1_23C0();
     return TRUE;
 }
 
+/* Builds a bit mask of first-place players or teams; returns false when exactly one has already
+ * won. */
 s16 fn_1_12C80(u8 *mask)
 {
-    u8 value;
+    u8 winnerMask;
     s16 playerCount;
     s16 zeroCount;
     s16 i;
 
-    value = 0;
+    winnerMask = 0;
     playerCount = 4;
     zeroCount = 0;
     if (lbl_1_bss_1278.values[3] == 1) {
@@ -4216,13 +4447,15 @@ s16 fn_1_12C80(u8 *mask)
     }
     for (i = 0; i < playerCount; i++) {
         if (lbl_1_bss_10D4[i].rank == 0) {
-            value |= 1 << i;
+            winnerMask |= 1 << i;
         }
     }
-    *mask = value;
+    *mask = winnerMask;
     return TRUE;
 }
 
+/* Runs the final winner presentation, assigns first and second place for individual or team mode,
+ * displays the winner names, and fades the results music. */
 s32 fn_1_12D7C(u8 mask)
 {
     OMOBJ *obj;
@@ -4230,14 +4463,14 @@ s32 fn_1_12D7C(u8 mask)
     s16 i;
 
     HuPrcSleep(120);
-    lbl_1_bss_12B0[0] = HuAudSStreamPlay(34);
+    lbl_1_bss_12B0[0] = HuAudSStreamPlay(MDRESULT_STREAM_RESULT);
 
     if (lbl_1_bss_1278.values[3] == 0) {
-        fn_1_258C(2, 917528, 1);
+        fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 24), 1);
         fn_1_246C();
-        fn_1_258C(2, 917529, 1);
+        fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 25), 1);
         fn_1_246C();
-        fn_1_295C(65539, 0);
+        fn_1_295C(MESSNUM(MESS_SYS_GUIDE, 3), 0);
 
         fn_1_C23C(mask);
         result = fn_1_C9A0();
@@ -4257,14 +4490,14 @@ s32 fn_1_12D7C(u8 mask)
         fn_1_27A4(2, lbl_1_bss_1278.messages[result], 0);
 
         fn_1_378C();
-        fn_1_258C(2, 917530, 1);
+        fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 26), 1);
         fn_1_246C();
     } else {
-        fn_1_258C(2, 917543, 1);
+        fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 39), 1);
         fn_1_246C();
-        fn_1_258C(2, 917529, 1);
+        fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 25), 1);
         fn_1_246C();
-        fn_1_295C(65539, 0);
+        fn_1_295C(MESSNUM(MESS_SYS_GUIDE, 3), 0);
 
         fn_1_C23C(15);
         result = fn_1_C9A0();
@@ -4293,18 +4526,20 @@ s32 fn_1_12D7C(u8 mask)
         }
 
         fn_1_378C();
-        fn_1_258C(2, 917544, 1);
+        fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 40), 1);
         fn_1_246C();
     }
 
     fn_1_C358();
-    fn_1_258C(2, 917531, 1);
+    fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 27), 1);
     fn_1_246C();
     fn_1_37EC();
     HuAudSStreamFadeOut(lbl_1_bss_12B0[0], 1000);
     return TRUE;
 }
 
+/* After ranking and winner-mask checks, plays the winner stream for 510 frames, shows individual or
+ * team winner text, then starts the follow-up stream and celebration. */
 s32 fn_1_15378(void)
 {
     s16 i;
@@ -4324,12 +4559,12 @@ s32 fn_1_15378(void)
     fn_1_23C0();
     fn_1_DC38(selected);
     HuPrcSleep(90);
-    lbl_1_bss_12B0[2] = HuAudSStreamPlay(35);
+    lbl_1_bss_12B0[2] = HuAudSStreamPlay(MDRESULT_STREAM_WINNER);
     HuPrcSleep(510);
 
     if (lbl_1_bss_1278.values[3] == 0) {
         fn_1_27A4(4, lbl_1_bss_1278.messages[selected], 0);
-        fn_1_258C(4, 917532, 1);
+        fn_1_258C(4, MESSNUM(MESS_PARTY_RESULTS, 28), 1);
         fn_1_246C();
     } else {
         if (selected == 0) {
@@ -4342,35 +4577,36 @@ s32 fn_1_15378(void)
             fn_1_27A4(4, lbl_1_bss_1278.messages[5], 2);
         }
 
-        fn_1_258C(4, 917545, 1);
+        fn_1_258C(4, MESSNUM(MESS_PARTY_RESULTS, 41), 1);
         fn_1_246C();
     }
 
     fn_1_23C0();
     HuAudSStreamFadeOut(lbl_1_bss_12B0[2], 1000);
     HuPrcSleep(60);
-    lbl_1_bss_12B0[1] = HuAudSStreamPlay(36);
-    lbl_1_bss_129C = HuAudFXPlay(1178);
+    lbl_1_bss_12B0[1] = HuAudSStreamPlay(MDRESULT_STREAM_WINNER_AFTERGLOW);
+    lbl_1_bss_129C = HuAudFXPlay(MSM_SE_MENU_11);
     fn_1_E658(selected);
     return TRUE;
 }
 
+/* Ranks individual players by stars and then coins, sharing ranks for equal totals; team mode
+ * compares stars first and coins as the tie-breaker. */
 void fn_1_1648C(void)
 {
     s32 order[4] = { 0, 1, 2, 3 };
     s32 i;
     s32 j;
-    s32 temp;
-
+    s32 savedPlayerIndex;
 
     if (lbl_1_bss_1278.values[3] == 0) {
         for (i = 0; i < 4; i++) {
             for (j = i; j < 4; j++) {
                 if (lbl_1_bss_10D4[order[j]].star >=
                     lbl_1_bss_10D4[order[i]].star) {
-                    temp = order[i];
+                    savedPlayerIndex = order[i];
                     order[i] = order[j];
-                    order[j] = temp;
+                    order[j] = savedPlayerIndex;
                 }
             }
         }
@@ -4380,9 +4616,9 @@ void fn_1_1648C(void)
                         lbl_1_bss_10D4[order[i]].star
                     && lbl_1_bss_10D4[order[j]].coin >=
                         lbl_1_bss_10D4[order[i]].coin) {
-                    temp = order[i];
+                    savedPlayerIndex = order[i];
                     order[i] = order[j];
-                    order[j] = temp;
+                    order[j] = savedPlayerIndex;
                 }
             }
         }
@@ -4429,6 +4665,8 @@ void fn_1_1648C(void)
     }
 }
 
+/* Runs the board-result sequence, processes each bonus-star statistic when enabled, assigns final
+ * ranks, then runs the winner presentation. */
 void fn_1_169A4(void)
 {
     u8 mask = 0;
@@ -4436,7 +4674,7 @@ void fn_1_169A4(void)
     fn_1_4B44();
     fn_1_4C60();
 
-    fn_1_258C(4, 917504, 1);
+    fn_1_258C(4, MESSNUM(MESS_PARTY_RESULTS, 0), 1);
     fn_1_246C();
     fn_1_105CC();
     fn_1_10B34();
@@ -4447,7 +4685,7 @@ void fn_1_169A4(void)
     }
 
     fn_1_4C60();
-    fn_1_258C(2, 917527, 1);
+    fn_1_258C(2, MESSNUM(MESS_PARTY_RESULTS, 23), 1);
     fn_1_246C();
     fn_1_23C0();
 
@@ -4460,6 +4698,8 @@ void fn_1_169A4(void)
     fn_1_15378();
 }
 
+/* Reveals the result characters and board models, starts the result music, and waits for the
+ * incoming screen wipe to finish. */
 s32 fn_1_170DC(void)
 {
     s16 i;
@@ -4472,7 +4712,7 @@ s32 fn_1_170DC(void)
     Hu3DModelAttrReset(lbl_1_bss_8->mdlId[0], HU3D_ATTR_DISPOFF);
     Hu3DModelShadowSet(lbl_1_bss_4->mdlId[0]);
     Hu3DModelShadowSet(lbl_1_bss_8->mdlId[0]);
-    lbl_1_bss_12B0[0] = HuAudSStreamPlay(34);
+    lbl_1_bss_12B0[0] = HuAudSStreamPlay(MDRESULT_STREAM_RESULT);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
     while (WipeCheck()) {
         HuPrcVSleep();
@@ -4480,6 +4720,7 @@ s32 fn_1_170DC(void)
     return TRUE;
 }
 
+/* Fades the result music and waits for the outgoing screen wipe to finish. */
 s32 fn_1_171EC(void)
 {
     HuAudSStreamFadeOut(lbl_1_bss_12B0[1], 1000);
@@ -4490,6 +4731,8 @@ s32 fn_1_171EC(void)
     return TRUE;
 }
 
+/* Runs the help and return screens: waits for A to open or close help, and lets A continue or B
+ * return to the prior result screen. */
 void fn_1_17248(void)
 {
     s16 state = 0;
@@ -4535,7 +4778,7 @@ void fn_1_17248(void)
             do {
                 HuPrcVSleep();
             } while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0);
-            HuAudFXPlay(2);
+            HuAudFXPlay(MSM_SE_CMN_03);
             state = 1;
             break;
 
@@ -4568,12 +4811,12 @@ void fn_1_17248(void)
                     lbl_1_bss_34->objFunc = NULL;
                     lbl_1_bss_38->objFunc = NULL;
                     lbl_1_bss_3C[0]->objFunc = NULL;
-                    HuAudFXPlay(2);
+                    HuAudFXPlay(MSM_SE_CMN_03);
                     state = 3;
                     break;
                 }
                 if (HuPadBtnDown[0] & PAD_BUTTON_B) {
-                    HuAudFXPlay(3);
+                    HuAudFXPlay(MSM_SE_CMN_04);
                     state = 0;
                     break;
                 }
@@ -4583,6 +4826,8 @@ void fn_1_17248(void)
     } while (state != 3);
 }
 
+/* Starts the board-result sequence, waits for the player to continue, runs the help flow, and
+ * closes the result screen. */
 void fn_1_17B10(void)
 {
     HuVecF position = { 0.0f, 0.0f, 0.0f };
@@ -4601,7 +4846,7 @@ void fn_1_17B10(void)
     Hu3DModelAttrReset(lbl_1_bss_8->mdlId[0], 1);
     Hu3DModelShadowSet(lbl_1_bss_4->mdlId[0]);
     Hu3DModelShadowSet(lbl_1_bss_8->mdlId[0]);
-    lbl_1_bss_12B0[0] = HuAudSStreamPlay(34);
+    lbl_1_bss_12B0[0] = HuAudSStreamPlay(MDRESULT_STREAM_RESULT);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
     WipeWait();
     fn_1_169A4();
@@ -4609,13 +4854,14 @@ void fn_1_17B10(void)
     do {
         HuPrcVSleep();
     } while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0);
-    HuAudFXPlay(2);
+    HuAudFXPlay(MSM_SE_CMN_03);
     fn_1_17248();
     HuAudSStreamFadeOut(lbl_1_bss_12B0[1], 1000);
     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 60);
     WipeWait();
 }
 
+/* Shows the board-result heading sprites and selects the board and turn-count number banks. */
 void fn_1_17CF4(void)
 {
     HUSPR_GROUPID *group = &lbl_1_bss_714.group;
@@ -4627,6 +4873,7 @@ void fn_1_17CF4(void)
     HuSprBankSet(group[0], 2, otherBank);
 }
 
+/* Shows the board-result heading sprite group. */
 void fn_1_17D94(void)
 {
     HUSPR_GROUPID *group = &lbl_1_bss_714.group;
@@ -4634,6 +4881,8 @@ void fn_1_17D94(void)
     fn_1_20108(group[0], HUSPR_ATTR_DISPOFF);
 }
 
+/* Creates the three board-result heading sprites, positions them, then hides the group until the
+ * heading is shown. */
 void fn_1_17DCC(OMOBJ *obj)
 {
     MDRESULT_GROUP_WORK *group = &lbl_1_bss_714;
@@ -4663,6 +4912,8 @@ void fn_1_17F60(void)
     HUSPR_GROUPID *group = &lbl_1_bss_714.group;
 }
 
+/* Rotates the two secondary models for each player and periodically switches idle and celebration
+ * motions. */
 void fn_1_17F78(OMOBJ *obj)
 {
     MDRESULT_PLAYER_WORK *work;
@@ -4700,6 +4951,8 @@ void fn_1_17F78(OMOBJ *obj)
     }
 }
 
+/* Builds the final player or team summary layout, positions the podium models, and fills each group
+ * with rank, star, and coin digits. */
 void fn_1_181C0(void)
 {
     HuVecF groupPos[4] = {
@@ -4748,6 +5001,7 @@ void fn_1_181C0(void)
         playerIdx[i] = lbl_1_bss_10D4[order[i]].playerIndex;
         rankVal[i] = lbl_1_bss_10D4[order[i]].rank;
         stars[i] = lbl_1_bss_10D4[order[i]].star;
+        // The summary display has three digit banks, so larger totals are capped.
         if (stars[i] >= 999) {
             stars[i] = 999;
         }
@@ -4846,6 +5100,7 @@ void fn_1_181C0(void)
     Hu3DModelShadowReset(lbl_1_bss_8->mdlId[0]);
 }
 
+/* Hides every model and sprite used by the final player or team summary. */
 void fn_1_18E14(void)
 {
     MDRESULT_PLAYER_WORK *work;
@@ -4866,6 +5121,8 @@ void fn_1_18E14(void)
     Hu3DModelAttrSet(lbl_1_bss_8->mdlId[0], HU3D_ATTR_DISPOFF);
 }
 
+/* Creates four copies of the character portrait and the 14 sprites used for each individual result
+ * summary. */
 void fn_1_18F08(OMOBJ *obj)
 {
     MDRESULT_PLAYER_SPRITE_TABLE spriteInfo = { {
@@ -4931,6 +5188,7 @@ void fn_1_18F08(OMOBJ *obj)
     }
 }
 
+/* Kills the three shared models used by the final player summary. */
 void fn_1_1922C(OMOBJ *obj)
 {
     MDRESULT_PLAYER_WORK *work;
@@ -4946,6 +5204,8 @@ void fn_1_1922C(OMOBJ *obj)
     }
 }
 
+/* Rotates the two secondary models in each player summary and periodically switches eligible
+ * characters between idle and celebration motions. */
 void fn_1_192BC(OMOBJ *obj)
 {
     MDRESULT_PLAYER_WORK *work;
@@ -4981,6 +5241,8 @@ void fn_1_192BC(OMOBJ *obj)
     }
 }
 
+/* Builds the two team summary groups, places the paired character models, and displays each team
+ * name, rank, star total, and coin total. */
 void fn_1_19504(void)
 {
     HuVecF groupPos[2] = {
@@ -5026,6 +5288,7 @@ void fn_1_19504(void)
         teamVal[i] = lbl_1_bss_10D4[order[i]].teamIndex;
         msg[i] = (&lbl_1_bss_1278.messages[4])[order[i]];
         stars[i] = lbl_1_bss_10D4[order[i]].star;
+        // The summary display has three digit banks, so larger totals are capped.
         if (stars[i] >= 999) {
             stars[i] = 999;
         }
@@ -5076,8 +5339,10 @@ void fn_1_19504(void)
             scales[i][3], scales[i][3]);
         fn_1_2001C(lbl_1_bss_C->mdlId[modelIdx[i][0]], &groupPos[i], &offsets[i][0]);
         fn_1_2001C(lbl_1_bss_C->mdlId[modelIdx[i][1]], &groupPos[i], &offsets[i][1]);
-        Hu3DModelScaleSet(lbl_1_bss_C->mdlId[modelIdx[i][0]], scales[i][0], scales[i][0], scales[i][0]);
-        Hu3DModelScaleSet(lbl_1_bss_C->mdlId[modelIdx[i][1]], scales[i][0], scales[i][0], scales[i][0]);
+        Hu3DModelScaleSet(lbl_1_bss_C->mdlId[modelIdx[i][0]], scales[i][0], scales[i][0],
+                          scales[i][0]);
+        Hu3DModelScaleSet(lbl_1_bss_C->mdlId[modelIdx[i][1]], scales[i][0], scales[i][0],
+                          scales[i][0]);
         Hu3DModelLayerSet(lbl_1_bss_C->mdlId[modelIdx[i][0]], 3);
         Hu3DModelLayerSet(lbl_1_bss_C->mdlId[modelIdx[i][1]], 3);
 
@@ -5136,6 +5401,7 @@ void fn_1_19504(void)
     Hu3DModelShadowReset(lbl_1_bss_8->mdlId[0]);
 }
 
+/* Hides both team summary groups, their models, windows, and the four character models. */
 void fn_1_1A468(void)
 {
     MDRESULT_PLAYER_WORK *work;
@@ -5158,6 +5424,8 @@ void fn_1_1A468(void)
     Hu3DModelAttrSet(lbl_1_bss_8->mdlId[0], HU3D_ATTR_DISPOFF);
 }
 
+/* Creates two team summary windows, their linked models, and the sprites used for team names,
+ * ranks, stars, and coins. */
 void fn_1_1A570(OMOBJ *obj)
 {
     MDRESULT_PLAYER_SPRITE_TABLE spriteInfo = { {
@@ -5251,6 +5519,7 @@ void fn_1_1A570(OMOBJ *obj)
     }
 }
 
+/* Kills the two team summary windows and the three source models. */
 void fn_1_1AA10(OMOBJ *obj)
 {
     s16 i;
@@ -5267,6 +5536,8 @@ void fn_1_1AA10(OMOBJ *obj)
     }
 }
 
+/* Object update that rotates summary models and changes eligible character motions for individual
+ * or team mode. */
 void fn_1_1AAA8(OMOBJ *obj)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
@@ -5276,6 +5547,7 @@ void fn_1_1AAA8(OMOBJ *obj)
     }
 }
 
+/* Builds the individual or team summary layout and installs fn_1_1AAA8 to animate it. */
 void fn_1_1AAF8(void)
 {
     lbl_1_bss_48 = 0;
@@ -5287,6 +5559,7 @@ void fn_1_1AAF8(void)
     lbl_1_bss_38->objFunc = fn_1_1AAA8;
 }
 
+/* Hides the summary layout selected for individual or team mode and clears its update callback. */
 void fn_1_1AB5C(void)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
@@ -5298,6 +5571,8 @@ void fn_1_1AB5C(void)
     lbl_1_bss_38->objFunc = NULL;
 }
 
+/* Creates the shared summary models, links them into individual or team summary groups, and hides
+ * the source models. */
 void fn_1_1AD68(OMOBJ *obj)
 {
     obj->mdlId[0] = Hu3DModelCreate(HuDataSelHeapReadNum(
@@ -5318,7 +5593,6 @@ void fn_1_1AD68(OMOBJ *obj)
     Hu3DModelAttrSet(obj->mdlId[1], HU3D_ATTR_DISPOFF);
     Hu3DModelAttrSet(obj->mdlId[2], HU3D_ATTR_DISPOFF);
 
-
     if (lbl_1_bss_1278.values[3] == 0) {
         fn_1_18E14();
     } else {
@@ -5328,6 +5602,7 @@ void fn_1_1AD68(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Kills the shared summary models, team windows, and their motions. */
 void fn_1_1B064(OMOBJ *obj)
 {
     s16 i;
@@ -5364,6 +5639,8 @@ void fn_1_1B064(OMOBJ *obj)
     }
 }
 
+/* Updates the individual result statistics graph as the player moves the cursor, changes graph
+ * mode, or selects another statistic. */
 void fn_1_1B194(OMOBJ *obj)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
@@ -5382,7 +5659,7 @@ void fn_1_1B194(OMOBJ *obj)
                 }
             }
             if (obj->work[0] == 0) {
-                HuAudFXPlay(0);
+                HuAudFXPlay(MSM_SE_CMN_01);
             }
         } else if (group[MDRESULT_GROUP_VIEW_MODE] == 0 &&
             (HuPadDStkRep[0] & PAD_BUTTON_RIGHT)) {
@@ -5399,11 +5676,11 @@ void fn_1_1B194(OMOBJ *obj)
                 }
             }
             if (obj->work[0] == 0) {
-                HuAudFXPlay(0);
+                HuAudFXPlay(MSM_SE_CMN_01);
             }
         } else if (group[MDRESULT_GROUP_VIEW_MODE] != 0 &&
             (HuPadDStkRep[0] & PAD_BUTTON_UP)) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_01);
             group[MDRESULT_GROUP_GRAPH_INDEX]--;
             if (group[MDRESULT_GROUP_GRAPH_INDEX] < 0) {
                 group[MDRESULT_GROUP_GRAPH_INDEX] = 3;
@@ -5412,7 +5689,7 @@ void fn_1_1B194(OMOBJ *obj)
             obj->work[0] = 0;
         } else if (group[MDRESULT_GROUP_VIEW_MODE] != 0 &&
             (HuPadDStkRep[0] & PAD_BUTTON_DOWN)) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_01);
             group[MDRESULT_GROUP_GRAPH_INDEX]++;
             if (group[MDRESULT_GROUP_GRAPH_INDEX] > 3) {
                 group[MDRESULT_GROUP_GRAPH_INDEX] = 0;
@@ -5420,7 +5697,7 @@ void fn_1_1B194(OMOBJ *obj)
             fn_1_2ED4(group[MDRESULT_GROUP_GRAPH_INDEX]);
             obj->work[0] = 0;
         } else if (HuPadBtnDown[0] & PAD_TRIGGER_R) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_01);
             group[MDRESULT_GROUP_VIEW_MODE]++;
             group[MDRESULT_GROUP_VIEW_MODE] %= 3;
             fn_1_1BAF4();
@@ -5447,6 +5724,8 @@ void fn_1_1B194(OMOBJ *obj)
     HuSprGrpPosSet(group[31], lbl_1_bss_4C, -15.0f);
 }
 
+/* Refreshes the individual statistics graph values and sprite banks for the current board, then
+ * shows the selected result view. */
 void fn_1_1BAF4(void)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
@@ -5499,6 +5778,8 @@ void fn_1_1BAF4(void)
     }
 }
 
+/* Hides the graph header, grid, mode controls, and cursor model before rebuilding the graph
+ * view. */
 void fn_1_1C050(void)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
@@ -5512,6 +5793,8 @@ void fn_1_1C050(void)
     Hu3DModelAttrSet(obj->mdlId[0], HU3D_ATTR_DISPOFF);
 }
 
+/* Creates the sprite groups for the individual statistics graph, its grid, selected-row highlights,
+ * mode controls, and value labels. */
 void fn_1_1C0C8(OMOBJ *obj)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
@@ -5668,6 +5951,8 @@ void fn_1_1C9A0(void)
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
 }
 
+/* Object update for the team statistics graph; handles cursor, graph mode, and selected statistic
+ * input, then updates the labels and cursor position. */
 void fn_1_1C9B8(OMOBJ *obj)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
@@ -5686,7 +5971,7 @@ void fn_1_1C9B8(OMOBJ *obj)
                 }
             }
             if (obj->work[0] == 0) {
-                HuAudFXPlay(0);
+                HuAudFXPlay(MSM_SE_CMN_01);
             }
         } else if (group[MDRESULT_GROUP_VIEW_MODE] == 0 &&
             (HuPadDStkRep[0] & PAD_BUTTON_RIGHT)) {
@@ -5703,11 +5988,11 @@ void fn_1_1C9B8(OMOBJ *obj)
                 }
             }
             if (obj->work[0] == 0) {
-                HuAudFXPlay(0);
+                HuAudFXPlay(MSM_SE_CMN_01);
             }
         } else if (group[MDRESULT_GROUP_VIEW_MODE] != 0 &&
             (HuPadDStkRep[0] & PAD_BUTTON_UP)) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_01);
             group[MDRESULT_GROUP_GRAPH_INDEX]--;
             if (group[MDRESULT_GROUP_GRAPH_INDEX] < 0) {
                 group[MDRESULT_GROUP_GRAPH_INDEX] = 1;
@@ -5716,7 +6001,7 @@ void fn_1_1C9B8(OMOBJ *obj)
             obj->work[0] = 0;
         } else if (group[MDRESULT_GROUP_VIEW_MODE] != 0 &&
             (HuPadDStkRep[0] & PAD_BUTTON_DOWN)) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_01);
             group[MDRESULT_GROUP_GRAPH_INDEX]++;
             if (group[MDRESULT_GROUP_GRAPH_INDEX] > 1) {
                 group[MDRESULT_GROUP_GRAPH_INDEX] = 0;
@@ -5724,7 +6009,7 @@ void fn_1_1C9B8(OMOBJ *obj)
             fn_1_2ED4(group[MDRESULT_GROUP_GRAPH_INDEX]);
             obj->work[0] = 0;
         } else if (HuPadBtnDown[0] & PAD_TRIGGER_R) {
-            HuAudFXPlay(0);
+            HuAudFXPlay(MSM_SE_CMN_01);
             group[MDRESULT_GROUP_VIEW_MODE]++;
             group[MDRESULT_GROUP_VIEW_MODE] %= 3;
             fn_1_1D318();
@@ -5751,6 +6036,8 @@ void fn_1_1C9B8(OMOBJ *obj)
     HuSprGrpPosSet(group[31], lbl_1_bss_50, -15.0f);
 }
 
+/* Refreshes the team statistics graph and switches between the board statistics, star graph, and
+ * coin graph views. */
 void fn_1_1D318(void)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
@@ -5803,6 +6090,7 @@ void fn_1_1D318(void)
     }
 }
 
+/* Hides the graph header, grid, mode controls, cursor, and the selected-statistic model. */
 void fn_1_1D874(void)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
@@ -5816,6 +6104,8 @@ void fn_1_1D874(void)
     Hu3DModelAttrSet(obj->mdlId[0], HU3D_ATTR_DISPOFF);
 }
 
+/* Creates the team statistics graph sprite groups, grid, selected-row highlights, graph-mode
+ * controls, and value labels. */
 void fn_1_1D8EC(OMOBJ *obj)
 {
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
@@ -5968,6 +6258,7 @@ void fn_1_1E19C(void)
     HUSPR_GROUPID *group = lbl_1_bss_3D2;
 }
 
+/* Object update that routes graph input to the individual or team statistics screen. */
 void fn_1_1E1B4(OMOBJ *obj)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
@@ -5977,6 +6268,7 @@ void fn_1_1E1B4(OMOBJ *obj)
     }
 }
 
+/* Builds the individual or team graph view and installs fn_1_1E1B4 as its input update. */
 void fn_1_1E204(void)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
@@ -5987,6 +6279,7 @@ void fn_1_1E204(void)
     lbl_1_bss_3C[0]->objFunc = fn_1_1E1B4;
 }
 
+/* Hides the active graph view and clears its input update. */
 void fn_1_1E258(void)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
@@ -5997,6 +6290,8 @@ void fn_1_1E258(void)
     lbl_1_bss_3C[0]->objFunc = NULL;
 }
 
+/* Creates the individual or team graph sprite groups, hides the initial view, and ends its setup
+ * callback. */
 void fn_1_1E358(OMOBJ *obj)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
@@ -6008,6 +6303,8 @@ void fn_1_1E358(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Has no visible effect: both branches only assign the same graph-group address to an unused local
+ * pointer. */
 void fn_1_1E47C(void)
 {
     if (lbl_1_bss_1278.values[3] == 0) {
@@ -6017,6 +6314,8 @@ void fn_1_1E47C(void)
     }
 }
 
+/* Finds the intersection of two non-parallel 2D lines; for parallel directions it writes originA
+ * and returns without a value. */
 s32 fn_1_1E4B8(HuVec2f *originA, HuVec2f *directionA, HuVec2f *originB,
     HuVec2f *directionB, HuVec2f *intersection)
 {
@@ -6048,6 +6347,8 @@ s32 fn_1_1E4B8(HuVec2f *originA, HuVec2f *directionA, HuVec2f *originB,
     return 1;
 }
 
+/* Custom graph sprite draw callback; scales the board statistics into the graph area and draws
+ * colored line strips for each player or team. */
 void fn_1_1E5E8(HUSPRITE *sprite)
 {
     s16 graphCount;
@@ -6187,6 +6488,7 @@ void fn_1_1E5E8(HUSPRITE *sprite)
     }
 }
 
+/* Creates the custom graph sprite and loads the texture used by fn_1_1E5E8. */
 void fn_1_1F308(void)
 {
     HUSPRID sprite;
@@ -6200,6 +6502,8 @@ void fn_1_1F308(void)
     HuSprAttrSet(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
 }
 
+/* Copies individual or team star and coin history into the graph buffers, including the bonus-star
+ * endpoint when enabled. */
 void fn_1_1F3D4(void)
 {
     s16 player;
@@ -6255,16 +6559,13 @@ void fn_1_1F834(void)
     HuSprAttrSet(lbl_1_bss_60, 0, HUSPR_ATTR_DISPOFF);
 }
 
+/* Stores the three coordinates of a result-scene vector. */
 void fn_1_1F868(HuVecF *vec, float x, float y, float z)
 {
     vec->x = x;
     vec->y = y;
     vec->z = z;
 }
-
-
-
-
 
 HuVecF lbl_1_data_0[16] = {
     { -270.0f, 0.0f, -200.0f },
@@ -6285,54 +6586,32 @@ HuVecF lbl_1_data_0[16] = {
     {  250.0f, 65.0f, -200.0f },
 };
 
-
 s32 lbl_1_data_C0[39] = {
-    DATANUM(DATA_mdpresult, 82),
-    DATANUM(DATA_mdpresult, 83),
-    DATANUM(DATA_mdpresult, 84),
-    DATANUM(DATA_mdpresult, 85),
-    DATANUM(DATA_mdpresult, 86),
-    DATANUM(DATA_mdpresult, 87),
-    DATANUM(DATA_mdpresult, 88),
-    DATANUM(DATA_mdpresult, 89),
-    DATANUM(DATA_mdpresult, 90),
-    DATANUM(DATA_mdpresult, 91),
-    DATANUM(DATA_mdpresult, 76),
-    DATANUM(DATA_mdpresult, 77),
-    DATANUM(DATA_mdpresult, 78),
-    DATANUM(DATA_mdpresult, 99),
-    DATANUM(DATA_mdpresult, 100),
-    DATANUM(DATA_mdpresult, 97),
-    DATANUM(DATA_mdpresult, 98),
-    DATANUM(DATA_mdpresult, 111),
-    DATANUM(DATA_mdpresult, 105),
-    DATANUM(DATA_mdpresult, 106),
-    DATANUM(DATA_mdpresult, 107),
-    DATANUM(DATA_mdpresult, 108),
-    DATANUM(DATA_mdpresult, 110),
-    DATANUM(DATA_mdpresult, 109),
-    DATANUM(DATA_mdpresult, 112),
-    DATANUM(DATA_mdpresult, 113),
-    DATANUM(DATA_mdpresult, 114),
-    DATANUM(DATA_mdpresult, 115),
-    DATANUM(DATA_mdpresult, 101),
-    DATANUM(DATA_mdpresult, 92),
-    DATANUM(DATA_mdpresult, 93),
-    DATANUM(DATA_mdpresult, 94),
-    DATANUM(DATA_mdpresult, 95),
-    DATANUM(DATA_mdpresult, 102),
-    DATANUM(DATA_mdpresult, 103),
-    DATANUM(DATA_mdpresult, 104),
-    DATANUM(DATA_mdpresult, 74),
-    DATANUM(DATA_mdpresult, 75),
+    DATANUM(DATA_mdpresult, 82), DATANUM(DATA_mdpresult, 83),
+    DATANUM(DATA_mdpresult, 84), DATANUM(DATA_mdpresult, 85),
+    DATANUM(DATA_mdpresult, 86), DATANUM(DATA_mdpresult, 87),
+    DATANUM(DATA_mdpresult, 88), DATANUM(DATA_mdpresult, 89),
+    DATANUM(DATA_mdpresult, 90), DATANUM(DATA_mdpresult, 91),
+    DATANUM(DATA_mdpresult, 76), DATANUM(DATA_mdpresult, 77),
+    DATANUM(DATA_mdpresult, 78), DATANUM(DATA_mdpresult, 99),
+    DATANUM(DATA_mdpresult, 100), DATANUM(DATA_mdpresult, 97),
+    DATANUM(DATA_mdpresult, 98), DATANUM(DATA_mdpresult, 111),
+    DATANUM(DATA_mdpresult, 105), DATANUM(DATA_mdpresult, 106),
+    DATANUM(DATA_mdpresult, 107), DATANUM(DATA_mdpresult, 108),
+    DATANUM(DATA_mdpresult, 110), DATANUM(DATA_mdpresult, 109),
+    DATANUM(DATA_mdpresult, 112), DATANUM(DATA_mdpresult, 113),
+    DATANUM(DATA_mdpresult, 114), DATANUM(DATA_mdpresult, 115),
+    DATANUM(DATA_mdpresult, 101), DATANUM(DATA_mdpresult, 92),
+    DATANUM(DATA_mdpresult, 93), DATANUM(DATA_mdpresult, 94),
+    DATANUM(DATA_mdpresult, 95), DATANUM(DATA_mdpresult, 102),
+    DATANUM(DATA_mdpresult, 103), DATANUM(DATA_mdpresult, 104),
+    DATANUM(DATA_mdpresult, 74), DATANUM(DATA_mdpresult, 75),
     DATANUM(DATA_mdpresult, 117),
 };
-
 
 s16 lbl_1_data_15C[6] = {
     3, 3, 3, 3, 5, 1,
 };
-
 
 MDRESULT_SPRITE_INFO lbl_1_data_168[18] = {
     { 0, 0,  0, 0, 0, {   0.0f,   0.0f }, { 1.0f, 1.0f }, 0.0f },
@@ -6355,13 +6634,9 @@ MDRESULT_SPRITE_INFO lbl_1_data_168[18] = {
     { 5, 0, 38, 0, 0, { 288.0f, 240.0f }, {10.0f,10.0f }, 0.0f },
 };
 
-
 s16 lbl_1_data_3A8[6] = {
     12, 12, 12, 12, 12, 10,
 };
-
-
-
 
 MDRESULT_GRAPH_TABLE lbl_1_data_3B4[6] = {
     { {     {  0, 0, MESSNUM(MESS_PARTY_RESULTS, 42) },     {  1, 0, MESSNUM(MESS_PARTY_RESULTS, 43) },     {  2, 0, MESSNUM(MESS_PARTY_RESULTS, 44) },     {  3, 0, MESSNUM(MESS_PARTY_RESULTS, 45) },     {  4, 0, MESSNUM(MESS_PARTY_RESULTS, 46) },     {  5, 0, MESSNUM(MESS_PARTY_RESULTS, 47) },     {  6, 0, MESSNUM(MESS_PARTY_RESULTS, 61) },     {  7, 0, MESSNUM(MESS_PARTY_RESULTS, 49) },     {  8, 0, MESSNUM(MESS_PARTY_RESULTS, 63) },     {  9, 0, MESSNUM(MESS_PARTY_RESULTS, 62) },     { 11, 0, MESSNUM(MESS_PARTY_RESULTS, 50) },     { 10, 0, MESSNUM(MESS_PARTY_RESULTS, 51) }, } },
@@ -6372,24 +6647,12 @@ MDRESULT_GRAPH_TABLE lbl_1_data_3B4[6] = {
     { {     {  0, 0, MESSNUM(MESS_PARTY_RESULTS, 42) },     {  1, 0, MESSNUM(MESS_PARTY_RESULTS, 43) },     {  2, 0, MESSNUM(MESS_PARTY_RESULTS, 44) },     {  3, 0, MESSNUM(MESS_PARTY_RESULTS, 45) },     {  4, 0, MESSNUM(MESS_PARTY_RESULTS, 46) },     {  5, 0, MESSNUM(MESS_PARTY_RESULTS, 47) },     {  6, 0, MESSNUM(MESS_PARTY_RESULTS, 61) },     {  7, 0, MESSNUM(MESS_PARTY_RESULTS, 49) },     {  8, 0, MESSNUM(MESS_PARTY_RESULTS, 63) },     {  9, 0, MESSNUM(MESS_PARTY_RESULTS, 62) },     { 11, 0, MESSNUM(MESS_PARTY_RESULTS, 50) },     { 10, 0, MESSNUM(MESS_PARTY_RESULTS, 51) }, } },
 };
 
-
-
-
-
-
-
-
 s32 lbl_1_data_5F4[11] = {
-    MESSNUM(MESS_CHARA_NAME, 0),
-    MESSNUM(MESS_CHARA_NAME, 1),
-    MESSNUM(MESS_CHARA_NAME, 2),
-    MESSNUM(MESS_CHARA_NAME, 3),
-    MESSNUM(MESS_CHARA_NAME, 4),
-    MESSNUM(MESS_CHARA_NAME, 5),
-    MESSNUM(MESS_CHARA_NAME, 6),
-    MESSNUM(MESS_CHARA_NAME, 7),
-    MESSNUM(MESS_CHARA_NAME, 8),
-    MESSNUM(MESS_CHARA_NAME, 9),
+    MESSNUM(MESS_CHARA_NAME, 0), MESSNUM(MESS_CHARA_NAME, 1),
+    MESSNUM(MESS_CHARA_NAME, 2), MESSNUM(MESS_CHARA_NAME, 3),
+    MESSNUM(MESS_CHARA_NAME, 4), MESSNUM(MESS_CHARA_NAME, 5),
+    MESSNUM(MESS_CHARA_NAME, 6), MESSNUM(MESS_CHARA_NAME, 7),
+    MESSNUM(MESS_CHARA_NAME, 8), MESSNUM(MESS_CHARA_NAME, 9),
     MESSNUM(MESS_CHARA_NAME, 10),
 };
 
@@ -6402,7 +6665,6 @@ char lbl_1_data_666[] = "gN01m1-itemhook_R";
 char lbl_1_data_678[] = "bg03";
 char lbl_1_data_67D[] = "%d, ";
 char lbl_1_data_682[] = "\n";
-
 
 s16 lbl_1_data_684[4] = { 0, 0, 0, 0 };
 
@@ -6419,7 +6681,6 @@ char lbl_1_data_750[] = "%d\n";
 float lbl_1_data_754 = 162.0f;
 float lbl_1_data_758 = 162.0f;
 
-
 GXColor lbl_1_data_75C[4] = {
     { 233, 80, 146, 255 },
     { 112, 212, 221, 255 },
@@ -6428,10 +6689,6 @@ GXColor lbl_1_data_75C[4] = {
 };
 
 char lbl_1_data_76C[] = "================ %d,%d\n";
-
-
-
-
 
 HU3D_LIGHTID lbl_1_bss_130E[5];
 HUWINID lbl_1_bss_1304[5];

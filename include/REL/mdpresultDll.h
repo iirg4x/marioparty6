@@ -1,6 +1,8 @@
 #ifndef MDRESULT_H
 #define MDRESULT_H
 
+/* Shared constants and work records for the minigame result overlay. */
+
 #include "dolphin.h"
 #include "game/hu3d.h"
 #include "game/object.h"
@@ -90,224 +92,223 @@ typedef struct MdResultCameraWork_s MDRESULT_CAMERA_WORK;
 typedef void (*MDRESULT_CAMERA_CALLBACK)(OMOBJ *obj, MDRESULT_CAMERA_WORK *camera);
 
 typedef struct MdResultMessageNumbers_s {
-    s32 values[2];
+    s32 values[2]; /* Message IDs used by the result window sound callback. */
 } MDRESULT_MESSAGE_NUMBERS;
 
 typedef struct MdResultFxNumbers_s {
-    s32 values[16];
+    s32 values[16]; /* Sound effect IDs indexed by the result-window slot. */
 } MDRESULT_FX_NUMBERS;
 
 typedef struct MdResultS16Table22_s {
-    s16 values[2][11];
+    s16 values[2][11]; /* Two voice tables indexed by character ID. */
 } MDRESULT_S16_TABLE_22;
 
 typedef struct MdResultByteTable110_s {
-    s8 values[55][2];
+    s8 values[55][2]; /* Unordered character pairs used by the special result message lookup. */
 } MDRESULT_BYTE_TABLE_110;
 
 typedef struct MdResultU8Table12_s {
-    u8 values[12];
+    u8 values[12]; /* Byte values used by the corresponding result effect table. */
 } MDRESULT_U8_TABLE_12;
 
 typedef struct MdResultFloatTable11_s {
-    float values[11];
+    float values[11]; /* Scalar values used by the corresponding result animation. */
 } MDRESULT_FLOAT_TABLE_11;
 
 typedef struct MdResultFloatTable8_s {
-    float values[8];
+    float values[8]; /* Scalar values used by the corresponding result animation. */
 } MDRESULT_FLOAT_TABLE_8;
 
 typedef struct MdResultColorTable8_s {
-    GXColor values[8];
+    GXColor values[8]; /* Eight RGBA colors used by the result effects. */
 } MDRESULT_COLOR_TABLE_8;
 
 typedef struct MdResultColorTable7_s {
-    GXColor values[7];
+    GXColor values[7]; /* Seven RGBA colors used by the result particle effect. */
 } MDRESULT_COLOR_TABLE_7;
 
 typedef struct MdResultColorStep_s {
-    s16 tick;
-    s16 paletteIndex;
+    s16 tick; /* Frame at which this palette step is reached. */
+    s16 paletteIndex; /* Color-table entry applied at this step. */
 } MDRESULT_COLOR_STEP;
 
 typedef struct MdResultColorWork_s {
-    u8 current[4];
-    u8 target[4];
+    u8 current[4]; /* Current RGBA color bytes. */
+    u8 target[4]; /* Destination RGBA color bytes. */
 } MDRESULT_COLOR_WORK;
 
 typedef struct MdResultBss1278Work_s {
-    s16 values[4];
-    s32 messages[6];
+    s16 values[4]; /* Board number, turn limit, bonus-star flag, and team-mode flag. */
+    s32 messages[6]; /* Four character-name messages followed by two pair messages. */
 } MDRESULT_BSS_1278_WORK;
 
 typedef struct MdResultVectorPair_s {
-    HuVecF values[2];
+    HuVecF values[2]; /* The two edges of one rendered trail segment. */
 } MDRESULT_VECTOR_PAIR;
 
 typedef struct MdResultCharacterWork_s {
-    s16 unk_00;
-    s16 unk_02;
-    s16 unk_04;
-    s16 unk_06;
-    s16 character;
-    s16 unk_0A;
+    s16 playerIndex; /* Player slot whose character is shown. */
+    s16 groupNo; /* Group number from GwPlayerConf. */
+    s16 playerType; /* Human or computer type from GwPlayerConf. */
+    s16 computerDifficulty; /* Computer difficulty from GwPlayerConf. */
+    s16 character; /* Character ID used for the displayed model and voice. */
+    s16 padNo; /* Controller slot used for the result prompt. */
 } MDRESULT_CHARACTER_WORK;
 
 typedef struct MdResultSpriteInfo_s {
-    s16 groupNo;
-    s16 memberNo;
-    s16 animNo;
-    s16 priority;
-    s16 bank;
-    HuVec2f pos;
-    HuVec2f scale;
-    float zRot;
+    s16 groupNo; /* Sprite group receiving this sprite. */
+    s16 memberNo; /* Member slot within the group. */
+    s16 animNo; /* Animation resource index. */
+    s16 priority; /* Draw priority before the screen-wide offset. */
+    s16 bank; /* Initial sprite bank. */
+    HuVec2f pos; /* Screen position in pixels. */
+    HuVec2f scale; /* Horizontal and vertical sprite scale. */
+    float zRot; /* Rotation around the screen Z axis, in degrees. */
 } MDRESULT_SPRITE_INFO;
 
 typedef struct MdResultPlayerSpriteInfo_s {
-    s16 animNo;
-    s16 priority;
-    s16 bank;
-    HuVec2f pos;
-    HuVec2f scale;
-    float zRot;
+    s16 animNo; /* Animation resource index. */
+    s16 priority; /* Draw priority before the screen-wide offset. */
+    s16 bank; /* Initial sprite bank. */
+    HuVec2f pos; /* Screen position in pixels. */
+    HuVec2f scale; /* Horizontal and vertical sprite scale. */
+    float zRot; /* Rotation around the screen Z axis, in degrees. */
 } MDRESULT_PLAYER_SPRITE_INFO;
 
 typedef struct MdResultPlayerSpriteTable_s {
-    MDRESULT_PLAYER_SPRITE_INFO values[14];
+    MDRESULT_PLAYER_SPRITE_INFO values[14]; /* Sprite descriptions for one player result. */
 } MDRESULT_PLAYER_SPRITE_TABLE;
 
 typedef struct MdResultPlayerSpriteTable15_s {
-    MDRESULT_PLAYER_SPRITE_INFO values[15];
+    MDRESULT_PLAYER_SPRITE_INFO values[15]; /* Sprite descriptions for one player result variant. */
 } MDRESULT_PLAYER_SPRITE_TABLE_15;
 
 typedef struct MdResultPlayerSpriteTable17_s {
-    MDRESULT_PLAYER_SPRITE_INFO values[17];
+    MDRESULT_PLAYER_SPRITE_INFO values[17]; /* Sprite descriptions for one player result variant. */
 } MDRESULT_PLAYER_SPRITE_TABLE_17;
 
 typedef struct MdResultGraphRecord_s {
-    s16 bank;
-    s16 unk_02;
-    s32 message;
+    s16 bank; /* Sprite bank containing the graph label. */
+    s16 reserved; /* Zero in every graph record in this table. */
+    s32 message; /* Message resource displayed for this statistic. */
 } MDRESULT_GRAPH_RECORD;
 
 typedef struct MdResultGraphTable_s {
-    MDRESULT_GRAPH_RECORD values[12];
+    MDRESULT_GRAPH_RECORD values[12]; /* Twelve graph labels and their message resources. */
 } MDRESULT_GRAPH_TABLE;
 
 typedef struct MdResultPlayerSpriteWork_s {
-    HU3D_MODELID models[3];
-    HUSPR_GROUPID group;
-    HUSPRID sprites[14];
-    u32 unk_24;
+    HU3D_MODELID models[3]; /* Character and result-scene model IDs. */
+    HUSPR_GROUPID group; /* Main player-result sprite group. */
+    HUSPRID sprites[14]; /* Individual score and label sprites. */
+    u32 reservedFlags; /* Preserved per-player flags; no use is visible here. */
 } MDRESULT_PLAYER_SPRITE_WORK;
 
-
 typedef struct MdResultEmitterWork_s {
-    s16 active;
-    float timer;
-    float scale;
-    void *data;
+    s16 active; /* Nonzero while this emitter is producing particles. */
+    float timer; /* Frames elapsed in the current emission. */
+    float scale; /* Current particle scale. */
+    void *data; /* Emitter-specific particle state. */
 } MDRESULT_EMITTER_WORK;
 
 typedef struct MdResultEmitterVertex_s {
-    HuVecF position;
-    float weight;
+    HuVecF position; /* Vertex position in scene coordinates. */
+    float weight; /* Contribution used when blending emitter vertices. */
 } MDRESULT_EMITTER_VERTEX;
 
 typedef struct MdResultPlayerWork_s {
-    HU3D_MODELID models[3];
-    HUSPR_GROUPID group;
-    float values[6];
-    HUSPR_GROUPID secondGroup;
-    s16 state[2];
-    HUWINID winId;
+    HU3D_MODELID models[3]; /* Models used for this player's result display. */
+    HUSPR_GROUPID group; /* Main sprite group. */
+    float values[6]; /* Per-player display values used during score presentation. */
+    HUSPR_GROUPID secondGroup; /* Additional sprite group used by this display. */
+    s16 state[2]; /* Result-display state for the two presentation stages. */
+    HUWINID winId; /* Message window associated with this player display. */
 } MDRESULT_PLAYER_WORK;
 
 typedef struct MdResultPlayerAltWork_s {
-    HU3D_MODELID models[3];
-    HUSPR_GROUPID group;
-    HUSPRID sprites[12];
-    HUSPR_GROUPID secondGroup;
-    HUSPRID secondSprites[2];
-    HUWINID winId;
+    HU3D_MODELID models[3]; /* Models used for this player's alternate display. */
+    HUSPR_GROUPID group; /* Main sprite group. */
+    HUSPRID sprites[12]; /* Sprite IDs in the main group. */
+    HUSPR_GROUPID secondGroup; /* Additional sprite group. */
+    HUSPRID secondSprites[2]; /* Sprite IDs in the additional group. */
+    HUWINID winId; /* Message window associated with this display. */
 } MDRESULT_PLAYER_ALT_WORK;
 
 typedef struct MdResultTrailWork_s {
-    HuVecF *points;
-    HuVecF base;
-    HuVecF velocity;
-    s16 modelIndex;
-    s16 state;
-    s16 pointCount;
-    s16 delay;
-    GXColor color;
-    s16 unk_28;
-    s16 unk_2A;
+    HuVecF *points; /* Ordered centerline points used to build the trail strip. */
+    HuVecF base; /* Offset added while trailing points follow the head. */
+    HuVecF velocity; /* Direction and speed for a moving trail head. */
+    s16 modelIndex; /* Index into the trail model array. */
+    s16 state; /* 1 fades the trail in; 0 fades it out. */
+    s16 pointCount; /* Number of allocated trail points. */
+    s16 delay; /* Half-width of the rendered trail, in scene units. */
+    GXColor color; /* Trail RGBA color. */
+    s16 moving; /* 0 uses a fading stationary trail; 1 advances its head. */
+    s16 reserved; /* Unused by the visible trail routines. */
 } MDRESULT_TRAIL_WORK;
 
 typedef struct MdResultScoreWork_s {
-    s16 playerIndex;
-    s16 teamIndex;
-    s16 rank;
-    s16 star;
-    s16 coin;
-    s16 values[16];
+    s16 playerIndex; /* First player represented by this result row. */
+    s16 teamIndex; /* Team index, or zero for individual results. */
+    s16 rank; /* Placement in the result screen. */
+    s16 star; /* Star total shown for this row. */
+    s16 coin; /* Coin total shown for this row. */
+    s16 values[16]; /* Board statistics, with handicap in slot 15. */
 } MDRESULT_SCORE_WORK;
 
 typedef struct MdResultGroupWork_s {
-    HUSPR_GROUPID group;
-    HUSPRID sprites[3];
+    HUSPR_GROUPID group; /* Sprite group containing the three displayed digits. */
+    HUSPRID sprites[3]; /* Sprite IDs for the hundreds, tens, and ones digits. */
 } MDRESULT_GROUP_WORK;
 
 typedef struct MdResultStateWork_s {
-    s16 state;
-    float time;
-    float delay;
-    s16 score;
+    s16 state; /* Current phase of a result-screen sequence. */
+    float time; /* Frames elapsed in the current phase. */
+    float delay; /* Frames to wait before advancing the phase. */
+    s16 score; /* Score value used by the sequence. */
 } MDRESULT_STATE_WORK;
 
 typedef struct MdResultMoveWork_s {
-    s16 state;
-    float time;
-    float duration;
-    HuVecF current;
-    HuVecF middle;
-    HuVecF target;
-    float values[4];
+    s16 state; /* Movement phase. */
+    float time; /* Frames elapsed in the current movement. */
+    float duration; /* Total movement duration in frames. */
+    HuVecF current; /* Starting or current position. */
+    HuVecF middle; /* Intermediate control point or position. */
+    HuVecF target; /* Destination position. */
+    float values[4]; /* Motion-specific speed, angle, and phase values. */
 } MDRESULT_MOVE_WORK;
 
 typedef struct MdResultModelEffectWork_s {
-    s16 state;
-    float time;
-    float angle;
-    float unk_0C;
-    float unk_10;
-    float unk_14;
-    float unk_18;
-    float unk_1C;
-    float unk_20;
-    float unk_24;
-    float unk_28;
-    float unk_2C;
-    float unk_30;
-    float unk_34;
-    float unk_38;
-    float unk_3C;
+    s16 state; /* Travel direction selected for the effect model. */
+    float time; /* Frames elapsed in the vertical bobbing cycle. */
+    float angle; /* Random frame count before the next bobbing cycle. */
+    float rotationSpeedX; /* Per-frame X rotation change, in degrees. */
+    float rotationSpeedY; /* Per-frame Y rotation change, in degrees. */
+    float rotationSpeedZ; /* Per-frame Z rotation change, in degrees. */
+    float horizontalSpeed; /* X movement per frame. */
+    float verticalDrift; /* Y movement per frame, plus the shared drift value. */
+    float depthSpeed; /* Z movement per frame. */
+    float horizontalLimit; /* X boundary that restarts the model's travel. */
+    float reservedFloat28; /* Unused by the visible effect routines. */
+    float reservedFloat2C; /* Unused by the visible effect routines. */
+    float reservedFloat30; /* Unused by the visible effect routines. */
+    float reservedFloat34; /* Unused by the visible effect routines. */
+    float reservedFloat38; /* Unused by the visible effect routines. */
+    float reservedFloat3C; /* Unused by the visible effect routines. */
 } MDRESULT_MODEL_EFFECT_WORK;
 
 struct MdResultCameraWork_s {
-    OMOBJ *obj;
-    HuVecF center;
-    HuVecF targetCenter;
-    HuVecF rot;
-    HuVecF targetRot;
-    float zoom;
-    float targetZoom;
-    MDRESULT_CAMERA_CALLBACK callback;
-    s16 unk_40;
-    s16 mode;
-    float unk_44;
+    OMOBJ *obj; /* Result-camera object updated by its callback. */
+    HuVecF center; /* Current camera look-at point in world units. */
+    HuVecF targetCenter; /* Look-at point approached by the camera. */
+    HuVecF rot; /* Current camera rotation in radians. */
+    HuVecF targetRot; /* Rotation approached by the camera, in radians. */
+    float zoom; /* Current camera distance/zoom value. */
+    float targetZoom; /* Camera distance/zoom value approached over time. */
+    MDRESULT_CAMERA_CALLBACK callback; /* Active camera motion callback. */
+    s16 reserved; /* Unused by the visible camera routines. */
+    s16 cameraMode; /* Mode selected by the result sequence for camera motion. */
+    float reservedParam; /* Unused by the visible camera routines. */
 };
 
 #endif

@@ -1,3 +1,4 @@
+/* Provides result-scene motion, sprite, and particle-effect helpers. */
 #include <string.h>
 
 #include "datadir_enum.h"
@@ -36,13 +37,13 @@ float fn_1_1FF48(float start, float end, float time, float duration);
 float fn_1_1FE74(float start, float end, float time, float duration);
 void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId,
     GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);
-void fn_1_26CF8(s16 index, HuVecF *position, float value);
+void fn_1_26CF8(s16 index, HuVecF *position, float verticalAccel);
 float fn_1_1FC94(float start, float end, float time, float duration);
 void fn_1_2001C(HU3D_MODELID modelId, const HuVecF *first,
     const HuVecF *second);
 void fn_1_20108(HUSPR_GROUPID groupId, s32 attr);
-void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 value);
-void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 value);
+void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number);
+void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 number);
 void fn_1_21714(s16 index, s16 parManId, HuVecF *velocity,
     float accelX, u8 *color);
 void fn_1_217EC(s16 index, s16 parManId, HuVecF *velocity,
@@ -65,10 +66,10 @@ void fn_1_243DC(s16 index, const HuVecF *position, u8 *color,
     float velocityY, float velocityZ, float accelX, s16 mode);
 void fn_1_20188(HUSPR_GROUPID groupId, s32 attr);
 void fn_1_25DB0(s16 index, HuVecF *position, float alpha);
-void fn_1_25D0C(float value);
+void fn_1_25D0C(float colorIndex);
 void fn_1_25FF4(s16 index);
 void fn_1_25B90(void);
-void fn_1_26EAC(float value);
+void fn_1_26EAC(float ignoredValue);
 void fn_1_26F74(void);
 void fn_1_23EF0(HuVecF *position);
 void fn_1_2104C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
@@ -92,10 +93,8 @@ extern HU3D_MODELID lbl_1_bss_1480[8];
 extern ANIMDATA *lbl_1_bss_14C8[7];
 extern s32 lbl_1_data_788[7];
 
-
-
 float fn_1_1F8EC(float start, float middle, float end, float time);
-void fn_1_204B0(float value);
+void fn_1_204B0(float colorIndex);
 void fn_1_20BC8(void);
 void fn_1_20CE0(void);
 void fn_1_20D0C(s16 index, HuVecF *position, float alpha);
@@ -113,9 +112,9 @@ void fn_1_22A4C(void);
 void fn_1_22C38(void);
 void fn_1_22CBC(MDRESULT_TRAIL_WORK *work);
 void fn_1_23C88(void);
-void fn_1_23D38(s16 index, HuVecF *position, float value);
+void fn_1_23D38(s16 index, HuVecF *position, float verticalOffset);
 void fn_1_2429C(s16 index);
-void fn_1_24308(s16 index, float value);
+void fn_1_24308(s16 index, float velocityZ);
 void fn_1_2436C(s16 index, HuVecF *position);
 void fn_1_24AD0(void);
 void fn_1_24BB4(void);
@@ -124,6 +123,8 @@ void fn_1_24C28(void);
 void fn_1_251D4(void);
 void fn_1_252CC(void);
 
+/* Interpolates between two values linearly, clamping to the start or end outside the animation
+ * duration. */
 float fn_1_1F878(float start, float end, float time, float duration)
 {
     if (time <= 0.0f) {
@@ -135,6 +136,8 @@ float fn_1_1F878(float start, float end, float time, float duration)
     return start + ((time / duration) * (end - start));
 }
 
+/* Moves a value toward its target by the supplied easing weight; used by result-camera and model
+ * transitions. */
 float fn_1_1F8BC(float current, float target, float weight)
 {
     if (current == target) {
@@ -143,6 +146,7 @@ float fn_1_1F8BC(float current, float target, float weight)
     return (target + (current * (weight - 1.0f))) / weight;
 }
 
+/* Evaluates one scalar component of a quadratic Bezier curve for a normalized time from 0 to 1. */
 float fn_1_1F8EC(float start, float middle, float end, float time)
 {
     float inverse = 1.0f - time;
@@ -152,6 +156,7 @@ float fn_1_1F8EC(float start, float middle, float end, float time)
             + (2.0f * (middle * (inverse * time))));
 }
 
+/* Evaluates a 3D quadratic Bezier path from the start, control, and end points. */
 void fn_1_1F948(HuVecF *result, const HuVecF *start,
     const HuVecF *middle, const HuVecF *end, float time)
 {
@@ -160,6 +165,7 @@ void fn_1_1F948(HuVecF *result, const HuVecF *start,
     result->z = fn_1_1F8EC(start->z, middle->z, end->z, time);
 }
 
+/* Moves each component of a 3D vector toward its target by the supplied easing weight. */
 void fn_1_1FB50(HuVecF *current, const HuVecF *target, float weight)
 {
     current->x = fn_1_1F8BC(current->x, target->x, weight);
@@ -167,6 +173,7 @@ void fn_1_1FB50(HuVecF *current, const HuVecF *target, float weight)
     current->z = fn_1_1F8BC(current->z, target->z, weight);
 }
 
+/* Applies a quarter-sine ease from start to end, clamping to the endpoints over the duration. */
 float fn_1_1FC94(float start, float end, float time, float duration)
 {
     if (time <= 0.0f) {
@@ -180,6 +187,7 @@ float fn_1_1FC94(float start, float end, float time, float duration)
             180.0)));
 }
 
+/* Applies a quarter-cosine ease from start to end, clamping to the endpoints over the duration. */
 float fn_1_1FD7C(float start, float end, float time, float duration)
 {
     if (time <= 0.0f) {
@@ -194,6 +202,7 @@ float fn_1_1FD7C(float start, float end, float time, float duration)
                 180.0))));
 }
 
+/* Applies a half-sine pulse between start and end; outside the active interval it returns start. */
 float fn_1_1FE74(float start, float end, float time, float duration)
 {
     if (time <= 0.0f || time >= duration) {
@@ -204,6 +213,8 @@ float fn_1_1FE74(float start, float end, float time, float duration)
             180.0)));
 }
 
+/* Applies a full-sine oscillation between start and end; outside the active interval it returns
+ * start. */
 float fn_1_1FF48(float start, float end, float time, float duration)
 {
     if (time <= 0.0f || time >= duration) {
@@ -214,6 +225,8 @@ float fn_1_1FF48(float start, float end, float time, float duration)
             180.0)));
 }
 
+/* Converts the sum of optional screen-space offsets to a 3D position and places the selected model
+ * there. */
 void fn_1_2001C(HU3D_MODELID modelId, const HuVecF *first,
     const HuVecF *second)
 {
@@ -234,6 +247,7 @@ void fn_1_2001C(HU3D_MODELID modelId, const HuVecF *first,
     Hu3DModelPosSet(modelId, world.x, world.y, world.z);
 }
 
+/* Sets the supplied sprite attribute on every member of a sprite group. */
 void fn_1_20108(HUSPR_GROUPID groupId, s32 attr)
 {
     HUSPR_GROUP *group = &HuSprGrpData[groupId];
@@ -244,6 +258,7 @@ void fn_1_20108(HUSPR_GROUPID groupId, s32 attr)
     }
 }
 
+/* Clears the supplied sprite attribute on every member of a sprite group. */
 void fn_1_20188(HUSPR_GROUPID groupId, s32 attr)
 {
     HUSPR_GROUP *group = &HuSprGrpData[groupId];
@@ -254,43 +269,48 @@ void fn_1_20188(HUSPR_GROUPID groupId, s32 attr)
     }
 }
 
-void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 value)
+/* Writes a three-digit value into consecutive sprite banks, showing bank 10 for a zero hundreds
+ * digit and hiding a leading zero tens digit. */
+void fn_1_20208(HUSPR_GROUPID groupId, s32 member, s16 number)
 {
     s16 digit;
 
-    digit = value / 100;
+    digit = number / 100;
     HuSprBankSet(groupId, member, digit);
     if (digit == 0) {
         HuSprBankSet(groupId, member, 10);
     }
-    digit = (value - (digit * 100)) / 10;
+    digit = (number - (digit * 100)) / 10;
     HuSprBankSet(groupId, member + 1, digit);
-    if (digit == 0 && value / 100 == 0) {
+    if (digit == 0 && number / 100 == 0) {
         HuSprAttrSet(groupId, member + 1, HUSPR_ATTR_DISPOFF);
     }
-    digit = value % 10;
+    digit = number % 10;
     HuSprBankSet(groupId, member + 2, digit);
 }
 
-void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 value)
+/* Writes a three-digit value into consecutive sprite banks and hides leading zero hundreds and tens
+ * digits. */
+void fn_1_2035C(HUSPR_GROUPID groupId, s32 member, s16 number)
 {
     s16 digit;
 
-    digit = value / 100;
+    digit = number / 100;
     HuSprBankSet(groupId, member, digit);
     if (digit == 0) {
         HuSprAttrSet(groupId, member, HUSPR_ATTR_DISPOFF);
     }
-    digit = (value - (digit * 100)) / 10;
+    digit = (number - (digit * 100)) / 10;
     HuSprBankSet(groupId, member + 1, digit);
-    if (digit == 0 && value / 100 == 0) {
+    if (digit == 0 && number / 100 == 0) {
         HuSprAttrSet(groupId, member + 1, HUSPR_ATTR_DISPOFF);
     }
-    digit = value % 10;
+    digit = number % 10;
     HuSprBankSet(groupId, member + 2, digit);
 }
 
-void fn_1_204B0(float value)
+/* Sets the color-table index on every particle in the shared layer-one effect model. */
+void fn_1_204B0(float colorIndex)
 {
     HU3D_MODEL *model = &Hu3DData[lbl_1_bss_14C6];
     HU3D_PARTICLE *particle = model->hookData;
@@ -301,10 +321,12 @@ void fn_1_204B0(float value)
     i = 0;
     data = particle->data;
     for (; i < particle->maxCnt; i++, data++) {
-        data->colorIdx = value;
+        data->colorIdx = colorIndex;
     }
 }
 
+/* Particle callback registered by fn_1_20BC8; animates paired rising particles and flushes their
+ * updated data. */
 void fn_1_20554(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *data;
@@ -383,6 +405,8 @@ void fn_1_20554(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates the shared 600-particle rising effect model and registers fn_1_20554 as its particle
+ * callback. */
 void fn_1_20BC8(void)
 {
     lbl_1_bss_14C6 = Hu3DParticleCreate(lbl_1_bss_14C8[0], 600);
@@ -397,11 +421,13 @@ void fn_1_20BC8(void)
     Hu3DParticleBlendModeSet(lbl_1_bss_14C6, 1);
 }
 
+/* Releases the shared particle model created by fn_1_20BC8. */
 void fn_1_20CE0(void)
 {
     Hu3DModelKill(lbl_1_bss_14C6);
 }
 
+/* Updates one marker particle with a scene position and alpha scaled from the supplied opacity. */
 void fn_1_20D0C(s16 index, HuVecF *position, float alpha)
 {
     HU3D_MODEL *model = &Hu3DData[lbl_1_bss_14C4];
@@ -416,6 +442,8 @@ void fn_1_20D0C(s16 index, HuVecF *position, float alpha)
     data->color.a = opacity;
 }
 
+/* Particle callback registered by fn_1_20E9C; copies each marker particle position and sets its
+ * display scale and color. */
 void fn_1_20DAC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     s16 state = 0;
@@ -439,6 +467,7 @@ void fn_1_20DAC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     }
 }
 
+/* Creates a four-particle marker model and registers fn_1_20DAC as its particle callback. */
 void fn_1_20E9C(void)
 {
     lbl_1_bss_14C4 = Hu3DParticleCreate(lbl_1_bss_14C8[0], 4);
@@ -451,11 +480,13 @@ void fn_1_20E9C(void)
     Hu3DParticleBlendModeSet(lbl_1_bss_14C4, 1);
 }
 
+/* Releases the four-particle marker model created by fn_1_20E9C. */
 void fn_1_20F80(void)
 {
     Hu3DModelKill(lbl_1_bss_14C4);
 }
 
+/* Shows the secondary particle model and resets each particle timer before a new effect. */
 void fn_1_20FAC(void)
 {
     HU3D_MODEL *model = &Hu3DData[lbl_1_bss_14C2];
@@ -471,6 +502,8 @@ void fn_1_20FAC(void)
     }
 }
 
+/* Particle callback registered by fn_1_21604; initializes and advances the colored particles of the
+ * result effect. */
 void fn_1_2104C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     GXColor colors[7] = {
@@ -538,6 +571,8 @@ void fn_1_2104C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     }
 }
 
+/* Creates the hidden 128-particle result effect and registers fn_1_2104C as its particle
+ * callback. */
 void fn_1_21604(void)
 {
     lbl_1_bss_14C2 = Hu3DParticleCreate(lbl_1_bss_14C8[5], 128);
@@ -550,11 +585,14 @@ void fn_1_21604(void)
     Hu3DParticleHookSet(lbl_1_bss_14C2, fn_1_2104C);
 }
 
+/* Releases the 128-particle effect model created by fn_1_21604. */
 void fn_1_216E8(void)
 {
     Hu3DModelKill(lbl_1_bss_14C2);
 }
 
+/* Sets the first particle parameters when each optional value is positive or a color pointer is
+ * supplied. */
 void fn_1_21714(s16 index, s16 parManId, HuVecF *velocity,
     float accelX, u8 *color)
 {
@@ -582,6 +620,7 @@ void fn_1_21714(s16 index, s16 parManId, HuVecF *velocity,
     data->accel.y = 0.0f;
 }
 
+/* Applies fn_1_21714 particle parameters and then sets the particle Y acceleration. */
 void fn_1_217EC(s16 index, s16 parManId, HuVecF *velocity,
     float accelX, u8 *color, float accelY)
 {
@@ -593,6 +632,8 @@ void fn_1_217EC(s16 index, s16 parManId, HuVecF *velocity,
     data->accel.y = accelY;
 }
 
+/* Resets every particle for an effect slot, activates the first particle, applies its settings, and
+ * shows the model. */
 void fn_1_21904(s16 index, s16 parManId, HuVecF *velocity,
     float accelX, u8 *color)
 {
@@ -614,6 +655,7 @@ void fn_1_21904(s16 index, s16 parManId, HuVecF *velocity,
     model->attr &= ~HU3D_ATTR_DISPOFF;
 }
 
+/* Stops the first particle in the selected effect slot. */
 void fn_1_21A70(s16 index)
 {
     HU3D_MODEL *model = &Hu3DData[lbl_1_bss_14B0[index]];
@@ -623,6 +665,8 @@ void fn_1_21A70(s16 index)
     data->time = 0;
 }
 
+/* Particle callback for the burst effect; spawns child particles from the first particle and
+ * advances their position and lifetime. */
 void fn_1_21AD0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *first, *data;
@@ -712,6 +756,7 @@ void fn_1_21AD0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates the per-slot particle models used for burst and trail effects. */
 void fn_1_22080(void)
 {
     s16 i;
@@ -729,6 +774,7 @@ void fn_1_22080(void)
     }
 }
 
+/* Releases the per-slot particle models created by fn_1_22080. */
 void fn_1_221EC(void)
 {
     s16 i;
@@ -738,6 +784,8 @@ void fn_1_221EC(void)
     }
 }
 
+/* Positions the selected burst effect and initializes its particle data from the supplied scene
+ * position. */
 void fn_1_22244(s16 index, HuVecF *position)
 {
     HU3D_MODEL *model;
@@ -761,6 +809,7 @@ void fn_1_22244(s16 index, HuVecF *position)
     }
 }
 
+/* Particle callback registered by fn_1_22080; updates the per-slot burst and trail particles. */
 void fn_1_22348(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *data;
@@ -834,6 +883,7 @@ void fn_1_22348(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates and initializes the shared model resources used by the result particle effects. */
 void fn_1_22A4C(void)
 {
     s16 i;
@@ -854,6 +904,7 @@ void fn_1_22A4C(void)
     }
 }
 
+/* Releases the shared model resources created by fn_1_22A4C. */
 void fn_1_22C38(void)
 {
     s16 i;
@@ -866,6 +917,8 @@ void fn_1_22C38(void)
     }
 }
 
+/* Advances the stationary trail points and fades its alpha in or out; hides the model when the fade
+ * reaches zero. */
 void fn_1_22CBC(MDRESULT_TRAIL_WORK *work)
 {
     s16 i;
@@ -876,7 +929,7 @@ void fn_1_22CBC(MDRESULT_TRAIL_WORK *work)
         work->points[i].y = work->base.y + work->points[i - 1].y;
         work->points[i].z = work->base.z + work->points[i - 1].z;
     }
-    if (work->unk_28 == 0) {
+    if (work->moving == 0) {
         if (work->state == 1) {
             work->color.a += 5;
             if (work->color.a >= 255) {
@@ -893,6 +946,8 @@ void fn_1_22CBC(MDRESULT_TRAIL_WORK *work)
     }
 }
 
+/* Advances the moving trail head by its velocity and hides the model after it falls below the
+ * scene. */
 void fn_1_22E48(MDRESULT_TRAIL_WORK *work)
 {
     work->points->x += 25.0f * work->velocity.x;
@@ -907,6 +962,8 @@ void fn_1_22E48(MDRESULT_TRAIL_WORK *work)
     work->velocity.y -= 0.025f;
 }
 
+/* Draw hook for each trail model; builds a triangle strip from the trail points, fades stationary
+ * trails, and advances moving heads. */
 void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix)
 {
     MDRESULT_TRAIL_WORK *work = model->hookData;
@@ -940,7 +997,7 @@ void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix)
         GX_TRUE, GX_TEVPREV);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 
-    if (work->unk_28 == 0) {
+    if (work->moving == 0) {
         HuSprTexLoad(
             lbl_1_bss_131C, 0, GX_TEXMAP0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
         GXSetBlendMode(
@@ -982,7 +1039,7 @@ void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix)
             work->points[i].y + (-direction.x * work->delay);
         vertices[i].values[1].z = work->points[i].z;
 
-        if (work->unk_28 == 0) {
+        if (work->moving == 0) {
             fade = 255.0f -
                 (255.0f / (work->pointCount - 2)) * i;
             if (fade < 0.0f) {
@@ -1028,7 +1085,7 @@ void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix)
             work->base.z + work->points[j - 1].z;
     }
 
-    if (work->unk_28 == 0) {
+    if (work->moving == 0) {
         if (work->state == 1) {
             work->color.a += 5;
             if (work->color.a >= 255) {
@@ -1044,7 +1101,7 @@ void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix)
         }
     }
 
-    if (work->unk_28 == 1) {
+    if (work->moving == 1) {
         work->points[0].x += 25.0f * work->velocity.x;
         work->points[0].y += 25.0f * work->velocity.y;
         work->points[0].z += 25.0f * work->velocity.z;
@@ -1057,6 +1114,8 @@ void fn_1_22F80(HU3D_MODEL *model, Mtx *matrix)
     }
 }
 
+/* Allocates trail point buffers and creates eight hidden trail models that use fn_1_22F80 as their
+ * draw hook. */
 void fn_1_23AA8(void)
 {
     s16 i;
@@ -1088,6 +1147,7 @@ void fn_1_23AA8(void)
     }
 }
 
+/* Frees each trail point buffer and releases the eight trail models created by fn_1_23AA8. */
 void fn_1_23C88(void)
 {
     HU3D_MODEL *model;
@@ -1101,7 +1161,8 @@ void fn_1_23C88(void)
     }
 }
 
-void fn_1_23D38(s16 index, HuVecF *position, float value)
+/* Sets a trail head position and vertical base offset for the selected trail. */
+void fn_1_23D38(s16 index, HuVecF *position, float verticalOffset)
 {
     MDRESULT_TRAIL_WORK *work = &lbl_1_bss_1320[index];
 
@@ -1109,9 +1170,10 @@ void fn_1_23D38(s16 index, HuVecF *position, float value)
     work->points[0].y = position->y;
     work->points[0].z = position->z;
     work->base.x = work->base.y = work->base.z = 0.0f;
-    work->base.y = value;
+    work->base.y = verticalOffset;
 }
 
+/* Starts a stationary colored trail at a position and restores its model visibility. */
 void fn_1_23DA0(s16 index, u8 *color, const HuVecF *position)
 {
     MDRESULT_TRAIL_WORK *work = &lbl_1_bss_1320[index];
@@ -1122,7 +1184,7 @@ void fn_1_23DA0(s16 index, u8 *color, const HuVecF *position)
     work->color.g = color[1];
     work->color.b = color[2];
     work->color.a = 0;
-    work->unk_28 = 0;
+    work->moving = 0;
     for (i = 0; i < work->pointCount; i++) {
         work->points[i].x = position->x;
         work->points[i].y = position->y;
@@ -1132,6 +1194,8 @@ void fn_1_23DA0(s16 index, u8 *color, const HuVecF *position)
     Hu3DModelAttrReset(lbl_1_bss_1480[index], HU3D_ATTR_DISPOFF);
 }
 
+/* Starts eight colored moving trails at the supplied position, assigning alternating horizontal
+ * directions. */
 void fn_1_23EF0(HuVecF *position)
 {
     MDRESULT_COLOR_TABLE_8 colors = {{
@@ -1155,7 +1219,7 @@ void fn_1_23EF0(HuVecF *position)
         work->color.g = colors.values[i].g;
         work->color.b = colors.values[i].b;
         work->color.a = 0;
-        work->unk_28 = 1;
+        work->moving = 1;
         work->base.x = work->base.y = work->base.z = 0.0f;
         work->base.y -= 5.0f;
         work->delay = 10;
@@ -1177,6 +1241,7 @@ void fn_1_23EF0(HuVecF *position)
     }
 }
 
+/* Stops the selected trail and hides its model. */
 void fn_1_2429C(s16 index)
 {
     MDRESULT_TRAIL_WORK *work = &lbl_1_bss_1320[index];
@@ -1185,16 +1250,18 @@ void fn_1_2429C(s16 index)
     Hu3DModelAttrSet(lbl_1_bss_1480[index], HU3D_ATTR_DISPOFF);
 }
 
-void fn_1_24308(s16 index, float value)
+/* Sets the selected trail movement parameter used by its particle data. */
+void fn_1_24308(s16 index, float velocityZ)
 {
     HU3D_MODEL *model = &Hu3DData[lbl_1_bss_131A];
     HU3D_PARTICLE *particle = model->hookData;
     HU3D_PARTICLE_DATA *data = &particle->data[index];
 
     data->time = 2;
-    data->vel.z = value;
+    data->vel.z = velocityZ;
 }
 
+/* Sets the selected trail particle position from the supplied vector. */
 void fn_1_2436C(s16 index, HuVecF *position)
 {
     HU3D_MODEL *model = &Hu3DData[lbl_1_bss_131A];
@@ -1206,6 +1273,8 @@ void fn_1_2436C(s16 index, HuVecF *position)
     data->pos.z = position->z;
 }
 
+/* Initializes one particle in the selected effect with position, color, velocity, and lifetime
+ * settings. */
 void fn_1_243DC(s16 index, const HuVecF *position, u8 *color,
     float velocityY, float velocityZ, float accelX, s16 mode)
 {
@@ -1235,6 +1304,8 @@ void fn_1_243DC(s16 index, const HuVecF *position, u8 *color,
     data->accel.y = color[3];
 }
 
+/* Particle callback for the result burst model; updates particles from their configured positions
+ * and velocities. */
 void fn_1_24554(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *data;
@@ -1290,6 +1361,7 @@ void fn_1_24554(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates a shared burst particle model and registers fn_1_24554 as its particle callback. */
 void fn_1_24AD0(void)
 {
     lbl_1_bss_131A = Hu3DParticleCreate(lbl_1_bss_14C8[0], 100);
@@ -1302,22 +1374,27 @@ void fn_1_24AD0(void)
     Hu3DParticleBlendModeSet(lbl_1_bss_131A, 1);
 }
 
+/* Releases the shared burst particle model created by fn_1_24AD0. */
 void fn_1_24BB4(void)
 {
     Hu3DModelKill(lbl_1_bss_131A);
 }
 
+/* Moves the secondary effect model to a position and makes it visible. */
 void fn_1_24BE0(HuVecF *pos)
 {
     Hu3DModelPosSetV(lbl_1_bss_1318, pos);
     Hu3DModelAttrReset(lbl_1_bss_1318, HU3D_ATTR_DISPOFF);
 }
 
+/* Hides the secondary effect model. */
 void fn_1_24C28(void)
 {
     Hu3DModelAttrSet(lbl_1_bss_1318, HU3D_ATTR_DISPOFF);
 }
 
+/* Particle callback registered by fn_1_251D4; animates the rising streak particles and flushes
+ * their data. */
 void fn_1_24C58(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *data;
@@ -1388,6 +1465,8 @@ void fn_1_24C58(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates the secondary 32-particle effect model and registers fn_1_24C58 as its particle
+ * callback. */
 void fn_1_251D4(void)
 {
     lbl_1_bss_1318 = Hu3DParticleCreate(lbl_1_bss_14C8[6], 32);
@@ -1401,11 +1480,14 @@ void fn_1_251D4(void)
     Hu3DParticleBlendModeSet(lbl_1_bss_1318, 1);
 }
 
+/* Releases the secondary particle model created by fn_1_251D4. */
 void fn_1_252CC(void)
 {
     Hu3DModelKill(lbl_1_bss_1318);
 }
 
+/* Loads the seven result effect animations, creates their particle models, and initializes the
+ * shared burst effects. */
 void fn_1_252F8(void)
 {
     s16 i;
@@ -1432,6 +1514,7 @@ void fn_1_252F8(void)
     fn_1_24AD0();
 }
 
+/* Releases the particle models and shared effects initialized by fn_1_252F8. */
 void fn_1_25B90(void)
 {
     fn_1_20CE0();
@@ -1443,7 +1526,8 @@ void fn_1_25B90(void)
     fn_1_24BB4();
 }
 
-void fn_1_25D0C(float value)
+/* Sets the color-table index on every particle in the selected shared model. */
+void fn_1_25D0C(float colorIndex)
 {
     HU3D_MODEL *model = &Hu3DData[lbl_1_bss_14C6];
     HU3D_PARTICLE_DATA *data;
@@ -1454,10 +1538,11 @@ void fn_1_25D0C(float value)
     i = 0;
     data = particle->data;
     for (; i < particle->maxCnt; i++, data++) {
-        data->colorIdx = value;
+        data->colorIdx = colorIndex;
     }
 }
 
+/* Sets one particle position and scales its alpha from the supplied opacity. */
 void fn_1_25DB0(s16 index, HuVecF *position, float alpha)
 {
     HU3D_PARTICLE *particle;
@@ -1478,6 +1563,8 @@ void fn_1_25DB0(s16 index, HuVecF *position, float alpha)
     data->color.a = opacity;
 }
 
+/* For valid effect slots 0 through 8, initializes the first particle with the supplied optional
+ * settings. */
 void fn_1_25E6C(s16 index, s16 parManId, HuVecF *velocity,
     float accelX, u8 *color)
 {
@@ -1487,6 +1574,7 @@ void fn_1_25E6C(s16 index, s16 parManId, HuVecF *velocity,
     fn_1_21904(index, parManId, velocity, accelX, color);
 }
 
+/* For valid effect slots 0 through 8, resets the first particle timer. */
 void fn_1_25FF4(s16 index)
 {
     HU3D_PARTICLE_DATA *data;
@@ -1502,6 +1590,8 @@ void fn_1_25FF4(s16 index)
     data->time = 0;
 }
 
+/* For valid effect slots 0 through 8, initializes the effect using the alternate particle setup
+ * routine. */
 void fn_1_26070(s16 index, s16 parManId, HuVecF *velocity,
     float accelX, u8 *color)
 {
@@ -1511,6 +1601,8 @@ void fn_1_26070(s16 index, s16 parManId, HuVecF *velocity,
     fn_1_21714(index, parManId, velocity, accelX, color);
 }
 
+/* Resets four per-player effect models and emits three colored particles at the supplied position;
+ * it also raises position->z by 100. */
 void fn_1_26164(s16 index, HuVecF *position)
 {
     GXColor color = {255, 255, 255, 64};
@@ -1567,6 +1659,7 @@ void fn_1_26164(s16 index, HuVecF *position)
     }
 }
 
+/* Emits three colored particles at the supplied position; it also raises position->z by 100. */
 void fn_1_26478(s16 index, HuVecF *position, const GXColor *color)
 {
     HU3D_PARTICLE *particle;
@@ -1598,6 +1691,8 @@ void fn_1_26478(s16 index, HuVecF *position, const GXColor *color)
     }
 }
 
+/* Initializes the main particle burst and five secondary particles with progressively lower alpha
+ * values. */
 void fn_1_2668C(s16 index, s16 parManId, HuVecF *velocity,
     float accelX, u8 *color)
 {
@@ -1605,7 +1700,8 @@ void fn_1_2668C(s16 index, s16 parManId, HuVecF *velocity,
         { 10, 255, 1 }, { 10, 255, 1 }, { 40, 128, 0 },
         { 100, 64, 0 }, { 200, 32, 0 }
     };
-    u8 unused[4] = { 255, 255, 255, 32 };
+    /* This translucent white default is unused; the caller supplies the burst and trail colors. */
+    GXColor defaultColor = {255, 255, 255, 32};
     s16 j;
 
     fn_1_21904(index, parManId, velocity, accelX, color);
@@ -1617,6 +1713,8 @@ void fn_1_2668C(s16 index, s16 parManId, HuVecF *velocity,
     }
 }
 
+/* Stops the selected burst, clears its trail state, hides its model, and marks its five trail
+ * particles for shutdown. */
 void fn_1_26BE4(s16 index)
 {
     HU3D_PARTICLE_DATA *burstData;
@@ -1644,7 +1742,9 @@ void fn_1_26BE4(s16 index)
     }
 }
 
-void fn_1_26CF8(s16 index, HuVecF *position, float value)
+/* Starts a burst at the supplied position, sets its vertical acceleration, and seeds the five trail
+ * points. */
+void fn_1_26CF8(s16 index, HuVecF *position, float verticalAccel)
 {
     HU3D_PARTICLE_DATA *burstData;
     HU3D_PARTICLE *burstParticle;
@@ -1656,13 +1756,13 @@ void fn_1_26CF8(s16 index, HuVecF *position, float value)
     burstParticle = burstModel->hookData;
     burstData = burstParticle->data;
     fn_1_21714(index, -1, position, -1.0f, NULL);
-    burstData->accel.y = value;
+    burstData->accel.y = verticalAccel;
     work = &lbl_1_bss_1320[index];
     work->points[0].x = position->x;
     work->points[0].y = position->y;
     work->points[0].z = position->z;
     work->base.x = work->base.y = work->base.z = 0.0f;
-    work->base.y = value;
+    work->base.y = verticalAccel;
     for (i = 0; i < 5; i++) {
         HU3D_PARTICLE_DATA *data;
         HU3D_PARTICLE *loopParticle;
@@ -1678,10 +1778,12 @@ void fn_1_26CF8(s16 index, HuVecF *position, float value)
     }
 }
 
-void fn_1_26EAC(float value)
+/* Accepts a requested drift value but currently leaves the effect unchanged. */
+void fn_1_26EAC(float ignoredValue)
 {
 }
 
+/* Starts the shared secondary effect at a position and resets all of its particle timers. */
 void fn_1_26EB0(HuVecF *position)
 {
     HU3D_MODEL *model;
