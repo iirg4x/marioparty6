@@ -1,3 +1,4 @@
+/* Black Hole updates its two duel characters and animates the meteor scene. */
 #include "REL/m651dll.h"
 #include "game/main.h"
 #include "game/audio.h"
@@ -10,196 +11,258 @@
 #include "datadir_enum.h"
 #include "math.h"
 
+#define M651_FINISH_CHARACTER_EFFECT_ID 581
+#define M651_RESULT_CHARACTER_EFFECT_ID 576
+
+#define M651_OPENING_FRAME_55_EFFECT_A_ID 2053
+#define M651_OPENING_FRAME_55_EFFECT_B_ID 2054
+#define M651_SUSTAINED_SCENE_EFFECT_ID 2055
+#define M651_SCENE_MOTION_CUE_EFFECT_ID 2056
+#define M651_RESULT_ARRIVAL_EFFECT_ID 2058
+#define M651_ENDING_FRAME_90_EFFECT_ID 2059
+#define M651_SOUND_CUE_MOTION_EFFECT_ID 2060
+
 M651Player lbl_1_bss_A8[2];
 M651Work64 lbl_1_bss_64;
 M651Work14 lbl_1_bss_14;
+/* Shared speed used to move a character toward the central scene target. */
 float lbl_1_bss_10;
+/* Character motion resource IDs passed to CharModelMotListCreate, terminated by zero. */
 unsigned int lbl_1_data_70[6] = {
     DATANUM(DATA_mario, 33), DATANUM(DATA_mariomot, 26), DATANUM(DATA_mario, 118),
     DATANUM(DATA_mariomot, 27), DATANUM(DATA_mariomot, 34), 0
 };
+/* Base CPU input delay by configured difficulty, in frames; each reset may subtract one frame. */
 int lbl_1_data_88[4] = { 15, 10, 8, 6 };
+/* Per-frame movement toward the finish depth, increased gradually during the sequence. */
 float lbl_1_data_98 = 0.020000001f;
+/* Scene-space target reached by a character selected as the winner. */
 HuVecF lbl_1_data_9C = { 0.0f, 40.0f, 2300.0f };
+/* Starting motion speed for the central scene model's animation. */
 float lbl_1_data_A8 = 1.0f;
+/* Handle for the sustained scene sound effect, played during the opening and faded when a player
+ * reaches the result point. */
 s32 lbl_1_data_AC = -1;
+/* Pitch for the sustained scene sound effect, raised by 10 each scene update until it reaches
+ * zero. */
 s32 lbl_1_data_B0 = -8192;
 
+/* Called by the duel-phase callback in lbl_1_data_14; raises approach speeds and decreases the
+ * rotation offset after a finish. */
 void fn_1_4A0(void)
 {
     lbl_1_data_98 += 0.016666668f;
-    lbl_1_bss_14.unk_04 += 0.02f;
-    if (lbl_1_bss_14.unk_04 > 2.6f) {
-        lbl_1_bss_14.unk_04 = 2.6f;
+    lbl_1_bss_14.meteorMotionSpeed += 0.02f;
+    if (lbl_1_bss_14.meteorMotionSpeed > 2.6f) {
+        lbl_1_bss_14.meteorMotionSpeed = 2.6f;
     }
-    lbl_1_bss_64.unk_38 += 0.002;
-    if (lbl_1_bss_A8[0].unk_24 == 1 || lbl_1_bss_A8[1].unk_24 == 1) {
-        lbl_1_bss_64.unk_30 -= 0.01;
-        if (lbl_1_bss_64.unk_30 > 0.0f) {
-            lbl_1_bss_64.unk_30 = 0.0f;
+    /* This accumulator advances, but the scene update never reads it. */
+    lbl_1_bss_64.unusedSceneSpeedAccumulator += 0.002;
+    if (lbl_1_bss_A8[0].reachedFinish == 1 || lbl_1_bss_A8[1].reachedFinish == 1) {
+        lbl_1_bss_64.sceneRotationSpeedOffset -= 0.01;
+        if (lbl_1_bss_64.sceneRotationSpeedOffset > 0.0f) {
+            lbl_1_bss_64.sceneRotationSpeedOffset = 0.0f;
         }
     } else {
-        lbl_1_bss_64.unk_30 += 0.0001;
-        if (lbl_1_bss_64.unk_30 > 1.2f) {
-            lbl_1_bss_64.unk_30 = 1.2f;
+        lbl_1_bss_64.sceneRotationSpeedOffset += 0.0001;
+        if (lbl_1_bss_64.sceneRotationSpeedOffset > 1.2f) {
+            lbl_1_bss_64.sceneRotationSpeedOffset = 1.2f;
         }
     }
 }
 
+/* Called by the result-phase callback in lbl_1_data_14 at frame 0; hides all meteor and display
+ * models. */
 void fn_1_62C(void)
 {
-    int i;
-    for (i = 0; i < 5; i++) {
-        Hu3DModelAttrSet(lbl_1_bss_14.modelIds32[i], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_14.modelIds1E[i], HU3D_ATTR_DISPOFF);
+    int meteorIndex;
+    for (meteorIndex = 0; meteorIndex < 5; meteorIndex++) {
+        Hu3DModelAttrSet(lbl_1_bss_14.meteorModels[meteorIndex], HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrSet(lbl_1_bss_14.meteorDisplayModels[meteorIndex], HU3D_ATTR_DISPOFF);
     }
 }
 
+/* Replaces the meteor update callback after all five motions end during result cleanup; hides each
+ * pair as its motion ends. */
 void fn_1_69C(OMOBJ *obj)
 {
-    int i;
-    for (i = 0; i < 5; i++) {
-        if (Hu3DMotionEndCheck(lbl_1_bss_14.modelIds32[i]) == 1) {
-            Hu3DModelAttrSet(lbl_1_bss_14.modelIds32[i], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_14.modelIds1E[i], HU3D_ATTR_DISPOFF);
+    int meteorIndex;
+    for (meteorIndex = 0; meteorIndex < 5; meteorIndex++) {
+        if (Hu3DMotionEndCheck(lbl_1_bss_14.meteorModels[meteorIndex]) == 1) {
+            Hu3DModelAttrSet(lbl_1_bss_14.meteorModels[meteorIndex], HU3D_ATTR_DISPOFF);
+            Hu3DModelAttrSet(lbl_1_bss_14.meteorDisplayModels[meteorIndex], HU3D_ATTR_DISPOFF);
         }
     }
 }
 
+/* Meteor object callback created by fn_1_D28; runs falling motions and approach effects, then
+ * switches to result cleanup after all five motions end. */
 void fn_1_72C(OMOBJ *obj)
 {
-    int i;
-    int count = 0;
-    int time;
+    int meteorIndex;
+    int endedMeteorCount = 0;
+    int motionStartTime;
 
-    for (i = 0; i < 5; i++) {
-        if (Hu3DMotionEndCheck(lbl_1_bss_14.modelIds32[i]) == 1) {
-            if (lbl_1_bss_14.unk_00 == 1) {
-                count++;
-                if (count == 5) {
+    for (meteorIndex = 0; meteorIndex < 5; meteorIndex++) {
+        if (Hu3DMotionEndCheck(lbl_1_bss_14.meteorModels[meteorIndex]) == 1) {
+            if (lbl_1_bss_14.resultStarted == 1) {
+                endedMeteorCount++;
+                if (endedMeteorCount == 5) {
                     obj->objFunc = fn_1_69C;
                     return;
                 }
                 continue;
             }
-            Hu3DModelAttrSet(lbl_1_bss_14.modelIds32[i], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_14.modelIds1E[i], HU3D_ATTR_DISPOFF);
-            lbl_1_bss_14.delayFrames[i]--;
-            if (lbl_1_bss_14.delayFrames[i] == 0) {
-                time = rand8() % 64;
-                lbl_1_bss_14.triggeredF[i] = 0;
-                if (i != 4) {
-                    lbl_1_bss_14.delayFrames[i] = rand8() % 256 + 1;
-                    Hu3DModelAttrReset(lbl_1_bss_14.modelIds32[i], HU3D_ATTR_DISPOFF);
-                    Hu3DModelAttrReset(lbl_1_bss_14.modelIds1E[i], HU3D_ATTR_DISPOFF);
-                    Hu3DMotionSpeedSet(lbl_1_bss_14.modelIds32[i], lbl_1_bss_14.unk_04);
-                    Hu3DMotionTimeSet(lbl_1_bss_14.modelIds32[i], time);
-                    Hu3DMotionSpeedSet(lbl_1_bss_14.modelIds1E[i], lbl_1_bss_14.unk_04);
-                    Hu3DMotionTimeSet(lbl_1_bss_14.modelIds1E[i], time);
+            Hu3DModelAttrSet(lbl_1_bss_14.meteorModels[meteorIndex], HU3D_ATTR_DISPOFF);
+            Hu3DModelAttrSet(lbl_1_bss_14.meteorDisplayModels[meteorIndex], HU3D_ATTR_DISPOFF);
+            lbl_1_bss_14.meteorDelayFrames[meteorIndex]--;
+            if (lbl_1_bss_14.meteorDelayFrames[meteorIndex] == 0) {
+                motionStartTime = rand8() % 64;
+                lbl_1_bss_14.approachEffectTriggered[meteorIndex] = 0;
+                if (meteorIndex != 4) {
+                    lbl_1_bss_14.meteorDelayFrames[meteorIndex] = rand8() % 256 + 1;
+                    Hu3DModelAttrReset(lbl_1_bss_14.meteorModels[meteorIndex], HU3D_ATTR_DISPOFF);
+                    Hu3DModelAttrReset(lbl_1_bss_14.meteorDisplayModels[meteorIndex],
+                                       HU3D_ATTR_DISPOFF);
+                    Hu3DMotionSpeedSet(lbl_1_bss_14.meteorModels[meteorIndex],
+                                       lbl_1_bss_14.meteorMotionSpeed);
+                    Hu3DMotionTimeSet(lbl_1_bss_14.meteorModels[meteorIndex], motionStartTime);
+                    Hu3DMotionSpeedSet(lbl_1_bss_14.meteorDisplayModels[meteorIndex],
+                                       lbl_1_bss_14.meteorMotionSpeed);
+                    Hu3DMotionTimeSet(lbl_1_bss_14.meteorDisplayModels[meteorIndex],
+                                      motionStartTime);
                 }
             }
         } else {
             Mtx mtx;
-            char *names[5] = { "meteo-astreS", "meteo-astreM", "meteo-astreLL", "meteo-astreL", "kuriboo_null" };
+            char *names[5] = { "meteo-astreS", "meteo-astreM", "meteo-astreLL", "meteo-astreL",
+                               "kuriboo_null" };
             HuVecF pos;
             HuVecF scale;
 
-            Hu3DModelObjMtxGet(lbl_1_bss_14.modelIds32[i], names[i], mtx);
+            Hu3DModelObjMtxGet(lbl_1_bss_14.meteorModels[meteorIndex], names[meteorIndex], mtx);
             Hu3DMtxTransGet(mtx, &pos);
             Hu3DMtxScaleGet(mtx, &scale);
-            if (80.0f * lbl_1_bss_64.unk_24 > pos.z && lbl_1_bss_14.triggeredF[i] == 0 && i != 4) {
-                Hu3DModelAttrReset(lbl_1_bss_14.modelIds28[i], HU3D_MOTATTR_PAUSE);
-                Hu3DModelPosSetV(lbl_1_bss_14.modelIds28[i], &pos);
-                Hu3DModelScaleSet(lbl_1_bss_14.modelIds28[i], 1.0f, 1.0f, 1.0f);
-                Hu3DModelAttrSet(lbl_1_bss_14.modelIds32[i], HU3D_ATTR_DISPOFF);
-                Hu3DModelAttrSet(lbl_1_bss_14.modelIds1E[i], HU3D_ATTR_DISPOFF);
-                Hu3DMotionTimeSet(lbl_1_bss_14.modelIds28[i], 0.0f);
-                lbl_1_bss_14.triggeredF[i] = 1;
+            if (80.0f * lbl_1_bss_64.firstBackgroundScale > pos.z &&
+                lbl_1_bss_14.approachEffectTriggered[meteorIndex] == 0 && meteorIndex != 4) {
+                Hu3DModelAttrReset(lbl_1_bss_14.meteorApproachModels[meteorIndex],
+                                   HU3D_MOTATTR_PAUSE);
+                Hu3DModelPosSetV(lbl_1_bss_14.meteorApproachModels[meteorIndex], &pos);
+                Hu3DModelScaleSet(lbl_1_bss_14.meteorApproachModels[meteorIndex], 1.0f, 1.0f, 1.0f);
+                Hu3DModelAttrSet(lbl_1_bss_14.meteorModels[meteorIndex], HU3D_ATTR_DISPOFF);
+                Hu3DModelAttrSet(lbl_1_bss_14.meteorDisplayModels[meteorIndex], HU3D_ATTR_DISPOFF);
+                Hu3DMotionTimeSet(lbl_1_bss_14.meteorApproachModels[meteorIndex], 0.0f);
+                lbl_1_bss_14.approachEffectTriggered[meteorIndex] = 1;
             }
         }
-        if (i == 4 && (lbl_1_bss_A8[0].pos.z < 1700.0f || lbl_1_bss_A8[1].pos.z < 1700.0f) && lbl_1_bss_64.unk_40 == 0) {
-            lbl_1_bss_64.unk_40 = 1;
+        if (meteorIndex == 4 &&
+            (lbl_1_bss_A8[0].pos.z < 1700.0f || lbl_1_bss_A8[1].pos.z < 1700.0f) &&
+            lbl_1_bss_64.finalMeteorCheckDone == 0) {
+            lbl_1_bss_64.finalMeteorCheckDone = 1;
             if (rand8() % 100 < 40) {
-                Hu3DModelAttrReset(lbl_1_bss_14.modelIds32[4], HU3D_MOTATTR_PAUSE);
-                Hu3DMotionSpeedSet(lbl_1_bss_14.modelIds32[4], lbl_1_bss_14.unk_04);
+                Hu3DModelAttrReset(lbl_1_bss_14.meteorModels[4], HU3D_MOTATTR_PAUSE);
+                Hu3DMotionSpeedSet(lbl_1_bss_14.meteorModels[4], lbl_1_bss_14.meteorMotionSpeed);
             }
         }
     }
 }
 
+/* Layer-6 draw hook registered by fn_1_D28; copies the first four meteor transforms to their linked
+ * display models. */
 void fn_1_C20(s16 layerNo)
 {
-    int i;
-    for (i = 0; i < 4; i++) {
+    int meteorIndex;
+    for (meteorIndex = 0; meteorIndex < 4; meteorIndex++) {
         Mtx mtx;
-        char *names[5] = { "meteo-astreS", "meteo-astreM", "meteo-astreLL", "meteo-astreL", "kuriboo_null" };
+        char *meteorJointNames[5] = { "meteo-astreS", "meteo-astreM", "meteo-astreLL",
+                                      "meteo-astreL", "kuriboo_null" };
         HuVecF pos;
         HuVecF rot;
         HuVecF scale;
 
-        Hu3DModelObjMtxGet(lbl_1_bss_14.modelIds32[i], names[i], mtx);
+        Hu3DModelObjMtxGet(lbl_1_bss_14.meteorModels[meteorIndex], meteorJointNames[meteorIndex],
+                           mtx);
         Hu3DMtxTransGet(mtx, &pos);
         Hu3DMtxRotGet(mtx, &rot);
         Hu3DMtxScaleGet(mtx, &scale);
-        Hu3DModelPosSetV(lbl_1_bss_14.modelIds1E[i], &pos);
-        Hu3DModelRotSetV(lbl_1_bss_14.modelIds1E[i], &rot);
-        Hu3DModelScaleSetV(lbl_1_bss_14.modelIds1E[i], &scale);
+        Hu3DModelPosSetV(lbl_1_bss_14.meteorDisplayModels[meteorIndex], &pos);
+        Hu3DModelRotSetV(lbl_1_bss_14.meteorDisplayModels[meteorIndex], &rot);
+        Hu3DModelScaleSetV(lbl_1_bss_14.meteorDisplayModels[meteorIndex], &scale);
     }
 }
 
+/* Called during scene setup by fn_1_3F30; loads meteor, approach-effect, linked-display, and hooked
+ * models, assigns motions, then creates the meteor update object. */
 void fn_1_D28(void)
 {
-    int i;
+    int meteorIndex;
     OMOBJ *obj;
     HU3D_MOTIONID motionId;
-    u32 modelData[5] = { DATANUM(DATA_m651, 8), DATANUM(DATA_m651, 9), DATANUM(DATA_m651, 10), DATANUM(DATA_m651, 11), DATANUM(DATA_m651, 16) };
-    u32 motionData[5] = { DATANUM(DATA_m651, 18), DATANUM(DATA_m651, 19), DATANUM(DATA_m651, 20), DATANUM(DATA_m651, 21), DATANUM(DATA_m651, 17) };
+    u32 meteorModelDataIds[5] = { DATANUM(DATA_m651, 8), DATANUM(DATA_m651, 9),
+                                  DATANUM(DATA_m651, 10), DATANUM(DATA_m651, 11),
+                                  DATANUM(DATA_m651, 16) };
+    u32 meteorMotionDataIds[5] = { DATANUM(DATA_m651, 18), DATANUM(DATA_m651, 19),
+                                   DATANUM(DATA_m651, 20), DATANUM(DATA_m651, 21),
+                                   DATANUM(DATA_m651, 17) };
 
-    for (i = 0; i < 5; i++) {
-        if (i == 0) {
-            lbl_1_bss_14.modelIds1E[0] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 14), HU_MEMNUM_OVL, HEAP_MODEL));
+    for (meteorIndex = 0; meteorIndex < 5; meteorIndex++) {
+        if (meteorIndex == 0) {
+            lbl_1_bss_14.meteorDisplayModels[0] = Hu3DModelCreate(
+                HuDataSelHeapReadNum(DATANUM(DATA_m651, 14), HU_MEMNUM_OVL, HEAP_MODEL));
         } else {
-            lbl_1_bss_14.modelIds1E[i] = Hu3DModelLink(lbl_1_bss_14.modelIds1E[0]);
+            lbl_1_bss_14.meteorDisplayModels[meteorIndex] =
+                Hu3DModelLink(lbl_1_bss_14.meteorDisplayModels[0]);
         }
-        Hu3DModelLayerSet(lbl_1_bss_14.modelIds1E[i], 6);
-        Hu3DModelAttrSet(lbl_1_bss_14.modelIds1E[i], HU3D_MOTATTR_LOOP);
+        Hu3DModelLayerSet(lbl_1_bss_14.meteorDisplayModels[meteorIndex], 6);
+        Hu3DModelAttrSet(lbl_1_bss_14.meteorDisplayModels[meteorIndex], HU3D_MOTATTR_LOOP);
         Hu3DLayerHookSet(6, fn_1_C20);
     }
-    for (i = 0; i < 5; i++) {
-        if (i == 0) {
-            lbl_1_bss_14.modelIds28[0] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 15), HU_MEMNUM_OVL, HEAP_MODEL));
+    for (meteorIndex = 0; meteorIndex < 5; meteorIndex++) {
+        if (meteorIndex == 0) {
+            lbl_1_bss_14.meteorApproachModels[0] = Hu3DModelCreate(
+                HuDataSelHeapReadNum(DATANUM(DATA_m651, 15), HU_MEMNUM_OVL, HEAP_MODEL));
         } else {
-            lbl_1_bss_14.modelIds28[i] = Hu3DModelLink(lbl_1_bss_14.modelIds28[0]);
+            lbl_1_bss_14.meteorApproachModels[meteorIndex] =
+                Hu3DModelLink(lbl_1_bss_14.meteorApproachModels[0]);
         }
-        Hu3DModelLayerSet(lbl_1_bss_14.modelIds28[i], 5);
-        Hu3DModelAttrReset(lbl_1_bss_14.modelIds28[i], HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrSet(lbl_1_bss_14.modelIds28[i], HU3D_MOTATTR_PAUSE);
-        lbl_1_bss_14.triggeredF[i] = 0;
+        Hu3DModelLayerSet(lbl_1_bss_14.meteorApproachModels[meteorIndex], 5);
+        Hu3DModelAttrReset(lbl_1_bss_14.meteorApproachModels[meteorIndex], HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrSet(lbl_1_bss_14.meteorApproachModels[meteorIndex], HU3D_MOTATTR_PAUSE);
+        lbl_1_bss_14.approachEffectTriggered[meteorIndex] = 0;
     }
-    lbl_1_bss_14.unk_1C = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 12), HU_MEMNUM_OVL, HEAP_MODEL));
-    motionId = Hu3DJointMotion(lbl_1_bss_14.unk_1C, HuDataSelHeapReadNum(DATANUM(DATA_m651, 13), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(lbl_1_bss_14.unk_1C, motionId);
-    Hu3DModelAttrSet(lbl_1_bss_14.unk_1C, HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(lbl_1_bss_14.modelIds1E[4], HU3D_ATTR_DISPOFF);
-    for (i = 0; i < 5; i++) {
-        lbl_1_bss_14.modelIds32[i] = Hu3DModelCreate(HuDataSelHeapReadNum(modelData[i], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelLayerSet(lbl_1_bss_14.modelIds32[i], 5);
-        lbl_1_bss_14.motionIds[i] = Hu3DJointMotion(lbl_1_bss_14.modelIds32[i], HuDataSelHeapReadNum(motionData[i], HU_MEMNUM_OVL, HEAP_MODEL));
-        lbl_1_bss_14.delayFrames[i] = rand8() % 4 + 1;
-        Hu3DModelAttrReset(lbl_1_bss_14.modelIds32[i], HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrReset(lbl_1_bss_14.modelIds32[i], HU3D_ATTR_DISPOFF);
-        Hu3DMotionSet(lbl_1_bss_14.modelIds32[i], lbl_1_bss_14.motionIds[i]);
-        Hu3DMotionTimeSet(lbl_1_bss_14.modelIds32[i], rand8() % 64);
+    lbl_1_bss_14.hookedMeteorModel =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 12), HU_MEMNUM_OVL, HEAP_MODEL));
+    motionId =
+        Hu3DJointMotion(lbl_1_bss_14.hookedMeteorModel,
+                        HuDataSelHeapReadNum(DATANUM(DATA_m651, 13), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DMotionSet(lbl_1_bss_14.hookedMeteorModel, motionId);
+    Hu3DModelAttrSet(lbl_1_bss_14.hookedMeteorModel, HU3D_MOTATTR_LOOP);
+    Hu3DModelAttrSet(lbl_1_bss_14.meteorDisplayModels[4], HU3D_ATTR_DISPOFF);
+    for (meteorIndex = 0; meteorIndex < 5; meteorIndex++) {
+        lbl_1_bss_14.meteorModels[meteorIndex] = Hu3DModelCreate(
+            HuDataSelHeapReadNum(meteorModelDataIds[meteorIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelLayerSet(lbl_1_bss_14.meteorModels[meteorIndex], 5);
+        lbl_1_bss_14.meteorMotions[meteorIndex] = Hu3DJointMotion(
+            lbl_1_bss_14.meteorModels[meteorIndex],
+            HuDataSelHeapReadNum(meteorMotionDataIds[meteorIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_14.meteorDelayFrames[meteorIndex] = rand8() % 4 + 1;
+        Hu3DModelAttrReset(lbl_1_bss_14.meteorModels[meteorIndex], HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrReset(lbl_1_bss_14.meteorModels[meteorIndex], HU3D_ATTR_DISPOFF);
+        Hu3DMotionSet(lbl_1_bss_14.meteorModels[meteorIndex],
+                      lbl_1_bss_14.meteorMotions[meteorIndex]);
+        Hu3DMotionTimeSet(lbl_1_bss_14.meteorModels[meteorIndex], rand8() % 64);
     }
-    Hu3DModelAttrSet(lbl_1_bss_14.modelIds32[4], HU3D_MOTATTR_PAUSE);
-    Hu3DModelAttrReset(lbl_1_bss_14.modelIds32[4], HU3D_MOTATTR_LOOP);
-    Hu3DModelHookSet(lbl_1_bss_14.modelIds32[4], "kuriboo_null", lbl_1_bss_14.unk_1C);
+    Hu3DModelAttrSet(lbl_1_bss_14.meteorModels[4], HU3D_MOTATTR_PAUSE);
+    Hu3DModelAttrReset(lbl_1_bss_14.meteorModels[4], HU3D_MOTATTR_LOOP);
+    Hu3DModelHookSet(lbl_1_bss_14.meteorModels[4], "kuriboo_null", lbl_1_bss_14.hookedMeteorModel);
     obj = omAddObjEx(fn_1_A0(), 336, 0, 0, 0, fn_1_72C);
     obj->data = &lbl_1_bss_14;
-    lbl_1_bss_14.unk_00 = 0;
-    lbl_1_bss_14.unk_04 = 1.0f;
+    lbl_1_bss_14.resultStarted = 0;
+    lbl_1_bss_14.meteorMotionSpeed = 1.0f;
 }
 
+/* Called by fn_1_3F30 during scene setup; creates the duel camera and sets its perspective,
+ * position, and 640 by 480 viewport. */
 void fn_1_1220(void)
 {
     Hu3DCameraCreate(HU3D_CAM0);
@@ -208,6 +271,8 @@ void fn_1_1220(void)
     Hu3DCameraViewportSet(HU3D_CAM0, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
 }
 
+/* Called by fn_1_3F30 during scene setup; creates the static white light used by the meteor and
+ * character models. */
 void fn_1_1344(void)
 {
     HU3D_LIGHTID lightId;
@@ -217,12 +282,14 @@ void fn_1_1344(void)
     Hu3DGLightInfinitytSet(lightId);
 }
 
+/* Called during scene setup by fn_1_3F30; creates one character object for each configured player
+ * assigned to group 0 or 1. */
 void fn_1_13D8(void)
 {
     int groupNo;
     int playerNo;
     OMOBJ *obj;
-    int unused = 0;
+    int zeroReserved = 0; /* Initialized but not used by character setup. */
     u32 modelData[2] = { DATANUM(DATA_m651, 22), DATANUM(DATA_m651, 24) };
     u32 motionData[2] = { DATANUM(DATA_m651, 23), DATANUM(DATA_m651, 25) };
 
@@ -234,39 +301,50 @@ void fn_1_13D8(void)
             lbl_1_bss_A8[groupNo].playerNo = playerNo;
             lbl_1_bss_A8[groupNo].characterNo = GwPlayerConf[playerNo].charNo;
             lbl_1_bss_A8[groupNo].padNo = GwPlayerConf[playerNo].padNo;
-            lbl_1_bss_A8[groupNo].modelId = CharModelMotListCreate(lbl_1_bss_A8[groupNo].characterNo, 1, lbl_1_data_70, lbl_1_bss_A8[groupNo].motionIds);
+            lbl_1_bss_A8[groupNo].modelId =
+                CharModelMotListCreate(lbl_1_bss_A8[groupNo].characterNo, 1, lbl_1_data_70,
+                                       lbl_1_bss_A8[groupNo].motionIds);
             CharMotionSet(lbl_1_bss_A8[groupNo].characterNo, lbl_1_bss_A8[groupNo].motionIds[1]);
             Hu3DModelCameraSet(lbl_1_bss_A8[groupNo].modelId, HU3D_CAM0);
             Hu3DModelAttrSet(lbl_1_bss_A8[groupNo].modelId, HU3D_MOTATTR_LOOP);
-            lbl_1_bss_A8[groupNo].unk_30 = Hu3DModelCreate(HuDataSelHeapReadNum(modelData[groupNo], HU_MEMNUM_OVL, HEAP_MODEL));
-            lbl_1_bss_A8[groupNo].unk_32 = Hu3DJointMotion(lbl_1_bss_A8[groupNo].unk_30, HuDataSelHeapReadNum(motionData[groupNo], HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DMotionSet(lbl_1_bss_A8[groupNo].unk_30, lbl_1_bss_A8[groupNo].unk_32);
-            Hu3DModelAttrReset(lbl_1_bss_A8[groupNo].unk_30, HU3D_MOTATTR_LOOP);
-            Hu3DModelAttrSet(lbl_1_bss_A8[groupNo].unk_30, HU3D_MOTATTR_PAUSE);
+            lbl_1_bss_A8[groupNo].resultHookModel = Hu3DModelCreate(
+                HuDataSelHeapReadNum(modelData[groupNo], HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_A8[groupNo].resultHookMotion = Hu3DJointMotion(
+                lbl_1_bss_A8[groupNo].resultHookModel,
+                HuDataSelHeapReadNum(motionData[groupNo], HU_MEMNUM_OVL, HEAP_MODEL));
+            Hu3DMotionSet(lbl_1_bss_A8[groupNo].resultHookModel,
+                          lbl_1_bss_A8[groupNo].resultHookMotion);
+            Hu3DModelAttrReset(lbl_1_bss_A8[groupNo].resultHookModel, HU3D_MOTATTR_LOOP);
+            Hu3DModelAttrSet(lbl_1_bss_A8[groupNo].resultHookModel, HU3D_MOTATTR_PAUSE);
             obj = omAddObjEx(fn_1_A0(), 400, 0, 0, 0, fn_1_18DC);
             obj->data = &lbl_1_bss_A8[groupNo];
             lbl_1_bss_A8[groupNo].pos.x = -100.0f + 200.0f * groupNo;
             lbl_1_bss_A8[groupNo].pos.y = 0.0f;
             lbl_1_bss_A8[groupNo].pos.z = 2000.0f;
             Hu3DModelPosSetV(lbl_1_bss_A8[groupNo].modelId, &lbl_1_bss_A8[groupNo].pos);
-            lbl_1_bss_A8[groupNo].unk_20 = 0;
-            lbl_1_bss_A8[groupNo].unk_24 = 0;
-            lbl_1_bss_A8[groupNo].unk_28 = 0;
-            lbl_1_bss_A8[groupNo].unk_2C = 0;
-            lbl_1_bss_A8[groupNo].unk_64 = 0.0f;
-            lbl_1_bss_A8[groupNo].cpuF = GwPlayerConf[playerNo].type;
-            lbl_1_bss_A8[groupNo].difficulty = GwPlayerConf[playerNo].comDif;
-            lbl_1_bss_A8[groupNo].unk_6E = (rand8() % 2 - 1) + lbl_1_data_88[lbl_1_bss_A8[groupNo].difficulty];
-            lbl_1_bss_A8[groupNo].fxNo = -1;
+            lbl_1_bss_A8[groupNo].movementBoostFrames = 0;
+            lbl_1_bss_A8[groupNo].reachedFinish = 0;
+            lbl_1_bss_A8[groupNo].finishResolved = 0;
+            lbl_1_bss_A8[groupNo].inputReceived = 0;
+            lbl_1_bss_A8[groupNo].crossingYaw = 0.0f;
+            lbl_1_bss_A8[groupNo].isCpu = GwPlayerConf[playerNo].type;
+            lbl_1_bss_A8[groupNo].cpuDifficulty = GwPlayerConf[playerNo].comDif;
+            lbl_1_bss_A8[groupNo].cpuInputDelayFrames =
+                (rand8() % 2 - 1) + lbl_1_data_88[lbl_1_bss_A8[groupNo].cpuDifficulty];
+            lbl_1_bss_A8[groupNo].effectHandle = -1;
         }
     }
 }
 
+/* Initial callback assigned when a player object is created; hands it to the sequence-wait callback
+ * on its first update. */
 void fn_1_18DC(OMOBJ *obj)
 {
     obj->objFunc = fn_1_18EC;
 }
 
+/* Player-object callback after fn_1_18DC; waits for duel mode 5 before enabling input and movement
+ * updates. */
 void fn_1_18EC(OMOBJ *obj)
 {
     if (MgSeqModeGet() == 5) {
@@ -274,33 +352,36 @@ void fn_1_18EC(OMOBJ *obj)
     }
 }
 
+/* Active player-object callback after fn_1_18EC; reads input, moves the character, and handles its
+ * finish sequence. */
 void fn_1_192C(OMOBJ *obj)
 {
     M651Player *work = obj->data;
     int input = 0;
 
-    if (work->cpuF) {
-        work->unk_6E--;
-        if (work->unk_6E == 0) {
-            work->unk_6E = (rand8() % 2 - 1) + lbl_1_data_88[work->difficulty];
+    if (work->isCpu) {
+        work->cpuInputDelayFrames--;
+        if (work->cpuInputDelayFrames == 0) {
+            work->cpuInputDelayFrames = (rand8() % 2 - 1) + lbl_1_data_88[work->cpuDifficulty];
             input = 1;
         }
     } else if (HuPadBtnDown[work->padNo] & PAD_BUTTON_A) {
         input = 1;
     }
     if (input == 1) {
-        work->unk_2C = 1;
+        work->inputReceived = 1;
         work->pos.z += 20.0f;
+        /* When z is below 1700, the input adds a second 20 to the character's z position. */
         if (work->pos.z < 1700.0f) {
             work->pos.z += 20.0f;
         }
-        work->unk_20 += 6;
-        if (work->unk_20 > 30) {
-            work->unk_20 = 30;
+        work->movementBoostFrames += 6;
+        if (work->movementBoostFrames > 30) {
+            work->movementBoostFrames = 30;
         }
     }
-    if (work->unk_20 > 0) {
-        work->unk_20--;
+    if (work->movementBoostFrames > 0) {
+        work->movementBoostFrames--;
         Hu3DMotionSpeedSet(work->modelId, 1.8f);
     } else {
         Hu3DMotionSpeedSet(work->modelId, 1.0f);
@@ -310,10 +391,11 @@ void fn_1_192C(OMOBJ *obj)
         work->pos.z = 2300.0f;
     }
     if (work->pos.z < 1700.0f) {
-        if (work->fxNo == -1) {
-            work->fxNo = CharFXPlay(work->characterNo, 581);
+        if (work->effectHandle == -1) {
+            work->effectHandle = CharFXPlay(work->characterNo, M651_FINISH_CHARACTER_EFFECT_ID);
         }
-        if (work->motionIds[2] != Hu3DMotionIDGet(work->modelId) && Hu3DMotionShiftIDGet(work->modelId) == HU3D_MOTIONID_NONE) {
+        if (work->motionIds[2] != Hu3DMotionIDGet(work->modelId) &&
+            Hu3DMotionShiftIDGet(work->modelId) == HU3D_MOTIONID_NONE) {
             Hu3DMotionShiftSet(work->modelId, work->motionIds[2], 0.0f, 30.0f, HU3D_MOTATTR_LOOP);
         }
         if (Hu3DMotionShiftIDGet(work->modelId) != HU3D_MOTIONID_NONE) {
@@ -324,7 +406,8 @@ void fn_1_192C(OMOBJ *obj)
         }
     }
     if (work->pos.z > 1700.0f) {
-        if (work->motionIds[1] != Hu3DMotionIDGet(work->modelId) && Hu3DMotionShiftIDGet(work->modelId) == HU3D_MOTIONID_NONE) {
+        if (work->motionIds[1] != Hu3DMotionIDGet(work->modelId) &&
+            Hu3DMotionShiftIDGet(work->modelId) == HU3D_MOTIONID_NONE) {
             Hu3DMotionShiftSet(work->modelId, work->motionIds[1], 0.0f, 30.0f, HU3D_MOTATTR_LOOP);
         }
         if (Hu3DMotionShiftIDGet(work->modelId) != HU3D_MOTIONID_NONE) {
@@ -335,25 +418,25 @@ void fn_1_192C(OMOBJ *obj)
         }
     }
     Hu3DModelPosSetV(work->modelId, &work->pos);
-    if (work->pos.z < 1000.0f && work->unk_28 != 1) {
-        work->unk_24 = 1;
+    if (work->pos.z < 1000.0f && work->finishResolved != 1) {
+        work->reachedFinish = 1;
     }
-    if (work->unk_28 == 1) {
-        if (work->unk_24 == 1) {
+    if (work->finishResolved == 1) {
+        if (work->reachedFinish == 1) {
             char *hooks[2] = { "P1", "P2" };
             Hu3DModelPosSet(work->modelId, 0.0f, work->pos.y, 0.0f);
-            Hu3DModelHookSet(work->unk_30, hooks[work->groupNo], work->modelId);
-            Hu3DModelAttrReset(work->unk_30, HU3D_MOTATTR_PAUSE);
+            Hu3DModelHookSet(work->resultHookModel, hooks[work->groupNo], work->modelId);
+            Hu3DModelAttrReset(work->resultHookModel, HU3D_MOTATTR_PAUSE);
             fn_1_B0(work->playerNo);
-            CharFXPlay(work->characterNo, 576);
+            CharFXPlay(work->characterNo, M651_RESULT_CHARACTER_EFFECT_ID);
             omVibrate(work->playerNo, 20, 20, 0);
         } else {
             HuVecF target = lbl_1_data_9C;
             HuVecF pos = work->pos;
-            PSVECSubtract(&target, &pos, &work->unk_58);
-            lbl_1_bss_10 = PSVECMag(&work->unk_58) / 120.0f;
+            PSVECSubtract(&target, &pos, &work->crossingDirection);
+            lbl_1_bss_10 = PSVECMag(&work->crossingDirection) / 120.0f;
             OSReport("winner speed %f\n", lbl_1_bss_10);
-            PSVECNormalize(&work->unk_58, &work->unk_58);
+            PSVECNormalize(&work->crossingDirection, &work->crossingDirection);
             Hu3DMotionSpeedSet(work->modelId, 0.8f);
             Hu3DMotionShiftSet(work->modelId, work->motionIds[1], 0.0f, 60.0f, HU3D_MOTATTR_LOOP);
         }
@@ -361,66 +444,75 @@ void fn_1_192C(OMOBJ *obj)
     }
 }
 
+/* Called during the duel update; starts result handling when either player reaches the finish. If
+ * both reach it, keeps a no-input finish as a draw or randomly selects one finisher when either
+ * received input. */
 void fn_1_1E60(void)
 {
     int player;
 
-    if (lbl_1_bss_A8[0].unk_28 == 1 || lbl_1_bss_A8[1].unk_28 == 1) {
+    if (lbl_1_bss_A8[0].finishResolved == 1 || lbl_1_bss_A8[1].finishResolved == 1) {
         return;
     }
-    if (lbl_1_bss_A8[0].unk_24 != 0 || lbl_1_bss_A8[1].unk_24 != 0) {
+    if (lbl_1_bss_A8[0].reachedFinish != 0 || lbl_1_bss_A8[1].reachedFinish != 0) {
         OSReport("finish.\n");
-        lbl_1_bss_14.unk_00 = 1;
-        if (lbl_1_bss_A8[0].unk_24 == 1 && lbl_1_bss_A8[1].unk_24 == 1) {
-            if (lbl_1_bss_A8[0].unk_2C == 0 && lbl_1_bss_A8[1].unk_2C == 0) {
-                lbl_1_bss_A8[0].unk_24 = 1;
-                lbl_1_bss_A8[1].unk_24 = 1;
+        lbl_1_bss_14.resultStarted = 1;
+        if (lbl_1_bss_A8[0].reachedFinish == 1 && lbl_1_bss_A8[1].reachedFinish == 1) {
+            if (lbl_1_bss_A8[0].inputReceived == 0 && lbl_1_bss_A8[1].inputReceived == 0) {
+                /* If neither side tapped, keep both finish flags set so the sequence shows a
+                 * draw. */
+                lbl_1_bss_A8[0].reachedFinish = 1;
+                lbl_1_bss_A8[1].reachedFinish = 1;
                 OSReport("draw.\n");
             } else {
                 player = rand8() % 2;
-                lbl_1_bss_A8[player].unk_24 = 1;
-                lbl_1_bss_A8[1 - player].unk_24 = 0;
+                lbl_1_bss_A8[player].reachedFinish = 1;
+                lbl_1_bss_A8[1 - player].reachedFinish = 0;
                 OSReport("random.\n");
             }
         }
-        OSReport("%d ( %d ) : %d ( %d )\n", lbl_1_bss_A8[0].groupNo, lbl_1_bss_A8[0].unk_2C, lbl_1_bss_A8[1].groupNo, lbl_1_bss_A8[1].unk_2C);
-        lbl_1_bss_A8[0].unk_28 = 1;
-        lbl_1_bss_A8[1].unk_28 = 1;
+        OSReport("%d ( %d ) : %d ( %d )\n", lbl_1_bss_A8[0].groupNo, lbl_1_bss_A8[0].inputReceived,
+                 lbl_1_bss_A8[1].groupNo, lbl_1_bss_A8[1].inputReceived);
+        lbl_1_bss_A8[0].finishResolved = 1;
+        lbl_1_bss_A8[1].finishResolved = 1;
     }
 }
 
+/* Player-object callback after fn_1_192C; holds a finisher at its hook or moves the other player to
+ * the result target. */
 void fn_1_2034(OMOBJ *obj)
 {
     M651Player *work = obj->data;
     HuVecF target;
     HuVecF pos;
 
-    if (work->unk_24 == 1) {
+    if (work->reachedFinish == 1) {
         if (work->pos.z > 0.0f) {
             char *hooks[2] = { "P1", "P2" };
-            Hu3DModelObjPosGet(work->unk_30, hooks[work->groupNo], &work->pos);
+            Hu3DModelObjPosGet(work->resultHookModel, hooks[work->groupNo], &work->pos);
             return;
         }
-        lbl_1_bss_64.unk_0C = 1;
-        lbl_1_bss_64.unk_14 = 0;
-        lbl_1_bss_64.unk_10 = lbl_1_bss_64.unk_24 / 120.0f;
-        OSReport("void : %f\n", lbl_1_bss_64.unk_10);
+        lbl_1_bss_64.resultAnimationActive = 1;
+        lbl_1_bss_64.sceneFrame = 0;
+        lbl_1_bss_64.resultScaleStep = lbl_1_bss_64.firstBackgroundScale / 120.0f;
+        OSReport("void : %f\n", lbl_1_bss_64.resultScaleStep);
         Hu3DModelAttrSet(work->modelId, HU3D_ATTR_DISPOFF);
-        Hu3DModelHookReset(work->unk_30);
+        Hu3DModelHookReset(work->resultHookModel);
         obj->objFunc = fn_1_242C;
         HuAudFXFadeOut(lbl_1_data_AC, 500);
-        HuAudFXPlay(2058);
+        HuAudFXPlay(M651_RESULT_ARRIVAL_EFFECT_ID);
         return;
     }
     target = lbl_1_data_9C;
     pos = work->pos;
-    PSVECSubtract(&target, &pos, &work->unk_58);
-    if (work->pos.x != lbl_1_data_9C.x || work->pos.y != lbl_1_data_9C.y || work->pos.z != lbl_1_data_9C.z) {
-        PSVECNormalize(&work->unk_58, &work->unk_58);
+    PSVECSubtract(&target, &pos, &work->crossingDirection);
+    if (work->pos.x != lbl_1_data_9C.x || work->pos.y != lbl_1_data_9C.y ||
+        work->pos.z != lbl_1_data_9C.z) {
+        PSVECNormalize(&work->crossingDirection, &work->crossingDirection);
     }
-    work->pos.x += lbl_1_bss_10 * work->unk_58.x;
-    work->pos.y += lbl_1_bss_10 * work->unk_58.y;
-    work->pos.z += lbl_1_bss_10 * work->unk_58.z;
+    work->pos.x += lbl_1_bss_10 * work->crossingDirection.x;
+    work->pos.y += lbl_1_bss_10 * work->crossingDirection.y;
+    work->pos.z += lbl_1_bss_10 * work->crossingDirection.z;
     if (work->pos.x < 1.0f + lbl_1_data_9C.x && work->pos.x > lbl_1_data_9C.x - 1.0f) {
         work->pos.x = lbl_1_data_9C.x;
     }
@@ -437,6 +529,8 @@ void fn_1_2034(OMOBJ *obj)
     }
 }
 
+/* Player-object callback assigned by fn_1_2034; holds the completed transition motion at frame
+ * 35. */
 void fn_1_23D4(OMOBJ *obj)
 {
     M651Player *work = obj->data;
@@ -445,10 +539,12 @@ void fn_1_23D4(OMOBJ *obj)
     }
 }
 
+/* Player-object callback after fn_1_2034; starts the finisher's final character motion when result
+ * mode 7 begins. */
 void fn_1_242C(OMOBJ *obj)
 {
     M651Player *work = obj->data;
-    if (MgSeqModeGet() == 7 && work->unk_24 == 1) {
+    if (MgSeqModeGet() == 7 && work->reachedFinish == 1) {
         Hu3DMotionSet(work->modelId, work->motionIds[4]);
         Hu3DModelAttrReset(work->modelId, HU3D_MOTATTR_PAUSE);
         Hu3DModelAttrSet(work->modelId, HU3D_MOTATTR_LOOP);
@@ -457,139 +553,166 @@ void fn_1_242C(OMOBJ *obj)
     }
 }
 
+/* Player-object callback after fn_1_242C; moves the character along its result path and turns it
+ * toward that path. */
 void fn_1_24BC(OMOBJ *obj)
 {
     M651Player *work = obj->data;
-    work->unk_4C.x += 12.0f * work->unk_58.x;
-    work->unk_4C.y += 12.0f * work->unk_58.y;
-    work->unk_4C.z += 12.0f * work->unk_58.z;
-    Hu3DModelPosSet(work->modelId, work->unk_4C.x, work->unk_4C.y, work->unk_4C.z);
-    Hu3DModelRotSet(work->modelId, 90.0f, 0.0f, work->unk_64);
+    work->crossingPosition.x += 12.0f * work->crossingDirection.x;
+    work->crossingPosition.y += 12.0f * work->crossingDirection.y;
+    work->crossingPosition.z += 12.0f * work->crossingDirection.z;
+    Hu3DModelPosSet(work->modelId, work->crossingPosition.x, work->crossingPosition.y,
+                    work->crossingPosition.z);
+    Hu3DModelRotSet(work->modelId, 90.0f, 0.0f, work->crossingYaw);
     Hu3DModelAttrReset(work->modelId, HU3D_ATTR_DISPOFF);
-    OSReport("pos : %f, %f, %f\n", work->unk_58.x, work->unk_58.y, work->unk_58.z);
+    OSReport("pos : %f, %f, %f\n", work->crossingDirection.x, work->crossingDirection.y,
+             work->crossingDirection.z);
 }
 
+/* Called during scene setup by fn_1_3F30; loads the scene models and creates their frame-update
+ * object. */
 void fn_1_25B0(void)
 {
     OMOBJ *obj;
 
-    lbl_1_bss_64.modelIds[0] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 0), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_64.modelIds[0], HU3D_MOTATTR_LOOP);
-    lbl_1_bss_64.modelIds[2] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 2), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_64.modelIds[2], HU3D_MOTATTR_LOOP);
-    lbl_1_bss_64.modelIds[1] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 1), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_64.modelIds[1], HU3D_MOTATTR_SHAPE_LOOP);
-    Hu3DModelAttrSet(lbl_1_bss_64.modelIds[1], HU3D_MOTATTR_LOOP);
-    lbl_1_bss_64.modelIds[3] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 4), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_64.modelIds[3], HU3D_MOTATTR_PAUSE);
-    Hu3DMotionSpeedSet(lbl_1_bss_64.modelIds[3], 2.0f);
-    lbl_1_bss_64.modelIds[4] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 3), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrReset(lbl_1_bss_64.modelIds[4], HU3D_MOTATTR_LOOP);
-    lbl_1_bss_64.unk_30 = 0.0f;
-    lbl_1_bss_64.unk_34 = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 5), HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_64.unk_38 = 1.0f;
-    Hu3DModelAttrSet(lbl_1_bss_64.unk_34, HU3D_MOTATTR_LOOP);
-    lbl_1_bss_64.unk_3C = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 6), HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_64.unk_3E = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 7), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_64.unk_3C, HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(lbl_1_bss_64.unk_3E, HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(lbl_1_bss_64.unk_3E, HU3D_ATTR_DISPOFF);
-    Hu3DModelLayerSet(lbl_1_bss_64.modelIds[4], 0);
-    Hu3DModelLayerSet(lbl_1_bss_64.modelIds[0], 1);
-    Hu3DModelLayerSet(lbl_1_bss_64.modelIds[2], 2);
-    Hu3DModelLayerSet(lbl_1_bss_64.modelIds[1], 3);
-    Hu3DModelLayerSet(lbl_1_bss_64.unk_34, 4);
-    Hu3DModelLayerSet(lbl_1_bss_64.unk_3C, 4);
-    Hu3DModelLayerSet(lbl_1_bss_64.unk_3E, 4);
+    lbl_1_bss_64.sceneModels[0] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 0), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelAttrSet(lbl_1_bss_64.sceneModels[0], HU3D_MOTATTR_LOOP);
+    lbl_1_bss_64.sceneModels[2] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 2), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelAttrSet(lbl_1_bss_64.sceneModels[2], HU3D_MOTATTR_LOOP);
+    lbl_1_bss_64.sceneModels[1] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 1), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelAttrSet(lbl_1_bss_64.sceneModels[1], HU3D_MOTATTR_SHAPE_LOOP);
+    Hu3DModelAttrSet(lbl_1_bss_64.sceneModels[1], HU3D_MOTATTR_LOOP);
+    lbl_1_bss_64.sceneModels[3] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 4), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelAttrSet(lbl_1_bss_64.sceneModels[3], HU3D_MOTATTR_PAUSE);
+    Hu3DMotionSpeedSet(lbl_1_bss_64.sceneModels[3], 2.0f);
+    lbl_1_bss_64.sceneModels[4] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 3), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelAttrReset(lbl_1_bss_64.sceneModels[4], HU3D_MOTATTR_LOOP);
+    lbl_1_bss_64.sceneRotationSpeedOffset = 0.0f;
+    lbl_1_bss_64.animatedSceneModel =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 5), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_64.unusedSceneSpeedAccumulator = 1.0f;
+    Hu3DModelAttrSet(lbl_1_bss_64.animatedSceneModel, HU3D_MOTATTR_LOOP);
+    lbl_1_bss_64.approachEffectModel =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 6), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_64.approachEffectOverlayModel =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m651, 7), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelAttrSet(lbl_1_bss_64.approachEffectModel, HU3D_MOTATTR_LOOP);
+    Hu3DModelAttrSet(lbl_1_bss_64.approachEffectOverlayModel, HU3D_MOTATTR_LOOP);
+    Hu3DModelAttrSet(lbl_1_bss_64.approachEffectOverlayModel, HU3D_ATTR_DISPOFF);
+    Hu3DModelLayerSet(lbl_1_bss_64.sceneModels[4], 0);
+    Hu3DModelLayerSet(lbl_1_bss_64.sceneModels[0], 1);
+    Hu3DModelLayerSet(lbl_1_bss_64.sceneModels[2], 2);
+    Hu3DModelLayerSet(lbl_1_bss_64.sceneModels[1], 3);
+    Hu3DModelLayerSet(lbl_1_bss_64.animatedSceneModel, 4);
+    Hu3DModelLayerSet(lbl_1_bss_64.approachEffectModel, 4);
+    Hu3DModelLayerSet(lbl_1_bss_64.approachEffectOverlayModel, 4);
     obj = omAddObjEx(fn_1_A0(), 336, 0, 0, 0, fn_1_29A4);
     obj->data = &lbl_1_bss_64;
-    lbl_1_bss_64.unk_14 = 0;
-    lbl_1_bss_64.unk_18 = 0.0f;
-    lbl_1_bss_64.unk_1C = 0.0f;
-    lbl_1_bss_64.unk_20 = 0.0f;
-    lbl_1_bss_64.unk_24 = 0.0f;
-    lbl_1_bss_64.unk_28 = 0.0f;
-    lbl_1_bss_64.unk_2C = 1.0f;
-    lbl_1_bss_64.unk_0C = 0;
-    lbl_1_bss_64.unk_40 = 0;
+    lbl_1_bss_64.sceneFrame = 0;
+    lbl_1_bss_64.mainSceneRotation = 0.0f;
+    lbl_1_bss_64.mainSceneScale = 0.0f;
+    lbl_1_bss_64.backgroundRotation = 0.0f;
+    lbl_1_bss_64.firstBackgroundScale = 0.0f;
+    lbl_1_bss_64.secondBackgroundScale = 0.0f;
+    lbl_1_bss_64.closingModelRotation = 1.0f;
+    lbl_1_bss_64.resultAnimationActive = 0;
+    lbl_1_bss_64.finalMeteorCheckDone = 0;
 }
 
+/* Scene-object callback created by fn_1_25B0; animates the opening and hands off to the duel
+ * callback at mode 5. */
 void fn_1_29A4(OMOBJ *obj)
 {
     M651Work64 *work = obj->data;
-    if (lbl_1_bss_64.unk_14 == 55) {
-        HuAudFXPlay(2053);
-        HuAudFXPlay(2054);
-        lbl_1_data_AC = HuAudFXPlay(2055);
+    if (lbl_1_bss_64.sceneFrame == 55) {
+        HuAudFXPlay(M651_OPENING_FRAME_55_EFFECT_A_ID);
+        HuAudFXPlay(M651_OPENING_FRAME_55_EFFECT_B_ID);
+        lbl_1_data_AC = HuAudFXPlay(M651_SUSTAINED_SCENE_EFFECT_ID);
         HuAudFXPitchSet(lbl_1_data_AC, lbl_1_data_B0);
     }
-    lbl_1_bss_64.unk_14++;
-    if (lbl_1_bss_64.unk_14 >= 80 && lbl_1_bss_64.unk_14 < 200) {
-        lbl_1_bss_64.unk_1C += 0.00833;
-        if (lbl_1_bss_64.unk_1C > 1.0f) lbl_1_bss_64.unk_1C = 1.0f;
+    lbl_1_bss_64.sceneFrame++;
+    if (lbl_1_bss_64.sceneFrame >= 80 && lbl_1_bss_64.sceneFrame < 200) {
+        lbl_1_bss_64.mainSceneScale += 0.00833;
+        if (lbl_1_bss_64.mainSceneScale > 1.0f) lbl_1_bss_64.mainSceneScale = 1.0f;
     }
-    lbl_1_bss_64.unk_18 += 1.0f;
-    Hu3DModelScaleSet(lbl_1_bss_64.modelIds[0], lbl_1_bss_64.unk_1C, lbl_1_bss_64.unk_1C, lbl_1_bss_64.unk_1C);
-    Hu3DModelRotSet(lbl_1_bss_64.modelIds[0], 0.0f, 0.0f, lbl_1_bss_64.unk_18);
-    if (lbl_1_bss_64.unk_14 < 120) {
-        lbl_1_bss_64.unk_24 += 0.00833;
-        lbl_1_bss_64.unk_28 += 0.00833;
-        if (lbl_1_bss_64.unk_24 > 1.0f) lbl_1_bss_64.unk_24 = 1.0f;
-        if (lbl_1_bss_64.unk_28 > 1.0f) lbl_1_bss_64.unk_28 = 1.0f;
+    lbl_1_bss_64.mainSceneRotation += 1.0f;
+    Hu3DModelScaleSet(lbl_1_bss_64.sceneModels[0], lbl_1_bss_64.mainSceneScale,
+                      lbl_1_bss_64.mainSceneScale, lbl_1_bss_64.mainSceneScale);
+    Hu3DModelRotSet(lbl_1_bss_64.sceneModels[0], 0.0f, 0.0f, lbl_1_bss_64.mainSceneRotation);
+    if (lbl_1_bss_64.sceneFrame < 120) {
+        lbl_1_bss_64.firstBackgroundScale += 0.00833;
+        lbl_1_bss_64.secondBackgroundScale += 0.00833;
+        if (lbl_1_bss_64.firstBackgroundScale > 1.0f) lbl_1_bss_64.firstBackgroundScale = 1.0f;
+        if (lbl_1_bss_64.secondBackgroundScale > 1.0f) lbl_1_bss_64.secondBackgroundScale = 1.0f;
     }
-    lbl_1_bss_64.unk_20 += 2.0f;
-    Hu3DModelScaleSet(lbl_1_bss_64.modelIds[1], lbl_1_bss_64.unk_24, lbl_1_bss_64.unk_24, lbl_1_bss_64.unk_24);
-    Hu3DModelRotSet(lbl_1_bss_64.modelIds[1], 0.0f, 0.0f, lbl_1_bss_64.unk_20);
-    Hu3DModelScaleSet(lbl_1_bss_64.modelIds[2], lbl_1_bss_64.unk_24, lbl_1_bss_64.unk_24, lbl_1_bss_64.unk_24);
-    Hu3DModelRotSet(lbl_1_bss_64.modelIds[2], 0.0f, 0.0f, lbl_1_bss_64.unk_20);
-    if (Hu3DMotionEndCheck(lbl_1_bss_64.modelIds[4]) == 1) {
-        lbl_1_bss_64.unk_2C -= 2.0f;
-        Hu3DModelRotSet(lbl_1_bss_64.modelIds[4], 0.0f, 0.0f, lbl_1_bss_64.unk_2C);
+    lbl_1_bss_64.backgroundRotation += 2.0f;
+    Hu3DModelScaleSet(lbl_1_bss_64.sceneModels[1], lbl_1_bss_64.firstBackgroundScale,
+                      lbl_1_bss_64.firstBackgroundScale, lbl_1_bss_64.firstBackgroundScale);
+    Hu3DModelRotSet(lbl_1_bss_64.sceneModels[1], 0.0f, 0.0f, lbl_1_bss_64.backgroundRotation);
+    Hu3DModelScaleSet(lbl_1_bss_64.sceneModels[2], lbl_1_bss_64.firstBackgroundScale,
+                      lbl_1_bss_64.firstBackgroundScale, lbl_1_bss_64.firstBackgroundScale);
+    Hu3DModelRotSet(lbl_1_bss_64.sceneModels[2], 0.0f, 0.0f, lbl_1_bss_64.backgroundRotation);
+    if (Hu3DMotionEndCheck(lbl_1_bss_64.sceneModels[4]) == 1) {
+        lbl_1_bss_64.closingModelRotation -= 2.0f;
+        Hu3DModelRotSet(lbl_1_bss_64.sceneModels[4], 0.0f, 0.0f, lbl_1_bss_64.closingModelRotation);
     }
     if (MgSeqModeGet() == 5) obj->objFunc = fn_1_2D8C;
 }
 
+/* Scene-object callback after fn_1_29A4; animates duel cues and, after a result, shrinks the scene
+ * before advancing the sequence. */
 void fn_1_2D8C(OMOBJ *obj)
 {
     M651Work64 *work = obj->data;
-    if (lbl_1_bss_64.unk_0C == 1) {
-        Hu3DModelAttrSet(lbl_1_bss_64.modelIds[4], HU3D_MOTATTR_SHAPE_REV);
-        lbl_1_bss_64.unk_14++;
-        lbl_1_bss_64.unk_1C -= 0.00833;
-        if (lbl_1_bss_64.unk_1C < 0.0f) lbl_1_bss_64.unk_1C = 0.0f;
-        lbl_1_bss_64.unk_24 -= lbl_1_bss_64.unk_10;
-        lbl_1_bss_64.unk_28 -= lbl_1_bss_64.unk_10;
-        if (lbl_1_bss_64.unk_24 < 0.0f) lbl_1_bss_64.unk_24 = 0.0f;
-        if (lbl_1_bss_64.unk_28 < 0.0f) lbl_1_bss_64.unk_28 = 0.0f;
-        if (lbl_1_bss_64.unk_24 < 0.2f) Hu3DModelAttrReset(lbl_1_bss_64.modelIds[3], HU3D_MOTATTR_PAUSE);
-        if ((float)lbl_1_bss_64.unk_14 == 90.0f) HuAudFXPlay(2059);
-        if ((float)lbl_1_bss_64.unk_14 > 120.0f) {
+    if (lbl_1_bss_64.resultAnimationActive == 1) {
+        Hu3DModelAttrSet(lbl_1_bss_64.sceneModels[4], HU3D_MOTATTR_SHAPE_REV);
+        lbl_1_bss_64.sceneFrame++;
+        lbl_1_bss_64.mainSceneScale -= 0.00833;
+        if (lbl_1_bss_64.mainSceneScale < 0.0f) lbl_1_bss_64.mainSceneScale = 0.0f;
+        lbl_1_bss_64.firstBackgroundScale -= lbl_1_bss_64.resultScaleStep;
+        lbl_1_bss_64.secondBackgroundScale -= lbl_1_bss_64.resultScaleStep;
+        if (lbl_1_bss_64.firstBackgroundScale < 0.0f) lbl_1_bss_64.firstBackgroundScale = 0.0f;
+        if (lbl_1_bss_64.secondBackgroundScale < 0.0f) lbl_1_bss_64.secondBackgroundScale = 0.0f;
+        if (lbl_1_bss_64.firstBackgroundScale < 0.2f)
+            Hu3DModelAttrReset(lbl_1_bss_64.sceneModels[3], HU3D_MOTATTR_PAUSE);
+        if ((float)lbl_1_bss_64.sceneFrame == 90.0f) HuAudFXPlay(M651_ENDING_FRAME_90_EFFECT_ID);
+        if ((float)lbl_1_bss_64.sceneFrame > 120.0f) {
             fn_1_190();
             obj->objFunc = NULL;
         }
     } else {
-        lbl_1_bss_64.unk_24 += 0.004f;
-        if (lbl_1_bss_64.unk_24 > 3.0f) lbl_1_bss_64.unk_24 = 3.0f;
-        lbl_1_bss_64.unk_28 += 0.004f;
-        if (lbl_1_bss_64.unk_28 > 1.5f) lbl_1_bss_64.unk_28 = 1.5f;
-        Hu3DMotionSpeedSet(lbl_1_bss_64.modelIds[0], lbl_1_data_A8);
+        lbl_1_bss_64.firstBackgroundScale += 0.004f;
+        if (lbl_1_bss_64.firstBackgroundScale > 3.0f) lbl_1_bss_64.firstBackgroundScale = 3.0f;
+        lbl_1_bss_64.secondBackgroundScale += 0.004f;
+        if (lbl_1_bss_64.secondBackgroundScale > 1.5f) lbl_1_bss_64.secondBackgroundScale = 1.5f;
+        Hu3DMotionSpeedSet(lbl_1_bss_64.sceneModels[0], lbl_1_data_A8);
         lbl_1_data_A8 += 0.05f;
         if (lbl_1_data_A8 > 4.0f) lbl_1_data_A8 = 4.0f;
         {
-            float times[6] = { 405.0f, 426.0f, 494.0f, 540.0f, 590.0f, 630.0f };
-            s16 pan[6] = { 32, 32, 96, 32, 32, 96 };
-            int i = 0;
-            float time = Hu3DMotionTimeGet(lbl_1_bss_64.unk_34);
-            for (i = 0; i < 6; i++) {
-                if (time == times[i]) HuAudFXPlayPan(2060, pan[i]);
+            float soundCueFrames[6] = { 405.0f, 426.0f, 494.0f, 540.0f, 590.0f, 630.0f };
+            s16 soundCuePan[6] = { 32, 32, 96, 32, 32, 96 };
+            int cueIndex = 0;
+            float animatedSceneFrame = Hu3DMotionTimeGet(lbl_1_bss_64.animatedSceneModel);
+            for (cueIndex = 0; cueIndex < 6; cueIndex++) {
+                if (animatedSceneFrame == soundCueFrames[cueIndex])
+                    HuAudFXPlayPan(M651_SOUND_CUE_MOTION_EFFECT_ID, soundCuePan[cueIndex]);
             }
         }
         {
-            float times[19] = { 386.0f, 490.0f, 580.0f, 666.0f, 737.0f, 760.0f, 830.0f, 870.0f, 900.0f, 932.0f, 955.0f, 1000.0f, 1024.0f, 1064.0f, 1096.0f, 1130.0f, 1150.0f, 1170.0f, 1180.0f };
-            int i = 0;
-            float time = Hu3DMotionTimeGet(lbl_1_bss_64.modelIds[1]);
-            for (i = 0; i < 19; i++) {
-                if (time == times[i]) HuAudFXPlay(2056);
+            float sceneCueFrames[19] = { 386.0f,  490.0f,  580.0f,  666.0f,  737.0f,
+                                         760.0f,  830.0f,  870.0f,  900.0f,  932.0f,
+                                         955.0f,  1000.0f, 1024.0f, 1064.0f, 1096.0f,
+                                         1130.0f, 1150.0f, 1170.0f, 1180.0f };
+            int cueIndex = 0;
+            float sceneMotionFrame = Hu3DMotionTimeGet(lbl_1_bss_64.sceneModels[1]);
+            for (cueIndex = 0; cueIndex < 19; cueIndex++) {
+                if (sceneMotionFrame == sceneCueFrames[cueIndex])
+                    HuAudFXPlay(M651_SCENE_MOTION_CUE_EFFECT_ID);
             }
         }
     }
@@ -598,87 +721,104 @@ void fn_1_2D8C(OMOBJ *obj)
         if (lbl_1_data_B0 > 0) lbl_1_data_B0 = 0;
         HuAudFXPitchSet(lbl_1_data_AC, lbl_1_data_B0);
     }
-    lbl_1_bss_64.unk_18 += 1.0f + lbl_1_bss_64.unk_30;
-    Hu3DModelScaleSet(lbl_1_bss_64.modelIds[0], lbl_1_bss_64.unk_1C, lbl_1_bss_64.unk_1C, lbl_1_bss_64.unk_1C);
-    Hu3DModelRotSet(lbl_1_bss_64.modelIds[0], 0.0f, 0.0f, lbl_1_bss_64.unk_18);
-    lbl_1_bss_64.unk_20 += 2.0f + lbl_1_bss_64.unk_30;
-    Hu3DModelScaleSet(lbl_1_bss_64.modelIds[1], lbl_1_bss_64.unk_24, lbl_1_bss_64.unk_24, lbl_1_bss_64.unk_24);
-    Hu3DModelRotSet(lbl_1_bss_64.modelIds[1], 0.0f, 0.0f, lbl_1_bss_64.unk_20);
-    Hu3DModelScaleSet(lbl_1_bss_64.modelIds[2], lbl_1_bss_64.unk_28, lbl_1_bss_64.unk_28, lbl_1_bss_64.unk_28);
-    Hu3DModelRotSet(lbl_1_bss_64.modelIds[2], 0.0f, 0.0f, lbl_1_bss_64.unk_20);
-    lbl_1_bss_64.unk_2C -= 2.0f + lbl_1_bss_64.unk_30;
-    Hu3DModelRotSet(lbl_1_bss_64.modelIds[4], 0.0f, 0.0f, lbl_1_bss_64.unk_2C);
+    lbl_1_bss_64.mainSceneRotation += 1.0f + lbl_1_bss_64.sceneRotationSpeedOffset;
+    Hu3DModelScaleSet(lbl_1_bss_64.sceneModels[0], lbl_1_bss_64.mainSceneScale,
+                      lbl_1_bss_64.mainSceneScale, lbl_1_bss_64.mainSceneScale);
+    Hu3DModelRotSet(lbl_1_bss_64.sceneModels[0], 0.0f, 0.0f, lbl_1_bss_64.mainSceneRotation);
+    lbl_1_bss_64.backgroundRotation += 2.0f + lbl_1_bss_64.sceneRotationSpeedOffset;
+    Hu3DModelScaleSet(lbl_1_bss_64.sceneModels[1], lbl_1_bss_64.firstBackgroundScale,
+                      lbl_1_bss_64.firstBackgroundScale, lbl_1_bss_64.firstBackgroundScale);
+    Hu3DModelRotSet(lbl_1_bss_64.sceneModels[1], 0.0f, 0.0f, lbl_1_bss_64.backgroundRotation);
+    Hu3DModelScaleSet(lbl_1_bss_64.sceneModels[2], lbl_1_bss_64.secondBackgroundScale,
+                      lbl_1_bss_64.secondBackgroundScale, lbl_1_bss_64.secondBackgroundScale);
+    Hu3DModelRotSet(lbl_1_bss_64.sceneModels[2], 0.0f, 0.0f, lbl_1_bss_64.backgroundRotation);
+    lbl_1_bss_64.closingModelRotation -= 2.0f + lbl_1_bss_64.sceneRotationSpeedOffset;
+    Hu3DModelRotSet(lbl_1_bss_64.sceneModels[4], 0.0f, 0.0f, lbl_1_bss_64.closingModelRotation);
     if (lbl_1_bss_A8[0].pos.z < 1700.0f || lbl_1_bss_A8[1].pos.z < 1700.0f) {
-        Hu3DModelAttrReset(lbl_1_bss_64.unk_3E, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_64.unk_3E, HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrReset(lbl_1_bss_64.approachEffectOverlayModel, HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrSet(lbl_1_bss_64.approachEffectOverlayModel, HU3D_MOTATTR_LOOP);
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_64.unk_3E, HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrReset(lbl_1_bss_64.approachEffectOverlayModel, HU3D_MOTATTR_LOOP);
     }
-    if (lbl_1_bss_A8[0].unk_24 == 1 || lbl_1_bss_A8[1].unk_24 == 1) {
-        Hu3DModelAttrReset(lbl_1_bss_64.unk_3E, HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrReset(lbl_1_bss_64.unk_3C, HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrSet(lbl_1_bss_64.unk_34, HU3D_ATTR_DISPOFF);
+    if (lbl_1_bss_A8[0].reachedFinish == 1 || lbl_1_bss_A8[1].reachedFinish == 1) {
+        Hu3DModelAttrReset(lbl_1_bss_64.approachEffectOverlayModel, HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrReset(lbl_1_bss_64.approachEffectModel, HU3D_MOTATTR_LOOP);
+        Hu3DModelAttrSet(lbl_1_bss_64.animatedSceneModel, HU3D_ATTR_DISPOFF);
     }
 }
 
+/* Placeholder player-object callback; it reads the object's data but performs no per-frame gameplay
+ * update. */
 void fn_1_35D8(OMOBJ *obj)
 {
     M651Player *work = obj->data;
 }
 
-void fn_1_35EC(M651Player *work, float y1, float y2, float x1, float x2)
+/* Called by fn_1_36F8; sets crossing endpoints and direction, selects the crossing motion, and sets
+ * the character's yaw. */
+void fn_1_35EC(M651Player *playerState, float startY, float endY, float startX, float endX)
 {
-    work->unk_34.x = x1;
-    work->unk_34.y = y1;
-    work->unk_34.z = 1000.0f;
-    work->unk_40.x = x2;
-    work->unk_40.y = y2;
-    work->unk_40.z = 1000.0f;
-    work->unk_4C = work->unk_34;
-    PSVECSubtract(&work->unk_40, &work->unk_34, &work->unk_58);
-    PSVECNormalize(&work->unk_58, &work->unk_58);
-    Hu3DModelAttrReset(work->modelId, HU3D_MOTATTR_LOOP);
-    CharMotionSet(work->characterNo, work->motionIds[0]);
-    if (x1 < x2) {
-        work->unk_64 = -90.0f;
+    playerState->crossingStart.x = startX;
+    playerState->crossingStart.y = startY;
+    playerState->crossingStart.z = 1000.0f;
+    playerState->crossingEnd.x = endX;
+    playerState->crossingEnd.y = endY;
+    playerState->crossingEnd.z = 1000.0f;
+    playerState->crossingPosition = playerState->crossingStart;
+    PSVECSubtract(&playerState->crossingEnd, &playerState->crossingStart,
+                  &playerState->crossingDirection);
+    PSVECNormalize(&playerState->crossingDirection, &playerState->crossingDirection);
+    Hu3DModelAttrReset(playerState->modelId, HU3D_MOTATTR_LOOP);
+    CharMotionSet(playerState->characterNo, playerState->motionIds[0]);
+    if (startX < endX) {
+        playerState->crossingYaw = -90.0f;
     } else {
-        work->unk_64 = 90.0f;
+        playerState->crossingYaw = 90.0f;
     }
 }
 
+/* Called by the result-phase callback in lbl_1_data_14 at frame 90; assigns both draw paths or
+ * pauses the winner and assigns only the other player's crossing path. */
 void fn_1_36F8(void)
 {
-    int player;
-    int direction;
-    int winnerDirection;
-    int height;
-    int winner;
+    int firstDrawPlayerIndex;
+    int drawPathOrder;
+    int winnerPathOrder;
+    int winnerPathHeight;
+    int winnerIndex;
 
-    if (lbl_1_bss_A8[0].unk_24 == 1 && lbl_1_bss_A8[1].unk_24 == 1) {
-        player = rand8() % 2;
-        direction = rand8() % 2;
+    if (lbl_1_bss_A8[0].reachedFinish == 1 && lbl_1_bss_A8[1].reachedFinish == 1) {
+        firstDrawPlayerIndex = rand8() % 2;
+        drawPathOrder = rand8() % 2;
         {
-            float ys[2] = { 250.0f, -250.0f };
-            fn_1_35EC(&lbl_1_bss_A8[player], ys[direction], ys[1 - direction], -1600.0f, 1600.0f);
-            fn_1_35EC(&lbl_1_bss_A8[1 - player], ys[direction], ys[1 - direction], 1600.0f, -1600.0f);
+            float pathHeights[2] = { 250.0f, -250.0f };
+            fn_1_35EC(&lbl_1_bss_A8[firstDrawPlayerIndex], pathHeights[drawPathOrder],
+                      pathHeights[1 - drawPathOrder], -1600.0f, 1600.0f);
+            fn_1_35EC(&lbl_1_bss_A8[1 - firstDrawPlayerIndex], pathHeights[drawPathOrder],
+                      pathHeights[1 - drawPathOrder], 1600.0f, -1600.0f);
         }
     } else {
-        winner = lbl_1_bss_A8[0].unk_24 == 1 ? 1 : 0;
+        winnerIndex = lbl_1_bss_A8[0].reachedFinish == 1 ? 1 : 0;
         {
-            HU3D_MODELID modelId = lbl_1_bss_A8[winner].modelId;
-            Hu3DModelAttrSet(modelId, HU3D_MOTATTR_PAUSE);
-            CharMotionShiftSet(lbl_1_bss_A8[winner].characterNo, lbl_1_bss_A8[winner].motionIds[3], 0.0f, 15.0f, 0);
+            HU3D_MODELID winnerModelId = lbl_1_bss_A8[winnerIndex].modelId;
+            Hu3DModelAttrSet(winnerModelId, HU3D_MOTATTR_PAUSE);
+            CharMotionShiftSet(lbl_1_bss_A8[winnerIndex].characterNo,
+                               lbl_1_bss_A8[winnerIndex].motionIds[3], 0.0f, 15.0f, 0);
         }
-        winnerDirection = rand8() % 2;
-        height = rand8() % 2;
+        winnerPathOrder = rand8() % 2;
+        winnerPathHeight = rand8() % 2;
         {
-            float ys[2] = { 250.0f, -250.0f };
-            float xs[2] = { -1600.0f, 1600.0f };
-            fn_1_35EC(&lbl_1_bss_A8[1 - winner], ys[height], ys[1 - height], xs[winnerDirection], xs[1 - winnerDirection]);
+            float pathHeights[2] = { 250.0f, -250.0f };
+            float pathStartXs[2] = { -1600.0f, 1600.0f };
+            fn_1_35EC(&lbl_1_bss_A8[1 - winnerIndex], pathHeights[winnerPathHeight],
+                      pathHeights[1 - winnerPathHeight], pathStartXs[winnerPathOrder],
+                      pathStartXs[1 - winnerPathOrder]);
         }
     }
 }
 
+/* Called by fn_1_40C; builds lighting, camera, player characters, scene models, and meteor objects
+ * in setup order. */
 void fn_1_3F30(void)
 {
     fn_1_1344();
