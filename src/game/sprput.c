@@ -1,3 +1,4 @@
+/* Sprite drawing setup, texture upload, and layered 2D/3D sprite rendering. */
 #define _MATH_H
 #include "game/sprite.h"
 #include "game/init.h"
@@ -7,12 +8,14 @@
 #include "dolphin/gx.h"
 #include "dolphin/vi.h"
 
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter);;
+void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, GXTexWrapMode wrapT,
+                  GXTexFilter filter);
+;
 
 typedef struct HuSprLayer_s {
-    s16 drawNo;
-    s16 layer;
-    s16 camera;
+    s16 drawNo; /* Sprite draw queue rendered by this 3D layer. */
+    s16 layer; /* Hu3D layer that invokes the sprite draw callback. */
+    s16 camera; /* Camera bit mask that enables this draw queue. */
 } HUSPR_LAYER;
 
 static void *bmpNoCC[8];
@@ -24,12 +27,13 @@ void mtxTransCat(Mtx matrix, float x, float y, float z);
 
 static void HuSprLayerHook(s16 layer);
 
+/* The render pass calls this before 2D sprite queues to restore their GX state. */
 void HuSprDispInit(void)
 {
     Mtx44 proj;
-    s16 i;
-    for(i=0; i<8; i++) {
-        bmpNoCC[i] = NULL;
+    s16 textureSlot;
+    for(textureSlot=0; textureSlot<8; textureSlot++) {
+        bmpNoCC[textureSlot] = NULL;
     }
     bmpCCIdx = 0;
     GXInvalidateTexAll();
@@ -48,12 +52,14 @@ void HuSprDispInit(void)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
     GXSetCullMode(GX_CULL_NONE);
     GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
-    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP,
+                  GX_AF_SPOT);
 }
 
+/* HuSprExec calls this for each visible sprite in the active draw queue. */
 void HuSprDisp(HUSPRITE *sp)
 {
-    s16 i;
+    s16 layerIndex;
     ANIMDATA *anim = sp->data;
     ANIMPAT *pat = sp->patP;
     Vec axis = {0, 0, 1};
@@ -77,18 +83,22 @@ void HuSprDisp(HUSPRITE *sp)
             hasVtxColor = TRUE;
             GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
             GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
-            GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT0, GX_DF_CLAMP, GX_AF_NONE);
+            GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT0, GX_DF_CLAMP,
+                          GX_AF_NONE);
             if(sp->attr & HUSPR_ATTR_VTXCOLOR_ADD) {
                 GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_TEXC, GX_CC_ZERO, GX_CC_ZERO, GX_CC_RASC);
-                GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+                GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE,
+                                GX_TEVPREV);
                 GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_TEXA, GX_CA_RASA, GX_CA_ZERO);
-                GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+                GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE,
+                                GX_TEVPREV);
             } else {
                 GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
             }
         } else {
             hasVtxColor = FALSE;
-            GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP, GX_AF_SPOT);
+            GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP,
+                          GX_AF_SPOT);
             GXSetTevOp(GX_TEVSTAGE0, GX_MODULATE);
         }
         GXSetNumTexGens(1);
@@ -126,7 +136,8 @@ void HuSprDisp(HUSPRITE *sp)
             GXSetTexCoordScaleManually(GX_TEXCOORD0, GX_TRUE, bgBmp->sizeX*16, bgBmp->sizeY*16);
             GXSetIndTexOrder(GX_INDTEXSTAGE0, GX_TEXCOORD0, GX_TEXMAP1);
             GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_16, GX_ITS_16);
-            GXSetTevIndTile(GX_TEVSTAGE0, GX_INDTEXSTAGE0, 16, 16, 16, 16, GX_ITF_4, GX_ITM_0, GX_ITB_NONE, GX_ITBA_OFF);
+            GXSetTevIndTile(GX_TEVSTAGE0, GX_INDTEXSTAGE0, 16, 16, 16, 16, GX_ITF_4, GX_ITM_0,
+                            GX_ITB_NONE, GX_ITBA_OFF);
         }
         GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
         GXSetZCompLoc(GX_FALSE);
@@ -140,17 +151,18 @@ void HuSprDisp(HUSPRITE *sp)
         mtxTransCat(modelview, sp->pos.x, sp->pos.y, 0);
         MTXConcat(*sp->groupMtx, modelview, modelview);
         GXLoadPosMtxImm(modelview, GX_PNMTX0);
-        for(i=pat->layerNum-1; i>=0; i--) {
+        for(layerIndex=pat->layerNum-1; layerIndex>=0; layerIndex--) {
             HuVec2f pos[4];
             float uvX0, uvY0, uvX1, uvY1;
             ANIMBMP *bmp;
-            layer = &pat->layer[i];
+            layer = &pat->layer[layerIndex];
             bmp = &anim->bmp[layer->bmpNo];
             if(!bmp) {
                 continue;
             }
             GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-            HuSprTexLoad(anim, layer->bmpNo, 0, sp->wrapS, sp->wrapT, (sp->attr & HUSPR_ATTR_LINEAR) ? GX_LINEAR : GX_NEAR);
+            HuSprTexLoad(anim, layer->bmpNo, 0, sp->wrapS, sp->wrapT,
+                         (sp->attr & HUSPR_ATTR_LINEAR) ? GX_LINEAR : GX_NEAR);
             if(layer->alpha != 255 || chanSum != 255*4) {
                 color.a = (u16)(sp->a*layer->alpha) >> 8;
                 GXSetTevColor(GX_TEVREG0, color);
@@ -201,7 +213,7 @@ void HuSprDisp(HUSPRITE *sp)
                 rectST.y0 = uvY0*sp->uvScaleY;
                 rectST.x1 = uvX1*sp->uvScaleX;
                 rectST.y1 = uvY1*sp->uvScaleY;
-                hook3D(sp, &modelview, i, &rectVtx, &rectST);
+                hook3D(sp, &modelview, layerIndex, &rectVtx, &rectST);
             } else {
                 GXBegin(GX_QUADS, GX_VTXFMT0, 4);
                 if(!hasVtxColor) {
@@ -215,16 +227,20 @@ void HuSprDisp(HUSPRITE *sp)
                     GXTexCoord2f32(uvX0*sp->uvScaleX, uvY1*sp->uvScaleY);
                 } else {
                     GXPosition3f32(pos[0].x, pos[0].y, 0);
-                    GXColor4u8(sp->vtxColor[0].r, sp->vtxColor[0].g, sp->vtxColor[0].b, sp->vtxColor[0].a);
+                    GXColor4u8(sp->vtxColor[0].r, sp->vtxColor[0].g, sp->vtxColor[0].b,
+                               sp->vtxColor[0].a);
                     GXTexCoord2f32(uvX0*sp->uvScaleX, uvY0*sp->uvScaleY);
                     GXPosition3f32(pos[1].x, pos[1].y, 0);
-                    GXColor4u8(sp->vtxColor[1].r, sp->vtxColor[1].g, sp->vtxColor[1].b, sp->vtxColor[1].a);
+                    GXColor4u8(sp->vtxColor[1].r, sp->vtxColor[1].g, sp->vtxColor[1].b,
+                               sp->vtxColor[1].a);
                     GXTexCoord2f32(uvX1*sp->uvScaleX, uvY0*sp->uvScaleY);
                     GXPosition3f32(pos[2].x, pos[2].y, 0);
-                    GXColor4u8(sp->vtxColor[2].r, sp->vtxColor[2].g, sp->vtxColor[2].b, sp->vtxColor[2].a);
+                    GXColor4u8(sp->vtxColor[2].r, sp->vtxColor[2].g, sp->vtxColor[2].b,
+                               sp->vtxColor[2].a);
                     GXTexCoord2f32(uvX1*sp->uvScaleX, uvY1*sp->uvScaleY);
                     GXPosition3f32(pos[3].x, pos[3].y, 0);
-                    GXColor4u8(sp->vtxColor[3].r, sp->vtxColor[3].g, sp->vtxColor[3].b, sp->vtxColor[3].a);
+                    GXColor4u8(sp->vtxColor[3].r, sp->vtxColor[3].g, sp->vtxColor[3].b,
+                               sp->vtxColor[3].a);
                     GXTexCoord2f32(uvX0*sp->uvScaleX, uvY1*sp->uvScaleY);
                 }
                 
@@ -243,7 +259,9 @@ void HuSprDisp(HUSPRITE *sp)
     }
 }
 
-void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXTexFilter filter)
+/* Sprite drawing and other renderers call this to bind one animation bitmap. */
+void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, GXTexWrapMode wrapT,
+                  GXTexFilter filter)
 {
     GXTexObj texObj;
     GXTlutObj tlutObj;
@@ -261,15 +279,18 @@ void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, 
             break;
             
         case ANIM_BMP_C8:
+            /* Indexed bitmaps bind their palette before the texture object. */
             GXInitTlutObj(&tlutObj, bmp->palData, GX_TL_RGB5A3, bmp->palNum);
             GXLoadTlut(&tlutObj, texMapId);
-            GXInitTexObjCI(&texObj,bmp->data, sizeX, sizeY, GX_TF_C8, wrapS, wrapT, GX_FALSE, texMapId);
+            GXInitTexObjCI(&texObj, bmp->data, sizeX, sizeY, GX_TF_C8, wrapS, wrapT, GX_FALSE,
+                           texMapId);
             break;
             
         case ANIM_BMP_C4:
             GXInitTlutObj(&tlutObj, bmp->palData, GX_TL_RGB5A3, bmp->palNum);
             GXLoadTlut(&tlutObj, texMapId);
-            GXInitTexObjCI(&texObj,bmp->data, sizeX, sizeY, GX_TF_C4, wrapS, wrapT, GX_FALSE, texMapId);
+            GXInitTexObjCI(&texObj, bmp->data, sizeX, sizeY, GX_TF_C4, wrapS, wrapT, GX_FALSE,
+                           texMapId);
             break;
             
         case ANIM_BMP_IA8:
@@ -303,260 +324,270 @@ void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, 
     GXLoadTexObj(&texObj, texMapId);
 }
 
+/* HuSprInit and HuSprClose clear the table of sprite queues on 3D layers. */
 void HuSprExecLayerInit(void)
 {
-    s16 i;
-    for(i=0; i<HU3D_LAYER_HOOK_MAX; i++) {
-        HuSprLayer[i].layer = -1;
+    s16 slotIndex;
+    for(slotIndex=0; slotIndex<HU3D_LAYER_HOOK_MAX; slotIndex++) {
+        HuSprLayer[slotIndex].layer = -1;
     }
 }
 
+/* Clients register a sprite queue for one camera mask and Hu3D layer. */
 void HuSprExecLayerCameraSet(s16 drawNo, s16 camera, s16 layer)
 {
-    s16 i;
+    s16 slotIndex;
     
-    for(i=0; i<HU3D_LAYER_HOOK_MAX; i++) {
-        if(-1 == HuSprLayer[i].layer) {
+    for(slotIndex=0; slotIndex<HU3D_LAYER_HOOK_MAX; slotIndex++) {
+        if(-1 == HuSprLayer[slotIndex].layer) {
             break;
         }
     }
-    if(i == HU3D_LAYER_HOOK_MAX) {
+    if(slotIndex == HU3D_LAYER_HOOK_MAX) {
         return;
     }
-    HuSprLayer[i].layer = layer;
-    HuSprLayer[i].camera = camera;
-    HuSprLayer[i].drawNo = drawNo;
+    HuSprLayer[slotIndex].layer = layer;
+    HuSprLayer[slotIndex].camera = camera;
+    HuSprLayer[slotIndex].drawNo = drawNo;
     Hu3DLayerHookSet(layer, HuSprLayerHook);
 }
 
+/* Clients register a sprite queue for a layer without a camera restriction. */
 void HuSprExecLayerSet(s16 drawNo, s16 layer)
 {
-    s16 i;
+    s16 slotIndex;
     
-    for(i=0; i<HU3D_LAYER_HOOK_MAX; i++) {
-        if(-1 == HuSprLayer[i].layer) {
+    for(slotIndex=0; slotIndex<HU3D_LAYER_HOOK_MAX; slotIndex++) {
+        if(-1 == HuSprLayer[slotIndex].layer) {
             break;
         }
     }
-    if(i == HU3D_LAYER_HOOK_MAX) {
+    if(slotIndex == HU3D_LAYER_HOOK_MAX) {
         return;
     }
-    HuSprLayer[i].layer = layer;
-    HuSprLayer[i].camera = -1;
-    HuSprLayer[i].drawNo = drawNo;
+    HuSprLayer[slotIndex].layer = layer;
+    HuSprLayer[slotIndex].camera = -1;
+    HuSprLayer[slotIndex].drawNo = drawNo;
     Hu3DLayerHookSet(layer, HuSprLayerHook);
 }
 
-static void HuSprLayerHook(short layer)
+/* Hu3D invokes this during the registered layer pass to draw its sprite queue for the active
+ * camera. */
+static void HuSprLayerHook(short layerNo)
 {
-    s16 i;
-    for(i=0; i<HU3D_LAYER_HOOK_MAX; i++) {
-        if(layer == HuSprLayer[i].layer) {
+    s16 slotIndex;
+    for(slotIndex=0; slotIndex<HU3D_LAYER_HOOK_MAX; slotIndex++) {
+        if(layerNo == HuSprLayer[slotIndex].layer) {
             break;
         }
     }
-    if(i == HU3D_LAYER_HOOK_MAX) {
+    if(slotIndex == HU3D_LAYER_HOOK_MAX) {
         return;
     }
-    if((Hu3DCameraBit & HuSprLayer[i].camera) == 0) {
+    if((Hu3DCameraBit & HuSprLayer[slotIndex].camera) == 0) {
         return;
     }
     HuSprDispInit();
-    HuSprExec(HuSprLayer[i].drawNo);
+    HuSprExec(HuSprLayer[slotIndex].drawNo);
 }
 
-void HuSpr3DDisp(HUSPRITE *sp, Mtx *matrix, s16 layerIdx, HUSPR_RECT *rectVtx, HUSPR_RECT *rectST)
+/* HuSpr3DSet installs this callback; HuSprDisp calls it for each sprite layer to draw its mesh. */
+void HuSpr3DDisp(HUSPRITE *sp, Mtx *spriteModelView, s16 spriteLayerIndex, HUSPR_RECT *vertexRect,
+                 HUSPR_RECT *texCoordRect)
 {
-    HUSPR_3DDATA *data3D; //r30
-    int idx; //r29
-    int col; //r28
-    int j; //r27
-    int i; //r26
-    int row; //r25
-    BOOL hasVtxColor; //r22
+    HUSPR_3DDATA *meshData;
+    int vertexIndex;
+    int columnCount;
+    int columnIndex;
+    int rowIndex;
+    int rowCount;
+    BOOL useVertexColors;
     
-    float w; //f31
-    float h; //f30
-    float r; //f29
-    float g; //f28
-    float b; //f27
-    float a; //f26
-    float scale; //f25
-    float depthScale; //f24
-    float centerZ; //f23
-    float stW; //f22
-    float stH; //f21
-    float tileW; //f20
-    float tileH; //f19
-    float tileSTW; //f18
-    float tileSTH; //sp+0xC
-    float z; //sp+0x8
+    float width;
+    float height;
+    float red;
+    float green;
+    float blue;
+    float alpha;
+    float projectionScale;
+    float projectionDepth;
+    float projectionCenterZ;
+    float texCoordWidth;
+    float texCoordHeight;
+    float cellWidth;
+    float cellHeight;
+    float cellTexCoordWidth;
+    float cellTexCoordHeight;
+    float vertexDepth;
     
-    Mtx44 proj; //sp+0x40
-    Mtx rot; //sp+0x10
+    Mtx44 projectionMatrix;
+    Mtx rotationMatrix;
     
-    data3D = sp->data3D;
-    w = rectVtx->x1-rectVtx->x0;
-    h = rectVtx->y1-rectVtx->y0;
-    if(w > h) {
-        depthScale = 3*w;
+    meshData = sp->data3D;
+    width = vertexRect->x1-vertexRect->x0;
+    height = vertexRect->y1-vertexRect->y0;
+    if(width > height) {
+        /* Projection depth is three times the longer sprite dimension. */
+        projectionDepth = 3*width;
     } else {
-        depthScale = 3*h;
+        projectionDepth = 3*height;
     }
-    stW = rectST->x1-rectST->x0;
-    stH = rectST->y1-rectST->y0;
-    col = data3D->col;
-    row = data3D->row;
-    centerZ = -depthScale*0.5;
+    texCoordWidth = texCoordRect->x1-texCoordRect->x0;
+    texCoordHeight = texCoordRect->y1-texCoordRect->y0;
+    columnCount = meshData->col;
+    rowCount = meshData->row;
+    projectionCenterZ = -projectionDepth*0.5;
     
-    MTXOrtho(proj, 0, HU_DISP_HEIGHT, 0, HU_DISP_WIDTH, 0, 100);
-    GXSetProjection(proj, GX_ORTHOGRAPHIC);
+    MTXOrtho(projectionMatrix, 0, HU_DISP_HEIGHT, 0, HU_DISP_WIDTH, 0, 100);
+    GXSetProjection(projectionMatrix, GX_ORTHOGRAPHIC);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_INDEX16);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetArray(GX_VA_POS, data3D->vtx, sizeof(HuVecF));
+    GXSetArray(GX_VA_POS, meshData->vtx, sizeof(HuVecF));
     GXSetVtxDesc(GX_VA_TEX0, GX_INDEX16);
     GXSetVtxAttrFmt(GX_VA_TEX0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-    GXSetArray(GX_VA_TEX0, data3D->st, sizeof(HuVec2f));
+    GXSetArray(GX_VA_TEX0, meshData->st, sizeof(HuVec2f));
     if(sp->attr & HUSPR_ATTR_VTXCOLOR) {
         GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
-        hasVtxColor = TRUE;
+        useVertexColors = TRUE;
     } else {
-        hasVtxColor = FALSE;
+        useVertexColors = FALSE;
     }
     GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
-    tileW = w/col;
-    tileH = h/row;
-    tileSTW = stW/col;
-    tileSTH = stH/row;
-    for(i=0; i<=row; i++) {
-        for(j=0; j<=col; j++) {
-            idx = j+(i*(col+1));
-            data3D->vtx[idx].x = rectVtx->x0+(tileW*j);
-            data3D->vtx[idx].y = rectVtx->y0+(tileH*i);
-            data3D->vtx[idx].z = 0;
-            data3D->st[idx].x = rectST->x0+(tileSTW*j);
-            data3D->st[idx].y = rectST->y0+(tileSTH*i);
+    cellWidth = width/columnCount;
+    cellHeight = height/rowCount;
+    cellTexCoordWidth = texCoordWidth/columnCount;
+    cellTexCoordHeight = texCoordHeight/rowCount;
+    for(rowIndex=0; rowIndex<=rowCount; rowIndex++) {
+        for(columnIndex=0; columnIndex<=columnCount; columnIndex++) {
+            vertexIndex = columnIndex+(rowIndex*(columnCount+1));
+            meshData->vtx[vertexIndex].x = vertexRect->x0+(cellWidth*columnIndex);
+            meshData->vtx[vertexIndex].y = vertexRect->y0+(cellHeight*rowIndex);
+            meshData->vtx[vertexIndex].z = 0;
+            meshData->st[vertexIndex].x = texCoordRect->x0+(cellTexCoordWidth*columnIndex);
+            meshData->st[vertexIndex].y = texCoordRect->y0+(cellTexCoordHeight*rowIndex);
         }
     }
-    DCFlushRangeNoSync(data3D->st, sizeof(HuVec2f)*(col+1)*(row+1));
-    mtxRot(rot, data3D->rot.x, data3D->rot.y, data3D->rot.z);
-    MTXMultVecArray(rot, data3D->vtx, data3D->vtx, (col+1)*(row+1));
-    for(i=0; i<=row; i++) {
-        for(j=0; j<=col; j++) {
-            idx = j+(i*(col+1));
-            z = -(centerZ+(data3D->depthScale*data3D->vtx[idx].z));
-            scale = -centerZ/z;
-            data3D->vtx[idx].x *= scale;
-            data3D->vtx[idx].y *= scale;
-            data3D->vtx[idx].z = -10;
+    DCFlushRangeNoSync(meshData->st, sizeof(HuVec2f)*(columnCount+1)*(rowCount+1));
+    /* Rotate the grid, then project each vertex using its configured depth. */
+    mtxRot(rotationMatrix, meshData->rot.x, meshData->rot.y, meshData->rot.z);
+    MTXMultVecArray(rotationMatrix, meshData->vtx, meshData->vtx, (columnCount+1)*(rowCount+1));
+    for(rowIndex=0; rowIndex<=rowCount; rowIndex++) {
+        for(columnIndex=0; columnIndex<=columnCount; columnIndex++) {
+            vertexIndex = columnIndex+(rowIndex*(columnCount+1));
+            vertexDepth = -(projectionCenterZ+(meshData->depthScale*meshData->vtx[vertexIndex].z));
+            projectionScale = -projectionCenterZ/vertexDepth;
+            meshData->vtx[vertexIndex].x *= projectionScale;
+            meshData->vtx[vertexIndex].y *= projectionScale;
+            meshData->vtx[vertexIndex].z = -10;
         }
     }
-    DCFlushRange(data3D->vtx, sizeof(HuVecF)*(col+1)*(row+1));
-    GXBegin(GX_QUADS, GX_VTXFMT0, col*row*4);
-    if(!hasVtxColor) {
-        for(i=0; i<row; i++) {
-            for(j=0; j<col; j++) {
-                idx = j+(i*(col+1));
-                GXPosition1x16(idx);
-                GXTexCoord1x16(idx);
-                GXPosition1x16(idx+1);
-                GXTexCoord1x16(idx+1);
-                GXPosition1x16(idx+col+2);
-                GXTexCoord1x16(idx+col+2);
-                GXPosition1x16(idx+col+1);
-                GXTexCoord1x16(idx+col+1);
+    DCFlushRange(meshData->vtx, sizeof(HuVecF)*(columnCount+1)*(rowCount+1));
+    GXBegin(GX_QUADS, GX_VTXFMT0, columnCount*rowCount*4);
+    if(!useVertexColors) {
+        for(rowIndex=0; rowIndex<rowCount; rowIndex++) {
+            for(columnIndex=0; columnIndex<columnCount; columnIndex++) {
+                vertexIndex = columnIndex+(rowIndex*(columnCount+1));
+                GXPosition1x16(vertexIndex);
+                GXTexCoord1x16(vertexIndex);
+                GXPosition1x16(vertexIndex+1);
+                GXTexCoord1x16(vertexIndex+1);
+                GXPosition1x16(vertexIndex+columnCount+2);
+                GXTexCoord1x16(vertexIndex+columnCount+2);
+                GXPosition1x16(vertexIndex+columnCount+1);
+                GXTexCoord1x16(vertexIndex+columnCount+1);
             }
         }
     } else {
-        for(i=0; i<row; i++) {
-            for(j=0; j<col; j++) {
-                idx = j+(i*(col+1));
-                GXPosition1x16(idx);
-                w = (float)j/(float)col;
-                h = (float)i/(float)row;
-                r = sp->vtxColor[0].r*((1.0-w)*(1.0-h));
-                g = sp->vtxColor[0].g*((1.0-w)*(1.0-h));
-                b = sp->vtxColor[0].b*((1.0-w)*(1.0-h));
-                a = sp->vtxColor[0].a*((1.0-w)*(1.0-h));
-                r += sp->vtxColor[1].r*(w*(1.0-h));
-                g += sp->vtxColor[1].g*(w*(1.0-h));
-                b += sp->vtxColor[1].b*(w*(1.0-h));
-                a += sp->vtxColor[1].a*(w*(1.0-h));
-                r += sp->vtxColor[2].r*(w*h);
-                g += sp->vtxColor[2].g*(w*h);
-                b += sp->vtxColor[2].b*(w*h);
-                a += sp->vtxColor[2].a*(w*h);
-                r += sp->vtxColor[3].r*((1.0-w)*h);
-                g += sp->vtxColor[3].g*((1.0-w)*h);
-                b += sp->vtxColor[3].b*((1.0-w)*h);
-                a += sp->vtxColor[3].a*((1.0-w)*h);
-                GXColor4u8(r, g, b, a);
-                GXTexCoord1x16(idx);
-                GXPosition1x16(idx+1);
-                w = (float)(j+1)/(float)col;
-                h = (float)i/(float)row;
-                r = sp->vtxColor[0].r*((1.0-w)*(1.0-h));
-                g = sp->vtxColor[0].g*((1.0-w)*(1.0-h));
-                b = sp->vtxColor[0].b*((1.0-w)*(1.0-h));
-                a = sp->vtxColor[0].a*((1.0-w)*(1.0-h));
-                r += sp->vtxColor[1].r*(w*(1.0-h));
-                g += sp->vtxColor[1].g*(w*(1.0-h));
-                b += sp->vtxColor[1].b*(w*(1.0-h));
-                a += sp->vtxColor[1].a*(w*(1.0-h));
-                r += sp->vtxColor[2].r*(w*h);
-                g += sp->vtxColor[2].g*(w*h);
-                b += sp->vtxColor[2].b*(w*h);
-                a += sp->vtxColor[2].a*(w*h);
-                r += sp->vtxColor[3].r*((1.0-w)*h);
-                g += sp->vtxColor[3].g*((1.0-w)*h);
-                b += sp->vtxColor[3].b*((1.0-w)*h);
-                a += sp->vtxColor[3].a*((1.0-w)*h);
-                GXColor4u8(r, g, b, a);
-                GXTexCoord1x16(idx+1);
-                GXPosition1x16(idx+col+2);
-                w = (float)(j+1)/(float)col;
-                h = (float)(i+1)/(float)row;
-                r = sp->vtxColor[0].r*((1.0-w)*(1.0-h));
-                g = sp->vtxColor[0].g*((1.0-w)*(1.0-h));
-                b = sp->vtxColor[0].b*((1.0-w)*(1.0-h));
-                a = sp->vtxColor[0].a*((1.0-w)*(1.0-h));
-                r += sp->vtxColor[1].r*(w*(1.0-h));
-                g += sp->vtxColor[1].g*(w*(1.0-h));
-                b += sp->vtxColor[1].b*(w*(1.0-h));
-                a += sp->vtxColor[1].a*(w*(1.0-h));
-                r += sp->vtxColor[2].r*(w*h);
-                g += sp->vtxColor[2].g*(w*h);
-                b += sp->vtxColor[2].b*(w*h);
-                a += sp->vtxColor[2].a*(w*h);
-                r += sp->vtxColor[3].r*((1.0-w)*h);
-                g += sp->vtxColor[3].g*((1.0-w)*h);
-                b += sp->vtxColor[3].b*((1.0-w)*h);
-                a += sp->vtxColor[3].a*((1.0-w)*h);
-                GXColor4u8(r, g, b, a);
-                GXTexCoord1x16(idx+col+2);
-                GXPosition1x16(idx+col+1);
-                w = (float)j/(float)col;
-                h = (float)(i+1)/(float)row;
-                r = sp->vtxColor[0].r*((1.0-w)*(1.0-h));
-                g = sp->vtxColor[0].g*((1.0-w)*(1.0-h));
-                b = sp->vtxColor[0].b*((1.0-w)*(1.0-h));
-                a = sp->vtxColor[0].a*((1.0-w)*(1.0-h));
-                r += sp->vtxColor[1].r*(w*(1.0-h));
-                g += sp->vtxColor[1].g*(w*(1.0-h));
-                b += sp->vtxColor[1].b*(w*(1.0-h));
-                a += sp->vtxColor[1].a*(w*(1.0-h));
-                r += sp->vtxColor[2].r*(w*h);
-                g += sp->vtxColor[2].g*(w*h);
-                b += sp->vtxColor[2].b*(w*h);
-                a += sp->vtxColor[2].a*(w*h);
-                r += sp->vtxColor[3].r*((1.0-w)*h);
-                g += sp->vtxColor[3].g*((1.0-w)*h);
-                b += sp->vtxColor[3].b*((1.0-w)*h);
-                a += sp->vtxColor[3].a*((1.0-w)*h);
-                GXColor4u8(r, g, b, a);
-                GXTexCoord1x16(idx+col+1);
+        /* Interpolate corner RGBA values at each mesh vertex to shade the sprite. */
+        for(rowIndex=0; rowIndex<rowCount; rowIndex++) {
+            for(columnIndex=0; columnIndex<columnCount; columnIndex++) {
+                vertexIndex = columnIndex+(rowIndex*(columnCount+1));
+                GXPosition1x16(vertexIndex);
+                width = (float)columnIndex/(float)columnCount;
+                height = (float)rowIndex/(float)rowCount;
+                red = sp->vtxColor[0].r*((1.0-width)*(1.0-height));
+                green = sp->vtxColor[0].g*((1.0-width)*(1.0-height));
+                blue = sp->vtxColor[0].b*((1.0-width)*(1.0-height));
+                alpha = sp->vtxColor[0].a*((1.0-width)*(1.0-height));
+                red += sp->vtxColor[1].r*(width*(1.0-height));
+                green += sp->vtxColor[1].g*(width*(1.0-height));
+                blue += sp->vtxColor[1].b*(width*(1.0-height));
+                alpha += sp->vtxColor[1].a*(width*(1.0-height));
+                red += sp->vtxColor[2].r*(width*height);
+                green += sp->vtxColor[2].g*(width*height);
+                blue += sp->vtxColor[2].b*(width*height);
+                alpha += sp->vtxColor[2].a*(width*height);
+                red += sp->vtxColor[3].r*((1.0-width)*height);
+                green += sp->vtxColor[3].g*((1.0-width)*height);
+                blue += sp->vtxColor[3].b*((1.0-width)*height);
+                alpha += sp->vtxColor[3].a*((1.0-width)*height);
+                GXColor4u8(red, green, blue, alpha);
+                GXTexCoord1x16(vertexIndex);
+                GXPosition1x16(vertexIndex+1);
+                width = (float)(columnIndex+1)/(float)columnCount;
+                height = (float)rowIndex/(float)rowCount;
+                red = sp->vtxColor[0].r*((1.0-width)*(1.0-height));
+                green = sp->vtxColor[0].g*((1.0-width)*(1.0-height));
+                blue = sp->vtxColor[0].b*((1.0-width)*(1.0-height));
+                alpha = sp->vtxColor[0].a*((1.0-width)*(1.0-height));
+                red += sp->vtxColor[1].r*(width*(1.0-height));
+                green += sp->vtxColor[1].g*(width*(1.0-height));
+                blue += sp->vtxColor[1].b*(width*(1.0-height));
+                alpha += sp->vtxColor[1].a*(width*(1.0-height));
+                red += sp->vtxColor[2].r*(width*height);
+                green += sp->vtxColor[2].g*(width*height);
+                blue += sp->vtxColor[2].b*(width*height);
+                alpha += sp->vtxColor[2].a*(width*height);
+                red += sp->vtxColor[3].r*((1.0-width)*height);
+                green += sp->vtxColor[3].g*((1.0-width)*height);
+                blue += sp->vtxColor[3].b*((1.0-width)*height);
+                alpha += sp->vtxColor[3].a*((1.0-width)*height);
+                GXColor4u8(red, green, blue, alpha);
+                GXTexCoord1x16(vertexIndex+1);
+                GXPosition1x16(vertexIndex+columnCount+2);
+                width = (float)(columnIndex+1)/(float)columnCount;
+                height = (float)(rowIndex+1)/(float)rowCount;
+                red = sp->vtxColor[0].r*((1.0-width)*(1.0-height));
+                green = sp->vtxColor[0].g*((1.0-width)*(1.0-height));
+                blue = sp->vtxColor[0].b*((1.0-width)*(1.0-height));
+                alpha = sp->vtxColor[0].a*((1.0-width)*(1.0-height));
+                red += sp->vtxColor[1].r*(width*(1.0-height));
+                green += sp->vtxColor[1].g*(width*(1.0-height));
+                blue += sp->vtxColor[1].b*(width*(1.0-height));
+                alpha += sp->vtxColor[1].a*(width*(1.0-height));
+                red += sp->vtxColor[2].r*(width*height);
+                green += sp->vtxColor[2].g*(width*height);
+                blue += sp->vtxColor[2].b*(width*height);
+                alpha += sp->vtxColor[2].a*(width*height);
+                red += sp->vtxColor[3].r*((1.0-width)*height);
+                green += sp->vtxColor[3].g*((1.0-width)*height);
+                blue += sp->vtxColor[3].b*((1.0-width)*height);
+                alpha += sp->vtxColor[3].a*((1.0-width)*height);
+                GXColor4u8(red, green, blue, alpha);
+                GXTexCoord1x16(vertexIndex+columnCount+2);
+                GXPosition1x16(vertexIndex+columnCount+1);
+                width = (float)columnIndex/(float)columnCount;
+                height = (float)(rowIndex+1)/(float)rowCount;
+                red = sp->vtxColor[0].r*((1.0-width)*(1.0-height));
+                green = sp->vtxColor[0].g*((1.0-width)*(1.0-height));
+                blue = sp->vtxColor[0].b*((1.0-width)*(1.0-height));
+                alpha = sp->vtxColor[0].a*((1.0-width)*(1.0-height));
+                red += sp->vtxColor[1].r*(width*(1.0-height));
+                green += sp->vtxColor[1].g*(width*(1.0-height));
+                blue += sp->vtxColor[1].b*(width*(1.0-height));
+                alpha += sp->vtxColor[1].a*(width*(1.0-height));
+                red += sp->vtxColor[2].r*(width*height);
+                green += sp->vtxColor[2].g*(width*height);
+                blue += sp->vtxColor[2].b*(width*height);
+                alpha += sp->vtxColor[2].a*(width*height);
+                red += sp->vtxColor[3].r*((1.0-width)*height);
+                green += sp->vtxColor[3].g*((1.0-width)*height);
+                blue += sp->vtxColor[3].b*((1.0-width)*height);
+                alpha += sp->vtxColor[3].a*((1.0-width)*height);
+                GXColor4u8(red, green, blue, alpha);
+                GXTexCoord1x16(vertexIndex+columnCount+1);
             }
         }
     }
