@@ -1,5 +1,4 @@
-/* Block math.h's extern inline sqrtf: its weak _half/_three statics would
- * prepend 16 bytes to .sdata2 that the original mgtimer.o does not have. */
+/* Creates and updates the minigame countdown and score timers. */
 #define _MATH_H
 
 #include "game/gamemes.h"
@@ -9,6 +8,7 @@
 #include "game/mg/timer.h"
 #include "datanum/mgconst.h"
 
+/* Timer values are frames at 60 frames per second; positions are screen pixels. */
 
 const static s16 MinuteLenTbl[4] = {
     0, 60, 100, 60
@@ -36,7 +36,6 @@ static void TimerExecOff(MGTIMER* timer);
 static void CreateSprite(MGTIMER* timer);
 static void KillSprite(MGTIMER* timer);
 static void UpdateSprite(MGTIMER* timer);
-
 
 static const HuVec2f digitOfsTbl[MGTIMER_TYPE_MAX][15] = {
     {
@@ -67,9 +66,11 @@ static const HuVec2f digitOfsTbl[MGTIMER_TYPE_MAX][15] = {
 
 static TIMERFUNC modeTbl[MGTIMER_MODE_MAX] = { TimerExecOff, TimerExecOn };
 
+/* Called by minigame setup to allocate a timer, create its display, and start its update
+ * process. */
 MGTIMER* MgTimerCreate(int type) {
     MGTIMER* timer;
-    int i;
+    int spriteIndex;
     timer = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MGTIMER), HU_MEMNUM_OVL);
     if (timer == NULL) {
         return NULL;
@@ -97,8 +98,8 @@ MGTIMER* MgTimerCreate(int type) {
     timer->digitScale = 1.0f;
     timer->timeUnit = MinuteLenTbl[type];
     timer->fadeOutTime = 0;
-    for (i = 0; i < 15; i++) {
-        timer->espId[i] = -1;
+    for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+        timer->espId[spriteIndex] = -1;
     }
     CreateSprite(timer);
     switch (type) {
@@ -120,6 +121,8 @@ MGTIMER* MgTimerCreate(int type) {
     return timer;
 }
 
+/* Called by the owning minigame during cleanup to stop the timer and release its display
+ * resources. */
 void MgTimerKill(MGTIMER* timer) {
     HuPrcKill(timer->proc);
     KillSprite(timer);
@@ -136,6 +139,7 @@ int MgTimerModeGet(MGTIMER* timer) {
     return timer->mode;
 }
 
+/* Minigame setup sets the starting, ending, and record frame counts before starting the timer. */
 void MgTimerParamSet(MGTIMER* timer, int maxTime, int endTime, int recordTime) {
     timer->maxTime = maxTime;
     timer->time = timer->maxTime;
@@ -149,23 +153,27 @@ int MgTimerValueGet(MGTIMER* timer) {
     return timer->time;
 }
 
+/* Minigame UI code moves the timer display in screen-pixel coordinates. */
 void MgTimerPosSet(MGTIMER *timer, float posX, float posY) {
     timer->pos.x = posX;
     timer->pos.y = posY;
     UpdateSprite(timer);
 }
 
+/* Minigame UI code reads the timer display position in screen pixels. */
 void MgTimerPosGet(MGTIMER* timer, float *posX, float *posY) {
     *posX = timer->pos.x;
     *posY = timer->pos.y;
 }
 
+/* Minigame control code starts counting and selects what the display does at the end. */
 void MgTimerModeOnSet(MGTIMER* timer, int offType) {
     timer->offType = offType;
     timer->stopF = FALSE;
     timer->mode = MGTIMER_MODE_ON;
 }
 
+/* Minigame control code requests the timer process to enter its idle mode. */
 void MgTimerModeOffSet(MGTIMER* timer) {
     timer->mode = MGTIMER_MODE_OFF;
 }
@@ -174,9 +182,11 @@ BOOL MgTimerDoneCheck(MGTIMER* timer) {
     return timer->endTime == timer->time;
 }
 
+/* Record-mode callers update the best time; -1 asks this function to compare the live time. */
 void MgTimerRecordSet(MGTIMER* timer, int recordTime) {
     if (recordTime == -1) {
-        if (((timer->speed > 0) && (timer->time < timer->recordTime)) || ((timer->speed < 0) && (timer->time > timer->recordTime))) {
+        if (((timer->speed > 0) && (timer->time < timer->recordTime)) ||
+            ((timer->speed < 0) && (timer->time > timer->recordTime))) {
             timer->recordTime = timer->time;
             timer->flashFlag = timer->flashFlag | MGTIMER_FLASH_RECORD;
         }
@@ -186,24 +196,27 @@ void MgTimerRecordSet(MGTIMER* timer, int recordTime) {
     }
 }
 
-void MgTimerColorSet(MGTIMER* timer, u8 r, u8 g, u8 b) {
-    int i;
-    timer->digitR = r;
-    timer->digitG = g;
-    timer->digitB = b;
-    for (i = 0; i <= 6; i++) {
-        if (timer->espId[i] != -1) {
-            espColorSet(timer->espId[i], r, g, b);
+/* Minigame UI code changes the RGB color used by the seven live timer digits. */
+void MgTimerColorSet(MGTIMER* timer, u8 red, u8 green, u8 blue) {
+    int spriteIndex;
+    timer->digitR = red;
+    timer->digitG = green;
+    timer->digitB = blue;
+    for (spriteIndex = 0; spriteIndex <= 6; spriteIndex++) {
+        if (timer->espId[spriteIndex] != -1) {
+            espColorSet(timer->espId[spriteIndex], red, green, blue);
         }
     }
 }
 
-void MgTimerBackColorSet(MGTIMER* timer, u8 r, u8 g, u8 b) {
+/* Minigame UI code changes the score-box background color when the timer has a box. */
+void MgTimerBackColorSet(MGTIMER* timer, u8 red, u8 green, u8 blue) {
     if (timer->boxId != HUSPR_GROUP_NONE) {
-        MgScoreBoxColorSet(timer->boxId, r, g, b);
+        MgScoreBoxColorSet(timer->boxId, red, green, blue);
     }
 }
 
+/* Child-process entry point created by MgTimerCreate; dispatches the selected timer mode. */
 static void TimerExec(void) {
     MGTIMER* timer;
 
@@ -213,31 +226,33 @@ static void TimerExec(void) {
     }
 }
 
+/* modeTbl idle callback: refreshes the display and checks for a mode change once per frame. */
 static void TimerExecOff(MGTIMER* timer) {
-    int i;
-    s16 mode;
-    int maxCheck;
-    s16 prevMode;
+    int pollIndex;
+    s16 currentMode;
+    int pollCount;
+    s16 previousMode;
 
     while (1) {
         UpdateSprite(timer);
-        for(maxCheck=1, i=0; i<maxCheck; i++) {
+        for(pollCount=1, pollIndex=0; pollIndex<pollCount; pollIndex++) {
             HuPrcVSleep();
-            mode = ((MGTIMER *)HuPrcCurrentGet()->property)->mode;
-            prevMode = ((MGTIMER *)HuPrcCurrentGet()->property)->prevMode;
-            ((MGTIMER *)HuPrcCurrentGet()->property)->prevMode = mode;
-            if (mode != prevMode) {
+            currentMode = ((MGTIMER *)HuPrcCurrentGet()->property)->mode;
+            previousMode = ((MGTIMER *)HuPrcCurrentGet()->property)->prevMode;
+            ((MGTIMER *)HuPrcCurrentGet()->property)->prevMode = currentMode;
+            if (currentMode != previousMode) {
                 return;
             }
         }
     }
 }
 
+/* modeTbl active callback: advances one frame per tick and applies the selected end behavior. */
 static void TimerExecOn(MGTIMER* timer) {
-    int i;
-    s16 mode;
-    int maxCheck;
-    s16 prevMode;
+    int pollIndex;
+    s16 currentMode;
+    int pollCount;
+    s16 previousMode;
 
     if (timer->dispOnF == 0) {
         MgTimerDispOn(timer);
@@ -245,12 +260,12 @@ static void TimerExecOn(MGTIMER* timer) {
     while ((timer->time != timer->endTime) && (timer->stopF == 0)) {
         timer->time = timer->time + timer->speed;
         UpdateSprite(timer);
-        for(maxCheck=1, i=0; i<maxCheck; i++) {
+        for(pollCount=1, pollIndex=0; pollIndex<pollCount; pollIndex++) {
             HuPrcVSleep();
-            mode = ((MGTIMER*)HuPrcCurrentGet()->property)->mode;
-            prevMode = ((MGTIMER*)HuPrcCurrentGet()->property)->prevMode;
-            ((MGTIMER*)HuPrcCurrentGet()->property)->prevMode = mode;
-            if (mode != prevMode) {
+            currentMode = ((MGTIMER*)HuPrcCurrentGet()->property)->mode;
+            previousMode = ((MGTIMER*)HuPrcCurrentGet()->property)->prevMode;
+            ((MGTIMER*)HuPrcCurrentGet()->property)->prevMode = currentMode;
+            if (currentMode != previousMode) {
                 return;
             }
         }
@@ -279,8 +294,9 @@ static void TimerExecOn(MGTIMER* timer) {
     }
 }
 
+/* MgTimerCreate builds the digit and crown sprites for score-style timer displays. */
 static void CreateSprite(MGTIMER* timer) {
-    int i;
+    int spriteIndex;
 
     switch (timer->type) {
         case MGTIMER_TYPE_NORMAL:
@@ -289,52 +305,57 @@ static void CreateSprite(MGTIMER* timer) {
         case MGTIMER_TYPE_RECORD:
         case MGTIMER_TYPE_SCORE:
         case MGTIMER_TYPE_WIDESCORE:
-            for (i = 0; i < 7; i++) {
-                timer->espId[i] = espEntry(MGCONST_ANM_scoreSmall, 0, 0);
-                espColorSet(timer->espId[i], 255, 255, 255);
+            for (spriteIndex = 0; spriteIndex < 7; spriteIndex++) {
+                timer->espId[spriteIndex] = espEntry(MGCONST_ANM_scoreSmall, 0, 0);
+                espColorSet(timer->espId[spriteIndex], 255, 255, 255);
             }
-            for (i = 0; i < 7; i++) {
-                timer->espId[i + 7] = espEntry(MGCONST_ANM_scoreSmall, 0, 0);
-                espColorSet(timer->espId[i + 7], 66, 255, 122);
+            for (spriteIndex = 0; spriteIndex < 7; spriteIndex++) {
+                timer->espId[spriteIndex + 7] = espEntry(MGCONST_ANM_scoreSmall, 0, 0);
+                espColorSet(timer->espId[spriteIndex + 7], 66, 255, 122);
             }
             timer->espId[14] = espEntry(MGCONST_ANM_crown, 0, 0);
             espBankSet(timer->espId[1], 10);
             espBankSet(timer->espId[4], 11);
             espBankSet(timer->espId[8], 10);
             espBankSet(timer->espId[11], 11);
-            for (i = 0; i < 15; i++) {
-                if (timer->espId[i] != -1) {
-                    espDispOff(timer->espId[i]);
-                    espPriSet(timer->espId[i], 9);
+            for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+                if (timer->espId[spriteIndex] != -1) {
+                    espDispOff(timer->espId[spriteIndex]);
+                    espPriSet(timer->espId[spriteIndex], 9);
                 }
             }
             break;
     }
 }
 
+/* MgTimerKill releases every sprite created for this timer. */
 static void KillSprite(MGTIMER* timer) {
-    int i;
-    for (i = 0; i < 15; i++) {
-        if (timer->espId[i] != -1) {
-            espKill(timer->espId[i]);
-            timer->espId[i] = -1;
+    int spriteIndex;
+    for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+        if (timer->espId[spriteIndex] != -1) {
+            espKill(timer->espId[spriteIndex]);
+            timer->espId[spriteIndex] = -1;
         }
     }
 }
 
+/* Called at setup and each timer tick to position digits and display the current and record
+ * times. */
 static void UpdateSprite(MGTIMER* timer) {
-    int i;
-    s32 second;
-    s32 centisecs;
-    s32 minute;
-    s32 time;
-    u8 r;
-    u8 g;
-    u8 b;
-    float tpLvl;
+    int spriteIndex;
+    s32 seconds;
+    s32 centiseconds;
+    s32 minutes;
+    s32 elapsedFrames;
+    u8 red;
+    u8 green;
+    u8 blue;
+    float transparencyLevel;
 
     switch (timer->type) {
         case MGTIMER_TYPE_NORMAL:
+            /* The message timer displays whole seconds, so update its value only at 60-frame
+             * boundaries. */
             if ((timer->time % 60) == 0) {
                 GameMesTimerValueSet(timer->gameMesId, timer->time / 60);
             }
@@ -344,51 +365,58 @@ static void UpdateSprite(MGTIMER* timer) {
         case MGTIMER_TYPE_RECORD:
         case MGTIMER_TYPE_SCORE:
         case MGTIMER_TYPE_WIDESCORE:
-            for (i = 0; i < 15; i++) {
-                if (timer->espId[i] != -1) {
-                    espPosSet(timer->espId[i],  timer->pos.x + digitOfsTbl[timer->type][i].x, timer->pos.y + digitOfsTbl[timer->type][i].y);
+            for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+                if (timer->espId[spriteIndex] != -1) {
+                    espPosSet(timer->espId[spriteIndex],
+                              timer->pos.x + digitOfsTbl[timer->type][spriteIndex].x,
+                              timer->pos.y + digitOfsTbl[timer->type][spriteIndex].y);
                 }
             }
             if (timer->boxId != -1) {
                 MgScoreBoxPosSet(timer->boxId, timer->pos.x - 8.0f, timer->pos.y - 8.0f);
             }
+            /* The live timer digits cap at 9:59.99; record-time digits are formatted separately
+             * below. */
             if (timer->time >= 35999) {
-                minute = 9;
-                second = 59;
-                centisecs = 99;
+                minutes = 9;
+                seconds = 59;
+                centiseconds = 99;
             } else {
-                time = (timer->time >= 35999) ? 35999 : timer->time;
-                minute = time / (timer->timeUnit * 60);
-                second = (time % (timer->timeUnit * 60)) / 60;
-                centisecs = 1.6666666f * ((time % 3600) % 60);
+                /* The enclosing branch already guarantees this value is below the display cap. */
+                elapsedFrames = (timer->time >= 35999) ? 35999 : timer->time;
+                minutes = elapsedFrames / (timer->timeUnit * 60);
+                seconds = (elapsedFrames % (timer->timeUnit * 60)) / 60;
+                /* Convert the remaining sub-second frames to truncated centiseconds using 100/60;
+                 * the record-time display uses the same conversion below. */
+                centiseconds = 1.6666666f * ((elapsedFrames % 3600) % 60);
             }
-            espBankSet(timer->espId[0], minute % 10);
-            espBankSet(timer->espId[2], second / 10);
-            espBankSet(timer->espId[3], second % 10);
-            espBankSet(timer->espId[5], centisecs / 10);
-            espBankSet(timer->espId[6], centisecs % 10);
+            espBankSet(timer->espId[0], minutes % 10);
+            espBankSet(timer->espId[2], seconds / 10);
+            espBankSet(timer->espId[3], seconds % 10);
+            espBankSet(timer->espId[5], centiseconds / 10);
+            espBankSet(timer->espId[6], centiseconds % 10);
 
-            minute = timer->recordTime / (timer->timeUnit * 60);
-            second = (timer->recordTime % (timer->timeUnit * 60)) / 60;
-            centisecs = 1.6666666f * ((timer->recordTime % 3600) % 60);
-            espBankSet(timer->espId[7], minute % 10);
-            espBankSet(timer->espId[9], second / 10);
-            espBankSet(timer->espId[10], second % 10);
-            espBankSet(timer->espId[12], centisecs / 10);
-            espBankSet(timer->espId[13],  centisecs - (centisecs / 10 * 10));
+            minutes = timer->recordTime / (timer->timeUnit * 60);
+            seconds = (timer->recordTime % (timer->timeUnit * 60)) / 60;
+            centiseconds = 1.6666666f * ((timer->recordTime % 3600) % 60);
+            espBankSet(timer->espId[7], minutes % 10);
+            espBankSet(timer->espId[9], seconds / 10);
+            espBankSet(timer->espId[10], seconds % 10);
+            espBankSet(timer->espId[12], centiseconds / 10);
+            espBankSet(timer->espId[13],  centiseconds - (centiseconds / 10 * 10));
             if (timer->flashFlag & MGTIMER_FLASH_COLOR) {
                 if (((GlobalCounter / 10) & 1) == 0) {
-                    r = timer->digitR;
-                    g = timer->digitG;
-                    b = timer->digitB;
+                    red = timer->digitR;
+                    green = timer->digitG;
+                    blue = timer->digitB;
                 } else {
-                    r = 255;
-                    g = 216;
-                    b = 0;
+                    red = 255;
+                    green = 216;
+                    blue = 0;
                 }
-                for (i = 0; i < 7; i++) {
-                    if (timer->espId[i] != -1) {
-                        espColorSet(timer->espId[i], r, g, b);
+                for (spriteIndex = 0; spriteIndex < 7; spriteIndex++) {
+                    if (timer->espId[spriteIndex] != -1) {
+                        espColorSet(timer->espId[spriteIndex], red, green, blue);
                     }
                 }
             }
@@ -404,33 +432,37 @@ static void UpdateSprite(MGTIMER* timer) {
                         timer->scaleDir = 1;
                     }
                 }
-                for (i = 0; i < 8; i++) {
-                    if (timer->espId[i+7] != -1) {
-                        espScaleSet(timer->espId[i+7], timer->digitScale, timer->digitScale);
+                for (spriteIndex = 0; spriteIndex < 8; spriteIndex++) {
+                    if (timer->espId[spriteIndex+7] != -1) {
+                        espScaleSet(timer->espId[spriteIndex + 7], timer->digitScale,
+                                    timer->digitScale);
                     }
                 }
             }
             if (timer->flashFlag & MGTIMER_FLASH_FADEOUT) {
-                tpLvl = 1.0f - (0.016666668f * timer->fadeOutTime);
-                for (i = 0; i < 15; i++) {
-                    if (timer->espId[i] != -1) {
-                        espTPLvlSet(timer->espId[i], tpLvl);
+                transparencyLevel = 1.0f - (0.016666668f * timer->fadeOutTime);
+                for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+                    if (timer->espId[spriteIndex] != -1) {
+                        espTPLvlSet(timer->espId[spriteIndex], transparencyLevel);
                     }
                     if (timer->boxId != -1) {
-                        MgScoreBoxTPLvlSet(timer->boxId, tpLvl);
+                        MgScoreBoxTPLvlSet(timer->boxId, transparencyLevel);
                     }
                 }
+                /* Opacity falls by 1/60 per update; when the counter is already 60, the next update
+                 * reaches zero, clears the fade flag, and hides the display. */
                 if (timer->fadeOutTime++ >= 60) {
                     timer->flashFlag = timer->flashFlag & ~MGTIMER_FLASH_FADEOUT;
                     MgTimerDispOff(timer);
                 }
             }
     }
-    (void)second;
+    (void)seconds;
 }
 
+/* Minigame callers show the timer message or all timer sprites and its score box. */
 void MgTimerDispOn(MGTIMER* timer) {
-    int i;
+    int spriteIndex;
 
     switch (timer->type) {
         case MGTIMER_TYPE_NORMAL:
@@ -443,9 +475,9 @@ void MgTimerDispOn(MGTIMER* timer) {
         case MGTIMER_TYPE_SCORE:
         case MGTIMER_TYPE_RECORD:
         case MGTIMER_TYPE_WIDESCORE:
-            for (i = 0; i < 15; i++) {
-                if (timer->espId[i] != -1) {
-                    espDispOn(timer->espId[i]);
+            for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+                if (timer->espId[spriteIndex] != -1) {
+                    espDispOn(timer->espId[spriteIndex]);
                 }
             }
             if (timer->boxId != -1) {
@@ -457,8 +489,9 @@ void MgTimerDispOn(MGTIMER* timer) {
     timer->dispOnF = TRUE;
 }
 
+/* Minigame callers hide the timer message or all timer sprites and its score box. */
 void MgTimerDispOff(MGTIMER* timer) {
-    int i;
+    int spriteIndex;
 
     switch (timer->type) {
         case MGTIMER_TYPE_NORMAL:
@@ -471,9 +504,9 @@ void MgTimerDispOff(MGTIMER* timer) {
         case MGTIMER_TYPE_RECORD:
         case MGTIMER_TYPE_SCORE:
         case MGTIMER_TYPE_WIDESCORE:
-            for (i = 0; i < 15; i++) {
-                if (timer->espId[i] != -1) {
-                    espDispOff(timer->espId[i]);
+            for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+                if (timer->espId[spriteIndex] != -1) {
+                    espDispOff(timer->espId[spriteIndex]);
                 }
             }
             if (timer->boxId != -1) {
@@ -484,8 +517,9 @@ void MgTimerDispOff(MGTIMER* timer) {
     timer->dispOnF = FALSE;
 }
 
+/* Record-screen callers show the timer message or record-style digits and score box. */
 void MgTimerRecordDispOn(MGTIMER* timer) {
-    int i;
+    int spriteIndex;
 
     switch (timer->type) {
         case MGTIMER_TYPE_NORMAL:
@@ -498,9 +532,9 @@ void MgTimerRecordDispOn(MGTIMER* timer) {
         case MGTIMER_TYPE_RECORD:
         case MGTIMER_TYPE_SCORE:
         case MGTIMER_TYPE_WIDESCORE:
-            for (i = 0; i < 15; i++) {
-                if (timer->espId[i] != -1) {
-                    espDispOn(timer->espId[i]);
+            for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+                if (timer->espId[spriteIndex] != -1) {
+                    espDispOn(timer->espId[spriteIndex]);
                 }
             }
             if (timer->boxId != HUSPR_GROUP_NONE) {
@@ -511,8 +545,9 @@ void MgTimerRecordDispOn(MGTIMER* timer) {
     timer->dispOnF = TRUE;
 }
 
+/* Record-screen callers hide the timer message or record-style digits and score box. */
 void MgTimerRecordDispOff(MGTIMER* timer) {
-    int i;
+    int spriteIndex;
 
     switch (timer->type) {
         case MGTIMER_TYPE_NORMAL:
@@ -525,9 +560,9 @@ void MgTimerRecordDispOff(MGTIMER* timer) {
         case MGTIMER_TYPE_RECORD:
         case MGTIMER_TYPE_SCORE:
         case MGTIMER_TYPE_WIDESCORE:
-            for(i = 0; i < 15; i++) {
-                if (timer->espId[i] != -1) {
-                    espDispOff(timer->espId[i]);
+            for(spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
+                if (timer->espId[spriteIndex] != -1) {
+                    espDispOff(timer->espId[spriteIndex]);
                 }
             }
             if(timer->boxId != -1) {
