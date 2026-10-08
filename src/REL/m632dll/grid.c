@@ -377,7 +377,7 @@ void fn_1_5D34(s32 playerIndex)
     Point3d direction;
     s32 targetGridX;
     s32 targetGridZ;
-    f32 floatValue0;
+    f32 riskThreshold;
     s32 currentGridX;
     s32 currentGridZ;
     MGPLAYER *player;
@@ -400,19 +400,19 @@ void fn_1_5D34(s32 playerIndex)
     }
     switch (GwPlayerConf[playerIndex].comDif) {
     case 0:
-        floatValue0 = 128.0f;
+        riskThreshold = 128.0f;
         break;
     case 1:
-        floatValue0 = 80.0f;
+        riskThreshold = 80.0f;
         break;
     case 2:
-        floatValue0 = 40.0f;
+        riskThreshold = 40.0f;
         break;
     case 3:
-        floatValue0 = 16.0f;
+        riskThreshold = 16.0f;
         break;
     }
-    if ((fn_1_604C(playerIndex, currentGridX, currentGridZ, &targetGridX, &targetGridZ) != 0) && ((currentGridX != targetGridX) || (currentGridZ != targetGridZ)) && ((f32) lbl_1_bss_0.gridA[currentGridX + currentGridZ * 8] >= floatValue0)) {
+    if ((fn_1_604C(playerIndex, currentGridX, currentGridZ, &targetGridX, &targetGridZ) != 0) && ((currentGridX != targetGridX) || (currentGridZ != targetGridZ)) && ((f32) lbl_1_bss_0.gridA[currentGridX + currentGridZ * 8] >= riskThreshold)) {
         direction.x = (f32) (targetGridX - currentGridX);
         direction.y = 0.0f;
         direction.z = (f32) (targetGridZ - currentGridZ);
@@ -442,13 +442,13 @@ s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *sele
     Point3d otherPlayerPosition;
     Point3d candidateOffset;
     M632GridCandidate *candidate;
-    f32 floatValue0;
+    f32 distanceWeight;
     s32 selectionChanged;
     s32 activeGroupPlayerCount;
     s32 candidateAvailable;
     s32 otherPlayerIndex;
-    s32 otherPlayerGridX;
-    s32 otherPlayerGridZ;
+    s32 gridCellX;
+    s32 gridCellZ;
     s32 candidateIndex;
 
     candidate = &candidates[0];
@@ -464,25 +464,25 @@ s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *sele
     if (startZ >= 8) {
         startZ = 7;
     }
-    otherPlayerGridZ = 0;
-    while (otherPlayerGridZ < 8) {
-        otherPlayerGridX = 0;
-        while (otherPlayerGridX < 8) {
-            candidateOffset.x = (f32) (otherPlayerGridX - startX);
+    gridCellZ = 0;
+    while (gridCellZ < 8) {
+        gridCellX = 0;
+        while (gridCellX < 8) {
+            candidateOffset.x = (f32) (gridCellX - startX);
             candidateOffset.y = 0.0f;
-            candidateOffset.z = (f32) (otherPlayerGridZ - startZ);
-            candidate->x = otherPlayerGridX;
-            candidate->z = otherPlayerGridZ;
+            candidateOffset.z = (f32) (gridCellZ - startZ);
+            candidate->x = gridCellX;
+            candidate->z = gridCellZ;
             candidate->distance = PSVECMag(&candidateOffset);
-            floatValue0 = candidate->distance;
-            if (floatValue0 < 1.0f) {
-                floatValue0 = 1.0f;
+            distanceWeight = candidate->distance;
+            if (distanceWeight < 1.0f) {
+                distanceWeight = 1.0f;
             }
-            candidate->cost = (s32) ((f32) lbl_1_bss_0.gridA[otherPlayerGridX + otherPlayerGridZ * 8] * floatValue0);
+            candidate->cost = (s32) ((f32) lbl_1_bss_0.gridA[gridCellX + gridCellZ * 8] * distanceWeight);
             candidate += 1;
-            otherPlayerGridX += 1;
+            gridCellX += 1;
         }
-        otherPlayerGridZ += 1;
+        gridCellZ += 1;
     }
     fn_1_6574(&candidates[0], 64U, sizeof(candidates[0]), fn_1_5FE4);
     candidate = &candidates[0];
@@ -502,9 +502,9 @@ s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *sele
             while (otherPlayerIndex < 4) {
                 if ((lbl_1_bss_0.group[otherPlayerIndex] == 1) && (lbl_1_bss_0.playerState[otherPlayerIndex] == 0) && (otherPlayerIndex != playerIndex)) {
                     otherPlayerPosition = lbl_1_bss_0.players[otherPlayerIndex]->actor->pos;
-                    otherPlayerGridX = (s32) ((400.0f + otherPlayerPosition.x) / 100.0f);
-                    otherPlayerGridZ = (s32) ((400.0f + otherPlayerPosition.z) / 100.0f);
-                    if ((otherPlayerGridX != candidate->x) || (otherPlayerGridZ != candidate->z)) {
+                    gridCellX = (s32) ((400.0f + otherPlayerPosition.x) / 100.0f);
+                    gridCellZ = (s32) ((400.0f + otherPlayerPosition.z) / 100.0f);
+                    if ((gridCellX != candidate->x) || (gridCellZ != candidate->z)) {
                         candidateAvailable = 1;
                         break;
                     }

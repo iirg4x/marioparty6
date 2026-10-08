@@ -109,8 +109,8 @@ extern MGSEQ_PARAM lbl_1_data_0;
 extern char *lbl_1_data_108[4];
 /* Collision model data numbers for the four arena layouts. */
 extern unsigned int lbl_1_data_118[4];
-/* Initialized 48-byte table data; this module does not read it. */
-extern u8 lbl_1_data_128[48];
+/* Four 3D points at Y=1200. */
+extern Point3d lbl_1_data_128[4];
 /* Character animation data numbers loaded during player setup. */
 extern unsigned int lbl_1_data_158[16];
 /* Group-1 CPU risk thresholds indexed by difficulty. */
