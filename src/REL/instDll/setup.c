@@ -42,12 +42,12 @@ enum {
 };
 
 typedef struct StageModel_s {
-    u32 dataNum;
-    s16 motMdl;
-    Vec pos;
-    Vec rot;
-    Vec scale;
-    s16 cameraBit;
+    u32 dataNum; /* Stage-model or joint-motion resource number. */
+    s16 motMdl; /* -1 creates a model; otherwise indexes the model receiving the joint motion. */
+    Vec pos; /* Preview position. */
+    Vec rot; /* Rotation in degrees. */
+    Vec scale; /* Per-axis scale. */
+    s16 cameraBit; /* Camera-selection mask. */
 } STAGE_MODEL;
 typedef struct Inst_data_798_view {
     u8 stageModelCount;
@@ -189,6 +189,7 @@ void fn_1_A0(void)
     }
     GWMgUnlockSet(lbl_1_bss_36 + INST_MINIGAME_NUMBER_BASE);
     lbl_1_bss_20 = &MgDataTbl[lbl_1_bss_36];
+    /* Rare minigames use the last-player preview type. */
     if (lbl_1_bss_20->flag & MG_FLAG_RARE) {
         lbl_1_bss_20->type = MG_TYPE_LAST;
     }
@@ -229,6 +230,8 @@ void fn_1_A0(void)
         lbl_1_bss_14 = 0;
     }
 
+    /* m678 selects 1-vs-3 or 2-vs-2 instructions from group-0 size; malformed group counts are
+     * reset. */
     if (lbl_1_bss_20->ovl == DLL_m678dll) {
         for (i = count = 0; i < GW_PLAYER_MAX; i++) {
             if (GwPlayerConf[i].grpNo == 0) {
@@ -293,6 +296,7 @@ prior_game_path:
     if (omovlevtno == 0) {
         s32 groupPlayers[4][4];
         s32 groupCount[4];
+    /* Randomize the display order within each two-player team. */
     if (lbl_1_bss_20->flag & MG_FLAG_GRPORDER) {
         groupCount[0] = groupCount[1] = 0;
         for (i = 0; i < GW_PLAYER_MAX; i++) {
@@ -575,7 +579,8 @@ void fn_1_15B4(void) {
     lbl_1_bss_8 = INST_INPUT_WAIT_FRAMES;
 }
 
-/* Displays pages and handles page, team, and day/night input in a child of fn_1_1024. */
+/* Displays instruction pages, inserts player names by group, and switches between day/night message
+ * sets. */
 void fn_1_15C8(void)
 {
     s16 i;
