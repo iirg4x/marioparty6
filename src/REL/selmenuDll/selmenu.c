@@ -230,16 +230,16 @@ static char *smDvdMusTbl[] = { "sound/mu_016a.dvd", "sound/mu_047a.dvd", "sound/
     "sound/mu_108a.dvd", "sound/mu002a.dvd", "" };
 
 /* The menu stores its current page and cursor; each page remembers its previous cursor row. */
-/* Current page index (0 through SM_PAGE_MAX - 1). */
+/* Current page index; -1 is a temporary sentinel while SMInit chooses the first page. */
 static s16 smPage;
 static s16 smCursorNoPrev[SM_PAGE_MAX];
 /* Objects owned by the selector and its four-view character preview. */
 static OMOBJ *smMainObj;
 static OMOBJ *smOutViewObj;
 static GW_PLAYER_CONF smPlayerConf[4];
-/* Current row within smPage (0 through SM_PAGE_SIZE - 1). */
+/* Current row within smPage; -1 is a temporary sentinel during initial row selection. */
 static s16 smCursorNo;
-/* Stores the list row cursor when leaving this selector, including when opening a mode. */
+/* Last row passed to SMExit; this file writes the value but does not read it. */
 static s16 smChar1Prev = -1;
 static u16 smPadBtnDown;
 static u16 smPadDStk;
@@ -360,7 +360,7 @@ static void SMCopyConfig(GW_PLAYER_CONF *dst, GW_PLAYER_CONF *src)
     }
 }
 
-/* Called by each active screen callback to combine four controllers and record directional press edges for this frame. */
+/* Screen callbacks that read controls call this to combine all four pads and record this frame’s directional press edges. */
 static void SMBtnRead(void)
 {
     int i;
@@ -608,7 +608,7 @@ static void SMGroupSet(int pos)
 static HU3D_MODELID smCharMdlId[SM_CHAR_MAX];
 /* TRUE once that player has confirmed their character. */
 static s16 smCharSelEndF[4];
-/* Nonzero for a playable character already assigned to a human player. */
+/* Nonzero for a character already taken by a human, reserved for Wario, or assigned to a COM slot. */
 static s16 smCharOnF[SM_CHAR_MAX];
 
 #define SM_CHAR_FILE_STRIDE 2
@@ -691,7 +691,7 @@ static void SMCharMdlKill(void)
     }
 }
 
-/* Assigns each COM player an unused character after all human players confirm their choices. */
+/* Assigns each COM slot an available character after reserving Wario and the current human choices. */
 static void SMCharComSet(void)
 {
     int i;
@@ -732,7 +732,7 @@ static void SMCharSelInit(OMOBJ *obj)
     obj->objFunc = SMCharSelMain;
 }
 
-/* Runs each frame on the character screen to process each human player’s choice and draw the four preview panels. */
+/* Runs each frame on the character screen to process unconfirmed player-slot input and draw human previews or COM labels in all four panels. */
 static void SMCharSelMain(OMOBJ *obj)
 {
     int i;
@@ -765,10 +765,11 @@ static void SMCharSelMain(OMOBJ *obj)
     if (manDoneNum == manNum) {
         SMCharNoAdd(0, 0);
         SMCharComSet();
-        smPlayerConf[0].charNo = 4;
-        smPlayerConf[1].charNo = 11;
-        smPlayerConf[2].charNo = 12;
-        smPlayerConf[3].charNo = 13;
+        /* When the confirmation count equals the human count (also immediately with no humans), this path discards all four picks, including COM assignments, and sets them to Wario, MinikoopaR, MinikoopaG, and MinikoopaB. */
+        smPlayerConf[0].charNo = SM_CHAR_WARIO;
+        smPlayerConf[1].charNo = SM_CHAR_MINIKOOPAR;
+        smPlayerConf[2].charNo = SM_CHAR_MINIKOOPAG;
+        smPlayerConf[3].charNo = SM_CHAR_MINIKOOPAB;
         SMCopyConfig(GwPlayerConf, smPlayerConf);
         CharDataClose(-1);
         OSReport("%d,%d,%d,%d\n", GwPlayerConf[0].charNo, GwPlayerConf[1].charNo, GwPlayerConf[2].charNo, GwPlayerConf[3].charNo);
@@ -791,6 +792,7 @@ static void SMCharSelMain(OMOBJ *obj)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         port = smPlayerConf[i].padNo;
         if (!smCharSelEndF[i]) {
+            /* Input uses this slot's configured pad, but the changed character is stored at the pad-number index. */
             if (smPadDStkDownAll[port] & SM_KEY_LEFT) {
                 smPlayerConf[port].charNo = SMCharNoAdd(i, -1);
             }
@@ -851,7 +853,7 @@ static void SMCharSelMain(OMOBJ *obj)
     }
 }
 
-/* Runs after the character screen finishes its outgoing wipe; waits for data reads, records the selected minigame and opens its instruction or overlay screen. */
+/* Runs after the outgoing wipe completes; waits for outstanding ARAM DMA requests, records the selected minigame and opens its instruction or overlay screen. */
 static void SMExit(OMOBJ *obj)
 {
     int mg;
@@ -963,7 +965,7 @@ static void SMPlayerConfInit(OMOBJ *obj)
     obj->objFunc = SMPlayerConfMain;
 }
 
-/* Runs each frame on the player-setup screen to edit player settings, return to the list, or shuffle the four player groups with Start. */
+/* Runs each frame on player setup: B/Y return to the list while selecting a player; Start makes 100 group-number swaps in that mode; A/B leave setting edit and Y returns to the list. */
 static void SMPlayerConfMain(OMOBJ *obj)
 {
     int offset;
@@ -1077,7 +1079,7 @@ static void SMPlayerConfMain(OMOBJ *obj)
     }
 }
 
-/* The auxiliary object callback registered by ObjectSetup; it advances the random generator once each frame. */
+/* The auxiliary callback registered by ObjectSetup; each active object-manager update advances the random generator once. */
 static void SMRandMain(OMOBJ *obj)
 {
     rand8();
@@ -1088,13 +1090,13 @@ static void SMStub(void) {}
 /* 3D sound setup selection and the currently edited effect values. */
 /* Selected effect-table index; left edits clamp it at zero, lookups also occur on entry, and this source has no upper clamp. */
 static s16 smEmiCompDataNo;
-/* Effect compensation loads unchanged on entry; edits clamp it to -127 through 127. */
+/* Loads the selected effect’s compensation on entry; left/right edits clamp it to -127 through 127 and write it back. Start only clears this displayed value. */
 static s16 smEmiCompVal;
 /* Selected sound setting index, from 0 through 7. */
 static s16 smSound3DNo;
 s16 lbl_1_bss_0;
 
-/* Loads the selected sound effect’s current compensation value when the 3D sound screen opens. */
+/* Reads comp from the selected effect-table row on entry, then installs the 3D sound screen callback. */
 static void SMSound3DInit(OMOBJ *obj)
 {
     MSMSE *se = msmSeGetIndexPtr(smEmiCompDataNo);
@@ -1102,7 +1104,7 @@ static void SMSound3DInit(OMOBJ *obj)
     obj->objFunc = SMSound3DExec;
 }
 
-/* Runs each frame on the 3D sound screen to adjust audio settings, reset the selected value to zero with Start, or return with B. */
+/* Runs each frame on the 3D sound screen: up/down select a setting, left/right edit it, Start applies that setting’s reset behavior, and B schedules a return to the list. */
 static void SMSound3DExec(OMOBJ *obj)
 {
     float speed;
@@ -1207,14 +1209,17 @@ static void SMSound3DExec(OMOBJ *obj)
                 break;
 
             case 5:
+                /* Start selects table entry zero; it does not reload that entry’s displayed compensation. */
                 smEmiCompDataNo = 0;
                 break;
 
             case 6:
+                /* Start clears the edit value only; the effect table is written on the next left/right edit. */
                 smEmiCompVal = 0;
                 break;
 
             case 7:
+                /* Start clears the flag without restoring master volume; left/right applies the volume change. */
                 musicOffF = 0;
                 break;
         }
