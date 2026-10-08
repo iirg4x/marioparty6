@@ -1,3 +1,4 @@
+// Reads game files from the DVD and reports changes in the drive status.
 #include "game/dvd.h"
 #include "game/data.h"
 
@@ -7,60 +8,73 @@
 static int CallBackStatus;
 static s32 beforeDvdStatus;
 
-static void HuDVDReadAsyncCallBack(s32 result, DVDFileInfo* fileInfo)
+// Marks one chunk complete so the synchronous reader can continue its wait loop.
+// The callback result and file info are ignored, including read errors.
+static void HuDVDReadAsyncCallBack(s32 ignoredResult, DVDFileInfo* ignoredFileInfo)
 {
     CallBackStatus = 1;
 }
 
-static void *HuDvdDataReadWait(DVDFileInfo *file, int mode, int param, BOOL async)
+// Allocates a file buffer, then either reads every chunk here or starts the data loader callback.
+// Called by the path-based and fast-entry read helpers below.
+static void *HuDvdDataReadWait(DVDFileInfo *dvdFile, int allocationMode, int heapOrAllocationNumber,
+                               BOOL readAsync)
 {
-    u32 len;
-    void *buf;
-    len = file->length;
-    DirDataSize = len;
-    switch(mode) {
+    u32 fileLength;
+    u8 *dataBuffer;
+    fileLength = dvdFile->length;
+    // Preserve the full file size for callers, including when an asynchronous read starts in
+    // chunks.
+    DirDataSize = fileLength;
+    // Modes select the DVD heap, numbered DVD heap, selected heap, or selected heap tail.
+    switch(allocationMode) {
         case 0:
-            buf = HuMemDirectMalloc(HEAP_DVD, OSRoundUp32B(len));
+            dataBuffer = HuMemDirectMalloc(HEAP_DVD, OSRoundUp32B(fileLength));
             break;
             
         case 1:
-            buf = HuMemDirectMallocNum(HEAP_DVD, OSRoundUp32B(len), param);
+            dataBuffer =
+                HuMemDirectMallocNum(HEAP_DVD, OSRoundUp32B(fileLength), heapOrAllocationNumber);
             break;
             
         case 2:
-            buf = HuMemDirectMalloc(param, OSRoundUp32B(len));
+            dataBuffer = HuMemDirectMalloc(heapOrAllocationNumber, OSRoundUp32B(fileLength));
             break;
          
         case 3:
-            buf = HuMemDirectTailMalloc(param, OSRoundUp32B(len));
+            dataBuffer = HuMemDirectTailMalloc(heapOrAllocationNumber, OSRoundUp32B(fileLength));
             break;
         
         default:
             OSPanic("dvd.c", 58, "dvd.c: HuDvdDataReadWait Mode Error");
             break;
     }
-    if(!buf) {
-        OSReport("dvd.c: Memory Allocation Error (Length %x) (mode %d)\n", len, mode);
+    if(!dataBuffer) {
+        OSReport("dvd.c: Memory Allocation Error (Length %x) (mode %d)\n", fileLength,
+                 allocationMode);
         OSReport("Rest Memory %x\n", HuRestMemGet(HEAP_DVD));
         OSPanic("dvd.c", 63, "\n");
         return NULL;
     }
     OSReport("Rest Memory %x\n", HuRestMemGet(HEAP_DVD));
-    if(async) {
-        if(len > HU_DVD_BLOCKSIZE) {
-            len = HU_DVD_BLOCKSIZE;
+    // Read-submission results are ignored; the synchronous path waits for its callback below.
+    if(readAsync) {
+        if(fileLength > HU_DVD_BLOCKSIZE) {
+            fileLength = HU_DVD_BLOCKSIZE;
         }
-        DVDReadAsyncPrio(file, buf, OSRoundUp32B(len), 0, HuDataDirReadAsyncCallBack, 3);
+        DVDReadAsyncPrio(dvdFile, dataBuffer, OSRoundUp32B(fileLength), 0,
+                         HuDataDirReadAsyncCallBack, 3);
     } else {
-        u32 readSize;
-        u32 readOfs;
-        for(readOfs=readSize=0; readOfs<len; readOfs += HU_DVD_BLOCKSIZE) {
-            readSize = len-readOfs;
-            if(readSize > HU_DVD_BLOCKSIZE) {
-                readSize = HU_DVD_BLOCKSIZE;
+        u32 chunkSize;
+        u32 readOffset;
+        for(readOffset=chunkSize=0; readOffset<fileLength; readOffset += HU_DVD_BLOCKSIZE) {
+            chunkSize = fileLength-readOffset;
+            if(chunkSize > HU_DVD_BLOCKSIZE) {
+                chunkSize = HU_DVD_BLOCKSIZE;
             }
             CallBackStatus = 0;
-            DVDReadAsyncPrio(file, ((u8 *)buf)+readOfs, OSRoundUp32B(readSize), readOfs, HuDVDReadAsyncCallBack, 2);
+            DVDReadAsyncPrio(dvdFile, &dataBuffer[readOffset], OSRoundUp32B(chunkSize),
+                             readOffset, HuDVDReadAsyncCallBack, 2);
             while(CallBackStatus == 0) {
                 HuDvdErrorWatch();
             }
@@ -68,131 +82,143 @@ static void *HuDvdDataReadWait(DVDFileInfo *file, int mode, int param, BOOL asyn
         }
     }
     
-    return buf;
+    return dataBuffer;
 }
 
-void *HuDvdDataRead(char *path)
+// Opens and fully reads a named file; window.c uses this for the selected language's messages.
+void *HuDvdDataRead(char *filePath)
 {
-    DVDFileInfo file;
-    void *data = NULL;
-    if(!DVDOpen(path, &file)) {
+    DVDFileInfo dvdFile;
+    void *fileData = NULL;
+    if(!DVDOpen(filePath, &dvdFile)) {
         OSPanic("dvd.c", 109, "dvd.c: File Open Error");
     } else {
-        data = HuDvdDataReadWait(&file, 0, 0, FALSE);
-        DVDClose(&file);
+        fileData = HuDvdDataReadWait(&dvdFile, 0, 0, FALSE);
+        DVDClose(&dvdFile);
     }
-    return data;
+    return fileData;
 }
 
-void **HuDvdDataReadMulti(char **paths)
+// Reads each null-terminated path into a parallel array; HuDataReadMultiSub uses this for
+// directories.
+void **HuDvdDataReadMulti(char **filePaths)
 {
-    DVDFileInfo file;
-    int i;
-    u32 count;
-    void **file_ptrs;
-    count = 0;
-    while(paths[count]) {
-        count++;
+    DVDFileInfo dvdFile;
+    int pathIndex;
+    u32 pathCount;
+    void **fileDataArray;
+    pathCount = 0;
+    while(filePaths[pathCount]) {
+        pathCount++;
     }
-    file_ptrs = HuMemDirectMalloc(0, count*sizeof(void *));
-    for(i=0; i<count; i++) {
-        if(!DVDOpen(paths[i], &file)) {
+    fileDataArray = HuMemDirectMalloc(0, pathCount*sizeof(void *));
+    for(pathIndex=0; pathIndex<pathCount; pathIndex++) {
+        if(!DVDOpen(filePaths[pathIndex], &dvdFile)) {
             OSPanic("dvd.c", 145, "dvd.c: File Open Error");
             return NULL;
         } else {
-            file_ptrs[i] = HuDvdDataReadWait(&file, 0, 0, FALSE);
-            DVDClose(&file);
+            fileDataArray[pathIndex] = HuDvdDataReadWait(&dvdFile, 0, 0, FALSE);
+            DVDClose(&dvdFile);
         }
     }
-    return file_ptrs;
+    return fileDataArray;
 }
 
-void *HuDvdDataReadDirect(char *path, HEAPID heap)
+// Reads a named file into the requested heap; objdll.c uses it to load REL modules.
+void *HuDvdDataReadDirect(char *filePath, HEAPID targetHeap)
 {
-    DVDFileInfo file;
-    void *data = NULL;
-    if(!DVDOpen(path, &file)) {
+    DVDFileInfo dvdFile;
+    void *fileData = NULL;
+    if(!DVDOpen(filePath, &dvdFile)) {
         OSPanic("dvd.c", 164, "dvd.c: File Open Error");
     } else {
-        data = HuDvdDataReadWait(&file, 2, heap, FALSE);
-        DVDClose(&file);
+        fileData = HuDvdDataReadWait(&dvdFile, 2, targetHeap, FALSE);
+        DVDClose(&dvdFile);
     }
-    return data;
+    return fileData;
 }
 
-void *HuDvdDataFastRead(s32 entrynum)
+// Reads one directory-table entry into the DVD heap; data.c uses this for directory loads.
+void *HuDvdDataFastRead(s32 entryNumber)
 {
-    DVDFileInfo file;
-    void *data = NULL;
-    if(!DVDFastOpen(entrynum, &file)) {
+    DVDFileInfo dvdFile;
+    void *fileData = NULL;
+    if(!DVDFastOpen(entryNumber, &dvdFile)) {
         OSPanic("dvd.c", 205, "dvd.c: File Open Error");
     } else {
-        data = HuDvdDataReadWait(&file, 0, 0, FALSE);
-        DVDClose(&file);
+        fileData = HuDvdDataReadWait(&dvdFile, 0, 0, FALSE);
+        DVDClose(&dvdFile);
     }
-    return data;
+    return fileData;
 }
 
-void *HuDvdDataFastReadNum(s32 entrynum, s32 num)
+// Reads a directory-table entry using allocationTag for its DVD heap block; called by data.c.
+void *HuDvdDataFastReadNum(s32 entryNumber, s32 allocationTag)
 {
-    DVDFileInfo file;
-    void *data = NULL;
-    if(!DVDFastOpen(entrynum, &file)) {
+    DVDFileInfo dvdFile;
+    void *fileData = NULL;
+    if(!DVDFastOpen(entryNumber, &dvdFile)) {
         OSPanic("dvd.c", 220, "dvd.c: File Open Error");
     } else {
-        data = HuDvdDataReadWait(&file, 1, num, FALSE);
-        DVDClose(&file);
+        fileData = HuDvdDataReadWait(&dvdFile, 1, allocationTag, FALSE);
+        DVDClose(&dvdFile);
     }
-    return data;
+    return fileData;
 }
 
-void *HuDvdDataFastReadAsync(s32 entrynum, HUDATASTAT *stat)
+// Starts an asynchronous directory read and leaves the open file and progress in its status record.
+// Called by data.c; HuDataDirReadAsyncCallBack advances later chunks and closes the file.
+void *HuDvdDataFastReadAsync(s32 entryNumber, HUDATASTAT *readStatus)
 {
-    DVDFileInfo file;
-    void *data = NULL;
-    if(!DVDFastOpen(entrynum, &stat->dvdFile)) {
+    DVDFileInfo unusedFileInfo; // The open file is stored in readStatus->dvdFile.
+    void *fileData = NULL;
+    if(!DVDFastOpen(entryNumber, &readStatus->dvdFile)) {
         OSPanic("dvd.c", 236, "dvd.c: File Open Error");
     } else {
-        stat->readOfs = 0;
-        stat->readLen = stat->dvdFile.length;
-        data = HuDvdDataReadWait(&stat->dvdFile, 0, 0, TRUE);
+        readStatus->readOfs = 0;
+        readStatus->readLen = readStatus->dvdFile.length;
+        fileData = HuDvdDataReadWait(&readStatus->dvdFile, 0, 0, TRUE);
     }
-    return data;
+    return fileData;
 }
 
-void HuDvdDataClose(void *ptr)
+// Frees a buffer returned by one of the DVD read helpers; data.c uses this when closing directory
+// data.
+void HuDvdDataClose(void *fileData)
 {
-    if(ptr) {
-        HuMemDirectFree(ptr);
+    if(fileData) {
+        HuMemDirectFree(fileData);
     }
 }
 
+// main.c checks the drive each frame; changed disk errors are printed and fatal errors halt the
+// game.
 void HuDvdErrorWatch()
 {
-    int status = DVDGetDriveStatus();
-    if(status == beforeDvdStatus) {
+    int driveStatus = DVDGetDriveStatus();
+    if(driveStatus == beforeDvdStatus) {
         return;
     }
-    beforeDvdStatus = status;
-    switch(status+1) {
-        case 0:
+    beforeDvdStatus = driveStatus;
+    switch(driveStatus+1) {
+        case DVD_STATE_FATAL_ERROR + 1:
             OSReport("DVD ERROR:Fatal error occurred\n***HALT***");
             while(1);
             break;
             
-        case 5:
+        case DVD_STATE_NO_DISK + 1:
             OSReport("DVD ERROR:No disk\n");
             break;
             
-        case 6:
+        case DVD_STATE_COVER_OPEN + 1:
             OSReport("DVD ERROR:Cover open\n");
             break;
             
-        case 7:
+        case DVD_STATE_WRONG_DISK + 1:
             OSReport("DVD ERROR:Wrong disk\n");
             break;
             
-        case 12:
+        case DVD_STATE_RETRY + 1:
             OSReport("DVD ERROR:Please retry\n");
             break;
             

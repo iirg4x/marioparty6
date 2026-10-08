@@ -1,3 +1,4 @@
+// Board capsule handlers for player movement, character encounters, and mushroom effects.
 #include "dolphin/math.h"
 #include "dolphin/mtx.h"
 #include "datanum/charmot.h"
@@ -17,6 +18,7 @@
 #include "game/board/window.h"
 #include "datadir_enum.h"
 #include "msm_se.h"
+#include "messdir_enum.h"
 
 double sin(double);
 double cos(double);
@@ -80,7 +82,7 @@ typedef struct {
     int _unk1C;
     EVCAPWORK objWork;
     CAPWORKFLAG flags;
-    int _unkB6C;
+    int effectModelId;
     u8 _unkB70[92];
     int processNo;
     OMOBJ *explodeObj;
@@ -113,14 +115,15 @@ enum {
     CAPMOVE_MASU_TYPE_STAR = 7,
     CAPMOVE_PLAYER_MOT_JUMP = 4,
     CAPMOVE_EFFECT_COLOR_RANGE = 1 << 15,
-    CAPMOVE_MESS_DOKAN_SAME_SPACE = 3473408,
-    CAPMOVE_MESS_DOKAN_TARGET = 3473409,
-    CAPMOVE_MESS_HANACHAN_ARRIVE = 3473411,
-    CAPMOVE_MESS_HANACHAN_DEPART = 3473412,
-    CAPMOVE_MESS_HANACHAN_STAR = 3473413,
-    CAPMOVE_MESS_STAR_MAX_DAY = 2555914,
-    CAPMOVE_MESS_STAR_MAX_NIGHT = 2555915,
 };
+
+#define CAPMOVE_MESS_DOKAN_SAME_SPACE MESSNUM(MESS_CAPSULE_EX01, 0)
+#define CAPMOVE_MESS_DOKAN_TARGET MESSNUM(MESS_CAPSULE_EX01, 1)
+#define CAPMOVE_MESS_HANACHAN_ARRIVE MESSNUM(MESS_CAPSULE_EX01, 3)
+#define CAPMOVE_MESS_HANACHAN_DEPART MESSNUM(MESS_CAPSULE_EX01, 4)
+#define CAPMOVE_MESS_HANACHAN_STAR MESSNUM(MESS_CAPSULE_EX01, 5)
+#define CAPMOVE_MESS_STAR_MAX_DAY MESSNUM(MESS_BOARD_STAR, 10)
+#define CAPMOVE_MESS_STAR_MAX_NIGHT MESSNUM(MESS_BOARD_STAR, 11)
 
 static HuVecF capsuleCameraOfs = { 0.0f, 100.0f, 0.0f };
 static HuVecF hanachanPlayerOfs[GW_CHARA_MAX] = {
@@ -214,75 +217,85 @@ static void ev_CapEffKillerExplodeCreate(CAPWORK *work, HuVecF *pos,
 static void ev_CapEffKillerBoostCreate(CAPWORK *work, HuVecF *pos,
     HuVecF *rot);
 
+// Runs from the capsule event table when the standard Mushroom capsule is used; shows its effect
+// and sets the resulting dice mode.
 void mbev_CapKinoko(void)
 {
-    CAPWORK *work = HuPrcCurrentGet()->property;
-    HuVecF playerPosNext;
-    HuVecF playerPos;
-    int modelId;
-    int i;
-    float time;
-    float scale;
-    float radius;
-    float yOfs;
+    CAPWORK *capWork = HuPrcCurrentGet()->property;
+    HuVecF currentPlayerPos;
+    HuVecF mushroomPos;
+    int mushroomModelId;
+    int frameIndex;
+    float animProgress;
+    float modelScale;
+    float orbitFactor;
+    float heightOffset;
 
-    mbev_CapWait(work);
-    work->explodeObj = mbev_CapEffExplodeCreate();
-    work->glowObj = mbev_CapEffGlowCreate();
-    mbev_CapEffGlowBlendModeSet(work->glowObj, 1);
-    mbPlayerPosGet(work->playerNo, &playerPos);
-    playerPos.y += 250.0f;
-    modelId = mbev_CapObjCreate(&work->objWork, CAPMOVE_DATA_KINOKO, NULL, FALSE, 0, FALSE);
-    mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
-    mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
-    mbObjDispSet(modelId, FALSE);
-    mbCapEffUseCreate(work->playerNo, work->capsuleNo);
-    while (mbCapEffUseModeGet(work->playerNo) < 2) {
+    mbev_CapWait(capWork);
+    capWork->explodeObj = mbev_CapEffExplodeCreate();
+    capWork->glowObj = mbev_CapEffGlowCreate();
+    mbev_CapEffGlowBlendModeSet(capWork->glowObj, 1);
+    mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+    mushroomPos.y += 250.0f;
+    mushroomModelId =
+        mbev_CapObjCreate(&capWork->objWork, CAPMOVE_DATA_KINOKO, NULL, FALSE, 0, FALSE);
+    mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
+    mbObjScaleSet(mushroomModelId, 1.0f, 1.0f, 1.0f);
+    mbObjDispSet(mushroomModelId, FALSE);
+    mbCapEffUseCreate(capWork->playerNo, capWork->capsuleNo);
+    while (mbCapEffUseModeGet(capWork->playerNo) < 2) {
         HuPrcVSleep();
     }
-    mbObjDispSet(modelId, TRUE);
-    work->_unkB6C = modelId;
-    ev_CapEffKinokoCreate(work);
-    for (i = 0; i < 30.0f; i++) {
-        time = i / 30.0f;
-        scale = sin((M_PI * (180.0f * time)) / 180.0f) + 1.0f;
-        mbObjScaleSet(modelId, scale, scale, scale);
+    mbObjDispSet(mushroomModelId, TRUE);
+    capWork->effectModelId = mushroomModelId;
+    ev_CapEffKinokoCreate(capWork);
+    for (frameIndex = 0; frameIndex < 30.0f; frameIndex++) {
+        animProgress = frameIndex / 30.0f;
+        modelScale = sin((M_PI * (180.0f * animProgress)) / 180.0f) + 1.0f;
+        mbObjScaleSet(mushroomModelId, modelScale, modelScale, modelScale);
         HuPrcVSleep();
     }
-    mbev_CapRandomBonusCoin(work->playerNo, work->capsuleNo, FALSE);
-    for (i = 0; i < 60.0f || !mbev_CapBonusCoinCheck(work->playerNo); i++) {
-        time = i / 60.0f;
-        mbPlayerPosGet(work->playerNo, &playerPos);
-        playerPos.y += (100.0f * sin((M_PI * (360.0f * time)) / 180.0f)) * 0.1f + 250.0f;
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
+    // Keep the model hovering for at least 60 frames and until the bonus-coin effect finishes.
+    mbev_CapRandomBonusCoin(capWork->playerNo, capWork->capsuleNo, FALSE);
+    for (frameIndex = 0; frameIndex < 60.0f || !mbev_CapBonusCoinCheck(capWork->playerNo);
+         frameIndex++) {
+        animProgress = frameIndex / 60.0f;
+        mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+        mushroomPos.y += (100.0f * sin((M_PI * (360.0f * animProgress)) / 180.0f)) * 0.1f + 250.0f;
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
         HuPrcVSleep();
     }
-    for (i = 1; i <= 10; i++) {
-        time = i / 10.0f;
-        mbPlayerPosGet(work->playerNo, &playerPosNext);
-        playerPos.y += time * ((playerPosNext.y + 250.0f) - playerPos.y);
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
+    // X and Z remain at the earlier position while the model height eases to the current player
+    // height.
+    for (frameIndex = 1; frameIndex <= 10; frameIndex++) {
+        animProgress = frameIndex / 10.0f;
+        mbPlayerPosGet(capWork->playerNo, &currentPlayerPos);
+        mushroomPos.y += animProgress * ((currentPlayerPos.y + 250.0f) - mushroomPos.y);
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
         HuPrcVSleep();
     }
+    // Shrink and orbit the model around the player before applying this capsule's dice mode.
     mbAudFXPlay(MSM_SE_BRD00_36);
-    for (i = 0; i < 90.0f; i++) {
-        time = 1.0f - (i / 90.0f);
-        yOfs = 50.0f + (time * time * 200.0f);
-        radius = sin((M_PI * (180.0f * (time * time))) / 180.0f);
-        mbPlayerPosGet(work->playerNo, &playerPos);
-        playerPos.x += (radius * cos((M_PI * (2.0f * (time * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
-        playerPos.z += (radius * sin((M_PI * (2.0f * (time * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
-        playerPos.y += yOfs;
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
-        mbObjScaleSet(modelId, time, time, time);
+    for (frameIndex = 0; frameIndex < 90.0f; frameIndex++) {
+        animProgress = 1.0f - (frameIndex / 90.0f);
+        heightOffset = 50.0f + (animProgress * animProgress * 200.0f);
+        orbitFactor = sin((M_PI * (180.0f * (animProgress * animProgress))) / 180.0f);
+        mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+        mushroomPos.x +=
+            (orbitFactor * cos((M_PI * (2.0f * (animProgress * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
+        mushroomPos.z +=
+            (orbitFactor * sin((M_PI * (2.0f * (animProgress * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
+        mushroomPos.y += heightOffset;
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
+        mbObjScaleSet(mushroomModelId, animProgress, animProgress, animProgress);
         HuPrcVSleep();
     }
-    GwPlayer[work->playerNo].diceMode = 1;
-    omVibrate(work->playerNo, 20, 4, 4);
-    for (i = 0; i < 6.0f; i++) {
+    GwPlayer[capWork->playerNo].diceMode = 1;
+    omVibrate(capWork->playerNo, 20, 4, 4);
+    for (frameIndex = 0; frameIndex < 6.0f; frameIndex++) {
         HuPrcVSleep();
     }
-    while (mbev_CapEffGlowDispGet(work->glowObj) > 0) {
+    while (mbev_CapEffGlowDispGet(capWork->glowObj) > 0) {
         HuPrcVSleep();
     }
     HuPrcEnd();
@@ -292,75 +305,85 @@ void mbev_CapKinokoKill(void)
 {
 }
 
+// Runs from the capsule event table when the S Mushroom capsule is used; shows its effect and sets
+// the resulting dice mode.
 void mbev_CapSKinoko(void)
 {
-    CAPWORK *work = HuPrcCurrentGet()->property;
-    HuVecF playerPosNext;
-    HuVecF playerPos;
-    int modelId;
-    int i;
-    float time;
-    float scale;
-    float radius;
-    float yOfs;
+    CAPWORK *capWork = HuPrcCurrentGet()->property;
+    HuVecF currentPlayerPos;
+    HuVecF mushroomPos;
+    int mushroomModelId;
+    int frameIndex;
+    float animProgress;
+    float modelScale;
+    float orbitFactor;
+    float heightOffset;
 
-    mbev_CapWait(work);
-    work->explodeObj = mbev_CapEffExplodeCreate();
-    work->glowObj = mbev_CapEffGlowCreate();
-    mbev_CapEffGlowBlendModeSet(work->glowObj, 1);
-    mbPlayerPosGet(work->playerNo, &playerPos);
-    playerPos.y += 250.0f;
-    modelId = mbev_CapObjCreate(&work->objWork, CAPMOVE_DATA_S_KINOKO, NULL, FALSE, 0, FALSE);
-    mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
-    mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
-    mbObjDispSet(modelId, FALSE);
-    mbCapEffUseCreate(work->playerNo, work->capsuleNo);
-    while (mbCapEffUseModeGet(work->playerNo) < 2) {
+    mbev_CapWait(capWork);
+    capWork->explodeObj = mbev_CapEffExplodeCreate();
+    capWork->glowObj = mbev_CapEffGlowCreate();
+    mbev_CapEffGlowBlendModeSet(capWork->glowObj, 1);
+    mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+    mushroomPos.y += 250.0f;
+    mushroomModelId =
+        mbev_CapObjCreate(&capWork->objWork, CAPMOVE_DATA_S_KINOKO, NULL, FALSE, 0, FALSE);
+    mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
+    mbObjScaleSet(mushroomModelId, 1.0f, 1.0f, 1.0f);
+    mbObjDispSet(mushroomModelId, FALSE);
+    mbCapEffUseCreate(capWork->playerNo, capWork->capsuleNo);
+    while (mbCapEffUseModeGet(capWork->playerNo) < 2) {
         HuPrcVSleep();
     }
-    mbObjDispSet(modelId, TRUE);
-    work->_unkB6C = modelId;
-    ev_CapEffKinokoCreate(work);
-    for (i = 0; i < 30.0f; i++) {
-        time = i / 30.0f;
-        scale = sin((M_PI * (180.0f * time)) / 180.0f) + 1.0f;
-        mbObjScaleSet(modelId, scale, scale, scale);
+    mbObjDispSet(mushroomModelId, TRUE);
+    capWork->effectModelId = mushroomModelId;
+    ev_CapEffKinokoCreate(capWork);
+    for (frameIndex = 0; frameIndex < 30.0f; frameIndex++) {
+        animProgress = frameIndex / 30.0f;
+        modelScale = sin((M_PI * (180.0f * animProgress)) / 180.0f) + 1.0f;
+        mbObjScaleSet(mushroomModelId, modelScale, modelScale, modelScale);
         HuPrcVSleep();
     }
-    mbev_CapRandomBonusCoin(work->playerNo, work->capsuleNo, FALSE);
-    for (i = 0; i < 60.0f || !mbev_CapBonusCoinCheck(work->playerNo); i++) {
-        time = i / 60.0f;
-        mbPlayerPosGet(work->playerNo, &playerPos);
-        playerPos.y += (100.0f * sin((M_PI * (360.0f * time)) / 180.0f)) * 0.1f + 250.0f;
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
+    // Keep the model hovering for at least 60 frames and until the bonus-coin effect finishes.
+    mbev_CapRandomBonusCoin(capWork->playerNo, capWork->capsuleNo, FALSE);
+    for (frameIndex = 0; frameIndex < 60.0f || !mbev_CapBonusCoinCheck(capWork->playerNo);
+         frameIndex++) {
+        animProgress = frameIndex / 60.0f;
+        mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+        mushroomPos.y += (100.0f * sin((M_PI * (360.0f * animProgress)) / 180.0f)) * 0.1f + 250.0f;
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
         HuPrcVSleep();
     }
-    for (i = 1; i <= 10; i++) {
-        time = i / 10.0f;
-        mbPlayerPosGet(work->playerNo, &playerPosNext);
-        playerPos.y += time * ((playerPosNext.y + 250.0f) - playerPos.y);
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
+    // X and Z remain at the earlier position while the model height eases to the current player
+    // height.
+    for (frameIndex = 1; frameIndex <= 10; frameIndex++) {
+        animProgress = frameIndex / 10.0f;
+        mbPlayerPosGet(capWork->playerNo, &currentPlayerPos);
+        mushroomPos.y += animProgress * ((currentPlayerPos.y + 250.0f) - mushroomPos.y);
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
         HuPrcVSleep();
     }
+    // Shrink and orbit the model around the player before applying this capsule's dice mode.
     mbAudFXPlay(MSM_SE_BRD00_36);
-    for (i = 0; i < 90.0f; i++) {
-        time = 1.0f - (i / 90.0f);
-        yOfs = 50.0f + (time * time * 200.0f);
-        radius = sin((M_PI * (180.0f * (time * time))) / 180.0f);
-        mbPlayerPosGet(work->playerNo, &playerPos);
-        playerPos.x += (radius * cos((M_PI * (2.0f * (time * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
-        playerPos.z += (radius * sin((M_PI * (2.0f * (time * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
-        playerPos.y += yOfs;
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
-        mbObjScaleSet(modelId, time, time, time);
+    for (frameIndex = 0; frameIndex < 90.0f; frameIndex++) {
+        animProgress = 1.0f - (frameIndex / 90.0f);
+        heightOffset = 50.0f + (animProgress * animProgress * 200.0f);
+        orbitFactor = sin((M_PI * (180.0f * (animProgress * animProgress))) / 180.0f);
+        mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+        mushroomPos.x +=
+            (orbitFactor * cos((M_PI * (2.0f * (animProgress * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
+        mushroomPos.z +=
+            (orbitFactor * sin((M_PI * (2.0f * (animProgress * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
+        mushroomPos.y += heightOffset;
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
+        mbObjScaleSet(mushroomModelId, animProgress, animProgress, animProgress);
         HuPrcVSleep();
     }
-    GwPlayer[work->playerNo].diceMode = 2;
-    omVibrate(work->playerNo, 20, 4, 4);
-    for (i = 0; i < 6.0f; i++) {
+    GwPlayer[capWork->playerNo].diceMode = 2;
+    omVibrate(capWork->playerNo, 20, 4, 4);
+    for (frameIndex = 0; frameIndex < 6.0f; frameIndex++) {
         HuPrcVSleep();
     }
-    while (mbev_CapEffGlowDispGet(work->glowObj) > 0) {
+    while (mbev_CapEffGlowDispGet(capWork->glowObj) > 0) {
         HuPrcVSleep();
     }
     HuPrcEnd();
@@ -370,75 +393,85 @@ void mbev_CapSKinokoKill(void)
 {
 }
 
+// Runs from the capsule event table when the P Mushroom capsule is used; shows its effect and sets
+// the resulting dice mode.
 void mbev_CapPKinoko(void)
 {
-    CAPWORK *work = HuPrcCurrentGet()->property;
-    HuVecF playerPosNext;
-    HuVecF playerPos;
-    int modelId;
-    int i;
-    float time;
-    float scale;
-    float radius;
-    float yOfs;
+    CAPWORK *capWork = HuPrcCurrentGet()->property;
+    HuVecF currentPlayerPos;
+    HuVecF mushroomPos;
+    int mushroomModelId;
+    int frameIndex;
+    float animProgress;
+    float modelScale;
+    float orbitFactor;
+    float heightOffset;
 
-    mbev_CapWait(work);
-    work->explodeObj = mbev_CapEffExplodeCreate();
-    work->glowObj = mbev_CapEffGlowCreate();
-    mbev_CapEffGlowBlendModeSet(work->glowObj, 1);
-    mbPlayerPosGet(work->playerNo, &playerPos);
-    playerPos.y += 250.0f;
-    modelId = mbev_CapObjCreate(&work->objWork, CAPMOVE_DATA_P_KINOKO, NULL, FALSE, 0, FALSE);
-    mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
-    mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
-    mbObjDispSet(modelId, FALSE);
-    mbCapEffUseCreate(work->playerNo, work->capsuleNo);
-    while (mbCapEffUseModeGet(work->playerNo) < 2) {
+    mbev_CapWait(capWork);
+    capWork->explodeObj = mbev_CapEffExplodeCreate();
+    capWork->glowObj = mbev_CapEffGlowCreate();
+    mbev_CapEffGlowBlendModeSet(capWork->glowObj, 1);
+    mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+    mushroomPos.y += 250.0f;
+    mushroomModelId =
+        mbev_CapObjCreate(&capWork->objWork, CAPMOVE_DATA_P_KINOKO, NULL, FALSE, 0, FALSE);
+    mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
+    mbObjScaleSet(mushroomModelId, 1.0f, 1.0f, 1.0f);
+    mbObjDispSet(mushroomModelId, FALSE);
+    mbCapEffUseCreate(capWork->playerNo, capWork->capsuleNo);
+    while (mbCapEffUseModeGet(capWork->playerNo) < 2) {
         HuPrcVSleep();
     }
-    mbObjDispSet(modelId, TRUE);
-    work->_unkB6C = modelId;
-    ev_CapEffKinokoCreate(work);
-    for (i = 0; i < 30.0f; i++) {
-        time = i / 30.0f;
-        scale = sin((M_PI * (180.0f * time)) / 180.0f) + 1.0f;
-        mbObjScaleSet(modelId, scale, scale, scale);
+    mbObjDispSet(mushroomModelId, TRUE);
+    capWork->effectModelId = mushroomModelId;
+    ev_CapEffKinokoCreate(capWork);
+    for (frameIndex = 0; frameIndex < 30.0f; frameIndex++) {
+        animProgress = frameIndex / 30.0f;
+        modelScale = sin((M_PI * (180.0f * animProgress)) / 180.0f) + 1.0f;
+        mbObjScaleSet(mushroomModelId, modelScale, modelScale, modelScale);
         HuPrcVSleep();
     }
-    mbev_CapRandomBonusCoin(work->playerNo, work->capsuleNo, FALSE);
-    for (i = 0; i < 60.0f || !mbev_CapBonusCoinCheck(work->playerNo); i++) {
-        time = i / 60.0f;
-        mbPlayerPosGet(work->playerNo, &playerPos);
-        playerPos.y += (100.0f * sin((M_PI * (360.0f * time)) / 180.0f)) * 0.1f + 250.0f;
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
+    // Keep the model hovering for at least 60 frames and until the bonus-coin effect finishes.
+    mbev_CapRandomBonusCoin(capWork->playerNo, capWork->capsuleNo, FALSE);
+    for (frameIndex = 0; frameIndex < 60.0f || !mbev_CapBonusCoinCheck(capWork->playerNo);
+         frameIndex++) {
+        animProgress = frameIndex / 60.0f;
+        mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+        mushroomPos.y += (100.0f * sin((M_PI * (360.0f * animProgress)) / 180.0f)) * 0.1f + 250.0f;
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
         HuPrcVSleep();
     }
-    for (i = 1; i <= 10; i++) {
-        time = i / 10.0f;
-        mbPlayerPosGet(work->playerNo, &playerPosNext);
-        playerPos.y += time * ((playerPosNext.y + 250.0f) - playerPos.y);
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
+    // X and Z remain at the earlier position while the model height eases to the current player
+    // height.
+    for (frameIndex = 1; frameIndex <= 10; frameIndex++) {
+        animProgress = frameIndex / 10.0f;
+        mbPlayerPosGet(capWork->playerNo, &currentPlayerPos);
+        mushroomPos.y += animProgress * ((currentPlayerPos.y + 250.0f) - mushroomPos.y);
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
         HuPrcVSleep();
     }
+    // Shrink and orbit the model around the player before applying this capsule's dice mode.
     mbAudFXPlay(MSM_SE_BRD00_36);
-    for (i = 0; i < 90.0f; i++) {
-        time = 1.0f - (i / 90.0f);
-        yOfs = 50.0f + (time * time * 200.0f);
-        radius = sin((M_PI * (180.0f * (time * time))) / 180.0f);
-        mbPlayerPosGet(work->playerNo, &playerPos);
-        playerPos.x += (radius * cos((M_PI * (2.0f * (time * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
-        playerPos.z += (radius * sin((M_PI * (2.0f * (time * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
-        playerPos.y += yOfs;
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
-        mbObjScaleSet(modelId, time, time, time);
+    for (frameIndex = 0; frameIndex < 90.0f; frameIndex++) {
+        animProgress = 1.0f - (frameIndex / 90.0f);
+        heightOffset = 50.0f + (animProgress * animProgress * 200.0f);
+        orbitFactor = sin((M_PI * (180.0f * (animProgress * animProgress))) / 180.0f);
+        mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+        mushroomPos.x +=
+            (orbitFactor * cos((M_PI * (2.0f * (animProgress * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
+        mushroomPos.z +=
+            (orbitFactor * sin((M_PI * (2.0f * (animProgress * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
+        mushroomPos.y += heightOffset;
+        mbObjPosSet(mushroomModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
+        mbObjScaleSet(mushroomModelId, animProgress, animProgress, animProgress);
         HuPrcVSleep();
     }
-    GwPlayer[work->playerNo].diceMode = 3;
-    omVibrate(work->playerNo, 20, 4, 4);
-    for (i = 0; i < 6.0f; i++) {
+    GwPlayer[capWork->playerNo].diceMode = 3;
+    omVibrate(capWork->playerNo, 20, 4, 4);
+    for (frameIndex = 0; frameIndex < 6.0f; frameIndex++) {
         HuPrcVSleep();
     }
-    while (mbev_CapEffGlowDispGet(work->glowObj) > 0) {
+    while (mbev_CapEffGlowDispGet(capWork->glowObj) > 0) {
         HuPrcVSleep();
     }
     HuPrcEnd();
@@ -448,74 +481,84 @@ void mbev_CapPKinokoKill(void)
 {
 }
 
+// Runs from the capsule event table for the M Mushroom; awards bonus coins, turns the player metal,
+// and sets dice mode 4.
 void mbev_CapMKinoko(void)
 {
-    CAPWORK *work = HuPrcCurrentGet()->property;
-    HuVecF playerPosNext;
-    HuVecF playerPos;
-    int modelId;
-    int i;
-    float time;
-    float scale;
-    float radius;
-    float yOfs;
+    CAPWORK *capWork = HuPrcCurrentGet()->property;
+    HuVecF currentPlayerPos;
+    HuVecF mushroomPos;
+    int effectModelId;
+    int frameIndex;
+    float animProgress;
+    float modelScale;
+    float orbitFactor;
+    float heightOffset;
 
-    mbev_CapWait(work);
-    work->explodeObj = mbev_CapEffExplodeCreate();
-    work->glowObj = mbev_CapEffGlowCreate();
-    mbev_CapEffGlowBlendModeSet(work->glowObj, 1);
-    mbPlayerPosGet(work->playerNo, &playerPos);
-    playerPos.y += 250.0f;
-    modelId = mbev_CapObjCreate(&work->objWork, CAPMOVE_DATA_M_KINOKO, NULL, FALSE, 0, FALSE);
-    mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
-    mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
-    mbObjDispSet(modelId, FALSE);
-    mbCapEffUseCreate(work->playerNo, work->capsuleNo);
-    while (mbCapEffUseModeGet(work->playerNo) < 2) {
+    mbev_CapWait(capWork);
+    capWork->explodeObj = mbev_CapEffExplodeCreate();
+    capWork->glowObj = mbev_CapEffGlowCreate();
+    mbev_CapEffGlowBlendModeSet(capWork->glowObj, 1);
+    mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+    mushroomPos.y += 250.0f;
+    effectModelId =
+        mbev_CapObjCreate(&capWork->objWork, CAPMOVE_DATA_M_KINOKO, NULL, FALSE, 0, FALSE);
+    mbObjPosSet(effectModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
+    mbObjScaleSet(effectModelId, 1.0f, 1.0f, 1.0f);
+    mbObjDispSet(effectModelId, FALSE);
+    mbCapEffUseCreate(capWork->playerNo, capWork->capsuleNo);
+    while (mbCapEffUseModeGet(capWork->playerNo) < 2) {
         HuPrcVSleep();
     }
-    mbObjDispSet(modelId, TRUE);
-    work->_unkB6C = modelId;
-    ev_CapEffKinokoCreate(work);
-    for (i = 0; i < 30.0f; i++) {
-        time = i / 30.0f;
-        scale = sin((M_PI * (180.0f * time)) / 180.0f) + 1.0f;
-        mbObjScaleSet(modelId, scale, scale, scale);
+    mbObjDispSet(effectModelId, TRUE);
+    capWork->effectModelId = effectModelId;
+    ev_CapEffKinokoCreate(capWork);
+    for (frameIndex = 0; frameIndex < 30.0f; frameIndex++) {
+        animProgress = frameIndex / 30.0f;
+        modelScale = sin((M_PI * (180.0f * animProgress)) / 180.0f) + 1.0f;
+        mbObjScaleSet(effectModelId, modelScale, modelScale, modelScale);
         HuPrcVSleep();
     }
-    mbev_CapRandomBonusCoin(work->playerNo, work->capsuleNo, FALSE);
-    for (i = 0; i < 60.0f || !mbev_CapBonusCoinCheck(work->playerNo); i++) {
-        time = i / 60.0f;
-        mbPlayerPosGet(work->playerNo, &playerPos);
-        playerPos.y += (100.0f * sin((M_PI * (360.0f * time)) / 180.0f)) * 0.1f + 250.0f;
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
+    // Keep the model hovering for at least 60 frames and until the bonus-coin effect finishes.
+    mbev_CapRandomBonusCoin(capWork->playerNo, capWork->capsuleNo, FALSE);
+    for (frameIndex = 0; frameIndex < 60.0f || !mbev_CapBonusCoinCheck(capWork->playerNo);
+         frameIndex++) {
+        animProgress = frameIndex / 60.0f;
+        mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+        mushroomPos.y += (100.0f * sin((M_PI * (360.0f * animProgress)) / 180.0f)) * 0.1f + 250.0f;
+        mbObjPosSet(effectModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
         HuPrcVSleep();
     }
-    for (i = 1; i <= 10; i++) {
-        time = i / 10.0f;
-        mbPlayerPosGet(work->playerNo, &playerPosNext);
-        playerPos.y += time * ((playerPosNext.y + 250.0f) - playerPos.y);
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
+    // X and Z remain at the earlier position while the model height eases to the current player
+    // height.
+    for (frameIndex = 1; frameIndex <= 10; frameIndex++) {
+        animProgress = frameIndex / 10.0f;
+        mbPlayerPosGet(capWork->playerNo, &currentPlayerPos);
+        mushroomPos.y += animProgress * ((currentPlayerPos.y + 250.0f) - mushroomPos.y);
+        mbObjPosSet(effectModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
         HuPrcVSleep();
     }
+    // Shrink and orbit the model around the player before applying this capsule's dice mode.
     mbAudFXPlay(MSM_SE_BRD00_36);
-    for (i = 0; i < 90.0f; i++) {
-        time = 1.0f - (i / 90.0f);
-        yOfs = 50.0f + (time * time * 200.0f);
-        radius = sin((M_PI * (180.0f * (time * time))) / 180.0f);
-        mbPlayerPosGet(work->playerNo, &playerPos);
-        playerPos.x += (radius * cos((M_PI * (2.0f * (time * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
-        playerPos.z += (radius * sin((M_PI * (2.0f * (time * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
-        playerPos.y += yOfs;
-        mbObjPosSet(modelId, playerPos.x, playerPos.y, playerPos.z);
-        mbObjScaleSet(modelId, time, time, time);
+    for (frameIndex = 0; frameIndex < 90.0f; frameIndex++) {
+        animProgress = 1.0f - (frameIndex / 90.0f);
+        heightOffset = 50.0f + (animProgress * animProgress * 200.0f);
+        orbitFactor = sin((M_PI * (180.0f * (animProgress * animProgress))) / 180.0f);
+        mbPlayerPosGet(capWork->playerNo, &mushroomPos);
+        mushroomPos.x +=
+            (orbitFactor * cos((M_PI * (2.0f * (animProgress * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
+        mushroomPos.z +=
+            (orbitFactor * sin((M_PI * (2.0f * (animProgress * 360.0f))) / 180.0f)) * 100.0f * 1.5f;
+        mushroomPos.y += heightOffset;
+        mbObjPosSet(effectModelId, mushroomPos.x, mushroomPos.y, mushroomPos.z);
+        mbObjScaleSet(effectModelId, animProgress, animProgress, animProgress);
         HuPrcVSleep();
     }
-    GwPlayer[work->playerNo].diceMode = 4;
-    mbPlayerMetalSet(work->playerNo, TRUE);
-    omVibrate(work->playerNo, 20, 4, 4);
+    GwPlayer[capWork->playerNo].diceMode = 4;
+    mbPlayerMetalSet(capWork->playerNo, TRUE);
+    omVibrate(capWork->playerNo, 20, 4, 4);
     mbAudFXPlay(MSM_SE_BRD00_69);
-    while (mbev_CapEffGlowDispGet(work->glowObj) > 0) {
+    while (mbev_CapEffGlowDispGet(capWork->glowObj) > 0) {
         HuPrcVSleep();
     }
     HuPrcEnd();
@@ -525,6 +568,8 @@ void mbev_CapMKinokoKill(void)
 {
 }
 
+// Runs from the Killer capsule event entry, plays its effect, awards bonus coins, and sets the
+// player's dice mode to five dice.
 void mbev_CapKiller(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -545,6 +590,8 @@ void mbev_CapKillerKill(void)
 {
 }
 
+// Runs from the Dokan capsule event entry, awards bonus coins, then swaps spaces with the
+// roulette-selected player unless both occupy the same space.
 void mbev_CapDokan(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -753,6 +800,9 @@ void mbev_CapDokanKill(void)
 {
 }
 
+// Runs from the Hanachan capsule event entry; awards bonus coins, flies the player to the Star
+// Space
+// (or current space if none exists), and awards a star only below 999 stars.
 void mbev_CapHanachan(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -835,7 +885,7 @@ void mbev_CapHanachan(void)
         mbObjMan, -32768, 0, 0, -1, ev_CapHanachanOMExec);
     obj->work[0] = 0;
     obj->work[1] = 0;
-    work->_unkB6C = modelId;
+    work->effectModelId = modelId;
     obj->data = HuMemDirectMallocNum(
         HEAP_HEAP, sizeof(CAPWORK), HU_MEMNUM_OVL);
     memcpy(obj->data, work, sizeof(CAPWORK));
@@ -889,6 +939,7 @@ void mbev_CapHanachan(void)
     mbWinCreate(2, CAPMOVE_MESS_HANACHAN_ARRIVE,
         HUWIN_SPEAKER_HANACHAN_STAR);
     mbWinTopWait();
+    // cancelF is forced false here, so the cancellation branch below cannot run.
     cancelF = FALSE;
     if (!cancelF) {
         cancelCheckF = FALSE;
@@ -1173,6 +1224,8 @@ void mbev_CapHanachanKill(void)
 {
 }
 
+// Per-frame callback that emits colored particles around Hanachan on alternating frames during the
+// capsule encounter.
 static void ev_CapHanachanOMExec(OMOBJ *obj)
 {
     CAPWORK *work = obj->data;
@@ -1197,8 +1250,8 @@ static void ev_CapHanachanOMExec(OMOBJ *obj)
     switch ((int)obj->work[0]) {
     case 0:
         if (++obj->work[1] & 1) {
-        mbObjPosGet(work->_unkB6C, &pos);
-        mbObjRotGet(work->_unkB6C, &rot);
+        mbObjPosGet(work->effectModelId, &pos);
+        mbObjRotGet(work->effectModelId, &rot);
         pos.y += 50.0f;
         offset.x = 100.0f * (1.5f * (-0.5f + MBCapsuleEffRandF()));
         offset.y = 100.0f * (-0.5f + MBCapsuleEffRandF());
@@ -1232,6 +1285,8 @@ static void ev_CapHanachanOMExec(OMOBJ *obj)
     }
 }
 
+// Runs from the Poison Mushroom capsule event entry; animates the mushroom, awards its coins, and
+// sets the player's dice mode.
 void mbev_CapNKinoko(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -1260,7 +1315,7 @@ void mbev_CapNKinoko(void)
         HuPrcVSleep();
     }
     mbObjDispSet(modelId, TRUE);
-    work->_unkB6C = modelId;
+    work->effectModelId = modelId;
     ev_CapEffKinokoCreate(work);
     for (i = 0; i < 30.0f; i++) {
         time = i / 30.0f;
@@ -1323,6 +1378,8 @@ static HuVecF killerOfsTbl[9] = {
     { 0.0f, 0.0f, -100.0f },
 };
 
+// Runs from the Killer movement event entry; rides the Bullet Bill across spaces, hits players, and
+// steals up to 20 coins from each hit player for the rider.
 void mbev_CapKillerMove(void)
 {
     CAPWORK *work;
@@ -1332,19 +1389,19 @@ void mbev_CapKillerMove(void)
     HuVecF finalPlayerPos;
     HuVecF finalPlayerRot;
     HuVecF playerPos;
-    HuVecF playerRot;
+    HuVecF candidatePos;
     HuVecF killerPos;
-    HuVecF killerPosStart;
-    HuVecF killerRot;
-    HuVecF targetRot;
+    HuVecF killerRotation;
+    HuVecF killerScale;
+    HuVecF targetPos;
     HuVecF offset;
-    HuVecF direction;
+    HuVecF playerStartPos;
     HuVecF velocity;
     HuVecF landingPos;
     HuVecF playerPosStart;
     HuVecF ridePos;
     HuVecF playerRotStart;
-    HuVecF objectScale;
+    HuVecF targetRotation;
     GXColor color;
     HuVecF effectPos;
     HuVecF nextRot;
@@ -1371,9 +1428,9 @@ void mbev_CapKillerMove(void)
     int masuAttr;
     float distance;
     float t;
-    float angleT;
+    float modelScale;
     float scalePos;
-    float scaleNeg;
+    float segmentLength;
 
     work = HuPrcCurrentGet()->property;
     readStat = mbBGRead(CAPMOVE_DATA_KILLER);
@@ -1425,13 +1482,13 @@ void mbev_CapKillerMove(void)
     if (PSVECMag(&playerPos) > 0.0f) {
         PSVECNormalize(&playerPos, &playerPos);
     }
-    killerPosStart.x = atan2(-playerPos.y,
+    killerRotation.x = atan2(-playerPos.y,
         sqrtf(playerPos.x * playerPos.x + playerPos.z * playerPos.z))
         / M_PI * 180.0;
-    killerPosStart.y = atan2(playerPos.x, playerPos.z) / M_PI * 180.0;
-    killerPosStart.z = 0.0f;
-    objectScale = killerPosStart;
-    mtxRot(matrix, -killerPosStart.x, killerPosStart.y, killerPosStart.z);
+    killerRotation.y = atan2(playerPos.x, playerPos.z) / M_PI * 180.0;
+    killerRotation.z = 0.0f;
+    targetRotation = killerRotation;
+    mtxRot(matrix, -killerRotation.x, killerRotation.y, killerRotation.z);
     effectPos.x = 0.0f;
     effectPos.y = 60.000004f;
     effectPos.z = -75.0f;
@@ -1452,17 +1509,17 @@ void mbev_CapKillerMove(void)
         finalPlayerPos.y += 200.0
             * sin((M_PI * (180.0f * t)) / 180.0);
         finalPlayerRot.x = mbev_CapAngleSumLerp(t, playerRotStart.x,
-            objectScale.x);
+            targetRotation.x);
         finalPlayerRot.y = mbev_CapAngleSumLerp(t, playerRotStart.y,
-            objectScale.y);
+            targetRotation.y);
         finalPlayerRot.z = mbev_CapAngleSumLerp(t, playerRotStart.z,
-            objectScale.z);
+            targetRotation.z);
         mbPlayerPosSetV(playerNo, &finalPlayerPos);
         mbPlayerRotSetV(playerNo, &finalPlayerRot);
         if (i == 15) {
             HuVecF dustPos;
 
-            mtxRot(matrix, killerPosStart.x, killerPosStart.y, killerPosStart.z);
+            mtxRot(matrix, killerRotation.x, killerRotation.y, killerRotation.z);
             effectPos.x = 0.0f;
             effectPos.y = 0.0f;
             effectPos.z = -75.0f;
@@ -1474,7 +1531,7 @@ void mbev_CapKillerMove(void)
             mbev_CapEffDustCloudAdd(work->explodeObj, dustPosP);
             mbAudFXPlay(MSM_SE_BRD00_45);
             mbObjPosSetV(modelId, &killerPos);
-            mbObjRotSetV(modelId, &killerPosStart);
+            mbObjRotSetV(modelId, &killerRotation);
             mbObjScaleSet(modelId, 0.0f, 0.0f, 0.0f);
             mbObjDispSet(modelId, TRUE);
             for (j = 0; j < GW_PLAYER_MAX; j++) {
@@ -1510,9 +1567,9 @@ void mbev_CapKillerMove(void)
             if (scalePos > 1.0f) {
                 scalePos = 1.0f;
             }
-            angleT = scalePos + (0.25f
+            modelScale = scalePos + (0.25f
                 * sin((M_PI * (180.0f * scalePos)) / 180.0f));
-            mbObjScaleSet(modelId, angleT, angleT, angleT);
+            mbObjScaleSet(modelId, modelScale, modelScale, modelScale);
         }
         HuPrcVSleep();
     }
@@ -1520,8 +1577,8 @@ void mbev_CapKillerMove(void)
     for (i = 0; i < 45.0f; i++) {
         t = (float)i / 45.0f;
         mbObjPosSetV(modelId, &killerPos);
-        mbObjRotSet(modelId, killerPosStart.x,
-        killerPosStart.y + (30.0f * sin((M_PI * (540.0f * t)) / 180.0f)), killerPosStart.z);
+        mbObjRotSet(modelId, killerRotation.x,
+        killerRotation.y + (30.0f * sin((M_PI * (540.0f * t)) / 180.0f)), killerRotation.z);
         mbObjRotGet(modelId, &effectPos);
         mtxRot(matrix, effectPos.x, effectPos.y, effectPos.z);
         effectPos.x = 0.0f;
@@ -1534,7 +1591,7 @@ void mbev_CapKillerMove(void)
         mbPlayerRotSetV(playerNo, &finalPlayerRot);
         for (j = 0; j < 3; j++) {
             effectPos = killerPos;
-            nextRot = killerPosStart;
+            nextRot = killerRotation;
             nextRot.y += 30.0f
                 * sin((M_PI * (360.0f * t)) / 180.0f);
             ev_CapEffKillerDustCreate(work, &effectPos, &nextRot);
@@ -1542,21 +1599,21 @@ void mbev_CapKillerMove(void)
         HuPrcVSleep();
     }
 
-    mbObjRotSet(modelId, -killerPosStart.x, killerPosStart.y, killerPosStart.z);
+    mbObjRotSet(modelId, -killerRotation.x, killerRotation.y, killerRotation.z);
     mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
     for (i = 0; i < 30.0f; i++) {
         t = (float)i / 60.0f;
         mbObjPosSetV(modelId, &killerPos);
         mbObjRotSet(modelId,
-            killerPosStart.x
+            killerRotation.x
                 + (30.0f * sin((M_PI * (180.0f * t)) / 180.0f)),
-            killerPosStart.y, killerPosStart.z);
-        angleT = -(0.2f
+            killerRotation.y, killerRotation.z);
+        modelScale = -(0.2f
             * sin((M_PI * (180.0f * t)) / 180.0f));
         scalePos = 0.2f
             * sin((M_PI * (180.0f * t)) / 180.0f);
         mbObjScaleSet(modelId, 1.0f + scalePos, 1.0f + scalePos,
-            1.0f + angleT);
+            1.0f + modelScale);
         mbObjRotGet(modelId, &effectPos);
         mtxRot(matrix, effectPos.x, effectPos.y, effectPos.z);
         effectPos.x = 0.0f;
@@ -1570,7 +1627,7 @@ void mbev_CapKillerMove(void)
         HuPrcVSleep();
     }
 
-    nextRot = killerPosStart;
+    nextRot = killerRotation;
     mtxRot(matrix, nextRot.x, nextRot.y, nextRot.z);
     effectPos.x = 0.0f;
     effectPos.y = 0.0f;
@@ -1580,14 +1637,14 @@ void mbev_CapKillerMove(void)
     ev_CapEffKillerExplodeCreate(work, &effectPos, &nextRot, 32);
     boostPos = effectPos;
     for (i = 0; i < 32; i++) {
-        ev_CapEffKillerBoostCreate(work, &boostPos, &killerPosStart);
+        ev_CapEffKillerBoostCreate(work, &boostPos, &killerRotation);
     }
     boostBudget = 12;
     mbObjRotGet(modelId, &effectPos);
-    killerPosStart.x = mbev_CapAngleSumLerp(0.5f, killerPosStart.x, effectPos.x);
-    killerPosStart.y = mbev_CapAngleSumLerp(0.5f, killerPosStart.y, effectPos.y);
-    killerPosStart.z = mbev_CapAngleSumLerp(0.5f, killerPosStart.z, effectPos.z);
-    mbObjScaleGet(modelId, &killerRot);
+    killerRotation.x = mbev_CapAngleSumLerp(0.5f, killerRotation.x, effectPos.x);
+    killerRotation.y = mbev_CapAngleSumLerp(0.5f, killerRotation.y, effectPos.y);
+    killerRotation.z = mbev_CapAngleSumLerp(0.5f, killerRotation.z, effectPos.z);
+    mbObjScaleGet(modelId, &killerScale);
     mbAudFXPlay(MSM_SE_BRD00_54);
     hitF = 0;
     do {
@@ -1603,19 +1660,19 @@ void mbev_CapKillerMove(void)
         }
         landingPos = path[1];
         playerPosStart = path[2];
-        targetRot = path[0];
-        offset = killerPosStart;
+        targetPos = path[0];
+        offset = killerRotation;
         PSVECSubtract(&playerPosStart, &landingPos, &playerPos);
-        if ((scaleNeg = PSVECMag(&playerPos))) {
+        if ((segmentLength = PSVECMag(&playerPos))) {
             PSVECNormalize(&playerPos, &playerPos);
         }
-        playerRotStart = killerPosStart;
-        objectScale.x = atan2(-playerPos.y,
+        playerRotStart = killerRotation;
+        targetRotation.x = atan2(-playerPos.y,
             sqrtf(playerPos.x * playerPos.x + playerPos.z * playerPos.z))
             / M_PI * 180.0;
-        objectScale.y = atan2(playerPos.x, playerPos.z) / M_PI * 180.0;
-        objectScale.z = 0.0f;
-        stepNum = (int)(scaleNeg / 20.0f);
+        targetRotation.y = atan2(playerPos.x, playerPos.z) / M_PI * 180.0;
+        targetRotation.z = 0.0f;
+        stepNum = (int)(segmentLength / 20.0f);
         for (i = 1; i <= stepNum; i++) {
             t = (float)i / (float)stepNum;
             mbev_CapHermiteGetV(t, &path[0], &path[1], &path[2], &path[3],
@@ -1629,29 +1686,29 @@ void mbev_CapKillerMove(void)
                 scalePos = 1.0f;
             }
             effectPos.x = mbev_CapAngleSumLerp(scalePos, playerRotStart.x,
-                objectScale.x);
+                targetRotation.x);
             effectPos.y = mbev_CapAngleSumLerp(scalePos, playerRotStart.y,
-                objectScale.y);
+                targetRotation.y);
             effectPos.z = 0.0f;
-            killerPosStart = effectPos;
-            if (killerRot.x > 1.0f) {
-                killerRot.x -= 0.01f;
+            killerRotation = effectPos;
+            if (killerScale.x > 1.0f) {
+                killerScale.x -= 0.01f;
             } else {
-                killerRot.x = 1.0f;
+                killerScale.x = 1.0f;
             }
-            if (killerRot.y > 1.0f) {
-                killerRot.y -= 0.01f;
+            if (killerScale.y > 1.0f) {
+                killerScale.y -= 0.01f;
             } else {
-                killerRot.y = 1.0f;
+                killerScale.y = 1.0f;
             }
-            if (killerRot.z < 1.0f) {
-                killerRot.z += 0.01f;
+            if (killerScale.z < 1.0f) {
+                killerScale.z += 0.01f;
             } else {
-                killerRot.z = 1.0f;
+                killerScale.z = 1.0f;
             }
             mbObjPosSetV(modelId, &killerPos);
-            mbObjRotSetV(modelId, &killerPosStart);
-            mbObjScaleSetV(modelId, &killerRot);
+            mbObjRotSetV(modelId, &killerRotation);
+            mbObjScaleSetV(modelId, &killerScale);
             mbObjRotGet(modelId, &effectPos);
             mtxRot(matrix, effectPos.x, effectPos.y, effectPos.z);
             effectPos.x = 0.0f;
@@ -1663,10 +1720,10 @@ void mbev_CapKillerMove(void)
             mbPlayerPosSetV(playerNo, &finalPlayerPos);
             mbPlayerRotSetV(playerNo, &finalPlayerRot);
             if (i & 1) {
-                ev_CapEffKillerDustCreate(work, &killerPos, &killerPosStart);
+                ev_CapEffKillerDustCreate(work, &killerPos, &killerRotation);
             }
             if (--boostBudget > 0) {
-                nextRot = killerPosStart;
+                nextRot = killerRotation;
                 mtxRot(matrix, nextRot.x, nextRot.y, nextRot.z);
                 effectPos.x = 0.0f;
                 effectPos.y = 0.0f;
@@ -1674,13 +1731,13 @@ void mbev_CapKillerMove(void)
                 PSMTXMultVec(matrix, &effectPos, &effectPos);
                 PSVECAdd(&killerPos, &effectPos, &effectPos);
                 for (j = 0; j < 16; j++) {
-                    ev_CapEffKillerBoostCreate(work, &effectPos, &killerPosStart);
+                    ev_CapEffKillerBoostCreate(work, &effectPos, &killerRotation);
                 }
             }
             HuPrcVSleep();
         }
         if (mbMasuTypeGet(nextMasuId) != CAPMOVE_MASU_TYPE_NONE) {
-            HuAudFXPlay(1006);
+            HuAudFXPlay(MSM_SE_BRD00_02);
         }
         for (j = 0; j < GW_PLAYER_MAX; j++) {
             if (j == playerNo || playerHitF[j] == TRUE ||
@@ -1741,16 +1798,16 @@ void mbev_CapKillerMove(void)
     mbPlayerMotionShiftSet(playerNo, CAPMOVE_PLAYER_MOT_JUMP, 0.0f, 8.0f,
         HU3D_MOTATTR_NONE);
     mbPlayerPosGet(playerNo, &finalPlayerPos);
-    direction = finalPlayerPos;
+    playerStartPos = finalPlayerPos;
     for (i = 0; i < 9; i++) {
-        mbMasuPosGet(GwPlayer[playerNo].masuId, &playerRot);
-        PSVECAdd(&playerRot, &killerOfsTbl[i], &playerRot);
+        mbMasuPosGet(GwPlayer[playerNo].masuId, &candidatePos);
+        PSVECAdd(&candidatePos, &killerOfsTbl[i], &candidatePos);
         for (j = 0; j < GW_PLAYER_MAX; j++) {
             if (j == playerNo) {
                 continue;
             }
             mbPlayerPosGet(j, &effectPos);
-            PSVECSubtract(&playerRot, &effectPos, &effectPos);
+            PSVECSubtract(&candidatePos, &effectPos, &effectPos);
             if (PSVECMag(&effectPos) < 95.0f) {
                 break;
             }
@@ -1761,9 +1818,9 @@ void mbev_CapKillerMove(void)
     }
     for (i = 0; i < 30.0f; i++) {
         t = (float)i / 30.0f;
-        PSVECSubtract(&playerRot, &direction, &effectPos);
+        PSVECSubtract(&candidatePos, &playerStartPos, &effectPos);
         PSVECScale(&effectPos, &effectPos, t);
-        PSVECAdd(&direction, &effectPos, &finalPlayerPos);
+        PSVECAdd(&playerStartPos, &effectPos, &finalPlayerPos);
         finalPlayerPos.y += 2.0
             * (100.0 * sin((M_PI * (180.0f * t)) / 180.0));
         finalPlayerRot.x = mbev_CapAngleSumLerp(t, finalPlayerRot.x, 0.0f);
@@ -1773,7 +1830,7 @@ void mbev_CapKillerMove(void)
         mbPlayerRotSetV(playerNo, &finalPlayerRot);
         HuPrcVSleep();
     }
-    mbPlayerPosSetV(playerNo, &playerRot);
+    mbPlayerPosSetV(playerNo, &candidatePos);
     mbPlayerMotIdleSet(playerNo);
     mbPlayerColSnapPlayerSet(playerNo, TRUE);
     mbCameraMoveWait();
@@ -1812,6 +1869,8 @@ void mbev_CapKillerMoveKill(void)
 {
 }
 
+// Adds a randomized dust particle behind the Killer, oriented by rot, to the capsule's exhaust
+// effect.
 static void ev_CapEffKillerDustCreate(CAPWORK *work, HuVecF *pos,
     HuVecF *rot)
 {
@@ -1859,6 +1918,7 @@ static void ev_CapEffKillerDustCreate(CAPWORK *work, HuVecF *pos,
         0.5f + (0.25f * MBCapsuleEffRandF()), colorP);
 }
 
+// Adds count particles in a radial burst at pos, rotated by rot, to the Killer's explosion effect.
 static void ev_CapEffKillerExplodeCreate(CAPWORK *work, HuVecF *pos,
     HuVecF *rot, int count)
 {
@@ -1906,6 +1966,8 @@ static void ev_CapEffKillerExplodeCreate(CAPWORK *work, HuVecF *pos,
     }
 }
 
+// Adds a randomized boost particle near pos, directed by a perturbed rot, to the Killer's boost
+// effect.
 static void ev_CapEffKillerBoostCreate(CAPWORK *work, HuVecF *pos,
     HuVecF *rot)
 {
@@ -1948,6 +2010,7 @@ static void ev_CapEffKillerBoostCreate(CAPWORK *work, HuVecF *pos,
         2.0f * (-0.5f + MBCapsuleEffRandF()),
         (int)(60.0f * (1.0f + (0.5f * MBCapsuleEffRandF()))), colorP);
 }
+// Creates a per-frame mushroom particle object with a copy of the capsule's effect state.
 static void ev_CapEffKinokoCreate(CAPWORK *work)
 {
     OMOBJ *obj;
@@ -1957,6 +2020,8 @@ static void ev_CapEffKinokoCreate(CAPWORK *work)
     memcpy(obj->data, work, sizeof(CAPWORK));
 }
 
+// Per-frame callback that emits colored particles around the active mushroom model until it shrinks
+// away.
 static void ev_CapEffKinokoOMExec(OMOBJ *obj)
 {
     CAPWORK *work;
@@ -1977,7 +2042,7 @@ static void ev_CapEffKinokoOMExec(OMOBJ *obj)
         return;
     }
     work = obj->data;
-    modelId = work->_unkB6C;
+    modelId = work->effectModelId;
     capsuleNo = work->capsuleNo;
     mbObjPosGet(modelId, &pos);
     mbObjScaleGet(modelId, &scale);
