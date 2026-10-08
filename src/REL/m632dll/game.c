@@ -22,20 +22,12 @@ char *lbl_1_data_108[4] = { lbl_1_data_BC, lbl_1_data_CF, lbl_1_data_E2, lbl_1_d
 
 unsigned int lbl_1_data_118[4] = { DATANUM(DATA_m632, 10), DATANUM(DATA_m632, 11), DATANUM(DATA_m632, 12), DATANUM(DATA_m632, 13) };
 
-/* Initialized 48-byte table data; this module does not read it. */
-u8 lbl_1_data_128[48] = {
-    195, 200, 0, 0,
-    68, 150, 0, 0,
-    0, 0, 0, 0,
-    67, 200, 0, 0,
-    68, 150, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    68, 150, 0, 0,
-    195, 200, 0, 0,
-    0, 0, 0, 0,
-    68, 150, 0, 0,
-    67, 200, 0, 0,
+/* Four 3D points at Y=1200. */
+Point3d lbl_1_data_128[4] = {
+    { -400.0f, 1200.0f, 0.0f },
+    { 400.0f, 1200.0f, 0.0f },
+    { 0.0f, 1200.0f, -400.0f },
+    { 0.0f, 1200.0f, 400.0f },
 };
 
 unsigned int lbl_1_data_158[16] = {
