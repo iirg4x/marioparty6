@@ -1,3 +1,4 @@
+// Camera view and system pause controls used by the object manager.
 #define _MATH_H
 #define M_PI 3.141592653589793
 double sin(double x);
@@ -9,9 +10,9 @@ double cos(double x);
 #include "game/process.h"
 #include "game/audio.h"
 
-//TODO: Replace when mgdata.h is implemented
+// Returns the MgDataTbl index associated with an overlay, or -1 if it is not listed.
 extern s32 MgNoGet(s16 ovlNo);
-//TODO: Replace when gamemes.h is implemented
+// Opens the pause menu for the current minigame.
 extern void GameMesPauseCreate(void);
 
 float CZoomM[HU3D_CAM_MAX];
@@ -23,80 +24,104 @@ HuVecF CRot;
 
 s32 omDBGMenuButton;
 
-void omOutView(OMOBJ *obj)
+// The object manager calls this callback to apply the active single camera each frame.
+void omOutView(OMOBJ *outViewObj)
 {
-    Vec pos;
-    Vec target;
-    Vec up;
-    Vec rotDir;
-    Vec dir;
+    Vec cameraPos;
+    Vec cameraTarget;
+    Vec cameraUp;
+    Vec rotatedUp;
+    Vec viewDir;
     float rotX = CRot.x;
     float rotY = CRot.y;
     float rotZ = CRot.z;
-    pos.x = Center.x+(CZoom*(HuSin(rotY)*HuCos(rotX)));
-    pos.y = Center.y+(CZoom*-HuSin(rotX));
-    pos.z = Center.z+(CZoom*(HuCos(rotY)*HuCos(rotX)));
-    target.x = Center.x;
-    target.y = Center.y;
-    target.z = Center.z;
-    rotDir.x = HuSin(rotY)*HuSin(rotX);
-    rotDir.y = HuCos(rotX);
-    rotDir.z = HuCos(rotY)*HuSin(rotX);
-    VECSubtract(&pos, &target, &dir);
-    if(dir.x == 0.0 && dir.y == 0.0 && dir.z == 0.0) {
-        dir.z = 1;
+    cameraPos.x = Center.x+(CZoom*(HuSin(rotY)*HuCos(rotX)));
+    cameraPos.y = Center.y+(CZoom*-HuSin(rotX));
+    cameraPos.z = Center.z+(CZoom*(HuCos(rotY)*HuCos(rotX)));
+    cameraTarget.x = Center.x;
+    cameraTarget.y = Center.y;
+    cameraTarget.z = Center.z;
+    rotatedUp.x = HuSin(rotY)*HuSin(rotX);
+    rotatedUp.y = HuCos(rotX);
+    rotatedUp.z = HuCos(rotY)*HuSin(rotX);
+    VECSubtract(&cameraPos, &cameraTarget, &viewDir);
+    if(viewDir.x == 0.0 && viewDir.y == 0.0 && viewDir.z == 0.0) {
+        viewDir.z = 1;
     }
-    VECNormalize(&dir, &dir);
-    up.x = (rotDir.x*((dir.x*dir.x)+((1.0f-(dir.x * dir.x))*HuCos(rotZ))))
-        + (rotDir.y*(((dir.x*dir.y)*(1.0-HuCos(rotZ)))-(dir.z*HuSin(rotZ))))
-        + (rotDir.z*(((dir.x*dir.z)*(1.0-HuCos(rotZ)))+(dir.y*HuSin(rotZ))));
-    up.y = (rotDir.y*((dir.y*dir.y)+((1.0f-(dir.y * dir.y))*HuCos(rotZ))))
-        + (rotDir.x*(((dir.x*dir.y)*(1.0-HuCos(rotZ)))+(dir.z*HuSin(rotZ))))
-        + (rotDir.z*(((dir.y*dir.z)*(1.0-HuCos(rotZ)))-(dir.x*HuSin(rotZ))));
-    up.z = (rotDir.z*((dir.z * dir.z)+((1.0f-(dir.z * dir.z))*HuCos(rotZ))))
-        + ((rotDir.x*(((dir.x * dir.z)*(1.0-HuCos(rotZ)))-(dir.y*HuSin(rotZ))))
-        + (rotDir.y*(((dir.y * dir.z)*(1.0-HuCos(rotZ)))+(dir.x*HuSin(rotZ)))));
-    VECNormalize(&up, &up);
-    Hu3DCameraPosSet(HU3D_CAM0, pos.x, pos.y, pos.z, up.x, up.y, up.z, target.x, target.y, target.z);
+    VECNormalize(&viewDir, &viewDir);
+    // Apply Rodrigues' rotation to rotate the elevation-derived up vector around the normalized
+    // view direction by rotZ; the result is normalized immediately afterward.
+    cameraUp.x = (rotatedUp.x*((viewDir.x*viewDir.x)+((1.0f-(viewDir.x * viewDir.x))*HuCos(rotZ))))
+        + (rotatedUp.y*(((viewDir.x*viewDir.y)*(1.0-HuCos(rotZ)))-(viewDir.z*HuSin(rotZ))))
+        + (rotatedUp.z*(((viewDir.x*viewDir.z)*(1.0-HuCos(rotZ)))+(viewDir.y*HuSin(rotZ))));
+    cameraUp.y = (rotatedUp.y*((viewDir.y*viewDir.y)+((1.0f-(viewDir.y * viewDir.y))*HuCos(rotZ))))
+        + (rotatedUp.x*(((viewDir.x*viewDir.y)*(1.0-HuCos(rotZ)))+(viewDir.z*HuSin(rotZ))))
+        + (rotatedUp.z*(((viewDir.y*viewDir.z)*(1.0-HuCos(rotZ)))-(viewDir.x*HuSin(rotZ))));
+    cameraUp.z = (rotatedUp.z *
+                  ((viewDir.z * viewDir.z) + ((1.0f - (viewDir.z * viewDir.z)) * HuCos(rotZ)))) +
+                 ((rotatedUp.x *
+                   (((viewDir.x * viewDir.z) * (1.0 - HuCos(rotZ))) - (viewDir.y * HuSin(rotZ)))) +
+                  (rotatedUp.y *
+                   (((viewDir.y * viewDir.z) * (1.0 - HuCos(rotZ))) + (viewDir.x * HuSin(rotZ)))));
+    VECNormalize(&cameraUp, &cameraUp);
+    Hu3DCameraPosSet(HU3D_CAM0, cameraPos.x, cameraPos.y, cameraPos.z, cameraUp.x, cameraUp.y,
+                     cameraUp.z, cameraTarget.x, cameraTarget.y, cameraTarget.z);
 }
 
-void omOutViewMulti(OMOBJ *obj)
+// The object manager calls this callback to apply each configured camera every frame.
+void omOutViewMulti(OMOBJ *outViewObj)
 {
-    u8 i;
-    for(i=0; i<obj->work[0]; i++) {
-        Vec pos;
-        Vec target;
-        Vec up;
-        Vec rotDir;
-        Vec dir;
-        float rotX = CRotM[i].x;
-        float rotY = CRotM[i].y;
-        float rotZ = CRotM[i].z;
-        pos.x = CenterM[i].x+(CZoomM[i]*(HuSin(rotY)*HuCos(rotX)));
-        pos.y = CenterM[i].y+(CZoomM[i]*-HuSin(rotX));
-        pos.z = CenterM[i].z+(CZoomM[i]*(HuCos(rotY)*HuCos(rotX)));
-        target.x = CenterM[i].x;
-        target.y = CenterM[i].y;
-        target.z = CenterM[i].z;
-        up.x = HuSin(rotY) * HuSin(rotX);
-        up.y = HuCos(rotX);
-        up.z = HuCos(rotY)*HuSin(rotX);
-        rotDir.x = HuSin(rotY)*HuSin(rotX);
-        rotDir.y = HuCos(rotX);
-        rotDir.z = HuCos(rotY)*HuSin(rotX);
-        VECSubtract(&pos, &target, &dir);
-        VECNormalize(&dir, &dir);
-        up.x = (rotDir.x*((dir.x*dir.x)+((1.0f-(dir.x*dir.x))*HuCos(rotZ))))
-            + (rotDir.y*(((dir.x*dir.y)*(1.0-HuCos(rotZ)))-(dir.z*HuSin(rotZ))))
-            + (rotDir.z*(((dir.x*dir.z)*(1.0-HuCos(rotZ)))+(dir.y*HuSin(rotZ))));
-        up.y = (rotDir.y*((dir.y*dir.y)+((1.0f-(dir.y*dir.y))*HuCos(rotZ))))
-            + (rotDir.x*(((dir.x*dir.y)*(1.0-HuCos(rotZ)))+(dir.z*HuSin(rotZ))))
-            + (rotDir.z*(((dir.y*dir.z)*(1.0-HuCos(rotZ)))-(dir.x*HuSin(rotZ))));
-        up.z = (rotDir.z*((dir.z * dir.z)+((1.0f-(dir.z*dir.z))*HuCos(rotZ))))
-            + ((rotDir.x*(((dir.x * dir.z)*(1.0-HuCos(rotZ)))-(dir.y*HuSin(rotZ))))
-            + (rotDir.y*(((dir.y * dir.z)*(1.0-HuCos(rotZ)))+(dir.x*HuSin(rotZ)))));
-        VECNormalize(&up, &up);
-        Hu3DCameraPosSetV((1 << i), &pos, &up, &target);
+    u8 cameraIndex;
+    for(cameraIndex=0; cameraIndex<outViewObj->work[0]; cameraIndex++) {
+        Vec cameraPos;
+        Vec cameraTarget;
+        Vec cameraUp;
+        Vec rotatedUp;
+        Vec viewDir;
+        float rotX = CRotM[cameraIndex].x;
+        float rotY = CRotM[cameraIndex].y;
+        float rotZ = CRotM[cameraIndex].z;
+        cameraPos.x = CenterM[cameraIndex].x+(CZoomM[cameraIndex]*(HuSin(rotY)*HuCos(rotX)));
+        cameraPos.y = CenterM[cameraIndex].y+(CZoomM[cameraIndex]*-HuSin(rotX));
+        cameraPos.z = CenterM[cameraIndex].z+(CZoomM[cameraIndex]*(HuCos(rotY)*HuCos(rotX)));
+        cameraTarget.x = CenterM[cameraIndex].x;
+        cameraTarget.y = CenterM[cameraIndex].y;
+        cameraTarget.z = CenterM[cameraIndex].z;
+        // These values are copied to rotatedUp below; cameraUp is overwritten by the roll
+        // rotation that follows.
+        cameraUp.x = HuSin(rotY) * HuSin(rotX);
+        cameraUp.y = HuCos(rotX);
+        cameraUp.z = HuCos(rotY)*HuSin(rotX);
+        rotatedUp.x = HuSin(rotY)*HuSin(rotX);
+        rotatedUp.y = HuCos(rotX);
+        rotatedUp.z = HuCos(rotY)*HuSin(rotX);
+        VECSubtract(&cameraPos, &cameraTarget, &viewDir);
+        VECNormalize(&viewDir, &viewDir);
+        // Apply Rodrigues' rotation to rotate the elevation-derived up vector around the normalized
+        // view direction by rotZ; the result is normalized immediately afterward.
+        cameraUp.x =
+            (rotatedUp.x *
+             ((viewDir.x * viewDir.x) + ((1.0f - (viewDir.x * viewDir.x)) * HuCos(rotZ)))) +
+            (rotatedUp.y *
+             (((viewDir.x * viewDir.y) * (1.0 - HuCos(rotZ))) - (viewDir.z * HuSin(rotZ)))) +
+            (rotatedUp.z *
+             (((viewDir.x * viewDir.z) * (1.0 - HuCos(rotZ))) + (viewDir.y * HuSin(rotZ))));
+        cameraUp.y =
+            (rotatedUp.y *
+             ((viewDir.y * viewDir.y) + ((1.0f - (viewDir.y * viewDir.y)) * HuCos(rotZ)))) +
+            (rotatedUp.x *
+             (((viewDir.x * viewDir.y) * (1.0 - HuCos(rotZ))) + (viewDir.z * HuSin(rotZ)))) +
+            (rotatedUp.z *
+             (((viewDir.y * viewDir.z) * (1.0 - HuCos(rotZ))) - (viewDir.x * HuSin(rotZ))));
+        cameraUp.z =
+            (rotatedUp.z *
+             ((viewDir.z * viewDir.z) + ((1.0f - (viewDir.z * viewDir.z)) * HuCos(rotZ)))) +
+            ((rotatedUp.x *
+              (((viewDir.x * viewDir.z) * (1.0 - HuCos(rotZ))) - (viewDir.y * HuSin(rotZ)))) +
+             (rotatedUp.y *
+              (((viewDir.y * viewDir.z) * (1.0 - HuCos(rotZ))) + (viewDir.x * HuSin(rotZ)))));
+        VECNormalize(&cameraUp, &cameraUp);
+        Hu3DCameraPosSetV((HU3D_CAM0 << cameraIndex), &cameraPos, &cameraUp, &cameraTarget);
     }
 }
 
@@ -106,42 +131,45 @@ void omOutViewMulti(OMOBJ *obj)
 #define SYSKEY_ATTR_UPAUSE (1 << 8)
 #define SYSKEY_ATTR_PAUSEKEY (1 << 9)
 
-void omDBGSystemKeyCheckSetup(OMOBJMAN *objman)
+void omDBGSystemKeyCheckSetup(OMOBJMAN *objManager)
 {
-    
 }
 
-void omSystemKeyCheckSetup(OMOBJMAN *objman)
+// Object-manager initialization calls this to install the per-frame system pause check.
+void omSystemKeyCheckSetup(OMOBJMAN *objManager)
 {
-    OMOBJ *sysKeyObj = omAddObj(objman, 32731, 0, 0, omSystemKeyCheck);
-    omDBGSysKeyObj = sysKeyObj;
-    omSetStatBit(sysKeyObj, OM_STAT_NOPAUSE|OM_STAT_SPRPAUSE);
-    sysKeyObj->work[0] = 0;
-    sysKeyObj->work[1] = 0;
-    sysKeyObj->work[2] = 0;
+    OMOBJ *systemKeyObj = omAddObj(objManager, 32731, 0, 0, omSystemKeyCheck);
+    omDBGSysKeyObj = systemKeyObj;
+    omSetStatBit(systemKeyObj, OM_STAT_NOPAUSE|OM_STAT_SPRPAUSE);
+    systemKeyObj->work[0] = 0;
+    systemKeyObj->work[1] = 0;
+    systemKeyObj->work[2] = 0;
 }
 
-void omSystemKeyCheck(OMOBJ *obj)
+// Runs from the system-key object each frame to pause or resume game, process, 3D, sprite, and
+// audio updates.
+void omSystemKeyCheck(OMOBJ *systemKeyObj)
 {
     if(!omSysPauseEnableFlag) {
         return;
     }
-    if(obj->work[0] & SYSKEY_ATTR_PAUSEON) {
-        u32 padNo = obj->work[1];
+    if(systemKeyObj->work[0] & SYSKEY_ATTR_PAUSEON) {
+        u32 padNo = systemKeyObj->work[1];
         if(padNo != SYSKEY_PAD_NONE) {
             if(omPadErrChk(padNo) == PAD_ERR_NONE && (HuPadBtnDown[padNo] & PAD_BUTTON_START)) {
-                obj->work[0] |= SYSKEY_ATTR_PAUSEKEY;
+                systemKeyObj->work[0] |= SYSKEY_ATTR_PAUSEKEY;
             }
         }
-        if(obj->work[0] & SYSKEY_ATTR_PAUSEKEY) {
+        if(systemKeyObj->work[0] & SYSKEY_ATTR_PAUSEKEY) {
             if(MgNoGet(omcurovl) != DLL_NONE) {
+                // A pause-menu minigame handles Start as a menu-close request.
                 GameMesPauseCancel();
             } else {
-                obj->work[0] |= SYSKEY_ATTR_UPAUSE;
+                systemKeyObj->work[0] |= SYSKEY_ATTR_UPAUSE;
             }
         }
-        if(obj->work[0] & SYSKEY_ATTR_UPAUSE) {
-            obj->work[0] &= ~(SYSKEY_ATTR_UPAUSE|SYSKEY_ATTR_PAUSEKEY|SYSKEY_ATTR_PAUSEON);
+        if(systemKeyObj->work[0] & SYSKEY_ATTR_UPAUSE) {
+            systemKeyObj->work[0] &= ~(SYSKEY_ATTR_UPAUSE|SYSKEY_ATTR_PAUSEKEY|SYSKEY_ATTR_PAUSEON);
             omAllPause(FALSE);
             HuPrcAllPause(FALSE);
             Hu3DPauseSet(FALSE);
@@ -151,27 +179,30 @@ void omSystemKeyCheck(OMOBJ *obj)
             HuAudSStreamPauseAll(FALSE);
         }
     } else {
-        s16 pauseF = FALSE;
+        s16 pauseRequested = FALSE;
         s32 padNo;
+        // Suppress pause input during wipes, when no overlay is active, or while exit is pending;
+        // Start polling is also skipped during wipe-in.
         if(WipeCheck() || omCurrentOvlGet() == DLL_NONE || omSysExitReq) {
             return;
         }
         if(!WipeCheckIn()) {
             for(padNo=0; padNo<4; padNo++) {
                 if(!omPadErrChk(padNo) && (HuPadBtnDown[padNo] & PAD_BUTTON_START)) {
-                    pauseF = TRUE;
+                    pauseRequested = TRUE;
                     break;
                 }
             }
         }
-        if(obj->work[0] & SYSKEY_ATTR_PAUSE) {
-            obj->work[0] &= ~SYSKEY_ATTR_PAUSE;
-            pauseF = TRUE;
+        if(systemKeyObj->work[0] & SYSKEY_ATTR_PAUSE) {
+            systemKeyObj->work[0] &= ~SYSKEY_ATTR_PAUSE;
+            pauseRequested = TRUE;
+            // Scripted pauses have no controller whose Start press can resume them.
             padNo = SYSKEY_PAD_NONE;
         }
-        if(pauseF) {
-            obj->work[0] |= SYSKEY_ATTR_PAUSEON;
-            obj->work[1] = padNo;
+        if(pauseRequested) {
+            systemKeyObj->work[0] |= SYSKEY_ATTR_PAUSEON;
+            systemKeyObj->work[1] = padNo;
             omAllPause(TRUE);
             HuPrcAllPause(TRUE);
             Hu3DPauseSet(TRUE);
@@ -187,18 +218,21 @@ void omSystemKeyCheck(OMOBJ *obj)
     }
 }
 
-void omSysPauseEnable(u8 flag)
+// Global system setup enables or disables handling of the Start button and scripted pause requests.
+void omSysPauseEnable(u8 enableFlag)
 {
-    omSysPauseEnableFlag = flag;
+    omSysPauseEnableFlag = enableFlag;
 }
 
-void omSysPauseCtrl(s16 flag)
+// Queues a pause/resume request when the system-key object exists; the callback applies it on a
+// later frame when system pause handling is enabled.
+void omSysPauseCtrl(s16 pauseFlag)
 {
     if(!omDBGSysKeyObj) {
         return;
     }
     omDBGSysKeyObj->work[0] &= ~(SYSKEY_ATTR_PAUSE|SYSKEY_ATTR_UPAUSE);
-    if(flag) {
+    if(pauseFlag) {
         omDBGSysKeyObj->work[0] |= SYSKEY_ATTR_PAUSE;
     } else {
         omDBGSysKeyObj->work[0] |= SYSKEY_ATTR_UPAUSE;
@@ -209,216 +243,238 @@ void omSysPauseCtrl(s16 flag)
 #define CAMERA_ATTR_SINGLE (1 << 0)
 
 typedef struct CameraViewWork_s {
-    s16 no;
-    s16 attr;
-    s16 moveType;
-    HuVecF centerEnd;
-    HuVecF rotEnd;
-    float zoomEnd;
-    u32 maxTime;
-    HUPROCESS *process;
+    s16 cameraNo; // Camera index marked as transitioning; initialized to -1 and cleared when
+                  // CameraMoveProc finishes. Immediate setters kill the process but leave this
+                  // marker set.
+    s16 attributes; // CAMERA_ATTR_SINGLE selects the single-camera globals instead of an indexed
+                    // camera.
+    s16 interpolationType; // Easing mode used to calculate each frame's interpolation weight.
+    HuVecF centerTarget; // Target look-at point in world units.
+    HuVecF rotationTarget; // Target camera rotation in degrees.
+    float zoomTarget; // Target camera distance from the look-at point.
+    u32 durationFrames; // Number of video frames in the transition.
+    HUPROCESS *process; // Child process that updates this camera until the transition ends.
 } CAMERA_VIEW_WORK;
 
 static CAMERA_VIEW_WORK cameraViewWork[HU3D_CAM_MAX];
 
 static void CameraMoveProc(void);
 
+// omMain calls this during object-manager creation to mark every camera transition slot idle.
 void omCameraViewInit(void)
 {
-    s16 i;
-    for(i=0; i<HU3D_CAM_MAX; i++) {
-        cameraViewWork[i].no = -1;
+    s16 cameraIndex;
+    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+        cameraViewWork[cameraIndex].cameraNo = -1;
     }
 }
 
-void omCameraViewSetMulti(s16 cameraBit, OM_CAMERA_VIEW *cameraView)
+// Sets target values immediately for each selected camera and cancels its running transition.
+void omCameraViewSetMulti(s16 cameraBits, OM_CAMERA_VIEW *view)
 {
-    s16 i;
-    s16 bit;
-    for(i=0, bit=HU3D_CAM0; i<HU3D_CAM_MAX; i++, bit <<= 1) {
-        if(cameraBit & bit) {
-            CRotM[i] = cameraView->rot;
-            CenterM[i] = cameraView->center;
-            CZoomM[i] = cameraView->zoom;
-            if(cameraViewWork[i].no != -1) {
-                HuPrcKill(cameraViewWork[i].process);
+    s16 cameraIndex;
+    s16 cameraBit;
+    for (cameraIndex = 0, cameraBit = HU3D_CAM0; cameraIndex < HU3D_CAM_MAX;
+         cameraIndex++, cameraBit <<= 1) {
+        if(cameraBits & cameraBit) {
+            CRotM[cameraIndex] = view->rot;
+            CenterM[cameraIndex] = view->center;
+            CZoomM[cameraIndex] = view->zoom;
+            if(cameraViewWork[cameraIndex].cameraNo != -1) {
+                HuPrcKill(cameraViewWork[cameraIndex].process);
             }
         }
     }
 }
 
-void omCameraViewSet(OM_CAMERA_VIEW *cameraView)
+// Sets the single camera immediately and cancels its running transition, if any.
+void omCameraViewSet(OM_CAMERA_VIEW *view)
 {
-    CRot = cameraView->rot;
-    Center = cameraView->center;
-    CZoom = cameraView->zoom;
-    if(cameraViewWork[0].no != -1) {
+    CRot = view->rot;
+    Center = view->center;
+    CZoom = view->zoom;
+    if(cameraViewWork[0].cameraNo != -1) {
         HuPrcKill(cameraViewWork[0].process);
     }
 }
 
-s16 omCameraViewMoveMulti(u32 camera, OM_CAMERA_VIEW *cameraView, s32 time, s16 moveType)
+// Starts or replaces a child-process transition for each selected camera, and returns the number
+// started. OM_CAMERA_SINGLE selects the single-camera globals.
+s16 omCameraViewMoveMulti(u32 cameraSelection, OM_CAMERA_VIEW *view, s32 durationFrames,
+                          s16 interpolationType)
 {
+    s16 cameraMask;
     s16 cameraBit;
-    s16 bit;
-    s16 cameraNum;
-    s16 i;
-    if(camera == OM_CAMERA_SINGLE) {
-        cameraBit = HU3D_CAM0;
+    s16 cameraCount;
+    s16 cameraIndex;
+    if(cameraSelection == OM_CAMERA_SINGLE) {
+        cameraMask = HU3D_CAM0;
     } else {
-        cameraBit = camera;
+        cameraMask = cameraSelection;
     }
-    for(i=cameraNum=0, bit=HU3D_CAM0; i<HU3D_CAM_MAX; i++, bit <<= 1) {
-        if(cameraBit & bit) {
-            CAMERA_VIEW_WORK *viewWork = &cameraViewWork[i];
-            HUPROCESS *process;
-            if(cameraViewWork[i].no != -1) {
+    for (cameraIndex = cameraCount = 0, cameraBit = HU3D_CAM0; cameraIndex < HU3D_CAM_MAX;
+         cameraIndex++, cameraBit <<= 1) {
+        if(cameraMask & cameraBit) {
+            CAMERA_VIEW_WORK *viewWork = &cameraViewWork[cameraIndex];
+            HUPROCESS *cameraProcess;
+            if(cameraViewWork[cameraIndex].cameraNo != -1) {
                 HuPrcKill(viewWork->process);
             }
-            process = HuPrcChildCreate(CameraMoveProc, 100, 4096, 0, HuPrcCurrentGet());
-            process->property = (void *)i;
-            viewWork->process = process;
-            viewWork->no = i;
-            if(camera == OM_CAMERA_SINGLE) {
-                viewWork->attr = CAMERA_ATTR_SINGLE;
+            cameraProcess = HuPrcChildCreate(CameraMoveProc, 100, 4096, 0, HuPrcCurrentGet());
+            cameraProcess->property = (void *)cameraIndex;
+            viewWork->process = cameraProcess;
+            viewWork->cameraNo = cameraIndex;
+            if(cameraSelection == OM_CAMERA_SINGLE) {
+                viewWork->attributes = CAMERA_ATTR_SINGLE;
             } else {
-                viewWork->attr = CAMERA_ATTR_NONE;
+                viewWork->attributes = CAMERA_ATTR_NONE;
             }
-            viewWork->centerEnd = cameraView->center;
-            viewWork->rotEnd = cameraView->rot;
-            viewWork->zoomEnd = cameraView->zoom;
-            viewWork->maxTime = time;
-            viewWork->moveType = moveType;
-            cameraNum++;
+            viewWork->centerTarget = view->center;
+            viewWork->rotationTarget = view->rot;
+            viewWork->zoomTarget = view->zoom;
+            viewWork->durationFrames = durationFrames;
+            viewWork->interpolationType = interpolationType;
+            cameraCount++;
         }
     }
-    return cameraNum;
+    return cameraCount;
 }
 
-s16 omCameraViewMove(OM_CAMERA_VIEW *cameraView, s32 time, s16 moveType)
+// Starts a transition on the single camera through the shared multi-camera worker.
+s16 omCameraViewMove(OM_CAMERA_VIEW *view, s32 durationFrames, s16 interpolationType)
 {
-    return omCameraViewMoveMulti(OM_CAMERA_SINGLE, cameraView, time, moveType);
+    return omCameraViewMoveMulti(OM_CAMERA_SINGLE, view, durationFrames, interpolationType);
 }
 
-s16 omCameraViewMoveSimpleMulti(u32 camera, OM_CAMERA_VIEW *cameraView, s32 time)
+// Starts the default smooth transition on each selected camera.
+s16 omCameraViewMoveSimpleMulti(u32 cameraSelection, OM_CAMERA_VIEW *view, s32 durationFrames)
 {
-    return omCameraViewMoveMulti(camera, cameraView, time, OM_CAMERAMOVE_SIMPLE);
+    return omCameraViewMoveMulti(cameraSelection, view, durationFrames, OM_CAMERAMOVE_SIMPLE);
 }
 
-s16 omCameraViewMoveSimple(OM_CAMERA_VIEW *cameraView, s32 time)
+// Starts the default smooth transition on the single camera.
+s16 omCameraViewMoveSimple(OM_CAMERA_VIEW *view, s32 durationFrames)
 {
-    return omCameraViewMove(cameraView, time, OM_CAMERAMOVE_SIMPLE);
+    return omCameraViewMove(view, durationFrames, OM_CAMERAMOVE_SIMPLE);
 }
 
-BOOL omCameraViewCheck(u32 cameraBit)
+// Returns FALSE if any selected camera slot is marked as transitioning (cameraNo != -1); the
+// marker may remain set after an immediate setter cancels its process.
+BOOL omCameraViewCheck(u32 cameraBits)
 {
-    s16 i;
-    s16 bit;
-    s16 cameraNum;
-    for(i=cameraNum=0, bit=HU3D_CAM0; i<HU3D_CAM_MAX; i++, bit <<= 1) {
-        if(cameraBit & bit) {
-            if(cameraViewWork[i].no != -1) {
-                cameraNum++;
+    s16 cameraIndex;
+    s16 cameraBit;
+    s16 movingCameraCount;
+    for (cameraIndex = movingCameraCount = 0, cameraBit = HU3D_CAM0; cameraIndex < HU3D_CAM_MAX;
+         cameraIndex++, cameraBit <<= 1) {
+        if(cameraBits & cameraBit) {
+            if(cameraViewWork[cameraIndex].cameraNo != -1) {
+                movingCameraCount++;
             }
         }
     }
-    if(cameraNum != 0) {
+    if(movingCameraCount != 0) {
         return FALSE;
     } else {
         return TRUE;
     }
 }
 
-
+// Child process created by omCameraViewMoveMulti; interpolates one camera once per video frame.
 static void CameraMoveProc(void)
 {
-    HUPROCESS *process = HuPrcCurrentGet();
-    s16 no = (s16)process->property;
-    CAMERA_VIEW_WORK *viewWork = &cameraViewWork[no];
-    u32 i;
+    HUPROCESS *cameraProcess = HuPrcCurrentGet();
+    s16 cameraIndex = (s16)cameraProcess->property;
+    CAMERA_VIEW_WORK *viewWork = &cameraViewWork[cameraIndex];
+    u32 frame;
     float angle;
     float weight;
-    float zoomOrig;
-    float zoomNew;
-    Vec centerOrig;
-    Vec rotOrig;
-    Vec centerNew;
-    Vec rotNew;
+    float zoomStart;
+    float zoomFrame;
+    Vec centerStart;
+    Vec rotationStart;
+    Vec centerFrame;
+    Vec rotationFrame;
     
-    Vec angleDiff;
+    Vec rotationDelta;
     
-    if(viewWork->attr & CAMERA_ATTR_SINGLE) {
-        rotOrig = CRot;
-        centerOrig = Center;
-        zoomOrig = CZoom;
+    if(viewWork->attributes & CAMERA_ATTR_SINGLE) {
+        rotationStart = CRot;
+        centerStart = Center;
+        zoomStart = CZoom;
     } else {
-        rotOrig = CRotM[no];
-        centerOrig = CenterM[no];
-        zoomOrig = CZoomM[no];
+        rotationStart = CRotM[cameraIndex];
+        centerStart = CenterM[cameraIndex];
+        zoomStart = CZoomM[cameraIndex];
     }
-    angle = viewWork->rotEnd.x-rotOrig.x;
+    // Wrap each rotation delta so the camera takes the shorter path around the circle.
+    angle = viewWork->rotationTarget.x-rotationStart.x;
     if(HuAbs(angle) > 180.0f) {
-        if(viewWork->rotEnd.x < rotOrig.x) {
-            angleDiff.x = 360+angle;
+        if(viewWork->rotationTarget.x < rotationStart.x) {
+            rotationDelta.x = 360+angle;
         } else {
-            angleDiff.x = angle-360;
+            rotationDelta.x = angle-360;
         }
     } else {
-        angleDiff.x = angle;
+        rotationDelta.x = angle;
     }
-    angle = viewWork->rotEnd.y-rotOrig.y;
+    angle = viewWork->rotationTarget.y-rotationStart.y;
     if(HuAbs(angle) > 180.0f) {
-        if(viewWork->rotEnd.y < rotOrig.y) {
-            angleDiff.y = 360+angle;
+        if(viewWork->rotationTarget.y < rotationStart.y) {
+            rotationDelta.y = 360+angle;
         } else {
-            angleDiff.y = angle-360;
+            rotationDelta.y = angle-360;
         }
     } else {
-        angleDiff.y = angle;
+        rotationDelta.y = angle;
     }
-    angle = viewWork->rotEnd.z-rotOrig.z;
+    angle = viewWork->rotationTarget.z-rotationStart.z;
     if(HuAbs(angle) > 180.0f) {
-        if(viewWork->rotEnd.z < rotOrig.z) {
-            angleDiff.z = 360+angle;
+        if(viewWork->rotationTarget.z < rotationStart.z) {
+            rotationDelta.z = 360+angle;
         } else {
-            angleDiff.z = angle-360;
+            rotationDelta.z = angle-360;
         }
     } else {
-        angleDiff.z = angle;
+        rotationDelta.z = angle;
     }
-    for(i=1; i<=viewWork->maxTime; i++) {
-        if(viewWork->moveType == OM_CAMERAMOVE_SIMPLE) {
-            angle = HuSin(90.0f*((float)i/(float)viewWork->maxTime));
+    for(frame=1; frame<=viewWork->durationFrames; frame++) {
+        // SIMPLE uses a sine-of-sine curve, COS uses a cosine curve, and LINEAR (also the
+        // COSSIN alias) uses a linear weight. Other values use a two-half curve: cosine easing
+        // for the first half and sine-of-sine easing for the second half.
+        if(viewWork->interpolationType == OM_CAMERAMOVE_SIMPLE) {
+            angle = HuSin(90.0f*((float)frame/(float)viewWork->durationFrames));
             weight = HuSin(90.0f*angle);
-        } else if(viewWork->moveType == OM_CAMERAMOVE_COS) {
-            weight = 1-HuCos(90.0f*((float)i/(float)viewWork->maxTime));
-        } else if(viewWork->moveType == OM_CAMERAMOVE_LINEAR) {
-            weight = (float)i/(float)viewWork->maxTime;
-        } else if(viewWork->maxTime/2 > i) {
-            angle = (float)i/(float)(viewWork->maxTime/2.0);
+        } else if(viewWork->interpolationType == OM_CAMERAMOVE_COS) {
+            weight = 1-HuCos(90.0f*((float)frame/(float)viewWork->durationFrames));
+        } else if(viewWork->interpolationType == OM_CAMERAMOVE_LINEAR) {
+            weight = (float)frame/(float)viewWork->durationFrames;
+        } else if(viewWork->durationFrames/2 > frame) {
+            angle = (float)frame/(float)(viewWork->durationFrames/2.0);
             weight = 0.5*(1-HuCos(90.0f*angle));
         } else {
-            angle = (float)(i-(viewWork->maxTime/2))/(float)(viewWork->maxTime/2.0);
+            angle = (float) (frame - (viewWork->durationFrames / 2)) /
+                    (float) (viewWork->durationFrames / 2.0);
             weight = 0.5+(0.5*HuSin(90.0*HuSin(90.0f*angle)));
         }
-        zoomNew = zoomOrig+(weight*(viewWork->zoomEnd-zoomOrig));
-        rotNew.x = rotOrig.x+(weight*angleDiff.x);
-        rotNew.y = rotOrig.y+(weight*angleDiff.y);
-        rotNew.z = rotOrig.z+(weight*angleDiff.z);
-        centerNew.x = centerOrig.x+(weight*(viewWork->centerEnd.x-centerOrig.x));
-        centerNew.y = centerOrig.y+(weight*(viewWork->centerEnd.y-centerOrig.y));
-        centerNew.z = centerOrig.z+(weight*(viewWork->centerEnd.z-centerOrig.z));
-        if(viewWork->attr & CAMERA_ATTR_SINGLE) {
-            CZoom = zoomNew;
-            CRot = rotNew;
-            Center = centerNew;
+        zoomFrame = zoomStart+(weight*(viewWork->zoomTarget-zoomStart));
+        rotationFrame.x = rotationStart.x+(weight*rotationDelta.x);
+        rotationFrame.y = rotationStart.y+(weight*rotationDelta.y);
+        rotationFrame.z = rotationStart.z+(weight*rotationDelta.z);
+        centerFrame.x = centerStart.x+(weight*(viewWork->centerTarget.x-centerStart.x));
+        centerFrame.y = centerStart.y+(weight*(viewWork->centerTarget.y-centerStart.y));
+        centerFrame.z = centerStart.z+(weight*(viewWork->centerTarget.z-centerStart.z));
+        if(viewWork->attributes & CAMERA_ATTR_SINGLE) {
+            CZoom = zoomFrame;
+            CRot = rotationFrame;
+            Center = centerFrame;
         } else {
-            CZoomM[no] = zoomNew;
-            CRotM[no] = rotNew;
-            CenterM[no] = centerNew;
+            CZoomM[cameraIndex] = zoomFrame;
+            CRotM[cameraIndex] = rotationFrame;
+            CenterM[cameraIndex] = centerFrame;
         }
         HuPrcVSleep();
     }
-    viewWork->no = -1;
+    viewWork->cameraNo = -1;
     HuPrcEnd();
 }

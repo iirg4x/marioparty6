@@ -1,4 +1,4 @@
-//fake function signatures
+// Board and game code use these entries to reach the shared engine routines.
 void OSDumpStopwatch(void);
 void PSVECDotProduct(void);
 void PSVECDistance(void);
@@ -1027,9 +1027,6 @@ void __nwa__FUl(void);
 void __ptmf_test(void);
 void __ptmf_scall(void);
 void __dla__FPv(void);
-/* Branch-target declaration for the legacy ASM export thunk below. MWCC's
- * inline assembler requires a function operand for b; the provider in ptmf.c
- * is the const PTMF data object, not a callable C function. */
 void __ptmf_null(void);
 void __ptmf_cmpr(void);
 void HuDataDirCancelAsync(void);
@@ -4946,8 +4943,9 @@ extern void _kerjmp_mbMgRouletteNumGet(void);
 extern void _kerjmp_mbMgCallSingleOnCheck(void);
 extern void _kerjmp_mbMgCallVsEffCreate(void);
 
+// Provides the engine call entries used by the game module; each entry branches
+// directly to the correspondingly named shared engine routine.
 asm void _kerent(void) {
-    #ifdef __MWERKS__ // clang-format off
     nofralloc
     entry _kerjmp_OSDumpStopwatch
     b OSDumpStopwatch
@@ -9893,5 +9891,4 @@ asm void _kerent(void) {
     b mbMgCallSingleOnCheck
     entry _kerjmp_mbMgCallVsEffCreate
     b mbMgCallVsEffCreate
-    #endif
 }
