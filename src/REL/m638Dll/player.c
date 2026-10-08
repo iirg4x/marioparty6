@@ -1,7 +1,16 @@
+/* Gondola Glide player setup, button responses, movement effects, and result exits. */
 #include "REL/m638Dll.h"
 
-u32 lbl_1_data_548[5] = { 9633792, 9306215, 9633830, 9633832, 9633806 };
+#define M638_TEAM0_REACTION_SFX_ID 1891
+#define M638_TEAM1_REACTION_SFX_ID 1892
 
+u32 lbl_1_data_548[5] = {
+    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mario, 103),
+    DATANUM(DATA_mariomot, 38), DATANUM(DATA_mariomot, 40),
+    DATANUM(DATA_mariomot, 14)
+};
+
+/* Object initializer: create a player model, join its team, and install its update callback. */
 void fn_1_67EC(OMOBJ *obj)
 {
     struct M638TeamSlotsView {
@@ -35,7 +44,7 @@ void fn_1_67EC(OMOBJ *obj)
         obj->mtnId[i] = motion;
     }
     CharMotionSet(player->charNo, obj->mtnId[1]);
-    CharModelAttrSet(player->charNo, 1073741826U);
+    CharModelAttrSet(player->charNo, HU3D_MOTATTR_PAUSE);
     CharModelAttrReset(player->charNo, 1U);
     CharMotionDataClose(player->charNo);
     Hu3DModelShadowSet(player->model);
@@ -67,6 +76,7 @@ void fn_1_67EC(OMOBJ *obj)
     obj->objFunc = fn_1_6B00;
 }
 
+/* Object update: read player input, update activity and animations, then sync the model pose. */
 void fn_1_6B00(OMOBJ *obj)
 {
     int pressed;
@@ -105,35 +115,36 @@ void fn_1_6B00(OMOBJ *obj)
     omSetRot(player->object, player->rot.x, player->rot.y, player->rot.z);
 }
 
+/* Advance the player's reaction animation and restore the idle pose when it ends. */
 void fn_1_6C98(M638PlayerView *player)
 {
-    f32 speed;
+    f32 motionSpeed;
     switch (player->state) {
     case 1:
         if (player->team->variant == 0) {
-            HuAudFXPlay(1891);
+            HuAudFXPlay(M638_TEAM0_REACTION_SFX_ID);
         } else {
-            HuAudFXPlay(1892);
+            HuAudFXPlay(M638_TEAM1_REACTION_SFX_ID);
         }
-        Hu3DModelAttrReset(player->model, 1073741826U);
-        Hu3DModelAttrReset(player->model, 1073741828U);
-        Hu3DModelAttrReset(player->attachedModel, 1073741826U);
-        Hu3DModelAttrReset(player->attachedModel, 1073741828U);
-        speed = player->activity;
-        if (speed < 0.25f) {
-            speed = 0.25f;
+        Hu3DModelAttrReset(player->model, HU3D_MOTATTR_PAUSE);
+        Hu3DModelAttrReset(player->model, HU3D_MOTATTR_REV);
+        Hu3DModelAttrReset(player->attachedModel, HU3D_MOTATTR_PAUSE);
+        Hu3DModelAttrReset(player->attachedModel, HU3D_MOTATTR_REV);
+        motionSpeed = player->activity;
+        if (motionSpeed < 0.25f) {
+            motionSpeed = 0.25f;
         }
-        if (speed > 2.0f) {
-            speed = 2.0f;
+        if (motionSpeed > 2.0f) {
+            motionSpeed = 2.0f;
         }
-        Hu3DMotionSpeedSet(player->model, speed);
-        Hu3DMotionSpeedSet(player->attachedModel, speed);
+        Hu3DMotionSpeedSet(player->model, motionSpeed);
+        Hu3DMotionSpeedSet(player->attachedModel, motionSpeed);
         player->state++;
         /* fallthrough */
     case 2:
         if (Hu3DMotionEndCheck(player->model)) {
-            Hu3DModelAttrSet(player->model, 1073741828U);
-            Hu3DModelAttrSet(player->attachedModel, 1073741828U);
+            Hu3DModelAttrSet(player->model, HU3D_MOTATTR_REV);
+            Hu3DModelAttrSet(player->attachedModel, HU3D_MOTATTR_REV);
             player->state++;
         }
         break;
@@ -141,14 +152,15 @@ void fn_1_6C98(M638PlayerView *player)
         break;
     case 3:
         if (Hu3DMotionEndCheck(player->model)) {
-            Hu3DModelAttrSet(player->model, 1073741826U);
-            Hu3DModelAttrSet(player->attachedModel, 1073741826U);
+            Hu3DModelAttrSet(player->model, HU3D_MOTATTR_PAUSE);
+            Hu3DModelAttrSet(player->attachedModel, HU3D_MOTATTR_PAUSE);
             player->state = 0;
         }
         break;
     }
 }
 
+/* Apply the player's small rhythmic body-scale animation during object updates. */
 void fn_1_6E40(M638PlayerView *player)
 {
     f32 scaleY;
@@ -163,24 +175,26 @@ void fn_1_6E40(M638PlayerView *player)
     }
     {
         f32 pi = acos(-1.0);
-        scaleZ = 1.0089999437332153 + (0.008999999612569809 * sin((2.0f * player->phase * pi) / 180.0f));
+        scaleZ =
+            1.0089999437332153 + (0.008999999612569809 * sin((2.0f * player->phase * pi) / 180.0f));
     }
     Hu3DModelScaleSet(player->model, 1.0f, scaleY, scaleZ);
     omSetSca(player->object, 1.0f, scaleY, scaleZ);
 }
 
-s32 fn_1_6FE4(void *data)
+/* Result callback: play the player's exit animation and return when it reaches the next pose. */
+s32 fn_1_6FE4(void *playerContext)
 {
     M638PlayerView *player;
-    f32 time;
-    f32 scale;
-    int done;
-    done = 0;
-    player = data;
+    f32 exitProgress;
+    f32 attachedModelScale;
+    int animationFinished;
+    animationFinished = 0;
+    player = playerContext;
     switch (player->exitState) {
     case 0:
-        Hu3DModelAttrReset(player->model, 1073741828U);
-        Hu3DModelAttrSet(player->model, 1073741826U);
+        Hu3DModelAttrReset(player->model, HU3D_MOTATTR_REV);
+        Hu3DModelAttrSet(player->model, HU3D_MOTATTR_PAUSE);
         Hu3DMotionShiftSet(player->model, player->motions[4], 0.0f, 10.0f, 0U);
         Hu3DMotionTimeSet(player->model, 0.0f);
         player->elapsed = 0;
@@ -188,75 +202,87 @@ s32 fn_1_6FE4(void *data)
         break;
     case 1:
         player->elapsed++;
-        time = player->elapsed / 58.0f;
-        scale = 1.0f - (0.5f * time);
-        Hu3DModelScaleSet(player->attachedModel, scale, scale, scale);
-        player->rot.y = -180.0f * time;
+        exitProgress = player->elapsed / 58.0f;
+        attachedModelScale = 1.0f - (0.5f * exitProgress);
+        Hu3DModelScaleSet(player->attachedModel, attachedModelScale, attachedModelScale,
+                          attachedModelScale);
+        player->rot.y = -180.0f * exitProgress;
         if (player->elapsed >= 58) {
-            Hu3DMotionShiftSet(player->model, player->motions[0], 60.0f, 5.0f, 1073741825U);
+            Hu3DMotionShiftSet(player->model, player->motions[0], 60.0f, 5.0f, HU3D_MOTATTR_LOOP);
             Hu3DModelScaleSet(player->attachedModel, 0.5f, 0.5f, 0.5f);
             player->rot.y = -180.0f;
             player->exitState = 2;
-            done = 1;
+            animationFinished = 1;
         }
         break;
     }
-    return done;
+    return animationFinished;
 }
 
-s32 fn_1_71DC(void *arg0)
+/* Human input path used by the active player's object update. The team's selected button counts as
+ * A; the other counts as B. */
+s32 fn_1_71DC(void *playerContext)
 {
-    u16 button_masks[2] = { PAD_BUTTON_A, PAD_BUTTON_B };
-    s32 var_r30;
+    u16 padButtons[2] = { PAD_BUTTON_A, PAD_BUTTON_B };
+    s32 inputAccepted;
 
-    var_r30 = 0;
-    if ((s32)(HuPadBtnDown[((M638PlayerView *)arg0)->padNo] &
-              button_masks[((M638PlayerView *)arg0)->team->button ^ 1]) != 0) {
-        var_r30 = 1;
-        ((M638PlayerView *)arg0)->buttonB = 1;
-        omVibrate(((M638PlayerView *)arg0)->playerNo, 20, 7, 3);
-    } else if ((s32)(HuPadBtnDown[((M638PlayerView *)arg0)->padNo] &
-                     button_masks[((M638PlayerView *)arg0)->team->button]) != 0) {
-        var_r30 = 1;
-        ((M638PlayerView *)arg0)->buttonA = 1;
+    inputAccepted = 0;
+    if ((s32)(HuPadBtnDown[((M638PlayerView *)playerContext)->padNo] &
+              padButtons[((M638PlayerView *)playerContext)->team->button ^ 1]) != 0) {
+        inputAccepted = 1;
+        ((M638PlayerView *)playerContext)->buttonB = 1;
+        /* Rumble is suppressed during wipe transitions, when vibration is off, or for a computer
+         * player. */
+        omVibrate(((M638PlayerView *)playerContext)->playerNo, 20, 7, 3);
+    } else if ((s32)(HuPadBtnDown[((M638PlayerView *)playerContext)->padNo] &
+                     padButtons[((M638PlayerView *)playerContext)->team->button]) != 0) {
+        inputAccepted = 1;
+        ((M638PlayerView *)playerContext)->buttonA = 1;
     }
-    return var_r30;
+    return inputAccepted;
 }
 
-s32 fn_1_72D0(void *arg0)
+/* Computer input path used by the active player's object update; generate an A press after the
+ * selected delay. */
+s32 fn_1_72D0(void *playerContext)
 {
-    s32 var_r30;
+    s32 inputAccepted;
 
-    var_r30 = 0;
-    ((M638PlayerView *)arg0)->count = (s32)(((M638PlayerView *)arg0)->count + 1);
-    if ((s32)((M638PlayerView *)arg0)->count >= (s32)((M638PlayerView *)arg0)->nextCount) {
-        ((M638PlayerView *)arg0)->count = 0;
-        ((M638PlayerView *)arg0)->nextCount = fn_1_7344((s32)((M638PlayerView *)arg0)->difficulty);
-        ((M638PlayerView *)arg0)->buttonA = 1;
-        var_r30 = 1;
+    inputAccepted = 0;
+    ((M638PlayerView *)playerContext)->count = (s32)(((M638PlayerView *)playerContext)->count + 1);
+    if ((s32) ((M638PlayerView *) playerContext)->count >=
+        (s32) ((M638PlayerView *) playerContext)->nextCount) {
+        ((M638PlayerView *)playerContext)->count = 0;
+        ((M638PlayerView *) playerContext)->nextCount =
+            fn_1_7344((s32) ((M638PlayerView *) playerContext)->difficulty);
+        ((M638PlayerView *)playerContext)->buttonA = 1;
+        inputAccepted = 1;
     }
-    return var_r30;
+    return inputAccepted;
 }
 
+/* Choose the next computer-player input delay in updates; difficulty 2 uses its three weighted
+ * outcomes. */
 u32 fn_1_7344(s32 difficulty)
 {
-    int base[4] = { 30, 12, 7, 7 };
-    int range[4] = { 30, 8, 3, 2 };
-    int cumulative[3] = { 33, 90, 100 };
-    int random;
-    int i;
+    int baseDelayFrames[4] = { 30, 12, 7, 7 };
+    int delayRangeFrames[4] = { 30, 8, 3, 2 };
+    int difficulty2Cutoffs[3] = { 33, 90, 100 };
+    int roll;
+    int outcomeIndex;
     if (difficulty == 2) {
-        random = frandmod(100);
-        for (i = 0; i < 3; i++) {
-            if (random < cumulative[i]) {
+        roll = frandmod(100);
+        for (outcomeIndex = 0; outcomeIndex < 3; outcomeIndex++) {
+            if (roll < difficulty2Cutoffs[outcomeIndex]) {
                 break;
             }
         }
-        return i + base[difficulty];
+        return outcomeIndex + baseDelayFrames[difficulty];
     }
-    return base[difficulty] + frandmod(range[difficulty]);
+    return baseDelayFrames[difficulty] + frandmod(delayRangeFrames[difficulty]);
 }
 
+/* Raise or decay the player's response impulse from the current A/B input. */
 void fn_1_745C(M638PlayerView *player)
 {
     f32 amount;
@@ -278,12 +304,15 @@ void fn_1_745C(M638PlayerView *player)
     }
 }
 
-void fn_1_7554(void *arg0)
+/* Copy a player's stored position and rotation to its model and object transforms. */
+void fn_1_7554(void *playerContext)
 {
-    Hu3DModelPosSetV(((M638PlayerView *)arg0)->model, &((M638PlayerView *)arg0)->pos);
-    omSetTra(((M638PlayerView *)arg0)->object, ((M638PlayerView *)arg0)->pos.x,
-             ((M638PlayerView *)arg0)->pos.y, ((M638PlayerView *)arg0)->pos.z);
-    Hu3DModelRotSetV(((M638PlayerView *)arg0)->model, &((M638PlayerView *)arg0)->rot);
-    omSetRot(((M638PlayerView *)arg0)->object, ((M638PlayerView *)arg0)->rot.x,
-             ((M638PlayerView *)arg0)->rot.y, ((M638PlayerView *)arg0)->rot.z);
+    Hu3DModelPosSetV(((M638PlayerView *) playerContext)->model,
+                     &((M638PlayerView *) playerContext)->pos);
+    omSetTra(((M638PlayerView *)playerContext)->object, ((M638PlayerView *)playerContext)->pos.x,
+             ((M638PlayerView *)playerContext)->pos.y, ((M638PlayerView *)playerContext)->pos.z);
+    Hu3DModelRotSetV(((M638PlayerView *) playerContext)->model,
+                     &((M638PlayerView *) playerContext)->rot);
+    omSetRot(((M638PlayerView *)playerContext)->object, ((M638PlayerView *)playerContext)->rot.x,
+             ((M638PlayerView *)playerContext)->rot.y, ((M638PlayerView *)playerContext)->rot.z);
 }
