@@ -1,3 +1,4 @@
+/* Sets up the minigame camera, runs its frame callbacks, and cleans up on exit. */
 #include "game/main.h"
 #include "game/object.h"
 #include "game/audio.h"
@@ -27,12 +28,17 @@ MGSEQ_PARAM lbl_1_data_0 = {
 };
 HUPROCESS *lbl_1_bss_0;
 
+/* The module prolog calls this after constructors to create the object manager and start the
+ * sequence. */
+
 void fn_1_A0(void)
 {
     lbl_1_bss_0 = omInitObjMan(200, 8192);
     omGameSysInit(lbl_1_bss_0);
     MgSeqCreate(&lbl_1_data_0);
 }
+
+/* Opening callback: creates camera 1, sets the course view and lighting, then initializes play. */
 
 void fn_1_F0(s16 mode, s16 frameNo)
 {
@@ -64,15 +70,21 @@ void fn_1_F0(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
+/* Fade-in callback: updates player and moving-row state. */
+
 void fn_1_3BC(s16 mode, s16 frameNo)
 {
     fn_1_5D0();
 }
 
+/* Start callback: resets result timing and starts the gameplay music if needed. */
+
 void fn_1_3DC(s16 mode, s16 frameNo)
 {
     fn_1_AF0();
 }
+
+/* Main-play callback advances to finish when player 0 is hit by a moving object. */
 
 void fn_1_3FC(s16 mode, s16 frameNo)
 {
@@ -81,10 +93,16 @@ void fn_1_3FC(s16 mode, s16 frameNo)
     }
 }
 
+/* Finish callback records the result and coin bonuses, slides player 0 on a loss, and fades out
+ * moving objects. */
+
 void fn_1_428(s16 mode, s16 frameNo)
 {
     fn_1_B50();
 }
+
+/* Pre-winner callback advances to the winner stage after all three opponent rows reach their end
+ * marks. */
 
 void fn_1_448(s16 mode, s16 frameNo)
 {
@@ -93,15 +111,21 @@ void fn_1_448(s16 mode, s16 frameNo)
     }
 }
 
+/* Pre-winner callback: advances alternate motions on the decorative models. */
+
 void fn_1_474(s16 mode, s16 frameNo)
 {
     fn_1_1E70();
 }
 
+/* Fade-out callback: advances alternate motions on the decorative models. */
+
 void fn_1_494(s16 mode, s16 frameNo)
 {
     fn_1_1E90();
 }
+
+/* Stops this minigame's audio and models before returning to the caller. */
 
 void fn_1_4B4(s16 mode, s16 frameNo)
 {

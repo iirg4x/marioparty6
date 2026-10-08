@@ -1,3 +1,4 @@
+/* Converts stick input into camera-relative movement and controls the character's motion. */
 #include "game/main.h"
 #include "game/object.h"
 #include "game/hu3d.h"
@@ -10,6 +11,9 @@
 
 void fn_1_7C34(Mtx matrix, int cameraId);
 int fn_1_7EF4(HuVecF *src, HuVecF *dst);
+
+/* Fade-in, main-play, and pre-winner callbacks set stick input before calling this to move, turn,
+ * and animate a character. */
 
 void fn_1_78A4(M630Player *player)
 {
@@ -45,19 +49,21 @@ void fn_1_78A4(M630Player *player)
     magnitude = move.x * move.x + move.z * move.z;
     if (magnitude > 25.0f) {
         if (player->currentMotion != 2) {
-            CharMotionShiftSet(player->charNo, player->motionId[2], 0.0f, 5.0f, 1073741825U);
+            CharMotionShiftSet(player->charNo, player->motionId[2], 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
             player->currentMotion = 2;
         }
     } else if (magnitude > 0.001) {
         if (player->currentMotion != 1) {
-            CharMotionShiftSet(player->charNo, player->motionId[1], 0.0f, 5.0f, 1073741825U);
+            CharMotionShiftSet(player->charNo, player->motionId[1], 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
             player->currentMotion = 1;
         }
     } else if (player->currentMotion != 0) {
-        CharMotionShiftSet(player->charNo, player->motionId[0], 0.0f, 5.0f, 1073741825U);
+        CharMotionShiftSet(player->charNo, player->motionId[0], 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
         player->currentMotion = 0;
     }
 }
+
+/* Character movement calls this to build movement axes relative to the active camera. */
 
 void fn_1_7C34(Mtx matrix, int cameraId)
 {
@@ -121,6 +127,8 @@ void fn_1_7C34(Mtx matrix, int cameraId)
     matrix[2][2] = z.z;
     matrix[2][3] = 0.0f;
 }
+
+/* Movement and camera setup call this to normalize a vector, with a fallback near zero. */
 
 int fn_1_7EF4(HuVecF *src, HuVecF *dst)
 {

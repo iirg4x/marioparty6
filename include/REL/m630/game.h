@@ -1,77 +1,78 @@
+/* Shared player, object, and animation state for Stage Fright. */
 #ifndef M630_GAME_H
 #define M630_GAME_H
 
-/* Field names remain unknown; word accesses and the 12-byte allocation agree. */
+/* Per-minigame frame and result state shared by the play and result callbacks. */
 typedef struct M630State {
-    int unk_0;
-    int unk_4;
-    int unk_8;
+    int frameCount; /* Frames elapsed in the current play or result stage. */
+    int actionTimer; /* Counts down scripted movement, or stores a result-phase step. */
+    int resultState; /* Counts frames after all three opponent rows reach their result positions;
+                      * starts at 0. */
 } M630State;
 
-/* Allocation stride and fields are independently visible in fn_1_1EB0. */
+/* Character model, position, controller, motion, and hit-reaction state. */
 typedef struct M630Player {
-    s16 charNo;
-    s16 modelId;
-    s16 motionId[9];
-    s16 currentMotion;
-    HuVecF pos;
-    float rotationY;
-    int padNo;
-    int unk_2C;
-    int unk_30;
+    s16 charNo; /* Character slot used by the character-motion API. */
+    s16 modelId; /* 3D model handle for this character. */
+    s16 motionId[9]; /* Idle, movement, hit, victory, and action motion handles. */
+    s16 currentMotion; /* Motion handle at setup; movement code then stores 0 idle, 1 moving, or 2
+                        * fast moving. */
+    HuVecF pos; /* Character position in world units. */
+    float rotationY; /* Character heading in degrees. */
+    int padNo; /* Controller assigned to this character. */
+    int hitState; /* 0 active, -1 hit, -2 recovery, -3 human hit motion, 1 blink recovery. */
+    int hitTimerFrames; /* Frames spent in the opponent recovery or blink phase. */
 } M630Player;
 
+/* Computer-controlled player settings and its action-selection state. */
 typedef struct M630Com {
-    int difficulty;
-    int type;
-    int unk_8;
-    int unk_C;
-    int unk_10;
-    int unk_14;
+    int difficulty; /* Computer difficulty index, 0 through 3. */
+    int type; /* 0 for the human; nonzero enables computer action selection. */
+    int unusedWord; /* Initialized to zero and not read by this minigame. */
+    int unusedWord2; /* Initialized to zero and not read by this minigame. */
+    int moveDirection; /* Horizontal drift direction selected by the easy-computer routine. */
+    int moveTimerFrames; /* Remaining frames in that horizontal drift. */
 } M630Com;
 
-/* Consumed layout: three records, 15 indexed models and vectors per record.
- * Natural alignment accounts for +0x1e and +0x172; no filler objects. */
+/* Three opponent rows, each with fifteen moving objects and effect state. */
 typedef struct M630ModelRow {
-    s16 model[15];
-    HuVecF pos[15];
-    float tpLvl[15];
-    int itemState[15];
-    int phaseState;
-    int currentIndex;
-    s16 secondaryModel[15];
-    int playerIndex[15];
+    s16 model[15]; /* Main moving-object model handles. */
+    HuVecF pos[15]; /* Object positions in world units. */
+    float transparency[15]; /* Current translucency level, from 0.0 to 1.0. */
+    int itemState[15]; /* 0 idle, 1 traveling, 2 queued, -1 hit, -2 passed player. */
+    int phaseState; /* Opponent action animation phase, 0 when idle. */
+    int currentIndex; /* Next object slot to launch, in the range 0 through 14. */
+    s16 secondaryModel[15]; /* Companion effect model handles. */
+    int playerIndex[15]; /* Character slot that hit an object. */
 } M630ModelRow;
 
-/* The target uses only the named scalar fields of this 32-byte record.
- * The two remaining intervals have no recovered purpose. */
+/* One decorative model and its two motions and alternate-motion state. */
 typedef struct M630MotionRecord {
-    s16 model;
-    s16 motionA;
-    s16 motionB;
-    unsigned char unknown_06[18];
-    int motionState;
-    unsigned char unknown_1C[4];
+    s16 model; /* Decorative model handle. */
+    s16 motionA; /* Base looping motion. */
+    s16 motionB; /* Brief alternate motion. */
+    unsigned char unusedBytes[18]; /* Unread bytes retained in the record. */
+    int motionState; /* 0 for base motion, 1 while returning from the alternate motion. */
+    unsigned char unusedTail[4]; /* Unread trailing bytes retained in the record. */
 } M630MotionRecord;
 
 typedef struct M630MovingModel {
-    s16 model;
-    unsigned char unknown_02[2];
-    s16 secondaryModel;
-    HuVecF pos;
-    int direction;
+    s16 model; /* Moving platform or row model handle. */
+    unsigned char reservedBytes[2]; /* Alignment bytes not read by the minigame. */
+    s16 secondaryModel; /* Side decoration model handle. */
+    HuVecF pos; /* Moving row position in world units. */
+    int direction; /* 0 moves toward +X; 1 moves toward -X. */
 } M630MovingModel;
 
 typedef struct M630RotatingModel {
-    s16 model;
-    float rotation;
+    s16 model; /* Spinner model handle. */
+    float rotation; /* Rotation around the X axis in degrees. */
 } M630RotatingModel;
 
-/* Consumed view of twelve bytes at BSS+0x744. Only the first float is
- * referenced; the remaining bytes' original declaration is unknown. */
+/* Direction and retained bytes used by player 0's brief slide animation on a loss. */
 typedef struct M630Bss744 {
-    float unk_0;
-    unsigned char unknown_04[8];
+    float losingPlayerSlideStep; /* Horizontal movement per result callback, in world units. */
+    unsigned char unusedBytes[8]; /* Unread bytes retained in the record. */
 } M630Bss744;
 
 extern HUPROCESS *lbl_1_bss_0;
