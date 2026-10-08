@@ -94,7 +94,6 @@ extern s16 lbl_1_bss_990[8];
 extern s16 lbl_1_bss_9A0[4][6];
 extern s16 lbl_1_data_0[8];
 
-
 /* Category display order used by the menu list; -1 ends the sequence. */
 s16 lbl_1_data_0[8] = {0, 1, 2, 3, 6, 7, 4, -1};
 u32 lbl_1_data_10[11] = {
@@ -128,7 +127,15 @@ MGMFREE_SPRITE_INIT lbl_1_data_50[19] = {
 };
 s16 lbl_1_data_2B0[4] = {4, 3, 6, 3};
 /* Selection remapping entries consumed as signed halfwords by fn_1_CAD4. */
-u8 lbl_1_data_2B8[200] = {0, 0, 0, 1, 0, 2, 0, 3, 0, 1, 0, 0, 0, 2, 0, 3, 0, 2, 0, 0, 0, 1, 0, 3, 0, 3, 0, 0, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0, 0, 0, 3, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0, 0, 0, 3, 0, 1, 0, 2, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0, 3, 0, 0, 0, 2, 0, 2, 0, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0, 0, 0, 3, 0, 1, 0, 2, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0, 3, 0, 0, 0, 2, 0, 2, 0, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3};
+u8 lbl_1_data_2B8[200] = { 0, 0, 0, 1, 0, 2, 0, 3, 0, 1, 0, 0, 0, 2, 0, 3, 0, 2, 0, 0, 0, 1, 0,
+                           3, 0, 3, 0, 0, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2,
+                           0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0, 0, 0, 3, 0,
+                           1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 1,
+                           0, 2, 0, 3, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0, 0, 0,
+                           3, 0, 1, 0, 2, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0, 3, 0, 0, 0, 2, 0, 2,
+                           0, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0,
+                           0, 0, 3, 0, 1, 0, 2, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0, 3, 0, 0, 0, 2,
+                           0, 2, 0, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3 };
 s16 lbl_1_data_380[4] = {0, 1, 2, 3};
 /* Last text-message ID used by the window callback's sound de-duplication. */
 u32 lbl_1_data_388 = -1;
@@ -193,8 +200,10 @@ s32 lbl_1_bss_0;
 void fn_1_0(HUWINID winId, u32 mess, s16 index)
 {
     s32 sentinel[1] = {-1};
-    s32 sounds[16] = {MSM_SE_GUIDE_25, MSM_SE_GUIDE_26, MSM_SE_GUIDE_27, MSM_SE_GUIDE_28, MSM_SE_GUIDE_29, MSM_SE_GUIDE_30, MSM_SE_GUIDE_31, -1,
-                      MSM_SE_GUIDE_17, MSM_SE_GUIDE_18, MSM_SE_GUIDE_19, MSM_SE_GUIDE_20, MSM_SE_GUIDE_21, MSM_SE_GUIDE_22, MSM_SE_GUIDE_23, -1};
+    s32 sounds[16] = { MSM_SE_GUIDE_25, MSM_SE_GUIDE_26, MSM_SE_GUIDE_27, MSM_SE_GUIDE_28,
+                       MSM_SE_GUIDE_29, MSM_SE_GUIDE_30, MSM_SE_GUIDE_31, -1,
+                       MSM_SE_GUIDE_17, MSM_SE_GUIDE_18, MSM_SE_GUIDE_19, MSM_SE_GUIDE_20,
+                       MSM_SE_GUIDE_21, MSM_SE_GUIDE_22, MSM_SE_GUIDE_23, -1 };
     s16 i;
 
     index--;
@@ -308,7 +317,8 @@ void fn_1_780(void)
         s16 lightNo;
 
         for (lightNo = 0; lightNo < 2; lightNo++) {
-            lbl_1_bss_9E0[lightNo] = Hu3DGLightCreateV(&position[lightNo], &direction[lightNo], &color);
+            lbl_1_bss_9E0[lightNo] =
+                Hu3DGLightCreateV(&position[lightNo], &direction[lightNo], &color);
             Hu3DGLightInfinitytSet(lbl_1_bss_9E0[lightNo]);
             Hu3DGLightStaticSet(lbl_1_bss_9E0[lightNo], 1);
         }
@@ -416,7 +426,8 @@ void fn_1_DA4(void)
 
     entry = (MGMFREE_SPRITE_INIT *)lbl_1_data_50;
     for (i = 0; i < 11; i++) {
-        lbl_1_bss_554[i] = HuSprAnimRead(HuDataSelHeapReadNum(lbl_1_data_10[i], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_554[i] =
+            HuSprAnimRead(HuDataSelHeapReadNum(lbl_1_data_10[i], HU_MEMNUM_OVL, HEAP_MODEL));
     }
     for (i = 0; i < 10; i++) {
         lbl_1_bss_53E[i] = HuSprGrpCreate(lbl_1_data_3C[i]);
@@ -471,7 +482,8 @@ void fn_1_11C0(void)
     }
 }
 
-/* Advance the title movie's close, start-check, playback-wait, and sprite-ready states each object tick. */
+/* Advance the title movie's close, start-check, playback-wait, and sprite-ready states each object
+ * tick. */
 void fn_1_1218(OMOBJ *obj)
 {
     switch (lbl_1_data_3AE) {
@@ -533,7 +545,8 @@ void fn_1_1400(s16 mode)
         }
         category = lbl_1_bss_9D0[0];
         index = (lbl_1_bss_9D0[2] + 2 * lbl_1_bss_9D0[1]) + 2 * lbl_1_bss_9D0[3];
-        lbl_1_bss_40 = HuSprAnimRead(HuDataSelHeapReadNum(MgDataTbl[lbl_1_bss_580[category][index][0]].instPic[0][0], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_40 = HuSprAnimRead(HuDataSelHeapReadNum(
+            MgDataTbl[lbl_1_bss_580[category][index][0]].instPic[0][0], HU_MEMNUM_OVL, HEAP_MODEL));
         HuSprAnimLock(lbl_1_bss_40);
         lbl_1_bss_4AA[0] = HuSprCreate(lbl_1_bss_40, 100, 0);
         HuSprGrpMemberSet(lbl_1_bss_4AE, 0, lbl_1_bss_4AA[0]);
@@ -543,7 +556,8 @@ void fn_1_1400(s16 mode)
             Hu3DAnimAnimSet(lbl_1_bss_4B0[5], lbl_1_bss_554[7]);
             return;
         }
-        if (lbl_1_bss_580[category][index][0] == -1 || lbl_1_bss_580[category][index][1] == 0 || mode == 0) {
+        if (lbl_1_bss_580[category][index][0] == -1 || lbl_1_bss_580[category][index][1] == 0 ||
+            mode == 0) {
             Hu3DAnimAnimSet(lbl_1_bss_4B0[5], lbl_1_bss_554[6]);
             return;
         }
@@ -672,7 +686,8 @@ void fn_1_1C74(OMOBJ *obj)
                 }
             }
         } else {
-            value = fn_1_E35C(table[i][3], table[i][4], record->interpolationTime, record->interpolationDuration);
+            value = fn_1_E35C(table[i][3], table[i][4], record->interpolationTime,
+                              record->interpolationDuration);
             if ((record->interpolationTime += 1.0f) > record->interpolationDuration) {
                 record->state = 0;
             }
@@ -719,14 +734,14 @@ void fn_1_1C74(OMOBJ *obj)
         record->interpolationDuration = 5.0f;
         record->transitionActive = 1.0f;
     }
-    value = fn_1_E3E8(9.8f * record->value.transitionStart, 9.8f * record->transitionTarget, record->interpolationTime, record->interpolationDuration);
+    value = fn_1_E3E8(9.8f * record->value.transitionStart, 9.8f * record->transitionTarget,
+                      record->interpolationTime, record->interpolationDuration);
     if ((record->interpolationTime += 1.0f) > record->interpolationDuration) {
         record->transitionActive = 0.0f;
         record->transitionTarget = lbl_1_bss_9D0[0];
     }
     Hu3DMotionTimeSet(obj->mdlId[11], value);
 }
-
 
 /* Create the menu model set and attach the configured motions and texture animations. */
 void fn_1_2590(OMOBJ *obj)
@@ -790,7 +805,8 @@ void fn_1_2590(OMOBJ *obj)
         }
         Hu3DModelLayerSet(obj->mdlId[i], table[i][2]);
         Hu3DModelCameraSet(obj->mdlId[i], table[i][3]);
-        Hu3DMotionShiftSet(obj->mdlId[i], obj->mtnId[i], 0.0f, 0.0f, table[i][1] * HU3D_MOTATTR_LOOP);
+        Hu3DMotionShiftSet(obj->mdlId[i], obj->mtnId[i], 0.0f, 0.0f,
+                           table[i][1] * HU3D_MOTATTR_LOOP);
     }
     for (i = 0; i < 6; i++) {
         lbl_1_bss_4B0[i] = Hu3DAnimCreate(lbl_1_bss_4DC[i], obj->mdlId[10], texture[i]);
@@ -804,7 +820,6 @@ void fn_1_2590(OMOBJ *obj)
     fn_1_1400(2);
     obj->objFunc = fn_1_1C74;
 }
-
 
 extern s16 lbl_1_data_380[4];
 /* The target SDK declares this conversion helper elsewhere; host builds need its prototype here. */
@@ -840,7 +855,8 @@ void fn_1_2BFC(OMOBJ *obj)
     }
     for (i = 0, modelNo = 4; i < 4; i++, modelNo++) {
         if (i == 0) {
-            obj->mdlId[modelNo] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 10), HU_MEMNUM_OVL, HEAP_MODEL));
+            obj->mdlId[modelNo] = Hu3DModelCreate(
+                HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 10), HU_MEMNUM_OVL, HEAP_MODEL));
         } else {
             obj->mdlId[modelNo] = Hu3DModelLink(obj->mdlId[4]);
         }
@@ -877,20 +893,22 @@ void fn_1_3004(void)
     }
 }
 
-
 /* Create the model and joint motion that display the minigame selection scene. */
 void fn_1_3124(OMOBJ *obj)
 {
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
-    obj->mdlId[0] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 27), HU_MEMNUM_OVL, HEAP_MODEL));
-    obj->mtnId[0] = Hu3DJointMotion(obj->mdlId[0], HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 28), HU_MEMNUM_OVL, HEAP_MODEL));
+    obj->mdlId[0] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 27), HU_MEMNUM_OVL, HEAP_MODEL));
+    obj->mtnId[0] = Hu3DJointMotion(
+        obj->mdlId[0], HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 28), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelPosSet(obj->mdlId[0], -310.0f, 220.0f, -100.0f);
     Hu3DModelRotSet(obj->mdlId[0], 0.0f, -90.0f, 0.0f);
     Hu3DModelScaleSet(obj->mdlId[0], 1.25f, 1.25f, 1.25f);
     Hu3DModelLayerSet(obj->mdlId[0], 3);
     Hu3DModelCameraSet(obj->mdlId[0], HU3D_CAM6);
     Hu3DMotionShiftSet(obj->mdlId[0], obj->mtnId[0], 0.0f, 0.0f, HU3D_MOTATTR_LOOP);
-    obj->mdlId[1] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 11), HU_MEMNUM_OVL, HEAP_MODEL));
+    obj->mdlId[1] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 11), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(obj->mdlId[1], 3);
     Hu3DModelCameraSet(obj->mdlId[1], HU3D_CAM6);
     obj->objFunc = NULL;
@@ -909,7 +927,8 @@ void fn_1_32D0(OMOBJ *obj)
 
 extern u8 lbl_1_bss_C[16];
 
-/* As the registered selection-display callback, position its models and update the selected-model scissor. */
+/* As the registered selection-display callback, position its models and update the selected-model
+ * scissor. */
 void fn_1_3330(OMOBJ *obj)
 {
     Vec position;
@@ -955,7 +974,6 @@ void fn_1_3330(OMOBJ *obj)
     Hu3DCameraScissorSet(32, (u32)x, (u32)y, (u32)width, (u32)height);
 }
 
-
 void fn_1_3330(OMOBJ *obj);
 
 /* Create the three paired model groups used by the menu's animated selection display. */
@@ -970,8 +988,10 @@ void fn_1_361C(OMOBJ *obj)
 
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
     for (i = 0; i < 3; i++) {
-        obj->mdlId[i] = Hu3DModelCreate(HuDataSelHeapReadNum(filePairs[i][0], HU_MEMNUM_OVL, HEAP_MODEL));
-        obj->mtnId[i] = Hu3DJointMotion(obj->mdlId[i], HuDataSelHeapReadNum(filePairs[i][1], HU_MEMNUM_OVL, HEAP_MODEL));
+        obj->mdlId[i] =
+            Hu3DModelCreate(HuDataSelHeapReadNum(filePairs[i][0], HU_MEMNUM_OVL, HEAP_MODEL));
+        obj->mtnId[i] = Hu3DJointMotion(
+            obj->mdlId[i], HuDataSelHeapReadNum(filePairs[i][1], HU_MEMNUM_OVL, HEAP_MODEL));
         Hu3DModelPosSet(obj->mdlId[i], 30.0f, 170.0f, 86.0f);
         Hu3DModelRotSet(obj->mdlId[i], 0.0f, 60.0f, 0.0f);
         Hu3DModelScaleSet(obj->mdlId[i], 0.8f, 0.8f, 0.8f);
@@ -984,12 +1004,12 @@ void fn_1_361C(OMOBJ *obj)
         Hu3DModelAttrSet(obj->mdlId[i], HU3D_ATTR_DISPOFF);
     }
     Hu3DModelAttrReset(obj->mdlId[rand8() % 3], HU3D_ATTR_DISPOFF);
-    obj->mdlId[3] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 12), HU_MEMNUM_OVL, HEAP_MODEL));
+    obj->mdlId[3] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_mgmfree, 12), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelLayerSet(obj->mdlId[3], 4);
     Hu3DModelCameraSet(obj->mdlId[3], HU3D_CAM5);
     obj->objFunc = fn_1_3330;
 }
-
 
 extern OMOBJ *lbl_1_bss_24;
 extern s16 lbl_1_bss_38;
@@ -1136,7 +1156,6 @@ void fn_1_41D8(void)
     }
 }
 
-
 /* Advance the cursor and option-marker animations from the registered object callback. */
 void fn_1_4238(OMOBJ *obj)
 {
@@ -1178,7 +1197,8 @@ extern char lbl_1_bss_64[10];
 extern char lbl_1_bss_6E[10];
 extern char lbl_1_data_426[];
 
-/* Fill the eight minigame windows with names and put unlocked/total counts in the side info window. */
+/* Fill the eight minigame windows with names and put unlocked/total counts in the side info
+ * window. */
 void fn_1_451C(void)
 {
     s16 i;
@@ -1372,7 +1392,8 @@ extern OMOBJ *lbl_1_bss_1C;
 extern HUWINID lbl_1_bss_7A[3];
 extern HUWINID lbl_1_bss_80[2];
 
-/* Create eight list windows, the side count/info window, two detail windows, and three choice windows. */
+/* Create eight list windows, the side count/info window, two detail windows, and three choice
+ * windows. */
 void fn_1_5894(OMOBJ *obj)
 {
     s16 i;
@@ -1608,8 +1629,11 @@ void fn_1_6CB0(OMOBJ *obj)
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
     for (i = 0; i < 12; i++) {
         if (i <= 2) {
-            obj->mdlId[i] = Hu3DModelCreate(HuDataSelHeapReadNum(filePairs[i % 3][0], HU_MEMNUM_OVL, HEAP_MODEL));
-            obj->mtnId[i] = Hu3DJointMotion(obj->mdlId[i], HuDataSelHeapReadNum(filePairs[i % 3][1], HU_MEMNUM_OVL, HEAP_MODEL));
+            obj->mdlId[i] = Hu3DModelCreate(
+                HuDataSelHeapReadNum(filePairs[i % 3][0], HU_MEMNUM_OVL, HEAP_MODEL));
+            obj->mtnId[i] =
+                Hu3DJointMotion(obj->mdlId[i], HuDataSelHeapReadNum(filePairs[i % 3][1],
+                                                                    HU_MEMNUM_OVL, HEAP_MODEL));
         } else {
             obj->mdlId[i] = Hu3DModelLink(obj->mdlId[i % 3]);
         }
@@ -1639,7 +1663,6 @@ void fn_1_6F48(void)
     fn_1_758();
 }
 
-
 /* Initialized strings and halfwords following the menu data. */
 char lbl_1_data_426[] = "%2d";
 char lbl_1_data_42A[] = "free_play-null_npc1";
@@ -1651,8 +1674,6 @@ char lbl_1_data_49F[] = "\n-----===== MARIO PARTY 6 :: MINIGAME FREE PLAY =====-
 s16 lbl_1_data_4DC = -1;
 s16 lbl_1_data_4DE = -1;
 
-
-
 #include <game/pad.h>
 #include <game/wipe.h>
 
@@ -1660,8 +1681,6 @@ extern u32 lbl_1_bss_4;
 extern s32 lbl_1_bss_9D8;
 extern f32 lbl_1_bss_4F8[4];
 extern f32 lbl_1_bss_508[4];
-
-
 
 extern BOOL MgPauseExitF;
 extern s32 omovlevtno;
@@ -1672,8 +1691,6 @@ s32 fn_1_E0C0(s16 mode);
 typedef void (*MGMFREE_VOID_FUNC)(void);
 extern const MGMFREE_VOID_FUNC _ctors[];
 extern const MGMFREE_VOID_FUNC _dtors[];
-
-
 
 /* Unlock the selected minigame and update the system's current minigame number. */
 static inline void inline_0(int id)
@@ -1776,7 +1793,6 @@ void fn_1_717C(void)
     }
 }
 
-
 /* Initialize MGMfree's object manager, scene, windows, sprites, and input callbacks. */
 void fn_1_7AE8(void)
 {
@@ -1797,8 +1813,6 @@ void fn_1_7AE8(void)
     lbl_1_bss_34 = omAddObjEx(lbl_1_bss_8, 4096, 16, 16, -1, fn_1_6CB0);
     HuPrcChildCreate(fn_1_717C, 12288, 12288, 0, lbl_1_bss_8);
 }
-
-
 
 /* Enter MGMfree from the minigame event and save the event state for the return path. */
 void fn_1_8548(void)
@@ -1832,8 +1846,6 @@ void _epilog(void)
     }
 }
 
-
-
 /* Show the option markers available for the current category and remaining item count. */
 void fn_1_8658(void)
 {
@@ -1860,15 +1872,11 @@ void fn_1_8658(void)
         lbl_1_bss_9D0[2] * 264 + 153, (lbl_1_bss_9D0[3] << 5) + 256);
 }
 
-
-
 void fn_1_8ADC(void)
 {
     fn_1_3EA0(2);
     fn_1_3EA0(3);
 }
-
-
 
 /* Handle category, page, and item navigation, returning the resulting change code. */
 s16 fn_1_8B78(void)
@@ -1984,7 +1992,6 @@ s16 fn_1_8B78(void)
     return change;
 }
 
-
 /* Prepare the mode-specific scene and selection state before the free-play loop starts. */
 s32 fn_1_A3FC(void)
 {
@@ -2020,7 +2027,6 @@ s32 fn_1_A3FC(void)
     return 1;
 }
 
-
 /* Display the introductory free-play prompt when entering the main menu mode. */
 s32 fn_1_AB00(void)
 {
@@ -2035,7 +2041,6 @@ s32 fn_1_AB00(void)
     fn_1_1400(1);
     return 1;
 }
-
 
 /* Display the confirmation prompt and return the selected action to the caller. */
 s16 fn_1_B160(void)
@@ -2055,7 +2060,6 @@ s16 fn_1_B160(void)
     }
     return result;
 }
-
 
 /* Wait for input on the two-choice prompt and return its accepted result. */
 s16 fn_1_B278(void)
@@ -2106,7 +2110,6 @@ s16 fn_1_B278(void)
     return result;
 }
 
-
 /* Wait for input on the three-choice prompt and return its accepted result. */
 s16 fn_1_B4E8(void)
 {
@@ -2153,7 +2156,6 @@ s16 fn_1_B4E8(void)
     }
     return result;
 }
-
 
 /* Run the main menu selection loop until the player confirms or cancels a choice. */
 s16 fn_1_B75C(void)
@@ -2229,7 +2231,6 @@ s16 fn_1_B75C(void)
     return result;
 }
 
-
 /* Set the selected model's rotation or restore its normal pose for the active menu state. */
 void fn_1_C870(s16 mode)
 {
@@ -2261,7 +2262,6 @@ void fn_1_C870(s16 mode)
         }
     }
 }
-
 
 /* Apply the requested item order and animate the four category models into that order. */
 void fn_1_CAD4(s16 *order, s16 mode)
@@ -2305,7 +2305,6 @@ void fn_1_CAD4(s16 *order, s16 mode)
     }
     fn_1_3F20(1);
 }
-
 
 extern s16 lbl_1_data_2B0[4];
 extern u8 lbl_1_data_2B8[200];

@@ -81,7 +81,8 @@ f32 fn_1_E264(f32 start, f32 end, f32 time, f32 duration)
     if (time >= duration) {
         return end;
     }
-    return start + (end - start) * (1.0 - cos(3.141592653589793 * ((90.0f / duration) * time) / 180.0));
+    return start +
+           (end - start) * (1.0 - cos(3.141592653589793 * ((90.0f / duration) * time) / 180.0));
 }
 
 /* Interpolate linearly from start to end over the requested frame duration. */
