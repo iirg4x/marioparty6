@@ -1,4 +1,5 @@
-/* Motion Check preview for character models and joint motions, with camera and lighting controls and shadow setup. */
+/* Motion Check preview for character models and joint motions, with camera and lighting controls
+ * and shadow setup. */
 #include "game/object.h"
 #include "game/hu3d.h"
 #include "game/pad.h"
@@ -39,7 +40,7 @@ void _epilog(void) {
 
 enum {
     /* Use the signed substick's high bits for coarser center movement. */
-    MOTCHK_SUBSTICK_AXIS_MASK = 248,
+    MOTCHK_SUBSTICK_AXIS_MASK = 0xF8,
 };
 
 /* Selection order in this table is the motion number shown by the preview. */
@@ -262,7 +263,7 @@ static char *MotNameTbl[MOTION_MAX] = {
     "c000m1_eye"
 };
 
-/* Object-manager handles for the camera update and viewport callback. */
+/* Object-manager handles for the camera update and camera-view output callbacks. */
 static OMOBJ *CameraObj;
 static OMOBJ *OutViewObj;
 u32 lbl_1_bss_50[8];
@@ -280,7 +281,7 @@ static int CharNo;
 static int CharMotNo;
 static int CharMdlNo;
 
-void CameraMain(OMOBJ *obj);
+void CameraMain(OMOBJ *cameraObj);
 void MotChkMain(void);
 
 /* Called by _prolog to create the preview camera, process and scene lighting. */
@@ -307,36 +308,39 @@ void ObjectSetup(void)
     Hu3DGLightInfinitytSet(MotChkLightId);
 }
 
-static void CreateChar(s16 charNo, s16 motNo, s16 mdlNo);
-static void LoadCharMotion(s16 charNo, s16 motNo, s16 mdlNo);
-static void KillChar(s16 charNo);
+static void CreateChar(s16 characterId, s16 motionIndex, s16 modelVariant);
+static void LoadCharMotion(s16 characterId, s16 motionIndex, s16 modelVariant);
+static void KillChar(s16 characterId);
 
-/* Child process created by ObjectSetup; after the wipe, handle preview controls and HUD each frame. */
+/* Child process created by ObjectSetup; after the opening wipe, handle preview controls and HUD
+ * each frame. */
 void MotChkMain(void)
 {
-    s16 i;
-    HuVecF shadowPos, shadowTarget, shadowUp;
-    BOOL upF;
+    s16 modelId;
+    HuVecF shadowCameraPosition, shadowTarget, shadowUp;
+    BOOL upButtonSeen;
 
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 20);
     WipeWait();
-    i = Hu3DModelCreateData(SAF_HSF_cube);
-    Hu3DModelPosSet(i, 0, 200, 0);
-    Hu3DModelShadowMapSet(i);
+    /* Create a cube, mark its geometry for shadow mapping, create the shadow map, and position its
+     * camera above the scene. */
+    modelId = Hu3DModelCreateData(SAF_HSF_cube);
+    Hu3DModelPosSet(modelId, 0, 200, 0);
+    Hu3DModelShadowMapSet(modelId);
     HuDataDirClose(DATA_saf);
     Hu3DShadowCreate(10, 20, 2000);
-    shadowPos.x = 200;
-    shadowPos.y = 1000;
-    shadowPos.z = 200;
+    shadowCameraPosition.x = 200;
+    shadowCameraPosition.y = 1000;
+    shadowCameraPosition.z = 200;
     shadowUp.y = 1;
     shadowUp.x = shadowUp.z = 0;
     shadowTarget.x = shadowTarget.y = shadowTarget.z = 0;
-    Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
+    Hu3DShadowPosSet(&shadowCameraPosition, &shadowUp, &shadowTarget);
     Hu3DShadowTPLvlSet(0.6f);
     CharMotNo = 0;
     CharNo = GwPlayerConf[0].charNo;
     CharMdlNo = 1;
-    upF = FALSE;
+    upButtonSeen = FALSE;
     CreateChar(CharNo, CharMotNo, CharMdlNo);
     while(1) {
         if(HuPadBtnRep[0] & PAD_BUTTON_A) {
@@ -356,8 +360,8 @@ void MotChkMain(void)
             if(CharMdlNo >= 4) {
                 CharMdlNo = 0;
             }
-            for(i=0; i<4; i++) {
-                Hu3DModelDispOff(CharMdlId[i]);
+            for(modelId=0; modelId<4; modelId++) {
+                Hu3DModelDispOff(CharMdlId[modelId]);
             }
             Hu3DModelDispOn(CharMdlId[CharMdlNo]);
         } else if(HuPadBtnRep[0] & PAD_BUTTON_X) {
@@ -375,6 +379,8 @@ void MotChkMain(void)
             }
             CreateChar(CharNo, CharMotNo, CharMdlNo);
         }
+        /* While LEFT is held, use full ambient and key light and disable shine; otherwise restore
+         * the dimmer shiny lighting. */
         if(HuPadBtn[0] & PAD_BUTTON_LEFT) {
             Hu3DAmbColorSet(1, 1, 1);
             Hu3DShineSet(FALSE);
@@ -385,7 +391,9 @@ void MotChkMain(void)
             Hu3DGLightColorSet(MotChkLightId, 128, 128, 128, 255);
         }
         if(HuPadBtnDown[0] == PAD_BUTTON_UP) {
-            upF = TRUE;
+            /* Set this otherwise-unused local flag only when UP is the sole newly pressed
+             * button. */
+            upButtonSeen = TRUE;
         }
         fontcolor = FONT_COLOR_WHITE;
         print8(16, 24, 2.0f, "%03d:%s", CharMotNo, MotNameTbl[CharMotNo]);
@@ -418,97 +426,119 @@ unsigned int CharDirTbl[GW_CHARA_KINOPIKO+1] = {
 #define CHAR_FILE(filename) MARIO_HSF_##filename
 #define CHAR_DATANUM(charNo, file) (CharDirTbl[charNo]|FILENUM(file))
 
-static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF);
+static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL lagFlag);
 
-/* Called at preview startup or character change to load four models and their selected and idle motions. */
-static void CreateChar(s16 charNo, s16 motNo, s16 mdlNo)
+/* Called at preview startup or character change to load four models and their selected and idle
+ * motions. */
+static void CreateChar(s16 characterId, s16 motionIndex, s16 modelVariant)
 {
-    s16 i;
-    CharMdlId[0] = Hu3DModelCreateData(CHAR_DATANUM(charNo, MARIO_HSF_c000m0));
-    CharMdlId[1] = Hu3DModelCreateData(CHAR_DATANUM(charNo, MARIO_HSF_c000m1));
-    CharMdlId[2] = Hu3DModelCreateData(CHAR_DATANUM(charNo, MARIO_HSF_c000m2));
-    CharMdlId[3] = Hu3DModelCreateData(CHAR_DATANUM(charNo, MARIO_HSF_c000m3));
-    CharMotId[0] = Hu3DJointMotionData(CharMdlId[0], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300+motNo));
-    CharMotId[1] = Hu3DJointMotionData(CharMdlId[1], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300+motNo));
-    CharMotId[2] = Hu3DJointMotionData(CharMdlId[2], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300+motNo));
-    CharMotId[3] = Hu3DJointMotionData(CharMdlId[3], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300+motNo));
-    CharMotIdleId[0] = Hu3DJointMotionData(CharMdlId[0], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300));
-    CharMotIdleId[1] = Hu3DJointMotionData(CharMdlId[1], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300));
-    CharMotIdleId[2] = Hu3DJointMotionData(CharMdlId[2], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300));
-    CharMotIdleId[3] = Hu3DJointMotionData(CharMdlId[3], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300));
+    s16 modelIndex;
+    CharMdlId[0] = Hu3DModelCreateData(CHAR_DATANUM(characterId, MARIO_HSF_c000m0));
+    CharMdlId[1] = Hu3DModelCreateData(CHAR_DATANUM(characterId, MARIO_HSF_c000m1));
+    CharMdlId[2] = Hu3DModelCreateData(CHAR_DATANUM(characterId, MARIO_HSF_c000m2));
+    CharMdlId[3] = Hu3DModelCreateData(CHAR_DATANUM(characterId, MARIO_HSF_c000m3));
+    CharMotId[0] = Hu3DJointMotionData(
+        CharMdlId[0], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300 + motionIndex));
+    CharMotId[1] = Hu3DJointMotionData(
+        CharMdlId[1], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300 + motionIndex));
+    CharMotId[2] = Hu3DJointMotionData(
+        CharMdlId[2], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300 + motionIndex));
+    CharMotId[3] = Hu3DJointMotionData(
+        CharMdlId[3], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300 + motionIndex));
+    CharMotIdleId[0] =
+        Hu3DJointMotionData(CharMdlId[0], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300));
+    CharMotIdleId[1] =
+        Hu3DJointMotionData(CharMdlId[1], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300));
+    CharMotIdleId[2] =
+        Hu3DJointMotionData(CharMdlId[2], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300));
+    CharMotIdleId[3] =
+        Hu3DJointMotionData(CharMdlId[3], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300));
     Hu3DMotionSet(CharMdlId[0], CharMotId[0]);
     Hu3DMotionSet(CharMdlId[1], CharMotId[1]);
     Hu3DMotionSet(CharMdlId[2], CharMotId[2]);
     Hu3DMotionSet(CharMdlId[3], CharMotId[3]);
-    for(i=0; i<4; i++) {
-        Hu3DModelDispOff(CharMdlId[i]);
-        Hu3DModelMotLoopOn(CharMdlId[i]);
-        Hu3DMotionAttrSet(CharMotId[i], HU3D_ATTR_MOT_RESET_LOCK);
-        Hu3DModelShadowSet(CharMdlId[i]);
-        Hu3DMotionTimingHookSet(CharMdlId[i], CharTimingHook);
+    /* Keep all four variants hidden and looping, lock each selected motion's reset, enable shadows,
+     * and install the timing callback before showing the requested variant. */
+    for(modelIndex=0; modelIndex<4; modelIndex++) {
+        Hu3DModelDispOff(CharMdlId[modelIndex]);
+        Hu3DModelMotLoopOn(CharMdlId[modelIndex]);
+        Hu3DMotionAttrSet(CharMotId[modelIndex], HU3D_ATTR_MOT_RESET_LOCK);
+        Hu3DModelShadowSet(CharMdlId[modelIndex]);
+        Hu3DMotionTimingHookSet(CharMdlId[modelIndex], CharTimingHook);
     }
-    Hu3DModelDispOn(CharMdlId[mdlNo]);
+    Hu3DModelDispOn(CharMdlId[modelVariant]);
     TimingHookMode = 0;
 
 }
 
-/* Animation callback installed by CreateChar; store its result for MotChkMain's HUD marker. */
-static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF)
+/* Animation callback installed by CreateChar; record * for a lagged update and - for one without
+ * lag. MotChkMain draws and clears this marker. */
+static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL lagFlag)
 {
-    TimingHookMode = (lagF) ? 1 : 2;
+    TimingHookMode = (lagFlag) ? 1 : 2;
 }
 
-/* Called by MotChkMain's A/B controls to change motion on all models and show the chosen variant. */
-static void LoadCharMotion(s16 charNo, s16 motNo, s16 mdlNo)
+/* Called by MotChkMain's A/B controls to change motion on all models and show the chosen
+ * variant. */
+static void LoadCharMotion(s16 characterId, s16 motionIndex, s16 modelVariant)
 {
-    s16 i;
-    for(i=0; i<4; i++) {
-        Hu3DMotionSet(CharMdlId[i], CharMotIdleId[i]);
+    s16 modelIndex;
+    for(modelIndex=0; modelIndex<4; modelIndex++) {
+        Hu3DMotionSet(CharMdlId[modelIndex], CharMotIdleId[modelIndex]);
     }
-    for(i=0; i<4; i++) {
-        Hu3DMotionKill(CharMotId[i]);
+    /* Switch every model to idle before releasing its selected motion. */
+    for(modelIndex=0; modelIndex<4; modelIndex++) {
+        Hu3DMotionKill(CharMotId[modelIndex]);
     }
-    CharMotId[0] = Hu3DJointMotionData(CharMdlId[0], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300+motNo));
-    CharMotId[1] = Hu3DJointMotionData(CharMdlId[1], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300+motNo));
-    CharMotId[2] = Hu3DJointMotionData(CharMdlId[2], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300+motNo));
-    CharMotId[3] = Hu3DJointMotionData(CharMdlId[3], CHAR_DATANUM(charNo, MARIO_HSF_c000m1_300+motNo));
+    CharMotId[0] = Hu3DJointMotionData(
+        CharMdlId[0], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300 + motionIndex));
+    CharMotId[1] = Hu3DJointMotionData(
+        CharMdlId[1], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300 + motionIndex));
+    CharMotId[2] = Hu3DJointMotionData(
+        CharMdlId[2], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300 + motionIndex));
+    CharMotId[3] = Hu3DJointMotionData(
+        CharMdlId[3], CHAR_DATANUM(characterId, MARIO_HSF_c000m1_300 + motionIndex));
     Hu3DMotionSet(CharMdlId[0], CharMotId[0]);
     Hu3DMotionSet(CharMdlId[1], CharMotId[1]);
     Hu3DMotionSet(CharMdlId[2], CharMotId[2]);
     Hu3DMotionSet(CharMdlId[3], CharMotId[3]);
-    for(i=0; i<4; i++) {
-        Hu3DModelDispOff(CharMdlId[i]);
-        Hu3DModelMotLoopOn(CharMdlId[i]);
-        Hu3DMotionAttrSet(CharMotId[i], HU3D_ATTR_MOT_RESET_LOCK);
+    for(modelIndex=0; modelIndex<4; modelIndex++) {
+        Hu3DModelDispOff(CharMdlId[modelIndex]);
+        Hu3DModelMotLoopOn(CharMdlId[modelIndex]);
+        Hu3DMotionAttrSet(CharMotId[modelIndex], HU3D_ATTR_MOT_RESET_LOCK);
     }
-    Hu3DModelDispOn(CharMdlId[mdlNo]);
+    Hu3DModelDispOn(CharMdlId[modelVariant]);
 }
 
-/* Called before MotChkMain changes character; close its data directory and release models and motions. */
-static void KillChar(s16 charNo)
+/* Called before MotChkMain changes character; close its data directory and release models and
+ * motions. */
+static void KillChar(s16 characterId)
 {
-    s16 i;
-    HuDataDirClose(CharDirTbl[charNo]);
-    for(i=0; i<4; i++) {
-        Hu3DModelKill(CharMdlId[i]);
+    s16 modelIndex;
+    HuDataDirClose(CharDirTbl[characterId]);
+    for(modelIndex=0; modelIndex<4; modelIndex++) {
+        Hu3DModelKill(CharMdlId[modelIndex]);
     }
-    for(i=0; i<4; i++) {
-        Hu3DMotionKill(CharMotId[i]);
-        Hu3DMotionKill(CharMotIdleId[i]);
+    for(modelIndex=0; modelIndex<4; modelIndex++) {
+        Hu3DMotionKill(CharMotId[modelIndex]);
+        Hu3DMotionKill(CharMotIdleId[modelIndex]);
     }
 }
 
-/* Object callback registered by ObjectSetup; apply controller orbit, zoom and pan each update. */
-void CameraMain(OMOBJ *obj)
+/* Camera control callback registered by ObjectSetup; update orbit, zoom and pan inputs each frame.
+ * omOutView applies the resulting camera view. */
+void CameraMain(OMOBJ *cameraObj)
 {
-    HuVecF pos;
-    HuVecF offset;
-    HuVecF dir;
-    HuVecF yOfs;
-    float rotZ;
-    s8 stickPos;
+    HuVecF cameraPosition;
+    HuVecF viewOffset;
+    HuVecF cameraUp;
+    HuVecF rolledUp;
+    float cameraRoll;
+    s8 substickAxis;
 
     if(HuPadBtnDown[0] & PAD_BUTTON_START) {
+        /* The array address is always non-null, so this always calls HuPrcKill with that address
+         * before returning to the previous overlay. */
         if(lbl_1_bss_50) {
             HuPrcKill((HUPROCESS *)lbl_1_bss_50);
         }
@@ -520,42 +550,52 @@ void CameraMain(OMOBJ *obj)
     CRot.y += HuPadStkX[0]/20;
     CZoom += HuPadTrigL[0]/2;
     CZoom -= HuPadTrigR[0]/2;
-    pos.x = Center.x + (CZoom * (HuSin(CRot.y) * HuCos(CRot.x)));
-    pos.y = (Center.y + (CZoom * -HuSin(CRot.x)));
-    pos.z = (Center.z + (CZoom * (HuCos(CRot.y) * HuCos(CRot.x))));
-    offset.x = Center.x - pos.x;
-    offset.y = Center.y - pos.y;
-    offset.z = Center.z - pos.z;
-    dir.x = (HuSin(CRot.y) * HuSin(CRot.x));
-    dir.y = HuCos(CRot.x);
-    dir.z = (HuCos(CRot.y) * HuSin(CRot.x));
-    rotZ = CRot.z;
-    /* Apply camera roll to the up direction used for vertical panning. */
-    yOfs.x = dir.x * (offset.x * offset.x + (1.0f - offset.x * offset.x) * HuCos(rotZ))
-        + dir.y * (offset.x * offset.y * (1.0f - HuCos(rotZ)) - offset.z * HuSin(rotZ))
-        + dir.z * (offset.x * offset.z * (1.0f - HuCos(rotZ)) + offset.y * HuSin(rotZ));
+    cameraPosition.x = Center.x + (CZoom * (HuSin(CRot.y) * HuCos(CRot.x)));
+    cameraPosition.y = (Center.y + (CZoom * -HuSin(CRot.x)));
+    cameraPosition.z = (Center.z + (CZoom * (HuCos(CRot.y) * HuCos(CRot.x))));
+    viewOffset.x = Center.x - cameraPosition.x;
+    viewOffset.y = Center.y - cameraPosition.y;
+    viewOffset.z = Center.z - cameraPosition.z;
+    cameraUp.x = (HuSin(CRot.y) * HuSin(CRot.x));
+    cameraUp.y = HuCos(CRot.x);
+    cameraUp.z = (HuCos(CRot.y) * HuSin(CRot.x));
+    cameraRoll = CRot.z;
+    /* Compute the up direction for vertical panning; CRot.z stays zero in this preview, so it
+     * remains unrolled. */
+    rolledUp.x = cameraUp.x * (viewOffset.x * viewOffset.x +
+                               (1.0f - viewOffset.x * viewOffset.x) * HuCos(cameraRoll)) +
+                 cameraUp.y * (viewOffset.x * viewOffset.y * (1.0f - HuCos(cameraRoll)) -
+                               viewOffset.z * HuSin(cameraRoll)) +
+                 cameraUp.z * (viewOffset.x * viewOffset.z * (1.0f - HuCos(cameraRoll)) +
+                               viewOffset.y * HuSin(cameraRoll));
 
-    yOfs.y = dir.y * (offset.y * offset.y + (1.0f - offset.y * offset.y) * HuCos(rotZ))
-        + dir.x * (offset.x * offset.y * (1.0f - HuCos(rotZ)) + offset.z * HuSin(rotZ))
-        + dir.z * (offset.y * offset.z * (1.0f - HuCos(rotZ)) - offset.x * HuSin(rotZ));
+    rolledUp.y = cameraUp.y * (viewOffset.y * viewOffset.y +
+                               (1.0f - viewOffset.y * viewOffset.y) * HuCos(cameraRoll)) +
+                 cameraUp.x * (viewOffset.x * viewOffset.y * (1.0f - HuCos(cameraRoll)) +
+                               viewOffset.z * HuSin(cameraRoll)) +
+                 cameraUp.z * (viewOffset.y * viewOffset.z * (1.0f - HuCos(cameraRoll)) -
+                               viewOffset.x * HuSin(cameraRoll));
 
-    yOfs.z = dir.z * (offset.z * offset.z + (1.0f - offset.z * offset.z) * HuCos(rotZ))
-        + (dir.x * (offset.x * offset.z * (1.0 - HuCos(rotZ)) - offset.y * HuSin(rotZ))
-        + dir.y * (offset.y * offset.z * (1.0 - HuCos(rotZ)) + offset.x * HuSin(rotZ)));
+    rolledUp.z = cameraUp.z * (viewOffset.z * viewOffset.z +
+                               (1.0f - viewOffset.z * viewOffset.z) * HuCos(cameraRoll)) +
+                 (cameraUp.x * (viewOffset.x * viewOffset.z * (1.0 - HuCos(cameraRoll)) -
+                                viewOffset.y * HuSin(cameraRoll)) +
+                  cameraUp.y * (viewOffset.y * viewOffset.z * (1.0 - HuCos(cameraRoll)) +
+                                viewOffset.x * HuSin(cameraRoll)));
     /* This perpendicular direction is the horizontal substick pan axis. */
-    VECCrossProduct(&dir, &offset, &offset);
-    VECNormalize(&offset, &offset);
-    stickPos = (HuPadSubStkX[0] & MOTCHK_SUBSTICK_AXIS_MASK);
-    if (stickPos != 0) {
-        Center.x += 0.05f * (offset.x * stickPos);
-        Center.y += 0.05f * (offset.y * stickPos);
-        Center.z += 0.05f * (offset.z * stickPos);
+    VECCrossProduct(&cameraUp, &viewOffset, &viewOffset);
+    VECNormalize(&viewOffset, &viewOffset);
+    substickAxis = (HuPadSubStkX[0] & MOTCHK_SUBSTICK_AXIS_MASK);
+    if (substickAxis != 0) {
+        Center.x += 0.05f * (viewOffset.x * substickAxis);
+        Center.y += 0.05f * (viewOffset.y * substickAxis);
+        Center.z += 0.05f * (viewOffset.z * substickAxis);
     }
-    VECNormalize(&yOfs, &offset);
-    stickPos = -(HuPadSubStkY[0] & MOTCHK_SUBSTICK_AXIS_MASK);
-    if (stickPos != 0) {
-        Center.x += 0.05f * (offset.x * stickPos);
-        Center.y += 0.05f * (offset.y * stickPos);
-        Center.z += 0.05f * (offset.z * stickPos);
+    VECNormalize(&rolledUp, &viewOffset);
+    substickAxis = -(HuPadSubStkY[0] & MOTCHK_SUBSTICK_AXIS_MASK);
+    if (substickAxis != 0) {
+        Center.x += 0.05f * (viewOffset.x * substickAxis);
+        Center.y += 0.05f * (viewOffset.y * substickAxis);
+        Center.z += 0.05f * (viewOffset.z * substickAxis);
     }
 }
