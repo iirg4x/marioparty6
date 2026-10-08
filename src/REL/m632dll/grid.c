@@ -8,7 +8,8 @@ void fn_1_4C8C(HU3D_MODEL *modelP, Mtx *mtx)
 
 }
 
-/* Called during fn_1_3934 scene setup; creates one camera-2 hook and initializes CPU timers and gridA weights. */
+/* Called during fn_1_3934 scene setup; creates one camera-2 hook and initializes CPU timers and
+ * gridA weights. */
 void fn_1_4C90(void)
 {
     s32 index;
@@ -96,8 +97,10 @@ void fn_1_4D48(void)
                     while (spreadZ <= 5) {
                         spreadX = -5;
                         while (spreadX <= 5) {
-                            if (((s32) (cellX + spreadX) >= 0) && ((s32) (cellX + spreadX) < 8) && ((s32) (cellZ + spreadZ) >= 0) && ((s32) (cellZ + spreadZ) < 8)) {
-                                lbl_1_bss_0.gridB[cellX + spreadX + (cellZ + spreadZ) * 8] += spreadWeights[(spreadX + 5) + (spreadZ + 5) * 11];
+                            if (((s32) (cellX + spreadX) >= 0) && ((s32) (cellX + spreadX) < 8) &&
+                                ((s32) (cellZ + spreadZ) >= 0) && ((s32) (cellZ + spreadZ) < 8)) {
+                                lbl_1_bss_0.gridB[cellX + spreadX + (cellZ + spreadZ) * 8] +=
+                                    spreadWeights[(spreadX + 5) + (spreadZ + 5) * 11];
                             }
                             spreadX += 1;
                         }
@@ -122,7 +125,8 @@ void fn_1_4D48(void)
     }
 }
 
-/* Called by fn_1_597C for a group-1 CPU player to add nearby group-1 players to gridA and clamp its weights. */
+/* Called by fn_1_597C for a group-1 CPU player to add nearby group-1 players to gridA and clamp its
+ * weights. */
 void fn_1_50A0(s32 playerIndex)
 {
     int neighborWeights[25] = {
@@ -140,7 +144,8 @@ void fn_1_50A0(s32 playerIndex)
     memcpy(lbl_1_bss_0.gridA, lbl_1_bss_0.gridB, sizeof(lbl_1_bss_0.gridA));
     otherPlayerIndex = 0;
     while (otherPlayerIndex < 4) {
-        if ((otherPlayerIndex != playerIndex) && (lbl_1_bss_0.group[otherPlayerIndex] == 1) && (lbl_1_bss_0.playerState[otherPlayerIndex] == 0)) {
+        if ((otherPlayerIndex != playerIndex) && (lbl_1_bss_0.group[otherPlayerIndex] == 1) &&
+            (lbl_1_bss_0.playerState[otherPlayerIndex] == 0)) {
             player = lbl_1_bss_0.players[otherPlayerIndex];
             playerPosition = player->actor->pos;
             playerGridX = (s32) ((400.0f + playerPosition.x) / 100.0f);
@@ -161,8 +166,10 @@ void fn_1_50A0(s32 playerIndex)
             while (deltaZ <= 2) {
                 deltaX = -2;
                 while (deltaX <= 2) {
-                    if (((s32) (playerGridX + deltaX) >= 0) && ((s32) (playerGridX + deltaX) < 8) && ((s32) (playerGridZ + deltaZ) >= 0) && ((s32) (playerGridZ + deltaZ) < 8)) {
-                        lbl_1_bss_0.gridA[playerGridX + deltaX + (playerGridZ + deltaZ) * 8] += neighborWeights[(deltaX + 2) + (deltaZ + 2) * 5];
+                    if (((s32) (playerGridX + deltaX) >= 0) && ((s32) (playerGridX + deltaX) < 8) &&
+                        ((s32) (playerGridZ + deltaZ) >= 0) && ((s32) (playerGridZ + deltaZ) < 8)) {
+                        lbl_1_bss_0.gridA[playerGridX + deltaX + (playerGridZ + deltaZ) * 8] +=
+                            neighborWeights[(deltaX + 2) + (deltaZ + 2) * 5];
                     }
                     deltaX += 1;
                 }
@@ -182,7 +189,8 @@ void fn_1_50A0(s32 playerIndex)
     }
 }
 
-/* Called by fn_1_17C0 during play to refresh the arena map and update active CPU movement decisions. */
+/* Called by fn_1_17C0 during play to refresh the arena map and update active CPU movement
+ * decisions. */
 void fn_1_535C(void)
 {
     s32 value9;
@@ -263,7 +271,8 @@ void fn_1_5400(s32 playerIndex)
                 collisionCenter.z /= (f32) lbl_1_bss_0.collisionCount;
                 do {
                     targetPlayerIndex = frandmod(4);
-                } while (lbl_1_bss_0.group[targetPlayerIndex] != 1 || lbl_1_bss_0.playerState[targetPlayerIndex] != 0);
+                } while (lbl_1_bss_0.group[targetPlayerIndex] != 1 ||
+                         lbl_1_bss_0.playerState[targetPlayerIndex] != 0);
                 {
                     MGPLAYER *selectedPlayer = lbl_1_bss_0.players[targetPlayerIndex];
                     targetPosition = selectedPlayer->actor->pos;
@@ -277,9 +286,11 @@ void fn_1_5400(s32 playerIndex)
                 lbl_1_bss_0.playerTimer[playerIndex] = (s32) (frandmod(20) + 20);
             } else {
                 randomAngle = (f32) (u32) frandmod(360);
-                direction.x = (f32) (cos((3.141592653589793 * (f64) randomAngle) / 180.0) - sin((3.141592653589793 * (f64) randomAngle) / 180.0));
+                direction.x = (f32) (cos((3.141592653589793 * (f64) randomAngle) / 180.0) -
+                                     sin((3.141592653589793 * (f64) randomAngle) / 180.0));
                 direction.y = 0.0f;
-                direction.z = (f32) (sin((3.141592653589793 * (f64) randomAngle) / 180.0) + cos((3.141592653589793 * (f64) randomAngle) / 180.0));
+                direction.z = (f32) (sin((3.141592653589793 * (f64) randomAngle) / 180.0) +
+                                     cos((3.141592653589793 * (f64) randomAngle) / 180.0));
                 PSVECNormalize(&direction, &direction);
                 lbl_1_bss_0.playerDirection[playerIndex] = direction;
                 lbl_1_bss_0.playerTimer[playerIndex] = (s32) (frandmod(60) + 30);
@@ -329,7 +340,8 @@ void fn_1_597C(s32 playerIndex)
     fn_1_50A0(playerIndex);
     switch (lbl_1_bss_0.playerAIState[playerIndex]) {
     case 0:
-        if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >= (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
+        if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >=
+            (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
             lbl_1_bss_0.playerAIState[playerIndex] = 2;
             fn_1_5D34(playerIndex);
         }
@@ -337,7 +349,8 @@ void fn_1_597C(s32 playerIndex)
     case 2:
         buttonDownMask = 0;
         buttonMask = 0;
-        if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >= (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
+        if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >=
+            (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
             fn_1_5D34(playerIndex);
         } else {
             neighborHeat = 0;
@@ -363,7 +376,8 @@ void fn_1_597C(s32 playerIndex)
             buttonDownMask = PAD_BUTTON_A;
             buttonMask = PAD_BUTTON_A;
         }
-        MgPlayerPadSet(player, (s32) (56.0f * direction.x), (s32) (56.0f * -direction.z), buttonDownMask, buttonMask);
+        MgPlayerPadSet(player, (s32) (56.0f * direction.x), (s32) (56.0f * -direction.z),
+                       buttonDownMask, buttonMask);
         break;
     case 1:
         break;
@@ -412,7 +426,9 @@ void fn_1_5D34(s32 playerIndex)
         riskThreshold = 16.0f;
         break;
     }
-    if ((fn_1_604C(playerIndex, currentGridX, currentGridZ, &targetGridX, &targetGridZ) != 0) && ((currentGridX != targetGridX) || (currentGridZ != targetGridZ)) && ((f32) lbl_1_bss_0.gridA[currentGridX + currentGridZ * 8] >= riskThreshold)) {
+    if ((fn_1_604C(playerIndex, currentGridX, currentGridZ, &targetGridX, &targetGridZ) != 0) &&
+        ((currentGridX != targetGridX) || (currentGridZ != targetGridZ)) &&
+        ((f32) lbl_1_bss_0.gridA[currentGridX + currentGridZ * 8] >= riskThreshold)) {
         direction.x = (f32) (targetGridX - currentGridX);
         direction.y = 0.0f;
         direction.z = (f32) (targetGridZ - currentGridZ);
@@ -435,7 +451,8 @@ int fn_1_5FE4(const void *a, const void *b)
     return 1;
 }
 
-/* Called by fn_1_5D34 to rank the 8-by-8 cells, compare candidates with active group-1 player positions, and report whether selection changed. */
+/* Called by fn_1_5D34 to rank the 8-by-8 cells, compare candidates with active group-1 player
+ * positions, and report whether selection changed. */
 s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *selectedZ)
 {
     M632GridCandidate candidates[64];
@@ -478,7 +495,8 @@ s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *sele
             if (distanceWeight < 1.0f) {
                 distanceWeight = 1.0f;
             }
-            candidate->cost = (s32) ((f32) lbl_1_bss_0.gridA[gridCellX + gridCellZ * 8] * distanceWeight);
+            candidate->cost =
+                (s32) ((f32) lbl_1_bss_0.gridA[gridCellX + gridCellZ * 8] * distanceWeight);
             candidate += 1;
             gridCellX += 1;
         }
@@ -490,7 +508,8 @@ s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *sele
     activeGroupPlayerCount = 0;
     candidateIndex = 0;
     while (candidateIndex < 4) {
-        if ((lbl_1_bss_0.group[candidateIndex] == 1) && (lbl_1_bss_0.playerState[candidateIndex] == 0)) {
+        if ((lbl_1_bss_0.group[candidateIndex] == 1) &&
+            (lbl_1_bss_0.playerState[candidateIndex] == 0)) {
             activeGroupPlayerCount += 1;
         }
         candidateIndex += 1;
@@ -500,7 +519,9 @@ s32 fn_1_604C(s32 playerIndex, s32 startX, s32 startZ, s32 *selectedX, s32 *sele
         if (activeGroupPlayerCount > 1) {
             otherPlayerIndex = 0;
             while (otherPlayerIndex < 4) {
-                if ((lbl_1_bss_0.group[otherPlayerIndex] == 1) && (lbl_1_bss_0.playerState[otherPlayerIndex] == 0) && (otherPlayerIndex != playerIndex)) {
+                if ((lbl_1_bss_0.group[otherPlayerIndex] == 1) &&
+                    (lbl_1_bss_0.playerState[otherPlayerIndex] == 0) &&
+                    (otherPlayerIndex != playerIndex)) {
                     otherPlayerPosition = lbl_1_bss_0.players[otherPlayerIndex]->actor->pos;
                     gridCellX = (s32) ((400.0f + otherPlayerPosition.x) / 100.0f);
                     gridCellZ = (s32) ((400.0f + otherPlayerPosition.z) / 100.0f);

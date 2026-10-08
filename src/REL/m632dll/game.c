@@ -2,13 +2,16 @@
 #define _MATH_H
 #include "REL/m632dll.h"
 
-static int lbl_1_data_78[5] = { DATANUM(DATA_m632, 0), DATANUM(DATA_m632, 2), DATANUM(DATA_m632, 2), DATANUM(DATA_m632, 3), DATANUM(DATA_m632, 4) };
+static int lbl_1_data_78[5] = { DATANUM(DATA_m632, 0), DATANUM(DATA_m632, 2), DATANUM(DATA_m632, 2),
+                                DATANUM(DATA_m632, 3), DATANUM(DATA_m632, 4) };
 
 static int lbl_1_data_8C[5] = { 0, 0, 1, 0, 1 };
 
-static int lbl_1_data_A0[4] = { DATANUM(DATA_m632, 21), DATANUM(DATA_m632, 22), DATANUM(DATA_m632, 23), DATANUM(DATA_m632, 24) };
+static int lbl_1_data_A0[4] = { DATANUM(DATA_m632, 21), DATANUM(DATA_m632, 22),
+                                DATANUM(DATA_m632, 23), DATANUM(DATA_m632, 24) };
 
-static int lbl_1_data_B0[3] = { DATANUM(DATA_m632, 5), DATANUM(DATA_m632, 7), DATANUM(DATA_m632, 8) };
+static int lbl_1_data_B0[3] = { DATANUM(DATA_m632, 5), DATANUM(DATA_m632, 7),
+                                DATANUM(DATA_m632, 8) };
 
 static char lbl_1_data_BC[19] = "632hakoniwa-PC01st";
 
@@ -20,7 +23,8 @@ static char lbl_1_data_F5[19] = "632hakoniwa-PC04st";
 
 char *lbl_1_data_108[4] = { lbl_1_data_BC, lbl_1_data_CF, lbl_1_data_E2, lbl_1_data_F5 };
 
-unsigned int lbl_1_data_118[4] = { DATANUM(DATA_m632, 10), DATANUM(DATA_m632, 11), DATANUM(DATA_m632, 12), DATANUM(DATA_m632, 13) };
+unsigned int lbl_1_data_118[4] = { DATANUM(DATA_m632, 10), DATANUM(DATA_m632, 11),
+                                   DATANUM(DATA_m632, 12), DATANUM(DATA_m632, 13) };
 
 /* Four 3D points at Y=1200. */
 Point3d lbl_1_data_128[4] = {
@@ -373,7 +377,8 @@ void fn_1_3510(MGACTOR *actorP, int param)
     }
 }
 
-/* Narrow-phase hook installed by fn_1_3934; adjusts arena contact and the active round's player-launch response. */
+/* Narrow-phase hook installed by fn_1_3934; adjusts arena contact and the active round's
+ * player-launch response. */
 int fn_1_353C(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
 {
     MGACTOR_COLMAP_POLY collisionPolygon;
@@ -418,7 +423,8 @@ int fn_1_353C(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             rayTo.y = rayFrom.y = 600.0f;
             if (MgActorColMapPolyGet(&rayFrom, &rayTo, 1U, &collisionPolygon) != 0) {
                 launchTarget = collisionPolygon.pos;
-                if (((HSF_FACE *) collisionPolygon.obj->mesh.face->data)[collisionPolygon.triNo].nbt[2] < 0.0f) {
+                if (((HSF_FACE *) collisionPolygon.obj->mesh.face->data)[collisionPolygon.triNo]
+                        .nbt[2] < 0.0f) {
                     launchTarget.y = 600.0f;
                 } else {
                     launchTarget.y = 1200.0f;
@@ -450,7 +456,8 @@ int fn_1_353C(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
     return 1;
 }
 
-/* Called by _prolog during module load to create the arena, players, collision actors, lighting, and sequence state. */
+/* Called by _prolog during module load to create the arena, players, collision actors, lighting,
+ * and sequence state. */
 void fn_1_3934(void)
 {
     Point3d shadowPosition;
@@ -496,11 +503,14 @@ void fn_1_3934(void)
     Hu3DCameraScissorSet(2, 640U, 480U, 0U, 0U);
     index = 0;
     while (index < 5) {
-        lbl_1_bss_0.cameraMotions[index] = Hu3DMotionCreate(HuDataSelHeapReadNum(lbl_1_data_78[index], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_0.cameraMotions[index] =
+            Hu3DMotionCreate(HuDataSelHeapReadNum(lbl_1_data_78[index], HU_MEMNUM_OVL, HEAP_MODEL));
         if (lbl_1_data_8C[index] == 0) {
-            lbl_1_bss_0.cameraModels[index] = Hu3DModelCameraCreate(lbl_1_bss_0.cameraMotions[index], 1U);
+            lbl_1_bss_0.cameraModels[index] =
+                Hu3DModelCameraCreate(lbl_1_bss_0.cameraMotions[index], 1U);
         } else {
-            lbl_1_bss_0.cameraModels[index] = Hu3DModelCameraCreate(lbl_1_bss_0.cameraMotions[index], 2U);
+            lbl_1_bss_0.cameraModels[index] =
+                Hu3DModelCameraCreate(lbl_1_bss_0.cameraMotions[index], 2U);
         }
         Hu3DCameraMotionOff(lbl_1_bss_0.cameraModels[index]);
         index += 1;
@@ -534,20 +544,26 @@ void fn_1_3934(void)
     Hu3DShadowMultiSizeSet(192U, 2);
     index = 0;
     while (index < 4) {
-        lbl_1_bss_0.playerModels[index] = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_A0[index], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_0.playerModels[index] =
+            Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_A0[index], HU_MEMNUM_OVL, HEAP_MODEL));
         Hu3DModelCameraSet(lbl_1_bss_0.playerModels[index], 1U);
         index += 1;
     }
-    lbl_1_bss_0.modelId = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 20), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_0.modelId =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 20), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelAttrSet(lbl_1_bss_0.modelId, HU3D_ATTR_DISPOFF);
     index = 0;
     while (index < 3) {
-        lbl_1_bss_0.sceneModels[index] = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_B0[index], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_0.sceneModels[index] =
+            Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_B0[index], HU_MEMNUM_OVL, HEAP_MODEL));
         index += 1;
     }
-    jointMotion = Hu3DJointMotion(lbl_1_bss_0.sceneModels[0], HuDataSelHeapReadNum(DATANUM(DATA_m632, 6), HU_MEMNUM_OVL, HEAP_MODEL));
+    jointMotion =
+        Hu3DJointMotion(lbl_1_bss_0.sceneModels[0],
+                        HuDataSelHeapReadNum(DATANUM(DATA_m632, 6), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DMotionSet(lbl_1_bss_0.sceneModels[0], jointMotion);
-    (&lbl_1_bss_0.collisionModel)[mapCount] = Hu3DModelCreate(HuDataSelHeapReadNum((int) lbl_1_data_118[lbl_1_bss_0.patternIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+    (&lbl_1_bss_0.collisionModel)[mapCount] = Hu3DModelCreate(HuDataSelHeapReadNum(
+        (int) lbl_1_data_118[lbl_1_bss_0.patternIndex], HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelAttrSet((&lbl_1_bss_0.collisionModel)[mapCount], HU3D_ATTR_DISPOFF);
     mapCount += 1;
     Hu3DModelCameraSet(lbl_1_bss_0.sceneModels[0], 1U);
@@ -561,47 +577,58 @@ void fn_1_3934(void)
     Hu3DModelShadowMapObjSet(lbl_1_bss_0.sceneModels[0], lbl_1_data_437);
     Hu3DModelShadowMapObjSet(lbl_1_bss_0.sceneModels[0], lbl_1_data_451);
     Hu3DModelShadowMapObjSet(lbl_1_bss_0.sceneModels[1], lbl_1_data_468);
-    lbl_1_bss_0.attachmentModels[0] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 14), HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_0.attachmentModels[1] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 16), HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_0.attachmentModels[2] = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 17), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_0.attachmentModels[0] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 14), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_0.attachmentModels[1] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 16), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_0.attachmentModels[2] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 17), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelAttrSet(lbl_1_bss_0.attachmentModels[0], HU3D_ATTR_DISPOFF);
     Hu3DModelAttrSet(lbl_1_bss_0.attachmentModels[1], HU3D_ATTR_DISPOFF);
     Hu3DModelAttrSet(lbl_1_bss_0.attachmentModels[2], HU3D_ATTR_DISPOFF);
-    lbl_1_bss_0.hookModelId = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 19), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_0.hookModelId =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m632, 19), HU_MEMNUM_OVL, HEAP_MODEL));
     patternData = (s8 *) lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
     {
-    char *collisionHookNames[8] = { lbl_1_data_2B8,lbl_1_data_2CD,lbl_1_data_2E2,lbl_1_data_2F7,lbl_1_data_30C,lbl_1_data_321,lbl_1_data_336,lbl_1_data_34B };
-    char *playerHookNames[8] = { lbl_1_data_360,lbl_1_data_378,lbl_1_data_390,lbl_1_data_3A8,lbl_1_data_3C0,lbl_1_data_3D8,lbl_1_data_3F0,lbl_1_data_408 };
-    MGACTOR_PARAM collisionActorParam;
-    MGACTOR_PARAM playerActorParam;
-    lbl_1_bss_0.linkedModelCount = 0;
-    counter = 1;
-    index = 0;
-    while (index < 64) {
-        if ((patternData[0] >= 2) && (patternData[0] <= 3)) {
-            x1 = index % 8;
-            z1 = index / 8;
-            switch (patternData[0]) {
-            case 2:
-                floatValue0 = -45.0f;
-                break;
-            case 3:
-                floatValue0 = 45.0f;
-                break;
+        char *collisionHookNames[8] = { lbl_1_data_2B8, lbl_1_data_2CD, lbl_1_data_2E2,
+                                        lbl_1_data_2F7, lbl_1_data_30C, lbl_1_data_321,
+                                        lbl_1_data_336, lbl_1_data_34B };
+        char *playerHookNames[8] = {
+            lbl_1_data_360, lbl_1_data_378, lbl_1_data_390, lbl_1_data_3A8,
+            lbl_1_data_3C0, lbl_1_data_3D8, lbl_1_data_3F0, lbl_1_data_408
+        };
+        MGACTOR_PARAM collisionActorParam;
+        MGACTOR_PARAM playerActorParam;
+        lbl_1_bss_0.linkedModelCount = 0;
+        counter = 1;
+        index = 0;
+        while (index < 64) {
+            if ((patternData[0] >= 2) && (patternData[0] <= 3)) {
+                x1 = index % 8;
+                z1 = index / 8;
+                switch (patternData[0]) {
+                case 2:
+                    floatValue0 = -45.0f;
+                    break;
+                case 3:
+                    floatValue0 = 45.0f;
+                    break;
+                }
+                linkedModel = Hu3DModelLink(lbl_1_bss_0.attachmentModels[0]);
+                Hu3DModelCameraSet(linkedModel, 2U);
+                Hu3DModelAttrReset(linkedModel, HU3D_ATTR_DISPOFF);
+                Hu3DModelShadowMapObjSet(linkedModel, lbl_1_data_480);
+                Hu3DModelHookSet(lbl_1_bss_0.sceneModels[1], collisionHookNames[counter],
+                                 linkedModel);
+                Hu3DModelPosSet(linkedModel, (f32) ((x1 * 100) - 350), 0.0f,
+                                (f32) ((z1 * 100) - 350));
+                Hu3DModelRotSet(linkedModel, 0.0f, floatValue0, 0.0f);
+                lbl_1_bss_0.linkedModels[lbl_1_bss_0.linkedModelCount] = linkedModel;
+                counter += 1;
+                lbl_1_bss_0.linkedModelCount += 1;
             }
-            linkedModel = Hu3DModelLink(lbl_1_bss_0.attachmentModels[0]);
-            Hu3DModelCameraSet(linkedModel, 2U);
-            Hu3DModelAttrReset(linkedModel, HU3D_ATTR_DISPOFF);
-            Hu3DModelShadowMapObjSet(linkedModel, lbl_1_data_480);
-            Hu3DModelHookSet(lbl_1_bss_0.sceneModels[1], collisionHookNames[counter], linkedModel);
-            Hu3DModelPosSet(linkedModel, (f32) ((x1 * 100) - 350), 0.0f, (f32) ((z1 * 100) - 350));
-            Hu3DModelRotSet(linkedModel, 0.0f, floatValue0, 0.0f);
-            lbl_1_bss_0.linkedModels[lbl_1_bss_0.linkedModelCount] = linkedModel;
-            counter += 1;
-            lbl_1_bss_0.linkedModelCount += 1;
-        }
-        patternData += 1;
-        index += 1;
+            patternData += 1;
+            index += 1;
     }
     MgActorColMapInit(&lbl_1_bss_0.collisionModel, mapCount, 30);
     collisionPatternData = (s8 *) lbl_1_data_2A8[lbl_1_bss_0.patternIndex];
@@ -623,7 +650,8 @@ void fn_1_3934(void)
             Hu3DModelCameraSet(collisionModel, 2U);
             Hu3DModelAttrReset(collisionModel, HU3D_ATTR_DISPOFF);
             collisionActorParam.correctHookParam = counter;
-            lbl_1_bss_0.collisionActors[counter] = MgActorCreate(&collisionActorParam, collisionModel);
+            lbl_1_bss_0.collisionActors[counter] =
+                MgActorCreate(&collisionActorParam, collisionModel);
             MgActorColBounceSet(lbl_1_bss_0.collisionActors[counter], 0.0f);
             collisionPosition.x = (f32) ((x2 * 100) - 350);
             collisionPosition.y = 0.0f;
@@ -636,7 +664,8 @@ void fn_1_3934(void)
             lbl_1_bss_0.collisionRotY[counter] = collisionRotation;
             lbl_1_bss_0.collisionActors[counter]->rotY = collisionRotation;
             MgActorRotYSet(lbl_1_bss_0.collisionActors[counter], collisionRotation);
-            collisionLightId = Hu3DLLightCreate(lbl_1_bss_0.collisionActors[counter]->mdlId, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 160U, 160U, 160U);
+            collisionLightId = Hu3DLLightCreate(lbl_1_bss_0.collisionActors[counter]->mdlId, 0.0f,
+                                                0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 160U, 160U, 160U);
             Hu3DLLightInfinitytSet(lbl_1_bss_0.collisionActors[counter]->mdlId, collisionLightId);
             collisionActorParam.param += 1;
             counter += 1;
@@ -661,7 +690,8 @@ void fn_1_3934(void)
         } else {
             playerGroup = 2;
         }
-        lbl_1_bss_0.players[index] = MgPlayerCreate(index, &playerActorParam, 2, (u16) playerGroup, -31U, lbl_1_data_158);
+        lbl_1_bss_0.players[index] =
+            MgPlayerCreate(index, &playerActorParam, 2, (u16) playerGroup, -31U, lbl_1_data_158);
         if (GwPlayerConf[index].grpNo == 0) {
             lbl_1_bss_0.group[index] = 0;
         } else {
@@ -673,7 +703,8 @@ void fn_1_3934(void)
         MgActorPosSet((MGACTOR *) lbl_1_bss_0.players[index], &playerPosition);
         MgActorPosSetRaw((MGACTOR *) lbl_1_bss_0.players[index], &playerPosition);
         Hu3DModelPosSetV(lbl_1_bss_0.players[index]->actor->mdlId, &playerPosition);
-        playerLightId = Hu3DLLightCreate(lbl_1_bss_0.players[index]->actor->mdlId, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 160U, 160U, 160U);
+        playerLightId = Hu3DLLightCreate(lbl_1_bss_0.players[index]->actor->mdlId, 0.0f, 0.0f, 0.0f,
+                                         0.0f, 0.0f, -1.0f, 160U, 160U, 160U);
         Hu3DLLightInfinitytSet(lbl_1_bss_0.players[index]->actor->mdlId, playerLightId);
         Hu3DModelShadowSet(lbl_1_bss_0.players[index]->actor->mdlId);
         MgPlayerVibrateCreate(lbl_1_bss_0.players[index]);

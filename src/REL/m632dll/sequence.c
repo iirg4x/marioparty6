@@ -47,7 +47,8 @@ void fn_1_104(s32 streamHandle)
     }
 }
 
-/* Called during the intro and play updates to pan a character's voice from the player's screen position. */
+/* Called during the intro and play updates to pan a character's voice from the player's screen
+ * position. */
 void fn_1_140(s32 playerIndex, s32 cameraId)
 {
     Point3d worldPosition;
@@ -73,7 +74,8 @@ void fn_1_21C(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
-/* Per-frame object callback added by fn_1_5A8 for a group-1 player; follows its model hook until motion ends. */
+/* Per-frame object callback added by fn_1_5A8 for a group-1 player; follows its model hook until
+ * motion ends. */
 void fn_1_240(OMOBJ *obj)
 {
     f32 matrix[3][4];
@@ -105,7 +107,8 @@ void fn_1_240(OMOBJ *obj)
     }
 }
 
-/* Per-frame object callback added by fn_1_5A8 for a group-0 player; follows its hook and shadow through the intro motion. */
+/* Per-frame object callback added by fn_1_5A8 for a group-0 player; follows its hook and shadow
+ * through the intro motion. */
 void fn_1_3E0(OMOBJ *obj)
 {
     Point3d hookPosition;
@@ -139,7 +142,8 @@ void fn_1_3E0(OMOBJ *obj)
     }
 }
 
-/* Opening sequence callback registered in lbl_1_data_0; on frame 0 it sets up the intro, then drops players into the arena. */
+/* Opening sequence callback registered in lbl_1_data_0; on frame 0 it sets up the intro, then drops
+ * players into the arena. */
 void fn_1_5A8(s16 mode, s16 frameNo)
 {
     int index;
@@ -234,8 +238,10 @@ void fn_1_5A8(s16 mode, s16 frameNo)
             while (index < 4) {
                 player = lbl_1_bss_0.players[index];
                 if (lbl_1_bss_0.group[index] == 1) {
-                    MgActorPosSet((MGACTOR *) lbl_1_bss_0.players[index], &lbl_1_bss_0.positions[counter]);
-                    MgActorPosSetRaw((MGACTOR *) lbl_1_bss_0.players[index], &lbl_1_bss_0.positions[counter]);
+                    MgActorPosSet((MGACTOR *) lbl_1_bss_0.players[index],
+                                  &lbl_1_bss_0.positions[counter]);
+                    MgActorPosSetRaw((MGACTOR *) lbl_1_bss_0.players[index],
+                                     &lbl_1_bss_0.positions[counter]);
                     Hu3DModelPosSetV(player->actor->mdlId, &lbl_1_bss_0.positions[counter]);
                     {
                     Point3d cameraFocusPosition = {100000.0f, 0.0f, 0.0f};
@@ -284,7 +290,8 @@ void fn_1_5A8(s16 mode, s16 frameNo)
         if ((u32) lbl_1_bss_0.frame >= 1U) {
             Hu3DCameraViewportSet(2, leftViewportX, 0.0f, rightViewportWidth, 480.0f, 0.0f, 1.0f);
             if (leftViewportWidth > 2.0f) {
-                Hu3DCameraScissorSet(2, (u32) leftViewportWidth + 2, 0U, 638 - (u32) leftViewportWidth, 480U);
+                Hu3DCameraScissorSet(2, (u32) leftViewportWidth + 2, 0U,
+                                     638 - (u32) leftViewportWidth, 480U);
             } else {
                 Hu3DCameraScissorSet(2, 0U, 0U, 0U, 480U);
             }
@@ -298,8 +305,10 @@ void fn_1_5A8(s16 mode, s16 frameNo)
                 Hu3DModelHookReset(lbl_1_bss_0.playerModels[index]);
                 if (lbl_1_bss_0.group[index] == 1) {
                     CharModelVoiceFlagSet(lbl_1_bss_0.players[index]->charNo, 1);
-                    MgActorPosSet((MGACTOR *) lbl_1_bss_0.players[index], &lbl_1_bss_0.positions[counter]);
-                    MgActorPosSetRaw((MGACTOR *) lbl_1_bss_0.players[index], &lbl_1_bss_0.positions[counter]);
+                    MgActorPosSet((MGACTOR *) lbl_1_bss_0.players[index],
+                                  &lbl_1_bss_0.positions[counter]);
+                    MgActorPosSetRaw((MGACTOR *) lbl_1_bss_0.players[index],
+                                     &lbl_1_bss_0.positions[counter]);
                     Hu3DModelPosSetV(player->actor->mdlId, &lbl_1_bss_0.positions[counter]);
                     CharMotionShiftSet(player->charNo, player->omObj->mtnId[10], 0.0f, 0.0f, 0U);
                     Hu3DModelShadowSet(lbl_1_bss_0.players[index]->actor->mdlId);
@@ -340,7 +349,8 @@ void fn_1_5A8(s16 mode, s16 frameNo)
                     if ((s32) (lbl_1_bss_0.activeMask & (1 << index)) != 0) {
                         lbl_1_bss_0.activeMask &= ~(1 << index);
                         CharModelLandDustCreate(lbl_1_bss_0.charNo[index], &playerPosition);
-                        CharMotionShiftSet(player->charNo, player->omObj->mtnId[11], 0.0f, 6.0f, HU3D_MOTATTR_LOOP);
+                        CharMotionShiftSet(player->charNo, player->omObj->mtnId[11], 0.0f, 6.0f,
+                                           HU3D_MOTATTR_LOOP);
                     }
                 } else {
                     done = 0;
@@ -372,7 +382,8 @@ void fn_1_5A8(s16 mode, s16 frameNo)
             while (index < 4) {
                 if ((s32) (lbl_1_bss_0.activeMask & (1 << index)) != 0) {
                     player = lbl_1_bss_0.players[index];
-                    CharMotionShiftSet(player->charNo, *player->omObj->mtnId, 0.0f, 6.0f, HU3D_MOTATTR_LOOP);
+                    CharMotionShiftSet(player->charNo, *player->omObj->mtnId, 0.0f, 6.0f,
+                                       HU3D_MOTATTR_LOOP);
                 }
                 index += 1;
             }
@@ -403,14 +414,16 @@ void fn_1_5A8(s16 mode, s16 frameNo)
     }
 }
 
-/* Sequence callback registered in lbl_1_data_0; starts background music when allowed and runs the actors. */
+/* Sequence callback registered in lbl_1_data_0; starts background music when allowed and runs the
+ * actors. */
 void fn_1_173C(s16 mode, s16 frameNo)
 {
     lbl_1_bss_0.stream = fn_1_A0(lbl_1_bss_0.stream, M632_PLAY_MODE_BGM_STREAM_ID);
     MgActorExec();
 }
 
-/* Play-mode callback registered in lbl_1_data_0; on frame 0 starts the round, then updates control, tilt, collisions, sounds, and timer. */
+/* Play-mode callback registered in lbl_1_data_0; on frame 0 starts the round, then updates control,
+ * tilt, collisions, sounds, and timer. */
 void fn_1_17C0(s16 mode, s16 frameNo)
 {
     Point3d spawnPosition;
@@ -483,7 +496,8 @@ void fn_1_17C0(s16 mode, s16 frameNo)
     lbl_1_bss_0.tilt.z += (lbl_1_bss_0.targetTiltZ - lbl_1_bss_0.tilt.z) / 30.0f;
     Hu3DModelRotSet(lbl_1_bss_0.collisionModel, lbl_1_bss_0.tilt.x, 0.0f, lbl_1_bss_0.tilt.z);
     Hu3DModelRotSet(lbl_1_bss_0.sceneModels[1], lbl_1_bss_0.tilt.x, 0.0f, lbl_1_bss_0.tilt.z);
-    angle = (f32) (360.0 - (180.0 + 180.0 * (atan2((f64) lbl_1_bss_0.tilt.z, -lbl_1_bss_0.tilt.x) / 3.141592653589793)));
+    angle = (f32) (360.0 - (180.0 + 180.0 * (atan2((f64) lbl_1_bss_0.tilt.z, -lbl_1_bss_0.tilt.x) /
+                                             3.141592653589793)));
     model = controller->actor->mdlId;
     currentTilt = lbl_1_bss_0.tilt;
     motionLength = 80.0f;
@@ -514,7 +528,8 @@ void fn_1_17C0(s16 mode, s16 frameNo)
         index += 1;
     }
     fn_1_2F90();
-    if (lbl_1_bss_0.previousCollisionFlag == 0 && lbl_1_bss_0.collisionFlag == 1 && lbl_1_bss_0.soundCooldownFrames >= 30) {
+    if (lbl_1_bss_0.previousCollisionFlag == 0 && lbl_1_bss_0.collisionFlag == 1 &&
+        lbl_1_bss_0.soundCooldownFrames >= 30) {
         collisionCenter.x = collisionCenter.y = collisionCenter.z = 0.0f;
         index = 0;
         while (index < lbl_1_bss_0.collisionCount) {
@@ -544,7 +559,8 @@ void fn_1_17C0(s16 mode, s16 frameNo)
     lbl_1_bss_0.soundCooldownFrames += 1;
     index = 0;
     while (index < lbl_1_bss_0.collisionCount) {
-        if (lbl_1_bss_0.collisionPairs[index][0] == 0 && lbl_1_bss_0.collisionPairs[index][1] == 1 && lbl_1_bss_0.collisionTimers[index] >= 30) {
+        if (lbl_1_bss_0.collisionPairs[index][0] == 0 &&
+            lbl_1_bss_0.collisionPairs[index][1] == 1 && lbl_1_bss_0.collisionTimers[index] >= 30) {
             collisionPairSoundHandle = HuAudFXPlay(M632_ARENA_COLLISION_SE_ID);
             actorPosition = lbl_1_bss_0.collisionActors[index]->pos;
             Hu3D3Dto2D(&actorPosition, 2, &actorScreenPosition);
@@ -576,7 +592,8 @@ void fn_1_17C0(s16 mode, s16 frameNo)
     }
 }
 
-/* Post-play callback registered in lbl_1_data_0; handles frame-0 effects, hides arena actors at frame 8, and advances defeat animations. */
+/* Post-play callback registered in lbl_1_data_0; handles frame-0 effects, hides arena actors at
+ * frame 8, and advances defeat animations. */
 void fn_1_2368(s16 mode, s16 frameNo)
 {
     Point3d effectDirection;
@@ -621,7 +638,8 @@ void fn_1_2368(s16 mode, s16 frameNo)
     fn_1_2F90();
 }
 
-/* Results callback registered in lbl_1_data_0; awards the outcome, presents the winning group, and hides arena models. */
+/* Results callback registered in lbl_1_data_0; awards the outcome, presents the winning group, and
+ * hides arena models. */
 void fn_1_2574(s16 mode, s16 frameNo)
 {
     s16 winners[4] = { -1, -1, -1, -1 };
@@ -770,7 +788,8 @@ void fn_1_2574(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
-/* Exit callback registered in lbl_1_data_0; starts the losing players' exit motion on frame 0 and runs their actors. */
+/* Exit callback registered in lbl_1_data_0; starts the losing players' exit motion on frame 0 and
+ * runs their actors. */
 void fn_1_2E04(s16 mode, s16 frameNo)
 {
     s32 index;
@@ -782,7 +801,8 @@ void fn_1_2E04(s16 mode, s16 frameNo)
             while (index < 4) {
                 if (lbl_1_bss_0.group[index] == 0) {
                     player = lbl_1_bss_0.players[index];
-                    CharMotionShiftSet(lbl_1_bss_0.charNo[index], player->omObj->mtnId[8], 0.0f, 6.0f, 0U);
+                    CharMotionShiftSet(lbl_1_bss_0.charNo[index], player->omObj->mtnId[8], 0.0f,
+                                       6.0f, 0U);
                 }
                 index += 1;
             }
@@ -791,7 +811,8 @@ void fn_1_2E04(s16 mode, s16 frameNo)
             while (index < 4) {
                 if (lbl_1_bss_0.group[index] == 1 && lbl_1_bss_0.playerState[index] == 0) {
                     player = lbl_1_bss_0.players[index];
-                    CharMotionShiftSet(lbl_1_bss_0.charNo[index], player->omObj->mtnId[8], 0.0f, 6.0f, 0U);
+                    CharMotionShiftSet(lbl_1_bss_0.charNo[index], player->omObj->mtnId[8], 0.0f,
+                                       6.0f, 0U);
                 }
                 index += 1;
             }
@@ -810,7 +831,8 @@ void fn_1_2F8C(s16 mode, s16 frameNo)
 
 }
 
-/* Called by fn_1_17C0 and fn_1_2368 to advance defeated players through launch, flight, and hide states. */
+/* Called by fn_1_17C0 and fn_1_2368 to advance defeated players through launch, flight, and hide
+ * states. */
 void fn_1_2F90(void)
 {
     Point3d modelPosition;
@@ -860,11 +882,16 @@ void fn_1_2F90(void)
                         break;
                     }
                     Hu3DModelCameraSet((s16) player->actor->mdlId, 1U);
-                    Hu3DModelPosSet((s16) player->actor->mdlId, modelPosition.x, modelPosition.y, modelPosition.z);
+                    Hu3DModelPosSet((s16) player->actor->mdlId, modelPosition.x, modelPosition.y,
+                                    modelPosition.z);
                     Hu3DModelScaleSet((s16) player->actor->mdlId, 0.2f, 0.2f, 0.2f);
-                    motionDirection.x = (f32) (cos((3.141592653589793 * (f64) launchAngle) / 180.0) - sin((3.141592653589793 * (f64) launchAngle) / 180.0));
+                    motionDirection.x =
+                        (f32) (cos((3.141592653589793 * (f64) launchAngle) / 180.0) -
+                               sin((3.141592653589793 * (f64) launchAngle) / 180.0));
                     motionDirection.y = 5.0f;
-                    motionDirection.z = (f32) (sin((3.141592653589793 * (f64) launchAngle) / 180.0) + cos((3.141592653589793 * (f64) launchAngle) / 180.0));
+                    motionDirection.z =
+                        (f32) (sin((3.141592653589793 * (f64) launchAngle) / 180.0) +
+                               cos((3.141592653589793 * (f64) launchAngle) / 180.0));
                     PSVECNormalize(&motionDirection, &motionDirection);
                     lbl_1_bss_0.playerMotionVec[playerIndex] = motionDirection;
                     lbl_1_bss_0.playerState[playerIndex] = 3;

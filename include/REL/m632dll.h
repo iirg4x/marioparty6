@@ -26,10 +26,13 @@
 #include <stddef.h>
 
 #define M632_ARENA_COLLISION_SE_ID 1846 /* Sound played when arena collision checks report a hit. */
-#define M632_PLAYER_ELIMINATION_SE_ID 1847 /* Sound played when an arena collision knocks out a player. */
+#define M632_PLAYER_ELIMINATION_SE_ID 1847 /* Sound played when an arena collision knocks out a
+                                            * player. */
 #define M632_OPENING_SEQUENCE_CUE_SE_ID 1848 /* Sound played at frame 98 of the opening sequence. */
-#define M632_PLAY_MODE_BGM_STREAM_ID 73 /* Background music stream started by the sequence callback when allowed. */
-#define M632_INTRO_CHARACTER_SE_ID 581 /* Character effect played at setup and used for opening voice selection. */
+#define M632_PLAY_MODE_BGM_STREAM_ID 73 /* Background music stream started by the sequence callback
+                                         * when allowed. */
+#define M632_INTRO_CHARACTER_SE_ID 581 /* Character effect played at setup and used for opening
+                                        * voice selection. */
 #define M632_GROUP1_INTRO_SE_ID 576 /* Character effect played for group 1 at opening frame 112. */
 
 #define fn_1_7364 __cvt_fp2unsigned
@@ -83,8 +86,10 @@ typedef struct M632State {
     f32 targetTiltZ; /* Target tilt.z derived from the player's stick input. */
     Point3d tilt; /* Current arena tilt in degrees; X/Z approach their targets each update. */
     MGTIMER *timer;
-    s32 completion; /* 0 when all active group-1 players are eliminated; 1 when the timer expires. */
-    int activeMask; /* One bit per player while that player is active in the current sequence phase. */
+    s32 completion; /* 0 when all active group-1 players are eliminated; 1 when the timer
+                     * expires. */
+    int activeMask; /* One bit per player while that player is active in the current sequence
+                     * phase. */
     s32 gridA[64]; /* Row-major 8-by-8 risk map after player proximity is added, values 0..255. */
     s32 gridB[64]; /* Row-major 8-by-8 obstacle risk map, values 0..255. */
     /* Stream handle (-1 means none), collision flags, and contact-sound cooldown in frames. */
