@@ -44,9 +44,9 @@ typedef struct S02DataC8 {
 /* Model IDs and event state retained while the S02 board is active. */
 typedef struct S02Work {
     s32 modelId[3]; /* First three scene models. */
-    s32 modelIdC;
+    s32 loopingSceneModelA;
     s32 eventModelId; /* Animation model used by the move-start event. */
-    s32 modelId14;
+    s32 loopingSceneModelB;
     s32 modelId18;
     s32 mapObjId[12]; /* Scenery segments moved by the scroll callback. */
     s32 modelId4C;
@@ -214,7 +214,7 @@ void S02ObjectClose(OMOBJ *obj)
 {
 }
 
-/* Per-frame scenery callback: advance the 12 map segments and wrap them at the route edge. */
+/* Per-frame scenery callback: advance 12 map segments and wrap segments past the x threshold to a fixed world position. */
 void S02MapObjectScrollUpdate(OMOBJ *obj)
 {
     HuVecF pos;
@@ -233,7 +233,7 @@ void S02MapObjectScrollUpdate(OMOBJ *obj)
     }
 }
 
-/* Move-start hook: run the S02 model event when the starting space has attribute bit 16. */
+/* Move-start hook: run the S02 model event when the starting space has attribute bit 0x10 set; other bits may also be set. */
 int S02MasuAttr16Handler(int playerNo, s16 id)
 {
     u32 attr = mbMasuMAttrGet(id);
@@ -250,7 +250,7 @@ int fn_1_3EC(int playerNo, s16 id)
     return 0;
 }
 
-/* Question-space hook: run the paired-route event for spaces with attribute bits 1 or 4. */
+/* Hatena-space hook: run the paired-route event when attribute bit 0x1 or 0x4 is set; both bits may be set. */
 int S02MasuAttr5Handler(int playerNo, s16 id)
 {
     u32 attr = mbMasuMAttrGet(id);
@@ -266,7 +266,7 @@ void fn_1_450(int playerNo)
 {
 }
 
-/* Player-turn close hook: restore both paired-route models to their starting state. */
+/* Player-turn close hook: reset each route model's transform and attached animation state. */
 void S02PairModelsResetEvent(int playerNo)
 {
     S02PairModelsReset();
@@ -394,7 +394,7 @@ void S02SceneModelsCreate(void)
     }
 
     modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 11), NULL, FALSE);
-    s02Work.modelIdC = modelId;
+    s02Work.loopingSceneModelA = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
@@ -405,7 +405,7 @@ void S02SceneModelsCreate(void)
     mbObjMotionSpeedSet(modelId, 0.0f);
 
     modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 13), NULL, FALSE);
-    s02Work.modelId14 = modelId;
+    s02Work.loopingSceneModelB = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
     mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
@@ -694,7 +694,7 @@ void fn_1_1120(int playerNo, s16 id)
     mbWipeFadeOut();
 }
 
-/* Restores both paired-route models after a player-turn event. */
+/* Resets the two route models and their attached animation state. */
 void S02PairModelsReset(void)
 {
     s32 i;
