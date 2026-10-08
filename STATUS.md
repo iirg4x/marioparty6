@@ -4,15 +4,17 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **September 28, 2026**
+Last published full-project snapshot: **October 8, 2026**
 
 Byte percentages were generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 27.34% | 47.13% |
+| Entire project | 27.83% | 47.39% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 14.52% | 14.37% |
+| REL modules | 15.12% | 14.79% |
+
+Mini-game Tour (`mgmfreedll`) selects all **109 functions** from native source. Its three translation units, data, and linked REL reproduce retail.
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
 **20 are fully source-selected** (`m602Dll`, `m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m630dll`, `m632dll`, `m633dll`, `m635dll`, `m637dll`, `m638Dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m668DLL`, `m670dll`) and **62 remain**. This scope is distinct
