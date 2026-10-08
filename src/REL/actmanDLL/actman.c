@@ -1,4 +1,5 @@
-/* This REL creates a ground map and four players, then updates the scene camera through MG sequence callbacks. */
+/* This REL creates a ground map and four players, then updates the scene camera through MG sequence
+ * callbacks. */
 #include "dolphin.h"
 #include "game/gamework.h"
 #include "game/mg/actman.h"
@@ -63,7 +64,8 @@ void _epilog(void) {
     }
 }
 
-/* Called by the REL prolog to create the actor manager, camera, light, map callback, and sequence. */
+/* Called by the REL prolog to create the actor manager, camera, light, map callback, and
+ * sequence. */
 void ObjectSetup(void)
 {
     HU3D_LIGHTID lightId;
@@ -86,7 +88,8 @@ void ObjectSetup(void)
     MgSeqCreate(&seqParam);
 }
 
-/* Actor-manager callback that loads the ground collision map and creates and positions four players. */
+/* Actor-manager callback that loads the ground collision map and creates and positions four
+ * players. */
 static void CreateMap(OMOBJ *obj)
 {
     MGACTOR_PARAM param;
@@ -146,7 +149,8 @@ static void SeqModeStart(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
-/* MG sequence main hook, called each gameplay frame to update actors, camera, and the exit input. */
+/* MG sequence main hook, called each gameplay frame to update actors, camera, and the exit
+ * input. */
 static void SeqModeMain(s16 mode, s16 frameNo)
 {
     MgActorExec();
@@ -172,7 +176,8 @@ static void SeqModePreWin(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
-/* MG sequence winner hook: start player zero's motion on frame one, then raise its model each frame. */
+/* MG sequence winner hook: start player zero's motion on frame one, then raise its model each
+ * frame. */
 static void SeqModeWin(s16 mode, s16 frameNo)
 {
     if(frameNo == 1) {
@@ -192,7 +197,8 @@ static void SeqModeFadeOut(s16 mode, s16 frameNo)
     }
 }
 
-/* Called once in close mode before overlay return; sets the sequence manager's next-mode request. */
+/* Called once in close mode before overlay return; sets the sequence manager's next-mode
+ * request. */
 static void SeqModeClose(s16 mode, s16 frameNo)
 {
     MgSeqModeNext();
