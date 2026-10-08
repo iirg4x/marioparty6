@@ -214,7 +214,8 @@ void S02ObjectClose(OMOBJ *obj)
 {
 }
 
-/* Per-frame scenery callback: advance 12 map segments and wrap segments past the x threshold to a fixed world position. */
+/* Per-frame scenery callback: advance 12 map segments and wrap segments past the x threshold to a
+ * fixed world position. */
 void S02MapObjectScrollUpdate(OMOBJ *obj)
 {
     HuVecF pos;
@@ -233,7 +234,8 @@ void S02MapObjectScrollUpdate(OMOBJ *obj)
     }
 }
 
-/* Move-start hook: run the S02 model event when the starting space has attribute bit 0x10 set; other bits may also be set. */
+/* Move-start hook: run the S02 model event when the starting space has attribute bit 0x10 set;
+ * other bits may also be set. */
 int S02MasuAttr16Handler(int playerNo, s16 id)
 {
     u32 attr = mbMasuMAttrGet(id);
@@ -250,7 +252,8 @@ int fn_1_3EC(int playerNo, s16 id)
     return 0;
 }
 
-/* Hatena-space hook: run the paired-route event when attribute bit 0x1 or 0x4 is set; both bits may be set. */
+/* Hatena-space hook: run the paired-route event when attribute bit 0x1 or 0x4 is set; both bits may
+ * be set. */
 int S02MasuAttr5Handler(int playerNo, s16 id)
 {
     u32 attr = mbMasuMAttrGet(id);
@@ -291,7 +294,8 @@ void fn_1_4B4(BOOL enterF)
     (void)enterF;
 }
 
-/* Move-start event: play the board animation, move the player through its camera shot, and return to the board. */
+/* Move-start event: play the board animation, move the player through its camera shot, and return
+ * to the board. */
 void fn_1_4B8(int playerNo, s16 id)
 {
     s32 motionId[2];
