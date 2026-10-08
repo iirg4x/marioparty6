@@ -1,3 +1,4 @@
+/* Starts the Lunar-tics minigame and coordinates cameras, sequence, and results. */
 #include "REL/m657Dll.h"
 #include "game/gamework.h"
 #include "game/memory.h"
@@ -7,6 +8,12 @@
 #include "game/gamemes.h"
 #include "string.h"
 #include "math.h"
+
+#define M657_OBJECT_CAPACITY 160
+#define M657_OBJECT_MANAGER_PRIORITY 131072 /* Scheduler priority for the minigame object
+                                             * manager. */
+/* BGM resource selected when the entrance sequence begins. */
+#define M657_BGM_LUNAR_TICS 87
 
 /* This module calls the MSL library entry, not the stdlib.h builtin macro. */
 int abs(int value);
@@ -23,6 +30,7 @@ MGSEQ_PARAM lbl_1_data_2C = {
     fn_1_1090, fn_1_1564, fn_1_15B8, fn_1_15BC
 };
 
+/* Clears minigame state and initializes the active music handle. */
 void fn_1_0(void)
 {
     memset(&lbl_1_bss_0, 0, sizeof(M657Work));
@@ -35,12 +43,14 @@ void fn_1_6C(void)
 {
 }
 
+/* Creates the object manager and initializes its shared game-system callbacks. */
 void fn_1_70(void)
 {
-    lbl_1_data_0->objman = omInitObjMan(160, 131072);
+    lbl_1_data_0->objman = omInitObjMan(M657_OBJECT_CAPACITY, M657_OBJECT_MANAGER_PRIORITY);
     omGameSysInit(lbl_1_data_0->objman);
 }
 
+/* Creates a split-screen camera for each configured team during setup. */
 void fn_1_BC(OMOBJMAN *objman)
 {
     M657Camera *camera;
@@ -73,6 +83,7 @@ void fn_1_BC(OMOBJMAN *objman)
     }
 }
 
+/* Replaces the split-screen camera with the full-screen result camera. */
 void fn_1_258(void)
 {
     M657Camera *camera = lbl_1_data_0->cameraObj[0]->data;
@@ -95,17 +106,20 @@ void fn_1_3EC(void)
 {
 }
 
+/* Assigns the player object that a team's split-screen camera follows. */
 void fn_1_3F0(s16 team, OMOBJ *target)
 {
     M657Camera *camera = lbl_1_data_0->cameraObj[team]->data;
     camera->target = target;
 }
 
+/* Object-create callback that installs the camera's per-frame follow update. */
 void fn_1_428(OMOBJ *obj)
 {
     obj->objFunc = fn_1_438;
 }
 
+/* Camera object callback that follows its assigned player as they descend. */
 void fn_1_438(OMOBJ *obj)
 {
     M657Camera *camera = obj->data;
@@ -116,7 +130,7 @@ void fn_1_438(OMOBJ *obj)
 
     player = playerData;
     {
-        s16 cameraNo = camera->cameraMask - 1;
+        s16 unusedCameraIndex = camera->cameraMask - 1;
         HuVecF farPos = { 0, 3334, 3549 };
         HuVecF nearPos = { 0, 202, 691 };
 
@@ -138,6 +152,7 @@ void fn_1_5C4(OMOBJ *obj)
 {
 }
 
+/* Creates and configures the white scene light during minigame initialization. */
 void fn_1_5C8(void)
 {
     HU3D_LIGHTID light;
@@ -161,6 +176,7 @@ typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 
+/* Runs registered constructors before creating the minigame objects. */
 int _prolog(void)
 {
     const VoidFunc *ctor = _ctors;
@@ -172,6 +188,7 @@ int _prolog(void)
     return 0;
 }
 
+/* Runs registered destructors when the minigame REL is unloaded. */
 void _epilog(void)
 {
     const VoidFunc *dtor = _dtors;
@@ -181,6 +198,7 @@ void _epilog(void)
     }
 }
 
+/* Builds all minigame objects and starts the sequence manager from the REL entry. */
 void fn_1_784(void)
 {
     fn_1_0();
@@ -195,6 +213,7 @@ void fn_1_784(void)
     MgSeqCreate(&lbl_1_data_2C);
 }
 
+/* MGSEQ_PARAM callback that binds cameras to players and clears winner flags. */
 void fn_1_B10(s16 mode, s16 frameNo)
 {
     int team;
@@ -210,13 +229,14 @@ void fn_1_B10(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
+/* MGSEQ_PARAM entrance callback that starts music and waits for both players to arrive. */
 void fn_1_BD4(s16 mode, s16 frameNo)
 {
     s16 i;
     s16 count = 0;
 
     if (MgSeqFrameNoGet() == 0) {
-        lbl_1_data_0->music = HuAudBGMPlay(87);
+        lbl_1_data_0->music = HuAudBGMPlay(M657_BGM_LUNAR_TICS);
     }
     fn_1_4EE4(0);
     fn_1_4EE4(1);
@@ -230,12 +250,15 @@ void fn_1_BD4(s16 mode, s16 frameNo)
     }
 }
 
+/* MGSEQ_PARAM callback that keeps both player markers aligned with their arena positions. */
 void fn_1_C74(s16 mode, s16 frameNo)
 {
     fn_1_4EE4(0);
     fn_1_4EE4(1);
 }
 
+/* MGSEQ_PARAM callback that waits for both players to land or the shared countdown to reach -600
+ * frames. */
 void fn_1_CA0(s16 mode, s16 frameNo)
 {
     s16 i;
@@ -253,13 +276,15 @@ void fn_1_CA0(s16 mode, s16 frameNo)
     }
 }
 
+/* MGSEQ_PARAM result callback that records both winners when times sum to zero, a tie for equal
+ * times, or the lower-absolute-time winner and a 10-coin bonus. */
 void fn_1_D28(s16 mode, s16 frameNo)
 {
     M657PlayerView *player;
     s16 i;
     OMOBJ *obj;
     u16 status;
-    s32 result[2];
+    s32 teamTime[2];
 
     if (MgSeqFrameNoGet() == 0) {
         s16 charNo[2] = { -1, -1 };
@@ -279,24 +304,26 @@ void fn_1_D28(s16 mode, s16 frameNo)
         }
         for (i = 0; i < 2; i++) {
             lbl_1_data_0->winners[i] = -1;
-            result[i] = fn_1_3EEC(i);
+            teamTime[i] = fn_1_3EEC(i);
         }
         lbl_1_data_0->winnerCount = 0;
-        if (result[0] + result[1] == 0) {
+        /* The result setter's return value is ignored; shared winner fields drive later
+         * presentation. */
+        if (teamTime[0] + teamTime[1] == 0) {
             status = MgSeqWinnerSet2(charNo[0], charNo[1]);
             fn_1_2BE4(0, 1);
             fn_1_2BE4(1, 1);
             lbl_1_data_0->winners[0] = 0;
             lbl_1_data_0->winners[1] = 1;
             lbl_1_data_0->winnerCount = 2;
-        } else if (result[0] == result[1]) {
+        } else if (teamTime[0] == teamTime[1]) {
             status = MgSeqWinnerSet(-1, -1, -1, -1);
-        } else if (abs(result[0]) < abs(result[1])) {
+        } else if (abs(teamTime[0]) < abs(teamTime[1])) {
             status = MgSeqWinnerSet1(charNo[0]);
             fn_1_2BE4(0, 1);
             lbl_1_data_0->winners[0] = 0;
             lbl_1_data_0->winnerCount = 1;
-            lbl_1_data_0->unk_22 = 1;
+            lbl_1_data_0->losingTeam = 1;
             GWMgCoinBonusSet(playerNo[0], 10);
             OSReport("winnner : %d\n", playerNo[0]);
         } else {
@@ -304,13 +331,14 @@ void fn_1_D28(s16 mode, s16 frameNo)
             fn_1_2BE4(1, 1);
             lbl_1_data_0->winners[0] = 1;
             lbl_1_data_0->winnerCount = 1;
-            lbl_1_data_0->unk_22 = 0;
+            lbl_1_data_0->losingTeam = 0;
             GWMgCoinBonusSet(playerNo[1], 10);
             OSReport("winnner : %d\n", playerNo[1]);
         }
     }
 }
 
+/* MGSEQ_PARAM result callback that restores the full-screen view and advances the exit. */
 void fn_1_1090(s16 mode, s16 frameNo)
 {
     int frame;
@@ -349,7 +377,7 @@ void fn_1_1090(s16 mode, s16 frameNo)
             }
             switch (lbl_1_data_0->winnerCount) {
                 case 1:
-                    fn_1_30FC(lbl_1_data_0->unk_22);
+                    fn_1_30FC(lbl_1_data_0->losingTeam);
                     break;
                 case 2:
                 {
@@ -385,6 +413,7 @@ void fn_1_1090(s16 mode, s16 frameNo)
     }
 }
 
+/* MGSEQ_PARAM callback that chooses character poses on the first result frame. */
 void fn_1_1564(s16 mode, s16 frameNo)
 {
     if (MgSeqFrameNoGet() == 0) {

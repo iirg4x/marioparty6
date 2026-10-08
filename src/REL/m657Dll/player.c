@@ -1,3 +1,4 @@
+/* Creates and updates each team's character, equipment, and fall animation. */
 #include "REL/m657Dll.h"
 #include "game/charman.h"
 #include "game/memory.h"
@@ -8,17 +9,33 @@
 #include "string.h"
 #include "math.h"
 
+#define M657_SFX_TEAM0_ACTION_PRESS 2085
+#define M657_SFX_TEAM1_ACTION_PRESS 2086
+#define M657_SFX_TEAM0_LANDING 2089
+#define M657_SFX_TEAM1_LANDING 2090
+
 typedef struct {
+    /* Shadow camera field of view in degrees. */
     float fov;
+    /* Near clipping distance in world units. */
     float near;
+    /* Far clipping distance in world units. */
     float far;
+    /* Shadow camera position in world units. */
     HuVecF pos;
+    /* Point the shadow camera looks toward, in world units. */
     HuVecF target;
+    /* Shadow camera up direction. */
     HuVecF up;
+    /* Shadow texture opacity from zero to one. */
     float opacity;
+    /* Shadow texture size in pixels. */
     u16 size;
+    /* Red channel of the shadow tint. */
     u8 r;
+    /* Green channel of the shadow tint. */
     u8 g;
+    /* Blue channel of the shadow tint. */
     u8 b;
 } M657Shadow;
 
@@ -43,6 +60,7 @@ static M657Shadow lbl_1_data_134 = {
 static s16 lbl_1_data_170 = -1;
 static HU3D_MOTIONID lbl_1_data_172[7] = { -1, -1, -1, -1, -1, -1, -1 };
 
+/* Creates the player object for each configured team; called during minigame setup. */
 void fn_1_2018(OMOBJMAN *objman)
 {
     OMOBJ *obj = NULL;
@@ -80,6 +98,7 @@ void fn_1_21A8(void)
     CharModelKill(-1);
 }
 
+/* Called from the player object's create callback to load its character and start pose. */
 void fn_1_21CC(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -112,11 +131,13 @@ void fn_1_21CC(OMOBJ *obj)
     player->pos.x = player->pos.y = player->pos.z = 0.0f;
     player->rot.x = player->rot.y = player->rot.z = 0.0f;
     player->pos.x = player->pos.z = 0.0f;
+    /* Every entrant starts at the same fixed height, regardless of prior position. */
     player->pos.y = 2573.0f;
     omSetTra(obj, player->pos.x, player->pos.y, player->pos.z);
     omSetRot(obj, player->rot.x, player->rot.y, player->rot.z);
 }
 
+/* Called during player-object creation to attach the rocket body and team-colored parts. */
 void fn_1_23F4(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -167,6 +188,7 @@ void fn_1_23F4(OMOBJ *obj)
     Hu3DModelHookSet(body, "rocket-Cs_itemhook", center);
 }
 
+/* Called by the player state updates to show the center part or hide every rocket part. */
 void fn_1_2694(OMOBJ *obj, BOOL visible)
 {
     HU3D_MODELID left = obj->mdlId[2];
@@ -184,6 +206,7 @@ void fn_1_2694(OMOBJ *obj, BOOL visible)
     }
 }
 
+/* Called during player-object creation to add the attached effect model and stopped motion. */
 void fn_1_2748(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -203,6 +226,7 @@ void fn_1_2748(OMOBJ *obj)
     Hu3DModelCameraSet(model, player->cameraMask);
 }
 
+/* Selects the requested character motion-table entry and records its index. */
 void fn_1_2840(OMOBJ *obj, s16 motionIndex)
 {
     M657Player *work = obj->data;
@@ -229,6 +253,8 @@ void fn_1_2840(OMOBJ *obj, s16 motionIndex)
     work->player.motionIndex = motionIndex;
 }
 
+/* Called each active player update to change the rocket animation when the action button
+ * changes. */
 void fn_1_294C(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -255,6 +281,7 @@ void fn_1_294C(OMOBJ *obj)
     }
 }
 
+/* Starts the rocket's exit motion and hides its attached parts during the exit state. */
 void fn_1_2A50(OMOBJ *obj)
 {
     HU3D_MODELID model = obj->mdlId[1];
@@ -266,6 +293,7 @@ void fn_1_2A50(OMOBJ *obj)
     Hu3DModelAttrSet(obj->mdlId[4], HU3D_ATTR_DISPOFF);
 }
 
+/* Polled by the player update until the exit motion ends, then marks it complete. */
 s32 fn_1_2AF0(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -279,6 +307,7 @@ s32 fn_1_2AF0(OMOBJ *obj)
     return FALSE;
 }
 
+/* Reports whether the team's rocket exit animation has finished. */
 s32 fn_1_2B64(s16 team)
 {
     M657Player *work = lbl_1_bss_30[team]->data;
@@ -286,6 +315,7 @@ s32 fn_1_2B64(s16 team)
     return work->exitFinished;
 }
 
+/* Starts the attached player effect motion after the player lands. */
 void fn_1_2B98(OMOBJ *obj)
 {
     HU3D_MODELID model = obj->mdlId[5];
@@ -293,6 +323,7 @@ void fn_1_2B98(OMOBJ *obj)
     Hu3DMotionSpeedSet(model, 1.0f);
 }
 
+/* Sets the team's winner flag for the result sequence. */
 void fn_1_2BE4(s16 team, s32 state)
 {
     OMOBJ *obj = lbl_1_bss_30[team];
@@ -301,6 +332,8 @@ void fn_1_2BE4(s16 team, s32 state)
     work->player.winner = state;
 }
 
+/* Sets winners to motion 1 and plays effect 577; sets non-winners to motion 2 only when state is
+ * zero. */
 void fn_1_2C20(s32 state)
 {
     OMOBJ *obj = NULL;
@@ -324,6 +357,7 @@ void fn_1_2C20(s32 state)
     }
 }
 
+/* Reports whether the team's character motion has reached its end. */
 s32 fn_1_2E78(s16 team)
 {
     OMOBJ *obj = lbl_1_bss_30[team];
@@ -336,6 +370,7 @@ s32 fn_1_2E78(s16 team)
     return FALSE;
 }
 
+/* Returns true for player state zero, otherwise reports whether the player is falling. */
 s32 fn_1_2EEC(s16 team)
 {
     M657PlayerView *player;
@@ -349,6 +384,7 @@ s32 fn_1_2EEC(s16 team)
     return player->falling;
 }
 
+/* Returns the team's normalized descent progress for its following camera. */
 float *fn_1_2F48(s16 team)
 {
     OMOBJ *obj = lbl_1_bss_30[team];
@@ -358,6 +394,7 @@ float *fn_1_2F48(s16 team)
     return &player->progress;
 }
 
+/* Reassigns the player's model and shadow configuration to the specified camera mask. */
 void fn_1_2F90(s16 team, u16 cameraMask)
 {
     OMOBJ *obj = lbl_1_bss_30[team];
@@ -377,6 +414,7 @@ void fn_1_2F90(s16 team, u16 cameraMask)
     Hu3DShadowMultiColSet(shadow->r, shadow->g, shadow->b, player->cameraMask);
 }
 
+/* Places the team's character at a world-space position. */
 void fn_1_306C(s16 team, HuVecF pos)
 {
     M657PlayerView *player;
@@ -388,6 +426,7 @@ void fn_1_306C(s16 team, HuVecF pos)
     omSetTra(obj, player->pos.x, player->pos.y, player->pos.z);
 }
 
+/* Resets the player's state and switches its object callback to the winner fly-by. */
 void fn_1_30FC(s16 team)
 {
     OMOBJ *obj = lbl_1_bss_30[team];
@@ -399,6 +438,7 @@ void fn_1_30FC(s16 team)
     obj->objFunc = fn_1_3B50;
 }
 
+/* Returns whether the team's player has reached the arena start. */
 s32 fn_1_3154(s32 team)
 {
     OMOBJ *obj = lbl_1_bss_30[(s16)team];
@@ -409,6 +449,7 @@ s32 fn_1_3154(s32 team)
     return player->ready;
 }
 
+/* Reports whether the computer's A-button hold phase is active. */
 s32 fn_1_319C(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -419,6 +460,7 @@ s32 fn_1_319C(OMOBJ *obj)
     return FALSE;
 }
 
+/* Object-create callback that builds player models and installs the active update. */
 void fn_1_31CC(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -431,6 +473,7 @@ void fn_1_31CC(OMOBJ *obj)
     obj->objFunc = fn_1_32F4;
 }
 
+/* Per-frame callback installed after player creation; runs the entrance state machine. */
 void fn_1_32F4(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -463,6 +506,7 @@ void fn_1_32F4(OMOBJ *obj)
     player->progress = (2573.0f-player->pos.y)/2573.0f;
 }
 
+/* Per-frame callback installed after the entrance; handles input, falling, and result states. */
 void fn_1_3468(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -500,11 +544,12 @@ void fn_1_3468(OMOBJ *obj)
             }
             fn_1_294C(obj);
             if (work->buttons & PAD_BUTTON_A) {
-                int sounds[2] = { 2085, 2086 };
+                int sounds[2] = { M657_SFX_TEAM0_ACTION_PRESS, M657_SFX_TEAM1_ACTION_PRESS };
 
                 if (work->prevButtons != work->buttons) {
                     work->sound = HuAudFXPlayPan(sounds[player->team], 48+32*player->team);
                 }
+                /* Holding A slows the descent; the sound starts only on the press edge. */
                 speed = 1.0f;
             } else if (work->sound != -1) {
                 HuAudFXStop(work->sound);
@@ -541,7 +586,7 @@ void fn_1_3468(OMOBJ *obj)
     if (player->falling) {
         player->pos.y -= speed;
         if (player->pos.y <= 0.0f) {
-            int sounds[2] = { 2089, 2090 };
+            int sounds[2] = { M657_SFX_TEAM0_LANDING, M657_SFX_TEAM1_LANDING };
 
             HuAudFXPlayPan(sounds[player->team], 48+32*player->team);
             if (work->sound != -1) {
@@ -562,6 +607,7 @@ void fn_1_3468(OMOBJ *obj)
     player->progress = (2573.0f-player->pos.y)/2573.0f;
 }
 
+/* Per-frame callback that animates the losing player's fly-by during a single-winner result. */
 void fn_1_3B50(OMOBJ *obj)
 {
     M657Player *work = obj->data;
@@ -572,7 +618,7 @@ void fn_1_3B50(OMOBJ *obj)
 
     switch (player->state) {
     case 0:
-        if ((frand() & 1) == 0) {
+        if ((frand() & 0x1) == 0) {
             player->pos.x = 1000.0f;
             target.x = -1000.0f;
         } else {
@@ -582,7 +628,7 @@ void fn_1_3B50(OMOBJ *obj)
         target.z = player->pos.z = -1000.0f;
         height = 550;
         halfHeight = height/2;
-        if ((frand() & 1) == 0) {
+        if ((frand() & 0x1) == 0) {
             player->pos.y = frand()%halfHeight;
             target.y = halfHeight + frand()%height;
         } else {
