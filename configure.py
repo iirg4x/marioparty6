@@ -1951,6 +1951,22 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m629Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m629Dll/m629.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m629Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
