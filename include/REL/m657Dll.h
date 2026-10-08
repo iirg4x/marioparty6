@@ -1,3 +1,4 @@
+/* Shared state and interface for the Lunar-tics minigame REL. */
 #ifndef _REL_M657DLL_H
 #define _REL_M657DLL_H
 
@@ -8,114 +9,183 @@
 #include "game/mg/score.h"
 
 typedef struct {
+    /* Object manager that owns the minigame's update objects. */
     OMOBJMAN *objman;
+    /* Camera objects for the two participating teams. */
     OMOBJ *cameraObj[2];
+    /* Shared scene light. */
     HU3D_LIGHTID light;
+    /* Minigame result-transition state. */
     s32 state;
+    /* Active music stream handle, or -1 when none is active. */
     s32 music;
+    /* Frame counter used by the result sequence. */
     s32 timer;
+    /* Team indices recorded as winners; -1 means no winner in that slot. */
     s16 winners[2];
+    /* Number of winning teams: zero, one, or two. */
     s16 winnerCount;
-    s16 unk_22;
+    /* Losing team whose character continues into the result fly-by. */
+    s16 losingTeam;
 } M657Work;
 
 typedef struct {
-    /* Unaccessed prefix of the target-allocated 28-byte camera record. */
-    u8 unk_00[8];
+    /* Eight bytes in the allocated camera record whose meaning is unknown. */
+    u8 unknownPrefix[8];
+    /* Camera bit mask used by the 3D camera APIs. */
     s32 cameraMask;
+    /* Player object followed by this camera. */
     OMOBJ *target;
+    /* Camera position in world units. */
     HuVecF pos;
 } M657Camera;
 
-/* Common player prefix recovered from the state, motion and camera consumers. */
+/* Player identity, presentation state, and world-space motion. */
 typedef struct {
+    /* Camera bit mask that renders this player. */
     s16 cameraMask;
+    /* Global player slot, from the game player configuration. */
     s16 playerNo;
+    /* Minigame team index, 0 or 1. */
     s16 team;
+    /* Character model index. */
     s16 charNo;
+    /* Currently selected character motion-table index. */
     s16 motionIndex;
+    /* Player position in world units. */
     HuVecF pos;
+    /* Player model rotation in degrees. */
     HuVecF rot;
+    /* Normalized direction used by the winner fly-by. */
     HuVecF vel;
+    /* Set while the player is falling into the arena. */
     BOOL falling;
-    u8 unk_34[4];
+    /* Four allocated bytes with no demonstrated use. */
+    u8 unaccessedStateBytes[4];
+    /* Per-player minigame state. */
     s32 state;
-    u8 unk_3C[4];
+    /* Four allocated bytes with no demonstrated use. */
+    u8 unaccessedWinnerBytes[4];
+    /* Whether this team is a winner. */
     BOOL winner;
+    /* Normalized descent progress, calculated from the 2573-unit start height. */
     float progress;
+    /* Set once the player reaches the starting position. */
     BOOL ready;
 } M657PlayerView;
 
-/* The complete allocation is 152 bytes; unaccessed spans remain unnamed. */
+/* Per-player input and animation state allocated alongside M657PlayerView. */
 typedef struct {
+    /* Shared player identity and movement state. */
     M657PlayerView player;
+    /* Active sound handle, or -1 when no player sound is playing. */
     s32 sound;
+    /* Controller slot assigned to this player. */
     s16 padNo;
+    /* Horizontal analog stick axis. */
     float stickX;
+    /* Vertical analog stick axis. */
     float stickY;
+    /* Buttons sampled for the current player update. */
     u32 buttons;
+    /* Buttons sampled during the preceding player update. */
     u32 prevButtons;
-    u8 unk_64[20];
+    /* Twenty allocated bytes with no demonstrated use. */
+    u8 unaccessedInputBytes[20];
+    /* Set when the exit animation has finished. */
     BOOL exitFinished;
+    /* Whether this player is computer-controlled. */
     BOOL computer;
+    /* Computer difficulty index, or -1 for a human player. */
     s16 difficulty;
+    /* Set while the computer input sequence is active. */
     BOOL inputActive;
+    /* Step in the computer input timing sequence. */
     s32 inputState;
+    /* Frames elapsed in the current computer input timing step. */
     s32 inputTimer;
+    /* Frames in the computer's A-button hold phase before it advances to the inactive phase. */
     s32 inputDelay;
+    /* Frames in the inactive phase after the A-button interval and before input resets. */
     s32 inputDuration;
 } M657Player;
 
 typedef struct {
+    /* Player object controlled by this computer-input record. */
     OMOBJ *obj;
+    /* Whether this player is computer-controlled. */
     BOOL enabled;
 } M657ComPlayer;
 
 typedef struct {
+    /* Computer-input records for the two participating teams. */
     M657ComPlayer *players[2];
+    /* State of the computer-input controller. */
     s16 state;
+    /* Reset to zero when the computer controller changes game modes. */
     s32 timer;
-    s32 unk_10;
-    s32 unk_14;
+    /* Values returned by public accessors; their writers are outside this source. */
+    s32 unknownValueA;
+    s32 unknownValueB;
 } M657ComWork;
 
 typedef struct {
+    /* Vertical viewport origin in pixels. */
     float y;
+    /* Horizontal viewport origin in pixels. */
     float x;
+    /* Viewport width in pixels. */
     float width;
+    /* Viewport height in pixels. */
     float height;
 } M657Viewport;
 
 typedef struct {
+    /* HUD sprite handles for the arena gauge. */
     s16 sprites[9];
+    /* HUD marker sprite for each team. */
     s16 playerSprites[2];
 } M657SpriteWork;
 
 typedef struct {
+    /* HUD group drawing the team's score panel. */
     HUSPR_GROUPID box;
+    /* Score display for the remaining whole seconds. */
     MGSCORE *seconds;
+    /* Score display for the remaining fractional second. */
     MGSCORE *hundredths;
+    /* Sprite group containing the decimal separator. */
     HUSPR_GROUPID separator;
-    /* Unaccessed bytes within the target's 28-byte team record. */
-    u8 unk_0E[6];
+    /* Six allocated bytes with no demonstrated use. */
+    u8 unaccessedScoreBytes[6];
+    /* Remaining time in frames; negative values show time after the shared countdown. */
     s32 frames;
+    /* Whether this team's score display is still being updated. */
     BOOL running;
 } M657ScoreTeam;
 
 typedef struct {
+    /* Shared score-display state machine. */
     s32 state;
+    /* Score and HUD data for each team. */
     M657ScoreTeam teams[2];
+    /* Shared remaining-time countdown in frames, at 60 frames per second. */
     s32 frames;
 } M657ScoreWork;
 
 typedef struct {
+    /* Item position in world units. */
     HuVecF pos;
-    s32 unk_0C;
+    /* Unknown value initialized to zero; no meaning is demonstrated here. */
+    s32 unknownValue;
 } M657ArenaItem;
 
 typedef struct {
+    /* Arena item position and associated value. */
     M657ArenaItem item;
-    u8 unk_10[12];
+    /* Twelve allocated bytes with no demonstrated use. */
+    u8 unaccessedArenaBytes[12];
+    /* Arena object state machine. */
     s16 state;
 } M657ArenaWork;
 

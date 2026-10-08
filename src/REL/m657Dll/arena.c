@@ -1,38 +1,44 @@
+/* Creates and updates the Lunar-tics arena, spaceship, and background scene. */
 #include "REL/m657Dll.h"
 #include "game/memory.h"
 #include "game/audio.h"
 #include "string.h"
 
+/* Arena entrance sound-effect resource IDs. */
+#define M657_SFX_START_CUE_A 2087
+#define M657_SFX_START_CUE_B 2088
+
 OMOBJ *lbl_1_bss_28;
 
-/* Unreferenced twelve-byte zero-initialized storage.
- * The original type and purpose are unknown. */
+/* Twelve zero-filled bytes with no demonstrated gameplay use in this module. */
 u8 lbl_1_data_80[12] = {0};
 
 char lbl_1_data_8C[5][10] = {
     "col", "post_R", "post_L", "post_R_C", "post_L_C"
 };
 
+/* Creates the paused arena object and allocates its scene state during setup. */
 void fn_1_15C0(OMOBJMAN *objman)
 {
     OMOBJ *obj;
-    M657ArenaWork *work;
+    M657ArenaWork *arenaWork;
 
     obj = omAddObjEx(objman, 30, 6, 3, -1, fn_1_1B84);
     lbl_1_bss_28 = obj;
     obj->stat |= OM_STAT_MODELPAUSE;
-    work = obj->data = HuMemDirectMallocNum(HEAP_HEAP,
+    arenaWork = obj->data = HuMemDirectMallocNum(HEAP_HEAP,
         sizeof(M657ArenaWork), HU_MEMNUM_OVL);
-    memset(work, 0, sizeof(M657ArenaWork));
+    memset(arenaWork, 0, sizeof(M657ArenaWork));
 }
 
 void fn_1_1658(void)
 {
 }
 
+/* Creates the arena background model and applies its initial camera and color. */
 void fn_1_165C(OMOBJ *obj)
 {
-    M657ArenaWork *work = obj->data;
+    M657ArenaWork *arenaWork = obj->data;
     HU3D_MODELID model = 0;
     HU3D_MOTIONID motion = 0;
 
@@ -45,19 +51,20 @@ void fn_1_165C(OMOBJ *obj)
     Hu3DBGColorSet(0, 0, 50);
 }
 
+/* Creates the arena floor and the spaceship door model with its motion. */
 void fn_1_1720(void)
 {
     M657ArenaItem *item;
     OMOBJ *obj = lbl_1_bss_28;
     HU3D_MODELID model;
-    M657ArenaWork *work = obj->data;
+    M657ArenaWork *arenaWork = obj->data;
     HU3D_MOTIONID motion;
 
-    item = &work->item;
+    item = &arenaWork->item;
     item->pos.x = 0.0f;
     item->pos.y = 2573.0f;
     item->pos.z = 0.0f;
-    item->unk_0C = 0;
+    item->unknownValue = 0;
     model = obj->mdlId[1] = Hu3DModelCreate(
         HuDataSelHeapReadNum(DATANUM(DATA_m657, 0), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelPosSet(model, item->pos.x, item->pos.y, item->pos.z);
@@ -74,6 +81,7 @@ void fn_1_1720(void)
     Hu3DModelHookSet(obj->mdlId[1], "spaceship00-door_target", model);
 }
 
+/* Creates the looping arena decoration and places it above the playfield. */
 void fn_1_1884(OMOBJ *obj)
 {
     HU3D_MODELID model = 0;
@@ -92,6 +100,7 @@ void fn_1_1884(OMOBJ *obj)
     Hu3DModelCameraSet(model, 3);
 }
 
+/* Creates the result-scene model used when the sequence changes camera views. */
 void fn_1_19B4(OMOBJ *obj)
 {
     HU3D_MODELID model = 0;
@@ -109,16 +118,18 @@ void fn_1_19B4(OMOBJ *obj)
     Hu3DModelCameraSet(model, 3);
 }
 
+/* Starts the spaceship door motion at normal playback speed. */
 void fn_1_1AD4(void)
 {
     HU3D_MODELID model = lbl_1_bss_28->mdlId[2];
     Hu3DMotionSpeedSet(model, 1.0f);
 }
 
+/* Reports whether the spaceship door motion has ended. */
 s32 fn_1_1B20(void)
 {
     OMOBJ *obj = lbl_1_bss_28;
-    M657ArenaWork *work = obj->data;
+    M657ArenaWork *arenaWork = obj->data;
     HU3D_MODELID model = obj->mdlId[2];
 
     if (Hu3DMotionEndCheck(model)) {
@@ -127,6 +138,7 @@ s32 fn_1_1B20(void)
     return FALSE;
 }
 
+/* Object-create callback that builds the arena models and installs its update. */
 void fn_1_1B84(OMOBJ *obj)
 {
     fn_1_165C(obj);
@@ -136,22 +148,23 @@ void fn_1_1B84(OMOBJ *obj)
     obj->objFunc = fn_1_1F6C;
 }
 
+/* Waits for the main game sequence and starts the arena entrance sound cues. */
 void fn_1_1F6C(OMOBJ *obj)
 {
-    M657ArenaWork *work = obj->data;
+    M657ArenaWork *arenaWork = obj->data;
 
-    switch (work->state) {
+    switch (arenaWork->state) {
         case 0:
-            work->state++;
+            arenaWork->state++;
             break;
         case 1:
-            work->state++;
+            arenaWork->state++;
             break;
         case 2:
             if (MgSeqModeGet() == MGSEQ_MODE_START) {
-                work->state++;
-                HuAudFXPlayPan(2087, 48);
-                HuAudFXPlayPan(2088, 80);
+                arenaWork->state++;
+                HuAudFXPlayPan(M657_SFX_START_CUE_A, 48);
+                HuAudFXPlayPan(M657_SFX_START_CUE_B, 80);
             }
             break;
         case 3:
