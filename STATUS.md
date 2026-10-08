@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 27.83% | 47.39% |
+| Entire project | 28.19% | 47.71% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 15.12% | 14.79% |
+| REL modules | 15.55% | 15.31% |
+
+Minigame Instructions (`instDll`) selects all **49 functions** from six complete translation units; its linked REL matches retail.
 
 Mini-game Tour (`mgmfreedll`) selects all **109 functions** from native source. Its three translation units, data, and linked REL reproduce retail.
 
