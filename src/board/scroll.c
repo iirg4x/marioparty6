@@ -1,3 +1,4 @@
+// Board scroll and map screens, including their map markers and path display.
 #define _MATH_H
 #include "dolphin/math.h"
 #include "game/board/main.h"
@@ -21,26 +22,27 @@ typedef void (*MBSCROLLHOOK)(BOOL enterF);
 typedef s16 (*MBSCROLLSTARFINDFUNC)(int playerNo);
 
 typedef struct MapSprWork_s {
-    int used;
-    int dispF;
-    s16 sprId[2];
-    u32 flags;
-    int type;
-    int masuId;
-    GXColor color;
-    s16 arrowSprId[1];
-    HuVecF pos2D;
-    HuVecF pos;
-    HuVecF colPos;
+    int used; // Whether this map marker slot is occupied.
+    int dispF; // Whether this marker is currently shown.
+    s16 sprId[2]; // Main sprite and optional translucent overlay.
+    u32 flags; // Map-view visibility layer bit mask; zero leaves non-player markers visible in
+               // every player mode, while 1, 4, and 5 select player-marker modes.
+    int type; // Character or board-space marker type.
+    int masuId; // Board space represented by this marker.
+    GXColor color; // Character marker and arrow tint.
+    s16 arrowSprId[1]; // Direction arrow sprite for character markers.
+    HuVecF pos2D; // Projected board-space position in screen coordinates.
+    HuVecF pos; // Current marker position in screen coordinates.
+    HuVecF colPos; // Screen-space horizontal correction from marker overlap.
 } MAPSPRWORK;
 
 typedef struct ScrollWork_s {
-    int mapSprNum;
-    int playerPosNo;
-    int mapFrame;
-    int pathFrame;
-    float mapPathScale;
-    MAPSPRWORK mapSpr[32];
+    int mapSprNum; // Number of occupied marker slots.
+    int playerPosNo; // Player-marker display mode selected on the map screen.
+    int mapFrame; // Frame counter for pulsing negative-type Donkey/Koopa map icon overlays.
+    int pathFrame; // Frame counter for scrolling path texture coordinates.
+    float mapPathScale; // Current vertical texture offset for the map paths.
+    MAPSPRWORK mapSpr[32]; // Board-space, player, and special-location markers.
 } SCROLLWORK;
 
 enum {
@@ -133,7 +135,8 @@ static void RotateScrollView(HuVecF *rot, HuVecF *pos, HuVecF *posOut);
 static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos);
 static s16 StarMasuGet(int playerNo);
 static void InitScrollCol(void);
-static void ResolveScrollCol(HuVecF *dir, HuVecF *pos1, HuVecF *pos2, HuVecF *endPos);
+static void ResolveScrollCol(HuVecF *dir, HuVecF *startPos, HuVecF *closestFacePointOut,
+                             HuVecF *endPos);
 static void MapViewCreate(void);
 static void MapViewKill(void);
 static BOOL MapViewExec(int playerNo);
@@ -141,7 +144,7 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static void MapSprCreate(int type, s16 masuId, int layer);
 static void MapBaseSprCreate(void);
 static void MapSprPosCalc(MAPSPRWORK *work);
-static void MapSprPlayerPosCalc(int unused);
+static void MapSprPlayerPosCalc(int playerPosNo);
 static BOOL MapSprPlayerCol(void);
 static void MapSprPlayerColAll(void);
 static void MapSprKill(void);
@@ -159,23 +162,27 @@ extern const float lbl_802C3550;
 extern const float lbl_802C3554;
 extern const float lbl_802C3558;
 
+// Selects the daytime board-space icon variant from the current game time.
 static inline BOOL MBTimeDayGet(void)
 {
     return GwSystem.curTime == 0;
 }
 
+// Called when the board scroll feature opens; prepares collision and map assets.
 void mbScrollInit(int dataNum)
 {
     ScrollCreate(mbObjDataNumGet(dataNum));
     MapViewCreate();
 }
 
+// Called when the board scroll feature closes; releases its models and animations.
 void mbScrollClose(void)
 {
     ScrollKill();
     MapViewKill();
 }
 
+// Board event entry point: alternates the free camera and map until the player exits.
 void mbev_Scroll(int playerNo, BOOL mapF)
 {
     int cameraStackNo;
@@ -214,6 +221,7 @@ void mbev_Scroll(int playerNo, BOOL mapF)
     mbPauseDisableSet(pauseDisableF);
 }
 
+// Initializes optional scroll collision geometry and the default star-space lookup.
 static void ScrollCreate(u32 dataNum)
 {
     if (dataNum == 0) {
@@ -229,6 +237,7 @@ static void ScrollCreate(u32 dataNum)
     scrollHook = NULL;
 }
 
+// Releases the scroll collision model and its boundary-face copy.
 static void ScrollKill(void)
 {
     HSF_FACE *triData;
@@ -244,6 +253,7 @@ static void ScrollKill(void)
     }
 }
 
+// Runs one free-camera visit, selecting the party or solo help text and invoking the scroll hook.
 static BOOL ScrollMain(int playerNo)
 {
     BOOL result;
@@ -284,6 +294,7 @@ static BOOL ScrollMain(int playerNo)
     return result;
 }
 
+// Runs the interactive board view; stick input moves the camera and triggers center on the star.
 static BOOL ScrollExec(int playerNo, s16 starMasuId)
 {
     int mode;
@@ -388,6 +399,7 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
     return result;
 }
 
+// Projects a world point onto the board plane along the current view direction.
 static void RotateScrollView(HuVecF *rot, HuVecF *pos, HuVecF *posOut)
 {
     posOut->x = pos->x + (HuSin(rot->y) * (pos->y / (HuSin(rot->x) / HuCos(rot->x))));
@@ -395,11 +407,12 @@ static void RotateScrollView(HuVecF *rot, HuVecF *pos, HuVecF *posOut)
     posOut->y = 0.0f;
 }
 
+// Finds the nearest forward intersection of a view ray with the scroll collision mesh.
 static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos)
 {
-    float maxArea;
-    float area;
-    float triArea;
+    float nearestRayT;
+    float rayT;
+    float planeDot;
     HuVecF cross;
     HuVecF *vtxP[4];
     HuVecF edge;
@@ -413,7 +426,7 @@ static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos)
     int i;
     HU3D_MODEL *modelP;
 
-    maxArea = -1.0f;
+    nearestRayT = -1.0f;
     if (scrollColModel < 0) {
         return FALSE;
     }
@@ -428,21 +441,21 @@ static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos)
     for (faceP = faceBufP->data, i = 0; i < faceBufP->count; i++, faceP++) {
         if (faceP->type == HSF_FACE_TRI) {
             vtxP[0] = ((HuVecF *)vtxBufP->data) + faceP->index[0].vertex;
-            triArea = (faceP->nbt[0] * vtxP[0]->x) + (faceP->nbt[1] * vtxP[0]->y)
+            planeDot = (faceP->nbt[0] * vtxP[0]->x) + (faceP->nbt[1] * vtxP[0]->y)
                 + (faceP->nbt[2] * vtxP[0]->z);
-            area = ((triArea - (faceP->nbt[0] * target->x)) - (faceP->nbt[1] * target->y)
+            rayT = ((planeDot - (faceP->nbt[0] * target->x)) - (faceP->nbt[1] * target->y)
                 - (faceP->nbt[2] * target->z))
                 / ((faceP->nbt[0] * dir->x) + (faceP->nbt[1] * dir->y)
                     + (faceP->nbt[2] * dir->z));
-            if (area < 0.0f) {
+            if (rayT < 0.0f) {
                 continue;
             }
-            if (maxArea >= 0.0f && area >= maxArea) {
+            if (nearestRayT >= 0.0f && rayT >= nearestRayT) {
                 continue;
             }
-            out.x = target->x + (area * dir->x);
-            out.y = target->y + (area * dir->y);
-            out.z = target->z + (area * dir->z);
+            out.x = target->x + (rayT * dir->x);
+            out.y = target->y + (rayT * dir->y);
+            out.z = target->z + (rayT * dir->z);
             if (faceP->type == HSF_FACE_TRI) {
                 vtxP[1] = ((HuVecF *)vtxBufP->data) + faceP->index[1].vertex;
                 vtxP[2] = ((HuVecF *)vtxBufP->data) + faceP->index[2].vertex;
@@ -465,18 +478,19 @@ static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos)
                     continue;
                 }
             }
-            maxArea = area;
+            nearestRayT = rayT;
         }
     }
-    if (maxArea >= 0.0f) {
-        endPos->x = target->x + (maxArea * dir->x);
-        endPos->y = target->y + (maxArea * dir->y);
-        endPos->z = target->z + (maxArea * dir->z);
+    if (nearestRayT >= 0.0f) {
+        endPos->x = target->x + (nearestRayT * dir->x);
+        endPos->y = target->y + (nearestRayT * dir->y);
+        endPos->z = target->z + (nearestRayT * dir->z);
         return TRUE;
     }
     return FALSE;
 }
 
+// Copies collision faces that have an exposed edge for the scroll camera fallback.
 static void InitScrollCol(void)
 {
     HSF_FACE *faceP;
@@ -533,7 +547,10 @@ static void InitScrollCol(void)
     }
 }
 
-static void ResolveScrollCol(HuVecF *dir, HuVecF *pos1, HuVecF *pos2, HuVecF *endPos)
+// Finds the nearest exposed collision face and, when one exists, writes its nearest point and ray
+// intersection to the supplied outputs.
+static void ResolveScrollCol(HuVecF *dir, HuVecF *startPos, HuVecF *closestFacePointOut,
+                             HuVecF *endPos)
 {
     HSF_FACE *faceP;
     int i;
@@ -579,14 +596,14 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *pos1, HuVecF *pos2, HuVecF *en
             int nextVtx = (i + 1) % 3;
 
             PSVECSubtract(&inVtx[nextVtx], &inVtx[i], &edge);
-            scale = ((pos1->x * edge.x) - (edge.x * inVtx[i].x) + (pos1->y * edge.y)
-                - (edge.y * inVtx[i].y) + (pos1->z * edge.z) - (edge.z * inVtx[i].z))
+            scale = ((startPos->x * edge.x) - (edge.x * inVtx[i].x) + (startPos->y * edge.y)
+                - (edge.y * inVtx[i].y) + (startPos->z * edge.z) - (edge.z * inVtx[i].z))
                 / PSVECSquareMag(&edge);
             if (scale >= 0.0f && scale < 1.0f) {
                 edge2.x = inVtx[i].x + (scale * edge.x);
                 edge2.y = inVtx[i].y + (scale * edge.y);
                 edge2.z = inVtx[i].z + (scale * edge.z);
-                PSVECSubtract(&edge2, pos1, &edge);
+                PSVECSubtract(&edge2, startPos, &edge);
                 mag = PSVECMag(&edge);
                 if (outFaceP == 0 || mag < minMag) {
                     outFaceP = faceP;
@@ -596,7 +613,7 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *pos1, HuVecF *pos2, HuVecF *en
             }
         }
         for (i = 0; i < 3; i++) {
-            PSVECSubtract(&inVtx[i], pos1, &edge);
+            PSVECSubtract(&inVtx[i], startPos, &edge);
             mag = PSVECMag(&edge);
             if (outFaceP == 0 || mag < minMag) {
                 outFaceP = faceP;
@@ -615,8 +632,8 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *pos1, HuVecF *pos2, HuVecF *en
         scale = ((dot - (faceP->nbt[0] * outPos2.x)) - (faceP->nbt[1] * outPos2.y)
             - (faceP->nbt[2] * outPos2.z))
             / ((faceP->nbt[0] * dir->x) + (faceP->nbt[1] * dir->y) + (faceP->nbt[2] * dir->z));
-        if (pos2 != 0) {
-            *pos2 = outPos2;
+        if (closestFacePointOut != 0) {
+            *closestFacePointOut = outPos2;
         }
         if (endPos != 0) {
             endPos->x = outPos2.x + (scale * dir->x);
@@ -626,11 +643,13 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *pos1, HuVecF *pos2, HuVecF *en
     }
 }
 
+// Supplies the current player's next star space as the scroll hint target.
 static s16 StarMasuGet(int playerNo)
 {
     return mbMasuFind_TypeIdGet(GwPlayer[playerNo].masuId, 7, TRUE, TRUE);
 }
 
+// Moves the board camera focus between two points while keeping it clear of collision geometry.
 void mbev_StarScroll(HuVecF *startPos, HuVecF *endPos, s16 time)
 {
     HuVecF rot;
@@ -659,6 +678,7 @@ void mbev_StarScroll(HuVecF *startPos, HuVecF *endPos, s16 time)
     mbCameraMovePos(&cameraPos, &rot, NULL, 1500.0f, -1.0f, 24);
     mbCameraMoveWait();
     if (time < 0) {
+        // A negative duration selects the event's default 120-frame transition.
         time = 120;
     }
     for (i = 0; i <= time; i++) {
@@ -674,6 +694,7 @@ void mbev_StarScroll(HuVecF *startPos, HuVecF *endPos, s16 time)
     }
 }
 
+// Loads and locks the map tile and path animations when board scroll initializes.
 static void MapViewCreate(void)
 {
     mapViewZoom = 20000.0f;
@@ -690,6 +711,7 @@ static void MapViewCreate(void)
     HuDataDirClose(DATA_bmasu);
 }
 
+// Releases the map tile and path animations when board scroll closes.
 static void MapViewKill(void)
 {
     if (masuMapAnim != NULL) {
@@ -702,6 +724,7 @@ static void MapViewKill(void)
     }
 }
 
+// Displays the board map and waits for A to cycle marker visibility, B to exit, or X to return.
 static BOOL MapViewExec(int playerNo)
 {
     float near;
@@ -750,6 +773,7 @@ static BOOL MapViewExec(int playerNo)
             scrollWorkP->playerPosNo = (scrollWorkP->playerPosNo + 1) % 3;
             partyF = GwSystem.partyF;
             if (!partyF && scrollWorkP->playerPosNo == 1) {
+                // In solo play, skip the multiplayer-only mode and advance to the next choice.
                 scrollWorkP->playerPosNo = (scrollWorkP->playerPosNo + 1) % 3;
             }
             MapSprPlayerPosCalc(scrollWorkP->playerPosNo);
@@ -782,6 +806,7 @@ static BOOL MapViewExec(int playerNo)
     return result;
 }
 
+// Creates a board-data sprite for use by a map marker.
 static inline s16 MapSprEntry(u32 dataNum, s16 prio)
 {
     s16 sprId;
@@ -791,6 +816,8 @@ static inline s16 MapSprEntry(u32 dataNum, s16 prio)
     return sprId;
 }
 
+// Adds a character or special-space marker when a free slot exists; silently ignores the request
+// when all 32 marker slots are occupied.
 static void MapSprCreate(int type, s16 masuId, int layer)
 {
     MAPSPRWORK *work;
@@ -870,6 +897,7 @@ static void MapSprCreate(int type, s16 masuId, int layer)
     scrollWorkP->mapSprNum++;
 }
 
+// Adds the current player markers and all Donkey and Koopa spaces to the map.
 static void MapBaseSprCreate(void)
 {
     s16 masuIdTbl[12];
@@ -899,6 +927,7 @@ static void MapBaseSprCreate(void)
     }
 }
 
+// Projects one marker's board space to screen coordinates and offsets character labels.
 static void MapSprPosCalc(MAPSPRWORK *work)
 {
     HuVecF masuPos;
@@ -920,7 +949,10 @@ static void MapSprPosCalc(MAPSPRWORK *work)
     }
 }
 
-static void MapSprPlayerPosCalc(int unused)
+// Applies player-marker mode 0 or 1 visibility, leaves mode 2 with all player markers hidden,
+// resolves overlaps, and places arrows.
+// The argument is ignored; this routine reads the selected mode from scrollWorkP.
+static void MapSprPlayerPosCalc(int playerPosNo)
 {
     MAPSPRWORK *work;
     HuVecF dir;
@@ -971,7 +1003,7 @@ static void MapSprPlayerPosCalc(int unused)
     case 0:
         work = scrollWorkP->mapSpr;
         for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
-            if (work->flags & 1) {
+            if (work->flags & 0x1) {
                 work->dispF = TRUE;
                 if (work->sprId[0] >= 0) {
                     espDispOn(work->sprId[0]);
@@ -994,7 +1026,7 @@ static void MapSprPlayerPosCalc(int unused)
     case 1:
         work = scrollWorkP->mapSpr;
         for (i = 0; i < scrollWorkP->mapSprNum; i++, work++) {
-            if (work->flags & 4) {
+            if (work->flags & 0x4) {
                 work->dispF = TRUE;
                 if (work->sprId[0] >= 0) {
                     espDispOn(work->sprId[0]);
@@ -1038,6 +1070,7 @@ static void MapSprPlayerPosCalc(int unused)
     }
 }
 
+// Separates overlapping visible character markers horizontally and clamps them to the screen.
 static BOOL MapSprPlayerCol(void)
 {
     MAPSPRWORK *work;
@@ -1087,6 +1120,7 @@ static BOOL MapSprPlayerCol(void)
     return result;
 }
 
+// Repeats marker separation until positions stop changing or the safety limit is reached.
 static void MapSprPlayerColAll(void)
 {
     int i;
@@ -1098,6 +1132,7 @@ static void MapSprPlayerColAll(void)
     }
 }
 
+// Kills every sprite owned by the map marker work list.
 static void MapSprKill(void)
 {
     MAPSPRWORK *work;
@@ -1124,6 +1159,8 @@ static s16 masuPatTbl[11] = {
     -1, 0, 1, 2, 6, 7, -2, 5, 8, -1, 9,
 };
 
+// Pulses the translucent secondary icon for negative-type Donkey/Koopa markers while the map is
+// drawn.
 static inline void MapSprScaleSet(void)
 {
     MAPSPRWORK *work;
@@ -1148,6 +1185,7 @@ const float lbl_802C3550 = 24.0f;
 const float lbl_802C3554 = 0.2f;
 const float lbl_802C3558 = 90.0f;
 
+// Draws each connected non-branch path once, starting from the board's start space.
 static void MapPathDraw(s16 masuId, Mtx *mtx)
 {
     Mtx pathMtx;
@@ -1226,6 +1264,7 @@ static void MapPathDraw(s16 masuId, Mtx *mtx)
     }
 }
 
+// Hu3D draw hook: renders projected paths and board-space icons over the map view.
 static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     Mtx texMtx;
@@ -1297,8 +1336,9 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 masuType = mbMasuTypeGet(i);
                 attr = mbMasuAttrGet(i);
                 mAttr = mbMasuMAttrGet(i);
-                if (masuType == 0 || (attr & ~SCROLL_MASU_ATTR_PATH_IGNORED & mbMasuDispAttrGet()) != 0
-                    || (mAttr & mbMasuDispMAttrGet()) != 0) {
+                if (masuType == 0 ||
+                    (attr & ~SCROLL_MASU_ATTR_PATH_IGNORED & mbMasuDispAttrGet()) != 0 ||
+                    (mAttr & mbMasuDispMAttrGet()) != 0) {
                     continue;
                 }
                 patNo = masuPatTbl[masuType];
@@ -1341,11 +1381,13 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
+// Replaces the callback used to choose the star space shown by the free-camera hint.
 void mbScrollStarFindFuncSet(MBSCROLLSTARFINDFUNC findFunc)
 {
     scrollStarFindFunc = findFunc;
 }
 
+// Sets supplied map-camera components; negative zoom leaves the current zoom unchanged.
 void mbMapCameraSet(const HuVecF *rot, const HuVecF *pos, float zoom)
 {
     if (rot) {
@@ -1359,16 +1401,19 @@ void mbMapCameraSet(const HuVecF *rot, const HuVecF *pos, float zoom)
     }
 }
 
+// Installs the callback run when the map view opens and closes.
 void mbMapHookSet(MBSCROLLHOOK hook)
 {
     mapHook = hook;
 }
 
+// Installs the callback run when the free-camera view opens and closes.
 void mbScrollHookSet(MBSCROLLHOOK hook)
 {
     scrollHook = hook;
 }
 
+// Adds a board marker, using the player layer for character markers.
 void mbMapSprAdd(int type, s16 id)
 {
     if (type >= 16) {
@@ -1378,6 +1423,7 @@ void mbMapSprAdd(int type, s16 id)
     }
 }
 
+// Capsule event entry point for opening the board scroll and map views.
 void mbev_ScrollCapsule(int playerNo)
 {
     mbev_Scroll(playerNo, FALSE);
