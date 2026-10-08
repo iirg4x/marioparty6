@@ -1856,6 +1856,65 @@ config.libs = [
             Object(Matching, "REL/mdminidll/layer_effect_position.c", extra_cflags=["-pooldata off"]),
         ],
     ),
+    Rel(
+        "mgmfreedll",
+        objects={
+            Object(
+                Matching,
+                "REL/mgmfreedll/runtime.c",
+                source="REL/mgmfreedll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+
+
+            Object(Matching, "REL/mgmfreedll/menu.c", source="REL/mgmfreedll/menu.c", extra_cflags=["-O0,p", "-char", "unsigned", "-fp_contract", "off", "-sdata", "0", "-sdata2", "0", "-pooldata", "off"]),
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            Object(Matching, "REL/mgmfreedll/mode_flow.c", source="REL/mgmfreedll/mode_flow.c", extra_cflags=["-O0,p", "-char", "unsigned", "-fp_contract", "off", "-sdata", "0", "-sdata2", "0", "-pooldata", "off"]),
+
+
+
+
+
+
+
+        },
+    ),
 ]
 
 if args.mode == "configure":
