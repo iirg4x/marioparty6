@@ -1,3 +1,4 @@
+/* Board-side math helpers for transforms, camera projection, and motion curves. */
 #define _MATH_H
 #include "dolphin/math.h"
 #include <stddef.h>
@@ -11,8 +12,7 @@
 
 #include "humath.h"
 
-/* One-instruction native primitive, following the SDK inline-helper style.
- * No fixed-register binding; projection and culling remain ordinary C. */
+/* Returns the magnitude of one camera-space coordinate for frustum checks. */
 #ifdef __MWERKS__
 static inline float MathAbsFloat(register float value)
 {
@@ -42,6 +42,7 @@ static float *cosTab;
 static HuVecF objectBBox[8];
 static HuVecF objectBBoxView[8];
 
+/* Board setup calls this before angle helpers use the shared cosine lookup table. */
 void mbMathInit(void)
 {
     s32 i;
@@ -53,6 +54,7 @@ void mbMathInit(void)
     }
 }
 
+/* Board teardown calls this to release the angle lookup table created during setup. */
 void mbMathClose(void)
 {
     if (cosTab != NULL) {
@@ -63,31 +65,29 @@ void mbMathClose(void)
 
 float mbCosDeg(float deg)
 {
-    return *(float *)((char *)cosTab + MB_TRIG_COS_OFFSET(deg, MB_TRIG_DEG_SCALE));
+    return cosTab[MB_TRIG_COS_OFFSET(deg, MB_TRIG_DEG_SCALE) / sizeof(*cosTab)];
 }
 
 float mbCosRad(float rad)
 {
-    return *(float *)((char *)cosTab + MB_TRIG_COS_OFFSET(rad, MB_TRIG_RAD_SCALE));
+    return cosTab[MB_TRIG_COS_OFFSET(rad, MB_TRIG_RAD_SCALE) / sizeof(*cosTab)];
 }
 
 float mbSinDeg(float deg)
 {
-    return *(float *)((char *)cosTab + MB_TRIG_SIN_OFFSET(deg, MB_TRIG_DEG_SCALE));
+    return cosTab[MB_TRIG_SIN_OFFSET(deg, MB_TRIG_DEG_SCALE) / sizeof(*cosTab)];
 }
 
 float mbSinRad(float rad)
 {
-    return *(float *)((char *)cosTab + MB_TRIG_SIN_OFFSET(rad, MB_TRIG_RAD_SCALE));
+    return cosTab[MB_TRIG_SIN_OFFSET(rad, MB_TRIG_RAD_SCALE) / sizeof(*cosTab)];
 }
 
 #ifdef __MWERKS__
-/* MP4/SDK-style native paired-single kernels; portable C follows below. */
-#pragma fp_contract on
 
+/* Rotates the Y/Z rows of an existing matrix by an X-axis sine/cosine pair. */
 void mbMtxRotTrigX(register Mtx mtx, register float sin, register float cos)
 {
-    /* Two paired rows are snapshotted before the in-place rotation. */
     asm {
         frsp sin, sin
         frsp cos, cos
@@ -112,9 +112,9 @@ void mbMtxRotTrigX(register Mtx mtx, register float sin, register float cos)
     }
 }
 
+/* Rotates the X/Z rows of an existing matrix by a Y-axis sine/cosine pair. */
 void mbMtxRotTrigY(register Mtx mtx, register float sin, register float cos)
 {
-    /* Two paired rows are snapshotted before the in-place rotation. */
     asm {
         frsp sin, sin
         frsp cos, cos
@@ -139,9 +139,9 @@ void mbMtxRotTrigY(register Mtx mtx, register float sin, register float cos)
     }
 }
 
+/* Rotates the X/Y rows of an existing matrix by a Z-axis sine/cosine pair. */
 void mbMtxRotTrigZ(register Mtx mtx, register float sin, register float cos)
 {
-    /* Two paired rows are snapshotted before the in-place rotation. */
     asm {
         frsp sin, sin
         frsp cos, cos
@@ -166,8 +166,8 @@ void mbMtxRotTrigZ(register Mtx mtx, register float sin, register float cos)
     }
 }
 
-#pragma fp_contract off
 #else
+/* Applies an X-axis rotation to each column of the existing matrix. */
 void mbMtxRotTrigX(Mtx mtx, float sin, float cos)
 {
     float y;
@@ -182,6 +182,7 @@ void mbMtxRotTrigX(Mtx mtx, float sin, float cos)
     }
 }
 
+/* Applies a Y-axis rotation to each column of the existing matrix. */
 void mbMtxRotTrigY(Mtx mtx, float sin, float cos)
 {
     float x;
@@ -196,6 +197,7 @@ void mbMtxRotTrigY(Mtx mtx, float sin, float cos)
     }
 }
 
+/* Applies a Z-axis rotation to each column of the existing matrix. */
 void mbMtxRotTrigZ(Mtx mtx, float sin, float cos)
 {
     float x;
@@ -213,6 +215,7 @@ void mbMtxRotTrigZ(Mtx mtx, float sin, float cos)
 #endif
 
 #ifdef __MWERKS__
+/* Builds an X-rotated matrix whose three basis rows carry the supplied scale. */
 void mbMtxRotTrigScaleX(register Mtx mtx, register float sin, register float cos,
     register HuVecF *scale)
 {
@@ -237,6 +240,7 @@ void mbMtxRotTrigScaleX(register Mtx mtx, register float sin, register float cos
     }
 }
 #else
+/* Builds an X-rotated matrix whose three basis rows carry the supplied scale. */
 void mbMtxRotTrigScaleX(Mtx mtx, float sin, float cos, HuVecF *scale)
 {
     mtx[0][0] = scale->x;
@@ -256,6 +260,7 @@ void mbMtxRotTrigScaleX(Mtx mtx, float sin, float cos, HuVecF *scale)
 #endif
 
 #ifdef __MWERKS__
+/* Builds a Y-rotated matrix whose three basis rows carry the supplied scale. */
 void mbMtxRotTrigScaleY(register Mtx mtx, register float sin, register float cos,
     register HuVecF *scale)
 {
@@ -284,6 +289,7 @@ void mbMtxRotTrigScaleY(register Mtx mtx, register float sin, register float cos
     }
 }
 #else
+/* Builds a Y-rotated matrix whose three basis rows carry the supplied scale. */
 void mbMtxRotTrigScaleY(Mtx mtx, float sin, float cos, HuVecF *scale)
 {
     mtx[0][0] = cos * scale->x;
@@ -302,6 +308,7 @@ void mbMtxRotTrigScaleY(Mtx mtx, float sin, float cos, HuVecF *scale)
 #endif
 
 #ifdef __MWERKS__
+/* Builds a Z-rotated matrix whose three basis rows carry the supplied scale. */
 void mbMtxRotTrigScaleZ(register Mtx mtx, register float sin, register float cos,
     register HuVecF *scale)
 {
@@ -326,6 +333,7 @@ void mbMtxRotTrigScaleZ(register Mtx mtx, register float sin, register float cos
     }
 }
 #else
+/* Builds a Z-rotated matrix whose three basis rows carry the supplied scale. */
 void mbMtxRotTrigScaleZ(Mtx mtx, float sin, float cos, HuVecF *scale)
 {
     mtx[0][0] = cos * scale->x;
@@ -344,6 +352,7 @@ void mbMtxRotTrigScaleZ(Mtx mtx, float sin, float cos, HuVecF *scale)
 
 #endif
 
+/* Looks up sine and cosine in the shared table, then rotates about the selected axis in degrees. */
 void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle)
 {
     float *table;
@@ -356,6 +365,7 @@ void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
+/* Looks up sine and cosine in the shared table, then rotates about the selected axis in radians. */
 void mbMtxRotAxisRad(Mtx mtx, u8 axis, float angle)
 {
     float *table;
@@ -368,9 +378,7 @@ void mbMtxRotAxisRad(Mtx mtx, u8 axis, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
-#ifdef __MWERKS__
-#pragma fp_contract on
-#endif
+/* Applies an X-axis matrix rotation using an angle measured in degrees. */
 void mbMtxRotXDeg(Mtx mtx, float angle)
 {
     s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
@@ -381,6 +389,7 @@ void mbMtxRotXDeg(Mtx mtx, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
+/* Applies an X-axis matrix rotation using an angle measured in radians. */
 void mbMtxRotXRad(Mtx mtx, float angle)
 {
     s32 offset = (s32)(angle * MB_TRIG_RAD_SCALE);
@@ -391,6 +400,7 @@ void mbMtxRotXRad(Mtx mtx, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
+/* Applies a Y-axis matrix rotation using an angle measured in degrees. */
 void mbMtxRotYDeg(Mtx mtx, float angle)
 {
     s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
@@ -401,6 +411,7 @@ void mbMtxRotYDeg(Mtx mtx, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
+/* Applies a Y-axis matrix rotation using an angle measured in radians. */
 void mbMtxRotYRad(Mtx mtx, float angle)
 {
     s32 offset = (s32)(angle * MB_TRIG_RAD_SCALE);
@@ -411,6 +422,7 @@ void mbMtxRotYRad(Mtx mtx, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
+/* Applies a Z-axis matrix rotation using an angle measured in degrees. */
 void mbMtxRotZDeg(Mtx mtx, float angle)
 {
     s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
@@ -421,6 +433,7 @@ void mbMtxRotZDeg(Mtx mtx, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
+/* Applies a Z-axis matrix rotation using an angle measured in radians. */
 void mbMtxRotZRad(Mtx mtx, float angle)
 {
     s32 offset = (s32)(angle * MB_TRIG_RAD_SCALE);
@@ -431,6 +444,7 @@ void mbMtxRotZRad(Mtx mtx, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)));
 }
 
+/* Builds a scaled X-axis rotation matrix from a degree angle and scale vector. */
 void mbMtxScaleRotXDeg(Mtx mtx, HuVecF *scale, float angle)
 {
     s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
@@ -441,6 +455,7 @@ void mbMtxScaleRotXDeg(Mtx mtx, HuVecF *scale, float angle)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
 }
 
+/* Builds a scaled Y-axis rotation matrix from a degree angle and scale vector. */
 void mbMtxScaleRotYDeg(Mtx mtx, float angle, HuVecF *scale)
 {
     s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
@@ -451,6 +466,7 @@ void mbMtxScaleRotYDeg(Mtx mtx, float angle, HuVecF *scale)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
 }
 
+/* Builds a scaled Z-axis rotation matrix from a degree angle and scale vector. */
 void mbMtxScaleRotZDeg(Mtx mtx, float angle, HuVecF *scale)
 {
     s32 offset = (s32)(angle * MB_TRIG_DEG_SCALE);
@@ -461,6 +477,7 @@ void mbMtxScaleRotZDeg(Mtx mtx, float angle, HuVecF *scale)
         *(float *)((char *)table + ((offset + 2) & MB_TRIG_BYTE_MASK)), scale);
 }
 
+/* Starts with an X rotation (or identity) and appends the nonzero Y and Z rotations. */
 void mbMtxRot(Mtx mtx, float x, float y, float z)
 {
     if (x != 0.0f) {
@@ -477,11 +494,7 @@ void mbMtxRot(Mtx mtx, float x, float y, float z)
 }
 
 #ifdef __MWERKS__
-#pragma fp_contract off
-#endif
-
-/* Native double-precision sums, rounded once by the final single stores. */
-#ifdef __MWERKS__
+/* Adds a position offset to the translation column of an existing matrix. */
 void mbMtxTransCat(register Mtx mtx, register float x, register float y, register float z)
 {
     asm {
@@ -497,6 +510,7 @@ void mbMtxTransCat(register Mtx mtx, register float x, register float y, registe
     }
 }
 #else
+/* Adds a position offset to the translation column of an existing matrix. */
 void mbMtxTransCat(Mtx mtx, float x, float y, float z)
 {
     double tx = mtx[0][3];
@@ -515,6 +529,7 @@ void mbMtxTransCat(Mtx mtx, float x, float y, float z)
 #define MB_RAND_HIGH_BIT (1U << 31)
 #define MB_RAND_VALUE_MASK (MB_RAND_HIGH_BIT - 1U)
 
+/* Maps a frand() value into the half-open integer range [0, mod). */
 u32 mbRandMod(u32 mod)
 {
     u32 value = frand();
@@ -526,25 +541,28 @@ u32 mbRandMod(u32 mod)
     return ((u64)value * mod) >> 32;
 }
 
-float mbVecMagXZ(HuVecF *a, HuVecF *b)
+/* Board movement uses this to measure horizontal separation, ignoring height. */
+float mbVecMagXZ(HuVecF *positionA, HuVecF *positionB)
 {
-    float dx = a->x - b->x;
-    float dz = a->z - b->z;
+    float dx = positionA->x - positionB->x;
+    float dz = positionA->z - positionB->z;
 
     return HuMagPoint2D(dx, dz);
 }
 
-BOOL mbVecMagXZCheck(HuVecF *a, HuVecF *b, float maxDist)
+/* Board checks use this for an inclusive horizontal-distance threshold. */
+BOOL mbVecMagXZCheck(HuVecF *positionA, HuVecF *positionB, float maxDist)
 {
-    float dist = mbVecMagXZ(a, b);
+    float distance = mbVecMagXZ(positionA, positionB);
 
-    if (dist <= maxDist) {
+    if (distance <= maxDist) {
         return TRUE;
     } else {
         return FALSE;
     }
 }
 
+/* Keeps a board rotation angle in the signed range [-180, 180] degrees. */
 float mbAngleWrap(float angle)
 {
     angle = fmod(angle, 360);
@@ -556,86 +574,92 @@ float mbAngleWrap(float angle)
     return angle;
 }
 
-void mbAngleWrapV(HuVecF *angle)
+/* Normalizes all three rotation components before board objects use them. */
+void mbAngleWrapV(HuVecF *rotation)
 {
     int i;
-    float *dest = (float *)angle;
+    float *component = (float *)rotation;
 
     for (i = 0; i < 3; i++) {
-        *dest = mbAngleWrap(*dest);
-        dest++;
+        *component = mbAngleWrap(*component);
+        component++;
     }
 }
 
-BOOL mbAngleAdd(float *dest, float angle, float speed)
+/* Advances a board rotation by a fixed degree step toward its target each update. */
+BOOL mbAngleAdd(float *rotation, float targetAngle, float speed)
 {
-    float wrapAngle = fmod(angle - *dest, 360);
-    float diff;
+    float wrappedDelta = fmod(targetAngle - *rotation, 360);
+    float step;
 
-    if (fabs(wrapAngle) < speed) {
-        *dest = angle;
+    if (fabs(wrappedDelta) < speed) {
+        *rotation = targetAngle;
         return TRUE;
     }
-    if (wrapAngle < 0.0f) {
-        wrapAngle += 360.0f;
+    if (wrappedDelta < 0.0f) {
+        wrappedDelta += 360.0f;
     }
-    if (wrapAngle > 180.0f) {
-        diff = -speed;
+    if (wrappedDelta > 180.0f) {
+        step = -speed;
     } else {
-        diff = speed;
+        step = speed;
     }
-    *dest += diff;
-    *dest = mbAngleWrap(*dest);
+    *rotation += step;
+    *rotation = mbAngleWrap(*rotation);
     return FALSE;
 }
 
-BOOL mbAngleMoveTo(float *dest, float angle, float speed)
+/* Gate and board motion use this to approach a target by a fraction per update. */
+BOOL mbAngleMoveTo(float *rotation, float targetAngle, float speed)
 {
-    float wrapAngle = fmod(angle - *dest, 360);
+    float wrappedDelta = fmod(targetAngle - *rotation, 360);
     float threshold = 1.0f;
 
-    if (fabs(wrapAngle) < threshold) {
-        *dest = angle;
+    if (fabs(wrappedDelta) < threshold) {
+        *rotation = targetAngle;
         return TRUE;
     }
-    if (wrapAngle < 0.0f) {
-        wrapAngle += 360.0f;
+    if (wrappedDelta < 0.0f) {
+        wrappedDelta += 360.0f;
     }
-    if (wrapAngle > 180.0f) {
-        wrapAngle -= 360.0f;
+    if (wrappedDelta > 180.0f) {
+        wrappedDelta -= 360.0f;
     }
-    *dest = fmod(*dest + (speed * wrapAngle), 360.0);
-    if (*dest < 0.0f) {
-        *dest += 360.0f;
+    *rotation = fmod(*rotation + (speed * wrappedDelta), 360.0);
+    if (*rotation < 0.0f) {
+        *rotation += 360.0f;
     }
     return FALSE;
 }
 
-float mbAngleWrap2(float a, float b)
+/* Returns the signed shortest angular difference from startAngle to angle. */
+float mbAngleWrap2(float angle, float startAngle)
 {
-    float angle = fmod(a - b, 360);
+    float wrappedDelta = fmod(angle - startAngle, 360);
 
-    if (angle < 0.0f) {
-        angle += 360.0f;
+    if (wrappedDelta < 0.0f) {
+        wrappedDelta += 360.0f;
     }
-    if (angle >= 180.0f) {
-        angle -= 360.0f;
+    if (wrappedDelta >= 180.0f) {
+        wrappedDelta -= 360.0f;
     }
-    return angle;
+    return wrappedDelta;
 }
 
-BOOL mbVecMagCheck(HuVecF *a, HuVecF *b, float dist)
+/* Board collision checks use a strict 3D radius test (the boundary is outside). */
+BOOL mbVecMagCheck(HuVecF *positionA, HuVecF *positionB, float radius)
 {
     HuVecF diff;
 
-    VECSubtract(a, b, &diff);
-    if (VECSquareMag(&diff) >= dist * dist) {
+    VECSubtract(positionA, positionB, &diff);
+    if (VECSquareMag(&diff) >= radius * radius) {
         return FALSE;
     } else {
         return TRUE;
     }
 }
 
+/* Builds the orientation rows used by board camera-facing transforms. */
 void mbMtxLookAtCalc(Mtx dest, HuVecF *eye, HuVecF *up, HuVecF *target)
 {
     HuVecF f;
@@ -663,7 +687,8 @@ void mbMtxLookAtCalc(Mtx dest, HuVecF *eye, HuVecF *up, HuVecF *target)
     dest[2][3] = 0.0f;
 }
 
-void mbPos3Dto2D(HuVecF *src, HuVecF *dst)
+/* Board sprites use this to project a world position into display pixels. */
+void mbPos3Dto2D(HuVecF *worldPos, HuVecF *screenPos)
 {
     MBCAMERA *cameraP = mbCameraGet();
     float tanFov;
@@ -673,16 +698,17 @@ void mbPos3Dto2D(HuVecF *src, HuVecF *dst)
     HuVecF pos;
 
     MTXLookAt(lookAt, &cameraP->eye, &cameraP->up, &cameraP->center);
-    MTXMultVec(lookAt, src, &pos);
+    MTXMultVec(lookAt, worldPos, &pos);
     tanFov = mbSinDeg(cameraP->fov * 0.5f) / mbCosDeg(cameraP->fov * 0.5f);
     width = HU_DISP_ASPECT * (tanFov * pos.z);
     height = tanFov * pos.z;
-    dst->x = HU_DISP_CENTERX + (pos.x * (HU_DISP_CENTERX / -width));
-    dst->y = HU_DISP_CENTERY + (pos.y * (HU_DISP_CENTERY / height));
-    dst->z = -pos.z;
+    screenPos->x = HU_DISP_CENTERX + (pos.x * (HU_DISP_CENTERX / -width));
+    screenPos->y = HU_DISP_CENTERY + (pos.y * (HU_DISP_CENTERY / height));
+    screenPos->z = -pos.z;
 }
 
-void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst)
+/* Board effects use this to project world positions into a selected camera's normalized view. */
+void mbPos3DtoNorm(HuVecF *worldPos, s16 cameraMask, HuVecF *normPos)
 {
     HU3D_CAMERA *cameraP;
     float tanFov;
@@ -699,33 +725,35 @@ void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst)
     }
     cameraP = &Hu3DCamera[cameraNo];
     MTXLookAt(lookAt, &cameraP->pos, &cameraP->up, &cameraP->target);
-    MTXMultVec(lookAt, src, &pos);
+    MTXMultVec(lookAt, worldPos, &pos);
     tanFov = mbSinDeg(cameraP->fov * 0.5f) / mbCosDeg(cameraP->fov * 0.5f);
     height = tanFov * -pos.z;
     width = HU_DISP_ASPECT * height;
-    dst->x = pos.x / width;
-    dst->y = pos.y / height;
-    dst->z = pos.z;
+    normPos->x = pos.x / width;
+    normPos->y = pos.y / height;
+    normPos->z = pos.z;
 }
 
-void mbPos2Dto3D(HuVecF *src, HuVecF *dst)
+/* Converts display-pixel coordinates and camera depth back to a world position. */
+void mbPos2Dto3D(HuVecF *screenPos, HuVecF *worldPos)
 {
     MBCAMERA *cameraP = mbCameraGet();
     float tanFov = mbSinDeg(cameraP->fov * 0.5f) / mbCosDeg(cameraP->fov * 0.5f);
-    float height = 2.0f * (tanFov * src->z);
+    float height = 2.0f * (tanFov * screenPos->z);
     float width = HU_DISP_ASPECT * height;
-    float normX = src->x / HU_DISP_WIDTH;
-    float normY = src->y / HU_DISP_HEIGHT;
+    float normX = screenPos->x / HU_DISP_WIDTH;
+    float normY = screenPos->y / HU_DISP_HEIGHT;
     Mtx lookAt;
 
-    dst->x = (normX - 0.5) * width;
-    dst->y = -(normY - 0.5) * height;
-    dst->z = -src->z;
+    worldPos->x = (normX - 0.5) * width;
+    worldPos->y = -(normY - 0.5) * height;
+    worldPos->z = -screenPos->z;
     mbCameraLookAtInvGet(lookAt);
-    MTXMultVec(lookAt, dst, dst);
+    MTXMultVec(lookAt, worldPos, worldPos);
 }
 
-void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst)
+/* Converts normalized camera-view coordinates and depth to a world position. */
+void mbNormPosto3D(HuVecF *normPos, s16 cameraMask, HuVecF *worldPos)
 {
     HU3D_CAMERA *cameraP;
     float depth;
@@ -745,58 +773,65 @@ void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst)
     cameraP = &Hu3DCamera[cameraNo];
     halfFov = cameraP->fov * 0.5f;
     cosine = mbCosDeg(halfFov);
-    absoluteDepth = MathAbsFloat(src->z);
+    absoluteDepth = MathAbsFloat(normPos->z);
     fovTan = mbSinDeg(halfFov) / cosine;
     depth = fovTan * absoluteDepth;
-    dst->x = src->x * (HU_DISP_ASPECT * depth);
-    dst->y = src->y * depth;
-    dst->z = src->z;
+    worldPos->x = normPos->x * (HU_DISP_ASPECT * depth);
+    worldPos->y = normPos->y * depth;
+    worldPos->z = normPos->z;
     MTXLookAt(lookAt, &cameraP->pos, &cameraP->up, &cameraP->target);
     MTXInverse(lookAt, lookAtInv);
-    MTXMultVec(lookAtInv, dst, dst);
+    MTXMultVec(lookAtInv, worldPos, worldPos);
 }
 
-void mbNormPosto2D(HuVecF *src, HuVecF *dst)
+/* Converts normalized screen coordinates to pixels while preserving depth. */
+void mbNormPosto2D(HuVecF *normPos, HuVecF *screenPos)
 {
-    dst->x = HU_DISP_CENTERX * (1.0f + src->x);
-    dst->y = -HU_DISP_CENTERY * (src->y - 1.0f);
-    dst->z = src->z;
+    screenPos->x = HU_DISP_CENTERX * (1.0f + normPos->x);
+    screenPos->y = -HU_DISP_CENTERY * (normPos->y - 1.0f);
+    screenPos->z = normPos->z;
 }
 
-float mbBezierCalc(float a, float b, float c, float t)
+/* Board path animation uses a quadratic Bezier value for normalized progress t. */
+float mbBezierCalc(float start, float control, float end, float t)
 {
     float invTime = 1.0f - t;
 
-    return (t * t * c) + ((invTime * invTime * a) + (b * ((2.0f * invTime) * t)));
+    return (t * t * end) + ((invTime * invTime * start) + (control * ((2.0f * invTime) * t)));
 }
 
-void mbBezierCalcV(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *dst, float t)
+/* Evaluates the same quadratic Bezier independently for each vector component. */
+void mbBezierCalcV(HuVecF *start, HuVecF *control, HuVecF *end, HuVecF *dst, float t)
 {
-    dst->x = mbBezierCalc(a->x, b->x, c->x, t);
-    dst->y = mbBezierCalc(a->y, b->y, c->y, t);
-    dst->z = mbBezierCalc(a->z, b->z, c->z, t);
+    dst->x = mbBezierCalc(start->x, control->x, end->x, t);
+    dst->y = mbBezierCalc(start->y, control->y, end->y, t);
+    dst->z = mbBezierCalc(start->z, control->z, end->z, t);
 }
 
-void mbBezierCalcVList(HuVecF *src, HuVecF *dst, float t)
+/* Evaluates a quadratic Bezier from three consecutive points in a vector list. */
+void mbBezierCalcVList(HuVecF *controlPoints, HuVecF *dst, float t)
 {
-    dst->x = mbBezierCalc(src[0].x, src[1].x, src[2].x, t);
-    dst->y = mbBezierCalc(src[0].y, src[1].y, src[2].y, t);
-    dst->z = mbBezierCalc(src[0].z, src[1].z, src[2].z, t);
+    dst->x = mbBezierCalc(controlPoints[0].x, controlPoints[1].x, controlPoints[2].x, t);
+    dst->y = mbBezierCalc(controlPoints[0].y, controlPoints[1].y, controlPoints[2].y, t);
+    dst->z = mbBezierCalc(controlPoints[0].z, controlPoints[1].z, controlPoints[2].z, t);
 }
 
-float mbBezierCalcSlope(float a, float b, float c, float t)
+/* Returns the derivative of a quadratic Bezier curve at normalized progress t. */
+float mbBezierCalcSlope(float start, float control, float end, float t)
 {
-    return 2.0f * ((-a + b) + (t * (c + (a - (2.0f * b)))));
+    return 2.0f * ((-start + control) + (t * (end + (start - (2.0f * control)))));
 }
 
-void mbBezierCalcSlopeV(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *dst, float t)
+/* Evaluates the quadratic Bezier derivative for each vector component. */
+void mbBezierCalcSlopeV(HuVecF *start, HuVecF *control, HuVecF *end, HuVecF *dst, float t)
 {
-    dst->x = mbBezierCalcSlope(a->x, b->x, c->x, t);
-    dst->y = mbBezierCalcSlope(a->y, b->y, c->y, t);
-    dst->z = mbBezierCalcSlope(a->z, b->z, c->z, t);
+    dst->x = mbBezierCalcSlope(start->x, control->x, end->x, t);
+    dst->y = mbBezierCalcSlope(start->y, control->y, end->y, t);
+    dst->z = mbBezierCalcSlope(start->z, control->z, end->z, t);
 }
 
-float mbHermiteCalc(float a, float b, float c, float d, float t)
+/* Board animation uses cubic Hermite interpolation between endpoint values and tangents. */
+float mbHermiteCalc(float start, float end, float startTangent, float endTangent, float t)
 {
     float tt = t * t;
     float ttt = t * t * t;
@@ -805,17 +840,21 @@ float mbHermiteCalc(float a, float b, float c, float d, float t)
     float cCoef = t + (ttt - (2.0f * tt));
     float dCoef = ttt - tt;
 
-    return (aCoef * a) + (bCoef * b) + (cCoef * c) + (dCoef * d);
+    return (aCoef * start) + (bCoef * end) + (cCoef * startTangent) + (dCoef * endTangent);
 }
 
-void mbHermiteCalcV(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, HuVecF *dst, float t)
+/* Evaluates cubic Hermite interpolation for each vector component. */
+void mbHermiteCalcV(HuVecF *start, HuVecF *end, HuVecF *startTangent, HuVecF *endTangent,
+    HuVecF *dst, float t)
 {
-    dst->x = mbHermiteCalc(a->x, b->x, c->x, d->x, t);
-    dst->y = mbHermiteCalc(a->y, b->y, c->y, d->y, t);
-    dst->z = mbHermiteCalc(a->z, b->z, c->z, d->z, t);
+    dst->x = mbHermiteCalc(start->x, end->x, startTangent->x, endTangent->x, t);
+    dst->y = mbHermiteCalc(start->y, end->y, startTangent->y, endTangent->y, t);
+    dst->z = mbHermiteCalc(start->z, end->z, startTangent->z, endTangent->z, t);
 }
 
-float mbHermiteCalcSlope(float a, float b, float c, float d, float t)
+/* Returns the derivative of the cubic Hermite curve at normalized progress t. */
+float mbHermiteCalcSlope(float start, float end, float startTangent, float endTangent,
+    float t)
 {
     float tt = t * t;
     float aCoef = (6.0f * tt) - (6.0f * t);
@@ -823,38 +862,42 @@ float mbHermiteCalcSlope(float a, float b, float c, float d, float t)
     float cCoef = 1.0f + ((3.0f * tt) - (4.0f * t));
     float dCoef = (3.0f * tt) - (2.0f * t);
 
-    return (aCoef * a) + (bCoef * b) + (cCoef * c) + (dCoef * d);
+    return (aCoef * start) + (bCoef * end) + (cCoef * startTangent) + (dCoef * endTangent);
 }
 
-float mbAngleLerp(float a, float b, float t)
+/* Board camera and character motion interpolate along the shortest degree arc. */
+float mbAngleLerp(float startAngle, float endAngle, float t)
 {
-    float diff = fmod(b - a, 360);
-    float ret;
+    float angleDelta = fmod(endAngle - startAngle, 360);
+    float result;
 
-    if (diff < 0.0f) {
-        diff += 360.0f;
+    if (angleDelta < 0.0f) {
+        angleDelta += 360.0f;
     }
-    if (diff > 180.0f) {
-        diff -= 360.0f;
+    if (angleDelta > 180.0f) {
+        angleDelta -= 360.0f;
     }
-    ret = fmod(a + (t * diff), 360);
-    if (ret < 0.0f) {
-        ret += 360.0f;
+    result = fmod(startAngle + (t * angleDelta), 360);
+    if (result < 0.0f) {
+        result += 360.0f;
     }
-    return ret;
+    return result;
 }
 
-float mbAngleEaseOut(float a, float b, float t)
+/* Starts angle interpolation quickly, then eases toward the end angle. */
+float mbAngleEaseOut(float startAngle, float endAngle, float t)
 {
-    return mbAngleLerp(a, b, HuSin(t * 90.0f));
+    return mbAngleLerp(startAngle, endAngle, HuSin(t * 90.0f));
 }
 
-float mbAngleEaseIn(float a, float b, float t)
+/* Starts angle interpolation slowly, then eases toward the end angle. */
+float mbAngleEaseIn(float startAngle, float endAngle, float t)
 {
-    return mbAngleLerp(a, b, 1.0f - HuCos(t * 90.0f));
+    return mbAngleLerp(startAngle, endAngle, 1.0f - HuCos(t * 90.0f));
 }
 
-float mbMathDistScale(HuVecF *src, float scale, HuVecF *dst)
+/* Moves a projected board position along camera depth by the requested scale. */
+float mbMathDistScale(HuVecF *worldPos, float scale, HuVecF *scaledWorldPos)
 {
     MBCAMERA *cameraP = mbCameraGet();
     HuVecF pos;
@@ -862,15 +905,18 @@ float mbMathDistScale(HuVecF *src, float scale, HuVecF *dst)
     float depth;
     float z;
 
-    mbPos3Dto2D(src, &pos);
+    mbPos3Dto2D(worldPos, &pos);
     tanFov = HuSin(cameraP->fov * 0.5f) / HuCos(cameraP->fov * 0.5f);
     depth = pos.z * tanFov;
     z = (depth / scale) / tanFov;
     pos.z = z;
-    mbPos2Dto3D(&pos, dst);
+    mbPos2Dto3D(&pos, scaledWorldPos);
+    /* The scaled position is written through the output pointer; the scalar return is always
+     * zero. */
     return 0.0f;
 }
 
+/* Called by the object's transform hook to set its renderer-visible cull flag. */
 static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
 {
     HU3D_CAMERA *cameraP;
@@ -878,47 +924,49 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     HuVecF centerView;
     ROMtx cullMtx;
     float fov;
-    float fovTan;
-    float near;
+    float negativeFovTan;
+    float nearPlaneDistance;
     float aspect;
-    float cameraH;
-    float aspectInv;
+    float frustumHalfHeight;
+    float reciprocalAspect;
     s32 i;
-    BOOL cullF;
+    BOOL horizontalCullF;
     BOOL verticalCullF;
 
     object->flags &= ~HSF_MATERIAL_DISPOFF;
     if (shadowModelDrawF == FALSE) {
         cameraP = &Hu3DCamera[Hu3DCameraNo];
         fov = cameraP->fov;
-        near = cameraP->near;
+        nearPlaneDistance = cameraP->near;
         aspect = cameraP->aspect;
     } else {
         fov = Hu3DShadow->fov;
-        near = Hu3DShadow->near;
+        nearPlaneDistance = Hu3DShadow->near;
         aspect = 1.0f;
     }
-    fovTan = -1.0f * (mbSinDeg(fov * 0.5f) / mbCosDeg(fov * 0.5f));
+    negativeFovTan = -1.0f * (mbSinDeg(fov * 0.5f) / mbCosDeg(fov * 0.5f));
     PSVECAdd(&object->mesh.mesh.min, &object->mesh.mesh.max, &center);
     PSVECScale(&center, &center, 0.5f);
     PSMTXMultVec(mtx, &center, &centerView);
-    cameraH = MathAbsFloat(centerView.z * fovTan);
-    if (MathAbsFloat(centerView.x) <= cameraH * aspect
-        && MathAbsFloat(centerView.y) <= cameraH
-        && centerView.y < -near) {
+    frustumHalfHeight = MathAbsFloat(centerView.z * negativeFovTan);
+    if (MathAbsFloat(centerView.x) <= frustumHalfHeight * aspect
+        && MathAbsFloat(centerView.y) <= frustumHalfHeight
+        && centerView.y < -nearPlaneDistance) {
+        /* A center inside the view bounds is sufficient to keep this object enabled. */
         return;
     }
 
+    /* Transform all eight local bounding-box corners into the camera's cull coordinates. */
     PSMTXReorder(mtx, cullMtx);
-    aspectInv = 1.0f / aspect;
-    cullMtx[0][0] *= aspectInv;
-    cullMtx[1][0] *= aspectInv;
-    cullMtx[2][0] *= aspectInv;
-    cullMtx[3][0] *= aspectInv;
-    cullMtx[0][2] *= fovTan;
-    cullMtx[1][2] *= fovTan;
-    cullMtx[2][2] *= fovTan;
-    cullMtx[3][2] *= fovTan;
+    reciprocalAspect = 1.0f / aspect;
+    cullMtx[0][0] *= reciprocalAspect;
+    cullMtx[1][0] *= reciprocalAspect;
+    cullMtx[2][0] *= reciprocalAspect;
+    cullMtx[3][0] *= reciprocalAspect;
+    cullMtx[0][2] *= negativeFovTan;
+    cullMtx[1][2] *= negativeFovTan;
+    cullMtx[2][2] *= negativeFovTan;
+    cullMtx[3][2] *= negativeFovTan;
 
     objectBBox[0].x = object->mesh.mesh.max.x;
     objectBBox[0].y = object->mesh.mesh.max.y;
@@ -947,16 +995,17 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     PSMTXROMultVecArray(cullMtx, objectBBox, objectBBoxView, 8);
 
     for (i = 0; i < 8; i++) {
-        if (objectBBoxView[i].z > near) {
+        if (objectBBoxView[i].z > nearPlaneDistance) {
             break;
         }
     }
     if (i >= 8) {
+        /* No corner lies beyond the near plane, so the box is wholly behind it. */
         object->flags |= HSF_MATERIAL_DISPOFF;
         return;
     }
 
-    cullF = FALSE;
+    horizontalCullF = FALSE;
     if (centerView.x >= 0.0f) {
         for (i = 0; i < 8; i++) {
             if (objectBBoxView[i].x < objectBBoxView[i].z) {
@@ -964,7 +1013,7 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
             }
         }
         if (i >= 8) {
-            cullF = TRUE;
+            horizontalCullF = TRUE;
         }
     } else {
         for (i = 0; i < 8; i++) {
@@ -973,10 +1022,11 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
             }
         }
         if (i >= 8) {
-            cullF = TRUE;
+            horizontalCullF = TRUE;
         }
     }
-    if (cullF) {
+    if (horizontalCullF) {
+        /* All corners fall outside the same horizontal side of the view. */
         object->flags |= HSF_MATERIAL_DISPOFF;
         return;
     }
@@ -1002,13 +1052,13 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
         }
     }
     if (verticalCullF) {
+        /* All corners fall outside the same vertical side of the view. */
         object->flags |= HSF_MATERIAL_DISPOFF;
     }
 }
 
-#pragma dont_inline on
 #ifdef __MWERKS__
-/* Native paired-single extrema kernel, with offsets derived from the HSF ABI. */
+/* HSF object offsets used to read vertex data and store its local bounds. */
 enum {
     BBOX_VERTEX = offsetof(HSF_OBJECT, mesh.vertex),
     BBOX_DATA = offsetof(HSF_BUFFER, data),
@@ -1023,6 +1073,7 @@ enum {
 static const float bboxMaxInitial = -1000000.0f;
 static const float bboxMinInitial = 1000000.0f;
 
+/* Computes the local-space minimum and maximum of the model's vertex positions. */
 static asm void ObjectBBoxUpdate(register HSF_OBJECT *object)
 {
     nofralloc
@@ -1088,6 +1139,7 @@ min_z_done:
     blr
 }
 #else
+/* Computes the local-space minimum and maximum of the model's vertex positions. */
 static void ObjectBBoxUpdate(HSF_OBJECT *object)
 {
     HuVecF *vertex = object->mesh.vertex->data;
@@ -1120,12 +1172,9 @@ static void ObjectBBoxUpdate(HSF_OBJECT *object)
     }
 }
 #endif
-#pragma dont_inline reset
 
-#ifdef __MWERKS__
-#pragma fp_contract on
-#endif
-/* Set only the translation column, after snapshotting the three inputs. */
+/* ObjectCullHook calls this while building the object's culling transform; it writes the
+ * object's position into the translation column after scale and rotation are set. */
 #ifdef __MWERKS__
 static inline void MathMtxTranslationSet(register Mtx mtx, register const HuVecF *pos)
 {
@@ -1139,6 +1188,8 @@ static inline void MathMtxTranslationSet(register Mtx mtx, register const HuVecF
     }
 }
 #else
+/* ObjectCullHook calls this while building the object's culling transform; it writes the
+ * object's position into the translation column after scale and rotation are set. */
 static inline void MathMtxTranslationSet(Mtx mtx, const HuVecF *pos)
 {
     float x = pos->x;
@@ -1150,6 +1201,7 @@ static inline void MathMtxTranslationSet(Mtx mtx, const HuVecF *pos)
 }
 #endif
 
+/* Composes the object's scale/rotation/translation with its parent before culling. */
 static void ObjectCullHook(HSF_OBJECT *object, HSF_TRANSFORM *transform,
     Mtx *prevMtx, Mtx *currMtx)
 {
@@ -1195,10 +1247,7 @@ static void ObjectCullHook(HSF_OBJECT *object, HSF_TRANSFORM *transform,
     ObjectCullUpdate(object, *currMtx);
 }
 
-#ifdef __MWERKS__
-#pragma fp_contract off
-#endif
-
+/* Called during board-model creation to cache bounds and install per-object cull hooks. */
 void mbObjCullInit(MBMODELID modelId)
 {
     HSF_DATA *hsf;

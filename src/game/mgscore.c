@@ -1,3 +1,4 @@
+// Creates and updates the numeric score displays used by minigames.
 #define _MATH_H
 #include "game/data.h"
 #include "game/process.h"
@@ -6,6 +7,7 @@
 
 #define SCORE_UNIT_SPRNO (MGSCORE_DIGIT_MAX)
 #define SCORE_SPRMAX (MGSCORE_DIGIT_MAX+1)
+#define SCORE_MILLIONS_PLACE 1000000
 
 static const float unitOfsTbl[3][4] = {
     8.0f, 28.0f, 28.0f, 8.0f,
@@ -17,18 +19,19 @@ static void ScoreExec(MGSCORE *score);
 static void ScoreMain();
 static void ScoreDispUpdate(MGSCORE *score);
 
-typedef void (*SCOREFUNC)(MGSCORE *timer);
+typedef void (*SCOREFUNC)(MGSCORE *score);
 
 static SCOREFUNC modeTbl[1] = { ScoreExec };
 
-
-MGSCORE *MgScoreCreate(int digitFile, int unitFile, BOOL dispLeadZeroF) {
+// Creates a score display with digit art and optional unit art for a minigame.
+MGSCORE *MgScoreCreate(int digitFile, int unitFile, BOOL showLeadingZeros) {
     MGSCORE *score;
-    int unitType;
-    int unit;
-    unitType = -1;
-    unit = 0;
-    unit = 1;
+    int unitStyle;
+    int unitBank;
+    unitStyle = -1;
+    unitBank = 0;
+    // Known unit files use bank 1; unrecognized unit files use bank 0.
+    unitBank = 1;
     score = MgScoreInit(digitFile);
     if (score == NULL) {
         return NULL;
@@ -43,38 +46,40 @@ MGSCORE *MgScoreCreate(int digitFile, int unitFile, BOOL dispLeadZeroF) {
 
         case DATANUM(DATA_mgconst, 0x35):
         case DATANUM(DATA_mgconst, 0x36):
-            unitType = 0;
+            // These two unit files share the first offset layout.
+            unitStyle = 0;
             break;
 
         case DATANUM(DATA_mgconst, 0x37):
-            unitType = 1;
+            unitStyle = 1;
             break;
 
         case DATANUM(DATA_mgconst, 0x38):
-            unitType = 2;
+            unitStyle = 2;
             break;
 
         default:
-            unitType = 3;
+            unitStyle = 3;
             break;
     }
-    if (unitType == 3) {
+    if (unitStyle == 3) {
         MgScoreUnitBankSet(score, 0);
         score->unitOfs.x = HuSprData[score->sprId[SCORE_UNIT_SPRNO]].data->pat->centerX;
         score->unitOfs.y = HuSprData[score->sprId[SCORE_UNIT_SPRNO]].data->pat->centerY;
     } else if (unitFile != -1) {
-        MgScoreUnitBankSet(score, unit);
-        score->unitOfs.x = unitOfsTbl[unitType][unit];
-        score->unitOfs.y = unitOfsTbl[unitType][3];
+        MgScoreUnitBankSet(score, unitBank);
+        score->unitOfs.x = unitOfsTbl[unitStyle][unitBank];
+        score->unitOfs.y = unitOfsTbl[unitStyle][3];
     }
-    score->dispLeadZeroF = dispLeadZeroF;
+    score->dispLeadZeroF = showLeadingZeros;
     MgScorePriSet(score, 90);
     return score;
 }
 
+// Allocates the digit sprites and starts the child process that refreshes this display.
 MGSCORE *MgScoreInit(int digitFile) {
     MGSCORE *score;
-    int i;
+    int digitIndex;
 
     score = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MGSCORE), HU_MEMNUM_OVL);
     if (score == NULL) {
@@ -103,9 +108,9 @@ MGSCORE *MgScoreInit(int digitFile) {
     score->sprId = HuMemDirectMallocNum(HEAP_HEAP, SCORE_SPRMAX*sizeof(HUSPRID), HU_MEMNUM_OVL);
     score->digitAnim = HuSprAnimDataRead(digitFile);
 
-    for (i = 0; i < MGSCORE_DIGIT_MAX; i++) {
-        score->sprId[i] = (int)HuSprCreate(score->digitAnim, 0, 0);
-        HuSprGrpMemberSet(score->grpId, i, score->sprId[i]);
+    for (digitIndex = 0; digitIndex < MGSCORE_DIGIT_MAX; digitIndex++) {
+        score->sprId[digitIndex] = (int)HuSprCreate(score->digitAnim, 0, 0);
+        HuSprGrpMemberSet(score->grpId, digitIndex, score->sprId[digitIndex]);
     }
     score->sprId[MGSCORE_DIGIT_MAX] = HUSPR_NONE;
     score->digitW = HuSprData[score->sprId[0]].data->pat->sizeX;
@@ -116,6 +121,7 @@ MGSCORE *MgScoreInit(int digitFile) {
     return score;
 }
 
+// Removes the score's sprite group and update process, then frees its storage.
 void MgScoreKill(MGSCORE *score) {
     HuSprGrpKill(score->grpId);
     HuPrcKill(score->proc);
@@ -127,6 +133,7 @@ int MgScoreModeGet(MGSCORE *score) {
     return score->mode;
 }
 
+// Sets the displayed integer and marks the sprite layout for refresh.
 void MgScoreValueSet(MGSCORE *score, int value) {
     score->value = value;
     score->validF = FALSE;
@@ -136,6 +143,7 @@ int MgScoreValueGet(MGSCORE *score) {
     return score->value;
 }
 
+// Sets the score group's screen position in pixels.
 void MgScorePosSet(MGSCORE *score, float posX, float posY) {
     score->pos.x = posX;
     score->pos.y = posY;
@@ -147,6 +155,7 @@ void MgScorePosGet(MGSCORE *score, float *posX, float *posY) {
     *posY = score->pos.y;
 }
 
+// Sets the scale applied to the whole score group.
 void MgScoreScaleSet(MGSCORE *score, float scaleX, float scaleY) {
     score->scale.x = scaleX;
     score->scale.y = scaleY;
@@ -158,12 +167,14 @@ void MgScoreScaleGet(MGSCORE *score, float *scaleX, float *scaleY) {
     *scaleY = score->scale.y;
 }
 
+// Sets the scale applied to each digit and the optional unit sprite.
 void MgScoreDigitScaleSet(MGSCORE *score, float scaleX, float scaleY) {
     score->digitScale.x = scaleX;
     score->digitScale.y = scaleY;
     score->validF = FALSE;
 }
 
+// Sets the score group's rotation around the screen Z axis, in radians.
 void MgScoreZRotSet(MGSCORE *score, float zRot) {
     score->zRot = zRot;
     score->validF = FALSE;
@@ -173,6 +184,7 @@ void MgScoreZRotGet(MGSCORE *score, float *zRot) {
     *zRot = score->zRot;
 }
 
+// Sets the transparency level passed to the score sprites (1.0 is opaque).
 void MgScoreTPLvlSet(MGSCORE *score, float tpLvl) {
     score->tpLvl = tpLvl;
     score->validF = FALSE;
@@ -182,13 +194,16 @@ void MgScoreTPLvlGet(MGSCORE *score, float *tpLvl) {
     *tpLvl = score->tpLvl;
 }
 
-void MgScoreColorSet(MGSCORE *score, u8 r, u8 g, u8 b) {
-    score->r = r;
-    score->g = g;
-    score->b = b;
+// Sets the RGB tint applied to the digits and optional unit sprite.
+void MgScoreColorSet(MGSCORE *score, u8 red, u8 green, u8 blue) {
+    score->r = red;
+    score->g = green;
+    score->b = blue;
     score->validF = FALSE;
 }
 
+// Sets the slot count used for alignment and, with leading zeros, limits visible positions to the
+// rightmost slots.
 void MgScoreMaxDigitSet(MGSCORE *score, int maxDigit) {
     score->maxDigit = maxDigit;
     score->validF = FALSE;
@@ -198,8 +213,9 @@ void MgScoreMaxDigitGet(MGSCORE *score, int *maxDigit) {
     *maxDigit = score->maxDigit;
 }
 
-void MgScoreDigitWidthSet(MGSCORE *score, float digitW) {
-    score->digitW = digitW;
+// Sets the horizontal spacing between adjacent digit sprites, in pixels.
+void MgScoreDigitWidthSet(MGSCORE *score, float digitWidth) {
+    score->digitW = digitWidth;
     score->validF = FALSE;
 }
 
@@ -207,33 +223,37 @@ void MgScoreDigitWidthGet(MGSCORE *score, float *digitW) {
     *digitW = score->digitW;
 }
 
+// Enables the score sprites on the next display refresh.
 void MgScoreDispOn(MGSCORE *score) {
     score->dispF = TRUE;
     score->validF = FALSE;
 }
 
+// Hides the score sprites on the next display refresh.
 void MgScoreDispOff(MGSCORE *score) {
     score->dispF = FALSE;
     score->validF = FALSE;
 }
 
-
-void MgScorePriSet(MGSCORE *score, s16 prio) {
-    int i;
-    score->prio = prio;
-    for (i = 0; i < SCORE_SPRMAX; i++) {
-        if (score->sprId[i] != HUSPR_NONE) {
-            HuSprPriSet(score->grpId, i, prio);
+// Sets the draw priority of every digit and the optional unit sprite.
+void MgScorePriSet(MGSCORE *score, s16 priority) {
+    int spriteIndex;
+    score->prio = priority;
+    for (spriteIndex = 0; spriteIndex < SCORE_SPRMAX; spriteIndex++) {
+        if (score->sprId[spriteIndex] != HUSPR_NONE) {
+            HuSprPriSet(score->grpId, spriteIndex, priority);
         }
     }
 }
 
+// Selects the animation bank used by the optional unit sprite, when present.
 void MgScoreUnitBankSet(MGSCORE *score, s16 bank) {
     if (score->sprId[SCORE_UNIT_SPRNO] != HUSPR_NONE) {
         HuSprBankSet(score->grpId, SCORE_UNIT_SPRNO, bank);
     }
 }
 
+// Runs as the score's child process and dispatches its selected update mode.
 static void ScoreMain(void)
 {
     MGSCORE *score;
@@ -244,19 +264,22 @@ static void ScoreMain(void)
     }
 }
 
+// Selects the standard mode, which refreshes the score once per frame.
 void MgScoreModeDefaultSet(MGSCORE *score) {
     score->mode = 0;
 }
 
+// Runs from modeTbl in the score child process, refreshing until the selected mode changes.
 static void ScoreExec(MGSCORE *score)
 {
-    s32 i;
+    s32 framePass;
     s16 mode;
-    s32 maxCheck;
+    s32 passLimit;
     s16 prevMode;
 
     while (1) {
-        for(maxCheck=1, i=0; i<maxCheck; i++) {
+        // The mode-table callback refreshes once per frame; it reads the active process property.
+        for(passLimit=1, framePass=0; framePass<passLimit; framePass++) {
             ScoreDispUpdate(HuPrcCurrentGet()->property);
             HuPrcVSleep();
 
@@ -271,69 +294,79 @@ static void ScoreExec(MGSCORE *score)
     }
 }
 
+// Rebuilds digit banks and sprite transforms after a score setting changes.
 static void ScoreDispUpdate(MGSCORE *score)
 {
-    int i;
-    int digitNum;
-    int digitVal;
-    int value;
-    int digit;
-    BOOL digitDispF;
-    float posX;
-    int bank[MGSCORE_DIGIT_MAX];
+    int digitIndex;
+    int digitCount;
+    int placeValue;
+    int remainingValue;
+    int currentDigit;
+    BOOL significantDigitSeen;
+    float digitPosX;
+    int digitBank[MGSCORE_DIGIT_MAX];
 
     if (score->validF == 0) {
-        i = 0;
-        value = score->value;
-        digitVal = 1000000;
-        digitNum = 0;
-        digitDispF = 0;
-        if (value == 0) {
+        digitIndex = 0;
+        remainingValue = score->value;
+        // Seven digit scores begin at the millions place.
+        placeValue = SCORE_MILLIONS_PLACE;
+        digitCount = 0;
+        significantDigitSeen = 0;
+        if (remainingValue == 0) {
             if (score->dispLeadZeroF) {
-                for (i = 0; i < MGSCORE_DIGIT_MAX; i++) {
-                    bank[i] = 0;
-                    digitNum++;
+                for (digitIndex = 0; digitIndex < MGSCORE_DIGIT_MAX; digitIndex++) {
+                    digitBank[digitIndex] = 0;
+                    digitCount++;
                 }
             } else {
-                bank[i++] = 0;
-                digitNum++;
+                digitBank[digitIndex++] = 0;
+                digitCount++;
             }
         } else {
             do {
-                digit = value / digitVal;
-                value = value - (digit * digitVal);
-                if ((digit > 0) || (digitDispF) || (score->dispLeadZeroF)) {
-                    digitDispF = 1;
-                    bank[i++] = digit;
-                    digitNum++;
+                currentDigit = remainingValue / placeValue;
+                // Remove the extracted place so the next pass reads the following decimal digit.
+                remainingValue = remainingValue - (currentDigit * placeValue);
+                if ((currentDigit > 0) || (significantDigitSeen) || (score->dispLeadZeroF)) {
+                    significantDigitSeen = 1;
+                    digitBank[digitIndex++] = currentDigit;
+                    digitCount++;
                 }
-                digitVal = digitVal / 10;
-            } while (digitVal > 0);
+                placeValue = placeValue / 10;
+            } while (placeValue > 0);
         }
-        while (i < MGSCORE_DIGIT_MAX) {
-            bank[i] = -1;
-            i++;
+        while (digitIndex < MGSCORE_DIGIT_MAX) {
+            // -1 marks unused sprite slots; those sprites are hidden during layout below.
+            digitBank[digitIndex] = -1;
+            digitIndex++;
         }
-        posX = score->digitW * (score->maxDigit - digitNum);
+        digitPosX = score->digitW * (score->maxDigit - digitCount);
 
-        for (i = 0; i < MGSCORE_DIGIT_MAX; i++) {
-            HuSprPosSet(score->grpId, i, posX, 0.0f);
-            posX += score->digitW;
-            if ((bank[i] != -1) && ((score->dispLeadZeroF == 0) || (i >= (MGSCORE_DIGIT_MAX - score->maxDigit)))) {
-                HuSprBankSet(score->grpId, i, bank[i]);
+        for (digitIndex = 0; digitIndex < MGSCORE_DIGIT_MAX; digitIndex++) {
+            HuSprPosSet(score->grpId, digitIndex, digitPosX, 0.0f);
+            digitPosX += score->digitW;
+            // With leading zeros, only the configured rightmost digit positions are shown.
+            if ((digitBank[digitIndex] != -1) &&
+                ((score->dispLeadZeroF == 0) ||
+                 (digitIndex >= (MGSCORE_DIGIT_MAX - score->maxDigit)))) {
+                HuSprBankSet(score->grpId, digitIndex, digitBank[digitIndex]);
                 if (score->dispF) {
-                    HuSprDispOn(score->grpId, i);
+                    HuSprDispOn(score->grpId, digitIndex);
                 } else {
-                    HuSprDispOff(score->grpId, i);
+                    HuSprDispOff(score->grpId, digitIndex);
                 }
-                HuSprScaleSet(score->grpId, i, score->digitScale.x, score->digitScale.y);
-                HuSprColorSet(score->grpId, i, score->r, score->g, score->b);
+                HuSprScaleSet(score->grpId, digitIndex, score->digitScale.x, score->digitScale.y);
+                HuSprColorSet(score->grpId, digitIndex, score->r, score->g, score->b);
             } else {
-                HuSprDispOff(score->grpId, i);
+                HuSprDispOff(score->grpId, digitIndex);
             }
         }
         if (score->sprId[SCORE_UNIT_SPRNO] != HUSPR_NONE) {
-            HuSprPosSet(score->grpId, SCORE_UNIT_SPRNO, (score->unitOfs.x + (score->maxDigit * score->digitW)) - score->unitOfs.y, 0.0f);
+            // The unit's horizontal position uses unitOfs.y as the trailing adjustment.
+            HuSprPosSet(score->grpId, SCORE_UNIT_SPRNO,
+                        (score->unitOfs.x + (score->maxDigit * score->digitW)) - score->unitOfs.y,
+                        0.0f);
             HuSprColorSet(score->grpId, SCORE_UNIT_SPRNO, score->r, score->g, score->b);
             HuSprScaleSet(score->grpId, SCORE_UNIT_SPRNO, score->digitScale.x, score->digitScale.y);
             if (score->dispF) {

@@ -1,69 +1,98 @@
+// Updates HSF mesh vertices from shape animation during the Hu3D model update.
 #define _MATH_H
 #include "game/ShapeExec.h"
 #include "game/EnvelopeExec.h"
 
+// Called by ShapeProc after it selects the mesh vertex buffer.
+// Applies sequential weights for shape type 2; other types truncate baseMorph to select a shape and
+// use its fraction to interpolate toward the next. The last shape wraps to itself.
 static void SetShapeMain(HSF_OBJECT *obj) {
-    HSF_BUFFER *shapeNext;
+    HSF_BUFFER *nextShape;
     HSF_BUFFER *shape;
-    float totalWeight;
-    float t;
-    s32 shapeIdx;
-    s32 j;
-    s32 shapeIdxNext;
-    s32 i;
+    float totalMorphWeight;
+    float blendFactor;
+    s32 baseShapeIndex;
+    s32 vertexIndex;
+    s32 nextShapeIndex;
+    s32 shapeOrVertexIndex;
 
     if (obj->mesh.shapeType == 2) {
-        totalWeight = 0.0f;
-        for (i = 0; i < obj->mesh.shapeNum; i++) {
-            totalWeight += obj->mesh.mesh.morphWeight[i];
+        totalMorphWeight = 0.0f;
+        for (shapeOrVertexIndex = 0; shapeOrVertexIndex < obj->mesh.shapeNum;
+             shapeOrVertexIndex++) {
+            totalMorphWeight += obj->mesh.mesh.morphWeight[shapeOrVertexIndex];
         }
         shape = *obj->mesh.shape;
-        for (i = 0; i < shape->count; i++) {
-            Vertextop[i].x = ((Vec*) shape->data)[i].x;
-            Vertextop[i].y = ((Vec*) shape->data)[i].y;
-            Vertextop[i].z = ((Vec*) shape->data)[i].z;
+        for (shapeOrVertexIndex = 0; shapeOrVertexIndex < shape->count;
+             shapeOrVertexIndex++) {
+            Vertextop[shapeOrVertexIndex].x = ((Vec*) shape->data)[shapeOrVertexIndex].x;
+            Vertextop[shapeOrVertexIndex].y = ((Vec*) shape->data)[shapeOrVertexIndex].y;
+            Vertextop[shapeOrVertexIndex].z = ((Vec*) shape->data)[shapeOrVertexIndex].z;
         }
-        for (i = 0; i < obj->mesh.shapeNum; i++) {
-            shape = obj->mesh.shape[i];
-            t = obj->mesh.mesh.morphWeight[i];
-            if (t < 0.0f) {
-                t = 0.0f;
-            } else if (totalWeight > 1.0f) {
-                t /= totalWeight;
+        // Negative weights are zeroed for blending but remain in the sum; if the sum exceeds 1,
+        // each weight is divided by it before sequential blending.
+        for (shapeOrVertexIndex = 0; shapeOrVertexIndex < obj->mesh.shapeNum;
+             shapeOrVertexIndex++) {
+            shape = obj->mesh.shape[shapeOrVertexIndex];
+            blendFactor = obj->mesh.mesh.morphWeight[shapeOrVertexIndex];
+            if (blendFactor < 0.0f) {
+                blendFactor = 0.0f;
+            } else if (totalMorphWeight > 1.0f) {
+                blendFactor /= totalMorphWeight;
             }
-            for (j = 0; j < shape->count; j++) {
-                Vertextop[j].x += t * (((Vec*) shape->data)[j].x - Vertextop[j].x);
-                Vertextop[j].y += t * (((Vec*) shape->data)[j].y - Vertextop[j].y);
-                Vertextop[j].z += t * (((Vec*) shape->data)[j].z - Vertextop[j].z);
+            for (vertexIndex = 0; vertexIndex < shape->count; vertexIndex++) {
+                Vertextop[vertexIndex].x +=
+                    blendFactor * (((Vec *) shape->data)[vertexIndex].x - Vertextop[vertexIndex].x);
+                Vertextop[vertexIndex].y +=
+                    blendFactor * (((Vec *) shape->data)[vertexIndex].y - Vertextop[vertexIndex].y);
+                Vertextop[vertexIndex].z +=
+                    blendFactor * (((Vec *) shape->data)[vertexIndex].z - Vertextop[vertexIndex].z);
             }
         }
     } else {
-        shapeIdx = obj->mesh.mesh.baseMorph;
-        shapeIdxNext = shapeIdx + 1;
-        if (shapeIdxNext >= obj->mesh.shapeNum) {
-            shapeIdxNext = shapeIdx;
+        baseShapeIndex = obj->mesh.mesh.baseMorph;
+        nextShapeIndex = baseShapeIndex + 1;
+        if (nextShapeIndex >= obj->mesh.shapeNum) {
+            nextShapeIndex = baseShapeIndex;
         }
-        t = obj->mesh.mesh.baseMorph - shapeIdx;
-        shape = obj->mesh.shape[shapeIdx];
-        shapeNext = obj->mesh.shape[shapeIdxNext];
-        for (i = 0; i < shape->count; i++) {
-            Vertextop[i].x = ((Vec*) shape->data)[i].x + t * (((Vec*) shapeNext->data)[i].x - ((Vec*) shape->data)[i].x);
-            Vertextop[i].y = ((Vec*) shape->data)[i].y + t * (((Vec*) shapeNext->data)[i].y - ((Vec*) shape->data)[i].y);
-            Vertextop[i].z = ((Vec*) shape->data)[i].z + t * (((Vec*) shapeNext->data)[i].z - ((Vec*) shape->data)[i].z);
+        blendFactor = obj->mesh.mesh.baseMorph - baseShapeIndex;
+        shape = obj->mesh.shape[baseShapeIndex];
+        nextShape = obj->mesh.shape[nextShapeIndex];
+        for (shapeOrVertexIndex = 0; shapeOrVertexIndex < shape->count;
+             shapeOrVertexIndex++) {
+            Vertextop[shapeOrVertexIndex].x =
+                ((Vec *) shape->data)[shapeOrVertexIndex].x +
+                blendFactor * (((Vec *) nextShape->data)[shapeOrVertexIndex].x -
+                               ((Vec *) shape->data)[shapeOrVertexIndex].x);
+            Vertextop[shapeOrVertexIndex].y =
+                ((Vec *) shape->data)[shapeOrVertexIndex].y +
+                blendFactor * (((Vec *) nextShape->data)[shapeOrVertexIndex].y -
+                               ((Vec *) shape->data)[shapeOrVertexIndex].y);
+            Vertextop[shapeOrVertexIndex].z =
+                ((Vec *) shape->data)[shapeOrVertexIndex].z +
+                blendFactor * (((Vec *) nextShape->data)[shapeOrVertexIndex].z -
+                               ((Vec *) shape->data)[shapeOrVertexIndex].z);
         }
     }
 }
 
+// Hu3D calls this after shape motion and before cluster and envelope processing.
+// It updates each mesh with shape data and writes the vertex range back to memory before GX reads
+// it.
 void ShapeProc(HSF_DATA *hsf) {
     HSF_OBJECT *obj;
-    s32 i;
+    s32 objectIndex;
 
     obj = hsf->object;
-    for (i = 0; i < hsf->objectNum; i++, obj++) {
+    for (objectIndex = 0; objectIndex < hsf->objectNum; objectIndex++, obj++) {
         if (obj->type == HSF_OBJ_MESH && obj->mesh.shapeNum != 0) {
             Vertextop = obj->mesh.vertex->data;
             SetShapeMain(obj);
+            // For each mesh with shape data, it updates and writes back the vertex range with
+            // DCStoreRange.
             DCStoreRange(Vertextop, obj->mesh.vertex->count * sizeof(Vec));
+            // Mark the mesh as having updated vertices so envelope processing uses this buffer as
+            // its source.
             obj->mesh.writeNum++;
         }
     }
