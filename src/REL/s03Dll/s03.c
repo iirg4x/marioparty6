@@ -34,9 +34,9 @@ enum {
     S03_HOOK_COUNT = 10,
     S03_OBJECT_LAYER = 3,
     S03_OBJECT_PRIORITY = 8204,
-    S03_MASU_ATTR_MOVE_START = 2,
-    S03_MASU_ATTR_HATENA = 1,
-    S03_MASU_LINK_FLAG = (1 << 13),
+    S03_MASU_ATTR_MOVE_START = 0x0002,
+    S03_MASU_ATTR_HATENA = 0x0001,
+    S03_MASU_LINK_FLAG = 0x2000,
     S03_ROTATE_HALF_TURN = 180,
     S03_ROTATE_MODE = 15,
     S03_MOVE_DURATION = 90,
@@ -51,50 +51,55 @@ enum {
 };
 
 typedef struct S03ParticleWork {
-    /* Cached transforms and board-space positions for the chain particle model. */
-    s32 modelId;
-    s32 index;          /* Slot in the particle array. */
-    HuVecF pos;
-    HuVecF basePos;
-    HuVecF rot;
-    HuVecF scale;
-    HuVecF angle;
-    HuVecF worldPos;    /* Particle positions used at each end of the chain step. */
-    HuVecF worldPos2;
+    /* Model instance used for this visible chain segment. */
+    s32 particleModelId;
+    s32 particleIndex;       /* Segment's slot in the particle array. */
+    HuVecF pos;              /* Current position of the segment in board units. */
+    HuVecF initialPos;       /* Starting position in board units for the chain effect. */
+    HuVecF rotation;         /* Current Euler rotation in degrees. */
+    HuVecF unusedBaseRotationCopy; /* Unused copy of the segment's base Euler rotation. */
+    HuVecF baseRotation;     /* Segment's fixed Euler angle offset in degrees. */
+    HuVecF innerChainPoint;  /* Point before this segment's offset is applied. */
+    HuVecF outerChainPoint;  /* Point after this segment's offset is applied. */
 } S03ParticleWork;
 
-/* Frame-counted path used while the player is carried through the board event. */
+/* Frame-counted Bezier path used to move the player during the hatena-space sequence. */
 typedef struct S03MoveWork {
-    s32 playerNo;
-    s32 timer;         /* Elapsed update frames. */
-    s32 duration;      /* Total update frames. */
-    s32 startDelay;    /* Frames before the carried-player motion changes. */
-    HuVecF startPos;   /* Start point for the board-space Bezier path. */
-    HuVecF controlPos; /* Control point for the board-space Bezier path. */
-    HuVecF endPos;     /* End point for the board-space Bezier path. */
+    s32 playerNo;            /* Player being moved by the event path. */
+    s32 elapsedFrames;       /* Update frames elapsed along the path. */
+    s32 durationFrames;      /* Total update frames for the path. */
+    s32 motionChangeFrame;   /* Frame when the player's motion changes. */
+    HuVecF startPos;         /* Start point for the board-space Bezier path. */
+    HuVecF controlPos;       /* Control point for the board-space Bezier path. */
+    HuVecF endPos;           /* End point for the board-space Bezier path. */
 } S03MoveWork;
 
 typedef struct S03Work {
     s16 modelId;                  /* Main S03 board model. */
     s16 pathModelId[2];           /* The two animated paths beside the event. */
     s16 chainAttachedModelId;     /* Character model attached to the chain hook. */
-    s16 chainModelId;
-    s16 sourceModelId;
-    s16 markerModelId;
-    s16 eventModelId;
-    HuVecF chainPos;              /* Initial ch_h1 joint translation on the source model. */
-    HuVecF chainEndPos;
-    s32 state;                    /* Held player number, or -1 when no player is held. */
-    s32 captureFlag;              /* 0 until playerOffset is sampled; then 1. */
-    s32 substate;                  /* Chain effect: 0 idle, 1 sway, 2 sway and grow. */
-    HuVecF rotation;               /* Chain effect phase angles in degrees. */
-    HuVecF scale;                  /* Per-axis chain sway amplitude. */
-    HuVecF targetPos;              /* Initial kusari_h1 joint offset on the chain model. */
+    s16 chainModelId;             /* Animated chain model used to carry the player. */
+    s16 sourceModelId;            /* Character model supplying the ch_h1 joint transform for the
+                                   * carried player; hidden at setup and shown during the chain
+                                   * sequence. */
+    s16 markerModelId;            /* Marker hooked to the source model's character joint. */
+    s16 eventModelId;             /* Animated model shown at the linked masu. */
+    HuVecF chainPos;              /* Initial ch_h1 joint position on the source model, in board
+                                   * units. */
+    HuVecF chainEndPos;           /* Initial kusari_h2 joint position on the source model, in board
+                                   * units. */
+    s32 heldPlayerNo;              /* Player carried by the chain, or -1 when none is held. */
+    s32 playerOffsetCaptured;      /* 0 before the source-joint offset is sampled; then 1. */
+    s32 chainMotionState;          /* 0 idle, 1 chain sway, 2 chain sway and growth. */
+    HuVecF rotation;               /* Chain sway phase angles in degrees. */
+    HuVecF scale;                  /* Per-axis chain sway amplitude in degrees. */
+    HuVecF chainHookOffset;        /* kusari_h1 joint offset on the chain model, in board units. */
     OMOBJ *effectObj;              /* Player-follow object active during the event. */
     S03ParticleWork *particleWork; /* Particle model state for the chain effect. */
-    float effectAngle;              /* Additional rotation in degrees applied to the source model pose. */
-    HuVecF playerOffset;           /* Captured player offset from the source model's ch_h1 joint. */
-    u32 unk_70;                    /* Not read by this board's C code. */
+    float effectAngle;              /* Angle offset used to compute the source model's position
+                                     * around the chain path. */
+    HuVecF playerOffset;           /* Player offset from ch_h1, in source-model local units. */
+    u32 unusedWord;                /* Not read by this board's code. */
 } S03Work;
 
 extern const VoidFunc _ctors[];
@@ -271,9 +276,9 @@ void fn_1_F4(void)
     mbObjDispSet(modelId, FALSE);
     Hu3DMotionCalc(mbObjModelIDGet(modelId));
     Hu3DModelObjMtxGet(mbObjModelIDGet(modelId), lbl_1_data_52, matrix);
-    work->targetPos.x = matrix[0][3];
-    work->targetPos.y = matrix[1][3];
-    work->targetPos.z = matrix[2][3];
+    work->chainHookOffset.x = matrix[0][3];
+    work->chainHookOffset.y = matrix[1][3];
+    work->chainHookOffset.z = matrix[2][3];
 
     modelId = mbObjCreate(DATANUM(DATA_s03, 8), NULL, FALSE);
     work->markerModelId = modelId;
@@ -294,9 +299,9 @@ void fn_1_F4(void)
     work->chainEndPos.y = matrix[1][3];
     work->chainEndPos.z = matrix[2][3];
 
-    work->state = -1;
-    work->captureFlag = 0;
-    work->substate = 0;
+    work->heldPlayerNo = -1;
+    work->playerOffsetCaptured = 0;
+    work->chainMotionState = 0;
     work->rotation.x = work->rotation.y = work->rotation.z =
         0.0f;
     work->scale.x = work->scale.y = work->scale.z = 5.0f;
@@ -349,6 +354,7 @@ int fn_1_69C(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
+    /* The move-end callback reads the masu attributes but performs no S03 action. */
     return 0;
 }
 
@@ -381,7 +387,9 @@ void fn_1_768(BOOL enterF)
 {
 }
 
-/* Called for marked hatena spaces; places the event model at the linked masu and starts the player's path from the triggering masu. */
+/* Called for marked hatena spaces; moves the event model from the linked masu toward the triggering
+ * masu, animates the player away from the triggering masu, then relocates the player to the board's
+ * start masu. */
 void fn_1_76C(int playerNo, s16 id)
 {
     S03Work *work;
@@ -397,7 +405,7 @@ void fn_1_76C(int playerNo, s16 id)
     HuVecF ringRotArg;
     HuVecF ringScaleArg;
     HuVecF dustPos;
-    int idLocal;
+    int masuId;
     GXColor ringColor = { 255, 255, 127, 255 };
     GXColor color;
     int linkedMasu;
@@ -429,9 +437,9 @@ void fn_1_76C(int playerNo, s16 id)
         pathIndex = 1;
     }
 
-    idLocal = id;
-    linkedMasu = mbMasuAttrFindLink(idLocal, S03_MASU_LINK_FLAG);
-    mbMasuPosGet(idLocal, &pathPos0);
+    masuId = id;
+    linkedMasu = mbMasuAttrFindLink(masuId, S03_MASU_LINK_FLAG);
+    mbMasuPosGet(masuId, &pathPos0);
     mbMasuPosGet(linkedMasu, &pathPos1);
     mbObjPosSetV(work->eventModelId, &pathPos1);
     mbObjDispSet(work->eventModelId, TRUE);
@@ -480,9 +488,9 @@ void fn_1_76C(int playerNo, s16 id)
                 HEAP_HEAP, sizeof(*moveWork), HU_MEMNUM_OVL);
             memset(moveWork, 0, sizeof(*moveWork));
             moveWork->playerNo = playerNo;
-            moveWork->timer = 0;
-            moveWork->duration = S03_MOVE_DURATION;
-            moveWork->startDelay = S03_MOVE_START_DELAY;
+            moveWork->elapsedFrames = 0;
+            moveWork->durationFrames = S03_MOVE_DURATION;
+            moveWork->motionChangeFrame = S03_MOVE_START_DELAY;
             moveWork->startPos = pathPos0;
             moveWork->controlPos.x = moveWork->startPos.x;
             moveWork->controlPos.y = moveWork->startPos.y
@@ -586,7 +594,9 @@ void fn_1_76C(int playerNo, s16 id)
     mbev_CapEffRingKill(ringObj);
 }
 
-/* Spawned during the hatena sequence; advances the player along a Bezier path each frame. */
+/* Hatena-sequence update that advances and rotates the player along a Bezier path, switches to
+ * motion 6 at frame 30, hides the player at the endpoint, and removes the updater on the following
+ * update. */
 void fn_1_1238(OMOBJ *obj)
 {
     S03MoveWork *moveWork = obj->data;
@@ -595,12 +605,12 @@ void fn_1_1238(OMOBJ *obj)
     Mtx matrixY;
     float t;
 
-    if (mbExitCheck() || moveWork->timer >= moveWork->duration) {
+    if (mbExitCheck() || moveWork->elapsedFrames >= moveWork->durationFrames) {
         lbl_1_bss_0 = NULL;
         omDelObjEx(mbObjMan, obj);
         return;
     }
-    t = (float)++moveWork->timer / (float)moveWork->duration;
+    t = (float)++moveWork->elapsedFrames / (float)moveWork->durationFrames;
     mbev_CapBezierGetV(t, (float *)&moveWork->startPos,
         (float *)&moveWork->controlPos, (float *)&moveWork->endPos,
         (float *)&playerPos);
@@ -610,7 +620,7 @@ void fn_1_1238(OMOBJ *obj)
     MTXRotDeg(matrixY, 'Y', 720.0f * t);
     PSMTXConcat(matrixX, matrixY, matrixX);
     mbPlayerMtxSet(moveWork->playerNo, &matrixX);
-    if (moveWork->timer == moveWork->startDelay) {
+    if (moveWork->elapsedFrames == moveWork->motionChangeFrame) {
         mbPlayerMotionShiftSet(moveWork->playerNo, 6, 0.0f,
             8.0f, HU3D_MOTATTR_LOOP);
     }
@@ -619,7 +629,8 @@ void fn_1_1238(OMOBJ *obj)
     }
 }
 
-/* Called by the move-start callback on marked masus; runs the chain event and writes the single-event return state. */
+/* Runs when a player starts moving from the marked masu: lifts the player to the chain, swings them
+ * through the event, then writes the single-event return state. */
 void fn_1_1450(int playerNo, s16 id)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -804,7 +815,7 @@ void fn_1_1450(int playerNo, s16 id)
         modelPos.y = 600.0f;
         mbCameraMoveMasu(id, &lbl_1_data_6C[0], &modelPos,
             3000.0f, -1.0f, S03_MOVE_DURATION);
-        work->state = playerNo;
+        work->heldPlayerNo = playerNo;
         HuPrcSleep(S03_MOVE_START_DELAY);
         mbAudFXDelaySet(S03_MOVE_START_DELAY);
         mbAudFXPlay(MSM_SE_GUIDE_47);
@@ -815,7 +826,7 @@ void fn_1_1450(int playerNo, s16 id)
         mbPlayerMotionShiftSet(playerNo, playerMotion[0], 0,
             8.0f, HU3D_MOTATTR_NONE);
         omVibrate((s16)playerNo, S03_VIBRATION_TIME, 7, 3);
-        work->substate++;
+        work->chainMotionState++;
     }
 
     for (time = 1; (u32)time < S03_LIFT_FRAMES; time++) {
@@ -853,7 +864,7 @@ void fn_1_1450(int playerNo, s16 id)
     curveC.x = curveA.x;
     curveC.y = curveA.y - 500.0f;
     curveC.z = curveA.z - 3000.0f;
-    work->substate++;
+    work->chainMotionState++;
     omVibrate((s16)playerNo, S03_CHAIN_FRAMES, 4, 4);
     for (time = 1; (u32)time < S03_CHAIN_FRAMES; time++) {
         float curvePhase;
@@ -890,7 +901,9 @@ void fn_1_1450(int playerNo, s16 id)
     mbSingleReturnWrite();
 }
 
-/* Object-manager update spawned by the chain event; guides the player to the event target. */
+/* Registered by fn_1_1450 as an object-manager callback; moves the player to a random nearby point
+ * and back to the event point, then ends the effect. Each update faces the player toward the
+ * current point and advances toward it, slowing as the yaw gap grows. */
 void fn_1_22F8(OMOBJ *obj)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -922,6 +935,8 @@ void fn_1_22F8(OMOBJ *obj)
     if (PSVECMag(&delta) < 10.0f) {
         switch ((int)obj->work[2]) {
         case 0:
+            /* The first arrival sends the player to a random point within 50 board units on X and
+             * Z. */
             obj->trans.x = basePos.x
                 + (100.0f
                     * (-0.5f + MBCapsuleEffRandF()));
@@ -931,12 +946,15 @@ void fn_1_22F8(OMOBJ *obj)
                     * (-0.5f + MBCapsuleEffRandF()));
             break;
         case 1:
+            /* After the random point, return to the original event point. */
             obj->trans.x = basePos.x;
             obj->trans.y = basePos.y;
             obj->trans.z = basePos.z;
             obj->work[2]++;
             break;
         case 2:
+            /* Reaching the event point again lets the next callback update delete this effect
+             * object. */
             obj->work[3] = 1;
             break;
         }
@@ -978,21 +996,21 @@ void fn_1_2670(void)
     particle = particleBase;
     memset(work->particleWork, 0, sizeof(*work->particleWork));
     for (i = 0; i < 1; i++, particle++) {
-        particle->modelId = mbObjCreate(DATANUM(DATA_s03, 10), NULL,
+        particle->particleModelId = mbObjCreate(DATANUM(DATA_s03, 10), NULL,
             TRUE);
-        mbObjDispSet(particle->modelId, FALSE);
-        particle->index = i;
+        mbObjDispSet(particle->particleModelId, FALSE);
+        particle->particleIndex = i;
 
         particle->pos.x = particle->pos.y = particle->pos.z
             = 0.0f;
-        particle->basePos = particle->pos;
+        particle->initialPos = particle->pos;
 
-        particle->angle.x = particle->angle.z = 0.0f;
-        particle->angle.y = 90.0f * (float)(i + 1);
-        particle->rot = particle->angle;
-        particle->scale = particle->angle;
-        particle->worldPos = particle->pos;
-        particle->worldPos2 = particle->pos;
+        particle->baseRotation.x = particle->baseRotation.z = 0.0f;
+        particle->baseRotation.y = 90.0f * (float)(i + 1);
+        particle->rotation = particle->baseRotation;
+        particle->unusedBaseRotationCopy = particle->baseRotation;
+        particle->innerChainPoint = particle->pos;
+        particle->outerChainPoint = particle->pos;
     }
     work->effectAngle = 90.0f * (float)(4 - (i % 4));
 }
@@ -1009,23 +1027,24 @@ void fn_1_2858(const HuVecF *pos, HuVecF *out)
         particle->pos = *pos;
         particle->pos.y += -25.0f
             + (50.0f * (float)(i + 1));
-        particle->basePos = particle->pos;
+        particle->initialPos = particle->pos;
 
-        particle->worldPos = particle->pos;
-        particle->worldPos.y += 25.0f;
-        particle->worldPos2 = particle->pos;
-        particle->worldPos2.y -= 25.0f;
+        particle->innerChainPoint = particle->pos;
+        particle->innerChainPoint.y += 25.0f;
+        particle->outerChainPoint = particle->pos;
+        particle->outerChainPoint.y -= 25.0f;
 
-        mbObjDispSet(particle->modelId, TRUE);
-        mbObjPosSetV(particle->modelId, &particle->pos);
-        mbObjRotSetV(particle->modelId, &particle->rot);
+        mbObjDispSet(particle->particleModelId, TRUE);
+        mbObjPosSetV(particle->particleModelId, &particle->pos);
+        mbObjRotSetV(particle->particleModelId, &particle->rotation);
     }
-    *out = particle->worldPos;
-    PSVECSubtract(out, &work->targetPos, out);
+    *out = particle->innerChainPoint;
+    PSVECSubtract(out, &work->chainHookOffset, out);
     omAddObjEx(mbObjMan, S03_OBJECT_PRIORITY, 0, 0, OM_GRP_NONE, fn_1_2A20);
 }
 
-/* Runs each object-manager frame to pose the chain particle and, during capture, the player. */
+/* Runs each object-manager frame to animate chain sway and growth, pose the chain particle and
+ * source model from the chain path, and align the carried player to the source model joint. */
 void fn_1_2A20(OMOBJ *obj)
 {
     S03Work *work = &lbl_1_bss_4;
@@ -1041,9 +1060,9 @@ void fn_1_2A20(OMOBJ *obj)
     int i;
 
     mbObjPosGet(work->chainModelId, &chainPos);
-    PSVECAdd(&chainPos, &work->targetPos, &targetPos);
+    PSVECAdd(&chainPos, &work->chainHookOffset, &targetPos);
     mbObjRotGet(work->chainModelId, &chainRot);
-    switch (work->substate) {
+    switch (work->chainMotionState) {
     case 0:
         break;
     case 1:
@@ -1092,15 +1111,15 @@ void fn_1_2A20(OMOBJ *obj)
     particlePos.y += 25.0f;
     rot = chainRot;
     for (i = 0; i < 1; i++, particle++) {
-        PSVECAdd(&rot, &particle->angle, &particle->rot);
+        PSVECAdd(&rot, &particle->baseRotation, &particle->rotation);
         mtxRot(matrix, rot.x, rot.y, rot.z);
         PSMTXMultVec(matrix, &lbl_1_data_8C[0], &offset);
-        particle->worldPos = particlePos;
+        particle->innerChainPoint = particlePos;
         PSVECAdd(&particlePos, &offset, &particle->pos);
         PSVECAdd(&particle->pos, &offset, &particlePos);
-        particle->worldPos2 = particlePos;
-        mbObjPosSetV(particle->modelId, &particle->pos);
-        mbObjRotSetV(particle->modelId, &particle->rot);
+        particle->outerChainPoint = particlePos;
+        mbObjPosSetV(particle->particleModelId, &particle->pos);
+        mbObjRotSetV(particle->particleModelId, &particle->rotation);
     }
 
     mtxRot(matrix, rot.x, rot.y + work->effectAngle, rot.z);
@@ -1109,26 +1128,27 @@ void fn_1_2A20(OMOBJ *obj)
     mbObjPosSetV(work->sourceModelId, &particlePos);
     mbObjRotSetV(work->sourceModelId, &rot);
 
-    if (work->state >= 0) {
-        if (work->captureFlag == 0) {
-            mbPlayerPosGet(work->captureFlag, &work->playerOffset);
+    if (work->heldPlayerNo >= 0) {
+        if (work->playerOffsetCaptured == 0) {
+            /* This sample reads player 0's position even when another player is held. */
+            mbPlayerPosGet(work->playerOffsetCaptured, &work->playerOffset);
             Hu3DModelObjMtxGet(mbObjModelIDGet(work->sourceModelId),
                 lbl_1_data_5C, matrix);
             work->playerOffset.x -= matrix[0][3];
             work->playerOffset.y -= matrix[1][3];
             work->playerOffset.z -= matrix[2][3];
-            work->captureFlag = 1;
+            work->playerOffsetCaptured = 1;
         }
         Hu3DMotionCalc(mbObjModelIDGet(work->sourceModelId));
         Hu3DModelObjMtxGet(mbObjModelIDGet(work->sourceModelId),
             lbl_1_data_5C, matrix);
         PSMTXMultVec(matrix, &work->playerOffset, &playerPos);
         matrix[0][3] = matrix[1][3] = matrix[2][3] = 0.0f;
-        mbPlayerMtxSet(work->state, &matrix);
-        mbPlayerPosSetV(work->state, &playerPos);
-        mbPlayerRotSet(work->state, 0.0f,
+        mbPlayerMtxSet(work->heldPlayerNo, &matrix);
+        mbPlayerPosSetV(work->heldPlayerNo, &playerPos);
+        mbPlayerRotSet(work->heldPlayerNo, 0.0f,
             0.0f, 0.0f);
-        mbPlayerScaleSet(work->state, 1.0f,
+        mbPlayerScaleSet(work->heldPlayerNo, 1.0f,
             1.0f, 1.0f);
     }
 }
