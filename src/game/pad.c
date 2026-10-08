@@ -1,19 +1,24 @@
-/* This TU does not use the inline sqrt helpers pulled in by dolphin.h. */
+/* Controller input sampling, directional input conversion, and rumble control. */
+/* This file does not use the inline sqrt helpers pulled in by dolphin.h. */
 #define _MATH_H
 #include "dolphin.h"
 #include "humath.h"
 #include "game/main.h"
 #include "game/pad.h"
 
-//TODO: Move to appropriate place
+/* The mic subsystem uses this retrace call to maintain its periodic wake alarm. */
 extern void HuMCPeriodicProc(void);
 
 typedef struct PadRumble_s {
-    s16 maxTime;
-    s16 offTime;
-    s16 onTime;
-    s16 time;
-    s16 numRumble;
+    s16 maxTime;      // Elapsed-retrace cutoff; zero disables the pattern, otherwise the motor is
+                      // hard-stopped after the counter advances past this value.
+    s16 offTime;      // Retrace phase at which the motor stops in each repeating cycle; this is the
+                      // rumbling portion of the cycle.
+    s16 onTime;       // Remaining retrace ticks in each repeating cycle after offTime; the motor
+                      // stays stopped during this portion.
+    s16 time;          // Elapsed retrace ticks for the current rumble pattern.
+    s16 numRumble;     // Number of initial post-retrace callbacks remaining before the repeating
+                       // rumble cycle.
 } RUMBLEDATA;
 
 static void PadReadVSync(u32 retraceCount);
@@ -67,167 +72,184 @@ static u32 chanTbl[4] = { PAD_CHAN0_BIT, PAD_CHAN1_BIT, PAD_CHAN2_BIT, PAD_CHAN3
 
 extern int HuDvdErrWait;
 
+/* Called during game startup to initialize controller sampling and disable scheduled rumble. */
 void HuPadInit(void)
 {
-    int i;
-    BOOL old;
+    int padIndex;
+    BOOL interruptsEnabled;
     PADSetSpec(PAD_SPEC_5);
     PADInit();
     SISetSamplingRate(0);
-    old = OSDisableInterrupts();
+    interruptsEnabled = OSDisableInterrupts();
     VISetPostRetraceCallback(PadReadVSync);
-    OSRestoreInterrupts(old);
-    for(i=0; i<4; i++) {
-        padStatErrOld[i] = PAD_ERR_NOT_READY;
+    OSRestoreInterrupts(interruptsEnabled);
+    for(padIndex=0; padIndex<4; padIndex++) {
+        padStatErrOld[padIndex] = PAD_ERR_NOT_READY;
     }
     VIWaitForRetrace();
     VIWaitForRetrace();
     HuPadRead();
-    for(i=0; i<4; i++) {
-        if(_PadErr[i] == PAD_ERR_NONE) {
-            PADControlMotor(i, PAD_MOTOR_STOP_HARD);
+    for(padIndex=0; padIndex<4; padIndex++) {
+        if(_PadErr[padIndex] == PAD_ERR_NONE) {
+            PADControlMotor(padIndex, PAD_MOTOR_STOP_HARD);
         }
-        rumbleData[i].maxTime = 0;
-        _PadRepCnt[i] = 0;
+        rumbleData[padIndex].maxTime = 0;
+        _PadRepCnt[padIndex] = 0;
     }
+    /* D-pad button bits are hidden from the public button arrays by default. */
     HuPadBtnMask = PAD_BUTTON_DPAD;
 }
 
+/* Copies the stored button, stick, trigger, D-pad, and error snapshots into their public arrays;
+ * copies button-down edges once and then clears their accumulator. */
 void HuPadRead(void)
 {
-    s16 i;
-    for(i=0; i<4; i++) {
-        HuPadBtn[i] = _PadBtn[i] & ~HuPadBtnMask;
-        HuPadBtnDown[i] = _PadBtnDown[i] & ~HuPadBtnMask;
-        HuPadStkX[i] = _PadStkX[i];
-        HuPadStkY[i] = _PadStkY[i];
-        HuPadSubStkX[i] = _PadSubStkX[i];
-        HuPadSubStkY[i] = _PadSubStkY[i];
-        HuPadTrigL[i] = _PadTrigL[i];
-        HuPadTrigR[i] = _PadTrigR[i];
-        HuPadDStk[i] = _PadDStk[i];
-        HuPadDStkRep[i] = _PadDStkRep[i];
-        HuPadDStkDown[i] = _PadDStkDown[i];
-        HuPadErr[i] = _PadErr[i];
+    s16 padIndex;
+    for(padIndex=0; padIndex<4; padIndex++) {
+        HuPadBtn[padIndex] = _PadBtn[padIndex] & ~HuPadBtnMask;
+        HuPadBtnDown[padIndex] = _PadBtnDown[padIndex] & ~HuPadBtnMask;
+        HuPadStkX[padIndex] = _PadStkX[padIndex];
+        HuPadStkY[padIndex] = _PadStkY[padIndex];
+        HuPadSubStkX[padIndex] = _PadSubStkX[padIndex];
+        HuPadSubStkY[padIndex] = _PadSubStkY[padIndex];
+        HuPadTrigL[padIndex] = _PadTrigL[padIndex];
+        HuPadTrigR[padIndex] = _PadTrigR[padIndex];
+        HuPadDStk[padIndex] = _PadDStk[padIndex];
+        HuPadDStkRep[padIndex] = _PadDStkRep[padIndex];
+        HuPadDStkDown[padIndex] = _PadDStkDown[padIndex];
+        HuPadErr[padIndex] = _PadErr[padIndex];
         
-        _PadBtnDown[i] = 0;
+        /* Button-down edges are consumed when this public input snapshot is read. */
+        _PadBtnDown[padIndex] = 0;
     }
 }
 
+/* VI post-retrace callback: when no disc error is active, samples controllers, updates input
+ * repeats and rumble, and resets channels; always runs system callbacks and advances VCounter. */
 static void PadReadVSync(u32 retraceCount)
 {
-    u32 chan;
-    s16 i;
-    PADStatus status[4];
+    u32 channelsToReset;
+    s16 padIndex;
+    PADStatus padStatuses[4];
     if(!HuDvdErrWait) {
-        RumbleBit = PADRead(status);
-        PADClampCircle(status);
-        chan = 0;
+        RumbleBit = PADRead(padStatuses);
+        PADClampCircle(padStatuses);
+        channelsToReset = 0;
         if(GlobalCounterOld == GlobalCounter) {
              RumbleCounter++;
         } else {
             RumbleCounter = 0;
             GlobalCounterOld = GlobalCounter;
         }
-        for(i=0; i<4; i++) {
-            PADStatus *statusP = &status[i];
-            RUMBLEDATA *rumble = &rumbleData[i];
-            if(padStatErrOld[i] && statusP->err == PAD_ERR_NONE) {
-                PADControlMotor(i, PAD_MOTOR_STOP_HARD);
-                rumble->maxTime = 0;
+        for(padIndex=0; padIndex<4; padIndex++) {
+            PADStatus *padStatus = &padStatuses[padIndex];
+            RUMBLEDATA *rumbleState = &rumbleData[padIndex];
+            if(padStatErrOld[padIndex] && padStatus->err == PAD_ERR_NONE) {
+                PADControlMotor(padIndex, PAD_MOTOR_STOP_HARD);
+                rumbleState->maxTime = 0;
             }
-            padStatErrOld[i] = statusP->err;
-            if(statusP->err != PAD_ERR_NONE) {
-                _PadErr[i] = statusP->err;
-                if(statusP->err != PAD_ERR_TRANSFER && statusP->err != PAD_ERR_NOT_READY) {
-                    chan |= chanTbl[i];
+            padStatErrOld[padIndex] = padStatus->err;
+            if(padStatus->err != PAD_ERR_NONE) {
+                _PadErr[padIndex] = padStatus->err;
+                if(padStatus->err != PAD_ERR_TRANSFER && padStatus->err != PAD_ERR_NOT_READY) {
+                    channelsToReset |= chanTbl[padIndex];
                 }
-                if(statusP->err == PAD_ERR_TRANSFER) {
-                    _PadErr[i] = 0;
-                    _PadBtnDown[i] = _PadDStkDown[i] = 0;
+                if(padStatus->err == PAD_ERR_TRANSFER) {
+                    _PadErr[padIndex] = 0;
+                    _PadBtnDown[padIndex] = _PadDStkDown[padIndex] = 0;
                     continue;
                 }
-                if(statusP->err == PAD_ERR_NO_CONTROLLER && SIProbe(i) == 0x88000000) {
-                    _PadErr[i] = 0;
-                    chan |= chanTbl[i];
+                /* Treat this receiver signature as recoverable and request a channel reset. */
+                if(padStatus->err == PAD_ERR_NO_CONTROLLER && SIProbe(padIndex) == SI_GC_RECEIVER) {
+                    _PadErr[padIndex] = 0;
+                    channelsToReset |= chanTbl[padIndex];
                 }
-                _PadBtnDown[i] = _PadBtn[i] = _PadStkX[i] = _PadStkY[i] = _PadSubStkX[i] = _PadSubStkY[i] = _PadTrigL[i] = _PadTrigR[i] =  _PadDStkRep[i] = _PadDStk[i] = _PadDStkDown[i] =  HuPadBtnRep[i] = 0;
+                _PadBtnDown[padIndex] = _PadBtn[padIndex] = _PadStkX[padIndex] =
+                    _PadStkY[padIndex] = _PadSubStkX[padIndex] = _PadSubStkY[padIndex] =
+                        _PadTrigL[padIndex] = _PadTrigR[padIndex] = _PadDStkRep[padIndex] =
+                            _PadDStk[padIndex] = _PadDStkDown[padIndex] = HuPadBtnRep[padIndex] = 0;
             } else {
-                u16 button = statusP->button & ~HuPadBtnMask;
-                if(statusP->triggerL > 105.0) {
-                    button |= PAD_BUTTON_TRIGGER_L;
+                u16 buttons = padStatus->button & ~HuPadBtnMask;
+                if(padStatus->triggerL > 105.0) {
+                    buttons |= PAD_BUTTON_TRIGGER_L;
                 }
-                if(statusP->triggerR > 105.0) {
-                    button |= PAD_BUTTON_TRIGGER_R;
+                if(padStatus->triggerR > 105.0) {
+                    buttons |= PAD_BUTTON_TRIGGER_R;
                 }
-                if(button && _PadBtn[i] == button) {
-                    if(_PadRepCnt[i] > 20) {
-                        HuPadBtnRep[i] = button;
+                if(buttons && _PadBtn[padIndex] == buttons) {
+                    if(_PadRepCnt[padIndex] > 20) {
+                        HuPadBtnRep[padIndex] = buttons;
                     } else {
+                        /* Hold repeat visibility until the retrace sampling interval advances. */
                         if(RumbleCounter == 0) {
-                            HuPadBtnRep[i] = 0;
+                            HuPadBtnRep[padIndex] = 0;
                         }
-                        _PadRepCnt[i]++;
+                        _PadRepCnt[padIndex]++;
                     }
                 } else {
-                    _PadRepCnt[i] = 0;
-                    HuPadBtnRep[i] = button;
+                    _PadRepCnt[padIndex] = 0;
+                    HuPadBtnRep[padIndex] = buttons;
                 }
-                PadADConv(i, statusP);
-                _PadBtnDown[i] |= PADButtonDown(_PadBtn[i], button);
+                PadADConv(padIndex, padStatus);
+                /* Record only bits newly present in this sample, using PADButtonDown's mask. */
+                _PadBtnDown[padIndex] |= PADButtonDown(_PadBtn[padIndex], buttons);
                 
                 if(RumbleCounter == 0 || RumbleCounter > 3) {
-                    _PadBtn[i] = button;
-                    _PadStkX[i] = statusP->stickX;
-                    _PadStkY[i] = statusP->stickY;
-                    _PadSubStkX[i] = statusP->substickX;
-                    _PadSubStkY[i] = statusP->substickY;
-                    _PadTrigL[i] = statusP->triggerL;
-                    _PadTrigR[i] = statusP->triggerR;
+                    _PadBtn[padIndex] = buttons;
+                    _PadStkX[padIndex] = padStatus->stickX;
+                    _PadStkY[padIndex] = padStatus->stickY;
+                    _PadSubStkX[padIndex] = padStatus->substickX;
+                    _PadSubStkY[padIndex] = padStatus->substickY;
+                    _PadTrigL[padIndex] = padStatus->triggerL;
+                    _PadTrigR[padIndex] = padStatus->triggerR;
                     RumbleCounter = 0;
                 } else {
-                    _PadBtn[i] |= button;
-                    _PadStkX[i] |= statusP->stickX;
-                    _PadStkY[i] |= statusP->stickY;
-                    _PadSubStkX[i] |= statusP->substickX;
-                    _PadSubStkY[i] |= statusP->substickY;
-                    _PadTrigL[i] |= statusP->triggerL;
-                    _PadTrigR[i] |= statusP->triggerR;
+                    /* For intermediate retraces, ORs button, stick, and trigger bytes into the
+                     * stored values until the next sampling boundary. */
+                    _PadBtn[padIndex] |= buttons;
+                    _PadStkX[padIndex] |= padStatus->stickX;
+                    _PadStkY[padIndex] |= padStatus->stickY;
+                    _PadSubStkX[padIndex] |= padStatus->substickX;
+                    _PadSubStkY[padIndex] |= padStatus->substickY;
+                    _PadTrigL[padIndex] |= padStatus->triggerL;
+                    _PadTrigR[padIndex] |= padStatus->triggerR;
                 }
-                HuPadStkXf[i] = (float)_PadStkX[i]*(1.0/56.0);
-                HuPadStkYf[i] = (float)_PadStkY[i]*(1.0/56.0);
-                HuPadSubStkXf[i] = (float)_PadSubStkX[i]*(1.0/44.0);
-                HuPadSubStkYf[i] = (float)_PadSubStkY[i]*(1.0/44.0);
-                HuPadSubStkXf[i] = (float)_PadSubStkX[i]*(1.0/44.0);
-                HuPadTrigLf[i] = (float)_PadTrigL[i]*(1.0/150.0);
-                HuPadTrigRf[i] = (float)_PadTrigR[i]*(1.0/150.0);
-                _PadErr[i] = statusP->err;
-                if(rumble->maxTime) {
-                    if(rumble->numRumble) {
-                        if(rumble->time == 0) {
-                            PADControlMotor(i, PAD_MOTOR_RUMBLE);
+                HuPadStkXf[padIndex] = (float)_PadStkX[padIndex]*(1.0/56.0);
+                HuPadStkYf[padIndex] = (float)_PadStkY[padIndex]*(1.0/56.0);
+                HuPadSubStkXf[padIndex] = (float)_PadSubStkX[padIndex]*(1.0/44.0);
+                HuPadSubStkYf[padIndex] = (float)_PadSubStkY[padIndex]*(1.0/44.0);
+                /* Rewrites the same normalized X sub-stick value after the Y assignment. */
+                HuPadSubStkXf[padIndex] = (float)_PadSubStkX[padIndex]*(1.0/44.0);
+                HuPadTrigLf[padIndex] = (float)_PadTrigL[padIndex]*(1.0/150.0);
+                HuPadTrigRf[padIndex] = (float)_PadTrigR[padIndex]*(1.0/150.0);
+                _PadErr[padIndex] = padStatus->err;
+                if(rumbleState->maxTime) {
+                    if(rumbleState->numRumble) {
+                        if(rumbleState->time == 0) {
+                            PADControlMotor(padIndex, PAD_MOTOR_RUMBLE);
                         }
-                        rumble->numRumble--;
+                        rumbleState->numRumble--;
                     } else {
-                        s16 time = rumble->time%(rumble->offTime+rumble->onTime);
-                        if(time == 0) {
-                            PADControlMotor(i, PAD_MOTOR_RUMBLE);
+                        s16 rumblePhase =
+                            rumbleState->time % (rumbleState->offTime + rumbleState->onTime);
+                        if(rumblePhase == 0) {
+                            PADControlMotor(padIndex, PAD_MOTOR_RUMBLE);
                         } else {
-                            if(time == rumble->offTime) {
-                                PADControlMotor(i, PAD_MOTOR_STOP);
+                            if(rumblePhase == rumbleState->offTime) {
+                                PADControlMotor(padIndex, PAD_MOTOR_STOP);
                             }
                         }
                     }
-                    rumble->time++;
-                    if(rumble->time > rumble->maxTime) {
-                        PADControlMotor(i, PAD_MOTOR_STOP_HARD);
-                        rumble->maxTime = 0;
+                    rumbleState->time++;
+                    if(rumbleState->time > rumbleState->maxTime) {
+                        PADControlMotor(padIndex, PAD_MOTOR_STOP_HARD);
+                        rumbleState->maxTime = 0;
                     }
                 }
             }
         }
-        if(chan) {
-            PADReset(chan);
+        if(channelsToReset) {
+            PADReset(channelsToReset);
         }
     }
     msmSysRegularProc();
@@ -235,168 +257,182 @@ static void PadReadVSync(u32 retraceCount)
     VCounter++;
 }
 
-static void PadADConv(s16 pad, PADStatus *status)
+/* Converts the two analog sticks into thresholded D-pad input and repeat state. */
+static void PadADConv(s16 padIndex, PADStatus *padStatus)
 {
-    float maxX, maxY;
-    float stickX, stickY;
-    float subStkX, subStkY;
-    float absX, absY;
-    u8 DStkPrev;
-    s16 spA, sp8;
-    spA = 0;
-    sp8 = 0;
-    stickX = status->stickX/56.0f;
-    stickY = status->stickY/56.0f;
-    subStkX = status->substickX/44.0f;
-    subStkY = status->substickY/44.0f;
-    if(HuSquare(stickX) > HuSquare(0.2f) && HuSquare(subStkX) > HuSquare(0.2f)) {
-        maxX = (stickX+subStkX)/2;
-    } else if(HuSquare(stickX) > HuSquare(0.2f)) {
-        maxX = stickX;
+    float combinedStickX, combinedStickY;
+    float mainStickX, mainStickY;
+    float subStickX, subStickY;
+    float absStickX, absStickY;
+    u8 previousDpad;
+    s16 unusedZero, secondUnusedZero;
+    /* These zeroed locals are retained even though the routine never reads them. */
+    unusedZero = 0;
+    secondUnusedZero = 0;
+    mainStickX = padStatus->stickX/56.0f;
+    mainStickY = padStatus->stickY/56.0f;
+    subStickX = padStatus->substickX/44.0f;
+    subStickY = padStatus->substickY/44.0f;
+    /* For each axis, averages both values when both exceed 0.2, uses the main stick when only it
+     * exceeds 0.2, and otherwise uses the sub-stick, even if neither exceeds 0.2. */
+    if(HuSquare(mainStickX) > HuSquare(0.2f) && HuSquare(subStickX) > HuSquare(0.2f)) {
+        combinedStickX = (mainStickX+subStickX)/2;
+    } else if(HuSquare(mainStickX) > HuSquare(0.2f)) {
+        combinedStickX = mainStickX;
     } else {
-        maxX = subStkX;
+        combinedStickX = subStickX;
     }
-    if(HuSquare(stickY) > HuSquare(0.2f) && HuSquare(subStkY) > HuSquare(0.2f)) {
-        maxY = (stickY+subStkY)/2;
-    } else if(HuSquare(stickY) > HuSquare(0.2f)) {
-        maxY = stickY;
+    if(HuSquare(mainStickY) > HuSquare(0.2f) && HuSquare(subStickY) > HuSquare(0.2f)) {
+        combinedStickY = (mainStickY+subStickY)/2;
+    } else if(HuSquare(mainStickY) > HuSquare(0.2f)) {
+        combinedStickY = mainStickY;
     } else {
-        maxY = subStkY;
+        combinedStickY = subStickY;
     }
-    absX = HuAbs(maxX);
-    absY = HuAbs(maxY);
-    DStkPrev = _PadDStk[pad];
-    _PadDStk[pad] = 0;
-    if(absY > 0.3f) {
-        if(maxY > 0) {
-            _PadDStk[pad] |= PAD_BUTTON_UP;
+    absStickX = HuAbs(combinedStickX);
+    absStickY = HuAbs(combinedStickY);
+    previousDpad = _PadDStk[padIndex];
+    _PadDStk[padIndex] = 0;
+    if(absStickY > 0.3f) {
+        if(combinedStickY > 0) {
+            _PadDStk[padIndex] |= PAD_BUTTON_UP;
         } else {
-            _PadDStk[pad] |= PAD_BUTTON_DOWN;
+            _PadDStk[padIndex] |= PAD_BUTTON_DOWN;
         }
     }
-    if(absX > 0.4f) {
-        if(maxX < 0) {
-            _PadDStk[pad] |= PAD_BUTTON_LEFT;
+    if(absStickX > 0.4f) {
+        if(combinedStickX < 0) {
+            _PadDStk[padIndex] |= PAD_BUTTON_LEFT;
         } else {
-            _PadDStk[pad] |= PAD_BUTTON_RIGHT;
+            _PadDStk[padIndex] |= PAD_BUTTON_RIGHT;
         }
     }
-    if(absX+absY < 0.3f) {
-        _PadDStkRepOld[pad] = 0;
+    if(absStickX+absStickY < 0.3f) {
+        _PadDStkRepOld[padIndex] = 0;
     }
-    if(_PadDStkRepCnt[pad]) {
-        _PadDStkRepCnt[pad]--;
-        if(absX+absY < 0.3f) {
-            _PadDStkRepCnt[pad] = 0;
+    /* A changed direction sets a 20-callback delay and a continuing direction sets a two-callback
+     * delay; during countdown, the repeat value is cleared when RumbleCounter is zero. */
+    if(_PadDStkRepCnt[padIndex]) {
+        _PadDStkRepCnt[padIndex]--;
+        if(absStickX+absStickY < 0.3f) {
+            _PadDStkRepCnt[padIndex] = 0;
         }
         if(RumbleCounter == 0) {
-            _PadDStkRep[pad] = 0;
+            _PadDStkRep[padIndex] = 0;
         }
     } else {
-        _PadDStkRep[pad] = _PadDStk[pad];
-        if(_PadDStkRep[pad]) {
-            if(_PadDStkRepOld[pad] == _PadDStkRep[pad]) {
-                _PadDStkRepCnt[pad] = 2;
+        _PadDStkRep[padIndex] = _PadDStk[padIndex];
+        if(_PadDStkRep[padIndex]) {
+            if(_PadDStkRepOld[padIndex] == _PadDStkRep[padIndex]) {
+                _PadDStkRepCnt[padIndex] = 2;
             } else {
-                _PadDStkRepCnt[pad] = 20;
+                _PadDStkRepCnt[padIndex] = 20;
             }
-            _PadDStkRepOld[pad] = _PadDStkRep[pad];
+            _PadDStkRepOld[padIndex] = _PadDStkRep[padIndex];
         }
     }
-    _PadDStkDown[pad] = _PadDStk[pad] & (_PadDStk[pad] ^ DStkPrev);
+    _PadDStkDown[padIndex] = _PadDStk[padIndex] & (_PadDStk[padIndex] ^ previousDpad);
 }
 
-u16 HuPadStkDirGet(s16 padNo)
+/* Returns D-pad direction bits for the main stick copied by HuPadRead. */
+u16 HuPadStkDirGet(s16 padIndex)
 {
-    float stkX = HuPadStkX[padNo]/56.0f;
-    float stkY = HuPadStkY[padNo]/56.0f;
-    float absX = HuAbs(stkX);
-    float absY = HuAbs(stkY);
-    u16 btn;
+    float stickX = HuPadStkX[padIndex]/56.0f;
+    float stickY = HuPadStkY[padIndex]/56.0f;
+    float absStickX = HuAbs(stickX);
+    float absStickY = HuAbs(stickY);
+    u16 directionButtons;
     
-    if(absY > 0.3f) {
-        if(stkY > 0) {
-            btn = PAD_BUTTON_UP;
+    if(absStickY > 0.3f) {
+        if(stickY > 0) {
+            directionButtons = PAD_BUTTON_UP;
         } else {
-            btn = PAD_BUTTON_DOWN;
+            directionButtons = PAD_BUTTON_DOWN;
         }
     } else {
-        btn = 0;
+        directionButtons = 0;
     }
-    if(absX > 0.4f) {
-        if(stkX < 0) {
-            btn |= PAD_BUTTON_LEFT;
+    if(absStickX > 0.4f) {
+        if(stickX < 0) {
+            directionButtons |= PAD_BUTTON_LEFT;
         } else {
-            btn |= PAD_BUTTON_RIGHT;
+            directionButtons |= PAD_BUTTON_RIGHT;
         }
     }
-    return btn;
+    return directionButtons;
 }
 
-u16 HuPadSubStkDirGet(s16 padNo)
+/* Returns D-pad direction bits for the sub-stick copied by HuPadRead. */
+u16 HuPadSubStkDirGet(s16 padIndex)
 {
-    float stkX = HuPadSubStkX[padNo]/44.0f;
-    float stkY = HuPadSubStkY[padNo]/44.0f;
-    float absX = HuAbs(stkX);
-    float absY = HuAbs(stkY);
-    u16 btn;
+    float stickX = HuPadSubStkX[padIndex]/44.0f;
+    float stickY = HuPadSubStkY[padIndex]/44.0f;
+    float absStickX = HuAbs(stickX);
+    float absStickY = HuAbs(stickY);
+    u16 directionButtons;
     
-    if(absY > 0.3f) {
-        if(stkY > 0) {
-            btn = PAD_BUTTON_UP;
+    if(absStickY > 0.3f) {
+        if(stickY > 0) {
+            directionButtons = PAD_BUTTON_UP;
         } else {
-            btn = PAD_BUTTON_DOWN;
+            directionButtons = PAD_BUTTON_DOWN;
         }
     } else {
-        btn = 0;
+        directionButtons = 0;
     }
-    if(absX > 0.4f) {
-        if(stkX < 0) {
-            btn |= PAD_BUTTON_LEFT;
+    if(absStickX > 0.4f) {
+        if(stickX < 0) {
+            directionButtons |= PAD_BUTTON_LEFT;
         } else {
-            btn |= PAD_BUTTON_RIGHT;
+            directionButtons |= PAD_BUTTON_RIGHT;
         }
     }
-    return btn;
+    return directionButtons;
 }
 
-void HuPadRumbleSet(s16 pad, s16 maxTime, s16 offTime, s16 onTime)
+/* Called by game effects to schedule a rumble pattern while the controller is connected. */
+void HuPadRumbleSet(s16 padIndex, s16 maxTime, s16 offTime, s16 onTime)
 {
-    RUMBLEDATA *rumble = &rumbleData[pad];
-    if(_PadErr[pad] == PAD_ERR_NONE) {
-        rumble->maxTime = maxTime;
-        rumble->offTime = offTime;
-        rumble->onTime = onTime;
-        rumble->time = 0;
-        rumble->numRumble = 3;
+    RUMBLEDATA *rumbleState = &rumbleData[padIndex];
+    if(_PadErr[padIndex] == PAD_ERR_NONE) {
+        rumbleState->maxTime = maxTime;
+        rumbleState->offTime = offTime;
+        rumbleState->onTime = onTime;
+        rumbleState->time = 0;
+        rumbleState->numRumble = 3;
     }
 }
 
-void HuPadRumbleStop(s16 pad)
+/* If the controller has no recorded error, cancels its scheduled pattern and hard-stops its
+ * motor. */
+void HuPadRumbleStop(s16 padIndex)
 {
-    RUMBLEDATA *rumble = &rumbleData[pad];
-    if(_PadErr[pad] == PAD_ERR_NONE) {
-        rumble->maxTime = 0;
-        PADControlMotor(pad, PAD_MOTOR_STOP_HARD);
+    RUMBLEDATA *rumbleState = &rumbleData[padIndex];
+    if(_PadErr[padIndex] == PAD_ERR_NONE) {
+        rumbleState->maxTime = 0;
+        PADControlMotor(padIndex, PAD_MOTOR_STOP_HARD);
     }
 }
 
+/* Called when game code needs to cancel every scheduled controller rumble pattern. */
 void HuPadRumbleAllStop(void)
 {
-    int i;
-    for(i=0; i<4; i++) {
-        rumbleData[i].maxTime = 0;
-        if(_PadErr[i] == PAD_ERR_NONE) {
-            PADControlMotor(i, PAD_MOTOR_STOP_HARD);
+    int padIndex;
+    for(padIndex=0; padIndex<4; padIndex++) {
+        rumbleData[padIndex].maxTime = 0;
+        if(_PadErr[padIndex] == PAD_ERR_NONE) {
+            PADControlMotor(padIndex, PAD_MOTOR_STOP_HARD);
         }
     }
 }
 
-s16 HuPadStatGet(s16 pad)
+/* Returns the most recent controller error stored by the post-retrace reader. */
+s16 HuPadStatGet(s16 padIndex)
 {
-    return _PadErr[pad];
+    return _PadErr[padIndex];
 }
 
+/* Returns the value most recently returned by PADRead. */
 u32 HuPadRumbleGet(void)
 {
     return RumbleBit;

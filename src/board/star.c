@@ -1,3 +1,4 @@
+/* Creates and runs the board's Star and Ztar models, rewards, and events. */
 #include "dolphin/math.h"
 #include "game/board/main.h"
 
@@ -47,45 +48,45 @@ enum {
 };
 
 typedef struct StarWork {
-    unsigned killF : 1;
-    unsigned rotateF : 1;
-    unsigned effectDispF : 1;
-    unsigned signF : 1;
-    unsigned modelDispF : 1;
-    unsigned autoDispF : 1;
-    unsigned scaleF : 1;
+    unsigned killF : 1; /* Set for removal by the object's next update. */
+    unsigned rotateF : 1; /* Enables the Star's spin animation. */
+    unsigned effectDispF : 1; /* Tracks whether the glow effect is displayed. */
+    unsigned signF : 1; /* True for a board-space object; false for a player-attached object. */
+    unsigned modelDispF : 1; /* Particle-emission gate tied to the object's model visibility. */
+    unsigned autoDispF : 1; /* Allows a hidden Star space model to reappear. */
+    unsigned scaleF : 1; /* Unused bit; initialized to zero with STARWORK. */
     unsigned : 1;
-    int objNo;
-    int no;
-    int masuId;
-    int playerNo;
-    s8 mode;
-    s8 rotSpeed;
-    s16 rotY;
-    HU3D_MODELID effectModelId;
-    s16 effectTime;
-    float baseY;
-    s16 time;
-    s16 time2;
-    ANIMDATA *effectAnim;
-    int signModelId;
-    OMOBJ *obj;
-    HuVecF pos;
-    HuVecF offset;
-    HuVecF rot;
-    HuVecF scale;
+    int objNo; /* Slot in the Star or Ztar object table. */
+    int no; /* Star index field; initialized to zero and not assigned in this file. */
+    int masuId; /* Board space followed by this object, or -1 for a player. */
+    int playerNo; /* Player associated with this object, or -1 for a space. */
+    s8 mode; /* Current grow, idle, or shrink animation mode. */
+    s8 rotSpeed; /* Spin speed in degrees per object update. */
+    s16 rotY; /* Shrink-animation rotation progress in degrees. */
+    HU3D_MODELID effectModelId; /* Glow particle model attached to the Star. */
+    s16 effectTime; /* Unused field; initialized to zero with STARWORK. */
+    float baseY; /* Vertical position used as the shrink-animation floor. */
+    s16 time; /* Frame counter for the current object animation. */
+    s16 time2; /* Unused field; initialized to zero with STARWORK. */
+    ANIMDATA *effectAnim; /* Unused animation-data pointer; initialized to NULL with STARWORK. */
+    int signModelId; /* Star-space sign model, when signF is true. */
+    OMOBJ *obj; /* Object-manager record that owns this work data. */
+    HuVecF pos; /* World position in board units. */
+    HuVecF offset; /* Per-frame world-space animation offset. */
+    HuVecF rot; /* Model rotation in degrees. */
+    HuVecF scale; /* Model scale on each axis. */
 } STARWORK;
 
 typedef struct StarDispWork {
-    int modelId[4];
-    int playerNo;
-    int num;
-    int mode;
-    int unk1C;
-    u16 time;
-    u16 delay;
-    HuVecF pos;
-    HuVecF modelPos[4];
+    int modelId[4]; /* Star-count digit and sign models. */
+    int playerNo; /* Player whose Star count is displayed. */
+    int num; /* Number of Stars represented by this display. */
+    int mode; /* Current display animation mode. */
+    int unusedState; /* Initialized to zero; no later read is present in this file. */
+    u16 time; /* Frames elapsed in the current display animation. */
+    u16 delay; /* Frames to wait before advancing the display animation. */
+    HuVecF pos; /* World position of the display. */
+    HuVecF modelPos[4]; /* Requested positions used to project each of the four display models. */
 } STARDISPWORK;
 
 static OMOBJ *starOMObj[STAR_OBJ_MAX];
@@ -193,6 +194,7 @@ void mbStarReset(void)
     lbl_802C0E88 = 0;
 }
 
+/* Initializes Star object tables and glow animation data when the board starts. */
 void mbStarInit(void)
 {
     memset(starOMObj, 0, sizeof(starOMObj));
@@ -211,6 +213,8 @@ void mbStarInit(void)
     mbZtarObjInit();
 }
 
+/* Marks active Star objects for removal and releases starEffAnim1; starEffAnim2 is not released
+ * here. */
 void mbStarClose(void)
 {
     int i;
@@ -225,6 +229,7 @@ void mbStarClose(void)
         HuSprAnimKill(starEffAnim1);
         starEffAnim1 = NULL;
     }
+    /* This repeats the first handle check, so starEffAnim2 is not released here. */
     if (starEffAnim1) {
         HuSprAnimKill(starEffAnim1);
         starEffAnim1 = NULL;
@@ -232,6 +237,7 @@ void mbStarClose(void)
     mbZtarObjClose();
 }
 
+/* Creates a free-standing Star object and returns its object-table slot. */
 int mbStarObjCreate(void)
 {
     int objNo;
@@ -242,10 +248,12 @@ int mbStarObjCreate(void)
     obj = starOMObj[objNo];
     work = obj->data;
     work->masuId = work->playerNo = -1;
+    /* The one-bit sign flag truncates this value to zero, leaving no space sign. */
     work->signF = 2;
     return objNo;
 }
 
+/* Sets the world position of a Star object by slot. */
 void mbStarObjPosSet(int objNo, float x, float y, float z)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -256,11 +264,13 @@ void mbStarObjPosSet(int objNo, float x, float y, float z)
     work->pos.z = z;
 }
 
+/* Sets the world position of a Star object from a vector. */
 void mbStarObjPosSetV(int objNo, const HuVecF *pos)
 {
     mbStarObjPosSet(objNo, pos->x, pos->y, pos->z);
 }
 
+/* Sets the model rotation in degrees for a Star object. */
 void mbStarObjRotSet(int objNo, float x, float y, float z)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -271,11 +281,13 @@ void mbStarObjRotSet(int objNo, float x, float y, float z)
     work->rot.z = z;
 }
 
+/* Sets the model rotation of a Star object from a vector. */
 void mbStarObjRotSetV(int objNo, const HuVecF *rot)
 {
     mbStarObjRotSet(objNo, rot->x, rot->y, rot->z);
 }
 
+/* Sets the per-axis model scale for a Star object. */
 void mbStarObjScaleSet(int objNo, float x, float y, float z)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -286,11 +298,13 @@ void mbStarObjScaleSet(int objNo, float x, float y, float z)
     work->scale.z = z;
 }
 
+/* Sets the per-axis model scale of a Star object from a vector. */
 void mbStarObjScaleSetV(int objNo, const HuVecF *scale)
 {
     mbStarObjScaleSet(objNo, scale->x, scale->y, scale->z);
 }
 
+/* Reads the world position of a Star object. */
 void mbStarObjPosGet(int objNo, HuVecF *pos)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -299,6 +313,7 @@ void mbStarObjPosGet(int objNo, HuVecF *pos)
     *pos = work->pos;
 }
 
+/* Reads the model rotation of a Star object. */
 void mbStarObjRotGet(int objNo, HuVecF *rot)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -307,6 +322,7 @@ void mbStarObjRotGet(int objNo, HuVecF *rot)
     *rot = work->rot;
 }
 
+/* Reads the per-axis scale of a Star object. */
 void mbStarObjScaleGet(int objNo, HuVecF *scale)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -315,11 +331,13 @@ void mbStarObjScaleGet(int objNo, HuVecF *scale)
     *scale = work->scale;
 }
 
+/* Requests removal of a Star object by its table slot. */
 void mbStarObjKill(int objNo)
 {
     StarObjKill(starOMObj[objNo]);
 }
 
+/* Changes model and glow visibility together for a Star object. */
 void mbStarObjDispSet(int objNo, BOOL dispF)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -331,6 +349,7 @@ void mbStarObjDispSet(int objNo, BOOL dispF)
     work->effectDispF = dispF;
 }
 
+/* Changes the particle-emission gate used by the Star object's particle callback. */
 void mbStarObjDispFlagSet(int objNo, BOOL dispF)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -339,6 +358,7 @@ void mbStarObjDispFlagSet(int objNo, BOOL dispF)
     work->modelDispF = dispF;
 }
 
+/* Associates a chest reward with a player and starts the Star reward sequence. */
 void mbStarChestCreate(int objNo, int playerNo)
 {
     OMOBJ *obj = starOMObj[objNo];
@@ -352,6 +372,7 @@ void mbStarChestCreate(int objNo, int playerNo)
     mbStarGetMain(playerNo, NULL, starAddNum, TRUE);
 }
 
+/* Allocates a Star model and its object-manager callback in the first free slot. */
 static int StarObjCreate(HuVecF *pos)
 {
     int i;
@@ -417,6 +438,7 @@ static int StarObjCreate(HuVecF *pos)
     return -1;
 }
 
+/* Finds the object-table slot assigned to a board space, or -1 if absent. */
 static inline int StarMasuNoGet(int masuId)
 {
     int i;
@@ -433,6 +455,7 @@ static inline int StarMasuNoGet(int masuId)
     return -1;
 }
 
+/* Returns the Star object assigned to a board space, if one exists. */
 static inline OMOBJ *StarMasuObjGet(int masuId)
 {
     int objNo = StarMasuNoGet(masuId);
@@ -443,11 +466,13 @@ static inline OMOBJ *StarMasuObjGet(int masuId)
     return NULL;
 }
 
+/* Stores the callback run while the Star-space event moves the camera. */
 void mbStarMoveHookSet(void (*hook)(void))
 {
     starMoveHook = hook;
 }
 
+/* Finds the object-table slot assigned to a player, or -1 if absent. */
 static inline int StarPlayerNoGet(int playerNo)
 {
     int i;
@@ -462,6 +487,7 @@ static inline int StarPlayerNoGet(int playerNo)
     return -1;
 }
 
+/* Returns the Star object assigned to a player, if one exists. */
 static inline OMOBJ *StarPlayerObjGet(int playerNo)
 {
     int objNo = StarPlayerNoGet(playerNo);
@@ -471,16 +497,19 @@ static inline OMOBJ *StarPlayerObjGet(int playerNo)
     return NULL;
 }
 
+/* Stores an alternate callback for the paid Star-space event. */
 void mbStarMasuFuncSet(void (*func)(void))
 {
     starMasuFunc = func;
 }
 
+/* Keeps the Star-space sign animation looping while its model is active. */
 static inline void StarSignLoopStart(MBMODELID modelId)
 {
     mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
 }
 
+/* Creates a Star object and sign at a board space. */
 static inline int StarMasuCreate(int masuId, HuVecF *pos)
 {
     int objNo;
@@ -504,6 +533,7 @@ static inline int StarMasuCreate(int masuId, HuVecF *pos)
     return objNo;
 }
 
+/* Replaces a board space with the next Star location and creates its sign. */
 void mbStarMasuNextSet(int masuId)
 {
     HuVecF pos;
@@ -520,6 +550,7 @@ void mbStarMasuNextSet(int masuId)
     starMasuNext = masuId;
 }
 
+/* Creates a Star object associated with a player. */
 static inline int StarPlayerCreate(int playerNo, HuVecF *pos)
 {
     int objNo;
@@ -536,6 +567,7 @@ static inline int StarPlayerCreate(int playerNo, HuVecF *pos)
     return objNo;
 }
 
+/* Creates a Star above the player, plays its grow-in animation, and runs the reward sequence. */
 void mbStarGetExec(int playerNo)
 {
     HuVecF pos;
@@ -549,14 +581,15 @@ void mbStarGetExec(int playerNo)
     objNo = StarPlayerCreate(playerNo, &pos);
     obj = starOMObj[objNo];
     work = obj->data;
-    seNo = mbAudFXPlay(1095);
-    mbAudFXPlay(1096);
+    seNo = mbAudFXPlay(MSM_SE_BRD00_91);
+    mbAudFXPlay(MSM_SE_BRD00_92);
     StarObjGrowSet(obj);
     StarObjGrowWait(obj);
     mbAudFXStop(seNo);
     mbStarGetMain(playerNo, NULL, starAddNum, TRUE);
 }
 
+/* Sets how many Stars the next ordinary Star reward grants. */
 void mbStarAddNumSet(int num)
 {
     starAddNum = num;
@@ -566,6 +599,7 @@ void mbStarStub(void)
 {
 }
 
+/* Runs the paid Star-space event as a child process and hides the move counter. */
 void mbev_StarMasu(int playerNo)
 {
     mbMoveNumDispSet(playerNo, FALSE);
@@ -578,6 +612,7 @@ void mbev_StarMasu(int playerNo)
     mbMoveNumDispSet(playerNo, TRUE);
 }
 
+/* Runs the free Star-space event as a child process and hides the move counter. */
 void mbev_StarFreeMasu(int playerNo)
 {
     mbMoveNumDispSet(playerNo, FALSE);
@@ -590,6 +625,7 @@ void mbev_StarFreeMasu(int playerNo)
     mbMoveNumDispSet(playerNo, TRUE);
 }
 
+/* Child-process entry point for a paid Star-space visit. */
 static void ev_StarMasu(void)
 {
     if (starMasuFunc != NULL) {
@@ -600,22 +636,26 @@ static void ev_StarMasu(void)
     HuPrcEnd();
 }
 
+/* Child-process entry point for a free Star-space visit. */
 static void ev_StarFreeMasu(void)
 {
     ev_StarMasuRun(TRUE);
     HuPrcEnd();
 }
 
+/* Clears the paid Star-space process handle when that child ends. */
 static void ev_StarMasuKill(void)
 {
     starMasuProc = NULL;
 }
 
+/* Clears the free Star-space process handle when that child ends. */
 static void ev_StarFreeMasuKill(void)
 {
     starFreeProc = NULL;
 }
 
+/* Requests removal of the active Star object associated with a player. */
 static inline void StarPlayerKill(int playerNo)
 {
     int i;
@@ -630,6 +670,7 @@ static inline void StarPlayerKill(int playerNo)
     }
 }
 
+/* Requests removal of the active Star object associated with a board space. */
 static inline void StarMasuKill(int masuId)
 {
     int i;
@@ -644,6 +685,7 @@ static inline void StarMasuKill(int masuId)
     }
 }
 
+/* Runs the Star award animation, updates the player's count, and clears its model. */
 void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
 {
     int time;
@@ -673,23 +715,24 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
         work = obj->data;
         no = work->no;
     } else {
-        /* Retail passes the address of this parameter, not the pointed-to vector. */
+        /* This passes &pos (a pointer-to-pointer), not pos; StarPlayerCreate interprets the pointer
+         * bytes as vector coordinates. */
         objNo = StarPlayerCreate(playerNo, (HuVecF *)&pos);
         obj = starOMObj[objNo];
         work = obj->data;
         mbPlayerPosGet(playerNo, &playerPos);
         work->baseY = playerPos.y;
         no = -1;
-        seNo = mbAudFXPlay(1095);
-        mbAudFXPlay(1096);
+        seNo = mbAudFXPlay(MSM_SE_BRD00_91);
+        mbAudFXPlay(MSM_SE_BRD00_92);
         HuPrcVSleep();
     }
     if (work->signF == TRUE && work->effectDispF == FALSE) {
         mbObjDispSet(obj->mdlId[0], TRUE);
         work->modelDispF = TRUE;
         work->effectDispF = TRUE;
-        streamNo = mbAudFXPlay(1095);
-        mbAudFXPlay(1096);
+        streamNo = mbAudFXPlay(MSM_SE_BRD00_91);
+        mbAudFXPlay(MSM_SE_BRD00_92);
         StarObjGrowSet(obj);
         StarObjGrowWait(obj);
         mbAudFXStop(streamNo);
@@ -709,7 +752,7 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
             if (seNo >= 0) {
                 mbAudFXStop(seNo);
             }
-            mbAudFXPlay(1097);
+            mbAudFXPlay(MSM_SE_BRD00_93);
             mbStarObjDispFlagSet(work->objNo, FALSE);
         }
         HuPrcVSleep();
@@ -769,11 +812,13 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
     starAddNum = 1;
 }
 
+/* Starts a one-Star reward sequence using the supplied position argument. */
 void mbStarGetPosExec(int playerNo, HuVecF *pos)
 {
     mbStarGetMain(playerNo, pos, 1, TRUE);
 }
 
+/* Advances Star animation state and synchronizes its models on each object update. */
 static void StarObjOMExec(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -804,6 +849,8 @@ static void StarObjOMExec(OMOBJ *obj)
         if (work->autoDispF == FALSE) {
             dispF = FALSE;
         }
+        /* Outside the tutorial, restore a hidden Star-space model unless the turn player occupies
+         * its space or auto-display is disabled. */
         if (dispF) {
             mbObjDispSet(obj->mdlId[0], TRUE);
             work->modelDispF = TRUE;
@@ -890,6 +937,7 @@ static void StarObjOMExec(OMOBJ *obj)
     }
 }
 
+/* Marks a Star object for removal by its next object-manager update. */
 static void StarObjKill(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -897,6 +945,7 @@ static void StarObjKill(OMOBJ *obj)
     work->killF = TRUE;
 }
 
+/* Advances the Star's spin, increasing its speed up to 16 degrees per update. */
 static void StarObjRotate(STARWORK *work, OMOBJ *obj)
 {
     float rotSpeed;
@@ -918,6 +967,7 @@ static void StarObjRotate(STARWORK *work, OMOBJ *obj)
     }
 }
 
+/* Returns a Star object to its elevated idle pose unless its effect is visible. */
 static void StarObjShrinkIdleSet(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -929,6 +979,7 @@ static void StarObjShrinkIdleSet(OMOBJ *obj)
     }
 }
 
+/* Starts the Star's growth animation, spin, and particle effect. */
 static inline void StarObjGrowSet(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -946,6 +997,7 @@ static inline void StarObjGrowSet(OMOBJ *obj)
     }
 }
 
+/* Starts the Star's shrinking animation and resets its spin. */
 static void StarObjShrinkSet(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -956,6 +1008,7 @@ static void StarObjShrinkSet(OMOBJ *obj)
     work->mode = STAR_MODE_SHRINK;
 }
 
+/* Waits for a growing Star to reach idle, then allows its final pose to settle. */
 static void StarObjGrowWait(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -966,6 +1019,7 @@ static void StarObjGrowWait(OMOBJ *obj)
     HuPrcSleep(20);
 }
 
+/* Waits until the Star's shrink-to-idle animation has finished. */
 static void StarObjShrinkIdleWait(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -975,6 +1029,7 @@ static void StarObjShrinkIdleWait(OMOBJ *obj)
     }
 }
 
+/* Creates the Star's particle model and installs its per-frame effect hook. */
 static HU3D_MODELID StarObjEffCreate(ANIMDATA *anim)
 {
     HU3D_MODELID modelId;
@@ -985,6 +1040,7 @@ static HU3D_MODELID StarObjEffCreate(ANIMDATA *anim)
     return modelId;
 }
 
+/* Releases a Star particle model when its model ID is valid. */
 static void StarObjEffKill(HU3D_MODELID modelId)
 {
     if (modelId >= 0) {
@@ -992,6 +1048,7 @@ static void StarObjEffKill(HU3D_MODELID modelId)
     }
 }
 
+/* Particle-model callback that emits Star glows and animates each particle's fall and fade. */
 static void StarObjEffHook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
@@ -1057,6 +1114,8 @@ void mbStarStub2(void)
 {
 }
 
+/* Called by the board opening flow to show the Star-space location and restore the opening
+ * camera. */
 void mbStarMapViewProcExec(void)
 {
     OMOBJ *guideObj = NULL;
@@ -1177,6 +1236,7 @@ void mbStarNoDispSet(void)
 {
 }
 
+/* Sets one Star-space model, sign, and particle visibility state. */
 void mbStarMasuDispSet(int masuId, BOOL dispF)
 {
     int objNo = StarMasuNoGet(masuId);
@@ -1198,6 +1258,7 @@ void mbStarMasuDispSet(int masuId, BOOL dispF)
     }
 }
 
+/* Sets model, sign, and particle visibility for every created Star object. */
 void mbStarDispSetAll(BOOL dispF)
 {
     int i;
@@ -1218,6 +1279,7 @@ void mbStarDispSetAll(BOOL dispF)
     }
 }
 
+/* Sets all Star visibility flags, including the particle hook's automatic-emission gate. */
 void mbStarObjDispSetAll(BOOL dispF)
 {
     int i;
@@ -1246,6 +1308,7 @@ void mbStarObjDispSetAll(BOOL dispF)
     }
 }
 
+/* Applies a clamped Star change to one player, optionally animating each Star. */
 static inline int StarAdd(int playerNo, int starNum, BOOL fastF)
 {
     int num;
@@ -1285,6 +1348,8 @@ static inline int StarAdd(int playerNo, int starNum, BOOL fastF)
     return starDiff;
 }
 
+/* Changes one player's Star count and waits for a display when the count changes or dispF is
+ * set. */
 int mbStarAddProcExec(int playerNo, int starNum, BOOL dispF, BOOL fastF)
 {
     int starDiff;
@@ -1303,6 +1368,7 @@ int mbStarAddProcExec(int playerNo, int starNum, BOOL dispF, BOOL fastF)
     return starDiff;
 }
 
+/* Changes one player's Stars and shows the count only for a nonzero change. */
 int mbStarAddDispExec(int playerNo, int starNum, BOOL dispF, BOOL fastF)
 {
     int starDiff;
@@ -1325,6 +1391,7 @@ int mbStarAddExec(int playerNo, int starNum)
     return mbStarAddDispExec(playerNo, starNum, FALSE, FALSE);
 }
 
+/* Applies Star changes for active players, respecting individual or team limits. */
 static void StarAddAllProc(int *addNum, BOOL fastF, int *result)
 {
     int starNum[4];
@@ -1400,6 +1467,7 @@ static void StarAddAllProc(int *addNum, BOOL fastF, int *result)
     mbAudFXPlay(15);
 }
 
+/* Applies per-player Star changes, then waits for requested count displays. */
 void mbStarAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF)
 {
     int result[4];
@@ -1426,6 +1494,7 @@ void mbStarAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF)
     } while (waitF);
 }
 
+/* Applies four Star changes and optionally waits for changed-count displays. */
 void mbStarAddAllProcExec(int num0, int num1, int num2, int num3,
     BOOL dispF, BOOL fastF)
 {
@@ -1459,6 +1528,7 @@ void mbStarAddAllProcExec(int num0, int num1, int num2, int num3,
     }
 }
 
+/* Applies four Star changes with the normal paced Star-count animation. */
 void mbStarAddAllExec(int num0, int num1, int num2, int num3)
 {
     int addNum[4];
@@ -1471,6 +1541,7 @@ void mbStarAddAllExec(int num0, int num1, int num2, int num3)
     StarAddAllProc(addNum, FALSE, result);
 }
 
+/* Creates a floating Star-count display 250 units above a player's position. */
 int mbStarDispPlayerCreate(int playerNo, int num)
 {
     HuVecF pos;
@@ -1481,6 +1552,7 @@ int mbStarDispPlayerCreate(int playerNo, int num)
     return playerNo;
 }
 
+/* Builds the sign, digit, and Star models for a floating Star-count display. */
 int mbStarDispCreate(int playerNo, HuVecF *pos, int num)
 {
     static const int SignMdlTbl[] = {
@@ -1569,7 +1641,7 @@ int mbStarDispCreate(int playerNo, HuVecF *pos, int num)
     work->playerNo = playerNo;
     work->num = num;
     work->mode = STAR_DISP_MODE_ON;
-    work->unk1C = 0;
+    work->unusedState = 0;
     work->time = 0;
     work->delay = 0;
     work->pos = dispPos;
@@ -1585,6 +1657,7 @@ int mbStarDispCreate(int playerNo, HuVecF *pos, int num)
     return playerNo;
 }
 
+/* Reports whether the player's floating Star-count display has been removed. */
 BOOL mbStarDispCheck(int playerNo)
 {
     if (starDispObj[playerNo] != NULL) {
@@ -1593,6 +1666,8 @@ BOOL mbStarDispCheck(int playerNo)
     return TRUE;
 }
 
+/* Object-manager callback that animates the floating Star-count models and removes them at the
+ * end. */
 static void StarDispUpdate(OMOBJ *obj)
 {
     STARDISPWORK *work = obj->data;
@@ -1757,6 +1832,7 @@ static void StarDispUpdate(OMOBJ *obj)
     }
 }
 
+/* Projects one count model into screen space while preserving its requested display depth. */
 static void StarDispObjUpdate(STARDISPWORK *work, int modelNo,
     float x, float y, float z, float scale)
 {
@@ -1801,6 +1877,7 @@ static void StarDispObjUpdate(STARDISPWORK *work, int modelNo,
     mbObjPosSet(work->modelId[modelNo], pos.x, pos.y, pos.z);
 }
 
+/* Runs the paid or free Star-space event for the current player after landing. */
 static void ev_StarMasuRun(BOOL freeF)
 {
     int guideNo = mbGuideNoGet();
@@ -1825,7 +1902,7 @@ static void ev_StarMasuRun(BOOL freeF)
         messNo = 1;
     }
     playerNo = GwSystem.turnPlayerNo;
-    mbAudFXPlay(1098);
+    mbAudFXPlay(MSM_SE_BRD00_94);
     mbPlayerMotIdleSet(playerNo);
     mbPlayerRotateStart(playerNo, 0, 15);
     while (!mbPlayerRotateCheck(playerNo)) {
@@ -1957,8 +2034,8 @@ starBuy:
     mbev_StarScroll(&startPos, &endPos, 120);
     mbWinKill((s16)winNo);
     mbObjDispSet(obj->mdlId[0], TRUE);
-    seNo = mbAudFXPlay(1095);
-    mbAudFXPlay(1096);
+    seNo = mbAudFXPlay(MSM_SE_BRD00_91);
+    mbAudFXPlay(MSM_SE_BRD00_92);
     StarObjGrowSet(obj);
     StarObjGrowWait(obj);
     mbAudFXStop(seNo);
@@ -1972,6 +2049,7 @@ starBuy:
     mbCameraPlayerViewSetFast(playerNo, 2);
     mbStatusDispForceSet(playerNo, FALSE);
     mbStatusDispForceSetAll(TRUE);
+    /* The event requests the all-player status display twice before closing. */
     mbStatusDispForceSetAll(TRUE);
     mbGuideKill(starGuideObj);
     starGuideObj = NULL;
@@ -1986,6 +2064,7 @@ end:
     mbCameraMoveWait();
 }
 
+/* Pause hook keeps the Star-space guide hidden while the board is paused. */
 static void StarPauseHook(BOOL pauseF)
 {
     int modelId;
@@ -2000,6 +2079,7 @@ static void StarPauseHook(BOOL pauseF)
     }
 }
 
+/* Material hook supplies the Star model's lighting and TEV stages during drawing. */
 static void StarMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     GXColor colorNew = { 255, 255, 255, 255 };
@@ -2025,6 +2105,7 @@ void mbZtarObjInit(void)
     memset(ztarOMObj, 0, sizeof(ztarOMObj));
 }
 
+/* Marks every active Ztar object for removal during board cleanup. */
 void mbZtarObjClose(void)
 {
     int i;
@@ -2042,6 +2123,7 @@ static inline MBPARTICLE *StarObjEffDataGet(HU3D_MODELID modelId)
     return Hu3DData[modelId].hookData;
 }
 
+/* Allocates a Ztar model and particle system in the first free object-table slot. */
 static int ZtarObjCreate(HuVecF *pos)
 {
     int i;
@@ -2100,6 +2182,7 @@ static int ZtarObjCreate(HuVecF *pos)
     return -1;
 }
 
+/* Changes the particle-emission gate used by the Ztar object's particle callback. */
 void mbZtarObjDispFlagSet(int objNo, BOOL dispF)
 {
     OMOBJ *obj = ztarOMObj[objNo];
@@ -2108,6 +2191,7 @@ void mbZtarObjDispFlagSet(int objNo, BOOL dispF)
     work->modelDispF = dispF;
 }
 
+/* Creates a Ztar attached to a board space and records its raised display position. */
 static inline int ZtarMasuCreate(int masuId, HuVecF *pos)
 {
     int objNo;
@@ -2125,6 +2209,7 @@ static inline int ZtarMasuCreate(int masuId, HuVecF *pos)
     return objNo;
 }
 
+/* Replaces the selected Star space with a Ztar and remembers the prior space type. */
 void mbZtarMasuNextSet(int masuId)
 {
     HuVecF pos;
@@ -2141,6 +2226,7 @@ void mbZtarMasuNextSet(int masuId)
     ztarMasuNext = masuId;
 }
 
+/* Creates a player-attached Ztar for the player's penalty animation. */
 static inline int ZtarPlayerCreate(int playerNo, HuVecF *pos)
 {
     int objNo;
@@ -2158,6 +2244,7 @@ static inline int ZtarPlayerCreate(int playerNo, HuVecF *pos)
     return objNo;
 }
 
+/* Raises a Ztar above a player, plays its entrance, then runs the Ztar penalty. */
 void mbZtarGetExec(int playerNo)
 {
     HuVecF pos;
@@ -2175,6 +2262,7 @@ void mbZtarGetExec(int playerNo)
     mbZtarGetMain(playerNo, NULL, -1, TRUE);
 }
 
+/* Finds the object slot for a Ztar attached to the given board space. */
 static inline int ZtarMasuNoGet(int masuId)
 {
     int i;
@@ -2189,6 +2277,7 @@ static inline int ZtarMasuNoGet(int masuId)
     return -1;
 }
 
+/* Returns the active Ztar object attached to a board space, if any. */
 static inline OMOBJ *ZtarMasuObjGet(int masuId)
 {
     int objNo = ZtarMasuNoGet(masuId);
@@ -2198,6 +2287,7 @@ static inline OMOBJ *ZtarMasuObjGet(int masuId)
     return NULL;
 }
 
+/* Finds the object slot for a Ztar attached to the given player. */
 static inline int ZtarPlayerNoGet(int playerNo)
 {
     int i;
@@ -2212,6 +2302,7 @@ static inline int ZtarPlayerNoGet(int playerNo)
     return -1;
 }
 
+/* Returns the active Ztar object attached to a player, if any. */
 static inline OMOBJ *ZtarPlayerObjGet(int playerNo)
 {
     int objNo = ZtarPlayerNoGet(playerNo);
@@ -2221,6 +2312,7 @@ static inline OMOBJ *ZtarPlayerObjGet(int playerNo)
     return NULL;
 }
 
+/* Marks the first Ztar attached to a player for removal. */
 static inline void ZtarPlayerKill(int playerNo)
 {
     int i;
@@ -2235,6 +2327,7 @@ static inline void ZtarPlayerKill(int playerNo)
     }
 }
 
+/* Marks the first Ztar attached to a board space for removal. */
 static inline void ZtarMasuKill(int masuId)
 {
     int i;
@@ -2249,6 +2342,7 @@ static inline void ZtarMasuKill(int masuId)
     }
 }
 
+/* Runs the Ztar penalty: animate the capsule away, then remove Stars or coins. */
 void mbZtarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
 {
     int time;
@@ -2274,7 +2368,8 @@ void mbZtarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
         work = obj->data;
         no = work->no;
     } else {
-        /* Preserve the same retail parameter-address path as StarGetMain. */
+        /* This passes &pos (a pointer-to-pointer), not pos; ZtarPlayerCreate interprets the pointer
+         * bytes as vector coordinates. */
         objNo = ZtarPlayerCreate(playerNo, (HuVecF *)&pos);
         obj = ztarOMObj[objNo];
         work = obj->data;
@@ -2323,6 +2418,7 @@ void mbZtarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
     HuPrcSleep(18);
 }
 
+/* Object-manager callback that animates, positions, and eventually removes a Ztar. */
 static void ZtarObjOMExec(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -2406,6 +2502,7 @@ static void ZtarObjOMExec(OMOBJ *obj)
     mbObjScaleSetV(obj->mdlId[0], &work->scale);
 }
 
+/* Marks a Ztar object for removal by its next object-manager update. */
 static void ZtarObjKill(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -2413,6 +2510,7 @@ static void ZtarObjKill(OMOBJ *obj)
     work->killF = TRUE;
 }
 
+/* Advances a Ztar's spin while its grow or shrink animation is active. */
 static void ZtarObjRotate(STARWORK *work, OMOBJ *obj)
 {
     float rotSpeed;
@@ -2434,6 +2532,7 @@ static void ZtarObjRotate(STARWORK *work, OMOBJ *obj)
     }
 }
 
+/* Starts the Ztar's shrink-to-idle transition, restoring its model if hidden. */
 static void ZtarObjShrinkIdleSet(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -2445,6 +2544,7 @@ static void ZtarObjShrinkIdleSet(OMOBJ *obj)
     }
 }
 
+/* Starts the Ztar entrance animation and plays its capsule sound. */
 static void ZtarObjGrowSet(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -2458,6 +2558,7 @@ static void ZtarObjGrowSet(OMOBJ *obj)
     mbAudFXPlay(1118);
 }
 
+/* Starts the Ztar's downward shrinking animation and resets its spin. */
 static void ZtarObjShrinkSet(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -2468,6 +2569,7 @@ static void ZtarObjShrinkSet(OMOBJ *obj)
     work->mode = STAR_MODE_SHRINK;
 }
 
+/* Waits for the Ztar entrance animation to reach idle, then lets it settle. */
 static void ZtarObjGrowWait(OMOBJ *obj)
 {
     STARWORK *work = obj->data;
@@ -2478,6 +2580,7 @@ static void ZtarObjGrowWait(OMOBJ *obj)
     HuPrcSleep(20);
 }
 
+/* Waits until the Ztar's shrink-to-idle transition has completed. */
 static void ZtarObjShrinkIdleWait(OMOBJ *obj)
 {
     STARWORK *work = obj->data;

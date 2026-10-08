@@ -1,3 +1,4 @@
+// Board music and sound-effect playback helpers.
 #define _MATH_H
 
 #include "game/board/audio.h"
@@ -9,50 +10,50 @@
 #include <string.h>
 
 typedef struct MBAudFXObj_s {
-    int seId;
-    int seNo;
-    int vol;
-    BOOL emitterF;
-    BOOL pauseF;
-    BOOL lockF;
-    Vec pos;
-    int *fxRef;
+    int seId; // Sound-effect resource ID.
+    int seNo; // Active sound-effect playback handle, or a sentinel when inactive.
+    int vol; // Requested sound-effect volume.
+    BOOL emitterF; // Whether playback uses a world-position emitter.
+    BOOL pauseF; // Whether the tracked sound is paused.
+    BOOL lockF; // Whether this entry is retained until its owner releases it.
+    Vec pos; // Emitter position in world coordinates.
+    int *fxRef; // Optional caller-owned slot updated when deferred playback starts.
 } MBAUDFXOBJ;
 
 typedef struct MBAudFXData_s {
-    int seId;
-    int delay;
-    int type;
-    s8 pan;
-    Vec pos;
+    int seId; // Sound-effect resource ID queued for delayed playback.
+    int delay; // Remaining process frames before playback.
+    int type; // MB_AUD_FX_TYPE_* playback mode.
+    s8 pan; // Stereo pan for MB_AUD_FX_TYPE_PAN playback.
+    Vec pos; // World position for MB_AUD_FX_TYPE_EMITTER playback.
 } MBAUDFXDATA;
 
 typedef struct MBMusData_s {
-    int streamNo;
-    s16 id;
-    s16 vol;
-    s16 closeTime;
-    s16 stopTime;
-    s16 fadeTime;
-    s16 pauseF;
-    s16 stopF;
-    HUPROCESS *proc;
+    int streamNo; // Audio stream handle, or MSM_STREAMNO_NONE when unused.
+    s16 id; // Music resource ID associated with streamNo.
+    s16 vol; // Current requested stream volume.
+    s16 closeTime; // Frames to retain a stream after the engine reports completion.
+    s16 stopTime; // Frames remaining before a requested stop is finalized.
+    s16 fadeTime; // Frames remaining in a pause/fade operation.
+    s16 pauseF; // TRUE while this channel is marked as paused.
+    s16 stopF; // TRUE while a stop countdown is active.
+    HUPROCESS *proc; // Process that monitors this channel's stream.
 } MBMUSDATA;
 
 typedef struct BoardMusData_s {
-    u32 boardNo;
-    s32 dayMusId;
-    s32 nightMusId;
-    BOOL timeF;
+    u32 boardNo; // Board index; 0xFFFFFFFF terminates the table.
+    s32 dayMusId; // Stream resource used during daytime.
+    s32 nightMusId; // Stream resource used during nighttime.
+    BOOL timeF; // TRUE when the board has separate day and night music.
 } BOARDMUSDATA;
 
 typedef struct MusBoardFadeData_s {
-    int chan;
-    int nextChan;
-    int speed;
-    int fadeSpeed;
-    int musId;
-    BOOL pauseF;
+    int chan; // Channel whose current stream is fading or pausing.
+    int nextChan; // Channel used for the replacement stream.
+    int speed; // Fade or pause-fade speed passed to the audio engine.
+    int fadeSpeed; // Fade-in speed for the replacement stream.
+    int musId; // Replacement music ID; MSM_STREAM_NONE selects board music.
+    BOOL pauseF; // TRUE requests pause-fade behavior for the outgoing stream.
 } MUSBOARDFADEDATA;
 
 enum {
@@ -116,6 +117,7 @@ static void MusBoardFade(void);
 static void AudFXMain(void);
 static void AudFXMainDestroy(void);
 
+// Pauses or resumes a tracked sound effect; repeated requests in the current state are ignored.
 static inline void AudFXObjPauseSet(int seNo, BOOL pauseF)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -149,6 +151,7 @@ static inline void AudFXObjPauseSet(int seNo, BOOL pauseF)
     }
 }
 
+// Stores a delayed emitter position when a queued sound has one.
 static inline void AudFXPosSet(MBAUDFXDATA *audFx, Vec *pos)
 {
     if (pos != NULL) {
@@ -156,6 +159,7 @@ static inline void AudFXPosSet(MBAUDFXDATA *audFx, Vec *pos)
     }
 }
 
+// Initializes board music and sound-effect tracking when board mode starts.
 void mbAudInit(void)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -197,9 +201,10 @@ void mbAudInit(void)
     for (i = 0; i < MB_AUD_FX_DELAY_MAX; i++, delayFx++) {
         delayFx->seId = MSM_SE_NONE;
     }
-    mbAudFXPlay(0x452);
+    mbAudFXPlay(MSM_SE_BRD00_102);
 }
 
+// Selects the current board's day/night stream and starts it on the background channel.
 void mbMusBoardPlay(void)
 {
     int i;
@@ -222,10 +227,13 @@ void mbMusBoardPlay(void)
     mbMusPlay(MB_MUS_CHAN_BG, musId, MSM_VOL_MAX, 0);
 }
 
-void mbMusPlay(int chan, int id, s8 vol, u16 fadeSpeed)
+// Starts a stream on a board music channel; called by board events and fade transitions.
+// The parameter block is filled, but the start call takes only ID and channel, so volume/fade are
+// not applied here.
+void mbMusPlay(int chan, int musicId, s8 volume, u16 fadeSpeed)
 {
     MBMUSDATA *musP = &musData[chan];
-    int streamNo;
+    int streamHandle;
     int chanOther;
     MSM_STREAMPARAM streamParam;
 
@@ -234,13 +242,15 @@ void mbMusPlay(int chan, int id, s8 vol, u16 fadeSpeed)
     }
 
     streamParam.flag = MSM_STREAMPARAM_CHAN | MSM_STREAMPARAM_VOL;
+    // This opposite-channel value is computed but not used by the remaining code.
     chanOther = chan ^ 1;
-    if (musData[chan].streamNo != MSM_STREAMNO_NONE && id == musData[chan].id) {
+    if (musData[chan].streamNo != MSM_STREAMNO_NONE && musicId == musData[chan].id) {
         if (mbMusStatGet(chan) == MSM_STREAM_PLAY || mbMusStatGet(chan) == MSM_STREAM_PAUSEOUT) {
             return;
         }
     }
-    if (musData[chan].streamNo != MSM_STREAMNO_NONE && id == musData[chan].id && mbMusStopCheck(chan)) {
+    if (musData[chan].streamNo != MSM_STREAMNO_NONE && musicId == musData[chan].id &&
+        mbMusStopCheck(chan)) {
         mbMusPauseFadeOut(chan, FALSE, 0);
         return;
     }
@@ -259,14 +269,14 @@ void mbMusPlay(int chan, int id, s8 vol, u16 fadeSpeed)
         streamParam.fadeSpeed = fadeSpeed;
     }
     streamParam.chan = chan * 2;
-    streamParam.vol = vol;
-    streamNo = HuAudSStreamChanPlay(id, chan * 2);
-    if (streamNo >= 0) {
+    streamParam.vol = volume;
+    streamHandle = HuAudSStreamChanPlay(musicId, chan * 2);
+    if (streamHandle >= 0) {
         int *chanP;
 
-        musP->streamNo = streamNo;
-        musP->id = id;
-        musP->vol = vol;
+        musP->streamNo = streamHandle;
+        musP->id = musicId;
+        musP->vol = volume;
         musP->closeTime = 3;
         musP->stopTime = 60;
         musP->stopF = FALSE;
@@ -278,6 +288,7 @@ void mbMusPlay(int chan, int id, s8 vol, u16 fadeSpeed)
     }
 }
 
+// Fades the selected channel using the default one-second fade.
 void mbMusFadeOut(int chan)
 {
     MBMUSDATA *musP = &musData[chan];
@@ -285,6 +296,7 @@ void mbMusFadeOut(int chan)
     mbMusFadeOutSpeed(chan, 1000);
 }
 
+// Stops the selected channel immediately and clears its tracked stream state.
 void mbMusStop(int chan, BOOL unused)
 {
     MBMUSDATA *musP = &musData[chan];
@@ -299,6 +311,7 @@ void mbMusStop(int chan, BOOL unused)
     musP->pauseF = FALSE;
 }
 
+// Fades a live stream and records a timeout for the channel monitor process.
 void mbMusFadeOutSpeed(int chan, u16 speed)
 {
     MBMUSDATA *musP = &musData[chan];
@@ -318,6 +331,7 @@ void mbMusStub(void)
 {
 }
 
+// Updates a live stream's volume (negative values select MSM_VOL_MAX) and optional fade speed.
 void mbMusParamSet(int chan, s8 vol, u16 fadeSpeed)
 {
     MBMUSDATA *musP = &musData[chan];
@@ -336,9 +350,12 @@ void mbMusParamSet(int chan, s8 vol, u16 fadeSpeed)
     }
     streamParam.vol = vol;
     musP->vol = vol;
+    // The parameter block is not passed; the helper receives volume and fade speed directly.
     HuAudSStreamParamSet(musP->streamNo, vol, fadeSpeed);
 }
 
+// Starts or reverses the channel's pause fade when its current state allows it; nonpositive speeds
+// use a 1000 ms engine fade and a 62-frame tracked countdown.
 void mbMusPauseFadeOut(int chan, BOOL pauseF, int speed)
 {
     MBMUSDATA *musP = &musData[chan];
@@ -364,6 +381,7 @@ void mbMusPauseFadeOut(int chan, BOOL pauseF, int speed)
     }
 }
 
+// Reports the tracked channel state, prioritizing stopped and paused flags.
 s32 mbMusStatGet(int chan)
 {
     MBMUSDATA *musP = &musData[chan];
@@ -380,6 +398,7 @@ s32 mbMusStatGet(int chan)
     return MSM_STREAM_PLAY;
 }
 
+// Fades all tracked music channels and closes tracked board sound effects.
 void mbAudClose(void)
 {
     int i;
@@ -392,6 +411,7 @@ void mbAudClose(void)
     mbAudFXObjClose();
 }
 
+// Returns whether a stream handle is assigned to this channel.
 BOOL mbMusCheck(int chan)
 {
     if (musData[chan].streamNo != MSM_STREAMNO_NONE) {
@@ -400,6 +420,7 @@ BOOL mbMusCheck(int chan)
     return FALSE;
 }
 
+// Returns whether the tracked channel is in the pause-in state.
 BOOL mbMusStopCheck(int chan)
 {
     if (mbMusCheck(chan) == FALSE) {
@@ -411,6 +432,7 @@ BOOL mbMusStopCheck(int chan)
     return FALSE;
 }
 
+// Returns whether a pause/fade countdown remains for this channel.
 BOOL mbMusFadeCheck(int chan)
 {
     if (mbMusCheck(chan) == FALSE) {
@@ -422,6 +444,7 @@ BOOL mbMusFadeCheck(int chan)
     return FALSE;
 }
 
+// Returns whether this channel has no stream or is stopped/done.
 BOOL mbMusEndCheck(int chan)
 {
     if (mbMusCheck(chan) == FALSE) {
@@ -433,6 +456,7 @@ BOOL mbMusEndCheck(int chan)
     return FALSE;
 }
 
+// Starts a foreground jingle stream and returns its audio handle.
 int mbMusJinglePlay(s16 id)
 {
     int streamNo = HuAudSStreamChanPlay(id, MB_MUS_CHAN_FG * 2);
@@ -440,6 +464,7 @@ int mbMusJinglePlay(s16 id)
     return streamNo;
 }
 
+// Waits up to 600 process frames for a jingle, then fades it out if still active.
 void mbMusJingleWait(int streamNo)
 {
     int time;
@@ -459,6 +484,7 @@ void mbMusJingleWait(int streamNo)
     }
 }
 
+// Returns the audio engine state for a jingle handle; negative handles are done.
 s32 mbMusJingleStatGet(int streamNo)
 {
     if (streamNo < 0) {
@@ -467,6 +493,9 @@ s32 mbMusJingleStatGet(int streamNo)
     return HuAudSStreamStatGet(streamNo);
 }
 
+// Monitors a music channel and clears it on board exit, stop-timeout expiry, or stream completion;
+// completed streams are retained for up to three frames, while DVD errors clear immediately.
+// mbMusPlay starts this child process per channel.
 static void MusPlay(void)
 {
     MBMUSDATA *musP;
@@ -538,6 +567,7 @@ static void MusPlay(void)
     HuPrcEnd();
 }
 
+// Clears the music monitor process property when its destructor runs.
 static void MusPlayKill(void)
 {
     HUPROCESS *proc = HuPrcCurrentGet();
@@ -552,6 +582,8 @@ static inline void *MusBoardFadeWorkAlloc(void)
     return HuMemDirectMallocNum(HEAP_HEAP, sizeof(MUSBOARDFADEDATA), HU_MEMNUM_OVL);
 }
 
+// Starts a board music transition requested by board events; only one fade process can run at a
+// time.
 BOOL mbMusBoardFadeOut(int chan, int nextChan, int speed, int fadeSpeed, int musId, BOOL pauseF)
 {
     MUSBOARDFADEDATA *work;
@@ -578,6 +610,7 @@ BOOL mbMusBoardFadeOut(int chan, int nextChan, int speed, int fadeSpeed, int mus
     return TRUE;
 }
 
+// Lets board events check whether the asynchronous board music transition is still active.
 BOOL mbMusBoardFadeCheck(void)
 {
     if (musBoardFadeProc == NULL) {
@@ -586,6 +619,8 @@ BOOL mbMusBoardFadeCheck(void)
     return TRUE;
 }
 
+// Waits for the outgoing stream fade, starts replacement or board music, then frees transition
+// state.
 static void MusBoardFade(void)
 {
     MUSBOARDFADEDATA *work = HuPrcCurrentGet()->property;
@@ -625,6 +660,8 @@ static void MusBoardFade(void)
     HuPrcEnd();
 }
 
+// Pauses or resumes tracked board streams and engine stream 2 directly; these calls do not update
+// the per-channel pause flags.
 void mbMusPauseSet(BOOL pauseF)
 {
     s32 pauseStatus;
@@ -642,10 +679,13 @@ void mbMusPauseSet(BOOL pauseF)
             HuAudSStreamPauseFadeOut(2, TRUE, 5);
         }
     } else {
-        if (musData[MB_MUS_CHAN_BG].streamNo != MSM_STREAMNO_NONE && musData[MB_MUS_CHAN_BG].pauseF == FALSE) {
+        if (musData[MB_MUS_CHAN_BG].streamNo != MSM_STREAMNO_NONE &&
+            musData[MB_MUS_CHAN_BG].pauseF == FALSE) {
             HuAudSStreamPauseFadeOut(musData[MB_MUS_CHAN_BG].streamNo, FALSE, 5);
         }
-        if (musData[MB_MUS_CHAN_FG].streamNo != MSM_STREAMNO_NONE && musData[MB_MUS_CHAN_BG].pauseF == FALSE) {
+        // The foreground resume is gated by the background channel's pause flag as well.
+        if (musData[MB_MUS_CHAN_FG].streamNo != MSM_STREAMNO_NONE &&
+            musData[MB_MUS_CHAN_BG].pauseF == FALSE) {
             HuAudSStreamPauseFadeOut(musData[MB_MUS_CHAN_FG].streamNo, FALSE, 5);
         }
         unpauseStatus = HuAudSStreamStatGet(2);
@@ -668,6 +708,7 @@ int mbAudFXObjSet(int seId)
     return mbAudFXObjCreate(seId, TRUE);
 }
 
+// Tracks a board sound effect for later volume, pause, position, or cleanup requests.
 int mbAudFXObjCreate(int seId, BOOL multiF)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -713,6 +754,7 @@ int mbAudFXObjCreate(int seId, BOOL multiF)
     return audFx->seNo;
 }
 
+// Changes the requested volume of a tracked board sound effect.
 void mbAudFXObjVolSet(int seNo, s16 vol)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -730,6 +772,7 @@ void mbAudFXObjVolSet(int seNo, s16 vol)
     HuAudFXVolSet(audFx->seNo, audFx->vol);
 }
 
+// Releases a tracked sound-effect slot and fades its playback out over one second.
 void mbAudFXObjKill(int seNo)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -748,6 +791,7 @@ void mbAudFXObjKill(int seNo)
     HuAudFXFadeOut(seNo, 1000);
 }
 
+// Fades out every currently tracked board sound effect during audio shutdown.
 void mbAudFXObjClose(void)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -765,6 +809,7 @@ int mbAudFXObjEmitterSet(int seId, Vec *pos)
     return mbAudFXObjEmitterCreate(seId, pos, TRUE);
 }
 
+// Tracks a sound effect attached to a world position for later position updates or cleanup.
 int mbAudFXObjEmitterCreate(int seId, Vec *pos, BOOL multiF)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -812,6 +857,7 @@ int mbAudFXObjEmitterCreate(int seId, Vec *pos, BOOL multiF)
     return audFx->seNo;
 }
 
+// Stores the emitter position and updates live playback unless star-reset audio is holding effects.
 void mbAudFXObjEmitterUpdate(int seNo, Vec *pos)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -831,6 +877,7 @@ void mbAudFXObjEmitterUpdate(int seNo, Vec *pos)
     }
 }
 
+// Stores a new position for a locked emitter that is waiting for deferred playback.
 void mbAudFXObjEmiterPosSet(int seId, Vec *pos)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -847,6 +894,7 @@ void mbAudFXObjEmiterPosSet(int seId, Vec *pos)
     audFx->pos = *pos;
 }
 
+// Registers a caller-owned handle slot to fill when a locked sound effect begins playback.
 void mbAudFXObjRefSet(int seId, int *fxRef)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -863,6 +911,8 @@ void mbAudFXObjRefSet(int seId, int *fxRef)
     audFx->fxRef = fxRef;
 }
 
+// Board child process: starts queued sounds, retires finished handles, tracks star-reset audio
+// state, and updates each player's voice pan every frame.
 static void AudFXMain(void)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -956,12 +1006,16 @@ static void AudFXMain(void)
     HuPrcEnd();
 }
 
+// Closes tracked board sound effects and clears the audio worker process pointer.
 static void AudFXMainDestroy(void)
 {
     mbAudFXObjClose();
     audFXProc = NULL;
 }
 
+// Plays a board sound effect now or queues it for the configured delay; a full delayed queue drops
+// the request, and the delay setting is consumed either way. Returns the immediate handle (or
+// MSM_SENO_NONE).
 int mbAudFXPlay(s16 seId)
 {
     int seNo = MSM_SENO_NONE;
@@ -995,6 +1049,8 @@ void mbAudFXStop(int seNo)
     HuAudFXStop(seNo);
 }
 
+// Stops all engine sound effects, using a 1000 ms fade when speed <= 0, and clears the board's
+// tracked and delayed sound-effect entries.
 void mbAudFXStopAll(int speed)
 {
     MBAUDFXOBJ *audFx = &audFXObjData[0];
@@ -1018,6 +1074,8 @@ void mbAudFXStopAll(int speed)
     }
 }
 
+// Plays a sound with pan derived from its world position, or queues that request for delayed
+// playback; a full delayed queue drops it and still consumes the delay setting.
 int mbAudFXPosPlay(s16 seId, Vec *pos)
 {
     int pan;
@@ -1049,6 +1107,7 @@ int mbAudFXPosPlay(s16 seId, Vec *pos)
     return seNo;
 }
 
+// Projects a world position to the screen and returns its clamped left-to-right sound pan.
 u8 mbAudFXPosPanGet(Vec *pos)
 {
     Vec pos2D;
@@ -1064,6 +1123,8 @@ u8 mbAudFXPosPanGet(Vec *pos)
     return pan;
 }
 
+// Plays a sound from a world-position emitter, or stores the request for delayed playback; a full
+// delayed queue drops it and still consumes the delay setting.
 int mbAudFXEmitterPlay(int seId, Vec *pos)
 {
     int seNo = MSM_SENO_NONE;
@@ -1102,6 +1163,7 @@ void mbAudFXPanning(int seNo, s16 pan)
     HuAudFXPanning(seNo, pan);
 }
 
+// Recalculates a playing sound's pan from its current world position.
 void mbAudFXPosPanning(int seNo, Vec *pos)
 {
     s16 pan = mbAudFXPosPanGet(pos);
@@ -1114,6 +1176,8 @@ void mbAudFXDelaySet(int delay)
     audFXDelay = delay;
 }
 
+// Selects the time-appropriate guide voice for a paired cue and plays or delays the selected sound;
+// a full delayed queue drops the request and still consumes the delay setting.
 int mbAudGuidePlay(s16 seId)
 {
     int delay1;
