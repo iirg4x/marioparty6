@@ -226,8 +226,10 @@ static u32 smCharSelCamBitTbl[] = { HU3D_CAM0, HU3D_CAM1, HU3D_CAM2, HU3D_CAM3 }
 
 static u32 lbl_1_data_844[] = { 0, 1, 2, 3, 4, 5 };
 
-static char *smDvdMusTbl[] = { "sound/mu_016a.dvd", "sound/mu_047a.dvd", "sound/mu_052a.dvd", "sound/mu_054a.dvd", "sound/mu_101a.dvd",
-    "sound/mu_108a.dvd", "sound/mu002a.dvd", "" };
+static char *smDvdMusTbl[] = { "sound/mu_016a.dvd", "sound/mu_047a.dvd",
+                               "sound/mu_052a.dvd", "sound/mu_054a.dvd",
+                               "sound/mu_101a.dvd", "sound/mu_108a.dvd",
+                               "sound/mu002a.dvd",  "" };
 
 /* The menu stores its current page and cursor; each page remembers its previous cursor row. */
 /* Current page index; -1 is a temporary sentinel while SMInit chooses the first page. */
@@ -298,7 +300,8 @@ void _epilog(void)
     }
 }
 
-/* Creates the minigame list and four-player preview objects, then initializes the board-session settings. */
+/* Creates the minigame list and four-player preview objects, then initializes the board-session
+ * settings. */
 void ObjectSetup(void)
 {
     static char *funcId = "SMOBJECTSETUP\n";
@@ -334,7 +337,8 @@ void ObjectSetup(void)
         CZoomM[i] = 500.0f;
         Hu3DCameraCreate(smCharSelCamBitTbl[i]);
         Hu3DCameraPerspectiveSet(smCharSelCamBitTbl[i], 45.0f, 20.0f, 25000.0f, 4.0f / 3.0f);
-        Hu3DCameraViewportSet(smCharSelCamBitTbl[i], (i % 2) * 320.0f, (i / 2) * 240.0f, 320.0f, 240.0f, 0.0f, 1.0f);
+        Hu3DCameraViewportSet(smCharSelCamBitTbl[i], (i % 2) * 320.0f, (i / 2) * 240.0f, 320.0f,
+                              240.0f, 0.0f, 1.0f);
     }
     Hu3DGLightCreate(0.0f, 0.0f, 100.0f, 0.0f, 0.0f, -1.0f, 255, 255, 255);
     pos.x = 0.0f;
@@ -360,7 +364,8 @@ static void SMCopyConfig(GW_PLAYER_CONF *dst, GW_PLAYER_CONF *src)
     }
 }
 
-/* Screen callbacks that read controls call this to combine all four pads and record this frame’s directional press edges. */
+/* Screen callbacks that read controls call this to combine all four pads and record this frame’s
+ * directional press edges. */
 static void SMBtnRead(void)
 {
     int i;
@@ -388,7 +393,8 @@ static void SMBtnRead(void)
     }
 }
 
-/* Draws the current page of minigames and modes, with disabled rows dimmed and the current row highlighted. */
+/* Draws the current page of minigames and modes, with disabled rows dimmed and the current row
+ * highlighted. */
 static void SMPagePrint(void)
 {
     int i;
@@ -467,7 +473,8 @@ static void SMCursorNoAdd(s16 num)
     (void)pos;
 }
 
-/* Runs once after the selector object is created; copies player settings, repairs duplicate characters and chooses the initial list row. */
+/* Runs once after the selector object is created; copies player settings, repairs duplicate
+ * characters and chooses the initial list row. */
 static void SMInit(OMOBJ *obj)
 {
     int i, j;
@@ -510,7 +517,8 @@ static void SMInit(OMOBJ *obj)
     obj->objFunc = SMMain;
 }
 
-/* Runs each frame on the list screen to draw the list and handle page, row, character, player-setup, sound-setup and exit inputs. */
+/* Runs each frame on the list screen to draw the list and handle page, row, character,
+ * player-setup, sound-setup and exit inputs. */
 static void SMMain(OMOBJ *obj)
 {
     SMBtnRead();
@@ -552,7 +560,8 @@ static void SMMain(OMOBJ *obj)
     }
 }
 
-/* Updates default player groups when the highlighted overlay changes, using that minigame’s group type. */
+/* Updates default player groups when the highlighted overlay changes, using that minigame’s group
+ * type. */
 static void SMGroupSet(int pos)
 {
     int i;
@@ -608,13 +617,15 @@ static void SMGroupSet(int pos)
 static HU3D_MODELID smCharMdlId[SM_CHAR_MAX];
 /* TRUE once that player has confirmed their character. */
 static s16 smCharSelEndF[4];
-/* Nonzero for a character already taken by a human, reserved for Wario, or assigned to a COM slot. */
+/* Nonzero for a character already taken by a human, reserved for Wario, or assigned to a COM
+ * slot. */
 static s16 smCharOnF[SM_CHAR_MAX];
 
 #define SM_CHAR_FILE_STRIDE 2
 #define SM_CHAR_MODEL_FILE_OFFSET 0
 #define SM_CHAR_MOTION_FILE_OFFSET 1
-#define SM_CHAR_FILE(charNo, offset) DATANUM(DATA_selmenu, ((charNo) * SM_CHAR_FILE_STRIDE) + (offset))
+#define SM_CHAR_FILE(charNo, offset)                                                               \
+    DATANUM(DATA_selmenu, ((charNo) * SM_CHAR_FILE_STRIDE) + (offset))
 #define SM_CHAR_MODEL_FILE(charNo) SM_CHAR_FILE(charNo, SM_CHAR_MODEL_FILE_OFFSET)
 #define SM_CHAR_MOTION_FILE(charNo) SM_CHAR_FILE(charNo, SM_CHAR_MOTION_FILE_OFFSET)
 
@@ -652,7 +663,8 @@ static int smCharMotFileTbl[SM_CHAR_FILE_COUNT] = {
     SM_CHAR_MOTION_FILE(SM_CHAR_MINIKOOPAB),
 };
 
-/* Finds the next character not already assigned to a human player when selection changes or duplicate settings are repaired. */
+/* Finds the next character not already assigned to a human player when selection changes or
+ * duplicate settings are repaired. */
 static s16 SMCharNoAdd(s16 playerNo, s16 num)
 {
     int i;
@@ -691,7 +703,8 @@ static void SMCharMdlKill(void)
     }
 }
 
-/* Assigns each COM slot an available character after reserving Wario and the current human choices. */
+/* Assigns each COM slot an available character after reserving Wario and the current human
+ * choices. */
 static void SMCharComSet(void)
 {
     int i;
@@ -714,7 +727,8 @@ static void SMCharComSet(void)
     }
 }
 
-/* Loads the character models and motions when the character screen opens, then installs its per-frame callback. */
+/* Loads the character models and motions when the character screen opens, then installs its
+ * per-frame callback. */
 static void SMCharSelInit(OMOBJ *obj)
 {
     int i;
@@ -732,7 +746,8 @@ static void SMCharSelInit(OMOBJ *obj)
     obj->objFunc = SMCharSelMain;
 }
 
-/* Runs each frame on the character screen to process unconfirmed player-slot input and draw human previews or COM labels in all four panels. */
+/* Runs each frame on the character screen to process unconfirmed player-slot input and draw human
+ * previews or COM labels in all four panels. */
 static void SMCharSelMain(OMOBJ *obj)
 {
     int i;
@@ -765,14 +780,17 @@ static void SMCharSelMain(OMOBJ *obj)
     if (manDoneNum == manNum) {
         SMCharNoAdd(0, 0);
         SMCharComSet();
-        /* When the confirmation count equals the human count (also immediately with no humans), this path discards all four picks, including COM assignments, and sets them to Wario, MinikoopaR, MinikoopaG, and MinikoopaB. */
+        /* When the confirmation count equals the human count (also immediately with no humans),
+         * this path discards all four picks, including COM assignments, and sets them to Wario,
+         * MinikoopaR, MinikoopaG, and MinikoopaB. */
         smPlayerConf[0].charNo = SM_CHAR_WARIO;
         smPlayerConf[1].charNo = SM_CHAR_MINIKOOPAR;
         smPlayerConf[2].charNo = SM_CHAR_MINIKOOPAG;
         smPlayerConf[3].charNo = SM_CHAR_MINIKOOPAB;
         SMCopyConfig(GwPlayerConf, smPlayerConf);
         CharDataClose(-1);
-        OSReport("%d,%d,%d,%d\n", GwPlayerConf[0].charNo, GwPlayerConf[1].charNo, GwPlayerConf[2].charNo, GwPlayerConf[3].charNo);
+        OSReport("%d,%d,%d,%d\n", GwPlayerConf[0].charNo, GwPlayerConf[1].charNo,
+                 GwPlayerConf[2].charNo, GwPlayerConf[3].charNo);
         if (!CharMotionAMemPGet(GwPlayerConf[0].charNo)) {
             CharMotionInit(GwPlayerConf[0].charNo);
         }
@@ -792,7 +810,8 @@ static void SMCharSelMain(OMOBJ *obj)
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         port = smPlayerConf[i].padNo;
         if (!smCharSelEndF[i]) {
-            /* Input uses this slot's configured pad, but the changed character is stored at the pad-number index. */
+            /* Input uses this slot's configured pad, but the changed character is stored at the
+             * pad-number index. */
             if (smPadDStkDownAll[port] & SM_KEY_LEFT) {
                 smPlayerConf[port].charNo = SMCharNoAdd(i, -1);
             }
@@ -853,7 +872,8 @@ static void SMCharSelMain(OMOBJ *obj)
     }
 }
 
-/* Runs after the outgoing wipe completes; waits for outstanding ARAM DMA requests, records the selected minigame and opens its instruction or overlay screen. */
+/* Runs after the outgoing wipe completes; waits for outstanding ARAM DMA requests, records the
+ * selected minigame and opens its instruction or overlay screen. */
 static void SMExit(OMOBJ *obj)
 {
     int mg;
@@ -884,7 +904,8 @@ static void SMExit(OMOBJ *obj)
     smChar1Prev = smCursorNo;
 }
 
-static char *smPlayerConfStrTbl[] = { "PLAYER:%d", " PAD%d:%s", "PADNO:%d", "  GRP:%d", "  DIF:%s" };
+static char *smPlayerConfStrTbl[] = { "PLAYER:%d", " PAD%d:%s", "PADNO:%d", "  GRP:%d",
+                                      "  DIF:%s" };
 
 /* Player-setup screen: selected player, selected field, and edit mode. */
 /* 0 selects a player; 1 edits that player’s highlighted setting. */
@@ -894,16 +915,15 @@ static s16 smPlayerConfNo;
 /* Setting index: type, controller, group, then computer difficulty (0 through 3). */
 static s16 smPlayerConfChoiceNo;
 
-#define DO_HILITE(option)                                                                                                                              \
-    do {                                                                                                                                               \
-        s32 color;                                                                                                                                     \
-        if (smPlayerConfChoiceNo == option) {                                                                                                          \
-            color = fontcolor = FONT_COLOR_CYAN;                                                                                                        \
-        }                                                                                                                                              \
-        else {                                                                                                                                         \
-            color = fontcolor = FONT_COLOR_GREEN;                                                                                                       \
-        }                                                                                                                                              \
-        (void)color;                                                                                                                                   \
+#define DO_HILITE(option)                                                                          \
+    do {                                                                                           \
+        s32 color;                                                                                 \
+        if (smPlayerConfChoiceNo == option) {                                                      \
+            color = fontcolor = FONT_COLOR_CYAN;                                                   \
+        } else {                                                                                   \
+            color = fontcolor = FONT_COLOR_GREEN;                                                  \
+        }                                                                                          \
+        (void) color;                                                                              \
     } while (0)
 
 /* Draws the four-player setup screen and highlights the selected player or setting. */
@@ -929,27 +949,39 @@ static void SMPlayerConfPrint(void)
         print8(x, y, 2.0f, smPlayerConfStrTbl[0], i);
         if (smPlayerConfEditF == 0) {
             fontcolor = FONT_COLOR_DARK_GREEN;
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 80, 2.0f, smPlayerConfStrTbl[1], smPlayerConf[i].padNo, typeStr[smPlayerConf[i].type]);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 96, 2.0f, smPlayerConfStrTbl[2], smPlayerConf[i].padNo);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 112, 2.0f, smPlayerConfStrTbl[3], smPlayerConf[i].grpNo);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 128, 2.0f, smPlayerConfStrTbl[4], diffStr[smPlayerConf[i].comDif]);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 80, 2.0f, smPlayerConfStrTbl[1],
+                   smPlayerConf[i].padNo, typeStr[smPlayerConf[i].type]);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 96, 2.0f, smPlayerConfStrTbl[2],
+                   smPlayerConf[i].padNo);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 112, 2.0f, smPlayerConfStrTbl[3],
+                   smPlayerConf[i].grpNo);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 128, 2.0f, smPlayerConfStrTbl[4],
+                   diffStr[smPlayerConf[i].comDif]);
         }
         else if (smPlayerConfEditF == 1 && smPlayerConfNo == i) {
             DO_HILITE(0);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 80, 2.0f, smPlayerConfStrTbl[1], smPlayerConf[i].padNo, typeStr[smPlayerConf[i].type]);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 80, 2.0f, smPlayerConfStrTbl[1],
+                   smPlayerConf[i].padNo, typeStr[smPlayerConf[i].type]);
             DO_HILITE(1);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 96, 2.0f, smPlayerConfStrTbl[2], smPlayerConf[i].padNo);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 96, 2.0f, smPlayerConfStrTbl[2],
+                   smPlayerConf[i].padNo);
             DO_HILITE(2);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 112, 2.0f, smPlayerConfStrTbl[3], smPlayerConf[i].grpNo);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 112, 2.0f, smPlayerConfStrTbl[3],
+                   smPlayerConf[i].grpNo);
             DO_HILITE(3);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 128, 2.0f, smPlayerConfStrTbl[4], diffStr[smPlayerConf[i].comDif]);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 128, 2.0f, smPlayerConfStrTbl[4],
+                   diffStr[smPlayerConf[i].comDif]);
         }
         else {
             fontcolor = FONT_COLOR_DARK_GREEN;
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 80, 2.0f, smPlayerConfStrTbl[1], smPlayerConf[i].padNo, typeStr[smPlayerConf[i].type]);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 96, 2.0f, smPlayerConfStrTbl[2], smPlayerConf[i].padNo);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 112, 2.0f, smPlayerConfStrTbl[3], smPlayerConf[i].grpNo);
-            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 128, 2.0f, smPlayerConfStrTbl[4], diffStr[smPlayerConf[i].comDif]);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 80, 2.0f, smPlayerConfStrTbl[1],
+                   smPlayerConf[i].padNo, typeStr[smPlayerConf[i].type]);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 96, 2.0f, smPlayerConfStrTbl[2],
+                   smPlayerConf[i].padNo);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 112, 2.0f, smPlayerConfStrTbl[3],
+                   smPlayerConf[i].grpNo);
+            print8(((i % 2) * 320) + 64, ((i / 2) * 240) + 128, 2.0f, smPlayerConfStrTbl[4],
+                   diffStr[smPlayerConf[i].comDif]);
         }
     }
 }
@@ -965,7 +997,8 @@ static void SMPlayerConfInit(OMOBJ *obj)
     obj->objFunc = SMPlayerConfMain;
 }
 
-/* Runs each frame on player setup: B/Y return to the list while selecting a player; Start makes 100 group-number swaps in that mode; A/B leave setting edit and Y returns to the list. */
+/* Runs each frame on player setup: B/Y return to the list while selecting a player; Start makes 100
+ * group-number swaps in that mode; A/B leave setting edit and Y returns to the list. */
 static void SMPlayerConfMain(OMOBJ *obj)
 {
     int offset;
@@ -973,12 +1006,14 @@ static void SMPlayerConfMain(OMOBJ *obj)
     SMBtnRead();
     if (!smPlayerConfEditF) {
         if (smPadDStkDown & SM_KEY_LEFT) {
-            offset = ((smPlayerConfNo & SM_PLAYER_CONF_COLUMN_MASK) - 1) & SM_PLAYER_CONF_COLUMN_MASK;
+            offset =
+                ((smPlayerConfNo & SM_PLAYER_CONF_COLUMN_MASK) - 1) & SM_PLAYER_CONF_COLUMN_MASK;
             smPlayerConfNo = (smPlayerConfNo & SM_PLAYER_CONF_COLUMN_CLEAR_MASK) + offset;
         }
         else {
             if (smPadDStkDown & SM_KEY_RIGHT) {
-                offset = ((smPlayerConfNo & SM_PLAYER_CONF_COLUMN_MASK) + 1) & SM_PLAYER_CONF_COLUMN_MASK;
+                offset = ((smPlayerConfNo & SM_PLAYER_CONF_COLUMN_MASK) + 1) &
+                         SM_PLAYER_CONF_COLUMN_MASK;
                 smPlayerConfNo = (smPlayerConfNo & SM_PLAYER_CONF_COLUMN_CLEAR_MASK) + offset;
             }
             else if (smPadDStkDown & SM_KEY_DOWN) {
@@ -1079,7 +1114,8 @@ static void SMPlayerConfMain(OMOBJ *obj)
     }
 }
 
-/* The auxiliary callback registered by ObjectSetup; each active object-manager update advances the random generator once. */
+/* The auxiliary callback registered by ObjectSetup; each active object-manager update advances the
+ * random generator once. */
 static void SMRandMain(OMOBJ *obj)
 {
     rand8();
@@ -1088,15 +1124,18 @@ static void SMRandMain(OMOBJ *obj)
 static void SMStub(void) {}
 
 /* 3D sound setup selection and the currently edited effect values. */
-/* Selected effect-table index; left edits clamp it at zero, lookups also occur on entry, and this source has no upper clamp. */
+/* Selected effect-table index; left edits clamp it at zero, lookups also occur on entry, and this
+ * source has no upper clamp. */
 static s16 smEmiCompDataNo;
-/* Loads the selected effect’s compensation on entry; left/right edits clamp it to -127 through 127 and write it back. Start only clears this displayed value. */
+/* Loads the selected effect’s compensation on entry; left/right edits clamp it to -127 through 127
+ * and write it back. Start only clears this displayed value. */
 static s16 smEmiCompVal;
 /* Selected sound setting index, from 0 through 7. */
 static s16 smSound3DNo;
 s16 lbl_1_bss_0;
 
-/* Reads comp from the selected effect-table row on entry, then installs the 3D sound screen callback. */
+/* Reads comp from the selected effect-table row on entry, then installs the 3D sound screen
+ * callback. */
 static void SMSound3DInit(OMOBJ *obj)
 {
     MSMSE *se = msmSeGetIndexPtr(smEmiCompDataNo);
@@ -1104,7 +1143,8 @@ static void SMSound3DInit(OMOBJ *obj)
     obj->objFunc = SMSound3DExec;
 }
 
-/* Runs each frame on the 3D sound screen: up/down select a setting, left/right edit it, Start applies that setting’s reset behavior, and B schedules a return to the list. */
+/* Runs each frame on the 3D sound screen: up/down select a setting, left/right edit it, Start
+ * applies that setting’s reset behavior, and B schedules a return to the list. */
 static void SMSound3DExec(OMOBJ *obj)
 {
     float speed;
@@ -1209,17 +1249,20 @@ static void SMSound3DExec(OMOBJ *obj)
                 break;
 
             case 5:
-                /* Start selects table entry zero; it does not reload that entry’s displayed compensation. */
+                /* Start selects table entry zero; it does not reload that entry’s displayed
+                 * compensation. */
                 smEmiCompDataNo = 0;
                 break;
 
             case 6:
-                /* Start clears the edit value only; the effect table is written on the next left/right edit. */
+                /* Start clears the edit value only; the effect table is written on the next
+                 * left/right edit. */
                 smEmiCompVal = 0;
                 break;
 
             case 7:
-                /* Start clears the flag without restoring master volume; left/right applies the volume change. */
+                /* Start clears the flag without restoring master volume; left/right applies the
+                 * volume change. */
                 musicOffF = 0;
                 break;
         }
@@ -1231,14 +1274,13 @@ static void SMSound3DExec(OMOBJ *obj)
     SMSound3DPrint();
 }
 
-#define DO_HILITE(pos)                                                                                                                                 \
-    do {                                                                                                                                               \
-        if (smSound3DNo == pos) {                                                                                                                      \
-            fontcolor = FONT_COLOR_GREEN;                                                                                                              \
-        }                                                                                                                                              \
-        else {                                                                                                                                         \
-            fontcolor = FONT_COLOR_DARK_GREEN;                                                                                                         \
-        }                                                                                                                                              \
+#define DO_HILITE(pos)                                                                             \
+    do {                                                                                           \
+        if (smSound3DNo == pos) {                                                                  \
+            fontcolor = FONT_COLOR_GREEN;                                                          \
+        } else {                                                                                   \
+            fontcolor = FONT_COLOR_DARK_GREEN;                                                     \
+        }                                                                                          \
     } while (0)
 
 /* Draws the eight 3D sound settings and highlights the setting currently selected for editing. */
