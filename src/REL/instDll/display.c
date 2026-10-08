@@ -1113,7 +1113,7 @@ void fn_1_8680(void)
     HuPrcEnd();
 }
 
-/* Positions the configured characters before the preview animation begins. */
+/* For preview type 7, scale the fifth character to 1.5 times the shared preview scale. */
 void fn_1_8B44(void)
 {
     Inst_data_798_view *poseData;
@@ -1138,7 +1138,7 @@ void fn_1_8B44(void)
     }
 }
 
-/* Called each frame to collect button state from eligible human players. */
+/* Collects buttons from human players; type 6 ignores players outside groups 0 and 1. */
 void fn_1_8DB0(void)
 {
     s16 playerNo;

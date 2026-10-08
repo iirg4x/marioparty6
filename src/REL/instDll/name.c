@@ -1,4 +1,4 @@
-/* Builds the instruction screen's character-name sprites. */
+/* Builds glyph sprites for the localized minigame title shown on the instruction screen. */
 #include "dolphin/math.h"
 #include "dolphin.h"
 #include "dolphin/gx.h"
@@ -33,38 +33,39 @@
 
 /* Encoded character-name glyph mapping and spacing constants. */
 #define INST_NAME_DATA_YOFFSET_BIT (1U << 31) /* Mark glyphs drawn four units lower. */
+#define INST_NAME_LOWER_GLYPH_DATA(number) (INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, number))
 enum {
     INST_NAME_SPACING_CODE = 16,
     INST_NAME_FIRST_GLYPH_CODE = 48
 };
 
 typedef struct StageModel_s {
-    u32 modelDataNum;
-    s16 motionModelIndex;
-    Vec position;
-    Vec rotation;
-    Vec scale;
-    s16 cameraMask;
+    u32 modelDataId; /* Stage model or joint-motion resource. */
+    s16 sourceModelIndex; /* -1 creates a model; otherwise names its base model. */
+    Vec position; /* Stage model position in preview coordinates. */
+    Vec rotation; /* Stage model rotation in degrees. */
+    Vec scale; /* Per-axis stage model scale. */
+    s16 cameraMask; /* Camera visibility bits passed to the model renderer. */
 } STAGE_MODEL;
 typedef struct Inst_data_798_view {
-    u8 stageModelCount;
-    u32 stageModelDataIds[4];
-    f32 orbitStartAngleDegrees;
-    f32 previewModelScale;
-    f32 characterFacingDegrees[5];
-    u8 stagePlayerMasks[4];
-    Vec characterPositions[5];
+    u8 stageModelCount; /* Number of stage preview resources in this record. */
+    u32 stageModelDataIds[4]; /* Stage preview model resources. */
+    f32 orbitStartAngleDegrees; /* Starting angle for the preview orbit. */
+    f32 previewModelScale; /* Scale shared by the stage and character previews. */
+    f32 characterFacingDegrees[5]; /* Character facing angles in degrees. */
+    u8 stagePlayerMasks[4]; /* Character visibility bits for each stage model. */
+    Vec characterPositions[5]; /* Character positions in stage preview coordinates. */
 } Inst_data_798_view;
 typedef struct Inst_bss_D8_view {
-    HU3D_MODELID stageModel;
-    u16 spinFramesRemaining;
-    f32 spinAngleDegrees;
-    u8 unusedStorage[12];
-    s8 playerIndices[5];
-    Vec playerPositions[5];
+    HU3D_MODELID stageModel; /* Loaded stage preview model. */
+    u16 spinFramesRemaining; /* Frames left in the model spin animation. */
+    f32 spinAngleDegrees; /* Current spin angle in degrees. */
+    u8 reservedBytes[12]; /* Bytes with no established use in this code. */
+    s8 playerIndices[5]; /* Character indices; -1 marks an unused slot. */
+    Vec playerPositions[5]; /* Character positions in stage preview coordinates. */
 } Inst_bss_D8_view;
 typedef struct InstDllMotionRecord {
-    s16 motionIds[10];
+    s16 characterMotionIds[10]; /* Loaded character motions used by the preview. */
 } InstDllMotionRecord;
 
 /* When nonzero, enables controller-one input for the preview camera in fn_1_35F8. */
@@ -160,204 +161,109 @@ extern void fn_1_99CC(void);
 void fn_1_9CB0(s16 layerNo);
 
 /* Maps encoded message characters to their sprite resources. */
-u32 lbl_1_data_F8[] = { 0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 43),
-                        DATANUM(DATA_inst, 44),
-                        DATANUM(DATA_inst, 45),
-                        DATANUM(DATA_inst, 46),
-                        DATANUM(DATA_inst, 47),
-                        DATANUM(DATA_inst, 48),
-                        DATANUM(DATA_inst, 49),
-                        DATANUM(DATA_inst, 50),
-                        DATANUM(DATA_inst, 51),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 52),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 58),
-                        DATANUM(DATA_inst, 59),
-                        DATANUM(DATA_inst, 60),
-                        DATANUM(DATA_inst, 61),
-                        DATANUM(DATA_inst, 62),
-                        DATANUM(DATA_inst, 63),
-                        DATANUM(DATA_inst, 64),
-                        DATANUM(DATA_inst, 65),
-                        DATANUM(DATA_inst, 66),
-                        DATANUM(DATA_inst, 67),
-                        DATANUM(DATA_inst, 68),
-                        DATANUM(DATA_inst, 69),
-                        DATANUM(DATA_inst, 70),
-                        DATANUM(DATA_inst, 71),
-                        DATANUM(DATA_inst, 72),
-                        DATANUM(DATA_inst, 73),
-                        DATANUM(DATA_inst, 74),
-                        DATANUM(DATA_inst, 75),
-                        DATANUM(DATA_inst, 76),
-                        DATANUM(DATA_inst, 77),
-                        DATANUM(DATA_inst, 78),
-                        DATANUM(DATA_inst, 79),
-                        DATANUM(DATA_inst, 80),
-                        DATANUM(DATA_inst, 81),
-                        DATANUM(DATA_inst, 82),
-                        DATANUM(DATA_inst, 83),
-                        DATANUM(DATA_inst, 72),
-                        DATANUM(DATA_inst, 55),
-                        DATANUM(DATA_inst, 72),
-                        DATANUM(DATA_inst, 72),
-                        DATANUM(DATA_inst, 72),
-                        DATANUM(DATA_inst, 72),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 84),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 85),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 86),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 87),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 88),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 89),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 90),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 91),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 92),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 93),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 94),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 95),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 96),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 97),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 98),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 99),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 100),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 101),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 102),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 103),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 104),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 105),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 106),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 107),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 108),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 109),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 56),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 52),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 57),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 53),
-                        INST_NAME_DATA_YOFFSET_BIT | DATANUM(DATA_inst, 54),
-                        DATANUM(DATA_inst, 42),
-                        DATANUM(DATA_inst, 42) };
+#define INST_NAME_NO_GLYPH 0
+#define INST_NAME_DEFAULT_GLYPH DATANUM(DATA_inst, 42)
+u32 lbl_1_data_F8[] = {
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_NO_GLYPH, INST_NAME_NO_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, DATANUM(DATA_inst, 43),
+    DATANUM(DATA_inst, 44), DATANUM(DATA_inst, 45),
+    DATANUM(DATA_inst, 46), DATANUM(DATA_inst, 47),
+    DATANUM(DATA_inst, 48), DATANUM(DATA_inst, 49),
+    DATANUM(DATA_inst, 50), DATANUM(DATA_inst, 51),
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, DATANUM(DATA_inst, 52),
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, DATANUM(DATA_inst, 58),
+    DATANUM(DATA_inst, 59), DATANUM(DATA_inst, 60),
+    DATANUM(DATA_inst, 61), DATANUM(DATA_inst, 62),
+    DATANUM(DATA_inst, 63), DATANUM(DATA_inst, 64),
+    DATANUM(DATA_inst, 65), DATANUM(DATA_inst, 66),
+    DATANUM(DATA_inst, 67), DATANUM(DATA_inst, 68),
+    DATANUM(DATA_inst, 69), DATANUM(DATA_inst, 70),
+    DATANUM(DATA_inst, 71), DATANUM(DATA_inst, 72),
+    DATANUM(DATA_inst, 73), DATANUM(DATA_inst, 74),
+    DATANUM(DATA_inst, 75), DATANUM(DATA_inst, 76),
+    DATANUM(DATA_inst, 77), DATANUM(DATA_inst, 78),
+    DATANUM(DATA_inst, 79), DATANUM(DATA_inst, 80),
+    DATANUM(DATA_inst, 81), DATANUM(DATA_inst, 82),
+    DATANUM(DATA_inst, 83), DATANUM(DATA_inst, 72),
+    DATANUM(DATA_inst, 55), DATANUM(DATA_inst, 72),
+    DATANUM(DATA_inst, 72), DATANUM(DATA_inst, 72),
+    DATANUM(DATA_inst, 72), INST_NAME_LOWER_GLYPH_DATA(84),
+    INST_NAME_LOWER_GLYPH_DATA(85), INST_NAME_LOWER_GLYPH_DATA(86),
+    INST_NAME_LOWER_GLYPH_DATA(87), INST_NAME_LOWER_GLYPH_DATA(88),
+    INST_NAME_LOWER_GLYPH_DATA(89), INST_NAME_LOWER_GLYPH_DATA(90),
+    INST_NAME_LOWER_GLYPH_DATA(91), INST_NAME_LOWER_GLYPH_DATA(92),
+    INST_NAME_LOWER_GLYPH_DATA(93), INST_NAME_LOWER_GLYPH_DATA(94),
+    INST_NAME_LOWER_GLYPH_DATA(95), INST_NAME_LOWER_GLYPH_DATA(96),
+    INST_NAME_LOWER_GLYPH_DATA(97), INST_NAME_LOWER_GLYPH_DATA(98),
+    INST_NAME_LOWER_GLYPH_DATA(99), INST_NAME_LOWER_GLYPH_DATA(100),
+    INST_NAME_LOWER_GLYPH_DATA(101), INST_NAME_LOWER_GLYPH_DATA(102),
+    INST_NAME_LOWER_GLYPH_DATA(103), INST_NAME_LOWER_GLYPH_DATA(104),
+    INST_NAME_LOWER_GLYPH_DATA(105), INST_NAME_LOWER_GLYPH_DATA(106),
+    INST_NAME_LOWER_GLYPH_DATA(107), INST_NAME_LOWER_GLYPH_DATA(108),
+    INST_NAME_LOWER_GLYPH_DATA(109), INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    DATANUM(DATA_inst, 56), INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    DATANUM(DATA_inst, 52), INST_NAME_LOWER_GLYPH_DATA(57),
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH,
+    INST_NAME_LOWER_GLYPH_DATA(53), INST_NAME_LOWER_GLYPH_DATA(54),
+    INST_NAME_DEFAULT_GLYPH, INST_NAME_DEFAULT_GLYPH
+};
 u8 lbl_1_data_410[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

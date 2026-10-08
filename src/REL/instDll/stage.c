@@ -33,32 +33,32 @@
 
 /* Stage preview records pair model resources with transforms and camera masks. */
 typedef struct StageModel_s {
-    u32 modelDataNum;
-    s16 motionModelIndex;
-    Vec position;
-    Vec rotation;
-    Vec scale;
-    s16 cameraMask;
+    u32 modelDataId; /* Stage model or joint-motion resource. */
+    s16 sourceModelIndex; /* -1 creates a model; otherwise names its base model. */
+    Vec position; /* Stage model position in preview coordinates. */
+    Vec rotation; /* Stage model rotation in degrees. */
+    Vec scale; /* Per-axis stage model scale. */
+    s16 cameraMask; /* Camera visibility bits passed to the model renderer. */
 } STAGE_MODEL;
 typedef struct Inst_data_798_view {
-    u8 stageModelCount;
-    u32 stageModelDataIds[4];
-    f32 orbitStartAngleDegrees;
-    f32 previewModelScale;
-    f32 characterFacingDegrees[5];
-    u8 stagePlayerMasks[4];
-    Vec characterPositions[5];
+    u8 stageModelCount; /* Number of stage preview resources in this record. */
+    u32 stageModelDataIds[4]; /* Stage preview model resources. */
+    f32 orbitStartAngleDegrees; /* Starting angle for the preview orbit. */
+    f32 previewModelScale; /* Scale shared by the stage and character previews. */
+    f32 characterFacingDegrees[5]; /* Character facing angles in degrees. */
+    u8 stagePlayerMasks[4]; /* Character visibility bits for each stage model. */
+    Vec characterPositions[5]; /* Character positions in stage preview coordinates. */
 } Inst_data_798_view;
 typedef struct Inst_bss_D8_view {
-    HU3D_MODELID stageModel;
-    u16 spinFramesRemaining;
-    f32 spinAngleDegrees;
-    u8 unusedStorage[12];
-    s8 playerIndices[5];
-    Vec playerPositions[5];
+    HU3D_MODELID stageModel; /* Loaded stage preview model. */
+    u16 spinFramesRemaining; /* Frames left in the model spin animation. */
+    f32 spinAngleDegrees; /* Current spin angle in degrees. */
+    u8 reservedBytes[12]; /* Bytes with no established use in this code. */
+    s8 playerIndices[5]; /* Character indices; -1 marks an unused slot. */
+    Vec playerPositions[5]; /* Character positions in stage preview coordinates. */
 } Inst_bss_D8_view;
 typedef struct InstDllMotionRecord {
-    s16 motionIds[10];
+    s16 characterMotionIds[10]; /* Loaded character motions used by the preview. */
 } InstDllMotionRecord;
 
 /* When nonzero, enables controller-one input for the preview camera in fn_1_35F8. */
@@ -209,26 +209,26 @@ extern HU3D_MOTIONID lbl_1_bss_4AA[256];
 void fn_1_4668(STAGE_MODEL *stageModels)
 {
     STAGE_MODEL *stageModel;
-    s16 modelIndex;
+    s16 stageModelIndex;
 
     stageModel = stageModels;
-    modelIndex = 0;
-    while (stageModel->modelDataNum != HU_DATANUM_NONE) {
-        if (stageModel->motionModelIndex == -1) {
-            lbl_1_bss_6AA[modelIndex] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(stageModel->modelDataNum, HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSetV(lbl_1_bss_6AA[modelIndex], &stageModel->position);
-            Hu3DModelRotSetV(lbl_1_bss_6AA[modelIndex], &stageModel->rotation);
-            Hu3DModelScaleSetV(lbl_1_bss_6AA[modelIndex], &stageModel->scale);
-            Hu3DModelCameraSet(lbl_1_bss_6AA[modelIndex], stageModel->cameraMask);
-            Hu3DModelLayerSet(lbl_1_bss_6AA[modelIndex], 1);
+    stageModelIndex = 0;
+    while (stageModel->modelDataId != HU_DATANUM_NONE) {
+        if (stageModel->sourceModelIndex == -1) {
+            lbl_1_bss_6AA[stageModelIndex] = Hu3DModelCreate(
+                HuDataSelHeapReadNum(stageModel->modelDataId, HU_MEMNUM_OVL, HEAP_MODEL));
+            Hu3DModelPosSetV(lbl_1_bss_6AA[stageModelIndex], &stageModel->position);
+            Hu3DModelRotSetV(lbl_1_bss_6AA[stageModelIndex], &stageModel->rotation);
+            Hu3DModelScaleSetV(lbl_1_bss_6AA[stageModelIndex], &stageModel->scale);
+            Hu3DModelCameraSet(lbl_1_bss_6AA[stageModelIndex], stageModel->cameraMask);
+            Hu3DModelLayerSet(lbl_1_bss_6AA[stageModelIndex], 1);
         } else {
             /* Motion records refer back to a model loaded earlier in the table. */
-            lbl_1_bss_4AA[modelIndex] = Hu3DJointMotion(
-                lbl_1_bss_6AA[stageModel->motionModelIndex],
-                HuDataSelHeapReadNum(stageModel->modelDataNum, HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_4AA[stageModelIndex] = Hu3DJointMotion(
+                lbl_1_bss_6AA[stageModel->sourceModelIndex],
+                HuDataSelHeapReadNum(stageModel->modelDataId, HU_MEMNUM_OVL, HEAP_MODEL));
         }
         stageModel++;
-        modelIndex++;
+        stageModelIndex++;
     }
 }

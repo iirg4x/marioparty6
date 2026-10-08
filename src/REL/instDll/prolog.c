@@ -7,10 +7,10 @@ void fn_1_A0(void);
 /* Called by the module loader on screen load to run constructors and initialize it. */
 int _prolog(void)
 {
-    const VoidFunc *ctor = _ctors;
-    while (*ctor != 0) {
-        (*ctor)();
-        ctor++;
+    const VoidFunc *constructor = _ctors;
+    while (*constructor != 0) {
+        (*constructor)();
+        constructor++;
     }
     fn_1_A0();
     return 0;
@@ -19,9 +19,9 @@ int _prolog(void)
 /* Called by the module loader on unload to run registered destructors. */
 void _epilog(void)
 {
-    const VoidFunc *dtor = _dtors;
-    while (*dtor != 0) {
-        (*dtor)();
-        dtor++;
+    const VoidFunc *destructor = _dtors;
+    while (*destructor != 0) {
+        (*destructor)();
+        destructor++;
     }
 }
