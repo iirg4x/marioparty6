@@ -1,338 +1,387 @@
+/* Manages the game's linked heaps used for resource, model, sound and process allocations. */
 #include "game/memory.h"
 #include "dolphin/os.h"
 
-#define DATA_GET_BLOCK(ptr) ((MEMORY_BLOCK *)(((char *)(ptr))-32))
+#define DATA_GET_BLOCK(payload) ((MEMORY_BLOCK *)(((char *)(payload))-32))
 #define BLOCK_GET_DATA(block) (((char *)(block))+32)
 
-#define MEM_ALLOC_SIZE(size) (((size)+63) & 0xFFFFFFE0)
+#define MEMORY_ALIGNMENT_MASK 0xFFFFFFE0
+#define MEMORY_UNUSED_CALLER_BIT_PATTERN 0xCDCDCDCD
+#define MEMORY_CHAIN_BROKEN_MASK 0x80000000
+#define MEMORY_FREE_MARKER_BIT_PATTERN 0xCD
+#define MEMORY_ALLOCATED_MARKER_BIT_PATTERN 0xA5
+#define MEMORY_UNNUMBERED_ALLOCATION_TAG (-256)
+#define MEMORY_DUMP_ALL_STATES 10
+#define MEM_ALLOC_SIZE(payloadBytes) (((payloadBytes)+63) & MEMORY_ALIGNMENT_MASK)
 
-#define BLOCK_CHECK_BROKEN(block) (((u32)((block)->next) & 0x80000000) == 0)
+#define BLOCK_CHECK_BROKEN(block) (((u32)((block)->next) & MEMORY_CHAIN_BROKEN_MASK) == 0)
 
 typedef struct MemoryBlock_s MEMORY_BLOCK;
 
 struct MemoryBlock_s {
-    s32 size;
-    u8 magic;
-    u8 flag;
-    MEMORY_BLOCK *prev;
-    MEMORY_BLOCK *next;
-    u32 num;
-    u32 retAddr;
-    u32 file;
+    s32 spanBytes;                 /* Block size in bytes, including this 32-byte header. */
+    u8 validityMarker;             /* Allocated marker while live; free marker after release. */
+    u8 isAllocated;                /* 1 while game data owns this block; 0 when it is reusable. */
+    MEMORY_BLOCK *previous;        /* Previous block by address in this heap's circular list. */
+    MEMORY_BLOCK *next;            /* Next block by address in this heap's circular list. */
+    u32 allocationTag;             /* Group used by numbered frees; -256 marks an unnumbered
+                                    * block. */
+    u32 callerAddress;             /* Caller return address shown by heap diagnostics. */
+    u32 dataFileId;                /* Resource data number associated with this payload, if any. */
 };
 
-static void *HuMemMemoryAlloc2(void *heap, s32 size, u32 num, u32 retAddr);
-static void *HuMemTailMemoryAlloc2(void *heap, s32 size, u32 num, u32 retAddr);
+static void *HuMemMemoryAlloc2(void *heapHead, s32 payloadBytes, u32 allocationTag,
+                               u32 callerAddress);
+static void *HuMemTailMemoryAlloc2(void *heapHead, s32 payloadBytes, u32 allocationTag,
+                                   u32 callerAddress);
 
-void *HuMemHeapInit(void *heap, s32 size)
+/* HuMemInit calls this during heap setup to describe the whole region as one available block. */
+void *HuMemHeapInit(void *heapHead, s32 heapSize)
 {
-    MEMORY_BLOCK *block = heap;
-    block->size = size;
-    block->magic = 205;
-    block->flag = 0;
-    block->prev = block;
+    MEMORY_BLOCK *block = heapHead;
+    block->spanBytes = heapSize;
+    block->validityMarker = MEMORY_FREE_MARKER_BIT_PATTERN;
+    block->isAllocated = 0;
+    block->previous = block;
     block->next = block;
-    block->num = -256;
-    block->retAddr = 0xCDCDCDCD;
+    block->allocationTag = MEMORY_UNNUMBERED_ALLOCATION_TAG;
+    block->callerAddress = MEMORY_UNUSED_CALLER_BIT_PATTERN;
     return block;
 }
 
-void *HuMemMemoryAllocNum(void *heap, s32 size, u32 num, u32 retAddr)
+/* HuMemDirectMallocNum calls this to allocate a block carrying its caller's group tag. */
+void *HuMemMemoryAllocNum(void *heapHead, s32 payloadBytes, u32 allocationTag, u32 callerAddress)
 {
-    return HuMemMemoryAlloc2(heap, size, num, retAddr);
+    return HuMemMemoryAlloc2(heapHead, payloadBytes, allocationTag, callerAddress);
 }
 
-void *HuMemMemoryAlloc(void *heap, s32 size, u32 retAddr)
+/* HuMemDirectMalloc calls this to allocate a block without a caller-supplied group tag. */
+void *HuMemMemoryAlloc(void *heapHead, s32 payloadBytes, u32 callerAddress)
 {
-    return HuMemMemoryAlloc2(heap, size, -256, retAddr);
+    return HuMemMemoryAlloc2(heapHead, payloadBytes, MEMORY_UNNUMBERED_ALLOCATION_TAG,
+                             callerAddress);
 }
 
-static void *HuMemMemoryAlloc2(void *heap, s32 size, u32 num, u32 retAddr)
+/* HuMemDirectMalloc variants use this first-fit scan; a free remainder is split off only when it
+ * exceeds the 32-byte header size. */
+static void *HuMemMemoryAlloc2(void *heapHead, s32 payloadBytes, u32 allocationTag,
+                               u32 callerAddress)
 {
-    s32 blockSize = MEM_ALLOC_SIZE(size);
-    MEMORY_BLOCK *block = heap;
-    MEMORY_BLOCK *prev;
+    s32 alignedSpanBytes = MEM_ALLOC_SIZE(payloadBytes);
+    MEMORY_BLOCK *block = heapHead;
+    MEMORY_BLOCK *previousBlock;
     do {
-        if(!block->flag && block->size >= blockSize) {
-            if(block->size-blockSize > 32u) {
-                MEMORY_BLOCK *new_block = (MEMORY_BLOCK *)(((u32)block)+blockSize);
-                new_block->size = block->size-blockSize;
-                new_block->magic = 205;
-                new_block->flag = 0;
-                new_block->retAddr = retAddr;
-                block->next->prev = new_block;
-                new_block->next = block->next;
-                block->next = new_block;
-                new_block->prev = block;
-                block->size = blockSize;
+        if(!block->isAllocated && block->spanBytes >= alignedSpanBytes) {
+            if(block->spanBytes-alignedSpanBytes > 32u) {
+                MEMORY_BLOCK *splitBlock = (MEMORY_BLOCK *)(((u32)block)+alignedSpanBytes);
+                splitBlock->spanBytes = block->spanBytes-alignedSpanBytes;
+                splitBlock->validityMarker = MEMORY_FREE_MARKER_BIT_PATTERN;
+                splitBlock->isAllocated = 0;
+                splitBlock->callerAddress = callerAddress;
+                block->next->previous = splitBlock;
+                splitBlock->next = block->next;
+                block->next = splitBlock;
+                splitBlock->previous = block;
+                block->spanBytes = alignedSpanBytes;
             }
-            block->flag = 1;
-            block->magic = 165;
-            block->num = num;
-            block->retAddr = retAddr;
-            block->file = 0;
+            block->isAllocated = 1;
+            block->validityMarker = MEMORY_ALLOCATED_MARKER_BIT_PATTERN;
+            block->allocationTag = allocationTag;
+            block->callerAddress = callerAddress;
+            block->dataFileId = 0;
             return BLOCK_GET_DATA(block);
         }
         if(BLOCK_CHECK_BROKEN(block)) {
             OSReport("Error: memory chain broken!\n");
         }
-        prev = block;
+        previousBlock = block;
         block = block->next;
         
-    } while(block != heap);
-    OSReport("HuMem>memory alloc error %08x(%08X): Call %08x\n", size, num, retAddr);
-    HuMemHeapDump(heap, -1);
+    } while(block != heapHead);
+    OSReport("HuMem>memory alloc error %08x(%08X): Call %08x\n", payloadBytes, allocationTag,
+             callerAddress);
+    HuMemHeapDump(heapHead, -1);
     return NULL;
 }
 
-void *HuMemTailMemoryAllocNum(void *heap, s32 size, u32 num, u32 retAddr)
+/* HuMemDirectTailMallocNum calls this to allocate from the tail with its caller's group tag. */
+void *HuMemTailMemoryAllocNum(void *heapHead, s32 payloadBytes, u32 allocationTag,
+                              u32 callerAddress)
 {
-    return HuMemTailMemoryAlloc2(heap, size, num, retAddr);
+    return HuMemTailMemoryAlloc2(heapHead, payloadBytes, allocationTag, callerAddress);
 }
 
-void *HuMemTailMemoryAlloc(void *heap, s32 size, u32 retAddr)
+/* HuMemDirectTailMalloc calls this to allocate from the tail without a caller group tag. */
+void *HuMemTailMemoryAlloc(void *heapHead, s32 payloadBytes, u32 callerAddress)
 {
-    return HuMemTailMemoryAlloc2(heap, size, -256, retAddr);
+    return HuMemTailMemoryAlloc2(heapHead, payloadBytes, MEMORY_UNNUMBERED_ALLOCATION_TAG,
+                                 callerAddress);
 }
 
-static void *HuMemTailMemoryAlloc2(void *heap, s32 size, u32 num, u32 retAddr)
+/* HuMemDirectTailMalloc variants scan from the high end and carve payloads from a block's end;
+ * a free remainder is kept only when it exceeds the 32-byte header size. */
+static void *HuMemTailMemoryAlloc2(void *heapHead, s32 payloadBytes, u32 allocationTag,
+                                   u32 callerAddress)
 {
-    s32 blockSize = MEM_ALLOC_SIZE(size);
-    MEMORY_BLOCK *block = heap;
-    while(block->next != heap) {
+    s32 alignedSpanBytes = MEM_ALLOC_SIZE(payloadBytes);
+    MEMORY_BLOCK *block = heapHead;
+    while(block->next != heapHead) {
         block = block->next;
     }
     do {
-        if(!block->flag && block->size >= blockSize) {
-            if(block->size-blockSize > 32u) {
-                MEMORY_BLOCK *old_block = block;
-                block = (MEMORY_BLOCK *)(((char *)old_block)+(old_block->size-blockSize));
-                block->size = blockSize;
-                block->prev = old_block;
-                block->next = old_block->next;
-                old_block->size = old_block->size-blockSize;
-                old_block->next = old_block->next->prev = block;
-                old_block->retAddr = retAddr;
+        if(!block->isAllocated && block->spanBytes >= alignedSpanBytes) {
+            if(block->spanBytes-alignedSpanBytes > 32u) {
+                MEMORY_BLOCK *tailBlock = block;
+                block = (MEMORY_BLOCK *) (((char *) tailBlock) +
+                                          (tailBlock->spanBytes - alignedSpanBytes));
+                block->spanBytes = alignedSpanBytes;
+                block->previous = tailBlock;
+                block->next = tailBlock->next;
+                tailBlock->spanBytes = tailBlock->spanBytes-alignedSpanBytes;
+                tailBlock->next = tailBlock->next->previous = block;
+                tailBlock->callerAddress = callerAddress;
             }
-            block->magic = 165;
-            block->flag = 1;
-            block->num = num;
-            block->retAddr = retAddr;
-            block->file = 0;
+            block->validityMarker = MEMORY_ALLOCATED_MARKER_BIT_PATTERN;
+            block->isAllocated = 1;
+            block->allocationTag = allocationTag;
+            block->callerAddress = callerAddress;
+            block->dataFileId = 0;
             return BLOCK_GET_DATA(block);
         }
-        block = block->prev;
-    } while(block != heap);
+        block = block->previous;
+    } while(block != heapHead);
     printf("memory allocation(tail) error.\n");
     return NULL;
 }
 
-void *HuMemMemoryRealloc(void *heap, void *ptr, s32 size, u32 retAddr)
+/* HuMemDirectRealloc resizes in place or moves a resource; a shrink creates a free tail only when
+ * the remainder exceeds 32 bytes, and does not merge that tail here. */
+void *HuMemMemoryRealloc(void *heapHead, void *payload, s32 payloadBytes, u32 callerAddress)
 {
-    s32 blockSize = MEM_ALLOC_SIZE(size);
-    MEMORY_BLOCK *block = DATA_GET_BLOCK(ptr);
-    if(block->size >= blockSize) {
-        if(block->size-blockSize > 32u) {
-            MEMORY_BLOCK *new_block = (MEMORY_BLOCK *)(((u32)block)+blockSize);
-            new_block->size = block->size-blockSize;
-            new_block->magic = 205;
-            new_block->flag = 0;
-            new_block->retAddr = retAddr;
-            block->next->prev = new_block;
-            new_block->next = block->next;
-            block->next = new_block;
-            new_block->prev = block;
-            block->size = blockSize;
+    s32 alignedSpanBytes = MEM_ALLOC_SIZE(payloadBytes);
+    MEMORY_BLOCK *block = DATA_GET_BLOCK(payload);
+    if(block->spanBytes >= alignedSpanBytes) {
+        if(block->spanBytes-alignedSpanBytes > 32u) {
+            MEMORY_BLOCK *splitBlock = (MEMORY_BLOCK *)(((u32)block)+alignedSpanBytes);
+            splitBlock->spanBytes = block->spanBytes-alignedSpanBytes;
+            splitBlock->validityMarker = MEMORY_FREE_MARKER_BIT_PATTERN;
+            splitBlock->isAllocated = 0;
+            splitBlock->callerAddress = callerAddress;
+            block->next->previous = splitBlock;
+            splitBlock->next = block->next;
+            block->next = splitBlock;
+            splitBlock->previous = block;
+            block->spanBytes = alignedSpanBytes;
         }
-        block->retAddr = retAddr;
+        block->callerAddress = callerAddress;
         return BLOCK_GET_DATA(block);
     } else {
-        void *newPtr = HuMemMemoryAllocNum(heap, size, block->num, retAddr);
-        if(newPtr) {
-            memcpy(newPtr, ptr, block->size-32);
-            HuMemMemoryFree(ptr, retAddr);
+        void *resizedPayload =
+            HuMemMemoryAllocNum(heapHead, payloadBytes, block->allocationTag, callerAddress);
+        if(resizedPayload) {
+            /* Preserve the old block's full payload capacity, not only the new requested size. */
+            memcpy(resizedPayload, payload, block->spanBytes-32);
+            HuMemMemoryFree(payload, callerAddress);
         }
-        return newPtr;
+        return resizedPayload;
     }
 }
 
-void HuMemMemoryFreeNum(void *heap, u32 num, u32 retAddr)
+/* HuMemDirectFreeNum calls this when a game system releases every block in one tag group. */
+void HuMemMemoryFreeNum(void *heapHead, u32 allocationTag, u32 callerAddress)
 {
-    MEMORY_BLOCK *block = heap;
+    MEMORY_BLOCK *block = heapHead;
     do {
-        MEMORY_BLOCK *block_next = block->next;
-        if(block->flag && block->num == num) {
-            HuMemMemoryFree(BLOCK_GET_DATA(block), retAddr);
+        MEMORY_BLOCK *nextBlock = block->next;
+        if(block->isAllocated && block->allocationTag == allocationTag) {
+            HuMemMemoryFree(BLOCK_GET_DATA(block), callerAddress);
         }
-        block = block_next;
-    } while(block != heap);
+        block = nextBlock;
+    } while(block != heapHead);
     
 }
 
-void HuMemMemoryFree(void *ptr, u32 retAddr)
+/* HuMemDirectFree and HuMemDirectRealloc's move path release a payload and coalesce with adjacent
+ * free blocks; address checks prevent joining across the circular-list wrap. */
+void HuMemMemoryFree(void *payload, u32 callerAddress)
 {
     MEMORY_BLOCK *block;
-    if(!ptr) {
+    if(!payload) {
         return;
     }
-    block = DATA_GET_BLOCK(ptr);
-    if(block->magic != 165) {
-        OSReport("HuMem>memory free error. %08x( call %08x)\n", ptr, retAddr);
+    block = DATA_GET_BLOCK(payload);
+    if(block->validityMarker != MEMORY_ALLOCATED_MARKER_BIT_PATTERN) {
+        OSReport("HuMem>memory free error. %08x( call %08x)\n", payload, callerAddress);
         return;
     }
-    if(block->prev < block && !block->prev->flag) {
-        block->flag  = 0;
-        block->magic = 205;
-        block->next->prev = block->prev;
-        block->prev->next = block->next;
-        block->prev->size += block->size;
-        block = block->prev;
+    if(block->previous < block && !block->previous->isAllocated) {
+        block->isAllocated  = 0;
+        block->validityMarker = MEMORY_FREE_MARKER_BIT_PATTERN;
+        block->next->previous = block->previous;
+        block->previous->next = block->next;
+        block->previous->spanBytes += block->spanBytes;
+        block = block->previous;
     }
-    if(block->next > block && !block->next->flag) {
-        block->next->next->prev = block;
-        block->size += block->next->size;
+    if(block->next > block && !block->next->isAllocated) {
+        block->next->next->previous = block;
+        block->spanBytes += block->next->spanBytes;
         block->next = block->next->next;
     }
-    block->flag = 0;
-    block->magic = 205;
-    block->retAddr = retAddr;
+    block->isAllocated = 0;
+    block->validityMarker = MEMORY_FREE_MARKER_BIT_PATTERN;
+    block->callerAddress = callerAddress;
 }
 
-s32 HuMemUsedMemorySizeGet(void *heap)
+/* HuMemUsedMallocSizeGet uses this for the heap meter's allocated byte total, including headers. */
+s32 HuMemUsedMemorySizeGet(void *heapHead)
 {
-    MEMORY_BLOCK *block = heap;
-    s32 size = 0;
+    MEMORY_BLOCK *block = heapHead;
+    s32 usedSpanBytes = 0;
     do {
-        if(block->flag == 1) {
-            size += block->size;
+        if(block->isAllocated == 1) {
+            usedSpanBytes += block->spanBytes;
         }
         block = block->next;
-    } while(block != heap);
-    return size;
+    } while(block != heapHead);
+    return usedSpanBytes;
 }
 
-s32 HuMemUsedMemoryBlockGet(void *heap)
+/* HuMemUsedMallocBlockGet uses this for the heap meter's number of live allocations. */
+s32 HuMemUsedMemoryBlockGet(void *heapHead)
 {
-    MEMORY_BLOCK *block = heap;
-    s32 usedNum = 0;
+    MEMORY_BLOCK *block = heapHead;
+    s32 allocatedBlockCount = 0;
     do {
-        if(block->flag == 1) {
-            usedNum++;
+        if(block->isAllocated == 1) {
+            allocatedBlockCount++;
         }
         block = block->next;
-    } while(block != heap);
-    return usedNum;
+    } while(block != heapHead);
+    return allocatedBlockCount;
 }
 
-s32 HuMemMaxMemorySizeGet(void *heap)
+/* Audio loading checks this before choosing a heap for a sample buffer. */
+s32 HuMemMaxMemorySizeGet(void *heapHead)
 {
-    MEMORY_BLOCK *block = heap;
-    s32 maxSize = 0;
+    MEMORY_BLOCK *block = heapHead;
+    s32 largestFreeSpanBytes = 0;
     do {
-        if(block->flag == 0 && maxSize < block->size) {
-            maxSize = block->size;
+        if(block->isAllocated == 0 && largestFreeSpanBytes < block->spanBytes) {
+            largestFreeSpanBytes = block->spanBytes;
         }
         block = block->next;
-    } while(block != heap);
-    return maxSize;
+    } while(block != heapHead);
+    return largestFreeSpanBytes;
+}
+/* Allocation callers use this to round a payload plus its 32-byte header to a 32-byte span. */
+s32 HuMemMemoryAllocSizeGet(s32 payloadBytes)
+{
+    return MEM_ALLOC_SIZE(payloadBytes);
 }
 
-
-s32 HuMemMemoryAllocSizeGet(s32 size)
+/* Heap reports print blocks: 0 selects free, positive selects used, and negative selects both;
+ * failed requests and board diagnostics call this to inspect the heap. */
+void HuMemHeapDump(void *heapHead, s16 status)
 {
-    return MEM_ALLOC_SIZE(size);
-}
-
-void HuMemHeapDump(void *heap, s16 status)
-{
-    MEMORY_BLOCK *block = heap;
-    s32 size = 0;
-    s32 inactive_size = 0;
-    s32 num_blocks = 0;
-    s32 num_unused_blocks = 0;
-    u8 dump_type;
+    MEMORY_BLOCK *block = heapHead;
+    s32 allocatedSpanBytes = 0;
+    s32 freeSpanBytes = 0;
+    s32 allocatedBlockCount = 0;
+    s32 freeBlockCount = 0;
+    u8 allocationStateFilter;
 
     if(status < 0) {
-        dump_type = 10;
+        allocationStateFilter = MEMORY_DUMP_ALL_STATES;
     } else if(status == 0) {
-        dump_type = 0;
+        allocationStateFilter = 0;
     } else {
-        dump_type = 1;
+        allocationStateFilter = 1;
     }
-    OSReport("======== HuMem heap dump %08x ========\n", heap);
+    OSReport("======== HuMem heap dump %08x ========\n", heapHead);
     OSReport("MCB-----+Size----+MG+FL+Prev----+Next----+UNum----+Body----+Call----+File----\n");
     do {
-        if(dump_type == 10 || block->flag == dump_type) {
-            OSReport("%08x %08x %02x %02x %08x %08x %08x %08x %08x %08x\n", block, block->size, block->magic, block->flag,
-                block->prev, block->next, block->num, BLOCK_GET_DATA(block), block->retAddr, block->file);
+        if(allocationStateFilter == MEMORY_DUMP_ALL_STATES ||
+           block->isAllocated == allocationStateFilter) {
+            OSReport("%08x %08x %02x %02x %08x %08x %08x %08x %08x %08x\n", block, block->spanBytes,
+                     block->validityMarker, block->isAllocated, block->previous, block->next,
+                     block->allocationTag, BLOCK_GET_DATA(block), block->callerAddress,
+                     block->dataFileId);
         }
-        if(block->flag == 1) {
-            size += block->size;
-            num_blocks++;
+        if(block->isAllocated == 1) {
+            allocatedSpanBytes += block->spanBytes;
+            allocatedBlockCount++;
         } else {
-            inactive_size += block->size;
-            num_unused_blocks++;
+            freeSpanBytes += block->spanBytes;
+            freeBlockCount++;
         }
         
         block = block->next;
-    } while(block != heap);
-    OSReport("MCB:%d(%d/%d) MEM:%08x(%08x/%08x)\n", num_blocks+num_unused_blocks, num_blocks, num_unused_blocks, 
-        size+inactive_size, size, inactive_size);
-    OSReport("======== HuMem heap dump %08x end =====\n", heap);
+    } while(block != heapHead);
+    OSReport("MCB:%d(%d/%d) MEM:%08x(%08x/%08x)\n", allocatedBlockCount + freeBlockCount,
+             allocatedBlockCount, freeBlockCount, allocatedSpanBytes + freeSpanBytes,
+             allocatedSpanBytes, freeSpanBytes);
+    OSReport("======== HuMem heap dump %08x end =====\n", heapHead);
 }
 
-s32 HuMemMemorySizeGet(void *ptr)
+/* The ARAM loader gets a valid block's allocated payload capacity, including alignment padding;
+ * this is its rounded span minus the 32-byte header. Null, free, or invalid blocks return zero. */
+s32 HuMemMemorySizeGet(void *payload)
 {
     MEMORY_BLOCK *block;
-    if(!ptr) {
+    if(!payload) {
         return 0;
     }
-    block = DATA_GET_BLOCK(ptr);
-    if(block->flag == 1 && block->magic == 165) {
-        return block->size-32;
+    block = DATA_GET_BLOCK(payload);
+    if(block->isAllocated == 1 && block->validityMarker == MEMORY_ALLOCATED_MARKER_BIT_PATTERN) {
+        return block->spanBytes-32;
     } else {
         return 0;
     }
 }
 
-BOOL HuMemMemoryFileSet(void *ptr, u32 file)
+/* Data and ARAM loaders store the supplied data number, including any directory bits, in the
+ * block header. */
+BOOL HuMemMemoryFileSet(void *payload, u32 dataFileId)
 {
     MEMORY_BLOCK *block;
-    if(!ptr) {
+    if(!payload) {
         return FALSE;
     }
-    block = DATA_GET_BLOCK(ptr);
-    if(block->flag == 1 && block->magic == 165) {
-        block->file = file;
+    block = DATA_GET_BLOCK(payload);
+    if(block->isAllocated == 1 && block->validityMarker == MEMORY_ALLOCATED_MARKER_BIT_PATTERN) {
+        block->dataFileId = dataFileId;
         return TRUE;
     } else {
         return FALSE;
     }
 }
 
-u32 HuMemMemoryFileGet(void *ptr)
+/* Model setup and diagnostics read this resource ID; an invalid pointer returns zero. */
+u32 HuMemMemoryFileGet(void *payload)
 {
     MEMORY_BLOCK *block;
-    if(!ptr) {
+    if(!payload) {
         return 0;
     }
-    block = DATA_GET_BLOCK(ptr);
-    if(block->flag == 1 && block->magic == 165) {
-        return block->file;
+    block = DATA_GET_BLOCK(payload);
+    if(block->isAllocated == 1 && block->validityMarker == MEMORY_ALLOCATED_MARKER_BIT_PATTERN) {
+        return block->dataFileId;
     } else {
         return 0;
     }
 }
 
-BOOL HuMemMemoryNumSet(void *ptr, u32 num)
+/* The external numbered-memory API uses this to change which HuMemDirectFreeNum releases a
+ * block. */
+BOOL HuMemMemoryNumSet(void *payload, u32 allocationTag)
 {
     MEMORY_BLOCK *block;
-    if(!ptr) {
+    if(!payload) {
         return FALSE;
     }
-    block = DATA_GET_BLOCK(ptr);
-    if(block->flag == 1 && block->magic == 165) {
-        block->num = num;
+    block = DATA_GET_BLOCK(payload);
+    if(block->isAllocated == 1 && block->validityMarker == MEMORY_ALLOCATED_MARKER_BIT_PATTERN) {
+        block->allocationTag = allocationTag;
         return TRUE;
     } else {
         return FALSE;

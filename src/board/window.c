@@ -1,3 +1,4 @@
+// Board window manager for message, choice, help, pause, and blank windows.
 #define _MATH_H
 
 #include "game/board/window.h"
@@ -12,11 +13,15 @@
 
 #include "string.h"
 
+#define MBWIN_PROCESS_PRIORITY 8207
+#define MBWIN_PROCESS_STACK_SIZE 16384
+#define MBWIN_PLAYER_DISABLE_RESET_MASK 0xFF
+
 typedef struct MBWinSizeData_s {
-    int posX;
-    int posY;
-    int sizeX;
-    int sizeY;
+    int posX; // Horizontal window origin in pixels.
+    int posY; // Vertical window origin in pixels.
+    int sizeX; // Window width in 24-pixel layout units.
+    int sizeY; // Window height in 32-pixel layout units.
 } MBWINSIZEDATA;
 
 extern HUPROCESS *mbMainProc;
@@ -49,19 +54,20 @@ static MBWINSIZEDATA winSizeTbl[MBWIN_TYPE_MAX] = {
     { 36, 344, 21, 3 },
 };
 
-static void KeyWaitInit(MBWIN *winP);
-static void KeyWaitSet(MBWIN *winP, int keyWaitNum);
-static void mbWinCenterSet(int winNo);
+static void KeyWaitInit(MBWIN *window);
+static void KeyWaitSet(MBWIN *window, int keyWaitCount);
+static void mbWinCenterSet(int windowNumber);
 
+// Initializes the board window manager and registers its pause display hook during board setup.
 void mbWinInit(void)
 {
-    MBWIN *winP = &mbWinData[0];
-    int i;
+    MBWIN *firstWindow = &mbWinData[0];
+    int windowIndex;
 
     HuWinInit(1);
     mbWinData = mbMalloc(sizeof(MBWIN) * MBWIN_MAX);
-    for (i = 0; i < MBWIN_MAX; i++) {
-        mbWinData[i].winId = HUWIN_NONE;
+    for (windowIndex = 0; windowIndex < MBWIN_MAX; windowIndex++) {
+        mbWinData[windowIndex].winId = HUWIN_NONE;
     }
     memset(mbWinOnF, 0, sizeof(mbWinOnF));
     mbWinNum = 0;
@@ -70,271 +76,293 @@ void mbWinInit(void)
     mbPauseHookPush(mbWinPauseHook);
 }
 
+// Closes every board window and releases the manager storage during board teardown.
 void mbWinClose(void)
 {
-    MBWIN *winP;
+    MBWIN *window;
 
     mbWinKillAll();
     HuWinAllKill();
-    winP = mbWinData;
-    HuMemDirectFree(winP);
+    window = mbWinData;
+    HuMemDirectFree(window);
 }
 
+// Creates one board window, waits for its message or choice, and runs as the child process from
+// mbWinCreate. SUN and MOON speakers force frames 4 and 3, ignoring the frame stored by the caller.
+// A paused window keeps this process asleep after display completion until the manager kills it.
 static void mbWinProc(void)
 {
-    HUPROCESS *proc = HuPrcCurrentGet();
-    MBWIN *winP = proc->property;
+    HUPROCESS *process = HuPrcCurrentGet();
+    MBWIN *window = process->property;
     HuVec2f pos;
-    HUWIN *huWinP;
-    int i;
+    HUWIN *windowData;
+    int entryIndex;
 
-    mbWinCenterSet(winP->no);
-    pos.x = winP->pos.x + winP->centerOfs.x;
-    pos.y = winP->pos.y + winP->centerOfs.y;
-    switch (winP->type) {
+    mbWinCenterSet(window->no);
+    pos.x = window->pos.x + window->centerOfs.x;
+    pos.y = window->pos.y + window->centerOfs.y;
+    switch (window->type) {
         case MBWIN_TYPE_HELP:
-            winP->winId = HuWinCreate(pos.x, pos.y, winP->size.x, winP->size.y, 0);
-            HuWinBGTPLvlSet(winP->winId, 0.0f);
-            HuWinMesSpeedSet(winP->winId, 0);
+            window->winId = HuWinCreate(pos.x, pos.y, window->size.x, window->size.y, 0);
+            HuWinBGTPLvlSet(window->winId, 0.0f);
+            HuWinMesSpeedSet(window->winId, 0);
             break;
 
         case MBWIN_TYPE_CAPSULE:
-            winP->winId = HuWinCreate(pos.x, pos.y, winP->size.x, winP->size.y, winP->frame);
-            HuWinMesSpeedSet(winP->winId, 0);
+            window->winId =
+                HuWinCreate(pos.x, pos.y, window->size.x, window->size.y, window->frame);
+            HuWinMesSpeedSet(window->winId, 0);
             break;
 
         case MBWIN_TYPE_PAUSEGUIDE:
-            winP->winId = HuWinCreate(pos.x, pos.y, winP->size.x, winP->size.y, winP->frame);
-            HuWinMesSpeedSet(winP->winId, 0);
+            window->winId =
+                HuWinCreate(pos.x, pos.y, window->size.x, window->size.y, window->frame);
+            HuWinMesSpeedSet(window->winId, 0);
             break;
 
         case MBWIN_TYPE_BLANK:
-            winP->winId = HuWinCreate(pos.x, pos.y, winP->size.x, winP->size.y, 0);
+            window->winId = HuWinCreate(pos.x, pos.y, window->size.x, window->size.y, 0);
             break;
 
         default:
-            if (winP->speakerNo == HUWIN_SPEAKER_NULL) {
-                winP->winId = HuWinExCreateFrame(pos.x, pos.y, winP->size.x, winP->size.y,
-                                                  HUWIN_SPEAKER_NULL, winP->frame);
-            } else if (winP->speakerNo == HUWIN_SPEAKER_SUN) {
-                winP->winId = HuWinExCreateFrame(pos.x, pos.y, winP->size.x, winP->size.y,
-                                                  winP->speakerNo, 4);
-            } else if (winP->speakerNo == HUWIN_SPEAKER_MOON) {
-                winP->winId = HuWinExCreateFrame(pos.x, pos.y, winP->size.x, winP->size.y,
-                                                  winP->speakerNo, 3);
+            if (window->speakerNo == HUWIN_SPEAKER_NULL) {
+                window->winId = HuWinExCreateFrame(pos.x, pos.y, window->size.x, window->size.y,
+                                                  HUWIN_SPEAKER_NULL, window->frame);
+            } else if (window->speakerNo == HUWIN_SPEAKER_SUN) {
+                window->winId = HuWinExCreateFrame(pos.x, pos.y, window->size.x, window->size.y,
+                                                  window->speakerNo, 4);
+            } else if (window->speakerNo == HUWIN_SPEAKER_MOON) {
+                window->winId = HuWinExCreateFrame(pos.x, pos.y, window->size.x, window->size.y,
+                                                  window->speakerNo, 3);
             } else {
-                winP->winId = HuWinExCreateFrame(pos.x, pos.y, winP->size.x, winP->size.y,
-                                                  winP->speakerNo, winP->frame);
+                window->winId = HuWinExCreateFrame(pos.x, pos.y, window->size.x, window->size.y,
+                                                  window->speakerNo, window->frame);
             }
-            if (winP->speakerNo == HUWIN_SPEAKER_NULL) {
-                HuWinExOpen(winP->winId);
+            if (window->speakerNo == HUWIN_SPEAKER_NULL) {
+                HuWinExOpen(window->winId);
             } else {
-                HuWinExOpen(winP->winId);
+                HuWinExOpen(window->winId);
             }
-            HuWinMesSpeedSet(winP->winId, winP->mesSpeed);
+            HuWinMesSpeedSet(window->winId, window->mesSpeed);
             break;
     }
-    if (winP->prio != -1) {
-        HuWinPriSet(winP->winId, winP->prio);
+    if (window->prio != -1) {
+        HuWinPriSet(window->winId, window->prio);
     }
-    HuWinAttrSet(winP->winId, winP->attr);
-    for (i = 0; i < HUWIN_INSERTMES_MAX; i++) {
-        if (winP->insertMes[i] != MBWIN_MES_NONE) {
-            HuWinInsertMesSet(winP->winId, winP->insertMes[i], i);
+    HuWinAttrSet(window->winId, window->attr);
+    for (entryIndex = 0; entryIndex < HUWIN_INSERTMES_MAX; entryIndex++) {
+        if (window->insertMes[entryIndex] != MBWIN_MES_NONE) {
+            HuWinInsertMesSet(window->winId, window->insertMes[entryIndex], entryIndex);
         }
     }
-    if (winP->type != MBWIN_TYPE_BLANK) {
-        HuWinMesSet(winP->winId, winP->mess);
+    if (window->type != MBWIN_TYPE_BLANK) {
+        HuWinMesSet(window->winId, window->mess);
     }
-    HuWinPushKeySet(winP->winId, PAD_BUTTON_A);
-    for (i = 0; i < HUWIN_CHOICE_MAX; i++) {
-        if (winP->choiceDisable[i]) {
-            HuWinChoiceDisable(winP->winId, i);
+    HuWinPushKeySet(window->winId, PAD_BUTTON_A);
+    for (entryIndex = 0; entryIndex < HUWIN_CHOICE_MAX; entryIndex++) {
+        if (window->choiceDisable[entryIndex]) {
+            HuWinChoiceDisable(window->winId, entryIndex);
         }
     }
-    mbWinPlayerDisable(winP->no, winP->playerNo);
-    if (winP->playerNo < 0 || GwPlayer[winP->playerNo].comF) {
-        KeyWaitInit(winP);
-        if (winP->choiceF && winP->comKeyHook) {
-            winP->comKeyHook();
+    mbWinPlayerDisable(window->no, window->playerNo);
+    if (window->playerNo < 0 || GwPlayer[window->playerNo].comF) {
+        KeyWaitInit(window);
+        if (window->choiceF && window->comKeyHook) {
+            window->comKeyHook();
         }
     }
-    huWinP = &winData[winP->winId];
-    while (huWinP->stat != HUWIN_STAT_NONE) {
-        if ((huWinP->attr & HUWIN_ATTR_KEYWAIT_CLEAR)
-            && !(winP->attr & HUWIN_ATTR_KEYWAIT_CLEAR)) {
-            KeyWaitSet(winP, 1);
-            winP->attr |= HUWIN_ATTR_KEYWAIT_CLEAR;
+    windowData = &winData[window->winId];
+    while (windowData->stat != HUWIN_STAT_NONE) {
+        // On the first message-wait clear, request one more automatic A press when this window's
+        // computer-player rules allow it, then mark the clear handled.
+        if ((windowData->attr & HUWIN_ATTR_KEYWAIT_CLEAR)
+            && !(window->attr & HUWIN_ATTR_KEYWAIT_CLEAR)) {
+            KeyWaitSet(window, 1);
+            window->attr |= HUWIN_ATTR_KEYWAIT_CLEAR;
         }
         HuPrcVSleep();
     }
-    if (winP->pauseF) {
+    if (window->pauseF) {
         HuPrcSleep(-1);
     }
-    if (winP->choiceNo != HUWIN_CHOICE_NONE) {
-        mbWinChoice[winP->no] = mbWinLastChoice = HuWinChoiceGet(winP->winId, winP->choiceNo);
+    if (window->choiceNo != HUWIN_CHOICE_NONE) {
+        mbWinChoice[window->no] = mbWinLastChoice = HuWinChoiceGet(window->winId, window->choiceNo);
     }
-    if (winP->speakerNo != HUWIN_SPEAKER_NULL) {
-        HuWinExClose(winP->winId);
+    if (window->speakerNo != HUWIN_SPEAKER_NULL) {
+        HuWinExClose(window->winId);
     }
     HuPrcEnd();
 }
 
+// Destroys a window process and removes its record from the active and stacking lists as its
+// destructor callback.
 static void mbWinDestroy(void)
 {
-    HUPROCESS *proc = HuPrcCurrentGet();
-    MBWIN *winP = proc->property;
-    int i;
+    HUPROCESS *process = HuPrcCurrentGet();
+    MBWIN *window = process->property;
+    int stackIndex;
 
-    if (winP->winId >= 0) {
-        if (winP->speakerNo == HUWIN_SPEAKER_NULL) {
-            HuWinExKill(winP->winId);
+    if (window->winId >= 0) {
+        if (window->speakerNo == HUWIN_SPEAKER_NULL) {
+            HuWinExKill(window->winId);
         } else {
-            HuWinExKill(winP->winId);
-            winP->speakerNo = HUWIN_SPEAKER_NULL;
+            HuWinExKill(window->winId);
+            window->speakerNo = HUWIN_SPEAKER_NULL;
         }
-        winP->winId = HUWIN_NONE;
+        window->winId = HUWIN_NONE;
     }
-    if (winP->choiceF) {
+    if (window->choiceF) {
         mbConfigPadDisableSet(TRUE);
     }
-    winP->mess = 0;
-    winP->proc = NULL;
-    if (mbWinOnF[winP->no]) {
-        mbWinOnF[winP->no] = FALSE;
-        for (i = 0; i < mbWinTopNo; i++) {
-            if (mbWinStack[i] == winP->no) {
+    window->mess = 0;
+    window->proc = NULL;
+    if (mbWinOnF[window->no]) {
+        mbWinOnF[window->no] = FALSE;
+        for (stackIndex = 0; stackIndex < mbWinTopNo; stackIndex++) {
+            if (mbWinStack[stackIndex] == window->no) {
                 break;
             }
         }
-        for (; i < mbWinTopNo - 1; i++) {
-            mbWinStack[i] = mbWinStack[i + 1];
+        for (; stackIndex < mbWinTopNo - 1; stackIndex++) {
+            mbWinStack[stackIndex] = mbWinStack[stackIndex + 1];
         }
         mbWinTopNo--;
     }
     mbWinNum--;
 }
 
+// Expands a window to fit its message and inserted text, then repositions the live window after
+// size changes.
 static void mbWinCenterSet(int winNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
     HuVec2f size;
-    int i;
+    int insertIndex;
 
-    for (i = 0; i < HUWIN_INSERTMES_MAX; i++) {
-        if (winP->insertMes[i] != MBWIN_MES_NONE) {
-            HuWinInsertMesSizeGet(winP->insertMes[i], i);
+    for (insertIndex = 0; insertIndex < HUWIN_INSERTMES_MAX; insertIndex++) {
+        if (window->insertMes[insertIndex] != MBWIN_MES_NONE) {
+            HuWinInsertMesSizeGet(window->insertMes[insertIndex], insertIndex);
         }
     }
-    HuWinMesMaxSizeGet(1, &size, winP->mess);
-    if (winP->size.x < size.x) {
-        winP->centerOfs.x = -(size.x - winP->size.x) * 0.5f;
-        winP->size.x = size.x;
+    HuWinMesMaxSizeGet(1, &size, window->mess);
+    if (window->size.x < size.x) {
+        window->centerOfs.x = -(size.x - window->size.x) * 0.5f;
+        window->size.x = size.x;
     }
-    if (winP->size.y < size.y) {
-        winP->centerOfs.y = -(size.y - winP->size.y) * 0.5f;
-        winP->size.y = size.y;
+    if (window->size.y < size.y) {
+        window->centerOfs.y = -(size.y - window->size.y) * 0.5f;
+        window->size.y = size.y;
     }
-    if (winP->winId >= 0) {
-        HuWinPosSet(winP->winId, winP->pos.x + winP->centerOfs.x,
-                    winP->pos.y + winP->centerOfs.y);
+    if (window->winId >= 0) {
+        HuWinPosSet(window->winId, window->pos.x + window->centerOfs.x,
+                    window->pos.y + window->centerOfs.y);
     }
 }
 
+// Allocates a window slot, fills its board defaults, and starts the child process used to display
+// the window.
 int mbWinCreate(int type, u32 mess, int speakerNo)
 {
-    MBWIN *winP;
+    MBWIN *window;
     HuVec2f size;
-    int i;
+    int slotIndex;
 
-    winP = &mbWinData[1];
-    for (i = 1; i < MBWIN_MAX; i++, winP++) {
-        if (winP->proc == NULL) {
+    window = &mbWinData[1];
+    for (slotIndex = 1; slotIndex < MBWIN_MAX; slotIndex++, window++) {
+        if (window->proc == NULL) {
             break;
         }
     }
-    if (i >= MBWIN_MAX) {
+    if (slotIndex >= MBWIN_MAX) {
         return MBWIN_NONE;
     }
-    memset(winP, 0, sizeof(MBWIN));
-    winP->proc = HuPrcChildCreate(mbWinProc, 0x200F, 0x4000, 0, mbMainProc);
-    HuPrcDestructorSet2(winP->proc, mbWinDestroy);
-    winP->proc->property = winP;
-    winP->winId = HUWIN_NONE;
-    winP->mess = mess;
-    winP->no = i;
-    winP->attr = HUWIN_ATTR_NONE;
-    winP->mesSpeed = GWMessSpeedGet();
-    winP->prio = -1;
-    winP->type = type;
-    winP->speakerNo = speakerNo;
-    winP->pauseF = winP->choiceF = FALSE;
-    winP->choiceNo = HUWIN_CHOICE_NONE;
-    winP->scale.x = winP->scale.y = 1.0f;
-    winP->comKeyHook = NULL;
-    winP->attr |= HUWIN_ATTR_NOCANCEL;
-    winP->frame = 0;
-    winP->playerNo = (_CheckFlag(FLAG_BOARD_TUTORIAL) == FALSE) ? GwSystem.turnPlayerNo : -1;
-    for (i = 0; i < HUWIN_CHOICE_MAX; i++) {
-        winP->choiceDisable[i] = FALSE;
+    memset(window, 0, sizeof(MBWIN));
+    window->proc = HuPrcChildCreate(mbWinProc, MBWIN_PROCESS_PRIORITY,
+                                    MBWIN_PROCESS_STACK_SIZE, 0, mbMainProc);
+    HuPrcDestructorSet2(window->proc, mbWinDestroy);
+    window->proc->property = window;
+    window->winId = HUWIN_NONE;
+    window->mess = mess;
+    window->no = slotIndex;
+    window->attr = HUWIN_ATTR_NONE;
+    window->mesSpeed = GWMessSpeedGet();
+    window->prio = -1;
+    window->type = type;
+    window->speakerNo = speakerNo;
+    window->pauseF = window->choiceF = FALSE;
+    window->choiceNo = HUWIN_CHOICE_NONE;
+    window->scale.x = window->scale.y = 1.0f;
+    window->comKeyHook = NULL;
+    window->attr |= HUWIN_ATTR_NOCANCEL;
+    window->frame = 0;
+    window->playerNo = (_CheckFlag(FLAG_BOARD_TUTORIAL) == FALSE) ? GwSystem.turnPlayerNo : -1;
+    for (slotIndex = 0; slotIndex < HUWIN_CHOICE_MAX; slotIndex++) {
+        window->choiceDisable[slotIndex] = FALSE;
     }
-    for (i = 0; i < HUWIN_INSERTMES_MAX; i++) {
-        winP->insertMes[i] = MBWIN_MES_NONE;
+    for (slotIndex = 0; slotIndex < HUWIN_INSERTMES_MAX; slotIndex++) {
+        window->insertMes[slotIndex] = MBWIN_MES_NONE;
     }
-    HuWinMesMaxSizeGet(1, &size, winP->mess);
-    if (winP->type != MBWIN_TYPE_HELP) {
-        winP->pos.x = winSizeTbl[winP->type].posX;
-        winP->pos.y = winSizeTbl[winP->type].posY;
-        winP->size.x = winSizeTbl[winP->type].sizeX * 24;
-        winP->size.y = winSizeTbl[winP->type].sizeY * 32;
+    HuWinMesMaxSizeGet(1, &size, window->mess);
+    if (window->type != MBWIN_TYPE_HELP) {
+        window->pos.x = winSizeTbl[window->type].posX;
+        window->pos.y = winSizeTbl[window->type].posY;
+        window->size.x = winSizeTbl[window->type].sizeX * 24;
+        window->size.y = winSizeTbl[window->type].sizeY * 32;
     } else {
-        winP->pos.x = HU_DISP_CENTERX - ((size.x / 2) - 16.0f);
-        winP->pos.y = 304.0f;
-        winP->size = size;
+        window->pos.x = HU_DISP_CENTERX - ((size.x / 2) - 16.0f);
+        window->pos.y = 304.0f;
+        window->size = size;
     }
-    winP->centerOfs.x = winP->centerOfs.y = 0.0f;
-    mbWinChoice[winP->no] = 0;
-    mbWinStack[mbWinTopNo++] = winP->no;
-    winP->frame = 0;
-    mbWinOnF[winP->no] = TRUE;
+    window->centerOfs.x = window->centerOfs.y = 0.0f;
+    mbWinChoice[window->no] = 0;
+    mbWinStack[mbWinTopNo++] = window->no;
+    window->frame = 0;
+    mbWinOnF[window->no] = TRUE;
     mbWinNum++;
-    return winP->no;
+    return window->no;
 }
 
+// Creates a choice window when a slot is available, records its choice, and enables pad input
+// globally.
 int mbWinCreateChoice(int type, u32 mess, int speakerNo, int choiceNo)
 {
-    int winNo = mbWinCreate(type, mess, speakerNo);
+    int windowNumber = mbWinCreate(type, mess, speakerNo);
 
-    if (winNo > 0) {
-        MBWIN *winP = &mbWinData[winNo];
-        winP->choiceF = TRUE;
-        winP->choiceNo = choiceNo;
-        winP->attr &= ~HUWIN_ATTR_NOCANCEL;
+    if (windowNumber > 0) {
+        MBWIN *window = &mbWinData[windowNumber];
+        window->choiceF = TRUE;
+        window->choiceNo = choiceNo;
+        window->attr &= ~HUWIN_ATTR_NOCANCEL;
     }
     mbConfigPadDisableSet(FALSE);
-    return winNo;
+    return windowNumber;
 }
 
+// Creates a help message window that pauses the board until the player dismisses it.
 int mbWinCreateHelp(u32 mess)
 {
-    int winNo = mbWinCreate(MBWIN_TYPE_HELP, mess, HUWIN_SPEAKER_NULL);
-    MBWIN *winP = &mbWinData[winNo];
+    int windowNumber = mbWinCreate(MBWIN_TYPE_HELP, mess, HUWIN_SPEAKER_NULL);
+    MBWIN *window = &mbWinData[windowNumber];
 
-    winP->pauseF = TRUE;
-    return winNo;
+    window->pauseF = TRUE;
+    return windowNumber;
 }
 
+// Stores a frame for window types that use a caller-selected frame; SUN and MOON speakers override
+// it when the child creates the window.
 int mbWinCreateFrame(int type, u32 mess, int speakerNo, int frame)
 {
-    int winNo = mbWinCreate(type, mess, speakerNo);
+    int windowNumber = mbWinCreate(type, mess, speakerNo);
 
-    if (winNo > 0) {
-        MBWIN *winP = &mbWinData[winNo];
-        winP->frame = frame;
+    if (windowNumber > 0) {
+        MBWIN *window = &mbWinData[windowNumber];
+        window->frame = frame;
     }
-    return winNo;
+    return windowNumber;
 }
 
+// Creates a board window with frame 4 by day or 3 by night when its type and speaker use the
+// caller-selected frame.
 int mbWinCreateTime(int type, u32 mess, int speakerNo)
 {
     if (!GwSystem.curTime) {
@@ -344,225 +372,252 @@ int mbWinCreateTime(int type, u32 mess, int speakerNo)
     }
 }
 
+// Creates an empty board window that pauses the board while it is active.
 int mbWinCreateBlank(void)
 {
-    int winNo = mbWinCreate(MBWIN_TYPE_BLANK, 0, HUWIN_SPEAKER_NULL);
-    MBWIN *winP = &mbWinData[winNo];
+    int windowNumber = mbWinCreate(MBWIN_TYPE_BLANK, 0, HUWIN_SPEAKER_NULL);
+    MBWIN *window = &mbWinData[windowNumber];
 
-    winP->pauseF = TRUE;
-    return winNo;
+    window->pauseF = TRUE;
+    return windowNumber;
 }
 
+// Creates an empty pausing window with an explicitly selected frame variant.
 int mbWinCreateBlankFrame(int frame)
 {
-    int winNo = mbWinCreateFrame(MBWIN_TYPE_BLANK, 0, HUWIN_SPEAKER_NULL, frame);
-    MBWIN *winP = &mbWinData[winNo];
+    int windowNumber = mbWinCreateFrame(MBWIN_TYPE_BLANK, 0, HUWIN_SPEAKER_NULL, frame);
+    MBWIN *window = &mbWinData[windowNumber];
 
-    winP->pauseF = TRUE;
-    return winNo;
+    window->pauseF = TRUE;
+    return windowNumber;
 }
 
+// Returns the manager record for a board window number.
 MBWIN *mbWinGet(int winNo)
 {
     return &mbWinData[winNo];
 }
 
+// Stops one board window process and removes its number from the window stack.
 void mbWinKill(s16 winNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
-    int i;
+    MBWIN *window = &mbWinData[winNo];
+    int stackIndex;
 
-    if (winP->proc) {
-        HuPrcKill(winP->proc);
+    if (window->proc) {
+        HuPrcKill(window->proc);
     }
-    mbWinOnF[winP->no] = FALSE;
-    for (i = 0; i < mbWinTopNo; i++) {
-        if (mbWinStack[i] == winP->no) {
+    mbWinOnF[window->no] = FALSE;
+    for (stackIndex = 0; stackIndex < mbWinTopNo; stackIndex++) {
+        if (mbWinStack[stackIndex] == window->no) {
             break;
         }
     }
-    for (; i < mbWinTopNo - 1; i++) {
-        mbWinStack[i] = mbWinStack[i + 1];
+    for (; stackIndex < mbWinTopNo - 1; stackIndex++) {
+        mbWinStack[stackIndex] = mbWinStack[stackIndex + 1];
     }
     mbWinTopNo--;
 }
 
+// Stops the board window currently at the top of the stack.
 void mbWinTopKill(void)
 {
     mbWinKill(mbWinStack[mbWinTopNo - 1]);
 }
 
+// Stops every active board window and clears the stack during reset or shutdown.
 void mbWinKillAll(void)
 {
-    MBWIN *winP = mbWinData;
-    int i;
+    MBWIN *window = mbWinData;
+    int windowIndex;
 
-    for (i = 0; i < MBWIN_MAX; i++, winP++) {
-        if (mbWinOnF[i]) {
-            if (winP->proc) {
-                HuPrcKill(winP->proc);
+    for (windowIndex = 0; windowIndex < MBWIN_MAX; windowIndex++, window++) {
+        if (mbWinOnF[windowIndex]) {
+            if (window->proc) {
+                HuPrcKill(window->proc);
             }
-            mbWinOnF[i] = FALSE;
+            mbWinOnF[windowIndex] = FALSE;
         }
     }
     mbWinTopNo = 0;
 }
 
+// Stores a window position and applies it immediately when the window has been created.
 void mbWinPosSet(s16 winNo, s16 posX, s16 posY)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->pos.x = posX;
-    winP->pos.y = posY;
-    if (winP->winId >= 0) {
-        HuWinPosSet(winP->winId, posX, posY);
+    window->pos.x = posX;
+    window->pos.y = posY;
+    if (window->winId >= 0) {
+        HuWinPosSet(window->winId, posX, posY);
     }
 }
 
+// Moves the board window currently at the top of the stack.
 void mbWinTopPosSet(s16 posX, s16 posY)
 {
     mbWinPosSet(mbWinStack[mbWinTopNo - 1], posX, posY);
 }
 
+// Copies a board window position into the caller's output vector.
 void mbWinPosGet(s16 winNo, HuVec2f *pos)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    pos->x = winP->pos.x;
-    pos->y = winP->pos.y;
+    pos->x = window->pos.x;
+    pos->y = window->pos.y;
 }
 
+// Copies the position of the board window currently at the top of the stack.
 void mbWinTopPosGet(HuVec2f *pos)
 {
     mbWinPosGet(mbWinStack[mbWinTopNo - 1], pos);
 }
 
+// Stores the requested size, enforces the main message minimum, rounds live dimensions up to 16
+// pixels, and updates the window geometry and sprites.
 void mbWinSizeSet(s16 winNo, s16 sizeX, s16 sizeY)
 {
-    MBWIN *winP = &mbWinData[winNo];
-    HUWIN *huWinP;
-    HUSPRITE *sprP;
-    float bgTPLvl0;
-    float bgTPLvl1;
+    MBWIN *window = &mbWinData[winNo];
+    HUWIN *windowData;
+    HUSPRITE *spriteData;
+    float backgroundAlpha0;
+    float backgroundAlpha1;
 
-    winP->size.x = sizeX;
-    winP->size.y = sizeY;
-    if (winP->winId >= 0) {
-        huWinP = &winData[winP->winId];
+    window->size.x = sizeX;
+    window->size.y = sizeY;
+    if (window->winId >= 0) {
+        windowData = &winData[window->winId];
         mbWinCenterSet(winNo);
-        sizeX = ((s16)winP->size.x + 15) & 0xFFF0;
-        sizeY = ((s16)winP->size.y + 15) & 0xFFF0;
-        huWinP->winW = sizeX;
-        huWinP->winH = sizeY;
-        huWinP->mesRectX = 8;
-        huWinP->mesRectY = 8;
-        huWinP->mesRectW = sizeX - 8;
-        huWinP->mesRectH = sizeY - 8;
-        sprP = &HuSprData[HuSprGrpData[huWinP->grpId].sprId[0]];
-        bgTPLvl0 = sprP->a;
-        sprP = &HuSprData[HuSprGrpData[huWinP->grpId].sprId[1]];
-        bgTPLvl1 = sprP->a;
-        HuSprGrpCenterSet(huWinP->grpId, sizeX / 2, sizeY / 2);
-        huWinP->charEntryMax = (sizeX / 8) * (sizeY / 24) * 5;
-        if (huWinP->charEntry) {
-            HuMemDirectFree(huWinP->charEntry);
-            huWinP->charEntry = HuMemDirectMalloc(HEAP_HEAP,
-                                                   sizeof(WINCHARENTRY) * huWinP->charEntryMax);
+        sizeX = ((s16)window->size.x + 15) & 0xFFF0;
+        sizeY = ((s16)window->size.y + 15) & 0xFFF0;
+        windowData->winW = sizeX;
+        windowData->winH = sizeY;
+        windowData->mesRectX = 8;
+        windowData->mesRectY = 8;
+        windowData->mesRectW = sizeX - 8;
+        windowData->mesRectH = sizeY - 8;
+        spriteData = &HuSprData[HuSprGrpData[windowData->grpId].sprId[0]];
+        backgroundAlpha0 = spriteData->a;
+        spriteData = &HuSprData[HuSprGrpData[windowData->grpId].sprId[1]];
+        backgroundAlpha1 = spriteData->a;
+        HuSprGrpCenterSet(windowData->grpId, sizeX / 2, sizeY / 2);
+        windowData->charEntryMax = (sizeX / 8) * (sizeY / 24) * 5;
+        if (windowData->charEntry) {
+            HuMemDirectFree(windowData->charEntry);
+            windowData->charEntry = HuMemDirectMalloc(HEAP_HEAP,
+                                                   sizeof(WINCHARENTRY) * windowData->charEntryMax);
         }
-        HuWinFrameSet(winP->winId, winP->frame);
-        HuSprTPLvlSet(huWinP->grpId, 0, bgTPLvl0 / 255.0f);
-        HuSprTPLvlSet(huWinP->grpId, 1, bgTPLvl1 / 255.0f);
+        HuWinFrameSet(window->winId, window->frame);
+        HuSprTPLvlSet(windowData->grpId, 0, backgroundAlpha0 / 255.0f);
+        HuSprTPLvlSet(windowData->grpId, 1, backgroundAlpha1 / 255.0f);
     }
 }
 
+// Resizes the board window currently at the top of the stack.
 void mbWinTopSizeSet(s16 sizeX, s16 sizeY)
 {
     mbWinSizeSet(mbWinStack[mbWinTopNo - 1], sizeX, sizeY);
 }
 
+// Gets the maximum rendered size of a window's main message, including the message data layout.
 void mbWinMesMaxSizeGet(s16 winNo, HuVec2f *size)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    HuWinMesMaxSizeGet(1, size, winP->mess);
+    HuWinMesMaxSizeGet(1, size, window->mess);
 }
 
+// Gets the maximum main message size for the board window at the top of the stack.
 void mbWinTopMesMaxSizeGet(HuVec2f *size)
 {
     mbWinMesMaxSizeGet(mbWinStack[mbWinTopNo - 1], size);
 }
 
+// Stores a window scale and applies it immediately to an existing window.
 void mbWinScaleSet(s16 winNo, float scaleX, float scaleY)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->scale.x = scaleX;
-    winP->scale.y = scaleY;
-    if (winP->winId >= 0) {
-        HuWinScaleSet(winP->winId, scaleX, scaleY);
+    window->scale.x = scaleX;
+    window->scale.y = scaleY;
+    if (window->winId >= 0) {
+        HuWinScaleSet(window->winId, scaleX, scaleY);
     }
 }
 
+// Scales the board window currently at the top of the stack.
 void mbWinTopScaleSet(float scaleX, float scaleY)
 {
     mbWinScaleSet(mbWinStack[mbWinTopNo - 1], scaleX, scaleY);
 }
 
+// Copies a board window's stored scale into the caller's output vector.
 void mbWinScaleGet(s16 winNo, HuVec2f *scale)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    scale->x = winP->scale.x;
-    scale->y = winP->scale.y;
+    scale->x = window->scale.x;
+    scale->y = window->scale.y;
 }
 
+// Copies the scale of the board window currently at the top of the stack.
 void mbWinTopScaleGet(HuVec2f *scale)
 {
     mbWinScaleGet(mbWinStack[mbWinTopNo - 1], scale);
 }
 
+// Returns the most recently completed choice from the window manager.
 int mbWinTopChoiceGet(void)
 {
     return mbWinLastChoice;
 }
 
+// Returns the completed choice stored for a board window number.
 int mbWinChoiceGet(s16 winNo)
 {
     return mbWinChoice[winNo];
 }
 
+// Marks a board window to hold the process after its message has finished.
 void mbWinPause(s16 winNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->pauseF = TRUE;
+    window->pauseF = TRUE;
 }
 
+// Marks the board window currently at the top of the stack to pause.
 void mbWinTopPause(void)
 {
     mbWinPause(mbWinStack[mbWinTopNo - 1]);
 }
 
+// Stores an inserted message and updates the live window when that slot is already visible.
 void mbWinInsertMesSet(s16 winNo, u32 insertMes, int insertMesNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->insertMes[insertMesNo] = insertMes;
-    if (winP->winId >= 0 && winP->insertMes[insertMesNo] != MBWIN_MES_NONE) {
-        HuWinInsertMesSet(winP->winId, winP->insertMes[insertMesNo], insertMesNo);
+    window->insertMes[insertMesNo] = insertMes;
+    if (window->winId >= 0 && window->insertMes[insertMesNo] != MBWIN_MES_NONE) {
+        HuWinInsertMesSet(window->winId, window->insertMes[insertMesNo], insertMesNo);
     }
 }
 
+// Sets an inserted message in the board window currently at the top of the stack.
 void mbWinTopInsertMesSet(u32 insertMes, int insertMesNo)
 {
     mbWinInsertMesSet(mbWinStack[mbWinTopNo - 1], insertMes, insertMesNo);
 }
 
+// Reports whether a board window process has finished and cleared its active flag.
 BOOL mbWinDoneCheck(s16 winNo)
 {
     return mbWinOnF[winNo] == FALSE;
 }
 
+// Reports whether the stack is empty or its top board window has finished.
 BOOL mbWinTopDoneCheck(void)
 {
     if (mbWinTopNo == 0) {
@@ -571,6 +626,7 @@ BOOL mbWinTopDoneCheck(void)
     return mbWinDoneCheck(mbWinStack[mbWinTopNo - 1]);
 }
 
+// Sleeps once per frame until the selected board window finishes.
 void mbWinWait(s16 winNo)
 {
     while (mbWinOnF[winNo]) {
@@ -578,6 +634,7 @@ void mbWinWait(s16 winNo)
     }
 }
 
+// Waits for the board window currently at the top of the stack when one exists.
 void mbWinTopWait(void)
 {
     if (mbWinTopNo == 0) {
@@ -586,280 +643,313 @@ void mbWinTopWait(void)
     mbWinWait(mbWinStack[mbWinTopNo - 1]);
 }
 
+// Adds window attributes to the stored state and applies them to a live window.
 void mbWinAttrSet(s16 winNo, u32 attr)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->attr |= attr;
-    if (winP->winId >= 0) {
-        HuWinAttrSet(winP->winId, winP->attr);
+    window->attr |= attr;
+    if (window->winId >= 0) {
+        HuWinAttrSet(window->winId, window->attr);
     }
 }
 
+// Adds attributes to the board window currently at the top of the stack.
 void mbWinTopAttrSet(u32 attr)
 {
     mbWinAttrSet(mbWinStack[mbWinTopNo - 1], attr);
 }
 
+// Removes window attributes from the stored state and applies the result to a live window.
 void mbWinAttrReset(s16 winNo, u32 attr)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->attr &= ~attr;
-    if (winP->winId >= 0) {
-        HuWinAttrSet(winP->winId, winP->attr);
+    window->attr &= ~attr;
+    if (window->winId >= 0) {
+        HuWinAttrSet(window->winId, window->attr);
     }
 }
 
+// Removes attributes from the board window currently at the top of the stack.
 void mbWinTopAttrReset(u32 attr)
 {
     mbWinAttrReset(mbWinStack[mbWinTopNo - 1], attr);
 }
 
+// Disables one choice entry in the stored window state before or during display.
 void mbWinChoiceDisable(s16 winNo, int choiceNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->choiceDisable[choiceNo] = TRUE;
+    window->choiceDisable[choiceNo] = TRUE;
 }
 
+// Disables one choice entry in the board window currently at the top of the stack.
 void mbWinTopChoiceDisable(int choiceNo)
 {
     mbWinChoiceDisable(mbWinStack[mbWinTopNo - 1], choiceNo);
 }
 
+// Selects a message speed and applies the corresponding engine value to a live window.
 void mbWinMesSpeedSet(s16 winNo, int speed)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->mesSpeed = speedTbl[speed];
-    if (winP->winId >= 0) {
-        HuWinMesSpeedSet(winP->winId, winP->mesSpeed);
+    window->mesSpeed = speedTbl[speed];
+    if (window->winId >= 0) {
+        HuWinMesSpeedSet(window->winId, window->mesSpeed);
     }
 }
 
+// Sets message speed for the board window currently at the top of the stack.
 void mbWinTopMesSpeedSet(int speed)
 {
     mbWinMesSpeedSet(mbWinStack[mbWinTopNo - 1], speed);
 }
 
+// Sets the message color on a live board window.
 void mbWinMesColSet(s16 winNo, int mesCol)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    HuWinMesColSet(winP->winId, mesCol);
+    HuWinMesColSet(window->winId, mesCol);
 }
 
+// Sets the message color on the board window currently at the top of the stack.
 void mbWinTopMesColSet(int mesCol)
 {
     mbWinMesColSet(mbWinStack[mbWinTopNo - 1], mesCol);
 }
 
+// Returns the currently highlighted choice from a live board window.
 s16 mbWinChoiceNowGet(s16 winNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    return HuWinChoiceNowGet(winP->winId);
+    return HuWinChoiceNowGet(window->winId);
 }
 
+// Returns the currently highlighted choice from the board window at the top of the stack.
 s16 mbWinTopChoiceNowGet(void)
 {
     return mbWinChoiceNowGet(mbWinStack[mbWinTopNo - 1]);
 }
 
+// Stores a window priority and applies it immediately when the window is live.
 void mbWinPriSet(s16 winNo, s16 prio)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    winP->prio = prio;
-    if (winP->winId >= 0) {
-        HuWinPriSet(winP->winId, winP->prio);
+    window->prio = prio;
+    if (window->winId >= 0) {
+        HuWinPriSet(window->winId, window->prio);
     }
 }
 
+// Sets priority on the board window currently at the top of the stack.
 void mbWinTopPriSet(s16 prio)
 {
     mbWinPriSet(mbWinStack[mbWinTopNo - 1], prio);
 }
 
+// Returns the highlighted choice, or -1 when the selected board window is not live.
 s16 mbWinChoiceNowGet2(s16 winNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    if (winP->winId < 0) {
+    if (window->winId < 0) {
         return -1;
     }
-    return HuWinChoiceNowGet(winP->winId);
+    return HuWinChoiceNowGet(window->winId);
 }
 
+// Returns the guarded current choice from the board window at the top of the stack.
 s16 mbWinTopChoiceNowGet2(void)
 {
     return mbWinChoiceNowGet2(mbWinStack[mbWinTopNo - 1]);
 }
 
+// In tutorial mode, forces player 0; otherwise allows all human-player pads for -1, disables all
+// pads for a computer player, or allows only the selected human player's pad, then applies the
+// mask.
 void mbWinPlayerDisable(s16 winNo, int playerNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
-    u8 disablePlayer;
-    int i;
+    MBWIN *window = &mbWinData[winNo];
+    u8 disabledPlayers;
+    int playerIndex;
 
     if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        winP->playerNo = 0;
-        disablePlayer = ~HUWIN_PLAYER_1;
+        window->playerNo = 0;
+        disabledPlayers = ~HUWIN_PLAYER_1;
     } else {
-        winP->playerNo = playerNo;
-        if (winP->playerNo == -1) {
-            disablePlayer = HUWIN_PLAYER_ALL;
-            for (i = 0; i < GW_PLAYER_MAX; i++) {
-                if (GwPlayer[i].comF == FALSE) {
-                    disablePlayer &= ~(1 << GwPlayer[i].padNo);
+        window->playerNo = playerNo;
+        if (window->playerNo == -1) {
+            disabledPlayers = HUWIN_PLAYER_ALL;
+            for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+                if (GwPlayer[playerIndex].comF == FALSE) {
+                    disabledPlayers &= ~(1 << GwPlayer[playerIndex].padNo);
                 }
             }
-        } else if (GwPlayer[winP->playerNo].comF) {
-            disablePlayer = HUWIN_PLAYER_ALL;
+        } else if (GwPlayer[window->playerNo].comF) {
+            disabledPlayers = HUWIN_PLAYER_ALL;
         } else {
-            disablePlayer = ~(1 << GwPlayer[winP->playerNo].padNo);
+            disabledPlayers = ~(1 << GwPlayer[window->playerNo].padNo);
         }
     }
-    if (winP->winId >= 0) {
-        HuWinDisablePlayerReset(winP->winId, 0xFF);
-        HuWinDisablePlayerSet(winP->winId, disablePlayer);
+    if (window->winId >= 0) {
+        HuWinDisablePlayerReset(window->winId, MBWIN_PLAYER_DISABLE_RESET_MASK);
+        HuWinDisablePlayerSet(window->winId, disabledPlayers);
     }
 }
 
+// Sets controller access for the board window currently at the top of the stack.
 void mbWinTopPlayerDisable(int playerNo)
 {
     mbWinPlayerDisable(mbWinStack[mbWinTopNo - 1], playerNo);
 }
 
-static void KeyWaitInit(MBWIN *winP)
+// Reads the message's computer wait count and prepares automatic A presses outside the tutorial.
+static void KeyWaitInit(MBWIN *window)
 {
-    int waitNum;
+    int keyWaitCount;
 
     if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
         return;
     }
-    waitNum = HuWinKeyWaitNumGet(winP->mess);
-    if (waitNum) {
+    keyWaitCount = HuWinKeyWaitNumGet(window->mess);
+    if (keyWaitCount) {
         HuWinComKeyReset();
-        KeyWaitSet(winP, waitNum);
+        KeyWaitSet(window, keyWaitCount);
     }
 }
 
-static void KeyWaitSet(MBWIN *winP, int keyWaitNum)
+// Queues the requested message waits for all-computer games or a selected computer player; returns
+// without queuing if the count is zero or no eligible computer player is selected.
+static void KeyWaitSet(MBWIN *window, int keyWaitCount)
 {
     s32 key[GW_PLAYER_MAX] = {};
-    int i;
-    int delay;
+    int playerIndex;
+    int delayFrames;
 
-    if (keyWaitNum == 0) {
+    if (keyWaitCount == 0) {
         return;
     }
     if (mbPlayerAllComCheck()) {
         key[0] = key[1] = key[2] = key[3] = PAD_BUTTON_A;
     } else {
-        if (winP->playerNo == -1) {
+        if (window->playerNo == -1) {
             return;
         }
-        if (!GwPlayer[winP->playerNo].comF) {
+        if (!GwPlayer[window->playerNo].comF) {
             return;
         }
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            int padNo = GwPlayer[i].padNo;
-            if (winP->playerNo == i) {
-                key[padNo] |= PAD_BUTTON_A;
+        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+            int padNumber = GwPlayer[playerIndex].padNo;
+            if (window->playerNo == playerIndex) {
+                key[padNumber] |= PAD_BUTTON_A;
             }
         }
     }
-    delay = GWComKeyDelayGet() * 1.5f;
-    for (i = 0; i < keyWaitNum; i++) {
-        HuWinComKeyWait(key[0], key[1], key[2], key[3], delay);
+    delayFrames = GWComKeyDelayGet() * 1.5f;
+    for (playerIndex = 0; playerIndex < keyWaitCount; playerIndex++) {
+        HuWinComKeyWait(key[0], key[1], key[2], key[3], delayFrames);
     }
 }
 
+// Installs the computer choice hook on the board window currently at the top of the stack.
 void mbWinTopComKeyHookSet(MBWINCOMKEYHOOK comKeyHook)
 {
-    s16 winNo = mbWinStack[mbWinTopNo - 1];
-    MBWIN *winP = &mbWinData[winNo];
+    s16 windowNumber = mbWinStack[mbWinTopNo - 1];
+    MBWIN *window = &mbWinData[windowNumber];
 
-    winP->comKeyHook = comKeyHook;
+    window->comKeyHook = comKeyHook;
 }
 
+// Shows or hides a live board window while preserving the requested process state.
 void mbWinDispSet(s16 winNo, BOOL dispF)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    if (winP->proc == NULL || winP->winId < 0) {
+    if (window->proc == NULL || window->winId < 0) {
         return;
     }
     if (dispF) {
-        HuWinDispOn(winP->winId);
+        HuWinDispOn(window->winId);
     } else {
-        HuWinDispOff(winP->winId);
+        HuWinDispOff(window->winId);
     }
 }
 
+// Shows or hides the board window currently at the top of the stack.
 void mbWinTopDispSet(BOOL dispF)
 {
     mbWinDispSet(mbWinStack[mbWinTopNo - 1], dispF);
 }
 
+// Applies pause display visibility to every active board window.
 void mbWinPauseHook(BOOL dispF)
 {
-    int i;
+    int windowIndex;
 
-    for (i = 1; i < MBWIN_MAX; i++) {
-        if (mbWinOnF[i]) {
-            mbWinDispSet(i, dispF);
+    for (windowIndex = 1; windowIndex < MBWIN_MAX; windowIndex++) {
+        if (mbWinOnF[windowIndex]) {
+            mbWinDispSet(windowIndex, dispF);
         }
     }
 }
 
+// Returns the engine window ID stored for a board window number.
 HUWINID mbWinIDGet(s16 winNo)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
 
-    return winP->winId;
+    return window->winId;
 }
 
+// Returns the engine window ID for the board window at the top of the stack.
 HUWINID mbWinTopIDGet(void)
 {
     return mbWinIDGet(mbWinStack[mbWinTopNo - 1]);
 }
 
+// Computes the screen centered position needed for a board window's message and stored minimum
+// size.
 void mbWinCenterGet(s16 winNo, HuVec2f *pos)
 {
-    MBWIN *winP = &mbWinData[winNo];
+    MBWIN *window = &mbWinData[winNo];
     HuVec2f size;
 
     mbWinMesMaxSizeGet(winNo, &size);
-    if (winP->size.x > size.x) {
-        size.x = winP->size.x;
+    if (window->size.x > size.x) {
+        size.x = window->size.x;
     }
-    if (winP->size.y > size.y) {
-        size.y = winP->size.y;
+    if (window->size.y > size.y) {
+        size.y = window->size.y;
     }
     pos->x = HU_DISP_CENTERX - (size.x / 2);
     pos->y = HU_DISP_CENTERY - (size.y / 2);
 }
 
+// Replaces a window's main message, reapplies inserted messages, and recenters the live window.
 void mbWinCenterInsertGet(s16 winNo, u32 mess)
 {
-    MBWIN *winP = &mbWinData[winNo];
-    int i;
+    MBWIN *window = &mbWinData[winNo];
+    int insertIndex;
 
-    winP->mess = mess;
-    if (winP->winId >= 0) {
-        for (i = 0; i < HUWIN_INSERTMES_MAX; i++) {
-            if (winP->insertMes[i] != MBWIN_MES_NONE) {
-                HuWinInsertMesSet(winP->winId, winP->insertMes[i], i);
+    window->mess = mess;
+    if (window->winId >= 0) {
+        for (insertIndex = 0; insertIndex < HUWIN_INSERTMES_MAX; insertIndex++) {
+            if (window->insertMes[insertIndex] != MBWIN_MES_NONE) {
+                HuWinInsertMesSet(window->winId, window->insertMes[insertIndex], insertIndex);
             }
         }
-        HuWinMesSet(winP->winId, winP->mess);
+        HuWinMesSet(window->winId, window->mess);
     }
     mbWinCenterSet(winNo);
 }
 
+// Replaces the main message in the board window currently at the top of the stack and recenters it.
 void mbWinTopCenterInsertGet(u32 mess)
 {
     mbWinCenterInsertGet(mbWinStack[mbWinTopNo - 1], mess);
