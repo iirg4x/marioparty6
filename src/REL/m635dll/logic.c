@@ -1,3 +1,4 @@
+/* Player input, team scoring, winner selection, and camera control for Garden Grab. */
 #include "REL/m635dll.h"
 #include "game/audio.h"
 #include "game/pad.h"
@@ -11,17 +12,20 @@ extern OM_CAMERA_VIEW lbl_1_data_24[3];
 M635Work lbl_1_bss_4;
 s32 lbl_1_bss_0;
 
+/* Called by the MGSEQ fade-in callback fn_1_134 to play the team intro, set the camera, and enter
+ * the player scene. */
 void fn_1_408(s16 frameNo)
 {
-    OM_CAMERA_VIEW view;
-    int i;
-    s16 charNo;
+    /* Called from fn_1_134 each fade-in frame; stage the camera and player entrances. */
+    OM_CAMERA_VIEW cameraView;
+    int playerIndex;
+    s16 characterId;
 
     if (frameNo == 30) {
         if (lbl_1_bss_4.nightF == 0) {
-            lbl_1_bss_0 = HuAudFXPlay(1865);
+            lbl_1_bss_0 = HuAudFXPlay(M635_SFX_DAY_INTRO);
         } else {
-            lbl_1_bss_0 = HuAudFXPlay(1866);
+            lbl_1_bss_0 = HuAudFXPlay(M635_SFX_NIGHT_INTRO);
         }
     } else if (frameNo == 90) {
         HuAudFXStop(lbl_1_bss_0);
@@ -33,27 +37,27 @@ void fn_1_408(s16 frameNo)
             break;
         case 1:
             if (frameNo == 5) {
-                view.center.x = 0.0f;
-                view.center.y = 20.0f;
-                view.center.z = -400.0f;
-                view.rot.x = -25.0f;
-                view.rot.y = view.rot.z = 0.0f;
-                view.zoom = 2500.0f;
-                omCameraViewMoveSimple(&view, 120);
+                cameraView.center.x = 0.0f;
+                cameraView.center.y = 20.0f;
+                cameraView.center.z = -400.0f;
+                cameraView.rot.x = -25.0f;
+                cameraView.rot.y = cameraView.rot.z = 0.0f;
+                cameraView.zoom = 2500.0f;
+                omCameraViewMoveSimple(&cameraView, 120);
                 lbl_1_bss_4.state++;
             }
             break;
         case 2:
             if (omCameraViewCheck(1)) {
-                for (i = 0; i < 4; i++) {
-                    charNo = lbl_1_bss_BC[i].charNo;
-                    fn_1_30C8(i, charNo);
+                for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+                    characterId = lbl_1_bss_BC[playerIndex].charNo;
+                    fn_1_30C8(playerIndex, characterId);
                 }
-                for (i = 0; i < 2; i++) {
-                    fn_1_33FC(i);
+                for (playerIndex = 0; playerIndex < 2; playerIndex++) {
+                    fn_1_33FC(playerIndex);
                 }
-                for (i = 0; i < 4; i++) {
-                    fn_1_2F40(i);
+                for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+                    fn_1_2F40(playerIndex);
                 }
                 lbl_1_bss_4.state++;
             }
@@ -65,13 +69,16 @@ void fn_1_408(s16 frameNo)
     }
 }
 
+/* Called from the pre-winner sequence callback after the result wipe; frame the winner or both tied
+ * teams. */
 void fn_1_638(void)
 {
-    int i;
-    M635Team *teams;
+    /* fn_1_2D0 calls this after the wipe-out completes and before the result wipe-in. */
+    int playerIndex;
+    M635Team *teamState;
 
-    for (i = 0; i < 4; i++) {
-        fn_1_3218(i, 1, 0.0f);
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        fn_1_3218(playerIndex, 1, 0.0f);
     }
     Center.x = lbl_1_data_24[lbl_1_bss_4.winner + 1].center.x;
     Center.y = lbl_1_data_24[lbl_1_bss_4.winner + 1].center.y;
@@ -81,93 +88,100 @@ void fn_1_638(void)
     CRot.z = lbl_1_data_24[lbl_1_bss_4.winner + 1].rot.z;
     CZoom = lbl_1_data_24[lbl_1_bss_4.winner + 1].zoom;
     if (lbl_1_bss_4.winner == -1) {
-        teams = lbl_1_bss_4.team;
+        teamState = lbl_1_bss_4.team;
         fn_1_3340();
-        for (i = 0; i < 2; i++) {
-            Hu3DModelAttrSet(teams[i].unk_14.model, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(teams[i].unk_18.model, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(teams[i].unk_1C.model, HU3D_ATTR_DISPOFF);
+        for (playerIndex = 0; playerIndex < 2; playerIndex++) {
+            Hu3DModelAttrSet(teamState[playerIndex].teamScoreModel.model, HU3D_ATTR_DISPOFF);
+            Hu3DModelAttrSet(teamState[playerIndex].memberOneScoreModel.model, HU3D_ATTR_DISPOFF);
+            Hu3DModelAttrSet(teamState[playerIndex].memberZeroScoreModel.model, HU3D_ATTR_DISPOFF);
         }
     } else {
-        for (i = 0; i < 4; i++) {
-            if (lbl_1_bss_4.winner != lbl_1_bss_BC[i].teamNo) {
-                Hu3DModelAttrSet(lbl_1_bss_BC[i].model, HU3D_ATTR_DISPOFF);
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+            if (lbl_1_bss_4.winner != lbl_1_bss_BC[playerIndex].teamNo) {
+                Hu3DModelAttrSet(lbl_1_bss_BC[playerIndex].model, HU3D_ATTR_DISPOFF);
             }
         }
     }
 }
 
+/* Called by fn_1_2D0 after the result wipe-in completes to move players into result poses. */
 void fn_1_8B0(void)
 {
-    int i;
+    int memberIndex;
 
     if (lbl_1_bss_4.winner == -1) {
-        for (i = 0; i < 4; i++) {
-            fn_1_3218(i, 3, 8.0f);
+        for (memberIndex = 0; memberIndex < 4; memberIndex++) {
+            fn_1_3218(memberIndex, 3, 8.0f);
         }
     } else {
-        for (i = 0; i < 2; i++) {
-            fn_1_3218(fn_1_32E0(lbl_1_bss_4.winner, i), 2, 8.0f);
+        for (memberIndex = 0; memberIndex < 2; memberIndex++) {
+            fn_1_3218(fn_1_32E0(lbl_1_bss_4.winner, memberIndex), 2, 8.0f);
         }
     }
 }
 
+/* Called by the MGSEQ main callback fn_1_1AC once per frame to process both teams and detect a
+ * winner. */
 void fn_1_954(s16 frameNo)
 {
-    int team;
-    s16 winner;
+    int teamIndex;
+    s16 winnerTeam;
 
-    for (team = 0; team < 2; team++) {
-        fn_1_9B8(team);
+    for (teamIndex = 0; teamIndex < 2; teamIndex++) {
+        fn_1_9B8(teamIndex);
     }
-    winner = fn_1_D84();
-    if (winner != -1) {
-        fn_1_F44(winner);
+    winnerTeam = fn_1_D84();
+    if (winnerTeam != -1) {
+        fn_1_F44(winnerTeam);
     }
 }
 
+/* Called from fn_1_954 once per team each gameplay frame to process human or CPU button input. */
 void fn_1_9B8(s16 team)
 {
-    s16 pads[2];
-    s16 players[2];
-    s16 chars[2];
-    u16 buttons[2];
-    M635Team *work;
-    int i;
-    s16 player;
-    s16 total;
+    s16 controllerSlots[2];
+    s16 playerSlots[2];
+    s16 characterIds[2];
+    u16 buttonPresses[2];
+    M635Team *teamState;
+    int memberIndex;
+    s16 playerIndex;
+    s16 pressTotal;
 
-    work = &lbl_1_bss_4.team[team];
-    for (i = 0; i < 2; i++) {
-        player = lbl_1_bss_B4[team][i];
-        players[i] = lbl_1_bss_BC[player].playerNo;
-        pads[i] = lbl_1_bss_BC[player].padNo;
-        chars[i] = lbl_1_bss_BC[player].charNo;
-        if (lbl_1_bss_BC[lbl_1_bss_B4[team][i]].comF == 0) {
-            buttons[i] = HuPadBtnDown[pads[i]];
-            buttons[i] &= (u16)~(PAD_TRIGGER_L | PAD_TRIGGER_R);
+    teamState = &lbl_1_bss_4.team[team];
+    for (memberIndex = 0; memberIndex < 2; memberIndex++) {
+        playerIndex = lbl_1_bss_B4[team][memberIndex];
+        playerSlots[memberIndex] = lbl_1_bss_BC[playerIndex].playerNo;
+        controllerSlots[memberIndex] = lbl_1_bss_BC[playerIndex].padNo;
+        characterIds[memberIndex] = lbl_1_bss_BC[playerIndex].charNo;
+        if (lbl_1_bss_BC[lbl_1_bss_B4[team][memberIndex]].comF == 0) {
+            buttonPresses[memberIndex] = HuPadBtnDown[controllerSlots[memberIndex]];
+            buttonPresses[memberIndex] &= (u16)~(PAD_TRIGGER_L | PAD_TRIGGER_R);
         } else {
-            buttons[i] = fn_1_1168(team, i);
+            buttonPresses[memberIndex] = fn_1_1168(team, memberIndex);
         }
     }
-    switch (work->unk_0C) {
+    switch (teamState->inputPhase) {
         case 0:
-            if (fn_1_27E4(team, work->unk_0A) != 3 &&
-                buttons[work->unk_0A] == lbl_1_data_0[work->buttonIndex[work->unk_0A]]) {
-                fn_1_25EC(team, work->unk_0A, 3);
-                fn_1_30C8(players[work->unk_0A], chars[work->unk_0A]);
-                fn_1_2F40(players[work->unk_0A]);
-                work->unk_08++;
-                work->unk_0A = 1 - work->unk_0A;
+            if (fn_1_27E4(team, teamState->nextMember) != 3 &&
+                buttonPresses[teamState->nextMember] ==
+                    lbl_1_data_0[teamState->buttonIndex[teamState->nextMember]]) {
+                fn_1_25EC(team, teamState->nextMember, 3);
+                fn_1_30C8(playerSlots[teamState->nextMember], characterIds[teamState->nextMember]);
+                fn_1_2F40(playerSlots[teamState->nextMember]);
+                teamState->alternatingPresses++;
+                teamState->nextMember = 1 - teamState->nextMember;
                 fn_1_33FC(team);
-                if (work->unk_08 >= 8) {
-                    work->unk_0C = 1;
-                    for (i = 0; i < 2; i++) {
-                        work->buttonIndex[i] = fn_1_EC0(work->buttonIndex[i], work->unk_0C);
+                if (teamState->alternatingPresses >= 8) {
+                    teamState->inputPhase = 1;
+                    for (memberIndex = 0; memberIndex < 2; memberIndex++) {
+                        teamState->buttonIndex[memberIndex] =
+                            fn_1_EC0(teamState->buttonIndex[memberIndex], teamState->inputPhase);
                     }
                 } else {
-                    work->buttonIndex[work->unk_0A] = fn_1_EC0(work->buttonIndex[work->unk_0A], work->unk_0C);
-                    fn_1_25EC(team, work->unk_0A, 1);
+                    teamState->buttonIndex[teamState->nextMember] = fn_1_EC0(
+                        teamState->buttonIndex[teamState->nextMember], teamState->inputPhase);
+                    fn_1_25EC(team, teamState->nextMember, 1);
                 }
             }
             break;
@@ -176,141 +190,158 @@ void fn_1_9B8(s16 team)
                 fn_1_25EC(team, 0, 4);
                 fn_1_25EC(team, 1, 4);
             }
-            total = 0;
-            for (i = 0; i < 2; i++) {
-                if (buttons[i] == lbl_1_data_0[work->buttonIndex[i]]) {
-                    fn_1_31BC(chars[i]);
-                    work->pressCount[i]++;
+            pressTotal = 0;
+            for (memberIndex = 0; memberIndex < 2; memberIndex++) {
+                if (buttonPresses[memberIndex] ==
+                    lbl_1_data_0[teamState->buttonIndex[memberIndex]]) {
+                    fn_1_31BC(characterIds[memberIndex]);
+                    teamState->pressCount[memberIndex]++;
                 }
-                total += work->pressCount[i];
+                pressTotal += teamState->pressCount[memberIndex];
             }
-            fn_1_3738(team, total / 10 + 9);
+            fn_1_3738(team, pressTotal / 10 + 9);
             break;
     }
 }
 
+/* Called from fn_1_954 each main-game frame; return the team at 100 presses, or randomly break a
+ * simultaneous tie. */
 s16 fn_1_D84(void)
 {
-    s16 totals[2];
-    s16 team;
-    s16 player;
+    s16 teamPressTotals[2];
+    s16 teamIndex;
+    s16 memberIndex;
 
     if (lbl_1_bss_4.winner != -1) {
         return -1;
     }
-    for (team = 0; team < 2; team++) {
-        totals[team] = 0;
-        if (lbl_1_bss_4.team[team].unk_0C != 0) {
-            for (player = 0; player < 2; player++) {
-                totals[team] += lbl_1_bss_4.team[team].pressCount[player];
+    for (teamIndex = 0; teamIndex < 2; teamIndex++) {
+        teamPressTotals[teamIndex] = 0;
+        if (lbl_1_bss_4.team[teamIndex].inputPhase != 0) {
+            for (memberIndex = 0; memberIndex < 2; memberIndex++) {
+                teamPressTotals[teamIndex] += lbl_1_bss_4.team[teamIndex].pressCount[memberIndex];
             }
         }
     }
-    if (totals[0] >= 100 && totals[1] >= 100) {
+    /* If both totals have reached the goal by this check, the game breaks the tie randomly. */
+    if (teamPressTotals[0] >= 100 && teamPressTotals[1] >= 100) {
         return frandmod(2);
     }
-    if (totals[0] >= 100) {
+    if (teamPressTotals[0] >= 100) {
         return 0;
     }
-    if (totals[1] >= 100) {
+    if (teamPressTotals[1] >= 100) {
         return 1;
     }
     return -1;
 }
 
-u16 fn_1_EC0(u16 previous, s16 phase)
+/* Called by fn_1_9B8 after an accepted alternating press or phase change to choose another button
+ * index. */
+u16 fn_1_EC0(u16 previousButton, s16 inputPhase)
 {
-    u16 button;
-    s16 count;
-    int i;
+    u16 candidateButton;
+    s16 buttonChoiceCount;
+    int attempt;
 
-    if (phase == 0) {
-        count = 6;
+    if (inputPhase == 0) {
+        buttonChoiceCount = 6;
     } else {
-        count = 4;
+        buttonChoiceCount = 4;
     }
-    for (i = 0; i < 5; i++) {
-        button = frandmod(count);
-        if (button != previous) {
+    /* Five failed retries leave the final candidate in place, even if it repeats the previous
+     * button. */
+    for (attempt = 0; attempt < 5; attempt++) {
+        candidateButton = frandmod(buttonChoiceCount);
+        if (candidateButton != previousButton) {
             break;
         }
     }
-    return button;
+    return candidateButton;
 }
 
+/* Called by fn_1_954 when fn_1_D84 finds a winner; store the result, award non-practice bonuses,
+ * and advance MGSEQ. */
 void fn_1_F44(s16 team)
 {
-    s16 chars[2];
-    int i;
-    int player;
-    int player2;
+    s16 winningCharacters[2];
+    int memberIndex;
+    int firstWinningPlayer;
+    int secondWinningPlayer;
 
     lbl_1_bss_4.winner = team;
     fn_1_33FC(team);
-    for (i = 0; i < 2; i++) {
-        chars[i] = lbl_1_bss_BC[lbl_1_bss_B4[team][i]].charNo;
+    /* The team-to-player lookup runs before the tie branch, so a -1 tie value also indexes this
+     * table here. */
+    for (memberIndex = 0; memberIndex < 2; memberIndex++) {
+        winningCharacters[memberIndex] = lbl_1_bss_BC[lbl_1_bss_B4[team][memberIndex]].charNo;
     }
     if (team == -1) {
         MgSeqDrawSet();
     } else {
-        MgSeqWinnerSet(chars[0], chars[1], -1, -1);
-        player = lbl_1_bss_B4[team][0];
+        MgSeqWinnerSet(winningCharacters[0], winningCharacters[1], -1, -1);
+        firstWinningPlayer = lbl_1_bss_B4[team][0];
         if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[player].mgCoinBonus = 10;
+            GwPlayer[firstWinningPlayer].mgCoinBonus = 10;
         }
-        player2 = lbl_1_bss_B4[team][1];
+        secondWinningPlayer = lbl_1_bss_B4[team][1];
         if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[player2].mgCoinBonus = 10;
+            GwPlayer[secondWinningPlayer].mgCoinBonus = 10;
         }
     }
     MgSeqModeNext();
 }
 
+/* Called by setup callback fn_1_F0 to reset round state and choose each team's initial
+ * alternating-phase button. */
 void fn_1_10A0(void)
 {
-    int team;
-    s16 nightF;
+    int teamIndex;
+    s16 nightScene;
 
     memset(&lbl_1_bss_4, 0, sizeof(M635Work));
     memset(lbl_1_bss_BC, 0, sizeof(lbl_1_bss_BC));
     lbl_1_bss_4.winner = -1;
-    nightF = GwMgNightF;
-    lbl_1_bss_4.nightF = nightF;
-    for (team = 0; team < 2; team++) {
-        lbl_1_bss_4.team[team].unk_0A = 1;
-        lbl_1_bss_4.team[team].buttonIndex[1] = frandmod(6);
+    nightScene = GwMgNightF;
+    lbl_1_bss_4.nightF = nightScene;
+    for (teamIndex = 0; teamIndex < 2; teamIndex++) {
+        lbl_1_bss_4.team[teamIndex].nextMember = 1;
+        lbl_1_bss_4.team[teamIndex].buttonIndex[1] = frandmod(6);
     }
 }
 
+/* Called from fn_1_9B8 for CPU-controlled members to return a simulated press when their frame
+ * timer expires. */
 u16 fn_1_1168(s16 team, s16 member)
 {
-    M635Team *work;
-    s16 player;
-    s16 difficulty;
+    M635Team *teamState;
+    s16 playerIndex;
+    s16 cpuDifficulty;
 
-    player = lbl_1_bss_B4[team][member];
-    difficulty = lbl_1_bss_BC[player].difficulty;
-    work = &lbl_1_bss_4.team[team];
-    switch (work->unk_0C) {
+    playerIndex = lbl_1_bss_B4[team][member];
+    cpuDifficulty = lbl_1_bss_BC[playerIndex].difficulty;
+    teamState = &lbl_1_bss_4.team[team];
+    switch (teamState->inputPhase) {
         case 0:
-            if (work->unk_0A != member) {
+            if (teamState->nextMember != member) {
                 return 0;
             }
-            if (lbl_1_bss_BC[player].timer-- <= 0) {
-                lbl_1_bss_BC[player].timer = fn_1_1308(difficulty);
-                return lbl_1_data_0[work->buttonIndex[member]];
+            if (lbl_1_bss_BC[playerIndex].timer-- <= 0) {
+                lbl_1_bss_BC[playerIndex].timer = fn_1_1308(cpuDifficulty);
+                return lbl_1_data_0[teamState->buttonIndex[member]];
             }
             break;
         case 1:
-            if (lbl_1_bss_BC[player].timer-- <= 0) {
-                lbl_1_bss_BC[player].timer = fn_1_13F8(difficulty);
-                return lbl_1_data_0[work->buttonIndex[member]];
+            if (lbl_1_bss_BC[playerIndex].timer-- <= 0) {
+                lbl_1_bss_BC[playerIndex].timer = fn_1_13F8(cpuDifficulty);
+                return lbl_1_data_0[teamState->buttonIndex[member]];
             }
             break;
     }
     return 0;
 }
 
+/* Called by fn_1_1168 and player setup to calculate the CPU delay for alternating-button input. */
 s16 fn_1_1308(s16 difficulty)
 {
     if (difficulty < 0 || difficulty > 3) {
@@ -319,6 +350,7 @@ s16 fn_1_1308(s16 difficulty)
     return 0.75 * lbl_1_data_12[difficulty][0] + frandmod(lbl_1_data_12[difficulty][0] / 2);
 }
 
+/* Called by fn_1_1168 to calculate the CPU delay for rapid-press input. */
 s16 fn_1_13F8(s16 difficulty)
 {
     if (difficulty < 0 || difficulty > 3) {
@@ -327,6 +359,8 @@ s16 fn_1_13F8(s16 difficulty)
     return 0.75 * lbl_1_data_12[difficulty][1] + frandmod(lbl_1_data_12[difficulty][1] / 2);
 }
 
+/* Debug camera helper: when called, pad 0 adjusts zoom, rotation, and the horizontal/depth camera
+ * center. */
 void fn_1_14E8(void)
 {
     if (HuPadBtn[0] & PAD_BUTTON_UP) {

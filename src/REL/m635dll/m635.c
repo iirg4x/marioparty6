@@ -1,3 +1,4 @@
+/* Minigame sequence callbacks, constants, and scene setup for Garden Grab. */
 #include "REL/m635dll.h"
 #include "game/audio.h"
 #include "game/wipe.h"
@@ -20,6 +21,7 @@ MGSEQ_PARAM lbl_1_data_78 = {
     fn_1_2D0, fn_1_3D8, fn_1_3DC, fn_1_3E0
 };
 
+/* MGSEQ initialization callback: create the object manager and start the sequence. */
 void fn_1_A0(void)
 {
     lbl_1_bss_64 = omInitObjMan(256, 8192);
@@ -27,6 +29,8 @@ void fn_1_A0(void)
     MgSeqCreate(&lbl_1_data_78);
 }
 
+/* MGSEQ setup callback registered in lbl_1_data_78: initialize gameplay and create scene/player
+ * objects on entry. */
 void fn_1_F0(s16 mode, s16 frameNo)
 {
     fn_1_10A0();
@@ -38,6 +42,8 @@ void fn_1_F0(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
+/* MGSEQ fade-in callback registered in lbl_1_data_78: advance the intro and update player/team
+ * animations each frame. */
 void fn_1_134(s16 mode, s16 frameNo)
 {
     fn_1_408(frameNo);
@@ -45,22 +51,26 @@ void fn_1_134(s16 mode, s16 frameNo)
     fn_1_3C34();
 }
 
+/* MGSEQ start callback registered in lbl_1_data_78: start music on entry and update the intro scene
+ * each frame. */
 void fn_1_164(s16 mode, s16 frameNo)
 {
     if (frameNo == 0) {
-        lbl_1_bss_4.music = HuAudBGMPlay(78);
+        lbl_1_bss_4.music = HuAudBGMPlay(MSM_STREAM_MGMUS_21);
     }
     fn_1_2CE8();
     fn_1_3C34();
 }
 
+/* MGSEQ main callback registered in lbl_1_data_78: show controls on entry, then update gameplay
+ * each frame. */
 void fn_1_1AC(s16 mode, s16 frameNo)
 {
-    int team;
+    int teamIndex;
 
     if (frameNo == 0) {
-        for (team = 0; team < 2; team++) {
-            fn_1_25EC(team, 1, 1);
+        for (teamIndex = 0; teamIndex < 2; teamIndex++) {
+            fn_1_25EC(teamIndex, 1, 1);
         }
     }
     fn_1_954(frameNo);
@@ -70,15 +80,17 @@ void fn_1_1AC(s16 mode, s16 frameNo)
     fn_1_2330();
 }
 
+/* MGSEQ finish callback registered in lbl_1_data_78: hide prompts, mark ties as draws, fade music
+ * on entry, and update the scene each frame. */
 void fn_1_224(s16 mode, s16 frameNo)
 {
-    int team;
-    int player;
+    int teamIndex;
+    int playerIndex;
 
     if (frameNo == 0) {
-        for (team = 0; team < 2; team++) {
-            for (player = 0; player < 2; player++) {
-                fn_1_25EC(team, player, 5);
+        for (teamIndex = 0; teamIndex < 2; teamIndex++) {
+            for (playerIndex = 0; playerIndex < 2; playerIndex++) {
+                fn_1_25EC(teamIndex, playerIndex, 5);
             }
         }
         if (lbl_1_bss_4.winner == -1) {
@@ -91,6 +103,8 @@ void fn_1_224(s16 mode, s16 frameNo)
     fn_1_42A0();
 }
 
+/* MGSEQ pre-winner callback registered in lbl_1_data_78: wipe to the result view, then advance
+ * through four states. */
 void fn_1_2D0(s16 mode, s16 frameNo)
 {
     switch (lbl_1_bss_4.state) {
@@ -123,9 +137,12 @@ void fn_1_2D0(s16 mode, s16 frameNo)
     fn_1_3C34();
 }
 
+/* MGSEQ winner callback; this minigame has no work in this phase. */
 void fn_1_3D8(s16 mode, s16 frameNo) {}
+/* MGSEQ fade-out callback; this minigame has no work in this phase. */
 void fn_1_3DC(s16 mode, s16 frameNo) {}
 
+/* MGSEQ close callback registered in lbl_1_data_78: remove the button-prompt sprites on exit. */
 void fn_1_3E0(s16 mode, s16 frameNo)
 {
     fn_1_2014();

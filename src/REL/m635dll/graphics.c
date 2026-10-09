@@ -1,3 +1,4 @@
+/* Scene models, player animations, score displays, and moving scenery for Garden Grab. */
 #include "REL/m635dll.h"
 #include "game/data.h"
 #include "game/gamework.h"
@@ -10,8 +11,8 @@
 #include "string.h"
 
 typedef struct M635SpritePos {
-    float x;
-    float y;
+    float x; /* Horizontal screen position in pixels. */
+    float y; /* Vertical screen position in pixels. */
 } M635SpritePos;
 
 M635Player lbl_1_bss_BC[4];
@@ -19,7 +20,7 @@ s16 lbl_1_bss_B4[2][2];
 M635Sprite lbl_1_bss_74[4];
 M635MovingModel lbl_1_bss_68;
 OMOBJMAN *lbl_1_bss_64;
-/* Unreferenced BSS interval; original type and purpose (possibly padding) unknown. */
+/* Four static bytes with no known game-facing use. */
 u8 lbl_1_bss_60[4];
 
 float lbl_1_data_A0[2] = { 7.0f / 6.0f, 5.0f / 3.0f };
@@ -101,16 +102,19 @@ u32 lbl_1_data_41C[12] = {
 };
 u32 lbl_1_data_44C[2] = { DATANUM(DATA_m635, 20), DATANUM(DATA_m635, 21) };
 
+/* Create the camera and set the starting view during sequence initialization. */
 void fn_1_1774(OMOBJMAN *objman)
 {
-    OMOBJ *obj;
+    /* Called during sequence initialization to create the camera and establish the starting
+     * view. */
+    OMOBJ *cameraViewObject;
 
     Hu3DCameraCreate(1);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(1, 20.0f, 60.0f, 25000.0f, 1.2f);
     Hu3DCameraPosSet(1, 0.0f, 800.0f, 2000.0f,
         0.0f, 1.0f, 0.0f, 0.0f, 100.0f, -500.0f);
-    obj = omAddObjEx(objman, 32730, 0, 0, -1, omOutView);
+    cameraViewObject = omAddObjEx(objman, 32730, 0, 0, -1, omOutView);
     Center.x = Center.y = 0.0f;
     Center.z = -400.0f;
     CRot.x = -30.0f;
@@ -119,22 +123,24 @@ void fn_1_1774(OMOBJMAN *objman)
     CZoom = 3000.0f;
 }
 
+/* Create lighting, shadows, and shared stage models during sequence initialization. */
 void fn_1_195C(void)
 {
-    s16 id;
-    int team;
-    s16 light;
-    s16 nightF;
+    /* Create lighting, shadows, and shared stage models during sequence initialization. */
+    s16 modelId;
+    int teamIndex;
+    s16 lightId;
+    s16 nightMode;
     HuVecF shadowPos;
     HuVecF shadowTarget;
     HuVecF shadowUp;
 
-    nightF = GwMgNightF;
-    lbl_1_bss_4.nightF = nightF;
-    light = Hu3DGLightCreateV(&lbl_1_data_D8, &lbl_1_data_E4, &lbl_1_data_F0[lbl_1_bss_4.nightF]);
-    Hu3DGLightStaticSet(light, 1);
-    Hu3DGLightInfinitytSet(light);
-    lbl_1_bss_4.light = light;
+    nightMode = GwMgNightF;
+    lbl_1_bss_4.nightF = nightMode;
+    lightId = Hu3DGLightCreateV(&lbl_1_data_D8, &lbl_1_data_E4, &lbl_1_data_F0[lbl_1_bss_4.nightF]);
+    Hu3DGLightStaticSet(lightId, 1);
+    Hu3DGLightInfinitytSet(lightId);
+    lbl_1_bss_4.light = lightId;
     Hu3DShadowCreate(30.0f, 20.0f, 10000.0f);
     shadowPos.x = 500.0f;
     shadowPos.y = 2000.0f;
@@ -143,174 +149,196 @@ void fn_1_195C(void)
     shadowUp.x = shadowUp.z = 0.0f;
     shadowTarget.x = shadowTarget.y = shadowTarget.z = 0.0f;
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
-    id = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_3E4[lbl_1_bss_4.nightF], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(id, HU3D_CAM0);
-    Hu3DModelPosSet(id, 0.0f, 0.0f, 0.0f);
-    Hu3DModelRotSet(id, 0.0f, 0.0f, 0.0f);
-    Hu3DModelScaleSet(id, 1.0f, 1.0f, 1.0f);
-    Hu3DModelShadowMapSet(id);
-    Hu3DModelAttrSet(id, HU3D_MOTATTR_LOOP);
+    modelId = Hu3DModelCreate(
+        HuDataSelHeapReadNum(lbl_1_data_3E4[lbl_1_bss_4.nightF], HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelCameraSet(modelId, HU3D_CAM0);
+    Hu3DModelPosSet(modelId, 0.0f, 0.0f, 0.0f);
+    Hu3DModelRotSet(modelId, 0.0f, 0.0f, 0.0f);
+    Hu3DModelScaleSet(modelId, 1.0f, 1.0f, 1.0f);
+    Hu3DModelShadowMapSet(modelId);
+    Hu3DModelAttrSet(modelId, HU3D_MOTATTR_LOOP);
     if (lbl_1_bss_4.nightF == 0) {
-        Hu3DModelShadowMapTPLvlSet(id, 0.8f);
+        Hu3DModelShadowMapTPLvlSet(modelId, 0.8f);
     } else {
-        Hu3DModelShadowMapTPLvlSet(id, 0.3f);
+        Hu3DModelShadowMapTPLvlSet(modelId, 0.3f);
     }
-    lbl_1_bss_4.model_4E = id;
-    id = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_3EC[lbl_1_bss_4.nightF], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(id, HU3D_CAM0);
-    Hu3DModelPosSet(id, 0.0f, 0.0f, 0.0f);
-    Hu3DModelRotSet(id, 0.0f, 0.0f, 0.0f);
-    Hu3DModelScaleSet(id, 1.0f, 1.0f, 1.0f);
-    lbl_1_bss_4.model_50 = id;
-    for (team = 0; team < 2; team++) {
-        id = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_3F4[lbl_1_bss_4.nightF][team], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(id, HU3D_CAM0);
-        Hu3DModelPosSetV(id, &lbl_1_data_C0[team]);
-        Hu3DMotionSpeedSet(id, 0.0f);
-        Hu3DModelShadowMapSet(id);
+    lbl_1_bss_4.shadowedGardenModel = modelId;
+    modelId = Hu3DModelCreate(
+        HuDataSelHeapReadNum(lbl_1_data_3EC[lbl_1_bss_4.nightF], HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelCameraSet(modelId, HU3D_CAM0);
+    Hu3DModelPosSet(modelId, 0.0f, 0.0f, 0.0f);
+    Hu3DModelRotSet(modelId, 0.0f, 0.0f, 0.0f);
+    Hu3DModelScaleSet(modelId, 1.0f, 1.0f, 1.0f);
+    lbl_1_bss_4.gardenStageModel = modelId;
+    for (teamIndex = 0; teamIndex < 2; teamIndex++) {
+        modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
+            lbl_1_data_3F4[lbl_1_bss_4.nightF][teamIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelCameraSet(modelId, HU3D_CAM0);
+        Hu3DModelPosSetV(modelId, &lbl_1_data_C0[teamIndex]);
+        Hu3DMotionSpeedSet(modelId, 0.0f);
+        Hu3DModelShadowMapSet(modelId);
         if (lbl_1_bss_4.nightF == 0) {
-            Hu3DModelShadowMapTPLvlSet(id, 0.8f);
+            Hu3DModelShadowMapTPLvlSet(modelId, 0.8f);
         } else {
-            Hu3DModelShadowMapTPLvlSet(id, 0.3f);
+            Hu3DModelShadowMapTPLvlSet(modelId, 0.3f);
         }
-        lbl_1_bss_4.team[team].unk_10.model = id;
-        id = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_404[lbl_1_bss_4.nightF][team], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(id, HU3D_CAM0);
-        Hu3DMotionSpeedSet(id, 0.0f);
-        lbl_1_bss_4.team[team].unk_20 = id;
-        id = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m635, 4), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(id, HU3D_CAM0);
-        Hu3DModelPosSetV(id, &lbl_1_data_A8[team]);
-        Hu3DMotionSpeedSet(id, 0.0f);
-        lbl_1_bss_4.team[team].unk_14.model = id;
-        id = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m635, 9), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(id, HU3D_CAM0);
-        Hu3DModelPosSetV(id, &lbl_1_data_A8[team]);
-        Hu3DMotionSpeedSet(id, 0.0f);
-        lbl_1_bss_4.team[team].unk_18.model = id;
-        id = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m635, 10), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(id, HU3D_CAM0);
-        Hu3DModelPosSetV(id, &lbl_1_data_A8[team]);
-        Hu3DMotionSpeedSet(id, 0.0f);
-        lbl_1_bss_4.team[team].unk_1C.model = id;
-        id = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_414[lbl_1_bss_4.nightF], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(id, HU3D_CAM0);
-        Hu3DModelPosSetV(id, &lbl_1_data_A8[team]);
-        Hu3DMotionSpeedSet(id, 0.0f);
-        lbl_1_bss_4.team[team].unk_22 = id;
-        id = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m635, 17), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(id, HU3D_CAM0);
-        Hu3DModelPosSetV(id, &lbl_1_data_A8[team]);
-        Hu3DMotionSpeedSet(id, 0.0f);
-        lbl_1_bss_4.team[team].unk_24 = id;
+        lbl_1_bss_4.team[teamIndex].teamProgressModel.model = modelId;
+        modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
+            lbl_1_data_404[lbl_1_bss_4.nightF][teamIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelCameraSet(modelId, HU3D_CAM0);
+        Hu3DMotionSpeedSet(modelId, 0.0f);
+        lbl_1_bss_4.team[teamIndex].lateStageModel = modelId;
+        modelId =
+            Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m635, 4), HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelCameraSet(modelId, HU3D_CAM0);
+        Hu3DModelPosSetV(modelId, &lbl_1_data_A8[teamIndex]);
+        Hu3DMotionSpeedSet(modelId, 0.0f);
+        lbl_1_bss_4.team[teamIndex].teamScoreModel.model = modelId;
+        modelId =
+            Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m635, 9), HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelCameraSet(modelId, HU3D_CAM0);
+        Hu3DModelPosSetV(modelId, &lbl_1_data_A8[teamIndex]);
+        Hu3DMotionSpeedSet(modelId, 0.0f);
+        lbl_1_bss_4.team[teamIndex].memberOneScoreModel.model = modelId;
+        modelId = Hu3DModelCreate(
+            HuDataSelHeapReadNum(DATANUM(DATA_m635, 10), HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelCameraSet(modelId, HU3D_CAM0);
+        Hu3DModelPosSetV(modelId, &lbl_1_data_A8[teamIndex]);
+        Hu3DMotionSpeedSet(modelId, 0.0f);
+        lbl_1_bss_4.team[teamIndex].memberZeroScoreModel.model = modelId;
+        modelId = Hu3DModelCreate(
+            HuDataSelHeapReadNum(lbl_1_data_414[lbl_1_bss_4.nightF], HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelCameraSet(modelId, HU3D_CAM0);
+        Hu3DModelPosSetV(modelId, &lbl_1_data_A8[teamIndex]);
+        Hu3DMotionSpeedSet(modelId, 0.0f);
+        lbl_1_bss_4.team[teamIndex].teamCueModel = modelId;
+        modelId = Hu3DModelCreate(
+            HuDataSelHeapReadNum(DATANUM(DATA_m635, 17), HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelCameraSet(modelId, HU3D_CAM0);
+        Hu3DModelPosSetV(modelId, &lbl_1_data_A8[teamIndex]);
+        Hu3DMotionSpeedSet(modelId, 0.0f);
+        lbl_1_bss_4.team[teamIndex].teamFinishModel = modelId;
     }
 }
 
+/* The close callback has no extra scene resources to release here. */
 void fn_1_2014(void)
 {
+    /* This minigame has no additional work in its sequence close callback. */
 }
 
+/* Called from the MGSEQ setup callback fn_1_F0 to create score and button sprites before play. */
 void fn_1_2018(void)
 {
-    ANIMDATA *buttonAnim[12];
-    ANIMDATA *backgroundAnim[2];
-    int i;
-    int member;
-    s16 group;
+    ANIMDATA *buttonAnimations[12];
+    ANIMDATA *backgroundAnimations[2];
+    int animationIndex;
+    int spriteMember;
+    s16 groupId;
 
-    for (i = 0; i < 12; i++) {
-        buttonAnim[i] = HuSprAnimRead(HuDataSelHeapReadNum(lbl_1_data_41C[i], HU_MEMNUM_OVL, HEAP_MODEL));
+    for (animationIndex = 0; animationIndex < 12; animationIndex++) {
+        buttonAnimations[animationIndex] = HuSprAnimRead(
+            HuDataSelHeapReadNum(lbl_1_data_41C[animationIndex], HU_MEMNUM_OVL, HEAP_MODEL));
     }
-    for (i = 0; i < 2; i++) {
-        backgroundAnim[i] = HuSprAnimRead(HuDataSelHeapReadNum(lbl_1_data_44C[i], HU_MEMNUM_OVL, HEAP_MODEL));
+    for (animationIndex = 0; animationIndex < 2; animationIndex++) {
+        backgroundAnimations[animationIndex] = HuSprAnimRead(
+            HuDataSelHeapReadNum(lbl_1_data_44C[animationIndex], HU_MEMNUM_OVL, HEAP_MODEL));
     }
-    for (i = 0; i < 4; i++) {
-        group = lbl_1_bss_74[i].group = HuSprGrpCreate(14);
-        HuSprGrpPosSet(group, lbl_1_data_188[i].x, lbl_1_data_188[i].y);
-        for (member = 0; member < 12; member++) {
-            HuSprGrpMemberSet(group, member, HuSprCreate(buttonAnim[member], 10, 0));
-            HuSprPosSet(group, member, 0.0f, -5.0f);
-            HuSprAttrSet(group, member, HUSPR_ATTR_DISPOFF);
+    for (animationIndex = 0; animationIndex < 4; animationIndex++) {
+        groupId = lbl_1_bss_74[animationIndex].group = HuSprGrpCreate(14);
+        HuSprGrpPosSet(groupId, lbl_1_data_188[animationIndex].x, lbl_1_data_188[animationIndex].y);
+        for (spriteMember = 0; spriteMember < 12; spriteMember++) {
+            HuSprGrpMemberSet(groupId, spriteMember,
+                              HuSprCreate(buttonAnimations[spriteMember], 10, 0));
+            HuSprPosSet(groupId, spriteMember, 0.0f, -5.0f);
+            HuSprAttrSet(groupId, spriteMember, HUSPR_ATTR_DISPOFF);
         }
-        for (member = 0; member < 2; member++) {
-            HuSprGrpMemberSet(group, member + 12, HuSprCreate(backgroundAnim[member], 15, 0));
-            HuSprAttrSet(group, member + 12, HUSPR_ATTR_DISPOFF);
-            HuSprTPLvlSet(group, member + 12, 0.75f);
+        for (spriteMember = 0; spriteMember < 2; spriteMember++) {
+            HuSprGrpMemberSet(groupId, spriteMember + 12,
+                              HuSprCreate(backgroundAnimations[spriteMember], 15, 0));
+            HuSprAttrSet(groupId, spriteMember + 12, HUSPR_ATTR_DISPOFF);
+            HuSprTPLvlSet(groupId, spriteMember + 12, 0.75f);
         }
-        lbl_1_bss_74[i].member = -1;
-        lbl_1_bss_74[i].state = 5;
-        lbl_1_bss_74[i].scale = 0.0f;
+        lbl_1_bss_74[animationIndex].member = -1;
+        lbl_1_bss_74[animationIndex].state = 5;
+        lbl_1_bss_74[animationIndex].scale = 0.0f;
     }
 }
 
+/* Update a player's button prompt after the input state changes. */
 void fn_1_2268(s16 team, s16 player)
 {
-    M635Sprite *sprite;
-    s16 member;
+    /* Update one player's button prompt after the input state changes. */
+    M635Sprite *prompt;
+    s16 buttonSprite;
 
-    sprite = &lbl_1_bss_74[player + team * 2];
-    if (sprite->state == 4) {
-        member = lbl_1_bss_4.team[team].buttonIndex[player] * 2;
-        HuSprAttrSet(sprite->group, member, HUSPR_ATTR_DISPOFF);
-        HuSprAttrReset(sprite->group, member + 1, HUSPR_ATTR_DISPOFF);
-        sprite->timer = 0;
+    prompt = &lbl_1_bss_74[player + team * 2];
+    if (prompt->state == 4) {
+        buttonSprite = lbl_1_bss_4.team[team].buttonIndex[player] * 2;
+        HuSprAttrSet(prompt->group, buttonSprite, HUSPR_ATTR_DISPOFF);
+        HuSprAttrReset(prompt->group, buttonSprite + 1, HUSPR_ATTR_DISPOFF);
+        prompt->timer = 0;
     }
 }
 
+/* Update button prompt scales, blinking, and hide timers once per gameplay frame. */
 void fn_1_2330(void)
 {
-    M635Sprite *sprite;
-    int i;
-    s16 member;
+    /* Per-frame update for button prompt scales, blinking, and hide timers. */
+    M635Sprite *prompt;
+    int spriteIndex;
+    s16 buttonSprite;
 
-    for (i = 0; i < 4; i++) {
-        sprite = &lbl_1_bss_74[i];
-        member = lbl_1_bss_4.team[i / 2].buttonIndex[i % 2] * 2;
-        switch (sprite->state) {
+    for (spriteIndex = 0; spriteIndex < 4; spriteIndex++) {
+        prompt = &lbl_1_bss_74[spriteIndex];
+        buttonSprite = lbl_1_bss_4.team[spriteIndex / 2].buttonIndex[spriteIndex % 2] * 2;
+        switch (prompt->state) {
         case 5:
             break;
         case 0:
             break;
         case 1:
-            sprite->scale += 0.2;
-            if (sprite->scale >= 1.0f) {
-                sprite->scale = 1.0f;
-                sprite->state = 0;
+            prompt->scale += 0.2;
+            if (prompt->scale >= 1.0f) {
+                prompt->scale = 1.0f;
+                prompt->state = 0;
             }
-            HuSprScaleSet(sprite->group, member, sprite->scale, sprite->scale);
-            HuSprScaleSet(sprite->group, 12, sprite->scale, sprite->scale);
+            HuSprScaleSet(prompt->group, buttonSprite, prompt->scale, prompt->scale);
+            HuSprScaleSet(prompt->group, 12, prompt->scale, prompt->scale);
             break;
         case 3:
-            sprite->timer--;
-            if (sprite->timer <= 0) {
-                HuSprAttrSet(sprite->group, sprite->member + 1, HUSPR_ATTR_DISPOFF);
-                HuSprAttrSet(sprite->group, 13, HUSPR_ATTR_DISPOFF);
-                sprite->state = 5;
-                sprite->scale = 0.0f;
+            prompt->timer--;
+            if (prompt->timer <= 0) {
+                HuSprAttrSet(prompt->group, prompt->member + 1, HUSPR_ATTR_DISPOFF);
+                HuSprAttrSet(prompt->group, 13, HUSPR_ATTR_DISPOFF);
+                prompt->state = 5;
+                prompt->scale = 0.0f;
             }
             break;
         case 4:
-            if (sprite->scale < 1.0f) {
-                sprite->scale += 0.2;
+            if (prompt->scale < 1.0f) {
+                prompt->scale += 0.2;
             }
-            if (sprite->timer % 8 == 0) {
-                HuSprAttrSet(sprite->group, sprite->member, HUSPR_ATTR_DISPOFF);
-                HuSprAttrReset(sprite->group, sprite->member + 1, HUSPR_ATTR_DISPOFF);
-            } else if (sprite->timer % 8 == 4) {
-                HuSprAttrSet(sprite->group, sprite->member + 1, HUSPR_ATTR_DISPOFF);
-                HuSprAttrReset(sprite->group, sprite->member, HUSPR_ATTR_DISPOFF);
+            if (prompt->timer % 8 == 0) {
+                HuSprAttrSet(prompt->group, prompt->member, HUSPR_ATTR_DISPOFF);
+                HuSprAttrReset(prompt->group, prompt->member + 1, HUSPR_ATTR_DISPOFF);
+            } else if (prompt->timer % 8 == 4) {
+                HuSprAttrSet(prompt->group, prompt->member + 1, HUSPR_ATTR_DISPOFF);
+                HuSprAttrReset(prompt->group, prompt->member, HUSPR_ATTR_DISPOFF);
             }
-            HuSprScaleSet(sprite->group, sprite->member, sprite->scale, sprite->scale);
-            HuSprScaleSet(sprite->group, sprite->member + 1, sprite->scale, sprite->scale);
-            HuSprScaleSet(sprite->group, 13, sprite->scale, sprite->scale);
-            sprite->timer++;
+            HuSprScaleSet(prompt->group, prompt->member, prompt->scale, prompt->scale);
+            HuSprScaleSet(prompt->group, prompt->member + 1, prompt->scale, prompt->scale);
+            HuSprScaleSet(prompt->group, 13, prompt->scale, prompt->scale);
+            prompt->timer++;
             break;
         }
     }
 }
 
+/* Set a player's prompt state and initialize the corresponding sprite members. */
 void fn_1_25EC(s16 team, s16 player, s16 state)
 {
+    /* Set a player's button prompt state and initialize its visible sprite members. */
     M635Sprite *sprite;
     int i;
     s16 member;
@@ -349,13 +377,17 @@ void fn_1_25EC(s16 team, s16 player, s16 state)
     }
 }
 
+/* Return the current button prompt state for one team member. */
 s16 fn_1_27E4(s16 team, s16 player)
 {
+    /* Return the current button prompt state for one team member. */
     return lbl_1_bss_74[player + team * 2].state;
 }
 
+/* Show one selected sprite member and the shared prompt for a player. */
 void fn_1_280C(s16 team, s16 player, s16 member)
 {
+    /* Show a selected sprite member and the shared prompt for one player. */
     M635Sprite *sprite;
     int i;
 
@@ -367,16 +399,20 @@ void fn_1_280C(s16 team, s16 player, s16 member)
     HuSprAttrReset(sprite->group, 13, HUSPR_ATTR_DISPOFF);
 }
 
+/* Hide the shared prompt sprite for one player. */
 void fn_1_28A8(s16 team, s16 player)
 {
+    /* Hide the shared prompt sprite for one player. */
     M635Sprite *sprite;
 
     sprite = &lbl_1_bss_74[player + team * 2];
     HuSprAttrSet(sprite->group, 13, HUSPR_ATTR_DISPOFF);
 }
 
+/* Destroy all four button-prompt sprite groups when the minigame exits. */
 void fn_1_2904(void)
 {
+    /* Destroy all four button-prompt sprite groups when the minigame exits. */
     int i;
 
     for (i = 0; i < 4; i++) {
@@ -384,8 +420,10 @@ void fn_1_2904(void)
     }
 }
 
+/* Build player-to-team mappings, create character models, and load their motions. */
 void fn_1_2954(void)
 {
+    /* Build player-to-team mappings, create character models, and load their motions. */
     int i;
     s16 charNo;
     int member;
@@ -447,8 +485,10 @@ void fn_1_2954(void)
     }
 }
 
+/* Update character depth each frame along the scripted result-position steps. */
 void fn_1_2CE8(void)
 {
+    /* Per-frame update that moves characters through the scripted result positions. */
     int member;
     int team;
     s16 state;
@@ -466,6 +506,7 @@ void fn_1_2CE8(void)
                 z += (lbl_1_data_2E8[state].z[member] - lbl_1_data_2E8[state - 1].z[member])
                     / lbl_1_data_2E8[state].frames;
                 if (z <= lbl_1_data_2E8[state].z[member]) {
+                    /* Clamp the local value at the target; this branch does not write it back. */
                     z = lbl_1_data_2E8[state].z[member];
                 } else {
                     lbl_1_bss_BC[player].z = z;
@@ -479,16 +520,20 @@ void fn_1_2CE8(void)
     }
 }
 
+/* Set a character's scripted position state when the requested index is valid. */
 void fn_1_2F08(s16 player, s16 state)
 {
+    /* Set a character's scripted position state when the requested index is valid. */
     if (state < 0 || state > 11) {
         return;
     }
     lbl_1_bss_BC[player].state = state;
 }
 
+/* Advance a character to the next scripted position state after a press or result. */
 void fn_1_2F40(s16 player)
 {
+    /* Advance a character to the next scripted position state after a press or result. */
     if (lbl_1_bss_BC[player].state > 8) {
         lbl_1_bss_BC[player].state++;
     } else if (lbl_1_bss_BC[player].state == 8) {
@@ -506,12 +551,15 @@ void fn_1_2F40(s16 player)
     }
 }
 
+/* Play a character reaction, vibrate that player's controller, and trigger team motion. */
 BOOL fn_1_30C8(s16 player, s16 charNo)
 {
+    /* Play a character reaction, vibrate that player's controller, and trigger team motion. */
     float maxTime;
     M635Player *work;
 
     work = &lbl_1_bss_BC[player];
+    /* The maximum is queried here but the reaction uses the fixed blend below. */
     maxTime = CharMotionMaxTimeGet(charNo);
     fn_1_31BC(charNo);
     CharMotionShiftSet(charNo, lbl_1_bss_BC[player].motions[0],
@@ -521,8 +569,10 @@ BOOL fn_1_30C8(s16 player, s16 charNo)
     return TRUE;
 }
 
+/* Request the character's cry twice for each successful button press. */
 void fn_1_31BC(s16 charNo)
 {
+    /* Request the character's cry twice for each successful button press. */
     int i;
 
     for (i = 0; i < 2; i++) {
@@ -530,8 +580,10 @@ void fn_1_31BC(s16 charNo)
     }
 }
 
+/* Blend the selected character motion over the requested number of frames. */
 void fn_1_3218(s16 player, s16 motion, float time)
 {
+    /* Blend the selected character motion over the requested number of frames. */
     s16 charNo;
 
     if (motion < 0 || motion >= 6) {
@@ -542,16 +594,20 @@ void fn_1_3218(s16 player, s16 motion, float time)
         0.0f, time, lbl_1_data_158[motion].attr);
 }
 
+/* Map a team and member slot to the corresponding global player index. */
 s16 fn_1_32E0(s16 team, s16 member)
 {
+    /* Map a team and member slot to the corresponding global player index. */
     if (team < 0 || team >= 2 || member < 0 || member >= 2) {
         return 0;
     }
     return lbl_1_bss_B4[team][member];
 }
 
+/* Reposition all four characters for the tied-result scene. */
 void fn_1_3340(void)
 {
+    /* Reposition all four characters for the tied-result scene. */
     int team;
     int member;
     s16 player;
@@ -566,21 +622,24 @@ void fn_1_3340(void)
     }
 }
 
+/* The close callback has no additional garden animation cleanup in this helper. */
 void fn_1_33F8(void)
 {
 }
 
+/* Advance one team's garden cue and trigger character reactions at its threshold. */
 void fn_1_33FC(s16 team)
 {
+    /* Advance this team's garden animation and trigger character reactions at its threshold. */
     s16 player;
     int member;
     M635Team *work;
 
     work = &lbl_1_bss_4.team[team];
-    work->unk_0E++;
-    Hu3DMotionSpeedSet(lbl_1_bss_4.team[team].unk_22, 1.0f);
-    if (work->unk_0E >= 20) {
-        Hu3DMotionSpeedSet(lbl_1_bss_4.team[team].unk_24, 1.0f);
+    work->scoreStep++;
+    Hu3DMotionSpeedSet(lbl_1_bss_4.team[team].teamCueModel, 1.0f);
+    if (work->scoreStep >= 20) {
+        Hu3DMotionSpeedSet(lbl_1_bss_4.team[team].teamFinishModel, 1.0f);
         for (member = 0; member < 2; member++) {
             player = fn_1_32E0(team, member);
             fn_1_3218(player, 4, 8.0f);
@@ -591,8 +650,10 @@ void fn_1_33FC(s16 team)
     }
 }
 
+/* Update a team's score step and animate both team members when the step changes. */
 void fn_1_3738(s16 team, s16 value)
 {
+    /* Update a team's score step and animate both team members when the step changes. */
     s16 player;
     int member;
     s16 players[2];
@@ -600,7 +661,7 @@ void fn_1_3738(s16 team, s16 value)
     M635Team *work;
 
     work = &lbl_1_bss_4.team[team];
-    if (work->unk_0E != value) {
+    if (work->scoreStep != value) {
         for (member = 0; member < 2; member++) {
             player = lbl_1_bss_B4[team][member];
             players[member] = lbl_1_bss_BC[player].playerNo;
@@ -610,42 +671,47 @@ void fn_1_3738(s16 team, s16 value)
         }
         if (value > 9) {
             if (team == 0) {
-                HuAudFXPlay(1863);
+                HuAudFXPlay(M635_SFX_RACE_TEAM_0);
             } else {
-                HuAudFXPlay(1864);
+                HuAudFXPlay(M635_SFX_RACE_TEAM_1);
             }
         }
     }
-    work->unk_0E = value;
+    work->scoreStep = value;
 }
 
+/* Advance one score animation and restart it when the late animation frames are reached. */
 void fn_1_3AC4(s16 team)
 {
+    /* Advance one score animation and restart its loop when it reaches the late frames. */
     M635Model *model;
     M635Team *work;
 
     work = &lbl_1_bss_4.team[team];
-    if (work->unk_0E < 10) {
-        work->unk_0E++;
+    if (work->scoreStep < 10) {
+        work->scoreStep++;
     }
-    if (work->unk_14.time >= 430) {
-        model = &work->unk_14;
+    if (work->teamScoreModel.time >= 430) {
+        model = &work->teamScoreModel;
         model->time = 401;
         Hu3DMotionTimeSet(model->model, model->time);
         Hu3DMotionSpeedSet(model->model, 1.0f);
     }
 }
 
+/* Restart the selected teammate's score animation when it has reached its end. */
 void fn_1_3B7C(s16 team, s16 member, s16 player)
 {
+    /* Restart the selected teammate's score animation when it has reached its end. */
     M635Model *model;
     M635Team *work;
 
     work = &lbl_1_bss_4.team[team];
+    /* The member slot selects the model; player is not used by this helper. */
     if (member != 0) {
-        model = &work->unk_18;
+        model = &work->memberOneScoreModel;
     } else {
-        model = &work->unk_1C;
+        model = &work->memberZeroScoreModel;
     }
     if (model->time >= 430) {
         model->time = 401;
@@ -654,8 +720,10 @@ void fn_1_3B7C(s16 team, s16 member, s16 player)
     }
 }
 
+/* Update score-model frames and play team cues as each score step advances. */
 void fn_1_3C34(void)
 {
+    /* Per-frame score animation update: seek to step-specific frames and play team cues. */
     M635Model *model;
     s16 step;
     int team;
@@ -663,18 +731,18 @@ void fn_1_3C34(void)
 
     for (team = 0; team < 2; team++) {
         work = &lbl_1_bss_4.team[team];
-        step = work->unk_0E;
+        step = work->scoreStep;
         if (step != 0) {
-            model = &work->unk_14;
+            model = &work->teamScoreModel;
             model->time = Hu3DMotionTimeGet(model->model);
             if (model->time < lbl_1_data_1A8[step - 1][0]) {
                 if (lbl_1_data_1A8[step - 1][0] < 400 || lbl_1_data_1A8[step - 1][0] > 700) {
                     model->time = lbl_1_data_1A8[step - 1][0];
                     Hu3DMotionTimeSet(model->model, model->time);
                     if (team == 0) {
-                        HuAudFXPlay(1859);
+                        HuAudFXPlay(M635_SFX_SCORE_TEAM_0);
                     } else {
-                        HuAudFXPlay(1860);
+                        HuAudFXPlay(M635_SFX_SCORE_TEAM_1);
                     }
                 }
                 Hu3DMotionSpeedSet(model->model, 1.0f);
@@ -683,15 +751,15 @@ void fn_1_3C34(void)
                 Hu3DMotionSpeedSet(model->model, 0.0f);
             }
             if (model->time == 769) {
-                Hu3DMotionSpeedSet(lbl_1_bss_4.team[team].unk_20, 1.0f);
+                Hu3DMotionSpeedSet(lbl_1_bss_4.team[team].lateStageModel, 1.0f);
             } else if (model->time == 710) {
                 if (team == 0) {
-                    HuAudFXPlay(1861);
+                    HuAudFXPlay(M635_SFX_TEAM_0_STAGE_CUE);
                 } else {
-                    HuAudFXPlay(1862);
+                    HuAudFXPlay(M635_SFX_TEAM_1_STAGE_CUE);
                 }
             }
-            model = &work->unk_18;
+            model = &work->memberOneScoreModel;
             model->time = Hu3DMotionTimeGet(model->model);
             if (model->time < lbl_1_data_1A8[step - 1][2]) {
                 model->time = lbl_1_data_1A8[step - 1][2];
@@ -701,7 +769,7 @@ void fn_1_3C34(void)
             if (model->time >= lbl_1_data_1A8[step - 1][3]) {
                 Hu3DMotionSpeedSet(model->model, 0.0f);
             }
-            model = &work->unk_1C;
+            model = &work->memberZeroScoreModel;
             model->time = Hu3DMotionTimeGet(model->model);
             if (model->time < lbl_1_data_1A8[step - 1][4]) {
                 model->time = lbl_1_data_1A8[step - 1][4];
@@ -711,7 +779,7 @@ void fn_1_3C34(void)
             if (model->time >= lbl_1_data_1A8[step - 1][5]) {
                 Hu3DMotionSpeedSet(model->model, 0.0f);
             }
-            model = &work->unk_10;
+            model = &work->teamProgressModel;
             model->time = Hu3DMotionTimeGet(model->model);
             if (model->time < lbl_1_data_1A8[step - 1][6]) {
                 model->time = lbl_1_data_1A8[step - 1][6];
@@ -725,8 +793,10 @@ void fn_1_3C34(void)
     }
 }
 
+/* Create the moving garden prop and choose its initial side and facing. */
 void fn_1_4114(void)
 {
+    /* Create the moving garden prop and choose its initial side and facing. */
     s16 model;
     s16 direction;
     float x;
@@ -736,9 +806,11 @@ void fn_1_4114(void)
     direction = frandmod(2);
     lbl_1_bss_68.direction = direction;
     if (lbl_1_bss_4.nightF == 0) {
-        model = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m635, 18), HU_MEMNUM_OVL, HEAP_MODEL));
+        model = Hu3DModelCreate(
+            HuDataSelHeapReadNum(DATANUM(DATA_m635, 18), HU_MEMNUM_OVL, HEAP_MODEL));
     } else {
-        model = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m635, 19), HU_MEMNUM_OVL, HEAP_MODEL));
+        model = Hu3DModelCreate(
+            HuDataSelHeapReadNum(DATANUM(DATA_m635, 19), HU_MEMNUM_OVL, HEAP_MODEL));
     }
     Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
     Hu3DModelCameraSet(model, HU3D_CAM0);
@@ -756,8 +828,10 @@ void fn_1_4114(void)
     lbl_1_bss_68.model = model;
 }
 
+/* Move the garden prop across the stage and pause briefly at each edge. */
 void fn_1_42A0(void)
 {
+    /* Move the garden prop across the stage and pause briefly at each edge. */
     if (lbl_1_bss_68.timer > 0) {
         lbl_1_bss_68.timer--;
         return;
@@ -782,5 +856,6 @@ void fn_1_42A0(void)
 
 void fn_1_448C(void)
 {
+    /* Hide the moving garden prop before the result camera takes over. */
     Hu3DModelAttrSet(lbl_1_bss_68.model, HU3D_ATTR_DISPOFF);
 }
