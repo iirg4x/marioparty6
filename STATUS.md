@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 28.79% | 48.36% |
+| Entire project | 28.95% | 48.45% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 16.28% | 16.38% |
+| REL modules | 16.48% | 16.52% |
+
+Motion Check (`safdll`) selects all **37 functions** from three complete translation units; its linked REL matches retail.
 
 Hyper Sniper (`m646Dll`) selects all **166 functions** from ten complete translation units; its linked REL matches retail.
 
