@@ -1,3 +1,4 @@
+// Loads, starts, and releases the object modules used as game overlays.
 #define _MATH_H
 #include "game/objdll.h"
 #include "game/dvd.h"
@@ -15,161 +16,177 @@ void omDLLDBGOut(void)
 	OSReport("DLL DBG OUT\n");
 }
 
-void omDLLInit(OVLTBL *ovlList)
+// Called by omMasterInit to clear the loaded-module slots and save the overlay table.
+void omDLLInit(OVLTBL *overlayTable)
 {
-	s32 i;
+	s32 slot;
 	OSReport("DLL DBG OUT\n");
-	for(i=0; i<OMDLLINFO_MAX; i++) {
-		omDLLinfoTbl[i] = NULL;
+	for(slot=0; slot<OMDLLINFO_MAX; slot++) {
+		omDLLinfoTbl[slot] = NULL;
 	}
-	omDLLFileList = ovlList;
+	omDLLFileList = overlayTable;
 }
 
-s32 omDLLStart(s16 dllno, s16 reloadF)
+// Called by the overlay manager when an overlay is selected; links a new module or restarts a
+// loaded one.
+s32 omDLLStart(s16 overlayNumber, s16 reloadFlag)
 {
-	s32 dll;
-	OSReport("DLLStart %d %d\n", dllno, reloadF);
-	dll = omDLLSearch(dllno);
-	if(dll >= 0 && !reloadF) {
-		OMDLLINFO *dllP = omDLLinfoTbl[dll];
-		OSReport("objdll>Already Loaded %s(%08x %08x)\n", dllP->name, dllP->module, dllP->bss);
-		
-		omDLLInfoDump(&dllP->module->info);
-		omDLLHeaderDump(dllP->module);
-		memset(dllP->bss, 0, dllP->module->bssSize);
+	s32 slot;
+	OSReport("DLLStart %d %d\n", overlayNumber, reloadFlag);
+	slot = omDLLSearch(overlayNumber);
+	if(slot >= 0 && !reloadFlag) {
+		OMDLLINFO *moduleInfo = omDLLinfoTbl[slot];
+                OSReport("objdll>Already Loaded %s(%08x %08x)\n", moduleInfo->name,
+                         moduleInfo->module, moduleInfo->bss);
+
+                omDLLInfoDump(&moduleInfo->module->info);
+		omDLLHeaderDump(moduleInfo->module);
+		// Clear the module's BSS before rerunning its prolog.
+		memset(moduleInfo->bss, 0, moduleInfo->module->bssSize);
 		HuMemDCFlushAll();
-		dllP->ret = ((OMDLLPROLOG)dllP->module->prolog)();
-		OSReport("objdll> %s prolog end\n", dllP->name);
-		return dll;
+		moduleInfo->ret = ((OMDLLPROLOG)moduleInfo->module->prolog)();
+		OSReport("objdll> %s prolog end\n", moduleInfo->name);
+		return slot;
 	} else {
-		for(dll=0; dll<OMDLLINFO_MAX; dll++) {
-			if(omDLLinfoTbl[dll] == NULL) {
+		for(slot=0; slot<OMDLLINFO_MAX; slot++) {
+			if(omDLLinfoTbl[slot] == NULL) {
 				break;
 			}
 		}
-		if(dll == OMDLLINFO_MAX) {
+		if(slot == OMDLLINFO_MAX) {
 			return -1;
 		}
-		omDLLLink(&omDLLinfoTbl[dll], dllno, TRUE);
-		return dll;
+		omDLLLink(&omDLLinfoTbl[slot], overlayNumber, TRUE);
+		return slot;
 	}
 }
 
-void omDLLNumEnd(s16 dllno, s16 reloadF)
+// Called by omOvlKill to end the overlay identified by its table number.
+void omDLLNumEnd(s16 overlayNumber, s16 reloadFlag)
 {
-	s16 dll;
-	if(dllno < 0) {
-		OSReport("objdll>omDLLNumEnd Invalid dllno %d\n", dllno);
+	s16 slot;
+	if(overlayNumber < 0) {
+		OSReport("objdll>omDLLNumEnd Invalid dllno %d\n", overlayNumber);
 		return;
 	}
-	OSReport("objdll>omDLLNumEnd %d %d\n", dllno, reloadF);
-	dll = omDLLSearch(dllno);
-	if(dll < 0) {
-		OSReport("objdll>omDLLNumEnd not found DLL No%d\n", dllno);
+	OSReport("objdll>omDLLNumEnd %d %d\n", overlayNumber, reloadFlag);
+	slot = omDLLSearch(overlayNumber);
+	if(slot < 0) {
+		OSReport("objdll>omDLLNumEnd not found DLL No%d\n", overlayNumber);
 		return;
 	}
-	omDLLEnd(dll, reloadF);
+	omDLLEnd(slot, reloadFlag);
 }
 
-void omDLLEnd(s16 dll, s16 reloadF)
+// Ends a loaded overlay; omDLLNumEnd resolves the table number before calling this.
+void omDLLEnd(s16 slot, s16 reloadFlag)
 {
-	OSReport("objdll>omDLLEnd %d %d\n", dll, reloadF);
-	if(reloadF == TRUE) {
-		OSReport("objdll>End DLL:%s\n", omDLLinfoTbl[dll]->name);
-		omDLLUnlink(omDLLinfoTbl[dll], 1);
-		omDLLinfoTbl[dll] = NULL;
+	OSReport("objdll>omDLLEnd %d %d\n", slot, reloadFlag);
+	if(reloadFlag == TRUE) {
+		OSReport("objdll>End DLL:%s\n", omDLLinfoTbl[slot]->name);
+		omDLLUnlink(omDLLinfoTbl[slot], 1);
+		omDLLinfoTbl[slot] = NULL;
 	} else {
-		OMDLLINFO *dllP = omDLLinfoTbl[dll];
-		
+		OMDLLINFO *moduleInfo = omDLLinfoTbl[slot];
+
 		OSReport("objdll>Call Epilog\n");
-		((OMDLLEPILOG)dllP->module->epilog)();
-		OSReport("objdll>End DLL stayed:%s\n", omDLLinfoTbl[dll]->name);
+		((OMDLLEPILOG)moduleInfo->module->epilog)();
+		OSReport("objdll>End DLL stayed:%s\n", omDLLinfoTbl[slot]->name);
 	}
 	OSReport("objdll>End DLL finish\n");
 }
 
-OMDLLINFO *omDLLLink(OMDLLINFO **dllInfoP, s16 dllno, s16 prologF)
+// Reads and links the overlay module, then optionally runs its prolog during startup.
+OMDLLINFO *omDLLLink(OMDLLINFO **moduleInfoOut, s16 overlayNumber, s16 callProlog)
 {
-	OMDLLINFO *dll;
-	OVLTBL *dllFile = &omDLLFileList[dllno];
-    static u8 ATTRIBUTE_ALIGN(32) strTable[1024]; //Needed for proper alignment of BSS in file
-    
-	OSReport("objdll>Link DLL:%s\n", dllFile->name);
-	dll = HuMemDirectMalloc(HEAP_HEAP, sizeof(OMDLLINFO));
-	*dllInfoP = dll;
-	dll->name = dllFile->name;
-	dll->module = HuDvdDataReadDirect(dllFile->name, HEAP_HEAP);
-	dll->bss = HuMemDirectMalloc(HEAP_HEAP, dll->module->bssSize);
-	if(OSLink(&dll->module->info, dll->bss) != TRUE) {
+	OMDLLINFO *moduleInfo;
+	OVLTBL *overlayEntry = &omDLLFileList[overlayNumber];
+    static u8 ATTRIBUTE_ALIGN(32) strTable[1024]; // Reserved to preserve BSS alignment in this
+                                                  // module.
+
+	OSReport("objdll>Link DLL:%s\n", overlayEntry->name);
+	moduleInfo = HuMemDirectMalloc(HEAP_HEAP, sizeof(OMDLLINFO));
+	*moduleInfoOut = moduleInfo;
+	moduleInfo->name = overlayEntry->name;
+	moduleInfo->module = HuDvdDataReadDirect(overlayEntry->name, HEAP_HEAP);
+	moduleInfo->bss = HuMemDirectMalloc(HEAP_HEAP, moduleInfo->module->bssSize);
+	if(OSLink(&moduleInfo->module->info, moduleInfo->bss) != TRUE) {
 		OSReport("objdll>++++++++++++++++ DLL Link Failed\n");
+		// The failed link is logged, then this path continues to report and optionally start the
+		// module.
 	}
-	omDLLInfoDump(&dll->module->info);
-	omDLLHeaderDump(dll->module);
-	OSReport("objdll>LinkOK %08x %08x\n", dll->module, dll->bss);
-	if(prologF == TRUE) {
-		OSReport("objdll> %s prolog start\n", dllFile->name);
-		dll->ret = ((OMDLLPROLOG)dll->module->prolog)();
-		OSReport("objdll> %s prolog end\n", dllFile->name);
+	omDLLInfoDump(&moduleInfo->module->info);
+	omDLLHeaderDump(moduleInfo->module);
+	OSReport("objdll>LinkOK %08x %08x\n", moduleInfo->module, moduleInfo->bss);
+	if(callProlog == TRUE) {
+		OSReport("objdll> %s prolog start\n", overlayEntry->name);
+		moduleInfo->ret = ((OMDLLPROLOG)moduleInfo->module->prolog)();
+		OSReport("objdll> %s prolog end\n", overlayEntry->name);
 	}
-	return dll;
+	return moduleInfo;
 }
 
-void omDLLUnlink(OMDLLINFO *dllInfo, s16 epilogF)
+// Runs the epilog when requested, attempts to unlink the module, logs failure, then frees its BSS,
+// module image, and info block regardless.
+void omDLLUnlink(OMDLLINFO *moduleInfo, s16 callEpilog)
 {
-	OSReport("odjdll>Unlink DLL:%s\n", dllInfo->name);
-	if(epilogF == TRUE) {
+	OSReport("odjdll>Unlink DLL:%s\n", moduleInfo->name);
+	if(callEpilog == TRUE) {
 		OSReport("objdll>Unlink DLL epilog\n");
-		((OMDLLEPILOG)dllInfo->module->epilog)();
+		((OMDLLEPILOG)moduleInfo->module->epilog)();
 		OSReport("objdll>Unlink DLL epilog finish\n");
 	}
-	if(OSUnlink(&dllInfo->module->info) != TRUE) {
+	if(OSUnlink(&moduleInfo->module->info) != TRUE) {
 		OSReport("objdll>+++++++++++++++++ DLL Unlink Failed\n");
 	}
-	HuMemDirectFree(dllInfo->bss);
-	HuMemDirectFree(dllInfo->module);
-	HuMemDirectFree(dllInfo);
+	HuMemDirectFree(moduleInfo->bss);
+	HuMemDirectFree(moduleInfo->module);
+	HuMemDirectFree(moduleInfo);
 }
 
-s32 omDLLSearch(s16 dllno)
+// Finds the loaded slot whose module name matches the requested overlay table entry.
+s32 omDLLSearch(s16 overlayNumber)
 {
-	s32 i;
-	OVLTBL *dllFile = &omDLLFileList[dllno];
-	OSReport("Search:%s\n", dllFile->name);
-	for(i=0; i<OMDLLINFO_MAX; i++) {
-		OMDLLINFO *dll = omDLLinfoTbl[i];
-		if(dll != NULL && strcmp(dll->name, dllFile->name) == 0) {
-			OSReport("+++++++++++ Find%d: %s\n", i, dll->name);
-			return i;
+	s32 slot;
+	OVLTBL *overlayEntry = &omDLLFileList[overlayNumber];
+	OSReport("Search:%s\n", overlayEntry->name);
+	for(slot=0; slot<OMDLLINFO_MAX; slot++) {
+		OMDLLINFO *loadedModule = omDLLinfoTbl[slot];
+		if(loadedModule != NULL && strcmp(loadedModule->name, overlayEntry->name) == 0) {
+			OSReport("+++++++++++ Find%d: %s\n", slot, loadedModule->name);
+			return slot;
 		}
 	}
 	return -1;
 }
 
-void omDLLInfoDump(OSModuleInfo *module)
+// Prints the OS linker metadata when a module is loaded or restarted.
+void omDLLInfoDump(OSModuleInfo *moduleInfo)
 {
 	OSReport("===== DLL Module Info dump ====\n");
-	OSReport("                   ID:0x%08x\n", module->id);
-	OSReport("             LinkPrev:0x%08x\n", module->link.prev);
-	OSReport("             LinkNext:0x%08x\n", module->link.next);
-	OSReport("          Section num:%d\n", module->numSections);
-	OSReport("Section info tbl ofst:0x%08x\n", module->sectionInfoOffset);
-	OSReport("           nameOffset:0x%08x\n", module->nameOffset);
-	OSReport("             nameSize:%d\n", module->nameSize);
-	OSReport("              version:0x%08x\n", module->version);
+	OSReport("                   ID:0x%08x\n", moduleInfo->id);
+	OSReport("             LinkPrev:0x%08x\n", moduleInfo->link.prev);
+	OSReport("             LinkNext:0x%08x\n", moduleInfo->link.next);
+	OSReport("          Section num:%d\n", moduleInfo->numSections);
+	OSReport("Section info tbl ofst:0x%08x\n", moduleInfo->sectionInfoOffset);
+	OSReport("           nameOffset:0x%08x\n", moduleInfo->nameOffset);
+	OSReport("             nameSize:%d\n", moduleInfo->nameSize);
+	OSReport("              version:0x%08x\n", moduleInfo->version);
 	OSReport("===============================\n");
 }
 
-void omDLLHeaderDump(OSModuleHeader *module)
+// Prints the module header's BSS, relocation, and entry-point fields during loading.
+void omDLLHeaderDump(OSModuleHeader *moduleHeader)
 {
 	OSReport("==== DLL Module Header dump ====\n");
-	OSReport("          bss Size:0x%08x\n", module->bssSize);
-	OSReport("        rel Offset:0x%08x\n", module->relOffset);
-	OSReport("        imp Offset:0x%08x\n", module->impOffset);
-	OSReport("    prolog Section:%d\n", module->prologSection);
-	OSReport("    epilog Section:%d\n", module->epilogSection);
-	OSReport("unresolved Section:%d\n", module->unresolvedSection);
-	OSReport("       prolog func:0x%08x\n", module->prolog);
-	OSReport("       epilog func:0x%08x\n", module->epilog);
-	OSReport("   unresolved func:0x%08x\n", module->unresolved);
+	OSReport("          bss Size:0x%08x\n", moduleHeader->bssSize);
+	OSReport("        rel Offset:0x%08x\n", moduleHeader->relOffset);
+	OSReport("        imp Offset:0x%08x\n", moduleHeader->impOffset);
+	OSReport("    prolog Section:%d\n", moduleHeader->prologSection);
+	OSReport("    epilog Section:%d\n", moduleHeader->epilogSection);
+	OSReport("unresolved Section:%d\n", moduleHeader->unresolvedSection);
+	OSReport("       prolog func:0x%08x\n", moduleHeader->prolog);
+	OSReport("       epilog func:0x%08x\n", moduleHeader->epilog);
+	OSReport("   unresolved func:0x%08x\n", moduleHeader->unresolved);
 	OSReport("================================\n");
 }
