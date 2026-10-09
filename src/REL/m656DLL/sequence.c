@@ -1,102 +1,107 @@
+/* Registers Mass Meteor's sequence callbacks and owns its object manager. */
 #include "REL/m656/m656.h"
 
 MGSEQ_PARAM lbl_1_data_0 = {
-    0,
-    0,
-    fn_1_118,
-    fn_1_14C,
-    fn_1_150,
-    fn_1_154,
-    fn_1_158,
-    fn_1_15C,
-    fn_1_160,
-    fn_1_164,
-    fn_1_168,
+    0, 0, fn_1_118, fn_1_14C, fn_1_150, fn_1_154, fn_1_158, fn_1_15C, fn_1_160, fn_1_164, fn_1_168,
 };
 
 OMOBJMAN *lbl_1_bss_0;
 
+/* Called by _prolog to create the object manager and start the sequence process. */
 void fn_1_A0(void)
 {
     lbl_1_bss_0 = MgActorObjectSetup();
     HuPrcChildCreate(fn_1_F4, 100U, 36864U, 0, lbl_1_bss_0);
 }
 
+/* The child process created by fn_1_A0 advances the object manager once per frame. */
 void fn_1_F4(void)
 {
     MgSeqCreate(&lbl_1_data_0);
-loop_1:
-    MgActorExec();
-    HuPrcVSleep();
-    goto loop_1;
+    while (1) {
+        MgActorExec();
+        HuPrcVSleep();
+    }
 }
 
-void fn_1_118(s16 mode, s16 frameNo)
+/* Called by MgSeqCreate at the intro transition to start gameplay and advance the mode. */
+void fn_1_118(s16 sequenceMode, s16 frameNumber)
 {
     fn_1_16C(100, 12U, fn_1_5050);
     MgSeqModeNext();
 }
 
-void fn_1_14C(s16 mode, s16 frameNo)
+/* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
+void fn_1_14C(s16 sequenceMode, s16 frameNumber)
 {
 
 }
 
-void fn_1_150(s16 mode, s16 frameNo)
+/* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
+void fn_1_150(s16 sequenceMode, s16 frameNumber)
 {
 
 }
 
-void fn_1_154(s16 mode, s16 frameNo)
+/* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
+void fn_1_154(s16 sequenceMode, s16 frameNumber)
 {
 
 }
 
-void fn_1_158(s16 mode, s16 frameNo)
+/* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
+void fn_1_158(s16 sequenceMode, s16 frameNumber)
 {
 
 }
 
-void fn_1_15C(s16 mode, s16 frameNo)
+/* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
+void fn_1_15C(s16 sequenceMode, s16 frameNumber)
 {
 
 }
 
-void fn_1_160(s16 mode, s16 frameNo)
+/* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
+void fn_1_160(s16 sequenceMode, s16 frameNumber)
 {
 
 }
 
-void fn_1_164(s16 mode, s16 frameNo)
+/* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
+void fn_1_164(s16 sequenceMode, s16 frameNumber)
 {
 
 }
 
-void fn_1_168(s16 mode, s16 frameNo)
+/* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
+void fn_1_168(s16 sequenceMode, s16 frameNumber)
 {
 
 }
 
-void *fn_1_16C(s32 priority, u32 size, void (*hook)(OMOBJ *))
+/* Called by Mass Meteor setup callbacks to register an object and allocate zeroed work data. */
+void *fn_1_16C(s32 priority, u32 workSize, void (*objectCallback)(OMOBJ *))
 {
-    OMOBJ *temp_r31;
+    OMOBJ *object;
 
-    temp_r31 = omAddObjEx(lbl_1_bss_0, (s16) priority, 0U, 0U, 0, hook);
-    if (size != 0) {
-        temp_r31->data = HuMemDirectMallocNum(HEAP_HEAP, (s32) size, 268435456U);
-        memset(temp_r31->data, 0, size);
+    object = omAddObjEx(lbl_1_bss_0, (s16) priority, 0U, 0U, 0, objectCallback);
+    if (workSize != 0) {
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, (s32) workSize, HU_MEMNUM_OVL);
+        memset(object->data, 0, workSize);
     } else {
-        temp_r31->data = NULL;
+        object->data = NULL;
     }
-    return temp_r31->data;
+    return object->data;
 }
 
-void fn_1_20C(OMOBJ *obj, void (*hook)(OMOBJ *))
+/* Called by stage callbacks to change the function run for an object's next frame. */
+void fn_1_20C(OMOBJ *object, void (*objectCallback)(OMOBJ *))
 {
-    obj->objFunc = hook;
+    object->objFunc = objectCallback;
 }
 
-float fn_1_214(f32 start, f32 end)
+/* Chooses a random stage value between the supplied lower and upper bounds. */
+float fn_1_214(f32 minimum, f32 maximum)
 {
-    return start + ((end - start) * frandf());
+    return minimum + ((maximum - minimum) * frandf());
 }

@@ -1,101 +1,122 @@
+/* Builds bounds and tests sphere, capsule, triangle, and segment collisions. */
 #include "REL/m656/m656.h"
 
-void fn_1_22FC(M656Sphere *out, f32 x, f32 y, f32 z, f32 radius)
+/* Sets a stage-space sphere when gameplay creates a collision shape. */
+void fn_1_22FC(M656Sphere *sphere, f32 centerX, f32 centerY, f32 centerZ, f32 radius)
 {
-    out->center.x = x;
-    out->center.y = y;
-    out->center.z = z;
-    out->radius = radius;
+    sphere->center.x = centerX;
+    sphere->center.y = centerY;
+    sphere->center.z = centerZ;
+    sphere->radius = radius;
 }
 
-void fn_1_2310(M656Bounds *out, M656Capsule *capsule)
+/* Computes a capsule's stage-space broad-phase bounds before overlap tests. */
+void fn_1_2310(M656Bounds *bounds, M656Capsule *capsule)
 {
-    HuVecF points[2];
-    points[0] = capsule->segment.start;
-    fn_1_4A8(&points[1], &capsule->segment.start, &capsule->segment.delta);
-    out->min.x = (points[0].x < points[1].x ? points[0].x : points[1].x) - capsule->radius;
-    out->max.x = capsule->radius + (points[0].x >= points[1].x ? points[0].x : points[1].x);
-    out->min.y = (points[0].y < points[1].y ? points[0].y : points[1].y) - capsule->radius;
-    out->max.y = capsule->radius + (points[0].y >= points[1].y ? points[0].y : points[1].y);
-    out->min.z = (points[0].z < points[1].z ? points[0].z : points[1].z) - capsule->radius;
-    out->max.z = capsule->radius + (points[0].z >= points[1].z ? points[0].z : points[1].z);
+    HuVecF endpoints[2];
+    endpoints[0] = capsule->segment.start;
+    fn_1_4A8(&endpoints[1], &capsule->segment.start, &capsule->segment.delta);
+    bounds->min.x =
+        (endpoints[0].x < endpoints[1].x ? endpoints[0].x : endpoints[1].x) - capsule->radius;
+    bounds->max.x =
+        capsule->radius + (endpoints[0].x >= endpoints[1].x ? endpoints[0].x : endpoints[1].x);
+    bounds->min.y =
+        (endpoints[0].y < endpoints[1].y ? endpoints[0].y : endpoints[1].y) - capsule->radius;
+    bounds->max.y =
+        capsule->radius + (endpoints[0].y >= endpoints[1].y ? endpoints[0].y : endpoints[1].y);
+    bounds->min.z =
+        (endpoints[0].z < endpoints[1].z ? endpoints[0].z : endpoints[1].z) - capsule->radius;
+    bounds->max.z =
+        capsule->radius + (endpoints[0].z >= endpoints[1].z ? endpoints[0].z : endpoints[1].z);
 }
 
-void fn_1_24C8(M656Bounds *out, M656Sphere *sphere)
+/* fn_1_67E8 uses these bounds to reject meteors before its sphere-contact test. */
+void fn_1_24C8(M656Bounds *bounds, M656Sphere *sphere)
 {
-    out->min = sphere->center;
-    out->min.x -= sphere->radius;
-    out->min.y -= sphere->radius;
-    out->min.z -= sphere->radius;
-    out->max = sphere->center;
-    out->max.x += sphere->radius;
-    out->max.y += sphere->radius;
-    out->max.z += sphere->radius;
+    bounds->min = sphere->center;
+    bounds->min.x -= sphere->radius;
+    bounds->min.y -= sphere->radius;
+    bounds->min.z -= sphere->radius;
+    bounds->max = sphere->center;
+    bounds->max.x += sphere->radius;
+    bounds->max.y += sphere->radius;
+    bounds->max.z += sphere->radius;
 }
 
-void fn_1_255C(M656Bounds *out, M656Triangle *triangle)
+/* Computes triangle bounds for broad-phase collision checks. */
+void fn_1_255C(M656Bounds *bounds, M656Triangle *triangle)
 {
-    HuVecF points[3];
-    int index;
-    points[0] = triangle->start;
-    fn_1_4A8(&points[1], &triangle->start, &triangle->edge1);
-    fn_1_4A8(&points[2], &triangle->start, &triangle->edge2);
-    out->min = points[0];
-    out->max = out->min;
-    for (index = 1; index < 3; index++) {
-        out->min.x = out->min.x > points[index].x ? points[index].x : out->min.x;
-        out->max.x = out->max.x <= points[index].x ? points[index].x : out->max.x;
-        out->min.y = out->min.y > points[index].y ? points[index].y : out->min.y;
-        out->max.y = out->max.y <= points[index].y ? points[index].y : out->max.y;
-        out->min.z = out->min.z > points[index].z ? points[index].z : out->min.z;
-        out->max.z = out->max.z <= points[index].z ? points[index].z : out->max.z;
+    HuVecF vertices[3];
+    int vertexIndex;
+    vertices[0] = triangle->start;
+    fn_1_4A8(&vertices[1], &triangle->start, &triangle->edge1);
+    fn_1_4A8(&vertices[2], &triangle->start, &triangle->edge2);
+    bounds->min = vertices[0];
+    bounds->max = bounds->min;
+    for (vertexIndex = 1; vertexIndex < 3; vertexIndex++) {
+        bounds->min.x =
+            bounds->min.x > vertices[vertexIndex].x ? vertices[vertexIndex].x : bounds->min.x;
+        bounds->max.x =
+            bounds->max.x <= vertices[vertexIndex].x ? vertices[vertexIndex].x : bounds->max.x;
+        bounds->min.y =
+            bounds->min.y > vertices[vertexIndex].y ? vertices[vertexIndex].y : bounds->min.y;
+        bounds->max.y =
+            bounds->max.y <= vertices[vertexIndex].y ? vertices[vertexIndex].y : bounds->max.y;
+        bounds->min.z =
+            bounds->min.z > vertices[vertexIndex].z ? vertices[vertexIndex].z : bounds->min.z;
+        bounds->max.z =
+            bounds->max.z <= vertices[vertexIndex].z ? vertices[vertexIndex].z : bounds->max.z;
     }
 }
 
-s32 fn_1_27C0(M656Bounds *a, M656Bounds *b)
+/* fn_1_67E8 rejects separated player and meteor bounds before testing sphere contact. */
+s32 fn_1_27C0(M656Bounds *firstBounds, M656Bounds *secondBounds)
 {
-    if ((a->min.z < b->max.z) && (a->max.z > b->min.z) && (a->min.x < b->max.x) && (a->max.x > b->min.x) && (a->min.y < b->max.y) && (a->max.y > b->min.y)) {
+    if ((firstBounds->min.z < secondBounds->max.z) && (firstBounds->max.z > secondBounds->min.z) &&
+        (firstBounds->min.x < secondBounds->max.x) && (firstBounds->max.x > secondBounds->min.x) &&
+        (firstBounds->min.y < secondBounds->max.y) && (firstBounds->max.y > secondBounds->min.y)) {
         return 1;
     }
     return 0;
 }
 
-/* The unused retail entry takes single-word arguments here, then reads their
- * stack homes as vectors. The following words are not initialized by this
- * function. Preserve that observed behavior; the original signature is unknown
- * and this entry is not portable-safe for callers. */
-s32 fn_1_2830(M656Sphere *a, s32 wordA, M656Sphere *b, s32 wordB,
-    float maxTime, float *time, HuVecF *out)
+/* Predicts a moving sphere collision during the current frame and reports its contact time. */
+s32 fn_1_2830(M656Sphere *firstSphere, s32 velocityWordA, M656Sphere *secondSphere,
+              s32 velocityWordB, float maxTime, float *hitTime, HuVecF *contactPointOut)
 {
-    HuVecF relative, delta, point;
-    float speedSquared, distanceSquared, radiusSum, radiusSquared;
-    float dot, c, discriminant;
-    fn_1_4E0(&relative, (HuVecF *)&wordB, (HuVecF *)&wordA);
-    speedSquared = fn_1_410(&relative);
-    fn_1_4E0(&delta, &b->center, &a->center);
-    distanceSquared = fn_1_410(&delta);
-    radiusSum = a->radius + b->radius;
-    radiusSquared = radiusSum * radiusSum;
-    if (speedSquared > 0.0f) {
-        dot = fn_1_440(&delta, &relative);
-        if (dot <= 0.0f) {
-            if (-maxTime * speedSquared <= dot ||
-                distanceSquared + maxTime * (2.0f * dot + maxTime * speedSquared) <= radiusSquared) {
-                c = distanceSquared - radiusSquared;
-                discriminant = dot * dot - speedSquared * c;
-                if (discriminant >= 0.0f) {
-                    if (c <= 0.0f) {
-                        *time = 0.0f;
-                        fn_1_4A8(out, &a->center, &b->center);
-                        fn_1_6F8(out, out, 0.5f);
+    HuVecF relativeVelocity, centerDelta, contactPoint;
+    float relativeSpeedSquared, centerDistanceSquared, combinedRadius, combinedRadiusSquared;
+    float velocityDotOffset, separationTerm, collisionDiscriminant;
+    fn_1_4E0(&relativeVelocity, (HuVecF *)&velocityWordB, (HuVecF *)&velocityWordA);
+    relativeSpeedSquared = fn_1_410(&relativeVelocity);
+    fn_1_4E0(&centerDelta, &secondSphere->center, &firstSphere->center);
+    centerDistanceSquared = fn_1_410(&centerDelta);
+    combinedRadius = firstSphere->radius + secondSphere->radius;
+    combinedRadiusSquared = combinedRadius * combinedRadius;
+    if (relativeSpeedSquared > 0.0f) {
+        velocityDotOffset = fn_1_440(&centerDelta, &relativeVelocity);
+        if (velocityDotOffset <= 0.0f) {
+            if (-maxTime * relativeSpeedSquared <= velocityDotOffset ||
+                centerDistanceSquared +
+                        maxTime * (2.0f * velocityDotOffset + maxTime * relativeSpeedSquared) <=
+                    combinedRadiusSquared) {
+                separationTerm = centerDistanceSquared - combinedRadiusSquared;
+                collisionDiscriminant =
+                    velocityDotOffset * velocityDotOffset - relativeSpeedSquared * separationTerm;
+                if (collisionDiscriminant >= 0.0f) {
+                    if (separationTerm <= 0.0f) {
+                        *hitTime = 0.0f;
+                        fn_1_4A8(contactPointOut, &firstSphere->center, &secondSphere->center);
+                        fn_1_6F8(contactPointOut, contactPointOut, 0.5f);
                     } else {
-                        *time = -(dot + sqrtf(discriminant)) / speedSquared;
-                        if (*time < 0.0f) *time = 0.0f;
-                        else if (*time > maxTime) *time = maxTime;
-                        fn_1_6F8(&point, &relative, *time);
-                        /* Retail computes this local point without copying it
-                         * to out on this branch. Do not silently repair it. */
-                        fn_1_4A8(&point, &point, &delta);
+                        *hitTime = -(velocityDotOffset + sqrtf(collisionDiscriminant)) /
+                                   relativeSpeedSquared;
+                        if (*hitTime < 0.0f) *hitTime = 0.0f;
+                        else if (*hitTime > maxTime) *hitTime = maxTime;
+                        fn_1_6F8(&contactPoint, &relativeVelocity, *hitTime);
+                        /* This branch updates a temporary contact point but leaves the output
+                         * untouched. */
+                        fn_1_4A8(&contactPoint, &contactPoint, &centerDelta);
                     }
                     return 1;
                 }
@@ -103,498 +124,623 @@ s32 fn_1_2830(M656Sphere *a, s32 wordA, M656Sphere *b, s32 wordB,
             return 0;
         }
     }
-    if (distanceSquared <= radiusSquared) {
-        *time = 0.0f;
-        fn_1_4A8(out, &a->center, &b->center);
-        fn_1_6F8(out, out, 0.5f);
+    if (centerDistanceSquared <= combinedRadiusSquared) {
+        *hitTime = 0.0f;
+        fn_1_4A8(contactPointOut, &firstSphere->center, &secondSphere->center);
+        fn_1_6F8(contactPointOut, contactPointOut, 0.5f);
         return 1;
     }
     return 0;
 }
 
-float fn_1_2BE8(M656Sphere *a, M656Sphere *b)
+/* fn_1_67E8 compares max(0, centerDistanceSquared - radiusASquared - radiusBSquared) with zero. */
+float fn_1_2BE8(M656Sphere *firstSphere, M656Sphere *secondSphere)
 {
-    HuVecF delta;
-    float distance;
-    fn_1_4E0(&delta, &a->center, &b->center);
-    distance = fn_1_410(&delta);
-    distance -= a->radius * a->radius + b->radius * b->radius;
-    if (distance < 0.0f) distance = 0.0f;
-    return distance;
+    HuVecF centerOffset;
+    float gapSquared;
+    fn_1_4E0(&centerOffset, &firstSphere->center, &secondSphere->center);
+    gapSquared = fn_1_410(&centerOffset);
+    gapSquared -=
+        firstSphere->radius * firstSphere->radius + secondSphere->radius * secondSphere->radius;
+    if (gapSquared < 0.0f) gapSquared = 0.0f;
+    return gapSquared;
 }
 
-float fn_1_2C8C(M656Sphere *a, M656Sphere *b)
+/* Returns sqrt(max(0, centerDistanceSquared - radiusASquared - radiusBSquared)) for gameplay
+ * thresholds. */
+float fn_1_2C8C(M656Sphere *sphereA, M656Sphere *sphereB)
 {
-    return sqrtf(fn_1_2BE8(a, b));
+    return sqrtf(fn_1_2BE8(sphereA, sphereB));
 }
 
-f32 fn_1_2E18(Point3d *arg0, M656Triangle *arg1, f32 *arg2, f32 *arg3)
+/* Returns the squared gap to the closest triangle point and optionally outputs its barycentric
+ * weights. */
+f32 fn_1_2E18(Point3d *queryPoint, M656Triangle *triangle, f32 *barycentricSOut,
+              f32 *barycentricTOut)
 {
-    Point3d offset;
-    f32 determinant;
-    f32 t;
-    f32 s;
-    f32 b0;
-    f32 b1;
-    f32 c;
+    Point3d pointOffset;
+    f32 gramDeterminant;
+    f32 barycentricT;
+    f32 barycentricS;
+    f32 pointOffsetDotEdge1;
+    f32 pointOffsetDotEdge2;
+    f32 offsetLengthSquared;
     f32 distanceSquared;
-    f32 a11;
-    f32 a00;
-    f32 a01;
-    f32 numerator;
-    f32 denominator;
+    f32 edge2LengthSquared;
+    f32 edge1LengthSquared;
+    f32 edgeDot;
+    f32 edgeParameterNumerator;
+    f32 edgeParameterDenominator;
     f32 edge1;
     f32 edge0;
 
-    fn_1_4E0(&offset, &arg1->start, arg0);
-    a00 = fn_1_410(&arg1->edge1);
-    a01 = fn_1_440(&arg1->edge1, &arg1->edge2);
-    a11 = fn_1_410(&arg1->edge2);
-    b0 = fn_1_440(&offset, &arg1->edge1);
-    b1 = fn_1_440(&offset, &arg1->edge2);
-    c = fn_1_410(&offset);
-    determinant = fabsf((a00 * a11) - (a01 * a01));
-    s = (a01 * b1) - (a11 * b0);
-    t = (a01 * b0) - (a00 * b1);
-    if ((s + t) <= determinant) {
-        if (s < 0.0f) {
-            if (t < 0.0f) {
-                if (b0 < 0.0f) {
-                    t = 0.0f;
-                    if (-b0 >= a00) {
-                        s = 1.0f;
-                        distanceSquared = c + (a00 + (2.0f * b0));
+    fn_1_4E0(&pointOffset, &triangle->start, queryPoint);
+    edge1LengthSquared = fn_1_410(&triangle->edge1);
+    edgeDot = fn_1_440(&triangle->edge1, &triangle->edge2);
+    edge2LengthSquared = fn_1_410(&triangle->edge2);
+    pointOffsetDotEdge1 = fn_1_440(&pointOffset, &triangle->edge1);
+    pointOffsetDotEdge2 = fn_1_440(&pointOffset, &triangle->edge2);
+    offsetLengthSquared = fn_1_410(&pointOffset);
+    gramDeterminant = fabsf((edge1LengthSquared * edge2LengthSquared) - (edgeDot * edgeDot));
+    barycentricS = (edgeDot * pointOffsetDotEdge2) - (edge2LengthSquared * pointOffsetDotEdge1);
+    barycentricT = (edgeDot * pointOffsetDotEdge1) - (edge1LengthSquared * pointOffsetDotEdge2);
+    if ((barycentricS + barycentricT) <= gramDeterminant) {
+        if (barycentricS < 0.0f) {
+            if (barycentricT < 0.0f) {
+                if (pointOffsetDotEdge1 < 0.0f) {
+                    barycentricT = 0.0f;
+                    if (-pointOffsetDotEdge1 >= edge1LengthSquared) {
+                        barycentricS = 1.0f;
+                        distanceSquared = offsetLengthSquared +
+                                          (edge1LengthSquared + (2.0f * pointOffsetDotEdge1));
                     } else {
-                        s = -b0 / a00;
-                        distanceSquared = c + (b0 * s);
+                        barycentricS = -pointOffsetDotEdge1 / edge1LengthSquared;
+                        distanceSquared =
+                            offsetLengthSquared + (pointOffsetDotEdge1 * barycentricS);
                     }
                 } else {
-                    s = 0.0f;
-                    if (b1 >= 0.0f) {
-                        t = 0.0f;
-                        distanceSquared = c;
-                    } else if (-b1 >= a11) {
-                        t = 1.0f;
-                        distanceSquared = c + (a11 + (2.0f * b1));
+                    barycentricS = 0.0f;
+                    if (pointOffsetDotEdge2 >= 0.0f) {
+                        barycentricT = 0.0f;
+                        distanceSquared = offsetLengthSquared;
+                    } else if (-pointOffsetDotEdge2 >= edge2LengthSquared) {
+                        barycentricT = 1.0f;
+                        distanceSquared = offsetLengthSquared +
+                                          (edge2LengthSquared + (2.0f * pointOffsetDotEdge2));
                     } else {
-                        t = -b1 / a11;
-                        distanceSquared = c + (b1 * t);
+                        barycentricT = -pointOffsetDotEdge2 / edge2LengthSquared;
+                        distanceSquared =
+                            offsetLengthSquared + (pointOffsetDotEdge2 * barycentricT);
                     }
                 }
             } else {
-                s = 0.0f;
-                if (b1 >= 0.0f) {
-                    t = 0.0f;
-                    distanceSquared = c;
-                } else if (-b1 >= a11) {
-                    t = 1.0f;
-                    distanceSquared = c + (a11 + (2.0f * b1));
+                barycentricS = 0.0f;
+                if (pointOffsetDotEdge2 >= 0.0f) {
+                    barycentricT = 0.0f;
+                    distanceSquared = offsetLengthSquared;
+                } else if (-pointOffsetDotEdge2 >= edge2LengthSquared) {
+                    barycentricT = 1.0f;
+                    distanceSquared =
+                        offsetLengthSquared + (edge2LengthSquared + (2.0f * pointOffsetDotEdge2));
                 } else {
-                    t = -b1 / a11;
-                    distanceSquared = c + (b1 * t);
+                    barycentricT = -pointOffsetDotEdge2 / edge2LengthSquared;
+                    distanceSquared = offsetLengthSquared + (pointOffsetDotEdge2 * barycentricT);
                 }
             }
-        } else if (t < 0.0f) {
-            t = 0.0f;
-            if (b0 >= 0.0f) {
-                s = 0.0f;
-                distanceSquared = c;
-            } else if (-b0 >= a00) {
-                s = 1.0f;
-                distanceSquared = c + (a00 + (2.0f * b0));
+        } else if (barycentricT < 0.0f) {
+            barycentricT = 0.0f;
+            if (pointOffsetDotEdge1 >= 0.0f) {
+                barycentricS = 0.0f;
+                distanceSquared = offsetLengthSquared;
+            } else if (-pointOffsetDotEdge1 >= edge1LengthSquared) {
+                barycentricS = 1.0f;
+                distanceSquared =
+                    offsetLengthSquared + (edge1LengthSquared + (2.0f * pointOffsetDotEdge1));
             } else {
-                s = -b0 / a00;
-                distanceSquared = c + (b0 * s);
+                barycentricS = -pointOffsetDotEdge1 / edge1LengthSquared;
+                distanceSquared = offsetLengthSquared + (pointOffsetDotEdge1 * barycentricS);
             }
         } else {
-            f32 inverseDeterminant = 1.0f / determinant;
-            s = s * inverseDeterminant;
-            t = t * inverseDeterminant;
-            distanceSquared = c + ((s * ((2.0f * b0) + ((a00 * s) + (a01 * t)))) + (t * ((2.0f * b1) + ((a01 * s) + (a11 * t)))));
+            f32 inverseGramDeterminant = 1.0f / gramDeterminant;
+            barycentricS = barycentricS * inverseGramDeterminant;
+            barycentricT = barycentricT * inverseGramDeterminant;
+            distanceSquared =
+                offsetLengthSquared +
+                ((barycentricS *
+                  ((2.0f * pointOffsetDotEdge1) +
+                   ((edge1LengthSquared * barycentricS) + (edgeDot * barycentricT)))) +
+                 (barycentricT *
+                  ((2.0f * pointOffsetDotEdge2) +
+                   ((edgeDot * barycentricS) + (edge2LengthSquared * barycentricT)))));
         }
-    } else if (s < 0.0f) {
-        edge0 = a01 + b0;
-        edge1 = a11 + b1;
+    } else if (barycentricS < 0.0f) {
+        edge0 = edgeDot + pointOffsetDotEdge1;
+        edge1 = edge2LengthSquared + pointOffsetDotEdge2;
         if (edge1 > edge0) {
-            numerator = edge1 - edge0;
-            denominator = a11 + (a00 - (2.0f * a01));
-            if (numerator >= denominator) {
-                s = 1.0f;
-                t = 0.0f;
-                distanceSquared = c + (a00 + (2.0f * b0));
+            edgeParameterNumerator = edge1 - edge0;
+            edgeParameterDenominator = edge2LengthSquared + (edge1LengthSquared - (2.0f * edgeDot));
+            if (edgeParameterNumerator >= edgeParameterDenominator) {
+                barycentricS = 1.0f;
+                barycentricT = 0.0f;
+                distanceSquared =
+                    offsetLengthSquared + (edge1LengthSquared + (2.0f * pointOffsetDotEdge1));
             } else {
-                s = numerator / denominator;
-                t = 1.0f - s;
-                distanceSquared = c + ((s * ((2.0f * b0) + ((a00 * s) + (a01 * t)))) + (t * ((2.0f * b1) + ((a01 * s) + (a11 * t)))));
+                barycentricS = edgeParameterNumerator / edgeParameterDenominator;
+                barycentricT = 1.0f - barycentricS;
+                distanceSquared =
+                    offsetLengthSquared +
+                    ((barycentricS *
+                      ((2.0f * pointOffsetDotEdge1) +
+                       ((edge1LengthSquared * barycentricS) + (edgeDot * barycentricT)))) +
+                     (barycentricT *
+                      ((2.0f * pointOffsetDotEdge2) +
+                       ((edgeDot * barycentricS) + (edge2LengthSquared * barycentricT)))));
             }
         } else {
-            s = 0.0f;
+            barycentricS = 0.0f;
             if (edge1 <= 0.0f) {
-                t = 1.0f;
-                distanceSquared = c + (a11 + (2.0f * b1));
-            } else if (b1 >= 0.0f) {
-                t = 0.0f;
-                distanceSquared = c;
+                barycentricT = 1.0f;
+                distanceSquared =
+                    offsetLengthSquared + (edge2LengthSquared + (2.0f * pointOffsetDotEdge2));
+            } else if (pointOffsetDotEdge2 >= 0.0f) {
+                barycentricT = 0.0f;
+                distanceSquared = offsetLengthSquared;
             } else {
-                t = -b1 / a11;
-                distanceSquared = c + (b1 * t);
+                barycentricT = -pointOffsetDotEdge2 / edge2LengthSquared;
+                distanceSquared = offsetLengthSquared + (pointOffsetDotEdge2 * barycentricT);
             }
         }
-    } else if (t < 0.0f) {
-        edge0 = a01 + b1;
-        edge1 = a00 + b0;
+    } else if (barycentricT < 0.0f) {
+        edge0 = edgeDot + pointOffsetDotEdge2;
+        edge1 = edge1LengthSquared + pointOffsetDotEdge1;
         if (edge1 > edge0) {
-            numerator = edge1 - edge0;
-            denominator = a11 + (a00 - (2.0f * a01));
-            if (numerator >= denominator) {
-                t = 1.0f;
-                s = 0.0f;
-                distanceSquared = c + (a11 + (2.0f * b1));
+            edgeParameterNumerator = edge1 - edge0;
+            edgeParameterDenominator = edge2LengthSquared + (edge1LengthSquared - (2.0f * edgeDot));
+            if (edgeParameterNumerator >= edgeParameterDenominator) {
+                barycentricT = 1.0f;
+                barycentricS = 0.0f;
+                distanceSquared =
+                    offsetLengthSquared + (edge2LengthSquared + (2.0f * pointOffsetDotEdge2));
             } else {
-                t = numerator / denominator;
-                s = 1.0f - t;
-                distanceSquared = c + ((s * ((2.0f * b0) + ((a00 * s) + (a01 * t)))) + (t * ((2.0f * b1) + ((a01 * s) + (a11 * t)))));
+                barycentricT = edgeParameterNumerator / edgeParameterDenominator;
+                barycentricS = 1.0f - barycentricT;
+                distanceSquared =
+                    offsetLengthSquared +
+                    ((barycentricS *
+                      ((2.0f * pointOffsetDotEdge1) +
+                       ((edge1LengthSquared * barycentricS) + (edgeDot * barycentricT)))) +
+                     (barycentricT *
+                      ((2.0f * pointOffsetDotEdge2) +
+                       ((edgeDot * barycentricS) + (edge2LengthSquared * barycentricT)))));
             }
         } else {
-            t = 0.0f;
+            barycentricT = 0.0f;
             if (edge1 <= 0.0f) {
-                s = 1.0f;
-                distanceSquared = c + (a00 + (2.0f * b0));
-            } else if (b0 >= 0.0f) {
-                s = 0.0f;
-                distanceSquared = c;
+                barycentricS = 1.0f;
+                distanceSquared =
+                    offsetLengthSquared + (edge1LengthSquared + (2.0f * pointOffsetDotEdge1));
+            } else if (pointOffsetDotEdge1 >= 0.0f) {
+                barycentricS = 0.0f;
+                distanceSquared = offsetLengthSquared;
             } else {
-                s = -b0 / a00;
-                distanceSquared = c + (b0 * s);
+                barycentricS = -pointOffsetDotEdge1 / edge1LengthSquared;
+                distanceSquared = offsetLengthSquared + (pointOffsetDotEdge1 * barycentricS);
             }
         }
     } else {
-        numerator = ((a11 + b1) - a01) - b0;
-        if (numerator <= 0.0f) {
-            s = 0.0f;
-            t = 1.0f;
-            distanceSquared = c + (a11 + (2.0f * b1));
+        edgeParameterNumerator =
+            ((edge2LengthSquared + pointOffsetDotEdge2) - edgeDot) - pointOffsetDotEdge1;
+        if (edgeParameterNumerator <= 0.0f) {
+            barycentricS = 0.0f;
+            barycentricT = 1.0f;
+            distanceSquared =
+                offsetLengthSquared + (edge2LengthSquared + (2.0f * pointOffsetDotEdge2));
         } else {
-            denominator = a11 + (a00 - (2.0f * a01));
-            if (numerator >= denominator) {
-                s = 1.0f;
-                t = 0.0f;
-                distanceSquared = c + (a00 + (2.0f * b0));
+            edgeParameterDenominator = edge2LengthSquared + (edge1LengthSquared - (2.0f * edgeDot));
+            if (edgeParameterNumerator >= edgeParameterDenominator) {
+                barycentricS = 1.0f;
+                barycentricT = 0.0f;
+                distanceSquared =
+                    offsetLengthSquared + (edge1LengthSquared + (2.0f * pointOffsetDotEdge1));
             } else {
-                s = numerator / denominator;
-                t = 1.0f - s;
-                distanceSquared = c + ((s * ((2.0f * b0) + ((a00 * s) + (a01 * t)))) + (t * ((2.0f * b1) + ((a01 * s) + (a11 * t)))));
+                barycentricS = edgeParameterNumerator / edgeParameterDenominator;
+                barycentricT = 1.0f - barycentricS;
+                distanceSquared =
+                    offsetLengthSquared +
+                    ((barycentricS *
+                      ((2.0f * pointOffsetDotEdge1) +
+                       ((edge1LengthSquared * barycentricS) + (edgeDot * barycentricT)))) +
+                     (barycentricT *
+                      ((2.0f * pointOffsetDotEdge2) +
+                       ((edgeDot * barycentricS) + (edge2LengthSquared * barycentricT)))));
             }
         }
     }
-    if (arg2) {
-        *arg2 = s;
+    if (barycentricSOut) {
+        *barycentricSOut = barycentricS;
     }
-    if (arg3) {
-        *arg3 = t;
+    if (barycentricTOut) {
+        *barycentricTOut = barycentricT;
     }
     return fabsf(distanceSquared);
 }
 
-float fn_1_36BC(HuVecF *a, M656Triangle *b, float *s, float *t)
+/* Takes the square root of the triangle gap for callers that need distance units. */
+float fn_1_36BC(HuVecF *queryPoint, M656Triangle *triangle, float *barycentricSOut,
+                float *barycentricTOut)
 {
-    return sqrtf(fn_1_2E18(a, b, s, t));
+    return sqrtf(fn_1_2E18(queryPoint, triangle, barycentricSOut, barycentricTOut));
 }
 
-f32 fn_1_37E8(M656Segment *arg0, M656Segment *arg1, f32 *arg2, f32 *arg3)
+/* Returns the squared gap between two segments and optionally outputs the closest-point
+ * parameters. */
+f32 fn_1_37E8(M656Segment *firstSegment, M656Segment *secondSegment, f32 *parameterAOut,
+              f32 *parameterBOut)
 {
-    Point3d offset;
-    f32 t;
-    f32 b0;
-    f32 s;
-    f32 c;
+    Point3d startOffset;
+    f32 parameterBValue;
+    f32 offsetDotDirectionA;
+    f32 parameterAValue;
+    f32 offsetLengthSquared;
     f32 distanceSquared;
-    f32 edge;
-    f32 a00;
-    f32 b1;
-    f32 a11;
-    f32 a01;
-    f32 inverseDeterminant;
-    f32 determinant;
+    f32 boundaryProjection;
+    f32 lengthSquaredA;
+    f32 negativeOffsetDotDirectionB;
+    f32 lengthSquaredB;
+    f32 negativeDirectionDot;
+    f32 inverseGramDeterminant;
+    f32 gramDeterminant;
 
-    fn_1_4E0(&offset, &arg0->start, &arg1->start);
-    a00 = fn_1_410(&arg0->delta);
-    a01 = -fn_1_440(&arg0->delta, &arg1->delta);
-    a11 = fn_1_410(&arg1->delta);
-    b0 = fn_1_440(&offset, &arg0->delta);
-    c = fn_1_410(&offset);
-    determinant = fabsf((a00 * a11) - (a01 * a01));
-    if (determinant >= 1.1920929e-7f) {
-        b1 = -fn_1_440(&offset, &arg1->delta);
-        s = (a01 * b1) - (a11 * b0);
-        t = (a01 * b0) - (a00 * b1);
-        if (s >= 0.0f) {
-            if (s <= determinant) {
-                if (t >= 0.0f) {
-                    if (t <= determinant) {
-                        inverseDeterminant = 1.0f / determinant;
-                        s = s * inverseDeterminant;
-                        t = t * inverseDeterminant;
-                        distanceSquared = c + ((s * ((2.0f * b0) + ((a00 * s) + (a01 * t)))) + (t * ((2.0f * b1) + ((a01 * s) + (a11 * t)))));
+    fn_1_4E0(&startOffset, &firstSegment->start, &secondSegment->start);
+    lengthSquaredA = fn_1_410(&firstSegment->delta);
+    negativeDirectionDot = -fn_1_440(&firstSegment->delta, &secondSegment->delta);
+    lengthSquaredB = fn_1_410(&secondSegment->delta);
+    offsetDotDirectionA = fn_1_440(&startOffset, &firstSegment->delta);
+    offsetLengthSquared = fn_1_410(&startOffset);
+    gramDeterminant =
+        fabsf((lengthSquaredA * lengthSquaredB) - (negativeDirectionDot * negativeDirectionDot));
+    if (gramDeterminant >= 1.1920929e-7f) {
+        negativeOffsetDotDirectionB = -fn_1_440(&startOffset, &secondSegment->delta);
+        parameterAValue = (negativeDirectionDot * negativeOffsetDotDirectionB) -
+                          (lengthSquaredB * offsetDotDirectionA);
+        parameterBValue = (negativeDirectionDot * offsetDotDirectionA) -
+                          (lengthSquaredA * negativeOffsetDotDirectionB);
+        if (parameterAValue >= 0.0f) {
+            if (parameterAValue <= gramDeterminant) {
+                if (parameterBValue >= 0.0f) {
+                    if (parameterBValue <= gramDeterminant) {
+                        inverseGramDeterminant = 1.0f / gramDeterminant;
+                        parameterAValue = parameterAValue * inverseGramDeterminant;
+                        parameterBValue = parameterBValue * inverseGramDeterminant;
+                        distanceSquared =
+                            offsetLengthSquared +
+                            ((parameterAValue * ((2.0f * offsetDotDirectionA) +
+                                                 ((lengthSquaredA * parameterAValue) +
+                                                  (negativeDirectionDot * parameterBValue)))) +
+                             (parameterBValue * ((2.0f * negativeOffsetDotDirectionB) +
+                                                 ((negativeDirectionDot * parameterAValue) +
+                                                  (lengthSquaredB * parameterBValue)))));
                     } else {
-                        t = 1.0f;
-                        edge = a01 + b0;
-                        if (edge >= 0.0f) {
-                            s = 0.0f;
-                            distanceSquared = c + (a11 + (2.0f * b1));
-                        } else if (-edge >= a00) {
-                            s = 1.0f;
-                            distanceSquared = c + (a00 + a11) + (2.0f * (b1 + edge));
+                        parameterBValue = 1.0f;
+                        boundaryProjection = negativeDirectionDot + offsetDotDirectionA;
+                        if (boundaryProjection >= 0.0f) {
+                            parameterAValue = 0.0f;
+                            distanceSquared =
+                                offsetLengthSquared +
+                                (lengthSquaredB + (2.0f * negativeOffsetDotDirectionB));
+                        } else if (-boundaryProjection >= lengthSquaredA) {
+                            parameterAValue = 1.0f;
+                            distanceSquared =
+                                offsetLengthSquared + (lengthSquaredA + lengthSquaredB) +
+                                (2.0f * (negativeOffsetDotDirectionB + boundaryProjection));
                         } else {
-                            s = -edge / a00;
-                            distanceSquared = c + ((2.0f * b1) + (a11 + (edge * s)));
+                            parameterAValue = -boundaryProjection / lengthSquaredA;
+                            distanceSquared =
+                                offsetLengthSquared +
+                                ((2.0f * negativeOffsetDotDirectionB) +
+                                 (lengthSquaredB + (boundaryProjection * parameterAValue)));
                         }
                     }
                 } else {
-                    t = 0.0f;
-                    if (b0 >= 0.0f) {
-                        s = 0.0f;
-                        distanceSquared = c;
-                    } else if (-b0 >= a00) {
-                        s = 1.0f;
-                        distanceSquared = c + (a00 + (2.0f * b0));
+                    parameterBValue = 0.0f;
+                    if (offsetDotDirectionA >= 0.0f) {
+                        parameterAValue = 0.0f;
+                        distanceSquared = offsetLengthSquared;
+                    } else if (-offsetDotDirectionA >= lengthSquaredA) {
+                        parameterAValue = 1.0f;
+                        distanceSquared =
+                            offsetLengthSquared + (lengthSquaredA + (2.0f * offsetDotDirectionA));
                     } else {
-                        s = -b0 / a00;
-                        distanceSquared = c + (b0 * s);
+                        parameterAValue = -offsetDotDirectionA / lengthSquaredA;
+                        distanceSquared =
+                            offsetLengthSquared + (offsetDotDirectionA * parameterAValue);
                     }
                 }
-            } else if (t >= 0.0f) {
-                if (t <= determinant) {
-                    s = 1.0f;
-                    edge = a01 + b1;
-                    if (edge >= 0.0f) {
-                        t = 0.0f;
-                        distanceSquared = c + (a00 + (2.0f * b0));
-                    } else if (-edge >= a11) {
-                        t = 1.0f;
-                        distanceSquared = c + (a00 + a11) + (2.0f * (b0 + edge));
+            } else if (parameterBValue >= 0.0f) {
+                if (parameterBValue <= gramDeterminant) {
+                    parameterAValue = 1.0f;
+                    boundaryProjection = negativeDirectionDot + negativeOffsetDotDirectionB;
+                    if (boundaryProjection >= 0.0f) {
+                        parameterBValue = 0.0f;
+                        distanceSquared =
+                            offsetLengthSquared + (lengthSquaredA + (2.0f * offsetDotDirectionA));
+                    } else if (-boundaryProjection >= lengthSquaredB) {
+                        parameterBValue = 1.0f;
+                        distanceSquared = offsetLengthSquared + (lengthSquaredA + lengthSquaredB) +
+                                          (2.0f * (offsetDotDirectionA + boundaryProjection));
                     } else {
-                        t = -edge / a11;
-                        distanceSquared = c + ((2.0f * b0) + (a00 + (edge * t)));
+                        parameterBValue = -boundaryProjection / lengthSquaredB;
+                        distanceSquared =
+                            offsetLengthSquared +
+                            ((2.0f * offsetDotDirectionA) +
+                             (lengthSquaredA + (boundaryProjection * parameterBValue)));
                     }
                 } else {
-                    edge = a01 + b0;
-                    if (-edge <= a00) {
-                        t = 1.0f;
-                        if (edge >= 0.0f) {
-                            s = 0.0f;
-                            distanceSquared = c + (a11 + (2.0f * b1));
+                    boundaryProjection = negativeDirectionDot + offsetDotDirectionA;
+                    if (-boundaryProjection <= lengthSquaredA) {
+                        parameterBValue = 1.0f;
+                        if (boundaryProjection >= 0.0f) {
+                            parameterAValue = 0.0f;
+                            distanceSquared =
+                                offsetLengthSquared +
+                                (lengthSquaredB + (2.0f * negativeOffsetDotDirectionB));
                         } else {
-                            s = -edge / a00;
-                            distanceSquared = c + ((2.0f * b1) + (a11 + (edge * s)));
+                            parameterAValue = -boundaryProjection / lengthSquaredA;
+                            distanceSquared =
+                                offsetLengthSquared +
+                                ((2.0f * negativeOffsetDotDirectionB) +
+                                 (lengthSquaredB + (boundaryProjection * parameterAValue)));
                         }
                     } else {
-                        s = 1.0f;
-                        edge = a01 + b1;
-                        if (edge >= 0.0f) {
-                            t = 0.0f;
-                            distanceSquared = c + (a00 + (2.0f * b0));
-                        } else if (-edge >= a11) {
-                            t = 1.0f;
-                            distanceSquared = c + (a00 + a11) + (2.0f * (b0 + edge));
+                        parameterAValue = 1.0f;
+                        boundaryProjection = negativeDirectionDot + negativeOffsetDotDirectionB;
+                        if (boundaryProjection >= 0.0f) {
+                            parameterBValue = 0.0f;
+                            distanceSquared = offsetLengthSquared +
+                                              (lengthSquaredA + (2.0f * offsetDotDirectionA));
+                        } else if (-boundaryProjection >= lengthSquaredB) {
+                            parameterBValue = 1.0f;
+                            distanceSquared = offsetLengthSquared +
+                                              (lengthSquaredA + lengthSquaredB) +
+                                              (2.0f * (offsetDotDirectionA + boundaryProjection));
                         } else {
-                            t = -edge / a11;
-                            distanceSquared = c + ((2.0f * b0) + (a00 + (edge * t)));
+                            parameterBValue = -boundaryProjection / lengthSquaredB;
+                            distanceSquared =
+                                offsetLengthSquared +
+                                ((2.0f * offsetDotDirectionA) +
+                                 (lengthSquaredA + (boundaryProjection * parameterBValue)));
                         }
                     }
                 }
-            } else if (-b0 < a00) {
-                t = 0.0f;
-                if (b0 >= 0.0f) {
-                    s = 0.0f;
-                    distanceSquared = c;
+            } else if (-offsetDotDirectionA < lengthSquaredA) {
+                parameterBValue = 0.0f;
+                if (offsetDotDirectionA >= 0.0f) {
+                    parameterAValue = 0.0f;
+                    distanceSquared = offsetLengthSquared;
                 } else {
-                    s = -b0 / a00;
-                    distanceSquared = c + (b0 * s);
+                    parameterAValue = -offsetDotDirectionA / lengthSquaredA;
+                    distanceSquared = offsetLengthSquared + (offsetDotDirectionA * parameterAValue);
                 }
             } else {
-                s = 1.0f;
-                edge = a01 + b1;
-                if (edge >= 0.0f) {
-                    t = 0.0f;
-                    distanceSquared = c + (a00 + (2.0f * b0));
-                } else if (-edge >= a11) {
-                    t = 1.0f;
-                    distanceSquared = c + (a00 + a11) + (2.0f * (b0 + edge));
+                parameterAValue = 1.0f;
+                boundaryProjection = negativeDirectionDot + negativeOffsetDotDirectionB;
+                if (boundaryProjection >= 0.0f) {
+                    parameterBValue = 0.0f;
+                    distanceSquared =
+                        offsetLengthSquared + (lengthSquaredA + (2.0f * offsetDotDirectionA));
+                } else if (-boundaryProjection >= lengthSquaredB) {
+                    parameterBValue = 1.0f;
+                    distanceSquared = offsetLengthSquared + (lengthSquaredA + lengthSquaredB) +
+                                      (2.0f * (offsetDotDirectionA + boundaryProjection));
                 } else {
-                    t = -edge / a11;
-                    distanceSquared = c + ((2.0f * b0) + (a00 + (edge * t)));
+                    parameterBValue = -boundaryProjection / lengthSquaredB;
+                    distanceSquared = offsetLengthSquared +
+                                      ((2.0f * offsetDotDirectionA) +
+                                       (lengthSquaredA + (boundaryProjection * parameterBValue)));
                 }
             }
-        } else if (t >= 0.0f) {
-            if (t <= determinant) {
-                s = 0.0f;
-                if (b1 >= 0.0f) {
-                    t = 0.0f;
-                    distanceSquared = c;
-                } else if (-b1 >= a11) {
-                    t = 1.0f;
-                    distanceSquared = c + (a11 + (2.0f * b1));
+        } else if (parameterBValue >= 0.0f) {
+            if (parameterBValue <= gramDeterminant) {
+                parameterAValue = 0.0f;
+                if (negativeOffsetDotDirectionB >= 0.0f) {
+                    parameterBValue = 0.0f;
+                    distanceSquared = offsetLengthSquared;
+                } else if (-negativeOffsetDotDirectionB >= lengthSquaredB) {
+                    parameterBValue = 1.0f;
+                    distanceSquared = offsetLengthSquared +
+                                      (lengthSquaredB + (2.0f * negativeOffsetDotDirectionB));
                 } else {
-                    t = -b1 / a11;
-                    distanceSquared = c + (b1 * t);
+                    parameterBValue = -negativeOffsetDotDirectionB / lengthSquaredB;
+                    distanceSquared =
+                        offsetLengthSquared + (negativeOffsetDotDirectionB * parameterBValue);
                 }
             } else {
-                edge = a01 + b0;
-                if (edge < 0.0f) {
-                    t = 1.0f;
-                    if (-edge >= a00) {
-                        s = 1.0f;
-                        distanceSquared = c + (a00 + a11) + (2.0f * (b1 + edge));
+                boundaryProjection = negativeDirectionDot + offsetDotDirectionA;
+                if (boundaryProjection < 0.0f) {
+                    parameterBValue = 1.0f;
+                    if (-boundaryProjection >= lengthSquaredA) {
+                        parameterAValue = 1.0f;
+                        distanceSquared =
+                            offsetLengthSquared + (lengthSquaredA + lengthSquaredB) +
+                            (2.0f * (negativeOffsetDotDirectionB + boundaryProjection));
                     } else {
-                        s = -edge / a00;
-                        distanceSquared = c + ((2.0f * b1) + (a11 + (edge * s)));
+                        parameterAValue = -boundaryProjection / lengthSquaredA;
+                        distanceSquared =
+                            offsetLengthSquared +
+                            ((2.0f * negativeOffsetDotDirectionB) +
+                             (lengthSquaredB + (boundaryProjection * parameterAValue)));
                     }
                 } else {
-                    s = 0.0f;
-                    if (b1 >= 0.0f) {
-                        t = 0.0f;
-                        distanceSquared = c;
-                    } else if (-b1 >= a11) {
-                        t = 1.0f;
-                        distanceSquared = c + (a11 + (2.0f * b1));
+                    parameterAValue = 0.0f;
+                    if (negativeOffsetDotDirectionB >= 0.0f) {
+                        parameterBValue = 0.0f;
+                        distanceSquared = offsetLengthSquared;
+                    } else if (-negativeOffsetDotDirectionB >= lengthSquaredB) {
+                        parameterBValue = 1.0f;
+                        distanceSquared = offsetLengthSquared +
+                                          (lengthSquaredB + (2.0f * negativeOffsetDotDirectionB));
                     } else {
-                        t = -b1 / a11;
-                        distanceSquared = c + (b1 * t);
+                        parameterBValue = -negativeOffsetDotDirectionB / lengthSquaredB;
+                        distanceSquared =
+                            offsetLengthSquared + (negativeOffsetDotDirectionB * parameterBValue);
                     }
                 }
             }
-        } else if (b0 < 0.0f) {
-            t = 0.0f;
-            if (-b0 >= a00) {
-                s = 1.0f;
-                distanceSquared = c + (a00 + (2.0f * b0));
+        } else if (offsetDotDirectionA < 0.0f) {
+            parameterBValue = 0.0f;
+            if (-offsetDotDirectionA >= lengthSquaredA) {
+                parameterAValue = 1.0f;
+                distanceSquared =
+                    offsetLengthSquared + (lengthSquaredA + (2.0f * offsetDotDirectionA));
             } else {
-                s = -b0 / a00;
-                distanceSquared = c + (b0 * s);
+                parameterAValue = -offsetDotDirectionA / lengthSquaredA;
+                distanceSquared = offsetLengthSquared + (offsetDotDirectionA * parameterAValue);
             }
         } else {
-            s = 0.0f;
-            if (b1 >= 0.0f) {
-                t = 0.0f;
-                distanceSquared = c;
-            } else if (-b1 >= a11) {
-                t = 1.0f;
-                distanceSquared = c + (a11 + (2.0f * b1));
+            parameterAValue = 0.0f;
+            if (negativeOffsetDotDirectionB >= 0.0f) {
+                parameterBValue = 0.0f;
+                distanceSquared = offsetLengthSquared;
+            } else if (-negativeOffsetDotDirectionB >= lengthSquaredB) {
+                parameterBValue = 1.0f;
+                distanceSquared =
+                    offsetLengthSquared + (lengthSquaredB + (2.0f * negativeOffsetDotDirectionB));
             } else {
-                t = -b1 / a11;
-                distanceSquared = c + (b1 * t);
+                parameterBValue = -negativeOffsetDotDirectionB / lengthSquaredB;
+                distanceSquared =
+                    offsetLengthSquared + (negativeOffsetDotDirectionB * parameterBValue);
             }
         }
-    } else if (a01 > 0.0f) {
-        if (b0 >= 0.0f) {
-            s = 0.0f;
-            t = 0.0f;
-            distanceSquared = c;
-        } else if (-b0 <= a00) {
-            s = -b0 / a00;
-            t = 0.0f;
-            distanceSquared = c + (b0 * s);
+    } else if (negativeDirectionDot > 0.0f) {
+        if (offsetDotDirectionA >= 0.0f) {
+            parameterAValue = 0.0f;
+            parameterBValue = 0.0f;
+            distanceSquared = offsetLengthSquared;
+        } else if (-offsetDotDirectionA <= lengthSquaredA) {
+            parameterAValue = -offsetDotDirectionA / lengthSquaredA;
+            parameterBValue = 0.0f;
+            distanceSquared = offsetLengthSquared + (offsetDotDirectionA * parameterAValue);
         } else {
-            b1 = -fn_1_440(&offset, &arg1->delta);
-            s = 1.0f;
-            edge = a00 + b0;
-            if (-edge >= a01) {
-                t = 1.0f;
-                distanceSquared = c + (a00 + a11) + (2.0f * (b1 + (a01 + b0)));
+            negativeOffsetDotDirectionB = -fn_1_440(&startOffset, &secondSegment->delta);
+            parameterAValue = 1.0f;
+            boundaryProjection = lengthSquaredA + offsetDotDirectionA;
+            if (-boundaryProjection >= negativeDirectionDot) {
+                parameterBValue = 1.0f;
+                distanceSquared = offsetLengthSquared + (lengthSquaredA + lengthSquaredB) +
+                                  (2.0f * (negativeOffsetDotDirectionB +
+                                           (negativeDirectionDot + offsetDotDirectionA)));
             } else {
-                t = -edge / a01;
-                distanceSquared = c + (a00 + (2.0f * b0)) + (t * ((a11 * t) + (2.0f * (a01 + b1))));
+                parameterBValue = -boundaryProjection / negativeDirectionDot;
+                distanceSquared = offsetLengthSquared +
+                                  (lengthSquaredA + (2.0f * offsetDotDirectionA)) +
+                                  (parameterBValue *
+                                   ((lengthSquaredB * parameterBValue) +
+                                    (2.0f * (negativeDirectionDot + negativeOffsetDotDirectionB))));
             }
         }
-    } else if (-b0 >= a00) {
-        s = 1.0f;
-        t = 0.0f;
-        distanceSquared = c + (a00 + (2.0f * b0));
-    } else if (b0 <= 0.0f) {
-        s = -b0 / a00;
-        t = 0.0f;
-        distanceSquared = c + (b0 * s);
+    } else if (-offsetDotDirectionA >= lengthSquaredA) {
+        parameterAValue = 1.0f;
+        parameterBValue = 0.0f;
+        distanceSquared = offsetLengthSquared + (lengthSquaredA + (2.0f * offsetDotDirectionA));
+    } else if (offsetDotDirectionA <= 0.0f) {
+        parameterAValue = -offsetDotDirectionA / lengthSquaredA;
+        parameterBValue = 0.0f;
+        distanceSquared = offsetLengthSquared + (offsetDotDirectionA * parameterAValue);
     } else {
-        b1 = -fn_1_440(&offset, &arg1->delta);
-        s = 0.0f;
-        if (b0 >= -a01) {
-            t = 1.0f;
-            distanceSquared = c + (a11 + (2.0f * b1));
+        negativeOffsetDotDirectionB = -fn_1_440(&startOffset, &secondSegment->delta);
+        parameterAValue = 0.0f;
+        if (offsetDotDirectionA >= -negativeDirectionDot) {
+            parameterBValue = 1.0f;
+            distanceSquared =
+                offsetLengthSquared + (lengthSquaredB + (2.0f * negativeOffsetDotDirectionB));
         } else {
-            t = -b0 / a01;
-            distanceSquared = c + (t * ((2.0f * b1) + (a11 * t)));
+            parameterBValue = -offsetDotDirectionA / negativeDirectionDot;
+            distanceSquared =
+                offsetLengthSquared + (parameterBValue * ((2.0f * negativeOffsetDotDirectionB) +
+                                                          (lengthSquaredB * parameterBValue)));
         }
     }
-    if (arg2) {
-        *arg2 = s;
+    if (parameterAOut) {
+        *parameterAOut = parameterAValue;
     }
-    if (arg3) {
-        *arg3 = t;
+    if (parameterBOut) {
+        *parameterBOut = parameterBValue;
     }
     return fabsf(distanceSquared);
 }
 
-float fn_1_43E4(M656Segment *a, M656Segment *b, float *s, float *t)
+/* Takes the square root of the segment gap for callers that need distance units. */
+float fn_1_43E4(M656Segment *firstSegment, M656Segment *secondSegment, float *parameterAOut,
+                float *parameterBOut)
 {
-    return sqrtf(fn_1_37E8(a, b, s, t));
+    return sqrtf(fn_1_37E8(firstSegment, secondSegment, parameterAOut, parameterBOut));
 }
 
-float fn_1_4510(HuVecF *point, M656Segment *segment)
+/* Returns the squared gap to the nearest point on a segment, clamping the projection to its
+ * endpoints. */
+float fn_1_4510(HuVecF *queryPoint, M656Segment *lineSegment)
 {
-    HuVecF delta, projection;
-    float t, length;
-    fn_1_4E0(&delta, point, &segment->start);
-    t = fn_1_440(&delta, &segment->delta);
-    if (t <= 0.0f) {
-        t = 0.0f;
+    HuVecF pointOffset, projectedOffset;
+    float segmentParameter, segmentLengthSquared;
+    fn_1_4E0(&pointOffset, queryPoint, &lineSegment->start);
+    segmentParameter = fn_1_440(&pointOffset, &lineSegment->delta);
+    if (segmentParameter <= 0.0f) {
+        segmentParameter = 0.0f;
     } else {
-        length = fn_1_410(&segment->delta);
-        if (t >= length) {
-            t = 1.0f;
-            fn_1_4E0(&delta, &delta, &segment->delta);
+        segmentLengthSquared = fn_1_410(&lineSegment->delta);
+        if (segmentParameter >= segmentLengthSquared) {
+            segmentParameter = 1.0f;
+            fn_1_4E0(&pointOffset, &pointOffset, &lineSegment->delta);
         } else {
-            t /= length;
-            fn_1_6F8(&projection, &segment->delta, t);
-            fn_1_4E0(&delta, &delta, &projection);
+            segmentParameter /= segmentLengthSquared;
+            fn_1_6F8(&projectedOffset, &lineSegment->delta, segmentParameter);
+            fn_1_4E0(&pointOffset, &pointOffset, &projectedOffset);
         }
     }
-    return fn_1_410(&delta);
+    return fn_1_410(&pointOffset);
 }
 
-float fn_1_4608(HuVecF *point, M656Segment *segment)
+/* Takes the square root of the point-to-segment gap for callers that need distance units. */
+float fn_1_4608(HuVecF *queryPoint, M656Segment *lineSegment)
 {
-    return sqrtf(fn_1_4510(point, segment));
+    return sqrtf(fn_1_4510(queryPoint, lineSegment));
 }
 
-float fn_1_47EC(M656Sphere *sphere, M656Segment *segment)
+/* Returns max(0, pointSegmentDistanceSquared - sphereRadiusSquared) for collision checks. */
+float fn_1_47EC(M656Sphere *movingSphere, M656Segment *lineSegment)
 {
-    float distance;
-    distance = fn_1_4510(&sphere->center, segment);
-    distance -= sphere->radius * sphere->radius;
-    if (distance < 0.0f) {
-        distance = 0.0f;
+    float gapSquared;
+    gapSquared = fn_1_4510(&movingSphere->center, lineSegment);
+    gapSquared -= movingSphere->radius * movingSphere->radius;
+    if (gapSquared < 0.0f) {
+        gapSquared = 0.0f;
     }
-    return distance;
+    return gapSquared;
 }
 
-double fn_1_4948(M656Sphere *sphere, M656Segment *segment)
+/* Returns sqrt(max(0, pointSegmentDistanceSquared - sphereRadiusSquared)) in stage units. */
+double fn_1_4948(M656Sphere *movingSphere, M656Segment *lineSegment)
 {
-    return sqrtf(fn_1_47EC(sphere, segment));
+    return sqrtf(fn_1_47EC(movingSphere, lineSegment));
 }
 
-float fn_1_4B8C(M656Sphere *sphere, M656Capsule *capsule)
+/* Returns max(0, pointSegmentDistanceSquared - sphereRadiusSquared - capsuleRadiusSquared) for
+ * collision checks. */
+float fn_1_4B8C(M656Sphere *movingSphere, M656Capsule *lineCapsule)
 {
-    float distance;
-    distance = fn_1_4510(&sphere->center, &capsule->segment);
-    distance -= sphere->radius * sphere->radius + capsule->radius * capsule->radius;
-    if (distance < 0.0f) {
-        distance = 0.0f;
+    float gapSquared;
+    gapSquared = fn_1_4510(&movingSphere->center, &lineCapsule->segment);
+    gapSquared -=
+        movingSphere->radius * movingSphere->radius + lineCapsule->radius * lineCapsule->radius;
+    if (gapSquared < 0.0f) {
+        gapSquared = 0.0f;
     }
-    return distance;
+    return gapSquared;
 }
 
-double fn_1_4CF8(M656Sphere *sphere, M656Capsule *capsule)
+/* Returns sqrt(max(0, pointSegmentDistanceSquared - sphereRadiusSquared - capsuleRadiusSquared)) in
+ * stage units. */
+double fn_1_4CF8(M656Sphere *movingSphere, M656Capsule *lineCapsule)
 {
-    return sqrtf(fn_1_4B8C(sphere, capsule));
+    return sqrtf(fn_1_4B8C(movingSphere, lineCapsule));
 }
