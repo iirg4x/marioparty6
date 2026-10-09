@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 29.13% | 48.82% |
+| Entire project | 29.20% | 48.86% |
 | Main DOL | 87.80% | 98.84% |
-| REL modules | 16.69% | 17.12% |
+| REL modules | 16.77% | 17.19% |
+
+w11Dll (`w11Dll`) selects all **40 functions** from **3 complete translation units**; its linked REL matches retail.
 
 DOL source: `src/gssdk_lib/asrpho/common/blocks/undersam.c` now builds from source; `main.dol` matches retail byte for byte.
 

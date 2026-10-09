@@ -2065,6 +2065,25 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "w11Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/w11Dll/prolog.c",
+            ),
+            Object(
+                Matching,
+                "REL/w11Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/w11Dll/world11_board.c",
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
