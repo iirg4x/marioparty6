@@ -1,29 +1,33 @@
+/* Camera and shared minigame state for Asteroad Rage. */
 #ifndef M659_CONTEXT_H
 #define M659_CONTEXT_H
 
-/* The camera prefix preserves storage whose original field types are unknown. */
 typedef struct M659Camera {
-    unsigned char unobserved_00[8];
-    s32 cameraMask;
-    OMOBJ *target;
-    HuVecF pos;
-    HuVecF targetPos;
+    unsigned char unreadCameraBytes[8]; /* Bytes with no established camera behavior in this
+                                         * module. */
+    s32 cameraMask; /* Camera bit used by the graphics engine. */
+    OMOBJ *target; /* Player object followed by this split-screen camera. */
+    HuVecF position; /* Camera position in world units. */
+    HuVecF targetPosition; /* Look-at position in world units. */
 } M659Camera;
 
 typedef struct M659Work {
-    OMOBJMAN *objman;
-    OMOBJ *cameraObj[2];
-    HU3D_LIGHTID light;
-    s32 unk_10;
-    s32 unk_14;
-    s32 sound;
-    s16 winners[2];
-    s16 winnerCount;
-    s16 otherPlayer;
+    OMOBJMAN *objman; /* Object manager for the minigame. */
+    OMOBJ *cameraObj[2]; /* Camera object for each side. */
+    HU3D_LIGHTID light; /* Course light created during minigame startup. */
+    s32 resultTimer; /* Frames elapsed in the result presentation. */
+    s32 resultPhase; /* Step of the result presentation sequence. */
+    s32 streamHandle; /* Background stream handle, or -1 when stopped. */
+    s16 winners[2]; /* Side indices of the winner or tied winners. */
+    s16 winnerCount; /* Number of winning sides. */
+    s16 otherPlayer; /* Losing side shown during the winner presentation. */
 } M659Work;
 
 typedef struct M659Viewport {
-    float y, x, width, height;
+    float y; /* Vertical origin in screen pixels. */
+    float x; /* Horizontal origin in screen pixels. */
+    float width; /* Viewport width in screen pixels. */
+    float height; /* Viewport height in screen pixels. */
 } M659Viewport;
 
 extern M659Work lbl_1_bss_4;
@@ -41,10 +45,9 @@ void fn_1_3D0(s16 index, OMOBJ *target);
 void fn_1_408(OMOBJ *obj);
 void fn_1_48C(OMOBJ *obj);
 void fn_1_558(OMOBJ *obj);
-void fn_1_4918(HuVecF a, HuVecF b, HuVecF *delta);
-double fn_1_493C(HuVecF delta);
-double fn_1_4ABC(HuVecF a, HuVecF b);
-/* The imported MSL abs provider is unary; this is not the two-argument
- * signature inferred from stale volatile registers by the raw translator. */
-int abs(int value);
+void fn_1_4918(HuVecF positionA, HuVecF positionB, HuVecF *difference);
+double fn_1_493C(HuVecF difference);
+double fn_1_4ABC(HuVecF positionA, HuVecF positionB);
+
+int abs(int absoluteInput);
 #endif
