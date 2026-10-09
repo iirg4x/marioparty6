@@ -1,9 +1,12 @@
+/* Collision registration and frame-by-frame collision response for Asteroad Rage. */
 #include "game/object.h"
 #include "game/memory.h"
 #include "string.h"
 #include "REL/m659/collision.h"
 
+/* Collision-manager object whose data stores the registration table. */
 OMOBJ *lbl_1_bss_54;
+/* Latch set after an overlap; gates collision response callbacks. */
 int lbl_1_bss_50;
 
 /* Both array extents are bounded by the corresponding insertion and lookup
@@ -11,53 +14,60 @@ int lbl_1_bss_50;
 void fn_1_4280(OMOBJ *obj);
 void fn_1_4290(OMOBJ *obj);
 #include "REL/m659/collision.h"
-/* Classification values follow the MSL float interface. */
+/* IEEE-754 binary32 fields used to restore ship positions after NaN coordinates. */
+#define M659_FLOAT_EXPONENT_MASK 0x7F800000 /* Binary32 exponent bits 23 through 30. */
+/* An all-ones exponent denotes infinity or NaN. */
+#define M659_FLOAT_INFINITE_EXPONENT M659_FLOAT_EXPONENT_MASK
+#define M659_FLOAT_FRACTION_MASK 0x007FFFFF /* Binary32 fraction bits 0 through 22 distinguish NaN
+                                             * from infinity or zero. */
 enum {
-    M659_FP_SNAN = 0, M659_FP_QNAN = 1, M659_FP_INFINITE = 2,
+    M659_FP_NAN = 1, M659_FP_INFINITE = 2,
     M659_FP_ZERO = 3, M659_FP_NORMAL = 4, M659_FP_SUBNORMAL = 5
 };
 
-/* Recovered float classifier; each test reads the signed representation word.
- * This implementation is not claimed to reproduce an original vendor header. */
+/* The course ignores NaN coordinates and restores the last valid position. */
 #include "REL/m659/collision.h"
 #include "math.h"
 #include "game/object.h"
 #include "math.h"
 
-/* The caller copies both operands and the magnitude argument. These helper
- * signatures explain those aggregate copies without synthetic local homes. */
+/* The distance helpers below use the course plane's X and Z coordinates only. */
 
+/* Creates the collision-manager object and allocates its registration table during minigame
+ * startup. */
 void fn_1_41F4(OMOBJMAN *manager)
 {
     OMOBJ *obj;
-    M659CollisionTable *work;
+    M659CollisionTable *collisionTable;
 
     obj = omAddObjEx(manager, 70, 0, 0, -1, fn_1_4280);
     lbl_1_bss_54 = obj;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659CollisionTable), 268435456);
-    obj->data = work;
-    memset(work, 0, sizeof(M659CollisionTable));
+    collisionTable = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659CollisionTable), HU_MEMNUM_OVL);
+    obj->data = collisionTable;
+    memset(collisionTable, 0, sizeof(M659CollisionTable));
 }
 
 void fn_1_427C(void)
 {
 }
 
+/* Collision-manager startup callback that installs its regular frame callback. */
 void fn_1_4280(OMOBJ *obj)
 {
     obj->objFunc = fn_1_4290;
 }
 
-static inline int classifyFloat(float value)
+/* Classifies a binary32 coordinate from its IEEE-754 exponent and fraction bits. */
+static inline int classifyFloat(float coordinate)
 {
-    switch (*(int *)&value & 2139095040) {
-    case 2139095040:
-        if ((*(int *)&value & 8388607) != 0) {
-            return M659_FP_QNAN;
+    switch (*(int *)&coordinate & M659_FLOAT_EXPONENT_MASK) {
+    case M659_FLOAT_INFINITE_EXPONENT:
+        if ((*(int *)&coordinate & M659_FLOAT_FRACTION_MASK) != 0) {
+            return M659_FP_NAN;
         }
         return M659_FP_INFINITE;
     case 0:
-        if ((*(int *)&value & 8388607) != 0) {
+        if ((*(int *)&coordinate & M659_FLOAT_FRACTION_MASK) != 0) {
             return M659_FP_SUBNORMAL;
         }
         return M659_FP_ZERO;
@@ -65,102 +75,123 @@ static inline int classifyFloat(float value)
     return M659_FP_NORMAL;
 }
 
-static inline void recoverPosition(void *entry)
+/* Restores the saved position when either horizontal coordinate is any NaN value. */
+static inline void recoverPosition(void *collisionData)
 {
-    M659Collision *a = entry;
-    if (classifyFloat(a->pos->x) == M659_FP_QNAN || classifyFloat(a->pos->z) == M659_FP_QNAN) {
-        *a->pos = a->previous;
+    M659Collision *collision = collisionData;
+    if (classifyFloat(collision->position->x) == M659_FP_NAN ||
+        classifyFloat(collision->position->z) == M659_FP_NAN) {
+        *collision->position = collision->previousPosition;
     }
 }
 
+/* Collision-manager frame callback: resolves eligible pairs, restores NaN positions, then updates
+ * registered owners. */
 void fn_1_4290(OMOBJ *obj)
 {
-    int i;
-    M659Collision *a;
-    M659CollisionTable *work = obj->data;
-    int j;
-    M659Collision *b;
-    int changed = 0;
-    M659Collision *aParams;
+    int firstSlot;
+    M659Collision *collisionA;
+    M659CollisionTable *collisionTable = obj->data;
+    int secondSlot;
+    M659Collision *collisionB;
+    int overlapOccurred = 0;
+    M659Collision *collisionAData;
 
-    for (i = 0; i < 200; i++) {
-        a = work->entries[i];
-        if (a != NULL) {
-            aParams = a;
-            if ((aParams->flags & 1) && aParams->unk_10 == 0) {
-                for (j = i + 1; j < 200; j++) {
-                    b = work->entries[j];
-                    if (b != NULL) {
-                        M659Collision *bParams = b;
-                        if ((bParams->flags & 1) && bParams->unk_10 == 0
-                            && (aParams->mask & bParams->mask) && fn_1_450C(a, b) == 1) {
-                            changed = 1;
+    for (firstSlot = 0; firstSlot < 200; firstSlot++) {
+        collisionA = collisionTable->entries[firstSlot];
+        if (collisionA != NULL) {
+            collisionAData = collisionA;
+            if ((collisionAData->flags & 0x1) && collisionAData->collisionDisabled == 0) {
+                for (secondSlot = firstSlot + 1; secondSlot < 200; secondSlot++) {
+                    collisionB = collisionTable->entries[secondSlot];
+                    if (collisionB != NULL) {
+                        M659Collision *collisionBData = collisionB;
+                        if ((collisionBData->flags & 0x1) &&
+                            collisionBData->collisionDisabled == 0 &&
+                            (collisionAData->mask & collisionBData->mask) &&
+                            fn_1_450C(collisionA, collisionB) == 1) {
+                            overlapOccurred = 1;
                         }
                     }
                 }
             }
         }
     }
-    if (changed == 1) {
+    if (overlapOccurred == 1) {
         lbl_1_bss_50 = 1;
     }
-    for (i = 0; i < 200; i++) {
-        a = work->entries[i];
-        if (a != NULL) {
-            aParams = a;
-            if (aParams->unk_10 == 0) {
-                recoverPosition(a);
+    for (firstSlot = 0; firstSlot < 200; firstSlot++) {
+        collisionA = collisionTable->entries[firstSlot];
+        if (collisionA != NULL) {
+            collisionAData = collisionA;
+            if (collisionAData->collisionDisabled == 0) {
+                recoverPosition(collisionA);
             }
-            if (aParams->update != NULL) {
-                aParams->update(aParams->userData);
+            if (collisionAData->update != NULL) {
+                collisionAData->update(collisionAData->userData);
             }
         }
     }
 }
 
-int fn_1_450C(M659Collision *a, M659Collision *b)
+/* Called for eligible pairs; separates overlapping XZ circles, applies enabled velocity impulses,
+ * and invokes response callbacks. */
+int fn_1_450C(M659Collision *firstCollision, M659Collision *secondCollision)
 {
-    float dx, dz;
-    float distance;
-    HuVecF middle;
-    HuVecF *posA = a->pos;
-    HuVecF *posB = b->pos;
-    float rate, radiusSum;
+    float directionX, directionZ;
+    float separationLength;
+    HuVecF midpoint;
+    HuVecF *firstPosition = firstCollision->position;
+    HuVecF *secondPosition = secondCollision->position;
+    float impulseRatio, radiusSum;
 
-    dx = posA->x - posB->x;
-    dz = posA->z - posB->z;
-    distance = sqrtf(dx * dx + dz * dz);
-    radiusSum = a->radius + b->radius;
-    if (radiusSum > distance) {
-        if (distance == 0.0) {
-            dx = 0.0f;
-            dz = -1.0f;
+    directionX = firstPosition->x - secondPosition->x;
+    directionZ = firstPosition->z - secondPosition->z;
+    separationLength = sqrtf(directionX * directionX + directionZ * directionZ);
+    radiusSum = firstCollision->radius + secondCollision->radius;
+    if (radiusSum > separationLength) {
+        if (separationLength == 0.0) {
+            /* Coincident centers use negative Z as the deterministic separation direction. */
+            directionX = 0.0f;
+            directionZ = -1.0f;
         } else {
-            dx /= distance;
-            dz /= distance;
+            directionX /= separationLength;
+            directionZ /= separationLength;
         }
-        middle.x = posA->x + 0.5 * (posB->x - posA->x);
-        middle.z = posA->z + 0.5 * (posB->z - posA->z);
-        distance = 0.5 * radiusSum;
-        posA->x = middle.x + dx * distance;
-        posA->z = middle.z + dz * distance;
-        posB->x = middle.x - dx * distance;
-        posB->z = middle.z - dz * distance;
-        if ((a->unk_08 != 0 || b->unk_08 != 0)
-            && (b->unk_08 != 0 || a->unk_08 != 0)) {
-            rate = 0.1f;
-            a->velocity->x += a->factor * (rate * (dx * distance));
-            a->velocity->z += a->factor * (rate * (dz * distance));
-            rate = 0.1f;
-            b->velocity->x -= b->factor * (rate * (dx * distance));
-            b->velocity->z -= b->factor * (rate * (dz * distance));
+        midpoint.x = firstPosition->x + 0.5 * (secondPosition->x - firstPosition->x);
+        midpoint.z = firstPosition->z + 0.5 * (secondPosition->z - firstPosition->z);
+        /* Replace the center distance with the half-width used to separate both ships. */
+        separationLength = 0.5 * radiusSum;
+        firstPosition->x = midpoint.x + directionX * separationLength;
+        firstPosition->z = midpoint.z + directionZ * separationLength;
+        secondPosition->x = midpoint.x - directionX * separationLength;
+        secondPosition->z = midpoint.z - directionZ * separationLength;
+        /* The either-object condition is repeated verbatim; one enabled flag is sufficient. */
+        if ((firstCollision->collisionImpulseEnabled != 0 ||
+             secondCollision->collisionImpulseEnabled != 0) &&
+            (secondCollision->collisionImpulseEnabled != 0 ||
+             firstCollision->collisionImpulseEnabled != 0)) {
+            impulseRatio = 0.1f;
+            firstCollision->velocity->x +=
+                firstCollision->factor * (impulseRatio * (directionX * separationLength));
+            firstCollision->velocity->z +=
+                firstCollision->factor * (impulseRatio * (directionZ * separationLength));
+            impulseRatio = 0.1f;
+            secondCollision->velocity->x -=
+                secondCollision->factor * (impulseRatio * (directionX * separationLength));
+            secondCollision->velocity->z -=
+                secondCollision->factor * (impulseRatio * (directionZ * separationLength));
         }
+        /* Once an overlap sets the latch, later response callbacks stay suppressed while
+         * separation still runs. */
         if (lbl_1_bss_50 == 0) {
-            if (a->collide != NULL) {
-                a->collide(a, b);
+            if (firstCollision->collide != NULL) {
+                /* Callback return values are ignored; pair overlap determines this function's
+                 * result. */
+                firstCollision->collide(firstCollision, secondCollision);
             }
-            if (b->collide != NULL) {
-                b->collide(b, a);
+            if (secondCollision->collide != NULL) {
+                secondCollision->collide(secondCollision, firstCollision);
             }
         }
         return 1;
@@ -168,88 +199,96 @@ int fn_1_450C(M659Collision *a, M659Collision *b)
     return 0;
 }
 
-void fn_1_4918(HuVecF a, HuVecF b, HuVecF *delta)
+/* XZ-distance helpers use this to subtract the second position from the first. */
+void fn_1_4918(HuVecF positionA, HuVecF positionB, HuVecF *difference)
 {
-    delta->x = a.x - b.x;
-    delta->z = a.z - b.z;
+    difference->x = positionA.x - positionB.x;
+    difference->z = positionA.z - positionB.z;
 }
 
-double fn_1_493C(HuVecF delta)
+/* The route planner calls this helper to measure an XZ difference vector. */
+double fn_1_493C(HuVecF difference)
 {
-    return sqrt(delta.x * delta.x + delta.z * delta.z);
+    return sqrt(difference.x * difference.x + difference.z * difference.z);
 }
 
-double fn_1_4ABC(HuVecF a, HuVecF b)
+/* The computer route planner uses this helper to measure spacing between course points. */
+double fn_1_4ABC(HuVecF positionA, HuVecF positionB)
 {
-    HuVecF delta;
-    fn_1_4918(a, b, &delta);
-    return fn_1_493C(delta);
+    HuVecF difference;
+    fn_1_4918(positionA, positionB, &difference);
+    return fn_1_493C(difference);
 }
 
-int fn_1_4CA4(M659Collision *value)
+/* Registers a collision object in the first available collision-table slot and returns that
+ * slot. */
+int fn_1_4CA4(M659Collision *collision)
 {
-    M659Collision **entry;
+    M659Collision **collisionEntry;
     int index;
     OMOBJ *obj = lbl_1_bss_54;
-    M659CollisionTable *work = obj->data;
+    M659CollisionTable *collisionTable = obj->data;
 
-    entry = work->entries;
-    for (index = 0; index < 200; index++, entry++) {
-        if (*entry == NULL) {
-            *entry = value;
+    collisionEntry = collisionTable->entries;
+    for (index = 0; index < 200; index++, collisionEntry++) {
+        if (*collisionEntry == NULL) {
+            *collisionEntry = collision;
             return index;
         }
     }
     return -1;
 }
 
-int fn_1_4D1C(void *value)
+/* Registers a secondary pointer and returns its table index after the collision-object slots. */
+int fn_1_4D1C(void *registration)
 {
-    void **entry;
+    void **secondaryEntry;
     int index;
     OMOBJ *obj = lbl_1_bss_54;
-    M659CollisionTable *work = obj->data;
+    M659CollisionTable *collisionTable = obj->data;
 
-    entry = work->entries2;
-    for (index = 0; index < 130; index++, entry++) {
-        if (*entry == NULL) {
-            *entry = value;
+    secondaryEntry = collisionTable->secondaryEntries;
+    for (index = 0; index < 130; index++, secondaryEntry++) {
+        if (*secondaryEntry == NULL) {
+            *secondaryEntry = registration;
             return index + 200;
         }
     }
     return -1;
 }
 
-void fn_1_4D94(int index)
+/* Clears a collision-table registration by its returned index. */
+void fn_1_4D94(int registrationIndex)
 {
-    M659CollisionTable *work;
+    M659CollisionTable *collisionTable;
     OMOBJ *obj = lbl_1_bss_54;
-    work = obj->data;
-    if (index >= 0) {
-        if (index < 200) {
-            work->entries[index] = NULL;
+    collisionTable = obj->data;
+    if (registrationIndex >= 0) {
+        if (registrationIndex < 200) {
+            collisionTable->entries[registrationIndex] = NULL;
         }
-        index -= 200;
-        if (index < 130) {
-            work->entries2[index] = NULL;
+        registrationIndex -= 200;
+        if (registrationIndex < 130) {
+            collisionTable->secondaryEntries[registrationIndex] = NULL;
         }
     }
 }
 
-void *fn_1_4DF8(int index)
+/* Returns a registered pointer for a valid table index, or NULL outside both tables. */
+void *fn_1_4DF8(int registrationIndex)
 {
-    M659CollisionTable *work;
+    M659CollisionTable *collisionTable;
     OMOBJ *obj = lbl_1_bss_54;
-    work = obj->data;
-    if (index < 0) {
+    collisionTable = obj->data;
+    if (registrationIndex < 0) {
         return NULL;
     }
-    if (index < 200) {
-        return work->entries[index];
+    if (registrationIndex < 200) {
+        return collisionTable->entries[registrationIndex];
     }
-    index -= 200;
-    if (index < 130) {
-        return work->entries2[index];
+    registrationIndex -= 200;
+    if (registrationIndex < 130) {
+        return collisionTable->secondaryEntries[registrationIndex];
     }
     return NULL;
 }
