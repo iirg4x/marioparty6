@@ -1,3 +1,4 @@
+// Board overlays and particle effects, including fades and confetti.
 #define _MATH_H
 #include "game/board/effect.h"
 #include "dolphin/os/OSFastCast.h"
@@ -31,6 +32,7 @@ static void *tempColorBuf;
 static OMOBJ *confettiOMObj;
 static OMOBJ *fadeOMObj;
 
+// Called by board startup to reset shared effect state and allocate the color buffer.
 void mbEffInit(void)
 {
     fadeOMObj = NULL;
@@ -39,6 +41,7 @@ void mbEffInit(void)
     tempColorNum = 0;
 }
 
+// Called by board shutdown to release the shared effect color buffer.
 void mbEffClose(void)
 {
     if (tempColorBuf) {
@@ -48,23 +51,24 @@ void mbEffClose(void)
 }
 
 typedef struct fadeEffWork_s {
-    unsigned killF : 1;
-    unsigned pauseF : 1;
-    u8 alpha;
-    s16 time;
-    s16 maxTime;
-    HU3D_MODELID modelId;
-    GXColor color;
-    float speed;
+    unsigned killF : 1; // Fade task should remove itself on its next update.
+    unsigned pauseF : 1; // Fade reached its target alpha and stopped changing.
+    u8 targetAlpha; // Requested overlay alpha when a fade-in completes.
+    s16 time; // Remaining initial delay in object updates.
+    s16 maxTime; // Initial fade duration in object updates.
+    HU3D_MODELID modelId; // Hu3D hook model that draws the overlay.
+    GXColor color; // Full-screen overlay color; alpha is animated.
+    float alphaStep; // Alpha change applied on each object update.
 } FADEEFFWORK;
 
 static void FadeOMExec(OMOBJ *obj);
 static void FadeDraw(HU3D_MODEL *modelP, Mtx *mtx);
 
+// Board pause, special-cap and scroll flows call this to fade the overlay back out.
 void mbEffFadeOutSet(s16 maxTime)
 {
     FADEEFFWORK *work;
-    float maxTimeF;
+    float maxTimeFloat;
     if(!fadeOMObj) {
         return;
     }
@@ -73,13 +77,14 @@ void mbEffFadeOutSet(s16 maxTime)
     }
     work = omObjGetWork(fadeOMObj, FADEEFFWORK);
     work->maxTime = maxTime;
-    OSs16tof32(&maxTime, &maxTimeF);
-    work->speed = -work->color.a/maxTimeF;
+    OSs16tof32(&maxTime, &maxTimeFloat);
+    work->alphaStep = -work->color.a/maxTimeFloat;
     work->pauseF = FALSE;
     work->time = work->maxTime;
 }
 
-void mbEffFadeCreate(s16 maxTime, u8 alpha)
+// Board pause, special-cap and scroll flows call this to create a black fade overlay.
+void mbEffFadeCreate(s16 maxTime, u8 targetAlpha)
 {
     FADEEFFWORK *work;
     if(fadeOMObj) {
@@ -101,8 +106,8 @@ void mbEffFadeCreate(s16 maxTime, u8 alpha)
     work->color.g = 0;
     work->color.b = 0;
     work->color.a = 0;
-    work->alpha = alpha;
-    work->speed = (float)(alpha-work->color.a)/maxTime;
+    work->targetAlpha = targetAlpha;
+    work->alphaStep = (float)(targetAlpha-work->color.a)/maxTime;
     work->time = maxTime;
     work->maxTime = maxTime;
     work->modelId = Hu3DHookFuncCreate(FadeDraw);
@@ -110,6 +115,7 @@ void mbEffFadeCreate(s16 maxTime, u8 alpha)
     Hu3DModelLayerSet(work->modelId, 1);
 }
 
+// Callers such as the pause flow poll this until the fade-in reaches its target.
 BOOL mbEffFadeDoneCheck(void)
 {
     FADEEFFWORK *work;
@@ -120,23 +126,26 @@ BOOL mbEffFadeDoneCheck(void)
     return (work->pauseF) ? TRUE : FALSE;
 }
 
-void mbEffFadeCameraSet(u16 bit)
+// Select which Hu3D cameras receive the existing fade overlay.
+void mbEffFadeCameraSet(u16 cameraBit)
 {
     if(fadeOMObj) {
         FADEEFFWORK *work = omObjGetWork(fadeOMObj, FADEEFFWORK);
-        Hu3DModelCameraSet(work->modelId, bit);
+        Hu3DModelCameraSet(work->modelId, cameraBit);
     }
 }
 
+// Used by board pause flow to avoid starting while another fade object exists.
 BOOL mbEffFadeCheck(void)
 {
     return (fadeOMObj != NULL) ? FALSE : TRUE;
 }
 
+// Object-manager callback: animate overlay alpha and remove completed fade-outs.
 static void FadeOMExec(OMOBJ *obj)
 {
     FADEEFFWORK *work = omObjGetWork(obj, FADEEFFWORK);
-    float alpha;
+    float overlayAlpha;
     if(work->killF || mbExitCheck()) {
         if(work->modelId != HU3D_MODELID_NONE) {
             Hu3DModelKill(work->modelId);
@@ -148,21 +157,22 @@ static void FadeOMExec(OMOBJ *obj)
     if(work->pauseF) {
         return;
     }
-    OSu8tof32(&work->color.a, &alpha);
-    alpha += work->speed;
-    OSf32tou8(&alpha, &work->color.a);
+    OSu8tof32(&work->color.a, &overlayAlpha);
+    overlayAlpha += work->alphaStep;
+    OSf32tou8(&overlayAlpha, &work->color.a);
     if(work->time > 0) {
         work->time--;
         return;
     }
-    if(work->speed > 0) {
+    if(work->alphaStep > 0) {
         work->pauseF = TRUE;
-        work->color.a = work->alpha;
+        work->color.a = work->targetAlpha;
     } else {
         work->killF = TRUE;
     }
 }
 
+// Hu3D hook callback: draw the current fade color over the full camera frame.
 static void FadeDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     static GXColor colorN = { 255, 255, 255, 255 };
@@ -212,25 +222,25 @@ static void FadeDraw(HU3D_MODEL *modelP, Mtx *mtx)
 }
 
 typedef struct confettiEffData_s {
-    s16 time;
-    u8 alpha;
-    u8 ambNo;
-    HuVecF pos;
-    HuVecF rot;
-    HuVecF vel;
-    HuVecF rotVel;
+    s16 time; // Remaining lifetime in updates; -1 marks an unused particle slot.
+    u8 alpha; // Particle opacity, from 0 (transparent) to 255 (opaque).
+    u8 ambNo; // Index into the six-color ambient palette used by the draw callback.
+    HuVecF pos; // World position in board coordinates.
+    HuVecF rot; // X/Y/Z rotation angles in degrees.
+    HuVecF vel; // Per-update movement in world coordinates.
+    HuVecF rotVel; // Per-update rotation change in degrees.
 } CONFETTIEFFDATA;
 
 typedef struct confettiEffWork_s {
-    unsigned killF : 1;
-    unsigned pauseF : 1;
-    s8 addNum;
-    s8 time;
-    s8 delay;
-    s16 maxCnt;
-    MBMODELID modelId;
-    HU3D_MODELID hookMdlId;
-    CONFETTIEFFDATA *data;
+    unsigned killF : 1; // Confetti task should clean up on its next update.
+    unsigned pauseF : 1; // Stop emission and clean up after current particles expire.
+    s8 addNum; // Pieces emitted per update, ramping up to five.
+    s8 time; // Updates elapsed toward increasing the emission count.
+    s8 delay; // Update interval used while ramping the emission count.
+    s16 maxCnt; // Capacity of the particle array.
+    MBMODELID modelId; // Board model used to draw each confetti piece.
+    HU3D_MODELID hookMdlId; // Hu3D callback model for confetti rendering.
+    CONFETTIEFFDATA *data; // Per-piece position, motion, rotation and lifetime.
 } CONFETTIEFFWORK;
 
 static void EffConfettiOMExec(OMOBJ *obj);
@@ -238,7 +248,8 @@ static void EffConfettiAdd(OMOBJ *obj);
 static void EffConfettiUpdate(OMOBJ *obj);
 static void EffConfettiDraw(HU3D_MODEL *modelP, Mtx *mtx);
 
-void mbEffConfettiCreate(HuVecF *pos, s16 maxCnt, float width)
+// Called by gameplay flows through the overlay entry points to start board confetti.
+void mbEffConfettiCreate(HuVecF *origin, s16 maxCnt, float radialSpread)
 {
     CONFETTIEFFWORK *work;
     OMOBJ *obj;
@@ -258,11 +269,12 @@ void mbEffConfettiCreate(HuVecF *pos, s16 maxCnt, float width)
     work->delay = 10;
     work->hookMdlId = Hu3DHookFuncCreate(EffConfettiDraw);
     Hu3DModelCameraSet(work->hookMdlId, HU3D_CAM0);
-    work->data = HuMemDirectMallocNum(HEAP_HEAP, work->maxCnt*sizeof(CONFETTIEFFDATA), HU_MEMNUM_OVL);
-    obj->trans.x = pos->x;
-    obj->trans.y = pos->y;
-    obj->trans.z = pos->z;
-    obj->rot.x = width;
+    work->data =
+        HuMemDirectMallocNum(HEAP_HEAP, work->maxCnt * sizeof(CONFETTIEFFDATA), HU_MEMNUM_OVL);
+    obj->trans.x = origin->x;
+    obj->trans.y = origin->y;
+    obj->trans.z = origin->z;
+    obj->rot.x = radialSpread;
     work->modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_board, 2)), NULL, FALSE);
     mbObjLayerSet(work->modelId, 5);
     mbObjDispSet(work->modelId, FALSE);
@@ -271,6 +283,7 @@ void mbEffConfettiCreate(HuVecF *pos, s16 maxCnt, float width)
     }
 }
 
+// Called by gameplay cleanup to request confetti removal on the next object update.
 void mbEffConfettiKill(void)
 {
     if(confettiOMObj) {
@@ -278,6 +291,7 @@ void mbEffConfettiKill(void)
     }
 }
 
+// Stop new pieces and cap each live piece's remaining lifetime at 16 updates.
 void mbEffConfettiReset(void)
 {
     CONFETTIEFFWORK *work;
@@ -295,6 +309,7 @@ void mbEffConfettiReset(void)
     }
 }
 
+// Object-manager callback: run emission and particle updates once per board update.
 static void EffConfettiOMExec(OMOBJ *obj)
 {
     CONFETTIEFFWORK *work = omObjGetWork(obj, CONFETTIEFFWORK);
@@ -310,6 +325,7 @@ static void EffConfettiOMExec(OMOBJ *obj)
     EffConfettiUpdate(obj);
 }
 
+// Emit pieces into free slots, increasing the count during effect startup.
 static void EffConfettiAdd(OMOBJ *obj)
 {
     CONFETTIEFFWORK *work = omObjGetWork(obj, CONFETTIEFFWORK);
@@ -353,6 +369,7 @@ static void EffConfettiAdd(OMOBJ *obj)
     }
 }
 
+// Advance live pieces and finish a reset after the last piece expires.
 static void EffConfettiUpdate(OMOBJ *obj)
 {
     int i;
@@ -391,6 +408,7 @@ static void EffConfettiUpdate(OMOBJ *obj)
     }
 }
 
+// Hu3D hook callback: draw active pieces with their palette color and opacity.
 static void EffConfettiDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     static HuVecF ambTbl[6] = {
@@ -399,7 +417,7 @@ static void EffConfettiDraw(HU3D_MODEL *modelP, Mtx *mtx)
         { 0.3, 1, 1 },
         { 1, 0.2, 0.1 },
         { 1, 0.2, 0.8 },
-        { 1, 8, 0.3 }
+        { 1, 8, 0.3 } // This entry uses a green ambient component of 8.0.
     };
     if(!confettiOMObj || mbExitCheck()) {
         return;
@@ -440,6 +458,7 @@ static void EffConfettiDraw(HU3D_MODEL *modelP, Mtx *mtx)
 static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx);
 static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx);
 
+// Create a hook model with one animated quad and texture coordinates per particle slot.
 HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
 {
     HU3D_MODELID modelId = Hu3DHookFuncCreate(ParticleDraw);
@@ -479,15 +498,19 @@ HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
     particleP->alphaIn[1] = GX_CA_TEXA;
     particleP->alphaIn[2] = GX_CA_RASA;
     particleP->alphaIn[3] = GX_CA_ZERO;
-    particleP->data = particleDataP = mbMallocNum(maxCnt * sizeof(MBPARTICLEDATA), modelP->mallocNo);
+    particleP->data = particleDataP =
+        mbMallocNum(maxCnt * sizeof(MBPARTICLEDATA), modelP->mallocNo);
     for (i = 0; i < maxCnt; i++, particleDataP++) {
         particleDataP->cameraBit = HU3D_CAM_ALL;
         *(u32 *)&particleDataP->color = -1;
         particleDataP->dispF = TRUE;
     }
-    particleP->vertex = HuMemDirectMallocNum(HEAP_MODEL, maxCnt * sizeof(HuVecF) * 4, modelP->mallocNo);
-    particleP->st = HuMemDirectMallocNum(HEAP_MODEL, maxCnt * sizeof(HuVec2f) * 4, modelP->mallocNo);
-    particleP->animSt = HuMemDirectMallocNum(HEAP_MODEL, anim->patNum * sizeof(HuVec2f) * 4, modelP->mallocNo);
+    particleP->vertex =
+        HuMemDirectMallocNum(HEAP_MODEL, maxCnt * sizeof(HuVecF) * 4, modelP->mallocNo);
+    particleP->st =
+        HuMemDirectMallocNum(HEAP_MODEL, maxCnt * sizeof(HuVec2f) * 4, modelP->mallocNo);
+    particleP->animSt =
+        HuMemDirectMallocNum(HEAP_MODEL, anim->patNum * sizeof(HuVec2f) * 4, modelP->mallocNo);
     for (i = 0; i < anim->patNum; i++) {
         layerP = anim->pat[i].layer;
         bmpP = &anim->bmp[layerP->bmpNo];
@@ -507,7 +530,8 @@ HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
         stP->y = scaleY * (layerP->startY + layerP->vtx[7]);
         stP++;
     }
-    GXBeginDisplayList(particleP->dl = mbMallocFlushModelNum((maxCnt * 24) + 128, modelP->mallocNo), MB_PARTICLE_DISPLAY_LIST_BYTES);
+    GXBeginDisplayList(particleP->dl = mbMallocFlushModelNum((maxCnt * 24) + 128, modelP->mallocNo),
+                       MB_PARTICLE_DISPLAY_LIST_BYTES);
     GXBegin(GX_QUADS, GX_VTXFMT0, maxCnt * 4);
     for (i = 0; i < maxCnt; i++) {
         vtxNo = i * 4;
@@ -528,6 +552,7 @@ HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
     return modelId;
 }
 
+// Release the animation and model-heap allocations owned by a particle model.
 void mbParticleKill(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -537,21 +562,24 @@ void mbParticleKill(HU3D_MODELID modelId)
     modelP->hsf = NULL;
 }
 
+// Enable per-particle vertex colors and allocate the color array on first use.
 void mbParticleColorCreate(HU3D_MODELID modelId)
 {
     MBPARTICLE *particleP = Hu3DData[modelId].hookData;
 
     particleP->colorF = TRUE;
     if (!particleP->color) {
-        particleP->color = HuMemDirectMallocNum(HEAP_MODEL, particleP->num * sizeof(GXColor), Hu3DData[modelId].mallocNo);
+        particleP->color = HuMemDirectMallocNum(HEAP_MODEL, particleP->num * sizeof(GXColor),
+                                                Hu3DData[modelId].mallocNo);
     }
 }
 
 typedef struct ParticleColorSort_s {
-    s32 key;
-    u32 index;
+    s32 key; // Sort key derived from a particle's depth in the active camera view.
+    u32 index; // Original particle slot associated with the key.
 } PARTICLECOLORSORT;
 
+// Copy one particle sort record while keeping its key and slot paired.
 static inline void ParticleSortEntryCopy(PARTICLECOLORSORT *dst, const PARTICLECOLORSORT *src)
 {
     s32 key = src->key;
@@ -559,10 +587,13 @@ static inline void ParticleSortEntryCopy(PARTICLECOLORSORT *dst, const PARTICLEC
     dst->key = key;
 }
 
+// Sort particle depth records in place; the short ranges finish with insertion sort.
 static void ParticleColorCopy(PARTICLECOLORSORT *color, int count)
 {
+    // Each partition stack holds 32 s32 bounds: 128 bytes, with 4-byte alignment.
     static s32 effColorNum[32];
     static s32 effColorNo[32];
+    // Pending partition bounds use parallel stacks, with stackSize measured in bytes.
     char *leftStack = (char *)effColorNum;
     char *rightStack = (char *)effColorNo;
     int i;
@@ -656,20 +687,19 @@ static void ParticleColorCopy(PARTICLECOLORSORT *color, int count)
     }
 }
 
-static inline void ParticleQuadTransform(register Vec *src, register Vec *dst, float scale, const Vec *pos)
+// Scale a particle's four corners and translate them to its world-space position.
+static inline void ParticleQuadTransform(register Vec *src, register Vec *dst, float scale,
+                                         const Vec *pos)
 {
     float scalePair[2];
     float translation[4];
     register const float *scalePairPtr = scalePair;
     register const float *translationPtr = translation;
-#if defined(__MWERKS__) && !defined(TARGET_PC)
     register float posXY, posZX, posYZ, scaleXY, v0, v1, v2;
-#endif
     translation[0] = translation[3] = pos->x;
     translation[1] = pos->y;
     translation[2] = pos->z;
     scalePair[0] = scalePair[1] = scale;
-#if defined(__MWERKS__) && !defined(TARGET_PC)
     asm {
         psq_l scaleXY, 0(scalePairPtr), 0, 0
         psq_l posXY, 0(translationPtr), 0, 0
@@ -694,19 +724,11 @@ static inline void ParticleQuadTransform(register Vec *src, register Vec *dst, f
         psq_st v1, 32(dst), 0, 0
         psq_st v2, 40(dst), 0, 0
     }
-#else
-    int i;
-    for (i = 0; i < 4; i++) {
-        dst[i].x = src[i].x * scale + pos->x;
-        dst[i].y = src[i].y * scale + pos->y;
-        dst[i].z = src[i].z * scale + pos->z;
-    }
-#endif
 }
 
+// Clear all four particle quad vertices when a slot is hidden or has zero scale.
 static inline void ParticleQuadClear(register const HuVec2f *zero, register Vec *dst)
 {
-#if defined(__MWERKS__) && !defined(TARGET_PC)
     asm {
         psq_l fp0, 0(zero), 0, 0
         psq_st fp0, 0(dst), 0, 0
@@ -716,17 +738,11 @@ static inline void ParticleQuadClear(register const HuVec2f *zero, register Vec 
         psq_st fp0, 32(dst), 0, 0
         psq_st fp0, 40(dst), 0, 0
     }
-#else
-    int i;
-    for (i = 0; i < 4; i++) {
-        dst[i].x = dst[i].y = dst[i].z = 0.0f;
-    }
-#endif
 }
 
+// Copy the four UV coordinates for the current animation frame into the draw array.
 static inline void ParticleQuadTexCopy(register const HuVec2f *src, register HuVec2f *dst)
 {
-#if defined(__MWERKS__) && !defined(TARGET_PC)
     asm {
         psq_l fp0, 0(src), 0, 0
         psq_l fp1, 8(src), 0, 0
@@ -737,12 +753,9 @@ static inline void ParticleQuadTexCopy(register const HuVec2f *src, register HuV
         psq_st fp2, 16(dst), 0, 0
         psq_st fp3, 24(dst), 0, 0
     }
-#else
-    int i;
-    for (i = 0; i < 4; i++) dst[i] = src[i];
-#endif
 }
 
+// Hu3D hook: update particle callbacks and animation, build visible quads, then draw them.
 static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     static Vec basePos[] = {
@@ -863,7 +876,8 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
                     && particleDataP->rot.z == 0.0f) {
                     drawVtxP = basePos;
                 } else {
-                    mbMtxRot(rotMtx, particleDataP->rot.x, particleDataP->rot.y, particleDataP->rot.z);
+                    mbMtxRot(rotMtx, particleDataP->rot.x, particleDataP->rot.y,
+                             particleDataP->rot.z);
                     PSMTXMultVecArray(rotMtx, basePos, finalVtx, 4);
                     drawVtxP = finalVtx;
                 }
@@ -935,7 +949,8 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
         particleP->alphaIn[2], particleP->alphaIn[3]);
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
     GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP,
+                  GX_AF_NONE);
     GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
     GXSetZCompLoc(FALSE);
     GXClearVtxDesc();
@@ -1001,6 +1016,7 @@ static float baseScale[] = {
     1.0f, 0.9f, 0.7f, 0.5f, 0.5f, 0.7f, 0.9f, 1.0f
 };
 
+// Install the per-frame callback invoked by ParticleDraw when model updates are enabled.
 void mbParticleHookSet(HU3D_MODELID modelId, MBPARTICLEHOOK hook)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1008,6 +1024,7 @@ void mbParticleHookSet(HU3D_MODELID modelId, MBPARTICLEHOOK hook)
     effP->hook = hook;
 }
 
+// Add particle-wide behavior flags, such as looping or pause handling.
 void mbParticleAttrSet(HU3D_MODELID modelId, u8 attr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1015,6 +1032,7 @@ void mbParticleAttrSet(HU3D_MODELID modelId, u8 attr)
     effP->attr |= attr;
 }
 
+// Remove the selected particle-wide behavior flags.
 void mbParticleAttrReset(HU3D_MODELID modelId, u8 attr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1022,6 +1040,7 @@ void mbParticleAttrReset(HU3D_MODELID modelId, u8 attr)
     effP->attr &= ~attr;
 }
 
+// Claim the first paused particle slot and reset it for reuse by an effect callback.
 MBPARTICLEDATA *mbParticleDataCreate(MBPARTICLE *effP)
 {
     MBPARTICLEDATA *effData;
@@ -1037,6 +1056,7 @@ MBPARTICLEDATA *mbParticleDataCreate(MBPARTICLE *effP)
     return NULL;
 }
 
+// Sum the frame durations in one animation bank, in animation ticks.
 int mbParticleUnkTotalGet(ANIMDATA *anim, int bankNo)
 {
     int i;
@@ -1050,6 +1070,7 @@ int mbParticleUnkTotalGet(ANIMDATA *anim, int bankNo)
     return total;
 }
 
+// Create an emitter-backed particle model and initialize its direction and vacuum state.
 HU3D_MODELID mbParManCreate(ANIMDATA *anim, s16 maxCnt, HU3D_PARMAN_PARAM *param)
 {
     HU3D_MODELID modelId;
@@ -1089,11 +1110,13 @@ HU3D_MODELID mbParManCreate(ANIMDATA *anim, s16 maxCnt, HU3D_PARMAN_PARAM *param
     return modelId;
 }
 
+// Release an emitter by using the particle model's common cleanup path.
 void mbParManKill(HU3D_MODELID modelId)
 {
     mbParticleKill(modelId);
 }
 
+// Select the GX blend mode used when this model's particles are drawn.
 void mbParticleBlendModeSet(HU3D_MODELID modelId, int blendMode)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1101,11 +1124,13 @@ void mbParticleBlendModeSet(HU3D_MODELID modelId, int blendMode)
     particleP->blendMode = blendMode;
 }
 
+// Set the emitter model's world position through the Hu3D model interface.
 void mbParManPosSet(int modelId, float x, float y, float z)
 {
     Hu3DModelPosSet(modelId, x, y, z);
 }
 
+// Set the direction vector along which the emitter launches particles.
 void mbParManVecSet(HU3D_MODELID modelId, float x, float y, float z)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1115,6 +1140,7 @@ void mbParManVecSet(HU3D_MODELID modelId, float x, float y, float z)
     parManParticleP->parMan.vec.z = z;
 }
 
+// Convert the supplied Euler rotation to the emitter's forward direction vector.
 void mbParManRotSet(HU3D_MODELID modelId, float rotX, float rotY, float rotZ)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1127,6 +1153,7 @@ void mbParManRotSet(HU3D_MODELID modelId, float rotX, float rotY, float rotZ)
     parManParticleP->parMan.vec.z = rotMtx[2][2];
 }
 
+// Add behavior flags to the particle emitter.
 void mbParManAttrSet(HU3D_MODELID modelId, s32 attr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1134,6 +1161,7 @@ void mbParManAttrSet(HU3D_MODELID modelId, s32 attr)
     parManParticleP->parMan.attr |= attr;
 }
 
+// Remove behavior flags from the particle emitter.
 void mbParManAttrReset(HU3D_MODELID modelId, s32 attr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1144,10 +1172,9 @@ void mbParManAttrReset(HU3D_MODELID modelId, s32 attr)
 /* Particle random ranges and results use the unsigned SDK domain. */
 #define ParticleRandMod(modulus) ((u32)frandmod((u32)(modulus)))
 
-/* Native HuVecF copy; the scalar fallback preserves the same twelve bytes. */
+/* Copy the particle's starting position before its launch direction is calculated. */
 static inline void ParticleVecCopy(register const HuVecF *src, register HuVecF *dst)
 {
-#if defined(__MWERKS__) && !defined(TARGET_PC)
     register __vec2x32float__ xy;
     register float z;
     asm {
@@ -1156,12 +1183,9 @@ static inline void ParticleVecCopy(register const HuVecF *src, register HuVecF *
         psq_st xy, 0(dst), 0, 0
         stfs z, 8(dst)
     }
-#else
-    HuVecF value = *src;
-    *dst = value;
-#endif
 }
 
+// Particle hook: emit available slots, integrate motion, apply colors, and retire particles.
 static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     MBPARMAN *parManParticleP = (MBPARMAN *)particleP;
@@ -1212,9 +1236,11 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
                     particleDataP->activeF = TRUE;
                     scale = param->scaleBase;
                     if (parManP->attr & HU3D_PARMAN_ATTR_RANDSCALE90) {
-                        scale = scale * 0.9 + ParticleRandMod((u32)(scale * 0.1 * 1000.0)) / 1000.0f;
+                        scale =
+                            scale * 0.9 + ParticleRandMod((u32) (scale * 0.1 * 1000.0)) / 1000.0f;
                     } else if (parManP->attr & HU3D_PARMAN_ATTR_RANDSCALE70) {
-                        scale = scale * 0.7 + ParticleRandMod((u32)(scale * 0.3 * 1000.0)) / 1000.0f;
+                        scale =
+                            scale * 0.7 + ParticleRandMod((u32) (scale * 0.3 * 1000.0)) / 1000.0f;
                     }
                     particleDataP->scaleBase = scale;
                     particleDataP->scale = scale;
@@ -1322,18 +1348,21 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
                 if (particleDataP->activeF) {
                     param = parManP->param;
                     if (parManP->attr & HU3D_PARMAN_ATTR_SCALEJITTER) {
-                        particleDataP->scale = particleDataP->scaleBase * baseScale[(parManP->jitterNo + i) & 7];
+                        particleDataP->scale =
+                            particleDataP->scaleBase * baseScale[(parManP->jitterNo + i) & 7];
                     } else {
                         particleDataP->scale = particleDataP->scaleBase;
                     }
                     if (!(parManP->attr & HU3D_PARMAN_ATTR_PAUSE)) {
                         PSVECAdd(&particleDataP->pos, &particleDataP->vel, &particleDataP->pos);
                         PSVECAdd(&particleDataP->pos, &particleDataP->accel, &particleDataP->pos);
-                        PSVECScale(&particleDataP->vel, &particleDataP->vel, particleDataP->speedDecay);
+                        PSVECScale(&particleDataP->vel, &particleDataP->vel,
+                                   particleDataP->speedDecay);
                         PSVECAdd(&param->gravity, &particleDataP->accel, &particleDataP->accel);
                         if (parManP->attr & HU3D_PARMAN_ATTR_VACUUM) {
                             PSVECSubtract(&parManP->vacuum, &particleDataP->pos, &vacuumAccel);
-                            if (vacuumAccel.x == 0.0f && vacuumAccel.y == 0.0f && vacuumAccel.z == 0.0f) {
+                            if (vacuumAccel.x == 0.0f && vacuumAccel.y == 0.0f &&
+                                vacuumAccel.z == 0.0f) {
                                 vacuumAccel.z = 1.0f;
                             }
                             PSVECNormalize(&vacuumAccel, &vacuumAccel);
@@ -1354,10 +1383,14 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
                         colorIdx = (s16)particleDataP->colorIdx;
                         colorStart = &param->colorStart[colorIdx];
                         colorEnd = &param->colorEnd[colorIdx];
-                        particleDataP->color.r = colorStart->r + weight * (colorEnd->r - colorStart->r);
-                        particleDataP->color.g = colorStart->g + weight * (colorEnd->g - colorStart->g);
-                        particleDataP->color.b = colorStart->b + weight * (colorEnd->b - colorStart->b);
-                        particleDataP->color.a = colorStart->a + weight * (colorEnd->a - colorStart->a);
+                        particleDataP->color.r =
+                            colorStart->r + weight * (colorEnd->r - colorStart->r);
+                        particleDataP->color.g =
+                            colorStart->g + weight * (colorEnd->g - colorStart->g);
+                        particleDataP->color.b =
+                            colorStart->b + weight * (colorEnd->b - colorStart->b);
+                        particleDataP->color.a =
+                            colorStart->a + weight * (colorEnd->a - colorStart->a);
                         if (particleDataP->scale < 0.01 || particleDataP->time >= param->maxTime) {
                             particleDataP->activeF = FALSE;
                             particleDataP->scale = 0.0f;
