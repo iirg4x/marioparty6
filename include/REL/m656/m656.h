@@ -1,3 +1,4 @@
+/* Shared state and helper declarations for Mass Meteor. */
 #include "game/main.h"
 #include "game/object.h"
 #include "game/audio.h"
@@ -23,72 +24,108 @@
 #ifndef M656_INTEGRATION_H
 #define M656_INTEGRATION_H
 
-/* Address-derived symbols are retained where original names are unknown. */
-/* Consumer-backed heap layouts. Offset/extent names are reconstruction labels,
- * not claims of recovered original type names. No compiler padding is added. */
+/* Per-meteor pattern entry used to place and animate a falling object. */
 typedef struct M656Work60 M656Work60;
 typedef struct M656Entry10 {
-    s16 kind;
-    float x, y, deltaY;
+    s16 kind; /* Meteor model index. */
+    float x; /* Starting horizontal position in stage units. */
+    float y; /* Starting vertical position in stage units. */
+    float deltaY; /* Vertical movement per frame while this group's player is moving. */
 } M656Entry10;
 typedef struct M656Work18 {
-    s16 group;
-    HU3D_MODELID model;
-    float angle;
-    s16 active;
-    HuVecF pos;
+    s16 group; /* Player group, 0 or 1. */
+    HU3D_MODELID model; /* Finish marker model. */
+    float angle; /* Marker rotation in degrees. */
+    s16 active; /* Nonzero after this group's progress reaches 100% and its finish marker is
+                 * enabled. */
+    HuVecF pos; /* Finish marker position in stage units. */
 } M656Work18;
 typedef struct M656Work4 {
-    s16 group, pattern;
+    s16 group; /* Player group, 0 or 1. */
+    s16 pattern; /* Selected meteor pattern row. */
 } M656Work4;
 typedef struct M656SceneWork {
-    s32 frame;
-    s16 stream;
-    s32 fx;
+    s32 frame; /* Frames elapsed in the current result transition. */
+    s16 stream; /* Audio stream handle, or -1 before playback. */
+    s32 fx; /* Stage sound effect handle, or -1 before playback. */
 } M656SceneWork;
-typedef struct M656CameraWork { s16 state; } M656CameraWork;
+typedef struct M656CameraWork {
+    s16 state; /* Stored field initialized before results-camera setup; no further use is
+                  established here. */
+} M656CameraWork;
 typedef struct M656EnvironmentWork {
-    s16 sprGroup;
-    HU3D_MODELID model2, model4;
-    HU3D_MODELID models[20];
-    HU3D_MODELID model2E;
-    HuVecF angles[20];
-    HuVecF steps[20];
+    s16 sprGroup; /* Sprite group for the stage progress display. */
+    HU3D_MODELID model2; /* Backdrop model. */
+    HU3D_MODELID model4; /* Animated stage model. */
+    HU3D_MODELID models[20]; /* Twenty decorative stage models. */
+    HU3D_MODELID model2E; /* Model whose hooks place the decorations. */
+    HuVecF angles[20]; /* Decorative model rotations in radians. */
+    HuVecF steps[20]; /* Per-frame rotation increments in radians. */
 } M656EnvironmentWork;
-typedef struct M656Sphere { HuVecF center; float radius; } M656Sphere;
+/* Collision primitives use stage-space coordinates and radii. */
+typedef struct M656Sphere {
+    HuVecF center; /* Sphere center in stage units. */
+    float radius;  /* Sphere radius in stage units. */
+} M656Sphere;
 typedef struct M656Work50 {
-    s16 index, group;
-    M656Entry10 *entry;
-    /* Unconsumed bytes inside the observed 80-byte allocation. */
-    u8 unknown08[4];
-    HuVecF pos, velocity;
-    HU3D_MODELID model;
-    M656Sphere sphere;
-    s16 state, timer;
-    HuVecF axis;
-    float step, angle;
+    s16 index; /* Position in the group's sixteen-entry pattern. */
+    s16 group; /* Player group, 0 or 1. */
+    M656Entry10 *entry; /* Pattern data for this meteor. */
+    u8 unidentifiedBytes[4]; /* Bytes not read by the stage callbacks. */
+    HuVecF pos; /* Current meteor position in stage units. */
+    HuVecF velocity; /* Per-frame movement after a hit. */
+    HU3D_MODELID model; /* Meteor model. */
+    M656Sphere sphere; /* Current collision sphere. */
+    s16 state; /* 0 while available, 1 after a player hit. */
+    s16 timer; /* Frames since the hit movement began. */
+    HuVecF axis; /* Rotation axis for the meteor. */
+    float step; /* Rotation increment in radians per frame. */
+    float angle; /* Current rotation angle in radians. */
 } M656Work50;
 struct M656Work60 {
-    OMOBJ *childObj;
-    s16 index, charNo, group, playerNo, motion;
-    s32 timer;
-    HuVecF velocity, pos;
-    /* Target allocation includes this interval; no original type is known. */
-    u8 unknown2C[12];
-    HU3D_MODELID model38;
-    s16 texScroll, state, sprGroup;
-    float progress, fraction;
-    HU3D_MODELID model48, model4A;
-    u8 unknown4C[4];
-    HU3D_MODELID model50;
-    HuVecF target;
+    OMOBJ *childObj; /* Character object used to move and animate the player. */
+    s16 index; /* Group index, 0 or 1. */
+    s16 charNo; /* Character selected for this player. */
+    s16 group; /* Player group, 0 or 1. */
+    s16 playerNo; /* Player configuration index. */
+    s16 motion; /* Current character motion index. */
+    s32 timer; /* Frames in the current movement or transition state. */
+    HuVecF velocity; /* Current player movement per frame. */
+    HuVecF pos; /* Current player position in stage units. */
+    u8 unidentifiedBytes[12]; /* Bytes not read by the stage callbacks. */
+    HU3D_MODELID model38; /* Player's animated trail model. */
+    s16 texScroll; /* Trail texture scroll handle. */
+    s16 state; /* Gameplay state: 0 before movement, 1 moving, 2 hit, 3 finished. */
+    s16 sprGroup; /* Progress marker sprite group. */
+    float progress; /* Frames elapsed during the race. */
+    float fraction; /* Progress along the 2350-frame course, clamped to 1. */
+    HU3D_MODELID model48; /* Result animation model. */
+    HU3D_MODELID model4A; /* Result animation model. */
+    u8 unidentifiedBytes2[4]; /* Bytes not read by the stage callbacks. */
+    HU3D_MODELID model50; /* Meteor impact effect model. */
+    HuVecF target; /* Current computer-player wandering target. */
 };
-/* Collision consumers establish these complete scalar/vector extents. */
-typedef struct M656Segment { HuVecF start, delta; } M656Segment;
-typedef struct M656Capsule { M656Segment segment; float radius; } M656Capsule;
-typedef struct M656Triangle { HuVecF start, edge1, edge2; } M656Triangle;
-typedef struct M656Bounds { HuVecF min, max; } M656Bounds;
-typedef struct M656Vec4 { float x, y, z, w; } M656Vec4;
+typedef struct M656Segment {
+    HuVecF start; /* Segment start point. */
+    HuVecF delta; /* Vector from start to end. */
+} M656Segment;
+typedef struct M656Capsule {
+    M656Segment segment; /* Capsule center line. */
+    float radius;        /* Capsule radius in stage units. */
+} M656Capsule;
+typedef struct M656Triangle {
+    HuVecF start; /* Triangle base vertex. */
+    HuVecF edge1; /* Vector from start to the second vertex. */
+    HuVecF edge2; /* Vector from start to the third vertex. */
+} M656Triangle;
+typedef struct M656Bounds {
+    HuVecF min; /* Minimum corner in stage units. */
+    HuVecF max; /* Maximum corner in stage units. */
+} M656Bounds;
+typedef struct M656Vec4 {
+    float x, y, z; /* Transformed point coordinates. */
+    float w;       /* Homogeneous coordinate. */
+} M656Vec4;
 
 extern MGSEQ_PARAM lbl_1_data_0;
 extern OMOBJMAN *lbl_1_bss_0;
@@ -103,7 +140,9 @@ extern s32 lbl_1_data_3C[8];
 extern s16 lbl_1_data_65C[8];
 extern char *lbl_1_data_60C[20];
 
-typedef struct M656MatrixElements { float elements[16]; } M656MatrixElements;
+typedef struct M656MatrixElements {
+    float elements[16]; /* Row-major 4x4 matrix elements. */
+} M656MatrixElements;
 void fn_1_A0(void);
 void fn_1_F4(void);
 void fn_1_118(s16 mode, s16 frameNo);
@@ -143,14 +182,14 @@ void fn_1_22FC(M656Sphere *out, f32 x, f32 y, f32 z, f32 radius);
 void fn_1_2310(M656Bounds *out, M656Capsule *capsule);
 void fn_1_24C8(M656Bounds *out, M656Sphere *sphere);
 void fn_1_255C(M656Bounds *out, M656Triangle *triangle);
-s32 fn_1_27C0(M656Bounds *a, M656Bounds *b);
-s32 fn_1_2830(M656Sphere *a, s32 wordA, M656Sphere *b, s32 wordB,
+s32 fn_1_27C0(M656Bounds *boundsA, M656Bounds *boundsB);
+s32 fn_1_2830(M656Sphere *sphereA, s32 vectorWordA, M656Sphere *sphereB, s32 vectorWordB,
     float maxTime, float *time, HuVecF *out);
-float fn_1_2BE8(M656Sphere *a, M656Sphere *b);
-float fn_1_2C8C(M656Sphere *a, M656Sphere *b);
-f32 fn_1_2E18(Point3d *arg0, M656Triangle *arg1, f32 *arg2, f32 *arg3);
+float fn_1_2BE8(M656Sphere *sphereA, M656Sphere *sphereB);
+float fn_1_2C8C(M656Sphere *sphereA, M656Sphere *sphereB);
+f32 fn_1_2E18(Point3d *point, M656Triangle *triangle, f32 *triangleS, f32 *triangleT);
 float fn_1_36BC(HuVecF *a, M656Triangle *b, float *s, float *t);
-f32 fn_1_37E8(M656Segment *arg0, M656Segment *arg1, f32 *arg2, f32 *arg3);
+f32 fn_1_37E8(M656Segment *segmentA, M656Segment *segmentB, f32 *parameterA, f32 *parameterB);
 float fn_1_43E4(M656Segment *a, M656Segment *b, float *s, float *t);
 float fn_1_4510(HuVecF *point, M656Segment *segment);
 float fn_1_4608(HuVecF *point, M656Segment *segment);
@@ -201,7 +240,7 @@ void fn_1_8E24(OMOBJ *obj);
 void fn_1_90B0(OMOBJ *obj);
 void fn_1_9100(OMOBJ *obj);
 void fn_1_92E4(OMOBJ *obj);
-void fn_1_9398(OMOBJ *arg0);
+void fn_1_9398(OMOBJ *obj);
 void fn_1_94C8(OMOBJ *obj);
 void fn_1_9558(OMOBJ *obj);
 extern char lbl_1_data_66C[14];
