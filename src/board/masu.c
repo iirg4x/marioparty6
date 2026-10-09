@@ -1,3 +1,4 @@
+/* Loads board spaces, draws their overlays, and handles space movement and searches. */
 #include "dolphin/math.h"
 
 #include "game/board/masu.h"
@@ -20,27 +21,27 @@
 #include <string.h>
 
 typedef struct MasuFindWork_s {
-    s16 id;
-    s16 linkNo;
+    s16 id; /* Space on the current search path. */
+    s16 linkNo; /* Next outgoing link to inspect when the search returns here. */
 } MASUFINDWORK;
 
 typedef BOOL (*MASUFINDCHECK)(int id, u32 value, u32 mask);
 
 typedef struct MasuNextWork_s {
-    int playerNo;
-    int state;
-    s16 masuId;
-    float angle;
-    float scale;
-    u8 alpha;
-    s16 delay;
-    s16 time;
-    s16 duration;
+    int playerNo; /* Player whose upcoming space is being shown. */
+    int state; /* Animation phase: grow (0) or shrink (1). */
+    s16 masuId; /* Upcoming space ID; zero means no marker. */
+    float angle; /* Current rotation angle in degrees. */
+    float scale; /* Current marker scale. */
+    u8 alpha; /* Marker opacity from 0 to 255. */
+    s16 delay; /* Frames to wait before animating. */
+    s16 time; /* Frames elapsed in the current animation phase. */
+    s16 duration; /* Total frames in the current animation phase. */
 } MASUNEXTWORK;
 
 typedef struct MasuPKinokoResult_s {
-    u8 id;
-    u8 step;
+    u8 id; /* Board-space ID reached by the search. */
+    u8 step; /* Number of visible spaces from the starting space. */
 } MASUPKINOKORESULT;
 
 static MASUFINDWORK masuFindWork[MASU_MAX];
@@ -155,6 +156,7 @@ static s16 masuSinglePatTbl[] = {
     (ptr) = (u8 *)(ptr) + sizeof(HuVecF); \
 } while (0)
 
+/* Initializes board-space storage, graphics, gates, and the upcoming-space marker. */
 void mbMasuInit(int dataNum)
 {
     int i;
@@ -181,6 +183,7 @@ void mbMasuInit(int dataNum)
     HuDataDirClose(DATA_bmasu);
 }
 
+/* Releases board-space graphics and storage during board shutdown. */
 void mbMasuClose(void)
 {
     int i;
@@ -195,6 +198,7 @@ void mbMasuClose(void)
     }
 }
 
+/* Reads one board's space records and their outgoing links into the active layer. */
 BOOL mbMasuDataRead(int dataNum)
 {
     MASU *masuP;
@@ -210,7 +214,7 @@ BOOL mbMasuDataRead(int dataNum)
 
     masuP = &masuData[masuLayer][0];
     masuP->pos.x = masuP->pos.y = masuP->pos.z = 0.0f;
-    masuP->pos.z = 100000.0f;
+    masuP->pos.z = 100000.0f; /* Keep the reserved space far outside the board. */
     masuP->rot.x = masuP->rot.y = masuP->rot.z = 0.0f;
     masuP->scale.x = masuP->scale.y = masuP->scale.z = 1.0f;
     PSMTXIdentity(masuP->matrix);
@@ -236,6 +240,7 @@ BOOL mbMasuDataRead(int dataNum)
     return TRUE;
 }
 
+/* Loads the board-mode space textures and installs the space drawing hook. */
 static void MasuDispInit(void)
 {
     int i;
@@ -259,6 +264,7 @@ static void MasuDispInit(void)
     Hu3DModelLayerSet(masuMdlId, 2);
 }
 
+/* Releases the space textures, display list, and drawing hook during shutdown. */
 static void MasuDispClose(void)
 {
     int i;
@@ -283,6 +289,7 @@ static void MasuDispClose(void)
 
 #define MASU_DL_BUF_SIZE 4096
 
+/* Builds the flat textured quad used for each board-space marker. */
 static u32 MasuDisplayListMake(void **displayList)
 {
     u8 *dlBufRaw = HuMemDirectMallocNum(HEAP_HEAP, MASU_DL_BUF_SIZE, HU_MEMNUM_OVL);
@@ -311,6 +318,7 @@ static u32 MasuDisplayListMake(void **displayList)
     return dlSize;
 }
 
+/* Builds the upright quad used to show a capsule owner's face over a space. */
 static u32 MasuDisplayListKaoMake(void **displayList)
 {
     u8 *dlBufRaw = HuMemDirectMallocNum(HEAP_HEAP, MASU_DL_BUF_SIZE, HU_MEMNUM_OVL);
@@ -341,11 +349,13 @@ static u32 MasuDisplayListKaoMake(void **displayList)
 
 #undef MASU_DL_BUF_SIZE
 
+/* Returns whether the board is in its first, daytime turn. */
 static inline BOOL MasuDayCheck(void)
 {
     return !GwSystem.curTime;
 }
 
+/* HU3D hook installed by MasuDispInit; draws visible spaces and capsule markers. */
 void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     GXColor color = { 255, 255, 255, 255 };
@@ -564,6 +574,7 @@ void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
+/* Starts the marker update process and installs its HU3D drawing hook. */
 static void MasuNextCreate(void)
 {
     masuNextProc = HuPrcChildCreate(MasuNextMain, 8195, 8192, 0, mbMainProc);
@@ -575,6 +586,7 @@ static void MasuNextCreate(void)
     masuNextDispF = TRUE;
 }
 
+/* Updates each upcoming-space marker once per process frame. */
 static void MasuNextMain(void)
 {
     MASUNEXTWORK *work;
@@ -606,7 +618,7 @@ static void MasuNextMain(void)
                     }
                     work->scale = 1.0f
                         + mbCosDeg(90.0f * work->time / work->duration);
-                    work->alpha = 192.0f * time;
+                    work->alpha = 192.0f * time; /* Opacity uses the pre-increment frame. */
                     if (masuNextId != work->masuId) {
                         work->state = 1;
                         work->time = 0;
@@ -625,6 +637,7 @@ static void MasuNextMain(void)
     }
 }
 
+/* Stops the marker hook's resources when the board closes. */
 static void MasuNextKill(void)
 {
     if (masuNextWork != NULL) {
@@ -643,13 +656,14 @@ static void MasuNextKill(void)
     }
 }
 
+/* HU3D hook installed by MasuNextCreate; draws the current player's next-space marker. */
 void MasuNextDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     MASUNEXTWORK *work;
     Mtx masuMtx;
     Mtx model;
     Mtx rot;
-    int dispNum = 0;
+    int dispNum = 0; /* Count is incremented below but does not affect rendering here. */
     GXColor color = { 255, 255, 255, 255 };
     int i;
 
@@ -721,6 +735,7 @@ void MasuNextDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
+/* Queues a short fade-in for a visible upcoming space when the target changes. */
 void mbMasuNextSet(s16 id)
 {
     MASUNEXTWORK *work = masuNextWork;
@@ -742,17 +757,19 @@ void mbMasuNextSet(s16 id)
     work->state = 0;
     work->time = 0;
     work->duration = 12;
-    work->angle = 0.0f;
+    work->angle = 0.0f; /* The marker starts without rotation. */
     work->playerNo = GwSystem.turnPlayerNo;
     work->delay = 6;
     work->alpha = 0;
 }
 
+/* Enables or hides the upcoming-space marker drawing hook. */
 void mbMasuNextDispSet(BOOL dispF)
 {
     masuNextDispF = dispF;
 }
 
+/* Called by the player movement loop on arrival; starts the destination space event. */
 int mbev_MasuMove(int playerNo, s16 id)
 {
     BOOL partyF = GwSystem.partyF;
@@ -783,6 +800,7 @@ int mbev_MasuMove(int playerNo, s16 id)
     return FALSE;
 }
 
+/* After capsule movement stops, records eligible space counts or runs the stop-capsule event. */
 int mbev_MasuCapStop(int playerNo, s16 id)
 {
     BOOL result = TRUE;
@@ -866,6 +884,7 @@ int mbev_MasuCapStop(int playerNo, s16 id)
     return result;
 }
 
+/* Called by the player turn flow at the end of movement to run the landed space event. */
 int mbev_MasuStop(int playerNo, s16 id)
 {
     BOOL result = TRUE;
@@ -969,6 +988,7 @@ static MASUDISP masuSingleDispTbl[] = {
     { 11, TRUE },
 };
 
+/* Called as a player begins leaving a space; runs its end hook and queues the next-space marker. */
 int mbev_MasuMasuStart(int playerNo)
 {
     int result;
@@ -1006,6 +1026,7 @@ int mbev_MasuMasuStart(int playerNo)
     return result;
 }
 
+/* Called as a player reaches a space; runs its start hook and queues that space's marker. */
 int mbev_MasuMasuEnd(int id)
 {
     int playerNo = GwSystem.turnPlayerNo;
@@ -1042,6 +1063,7 @@ int mbev_MasuMasuEnd(int id)
     return result;
 }
 
+/* Runs the board's question-space hook when movement stops on a question space. */
 static int ev_MasuHatena(int playerNo, s16 id)
 {
     int result = TRUE;
@@ -1106,6 +1128,7 @@ void mbMasuMAttrSet(s16 id, u32 attr)
     masuData[masuLayer][id].mAttr = attr;
 }
 
+/* Compresses selected bits into consecutive low bits for board event attribute checks. */
 u32 mbev_MasuBitGet(u32 outMask, u32 inMask)
 {
     u32 bitIn;
@@ -1128,6 +1151,7 @@ u32 mbev_MasuBitGet(u32 outMask, u32 inMask)
     return result;
 }
 
+/* Expands consecutive selected bits back into their board attribute positions. */
 u32 mbev_MasuAttrGet(int outMask, u32 inMask)
 {
     u32 bitIn;
@@ -1159,6 +1183,7 @@ void mbMasuTypeSet(s16 id, int type)
     masuData[masuLayer][id].type = type;
 }
 
+/* Board setup calls this when replacing a space type; affected spaces lose their capsules. */
 void mbMasuTypeChange(u16 oldType, u16 newType)
 {
     int i;
@@ -1172,6 +1197,7 @@ void mbMasuTypeChange(u16 oldType, u16 newType)
     }
 }
 
+/* Player and marker drawing code calls this to check whether this space type is shown. */
 BOOL mbMasuDispCheck(s16 id)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1193,6 +1219,7 @@ BOOL mbMasuDispCheck(s16 id)
     return masuSingleDispTbl[i].dispF;
 }
 
+/* Board initialization clears every board space's stored capsule assignment. */
 void mbMasuCapsuleReset(void)
 {
     int i;
@@ -1207,12 +1234,14 @@ int mbMasuCapsuleGet(s16 id)
     return masuData[masuLayer][id].capsuleNo;
 }
 
+/* Updates a space's capsule assignment in the system table and the active layer. */
 void mbMasuCapsuleSet(s16 id, int capsuleNo)
 {
     GwSystem.masuCapsule[id] = capsuleNo;
     masuData[masuLayer][id].capsuleNo = capsuleNo;
 }
 
+/* Player and board rendering code reads a space's world position through this accessor. */
 void mbMasuPosGet(s16 id, HuVecF *pos)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1226,6 +1255,7 @@ void mbMasuPosGet(s16 id, HuVecF *pos)
     }
 }
 
+/* Board setup stores a space's world position before player movement and drawing. */
 void mbMasuPosSet(s16 id, float x, float y, float z)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1240,6 +1270,7 @@ void mbMasuPosSetV(s16 id, HuVecF *pos)
     mbMasuPosSet(id, pos->x, pos->y, pos->z);
 }
 
+/* Player placement code gets a rotated point at a space corner for its movement position. */
 void mbMasuCornerRotPosGet(s16 id, int cornerNo, HuVecF *pos)
 {
     HuVecF posMasu;
@@ -1273,6 +1304,7 @@ typedef struct MasuCorner_s {
     int order;
 } MASUCORNER;
 
+/* Player placement code selects an open corner around a space, based on its connected links. */
 void mbMasuCornerPosGet(s16 id, int cornerNo, HuVecF *pos)
 {
     MASU *masuP = mbMasuGet(id);
@@ -1354,6 +1386,7 @@ void mbMasuCornerPosGet(s16 id, int cornerNo, HuVecF *pos)
 
 #undef MASU_CORNER_MAX
 
+/* Player and rendering code reads a space's stored or matrix-derived rotation. */
 void mbMasuRotGet(s16 id, HuVecF *rot)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1365,6 +1398,7 @@ void mbMasuRotGet(s16 id, HuVecF *rot)
     }
 }
 
+/* Board setup stores a space's rotation in degrees for later position and matrix queries. */
 void mbMasuRotSet(s16 id, float x, float y, float z)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1379,6 +1413,7 @@ void mbMasuRotSetV(s16 id, HuVecF *rot)
     mbMasuRotSet(id, rot->x, rot->y, rot->z);
 }
 
+/* Rendering and player placement request the space transform as a 3 by 4 matrix. */
 void mbMasuMtxGet(s16 id, Mtx matrix)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1395,6 +1430,7 @@ void mbMasuMtxGet(s16 id, Mtx matrix)
     }
 }
 
+/* Board setup installs an explicit transform, or clears it when passed NULL. */
 void mbMasuMtxSet(s16 id, Mtx matrix)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1447,6 +1483,7 @@ u32 mbMasuDispMAttrGet(void)
     return masuDispMAttrMask[masuLayer];
 }
 
+/* Board event code toggles the shared model that draws the spaces. */
 void mbMasuModelDispSet(BOOL dispF)
 {
     if (dispF) {
@@ -1456,6 +1493,7 @@ void mbMasuModelDispSet(BOOL dispF)
     }
 }
 
+/* Board path code reads one outgoing link from the space's authored link table. */
 s16 mbMasuLinkGet(s16 id, int linkNo)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1463,6 +1501,7 @@ s16 mbMasuLinkGet(s16 id, int linkNo)
     return masuP->linkTbl[linkNo];
 }
 
+/* Board path code reads the number of outgoing links authored for a space. */
 s16 mbMasuLinkNumGet(s16 id)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1475,6 +1514,8 @@ int mbMasuLinkTblGet(s16 id, s16 *linkTbl)
     return mbMasuLinkTblGet2(id, linkTbl, FALSE);
 }
 
+/* Returns hook links when enabled and the hook returns a positive count; otherwise returns
+ * outgoing links not blocked by branch attributes. */
 int mbMasuLinkTblGet2(s16 id, s16 *linkTbl, BOOL hookF)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1502,6 +1543,7 @@ int mbMasuLinkTblGet2(s16 id, s16 *linkTbl, BOOL hookF)
     return linkNum;
 }
 
+/* Board path logic finds the first linked space carrying any requested attribute bit. */
 s16 mbMasuAttrFindLink(s16 id, u16 attr)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1517,6 +1559,7 @@ s16 mbMasuAttrFindLink(s16 id, u16 attr)
     return MASU_NULL;
 }
 
+/* Board path logic finds the first linked space whose masked attributes equal attr. */
 s16 mbMasuAttrMatchFindLink(s16 id, u16 attr, u16 mask)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1532,6 +1575,7 @@ s16 mbMasuAttrMatchFindLink(s16 id, u16 attr, u16 mask)
     return MASU_NULL;
 }
 
+/* Board path logic finds the first linked space carrying any requested extended-attribute bit. */
 s16 mbMasuMAttrFindLink(s16 id, u32 attr)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1547,6 +1591,7 @@ s16 mbMasuMAttrFindLink(s16 id, u32 attr)
     return MASU_NULL;
 }
 
+/* Board path logic finds the first linked space whose masked extended attributes equal attr. */
 s16 mbMasuMAttrMatchFindLink(s16 id, u32 attr, u32 mask)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1562,6 +1607,7 @@ s16 mbMasuMAttrMatchFindLink(s16 id, u32 attr, u32 mask)
     return MASU_NULL;
 }
 
+/* Board path logic finds the first linked space with the requested space type. */
 s16 mbMasuTypeFindLink(s16 id, int type)
 {
     MASU *masuP = &masuData[masuLayer][id];
@@ -1577,6 +1623,7 @@ s16 mbMasuTypeFindLink(s16 id, int type)
     return MASU_NULL;
 }
 
+/* Board placement code lists spaces whose outgoing links point to id. */
 s16 mbMasuLinkParentGet(s16 id, s16 *linkTbl)
 {
     MASU *masuP;
@@ -1626,6 +1673,8 @@ static BOOL MasuIdCheck(int id, u32 targetId, u32 unused)
     return id == targetId;
 }
 
+/* Searches linked spaces for the nearest match, recording its path and distance with hidden
+ * spaces counted according to dispF. */
 static void MasuFind(s16 id, MASUFINDCHECK check, u32 value, u32 mask,
     BOOL hookF, BOOL dispF)
 {
@@ -1713,16 +1762,19 @@ int mbMasuFind_AttrStepGet(s16 id, u16 attr)
     return masuFindStep;
 }
 
-int mbMasuFind_AttrMatchStepGet(s16 id, u16 arg1, u16 arg2)
+/* Measures the route to the first space whose selected flags equal attrValue. */
+int mbMasuFind_AttrMatchStepGet(s16 id, u16 attrValue, u16 attrMask)
 {
-    MasuFind(id, MasuAttrMatchCheck, arg1, arg2, FALSE, TRUE);
+    MasuFind(id, MasuAttrMatchCheck, attrValue, attrMask, FALSE, TRUE);
     return masuFindStep;
 }
 
-int mbMasuFind_AttrStepGet2(s16 id, u16 arg1, u16 arg2, BOOL hookF,
+/* Measures the route to the first space whose selected flag bits equal attrValue; hookF enables
+ * link hooks and dispF controls hidden-space distance. */
+int mbMasuFind_AttrStepGet2(s16 id, u16 attrValue, u16 attrMask, BOOL hookF,
     BOOL dispF)
 {
-    MasuFind(id, MasuAttrMatchCheck, arg1, arg2, hookF, dispF);
+    MasuFind(id, MasuAttrMatchCheck, attrValue, attrMask, hookF, dispF);
     return masuFindStep;
 }
 
@@ -1732,16 +1784,19 @@ int mbMasuFind_MAttrStepGet(s16 id, u32 attr)
     return masuFindStep;
 }
 
-int mbMasuFind_MAttrMatchStepGet(s16 id, u32 arg1, u32 arg2)
+/* Measures the route to the first space whose selected extended flags equal mAttrValue. */
+int mbMasuFind_MAttrMatchStepGet(s16 id, u32 mAttrValue, u32 mAttrMask)
 {
-    MasuFind(id, MasuMAttrMatchCheck, arg1, arg2, FALSE, TRUE);
+    MasuFind(id, MasuMAttrMatchCheck, mAttrValue, mAttrMask, FALSE, TRUE);
     return masuFindStep;
 }
 
-int mbMasuFind_MAttrStepGet2(s16 id, u32 arg1, u32 arg2, BOOL hookF,
+/* Measures the route to the first space whose selected extended-flag bits equal mAttrValue;
+ * hookF enables link hooks and dispF controls hidden-space distance. */
+int mbMasuFind_MAttrStepGet2(s16 id, u32 mAttrValue, u32 mAttrMask, BOOL hookF,
     BOOL dispF)
 {
-    MasuFind(id, MasuMAttrMatchCheck, arg1, arg2, hookF, dispF);
+    MasuFind(id, MasuMAttrMatchCheck, mAttrValue, mAttrMask, hookF, dispF);
     return masuFindStep;
 }
 
@@ -1762,6 +1817,7 @@ s16 mbMasuFind_TypeSearch(s16 id, s16 type)
     return mbMasuFind_TypeIdGet(id, type, FALSE, TRUE);
 }
 
+/* Board events find a space of this type from id, or scan the current layer when id is negative. */
 s16 mbMasuFind_TypeIdGet(s16 id, s16 type, BOOL hookF, BOOL dispF)
 {
     int i;
@@ -1780,6 +1836,7 @@ s16 mbMasuFind_TypeIdGet(s16 id, s16 type, BOOL hookF, BOOL dispF)
     return MASU_NULL;
 }
 
+/* Board event and path code finds a space with attr, starting at id or scanning the layer. */
 s16 mbMasuFind_AttrIdGet(s16 id, u16 attr)
 {
     int i;
@@ -1798,30 +1855,35 @@ s16 mbMasuFind_AttrIdGet(s16 id, u16 attr)
     return MASU_NULL;
 }
 
-s16 mbMasuFind_AttrMatchIdGet(s16 id, u16 arg1, u16 arg2)
+/* Finds a flag match from id, or scans all spaces when id is negative. */
+s16 mbMasuFind_AttrMatchIdGet(s16 id, u16 attrValue, u16 attrMask)
 {
-    return mbMasuFind_AttrMatchIdGet2(id, arg1, arg2, FALSE, TRUE);
+    return mbMasuFind_AttrMatchIdGet2(id, attrValue, attrMask, FALSE, TRUE);
 }
 
-s16 mbMasuFind_AttrMatchIdGet2(s16 id, u16 arg1, u16 arg2, BOOL hookF,
+/* Board events find a masked flag match from id, or scan the current layer when id is negative. */
+s16 mbMasuFind_AttrMatchIdGet2(s16 id, u16 attrValue, u16 attrMask, BOOL hookF,
     BOOL dispF)
 {
     int i;
     MASU *masuP;
 
     if (id >= 0) {
-        MasuFind(id, MasuAttrMatchCheck, arg1, arg2, hookF, dispF);
+        /* Both search paths compare the requested value against the selected flag bits. */
+        MasuFind(id, MasuAttrMatchCheck, attrValue, attrMask, hookF, dispF);
         return masuFindId;
     }
     masuP = &masuData[masuLayer][1];
     for (i = 0; i < masuNum[masuLayer]; i++, masuP++) {
-        if (arg1 == (masuP->flag & arg2)) {
+        if (attrValue == (masuP->flag & attrMask)) {
             return i + 1;
         }
     }
     return MASU_NULL;
 }
 
+/* Board event and path code finds a space with an extended attribute, starting at id or scanning
+ * the layer. */
 s16 mbMasuFind_MAttrIdGet(s16 id, u32 attr)
 {
     int i;
@@ -1840,30 +1902,35 @@ s16 mbMasuFind_MAttrIdGet(s16 id, u32 attr)
     return MASU_NULL;
 }
 
-s16 mbMasuFind_MAttrMatchIdGet(s16 id, u32 arg1, u32 arg2)
+/* Finds an extended-attribute match from id, or scans all spaces when id is negative. */
+s16 mbMasuFind_MAttrMatchIdGet(s16 id, u32 mAttrValue, u32 mAttrMask)
 {
-    return mbMasuFind_MAttrMatchIdGet2(id, arg1, arg2, FALSE, TRUE);
+    return mbMasuFind_MAttrMatchIdGet2(id, mAttrValue, mAttrMask, FALSE, TRUE);
 }
 
-s16 mbMasuFind_MAttrMatchIdGet2(s16 id, u32 arg1, u32 arg2, BOOL hookF,
+/* Board events find a masked extended-attribute match from id, or scan the current layer when
+ * id is negative. */
+s16 mbMasuFind_MAttrMatchIdGet2(s16 id, u32 mAttrValue, u32 mAttrMask, BOOL hookF,
     BOOL dispF)
 {
     int i;
     MASU *masuP;
 
     if (id >= 0) {
-        MasuFind(id, MasuMAttrMatchCheck, arg1, arg2, hookF, dispF);
+        /* Both search paths compare the requested value against the selected extended-flag bits. */
+        MasuFind(id, MasuMAttrMatchCheck, mAttrValue, mAttrMask, hookF, dispF);
         return masuFindId;
     }
     masuP = &masuData[masuLayer][1];
     for (i = 0; i < masuNum[masuLayer]; i++, masuP++) {
-        if (arg1 == (masuP->mAttr & arg2)) {
+        if (mAttrValue == (masuP->mAttr & mAttrMask)) {
             return i + 1;
         }
     }
     return MASU_NULL;
 }
 
+/* Board events and menus collect IDs of every current-layer space with this type. */
 int mbMasuTypeListGet(s16 type, s16 *list)
 {
     int i;
@@ -1881,6 +1948,7 @@ int mbMasuTypeListGet(s16 type, s16 *list)
     return num;
 }
 
+/* Board events collect current-layer space IDs whose flags contain any requested attribute bit. */
 int mbMasuAttrListGet(u16 attr, s16 *list)
 {
     int i;
@@ -1898,6 +1966,7 @@ int mbMasuAttrListGet(u16 attr, s16 *list)
     return num;
 }
 
+/* Board events collect current-layer space IDs whose masked flags equal the requested value. */
 int mbMasuAttrMatchListGet(u16 attr, u16 mask, s16 *list)
 {
     int i;
@@ -1915,6 +1984,7 @@ int mbMasuAttrMatchListGet(u16 attr, u16 mask, s16 *list)
     return num;
 }
 
+/* Board events collect current-layer space IDs whose extended flags contain any requested bit. */
 int mbMasuMAttrListGet(u32 attr, s16 *list)
 {
     int i;
@@ -1932,6 +2002,7 @@ int mbMasuMAttrListGet(u32 attr, s16 *list)
     return num;
 }
 
+/* Board events collect current-layer space IDs whose masked extended flags equal the value. */
 int mbMasuMAttrMatchTblGet(u32 attr, u32 mask, s16 *list)
 {
     int i;
@@ -1967,18 +2038,22 @@ int mbMasuFind_AttrNumGet(s16 id, u16 attr, u32 unused)
     return mbMasuFind_AttrMatchNumGet2(id, attr, attr, FALSE, TRUE, unused);
 }
 
-int mbMasuFind_AttrMatchNumGet(s16 id, u16 arg1, u16 arg2, u32 unused)
+/* Board event code counts spaces with these flags using the default path-search settings. */
+int mbMasuFind_AttrMatchNumGet(s16 id, u16 attrValue, u16 attrMask, u32 unused)
 {
-    return mbMasuFind_AttrMatchNumGet2(id, arg1, arg2, FALSE, TRUE, unused);
+    return mbMasuFind_AttrMatchNumGet2(id, attrValue, attrMask, FALSE, TRUE, unused);
 }
 
-int mbMasuFind_AttrMatchNumGet2(s16 id, u16 arg1, u16 arg2, BOOL hookF,
+/* Counts matches found by the attribute callback, with optional hook and display checks. */
+int mbMasuFind_AttrMatchNumGet2(s16 id, u16 attrValue, u16 attrMask, BOOL hookF,
     BOOL dispF, u32 unused)
 {
-    MasuFind(id, MasuAttrMatchCheck, arg1, arg2, hookF, dispF);
+    MasuFind(id, MasuAttrMatchCheck, attrValue, attrMask, hookF, dispF);
     return masuFindResultNum;
 }
 
+/* Board event code finds the first path match from id, or the first current-layer match when id
+ * is negative. */
 s16 mbMasuFind_MAttrNumGet(s16 id, u32 attr)
 {
     s16 result;
@@ -2002,15 +2077,18 @@ done:
     return result;
 }
 
-int mbMasuFind_MAttrMatchListGet(s16 id, u32 arg1, u32 arg2, s16 *list)
+/* Board event code lists the path's extended-attribute matches from id. */
+int mbMasuFind_MAttrMatchListGet(s16 id, u32 mAttrValue, u32 mAttrMask, s16 *list)
 {
-    return mbMasuFind_MAttrMatchListGet2(id, arg1, arg2, FALSE, TRUE, list);
+    return mbMasuFind_MAttrMatchListGet2(id, mAttrValue, mAttrMask, FALSE, TRUE, list);
 }
 
-int mbMasuFind_MAttrMatchListGet2(s16 id, u32 arg1, u32 arg2, BOOL hookF,
+/* Board events collect path IDs with these extended flags, optionally following link hooks and
+ * counting visible spaces. */
+int mbMasuFind_MAttrMatchListGet2(s16 id, u32 mAttrValue, u32 mAttrMask, BOOL hookF,
     BOOL dispF, s16 *list)
 {
-    MasuFind(id, MasuMAttrMatchCheck, arg1, arg2, hookF, dispF);
+    MasuFind(id, MasuMAttrMatchCheck, mAttrValue, mAttrMask, hookF, dispF);
     memcpy(list, masuFindResult, masuFindResultNum * sizeof(s16));
     return masuFindResultNum;
 }
@@ -2048,6 +2126,8 @@ void mbev_MasuLinkTblHookSet(MASUPATHCHECKHOOK hook)
     masuev_LinkTblHook = hook;
 }
 
+/* Returns 1 for the player's or teammate's movement-mode capsule, -1 for another player's, and 0
+ * when none applies. */
 int mbMasuPlayerCapMoveCheck(int playerNo, s16 id)
 {
     int capPlayerNo = mbCapMasuPlayerGet(id);
@@ -2065,6 +2145,8 @@ int mbMasuPlayerCapMoveCheck(int playerNo, s16 id)
     return 0;
 }
 
+/* Returns 1 for the player's or teammate's stop-mode capsule, -1 for another player's, and 0 when
+ * none applies. */
 int mbMasuPlayerCapStopCheck(int playerNo, s16 id)
 {
     int capPlayerNo = mbCapMasuPlayerGet(id);
@@ -2082,6 +2164,8 @@ int mbMasuPlayerCapStopCheck(int playerNo, s16 id)
     return 0;
 }
 
+/* After a player reaches a space, colors their status panel for the space and capsule they
+ * occupy. */
 void mbMasuPlayerColorSet(int playerNo)
 {
     int colorTbl[][2] = {
@@ -2143,6 +2227,7 @@ void mbMasuPlayerFadeSet(BOOL fadeF)
     masuCapsuleFadeOnF = fadeF;
 }
 
+/* Board initialization clears the player's accumulated counts for every prize space type. */
 void mbMasuPlayerPrizeReset(int playerNo)
 {
     GwPlayer[playerNo].plusMasuNum = 0;
@@ -2160,6 +2245,9 @@ static inline void MasuPlayerNextSet(int playerNo, int id)
     mbPlayerWorkGet(playerNo)->masuNext = id;
 }
 
+/* For a computer player's mushroom roll, randomly skips half the time; otherwise chooses a
+ * reachable special space, then an owned stop capsule, stores it as next, and returns distance
+ * minus one (or 9 if none). */
 int mbMasuPKinokoValueGet(int playerNo, s16 id)
 {
     s16 linkTbl[MASU_LINK_MAX];

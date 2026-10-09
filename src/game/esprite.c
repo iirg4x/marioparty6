@@ -1,167 +1,178 @@
+/* Manages game sprites by reusing loaded animation data and placing sprites in one group. */
 #define _MATH_H
 #include "game/esprite.h"
 #include "game/data.h"
 #include "game/sprite.h"
 
 typedef struct esprite_s {
-    s16 memberNo;
-    s16 animNo;
+    s16 groupMemberIndex; /* Slot used to address this sprite in the shared sprite group. */
+    s16 animationSlot; /* Index of the shared animation record used by this sprite. */
 } ESPRITE;
 
 typedef struct espanim_s {
-    /* 0x00 */ unsigned int dataNum;
-    /* 0x04 */ u16 useCnt;
-    /* 0x08 */ ANIMDATA *anim;
+    /* 0x00 */ unsigned int dataNumber; /* Resource number for this animation. */
+    /* 0x04 */ u16 referenceCount; /* Number of live sprites using this animation. */
+    /* 0x08 */ ANIMDATA *animation; /* Sprite animation data shared by those sprites. */
 } ESPANIM;
 
 ESPRITE esprite[HUSPR_MAX];
 ESPANIM espanim[HUSPR_MAX];
 
-static HUSPR_GROUPID gid;
+static HUSPR_GROUPID gid; /* Group containing every sprite managed by this file. */
 
+/* Called by game initialization before game or board code requests managed sprites. */
 void espInit(void) {
-    s32 i;
+    s32 slotIndex;
 
     gid = HuSprGrpCreate(HUSPR_MAX);
-    for (i = 0; i < HUSPR_MAX; i++) {
-        esprite[i].memberNo = i;
-        esprite[i].animNo = -1;
+    for (slotIndex = 0; slotIndex < HUSPR_MAX; slotIndex++) {
+        esprite[slotIndex].groupMemberIndex = slotIndex;
+        esprite[slotIndex].animationSlot = HUSPR_NONE;
     }
-    for (i = 0; i < HUSPR_MAX; i++) {
-        espanim[i].useCnt = 0;
+    for (slotIndex = 0; slotIndex < HUSPR_MAX; slotIndex++) {
+        espanim[slotIndex].referenceCount = 0;
     }
 }
 
-s16 espEntry(unsigned int dataNum, s16 prio, s16 bank)
+/* Game and board code call this when creating an animation-backed sprite. */
+s16 espEntry(unsigned int dataNumber, s16 priority, s16 bank)
 {
-    ESPANIM *animFree;
-    ESPANIM *anim;
-    ESPRITE *esp;
-    void *data;
-    s16 sprNo;
-    s16 i;
-    s32 animFreeId;
+    ESPANIM *unusedAnimation;
+    ESPANIM *animation;
+    ESPRITE *spriteSlot;
+    void *animationResource;
+    s16 spriteId;
+    s16 slotIndex;
+    s32 animationSlotIndex;
 
-    esp = esprite;
-    for (i = 0; i < HUSPR_MAX; esp++, i++) {
-        if (esp->animNo == -1) {
+    spriteSlot = esprite;
+    for (slotIndex = 0; slotIndex < HUSPR_MAX; spriteSlot++, slotIndex++) {
+        if (spriteSlot->animationSlot == HUSPR_NONE) {
             break;
         }
     }
-    if (i == HUSPR_MAX) {
-        return -1;
+    if (slotIndex == HUSPR_MAX) {
+        return HUSPR_NONE;
     }
-    anim = espanim;
-    animFree = NULL;
-    for (animFreeId = 0; animFreeId < HUSPR_MAX; anim++, animFreeId++) {
-        if (anim->useCnt != 0) {
-            if (anim->dataNum == dataNum) {
-                animFree = NULL;
+    animation = espanim;
+    unusedAnimation = NULL;
+    for (animationSlotIndex = 0; animationSlotIndex < HUSPR_MAX;
+         animation++, animationSlotIndex++) {
+        if (animation->referenceCount != 0) {
+            if (animation->dataNumber == dataNumber) {
+                unusedAnimation = NULL; /* Keep the cached animation alive for its other sprites. */
                 break;
             }
-        } else if (animFree == NULL) {
-            animFree = anim;
+        } else if (unusedAnimation == NULL) {
+            unusedAnimation = animation;
         }
     }
-    if (animFreeId == HUSPR_MAX) {
-        if (animFree == NULL) {
-            return -1;
+    if (animationSlotIndex == HUSPR_MAX) {
+        if (unusedAnimation == NULL) {
+            return HUSPR_NONE;
         }
-        data = HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
-        if (data == NULL) {
-            return -1;
+        animationResource = HuDataSelHeapReadNum(dataNumber, HU_MEMNUM_OVL, HEAP_MODEL);
+        if (animationResource == NULL) {
+            return HUSPR_NONE;
         }
-        animFree->dataNum = dataNum;
-        animFree->anim = HuSprAnimRead(data);
-        anim = animFree;
+        unusedAnimation->dataNumber = dataNumber;
+        unusedAnimation->animation = HuSprAnimRead(animationResource);
+        animation = unusedAnimation;
     }
-    sprNo = HuSprCreate(anim->anim, prio, bank);
-    if (sprNo == -1) {
+    spriteId = HuSprCreate(animation->animation, priority, bank);
+    if (spriteId == HUSPR_NONE) {
         OSReport("Error: Esprite Max Over!\n");
-        if (animFree != NULL) {
-            HuSprAnimKill(anim->anim);
+        if (unusedAnimation != NULL) {
+            /* This call loaded the animation, but could not create a sprite to use it. */
+            HuSprAnimKill(animation->animation);
         }
-        return -1;
+        return HUSPR_NONE;
     }
-    anim->useCnt++;
-    esp->animNo = anim - espanim;
-    HuSprGrpMemberSet(gid, esp->memberNo, sprNo);
-    return i;
+    animation->referenceCount++;
+    spriteSlot->animationSlot = animation - espanim;
+    HuSprGrpMemberSet(gid, spriteSlot->groupMemberIndex, spriteId);
+    return slotIndex;
 }
 
-void espKill(s16 espId)
+/* Game and board cleanup code call this to remove a sprite from the group and decrement its
+ * animation live-user count; the sprite manager releases the sprite's animation reference and
+ * frees the animation data when no sprites use it. */
+void espKill(s16 spriteSlotIndex)
 {
-    HuSprGrpMemberKill(gid, esprite[espId].memberNo);
-    espanim[esprite[espId].animNo].useCnt--;
-    esprite[espId].animNo = -1;
+    HuSprGrpMemberKill(gid, esprite[spriteSlotIndex].groupMemberIndex);
+    espanim[esprite[spriteSlotIndex].animationSlot].referenceCount--;
+    esprite[spriteSlotIndex].animationSlot = HUSPR_NONE;
 }
 
+/* Returns the shared group so callers can configure sprites through sprite APIs. */
 HUSPR_GROUPID espGrpIDGet(void)
 {
     return gid;
 }
 
-void espDispOn(s16 espId)
+/* Game and board display code call this to clear the sprite's hidden flag. */
+void espDispOn(s16 spriteSlotIndex)
 {
-    HuSprAttrReset(gid, esprite[espId].memberNo, HUSPR_ATTR_DISPOFF);
+    HuSprAttrReset(gid, esprite[spriteSlotIndex].groupMemberIndex, HUSPR_ATTR_DISPOFF);
 }
 
-void espDispOff(s16 espId)
+/* Game and board display code call this to hide the sprite until it is enabled again. */
+void espDispOff(s16 spriteSlotIndex)
 {
-    HuSprAttrSet(gid, esprite[espId].memberNo, HUSPR_ATTR_DISPOFF);
+    HuSprAttrSet(gid, esprite[spriteSlotIndex].groupMemberIndex, HUSPR_ATTR_DISPOFF);
 }
 
-void espAttrSet(s16 espId, u16 attr)
+void espAttrSet(s16 spriteSlotIndex, u16 attributes)
 {
-    HuSprAttrSet(gid, esprite[espId].memberNo, attr);
+    HuSprAttrSet(gid, esprite[spriteSlotIndex].groupMemberIndex, attributes);
 }
 
-void espAttrReset(s16 espId, u16 attr)
+void espAttrReset(s16 spriteSlotIndex, u16 attributes)
 {
-    HuSprAttrReset(gid, esprite[espId].memberNo, attr);
+    HuSprAttrReset(gid, esprite[spriteSlotIndex].groupMemberIndex, attributes);
 }
 
-void espPosSet(s16 espId, float posX, float posY)
+void espPosSet(s16 spriteSlotIndex, float posX, float posY)
 {
-    HuSprPosSet(gid, esprite[espId].memberNo, posX, posY);
+    HuSprPosSet(gid, esprite[spriteSlotIndex].groupMemberIndex, posX, posY);
 }
 
-void espScaleSet(s16 espId, float scaleX, float scaleY)
+void espScaleSet(s16 spriteSlotIndex, float scaleX, float scaleY)
 {
-    HuSprScaleSet(gid, esprite[espId].memberNo, scaleX, scaleY);
+    HuSprScaleSet(gid, esprite[spriteSlotIndex].groupMemberIndex, scaleX, scaleY);
 }
 
-void espZRotSet(s16 espId, float zRot)
+void espZRotSet(s16 spriteSlotIndex, float zRot)
 {
-    HuSprZRotSet(gid, esprite[espId].memberNo, zRot);
+    HuSprZRotSet(gid, esprite[spriteSlotIndex].groupMemberIndex, zRot);
 }
 
-void espTPLvlSet(s16 espId, float tpLvl)
+void espTPLvlSet(s16 spriteSlotIndex, float alphaLevel)
 {
-    HuSprTPLvlSet(gid, esprite[espId].memberNo, tpLvl);
+    HuSprTPLvlSet(gid, esprite[spriteSlotIndex].groupMemberIndex, alphaLevel);
 }
 
-void espColorSet(s16 espId, u8 r, u8 g, u8 b)
+void espColorSet(s16 spriteSlotIndex, u8 red, u8 green, u8 blue)
 {
-    HuSprColorSet(gid, esprite[espId].memberNo, r, g, b);
+    HuSprColorSet(gid, esprite[spriteSlotIndex].groupMemberIndex, red, green, blue);
 }
 
-void espSpeedSet(s16 espId, float speed)
+void espSpeedSet(s16 spriteSlotIndex, float speed)
 {
-    HuSprSpeedSet(gid, esprite[espId].memberNo, speed);
+    HuSprSpeedSet(gid, esprite[spriteSlotIndex].groupMemberIndex, speed);
 }
 
-void espBankSet(s16 espId, s16 bank)
+void espBankSet(s16 spriteSlotIndex, s16 bank)
 {
-    HuSprBankSet(gid, esprite[espId].memberNo, bank);
+    HuSprBankSet(gid, esprite[spriteSlotIndex].groupMemberIndex, bank);
 }
 
-void espDrawNoSet(s16 espId, s16 drawNo)
+void espDrawNoSet(s16 spriteSlotIndex, s16 drawNo)
 {
-    HuSprDrawNoSet(gid, esprite[espId].memberNo, drawNo);
+    HuSprDrawNoSet(gid, esprite[spriteSlotIndex].groupMemberIndex, drawNo);
 }
 
-void espPriSet(s16 espId, s16 pri)
+void espPriSet(s16 spriteSlotIndex, s16 priority)
 {
-    HuSprPriSet(gid, esprite[espId].memberNo, pri);
+    HuSprPriSet(gid, esprite[spriteSlotIndex].groupMemberIndex, priority);
 }

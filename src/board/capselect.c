@@ -1,3 +1,4 @@
+/* Board capsule selection, capsule acquisition, and capsule-space displays. */
 #define _MATH_H
 #include "game/board/main.h"
 
@@ -58,7 +59,6 @@ extern OMOBJ *mbev_CapEffExplodeCreate(void);
 extern void mbev_CapEffDustExplodeAdd(OMOBJ *obj, HuVecF *pos);
 extern int mbev_CapEffExplodeAnimGet(OMOBJ *obj);
 extern void mbev_CapEffExplodeKill(OMOBJ *obj);
-/* Caller contract reconstructed from the matching CapSelect translation unit. */
 extern int Hu3D3Dto2D(HuVecF *src, s16 cameraBit, HuVecF *dst);
 
 static HUPROCESS *ev_CapSelectShrinkProc[4] = { NULL, NULL, NULL, NULL };
@@ -74,39 +74,39 @@ static BOOL ev_CapMasuDispF;
 static BOOL ev_CapSelectStoryF;
 
 typedef struct CapMasuWork_s {
-    int objNo;
-    int masuId;
-    int modelId;
-    int angle;
-    int playerNo;
-    BOOL hiddenF;
-    float scale;
-    HuVecF pos;
+    int objNo;             /* Slot in ev_CapMasuOMObj. */
+    int masuId;             /* Board space represented by this capsule display. */
+    int modelId;            /* 3D model shown over the board space. */
+    int angle;              /* Bobbing phase in degrees. */
+    int playerNo;           /* Player currently collecting the capsule. */
+    BOOL hiddenF;           /* True while the display is hidden or appearing. */
+    float scale;            /* Current display scale, from 0.0 to 1.0. */
+    HuVecF pos;             /* Current board-space position. */
 } CAPMASUWORK;
 
 typedef struct CapSelectWork_s {
-    int capsuleNum;
-    int selectNo;
-    int comSelectNo;
-    int playerNo;
-    int descWinIndex;
-    s16 winId[3];
-    s16 objId[6];
-    s16 arrowSprId[2];
-    s16 pulseAngle;
-    s16 comDelay;
-    float scale[6];
-    int extraCapsule;
-    BOOL deleteF;
+    int capsuleNum;         /* Number of choices displayed in the ring. */
+    int selectNo;           /* Index of the currently highlighted choice. */
+    int comSelectNo;        /* Computer's target choice, or a negative state. */
+    int playerNo;           /* Player whose capsule inventory is being shown. */
+    int descWinIndex;       /* Active description-window slot, 0 or 1. */
+    s16 winId[3];            /* Help and alternating capsule-description windows. */
+    s16 objId[6];            /* 3D object for each displayed capsule. */
+    s16 arrowSprId[2];       /* Left and right selection-arrow sprites. */
+    s16 pulseAngle;          /* Frame phase for the selected capsule pulse. */
+    s16 comDelay;            /* Frames until the computer makes its next input. */
+    float scale[6];          /* Base display scale for each capsule object. */
+    int extraCapsule;        /* Temporary capsule choice appended to the menu, or -1. */
+    BOOL deleteF;            /* True when choosing a capsule to discard. */
 } CAPSELECTWORK;
 
 typedef struct CapSelectShrinkWork_s {
-    int playerNo;
-    int objId;
-    int count;
-    s16 objIdTbl[6];
-    HuVecF start[6];
-    HuVecF end[6];
+    int playerNo;            /* Player whose selection display is closing. */
+    int retainedObjId;       /* Selected object that remains with the player. */
+    int count;               /* Number of capsule objects being animated. */
+    s16 capsuleObjIds[6];    /* Objects animated from the ring back to the player. */
+    HuVecF playerPositions[6]; /* Destinations at or above the player. */
+    HuVecF ringPositions[6]; /* Starting positions on the selection ring. */
 } CAPSELECTSHRINKWORK;
 
 int mbCapSelect(void);
@@ -137,11 +137,12 @@ void mbCapMasuObjCreate(int masuId);
 
 static void CapMasuOMExec(OMOBJ *obj);
 
+/* Runs when the active player opens the capsule menu; returns the chosen action. */
 int mbCapSelect(void)
 {
     CAPSELECTWORK *work;
     BOOL partyF;
-    CAPSELECTWORK *workData;
+    CAPSELECTWORK *allocatedWork;
     int playerNo = GwSystem.turnPlayerNo;
     int objId;
     int result;
@@ -160,10 +161,10 @@ int mbCapSelect(void)
         while (!mbCapSelectShrinkCheck(playerNo)) {
             HuPrcVSleep();
         }
-        workData = HuMemDirectMallocNum(HEAP_HEAP,
+        allocatedWork = HuMemDirectMallocNum(HEAP_HEAP,
             sizeof(CAPSELECTWORK),
             HU_MEMNUM_OVL);
-        work = workData;
+        work = allocatedWork;
         memset(work, 0, sizeof(CAPSELECTWORK));
         work->playerNo = playerNo;
         work->deleteF = FALSE;
@@ -218,18 +219,20 @@ cleanup:
     return ev_CapSelectValue[playerNo];
 }
 
+/* Prompts to choose an inventory capsule to discard before a board-space pickup or shop
+ * purchase. */
 int mbCapDelete(int capsuleNo, BOOL repeatF)
 {
     CAPSELECTWORK *work;
     int winId;
     HuVecF pos;
     HuVecF dustPos;
-    CAPSELECTWORK *workData;
+    CAPSELECTWORK *allocatedWork;
     int playerNo = GwSystem.turnPlayerNo;
     int objId;
     int result;
     OMOBJ *effectObj;
-    HuVecF *dustPosP;
+    HuVecF *dustPositionPtr;
     BOOL partyF;
 
     mbCapSelectResultSet(playerNo, -1, -1);
@@ -239,10 +242,10 @@ retry:
         while (!mbCapSelectShrinkCheck(playerNo)) {
             HuPrcVSleep();
         }
-        workData = HuMemDirectMallocNum(HEAP_HEAP,
+        allocatedWork = HuMemDirectMallocNum(HEAP_HEAP,
             sizeof(CAPSELECTWORK),
             HU_MEMNUM_OVL);
-        work = workData;
+        work = allocatedWork;
         memset(work, 0, sizeof(CAPSELECTWORK));
         work->playerNo = playerNo;
         work->deleteF = TRUE;
@@ -276,8 +279,8 @@ retry:
                 mbAudFXPlay(MSM_SE_BRD00_17);
                 effectObj = mbev_CapEffExplodeCreate();
                 dustPos = pos;
-                dustPosP = &dustPos;
-                mbev_CapEffDustExplodeAdd(effectObj, dustPosP);
+                dustPositionPtr = &dustPos;
+                mbev_CapEffDustExplodeAdd(effectObj, dustPositionPtr);
                 mbObjDispSet(objId, FALSE);
                 while (mbev_CapEffExplodeAnimGet(effectObj) > 0) {
                     HuPrcVSleep();
@@ -311,9 +314,10 @@ cleanup:
     return ev_CapSelectValue[playerNo];
 }
 
+/* Called by mbCapSelect and mbCapDelete to show the capsule ring and handle menu input. */
 static void CapSelect(CAPSELECTWORK *work)
 {
-    HuVecF temp;
+    HuVecF capsulePosition;
     HuVecF playerPos;
     HuVecF center;
     HuVecF screen[6];
@@ -336,8 +340,8 @@ static void CapSelect(CAPSELECTWORK *work)
     s16 helpCapsule;
     s16 capsuleNo;
     s16 oldCapsule;
-    int resultObj;
-    int resultNo;
+    int retainedObjectId;
+    int retainedChoiceIndex;
     int move;
     int i;
 
@@ -367,8 +371,8 @@ static void CapSelect(CAPSELECTWORK *work)
     if (!work->deleteF) {
         mbStatusDispFocusSet(work->playerNo, TRUE);
     }
-    mbCapSelectResultGet(playerNo, &resultObj, &resultNo);
-    ev_CapSelectMdlId = resultObj;
+    mbCapSelectResultGet(playerNo, &retainedObjectId, &retainedChoiceIndex);
+    ev_CapSelectMdlId = retainedObjectId;
     mbPlayerPosGet(work->playerNo, &playerPos);
     playerPos.y += 100.0f;
     center.x = playerPos.x;
@@ -383,8 +387,8 @@ static void CapSelect(CAPSELECTWORK *work)
         work->selectNo = oldSelect;
         baseAngle = work->selectNo * (360.0f / work->capsuleNum);
     }
-    if (resultNo != -1) {
-        oldSelect = resultNo;
+    if (retainedChoiceIndex != -1) {
+        oldSelect = retainedChoiceIndex;
         work->selectNo = oldSelect;
         baseAngle = work->selectNo * (360.0f / work->capsuleNum);
     }
@@ -399,8 +403,8 @@ static void CapSelect(CAPSELECTWORK *work)
         end[i].z = center.z
             + (125.0 * cos((M_PI * (baseAngle + angleTbl[i])) / 180.0));
         start[i] = playerPos;
-        if (resultObj != -1 && resultNo == i) {
-            work->objId[i] = resultObj;
+        if (retainedObjectId != -1 && retainedChoiceIndex == i) {
+            work->objId[i] = retainedObjectId;
             mbObjLayerSet(work->objId[i], 4);
             reuseModelId = work->objId[i];
             mbObjAttrSet(reuseModelId, HU3D_MOTATTR_LOOP);
@@ -446,8 +450,8 @@ static void CapSelect(CAPSELECTWORK *work)
     mbWinPosGet(work->winId[0], &helpPos);
     mbWinPosSet(work->winId[0], helpPos.x, 284);
     for (i = 0; i < work->capsuleNum; i++) {
-        mbObjPosGet(work->objId[i], &temp);
-        Hu3D3Dto2D(&temp, 1, &screen[i]);
+        mbObjPosGet(work->objId[i], &capsulePosition);
+        Hu3D3Dto2D(&capsulePosition, 1, &screen[i]);
     }
     for (i = 0; i < 2; i++) {
         if (i == 0) {
@@ -595,10 +599,10 @@ static void CapSelect(CAPSELECTWORK *work)
     } else {
         mbCapSelectResultSet(playerNo, -1, -1);
     }
-    mbCapSelectResultGet(playerNo, &resultObj, &resultNo);
-    ev_CapSelectMdlId = resultObj;
+    mbCapSelectResultGet(playerNo, &retainedObjectId, &retainedChoiceIndex);
+    ev_CapSelectMdlId = retainedObjectId;
     mbAudFXPlay(MSM_SE_BRD00_22);
-    CapSelectShrinkCreate(playerNo, resultObj, work, start, end);
+    CapSelectShrinkCreate(playerNo, retainedObjectId, work, start, end);
     for (i = 0; i < 3; i++) {
         if (work->winId[i] >= 0) {
             mbWinKill(work->winId[i]);
@@ -623,6 +627,7 @@ static void CapSelect(CAPSELECTWORK *work)
     }
 }
 
+/* Called by CapSelect on each menu-entry frame to move a capsule toward its ring slot. */
 float mbCapSelectGrow(HuVecF *start, HuVecF *end, MBMODELID modelId,
     float weight, float baseScale)
 {
@@ -643,14 +648,15 @@ float mbCapSelectGrow(HuVecF *start, HuVecF *end, MBMODELID modelId,
     return scale;
 }
 
+/* Called each menu frame by CapSelect to read pad input or advance the computer choice. */
 static int CapSelectPadExec(CAPSELECTWORK *work)
 {
     int playerNo = work->playerNo;
     int move = 0;
     u16 padNo;
     u16 button;
-    u16 buttonCopy;
-    u16 buttonDown;
+    u16 inputButtons;
+    u16 activeButtons;
     BOOL partyF;
 
     if (GwPlayerConf[work->playerNo].type == 0) {
@@ -676,32 +682,32 @@ static int CapSelectPadExec(CAPSELECTWORK *work)
             work->comDelay = 20;
         }
     }
-    buttonCopy = button;
-    buttonDown = buttonCopy;
+    inputButtons = button;
+    activeButtons = inputButtons;
     if (mbPauseProcCheck()) {
-        buttonDown = 0;
+        activeButtons = 0;
         return move;
     }
-    if ((buttonDown & PAD_BUTTON_LEFT) && work->capsuleNum > 1) {
+    if ((activeButtons & PAD_BUTTON_LEFT) && work->capsuleNum > 1) {
         mbAudFXPlay(0);
         if (--work->selectNo < 0) {
             work->selectNo = work->capsuleNum - 1;
         }
         move = -1;
     }
-    if ((buttonDown & PAD_BUTTON_RIGHT) && work->capsuleNum > 1) {
+    if ((activeButtons & PAD_BUTTON_RIGHT) && work->capsuleNum > 1) {
         mbAudFXPlay(0);
         if (++work->selectNo >= work->capsuleNum) {
             work->selectNo = 0;
         }
         move = 1;
     }
-    if (buttonDown & PAD_BUTTON_A) {
+    if (activeButtons & PAD_BUTTON_A) {
         ev_CapSelectValue[playerNo] = -8;
         mbAudFXPlay(1);
         return move;
     }
-    if (buttonDown & PAD_BUTTON_Y) {
+    if (activeButtons & PAD_BUTTON_Y) {
         partyF = GwSystem.partyF;
         if (partyF) {
             ev_CapSelectValue[playerNo] = -4;
@@ -709,12 +715,12 @@ static int CapSelectPadExec(CAPSELECTWORK *work)
             return move;
         }
     }
-    if (buttonDown & PAD_BUTTON_X) {
+    if (activeButtons & PAD_BUTTON_X) {
         ev_CapSelectValue[playerNo] = -3;
         mbAudFXPlay(1);
         return move;
     }
-    if (buttonDown & PAD_BUTTON_B) {
+    if (activeButtons & PAD_BUTTON_B) {
         ev_CapSelectValue[playerNo] = -7;
         mbAudFXPlay(3);
         return move;
@@ -722,12 +728,14 @@ static int CapSelectPadExec(CAPSELECTWORK *work)
     return move;
 }
 
+/* Stores the object and ring index that the closing animation should retain. */
 void mbCapSelectResultSet(int playerNo, int objId, int result)
 {
     ev_CapSelectObjId[playerNo] = objId;
     ev_CapSelectResult[playerNo] = result;
 }
 
+/* Returns the retained object and ring index; either output pointer may be null. */
 void mbCapSelectResultGet(int playerNo, int *objId, int *result)
 {
     if (objId != NULL) {
@@ -738,17 +746,19 @@ void mbCapSelectResultGet(int playerNo, int *objId, int *result)
     }
 }
 
+/* Clears the retained capsule object and selection index for a player. */
 void mbCapSelectResultReset(int playerNo)
 {
     ev_CapSelectObjId[playerNo] = -1;
     ev_CapSelectResult[playerNo] = -1;
 }
 
+/* Called by CapSelect when the menu closes to start the return animation child process. */
 static void CapSelectShrinkCreate(int playerNo, int objId,
     CAPSELECTWORK *selectWork, HuVecF *start, HuVecF *end)
 {
     CAPSELECTSHRINKWORK *work;
-    CAPSELECTSHRINKWORK *workData;
+    CAPSELECTSHRINKWORK *allocatedShrinkWork;
     int i;
 
     ev_CapSelectShrinkProc[playerNo] = HuPrcChildCreate(CapSelectShrink,
@@ -756,18 +766,18 @@ static void CapSelectShrinkCreate(int playerNo, int objId,
         mbMainProc);
     HuPrcDestructorSet2(ev_CapSelectShrinkProc[playerNo],
         CapSelectShrinkDestroy);
-    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPSELECTSHRINKWORK),
+    allocatedShrinkWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAPSELECTSHRINKWORK),
         HU_MEMNUM_OVL);
-    work = workData;
+    work = allocatedShrinkWork;
     ev_CapSelectShrinkProc[playerNo]->property = work;
     memset(work, 0, sizeof(CAPSELECTSHRINKWORK));
     work->playerNo = playerNo;
-    work->objId = objId;
+    work->retainedObjId = objId;
     work->count = selectWork->capsuleNum;
     for (i = 0; i < work->count; i++) {
-        work->objIdTbl[i] = selectWork->objId[i];
-        work->start[i] = start[i];
-        work->end[i] = end[i];
+        work->capsuleObjIds[i] = selectWork->objId[i];
+        work->playerPositions[i] = start[i];
+        work->ringPositions[i] = end[i];
     }
 }
 
@@ -776,6 +786,7 @@ static inline float CapSelectShrinkScaleGet(void)
     return 0.75f;
 }
 
+/* Child process started by CapSelectShrinkCreate to return ring objects when the menu closes. */
 static void CapSelectShrink(void)
 {
     CAPSELECTSHRINKWORK *work = HuPrcCurrentGet()->property;
@@ -791,6 +802,7 @@ static void CapSelectShrink(void)
     if (ev_CapSelectMdlId != -1) {
         mbObjScaleGet(ev_CapSelectMdlId, &transform);
         scaleDelta = transform.x - 1.0f;
+        /* The same vector is reused; only its Y rotation is needed below. */
         mbObjRotGet(ev_CapSelectMdlId, &transform);
         startRot = transform.y;
         if (startRot > 180.0f) {
@@ -805,22 +817,22 @@ static void CapSelectShrink(void)
         selectedScale = 1.0f + (scaleDelta * (1.0f - weight));
         rotY = startRot * (1.0f - weight);
         for (i = 0; i < work->count; i++) {
-            if (work->objIdTbl[i] == ev_CapSelectMdlId) {
-                s16 objId = work->objIdTbl[i];
+            if (work->capsuleObjIds[i] == ev_CapSelectMdlId) {
+                s16 objId = work->capsuleObjIds[i];
                 HuVecF pos;
                 float scale;
 
                 scale = sin((M_PI * (90.0f * (1.0f - weight))) / 180.0);
-                pos.y = ((float *)&work->start[i])[1]
-                    + (scale * (((float *)&work->end[i])[1]
-                    - ((float *)&work->start[i])[1]));
-                pos.x = (work->start + i)->x
+                pos.y = ((float *)&work->playerPositions[i])[1]
+                    + (scale * (((float *)&work->ringPositions[i])[1]
+                    - ((float *)&work->playerPositions[i])[1]));
+                pos.x = (work->playerPositions + i)->x
                     + ((1.0f - weight)
-                    * ((work->end + i)->x - (work->start + i)->x));
-                pos.z = ((float *)&work->start[i])[2]
+                    * ((work->ringPositions + i)->x - (work->playerPositions + i)->x));
+                pos.z = ((float *)&work->playerPositions[i])[2]
                     + ((1.0f - weight)
-                    * (((float *)&work->end[i])[2]
-                    - ((float *)&work->start[i])[2]));
+                    * (((float *)&work->ringPositions[i])[2]
+                    - ((float *)&work->playerPositions[i])[2]));
                 if (objId != ev_CapSelectMdlId) {
                     scale = 1.0f - weight;
                 } else {
@@ -829,24 +841,24 @@ static void CapSelectShrink(void)
                 mbObjPosSetV(objId, &pos);
                 mbObjScaleSet(objId, scale * selectedScale,
                     scale * selectedScale, scale * selectedScale);
-                mbObjRotSet(work->objIdTbl[i], 0.0f,
+                mbObjRotSet(work->capsuleObjIds[i], 0.0f,
                     rotY, 0.0f);
     } else {
-        s16 objId = work->objIdTbl[i];
+        s16 objId = work->capsuleObjIds[i];
         HuVecF pos;
         float scale;
 
         scale = sin((M_PI * (90.0f * (1.0f - weight))) / 180.0);
-        pos.y = ((float *)&work->start[i])[1]
-            + (scale * (((float *)&work->end[i])[1]
-            - ((float *)&work->start[i])[1]));
-        pos.x = (work->start + i)->x
+        pos.y = ((float *)&work->playerPositions[i])[1]
+            + (scale * (((float *)&work->ringPositions[i])[1]
+            - ((float *)&work->playerPositions[i])[1]));
+        pos.x = (work->playerPositions + i)->x
             + ((1.0f - weight)
-            * ((work->end + i)->x - (work->start + i)->x));
-        pos.z = ((float *)&work->start[i])[2]
+            * ((work->ringPositions + i)->x - (work->playerPositions + i)->x));
+        pos.z = ((float *)&work->playerPositions[i])[2]
             + ((1.0f - weight)
-            * (((float *)&work->end[i])[2]
-            - ((float *)&work->start[i])[2]));
+            * (((float *)&work->ringPositions[i])[2]
+            - ((float *)&work->playerPositions[i])[2]));
         if (objId != ev_CapSelectMdlId) {
             scale = 1.0f - weight;
         } else {
@@ -863,20 +875,23 @@ static void CapSelectShrink(void)
     HuPrcEnd();
 }
 
+/* Called as the shrink child-process destructor to kill unretained objects and free its state. */
 static void CapSelectShrinkDestroy(void)
 {
     CAPSELECTSHRINKWORK *work = HuPrcCurrentGet()->property;
     int i;
 
     for (i = 0; i < work->count; i++) {
-        if (work->objIdTbl[i] != work->objId && work->objIdTbl[i] != -1) {
-            mbCapObjKill(work->objIdTbl[i]);
+        if (work->capsuleObjIds[i] != work->retainedObjId
+            && work->capsuleObjIds[i] != -1) {
+            mbCapObjKill(work->capsuleObjIds[i]);
         }
     }
     HuMemDirectFree(work);
     ev_CapSelectShrinkProc[work->playerNo] = NULL;
 }
 
+/* Reports whether the player's capsule-menu close animation has finished. */
 BOOL mbCapSelectShrinkCheck(int playerNo)
 {
     if (ev_CapSelectShrinkProc[playerNo] == NULL) {
@@ -885,16 +900,19 @@ BOOL mbCapSelectShrinkCheck(int playerNo)
     return FALSE;
 }
 
+/* Selects whether story-mode starter capsules are included in the menu. */
 static void CapSelectStoryFSet(BOOL storyF)
 {
     ev_CapSelectStoryF = storyF;
 }
 
+/* Sets an optional temporary capsule appended to this player's choices. */
 static void CapSelectExtraCapsuleGet(int playerNo, int capsuleNo)
 {
     ev_CapSelectExtra[playerNo] = capsuleNo;
 }
 
+/* Resolves a menu index to a story starter, temporary capsule, or inventory entry. */
 static int CapSelectCapsuleGet(int playerNo, int selectNo)
 {
     if (ev_CapSelectStoryF) {
@@ -912,6 +930,7 @@ static int CapSelectCapsuleGet(int playerNo, int selectNo)
     return mbPlayerCapsuleGet(playerNo, selectNo);
 }
 
+/* Counts inventory entries plus any story starters or temporary choice. */
 static int CapSelectNumGet(int playerNo)
 {
     if (ev_CapSelectStoryF) {
@@ -923,6 +942,7 @@ static int CapSelectNumGet(int playerNo)
     return mbPlayerCapsuleNumGet(playerNo);
 }
 
+/* Builds the displayed choice list and asks the appropriate computer chooser. */
 static int CapSelectComGet(int playerNo, BOOL deleteF)
 {
     int capsule[5];
@@ -963,6 +983,7 @@ void fn_8019A62C(void)
 {
 }
 
+/* Runs when a player lands on a capsule space and handles the resulting pickup. */
 void mbCapMasuExec(int playerNo, int masuId)
 {
     OMOBJ *obj;
@@ -1093,6 +1114,7 @@ void mbCapMasuExec(int playerNo, int masuId)
     }
 }
 
+/* Initializes the capsule-space display slots and creates displays for the board. */
 void mbCapMasuObjInit(void)
 {
     int i;
@@ -1104,6 +1126,7 @@ void mbCapMasuObjInit(void)
     ev_CapMasuDispF = TRUE;
 }
 
+/* Clears the capsule-space display registry during board cleanup. */
 void mbCapMasuObjClose(void)
 {
     int i;
@@ -1113,6 +1136,7 @@ void mbCapMasuObjClose(void)
     }
 }
 
+/* Creates one display object for each capsule space currently on the board. */
 void mbCapMasuObjCreateAll(void)
 {
     int masuId;
@@ -1124,6 +1148,7 @@ void mbCapMasuObjCreateAll(void)
     }
 }
 
+/* Registers and initializes the animated display for one capsule space. */
 void mbCapMasuObjCreate(int masuId)
 {
     OMOBJ *obj;
@@ -1167,6 +1192,7 @@ void mbCapMasuObjCreate(int masuId)
     }
 }
 
+/* Animates an offered capsule from above the player through its pickup effect. */
 void mbCapCapsuleGet(int playerNo, int capsuleNo)
 {
     int objId;
@@ -1212,11 +1238,13 @@ void mbCapCapsuleGet(int playerNo, int capsuleNo)
     mbCapObjKill(objId);
 }
 
+/* Enables or suppresses capsule-space displays during board events. */
 void mbCapMasuDispSet(BOOL dispF)
 {
     ev_CapMasuDispF = dispF;
 }
 
+/* Per-frame callback that shows, hides, bobs, and scales a capsule-space model. */
 static void CapMasuOMExec(OMOBJ *obj)
 {
     CAPMASUWORK *work = omObjGetDataAs(obj, CAPMASUWORK);
@@ -1270,6 +1298,7 @@ static void CapMasuOMExec(OMOBJ *obj)
     }
 }
 
+/* Creates the help text for a capsule choice or for the discard menu. */
 static int CapHelpWinCreate(int capsuleNo, BOOL deleteF)
 {
     int winId;

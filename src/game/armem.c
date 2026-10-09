@@ -1,27 +1,35 @@
+/* Manages ARAM blocks and transfers data between ARAM and main memory. */
 #include "game/armem.h"
 #include "game/data.h"
 
 #define ARMEM_BLOCK_MAX 64
+#define ARQ_OWNER_HU 4660
+#define ARMEM_DIRECTORY_ID_MASK 0xFFFF0000
+#define ARMEM_NO_DIRECTORY_ID 65535
+#define ARMEM_ARCHIVE_ALIGN_DOWN_MASK 0xFFFFFFFE0
+#define ARMEM_FILE_SIZE_ALIGN_DOWN_MASK 0xFFFFFFFE
+#define ARMEM_FILE_TRANSFER_ROUNDUP_BIAS 63
 
 typedef struct ARMemBlock_s ARMEM_BLOCK;
 
 struct ARMemBlock_s {
-    /* 0x00 */ u8 flag;
-    /* 0x02 */ u16 dir;
-    /* 0x04 */ AMEM_PTR aMemP;
-    /* 0x08 */ u32 size;
-    /* 0x0C */ ARMEM_BLOCK *next;
+    /* 0x00 */ u8 inUse; /* 1 while reserved or allocated, 0 while free; the sentinel is 1. */
+    /* 0x02 */ u16 dataDirId; /* Data directory ID, or 0xFFFF when unassociated. */
+    /* 0x04 */ AMEM_PTR aramAddress; /* Start address of this range in ARAM. */
+    /* 0x08 */ u32 size; /* Length of this ARAM range in bytes. */
+    /* 0x0C */ ARMEM_BLOCK *next; /* Next range in address order, ending at the sentinel. */
 }; // Size 0x10
 
 typedef struct ARQueReq_s {
-    /* 0x00 */ ARQRequest req;
-    /* 0x20 */ s32 dir;
-    /* 0x24 */ void *dst;
+    /* 0x00 */ ARQRequest request; /* ARAM-to-main-memory request for the resource copy. */
+    /* 0x20 */ s32 dataNum; /* Directory-base data number (directory ID in the upper 16 bits) used
+                             * to register the returned archive buffer. */
+    /* 0x24 */ void *destination; /* Main-memory buffer filled by the ARAM transfer. */
 } ARQUEREQ; // Size 0x28
 
-static void ArqCallBack(u32 pointerToARQRequest);
-static void ArqCallBackAM(u32 pointerToARQRequest);
-static void ArqCallBackAMFileRead(u32 pointerToARQRequest);
+static void ArqCallBack(u32 requestAddress);
+static void ArqCallBackAM(u32 requestAddress);
+static void ArqCallBackAMFileRead(u32 requestAddress);
 
 static s32 ATTRIBUTE_ALIGN(32) preLoadBuf[16];
 static ARQUEREQ ARQueBuf[16];
@@ -32,349 +40,393 @@ static AMEM_PTR ARBase;
 static s32 arqCnt;
 static s16 arqIdx;
 
+/* HuSysInit calls this during startup to initialize ARAM and seed the free-range list. */
 void HuARInit(void) {
-    s32 size;
-    s16 i;
+    s32 availableBytes;
+    s16 blockIndex;
 
     if(!ARCheckInit()) {
         ARInit(NULL, 0);
         ARQInit();
     }
-    for (i=0; i<ARMEM_BLOCK_MAX; i++) {
-        ARInfo[i].aMemP = 0;
+    for (blockIndex=0; blockIndex<ARMEM_BLOCK_MAX; blockIndex++) {
+        ARInfo[blockIndex].aramAddress = 0;
     }
-    size = ARGetSize() - HU_AMEM_BASE;
+    availableBytes = ARGetSize() - HU_AMEM_BASE;
     ARBase = HU_AMEM_BASE;
-    ARInfo[0].aMemP = ARBase;
-    ARInfo[0].size = size;
-    ARInfo[0].flag = 0;
+    ARInfo[0].aramAddress = ARBase;
+    ARInfo[0].size = availableBytes;
+    ARInfo[0].inUse = 0;
     ARInfo[0].next = &ARInfo[1];
-    ARInfo[0].dir = 0xFFFF;
-    ARInfo[1].aMemP = -1;
+    ARInfo[0].dataDirId = ARMEM_NO_DIRECTORY_ID;
+    ARInfo[1].aramAddress = -1;
     ARInfo[1].size = 0;
-    ARInfo[1].flag = 1;
+    ARInfo[1].inUse = 1;
     ARInfo[1].next = 0;
-    ARInfo[1].dir = 0xFFFF;
+    ARInfo[1].dataDirId = ARMEM_NO_DIRECTORY_ID;
     arqCnt = 0;
 }
 
+/* Resource loaders call this to reserve a 32-byte-rounded range from the ARAM free list. */
 AMEM_PTR HuARMalloc(u32 size) {
-    ARMEM_BLOCK *prev;
-    ARMEM_BLOCK *next;
-    ARMEM_BLOCK *curr;
-    s16 i;
+    ARMEM_BLOCK *previousBlock;
+    ARMEM_BLOCK *newBlock;
+    ARMEM_BLOCK *currentBlock;
+    s16 blockIndex;
 
-    size = OSRoundUp32B(size);
-    curr = prev = ARInfo;
-    while(curr->next != 0) {
-        if(curr->flag == 0 && curr->size >= size) {
+    size = OSRoundUp32B(size); /* ARQ transfers and ARAM addresses use 32-byte alignment. */
+    currentBlock = previousBlock = ARInfo;
+    while(currentBlock->next != 0) {
+        if(currentBlock->inUse == 0 && currentBlock->size >= size) {
             break;
         }
-        prev = curr;
-        curr = curr->next;
+        previousBlock = currentBlock;
+        currentBlock = currentBlock->next;
     }
-    if(curr->next == 0) {
+    if(currentBlock->next == 0) {
         OSReport("Can't ARAM Allocated %x\n", size);
         HuAMemDump();
         return 0;
     }
-    curr->flag = 1;
-    if(curr->size == size && prev != curr) {
-        curr->dir = 0xFFFF;
+    currentBlock->inUse = 1;
+    if(currentBlock->size == size && previousBlock != currentBlock) {
+        currentBlock->dataDirId = ARMEM_NO_DIRECTORY_ID;
     } else {
-        next = &ARInfo[1];
-        for (i=0; i<ARMEM_BLOCK_MAX-1; i++, next++) {
-            if(!next->aMemP) {
+        newBlock = &ARInfo[1];
+        for (blockIndex=0; blockIndex<ARMEM_BLOCK_MAX-1; blockIndex++, newBlock++) {
+            if(!newBlock->aramAddress) {
                 break;
             }
         }
-        if(i == ARMEM_BLOCK_MAX-1) {
+        if(blockIndex == ARMEM_BLOCK_MAX-1) {
             OSReport("Can't ARAM Allocated %x\n", size);
             return 0;
         }
-        next->next = curr->next;
-        curr->next = next;
-        next->size = curr->size - size;
-        next->aMemP = curr->aMemP + size;
-        curr->size = size;
-        curr->dir = next->dir = 0xFFFF;
-        next->flag = 0;
+        /* Split the selected free range so its unused tail remains available for later loads. */
+        newBlock->next = currentBlock->next;
+        currentBlock->next = newBlock;
+        newBlock->size = currentBlock->size - size;
+        newBlock->aramAddress = currentBlock->aramAddress + size;
+        currentBlock->size = size;
+        currentBlock->dataDirId = newBlock->dataDirId = ARMEM_NO_DIRECTORY_ID;
+        newBlock->inUse = 0;
     }
-    return curr->aMemP;
+    return currentBlock->aramAddress;
 }
 
-void HuARFree(AMEM_PTR aMemP) {
-    ARMEM_BLOCK *prev;
-    ARMEM_BLOCK *next;
-    ARMEM_BLOCK *curr;
+/* Resource release paths call this to free a range and merge neighboring free ranges. */
+void HuARFree(AMEM_PTR aramAddress) {
+    ARMEM_BLOCK *previousBlock;
+    ARMEM_BLOCK *nextBlock;
+    ARMEM_BLOCK *currentBlock;
 
-    curr = prev = ARInfo;
-    while(curr->next) {
-        if(curr->aMemP == aMemP) {
+    currentBlock = previousBlock = ARInfo;
+    while(currentBlock->next) {
+        if(currentBlock->aramAddress == aramAddress) {
             break;
         }
-        prev = curr;
-        curr = curr->next;
+        previousBlock = currentBlock;
+        currentBlock = currentBlock->next;
     }
-    if(curr->flag) {
-        if(!curr->next && curr->aMemP != aMemP) {
-            OSReport("Can't ARAM Free %x\n", aMemP);
+    if(currentBlock->inUse) {
+        if(!currentBlock->next && currentBlock->aramAddress != aramAddress) {
+            OSReport("Can't ARAM Free %x\n", aramAddress);
             return;
         }
-        next = curr->next;
-        if(next->next && next->flag == FALSE) {
-            if(curr->aMemP > next->aMemP) {
-                curr->aMemP = next->aMemP;
+        nextBlock = currentBlock->next;
+        if(nextBlock->next && nextBlock->inUse == FALSE) {
+            if(currentBlock->aramAddress > nextBlock->aramAddress) {
+                currentBlock->aramAddress = nextBlock->aramAddress;
             }
-            curr->size += next->size;
-            curr->next = next->next;
-            next->aMemP = 0;
+            currentBlock->size += nextBlock->size;
+            currentBlock->next = nextBlock->next;
+            nextBlock->aramAddress = 0;
         }
-        if(prev != curr && prev->next && prev->flag == FALSE) {
-            if(prev->aMemP > curr->aMemP) {
-                prev->aMemP = curr->aMemP;
+        if(previousBlock != currentBlock && previousBlock->next && previousBlock->inUse == FALSE) {
+            if(previousBlock->aramAddress > currentBlock->aramAddress) {
+                previousBlock->aramAddress = currentBlock->aramAddress;
             }
-            prev->size += curr->size;
-            prev->next = curr->next;
-            curr->aMemP = 0;
+            previousBlock->size += currentBlock->size;
+            previousBlock->next = currentBlock->next;
+            currentBlock->aramAddress = 0;
         }
-        curr->flag = 0;
-        curr->dir = 0xFFFF;
+        currentBlock->inUse = 0;
+        currentBlock->dataDirId = ARMEM_NO_DIRECTORY_ID;
     }
 }
 
-static u32 HuARSizeGet(AMEM_PTR aMemP) {
-    ARMEM_BLOCK *curr;
-    ARMEM_BLOCK *prev;
+/* ARAM-to-main-memory loaders use this to get the recorded span for a range start address. */
+static u32 HuARSizeGet(AMEM_PTR aramAddress) {
+    ARMEM_BLOCK *currentBlock;
+    ARMEM_BLOCK *previousBlock;
 
-    curr = prev = ARInfo;
-    while(curr->next) {
-        if(curr->aMemP == aMemP) {
+    currentBlock = previousBlock = ARInfo;
+    while(currentBlock->next) {
+        if(currentBlock->aramAddress == aramAddress) {
             break;
         }
-        prev = curr;
-        curr = curr->next;
+        previousBlock = currentBlock;
+        currentBlock = currentBlock->next;
     }
-    if(curr->next == FALSE && curr->aMemP != aMemP) {
-        OSReport("Can't Find ARAM %x\n", aMemP);
+    if(currentBlock->next == FALSE && currentBlock->aramAddress != aramAddress) {
+        OSReport("Can't Find ARAM %x\n", aramAddress);
         return 0;
     } else {
-        return curr->size;
+        return currentBlock->size;
     }
 }
 
-static ARMEM_BLOCK *HuARInfoGet(AMEM_PTR aMemP) {
-    ARMEM_BLOCK *curr;
-    ARMEM_BLOCK *prev;
+/* Transfer helpers use this to find the block record for an ARAM range start address. */
+static ARMEM_BLOCK *HuARInfoGet(AMEM_PTR aramAddress) {
+    ARMEM_BLOCK *currentBlock;
+    ARMEM_BLOCK *previousBlock;
 
-    curr = prev = ARInfo;
-    while(curr->next) {
-        if(curr->aMemP == aMemP) {
+    currentBlock = previousBlock = ARInfo;
+    while(currentBlock->next) {
+        if(currentBlock->aramAddress == aramAddress) {
             break;
         }
-        prev = curr;
-        curr = curr->next;
+        previousBlock = currentBlock;
+        currentBlock = currentBlock->next;
     }
-    if(curr->next == FALSE && curr->aMemP != aMemP) {
-        OSReport("Can't Find ARAM %x\n", aMemP);
+    if(currentBlock->next == FALSE && currentBlock->aramAddress != aramAddress) {
+        OSReport("Can't Find ARAM %x\n", aramAddress);
         return NULL;
     } else {
-        return curr;
+        return currentBlock;
     }
 }
 
+/* Allocation failure paths and explicit diagnostics call this to print the ARAM range list. */
 void HuAMemDump(void) {
-    ARMEM_BLOCK *curr;
+    ARMEM_BLOCK *currentBlock;
 
     OSReport("ARAM DUMP ======================\n");
     OSReport("AMemPtr  Stat Length\n");
-    for(curr=ARInfo; curr->next; curr=curr->next) {
-        OSReport("%08x:%04x,%08x,%08x\n", curr->aMemP, curr->flag, curr->size, curr->dir);
+    for(currentBlock=ARInfo; currentBlock->next; currentBlock=currentBlock->next) {
+        OSReport("%08x:%04x,%08x,%08x\n", currentBlock->aramAddress, currentBlock->inUse,
+            currentBlock->size, currentBlock->dataDirId);
     }
-    OSReport("%08x:%04x,%08x\n", curr->aMemP, curr->flag, curr->size);
+    OSReport("%08x:%04x,%08x\n", currentBlock->aramAddress, currentBlock->inUse,
+        currentBlock->size);
     OSReport("================================\n");
 }
 
-AMEM_PTR HuAR_DVDtoARAM(unsigned int dir) {
-    HUDATASTAT *stat;
-    ARMEM_BLOCK *block;
-    AMEM_PTR aMemP;
+/* When a directory is not already in ARAM, resource loaders use this to get it into main memory if
+ * needed, queue its copy to ARAM, and wait until pending ARQ transfers finish. */
+AMEM_PTR HuAR_DVDtoARAM(unsigned int dataNum) {
+    HUDATASTAT *dataStatus;
+    ARMEM_BLOCK *allocatedBlock;
+    AMEM_PTR aramAddress;
 
-    aMemP = HuARDirCheck(dir);
-    if(aMemP) {
-        return aMemP;
+    aramAddress = HuARDirCheck(dataNum);
+    if(aramAddress) {
+        return aramAddress;
     }
-    stat = HuDataDirRead(dir);
+    dataStatus = HuDataDirRead(dataNum);
     DirDataSize = OSRoundUp32B(DirDataSize);
-    aMemP = HuARMalloc(DirDataSize);
-    if(!aMemP) {
+    aramAddress = HuARMalloc(DirDataSize);
+    if(!aramAddress) {
         return 0;
     }
-    block = HuARInfoGet(aMemP);
-    block->dir = (dir >> 16);
+    allocatedBlock = HuARInfoGet(aramAddress);
+    allocatedBlock->dataDirId = (dataNum >> 16);
     arqCnt++;
-    ARQPostRequest(&arqReq, 0x1234, 0, 0, (u32) stat->dirP, aMemP, DirDataSize, ArqCallBack);
-    OSReport("ARAM Trans %x\n", aMemP);
+    ARQPostRequest(&arqReq, ARQ_OWNER_HU, ARQ_TYPE_MRAM_TO_ARAM, ARQ_PRIORITY_LOW,
+        (u32) dataStatus->dirP, aramAddress, DirDataSize, ArqCallBack);
+    OSReport("ARAM Trans %x\n", aramAddress);
     while(HuARDMACheck());
-    HuDataDirClose(dir);
-    return aMemP;
+    HuDataDirClose(dataNum);
+    return aramAddress;
 }
 
-static void ArqCallBack(u32 pointerToARQRequest) {
+/* ARQ invokes this when a queued main-memory-to-ARAM transfer completes. */
+static void ArqCallBack(u32 requestAddress) {
     arqCnt--;
-    (void)pointerToARQRequest; // required to match (return?)
+    (void)requestAddress;
 }
 
-AMEM_PTR HuAR_MRAMtoARAM(int dir) {
-    return HuAR_MRAMtoARAM2(HuDataGetDirPtr(dir));
+/* Character and module loaders use this wrapper to copy an already loaded resource into ARAM. */
+AMEM_PTR HuAR_MRAMtoARAM(int dataNum) {
+    return HuAR_MRAMtoARAM2(HuDataGetDirPtr(dataNum));
 }
 
-AMEM_PTR HuAR_MRAMtoARAM2(void *dirPtr) {
-    ARMEM_BLOCK *block;
-    HUDATASTAT *status;
-    u32 size;
-    AMEM_PTR aMemP;
+/* Loaders pass a resident data pointer here to queue its archive copy to ARAM and record the
+ * directory ID; if that directory is already in ARAM, it returns the existing address. */
+AMEM_PTR HuAR_MRAMtoARAM2(void *sourceData) {
+    ARMEM_BLOCK *allocatedBlock;
+    HUDATASTAT *dataStatus;
+    u32 alignedSize;
+    AMEM_PTR aramAddress;
 
-    status = HuDataGetStatus(dirPtr);
-    aMemP = HuARDirCheck(status->dirId << 16);
-    if(aMemP) {
-        return aMemP;
+    dataStatus = HuDataGetStatus(sourceData);
+    aramAddress = HuARDirCheck(dataStatus->dirId << 16);
+    if(aramAddress) {
+        return aramAddress;
     }
-    size = HuMemMemorySizeGet(dirPtr);
-    size = OSRoundUp32B(size);
-    aMemP = HuARMalloc(size);
-    if(!aMemP) {
+    alignedSize = HuMemMemorySizeGet(sourceData);
+    alignedSize = OSRoundUp32B(alignedSize);
+    aramAddress = HuARMalloc(alignedSize);
+    if(!aramAddress) {
         return 0;
     }
-    block = HuARInfoGet(aMemP);
-    block->dir = status->dirId;
+    allocatedBlock = HuARInfoGet(aramAddress);
+    allocatedBlock->dataDirId = dataStatus->dirId;
     arqCnt++;
-    ARQPostRequest(&arqReq, 0x1234, 0, 0, (u32)dirPtr, aMemP, size, ArqCallBack);
-    return aMemP;
+    ARQPostRequest(&arqReq, ARQ_OWNER_HU, ARQ_TYPE_MRAM_TO_ARAM, ARQ_PRIORITY_LOW,
+        (u32)sourceData, aramAddress, alignedSize, ArqCallBack);
+    return aramAddress;
 }
 
-void *HuAR_ARAMtoMRAM(AMEM_PTR aMemP) {
-    HuAR_ARAMtoMRAMNum(aMemP, 0);
+/* HuDataDirRead and HuDataDirReadAsync call this to queue an ARAM-to-main-memory copy; the
+ * synchronous caller waits and then looks up its data record. */
+/* HuDataDirRead paths call this wrapper; it starts the transfer without returning its result. */
+void *HuAR_ARAMtoMRAM(AMEM_PTR aramAddress) {
+    HuAR_ARAMtoMRAMNum(aramAddress, 0);
 }
 
-void *HuAR_ARAMtoMRAMNum(AMEM_PTR aMemP, s32 num) {
-    void *dst;
-    ARMEM_BLOCK *block;
-    s32 size;
+/* HuDataDirReadNum uses this to start copying an ARAM-resident archive; its callback registers the
+ * destination when DMA completes. */
+void *HuAR_ARAMtoMRAMNum(AMEM_PTR aramAddress, s32 allocationNumber) {
+    void *destination;
+    ARMEM_BLOCK *allocatedBlock;
+    s32 transferSize;
     
-
-    block = HuARInfoGet(aMemP);
-    if(HuDataReadChk(block->dir << 16) >= 0) {
+    allocatedBlock = HuARInfoGet(aramAddress);
+    if(HuDataReadChk(allocatedBlock->dataDirId << 16) >= 0) {
+        /* The resource is already present; this path returns no buffer pointer. */
         return;
     }
-    size = HuARSizeGet(aMemP);
-    dst = HuMemDirectMallocNum(HEAP_DVD, size, num);
-    if(!dst) {
+    transferSize = HuARSizeGet(aramAddress);
+    destination = HuMemDirectMallocNum(HEAP_DVD, transferSize, allocationNumber);
+    if(!destination) {
         return 0;
     }
-    HuMemMemoryFileSet(dst, (block->dir << 16) & 0xFFFF0000);
-    DCFlushRangeNoSync(dst, size);
-    ARQueBuf[arqIdx].dir = (block->dir << 16);
-    ARQueBuf[arqIdx].dst = dst;
+    HuMemMemoryFileSet(destination, (allocatedBlock->dataDirId << 16) & ARMEM_DIRECTORY_ID_MASK);
+    /* The destination cache range is flushed before ARAM DMA writes into it. */
+    DCFlushRangeNoSync(destination, transferSize);
+    ARQueBuf[arqIdx].dataNum = (allocatedBlock->dataDirId << 16);
+    ARQueBuf[arqIdx].destination = destination;
     arqCnt++;
     PPCSync();
-    ARQPostRequest(&ARQueBuf[arqIdx].req, 0x1234, 1, 0, aMemP, (u32) dst, size, ArqCallBackAM);
+    ARQPostRequest(&ARQueBuf[arqIdx].request, ARQ_OWNER_HU, ARQ_TYPE_ARAM_TO_MRAM,
+        ARQ_PRIORITY_LOW, aramAddress, (u32) destination, transferSize, ArqCallBackAM);
     arqIdx++;
     arqIdx &= 0xF;
-    return dst;
+    return destination;
 }
 
-static void ArqCallBackAM(u32 pointerToARQRequest) {
-    ARQUEREQ *request = (ARQUEREQ *) pointerToARQRequest;
+/* ARQ invokes this after an ARAM-to-main-memory copy so the data loader can register the buffer. */
+static void ArqCallBackAM(u32 requestAddress) {
+    ARQUEREQ *request = (ARQUEREQ *) requestAddress;
 
     arqCnt--;
-    HuDataDirSet(request->dst, request->dir);
+    HuDataDirSet(request->destination, request->dataNum);
 }
 
+/* Data loading paths poll this until all queued ARAM DMA callbacks have completed. */
 s32 HuARDMACheck(void) {
     return arqCnt;
 }
 
-AMEM_PTR HuARDirCheck(unsigned int dir) {
-    ARMEM_BLOCK *curr;
+/* Data loaders and resource managers use this to find a directory's allocated ARAM range. */
+AMEM_PTR HuARDirCheck(unsigned int dataNum) {
+    ARMEM_BLOCK *currentBlock;
 
-    curr = ARInfo;
-    dir >>= 16;
-    while(curr->next != 0) {
-        if(curr->flag == 1 && curr->dir == dir) {
-            return curr->aMemP;
+    currentBlock = ARInfo;
+    dataNum >>= 16;
+    while(currentBlock->next != 0) {
+        if(currentBlock->inUse == 1 && currentBlock->dataDirId == dataNum) {
+            return currentBlock->aramAddress;
         }
-        curr = curr->next;
+        currentBlock = currentBlock->next;
     }
     return 0;
 }
 
-void HuARDirFree(unsigned int dir) {
-    ARMEM_BLOCK *curr;
+/* Resource managers call this when they release a directory's resident ARAM copy. */
+void HuARDirFree(unsigned int dataNum) {
+    ARMEM_BLOCK *currentBlock;
 
-    curr = ARInfo;
-    dir >>= 16;
-    while(curr->next) {
-        if(curr->dir == dir) {
-            HuARFree(curr->aMemP);
+    currentBlock = ARInfo;
+    dataNum >>= 16;
+    while(currentBlock->next) {
+        if(currentBlock->dataDirId == dataNum) {
+            HuARFree(currentBlock->aramAddress);
             break;
         }
-        curr = curr->next;
+        currentBlock = currentBlock->next;
     }
 }
 
-void *HuAR_ARAMtoMRAMFileRead(unsigned int dataNum, u32 num, HEAPID heap) {
-    s32 *dirBuf;
-    void *dst;
-    void *dvdBuf;
-    AMEM_PTR srcAMemP;
-    s32 count;
-    s32 size;
-    AMEM_PTR aMemP;
+/* Character and message loaders call this to copy and decode one file from a resident archive. */
+void *HuAR_ARAMtoMRAMFileRead(unsigned int dataNum, u32 allocationNumber, HEAPID heap) {
+    s32 *directoryEntry;
+    void *decodedData;
+    void *transferBuffer;
+    AMEM_PTR sourceAddress;
+    s32 fileOffset;
+    s32 transferSize;
+    AMEM_PTR archiveAddress;
 
-    if((aMemP = HuARDirCheck(dataNum)) == 0) {
+    if((archiveAddress = HuARDirCheck(dataNum)) == 0) {
         OSReport("Error: data none on ARAM %0x\n", dataNum);
         HuAMemDump();
         return 0;
     }
     DCInvalidateRange(&preLoadBuf, sizeof(preLoadBuf));
-    srcAMemP = aMemP + (u32)((u32)(((u16)dataNum + 1) * 4) & 0xFFFFFFFE0);
+    /* Read a 64-byte window starting at the 32-byte-aligned address that contains the archive's
+     * directory word pair. */
+    sourceAddress =
+        archiveAddress + (u32) ((u32) (((u16) dataNum + 1) * 4) & ARMEM_ARCHIVE_ALIGN_DOWN_MASK);
     arqCnt++;
-    ARQPostRequest(&ARQueBuf[arqIdx].req, 0x1234, 1, 0, srcAMemP, (u32) &preLoadBuf, sizeof(preLoadBuf), ArqCallBackAMFileRead);
+    ARQPostRequest(&ARQueBuf[arqIdx].request, ARQ_OWNER_HU, ARQ_TYPE_ARAM_TO_MRAM,
+        ARQ_PRIORITY_LOW, sourceAddress, (u32) &preLoadBuf, sizeof(preLoadBuf),
+        ArqCallBackAMFileRead);
     arqIdx++;
     arqIdx &= 0xF;
     while(HuARDMACheck());
-    dirBuf = &preLoadBuf[(dataNum + 1) & 7];
-    count = dirBuf[0];
-    srcAMemP = aMemP + (u32)(count & 0xFFFFFFFE0);
-    if(dirBuf[1] - count < 0) {
-        size = (HuARSizeGet(aMemP) - count + 0x3F) & 0xFFFFFFFE0;
+    directoryEntry = &preLoadBuf[(dataNum + 1) & 0x7];
+    fileOffset = directoryEntry[0];
+    /* Compute the span to the next file offset, or to the allocated archive range end for the last
+     * entry, then include padding for the aligned DMA source and transfer length. */
+    sourceAddress = archiveAddress + (u32)(fileOffset & ARMEM_ARCHIVE_ALIGN_DOWN_MASK);
+    if(directoryEntry[1] - fileOffset < 0) {
+        transferSize =
+            (HuARSizeGet(archiveAddress) - fileOffset + ARMEM_FILE_TRANSFER_ROUNDUP_BIAS) &
+            ARMEM_ARCHIVE_ALIGN_DOWN_MASK;
     } else {
-        size = (dirBuf[1] - count + 0x3F) & 0xFFFFFFFE0;
+        transferSize = (directoryEntry[1] - fileOffset + ARMEM_FILE_TRANSFER_ROUNDUP_BIAS) &
+                       ARMEM_ARCHIVE_ALIGN_DOWN_MASK;
     }
-    dvdBuf = HuMemDirectMalloc(HEAP_DVD, size);
-    if(!dvdBuf) {
+    transferBuffer = HuMemDirectMalloc(HEAP_DVD, transferSize);
+    if(!transferBuffer) {
         return 0;
     }
-    DCFlushRangeNoSync(dvdBuf, size);
+    DCFlushRangeNoSync(transferBuffer, transferSize);
     arqCnt++;
     PPCSync();
-    ARQPostRequest(&ARQueBuf[arqIdx].req, 0x1234, 1, 0, srcAMemP, (u32) dvdBuf, (u32) size, ArqCallBackAMFileRead);
+    ARQPostRequest(&ARQueBuf[arqIdx].request, ARQ_OWNER_HU, ARQ_TYPE_ARAM_TO_MRAM,
+        ARQ_PRIORITY_LOW, sourceAddress, (u32) transferBuffer, (u32) transferSize,
+        ArqCallBackAMFileRead);
     arqIdx++;
     arqIdx &= 0xF;
     while(HuARDMACheck());
-    dirBuf = (s32*) ((u8*) dvdBuf + (count & 0x1F));
-    dst = HuMemDirectMallocNum(heap, (dirBuf[0] + 1) & ~1, num);
-    if(!dst) {
+    directoryEntry = (s32*) ((u8*) transferBuffer + (fileOffset & 0x1F));
+    decodedData = HuMemDirectMallocNum(
+        heap, (directoryEntry[0] + 1) & ARMEM_FILE_SIZE_ALIGN_DOWN_MASK, allocationNumber);
+    if(!decodedData) {
+        /* The temporary transfer buffer is left allocated on this failure path. */
         return 0;
     }
-    HuDecodeData(&dirBuf[2], dst, dirBuf[0], dirBuf[1]);
-    HuMemMemoryFileSet(dst, dataNum);
-    HuMemDirectFree(dvdBuf);
-    return dst;
+    HuDecodeData(&directoryEntry[2], decodedData, directoryEntry[0], directoryEntry[1]);
+    HuMemMemoryFileSet(decodedData, dataNum);
+    HuMemDirectFree(transferBuffer);
+    return decodedData;
 }
 
-static void ArqCallBackAMFileRead(u32 pointerToARQRequest) {
+/* ARQ invokes this after each archive directory or payload DMA completes. */
+static void ArqCallBackAMFileRead(u32 requestAddress) {
     arqCnt--;
-    (void)pointerToARQRequest; // required to match (return?)
+    (void)requestAddress;
 }

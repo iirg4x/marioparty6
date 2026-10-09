@@ -1,3 +1,4 @@
+/* Manages sprite animation, groups, ordering, and frame-by-frame drawing. */
 #define _MATH_H
 #define M_PI 3.141592653589793
 double sin(double x);
@@ -12,12 +13,13 @@ double sin(double x);
 #define SPRITE_DIRTY_ATTR 0x1
 #define SPRITE_DIRTY_XFORM 0x2
 #define SPRITE_DIRTY_COLOR 0x4
+#define ANIM_POINTER_ABSOLUTE_MASK 0xFFFF0000
 
 typedef struct HuSprOrder_s {
-    u16 grpId;
+    u16 groupId;
     u16 sprId;
-    u16 prio;
-    u16 next;
+    u16 priority;
+    u16 nextOrder;
 } HUSPR_ORDER;
 
 HUSPR_GROUP HuSprGrpData[HUSPR_GROUP_MAX];
@@ -30,78 +32,83 @@ HUSPRITE *HuSprData;
 
 static void HuSprOrderEntry(HUSPR_GROUPID grpId, HUSPRID sprId);
 
+/* System startup calls this to initialize sprite storage before frame drawing. */
 void HuSprInit(void)
 {
-    s16 i;
-    HUSPRITE *sp;
-    HUSPR_GROUP *gp;
+    s16 spriteIndex;
+    HUSPRITE *sprite;
+    HUSPR_GROUP *group;
     if(!HuSprData) {
         HuSprData = HuMemDirectMalloc(HEAP_HEAP, sizeof(HUSPRITE)*HUSPR_MAX);
     }
-    for(sp = &HuSprData[1], i=1; i<HUSPR_MAX; i++, sp++) {
-        sp->data = NULL;
+    for(sprite = &HuSprData[1], spriteIndex=1; spriteIndex<HUSPR_MAX; spriteIndex++, sprite++) {
+        sprite->data = NULL;
     }
-    for(gp = HuSprGrpData, i=0; i<HUSPR_GROUP_MAX; i++, gp++) {
-        gp->sprNum = 0;
+    for(group = HuSprGrpData, spriteIndex=0; spriteIndex<HUSPR_GROUP_MAX; spriteIndex++, group++) {
+        group->sprNum = 0;
     }
     HuSprExecLayerInit();
-    sp = &HuSprData[0];
-    sp->prio = 0;
-    sp->data = (void *)1;
+    sprite = &HuSprData[0];
+    sprite->prio = 0;
+    sprite->data = (void *)1;
     HuSprPauseF = FALSE;
 }
 
+/* Scene teardown calls this to release groups and sprites when sprite use ends. */
 void HuSprClose(void)
 {
-    s16 i;
-    HUSPR_GROUP *gp;
-    HUSPRITE *sp;
+    s16 entryIndex;
+    HUSPR_GROUP *group;
+    HUSPRITE *sprite;
     
-    for(gp = HuSprGrpData, i=0; i<HUSPR_GROUP_MAX; i++, gp++) {
-        if(gp->sprNum != 0) {
-            HuSprGrpKill(i);
+    for(group = HuSprGrpData, entryIndex=0; entryIndex<HUSPR_GROUP_MAX; entryIndex++, group++) {
+        if(group->sprNum != 0) {
+            HuSprGrpKill(entryIndex);
         }
     }
-    for(sp = &HuSprData[1], i=1; i<HUSPR_MAX; i++, sp++) {
-        if(sp->data) {
-            HuSprKill(i);
+    for(sprite = &HuSprData[1], entryIndex=1; entryIndex<HUSPR_MAX; entryIndex++, sprite++) {
+        if(sprite->data) {
+            HuSprKill(entryIndex);
         }
     }
     HuSprExecLayerInit();
     HuSprPauseF = FALSE;
 }
 
+/* Hu3DExec calls this for each draw layer during the camera rendering pass. */
 void HuSprExec(s16 drawNo)
 {
-    HUSPRITE *sp;
-    while(sp = HuSprCall()) {
-        if(!(sp->attr & HUSPR_ATTR_DISPOFF) && sp->drawNo == drawNo) {
-            HuSprDisp(sp);
+    HUSPRITE *sprite;
+    while(sprite = HuSprCall()) {
+        if(!(sprite->attr & HUSPR_ATTR_DISPOFF) && sprite->drawNo == drawNo) {
+            HuSprDisp(sprite);
         }
     }
 }
 
+/* Hu3DExec calls this before camera drawing to build transforms and sprite order. */
 void HuSprBegin(void)
 {
-    Mtx temp, rot;
-    s16 i, j;
+    Mtx translationMatrix, rotationMatrix;
+    s16 groupIndex, memberIndex;
     Vec axis = {0, 0, 1};
-    HUSPR_GROUP *gp;
-    gp = HuSprGrpData;
+    HUSPR_GROUP *group;
+    group = HuSprGrpData;
     HuSprOrderNum = 1;
-    HuSprOrder[0].next = 0;
-    HuSprOrder[0].prio = -1;
-    for(i=0; i<HUSPR_GROUP_MAX; i++, gp++) {
-        if(gp->sprNum != 0) {
-            MTXTrans(temp, gp->center.x*gp->scale.x, gp->center.y*gp->scale.y, 0.0f);
-            MTXRotAxisDeg(rot, &axis, gp->zRot);
-            MTXConcat(rot, temp, gp->mtx);
-            MTXScale(temp, gp->scale.x, gp->scale.y, 1.0f);
-            MTXConcat(gp->mtx, temp, gp->mtx);
-            mtxTransCat(gp->mtx, gp->pos.x, gp->pos.y, 0);
-            for(j=0; j<gp->sprNum; j++) {
-                if(gp->sprId[j] != -1) {
-                    HuSprOrderEntry(i, gp->sprId[j]);
+    HuSprOrder[0].nextOrder = 0;
+    HuSprOrder[0].priority = -1;
+    for(groupIndex=0; groupIndex<HUSPR_GROUP_MAX; groupIndex++, group++) {
+        if(group->sprNum != 0) {
+            MTXTrans(translationMatrix, group->center.x * group->scale.x,
+                     group->center.y * group->scale.y, 0.0f);
+            MTXRotAxisDeg(rotationMatrix, &axis, group->zRot);
+            MTXConcat(rotationMatrix, translationMatrix, group->mtx);
+            MTXScale(translationMatrix, group->scale.x, group->scale.y, 1.0f);
+            MTXConcat(group->mtx, translationMatrix, group->mtx);
+            mtxTransCat(group->mtx, group->pos.x, group->pos.y, 0);
+            for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+                if(group->sprId[memberIndex] != -1) {
+                    HuSprOrderEntry(groupIndex, group->sprId[memberIndex]);
                 }
             }
         }
@@ -109,121 +116,130 @@ void HuSprBegin(void)
     HuSprOrderNo = 0;
 }
 
+/* HuSprBegin calls this for each populated member to insert it by sprite priority. */
 static void HuSprOrderEntry(HUSPR_GROUPID grpId, HUSPRID sprId)
 {
     HUSPR_ORDER *order = &HuSprOrder[HuSprOrderNum];
-    s16 prio = HuSprData[sprId].prio;
-    s16 prev, next;
+    s16 priority = HuSprData[sprId].prio;
+    s16 previousOrder, nextOrder;
     if(HuSprOrderNum >= HUSPR_ORDER_MAX) {
         OSReport("Order Max Over!\n");
         return;
     }
-    next = HuSprOrder[0].next;
-    for(prev = 0; next != 0; prev = next, next = HuSprOrder[next].next) {
-        if(HuSprOrder[next].prio < prio) {
+    nextOrder = HuSprOrder[0].nextOrder;
+    for (previousOrder = 0; nextOrder != 0;
+         previousOrder = nextOrder, nextOrder = HuSprOrder[nextOrder].nextOrder) {
+        if(HuSprOrder[nextOrder].priority < priority) {
             break;
         }
     }
-    order->next = HuSprOrder[prev].next;
-    HuSprOrder[prev].next = HuSprOrderNum;
-    order->prio = prio;
-    order->grpId = grpId;
+    order->nextOrder = HuSprOrder[previousOrder].nextOrder;
+    HuSprOrder[previousOrder].nextOrder = HuSprOrderNum;
+    order->priority = priority;
+    order->groupId = grpId;
     order->sprId = sprId;
     HuSprOrderNum++;
 }
 
+/* HuSprExec calls this repeatedly to walk the frame's priority-ordered sprites. */
 HUSPRITE *HuSprCall(void)
 {
-    HuSprOrderNo = HuSprOrder[HuSprOrderNo].next;
+    HuSprOrderNo = HuSprOrder[HuSprOrderNo].nextOrder;
     if(HuSprOrderNo != 0) {
         HUSPR_ORDER *order = &HuSprOrder[HuSprOrderNo];
-        HUSPRITE *sp = &HuSprData[order->sprId];
-        sp->groupMtx = &HuSprGrpData[order->grpId].mtx;
-        if(sp->attr & HUSPR_ATTR_FUNC) {
-            return sp;
+        HUSPRITE *sprite = &HuSprData[order->sprId];
+        sprite->groupMtx = &HuSprGrpData[order->groupId].mtx;
+        if(sprite->attr & HUSPR_ATTR_FUNC) {
+            return sprite;
         }
-        sp->frameP = &sp->data->bank[sp->bank].frame[sp->animNo];
-        sp->patP = &sp->data->pat[sp->frameP->pat];
-        return sp;
+        sprite->frameP = &sprite->data->bank[sprite->bank].frame[sprite->animNo];
+        sprite->patP = &sprite->data->pat[sprite->frameP->pat];
+        return sprite;
     } else {
         return NULL;
     }
 }
 
-static inline void SpriteCalcFrame(HUSPRITE *sp, ANIMBANK *bank, ANIMFRAME **frame, s16 loopF)
+/* HuSprFinish calls this while advancing a sprite, wrapping or holding at an end. */
+static inline void SpriteCalcFrame(HUSPRITE *sprite, ANIMBANK *bank, ANIMFRAME **frame,
+                                   s16 loopEnabled)
 {
-    if(sp->time >= (*frame)->time) {
-        sp->animNo++;
-        sp->time -= (*frame)->time;
-        if(sp->animNo >= bank->timeNum || (*frame)[1].time == -1) {
-            if(loopF) {
-                sp->animNo = 0;
+    if(sprite->time >= (*frame)->time) {
+        sprite->animNo++;
+        sprite->time -= (*frame)->time;
+        if(sprite->animNo >= bank->timeNum || (*frame)[1].time == -1) {
+            if(loopEnabled) {
+                sprite->animNo = 0;
             } else {
-                sp->animNo = bank->timeNum-1;
+                sprite->animNo = bank->timeNum-1;
             }
         }
-        *frame = &bank->frame[sp->animNo];
-    } else if(sp->time < 0) {
-        sp->animNo--;
-        if(sp->animNo < 0) {
-            if(loopF) {
-                sp->animNo = bank->timeNum-1;
+        *frame = &bank->frame[sprite->animNo];
+    } else if(sprite->time < 0) {
+        sprite->animNo--;
+        if(sprite->animNo < 0) {
+            if(loopEnabled) {
+                sprite->animNo = bank->timeNum-1;
             } else {
-                sp->animNo = 0;
+                sprite->animNo = 0;
             }
         }
-        *frame = &bank->frame[sp->animNo];
-        sp->time += (*frame)->time;
+        *frame = &bank->frame[sprite->animNo];
+        sprite->time += (*frame)->time;
     }
 }
 
+/* Hu3DExec calls this after its camera draws to advance sprite animations. */
 void HuSprFinish(void)
 {
     ANIMDATA *anim;
     ANIMBANK *bank;
     ANIMFRAME *frame;
-    HUSPRITE *sp;
-    s16 i;
-    s16 j;
-    s16 loopF;
-    s16 timeInc;
+    HUSPRITE *sprite;
+    s16 spriteIndex;
+    s16 frameStep;
+    s16 loopEnabled;
+    s16 timeIncrement;
     
-    for(sp = &HuSprData[1], i=1; i<HUSPR_MAX; i++, sp++) {
-        if(sp->data && !(sp->attr & HUSPR_ATTR_FUNC)) {
-            if(!HuSprPauseF || (sp->attr & HUSPR_ATTR_NOPAUSE)) {
-                anim = sp->data;
-                bank = &anim->bank[sp->bank];
-                frame = &bank->frame[sp->animNo];
-                loopF = (sp->attr & HUSPR_ATTR_LOOP) ? 0 : 1;
-                if(!(sp->attr & HUSPR_ATTR_NOANIM)) {
-                    timeInc = (sp->attr & HUSPR_ATTR_REVERSE) ? -1 : 1;
-                    for(j=0; j<(s32)sp->speed*minimumVcount; j++) {
-                        sp->time += timeInc;
-                        SpriteCalcFrame(sp, bank, &frame, loopF);
+    for(sprite = &HuSprData[1], spriteIndex=1; spriteIndex<HUSPR_MAX; spriteIndex++, sprite++) {
+        if(sprite->data && !(sprite->attr & HUSPR_ATTR_FUNC)) {
+            if(!HuSprPauseF || (sprite->attr & HUSPR_ATTR_NOPAUSE)) {
+                anim = sprite->data;
+                bank = &anim->bank[sprite->bank];
+                frame = &bank->frame[sprite->animNo];
+                loopEnabled = (sprite->attr & HUSPR_ATTR_LOOP) ? 0 : 1;
+                if(!(sprite->attr & HUSPR_ATTR_NOANIM)) {
+                    timeIncrement = (sprite->attr & HUSPR_ATTR_REVERSE) ? -1 : 1;
+                    for(frameStep=0; frameStep<(s32)sprite->speed*minimumVcount; frameStep++) {
+                        sprite->time += timeIncrement;
+                        SpriteCalcFrame(sprite, bank, &frame, loopEnabled);
                     }
-                    sp->time += (sp->speed*(float)minimumVcount)-j;
-                    SpriteCalcFrame(sp, bank, &frame, loopF);
+                    sprite->time += (sprite->speed*(float)minimumVcount)-frameStep;
+                    SpriteCalcFrame(sprite, bank, &frame, loopEnabled);
                 }
-                sp->dirty = 0;
+                sprite->dirty = 0;
             }
         }
     }
 }
 
+/* Pause and scene logic call this to gate animation updates for paused sprites. */
 void HuSprPauseSet(BOOL value)
 {
     HuSprPauseF = value;
 }
 
+/* After animation data loads, this fixes relative pointers; already-absolute data skips fixups and
+ * increments useNum. */
 ANIMDATA *HuSprAnimRead(void *data)
 {
-    s16 i;
+    s16 index;
     ANIMBMP *bmp;
     ANIMBANK *bank;
     ANIMPAT *pat;
     
     ANIMDATA *anim = (ANIMDATA *)data;
-    if((u32)anim->bank & 0xFFFF0000) {
+    if((u32)anim->bank & ANIM_POINTER_ABSOLUTE_MASK) {
         anim->useNum++;
         return anim;
     }
@@ -233,13 +249,13 @@ ANIMDATA *HuSprAnimRead(void *data)
     anim->pat = pat;
     bmp = (ANIMBMP *)((u32)anim->bmp+(u32)data);
     anim->bmp = bmp;
-    for(i=0; i<anim->bankNum; i++, bank++) {
+    for(index=0; index<anim->bankNum; index++, bank++) {
         bank->frame = (ANIMFRAME *)((u32)bank->frame+(u32)data);
     }
-    for(i=0; i<anim->patNum; i++, pat++) {
+    for(index=0; index<anim->patNum; index++, pat++) {
         pat->layer = (ANIMLAYER *)((u32)pat->layer+(u32)data);
     }
-    for(i=0; i<anim->bmpNum; i++, bmp++) {
+    for(index=0; index<anim->bmpNum; index++, bmp++) {
         bmp->palData = (void *)((u32)bmp->palData+(u32)data);
         bmp->data = (void *)((u32)bmp->data+(u32)data);
     }
@@ -247,166 +263,177 @@ ANIMDATA *HuSprAnimRead(void *data)
     return anim;
 }
 
+/* Adds one sprite's reference to shared animation data. */
 void HuSprAnimLock(ANIMDATA *anim)
 {
     anim->useNum++;
 }
 
+/* HUD and game sprite setup call this to allocate a slot with standard defaults. */
 HUSPRID HuSprCreate(ANIMDATA *anim, s16 prio, s16 bank)
 {
-    HUSPRITE *sp;
-    s16 i;
-    for(sp = &HuSprData[1], i=1; i<HUSPR_MAX; i++, sp++) {
-        if(!sp->data) {
+    HUSPRITE *sprite;
+    s16 spriteIndex;
+    for(sprite = &HuSprData[1], spriteIndex=1; spriteIndex<HUSPR_MAX; spriteIndex++, sprite++) {
+        if(!sprite->data) {
             break;
         }
     }
-    if(i == HUSPR_MAX) {
+    if(spriteIndex == HUSPR_MAX) {
         OSReport("Error: Sprite Max Over!\n");
         return HUSPR_NONE;
     }
-    sp->data = anim;
-    sp->speed = 1.0f;
-    sp->animNo = 0;
-    sp->bank = bank;
-    sp->time = 0.0f;
-    sp->attr = HUSPR_ATTR_LINEAR;
-    sp->drawNo = 0;
-    sp->r = sp->g = sp->b = sp->a = 255;
-    sp->pos.x = sp->pos.y = sp->zRot = 0.0f;
-    sp->prio = prio;
-    sp->scale.x = sp->scale.y = 1.0f;
-    sp->wrapS = sp->wrapT = GX_CLAMP;
-    sp->uvScaleX = sp->uvScaleY = 1;
-    sp->bg = NULL;
-    sp->scissorX = sp->scissorY = 0;
-    sp->scissorW = 640;
-    sp->scissorH = 480;
-    sp->hook3D = NULL;
-    sp->data3D = NULL;
+    sprite->data = anim;
+    sprite->speed = 1.0f;
+    sprite->animNo = 0;
+    sprite->bank = bank;
+    sprite->time = 0.0f;
+    sprite->attr = HUSPR_ATTR_LINEAR;
+    sprite->drawNo = 0;
+    sprite->r = sprite->g = sprite->b = sprite->a = 255;
+    sprite->pos.x = sprite->pos.y = sprite->zRot = 0.0f;
+    sprite->prio = prio;
+    sprite->scale.x = sprite->scale.y = 1.0f;
+    sprite->wrapS = sprite->wrapT = GX_CLAMP;
+    sprite->uvScaleX = sprite->uvScaleY = 1;
+    sprite->bg = NULL;
+    sprite->scissorX = sprite->scissorY = 0;
+    sprite->scissorW = 640;
+    sprite->scissorH = 480;
+    sprite->hook3D = NULL;
+    sprite->data3D = NULL;
     if(anim) {
         HuSprAnimLock(anim);
     }
-    return i;
+    return spriteIndex;
 }
 
+/* Callback-based sprite setup calls this to create a sprite with custom rendering. */
 HUSPRID HuSprFuncCreate(HUSPR_FUNC func, s16 prio)
 {
-    HUSPRITE *sp;
+    HUSPRITE *sprite;
     HUSPRID sprId = HuSprCreate(NULL, prio, 0);
     if(sprId == HUSPR_NONE) {
         return HUSPR_NONE;
     }
-    sp = &HuSprData[sprId];
-    sp->func = func;
-    sp->attr |= HUSPR_ATTR_FUNC;
+    sprite = &HuSprData[sprId];
+    sprite->func = func;
+    sprite->attr |= HUSPR_ATTR_FUNC;
     return sprId;
 }
 
+/* HUD and game sprite setup call this to allocate empty member slots. */
 HUSPR_GROUPID HuSprGrpCreate(s16 sprNum)
 {
-    HUSPR_GROUP *gp;
-    s16 i, j;
-    for(gp = HuSprGrpData, i=0; i<HUSPR_GROUP_MAX; i++, gp++) {
-        if(gp->sprNum == 0) {
+    HUSPR_GROUP *group;
+    s16 groupIndex, memberIndex;
+    for(group = HuSprGrpData, groupIndex=0; groupIndex<HUSPR_GROUP_MAX; groupIndex++, group++) {
+        if(group->sprNum == 0) {
             break;
         }
     }
-    if(i == HUSPR_GROUP_MAX) {
+    if(groupIndex == HUSPR_GROUP_MAX) {
         return HUSPR_GROUP_NONE;
     }
-    gp->sprId = HuMemDirectMalloc(HEAP_HEAP, sizeof(HUSPRID)*sprNum);
-    for(j=0; j<sprNum; j++) {
-        gp->sprId[j] = HUSPR_NONE;
+    group->sprId = HuMemDirectMalloc(HEAP_HEAP, sizeof(HUSPRID)*sprNum);
+    for(memberIndex=0; memberIndex<sprNum; memberIndex++) {
+        group->sprId[memberIndex] = HUSPR_NONE;
     }
-    gp->sprNum = sprNum;
-    gp->pos.x = gp->pos.y = gp->zRot = gp->center.x = gp->center.y = 0.0f;
-    gp->scale.x = gp->scale.y = 1.0f;
-    return i;
+    group->sprNum = sprNum;
+    group->pos.x = group->pos.y = group->zRot = group->center.x = group->center.y = 0.0f;
+    group->scale.x = group->scale.y = 1.0f;
+    return groupIndex;
 }
 
+/* Sprite clients call this when they need a group copy with independent members. */
 HUSPR_GROUPID HuSprGrpCopy(HUSPR_GROUPID grpId)
 {
-    HUSPR_GROUP *newGp;
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    HUSPR_GROUPID newGrpId = HuSprGrpCreate(gp->sprNum);
-    s16 i;
-    if(newGrpId == HUSPR_GROUP_NONE) {
+    HUSPR_GROUP *newGroup;
+    HUSPR_GROUP *sourceGroup = &HuSprGrpData[grpId];
+    HUSPR_GROUPID newGroupId = HuSprGrpCreate(sourceGroup->sprNum);
+    s16 memberIndex;
+    if(newGroupId == HUSPR_GROUP_NONE) {
         return HUSPR_GROUP_NONE;
     }
-    newGp = &HuSprGrpData[newGrpId];
-    newGp->pos.x = gp->pos.x;
-    newGp->pos.y = gp->pos.y;
-    newGp->zRot = gp->zRot;
-    newGp->scale.x = gp->scale.x;
-    newGp->scale.y = gp->scale.y;
-    newGp->center.x = gp->center.x;
-    newGp->center.y = gp->center.y;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HUSPRITE *sp = &HuSprData[gp->sprId[i]];
-            s16 sprId = HuSprCreate(sp->data, sp->prio, sp->bank);
-            HuSprData[sprId] = *sp;
-            HuSprGrpMemberSet(newGrpId, i, sprId);
+    newGroup = &HuSprGrpData[newGroupId];
+    newGroup->pos.x = sourceGroup->pos.x;
+    newGroup->pos.y = sourceGroup->pos.y;
+    newGroup->zRot = sourceGroup->zRot;
+    newGroup->scale.x = sourceGroup->scale.x;
+    newGroup->scale.y = sourceGroup->scale.y;
+    newGroup->center.x = sourceGroup->center.x;
+    newGroup->center.y = sourceGroup->center.y;
+    for(memberIndex=0; memberIndex<sourceGroup->sprNum; memberIndex++) {
+        if(sourceGroup->sprId[memberIndex] != HUSPR_NONE) {
+            HUSPRITE *sourceSprite = &HuSprData[sourceGroup->sprId[memberIndex]];
+            s16 newSpriteId =
+                HuSprCreate(sourceSprite->data, sourceSprite->prio, sourceSprite->bank);
+            HuSprData[newSpriteId] = *sourceSprite;
+            HuSprGrpMemberSet(newGroupId, memberIndex, newSpriteId);
         }
     }
-    return newGrpId;
+    return newGroupId;
 }
 
+/* Sprite setup calls this to place a sprite in an unused group member slot. */
 void HuSprGrpMemberSet(HUSPR_GROUPID grpId, s16 memberNo, HUSPRID sprId)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    HUSPRITE *sp = &HuSprData[sprId];
-    if(gp->sprNum == 0 || gp->sprNum <= memberNo || gp->sprId[memberNo] != HUSPR_NONE) {
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    HUSPRITE *sprite = &HuSprData[sprId];
+    if(group->sprNum == 0 || group->sprNum <= memberNo || group->sprId[memberNo] != HUSPR_NONE) {
         return;
     }
-    gp->sprId[memberNo] = sprId;
+    group->sprId[memberNo] = sprId;
 }
 
+/* Group owners call this when removing one member and freeing its sprite data. */
 void HuSprGrpMemberKill(HUSPR_GROUPID grpId, s16 memberNo)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    if(gp->sprNum == 0 || gp->sprNum <= memberNo || gp->sprId[memberNo] == HUSPR_NONE) {
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    if(group->sprNum == 0 || group->sprNum <= memberNo || group->sprId[memberNo] == HUSPR_NONE) {
         return;
     }
-    HuSprKill(gp->sprId[memberNo]);
-    gp->sprId[memberNo] = HUSPR_NONE;
+    HuSprKill(group->sprId[memberNo]);
+    group->sprId[memberNo] = HUSPR_NONE;
 }
 
+/* Group owners call this when removing a group and releasing all of its members. */
 void HuSprGrpKill(HUSPR_GROUPID grpId)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    s16 i;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprKill(gp->sprId[i]);
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    s16 memberIndex;
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprKill(group->sprId[memberIndex]);
         }
     }
-    gp->sprNum = 0;
-    HuMemDirectFree(gp->sprId);
+    group->sprNum = 0;
+    HuMemDirectFree(group->sprId);
 }
 
+/* Group and sprite owners call this to release animation, background, and mesh data. */
 void HuSprKill(HUSPRID sprId)
 {
-    HUSPRITE *sp = &HuSprData[sprId];
-    if(!sp->data) {
+    HUSPRITE *sprite = &HuSprData[sprId];
+    if(!sprite->data) {
         return;
     }
-    if(!(sp->attr & HUSPR_ATTR_FUNC)) {
-        HuSprAnimKill(sp->data);
+    if(!(sprite->attr & HUSPR_ATTR_FUNC)) {
+        HuSprAnimKill(sprite->data);
     }
-    if(sp->bg) {
-        HuSprAnimKill(sp->bg);
-        sp->bg = NULL;
+    if(sprite->bg) {
+        HuSprAnimKill(sprite->bg);
+        sprite->bg = NULL;
     }
-    if(sp->attr & HUSPR_ATTR_3D) {
-        if(sp->data3D) {
-            HuMemDirectFree(sp->data3D);
+    if(sprite->attr & HUSPR_ATTR_3D) {
+        if(sprite->data3D) {
+            HuMemDirectFree(sprite->data3D);
         }
     }
-    sp->data = NULL;
+    sprite->data = NULL;
 }
 
+/* Sprite destruction calls this to free animation data after its final user releases it. */
 void HuSprAnimKill(ANIMDATA *anim)
 {
     if(--anim->useNum <= 0) {
@@ -422,253 +449,281 @@ void HuSprAnimKill(ANIMDATA *anim)
     }
 }
 
+/* Sprite clients call this to add attributes and refresh the member's render state. */
 void HuSprAttrSet(HUSPR_GROUPID grpId, s16 memberNo, s32 attr)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    HUSPRITE *sp;
-    if(gp->sprNum == 0 || gp->sprNum <= memberNo || gp->sprId[memberNo] == HUSPR_NONE) {
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    HUSPRITE *sprite;
+    if(group->sprNum == 0 || group->sprNum <= memberNo || group->sprId[memberNo] == HUSPR_NONE) {
         return;
     }
-    sp = &HuSprData[gp->sprId[memberNo]];
-    sp->attr |= attr;
-    sp->dirty |= SPRITE_DIRTY_ATTR;
+    sprite = &HuSprData[group->sprId[memberNo]];
+    sprite->attr |= attr;
+    sprite->dirty |= SPRITE_DIRTY_ATTR;
 }
 
+/* Sprite clients call this to clear attributes and refresh the member's render state. */
 void HuSprAttrReset(HUSPR_GROUPID grpId, s16 memberNo, s32 attr)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    HUSPRITE *sp;
-    if(gp->sprNum == 0 || gp->sprNum <= memberNo || gp->sprId[memberNo] == HUSPR_NONE) {
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    HUSPRITE *sprite;
+    if(group->sprNum == 0 || group->sprNum <= memberNo || group->sprId[memberNo] == HUSPR_NONE) {
         return;
     }
-    sp = &HuSprData[gp->sprId[memberNo]];
-    sp->attr &= ~attr;
-    sp->dirty |= SPRITE_DIRTY_ATTR;
+    sprite = &HuSprData[group->sprId[memberNo]];
+    sprite->attr &= ~attr;
+    sprite->dirty |= SPRITE_DIRTY_ATTR;
 }
 
+/* Group clients call this to apply attribute bits to every populated member. */
 void HuSprGrpAttrSet(HUSPR_GROUPID grpId, s32 attr)
 {
-    s16 i;
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprAttrSet(grpId, i, attr);
+    s16 memberIndex;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprAttrSet(grpId, memberIndex, attr);
         }
     }
 }
 
+/* Group clients call this to clear attribute bits from every populated member. */
 void HuSprGrpAttrReset(HUSPR_GROUPID grpId, s32 attr)
 {
-    s16 i;
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprAttrReset(grpId, i, attr);
+    s16 memberIndex;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprAttrReset(grpId, memberIndex, attr);
         }
     }
 }
 
+/* Sprite clients query this for a member's attributes while the group slot is live. */
 u16 HuSprAttrGet(HUSPR_GROUPID grpId, s16 memberNo)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    HUSPRITE *sp;
-    if(gp->sprNum == 0 || gp->sprNum <= memberNo || gp->sprId[memberNo] == HUSPR_NONE) {
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    HUSPRITE *sprite;
+    if(group->sprNum == 0 || group->sprNum <= memberNo || group->sprId[memberNo] == HUSPR_NONE) {
         return;
     }
-    sp = &HuSprData[gp->sprId[memberNo]];
-    return sp->attr;
+    sprite = &HuSprData[group->sprId[memberNo]];
+    return sprite->attr;
 }
 
+/* Sprite clients call this to set local x/y position before the next draw update. */
 void HuSprPosSet(HUSPR_GROUPID grpId, s16 memberNo, float posX, float posY)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    sp->pos.x = posX;
-    sp->pos.y = posY;
-    sp->dirty |= SPRITE_DIRTY_XFORM;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    sprite->pos.x = posX;
+    sprite->pos.y = posY;
+    sprite->dirty |= SPRITE_DIRTY_XFORM;
 }
 
+/* Sprite clients call this to set the member's z rotation before the next draw. */
 void HuSprZRotSet(HUSPR_GROUPID grpId, s16 memberNo, float zRot)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    sp->zRot = zRot;
-    sp->dirty |= SPRITE_DIRTY_XFORM;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    sprite->zRot = zRot;
+    sprite->dirty |= SPRITE_DIRTY_XFORM;
 }
 
+/* Sprite clients call this to set x/y scale before the next draw update. */
 void HuSprScaleSet(HUSPR_GROUPID grpId, s16 memberNo, float scaleX, float scaleY)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    sp->scale.x = scaleX;
-    sp->scale.y = scaleY;
-    sp->dirty |= SPRITE_DIRTY_XFORM;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    sprite->scale.x = scaleX;
+    sprite->scale.y = scaleY;
+    sprite->dirty |= SPRITE_DIRTY_XFORM;
 }
 
+/* Sprite clients set transparency here; a level of 1.0 maps to opaque alpha. */
 void HuSprTPLvlSet(HUSPR_GROUPID grpId, s16 memberNo, float tpLvl)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    sp->a = tpLvl*255;
-    sp->dirty |= SPRITE_DIRTY_COLOR;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    sprite->a = tpLvl*255;
+    sprite->dirty |= SPRITE_DIRTY_COLOR;
 }
 
+/* Sprite clients call this to set RGB tint before the next draw update. */
 void HuSprColorSet(HUSPR_GROUPID grpId, s16 memberNo, u8 r, u8 g, u8 b)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    sp->r = r;
-    sp->g = g;
-    sp->b = b;
-    sp->dirty |= SPRITE_DIRTY_COLOR;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    sprite->r = r;
+    sprite->g = g;
+    sprite->b = b;
+    sprite->dirty |= SPRITE_DIRTY_COLOR;
 }
 
+/* Sprite clients set the member's animation speed multiplier through this API. */
 void HuSprSpeedSet(HUSPR_GROUPID grpId, s16 memberNo, float speed)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    HuSprData[gp->sprId[memberNo]].speed = speed;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    HuSprData[group->sprId[memberNo]].speed = speed;
 }
 
+/* Sprite clients switch banks and reset frame time; reverse mode uses the previously selected
+ * bank's frame and duration. */
 void HuSprBankSet(HUSPR_GROUPID grpId, s16 memberNo, s16 bank)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    ANIMDATA *anim = sp->data;
-    ANIMBANK *bank_ptr = &anim->bank[sp->bank];
-    ANIMFRAME *frame_ptr = &bank_ptr->frame[sp->animNo];
-    sp->bank = bank;
-    if(sp->attr & HUSPR_ATTR_REVERSE) {
-        sp->animNo = bank_ptr->timeNum-1;
-        frame_ptr = &bank_ptr->frame[sp->animNo];
-        sp->time = frame_ptr->time;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    ANIMDATA *anim = sprite->data;
+    ANIMBANK *bankData = &anim->bank[sprite->bank];
+    ANIMFRAME *frame = &bankData->frame[sprite->animNo];
+    sprite->bank = bank;
+    if(sprite->attr & HUSPR_ATTR_REVERSE) {
+        sprite->animNo = bankData->timeNum-1;
+        frame = &bankData->frame[sprite->animNo];
+        sprite->time = frame->time;
     } else {
-        sp->time = 0;
-        sp->animNo = 0;
+        sprite->time = 0;
+        sprite->animNo = 0;
     }
 }
 
+/* Sprite clients select a current-bank frame and reset elapsed time; an index at or past
+ * bank->timeNum logs an error and resets to frame 0. */
 void HuSprAnimNoSet(HUSPR_GROUPID grpId, s16 memberNo, s16 animNo)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    ANIMDATA *anim = sp->data;
-    ANIMBANK *bank_ptr = &anim->bank[sp->bank];
-    if(bank_ptr->timeNum <= animNo) {
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    ANIMDATA *anim = sprite->data;
+    ANIMBANK *bankData = &anim->bank[sprite->bank];
+    if(bankData->timeNum <= animNo) {
         OSReport("Error: AnimNoSet Over %d\n", animNo);
         animNo = 0;
     }
-    sp->animNo = animNo;
-    sp->time = 0;
+    sprite->animNo = animNo;
+    sprite->time = 0;
 }
 
+/* Sprite clients select a frame and pause its advance until the no-animation bit clears. */
 void HuSprAnimNoSetPause(HUSPR_GROUPID grpId, s16 memberNo, s16 animNo)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
     HuSprAnimNoSet(grpId, memberNo, animNo);
-    sp->attr |= HUSPR_ATTR_NOANIM;
+    sprite->attr |= HUSPR_ATTR_NOANIM;
 }
 
+/* Group clients set world position here before the next transform build and draw. */
 void HuSprGrpPosSet(HUSPR_GROUPID grpId, float posX, float posY)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    s16 i;
-    gp->pos.x = posX;
-    gp->pos.y = posY;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != -1) {
-            HuSprData[gp->sprId[i]].dirty |= SPRITE_DIRTY_XFORM;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    s16 memberIndex;
+    group->pos.x = posX;
+    group->pos.y = posY;
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != -1) {
+            HuSprData[group->sprId[memberIndex]].dirty |= SPRITE_DIRTY_XFORM;
         }
     }
 }
 
+/* Group clients set the pivot used when rotation and scale are built for drawing. */
 void HuSprGrpCenterSet(HUSPR_GROUPID grpId, float centerX, float centerY)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    s16 i;
-    gp->center.x = centerX;
-    gp->center.y = centerY;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprData[gp->sprId[i]].dirty |= SPRITE_DIRTY_XFORM;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    s16 memberIndex;
+    group->center.x = centerX;
+    group->center.y = centerY;
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprData[group->sprId[memberIndex]].dirty |= SPRITE_DIRTY_XFORM;
         }
     }
 }
 
+/* Group clients set z rotation here before the next transform build and draw. */
 void HuSprGrpZRotSet(HUSPR_GROUPID grpId, float zRot)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    s16 i;
-    gp->zRot = zRot;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprData[gp->sprId[i]].dirty |= SPRITE_DIRTY_XFORM;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    s16 memberIndex;
+    group->zRot = zRot;
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprData[group->sprId[memberIndex]].dirty |= SPRITE_DIRTY_XFORM;
         }
     }
 }
 
+/* Group clients set x/y scale here before the next transform build and draw. */
 void HuSprGrpScaleSet(HUSPR_GROUPID grpId, float scaleX, float scaleY)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    s16 i;
-    gp->scale.x = scaleX;
-    gp->scale.y = scaleY;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprData[gp->sprId[i]].dirty |= SPRITE_DIRTY_XFORM;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    s16 memberIndex;
+    group->scale.x = scaleX;
+    group->scale.y = scaleY;
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprData[group->sprId[memberIndex]].dirty |= SPRITE_DIRTY_XFORM;
         }
     }
 }
 
+/* Group clients set alpha here for every populated sprite before drawing. */
 void HuSprGrpTPLvlSet(HUSPR_GROUPID grpId, float tpLvl)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    s16 i;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprData[gp->sprId[i]].a = tpLvl*255;
-            HuSprData[gp->sprId[i]].dirty |= SPRITE_DIRTY_COLOR;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    s16 memberIndex;
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprData[group->sprId[memberIndex]].a = tpLvl*255;
+            HuSprData[group->sprId[memberIndex]].dirty |= SPRITE_DIRTY_COLOR;
         }
     }
 }
 
+/* Group clients assign a draw-layer number to each populated member with this call. */
 void HuSprGrpDrawNoSet(HUSPR_GROUPID grpId, s32 drawNo)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    s16 i;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprData[gp->sprId[i]].drawNo = drawNo;
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    s16 memberIndex;
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprData[group->sprId[memberIndex]].drawNo = drawNo;
         }
     }
 }
 
+/* Sprite clients assign a member to a draw layer such as the front or back pass. */
 void HuSprDrawNoSet(HUSPR_GROUPID grpId, s16 memberNo, s32 drawNo)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    sp->drawNo = drawNo;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    sprite->drawNo = drawNo;
 }
 
+/* Sprite clients set priority here before HuSprBegin builds the next sprite order. */
 void HuSprPriSet(HUSPR_GROUPID grpId, s16 memberNo, s16 prio)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    sp->prio = prio;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    sprite->prio = prio;
 }
 
-void HuSprGrpScissorSet(HUSPR_GROUPID grpId, s16 x, s16 y, s16 w, s16 h)
+/* Applies one scissor rectangle to each populated member of a group. */
+/* Group clients apply a pixel scissor rectangle to each populated member. */
+void HuSprGrpScissorSet(HUSPR_GROUPID grpId, s16 x, s16 y, s16 width, s16 height)
 {
-    HUSPR_GROUP *gp = &HuSprGrpData[grpId];
-    s16 i;
-    for(i=0; i<gp->sprNum; i++) {
-        if(gp->sprId[i] != HUSPR_NONE) {
-            HuSprScissorSet(grpId, i, x, y, w, h);
+    HUSPR_GROUP *group = &HuSprGrpData[grpId];
+    s16 memberIndex;
+    for(memberIndex=0; memberIndex<group->sprNum; memberIndex++) {
+        if(group->sprId[memberIndex] != HUSPR_NONE) {
+            HuSprScissorSet(grpId, memberIndex, x, y, width, height);
         }
     }
 }
 
-void HuSprScissorSet(HUSPR_GROUPID grpId, s16 memberNo, s16 x, s16 y, s16 w, s16 h)
+/* Sprite clients set the member's screen-space scissor rectangle in pixel units. */
+void HuSprScissorSet(HUSPR_GROUPID grpId, s16 memberNo, s16 x, s16 y, s16 width, s16 height)
 {
-    HUSPRITE *sp = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
-    sp->scissorX = x;
-    sp->scissorY = y;
-    sp->scissorW = w;
-    sp->scissorH = h;
+    HUSPRITE *sprite = &HuSprData[HuSprGrpData[grpId].sprId[memberNo]];
+    sprite->scissorX = x;
+    sprite->scissorY = y;
+    sprite->scissorW = width;
+    sprite->scissorH = height;
 }
 
 static s16 bitSizeTbl[11] = { 32, 24, 16, 8, 4, 16, 8, 8, 4, 8, 4 };
 
+/* Sprite creation code calls this to make a one-frame animation for a new image. */
 ANIMDATA *HuSprAnimMake(s16 sizeX, s16 sizeY, s16 dataFmt)
 {
     ANIMLAYER *layer;
@@ -676,22 +731,24 @@ ANIMDATA *HuSprAnimMake(s16 sizeX, s16 sizeY, s16 dataFmt)
     ANIMDATA *anim;
     ANIMPAT *pat;
     ANIMFRAME *frame;
-    void *temp;
+    void *allocationCursor;
     ANIMBANK *bank;
     ANIMDATA *newAnim;
 
-    anim = newAnim = HuMemDirectMalloc(HEAP_MODEL, sizeof(ANIMDATA)+sizeof(ANIMBANK)+sizeof(ANIMFRAME)
-                                            +sizeof(ANIMPAT)+sizeof(ANIMLAYER)+sizeof(ANIMBMP));
+    anim = newAnim =
+        HuMemDirectMalloc(HEAP_MODEL, sizeof(ANIMDATA) + sizeof(ANIMBANK) + sizeof(ANIMFRAME) +
+                                          sizeof(ANIMPAT) + sizeof(ANIMLAYER) + sizeof(ANIMBMP));
 
-    bank = temp = &newAnim[1];
+    /* The animation records share one block, laid out in type order. */
+    bank = allocationCursor = &newAnim[1];
     anim->bank = bank;
-    frame = temp = ((char *)temp+sizeof(ANIMBANK));
+    frame = allocationCursor = (ANIMBANK *)allocationCursor + 1;
     bank->frame = frame;
-    pat = temp = ((char *)temp+sizeof(ANIMFRAME));
+    pat = allocationCursor = (ANIMFRAME *)allocationCursor + 1;
     anim->pat = pat;
-    layer = temp = ((char *)temp+sizeof(ANIMPAT));
+    layer = allocationCursor = (ANIMPAT *)allocationCursor + 1;
     pat->layer = layer;
-    bmp = temp = ((char *)temp+sizeof(ANIMLAYER));
+    bmp = allocationCursor = (ANIMLAYER *)allocationCursor + 1;
     anim->bmp = bmp;
     anim->useNum = 0;
     anim->bankNum = 1;
@@ -700,7 +757,7 @@ ANIMDATA *HuSprAnimMake(s16 sizeX, s16 sizeY, s16 dataFmt)
     bank->timeNum = 1;
     bank->unk = 10;
     frame->pat = 0;
-    frame->time = 10;
+    frame->time = 10; /* The one-frame image remains on screen for ten ticks. */
     frame->shiftX = frame->shiftY = frame->flip = 0;
     pat->layerNum = 1;
     pat->centerX = sizeX/2;
@@ -732,85 +789,93 @@ ANIMDATA *HuSprAnimMake(s16 sizeX, s16 sizeY, s16 dataFmt)
     return anim;
 }
 
+/* Attaches a background animation to one group member. */
 void HuSprBGSet(HUSPR_GROUPID grpId, s16 memberNo, ANIMDATA *bg, s16 bgBank)
 {
     HUSPRID sprId = HuSprGrpData[grpId].sprId[memberNo];
     HuSprSprBGSet(sprId, bg, bgBank);
 }
 
+/* Configures a sprite's repeated, non-linear-filtered background animation. */
 void HuSprSprBGSet(HUSPRID sprId, ANIMDATA *bg, s16 bgBank)
 {
-    HUSPRITE *sp = &HuSprData[sprId];
-    sp->bg = bg;
-    sp->bgBank = bgBank;
-    sp->wrapT = sp->wrapS = GX_REPEAT;
-    sp->attr &= ~HUSPR_ATTR_LINEAR;
+    HUSPRITE *sprite = &HuSprData[sprId];
+    sprite->bg = bg;
+    sprite->bgBank = bgBank;
+    sprite->wrapT = sprite->wrapS = GX_REPEAT;
+    sprite->attr &= ~HUSPR_ATTR_LINEAR;
     HuSprAnimLock(bg);
 }
 
+/* Installs the callback used to draw a sprite with its custom 3D geometry. */
 void HuSpr3DHookSet(HUSPRID sprId, HUSPR_3DHOOK hook3D)
 {
-    HUSPRITE *sp = &HuSprData[sprId];
-    sp->hook3D = hook3D;
+    HUSPRITE *sprite = &HuSprData[sprId];
+    sprite->hook3D = hook3D;
 }
 
+/* Allocates per-sprite 3D drawing data and marks the sprite for the 3D path. */
 HUSPR_3DDATA *HuSpr3DDataCreate(HUSPRID sprId, int size)
 {
-    HUSPRITE *sp = &HuSprData[sprId];
-    sp->data3D = HuMemDirectMalloc(HEAP_HEAP, size);
-    sp->attr |= HUSPR_ATTR_3D;
-    return sp->data3D;
+    HUSPRITE *sprite = &HuSprData[sprId];
+    sprite->data3D = HuMemDirectMalloc(HEAP_HEAP, size);
+    sprite->attr |= HUSPR_ATTR_3D;
+    return sprite->data3D;
 }
 
+/* Builds a mesh sized from the maximum layer width and height, with max(1, size/16) subdivisions
+ * per axis. */
 void HuSpr3DSet(HUSPRID sprId)
 {
-    HUSPR_3DDATA *data3D; //r31
-    HUSPRITE *sp; //r30
-    int i; //r29
-    int j; //r28
-    int w; //r26
-    int h; //r25
-    int gridSize; //r24
-    int col; //r23
-    int row; //r22
+    HUSPR_3DDATA *data3D;
+    HUSPRITE *sprite;
+    int patternIndex;
+    int layerIndex;
+    int maxWidth;
+    int maxHeight;
+    int gridSize;
+    int columnCount;
+    int rowCount;
     
-    sp = &HuSprData[sprId];
+    sprite = &HuSprData[sprId];
     HuSpr3DHookSet(sprId, HuSpr3DDisp);
-    w=h=0;
-    for(i=0; i<sp->data->patNum; i++) {
-        for(j=0; j<sp->data->pat[i].layerNum; j++) {
-            if(w < sp->data->pat[i].layer[j].sizeX) {
-                w = sp->data->pat[i].layer[j].sizeX;
+    maxWidth=maxHeight=0;
+    for(patternIndex=0; patternIndex<sprite->data->patNum; patternIndex++) {
+        for(layerIndex=0; layerIndex<sprite->data->pat[patternIndex].layerNum; layerIndex++) {
+            if(maxWidth < sprite->data->pat[patternIndex].layer[layerIndex].sizeX) {
+                maxWidth = sprite->data->pat[patternIndex].layer[layerIndex].sizeX;
             }
-            if(h < sp->data->pat[i].layer[j].sizeY) {
-                h = sp->data->pat[i].layer[j].sizeY;
+            if(maxHeight < sprite->data->pat[patternIndex].layer[layerIndex].sizeY) {
+                maxHeight = sprite->data->pat[patternIndex].layer[layerIndex].sizeY;
             }
         }
     }
-    if(w < 16) {
-        col = 1;
+    if(maxWidth < 16) {
+        columnCount = 1;
     } else {
-        col = w/16;
+        columnCount = maxWidth/16;
     }
-    if(h < 16) {
-        row = 1;
+    if(maxHeight < 16) {
+        rowCount = 1;
     } else {
-        row = h/16;
+        rowCount = maxHeight/16;
     }
-    gridSize = (col+1)*(row+1);
-    data3D = HuSpr3DDataCreate(sprId, sizeof(HUSPR_3DDATA)+(gridSize*sizeof(HuVecF))+(gridSize*sizeof(HuVec2f)));
+    gridSize = (columnCount+1)*(rowCount+1);
+    data3D = HuSpr3DDataCreate(sprId, sizeof(HUSPR_3DDATA) + (gridSize * sizeof(HuVecF)) +
+                                          (gridSize * sizeof(HuVec2f)));
     data3D->vtx = (HuVecF *)&data3D[1];
     data3D->st = (HuVec2f *)&data3D->vtx[gridSize];
     data3D->rot.x = data3D->rot.y = data3D->rot.z = 0;
-    data3D->col = col;
-    data3D->row = row;
+    data3D->col = columnCount;
+    data3D->row = rowCount;
     data3D->depthScale = 2*HuSin(30);
 }
 
+/* Sprite clients set custom mesh rotation here when per-sprite 3D data is present. */
 void HuSpr3DRotSet(HUSPRID sprId, float x, float y, float z)
 {
-    HUSPRITE *sp = &HuSprData[sprId];
-    HUSPR_3DDATA *data3D = sp->data3D;
+    HUSPRITE *sprite = &HuSprData[sprId];
+    HUSPR_3DDATA *data3D = sprite->data3D;
     if(data3D) {
         data3D->rot.x = x;
         data3D->rot.y = y;
@@ -818,54 +883,60 @@ void HuSpr3DRotSet(HUSPRID sprId, float x, float y, float z)
     }
 }
 
+/* Sprite clients set mesh depth scaling here from half the supplied field of view. */
 void HuSpr3DFovSet(HUSPRID sprId, float fov)
 {
-    HUSPRITE *sp = &HuSprData[sprId];
-    HUSPR_3DDATA *data3D = sp->data3D;
+    HUSPRITE *sprite = &HuSprData[sprId];
+    HUSPR_3DDATA *data3D = sprite->data3D;
     if(data3D) {
         data3D->depthScale = 2*HuSin(fov/2);
     }
 }
 
+/* Enables and copies the four corner colors used to tint a member's vertices. */
 void HuSprVtxColorSet(HUSPR_GROUPID grpId, s16 memberNo, GXColor *vtxColor)
 {
     HUSPRID sprId = HuSprGrpData[grpId].sprId[memberNo];
-    HUSPRITE *sp = &HuSprData[sprId];
-    s16 i;
-    sp->attr |= HUSPR_ATTR_VTXCOLOR;
-    for(i=0; i<4; i++) {
-        sp->vtxColor[i] = vtxColor[i];
+    HUSPRITE *sprite = &HuSprData[sprId];
+    s16 cornerIndex;
+    sprite->attr |= HUSPR_ATTR_VTXCOLOR;
+    for(cornerIndex=0; cornerIndex<4; cornerIndex++) {
+        sprite->vtxColor[cornerIndex] = vtxColor[cornerIndex];
     }
 }
 
+/* Disables per-vertex color tinting for the selected group member. */
 void HuSprVtxColorReset(HUSPR_GROUPID grpId, s16 memberNo)
 {
     HUSPRID sprId = HuSprGrpData[grpId].sprId[memberNo];
-    HUSPRITE *sp = &HuSprData[sprId];
-    sp->attr &= ~HUSPR_ATTR_VTXCOLOR;
+    HUSPRITE *sprite = &HuSprData[sprId];
+    sprite->attr &= ~HUSPR_ATTR_VTXCOLOR;
 }
 
-
+/* AnimDebug prints an animation's pattern, bank, frame, and bitmap metadata. */
 void AnimDebug(ANIMDATA *anim)
 {
     ANIMPAT *pat;
     ANIMLAYER *layer;
-    s16 i;
-    s16 j;
+    s16 patternIndex;
+    s16 layerIndex;
     ANIMFRAME *frame;
     ANIMBANK *bank;
     ANIMBMP *bmp;
-    
-    OSReport("patNum %d,bankNum %d,bmpNum %d\n", anim->patNum, anim->bankNum, anim->bmpNum & ANIM_BMP_NUM_MASK);
+
+    OSReport("patNum %d,bankNum %d,bmpNum %d\n", anim->patNum, anim->bankNum,
+             anim->bmpNum & ANIM_BMP_NUM_MASK);
     pat = anim->pat;
-    for(i=0; i<anim->patNum; i++) {
-        OSReport("PATTERN%d:\n", i);
-        OSReport("\tlayerNum %d,center (%d,%d),size (%d,%d)\n", pat->layerNum, pat->centerX, pat->centerX, pat->sizeX, pat->sizeY);
+    for(patternIndex=0; patternIndex<anim->patNum; patternIndex++) {
+        OSReport("PATTERN%d:\n", patternIndex);
+        OSReport("\tlayerNum %d,center (%d,%d),size (%d,%d)\n", pat->layerNum, pat->centerX,
+                 pat->centerX, pat->sizeX, pat->sizeY);
         layer = pat->layer;
-        for(j=0; j<pat->layerNum; j++) {
+        for(layerIndex=0; layerIndex<pat->layerNum; layerIndex++) {
             OSReport("\t\tfileNo %d,flip %x\n", layer->bmpNo, layer->flip);
-            OSReport("\t\tstart (%d,%d),size (%d,%d),shift (%d,%d)\n", layer->startX, layer->startY, layer->sizeX, layer->sizeY, layer->shiftX, layer->shiftY);
-            if(j != pat->layerNum-1) {
+            OSReport("\t\tstart (%d,%d),size (%d,%d),shift (%d,%d)\n", layer->startX, layer->startY,
+                     layer->sizeX, layer->sizeY, layer->shiftX, layer->shiftY);
+            if(layerIndex != pat->layerNum-1) {
                 OSReport("\n");
             }
             layer++;
@@ -873,20 +944,22 @@ void AnimDebug(ANIMDATA *anim)
         pat++;
     }
     bank = anim->bank;
-    for(i=0; i<anim->bankNum; i++) {
-        OSReport("BANK%d:\n", i);
+    for(patternIndex=0; patternIndex<anim->bankNum; patternIndex++) {
+        OSReport("BANK%d:\n", patternIndex);
         OSReport("\ttimeNum %d\n", bank->timeNum);
         frame = bank->frame;
-        for(j=0; j<bank->timeNum; j++) {
-            OSReport("\t\tpat %d,time %d,shift(%d,%d),flip %x\n", frame->pat, frame->time, frame->shiftX, frame->shiftY, frame->flip);
+        for(layerIndex=0; layerIndex<bank->timeNum; layerIndex++) {
+            OSReport("\t\tpat %d,time %d,shift(%d,%d),flip %x\n", frame->pat, frame->time,
+                     frame->shiftX, frame->shiftY, frame->flip);
             frame++;
         }
         bank++;
     }
     bmp = anim->bmp;
-    for(i=0; i<anim->bmpNum & ANIM_BMP_NUM_MASK; i++) {
-        OSReport("BMP%d:\n", i);
-        OSReport("\tpixSize %d,palNum %d,size (%d,%d)\n", bmp->pixSize, bmp->palNum, bmp->sizeX, bmp->sizeY);
+    for(patternIndex=0; patternIndex<anim->bmpNum & ANIM_BMP_NUM_MASK; patternIndex++) {
+        OSReport("BMP%d:\n", patternIndex);
+        OSReport("\tpixSize %d,palNum %d,size (%d,%d)\n", bmp->pixSize, bmp->palNum, bmp->sizeX,
+                 bmp->sizeY);
         bmp++;
     }
 }
