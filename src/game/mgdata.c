@@ -1,3 +1,4 @@
+// Stores minigame metadata and converts minigame results to decathlon scores.
 #include "game/mgdata.h"
 
 #include "game/omovl.h"
@@ -6,10 +7,11 @@
 
 #include "datanum/instpic.h"
 
-#define DECA_SCORE_TIME 0
-#define DECA_SCORE_POINT 1
+#define DECA_SCORE_TIME 0 // Lower normalized results earn more points.
+#define DECA_SCORE_POINT 1 // Higher normalized results earn more points.
 #define DECA_SCORE_NUM 11
-
+#define MGDATA_COLOR_GOLD 4292351487u
+#define MGDATA_COLOR_GREEN 1124039423u
 
 int MgModeSubMode;
 s16 MgModeScore[GW_PLAYER_MAX];
@@ -31,35 +33,39 @@ float MgModeWorkFloat[16];
 
 #include "mgdata.inc"
 
-s32 MgNoGet(s16 ovlNo)
+// Game, board, and object-system callers use this to find the table row for an overlay ID.
+s32 MgNoGet(s16 overlayNo)
 {
-    MGDATA *mgData;
-    s16 i;
-    for(mgData=&MgDataTbl[0], i=0; mgData->ovl != (u16)DLL_NONE; mgData++, i++) {
-        if(mgData->ovl == ovlNo) {
-            return i;
+    MGDATA *minigameData;
+    s16 minigameIndex;
+    for (minigameData = &MgDataTbl[0], minigameIndex = 0; minigameData->ovl != (u16) DLL_NONE;
+         minigameData++, minigameIndex++) {
+        if(minigameData->ovl == overlayNo) {
+            return minigameIndex;
         }
     }
     return -1;
 }
 
+// Returns the current minigame submode when a caller queries it.
 int MgSubModeGet(void)
 {
     return MgSubMode;
 }
 
 typedef struct MgDecaPoint_s {
-    float score;
-    float value;
+    float decathlonScore; // Decathlon score at this point on the result curve.
+    float normalizedValue; // Normalized minigame result at this point on the curve.
 } MGDECAPOINT;
 
 typedef struct MgDecaScore_s {
-    s32 mgNo;
-    s16 type;
-    s16 pointNum;
-    MGDECAPOINT points[10];
+    s32 overlayNo; // Minigame overlay ID whose result uses this curve.
+    s16 scoreType; // Whether better results increase or decrease the curve value.
+    s16 pointCount; // Number of initialized points in the curve.
+    MGDECAPOINT points[10]; // Result-to-score breakpoints, in curve order.
 } MGDECASCORE;
 
+// Curves map each decathlon minigame's normalized result to its per-game score.
 static MGDECASCORE MgDecaScoreTbl[DECA_SCORE_NUM] = {
     {
         502,
@@ -195,6 +201,8 @@ static MGDECASCORE MgDecaScoreTbl[DECA_SCORE_NUM] = {
         }
     },
     {
+        // MgDecaScoreCalc selects overlay 514, not this curve; these scores are 3.0009 times
+        // overlay 514's.
         5141,
         DECA_SCORE_POINT,
         7,
@@ -210,141 +218,158 @@ static MGDECASCORE MgDecaScoreTbl[DECA_SCORE_NUM] = {
     },
 };
 
-int MgDecaScoreCalc(int gameNo, int mgScore)
+// The kernel export lets decathlon result flow convert a minigame result to its decathlon score.
+int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
 {
-    MGDECASCORE *scoreP;
-    MGDECAPOINT *point;
-    MGDECAPOINT *pointNext;
-    int pointNo;
-    s32 mgNo;
-    float value;
-    int result;
-    result = 1000;
-    OSReport("%d\n", mgScore);
-    mgNo = -1;
-    switch(gameNo) {
+    MGDECASCORE *scoreEntry;
+    MGDECAPOINT *previousPoint;
+    MGDECAPOINT *currentPoint;
+    int pointIndex;
+    s32 overlayNo;
+    float normalizedResult;
+    int decathlonScore;
+    decathlonScore = 1000;
+    // Keep the raw result visible in the debug log; this output does not affect scoring.
+    OSReport("%d\n", gameResult);
+    overlayNo = -1;
+    // Map each decathlon slot to its overlay curve and normalize its raw result using that slot's
+    // scale.
+    // A zero result on these time-based slots bypasses interpolation and returns zero.
+    switch(decathlonGameIndex) {
         case 0:
-            if(mgScore == 0) {
-                result = 0;
+            if(gameResult == 0) {
+                decathlonScore = 0;
             } else {
-                value = mgScore/50.0f;
-                mgNo = 502;
+                normalizedResult = gameResult/50.0f;
+                overlayNo = 502;
             }
             break;
         
         case 1:
-            if(mgScore == 0) {
-                result = 0;
+            if(gameResult == 0) {
+                decathlonScore = 0;
             } else {
-                value = mgScore/50.0f;
-                mgNo = 504;
+                normalizedResult = gameResult/50.0f;
+                overlayNo = 504;
             }
             break;
        
        case 2:
-            value = mgScore;
-            mgNo = 563;
+            normalizedResult = gameResult;
+            overlayNo = 563;
             break;
        
        case 3:
-            value = mgScore;
-            mgNo = 506;
+            normalizedResult = gameResult;
+            overlayNo = 506;
             break;
        
        case 4:
-            if(mgScore == 0) {
-                result = 0;
+            if(gameResult == 0) {
+                decathlonScore = 0;
             } else {
-                value = mgScore/1000.0f;
-                mgNo = 507;
+                normalizedResult = gameResult/1000.0f;
+                overlayNo = 507;
             }
             break;
        
        case 5:
-            value = mgScore;
-            mgNo = 510;
+            normalizedResult = gameResult;
+            overlayNo = 510;
             break;
        
        case 6:
-            if(mgScore == 0) {
-                result = 0;
+            if(gameResult == 0) {
+                decathlonScore = 0;
             } else {
-                value = mgScore/50.0f;
-                mgNo = 511;
+                normalizedResult = gameResult/50.0f;
+                overlayNo = 511;
             }
             break;
        
        case 8:
-            if(mgScore == 0) {
-                result = 0;
+            if(gameResult == 0) {
+                decathlonScore = 0;
             } else {
-                value = mgScore/50.0f;
-                mgNo = 512;
+                normalizedResult = gameResult/50.0f;
+                overlayNo = 512;
             }
             break;
        
        case 7:
-            if(mgScore == 0) {
-                result = 0;
+            if(gameResult == 0) {
+                decathlonScore = 0;
             } else {
-                value = mgScore/50.0f;
-                mgNo = 513;
+                normalizedResult = gameResult/50.0f;
+                overlayNo = 513;
             }
             break;
        
        case 9:
-            value = mgScore/100.0f;
-            mgNo = 514;
+            normalizedResult = gameResult/100.0f;
+            overlayNo = 514;
             break;
     }
-    if(mgNo > 0) {
+    // Unmapped slots keep the initial score of 1000; zero-result slots above keep their explicit
+    // zero.
+    if(overlayNo > 0) {
         
-        int i;
-        for(scoreP=&MgDecaScoreTbl[0], i=DECA_SCORE_NUM; i--; scoreP++) {
-            if(scoreP->mgNo == mgNo) {
+        int scoreEntryIndex;
+        for (scoreEntry = &MgDecaScoreTbl[0], scoreEntryIndex = DECA_SCORE_NUM; scoreEntryIndex--;
+             scoreEntry++) {
+            if(scoreEntry->overlayNo == overlayNo) {
                 break;
             }
         }
-        point = NULL;
-        pointNext = &scoreP->points[0];
-        result = 1000;
-        if(scoreP->type != DECA_SCORE_TIME) {
-            for(pointNo=0; pointNo<scoreP->pointNum; point=pointNext, pointNext++, pointNo++) {
-                if(value <= pointNext->value) {
-                    if(!point) {
-                        result = 0;
+        previousPoint = NULL;
+        currentPoint = &scoreEntry->points[0];
+        decathlonScore = 1000;
+        if(scoreEntry->scoreType != DECA_SCORE_TIME) {
+            for (pointIndex = 0; pointIndex < scoreEntry->pointCount;
+                 previousPoint = currentPoint, currentPoint++, pointIndex++) {
+                if(normalizedResult <= currentPoint->normalizedValue) {
+                    if(!previousPoint) {
+                        decathlonScore = 0;
                         break;
                     } else {
-                        result = point->score;
-                        result += (pointNext->score-point->score)*((value-point->value)/(pointNext->value-point->value));
+                        // Linear interpolation is stored in int decathlonScore, truncating any
+                        // fractional score.
+                        decathlonScore = previousPoint->decathlonScore;
+                        decathlonScore +=
+                            (currentPoint->decathlonScore - previousPoint->decathlonScore) *
+                            ((normalizedResult - previousPoint->normalizedValue) /
+                             (currentPoint->normalizedValue - previousPoint->normalizedValue));
                         break;
                     }
                 }
-                
             }
         } else {
-            for(pointNo=0; pointNo<scoreP->pointNum; point=pointNext, pointNext++, pointNo++) {
-                if(value >= pointNext->value) {
-                    if(!point) {
-                        result = 0;
+            for (pointIndex = 0; pointIndex < scoreEntry->pointCount;
+                 previousPoint = currentPoint, currentPoint++, pointIndex++) {
+                if(normalizedResult >= currentPoint->normalizedValue) {
+                    if(!previousPoint) {
+                        decathlonScore = 0;
                         break;
                     } else {
-                        result = point->score;
-                        result += (pointNext->score-point->score)*((point->value-value)/(point->value-pointNext->value));
+                        decathlonScore = previousPoint->decathlonScore;
+                        decathlonScore +=
+                            (currentPoint->decathlonScore - previousPoint->decathlonScore) *
+                            ((previousPoint->normalizedValue - normalizedResult) /
+                             (previousPoint->normalizedValue - currentPoint->normalizedValue));
                         break;
                     }
                 }
             }
         }
     }
-    if(result < 0) {
-        result = 0;
-    } else if(result > 1000) {
-        result = 1000;
+    if(decathlonScore < 0) {
+        decathlonScore = 0;
+    } else if(decathlonScore > 1000) {
+        decathlonScore = 1000;
     }
-    return result;
+    return decathlonScore;
 }
 
-int lbl_802BF860 = 0xFFD815FF;
+int lbl_802BF860 = MGDATA_COLOR_GOLD;
 int lbl_802BF864 = 0xFFFFFFFF;
-int lbl_802BF868 = 0x42FF7AFF;
+int lbl_802BF868 = MGDATA_COLOR_GREEN;
