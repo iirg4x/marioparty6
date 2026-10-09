@@ -1,13 +1,5 @@
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double);
-double cos(double);
-#pragma cplusplus on
-extern inline double fabs(double x)
-{
-    return __fabs(x);
-}
-#pragma cplusplus reset
+// Controls the board camera, its view transitions, focus targets, and listener orientation.
+#include "dolphin/math.h"
 
 #include "game/board/main.h"
 #include "game/board/camera.h"
@@ -27,17 +19,19 @@ extern inline double fabs(double x)
 
 #define MBNO_MAX 11
 
+#define CAMERA_LISTENER_INITIAL_POS_Z 100000
+
 typedef struct listenerParam_s {
-    float sndDist;
-    float sndSpeed;
-    float startDis;
-    float frontSurDis;
-    float backSurDis;
+    float sndDist; // Distance at which the listener applies its sound attenuation.
+    float sndSpeed; // Speed used by the listener's distance calculation.
+    float startDis; // Distance at which listener processing begins.
+    float frontSurDis; // Sound-surround distance in front of the listener.
+    float backSurDis; // Sound-surround distance behind the listener.
 } LISTENERPARAM;
 
 typedef struct listenerParamEntry_s {
-    int no;
-    LISTENERPARAM param;
+    int no; // Board number selecting this listener configuration.
+    LISTENERPARAM param; // Listener distances and speed for this board.
 } LISTENERPARAMENTRY;
 
 BOOL mbPauseEnableCheck(void);
@@ -61,7 +55,8 @@ static BOOL CameraFocusCenterCalc(HuVecF *center, HuVecF *focusPos);
 static float CameraCanterCalc(HuVecF *rot, float fov, HuVecF *center);
 static void CameraMotionSet(MBCAMERA *cameraP);
 static void CameraLookAt(MBCAMERA *cameraP);
-static void CameraMoveApply(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime);
+static void CameraMoveApply(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov,
+                            s16 maxTime);
 
 static MBVIEW viewData[] = {
     { -35, 1600, 30 },
@@ -76,6 +71,7 @@ static OMOBJ *cameraOMObj;
 static s16 lightTypeBackup[2];
 static s16 cameraStackLevel;
 
+// Initializes board camera state, audio listening, and per-camera render hooks at board startup.
 void mbCameraInit(void)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -132,7 +128,8 @@ void mbCameraInit(void)
     cam = &Hu3DCamera[2];
     cam->pos.x = cam->pos.y = cam->pos.z = 0;
     cam->target.z = -100;
-    Hu3DCameraScissorSet(cameraP->bit, cameraP->viewportX, cameraP->viewportY, cameraP->viewportW, cameraP->viewportH);
+    Hu3DCameraScissorSet(cameraP->bit, cameraP->viewportX, cameraP->viewportY, cameraP->viewportW,
+                         cameraP->viewportH);
     cameraP->center.x = cameraP->center.y = cameraP->center.z = 0;
     for(i = 0; i < MBNO_MAX; i++) {
         if(listenerParamTbl[i].no == BoardNoGet()) {
@@ -144,13 +141,14 @@ void mbCameraInit(void)
     }
     listenerParam = &listenerParamTbl[i].param;
     pos.x = pos.y = 0;
-    pos.z = 100000;
+    pos.z = CAMERA_LISTENER_INITIAL_POS_Z;
     dir.x = 0;
     dir.y = 0;
     dir.z = -1;
     VECNormalize(&dir, &dir);
-    HuAudFXListnerSetEX(&pos, &dir, listenerParam->sndDist, listenerParam->sndSpeed, listenerParam->startDis,
-                       listenerParam->frontSurDis, listenerParam->backSurDis);
+    HuAudFXListnerSetEX(&pos, &dir, listenerParam->sndDist, listenerParam->sndSpeed,
+                        listenerParam->startDis, listenerParam->frontSurDis,
+                        listenerParam->backSurDis);
     cameraOMObj = omAddObjEx(mbObjMan, 32256, 0, 0, OM_GRP_NONE, CameraOMExec);
     Hu3DCameraLayerHookSet(HU3D_CAM0, 0, Camera0LayerHook);
     Hu3DCameraLayerHookSet(HU3D_CAM1, 0, Camera1LayerHook);
@@ -159,6 +157,7 @@ void mbCameraInit(void)
     lightTypeBackup[0] = lightTypeBackup[1] = -1;
 }
 
+// Restores the first global light and disables the second before camera 0 draws its layer.
 static void Camera0LayerHook(s16 layerNo)
 {
     HU3D_LIGHT *light = &Hu3DGlobalLight[0];
@@ -172,6 +171,7 @@ static void Camera0LayerHook(s16 layerNo)
     }
 }
 
+// Disables the first light, restores the second, and clears depth before camera 1 draws.
 static void Camera1LayerHook(s16 layerNo)
 {
     HU3D_LIGHT *light = &Hu3DGlobalLight[0];
@@ -186,11 +186,14 @@ static void Camera1LayerHook(s16 layerNo)
     Hu3DZClear();
 }
 
+// Clears the depth buffer before camera 2 draws its layer.
 static void Camera2LayerHook(s16 layerNo)
 {
     Hu3DZClear();
 }
 
+// Updates the board camera and audio listener each object-manager frame; registered by
+// mbCameraInit.
 static void CameraOMExec(OMOBJ *obj)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -202,8 +205,10 @@ static void CameraOMExec(OMOBJ *obj)
     if(mbPauseEnableCheck()) {
         return;
     }
-    Hu3DCameraPerspectiveSet(cameraP->bit, cameraP->fov, cameraP->near, cameraP->far, cameraP->aspect);
-    Hu3DCameraViewportSet(cameraP->bit, cameraP->viewportX, cameraP->viewportY, cameraP->viewportW, cameraP->viewportH, cameraP->viewportNear, cameraP->viewportFar);
+    Hu3DCameraPerspectiveSet(cameraP->bit, cameraP->fov, cameraP->near, cameraP->far,
+                             cameraP->aspect);
+    Hu3DCameraViewportSet(cameraP->bit, cameraP->viewportX, cameraP->viewportY, cameraP->viewportW,
+                          cameraP->viewportH, cameraP->viewportNear, cameraP->viewportFar);
     CameraMotionMain(cameraP);
     cameraP->lookAtFunc(cameraP);
     cameraP->dispOn = TRUE;
@@ -213,6 +218,8 @@ static void CameraOMExec(OMOBJ *obj)
     HuAudFXListnerUpdate(&cameraP->eye, &dir);
 }
 
+// Advances a scripted camera motion or eases the camera toward its current focus targets each
+// frame.
 static void CameraMotionMain(MBCAMERA *cameraP)
 {
     HuVecF pos;
@@ -241,6 +248,8 @@ static void CameraMotionMain(MBCAMERA *cameraP)
     }
 }
 
+// Computes the center of the axis-aligned bounds of all configured position, model, or space focus
+// targets.
 static BOOL CameraFocusCenterCalc(HuVecF *center, HuVecF *focusPos)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -292,6 +301,8 @@ static BOOL CameraFocusCenterCalc(HuVecF *center, HuVecF *focusPos)
     return TRUE;
 }
 
+// Computes the zoom needed to frame every focus target from the supplied camera angle and field of
+// view.
 static float CameraCanterCalc(HuVecF *rot, float fov, HuVecF *center)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -337,11 +348,16 @@ static float CameraCanterCalc(HuVecF *rot, float fov, HuVecF *center)
     zoomMax = 0;
     for(i = 0; i < cameraP->focusNum; i++) {
         for(j = 0; j < 2; j++) {
-            len = ((dir[j].x*focusPos[i].x)+(dir[j].y*focusPos[i].y)+(dir[j].z*focusPos[i].z))+targetDist[j];
+            len = ((dir[j].x * focusPos[i].x) + (dir[j].y * focusPos[i].y) +
+                   (dir[j].z * focusPos[i].z)) +
+                  targetDist[j];
             ofs2.x = focusPos[i].x-(dir[j].x*len);
             ofs2.y = focusPos[i].y-(dir[j].y*len);
             ofs2.z = focusPos[i].z-(dir[j].z*len);
-            weight = ((ofs2.z * rot1.z) + (((ofs2.y * rot1.y) + ((ofs2.x * rot1.x) - (center->x * rot1.x))) - (center->y * rot1.y))) - (center->z * rot1.z);
+            weight = ((ofs2.z * rot1.z) +
+                      (((ofs2.y * rot1.y) + ((ofs2.x * rot1.x) - (center->x * rot1.x))) -
+                       (center->y * rot1.y))) -
+                     (center->z * rot1.z);
             ofs1.x = center->x+(weight*rot1.x);
             ofs1.y = center->y+(weight*rot1.y);
             ofs1.z = center->z+(weight*rot1.z);
@@ -364,6 +380,7 @@ static float CameraCanterCalc(HuVecF *rot, float fov, HuVecF *center)
     return zoomMax;
 }
 
+// Interpolates the active camera motion keys once per frame until its timer reaches the duration.
 static void CameraMotionSet(MBCAMERA *cameraP)
 {
     MBCAMERAVIEWKEY *key1 = &cameraP->viewKey[0];
@@ -411,6 +428,7 @@ static void CameraMotionSet(MBCAMERA *cameraP)
     cameraP->center.z = key1->pos.z+(weight*(pos.z-key1->pos.z));
 }
 
+// Derives eye and up vectors from the board camera state and applies any active shake.
 static void CameraLookAt(MBCAMERA *cameraP)
 {
     cameraP->eye.x = (HuSin(cameraP->rot.y)*HuCos(cameraP->rot.x)*cameraP->zoom)+cameraP->center.x;
@@ -431,18 +449,21 @@ static void CameraLookAt(MBCAMERA *cameraP)
     }
 }
 
+// Sets the current camera distance from its center of interest.
 void mbCameraZoomSet(float zoom)
 {
     MBCAMERA *cameraP = mbCameraGet();
     cameraP->zoom = zoom;
 }
 
+// Returns the current camera distance from its center of interest.
 float mbCameraZoomGet(void)
 {
     MBCAMERA *cameraP = mbCameraGet();
     return cameraP->zoom;
 }
 
+// Sets the camera's X and Y angles from a vector; the supplied Z angle is ignored.
 void mbCameraRotSetV(HuVecF *rot)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -450,6 +471,7 @@ void mbCameraRotSetV(HuVecF *rot)
     cameraP->rot.y = rot->y;
 }
 
+// Sets the camera's X and Y angles; rotZ is accepted but does not affect the camera.
 void mbCameraRotSet(float rotX, float rotY, float rotZ)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -457,12 +479,14 @@ void mbCameraRotSet(float rotX, float rotY, float rotZ)
     cameraP->rot.y = rotY;
 }
 
+// Copies the current camera rotation to the caller.
 void mbCameraRotGet(HuVecF *rot)
 {
     MBCAMERA *cameraP = mbCameraGet();
     *rot = cameraP->rot;
 }
 
+// Sets the camera center and clears all focus targets.
 void mbCameraCenterSetV(HuVecF *center)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -472,6 +496,7 @@ void mbCameraCenterSetV(HuVecF *center)
     cameraP->center.z = center->z;
 }
 
+// Sets the camera center and clears all focus targets.
 void mbCameraCenterSet(float centerX, float centerY, float centerZ)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -481,12 +506,14 @@ void mbCameraCenterSet(float centerX, float centerY, float centerZ)
     cameraP->center.z = centerZ;
 }
 
+// Copies the current camera center to the caller.
 void mbCameraCenterGet(HuVecF *center)
 {
     MBCAMERA *cameraP = mbCameraGet();
     *center = cameraP->center;
 }
 
+// Sets the camera eye position directly.
 void mbCameraEyeSetV(HuVecF *eye)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -495,6 +522,7 @@ void mbCameraEyeSetV(HuVecF *eye)
     cameraP->eye.z = eye->z;
 }
 
+// Sets the camera eye position directly.
 void mbCameraEyeSet(float eyeX, float eyeY, float eyeZ)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -503,18 +531,21 @@ void mbCameraEyeSet(float eyeX, float eyeY, float eyeZ)
     cameraP->eye.z = eyeZ;
 }
 
+// Copies the current camera eye position to the caller.
 void mbCameraEyeGet(HuVecF *eye)
 {
     MBCAMERA *cameraP = mbCameraGet();
     *eye = cameraP->eye;
 }
 
+// Sets the offset applied between the focus center and the camera center.
 void mbCameraOffsetSetV(HuVecF *offset)
 {
     MBCAMERA *cameraP = mbCameraGet();
     cameraP->offset = *offset;
 }
 
+// Sets the offset applied between the focus center and the camera center.
 void mbCameraOffsetSet(float offsetX, float offsetY, float offsetZ)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -523,12 +554,14 @@ void mbCameraOffsetSet(float offsetX, float offsetY, float offsetZ)
     cameraP->offset.z = offsetZ;
 }
 
+// Copies the current focus offset to the caller.
 void mbCameraOffsetGet(HuVecF *offset)
 {
     MBCAMERA *cameraP = mbCameraGet();
     *offset = cameraP->offset;
 }
 
+// Selects the camera transition curve, clamping negative values to the linear curve.
 void mbCameraCurveTypeSet(int curveType)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -539,12 +572,14 @@ void mbCameraCurveTypeSet(int curveType)
     }
 }
 
+// Returns the selected camera transition curve.
 s16 mbCameraCurveTypeGet(void)
 {
     MBCAMERA *cameraP = mbCameraGet();
     return cameraP->curveType;
 }
 
+// Returns the normalized direction from the camera eye toward its center, when nonzero.
 void mbCameraDirGet(HuVecF *dir)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -554,6 +589,7 @@ void mbCameraDirGet(HuVecF *dir)
     }
 }
 
+// Returns the normalized direction from the camera eye to pos, when nonzero.
 void mbCameraPosDirGet(HuVecF *pos, HuVecF *dir)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -563,6 +599,7 @@ void mbCameraPosDirGet(HuVecF *pos, HuVecF *dir)
     }
 }
 
+// Selects a custom per-frame look-at callback or restores the board camera callback for NULL.
 void mbCameraLookAtFuncSet(MBCAMERALOOKATFUNC lookAtFunc)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -573,24 +610,28 @@ void mbCameraLookAtFuncSet(MBCAMERALOOKATFUNC lookAtFunc)
     }
 }
 
+// Selects which hardware cameras receive board camera updates.
 void mbCameraBitSet(u16 bit)
 {
     MBCAMERA *cameraP = mbCameraGet();
     cameraP->bit = bit;
 }
 
+// Sets the camera field of view in degrees.
 void mbCameraFovSet(float fov)
 {
     MBCAMERA *cameraP = mbCameraGet();
     cameraP->fov = fov;
 }
 
+// Sets the render scissor rectangle in screen coordinates.
 void mbCameraScissorSet(int x, int y, int w, int h)
 {
     MBCAMERA *cameraP = mbCameraGet();
     Hu3DCameraScissorSet(cameraP->bit, x, y, w, h);
 }
 
+// Sets the near and far clipping distances.
 void mbCameraNearFarSet(float near, float far)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -598,6 +639,7 @@ void mbCameraNearFarSet(float near, float far)
     cameraP->far = far;
 }
 
+// Writes clipping distances only for non-NULL output pointers.
 void mbCameraNearFarGet(float *near, float *far)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -609,12 +651,14 @@ void mbCameraNearFarGet(float *near, float *far)
     }
 }
 
+// Builds the current camera look-at matrix.
 void mbCameraLookAtGet(Mtx lookAt)
 {
     MBCAMERA *cameraP = mbCameraGet();
     MTXLookAt(lookAt, &cameraP->eye, &cameraP->up, &cameraP->center);
 }
 
+// Builds the inverse of the current camera look-at matrix.
 void mbCameraLookAtInvGet(Mtx lookAtInv)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -623,11 +667,13 @@ void mbCameraLookAtInvGet(Mtx lookAtInv)
     MTXInverse(temp, lookAtInv);
 }
 
+// Returns the board's active camera state.
 MBCAMERA *mbCameraGet(void)
 {
     return &cameraCur;
 }
 
+// Saves the current board camera in the first unused stack slot before a temporary view.
 int mbCameraStackPush(void)
 {
     int i;
@@ -641,15 +687,19 @@ int mbCameraStackPush(void)
     return i + 1;
 }
 
+// Starts a transition to a saved camera view and restores its focus targets; used by board view
+// changes such as leaving the scroll map.
 void mbCameraStackIdxSet(s16 idx, int maxTime)
 {
     MBCAMERA *cameraP = &cameraStack[idx - 1];
     int i;
     cameraP->dispOn = FALSE;
     if(cameraP->focusNum == 0) {
-        CameraMoveApply(&cameraP->center, &cameraP->rot, &cameraP->offset, cameraP->zoom, cameraP->fov, (s16)maxTime);
+        CameraMoveApply(&cameraP->center, &cameraP->rot, &cameraP->offset, cameraP->zoom,
+                        cameraP->fov, (s16) maxTime);
     } else {
-        CameraMoveApply(NULL, &cameraP->rot, &cameraP->offset, cameraP->zoom, cameraP->fov, (s16)maxTime);
+        CameraMoveApply(NULL, &cameraP->rot, &cameraP->offset, cameraP->zoom, cameraP->fov,
+                        (s16) maxTime);
     }
     cameraCur.focusNum = cameraP->focusNum;
     for(i = 0; i < cameraCur.focusNum; i++) {
@@ -657,6 +707,7 @@ void mbCameraStackIdxSet(s16 idx, int maxTime)
     }
 }
 
+// Starts a transition back to the most recently saved board camera after a temporary sequence.
 void mbCameraStackPop(int maxTime)
 {
     s16 idx = cameraStackLevel;
@@ -664,9 +715,11 @@ void mbCameraStackPop(int maxTime)
     int i;
     cameraP->dispOn = FALSE;
     if(cameraP->focusNum == 0) {
-        CameraMoveApply(&cameraP->center, &cameraP->rot, &cameraP->offset, cameraP->zoom, cameraP->fov, (s16)maxTime);
+        CameraMoveApply(&cameraP->center, &cameraP->rot, &cameraP->offset, cameraP->zoom,
+                        cameraP->fov, (s16) maxTime);
     } else {
-        CameraMoveApply(NULL, &cameraP->rot, &cameraP->offset, cameraP->zoom, cameraP->fov, (s16)maxTime);
+        CameraMoveApply(NULL, &cameraP->rot, &cameraP->offset, cameraP->zoom, cameraP->fov,
+                        (s16) maxTime);
     }
     cameraCur.focusNum = cameraP->focusNum;
     for(i = 0; i < cameraCur.focusNum; i++) {
@@ -674,6 +727,7 @@ void mbCameraStackPop(int maxTime)
     }
 }
 
+// Tests whether a world-space sphere intersects the active camera's view bounds.
 BOOL mbCameraCullCheck(HuVecF *pos, float radius)
 {
     MBCAMERA *cameraP = &cameraCur;
@@ -702,12 +756,15 @@ BOOL mbCameraCullCheck(HuVecF *pos, float radius)
     return FALSE;
 }
 
+// Sets whether camera motion toward focus targets is eased.
 void mbCameraMoveOnSet(BOOL moveOn)
 {
     MBCAMERA *cameraP = mbCameraGet();
     cameraP->moveOn = moveOn;
 }
 
+// Sets the per-frame easing factor used while the camera follows focus targets; negative restores
+// the standard factor.
 void mbCameraSpeedSet(float speed)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -718,12 +775,14 @@ void mbCameraSpeedSet(float speed)
     }
 }
 
+// Clears the current camera focus target list.
 void mbCameraFocusReset(void)
 {
     MBCAMERA *cameraP = mbCameraGet();
     cameraP->focusNum = 0;
 }
 
+// Replaces the current focus list with one fixed world-space point.
 void mbCameraFocusPosSet(HuVecF *pos)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -731,6 +790,7 @@ void mbCameraFocusPosSet(HuVecF *pos)
     mbCameraFocusPosAdd(pos);
 }
 
+// Adds a fixed point to the camera focus list and resumes eased tracking outside a scripted move.
 void mbCameraFocusPosAdd(HuVecF *pos)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -744,6 +804,8 @@ void mbCameraFocusPosAdd(HuVecF *pos)
     mbCameraSpeedSet(0.15f);
 }
 
+// Replaces the focus list with a player when playerNo is valid; used by board events framing a
+// player.
 void mbCameraFocusPlayerSet(int playerNo)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -753,6 +815,8 @@ void mbCameraFocusPlayerSet(int playerNo)
     }
 }
 
+// Adds a player's model as a focus target and, outside scripted motion, sets the view offset above
+// the board surface.
 void mbCameraFocusPlayerAdd(int playerNo)
 {
     mbCameraFocusObjAdd(mbPlayerObjIDGet(playerNo));
@@ -763,6 +827,7 @@ void mbCameraFocusPlayerAdd(int playerNo)
     mbCameraSpeedSet(0.15f);
 }
 
+// Replaces the focus list with a model when modelId is valid.
 void mbCameraFocusObjSet(MBMODELID modelId)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -772,6 +837,7 @@ void mbCameraFocusObjSet(MBMODELID modelId)
     }
 }
 
+// Adds a model to the focus list and resumes eased tracking outside a scripted move.
 void mbCameraFocusObjAdd(MBMODELID modelId)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -785,6 +851,7 @@ void mbCameraFocusObjAdd(MBMODELID modelId)
     mbCameraSpeedSet(0.15f);
 }
 
+// Replaces the focus list with a board space when masuId is valid.
 void mbCameraFocusMasuSet(int masuId)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -794,6 +861,7 @@ void mbCameraFocusMasuSet(int masuId)
     }
 }
 
+// Adds a board space to the focus list and resumes eased tracking outside a scripted move.
 void mbCameraFocusMasuAdd(int masuId)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -807,7 +875,10 @@ void mbCameraFocusMasuAdd(int masuId)
     mbCameraSpeedSet(0.15f);
 }
 
-static void CameraMoveApply(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime)
+// Builds a linear camera transition from the current view to supplied values, retaining current
+// values for NULL or negative inputs and clamping duration to at least one frame.
+static void CameraMoveApply(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov,
+                            s16 maxTime)
 {
     MBCAMERA *cameraP = mbCameraGet();
     MBCAMERAVIEWKEY *key1 = &cameraP->viewKey[0];
@@ -849,7 +920,10 @@ static void CameraMoveApply(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom
     cameraP->maxTime = maxTime;
 }
 
-static inline void CameraMoveApplyI(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime)
+// Builds a linear camera transition from the current view to supplied values, retaining current
+// values for NULL or negative inputs and clamping duration to at least one frame.
+static inline void CameraMoveApplyI(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov,
+                                    s16 maxTime)
 {
     MBCAMERA *cameraP = mbCameraGet();
     MBCAMERAVIEWKEY *key1 = &cameraP->viewKey[0];
@@ -891,6 +965,8 @@ static inline void CameraMoveApplyI(HuVecF *pos, HuVecF *rot, HuVecF *offset, fl
     cameraP->maxTime = maxTime;
 }
 
+// Animates the camera toward a world-space position and optional rotation, offset, zoom, and field
+// of view; used by board events for fixed shots.
 void mbCameraMovePos(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime)
 {
     HuVecF ofs;
@@ -905,7 +981,10 @@ void mbCameraMovePos(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom, float
     }
 }
 
-void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime)
+// Animates toward a player's position, using a 100-unit Y offset by default; player -1 keeps the
+// current center and uses the supplied view values.
+void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset, float zoom, float fov,
+                        s16 maxTime)
 {
     HuVecF pos;
     HuVecF ofs;
@@ -924,7 +1003,10 @@ void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset, float zoom, f
     }
 }
 
-void mbCameraMoveObj(MBMODELID modelId, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime)
+// Animates toward a model's stored base position; model -1 keeps the current center, and a NULL
+// offset defaults to zero.
+void mbCameraMoveObj(MBMODELID modelId, HuVecF *rot, HuVecF *offset, float zoom, float fov,
+                     s16 maxTime)
 {
     HuVecF pos;
     HuVecF ofs;
@@ -942,6 +1024,7 @@ void mbCameraMoveObj(MBMODELID modelId, HuVecF *rot, HuVecF *offset, float zoom,
     }
 }
 
+// Animates the camera to a board space, or continues with supplied view values when masuId is -1.
 void mbCameraMoveMasu(s16 masuId, HuVecF *rot, HuVecF *offset, float zoom, float fov, s16 maxTime)
 {
     HuVecF pos;
@@ -965,6 +1048,7 @@ BOOL mbCameraMoveCheck(void)
     return _CheckFlag(FLAG_BOARD_CAMERAMOT) ? FALSE : TRUE;
 }
 
+// Yields the calling process until a scripted camera move ends, then yields one extra frame.
 void mbCameraMoveWait(void)
 {
     while(!mbCameraMoveCheck()) {
@@ -973,6 +1057,7 @@ void mbCameraMoveWait(void)
     HuPrcVSleep();
 }
 
+// Ends an active scripted move immediately and applies its destination camera values.
 void mbCameraMoveStop(void)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -987,6 +1072,7 @@ void mbCameraMoveStop(void)
     }
 }
 
+// Starts a shake that offsets the camera eye with power-scaled random values for maxTime frames.
 void mbCameraShakeSet(int maxTime, float power)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -995,6 +1081,7 @@ void mbCameraShakeSet(int maxTime, float power)
     cameraP->quakeTime = maxTime;
 }
 
+// Clears the active shake and its remaining frame count.
 void mbCameraShakeReset(void)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -1003,6 +1090,7 @@ void mbCameraShakeReset(void)
     cameraP->quakeTime = 0;
 }
 
+// Applies one of the board's standard player views over maxTime frames; called for player framing.
 void mbCameraPlayerViewSetTime(int playerNo, int viewNo, int maxTime)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -1027,6 +1115,7 @@ void mbCameraPlayerViewGet(int viewNo, MBVIEW *viewP)
     memcpy(viewP, &viewData[viewNo], sizeof(MBVIEW));
 }
 
+// Returns the first standard view whose zoom is at least the current distance, falling back to 0.
 int mbCameraPlayerViewNoGet(void)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -1053,6 +1142,7 @@ float mbCameraPlayerViewRotXGet(int viewNo)
     return viewData[viewNo].rotX;
 }
 
-void mbCameraMultiFocusSet(int arg0, int arg1, double arg2, int arg3)
+// Currently has no effect.
+void mbCameraMultiFocusSet(int focusType, int focusTarget, double zoom, int maxTime)
 {
 }
