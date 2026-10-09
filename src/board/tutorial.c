@@ -1,3 +1,4 @@
+/* Coordinates the board tutorial, its guidance windows, and minigame selection. */
 #define _MATH_H
 #include "dolphin/math.h"
 
@@ -13,6 +14,7 @@
 #include "game/mgdata.h"
 #include "game/pad.h"
 #include "game/wipe.h"
+#include "messdir_enum.h"
 
 extern BOOL mbSaveNewF;
 extern void mbExitReq(void);
@@ -22,43 +24,44 @@ extern BOOL mbWipeSpecialStatGet(void);
 extern void mbWipeWait(void);
 
 typedef struct TutorialCallWork_s {
-    int scene;
-    int callNum;
-    int result;
-    int stat;
-    int mode;
+    int scene; /* Board event scene currently waiting for a tutorial response. */
+    int callNum; /* Repeated board-event calls left before the tutorial advances. */
+    int result; /* Value returned by the board event after its tutorial call. */
+    int stat; /* 0 while a call is pending, positive while ready, negative when ended. */
+    int mode; /* Tutorial mode selected by the board setup. */
 } TUTORIALCALLWORK;
 
 typedef struct TutorialWinData_s {
-    s8 stat;
-    s8 delay;
-    s16 time;
+    s8 stat; /* 0 while tracking an open window; negative when no window is tracked. */
+    s8 delay; /* One-frame transition delay after the window enters its closing state. */
+    s16 time; /* Frame count accumulated during the window closing transition. */
 } TUTORIALWINDATA;
 
 typedef struct TutorialGuideData_s {
-    int message;
-    int seId;
+    int message; /* Guide message ID whose voice cue is listed here. */
+    int seId; /* Sound effect played when that guide message opens. */
 } TUTORIALGUIDEDATA;
 
 typedef struct TutorialMgCallWork_s {
-    u8 killF : 1;
-    u8 slideInF : 1;
-    u8 state : 3;
-    u8 cursorNo : 3;
-    u8 dispF : 1;
-    s16 winNo;
-    s16 field04;
-    s16 time;
-    s16 maxTime;
-    int message;
+    u8 killF : 1; /* Requests removal of this minigame choice object. */
+    u8 slideInF : 1; /* Set until the choice finishes entering from the screen edge. */
+    u8 state : 3; /* Animation state: slide-in, idle, selected, 8-frame transition, grow, or
+                   * drop. */
+    u8 cursorNo : 3; /* This choice's slot in the four-item roulette. */
+    u8 dispF : 1; /* Whether its help window is displayed. */
+    s16 winNo; /* Help-window handle for this choice. */
+    s16 unused; /* Reserved short; this file does not read it. */
+    s16 time; /* Current frame within the active animation. */
+    s16 maxTime; /* Last frame of the active animation. */
+    int message; /* Minigame name message, or -1 when the slot is empty. */
 } TUTORIALMGCALLWORK;
 
 typedef struct TutorialMgCallData_s {
-    int active;
-    int field04;
-    s16 espId[3];
-    s16 field0E[5];
-    OMOBJ *obj[4];
+    int active; /* Nonzero while the minigame roulette owns its effects and objects. */
+    int unused; /* Reserved word; this file does not read it. */
+    s16 espId[3]; /* Sprite handles for the roulette frame, highlight, and selector. */
+    s16 unusedShorts[5]; /* Reserved handles; this file does not use them. */
+    OMOBJ *obj[4]; /* The four displayed minigame choices. */
 } TUTORIALMGCALLDATA;
 
 static s16 tutorialSprId[16];
@@ -75,79 +78,155 @@ static s16 tutorialMgCallCursorPos;
 static TUTORIALMAINFUNC tutorialMain;
 static OMOBJ *tutorialGuideObj;
 
+/* Message IDs for board tutorial guide windows. */
+#define MES_BOARD_GUIDE_0001 MESSNUM(MESS_BOARD_TUTORIAL, 1)
+#define MES_BOARD_GUIDE_0007 MESSNUM(MESS_BOARD_TUTORIAL, 7)
+#define MES_BOARD_GUIDE_0008 MESSNUM(MESS_BOARD_TUTORIAL, 8)
+#define MES_BOARD_GUIDE_000A MESSNUM(MESS_BOARD_TUTORIAL, 10)
+#define MES_BOARD_GUIDE_000B MESSNUM(MESS_BOARD_TUTORIAL, 11)
+#define MES_BOARD_GUIDE_000C MESSNUM(MESS_BOARD_TUTORIAL, 12)
+#define MES_BOARD_GUIDE_000D MESSNUM(MESS_BOARD_TUTORIAL, 13)
+#define MES_BOARD_GUIDE_000E MESSNUM(MESS_BOARD_TUTORIAL, 14)
+#define MES_BOARD_GUIDE_000F MESSNUM(MESS_BOARD_TUTORIAL, 15)
+#define MES_BOARD_GUIDE_0010 MESSNUM(MESS_BOARD_TUTORIAL, 16)
+#define MES_BOARD_GUIDE_0011 MESSNUM(MESS_BOARD_TUTORIAL, 17)
+#define MES_BOARD_GUIDE_0014 MESSNUM(MESS_BOARD_TUTORIAL, 20)
+#define MES_BOARD_GUIDE_0015 MESSNUM(MESS_BOARD_TUTORIAL, 21)
+#define MES_BOARD_GUIDE_0016 MESSNUM(MESS_BOARD_TUTORIAL, 22)
+#define MES_BOARD_GUIDE_0017 MESSNUM(MESS_BOARD_TUTORIAL, 23)
+#define MES_BOARD_GUIDE_0018 MESSNUM(MESS_BOARD_TUTORIAL, 24)
+#define MES_BOARD_GUIDE_0019 MESSNUM(MESS_BOARD_TUTORIAL, 25)
+#define MES_BOARD_GUIDE_001B MESSNUM(MESS_BOARD_TUTORIAL, 27)
+#define MES_BOARD_GUIDE_001C MESSNUM(MESS_BOARD_TUTORIAL, 28)
+#define MES_BOARD_GUIDE_001D MESSNUM(MESS_BOARD_TUTORIAL, 29)
+#define MES_BOARD_GUIDE_001E MESSNUM(MESS_BOARD_TUTORIAL, 30)
+#define MES_BOARD_GUIDE_001F MESSNUM(MESS_BOARD_TUTORIAL, 31)
+#define MES_BOARD_GUIDE_0020 MESSNUM(MESS_BOARD_TUTORIAL, 32)
+#define MES_BOARD_GUIDE_0021 MESSNUM(MESS_BOARD_TUTORIAL, 33)
+#define MES_BOARD_GUIDE_0023 MESSNUM(MESS_BOARD_TUTORIAL, 35)
+#define MES_BOARD_GUIDE_0024 MESSNUM(MESS_BOARD_TUTORIAL, 36)
+#define MES_BOARD_GUIDE_0025 MESSNUM(MESS_BOARD_TUTORIAL, 37)
+#define MES_BOARD_GUIDE_0026 MESSNUM(MESS_BOARD_TUTORIAL, 38)
+#define MES_BOARD_GUIDE_0027 MESSNUM(MESS_BOARD_TUTORIAL, 39)
+#define MES_BOARD_GUIDE_0028 MESSNUM(MESS_BOARD_TUTORIAL, 40)
+#define MES_BOARD_GUIDE_0029 MESSNUM(MESS_BOARD_TUTORIAL, 41)
+#define MES_BOARD_GUIDE_002A MESSNUM(MESS_BOARD_TUTORIAL, 42)
+#define MES_BOARD_GUIDE_002D MESSNUM(MESS_BOARD_TUTORIAL, 45)
+#define MES_BOARD_GUIDE_002E MESSNUM(MESS_BOARD_TUTORIAL, 46)
+#define MES_BOARD_GUIDE_002F MESSNUM(MESS_BOARD_TUTORIAL, 47)
+#define MES_BOARD_GUIDE_0031 MESSNUM(MESS_BOARD_TUTORIAL, 49)
+#define MES_BOARD_GUIDE_0032 MESSNUM(MESS_BOARD_TUTORIAL, 50)
+#define MES_BOARD_GUIDE_0033 MESSNUM(MESS_BOARD_TUTORIAL, 51)
+#define MES_BOARD_GUIDE_0034 MESSNUM(MESS_BOARD_TUTORIAL, 52)
+#define MES_BOARD_GUIDE_0000 MESSNUM(MESS_BOARD_TUTORIAL, 0)
+#define MES_BOARD_GUIDE_003D MESSNUM(MESS_BOARD_TUTORIAL, 61)
+#define MES_BOARD_GUIDE_0048 MESSNUM(MESS_BOARD_TUTORIAL, 72)
+#define MES_BOARD_GUIDE_0035 MESSNUM(MESS_BOARD_TUTORIAL, 53)
+#define MES_BOARD_GUIDE_0036 MESSNUM(MESS_BOARD_TUTORIAL, 54)
+#define MES_BOARD_GUIDE_0038 MESSNUM(MESS_BOARD_TUTORIAL, 56)
+#define MES_BOARD_GUIDE_0039 MESSNUM(MESS_BOARD_TUTORIAL, 57)
+#define MES_BOARD_GUIDE_003A MESSNUM(MESS_BOARD_TUTORIAL, 58)
+#define MES_BOARD_GUIDE_003C MESSNUM(MESS_BOARD_TUTORIAL, 60)
+#define MES_BOARD_GUIDE_003E MESSNUM(MESS_BOARD_TUTORIAL, 62)
+#define MES_BOARD_GUIDE_003F MESSNUM(MESS_BOARD_TUTORIAL, 63)
+#define MES_BOARD_GUIDE_0040 MESSNUM(MESS_BOARD_TUTORIAL, 64)
+#define MES_BOARD_GUIDE_0041 MESSNUM(MESS_BOARD_TUTORIAL, 65)
+#define MES_BOARD_GUIDE_0042 MESSNUM(MESS_BOARD_TUTORIAL, 66)
+#define MES_BOARD_GUIDE_0043 MESSNUM(MESS_BOARD_TUTORIAL, 67)
+#define MES_BOARD_GUIDE_0044 MESSNUM(MESS_BOARD_TUTORIAL, 68)
+#define MES_BOARD_GUIDE_0045 MESSNUM(MESS_BOARD_TUTORIAL, 69)
+#define MES_BOARD_GUIDE_0046 MESSNUM(MESS_BOARD_TUTORIAL, 70)
+#define MES_BOARD_GUIDE_0047 MESSNUM(MESS_BOARD_TUTORIAL, 71)
+#define MES_BOARD_GUIDE_0049 MESSNUM(MESS_BOARD_TUTORIAL, 73)
+#define MES_BOARD_GUIDE_004A MESSNUM(MESS_BOARD_TUTORIAL, 74)
+#define MES_BOARD_GUIDE_004C MESSNUM(MESS_BOARD_TUTORIAL, 76)
+#define MES_BOARD_GUIDE_004D MESSNUM(MESS_BOARD_TUTORIAL, 77)
+#define MES_BOARD_GUIDE_004E MESSNUM(MESS_BOARD_TUTORIAL, 78)
+#define MES_BOARD_GUIDE_004F MESSNUM(MESS_BOARD_TUTORIAL, 79)
+#define MES_BOARD_GUIDE_0050 MESSNUM(MESS_BOARD_TUTORIAL, 80)
+#define MES_BOARD_GUIDE_0051 MESSNUM(MESS_BOARD_TUTORIAL, 81)
+#define MES_BOARD_GUIDE_0052 MESSNUM(MESS_BOARD_TUTORIAL, 82)
+#define MES_BOARD_GUIDE_0054 MESSNUM(MESS_BOARD_TUTORIAL, 84)
+#define MES_BOARD_GUIDE_0055 MESSNUM(MESS_BOARD_TUTORIAL, 85)
+#define MES_BOARD_GUIDE_0057 MESSNUM(MESS_BOARD_TUTORIAL, 87)
+#define MES_BOARD_GUIDE_0058 MESSNUM(MESS_BOARD_TUTORIAL, 88)
+#define MES_BOARD_GUIDE_0059 MESSNUM(MESS_BOARD_TUTORIAL, 89)
+#define MES_BOARD_GUIDE_005B MESSNUM(MESS_BOARD_TUTORIAL, 91)
+#define MES_BOARD_GUIDE_005C MESSNUM(MESS_BOARD_TUTORIAL, 92)
+
 static TUTORIALGUIDEDATA tutorialGuideTbl[] = {
-    { 0x002A0000, 0x3B6 },
-    { 0x002A0001, 0x3B8 },
-    { 0x002A0007, 0x3B8 },
-    { 0x002A0008, 0x3B8 },
-    { 0x002A000A, 0x3B6 },
-    { 0x002A000B, 0x3B8 },
-    { 0x002A000C, 0x3B8 },
-    { 0x002A000D, 0x3B8 },
-    { 0x002A000E, 0x3B8 },
-    { 0x002A000F, 0x3B8 },
-    { 0x002A0010, 0x3B8 },
-    { 0x002A0011, 0x3B8 },
-    { 0x002A0014, 0x3B6 },
-    { 0x002A0015, 0x3B8 },
-    { 0x002A0016, 0x3B6 },
-    { 0x002A0017, 0x3B8 },
-    { 0x002A0018, 0x3B6 },
-    { 0x002A0019, 0x3B6 },
-    { 0x002A001B, 0x3B8 },
-    { 0x002A001C, 0x3B8 },
-    { 0x002A001D, 0x3B8 },
-    { 0x002A001E, 0x3B8 },
-    { 0x002A001F, 0x3B6 },
-    { 0x002A0020, 0x3B8 },
-    { 0x002A0021, 0x3B8 },
-    { 0x002A0023, 0x3B6 },
-    { 0x002A0024, 0x3B8 },
-    { 0x002A0025, 0x3B8 },
-    { 0x002A0026, 0x3B8 },
-    { 0x002A0027, 0x3B6 },
-    { 0x002A0028, 0x3B8 },
-    { 0x002A0029, 0x3B6 },
-    { 0x002A002A, 0x3B8 },
-    { 0x002A002D, 0x3B6 },
-    { 0x002A002E, 0x3B8 },
-    { 0x002A002F, 0x3B8 },
-    { 0x002A0031, 0x3B8 },
-    { 0x002A0032, 0x3B6 },
-    { 0x002A0033, 0x3B8 },
-    { 0x002A0034, 0x3B8 },
-    { 0x002A0035, 0x3B6 },
-    { 0x002A0036, 0x3B8 },
-    { 0x002A0038, 0x3B8 },
-    { 0x002A0039, 0x3B8 },
-    { 0x002A003A, 0x3B6 },
-    { 0x002A003C, 0x3B8 },
-    { 0x002A003E, 0x3B8 },
-    { 0x002A003F, 0x3B6 },
-    { 0x002A0040, 0x3B8 },
-    { 0x002A0041, 0x3B8 },
-    { 0x002A0042, 0x3B8 },
-    { 0x002A0043, 0x3B8 },
-    { 0x002A0044, 0x3B8 },
-    { 0x002A0045, 0x3B8 },
-    { 0x002A0046, 0x3B8 },
-    { 0x002A0047, 0x3B8 },
-    { 0x002A0049, 0x3B6 },
-    { 0x002A004A, 0x3B8 },
-    { 0x002A004C, 0x3B6 },
-    { 0x002A004D, 0x3B6 },
-    { 0x002A004E, 0x3B8 },
-    { 0x002A004F, 0x3B6 },
-    { 0x002A0050, 0x3B6 },
-    { 0x002A0051, 0x3B6 },
-    { 0x002A0052, 0x3B8 },
-    { 0x002A0054, 0x3B6 },
-    { 0x002A0055, 0x3B6 },
-    { 0x002A0057, 0x3B6 },
-    { 0x002A0058, 0x3B8 },
-    { 0x002A0059, 0x3B6 },
-    { 0x002A005B, 0x3B8 },
-    { 0x002A005C, 0x3B6 },
+    { MES_BOARD_GUIDE_0000, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0001, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0007, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0008, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_000A, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_000B, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_000C, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_000D, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_000E, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_000F, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0010, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0011, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0014, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0015, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0016, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0017, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0018, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0019, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_001B, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_001C, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_001D, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_001E, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_001F, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0020, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0021, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0023, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0024, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0025, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0026, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0027, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0028, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0029, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_002A, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_002D, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_002E, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_002F, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0031, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0032, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0033, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0034, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0035, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0036, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0038, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0039, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_003A, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_003C, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_003E, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_003F, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0040, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0041, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0042, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0043, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0044, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0045, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0046, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0047, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0049, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_004A, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_004C, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_004D, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_004E, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_004F, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0050, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0051, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0052, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0054, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0055, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0057, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0058, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_0059, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_005B, MSM_SE_GUIDE_28 },
+    { MES_BOARD_GUIDE_005C, MSM_SE_GUIDE_26 },
     { -1, -1 },
 };
 
@@ -172,6 +251,7 @@ static BOOL TutorialMgCallSlideInCheck(OMOBJ *obj);
 static void TutorialMgCallGrowSet(OMOBJ *obj);
 static void TutorialMgCallKill(OMOBJ *obj);
 
+/* Resets tutorial resources and call state before a board tutorial is created. */
 void mbTutorialInit(void)
 {
     int i;
@@ -192,11 +272,13 @@ void mbTutorialInit(void)
     tutorialExitOnF = FALSE;
 }
 
-void mbTutorialMainFuncSet(TUTORIALMAINFUNC func)
+void mbTutorialMainFuncSet(TUTORIALMAINFUNC mainFunc)
 {
-    tutorialMain = func;
+    tutorialMain = mainFunc;
 }
 
+/* Board initialization calls this when FLAG_BOARD_TUTORIAL is set to start both tutorial
+ * processes. */
 void mbTutorialCreate(void)
 {
     tutorialCallWork.scene = -1;
@@ -211,11 +293,14 @@ void mbTutorialCreate(void)
     _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 7));
     _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 8));
     _ClearFlag(FLAG_BOARD_NOMG);
+    /* TutorialWatch is the child-process callback for this board tutorial session. */
     tutorialWatchProc = HuPrcChildCreate(TutorialWatch, 0x2011, 0x2000, 0, mbMainProc);
     tutorialMainProc = HuPrcChildCreate(tutorialMain, 0x2011, 0x2000, 0, mbMainProc);
     HuPrcVSleep();
 }
 
+/* Watches input as the child created by mbTutorialCreate, then fades out and releases tutorial
+ * resources. */
 static void TutorialWatch(void)
 {
     s16 winNo;
@@ -223,7 +308,7 @@ static void TutorialWatch(void)
 
     HuPrcSleep(60);
     TutorialWinInit();
-    winNo = mbWinCreateHelp(0x002A0048);
+    winNo = mbWinCreateHelp(MES_BOARD_GUIDE_0048);
     mbWinMesMaxSizeGet(winNo, &size);
     mbWinPosSet(winNo, 288.0f - ((s16)size.x / 2), 400);
     tutorialExitOnF = TRUE;
@@ -250,6 +335,7 @@ static void TutorialWatch(void)
         if (partyF) {
             WipeColorSet(0, 0, 0);
         } else {
+            /* Both game modes currently use the same black wipe color. */
             WipeColorSet(0, 0, 0);
         }
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 30);
@@ -272,6 +358,7 @@ static void TutorialWatch(void)
     HuPrcSleep(-1);
 }
 
+/* Serves a board event's request for tutorial guidance and returns its result. */
 int mbTutorialCall(int scene)
 {
     if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
@@ -304,11 +391,13 @@ int mbTutorialCall(int scene)
     return tutorialCallWork.result;
 }
 
+/* Marks the current tutorial call sequence as ended. */
 void mbTutorialCallEnd(void)
 {
     tutorialCallWork.stat = -1;
 }
 
+/* Sleeps one frame, terminating the caller process after a tutorial exit request. */
 void mbTutorialVSleep(void)
 {
     if (mbTutorialExitReqGet()) {
@@ -317,6 +406,7 @@ void mbTutorialVSleep(void)
     HuPrcVSleep();
 }
 
+/* Signals one tutorial event and waits until the tutorial process acknowledges it. */
 void mbTutorialCallWait(int scene)
 {
     tutorialCallWork.scene = scene;
@@ -327,6 +417,7 @@ void mbTutorialCallWait(int scene)
     }
 }
 
+/* Allows a board event to request the same tutorial scene a fixed number of times. */
 void mbTutorialMultiCall(int scene, int callNum)
 {
     tutorialCallWork.scene = scene;
@@ -337,6 +428,7 @@ void mbTutorialMultiCall(int scene, int callNum)
     }
 }
 
+/* Waits for a scene and then publishes the supplied result to its board caller. */
 void mbTutorialCallResult(int scene, int result)
 {
     tutorialCallWork.scene = scene;
@@ -348,6 +440,7 @@ void mbTutorialCallResult(int scene, int result)
     mbTutorialResultSet(result);
 }
 
+/* Waits for a scene, then displays its guide message until its timed window ends. */
 void mbTutorialMesCall(int scene, int message)
 {
     tutorialCallWork.scene = scene;
@@ -359,6 +452,7 @@ void mbTutorialMesCall(int scene, int message)
     mbTutorialWinMesExec(message);
 }
 
+/* Shows a guide message with a board-space marker after the requested scene. */
 void mbTutorialMesMasuCall(int scene, int message, int masuId)
 {
     tutorialCallWork.scene = scene;
@@ -370,6 +464,7 @@ void mbTutorialMesMasuCall(int scene, int message, int masuId)
     mbTutorialWinMesMasuExec(message, masuId);
 }
 
+/* Waits for the turn tutorial scene and reports the displayed turn as zero-based. */
 void mbTutorialTurnCall(int turn)
 {
     tutorialCallWork.scene = 5;
@@ -381,6 +476,8 @@ void mbTutorialTurnCall(int turn)
     mbTutorialResultSet(turn - 1);
 }
 
+/* Waits for the guide scene, then stores the selected guide number as the pending board-call
+ * result. */
 void mbTutorialGuideCall(int guideNo)
 {
     tutorialCallWork.scene = 13;
@@ -392,6 +489,7 @@ void mbTutorialGuideCall(int guideNo)
     mbTutorialResultSet(guideNo);
 }
 
+/* Waits for capsule-use guidance, then reports the player's capsule slot. */
 void mbTutorialCapsuleUseCall(int capsuleNo)
 {
     int capsuleIndex;
@@ -406,26 +504,31 @@ void mbTutorialCapsuleUseCall(int capsuleNo)
     mbTutorialResultSet(capsuleIndex);
 }
 
+/* Stores the result that the pending board tutorial call will return. */
 void mbTutorialResultSet(int result)
 {
     tutorialCallWork.result = result;
 }
 
+/* Returns the board event scene currently registered with the tutorial. */
 int mbTutorialSceneGet(void)
 {
     return tutorialCallWork.scene;
 }
 
+/* Stores the board-selected tutorial mode. */
 void mbTutorialModeSet(int mode)
 {
     tutorialCallWork.mode = mode;
 }
 
+/* Returns the currently stored tutorial mode. */
 int mbTutorialModeGet(void)
 {
     return tutorialCallWork.mode;
 }
 
+/* Moves the camera to a tutorial board space using the player's normal view zoom. */
 s16 mbTutorialViewSet(void)
 {
     HuVecF rot = { -35.0f, 0.0f, 0.0f };
@@ -438,6 +541,7 @@ s16 mbTutorialViewSet(void)
     return masuId;
 }
 
+/* Moves the camera to a selected board space for a tutorial demonstration. */
 void mbTutorialViewMasuSet(s16 masuId)
 {
     HuVecF rot = { -35.0f, 0.0f, 0.0f };
@@ -447,6 +551,7 @@ void mbTutorialViewMasuSet(s16 masuId)
     mbCameraMoveOnSet(FALSE);
 }
 
+/* Creates and tracks a tutorial sprite using the requested board data entry. */
 s16 mbTutorialSprCreate(unsigned int dataNum)
 {
     s16 sprId;
@@ -462,6 +567,7 @@ s16 mbTutorialSprCreate(unsigned int dataNum)
     return sprId;
 }
 
+/* Creates a centered tutorial sprite and scales it from zero to full size. */
 s16 mbTutorialSprDispOn(unsigned int dataNum)
 {
     s16 sprId;
@@ -477,6 +583,7 @@ s16 mbTutorialSprDispOn(unsigned int dataNum)
     return sprId;
 }
 
+/* Kills a tracked tutorial sprite and frees its slot in the local handle list. */
 void mbTutorialSprKill(s16 sprId)
 {
     int i;
@@ -492,6 +599,7 @@ void mbTutorialSprKill(s16 sprId)
     tutorialSprId[index] = -1;
 }
 
+/* Shrinks a tutorial sprite to zero before removing it from the sprite system. */
 void mbTutorialSprDispOff(s16 sprId)
 {
     int i;
@@ -504,6 +612,7 @@ void mbTutorialSprDispOff(s16 sprId)
     mbTutorialSprKill(sprId);
 }
 
+/* Removes every sprite still tracked when the tutorial watcher exits. */
 static void TutorialSprClose(void)
 {
     int i;
@@ -516,6 +625,7 @@ static void TutorialSprClose(void)
     }
 }
 
+/* Records a sprite-group handle for cleanup when the tutorial exits. */
 void mbTutorialSprGrpSet(s16 grpId)
 {
     s16 id;
@@ -529,6 +639,8 @@ void mbTutorialSprGrpSet(s16 grpId)
     id = tutorialSprGrpId[i] = grpId;
 }
 
+/* Clears the sprite-handle slot at this index; the group handle remains tracked for exit
+ * cleanup. */
 void mbTutorialSprGrpKill(s16 grpId)
 {
     int i;
@@ -544,6 +656,7 @@ void mbTutorialSprGrpKill(s16 grpId)
     tutorialSprId[index] = -1;
 }
 
+/* Kills all sprite groups still owned by the tutorial. */
 static void TutorialSprGrpClose(void)
 {
     int i;
@@ -556,6 +669,7 @@ static void TutorialSprGrpClose(void)
     }
 }
 
+/* Creates a board model and tracks its handle for tutorial cleanup. */
 MBMODELID mbTutorialModelCreate(int dataNum, BOOL linkF)
 {
     MBMODELID modelId;
@@ -570,6 +684,7 @@ MBMODELID mbTutorialModelCreate(int dataNum, BOOL linkF)
     return modelId;
 }
 
+/* Kills a tracked tutorial model and releases its handle slot. */
 void mbTutorialModelKill(int modelId)
 {
     int i;
@@ -585,6 +700,7 @@ void mbTutorialModelKill(int modelId)
     tutorialMdlId[modelNo] = -1;
 }
 
+/* Removes every model still tracked when the tutorial watcher exits. */
 static void TutorialModelKillAll(void)
 {
     int i;
@@ -597,6 +713,7 @@ static void TutorialModelKillAll(void)
     }
 }
 
+/* Creates the guide character, hides its model, and prepares its opening motion. */
 OMOBJ *mbTutorialGuideCreate(s8 *motTbl, BOOL screenF)
 {
     tutorialGuideObj = mbGuideCreateFlag(NULL, motTbl, screenF, FALSE, TRUE);
@@ -606,32 +723,38 @@ OMOBJ *mbTutorialGuideCreate(s8 *motTbl, BOOL screenF)
     return tutorialGuideObj;
 }
 
+/* Removes the guide character and clears the stored object handle. */
 void mbTutorialGuideClose(OMOBJ *obj)
 {
     mbGuideKill(obj);
     tutorialGuideObj = NULL;
 }
 
+/* Returns the guide character object used by tutorial message windows. */
 OMOBJ *mbTutorialGuideGet(void)
 {
     return tutorialGuideObj;
 }
 
+/* Reports whether the tutorial watcher has received an exit request. */
 BOOL mbTutorialExitReqGet(void)
 {
     return tutorialExitReqF;
 }
 
+/* Requests that tutorial processes exit on their next tutorial sleep. */
 void mbTutorialExitSet(void)
 {
     tutorialExitReqF = TRUE;
 }
 
+/* Controls whether the watcher accepts START and performs the exit wipe. */
 void mbTutorialExitOnSet(BOOL exitOnF)
 {
     tutorialExitOnF = exitOnF;
 }
 
+/* Marks every tutorial-window timer slot as unused before tracking begins. */
 static void TutorialWinInit(void)
 {
     int i;
@@ -642,6 +765,7 @@ static void TutorialWinInit(void)
     }
 }
 
+/* Advances tutorial-window timers from the shared window state each frame. */
 static void TutorialWinUpdate(void)
 {
     int i;
@@ -669,6 +793,7 @@ static void TutorialWinUpdate(void)
     }
 }
 
+/* Consumes a tracked close-transition tick and reports whether it was pending. */
 BOOL mbTutorialWinWait(int winNo)
 {
     MBWIN *win;
@@ -695,6 +820,7 @@ BOOL mbTutorialWinWait(int winNo)
     return waitF;
 }
 
+/* Clears the tutorial timer for an open window so its wait can finish. */
 void mbTutorialWinClose(int winNo)
 {
     MBWIN *win;
@@ -707,6 +833,7 @@ void mbTutorialWinClose(int winNo)
     }
 }
 
+/* Creates a guide window, plays its mapped cue, and waits for its close transition. */
 void mbTutorialWinMesExec(int message)
 {
     int winNo;
@@ -728,6 +855,7 @@ void mbTutorialWinMesExec(int message)
     mbWinWait(winNo);
 }
 
+/* Shows a guide message and marker until its close transition and window process finish. */
 void mbTutorialWinMesMasuExec(int message, int masuId)
 {
     int winNo;
@@ -751,6 +879,7 @@ void mbTutorialWinMesMasuExec(int message, int masuId)
     mbTutorialSprDispOff(sprId);
 }
 
+/* Opens a guide window, plays its mapped cue, and returns the window handle. */
 int mbTutorialWinCreate(int message)
 {
     int winNo;
@@ -772,6 +901,8 @@ int mbTutorialWinCreate(int message)
     return winNo;
 }
 
+/* Keeps the guide animation active through the close transition, then waits for the window
+ * process. */
 void mbTutorialWinKeyWait(int winNo)
 {
     while (mbTutorialWinWait(winNo)) {
@@ -782,11 +913,13 @@ void mbTutorialWinKeyWait(int winNo)
     mbWinWait(winNo);
 }
 
+/* Clears the roulette's object and sprite ownership state. */
 void mbTutorialMgCallInit(void)
 {
     memset(&tutorialMgCallData, 0, sizeof(tutorialMgCallData));
 }
 
+/* Kills roulette sprites and marks choice objects for deletion by their callbacks when active. */
 void mbTutorialMgCallClose(void)
 {
     int i;
@@ -808,6 +941,8 @@ void mbTutorialMgCallClose(void)
     }
 }
 
+/* Displays a randomly selected eligible minigame in four roulette slots when one exists, animates
+ * the selection, and highlights the result. */
 void mbTutorialMgCallExec(int type)
 {
     TUTORIALMGCALLDATA *data = &tutorialMgCallData;
@@ -866,7 +1001,7 @@ void mbTutorialMgCallExec(int type)
         work->cursorNo = i;
         data->obj[i]->trans.y = mgCallWinYOfsTbl[listNum][i];
         unlocked = FALSE;
-        work->winNo = mbWinCreateHelp(0x002A003D);
+    work->winNo = mbWinCreateHelp(MES_BOARD_GUIDE_003D);
         work->message = -1;
         if (mgData) {
             work->message = mgData->nameMes;
@@ -900,17 +1035,19 @@ void mbTutorialMgCallExec(int type)
             }
             espPosSet(data->espId[2], 288.0f, data->obj[tutorialMgCallCursorPos]->trans.y);
             espDispOn(data->espId[2]);
-            mbAudFXPlay(1009);
+            mbAudFXPlay(MSM_SE_BRD00_05);
         }
         mbTutorialVSleep();
     }
     tutorialMgCallCursorPos = result;
     espPosSet(data->espId[2], 288.0f, data->obj[tutorialMgCallCursorPos]->trans.y);
     TutorialMgCallGrowSet(data->obj[tutorialMgCallCursorPos]);
-    mbAudFXPlay(1134);
+    mbAudFXPlay(MSM_SE_BRD00_130);
     HuPrcSleep(120);
 }
 
+/* Selects a random eligible minigame of the requested type, or -1 if none, and fills every slot
+ * with it. */
 static void TutorialMgCallListGet(int type, int num, s16 *list)
 {
     s8 candidates[64];
@@ -926,11 +1063,14 @@ static void TutorialMgCallListGet(int type, int num, s16 *list)
     if (candidateNum > 0) {
         mgNo = candidates[mbRandMod(candidateNum)];
     }
+    /* Each slot gets the same random minigame; the roulette animates selection position. */
     for (i = 0; i < num; i++) {
         list[i] = mgNo;
     }
 }
 
+/* Object callback passed to omAddObjEx; updates one choice's animation and help window each
+ * frame. */
 static void TutorialMgCallOMExec(OMOBJ *obj)
 {
     TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
@@ -985,14 +1125,16 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
         case 4:
             if (work->time <= work->maxTime) {
                 weight = (float)work->time++ / work->maxTime;
-                obj->scale.x = obj->scale.y = 1.0f + (0.2f * sin((M_PI * (720.0f * (1.0f - weight))) / 180.0));
+                obj->scale.x = obj->scale.y =
+                    1.0f + (0.2f * sin((M_PI * (720.0f * (1.0f - weight))) / 180.0));
             }
             break;
         case 5:
             if (work->time <= work->maxTime) {
                 weight = (float)work->time++ / work->maxTime;
                 obj->trans.y = obj->rot.y + (weight * (96.0f - obj->rot.y));
-                obj->scale.x = obj->scale.y = 0.5f + (0.5f * cos((M_PI * (90.0f * weight)) / 180.0));
+                obj->scale.x = obj->scale.y =
+                    0.5f + (0.5f * cos((M_PI * (90.0f * weight)) / 180.0));
             }
             break;
     }
@@ -1003,6 +1145,7 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
         obj->trans.y - ((size.y / 2) * obj->scale.y));
 }
 
+/* Starts a choice's 30-frame slide-in animation. */
 static void TutorialMgCallSlideInSet(OMOBJ *obj)
 {
     TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
@@ -1013,6 +1156,7 @@ static void TutorialMgCallSlideInSet(OMOBJ *obj)
     work->maxTime = 30;
 }
 
+/* Reports whether a roulette choice has completed its slide-in. */
 static BOOL TutorialMgCallSlideInCheck(OMOBJ *obj)
 {
     TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
@@ -1023,6 +1167,8 @@ static BOOL TutorialMgCallSlideInCheck(OMOBJ *obj)
     return TRUE;
 }
 
+/* Starts the selected choice's grow animation and replaces its help label when a name message is
+ * available. */
 static void TutorialMgCallGrowSet(OMOBJ *obj)
 {
     TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
@@ -1036,6 +1182,7 @@ static void TutorialMgCallGrowSet(OMOBJ *obj)
     }
 }
 
+/* Marks a roulette choice for removal by its object callback. */
 static void TutorialMgCallKill(OMOBJ *obj)
 {
     TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
