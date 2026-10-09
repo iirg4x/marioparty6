@@ -1,3 +1,4 @@
+/* Board pause menu, its single-player minigame list, and pause-state controls. */
 #define _MATH_H
 #define M_PI 3.141592653589793
 double sin(double);
@@ -26,9 +27,24 @@ double cos(double);
 
 #include "humath.h"
 #include "string.h"
+#include "messdir_enum.h"
 
 #define PAUSE_HOOK_MAX 32
+#define MES_BPAUSE6_SINGLE_HELP MESSNUM(MESS_BOARD_OPE, 8)
+#define MES_BPAUSE6_MULTIPLAYER_HELP MESSNUM(MESS_BOARD_PAUSE, 24)
+#define MES_BPAUSE6_SINGLE_MG_HELP MESSNUM(MESS_BOARD_PAUSE, 39)
+#define MES_BPAUSE6_MG_LIST_HELP MESSNUM(MESS_BOARD_PAUSE, 26)
+#define MES_BPAUSE6_MG_TITLE_0 MESSNUM(MESS_BOARD_PAUSE, 31)
+#define MES_BPAUSE6_MG_TITLE_1 MESSNUM(MESS_BOARD_PAUSE, 32)
+#define MES_BPAUSE6_MG_TITLE_2 MESSNUM(MESS_BOARD_PAUSE, 33)
+#define MES_BPAUSE6_MG_TITLE_3 MESSNUM(MESS_BOARD_PAUSE, 34)
+#define MES_BPAUSE6_MG_TITLE_4 MESSNUM(MESS_BOARD_PAUSE, 35)
+#define MES_BPAUSE6_MG_TITLE_5 MESSNUM(MESS_BOARD_PAUSE, 38)
+#define MES_BPAUSE6_MG_ROW_STATUS_DEFAULT MESSNUM(MESS_BOARD_PAUSE, 29)
+#define MES_BPAUSE6_MG_ROW_STATUS_SINGLE_UNLOCK MESSNUM(MESS_BOARD_PAUSE, 30)
+#define MES_BPAUSE6_MG_LOCKED_NAME MESSNUM(MESS_BOARD_PAUSE, 28)
 
+/* Keeps the saved minigame pack selection in range before pause settings are stored. */
 static inline s32 GWMgPackGet(void)
 {
     if(GwSystem.mgPack >= 5) {
@@ -67,29 +83,29 @@ extern int mbMasuNumGet(void);
 extern BOOL mbSingleMgUnlockGet(int mgNo);
 
 typedef struct MgList_s {
-    s16 type;       /* 0x00 */
-    s16 count;      /* 0x02 */
-    s16 num;        /* 0x04 */
+    s16 category;   /* Category index shown by this page. */
+    s16 unlockedCount; /* Number of entries unlocked for display. */
+    s16 entryCount; /* Number of minigames assigned to this category. */
     struct {
-        u8 mgNo;
-        u8 flag;
-    } mg[32];       /* 0x06 */
+        u8 mgNo;    /* Index into MgDataTbl. */
+        u8 flag;    /* Bit 0: unlocked in party play; bit 1: unlocked in single-player. */
+    } mg[32];
 } MGLIST;
 
 typedef struct pauseWork_s {
-    s16 sprId[6];   /* 0x00 */
-    s16 panelId;    /* 0x0C */
-    s16 telopId;    /* 0x0E */
-    s32 winId[2];   /* 0x10 */
+    s16 sprId[6];   /* Board logo, turn label, and four turn-number digit sprites. */
+    s16 panelId;    /* Pause panel model; zero means no panel is active. */
+    s16 telopId;    /* Turn-time sprite; negative means it was not created. */
+    s32 winId[2];   /* Help windows used by the pause screen. */
 } PAUSEWORK;
 
 typedef struct pauseSingleWork_s {
-    s32 bgWin;      /* 0x00 */
-    s32 titleWin;   /* 0x04 */
-    s32 mgWin[2];   /* 0x08 */
-    s32 moveCnt[2]; /* 0x10 */
-    s32 growF[2];   /* 0x18 */
-    s16 sprId[14];  /* 0x20 */
+    s32 bgWin;      /* Background window behind the minigame list. */
+    s32 titleWin;   /* Window containing the selected minigame category title. */
+    s32 mgWin[2];   /* Two alternating windows containing minigame rows. */
+    s32 moveCnt[2]; /* Remaining frames in the corresponding list-edge animation (0 to 8). */
+    s32 growF[2];   /* Whether each list-edge arrow remains visible. */
+    s16 sprId[14];  /* Category, progress, count, and list-edge arrow sprites. */
 } PAUSESINGLEWORK;
 
 static MBPAUSEHOOK pauseHook[PAUSE_HOOK_MAX];
@@ -104,7 +120,7 @@ static HUPROCESS *pauseProc;
 static int pauseHookNum;
 static OMOBJ *pauseGuideObj;
 
-static const u32 HelpWinMesTbl[2] = { 0x00260008, 0x00280018 };
+static const u32 HelpWinMesTbl[2] = { MES_BPAUSE6_SINGLE_HELP, MES_BPAUSE6_MULTIPLAYER_HELP };
 
 static void PauseMain(void);
 static void PauseDestroy(void);
@@ -118,6 +134,7 @@ static void PauseSingleSprCreate(MGLIST *list, PAUSESINGLEWORK *work);
 static void PauseSingleMGTypeSet(MGLIST *list, PAUSESINGLEWORK *work, int page, int top);
 static int PauseSingleExec(PAUSEWORK *work);
 
+/* Called during board setup to clear pause hooks and restore the unpaused engine state. */
 void mbPauseInit(void)
 {
     int i;
@@ -131,6 +148,7 @@ void mbPauseInit(void)
     }
 }
 
+/* Starts the pause process for the player whose Start press opened the menu. */
 void mbPauseCreate(int playerNo)
 {
     pauseProc = HuPrcChildCreate(PauseMain, 0x2012, 0x3800, 0, mbMainProc);
@@ -140,6 +158,7 @@ void mbPauseCreate(int playerNo)
     mbPauseSet(TRUE);
 }
 
+/* Polled by board flow to find a connected eligible player pressing Start. */
 int mbPauseStartCheck(void)
 {
     int i;
@@ -167,7 +186,8 @@ int mbPauseStartCheck(void)
     for(i=0; i<GW_PLAYER_MAX; i++) {
         int padNo = GwPlayer[i].padNo;
         if(HuPadStatGet(padNo) == 0) {
-            if((GWPartyGet() != FALSE || GwPlayer[i].comF == FALSE) && (HuPadBtnDown[padNo] & PAD_BUTTON_START)) {
+            if ((GWPartyGet() != FALSE || GwPlayer[i].comF == FALSE) &&
+                (HuPadBtnDown[padNo] & PAD_BUTTON_START)) {
                 return i;
             }
         }
@@ -175,11 +195,13 @@ int mbPauseStartCheck(void)
     return -1;
 }
 
+/* Lets board flow test whether the pause process currently exists. */
 BOOL mbPauseProcCheck(void)
 {
     return (pauseProc != NULL) ? TRUE : FALSE;
 }
 
+/* Enables or clears the common flag that prevents opening the pause menu. */
 void mbPauseDisableSet(BOOL disableF)
 {
     if(disableF) {
@@ -189,16 +211,19 @@ void mbPauseDisableSet(BOOL disableF)
     }
 }
 
+/* Returns whether board flow currently forbids opening the pause menu. */
 BOOL mbPauseDisableGet(void)
 {
     return (_CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 31))) ? TRUE : FALSE;
 }
 
+/* Registers a callback to pause or resume a board subsystem with the menu. */
 void mbPauseHookPush(MBPAUSEHOOK hook)
 {
     pauseHook[pauseHookNum++] = hook;
 }
 
+/* Removes a registered pause callback while preserving the order of remaining hooks. */
 void mbPauseHookPop(MBPAUSEHOOK hook)
 {
     int i;
@@ -216,6 +241,8 @@ void mbPauseHookPop(MBPAUSEHOOK hook)
     pauseHookNum--;
 }
 
+/* Pause process body: fades to the menu, runs it, then restores the board scene unless
+ * configuration exits. */
 static void PauseMain(void)
 {
     PAUSEWORK pauseWork;
@@ -227,16 +254,11 @@ static void PauseMain(void)
     int boardNo;
     int partyF;
     static const u32 logoFileTbl[] = {
-        DATANUM(DATA_board, 0x44),
-        DATANUM(DATA_board, 0x45),
-        DATANUM(DATA_board, 0x46),
-        DATANUM(DATA_board, 0x47),
-        DATANUM(DATA_board, 0x48),
-        DATANUM(DATA_board, 0x49),
-        DATANUM(DATA_board, 0x4C),
-        DATANUM(DATA_board, 0x4B),
-        DATANUM(DATA_board, 0x4A),
-        DATANUM(DATA_board, 0x44),
+        DATANUM(DATA_board, 68), DATANUM(DATA_board, 69),
+        DATANUM(DATA_board, 70), DATANUM(DATA_board, 71),
+        DATANUM(DATA_board, 72), DATANUM(DATA_board, 73),
+        DATANUM(DATA_board, 76), DATANUM(DATA_board, 75),
+        DATANUM(DATA_board, 74), DATANUM(DATA_board, 68),
         DATANUM(DATA_board, 0x44),
     };
     HuMemHeapDump(HuMemHeapPtrGet(HEAP_DVD), -1);
@@ -302,6 +324,8 @@ static void PauseMain(void)
     HuPrcEnd();
 }
 
+/* Process destructor resumes hooks and clears pause when the board is not exiting, then stores
+ * current pause-related settings. */
 static void PauseDestroy(void)
 {
     int i;
@@ -335,6 +359,7 @@ static void PauseDestroy(void)
     pauseProc = NULL;
 }
 
+/* Builds the multiplayer pause screen, or delegates to the single-player list screen. */
 static void PauseScreenCreate(PAUSEWORK *work)
 {
     int i;
@@ -386,6 +411,7 @@ static void PauseScreenCreate(PAUSEWORK *work)
     }
     turn = GwSystem.turnNo;
     if(turn > 99) {
+        /* The two digit sprites display values only through 99. */
         turn = 99;
     }
     if(turn/10 != 0) {
@@ -420,6 +446,7 @@ static void PauseScreenCreate(PAUSEWORK *work)
     mbObjDispSet(mbGuideModelGet(pauseGuideObj), TRUE);
 }
 
+/* Sets up the single-player pause screen logo and creates its two help windows. */
 static void PauseScreenSingleCreate(PAUSEWORK *work)
 {
     HuVec2f center;
@@ -436,14 +463,15 @@ static void PauseScreenSingleCreate(PAUSEWORK *work)
         pauseGuideObj = mbGuideCreateFlag(&pos3d, guideMotSingleTbl, TRUE, FALSE, TRUE);
     }
     work->winId[0] = work->winId[1] = -1;
-    work->winId[0] = mbWinCreateHelp(0x00260008);
+    work->winId[0] = mbWinCreateHelp(MES_BPAUSE6_SINGLE_HELP);
     mbWinCenterGet(work->winId[0], &center);
     mbWinPosSet(work->winId[0], center.x, 376);
-    work->winId[1] = mbWinCreateHelp(0x00280027);
+    work->winId[1] = mbWinCreateHelp(MES_BPAUSE6_SINGLE_MG_HELP);
     mbWinCenterGet(work->winId[1], &center);
     mbWinPosSet(work->winId[1], center.x, 332);
 }
 
+/* Releases sprites, panel, and windows created for the multiplayer pause screen. */
 static void PauseScreenKill(PAUSEWORK *work)
 {
     int i;
@@ -472,6 +500,7 @@ static void PauseScreenKill(PAUSEWORK *work)
     }
 }
 
+/* Hides the single-player logo and closes its active help windows. */
 static void PauseScreenSingleKill(PAUSEWORK *work)
 {
     espDispOff(work->sprId[0]);
@@ -485,6 +514,7 @@ static void PauseScreenSingleKill(PAUSEWORK *work)
     }
 }
 
+/* Waits for A to open configuration or Start to close the pause screen. */
 static int PauseScreenExec(PAUSEWORK *work)
 {
     int i = 0;
@@ -520,6 +550,7 @@ static int PauseScreenExec(PAUSEWORK *work)
     return result;
 }
 
+/* Pauses board objects and engine subsystems, or resumes them when pauseF is false. */
 void mbPauseSet(BOOL pauseF)
 {
     OMOBJWORK *objWork = mbObjMan->property;
@@ -556,6 +587,7 @@ static u32 pauseDataDirTbl[] = {
     DATA_bpause6,
 };
 
+/* Selects the board pause data directory for a language index. */
 int mbPauseDataDirGet(int type)
 {
     if(type < 0) {
@@ -564,10 +596,11 @@ int mbPauseDataDirGet(int type)
     return pauseDataDirTbl[type];
 }
 
+/* Replaces the default pause data directory with the current language variant. */
 int mbPauseDataNumGet(int dataNum)
 {
     int lang = mbLanguageGet();
-    if((dataNum & 0xFFFF0000) != DATA_bpause6) {
+    if(DIRNUM(dataNum) != DATA_bpause6) {
         return dataNum;
     }
     if(lang < 0) {
@@ -578,80 +611,76 @@ int mbPauseDataNumGet(int dataNum)
 
 static s16 mgTypeTbl[6] = { 0, 1, 2, 3, 6, -1 };
 
+/* Assigns minigames to single-player menu categories and counts unlocked entries. */
 static int PauseSingleMGListGet(MGLIST *list)
 {
     int i;
     int j;
-    int listNo;
-    int total;
-    MGLIST *entry;
+    int categoryIndex;
+    int unlockedTotal;
+    MGLIST *category;
 
     memset(list, 0, sizeof(pauseMGList));
     for(i=0; i<6; i++) {
-        list[i].type = i;
+        list[i].category = i;
     }
     for(i=0; MgDataTbl[i].ovl != 0xFFFF; i++) {
-        listNo = 6;
+        categoryIndex = 6;
         if(MgDataTbl[i].flag & 0x80) {
-            listNo = 5;
+            categoryIndex = 5;
             if(MgDataTbl[i].ovl == 0x52) {
-                listNo = 6;
+                /* This special overlay is omitted from the single-player category list. */
+                categoryIndex = 6;
             }
         } else {
             for(j=0; j<5; j++) {
                 if(mgTypeTbl[j] == MgDataTbl[i].type) {
-                    listNo = j;
+                    categoryIndex = j;
                     break;
                 }
             }
         }
-        if(listNo >= 6) {
+        if(categoryIndex >= 6) {
             continue;
         }
-        entry = &list[listNo];
-        entry->mg[entry->num].mgNo = i;
+        category = &list[categoryIndex];
+        category->mg[category->entryCount].mgNo = i;
         if(GWMgUnlockGet(MgNoGet(MgDataTbl[i].ovl) + 0x259)) {
-            entry->mg[entry->num].flag = 1;
+            category->mg[category->entryCount].flag = 1;
         }
         if(mbSingleMgUnlockGet(MgNoGet(MgDataTbl[i].ovl) + 0x259)) {
-            entry->mg[entry->num].flag |= 2;
+            category->mg[category->entryCount].flag |= 2;
         }
-        if(entry->mg[entry->num].flag != 0) {
-            entry->count++;
+        if(category->mg[category->entryCount].flag != 0) {
+            category->unlockedCount++;
         }
-        entry->num++;
+        category->entryCount++;
     }
-    total = 0;
+    unlockedTotal = 0;
     for(i=0; i<6; i++) {
-        total += list[i].count;
+        unlockedTotal += list[i].unlockedCount;
     }
-    return total;
+    return unlockedTotal;
 }
 
+/* Creates the single-player minigame list graphics and its three help windows. */
 static void PauseSingleSprCreate(MGLIST *list, PAUSESINGLEWORK *work)
 {
     int i;
-    int rem;
+    int remainingCount;
     int page;
     int total;
     int lang;
     HuVec2f winSize;
     HuVecF winPos;
     static int fileTbl[] = {
-        DATANUM(DATA_bpause6, 0x2C),
-        DATANUM(DATA_bpause6, 0x28),
-        DATANUM(DATA_bpause6, 0x29),
-        DATANUM(DATA_bpause6, 0x29),
-        DATANUM(DATA_bpause6, 0x2B),
-        DATANUM(DATA_bpause6, 0x2B),
-        DATANUM(DATA_bpause6, 0x2A),
-        DATANUM(DATA_bpause6, 0x2A),
-        DATANUM(DATA_bpause6, 0x27),
-        DATANUM(DATA_bpause6, 0x26),
-        DATANUM(DATA_bpause6, 0x26),
-        DATANUM(DATA_bpause6, 0x26),
-        DATANUM(DATA_bpause6, 0x20),
-        DATANUM(DATA_bpause6, 0x20),
+        DATANUM(DATA_bpause6, 44), DATANUM(DATA_bpause6, 40),
+        DATANUM(DATA_bpause6, 41), DATANUM(DATA_bpause6, 41),
+        DATANUM(DATA_bpause6, 43), DATANUM(DATA_bpause6, 43),
+        DATANUM(DATA_bpause6, 42), DATANUM(DATA_bpause6, 42),
+        DATANUM(DATA_bpause6, 39), DATANUM(DATA_bpause6, 38),
+        DATANUM(DATA_bpause6, 38), DATANUM(DATA_bpause6, 38),
+        DATANUM(DATA_bpause6, 32), DATANUM(DATA_bpause6, 32),
     };
     static HuVec2f posTbl[] = {
         { 288, 136 }, { 472, 72 }, { 424, 72 }, { 520, 72 },
@@ -703,18 +732,18 @@ static void PauseSingleSprCreate(MGLIST *list, PAUSESINGLEWORK *work)
     if(i >= mbMasuNumGet()) {
         i = 0;
     }
-    rem = i;
-    page = rem/10;
+    remainingCount = i;
+    page = remainingCount/10;
     if(page > 0) {
         espDispOn(work->sprId[6]);
         espBankSet(work->sprId[6], page);
     }
-    rem = rem - (page*10);
-    if(rem > 0) {
+    remainingCount = remainingCount - (page*10);
+    if(remainingCount > 0) {
         if(i <= 5) {
-            rem += 9;
+            remainingCount += 9;
         }
-        espBankSet(work->sprId[7], rem);
+        espBankSet(work->sprId[7], remainingCount);
     }
     for(i=0; i<4; i++) {
         espScaleSet(work->sprId[i+8], 1.2f, 1.2f);
@@ -728,9 +757,9 @@ static void PauseSingleSprCreate(MGLIST *list, PAUSESINGLEWORK *work)
         espBankSet(work->sprId[10], page);
         i++;
     }
-    rem = total - (page*10);
-    if(rem > 0) {
-        espBankSet(work->sprId[i+10], rem);
+    remainingCount = total - (page*10);
+    if(remainingCount > 0) {
+        espBankSet(work->sprId[i+10], remainingCount);
     }
     winPos.x = 288.0f;
     winPos.y = 240.0f;
@@ -745,18 +774,20 @@ static void PauseSingleSprCreate(MGLIST *list, PAUSESINGLEWORK *work)
     winPos.x += 4.0f;
     winPos.y += 4.0f;
     for(i=0; i<2; i++) {
-        work->mgWin[i] = mbWinCreateHelp(0x0028001A);
+        work->mgWin[i] = mbWinCreateHelp(MES_BPAUSE6_MG_LIST_HELP);
         mbWinMesMaxSizeGet(work->mgWin[i], &winSize);
         mbWinSizeSet(work->mgWin[i], 268, winSize.y);
         mbWinPosSet(work->mgWin[i], winPos.x + ((i & 1) ? 268 : 0), winPos.y);
     }
-    work->titleWin = mbWinCreateHelp(0x0028001F);
+    work->titleWin = mbWinCreateHelp(MES_BPAUSE6_MG_TITLE_0);
     mbWinMesMaxSizeGet(work->titleWin, &winSize);
     winPos.x = 288.0f;
     winPos.y = 240.0f;
-    mbWinPosSet(work->titleWin, winPos.x - (0.5f * winSize.x), (winPos.y - 108.0f) - (0.5f * winSize.y));
+    mbWinPosSet(work->titleWin, winPos.x - (0.5f * winSize.x),
+                (winPos.y - 108.0f) - (0.5f * winSize.y));
 }
 
+/* Fills the title and visible rows for one category and list offset. */
 static void PauseSingleMGTypeSet(MGLIST *list, PAUSESINGLEWORK *work, int page, int top)
 {
     int i;
@@ -766,7 +797,8 @@ static void PauseSingleMGTypeSet(MGLIST *list, PAUSESINGLEWORK *work, int page, 
     int lang;
     HuVec2f winSize;
     static u32 insertMesTbl[] = {
-        0x0028001F, 0x00280020, 0x00280021, 0x00280022, 0x00280023, 0x00280026,
+        MES_BPAUSE6_MG_TITLE_0, MES_BPAUSE6_MG_TITLE_1, MES_BPAUSE6_MG_TITLE_2,
+        MES_BPAUSE6_MG_TITLE_3, MES_BPAUSE6_MG_TITLE_4, MES_BPAUSE6_MG_TITLE_5,
     };
     static int insertMesTbl2[] = { 0, 0, 1, 1, 2, 2, 3, 3 };
     static int insertMesTbl3[] = { 4, 4, 5, 5, 6, 6, 7, 7 };
@@ -777,43 +809,45 @@ static void PauseSingleMGTypeSet(MGLIST *list, PAUSESINGLEWORK *work, int page, 
     mbWinCenterInsertGet(work->titleWin, insertMesTbl[page]);
     mbWinScaleSet(work->titleWin, nameScaleTbl[lang], 1.0f);
     mbWinMesMaxSizeGet(work->titleWin, &winSize);
-    mbWinPosSet(work->titleWin, 288.0f - (0.5f * winSize.x * nameScaleTbl[lang]), 136.0f - (0.5f * winSize.y));
+    mbWinPosSet(work->titleWin, 288.0f - (0.5f * winSize.x * nameScaleTbl[lang]),
+                136.0f - (0.5f * winSize.y));
     for(i=0; i<8; i++) {
         int slot = i + top;
         mesA = (u32)" ";
-        mesB = 0x0028001D;
-        if(slot < entry->num) {
+        mesB = MES_BPAUSE6_MG_ROW_STATUS_DEFAULT;
+        if(slot < entry->entryCount) {
             if(entry->mg[slot].flag != 0) {
                 mesA = MgDataTbl[entry->mg[slot].mgNo].nameMes;
                 if(entry->mg[slot].flag >= 2) {
-                    mesB = 0x0028001E;
+                    mesB = MES_BPAUSE6_MG_ROW_STATUS_SINGLE_UNLOCK;
                 }
             } else {
-                mesA = 0x0028001C;
+                mesA = MES_BPAUSE6_MG_LOCKED_NAME;
             }
         }
         mbWinInsertMesSet(work->mgWin[i & 1], mesA, insertMesTbl2[i]);
         mbWinInsertMesSet(work->mgWin[i & 1], mesB, insertMesTbl3[i]);
     }
     for(i=0; i<2; i++) {
-        mbWinCenterInsertGet(work->mgWin[i], 0x0028001A);
+        mbWinCenterInsertGet(work->mgWin[i], MES_BPAUSE6_MG_LIST_HELP);
     }
     work->growF[0] = work->growF[1] = 1;
     if(top <= 0) {
         work->growF[0] = 0;
     }
-    if(top + 8 >= entry->num) {
+    if(top + 8 >= entry->entryCount) {
         work->growF[1] = 0;
     }
 }
 
+/* Runs single-player pause input, category paging, scrolling, and arrow animation. */
 static int PauseSingleExec(PAUSEWORK *work)
 {
     int i;
     int n;
     int result;
     int padNo;
-    int wait = 0;
+    int inputDelay = 0;
     int page = 0;
     int top = 0;
     int newPage;
@@ -838,8 +872,8 @@ static int PauseSingleExec(PAUSEWORK *work)
             result = 0;
             break;
         }
-        if(wait != 0) {
-            wait--;
+        if(inputDelay != 0) {
+            inputDelay--;
         } else {
             newPage = page;
             newTop = top;
@@ -849,16 +883,16 @@ static int PauseSingleExec(PAUSEWORK *work)
                     newPage += 6;
                 }
                 newTop = 0;
-                wait = 8;
+                inputDelay = 8;
             } else if(HuPadBtnRep[padNo] & PAD_TRIGGER_R) {
                 newPage++;
                 if(newPage >= 6) {
                     newPage -= 6;
                 }
                 newTop = 0;
-                wait = 8;
+                inputDelay = 8;
             } else if(HuPadDStkRep[padNo] & PAD_BUTTON_DOWN) {
-                if(newTop + 8 < pauseMGList[page].num) {
+                if(newTop + 8 < pauseMGList[page].entryCount) {
                     newTop += 2;
                     pauseSingleWork.moveCnt[1] = 8;
                 }
@@ -871,7 +905,7 @@ static int PauseSingleExec(PAUSEWORK *work)
                     pauseSingleWork.moveCnt[0] = 8;
                 }
             }
-            if(wait != 0) {
+            if(inputDelay != 0) {
                 pauseSingleWork.moveCnt[0] = pauseSingleWork.moveCnt[1] = 0;
             }
             if(page != newPage || top != newTop) {

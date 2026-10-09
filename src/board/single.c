@@ -1,3 +1,4 @@
+/* Sets up the single-player board mode, its events, effects, and records. */
 #include "dolphin/math.h"
 #include "datadir_enum.h"
 #include "game/board/masu.h"
@@ -103,8 +104,8 @@ typedef struct SingleMicResponse_s {
 
 typedef struct SingleEffData_s {
     int active;
-    BOOL unk04;
-    BOOL unk08;
+    BOOL modelVisible; /* Whether the board-space particle model is shown. */
+    BOOL particleVisible; /* Whether the child minigame particles are shown. */
     s16 masuType;
     s16 effNo;
     s16 state;
@@ -112,16 +113,16 @@ typedef struct SingleEffData_s {
     HU3D_MODELID childModelId[2];
     HuVecF pos;
     HuVecF targetPos;
-    float unk30;
-    float unk34;
-    float unk38;
+    float rotationX; /* Particle-space rotation in degrees. */
+    float rotationY; /* Particle-space rotation in degrees. */
+    float rotationZ; /* Particle-space rotation in degrees. */
     HuVecF scale;
-    float unk48;
-    float unk4C;
+    float rotationSpeed; /* Degrees added to the Y rotation each object update. */
+    float bobScale; /* Multiplier for the board-space particle's vertical bob. */
     OMOBJ *obj;
-    BOOL unk54;
-    float unk58;
-    float unk5C;
+    BOOL particlesRepeat; /* Respawn child minigame particles after they fade. */
+    float particleBrightness; /* RGB brightness multiplier from 0.0 to 1.0. */
+    float spaceAlpha; /* Board-space particle alpha multiplier from 0.0 to 1.0. */
     s16 timer;
     s16 timerMax;
     s32 seId;
@@ -212,6 +213,7 @@ int mbSingleCall(int mode, int arg);
 void mbSingleReturn(void);
 void mbSingleReturn(void);
 
+/* Called by mbInit after board systems load; prepares the single-player board. */
 void mbSingleInit(void)
 {
     static int effFile[] = {
@@ -283,6 +285,7 @@ void mbSingleInit(void)
     HuDataDirClose(DATA_bsingle);
 }
 
+/* Called by mbClose during board teardown to release single-player resources. */
 void mbSingleClose(void)
 {
     int playerNo = GwSystem.turnPlayerNo;
@@ -306,6 +309,7 @@ void mbSingleClose(void)
     SingleMicKill();
 }
 
+/* Called by mbSaveStoryInit before starting a single-player story board. */
 void mbSingleSaveInit(int teamChar, int mgPack, int storyComDif)
 {
     int i;
@@ -331,6 +335,7 @@ void mbSingleSaveInit(int teamChar, int mgPack, int storyComDif)
     _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 13));
 }
 
+/* Called during board setup to open the voice-input context when a mic is ready. */
 static void SingleMicCreate(void)
 {
     if (HuMCMicGet() == TRUE && HuMCProbe(TRUE) == FALSE && !singleMicF) {
@@ -343,6 +348,7 @@ static void SingleMicCreate(void)
     }
 }
 
+/* Called during board teardown to stop the mic listener and close its context. */
 static void SingleMicKill(void)
 {
     if (singleMicF) {
@@ -358,6 +364,7 @@ static void SingleMicKill(void)
     }
 }
 
+/* Starts voice-response delivery when the board mic context is available. */
 static void SingleMicListenerCreate(void)
 {
     if (!singleMicF || singleListenerCreateF) {
@@ -367,6 +374,7 @@ static void SingleMicListenerCreate(void)
     singleListenerCreateF = TRUE;
 }
 
+/* Stops voice-response delivery when this board no longer needs the mic. */
 static void SingleMicListenerKill(void)
 {
     if (!singleMicF || !singleListenerCreateF) {
@@ -377,6 +385,7 @@ static void SingleMicListenerKill(void)
     }
 }
 
+/* Called for a fresh non-tutorial board to shuffle its special space order. */
 static void SingleMasuOrderInit(void)
 {
     static int masuNum[][3] = {
@@ -389,32 +398,33 @@ static void SingleMasuOrderInit(void)
     int listNum;
     int i;
     int j;
-    int listNo;
-    int no1;
-    int no2;
-    s16 temp;
+    int listIndex;
+    int firstIndex;
+    int secondIndex;
+    s16 savedMasuId;
 
     listNum = mbMasuTypeListGet(1, list);
     listNum += mbMasuTypeListGet(2, &list[listNum]);
     listNum += mbMasuTypeListGet(4, &list[listNum]);
     for (i = 0; i < 100; i++) {
-        no1 = mbRandMod(listNum);
-        no2 = mbRandMod(listNum);
-        temp = list[no1];
-        list[no1] = list[no2];
-        list[no2] = temp;
+        firstIndex = mbRandMod(listNum);
+        secondIndex = mbRandMod(listNum);
+        savedMasuId = list[firstIndex];
+        list[firstIndex] = list[secondIndex];
+        list[secondIndex] = savedMasuId;
     }
     singleMasuOrderNum = 0;
-    listNo = 0;
+    listIndex = 0;
     for (i = 0; i < 3; i++) {
         for (j = 0; j < masuNum[singleBoard][i]; j++) {
             singleMasuOrder[singleMasuOrderNum][1] = masuType[i];
-            singleMasuOrder[singleMasuOrderNum][0] = list[listNo++];
+            singleMasuOrder[singleMasuOrderNum][0] = list[listIndex++];
             singleMasuOrderNum++;
         }
     }
 }
 
+/* Applies the saved randomized special-space types during board setup. */
 static void SingleMasuOrderSet(void)
 {
     int i;
@@ -424,11 +434,13 @@ static void SingleMasuOrderSet(void)
     }
 }
 
+/* Clears the minigame unlocks earned during the current single-player board. */
 void mbSingleMgUnlockInit(void)
 {
     memset(singleMgUnlock, 0, sizeof(singleMgUnlock));
 }
 
+/* Called while saving board progress to merge earned minigames into common unlocks. */
 void mbSingleMgUnlockWrite(void)
 {
     int word;
@@ -443,24 +455,28 @@ void mbSingleMgUnlockWrite(void)
     }
 }
 
+/* Records a minigame unlocked during this single-player board. */
 void mbSingleMgUnlockSet(int mgNo)
 {
     mgNo -= GW_MGNO_BASE;
     singleMgUnlock[mgNo >> 5] |= (1 << (mgNo % 32));
 }
 
+/* Removes a pending single-player minigame unlock, such as a superseded prize. */
 void mbSingleMgUnlockReset(int mgNo)
 {
     mgNo -= GW_MGNO_BASE;
     singleMgUnlock[mgNo >> 5] &= ~(1 << (mgNo % 32));
 }
 
+/* Checks the pending unlock set while single-player board progress is active. */
 BOOL mbSingleMgUnlockGet(int mgNo)
 {
     mgNo -= GW_MGNO_BASE;
     return (singleMgUnlock[mgNo >> 5] & (1 << (mgNo % 32))) != 0;
 }
 
+/* Reports whether any minigame unlock is pending for this board. */
 BOOL mbSingleMgUnlockCheckAny(void)
 {
     int word;
@@ -473,6 +489,7 @@ BOOL mbSingleMgUnlockCheckAny(void)
     return FALSE;
 }
 
+/* Counts pending minigame unlocks for single-player prize and selection logic. */
 int mbSingleMgUnlockNumGet(void)
 {
     int num = 0;
@@ -489,12 +506,14 @@ int mbSingleMgUnlockNumGet(void)
     return num;
 }
 
+/* Clears the rolling list of special spaces visited during this board. */
 static void SingleMasuTypeReset(void)
 {
     masuTypeNum = 0;
     memset(masuType, 0, sizeof(masuType));
 }
 
+/* Creates a board-effect particle model with its render hook and board layer. */
 static inline HU3D_MODELID SingleParticleCreate(int animNo, s16 maxCount,
     MBPARTICLEHOOK hook)
 {
@@ -508,11 +527,13 @@ static inline HU3D_MODELID SingleParticleCreate(int animNo, s16 maxCount,
     return modelId;
 }
 
+/* Returns the particle data attached to one of this board's effect models. */
 static inline MBPARTICLE *SingleParticleDataGet(HU3D_MODELID modelId)
 {
     return (MBPARTICLE *)Hu3DData[modelId].hookData;
 }
 
+/* Called during board setup to create the reusable space and minigame effects. */
 static void SingleEffInit(void)
 {
     MBPARTICLE *particle;
@@ -538,12 +559,14 @@ static void SingleEffInit(void)
         Hu3DModelAttrSet(work->childModelId[1], HU3D_ATTR_DISPOFF);
         mbParticleBlendModeSet((int)work->childModelId[1], MB_PARTICLE_BLEND_ADDCOL);
 
-        work->obj = omAddObjEx(mbObjMan, SINGLE_EFFECT_OBJ_PRIORITY, 0, 0, OM_GRP_NONE, SingleEffOMExec);
+        work->obj =
+            omAddObjEx(mbObjMan, SINGLE_EFFECT_OBJ_PRIORITY, 0, 0, OM_GRP_NONE, SingleEffOMExec);
         work->obj->work[0] = i;
         work->seId = -1;
     }
 }
 
+/* Called during board teardown to hide all active reusable effects. */
 static void SingleEffClose(void)
 {
     int i;
@@ -556,6 +579,7 @@ static void SingleEffClose(void)
     }
 }
 
+/* Starts a space effect at the supplied board position for a visited space type. */
 static s16 SingleEffCreate(HuVecF *pos, int masuType)
 {
     MBPARTICLE *particle;
@@ -569,16 +593,16 @@ static s16 SingleEffCreate(HuVecF *pos, int masuType)
     }
     work->effNo = i + 1;
     work->active = TRUE;
-    work->unk04 = TRUE;
-    work->unk08 = TRUE;
+    work->modelVisible = TRUE;
+    work->particleVisible = TRUE;
     work->masuType = masuType;
     work->pos = *pos;
-    work->unk30 = work->unk34 = work->unk38 = 0.0f;
+    work->rotationX = work->rotationY = work->rotationZ = 0.0f;
     work->scale.x = work->scale.y = work->scale.z = 1.0f;
-    work->unk5C = 1.0f;
-    work->unk58 = 0.0f;
-    work->unk4C = 1.0f;
-    work->unk54 = TRUE;
+    work->spaceAlpha = 1.0f;
+    work->particleBrightness = 0.0f;
+    work->bobScale = 1.0f;
+    work->particlesRepeat = TRUE;
     Hu3DModelAttrReset(work->modelId, HU3D_ATTR_DISPOFF);
     Hu3DModelAttrReset(work->childModelId[0], HU3D_ATTR_DISPOFF);
     particle = SingleParticleDataGet(work->childModelId[0]);
@@ -593,19 +617,21 @@ static s16 SingleEffCreate(HuVecF *pos, int masuType)
     return work->effNo;
 }
 
+/* Hides the particle models when an event finishes using this effect slot. */
 static void SingleEffKill(s16 effNo)
 {
     SINGLE_EFF_DATA *work = &singleEffData[effNo - 1];
     int i;
 
     work->active = 0;
-    work->unk04 = FALSE;
+    work->modelVisible = FALSE;
     Hu3DModelAttrSet(work->modelId, HU3D_ATTR_DISPOFF);
     for (i = 0; i < 2; i++) {
         Hu3DModelAttrSet(work->childModelId[i], HU3D_ATTR_DISPOFF);
     }
 }
 
+/* Called by the particle renderer to draw and bob the active board space. */
 static void SingleEffMgMasuHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx)
 {
     static s16 masuPatNo[] = { -1, 0, 1, 2, 6, 7, 3, 5, 8, 9, 10, 11 };
@@ -633,18 +659,19 @@ static void SingleEffMgMasuHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx
     mtxScaleCat(transform, work->scale.x, work->scale.y, work->scale.z);
     mtxTransCat(transform, work->pos.x, work->pos.y, work->pos.z);
     PSMTXConcat(mtx, transform, mtx);
-    data->rot = *(HuVecF *)&work->unk30;
+    data->rot = *(HuVecF *)&work->rotationX;
     data->animNo = masuPatNo[work->masuType];
-    data->color.a = (u8)(255.0f * work->unk5C);
+    data->color.a = (u8)(255.0f * work->spaceAlpha);
     particle->tevColor[0].r = particle->tevColor[0].g =
-        particle->tevColor[0].b = (u8)(255.0f * work->unk58);
+        particle->tevColor[0].b = (u8)(255.0f * work->particleBrightness);
     if (!Hu3DPauseF) {
-        data->pos.y = work->unk4C
+        data->pos.y = work->bobScale
             * (100.0f * (0.1f * mbSinDeg(4.0f * data->time)));
         data->time++;
     }
 }
 
+/* Called each particle frame to emit and fade the minigame space sparkle. */
 static void SingleEffMgHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx)
 {
     SINGLE_EFF_DATA *work;
@@ -690,7 +717,7 @@ static void SingleEffMgHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx)
             data->weight += 10.0f;
             data->activeF--;
             if (data->activeF == 0) {
-                if (work->unk54) {
+                if (work->particlesRepeat) {
                     data->pos.x = work->pos.x + (work->scale.x * (50.0f - (100.0f * frandf())));
                     data->pos.y = work->pos.y + (work->scale.y * (50.0f - (100.0f * frandf())));
                     data->pos.z = work->pos.z + (work->scale.z * (50.0f - (100.0f * frandf())));
@@ -708,10 +735,11 @@ static void SingleEffMgHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx)
     if (active == 0) {
         particle->mode = 0;
         Hu3DModelAttrSet(particle->modelId, HU3D_ATTR_DISPOFF);
-        work->unk08 = FALSE;
+        work->particleVisible = FALSE;
     }
 }
 
+/* Called each particle frame to animate the burst used when a space effect ends. */
 static void SingleEffMgExplodeHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx)
 {
     MBPARTICLEDATA *data;
@@ -764,6 +792,7 @@ static void SingleEffMgExplodeHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx 
     }
 }
 
+/* Called each particle frame to animate the capsule reward's flying fragments. */
 static void SingleEffMgCapsuleHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx)
 {
     MBPARTICLEDATA *data;
@@ -821,6 +850,7 @@ static void SingleEffMgCapsuleHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx 
     }
 }
 
+/* Called each particle frame to animate the rising fire around the rare space. */
 static void SingleEffMgFireHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx)
 {
     HuVecF center;
@@ -943,6 +973,7 @@ static void SingleEffMgFireHook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx
     }
 }
 
+/* Called each particle frame to animate the second layer of rare-space fire. */
 static void SingleEffMgFire2Hook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mtx)
 {
     HuVecF center;
@@ -1058,6 +1089,7 @@ static void SingleEffMgFire2Hook(HU3D_MODEL *model, MBPARTICLE *particle, Mtx mt
     }
 }
 
+/* Object-manager callback that advances the active space effect each frame. */
 static void SingleEffOMExec(OMOBJ *obj)
 {
     SINGLE_EFF_DATA *work;
@@ -1075,9 +1107,9 @@ static void SingleEffOMExec(OMOBJ *obj)
     if (work->active == 0) {
         return;
     }
-    if (work->unk04) {
+    if (work->modelVisible) {
         Hu3DModelAttrReset(work->modelId, HU3D_ATTR_DISPOFF);
-        if (work->unk08) {
+        if (work->particleVisible) {
             Hu3DModelAttrReset(work->childModelId[0], HU3D_ATTR_DISPOFF);
         }
     } else {
@@ -1093,7 +1125,7 @@ static void SingleEffOMExec(OMOBJ *obj)
         phase = (float)(work->timer++) / (float)work->timerMax;
         work->scale.y = phase;
         work->scale.x = phase;
-        work->unk4C = phase;
+        work->bobScale = phase;
         work->pos.y = work->targetPos.y
             + (100.0f * (2.0f * mbSinDeg(90.0f * phase)));
         if (work->timer > work->timerMax) {
@@ -1104,9 +1136,9 @@ static void SingleEffOMExec(OMOBJ *obj)
     case 2:
         phase = (float)(work->timer++) / (float)work->timerMax;
         reverse = 1.0f - phase;
-        work->unk48 += 0.2f;
+        work->rotationSpeed += 0.2f;
         work->scale.x = work->scale.y = mbCosDeg(90.0f * phase);
-        work->unk4C = reverse;
+        work->bobScale = reverse;
         work->pos.y = work->targetPos.y
             + (100.0f * (2.0f * mbSinDeg(90.0f * reverse)));
         if (work->timer > work->timerMax) {
@@ -1116,9 +1148,9 @@ static void SingleEffOMExec(OMOBJ *obj)
 
     case 3:
         phase = (float)(work->timer++) / (float)work->timerMax;
-        work->unk48 += 0.2f;
-        work->unk58 = phase;
-        work->unk4C = 1.0f - phase;
+        work->rotationSpeed += 0.2f;
+        work->particleBrightness = phase;
+        work->bobScale = 1.0f - phase;
         mbPos3Dto2D(&work->targetPos, &pos2d);
         pos2d.x = 114.0f;
         pos2d.y = 80.0f;
@@ -1130,7 +1162,7 @@ static void SingleEffOMExec(OMOBJ *obj)
         work->pos.z = work->targetPos.z
             + (phase * (pos3d.z - work->targetPos.z));
         if ((u32)work->timer == work->timerMax - 12) {
-            work->unk54 = FALSE;
+            work->particlesRepeat = FALSE;
         }
         if (work->timer > work->timerMax) {
             SingleEffMgStop(work->effNo, 0);
@@ -1141,7 +1173,7 @@ static void SingleEffOMExec(OMOBJ *obj)
         phase = (float)(work->timer++) / (float)work->timerMax;
         work->scale.x = work->scale.y =
             1.0f + (4.0f * mbSinDeg(90.0f * phase));
-        work->unk5C = 1.0f - phase;
+        work->spaceAlpha = 1.0f - phase;
         if (work->timer > work->timerMax) {
             work->state = 0;
             Hu3DModelAttrSet(work->modelId, HU3D_ATTR_DISPOFF);
@@ -1154,11 +1186,11 @@ static void SingleEffOMExec(OMOBJ *obj)
         work->scale.x = work->scale.y =
             1.0f + (1.5f * mbSinDeg(90.0f * phase)) +
             (0.5f * mbSinDeg(1440.0f * phase));
-        work->unk4C = 1.0f - phase;
-        work->unk48 += 0.4f;
-        work->unk58 = phase;
+        work->bobScale = 1.0f - phase;
+        work->rotationSpeed += 0.4f;
+        work->particleBrightness = phase;
         if ((u32)work->timer == work->timerMax - 12) {
-            work->unk54 = FALSE;
+            work->particlesRepeat = FALSE;
         }
         if (work->timer > work->timerMax) {
             SingleEffMgStop(work->effNo, 1);
@@ -1170,9 +1202,10 @@ static void SingleEffOMExec(OMOBJ *obj)
         break;
     }
 
-    work->unk34 += work->unk48;
+    work->rotationY += work->rotationSpeed;
 }
 
+/* Begins the ending burst after the minigame or prize space effect completes. */
 static void SingleEffMgStop(s16 effNo, int type)
 {
     SINGLE_EFF_DATA *work;
@@ -1180,8 +1213,8 @@ static void SingleEffMgStop(s16 effNo, int type)
 
     work = &singleEffData[effNo - 1];
     work->state = 4;
-    work->unk34 = 0.0f;
-    work->unk48 = 0.0f;
+    work->rotationY = 0.0f;
+    work->rotationSpeed = 0.0f;
     work->timer = 0;
     work->timerMax = 30;
     Hu3DModelAttrReset(work->childModelId[1], HU3D_ATTR_DISPOFF);
@@ -1201,6 +1234,7 @@ static void SingleEffMgStop(s16 effNo, int type)
     }
 }
 
+/* Called when a player lands on a minigame space to select its board event. */
 void mbev_SingleMg(int playerNo, s16 masuId)
 {
     int masuType;
@@ -1232,6 +1266,7 @@ void mbev_SingleMg(int playerNo, s16 masuId)
     }
 }
 
+/* Called after a minigame to run its single-player result event and clear flags. */
 int mbev_SingleMgEnd(int playerNo)
 {
     int mgNo = GwSystem.mgNo;
@@ -1254,6 +1289,7 @@ int mbev_SingleMgEnd(int playerNo)
     return TRUE;
 }
 
+/* Runs the ordinary special-space animation before launching its minigame. */
 static void ev_SingleMg(int playerNo, s16 masuId)
 {
     HuVecF effectPos, playerPos;
@@ -1273,8 +1309,8 @@ static void ev_SingleMg(int playerNo, s16 masuId)
     effect->pos = effectPos;
     effect->targetPos = effect->pos;
     effect->scale.x = effect->scale.y = 0.0f;
-    effect->unk4C = 0.0f;
-    effect->unk48 = 4.0f;
+    effect->bobScale = 0.0f;
+    effect->rotationSpeed = 4.0f;
     effect->timer = 0;
     effect->timerMax = 60;
     if (masuType == 7) {
@@ -1312,7 +1348,7 @@ static void ev_SingleMg(int playerNo, s16 masuId)
     }
     endEffect = &singleEffData[effNo - 1];
     endEffect->active = 0;
-    endEffect->unk04 = FALSE;
+    endEffect->modelVisible = FALSE;
     Hu3DModelAttrSet(endEffect->modelId, HU3D_ATTR_DISPOFF);
     for (childIndex = 0; childIndex < 2; ++childIndex) {
         Hu3DModelAttrSet(endEffect->childModelId[childIndex], HU3D_ATTR_DISPOFF);
@@ -1320,6 +1356,7 @@ static void ev_SingleMg(int playerNo, s16 masuId)
     mbAudFXStop(seNo);
 }
 
+/* Presents the minigame result, unlocks and awards its single-player prize. */
 static void ev_SingleMgEnd(int playerNo)
 {
     HuVecF effectPos;
@@ -1365,8 +1402,8 @@ static void ev_SingleMgEnd(int playerNo)
         initialEffect = &singleEffData[effNo - 1];
         initialWork = initialEffect;
         initialWork->scale.x = initialWork->scale.y = initialWork->scale.z = 1.0f;
-        initialWork->unk48 = 4.0f;
-        initialWork->unk4C = 1.0f;
+        initialWork->rotationSpeed = 4.0f;
+        initialWork->bobScale = 1.0f;
     }
     mbMusBoardPlay();
     mbWipeFadeIn();
@@ -1479,7 +1516,7 @@ static void ev_SingleMgEnd(int playerNo)
         int i;
 
         effect->active = 0;
-        effect->unk04 = FALSE;
+        effect->modelVisible = FALSE;
         Hu3DModelAttrSet(effect->modelId, HU3D_ATTR_DISPOFF);
         for (i = 0; i < 2; i++) {
             Hu3DModelAttrSet(effect->childModelId[i], HU3D_ATTR_DISPOFF);
@@ -1487,6 +1524,7 @@ static void ev_SingleMgEnd(int playerNo)
     }
 }
 
+/* Checks saved and current-board unlocks when building eligible minigame lists. */
 static inline BOOL SingleMgUnlockedCheck(int unlockMgNo)
 {
     if (GWMgUnlockGet(unlockMgNo)
@@ -1497,6 +1535,7 @@ static inline BOOL SingleMgUnlockedCheck(int unlockMgNo)
     }
 }
 
+/* Builds the list of eligible, still-locked minigames for board event selection. */
 static inline int SingleMgListGet(int mgType, u8 *list)
 {
     int mgNo;
@@ -1522,6 +1561,7 @@ static inline int SingleMgListGet(int mgType, u8 *list)
     return listNum;
 }
 
+/* Runs the rare minigame space reveal and awards its unlock or coin prize. */
 static void ev_SingleRareMg(int playerNo, s16 effNo)
 {
     static const HuVecF cameraOfs = { 0.0f, 100.0f, 0.0f };
@@ -1570,7 +1610,7 @@ static void ev_SingleRareMg(int playerNo, s16 effNo)
                     work->state = 2;
                     work->pos = effectPos;
                     work->targetPos = work->pos;
-                    work->unk54 = FALSE;
+                    work->particlesRepeat = FALSE;
                     work->timer = 0;
                     work->timerMax = 60;
                 }
@@ -1682,6 +1722,7 @@ static void ev_SingleRareMg(int playerNo, s16 effNo)
     mbSingleReturn();
 }
 
+/* Lists minigames unlocked during this board for Koopa's capsule choice. */
 static inline int SingleMgUnlockListGet(u8 *list)
 {
     int word;
@@ -1702,9 +1743,7 @@ static inline int SingleMgUnlockListGet(u8 *list)
     return listNum;
 }
 
-/* Approved compatibility primitive, as used by CapSpecial: one fabs
- * instruction with a compiler-selected register and a portable fallback. */
-#ifdef __MWERKS__
+/* Returns the positive magnitude used for the capsule sprite brightness. */
 static inline float SingleAbsFloat(register float value)
 {
     asm {
@@ -1712,13 +1751,8 @@ static inline float SingleAbsFloat(register float value)
     }
     return value;
 }
-#else
-static inline float SingleAbsFloat(float value)
-{
-    return (float)fabs((double)value);
-}
-#endif
 
+/* Runs the Koopa space conversation, capsule gift, and possible minigame choice. */
 static void ev_SingleKoopaMg(int playerNo, s16 masuId)
 {
     static int guideMot[] = {
@@ -2053,6 +2087,7 @@ int choice;
     }
 }
 
+/* Called after Koopa's minigame to close his dialogue and restore board music. */
 static void ev_SingleKoopaMgSkip(MBMODELID modelId)
 {
     s16 winId;
@@ -2067,8 +2102,6 @@ static void ev_SingleKoopaMgSkip(MBMODELID modelId)
     mbMusBoardPlay();
 }
 
-
-
 static inline s16 SingleMgCoinGet(int playerNo)
 {
     return GwPlayer[playerNo].mgCoin;
@@ -2079,18 +2112,21 @@ static inline s16 SingleMgCoinBonusGet(int playerNo)
     return GwPlayer[playerNo].mgCoinBonus;
 }
 
+/* Reports whether the effect slot is in a nonzero animation state. */
 static inline BOOL SingleEffBusyCheck(s16 effNo)
 {
     SINGLE_EFF_DATA *work = &singleEffData[effNo - 1];
     return work->state != 0;
 }
 
+/* Adds a visited space type to the five-entry rolling history. */
 static inline void SingleMasuTypeAdd(s16 type)
 {
     masuType[masuTypeNum++] = (u8)type;
     masuTypeNum %= 5;
 }
 
+/* Starts the camera-layer transition and sound for a minigame prize effect. */
 static inline void SingleEffPrizeStart(s16 effNo)
 {
     SINGLE_EFF_DATA *work;
@@ -2110,24 +2146,28 @@ static inline void SingleEffPrizeStart(s16 effNo)
     mbAudFXPlay(MSM_SE_SBRD_02);
 }
 
+/* Adds a minigame to pending unlocks and sets its single-player unlock flag. */
 static inline void SingleMgUnlock(int mgNo)
 {
     mbSingleMgUnlockSet(mgNo);
     GWSingleMgFlagSet(mgNo);
 }
 
+/* Sets whether the board-space model for this effect slot is visible. */
 static inline void SingleEffUnk04Set(s16 effNo, BOOL value)
 {
     SINGLE_EFF_DATA *work = &singleEffData[effNo - 1];
-    work->unk04 = value;
+    work->modelVisible = value;
 }
 
+/* Copies the effect slot position into the caller's vector. */
 static inline void SingleEffPosGet(s16 effNo, HuVecF *pos)
 {
     SINGLE_EFF_DATA *work = &singleEffData[effNo - 1];
     *pos = work->pos;
 }
 
+/* Presents the Koopa minigame result and applies its reward or penalty. */
 static void ev_SingleKoopaMgEnd(int playerNo)
 {
     static int guideMot[] = {
@@ -2515,6 +2555,7 @@ static void ev_SingleKoopaMgEnd(int playerNo)
     }
     HuDataDirClose(DATA_capsulechar1);
 }
+/* Plays the result voice variant that matches the mini-Koopa character. */
 static inline int SingleMKoopaSePlay(int seId)
 {
     int i;
@@ -2546,6 +2587,7 @@ static inline int SingleMKoopaSePlay(int seId)
 static HuVecF viewOfs750 = { 0.0f, 100.0f, 0.0f };
 static HuVecF viewOfs825 = { 0.0f, 100.0f, 0.0f };
 
+/* Checks whether every duel minigame is unlocked before mini-Koopa offers one. */
 static inline BOOL SingleMKoopaMgLockedCheck(void)
 {
     int i;
@@ -2560,6 +2602,7 @@ static inline BOOL SingleMKoopaMgLockedCheck(void)
     return TRUE;
 }
 
+/* Runs the mini-Koopa space event and the minigame selected by its dialogue. */
 static void ev_SingleMKoopaMg(int playerNo, s16 masuId)
 {
     HuVecF masuPos;
@@ -2678,6 +2721,7 @@ opponentPlayerNo = miniKoopaType + 1;
     GwPlayer[opponentPlayerNo].masuId = 0;
 }
 
+/* Presents the mini-Koopa minigame result and resolves its coin outcome. */
 static void ev_SingleMKoopaMgEnd(int playerNo)
 {
     HuVecF effectPos;
@@ -2868,6 +2912,7 @@ cleanup:
     }
 }
 
+/* Resets single-player board records when a new, non-tutorial save begins. */
 static void SingleMgSaveInit(void)
 {
     SINGLE_SAVE_WORK *saveWork = &singleSaveWork;
@@ -2880,6 +2925,7 @@ static void SingleMgSaveInit(void)
         memset(saveWork, 0, sizeof(*saveWork));
     }
 }
+/* Clears one single-player prize flag when a higher-tier prize replaces it. */
 void mbSinglePrizeFlagReset(int flag)
 {
     if (flag <= 63) {
@@ -2888,6 +2934,7 @@ void mbSinglePrizeFlagReset(int flag)
     }
 }
 
+/* Board callback that records play, mic, space, and prize progress by mode. */
 int mbSingleCall(int mode, int arg)
 {
     GW_PLAYER_COM_DIF storyComDif;
@@ -3110,6 +3157,7 @@ int mbSingleCall(int mode, int arg)
     return 0;
 }
 
+/* Microphone callback that stores a valid spoken dice result for the current turn. */
 static void SingleMicListener(u16 *response)
 {
     SINGLE_SAVE_WORK *saveWork = &singleSaveWork;
@@ -3125,6 +3173,7 @@ static void SingleMicListener(u16 *response)
     }
 }
 
+/* Called before saving to award prizes from accumulated single-player board stats. */
 static void SingleFlagFlush(void)
 {
     int playerNo;
@@ -3301,6 +3350,7 @@ static void SingleFlagFlush(void)
     memcpy(GwCommon.singleBoardFlag, boardFlag, sizeof(boardFlag));
 }
 
+/* Saves the minigame record table before a single-player board can change it. */
 static void SingleMgRecordBackup(void)
 {
     int i;
@@ -3310,6 +3360,7 @@ static void SingleMgRecordBackup(void)
     }
 }
 
+/* Restores records when the player cancels the current board. */
 static void SingleMgRecordRestore(void)
 {
     int i;
@@ -3319,6 +3370,7 @@ static void SingleMgRecordRestore(void)
     }
 }
 
+/* Snapshots records before a minigame so its result can be checked for a record. */
 static void SingleMgRecordPrizeInit(void)
 {
     int i;
@@ -3328,6 +3380,7 @@ static void SingleMgRecordPrizeInit(void)
     }
 }
 
+/* Awards the single-player record prize if the latest result changed a record. */
 static void SingleMgRecordPrizeSet(void)
 {
     int i;
@@ -3343,6 +3396,7 @@ static void SingleMgRecordPrizeSet(void)
     }
 }
 
+/* Called at the final five turns to explain the single-player board rules. */
 static void SingleLast5(void)
 {
     static u32 mesTbl[] = {
@@ -3381,6 +3435,7 @@ static void SingleLast5(void)
     mbGuideEnd(guideObj, TRUE);
 }
 
+/* Called by a board event script when the single-player board should end. */
 void mbSingleReturn(void)
 {
     singleEndF = TRUE;
@@ -3388,6 +3443,7 @@ void mbSingleReturn(void)
     HuPrcSleep(-1);
 }
 
+/* Called when leaving the board should discard its pending single-player save. */
 void mbSingleReturnWrite(void)
 {
     singleCancelF = TRUE;
@@ -3396,6 +3452,7 @@ void mbSingleReturnWrite(void)
     HuPrcSleep(-1);
 }
 
+/* Called by the board event flow after the final game-end message. */
 void mbSingleGameEnd(void)
 {
     int playerNo = GwSystem.turnPlayerNo;
@@ -3426,6 +3483,7 @@ void mbSingleGameEnd(void)
     HuPrcSleep(-1);
 }
 
+/* Called during board close to commit, clear, or discard single-player progress. */
 void mbSingleSaveFlush(int value)
 {
     int playerNo = GwSystem.turnPlayerNo;
@@ -3452,6 +3510,7 @@ void mbSingleSaveFlush(int value)
     }
 }
 
+/* Returns the current player's steps to the next type-7 space. */
 int mbSingleStepGet(void)
 {
     s16 masuId = GwPlayer[GwSystem.turnPlayerNo].masuId;
