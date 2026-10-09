@@ -1,3 +1,4 @@
+/* Board coin models, particles, and the floating coin-count display. */
 #include "dolphin/math.h"
 
 #include "game/board/audio.h"
@@ -16,6 +17,7 @@
 #include "game/process.h"
 #include "game/sprite.h"
 
+#include "msm_se.h"
 #include "string.h"
 
 #define COIN_OBJ_BANK_MAX 64
@@ -23,29 +25,23 @@
 #define COIN_EFF_MAX 64
 #define COIN_MODEL_MAX 14
 
-#define COIN_OBJ_ID_MASK ((1 << 12) - 1)
-#define COIN_OBJ_ID_BASE (1 << 14)
+#define COIN_OBJ_ID_MASK 0xFFF
+#define COIN_OBJ_ID_BASE 16384
 #define COIN_OBJ_SLOT_MASK (COIN_OBJ_BANK_SIZE - 1)
 
 #define COIN_OBJ_ATTR_USED (1 << 0)
 #define COIN_OBJ_ATTR_DISP (1 << 20)
 #define COIN_OBJ_KIND_SHIFT 16
+#define COIN_OBJ_KIND_ALTERNATE (1 << COIN_OBJ_KIND_SHIFT)
 #define COIN_OBJ_KIND_MASK (15 << COIN_OBJ_KIND_SHIFT)
-#define COIN_OBJ_KIND_FIELD_MASK (~((1 << COIN_OBJ_KIND_SHIFT) - 1))
+#define COIN_OBJ_LAYER_MASK 0xFFFF
+#define COIN_OBJ_KIND_FIELD_MASK (~COIN_OBJ_LAYER_MASK)
 
 #define COINDISP_MODE_ON 0
 #define COINDISP_MODE_MAIN 1
 #define COINDISP_MODE_NONE 2
 #define COINDISP_MODE_OFF 3
 #define COINDISP_MODEL_MAX 5
-
-enum {
-    COIN_SE_GAIN = 7,
-    COIN_SE_LOSS = 14,
-    COIN_SE_CHANGE_END = 15,
-    COIN_SE_DISPLAY_GAIN = 1127,
-    COIN_SE_DISPLAY_LOSS = 1128,
-};
 
 enum {
     COIN_DATA_MODEL_RED = DATANUM(DATA_board, 3),
@@ -66,40 +62,41 @@ enum {
 };
 
 typedef struct MbCoinObjBank_s {
-    int count;
-    u32 attr[COIN_OBJ_BANK_SIZE];
-    s8 motNo[COIN_OBJ_BANK_SIZE];
-    MBCOINOBJ obj[COIN_OBJ_BANK_SIZE];
+    int count; /* Number of allocated coin objects in this bank. */
+    u32 attr[COIN_OBJ_BANK_SIZE]; /* Allocation, visibility, camera, and model-kind bits per
+                                   * slot. */
+    s8 motNo[COIN_OBJ_BANK_SIZE]; /* Motion sample selected for each numbered model. */
+    MBCOINOBJ obj[COIN_OBJ_BANK_SIZE]; /* Transform and alpha state for each slot. */
 } MBCOINOBJBANK;
 
 typedef struct MbCoinObjData_s {
-    int hookModelId[3];
-    s16 modelId[14];
-    HSF_OBJECT *modelObj[14];
-    MBCOINOBJBANK *bank[COIN_OBJ_BANK_MAX];
+    int hookModelId[3]; /* Draw hooks for the three board cameras. */
+    s16 modelId[14]; /* Coin, red coin, digits, and sign model handles. */
+    HSF_OBJECT *modelObj[14]; /* Model object roots drawn for each model handle. */
+    MBCOINOBJBANK *bank[COIN_OBJ_BANK_MAX]; /* Allocated object banks, each with 64 slots. */
 } MBCOINOBJDATA;
 
 typedef struct CoinDispWork_s {
-    unsigned killF : 1;
-    unsigned sign : 1;
-    unsigned mode : 3;
-    u8 modelNum;
-    s16 no;
-    u16 delay;
-    u16 time;
-    u16 maxTime;
+    unsigned killF : 1; /* Set when the display object should be removed. */
+    unsigned sign : 1; /* Nonzero for a loss display, which uses a minus sign. */
+    unsigned mode : 3; /* Current appear, spread, or exit animation mode. */
+    u8 modelNum; /* Number of coin/sign/digit models in this display. */
+    s16 no; /* Slot in coinDispOMObj for this display. */
+    u16 delay; /* Frames to wait before advancing the animation. */
+    u16 time; /* Appearance angle in degrees, then elapsed frames in the spread and exit modes. */
+    u16 maxTime; /* Frame duration used by the spread and exit modes. */
 } COINDISPWORK;
 
 typedef struct coinDispModel_s {
-    HuVecF pos;
-    HuVecF scale;
-    float rotY;
+    HuVecF pos; /* Model offset from the display object's position. */
+    HuVecF scale; /* Per-axis model scale before perspective adjustment. */
+    float rotY; /* Model yaw in degrees. */
 } COINDISPMODEL;
 
 typedef struct CoinEffData_s {
-    HuVecF pos;
-    s16 modelId;
-    s16 count;
+    HuVecF pos; /* World position of the coin sparkle effect. */
+    s16 modelId; /* Particle model handle, or zero when no effect is allocated. */
+    s16 count; /* Number of particles still alive in this effect. */
 } COINEFFDATA;
 
 extern void mbMtxRotYDeg(Mtx mtx, float angle);
@@ -128,52 +125,23 @@ static void CoinAddAllProc(int *addNum, BOOL fastF, int *result);
 static OMOBJ *coinDispOMObj[GW_PLAYER_MAX + 1] = {};
 
 static int numberFileTbl[] = {
-    COIN_DATA_NUMBER_ZERO,
-    COIN_DATA_NUMBER_ONE,
-    COIN_DATA_NUMBER_TWO,
-    COIN_DATA_NUMBER_THREE,
-    COIN_DATA_NUMBER_FOUR,
-    COIN_DATA_NUMBER_FIVE,
-    COIN_DATA_NUMBER_SIX,
-    COIN_DATA_NUMBER_SEVEN,
-    COIN_DATA_NUMBER_EIGHT,
-    COIN_DATA_NUMBER_NINE,
-    COIN_DATA_PLUS,
-    COIN_DATA_PLUS_MINUS,
+    COIN_DATA_NUMBER_ZERO, COIN_DATA_NUMBER_ONE, COIN_DATA_NUMBER_TWO, COIN_DATA_NUMBER_THREE,
+    COIN_DATA_NUMBER_FOUR, COIN_DATA_NUMBER_FIVE, COIN_DATA_NUMBER_SIX, COIN_DATA_NUMBER_SEVEN,
+    COIN_DATA_NUMBER_EIGHT, COIN_DATA_NUMBER_NINE, COIN_DATA_PLUS, COIN_DATA_PLUS_MINUS,
 };
 
 static int coinObjFileTbl[] = {
-    COIN_DATA_MODEL_RED,
-    COIN_DATA_MODEL,
-    COIN_DATA_NUMBER_ZERO,
-    COIN_DATA_NUMBER_ONE,
-    COIN_DATA_NUMBER_TWO,
-    COIN_DATA_NUMBER_THREE,
-    COIN_DATA_NUMBER_FOUR,
-    COIN_DATA_NUMBER_FIVE,
-    COIN_DATA_NUMBER_SIX,
-    COIN_DATA_NUMBER_SEVEN,
-    COIN_DATA_NUMBER_EIGHT,
-    COIN_DATA_NUMBER_NINE,
-    COIN_DATA_PLUS,
-    COIN_DATA_PLUS_MINUS,
+    COIN_DATA_MODEL_RED, COIN_DATA_MODEL, COIN_DATA_NUMBER_ZERO, COIN_DATA_NUMBER_ONE,
+    COIN_DATA_NUMBER_TWO, COIN_DATA_NUMBER_THREE, COIN_DATA_NUMBER_FOUR, COIN_DATA_NUMBER_FIVE,
+    COIN_DATA_NUMBER_SIX, COIN_DATA_NUMBER_SEVEN, COIN_DATA_NUMBER_EIGHT, COIN_DATA_NUMBER_NINE,
+    COIN_DATA_PLUS, COIN_DATA_PLUS_MINUS,
 };
 
 static char *coinObjNameTbl[] = {
-    "Rcoin-coin",
-    "coin",
-    "num0-no_0",
-    "num1-no_1",
-    "num2-no_2",
-    "num3-no_3",
-    "num4-no_4",
-    "num5-no_5",
-    "num6-no_6",
-    "num7-no_7",
-    "num8-no_8",
-    "num9-no_9",
-    "plus",
-    "plus-minus",
+    "Rcoin-coin", "coin", "num0-no_0", "num1-no_1",
+    "num2-no_2", "num3-no_3", "num4-no_4", "num5-no_5",
+    "num6-no_6", "num7-no_7", "num8-no_8", "num9-no_9",
+    "plus", "plus-minus",
 };
 
 static GXColor coinEffColorTbl[] = {
@@ -204,7 +172,7 @@ static HUPROCESS *coinMdlProc;
 static int coin2MdlId;
 static int coin1MdlId;
 
-/* Same native HuVecF copy primitive used by the recovered Board Dice code. */
+/* Copy a three-component position without changing its floating-point values. */
 static inline void CoinVecCopy(register const HuVecF *src, register HuVecF *dst)
 {
 #ifdef __MWERKS__
@@ -223,7 +191,7 @@ static inline void CoinVecCopy(register const HuVecF *src, register HuVecF *dst)
 }
 
 #ifdef __MWERKS__
-/* Bind each input once, in matrix-then-position order, before the native kernel. */
+/* Write a world position into the translation column of a model matrix. */
 #define CoinMtxTranslationSet(matrix, position) do { \
     register MtxPtr coinMatrixPtr = (matrix); \
     register const HuVecF *coinPositionPtr = (position); \
@@ -237,6 +205,7 @@ static inline void CoinVecCopy(register const HuVecF *src, register HuVecF *dst)
     } \
 } while (0)
 #else
+/* Write a world position into the translation column of a model matrix. */
 static inline void CoinMtxTranslationSet(Mtx mtx, const HuVecF *pos)
 {
     float x = pos->x;
@@ -248,27 +217,31 @@ static inline void CoinMtxTranslationSet(Mtx mtx, const HuVecF *pos)
 }
 #endif
 
+/* Board startup loads the coin models, installs draw hooks, and starts resource maintenance. */
 void mbCoinInit(void)
 {
-    s16 modelId1;
-    s16 modelId2;
+    s16 redCoinModelId;
+    s16 coinModelId;
 
+    /* Board startup calls this before coin models, draw hooks, or effects are used. */
     memset(coinDispOMObj, 0, sizeof(coinDispOMObj));
     memset(coinEffData, 0, sizeof(coinEffData));
-    modelId1 = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL_RED), NULL, TRUE);
-    coin1MdlId = modelId1;
-    modelId2 = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL), NULL, TRUE);
-    coin2MdlId = modelId2;
+    redCoinModelId = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL_RED), NULL, TRUE);
+    coin1MdlId = redCoinModelId;
+    coinModelId = mbObjCreate(mbBoardDataNumGet(COIN_DATA_MODEL), NULL, TRUE);
+    coin2MdlId = coinModelId;
     mbObjDispSet(coin1MdlId, FALSE);
     mbObjDispSet(coin2MdlId, FALSE);
     CoinInit();
     coinMdlProc = HuPrcChildCreate(CoinMain, 8206, 8192, 0, mbMainProc);
 }
 
+/* Board shutdown calls this after board objects stop using coin models and effects. */
 void mbCoinClose(void)
 {
     int i;
 
+    /* Board shutdown calls this to release coin models, effects, and the update process. */
     CoinClose();
     for (i = 0; i < COIN_EFF_MAX; i++) {
         if (coinEffData[i].modelId > 0) {
@@ -287,33 +260,38 @@ void mbCoinClose(void)
     HuPrcKill(coinMdlProc);
 }
 
+/* Turn a temporary board object into a coin sparkle at the object's current position. */
 void mbCoinEffObjCreate(int modelId)
 {
     HuVecF pos;
 
+    /* Capsule/event callers transfer an object position into a sparkle, then discard the object. */
     mbObjPosGet(modelId, &pos);
     mbCoinEffCreate(&pos);
     mbObjKill(modelId);
 }
 
+/* Load the shared coin, sign, and digit models and register camera draw hooks. */
 static void CoinInit(void)
 {
-    int i;
+    int modelIndex;
     int modelId;
 
-    for (i = 0; i < COIN_MODEL_MAX; i++) {
-        modelId = mbObjCreate(mbBoardDataNumGet(coinObjFileTbl[i]), NULL, FALSE);
-        coinObjData.modelId[i] = modelId;
-        coinObjData.modelObj[i] = Hu3DModelObjPtrGet(mbObjModelIDGet(modelId), coinObjNameTbl[i]);
+    /* Load the shared coin and numeral models, then install hooks for each board camera. */
+    for (modelIndex = 0; modelIndex < COIN_MODEL_MAX; modelIndex++) {
+        modelId = mbObjCreate(mbBoardDataNumGet(coinObjFileTbl[modelIndex]), NULL, FALSE);
+        coinObjData.modelId[modelIndex] = modelId;
+        coinObjData.modelObj[modelIndex] =
+            Hu3DModelObjPtrGet(mbObjModelIDGet(modelId), coinObjNameTbl[modelIndex]);
         mbObjDispSet(modelId, FALSE);
-        if (i >= 2) {
+        if (modelIndex >= 2) {
             mbObjMotionSet(modelId, 0, HU3D_MOTATTR_NONE);
             mbObjMotionTimeSet(modelId, 0.5f);
             mbObjMotionSpeedSet(modelId, 0.0f);
         }
     }
-    for (i = 0; i < COIN_OBJ_BANK_MAX; i++) {
-        coinObjData.bank[i] = NULL;
+    for (modelIndex = 0; modelIndex < COIN_OBJ_BANK_MAX; modelIndex++) {
+        coinObjData.bank[modelIndex] = NULL;
     }
     coinObjData.hookModelId[0] = Hu3DHookFuncCreate(CoinDraw);
     Hu3DModelCameraSet(coinObjData.hookModelId[0], HU3D_CAM0);
@@ -326,30 +304,33 @@ static void CoinInit(void)
     Hu3DModelLayerSet(coinObjData.hookModelId[2], 0);
 }
 
+/* Remove the camera hooks, release object banks, and unload the shared models. */
 static void CoinClose(void)
 {
     MBCOINOBJBANK *bankP;
-    int i;
+    int bankIndex;
 
+    /* Remove camera hooks, free allocated banks, and release the models loaded by CoinInit. */
     Hu3DModelKill(coinObjData.hookModelId[0]);
     coinObjData.hookModelId[0] = -1;
     Hu3DModelKill(coinObjData.hookModelId[1]);
     coinObjData.hookModelId[1] = -1;
     Hu3DModelKill(coinObjData.hookModelId[2]);
     coinObjData.hookModelId[2] = -1;
-    for (i = 0; i < COIN_OBJ_BANK_MAX; i++) {
-        if (coinObjData.bank[i] != NULL) {
-            bankP = coinObjData.bank[i];
+    for (bankIndex = 0; bankIndex < COIN_OBJ_BANK_MAX; bankIndex++) {
+        if (coinObjData.bank[bankIndex] != NULL) {
+            bankP = coinObjData.bank[bankIndex];
             HuMemDirectFree(bankP);
-            coinObjData.bank[i] = NULL;
+            coinObjData.bank[bankIndex] = NULL;
         }
     }
-    for (i = 0; i < COIN_MODEL_MAX; i++) {
-        mbObjKill(coinObjData.modelId[i]);
-        coinObjData.modelId[i] = 0;
+    for (bankIndex = 0; bankIndex < COIN_MODEL_MAX; bankIndex++) {
+        mbObjKill(coinObjData.modelId[bankIndex]);
+        coinObjData.modelId[bankIndex] = 0;
     }
 }
 
+/* Draw each visible coin object for the camera whose hook invoked this callback. */
 static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
 {
     Mtx mtx;
@@ -358,33 +339,34 @@ static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
     int motNo[COIN_MODEL_MAX];
     int modelId[COIN_MODEL_MAX];
     HU3D_MODEL *modelData[COIN_MODEL_MAX];
-    int bankNo;
+    int bankIndex;
     MBCOINOBJBANK **bankPP;
     int *attrP;
-    int modelNo;
-    int objNo;
+    int modelIndex;
+    int objectIndex;
     int alphaVal;
     int motion;
     int cameraBit = (u16)modelP->cameraBit;
     float motTimeTbl[] = { 0.5f, 1.5f, 2.5f };
 
+    /* The camera hook draws visible bank entries using each object's transform and motion. */
     Hu3DModelObjDrawInit();
-    for (bankNo = 0; bankNo < COIN_MODEL_MAX; bankNo++) {
-        alpha[bankNo] = -1;
-        motNo[bankNo] = -1;
-        modelId[bankNo] = mbObjModelIDGet(coinObjData.modelId[bankNo]);
-        modelData[bankNo] = &Hu3DData[modelId[bankNo]];
+    for (bankIndex = 0; bankIndex < COIN_MODEL_MAX; bankIndex++) {
+        alpha[bankIndex] = -1;
+        motNo[bankIndex] = -1;
+        modelId[bankIndex] = mbObjModelIDGet(coinObjData.modelId[bankIndex]);
+        modelData[bankIndex] = &Hu3DData[modelId[bankIndex]];
     }
-    for (bankPP = &coinObjData.bank[0], bankNo = 0;
-         bankNo < COIN_OBJ_BANK_MAX;
-         bankNo++, bankPP++) {
+    for (bankPP = &coinObjData.bank[0], bankIndex = 0;
+         bankIndex < COIN_OBJ_BANK_MAX;
+         bankIndex++, bankPP++) {
         if (*bankPP != NULL && (*bankPP)->count != 0) {
             attrP = (int *)&(*bankPP)->attr[0];
-            for (objNo = 0; objNo < COIN_OBJ_BANK_SIZE; objNo++, attrP++) {
+            for (objectIndex = 0; objectIndex < COIN_OBJ_BANK_SIZE; objectIndex++, attrP++) {
                 if (*attrP != 0
                     && (*attrP & cameraBit) != 0
                     && (*attrP & COIN_OBJ_ATTR_DISP) != 0) {
-                    objP = &(*bankPP)->obj[objNo];
+                    objP = &(*bankPP)->obj[objectIndex];
                     if (!(objP->alpha <= 0.0f)
                         && objP->scale.x != 0.0f
                         && objP->scale.y != 0.0f
@@ -402,21 +384,22 @@ static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
                         }
                         CoinMtxTranslationSet(mtx, &objP->pos);
                         PSMTXConcat(*mtxP, mtx, mtx);
-                        modelNo = (*attrP & COIN_OBJ_KIND_MASK) >> COIN_OBJ_KIND_SHIFT;
+                        modelIndex = (*attrP & COIN_OBJ_KIND_MASK) >> COIN_OBJ_KIND_SHIFT;
                         alphaVal = 255.0f * objP->alpha;
-                        if (alphaVal != alpha[modelNo]) {
-                            alpha[modelNo] = alphaVal;
-                            mbObjAlphaSet(coinObjData.modelId[modelNo], alphaVal);
+                        if (alphaVal != alpha[modelIndex]) {
+                            alpha[modelIndex] = alphaVal;
+                            mbObjAlphaSet(coinObjData.modelId[modelIndex], alphaVal);
                         }
-                        if (modelNo >= 2) {
-                            motion = (*bankPP)->motNo[objNo];
-                            if (motion != motNo[modelNo]) {
-                                motNo[modelNo] = motion;
-                                Hu3DMotionExec(modelId[modelNo], modelData[modelNo]->motId,
+                        if (modelIndex >= 2) {
+                            motion = (*bankPP)->motNo[objectIndex];
+                            if (motion != motNo[modelIndex]) {
+                                motNo[modelIndex] = motion;
+                                Hu3DMotionExec(modelId[modelIndex], modelData[modelIndex]->motId,
                                     motTimeTbl[motion], FALSE);
                             }
                         }
-                        Hu3DModelObjPtrDraw(modelId[modelNo], coinObjData.modelObj[modelNo], mtx);
+                        Hu3DModelObjPtrDraw(modelId[modelIndex], coinObjData.modelObj[modelIndex],
+                                            mtx);
                     }
                 }
             }
@@ -424,15 +407,18 @@ static void CoinDraw(HU3D_MODEL *modelP, Mtx *mtxP)
     }
 }
 
+/* Coin constructors allocate 64 object slots with the board overlay's memory tag. */
 static inline void *CoinBankAlloc(void)
 {
     return HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBCOINOBJBANK), HU_MEMNUM_OVL);
 }
 
+/* Initialize an allocated bank with no occupied slots. */
 static inline MBCOINOBJBANK *CoinBankCreate(void)
 {
     MBCOINOBJBANK *bankP;
 
+    /* Start a new bank with every slot unused and at its default motion. */
     bankP = CoinBankAlloc();
     bankP->count = 0;
     memset(bankP->attr, 0, sizeof(bankP->attr));
@@ -440,6 +426,7 @@ static inline MBCOINOBJBANK *CoinBankCreate(void)
     return bankP;
 }
 
+/* Coin-display creation reserves a red-coin model slot and returns its encoded object ID. */
 static inline s16 CoinCreate(void)
 {
     MBCOINOBJBANK *bankP;
@@ -476,11 +463,13 @@ static inline s16 CoinCreate(void)
     return objNo;
 }
 
+/* Create the red-coin model used at the start of a floating coin-change display. */
 s16 mbCoinCreate(void)
 {
     return CoinCreate();
 }
 
+/* Board events reserve a slot for the ordinary coin model. */
 s16 mbCoinCreate2(void)
 {
     int *attrP;
@@ -507,7 +496,7 @@ s16 mbCoinCreate2(void)
         }
     }
     bankP->count++;
-    *attrP = (1 << 16) | COIN_OBJ_ATTR_DISP | COIN_OBJ_ATTR_USED;
+    *attrP = COIN_OBJ_KIND_ALTERNATE | COIN_OBJ_ATTR_DISP | COIN_OBJ_ATTR_USED;
     bankP->motNo[objNo] = 0;
     objP = &bankP->obj[objNo];
     memset(objP, 0, sizeof(MBCOINOBJ));
@@ -517,6 +506,7 @@ s16 mbCoinCreate2(void)
     return objNo;
 }
 
+/* Floating displays reserve a digit model selected by its value from zero through nine. */
 static inline s16 CoinModelCreate(int modelNo)
 {
     MBCOINOBJBANK *bankP;
@@ -553,6 +543,7 @@ static inline s16 CoinModelCreate(int modelNo)
     return objNo;
 }
 
+/* Create a digit model object and select its fixed animation sample. */
 s16 mbCoinObjCreate(int modelNo, int motNo)
 {
     int objId;
@@ -562,6 +553,7 @@ s16 mbCoinObjCreate(int modelNo, int motNo)
     return objId;
 }
 
+/* Floating displays reserve the plus or plus/minus model selected by modelNo. */
 static inline s16 CoinModelCreate2(int modelNo)
 {
     MBCOINOBJBANK *bankP;
@@ -598,6 +590,7 @@ static inline s16 CoinModelCreate2(int modelNo)
     return objNo;
 }
 
+/* Floating displays create a sign model and select its sampled motion. */
 s16 mbCoinObjCreate2(int modelNo, int motNo)
 {
     int objId;
@@ -607,6 +600,7 @@ s16 mbCoinObjCreate2(int modelNo, int motNo)
     return objId;
 }
 
+/* Resolve an encoded coin object ID to its mutable transform and display state. */
 MBCOINOBJ *mbCoinObjGet(s16 objId)
 {
     MBCOINOBJBANK *bankP;
@@ -620,6 +614,7 @@ MBCOINOBJ *mbCoinObjGet(s16 objId)
     return &bankP->obj[objNo];
 }
 
+/* Release a coin-object slot without spawning its sparkle effect. */
 void mbCoinObjNumDec(s16 objId)
 {
     MBCOINOBJBANK *bankP;
@@ -634,6 +629,7 @@ void mbCoinObjNumDec(s16 objId)
     bankP->count--;
 }
 
+/* Release a coin-object slot and spawn a sparkle at its last position. */
 void mbCoinObjKill(s16 objId)
 {
     int bankNo;
@@ -649,6 +645,7 @@ void mbCoinObjKill(s16 objId)
     bankP->count--;
 }
 
+/* Set an object's world-space position. */
 void mbCoinObjPosSet(s16 objId, float x, float y, float z)
 {
     MBCOINOBJBANK *bankP;
@@ -667,11 +664,13 @@ void mbCoinObjPosSet(s16 objId, float x, float y, float z)
     objP->pos.z = z;
 }
 
+/* Set an object's world-space position from a vector. */
 void mbCoinObjPosSetV(s16 objId, HuVecF *pos)
 {
     mbCoinObjPosSet(objId, pos->x, pos->y, pos->z);
 }
 
+/* Copy an object's world-space position to the caller's vector. */
 void mbCoinObjPosGet(s16 objId, HuVecF *pos)
 {
     MBCOINOBJ *objP;
@@ -687,6 +686,7 @@ void mbCoinObjPosGet(s16 objId, HuVecF *pos)
     CoinVecCopy(&objP->pos, pos);
 }
 
+/* Set an object's rotation in degrees around each axis. */
 void mbCoinObjRotSet(s16 objId, float x, float y, float z)
 {
     MBCOINOBJBANK *bankP;
@@ -705,11 +705,13 @@ void mbCoinObjRotSet(s16 objId, float x, float y, float z)
     objP->rot.z = z;
 }
 
+/* Set an object's rotation from a vector of degree values. */
 void mbCoinObjRotSetV(s16 objId, HuVecF *rot)
 {
     mbCoinObjRotSet(objId, rot->x, rot->y, rot->z);
 }
 
+/* Copy an object's rotation in degrees to the caller's vector. */
 void mbCoinObjRotGet(s16 objId, HuVecF *rot)
 {
     MBCOINOBJ *objP;
@@ -725,6 +727,7 @@ void mbCoinObjRotGet(s16 objId, HuVecF *rot)
     CoinVecCopy(&objP->rot, rot);
 }
 
+/* Set an object's scale independently on each axis. */
 void mbCoinObjScaleSet(s16 objId, float x, float y, float z)
 {
     MBCOINOBJBANK *bankP;
@@ -743,11 +746,13 @@ void mbCoinObjScaleSet(s16 objId, float x, float y, float z)
     objP->scale.z = z;
 }
 
+/* Set an object's scale from a vector. */
 void mbCoinObjScaleSetV(s16 objId, HuVecF *scale)
 {
     mbCoinObjScaleSet(objId, scale->x, scale->y, scale->z);
 }
 
+/* Copy an object's scale to the caller's vector. */
 void mbCoinObjScaleGet(s16 objId, HuVecF *scale)
 {
     MBCOINOBJ *objP;
@@ -763,6 +768,7 @@ void mbCoinObjScaleGet(s16 objId, HuVecF *scale)
     CoinVecCopy(&objP->scale, scale);
 }
 
+/* Store opacity without clamping; zero is transparent and one is fully visible. */
 void mbCoinObjAlphaSet(s16 objId, float alpha)
 {
     MBCOINOBJBANK *bankP;
@@ -779,6 +785,7 @@ void mbCoinObjAlphaSet(s16 objId, float alpha)
     objP->alpha = alpha;
 }
 
+/* Return the object's stored opacity without clamping it. */
 float mbCoinObjAlphaGet(s16 objId)
 {
     MBCOINOBJBANK *bankP;
@@ -795,6 +802,7 @@ float mbCoinObjAlphaGet(s16 objId)
     return objP->alpha;
 }
 
+/* Enable or disable drawing this object in its selected camera. */
 void mbCoinObjDispSet(s16 objId, BOOL dispF)
 {
     MBCOINOBJBANK *bankP;
@@ -811,6 +819,7 @@ void mbCoinObjDispSet(s16 objId, BOOL dispF)
     }
 }
 
+/* Return whether the object's display flag is enabled. */
 BOOL mbCoinObjDispGet(s16 objId)
 {
     MBCOINOBJBANK *bankP;
@@ -824,6 +833,7 @@ BOOL mbCoinObjDispGet(s16 objId)
     return (bankP->attr[objNo] & COIN_OBJ_ATTR_DISP) == COIN_OBJ_ATTR_DISP;
 }
 
+/* Board effects and floating displays select the camera mask used to draw this object. */
 void mbCoinObjLayerSet(s16 objId, u16 layer)
 {
     MBCOINOBJBANK *bankP;
@@ -838,6 +848,7 @@ void mbCoinObjLayerSet(s16 objId, u16 layer)
     bankP->attr[objNo] |= layer;
 }
 
+/* Select the fixed animation sample at frame 0.5, 1.5, or 2.5 for this digit or sign. */
 void mbCoinObjMotSet(s16 objId, int motNo)
 {
     MBCOINOBJBANK *bankP;
@@ -851,41 +862,47 @@ void mbCoinObjMotSet(s16 objId, int motNo)
     bankP->motNo[objNo] = motNo;
 }
 
+/* Coin process created by mbCoinInit: seed five effects and two banks, then reclaim idle resources
+ * beyond those retained slots each frame. */
 static void CoinMain(void)
 {
     HuVecF pos = { 0.0f, 0.0f, 0.0f };
     MBCOINOBJBANK *bankP;
     COINEFFDATA *effP;
     MBCOINOBJBANK **bankPP;
-    int i;
-    int bankNo;
-    int num;
-    int no;
+    int effectIndex;
+    int bankIndex;
+    int activeEffectCount;
+    int resourceIndex;
 
-    for (i = 0; i < 5; i++) {
-        CoinEffCreate(i, &pos);
+    for (effectIndex = 0; effectIndex < 5; effectIndex++) {
+        CoinEffCreate(effectIndex, &pos);
     }
-    for (bankNo = 0, no = 0; no < 2; bankNo++) {
-        if (coinObjData.bank[bankNo] == NULL) {
-            coinObjData.bank[bankNo] = CoinBankCreate();
-            no++;
+    for (bankIndex = 0, resourceIndex = 0; resourceIndex < 2; bankIndex++) {
+        if (coinObjData.bank[bankIndex] == NULL) {
+            coinObjData.bank[bankIndex] = CoinBankCreate();
+            resourceIndex++;
         }
     }
     while (TRUE) {
-        num = 0;
-        for (effP = &coinEffData[i], no = i; no < COIN_EFF_MAX; no++, effP++) {
+        /* This model count is collected and discarded; each effect's particle count controls
+         * cleanup. */
+        activeEffectCount = 0;
+        for (effP = &coinEffData[effectIndex], resourceIndex = effectIndex;
+             resourceIndex < COIN_EFF_MAX;
+             resourceIndex++, effP++) {
             if (effP->modelId != 0) {
-                num++;
+                activeEffectCount++;
                 if (effP->count == 0) {
                     mbParticleKill(effP->modelId);
                     effP->modelId = 0;
                 }
             }
         }
-        num = 0;
-        for (bankPP = &coinObjData.bank[bankNo], no = bankNo;
-             no < COIN_OBJ_BANK_MAX;
-             no++, bankPP++) {
+        activeEffectCount = 0;
+        for (bankPP = &coinObjData.bank[bankIndex], resourceIndex = bankIndex;
+             resourceIndex < COIN_OBJ_BANK_MAX;
+             resourceIndex++, bankPP++) {
             if (*bankPP != NULL && (*bankPP)->count == 0) {
                 bankP = *bankPP;
                 HuMemDirectFree(bankP);
@@ -896,7 +913,7 @@ static void CoinMain(void)
     }
 }
 
-/* Same one-instruction absolute-value primitive as Board Math and Dice. */
+/* Return the absolute value used for particle distance checks. */
 static inline float CoinAbsFloat(register float value)
 {
 #ifdef __MWERKS__
@@ -909,6 +926,7 @@ static inline float CoinAbsFloat(register float value)
 #endif
 }
 
+/* Add up to 20 colored particles at a world position for a collected coin. */
 void mbCoinEffCreate(HuVecF *pos)
 {
     COINEFFDATA *effP;
@@ -923,7 +941,7 @@ void mbCoinEffCreate(HuVecF *pos)
     int remaining;
     int i;
 
-    mbAudFXPlay(COIN_SE_GAIN);
+    mbAudFXPlay(MSM_SE_CMN_08);
     effNo = -1;
     for (effP = &coinEffData[0], i = 0; i < COIN_EFF_MAX; i++, effP++) {
         if (effP->modelId != 0) {
@@ -948,7 +966,7 @@ void mbCoinEffCreate(HuVecF *pos)
     }
     CoinEffCreate(effNo, pos);
     effP = &coinEffData[effNo];
-    /* Retail initializes this scalar but never reads it. */
+    /* This initialized value is unused and does not affect the emitted particles. */
     unused = 0;
     particleP = Hu3DData[effP->modelId].hookData;
     VECSubtract(pos, &effP->pos, &offset);
@@ -963,6 +981,7 @@ void mbCoinEffCreate(HuVecF *pos)
             particleDataP->color.g = coinEffColorTbl[colorNo].g + mbRandMod(20);
             particleDataP->color.b = coinEffColorTbl[colorNo].b + mbRandMod(20);
             particleDataP->color.a = coinEffColorTbl[colorNo].a + mbRandMod(20);
+            /* The bank choice uses 32 indices although coinEffBankTbl declares only 16 entries. */
             particleDataP->animBank = coinEffBankTbl[mbRandMod(32)];
             particleDataP->pos.x = particleDataP->pos.y = particleDataP->pos.z = 0.0f;
             angle = 360.0f * frandf();
@@ -991,6 +1010,7 @@ void mbCoinEffCreate(HuVecF *pos)
     }
 }
 
+/* Allocate a particle model or move an idle one; active models retain their existing origin. */
 static void CoinEffCreate(int no, HuVecF *pos)
 {
     COINEFFDATA *effP;
@@ -1000,9 +1020,10 @@ static void CoinEffCreate(int no, HuVecF *pos)
 
     effP = &coinEffData[no];
     if (effP->modelId <= 0) {
-        effP->modelId = mbParticleCreate(
-            HuSprAnimRead(HuDataSelHeapReadNum(mbBoardDataNumGet(COIN_DATA_EFFECT), HU_MEMNUM_OVL, HEAP_MODEL)),
-            100);
+        effP->modelId =
+            mbParticleCreate(HuSprAnimRead(HuDataSelHeapReadNum(mbBoardDataNumGet(COIN_DATA_EFFECT),
+                                                                HU_MEMNUM_OVL, HEAP_MODEL)),
+                             100);
         mbParticleHookSet(effP->modelId, CoinEffHook);
         Hu3DModelLayerSet(effP->modelId, 5);
         effP->pos.x = pos->x;
@@ -1019,6 +1040,8 @@ static void CoinEffCreate(int no, HuVecF *pos)
             particleDataP->time = 0;
         }
         particleP->blendMode = MB_PARTICLE_BLEND_ADDCOL;
+        /* Store the effect slot in the model's time field so CoinEffHook can update its live
+         * count. */
         particleP->time = no;
     } else if (effP->count == 0) {
         effP->pos.x = pos->x;
@@ -1028,20 +1051,22 @@ static void CoinEffCreate(int no, HuVecF *pos)
     }
 }
 
+/* Particle drawing calls this once per update to advance sparkles and count the survivors. */
 static void CoinEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     MBPARTICLEDATA *particleDataP;
-    int count;
-    int num;
-    int i;
+    int liveParticleCount;
+    int particleCapacity;
+    int particleIndex;
 
-    count = 0;
-    num = particleP->num;
-    for (particleDataP = particleP->data, i = 0;
-         i < particleP->num;
-         i++, particleDataP++) {
+    liveParticleCount = 0;
+    /* This capacity snapshot is unused; the particle loop reads the model's slot count directly. */
+    particleCapacity = particleP->num;
+    for (particleDataP = particleP->data, particleIndex = 0;
+         particleIndex < particleP->num;
+         particleIndex++, particleDataP++) {
         if (particleDataP->time != 0) {
-            count++;
+            liveParticleCount++;
             VECScale(&particleDataP->vel, &particleDataP->vel, particleDataP->accel.z);
             VECAdd(&particleDataP->pos, &particleDataP->vel, &particleDataP->pos);
             particleDataP->vel.y += particleDataP->accel.y;
@@ -1057,26 +1082,27 @@ static void CoinEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
                 if (particleDataP->time == 0) {
                     particleDataP->color.a = 0;
                     particleDataP->scale = 0.0f;
-                    count--;
+                    liveParticleCount--;
                 }
             }
         }
     }
-    coinEffData[particleP->time].count = count;
+    coinEffData[particleP->time].count = liveParticleCount;
 }
 
+/* Board events create a floating signed coin amount; sign selects the sign only for zero. */
 s16 mbCoinDispCreate(HuVecF *pos, int coinNum, int sign, BOOL playSe)
 {
-    OMOBJ *obj;
-    COINDISPWORK *work;
-    s8 i;
+    OMOBJ *displayObj;
+    COINDISPWORK *displayWork;
+    s8 displaySlot;
 
-    for (i = 1; i < GW_PLAYER_MAX + 1; i++) {
-        if (!coinDispOMObj[i]) {
+    for (displaySlot = 1; displaySlot < GW_PLAYER_MAX + 1; displaySlot++) {
+        if (!coinDispOMObj[displaySlot]) {
             break;
         }
     }
-    if (i >= GW_PLAYER_MAX + 1) {
+    if (displaySlot >= GW_PLAYER_MAX + 1) {
         return -1;
     }
     if (coinNum > 999) {
@@ -1084,108 +1110,115 @@ s16 mbCoinDispCreate(HuVecF *pos, int coinNum, int sign, BOOL playSe)
     } else if (coinNum < -999) {
         coinNum = -999;
     }
-    obj = omAddObjEx(mbObjMan, 261, 5, 0, OM_GRP_NONE, CoinDispOMExec);
-    obj->data = HuMemDirectMallocNum(
+    displayObj = omAddObjEx(mbObjMan, 261, 5, 0, OM_GRP_NONE, CoinDispOMExec);
+    displayObj->data = HuMemDirectMallocNum(
         HEAP_HEAP,
         COINDISP_MODEL_MAX * sizeof(COINDISPMODEL),
         HU_MEMNUM_OVL);
-    omSetStatBit(obj, OM_STAT_MODELPAUSE);
-    coinDispOMObj[i] = obj;
-    work = omObjGetWork(obj, COINDISPWORK);
-    work->killF = FALSE;
+    omSetStatBit(displayObj, OM_STAT_MODELPAUSE);
+    coinDispOMObj[displaySlot] = displayObj;
+    displayWork = omObjGetWork(displayObj, COINDISPWORK);
+    displayWork->killF = FALSE;
     if (coinNum != 0) {
-        work->sign = (coinNum < 0) ? 1 : 0;
+        displayWork->sign = (coinNum < 0) ? 1 : 0;
     } else {
-        work->sign = (sign < 0) ? 1 : 0;
+        displayWork->sign = (sign < 0) ? 1 : 0;
     }
-    work->mode = COINDISP_MODE_ON;
-    work->no = i;
-    work->delay = 0;
-    work->time = 0;
-    obj->trans.x = pos->x;
-    obj->trans.y = pos->y;
-    obj->trans.z = pos->z;
-    obj->rot.x = 0.0f;
-    obj->rot.y = 0.01f;
-    CoinDispCreate(obj, coinNum);
-    CoinDispObjUpdate(obj);
+    displayWork->mode = COINDISP_MODE_ON;
+    displayWork->no = displaySlot;
+    displayWork->delay = 0;
+    displayWork->time = 0;
+    displayObj->trans.x = pos->x;
+    displayObj->trans.y = pos->y;
+    displayObj->trans.z = pos->z;
+    displayObj->rot.x = 0.0f;
+    displayObj->rot.y = 0.01f;
+    CoinDispCreate(displayObj, coinNum);
+    CoinDispObjUpdate(displayObj);
     if (playSe) {
-        if (!work->sign) {
-            mbAudFXPlay(COIN_SE_DISPLAY_GAIN);
+        if (!displayWork->sign) {
+            mbAudFXPlay(MSM_SE_BRD00_123);
         } else {
-            mbAudFXPlay(COIN_SE_DISPLAY_LOSS);
+            mbAudFXPlay(MSM_SE_BRD00_124);
         }
     }
-    return work->no;
+    return displayWork->no;
 }
 
+/* Board-space caller variant that supplies a positive sign when the total is zero. */
 s16 mbCoinDispMasuCreate(HuVecF *pos, int coinNum, BOOL playSe)
 {
     return mbCoinDispCreate(pos, coinNum, 1, playSe);
 }
 
+/* Capsule callers request the gain/loss cue when a display slot is available. */
 s16 mbCoinDispCapsuleCreate(HuVecF *pos, int coinNum)
 {
     return mbCoinDispCreate(pos, coinNum, 1, TRUE);
 }
 
-static void CoinDispCreate(OMOBJ *obj, int coinNum)
+/* Display creation builds the coin, sign, and decimal digits, suppressing leading zeroes. */
+static void CoinDispCreate(OMOBJ *displayObj, int coinNum)
 {
-    int modelNum;
+    int modelSlot;
     int digit;
-    int digitVal;
-    COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
-    COINDISPMODEL *model = obj->data;
-    BOOL dispF = FALSE;
-    float motTime;
-    int i;
+    int digitPlace;
+    COINDISPWORK *displayWork = omObjGetWork(displayObj, COINDISPWORK);
+    COINDISPMODEL *digitModel = displayObj->data;
+    BOOL showLeadingDigits = FALSE;
+    float displayMotionTime;
+    int modelIndex;
 
-    obj->mdlId[0] = mbCoinCreate();
-    if (work->sign) {
-        motTime = 2.5f;
+    displayObj->mdlId[0] = mbCoinCreate();
+    /* This motion-time choice is unused; the sign and digit constructors select their samples. */
+    if (displayWork->sign) {
+        displayMotionTime = 2.5f;
     } else {
-        motTime = 1.5f;
+        displayMotionTime = 1.5f;
     }
-    obj->mdlId[1] = mbCoinObjCreate2(work->sign, work->sign ? 2 : 1);
-    digitVal = 100;
-    work->modelNum = 0;
-    modelNum = 2;
+    displayObj->mdlId[1] = mbCoinObjCreate2(displayWork->sign, displayWork->sign ? 2 : 1);
+    digitPlace = 100;
+    displayWork->modelNum = 0;
+    modelSlot = 2;
     coinNum = abs(coinNum);
-    for (i = 0; i < 3; i++) {
-        digit = coinNum / digitVal;
+    for (modelIndex = 0; modelIndex < 3; modelIndex++) {
+        digit = coinNum / digitPlace;
 
-        if (i == 2) {
-            dispF = TRUE;
+        if (modelIndex == 2) {
+            showLeadingDigits = TRUE;
         }
-        if (dispF || digit != 0) {
-            dispF = TRUE;
-            obj->mdlId[modelNum] = mbCoinObjCreate(digit, work->sign ? 2 : 1);
-            modelNum++;
+        if (showLeadingDigits || digit != 0) {
+            showLeadingDigits = TRUE;
+            displayObj->mdlId[modelSlot] = mbCoinObjCreate(digit, displayWork->sign ? 2 : 1);
+            modelSlot++;
         }
-        coinNum -= digit * digitVal;
-        digitVal /= 10;
+        coinNum -= digit * digitPlace;
+        digitPlace /= 10;
     }
-    work->modelNum = modelNum;
-    for (model = obj->data, i = 0; i < work->modelNum; i++, model++) {
-        model->pos.x = model->pos.y = model->pos.z = 0.0f;
-        model->rotY = 0.0f;
-        model->scale.x = model->scale.y = model->scale.z = 0.001f;
-        mbCoinObjLayerSet(obj->mdlId[i], HU3D_CAM1);
+    displayWork->modelNum = modelSlot;
+    for (digitModel = displayObj->data, modelIndex = 0;
+         modelIndex < displayWork->modelNum;
+         modelIndex++, digitModel++) {
+        digitModel->pos.x = digitModel->pos.y = digitModel->pos.z = 0.0f;
+        digitModel->rotY = 0.0f;
+        digitModel->scale.x = digitModel->scale.y = digitModel->scale.z = 0.001f;
+        mbCoinObjLayerSet(displayObj->mdlId[modelIndex], HU3D_CAM1);
     }
 }
 
+/* Per-frame object callback: process its animation mode or remove a killed display. */
 static void CoinDispOMExec(OMOBJ *obj)
 {
-    COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
+    COINDISPWORK *displayWork = omObjGetWork(obj, COINDISPWORK);
 
-    if (work->killF || mbExitCheck()) {
+    if (displayWork->killF || mbExitCheck()) {
         CoinDispObjKill(obj);
-        coinDispOMObj[work->no] = NULL;
+        coinDispOMObj[displayWork->no] = NULL;
         omDelObjEx(HuPrcCurrentGet(), obj);
         return;
     }
-    if (work->delay == 0) {
-        switch (work->mode) {
+    if (displayWork->delay == 0) {
+        switch (displayWork->mode) {
             case COINDISP_MODE_ON:
                 CoinDispOn(obj);
                 break;
@@ -1199,149 +1232,159 @@ static void CoinDispOMExec(OMOBJ *obj)
                 break;
         }
     } else {
-        work->delay--;
+        displayWork->delay--;
     }
     CoinDispObjUpdate(obj);
 }
 
-static void CoinDispObjUpdate(OMOBJ *obj)
+/* Display creation and each object update place the models at depth 800 with their screen size
+ * preserved. */
+static void CoinDispObjUpdate(OMOBJ *displayObj)
 {
-    COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
-    COINDISPMODEL *model = obj->data;
-    HuVecF pos;
-    HuVecF pos2D;
-    Mtx rotMtx;
+    COINDISPWORK *displayWork = omObjGetWork(displayObj, COINDISPWORK);
+    COINDISPMODEL *displayModel = displayObj->data;
+    HuVecF worldPos;
+    HuVecF transformVec;
+    Mtx cameraYawMtx;
     float cameraRotY;
-    int i;
+    int modelIndex;
 
-    mbCameraRotGet(&pos2D);
-    cameraRotY = pos2D.y;
-    PSMTXRotRad(rotMtx, 'Y', 0.017453292f * cameraRotY);
-    for (i = 0; i < work->modelNum; i++, model++) {
-        float scale;
-        float z;
+    mbCameraRotGet(&transformVec);
+    cameraRotY = transformVec.y;
+    PSMTXRotRad(cameraYawMtx, 'Y', 0.017453292f * cameraRotY);
+    for (modelIndex = 0; modelIndex < displayWork->modelNum; modelIndex++, displayModel++) {
+        float depthScale;
+        float originalDepth;
 
-        PSMTXMultVec(rotMtx, &model->pos, &pos2D);
-        PSVECAdd(&obj->trans, &pos2D, &pos);
-        mbPos3Dto2D(&pos, &pos2D);
-        z = pos2D.z;
-        pos2D.z = 800.0f;
-        mbPos2Dto3D(&pos2D, &pos);
-        scale = 800.0f / z;
-        mbCoinObjPosSetV(obj->mdlId[i], &pos);
+        PSMTXMultVec(cameraYawMtx, &displayModel->pos, &transformVec);
+        PSVECAdd(&displayObj->trans, &transformVec, &worldPos);
+        mbPos3Dto2D(&worldPos, &transformVec);
+        originalDepth = transformVec.z;
+        /* A common camera depth keeps the models together; scaling preserves their apparent
+         * size. */
+        transformVec.z = 800.0f;
+        mbPos2Dto3D(&transformVec, &worldPos);
+        depthScale = 800.0f / originalDepth;
+        mbCoinObjPosSetV(displayObj->mdlId[modelIndex], &worldPos);
         mbCoinObjRotSet(
-            obj->mdlId[i],
+            displayObj->mdlId[modelIndex],
             0.0f,
-            model->rotY + cameraRotY,
+            displayModel->rotY + cameraRotY,
             0.0f);
         mbCoinObjScaleSet(
-            obj->mdlId[i],
-            model->scale.x * scale,
-            model->scale.y * scale,
-            model->scale.z * scale);
+            displayObj->mdlId[modelIndex],
+            displayModel->scale.x * depthScale,
+            displayModel->scale.y * depthScale,
+            displayModel->scale.z * depthScale);
     }
 }
 
-static void CoinDispOn(OMOBJ *obj)
+/* During the appear mode, the display callback grows and spins the coin before revealing digits. */
+static void CoinDispOn(OMOBJ *displayObj)
 {
-    COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
-    COINDISPMODEL *model = obj->data;
-    float s;
-    float scale;
-    int i;
+    COINDISPWORK *displayWork = omObjGetWork(displayObj, COINDISPWORK);
+    COINDISPMODEL *displayModel = displayObj->data;
+    float appearanceWeight;
+    float modelScale;
+    int modelIndex;
 
-    s = mbSinDeg((float)work->time);
-    scale = s;
-    obj->rot.x = 405.0f * s;
-    model->scale.x = model->scale.y = model->scale.z = scale;
-    model->pos.x = model->pos.y = model->pos.z = 0.0f;
-    model->rotY = obj->rot.x;
-    if (work->time < 90) {
-        work->time += 6;
+    appearanceWeight = mbSinDeg((float)displayWork->time);
+    modelScale = appearanceWeight;
+    displayObj->rot.x = 405.0f * appearanceWeight;
+    displayModel->scale.x = displayModel->scale.y = displayModel->scale.z = modelScale;
+    displayModel->pos.x = displayModel->pos.y = displayModel->pos.z = 0.0f;
+    displayModel->rotY = displayObj->rot.x;
+    if (displayWork->time < 90) {
+        displayWork->time += 6;
         return;
     }
-    work->mode = COINDISP_MODE_MAIN;
-    work->time = 0;
-    work->maxTime = 30;
-    model = ((COINDISPMODEL *)obj->data) + 1;
-    for (i = 1; i < work->modelNum; i++, model++) {
-        model->scale.x = model->scale.y = model->scale.z = scale;
-        model->pos.x = model->pos.y = model->pos.z = 0.0f;
-        model->rotY = obj->rot.x;
+    displayWork->mode = COINDISP_MODE_MAIN;
+    displayWork->time = 0;
+    displayWork->maxTime = 30;
+    /* The sign and digits stay tiny until the coin has finished growing. */
+    displayModel = ((COINDISPMODEL *)displayObj->data) + 1;
+    for (modelIndex = 1; modelIndex < displayWork->modelNum; modelIndex++, displayModel++) {
+        displayModel->scale.x = displayModel->scale.y = displayModel->scale.z = modelScale;
+        displayModel->pos.x = displayModel->pos.y = displayModel->pos.z = 0.0f;
+        displayModel->rotY = displayObj->rot.x;
     }
 }
 
-static void CoinDispMain(OMOBJ *obj)
+/* During the spread mode, the display callback fans out the models, then selects exit with a
+ * pause. */
+static void CoinDispMain(OMOBJ *displayObj)
 {
-    COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
-    COINDISPMODEL *model = obj->data;
-    float weight = (float)work->time / work->maxTime;
-    float ofsX = -0.5f * ((work->modelNum - 1) * 120.00001f);
-    float s = mbSinDeg(weight * 90.0f);
-    float angle;
-    float sy;
-    int i;
+    COINDISPWORK *displayWork = omObjGetWork(displayObj, COINDISPWORK);
+    COINDISPMODEL *displayModel = displayObj->data;
+    float spreadProgress = (float)displayWork->time / displayWork->maxTime;
+    float slotOffsetX = -0.5f * ((displayWork->modelNum - 1) * 120.00001f);
+    float spreadWeight = mbSinDeg(spreadProgress * 90.0f);
+    float bounceAngle;
+    float bounceHeightWeight;
+    int modelIndex;
 
-    obj->rot.x = 45.0f + (s * 315.0f);
-    angle = weight * (((work->modelNum - 1) * 30.0f) + 180.0f);
-    for (i = 0; i < work->modelNum; i++, model++) {
-        sy = mbSinDeg(angle);
-        if (sy < 0.0f) {
-            sy = 0.0f;
+    displayObj->rot.x = 45.0f + (spreadWeight * 315.0f);
+    bounceAngle = spreadProgress * (((displayWork->modelNum - 1) * 30.0f) + 180.0f);
+    for (modelIndex = 0; modelIndex < displayWork->modelNum; modelIndex++, displayModel++) {
+        bounceHeightWeight = mbSinDeg(bounceAngle);
+        if (bounceHeightWeight < 0.0f) {
+            bounceHeightWeight = 0.0f;
         }
-        model->pos.x = s * ofsX;
-        model->pos.y = 200.0f * sy;
-        model->pos.z = 0.0f;
-        model->rotY = obj->rot.x;
-        ofsX += 120.00001f;
-        angle -= 30.0f;
+        displayModel->pos.x = spreadWeight * slotOffsetX;
+        displayModel->pos.y = 200.0f * bounceHeightWeight;
+        displayModel->pos.z = 0.0f;
+        displayModel->rotY = displayObj->rot.x;
+        slotOffsetX += 120.00001f;
+        bounceAngle -= 30.0f;
     }
-    if (++work->time > work->maxTime) {
-        work->mode = COINDISP_MODE_OFF;
-        work->time = 0;
-        work->maxTime = 24;
-        work->delay = 30;
+    if (++displayWork->time > displayWork->maxTime) {
+        displayWork->mode = COINDISP_MODE_OFF;
+        displayWork->time = 0;
+        displayWork->maxTime = 24;
+        displayWork->delay = 30;
     }
 }
 
-static void CoinDispOff(OMOBJ *obj)
+/* During the exit mode, the display callback raises gains or lowers losses while fading them. */
+static void CoinDispOff(OMOBJ *displayObj)
 {
-    COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
-    COINDISPMODEL *model = obj->data;
-    float weight = (float)work->time / work->maxTime;
-    float angle;
-    float s;
-    float posY;
-    float angleBase;
-    int i;
+    COINDISPWORK *displayWork = omObjGetWork(displayObj, COINDISPWORK);
+    COINDISPMODEL *displayModel = displayObj->data;
+    float exitProgress = (float)displayWork->time / displayWork->maxTime;
+    float fadeAngle;
+    float travelWeight;
+    float travelY;
+    float leadingFadeAngle;
+    int modelIndex;
 
-    obj->rot.x = (270.0f * mbSinDeg(weight * 90.0f)) + 90.0f;
-    angleBase = weight * (((work->modelNum - 1) * 30.0f) + 90.0f);
-    for (i = 0; i < work->modelNum; i++, model++) {
-        angle = angleBase - (i * 30.0f);
-        if (angle < 0.0f) {
-            angle = 0.0f;
-        } else if (angle > 90.0f) {
-            angle = 90.0f;
+    displayObj->rot.x = (270.0f * mbSinDeg(exitProgress * 90.0f)) + 90.0f;
+    leadingFadeAngle = exitProgress * (((displayWork->modelNum - 1) * 30.0f) + 90.0f);
+    for (modelIndex = 0; modelIndex < displayWork->modelNum; modelIndex++, displayModel++) {
+        fadeAngle = leadingFadeAngle - (modelIndex * 30.0f);
+        if (fadeAngle < 0.0f) {
+            fadeAngle = 0.0f;
+        } else if (fadeAngle > 90.0f) {
+            fadeAngle = 90.0f;
         }
-        s = mbSinDeg(angle);
-        if (work->sign) {
-            posY = -100.0f * s;
+        travelWeight = mbSinDeg(fadeAngle);
+        if (displayWork->sign) {
+            travelY = -100.0f * travelWeight;
         } else {
-            posY = 100.0f * s;
+            travelY = 100.0f * travelWeight;
         }
-        model->pos.y = posY;
-        model->rotY = obj->rot.x;
-        mbCoinObjAlphaSet(obj->mdlId[i], mbCosDeg(angle));
+        displayModel->pos.y = travelY;
+        displayModel->rotY = displayObj->rot.x;
+        mbCoinObjAlphaSet(displayObj->mdlId[modelIndex], mbCosDeg(fadeAngle));
     }
-    if (++work->time > work->maxTime) {
-        for (i = 0; i < work->modelNum; i++) {
-            mbCoinObjDispSet(obj->mdlId[i], FALSE);
+    if (++displayWork->time > displayWork->maxTime) {
+        for (modelIndex = 0; modelIndex < displayWork->modelNum; modelIndex++) {
+            mbCoinObjDispSet(displayObj->mdlId[modelIndex], FALSE);
         }
-        work->killF = TRUE;
+        displayWork->killF = TRUE;
     }
 }
 
+/* Release every coin model owned by a floating-total object. */
 static void CoinDispObjKill(OMOBJ *obj)
 {
     COINDISPWORK *work = omObjGetWork(obj, COINDISPWORK);
@@ -1355,6 +1398,7 @@ static void CoinDispObjKill(OMOBJ *obj)
     }
 }
 
+/* Request removal of one floating-total object by its display slot. */
 void mbCoinDispKill(s16 no)
 {
     if (no <= 0 || no >= GW_PLAYER_MAX + 1) {
@@ -1365,6 +1409,7 @@ void mbCoinDispKill(s16 no)
     }
 }
 
+/* Return true after the display object leaves its slot; a pending kill still returns false. */
 BOOL mbCoinDispKillCheck(s16 no)
 {
     if (no <= 0 || no >= GW_PLAYER_MAX + 1) {
@@ -1378,6 +1423,7 @@ BOOL mbCoinDispKillCheck(s16 no)
     return TRUE;
 }
 
+/* Apply one player's coin change, clamping the total to 0..999. */
 static inline int CoinAdd(int playerNo, int coinNum, BOOL fastF)
 {
     int num;
@@ -1405,7 +1451,7 @@ static inline int CoinAdd(int playerNo, int coinNum, BOOL fastF)
     coinDiff = num;
     if (!fastF) {
         coinChg = (num >= 0) ? 1 : -1;
-        seId = (coinChg > 0) ? COIN_SE_GAIN : COIN_SE_LOSS;
+        seId = (coinChg > 0) ? MSM_SE_CMN_08 : MSM_SE_CMN_15;
         for (i = 0; i < abs(num); i++) {
             mbPlayerCoinAdd(playerNo, coinChg);
             mbAudFXPlay(seId);
@@ -1417,6 +1463,7 @@ static inline int CoinAdd(int playerNo, int coinNum, BOOL fastF)
     return coinDiff;
 }
 
+/* Board events apply a coin change and wait for its display; dispF also requests a zero display. */
 int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 {
     int coinDiff;
@@ -1426,7 +1473,7 @@ int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
     if (coinDiff != 0 || dispF) {
         HuVecF pos;
 
-        mbAudFXPlay(COIN_SE_CHANGE_END);
+        mbAudFXPlay(MSM_SE_CMN_16);
         mbPlayerPosGet(playerNo, &pos);
         pos.y += 250.0f;
         dispNo = mbCoinDispCreate(&pos, coinDiff, dispF, TRUE);
@@ -1437,6 +1484,7 @@ int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
     return coinDiff;
 }
 
+/* Board events apply a coin change and, when requested, wait for its nonzero change display. */
 int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 {
     int coinDiff;
@@ -1444,7 +1492,7 @@ int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
 
     coinDiff = CoinAdd(playerNo, coinNum, fastF);
     if (coinDiff != 0) {
-        mbAudFXPlay(COIN_SE_CHANGE_END);
+        mbAudFXPlay(MSM_SE_CMN_16);
     }
     if (dispF && coinDiff != 0) {
         HuVecF pos;
@@ -1459,11 +1507,13 @@ int mbCoinAddDispExec(int playerNo, int coinNum, BOOL dispF, BOOL fastF)
     return coinDiff;
 }
 
+/* Convenience path for a normal, animated coin change without a floating total. */
 int mbCoinAddExec(int playerNo, int coinNum)
 {
     return mbCoinAddDispExec(playerNo, coinNum, FALSE, FALSE);
 }
 
+/* Clamp a two-player team's combined value and adjust changes to respect zero and max. */
 int mbStatTeamMinValGet(int teamNo, int value, int max, int *addNum,
     int *result)
 {
@@ -1480,6 +1530,7 @@ int mbStatTeamMinValGet(int teamNo, int value, int max, int *addNum,
         stat += addNum[player];
         result[player] = addNum[player];
     }
+    /* On overflow, apply the smaller change first; on underflow, apply the larger change first. */
     if (stat > max) {
         if (addNum[playerNo[0]] > addNum[playerNo[1]]) {
             player = playerNo[0];
@@ -1516,6 +1567,8 @@ int mbStatTeamMinValGet(int teamNo, int value, int max, int *addNum,
     return stat - value;
 }
 
+/* Apply changes to all players, splitting team adjustments and optionally animating each coin.
+ * The per-coin loop uses the gain cue for both positive and negative changes. */
 static void CoinAddAllProc(int *addNum, BOOL fastF, int *result)
 {
     int coinNum[4];
@@ -1574,7 +1627,7 @@ static void CoinAddAllProc(int *addNum, BOOL fastF, int *result)
                 if (--time[i] == 0) {
                     mbPlayerCoinAdd(i, coinChg[i]);
                     coinNum[i] -= coinChg[i];
-                    mbAudFXPlay(COIN_SE_GAIN);
+                    mbAudFXPlay(MSM_SE_CMN_08);
                     time[i] = delay[i];
                 }
                 playerNum++;
@@ -1588,9 +1641,11 @@ static void CoinAddAllProc(int *addNum, BOOL fastF, int *result)
             }
         }
     }
-    mbAudFXPlay(COIN_SE_CHANGE_END);
+    /* One change-end cue plays after the batch, regardless of the changes' direction. */
+    mbAudFXPlay(MSM_SE_CMN_16);
 }
 
+/* Change all four players using per-player display choices, then wait for active displays. */
 void mbCoinAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF)
 {
     int result[4];
@@ -1619,8 +1674,11 @@ void mbCoinAddAllProcExecV(int *addNum, BOOL *dispF, BOOL fastF)
     } while (waitF);
 }
 
-void mbCoinAddAllProcExec(int num0, int num1, int num2, int num3,
-    BOOL dispF, BOOL fastF)
+/* Board events apply four coin changes and optionally display each nonzero applied change.
+ * The wait uses the last created display; with dispF true and no applied changes, its slot is
+ * uninitialized but still passed to the removal check. */
+void mbCoinAddAllProcExec(int player0Change, int player1Change, int player2Change,
+                          int player3Change, BOOL dispF, BOOL fastF)
 {
     int addNum[4];
     int result[4];
@@ -1628,10 +1686,10 @@ void mbCoinAddAllProcExec(int num0, int num1, int num2, int num3,
     int dispNo;
     int i;
 
-    addNum[0] = num0;
-    addNum[1] = num1;
-    addNum[2] = num2;
-    addNum[3] = num3;
+    addNum[0] = player0Change;
+    addNum[1] = player1Change;
+    addNum[2] = player2Change;
+    addNum[3] = player3Change;
     CoinAddAllProc(addNum, fastF, result);
     if (dispF) {
         for (i = 0; i < 4; i++) {
@@ -1647,14 +1705,15 @@ void mbCoinAddAllProcExec(int num0, int num1, int num2, int num3,
     }
 }
 
-void mbCoinAddAllExec(int num0, int num1, int num2, int num3)
+/* Board events apply four coin changes with per-coin animation and no floating displays. */
+void mbCoinAddAllExec(int player0Change, int player1Change, int player2Change, int player3Change)
 {
     int addNum[4];
     int result[4];
 
-    addNum[0] = num0;
-    addNum[1] = num1;
-    addNum[2] = num2;
-    addNum[3] = num3;
+    addNum[0] = player0Change;
+    addNum[1] = player1Change;
+    addNum[2] = player2Change;
+    addNum[3] = player3Change;
     CoinAddAllProc(addNum, FALSE, result);
 }
