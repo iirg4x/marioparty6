@@ -2084,6 +2084,27 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "w04Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/w04Dll/board.c",
+                extra_cflags=["-pooldata", "off", "-sym", "on"],
+            ),
+            Object(
+                Matching,
+                "REL/w04Dll/prolog.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/w04Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
