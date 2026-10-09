@@ -1,3 +1,4 @@
+/* Manages board models, their motions, transforms, visibility, and shadows. */
 #define _MATH_H
 #define M_PI 3.141592653589793
 
@@ -29,6 +30,8 @@ static BOOL ObjManModelCreate(MBOBJMODEL *modelP, int dataNum, BOOL linkF);
 static int ObjManMotionCreate(MBOBJMODEL *modelP, int motNum, const int *motDataNum);
 static MBOBJMODEL *ObjManLinkSearch(int dataNum);
 
+/* Replaces an opposite-time directory with the configured directory for the current board
+ * time, preserving the file number. */
 int mbObjDataNumGet(int dataNum)
 {
     int result;
@@ -47,6 +50,7 @@ done:
     return result;
 }
 
+/* Called during board setup to allocate the model table and register its update callback. */
 void mbObjInit(void)
 {
     objManNum = 0;
@@ -56,6 +60,7 @@ void mbObjInit(void)
     omSetStatBit(objManOMObj, OM_STAT_NOPAUSE | OM_STAT_SPRPAUSE);
 }
 
+/* Called during board teardown to kill active models and release the model table. */
 void mbObjClose(void)
 {
     int i;
@@ -73,6 +78,7 @@ void mbObjClose(void)
     }
 }
 
+/* Registered by mbObjInit; updates active board models during each object-manager execution. */
 static void ObjManOMExec(OMOBJ *obj)
 {
     MBOBJMODEL *modelP;
@@ -103,6 +109,8 @@ static void ObjManOMExec(OMOBJ *obj)
             }
         }
         if (modelP->fadeF) {
+            /* Convert pos to screen depth for fading. Only the culling branch assigns pos;
+             * disabled culling leaves it uninitialized here. */
             mbPos3Dto2D(&pos, &pos2D);
             if (pos2D.z < 1000.0f) {
                 fadePos = pos2D.z / 1000.0f;
@@ -116,6 +124,7 @@ static void ObjManOMExec(OMOBJ *obj)
             Hu3DModelTPLvlSet(modelP->modelId, fade * ((float) modelP->alpha / 255.0f));
         }
 
+        /* Read the current model attribute mask, then ignore it before applying display state. */
         attr = Hu3DModelAttrGet(modelP->modelId);
         if (!modelP->dispF) {
             Hu3DModelAttrSet(modelP->modelId, HU3D_ATTR_DISPOFF);
@@ -132,6 +141,7 @@ static void ObjManOMExec(OMOBJ *obj)
     }
 }
 
+/* Allocates a model slot, creates its model and motions, and applies board-object defaults. */
 static MBMODELID ObjManObjCreate(int charNo, int dataNum, const int *motDataNum, BOOL linkF)
 {
     MBOBJMODEL *modelP;
@@ -152,6 +162,8 @@ static MBMODELID ObjManObjCreate(int charNo, int dataNum, const int *motDataNum,
     memset(modelP, 0, sizeof(MBOBJMODEL));
     modelP->id = i;
     modelP->charNo = charNo;
+    /* Both creation return values are stored in result and ignored; motion creation below
+     * overwrites the model-creation result. */
     result = ObjManModelCreate(modelP, dataNum, linkF);
 
     motNum = 0;
@@ -187,10 +199,12 @@ static MBMODELID ObjManObjCreate(int charNo, int dataNum, const int *motDataNum,
     return modelP->id;
 }
 
+/* Called by board features to create a model; linkF permits reuse of a loaded asset. */
 MBMODELID mbObjCreate(int dataNum, const int *motDataNum, BOOL linkF)
 {
     MBMODELID modelId;
 
+    /* Seed the shared source model hidden when this is the first linked instance. */
     if (linkF && !ObjManLinkSearch(dataNum)) {
         modelId = ObjManObjCreate(CHARNO_NONE, dataNum, motDataNum, linkF);
         mbObjDispSet(modelId, FALSE);
@@ -198,6 +212,7 @@ MBMODELID mbObjCreate(int dataNum, const int *motDataNum, BOOL linkF)
     return ObjManObjCreate(CHARNO_NONE, dataNum, motDataNum, linkF);
 }
 
+/* Called by board features to create a character model and place it on the character layer. */
 MBMODELID mbObjCharCreate(int charNo, int dataNum, const int *motDataNum, BOOL linkF)
 {
     MBMODELID modelId = ObjManObjCreate(charNo, dataNum, motDataNum, linkF);
@@ -206,6 +221,8 @@ MBMODELID mbObjCharCreate(int charNo, int dataNum, const int *motDataNum, BOOL l
     return modelId;
 }
 
+/* ObjManObjCreate creates a model here: non-character entries link or load configured day/night
+ * data; character entries call CharModelCreate and skip data loading. */
 static BOOL ObjManModelCreate(MBOBJMODEL *modelP, int dataNum, BOOL linkF)
 {
     MBOBJMODEL *linkP = NULL;
@@ -239,6 +256,7 @@ static BOOL ObjManModelCreate(MBOBJMODEL *modelP, int dataNum, BOOL linkF)
 read_data:
         data = HuDataSelHeapReadNum(readDataNum, HU_MEMNUM_OVL, HEAP_MODEL);
         if (!data) {
+            /* These remaining-memory values are read here but do not affect the load path. */
             s32 modelRestMem = HuRestMemGet(HEAP_MODEL);
             s32 dvdRestMem = HuRestMemGet(HEAP_DVD);
         }
@@ -259,6 +277,8 @@ read_data:
     return TRUE;
 }
 
+/* ObjManObjCreate stores the built-in motion in slot zero and loads requested additional
+ * motions here. Data or motion creation failure returns -1 before setting the motion count. */
 static int ObjManMotionCreate(MBOBJMODEL *modelP, int motNum, const int *motDataNum)
 {
     void *data;
@@ -293,6 +313,8 @@ static int ObjManMotionCreate(MBOBJMODEL *modelP, int motNum, const int *motData
     return TRUE;
 }
 
+/* Model creation finds any active model with this data number for linking; no character filter
+ * is applied. */
 static MBOBJMODEL *ObjManLinkSearch(int dataNum)
 {
     MBOBJMODEL *modelP;
@@ -306,6 +328,8 @@ static MBOBJMODEL *ObjManLinkSearch(int dataNum)
     return NULL;
 }
 
+/* Called when a board feature releases a model; linked instances are removed before their
+ * source. */
 void mbObjKill(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -355,6 +379,8 @@ void mbObjKill(MBMODELID modelId)
     modelP->dispF = FALSE;
 }
 
+/* Board setup records the day and night data directories used for seasonal model and motion
+ * loads. */
 void mbObjDirSet(int day, int night)
 {
     dataDirDay = day;
@@ -376,6 +402,7 @@ void mbObjDispSet(MBMODELID modelId, BOOL dispF)
     objManData[modelId].dispF = dispF;
 }
 
+/* Board features call this to set the cameras that can render one model. */
 void mbObjCameraSet(MBMODELID modelId, u16 cameraBit)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -389,6 +416,7 @@ int mbObjLayerGet(MBMODELID modelId)
     return objManData[modelId].layer;
 }
 
+/* Board features call this to assign one model to a render layer. */
 void mbObjLayerSet(MBMODELID modelId, u8 layer)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -397,6 +425,8 @@ void mbObjLayerSet(MBMODELID modelId, u8 layer)
     Hu3DModelLayerSet(modelP->modelId, layer);
 }
 
+/* Board features can move all active engine models to one layer; stored layer fields are
+ * unchanged. */
 void mbObjLayerSetAll(u8 layer)
 {
     MBOBJMODEL *modelP;
@@ -424,6 +454,7 @@ void mbObjPosSetV(MBMODELID modelId, const HuVecF *pos)
     mbObjPosSet(modelId, pos->x, pos->y, pos->z);
 }
 
+/* Board features set the model position; its stored offset is added for rendering. */
 void mbObjPosSet(MBMODELID modelId, float x, float y, float z)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -447,6 +478,7 @@ void mbObjOffsetSetV(MBMODELID modelId, const HuVecF *offset)
     mbObjOffsetSet(modelId, offset->x, offset->y, offset->z);
 }
 
+/* Board features set a model-local position offset, then refresh its rendered position. */
 void mbObjOffsetSet(MBMODELID modelId, float x, float y, float z)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -469,6 +501,7 @@ void mbObjRotSetV(MBMODELID modelId, const HuVecF *rot)
     mbObjRotSet(modelId, rot->x, rot->y, rot->z);
 }
 
+/* Board features set all three stored rotation components and apply them to the model. */
 void mbObjRotSet(MBMODELID modelId, float x, float y, float z)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -484,6 +517,7 @@ float mbObjRotYGet(MBMODELID modelId)
     return objManData[modelId].rot.y;
 }
 
+/* Board features change only yaw while preserving the model's X and Z rotations. */
 void mbObjRotYSet(MBMODELID modelId, float rotY)
 {
     HuVecF rot;
@@ -502,6 +536,7 @@ void mbObjScaleSetV(MBMODELID modelId, const HuVecF *scale)
     mbObjScaleSet(modelId, scale->x, scale->y, scale->z);
 }
 
+/* Board features set the model's per-axis scale and apply the resulting vector. */
 void mbObjScaleSet(MBMODELID modelId, float x, float y, float z)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -512,6 +547,7 @@ void mbObjScaleSet(MBMODELID modelId, float x, float y, float z)
     Hu3DModelScaleSetV(modelP->modelId, &modelP->scale);
 }
 
+/* Board features read the current engine model matrix into mtx. */
 void mbObjMtxGet(MBMODELID modelId, Mtx *mtx)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -520,6 +556,7 @@ void mbObjMtxGet(MBMODELID modelId, Mtx *mtx)
     PSMTXCopy(model3DP->mtx, *mtx);
 }
 
+/* Board features replace the engine model matrix with mtx. */
 void mbObjMtxSet(MBMODELID modelId, Mtx *mtx)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -528,6 +565,7 @@ void mbObjMtxSet(MBMODELID modelId, Mtx *mtx)
     PSMTXCopy(*mtx, model3DP->mtx);
 }
 
+/* Board features enable supplied model or motion attribute bits through Hu3DModelAttrSet. */
 void mbObjAttrSet(MBMODELID modelId, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -535,6 +573,7 @@ void mbObjAttrSet(MBMODELID modelId, u32 attr)
     Hu3DModelAttrSet(modelP->modelId, attr);
 }
 
+/* Board features clear supplied model or motion attribute bits through Hu3DModelAttrReset. */
 void mbObjAttrReset(MBMODELID modelId, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -547,6 +586,7 @@ void mbObjAmbSet(MBMODELID modelId, float r, float g, float b)
     Hu3DModelAmbSet(objManData[modelId].modelId, r, g, b);
 }
 
+/* Board lighting updates use this to apply one ambient color to every active model. */
 void mbObjAmbSetAll(float r, float g, float b)
 {
     MBOBJMODEL *modelP;
@@ -564,6 +604,7 @@ u8 mbObjAlphaGet(MBMODELID modelId)
     return objManData[modelId].alpha;
 }
 
+/* Board features set model opacity from 0 (transparent) through 255 (opaque). */
 void mbObjAlphaSet(MBMODELID modelId, u8 alpha)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -577,6 +618,7 @@ void mbObjFadeSet(MBMODELID modelId, BOOL fadeF)
     objManData[modelId].fadeF = fadeF;
 }
 
+/* Board effects toggle whether this model writes depth while rendering. */
 void mbObjZWriteOffSet(MBMODELID modelId, BOOL zWriteOffF)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -588,6 +630,7 @@ void mbObjZWriteOffSet(MBMODELID modelId, BOOL zWriteOffF)
     }
 }
 
+/* Board features set the camera-culling radius; a negative input disables culling. */
 void mbObjCullRadiusSet(MBMODELID modelId, float radius)
 {
     if (radius < 0.0f) {
@@ -596,6 +639,8 @@ void mbObjCullRadiusSet(MBMODELID modelId, float radius)
     objManData[modelId].cullRadius = radius;
 }
 
+/* Board features hook hookModelId to objName on modelId, then set the hooked model's stored
+ * base position to zero; its offset remains applied. */
 void mbObjHookSet(MBMODELID modelId, char *objName, MBMODELID hookModelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -605,6 +650,7 @@ void mbObjHookSet(MBMODELID modelId, char *objName, MBMODELID hookModelId)
     mbObjPosSet(hookModelId, 0.0f, 0.0f, 0.0f);
 }
 
+/* Board features detach all model hooks from this model. */
 void mbObjHookReset(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -612,6 +658,7 @@ void mbObjHookReset(MBMODELID modelId)
     Hu3DModelHookReset(modelP->modelId);
 }
 
+/* Board features detach the named hooked object from this model. */
 void mbObjHookObjReset(MBMODELID modelId, char *objName)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -619,6 +666,8 @@ void mbObjHookObjReset(MBMODELID modelId, char *objName)
     Hu3DModelHookObjReset(modelP->modelId, objName);
 }
 
+/* Board features play a sound at the model's stored base position; its render offset is not
+ * included. */
 int mbObjSePlay(MBMODELID modelId, s16 seId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -626,6 +675,7 @@ int mbObjSePlay(MBMODELID modelId, s16 seId)
     return mbAudFXPosPlay(seId, &modelP->pos);
 }
 
+/* Character board models use this to enable or disable voice for a motion slot. */
 void mbObjMotionVoiceOnSet(MBMODELID modelId, int motNo, BOOL voiceOnF)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -635,6 +685,7 @@ void mbObjMotionVoiceOnSet(MBMODELID modelId, int motNo, BOOL voiceOnF)
     }
 }
 
+/* Board features query the motion slot most recently selected for this model. */
 int mbObjMotionGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -642,6 +693,9 @@ int mbObjMotionGet(MBMODELID modelId)
     return modelP->motNo;
 }
 
+/* Board features select a motion, reset speed and range, and seek to the end for reverse flags.
+ * Only loop/pause bits are cleared before applying attrs and recording motNo, so old reverse
+ * and shape flags can persist. */
 void mbObjMotionSet(MBMODELID modelId, int motNo, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -675,6 +729,7 @@ int mbObjMotionIDCurGet(MBMODELID modelId)
     return mbObjMotionIDGet(modelId, mbObjMotionGet(modelId));
 }
 
+/* Board features retrieve the engine motion ID stored in a specific slot. */
 int mbObjMotionIDGet(MBMODELID modelId, int motNo)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -682,6 +737,8 @@ int mbObjMotionIDGet(MBMODELID modelId, int motNo)
     return modelP->motId[motNo];
 }
 
+/* Board features start a blend with supplied start/end. Shared motStart is reset to zero and
+ * motEnd to the current main-motion maximum before the call, then motNo is recorded. */
 void mbObjMotionShiftSet(MBMODELID modelId, int motNo, float start, float end, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -700,6 +757,7 @@ void mbObjMotionShiftSet(MBMODELID modelId, int motNo, float start, float end, u
     modelP->motNo = motNo;
 }
 
+/* Board features query the engine ID of the model's motion currently being blended. */
 int mbObjMotionShiftIDGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -707,11 +765,14 @@ int mbObjMotionShiftIDGet(MBMODELID modelId)
     return Hu3DMotionShiftIDGet(modelP->modelId);
 }
 
-void mbObjMotionNoCreate(MBMODELID modelId, int dataNum, int motNo)
+/* Board features load a motion into a specified slot. Character data closes immediately and
+ * its data number is not recorded; motNum increments even on failure. */
+void mbObjMotionNoCreate(MBMODELID objectOrMotionId, int dataNum, int motNo)
 {
-    MBOBJMODEL *modelP = &objManData[modelId];
+    MBOBJMODEL *modelP = &objManData[objectOrMotionId];
     int readDataNum;
 
+    /* The input object-table ID is reused below to hold the created motion ID. */
     if (modelP->charNo == CHARNO_NONE) {
         if (!GwSystem.curTime) {
             if (DIRNUM(dataNum) == dataDirNight) {
@@ -725,18 +786,20 @@ void mbObjMotionNoCreate(MBMODELID modelId, int dataNum, int motNo)
         readDataNum = dataNum;
 read_data:
         modelP->motData[motNo] = HuDataSelHeapReadNum(readDataNum, HU_MEMNUM_OVL, HEAP_MODEL);
-        modelId = Hu3DJointMotion(modelP->modelId, modelP->motData[motNo]);
+        objectOrMotionId = Hu3DJointMotion(modelP->modelId, modelP->motData[motNo]);
     } else {
-        modelId = CharMotionCreate(modelP->charNo, dataNum);
+        objectOrMotionId = CharMotionCreate(modelP->charNo, dataNum);
         CharMotionDataClose(modelP->charNo);
     }
-    modelP->motId[motNo] = modelId;
+    modelP->motId[motNo] = objectOrMotionId;
     modelP->motNum++;
 }
 
-int mbObjMotionCreate(MBMODELID modelId, int dataNum)
+/* Board features load a motion into the first free nonzero slot. Character data numbers are
+ * not retained; a full table falls through to an out-of-bounds slot instead of failing. */
+int mbObjMotionCreate(MBMODELID objectOrMotionId, int dataNum)
 {
-    MBOBJMODEL *modelP = &objManData[modelId];
+    MBOBJMODEL *modelP = &objManData[objectOrMotionId];
     int motNo;
     int readDataNum;
 
@@ -745,6 +808,7 @@ int mbObjMotionCreate(MBMODELID modelId, int dataNum)
             break;
         }
     }
+    /* The input object-table ID is reused below to hold the created motion ID. */
     if (modelP->charNo == CHARNO_NONE) {
         if (!GwSystem.curTime) {
             if (DIRNUM(dataNum) == dataDirNight) {
@@ -758,16 +822,17 @@ int mbObjMotionCreate(MBMODELID modelId, int dataNum)
         readDataNum = dataNum;
 read_data:
         modelP->motData[motNo] = HuDataSelHeapReadNum(readDataNum, HU_MEMNUM_OVL, HEAP_MODEL);
-        modelId = Hu3DJointMotion(modelP->modelId, modelP->motData[motNo]);
+        objectOrMotionId = Hu3DJointMotion(modelP->modelId, modelP->motData[motNo]);
     } else {
-        modelId = CharMotionCreate(modelP->charNo, dataNum);
+        objectOrMotionId = CharMotionCreate(modelP->charNo, dataNum);
         CharMotionDataClose(modelP->charNo);
     }
-    modelP->motId[motNo] = modelId;
+    modelP->motId[motNo] = objectOrMotionId;
     modelP->motNum++;
     return motNo;
 }
 
+/* Board features release one motion slot, selecting the base motion first if it was active. */
 void mbObjMotionKill(MBMODELID modelId, int motNo)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -787,6 +852,7 @@ void mbObjMotionKill(MBMODELID modelId, int motNo)
     modelP->motNum--;
 }
 
+/* Board features query the current playback frame of the model's active motion. */
 float mbObjMotionTimeGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -800,6 +866,8 @@ float mbObjMotionTimeGet(MBMODELID modelId)
     return time;
 }
 
+/* Board features seek the active motion to the requested frame; the engine clamps time to
+ * [0, max]. */
 void mbObjMotionTimeSet(MBMODELID modelId, float time)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -811,6 +879,7 @@ void mbObjMotionTimeSet(MBMODELID modelId, float time)
     }
 }
 
+/* Board features query the final frame of the active motion. */
 float mbObjMotionMaxTimeGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -824,6 +893,7 @@ float mbObjMotionMaxTimeGet(MBMODELID modelId)
     return time;
 }
 
+/* Board features query the playback speed stored by the engine for this model. */
 float mbObjMotionSpeedGet(MBMODELID modelId)
 {
     HU3D_MODEL *model3DP;
@@ -834,6 +904,7 @@ float mbObjMotionSpeedGet(MBMODELID modelId)
     return model3DP->motWork.speed;
 }
 
+/* Board features set motion playback speed and the speed used by motion blending. */
 void mbObjMotionSpeedSet(MBMODELID modelId, float speed)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -848,6 +919,7 @@ void mbObjMotionSpeedSet(MBMODELID modelId, float speed)
     model3DP->motShiftWork.speed = speed;
 }
 
+/* Board features poll whether the active motion has reached its end. */
 BOOL mbObjMotionEndCheck(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -861,6 +933,8 @@ BOOL mbObjMotionEndCheck(MBMODELID modelId)
     return result;
 }
 
+/* Board features update nonnegative playback bounds and pass the stored frame range to the
+ * engine. */
 void mbObjMotionStartEndSet(MBMODELID modelId, s16 start, s16 end)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -874,6 +948,7 @@ void mbObjMotionStartEndSet(MBMODELID modelId, s16 start, s16 end)
     Hu3DMotionStartEndSet(modelP->modelId, modelP->motStart, modelP->motEnd);
 }
 
+/* Board features enable or disable looping for the model's motion playback. */
 void mbObjMotionLoopSet(MBMODELID modelId, BOOL loopF)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -885,6 +960,7 @@ void mbObjMotionLoopSet(MBMODELID modelId, BOOL loopF)
     }
 }
 
+/* Board features query the current frame of the model's shape animation. */
 float mbObjMotionShapeTimeGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -893,6 +969,8 @@ float mbObjMotionShapeTimeGet(MBMODELID modelId)
     return model3DP->motShapeWork.time;
 }
 
+/* Board features select a shape motion and reset speed/range. Reverse starts at the main-motion
+ * maximum; attribute bits are only added, so old shape flags persist. */
 void mbObjMotionShapeSet(MBMODELID modelId, int motNo, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -906,6 +984,8 @@ void mbObjMotionShapeSet(MBMODELID modelId, int motNo, u32 attr)
     Hu3DModelAttrSet(modelP->modelId, attr);
 }
 
+/* Board event callbacks such as fn_1_8860 write the shape frame directly; no range clamp or
+ * endpoint update is performed. */
 void mbObjMotionShapeTimeSet(MBMODELID modelId, float time)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -914,6 +994,7 @@ void mbObjMotionShapeTimeSet(MBMODELID modelId, float time)
     model3DP->motShapeWork.time = time;
 }
 
+/* Shape-end checks use this to read the configured last frame of the model's shape motion. */
 float mbObjMotionShapeMaxTimeGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -923,6 +1004,8 @@ float mbObjMotionShapeMaxTimeGet(MBMODELID modelId)
     return model3DP->motShapeWork.end;
 }
 
+/* Board/event code sets shape playback speed, including zero to pause and negative values to
+ * reverse. */
 void mbObjMotionShapeSpeedSet(MBMODELID modelId, float speed)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -931,6 +1014,7 @@ void mbObjMotionShapeSpeedSet(MBMODELID modelId, float speed)
     model3DP->motShapeWork.speed = speed;
 }
 
+/* Board event code queries the playback rate when it needs the current shape-animation speed. */
 float mbObjMotionShapeSpeedGet(MBMODELID modelId)
 {
     HU3D_MODEL *model3DP;
@@ -941,6 +1025,8 @@ float mbObjMotionShapeSpeedGet(MBMODELID modelId)
     return model3DP->motShapeWork.speed;
 }
 
+/* Board event code checks shape time against its configured end. This attr test does not see
+ * shape flags stored in motAttr, so reverse playback uses the forward end test. */
 BOOL mbObjMotionShapeEndCheck(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -952,6 +1038,8 @@ BOOL mbObjMotionShapeEndCheck(MBMODELID modelId)
     return mbObjMotionShapeMaxTimeGet(modelId) <= model3DP->motShapeWork.time;
 }
 
+/* Board model setup sets shape range from shared motStart/motEnd; negative inputs retain those
+ * shared fields, which main-motion operations can change. */
 void mbObjMotionShapeStartEndSet(MBMODELID modelId, s16 start, s16 end)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -965,6 +1053,7 @@ void mbObjMotionShapeStartEndSet(MBMODELID modelId, s16 start, s16 end)
     Hu3DMotionShapeStartEndSet(modelP->modelId, modelP->motStart, modelP->motEnd);
 }
 
+/* Board and minigame model setup call this to enable the model's cast shadows. */
 void mbObjShadowSet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -972,6 +1061,7 @@ void mbObjShadowSet(MBMODELID modelId)
     Hu3DModelShadowSet(modelP->modelId);
 }
 
+/* Board and minigame cleanup call this to disable the model's cast shadows. */
 void mbObjShadowReset(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -979,6 +1069,7 @@ void mbObjShadowReset(MBMODELID modelId)
     Hu3DModelShadowReset(modelP->modelId);
 }
 
+/* Board and minigame model setup call this to include the model in shadow-map rendering. */
 void mbObjShadowMapSet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
@@ -986,6 +1077,7 @@ void mbObjShadowMapSet(MBMODELID modelId)
     Hu3DModelShadowMapSet(modelP->modelId);
 }
 
+/* Board and minigame cleanup call this to remove the model from shadow-map rendering. */
 void mbObjShadowMapReset(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];

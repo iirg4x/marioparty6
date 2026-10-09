@@ -1,4 +1,5 @@
-/* Retail shopevent.o omits math.h's weak sqrtf constants. */
+/* Board shop events display capsule offers and let a player buy or replace one. */
+/* Use the Dolphin math declarations for the shop's movement and menu animations. */
 #define _MATH_H
 #include "dolphin/math.h"
 
@@ -20,25 +21,27 @@
 #include "game/sprite.h"
 
 #include "humath.h"
+#include "datadir_enum.h"
 #include "messdir_enum.h"
+#include "msm_se.h"
 #include "string.h"
 
 typedef void (*MBSHOPOBJHOOK)(int modelId, int shopNo);
 
 enum {
-    SHOP_MASU_ATTR_PATH_LINK = 1 << 5,
+    SHOP_MASU_ATTR_PATH_LINK = (1 << 5),
     SHOP_LIST_ENTRY_COUNT = 33,
     SHOP_LIST_ENTRY_SIZE = 16,
     SHOP_TUTORIAL_ENTRY = 19,
     SHOP_TUTORIAL_SELECT = 20,
-    SHOP_SFX_NIGHT_SUCCESS = 960,
-    SHOP_SFX_NIGHT_PROMPT = 961,
-    SHOP_SFX_NIGHT_UNAVAILABLE = 962,
-    SHOP_SFX_DAY_SUCCESS = 986,
-    SHOP_SFX_DAY_PROMPT = 987,
-    SHOP_SFX_DAY_UNAVAILABLE = 988,
-    SHOP_SFX_OPEN = 1143,
-    SHOP_SFX_CLOSE = 1144,
+    SHOP_SFX_NIGHT_SUCCESS = MSM_SE_GUIDE_36,
+    SHOP_SFX_NIGHT_PROMPT = MSM_SE_GUIDE_37,
+    SHOP_SFX_NIGHT_UNAVAILABLE = MSM_SE_GUIDE_38,
+    SHOP_SFX_DAY_SUCCESS = MSM_SE_GUIDE_62,
+    SHOP_SFX_DAY_PROMPT = MSM_SE_GUIDE_63,
+    SHOP_SFX_DAY_UNAVAILABLE = MSM_SE_GUIDE_64,
+    SHOP_SFX_OPEN = MSM_SE_BRD00_139,
+    SHOP_SFX_CLOSE = MSM_SE_BRD00_140,
     SHOP_DATA_NIGHT_MODEL = DATANUM(DATA_capsuleshop, 0),
     SHOP_DATA_NIGHT_MOTION = DATANUM(DATA_capsuleshop, 1),
     SHOP_DATA_NIGHT_MOTION_CLOSE = DATANUM(DATA_capsuleshop, 4),
@@ -58,35 +61,35 @@ enum {
 };
 
 typedef struct MBSHOPWORK {
-    int playerNo;
-    int shopNo;
+    int playerNo; /* Player currently visiting the shop. */
+    int shopNo; /* Board space ID used to find this shop. */
 } MBSHOPWORK;
 
 typedef struct MBSHOPOMWORK {
-    int modelId;
-    int shopNo;
-    int masuId;
-    int masuLinkId;
-    BOOL pathF;
-    int masuEndId;
-    int unk18;
-    int unk1C;
-    BOOL modelMotionF;
-    BOOL motionExecF;
-    BOOL openF;
-    int backModelId[8];
-    int backMotNo[8];
-    BOOL backDispF[8];
-    HuVecF masuPos;
-    HuVecF capsulePos;
-    HuVecF shopPos;
+    int modelId; /* Main shop model, or -1 when this shop has no model. */
+    int shopNo; /* Index in ev_ShopOMObj. */
+    int masuId; /* Board space that starts the shop path. */
+    int masuLinkId; /* First linked space after the shop space. */
+    BOOL pathF; /* TRUE when the shop is reached along linked spaces. */
+    int masuEndId; /* Last space the player walks to on the shop path; -1 for direct approach. */
+    int reservedStateA; /* Cleared during setup and never read in this file. */
+    int reservedStateB; /* Cleared during setup and never read in this file. */
+    BOOL modelMotionF; /* TRUE when the main model has separate open and close motions. */
+    BOOL motionExecF; /* TRUE while the shop's open or close motion is running. */
+    BOOL openF; /* TRUE while the shop is opening or open. */
+    int backModelId[8]; /* Attached shop model IDs; -1 marks an unused slot. */
+    int backMotionNo[8]; /* 0/1 reverse on closing; 2/3 play forward; 4 loops continuously. */
+    BOOL backStaysVisibleF[8]; /* TRUE when an attached model stays visible after closing. */
+    HuVecF masuPos; /* World position of the shop model's board space. */
+    HuVecF capsulePos; /* World position used for the temporary shop visit model. */
+    HuVecF shopPos; /* World position where the player approaches the counter. */
 } MBSHOPOMWORK;
 
 typedef struct ShopOffer_s {
-    int capsuleNo;
-    int cost;
-    int messageId;
-    char costText[16];
+    int capsuleNo; /* Capsule ID offered for sale. */
+    int cost; /* Coin price for this player. */
+    int messageId; /* Capsule use text inserted into purchase and replacement dialogue. */
+    char costText[16]; /* Formatted offer price; written here but not read later in this file. */
 } SHOP_OFFER;
 
 #define SHOP_SELECT_WINDOW_SPACING 576.0f
@@ -106,6 +109,7 @@ enum {
     SHOP_SELECT_STICK_THRESHOLD = 20,
 };
 
+/* Rows select the offer count; X is angle in degrees, Y is radius, and Z is unused. */
 static HuVecF ev_ShopCapsulePlayer[3][3] = {
     {
         { 0.0f, 0.0f, 0.0f },
@@ -127,12 +131,13 @@ static HuVecF ev_ShopCapsulePlayer[3][3] = {
 static HuVecF ev_ShopLightPos = { -10000.0f, 10000.0f, -10000.0f };
 static HuVecF ev_ShopLightDir = { 1.0f, -1.0f, -1.0f };
 static int ev_ShopSprFileTbl[4] = {
-    DATANUM(DATA_board, 0x26),
-    DATANUM(DATA_board, 0x23),
-    DATANUM(DATA_board, 0x23),
-    DATANUM(DATA_board, 0x23),
+    DATANUM(DATA_board, 38),
+    DATANUM(DATA_board, 35),
+    DATANUM(DATA_board, 35),
+    DATANUM(DATA_board, 35),
 };
 static HuVecF ev_ShopWinPos = { 288.0f, 176.0f, 0.0f };
+/* Screen positions and projection depth for one, two, or three carousel offers. */
 static HuVecF ev_ShopCapsulePos[3][3] = {
     {
         { 288.0f, 170.0f, 1000.0f },
@@ -151,6 +156,7 @@ static HuVecF ev_ShopCapsulePos[3][3] = {
     },
 };
 
+/* Board shop objects are indexed independently of their board space IDs. */
 static OMOBJ *ev_ShopOMObj[GW_PLAYER_MAX];
 static GXColor ev_ShopLightColor = { 255, 255, 255, 255 };
 
@@ -159,7 +165,7 @@ void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo, BOOL linkF, 
 extern int mbCapObjCreate(int capsuleNo, BOOL flag);
 extern void mbCapObjKill(int objId);
 extern int mbCapDescWinCreate(int capsuleNo);
-extern s8 mbPadStkXGet(s32 playerNo);
+extern s8 mbPadStkXGet(s32 padNo);
 extern void mbev_CapVecChase(float weight, HuVecF *src, HuVecF *target,
     HuVecF *out);
 extern s32 mbBGRead(s32 dataNum);
@@ -184,41 +190,46 @@ extern void mbComChoiceRightSet(void);
 extern void mbev_Scroll(int playerNo, BOOL mapF);
 static void ev_ShopOMExec(OMOBJ *obj);
 static void ev_ShopOpenSet(int shopNo, BOOL openF);
-static void ev_Shop(MBSHOPWORK *work);
-static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum, int winType);
-static int ev_ShopMesGet(int messNo);
+static void ev_Shop(MBSHOPWORK *visitWork);
+static int ev_ShopSelect(MBSHOPWORK *visitWork, SHOP_OFFER *offer, int offerNum, int winType);
+static int ev_ShopMesGet(int dayMessageId);
 void mbev_ShopExObjHookSet(MBSHOPOBJHOOK hook);
 
 static int ev_ShopNum;
 static MBSHOPOBJHOOK ev_ShopExObjHook;
 static BOOL ev_ShopEnableF;
 
+/* Enables or disables board shop visits; called by board event setup. */
 void mbev_ShopEnableSet(BOOL enableF)
 {
     ev_ShopEnableF = enableF;
 }
 
+/* Called during board setup to create shop objects without a custom object hook. */
 void mbev_ShopInit(int dataNum)
 {
     mbev_ShopExObjHookSet(NULL);
     mbev_ShopCreate(dataNum, -1);
 }
 
+/* Called during board setup to create shop objects with a caller-supplied setup hook. */
 void mbev_ShopExInit(int dataNum, MBSHOPOBJHOOK hook)
 {
     mbev_ShopExObjHookSet(hook);
     mbev_ShopCreate(dataNum, -1);
 }
 
+/* Enables visits and creates shop objects during board setup; a shop without a marked path link
+ * ends the scan. */
 void mbev_ShopCreate(int dataNum, int motDataNum)
 {
     HuVecF shopPos;
     HuVecF masuPos;
-    HuVecF dir;
-    int masuTbl[3];
-    int motDataNumTbl[2];
+    HuVecF approachDirection;
+    int shopPathMasuIds[3];
+    int motionDataNums[2];
     int masuId;
-    int i;
+    int backModelSlot;
     int shopNo;
 
     ev_ShopEnableF = TRUE;
@@ -226,207 +237,220 @@ void mbev_ShopCreate(int dataNum, int motDataNum)
         ev_ShopOMObj[masuId] = NULL;
     }
     shopNo = 0;
-    motDataNumTbl[0] = motDataNum;
-    motDataNumTbl[1] = -1;
+    motionDataNums[0] = motDataNum;
+    motionDataNums[1] = -1;
     for (masuId = 1; masuId < mbMasuNumGet(); masuId++) {
         int linkMasuId;
         int shopLinkMasuId;
         int shopMasuId;
         int nextMasuId;
-        MBSHOPOMWORK *work;
-        OMOBJ *obj;
+        MBSHOPOMWORK *shopWork;
+        OMOBJ *shopObj;
 
         if (mbMasuTypeGet(masuId) != 9) {
             continue;
         }
-        linkMasuId = mbMasuAttrFindLink(masuId, 0x20);
+        linkMasuId = mbMasuAttrFindLink(masuId, SHOP_MASU_ATTR_PATH_LINK);
         if (linkMasuId < 0) {
             break;
         }
-        nextMasuId = mbMasuAttrFindLink(linkMasuId, 0x20);
-        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBSHOPOMWORK), HU_MEMNUM_OVL);
-        memset(work, 0, sizeof(MBSHOPOMWORK));
+        nextMasuId = mbMasuAttrFindLink(linkMasuId, SHOP_MASU_ATTR_PATH_LINK);
+        shopWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBSHOPOMWORK), HU_MEMNUM_OVL);
+        memset(shopWork, 0, sizeof(MBSHOPOMWORK));
         shopMasuId = masuId;
         shopLinkMasuId = linkMasuId;
         mbMasuPosGet(shopMasuId, &shopPos);
         mbMasuPosGet(shopLinkMasuId, &masuPos);
         if (nextMasuId != -1) {
-            work->pathF = TRUE;
-            masuTbl[0] = shopMasuId;
-            masuTbl[1] = shopLinkMasuId;
-            masuTbl[2] = nextMasuId;
-            while ((nextMasuId = mbMasuAttrFindLink(masuTbl[2], 0x20)) > 0) {
-                masuTbl[0] = masuTbl[1];
-                masuTbl[1] = masuTbl[2];
-                masuTbl[2] = nextMasuId;
+            /* Keep the last two spaces: the player stops before the shop model. */
+            shopWork->pathF = TRUE;
+            shopPathMasuIds[0] = shopMasuId;
+            shopPathMasuIds[1] = shopLinkMasuId;
+            shopPathMasuIds[2] = nextMasuId;
+            while ((nextMasuId = mbMasuAttrFindLink(shopPathMasuIds[2], SHOP_MASU_ATTR_PATH_LINK)) >
+                   0) {
+                shopPathMasuIds[0] = shopPathMasuIds[1];
+                shopPathMasuIds[1] = shopPathMasuIds[2];
+                shopPathMasuIds[2] = nextMasuId;
             }
-            mbMasuPosGet(masuTbl[1], &work->shopPos);
-            mbMasuPosGet(masuTbl[2], &work->masuPos);
-            shopPos = work->shopPos;
-            masuPos = work->masuPos;
-            work->masuEndId = masuTbl[1];
+            mbMasuPosGet(shopPathMasuIds[1], &shopWork->shopPos);
+            mbMasuPosGet(shopPathMasuIds[2], &shopWork->masuPos);
+            shopPos = shopWork->shopPos;
+            masuPos = shopWork->masuPos;
+            shopWork->masuEndId = shopPathMasuIds[1];
         } else {
-            work->pathF = FALSE;
-            work->masuEndId = -1;
-            PSVECSubtract(&shopPos, &masuPos, &dir);
-            if (PSVECMag(&dir) > 0.0f) {
-                PSVECNormalize(&dir, &dir);
+            shopWork->pathF = FALSE;
+            shopWork->masuEndId = -1;
+            /* Offset the direct approach 100 units toward the starting space, then force it to the
+             * model space's height. */
+            PSVECSubtract(&shopPos, &masuPos, &approachDirection);
+            if (PSVECMag(&approachDirection) > 0.0f) {
+                PSVECNormalize(&approachDirection, &approachDirection);
             }
-            PSVECScale(&dir, &dir, 100.0f);
-            PSVECAdd(&masuPos, &dir, &work->shopPos);
-            work->shopPos.y = masuPos.y;
-            mbMasuPosGet(shopLinkMasuId, &work->masuPos);
+            PSVECScale(&approachDirection, &approachDirection, 100.0f);
+            PSVECAdd(&masuPos, &approachDirection, &shopWork->shopPos);
+            shopWork->shopPos.y = masuPos.y;
+            mbMasuPosGet(shopLinkMasuId, &shopWork->masuPos);
         }
-        PSVECSubtract(&masuPos, &shopPos, &dir);
-        if (PSVECMag(&dir) > 0.0f) {
-            PSVECNormalize(&dir, &dir);
+        PSVECSubtract(&masuPos, &shopPos, &approachDirection);
+        if (PSVECMag(&approachDirection) > 0.0f) {
+            PSVECNormalize(&approachDirection, &approachDirection);
         }
-        PSVECScale(&dir, &dir, 100.0f);
-        PSVECAdd(&masuPos, &dir, &work->capsulePos);
+        PSVECScale(&approachDirection, &approachDirection, 100.0f);
+        PSVECAdd(&masuPos, &approachDirection, &shopWork->capsulePos);
         if (GwSystem.curTime) {
-            work->capsulePos.y += 30.000002f;
+            shopWork->capsulePos.y += 30.000002f;
         }
-        obj = ev_ShopOMObj[shopNo] = omAddObjEx(mbObjMan, -32768, 0, 0,
+        shopObj = ev_ShopOMObj[shopNo] = omAddObjEx(mbObjMan, -32768, 0, 0,
             OM_GRP_NONE, ev_ShopOMExec);
-        obj->data = work;
+        shopObj->data = shopWork;
         if (dataNum <= 0) {
-            work->modelId = -1;
+            shopWork->modelId = -1;
         } else if (motDataNum != -1) {
-            work->modelId = mbObjCreate(dataNum, motDataNumTbl, TRUE);
-            work->modelMotionF = TRUE;
+            shopWork->modelId = mbObjCreate(dataNum, motionDataNums, TRUE);
+            shopWork->modelMotionF = TRUE;
         } else {
-            work->modelId = mbObjCreate(dataNum, NULL, TRUE);
-            work->modelMotionF = FALSE;
+            shopWork->modelId = mbObjCreate(dataNum, NULL, TRUE);
+            shopWork->modelMotionF = FALSE;
         }
-        PSVECSubtract(&shopPos, &masuPos, &dir);
-        if (work->modelId != -1) {
-            mbObjPosSetV(work->modelId, &masuPos);
-            mbObjRotSet(work->modelId, 0.0f, HuAtan(dir.x, dir.z), 0.0f);
-            mbObjMotionSpeedSet(work->modelId, 0.0f);
+        PSVECSubtract(&shopPos, &masuPos, &approachDirection);
+        if (shopWork->modelId != -1) {
+            mbObjPosSetV(shopWork->modelId, &masuPos);
+            mbObjRotSet(shopWork->modelId, 0.0f, HuAtan(approachDirection.x, approachDirection.z),
+                        0.0f);
+            mbObjMotionSpeedSet(shopWork->modelId, 0.0f);
         }
-        work->shopNo = shopNo;
-        work->masuId = shopMasuId;
-        work->masuLinkId = shopLinkMasuId;
-        work->unk18 = 0;
-        work->unk1C = 0;
-        work->motionExecF = FALSE;
-        work->openF = FALSE;
+        shopWork->shopNo = shopNo;
+        shopWork->masuId = shopMasuId;
+        shopWork->masuLinkId = shopLinkMasuId;
+        shopWork->reservedStateA = 0;
+        shopWork->reservedStateB = 0;
+        shopWork->motionExecF = FALSE;
+        shopWork->openF = FALSE;
         if (ev_ShopExObjHook != NULL) {
-            ev_ShopExObjHook(work->modelId, shopNo);
+            ev_ShopExObjHook(shopWork->modelId, shopNo);
         }
-        for (i = 0; i < 8; i++) {
-            work->backModelId[i] = -1;
-            work->backMotNo[i] = 0;
-            work->backDispF[i] = FALSE;
+        for (backModelSlot = 0; backModelSlot < 8; backModelSlot++) {
+            shopWork->backModelId[backModelSlot] = -1;
+            shopWork->backMotionNo[backModelSlot] = 0;
+            shopWork->backStaysVisibleF[backModelSlot] = FALSE;
         }
         shopNo++;
     }
     ev_ShopNum = shopNo;
 }
 
+/* Stores the optional hook called once for each shop object as it is created. */
 void mbev_ShopExObjHookSet(MBSHOPOBJHOOK hook)
 {
     ev_ShopExObjHook = hook;
 }
 
+/* Called during board setup to add an attached model to each shop. */
 void mbev_ShopBackCreate(int dataNum, int motDataNum, int motNo, BOOL linkF)
 {
     mbev_ShopBackMotCreate(dataNum, motDataNum, motNo, linkF, 0);
 }
 
+/* Called during board setup to attach models and choose their opening and closing behavior. */
 void mbev_ShopBackMotCreate(int dataNum, int motDataNum, int motNo, BOOL linkF, char *hookName)
 {
-    int motDataNumTbl[16];
-    HuVecF pos;
-    HuVecF rot;
-    int i;
-    int j;
+    int motionDataNums[16];
+    HuVecF shopModelPos;
+    HuVecF shopModelRot;
+    int shopIndex;
+    int attachedModelSlot;
 
-    for (i = 0; i < 3; i++) {
-        OMOBJ *obj = ev_ShopOMObj[i];
-        MBSHOPOMWORK *work;
+    for (shopIndex = 0; shopIndex < 3; shopIndex++) {
+        OMOBJ *shopObj = ev_ShopOMObj[shopIndex];
+        MBSHOPOMWORK *shopWork;
 
-        if (obj == NULL) {
+        if (shopObj == NULL) {
             continue;
         }
-        work = obj->data;
-        for (j = 0; j < 8; j++) {
-            if (work->backModelId[j] == -1) {
+        shopWork = shopObj->data;
+        for (attachedModelSlot = 0; attachedModelSlot < 8; attachedModelSlot++) {
+            if (shopWork->backModelId[attachedModelSlot] == -1) {
                 break;
             }
         }
         if (motDataNum >= 0) {
-            motDataNumTbl[0] = motDataNum;
-            motDataNumTbl[1] = -1;
-            work->backModelId[j] = mbObjCreate(dataNum, motDataNumTbl, linkF);
+            motionDataNums[0] = motDataNum;
+            motionDataNums[1] = -1;
+            shopWork->backModelId[attachedModelSlot] = mbObjCreate(dataNum, motionDataNums, linkF);
         } else {
-            work->backModelId[j] = mbObjCreate(dataNum, NULL, linkF);
+            shopWork->backModelId[attachedModelSlot] = mbObjCreate(dataNum, NULL, linkF);
         }
-        if (work->modelId != -1) {
-            mbObjPosGet(work->modelId, &pos);
-            mbObjRotGet(work->modelId, &rot);
+        if (shopWork->modelId != -1) {
+            mbObjPosGet(shopWork->modelId, &shopModelPos);
+            mbObjRotGet(shopWork->modelId, &shopModelRot);
         } else {
-            pos.x = pos.y = pos.z = 0.0f;
-            rot.x = rot.y = rot.z = 0.0f;
+            shopModelPos.x = shopModelPos.y = shopModelPos.z = 0.0f;
+            shopModelRot.x = shopModelRot.y = shopModelRot.z = 0.0f;
         }
         if (hookName == NULL) {
-            mbObjPosSetV(work->backModelId[j], &pos);
-            mbObjRotSetV(work->backModelId[j], &rot);
-        } else if (work->modelId != -1) {
-            mbObjHookSet(work->modelId, hookName, work->backModelId[j]);
+            mbObjPosSetV(shopWork->backModelId[attachedModelSlot], &shopModelPos);
+            mbObjRotSetV(shopWork->backModelId[attachedModelSlot], &shopModelRot);
+        } else if (shopWork->modelId != -1) {
+            mbObjHookSet(shopWork->modelId, hookName, shopWork->backModelId[attachedModelSlot]);
         }
-        work->backMotNo[j] = motNo;
-        switch (work->backMotNo[j]) {
+        /* Modes 0-3 wait for the shop to open; mode 4 keeps playing throughout. */
+        shopWork->backMotionNo[attachedModelSlot] = motNo;
+        switch (shopWork->backMotionNo[attachedModelSlot]) {
             case 0:
             case 1:
-                mbObjMotionSpeedSet(work->backModelId[j], 0.0f);
+                mbObjMotionSpeedSet(shopWork->backModelId[attachedModelSlot], 0.0f);
                 break;
             case 2:
             case 3:
-                mbObjMotionSpeedSet(work->backModelId[j], 0.0f);
+                mbObjMotionSpeedSet(shopWork->backModelId[attachedModelSlot], 0.0f);
                 break;
             case 4: {
-                MBMODELID modelId = work->backModelId[j];
+                MBMODELID modelId = shopWork->backModelId[attachedModelSlot];
 
                 mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
                 break;
             }
         }
-        if (work->backMotNo[j] == 1 || work->backMotNo[j] == 3) {
-            work->backDispF[j] = TRUE;
+        if (shopWork->backMotionNo[attachedModelSlot] == 1 ||
+            shopWork->backMotionNo[attachedModelSlot] == 3) {
+            shopWork->backStaysVisibleF[attachedModelSlot] = TRUE;
         }
-        if (!work->backDispF[j]) {
-            mbObjDispSet(work->backModelId[j], FALSE);
+        if (!shopWork->backStaysVisibleF[attachedModelSlot]) {
+            mbObjDispSet(shopWork->backModelId[attachedModelSlot], FALSE);
         }
     }
 }
 
-static void ev_ShopOMExec(OMOBJ *obj)
+/* Per-frame object callback that detects motion completion and hides closed decorations. */
+static void ev_ShopOMExec(OMOBJ *shopObj)
 {
-    MBSHOPOMWORK *work = obj->data;
-    int i;
+    MBSHOPOMWORK *shopWork = shopObj->data;
+    int attachedModelSlot;
 
-    if (mbExitCheck() || ev_ShopOMObj[work->shopNo] == NULL) {
-        omDelObjEx(mbObjMan, obj);
+    if (mbExitCheck() || ev_ShopOMObj[shopWork->shopNo] == NULL) {
+        omDelObjEx(mbObjMan, shopObj);
         return;
     }
-    if (work->motionExecF && work->modelId != -1) {
-        if (work->openF) {
-            if (mbObjMotionTimeGet(work->modelId) >= mbObjMotionMaxTimeGet(work->modelId)) {
-                work->motionExecF = FALSE;
+    if (shopWork->motionExecF && shopWork->modelId != -1) {
+        if (shopWork->openF) {
+            if (mbObjMotionTimeGet(shopWork->modelId) >= mbObjMotionMaxTimeGet(shopWork->modelId)) {
+                shopWork->motionExecF = FALSE;
             }
         } else {
-            if (work->modelMotionF) {
-                if (mbObjMotionTimeGet(work->modelId) >= mbObjMotionMaxTimeGet(work->modelId)) {
-                    work->motionExecF = FALSE;
+            if (shopWork->modelMotionF) {
+                if (mbObjMotionTimeGet(shopWork->modelId) >=
+                    mbObjMotionMaxTimeGet(shopWork->modelId)) {
+                    shopWork->motionExecF = FALSE;
                 }
-            } else if (mbObjMotionTimeGet(work->modelId) <= 0.0f) {
-                work->motionExecF = FALSE;
+            } else if (mbObjMotionTimeGet(shopWork->modelId) <= 0.0f) {
+                shopWork->motionExecF = FALSE;
             }
-            if (!work->motionExecF) {
-                for (i = 0; i < 8; i++) {
-                    if (work->backModelId[i] != -1 && !work->backDispF[i]) {
-                        mbObjDispSet(work->backModelId[i], FALSE);
+            if (!shopWork->motionExecF) {
+                for (attachedModelSlot = 0; attachedModelSlot < 8; attachedModelSlot++) {
+                    if (shopWork->backModelId[attachedModelSlot] != -1 &&
+                        !shopWork->backStaysVisibleF[attachedModelSlot]) {
+                        mbObjDispSet(shopWork->backModelId[attachedModelSlot], FALSE);
                     }
                 }
             }
@@ -434,91 +458,97 @@ static void ev_ShopOMExec(OMOBJ *obj)
     }
 }
 
+/* Starts the shop's opening or closing motion when the visit sequence requests it. */
 static void ev_ShopOpenSet(int shopNo, BOOL openF)
 {
-    OMOBJ *obj = ev_ShopOMObj[shopNo];
-    MBSHOPOMWORK *work = obj->data;
-    int i;
+    OMOBJ *shopObj = ev_ShopOMObj[shopNo];
+    MBSHOPOMWORK *shopWork = shopObj->data;
+    int attachedModelSlot;
 
-    if (work->modelId == -1) {
+    if (shopWork->modelId == -1) {
         return;
     }
-    work->motionExecF = TRUE;
-    work->openF = openF;
-    if (work->openF) {
-        mbAudFXPlay(0x477);
-        mbObjMotionSet(work->modelId, 0, 0);
-        mbObjMotionSpeedSet(work->modelId, 1.0f);
-        for (i = 0; i < 8; i++) {
-            if (work->backModelId[i] == -1) {
+    shopWork->motionExecF = TRUE;
+    shopWork->openF = openF;
+    if (shopWork->openF) {
+        mbAudFXPlay(SHOP_SFX_OPEN);
+        mbObjMotionSet(shopWork->modelId, 0, 0);
+        mbObjMotionSpeedSet(shopWork->modelId, 1.0f);
+        for (attachedModelSlot = 0; attachedModelSlot < 8; attachedModelSlot++) {
+            if (shopWork->backModelId[attachedModelSlot] == -1) {
                 continue;
             }
-            switch (work->backMotNo[i]) {
+            switch (shopWork->backMotionNo[attachedModelSlot]) {
                 case 0:
                 case 1:
                 case 2:
                 case 3:
-                    mbObjMotionTimeSet(work->backModelId[i], 0.0f);
-                    mbObjMotionSpeedSet(work->backModelId[i], 1.0f);
-                    mbObjDispSet(work->backModelId[i], TRUE);
+                    mbObjMotionTimeSet(shopWork->backModelId[attachedModelSlot], 0.0f);
+                    mbObjMotionSpeedSet(shopWork->backModelId[attachedModelSlot], 1.0f);
+                    mbObjDispSet(shopWork->backModelId[attachedModelSlot], TRUE);
                     break;
                 default:
-                    mbObjDispSet(work->backModelId[i], TRUE);
+                    mbObjDispSet(shopWork->backModelId[attachedModelSlot], TRUE);
                     break;
             }
         }
     } else {
-        mbAudFXPlay(0x478);
-        if (work->modelMotionF) {
-            mbObjMotionSet(work->modelId, 1, 0);
-            mbObjMotionSpeedSet(work->modelId, 1.0f);
+        mbAudFXPlay(SHOP_SFX_CLOSE);
+        if (shopWork->modelMotionF) {
+            mbObjMotionSet(shopWork->modelId, 1, 0);
+            mbObjMotionSpeedSet(shopWork->modelId, 1.0f);
         } else {
-            mbObjMotionSpeedSet(work->modelId, -1.0f);
+            /* Shops with one motion close by playing their opening motion backward. */
+            mbObjMotionSpeedSet(shopWork->modelId, -1.0f);
         }
-        for (i = 0; i < 8; i++) {
-            if (work->backModelId[i] == -1) {
+        for (attachedModelSlot = 0; attachedModelSlot < 8; attachedModelSlot++) {
+            if (shopWork->backModelId[attachedModelSlot] == -1) {
                 continue;
             }
-            switch (work->backMotNo[i]) {
+            switch (shopWork->backMotionNo[attachedModelSlot]) {
                 case 0:
                 case 1:
-                    mbObjMotionSpeedSet(work->backModelId[i], -1.0f);
+                    mbObjMotionSpeedSet(shopWork->backModelId[attachedModelSlot], -1.0f);
                     break;
                 case 2:
                 case 3:
-                    mbObjMotionTimeSet(work->backModelId[i], 0.0f);
-                    mbObjMotionSpeedSet(work->backModelId[i], 1.0f);
+                    mbObjMotionTimeSet(shopWork->backModelId[attachedModelSlot], 0.0f);
+                    mbObjMotionSpeedSet(shopWork->backModelId[attachedModelSlot], 1.0f);
                     break;
             }
         }
     }
 }
 
+/* On shop arrival, hides remaining moves and disables pause, then unconditionally enables both
+ * after the visit. */
 int mbev_Shop(int playerNo, int shopNo)
 {
-    MBSHOPWORK *work;
-    void *workP;
+    MBSHOPWORK *visitWork;
+    void *allocatedVisitWork;
 
     mbMoveNumDispSet(playerNo, FALSE);
-    workP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBSHOPWORK), HU_MEMNUM_OVL);
-    work = workP;
-    memset(work, 0, sizeof(MBSHOPWORK));
-    work->playerNo = playerNo;
-    work->shopNo = shopNo;
+    allocatedVisitWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MBSHOPWORK), HU_MEMNUM_OVL);
+    visitWork = allocatedVisitWork;
+    memset(visitWork, 0, sizeof(MBSHOPWORK));
+    visitWork->playerNo = playerNo;
+    visitWork->shopNo = shopNo;
     mbPauseDisableSet(TRUE);
-    ev_Shop(work);
-    HuMemDirectFree(work);
+    ev_Shop(visitWork);
+    HuMemDirectFree(visitWork);
     mbPauseDisableSet(FALSE);
     mbMoveNumDispSet(playerNo, TRUE);
     return 0;
 }
 
+/* Called while preparing a visit to allocate the temporary capsule offer list. */
 static inline s8 *ev_ShopListAlloc(void)
 {
     return HuMemDirectMallocNum(HEAP_HEAP,
         SHOP_LIST_ENTRY_COUNT * SHOP_LIST_ENTRY_SIZE, HU_MEMNUM_OVL);
 }
 
+/* Called while walking to a linked shop to find the player's final approach space. */
 static inline int ev_ShopMasuEndGet(int shopNo, OMOBJ **shopObj,
     MBSHOPOMWORK **shopWork)
 {
@@ -528,70 +558,71 @@ static inline int ev_ShopMasuEndGet(int shopNo, OMOBJ **shopObj,
     return (*shopWork)->masuEndId;
 }
 
-static void ev_Shop(MBSHOPWORK *work)
+/* Called by mbev_Shop to prepare offers, walk to the counter, and handle one purchase. */
+static void ev_Shop(MBSHOPWORK *visitWork)
 {
     int motionDataNum[16];
     SHOP_OFFER offer[3];
-    SHOP_OFFER swap;
-    SHOP_OFFER *offerP;
+    SHOP_OFFER savedOffer;
+    SHOP_OFFER *currentOffer;
     HuVecF playerPos;
     HuVecF masuPos;
-    HuVecF pos;
+    HuVecF eventPos;
     HuVecF direction;
     HuVecF shopPos;
-    HuVecF returnPos;
-    HuVecF capsulePlayer;
-    s8 *shopList;
-    int first;
+    HuVecF savedPlayerPos;
+    HuVecF displayOffset;
+    s8 *shopCapsuleList;
+    int firstOfferIndex;
     int capsuleObjId[3];
-    int second;
-    BOOL doneF;
-    int coinAddResult;
-    int deleteCapsuleNo;
-    int shopListNum;
-    int readStat;
-    int selection;
+    int secondOfferIndex;
+    BOOL visitDoneF;
+    int coinAddResult; /* The coin update return value is captured but never used. */
+    int discardedCapsuleNo;
+    int shopCapsuleCount;
+    int archiveReadStatus;
+    int selectionResult; /* Tutorial capsule ID, later replaced by the selected offer index. */
     int shopNo;
     int lightId;
-    int pathNum;
+    int pathSpaceCount;
     int shopIndex;
     int offerNum;
     int winType;
     int masuId;
-    int i;
+    int loopIndex;
     int shopModelId;
-    int capsuleModelId;
+    int capsuleModelId; /* Additional model slot stays unused during this visit. */
     int currentMasuId;
-    BOOL comDeclineF;
-    float angle;
+    BOOL comSaveCoinsF;
+    float facingAngle;
 
     if (!ev_ShopEnableF) {
         return;
     }
     shopModelId = capsuleModelId = lightId = -1;
-    for (i = 0; i < 3; i++) {
-        capsuleObjId[i] = -1;
+    for (loopIndex = 0; loopIndex < 3; loopIndex++) {
+        capsuleObjId[loopIndex] = -1;
     }
     if (!GwSystem.curTime) {
         winType = 8;
     } else {
         winType = 9;
     }
-    readStat = mbBGRead(SHOP_DATA_NIGHT_MODEL);
-    mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
+    archiveReadStatus = mbBGRead(SHOP_DATA_NIGHT_MODEL);
+    mbPlayerMotionShiftSet(visitWork->playerNo, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     {
         int foundShopNo;
         OMOBJ *shopObj;
-        MBSHOPOMWORK *findWork;
+        MBSHOPOMWORK *candidateShopWork;
         int shopMasuId;
 
-        shopMasuId = work->shopNo;
+        shopMasuId = visitWork->shopNo;
         for (shopIndex = 0; shopIndex < ev_ShopNum; shopIndex++) {
             shopObj = ev_ShopOMObj[shopIndex];
-            findWork = shopObj->data;
+            candidateShopWork = shopObj->data;
 
-            if (findWork->masuId == shopMasuId) {
+            if (candidateShopWork->masuId == shopMasuId) {
                 foundShopNo = shopIndex;
                 goto shop_found;
             }
@@ -602,47 +633,52 @@ shop_found:
         shopNo = foundShopNo;
     }
     {
-        shopList = ev_ShopListAlloc();
-        shopListNum = mbCapShopListGet(work->playerNo, shopList);
+        shopCapsuleList = ev_ShopListAlloc();
+        shopCapsuleCount = mbCapShopListGet(visitWork->playerNo, shopCapsuleList);
 
-        offerP = offer;
-        for (i = 0, offerNum = 0;
-            i < 3 && i < shopListNum;
-            i++, offerP++) {
-            offerP->capsuleNo = shopList[i * SHOP_LIST_ENTRY_SIZE];
-            offerP->cost = mbCapBuyCostGet((s16)offerP->capsuleNo,
-                (s16)work->playerNo);
-            offerP->messageId = mbCapUseMesGet(offerP->capsuleNo);
-            sprintf(offerP->costText, "%d", offerP->cost);
+        currentOffer = offer;
+        for (loopIndex = 0, offerNum = 0;
+            loopIndex < 3 && loopIndex < shopCapsuleCount;
+            loopIndex++, currentOffer++) {
+            currentOffer->capsuleNo = shopCapsuleList[loopIndex * SHOP_LIST_ENTRY_SIZE];
+            currentOffer->cost = mbCapBuyCostGet((s16)currentOffer->capsuleNo,
+                (s16)visitWork->playerNo);
+            currentOffer->messageId = mbCapUseMesGet(currentOffer->capsuleNo);
+            sprintf(currentOffer->costText, "%d", currentOffer->cost);
             offerNum++;
         }
-        for (i = 0, offerP = offer; i < offerNum; i++, offerP++) {
-            if (offerP->cost > mbPlayerCoinGet(work->playerNo)) {
-                offerP->capsuleNo = 0;
-                offerP->cost = mbCapBuyCostGet((s16)offerP->capsuleNo,
-                    (s16)work->playerNo);
-                offerP->messageId = mbCapUseMesGet(offerP->capsuleNo);
-                sprintf(offerP->costText, "%d", offerP->cost);
+        for (loopIndex = 0, currentOffer = offer; loopIndex < offerNum;
+             loopIndex++, currentOffer++) {
+            if (currentOffer->cost > mbPlayerCoinGet(visitWork->playerNo)) {
+                /* An unaffordable offer becomes capsule zero and gets its price and text. */
+                currentOffer->capsuleNo = 0;
+                currentOffer->cost = mbCapBuyCostGet((s16)currentOffer->capsuleNo,
+                    (s16)visitWork->playerNo);
+                currentOffer->messageId = mbCapUseMesGet(currentOffer->capsuleNo);
+                sprintf(currentOffer->costText, "%d", currentOffer->cost);
             }
         }
-        for (i = 0, offerP = offer; i < offerNum; i++, offerP++) {
-            mbCapNumInc(offerP->capsuleNo, 1);
+        for (loopIndex = 0, currentOffer = offer; loopIndex < offerNum;
+             loopIndex++, currentOffer++) {
+            mbCapNumInc(currentOffer->capsuleNo, 1);
         }
-        for (i = 0; i < 64 && offerNum >= 2; i++) {
-            first = mbRandMod(offerNum);
-            second = mbRandMod(offerNum);
+        for (loopIndex = 0; loopIndex < 64 && offerNum >= 2; loopIndex++) {
+            firstOfferIndex = mbRandMod(offerNum);
+            secondOfferIndex = mbRandMod(offerNum);
 
-            if (first != second) {
-                swap = offer[first];
-                offer[first] = offer[second];
-                offer[first] = swap;
+            if (firstOfferIndex != secondOfferIndex) {
+                /* Both writes target the first offer, restoring it instead of swapping. */
+                savedOffer = offer[firstOfferIndex];
+                offer[firstOfferIndex] = offer[secondOfferIndex];
+                offer[firstOfferIndex] = savedOffer;
             }
         }
-        HuMemDirectFree(shopList);
+        HuMemDirectFree(shopCapsuleList);
     }
     HuPrcVSleep();
 
     if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        /* Ordinary visits stop on the final turn; the tutorial controls entry itself. */
         if (GwSystem.turnNo >= GwSystem.turnMax) {
             if (!GwSystem.curTime) {
                 mbAudFXPlay(SHOP_SFX_DAY_PROMPT);
@@ -653,28 +689,29 @@ shop_found:
             mbWinTopWait();
             goto cleanup;
         }
-        if (mbPlayerCoinGet(work->playerNo) > 4) {
+        if (mbPlayerCoinGet(visitWork->playerNo) > 4) {
             mbWinCreateChoice(2, ev_ShopMesGet(SHOP_MESSAGE_ENTER_CHOICE),
                 -1, 0);
-            if (GwPlayer[work->playerNo].comF) {
-                comDeclineF = FALSE;
-                if (mbMasuFind_TypeStepGet((s16)work->shopNo, 7)
-                    < GwPlayer[work->playerNo].moveNum) {
-                    comDeclineF = TRUE;
+            if (GwPlayer[visitWork->playerNo].comF) {
+                comSaveCoinsF = FALSE;
+                /* Save coins when a nearby star or team budget takes priority. */
+                if (mbMasuFind_TypeStepGet((s16)visitWork->shopNo, 7)
+                    < GwPlayer[visitWork->playerNo].moveNum) {
+                    comSaveCoinsF = TRUE;
                 }
-                if (mbMasuFind_TypeStepGet((s16)work->shopNo, 7) < 20
-                    && mbPlayerCoinGet(work->playerNo) < 25
-                    && mbPlayerCoinGet(work->playerNo) >= 20) {
-                    comDeclineF = TRUE;
+                if (mbMasuFind_TypeStepGet((s16)visitWork->shopNo, 7) < 20
+                    && mbPlayerCoinGet(visitWork->playerNo) < 25
+                    && mbPlayerCoinGet(visitWork->playerNo) >= 20) {
+                    comSaveCoinsF = TRUE;
                 }
                 if (GWTeamFGet()
-                    && mbPlayerCoinGet(work->playerNo) < 25
-                    && mbPlayerCoinGet(work->playerNo) >= 20) {
-                    comDeclineF = TRUE;
+                    && mbPlayerCoinGet(visitWork->playerNo) < 25
+                    && mbPlayerCoinGet(visitWork->playerNo) >= 20) {
+                    comSaveCoinsF = TRUE;
                 }
                 if (MBCapsuleEffRandF() < 0.7f
-                    && !comDeclineF
-                    && mbPlayerCapsuleNumGet(work->playerNo)
+                    && !comSaveCoinsF
+                    && mbPlayerCapsuleNumGet(visitWork->playerNo)
                         < mbPlayerCapsuleMaxGet()) {
                     mbComChoiceLeftSet();
                 } else {
@@ -704,39 +741,40 @@ shop_found:
     }
 
 enter_shop:
-    for (i = 0; i < offerNum; i++) {
-        capsuleObjId[i] = mbCapObjColorCreate(offer[i].capsuleNo, 0);
-        mbCapObjColorLayerSet(capsuleObjId[i], 4);
+    /* Arrange the offer capsules around the counter, relative to the approach direction. */
+    for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+        capsuleObjId[loopIndex] = mbCapObjColorCreate(offer[loopIndex].capsuleNo, 0);
+        mbCapObjColorLayerSet(capsuleObjId[loopIndex], 4);
         {
             OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-            MBSHOPOMWORK *localShopWork = shopObj->data;
+            MBSHOPOMWORK *shopWork = shopObj->data;
 
-            masuPos = localShopWork->masuPos;
+            masuPos = shopWork->masuPos;
         }
         {
             OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-            MBSHOPOMWORK *localShopWork = shopObj->data;
+            MBSHOPOMWORK *shopWork = shopObj->data;
 
-            shopPos = localShopWork->shopPos;
+            shopPos = shopWork->shopPos;
         }
         PSVECSubtract(&masuPos, &shopPos, &direction);
-        pos = masuPos;
-        pos.y += 100.0f;
-        capsulePlayer = ev_ShopCapsulePlayer[offerNum - 1][i];
-        pos.x += capsulePlayer.y
-            * sin((M_PI * (capsulePlayer.x
+        eventPos = masuPos;
+        eventPos.y += 100.0f;
+        displayOffset = ev_ShopCapsulePlayer[offerNum - 1][loopIndex];
+        eventPos.x += displayOffset.y
+            * sin((M_PI * (displayOffset.x
                 + (180.0 * (atan2(direction.x, direction.z) / M_PI))))
                 / 180.0);
-        pos.z += capsulePlayer.y
-            * cos((M_PI * (capsulePlayer.x
+        eventPos.z += displayOffset.y
+            * cos((M_PI * (displayOffset.x
                 + (180.0 * (atan2(direction.x, direction.z) / M_PI))))
                 / 180.0);
-        mbCapObjColorPosSetV(capsuleObjId[i], &pos);
-        mbCapObjColorScaleSet(capsuleObjId[i], 0.5f, 0.5f, 0.5f);
+        mbCapObjColorPosSetV(capsuleObjId[loopIndex], &eventPos);
+        mbCapObjColorScaleSet(capsuleObjId[loopIndex], 0.5f, 0.5f, 0.5f);
         HuPrcVSleep();
     }
-    if (readStat != -1) {
-        mbBGReadWait(readStat);
+    if (archiveReadStatus != -1) {
+        mbBGReadWait(archiveReadStatus);
     }
     if (!GwSystem.curTime) {
         motionDataNum[0] = SHOP_DATA_DAY_MOTION;
@@ -758,141 +796,147 @@ enter_shop:
 
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        masuPos = localShopWork->masuPos;
+        masuPos = shopWork->masuPos;
     }
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        shopPos = localShopWork->shopPos;
+        shopPos = shopWork->shopPos;
     }
-    mbMasuPosGet((s16)work->shopNo, &playerPos);
+    mbMasuPosGet((s16)visitWork->shopNo, &playerPos);
     PSVECSubtract(&masuPos, &shopPos, &direction);
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        pos = localShopWork->capsulePos;
+        eventPos = shopWork->capsulePos;
     }
-    mbObjPosSetV(shopModelId, &pos);
+    mbObjPosSetV(shopModelId, &eventPos);
     mbObjRotSet(shopModelId, 0.0f,
         (float)(180.0 + ((atan2(direction.x, direction.z) / M_PI) * 180.0)),
         0.0f);
     mbObjMotionSet(shopModelId, 1, HU3D_MOTATTR_LOOP);
     ev_ShopOpenSet(shopNo, TRUE);
-    omVibrate((s16)work->playerNo, 20, 7, 3);
+    omVibrate((s16)visitWork->playerNo, 20, 7, 3);
 
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        masuPos = localShopWork->masuPos;
+        masuPos = shopWork->masuPos;
     }
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        shopPos = localShopWork->shopPos;
+        shopPos = shopWork->shopPos;
     }
-    mbMasuPosGet((s16)work->shopNo, &playerPos);
+    mbMasuPosGet((s16)visitWork->shopNo, &playerPos);
     PSVECSubtract(&shopPos, &playerPos, &direction);
-    angle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
-    mbPlayerRotateStart(work->playerNo, angle, 15);
-    while (!mbPlayerRotateCheck(work->playerNo)) {
+    facingAngle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
+    mbPlayerRotateStart(visitWork->playerNo, facingAngle, 15);
+    while (!mbPlayerRotateCheck(visitWork->playerNo)) {
         HuPrcVSleep();
     }
     {
         OMOBJ *shopObj;
-        MBSHOPOMWORK *localShopWork;
+        MBSHOPOMWORK *shopWork;
 
         while ((shopObj = ev_ShopOMObj[shopNo]),
-            (localShopWork = shopObj->data),
-            localShopWork->motionExecF != FALSE) {
+            (shopWork = shopObj->data),
+            shopWork->motionExecF != FALSE) {
             HuPrcVSleep();
         }
     }
-    returnPos = playerPos;
+    savedPlayerPos = playerPos; /* Saved here but not read later in this event. */
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        shopPos = localShopWork->shopPos;
+        shopPos = shopWork->shopPos;
     }
     {
-        int path[16];
+        int visitedSpaceIds[16];
 
         mbStatusDispSetAll(FALSE);
-        mbCameraPlayerViewSet(work->playerNo, 0);
-        mbPlayerColSnapPlayerSet(work->playerNo, FALSE);
+        mbCameraPlayerViewSet(visitWork->playerNo, 0);
+        mbPlayerColSnapPlayerSet(visitWork->playerNo, FALSE);
         {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        if (localShopWork->pathF) {
-            pathNum = 1;
-            path[0] = currentMasuId = GwPlayer[work->playerNo].masuId;
+        if (shopWork->pathF) {
+            /* Record each walked space so the return trip can follow the same path. */
+            pathSpaceCount = 1;
+            visitedSpaceIds[0] = currentMasuId = GwPlayer[visitWork->playerNo].masuId;
             {
                 OMOBJ *shopObj;
-                MBSHOPOMWORK *localShopWork;
+                MBSHOPOMWORK *shopWork;
 
                 while (currentMasuId != ev_ShopMasuEndGet(shopNo,
-                    &shopObj, &localShopWork)) {
+                    &shopObj, &shopWork)) {
                     mbMasuPosGet(
                         (masuId = mbMasuAttrFindLink((s16)currentMasuId,
-                            SHOP_MASU_ATTR_PATH_LINK)), &pos);
-                    GwPlayer[work->playerNo].masuIdNext = masuId;
-                    mbPlayerMasuMovePos(work->playerNo, &pos, TRUE);
-                    GwPlayer[work->playerNo].masuId = masuId;
-                    path[pathNum] = currentMasuId = masuId;
-                    pathNum++;
+                            SHOP_MASU_ATTR_PATH_LINK)), &eventPos);
+                    GwPlayer[visitWork->playerNo].masuIdNext = masuId;
+                    mbPlayerMasuMovePos(visitWork->playerNo, &eventPos, TRUE);
+                    GwPlayer[visitWork->playerNo].masuId = masuId;
+                    visitedSpaceIds[pathSpaceCount] = currentMasuId = masuId;
+                    pathSpaceCount++;
                 }
             }
         } else {
-            mbPlayerMasuMovePos(work->playerNo, &shopPos, TRUE);
+            mbPlayerMasuMovePos(visitWork->playerNo, &shopPos, TRUE);
         }
     }
     PSVECSubtract(&masuPos, &shopPos, &direction);
-    mbPlayerRotateStart(work->playerNo,
+    mbPlayerRotateStart(visitWork->playerNo,
         (atan2(direction.x, direction.z) / M_PI) * 180.0, 15);
-    while (!mbPlayerRotateCheck(work->playerNo)) {
+    while (!mbPlayerRotateCheck(visitWork->playerNo)) {
         HuPrcVSleep();
     }
-        mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
+        mbPlayerMotionShiftSet(visitWork->playerNo, 1, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
 
-    if (GwPlayer[work->playerNo].comF) {
-        for (i = 0; i < offerNum; i++) {
-            if (offer[i].cost <= mbPlayerCoinGet(work->playerNo)) {
+    if (GwPlayer[visitWork->playerNo].comF) {
+        /* Computer visitors buy the first affordable offer without opening the carousel. */
+        for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+            if (offer[loopIndex].cost <= mbPlayerCoinGet(visitWork->playerNo)) {
                 break;
             }
         }
-        if (i < offerNum) {
+        if (loopIndex < offerNum) {
             if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-                selection = mbTutorialCall(SHOP_TUTORIAL_SELECT);
+                selectionResult = mbTutorialCall(SHOP_TUTORIAL_SELECT);
 
-                if (selection >= 0) {
-                    offer[i].capsuleNo = selection;
-                    offer[i].cost = mbCapBuyCostGet((s16)selection,
-                        (s16)work->playerNo);
-                    offer[i].messageId = mbCapUseMesGet(selection);
+                if (selectionResult >= 0) {
+                    /* The tutorial replaces this offer's capsule, price and text without checking
+                     * the new price against the player's coins. */
+                    offer[loopIndex].capsuleNo = selectionResult;
+                    offer[loopIndex].cost = mbCapBuyCostGet((s16)selectionResult,
+                        (s16)visitWork->playerNo);
+                    offer[loopIndex].messageId = mbCapUseMesGet(selectionResult);
                 }
             }
-            selection = i;
-            coinAddResult = mbCoinAddProcExec(work->playerNo,
-                -offer[selection].cost, -1, TRUE);
-            mbCapCapsuleGet(work->playerNo, offer[selection].capsuleNo);
-            mbPlayerCapsuleAdd(work->playerNo, offer[selection].capsuleNo);
-            mbPlayerWinLoseVoicePlay(work->playerNo, 12, CHARVOICEID(6));
-            mbPlayerMotionShiftSet(work->playerNo, 12, 0.0f, 4.0f, 0);
+            selectionResult = loopIndex;
+            coinAddResult = mbCoinAddProcExec(visitWork->playerNo,
+                -offer[selectionResult].cost, -1, TRUE);
+            mbCapCapsuleGet(visitWork->playerNo, offer[selectionResult].capsuleNo);
+            /* A full inventory silently rejects this add; payment and the pickup animation have
+             * already occurred. */
+            mbPlayerCapsuleAdd(visitWork->playerNo, offer[selectionResult].capsuleNo);
+            mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, CHARVOICEID(6));
+            mbPlayerMotionShiftSet(visitWork->playerNo, 12, 0.0f, 4.0f, 0);
             mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_PURCHASED), -1);
-            mbWinTopInsertMesSet(offer[selection].messageId, 0);
+            mbWinTopInsertMesSet(offer[selectionResult].messageId, 0);
             mbWinTopWait();
-            while (!mbPlayerMotionEndCheck(work->playerNo)) {
+            while (!mbPlayerMotionEndCheck(visitWork->playerNo)) {
                 HuPrcVSleep();
             }
-            mbPlayerMotIdleSet(work->playerNo);
+            mbPlayerMotIdleSet(visitWork->playerNo);
             mbObjMotionShiftSet(shopModelId, 3, 0.0f, 8.0f,
                 HU3D_MOTATTR_LOOP);
         }
@@ -900,7 +944,7 @@ enter_shop:
         while (!mbStatusOffCheckAll()) {
             HuPrcVSleep();
         }
-        mbStatusDispFocusSet(work->playerNo, TRUE);
+        mbStatusDispFocusSet(visitWork->playerNo, TRUE);
         if (!GwSystem.curTime) {
             mbAudFXPlay(SHOP_SFX_DAY_PROMPT);
         } else {
@@ -908,7 +952,7 @@ enter_shop:
         }
         mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_GREETING), winType);
         mbWinTopWait();
-        if (GwSystem.curTime && GwPlayer[work->playerNo].rank >= 2) {
+        if (GwSystem.curTime && GwPlayer[visitWork->playerNo].rank >= 2) {
             if (!GwSystem.curTime) {
                 mbAudFXPlay(SHOP_SFX_DAY_SUCCESS);
             } else {
@@ -918,14 +962,14 @@ enter_shop:
                 winType);
             mbWinTopWait();
         }
-        selection = -1;
-        doneF = FALSE;
+        selectionResult = -1;
+        visitDoneF = FALSE;
         do {
             switch (offerNum) {
             case 1:
             case 2:
             case 3:
-                selection = ev_ShopSelect(work, offer, offerNum, winType);
+                selectionResult = ev_ShopSelect(visitWork, offer, offerNum, winType);
                 break;
             default:
                 if (!GwSystem.curTime) {
@@ -935,23 +979,24 @@ enter_shop:
                 }
                 mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_NO_OFFERS), winType);
                 mbWinTopWait();
-                doneF = TRUE;
-                selection = -1;
+                visitDoneF = TRUE;
+                selectionResult = -1;
                 break;
             }
 
-        if (selection >= offerNum || selection == -1) {
-            doneF = TRUE;
+        if (selectionResult >= offerNum || selectionResult == -1) {
+            visitDoneF = TRUE;
         } else {
-            int deleteIndex;
+            int discardedInventoryIndex; /* -1 means no discard; -2 means selection canceled. */
 
-            deleteCapsuleNo = -1;
-                deleteIndex = -1;
-                if (mbPlayerCapsuleNumGet(work->playerNo)
+            discardedCapsuleNo = -1;
+                discardedInventoryIndex = -1;
+                if (mbPlayerCapsuleNumGet(visitWork->playerNo)
                     >= mbPlayerCapsuleMaxGet()) {
+                    /* A full inventory requires permission and a capsule to discard. */
                     mbWinCreateChoice(2,
                         ev_ShopMesGet(SHOP_MESSAGE_DISCARD_CHOICE), winType, 0);
-                    if (GwPlayer[work->playerNo].comF) {
+                    if (GwPlayer[visitWork->playerNo].comF) {
                         mbComChoiceLeftSet();
                     }
                     mbWinTopWait();
@@ -959,52 +1004,57 @@ enter_shop:
                         continue;
                     }
                     do {
-                        deleteCapsuleNo = mbCapDelete(-1, TRUE);
-                        switch (deleteCapsuleNo) {
+                        discardedCapsuleNo = mbCapDelete(-1, TRUE);
+                        switch (discardedCapsuleNo) {
                             default:
-                                for (i = 0; i < mbPlayerCapsuleMaxGet(); i++) {
-                                    if (deleteCapsuleNo
-                                        == mbPlayerCapsuleGet(work->playerNo, i)) {
-                                        deleteIndex = i;
+                                /* If several slots contain the chosen capsule type, discard the
+                                 * last of those slots. */
+                                for (loopIndex = 0; loopIndex < mbPlayerCapsuleMaxGet();
+                                     loopIndex++) {
+                                    if (discardedCapsuleNo
+                                        == mbPlayerCapsuleGet(visitWork->playerNo, loopIndex)) {
+                                        discardedInventoryIndex = loopIndex;
                                     }
                                 }
-                                if (deleteIndex != -1) {
-                                    mbPlayerCapsuleRemove(work->playerNo,
-                                        deleteIndex);
+                                if (discardedInventoryIndex != -1) {
+                                    mbPlayerCapsuleRemove(visitWork->playerNo,
+                                        discardedInventoryIndex);
                                 }
                                 break;
                             case -3:
-                                mbev_Scroll(work->playerNo, FALSE);
-                                deleteIndex = -1;
+                                /* Resume the discard prompt after viewing the board. */
+                                mbev_Scroll(visitWork->playerNo, FALSE);
+                                discardedInventoryIndex = -1;
                                 break;
                             case -7:
-                                deleteIndex = -2;
+                                /* Canceling the discard returns to the shop offers. */
+                                discardedInventoryIndex = -2;
                                 break;
                             }
-                    } while (deleteIndex == -1);
-                    if (deleteIndex == -2) {
+                    } while (discardedInventoryIndex == -1);
+                    if (discardedInventoryIndex == -2) {
                         continue;
                     }
                 }
-                coinAddResult = mbCoinAddExec(work->playerNo,
-                    -offer[selection].cost);
-                mbCapCapsuleGet(work->playerNo, offer[selection].capsuleNo);
-                mbPlayerCapsuleAdd(work->playerNo, offer[selection].capsuleNo);
-                mbPlayerWinLoseVoicePlay(work->playerNo, 12, CHARVOICEID(6));
-                mbPlayerMotionShiftSet(work->playerNo, 12, 0.0f, 4.0f, 0);
-                if (deleteIndex == -1) {
+                coinAddResult = mbCoinAddExec(visitWork->playerNo,
+                    -offer[selectionResult].cost);
+                mbCapCapsuleGet(visitWork->playerNo, offer[selectionResult].capsuleNo);
+                mbPlayerCapsuleAdd(visitWork->playerNo, offer[selectionResult].capsuleNo);
+                mbPlayerWinLoseVoicePlay(visitWork->playerNo, 12, CHARVOICEID(6));
+                mbPlayerMotionShiftSet(visitWork->playerNo, 12, 0.0f, 4.0f, 0);
+                if (discardedInventoryIndex == -1) {
                     mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_PURCHASED), -1);
-                    mbWinTopInsertMesSet(offer[selection].messageId, 0);
+                    mbWinTopInsertMesSet(offer[selectionResult].messageId, 0);
                 } else {
                     mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_REPLACED), -1);
-                    mbWinTopInsertMesSet(mbCapUseMesGet(deleteCapsuleNo), 0);
-                    mbWinTopInsertMesSet(offer[selection].messageId, 1);
+                    mbWinTopInsertMesSet(mbCapUseMesGet(discardedCapsuleNo), 0);
+                    mbWinTopInsertMesSet(offer[selectionResult].messageId, 1);
                 }
                 mbWinTopWait();
-                while (!mbPlayerMotionEndCheck(work->playerNo)) {
+                while (!mbPlayerMotionEndCheck(visitWork->playerNo)) {
                     HuPrcVSleep();
                 }
-                mbPlayerMotIdleSet(work->playerNo);
+                mbPlayerMotIdleSet(visitWork->playerNo);
                 mbObjMotionShiftSet(shopModelId, 3, 0.0f, 8.0f,
                     HU3D_MOTATTR_LOOP);
                 if (!GwSystem.curTime) {
@@ -1014,41 +1064,42 @@ enter_shop:
                 }
                 mbWinCreate(2, ev_ShopMesGet(SHOP_MESSAGE_THANK_YOU), winType);
                 mbWinTopWait();
-                doneF = TRUE;
+                visitDoneF = TRUE;
             }
-        } while (!doneF);
-        mbStatusDispFocusSet(work->playerNo, FALSE);
+        } while (!visitDoneF);
+        mbStatusDispFocusSet(visitWork->playerNo, FALSE);
     }
 
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        shopPos = localShopWork->shopPos;
+        shopPos = shopWork->shopPos;
     }
-    mbMasuPosGet((s16)work->shopNo, &playerPos);
+    mbMasuPosGet((s16)visitWork->shopNo, &playerPos);
     PSVECSubtract(&playerPos, &shopPos, &direction);
-    angle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
+    /* The return angle is calculated but is not applied to the player. */
+    facingAngle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        if (localShopWork->pathF) {
-            for (i = 1; i < pathNum; i++) {
-                masuId = path[pathNum - (i + 1)];
+        if (shopWork->pathF) {
+            for (loopIndex = 1; loopIndex < pathSpaceCount; loopIndex++) {
+                masuId = visitedSpaceIds[pathSpaceCount - (loopIndex + 1)];
 
-                GwPlayer[work->playerNo].masuIdNext = masuId;
+                GwPlayer[visitWork->playerNo].masuIdNext = masuId;
                 mbMasuPosGet(masuId, &shopPos);
-                mbPlayerMasuMovePos(work->playerNo, &shopPos, TRUE);
-                GwPlayer[work->playerNo].masuId = masuId;
+                mbPlayerMasuMovePos(visitWork->playerNo, &shopPos, TRUE);
+                GwPlayer[visitWork->playerNo].masuId = masuId;
             }
         } else {
-            mbPlayerMasuMovePos(work->playerNo, &playerPos, TRUE);
+            mbPlayerMasuMovePos(visitWork->playerNo, &playerPos, TRUE);
         }
         }
     }
-    mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
-    mbPlayerMotionShiftSet(work->playerNo, 1, 0.0f, 8.0f,
+    mbPlayerColSnapPlayerSet(visitWork->playerNo, TRUE);
+    mbPlayerMotionShiftSet(visitWork->playerNo, 1, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
     while (!mbStatusOffCheckAll()) {
         HuPrcVSleep();
@@ -1056,26 +1107,27 @@ enter_shop:
     mbStatusDispSetAll(TRUE);
     {
         OMOBJ *shopObj = ev_ShopOMObj[shopNo];
-        MBSHOPOMWORK *localShopWork = shopObj->data;
+        MBSHOPOMWORK *shopWork = shopObj->data;
 
-        if (localShopWork->openF) {
+        if (shopWork->openF) {
             ev_ShopOpenSet(shopNo, FALSE);
         }
     }
     {
         OMOBJ *shopObj;
-        MBSHOPOMWORK *localShopWork;
+        MBSHOPOMWORK *shopWork;
 
         while ((shopObj = ev_ShopOMObj[shopNo]),
-            (localShopWork = shopObj->data),
-            localShopWork->motionExecF != FALSE) {
+            (shopWork = shopObj->data),
+            shopWork->motionExecF != FALSE) {
             HuPrcVSleep();
         }
     }
-    mbCameraPlayerViewSet(work->playerNo, 2);
+    mbCameraPlayerViewSet(visitWork->playerNo, 2);
 
 cleanup:
-    mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
+    /* Entry can be declined before any models exist, so release only valid handles. */
+    mbPlayerColSnapPlayerSet(visitWork->playerNo, TRUE);
     if (shopModelId != -1) {
         if (lightId != -1) {
             Hu3DLLightKill(mbObjModelIDGet(shopModelId), lightId);
@@ -1085,54 +1137,55 @@ cleanup:
     if (capsuleModelId != -1) {
         mbObjKill(capsuleModelId);
     }
-    for (i = 0; i < offerNum; i++) {
-        if (capsuleObjId[i] != -1) {
-            mbCapObjColorKill(capsuleObjId[i]);
+    for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+        if (capsuleObjId[loopIndex] != -1) {
+            mbCapObjColorKill(capsuleObjId[loopIndex]);
         }
     }
     HuDataDirClose(SHOP_DATA_NIGHT_MODEL);
 }
 
-static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
+/* Called during a shop visit to browse offers; returns the offer index or -1 on cancel. */
+static int ev_ShopSelect(MBSHOPWORK *visitWork, SHOP_OFFER *offer, int offerNum,
     int winType)
 {
-    HuVecF modelPos;
-    HuVecF oldPos;
-    HuVecF newPos;
-    HuVecF position;
-    HuVecF movePos;
-    HuVecF winPos[3];
-    HuVec2f windowPosition;
-    ANIMDATA *animP;
+    HuVecF capsuleWorldPos;
+    HuVecF previousCursorPos;
+    HuVecF selectedCursorPos;
+    HuVecF screenPos;
+    HuVecF descriptionScroll;
+    HuVecF descriptionBasePos[3];
+    HuVec2f descriptionWindowPos;
+    ANIMDATA *panelAnim;
     int capsuleObjId[3];
     int descWinId[3];
     int digitSprId[3][4];
-    int pulseTime = 0;
-    int previous = pulseTime;
-    int selected = previous;
+    int pulseFrame = 0;
+    int previousOfferIndex = pulseFrame;
+    int selectedOfferIndex = previousOfferIndex;
     int panelGrpId;
     int cursorSprId;
     int panelSprId;
-    int button;
-    int buttonDown;
+    int heldButtons;
+    int pressedButtons;
     int padNo;
-    int i;
-    int j;
+    int loopIndex;
+    int componentIndex;
     int helpWinId;
-    BOOL doneF;
-    float scale;
+    BOOL selectionDoneF;
+    float capsuleScale;
     float panelRotation;
-    float weight;
-    float oldWindowOffset;
-    float newWindowOffset;
+    float scrollProgress;
+    float previousWindowOffset;
+    float selectedWindowOffset;
 
-    movePos.x = movePos.y = movePos.z = 0.0f;
+    descriptionScroll.x = descriptionScroll.y = descriptionScroll.z = 0.0f;
 
     panelGrpId = HuSprGrpCreate(1);
     HuSprGrpCenterSet(panelGrpId, ev_ShopWinPos.x, ev_ShopWinPos.y);
     HuSprGrpDrawNoSet(panelGrpId, SHOP_SELECT_DRAW_NO);
     panelSprId = HuSprCreate(
-        animP = HuSprAnimRead(HuDataSelHeapReadNum(SHOP_SELECT_PANEL_FILE,
+        panelAnim = HuSprAnimRead(HuDataSelHeapReadNum(SHOP_SELECT_PANEL_FILE,
             HU_MEMNUM_OVL, HEAP_MODEL)),
         SHOP_SELECT_PANEL_PRIORITY, 0);
     HuSprGrpMemberSet(panelGrpId, 0, panelSprId);
@@ -1140,8 +1193,9 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
     HuSprAttrSet(panelGrpId, 0, SHOP_SELECT_SPR_ATTR);
     HuSpr3DSet(panelSprId);
     HuSpr3DRotSet(panelSprId, 90.0f, 0.0f, 0.0f);
-    for (i = 1; i <= SHOP_SELECT_ROTATE_FRAMES; i++) {
-        panelRotation = 90.0 - (9.0 * i);
+    /* Fold the panel into view before showing its capsules and prices. */
+    for (loopIndex = 1; loopIndex <= SHOP_SELECT_ROTATE_FRAMES; loopIndex++) {
+        panelRotation = 90.0 - (9.0 * loopIndex);
         HuSpr3DRotSet(panelSprId, panelRotation, 0.0f, 0.0f);
         HuPrcVSleep();
     }
@@ -1151,167 +1205,173 @@ static int ev_ShopSelect(MBSHOPWORK *work, SHOP_OFFER *offer, int offerNum,
         0);
     espDrawNoSet(cursorSprId, 0);
     espPosSet(cursorSprId,
-        ev_ShopCapsulePos[offerNum - 1][selected].x
+        ev_ShopCapsulePos[offerNum - 1][selectedOfferIndex].x
             + SHOP_SELECT_CURSOR_OFFSET,
-        ev_ShopCapsulePos[offerNum - 1][selected].y
+        ev_ShopCapsulePos[offerNum - 1][selectedOfferIndex].y
             + SHOP_SELECT_CURSOR_OFFSET);
     espAttrSet(cursorSprId, SHOP_SELECT_SPR_ATTR);
     espDispOn(cursorSprId);
 
-    for (i = 0; i < offerNum; i++) {
-        capsuleObjId[i] = mbCapObjCreate(offer[i].capsuleNo, FALSE);
-        mbObjLayerSet(capsuleObjId[i], SHOP_SELECT_MODEL_LAYER);
-        mbObjCameraSet(capsuleObjId[i], SHOP_SELECT_CAMERA);
+    for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+        capsuleObjId[loopIndex] = mbCapObjCreate(offer[loopIndex].capsuleNo, FALSE);
+        mbObjLayerSet(capsuleObjId[loopIndex], SHOP_SELECT_MODEL_LAYER);
+        mbObjCameraSet(capsuleObjId[loopIndex], SHOP_SELECT_CAMERA);
         {
-            MBMODELID modelId = capsuleObjId[i];
+            MBMODELID modelId = capsuleObjId[loopIndex];
             mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
         }
-        mbObjMotionSpeedSet(capsuleObjId[i], 0.0f);
-        Hu3D2Dto3D(&ev_ShopCapsulePos[offerNum - 1][i],
-            SHOP_SELECT_CAMERA, &modelPos);
-        mbObjPosSetV(capsuleObjId[i], &modelPos);
-        mbObjRotSet(capsuleObjId[i], 30.0f, 0.0f, 0.0f);
-        mbObjScaleSet(capsuleObjId[i], 1.0f, 1.0f, 1.0f);
+        mbObjMotionSpeedSet(capsuleObjId[loopIndex], 0.0f);
+        Hu3D2Dto3D(&ev_ShopCapsulePos[offerNum - 1][loopIndex],
+            SHOP_SELECT_CAMERA, &capsuleWorldPos);
+        mbObjPosSetV(capsuleObjId[loopIndex], &capsuleWorldPos);
+        mbObjRotSet(capsuleObjId[loopIndex], 30.0f, 0.0f, 0.0f);
+        mbObjScaleSet(capsuleObjId[loopIndex], 1.0f, 1.0f, 1.0f);
     }
     mbObjMotionSpeedSet(capsuleObjId[0], 1.0f);
 
-    for (i = 0; i < offerNum; i++) {
-        position = ev_ShopCapsulePos[offerNum - 1][i];
-        if (offer[i].cost >= 10) {
-            position.x -= 24.0f;
+    for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+        screenPos = ev_ShopCapsulePos[offerNum - 1][loopIndex];
+        if (offer[loopIndex].cost >= 10) {
+            screenPos.x -= 24.0f;
         } else {
-            position.x -= 18.0f;
+            screenPos.x -= 18.0f;
         }
-        for (j = 0; j < 4; j++) {
-            digitSprId[i][j] = espEntry(
-                mbBoardDataNumGet(ev_ShopSprFileTbl[j]),
+        for (componentIndex = 0; componentIndex < 4; componentIndex++) {
+            digitSprId[loopIndex][componentIndex] = espEntry(
+                mbBoardDataNumGet(ev_ShopSprFileTbl[componentIndex]),
                 SHOP_SELECT_ESP_PRIORITY, 0);
-            espDrawNoSet(digitSprId[i][j], 0);
-            espAttrSet(digitSprId[i][j], SHOP_SELECT_SPR_ATTR);
-            espPosSet(digitSprId[i][j], position.x + (16 * j),
-                position.y + 32.0f);
+            espDrawNoSet(digitSprId[loopIndex][componentIndex], 0);
+            espAttrSet(digitSprId[loopIndex][componentIndex], SHOP_SELECT_SPR_ATTR);
+            espPosSet(digitSprId[loopIndex][componentIndex], screenPos.x + (16 * componentIndex),
+                screenPos.y + 32.0f);
         }
-        espBankSet(digitSprId[i][1], 10);
-        if (offer[i].cost >= 10) {
-            espBankSet(digitSprId[i][2], offer[i].cost / 10);
-            espBankSet(digitSprId[i][3], offer[i].cost % 10);
+        espBankSet(digitSprId[loopIndex][1], 10);
+        /* The price row keeps two digit slots, hiding the last for a one-digit cost. */
+        if (offer[loopIndex].cost >= 10) {
+            espBankSet(digitSprId[loopIndex][2], offer[loopIndex].cost / 10);
+            espBankSet(digitSprId[loopIndex][3], offer[loopIndex].cost % 10);
         } else {
-            espBankSet(digitSprId[i][2], offer[i].cost % 10);
-            espDispOff(digitSprId[i][3]);
+            espBankSet(digitSprId[loopIndex][2], offer[loopIndex].cost % 10);
+            espDispOff(digitSprId[loopIndex][3]);
         }
     }
 
-    for (i = 0; i < offerNum; i++) {
-        descWinId[i] = mbCapDescWinCreate(offer[i].capsuleNo);
-        mbWinPosGet(descWinId[i], &windowPosition);
-        winPos[i].x = (SHOP_SELECT_WINDOW_SPACING * i) + windowPosition.x;
-        winPos[i].y = windowPosition.y;
-        winPos[i].z = 0.0f;
-        PSVECAdd(&winPos[i], &movePos, &position);
-        mbWinPosSet(descWinId[i], position.x, position.y);
+    for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+        descWinId[loopIndex] = mbCapDescWinCreate(offer[loopIndex].capsuleNo);
+        mbWinPosGet(descWinId[loopIndex], &descriptionWindowPos);
+        descriptionBasePos[loopIndex].x =
+            (SHOP_SELECT_WINDOW_SPACING * loopIndex) + descriptionWindowPos.x;
+        descriptionBasePos[loopIndex].y = descriptionWindowPos.y;
+        descriptionBasePos[loopIndex].z = 0.0f;
+        PSVECAdd(&descriptionBasePos[loopIndex], &descriptionScroll, &screenPos);
+        mbWinPosSet(descWinId[loopIndex], screenPos.x, screenPos.y);
     }
     helpWinId = mbWinCreateHelp(MESSNUM(MESS_SHOP_EVENT, 29));
     mbWinAttrSet(+(s16)helpWinId, HUWIN_ATTR_ALIGN_CENTER);
 
     do {
-        doneF = FALSE;
-        padNo = GwPlayer[work->playerNo].padNo;
-        button = HuPadBtn[padNo];
-        buttonDown = HuPadBtnDown[padNo];
+        selectionDoneF = FALSE;
+        padNo = GwPlayer[visitWork->playerNo].padNo;
+        heldButtons = HuPadBtn[padNo];
+        pressedButtons = HuPadBtnDown[padNo];
         if (mbPadStkXGet(padNo) < -SHOP_SELECT_STICK_THRESHOLD) {
-            button |= PAD_BUTTON_LEFT;
+            heldButtons |= PAD_BUTTON_LEFT;
         } else if (mbPadStkXGet(padNo) > SHOP_SELECT_STICK_THRESHOLD) {
-            button |= PAD_BUTTON_RIGHT;
+            heldButtons |= PAD_BUTTON_RIGHT;
         }
-        if (button & PAD_BUTTON_LEFT) {
-            selected--;
-        } else if (button & PAD_BUTTON_RIGHT) {
-            selected++;
+        if (heldButtons & PAD_BUTTON_LEFT) {
+            selectedOfferIndex--;
+        } else if (heldButtons & PAD_BUTTON_RIGHT) {
+            selectedOfferIndex++;
         }
-        if (GwPlayer[work->playerNo].comF) {
-            buttonDown = PAD_BUTTON_A;
-            selected = previous;
+        if (GwPlayer[visitWork->playerNo].comF) {
+            /* Automated selection immediately confirms the currently displayed offer. */
+            pressedButtons = PAD_BUTTON_A;
+            selectedOfferIndex = previousOfferIndex;
         }
-        if (selected < 0) {
-            selected = 0;
+        if (selectedOfferIndex < 0) {
+            selectedOfferIndex = 0;
         }
-        if (selected >= offerNum) {
-            selected = offerNum - 1;
+        if (selectedOfferIndex >= offerNum) {
+            selectedOfferIndex = offerNum - 1;
         }
-        if (selected != previous) {
-            oldPos = ev_ShopCapsulePos[offerNum - 1][previous];
-            newPos = ev_ShopCapsulePos[offerNum - 1][selected];
-            oldWindowOffset = SHOP_SELECT_WINDOW_SPACING * -previous;
-            newWindowOffset = SHOP_SELECT_WINDOW_SPACING * -selected;
-            mbObjMotionSpeedSet(capsuleObjId[previous], 0.0f);
-            mbObjMotionTimeSet(capsuleObjId[previous], 0.0f);
-            mbObjScaleSet(capsuleObjId[previous], 1.0f, 1.0f, 1.0f);
-            mbAudFXPlay(0);
-            for (i = 1; i <= SHOP_SELECT_MOVE_FRAMES; i++) {
-                weight = i / 20.0f;
+        if (selectedOfferIndex != previousOfferIndex) {
+            /* Move the cursor and scroll all descriptions together over twenty frames. */
+            previousCursorPos = ev_ShopCapsulePos[offerNum - 1][previousOfferIndex];
+            selectedCursorPos = ev_ShopCapsulePos[offerNum - 1][selectedOfferIndex];
+            previousWindowOffset = SHOP_SELECT_WINDOW_SPACING * -previousOfferIndex;
+            selectedWindowOffset = SHOP_SELECT_WINDOW_SPACING * -selectedOfferIndex;
+            mbObjMotionSpeedSet(capsuleObjId[previousOfferIndex], 0.0f);
+            mbObjMotionTimeSet(capsuleObjId[previousOfferIndex], 0.0f);
+            mbObjScaleSet(capsuleObjId[previousOfferIndex], 1.0f, 1.0f, 1.0f);
+            mbAudFXPlay(MSM_SE_CMN_01);
+            for (loopIndex = 1; loopIndex <= SHOP_SELECT_MOVE_FRAMES; loopIndex++) {
+                scrollProgress = loopIndex / 20.0f;
 
-                mbev_CapVecChase(sin((M_PI * (90.0f * weight)) / 180.0),
-                    &oldPos, &newPos, &position);
+                mbev_CapVecChase(sin((M_PI * (90.0f * scrollProgress)) / 180.0),
+                    &previousCursorPos, &selectedCursorPos, &screenPos);
                 espPosSet(cursorSprId,
-                    position.x + SHOP_SELECT_CURSOR_OFFSET,
-                    position.y + SHOP_SELECT_CURSOR_OFFSET);
-                movePos.x = oldWindowOffset
-                    + ((newWindowOffset - oldWindowOffset)
-                        * sin((M_PI * (90.0f * weight)) / 180.0));
-                for (j = 0; j < offerNum; j++) {
-                    PSVECAdd(&winPos[j], &movePos, &position);
-                    mbWinPosSet(descWinId[j], position.x, position.y);
+                    screenPos.x + SHOP_SELECT_CURSOR_OFFSET,
+                    screenPos.y + SHOP_SELECT_CURSOR_OFFSET);
+                descriptionScroll.x = previousWindowOffset
+                    + ((selectedWindowOffset - previousWindowOffset)
+                        * sin((M_PI * (90.0f * scrollProgress)) / 180.0));
+                for (componentIndex = 0; componentIndex < offerNum; componentIndex++) {
+                    PSVECAdd(&descriptionBasePos[componentIndex], &descriptionScroll, &screenPos);
+                    mbWinPosSet(descWinId[componentIndex], screenPos.x, screenPos.y);
                 }
                 HuPrcVSleep();
             }
-            mbObjMotionSpeedSet(capsuleObjId[selected], 1.0f);
-            mbObjMotionTimeSet(capsuleObjId[selected], 0.0f);
-            mbObjScaleSet(capsuleObjId[selected], 1.0f, 1.0f, 1.0f);
-            previous = selected;
-            pulseTime = 0;
+            mbObjMotionSpeedSet(capsuleObjId[selectedOfferIndex], 1.0f);
+            mbObjMotionTimeSet(capsuleObjId[selectedOfferIndex], 0.0f);
+            mbObjScaleSet(capsuleObjId[selectedOfferIndex], 1.0f, 1.0f, 1.0f);
+            previousOfferIndex = selectedOfferIndex;
+            pulseFrame = 0;
         }
-        scale = 1.0f + (0.2f * fabs(sin((M_PI
-            * ((90.0f * pulseTime) / 12.0f)) / 180.0)));
-        mbObjScaleSet(capsuleObjId[selected], scale, scale, scale);
-        pulseTime++;
-        if (buttonDown & PAD_BUTTON_A) {
-            mbAudFXPlay(1);
-            doneF = TRUE;
-        } else if (buttonDown & PAD_BUTTON_B) {
-            mbAudFXPlay(3);
-            selected = -1;
-            doneF = TRUE;
+        capsuleScale = 1.0f + (0.2f * fabs(sin((M_PI
+            * ((90.0f * pulseFrame) / 12.0f)) / 180.0)));
+        /* Only the selected capsule plays its motion and pulses above normal size. */
+        mbObjScaleSet(capsuleObjId[selectedOfferIndex], capsuleScale, capsuleScale, capsuleScale);
+        pulseFrame++;
+        if (pressedButtons & PAD_BUTTON_A) {
+            mbAudFXPlay(MSM_SE_CMN_02);
+            selectionDoneF = TRUE;
+        } else if (pressedButtons & PAD_BUTTON_B) {
+            mbAudFXPlay(MSM_SE_CMN_04);
+            selectedOfferIndex = -1;
+            selectionDoneF = TRUE;
         }
         HuPrcVSleep();
-    } while (!doneF);
+    } while (!selectionDoneF);
 
     espKill(cursorSprId);
-    for (i = 0; i < offerNum; i++) {
-        mbCapObjKill(capsuleObjId[i]);
+    for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+        mbCapObjKill(capsuleObjId[loopIndex]);
     }
-    for (i = 0; i < offerNum; i++) {
-        for (j = 0; j < 4; j++) {
-            espKill(digitSprId[i][j]);
+    for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+        for (componentIndex = 0; componentIndex < 4; componentIndex++) {
+            espKill(digitSprId[loopIndex][componentIndex]);
         }
     }
-    for (i = 0; i < offerNum; i++) {
-        mbWinKill(descWinId[i]);
+    for (loopIndex = 0; loopIndex < offerNum; loopIndex++) {
+        mbWinKill(descWinId[loopIndex]);
     }
     mbWinKill(helpWinId);
-    for (i = 1; i <= SHOP_SELECT_ROTATE_FRAMES; i++) {
-        panelRotation = 9.0 * i;
+    for (loopIndex = 1; loopIndex <= SHOP_SELECT_ROTATE_FRAMES; loopIndex++) {
+        panelRotation = 9.0 * loopIndex;
         HuSpr3DRotSet(panelSprId, panelRotation, 0.0f, 0.0f);
         HuPrcVSleep();
     }
     HuSprGrpMemberKill(panelGrpId, 0);
     HuSprGrpKill(panelGrpId);
-    return selected;
+    return selectedOfferIndex;
 }
 
-static int ev_ShopMesGet(int messNo)
+/* Called when shop dialogue opens; selects the message bank's day or night text. */
+static int ev_ShopMesGet(int dayMessageId)
 {
     if (!GwSystem.curTime) {
-        return messNo;
+        return dayMessageId;
     }
-    return messNo + 14;
+    return dayMessageId + 14;
 }
