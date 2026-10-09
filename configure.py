@@ -2105,6 +2105,34 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m643DLL",
+        objects={
+            Object(
+                Matching,
+                "REL/m643DLL/game.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m643DLL/math.c",
+            ),
+            Object(
+                Matching,
+                "REL/m643DLL/prolog.c",
+            ),
+            Object(
+                Matching,
+                "REL/m643DLL/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/m643DLL/startup.c",
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
