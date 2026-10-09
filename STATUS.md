@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 29.75% | 50.60% |
+| Entire project | 30.20% | 50.80% |
 | Main DOL | 87.80% | 98.84% |
-| REL modules | 17.45% | 20.02% |
+| REL modules | 17.99% | 20.35% |
+
+Jump the Gun (`m643DLL`) selects all **128 functions** from **5 complete translation units**; its linked REL matches retail.
 
 Snowflake Lake (`w04Dll`) selects all **134 functions** from **3 complete translation units**; its linked REL matches retail.
 
