@@ -1,3 +1,4 @@
+// Runs the board's final-five-turn event, including its roulette and Koopa effects.
 #include "dolphin/math.h"
 
 #include "game/board/audio.h"
@@ -32,6 +33,7 @@ BOOL mbGuideMotionCheck(OMOBJ *obj);
 int mbGuideSpeakerNoGet(void);
 float mbSinDeg(float deg);
 
+// Copies all three coordinates of one board position into another.
 static inline void Last5VecCopy(register HuVecF *src,
     register HuVecF *dst)
 {
@@ -88,7 +90,7 @@ void mbObjHookReset(int modelId);
 #define LAST5_ROULETTE_CHANCE_TBL_NUM 5
 #define LAST5_ROULETTE_MODEL_LAYER 3
 #define LAST5_ROULETTE_SHUFFLE_NUM 20
-#define LAST5_ROULETTE_UPDATE_MASK 3
+#define LAST5_ROULETTE_UPDATE_MASK 0x3
 #define LAST5_ROULETTE_POS_OFFSET 50.0f
 #define LAST5_ROULETTE_SCALE 2.0f
 #define LAST5_ROULETTE_MOTION_TIME_OFFSET 0.5f
@@ -140,25 +142,25 @@ void mbObjHookReset(int modelId);
 #define LAST5_MESS_TEAM_RANK_SECOND LAST5_MESS_ID(52)
 
 typedef struct Last5CoinWork_s {
-    s16 delay;
-    float velocity;
+    s16 frameDelay; // Frames to wait before showing this falling coin.
+    float verticalSpeed; // Vertical movement per frame; gravity makes it more negative.
 } LAST5COINWORK;
 
 typedef struct Last5RouletteWork_s {
-    u8 unk0F : 1;
-    u8 killF : 1;
-    u8 unk2F : 1;
-    u8 unk3F : 1;
-    u8 rouletteF : 1;
-    u8 diceHitF : 1;
-    u8 diceF : 1;
-    u8 unk7F : 1;
-    s16 time;
-    s16 unk4;
-    s16 unk6;
-    s16 result;
-    s16 chanceNum;
-    s16 chanceNumCur;
+    u8 unused0F : 1; // Unused flag storage.
+    u8 killF : 1; // The roulette callback should release its models and stop.
+    u8 unused2F : 1; // Unused flag storage.
+    u8 unused3F : 1; // Unused flag storage.
+    u8 rouletteF : 1; // The roulette display is cycling through results.
+    u8 diceHitF : 1; // The dice has landed and the roulette should stop cycling.
+    u8 diceF : 1; // The roulette is displaying the dice model.
+    u8 unused7F : 1; // Unused flag storage.
+    s16 frameCount; // Frames elapsed while the roulette is cycling.
+    s16 unused4; // Unused work storage.
+    s16 unused6; // Unused work storage.
+    s16 result; // Current roulette effect index: spaces, coins, capsules, or Koopa.
+    s16 chanceCount; // Number of entries in the weighted result table.
+    s16 remainingChanceCount; // Entries still available before the table is refilled.
 } LAST5ROULETTEWORK;
 
 extern int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
@@ -185,26 +187,27 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     OMOBJ *guideObj);
 static void ev_Last5Koopa();
 
+// Draws one weighted effect and removes it from the current shuffle cycle.
 static inline void Last5RouletteResultSet(OMOBJ *obj)
 {
     LAST5ROULETTEWORK *work = omObjGetWork(obj, LAST5ROULETTEWORK);
-    s8 *table = obj->data;
+    s8 *resultTable = obj->data;
     int i;
     int index;
 
-    if (work->chanceNumCur <= 0) {
-        work->chanceNumCur = work->chanceNum;
+    if (work->remainingChanceCount <= 0) {
+        work->remainingChanceCount = work->chanceCount;
     }
     for (i = 0; i < LAST5_ROULETTE_SHUFFLE_NUM; i++) {
-        index = mbRandMod(work->chanceNumCur);
-        if (work->result != table[index]) {
+        index = mbRandMod(work->remainingChanceCount);
+        if (work->result != resultTable[index]) {
             break;
         }
     }
-    work->chanceNumCur--;
-    i = table[index];
-    table[index] = table[work->chanceNumCur];
-    table[work->chanceNumCur] = i;
+    work->remainingChanceCount--;
+    i = resultTable[index];
+    resultTable[index] = resultTable[work->remainingChanceCount];
+    resultTable[work->remainingChanceCount] = i;
     work->result = i;
 }
 
@@ -279,6 +282,7 @@ static s8 guideMotTbl[7] = {
     -1,
 };
 
+// Main board dispatches this event on player zero's turn once fewer than five turns remain.
 void mbev_Last5(void)
 {
     HuVecF pos;
@@ -291,6 +295,7 @@ void mbev_Last5(void)
     int firstTeamNo = 0;
     int secondTeamNo = 1;
     int otherPlayerNo = 0;
+    // These winner and runner selections are stored below but not read later in the event.
     OMOBJ *guideObj;
     int playerNo = 3;
     int messageOffset;
@@ -448,6 +453,7 @@ void mbev_Last5(void)
                 80.0f * ((float)(j - i) / (float)j)));
             target.y = pos.y + arcOffset;
             mbPlayerPosSetV(playerNo, &target);
+            // This comparison has no effect; the loop still sleeps on every arc step.
             i == j - 4;
             HuPrcVSleep();
         }
@@ -582,15 +588,16 @@ void mbev_Last5(void)
     HuPrcVSleep();
 }
 
+// Called by mbev_Last5 to create roulette models and a weighted table at the start space.
 static OMOBJ *Last5RouletteCreate(int masuId)
 {
     LAST5ROULETTEWORK *work;
     OMOBJ *obj;
     HuVecF pos;
-    int chanceNum;
-    void *tableP;
-    s8 *tableP2;
-    s8 *table;
+    int chanceCount;
+    void *tableAllocation;
+    s8 *allocationAsBytes;
+    s8 *resultTable;
     int i;
     int num;
     int j;
@@ -623,16 +630,16 @@ static OMOBJ *Last5RouletteCreate(int masuId)
     for (i = 0, num = 0; i < LAST5_ROULETTE_RESULT_NUM; i++) {
         num += rouletteChanceTbl[i];
     }
-    work->chanceNum = work->chanceNumCur = num;
-    chanceNum = work->chanceNum;
-    tableP = HuMemDirectMallocNum(HEAP_HEAP, chanceNum, HU_MEMNUM_OVL);
-    tableP2 = tableP;
-    table = tableP2;
-    obj->data = table;
+    work->chanceCount = work->remainingChanceCount = num;
+    chanceCount = work->chanceCount;
+    tableAllocation = HuMemDirectMallocNum(HEAP_HEAP, chanceCount, HU_MEMNUM_OVL);
+    allocationAsBytes = tableAllocation;
+    resultTable = allocationAsBytes;
+    obj->data = resultTable;
 
     for (i = 0, j = 0; i < LAST5_ROULETTE_RESULT_NUM; i++) {
         for (num = 0; num < rouletteChanceTbl[i]; num++) {
-            table[j++] = i;
+            resultTable[j++] = i;
         }
     }
 
@@ -642,6 +649,7 @@ static OMOBJ *Last5RouletteCreate(int masuId)
     return obj;
 }
 
+// Called by mbev_Last5 to request cleanup from the roulette object's next process callback.
 static void Last5RouletteKill(OMOBJ *obj)
 {
     LAST5ROULETTEWORK *work = omObjGetWork(obj, LAST5ROULETTEWORK);
@@ -649,6 +657,7 @@ static void Last5RouletteKill(OMOBJ *obj)
     work->killF = TRUE;
 }
 
+// Object-manager callback installed by Last5RouletteCreate; animates results and frees the object.
 static void Last5RouletteOMExec(OMOBJ *obj)
 {
     LAST5ROULETTEWORK *work = omObjGetWork(obj, LAST5ROULETTEWORK);
@@ -672,8 +681,8 @@ static void Last5RouletteOMExec(OMOBJ *obj)
     }
 
     if (work->rouletteF && !work->diceHitF) {
-        work->time++;
-        if (!(work->time & LAST5_ROULETTE_UPDATE_MASK)) {
+        work->frameCount++;
+        if (!(work->frameCount & LAST5_ROULETTE_UPDATE_MASK)) {
             Last5RouletteResultSet(obj);
             mbObjMotionTimeSet(obj->mdlId[2],
                 LAST5_ROULETTE_MOTION_TIME_OFFSET + work->result);
@@ -681,6 +690,7 @@ static void Last5RouletteOMExec(OMOBJ *obj)
     }
 }
 
+// Called by mbev_Last5 to randomize the display order, then sort by current player or team rank.
 static void Last5PlayerOrderGet(int *playerOrder, int playerNum)
 {
     int rank[GW_PLAYER_MAX];
@@ -743,6 +753,7 @@ static void Last5PlayerOrderGet(int *playerOrder, int playerNum)
     }
 }
 
+// Called by mbev_Last5 to start the player's dice roll and wait for its dice process to finish.
 static void ev_Last5Dice(int playerNo)
 {
     OMOBJ *obj = last5RouletteOMObj;
@@ -761,6 +772,8 @@ static void ev_Last5Dice(int playerNo)
     mbAudFXPlay(LAST5_DICE_RESULT_SFX);
 }
 
+// Dice-motion hook installed by ev_Last5Dice; signals roulette on impact, then returns the player
+// to idle.
 static void ev_Last5SDiceMotHook(int playerNo)
 {
     int i;
@@ -777,23 +790,25 @@ static void ev_Last5SDiceMotHook(int playerNo)
     mbPlayerMotIdleSet(playerNo);
 }
 
+// Called for the coin roulette result; drops forty coins around the player, then awards them.
 static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
 {
     HuVecF playerPos;
     MBCOINOBJ *coinObj;
     LAST5COINWORK *coinWork;
     s16 coinObjId[LAST5_COIN_NUM];
-    int validNum = 0;
+    int unusedValidCount = 0; // This local is not read by the coin shower.
     int activeNum;
-    int coinNum = 1;
+    int coinCount = 1;
     int i;
 
     mbGuideMotionShiftSet(guideObj, 6, TRUE);
     mbGuideMotionStop(guideObj);
     HuPrcSleep(48);
-    coinNum = LAST5_COIN_NUM;
+    // The initial one is replaced by the full coin shower count before use.
+    coinCount = LAST5_COIN_NUM;
     mbPlayerPosGet(playerNo, &playerPos);
-    for (i = 0; i < coinNum; i++) {
+    for (i = 0; i < coinCount; i++) {
         coinObjId[i] = mbCoinCreate2();
         mbCoinObjDispSet(coinObjId[i], FALSE);
         coinObj = mbCoinObjGet(coinObjId[i]);
@@ -806,26 +821,26 @@ static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
         coinObj->rot.y = 360.0f * frandf();
         coinObj->scale.x = coinObj->scale.y = coinObj->scale.z = 0.7f;
         coinWork = (LAST5COINWORK *)coinObj->work;
-        coinWork->delay = (float)(i * 30) / coinNum;
-        coinWork->velocity = LAST5_COIN_START_VELOCITY;
+        coinWork->frameDelay = (float)(i * 30) / coinCount;
+        coinWork->verticalSpeed = LAST5_COIN_START_VELOCITY;
     }
 
-    activeNum = coinNum;
+    activeNum = coinCount;
     while (activeNum != 0) {
-        for (i = 0, activeNum = 0; i < coinNum; i++) {
+        for (i = 0, activeNum = 0; i < coinCount; i++) {
             if (coinObjId[i] == 0) {
                 continue;
             }
             activeNum++;
             coinObj = mbCoinObjGet(coinObjId[i]);
             coinWork = (LAST5COINWORK *)coinObj->work;
-            if (coinWork->delay != 0) {
-                coinWork->delay--;
+            if (coinWork->frameDelay != 0) {
+                coinWork->frameDelay--;
                 continue;
             }
             mbCoinObjDispSet(coinObjId[i], TRUE);
-            coinWork->velocity += LAST5_COIN_GRAVITY;
-            coinObj->pos.y += coinWork->velocity;
+            coinWork->verticalSpeed += LAST5_COIN_GRAVITY;
+            coinObj->pos.y += coinWork->verticalSpeed;
             if (coinObj->pos.y < 100.0f + playerPos.y) {
                 mbCoinObjKill(coinObjId[i]);
                 coinObjId[i] = 0;
@@ -837,11 +852,12 @@ static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
     mbGuideMotionShiftSet(guideObj, 1, TRUE);
     mbPlayerWinLoseVoicePlay(playerNo, 12, CHARVOICEID(6));
     mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 12.0f, HU3D_MOTATTR_NONE);
-    mbCoinAddProcExec(playerNo, coinNum, TRUE, TRUE);
+    mbCoinAddProcExec(playerNo, coinCount, TRUE, TRUE);
     mbPlayerMotionEndWait(playerNo);
     mbPlayerMotIdleSet(playerNo);
 }
 
+// Called for the capsule roulette result; throws up to five random capsules on eligible spaces.
 static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     OMOBJ *guideObj)
 {
@@ -850,10 +866,10 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     HuVecF startPos;
     s16 *masuList[LAST5_CAPSULE_MASU_LIST_NUM];
     int masuNum[LAST5_CAPSULE_MASU_LIST_NUM];
-    int type;
-    int validNum = 0;
+    int unusedSpaceCategory;
+    int unusedValidCount = 0; // This local is not read by the capsule event.
     int index;
-    int capsuleNum = 1;
+    int unusedCapsuleNumber = 1; // This local is not read by capsule placement.
     int capsuleCount;
     int useMode;
     int listNo;
@@ -889,6 +905,7 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     }
     capsuleCount = index;
     if (capsuleCount < LAST5_CAPSULE_ADD_NUM) {
+        // When fewer than five capsule types are available, repeat the first entry.
         while (capsuleCount < LAST5_CAPSULE_ADD_NUM) {
             capsuleList[capsuleCount] = capsuleList[0];
             capsuleCount++;
@@ -908,7 +925,8 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
         masuNum[listNo] = 0;
     }
 
-    for (i = 1, type = 0; i < mbMasuNumGet(); i++) {
+    // The original initialization is unused; capsule placement selects its category below.
+    for (i = 1, unusedSpaceCategory = 0; i < mbMasuNumGet(); i++) {
         if (mbCapThrowMasuCheck(i)) {
             listNo = 0;
             if (mbCapMasuDispTypeGet(i) == 0) {
@@ -923,6 +941,7 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
         }
     }
 
+    // The existing chain clears pos.z as well as startPos.x/y; startPos.z is untouched here.
     startPos.x = startPos.y = pos.z = 0.0f;
     listNo = 0;
     for (i = 0; i < LAST5_CAPSULE_ADD_NUM; i++) {
@@ -985,6 +1004,7 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     mbPlayerMotIdleSet(playerNo);
 }
 
+// Called for the Koopa roulette result; raises Koopa, explains equalization, and adjusts coins.
 static void ev_Last5Koopa(playerNo, rouletteObj, modelId)
 int playerNo;
 OMOBJ *rouletteObj;
@@ -994,7 +1014,7 @@ MBMODELID modelId;
     HuVecF playerPos;
     int playerTbl[GW_PLAYER_MAX + 1];
     int coinAverage;
-    int value;
+    int playerOrCoinDelta;
     LAST5ROULETTEWORK *hideWork;
     LAST5ROULETTEWORK *showWork;
     int teamNo;
@@ -1009,13 +1029,13 @@ MBMODELID modelId;
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjDispSet(modelId, TRUE);
 
-    for (i = LAST5_KOOPA_RISE_TIME, value = TRUE; i >= 0; i--) {
-        if (i < LAST5_KOOPA_RISE_TRIGGER && value) {
+    for (i = LAST5_KOOPA_RISE_TIME, playerOrCoinDelta = TRUE; i >= 0; i--) {
+        if (i < LAST5_KOOPA_RISE_TRIGGER && playerOrCoinDelta) {
             mbObjMotionSpeedSet(modelId, 1.0f);
             mbAudFXPlay(LAST5_KOOPA_APPEAR_SFX);
             mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 6.0f,
                 HU3D_MOTATTR_NONE);
-            value = FALSE;
+            playerOrCoinDelta = FALSE;
         }
         riseProgress =
             (float)i * (1.0f / LAST5_KOOPA_RISE_TIME);
@@ -1086,9 +1106,9 @@ MBMODELID modelId;
             coinAverage += mbPlayerTeamCoinGet(i);
             playerTbl[i] = mbPlayerTeamFindPlayer(i, 0);
             if (GwPlayer[playerTbl[i]].comF) {
-                value = mbPlayerTeamFindPlayer(i, 1);
-                if (!GwPlayer[value].comF) {
-                    playerTbl[i] = value;
+                playerOrCoinDelta = mbPlayerTeamFindPlayer(i, 1);
+                if (!GwPlayer[playerOrCoinDelta].comF) {
+                    playerTbl[i] = playerOrCoinDelta;
                 }
             }
             teamNo = GwPlayer[playerNo].team;
@@ -1103,17 +1123,19 @@ MBMODELID modelId;
         mbCameraPlayerViewSetFast(playerTbl[i], FALSE);
         mbStatusDispFocusSet(playerTbl[i], TRUE);
         mbWipeDissolveFadeIn();
-        value = coinAverage - mbPlayerCoinGet(playerTbl[i]);
-        if (value > 0) {
+        playerOrCoinDelta = coinAverage - mbPlayerCoinGet(playerTbl[i]);
+        if (playerOrCoinDelta > 0) {
             mbPlayerWinLoseVoicePlay(playerTbl[i], 12, CHARVOICEID(6));
             mbPlayerMotionShiftSet(playerTbl[i], 12, 0.0f, 12.0f,
                 HU3D_MOTATTR_NONE);
-        } else if (value < 0) {
+        } else if (playerOrCoinDelta < 0) {
             mbPlayerWinLoseVoicePlay(playerTbl[i], 13, CHARVOICEID(12));
             mbPlayerMotionShiftSet(playerTbl[i], 13, 0.0f, 12.0f,
                 HU3D_MOTATTR_NONE);
         }
-        mbCoinAddProcExec(playerTbl[i], value, value - 1, TRUE);
+        // The second flag is deliberately derived from the coin delta.
+        mbCoinAddProcExec(playerTbl[i], playerOrCoinDelta,
+            playerOrCoinDelta - 1, TRUE);
         mbWipeDissolveFadeOut();
         mbPlayerMotionSet(playerTbl[i], 1, HU3D_MOTATTR_LOOP);
         mbStatusDispForceSet(playerTbl[i], FALSE);
