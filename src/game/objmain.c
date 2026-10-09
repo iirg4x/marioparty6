@@ -1,3 +1,4 @@
+// Coordinates overlay transitions and the per-frame game object manager.
 #define _MATH_H
 #include "game/object.h"
 #include "game/objdll.h"
@@ -50,30 +51,34 @@ OMOVL omprevovl = DLL_NONE;
 
 static void omWatchOverlayProc(void);
 
-
-void omMasterInit(s32 watchPrio, OVLTBL *ovlTbl, OMOVL ovlMax, OMOVL ovlInit)
+// Called by main.c during system startup to start the overlay watcher and request the boot overlay.
+void omMasterInit(s32 overlayWatchPriority, OVLTBL *overlayTable, OMOVL overlayCount,
+                  OMOVL initialOverlay)
 {
-    s16 i;
-    omDLLInit(ovlTbl);
-    omwatchproc = HuPrcCreate(omWatchOverlayProc, watchPrio, 12288, 0);
+    s16 workIndex;
+    omDLLInit(overlayTable);
+    omwatchproc = HuPrcCreate(omWatchOverlayProc, overlayWatchPriority, 12288, 0);
     HuPrcSetStat(omwatchproc, HU_PRC_STAT_PAUSE_ON|HU_PRC_STAT_UPAUSE_ON);
     omcurovl = DLL_NONE;
     omovlhisidx = -1;
-    omOvlCall(ovlInit, 0, 0);
+    omOvlCall(initialOverlay, 0, 0);
     omDBGSysKeyObj = NULL;
-    for(i=0; i<16; i++) {
-        MgModeWorkInt[i] = MgModeWorkFloat[i] = 0;
+    for(workIndex=0; workIndex<16; workIndex++) {
+        MgModeWorkInt[workIndex] = MgModeWorkFloat[workIndex] = 0;
     }
     omSysPauseEnable(TRUE);
 }
 
+// The process created by omMasterInit waits for requests and initializes overlays after fades.
 static void omWatchOverlayProc(void)
 {
     while(1) {
         if(omcurovl == DLL_NONE) {
             if(omnextovl >= 0 && fadeStat == FALSE) {
                 HuPrcSleep(0);
-                OSReport("++++++++++++++++++++ Start New OVL %d (EVT:%d STAT:0x%08x) ++++++++++++++++++\n", omnextovl, omnextovlevtno, omnextovlstat);
+                OSReport(
+                    "++++++++++++++++++++ Start New OVL %d (EVT:%d STAT:0x%08x) ++++++++++++++++++\n",
+                    omnextovl, omnextovlevtno, omnextovlstat);
                 OSReport("objman>Init esp\n");
                 espInit();
                 OSReport("objman>Call objectsetup\n");
@@ -104,45 +109,51 @@ static void omWatchOverlayProc(void)
     }
 }
 
-void omOvlCallEx(OMOVL ovl, s16 unlinkF, s32 evtno, s32 stat)
+// Called by overlay transitions to append the requested overlay to history and schedule it; if the
+// history index is already at least OMOVLHIS_MAX, logs an error and skips both.
+void omOvlCallEx(OMOVL overlay, s16 unlinkObjects, s32 eventNo, s32 overlayStatus)
 {
-    OSReport("objman>Call New Ovl %d(%d)\n", ovl, unlinkF);
+    OSReport("objman>Call New Ovl %d(%d)\n", overlay, unlinkObjects);
     if(omovlhisidx >= OMOVLHIS_MAX) {
         OSReport("objman>OVL Call over error\n");
     } else {
-        omovlhis[++omovlhisidx].ovl = ovl;
-        omovlhis[omovlhisidx].evtno = evtno;
-        omovlhis[omovlhisidx].stat = stat;
-        omOvlGotoEx(ovl, unlinkF, evtno, stat);
+        omovlhis[++omovlhisidx].ovl = overlay;
+        omovlhis[omovlhisidx].evtno = eventNo;
+        omovlhis[omovlhisidx].stat = overlayStatus;
+        omOvlGotoEx(overlay, unlinkObjects, eventNo, overlayStatus);
     }
 }
 
-void omOvlGotoEx(OMOVL ovl, s16 unlinkF, s32 evtno, s32 stat)
+// Called by overlay transitions to schedule an overlay, closing the current one if active.
+void omOvlGotoEx(OMOVL overlay, s16 unlinkObjects, s32 eventNo, s32 overlayStatus)
 {
     omprevovl = omcurovl;
     if(omcurovl >= 0) {
-        omOvlKill(unlinkF);
+        omOvlKill(unlinkObjects);
     }
-    omnextovl = ovl;
-    omnextovlevtno = evtno;
-    omnextovlstat = stat;
+    omnextovl = overlay;
+    omnextovlevtno = eventNo;
+    omnextovlstat = overlayStatus;
 }
 
-void omOvlReturnEx(s16 hisOfs, s16 unlinkF)
+// Called by overlay code to return to history unless another overlay request is already queued.
+void omOvlReturnEx(s16 historyOffset, s16 unlinkObjects)
 {
     if(omnextovl >= 0) {
         return;
     }
-    omovlhisidx -= hisOfs;
-    OSReport("objman>Ovl Return %d=%d(%d)\n", hisOfs, omovlhisidx, unlinkF);
+    omovlhisidx -= historyOffset;
+    OSReport("objman>Ovl Return %d=%d(%d)\n", historyOffset, omovlhisidx, unlinkObjects);
     if(omovlhisidx < 0) {
         OSReport("objman>OVL under error\n");
         omovlhisidx = 0;
     }
-    omOvlGotoEx(omovlhis[omovlhisidx].ovl, unlinkF, omovlhis[omovlhisidx].evtno, omovlhis[omovlhisidx].stat);
+    omOvlGotoEx(omovlhis[omovlhisidx].ovl, unlinkObjects, omovlhis[omovlhisidx].evtno,
+                omovlhis[omovlhisidx].stat);
 }
 
-void omOvlKill(s16 unlinkF)
+// Called during an overlay transition to release overlay-owned state and end its DLL.
+void omOvlKill(s16 unlinkObjects)
 {
     MgActorClose();
     CharModelKill(GW_CHARA_NULL);
@@ -158,370 +169,414 @@ void omOvlKill(s16 unlinkF)
     SLWinInit();
     HuPadRumbleAllStop();
     HuAudFXListnerKill();
-    OSReport("OvlKill %d\n", unlinkF);
+    OSReport("OvlKill %d\n", unlinkObjects);
     omSysExitReq = FALSE;
-    omDLLNumEnd(omcurovl, unlinkF);
+    omDLLNumEnd(omcurovl, unlinkObjects);
     omcurovl = DLL_NONE;
     omDBGSysKeyObj = NULL;
 }
 
-void omOvlHisChg(s32 hisOfs, OMOVL ovl, s32 evtno, s32 stat)
+// Called by overlay code to replace a return-history entry when its offset is in range.
+void omOvlHisChg(s32 historyOffset, OMOVL overlay, s32 eventNo, s32 overlayStatus)
 {
-    OMOVLHIS *his;
-    if(omovlhisidx-hisOfs < 0 || omovlhisidx-hisOfs >= OMOVLHIS_MAX) {
+    OMOVLHIS *historyEntry;
+    if(omovlhisidx-historyOffset < 0 || omovlhisidx-historyOffset >= OMOVLHIS_MAX) {
         OSReport("objman> omOvlHisChg: overlay 実行履歴の範囲外を変更しようとしました\n");
         return;
     }
-    his = &omovlhis[omovlhisidx-hisOfs];
-    his->ovl = ovl;
-    his->evtno = evtno;
-    his->stat = stat;
+    historyEntry = &omovlhis[omovlhisidx-historyOffset];
+    historyEntry->ovl = overlay;
+    historyEntry->evtno = eventNo;
+    historyEntry->stat = overlayStatus;
 }
 
-OMOVLHIS *omOvlHisGet(s32 hisOfs)
+// Called by overlay code to read a return-history entry, or NULL when its offset is out of range.
+OMOVLHIS *omOvlHisGet(s32 historyOffset)
 {
-    if(omovlhisidx-hisOfs < 0 || omovlhisidx-hisOfs >= OMOVLHIS_MAX) {
+    if(omovlhisidx-historyOffset < 0 || omovlhisidx-historyOffset >= OMOVLHIS_MAX) {
         OSReport("objman> omOvlHisGet: overlay 実行履歴の範囲外を参照しようとしました\n");
         return NULL;
     }
-    return &omovlhis[omovlhisidx-hisOfs];
+    return &omovlhis[omovlhisidx-historyOffset];
 }
 
 static void omMain(void);
 
 static void omDestroyObjMan(void);
 
-OMOBJMAN *omInitObjMan(s16 objMax, s32 objManPrio)
+// Called by scene managers to allocate an object manager and start its frame process.
+OMOBJMAN *omInitObjMan(s16 maxObjectCount, s32 objectManagerPriority)
 {
-    OMOBJGRP *grpData;
-    OMOBJ *objData;
-    OMOBJWORK *objWork;
-    OMOBJMAN *objMan;
-    s32 i;
+    OMOBJGRP *groupData;
+    OMOBJ *objectData;
+    OMOBJWORK *objectWork;
+    OMOBJMAN *objectManager;
+    s32 objectIndex;
     OSReport("objman>InitObjMan start\n");
-    objMax += 5;
+    // Reserve five extra object slots beyond the count requested by the caller.
+    maxObjectCount += 5;
     omSysExitReq = FALSE;
-    omObjManProc = objMan = HuPrcChildCreate(omMain, objManPrio, 24576, 0, omwatchproc);
-    HuPrcSetStat(objMan, HU_PRC_STAT_PAUSE_ON|HU_PRC_STAT_UPAUSE_ON);
-    objWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(OMOBJWORK), HU_MEMNUM_OVL);
-    objWork->objMax = objMax;
-    objMan->property = objWork;
-    objMan->destructor = omDestroyObjMan;
-    objWork->objIdx = 0;
-    objWork->objNext = 0;
-    objWork->objLast = OM_OBJ_NONE;
-    objWork->objFirst = OM_OBJ_NONE;
-    objWork->objData = objData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(OMOBJ)*objMax, HU_MEMNUM_OVL);
-    objWork->grpData = grpData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(OMOBJGRP)*OM_GRP_MAX, HU_MEMNUM_OVL);
-    for(i=0; i<objMax; i++) {
-        OMOBJ *obj = &objData[i];
-        obj->stat = OM_STAT_DELETED;
-        obj->prio = obj->prev = obj->next = OM_OBJ_NONE;
-        obj->mode = 0;
-        obj->trans.x = obj->trans.y = obj->trans.z = obj->rot.x = obj->rot.y = obj->rot.z = 0;
-        obj->scale.x = obj->scale.y = obj->scale.z = 1;
-        obj->mdlId = obj->mtnId = NULL;
-        obj->objFunc = obj->data = NULL;
-        obj->nextNo = i+1;
-        obj->mtncnt = 0;
-        obj->mtnId = NULL;
+    omObjManProc = objectManager =
+        HuPrcChildCreate(omMain, objectManagerPriority, 24576, 0, omwatchproc);
+    HuPrcSetStat(objectManager, HU_PRC_STAT_PAUSE_ON|HU_PRC_STAT_UPAUSE_ON);
+    objectWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(OMOBJWORK), HU_MEMNUM_OVL);
+    objectWork->objMax = maxObjectCount;
+    objectManager->property = objectWork;
+    objectManager->destructor = omDestroyObjMan;
+    objectWork->objIdx = 0;
+    objectWork->objNext = 0;
+    objectWork->objLast = OM_OBJ_NONE;
+    objectWork->objFirst = OM_OBJ_NONE;
+    objectWork->objData = objectData =
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(OMOBJ) * maxObjectCount, HU_MEMNUM_OVL);
+    objectWork->grpData = groupData =
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(OMOBJGRP) * OM_GRP_MAX, HU_MEMNUM_OVL);
+    for(objectIndex=0; objectIndex<maxObjectCount; objectIndex++) {
+        OMOBJ *object = &objectData[objectIndex];
+        object->stat = OM_STAT_DELETED;
+        object->prio = object->prev = object->next = OM_OBJ_NONE;
+        object->mode = 0;
+        object->trans.x = object->trans.y = object->trans.z = object->rot.x = object->rot.y =
+            object->rot.z = 0;
+        object->scale.x = object->scale.y = object->scale.z = 1;
+        object->mdlId = object->mtnId = NULL;
+        object->objFunc = object->data = NULL;
+        object->nextNo = objectIndex+1;
+        object->mtncnt = 0;
+        // Reset the motion ID pointer after initializing this object slot.
+        object->mtnId = NULL;
     }
-    for(i=0; i<OM_GRP_MAX; i++) {
-        grpData[i].objMax = 0;
-        grpData[i].objNum = 0;
-        grpData[i].memberNo = 0;
-        grpData[i].memberList = NULL;
-        grpData[i].memberNext = NULL;
+    for(objectIndex=0; objectIndex<OM_GRP_MAX; objectIndex++) {
+        groupData[objectIndex].objMax = 0;
+        groupData[objectIndex].objNum = 0;
+        groupData[objectIndex].memberNo = 0;
+        groupData[objectIndex].memberList = NULL;
+        groupData[objectIndex].memberNext = NULL;
     }
     OSReport("objman>InitObjMan end\n");
     omUPauseFlag = FALSE;
     HuPrcAllUPause(0);
     omCameraViewInit();
     MgScoreBoxInit();
-    return objMan;
+    return objectManager;
 }
 
+// Process destructor installed by omInitObjMan; clears the active-list tail on shutdown.
 static void omDestroyObjMan(void)
 {
-    OMOBJMAN *objMan = HuPrcCurrentGet();
-    OMOBJWORK *objWork = objMan->property;
-    objWork->objLast = OM_OBJ_NONE;
+    OMOBJMAN *objectManager = HuPrcCurrentGet();
+    OMOBJWORK *objectWork = objectManager->property;
+    objectWork->objLast = OM_OBJ_NONE;
     OSReport("objman>Destory ObjMan\n");
 }
 
-static void omInsertObj(OMOBJMAN *objMan, OMOBJ *obj);
+static void omInsertObj(OMOBJMAN *objectManager, OMOBJ *object);
 
-OMOBJ *omAddObjEx(OMOBJMAN *objMan, s16 prio, u16 mdlcnt, u16 mtncnt, s16 grpNo, OMOBJ_FUNC objFunc)
+// Called by gameplay systems to allocate an object slot and register its frame callback.
+OMOBJ *omAddObjEx(OMOBJMAN *objectManager, s16 priority, u16 modelCount, u16 motionCount,
+                  s16 groupNumber, OMOBJ_FUNC objectCallback)
 {
-    OMOBJWORK *objWork = objMan->property;
-    OMOBJ *objData = objWork->objData;
-    OMOBJ *obj;
-    s16 objNext;
-    s32 i;
-    if(objWork->objIdx == objWork->objMax) {
+    OMOBJWORK *objectWork = objectManager->property;
+    OMOBJ *objectData = objectWork->objData;
+    OMOBJ *object;
+    s16 nextObjectIndex;
+    s32 arrayIndex;
+    if(objectWork->objIdx == objectWork->objMax) {
         OSReport("Error: ObjMax Over!\n");
         return NULL;
     }
-    objNext = objWork->objNext;
-    obj = &objData[objNext];
-    obj->objNext = objNext;
-    obj->prio = prio;
-    omInsertObj(objMan, obj);
-    if(mdlcnt) {
-        obj->mdlId = HuMemDirectMallocNum(HEAP_HEAP, sizeof(HU3D_MODELID)*mdlcnt, HU_MEMNUM_OVL);
-        obj->mdlcnt = mdlcnt;
-        for(i=0; i<mdlcnt; i++) {
-            obj->mdlId[i] = HU3D_MODELID_NONE;
+    nextObjectIndex = objectWork->objNext;
+    object = &objectData[nextObjectIndex];
+    object->objNext = nextObjectIndex;
+    object->prio = priority;
+    omInsertObj(objectManager, object);
+    if(modelCount) {
+        object->mdlId =
+            HuMemDirectMallocNum(HEAP_HEAP, sizeof(HU3D_MODELID) * modelCount, HU_MEMNUM_OVL);
+        object->mdlcnt = modelCount;
+        for(arrayIndex=0; arrayIndex<modelCount; arrayIndex++) {
+            object->mdlId[arrayIndex] = HU3D_MODELID_NONE;
         }
     } else {
-        obj->mdlId = NULL;
-        obj->mdlcnt = 0;
+        object->mdlId = NULL;
+        object->mdlcnt = 0;
     }
-    if(mtncnt) {
-        obj->mtnId = HuMemDirectMallocNum(HEAP_HEAP, sizeof(HU3D_MODELID)*mtncnt, HU_MEMNUM_OVL);
-        obj->mtncnt = mtncnt;
+    if(motionCount) {
+        object->mtnId =
+            HuMemDirectMallocNum(HEAP_HEAP, sizeof(HU3D_MODELID) * motionCount, HU_MEMNUM_OVL);
+        object->mtncnt = motionCount;
     } else {
-        obj->mtnId = NULL;
-        obj->mtncnt = 0;
+        object->mtnId = NULL;
+        object->mtncnt = 0;
     }
-    if(grpNo >= 0) {
-        omAddMember(objMan, grpNo, obj);
+    if(groupNumber >= 0) {
+        omAddMember(objectManager, groupNumber, object);
     } else {
-        obj->grpNo = grpNo;
-        obj->memberNo = 0;
+        object->grpNo = groupNumber;
+        object->memberNo = 0;
     }
-    obj->stat = OM_STAT_ACTIVE;
-    obj->mode = 0;
-    obj->objFunc = objFunc;
-    obj->work[0] = obj->work[1] = obj->work[2] = obj->work[3] = 0;
-    objWork->objNext = obj->nextNo;
-    objWork->objIdx++;
-    omSetTra(obj, 0.0f, 0.0f, 0.0f);
-    omSetRot(obj, 0.0f, 0.0f, 0.0f);
-    omSetSca(obj, 1.0f, 1.0f, 1.0f);
-    return obj;
+    object->stat = OM_STAT_ACTIVE;
+    object->mode = 0;
+    object->objFunc = objectCallback;
+    object->work[0] = object->work[1] = object->work[2] = object->work[3] = 0;
+    objectWork->objNext = object->nextNo;
+    objectWork->objIdx++;
+    omSetTra(object, 0.0f, 0.0f, 0.0f);
+    omSetRot(object, 0.0f, 0.0f, 0.0f);
+    omSetSca(object, 1.0f, 1.0f, 1.0f);
+    return object;
 }
 
-static void omInsertObj(OMOBJMAN *objMan, OMOBJ *obj)
+// Helper called by omAddObjEx; inserts before existing objects with an equal or lower priority.
+static void omInsertObj(OMOBJMAN *objectManager, OMOBJ *object)
 {
-    OMOBJWORK *objWork = objMan->property;
-    OMOBJ *objData = objWork->objData;
-    s16 objNext = obj->objNext;
-    s16 prio = obj->prio;
-    s16 next;
-    s16 prev;
-    OMOBJ *objNextP;
-    if(objWork->objFirst == OM_OBJ_NONE) {
-        obj->prev = OM_OBJ_NONE;
-        obj->next = OM_OBJ_NONE;
-        objWork->objFirst = objNext;
-        objWork->objLast = objNext;
+    OMOBJWORK *objectWork = objectManager->property;
+    OMOBJ *objectData = objectWork->objData;
+    s16 objectIndex = object->objNext;
+    s16 priority = object->prio;
+    s16 nextObjectIndex;
+    s16 previousObjectIndex;
+    OMOBJ *nextObject;
+    if(objectWork->objFirst == OM_OBJ_NONE) {
+        object->prev = OM_OBJ_NONE;
+        object->next = OM_OBJ_NONE;
+        objectWork->objFirst = objectIndex;
+        objectWork->objLast = objectIndex;
         return;
     }
-    for(next=objWork->objFirst; next != OM_OBJ_NONE; next = objNextP->next) {
-        objNextP = &objData[next];
-        if(objNextP->prio <= prio) {
+    for (nextObjectIndex = objectWork->objFirst; nextObjectIndex != OM_OBJ_NONE;
+         nextObjectIndex = nextObject->next) {
+        nextObject = &objectData[nextObjectIndex];
+        if(nextObject->prio <= priority) {
             break;
         }
-        prev = next;
+        previousObjectIndex = nextObjectIndex;
     }
-    if(next != OM_OBJ_NONE) {
-        obj->prev = objNextP->prev;
-        obj->next = next;
-        if(objNextP->prev != OM_OBJ_NONE) {
-            objData[objNextP->prev].next = objNext;
+    if(nextObjectIndex != OM_OBJ_NONE) {
+        object->prev = nextObject->prev;
+        object->next = nextObjectIndex;
+        if(nextObject->prev != OM_OBJ_NONE) {
+            objectData[nextObject->prev].next = objectIndex;
         } else {
-            objWork->objFirst = objNext;
+            objectWork->objFirst = objectIndex;
         }
-        objNextP->prev = objNext;
+        nextObject->prev = objectIndex;
     } else {
-        obj->next = OM_OBJ_NONE;
-        obj->prev = prev;
-        objNextP->next = objNext;
-        objWork->objLast = objNext;
+        object->next = OM_OBJ_NONE;
+        object->prev = previousObjectIndex;
+        nextObject->next = objectIndex;
+        objectWork->objLast = objectIndex;
     }
 }
 
-void omAddMember(OMOBJMAN *objMan, u16 grpNo, OMOBJ *obj)
+// Called by omAddObjEx to add an object when its group has a free member slot; full groups skip it.
+void omAddMember(OMOBJMAN *objectManager, u16 groupNumber, OMOBJ *object)
 {
-    OMOBJWORK *objWork = objMan->property;
-    OMOBJGRP *grpP = &objWork->grpData[grpNo];
-    if(grpP->objNum != grpP->objMax) {
-        obj->grpNo = grpNo;
-        obj->memberNo = grpP->memberNo;
-        grpP->memberList[grpP->memberNo] = obj;
-        grpP->memberNo = grpP->memberNext[grpP->memberNo];
-        grpP->objNum++;
+    OMOBJWORK *objectWork = objectManager->property;
+    OMOBJGRP *group = &objectWork->grpData[groupNumber];
+    if(group->objNum != group->objMax) {
+        object->grpNo = groupNumber;
+        object->memberNo = group->memberNo;
+        group->memberList[group->memberNo] = object;
+        group->memberNo = group->memberNext[group->memberNo];
+        group->objNum++;
     }
 }
 
-void omDelObjEx(OMOBJMAN *objMan, OMOBJ *obj)
+// Called by object owners to free an object and unlink it from its group and priority list.
+void omDelObjEx(OMOBJMAN *objectManager, OMOBJ *object)
 {
-    OMOBJWORK *objWork = objMan->property;
-    OMOBJ *objData = objWork->objData;
-    s16 objNext = obj->objNext;
-    if(objWork->objIdx == 0 || obj->stat == OM_STAT_DELETED) {
+    OMOBJWORK *objectWork = objectManager->property;
+    OMOBJ *objectData = objectWork->objData;
+    s16 objectIndex = object->objNext;
+    if(objectWork->objIdx == 0 || object->stat == OM_STAT_DELETED) {
         return;
     }
-    objWork->objIdx--;
-    if(obj->grpNo >= 0) {
-        omDelMember(objMan, obj);
+    objectWork->objIdx--;
+    if(object->grpNo >= 0) {
+        omDelMember(objectManager, object);
     }
-    if(obj->mtnId != NULL) {
-        HuMemDirectFree(obj->mtnId);
-        obj->mtnId = NULL;
+    if(object->mtnId != NULL) {
+        HuMemDirectFree(object->mtnId);
+        object->mtnId = NULL;
     }
-    if(obj->mdlId != NULL) {
-        HuMemDirectFree(obj->mdlId);
-        obj->mdlId = NULL;
+    if(object->mdlId != NULL) {
+        HuMemDirectFree(object->mdlId);
+        object->mdlId = NULL;
     }
-    if(obj->data != NULL) {
-        HuMemDirectFree(obj->data);
-        obj->data = NULL;
+    if(object->data != NULL) {
+        HuMemDirectFree(object->data);
+        object->data = NULL;
     }
-    obj->stat = OM_STAT_DELETED;
-    if(obj->next >= 0) {
-        objData[obj->next].prev = obj->prev;
+    object->stat = OM_STAT_DELETED;
+    if(object->next >= 0) {
+        objectData[object->next].prev = object->prev;
     }
-    if(obj->prev >= 0) {
-        objData[obj->prev].next = obj->next;
+    if(object->prev >= 0) {
+        objectData[object->prev].next = object->next;
     }
-    if(objWork->objIdx) {
-        if(obj->prev < 0) {
-            objWork->objFirst = objData[obj->next].objNext;
+    if(objectWork->objIdx) {
+        if(object->prev < 0) {
+            objectWork->objFirst = objectData[object->next].objNext;
         }
-        if(obj->next < 0) {
-            objWork->objLast = objData[obj->prev].objNext;
+        if(object->next < 0) {
+            objectWork->objLast = objectData[object->prev].objNext;
         }
     } else {
-        objWork->objFirst = objWork->objLast = OM_OBJ_NONE;
+        objectWork->objFirst = objectWork->objLast = OM_OBJ_NONE;
     }
-    obj->nextNo = objWork->objNext;
-    objWork->objNext = objNext;
+    object->nextNo = objectWork->objNext;
+    objectWork->objNext = objectIndex;
 }
 
-void omDelMember(OMOBJMAN *objMan, OMOBJ *obj)
+// Removes the object from its group when omDelObjEx deletes it.
+void omDelMember(OMOBJMAN *objectManager, OMOBJ *object)
 {
-    if(obj->grpNo != OM_GRP_NONE) {
-        OMOBJWORK *objWork = objMan->property;
-        OMOBJ *objData = objWork->objData;
-        OMOBJGRP *grp = &objWork->grpData[obj->grpNo];
-        grp->memberList[obj->memberNo] = NULL;
-        grp->memberNext[obj->memberNo] = grp->memberNo;
-        grp->memberNo = obj->memberNo;
-        obj->grpNo = OM_GRP_NONE;
-        grp->objNum--;
-    }
-}
-
-void omMakeGroupEx(OMOBJMAN *objMan, u16 grpNo, u16 objMax)
-{
-    OMOBJWORK *objWork = objMan->property;
-    OMOBJGRP *grpP = &objWork->grpData[grpNo];
-    s32 i;
-    if(grpP->memberList != NULL) {
-        HuMemDirectFree(grpP->memberList);
-    }
-    if(grpP->memberNext != NULL) {
-        HuMemDirectFree(grpP->memberNext);
-    }
-    grpP->memberNo = 0;
-    grpP->objMax = objMax;
-    grpP->objNum = 0;
-    grpP->memberList = HuMemDirectMallocNum(HEAP_HEAP, objMax*sizeof(OMOBJ *), HU_MEMNUM_OVL);
-    grpP->memberNext = HuMemDirectMallocNum(HEAP_HEAP, objMax*sizeof(u16), HU_MEMNUM_OVL);
-    for(i=0; i<objMax; i++) {
-        grpP->memberList[i] = NULL;
-        grpP->memberNext[i] = i+1;
+    if(object->grpNo != OM_GRP_NONE) {
+        OMOBJWORK *objectWork = objectManager->property;
+        OMOBJ *objectData = objectWork->objData;
+        OMOBJGRP *group = &objectWork->grpData[object->grpNo];
+        group->memberList[object->memberNo] = NULL;
+        group->memberNext[object->memberNo] = group->memberNo;
+        group->memberNo = object->memberNo;
+        object->grpNo = OM_GRP_NONE;
+        group->objNum--;
     }
 }
 
-OMOBJ **omGetGroupMemberListEx(OMOBJMAN *objMan, s16 grpNo)
+// Called during scene setup to allocate a group's member slots and initialize the available-slot
+// chain.
+void omMakeGroupEx(OMOBJMAN *objectManager, u16 groupNumber, u16 maxMemberCount)
 {
-    OMOBJWORK *objWork = objMan->property;
-    return objWork->grpData[grpNo].memberList;
+    OMOBJWORK *objectWork = objectManager->property;
+    OMOBJGRP *group = &objectWork->grpData[groupNumber];
+    s32 memberIndex;
+    if(group->memberList != NULL) {
+        HuMemDirectFree(group->memberList);
+    }
+    if(group->memberNext != NULL) {
+        HuMemDirectFree(group->memberNext);
+    }
+    group->memberNo = 0;
+    group->objMax = maxMemberCount;
+    group->objNum = 0;
+    group->memberList =
+        HuMemDirectMallocNum(HEAP_HEAP, maxMemberCount * sizeof(OMOBJ *), HU_MEMNUM_OVL);
+    group->memberNext = HuMemDirectMallocNum(HEAP_HEAP, maxMemberCount*sizeof(u16), HU_MEMNUM_OVL);
+    for(memberIndex=0; memberIndex<maxMemberCount; memberIndex++) {
+        group->memberList[memberIndex] = NULL;
+        // The final slot links to maxMemberCount, which terminates the available-slot chain.
+        group->memberNext[memberIndex] = memberIndex+1;
+    }
 }
 
-void omSetStatBit(OMOBJ *obj, u16 bit)
+// Called by group users to retrieve the group's member-pointer array.
+OMOBJ **omGetGroupMemberListEx(OMOBJMAN *objectManager, s16 groupNumber)
 {
-    obj->stat |= bit;
+    OMOBJWORK *objectWork = objectManager->property;
+    return objectWork->grpData[groupNumber].memberList;
 }
 
-void omResetStatBit(OMOBJ *obj, u16 bit)
+// Called by object controls to add status bits to an object's flags.
+void omSetStatBit(OMOBJ *object, u16 statusBits)
 {
-    obj->stat &= ~bit;
+    object->stat |= statusBits;
 }
 
-void omSetTra(OMOBJ *obj, float x, float y, float z)
+// Called by object controls to clear status bits from an object's flags.
+void omResetStatBit(OMOBJ *object, u16 statusBits)
 {
-    obj->trans.x = x;
-    obj->trans.y = y;
-    obj->trans.z = z;
+    object->stat &= ~statusBits;
 }
 
-void omSetRot(OMOBJ *obj, float x, float y, float z)
+// Called by object controls to set the object's position components in game units.
+void omSetTra(OMOBJ *object, float x, float y, float z)
 {
-    obj->rot.x = x;
-    obj->rot.y = y;
-    obj->rot.z = z;
+    object->trans.x = x;
+    object->trans.y = y;
+    object->trans.z = z;
 }
 
-void omSetSca(OMOBJ *obj, float x, float y, float z)
+// Called by object controls to set the object's rotation components.
+void omSetRot(OMOBJ *object, float x, float y, float z)
 {
-    obj->scale.x = x;
-    obj->scale.y = y;
-    obj->scale.z = z;
+    object->rot.x = x;
+    object->rot.y = y;
+    object->rot.z = z;
+}
+
+// Called by object controls to set the object's scale components.
+void omSetSca(OMOBJ *object, float x, float y, float z)
+{
+    object->scale.x = x;
+    object->scale.y = y;
+    object->scale.z = z;
 }
 
 #define BLACK_SHADOW "\xFD\x01"
 
+// Child process created by omInitObjMan; invokes eligible callbacks and updates the first valid
+// model's transforms unless model updates are paused.
 static void omMain(void)
 {
     OMOBJMAN *objMan = HuPrcCurrentGet();
     OMOBJWORK *objWork = objMan->property;
     OMOBJ *objData = objWork->objData;
-    s16 objIdx;
+    s16 objectIndex;
     omDLLDBGOut();
     while(1) {
         if(omdispinfo) {
-            float scale = 1.5f;
-            GXColor color;
-            color.a = 96;
-            color.r = 0;
-            color.g = 0;
-            color.b = 255;
-            printWin(15, 31, 128*scale, 48*scale, &color);
+            float debugScale = 1.5f;
+            GXColor debugPanelColor;
+            debugPanelColor.a = 96;
+            debugPanelColor.r = 0;
+            debugPanelColor.g = 0;
+            debugPanelColor.b = 255;
+            printWin(15, 31, 128*debugScale, 48*debugScale, &debugPanelColor);
             fontcolor = FONT_COLOR_YELLOW;
-            print8(16, 32, scale, BLACK_SHADOW "H:%08lX(%ld)", HuMemUsedMallocSizeGet(HEAP_HEAP), HuMemUsedMallocBlockGet(HEAP_HEAP));
-            print8(16, 32+(8*scale), scale, BLACK_SHADOW "M:%08lX(%ld)", HuMemUsedMallocSizeGet(HEAP_MODEL), HuMemUsedMallocBlockGet(HEAP_MODEL));
-            print8(16, 32+(16*scale), scale, BLACK_SHADOW "OBJ:%d/%d", objWork->objIdx, objWork->objMax);
-            print8(16, 32+(24*scale), scale, BLACK_SHADOW "OVL:%ld(%ld<%ld)", omovlhisidx, omcurovl, omprevovl);
-            print8(16, 32+(32*scale), scale, BLACK_SHADOW "POL:%ld(%d)", totalPolyCnted, totalMatCnted);
-            print8(16, 32+(40*scale), scale, BLACK_SHADOW "D:%08lX(%ld)", HuMemUsedMallocSizeGet(HEAP_DVD), HuMemUsedMallocBlockGet(HEAP_DVD));
+            print8(16, 32, debugScale, BLACK_SHADOW "H:%08lX(%ld)",
+                   HuMemUsedMallocSizeGet(HEAP_HEAP), HuMemUsedMallocBlockGet(HEAP_HEAP));
+            print8(16, 32 + (8 * debugScale), debugScale, BLACK_SHADOW "M:%08lX(%ld)",
+                   HuMemUsedMallocSizeGet(HEAP_MODEL), HuMemUsedMallocBlockGet(HEAP_MODEL));
+            print8(16, 32 + (16 * debugScale), debugScale, BLACK_SHADOW "OBJ:%d/%d",
+                   objWork->objIdx, objWork->objMax);
+            print8(16, 32 + (24 * debugScale), debugScale, BLACK_SHADOW "OVL:%ld(%ld<%ld)",
+                   omovlhisidx, omcurovl, omprevovl);
+            print8(16, 32 + (32 * debugScale), debugScale, BLACK_SHADOW "POL:%ld(%d)",
+                   totalPolyCnted, totalMatCnted);
+            print8(16, 32 + (40 * debugScale), debugScale, BLACK_SHADOW "D:%08lX(%ld)",
+                   HuMemUsedMallocSizeGet(HEAP_DVD), HuMemUsedMallocBlockGet(HEAP_DVD));
         }
         if(HuLoadProcModeGet()) {
             HuPrcVSleep();
             continue;
         }
-        objIdx = objWork->objLast;
-        while(objIdx != OM_OBJ_NONE) {
-            OMOBJ *obj = &objData[objIdx];
-            objIdx = obj->prev;
-            if((obj->stat & (OM_STAT_DELETED|OM_STAT_DISABLED)) == 0) {
-                if(obj->objFunc != NULL && (obj->stat & (0x40|0x8|OM_STAT_PAUSED)) == 0) {
-                    obj->objFunc(obj);
+        objectIndex = objWork->objLast;
+        while(objectIndex != OM_OBJ_NONE) {
+            OMOBJ *object = &objData[objectIndex];
+            objectIndex = object->prev;
+            if((object->stat & (OM_STAT_DELETED|OM_STAT_DISABLED)) == 0) {
+                if (object->objFunc != NULL &&
+                    (object->stat & (OM_STAT_40 | 0x8 | OM_STAT_PAUSED)) == 0) {
+                    object->objFunc(object);
                 }
                 if(omcurovl == DLL_NONE || objWork->objLast == OM_OBJ_NONE) {
                     break;
                 }
-                if((obj->stat & (OM_STAT_DELETED|OM_STAT_DISABLED)) == 0) {
-                    if((objData[objIdx].stat & (OM_STAT_DELETED|OM_STAT_DISABLED)) != 0) {
-                        objIdx = obj->prev;
+                if((object->stat & (OM_STAT_DELETED|OM_STAT_DISABLED)) == 0) {
+                    // A callback may remove the next list entry; resume from this object's updated
+                    // link.
+                    if((objData[objectIndex].stat & (OM_STAT_DELETED|OM_STAT_DISABLED)) != 0) {
+                        objectIndex = object->prev;
                     }
-                    if(obj->mdlId != NULL && obj->mdlId[0] != HU3D_MODELID_NONE && !(obj->stat & OM_STAT_MODELPAUSE)) {
-                        Hu3DModelPosSet(obj->mdlId[0], obj->trans.x, obj->trans.y, obj->trans.z);
-                        Hu3DModelRotSet(obj->mdlId[0], obj->rot.x, obj->rot.y, obj->rot.z);
-                        Hu3DModelScaleSet(obj->mdlId[0], obj->scale.x, obj->scale.y, obj->scale.z);
+                    if (object->mdlId != NULL && object->mdlId[0] != HU3D_MODELID_NONE &&
+                        !(object->stat & OM_STAT_MODELPAUSE)) {
+                        Hu3DModelPosSet(object->mdlId[0], object->trans.x, object->trans.y,
+                                        object->trans.z);
+                        Hu3DModelRotSet(object->mdlId[0], object->rot.x, object->rot.y,
+                                        object->rot.z);
+                        Hu3DModelScaleSet(object->mdlId[0], object->scale.x, object->scale.y,
+                                          object->scale.z);
                     }
                 }
             }
@@ -530,66 +585,72 @@ static void omMain(void)
     }
 }
 
-//Dummy function to force string literals in binary
-static void omDumpObj(OMOBJMAN *objMan)
+// Prints every object slot's state and transforms when the manager dump helper is invoked.
+static void omDumpObj(OMOBJMAN *objectManager)
 {
-    OMOBJWORK *objWork = objMan->property;
-    OMOBJ *objData = objWork->objData;
-    s32 i;
+    OMOBJWORK *objectWork = objectManager->property;
+    OMOBJ *objectData = objectWork->objData;
+    s32 objectIndex;
     OSReport("=================== 現在登録されている OBJECT ==================\n");
-    OSReport("STAT PRI GRPN MEMN PROG (TRA) (ROT) (SCA) mdlcnt mtncnt work[0] work[1] work[2] work[3] *data\n");
-    for(i=0; i<objWork->objMax; i++) {
-        OMOBJ *object = &objData[i];
-        OSReport("%04d:%04X %04X %d %d %08X (%.2f %.2f %.2f) (%.2f %.2f %.2f) (%.2f %.2f %.2f) %d %d %08X %08X %08X %08X %08X\n",
+    OSReport(
+        "STAT PRI GRPN MEMN PROG (TRA) (ROT) (SCA) mdlcnt mtncnt work[0] work[1] work[2] work[3] *data\n");
+    for(objectIndex=0; objectIndex<objectWork->objMax; objectIndex++) {
+        OMOBJ *object = &objectData[objectIndex];
+        OSReport(
+            "%04d:%04X %04X %d %d %08X (%.2f %.2f %.2f) (%.2f %.2f %.2f) (%.2f %.2f %.2f) %d %d %08X %08X %08X %08X %08X\n",
             object->stat, object->stat, object->prio, object->grpNo, object->mode, object->objFunc,
-            object->trans.x, object->trans.y, object->trans.z, 
-            object->rot.x, object->rot.y, object->rot.z, 
-            object->scale.x, object->scale.y, object->scale.z, 
-            object->mdlcnt, object->mtncnt, object->work[0], object->work[1], object->work[2], object->work[3], object->data);
+            object->trans.x, object->trans.y, object->trans.z, object->rot.x, object->rot.y,
+            object->rot.z, object->scale.x, object->scale.y, object->scale.z, object->mdlcnt,
+            object->mtncnt, object->work[0], object->work[1], object->work[2], object->work[3],
+            object->data);
     }
     OSReport("================================================================\n");
 }
 
-void omAllPause(BOOL pauseF)
+// Called by omSystemKeyCheck to pause or resume eligible object callbacks, including scripted
+// requests.
+void omAllPause(BOOL pauseFlag)
 {
-    OMOBJMAN *objMan = HuPrcCurrentGet();
-    OMOBJWORK *objWork = objMan->property;
-    s32 i;
-    if(pauseF) {
-        for(i=0; i<objWork->objMax; i++) {
-            if((objWork->objData[i].stat & (OM_STAT_DELETED|OM_STAT_NOPAUSE)) == 0) {
-                omSetStatBit(&objWork->objData[i], OM_STAT_PAUSED);
+    OMOBJMAN *objectManager = HuPrcCurrentGet();
+    OMOBJWORK *objectWork = objectManager->property;
+    s32 objectIndex;
+    if(pauseFlag) {
+        for(objectIndex=0; objectIndex<objectWork->objMax; objectIndex++) {
+            if((objectWork->objData[objectIndex].stat & (OM_STAT_DELETED|OM_STAT_NOPAUSE)) == 0) {
+                omSetStatBit(&objectWork->objData[objectIndex], OM_STAT_PAUSED);
             }
         }
     } else {
-        for(i=0; i<objWork->objMax; i++) {
-            if((objWork->objData[i].stat & (OM_STAT_DELETED|OM_STAT_NOPAUSE)) == 0) {
-                omResetStatBit(&objWork->objData[i], OM_STAT_PAUSED);
+        for(objectIndex=0; objectIndex<objectWork->objMax; objectIndex++) {
+            if((objectWork->objData[objectIndex].stat & (OM_STAT_DELETED|OM_STAT_NOPAUSE)) == 0) {
+                omResetStatBit(&objectWork->objData[objectIndex], OM_STAT_PAUSED);
             }
         }
     }
 }
 
-void omObjManPause(BOOL pauseF)
+// Called by the memory-card device message flow to suspend and restore gameplay object callbacks.
+void omObjManPause(BOOL pauseFlag)
 {
-    OMOBJMAN *objMan = omObjManProc;
-    OMOBJWORK *objWork = objMan->property;
-    s32 i;
-    if(pauseF) {
-        for(i=0; i<objWork->objMax; i++) {
-            if((objWork->objData[i].stat & (OM_STAT_DELETED|OM_STAT_SPRPAUSE)) == 0) {
-                omSetStatBit(&objWork->objData[i], OM_STAT_40);
+    OMOBJMAN *objectManager = omObjManProc;
+    OMOBJWORK *objectWork = objectManager->property;
+    s32 objectIndex;
+    if(pauseFlag) {
+        for(objectIndex=0; objectIndex<objectWork->objMax; objectIndex++) {
+            if((objectWork->objData[objectIndex].stat & (OM_STAT_DELETED|OM_STAT_SPRPAUSE)) == 0) {
+                omSetStatBit(&objectWork->objData[objectIndex], OM_STAT_40);
             }
         }
     } else {
-        for(i=0; i<objWork->objMax; i++) {
-            if((objWork->objData[i].stat & (OM_STAT_DELETED|OM_STAT_SPRPAUSE)) == 0) {
-                omResetStatBit(&objWork->objData[i], OM_STAT_40);
+        for(objectIndex=0; objectIndex<objectWork->objMax; objectIndex++) {
+            if((objectWork->objData[objectIndex].stat & (OM_STAT_DELETED|OM_STAT_SPRPAUSE)) == 0) {
+                omResetStatBit(&objectWork->objData[objectIndex], OM_STAT_40);
             }
         }
     }
 }
 
+// Returns the saved system-key pause bit; MCDeviceMesExec reads it before pausing other processes.
 char omPauseChk(void)
 {
     if(omDBGSysKeyObj == NULL) {
@@ -599,6 +660,7 @@ char omPauseChk(void)
     }
 }
 
+// Returns the currently active overlay ID.
 OMOVL omCurrentOvlGet(void)
 {
     return omcurovl;
