@@ -1,9 +1,11 @@
+/* Manages the game's scheduled processes, their child trees, and per-process heaps. */
 #include "game/process.h"
 #include "game/memory.h"
 #include "dolphin/os.h"
 
 #define FAKE_RETADDR 0xA5A5A5A5
 #define DEFAULT_STACK_SIZE 4096
+#define PROCESS_HEAP_VALIDITY_MARKER 165
 
 static jmp_buf processjmpbuf;
 static HUPROCESS *processtop;
@@ -11,71 +13,79 @@ static HUPROCESS *processcur;
 static u16 processcnt;
 u32 procfunc;
 
+/* Called during game startup to clear the scheduler's count and active-process list. */
 void HuPrcInit(void)
 {
     processcnt = 0;
     processtop = NULL;
 }
 
-static void LinkProcess(HUPROCESS **root, HUPROCESS *process) {
-    HUPROCESS *src_process = *root;
+/* HuPrcCreate calls this to insert a process; equal priorities retain creation order. */
+static void LinkProcess(HUPROCESS **processList, HUPROCESS *newProcess) {
+    HUPROCESS *currentProcess = *processList;
 
-    if (src_process && (src_process->prio >= process->prio)) {
-        while (src_process->next && src_process->next->prio >= process->prio) {
-            src_process = src_process->next;
+    if (currentProcess && (currentProcess->prio >= newProcess->prio)) {
+        while (currentProcess->next && currentProcess->next->prio >= newProcess->prio) {
+            currentProcess = currentProcess->next;
         }
 
-        process->next = src_process->next;
-        process->prev = src_process;
-        src_process->next = process;
-        if (process->next) {
-            process->next->prev = process;
+        newProcess->next = currentProcess->next;
+        newProcess->prev = currentProcess;
+        currentProcess->next = newProcess;
+        if (newProcess->next) {
+            newProcess->next->prev = newProcess;
         }
     } else {
-        process->next = (*root);
-        process->prev = NULL;
-        *root = process;
-        if (src_process) {
-            src_process->prev = process;
+        newProcess->next = (*processList);
+        newProcess->prev = NULL;
+        *processList = newProcess;
+        if (currentProcess) {
+            currentProcess->prev = newProcess;
         }
     }
 }
-static void UnlinkProcess(HUPROCESS **root, HUPROCESS *process) {
-    if (process->next) {
-        process->next->prev = process->prev;
+/* gcTerminateProcess calls this to remove a process from the scheduler list. */
+static void UnlinkProcess(HUPROCESS **processList, HUPROCESS *targetProcess) {
+    if (targetProcess->next) {
+        targetProcess->next->prev = targetProcess->prev;
     }
-    if (process->prev) {
-        process->prev->next = process->next;
+    if (targetProcess->prev) {
+        targetProcess->prev->next = targetProcess->next;
     } else {
-        *root = process->next;
+        *processList = targetProcess->next;
     }
 }
 
-HUPROCESS *HuPrcCreate(void (*func)(void), u16 prio, u32 stackSize, s32 heapSize)
+/* Game systems call this to allocate a process, its stack, and its private heap. */
+HUPROCESS *HuPrcCreate(void (*entryFunc)(void), u16 priority, u32 stackBytes, s32 extraHeapBytes)
 {
     HUPROCESS *process;
-    s32 allocSize;
-    void *heap;
-    if(stackSize == 0) {
-        stackSize = DEFAULT_STACK_SIZE;
+    s32 allocationBytes;
+    void *processHeap;
+    /* A zero stack size selects DEFAULT_STACK_SIZE (4096 bytes). */
+    if(stackBytes == 0) {
+        stackBytes = DEFAULT_STACK_SIZE;
     }
-    allocSize = HuMemMemoryAllocSizeGet(sizeof(HUPROCESS))
-                    +HuMemMemoryAllocSizeGet(stackSize)
-                    +HuMemMemoryAllocSizeGet(heapSize);
-    if(!(heap = HuMemDirectMalloc(HEAP_HEAP, allocSize))) {
-        OSReport("process> malloc error size %d\n", allocSize);
+    allocationBytes = HuMemMemoryAllocSizeGet(sizeof(HUPROCESS))
+                    +HuMemMemoryAllocSizeGet(stackBytes)
+                    +HuMemMemoryAllocSizeGet(extraHeapBytes);
+    if(!(processHeap = HuMemDirectMalloc(HEAP_HEAP, allocationBytes))) {
+        OSReport("process> malloc error size %d\n", allocationBytes);
         return NULL;
     }
-    HuMemHeapInit(heap, allocSize);
-    process = HuMemMemoryAlloc(heap, sizeof(HUPROCESS), FAKE_RETADDR);
-    process->heap = heap;
+    HuMemHeapInit(processHeap, allocationBytes);
+    process = HuMemMemoryAlloc(processHeap, sizeof(HUPROCESS), FAKE_RETADDR);
+    process->heap = processHeap;
     process->exec = HUPRC_EXEC_NORMAL;
     process->stat = 0;
-    process->prio = prio;
+    process->prio = priority;
     process->sleep = 0;
-    process->spBase = ((u32)HuMemMemoryAlloc(heap, stackSize, FAKE_RETADDR))+stackSize-8;
+    /* The saved stack pointer starts eight bytes below the allocated stack's end. */
+    process->spBase = ((u32)HuMemMemoryAlloc(processHeap, stackBytes, FAKE_RETADDR))+stackBytes-8;
     gcsetjmp(&process->jump);
-    process->jump.lr = (u32)func;
+    /* Set the saved link register to entryFunc so the scheduler's first resume starts the process
+     * there. */
+    process->jump.lr = (u32)entryFunc;
     process->jump.sp = process->spBase;
     process->destructor = NULL;
     process->property = NULL;
@@ -86,56 +96,65 @@ HUPROCESS *HuPrcCreate(void (*func)(void), u16 prio, u32 stackSize, s32 heapSize
     return process;
 }
 
-void HuPrcChildLink(HUPROCESS *parent, HUPROCESS *child)
+/* HuPrcChildCreate uses this to attach a process beneath its parent in the child list. */
+void HuPrcChildLink(HUPROCESS *parentProcess, HUPROCESS *childProcess)
 {
-    HuPrcChildUnlink(child);
-    if(parent->child) {
-        parent->child->firstChild = child;
+    HuPrcChildUnlink(childProcess);
+    if(parentProcess->child) {
+        parentProcess->child->firstChild = childProcess;
     }
-    child->nextChild = parent->child;
-    child->firstChild = NULL;
-    parent->child = child;
-    child->parent = parent;
+    /* nextChild points toward older siblings; firstChild links back toward newer ones. */
+    childProcess->nextChild = parentProcess->child;
+    childProcess->firstChild = NULL;
+    parentProcess->child = childProcess;
+    childProcess->parent = parentProcess;
 }
 
-void HuPrcChildUnlink(HUPROCESS *process)
+/* HuPrcKill, HuPrcEnd, and HuPrcChildLink use this to detach a process from its parent. */
+void HuPrcChildUnlink(HUPROCESS *childProcess)
 {
-    if(process->parent) {
-        if(process->nextChild) {
-            process->nextChild->firstChild = process->firstChild;
+    if(childProcess->parent) {
+        if(childProcess->nextChild) {
+            childProcess->nextChild->firstChild = childProcess->firstChild;
         }
-        if(process->firstChild) {
-            process->firstChild->nextChild = process->nextChild;
+        if(childProcess->firstChild) {
+            childProcess->firstChild->nextChild = childProcess->nextChild;
         } else {
-            process->parent->child = process->nextChild;
+            childProcess->parent->child = childProcess->nextChild;
         }
-        process->parent = NULL;
+        childProcess->parent = NULL;
     }
 }
 
-HUPROCESS *HuPrcChildCreate(void (*func)(void), u16 prio, u32 stackSize, s32 heapSize, HUPROCESS *parent)
+/* Game systems call this to create a scheduled process beneath a parent. */
+HUPROCESS *HuPrcChildCreate(void (*entryFunc)(void), u16 priority, u32 stackBytes,
+                            s32 extraHeapBytes, HUPROCESS *parent)
 {
-    HUPROCESS *child = HuPrcCreate(func, prio, stackSize, heapSize);
+    HUPROCESS *child = HuPrcCreate(entryFunc, priority, stackBytes, extraHeapBytes);
+    /* Allocation failure is passed to the link operation without a NULL check. */
     HuPrcChildLink(parent, child);
     return child;
 }
 
+/* Yields until this process has no children left in its child list. */
 void HuPrcChildWatch()
 {
-    HUPROCESS *curr = HuPrcCurrentGet();
-    if(curr->child) {
-        curr->exec = HUPRC_EXEC_CHILDWATCH;
-        if(!gcsetjmp(&curr->jump)) {
+    HUPROCESS *currentProcess = HuPrcCurrentGet();
+    if(currentProcess->child) {
+        currentProcess->exec = HUPRC_EXEC_CHILDWATCH;
+        if(!gcsetjmp(&currentProcess->jump)) {
             gclongjmp(&processjmpbuf, 1);
         }
     }
 }
 
+/* Process code calls this to get the process currently running in the scheduler. */
 HUPROCESS *HuPrcCurrentGet()
 {
     return processcur;
 }
 
+/* HuPrcKill and HuPrcChildKill use this to clear sleep before marking a process killed. */
 static s32 SetKillStatusProcess(HUPROCESS *process)
 {
     if(process->exec != HUPRC_EXEC_KILLED) {
@@ -147,6 +166,7 @@ static s32 SetKillStatusProcess(HUPROCESS *process)
     }
 }
 
+/* Game code uses this to kill a process and its descendants; NULL selects the current process. */
 s32 HuPrcKill(HUPROCESS *process)
 {
     if(process == NULL) {
@@ -157,19 +177,22 @@ s32 HuPrcKill(HUPROCESS *process)
     return SetKillStatusProcess(process);
 }
 
+/* HuPrcKill and HuPrcEnd call this to mark descendants killed and clear the process's child-list
+ * head. */
 void HuPrcChildKill(HUPROCESS *process)
 {
-    HUPROCESS *child = process->child;
-    while(child) {
-        if(child->child) {
-            HuPrcChildKill(child);
+    HUPROCESS *childProcess = process->child;
+    while(childProcess) {
+        if(childProcess->child) {
+            HuPrcChildKill(childProcess);
         }
-        SetKillStatusProcess(child);
-        child = child->nextChild;
+        SetKillStatusProcess(childProcess);
+        childProcess = childProcess->nextChild;
     }
     process->child = NULL;
 }
 
+/* HuPrcEnd calls this to run cleanup, remove the process, and return to the scheduler. */
 static void gcTerminateProcess(HUPROCESS *process)
 {
     if(process->destructor) {
@@ -180,6 +203,8 @@ static void gcTerminateProcess(HUPROCESS *process)
     gclongjmp(&processjmpbuf, 2);
 }
 
+/* A running process enters here, or the scheduler redirects a killed process's saved link register
+ * here, to kill children, detach the process, and terminate. */
 void HuPrcEnd()
 {
     HUPROCESS *process = HuPrcCurrentGet();
@@ -188,51 +213,60 @@ void HuPrcEnd()
     gcTerminateProcess(process);
 }
 
-void HuPrcSleep(s32 time)
+/* A nonzero argument sets sleep ticks unless the process is already killed; positive ticks count
+ * down, while negative ticks sleep indefinitely. Zero only yields. */
+void HuPrcSleep(s32 sleepTicks)
 {
     HUPROCESS *process = HuPrcCurrentGet();
-    if(time != 0 && process->exec != HUPRC_EXEC_KILLED) {
+    if(sleepTicks != 0 && process->exec != HUPRC_EXEC_KILLED) {
         process->exec = HUPRC_EXEC_SLEEP;
-        process->sleep = time;
+        process->sleep = sleepTicks;
     }
     if(!gcsetjmp(&process->jump)) {
         gclongjmp(&processjmpbuf, 1);
     }
 }
 
+/* Yields for one scheduler pass without setting a positive sleep countdown. */
 void HuPrcVSleep()
 {
     HuPrcSleep(0);
 }
 
+/* Clears the countdown; SetKillStatusProcess calls this before switching to killed state. */
 void HuPrcWakeup(HUPROCESS *process)
 {
     process->sleep = 0;
 }
 
-void HuPrcDestructorSet2(HUPROCESS *process, void (*func)(void))
+/* Process owners call this to set cleanup that runs when the supplied process ends. */
+void HuPrcDestructorSet2(HUPROCESS *targetProcess, void (*destructorFunc)(void))
 {
-    process->destructor = func;
+    targetProcess->destructor = destructorFunc;
 }
 
-void HuPrcDestructorSet(void (*func)(void))
+/* A process calls this to set cleanup that runs when it ends. */
+void HuPrcDestructorSet(void (*destructorFunc)(void))
 {
-    HUPROCESS *process = HuPrcCurrentGet();
-    process->destructor = func;
+    HUPROCESS *currentProcess = HuPrcCurrentGet();
+    currentProcess->destructor = destructorFunc;
 }
 
-void HuPrcCall(s32 tick)
+/* main.c calls this once per game loop to resume processes and advance their sleep timers. */
+void HuPrcCall(s32 schedulerTicks)
 {
-    HUPROCESS *process;
-    s32 ret;
+    HUPROCESS *scheduledProcess;
+    s32 dispatchResult;
     processcur = processtop;
-    ret = gcsetjmp(&processjmpbuf);
+    dispatchResult = gcsetjmp(&processjmpbuf);
     while(1) {
-        switch(ret) {
+        switch(dispatchResult) {
             case 2:
+                /* The process ended; release its outer heap before advancing the scheduler. */
                 HuMemDirectFree(processcur->heap);
             case 1:
-                if(((u8 *)(processcur->heap))[4] != 165) {
+                /* The allocator marks a live heap block with byte 0xA5 at this offset. */
+                if(((u8 *)(processcur->heap))[4] != PROCESS_HEAP_VALIDITY_MARKER) {
                     printf("stack overlap error.(process pointer %x)\n", processcur);
                     while(1);
                 } else {
@@ -240,106 +274,117 @@ void HuPrcCall(s32 tick)
                 }
                 break;
         }
-        process = processcur;
-        if(!process) {
+        scheduledProcess = processcur;
+        if(!scheduledProcess) {
             return;
         }
-        procfunc = process->jump.lr;
-        if((process->stat & (HU_PRC_STAT_PAUSE|HU_PRC_STAT_UPAUSE)) && process->exec != HUPRC_EXEC_KILLED) {
-            ret = 1;
+        procfunc = scheduledProcess->jump.lr;
+        if ((scheduledProcess->stat & (HU_PRC_STAT_PAUSE | HU_PRC_STAT_UPAUSE)) &&
+            scheduledProcess->exec != HUPRC_EXEC_KILLED) {
+            /* Paused processes are skipped, while killed processes must still reach HuPrcEnd. */
+            dispatchResult = 1;
             continue;
         }
-        switch(process->exec) {
+        switch(scheduledProcess->exec) {
             case HUPRC_EXEC_SLEEP:
-                if(process->sleep > 0) {
-                    process->sleep -= tick;
-                    if(process->sleep <= 0) {
-                        process->sleep = 0;
-                        process->exec = HUPRC_EXEC_NORMAL;
+                if(scheduledProcess->sleep > 0) {
+                    scheduledProcess->sleep -= schedulerTicks;
+                    if(scheduledProcess->sleep <= 0) {
+                        /* Clamp an expired countdown so the process resumes with zero sleep. */
+                        scheduledProcess->sleep = 0;
+                        scheduledProcess->exec = HUPRC_EXEC_NORMAL;
                     }
                 }
-                ret = 1;
+                dispatchResult = 1;
                 break;
-                
+
             case HUPRC_EXEC_CHILDWATCH:
-                if(process->child) {
-                    ret = 1;
+                if(scheduledProcess->child) {
+                    dispatchResult = 1;
                 } else {
-                    process->exec = HUPRC_EXEC_NORMAL;
-                    ret = 0;
+                    scheduledProcess->exec = HUPRC_EXEC_NORMAL;
+                    dispatchResult = 0;
                 }
                 break;
-                
+
             case HUPRC_EXEC_KILLED:
-                process->jump.lr = (u32)HuPrcEnd;
+                /* Replace the saved entry point so the resumed process terminates through
+                 * HuPrcEnd. */
+                scheduledProcess->jump.lr = (u32)HuPrcEnd;
             case HUPRC_EXEC_NORMAL:
-                gclongjmp(&process->jump, 1);
+                gclongjmp(&scheduledProcess->jump, 1);
                 break;
         }
     }
 }
 
-void *HuPrcMemAlloc(s32 size)
+/* Allocates memory from the calling process's private heap. */
+void *HuPrcMemAlloc(s32 allocationBytes)
 {
     HUPROCESS *process = HuPrcCurrentGet();
-    return HuMemMemoryAlloc(process->heap, size, FAKE_RETADDR);
+    return HuMemMemoryAlloc(process->heap, allocationBytes, FAKE_RETADDR);
 }
 
-void HuPrcMemFree(void *ptr)
+/* Process owners call this to free a block allocated from the process's private heap. */
+void HuPrcMemFree(void *allocation)
 {
-    HuMemMemoryFree(ptr, FAKE_RETADDR);
+    HuMemMemoryFree(allocation, FAKE_RETADDR);
 }
 
-void HuPrcSetStat(HUPROCESS *process, u16 value)
+/* Sets the selected pause or process status bits. */
+void HuPrcSetStat(HUPROCESS *process, u16 statusMask)
 {
-    process->stat |= value;
+    process->stat |= statusMask;
 }
 
-void HuPrcResetStat(HUPROCESS *process, u16 value)
+/* Clears the selected pause or process status bits. */
+void HuPrcResetStat(HUPROCESS *process, u16 statusMask)
 {
-    process->stat &= ~value;
+    process->stat &= ~statusMask;
 }
 
-void HuPrcAllPause(s32 flag)
+/* Pause controls call this to pause processes that have not opted out, or clear the pause bit. */
+void HuPrcAllPause(s32 enablePause)
 {
-    HUPROCESS *process = processtop;
-    if(flag) {
-        while(process != NULL) {
-            if(!(process->stat & HU_PRC_STAT_PAUSE_ON)) {
-                HuPrcSetStat(process, HU_PRC_STAT_PAUSE);
+    HUPROCESS *scheduledProcess = processtop;
+    if(enablePause) {
+        while(scheduledProcess != NULL) {
+            if(!(scheduledProcess->stat & HU_PRC_STAT_PAUSE_ON)) {
+                HuPrcSetStat(scheduledProcess, HU_PRC_STAT_PAUSE);
             }
-            
-            process = process->next;
+
+            scheduledProcess = scheduledProcess->next;
         }
     } else {
-        while(process != NULL) {
-            if(process->stat & HU_PRC_STAT_PAUSE) {
-                HuPrcResetStat(process, HU_PRC_STAT_PAUSE);
+        while(scheduledProcess != NULL) {
+            if(scheduledProcess->stat & HU_PRC_STAT_PAUSE) {
+                HuPrcResetStat(scheduledProcess, HU_PRC_STAT_PAUSE);
             }
-            
-            process = process->next;
+
+            scheduledProcess = scheduledProcess->next;
         }
     }
 }
 
-void HuPrcAllUPause(s32 flag)
+/* Pause controls call this to set or clear the independent UPAUSE state. */
+void HuPrcAllUPause(s32 enableUPause)
 {
-    HUPROCESS *process = processtop;
-    if(flag) {
-        while(process != NULL) {
-            if(!(process->stat & HU_PRC_STAT_UPAUSE_ON)) {
-                HuPrcSetStat(process, HU_PRC_STAT_UPAUSE);
+    HUPROCESS *scheduledProcess = processtop;
+    if(enableUPause) {
+        while(scheduledProcess != NULL) {
+            if(!(scheduledProcess->stat & HU_PRC_STAT_UPAUSE_ON)) {
+                HuPrcSetStat(scheduledProcess, HU_PRC_STAT_UPAUSE);
             }
-            
-            process = process->next;
+
+            scheduledProcess = scheduledProcess->next;
         }
     } else {
-        while(process != NULL) {
-            if(process->stat & HU_PRC_STAT_UPAUSE) {
-                HuPrcResetStat(process, HU_PRC_STAT_UPAUSE);
+        while(scheduledProcess != NULL) {
+            if(scheduledProcess->stat & HU_PRC_STAT_UPAUSE) {
+                HuPrcResetStat(scheduledProcess, HU_PRC_STAT_UPAUSE);
             }
-            
-            process = process->next;
+
+            scheduledProcess = scheduledProcess->next;
         }
     }
 }
