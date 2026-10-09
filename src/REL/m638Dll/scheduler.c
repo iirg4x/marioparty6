@@ -1,9 +1,11 @@
+/* Callback queue used by M638 for timed model, prop, and result effects. */
 #include "REL/m638Dll.h"
 
 M638Jobs lbl_1_bss_A18;
 
 M638Job lbl_1_bss_18[128];
 
+/* Initialize the free callback slots before the scene object starts its update loop. */
 void fn_1_75BC(void)
 {
     M638Job *node;
@@ -28,6 +30,7 @@ void fn_1_75BC(void)
     node->callback = NULL;
 }
 
+/* Add a callback to the active list and return nonzero when a free slot was available. */
 s32 fn_1_7660(s32 (*callback)(void *), void *data)
 {
     M638Job *node = NULL;
@@ -44,10 +47,11 @@ s32 fn_1_7660(s32 (*callback)(void *), void *data)
         }
         jobs->activeHead = node;
     }
-    /* The 32-bit target API exposes an opaque scalar token; consumers test it. */
+    /* Callers use a nonzero result to tell whether the callback was scheduled. */
     return (s32)node;
 }
 
+/* Remove a completed callback from the active list and return its slot to the free list. */
 void fn_1_76C8(M638Job **job)
 {
     M638Job *node;
@@ -70,6 +74,7 @@ void fn_1_76C8(M638Job **job)
     *job = NULL;
 }
 
+/* Scene update: run active callbacks and recycle each slot that reports completion. */
 void fn_1_7754(void)
 {
     M638Job *node;

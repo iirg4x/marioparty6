@@ -1,3 +1,4 @@
+/* Shared M638 views and callback declarations for the Gondola Glide module. */
 #ifndef M638DLL_H
 #define M638DLL_H
 
@@ -25,47 +26,47 @@
 
 #include "game/esprite.h"
 
-/* Retail-consumed layouts, descriptive names only. */
+/* State shared by the minigame scene and its timed callbacks. */
 typedef struct M638Job M638Job;
 typedef struct M638Jobs {
-    M638Job *freeHead;
-    M638Job *activeHead;
-    M638Job *storage;
+    M638Job *freeHead; /* First unused job record available for scheduling. */
+    M638Job *activeHead; /* First callback job currently waiting or running. */
+    M638Job *storage; /* Base of the fixed job-record array. */
 } M638Jobs;
 struct M638Job {
-    M638Jobs *owner;
-    M638Job *prev;
-    M638Job *next;
-    s32 (*callback)(void *);
-    void *data;
+    M638Jobs *owner; /* Queue that owns this record. */
+    M638Job *prev; /* Previous record in the active or free list. */
+    M638Job *next; /* Next record in the active or free list. */
+    s32 (*callback)(void *); /* Per-update function; nonzero signals completion. */
+    void *data; /* Callback-specific state passed to callback. */
 };
 extern M638Job lbl_1_bss_18[128];
 extern M638Jobs lbl_1_bss_A18;
 typedef struct M638TimerWatch {
-    s32 count;
-    MGTIMER *timer;
+    s32 count; /* Number of updates elapsed while watching the timer. */
+    MGTIMER *timer; /* Timer whose record display is checked after the wait. */
 } M638TimerWatch;
 extern M638TimerWatch lbl_1_bss_10;
 typedef struct M638ScaleWork {
-    f32 value;
-    s16 active;
-    s16 model;
+    f32 responseScale; /* Scale increase applied as the response motion advances. */
+    s16 active; /* Whether the scale update is active. */
+    s16 model; /* Model handle whose scale is being changed. */
 } M638ScaleWork;
 struct M638TeamActorView;
-void fn_1_3518(struct M638TeamActorView *work, s32 mode, f32 value);
+void fn_1_3518(struct M638TeamActorView *actor, s32 teamActive, f32 blend);
 void fn_1_5760(M638ScaleWork *work, f32 value);
 u32 fn_1_7344(s32 difficulty);
 s32 fn_1_7660(s32 (*callback)(void *), void *data);
 void fn_1_76C8(M638Job **job);
 s32 fn_1_6790(void *data);
 
-/* This is a consumed view of the existing scene, not additional storage. */
+/* Scene lighting positions and the day/night lighting choice. */
 typedef struct M638LightingView {
-    u8 unknown000[1704];
-    Point3d lightPosition;
-    Point3d lightTarget;
-    u8 unknown6C0[44];
-    s16 alternateLight;
+    u8 unknown000[1704]; /* Scene fields not used by the lighting callbacks. */
+    Point3d lightPosition; /* Position of the scene's directional light. */
+    Point3d lightTarget; /* Point the scene light aims toward. */
+    u8 unknown6C0[44]; /* Scene fields not used by the lighting callbacks. */
+    s16 alternateLight; /* Nonzero selects the alternate course lighting. */
 } M638LightingView;
 void fn_1_13B4(M638LightingView *scene);
 void fn_1_1470(M638LightingView *scene);
@@ -73,233 +74,230 @@ void fn_1_5528(M638ScaleWork *work, s32 camera);
 void fn_1_56B4(M638ScaleWork *work);
 
 typedef struct M638CameraWork {
-    f32 elapsed;
-    f32 splitX;
+    f32 elapsed; /* Frames elapsed during the camera split transition. */
+    f32 splitX; /* Horizontal split position in screen coordinates. */
 } M638CameraWork;
 void fn_1_16AC(M638CameraWork *work);
-/* Existing scene model-cache interval, indexed by creation consumers. */
+/* Model handles cached while the scene and course props are created. */
 typedef struct M638ModelCacheView {
-    u8 unknown000[1810];
-    s16 models[74];
+    u8 unknown000[1810]; /* Scene state preceding the shared model cache. */
+    s16 models[74]; /* Model handles cached for the scene and course props. */
 } M638ModelCacheView;
 
-/* Combined view of independently consumed fields on the same scene object. */
+/* Camera and status-sprite state used while the two team views move. */
 typedef struct M638SceneCameraView {
-    u8 unknown000[524];
-    s16 team0Model;
-    u8 unknown20E[834];
-    s16 team1Model;
-    u8 unknown552[310];
-    M638CameraWork camera;
-    u8 unknown690[280];
-    s16 sprite0;
-    s16 sprite1;
+    u8 unknown000[524]; /* Scene camera state preceding team 0's view model. */
+    s16 team0Model; /* Team 0 camera-view model handle. */
+    u8 unknown20E[834]; /* Scene camera state between the team view models. */
+    s16 team1Model; /* Team 1 camera-view model handle. */
+    u8 unknown552[310]; /* Scene camera state preceding split animation data. */
+    M638CameraWork camera; /* Shared camera split transition state. */
+    u8 unknown690[280]; /* Scene state preceding the status sprites. */
+    s16 sprite0; /* First status sprite handle. */
+    s16 sprite1; /* Second status sprite handle. */
 } M638SceneCameraView;
 
-/* Consumed 20-byte element, from fn_1_5814's indexed 6/8/4 arrays.
- * Consumers cover the first 18 bytes; the final two are unknown tail bytes.
- * The C view's natural alignment supplies that extent without new storage. */
+/* One course prop's position, model, animation state, and travel flag. */
 typedef struct M638Prop {
-    Point3d pos;
-    s16 model;
-    s16 state;
-    s16 moving;
+    Point3d pos; /* Course position in world units. */
+    s16 model; /* Course prop model handle. */
+    s16 state; /* Prop motion state: 0/1 active motion, 2 ready. */
+    s16 moving; /* Nonzero advances the prop along its course path. */
 } M638Prop;
 
-/* Existing 368-byte record: indexed 20-byte entries and two final counters. */
+/* Course props grouped by size and lighting, followed by their scheduler state. */
 typedef struct M638PropGroups {
-    M638Prop small[6];
-    M638Prop middle[8];
-    M638Prop night[4];
-    s32 count;
-    s32 state;
+    M638Prop small[6]; /* Six small props released during the course. */
+    M638Prop middle[8]; /* Eight middle props released during the course. */
+    M638Prop night[4]; /* Four night-only props released during the course. */
+    s32 count; /* Frames accumulated for the current release group. */
+    s32 state; /* Current course prop release phase. */
 } M638PropGroups;
-/* Only these consumers are named; unknown intervals are not new storage. */
+/* Course lighting choice and cached course model handles. */
 typedef struct M638ScenePropsView {
-    u8 unknown000[1772];
-    s16 alternateLight;
-    u8 unknown6EE[36];
-    s16 models[74];
+    u8 unknown000[1772]; /* Scene state preceding lighting and model handles. */
+    s16 alternateLight; /* Nonzero selects the alternate course lighting. */
+    u8 unknown6EE[36]; /* Scene state between lighting and model handles. */
+    s16 models[74]; /* Cached scene and course prop model handles. */
 } M638ScenePropsView;
 
-/* Views over the existing allocated team/player records. Unknown intervals
- * are explicit; these declarations do not allocate storage or name originals. */
+/* Input state used by a team and the player records assigned to it. */
 typedef struct M638TeamInputView {
-    u8 unknown000[784];
-    s16 active;
-    s16 button;
-    u8 unknown314[36];
-    s16 variant;
+    u8 unknown000[784]; /* Team state preceding the current input values. */
+    s16 active; /* Nonzero while this team accepts player input. */
+    s16 button; /* Button selected for the current team action. */
+    u8 unknown314[36]; /* Team state preceding the team variant. */
+    s16 variant; /* Team index used by team-specific behavior. */
 } M638TeamInputView;
 typedef struct M638PlayerView {
-    OMOBJ *object;
-    M638TeamInputView *team;
-    f32 activity;
-    f32 impulse;
-    f32 phase;
-    Point3d pos;
-    Point3d rot;
-    s32 count;
-    s32 nextCount;
-    s16 model;
-    s16 motions[5];
-    s16 playerNo;
-    s16 charNo;
-    s16 group;
-    s16 member;
-    s16 padNo;
-    u8 unknown4A[4];
-    s16 isCom;
-    s16 difficulty;
-    s16 attachedModel;
-    s16 state;
-    s16 exitState;
-    s16 elapsed;
-    s16 buttonA;
-    s16 buttonB;
+    OMOBJ *object; /* Engine object that owns this player record. */
+    M638TeamInputView *team; /* Team input state used by this player. */
+    f32 activity; /* Current player activity or animation progress. */
+    f32 impulse; /* Horizontal movement impulse applied to the player. */
+    f32 phase; /* Current phase of the player's movement animation. */
+    Point3d pos; /* Player position in world units. */
+    Point3d rot; /* Player rotation in degrees. */
+    s32 count; /* Frames elapsed toward the next computer-generated A press. */
+    s32 nextCount; /* Update threshold for the next computer-generated A press. */
+    s16 model; /* Player character model handle. */
+    s16 motions[5]; /* Motion handles used by the player animation states. */
+    s16 playerNo; /* Global player number. */
+    s16 charNo; /* Character selection number. */
+    s16 group; /* Player team number. */
+    s16 member; /* Player position within its team. */
+    s16 padNo; /* Controller assigned to this player. */
+    u8 unknown4A[4]; /* Player state not interpreted by this module. */
+    s16 isCom; /* Nonzero when this player is computer-controlled. */
+    s16 difficulty; /* Computer difficulty level. */
+    s16 attachedModel; /* Model attached to the player's character. */
+    s16 state; /* Current player movement or animation state. */
+    s16 exitState; /* Progress through the player's exit sequence. */
+    s16 elapsed; /* Frames elapsed in the current player animation. */
+    s16 buttonA; /* A-button state sampled for this player. */
+    s16 buttonB; /* B-button state sampled for this player. */
 } M638PlayerView;
 
-/* Consumed views only. Unknown intervals are existing storage, not allocations. */
+/* Bounce effect, split transition, and team finish presentation state. */
 typedef struct M638BounceView {
-    u8 unknown000[32];
-    s32 count;
-    u8 unknown024[6];
-    s16 modelA;
-    s16 modelB;
+    u8 unknown000[32]; /* Effect state preceding its frame counter. */
+    s32 count; /* Frames elapsed in the bounce effect. */
+    u8 unknown024[6]; /* Effect state preceding its two model handles. */
+    s16 modelA; /* First model used by the bounce effect. */
+    s16 modelB; /* Second model used by the bounce effect. */
 } M638BounceView;
 typedef struct M638SceneSplitView {
-    u8 unknown000[1672];
-    M638CameraWork camera;
-    u8 unknown690[106];
-    s16 side;
+    u8 unknown000[1672]; /* Scene state preceding the split transition. */
+    M638CameraWork camera; /* Progress and horizontal position of the split. */
+    u8 unknown690[106]; /* Scene state preceding the selected screen side. */
+    s16 side; /* Team side being brought to the full-screen view. */
 } M638SceneSplitView;
 typedef struct M638TeamFinishView {
-    u8 unknown000[8];
-    f32 output;
-    u8 unknown00C[20];
-    f32 source;
-    u8 unknown024[488];
-    s16 model;
-    u8 unknown20E[242];
-    f32 blend;
-    f32 base;
-    f32 elapsed;
-    s32 state;
-    u8 unknown310[40];
-    s16 variant;
+    u8 unknown000[8]; /* Team finish state preceding the output value. */
+    f32 output; /* Current output passed to the finish presentation. */
+    u8 unknown00C[20]; /* Team finish state preceding the source value. */
+    f32 source; /* Starting value blended into the finish presentation. */
+    u8 unknown024[488]; /* Team finish state preceding the finish model. */
+    s16 model; /* Winning team's finish model handle. */
+    u8 unknown20E[242]; /* Team finish model state preceding blend values. */
+    f32 blend; /* Current visual blend for the team's finish presentation. */
+    f32 base; /* Blend value used as the finish transition's starting point. */
+    f32 elapsed; /* Frames elapsed in the finish transition. */
+    s32 state; /* Finish callback phase. */
+    u8 unknown310[40]; /* Team finish state preceding the team variant. */
+    s16 variant; /* Team index used to select finish sounds and assets. */
 } M638TeamFinishView;
 
 typedef struct M638SceneChoicesView {
-    u8 unknown000[1788];
-    s16 choices[11];
+    u8 unknown000[1788]; /* Scene state preceding course choice values. */
+    s16 choices[11]; /* Selected course event choices. */
 } M638SceneChoicesView;
 
-/* Existing team actor subobject; both constructor and update consumers agree. */
+/* Team actor pose, visual blend, and motion state. */
 typedef struct M638TeamActorView {
-    Point3d rot;
-    Point3d pos;
-    f32 blend;
-    s32 mode;
-    s32 count;
-    s32 blinkCount;
-    s16 state;
-    s16 modelA;
-    s16 modelB;
-    s16 modelC;
-    s16 modelD;
+    Point3d rot; /* Team actor rotation in degrees. */
+    Point3d pos; /* Team actor position in world units. */
+    f32 blend; /* Current visual blend for the team actor. */
+    s32 swingEnabled; /* Nonzero while the actor responds to the team's held input. */
+    s32 count; /* Frames accumulated in the current actor state. */
+    s32 blinkCount; /* Frames until the next eye blink. */
+    s16 state; /* Current team actor animation state. */
+    s16 modelA; /* First model handle used by the team actor. */
+    s16 modelB; /* Second model handle used by the team actor. */
+    s16 modelC; /* Third model handle used by the team actor. */
+    s16 modelD; /* Fourth model handle used by the team actor. */
 } M638TeamActorView;
 
-/* Existing course subobject. Indexed extents follow the creating loops. */
+/* Course models, event hooks, prop groups, and current segment. */
 typedef struct M638CourseView {
-    M638Prop pair[2][2];
-    s32 pairIndex[2];
-    M638PropGroups props;
-    u8 unknown1C8[4];
-    s16 current;
-    s16 alternateModel;
-    s16 model;
-    s16 lastModel;
-    s16 segments[20];
-    s16 events[10];
-    s16 overlays[9];
-    s16 connectors[40];
-    s16 nightModels[5];
+    M638Prop pair[2][2]; /* Paired props queued for the two team courses. */
+    s32 pairIndex[2]; /* Next prop slot for each team course. */
+    M638PropGroups props; /* Small, middle, and night course props. */
+    u8 unknown1C8[4]; /* Course state preceding the current segment. */
+    s16 current; /* Index of the current course segment. */
+    s16 alternateModel; /* Model handle for the alternate course appearance. */
+    s16 model; /* Current course model handle. */
+    s16 lastModel; /* Previous course model handle during a transition. */
+    s16 segments[20]; /* Course segment model handles. */
+    s16 events[10]; /* Course event hook indices. */
+    s16 overlays[9]; /* Overlay model handles used by course events. */
+    s16 connectors[40]; /* Course connector model handles. */
+    s16 nightModels[5]; /* Night course model handles. */
 } M638CourseView;
 typedef struct M638SceneCourseView {
-    u8 unknown000[1728];
-    f32 eventTimes[10];
-    f32 endTime;
-    s16 alternateLight;
-    u8 unknown6EE[14];
-    s16 choices[11];
-    s16 models[74];
+    u8 unknown000[1728]; /* Scene state preceding course event timing. */
+    f32 eventTimes[10]; /* Course motion times for the event hooks. */
+    f32 endTime; /* Course motion time at the end of the segment. */
+    s16 alternateLight; /* Nonzero selects alternate course lighting. */
+    u8 unknown6EE[14]; /* Scene course state preceding selected choices. */
+    s16 choices[11]; /* Selected course event choices. */
+    s16 models[74]; /* Cached model handles for the course scene. */
 } M638SceneCourseView;
 
-/* Combined consumed-layout views. Names are descriptive, not original symbols.
- * Unknown intervals preserve existing storage only; these types allocate none. */
+/* Team and scene state used by the minigame's update and presentation callbacks. */
 typedef struct M638TeamView {
-    M638PlayerView *players[2];
-    M638TeamActorView actor;
-    M638CourseView course;
-    u8 unknown2B8[4];
-    M638ScaleWork scale;
-    M638Prop props[3];
-    f32 blend;
-    f32 base;
-    f32 elapsed;
-    s32 state;
-    s16 active;
-    s16 button;
-    s16 count;
-    s16 field316;
-    s16 field318;
-    u16 camera;
-    f32 field31C;
-    f32 field320;
-    s16 sprites[5];
-    u8 unknown32E[2];
-    s32 field330;
-    s32 field334;
-    s16 variant;
-    u8 unknown33A[2];
-    s32 sound0;
-    s32 sound1;
+    M638PlayerView *players[2]; /* Two players assigned to this team. */
+    M638TeamActorView actor; /* Team character pose and animation state. */
+    M638CourseView course; /* Course segment and prop state for this team. */
+    u8 unknown2B8[4]; /* Team state preceding the scale transition. */
+    M638ScaleWork scale; /* Model and progress for the team's scale effect. */
+    M638Prop props[3]; /* Course props currently queued for this team. */
+    f32 blend; /* Current visual blend for the team presentation. */
+    f32 base; /* Starting blend value for team transitions. */
+    f32 elapsed; /* Frames elapsed in the current team transition. */
+    s32 state; /* Current team presentation state. */
+    s16 active; /* Nonzero while the team accepts input. */
+    s16 button; /* Button currently selected by the team. */
+    s16 count; /* Index of the next course event for this team. */
+    s16 swingHoldFrames; /* Frames an A input keeps the team actor in its held pose. */
+    s16 nextPropIndex; /* Alternates between the two queued player props. */
+    u16 camera; /* Camera assigned to this team's view. */
+    f32 cameraBlend; /* Smoothed portion of blend used to move this team's camera. */
+    f32 unusedFloat; /* Cleared to 0.0 during team setup. */
+    s16 sprites[5]; /* Button and status sprites for the team view. */
+    u8 unknown32E[2]; /* Team state preceding the sound identifiers. */
+    s32 buttonIndicatorFrames; /* Frames elapsed since the active button indicator last switched. */
+    s32 buttonIndicatorIndex; /* Alternates between the two indicator sprites for the selected
+                               * button. */
+    s16 variant; /* Team index used for team-specific behavior. */
+    u8 unknown33A[2]; /* Team state preceding its sound identifiers. */
+    s32 sound0; /* First sound identifier used by this team. */
+    s32 sound1; /* Second sound identifier used by this team. */
 } M638TeamView;
 typedef struct M638SceneView {
-    M638TeamView teams[2];
-    M638CameraWork camera;
-    MGTIMER *timer;
-    f32 seqTime;
-    f32 exitTime;
-    s32 record;
-    s32 time;
-    s32 newRecord;
-    Point3d vector0;
-    Point3d vector1;
-    f32 eventTimes[10];
-    f32 endTime;
-    s16 alternateLight;
-    s16 playState;
-    s16 introState;
-    s16 startState;
-    s16 resultState;
-    s16 finishState;
-    s16 field6F8;
-    s16 winner;
-    s16 choices[11];
-    s16 models[73];
-    s16 extraModels[1];
-    s16 sprites[3];
+    M638TeamView teams[2]; /* Team state for both sides of the course. */
+    M638CameraWork camera; /* Shared split-screen transition state. */
+    MGTIMER *timer; /* Match timer shown during play. */
+    f32 seqTime; /* Frames elapsed in the active minigame sequence. */
+    f32 exitTime; /* Updates elapsed since the result sequence began. */
+    s32 record; /* Stored record time in timer frames. */
+    s32 time; /* Current match time in timer frames. */
+    s32 newRecord; /* Nonzero when the match establishes a new record. */
+    Point3d vector0; /* Scene transition vector used by the camera. */
+    Point3d vector1; /* Destination vector used by the camera transition. */
+    f32 eventTimes[10]; /* Course motion times for the event hooks. */
+    f32 endTime; /* Course motion time at the end of play. */
+    s16 alternateLight; /* Nonzero selects alternate course lighting. */
+    s16 playState; /* Progress through active play. */
+    s16 introState; /* Progress through the opening split-screen sequence. */
+    s16 startState; /* Progress through the match start presentation. */
+    s16 resultState; /* Progress through the results presentation. */
+    s16 finishState; /* Progress through the team finish presentation. */
+    s16 winnerSequenceState; /* Progress through the winner presentation callback. */
+    s16 winner; /* Winning team index. */
+    s16 choices[11]; /* Selected course event choices. */
+    s16 models[73]; /* Scene model handles indexed by the data table. */
+    s16 extraModels[1]; /* Additional scene model handle. */
+    s16 sprites[3]; /* Shared scene status sprite handles. */
 } M638SceneView;
 typedef char M638TeamView_stride_check[(sizeof(M638TeamView) == 836) ? 1 : -1];
 typedef char M638SceneView_extent_check[(sizeof(M638SceneView) == 1964) ? 1 : -1];
 
-/* +836 team stride and constructor/update consumers bind this parameter. */
+/* Update a team's players, actor, course, and effects for the current frame. */
 void fn_1_2288(M638TeamView *team);
 
 struct _struct_lbl_1_data_330_0x8 {
-    f32 unk0;
-    f32 unk4;
+    f32 courseTimeThreshold; /* Course motion time at which the actor advances to the next state. */
+    f32 propRotationScale; /* Multiplier for the event prop rotation at this actor state. */
 };
 void fn_1_A0(void);
 void fn_1_1EC(s16 mode, s16 frameNo);
@@ -312,7 +310,7 @@ void fn_1_D84(s16 mode, s16 frameNo);
 void fn_1_11EC(s16 mode, s16 frameNo);
 void fn_1_11F0(s16 mode, s16 frameNo);
 void fn_1_1294(void);
-void fn_1_165C(M638CameraWork *arg0);
+void fn_1_165C(M638CameraWork *camera);
 void fn_1_1988(OMOBJ *obj);
 void fn_1_19C0(OMOBJ *obj);
 void fn_1_1CD4(M638SceneView *scene);
@@ -323,7 +321,7 @@ s32 fn_1_2ED0(void *data);
 s32 fn_1_2F94(void *data);
 void fn_1_309C(M638TeamActorView *work, s32 camera);
 s32 fn_1_368C(void *data);
-void fn_1_3804(void *arg0);
+void fn_1_3804(void *sceneData);
 void fn_1_386C(M638CourseView *course, s32 camera);
 void fn_1_4948(M638CourseView *course);
 void fn_1_4B4C(M638CourseView *course);
@@ -342,10 +340,10 @@ void fn_1_6B00(OMOBJ *obj);
 void fn_1_6C98(M638PlayerView *player);
 void fn_1_6E40(M638PlayerView *player);
 s32 fn_1_6FE4(void *data);
-s32 fn_1_71DC(void *arg0);
-s32 fn_1_72D0(void *arg0);
+s32 fn_1_71DC(void *playerData);
+s32 fn_1_72D0(void *playerData);
 void fn_1_745C(M638PlayerView *player);
-void fn_1_7554(void *arg0);
+void fn_1_7554(void *playerData);
 void fn_1_75BC(void);
 void fn_1_7754(void);
 
@@ -428,7 +426,7 @@ extern M638TimerWatch lbl_1_bss_10;
 extern HUPROCESS *lbl_1_bss_C;
 extern s32 lbl_1_bss_8;
 extern OMOBJ *lbl_1_bss_4;
-extern /* Four unreferenced retail BSS bytes; original declaration is unknown. */
+extern /* Four scene-state bytes whose purpose is not established here. */
 u8 lbl_1_bss_0[4];
 extern const u16 lbl_1_rodata_10[4];
 extern const Point3d lbl_1_rodata_68;
