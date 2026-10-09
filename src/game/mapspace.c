@@ -1,3 +1,4 @@
+// Queries map-model surfaces and accumulates horizontal wall collision corrections.
 #include "game/hsfformat.h"
 #include "game/object.h"
 #include "game/hu3d.h"
@@ -6,335 +7,390 @@
 
 #undef HuSetVecF
 
-void MapWallCheck(float *arg0, float *arg1, HSF_MAPATTR *arg2);
-BOOL Hitcheck_Triangle_with_Sphere(HuVecF *arg0, HuVecF *arg1, float arg2, HuVecF *arg3);
-BOOL Hitcheck_Quadrangle_with_Sphere(HuVecF *arg0, HuVecF *arg1, float arg2, HuVecF *arg3);
-void AppendAddXZ(float arg0, float arg1, float arg2);
-void CharRotInv(Mtx arg0, Mtx arg1, HuVecF *arg2, OMOBJ *arg3);
+void MapWallCheck(float *worldSphere, float *localSphere, HSF_MAPATTR *mapAttribute);
+BOOL Hitcheck_Triangle_with_Sphere(HuVecF *triangle, HuVecF *sphereCenter, float sphereRadius,
+                                   HuVecF *closestPoint);
+BOOL Hitcheck_Quadrangle_with_Sphere(HuVecF *quadrangle, HuVecF *sphereCenter, float sphereRadius,
+                                     HuVecF *closestPoint);
+void AppendAddXZ(float directionX, float directionZ, float distance);
+void CharRotInv(Mtx matrix, Mtx inverseMatrix, HuVecF *point, OMOBJ *object);
 
-static BOOL PolygonRangeCheck(HSF_MAPATTR *arg0, float arg1, float arg2, float *arg3, float arg4);
-static s32 DefIfnnerMapCircle(HuVecF *arg0, s16 *arg1, HuVecF *arg2, HuVecF *arg3);
-static s32 CalcPPLength(float *arg0, s16 *arg1, HuVecF *arg2);
-static float MapIflnnerCalc(float arg0, float arg1, float arg2, HuVecF *arg3, HuVecF *arg4, HuVecF *arg5);
-static float MapCalcPoint(float arg0, float arg1, float arg2, HuVecF *arg3, u16 *arg4);
-static BOOL AreaCheck(float arg0, float arg1, u16 *arg2, HuVecF *arg3);
-static s32 MapIflnnerTriangle(float arg0, float arg1, u16 *arg2, HuVecF *arg3);
-static s32 MapIflnnerQuadrangle(float arg0, float arg1, u16 *arg2, HuVecF *arg3);
-static BOOL GetPolygonCircleMtx(s16 *arg0, HuVecF *arg1, float *arg2, float *arg3);
-static s32 PrecalcPntToTriangle(HuVecF *arg0, HuVecF *arg1, HuVecF *arg2, HuVecF * arg3, HuVecF *arg4, HuVecF *arg5);
-static void DefSetHitFace(float arg0, float arg1, float arg2);
+static BOOL PolygonRangeCheck(HSF_MAPATTR *mapAttribute, float x, float z, float *heightOut,
+                              float worldHeightLimit);
+static s32 DefIfnnerMapCircle(HuVecF *point, s16 *polygonData, HuVecF *vertices, HuVecF *direction);
+static s32 CalcPPLength(float *sphere, s16 *polygonData, HuVecF *vertices);
+static float MapIflnnerCalc(float x, float y, float z, HuVecF *edgeStart, HuVecF *edgeEnd,
+                            HuVecF *direction);
+static float MapCalcPoint(float x, float y, float z, HuVecF *vertices, u16 *polygonData);
+static BOOL AreaCheck(float x, float z, u16 *polygonData, HuVecF *vertices);
+static s32 MapIflnnerTriangle(float x, float z, u16 *polygonData, HuVecF *vertices);
+static s32 MapIflnnerQuadrangle(float x, float z, u16 *polygonData, HuVecF *vertices);
+static BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
+                                float *localSphere);
+static s32 PrecalcPntToTriangle(HuVecF *triangleOrigin, HuVecF *firstEdge, HuVecF *secondEdge,
+                                HuVecF *faceNormal, HuVecF *relativePoint, HuVecF *closestOffset);
+static void DefSetHitFace(float x, float y, float z);
 
+// Map objects consulted by each query; only entries below nMap are visited.
 OMOBJ *MapObject[16];
+// Local-to-world and world-to-local transforms for the map object being queried.
 Mtx MapMT;
 Mtx MapMTR;
+// Accumulated horizontal correction after the current object's matrix conversion.
 static HuVecF MTRAdd;
+// Local normal of the last containing triangle examined by a height query.
 static HuVecF FieldVec;
+// Vertex indices of triangles accepted by XZ containment tests.
 s32 ColisionIdx[10][3];
+// Normals recorded alongside wall contact points.
 HuVecF HitFaceVec[32];
+// Zero-initialized point used by the extra wall-plane side test; never updated here.
 static HuVecF OldXYZ;
+// Wall contact points in world coordinates; HitFaceCount is the next slot.
 HuVecF HitFace[32];
-u8 CharObject[0x28];
+// Storage reserved for character-query entries; this file does not access it.
+u8 CharObject[40];
 
+// Horizontal world-space correction accumulated by wall collision queries.
 float AddX;
 float AddZ;
+// Number of registered map objects and character-query entries, respectively.
 s32 nMap;
 s32 nChar;
+// Number of contacts for the current map object, reset by MapWall.
 s32 HitFaceCount;
+// Model data and vertex array used by the current polygon traversal.
 static HSF_DATA *AttrHsf;
 static HuVecF *topvtx;
+// Number of triangles recorded by containment tests during the current query.
 s32 ColisionCount;
 
-void MapWall(float arg0, float arg1, float arg2, float arg3)
+// Handles a caller's sphere-versus-map wall query, accumulating XZ correction.
+// Contacts and containment indices are reset separately for each registered map object.
+void MapWall(float radius, float worldX, float worldY, float worldZ)
 {
-    float sp28[4];
-    float sp18[4];
-    float var_f31;
-    float var_f30;
-    float var_f29;
-    OMOBJ *var_r25;
-    HU3D_MODEL *var_r26;
-    HSF_DATA *temp_r29;
-    HSF_MAPATTR *sp14;
-    HSF_MAPATTR *var_r31;
-    s32 temp_r24;
-    s32 i;
-    s32 j;
+    float worldSphere[4]; // World X, Y, Z followed by the query radius.
+    float localSphere[4]; // Object-space center followed by the unchanged radius.
+    float queryRadius;
+    float localX;
+    float localZ;
+    OMOBJ *mapObject;
+    HU3D_MODEL *mapModel;
+    HSF_DATA *mapData;
+    HSF_MAPATTR *firstMapAttribute;
+    HSF_MAPATTR *mapAttribute;
+    s32 modelId;
+    s32 objectIndex;
+    s32 attributeIndex;
 
-    for (i = 0; i < nMap; i++) {
-        var_r25 = MapObject[i];
-        temp_r24 = MapObject[i]->mdlId[0];
-        sp18[0] = sp28[0] = arg1;
-        sp18[1] = sp28[1] = arg2;
-        sp18[2] = sp28[2] = arg3;
-        sp18[3] = sp28[3] = arg0;
-        var_f31 = sp28[3];
-        CharRotInv(MapMT, MapMTR, (HuVecF *)sp18, var_r25);
+    for (objectIndex = 0; objectIndex < nMap; objectIndex++) {
+        mapObject = MapObject[objectIndex];
+        modelId = MapObject[objectIndex]->mdlId[0];
+        localSphere[0] = worldSphere[0] = worldX;
+        localSphere[1] = worldSphere[1] = worldY;
+        localSphere[2] = worldSphere[2] = worldZ;
+        localSphere[3] = worldSphere[3] = radius;
+        queryRadius = worldSphere[3];
+        CharRotInv(MapMT, MapMTR, (HuVecF *)localSphere, mapObject);
         ColisionCount = 0;
         HitFaceCount = 0;
-        var_r26 = &Hu3DData[temp_r24];
-        temp_r29 = var_r26->hsf;
-        AttrHsf = temp_r29;
-        sp14 = AttrHsf->mapAttr;
-        var_r31 = temp_r29->mapAttr;
-        for (j = 0; j < temp_r29->mapAttrNum; j++, var_r31++) {
-            var_f30 = sp18[0];
-            var_f29 = sp18[2];
-            sp18[3] = arg0;
-            if (var_r31->minX <= var_f30 + var_f31 && var_r31->maxX > var_f30 - var_f31
-                && var_r31->minZ <= var_f29 + var_f31 && var_r31->maxZ > var_f29 - var_f31) {
-                MapWallCheck(sp28, sp18, var_r31);
+        mapModel = &Hu3DData[modelId];
+        mapData = mapModel->hsf;
+        AttrHsf = mapData;
+        firstMapAttribute = AttrHsf->mapAttr;
+        mapAttribute = mapData->mapAttr;
+        for (attributeIndex = 0; attributeIndex < mapData->mapAttrNum;
+             attributeIndex++, mapAttribute++) {
+            localX = localSphere[0];
+            localZ = localSphere[2];
+            localSphere[3] = radius;
+            if (mapAttribute->minX <= localX + queryRadius &&
+                mapAttribute->maxX > localX - queryRadius &&
+                mapAttribute->minZ <= localZ + queryRadius &&
+                mapAttribute->maxZ > localZ - queryRadius) {
+                MapWallCheck(worldSphere, localSphere, mapAttribute);
             }
         }
     }
 }
 
-void MapWallCheck(float *arg0, float *arg1, HSF_MAPATTR *arg2) {
-    u32 var_r30;
-    u16 temp_r29;
-    u16 *var_r31;
-    s32 var_r28;
-    Mtx sp10;
+// Called by MapWall for each nearby map-attribute block; visits its flagged wall polygons.
+// Both sphere arrays contain X, Y, Z and radius; correction is shared across polygon tests.
+void MapWallCheck(float *worldSphere, float *localSphere, HSF_MAPATTR *mapAttribute) {
+    u32 dataOffset;
+    u16 polygonHeader;
+    u16 *polygonData;
+    s32 wallCount;
+    Mtx normalMatrix;
 
-    var_r28 = 0;
-    var_r28 = 0;
+    // The wall counter is initialized twice and is not consumed after traversal.
+    wallCount = 0;
+    wallCount = 0;
     topvtx = AttrHsf->vertex->data;
-    var_r31 = arg2->data;
+    polygonData = mapAttribute->data;
     MTRAdd.x = AddX;
     MTRAdd.z = AddZ;
     MTRAdd.y = 0.0f;
-    PSMTXInvXpose(MapMT, sp10);
-    PSMTXMultVec(sp10, &MTRAdd, &MTRAdd);
-    for (var_r30 = 0; var_r30 < arg2->dataLen;) {
-        temp_r29 = *var_r31;
-        if (temp_r29 & 0x8000) {
-            GetPolygonCircleMtx((s16*) var_r31, topvtx, arg0, arg1);
-            var_r28++;
+    PSMTXInvXpose(MapMT, normalMatrix);
+    PSMTXMultVec(normalMatrix, &MTRAdd, &MTRAdd);
+    for (dataOffset = 0; dataOffset < mapAttribute->dataLen;) {
+        polygonHeader = *polygonData;
+        if (polygonHeader & 0x8000) {
+            GetPolygonCircleMtx((s16*) polygonData, topvtx, worldSphere, localSphere);
+            wallCount++;
         }
-        var_r30 += (temp_r29 & 0xFF) + 1;
-        var_r31 += (temp_r29 & 0xFF) + 1;
+        dataOffset += (polygonHeader & 0xFF) + 1;
+        polygonData += (polygonHeader & 0xFF) + 1;
     }
 }
 
-float MapPos(float arg0, float arg1, float arg2, float arg3, HuVecF *arg4) {
-    HuVecF sp14;
-    float var_f31;
-    float var_f29;
-    float sp10;
-    float var_f28;
-    HSF_MAPATTR *var_r29;
-    HU3D_MODEL *var_r24;
-    OMOBJ *temp_r27;
-    s32 i;
-    s32 j;
-    HSF_DATA *temp_r25;
-    Mtx sp20;
+// Handles a height query: each block supplies its highest surface strictly below
+// worldY + heightAllowance, then the candidate closest to worldY is returned.
+// The reported normal comes from the last containing triangle examined in the chosen block.
+float MapPos(float worldX, float worldY, float worldZ, float heightAllowance, HuVecF *normalOut) {
+    HuVecF queryPoint;
+    float bestHeight;
+    float localX;
+    float candidateHeight;
+    float localZ;
+    HSF_MAPATTR *mapAttribute;
+    HU3D_MODEL *mapModel;
+    OMOBJ *mapObject;
+    s32 objectIndex;
+    s32 attributeIndex;
+    HSF_DATA *mapData;
+    Mtx normalMatrix;
 
-    var_f31 = -100000.0f;
+    bestHeight = -100000.0f;
     ColisionCount = 0;
-    for (i = 0; i < nMap; i++) {
-        temp_r27 = MapObject[i];
-        var_r24 = &Hu3DData[temp_r27->mdlId[0]];
-        temp_r25 = var_r24->hsf;
-        sp14.x = arg0;
-        sp14.y = arg1;
-        sp14.z = arg2;
-        CharRotInv(MapMT, MapMTR, &sp14, temp_r27);
-        var_f29 = sp14.x;
-        var_f28 = sp14.z;
-        AttrHsf = temp_r25;
-        var_r29 = AttrHsf->mapAttr;
-        for (j = 0; j < temp_r25->mapAttrNum; j++, var_r29++) {
-            if (var_r29->minX <= var_f29 && var_r29->maxX >= var_f29
-                && var_r29->minZ <= var_f28 && var_r29->maxZ >= var_f28
-                && PolygonRangeCheck(var_r29, var_f29, var_f28, &sp10, arg1 + arg3) == TRUE) {
-                sp14.x = var_f29;
-                sp14.y = sp10;
-                sp14.z = var_f28;
-                PSMTXMultVec(MapMT, &sp14, &sp14);
-                sp10 = sp14.y;
-                if (sp10 > arg1 + arg3 || fabs(arg1 - sp10) > fabs(arg1 - var_f31)) {
+    for (objectIndex = 0; objectIndex < nMap; objectIndex++) {
+        mapObject = MapObject[objectIndex];
+        mapModel = &Hu3DData[mapObject->mdlId[0]];
+        mapData = mapModel->hsf;
+        queryPoint.x = worldX;
+        queryPoint.y = worldY;
+        queryPoint.z = worldZ;
+        CharRotInv(MapMT, MapMTR, &queryPoint, mapObject);
+        localX = queryPoint.x;
+        localZ = queryPoint.z;
+        AttrHsf = mapData;
+        mapAttribute = AttrHsf->mapAttr;
+        for (attributeIndex = 0; attributeIndex < mapData->mapAttrNum;
+             attributeIndex++, mapAttribute++) {
+            if (mapAttribute->minX <= localX && mapAttribute->maxX >= localX &&
+                mapAttribute->minZ <= localZ && mapAttribute->maxZ >= localZ &&
+                PolygonRangeCheck(mapAttribute, localX, localZ, &candidateHeight,
+                                  worldY + heightAllowance) == TRUE) {
+                queryPoint.x = localX;
+                queryPoint.y = candidateHeight;
+                queryPoint.z = localZ;
+                PSMTXMultVec(MapMT, &queryPoint, &queryPoint);
+                candidateHeight = queryPoint.y;
+                if (candidateHeight > worldY + heightAllowance ||
+                    fabs(worldY - candidateHeight) > fabs(worldY - bestHeight)) {
                     continue;
                 }
-                var_f31 = sp10;
-                arg4->x = FieldVec.x;
-                arg4->y = FieldVec.y;
-                arg4->z = FieldVec.z;
-                PSMTXInvXpose(MapMT, sp20);
-                PSMTXMultVec(sp20, arg4, arg4);
-                var_f31 = sp14.y;
+                bestHeight = candidateHeight;
+                normalOut->x = FieldVec.x;
+                normalOut->y = FieldVec.y;
+                normalOut->z = FieldVec.z;
+                PSMTXInvXpose(MapMT, normalMatrix);
+                PSMTXMultVec(normalMatrix, normalOut, normalOut);
+                bestHeight = queryPoint.y;
             }
         }
     }
-    if (var_f31 == -100000.0f) {
-        arg4->x = 0.0f;
-        arg4->y = 1.0f;
-        arg4->x = 0.0f;
-        return arg1;
+    if (bestHeight == -100000.0f) {
+        // No surface: retain the input height, write X twice, and leave normal Z untouched.
+        normalOut->x = 0.0f;
+        normalOut->y = 1.0f;
+        normalOut->x = 0.0f;
+        return worldY;
     } else {
-        return var_f31;
+        return bestHeight;
     }
 }
 
-BOOL PolygonRangeCheck(HSF_MAPATTR *arg0, float arg1, float arg2, float *arg3, float arg4) {
-    HuVecF sp20;
-    float temp_f29;
-    float var_f27;
-    u16 *var_r31;
-    u16 temp_r29;
-    s32 var_r28;
-    s32 var_r27;
-    s32 i;
+// Called by MapPos for each candidate attribute block; finds the nearest height strictly below
+// worldHeightLimit. Wall polygons are skipped, and heightOut remains in object coordinates.
+BOOL PolygonRangeCheck(HSF_MAPATTR *mapAttribute, float x, float z, float *heightOut,
+                       float worldHeightLimit) {
+    HuVecF worldPoint;
+    float localHeight;
+    float closestHeightGap;
+    u16 *polygonData;
+    u16 polygonHeader;
+    s32 candidateCount; // Bounding-box candidates counted but not used to choose the height.
+    s32 foundHeight;
+    s32 dataOffset;
 
-    var_r28 = 0;
-    var_r27 = 0;
-    var_f27 = 100000.0f;
+    candidateCount = 0;
+    foundHeight = 0;
+    closestHeightGap = 100000.0f;
     topvtx = AttrHsf->vertex->data;
-    var_r31 = arg0->data;
-    for (i = 0; i < arg0->dataLen;) {
-        temp_r29 = *var_r31;
-        if (temp_r29 & 0x8000) {
-            i += (temp_r29 & 0xFF) + 1;
-            var_r31 += (temp_r29 & 0xFF) + 1;
+    polygonData = mapAttribute->data;
+    for (dataOffset = 0; dataOffset < mapAttribute->dataLen;) {
+        polygonHeader = *polygonData;
+        if (polygonHeader & 0x8000) {
+            dataOffset += (polygonHeader & 0xFF) + 1;
+            polygonData += (polygonHeader & 0xFF) + 1;
         } else {
-            switch (temp_r29 & 0xFF) {
+            switch (polygonHeader & 0xFF) {
                 case 1:
-                    i += 2;
-                    var_r31 += 2;
+                    dataOffset += 2;
+                    polygonData += 2;
                     break;
                 case 2:
-                    i += 3;
-                    var_r31 += 3;
+                    dataOffset += 3;
+                    polygonData += 3;
                     break;
                 case 3:
-                    if (AreaCheck(arg1, arg2, var_r31, topvtx) == TRUE) {
-                        var_r28++;
-                        if (MapIflnnerTriangle(arg1, arg2, var_r31, topvtx) == 1) {
-                            temp_f29 = MapCalcPoint(arg1, 0.0f, arg2, topvtx, var_r31);
-                            sp20.x = arg1;
-                            sp20.y = temp_f29;
-                            sp20.z = arg2;
-                            PSMTXMultVec(MapMT, &sp20, &sp20);
-                            if (arg4 > sp20.y && var_f27 > fabs(arg4 - sp20.y)) {
-                                var_f27 = fabs(arg4 - sp20.y);
-                                *arg3 = temp_f29;
-                                var_r27 = 1;
+                    if (AreaCheck(x, z, polygonData, topvtx) == TRUE) {
+                        candidateCount++;
+                        if (MapIflnnerTriangle(x, z, polygonData, topvtx) == 1) {
+                            localHeight = MapCalcPoint(x, 0.0f, z, topvtx, polygonData);
+                            worldPoint.x = x;
+                            worldPoint.y = localHeight;
+                            worldPoint.z = z;
+                            PSMTXMultVec(MapMT, &worldPoint, &worldPoint);
+                            if (worldHeightLimit > worldPoint.y &&
+                                closestHeightGap > fabs(worldHeightLimit - worldPoint.y)) {
+                                closestHeightGap = fabs(worldHeightLimit - worldPoint.y);
+                                *heightOut = localHeight;
+                                foundHeight = 1;
                             }
                         }
                     }
-                    i += 4;
-                    var_r31 += 4;
+                    dataOffset += 4;
+                    polygonData += 4;
                     break;
                 case 4:
-                    if (AreaCheck(arg1, arg2, var_r31, topvtx) == TRUE) {
-                        var_r28++;
-                        if (MapIflnnerQuadrangle(arg1, arg2, var_r31, topvtx) == 1) {
-                            temp_f29 = MapCalcPoint(arg1, 0.0f, arg2, topvtx, var_r31);
-                            sp20.x = arg1;
-                            sp20.y = temp_f29;
-                            sp20.z = arg2;
-                            PSMTXMultVec(MapMT, &sp20, &sp20);
-                            if (arg4 > sp20.y) {
-                                if (var_f27 > fabs(arg4 - sp20.y)) {
-                                    var_f27 = fabs(arg4 - sp20.y);
-                                    *arg3 = temp_f29;
-                                    var_r27 = 1;
+                    if (AreaCheck(x, z, polygonData, topvtx) == TRUE) {
+                        candidateCount++;
+                        if (MapIflnnerQuadrangle(x, z, polygonData, topvtx) == 1) {
+                            localHeight = MapCalcPoint(x, 0.0f, z, topvtx, polygonData);
+                            worldPoint.x = x;
+                            worldPoint.y = localHeight;
+                            worldPoint.z = z;
+                            PSMTXMultVec(MapMT, &worldPoint, &worldPoint);
+                            if (worldHeightLimit > worldPoint.y) {
+                                if (closestHeightGap > fabs(worldHeightLimit - worldPoint.y)) {
+                                    closestHeightGap = fabs(worldHeightLimit - worldPoint.y);
+                                    *heightOut = localHeight;
+                                    foundHeight = 1;
                                 }
                             }
                         }
                     }
-                    i += 5;
-                    var_r31 += 5;
+                    dataOffset += 5;
+                    polygonData += 5;
                     break;
                 default:
-                    i++;
-                    var_r31++;
+                    dataOffset++;
+                    polygonData++;
                     break;
             }
         }
     }
-    if (var_r27 != 0) {
+    if (foundHeight != 0) {
         return TRUE;
     } else {
         return FALSE;
     }
 }
 
-static s32 DefIfnnerMapCircle(HuVecF *arg0, s16 *arg1, HuVecF *arg2, HuVecF *arg3) {
-    float temp_f30;
-    float temp_f29;
-    float temp_f28;
-    float var_f31;
-    s32 var_r28;
-    s32 var_r27;
-    s32 var_r25;
+// Called by GetPolygonCircleMtx to test polygon edge sides along the supplied vector.
+// Triangles can return inside; the quadrangle path performs edge tests but always returns zero.
+static s32 DefIfnnerMapCircle(HuVecF *point, s16 *polygonData, HuVecF *vertices,
+                              HuVecF *direction) {
+    float pointX;
+    float pointY;
+    float pointZ;
+    float edgeSide;
+    s32 edgeIndex;
+    s32 polygonState; // Vertex count initially; quadrangle edge tests can replace it with one.
+    s32 nextEdgeIndex;
 
-    temp_f30 = arg0->x;
-    temp_f29 = arg0->y;
-    temp_f28 = arg0->z;
-    var_r27 = *arg1 & 0xFF;
-    arg1++;
-    if (var_r27 == 3) {
-        var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[0]], &arg2[arg1[1]], arg3);
-        if (var_f31 > 0.0f) {
-            for (var_r28 = 1; var_r28 < var_r27; var_r28++) {
-                var_r25 = (var_r28 + 1) % var_r27;
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[var_r28]], &arg2[arg1[var_r25]], arg3);
-                if (var_f31 < 0.0f) {
+    pointX = point->x;
+    pointY = point->y;
+    pointZ = point->z;
+    polygonState = *polygonData & 0xFF;
+    polygonData++;
+    if (polygonState == 3) {
+        edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[0]],
+                                  &vertices[polygonData[1]], direction);
+        if (edgeSide > 0.0f) {
+            for (edgeIndex = 1; edgeIndex < polygonState; edgeIndex++) {
+                nextEdgeIndex = (edgeIndex + 1) % polygonState;
+                edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[edgeIndex]],
+                                         &vertices[polygonData[nextEdgeIndex]], direction);
+                if (edgeSide < 0.0f) {
                     return 0;
                 }
             }
             return 1;
         } else {
-            for (var_r28 = 1; var_r28 < var_r27; var_r28++) {
-                var_r25 = (var_r28 + 1) % var_r27;
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[var_r28]], &arg2[arg1[var_r25]], arg3);
-                if (var_f31 > 0.0f) {
+            for (edgeIndex = 1; edgeIndex < polygonState; edgeIndex++) {
+                nextEdgeIndex = (edgeIndex + 1) % polygonState;
+                edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[edgeIndex]],
+                                         &vertices[polygonData[nextEdgeIndex]], direction);
+                if (edgeSide > 0.0f) {
                     return 0;
                 }
             }
             return 1;
         }
-    } else if (var_r27 == 4) {
-        var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[0]], &arg2[arg1[2]], arg3);
-        if (var_f31 > 0.0f) {
-            var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[2]], &arg2[arg1[3]], arg3);
-            if (var_f31 < 0.0f) {
-                var_r27 = 1;
+    } else if (polygonState == 4) {
+        edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[0]],
+                                  &vertices[polygonData[2]], direction);
+        if (edgeSide > 0.0f) {
+            edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[2]],
+                                      &vertices[polygonData[3]], direction);
+            if (edgeSide < 0.0f) {
+                polygonState = 1;
             } else {
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[3]], &arg2[arg1[0]], arg3);
-                if (var_f31 < 0.0f) {
-                    var_r27 = 1;
+                edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[3]],
+                                         &vertices[polygonData[0]], direction);
+                if (edgeSide < 0.0f) {
+                    polygonState = 1;
                 }
             }
         } else {
-            var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[2]], &arg2[arg1[3]], arg3);
-            if (var_f31 > 0.0f) {
-                var_r27 = 1;
+            edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[2]],
+                                      &vertices[polygonData[3]], direction);
+            if (edgeSide > 0.0f) {
+                polygonState = 1;
             } else {
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[3]], &arg2[arg1[0]], arg3);
-                if (var_f31 > 0.0f) {
-                    var_r27 = 1;
+                edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[3]],
+                                         &vertices[polygonData[0]], direction);
+                if (edgeSide > 0.0f) {
+                    polygonState = 1;
                 }
             }
         }
-        if (var_r27 != 0) {
-            var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[0]], &arg2[arg1[3]], arg3);
-            if (var_f31 > 0.0f) {
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[3]], &arg2[arg1[1]], arg3);
-                if (var_f31 < 0.0f) {
+        if (polygonState != 0) {
+            edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[0]],
+                                      &vertices[polygonData[3]], direction);
+            if (edgeSide > 0.0f) {
+                edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[3]],
+                                         &vertices[polygonData[1]], direction);
+                if (edgeSide < 0.0f) {
                     return 0;
                 }
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[1]], &arg2[arg1[0]], arg3);
-                if (var_f31 < 0.0f) {
+                edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[1]],
+                                         &vertices[polygonData[0]], direction);
+                if (edgeSide < 0.0f) {
                     return 0;
                 }
             } else {
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[3]], &arg2[arg1[1]], arg3);
-                if (var_f31 > 0.0f) {
+                edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[3]],
+                                         &vertices[polygonData[1]], direction);
+                if (edgeSide > 0.0f) {
                     return 0;
                 }
-                var_f31 = MapIflnnerCalc(temp_f30, temp_f29, temp_f28, &arg2[arg1[1]], &arg2[arg1[0]], arg3);
-                if (var_f31 > 0.0f) {
+                edgeSide = MapIflnnerCalc(pointX, pointY, pointZ, &vertices[polygonData[1]],
+                                         &vertices[polygonData[0]], direction);
+                if (edgeSide > 0.0f) {
                     return 0;
                 }
             }
@@ -343,577 +399,666 @@ static s32 DefIfnnerMapCircle(HuVecF *arg0, s16 *arg1, HuVecF *arg2, HuVecF *arg
     return 0;
 }
 
-static inline void MapspaceInlineFunc00(HuVecF *arg0) {
-    float sp24;
-    float sp28;
-    float sp2C;
-    float sp14;
+// Used by face-normal and wall-correction helpers to normalize nonzero vectors in place.
+// A zero vector is left unchanged.
+static inline void MapspaceInlineFunc00(HuVecF *vector) {
+    float x;
+    float y;
+    float z;
+    float length;
 
-    sp24 = arg0->x;
-    sp28 = arg0->y;
-    sp2C = arg0->z;
-    sp14 = sqrtf(sp24 * sp24 + sp28 * sp28 + sp2C * sp2C);
-    if (sp14 != 0.0f) {
-        arg0->x /= sp14;
-        arg0->y /= sp14;
-        arg0->z /= sp14;
+    x = vector->x;
+    y = vector->y;
+    z = vector->z;
+    length = sqrtf(x * x + y * y + z * z);
+    if (length != 0.0f) {
+        vector->x /= length;
+        vector->y /= length;
+        vector->z /= length;
     }
 }
 
-static inline void MapspaceInlineFunc01(HuVecF *arg0, HuVecF *arg1, HuVecF *arg2, HuVecF *arg3) {
-    float sp48;
-    float sp4C;
-    float sp50;
-    float temp_f18;
-    float temp_f19;
-    float temp_f20;
+// Used by height, wall-plane and containment tests to build a normalized face normal.
+// Collinear points produce a zero normal.
+static inline void MapspaceInlineFunc01(HuVecF *normalOut, HuVecF *origin, HuVecF *firstPoint,
+                                        HuVecF *secondPoint) {
+    float firstEdgeX;
+    float firstEdgeY;
+    float firstEdgeZ;
+    float secondEdgeX;
+    float secondEdgeY;
+    float secondEdgeZ;
 
-    sp48 = arg2->x - arg1->x;
-    sp4C = arg2->y - arg1->y;
-    sp50 = arg2->z - arg1->z;
-    temp_f18 = arg3->x - arg1->x;
-    temp_f19 = arg3->y - arg1->y;
-    temp_f20 = arg3->z - arg1->z;
-    arg0->x = sp4C * temp_f20 - sp50 * temp_f19;
-    arg0->y = sp50 * temp_f18 - sp48 * temp_f20;
-    arg0->z = sp48 * temp_f19 - sp4C * temp_f18;
-    MapspaceInlineFunc00(arg0);
+    firstEdgeX = firstPoint->x - origin->x;
+    firstEdgeY = firstPoint->y - origin->y;
+    firstEdgeZ = firstPoint->z - origin->z;
+    secondEdgeX = secondPoint->x - origin->x;
+    secondEdgeY = secondPoint->y - origin->y;
+    secondEdgeZ = secondPoint->z - origin->z;
+    normalOut->x = firstEdgeY * secondEdgeZ - firstEdgeZ * secondEdgeY;
+    normalOut->y = firstEdgeZ * secondEdgeX - firstEdgeX * secondEdgeZ;
+    normalOut->z = firstEdgeX * secondEdgeY - firstEdgeY * secondEdgeX;
+    MapspaceInlineFunc00(normalOut);
 }
 
-static s32 CalcPPLength(float *arg0, s16 *arg1, HuVecF *arg2) {
-    HuVecF *temp_r29;
-    HuVecF sp68;
-    float temp_f25;
-    float temp_f24;
-    float temp_f23;
-    float temp_f22;
-    float temp_f21;
-    float sp5C;
-    float sp58;
-    float sp54;
-    s16 temp_r24;
-    s16 temp_r22;
-    s32 var_r23;
+// Called by GetPolygonCircleMtx to reject unflagged or distant wall planes and project the sphere
+// center onto the plane. Returns zero for rejection, otherwise minus one or one for its side.
+static s32 CalcPPLength(float *sphere, s16 *polygonData, HuVecF *vertices) {
+    HuVecF *planePoint;
+    HuVecF faceNormal;
+    float projectionDistance; // Signed displacement from the sphere center to the wall plane.
+    float pointOffsetX;
+    float pointOffsetY;
+    float pointOffsetZ;
+    float signedDistance;
+    float planeX;
+    float planeY;
+    float planeZ;
+    s16 polygonHeader;
+    s16 vertexIndex;
+    s32 planeSide;
 
-    var_r23 = -1;
-    temp_r24 = arg1[0];
-    if (!(temp_r24 & 0x8000)) {
+    planeSide = -1;
+    polygonHeader = polygonData[0];
+    if (!(polygonHeader & 0x8000)) {
         return 0;
     }
-    if ((temp_r24 & 0xFF) == 4) {
-        MapspaceInlineFunc01(&sp68, &arg2[arg1[1]], &arg2[arg1[4]], &arg2[arg1[3]]);
+    if ((polygonHeader & 0xFF) == 4) {
+        MapspaceInlineFunc01(&faceNormal, &vertices[polygonData[1]], &vertices[polygonData[4]],
+                             &vertices[polygonData[3]]);
     } else {
-        MapspaceInlineFunc01(&sp68, &arg2[arg1[1]], &arg2[arg1[2]], &arg2[arg1[3]]);
+        MapspaceInlineFunc01(&faceNormal, &vertices[polygonData[1]], &vertices[polygonData[2]],
+                             &vertices[polygonData[3]]);
     }
-    temp_r22 = arg1[1];
-    temp_r29 = &arg2[temp_r22];
-    sp5C = temp_r29->x;
-    sp58 = temp_r29->y;
-    sp54 = temp_r29->z;
-    temp_f24 = sp5C - arg0[0];
-    temp_f23 = sp58 - arg0[1];
-    temp_f22 = sp54 - arg0[2];
-    temp_f21 = sp68.x * temp_f24 + sp68.y * temp_f23 + sp68.z * temp_f22;
-    if (temp_f21 >= 0.0f) {
-        var_r23 = 1;
+    vertexIndex = polygonData[1];
+    planePoint = &vertices[vertexIndex];
+    planeX = planePoint->x;
+    planeY = planePoint->y;
+    planeZ = planePoint->z;
+    pointOffsetX = planeX - sphere[0];
+    pointOffsetY = planeY - sphere[1];
+    pointOffsetZ = planeZ - sphere[2];
+    signedDistance =
+        faceNormal.x * pointOffsetX + faceNormal.y * pointOffsetY + faceNormal.z * pointOffsetZ;
+    if (signedDistance >= 0.0f) {
+        planeSide = 1;
     }
-    if (fabs(temp_f21) > arg0[3]) {
+    if (fabs(signedDistance) > sphere[3]) {
         return 0;
     }
-    temp_f25 = sp68.x * temp_f24 + sp68.y * temp_f23 + sp68.z * temp_f22;
-    arg0[0] += sp68.x * temp_f25;
-    arg0[1] += sp68.y * temp_f25;
-    arg0[2] += sp68.z * temp_f25;
-    return var_r23;
+    projectionDistance =
+        faceNormal.x * pointOffsetX + faceNormal.y * pointOffsetY + faceNormal.z * pointOffsetZ;
+    sphere[0] += faceNormal.x * projectionDistance;
+    sphere[1] += faceNormal.y * projectionDistance;
+    sphere[2] += faceNormal.z * projectionDistance;
+    return planeSide;
 }
 
-static float MapIflnnerCalc(float arg0, float arg1, float arg2, HuVecF *arg3, HuVecF *arg4, HuVecF *arg5) {
-    float temp_f31;
-    float temp_f30;
-    float temp_f29;
-    float temp_f28;
-    float temp_f27;
-    float temp_f26;
-    float temp_f25;
+// Called by DefIfnnerMapCircle to compare a point with an edge along the supplied direction.
+// The sign of the scalar triple product is used for containment tests.
+static float MapIflnnerCalc(float x, float y, float z, HuVecF *edgeStart, HuVecF *edgeEnd,
+                            HuVecF *direction) {
+    float startOffsetX;
+    float startOffsetY;
+    float startOffsetZ;
+    float endOffsetX;
+    float endOffsetY;
+    float endOffsetZ;
+    float edgeSide;
 
-    temp_f31 = arg3->x - arg0;
-    temp_f30 = arg3->y - arg1;
-    temp_f29 = arg3->z - arg2;
-    temp_f28 = arg4->x - arg0;
-    temp_f27 = arg4->y - arg1;
-    temp_f26 = arg4->z - arg2;
-    temp_f25 = arg5->x * (temp_f30 * temp_f26 - temp_f29 * temp_f27)
-        + arg5->y * (temp_f29 * temp_f28 - temp_f31 * temp_f26)
-        + arg5->z * (temp_f31 * temp_f27 - temp_f30 * temp_f28);
-    return temp_f25;
+    startOffsetX = edgeStart->x - x;
+    startOffsetY = edgeStart->y - y;
+    startOffsetZ = edgeStart->z - z;
+    endOffsetX = edgeEnd->x - x;
+    endOffsetY = edgeEnd->y - y;
+    endOffsetZ = edgeEnd->z - z;
+    edgeSide = direction->x * (startOffsetY * endOffsetZ - startOffsetZ * endOffsetY)
+        + direction->y * (startOffsetZ * endOffsetX - startOffsetX * endOffsetZ)
+        + direction->z * (startOffsetX * endOffsetY - startOffsetY * endOffsetX);
+    return edgeSide;
 }
 
-static float MapCalcPoint(float arg0, float arg1, float arg2, HuVecF *arg3, u16 *arg4) {
-    HuVecF sp40;
-    float sp3C;
-    float sp38;
-    float sp34;
-    float sp30;
-    float sp2C;
-    float sp28;
-    float var_f28;
-    float var_f26;
-    float var_f25;
-    float var_f27;
-    float var_f24;
-    s32 temp_r27;
-    HuVecF *temp_r30;
+// Called by PolygonRangeCheck after containment accepts a triangle; finds the vertical plane
+// intersection and records its normal. The polygonData argument is unused.
+static float MapCalcPoint(float x, float y, float z, HuVecF *vertices, u16 *polygonData) {
+    HuVecF faceNormal;
+    float planeZ;
+    float planeY;
+    float planeX;
+    float pointX;
+    float pointZ;
+    float verticalStep;
+    float heightOffset;
+    float pointY;
+    float normalX;
+    float normalY;
+    float normalZ;
+    s32 collisionIndex;
+    HuVecF *planePoint;
 
-    temp_r27 = ColisionCount - 1;
-    temp_r30 = &arg3[ColisionIdx[temp_r27][0]];
-    sp34 = temp_r30->x;
-    sp38 = temp_r30->y;
-    sp3C = temp_r30->z;
-    sp30 = arg0;
-    var_f26 = arg1;
-    sp2C = arg2;
-    sp28 = 1.0f;
-    MapspaceInlineFunc01(&sp40, &arg3[ColisionIdx[temp_r27][0]], &arg3[ColisionIdx[temp_r27][1]], &arg3[ColisionIdx[temp_r27][2]]);
-    var_f25 = sp40.x;
-    var_f27 = sp40.y;
-    var_f24 = sp40.z;
-    FieldVec.x = var_f25;
-    FieldVec.y = var_f27;
-    FieldVec.z = var_f24;
-    var_f28 = var_f25 * (sp34 - sp30) + var_f27 * (sp38 - var_f26) + var_f24 * (sp3C - sp2C);
-    var_f28 /= var_f27;
-    return var_f26 + sp28 * var_f28;
+    collisionIndex = ColisionCount - 1;
+    planePoint = &vertices[ColisionIdx[collisionIndex][0]];
+    planeX = planePoint->x;
+    planeY = planePoint->y;
+    planeZ = planePoint->z;
+    pointX = x;
+    pointY = y;
+    pointZ = z;
+    verticalStep = 1.0f;
+    MapspaceInlineFunc01(&faceNormal, &vertices[ColisionIdx[collisionIndex][0]],
+                         &vertices[ColisionIdx[collisionIndex][1]],
+                         &vertices[ColisionIdx[collisionIndex][2]]);
+    normalX = faceNormal.x;
+    normalY = faceNormal.y;
+    normalZ = faceNormal.z;
+    FieldVec.x = normalX;
+    FieldVec.y = normalY;
+    FieldVec.z = normalZ;
+    heightOffset =
+        normalX * (planeX - pointX) + normalY * (planeY - pointY) + normalZ * (planeZ - pointZ);
+    heightOffset /= normalY;
+    return pointY + verticalStep * heightOffset;
 }
 
-static BOOL AreaCheck(float arg0, float arg1, u16 *arg2, HuVecF *arg3) {
-    float var_f31;
-    float var_f30;
-    float var_f29;
-    float var_f28;
-    s32 var_r29;
-    s32 temp_r31;
-    s32 i;
+// Called by PolygonRangeCheck before containment tests; checks the polygon's inclusive XZ bounds.
+static BOOL AreaCheck(float x, float z, u16 *polygonData, HuVecF *vertices) {
+    float maxX;
+    float maxZ;
+    float minX;
+    float minZ;
+    s32 vertexCount;
+    s32 vertexIndex;
+    s32 cornerIndex;
 
-    var_f31 = var_f30 = -100000.0f;
-    var_f29 = var_f28 = 100000.0f;
-    var_r29 = *arg2 & 0xFF;
-    arg2++;
-    for (i = 0; i < var_r29; i++, arg2++) {
-        temp_r31 = *arg2;
-        if (var_f29 > arg3[temp_r31].x) {
-            var_f29 = arg3[temp_r31].x;
+    maxX = maxZ = -100000.0f;
+    minX = minZ = 100000.0f;
+    vertexCount = *polygonData & 0xFF;
+    polygonData++;
+    for (cornerIndex = 0; cornerIndex < vertexCount; cornerIndex++, polygonData++) {
+        vertexIndex = *polygonData;
+        if (minX > vertices[vertexIndex].x) {
+            minX = vertices[vertexIndex].x;
         }
-        if (var_f31 < arg3[temp_r31].x) {
-            var_f31 = arg3[temp_r31].x;
+        if (maxX < vertices[vertexIndex].x) {
+            maxX = vertices[vertexIndex].x;
         }
-        if (var_f28 > arg3[temp_r31].z) {
-            var_f28 = arg3[temp_r31].z;
+        if (minZ > vertices[vertexIndex].z) {
+            minZ = vertices[vertexIndex].z;
         }
-        if (var_f30 < arg3[temp_r31].z) {
-            var_f30 = arg3[temp_r31].z;
+        if (maxZ < vertices[vertexIndex].z) {
+            maxZ = vertices[vertexIndex].z;
         }
     }
-    if (var_f29 <= arg0 && var_f31 >= arg0
-        && var_f28 <= arg1 && var_f30 >= arg1) {
+    if (minX <= x && maxX >= x
+        && minZ <= z && maxZ >= z) {
         return TRUE;
     } else {
         return FALSE;
     }
 }
 
-static inline float MapspaceInlineFunc02(float arg0, float arg1, HuVecF *arg2, HuVecF *arg3) {
-    float sp54;
-    float sp58;
-    float sp5C;
-    float sp60;
-    float sp64;
+// Used by triangle and quadrangle height tests to compare an XZ point with an edge.
+// The sign of this 2D cross product determines which side contains the point.
+static inline float MapspaceInlineFunc02(float x, float z, HuVecF *edgeStart, HuVecF *edgeEnd) {
+    float startOffsetX;
+    float startOffsetZ;
+    float endOffsetX;
+    float endOffsetZ;
+    float edgeSide;
 
-    sp54 = arg2->x - arg0;
-    sp58 = arg2->z - arg1;
-    sp5C = arg3->x - arg0;
-    sp60 = arg3->z - arg1;
-    sp64 = -(sp58 * sp5C - sp54 * sp60);
-    return sp64;
+    startOffsetX = edgeStart->x - x;
+    startOffsetZ = edgeStart->z - z;
+    endOffsetX = edgeEnd->x - x;
+    endOffsetZ = edgeEnd->z - z;
+    edgeSide = -(startOffsetZ * endOffsetX - startOffsetX * endOffsetZ);
+    return edgeSide;
 }
 
-static s32 MapIflnnerTriangle(float arg0, float arg1, u16 *arg2, HuVecF *arg3) {
-    HuVecF sp68;
-    float var_f29;
-    s32 var_r21;
-    s32 i;
+// Called by PolygonRangeCheck to test XZ containment; rejects vertical faces and records the
+// triangle's indices on success.
+static s32 MapIflnnerTriangle(float x, float z, u16 *polygonData, HuVecF *vertices) {
+    HuVecF faceNormal;
+    float edgeSide;
+    s32 nextEdgeIndex;
+    s32 edgeIndex;
 
-    MapspaceInlineFunc01(&sp68, &arg3[arg2[1]], &arg3[arg2[2]], &arg3[arg2[3]]);
-    if (sp68.y == 0.0f) {
+    MapspaceInlineFunc01(&faceNormal, &vertices[polygonData[1]], &vertices[polygonData[2]],
+                         &vertices[polygonData[3]]);
+    if (faceNormal.y == 0.0f) {
         return 0;
     }
-    arg2++;
-    var_f29 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[0]], &arg3[arg2[1]]);
-    if (var_f29 > 0.0f) {
-        for (i = 1; i < 3; i++) {
-            var_r21 = (i + 1) % 3;
-            var_f29 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[i]], &arg3[arg2[var_r21]]);
-            if (var_f29 < 0.0f) {
+    polygonData++;
+    edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[0]], &vertices[polygonData[1]]);
+    if (edgeSide > 0.0f) {
+        for (edgeIndex = 1; edgeIndex < 3; edgeIndex++) {
+            nextEdgeIndex = (edgeIndex + 1) % 3;
+            edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[edgeIndex]],
+                                            &vertices[polygonData[nextEdgeIndex]]);
+            if (edgeSide < 0.0f) {
                 return 0;
             }
         }
     } else {
-        for (i = 1; i < 3; i++) {
-            var_r21 = (i + 1) % 3;
-            var_f29 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[i]], &arg3[arg2[var_r21]]);
-            if (var_f29 > 0.0f) {
+        for (edgeIndex = 1; edgeIndex < 3; edgeIndex++) {
+            nextEdgeIndex = (edgeIndex + 1) % 3;
+            edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[edgeIndex]],
+                                            &vertices[polygonData[nextEdgeIndex]]);
+            if (edgeSide > 0.0f) {
                 return 0;
             }
         }
     }
-    ColisionIdx[ColisionCount][0] = arg2[0];
-    ColisionIdx[ColisionCount][1] = arg2[1];
-    ColisionIdx[ColisionCount][2] = arg2[2];
+    ColisionIdx[ColisionCount][0] = polygonData[0];
+    ColisionIdx[ColisionCount][1] = polygonData[1];
+    ColisionIdx[ColisionCount][2] = polygonData[2];
     ColisionCount++;
     return 1;
 }
 
-static s32 MapIflnnerQuadrangle(float arg0, float arg1, u16 *arg2, HuVecF *arg3) {
-    HuVecF sp158;
-    float var_f31;
-    s32 var_r28;
+// Called by PolygonRangeCheck to test XZ containment against two triangles of a quadrangle.
+// Records the accepted split (0, 3, 2) or (0, 1, 3); vertical faces are rejected.
+static s32 MapIflnnerQuadrangle(float x, float z, u16 *polygonData, HuVecF *vertices) {
+    HuVecF faceNormal;
+    float edgeSide;
+    s32 tryOtherTriangle;
 
-    MapspaceInlineFunc01(&sp158, &arg3[arg2[1]], &arg3[arg2[2]], &arg3[arg2[3]]);
-    if (sp158.y == 0.0f) {
+    MapspaceInlineFunc01(&faceNormal, &vertices[polygonData[1]], &vertices[polygonData[2]],
+                         &vertices[polygonData[3]]);
+    if (faceNormal.y == 0.0f) {
         return 0;
     }
-    var_r28 = 0;
-    arg2++;
-    var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[0]], &arg3[arg2[3]]);
-    if (var_f31 > 0.0f) {
-        var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[3]], &arg3[arg2[2]]);
-        if (var_f31 < 0.0f) {
-            var_r28 = 1;
+    tryOtherTriangle = 0;
+    polygonData++;
+    edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[0]], &vertices[polygonData[3]]);
+    if (edgeSide > 0.0f) {
+        edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[3]], &vertices[polygonData[2]]);
+        if (edgeSide < 0.0f) {
+            tryOtherTriangle = 1;
         } else {
-            var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[2]], &arg3[arg2[0]]);
-            if (var_f31 < 0.0f) {
-                var_r28 = 1;
+            edgeSide =
+                MapspaceInlineFunc02(x, z, &vertices[polygonData[2]], &vertices[polygonData[0]]);
+            if (edgeSide < 0.0f) {
+                tryOtherTriangle = 1;
             }
         }
     } else {
-        var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[3]], &arg3[arg2[2]]);
-        if (var_f31 > 0.0f) {
-            var_r28 = 1;
+        edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[3]], &vertices[polygonData[2]]);
+        if (edgeSide > 0.0f) {
+            tryOtherTriangle = 1;
         } else {
-            var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[2]], &arg3[arg2[0]]);
-            if (var_f31 > 0.0f) {
-                var_r28 = 1;
+            edgeSide =
+                MapspaceInlineFunc02(x, z, &vertices[polygonData[2]], &vertices[polygonData[0]]);
+            if (edgeSide > 0.0f) {
+                tryOtherTriangle = 1;
             }
         }
     }
-    if (var_r28 == 0) {
-        ColisionIdx[ColisionCount][0] = arg2[0];
-        ColisionIdx[ColisionCount][1] = arg2[3];
-        ColisionIdx[ColisionCount][2] = arg2[2];
+    if (tryOtherTriangle == 0) {
+        ColisionIdx[ColisionCount][0] = polygonData[0];
+        ColisionIdx[ColisionCount][1] = polygonData[3];
+        ColisionIdx[ColisionCount][2] = polygonData[2];
         ColisionCount++;
         return 1;
     }
-    var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[0]], &arg3[arg2[1]]);
-    if (var_f31 > 0.0f) {
-        var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[1]], &arg3[arg2[3]]);
-        if (var_f31 < 0.0f) {
+    edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[0]], &vertices[polygonData[1]]);
+    if (edgeSide > 0.0f) {
+        edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[1]], &vertices[polygonData[3]]);
+        if (edgeSide < 0.0f) {
             return 0;
         }
-        var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[3]], &arg3[arg2[0]]);
-        if (var_f31 < 0.0f) {
+        edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[3]], &vertices[polygonData[0]]);
+        if (edgeSide < 0.0f) {
             return 0;
         }
     } else {
-        var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[1]], &arg3[arg2[3]]);
-        if (var_f31 > 0.0f) {
+        edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[1]], &vertices[polygonData[3]]);
+        if (edgeSide > 0.0f) {
             return 0;
         }
-        var_f31 = MapspaceInlineFunc02(arg0, arg1, &arg3[arg2[3]], &arg3[arg2[0]]);
-        if (var_f31 > 0.0f) {
+        edgeSide = MapspaceInlineFunc02(x, z, &vertices[polygonData[3]], &vertices[polygonData[0]]);
+        if (edgeSide > 0.0f) {
             return 0;
         }
     }
-    ColisionIdx[ColisionCount][0] = arg2[0];
-    ColisionIdx[ColisionCount][1] = arg2[1];
-    ColisionIdx[ColisionCount][2] = arg2[3];
+    ColisionIdx[ColisionCount][0] = polygonData[0];
+    ColisionIdx[ColisionCount][1] = polygonData[1];
+    ColisionIdx[ColisionCount][2] = polygonData[3];
     ColisionCount++;
     return 1;
 }
 
-static inline s32 MapspaceInlineFunc03(float *spE0, s16 *temp_r31, HuVecF *arg1) {
-    HuVecF spAC;
-    HuVecF *temp_r21;
-    float sp70;
-    float sp74;
-    float sp78;
-    float sp7C;
-    s16 sp8;
+// Called by GetPolygonCircleMtx after transforming OldXYZ to object coordinates; returns the
+// saved point's side of the plane through the first three polygon vertices.
+static inline s32 MapspaceInlineFunc03(float *sphere, s16 *vertexIndices, HuVecF *vertices) {
+    HuVecF faceNormal;
+    HuVecF *planePoint;
+    float pointOffsetX;
+    float pointOffsetY;
+    float pointOffsetZ;
+    float signedDistance;
+    s16 vertexIndex;
 
-    MapspaceInlineFunc01(&spAC, &arg1[temp_r31[0]], &arg1[temp_r31[1]], &arg1[temp_r31[2]]);
-    sp8 = temp_r31[1];
-    temp_r21 = &arg1[sp8];
-    sp70 = temp_r21->x;
-    sp74 = temp_r21->y;
-    sp78 = temp_r21->z;
-    sp70 -= spE0[0];
-    sp74 -= spE0[1];
-    sp78 -= spE0[2];
-    sp7C = spAC.x * sp70 + spAC.y * sp74 + spAC.z * sp78;
-    return (sp7C < 0.0f) ? -1 : 1;
+    MapspaceInlineFunc01(&faceNormal, &vertices[vertexIndices[0]], &vertices[vertexIndices[1]],
+                         &vertices[vertexIndices[2]]);
+    vertexIndex = vertexIndices[1];
+    planePoint = &vertices[vertexIndex];
+    pointOffsetX = planePoint->x;
+    pointOffsetY = planePoint->y;
+    pointOffsetZ = planePoint->z;
+    pointOffsetX -= sphere[0];
+    pointOffsetY -= sphere[1];
+    pointOffsetZ -= sphere[2];
+    signedDistance =
+        faceNormal.x * pointOffsetX + faceNormal.y * pointOffsetY + faceNormal.z * pointOffsetZ;
+    return (signedDistance < 0.0f) ? -1 : 1;
 }
 
-static BOOL GetPolygonCircleMtx(s16 *arg0, HuVecF *arg1, float *arg2, float *arg3) {
-    HuVecF sp144[4];
-    HuVecF sp120[3];
-    float spE0[4];
-    float spD0[4];
-    float temp_f31;
-    float temp_f30;
-    float var_f21;
-    HuVecF spC4;
-    HuVecF spB8;
-    s32 spA8;
-    float spA4;
-    s32 spA0;
-    BOOL var_r17;
-    s16 *temp_r31;
-    HuVecF *temp_r29;
-    Mtx spF0;
+// Called by MapWallCheck for one wall polygon; tests sphere overlap, records the contact and
+// accumulates horizontal separation. A positive plane-side result also checks OldXYZ.
+static BOOL GetPolygonCircleMtx(s16 *polygonData, HuVecF *vertices, float *worldSphere,
+                                float *localSphere) {
+    HuVecF quadrangle[4];
+    HuVecF triangle[3];
+    float projectedSphere[4]; // Object-space projected center and radius; later holds OldXYZ.
+    float querySphere[4]; // Corrected local sphere, later replaced with its world-space center.
+    float contactOffsetX;
+    float contactOffsetZ;
+    float pushDistance;
+    HuVecF closestPoint;
+    HuVecF movementDirection;
+    s32 unusedCounter; // Initialized but not used by the collision calculation.
+    float contactOffsetY;
+    s32 planeSide;
+    BOOL overlaps;
+    s16 *vertexIndices;
+    HuVecF *contactNormal;
+    Mtx normalMatrix;
 
-    spA8 = 0;
-    spD0[0] = spE0[0] = arg3[0] + MTRAdd.x;
-    spD0[1] = spE0[1] = arg3[1];
-    spD0[2] = spE0[2] = arg3[2] + MTRAdd.z;
-    spD0[3] = spE0[3] = arg3[3];
-    temp_r31 = arg0 + 1;
-    if ((spA0 = CalcPPLength(spE0, arg0, arg1)) == 0) {
+    unusedCounter = 0;
+    querySphere[0] = projectedSphere[0] = localSphere[0] + MTRAdd.x;
+    querySphere[1] = projectedSphere[1] = localSphere[1];
+    querySphere[2] = projectedSphere[2] = localSphere[2] + MTRAdd.z;
+    querySphere[3] = projectedSphere[3] = localSphere[3];
+    vertexIndices = polygonData + 1;
+    if ((planeSide = CalcPPLength(projectedSphere, polygonData, vertices)) == 0) {
         return 0;
     }
-    spC4.x = spC4.y = spC4.z = 0.0f;
-    if ((arg0[0] & 0xFF) == 4) {
-        sp144[0].x = arg1[temp_r31[0]].x;
-        sp144[0].y = arg1[temp_r31[0]].y;
-        sp144[0].z = arg1[temp_r31[0]].z;
-        sp144[1].x = arg1[temp_r31[1]].x;
-        sp144[1].y = arg1[temp_r31[1]].y;
-        sp144[1].z = arg1[temp_r31[1]].z;
-        sp144[2].x = arg1[temp_r31[2]].x;
-        sp144[2].y = arg1[temp_r31[2]].y;
-        sp144[2].z = arg1[temp_r31[2]].z;
-        sp144[3].x = arg1[temp_r31[3]].x;
-        sp144[3].y = arg1[temp_r31[3]].y;
-        sp144[3].z = arg1[temp_r31[3]].z;
-        var_r17 = Hitcheck_Quadrangle_with_Sphere(sp144, (HuVecF *) spD0, spE0[3], &spC4);
+    closestPoint.x = closestPoint.y = closestPoint.z = 0.0f;
+    if ((polygonData[0] & 0xFF) == 4) {
+        quadrangle[0].x = vertices[vertexIndices[0]].x;
+        quadrangle[0].y = vertices[vertexIndices[0]].y;
+        quadrangle[0].z = vertices[vertexIndices[0]].z;
+        quadrangle[1].x = vertices[vertexIndices[1]].x;
+        quadrangle[1].y = vertices[vertexIndices[1]].y;
+        quadrangle[1].z = vertices[vertexIndices[1]].z;
+        quadrangle[2].x = vertices[vertexIndices[2]].x;
+        quadrangle[2].y = vertices[vertexIndices[2]].y;
+        quadrangle[2].z = vertices[vertexIndices[2]].z;
+        quadrangle[3].x = vertices[vertexIndices[3]].x;
+        quadrangle[3].y = vertices[vertexIndices[3]].y;
+        quadrangle[3].z = vertices[vertexIndices[3]].z;
+        overlaps = Hitcheck_Quadrangle_with_Sphere(quadrangle, (HuVecF *) querySphere,
+                                                   projectedSphere[3], &closestPoint);
     } else {
-        sp120[0].x = arg1[temp_r31[0]].x;
-        sp120[0].y = arg1[temp_r31[0]].y;
-        sp120[0].z = arg1[temp_r31[0]].z;
-        sp120[1].x = arg1[temp_r31[1]].x;
-        sp120[1].y = arg1[temp_r31[1]].y;
-        sp120[1].z = arg1[temp_r31[1]].z;
-        sp120[2].x = arg1[temp_r31[2]].x;
-        sp120[2].y = arg1[temp_r31[2]].y;
-        sp120[2].z = arg1[temp_r31[2]].z;
-        var_r17 = Hitcheck_Triangle_with_Sphere(sp120, (HuVecF *) spD0, spE0[3], &spC4);
+        triangle[0].x = vertices[vertexIndices[0]].x;
+        triangle[0].y = vertices[vertexIndices[0]].y;
+        triangle[0].z = vertices[vertexIndices[0]].z;
+        triangle[1].x = vertices[vertexIndices[1]].x;
+        triangle[1].y = vertices[vertexIndices[1]].y;
+        triangle[1].z = vertices[vertexIndices[1]].z;
+        triangle[2].x = vertices[vertexIndices[2]].x;
+        triangle[2].y = vertices[vertexIndices[2]].y;
+        triangle[2].z = vertices[vertexIndices[2]].z;
+        overlaps = Hitcheck_Triangle_with_Sphere(triangle, (HuVecF *) querySphere,
+                                                 projectedSphere[3], &closestPoint);
     }
-    if (var_r17 == TRUE) {
-        spD0[0] = arg2[0] + AddX;
-        spD0[1] = arg2[1];
-        spD0[2] = arg2[2] + AddZ;
-        PSMTXMultVec(MapMT, &spC4, &spC4);
-        DefSetHitFace(spC4.x, spC4.y, spC4.z);
-        temp_r29 = &HitFaceVec[HitFaceCount];
-        MapspaceInlineFunc01(temp_r29, &arg1[arg0[0]], &arg1[arg0[1]], &arg1[arg0[2]]);
-        temp_f31 = spC4.x - spD0[0];
-        spA4 = spC4.y - spD0[1];
-        temp_f30 = spC4.z - spD0[2];
-        var_f21 = spE0[3] - sqrtf(temp_f31 * temp_f31 + temp_f30 * temp_f30);
+    if (overlaps == TRUE) {
+        querySphere[0] = worldSphere[0] + AddX;
+        querySphere[1] = worldSphere[1];
+        querySphere[2] = worldSphere[2] + AddZ;
+        PSMTXMultVec(MapMT, &closestPoint, &closestPoint);
+        DefSetHitFace(closestPoint.x, closestPoint.y, closestPoint.z);
+        contactNormal = &HitFaceVec[HitFaceCount];
+        // This normal indexes the header and the first two indices as vertex numbers.
+        MapspaceInlineFunc01(contactNormal, &vertices[polygonData[0]], &vertices[polygonData[1]],
+                             &vertices[polygonData[2]]);
+        contactOffsetX = closestPoint.x - querySphere[0];
+        contactOffsetY = closestPoint.y - querySphere[1];
+        contactOffsetZ = closestPoint.z - querySphere[2];
+        pushDistance = projectedSphere[3] -
+                       sqrtf(contactOffsetX * contactOffsetX + contactOffsetZ * contactOffsetZ);
         HitFaceCount++;
-        if (spA0 > 0) {
-            spE0[0] = OldXYZ.x;
-            spE0[1] = OldXYZ.y;
-            spE0[2] = OldXYZ.z;
-            PSMTXMultVec(MapMTR, (HuVecF *) &spE0, (HuVecF *) &spE0);
-            if (MapspaceInlineFunc03(spE0, temp_r31, arg1) < 0) {
-                spB8.x = spE0[0] - spD0[0];
-                spB8.y = spE0[1] - spD0[1];
-                spB8.z = spE0[2] - spD0[2];
-                MapspaceInlineFunc00(&spB8);
-                if (DefIfnnerMapCircle((HuVecF *) spD0, arg0 - 1, arg1, &spB8) == 1) {
-                    var_f21 = spE0[3] + sqrtf(temp_f31 * temp_f31 + temp_f30 * temp_f30);
+        if (planeSide > 0) {
+            projectedSphere[0] = OldXYZ.x;
+            projectedSphere[1] = OldXYZ.y;
+            projectedSphere[2] = OldXYZ.z;
+            PSMTXMultVec(MapMTR, (HuVecF *) &projectedSphere, (HuVecF *) &projectedSphere);
+            if (MapspaceInlineFunc03(projectedSphere, vertexIndices, vertices) < 0) {
+                // This direction subtracts the world-space query center from the object-space
+                // OldXYZ point.
+                movementDirection.x = projectedSphere[0] - querySphere[0];
+                movementDirection.y = projectedSphere[1] - querySphere[1];
+                movementDirection.z = projectedSphere[2] - querySphere[2];
+                MapspaceInlineFunc00(&movementDirection);
+                // The edge test starts one word before this polygon's header.
+                if (DefIfnnerMapCircle((HuVecF *) querySphere, polygonData - 1, vertices,
+                                       &movementDirection) == 1) {
+                    pushDistance = projectedSphere[3] + sqrtf(contactOffsetX * contactOffsetX +
+                                                              contactOffsetZ * contactOffsetZ);
                 }
             } else {
-                var_f21 = 0.0f;
+                pushDistance = 0.0f;
             }
         }
-        if (var_f21 > 0.0f) {
-            AppendAddXZ(-temp_f31, -temp_f30, var_f21);
+        if (pushDistance > 0.0f) {
+            AppendAddXZ(-contactOffsetX, -contactOffsetZ, pushDistance);
             MTRAdd.x = AddX;
             MTRAdd.z = AddZ;
             MTRAdd.y = 0.0f;
-            PSMTXInvXpose(MapMT, spF0);
-            PSMTXMultVec(spF0, &MTRAdd, &MTRAdd);
+            PSMTXInvXpose(MapMT, normalMatrix);
+            PSMTXMultVec(normalMatrix, &MTRAdd, &MTRAdd);
         }
     }
-    return var_r17;
+    return overlaps;
 }
 
-static s32 PrecalcPntToTriangle(HuVecF *arg0, HuVecF *arg1, HuVecF *arg2, HuVecF * arg3, HuVecF *arg4, HuVecF *arg5) {
-    HuVecF sp14;
-    HuVecF sp8;
-    float temp_f28;
-    float temp_f30;
-    float temp_f29;
-    float temp_f31;
+// Called by both sphere hit tests to compute a closest-point offset from two triangle edges.
+// triangleOrigin is unused. Non-origin endpoint cases only redirect the local output
+// pointer, leaving the caller's vector unchanged; origin endpoint cases write zero.
+static s32 PrecalcPntToTriangle(HuVecF *triangleOrigin, HuVecF *firstEdge, HuVecF *secondEdge,
+                                HuVecF *faceNormal, HuVecF *relativePoint, HuVecF *closestOffset) {
+    HuVecF projectionVector;
+    HuVecF edgeOffset;
+    float reciprocalDeterminant;
+    float firstWeight;
+    float secondWeight;
+    float edgeFraction;
 
-    HuSetVecF(&sp14, -arg4->x, -arg4->y, -arg4->z);
-    temp_f28 = 1.0f / (-(arg1->z * arg2->y * arg3->x) + arg1->y * arg2->z * arg3->x + arg1->z * arg2->x * arg3->y - arg1->x * arg2->z * arg3->y - arg1->y * arg2->x * arg3->z + arg1->x * arg2->y * arg3->z);
-    temp_f30 = temp_f28 * (arg2->z * (arg3->y * sp14.x - arg3->x * sp14.y) + arg2->y * (arg3->x * sp14.z - arg3->z * sp14.x) + arg2->x * (arg3->z * sp14.y - arg3->y * sp14.z));
-    temp_f29 = temp_f28 * (arg1->z * (arg3->x * sp14.y - arg3->y * sp14.x) + arg1->y * (arg3->z * sp14.x - arg3->x * sp14.z) + arg1->x * (arg3->y * sp14.z - arg3->z * sp14.y));
-    if (temp_f30 > 0.0f && temp_f29 > 0.0f && temp_f30 + temp_f29 > 1.0f) {
-        VECSubtract(arg2, arg1, &sp14);
-        VECSubtract(arg4, arg1, &sp8);
-        temp_f31 = VECDotProduct(&sp14, &sp8) / VECDotProduct(&sp14, &sp14);
-        if (temp_f31 <= 0.0f) {
-            arg5 = arg1;
+    HuSetVecF(&projectionVector, -relativePoint->x, -relativePoint->y, -relativePoint->z);
+    reciprocalDeterminant = 1.0f / (-(firstEdge->z * secondEdge->y * faceNormal->x) +
+                                    firstEdge->y * secondEdge->z * faceNormal->x +
+                                    firstEdge->z * secondEdge->x * faceNormal->y -
+                                    firstEdge->x * secondEdge->z * faceNormal->y -
+                                    firstEdge->y * secondEdge->x * faceNormal->z +
+                                    firstEdge->x * secondEdge->y * faceNormal->z);
+    firstWeight =
+        reciprocalDeterminant *
+        (secondEdge->z * (faceNormal->y * projectionVector.x - faceNormal->x * projectionVector.y) +
+         secondEdge->y * (faceNormal->x * projectionVector.z - faceNormal->z * projectionVector.x) +
+         secondEdge->x * (faceNormal->z * projectionVector.y - faceNormal->y * projectionVector.z));
+    secondWeight =
+        reciprocalDeterminant *
+        (firstEdge->z * (faceNormal->x * projectionVector.y - faceNormal->y * projectionVector.x) +
+         firstEdge->y * (faceNormal->z * projectionVector.x - faceNormal->x * projectionVector.z) +
+         firstEdge->x * (faceNormal->y * projectionVector.z - faceNormal->z * projectionVector.y));
+    if (firstWeight > 0.0f && secondWeight > 0.0f && firstWeight + secondWeight > 1.0f) {
+        VECSubtract(secondEdge, firstEdge, &projectionVector);
+        VECSubtract(relativePoint, firstEdge, &edgeOffset);
+        edgeFraction = VECDotProduct(&projectionVector, &edgeOffset) /
+                       VECDotProduct(&projectionVector, &projectionVector);
+        // These endpoint cases leave the caller's output vector unchanged.
+        if (edgeFraction <= 0.0f) {
+            closestOffset = firstEdge;
         } else {
-            if (temp_f31 >= 1.0f) {
-                arg5 = arg2;
+            if (edgeFraction >= 1.0f) {
+                closestOffset = secondEdge;
             } else {
-                VECScale(&sp14, &sp8, temp_f31);
-                VECAdd(arg1, &sp8, arg5);
+                VECScale(&projectionVector, &edgeOffset, edgeFraction);
+                VECAdd(firstEdge, &edgeOffset, closestOffset);
             }
         }
-    } else if (temp_f29 < 0.0f) {
-        temp_f31 = VECDotProduct(arg1, arg4) / VECDotProduct(arg1, arg1);
-        if (temp_f31 <= 0.0f) {
-            HuSetVecF(arg5, 0.0, 0.0, 0.0);
+    } else if (secondWeight < 0.0f) {
+        edgeFraction =
+            VECDotProduct(firstEdge, relativePoint) / VECDotProduct(firstEdge, firstEdge);
+        if (edgeFraction <= 0.0f) {
+            HuSetVecF(closestOffset, 0.0, 0.0, 0.0);
         } else {
-            if (temp_f31 >= 1.0f) {
-                arg5 = arg1;
+            if (edgeFraction >= 1.0f) {
+                closestOffset = firstEdge;
             } else {
-                VECScale(arg1, arg5, temp_f31);
+                VECScale(firstEdge, closestOffset, edgeFraction);
             }
         }
-    } else if (temp_f30 < 0.0f) {
-        temp_f31 = VECDotProduct(arg2, arg4) / VECDotProduct(arg2, arg2);
-        if (temp_f31 <= 0.0f) {
-            HuSetVecF(arg5, 0.0, 0.0, 0.0);
+    } else if (firstWeight < 0.0f) {
+        edgeFraction =
+            VECDotProduct(secondEdge, relativePoint) / VECDotProduct(secondEdge, secondEdge);
+        if (edgeFraction <= 0.0f) {
+            HuSetVecF(closestOffset, 0.0, 0.0, 0.0);
         } else {
-            if (temp_f31 >= 1.0f) {
-                arg5 = arg2;
+            if (edgeFraction >= 1.0f) {
+                closestOffset = secondEdge;
             } else {
-                VECScale(arg2, arg5, temp_f31);
+                VECScale(secondEdge, closestOffset, edgeFraction);
             }
         }
     } else {
-        HuSetVecF(arg5, temp_f30 * arg1->x + temp_f29 * arg2->x, temp_f30 * arg1->y + temp_f29 * arg2->y, temp_f30 * arg1->z + temp_f29 * arg2->z);
+        HuSetVecF(closestOffset, firstWeight * firstEdge->x + secondWeight * secondEdge->x,
+                  firstWeight * firstEdge->y + secondWeight * secondEdge->y,
+                  firstWeight * firstEdge->z + secondWeight * secondEdge->z);
     }
     return 1;
 }
 
-BOOL Hitcheck_Triangle_with_Sphere(HuVecF *arg0, HuVecF *arg1, float arg2, HuVecF *arg3) {
-    HuVecF sp48;
-    HuVecF sp3C;
-    HuVecF sp30;
-    HuVecF sp24;
-    HuVecF sp18;
-    HuVecF spC;
-    float var_f31;
+// Called by GetPolygonCircleMtx for triangular walls; writes its closest-point candidate even
+// without overlap, then returns whether that candidate is within the sphere radius.
+BOOL Hitcheck_Triangle_with_Sphere(HuVecF *triangle, HuVecF *sphereCenter, float sphereRadius,
+                                   HuVecF *closestPoint) {
+    HuVecF triangleOrigin;
+    HuVecF firstEdge;
+    HuVecF secondEdge;
+    HuVecF faceNormal;
+    HuVecF relativeCenter;
+    HuVecF closestOffset;
+    float distance;
 
-    sp48.x = arg0[0].x;
-    sp48.y = arg0[0].y;
-    sp48.z = arg0[0].z;
-    VECSubtract(&arg0[1], &arg0[0], &sp3C);
-    VECSubtract(&arg0[2], &arg0[0], &sp30);
-    VECCrossProduct(&sp3C, &sp30, &sp24);
-    VECSubtract(arg1, &arg0[0], &sp18);
-    PrecalcPntToTriangle(&sp48, &sp3C, &sp30, &sp24, &sp18, &spC);
-    VECAdd(&spC, &sp48, arg3);
-    var_f31 = VECDistance(arg3, arg1);
-    if (var_f31 > arg2) {
+    triangleOrigin.x = triangle[0].x;
+    triangleOrigin.y = triangle[0].y;
+    triangleOrigin.z = triangle[0].z;
+    VECSubtract(&triangle[1], &triangle[0], &firstEdge);
+    VECSubtract(&triangle[2], &triangle[0], &secondEdge);
+    VECCrossProduct(&firstEdge, &secondEdge, &faceNormal);
+    VECSubtract(sphereCenter, &triangle[0], &relativeCenter);
+    // Some endpoint paths leave closestOffset unwritten; it is not initialized before this call.
+    PrecalcPntToTriangle(&triangleOrigin, &firstEdge, &secondEdge, &faceNormal, &relativeCenter,
+                         &closestOffset);
+    VECAdd(&closestOffset, &triangleOrigin, closestPoint);
+    distance = VECDistance(closestPoint, sphereCenter);
+    if (distance > sphereRadius) {
         return FALSE;
     } else {
         return TRUE;
     }
 }
 
-BOOL Hitcheck_Quadrangle_with_Sphere(HuVecF *arg0, HuVecF *arg1, float arg2, HuVecF *arg3) {
-    HuVecF sp6C;
-    HuVecF sp60;
-    HuVecF sp54;
-    HuVecF sp48;
-    HuVecF sp3C;
-    HuVecF sp30;
-    HuVecF sp24;
-    HuVecF sp18;
-    HuVecF spC;
-    float temp_f30;
-    float var_f31;
+// Called by GetPolygonCircleMtx for quadrangular walls; evaluates splits (0, 2, 3) and (0, 3, 1),
+// writes the nearer candidate even without overlap, and tests that distance against the radius.
+BOOL Hitcheck_Quadrangle_with_Sphere(HuVecF *quadrangle, HuVecF *sphereCenter, float sphereRadius,
+                                     HuVecF *closestPoint) {
+    HuVecF triangleOrigin;
+    HuVecF diagonalEdge;
+    HuVecF lastEdge;
+    HuVecF firstEdge;
+    HuVecF faceNormal;
+    HuVecF relativeCenter;
+    HuVecF closestOffset;
+    HuVecF firstClosestPoint;
+    HuVecF secondClosestPoint;
+    float secondDistance;
+    float closestDistance;
 
-    sp6C.x = arg0->x;
-    sp6C.y = arg0->y;
-    sp6C.z = arg0->z;
-    VECSubtract(&arg0[2], &arg0[0], &sp60);
-    VECSubtract(&arg0[3], &arg0[0], &sp54);
-    VECSubtract(&arg0[1], &arg0[0], &sp48);
-    VECCrossProduct(&sp60, &sp54, &sp3C);
-    VECSubtract(arg1, &arg0[0], &sp30);
-    PrecalcPntToTriangle(&sp6C, &sp60, &sp54, &sp3C, &sp30, &sp24);
-    VECAdd(&sp24, &sp6C, &sp18);
-    PrecalcPntToTriangle(&sp6C, &sp54, &sp48, &sp3C, &sp30, &sp24);
-    VECAdd(&sp24, &sp6C, &spC);
-    var_f31 = VECDistance(&sp18, arg1);
-    temp_f30 = VECDistance(&spC, arg1);
-    if (temp_f30 > var_f31) {
-        arg3->x = sp18.x;
-        arg3->y = sp18.y;
-        arg3->z = sp18.z;
+    triangleOrigin.x = quadrangle->x;
+    triangleOrigin.y = quadrangle->y;
+    triangleOrigin.z = quadrangle->z;
+    VECSubtract(&quadrangle[2], &quadrangle[0], &diagonalEdge);
+    VECSubtract(&quadrangle[3], &quadrangle[0], &lastEdge);
+    VECSubtract(&quadrangle[1], &quadrangle[0], &firstEdge);
+    VECCrossProduct(&diagonalEdge, &lastEdge, &faceNormal);
+    VECSubtract(sphereCenter, &quadrangle[0], &relativeCenter);
+    PrecalcPntToTriangle(&triangleOrigin, &diagonalEdge, &lastEdge, &faceNormal, &relativeCenter,
+                         &closestOffset);
+    VECAdd(&closestOffset, &triangleOrigin, &firstClosestPoint);
+    // The first call can leave closestOffset unwritten. This split reuses that offset
+    // and the first split's normal; endpoint paths can keep the prior offset.
+    PrecalcPntToTriangle(&triangleOrigin, &lastEdge, &firstEdge, &faceNormal, &relativeCenter,
+                         &closestOffset);
+    VECAdd(&closestOffset, &triangleOrigin, &secondClosestPoint);
+    closestDistance = VECDistance(&firstClosestPoint, sphereCenter);
+    secondDistance = VECDistance(&secondClosestPoint, sphereCenter);
+    if (secondDistance > closestDistance) {
+        closestPoint->x = firstClosestPoint.x;
+        closestPoint->y = firstClosestPoint.y;
+        closestPoint->z = firstClosestPoint.z;
     } else {
-        var_f31 = temp_f30;
-        arg3->x = spC.x;
-        arg3->y = spC.y;
-        arg3->z = spC.z;
+        closestDistance = secondDistance;
+        closestPoint->x = secondClosestPoint.x;
+        closestPoint->y = secondClosestPoint.y;
+        closestPoint->z = secondClosestPoint.z;
     }
-    if (var_f31 > arg2) {
+    if (closestDistance > sphereRadius) {
         return FALSE;
     } else {
         return TRUE;
     }
 }
 
-static void DefSetHitFace(float arg0, float arg1, float arg2) {
-    HitFace[HitFaceCount].x = arg0;
-    HitFace[HitFaceCount].y = arg1;
-    HitFace[HitFaceCount].z = arg2;
+// Called by GetPolygonCircleMtx to store a world contact point before advancing HitFaceCount.
+static void DefSetHitFace(float x, float y, float z) {
+    HitFace[HitFaceCount].x = x;
+    HitFace[HitFaceCount].y = y;
+    HitFace[HitFaceCount].z = z;
 }
 
-void AppendAddXZ(float arg0, float arg1, float arg2) {
-    HuVecF spC;
+// Called by GetPolygonCircleMtx after overlap; adds a distance-scaled correction along the XZ
+// direction.
+void AppendAddXZ(float directionX, float directionZ, float distance) {
+    HuVecF direction;
 
-    spC.x = arg0;
-    spC.y = 0.0f;
-    spC.z = arg1;
-    MapspaceInlineFunc00(&spC);
-    AddX += spC.x * arg2;
-    AddZ += spC.z * arg2;
+    direction.x = directionX;
+    direction.y = 0.0f;
+    direction.z = directionZ;
+    MapspaceInlineFunc00(&direction);
+    AddX += direction.x * distance;
+    AddZ += direction.z * distance;
 }
 
-void CharRotInv(Mtx arg0, Mtx arg1, HuVecF *arg2, OMOBJ *arg3) {
-    Mtx sp8;
+// Called by MapWall and MapPos to convert a query point into map-object coordinates.
+// Builds translation and Z, Y, X rotations in degrees; object scale is not applied.
+void CharRotInv(Mtx matrix, Mtx inverseMatrix, HuVecF *point, OMOBJ *object) {
+    Mtx rotationMatrix;
 
-    PSMTXTrans(arg0, arg3->trans.x, arg3->trans.y, arg3->trans.z);
-    if (arg3->rot.z) {
-        PSMTXRotRad(sp8, 'z', MTXDegToRad(arg3->rot.z));
-        PSMTXConcat(arg0, sp8, arg0);
+    PSMTXTrans(matrix, object->trans.x, object->trans.y, object->trans.z);
+    if (object->rot.z) {
+        PSMTXRotRad(rotationMatrix, 'z', MTXDegToRad(object->rot.z));
+        PSMTXConcat(matrix, rotationMatrix, matrix);
     }
-    if (arg3->rot.y) {
-        PSMTXRotRad(sp8, 'y', MTXDegToRad(arg3->rot.y));
-        PSMTXConcat(arg0, sp8, arg0);
+    if (object->rot.y) {
+        PSMTXRotRad(rotationMatrix, 'y', MTXDegToRad(object->rot.y));
+        PSMTXConcat(matrix, rotationMatrix, matrix);
     }
-    if (arg3->rot.x) {
-        PSMTXRotRad(sp8, 'x', MTXDegToRad(arg3->rot.x));
-        PSMTXConcat(arg0, sp8, arg0);
+    if (object->rot.x) {
+        PSMTXRotRad(rotationMatrix, 'x', MTXDegToRad(object->rot.x));
+        PSMTXConcat(matrix, rotationMatrix, matrix);
     }
-    PSMTXInverse(arg0, arg1);
-    PSMTXMultVec(arg1, arg2, arg2);
+    PSMTXInverse(matrix, inverseMatrix);
+    PSMTXMultVec(inverseMatrix, point, point);
 }
