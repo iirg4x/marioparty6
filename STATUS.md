@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 28.95% | 48.45% |
+| Entire project | 29.13% | 48.82% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 16.48% | 16.52% |
+| REL modules | 16.69% | 17.12% |
+
+TT Wars (`ttwarsdll`) selects all **50 functions** from **3 complete translation units**; its linked REL matches retail.
 
 Motion Check (`safdll`) selects all **37 functions** from three complete translation units; its linked REL matches retail.
 
