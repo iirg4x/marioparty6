@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 29.20% | 48.86% |
+| Entire project | 29.75% | 50.60% |
 | Main DOL | 87.80% | 98.84% |
-| REL modules | 16.77% | 17.19% |
+| REL modules | 17.45% | 20.02% |
+
+Snowflake Lake (`w04Dll`) selects all **134 functions** from **3 complete translation units**; its linked REL matches retail.
 
 w11Dll (`w11Dll`) selects all **40 functions** from **3 complete translation units**; its linked REL matches retail.
 
