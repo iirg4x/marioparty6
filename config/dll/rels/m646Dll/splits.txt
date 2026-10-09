@@ -5,3 +5,59 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m646Dll/sequence.c:
+	.text       start:0x00000000 end:0x00000AF4
+	.rodata     start:0x00000000 end:0x00000058
+	.data       start:0x00000000 end:0x00000038
+	.bss        start:0x00000000 end:0x00000028
+
+REL/m646Dll/actors.c:
+	.text       start:0x00000AF4 end:0x00002594
+	.rodata     start:0x00000058 end:0x00000098
+	.data       start:0x00000038 end:0x00000108
+	.bss        start:0x00000028 end:0x00000060
+
+REL/m646Dll/collision.c:
+	.text       start:0x00002594 end:0x00004E28
+	.rodata     start:0x00000098 end:0x000000F0
+	.data       start:0x00000108 end:0x00000140
+	.bss        start:0x00000060 end:0x00000068
+
+REL/m646Dll/model_shadows.c:
+	.text       start:0x00004E28 end:0x0000543C
+	.rodata     start:0x000000F0 end:0x00000110
+	.data       start:0x00000140 end:0x00000190
+	.bss        start:0x00000068 end:0x00000070
+
+REL/m646Dll/character_motion.c:
+	.text       start:0x0000543C end:0x00008158
+	.rodata     start:0x00000110 end:0x000001A8
+	.data       start:0x00000190 end:0x000002C0
+	.bss        start:0x00000070 end:0x00000080
+
+REL/m646Dll/model_attachments.c:
+	.text       start:0x00008158 end:0x00008E78
+	.rodata     start:0x000001A8 end:0x000001B0
+	.data       start:0x000002C0 end:0x00001D68
+	.bss        start:0x00000080 end:0x000000B8
+
+REL/m646Dll/score_display.c:
+	.text       start:0x00008E78 end:0x000098E0
+	.rodata     start:0x000001B0 end:0x000001D8
+	.data       start:0x00001D68 end:0x00001DC8
+	.bss        start:0x000000B8 end:0x000000C0
+
+REL/m646Dll/target_selection.c:
+	.text       start:0x000098E0 end:0x0000B3C0
+	.rodata     start:0x000001D8 end:0x00000228
+	.data       start:0x00001DC8 end:0x00001E4C
+	.bss        start:0x000000C0 end:0x000000C4
+
+REL/m646Dll/spatial_audio.c:
+	.text       start:0x0000B3C0 end:0x0000B4EC
+	.rodata     start:0x00000228 end:0x00000238
+
+REL/m646Dll/runtime.c:
+	.text       start:0x0000B4EC end:0x0000BF30
+	.rodata     start:0x00000238 end:0x00000250
