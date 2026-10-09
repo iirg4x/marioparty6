@@ -1,3 +1,4 @@
+/* Initializes and renders the game's 3D models, cameras, lights, and effects. */
 #define _MATH_H
 #define M_PI 3.141592653589793
 double sin(double x);
@@ -32,7 +33,6 @@ double tan(double x);
 
 #define LIGHT_TYPE_GET(lightP) ((lightP)->type & LIGHT_TYPE_MASK)
 
-
 #include "refMapData0.inc"
 #include "refMapData1.inc"
 #include "refMapData2.inc"
@@ -46,14 +46,14 @@ double tan(double x);
 #include "hiliteData4.inc"
 
 typedef struct FbCopyLayer_s {
-    s16 layerNo;
-    s16 x;
-    s16 y;
-    s16 w;
-    s16 h;
-    GXTexFmt texFmt;
-    BOOL mipmap;
-    void *buf;
+    s16 layerNo;       /* Render layer whose callback copies the framebuffer. */
+    s16 sourceX;       /* Top-left source x coordinate in framebuffer pixels. */
+    s16 sourceY;       /* Top-left source y coordinate in framebuffer pixels. */
+    s16 width;         /* Source width in framebuffer pixels. */
+    s16 height;        /* Source height in framebuffer pixels. */
+    GXTexFmt texFmt;   /* Texture format used for the copied image. */
+    BOOL mipmapF;      /* Whether the copy destination uses mipmap sizing. */
+    void *textureBuffer; /* Destination texture buffer. */
 } FBCOPY_LAYER;
 
 static FBCOPY_LAYER FbCopyLayer[HU3D_LAYER_HOOK_MAX];
@@ -94,30 +94,31 @@ float Hu3DAmbColB;
 BOOL Hu3DShineF;
 static BOOL modelKillAllF;
 
+/* Called once by main during startup to initialize the 3D renderer and its resources. */
 void Hu3DInit(void)
 {
-    s16 i;
-    s16 j;
+    s16 index;
+    s16 cameraIndex;
     HU3D_MODEL *modelP;
     HU3D_CAMERA *cameraP;
     Hu3DDrawInit();
     Hu3DData = modelP = HuMemDirectMalloc(HEAP_HEAP, sizeof(HU3D_MODEL)*HU3D_MODEL_MAX);
     
-    for(modelP, i=0; i<HU3D_MODEL_MAX; i++, modelP++) {
+    for(modelP, index=0; index<HU3D_MODEL_MAX; index++, modelP++) {
         modelP->hsf = NULL;
     }
-    for(cameraP = &Hu3DCamera[0], i=0; i<HU3D_CAM_MAX; i++, cameraP++) {
+    for(cameraP = &Hu3DCamera[0], index=0; index<HU3D_CAM_MAX; index++, cameraP++) {
         cameraP->fov = -1;
     }
     Hu3DMotionInit();
     Hu3DLighInit();
     BGColor.r = BGColor.g = BGColor.b = BGColor.a = 0;
-    for(i=0; i<HU3D_LAYER_MAX; i++) {
-        layerNum[i] = 0;
+    for(index=0; index<HU3D_LAYER_MAX; index++) {
+        layerNum[index] = 0;
     }
-    for(j=0; j<HU3D_CAM_MAX; j++) {
-        for(i=0; i<HU3D_LAYER_HOOK_MAX; i++) {
-            layerHook[j][i] = NULL;
+    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+        for(index=0; index<HU3D_LAYER_HOOK_MAX; index++) {
+            layerHook[cameraIndex][index] = NULL;
         }
     }
     
@@ -135,13 +136,13 @@ void Hu3DInit(void)
     Hu3DFogClear();
     Hu3DAnimInit();
     Hu3DParManInit();
-    for(i=0; i<HU3D_PROJ_MAX; i++) {
-        Hu3DProjection[i].anim = NULL;
+    for(index=0; index<HU3D_PROJ_MAX; index++) {
+        Hu3DProjection[index].anim = NULL;
     }
     shadowNum = 0;
     Hu3DShadowCamBit = 0;
-    for(i=0; i<HU3D_CAM_MAX; i++) {
-        Hu3DShadowBuf[i].buf = NULL;
+    for(index=0; index<HU3D_CAM_MAX; index++) {
+        Hu3DShadowBuf[index].buf = NULL;
     }
     Hu3DShadowF = FALSE;
     Hu3DProjectionNum = 0;
@@ -154,17 +155,18 @@ void Hu3DInit(void)
     NoSyncF = FALSE;
 }
 
+/* Called once at the start of each main render frame before game logic and drawing. */
 void Hu3DPreProc(void)
 {
     GXColor shadowClear = { 0, 0, 0, 255 };
-    s16 i;
+    s16 modelIndex;
     HU3D_MODEL *modelP;
     if(shadowNum && Hu3DShadowF) {
         GXSetCopyClear(shadowClear, GX_MAX_Z24);
     } else {
         GXSetCopyClear(BGColor, GX_MAX_Z24);
     }
-    for(modelP = &Hu3DData[0], i=0; i<HU3D_MODEL_MAX; i++, modelP++) {
+    for(modelP = &Hu3DData[0], modelIndex=0; modelIndex<HU3D_MODEL_MAX; modelIndex++, modelP++) {
         if(modelP->hsf) {
             modelP->attr &= ~(HU3D_ATTR_MOTION_MODEL|HU3D_ATTR_MOT_EXEC);
         }
@@ -183,6 +185,7 @@ static void Hu3DReflectModelExec(void);
 #define HU3D_ATTR_CAMERA_UPDATE (HU3D_ATTR_CAMERA_MOTON|HU3D_ATTR_DISPOFF)
 #define HU3D_ATTR_NOUPDATE_ALL (HU3D_ATTR_REFLECT_MODEL|HU3D_ATTR_MOTION_OFF|HU3D_ATTR_DISPOFF)
 
+/* Called by main after game logic each frame to draw camera layers, models, and sprites. */
 void Hu3DExec(void)
 {
     GXColor clearColor = {};
@@ -221,7 +224,8 @@ void Hu3DExec(void)
                     shadowCameraNo = i;
                 }
             }
-            for(cameraP = &Hu3DCamera[0], Hu3DCameraNo=0; Hu3DCameraNo<HU3D_CAM_MAX; Hu3DCameraNo++, cameraP++) {
+            for (cameraP = &Hu3DCamera[0], Hu3DCameraNo = 0; Hu3DCameraNo < HU3D_CAM_MAX;
+                 Hu3DCameraNo++, cameraP++) {
                 if(cameraP->fov == -1) {
                     continue;
                 }
@@ -242,7 +246,8 @@ void Hu3DExec(void)
             GXSetDrawDone();
         }
     }
-    for(cameraP = &Hu3DCamera[0], Hu3DCameraNo=0; Hu3DCameraNo<HU3D_CAM_MAX; Hu3DCameraNo++, cameraP++) {
+    for (cameraP = &Hu3DCamera[0], Hu3DCameraNo = 0; Hu3DCameraNo < HU3D_CAM_MAX;
+         Hu3DCameraNo++, cameraP++) {
         if(cameraP->fov == -1) {
             continue;
         }
@@ -264,7 +269,8 @@ void Hu3DExec(void)
             HuSprExec(HUSPR_DRAWNO_BACK);
         }
         if(FogData.fogType != GX_FOG_NONE) {
-            GXSetFog(FogData.fogType, FogData.fogStart, FogData.fogEnd, cameraP->near, cameraP->far, FogData.fogColor);
+            GXSetFog(FogData.fogType, FogData.fogStart, FogData.fogEnd, cameraP->near, cameraP->far,
+                     FogData.fogColor);
         }
         for(layer=0; layer<HU3D_LAYER_MAX; layer++) {
             if(layerHook[Hu3DCameraNo][layer]) {
@@ -285,7 +291,8 @@ void Hu3DExec(void)
                         Hu3DCameraMotionExec(i);
                         continue;
                     }
-                    if((modelP->attr & HU3D_ATTR_CAMERA_UPDATE) == HU3D_ATTR_CAMERA_UPDATE && modelP->motId != HU3D_MOTIONID_NONE) {
+                    if ((modelP->attr & HU3D_ATTR_CAMERA_UPDATE) == HU3D_ATTR_CAMERA_UPDATE &&
+                        modelP->motId != HU3D_MOTIONID_NONE) {
                         Hu3DMotionExec(i, modelP->motId, modelP->motWork.time, FALSE);
                     }
                     if(modelP->attr & HU3D_ATTR_NOUPDATE_ALL) {
@@ -297,7 +304,8 @@ void Hu3DExec(void)
                     if(modelP->layerNo != layer) {
                         continue;
                     }
-                    if(((modelP->attr & HU3D_ATTR_MOT_EXEC) == 0 && (modelP->attr & HU3D_ATTR_MOT_SLOW) == 0) ||
+                    if (((modelP->attr & HU3D_ATTR_MOT_EXEC) == 0 &&
+                         (modelP->attr & HU3D_ATTR_MOT_SLOW) == 0) ||
                         ((modelP->attr & HU3D_ATTR_MOT_SLOW) != 0 && (modelP->tick & 1) != 0)) {
                         vtxInvalidateF = FALSE;
                         modelP->motAttr &= ~HU3D_MOTATTR;
@@ -316,13 +324,16 @@ void Hu3DExec(void)
                         }
                         if(modelP->motIdShape != HU3D_MOTIONID_NONE) {
                             if(modelP->motId == HU3D_MOTIONID_NONE) {
-                                Hu3DMotionExec(i, modelP->motIdShape, modelP->motShapeWork.time, FALSE);
+                                Hu3DMotionExec(i, modelP->motIdShape, modelP->motShapeWork.time,
+                                               FALSE);
                             } else {
-                                Hu3DMotionExec(i, modelP->motIdShape, modelP->motShapeWork.time, TRUE);
+                                Hu3DMotionExec(i, modelP->motIdShape, modelP->motShapeWork.time,
+                                               TRUE);
                             }
                             vtxInvalidateF = TRUE;
                         }
-                        if ((modelP->attr & (HU3D_ATTR_ENVELOPE_OFF|HU3D_ATTR_HOOKFUNC)) == 0 || (modelP->attr & HU3D_ATTR_MOTION_MODEL)) {
+                        if ((modelP->attr & (HU3D_ATTR_ENVELOPE_OFF | HU3D_ATTR_HOOKFUNC)) == 0 ||
+                            (modelP->attr & HU3D_ATTR_MOTION_MODEL)) {
                             vtxInvalidateF = TRUE;
                             InitVtxParm(modelP->hsf);
                             if(modelP->motIdShape != HU3D_MOTIONID_NONE) {
@@ -346,7 +357,8 @@ void Hu3DExec(void)
                         syncF = FALSE;
                     }
                     if ((modelP->attr & HU3D_ATTR_HOOK) == 0 &&
-                        (0.0f != modelP->scale.x || 0.0f != modelP->scale.y || 0.0f != modelP->scale.z)) {
+                        (0.0f != modelP->scale.x || 0.0f != modelP->scale.y ||
+                         0.0f != modelP->scale.z)) {
                         Mtx temp;
                         Mtx final;
                         mtxRot(temp, modelP->rot.x, modelP->rot.y, modelP->rot.z);
@@ -382,7 +394,8 @@ void Hu3DExec(void)
         if(!modelP->hsf) {
             continue;
         }
-        if ((modelP->motId != HU3D_MOTIONID_NONE || (modelP->attr & HU3D_ATTR_CLUSTER_ON) != 0 || modelP->motIdShape != HU3D_MOTIONID_NONE) &&
+        if ((modelP->motId != HU3D_MOTIONID_NONE || (modelP->attr & HU3D_ATTR_CLUSTER_ON) != 0 ||
+             modelP->motIdShape != HU3D_MOTIONID_NONE) &&
             (Hu3DPauseF == 0 || (modelP->attr & HU3D_ATTR_NOPAUSE) != 0)) {
             Hu3DMotionNext(i);
         }
@@ -393,10 +406,11 @@ void Hu3DExec(void)
     (void)hookFunc;
 }
 
+/* Called when an overlay or save flow closes its scene to release all 3D resources. */
 void Hu3DAllKill(void)
 {
-    s16 i;
-    s16 j;
+    s16 index;
+    s16 cameraIndex;
     Hu3DModelAllKill();
     Hu3DMotionAllKill();
     Hu3DCameraAllKill();
@@ -406,29 +420,29 @@ void Hu3DAllKill(void)
         HuMemDirectFree(reflectAnim[0]);
     }
     reflectAnim[0] = HuSprAnimRead(refMapData0);
-    for(i=0; i<HU3D_CAM_MAX; i++) {
-        if(Hu3DShadowBuf[i].buf) {
-            HuMemDirectFree(Hu3DShadowBuf[i].buf);
-            Hu3DShadowBuf[i].buf = NULL;
+    for(index=0; index<HU3D_CAM_MAX; index++) {
+        if(Hu3DShadowBuf[index].buf) {
+            HuMemDirectFree(Hu3DShadowBuf[index].buf);
+            Hu3DShadowBuf[index].buf = NULL;
         }
     }
     shadowNum = 0;
     Hu3DShadowF = 0;
     Hu3DFogClear();
-    for(i=0; i<HU3D_LAYER_MAX; i++) {
-        layerNum[i] = 0;
+    for(index=0; index<HU3D_LAYER_MAX; index++) {
+        layerNum[index] = 0;
     }
-    for(j=0; j<HU3D_CAM_MAX; j++) {
-        for(i=0; i<HU3D_LAYER_HOOK_MAX; i++) {
-            layerHook[j][i] = NULL;
+    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+        for(index=0; index<HU3D_LAYER_HOOK_MAX; index++) {
+            layerHook[cameraIndex][index] = NULL;
         }
     }
     
-    for(i=0; i<HU3D_PROJ_MAX; i++) {
-        if(Hu3DProjection[i].anim) {
-            Hu3DProjectionKill(i);
+    for(index=0; index<HU3D_PROJ_MAX; index++) {
+        if(Hu3DProjection[index].anim) {
+            Hu3DProjectionKill(index);
         }
-        Hu3DProjection[i].anim = NULL;
+        Hu3DProjection[index].anim = NULL;
     }
     Hu3DAmbColorSet(1, 1, 1);
     Hu3DBGColorSet(0, 0, 0);
@@ -436,6 +450,7 @@ void Hu3DAllKill(void)
     Hu3DShineF = FALSE;
 }
 
+/* Sets the background clear color's RGB channels; the existing alpha is preserved. */
 void Hu3DBGColorSet(u8 r, u8 g, u8 b)
 {
     BGColor.r = r;
@@ -443,51 +458,58 @@ void Hu3DBGColorSet(u8 r, u8 g, u8 b)
     BGColor.b = b;
 }
 
-void Hu3DCameraLayerHookSet(s16 bit, s16 layerNo, HU3D_LAYER_HOOK hook)
+/* Registers a callback for each selected camera at the requested render layer. */
+void Hu3DCameraLayerHookSet(s16 cameraMask, s16 layerNo, HU3D_LAYER_HOOK hook)
 {
-    s16 i;
-    for(i=0; i<HU3D_CAM_MAX; i++) {
-        if((1 << i) & bit) {
-            layerHook[i][layerNo] = hook;
+    s16 cameraIndex;
+    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+        if((1 << cameraIndex) & cameraMask) {
+            layerHook[cameraIndex][layerNo] = hook;
         }
     }
 }
 
-void Hu3DCameraLayerHookReset(s16 bit, s16 layerNo)
+/* Removes the callback at the requested layer for each selected camera. */
+void Hu3DCameraLayerHookReset(s16 cameraMask, s16 layerNo)
 {
-    s16 i;
-    for(i=0; i<HU3D_CAM_MAX; i++) {
-        if((1 << i) & bit) {
-            layerHook[i][layerNo] = NULL;
+    s16 cameraIndex;
+    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+        if((1 << cameraIndex) & cameraMask) {
+            layerHook[cameraIndex][layerNo] = NULL;
         }
     }
 }
 
+/* Registers one layer callback for every camera. */
 void Hu3DLayerHookSet(s16 layerNo, HU3D_LAYER_HOOK hook)
 {
     Hu3DCameraLayerHookSet(HU3D_CAM_ALL, layerNo, hook);
 }
 
+/* Removes a layer callback from every camera. */
 void Hu3DLayerHookReset(s16 layerNo)
 {
     Hu3DCameraLayerHookReset(HU3D_CAM_ALL, layerNo);
 }
 
-void Hu3DPauseSet(BOOL pauseF)
+/* Controls whether model motion time advances in Hu3DExec; models still render. */
+void Hu3DPauseSet(BOOL paused)
 {
-    Hu3DPauseF = pauseF;
+    Hu3DPauseF = paused;
 }
 
+/* Suppresses draw-completion synchronization in Hu3DExec while enabled. */
 void Hu3DNoSyncSet(BOOL noSync)
 {
     NoSyncF = noSync;
 }
 
-HU3D_MODELID Hu3DModelCreate(void *data)
+/* Creates a model from HSF data; callers then set its transform, camera, and layer as needed. */
+HU3D_MODELID Hu3DModelCreate(void *hsfData)
 {
     HU3D_MODEL *modelP;
     s16 modelId;
-    s16 i;
+    s16 index;
     for(modelP=&Hu3DData[0], modelId=0; modelId<HU3D_MODEL_MAX; modelId++, modelP++) {
         if(!modelP->hsf) {
             break;
@@ -497,7 +519,7 @@ HU3D_MODELID Hu3DModelCreate(void *data)
         OSReport("Error: Create Model Over!\n");
         return HU3D_MODELID_NONE;
     }
-    modelP->hsf = LoadHSF(data);
+    modelP->hsf = LoadHSF(hsfData);
     modelP->linkMdlId = HU3D_MODELID_NONE;
     modelP->mallocNo = Hu3DMallocNo = (u32)modelP->hsf;
     modelP->attr = HU3D_ATTR_NONE;
@@ -505,8 +527,8 @@ HU3D_MODELID Hu3DModelCreate(void *data)
     modelP->projBit = 0;
     MakeDisplayList(modelId, modelP->mallocNo);
     modelP->motWork.speed = 1.0f;
-    for(i=0; i<HU3D_CLUSTER_MAX; i++) {
-        modelP->motIdCluster[i] = HU3D_MOTIONID_NONE;
+    for(index=0; index<HU3D_CLUSTER_MAX; index++) {
+        modelP->motIdCluster[index] = HU3D_MOTIONID_NONE;
     }
     modelP->motIdOvl = HU3D_MOTIONID_NONE;
     modelP->motIdShift = HU3D_MOTIONID_NONE;
@@ -543,8 +565,8 @@ HU3D_MODELID Hu3DModelCreate(void *data)
     modelP->hiliteIdx = 0;
     modelP->ambR = modelP->ambG = modelP->ambB = 1;
     modelP->reflectType = HU3D_REFLECT_TYPE_NONE;
-    for(i=0; i<HU3D_MODEL_LLIGHT_MAX; i++) {
-        modelP->LLightId[i] = HU3D_LIGHTID_NONE;
+    for(index=0; index<HU3D_MODEL_LLIGHT_MAX; index++) {
+        modelP->LLightId[index] = HU3D_LIGHTID_NONE;
     }
     modelP->lightBit = MODEL_GLOBAL_LIGHTS_ALL;
     modelP->camInfoBit = 0;
@@ -552,17 +574,20 @@ HU3D_MODELID Hu3DModelCreate(void *data)
     MTXIdentity(modelP->mtx);
     layerNum[0]++;
     if(modelP->hsf->sceneNum && (modelP->hsf->scene->fogStart || modelP->hsf->scene->fogEnd)) {
-        Hu3DFogSet(modelP->hsf->scene->fogStart, modelP->hsf->scene->fogEnd, modelP->hsf->scene->fogColor.r, modelP->hsf->scene->fogColor.g, modelP->hsf->scene->fogColor.b);
+        Hu3DFogSet(modelP->hsf->scene->fogStart, modelP->hsf->scene->fogEnd,
+                   modelP->hsf->scene->fogColor.r, modelP->hsf->scene->fogColor.g,
+                   modelP->hsf->scene->fogColor.b);
     }
     return modelId;
 }
 
+/* Creates a linked instance from an existing model and copies its render and motion setup. */
 HU3D_MODELID Hu3DModelLink(HU3D_MODELID linkMdlId)
 {
     HU3D_MODEL *linkModelP = &Hu3DData[linkMdlId];
     HU3D_MODEL *modelP;
-    HSF_OBJECT *objtop;
-    s16 i;
+    HSF_OBJECT *duplicatedObjects;
+    s16 index;
     s16 modelId;
     u32 file;
     for(modelP=&Hu3DData[0], modelId=0; modelId<HU3D_MODEL_MAX; modelId++, modelP++) {
@@ -580,9 +605,10 @@ HU3D_MODELID Hu3DModelLink(HU3D_MODELID linkMdlId)
     HuMemMemoryFileSet(modelP->hsf, file);
     modelP->mallocNoLink = (u32)modelP->hsf;
     *modelP->hsf = *linkModelP->hsf;
-    objtop = Hu3DObjDuplicate(modelP->hsf, modelP->mallocNoLink);
-    modelP->hsf->root = (HSF_OBJECT *)((char *)objtop+((u32)modelP->hsf->root-(u32)modelP->hsf->object));
-    modelP->hsf->object = objtop;
+    duplicatedObjects = Hu3DObjDuplicate(modelP->hsf, modelP->mallocNoLink);
+    modelP->hsf->root = (HSF_OBJECT *) ((char *) duplicatedObjects +
+                                        ((u32) modelP->hsf->root - (u32) modelP->hsf->object));
+    modelP->hsf->object = duplicatedObjects;
     Hu3DAttrDuplicate(modelP->hsf, modelP->mallocNoLink);
     Hu3DMatDuplicate(modelP->hsf, modelP->mallocNoLink);
     modelP->mallocNo = linkModelP->mallocNo;
@@ -606,14 +632,14 @@ HU3D_MODELID Hu3DModelLink(HU3D_MODELID linkMdlId)
     modelP->motShapeWork.speed = linkModelP->motShapeWork.speed;
     modelP->motShapeWork.start = linkModelP->motShapeWork.start;
     modelP->motShapeWork.end = linkModelP->motShapeWork.end;
-    for(i=0; i<HU3D_CLUSTER_MAX; i++) {
-        modelP->motIdCluster[i] = linkModelP->motIdCluster[i];
-        if(modelP->motIdCluster[i] != HU3D_MOTIONID_NONE) {
-            modelP->clusterTime[i] = 0;
-            modelP->clusterSpeed[i] = linkModelP->clusterSpeed[i];
-            modelP->clusterAttr[i] = linkModelP->clusterAttr[i];
+    for(index=0; index<HU3D_CLUSTER_MAX; index++) {
+        modelP->motIdCluster[index] = linkModelP->motIdCluster[index];
+        if(modelP->motIdCluster[index] != HU3D_MOTIONID_NONE) {
+            modelP->clusterTime[index] = 0;
+            modelP->clusterSpeed[index] = linkModelP->clusterSpeed[index];
+            modelP->clusterAttr[index] = linkModelP->clusterAttr[index];
             modelP->attr |= HU3D_ATTR_CLUSTER_ON;
-            ClusterAdjustObject(modelP->hsf, Hu3DMotion[modelP->motIdCluster[i]].hsf);
+            ClusterAdjustObject(modelP->hsf, Hu3DMotion[modelP->motIdCluster[index]].hsf);
         }
     }
     modelP->motWork.time = linkModelP->motWork.time;
@@ -628,8 +654,8 @@ HU3D_MODELID Hu3DModelLink(HU3D_MODELID linkMdlId)
     modelP->ambR = modelP->ambG = modelP->ambB = 1;
     modelP->reflectType = HU3D_REFLECT_TYPE_NONE;
     
-    for(i=0; i<HU3D_MODEL_LLIGHT_MAX; i++) {
-        modelP->LLightId[i] = HU3D_LIGHTID_NONE;
+    for(index=0; index<HU3D_MODEL_LLIGHT_MAX; index++) {
+        modelP->LLightId[index] = HU3D_LIGHTID_NONE;
     }
     modelP->lightBit = MODEL_GLOBAL_LIGHTS_ALL;
     modelP->camInfoBit = 0;
@@ -638,10 +664,11 @@ HU3D_MODELID Hu3DModelLink(HU3D_MODELID linkMdlId)
     return modelId;
 }
 
+/* Creates a model slot whose callback the HSF drawing pipeline invokes for draw objects. */
 HU3D_MODELID Hu3DHookFuncCreate(HU3D_MODEL_HOOK hookFunc)
 {
     HU3D_MODEL *modelP;
-    s16 i;
+    s16 index;
     s16 modelId;
     for(modelP=&Hu3DData[0], modelId=0; modelId<HU3D_MODEL_MAX; modelId++, modelP++) {
         if(!modelP->hsf) {
@@ -659,8 +686,8 @@ HU3D_MODELID Hu3DHookFuncCreate(HU3D_MODEL_HOOK hookFunc)
     modelP->rot.x = modelP->rot.y = modelP->rot.z = 0;
     modelP->scale.x = modelP->scale.y = modelP->scale.z = 1;
     modelP->motId = modelP->motIdShift = modelP->motIdOvl = modelP->motIdShape = HU3D_MOTIONID_NONE;
-    for(i=0; i<HU3D_CLUSTER_MAX; i++) {
-        modelP->motIdCluster[i] = HU3D_MOTIONID_NONE;
+    for(index=0; index<HU3D_CLUSTER_MAX; index++) {
+        modelP->motIdCluster[index] = HU3D_MOTIONID_NONE;
     }
     modelP->motWork.time = 0;
     modelP->motWork.speed = 1;
@@ -675,8 +702,8 @@ HU3D_MODELID Hu3DHookFuncCreate(HU3D_MODEL_HOOK hookFunc)
     modelP->linkMdlId = HU3D_MODELID_NONE;
     modelP->projBit = 0;
     modelP->reflectType = HU3D_REFLECT_TYPE_NONE;
-    for(i=0; i<HU3D_MODEL_LLIGHT_MAX; i++) {
-        modelP->LLightId[i] = HU3D_LIGHTID_NONE;
+    for(index=0; index<HU3D_MODEL_LLIGHT_MAX; index++) {
+        modelP->LLightId[index] = HU3D_LIGHTID_NONE;
     }
     modelP->lightBit = MODEL_GLOBAL_LIGHTS_ALL;
     modelP->camInfoBit = 0;
@@ -685,13 +712,14 @@ HU3D_MODELID Hu3DHookFuncCreate(HU3D_MODEL_HOOK hookFunc)
     return modelId;
 }
 
+/* Releases a model and its owned resources when an overlay or scene removes it. */
 void Hu3DModelKill(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HSF_DATA *hsf = modelP->hsf;
     HU3D_MODEL *iterModelP;
-    s16 i;
-    s16 linkNum;
+    s16 index;
+    s16 sharedModelCount;
     if(!hsf) {
         return;
     }
@@ -729,24 +757,27 @@ void Hu3DModelKill(HU3D_MODELID modelId)
         hsf = modelP->hsfLink;
         modelP->hsf = hsf;
     }
-    for(iterModelP=&Hu3DData[0], linkNum=i=0; i<HU3D_MODEL_MAX; i++, iterModelP++) {
+    for (iterModelP = &Hu3DData[0], sharedModelCount = index = 0; index < HU3D_MODEL_MAX;
+         index++, iterModelP++) {
         if(!iterModelP->hsf) {
             continue;
         }
-        if(iterModelP->hsf == hsf || (iterModelP->linkMdlId != HU3D_MODELID_NONE && iterModelP->hsfLink == hsf)) {
-            linkNum++;
+        if (iterModelP->hsf == hsf ||
+            (iterModelP->linkMdlId != HU3D_MODELID_NONE && iterModelP->hsfLink == hsf)) {
+            sharedModelCount++;
         }
     }
-    if(linkNum > 1) {
+    if(sharedModelCount > 1) {
         if(modelP->attr & HU3D_ATTR_SHADOW) {
             shadowNum--;
         }
         modelP->hsf = NULL;
         iterModelP=&Hu3DData[0];
         if(modelP->motIdSrc != HU3D_MOTIONID_NONE) {
-            for(i=0; i<HU3D_MODEL_MAX; i++, iterModelP++) {
-                if(iterModelP->hsf && iterModelP->linkMdlId != HU3D_MODELID_NONE && iterModelP->hsfLink == hsf) {
-                    Hu3DMotion[modelP->motIdSrc].modelId = i;
+            for(index=0; index<HU3D_MODEL_MAX; index++, iterModelP++) {
+                if (iterModelP->hsf && iterModelP->linkMdlId != HU3D_MODELID_NONE &&
+                    iterModelP->hsfLink == hsf) {
+                    Hu3DMotion[modelP->motIdSrc].modelId = index;
                     
                     break;
                 }
@@ -765,12 +796,12 @@ void Hu3DModelKill(HU3D_MODELID modelId)
     }
     HuMemDirectFree(modelP->hsf);
     HuMemDirectFreeNum(HEAP_MODEL, modelP->mallocNo);
-    for(i=0; i<modelP->lightNum; i++) {
-        Hu3DGLightKill(modelP->lightId[i]);
+    for(index=0; index<modelP->lightNum; index++) {
+        Hu3DGLightKill(modelP->lightId[index]);
     }
-    for(i=0; i<HU3D_MODEL_LLIGHT_MAX; i++) {
-        if(modelP->LLightId[i] != HU3D_LIGHTID_NONE) {
-            Hu3DLLightKill(modelId, i);
+    for(index=0; index<HU3D_MODEL_LLIGHT_MAX; index++) {
+        if(modelP->LLightId[index] != HU3D_LIGHTID_NONE) {
+            Hu3DLLightKill(modelId, index);
         }
     }
     if(modelP->attr & HU3D_ATTR_SHADOW) {
@@ -780,25 +811,26 @@ void Hu3DModelKill(HU3D_MODELID modelId)
     return;
 }
 
+/* Called by Hu3DAllKill to remove every model and clear camera-layer hooks. */
 void Hu3DModelAllKill(void)
 {
-    s16 i;
-    s16 j;
+    s16 index;
+    s16 cameraIndex;
     HU3D_MODEL *modelP;
     
     modelKillAllF = TRUE;
-    for(modelP=&Hu3DData[0], i=0; i<HU3D_MODEL_MAX; i++, modelP++) {
+    for(modelP=&Hu3DData[0], index=0; index<HU3D_MODEL_MAX; index++, modelP++) {
         if(modelP->hsf) {
-            Hu3DModelKill(i);
+            Hu3DModelKill(index);
         }
     }
     modelKillAllF = FALSE;
-    for(i=0; i<HU3D_LAYER_MAX; i++) {
-        layerNum[i] = 0;
+    for(index=0; index<HU3D_LAYER_MAX; index++) {
+        layerNum[index] = 0;
     }
-    for(j=0; j<HU3D_CAM_MAX; j++) {
-        for(i=0; i<HU3D_LAYER_HOOK_MAX; i++) {
-            layerHook[j][i] = NULL;
+    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+        for(index=0; index<HU3D_LAYER_HOOK_MAX; index++) {
+            layerHook[cameraIndex][index] = NULL;
         }
     }
     
@@ -807,6 +839,7 @@ void Hu3DModelAllKill(void)
     Hu3DReflectModelId = HU3D_MODELID_NONE;
 }
 
+/* Model setup and animation callers use this to place a model in world space. */
 void Hu3DModelPosSet(HU3D_MODELID modelId, float posX, float posY, float posZ)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -815,18 +848,21 @@ void Hu3DModelPosSet(HU3D_MODELID modelId, float posX, float posY, float posZ)
     modelP->pos.z = posZ;
 }
 
+/* Model setup copies a complete world-space position into the selected model record. */
 void Hu3DModelPosSetV(HU3D_MODELID modelId, HuVecF *pos)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->pos = *pos;
 }
 
+/* Model queries copy the selected model's stored world-space position to the caller. */
 void Hu3DModelPosGet(HU3D_MODELID modelId, HuVecF *pos)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     *pos = modelP->pos;
 }
 
+/* Model setup and animation callers use this to set the model's three rotation components. */
 void Hu3DModelRotSet(HU3D_MODELID modelId, float rotX, float rotY, float rotZ)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -835,18 +871,21 @@ void Hu3DModelRotSet(HU3D_MODELID modelId, float rotX, float rotY, float rotZ)
     modelP->rot.z = rotZ;
 }
 
+/* Model setup copies all three rotation components into the selected model record. */
 void Hu3DModelRotSetV(HU3D_MODELID modelId, HuVecF *rot)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->rot = *rot;
 }
 
+/* Model queries copy the selected model's stored rotation vector to the caller. */
 void Hu3DModelRotGet(HU3D_MODELID modelId, HuVecF *rot)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     *rot = modelP->rot;
 }
 
+/* Model setup callers use this to set independent scale factors on each model axis. */
 void Hu3DModelScaleSet(HU3D_MODELID modelId, float scaleX, float scaleY, float scaleZ)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -855,18 +894,21 @@ void Hu3DModelScaleSet(HU3D_MODELID modelId, float scaleX, float scaleY, float s
     modelP->scale.z = scaleZ;
 }
 
+/* Model setup copies all three scale factors into the selected model record. */
 void Hu3DModelScaleSetV(HU3D_MODELID modelId, HuVecF *scale)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->scale = *scale;
 }
 
+/* Model queries copy the selected model's stored scale vector to the caller. */
 void Hu3DModelScaleGet(HU3D_MODELID modelId, HuVecF *scale)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     *scale = modelP->scale;
 }
 
+/* Model setup callers can replace the model's stored transform matrix with this value. */
 void Hu3DModelMtxSet(HU3D_MODELID modelId, Mtx *mtx)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -874,12 +916,14 @@ void Hu3DModelMtxSet(HU3D_MODELID modelId, Mtx *mtx)
     
 }
 
+/* Model queries copy the model's stored transform matrix into the caller's matrix. */
 void Hu3DModelMtxGet(HU3D_MODELID modelId, Mtx *mtx)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     MTXCopy(modelP->mtx, *mtx);
 }
 
+/* Model setup callers enable model or motion attributes; HU3D_MOTATTR routes bits to motAttr. */
 void Hu3DModelAttrSet(HU3D_MODELID modelId, u32 attr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -891,6 +935,7 @@ void Hu3DModelAttrSet(HU3D_MODELID modelId, u32 attr)
     }
 }
 
+/* Model setup callers clear model or motion attributes; HU3D_MOTATTR selects the motion mask. */
 void Hu3DModelAttrReset(HU3D_MODELID modelId, u32 attr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -901,36 +946,42 @@ void Hu3DModelAttrReset(HU3D_MODELID modelId, u32 attr)
     }
 }
 
+/* Model queries return the model-level attribute mask. */
 u32 Hu3DModelAttrGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return modelP->attr;
 }
 
+/* Motion queries return the motion mask with HU3D_MOTATTR set to identify its bit domain. */
 u32 Hu3DModelMotionAttrGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return modelP->motAttr|HU3D_MOTATTR;
 }
 
+/* Motion setup enables the requested attribute bits on one model cluster. */
 void Hu3DModelClusterAttrSet(HU3D_MODELID modelId, s16 clusterNo, s32 clusterAttr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->clusterAttr[clusterNo] |= clusterAttr;
 }
 
+/* Motion setup clears the requested attribute bits on one model cluster. */
 void Hu3DModelClusterAttrReset(HU3D_MODELID modelId, s16 clusterNo, s32 clusterAttr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->clusterAttr[clusterNo] &= ~clusterAttr;
 }
 
+/* Render setup restricts the model to the supplied camera-selection bit mask. */
 void Hu3DModelCameraSet(HU3D_MODELID modelId, u16 cameraBit)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->cameraBit = cameraBit;
 }
 
+/* Render setup moves a model between layers while keeping each layer's model count current. */
 void Hu3DModelLayerSet(HU3D_MODELID modelId, s16 layerNo)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -939,6 +990,7 @@ void Hu3DModelLayerSet(HU3D_MODELID modelId, s16 layerNo)
     layerNum[layerNo]++;
 }
 
+/* Model and effect setup uses the normalized HSF object name to find its object record. */
 HSF_OBJECT *Hu3DModelObjPtrGet(HU3D_MODELID modelId, char *objName)
 {
     char name[HSF_OBJNAME_MAX_LEN];
@@ -958,6 +1010,7 @@ HSF_OBJECT *Hu3DModelObjPtrGet(HU3D_MODELID modelId, char *objName)
     return NULL;
 }
 
+/* Model setup applies one transparency level to every material and marks mesh data translucent. */
 void Hu3DModelTPLvlSet(HU3D_MODELID modelId, float tpLvl)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -983,6 +1036,7 @@ void Hu3DModelTPLvlSet(HU3D_MODELID modelId, float tpLvl)
     modelP->attr |= HU3D_ATTR_TPLVL_SET;
 }
 
+/* Model setup assigns a highlight texture to every mesh object in the model. */
 void Hu3DModelHiliteMapSet(HU3D_MODELID modelId, ANIMDATA *hiliteMap)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1002,6 +1056,7 @@ void Hu3DModelHiliteMapSet(HU3D_MODELID modelId, ANIMDATA *hiliteMap)
     }
 }
 
+/* Render setup enables shadow casting on the model and its objects with constant data. */
 void Hu3DModelShadowSet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1022,6 +1077,7 @@ void Hu3DModelShadowSet(HU3D_MODELID modelId)
     }
 }
 
+/* Render setup disables shadow casting and removes the shadow flag from the model's objects. */
 void Hu3DModelShadowReset(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1052,6 +1108,7 @@ void Hu3DModelShadowDispOff(HU3D_MODELID modelId)
     Hu3DModelAttrReset(modelId, HU3D_ATTR_SHADOW);
 }
 
+/* Render setup marks every object with constant data for shadow-map rendering. */
 void Hu3DModelShadowMapSet(HU3D_MODELID modelId)
 {
     HSF_DATA *hsf = Hu3DData[modelId].hsf;
@@ -1068,6 +1125,7 @@ void Hu3DModelShadowMapSet(HU3D_MODELID modelId)
     }
 }
 
+/* Render setup enables shadow-map rendering for the named object when it has constant data. */
 void Hu3DModelShadowMapObjSet(HU3D_MODELID modelId, char *objName)
 {
     char name[HSF_OBJNAME_MAX_LEN];
@@ -1086,6 +1144,7 @@ void Hu3DModelShadowMapObjSet(HU3D_MODELID modelId, char *objName)
     }
 }
 
+/* Render setup disables shadow-map rendering for the named object when it has constant data. */
 void Hu3DModelShadowMapObjReset(HU3D_MODELID modelId, char *objName)
 {
     char name[HSF_OBJNAME_MAX_LEN];
@@ -1104,6 +1163,7 @@ void Hu3DModelShadowMapObjReset(HU3D_MODELID modelId, char *objName)
     }
 }
 
+/* Render setup assigns a byte alpha derived from tpLvl to every object's shadow map. */
 void Hu3DModelShadowMapTPLvlSet(HU3D_MODELID modelId, float tpLvl)
 {
     HSF_DATA *hsf = Hu3DData[modelId].hsf;
@@ -1120,6 +1180,7 @@ void Hu3DModelShadowMapTPLvlSet(HU3D_MODELID modelId, float tpLvl)
     }
 }
 
+/* Render setup assigns the requested shadow-map alpha to the named object only. */
 void Hu3DModelShadowMapObjTPLvlSet(HU3D_MODELID modelId, char *objName, float tpLvl)
 {
     char name[HSF_OBJNAME_MAX_LEN];
@@ -1139,6 +1200,7 @@ void Hu3DModelShadowMapObjTPLvlSet(HU3D_MODELID modelId, char *objName, float tp
     }
 }
 
+/* Render setup clears shadow-map flags from all model objects with constant data. */
 void Hu3DModelShadowMapReset(HU3D_MODELID modelId)
 {
     HSF_DATA *hsf = Hu3DData[modelId].hsf;
@@ -1154,6 +1216,7 @@ void Hu3DModelShadowMapReset(HU3D_MODELID modelId)
     }
 }
 
+/* Lighting setup stores the model's ambient red, green, and blue components. */
 void Hu3DModelAmbSet(HU3D_MODELID modelId, float ambR, float ambG, float ambB)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1162,6 +1225,7 @@ void Hu3DModelAmbSet(HU3D_MODELID modelId, float ambR, float ambG, float ambB)
     modelP->ambB = ambB;
 }
 
+/* Attachment setup hooks hookMdlId to a named object after calculating the source model motion. */
 void Hu3DModelHookSet(HU3D_MODELID modelId, char *objName, HU3D_MODELID hookMdlId)
 {
     char name[HSF_OBJNAME_MAX_LEN];
@@ -1184,6 +1248,7 @@ void Hu3DModelHookSet(HU3D_MODELID modelId, char *objName, HU3D_MODELID hookMdlI
     OSReport( "Error: Not Found %s for HookSet\n", objName);
 }
 
+/* Attachment cleanup clears each attached model hook attribute and resets its object hook ID. */
 void Hu3DModelHookReset(HU3D_MODELID modelId)
 {
     HSF_DATA *hsf = Hu3DData[modelId].hsf;
@@ -1201,6 +1266,7 @@ void Hu3DModelHookReset(HU3D_MODELID modelId)
     }
 }
 
+/* Attachment cleanup releases the hook stored on one named object. */
 void Hu3DModelHookObjReset(HU3D_MODELID modelId, char *objName)
 {
     char name[HSF_OBJNAME_MAX_LEN];
@@ -1220,18 +1286,21 @@ void Hu3DModelHookObjReset(HU3D_MODELID modelId, char *objName)
     OSReport("Error: Not Found %s for HookReset\n", objName);
 }
 
+/* Sets the selected projection bit on the model. */
 void Hu3DModelProjectionSet(HU3D_MODELID modelId, HU3D_PROJID projId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->projBit |= (1 << projId);
 }
 
+/* Clears the selected projection bit on the model. */
 void Hu3DModelProjectionReset(HU3D_MODELID modelId, HU3D_PROJID projId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->projBit &= ~(1 << projId);
 }
 
+/* Render setup writes the highlight type into each material and enables model highlights. */
 void Hu3DModelHiliteTypeSet(HU3D_MODELID modelId, s16 hiliteType)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1247,12 +1316,14 @@ void Hu3DModelHiliteTypeSet(HU3D_MODELID modelId, s16 hiliteType)
     Hu3DModelAttrSet(modelId, HU3D_ATTR_HILITE);
 }
 
+/* Stores the model reflection type. */
 void Hu3DModelReflectTypeSet(HU3D_MODELID modelId, s16 reflectType)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->reflectType = reflectType;
 }
 
+/* Reflection setup selects the model, allocates its 128-by-128 texture, and initializes the map. */
 void Hu3DReflectModelSet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP;
@@ -1283,6 +1354,7 @@ HU3D_CAMERA defCamera = {
     0.0f, 1.0f
 };
 
+/* Display setup initializes each selected camera from the current render-mode dimensions. */
 void Hu3DCameraCreate(int cameraBit)
 {
     s16 i;
@@ -1300,6 +1372,7 @@ void Hu3DCameraCreate(int cameraBit)
     }
 }
 
+/* Camera setup updates perspective parameters for every camera selected by cameraBit. */
 void Hu3DCameraPerspectiveSet(int cameraBit, float fov, float near, float far, float aspect)
 {
     s16 i;
@@ -1315,7 +1388,10 @@ void Hu3DCameraPerspectiveSet(int cameraBit, float fov, float near, float far, f
     }
 }
 
-void Hu3DCameraViewportSet(int cameraBit, float vpX, float vpY, float vpW, float vpH, float vpNearZ, float vpFarZ)
+/* Display setup sets viewport bounds for selected cameras; 240-line output halves viewport
+ * height. */
+void Hu3DCameraViewportSet(int cameraBit, float vpX, float vpY, float vpW, float vpH, float vpNearZ,
+                           float vpFarZ)
 {
     s16 i;
     s16 bit;
@@ -1335,7 +1411,9 @@ void Hu3DCameraViewportSet(int cameraBit, float vpX, float vpY, float vpW, float
     }
 }
 
-void Hu3DCameraScissorSet(int cameraBit, unsigned int scissorX, unsigned int scissorY, unsigned int scissorW, unsigned int scissorH)
+/* Display setup sets the integer scissor rectangle for every selected camera. */
+void Hu3DCameraScissorSet(int cameraBit, unsigned int scissorX, unsigned int scissorY,
+                          unsigned int scissorW, unsigned int scissorH)
 {
     s16 i;
     s16 bit;
@@ -1350,7 +1428,9 @@ void Hu3DCameraScissorSet(int cameraBit, unsigned int scissorX, unsigned int sci
     }
 }
 
-void Hu3DCameraPosSet(int cameraBit, float posX, float posY, float posZ, float upX, float upY, float upZ, float targetX, float targetY, float targetZ)
+/* Camera setup writes position, up direction, and look target for each selected camera. */
+void Hu3DCameraPosSet(int cameraBit, float posX, float posY, float posZ, float upX, float upY,
+                      float upZ, float targetX, float targetY, float targetZ)
 {
     s16 i;
     s16 bit;
@@ -1370,6 +1450,7 @@ void Hu3DCameraPosSet(int cameraBit, float posX, float posY, float posZ, float u
     }
 }
 
+/* Camera setup copies position, up direction, and look target to each selected camera. */
 void Hu3DCameraPosSetV(int cameraBit, Vec *pos, Vec *up, Vec *target)
 {
     s16 i;
@@ -1384,6 +1465,7 @@ void Hu3DCameraPosSetV(int cameraBit, Vec *pos, Vec *up, Vec *target)
     }
 }
 
+/* Camera queries copy the first selected camera's position, up direction, and target to outputs. */
 void Hu3DCameraPosGet(int cameraBit, Vec *pos, Vec *up, Vec *target)
 {
     s16 i;
@@ -1399,6 +1481,7 @@ void Hu3DCameraPosGet(int cameraBit, Vec *pos, Vec *up, Vec *target)
     }
 }
 
+/* Camera queries copy perspective values from the first camera selected by cameraBit. */
 void Hu3DCameraPerspectiveGet(int cameraBit, float *fov, float *near, float *far)
 {
     s16 i;
@@ -1414,6 +1497,7 @@ void Hu3DCameraPerspectiveGet(int cameraBit, float *fov, float *near, float *far
     }
 }
 
+/* Camera teardown marks every selected camera inactive by setting its field of view to -1. */
 void Hu3DCameraKill(int cameraBit)
 {
     s16 i;
@@ -1426,6 +1510,7 @@ void Hu3DCameraKill(int cameraBit)
     }
 }
 
+/* Global display teardown marks all active cameras inactive and clears the camera-exists mask. */
 void Hu3DCameraAllKill(void)
 {
     HU3D_CAMERA *cameraP = &Hu3DCamera[0];
@@ -1439,6 +1524,7 @@ void Hu3DCameraAllKill(void)
     Hu3DCameraExistF = 0;
 }
 
+/* The display path loads one camera's projection, viewport, scissor, and view matrix into GX. */
 void Hu3DCameraSet(s32 cameraNo, Mtx modelView)
 {
     Mtx44 proj;
@@ -1446,14 +1532,19 @@ void Hu3DCameraSet(s32 cameraNo, Mtx modelView)
     MTXPerspective(proj, cameraP->fov, cameraP->aspect, cameraP->near, cameraP->far);
     GXSetProjection(proj, GX_PERSPECTIVE);
     if(RenderMode->field_rendering) {
-        GXSetViewportJitter(cameraP->viewportX, cameraP->viewportY, cameraP->viewportW, cameraP->viewportH, cameraP->viewportNear, cameraP->viewportFar, VIGetNextField());
+        GXSetViewportJitter(cameraP->viewportX, cameraP->viewportY, cameraP->viewportW,
+                            cameraP->viewportH, cameraP->viewportNear, cameraP->viewportFar,
+                            VIGetNextField());
     } else {
-        GXSetViewport(cameraP->viewportX, cameraP->viewportY, cameraP->viewportW, cameraP->viewportH, cameraP->viewportNear, cameraP->viewportFar);
+        GXSetViewport(cameraP->viewportX, cameraP->viewportY, cameraP->viewportW,
+                      cameraP->viewportH, cameraP->viewportNear, cameraP->viewportFar);
     }
     GXSetScissor(cameraP->scissorX, cameraP->scissorY, cameraP->scissorW, cameraP->scissorH);
     MTXLookAt(modelView, &cameraP->pos, &cameraP->up, &cameraP->target);
 }
 
+/* Camera-motion setup reads the model's camera object, updates that camera, and enables model
+ * camera motion. */
 BOOL Hu3DModelCameraInfoSet(HU3D_MODELID modelId, u16 cameraBit)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1480,7 +1571,8 @@ BOOL Hu3DModelCameraInfoSet(HU3D_MODELID modelId, u16 cameraBit)
         Hu3DCameraPosSet(cameraBit, obj->camera.pos.x, obj->camera.pos.y, obj->camera.pos.z,
             up.x, up.y, up.z,
             obj->camera.target.x, obj->camera.target.y, obj->camera.target.z);
-        Hu3DCameraPerspectiveSet(cameraBit, obj->camera.fov, obj->camera.near, obj->camera.far, HU_DISP_ASPECT);
+        Hu3DCameraPerspectiveSet(cameraBit, obj->camera.fov, obj->camera.near, obj->camera.far,
+                                 HU_DISP_ASPECT);
         modelP->camInfoBit = cameraBit;
         Hu3DModelAttrSet(modelId, HU3D_ATTR_CAMERA_MOTON);
         return TRUE;
@@ -1488,6 +1580,8 @@ BOOL Hu3DModelCameraInfoSet(HU3D_MODELID modelId, u16 cameraBit)
     return FALSE;
 }
 
+/* Camera-motion setup creates a motion-driven model record associated with the selected camera
+ * bit. */
 s16 Hu3DModelCameraCreate(HU3D_MOTIONID motId, u16 cameraBit)
 {
     HU3D_MODELID modelId = Hu3DHookFuncCreate((HU3D_MODEL_HOOK)-1);
@@ -1500,6 +1594,7 @@ s16 Hu3DModelCameraCreate(HU3D_MOTIONID motId, u16 cameraBit)
     return modelId;
 }
 
+/* Camera-motion control associates the model with a camera and enables its camera-motion flag. */
 void Hu3DCameraMotionOn(HU3D_MODELID modelId, u16 cameraBit)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1507,6 +1602,8 @@ void Hu3DCameraMotionOn(HU3D_MODELID modelId, u16 cameraBit)
     Hu3DModelAttrSet(modelId, HU3D_ATTR_CAMERA_MOTON);
 }
 
+/* Camera-motion control resumes the model motion, sets its full motion range, and starts at time
+ * zero. */
 void Hu3DCameraMotionStart(HU3D_MODELID modelId, u16 cameraBit)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1516,11 +1613,13 @@ void Hu3DCameraMotionStart(HU3D_MODELID modelId, u16 cameraBit)
     Hu3DMotionTimeSet(modelId, 0);
 }
 
+/* Camera-motion control clears the flag that lets the model's motion drive camera state. */
 void Hu3DCameraMotionOff(HU3D_MODELID modelId)
 {
     Hu3DModelAttrReset(modelId, HU3D_ATTR_CAMERA_MOTON);
 }
 
+/* 3D system initialization marks all global and model-local light slots unused. */
 void Hu3DLighInit(void)
 {
     HU3D_LIGHT *lightP;
@@ -1535,10 +1634,13 @@ void Hu3DLighInit(void)
     }
 }
 
+/* Called by light creation APIs to initialize a spotlight from scene position, direction, and
+ * color. */
 static void Hu3DLightCreate(HU3D_LIGHT *lightP, HuVecF *pos, HuVecF *dir, GXColor *color)
 {
     lightP->type = HU3D_LIGHT_TYPE_SPOT;
     lightP->pos = *pos;
+    /* Give a directionless light a usable forward axis before normalization. */
     if(dir->x == 0 && dir->y == 0 && dir->z == 0){ 
         dir->z = 1;
     }
@@ -1550,7 +1652,10 @@ static void Hu3DLightCreate(HU3D_LIGHT *lightP, HuVecF *pos, HuVecF *dir, GXColo
     lightP->color = *color;
 }
 
-HU3D_LIGHTID Hu3DGLightCreate(float posX, float posY, float posZ, float dirX, float dirY, float dirZ, u8 colorR, u8 colorG, u8 colorB)
+/* Scene setup packages scalar position, direction, and RGB values before allocating a global
+ * light. */
+HU3D_LIGHTID Hu3DGLightCreate(float posX, float posY, float posZ, float dirX, float dirY,
+                              float dirZ, u8 colorR, u8 colorG, u8 colorB)
 {
     Vec pos;
     Vec dir;
@@ -1568,6 +1673,8 @@ HU3D_LIGHTID Hu3DGLightCreate(float posX, float posY, float posZ, float dirX, fl
     return Hu3DGLightCreateV(&pos, &dir, &color);
 }
 
+/* Scene setup claims the first unused global light slot, initializes it, or returns NONE when
+ * full. */
 HU3D_LIGHTID Hu3DGLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color)
 {
     HU3D_LIGHTID lightId;
@@ -1585,7 +1692,9 @@ HU3D_LIGHTID Hu3DGLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color)
     return lightId;
 }
 
-HU3D_LLIGHTID Hu3DLLightCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float dirX, float dirY, float dirZ, u8 colorR, u8 colorG, u8 colorB)
+/* Model lighting setup packages scalar position, direction, and RGB values for a local light. */
+HU3D_LLIGHTID Hu3DLLightCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float dirX,
+                               float dirY, float dirZ, u8 colorR, u8 colorG, u8 colorB)
 {
     Vec pos;
     Vec dir;
@@ -1603,6 +1712,8 @@ HU3D_LLIGHTID Hu3DLLightCreate(HU3D_MODELID modelId, float posX, float posY, flo
     return Hu3DLLightCreateV(modelId, &pos, &dir, &color);
 }
 
+/* Allocates a global light slot and assigns it to a model-local slot. Returns NONE if either
+ * pool is full; if the model-local pool is full, the global slot remains claimed. */
 HU3D_LLIGHTID Hu3DLLightCreateV(HU3D_MODELID modelId, HuVecF *pos, HuVecF *dir, GXColor *color)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1631,6 +1742,7 @@ HU3D_LLIGHTID Hu3DLLightCreateV(HU3D_MODELID modelId, HuVecF *pos, HuVecF *dir, 
     return LLightId;
 }
 
+/* Selects spot-light attenuation and its cone cutoff for subsequent GX light setup. */
 static void Hu3DLightSpotSet(HU3D_LIGHT *lightP, GXSpotFn spotFunc, float cutoff)
 {
     LIGHT_TYPE_SET(lightP, HU3D_LIGHT_TYPE_SPOT);
@@ -1638,12 +1750,14 @@ static void Hu3DLightSpotSet(HU3D_LIGHT *lightP, GXSpotFn spotFunc, float cutoff
     lightP->func = spotFunc;
 }
 
+/* Configures a global light as a spotlight for later model draws. */
 void Hu3DGLightSpotSet(HU3D_LIGHTID lightId, GXSpotFn spotFunc, float cutoff)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightSpotSet(lightP, spotFunc, cutoff);
 }
 
+/* Configures one of a model's local lights as a spotlight for later model draws. */
 void Hu3DLLightSpotSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float cutoff, GXSpotFn spotFunc)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1651,17 +1765,20 @@ void Hu3DLLightSpotSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float cutoff
     Hu3DLightSpotSet(lightP, spotFunc, cutoff);
 }
 
+/* Marks a light as directional, so its position is treated as an infinite source. */
 static void Hu3DLightInfinitytSet(HU3D_LIGHT *lightP)
 {
     LIGHT_TYPE_SET(lightP, HU3D_LIGHT_TYPE_INFINITYT);
 }
 
+/* Sets a global light to directional lighting. */
 void Hu3DGLightInfinitytSet(HU3D_LIGHTID lightId)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightInfinitytSet(lightP);
 }
 
+/* Sets one of a model's local lights to directional lighting. */
 void Hu3DLLightInfinitytSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1669,7 +1786,9 @@ void Hu3DLLightInfinitytSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId)
     Hu3DLightInfinitytSet(lightP);
 }
 
-static void Hu3DLightPointSet(HU3D_LIGHT *lightP, float refDistance, float refBrightness, GXDistAttnFn distFunc)
+/* Sets point-light attenuation using a reference distance and brightness. */
+static void Hu3DLightPointSet(HU3D_LIGHT *lightP, float refDistance, float refBrightness,
+                              GXDistAttnFn distFunc)
 {
     LIGHT_TYPE_SET(lightP, HU3D_LIGHT_TYPE_POINT);
     lightP->cutoff = refDistance;
@@ -1677,24 +1796,30 @@ static void Hu3DLightPointSet(HU3D_LIGHT *lightP, float refDistance, float refBr
     lightP->func = distFunc;
 }
 
-void Hu3DGLightPointSet(HU3D_LIGHTID lightId, float refDistance, float refBrightness, GXDistAttnFn distFunc)
+/* Configures a global light as a point source for later model draws. */
+void Hu3DGLightPointSet(HU3D_LIGHTID lightId, float refDistance, float refBrightness,
+                        GXDistAttnFn distFunc)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightPointSet(lightP, refDistance, refBrightness, distFunc);
 }
 
-void Hu3DLLightPointSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float refDistance, float refBrightness, GXDistAttnFn distFunc)
+/* Configures one of a model's local lights as a point source. */
+void Hu3DLLightPointSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float refDistance,
+                        float refBrightness, GXDistAttnFn distFunc)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HU3D_LIGHT *lightP = &Hu3DLocalLight[modelP->LLightId[lightId]];
     Hu3DLightPointSet(lightP, refDistance, refBrightness, distFunc);
 }
 
+/* Releases a global light slot so a later light creation can reuse it. */
 void Hu3DGLightKill(HU3D_LIGHTID lightId)
 {
     Hu3DGlobalLight[lightId].type = HU3D_LIGHT_TYPE_NONE;
 }
 
+/* Releases a model's local light slot and clears its local-light attribute when none remain. */
 void Hu3DLLightKill(HU3D_MODELID modelId, HU3D_LLIGHTID lightId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1712,6 +1837,7 @@ void Hu3DLLightKill(HU3D_MODELID modelId, HU3D_LLIGHTID lightId)
     }
 }
 
+/* Clears every active global and local light during renderer or scene teardown. */
 void Hu3DLightAllKill(void)
 {
     HU3D_LIGHTID lightId;
@@ -1728,6 +1854,7 @@ void Hu3DLightAllKill(void)
     }
 }
 
+/* Stores the RGBA color used when this light is loaded for a model draw. */
 static void Hu3DLightColSet(HU3D_LIGHT *lightP, u8 r, u8 g, u8 b, u8 a)
 {
     lightP->color.r = r;
@@ -1736,12 +1863,14 @@ static void Hu3DLightColSet(HU3D_LIGHT *lightP, u8 r, u8 g, u8 b, u8 a)
     lightP->color.a = a;
 }
 
+/* Changes a global light's RGBA color. */
 void Hu3DGLightColorSet(HU3D_LIGHTID lightId, u8 r, u8 g, u8 b, u8 a)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightColSet(lightP, r, g, b, a);
 }
 
+/* Changes the RGBA color of one of a model's local lights. */
 void Hu3DLLightColorSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, u8 r, u8 g, u8 b, u8 a)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1749,18 +1878,21 @@ void Hu3DLLightColorSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, u8 r, u8 g,
     Hu3DLightColSet(lightP, r, g, b, a);
 }
 
+/* Stores a light position and normalizes the supplied direction for GX. */
 static void Hu3DLightPSetV(HU3D_LIGHT *lightP, HuVecF *pos, HuVecF *dir)
 {
     lightP->pos = *pos;
     HuNormVecF(dir, &lightP->dir);
 }
 
+/* Updates a global light from vector position and direction values. */
 void Hu3DGLightPosSetV(HU3D_LIGHTID lightId, HuVecF *pos, HuVecF *dir)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightPSetV(lightP, pos, dir);
 }
 
+/* Updates a model-local light from vector position and direction values. */
 void Hu3DLLightPosSetV(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, HuVecF *pos, HuVecF *dir)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1768,7 +1900,8 @@ void Hu3DLLightPosSetV(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, HuVecF *pos,
     Hu3DLightPSetV(lightP, pos, dir);
 }
 
-static void Hu3DLightPSet(HU3D_LIGHT *lightP, float posX, float posY, float posZ, float dirX, float dirY, float dirZ)
+static void Hu3DLightPSet(HU3D_LIGHT *lightP, float posX, float posY, float posZ, float dirX,
+                          float dirY, float dirZ)
 {
     lightP->pos.x = posX;
     lightP->pos.y = posY;
@@ -1779,20 +1912,26 @@ static void Hu3DLightPSet(HU3D_LIGHT *lightP, float posX, float posY, float posZ
     HuNormVecF(&lightP->dir, &lightP->dir);
 }
 
-void Hu3DGLightPosSet(HU3D_LIGHTID lightId, float posX, float posY, float posZ, float dirX, float dirY, float dirZ)
+/* Updates a global light from scalar position and direction components. */
+void Hu3DGLightPosSet(HU3D_LIGHTID lightId, float posX, float posY, float posZ, float dirX,
+                      float dirY, float dirZ)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightPSet(lightP, posX, posY, posZ, dirX, dirY, dirZ);
 }
 
-void Hu3DLLightPosSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float posX, float posY, float posZ, float dirX, float dirY, float dirZ)
+/* Updates a model-local light from scalar position and direction components. */
+void Hu3DLLightPosSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float posX, float posY,
+                      float posZ, float dirX, float dirY, float dirZ)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HU3D_LIGHT *lightP = &Hu3DLocalLight[modelP->LLightId[lightId]];
     Hu3DLightPSet(lightP, posX, posY, posZ, dirX, dirY, dirZ);
 }
 
-static void Hu3DLightPASet(HU3D_LIGHT *lightP, float posX, float posY, float posZ, float angleX, float angleY)
+/* Builds a normalized light direction from position and the supplied angles. */
+static void Hu3DLightPASet(HU3D_LIGHT *lightP, float posX, float posY, float posZ, float angleX,
+                           float angleY)
 {
     lightP->pos.x = posX;
     lightP->pos.y = posY;
@@ -1803,19 +1942,24 @@ static void Hu3DLightPASet(HU3D_LIGHT *lightP, float posX, float posY, float pos
     HuNormVecF(&lightP->dir, &lightP->dir);
 }
 
-void Hu3DGLightPosAngleSet(HU3D_LIGHTID lightId, float posX, float posY, float posZ, float angleX, float angleY)
+/* Positions a global light and aims it using horizontal and vertical angles. */
+void Hu3DGLightPosAngleSet(HU3D_LIGHTID lightId, float posX, float posY, float posZ, float angleX,
+                           float angleY)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightPASet(lightP, posX, posY, posZ, angleX, angleY);
 }
 
-void Hu3DLLightPosAngleSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float posX, float posY, float posZ, float angleX, float angleY)
+/* Positions a model-local light and aims it using horizontal and vertical angles. */
+void Hu3DLLightPosAngleSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float posX, float posY,
+                           float posZ, float angleX, float angleY)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HU3D_LIGHT *lightP = &Hu3DLocalLight[modelP->LLightId[lightId]];
     Hu3DLightPASet(lightP, posX, posY, posZ, angleX, angleY);
 }
 
+/* Stores the light position and points its normalized direction toward the aim point. */
 static void Hu3DLightPAimSetV(HU3D_LIGHT *lightP, HuVecF *pos, HuVecF *aim)
 {
     lightP->pos = *pos;
@@ -1823,12 +1967,14 @@ static void Hu3DLightPAimSetV(HU3D_LIGHT *lightP, HuVecF *pos, HuVecF *aim)
     HuNormVecF(&lightP->dir, &lightP->dir);
 }
 
+/* Points a global light from a vector position toward a vector aim point. */
 void Hu3DGLightPosAimSetV(HU3D_LIGHTID lightId, HuVecF *pos, HuVecF *aim)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightPAimSetV(lightP, pos, aim);
 }
 
+/* Points one of a model's local lights from a position toward a vector aim point. */
 void Hu3DLLightPosAimSetV(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, HuVecF *pos, HuVecF *aim)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1836,7 +1982,9 @@ void Hu3DLLightPosAimSetV(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, HuVecF *p
     Hu3DLightPAimSetV(lightP, pos, aim);
 }
 
-void Hu3DGLightPosAimSet(HU3D_LIGHTID lightId, float posX, float posY, float posZ, float aimX, float aimY, float aimZ)
+/* Points a global light toward an aim point given as scalar coordinates. */
+void Hu3DGLightPosAimSet(HU3D_LIGHTID lightId, float posX, float posY, float posZ, float aimX,
+                         float aimY, float aimZ)
 {
     Vec pos;
     Vec aim;
@@ -1849,7 +1997,9 @@ void Hu3DGLightPosAimSet(HU3D_LIGHTID lightId, float posX, float posY, float pos
     Hu3DGLightPosAimSetV(lightId, &pos, &aim);
 }
 
-void Hu3DLLightPosAimSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float posX, float posY, float posZ, float aimX, float aimY, float aimZ)
+/* Points a model-local light toward an aim point given as scalar coordinates. */
+void Hu3DLLightPosAimSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float posX, float posY,
+                         float posZ, float aimX, float aimY, float aimZ)
 {
     Vec pos;
     Vec aim;
@@ -1862,6 +2012,7 @@ void Hu3DLLightPosAimSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float posX
     Hu3DLLightPosAimSetV(modelId, lightId,  &pos, &aim);
 }
 
+/* Sets whether camera transforms are applied to this light during GX setup. */
 static void Hu3DLightStatSet(HU3D_LIGHT *lightP, BOOL staticF)
 {
     if(staticF) {
@@ -1870,12 +2021,14 @@ static void Hu3DLightStatSet(HU3D_LIGHT *lightP, BOOL staticF)
         lightP->type &= ~HU3D_LIGHT_TYPE_STATIC;
     }
 }
+/* Selects camera-relative or fixed placement for a global light. */
 void Hu3DGLightStaticSet(HU3D_LIGHTID lightId, BOOL staticF)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
     Hu3DLightStatSet(lightP, staticF);
 }
 
+/* Selects camera-relative or fixed placement for one of a model's local lights. */
 void Hu3DLLightStaticSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, BOOL staticF)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1883,6 +2036,7 @@ void Hu3DLLightStaticSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, BOOL stati
     Hu3DLightStatSet(lightP, staticF);
 }
 
+/* Returns a local-light slot's position, direction, color, and packed light type. */
 s16 Hu3DLLightParamGet(HU3D_LIGHTID LLightId, Vec *pos, Vec *dir, GXColor *color)
 {
     HU3D_LIGHT *lightP = &Hu3DLocalLight[LLightId];
@@ -1892,6 +2046,7 @@ s16 Hu3DLLightParamGet(HU3D_LIGHTID LLightId, Vec *pos, Vec *dir, GXColor *color
     return lightP->type;
 }
 
+/* Returns a global-light slot's position, direction, color, and packed light type. */
 s16 Hu3DGLightParamGet(HU3D_LIGHTID lightId, Vec *pos, Vec *dir, GXColor *color)
 {
     HU3D_LIGHT *lightP = &Hu3DGlobalLight[lightId];
@@ -1901,6 +2056,7 @@ s16 Hu3DGLightParamGet(HU3D_LIGHTID lightId, Vec *pos, Vec *dir, GXColor *color)
     return lightP->type;
 }
 
+/* Imports HSF light objects into the global light pool when a model is set up. */
 s32 Hu3DModelLightInfoSet(HU3D_MODELID modelId, s16 staticF)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1922,7 +2078,9 @@ s32 Hu3DModelLightInfoSet(HU3D_MODELID modelId, s16 staticF)
         lightDir.x = obj->light.target.x - obj->light.pos.x;
         lightDir.y = obj->light.target.y - obj->light.pos.y;
         lightDir.z = obj->light.target.z - obj->light.pos.z;
-        lightId = Hu3DGLightCreate(obj->light.pos.x, obj->light.pos.y, obj->light.pos.z, lightDir.x, lightDir.y, lightDir.z, obj->light.r, obj->light.g, obj->light.b);
+        lightId =
+            Hu3DGLightCreate(obj->light.pos.x, obj->light.pos.y, obj->light.pos.z, lightDir.x,
+                             lightDir.y, lightDir.z, obj->light.r, obj->light.g, obj->light.b);
         modelP->lightId[lightNum] = lightId;
         lightP = &Hu3DGlobalLight[lightId];
         Hu3DGLightStaticSet(lightId, staticF);
@@ -1932,8 +2090,10 @@ s32 Hu3DModelLightInfoSet(HU3D_MODELID modelId, s16 staticF)
                 break;
             
             case 1:
-                Hu3DGLightPointSet(lightId, obj->light.refBrightness-obj->light.refDistance, 1.0f, GX_DA_MEDIUM);
-                Hu3DGLightPosSet(lightId, obj->light.pos.x, obj->light.pos.y, obj->light.pos.z, 0, 1, 0);
+                Hu3DGLightPointSet(lightId, obj->light.refBrightness - obj->light.refDistance, 1.0f,
+                                   GX_DA_MEDIUM);
+                Hu3DGLightPosSet(lightId, obj->light.pos.x, obj->light.pos.y, obj->light.pos.z, 0,
+                                 1, 0);
                 break;
             
             case 2:
@@ -1949,6 +2109,7 @@ s32 Hu3DModelLightInfoSet(HU3D_MODELID modelId, s16 staticF)
     return lightNum;
 }
 
+/* Finds an imported HSF light by object name and reports NONE when it is absent. */
 HU3D_LIGHTID Hu3DModelLightIdGet(HU3D_MODELID modelId, char *objName)
 {
     char name[HSF_OBJNAME_MAX_LEN];
@@ -1972,6 +2133,7 @@ HU3D_LIGHTID Hu3DModelLightIdGet(HU3D_MODELID modelId, char *objName)
     return HU3D_LIGHTID_NONE;
 }
 
+/* Enables a global light in this model's draw-time light mask. */
 u8 Hu3DModelLightBitSet(HU3D_MODELID modelId, HU3D_LIGHTID lightId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1979,6 +2141,7 @@ u8 Hu3DModelLightBitSet(HU3D_MODELID modelId, HU3D_LIGHTID lightId)
     return modelP->lightBit;
 }
 
+/* Disables a global light in this model's draw-time light mask. */
 u8 Hu3DModelLightBitReset(HU3D_MODELID modelId, HU3D_LIGHTID lightId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1986,8 +2149,10 @@ u8 Hu3DModelLightBitReset(HU3D_MODELID modelId, HU3D_LIGHTID lightId)
     return modelP->lightBit;
 }
 
-static void lightSet(HU3D_LIGHT *lightP, s16 bit, Mtx cameraMtxXPose, Mtx cameraMtx, float hilitePower);
+static void lightSet(HU3D_LIGHT *lightP, s16 bit, Mtx cameraMtxXPose, Mtx cameraMtx,
+                     float hilitePower);
 
+/* Loads the enabled global and local lights for one model draw. */
 s16 Hu3DLightSet(HU3D_MODEL *modelP, Mtx cameraMtx, Mtx cameraMtxXPose, float hilitePower)
 {
     s16 bit;
@@ -2000,8 +2165,9 @@ s16 Hu3DLightSet(HU3D_MODEL *modelP, Mtx cameraMtx, Mtx cameraMtxXPose, float hi
     lightBit = 0;
     bit = (1 << 0);
     flag = 1;
-    
-    for(lightP=&Hu3DGlobalLight[0], mask=modelP->lightBit, i=0; i<HU3D_GLIGHT_MAX; i++, lightP++, mask >>= 1) {
+
+    for (lightP = &Hu3DGlobalLight[0], mask = modelP->lightBit, i = 0; i < HU3D_GLIGHT_MAX;
+         i++, lightP++, mask >>= 1) {
         if(lightP->type != HU3D_LIGHT_TYPE_NONE && (mask & 1)) {
             lightSet(lightP, bit, cameraMtxXPose, cameraMtx, hilitePower);
             lightBit |= bit;
@@ -2021,7 +2187,9 @@ s16 Hu3DLightSet(HU3D_MODEL *modelP, Mtx cameraMtx, Mtx cameraMtxXPose, float hi
     return lightBit;
 }
 
-static void lightSet(HU3D_LIGHT *lightP, s16 lightBit, Mtx cameraMtx, Mtx cameraMtxXPose, float hilitePower)
+/* Transforms one light and loads its attenuation, direction, color, and GX light slot. */
+static void lightSet(HU3D_LIGHT *lightP, s16 lightBit, Mtx cameraMtx, Mtx cameraMtxXPose,
+                     float hilitePower)
 {
     GXLightObj lightObj;
     HuVecF dir;
@@ -2063,6 +2231,7 @@ static void lightSet(HU3D_LIGHT *lightP, s16 lightBit, Mtx cameraMtx, Mtx camera
     GXLoadLightObjImm(&lightObj, lightBit);
 }
 
+/* Replaces the reflection texture animation used by reflective model materials. */
 void Hu3DReflectMapSet(ANIMDATA *anim)
 {
     if (reflectAnim[0] != (void *)refMapData0) {
@@ -2077,6 +2246,7 @@ void Hu3DReflectNoSet(s16 no)
     reflectMapNo = no;
 }
 
+/* Sets perspective exponential fog range and color for subsequent scene rendering. */
 void Hu3DFogSet(float start, float end, u8 r, u8 g, u8 b)
 {
     FogData.fogType = GX_FOG_PERSP_EXP;
@@ -2088,12 +2258,14 @@ void Hu3DFogSet(float start, float end, u8 r, u8 g, u8 b)
     FogData.fogColor.a = 255;
 }
 
+/* Clears the stored fog mode and disables fog in GX. */
 void Hu3DFogClear(void)
 {
     FogData.fogType = GX_FOG_NONE;
     GXSetFog(GX_FOG_NONE, 0, 0, 0, 0, BGColor);
 }
 
+/* Sets the RGB ambient color used by the 3D renderer. */
 void Hu3DAmbColorSet(float r, float g, float b)
 {
     Hu3DAmbColR = r;
@@ -2101,6 +2273,7 @@ void Hu3DAmbColorSet(float r, float g, float b)
     Hu3DAmbColB = b;
 }
 
+/* Enables or disables the renderer's shine effect. */
 void Hu3DShineSet(BOOL shineF)
 {
     if(shineF) {
@@ -2112,6 +2285,7 @@ void Hu3DShineSet(BOOL shineF)
 
 #define SHADOW_DEFAULT_SIZE 192
 
+/* Allocates and initializes shadow camera buffers for each selected camera. */
 void Hu3DShadowMultiCreate(float fov, float near, float far, s16 cameraBit)
 {
     s16 i;
@@ -2120,7 +2294,8 @@ void Hu3DShadowMultiCreate(float fov, float near, float far, s16 cameraBit)
             HU3D_SHADOW *shadowP = &Hu3DShadowBuf[i];
             shadowP->size = SHADOW_DEFAULT_SIZE;
             if(!shadowP->buf) {
-                shadowP->buf = HuMemDirectMalloc(HEAP_MODEL, SHADOW_DEFAULT_SIZE*SHADOW_DEFAULT_SIZE);
+                shadowP->buf =
+                    HuMemDirectMalloc(HEAP_MODEL, SHADOW_DEFAULT_SIZE * SHADOW_DEFAULT_SIZE);
             }
             shadowP->fov = fov;
             shadowP->near = near;
@@ -2147,6 +2322,7 @@ void Hu3DShadowCreate(float fov, float near, float far)
     Hu3DShadowMultiCreate(fov, near, far, HU3D_CAM0);
 }
 
+/* Updates the shadow camera position, up vector, and target for selected cameras. */
 void Hu3DShadowMultiPosSet(HuVecF *camPos, HuVecF *camUp, HuVecF *camTarget, s16 cameraBit)
 {
     s16 i;
@@ -2165,6 +2341,7 @@ void Hu3DShadowPosSet(HuVecF *camPos, HuVecF *camUp, HuVecF *camTarget)
     Hu3DShadowMultiPosSet(camPos, camUp, camTarget, HU3D_CAM0);
 }
 
+/* Sets the shadow texture alpha for each selected shadow camera. */
 void Hu3DShadowMultiTPLvlSet(float tpLvl, s16 cameraBit)
 {
     s16 i;
@@ -2180,6 +2357,7 @@ void Hu3DShadowTPLvlSet(float tpLvl)
     Hu3DShadowMultiTPLvlSet(tpLvl, HU3D_CAM0);
 }
 
+/* Resizes shadow-map buffers for the selected shadow cameras. */
 void Hu3DShadowMultiSizeSet(u16 size, s16 cameraBit)
 {
     s16 i;
@@ -2200,6 +2378,7 @@ void Hu3DShadowSizeSet(u16 size)
     Hu3DShadowMultiSizeSet(size, HU3D_CAM0);
 }
 
+/* Sets the RGB tint applied to shadows from the selected shadow cameras. */
 void Hu3DShadowMultiColSet(u8 r, u8 g, u8 b, s16 cameraBit)
 {
     s16 i;
@@ -2218,6 +2397,7 @@ void Hu3DShadowColSet(u8 r, u8 g, u8 b)
     Hu3DShadowMultiColSet(r, g, b, HU3D_CAM0);
 }
 
+/* Renders shadow-casting models from the active shadow camera and copies its map to the texture. */
 static void Hu3DShadowExec(BOOL bgColorF)
 {
     Mtx temp;
@@ -2251,7 +2431,9 @@ static void Hu3DShadowExec(BOOL bgColorF)
         if(!modelP->hsf) {
             continue;
         }
-        if((modelP->attr & HU3D_ATTR_SHADOW) && (modelP->attr & (HU3D_ATTR_DISPOFF|HU3D_ATTR_REFLECT_MODEL)) == 0 && (modelP->attr & HU3D_ATTR_HOOK) == 0) {
+        if ((modelP->attr & HU3D_ATTR_SHADOW) &&
+            (modelP->attr & (HU3D_ATTR_DISPOFF | HU3D_ATTR_REFLECT_MODEL)) == 0 &&
+            (modelP->attr & HU3D_ATTR_HOOK) == 0) {
             if(Hu3DShadowCamBit == HU3D_CAM0 || (Hu3DCameraBit & modelP->cameraBit)) {
                 BOOL vtxInvalidateF;
                 if(modelP->attr & HU3D_ATTR_MOTION_OFF) {
@@ -2276,7 +2458,8 @@ static void Hu3DShadowExec(BOOL bgColorF)
                             Hu3DMotionExec(i, modelP->motIdShape, modelP->motShapeWork.time, TRUE);
                         }
                     }
-                    if ((modelP->attr & (HU3D_ATTR_ENVELOPE_OFF|HU3D_ATTR_HOOKFUNC)) == 0 || (modelP->attr & HU3D_ATTR_MOTION_MODEL)) {
+                    if ((modelP->attr & (HU3D_ATTR_ENVELOPE_OFF | HU3D_ATTR_HOOKFUNC)) == 0 ||
+                        (modelP->attr & HU3D_ATTR_MOTION_MODEL)) {
                         vtxInvalidateF = TRUE;
                         InitVtxParm(modelP->hsf);
                         if(modelP->motIdShape != HU3D_MOTIONID_NONE) {
@@ -2345,6 +2528,7 @@ static void Hu3DShadowExec(BOOL bgColorF)
     GXEnd();
 }
 
+/* Renders the reflection model into its texture before reflective models are drawn. */
 static void Hu3DReflectModelExec(void)
 {
     Mtx temp;
@@ -2378,7 +2562,8 @@ static void Hu3DReflectModelExec(void)
     if(modelP->motId != HU3D_MOTIONID_NONE) {
         Hu3DMotionExec(Hu3DReflectModelId, modelP->motId, modelP->motWork.time, FALSE);
     }
-    if ((modelP->attr & (HU3D_ATTR_ENVELOPE_OFF|HU3D_ATTR_HOOKFUNC)) == 0 || (modelP->attr & HU3D_ATTR_MOTION_MODEL)) {
+    if ((modelP->attr & (HU3D_ATTR_ENVELOPE_OFF | HU3D_ATTR_HOOKFUNC)) == 0 ||
+        (modelP->attr & HU3D_ATTR_MOTION_MODEL)) {
         InitVtxParm(modelP->hsf);
         if(modelP->motIdShape != HU3D_MOTIONID_NONE) {
             ShapeProc(modelP->hsf);
@@ -2428,6 +2613,7 @@ static void Hu3DReflectModelExec(void)
     GXEnd();
 }
 
+/* Reserves a projection slot and initializes its camera and texture alpha settings. */
 HU3D_PROJID Hu3DProjectionCreate(ANIMDATA *anim, float fov, float near, float far)
 {
     HU3D_PROJECTION *projP;
@@ -2458,12 +2644,14 @@ HU3D_PROJID Hu3DProjectionCreate(ANIMDATA *anim, float fov, float near, float fa
     return projId;
 }
 
+/* Frees the projection animation and marks its slot unused. */
 void Hu3DProjectionKill(HU3D_PROJID projId)
 {
     HuSprAnimKill(Hu3DProjection[projId].anim);
     Hu3DProjection[projId].anim = NULL;
 }
 
+/* Updates the camera vectors used to draw a projection texture. */
 void Hu3DProjectionPosSet(HU3D_PROJID projId, HuVecF *camPos, HuVecF *camUp, HuVecF *camTarget)
 {
     Hu3DProjection[projId].camPos = *camPos;
@@ -2476,6 +2664,7 @@ void Hu3DProjectionTPLvlSet(HU3D_PROJID projId, float tpLvl)
     Hu3DProjection[projId].alpha = tpLvl*255;
 }
 
+/* Replaces a named model bitmap with the levels stored in an animation resource. */
 void Hu3DMipMapSet(void *animData, HU3D_MODELID modelId, char *bmpName)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -2539,6 +2728,7 @@ void Hu3DMipMapSet(void *animData, HU3D_MODELID modelId, char *bmpName)
     DCFlushRange(dataPtr, dataSize);
 }
 
+/* Copies the requested framebuffer rectangle into a texture buffer. */
 void Hu3DFbCopyExec(s16 x, s16 y, s16 w, s16 h, GXTexFmt texFmt, s16 mipmapF, void *buf)
 {
     GXSetTexCopySrc(x, y, w, h);
@@ -2552,26 +2742,31 @@ void Hu3DFbCopyExec(s16 x, s16 y, s16 w, s16 h, GXTexFmt texFmt, s16 mipmapF, vo
 
 static void FbCopyLayerHook(s16 layerNo);
 
-void Hu3DFbCopyLayerSet(s16 layerNo, s16 x, s16 y, s16 w, s16 h, GXTexFmt texFmt, s16 mipmapF, void *buf)
+/* Registers a layer callback that copies a framebuffer rectangle after the layer draws. */
+void Hu3DFbCopyLayerSet(s16 layerNo, s16 x, s16 y, s16 w, s16 h, GXTexFmt texFmt, s16 mipmapF,
+                        void *buf)
 {
     FBCOPY_LAYER *copyLayerP = &FbCopyLayer[layerNo];
     copyLayerP->layerNo = layerNo;
-    copyLayerP->x = x;
-    copyLayerP->y = y;
-    copyLayerP->w = w;
-    copyLayerP->h = h;
+    copyLayerP->sourceX = x;
+    copyLayerP->sourceY = y;
+    copyLayerP->width = w;
+    copyLayerP->height = h;
     copyLayerP->texFmt = texFmt;
-    copyLayerP->mipmap = mipmapF;
-    copyLayerP->buf = buf;
+    copyLayerP->mipmapF = mipmapF;
+    copyLayerP->textureBuffer = buf;
     Hu3DLayerHookSet(layerNo, FbCopyLayerHook);
 }
 
+/* Copies the framebuffer rectangle configured for this layer. */
 static void FbCopyLayerHook(s16 layerNo)
 {
     FBCOPY_LAYER *copyLayerP = &FbCopyLayer[layerNo];
-    Hu3DFbCopyExec(copyLayerP->x, copyLayerP->y, copyLayerP->w, copyLayerP->h, copyLayerP->texFmt, copyLayerP->mipmap, copyLayerP->buf);
+    Hu3DFbCopyExec(copyLayerP->sourceX, copyLayerP->sourceY, copyLayerP->width, copyLayerP->height,
+                   copyLayerP->texFmt, copyLayerP->mipmapF, copyLayerP->textureBuffer);
 }
 
+/* Draws a color-write-disabled quad one unit before the camera far plane to clear scene depth. */
 void Hu3DZClear(void)
 {
     HU3D_CAMERA *cameraP = &Hu3DCamera[Hu3DCameraNo];
@@ -2584,7 +2779,8 @@ void Hu3DZClear(void)
     
     MTXPerspective(proj, cameraP->fov, cameraP->aspect, cameraP->near, cameraP->far);
     GXSetProjection(proj, GX_PERSPECTIVE);
-    GXSetViewport(cameraP->viewportX, cameraP->viewportY, cameraP->viewportW, cameraP->viewportH, cameraP->viewportNear, cameraP->viewportFar);
+    GXSetViewport(cameraP->viewportX, cameraP->viewportY, cameraP->viewportW, cameraP->viewportH,
+                  cameraP->viewportNear, cameraP->viewportFar);
     GXSetScissor(cameraP->scissorX, cameraP->scissorY, cameraP->scissorW, cameraP->scissorH);
     GXClearVtxDesc();
     GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -2623,6 +2819,7 @@ void Hu3DZClearLayerSet(s16 layerNo)
     Hu3DLayerHookSet(layerNo, (HU3D_LAYER_HOOK)Hu3DZClear);
 }
 
+/* Prints loaded model and motion IDs with their source file locations. */
 void Hu3DModelDebug(void)
 {
     HU3D_MODEL *modelP;
@@ -2634,7 +2831,8 @@ void Hu3DModelDebug(void)
     OSReport("ID :Dir :File\n");
     for(i=0; i<HU3D_MODEL_MAX; i++, modelP++) {
         if(modelP->hsf && (modelP->attr & (HU3D_ATTR_HOOKFUNC|HU3D_ATTR_CAMERA)) == 0) {
-            OSReport("%3d:%04x:%3d", i, HuMemMemoryFileGet(modelP->hsf) >> 16, FILENUM(HuMemMemoryFileGet(modelP->hsf)));
+            OSReport("%3d:%04x:%3d", i, HuMemMemoryFileGet(modelP->hsf) >> 16,
+                     FILENUM(HuMemMemoryFileGet(modelP->hsf)));
             if(modelP->motId != HU3D_MOTIONID_NONE) {
                 OSReport(" motionNo %d\n", modelP->motId);
             } else {
@@ -2647,7 +2845,8 @@ void Hu3DModelDebug(void)
     OSReport("ID :Dir :File\n");
     for(motionP=Hu3DMotion, i=0; i<HU3D_MOTION_MAX; i++, motionP++) {
         if(motionP->hsf) {
-            OSReport("%3d:%04x:%3d\n", i, HuMemMemoryFileGet(motionP->hsf) >> 16, FILENUM(HuMemMemoryFileGet(motionP->hsf)));
+            OSReport("%3d:%04x:%3d\n", i, HuMemMemoryFileGet(motionP->hsf) >> 16,
+                     FILENUM(HuMemMemoryFileGet(motionP->hsf)));
         }
     }
 }
