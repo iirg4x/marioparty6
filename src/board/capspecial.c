@@ -1,3 +1,4 @@
+/* Board capsule events with special character scenes and player effects. */
 #define _MATH_H
 #include "dolphin/math.h"
 #include "dolphin/pad.h"
@@ -23,9 +24,7 @@
 #include "game/process.h"
 #include "messdir_enum.h"
 
-/* Approved compatibility primitive: MWCC emits one fabs instruction.
- * Other compilers use the portable math function; no fixed register is used. */
-#ifdef __MWERKS__
+/* Returns the magnitude used by Koopa's sine-driven dice pulse. */
 static inline float CapSpecialAbsFloat(register float value)
 {
     asm {
@@ -33,12 +32,6 @@ static inline float CapSpecialAbsFloat(register float value)
     }
     return value;
 }
-#else
-static inline float CapSpecialAbsFloat(float value)
-{
-    return (float)fabs((double)value);
-}
-#endif
 
 #define CAPSPECIAL_MASU_ATTR_TERESA_LINK (1 << 13)
 #define CAPSPECIAL_CAPSULE_LIGHT 31
@@ -132,16 +125,16 @@ typedef int (*TERESA_STEAL_BEGIN_HOOK)(int, int);
 #define CAP_WORK_MAX 64
 
 typedef struct EvCapWork {
-    int motId[CAP_WORK_MAX][GW_PLAYER_MAX];
-    int objId[CAP_WORK_MAX];
-    int sprId[CAP_WORK_MAX];
-    void *mem[CAP_WORK_MAX];
-    int masuId[CAP_WORK_MAX];
-    HuVecF objPos[CAP_WORK_MAX];
-    int playerMasuId[GW_PLAYER_MAX];
-    HuVecF playerPos[GW_PLAYER_MAX];
-    int bgId;
-    OMOBJ *obj;
+    int motId[CAP_WORK_MAX][GW_PLAYER_MAX]; /* Motion resource IDs by object and player. */
+    int objId[CAP_WORK_MAX]; /* Board object IDs created for this event. */
+    int sprId[CAP_WORK_MAX]; /* Sprite IDs created for this event. */
+    void *mem[CAP_WORK_MAX]; /* Allocations retained while event objects use them. */
+    int masuId[CAP_WORK_MAX]; /* Space associated with each event object. */
+    HuVecF objPos[CAP_WORK_MAX]; /* Current placement for each event object. */
+    int playerMasuId[GW_PLAYER_MAX]; /* Saved board space for each player. */
+    HuVecF playerPos[GW_PLAYER_MAX]; /* Saved position for each player. */
+    int bgId; /* Background object ID owned by this event. */
+    OMOBJ *obj; /* Event object that owns the work record. */
 } EVCAPWORK;
 
 typedef struct CapWorkFlag {
@@ -180,56 +173,56 @@ typedef struct CapWorkFlag {
 } CAPWORKFLAG;
 
 typedef struct CapWork {
-    int playerNo;
-    int targetPlayerNo;
-    int capsuleNo;
-    int masuId;
-    int masuIdNext;
-    int _unk14;
-    int _unk18;
-    int _unk1C;
+    int playerNo; /* Player who triggered the capsule. */
+    int targetPlayerNo; /* Selected player affected by the event, when applicable. */
+    int capsuleNo; /* Capsule being run. */
+    int masuId; /* Space where the capsule event started. */
+    int masuIdNext; /* Next space tracked by capsule movement. */
+    int _unk14; /* Shared work slot whose meaning is not established in this file. */
+    int _unk18; /* Shared work slot whose meaning is not established in this file. */
+    int _unk1C; /* Shared work slot whose meaning is not established in this file. */
     EVCAPWORK objWork;
     CAPWORKFLAG flags;
-    int eventData[6];
-    u8 _unkB84[40];
-    OMOBJ *guideObj;
-    u8 _unkBB0[28];
-    int processNo;
-    OMOBJ *explodeObj;
-    OMOBJ *boostObj;
-    OMOBJ *snowObj;
-    OMOBJ *glowObj;
-    OMOBJ *ringObj;
-    OMOBJ *coinObj;
-    OMOBJ *coinManObj;
-    OMOBJ *starManObj;
-    OMOBJ *capLoseObj;
+    int eventData[6]; /* Per-event object IDs, counts, or callback results. */
+    u8 _unkB84[40]; /* Shared work bytes whose use is not established in this file. */
+    OMOBJ *guideObj; /* Guide character object used by capsule scenes. */
+    u8 _unkBB0[28]; /* Shared work bytes whose use is not established in this file. */
+    int processNo; /* Process ID for the running capsule event. */
+    OMOBJ *explodeObj; /* Explosion effect object, when the event uses one. */
+    OMOBJ *boostObj; /* Boost effect object, when the event uses one. */
+    OMOBJ *snowObj; /* Snow effect object, when the event uses one. */
+    OMOBJ *glowObj; /* Glow effect object, when the event uses one. */
+    OMOBJ *ringObj; /* Ring effect object, when the event uses one. */
+    OMOBJ *coinObj; /* Coin effect object, when the event uses one. */
+    OMOBJ *coinManObj; /* Coin character object, when the event uses one. */
+    OMOBJ *starManObj; /* Star character object, when the event uses one. */
+    OMOBJ *capLoseObj; /* Capsule-loss object, when the event uses one. */
 } CAPWORK;
 
 typedef struct TeresaFadeWork_s {
-    void *textureData;
-    u32 textureSize;
-    BOOL activeF;
-    float alpha;
-    BOOL copyF;
-    OMOBJ *object;
-    u32 screenWidth;
-    u32 screenHeight;
-    u32 textureWidth;
-    u32 textureHeight;
+    void *textureData; /* Captured screen image used by the Teresa fade. */
+    u32 textureSize; /* Captured image size in bytes. */
+    BOOL activeF; /* Whether the fade draw hook is enabled. */
+    float alpha; /* Overlay opacity. */
+    BOOL copyF; /* Whether the current frame should be copied. */
+    OMOBJ *object; /* Teresa object whose material is faded. */
+    u32 screenWidth; /* Render target width in pixels. */
+    u32 screenHeight; /* Render target height in pixels. */
+    u32 textureWidth; /* Captured texture width in pixels. */
+    u32 textureHeight; /* Captured texture height in pixels. */
 } TERESA_FADE_WORK;
 
 typedef struct MiracleSprWork_s {
-    BOOL activeF;
-    int sprId;
-    int backSprId;
-    int sprIdTbl[6];
-    int focusTime;
-    int focusNo;
-    BOOL hideF;
-    float unk30;
-    float unk34;
-    HuVecF pos;
+    BOOL activeF; /* Whether the trade-selection sprites are active. */
+    int sprId; /* Current foreground sprite. */
+    int backSprId; /* Background sprite behind the trade choices. */
+    int sprIdTbl[6]; /* Sprite IDs for the available trade choices. */
+    int focusTime; /* Frames spent animating the current focus. */
+    int focusNo; /* Focused trade choice index. */
+    BOOL hideF; /* Whether trade sprites are hidden. */
+    float resetFloatA; /* Set to 0.0 during trade-sprite setup; runtime purpose is unknown here. */
+    float resetFloatB; /* Set to 0.0 during trade-sprite setup; runtime purpose is unknown here. */
+    HuVecF pos; /* Screen position used to place the trade sprites. */
 } MIRACLE_SPR_WORK;
 
 static HuVecF capsuleCameraOfs = { 0.0f, 100.0f, 0.0f };
@@ -361,10 +354,14 @@ static char capspecialMesFormat[3] = "%d";
 static char capspecialMotionNode[5] = "head";
 static char capspecialTargetNode[8] = "target";
 static int miracleBackFile = CAPSPECIAL_DATA_MIRACLE_TRADE_BACK;
-static u32 donkeyMgFile[2] = { DATANUM(DATA_board, 140), DATANUM(DATA_board, 140) }; /* minigame archive resource identifier pair */
-static u8 donkeyDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 }; /* dice value table terminator sentinel */
-static u32 koopaMgFile[2] = { DATANUM(DATA_board, 141), DATANUM(DATA_board, 141) }; /* minigame archive resource identifier pair */
-static u8 koopaDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 }; /* dice value table terminator sentinel */
+/* minigame archive resource identifier pair */
+static u32 donkeyMgFile[2] = { DATANUM(DATA_board, 140), DATANUM(DATA_board, 140) };
+/* dice value table terminator sentinel */
+static u8 donkeyDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 };
+/* minigame archive resource identifier pair */
+static u32 koopaMgFile[2] = { DATANUM(DATA_board, 141), DATANUM(DATA_board, 141) };
+/* dice value table terminator sentinel */
+static u8 koopaDiceTbl[8] = { 0, 1, 2, 3, 4, CAPSPECIAL_DICE_TABLE_END, 0, 0 };
 static int kettouMotId[12];
 typedef struct {
     s16 playerNo1;
@@ -523,6 +520,8 @@ void mbev_CapTeresaFadeCreate(int objectId);
 void mbev_CapTeresaFadeKill(int objectId);
 void mbev_CapTeresaFadeSet(float alpha);
 
+/* Runs the Teresa capsule event from the capsule callback table. It presents
+ * Teresa's choices, then charges the player and performs the selected steal. */
 void mbev_CapTeresa(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -1131,8 +1130,9 @@ for (i = 0, starEnabledNum = 0; i < GW_PLAYER_MAX; i++) {
                                 * cos((M_PI * launchElevation) / 180.0)));
                             coinVel.y = (float)(weight
                                 * sin((M_PI * launchElevation) / 180.0));
-                            coinEffect = mbev_CapEffCoinAdd(work->coinObj,
-                                &coinPos, &coinVel, 0.75f, 4.9f, 30, CAPSPECIAL_TERESA_COIN_EFFECT_ARG);
+                            coinEffect =
+                                mbev_CapEffCoinAdd(work->coinObj, &coinPos, &coinVel, 0.75f, 4.9f,
+                                                   30, CAPSPECIAL_TERESA_COIN_EFFECT_ARG);
                             if (coinEffect >= 0) {
                                 mbev_CapEffCoinMaxYSet(work->coinObj,
                                     coinEffect, cameraRot.y + 300.0f);
@@ -1412,6 +1412,7 @@ void mbev_CapTeresaStealSet(int mesId, int coinNum, TERESA_STEAL_BEGIN_HOOK begi
 
 static const float lbl_802C42C4 = 255.0f;
 
+/* Called by the Teresa capsule event to prepare the screen-capture fade overlay. */
 void mbev_CapTeresaFadeCreate(int objectId)
 {
     int modelId;
@@ -1465,6 +1466,7 @@ void mbev_CapTeresaFadeCreate(int objectId)
     DCFlushRange(teresaFadeWork->textureData, teresaFadeWork->textureSize);
 }
 
+/* Called when the Teresa scene ends to remove its material hook and capture buffer. */
 void mbev_CapTeresaFadeKill(int objectId)
 {
     Hu3DModelMatHookSet(mbObjModelIDGet(objectId), NULL);
@@ -1475,6 +1477,7 @@ void mbev_CapTeresaFadeKill(int objectId)
     }
 }
 
+/* Adds the captured scene image over Teresa while the event fades her in. */
 static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
     HSF_MATERIAL *material)
 {
@@ -1507,9 +1510,11 @@ static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
     GXSetNumTexGens(2);
     GXSetNumTevStages(2);
     GXSetTevKAlphaSel(0, 0);
-    GXSetTexCoordGen2(0, 1, 4, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY); /* texture-coordinate generation selector for the fade pass */
+    /* texture-coordinate generation selector for the fade pass */
+    GXSetTexCoordGen2(0, 1, 4, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
     GXSetTevOrder(0, 0, 0, 0);
-    GXSetTevColorIn(0, GX_CC_ZERO, 8, GX_CC_RASC, GX_CC_ZERO); /* TEV color-input selectors for sampled fade composition */
+    /* TEV color-input selectors for sampled fade composition */
+    GXSetTevColorIn(0, GX_CC_ZERO, 8, GX_CC_RASC, GX_CC_ZERO);
     GXSetTevColorOp(0, 0, 0, 0, GX_TRUE, 0);
     GXSetTevAlphaIn(0, 7, 7, 7, 6);
     GXSetTevAlphaOp(0, 0, 0, 0, GX_TRUE, 0);
@@ -1527,14 +1532,16 @@ static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
     PSMTXConcat(perspective, Hu3DCameraMtx, texMtx);
     PSMTXConcat(texMtx, objectMtx, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX1, 0); /* projected texture matrix slot for the fade pass */
-    GXSetTexCoordGen2(1, 0, 0, GX_TEXMTX1, GX_FALSE, GX_PTIDENTITY); /* texture-coordinate generation selector for the fade pass */
+    /* texture-coordinate generation selector for the fade pass */
+    GXSetTexCoordGen2(1, 0, 0, GX_TEXMTX1, GX_FALSE, GX_PTIDENTITY);
 
     color.r = color.g = color.b = 255;
     color.a = (u8)teresaFadeWork->alpha;
     GXSetTevColor(3, color);
     GXSetTevOrder(1, 1, 1, 4);
     GXSetTevKAlphaSel(1, 0);
-    GXSetTevColorIn(1, 8, 0, 7, GX_CC_ZERO); /* TEV color-input selectors for sampled fade composition */
+    GXSetTevColorIn(1, 8, 0, 7, GX_CC_ZERO); /* TEV color-input selectors for sampled fade
+                                              * composition */
     GXSetTevColorOp(1, 0, 0, 0, GX_TRUE, 0);
     GXSetTevAlphaIn(1, 7, 7, 7, 6);
     GXSetTevAlphaOp(1, 0, 0, 0, GX_TRUE, 0);
@@ -1551,6 +1558,7 @@ static void ev_CapTeresaFadeMatHook(HU3D_DRAW_OBJ *drawObj,
     }
 }
 
+/* Requests a fresh screen capture and removes the fade object on event exit. */
 static void ev_CapTeresaFadeOMExec(OMOBJ *obj)
 {
     if (mbExitCheck() || !teresaFadeWork) {
@@ -1560,6 +1568,7 @@ static void ev_CapTeresaFadeOMExec(OMOBJ *obj)
     }
 }
 
+/* Called by the Teresa scene while fading its captured screen overlay. */
 void mbev_CapTeresaFadeSet(float alpha)
 {
 
@@ -1579,6 +1588,8 @@ const float lbl_802C436C = -0.5f;
 const float lbl_802C4370 = 10.0f;
 const float lbl_802C4374 = -20.0f;
 
+/* Runs the Miracle capsule scene from the capsule callback table, moving the
+ * player to the start space while the guides present the trade choices. */
 void mbev_CapMiracle(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -1607,14 +1618,17 @@ void mbev_CapMiracle(void)
     }
     mbCameraPlayerViewSet(playerNo, 0);
     mbev_CapPlayerRotate(playerNo, 0.0f);
-    guideIds[0] = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 0), /* event model resource identifier */
+    /* event model resource identifier */
+    guideIds[0] = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 0),
         (int *)MiracleGuideMotTbl[0], FALSE, 5, FALSE);
     mbObjMotionSet(guideIds[0], 3, 0);
     mbObjDispSet(guideIds[0], FALSE);
-    guideIds[1] = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 27), /* event model resource identifier */
+    /* event model resource identifier */
+    guideIds[1] = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 27),
         (int *)MiracleGuideMotTbl[1], FALSE, 5, FALSE);
     mbObjHookSet(guideIds[1], miracleItemHookName,
-        mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 53), NULL, /* event model resource identifier */
+        /* event model resource identifier */
+        mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 53), NULL,
             FALSE, 5, FALSE));
     HuPrcVSleep();
     mbObjMotionSet(guideIds[1], 3, 0);
@@ -1709,6 +1723,7 @@ void mbev_CapMiracleKill(void)
 {
 }
 
+/* Animates the guide characters and player around the Miracle capsule space. */
 static void ev_CapMiracleMasu(CAPWORK *work)
 {
     HuVecF playerPos;
@@ -2043,6 +2058,7 @@ static void ev_CapMiracleMasu(CAPWORK *work)
     }
 }
 
+/* Runs the Miracle capsule scene after its event entry point selects guide and spaces. */
 static void ev_CapMiracleRun(CAPWORK *work)
 {
     HuVecF guidePos;
@@ -2094,7 +2110,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
     pos.y = playerPos.y;
     pos.z = playerPos.z - 75.0f;
     mbCameraRotGet(&rot);
-    tradeObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 54), NULL, /* event model resource identifier */
+    /* event model resource identifier */
+    tradeObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 54), NULL,
         FALSE, 0, FALSE);
     mbObjPosSetV(tradeObj, &pos);
     mbObjRotSetV(tradeObj, &rot);
@@ -2104,7 +2121,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
     pos.x = mtx[0][3];
     pos.y = mtx[1][3];
     pos.z = mtx[2][3];
-    leftObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 56), NULL, /* event model resource identifier */
+    /* event model resource identifier */
+    leftObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 56), NULL,
         FALSE, 0, FALSE);
     mbObjMotionTimeSet(leftObj, 0.5f + GwPlayer[playerNo].charNo);
     mbObjMotionSpeedSet(leftObj, 0.0f);
@@ -2113,7 +2131,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
     mbObjScaleSet(leftObj, 2.0f, 2.0f, 2.0f);
     mbObjDispSet(leftObj, FALSE);
     mbObjLayerSet(leftObj, 3);
-    rightObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 57), NULL, /* event model resource identifier */
+    /* event model resource identifier */
+    rightObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 57), NULL,
         FALSE, 0, FALSE);
     mbObjMotionTimeSet(rightObj, 0.5f);
     mbObjMotionSpeedSet(rightObj, 0.0f);
@@ -2122,7 +2141,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
     mbObjScaleSet(rightObj, 2.0f, 2.0f, 2.0f);
     mbObjDispSet(rightObj, FALSE);
     mbObjLayerSet(rightObj, 3);
-    targetObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 55), NULL, /* event model resource identifier */
+    /* event model resource identifier */
+    targetObj = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar4, 55), NULL,
         FALSE, 0, FALSE);
     mbObjAttrSet(targetObj, HU3D_MOTATTR_LOOP);
     mbObjPosSetV(targetObj, &pos);
@@ -2135,10 +2155,12 @@ static void ev_CapMiracleRun(CAPWORK *work)
     mbWipeDissolveFadeIn();
     mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(MSM_SE_GUIDE_26); /* event guide voice resource */
-    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 0)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+    /* miracle scene message resource */
+    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 0)), mbGuideSpeakerNoGet());
     mbWinTopWait();
     mbAudGuidePlay(MSM_SE_GUIDE_28); /* event guide voice resource */
-    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 1)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+    /* miracle scene message resource */
+    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 1)), mbGuideSpeakerNoGet());
     mbWinTopWait();
     for (i = 1; i < 5; i++) {
         Hu3DMotionForceSet(mbObjModelIDGet(guide), capspecialMotionNode, HU3D_CONST_FORCE_ROTX,
@@ -2177,7 +2199,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
     HuPrcSleep(60);
     mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
     mbAudGuidePlay(MSM_SE_GUIDE_28); /* event guide voice resource */
-    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 2)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+    /* miracle scene message resource */
+    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 2)), mbGuideSpeakerNoGet());
     mbWinTopWait();
     mbAudFXDelaySet(30);
     mbAudFXPlay(MSM_SE_BRD00_13); /* event sound-effect resource */
@@ -2215,7 +2238,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
         mbObjMotionShiftSet(guide, 6, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
         mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
-            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 5)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            /* miracle scene message resource */
+        mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 5)), mbGuideSpeakerNoGet());
         mbWinTopWait();
         mbPlayerWinLoseVoicePlay(playerNo, 13, CHARVOICEID(12)); /* player loss voice resource */
         mbev_CapPlayerMotShiftWait(playerNo, 13, HU3D_MOTATTR_NONE,
@@ -2239,7 +2263,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
         mbAudGuidePlay(MSM_SE_GUIDE_28); /* event guide voice resource */
         mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
-            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 3)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            /* miracle scene message resource */
+        mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 3)), mbGuideSpeakerNoGet());
         mbWinTopWait();
         mbAudFXDelaySet(30);
         mbAudFXPlay(MSM_SE_BRD00_13); /* event sound-effect resource */
@@ -2275,7 +2300,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
     ev_CapMiracleTradeFocusSet();
     mbObjMotionShiftSet(guide, 7, 0.0f, 8.0f,
         HU3D_MOTATTR_LOOP);
-    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 4)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+    /* miracle scene message resource */
+    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 4)), mbGuideSpeakerNoGet());
     mbWinTopWait();
     ev_CapMiracleTradeHideSet();
     HuPrcSleep(60);
@@ -2297,9 +2323,12 @@ static void ev_CapMiracleRun(CAPWORK *work)
     switch (tradeNo) {
         case 0:
             mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
-                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                    /* miracle scene message resource */
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)),
+                        mbGuideSpeakerNoGet());
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
-            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 1); /* miracle scene insert resource */
+            /* miracle scene insert resource */
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 1);
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
             mbWinTopWait();
             if (mbPlayerCoinGet(playerNo1) <= 0) {
@@ -2307,7 +2336,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
-                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 1); /* miracle scene insert resource */
+                /* miracle scene insert resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 1);
                 mbWinTopWait();
             } else {
                 mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
@@ -2318,17 +2348,21 @@ static void ev_CapMiracleRun(CAPWORK *work)
             break;
         case 1:
             mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
-                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                    /* miracle scene message resource */
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)),
+                        mbGuideSpeakerNoGet());
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 1);
-            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 2); /* miracle scene insert resource */
+            /* miracle scene insert resource */
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 2);
             mbWinTopWait();
             if (mbPlayerCoinGet(playerNo1) <= 0
                 && mbPlayerCoinGet(playerNo2) <= 0) {
                 mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
-                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 0); /* miracle scene insert resource */
+                /* miracle scene insert resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 11), 0);
                 mbWinTopWait();
             } else {
                 mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
@@ -2340,9 +2374,12 @@ static void ev_CapMiracleRun(CAPWORK *work)
             break;
         case 2:
             mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
-                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                    /* miracle scene message resource */
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)),
+                        mbGuideSpeakerNoGet());
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
-            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 13), 1); /* miracle scene insert resource */
+            /* miracle scene insert resource */
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 13), 1);
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
             mbWinTopWait();
             if (mbPlayerStarGet(playerNo1) <= 0) {
@@ -2350,7 +2387,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
-                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 1); /* miracle scene insert resource */
+                /* miracle scene insert resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 1);
                 mbWinTopWait();
             } else {
                 mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
@@ -2361,9 +2399,12 @@ static void ev_CapMiracleRun(CAPWORK *work)
             break;
         case 3:
             mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
-                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                    /* miracle scene message resource */
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 6)),
+                        mbGuideSpeakerNoGet());
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
-            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 14), 1); /* miracle scene insert resource */
+            /* miracle scene insert resource */
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 14), 1);
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 2);
             mbWinTopWait();
             if (mbPlayerStarGet(playerNo1) <= 0) {
@@ -2371,7 +2412,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 8)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
                 mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
-                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 1); /* miracle scene insert resource */
+                /* miracle scene insert resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 1);
                 mbWinTopWait();
             } else {
                 mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
@@ -2382,17 +2424,21 @@ static void ev_CapMiracleRun(CAPWORK *work)
             break;
         case 4:
             mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
-                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                    /* miracle scene message resource */
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)),
+                        mbGuideSpeakerNoGet());
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 1);
-            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 2); /* miracle scene insert resource */
+            /* miracle scene insert resource */
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 2);
             mbWinTopWait();
             if (mbPlayerStarGet(playerNo1) <= 0
                 && mbPlayerStarGet(playerNo2) <= 0) {
                 mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
-                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 0); /* miracle scene insert resource */
+                /* miracle scene insert resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 12), 0);
                 mbWinTopWait();
             } else {
                 mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
@@ -2404,10 +2450,13 @@ static void ev_CapMiracleRun(CAPWORK *work)
             break;
         case 5:
             mbAudGuidePlay(MSM_SE_GUIDE_25); /* event guide voice resource */
-                    mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+                    /* miracle scene message resource */
+            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 7)),
+                        mbGuideSpeakerNoGet());
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo1), 0);
             mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo2), 1);
-            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 15), 2); /* miracle scene insert resource */
+            /* miracle scene insert resource */
+            mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 15), 2);
             mbWinTopWait();
             if (mbPlayerCoinGet(playerNo1) <= 0
                 && mbPlayerCoinGet(playerNo2) <= 0
@@ -2416,7 +2465,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
                 mbAudGuidePlay(MSM_SE_GUIDE_27); /* event guide voice resource */
                             mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 9)),
                     mbGuideSpeakerNoGet()); /* miracle scene message resource */
-                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 15), 0); /* miracle scene insert resource */
+                /* miracle scene insert resource */
+                mbWinTopInsertMesSet(MESSNUM(MESS_MIRACLE_MASU, 15), 0);
                 mbWinTopWait();
             } else {
                 mbObjMotionShiftSet(guide, 1, 0.0f, 8.0f,
@@ -2445,22 +2495,26 @@ static void ev_CapMiracleRun(CAPWORK *work)
         motionF[1] = FALSE;
         for (i = 0; i < 2; i++) {
             if (oldStar[i] < mbPlayerStarGet(players[i])) {
-                mbPlayerWinLoseVoicePlay(players[i], 7, CHARVOICEID(0)); /* player win voice resource */
+                /* player win voice resource */
+                mbPlayerWinLoseVoicePlay(players[i], 7, CHARVOICEID(0));
                 mbPlayerMotionShiftSet(players[i], 7, 0.0f, 8.0f,
                     HU3D_MOTATTR_NONE);
                 motionF[i] = TRUE;
             } else if (oldStar[i] > mbPlayerStarGet(players[i])) {
-                mbPlayerWinLoseVoicePlay(players[i], 8, CHARVOICEID(12)); /* player loss voice resource */
+                /* player loss voice resource */
+                mbPlayerWinLoseVoicePlay(players[i], 8, CHARVOICEID(12));
                 mbPlayerMotionShiftSet(players[i], 8, 0.0f, 8.0f,
                     HU3D_MOTATTR_NONE);
                 motionF[i] = TRUE;
             } else if (oldCoin[i] < mbPlayerCoinGet(players[i])) {
-                mbPlayerWinLoseVoicePlay(players[i], 12, CHARVOICEID(6)); /* player win voice resource */
+                /* player win voice resource */
+                mbPlayerWinLoseVoicePlay(players[i], 12, CHARVOICEID(6));
                 mbPlayerMotionShiftSet(players[i], 12, 0.0f, 8.0f,
                     HU3D_MOTATTR_NONE);
                 motionF[i] = TRUE;
             } else if (oldCoin[i] > mbPlayerCoinGet(players[i])) {
-                mbPlayerWinLoseVoicePlay(players[i], 13, CHARVOICEID(12)); /* player loss voice resource */
+                /* player loss voice resource */
+                mbPlayerWinLoseVoicePlay(players[i], 13, CHARVOICEID(12));
                 mbPlayerMotionShiftSet(players[i], 13, 0.0f, 8.0f,
                     HU3D_MOTATTR_NONE);
                 motionF[i] = TRUE;
@@ -2487,7 +2541,8 @@ static void ev_CapMiracleRun(CAPWORK *work)
         mbObjMotionShiftSet(guide, 5, 0.0f, 8.0f,
             HU3D_MOTATTR_LOOP);
         mbAudGuidePlay(MSM_SE_GUIDE_28); /* event guide voice resource */
-            mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 10)), mbGuideSpeakerNoGet()); /* miracle scene message resource */
+            /* miracle scene message resource */
+        mbWinCreate(2, ev_CapMiracleMesGet(MESSNUM(MESS_MIRACLE_MASU, 10)), mbGuideSpeakerNoGet());
         mbWinTopWait();
     }
     mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
@@ -2623,6 +2678,7 @@ static void ev_CapMiracleStarTrade(CAPWORK *work, int playerNo1, int playerNo2,
         || mbev_CapStarManNumGet(work->starManObj) > 0);
 }
 
+/* Maps a Miracle message choice to the message displayed by its event flow. */
 static int ev_CapMiracleMesGet(int messNo)
 {
     if (GwSystem.curTime == FALSE) {
@@ -2776,6 +2832,7 @@ static int ev_CapMiracleDiceExec(int playerNo, int modelId, int timeMax,
     return value;
 }
 
+/* Creates the Miracle trade-choice sprites and initializes their animation state. */
 static void ev_CapMiracleSprCreate(void)
 {
     MIRACLE_SPR_WORK *work;
@@ -2798,11 +2855,12 @@ static void ev_CapMiracleSprCreate(void)
         work->focusTime = 0;
         work->focusNo = 0;
         work->hideF = FALSE;
-        work->unk30 = 0.0f;
-        work->unk34 = 0.0f;
+        work->resetFloatA = 0.0f;
+        work->resetFloatB = 0.0f;
     }
 }
 
+/* Object-manager callback that animates and positions the Miracle trade sprites. */
 static void ev_CapMiracleSprUpdate(OMOBJ *obj)
 {
     MIRACLE_SPR_WORK *work = obj->data;
@@ -2995,6 +3053,7 @@ static void ev_CapMiracleSprDestroy(void)
     miracleSprObj = NULL;
 }
 
+/* Shows the Miracle trade choices at pos, initially focusing the selected choice. */
 static void ev_CapMiracleTradeCreate(HuVecF *pos, int no)
 {
     MIRACLE_SPR_WORK *work;
@@ -3018,8 +3077,8 @@ static void ev_CapMiracleTradeCreate(HuVecF *pos, int no)
     work->activeF = TRUE;
     work->focusTime = 0;
     work->focusNo = 0;
-    work->unk30 = 0.0f;
-    work->unk34 = 0.0f;
+    work->resetFloatA = 0.0f;
+    work->resetFloatB = 0.0f;
     work->pos = *pos;
     if (no < 0) {
         no = 0;
@@ -3046,6 +3105,7 @@ static void ev_CapMiracleTradeCreate(HuVecF *pos, int no)
     }
 }
 
+/* Updates which Miracle trade choice is highlighted from the current pad input. */
 static void ev_CapMiracleTradeFocusSet(void)
 {
     int i;
@@ -3063,6 +3123,7 @@ static void ev_CapMiracleTradeFocusSet(void)
     }
 }
 
+/* Hides the Miracle trade-choice sprites while the event continues its scene. */
 static void ev_CapMiracleTradeHideSet(void)
 {
     int i;
@@ -3079,6 +3140,7 @@ static void ev_CapMiracleTradeHideSet(void)
     }
 }
 
+/* Runs the Kettou duel capsule event from the capsule callback table. */
 void mbev_CapKettou(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -3174,10 +3236,11 @@ void mbev_CapKettou(void)
             ev_CapKettouReturn(work);
         } else {
             int guideSpeaker = mbGuideSpeakerNoGet();
-            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 12)), guideSpeaker); /* duel scene message resource */
+            /* duel scene message resource */
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 12)), guideSpeaker);
             mbWinTopWait();
             mbAudFXDelaySet(30);
-            mbAudGuidePlay(MSM_SE_GUIDE_26); /* guide sound-effect resource */
+            mbAudGuidePlay(MSM_SE_GUIDE_26); /* guide voice resource */
             mbObjMotionShiftSet(guideModel, kettouMotId[5],
                 0.0f, 8.0f, 0);
             mbev_MgCallKettou();
@@ -3196,6 +3259,7 @@ void mbev_CapKettouKill(void)
 {
 }
 
+/* Runs the Kettou capsule battle scene and returns its selected result. */
 static int ev_CapKettouStart(CAPWORK *work)
 {
     extern void mbStatusDispForceSetAll(BOOL dispF);
@@ -3319,22 +3383,27 @@ static int ev_CapKettouStart(CAPWORK *work)
     mbCameraMovePlayer(playerNo, NULL, &cameraOfs,
         1500.0f, -1.0f, -1);
     mbCameraMoveWait();
-    sprite0 = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 65), 120, 0); /* event sprite resource identifier */
+    /* event sprite resource identifier */
+    sprite0 = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 65), 120, 0);
     espPosSet((s16)sprId, 288.0f, 224.0f);
     espTPLvlSet((s16)sprId, 0.8f);
     espDispOff((s16)sprId);
-    sprite1 = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 67), 110, 0); /* event sprite resource identifier */
+    /* event sprite resource identifier */
+    sprite1 = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 67), 110, 0);
     espPosSet((s16)sprId, 230.0f, 224.0f);
     espDispOff((s16)sprId);
-    sprite[0] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0); /* event sprite resource identifier */
+    /* event sprite resource identifier */
+    sprite[0] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0);
     espPosSet((s16)sprId, 272.0f, 224.0f);
     espBankSet((s16)sprId, 10);
     espDispOff((s16)sprId);
-    sprite[1] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0); /* event sprite resource identifier */
+    /* event sprite resource identifier */
+    sprite[1] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0);
     espPosSet((s16)sprId, 312.0f, 224.0f);
     espBankSet((s16)sprId, 0);
     espDispOff((s16)sprId);
-    sprite[2] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0); /* event sprite resource identifier */
+    /* event sprite resource identifier */
+    sprite[2] = sprId = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar4, 66), 100, 0);
     espPosSet((s16)sprId, 352.0f, 224.0f);
     espBankSet((s16)sprId, 1);
     espDispOff((s16)sprId);
@@ -3342,7 +3411,8 @@ static int ev_CapKettouStart(CAPWORK *work)
     mbMusBoardFadeOut(0, 0, 1000, 1000, MSM_STREAM_STORY_LOSE, FALSE);
     mbWipeSpecialFadeOutCreate(2, 60);
     mbAudGuidePlay(MSM_SE_GUIDE_26); /* event guide-voice resource */
-    mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 0)), mbGuideSpeakerNoGet()); /* duel scene message resource */
+    /* duel scene message resource */
+    mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 0)), mbGuideSpeakerNoGet());
     mbWinTopWait();
     if (mbPlayerStarGet(playerNo) <= 0 && mbPlayerCoinGet(playerNo) < 40) {
         starEnable = FALSE;
@@ -3404,7 +3474,8 @@ repeatTarget:
     switch (playerNum) {
     case 3:
         do {
-            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 1)), mbGuideSpeakerNoGet(), 0);
+            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 1)),
+                              mbGuideSpeakerNoGet(), 0);
             mbWinTopAttrSet(HUWIN_ATTR_NOCANCEL);
             for (i = 0; i < playerNum; i++) {
                 compactList[i] = playerList[i];
@@ -3440,7 +3511,8 @@ repeatTarget:
         break;
     case 2:
         do {
-            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 2)), mbGuideSpeakerNoGet(), 0);
+            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 2)),
+                              mbGuideSpeakerNoGet(), 0);
             mbWinTopAttrSet(HUWIN_ATTR_NOCANCEL);
             for (i = 0; i < playerNum; i++) {
                 compactList[i] = playerList[i];
@@ -3522,7 +3594,8 @@ repeatTarget:
         float scaleY;
 
     repeatWager:
-        mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 3)), mbGuideSpeakerNoGet(), 0);
+        mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 3)),
+                          mbGuideSpeakerNoGet(), 0);
         if (playerNum < 2) {
             mbWinTopAttrSet(HUWIN_ATTR_NOCANCEL);
             mbWinTopChoiceDisable(2);
@@ -3699,7 +3772,8 @@ repeatTarget:
             }
             choiceStar = 0;
         } else {
-            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 4)), mbGuideSpeakerNoGet(), 0);
+            mbWinCreateChoice(1, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 4)),
+                              mbGuideSpeakerNoGet(), 0);
             coinChoiceF = starChoiceF = TRUE;
             if (mbPlayerCoinGet(playerNo) < 40) {
                 mbWinTopChoiceDisable(0);
@@ -3764,7 +3838,8 @@ repeatTarget:
                 HuPrcVSleep();
             } while (!mbStarDispCheck(starObj[0])
                 || !mbStarDispCheck(starObj[1]));
-            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 10)), mbGuideSpeakerNoGet());
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 10)),
+                        mbGuideSpeakerNoGet());
             mbWinTopWait();
             memset(&mgResultData, 0, sizeof(mgResultData));
             mgResultData.playerNo1 = playerNo;
@@ -3784,7 +3859,8 @@ repeatTarget:
                 HuPrcVSleep();
             } while (!mbCoinDispKillCheck(coinDisp[0])
                 || !mbStarDispCheck(starObj[1]));
-            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 11)), mbGuideSpeakerNoGet());
+            mbWinCreate(2, ev_CapKettouMesGet(MESSNUM(MESS_KETTOU_MASU, 11)),
+                        mbGuideSpeakerNoGet());
             mbWinTopWait();
             memset(&mgResultData, 0, sizeof(mgResultData));
             mgResultData.playerNo1 = playerNo;
@@ -3798,6 +3874,7 @@ repeatTarget:
     }
 }
 
+/* Restores player and board state after the Kettou capsule battle scene. */
 static void ev_CapKettouReturn(CAPWORK *work)
 {
     extern void mbStatusDispForceSetAll(BOOL dispF);
@@ -4061,6 +4138,7 @@ winner_done:
     work->guideObj = NULL;
 }
 
+/* Maps a Kettou message choice to the message used by its capsule scene. */
 static int ev_CapKettouMesGet(int messNo)
 {
     if (GwSystem.curTime == FALSE) {
@@ -4069,6 +4147,8 @@ static int ev_CapKettouMesGet(int messNo)
     return messNo + 23;
 }
 
+/* Runs the Donkey capsule event from the capsule callback table, including its
+ * roulette and minigame sequence. */
 void mbev_CapDonkey(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -4085,16 +4165,19 @@ void mbev_CapDonkey(void)
     work->coinObj = mbev_CapEffCoinCreate();
     HuPrcVSleep();
 
-    obj1 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 14), /* event model resource identifier */
+    /* event model resource identifier */
+    obj1 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 14),
         (int *)donkeyMotTbl, FALSE, 5, FALSE);
     mbObjDispSet(obj1, FALSE);
-    obj2 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 33), /* event model resource identifier */
+    /* event model resource identifier */
+    obj2 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 33),
         NULL, FALSE, 5, FALSE);
     mbObjDispSet(obj2, FALSE);
     mbObjLayerSet(obj2, 3);
     mbev_CapObjPosSet(&work->objWork, obj2,
         GwPlayer[work->playerNo].masuId, NULL);
-    obj3 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsule, 68), /* event model resource identifier */
+    /* event model resource identifier */
+    obj3 = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsule, 68),
         NULL, FALSE, 5, FALSE);
     mbObjDispSet(obj3, FALSE);
     work->eventData[0] = obj1;
@@ -4114,7 +4197,8 @@ void mbev_CapDonkey(void)
                 mbWipeFadeOut();
                 ev_CapDonkeyCoin(work);
             } else {
-                mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 8), -1); /* Donkey scene message resource */
+                /* Donkey scene message resource */
+                mbWinCreate(2, MESSNUM(MESS_DONKEY_MASU, 8), -1);
                 mbWinTopWait();
                 mbObjMotionShiftSet(obj1, 10, 0.0f, 8.0f, 0);
                 mbev_MgCallDonkey();
@@ -4131,9 +4215,9 @@ void mbev_CapDonkeyKill(void)
 {
 }
 
-
 const float lbl_802C4434 = 250.0f;
 
+/* Runs Donkey's capsule scene, including its choice and coin presentation. */
 static int ev_CapDonkeyStart(CAPWORK *work)
 {
     HuVecF pos;
@@ -4373,10 +4457,12 @@ static int ev_CapDonkeyStart(CAPWORK *work)
     mbWinTopWait();
     mbAudFXPlay(MSM_SE_GUIDE_12); /* event sound-effect resource */
     mbev_CapPlayerMotShiftSet(obj1, 8, 0, TRUE);
-    spr[0] = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 34), 100, 0); /* event sprite resource identifier */
+    /* event sprite resource identifier */
+    spr[0] = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 34), 100, 0);
     espPosSet(spr[0], 288.0f, 240.0f);
     espScaleSet(spr[0], 0.0f, 0.0f);
-    spr[1] = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 35), 100, 0); /* event sprite resource identifier */
+    /* event sprite resource identifier */
+    spr[1] = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 35), 100, 0);
     espPosSet(spr[1], 304.0f, 240.0f);
     espScaleSet(spr[1], 0.0f, 0.0f);
     espAttrSet(spr[1], 1);
@@ -4479,6 +4565,7 @@ static int ev_CapDonkeyStart(CAPWORK *work)
         }
 }
 
+/* Presents and applies the coin result selected during Donkey's capsule scene. */
 static void ev_CapDonkeyCoin(CAPWORK *work)
 {
     HuVecF targetPos;
@@ -4597,6 +4684,7 @@ static void ev_CapDonkeyCoin(CAPWORK *work)
     mbev_CapPlayerMotShiftWait(playerNo, 1, HU3D_MOTATTR_LOOP, TRUE);
 }
 
+/* Restores player and board presentation after Donkey's capsule scene. */
 static void ev_CapDonkeyReturn(CAPWORK *work)
 {
     HuVecF playerPos;
@@ -4693,6 +4781,7 @@ static void ev_CapDonkeyReturn(CAPWORK *work)
     mbCameraMoveWait();
 }
 
+/* Object-manager callback that advances the Donkey scene's board object. */
 static void ev_CapDonkeyOMExec(OMOBJ *obj)
 {
     extern void CharEffectHipDropCreate();
@@ -4807,6 +4896,8 @@ static void ev_CapDonkeyOMExec(OMOBJ *obj)
     }
 }
 
+/* Runs the Koopa capsule event from the capsule callback table and resolves
+ * the roulette result as a coin, star, or minigame penalty. */
 void mbev_CapKoopa(void)
 {
     CAPWORK *work = HuPrcCurrentGet()->property;
@@ -4820,7 +4911,8 @@ void mbev_CapKoopa(void)
     HuPrcVSleep();
     work->coinObj = mbev_CapEffCoinCreate();
     HuPrcVSleep();
-    objId = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 0), /* event model resource identifier */
+    /* event model resource identifier */
+    objId = mbev_CapObjCreate(&work->objWork, DATANUM(DATA_capsulechar1, 0),
         (int *)koopaMotTbl, FALSE, 5, FALSE);
     mbObjDispSet(objId, FALSE);
     mbPlayerColSnapPlayerSet(work->playerNo, TRUE);
@@ -4856,6 +4948,7 @@ void mbev_CapKoopaKill(void)
 {
 }
 
+/* Runs Koopa's capsule scene and prepares its coin result. */
 static int ev_CapKoopaStart(CAPWORK *work)
 {
     HuVecF playerPos;
@@ -4884,7 +4977,8 @@ static int ev_CapKoopaStart(CAPWORK *work)
         DATANUM(DATA_mariomot, 23)); /* event resource identifier */
     playerMot[1] = mbev_CapPlayerMotionCreate(&work->objWork, playerNo,
         DATANUM(DATA_mariomot, 25)); /* event resource identifier */
-    spr = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 36), 100, 0); /* event sprite resource identifier */
+    /* event sprite resource identifier */
+    spr = mbev_CapSprCreate(&work->objWork, DATANUM(DATA_capsulechar1, 36), 100, 0);
     espPosSet((s16)spr, 288.0f, 240.0f);
     espScaleSet((s16)spr, 4.0f, 4.0f);
     espTPLvlSet((s16)spr, 0.0f);
@@ -5135,6 +5229,7 @@ static inline s16 GWMgCoinBonusGet(s32 playerNo)
     return GwPlayer[playerNo].mgCoinBonus;
 }
 
+/* Presents and applies the coin result during Koopa's capsule scene. */
 static int ev_CapKoopaCoin(CAPWORK *work)
 {
     extern void mbStatusDispForceSetAll(BOOL dispF);
@@ -5361,6 +5456,7 @@ static int ev_CapKoopaCoin(CAPWORK *work)
     return 0;
 }
 
+/* Restores player and board state after Koopa's capsule scene. */
 static int ev_CapKoopaReturn(CAPWORK *work)
 {
     HuVecF masuPos;
@@ -5373,7 +5469,7 @@ static int ev_CapKoopaReturn(CAPWORK *work)
     float time;
 
     for (i = 0; i < 4; i++) {
-        ids[i] = work->eventData[i + 2]; /* retained CAPWORK field offset */
+        ids[i] = work->eventData[i + 2]; /* Player IDs saved by the squish step. */
     }
     mbAudFXDelaySet(30);
     mbAudFXPlay(MSM_SE_GUIDE_47); /* event sound-effect resource */
@@ -5415,6 +5511,7 @@ static int ev_CapKoopaReturn(CAPWORK *work)
     return 0;
 }
 
+/* Supplies an A-button press after Koopa's dice-hit timer expires. */
 static u16 ev_CapKoopaDicePadBtnHook(void)
 {
     if (--diceHitTimer <= 0) {
@@ -5423,6 +5520,7 @@ static u16 ev_CapKoopaDicePadBtnHook(void)
     return 0;
 }
 
+/* Dice motion hook that advances Koopa's animation and triggers the dice hit during his roll. */
 static void ev_CapKoopaDiceMotHook(int playerNo)
 {
     int i;
