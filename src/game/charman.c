@@ -1,3 +1,4 @@
+// Character model, motion, voice, lighting, and particle effects used throughout gameplay.
 #define _MATH_H
 #include "dolphin/math.h"
 
@@ -34,46 +35,46 @@
 #define CHAR_LIGHT_FLAGS_MASK (((1 << 8) - 1) << 8)
 
 typedef struct CharWork_s {
-    HU3D_MODELID modelId;
-    s16 model;
-    s16 motNoCurr;
-    s16 motNoShiftCurr;
-    s16 motNoPrev;
-    s16 motNoShiftPrev;
-    HU3D_MOTIONID motId[CHAR_MOT_MAX];
-    s16 motNoTbl[CHAR_MOT_MAX];
-    s16 vol;
-    s16 pan;
-    u8 voiceFlag[CHAR_MOT_MAX];
-    u32 attr;
-    s8 stepFx;
-    HuVecF pos;
-    AMEM_PTR motAMemP;
-    HUPROCESS *process;
-    s16 timingHookNo;
-    s16 motNoPlay[2];
-    s16 motPlayTime[2];
+    HU3D_MODELID modelId; // Active 3D model, or HU3D_MODELID_NONE when unloaded.
+    s16 model; // Character model variant selected by CHAR_MODEL0 through CHAR_MODEL3.
+    s16 motNoCurr; // Current character motion number.
+    s16 motNoShiftCurr; // Current motion number on the blending track.
+    s16 motNoPrev; // Previous motion number on the main track.
+    s16 motNoShiftPrev; // Previous motion number on the blending track.
+    HU3D_MOTIONID motId[CHAR_MOT_MAX]; // Loaded engine motion IDs indexed by character motion slot.
+    s16 motNoTbl[CHAR_MOT_MAX]; // Character motion number for each loaded motion slot.
+    s16 vol; // Character voice volume passed to the audio system.
+    s16 pan; // Character voice pan passed to the audio system.
+    u8 voiceFlag[CHAR_MOT_MAX]; // Voice and update flags for each loaded motion.
+    u32 attr; // Character behavior flags defined by CHAR_ATTR_*.
+    s8 stepFx; // Footstep sound variation selected for this character.
+    HuVecF pos; // Last sampled model position in world coordinates.
+    AMEM_PTR motAMemP; // Handle for this character's motion archive in audio RAM.
+    HUPROCESS *process; // Per-character animation update process.
+    s16 timingHookNo; // Number of motion timing callbacks seen by the update process.
+    s16 motNoPlay[2]; // Motion numbers currently tracked on the two animation tracks.
+    s16 motPlayTime[2]; // Frames elapsed for each tracked motion.
 } CHARWORK;
 
 typedef struct EffectData_s {
-    unsigned int dataNum;
-    s16 maxCnt;
-    s16 blendMode;
-    s32 motCnt;
-    unsigned int motDataNum[16];
+    unsigned int dataNum; // Particle resource archive number.
+    s16 maxCnt; // Maximum particle count for this effect.
+    s16 blendMode; // GX particle blend mode.
+    s32 motCnt; // Unused field; stored values do not count the motion-resource entries.
+    unsigned int motDataNum[16]; // Particle motion resource numbers.
 } EFFECTDATA;
 
 typedef struct EffectParam_s {
-    u32 attr;
-    GXColor colorBegin;
-    GXColor colorEnd;
-    HuVecF vel;
-    HuVecF velDecay;
-    float gravity;
-    u32 zero;
-    float scaleVel;
-    float alphaBase;
-    float colorWeight;
+    u32 attr; // Particle behavior flags.
+    GXColor colorBegin; // Starting particle color and alpha.
+    GXColor colorEnd; // Ending particle color and alpha.
+    HuVecF vel; // Initial velocity in world units per frame.
+    HuVecF velDecay; // Per-frame velocity multiplier.
+    float gravity; // Vertical acceleration per frame.
+    u32 zero; // Reserved particle parameter, initialized to zero.
+    float scaleVel; // Particle scale change per frame.
+    float alphaBase; // Alpha change per frame.
+    float colorWeight; // Blend weight between the endpoint colors.
 } EFFECTPARAM;
 
 static EFFECTDATA effectDataTbl[] = {
@@ -89,8 +90,9 @@ static EFFECTDATA effectDataTbl[] = {
 };
 
 char *CharHeadObjNameTbl[15] = {
-    "root_head", "root_head", "root_hair1", "ske_head", "eff_head", "hair1", "eff_head",
-    "root_head", "root_head", "root_head", "root_head", "root_head", "root_head", "root_head", "root_head",
+    "root_head", "root_head", "root_hair1", "ske_head",  "eff_head",
+    "hair1",     "eff_head",  "root_head",  "root_head", "root_head",
+    "root_head", "root_head", "root_head",  "root_head", "root_head",
 };
 
 unsigned int CharDataDirTbl[CHARNO_MAX][6] = {
@@ -110,7 +112,6 @@ unsigned int CharDataDirTbl[CHARNO_MAX][6] = {
     { DATA_minikoopaBmdl0, DATA_minikoopaBmdl1, DATA_minikoopaBmdl2, DATA_minikoopaBmdl3, DATA_minikoopamot, DATA_minikoopa },
 };
 
-
 static u8 lbl_8026F7B0[232];
 static u16 dustFlags[CHAR_NPC_MAX];
 static HUPROCESS *hookDustProc[CHAR_MOT_MAX];
@@ -122,8 +123,8 @@ static s16 effectLayer;
 static BOOL motShiftF;
 static AMEM_PTR effectAMemP;
 
-
-
+// Initializes character work records and the shared particle resources before characters are
+// created.
 void CharInit(void)
 {
     s16 i;
@@ -154,11 +155,13 @@ void CharInit(void)
     effectLayer = 0;
 }
 
+// Returns this character's current motion archive handle in audio RAM.
 AMEM_PTR CharMotionAMemPGet(s16 charNo)
 {
     return CharWork[charNo].motAMemP;
 }
 
+// Loads the selected character's motion archive into ARAM on first use.
 void CharMotionInit(s16 charNo)
 {
     if(charNo >= CHARNO_MAX || charNo < 0 || charNo == (u8)CHARNO_NONE) {
@@ -171,6 +174,8 @@ void CharMotionInit(s16 charNo)
     }
 }
 
+// Reads the motion archive asynchronously, waits for the read and DMA, then closes its MRAM
+// directory.
 void CharMotionInitAsync(s16 charNo)
 {
     if(charNo >= CHARNO_MAX || charNo < 0 || charNo == (u8)CHARNO_NONE) {
@@ -191,6 +196,8 @@ void CharMotionInitAsync(s16 charNo)
     }
 }
 
+// Frees the ARAM motion archive only if its source directory is present, then clears the stored
+// handle either way.
 void CharMotionClose(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -202,6 +209,8 @@ void CharMotionClose(s16 charNo)
     }
 }
 
+// Closes all model directories and motion storage for one character, or all characters for
+// CHARNO_NONE.
 void CharDataClose(s16 charNo)
 {
     s16 i;
@@ -217,6 +226,7 @@ void CharDataClose(s16 charNo)
     }
 }
 
+// Orders cached character motion archives according to the requested character sequence.
 void CharMotionLoad(s16 *statList)
 {
     CHARWORK *workP;
@@ -286,11 +296,43 @@ void CharMotionLoad(s16 *statList)
     printf("Time %dmsec\n", OSTicksToMilliseconds(OSGetTick()-start));
 }
 
-static EFFECTPARAM dustEffParam = { 0, { 128, 128, 128, 255 }, { 64, 32, 0, 255 }, { 0, 2, 1 }, { 0.95f, 0.95f, 0.95f }, 0, 0, 1, -5, 0.02f };
-static EFFECTPARAM hitEffParam = { 0, { 255, 64, 64, 128 }, { 255, 64, 64, 128 }, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, -5, 0, 0 };
-static EFFECTPARAM npcHitEffParam = { 0, { 255, 255, 0, 255 }, { 255, 255, 0, 255 }, { 0, 0, 0 }, { 0.95f, 0.95f, 0.95f }, 0, 0, -0.5, -10, 0 };
-static EFFECTPARAM warnEffParam = { 0, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, { 0, 20, 0 }, { 0.95f, 0.85f, 0.95f }, 0, 0, 1, -5, 0 };
-static EFFECTPARAM smokeEffParam = { 0, { 128, 32, 32, 255 }, { 0, 0, 0, 255 }, { 0, 10, 0 }, { 1.0f, 0.95f, 1.0f }, 0, 0, 5, -13, 0.1f };
+static EFFECTPARAM dustEffParam = { 0,
+                                    { 128, 128, 128, 255 },
+                                    { 64, 32, 0, 255 },
+                                    { 0, 2, 1 },
+                                    { 0.95f, 0.95f, 0.95f },
+                                    0,
+                                    0,
+                                    1,
+                                    -5,
+                                    0.02f };
+static EFFECTPARAM hitEffParam = {
+    0, { 255, 64, 64, 128 }, { 255, 64, 64, 128 }, { 0, 0, 0 }, { 0, 0, 0 }, 0, 0, -5, 0, 0
+};
+static EFFECTPARAM npcHitEffParam = { 0,
+                                      { 255, 255, 0, 255 },
+                                      { 255, 255, 0, 255 },
+                                      { 0, 0, 0 },
+                                      { 0.95f, 0.95f, 0.95f },
+                                      0,
+                                      0,
+                                      -0.5,
+                                      -10,
+                                      0 };
+static EFFECTPARAM warnEffParam = { 0,
+                                    { 255, 255, 255, 255 },
+                                    { 255, 255, 255, 255 },
+                                    { 0, 20, 0 },
+                                    { 0.95f, 0.85f, 0.95f },
+                                    0,
+                                    0,
+                                    1,
+                                    -5,
+                                    0 };
+static EFFECTPARAM smokeEffParam = {
+    0,   { 128, 32, 32, 255 }, { 0, 0, 0, 255 }, { 0, 10, 0 }, { 1.0f, 0.95f, 1.0f }, 0, 0, 5, -13,
+    0.1f
+};
 
 static s8 walkVoiceTimeTbl[56] = {
     10, 32, -1, -1,
@@ -354,6 +396,8 @@ static u8 loseAnimLen[CHARNO_MAX] = { 18, 0, 36, 106, 0, 0, 24, 24, 90, 60, 24, 
 
 static s8 jumpAnimLen[CHARNO_MAX] = { 42, 42, 43, 52, 42, 42, -1, 42, 42, 42, 42, 42, 42, 42 };
 
+// Ignores charNo: releases all character models and data for shutdown, then frees the shared effect
+// archive.
 void CharClose(s16 charNo)
 {
     CharModelKill(CHARNO_NONE);
@@ -366,14 +410,16 @@ static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF)
 static void UpdateChar(void);
 static s16 GetStepType(void);
 
+// Creates a character model and its animation process, selecting the model archive from the variant
+// flags.
 HU3D_MODELID CharModelCreate(s16 charNo, s16 model)
 {
-    s16 sp8 = 0;
+    s16 unused = 0; // This initialized local is not read during model setup.
     CHARWORK *workP = &CharWork[charNo];
     unsigned int dataNum;
     HU3D_MODELID modelId;
-    s16 *property;
-    void *dataP;
+    s16 *characterNoPtr;
+    void *modelData;
 
     if(workP->modelId != HU3D_MODELID_NONE) {
         Hu3DModelKill(workP->modelId);
@@ -387,13 +433,13 @@ HU3D_MODELID CharModelCreate(s16 charNo, s16 model)
     } else {
         dataNum = CharDataDirTbl[charNo][3];
     }
-    dataP = HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
-    workP->modelId = modelId = Hu3DModelCreate(dataP);
+    modelData = HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+    workP->modelId = modelId = Hu3DModelCreate(modelData);
     workP->process = HuPrcCreate(UpdateChar, 99, 16384, 0);
-    workP->process->property = property = HuMemDirectMalloc(HEAP_HEAP, sizeof(s16));
+    workP->process->property = characterNoPtr = HuMemDirectMalloc(HEAP_HEAP, sizeof(s16));
     workP->model = model;
     workP->attr = 0;
-    *property = charNo;
+    *characterNoPtr = charNo;
     workP->stepFx = GetStepType();
     Hu3DMotionTimingHookSet(modelId, CharTimingHook);
     workP->timingHookNo = 0;
@@ -401,6 +447,7 @@ HU3D_MODELID CharModelCreate(s16 charNo, s16 model)
     return modelId;
 }
 
+// Records each timing callback for this character model, regardless of active motion or lag state.
 static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF)
 {
     CHARWORK *workP = &CharWork[0];
@@ -415,13 +462,16 @@ static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF)
 
 static void UpdateMotPlay(CHARWORK *workP, s16 motNo, s16 motNoShift);
 void CharEffectHipDropCreate(s16 charNo, HuVecF *pos);
-static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voiceFlag, s16 frameNo, HuVecF *ofs);
+static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voiceFlag, s16 frameNo,
+                           HuVecF *ofs);
 static void EyeBmpUpdate(s16 charNo);
 
+// Per-character process created by CharModelCreate; samples active motions and updates animation
+// effects each frame.
 static void UpdateChar(void)
 {
-    s16 *property = HuPrcCurrentGet()->property;
-    CHARWORK *workP = &CharWork[*property];
+    s16 *characterNoPtr = HuPrcCurrentGet()->property;
+    CHARWORK *workP = &CharWork[*characterNoPtr];
     HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
     s16 updateBmpF = FALSE;
     HuVecF pos;
@@ -459,7 +509,8 @@ static void UpdateChar(void)
         motShiftF = FALSE;
         if(motNo != -1) {
             workP->motNoCurr = motNo;
-            UpdateCharAnim(*property, workP->modelId, motNo, workP->voiceFlag[motId], modelP->motWork.time, &pos);
+            UpdateCharAnim(*characterNoPtr, workP->modelId, motNo, workP->voiceFlag[motId],
+                           modelP->motWork.time, &pos);
             workP->motNoPrev = motNo;
         } else {
             workP->motNoCurr = -1;
@@ -469,14 +520,15 @@ static void UpdateChar(void)
             updateBmpF = TRUE;
             if(motNoShift != -1) {
                 workP->motNoShiftCurr = motNoShift;
-                UpdateCharAnim(*property, workP->modelId, motNoShift, workP->voiceFlag[motIdShift], modelP->motShiftWork.time, &pos);
+                UpdateCharAnim(*characterNoPtr, workP->modelId, motNoShift,
+                               workP->voiceFlag[motIdShift], modelP->motShiftWork.time, &pos);
                 workP->motNoShiftPrev = motNoShift;
             } else {
                 workP->motNoShiftCurr = -1;
             }
         } else {
             if(updateBmpF) {
-                EyeBmpUpdate(*property);
+                EyeBmpUpdate(*characterNoPtr);
                 updateBmpF = FALSE;
             }
         }
@@ -490,6 +542,8 @@ static void UpdateChar(void)
     }
 }
 
+// Tracks elapsed frames for the active main and blending motions, clearing slots for motions that
+// ended.
 static void UpdateMotPlay(CHARWORK *workP, s16 motNo, s16 motNoShift)
 {
     s16 i;
@@ -537,6 +591,8 @@ static void UpdateMotPlay(CHARWORK *workP, s16 motNo, s16 motNoShift)
     }
 }
 
+// Returns the elapsed frame count for a tracked motion, or -1 if neither animation track contains
+// it.
 static inline s32 GetMotNoPlayTime(CHARWORK *workP, s16 motNo)
 {
     s16 i;
@@ -550,17 +606,22 @@ static inline s32 GetMotNoPlayTime(CHARWORK *workP, s16 motNo)
 
 s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag);
 static s16 CharWinVoicePlay(s16 charNo, u8 voiceFlag);
-static s16 EffectDustCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, EFFECTPARAM *param);
-static s16 EffectHitCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, EFFECTPARAM *param);
-static s16 EffectSmokeCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, EFFECTPARAM *param);
+static s16 EffectDustCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
+                            EFFECTPARAM *param);
+static s16 EffectHitCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
+                           EFFECTPARAM *param);
+static s16 EffectSmokeCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
+                             EFFECTPARAM *param);
 
-static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, float ofsY, EFFECTPARAM *param);
-static s16 EffectBirdCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, s16 charNo, float ofsY, EFFECTPARAM *param);
-
+static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY, float posZ,
+                                   float scale, float ofsY, EFFECTPARAM *param);
+static s16 EffectBirdCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
+                            s16 charNo, float ofsY, EFFECTPARAM *param);
 
 static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag);
 
-static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voiceFlag, s16 frameNo, HuVecF *ofs)
+static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voiceFlag, s16 frameNo,
+                           HuVecF *ofs)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     CHARWORK *workP = &CharWork[charNo];
@@ -768,7 +829,8 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                         } else {
                             warnSize = 120;
                         }
-                        EffectWarnCreate(modelId, modelP->pos.x, 100.0f+modelP->pos.y, modelP->pos.z, 20, warnSize, &warnEffParam);
+                        EffectWarnCreate(modelId, modelP->pos.x, 100.0f + modelP->pos.y,
+                                         modelP->pos.z, 20, warnSize, &warnEffParam);
                     }
                     if(frameNo == 30) {
                         CharModelLandDustCreate(charNo, &modelP->pos);
@@ -789,7 +851,8 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                         } else {
                             warnSize = 100;
                         }
-                        EffectWarnCreate(modelId, modelP->pos.x, 100.0f+modelP->pos.y, modelP->pos.z, 20, warnSize, &warnEffParam);
+                        EffectWarnCreate(modelId, modelP->pos.x, 100.0f + modelP->pos.y,
+                                         modelP->pos.z, 20, warnSize, &warnEffParam);
                     }
                     if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                         _CharFXPlay(charNo, CHARVOICEID(9), voiceFlag);
@@ -804,7 +867,9 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             if(!(workP->attr & CHAR_ATTR_BIRD_ACTIVE) && !(workP->attr & CHAR_ATTR_FX_OFF)) {
                 _CharFXPlay(charNo, CHARSEID(19), voiceFlag);
                 for(i=0; i<3; i++) {
-                    EffectBirdCreate(modelId, modelP->pos.x, modelP->pos.y+(100.0f*modelP->scale.x), modelP->pos.z, 1.0f, charNo, i*120, &warnEffParam);
+                    EffectBirdCreate(modelId, modelP->pos.x,
+                                     modelP->pos.y + (100.0f * modelP->scale.x), modelP->pos.z,
+                                     1.0f, charNo, i * 120, &warnEffParam);
                 }
                 workP->attr |= CHAR_ATTR_BIRD_ACTIVE;
             }
@@ -813,7 +878,8 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_320):
             if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                 if(frameNo & 1) {
-                    Hu3DModelObjMtxGet(modelId, CharModelItemHookGet(charNo, workP->model, 4), hitMtx);
+                    Hu3DModelObjMtxGet(modelId, CharModelItemHookGet(charNo, workP->model, 4),
+                                       hitMtx);
                     pos.x = hitMtx[0][3];
                     pos.y = hitMtx[1][3];
                     pos.z = hitMtx[2][3];
@@ -839,7 +905,8 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
         case CHAR_MOTNO(CHARMOT_HSF_c000m1_306):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
-                if((omcurovl < DLL_w01dll || omcurovl > DLL_w11dll) && (omcurovl < DLL_s01dll || omcurovl > DLL_s03dll)) {
+                if ((omcurovl < DLL_w01dll || omcurovl > DLL_w11dll) &&
+                    (omcurovl < DLL_s01dll || omcurovl > DLL_s03dll)) {
                     if(frameNo == winAnimLen[charNo]) {
                         CharWinVoicePlay(charNo, voiceFlag);
                         workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
@@ -1019,9 +1086,12 @@ static s16 winVoiceTbl[][2] = {
     { -1, 0 },
 };
 
-static float CharYOfsTbl1[CHARNO_MAX] = { 110.0f, 160.0f, 110.0f, 160.0f, 150.0f, 180.0f, 130.0f, 160.0f, 130.0f, 160.0f, 150.0f, 180.0f, 120.0f, 210.0f };
-static float CharYOfsTbl2[CHARNO_MAX] = { 110.0f, 160.0f, 110.0f, 160.0f, 130.0f, 160.0f, 110.0f, 160.0f, 130.0f, 160.0f, 130.0f, 160.0f, 130.0f, 160.0f };
-static float birdYOfsTbl[CHARNO_MAX] = { 80.0f, 80.0f, 60.0f, 75.0f, 40.0f, 60.0f, 45.0f, 90.0f, 70.0f, 75.0f, 90.0f, 75.0f, 75.0f, 75.0f };
+static float CharYOfsTbl1[CHARNO_MAX] = { 110.0f, 160.0f, 110.0f, 160.0f, 150.0f, 180.0f, 130.0f,
+                                          160.0f, 130.0f, 160.0f, 150.0f, 180.0f, 120.0f, 210.0f };
+static float CharYOfsTbl2[CHARNO_MAX] = { 110.0f, 160.0f, 110.0f, 160.0f, 130.0f, 160.0f, 110.0f,
+                                          160.0f, 130.0f, 160.0f, 130.0f, 160.0f, 130.0f, 160.0f };
+static float birdYOfsTbl[CHARNO_MAX] = { 80.0f, 80.0f, 60.0f, 75.0f, 40.0f, 60.0f, 45.0f,
+                                         90.0f, 70.0f, 75.0f, 90.0f, 75.0f, 75.0f, 75.0f };
 
 static s16 stepVoiceTbl[] = {
     DLL_w01dll, 0,
@@ -1139,6 +1209,8 @@ static s16 stepVoiceTbl[] = {
     -1, -1,
 };
 
+// Plays a character sound at the model position or with its configured volume and pan; no value is
+// assigned to this function's declared s16 return.
 s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -1152,6 +1224,8 @@ s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag)
     }
 }
 
+// Plays the win voice selected for the current minigame, falling back to the standard win voice.
+// The playback is the useful result; ret is returned without being assigned in this function.
 static s16 CharWinVoicePlay(s16 charNo, u8 voiceFlag)
 {
     s16 seNo;
@@ -1173,6 +1247,7 @@ static s16 CharWinVoicePlay(s16 charNo, u8 voiceFlag)
 
 static void EffectParticleHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx mtx);
 
+// Creates particle models for active cameras when character effects are first needed.
 static void EffectInit(void)
 {
     s16 effInitF = FALSE;
@@ -1192,7 +1267,8 @@ static void EffectInit(void)
                 continue;
             }
             if(!anim[i]) {
-                void *data = HuDataSelHeapReadNum(effectDataTbl[i].dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+                void *data =
+                    HuDataSelHeapReadNum(effectDataTbl[i].dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
                 anim[i] = HuSprAnimRead(data);
             }
             effModelId[i][cameraNo] = Hu3DParticleCreate(anim[i], effectDataTbl[i].maxCnt);
@@ -1202,7 +1278,8 @@ static void EffectInit(void)
             Hu3DParticleHookSet(effModelId[i][cameraNo], EffectParticleHook);
             Hu3DModelCameraSet(effModelId[i][cameraNo], (1 << cameraNo));
             if(!effParamAll[i]) {
-                effParamAll[i] = HuMemDirectMalloc(HEAP_HEAP, effectDataTbl[i].maxCnt*sizeof(EFFECTPARAM));
+                effParamAll[i] =
+                    HuMemDirectMalloc(HEAP_HEAP, effectDataTbl[i].maxCnt * sizeof(EFFECTPARAM));
             }
             Hu3DParticleBlendModeSet(effModelId[i][cameraNo], effectDataTbl[i].blendMode);
             {
@@ -1212,7 +1289,8 @@ static void EffectInit(void)
                 particleP->emitCnt = 0;
                 particleP->work = effParamAll[i];
                 particleP->count = 1;
-                for(particleDataP = particleP->data, j=0; j<particleP->maxCnt; j++, particleDataP++) {
+                for (particleDataP = particleP->data, j = 0; j < particleP->maxCnt;
+                     j++, particleDataP++) {
                     particleDataP->scale = 0;
                 }
                 effInitF = TRUE;
@@ -1224,6 +1302,7 @@ static void EffectInit(void)
     }
 }
 
+// Ensures the requested particle effect has a model and particle storage for each active camera.
 static void EffectParticleCreate(u8 type)
 {
     ANIMDATA *anim = NULL;
@@ -1242,7 +1321,8 @@ static void EffectParticleCreate(u8 type)
             }
         } else {
             if(!anim) {
-                void *data = HuDataSelHeapReadNum(effectDataTbl[type].dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+                void *data =
+                    HuDataSelHeapReadNum(effectDataTbl[type].dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
                 anim = HuSprAnimRead(data);
             }
             effModelId[type][cameraNo] = Hu3DParticleCreate(anim, effectDataTbl[type].maxCnt);
@@ -1253,7 +1333,8 @@ static void EffectParticleCreate(u8 type)
             Hu3DParticleHookSet(effModelId[type][cameraNo], EffectParticleHook);
             Hu3DModelCameraSet(effModelId[type][cameraNo], (1 << cameraNo));
             if(!effParamAll[type]) {
-                effParamAll[type] = HuMemDirectMalloc(HEAP_HEAP, effectDataTbl[type].maxCnt*sizeof(EFFECTPARAM));
+                effParamAll[type] =
+                    HuMemDirectMalloc(HEAP_HEAP, effectDataTbl[type].maxCnt * sizeof(EFFECTPARAM));
             }
             Hu3DParticleBlendModeSet(effModelId[type][cameraNo], effectDataTbl[type].blendMode);
             {
@@ -1263,7 +1344,8 @@ static void EffectParticleCreate(u8 type)
                 particleP->emitCnt = 0;
                 particleP->work = effParamAll[type];
                 particleP->count = 1;
-                for(particleDataP = particleP->data, j=0; j<particleP->maxCnt; j++, particleDataP++) {
+                for (particleDataP = particleP->data, j = 0; j < particleP->maxCnt;
+                     j++, particleDataP++) {
                     particleDataP->scale = 0;
                 }
             }
@@ -1271,9 +1353,13 @@ static void EffectParticleCreate(u8 type)
     }
 }
 
-static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float posZ, float scale, EFFECTPARAM *param);
+// Reserves a free particle slot on each requested active camera and initializes its motion data.
+static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float posZ, float scale,
+                        EFFECTPARAM *param);
 
-static s16 EffectDustCreate(s16 modelId, float posX, float posY, float posZ, float scale, EFFECTPARAM *param)
+// Emits dust using the character model's camera and scales its motion with the model.
+static s16 EffectDustCreate(s16 modelId, float posX, float posY, float posZ, float scale,
+                            EFFECTPARAM *param)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     if(modelP->scale.x != 1.0) {
@@ -1289,7 +1375,9 @@ static s16 EffectDustCreate(s16 modelId, float posX, float posY, float posZ, flo
     }
 }
 
-static s16 EffectSmokeCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, EFFECTPARAM *param)
+// Emits smoke using the character model's camera and scales its motion with the model.
+static s16 EffectSmokeCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
+                             EFFECTPARAM *param)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     if(modelP->scale.x != 1.0) {
@@ -1305,7 +1393,9 @@ static s16 EffectSmokeCreate(HU3D_MODELID modelId, float posX, float posY, float
     }
 }
 
-static s16 EffectHitCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, EFFECTPARAM *param)
+// Emits a hit particle effect using the character model's camera and scale.
+static s16 EffectHitCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
+                           EFFECTPARAM *param)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     if(modelP->scale.x != 1.0) {
@@ -1321,7 +1411,9 @@ static s16 EffectHitCreate(HU3D_MODELID modelId, float posX, float posY, float p
     }
 }
 
-static inline s16 EffectStarCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, EFFECTPARAM *param)
+// Emits star particles using the character model's camera and scale.
+static inline s16 EffectStarCreate(HU3D_MODELID modelId, float posX, float posY, float posZ,
+                                   float scale, EFFECTPARAM *param)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     if(modelP->scale.x != 1.0) {
@@ -1337,7 +1429,9 @@ static inline s16 EffectStarCreate(HU3D_MODELID modelId, float posX, float posY,
     }
 }
 
-static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, float ofsY, EFFECTPARAM *param)
+// Emits warning particles around the model and records model and height data for animation.
+static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY, float posZ,
+                                   float scale, float ofsY, EFFECTPARAM *param)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     EFFECTPARAM paramNew = *param;
@@ -1374,7 +1468,9 @@ static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY,
     }
 }
 
-static s16 EffectBirdCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale, s16 charNo, float ofsY, EFFECTPARAM *param)
+// Emits orbiting bird particles and records which character and head-height offset they follow.
+static s16 EffectBirdCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
+                            s16 charNo, float ofsY, EFFECTPARAM *param)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     EFFECTPARAM paramNew = *param;
@@ -1410,7 +1506,8 @@ static s16 EffectBirdCreate(HU3D_MODELID modelId, float posX, float posY, float 
     }
 }
 
-static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float posZ, float scale, EFFECTPARAM *param)
+static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float posZ, float scale,
+                        EFFECTPARAM *param)
 {
     s16 cameraNo, bit;
     s16 id;
@@ -1436,13 +1533,15 @@ static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float p
         modelP = &Hu3DData[modelId];
         particleP = modelP->hookData;
         effParam = particleP->work;
-        for(particleDataP=&particleP->data[particleP->emitCnt], nextId=particleP->emitCnt; nextId<particleP->maxCnt; nextId++, particleDataP++) {
+        for (particleDataP = &particleP->data[particleP->emitCnt], nextId = particleP->emitCnt;
+             nextId < particleP->maxCnt; nextId++, particleDataP++) {
             if(!particleDataP->scale) {
                 break;
             }
         }
         if(nextId >= particleP->maxCnt) {
-            for(particleDataP=&particleP->data[0], nextId=0; nextId<particleP->maxCnt; nextId++, particleDataP++) {
+            for (particleDataP = &particleP->data[0], nextId = 0; nextId < particleP->maxCnt;
+                 nextId++, particleDataP++) {
                 if(!particleDataP->scale) {
                     break;
                 }
@@ -1473,6 +1572,7 @@ static void UpdateEffect(HU3D_PARTICLE_DATA *particleDataP);
 static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP);
 static void UpdateModelEffect(HU3D_PARTICLE_DATA *particleDataP);
 
+// Advances active particles each frame; Hu3DParticleHookSet installs this for effect models.
 static void EffectParticleHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx mtx)
 {
     EFFECTPARAM *param = particleP->work;
@@ -1494,21 +1594,24 @@ static void EffectParticleHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx
             particleDataP->vel.z *= param[i].velDecay.z;
             VECAdd(&particleDataP->vel, &particleDataP->pos, &particleDataP->pos);
             particleDataP->vel.y += param[i].gravity;
-            color = particleDataP->color.r+(param[i].colorWeight*(param[i].colorEnd.r-param[i].colorBegin.r));
+            color = particleDataP->color.r +
+                    (param[i].colorWeight * (param[i].colorEnd.r - param[i].colorBegin.r));
             if(color < 0) {
                 color = 0;
             } else if(color > 255) {
                 color = 255;
             }
             particleDataP->color.r = color;
-            color = particleDataP->color.g+(param[i].colorWeight*(param[i].colorEnd.g-param[i].colorBegin.g));
+            color = particleDataP->color.g +
+                    (param[i].colorWeight * (param[i].colorEnd.g - param[i].colorBegin.g));
             if(color < 0) {
                 color = 0;
             } else if(color > 255) {
                 color = 255;
             }
             particleDataP->color.g = color;
-            color = particleDataP->color.b+(param[i].colorWeight*(param[i].colorEnd.b-param[i].colorBegin.b));
+            color = particleDataP->color.b +
+                    (param[i].colorWeight * (param[i].colorEnd.b - param[i].colorBegin.b));
             if(color < 0) {
                 color = 0;
             } else if(color > 255) {
@@ -1522,7 +1625,8 @@ static void EffectParticleHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx
             particleDataP->color.a = color;
             if(particleDataP->scale) {
                 if(param[i].attr & CHAR_EFFECT_SCALE_FLICKER) {
-                    particleDataP->scale = particleDataP->scaleBase*(((particleDataP->time+i) & 1) ? 1.0 : 0.5);
+                    particleDataP->scale =
+                        particleDataP->scaleBase * (((particleDataP->time + i) & 1) ? 1.0 : 0.5);
                 } else {
                     particleDataP->scale = particleDataP->scaleBase;
                 }
@@ -1552,6 +1656,7 @@ static void EffectParticleHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx
     DCStoreRangeNoSync(particleP->data, particleP->maxCnt*sizeof(HU3D_PARTICLE_DATA));
 }
 
+// Animates the warning ring around its source model and fades it after its hold period.
 static void UpdateEffect(HU3D_PARTICLE_DATA *particleDataP)
 {
     HU3D_MODEL *modelP = &Hu3DData[(int)particleDataP->vel.x];
@@ -1566,7 +1671,8 @@ static void UpdateEffect(HU3D_PARTICLE_DATA *particleDataP)
     }
     radius *= modelP->scale.x;
     particleDataP->pos.x = modelP->pos.x+(particleDataP->accel.x*radius);
-    particleDataP->pos.y = (modelP->pos.y+(particleDataP->vel.y*modelP->scale.x))+(particleDataP->accel.y*radius);
+    particleDataP->pos.y = (modelP->pos.y + (particleDataP->vel.y * modelP->scale.x)) +
+                           (particleDataP->accel.y * radius);
     particleDataP->pos.z = modelP->pos.z+(particleDataP->accel.z*radius);
     if(particleDataP->time > 20) {
         particleDataP->color.a -= 32;
@@ -1578,7 +1684,7 @@ static void UpdateEffect(HU3D_PARTICLE_DATA *particleDataP)
     particleDataP->time++;
 }
 
-
+// Orbits bird particles around a character's head while a bird motion is playing, then fades them.
 static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
 {
     s16 charNo = (s16)particleDataP->vel.x;
@@ -1606,9 +1712,11 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
     particleDataP->color.a = 255;
     angle = (particleDataP->time*5)%360;
     Hu3DModelObjPosGet(workP->modelId, CharHeadObjNameTbl[charNo], &particleDataP->pos);
-    particleDataP->pos.x = particleDataP->pos.x+(modelP->scale.x*(40.0*HuSin(particleDataP->vel.y+angle)));
+    particleDataP->pos.x =
+        particleDataP->pos.x + (modelP->scale.x * (40.0 * HuSin(particleDataP->vel.y + angle)));
     particleDataP->pos.y = particleDataP->pos.y+(modelP->scale.y*birdYOfsTbl[charNo]);
-    particleDataP->pos.z = particleDataP->pos.z+(modelP->scale.z*(40.0*HuCos(particleDataP->vel.y+angle)));
+    particleDataP->pos.z =
+        particleDataP->pos.z + (modelP->scale.z * (40.0 * HuCos(particleDataP->vel.y + angle)));
     particleDataP->time++;
     if(particleDataP->time >= 143) {
         particleDataP->time = 72;
@@ -1626,7 +1734,7 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
     }
 }
 
-
+// Returns the footstep sound variation assigned to the currently running minigame.
 static s16 GetStepType(void)
 {
     s16 i;
@@ -1638,6 +1746,7 @@ static s16 GetStepType(void)
     return 0;
 }
 
+// Loads particle models for any effect motions referenced by the newly loaded motion resource.
 static inline void MotionParticleInit(unsigned int dataNum)
 {
     s16 i;
@@ -1653,6 +1762,7 @@ static inline void MotionParticleInit(unsigned int dataNum)
     }
 }
 
+// Loads a character motion resource, creates its joint motion, and tracks its motion number.
 HU3D_MOTIONID CharMotionCreate(s16 charNo, unsigned int dataNum)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -1679,9 +1789,11 @@ HU3D_MOTIONID CharMotionCreate(s16 charNo, unsigned int dataNum)
     }
     if(i != CHARNO_MAX || dir == 0) {
         dataNum = FILENUM(dataNum);
-        data = HuAR_ARAMtoMRAMFileRead(DATANUM(CharDataDirTbl[charNo][4], dataNum), HU_MEMNUM_OVL, HEAP_MODEL);
+        data = HuAR_ARAMtoMRAMFileRead(DATANUM(CharDataDirTbl[charNo][4], dataNum), HU_MEMNUM_OVL,
+                                       HEAP_MODEL);
         if(!data) {
-            data = HuDataSelHeapReadNum(DATANUM(CharDataDirTbl[charNo][4], dataNum), HU_MEMNUM_OVL, HEAP_MODEL);
+            data = HuDataSelHeapReadNum(DATANUM(CharDataDirTbl[charNo][4], dataNum), HU_MEMNUM_OVL,
+                                        HEAP_MODEL);
         }
         workP->motNoTbl[motNo] = dataNum;
     } else {
@@ -1704,6 +1816,7 @@ HU3D_MOTIONID CharMotionCreate(s16 charNo, unsigned int dataNum)
     return workP->motId[motNo];
 }
 
+// Associates a loaded motion ID with its character motion number for motion tracking.
 void CharMotionNoSet(s16 charNo, HU3D_MOTIONID motId, unsigned int motNo)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -1718,6 +1831,7 @@ void CharMotionNoSet(s16 charNo, HU3D_MOTIONID motId, unsigned int motNo)
     }
 }
 
+// Stops a character motion and removes its ID from the character's loaded-motion table.
 void CharMotionKill(s16 charNo, unsigned int motId)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -1732,6 +1846,8 @@ void CharMotionKill(s16 charNo, unsigned int motId)
     
 }
 
+// Closes the character motion and shared effect data directories for one character, or all
+// characters.
 void CharMotionDataClose(s16 charNo)
 {
     s16 i;
@@ -1745,6 +1861,7 @@ void CharMotionDataClose(s16 charNo)
     }
 }
 
+// Closes the character model and motion directories plus shared effect data.
 void CharModelDataClose(s16 charNo)
 {
     s16 i;
@@ -1760,6 +1877,7 @@ void CharModelDataClose(s16 charNo)
     }
 }
 
+// Stops a character's motions and removes its model; CHARNO_NONE applies cleanup to all characters.
 void CharModelKill(s16 charNo)
 {
     s16 i;
@@ -1824,6 +1942,7 @@ void CharModelKill(s16 charNo)
     }
 }
 
+// Gameplay and menu animation controllers call this to switch a character model's motion.
 void CharMotionSet(s16 charNo, HU3D_MOTIONID motId)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -1832,6 +1951,8 @@ void CharMotionSet(s16 charNo, HU3D_MOTIONID motId)
     Hu3DMotionSet(workP->modelId, motId);
 }
 
+// Called before a motion switch to clear translation and rotation animation transforms on the
+// model's eye bitmaps.
 static void EyeBmpUpdate(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -1863,23 +1984,38 @@ static void EyeBmpUpdate(s16 charNo)
     }
 }
 
-char *CharEyeBmpNameTbl[CHARNO_MAX*CHAR_MODEL_MAX*2] = {
-    "s3c000m1_eyes", "s3c000m1_eyes", "s3c000m1_eyes", "s3c000m1_eyes", "s3c000m2_eyes", "s3c000m2_eyes", "mario_eyes", "mario_eyes",
-    "S3c001m0_eye", "S3c001m0_eye", "S3c001m1_eye", "S3c001m1_eye", "c001m3_eye", "c001m3_eye", "c001m3_eye", "c001m3_eye",
-    "s3c002m0_r_eye", "s3c002m0_l_eye", "s3c002m1_r_eye", "s3c002m1_l_eye", "s3c002m2_r_eye", "s3c002m2_l_eye", "", "",
-    "", "", "", "", "", "", "S3c003m3", "S3c003m3",
-    "s3c004m0_eye", "s3c004m0_eye", "s3c004m1_eye", "s3c004m1_eye", "s3c004m3_eye", "s3c004m3_eye", "s3c004m3_eye", "s3c004m3_eye",
-    "s3c007m0_Eye_L", "s3c007m0_Eye_R", "s3c007m1_Eye_L", "s3c007m1_Eye_R", "s3c006m2_eye", "s3c006m2_eye_R", "", "",
-    "s3c007_m0_eye", "s3c007_m0_eye", "s3c007_m1_eye", "s3c007_m1_eye", "s3c007_m2_eye", "s3c007_m2_eye", "s3c007_m3_eye", "s3c007_m3_eye",
-    "c008m1_eyes1", "c008m1_eyes1", "c008m1_eyes1", "c008m1_eyes1", "c008m1_eyes1", "c008m1_eyes1", "", "",
-    "", "", "", "", "", "", "", "",
-    "", "", "", "", "", "", "", "",
-    "c011m1_eyes1", "c011m1_eyes1", "c011m1_eyes1", "c011m1_eyes1", "c008m1_eyes1", "c008m1_eyes1", "", "",
-    "", "", "", "", "", "", "", "",
-    "", "", "", "", "", "", "", "",
-    "", "", "", "", "", "", "", "",
+char *CharEyeBmpNameTbl[CHARNO_MAX * CHAR_MODEL_MAX * 2] = {
+    "s3c000m1_eyes", "s3c000m1_eyes", "s3c000m1_eyes", "s3c000m1_eyes",
+    "s3c000m2_eyes", "s3c000m2_eyes", "mario_eyes", "mario_eyes",
+    "S3c001m0_eye", "S3c001m0_eye", "S3c001m1_eye", "S3c001m1_eye",
+    "c001m3_eye", "c001m3_eye", "c001m3_eye", "c001m3_eye",
+    "s3c002m0_r_eye", "s3c002m0_l_eye", "s3c002m1_r_eye", "s3c002m1_l_eye",
+    "s3c002m2_r_eye", "s3c002m2_l_eye", "", "",
+    "", "", "", "",
+    "", "", "S3c003m3", "S3c003m3",
+    "s3c004m0_eye", "s3c004m0_eye", "s3c004m1_eye", "s3c004m1_eye",
+    "s3c004m3_eye", "s3c004m3_eye", "s3c004m3_eye", "s3c004m3_eye",
+    "s3c007m0_Eye_L", "s3c007m0_Eye_R", "s3c007m1_Eye_L", "s3c007m1_Eye_R",
+    "s3c006m2_eye", "s3c006m2_eye_R", "", "",
+    "s3c007_m0_eye", "s3c007_m0_eye", "s3c007_m1_eye", "s3c007_m1_eye",
+    "s3c007_m2_eye", "s3c007_m2_eye", "s3c007_m3_eye", "s3c007_m3_eye",
+    "c008m1_eyes1", "c008m1_eyes1", "c008m1_eyes1", "c008m1_eyes1",
+    "c008m1_eyes1", "c008m1_eyes1", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    "c011m1_eyes1", "c011m1_eyes1", "c011m1_eyes1", "c011m1_eyes1",
+    "c008m1_eyes1", "c008m1_eyes1", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    "", "", "", "",
+    "", "", "", "",
 };
 
+// Returns the two eye-bitmap names assigned to this character model variant.
 char **CharModelEyeBmpGet(s16 charNo, s16 model)
 {
     s16 i;
@@ -1909,6 +2045,7 @@ static char *CharHookNameTbl[CHARNO_MAX*5] = {
     "a-itemhook-r", "a-itemhook-l", "a-itemhook-fr", "a-itemhook-fl", "a-itemhook-body",
 };
 
+// Returns the named attachment point used for an item on a character model.
 char *CharModelItemHookGet(s16 charNo, s16 model, s16 hookNo)
 {
     s16 i;
@@ -1951,6 +2088,7 @@ HU3D_MOTIONID CharMotionShiftIDGet(s16 charNo)
     return Hu3DMotionShiftIDGet(workP->modelId);
 }
 
+// Animation controllers call this to blend the character into another motion over a time range.
 void CharMotionShiftSet(s16 charNo, HU3D_MOTIONID motId, float start, float end, u32 attr)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -1988,14 +2126,18 @@ void CharModelAttrReset(s16 charNo, u32 attr)
     Hu3DModelAttrReset(workP->modelId, attr);
 }
 
-static float modelHeightTbl[CHARNO_MAX] = { 150.0f, 170.0f, 188.0f, 169.0f, 164.0f, 180.0f, 210.0f, 120.0f, 150.0f, 150.0f, 120.0f, 150.0f, 150.0f, 150.0f };
+static float modelHeightTbl[CHARNO_MAX] = {
+    150.0f, 170.0f, 188.0f, 169.0f, 164.0f, 180.0f, 210.0f,
+    120.0f, 150.0f, 150.0f, 120.0f, 150.0f, 150.0f, 150.0f
+};
 
 float CharModelHeightGet(s16 charNo)
 {
     return modelHeightTbl[charNo];
 }
 
-HU3D_MODELID CharModelMotListCreate(s16 charNo, s16 model, unsigned int *motDataNum, HU3D_MOTIONID *motId)
+HU3D_MODELID CharModelMotListCreate(s16 charNo, s16 model, unsigned int *motDataNum,
+                                    HU3D_MOTIONID *motId)
 {
     HU3D_MODELID modelId = CharModelCreate(charNo, model);
     s16 no = 0;
@@ -2010,6 +2152,7 @@ HU3D_MODELID CharModelMotListCreate(s16 charNo, s16 model, unsigned int *motData
     return modelId;
 }
 
+// Returns one of the character model's three timing-hook slots for animation callbacks.
 s32 CharModelTimingHookNoGet(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2029,6 +2172,7 @@ typedef struct HookDustWork_s {
 
 static void CreateHookDust(void);
 
+// Reserves a process slot for the short hook-dust animation started by CharModelHookDustCreate.
 static inline HUPROCESS *CreateHookDustProc(void)
 {
     s16 i;
@@ -2044,6 +2188,7 @@ static inline HUPROCESS *CreateHookDustProc(void)
     return hookDustProc[i];
 }
 
+// Stops a hook-dust process and releases its entry in the shared process table.
 static inline void KillHookDustProc(HUPROCESS *process)
 {
     s16 i;
@@ -2055,6 +2200,7 @@ static inline void KillHookDustProc(HUPROCESS *process)
     }
 }
 
+// Called when an attached object is removed to animate its model upward and burst it into dust.
 void CharModelHookDustCreate(s16 charNo, char *objName)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2079,7 +2225,8 @@ void CharModelHookDustCreate(s16 charNo, char *objName)
         Hu3DModelDispOff(hookMdlId);
         return;
     }
-    process->property = hookDustWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(HOOKDUSTWORK), HU_MEMNUM_OVL);
+    process->property = hookDustWork =
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(HOOKDUSTWORK), HU_MEMNUM_OVL);
     modelP = &Hu3DData[hookMdlId];
     Hu3DMtxTransGet(hookMtx, &temp);
     Hu3DModelPosSetV(hookMdlId, &temp);
@@ -2091,6 +2238,7 @@ void CharModelHookDustCreate(s16 charNo, char *objName)
     hookDustWork->cameraBit = modelP->cameraBit;
 }
 
+// The hook-dust process shrinks and lifts the detached model, then emits dust particles.
 static void CreateHookDust(void)
 {
     HOOKDUSTWORK *hookDustWork = HuPrcCurrentGet()->property;
@@ -2145,6 +2293,7 @@ static EFFECTPARAM modelSmokeEffParam = {
     0.02f
 };
 
+// Creates the expanding smoke burst used by gameplay effects, scaled around the supplied position.
 void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
 {
     HU3D_PARTICLE_DATA *particleDataP;
@@ -2157,7 +2306,8 @@ void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
     for(bit=HU3D_CAM0, cameraNo=0; cameraNo<HU3D_CAM_MAX; cameraNo++, bit <<= 1) {
         if(cameraBit & bit) {
             for(i=0; i<8; i++) {
-                effectNo = EffectCreate(EFFECT_SMOKE, bit, pos->x, pos->y, pos->z, 20*scale, &modelSmokeEffParam);
+                effectNo = EffectCreate(EFFECT_SMOKE, bit, pos->x, pos->y, pos->z, 20 * scale,
+                                        &modelSmokeEffParam);
                 if(effectNo == -1) {
                     break;
                 }
@@ -2174,7 +2324,8 @@ void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
                 particleDataP->color.a = 255-(frandmod(3)*16);
             }
             for(i=0; i<8; i++) {
-                effectNo = EffectCreate(EFFECT_SMOKE, bit, pos->x, pos->y, pos->z, 10*scale, &modelSmokeEffParam);
+                effectNo = EffectCreate(EFFECT_SMOKE, bit, pos->x, pos->y, pos->z, 10 * scale,
+                                        &modelSmokeEffParam);
                 if(effectNo == -1) {
                     break;
                 }
@@ -2190,7 +2341,8 @@ void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
                 particleDataP->colorIdx = scale*(0.1f*(frandmod(20)-10));
                 particleDataP->color.a = 255-(frandmod(3)*16);
             }
-            effectNo = EffectCreate(EFFECT_SMOKE, bit, pos->x, pos->y, pos->z, 10*scale, &modelSmokeEffParam);
+            effectNo = EffectCreate(EFFECT_SMOKE, bit, pos->x, pos->y, pos->z, 10 * scale,
+                                    &modelSmokeEffParam);
             if(effectNo == -1) {
                 break;
             }
@@ -2214,6 +2366,7 @@ void CharEffectSmokeCreate(s16 cameraBit, HuVecF *pos)
     CharEffectSmokeCreateScale(cameraBit, pos, 1.0f);
 }
 
+// Particle update callback moves a model-attached effect outward, grows it, then fades it away.
 static void UpdateModelEffect(HU3D_PARTICLE_DATA *particleDataP)
 {
     float speed;
@@ -2257,6 +2410,7 @@ static EFFECTPARAM coinEffParam = {
     0
 };
 
+// Emits a ring of yellow glow particles when a coin-related character effect is shown.
 void CharEffectCoinGlowCreate(s16 cameraBit, HuVecF *pos)
 {
     s16 i;
@@ -2299,6 +2453,7 @@ static EFFECTPARAM hitGlowEffParam = {
     0.05f
 };
 
+// Called at the character's hit hook to place the impact burst just in front of the model.
 void CharModelHitCreate(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2329,6 +2484,7 @@ void CharModelHitCreate(s16 charNo)
     CharEffectHitCreate(modelP->cameraBit, &pos, &modelP->rot);
 }
 
+// Creates the directional star and glow burst used for a character impact.
 void CharEffectHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
 {
     Mtx mtx;
@@ -2350,14 +2506,16 @@ void CharEffectHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
         VECNormalize(&dir, &dir);
         MTXMultVec(mtx, &dir, &dir);
         VECScale(&dir, &modelHitEffParam.vel, 10);
-        effectNo = EffectCreate(EFFECT_STAR, cameraBit, pos->x, pos->y, pos->z, 30, &modelHitEffParam);
+        effectNo =
+            EffectCreate(EFFECT_STAR, cameraBit, pos->x, pos->y, pos->z, 30, &modelHitEffParam);
         if(effectNo == -1) {
             break;
         }
         VECScale(&radius, &vel, -3-(0.1*frandmod(20)));
         VECScale(&dir, &dir, 4);
         VECAdd(&dir, &vel, &hitGlowEffParam.vel);
-        effectNo = EffectCreate(EFFECT_HIT, cameraBit, pos->x, pos->y, pos->z, 20, &hitGlowEffParam);
+        effectNo =
+            EffectCreate(EFFECT_HIT, cameraBit, pos->x, pos->y, pos->z, 20, &hitGlowEffParam);
         if(effectNo == -1) {
             break;
         }
@@ -2390,6 +2548,7 @@ static EFFECTPARAM shoeHitGlowEffParam = {
     0.05f
 };
 
+// Called at the right-shoe hook to place the shoe-impact burst in front of the character.
 void CharModelShoeHitCreate(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2411,6 +2570,7 @@ void CharModelShoeHitCreate(s16 charNo)
     CharEffectShoeHitCreate(modelP->cameraBit, &pos, &modelP->rot);
 }
 
+// Creates the star and glow particles for a shoe impact, aimed around the shoe's forward axis.
 void CharEffectShoeHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
 {
     Mtx mtx;
@@ -2431,20 +2591,23 @@ void CharEffectShoeHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
         dir.z = ((radius.y*radius.z)*(1-HuCos(angle)))+(radius.x*HuSin(angle));
         VECNormalize(&dir, &dir);
         VECScale(&dir, &shoeHitEffParam.vel, 10);
-        effectNo = EffectCreate(EFFECT_STAR, cameraBit, pos->x, pos->y, pos->z, 20, &shoeHitEffParam);
+        effectNo =
+            EffectCreate(EFFECT_STAR, cameraBit, pos->x, pos->y, pos->z, 20, &shoeHitEffParam);
         if(effectNo == -1) {
             break;
         }
         VECScale(&radius, &vel, -2-(0.1*frandmod(20)));
         VECScale(&dir, &dir, 2);
         VECAdd(&dir, &vel, &shoeHitGlowEffParam.vel);
-        effectNo = EffectCreate(EFFECT_HIT, cameraBit, pos->x, pos->y, pos->z, 20, &shoeHitGlowEffParam);
+        effectNo =
+            EffectCreate(EFFECT_HIT, cameraBit, pos->x, pos->y, pos->z, 20, &shoeHitGlowEffParam);
         if(effectNo == -1) {
             break;
         }
     }
 }
 
+// Moves every active character-effect model to the requested render layer.
 void CharEffectLayerSet(s16 layerNo)
 {
     s16 i, j;
@@ -2458,6 +2621,7 @@ void CharEffectLayerSet(s16 layerNo)
     effectLayer = layerNo;
 }
 
+// Character setup and event scripts use this to enable or suppress voice playback for one motion.
 void CharMotionVoiceOnSet(s16 charNo, s16 motNo, BOOL voiceOn)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2481,6 +2645,7 @@ void CharMotionVoiceOnSet(s16 charNo, s16 motNo, BOOL voiceOn)
     }
 }
 
+// Enables or disables automatic stereo panning for voice lines emitted by this character.
 void CharModelVoicePanAutoSet(s16 charNo, BOOL voicePanAuto)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2491,6 +2656,7 @@ void CharModelVoicePanAutoSet(s16 charNo, BOOL voicePanAuto)
     }
 }
 
+// Character and NPC controllers use this flag to suppress or restore their sound and effect cues.
 void CharModelVoiceFlagSet(s16 charNo, BOOL fxFlag)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2510,7 +2676,7 @@ void CharModelVoiceFlagSet(s16 charNo, BOOL fxFlag)
     }
 }
 
-
+// Sets whether the selected character motion updates its voice and motion events while playing.
 void CharMotionUpdateSet(s16 charNo, unsigned int dataNum, BOOL updateF)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2535,14 +2701,15 @@ void CharMotionUpdateSet(s16 charNo, unsigned int dataNum, BOOL updateF)
 }
 
 typedef struct NpcDustWork_s {
-    HU3D_MODELID modelId;
-    HU3D_MOTIONID motId;
-    s16 type;
-    s16 npcNo;
+    HU3D_MODELID modelId; // Model whose motion drives the dust effect.
+    HU3D_MOTIONID motId; // Motion that must be active for effects to run.
+    s16 type; // Dust and sound pattern selected by UpdateNpcDust.
+    s16 npcNo; // NPC identity, or CHAR_NPC_NONE to suppress NPC sounds.
 } NPCDUSTWORK;
 
 static void UpdateNpcDust(void);
 
+// Starts motion-timed dust and sound effects for an NPC or character.
 s32 CharNpcDustSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type, s16 npcNo)
 {
     HUPROCESS *parent = HuPrcCurrentGet();
@@ -2560,6 +2727,7 @@ s32 CharNpcDustSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type, s16 npcN
     }
 }
 
+// Starts the same motion-timed dust effect without associating an NPC footstep sound.
 s32 CharNpcDustVoiceOffSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type)
 {
     s32 ret;
@@ -2585,6 +2753,7 @@ static s8 npcSeTimeTbl4[8] = { 1, 23, -25, -25, -25, -25, -25, -25 };
 
 static u16 npcSeTbl5[4] = { 177, 177, 177, 177 };
 
+// Updates dust and NPC footstep sounds each frame while the selected motion is active.
 static void UpdateNpcDust(void)
 {
     NPCDUSTWORK *work = HuPrcCurrentGet()->property;
@@ -2613,7 +2782,8 @@ static void UpdateNpcDust(void)
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
-                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
+                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10) + 30,
+                                         &dustEffParam);
                     }
                 }
                 if(work->npcNo != CHAR_NPC_NONE) {
@@ -2635,7 +2805,8 @@ static void UpdateNpcDust(void)
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
-                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
+                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10) + 30,
+                                         &dustEffParam);
                     }
                 }
                 if(work->npcNo != CHAR_NPC_NONE) {
@@ -2660,7 +2831,8 @@ static void UpdateNpcDust(void)
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
-                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
+                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10) + 30,
+                                         &dustEffParam);
                     }
                 }
                 for(i=0; i<2; i++) {
@@ -2683,7 +2855,8 @@ static void UpdateNpcDust(void)
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
-                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
+                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10) + 30,
+                                         &dustEffParam);
                     }
                 }
                 for(i=0; i<2; i++) {
@@ -2706,7 +2879,8 @@ static void UpdateNpcDust(void)
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
-                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
+                        EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10) + 30,
+                                         &dustEffParam);
                     }
                 }
                 for(i=0; i<2; i++) {
@@ -2726,16 +2900,20 @@ static void UpdateNpcDust(void)
                         npcHitEffParam.vel.x = 10*HuSin(45.0f*i)*modelP->scale.x;
                         npcHitEffParam.vel.y = 0;
                         npcHitEffParam.vel.z = 10*HuCos(45.0f*i)*modelP->scale.x;
-                        EffectStarCreate(modelId, modelP->pos.x, modelP->pos.y+(10*modelP->scale.x), modelP->pos.z, 40, &npcHitEffParam);
+                        EffectStarCreate(modelId, modelP->pos.x,
+                                         modelP->pos.y + (10 * modelP->scale.x), modelP->pos.z, 40,
+                                         &npcHitEffParam);
                     }
                     for(i=0; i<8; i++){ 
                         dustEffParam.vel.x = 4*HuSin((45.0f*i)+22.5)*modelP->scale.x;
                         dustEffParam.vel.y = 0;
                         dustEffParam.vel.z = 4*HuCos((45.0f*i)+22.5)*modelP->scale.x;
-                        EffectDustCreate(modelId, modelP->pos.x, modelP->pos.y+(10*modelP->scale.x), modelP->pos.z, 20, &dustEffParam);
+                        EffectDustCreate(modelId, modelP->pos.x,
+                                         modelP->pos.y + (10 * modelP->scale.x), modelP->pos.z, 20,
+                                         &dustEffParam);
                     }
                     if(npcNo != CHAR_NPC_NONE) {
-                        HuAudFXPlay(195);
+                        HuAudFXPlay(CHARSEID(18));
                     }
                 }
                 break;
@@ -2749,6 +2927,8 @@ void CharModelStepSet(s16 charNo, s16 stepFx)
     workP->stepFx = stepFx;
 }
 
+// Selects the character's footstep sound and spatial playback when UpdateCharAnim reaches a step;
+// its configured-volume/pan path returns an unassigned s16.
 static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2825,6 +3005,7 @@ static EFFECTPARAM hipDropStarEffParam = {
     0
 };
 
+// Spreads a ring of landing dust around the character when UpdateCharAnim detects an impact.
 void CharModelLandDustCreate(s16 charNo, HuVecF *pos)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2842,10 +3023,12 @@ void CharModelLandDustCreate(s16 charNo, HuVecF *pos)
         effectPos.y = pos->y+(10*modelP->scale.x);
         effectPos.z = pos->z+(20*HuCos(30.0f*i)*modelP->scale.x);
         landEffParam.gravity = frandmod(20)*0.01;
-        EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z, speed, &landEffParam);
+        EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
+                     speed, &landEffParam);
     }
 }
 
+// Creates landing dust and a footstep sound for step-triggered animation events.
 void CharModelLandDustCreateStep(s16 charNo, HuVecF *pos)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2863,11 +3046,13 @@ void CharModelLandDustCreateStep(s16 charNo, HuVecF *pos)
         effectPos.y = pos->y+(10*modelP->scale.x);
         effectPos.z = pos->z+(modelP->scale.x*(20.0*HuCos(30.0f*i)));
         landEffParam.gravity = 0.01*frandmod(20);
-        EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z, speed, &landEffParam);
+        EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
+                     speed, &landEffParam);
     }
     PlayStepVoice(charNo, CHARSEID(8), 0);
 }
 
+// Creates a dust ring and outward stars when UpdateCharAnim detects a hip-drop landing.
 void CharEffectHipDropCreate(s16 charNo, HuVecF *pos)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2885,16 +3070,19 @@ void CharEffectHipDropCreate(s16 charNo, HuVecF *pos)
         effectPos.y = pos->y+(15*modelP->scale.x);
         effectPos.z = pos->z+(20*HuCos(30.0f*i)*modelP->scale.x);
         hipDropLandEffParam.gravity = frandmod(20)*0.01;
-        EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z, speed, &hipDropLandEffParam);
+        EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
+                     speed, &hipDropLandEffParam);
     }
     for(i=0; i<8; i++) {
         hipDropStarEffParam.vel.x = (20*HuSin(45.0f*i)*modelP->scale.x);
         hipDropStarEffParam.vel.y = 5;
         hipDropStarEffParam.vel.z = (20*HuCos(45.0f*i)*modelP->scale.x);
-        EffectStarCreate(workP->modelId, modelP->pos.x, modelP->pos.y+(10*modelP->scale.x), modelP->pos.z, 40, &hipDropStarEffParam);
+        EffectStarCreate(workP->modelId, modelP->pos.x, modelP->pos.y + (10 * modelP->scale.x),
+                         modelP->pos.z, 40, &hipDropStarEffParam);
     }
 }
 
+// Emits two rings of dust particles at the supplied position and scale.
 void CharEffectDustCreate(s16 cameraBit, float scale, HuVecF *pos)
 {
     s16 i;
@@ -2925,7 +3113,7 @@ static EFFECTPARAM cryEffParam = {
     0.02f
 };
 
-
+// Emits a drifting cry particle around a character's head during a cry animation.
 void CharEffectCryCreate(s16 cameraBit, HuVecF *pos, HuVecF *offset, float scale)
 {
     float randZ;
@@ -2945,9 +3133,11 @@ void CharEffectCryCreate(s16 cameraBit, HuVecF *pos, HuVecF *offset, float scale
     effectPos.x = pos->x+(scale*(frandmod(30)-15));
     effectPos.y = pos->y+(scale*(frandmod(20)-10));
     effectPos.z = pos->z+(scale*(frandmod(30)-15));
-    EffectCreate(EFFECT_CRY, cameraBit, effectPos.x, effectPos.y, effectPos.z, scale*8, &cryEffParam);
+    EffectCreate(EFFECT_CRY, cameraBit, effectPos.x, effectPos.y, effectPos.z, scale * 8,
+                 &cryEffParam);
 }
 
+// Gets the character's head position and emits a cry particle during UpdateCharAnim.
 void CharModelCryCreate(s16 charNo, float yOfs, float ofsY)
 {
     CHARWORK *workP = &CharWork[charNo];
@@ -2965,6 +3155,7 @@ void CharModelCryCreate(s16 charNo, float yOfs, float ofsY)
     CharEffectCryCreate(modelP->cameraBit, &pos, &offset, modelP->scale.x);
 }
 
+// Returns the selected character model archive number for the requested model variant.
 unsigned int CharModelFileNumGet(s16 charNo, s16 model)
 {
     if(model & CHAR_MODEL0) {
@@ -2995,15 +3186,15 @@ void CharModelVoiceVolSet(s16 charNo, s16 vol)
     workP->vol = vol;
 }
 
-
 typedef struct WinLoseVoicePlay_s {
-    s16 charNo;
-    s16 seId;
-    unsigned int motId;
+    s16 charNo; // Character whose result voice will play.
+    s16 seId; // Sound effect ID to play after the animation delay.
+    unsigned int motId; // Motion ID whose animation length determines the delay.
 } WINLOSEVOICEPLAY;
 
 static void PlayWinLoseVoice(void);
 
+// Schedules a result voice after the character's selected win animation has played.
 void CharWinLoseVoicePlay(s16 charNo, unsigned int motId, s16 seId)
 {
     HUPROCESS *parent = HuPrcCurrentGet();
@@ -3012,7 +3203,8 @@ void CharWinLoseVoicePlay(s16 charNo, unsigned int motId, s16 seId)
         OSReport("Error: CharWinLoseVoicePlay Failure.\n");
         return;
     } else {
-        WINLOSEVOICEPLAY *winLose = HuMemDirectMallocNum(HEAP_HEAP, sizeof(WINLOSEVOICEPLAY), HU_MEMNUM_OVL);
+        WINLOSEVOICEPLAY *winLose =
+            HuMemDirectMallocNum(HEAP_HEAP, sizeof(WINLOSEVOICEPLAY), HU_MEMNUM_OVL);
         process->property = winLose;
         winLose->charNo = charNo;
         winLose->seId = seId;
@@ -3020,6 +3212,7 @@ void CharWinLoseVoicePlay(s16 charNo, unsigned int motId, s16 seId)
     }
 }
 
+// Waits for the selected result animation, then plays its voice and exits the child task.
 static void PlayWinLoseVoice(void)
 {
     HUPROCESS *process = HuPrcCurrentGet();
@@ -3067,6 +3260,7 @@ static void PlayWinLoseVoice(void)
     }
 }
 
+// Plays the losing voice for each supplied character after the result sequence calls this helper.
 void CharLoseVoicePlay(s16 charNo1, s16 charNo2, s16 charNo3, s16 charNo4)
 {
     if(charNo1 != CHARNO_NONE) {
@@ -3083,6 +3277,7 @@ void CharLoseVoicePlay(s16 charNo1, s16 charNo2, s16 charNo3, s16 charNo4)
     }
 }
 
+// Returns the known result-animation duration for a character, or zero for other motions.
 s16 CharMotionTotalTimeGet(s16 charNo, int motNo)
 {
     switch(motNo) {
@@ -3117,6 +3312,8 @@ s16 CharMotionExtraTimeGet(s16 charNo, int motNo)
     return 0;
 }
 
+// Creates one shared light and attaches its ID to each loaded character model that has a free
+// local-light slot.
 HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color)
 {
     CHARWORK *workP = CharWork;
@@ -3148,7 +3345,10 @@ HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color)
 
 inline HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color);
 
-HU3D_LIGHTID CharLightCreate(float posX, float posY, float posZ, float dirX, float dirY, float dirZ, u8 r, u8 g, u8 b)
+// Builds a character light from position, direction, and RGB values, then attaches it to loaded
+// character models.
+HU3D_LIGHTID CharLightCreate(float posX, float posY, float posZ, float dirX, float dirY, float dirZ,
+                             u8 r, u8 g, u8 b)
 {
     HuVecF pos;
     HuVecF dir;
@@ -3159,6 +3359,7 @@ HU3D_LIGHTID CharLightCreate(float posX, float posY, float posZ, float dirX, flo
     return CharLightCreateV(&pos, &dir, &color);
 }
 
+// Finds the first local light attached to a loaded character model.
 static inline HU3D_LIGHT *GetCharLight(void)
 {
     CHARWORK *workP = CharWork;
@@ -3180,6 +3381,7 @@ static inline HU3D_LIGHT *GetCharLight(void)
     return NULL;
 }
 
+// Configures the shared character light as a spot light with the requested cutoff.
 void CharLightSpotSet(s32 func, float cutoff)
 {
     HU3D_LIGHT *lightP = GetCharLight();
@@ -3190,6 +3392,7 @@ void CharLightSpotSet(s32 func, float cutoff)
     }
 }
 
+// Changes the shared character light to directional (infinite-distance) mode.
 void CharLightInfinitytSet(void)
 {
     HU3D_LIGHT *lightP = GetCharLight();
@@ -3199,6 +3402,7 @@ void CharLightInfinitytSet(void)
     }
 }
 
+// Configures the shared character light as a point light with its attenuation settings.
 void CharLightPointSet(s32 func, float cutoff, float brightness)
 {
     HU3D_LIGHT *lightP = GetCharLight();
@@ -3211,6 +3415,7 @@ void CharLightPointSet(s32 func, float cutoff, float brightness)
     }
 }
 
+// Sets the color and alpha used by the shared character light.
 void CharLightColorSet(u8 r, u8 g, u8 b, u8 a)
 {
     HU3D_LIGHT *lightP = GetCharLight();
@@ -3222,6 +3427,7 @@ void CharLightColorSet(u8 r, u8 g, u8 b, u8 a)
     }
 }
 
+// Sets the shared light's position and normalizes its aim vector into the light direction.
 void CharLightPosAimSetV(HuVecF *pos, HuVecF *aim)
 {
     HU3D_LIGHT *lightP = GetCharLight();
@@ -3231,6 +3437,7 @@ void CharLightPosAimSetV(HuVecF *pos, HuVecF *aim)
     }
 }
 
+// Sets the shared light position and normalizes the supplied aim direction.
 void CharLightPosAimSet(float posX, float posY, float posZ, float aimX, float aimY, float aimZ)
 {
     HU3D_LIGHT *lightP = GetCharLight();
@@ -3245,6 +3452,7 @@ void CharLightPosAimSet(float posX, float posY, float posZ, float aimX, float ai
     }
 }
 
+// Enables or clears the static-light flag on the shared character light.
 void CharLightStaticSet(BOOL staticF)
 {
     HU3D_LIGHT *lightP = GetCharLight();
@@ -3257,11 +3465,13 @@ void CharLightStaticSet(BOOL staticF)
     }
 }
 
+// Places the warning marker above a character when a caller requests the danger effect.
 void CharEffectWarnCreate(s16 charNo, float scale)
 {
     CHARWORK *workP = &CharWork[charNo];
     HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
-    EffectWarnCreate(workP->modelId, modelP->pos.x, 100.0f+modelP->pos.y, modelP->pos.z, 20, scale, &warnEffParam);
+    EffectWarnCreate(workP->modelId, modelP->pos.x, 100.0f + modelP->pos.y, modelP->pos.z, 20,
+                     scale, &warnEffParam);
 }
 
 u32 CharAttrGet(s16 charNo)

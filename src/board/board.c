@@ -1,3 +1,4 @@
+/* Runs the shared board mode lifecycle, turn loop, and day/night transitions. */
 #define _DOLPHIN_MATH
 #define _MATH_H
 
@@ -22,9 +23,9 @@ static inline s16 GWMgNightFGet(void)
     return GwMgNightF;
 }
 
-static inline void GWMgPackSet(s32 value)
+static inline void GWMgPackSet(s32 mgPack)
 {
-    GwSystem.mgPack = value;
+    GwSystem.mgPack = mgPack;
 }
 
 static void mbOMDestroy(void);
@@ -34,34 +35,40 @@ void mbClose(void);
 void mbInit(void);
 void mbNextTime(void);
 BOOL mbNextTimeSet(void);
-void mbev_NextTimeSet(MBHOOK hook);
+void mbev_NextTimeSet(MBHOOK nextTimeHook);
 void mbLightSet(void);
 
+/* Position, direction, and RGBA color passed to the board's Hu3D light. */
 static Vec lightPos = {-500.0f, 500.0f, 2000.0f};
 static Vec lightDir = {0.5f, -0.5f, -2.0f};
+/* Overlay selected for mbOMDestroy to enter after closing board resources. */
 static OMOVL nextOvl = DLL_NONE;
 static s32 lbl_802BFBAC = 20;
 static s32 lbl_802BFBB0 = 20;
+/* White RGBA color paired with the board light position and direction. */
 static GXColor lightColor = {255, 255, 255, 255};
 static const float lbl_802C3088 = 10000.0f;
 static const float lbl_802C308C = -45.0f;
 static const float lbl_802C3090 = 0.0f;
-#pragma force_active on
-static const float gap_11_802C3094 = 0.0f;
-#pragma force_active reset
 
 static s32 gap_10_802C0D14;
+/* Called by mbMain when curTime and nextTime differ. */
 static MBHOOK ev_NextTime;
+/* Called by mbMain when returning through the common load-time flag. */
 static MBHOOK ev_LoadTime;
+/* Called by mbMain after either mode's turn execution. */
 static MBHOOK ev_TurnEnd;
+/* Called by mbMain before a turn when no return event interrupts it. */
 static MBHOOK ev_TurnStart;
+/* Optional board-specific light setup/reset callbacks. */
 static MBHOOK lightResetFunc;
 static MBHOOK lightSetFunc;
+/* Board mode callbacks retained until the board process is closed. */
 static MBHOOK closeHook;
 static MBHOOK initHook;
-BOOL mbSaveNewF;
-HUPROCESS *mbMainProc;
-OMOBJMAN *mbObjMan;
+BOOL mbSaveNewF; /* Set while mbObjectSetup initializes a new board save. */
+HUPROCESS *mbMainProc; /* Child process that runs mbMain. */
+OMOBJMAN *mbObjMan; /* Object manager whose teardown invokes mbOMDestroy. */
 
 extern void mbBoardDataDirRead(void);
 extern void mbMathInit(void);
@@ -127,7 +134,7 @@ extern void mbSingleInit(void);
 extern void mbSingleClose(void);
 extern void mbSingleSaveInit(s32 teamChar, s32 mgPack, s32 storyComDif);
 extern void mbSingleGameEnd(void);
-extern s32 mbSingleCall(s32 mode, s32 arg);
+extern s32 mbSingleCall(s32 mode, s32 modeArg);
 extern s32 mbev_SingleMgEnd(s32 playerNo);
 extern s32 mbev_MgCall(void);
 extern void mbMgCallDataClose(void);
@@ -143,14 +150,15 @@ extern void mbTelopTimeChangeCreate(void);
 extern void mbTelopTimeChangeKill(void);
 extern BOOL mbTelopTimeChangeCheck(void);
 extern void HuAudAllStop(void);
-extern void mbLightFuncSet(MBHOOK setHook, MBHOOK resetHook);
+extern void mbLightFuncSet(MBHOOK lightSetHook, MBHOOK lightResetHook);
 extern void mbDirClose(void);
-extern void mbBGReadWait(s32 statId);
-extern s32 mbBGRead(s32 dataNum);
+extern void mbBGReadWait(s32 dataReadStat);
+extern s32 mbBGRead(s32 boardDataNum);
 void evdef_ChangeTime(void);
 BOOL mbReturnMgCheck(void);
 
-void mbObjectSetup(s32 boardNo, MBHOOK init, MBHOOK close)
+/* Sets board state and starts mbMain as the board object's child process. */
+void mbObjectSetup(s32 boardNo, MBHOOK boardInit, MBHOOK boardClose)
 {
     omSysPauseEnable(FALSE);
     mbPauseDisableSet(TRUE);
@@ -226,8 +234,8 @@ void mbObjectSetup(s32 boardNo, MBHOOK init, MBHOOK close)
     _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 29));
     _ClearFlag(FLAG_BOARD_TURN_NOSTART);
     mbConfigPadDisableSet(TRUE);
-    initHook = init;
-    closeHook = close;
+    initHook = boardInit;
+    closeHook = boardClose;
     lightSetFunc = lightResetFunc = NULL;
     mbSNpcInit();
     mbTutorialInit();
@@ -244,18 +252,19 @@ void mbObjectSetup(s32 boardNo, MBHOOK init, MBHOOK close)
     GwSystem.boardNo = boardNo;
 }
 
+/* Closes board resources, then follows the requested overlay or returns. */
 static void mbOMDestroy(void)
 {
-    s32 ovl;
+    s32 currentOvl;
     mbClose();
     if (nextOvl != DLL_NONE) {
         omOvlCallEx(nextOvl, TRUE, 0, 0);
         return;
     }
     if (_CheckFlag(FLAG_BOARD_MOVE_DONE)) {
-        ovl = omCurrentOvlGet();
+        currentOvl = omCurrentOvlGet();
         _ClearFlag(FLAG_BOARD_MOVE_DONE);
-        omOvlGotoEx(ovl, TRUE, 0, 0);
+        omOvlGotoEx(currentOvl, TRUE, 0, 0);
         return;
     }
     _ClearFlag(FLAG_BOARD_SAVEINIT);
@@ -270,12 +279,13 @@ static void mbOMDestroy(void)
     }
 }
 
+/* Runs after mbObjectSetup starts the board process; handles entry, turns, and return events. */
 static void mbMain(void)
 {
-    s32 i;
-    s32 interruptF = FALSE;
-    s32 mgCallF;
-    s32 curTime;
+    s32 playerNo;
+    s32 turnInterruptF = FALSE;
+    s32 minigameCalledF;
+    s32 currentTime;
     s32 nightF;
 
     mbWipeWait();
@@ -287,9 +297,9 @@ static void mbMain(void)
     mbInit();
     if (!_CheckFlag(FLAG_BOARD_OPENING)) {
         if (_CheckFlag(FLAG_BOARD_DEBUG) && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            BOOL partyF = GwSystem.partyF;
+            BOOL partyModeF = GwSystem.partyF;
 
-            if (partyF != FALSE) {
+            if (partyModeF != FALSE) {
                 s32 starNo = mbStarNoRandGet();
                 if (starNo >= 0) {
                     mbStarNoSet(starNo);
@@ -306,21 +316,21 @@ static void mbMain(void)
             }
         }
         {
-            BOOL partyF = GwSystem.partyF;
+            BOOL partyModeF = GwSystem.partyF;
 
-            if (partyF != FALSE) {
+            if (partyModeF != FALSE) {
                 if (!GWTeamFGet()) {
-                    for (i = 0; i < 4; i++) {
-                        mbPlayerCoinSet(i, 10);
+                    for (playerNo = 0; playerNo < 4; playerNo++) {
+                        mbPlayerCoinSet(playerNo, 10);
                     }
                 } else {
-                    for (i = 0; i < 2; i++) {
-                        mbPlayerTeamCoinSet(i, 20);
+                    for (playerNo = 0; playerNo < 2; playerNo++) {
+                        mbPlayerTeamCoinSet(playerNo, 20);
                     }
                 }
             } else {
-                for (i = 0; i < 4; i++) {
-                    mbPlayerCoinSet(i, 0);
+                for (playerNo = 0; playerNo < 4; playerNo++) {
+                    mbPlayerCoinSet(playerNo, 0);
                 }
             }
         }
@@ -329,8 +339,8 @@ static void mbMain(void)
     }
     if (GwSystem.curTime != GwSystem.nextTime) {
         GwSystem.timeTurn = 0;
-        curTime = GwSystem.curTime;
-        GwMgNightF = curTime;
+        currentTime = GwSystem.curTime;
+        GwMgNightF = currentTime;
         if (ev_NextTime != NULL) {
             mbMusBoardPlay();
             _ClearFlag(FLAG_BOARD_STAR_RESET);
@@ -341,45 +351,45 @@ static void mbMain(void)
         GwSystem.nextTime = GwSystem.curTime;
     }
     {
-        BOOL dayF;
+        BOOL isDayF;
 
-        dayF = (GwSystem.curTime == 0);
-        nightF = dayF ? FALSE : TRUE;
+        isDayF = (GwSystem.curTime == 0);
+        nightF = isDayF ? FALSE : TRUE;
         GwMgNightF = nightF;
     }
     if (mbReturnMgCheck()) {
         if (GWPartyGet() == FALSE) {
-            interruptF = mbev_SingleMgEnd(0);
+            turnInterruptF = mbev_SingleMgEnd(0);
         } else {
             if (_CheckFlag(FLAG_BOARD_MG)) {
                 _ClearFlag(FLAG_BOARD_MG);
             } else if (_CheckFlag(FLAG_BOARD_MG_KETTOU)) {
                 mbev_CapKettouEndCall(GwSystem.turnPlayerNo);
                 _ClearFlag(FLAG_BOARD_MG_KETTOU);
-                interruptF = TRUE;
+                turnInterruptF = TRUE;
             } else if (_CheckFlag(FLAG_BOARD_MG_DONKEY)) {
                 mbev_CapDonkeyEndCall(GwSystem.turnPlayerNo);
                 _ClearFlag(FLAG_BOARD_MG_DONKEY);
-                interruptF = TRUE;
+                turnInterruptF = TRUE;
             } else if (_CheckFlag(FLAG_BOARD_MG_KOOPA)) {
                 mbev_CapKoopaEndCall(GwSystem.turnPlayerNo);
                 _ClearFlag(FLAG_BOARD_MG_KOOPA);
-                interruptF = TRUE;
+                turnInterruptF = TRUE;
             } else if (_CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 19))) {
                 if (ev_LoadTime != NULL) {
                     ev_LoadTime();
                 }
                 _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 19));
-                interruptF = TRUE;
+                turnInterruptF = TRUE;
             }
             _ClearFlag(FLAG_BOARD_MOVE_DONE);
         }
     }
     while (1) {
-    if (ev_TurnStart && !interruptF) {
+    if (ev_TurnStart && !turnInterruptF) {
         ev_TurnStart();
     }
-    if (GwSystem.turnPlayerNo == 0 && !interruptF && GwSystem.turnMax - GwSystem.turnNo < 5) {
+    if (GwSystem.turnPlayerNo == 0 && !turnInterruptF && GwSystem.turnMax - GwSystem.turnNo < 5) {
         if (!_CheckFlag(FLAG_BOARD_LAST5) && GWPartyGet() != FALSE) {
             mbev_Last5();
             _SetFlag(FLAG_BOARD_LAST5);
@@ -403,7 +413,7 @@ static void mbMain(void)
     }
     if (GWPartyGet() != FALSE) {
         mbStatusDispForceSetAll(TRUE);
-        mbTurnExec(interruptF);
+        mbTurnExec(turnInterruptF);
         if (ev_TurnEnd) {
             ev_TurnEnd();
         }
@@ -416,15 +426,15 @@ static void mbMain(void)
             mbNextTime();
             continue;
         } else if (_CheckFlag(FLAG_BOARD_NOMG)) {
-            interruptF = FALSE;
+            turnInterruptF = FALSE;
             mbStatusColorAllSet(0);
             mbNextTime();
             continue;
         } else {
             GwSystem.turnPlayerNo = -1;
-            mgCallF = mbev_MgCall();
+            minigameCalledF = mbev_MgCall();
             mbStatusColorAllSet(0);
-            if (!mgCallF) {
+            if (!minigameCalledF) {
                 mbNextTimeSet();
                 HuPrcSleep(-1);
             } else {
@@ -435,7 +445,7 @@ static void mbMain(void)
     } else {
         mbStatusDispForceSetAll(TRUE);
         mbStatusMasuDispSet(TRUE);
-        mbSingleTurnExec(interruptF);
+        mbSingleTurnExec(turnInterruptF);
         if (ev_TurnEnd) {
             ev_TurnEnd();
         }
@@ -446,7 +456,7 @@ static void mbMain(void)
         }
         GwSystem.turnPlayerNo = 0;
         if (_CheckFlag(FLAG_BOARD_NOMG)) {
-            interruptF = FALSE;
+            turnInterruptF = FALSE;
             mbStatusColorAllSet(0);
             continue;
         }
@@ -458,7 +468,7 @@ static void mbMain(void)
         mbStatusColorAllSet(0);
         GwSystem.turnPlayerNo = 0;
     }
-    interruptF = FALSE;
+    turnInterruptF = FALSE;
     }
 }
 
@@ -467,24 +477,29 @@ static void mbMainKill(void)
     mbMainProc = NULL;
 }
 
+/* Changes the day/night value and leaves nextTime at the previous value to signal the
+ * transition. */
 void mbChangeTimeSet(void)
 {
+    /* mbMain compares these fields before running the time-change event. */
     GwSystem.nextTime = GwSystem.curTime;
     GwSystem.curTime ^= 1;
 }
 
+/* Advances day/night only after the configured number of turns; reports whether it changed. */
 BOOL mbNextTimeSet(void)
 {
-    s32 timeTurnMax = GwSystem.timeTurnMax;
-    s32 timeTurn = GwSystem.timeTurn;
+    s32 turnsPerTime = GwSystem.timeTurnMax;
+    s32 turnsInTime = GwSystem.timeTurn;
 
-    if (timeTurn >= timeTurnMax) {
+    if (turnsInTime >= turnsPerTime) {
         mbChangeTimeSet();
         return TRUE;
     }
     return FALSE;
 }
 
+/* Handles a board-requested time change by marking a return event and exiting the process. */
 void mbChangeTime(void)
 {
     nextOvl = DLL_NONE;
@@ -495,19 +510,20 @@ void mbChangeTime(void)
     HuPrcSleep(-1);
 }
 
+/* Called from mbMain after a turn; exits to the board overlay when this time segment ends. */
 void mbNextTime(void)
 {
-    BOOL nextTimeF;
-    s32 timeTurnMax = GwSystem.timeTurnMax;
-    s32 timeTurn = GwSystem.timeTurn;
+    BOOL advancesTimeF;
+    s32 turnsPerTime = GwSystem.timeTurnMax;
+    s32 turnsInTime = GwSystem.timeTurn;
 
-    if (timeTurn >= timeTurnMax) {
+    if (turnsInTime >= turnsPerTime) {
         mbChangeTimeSet();
-        nextTimeF = TRUE;
+        advancesTimeF = TRUE;
     } else {
-        nextTimeF = FALSE;
+        advancesTimeF = FALSE;
     }
-    if (nextTimeF) {
+    if (advancesTimeF) {
         nextOvl = DLL_NONE;
         _SetFlag(FLAG_BOARD_MOVE_DONE);
         _SetFlag(FLAG_BOARD_MG);
@@ -516,6 +532,7 @@ void mbNextTime(void)
     }
 }
 
+/* Default ev_NextTime callback installed by mbObjectSetup; frames the day/night change. */
 void evdef_ChangeTime(void)
 {
     mbCameraZoomSet(lbl_802C3088);
@@ -530,12 +547,14 @@ void evdef_ChangeTime(void)
     mbWipeDissolveFadeOut();
 }
 
-void mbOvlCall(OMOVL ovl)
+/* Requests an overlay transition; mbOMDestroy performs it after board cleanup. */
+void mbOvlCall(OMOVL nextOverlay)
 {
-    nextOvl = ovl;
+    nextOvl = nextOverlay;
     mbExitReq();
 }
 
+/* Reports whether mbMain must process a minigame return or board-move event. */
 BOOL mbReturnMgCheck(void)
 {
     if (_CheckFlag(FLAG_BOARD_MG)
@@ -549,6 +568,7 @@ BOOL mbReturnMgCheck(void)
     return FALSE;
 }
 
+/* Initializes board subsystems from mbMain before its opening flow and turn loop. */
 void mbInit(void)
 {
     if (!SLSaveFlagGet()) {
@@ -605,6 +625,8 @@ void mbInit(void)
     _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 21));
 }
 
+/* Releases board subsystems when mbOMDestroy tears down the board object manager; a clear init flag
+ * takes the short data/math cleanup path. */
 void mbClose(void)
 {
     HuMemHeapDump(HuMemHeapPtrGet(3), -1);
@@ -651,12 +673,15 @@ void mbDirClose(void)
     HuDataDirCloseAll();
 }
 
-void mbLightFuncSet(MBHOOK setHook, MBHOOK resetHook)
+/* Installs optional board-specific callbacks run by mbLightSet and mbLightReset. */
+void mbLightFuncSet(MBHOOK lightSetHook, MBHOOK lightResetHook)
 {
-    lightSetFunc = setHook;
-    lightResetFunc = resetHook;
+    lightSetFunc = lightSetHook;
+    lightResetFunc = lightResetHook;
 }
 
+/* Applies the board light hook, creates a global light from the configured vectors/color, and marks
+ * it non-static and infinite. */
 void mbLightSet(void)
 {
     HU3D_LIGHTID lightId;
@@ -665,10 +690,14 @@ void mbLightSet(void)
         lightSetFunc();
     }
     lightId = (s16)Hu3DGLightCreateV(&lightPos, &lightDir, &lightColor);
+    /* Hu3DGLightCreateV can return HU3D_LIGHTID_NONE; this code passes the ID to both setters
+     * without checking it. */
     Hu3DGLightStaticSet(lightId, FALSE);
     Hu3DGLightInfinitytSet((s16)lightId);
 }
 
+/* Runs the reset hook, sets the background to black, disables fog, and selects reflection map
+ * zero. */
 void mbLightReset(void)
 {
     if (lightResetFunc) {
@@ -694,49 +723,50 @@ BOOL mbPauseEnableCheck(void)
     return _CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 23)) ? TRUE : FALSE;
 }
 
-s32 mbBGRead(s32 dataNum)
+s32 mbBGRead(s32 boardDataNum)
 {
-    return HuDataDirReadAsync(dataNum);
+    return HuDataDirReadAsync(boardDataNum);
 }
 
-void mbBGReadWait(s32 statId)
+/* Waits until the data-read status is complete, or returns when there is no status to wait on. */
+void mbBGReadWait(s32 dataReadStat)
 {
-    if (statId == HU_DATA_STAT_NONE) {
+    if (dataReadStat == HU_DATA_STAT_NONE) {
         return;
     }
-    while (HuDataGetAsyncStat(statId) == FALSE) {
+    while (HuDataGetAsyncStat(dataReadStat) == FALSE) {
         HuPrcVSleep();
     }
 }
 
-void mbev_NextTimeSet(MBHOOK hook)
+void mbev_NextTimeSet(MBHOOK nextTimeHook)
 {
-    ev_NextTime = hook;
+    ev_NextTime = nextTimeHook;
 }
 
-void mbev_LoadTimeSet(MBHOOK hook)
+void mbev_LoadTimeSet(MBHOOK loadTimeHook)
 {
-    ev_LoadTime = hook;
+    ev_LoadTime = loadTimeHook;
 }
 
-void mbev_TurnStartSet(MBHOOK hook)
+void mbev_TurnStartSet(MBHOOK turnStartHook)
 {
-    ev_TurnStart = hook;
+    ev_TurnStart = turnStartHook;
 }
 
-void mbev_TurnEndSet(MBHOOK hook)
+void mbev_TurnEndSet(MBHOOK turnEndHook)
 {
-    ev_TurnEnd = hook;
+    ev_TurnEnd = turnEndHook;
 }
 
-void fn_8014C3B4(s32 value)
+void fn_8014C3B4(s32 storedValue)
 {
-    lbl_802BFBAC = value;
+    lbl_802BFBAC = storedValue;
 }
 
-void fn_8014C3BC(s32 value)
+void fn_8014C3BC(s32 storedValue)
 {
-    lbl_802BFBB0 = value;
+    lbl_802BFBB0 = storedValue;
 }
 
 s32 fn_8014C3C4(void)
@@ -749,10 +779,12 @@ s32 fn_8014C3CC(void)
     return lbl_802BFBB0;
 }
 
+/* Resets board save fields and player totals before a new game; single-player/tutorial setup also
+ * clears the team flag in the player loop. */
 void mbSaveInit(s32 boardNo)
 {
-    s32 i;
-    s32 j;
+    s32 playerNo;
+    s32 capsuleNo;
     GwSystem.boardNo = boardNo;
     _ClearFlag(FLAG_BOARD_SAVEINIT);
     _ClearFlag(FLAG_MG_PRACTICE);
@@ -761,48 +793,51 @@ void mbSaveInit(s32 boardNo)
     GwSystem.hiddenBlockMasuId = 0;
     memset(&GwSystem.boardWork[0], 0, sizeof(GwSystem.boardWork));
     GwSystem.turnNo = 1;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        GwPlayer[i].coin = 0;
+    for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
+        GwPlayer[playerNo].coin = 0;
         if (GWPartyGet() == FALSE || _CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            GwPlayer[i].star = 0;
+            GwPlayer[playerNo].star = 0;
             GwSystem.tagF = FALSE;
         } else {
-            GwPlayer[i].star = mbPlayerHandicapGet(i);
+            GwPlayer[playerNo].star = mbPlayerHandicapGet(playerNo);
         }
-        mbMasuPlayerPrizeReset(i);
-        GwPlayer[i].coinTotalMg = 0;
-        GwPlayer[i].coinTotal = 0;
-        GwPlayer[i].coinMax = 0;
-        GwPlayer[i].starMax = 0;
-        GwPlayer[i].coinBattle = 0;
-        GwPlayer[i].mgCoin = 0;
-        GwPlayer[i].mgCoinBonus = 0;
-        GwPlayer[i].capsuleUseNum = 0;
-        for (j = 0; j < 3; j++) {
-            GwPlayer[i].capsule[j] = -1;
+        mbMasuPlayerPrizeReset(playerNo);
+        GwPlayer[playerNo].coinTotalMg = 0;
+        GwPlayer[playerNo].coinTotal = 0;
+        GwPlayer[playerNo].coinMax = 0;
+        GwPlayer[playerNo].starMax = 0;
+        GwPlayer[playerNo].coinBattle = 0;
+        GwPlayer[playerNo].mgCoin = 0;
+        GwPlayer[playerNo].mgCoinBonus = 0;
+        GwPlayer[playerNo].capsuleUseNum = 0;
+        for (capsuleNo = 0; capsuleNo < 3; capsuleNo++) {
+            GwPlayer[playerNo].capsule[capsuleNo] = -1;
         }
     }
 }
 
+/* Applies single-player save setup and sets the night flag to daytime. */
 void mbSaveStoryInit(s32 teamChar, s32 mgPack, s32 storyComDif)
 {
     mbSingleSaveInit(teamChar, mgPack, storyComDif);
     GwMgNightF = 0;
 }
 
-void mbSavePartyInit(BOOL teamF, BOOL bonusStarF, s32 mgPack, s32 turnMax,
-                     s32 handicapP1, s32 handicapP2, s32 handicapP3, s32 handicapP4)
+/* Forces party mode on, stores party settings and handicaps, then clears tutorial/init state. */
+void mbSavePartyInit(BOOL teamsF, BOOL bonusStarsF, s32 mgPack, s32 turnMax,
+                     s32 player1Handicap, s32 player2Handicap,
+                     s32 player3Handicap, s32 player4Handicap)
 {
     GwSystem.partyF = TRUE;
-    GwSystem.tagF = teamF;
+    GwSystem.tagF = teamsF;
     GwSystem.storyComDif = 0;
-    GwSystem.bonusStarF = bonusStarF;
+    GwSystem.bonusStarF = bonusStarsF;
     GwSystem.mgPack = mgPack;
     GwSystem.turnMax = turnMax;
-    GwPlayer[0].handicap = handicapP1;
-    GwPlayer[1].handicap = handicapP2;
-    GwPlayer[2].handicap = handicapP3;
-    GwPlayer[3].handicap = handicapP4;
+    GwPlayer[0].handicap = player1Handicap;
+    GwPlayer[1].handicap = player2Handicap;
+    GwPlayer[2].handicap = player3Handicap;
+    GwPlayer[3].handicap = player4Handicap;
     _ClearFlag(FLAG_BOARD_TUTORIAL);
     _SetFlag(5);
     _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 13));
