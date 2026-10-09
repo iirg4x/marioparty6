@@ -1,92 +1,70 @@
+// Board capsule inventory, selection, throwing, collision, and visual effects.
 #include "dolphin/math.h"
-
 
 #include "game/board/masu.h"
 
-
 #include "game/board/audio.h"
-
 
 #include "game/board/branch.h"
 
-
 #include "game/board/capsule.h"
-
 
 #include "game/board/main.h"
 
-
 #include "game/board/object.h"
-
 
 #include "game/board/player.h"
 
-
 #include "game/board/tutorial.h"
-
 
 #include "game/board/camera.h"
 
-
 #include "game/board/effect.h"
-
 
 #include "game/board/window.h"
 
-
 #include "game/gamework.h"
-
 
 #include "game/charman.h"
 
-
 #include "game/hsfload.h"
-
 
 #include "game/hu3d.h"
 
-
 #include "game/main.h"
-
 
 #include "game/memory.h"
 
-
 #include "game/object.h"
-
 
 #include "game/process.h"
 
-
 #include "game/pad.h"
-
 
 #include "game/printfunc.h"
 
-
 #include "game/sprite.h"
-
 
 #include "game/gamemes.h"
 
-
 #include "humath.h"
-
 
 #include "messdir_enum.h"
 
-
 #include "float.h"
-
 
 #include "string.h"
 
-
 #define M_PI 3.141592653589793
-
 
 #define CAPSULE_OBJ_COLOR_MAX 128
 
+// Hardware tick budget for each throw-path collision search update.
+#define CAPSULE_THROW_SEARCH_TICK_BUDGET 100000
+
+#define CAPSULE_VALUE_TYPE_BYTE_MASK 0xFF
+
+#define CAPSULE_MASU_SELECT_BLOCKED_FLAG (1 << 15)
 
 enum {
     CAPSULE_BOMHEI = 24,
@@ -205,10 +183,10 @@ enum {
 
 enum {
     CAPSULE_VALUE_TYPE_BITS = 8,
-    CAPSULE_VALUE_TYPE_MASK = (1 << CAPSULE_VALUE_TYPE_BITS) - 1,
+    CAPSULE_VALUE_TYPE_MASK = CAPSULE_VALUE_TYPE_BYTE_MASK,
     CAPSULE_VALUE_PLAYER_SHIFT = CAPSULE_VALUE_TYPE_BITS,
     CAPSULE_VALUE_NONE = CAPSULE_VALUE_TYPE_MASK,
-    CAPSULE_MASU_SELECT_BLOCKED = 1 << 15,
+    CAPSULE_MASU_SELECT_BLOCKED = CAPSULE_MASU_SELECT_BLOCKED_FLAG,
     CAPSULE_EFF_COLOR_RANGE = 32768,
     CAPSULE_VALID_LIST_MAX = 33,
 };
@@ -231,309 +209,300 @@ static GXColor capsuleCrackEffMatColor;
 typedef void (*CAPSULE_THROW_HOOK)(BOOL startF);
 
 typedef struct CapsuleObjColor_s {
-    s16 flag;
-    MBMODELID mdlId;
-    MBMODELID mdlId2;
-    u8 layer;
-    HuVecF pos;
-    HuVecF rot;
-    HuVecF scale;
+    s16 flag; // Nonzero while this colored capsule model slot is occupied.
+    MBMODELID mdlId; // Board model ID returned to capsule animations and shop displays.
+    MBMODELID unusedModelId; // Unused storage; set to MB_MODEL_NONE when the slot is released.
+    u8 layer; // Render layer last assigned through the colored capsule interface.
+    HuVecF pos; // Stored base position in board world units.
+    HuVecF rot; // Stored model rotation in degrees.
+    HuVecF scale; // Stored per-axis model scale.
 } CAPSULE_OBJ_COLOR;
 
 typedef struct CapEffMasuOkWork_s {
-    s32 modelId;
-    s32 state;
-    s32 masuId;
-    s32 unk0C;
-    float scale;
+    s32 modelId; // Board model for an eligible-space or current-space marker.
+    s32 state; // 0 idle, 1 start, 2 growing, 3 shown, 10 shrinking, 11 hidden.
+    s32 masuId; // Followed board space; zero leaves the marker unassigned.
+    s32 unusedWord; // Cleared at creation and otherwise unused.
+    float scale; // Uniform scale of the animated current-space marker.
 } CAP_EFF_MASU_OK_WORK;
 
 typedef struct CapEffRemoveWork_s {
-    int modelId;
-    int activeCount;
-    void *anim;
+    int modelId; // Engine model holding the capsule-removal particles.
+    int activeCount; // Particles still playing their sixteen-frame texture animation.
+    void *anim; // Texture animation released after the removal effect ends.
 } CAP_EFF_REMOVE_WORK;
 
 typedef struct CapEffHiliteWork_s {
-    int modelId[3];
-    int modelNo;
-    ANIMDATA *anim[3];
+    int modelId[3]; // Engine models for the three selectable highlight textures.
+    int activeCount; // Active highlight count shared by all three texture models.
+    ANIMDATA *anim[3]; // Highlight textures released with the selection effects.
 } CAP_EFF_HILITE_WORK;
 
 typedef struct CapEffCrackData_s {
-    BOOL flag;
-    float scale;
-    float angle;
-    float angleSpeed;
-    float scaleSpeed;
-    int delay;
-    HuVecF prevVel;
-    HuVecF prevPos[3];
-    HuVecF accel;
-    HuVecF vel;
-    HuVecF pos[3];
-    HuVec2f uv[3];
-    GXColor color;
+    BOOL flag; // TRUE while this shell triangle is visible.
+    float scale; // Triangle size multiplier, reduced during the outward burst.
+    float angle; // Triangle rotation in degrees around the effect's Z axis.
+    float angleSpeed; // Degrees added per object update after the delay expires.
+    float scaleSpeed; // Scale removed per object update during the burst.
+    int delay; // Object updates remaining before this triangle starts moving.
+    HuVecF prevVel; // Initial triangle center used when raising the flat shell into a dome.
+    HuVecF prevPos[3]; // Initial vertex offsets from the triangle center.
+    HuVecF accel; // Outward displacement added to the triangle center each update.
+    HuVecF vel; // Current triangle center in effect-local world units.
+    HuVecF pos[3]; // Current vertex offsets from the triangle center.
+    HuVec2f uv[3]; // Texture coordinates for the triangle's three vertices.
+    GXColor color; // Triangle tint and opacity.
 } CAP_EFF_CRACK_DATA;
 
 typedef struct CapEffCrackWork_s {
-    s32 modelId;
-    s32 state;
-    s32 time;
-    s32 num;
-    s32 vtxNum;
-    s32 segNum;
-    HuVecF *vtx;
-    HuVec2f *st;
-    CAP_EFF_CRACK_DATA *data;
-    ANIMDATA *animP;
-    GXColor color;
-    u32 dlSize;
-    void *dl;
+    s32 modelId; // Engine model whose draw hook renders the capsule shell.
+    s32 state; // 0 idle, 1 flatten, 2 expand, 3 raise, 4 burst; 5 leaves it unchanged.
+    s32 time; // Object-update counter for the expanding and raising phases.
+    s32 num; // Number of shell triangles, including hidden triangles outside the circle.
+    s32 vtxNum; // Three render vertices per shell triangle.
+    s32 segNum; // Cleared at creation and otherwise unused.
+    HuVecF *vtx; // Render vertex buffer rebuilt by the draw hook.
+    HuVec2f *st; // Render texture-coordinate buffer rebuilt by the draw hook.
+    CAP_EFF_CRACK_DATA *data; // Motion, shape, and color of each shell triangle.
+    ANIMDATA *animP; // Shell texture animation.
+    GXColor color; // Additional color used while the shell rises and bursts.
+    u32 dlSize; // Size of the indexed triangle display list in bytes.
+    void *dl; // Indexed triangle display list.
 } CAP_EFF_CRACK_WORK;
 
 typedef struct CapEffTrailWork_s {
-    HuVecF prevPos[12];
+    HuVecF prevPos[12]; // Ring buffer of the thrown capsule's recent world positions.
 } CAP_EFF_TRAIL_WORK;
 
 typedef struct CapEffTrailPoint_s {
-    HuVecF start;
-    HuVecF end;
-    float mag;
-    float totalMag;
+    HuVecF start; // More recent endpoint of this recorded flight segment.
+    HuVecF end; // Older endpoint of this recorded flight segment.
+    float mag; // Segment length in board world units.
+    float totalMag; // Distance from the trail head to this segment's start.
 } CAP_EFF_TRAIL_POINT;
 
 #define CAP_EFF_ATTR_NONE 0
 
-
 #define CAP_EFF_ATTR_COUNTER_RESET (1 << 0)
-
 
 #define CAP_EFF_ATTR_COUNTER_UPDATE (1 << 1)
 
-
 #define CAP_EFF_DISPATTR_NONE 0
-
 
 #define CAP_EFF_DISPATTR_ZBUF_OFF (1 << 0)
 
-
 #define CAP_EFF_DISPATTR_NOANIM (1 << 1)
-
 
 #define CAP_EFF_DISPATTR_CAMERA_ROT (1 << 2)
 
-
 #define CAP_EFF_DISPATTR_ROT3D (1 << 3)
-
 
 #define CAP_EFF_DISPATTR_ALL 15
 
-
 #define CAP_EFF_GLOW_Z_OFFSET (30.0f + (16.0f * FLT_EPSILON))
-
 
 typedef struct CapEffect_s CAP_EFFECT;
 
 typedef void (*CAP_EFF_HOOK)(HU3D_MODEL *modelP, CAP_EFFECT *effP, Mtx *matrix);
 
 typedef struct CapEffData_s {
-    s16 time;
-    s16 work;
-    s16 mode;
-    s16 cameraBit;
-    HuVecF vel;
-    float baseAlpha;
-    float tpLvl;
-    float speed;
-    float unk20;
-    float gravity;
-    float rotSpeed;
-    float animTime;
-    float animSpeed;
-    float scale;
-    HuVecF rot;
-    HuVecF pos;
-    GXColor color;
-    int no;
+    s16 phase; // Highlight phase: zero fades in, one fades out; removal particles clear it.
+    s16 fadeFrame; // Number of object updates elapsed in the current highlight phase.
+    s16 easingMode; // Highlight easing: zero linear, one sine, two complementary cosine.
+    s16 cameraBit; // Unused particle storage.
+    HuVecF vel; // Removal velocity, or highlight start ratio, end ratio, and full size.
+    float fadeInDuration; // Highlight fade-in duration in object updates.
+    float fadeOutDuration; // Highlight fade-out duration in object updates.
+    float speed; // Removal rotation increment, or the highlight's maximum alpha value.
+    float unusedFloat; // Unused storage in a capsule effect particle.
+    float gravity; // Unused particle storage.
+    float rotSpeed; // Unused particle storage.
+    float animTime; // Fractional frame of the removal texture animation.
+    float animSpeed; // Removal texture frames advanced per object update.
+    float scale; // Quad size in world units; zero makes the slot inactive.
+    HuVecF rot; // Degree angles for 3D highlights; ordinary quads use rot.z as radians.
+    HuVecF pos; // Quad center in effect-local world units.
+    GXColor color; // Per-quad tint and opacity.
+    int frameNo; // Cell in the sixteen-frame texture atlas; ignored for full-texture highlights.
 } CAP_EFF_DATA;
 
 struct CapEffect_s {
-    s16 mode;
-    s16 time;
-    HuVecF vel;
-    s16 work[8];
-    u8 blendMode;
-    u8 attr;
-    u8 dispAttr;
-    u8 unk23;
-    HU3D_MODELID modelId;
-    s16 num;
-    u32 count;
-    u32 prevCounter;
-    u32 prevCount;
-    u32 dlSize;
-    ANIMDATA *anim;
-    CAP_EFF_DATA *data;
-    HuVecF *vertex;
-    HuVec2f *st;
-    void *dl;
-    CAP_EFF_HOOK hook;
-    HU3D_MODEL *hookMdlP;
+    s16 mode; // Initialized to zero and otherwise unused by capsule effects.
+    s16 time; // Initialized to zero and otherwise unused by capsule effects.
+    HuVecF vel; // Unused effect storage.
+    s16 work[8]; // Unused effect storage.
+    u8 blendMode; // Normal, additive, or inverse-color quad blending.
+    u8 attr; // CAP_EFF_ATTR_* flags controlling the render counter.
+    u8 dispAttr; // CAP_EFF_DISPATTR_* flags controlling quad geometry, UVs, and depth tests.
+    u8 unusedByte; // Cleared when the effect is created; otherwise unused.
+    HU3D_MODELID modelId; // Unused model-ID storage.
+    s16 num; // Number of particle slots and indexed quads in this effect.
+    u32 count; // Counter advanced by normal render passes unless its update flag is set.
+    u32 prevCounter; // Last GlobalCounter value drawn, preventing repeated normal draws.
+    u32 prevCount; // Nonzero counter limit applied after drawing; zero leaves the count
+                   // unrestricted.
+    u32 dlSize; // Size of the indexed quad display list in bytes.
+    ANIMDATA *anim; // Shared texture animation for the quad pool.
+    CAP_EFF_DATA *data; // Particle state and tint, one entry per quad.
+    HuVecF *vertex; // Four render vertices per particle, rebuilt by the draw hook.
+    HuVec2f *st; // Four texture coordinates per particle, rebuilt by the draw hook.
+    void *dl; // Indexed quad display list.
+    CAP_EFF_HOOK hook; // Optional callback run before quad geometry is rebuilt.
+    HU3D_MODEL *hookMdlP; // Optional preceding effect model drawn through the same matrix.
 }
 
 ;
 
 typedef struct CapEffUseWork_s {
-    int playerNo;
-    int capsuleNo;
+    int playerNo; // Board player whose capsule effect is running.
+    int capsuleNo; // Capsule type used by the effect.
 } CAP_EFF_USE_WORK;
 
 typedef struct CapSelectMasuWork_s {
-    int unk00;
-    int unk04;
-    int unk08;
-    int unk0C;
-    int objId;
-    int winId1;
-    int winId2;
+    int playerNo; // Board player selecting a capsule destination.
+    int unusedResult; // Initialized to -1 and not read by either selection path.
+    int capsuleNo; // Capsule type whose placement rules and appearance are used.
+    int capObjId; // Capsule preview model; MB_MODEL_NONE when released or restored.
+    int cameraObjId; // Hidden board model used as the selection camera's focus.
+    int helpWinId; // Control help window, or MB_MODEL_NONE when absent.
+    int messageWinId; // Destination prompt window, or MB_MODEL_NONE when absent.
 } CAP_SELECT_MASU_WORK;
 
 typedef struct CapEffThrowWork_s {
-    int modelId;
-    int playerNo;
-    int maxTime;
-    BOOL endF;
-    int minNo;
-    int no;
-    int initF;
-    HuVecF startPos;
-    HuVecF endPos;
-    HuVecF pos;
-    float yOfs;
-    u32 tick;
-    u32 delay;
-    float x[3];
-    float y[3];
-    float z[3];
+    int modelId; // Engine hook model that advances the path search during rendering.
+    int playerNo; // Player excluded from collision checks; -2 disables player collision.
+    int maxTime; // Flight duration in frames, with a minimum of 24.
+    BOOL endF; // TRUE when a candidate or fallback path is ready.
+    int minNo; // Initial candidate index, set to zero at creation.
+    int no; // Current entry in the 48-candidate path table.
+    int initF; // Zero starts a candidate; otherwise its next collision sample index.
+    HuVecF startPos; // World-space launch position.
+    HuVecF endPos; // World-space destination position.
+    HuVecF pos; // Previous point used by the segment collision tests.
+    float yOfs; // Extra arc height in world units.
+    u32 tick; // Tick at the start of the current render-hook search slice.
+    u32 delay; // Board-specific tick budget checked after each collision-free sample.
+    float x[3]; // Launch, candidate bend, and destination X coordinates.
+    float y[3]; // Launch, candidate bend, and destination Y coordinates.
+    float z[3]; // Launch, candidate bend, and destination Z coordinates.
 } CAP_EFF_THROW_WORK;
 
 typedef struct CapPlayerThrowFrame_s {
-    float speed;
-    float yOfs;
-    float radius;
-    int dir;
+    float speed; // Fraction of the launch-to-destination vector used for the bend.
+    float yOfs; // Extra bend height in world units.
+    float radius; // Fixed sideways bend offset in world units; zero uses dir instead.
+    int dir; // Direction multiplier for a sideways offset based on throw distance.
 } CAP_PLAYER_THROW_FRAME;
 
 typedef struct CapGuideWork_s {
-    int objId;
-    int state;
-    int rotY;
-    float scale;
+    int objId; // Board model showing one route from the selected space.
+    int state; // 0 grows the guide; 1 keeps its pulse phase advancing.
+    int rotY; // Pulse phase in degrees, advanced by the object update.
+    float scale; // Uniform guide scale; shrinks below zero before being hidden.
 } CAP_GUIDE_WORK;
 
 typedef struct CapsuleObjData_s {
-    int objId;
-    void *anim;
-    HU3D_ANIMID animId0;
-    HU3D_ANIMID animId1;
+    int objId; // Cancel-item board model, or MB_MODEL_NONE in an unused slot.
+    void *anim; // Sprite animation shared by both animated model textures.
+    HU3D_ANIMID textureAnimId; // Texture animation attached to S3TCys77120.
+    HU3D_ANIMID linkedTextureAnimId; // Linked texture animation attached to S3TCys77121.
 } CAPSULE_OBJ_DATA;
 
 typedef struct CapPlayerThrowWork_s {
-    int playerNo;
-    int masuId;
-    int capsuleNo;
-    int capObjId0;
-    int capObjId1;
-    int objColorId;
-    int jumpMotId;
-    int time;
-    int maxTime;
-    float yOfs;
-    HuVecF pos;
-    HuVecF masuPos;
-    HuVecF unused;
+    int playerNo; // Board player performing the throw.
+    int masuId; // Destination board space.
+    int capsuleNo; // Capsule type being placed.
+    int capObjId0; // Capsule model moved into the hand and hidden at release.
+    int capObjId1; // Hidden capsule model used to focus the camera during flight.
+    int objColorId; // Colored capsule model displayed during flight.
+    int jumpMotId; // Player motion used for the throwing pose.
+    int time; // Elapsed flight frames.
+    int maxTime; // Duration selected by the throw-path search, in frames.
+    float yOfs; // Arc height above the endpoints, capped at 700 world units.
+    HuVecF pos; // Hand position at release in world coordinates.
+    HuVecF masuPos; // Destination position, raised 20 world units above its space.
+    HuVecF unused; // Cleared with the work record and otherwise unused.
 } CAP_PLAYER_THROW_WORK;
 
 typedef struct CapAutoThrowWork_s {
-    int playerNo;
-    int capsuleNo;
-    int masuId;
-    int maxTime;
-    float startT;
-    HuVecF startPos;
-    HuVecF endPos;
-    HuVecF masuPos;
+    int playerNo; // Player receiving vibration and ownership of the placed capsule.
+    int capsuleNo; // Capsule type being placed.
+    int masuId; // Destination space; nonpositive skips space transforms and ending window.
+    int maxTime; // Duration of the supplied flight, in frames.
+    float startT; // Starting fraction of the flight; at least one skips flight playback.
+    HuVecF startPos; // Launch point in world coordinates.
+    HuVecF endPos; // Middle control point in world coordinates.
+    HuVecF masuPos; // Final control point in world coordinates.
 } CAP_AUTO_THROW_WORK;
 
 typedef struct CapUseDeleteWork_s {
-    int unk00;
-    int unk04;
-    int unk08;
-    int capObjId;
-    int objId;
-    int winId0;
-    int winId1;
-    int unk1C;
+    int playerNo; // Board player answering the discard prompt.
+    int unusedModelId; // Initialized to MB_MODEL_NONE and otherwise unused.
+    int capsuleNo; // Capsule type presented for discarding.
+    int capObjId; // Capsule preview model; MB_MODEL_NONE once released or restored.
+    int auxModelId; // Optional model released by cleanup; this path leaves it absent.
+    int primaryWinId; // Optional window released by cleanup; this path leaves it absent.
+    int secondaryWinId; // Optional window released by cleanup; this path leaves it absent.
+    int unusedTail; // Zeroed with the work record and otherwise unused.
 } CAP_USE_DELETE_WORK;
 
 typedef struct CapUseWork_s {
-    int playerNo;
-    int capsuleNo;
+    int playerNo; // Board player choosing whether to use the capsule.
+    int capsuleNo; // Capsule type shown in the use prompt.
 } CAP_USE_WORK;
 
 typedef struct CapsuleList_s {
-    s8 id;
-    s8 cost[3];
-    s8 weight[12];
+    s8 id; // Capsule type, or -1 at the end of a distribution list.
+    s8 cost[3]; // Price alternatives used by purchase and sale rank rules.
+    s8 weight[12]; // Four rank weights each for early rewards, late rewards, and shops.
 } CAPSULE_LIST;
 
 typedef struct CapsuleListFile_s {
-    s32 boardNo;
-    s32 dataNo;
+    s32 boardNo; // Board whose capsule list is stored here; negative ends the table.
+    s32 dataNo; // Data archive entry containing this board's capsule list.
 } CAPSULE_LIST_FILE;
 
 typedef struct CapsuleData_s {
-    u32 file;
-    u32 objFile;
-    u32 descMes;
-    u32 useMes;
-    int masuPat;
-    int color;
-    int cost;
-    s8 code;
-    u16 useMode;
-    char *debugName;
-    u8 listFlag;
+    u32 file; // Item model asset used by capsule selection and use animations.
+    u32 objFile; // Colored capsule model asset used during flight and other capsule effects.
+    u32 descMes; // Message describing this capsule in selection and shop windows.
+    u32 useMes; // Capsule name message inserted into use and discard prompts.
+    int masuPat; // Space-display pattern associated with this capsule type.
+    int color; // Capsule color category used by models and trail tints.
+    int cost; // Default coin cost when the board list has no positive price override.
+    s8 code; // Letter category used by rank- and turn-weighted capsule generation.
+    u16 useMode; // Capsule use mode; mode two is tested as trap placement.
+    char *debugName; // Name displayed by the capsule debug screens.
+    u8 listFlag; // Value returned by the capsule-list exclusion query.
 } CAPSULE_DATA;
 
 typedef struct CapsuleTurnData_s {
-    s8 code;
-    int chance;
+    s8 code; // Weighted capsule letter category, from A through E.
+    int chance; // Cumulative weight threshold for this category's random selection.
 } CAPSULE_TURN_DATA;
 
 typedef struct CapsuleComChoice_s {
-    int index;
-    int capsuleNo;
-    int chance;
+    int index; // Position in the caller's capsule inventory list.
+    int capsuleNo; // Capsule type at that position.
+    int chance; // Computer discard weight used to rank this choice.
 } CAPSULE_COM_CHOICE;
 
 typedef struct CapsuleComChoiceBack_s {
-    int index;
-    int capsuleNo;
-    int chance;
-    BOOL back;
+    int index; // Position in the caller's capsule inventory list.
+    int capsuleNo; // Capsule type at that position.
+    int chance; // Adjusted computer use weight.
+    BOOL back; // TRUE when this choice favors a backward destination.
 } CAPSULE_COM_CHOICE_BACK;
 
 typedef struct CapsuleComChanceRank_s {
-    s16 chance;
-    s8 code;
-    s8 unk03;
+    s16 chance; // Base use weight for one character.
+    s8 code; // Character-specific modifier code used by capsule decision rules.
+    s8 unusedByte; // Unused byte in the computer-choice rank entry.
 } CAPSULE_COM_CHANCE_RANK;
 
 typedef struct CapsuleComChance_s {
-    s16 capsuleNo;
-    CAPSULE_COM_CHANCE_RANK rank[11];
+    s16 capsuleNo; // Capsule type; -1 ends the computer-weight table.
+    CAPSULE_COM_CHANCE_RANK rank[11]; // Base weights and modifier codes by character.
 } CAPSULE_COM_CHANCE;
 
 static CAPSULE_THROW_HOOK capsuleThrowHook;
@@ -702,8 +671,12 @@ static GXColor capsulePlayerThrowColorTbl[4] = {
 };
 
 static int capsulePlayerThrowDelayTbl[11] = {
-    100000, 100000, 100000, 100000, 100000, 100000,
-    100000, 100000, 100000, 100000, 100000,
+    CAPSULE_THROW_SEARCH_TICK_BUDGET, CAPSULE_THROW_SEARCH_TICK_BUDGET,
+    CAPSULE_THROW_SEARCH_TICK_BUDGET, CAPSULE_THROW_SEARCH_TICK_BUDGET,
+    CAPSULE_THROW_SEARCH_TICK_BUDGET, CAPSULE_THROW_SEARCH_TICK_BUDGET,
+    CAPSULE_THROW_SEARCH_TICK_BUDGET, CAPSULE_THROW_SEARCH_TICK_BUDGET,
+    CAPSULE_THROW_SEARCH_TICK_BUDGET, CAPSULE_THROW_SEARCH_TICK_BUDGET,
+    CAPSULE_THROW_SEARCH_TICK_BUDGET,
 };
 
 static CAP_PLAYER_THROW_FRAME capsulePlayerThrowFrameTbl[48] = {
@@ -755,8 +728,8 @@ static CAPSULE_LIST_FILE capsuleListFileTbl[] = {
 };
 
 typedef struct CapsuleListDefine_s {
-    u32 capsuleNo;
-    char *name;
+    u32 capsuleNo; // Capsule type named by the debug list export; -1 ends the table.
+    char *name; // Constant name printed when exporting a debug-edited capsule list.
 } CAPSULE_LIST_DEFINE;
 
 static CAPSULE_LIST_DEFINE capsuleListDefineTbl[24] = {
@@ -821,7 +794,8 @@ extern void mbev_CapEffRayTransformSet(OMOBJ *obj, HuVecF *pos, HuVecF *rot, Mtx
 
 extern void mbev_CapEffMasuHitTransformSet(OMOBJ *obj, HuVecF *pos, HuVecF *rot, Mtx *mtx);
 
-extern int mbev_CapEffRayAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA, HuVecF *rotB, float scale, int time);
+extern int mbev_CapEffRayAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA, HuVecF *rotB, float scale,
+                             int time);
 
 extern void mbev_CapEffRayAlphaSet(OMOBJ *obj, float alpha);
 
@@ -967,7 +941,6 @@ extern s16 *mbCapEffData;
         } \
     } while (0)
 
-
 static void CapComKeyHook(void);
 
 static void CapComChoiceSet(int choice);
@@ -992,7 +965,7 @@ static void CapThrowCameraSet(float *x, float *y, float *z, int num);
 
 static void CapThrowCameraCalc(float t, float *x, float *y, float *z, HuVecF *out, int num);
 
-static void CapThrowEndWin(int unused, int value);
+static void CapThrowEndWin(int unusedMasuId, int capsuleNo);
 
 static void CapColMdlIdGet(void);
 
@@ -1016,7 +989,7 @@ static BOOL CapEffThrowCheck(HuVecF *pos, int *maxTime);
 
 static void CapEffThrowKill(void);
 
-static BOOL CapEffThrowMasuWait(BOOL waitGlowF);
+static BOOL CapEffThrowMasuWait(BOOL bonusCoinCount);
 
 static int CapUseDelete(int playerNo, int capsuleNo);
 
@@ -1086,7 +1059,7 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num);
 
 static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
 
-static int CapUseSelect(CAP_USE_WORK *work);
+static int CapUseSelect(CAP_USE_WORK *useWork);
 
 static int CapUse(int playerNo, int capsuleNo);
 
@@ -1105,7 +1078,7 @@ static void CapSelectMasuAddFront(s16 *masuFlag, s16 masuId, s16 max);
 
 static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max);
 
-static int CapSelectMasuWinCreate(int unused);
+static int CapSelectMasuWinCreate(int messageType);
 
 static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work);
 
@@ -1117,7 +1090,7 @@ static int CapSelectMasuComListGet(
 static int CapSelectMasuComListGetRev(
     s16 *path, s16 *masuFlag, s16 masuId, s16 targetId, int depth);
 
-static float CapAngleSumWrap(float angle1, float angle2);
+static float CapAngleSumWrap(float targetAngle, float stickAngle);
 
 static float CapCameraXZAngleGet(float angle);
 
@@ -1165,29 +1138,31 @@ int mbCapCostGet(s16 capsuleNo);
 
 BOOL mbCapListExcludeCheck(s16 capsuleNo);
 
-
 static void CapPlayerThrowKill(void);
 
+// Handles the selected capsule action and starts its use or throw.
+// Called by the capsule-selection flow after the player chooses a capsule.
 int mbCapUse(int playerNo, int capsuleNo)
 {
-    int objId;
-    int result;
-    int gameMesId;
-    BOOL partyF;
-    BOOL partyF2;
+    int capsuleObjId;
+    int masuSelectionResult;
+    int gameMessageId;
+    BOOL isPartyMode;
+    BOOL isPartyModeAfterThrow;
 
     capsuleNo = mbCapValueTypeGet((s16)capsuleNo);
     capsuleUseRemoveOnF = FALSE;
     if (capsuleNo == CAPSULE_DICE) {
-        int diceResult;
+        int selectedResult;
 
         while (!mbCapSelectShrinkCheck(playerNo)) {
             HuPrcVSleep();
         }
-        mbCapSelectResultGet(playerNo, &objId, &diceResult);
+        // The dice branch uses only the spawned object; this result is discarded.
+        mbCapSelectResultGet(playerNo, &capsuleObjId, &selectedResult);
         mbCapSelectResultReset(playerNo);
-        if (objId != MB_MODEL_NONE) {
-            mbCapObjKill(objId);
+        if (capsuleObjId != MB_MODEL_NONE) {
+            mbCapObjKill(capsuleObjId);
         }
         return TRUE;
     }
@@ -1202,8 +1177,8 @@ int mbCapUse(int playerNo, int capsuleNo)
         mbWinTopWait();
         if (mbWinTopChoiceGet() == 0) {
             mbPauseDisableSet(TRUE);
-            gameMesId = GameMesCreate(6, TRUE);
-            while (GameMesStatGet((s16)gameMesId) != 0) {
+            gameMessageId = GameMesCreate(GAMEMES_MES_MG_BATTLE, TRUE);
+            while (GameMesStatGet((s16)gameMessageId) != GAMEMES_STAT_NONE) {
                 HuPrcVSleep();
             }
             mbWipeFadeOut();
@@ -1214,28 +1189,28 @@ int mbCapUse(int playerNo, int capsuleNo)
     if (mbPlayerCapsuleFind(playerNo, capsuleNo) == -1) {
         return TRUE;
     }
-    result = mbCapSelectMasu(playerNo, capsuleNo);
-    if (result != -1) {
-        if (result == -2) {
+    masuSelectionResult = mbCapSelectMasu(playerNo, capsuleNo);
+    if (masuSelectionResult != -1) {
+        if (masuSelectionResult == -2) {
             if (CapUseDelete(playerNo, capsuleNo)) {
                 return TRUE;
             }
             return FALSE;
         }
-        if (result == -3) {
+        if (masuSelectionResult == -3) {
             if (CapUse(playerNo, capsuleNo)) {
                 mbev_CapCall(playerNo, capsuleNo, TRUE, FALSE);
-                partyF = GwSystem.partyF;
-                if (!partyF) {
+                isPartyMode = GwSystem.partyF;
+                if (!isPartyMode) {
                     mbSingleCall(4, capsuleNo);
                 }
             } else {
                 return FALSE;
             }
         } else {
-            mbCapPlayerThrow(playerNo, result, capsuleNo);
-            partyF2 = GwSystem.partyF;
-            if (!partyF2) {
+            mbCapPlayerThrow(playerNo, masuSelectionResult, capsuleNo);
+            isPartyModeAfterThrow = GwSystem.partyF;
+            if (!isPartyModeAfterThrow) {
                 mbSingleCall(4, capsuleNo);
             }
             return TRUE;
@@ -1255,137 +1230,152 @@ BOOL MBCapsuleStub2(void)
     return FALSE;
 }
 
+// Presents the selected capsule and updates inventory unless capsuleUseRemoveOnF is set.
+// Called by mbCapUse for capsules already in inventory.
 static int CapUse(int playerNo, int capsuleNo)
 {
-    CAP_USE_WORK *work;
+    CAP_USE_WORK *useWork;
     int result;
-    CAP_USE_WORK *workData;
+    CAP_USE_WORK *allocatedWork;
 
     capsuleNo = mbCapValueTypeGet(capsuleNo);
-    workData = HuMemDirectMallocNum(
+    allocatedWork = HuMemDirectMallocNum(
         HEAP_HEAP, sizeof(CAP_USE_WORK), HU_MEMNUM_OVL);
-    work = workData;
-    memset(work, 0, sizeof(CAP_USE_WORK));
-    work->playerNo = playerNo;
-    work->capsuleNo = capsuleNo;
-    result = CapUseSelect(work);
-    HuMemDirectFree(work);
+    useWork = allocatedWork;
+    memset(useWork, 0, sizeof(CAP_USE_WORK));
+    useWork->playerNo = playerNo;
+    useWork->capsuleNo = capsuleNo;
+    result = CapUseSelect(useWork);
+    HuMemDirectFree(useWork);
     return result;
 }
 
-static int CapUseSelect(CAP_USE_WORK *work)
+// Animates the capsule into view, asks whether to use it, and updates inventory.
+// Called by CapUse after it prepares the player and capsule IDs.
+static int CapUseSelect(CAP_USE_WORK *useWork)
 {
     HuVecF playerPos;
-    HuVecF capPos;
-    HuVecF pos;
-    int capObjId;
-    int winId;
-    int oldObjId;
-    int result;
-    int time;
+    HuVecF capsulePos;
+    HuVecF playerAnimPos;
+    int capsuleObjId;
+    int choiceWindowId;
+    int previousObjId;
+    int previousSelectionResult;
+    int animFrame;
     int capsuleSlot;
-    float t;
-    float scale;
+    float animProgress;
+    float capsuleScale;
 
-    mbCapSelectResultGet(work->playerNo, &oldObjId, &result);
-    mbCapSelectResultReset(work->playerNo);
-    if (oldObjId != MB_MODEL_NONE) {
-        capObjId = oldObjId;
+    mbCapSelectResultGet(useWork->playerNo, &previousObjId,
+        &previousSelectionResult);
+    mbCapSelectResultReset(useWork->playerNo);
+    if (previousObjId != MB_MODEL_NONE) {
+        capsuleObjId = previousObjId;
     } else {
-        capObjId = mbCapObjCreate(work->capsuleNo, FALSE);
+        capsuleObjId = mbCapObjCreate(useWork->capsuleNo, FALSE);
     }
-    mbPlayerPosGet(work->playerNo, &playerPos);
-    capPos = playerPos;
-    capPos.y += 250.0f;
-    if (oldObjId != MB_MODEL_NONE) {
-        mbObjPosGet(capObjId, &capPos);
-        capPos.x = playerPos.x;
+    mbPlayerPosGet(useWork->playerNo, &playerPos);
+    capsulePos = playerPos;
+    capsulePos.y += 250.0f;
+    if (previousObjId != MB_MODEL_NONE) {
+        mbObjPosGet(capsuleObjId, &capsulePos);
+        // Keep the existing height and depth, but align the capsule with the player.
+        capsulePos.x = playerPos.x;
     }
-    mbObjPosSet(capObjId, capPos.x, capPos.y, capPos.z);
-    mbObjLayerSet(capObjId, 4);
-    mbObjAttrSet(capObjId, HU3D_MOTATTR_LOOP);
-    if (oldObjId == MB_MODEL_NONE) {
-        mbObjDispSet(capObjId, TRUE);
-        time = 0;
+    mbObjPosSet(capsuleObjId, capsulePos.x, capsulePos.y, capsulePos.z);
+    mbObjLayerSet(capsuleObjId, 4);
+    mbObjAttrSet(capsuleObjId, HU3D_MOTATTR_LOOP);
+    if (previousObjId == MB_MODEL_NONE) {
+        mbObjDispSet(capsuleObjId, TRUE);
+        animFrame = 0;
         do {
-            time++;
-            t = (float)time / 18.0f;
-            if (t > 1.0f) {
-                t = 1.0f;
+            animFrame++;
+            animProgress = (float)animFrame / 18.0f;
+            if (animProgress > 1.0f) {
+                animProgress = 1.0f;
             }
-            mbPlayerPosGet(work->playerNo, &pos);
-            pos.y += 100.0 + (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
-            mbObjPosSetV(capObjId, &pos);
-            scale = (double)1.2f *
-                sin((M_PI * (90.0f * t)) / 180.0);
-            mbObjScaleSet(capObjId, scale, scale, scale);
+            mbPlayerPosGet(useWork->playerNo, &playerAnimPos);
+            playerAnimPos.y += 100.0 +
+                (150.0 * sin((M_PI * (90.0f * animProgress)) / 180.0));
+            mbObjPosSetV(capsuleObjId, &playerAnimPos);
+            capsuleScale = (double)1.2f *
+                sin((M_PI * (90.0f * animProgress)) / 180.0);
+            mbObjScaleSet(capsuleObjId, capsuleScale, capsuleScale,
+                capsuleScale);
             HuPrcVSleep();
-        } while (!mbCameraMoveCheck() || t < 1.0f);
+        } while (!mbCameraMoveCheck() || animProgress < 1.0f);
     }
-    if (!GwPlayer[work->playerNo].comF) {
-        winId = mbWinCreateChoice(
+    if (!GwPlayer[useWork->playerNo].comF) {
+        // Later prompt calls use the top window, so this returned ID is unused.
+        choiceWindowId = mbWinCreateChoice(
             MBWIN_TYPE_EVENT,
             MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_USE_CHOICE), -1,
             0);
-        mbWinTopInsertMesSet(mbCapUseMesGet(work->capsuleNo), 0);
-        if (GwPlayer[work->playerNo].comF) {
+        mbWinTopInsertMesSet(mbCapUseMesGet(useWork->capsuleNo), 0);
+        // This CPU-player check is unreachable after the outer non-CPU test.
+        if (GwPlayer[useWork->playerNo].comF) {
             CapComChoiceSet(0);
         }
         mbWinTopWait();
         if (mbWinTopChoiceGet() != 0 || mbWinTopChoiceGet() == -1) {
-            if (oldObjId == MB_MODEL_NONE) {
-                for (time = 0; time <= 18.0f; time++) {
-                    t = 1.0f - ((float)time / 18.0f);
-                    if (t < 0.0f) {
-                        t = 0.0f;
+            if (previousObjId == MB_MODEL_NONE) {
+                for (animFrame = 0; animFrame <= 18.0f; animFrame++) {
+                    animProgress = 1.0f - ((float)animFrame / 18.0f);
+                    if (animProgress < 0.0f) {
+                        animProgress = 0.0f;
                     }
-                    mbPlayerPosGet(work->playerNo, &pos);
-                    pos.y += 100.0 +
-                        (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
-                    mbObjPosSetV(capObjId, &pos);
-                    scale = (double)1.2f *
-                        sin((M_PI * (90.0f * t)) / 180.0);
-                    mbObjScaleSet(capObjId, scale, scale, scale);
+                    mbPlayerPosGet(useWork->playerNo, &playerAnimPos);
+                    playerAnimPos.y += 100.0 + (150.0 *
+                        sin((M_PI * (90.0f * animProgress)) / 180.0));
+                    mbObjPosSetV(capsuleObjId, &playerAnimPos);
+                    capsuleScale = (double)1.2f *
+                        sin((M_PI * (90.0f * animProgress)) / 180.0);
+                    mbObjScaleSet(capsuleObjId, capsuleScale, capsuleScale,
+                        capsuleScale);
                     HuPrcVSleep();
                 }
             } else {
-                mbCapSelectResultSet(work->playerNo, oldObjId, result);
-                capObjId = MB_MODEL_NONE;
+                mbCapSelectResultSet(useWork->playerNo, previousObjId,
+                    previousSelectionResult);
+                capsuleObjId = MB_MODEL_NONE;
             }
-            if (capObjId != MB_MODEL_NONE) {
-                mbCapObjKill(capObjId);
+            if (capsuleObjId != MB_MODEL_NONE) {
+                mbCapObjKill(capsuleObjId);
             }
             return FALSE;
         }
     }
     if (!capsuleUseRemoveOnF) {
-        mbPlayerCapsuleUseSet(work->capsuleNo);
-        capsuleSlot = mbPlayerCapsuleFind(work->playerNo, work->capsuleNo);
+        mbPlayerCapsuleUseSet(useWork->capsuleNo);
+        capsuleSlot = mbPlayerCapsuleFind(useWork->playerNo, useWork->capsuleNo);
         if (capsuleSlot != -1) {
-            mbPlayerCapsuleRemove(work->playerNo, capsuleSlot);
+            mbPlayerCapsuleRemove(useWork->playerNo, capsuleSlot);
         }
     }
-    if (result == -1) {
-        result = 0;
+    if (previousSelectionResult == -1) {
+        previousSelectionResult = 0;
     }
-    mbCapSelectResultSet(work->playerNo, capObjId, result);
+    mbCapSelectResultSet(useWork->playerNo, capsuleObjId,
+        previousSelectionResult);
     return TRUE;
 }
 
+// Starts the capsule-use effect as a child of the main board process.
+// Called by capsule event and movement routines during capsule use.
 BOOL mbCapEffUseCreate(int playerNo, int capsuleNo)
 {
-    CAP_EFF_USE_WORK *work;
-    CAP_EFF_USE_WORK *workData;
+    CAP_EFF_USE_WORK *effectWork;
+    CAP_EFF_USE_WORK *allocatedWork;
 
     capsuleNo = mbCapValueTypeGet(capsuleNo);
     capsuleUseEffProc[playerNo] =
         HuPrcChildCreate(CapEffUse, 8196, 24576, 0, mbMainProc);
-    workData = HuMemDirectMallocNum(
+    allocatedWork = HuMemDirectMallocNum(
         HEAP_HEAP, sizeof(CAP_EFF_USE_WORK), HU_MEMNUM_OVL);
-    capsuleUseEffProc[playerNo]->property = work = workData;
-    memset(work, 0, sizeof(CAP_EFF_USE_WORK));
-    work->playerNo = playerNo;
-    work->capsuleNo = capsuleNo;
+    capsuleUseEffProc[playerNo]->property = effectWork = allocatedWork;
+    memset(effectWork, 0, sizeof(CAP_EFF_USE_WORK));
+    effectWork->playerNo = playerNo;
+    effectWork->capsuleNo = capsuleNo;
     capsuleUseEffMode[playerNo] = 0;
     capsuleUseEffPos[playerNo].x = capsuleUseEffPos[playerNo].y =
         capsuleUseEffPos[playerNo].z = 0.0f;
@@ -1393,11 +1383,13 @@ BOOL mbCapEffUseCreate(int playerNo, int capsuleNo)
     return TRUE;
 }
 
+// Returns the current visual-effect phase for a player's capsule.
 int mbCapEffUseModeGet(int playerNo)
 {
     return capsuleUseEffMode[playerNo];
 }
 
+// Returns the capsule-effect position after the effect has entered its active phase.
 BOOL mbCapEffUsePosGet(int playerNo, HuVecF *pos)
 {
     int mode = capsuleUseEffMode[playerNo];
@@ -1409,33 +1401,37 @@ BOOL mbCapEffUsePosGet(int playerNo, HuVecF *pos)
     return TRUE;
 }
 
+// Starts the Wan Wan capsule effect at a supplied board position.
+// Called by the board event that creates the Wan Wan capsule effect.
 BOOL mbCapEffUseWanWanCreate(int playerNo, int capsuleValue, HuVecF *pos)
 {
-    CAP_EFF_USE_WORK *work;
-    int objId;
-    CAP_EFF_USE_WORK *workData;
+    CAP_EFF_USE_WORK *effectWork;
+    int capsuleObjId;
+    CAP_EFF_USE_WORK *allocatedWork;
 
     capsuleValue = mbCapValueTypeGet(capsuleValue);
     capsuleUseEffProc[playerNo] =
         HuPrcChildCreate(CapEffUse, 8196, 24576, 0, mbMainProc);
-    workData = HuMemDirectMallocNum(
+    allocatedWork = HuMemDirectMallocNum(
         HEAP_HEAP, sizeof(CAP_EFF_USE_WORK), HU_MEMNUM_OVL);
-    work = workData;
-    capsuleUseEffProc[playerNo]->property = work;
-    memset(work, 0, sizeof(CAP_EFF_USE_WORK));
-    work->playerNo = playerNo;
-    work->capsuleNo = capsuleValue;
+    effectWork = allocatedWork;
+    capsuleUseEffProc[playerNo]->property = effectWork;
+    memset(effectWork, 0, sizeof(CAP_EFF_USE_WORK));
+    effectWork->playerNo = playerNo;
+    effectWork->capsuleNo = capsuleValue;
     capsuleUseEffMode[playerNo] = 0;
     capsuleUseEffPos[playerNo].x = capsuleUseEffPos[playerNo].y =
         capsuleUseEffPos[playerNo].z = 0.0f;
-    objId = mbCapObjCreate(capsuleValue, FALSE);
-    mbObjPosSetV(objId, pos);
-    mbObjDispSet(objId, FALSE);
-    mbCapSelectResultSet(work->playerNo, objId, FALSE);
+    capsuleObjId = mbCapObjCreate(capsuleValue, FALSE);
+    mbObjPosSetV(capsuleObjId, pos);
+    mbObjDispSet(capsuleObjId, FALSE);
+    mbCapSelectResultSet(effectWork->playerNo, capsuleObjId, FALSE);
     HuPrcDestructorSet2(capsuleUseEffProc[playerNo], CapEffUseKill);
     return TRUE;
 }
 
+// Runs the use-effect process started by the capsule-use entry points.
+// Raises a new capsule, bursts rays and sparkles, then hides and releases it.
 static void CapEffUse(void)
 {
     CAP_EFF_USE_WORK *work = HuPrcCurrentGet()->property;
@@ -1480,6 +1476,7 @@ static void CapEffUse(void)
     mbPlayerPosGet(work->playerNo, &playerPos);
     capPos = playerPos;
     capPos.y += 250.0f;
+    // A selection preview keeps its height and depth, but follows the player's X position.
     if (oldObjId != MB_MODEL_NONE) {
         mbObjPosGet(capObjId, &capPos);
         capPos.x = playerPos.x;
@@ -1568,6 +1565,7 @@ static void CapEffUse(void)
             (int)(60.0f * (0.4f + (0.5f * MBCapsuleEffRandF()))),
             100.0f * (0.3f + (0.2f * MBCapsuleEffRandF())),
             5.0f * (-0.5f + MBCapsuleEffRandF()), 0.0f, glowColorP);
+        // Split the large sparkle burst across two frames.
         if (time == 128) {
             HuPrcVSleep();
         }
@@ -1594,6 +1592,8 @@ static void CapEffUse(void)
     HuPrcEnd();
 }
 
+// The use-effect process destructor clears the player's effect status and work.
+// It also requests cleanup of the capsule removal and highlight effects.
 static void CapEffUseKill(void)
 {
     CAP_EFF_USE_WORK *work = HuPrcCurrentGet()->property;
@@ -1607,6 +1607,7 @@ static void CapEffUseKill(void)
 
 BOOL mbCapPlayerThrowCheck(void);
 
+// Called after destination selection to start a player's throw and wait for its process.
 void mbCapPlayerThrow(int playerNo, int masuId, int capsuleNo)
 {
     CAP_PLAYER_THROW_WORK *work;
@@ -1631,6 +1632,7 @@ void mbCapPlayerThrow(int playerNo, int masuId, int capsuleNo)
     }
 }
 
+// The throw entry point polls this until its process destructor clears the process.
 BOOL mbCapPlayerThrowCheck(void)
 {
     if (capsulePlayerThrowProc) {
@@ -1640,29 +1642,35 @@ BOOL mbCapPlayerThrowCheck(void)
     }
 }
 
+// Board setup supplies a hidden model for throw-path collision; MB_MODEL_NONE disables it.
+// The return value is unset on the disable path, whose callers ignore it.
 int mbCapThrowColCreate(int dataNum)
 {
-    int objId;
+    int collisionObjId;
 
     if (dataNum != MB_MODEL_NONE) {
-        objId = (s16)mbObjCreate(dataNum, NULL, FALSE);
-        ((void (*)(int, BOOL))mbObjDispSet)(objId, FALSE);
-        capsuleColObjId = objId;
+        collisionObjId = (s16)mbObjCreate(dataNum, NULL, FALSE);
+        ((void (*)(int, BOOL))mbObjDispSet)(collisionObjId, FALSE);
+        capsuleColObjId = collisionObjId;
         CapColMdlIdGet();
     } else {
         capsuleColObjId = MB_MODEL_NONE;
         CapColKill();
     }
-    return objId;
+    return collisionObjId;
 }
 
-BOOL mbCapThrowColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
+// Exposes the board-model segment collision test to capsule throw callers.
+BOOL mbCapThrowColCheck(HuVecF *segmentStart, HuVecF *segmentEnd, HuVecF *hitPos)
 {
-    BOOL result = CapColCheck(posA, posB, out);
+    BOOL hitF = CapColCheck(segmentStart, segmentEnd, hitPos);
 
-    return result;
+    return hitF;
 }
 
+// The player's throw moves the capsule into the hand, selects and plays an arc,
+// places the capsule, restores the player and camera, and removes it from
+// inventory unless capsuleUseRemoveOnF is set.
 static void CapPlayerThrow(void)
 {
     CAP_PLAYER_THROW_WORK *work;
@@ -1738,6 +1746,7 @@ static void CapPlayerThrow(void)
     PSVECSubtract(&work->masuPos, &work->pos, &dir);
     mbPlayerRotSet(work->playerNo, 0.0f,
         (float)((atan2(dir.x, dir.z) / M_PI) * 180.0), 0.0f);
+    // Sample the future release pose to find the hand position before starting the throw.
     mbPlayerMotionSet(work->playerNo, work->jumpMotId, HU3D_MOTATTR_NONE);
     mbPlayerMotionTimeSet(
         work->playerNo, 0.35f * mbPlayerMotionMaxTimeGet(work->playerNo));
@@ -1883,6 +1892,7 @@ static void CapPlayerThrow(void)
         mbCapObjColorMtxSet(work->objColorId, &objMtx);
         CapEffTrailPosSet(&effPos);
         mbObjPosSet(work->capObjId1, mdl2Pos.x, mdl2Pos.y, mdl2Pos.z);
+        // This hidden model follows a softened arc solely as the camera focus.
         mbObjDispSet(work->capObjId1, FALSE);
         mbCameraFocusObjSet(work->capObjId1);
         if (capsuleThrowGlowOMObj != NULL) {
@@ -1959,6 +1969,7 @@ static void CapPlayerThrow(void)
     HuPrcEnd();
 }
 
+// The throw-process destructor releases its path search, capsule models, and work record.
 static void CapPlayerThrowKill(void)
 {
     CAP_PLAYER_THROW_WORK *work = HuPrcCurrentGet()->property;
@@ -1971,6 +1982,8 @@ static void CapPlayerThrowKill(void)
     capsulePlayerThrowProc = NULL;
 }
 
+// Player and scripted throws start a render-hook search for a usable three-point arc.
+// The supplied player and space are unused; player collision starts disabled.
 static void CapEffThrowCreate(int playerNo, float *x, float *y, float *z,
     float yOfs, int masuId)
 {
@@ -2021,6 +2034,8 @@ static void CapEffThrowCreate(int playerNo, float *x, float *y, float *z,
     work->z[2] = z[2];
 }
 
+// The model render hook tests candidate throw arcs in slices of the board's tick budget.
+// It keeps the first clear arc, or falls back to the first candidate after all fail.
 static void CapEffThrowHook(HU3D_MODEL *modelP, Mtx *mtx)
 {
     CAP_EFF_THROW_WORK *work = modelP->hookData;
@@ -2084,6 +2099,7 @@ static void CapEffThrowHook(HU3D_MODEL *modelP, Mtx *mtx)
         work->initF = TRUE;
     }
     work->tick = OSGetTick();
+    // initF also holds the current path sample, resuming where the previous hook stopped.
     for (i = 0; work->initF < (0.5f * work->maxTime); i++) {
         t = work->initF / (0.5f * work->maxTime);
         CapThrowCameraCalc(t, work->x, work->y, work->z, &out, 3);
@@ -2143,6 +2159,7 @@ static void CapEffThrowHook(HU3D_MODEL *modelP, Mtx *mtx)
     work->endF = TRUE;
 }
 
+// The player throw polls for a finished path search and receives its bend and duration.
 static BOOL CapEffThrowCheck(HuVecF *pos, int *maxTime)
 {
     HU3D_MODEL *model;
@@ -2163,6 +2180,7 @@ static BOOL CapEffThrowCheck(HuVecF *pos, int *maxTime)
     return TRUE;
 }
 
+// Throw completion and its process destructor remove the render-hook path search.
 static void CapEffThrowKill(void)
 {
     if (capEffThrowMdlId != MB_MODEL_NONE) {
@@ -2171,6 +2189,7 @@ static void CapEffThrowKill(void)
     capEffThrowMdlId = MB_MODEL_NONE;
 }
 
+// Before a player throws, creates the trail and impact effects for its destination space.
 static void CapEffThrowMasuCreate(int masuId, int capsuleNo)
 {
     HuVecF pos;
@@ -2196,6 +2215,8 @@ static void CapEffThrowMasuCreate(int masuId, int capsuleNo)
     CapEffCrackCreate();
 }
 
+// Player and automatic throws run this landing burst, placing the capsule at frame 20.
+// Returns the bonus-coin count; -1 suppresses coins outside eligible party throws.
 static int CapEffThrowMasu(int masuId, int capsuleNo, int playerNo, BOOL bonusF)
 {
     HuVecF pos;
@@ -2314,6 +2335,7 @@ static int CapEffThrowMasu(int masuId, int capsuleNo, int playerNo, BOOL bonusF)
     mbev_CapEffRingAdd(capsuleThrowRingOMObj, ringStartPosP,
         ringStartRotP, ringStartVelP, 3, 15, 1, ringStartColorP);
     for (time = 0; (float)time <= 60.0f || coinLeft > 0; time++) {
+        // Keep the fading effects at their last frame while any bonus coins remain.
         if ((float)time > 60.0f) {
             time = 60;
         }
@@ -2461,13 +2483,15 @@ static int CapEffThrowMasu(int masuId, int capsuleNo, int playerNo, BOOL bonusF)
     return coinNum;
 }
 
-static BOOL CapEffThrowMasuWait(BOOL waitGlowF)
+// The player throw waits for landing coins and releases all throw effects here.
+// Its argument is the bonus count: only nonpositive values also wait for the glow to finish.
+static BOOL CapEffThrowMasuWait(BOOL bonusCoinCount)
 {
     HuPrcSleep(18);
     while (mbev_CapEffCoinNumGet(capsuleThrowMasuCoinOMObj) > 0) {
         HuPrcVSleep();
     }
-    if (waitGlowF <= 0) {
+    if (bonusCoinCount <= 0) {
         while (mbev_CapEffGlowDispGet(capsuleThrowGlowOMObj) != 0) {
             HuPrcVSleep();
         }
@@ -2497,6 +2521,8 @@ void mbCapThrowHookSet(CAPSULE_THROW_HOOK hook)
     capsuleThrowHook = hook;
 }
 
+// Starts a standalone throw-path search between positions supplied by a board event.
+// Arc height grows with distance and is capped at 700 world units.
 void mbCapEffThrowCreate(HuVecF *startPos, HuVecF *endPos)
 {
     HuVecF delta;
@@ -2524,6 +2550,7 @@ void mbCapEffThrowCreate(HuVecF *startPos, HuVecF *endPos)
     CapEffThrowCreate(-1, x, y, z, yOfs, -1);
 }
 
+// Scripted callers poll for the path bend and flight duration; success destroys the search.
 BOOL mbCapEffThrowCheck(HuVecF *pos, int *maxTime)
 {
     CAP_EFF_THROW_WORK *work;
@@ -2556,6 +2583,8 @@ BOOL mbCapEffThrowCheck(HuVecF *pos, int *maxTime)
     return result;
 }
 
+// Last-five-turn and capsule events call this to play a supplied arc without a player pose.
+// startT is the initial flight fraction; values at least one go straight to the landing.
 void mbCapAutoThrow(HuVecF *startPos, HuVecF *endPos, HuVecF *masuPos, int playerNo,
     int masuId, int capsuleNo, BOOL maxTime, float startT)
 {
@@ -2578,6 +2607,8 @@ void mbCapAutoThrow(HuVecF *startPos, HuVecF *endPos, HuVecF *masuPos, int playe
     HuMemDirectFree(work);
 }
 
+// Runs the automatic throw's supplied arc, landing effects, and placement synchronously.
+// These event throws request no bonus coins and bracket playback with the throw hook.
 static void CapAutoThrow(CAP_AUTO_THROW_WORK *work)
 {
     int capsuleNo;
@@ -2745,6 +2776,8 @@ void mbCapAutoThrowEnd(CAP_AUTO_THROW_WORK *work)
 {
 }
 
+// Called by mbCapUse to choose a capsule destination or route to use/discard prompts.
+// Returns a space ID, -1 for cancel, -2 for discard, or -3 for use on the player.
 int mbCapSelectMasu(int playerNo, int capsuleNo)
 {
     CAP_SELECT_MASU_WORK *workData;
@@ -2766,9 +2799,9 @@ int mbCapSelectMasu(int playerNo, int capsuleNo)
     workData = HuMemDirectMallocNum(
         HEAP_HEAP, 32, HU_MEMNUM_OVL);
     work = workData;
-    work->unk00 = playerNo;
-    work->unk04 = -1;
-    work->unk08 = capsuleNo;
+    work->playerNo = playerNo;
+    work->unusedResult = -1;
+    work->capsuleNo = capsuleNo;
     if (!GwPlayer[playerNo].comF) {
         CapSelectMasuPlayer(work);
     } else {
@@ -2778,6 +2811,8 @@ int mbCapSelectMasu(int playerNo, int capsuleNo)
     return capsuleMasuSelectResult;
 }
 
+// Scans reachable placement counts from every space during capsule initialization.
+// The computed maximum is not retained after the scan.
 void mbCapSelectMasuInit(void)
 {
     int maxNum = 0;
@@ -2806,6 +2841,8 @@ void mbCapSelectMasuInit(void)
     HuMemDirectFree(masuFlag);
 }
 
+// Runs human-controlled destination selection for mbCapSelectMasu.
+// Moves the camera along eligible routes and restores a saved preview on cancellation.
 static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
 {
     s16 candidateDir[10];
@@ -2855,8 +2892,8 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
     moveNum = -1;
     memset(candidateDir, 0, sizeof(candidateDir));
     memset(candidates, 0, sizeof(candidates));
-    padNo = GwPlayer[work->unk00].padNo;
-    masuId = previousMasuId = GwPlayer[work->unk00].masuId;
+    padNo = GwPlayer[work->playerNo].padNo;
+    masuId = previousMasuId = GwPlayer[work->playerNo].masuId;
     frontNum = 0;
     validParentNum = 0;
     direction = 1;
@@ -2868,40 +2905,40 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
     CapSelectMasuListGet(masuFlag, masuId, 5, 5);
     masuFlag[masuId] = CAPSULE_MASU_SELECT_BLOCKED;
 
-    mbCapSelectResultGet(work->unk00, &oldObjId, &oldResult);
-    mbCapSelectResultReset(work->unk00);
+    mbCapSelectResultGet(work->playerNo, &oldObjId, &oldResult);
+    mbCapSelectResultReset(work->playerNo);
     if (oldObjId != MB_MODEL_NONE) {
-        work->unk0C = capsuleObjId = oldObjId;
+        work->capObjId = capsuleObjId = oldObjId;
     } else {
-        work->unk0C = capsuleObjId = mbCapObjCreate(work->unk08, TRUE);
-        mbObjDispSet(work->unk0C, FALSE);
-        mbPlayerPosGet(work->unk00, &playerPos);
-        mbObjPosSet(work->unk0C, playerPos.x, playerPos.y + 250.0f,
+        work->capObjId = capsuleObjId = mbCapObjCreate(work->capsuleNo, TRUE);
+        mbObjDispSet(work->capObjId, FALSE);
+        mbPlayerPosGet(work->playerNo, &playerPos);
+        mbObjPosSet(work->capObjId, playerPos.x, playerPos.y + 250.0f,
             playerPos.z);
-        mbObjScaleSet(work->unk0C, 1.2f, 1.2f, 1.2f);
+        mbObjScaleSet(work->capObjId, 1.2f, 1.2f, 1.2f);
     }
-    mbObjLayerSet(work->unk0C, 4);
+    mbObjLayerSet(work->capObjId, 4);
     {
         s16 objId;
 
-        objId = work->unk0C;
+        objId = work->capObjId;
         mbObjAttrSet(objId, HU3D_MOTATTR_LOOP);
     }
     cameraZoom = mbCameraZoomGet();
     mbCameraOffsetGet(&cameraOffset);
 
-    work->objId = mbObjCreate(mbCapFileGet(work->unk08), NULL, TRUE);
-    mbObjDispSet(work->objId, FALSE);
-    mbPlayerPosGet(work->unk00, &playerPos);
-    mbObjPosSetV(work->objId, &playerPos);
-    mbCameraMoveObj(work->objId, NULL, NULL, 3200.0f, -1.0f, 15);
+    work->cameraObjId = mbObjCreate(mbCapFileGet(work->capsuleNo), NULL, TRUE);
+    mbObjDispSet(work->cameraObjId, FALSE);
+    mbPlayerPosGet(work->playerNo, &playerPos);
+    mbObjPosSetV(work->cameraObjId, &playerPos);
+    mbCameraMoveObj(work->cameraObjId, NULL, NULL, 3200.0f, -1.0f, 15);
     initialF = TRUE;
-    work->winId1 = mbWinCreateHelp(MESSNUM(
+    work->helpWinId = mbWinCreateHelp(MESSNUM(
         MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_SELECT_HELP));
     mbWinTopPosGet(&winPos);
     mbWinTopPosSet(winPos.x, 284);
-    mbWinAttrSet(work->winId1, 2048);
-    work->winId2 = MB_MODEL_NONE;
+    mbWinAttrSet(work->helpWinId, 2048);
+    work->messageWinId = MB_MODEL_NONE;
     capsuleMes = capsuleMesPrev = -1;
     CapGuideCreate();
     CapEffMasuOkCreate();
@@ -2938,24 +2975,25 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
             }
         }
         if (!validF && frontNum == 1 && validParentNum == 1 &&
-            masuId != GwPlayer[work->unk00].masuId) {
+            masuId != GwPlayer[work->playerNo].masuId) {
             directF = TRUE;
         } else {
             directF = FALSE;
         }
 
         if (!directF) {
-            if (masuId == GwPlayer[work->unk00].masuId) {
+            // Both positions deliberately use the same destination prompt.
+            if (masuId == GwPlayer[work->playerNo].masuId) {
                 capsuleMes = 0;
             } else {
                 capsuleMes = 0;
             }
             if (capsuleMes != capsuleMesPrev) {
-                if (work->winId2 != MB_MODEL_NONE) {
-                    mbWinKill(work->winId2);
+                if (work->messageWinId != MB_MODEL_NONE) {
+                    mbWinKill(work->messageWinId);
                 }
-                work->winId2 = MB_MODEL_NONE;
-                work->winId2 = CapSelectMasuWinCreate(capsuleMes);
+                work->messageWinId = MB_MODEL_NONE;
+                work->messageWinId = CapSelectMasuWinCreate(capsuleMes);
                 capsuleMesPrev = capsuleMes;
             }
         }
@@ -2998,7 +3036,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
         stickDir.z = (float)mbPadStkYGet(padNo);
 
         if (initialF) {
-            mbObjDispSet(work->unk0C, TRUE);
+            mbObjDispSet(work->capObjId, TRUE);
             time = 0;
             do {
                 if (oldObjId == MB_MODEL_NONE) {
@@ -3007,13 +3045,13 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
                     if (t > 1.0f) {
                         t = 1.0f;
                     }
-                    mbPlayerPosGet(work->unk00, &playerPos);
+                    mbPlayerPosGet(work->playerNo, &playerPos);
                     playerPos.y += 100.0 +
                         (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
-                    mbObjPosSetV(work->unk0C, &playerPos);
+                    mbObjPosSetV(work->capObjId, &playerPos);
                     scale = (double)1.2f *
                         sin((M_PI * (90.0f * t)) / 180.0);
-                    mbObjScaleSet(work->unk0C, scale, scale, scale);
+                    mbObjScaleSet(work->capObjId, scale, scale, scale);
                 } else {
                     t = 1.0f;
                 }
@@ -3022,7 +3060,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
             initialF = FALSE;
         }
 
-        if (GwPlayer[work->unk00].comF) {
+        if (GwPlayer[work->playerNo].comF) {
             capsuleMasuSelectResult = -1;
             goto cleanup;
         }
@@ -3035,7 +3073,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
                 rot.x += capsuleMasuSelectRotTbl[0].x;
                 rot.y += capsuleMasuSelectRotTbl[0].y;
                 rot.z += capsuleMasuSelectRotTbl[0].z;
-                color = capsuleMasuSelectColorTbl[mbCapColorGet(work->unk08)];
+                color = capsuleMasuSelectColorTbl[mbCapColorGet(work->capsuleNo)];
                 CapEffHiliteAdd(targetPos, rot, capsuleMasuSelectRotTbl[1],
                     1, 18, 1, 2, color);
                 hiliteDelay = 19;
@@ -3076,6 +3114,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
                 diffAngle = 180.0f;
                 bestAngle = 180.0f;
                 selectedId = -1;
+                // The angle threshold stays fixed, so the last qualifying route wins.
                 for (i = 0; i < linkNum; i++) {
                     if (candidates[i] == -1 ||
                         masuFlag[candidates[i]] == 0) {
@@ -3107,7 +3146,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
             PSVECSubtract(&moveTargetPos, &playerPos, &moveDelta);
             PSVECScale(&moveDelta, &moveDelta, t);
             PSVECAdd(&playerPos, &moveDelta, &moveDelta);
-            mbObjPosSet(work->objId, moveDelta.x, moveDelta.y, moveDelta.z);
+            mbObjPosSet(work->cameraObjId, moveDelta.x, moveDelta.y, moveDelta.z);
             HuPrcVSleep();
         }
         for (time = 0; time < frontNum; time++) {
@@ -3125,33 +3164,35 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
 
 cleanup:
     HuMemDirectFree(masuFlag);
-    if (work->winId1 != MB_MODEL_NONE) {
-        mbWinKill(work->winId1);
+    if (work->helpWinId != MB_MODEL_NONE) {
+        mbWinKill(work->helpWinId);
     }
-    work->winId1 = MB_MODEL_NONE;
-    if (work->winId2 != MB_MODEL_NONE) {
-        mbWinKill(work->winId2);
+    work->helpWinId = MB_MODEL_NONE;
+    if (work->messageWinId != MB_MODEL_NONE) {
+        mbWinKill(work->messageWinId);
     }
-    work->winId2 = MB_MODEL_NONE;
+    work->messageWinId = MB_MODEL_NONE;
     if (capsuleMasuSelectResult != -1) {
         mbWipeDissolveFadeOut();
     } else {
         if (oldObjId != MB_MODEL_NONE) {
-            mbCapSelectResultSet(work->unk00, oldObjId, oldResult);
-            work->unk0C = MB_MODEL_NONE;
+            mbCapSelectResultSet(work->playerNo, oldObjId, oldResult);
+            work->capObjId = MB_MODEL_NONE;
         }
-        if (work->unk0C != MB_MODEL_NONE) {
-            mbCapObjKill(work->unk0C);
+        if (work->capObjId != MB_MODEL_NONE) {
+            mbCapObjKill(work->capObjId);
         }
-        work->unk0C = MB_MODEL_NONE;
+        work->capObjId = MB_MODEL_NONE;
         capsuleObjId = MB_MODEL_NONE;
     }
     mbCameraMovePlayer(
-        (s16)work->unk00, NULL, &cameraOffset, cameraZoom, -1.0f, -1);
+        (s16)work->playerNo, NULL, &cameraOffset, cameraZoom, -1.0f, -1);
     mbCameraMoveWait();
     CapSelectMasuKill(work);
 }
 
+// Chooses a random eligible destination for mbCapSelectMasu's computer-player path.
+// Prefers spaces without capsules; tutorial guidance can replace the chosen space.
 static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
 {
     s16 links[10];
@@ -3176,7 +3217,7 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
     int moveNum;
     GW_PLAYER *volatile playerP;
     int maxMasu;
-    int comLevel;
+    int padNo;
     int oldObjId;
     int oldResult;
     int selPos;
@@ -3202,13 +3243,13 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
     (void)cameraP;
     (void)cameraP;
     {
-        playerNo = work->unk00;
+        playerNo = work->playerNo;
         playerData = &GwPlayer[playerNo];
         playerBase = playerData;
         playerP = playerBase;
 
         maxMasu = mbMasuRawNumGet();
-        comLevel = GwPlayer[work->unk00].padNo;
+        padNo = GwPlayer[work->playerNo].padNo;
         masuId = previousMasuId = playerP->masuId;
     }
     linkCount = 0;
@@ -3270,25 +3311,25 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
     (void)masuId;
     (void)targetId;
 
-    mbCapSelectResultGet(work->unk00, &oldObjId, &oldResult);
-    mbCapSelectResultReset(work->unk00);
+    mbCapSelectResultGet(work->playerNo, &oldObjId, &oldResult);
+    mbCapSelectResultReset(work->playerNo);
     if (oldObjId != MB_MODEL_NONE) {
-        work->unk0C = capsuleObjId = oldObjId;
+        work->capObjId = capsuleObjId = oldObjId;
     } else {
-        work->unk0C = capsuleObjId = mbCapObjCreate(work->unk08, TRUE);
-        mbObjDispSet(work->unk0C, TRUE);
-        mbPlayerPosGet(work->unk00, &playerPos);
-        mbObjPosSet(work->unk0C, playerPos.x, playerPos.y + 250.0f,
+        work->capObjId = capsuleObjId = mbCapObjCreate(work->capsuleNo, TRUE);
+        mbObjDispSet(work->capObjId, TRUE);
+        mbPlayerPosGet(work->playerNo, &playerPos);
+        mbObjPosSet(work->capObjId, playerPos.x, playerPos.y + 250.0f,
             playerPos.z);
-        mbObjScaleSet(work->unk0C, 1.2f, 1.2f, 1.2f);
+        mbObjScaleSet(work->capObjId, 1.2f, 1.2f, 1.2f);
         (void)scale;
         (void)scale;
     }
-    mbObjLayerSet(work->unk0C, 4);
+    mbObjLayerSet(work->capObjId, 4);
     {
         s16 objId;
 
-        objId = work->unk0C;
+        objId = work->capObjId;
         mbObjAttrSet(objId, HU3D_MOTATTR_LOOP);
     }
     cameraZoom = mbCameraZoomGet();
@@ -3296,14 +3337,14 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
     (void)t;
     mbCameraOffsetGet(&cameraOffset);
 
-    work->objId = mbObjCreate(mbCapFileGet(work->unk08), NULL, TRUE);
-    mbObjDispSet(work->objId, FALSE);
-    mbPlayerPosGet(work->unk00, &playerPos);
-    mbObjPosSetV(work->objId, &playerPos);
+    work->cameraObjId = mbObjCreate(mbCapFileGet(work->capsuleNo), NULL, TRUE);
+    mbObjDispSet(work->cameraObjId, FALSE);
+    mbPlayerPosGet(work->playerNo, &playerPos);
+    mbObjPosSetV(work->cameraObjId, &playerPos);
     modelDispF = TRUE;
     (void)modelDispF;
-    work->winId1 = MB_MODEL_NONE;
-    work->winId2 = MB_MODEL_NONE;
+    work->helpWinId = MB_MODEL_NONE;
+    work->messageWinId = MB_MODEL_NONE;
     sePlayF = -1;
     selPos = sePlayF;
     (void)selPos;
@@ -3321,12 +3362,13 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
             break;
         }
     }
+    // A failed path search still appends the chosen target here.
     if (count < 256 || !capsuleComSearchF) {
         path[count + 1] = targetId;
         path[count + 2] = targetId;
         count += 2;
     } else {
-        capsuleMasuSelectComF[work->unk00] = TRUE;
+        capsuleMasuSelectComF[work->playerNo] = TRUE;
         capsuleMasuSelectResult = masuId = -1;
         goto cleanup;
     }
@@ -3340,50 +3382,53 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
     capsuleMasuSelectResult = (s16)targetId;
 
 cleanup:
-    if (work->winId1 != MB_MODEL_NONE) {
-        mbWinKill(work->winId1);
+    if (work->helpWinId != MB_MODEL_NONE) {
+        mbWinKill(work->helpWinId);
     }
-    work->winId1 = MB_MODEL_NONE;
-    if (work->winId2 != MB_MODEL_NONE) {
-        mbWinKill(work->winId2);
+    work->helpWinId = MB_MODEL_NONE;
+    if (work->messageWinId != MB_MODEL_NONE) {
+        mbWinKill(work->messageWinId);
     }
-    work->winId2 = MB_MODEL_NONE;
+    work->messageWinId = MB_MODEL_NONE;
     HuMemDirectFree(masuFlag);
     HuMemDirectFree(path);
     HuMemDirectFree(masuList);
     if (capsuleMasuSelectResult == -1) {
         if (oldObjId != MB_MODEL_NONE) {
-            mbCapSelectResultSet(work->unk00, oldObjId, oldResult);
-            work->unk0C = MB_MODEL_NONE;
+            mbCapSelectResultSet(work->playerNo, oldObjId, oldResult);
+            work->capObjId = MB_MODEL_NONE;
         }
-        if (work->unk0C != MB_MODEL_NONE) {
-            mbCapObjKill(work->unk0C);
+        if (work->capObjId != MB_MODEL_NONE) {
+            mbCapObjKill(work->capObjId);
         }
-        work->unk0C = MB_MODEL_NONE;
+        work->capObjId = MB_MODEL_NONE;
         capsuleObjId = MB_MODEL_NONE;
     }
     CapSelectMasuKill(work);
 }
 
+// Releases route guides, space markers, camera focus model, and selection windows.
+// Both destination selection paths call this after preserving any capsule preview.
 static void CapSelectMasuKill(CAP_SELECT_MASU_WORK *work)
 {
     CapGuideKill();
     CapEffMasuOkKill();
-    if (work->objId != MB_MODEL_NONE) {
-        mbObjKill(work->objId);
+    if (work->cameraObjId != MB_MODEL_NONE) {
+        mbObjKill(work->cameraObjId);
     }
-    work->objId = MB_MODEL_NONE;
-    if (work->winId1 != MB_MODEL_NONE) {
-        mbWinKill(work->winId1);
+    work->cameraObjId = MB_MODEL_NONE;
+    if (work->helpWinId != MB_MODEL_NONE) {
+        mbWinKill(work->helpWinId);
     }
-    work->winId1 = MB_MODEL_NONE;
-    if (work->winId2 != MB_MODEL_NONE) {
-        mbWinKill(work->winId2);
+    work->helpWinId = MB_MODEL_NONE;
+    if (work->messageWinId != MB_MODEL_NONE) {
+        mbWinKill(work->messageWinId);
     }
-    work->winId2 = MB_MODEL_NONE;
+    work->messageWinId = MB_MODEL_NONE;
     CapEffHiliteKill();
 }
 
+// Candidate enumeration accepts regular spaces with compatible capsules and no player on them.
 static BOOL CapSelectMasuCheck(int masuId)
 {
     int masuType;
@@ -3411,6 +3456,8 @@ static BOOL CapSelectMasuDispCheck(int masuId)
     return mbMasuDispCheck(masuId);
 }
 
+// Builds the forward/backward destination table for selection and range-count queries.
+// Trims marked connector paths near the board start after both traversals.
 static void CapSelectMasuListGet(
     s16 *masuFlag, s16 masuId, s16 frontMax, s16 backMax)
 {
@@ -3425,6 +3472,8 @@ static void CapSelectMasuListGet(
     }
 }
 
+// Walks outgoing links while building the capsule destination table.
+// Displayed spaces after the starting space consume the remaining forward range.
 static void CapSelectMasuAddFront(s16 *masuFlag, s16 masuId, s16 max)
 {
     s16 link[10];
@@ -3454,6 +3503,8 @@ static void CapSelectMasuAddFront(s16 *masuFlag, s16 masuId, s16 max)
     }
 }
 
+// Walks incoming links while building the capsule destination table.
+// Displayed spaces after the starting space consume the remaining backward range.
 static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max)
 {
     s16 parent[10];
@@ -3490,6 +3541,8 @@ static void CapSelectMasuAddBack(s16 *masuFlag, s16 masuId, s16 max)
     }
 }
 
+// Trims marked type-zero connector routes during destination enumeration.
+// Non-connector spaces keep their destination-table entry.
 static void CapSelectMasuLinkCheck(s16 *masuFlag, s16 masuId)
 {
     s16 link[10];
@@ -3513,33 +3566,35 @@ static void CapSelectMasuLinkCheck(s16 *masuFlag, s16 masuId)
     }
 }
 
+// Searches marked outgoing links for the computer player's destination and records the path.
+// Called by computer selection; capsuleComSearchF stops traversal once the target is found.
 static int CapSelectMasuComListGet(
     s16 *path, s16 *masuFlag, s16 masuId, s16 targetId, int depth)
 {
     s16 links[10];
-    s16 links2[10];
-    s16 links3[10];
-    s16 links4[10];
-    s16 links5[10];
+    s16 childLinks[10];
+    s16 grandchildLinks[10];
+    s16 branchLinks[10];
+    s16 leafLinks[10];
     s16 linkNum;
-    s16 linkNum2;
-    s16 linkNum3;
-    s16 linkNum4;
-    s16 masuId1;
-    s16 masuId2;
-    s16 masuId3;
-    s16 linkNum5;
-    s16 masuId4;
-    s16 masuId5;
+    s16 childLinkNum;
+    s16 grandchildLinkNum;
+    s16 branchLinkNum;
+    s16 childMasuId;
+    s16 grandchildMasuId;
+    s16 branchMasuId;
+    s16 leafLinkNum;
+    s16 leafMasuId;
+    s16 unusedLeafMasuId;
     int i;
     int j;
     int k;
     int l;
     int m;
-    int depth1;
-    int depth2;
-    int depth3;
-    int depth4;
+    int childDepth;
+    int grandchildDepth;
+    int branchDepth;
+    int leafDepth;
 
     path[(s16)depth] = masuId;
     depth++;
@@ -3551,55 +3606,55 @@ static int CapSelectMasuComListGet(
     linkNum = mbMasuLinkTblGet(masuId, links);
     for (i = 0; i < linkNum; i++) {
         if (masuFlag[links[i]] != 0) {
-            depth1 = depth;
-            masuId1 = links[i];
-            path[(s16)depth1] = masuId1;
-            depth1++;
-            if (masuId1 == targetId) {
+            childDepth = depth;
+            childMasuId = links[i];
+            path[(s16)childDepth] = childMasuId;
+            childDepth++;
+            if (childMasuId == targetId) {
                 capsuleComSearchF = TRUE;
             } else {
-                linkNum2 = mbMasuLinkTblGet(masuId1, links2);
-                for (j = 0; j < linkNum2; j++) {
-                    if (masuFlag[links2[j]] != 0) {
-                        depth2 = depth1;
-                        masuId2 = links2[j];
-                        path[(s16)depth2] = masuId2;
-                        depth2++;
-                        if (masuId2 == targetId) {
+                childLinkNum = mbMasuLinkTblGet(childMasuId, childLinks);
+                for (j = 0; j < childLinkNum; j++) {
+                    if (masuFlag[childLinks[j]] != 0) {
+                        grandchildDepth = childDepth;
+                        grandchildMasuId = childLinks[j];
+                        path[(s16)grandchildDepth] = grandchildMasuId;
+                        grandchildDepth++;
+                        if (grandchildMasuId == targetId) {
                             capsuleComSearchF = TRUE;
                         } else {
-                            linkNum3 = mbMasuLinkTblGet(masuId2, links3);
-                            for (k = 0; k < linkNum3; k++) {
-                                if (masuFlag[links3[k]] != 0) {
-                                    depth3 = depth2;
-                                    masuId3 = links3[k];
-                                    path[(s16)depth3] = masuId3;
-                                    depth3++;
-                                    if (masuId3 == targetId) {
+                            grandchildLinkNum = mbMasuLinkTblGet(grandchildMasuId, grandchildLinks);
+                            for (k = 0; k < grandchildLinkNum; k++) {
+                                if (masuFlag[grandchildLinks[k]] != 0) {
+                                    branchDepth = grandchildDepth;
+                                    branchMasuId = grandchildLinks[k];
+                                    path[(s16)branchDepth] = branchMasuId;
+                                    branchDepth++;
+                                    if (branchMasuId == targetId) {
                                         capsuleComSearchF = TRUE;
                                     } else {
-                                        linkNum4 = mbMasuLinkTblGet(
-                                            masuId3, links4);
-                                        for (l = 0; l < linkNum4; l++) {
-                                            if (masuFlag[links4[l]] != 0) {
-                                                depth4 = depth3;
-                                                masuId5 = masuId4 = links4[l];
-                                                path[(s16)depth4] = masuId4;
-                                                depth4++;
-                                                if (masuId4 == targetId) {
+                                        branchLinkNum = mbMasuLinkTblGet(
+                                            branchMasuId, branchLinks);
+                                        for (l = 0; l < branchLinkNum; l++) {
+                                            if (masuFlag[branchLinks[l]] != 0) {
+                                                leafDepth = branchDepth;
+                                                unusedLeafMasuId = leafMasuId = branchLinks[l];
+                                                path[(s16)leafDepth] = leafMasuId;
+                                                leafDepth++;
+                                                if (leafMasuId == targetId) {
                                                     capsuleComSearchF = TRUE;
                                                 } else {
-                                                    linkNum5 = mbMasuLinkTblGet(
-                                                        masuId4, links5);
+                                                    leafLinkNum = mbMasuLinkTblGet(
+                                                        leafMasuId, leafLinks);
                                                     for (m = 0;
-                                                         m < linkNum5; m++) {
-                                                        if (masuFlag[links5[m]]
+                                                         m < leafLinkNum; m++) {
+                                                        if (masuFlag[leafLinks[m]]
                                                             != 0) {
                                                             CapSelectMasuComListGet(
                                                                 path, masuFlag,
-                                                                links5[m],
+                                                                leafLinks[m],
                                                                 targetId,
-                                                                depth4);
+                                                                leafDepth);
                                                             if (capsuleComSearchF) {
                                                                 break;
                                                             }
@@ -3632,33 +3687,35 @@ static int CapSelectMasuComListGet(
     return (s16)depth;
 }
 
+// Searches marked incoming links when the computer player's forward search fails.
+// Records the reverse path and stops when capsuleComSearchF reports the target.
 static int CapSelectMasuComListGetRev(
     s16 *path, s16 *masuFlag, s16 masuId, s16 targetId, int depth)
 {
     s16 parents[10];
-    s16 parents2[10];
-    s16 parents3[10];
-    s16 parents4[10];
-    s16 parents5[10];
+    s16 childParents[10];
+    s16 grandchildParents[10];
+    s16 branchParents[10];
+    s16 leafParents[10];
     s16 parentNum;
-    s16 parentNum2;
-    s16 parentNum3;
-    s16 parentNum4;
-    s16 masuId1;
-    s16 masuId2;
-    s16 masuId3;
-    s16 parentNum5;
-    s16 masuId4;
-    s16 masuId5;
+    s16 childParentNum;
+    s16 grandchildParentNum;
+    s16 branchParentNum;
+    s16 childMasuId;
+    s16 grandchildMasuId;
+    s16 branchMasuId;
+    s16 leafParentNum;
+    s16 leafMasuId;
+    s16 unusedLeafMasuId;
     int i;
     int j;
     int k;
     int l;
     int m;
-    int depth1;
-    int depth2;
-    int depth3;
-    int depth4;
+    int childDepth;
+    int grandchildDepth;
+    int branchDepth;
+    int leafDepth;
 
     path[(s16)depth] = masuId;
     depth++;
@@ -3670,55 +3727,56 @@ static int CapSelectMasuComListGetRev(
     parentNum = mbMasuLinkParentGet(masuId, parents);
     for (i = 0; i < parentNum; i++) {
         if (masuFlag[parents[i]] != 0) {
-            depth1 = depth;
-            masuId1 = parents[i];
-            path[(s16)depth1] = masuId1;
-            depth1++;
-            if (masuId1 == targetId) {
+            childDepth = depth;
+            childMasuId = parents[i];
+            path[(s16)childDepth] = childMasuId;
+            childDepth++;
+            if (childMasuId == targetId) {
                 capsuleComSearchF = TRUE;
             } else {
-                parentNum2 = mbMasuLinkParentGet(masuId1, parents2);
-                for (j = 0; j < parentNum2; j++) {
-                    if (masuFlag[parents2[j]] != 0) {
-                        depth2 = depth1;
-                        masuId2 = parents2[j];
-                        path[(s16)depth2] = masuId2;
-                        depth2++;
-                        if (masuId2 == targetId) {
+                childParentNum = mbMasuLinkParentGet(childMasuId, childParents);
+                for (j = 0; j < childParentNum; j++) {
+                    if (masuFlag[childParents[j]] != 0) {
+                        grandchildDepth = childDepth;
+                        grandchildMasuId = childParents[j];
+                        path[(s16)grandchildDepth] = grandchildMasuId;
+                        grandchildDepth++;
+                        if (grandchildMasuId == targetId) {
                             capsuleComSearchF = TRUE;
                         } else {
-                            parentNum3 = mbMasuLinkParentGet(masuId2, parents3);
-                            for (k = 0; k < parentNum3; k++) {
-                                if (masuFlag[parents3[k]] != 0) {
-                                    depth3 = depth2;
-                                    masuId3 = parents3[k];
-                                    path[(s16)depth3] = masuId3;
-                                    depth3++;
-                                    if (masuId3 == targetId) {
+                            grandchildParentNum =
+                                mbMasuLinkParentGet(grandchildMasuId, grandchildParents);
+                            for (k = 0; k < grandchildParentNum; k++) {
+                                if (masuFlag[grandchildParents[k]] != 0) {
+                                    branchDepth = grandchildDepth;
+                                    branchMasuId = grandchildParents[k];
+                                    path[(s16)branchDepth] = branchMasuId;
+                                    branchDepth++;
+                                    if (branchMasuId == targetId) {
                                         capsuleComSearchF = TRUE;
                                     } else {
-                                        parentNum4 = mbMasuLinkParentGet(
-                                            masuId3, parents4);
-                                        for (l = 0; l < parentNum4; l++) {
-                                            if (masuFlag[parents4[l]] != 0) {
-                                                depth4 = depth3;
-                                                masuId5 = masuId4 = parents4[l];
-                                                path[(s16)depth4] = masuId4;
-                                                depth4++;
-                                                if (masuId4 == targetId) {
+                                        branchParentNum = mbMasuLinkParentGet(
+                                            branchMasuId, branchParents);
+                                        for (l = 0; l < branchParentNum; l++) {
+                                            if (masuFlag[branchParents[l]] != 0) {
+                                                leafDepth = branchDepth;
+                                                unusedLeafMasuId = leafMasuId = branchParents[l];
+                                                path[(s16)leafDepth] = leafMasuId;
+                                                leafDepth++;
+                                                if (leafMasuId == targetId) {
                                                     capsuleComSearchF = TRUE;
                                                 } else {
-                                                    parentNum5 = mbMasuLinkParentGet(
-                                                        masuId4, parents5);
+                                                    leafParentNum = mbMasuLinkParentGet(
+                                                        leafMasuId, leafParents);
                                                     for (m = 0;
-                                                         m < parentNum5; m++) {
-                                                        if (masuFlag[parents5[m]]
+                                                         m < leafParentNum; m++) {
+                                                        if (masuFlag[leafParents[m]]
                                                             != 0) {
                                                             CapSelectMasuComListGetRev(
                                                                 path, masuFlag,
-                                                                parents5[m],
+                                                                leafParents[m],
                                                                 targetId,
-                                                                depth4);
+                                                                leafDepth);
                                                             if (capsuleComSearchF) {
                                                                 break;
                                                             }
@@ -3751,12 +3809,14 @@ static int CapSelectMasuComListGetRev(
     return (s16)depth;
 }
 
-static int CapSelectMasuWinCreate(int unused)
+// Creates the destination prompt during human capsule selection and raises it eight pixels.
+// Only message type zero is handled; other values leave the returned window ID unset.
+static int CapSelectMasuWinCreate(int messageType)
 {
     int winId;
     HuVec2f pos;
 
-    switch (unused) {
+    switch (messageType) {
         case 0:
             winId = mbWinCreate(
                 MBWIN_TYPE_CAPSULE,
@@ -3772,6 +3832,8 @@ static int CapSelectMasuWinCreate(int unused)
     return winId;
 }
 
+// Called by mbCapUse for capsule modes that request a discard confirmation.
+// Creates the prompt work and returns whether the player confirmed discarding.
 static int CapUseDelete(int playerNo, int capsuleNo)
 {
     CAP_USE_DELETE_WORK *work;
@@ -3783,15 +3845,17 @@ static int CapUseDelete(int playerNo, int capsuleNo)
         HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
     work = workData;
     memset(work, 0, sizeof(*work));
-    work->unk00 = playerNo;
-    work->unk04 = MB_MODEL_NONE;
-    work->unk08 = capsuleNo;
+    work->playerNo = playerNo;
+    work->unusedModelId = MB_MODEL_NONE;
+    work->capsuleNo = capsuleNo;
     capsuleMasuSelectComF[playerNo] = FALSE;
     result = CapUseDeleteWin(work);
     HuMemDirectFree(work);
     return result;
 }
 
+// Runs the discard confirmation, preview animation, and removal effect for CapUseDelete.
+// Cancellation restores a saved preview; capsuleUseRemoveOnF suppresses inventory removal.
 static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
 {
     HuVecF playerPos;
@@ -3807,14 +3871,14 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
     float scale;
 
     choice = -1;
-    mbCapSelectResultGet(work->unk00, &oldObjId, &result);
-    mbCapSelectResultReset(work->unk00);
+    mbCapSelectResultGet(work->playerNo, &oldObjId, &result);
+    mbCapSelectResultReset(work->playerNo);
     if (oldObjId != MB_MODEL_NONE) {
         work->capObjId = capsuleObjId = oldObjId;
     } else {
-        work->capObjId = capsuleObjId = mbCapObjCreate(work->unk08, TRUE);
+        work->capObjId = capsuleObjId = mbCapObjCreate(work->capsuleNo, TRUE);
         mbObjDispSet(work->capObjId, FALSE);
-        mbPlayerPosGet(work->unk00, &playerPos);
+        mbPlayerPosGet(work->playerNo, &playerPos);
         mbObjPosSet(work->capObjId, playerPos.x, playerPos.y + 250.0f,
             playerPos.z);
         mbObjScaleSet(work->capObjId, 1.2f, 1.2f, 1.2f);
@@ -3822,9 +3886,9 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
     mbObjLayerSet(work->capObjId, 4);
     modelId = work->capObjId;
     mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
-    work->objId = MB_MODEL_NONE;
-    work->winId0 = MB_MODEL_NONE;
-    work->winId1 = MB_MODEL_NONE;
+    work->auxModelId = MB_MODEL_NONE;
+    work->primaryWinId = MB_MODEL_NONE;
+    work->secondaryWinId = MB_MODEL_NONE;
     mbObjDispSet(work->capObjId, TRUE);
     time = 0;
     do {
@@ -3834,7 +3898,7 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
             if (t > 1.0f) {
                 t = 1.0f;
             }
-            mbPlayerPosGet(work->unk00, &playerPos);
+            mbPlayerPosGet(work->playerNo, &playerPos);
             playerPos.y += 100.0 +
                 (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
             mbObjPosSetV(work->capObjId, &playerPos);
@@ -3850,8 +3914,8 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
         MBWIN_TYPE_EVENT,
         MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DELETE_CHOICE),
         -1, TRUE);
-    mbWinTopInsertMesSet(mbCapUseMesGet(work->unk08), 0);
-    if (GwPlayer[work->unk00].comF) {
+    mbWinTopInsertMesSet(mbCapUseMesGet(work->capsuleNo), 0);
+    if (GwPlayer[work->playerNo].comF) {
         CapComChoiceSet(-1);
     }
     mbWinTopWait();
@@ -3865,12 +3929,13 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
         removePos = playerPos;
         removePosP = &removePos;
         CapEffRemoveAddAll(removePosP);
-        omVibrate(work->unk00, 20, 4, 4);
+        omVibrate(work->playerNo, 20, 4, 4);
+        // Some callers request the effect without removing an inventory capsule.
         if (!capsuleUseRemoveOnF) {
-            mbPlayerCapsuleUseSet(work->unk08);
-            capsuleSlot = mbPlayerCapsuleFind(work->unk00, work->unk08);
+            mbPlayerCapsuleUseSet(work->capsuleNo);
+            capsuleSlot = mbPlayerCapsuleFind(work->playerNo, work->capsuleNo);
             if (capsuleSlot != MB_MODEL_NONE) {
-                mbPlayerCapsuleRemove(work->unk00, capsuleSlot);
+                mbPlayerCapsuleRemove(work->playerNo, capsuleSlot);
             }
         }
         do {
@@ -3879,17 +3944,17 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
         CapEffRemoveKill();
         HuPrcVSleep();
     } else if (oldObjId != MB_MODEL_NONE) {
-        mbCapSelectResultSet(work->unk00, oldObjId, result);
+        mbCapSelectResultSet(work->playerNo, oldObjId, result);
         work->capObjId = MB_MODEL_NONE;
     }
-    if (work->winId0 != MB_MODEL_NONE) {
-        mbWinKill(work->winId0);
+    if (work->primaryWinId != MB_MODEL_NONE) {
+        mbWinKill(work->primaryWinId);
     }
-    work->winId0 = MB_MODEL_NONE;
-    if (work->winId1 != MB_MODEL_NONE) {
-        mbWinKill(work->winId1);
+    work->primaryWinId = MB_MODEL_NONE;
+    if (work->secondaryWinId != MB_MODEL_NONE) {
+        mbWinKill(work->secondaryWinId);
     }
-    work->winId1 = MB_MODEL_NONE;
+    work->secondaryWinId = MB_MODEL_NONE;
     if (work->capObjId != MB_MODEL_NONE) {
         mbCapObjKill(work->capObjId);
     }
@@ -3902,46 +3967,51 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
     return FALSE;
 }
 
+// Releases remaining preview models and optional windows after the discard prompt.
 static void CapUseDeleteKill(CAP_USE_DELETE_WORK *work)
 {
     if (work->capObjId != MB_MODEL_NONE) {
         mbCapObjKill(work->capObjId);
     }
     work->capObjId = MB_MODEL_NONE;
-    if (work->objId != MB_MODEL_NONE) {
-        mbObjKill(work->objId);
+    if (work->auxModelId != MB_MODEL_NONE) {
+        mbObjKill(work->auxModelId);
     }
-    work->objId = MB_MODEL_NONE;
-    if (work->winId0 != MB_MODEL_NONE) {
-        mbWinKill(work->winId0);
+    work->auxModelId = MB_MODEL_NONE;
+    if (work->primaryWinId != MB_MODEL_NONE) {
+        mbWinKill(work->primaryWinId);
     }
-    work->winId0 = MB_MODEL_NONE;
-    if (work->winId1 != MB_MODEL_NONE) {
-        mbWinKill(work->winId1);
+    work->primaryWinId = MB_MODEL_NONE;
+    if (work->secondaryWinId != MB_MODEL_NONE) {
+        mbWinKill(work->secondaryWinId);
     }
-    work->winId1 = MB_MODEL_NONE;
+    work->secondaryWinId = MB_MODEL_NONE;
 }
 
+// Installs a board's supplied capsule list, retaining only entries enabled for distribution.
+// Existing-save setup also clears the two capsule counters.
 void mbCapListInit(CAPSULE_LIST *list)
 {
-    int i;
-    int num;
+    int entryIndex;
+    int entryCount;
 
-    for (i = 0, num = 0; i < 33; i++) {
-        if (list[i].id == -1) {
+    for (entryIndex = 0, entryCount = 0; entryIndex < 33; entryIndex++) {
+        if (list[entryIndex].id == -1) {
             break;
         }
-        if (mbCapListExcludeCheck(list[i].id)) {
-            capsuleList[num] = list[i];
-            num++;
+        if (mbCapListExcludeCheck(list[entryIndex].id)) {
+            capsuleList[entryCount] = list[entryIndex];
+            entryCount++;
         }
     }
-    capsuleList[num].id = -1;
+    capsuleList[entryCount].id = -1;
     if (!mbSaveNewF) {
         memset(capsuleNum, 0, sizeof(capsuleNum));
     }
 }
 
+// Capsule-event initialization loads the current board's distribution list and filters it.
+// Existing-save setup also clears the two capsule counters.
 void mbCapListRead(void)
 {
     CAPSULE_LIST_FILE *file;
@@ -3979,20 +4049,24 @@ void mbCapListRead(void)
     }
 }
 
+// Copies active distribution entries for a caller and returns their count.
+// The terminator is written back to the internal list, rather than to the caller's copy.
 int mbCapListCopy(CAPSULE_LIST *list)
 {
-    int i;
+    int entryIndex;
 
-    for (i = 0; i < 32; i++) {
-        if (capsuleList[i].id == -1) {
+    for (entryIndex = 0; entryIndex < 32; entryIndex++) {
+        if (capsuleList[entryIndex].id == -1) {
             break;
         }
-        list[i] = capsuleList[i];
+        list[entryIndex] = capsuleList[entryIndex];
     }
-    capsuleList[i].id = -1;
-    return i;
+    capsuleList[entryIndex].id = -1;
+    return entryIndex;
 }
 
+// The capsule debug screen edits distribution entries and commits them on both triggers.
+// A accepts a row edit, B restores it, and Y prints the edited list.
 void mbCapListDebug(void)
 {
     static GXColor winColor = { 0, 0, 144, 192 };
@@ -4273,6 +4347,8 @@ static int capsuleNumColW[16] = {
     32, 32, 32, 48,
 };
 
+// The capsule debug counter screen shows each entry's two counts and their sum.
+// It waits for both controller-zero triggers before returning.
 void mbCapNumDebug(void)
 {
     static GXColor winColor = { 0, 0, 144, 192 };
@@ -4340,13 +4416,15 @@ s16 mbCapMasuPlayerGet2(s16 masuId)
     return mbMasuCapsuleGet(masuId) >> 8;
 }
 
+// Space-placement callers add an owner to the packed capsule value.
+// Owner bits are ORed into the existing value, so this does not clear an earlier owner.
 void mbCapMasuPlayerSet(s16 masuId, s16 playerNo)
 {
-    s16 capsuleNo = (s16)mbMasuCapsuleGet(masuId);
+    s16 capsuleValue = (s16)mbMasuCapsuleGet(masuId);
 
-    capsuleNo |=
+    capsuleValue |=
         (playerNo & CAPSULE_VALUE_TYPE_MASK) << CAPSULE_VALUE_PLAYER_SHIFT;
-    mbMasuCapsuleSet(masuId, capsuleNo);
+    mbMasuCapsuleSet(masuId, capsuleValue);
 }
 
 void mbCapMasuPlayerTypeSet(s16 masuId, s16 capsuleNo, s16 playerNo)
@@ -4366,6 +4444,7 @@ s16 mbCapUseModeGet(s16 capsuleNo)
     return capsuleData[capsuleNo].useMode;
 }
 
+// Capsule rule callers test whether the type uses trap placement mode.
 BOOL mbCapUseTrapCheck(s16 capsuleNo)
 {
     capsuleNo = mbCapValueTypeGet(capsuleNo);
@@ -4375,6 +4454,7 @@ BOOL mbCapUseTrapCheck(s16 capsuleNo)
     return FALSE;
 }
 
+// The capsule shop reads a daytime or night/rank price, falling back to the base cost.
 int mbCapBuyCostGet(s16 capsuleNo, s16 playerNo)
 {
     int cost;
@@ -4414,6 +4494,7 @@ int mbCapBuyCostGet(s16 capsuleNo, s16 playerNo)
     return mbCapCostGet(capsuleNo);
 }
 
+// Sale-price callers select the player's rank price, falling back to the base capsule cost.
 int mbCapSellCostGet(s16 capsuleNo, s16 playerNo)
 {
     int cost;
@@ -4461,6 +4542,7 @@ BOOL mbCapListExcludeCheck(s16 capsuleNo)
     return capsuleData[capsuleNo].listFlag;
 }
 
+// Last-five-turn placement accepts an unoccupied blue/red space with no displayed trap.
 BOOL mbCapThrowMasuCheck(int masuId)
 {
     BOOL result;
@@ -4492,6 +4574,8 @@ done:
     return result;
 }
 
+// Computer selection starts with character weights, then adjusts for route and inventory.
+// Modes return adjusted use weight, base weight, or the complementary discard weight.
 int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
 {
     CAPSULE_COM_CHANCE *data;
@@ -4683,6 +4767,8 @@ static int capsuleTurnTbl[9][2] = {
     { 15, 35 },
 };
 
+// Computer capsule weights search reachable forward routes within a displayed-space budget.
+// Modes seek an opponent's capsule 23, any opponent-owned trap, or another player.
 static BOOL CapCheckComPath(int playerNo, int max, int mode)
 {
     s16 masuStack[32];
@@ -4789,6 +4875,8 @@ static inline s16 CapUseModeGetInline(s16 capsuleNo)
     return capsuleData[capsuleNo].useMode;
 }
 
+// Capsule selection chooses a computer player's inventory index by adjusted use weights.
+// It can decline a choice, follows tutorial control, and remembers a backward throw choice.
 int mbCapSelectComGet(int playerNo, int *capsuleTbl, int capsuleNum)
 {
     CAPSULE_COM_CHOICE_BACK temp;
@@ -4878,6 +4966,7 @@ int mbCapSelectComGet(int playerNo, int *capsuleTbl, int capsuleNum)
     return choiceP->index;
 }
 
+// The discard selection chooses the inventory index with the greatest discard weight.
 int mbCapSelectDeleteComGet(int playerNo, int *capsuleTbl, int capsuleNum)
 {
     CAPSULE_COM_CHOICE temp;
@@ -4908,6 +4997,8 @@ int mbCapSelectDeleteComGet(int playerNo, int *capsuleTbl, int capsuleNum)
     return choice[0].index;
 }
 
+// Board event callers fill blue/red spaces with throw capsules and selected or random owners.
+// A negative type picks randomly; checkF zero preserves spaces that already hold a capsule.
 void mbCapRandomThrowAdd(int capsuleNo, int playerNo, int checkF)
 {
     int masuId;
@@ -4937,6 +5028,8 @@ void mbCapRandomThrowAdd(int capsuleNo, int playerNo, int checkF)
     }
 }
 
+// Board event callers fill blue/red spaces with traps and selected or random owners.
+// A negative type picks randomly; checkF zero preserves spaces that already hold a capsule.
 void mbCapRandomTrapAdd(int capsuleNo, int playerNo, int checkF)
 {
     int masuId;
@@ -4966,6 +5059,8 @@ void mbCapRandomTrapAdd(int capsuleNo, int playerNo, int checkF)
     }
 }
 
+// Throw landing and board population store the capsule type and owner on a space.
+// Types above the duel capsule and the bone capsule are ignored by this placement path.
 void mbCapMasuCapsuleSet(int masuId, int capsuleNo, int playerNo)
 {
     s16 value;
@@ -4992,11 +5087,12 @@ void mbCapMasuCapsuleSet(int masuId, int capsuleNo, int playerNo)
     }
 }
 
-static void CapThrowEndWin(int unused, int value)
+// After player or automatic landing, bone and Koopa capsules show the special ending message.
+static void CapThrowEndWin(int unusedMasuId, int capsuleNo)
 {
-    value = mbCapValueTypeGet(value);
+    capsuleNo = mbCapValueTypeGet(capsuleNo);
 
-    switch (value) {
+    switch (capsuleNo) {
         case CAPSULE_HONE:
             mbWinCreate(2,
                 MESSNUM(
@@ -5056,6 +5152,7 @@ int mbCapUseCostGet(void)
     return 0;
 }
 
+// Capsule rule callers test whether this type is used directly on the player.
 BOOL mbCapUseCheck(int capsuleNo)
 {
     if (mbCapUseModeGet(capsuleNo) == 0) {
@@ -5064,6 +5161,7 @@ BOOL mbCapUseCheck(int capsuleNo)
     return FALSE;
 }
 
+// Distribution and debug callers accept capsule types that have a model file assigned.
 BOOL mbCapValidCheck(int capsuleNo)
 {
     capsuleNo = mbCapValueTypeGet(capsuleNo);
@@ -5076,6 +5174,8 @@ BOOL mbCapValidCheck(int capsuleNo)
     return TRUE;
 }
 
+// Placement and board effects classify blue/red spaces as empty, a throw capsule, or a trap.
+// Capsules on other space types are hidden from this classification.
 s16 mbCapMasuDispTypeGet(s16 masuId)
 {
     s16 capsuleNo;
@@ -5100,6 +5200,8 @@ int mbCapSelectMasuNum(int masuId)
         + mbCapSelectMasuBackNum(masuId);
 }
 
+// Computer selection counts eligible capsule destinations within five forward spaces.
+// Enables selection completion before collecting the route flags.
 int mbCapSelectMasuFrontNum(int masuId)
 {
     s16 *masuFlagData;
@@ -5122,6 +5224,8 @@ int mbCapSelectMasuFrontNum(int masuId)
     return num;
 }
 
+// Computer selection counts eligible capsule destinations within five backward spaces.
+// Enables selection completion before collecting the route flags.
 int mbCapSelectMasuBackNum(int masuId)
 {
     s16 *masuFlagData;
@@ -5144,6 +5248,7 @@ int mbCapSelectMasuBackNum(int masuId)
     return num;
 }
 
+// Capsule generation collects the valid types below CAPSULE_VALID_LIST_MAX for its caller.
 int mbCapValidListGet(int *list)
 {
     int i;
@@ -5160,6 +5265,8 @@ int mbCapValidListGet(int *list)
     return num;
 }
 
+// Capsule generation selects a valid type by rank and the current part of the game.
+// Negative ranks and empty weight categories fall back to an unrestricted random type.
 int mbCapNextGet(int rank)
 {
     int i;
@@ -5170,7 +5277,7 @@ int mbCapNextGet(int rank)
     int *chanceTbl;
     int gamePart;
     int totalChance;
-    int temp;
+    int swappedCapsule;
     int turnSeg;
     int code;
     int chance;
@@ -5184,9 +5291,9 @@ int mbCapNextGet(int rank)
             inIdx = i % num;
             outIdx = mbRandMod(num);
             if (inIdx != outIdx) {
-                temp = list[inIdx];
+                swappedCapsule = list[inIdx];
                 list[inIdx] = list[outIdx];
-                list[outIdx] = temp;
+                list[outIdx] = swappedCapsule;
             }
         }
         return list[mbRandMod(num)];
@@ -5248,21 +5355,23 @@ int mbCapNextGet(int rank)
         inIdx = i % idx;
         outIdx = mbRandMod(idx);
         if (inIdx != outIdx) {
-            temp = outList[inIdx];
+            swappedCapsule = outList[inIdx];
             outList[inIdx] = outList[outIdx];
-            outList[outIdx] = temp;
+            outList[outIdx] = swappedCapsule;
         }
     }
     i = mbRandMod(idx);
     return outList[i];
 }
 
+// Landing on a capsule space selects a pickup using rank and the first or second game half.
+// Each copy already carried by the player halves that capsule's selection weight.
 int mbCapMasuNextGet(int playerNo)
 {
     CAPSULE_LIST *listBase;
     CAPSULE_LIST *list;
     CAPSULE_LIST *listWork;
-    CAPSULE_LIST temp;
+    CAPSULE_LIST swappedEntry;
     int weightNo;
     int capsuleNo;
     int count;
@@ -5305,9 +5414,9 @@ int mbCapMasuNextGet(int playerNo)
             listNo = mbRandMod(count);
             otherListNo = mbRandMod(count);
             if (listNo != otherListNo) {
-                temp = listBase[listNo];
+                swappedEntry = listBase[listNo];
                 listBase[listNo] = listBase[otherListNo];
-                listBase[otherListNo] = temp;
+                listBase[otherListNo] = swappedEntry;
             }
         }
     } else {
@@ -5322,9 +5431,9 @@ int mbCapMasuNextGet(int playerNo)
         for (j = i + 1; j < count; j++) {
             if (listBase[i].weight[weightNo] >
                 listBase[j].weight[weightNo]) {
-                temp = listBase[i];
+                swappedEntry = listBase[i];
                 listBase[i] = listBase[j];
-                listBase[j] = temp;
+                listBase[j] = swappedEntry;
             }
         }
     }
@@ -5345,12 +5454,14 @@ cleanup:
     return capsuleNo;
 }
 
-static int CapShopNextGet(int playerNo, int exclude0, int exclude1)
+// Shop stock generation chooses a capsule while excluding the two preceding offers.
+// Eligibility and final selection use shop weights; the total uses adjusted pickup weights.
+static int CapShopNextGet(int playerNo, int firstExcludedCapsule, int secondExcludedCapsule)
 {
     CAPSULE_LIST *listBase;
     CAPSULE_LIST *list;
     CAPSULE_LIST *listWork;
-    CAPSULE_LIST temp;
+    CAPSULE_LIST swappedEntry;
     int rank;
     int capsuleNo;
     int count;
@@ -5372,8 +5483,8 @@ static int CapShopNextGet(int playerNo, int exclude0, int exclude1)
         if (capsuleList[i].id == -1) {
             break;
         }
-        if (capsuleList[i].id == exclude0 ||
-            capsuleList[i].id == exclude1) {
+        if (capsuleList[i].id == firstExcludedCapsule ||
+            capsuleList[i].id == secondExcludedCapsule) {
             continue;
         }
         if (*(&capsuleList[i].weight[8] + rank) <= 0) {
@@ -5394,9 +5505,9 @@ static int CapShopNextGet(int playerNo, int exclude0, int exclude1)
             listNo = mbRandMod(count);
             otherListNo = mbRandMod(count);
             if (listNo != otherListNo) {
-                temp = listBase[listNo];
+                swappedEntry = listBase[listNo];
                 listBase[listNo] = listBase[otherListNo];
-                listBase[otherListNo] = temp;
+                listBase[otherListNo] = swappedEntry;
             }
         }
     } else {
@@ -5411,9 +5522,9 @@ static int CapShopNextGet(int playerNo, int exclude0, int exclude1)
         for (j = i + 1; j < count; j++) {
             if (*(&listBase[i].weight[8] + rank) >
                 *(&listBase[j].weight[8] + rank)) {
-                temp = listBase[i];
+                swappedEntry = listBase[i];
                 listBase[i] = listBase[j];
-                listBase[j] = temp;
+                listBase[j] = swappedEntry;
             }
         }
     }
@@ -5434,6 +5545,7 @@ cleanup:
     return capsuleNo;
 }
 
+// A shop visit fills the caller's stock list with up to three distinct weighted offers.
 int mbCapShopListGet(int playerNo, CAPSULE_LIST *list)
 {
     int capsuleNo[CAPSULE_VALID_LIST_MAX];
@@ -5465,13 +5577,15 @@ int mbCapShopListGet(int playerNo, CAPSULE_LIST *list)
     return i;
 }
 
+// Last-five-turn capsule placement reads up to maxNum IDs from a shuffled capsule list.
+// Output stops at an encountered -1 ID rather than at the number of copied entries.
 int mbCapRandomListGet(int *capsuleListOut, int maxNum)
 {
     CAPSULE_LIST *listBase;
     CAPSULE_LIST *list;
     int count;
     CAPSULE_LIST *listWork;
-    CAPSULE_LIST temp;
+    CAPSULE_LIST swappedEntry;
     int i;
     int listNo;
     int otherListNo;
@@ -5496,9 +5610,9 @@ int mbCapRandomListGet(int *capsuleListOut, int maxNum)
             listNo = mbRandMod(count);
             otherListNo = mbRandMod(count);
             if (listNo != otherListNo) {
-                temp = listBase[listNo];
+                swappedEntry = listBase[listNo];
                 listBase[listNo] = listBase[otherListNo];
-                listBase[otherListNo] = temp;
+                listBase[otherListNo] = swappedEntry;
             }
         }
     }
@@ -5515,6 +5629,8 @@ int mbCapRandomListGet(int *capsuleListOut, int maxNum)
     return num;
 }
 
+// Capsule use and throwing effects roll bonus coins from the player's rank and use mode.
+// A failed roll returns zero; lower-ranked players have larger chances and coin ranges.
 int mbCapBonusCoinNumGet(int playerNo, int capsuleNo)
 {
     int bonus;
@@ -5564,6 +5680,8 @@ int mbCapBonusCoinNumGet(int playerNo, int capsuleNo)
     return bonus;
 }
 
+// Capsule selection and shop displays create a paused, instant-text description window.
+// Packed owner bits are discarded, and the window is moved eight pixels above its default.
 int mbCapDescWinCreate(int capsuleNo)
 {
     HuVec2f pos;
@@ -5579,6 +5697,7 @@ int mbCapDescWinCreate(int capsuleNo)
     return winId;
 }
 
+// Board setup clears capsule model tracking and creates two hidden linked model sources.
 void mbCapInit(void)
 {
     int i;
@@ -5613,6 +5732,8 @@ void mbCapInit(void)
     mbObjDispSet(objId, FALSE);
 }
 
+// Capsule selection and use animations create an item model with its category border.
+// The cancel item instead gets two texture animations and a 1.5 scale; specialF is ignored.
 int mbCapObjCreate(int capsuleNo, BOOL specialF)
 {
     ANIMDATA *anim;
@@ -5641,13 +5762,13 @@ int mbCapObjCreate(int capsuleNo, BOOL specialF)
         anim = capsuleObjData[i].anim = HuSprAnimRead(HuDataSelHeapReadNum(
             DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_ANIM),
             HU_MEMNUM_OVL, HEAP_MODEL));
-        capsuleObjData[i].animId0 = Hu3DAnimCreate(
+        capsuleObjData[i].textureAnimId = Hu3DAnimCreate(
             anim, mbObjModelIDGet(objId), "S3TCys77120");
-        Hu3DAnmNoSet(capsuleObjData[i].animId0, 0);
-        capsuleObjData[i].animId1 = Hu3DAnimLink(
-            capsuleObjData[i].animId0, mbObjModelIDGet(objId),
+        Hu3DAnmNoSet(capsuleObjData[i].textureAnimId, 0);
+        capsuleObjData[i].linkedTextureAnimId = Hu3DAnimLink(
+            capsuleObjData[i].textureAnimId, mbObjModelIDGet(objId),
             "S3TCys77121");
-        Hu3DAnmNoSet(capsuleObjData[i].animId1, 0);
+        Hu3DAnmNoSet(capsuleObjData[i].linkedTextureAnimId, 0);
         PSMTXScale(mtx, 1.5f, 1.5f, 1.5f);
         mbObjMtxSet(objId, &mtx);
         return objId;
@@ -5672,6 +5793,8 @@ extern int capsuleBorderFileTbl[6];
 
 void mbCapObjBorderKill(int objId);
 
+// Item-model creation hooks the capsule category's shared border to its center object.
+// Models without a center return -1; categories without border assets also have no border.
 int mbCapObjBorderCreate(int objId, int capsuleNo)
 {
     HSF_DATA *hsf;
@@ -5714,6 +5837,8 @@ int mbCapObjBorderCreate(int objId, int capsuleNo)
     return capsuleObjBorderId[groupNo];
 }
 
+// Capsule selection and use cleanup release an item model and its associated visual assets.
+// Cancel-item models own texture animations; ordinary models release their border reference.
 void mbCapObjKill(int objId)
 {
     int i;
@@ -5724,8 +5849,8 @@ void mbCapObjKill(int objId)
         }
     }
     if (i < 8) {
-        Hu3DAnimKill(capsuleObjData[i].animId0);
-        Hu3DAnimKill(capsuleObjData[i].animId1);
+        Hu3DAnimKill(capsuleObjData[i].textureAnimId);
+        Hu3DAnimKill(capsuleObjData[i].linkedTextureAnimId);
         HuSprAnimKill(capsuleObjData[i].anim);
         mbObjKill(capsuleObjData[i].objId);
         capsuleObjData[i].objId = MB_MODEL_NONE;
@@ -5735,6 +5860,7 @@ void mbCapObjKill(int objId)
     }
 }
 
+// Item-model cleanup removes its border reference and releases borders with no remaining users.
 void mbCapObjBorderKill(int objId)
 {
     s16 *borderId = capsuleBorderObjId;
@@ -5767,6 +5893,8 @@ static inline void CapObjUnitScaleSet(CAPSULE_OBJ_COLOR *obj)
     obj->scale.x = obj->scale.y = obj->scale.z = 1.0f;
 }
 
+// Throwing, capsule events, and shops allocate a colored capsule model on render layer four.
+// Packed owner bits are discarded; a full model-slot table returns -1.
 int mbCapObjColorCreate(int capsuleNo, BOOL createF)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5805,6 +5933,7 @@ int mbCapObjColorCreate(int capsuleNo, BOOL createF)
     return obj->mdlId;
 }
 
+// Colored capsule accessors find the occupied slot for a board model ID, or return -1.
 static inline int CapObjColorSearch(int id)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5822,6 +5951,7 @@ static inline int CapObjColorSearch(int id)
     }
 }
 
+// Throwing, capsule events, and shop cleanup release a tracked colored capsule model.
 void mbCapObjColorKill(int id)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5832,12 +5962,13 @@ void mbCapObjColorKill(int id)
         if (obj->flag) {
             mbObjKill(obj->mdlId);
             obj->mdlId = MB_MODEL_NONE;
-            obj->mdlId2 = MB_MODEL_NONE;
+            obj->unusedModelId = MB_MODEL_NONE;
             obj->flag = FALSE;
         }
     }
 }
 
+// Capsule animations store and apply a colored model's base position in board world units.
 void mbCapObjColorPosSet(int id, float posX, float posY, float posZ)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5852,6 +5983,7 @@ void mbCapObjColorPosSet(int id, float posX, float posY, float posZ)
     }
 }
 
+// Capsule animations store and apply a colored model's three rotation angles in degrees.
 void mbCapObjColorRotSet(int id, float rotX, float rotY, float rotZ)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5866,6 +5998,7 @@ void mbCapObjColorRotSet(int id, float rotX, float rotY, float rotZ)
     }
 }
 
+// Capsule animations store and apply a colored model's per-axis scale.
 void mbCapObjColorScaleSet(int id, float scaleX, float scaleY, float scaleZ)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5880,6 +6013,7 @@ void mbCapObjColorScaleSet(int id, float scaleX, float scaleY, float scaleZ)
     }
 }
 
+// Flight trails and capsule animations set a colored model's base position from a vector.
 void mbCapObjColorPosSetV(int id, HuVecF *pos)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5891,6 +6025,7 @@ void mbCapObjColorPosSetV(int id, HuVecF *pos)
     }
 }
 
+// Capsule animations set a colored model's stored rotation from a vector of degree angles.
 void mbCapObjColorRotSetV(int id, HuVecF *rot)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5902,6 +6037,7 @@ void mbCapObjColorRotSetV(int id, HuVecF *rot)
     }
 }
 
+// Capsule animations set a colored model's stored per-axis scale from a vector.
 void mbCapObjColorScaleSetV(int id, HuVecF *scale)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5913,6 +6049,7 @@ void mbCapObjColorScaleSetV(int id, HuVecF *scale)
     }
 }
 
+// Capsule animation callers read the colored model's stored base position; unknown IDs do nothing.
 void mbCapObjColorPosGet(int id, HuVecF *pos)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5924,6 +6061,7 @@ void mbCapObjColorPosGet(int id, HuVecF *pos)
     }
 }
 
+// Capsule animation callers read the stored rotation in degrees; unknown IDs leave rot unchanged.
 void mbCapObjColorRotGet(int id, HuVecF *rot)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5935,6 +6073,7 @@ void mbCapObjColorRotGet(int id, HuVecF *rot)
     }
 }
 
+// Capsule animation callers read the stored per-axis scale; unknown IDs leave scale unchanged.
 void mbCapObjColorScaleGet(int id, HuVecF *scale)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5946,6 +6085,7 @@ void mbCapObjColorScaleGet(int id, HuVecF *scale)
     }
 }
 
+// Colored model creation and capsule animations store and apply the requested render layer.
 void mbCapObjColorLayerSet(int id, u8 layer)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5958,6 +6098,7 @@ void mbCapObjColorLayerSet(int id, u8 layer)
     }
 }
 
+// Colored capsule callers read the last assigned render layer, or zero for an unknown model ID.
 u8 mbCapObjColorLayerGet(int id)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5970,6 +6111,7 @@ u8 mbCapObjColorLayerGet(int id)
     return obj->layer;
 }
 
+// Capsule animations enable supplied engine model or motion attribute bits on a colored model.
 void mbCapObjColorAttrSet(int id, u32 attr)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5983,6 +6125,7 @@ void mbCapObjColorAttrSet(int id, u32 attr)
     }
 }
 
+// Capsule animations clear supplied engine model or motion attribute bits on a colored model.
 void mbCapObjColorAttrReset(int id, u32 attr)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -5996,6 +6139,7 @@ void mbCapObjColorAttrReset(int id, u32 attr)
     }
 }
 
+// Capsule animations request colored model visibility for the next board object-manager update.
 void mbCapObjColorDispSet(int id, BOOL dispF)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -6007,6 +6151,7 @@ void mbCapObjColorDispSet(int id, BOOL dispF)
     }
 }
 
+// Capsule animations set colored model opacity from zero (transparent) to 255 (opaque).
 void mbCapObjColorAlphaSet(int id, u8 alpha)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -6018,6 +6163,7 @@ void mbCapObjColorAlphaSet(int id, u8 alpha)
     }
 }
 
+// Capsule animations replace a colored model's engine transformation matrix directly.
 void mbCapObjColorMtxSet(int id, Mtx *mtx)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -6029,6 +6175,7 @@ void mbCapObjColorMtxSet(int id, Mtx *mtx)
     }
 }
 
+// Capsule animation callers copy a colored model's current engine transformation matrix.
 void mbCapObjColorMtxGet(int id, Mtx *mtx)
 {
     CAPSULE_OBJ_COLOR *obj;
@@ -6040,6 +6187,7 @@ void mbCapObjColorMtxGet(int id, Mtx *mtx)
     }
 }
 
+// Creates ten hidden route-guide models when capsule destination selection starts.
 static void CapGuideCreate(void)
 {
     CAP_GUIDE_WORK *work;
@@ -6062,6 +6210,8 @@ static void CapGuideCreate(void)
     }
 }
 
+// Human destination selection calls this to place a guide toward a linked space.
+// Uses the first hidden guide and delays its animation by one object update.
 static void CapGuideRotYSet(int masuId, float rotY)
 {
     CAP_GUIDE_WORK *work = capsuleGuideOMObj->data;
@@ -6102,6 +6252,8 @@ static void CapGuideRotYSet(int masuId, float rotY)
     }
 }
 
+// Object-manager update grows or shrinks route guides and advances their pulse phase.
+// Releases all guide models after selection ends or the board exits.
 static void CapGuideOMExec(OMOBJ *obj)
 {
     CAP_GUIDE_WORK *work = obj->data;
@@ -6134,6 +6286,7 @@ static void CapGuideOMExec(OMOBJ *obj)
                     work->state = 1;
                 }
                 mbObjScaleSet(work->objId, work->scale, work->scale, work->scale);
+            // Growth falls through; the pulse scale is stored without a model update.
             case 1:
                 if ((work->rotY += 20) > 360) {
                     work->rotY -= 360;
@@ -6153,6 +6306,7 @@ static void CapGuideOMExec(OMOBJ *obj)
     }
 }
 
+// Requests route-guide shrink when human selection moves to another space.
 static void CapGuideGrowSet(void)
 {
     void *work = capsuleGuideOMObj->data;
@@ -6162,11 +6316,13 @@ static void CapGuideGrowSet(void)
     }
 }
 
+// Requests deferred guide deletion during destination-selection cleanup.
 static void CapGuideKill(void)
 {
     capsuleGuideOMObj = NULL;
 }
 
+// Creates 32 eligible-space markers and one animated current-space marker for selection.
 static void CapEffMasuOkCreate(void)
 {
     OMOBJ *obj;
@@ -6189,7 +6345,7 @@ static void CapEffMasuOkCreate(void)
         mbObjLayerSet(work->modelId, 5);
         work->masuId = 0;
         work->state = 0;
-        work->unk0C = 0;
+        work->unusedWord = 0;
         work->scale = 0.0f;
     }
     work->modelId = mbObjCreate(DATANUM(DATA_capsule, 37), NULL, TRUE);
@@ -6202,10 +6358,12 @@ static void CapEffMasuOkCreate(void)
     mbObjLayerSet(work->modelId, 5);
     work->masuId = 0;
     work->state = 0;
-    work->unk0C = 0;
+    work->unusedWord = 0;
     work->scale = 0.0f;
 }
 
+// Human selection assigns the eligible-space markers from its destination table.
+// The starting-space argument is unused.
 static void CapEffMasuOkAddAll(s16 unused, s16 *masuFlag)
 {
     OMOBJ *obj = capEffMasuOkOMObj;
@@ -6230,6 +6388,8 @@ static void CapEffMasuOkAddAll(s16 unused, s16 *masuFlag)
     }
 }
 
+// Object-manager update follows marked spaces and animates the current-space marker.
+// Releases the 33 models after selection ends or the board exits.
 static void CapEffMasuOkOMExec(OMOBJ *obj)
 {
     CAP_EFF_MASU_OK_WORK *work = obj->data;
@@ -6288,6 +6448,7 @@ static void CapEffMasuOkOMExec(OMOBJ *obj)
     }
 }
 
+// Human selection shows or hides eligible-space markers; the current marker is separate.
 static void CapEffMasuOkDispSet(BOOL dispF)
 {
     OMOBJ *obj = capEffMasuOkOMObj;
@@ -6303,21 +6464,24 @@ static void CapEffMasuOkDispSet(BOOL dispF)
     }
 }
 
+// Requests deferred marker deletion during destination-selection cleanup.
 static void CapEffMasuOkKill(void)
 {
     capEffMasuOkOMObj = NULL;
 }
 
+// Human selection places the current-space marker ten units above a valid destination.
+// Starts its growth animation from a nearly invisible scale.
 static void CapEffMasuOkPosSet(HuVecF *pos, int masuId)
 {
-    HuVecF pos2;
+    HuVecF markerPos;
     OMOBJ *obj = capEffMasuOkOMObj;
     CAP_EFF_MASU_OK_WORK *work = obj->data;
 
     work += 32;
-    pos2 = *pos;
-    pos2.y += 10.0f;
-    mbObjPosSetV(work->modelId, &pos2);
+    markerPos = *pos;
+    markerPos.y += 10.0f;
+    mbObjPosSetV(work->modelId, &markerPos);
     mbObjDispSet(work->modelId, TRUE);
     mbObjScaleSet(work->modelId, 0.001f, 0.001f, 0.001f);
     work->masuId = masuId;
@@ -6325,6 +6489,7 @@ static void CapEffMasuOkPosSet(HuVecF *pos, int masuId)
     work->scale = 0.0f;
 }
 
+// Starts the current-space marker shrinking when selection moves to another space.
 static void CapEffMasuOkNext(void)
 {
     OMOBJ *obj = capEffMasuOkOMObj;
@@ -6334,6 +6499,7 @@ static void CapEffMasuOkNext(void)
     work->state = 10;
 }
 
+// Capsule discard starts a removal effect with space for sixty-four animated particles.
 static void CapEffRemoveCreate(void)
 {
     OMOBJ *obj;
@@ -6362,6 +6528,8 @@ static void CapEffRemoveCreate(void)
     effect->blendMode = HU3D_PARTICLE_BLEND_NORMAL;
 }
 
+// Object-manager updates move removal particles until their sixteen-frame animation ends.
+// Board exit or a cleanup request releases the model, texture animation, and object.
 static void CapEffRemoveOMExec(OMOBJ *obj)
 {
     CAP_EFF_REMOVE_WORK *work = obj->data;
@@ -6387,7 +6555,7 @@ static void CapEffRemoveOMExec(OMOBJ *obj)
     model = &Hu3DData[work->modelId];
     effect = model->hookData;
     data = effect->data;
-    effect->unk23 = 0;
+    effect->unusedByte = 0;
     for (i = 0; i < effect->num; i++, data++) {
         if (data->scale <= 0.0f) {
             continue;
@@ -6399,22 +6567,24 @@ static void CapEffRemoveOMExec(OMOBJ *obj)
         if (data->rot.z >= 360.0f) {
             data->rot.z -= 360.0f;
         }
-        data->no = (int)data->animTime;
+        data->frameNo = (int)data->animTime;
         data->animTime += data->animSpeed;
-        if (data->no >= 16) {
-            data->no = 0;
-            data->time = 0;
+        if (data->frameNo >= 16) {
+            data->frameNo = 0;
+            data->phase = 0;
             data->scale = 0.0f;
             work->activeCount--;
         }
     }
 }
 
+// Capsule discard requests removal-effect cleanup on the next object-manager update.
 static void CapEffRemoveKill(void)
 {
     capEffRemoveOMObj = NULL;
 }
 
+// Capsule discard waits while the removal effect still has active particles.
 static BOOL CapEffRemoveCheck(void)
 {
     OMOBJ *obj = capEffRemoveOMObj;
@@ -6427,6 +6597,8 @@ static BOOL CapEffRemoveCheck(void)
     return work->activeCount;
 }
 
+// Removal bursts fill the first inactive particle slot, returning -1 when the pool is full.
+// The offset argument is unused here; the caller has already applied it to the position.
 static inline int CapEffRemoveAddData(HuVecF pos, HuVecF vel, float scale,
     float speed, float offset, float animSpeed, GXColor color)
 {
@@ -6450,7 +6622,7 @@ static inline int CapEffRemoveAddData(HuVecF pos, HuVecF vel, float scale,
     if (i >= effect->num) {
         return -1;
     }
-    data->time = data->work = 0;
+    data->phase = data->fadeFrame = 0;
     data->pos.x = pos.x;
     data->pos.y = pos.y;
     data->pos.z = pos.z;
@@ -6461,14 +6633,16 @@ static inline int CapEffRemoveAddData(HuVecF pos, HuVecF vel, float scale,
     data->scale = scale;
     data->color = color;
     data->rot.z = 0.0f;
-    data->no = 0;
-    data->time = 0;
+    data->frameNo = 0;
+    data->phase = 0;
     data->animTime = 0.0f;
     data->animSpeed = animSpeed;
     work->activeCount++;
     return i;
 }
 
+// The discard burst adds two equally spaced particles with opposite rotation speeds.
+// Returns the two slot results packed without a separate failure check.
 static int CapEffRemoveAdd(HuVecF pos, HuVecF vel, float scale,
     float speed, float offset, float animSpeed, GXColor color)
 {
@@ -6478,6 +6652,7 @@ static int CapEffRemoveAdd(HuVecF pos, HuVecF vel, float scale,
     int firstIndex;
     int secondIndex;
 
+    // Separation uses the swapped X/Z velocity components, without negating either one.
     dir.x = vel.z;
     dir.z = vel.x;
     dir.y = 0.0f;
@@ -6500,6 +6675,8 @@ static int CapEffRemoveAdd(HuVecF pos, HuVecF vel, float scale,
     return (firstIndex << 16) | secondIndex;
 }
 
+// Confirming capsule discard emits thirty-two particle pairs around the hidden item model.
+// Each pair gets a randomized radius, outward speed, size, tint, and animation speed.
 static void CapEffRemoveAddAll(HuVecF *pos)
 {
     HuVecF effectPos;
@@ -6538,6 +6715,7 @@ static void CapEffRemoveAddAll(HuVecF *pos)
     }
 }
 
+// Capsule-use cleanup clears the auxiliary removal-effect object reference.
 static void CapEffRemoveAddDestroy(void)
 {
     capEffRemoveAddOMObj = NULL;
@@ -6590,6 +6768,8 @@ static GXColor capsuleTrailColorTbl[4][2] = {
     },
 };
 
+// Human destination selection allocates three additive highlight textures with thirty-two slots
+// each.
 static void CapEffHiliteCreate(void)
 {
     OMOBJ *obj;
@@ -6614,7 +6794,7 @@ static void CapEffHiliteCreate(void)
         work->anim[i] = anim;
         work->modelId[i] = modelId = CapEffCreate(anim, 32);
         Hu3DModelLayerSet(modelId, 5);
-        work->modelNo = 0;
+        work->activeCount = 0;
         model = &Hu3DData[modelId];
         effect = model->hookData;
         effect->blendMode = HU3D_PARTICLE_BLEND_ADDCOL;
@@ -6623,6 +6803,8 @@ static void CapEffHiliteCreate(void)
     }
 }
 
+// Object-manager updates grow and fade destination highlights using their selected easing mode.
+// All three texture models share one active count and are released when selection ends.
 static void CapEffHiliteOMExec(OMOBJ *obj)
 {
     CAP_EFF_HILITE_WORK *work;
@@ -6648,7 +6830,7 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
         return;
     }
     for (modelNo = 0; modelNo < 3; modelNo++) {
-        if (work->modelNo <= 0) {
+        if (work->activeCount <= 0) {
             Hu3DModelAttrSet(work->modelId[modelNo], HU3D_ATTR_DISPOFF);
             continue;
         }
@@ -6656,19 +6838,19 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
         model = &Hu3DData[work->modelId[modelNo]];
         effect = model->hookData;
         data = effect->data;
-        effect->unk23 = 0;
+        effect->unusedByte = 0;
         for (i = 0; i < effect->num; i++, data++) {
             if (data->scale <= 0.0f) {
                 continue;
             }
-            switch (data->time) {
+            switch (data->phase) {
             case 0:
-                if (data->baseAlpha > 0.0f) {
-                    t = (float)(++data->work) / data->baseAlpha;
+                if (data->fadeInDuration > 0.0f) {
+                    t = (float)(++data->fadeFrame) / data->fadeInDuration;
                 } else {
                     t = 1.0f;
                 }
-                switch (data->mode) {
+                switch (data->easingMode) {
                 case 0:
                     (void)t;
                     break;
@@ -6686,18 +6868,18 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
                 if (t >= 1.0f) {
                     data->scale = data->vel.z;
                     data->color.a = (u8)data->speed;
-                    data->time++;
-                    data->work = 0;
+                    data->phase++;
+                    data->fadeFrame = 0;
                 }
                 break;
 
             case 1:
-                if (data->tpLvl > 0.0f) {
-                    t = (float)(++data->work) / data->tpLvl;
+                if (data->fadeOutDuration > 0.0f) {
+                    t = (float)(++data->fadeFrame) / data->fadeOutDuration;
                 } else {
                     t = 1.0f;
                 }
-                switch (data->mode) {
+                switch (data->easingMode) {
                 case 0:
                     (void)t;
                     break;
@@ -6714,7 +6896,7 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
                 data->color.a = (u8)(data->speed * (1.0f - t));
                 if (t >= 1.0f) {
                     data->scale = 0.0f;
-                    work->modelNo--;
+                    work->activeCount--;
                 }
                 break;
             }
@@ -6722,11 +6904,14 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
     }
 }
 
+// Selection cleanup requests highlight deletion on the next object-manager update.
 static void CapEffHiliteKill(void)
 {
     capEffHiliteOMObj = NULL;
 }
 
+// Destination selection adds a highlight with update-count fade durations and easing mode.
+// scale.x and scale.y are initial and final scale ratios; scale.z supplies its full size.
 static int CapEffHiliteAdd(HuVecF pos, HuVecF rot, HuVecF scale,
     int fadeIn, int fadeOut, int modelNo, int mode, GXColor color)
 {
@@ -6753,28 +6938,30 @@ static int CapEffHiliteAdd(HuVecF pos, HuVecF rot, HuVecF scale,
     if (i >= effect->num) {
         return MB_MODEL_NONE;
     }
-    data->time = data->work = 0;
+    data->phase = data->fadeFrame = 0;
     data->pos.x = pos.x;
     data->pos.y = pos.y;
     data->pos.z = pos.z;
     data->vel.x = scale.x;
     data->vel.y = scale.y;
     data->vel.z = scale.z;
-    data->baseAlpha = (float)fadeIn;
-    data->tpLvl = (float)fadeOut;
+    data->fadeInDuration = (float)fadeIn;
+    data->fadeOutDuration = (float)fadeOut;
     data->speed = (float)color.a;
     data->scale = scale.z;
     data->color = color;
     data->rot.x = rot.x;
     data->rot.y = rot.y;
     data->rot.z = rot.z;
-    data->no = 0;
-    data->time = 0;
-    data->mode = (s16)mode;
-    work->modelNo++;
+    data->frameNo = 0;
+    data->phase = 0;
+    data->easingMode = (s16)mode;
+    work->activeCount++;
     return i;
 }
 
+// Shell construction calculates positive lengths, storing the float result before returning it.
+// Nonpositive values pass through unchanged and leave result untouched.
 static inline float CapEffCrackSqrt(
     float value, volatile float *result)
 {
@@ -6794,6 +6981,8 @@ static inline float CapEffCrackSqrt(
     return value;
 }
 
+// Shell construction calculates a positive length and copies the stored float to output.
+// Nonpositive values are copied directly to output and leave result untouched.
 static inline void CapEffCrackSqrtStore(
     float value, volatile float *result, volatile float *output)
 {
@@ -6814,6 +7003,8 @@ static inline void CapEffCrackSqrtStore(
     }
 }
 
+// Throw setup builds a textured dome from a twenty-four-by-twenty-four grid of triangle pairs.
+// The shell remains idle until the landing burst starts its expansion and breakup.
 static void CapEffCrackCreate(void)
 {
     CAP_EFF_CRACK_DATA *data;
@@ -6926,6 +7117,7 @@ static void CapEffCrackCreate(void)
                             + (data->pos[l].z * data->pos[l].z),
                         &sqrtScaleResult) / 100.0f;
                     scaleTbl[l] = scale;
+                    // Clamp the circular rim before lifting each point onto the dome.
                     if (scaleTbl[l] > 1.0f) {
                         scale = 1.0f;
                         if (PSVECMag(&data->pos[l]) > 0.0f) {
@@ -6950,6 +7142,7 @@ static void CapEffCrackCreate(void)
                         + (data->vel.z * data->vel.z),
                     &sqrtVelocityResult, &sqrtVelocityValue);
                 yOfs = sqrtVelocityValue / 100;
+                // This second delay draw replaces the earlier sixteen-step delay.
                 data->delay = mbRandMod(CAPSULE_EFF_COLOR_RANGE) & 7;
                 if (PSVECMag(&data->vel) > 0.0f) {
                     PSVECNormalize(&data->vel, &data->accel);
@@ -6994,6 +7187,7 @@ static void CapEffCrackCreate(void)
     }
     GXEnd();
     work->dlSize = GXEndDisplayList();
+    // The size comparison has no effect; the display list is copied at its returned size.
     work->dlSize > 65536;
     dlDataHeap = model->mallocNo;
     dlSizeData = work->dlSize;
@@ -7005,6 +7199,8 @@ static void CapEffCrackCreate(void)
     HuMemDirectFree(dlBuf);
 }
 
+// Object-manager updates flatten, expand, raise, and disperse the landing burst's shell triangles.
+// Each triangle waits its own delay, then moves outward, spins, shrinks, and fades away.
 static void CapEffCrackOMExec(OMOBJ *obj)
 {
     CAP_EFF_CRACK_WORK *work;
@@ -7107,11 +7303,14 @@ static void CapEffCrackOMExec(OMOBJ *obj)
     }
 }
 
+// Throw cleanup requests shell-effect deletion on the next object-manager update.
 static void CapEffCrackKill(void)
 {
     capEffCrackOMObj = NULL;
 }
 
+// The capsule landing burst starts shell expansion at the supplied position and degree rotation.
+// Either missing vector defaults to zero; an absent shell object makes the request a no-op.
 static void CapEffCrackAdd(HuVecF *pos, HuVecF *rot)
 {
     OMOBJ *obj;
@@ -7142,6 +7341,8 @@ static void CapEffCrackAdd(HuVecF *pos, HuVecF *rot)
     Hu3DModelRotSet(work->modelId, obj->rot.x, obj->rot.y, obj->rot.z);
 }
 
+// The shell model's render hook rebuilds triangle vertices and draws them with additive blending.
+// Idle shells and shadow passes are skipped; inactive triangles collapse to zero-sized faces.
 static void CapEffCrackDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     CAP_EFF_CRACK_WORK *work;
@@ -7206,6 +7407,7 @@ static void CapEffCrackDraw(HU3D_MODEL *modelP, Mtx *mtx)
                     st++;
                 }
             } else {
+                // Rotating triangles use their full vertex offsets rather than the shrinking scale.
                 sinAngle = data->angle;
                 sinResult = mbSinDeg(sinAngle);
                 sinValue = sinResult;
@@ -7254,6 +7456,8 @@ static void CapEffCrackDraw(HU3D_MODEL *modelP, Mtx *mtx)
     GXCallDisplayList(work->dl, work->dlSize);
 }
 
+// Throw setup allocates a twelve-position flight history and two twelve-particle trail layers.
+// The capsuleNo argument is masked but otherwise unused; particles stay hidden until flight starts.
 static void CapEffTrailCreate(int capsuleNo)
 {
     OMOBJ *obj;
@@ -7295,6 +7499,8 @@ static void CapEffTrailCreate(int capsuleNo)
     obj->work[1] = 0;
 }
 
+// Object-manager updates record the capsule's flight position and redistribute its trail behind it.
+// Samples are evenly spaced over short histories and ten world units apart beyond 120 units.
 static void CapEffTrailOMExec(OMOBJ *obj)
 {
     int i;
@@ -7407,11 +7613,14 @@ static void CapEffTrailOMExec(OMOBJ *obj)
     obj->work[1] = pointNo;
 }
 
+// Throw cleanup requests flight-trail deletion on the next object-manager update.
 static void CapEffTrailKill(void)
 {
     capEffTrailOMObj = NULL;
 }
 
+// Flight start seeds the trail at one position and tints both layers to the capsule's color.
+// Each layer becomes smaller and more transparent toward the trail's tail.
 static void CapEffTrailAdd(HuVecF *pos, int capsuleNo)
 {
     OMOBJ *obj = capEffTrailOMObj;
@@ -7463,6 +7672,7 @@ static void CapEffTrailAdd(HuVecF *pos, int capsuleNo)
     obj->work[0] = 1;
 }
 
+// Flight animation supplies the position that the trail records on its next object update.
 static void CapEffTrailPosSet(HuVecF *pos)
 {
     OMOBJ *obj = capEffTrailOMObj;
@@ -7474,6 +7684,8 @@ static void CapEffTrailPosSet(HuVecF *pos)
     }
 }
 
+// Removal and destination-highlight setup allocate a textured quad pool and its indexed draw list.
+// Particle slots begin with zero scale so callers can activate them as their animations start.
 static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
 {
     CAP_EFFECT *effP;
@@ -7521,7 +7733,7 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
     effP->hookMdlP = NULL;
     effP->count = 0;
     effP->attr = CAP_EFF_ATTR_NONE;
-    effP->unk23 = 0;
+    effP->unusedByte = 0;
     effP->prevCount = 0;
     effP->mode = effP->time = 0;
     particleHeap = modelP->mallocNo;
@@ -7540,7 +7752,7 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
         effDataP->pos.z = 0.0f;
         effDataP->color.r = effDataP->color.g = effDataP->color.b =
             effDataP->color.a = 255;
-        effDataP->no = 0;
+        effDataP->frameNo = 0;
     }
     vertexHeap = modelP->mallocNo;
     vertexData = HuMemDirectMallocNum(HEAP_MODEL,
@@ -7609,6 +7821,8 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
     return modelId;
 }
 
+// The removal and highlight models' render hook builds textured quads from their particle slots.
+// Display flags select facing, rotation, depth tests, and full-texture or sixteen-frame atlas UVs.
 static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     CAP_EFFECT *effP;
@@ -7763,6 +7977,7 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 VECScale(&posTbl[1], &scaleVtx[1], effDataP->scale);
                 VECScale(&posTbl[2], &scaleVtx[2], effDataP->scale);
                 VECScale(&posTbl[3], &scaleVtx[3], effDataP->scale);
+                // This quad path takes radians, unlike the degree angles used for 3D highlights.
                 MTXRotRad(mtxRotZ, 'Z', effDataP->rot.z);
                 PSMTXConcat(mtxInv, mtxRotZ, mtxPos);
                 PSMTXMultVecArray(mtxPos, scaleVtx, finalVtx, 4);
@@ -7776,14 +7991,15 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
         st = effP->st;
         if (!(effP->dispAttr & CAP_EFF_DISPATTR_NOANIM)) {
             for (i = 0; i < effP->num; i++, effDataP++) {
-                row = effDataP->no & 3;
-                col = (effDataP->no >> 2) & 3;
+                row = effDataP->frameNo & 3;
+                col = (effDataP->frameNo >> 2) & 3;
                 for (j = 0; j < 4; j++, st++) {
                     st->x = (0.25f * row) + uvTbl[j].x;
                     st->y = (0.25f * col) + uvTbl[j].y;
                 }
             }
         } else {
+            // Nonanimated highlights use the entire texture instead of a quarter-width atlas cell.
             for (i = 0; i < effP->num; i++, effDataP++) {
                 for (j = 0; j < 4; j++, st++) {
                     st->x = 4 * uvTbl[j].x;
@@ -7821,21 +8037,23 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
-static float CapAngleSumWrap(float angle1, float angle2)
+// Human selection uses the signed heading difference to choose a route near the stick angle.
+// Each input is wrapped by at most one turn before the difference is wrapped to 180 degrees.
+static float CapAngleSumWrap(float targetAngle, float stickAngle)
 {
     float result;
 
-    if (angle1 >= 360.0f) {
-        angle1 -= 360.0f;
-    } else if (angle1 < 0.0f) {
-        angle1 += 360.0f;
+    if (targetAngle >= 360.0f) {
+        targetAngle -= 360.0f;
+    } else if (targetAngle < 0.0f) {
+        targetAngle += 360.0f;
     }
-    if (angle2 >= 360.0f) {
-        angle2 -= 360.0f;
-    } else if (angle2 < 0.0f) {
-        angle2 += 360.0f;
+    if (stickAngle >= 360.0f) {
+        stickAngle -= 360.0f;
+    } else if (stickAngle < 0.0f) {
+        stickAngle += 360.0f;
     }
-    result = angle1 - angle2;
+    result = targetAngle - stickAngle;
     if (result <= -180.0f) {
         result += 360.0f;
     } else if (result >= 180.0f) {
@@ -7844,26 +8062,32 @@ static float CapAngleSumWrap(float angle1, float angle2)
     return result;
 }
 
+// Converts a route heading through the current camera rotation for human stick selection.
 static float CapCameraXZAngleGet(float angle)
 {
     MBCAMERA *cameraP = mbCameraGet();
-    Mtx mtx;
-    HuVecF vec;
+    Mtx cameraRotation;
+    HuVecF heading;
 
-    mtxRot(mtx, cameraP->rot.x, cameraP->rot.y, cameraP->rot.z);
-    vec.x = HuSin(angle);
-    vec.y = 0.0f;
-    vec.z = HuCos(angle);
-    PSMTXMultVec(mtx, &vec, &vec);
-    return HuAtan(vec.x, vec.z);
+    mtxRot(cameraRotation, cameraP->rot.x, cameraP->rot.y, cameraP->rot.z);
+    heading.x = HuSin(angle);
+    heading.y = 0.0f;
+    heading.z = HuCos(angle);
+    PSMTXMultVec(cameraRotation, &heading, &heading);
+    return HuAtan(heading.x, heading.z);
 }
 
+// Computer capsule decisions attach a scripted left/right choice hook to the current board window.
 static void CapComChoiceSet(int choice)
 {
     capsuleComChoice = choice;
     mbWinTopComKeyHookSet(CapComKeyHook);
 }
 
+// The board window invokes this hook to queue the computer player's choice steps and A
+// confirmation.
+// Positive choices move right, negative choices move left, with the configured delay before each
+// key.
 static void CapComKeyHook(void)
 {
     s32 key[4];
@@ -7878,19 +8102,20 @@ static void CapComKeyHook(void)
     padNo = GwPlayer[playerNo].padNo;
     time = GWComKeyDelayGet();
     if (capsuleComChoice >= 0) {
-        keyValue = 2;
+        keyValue = PAD_BUTTON_RIGHT;
     } else {
-        keyValue = 1;
+        keyValue = PAD_BUTTON_LEFT;
     }
     key[padNo] = keyValue;
     for (i = 0; i < abs(capsuleComChoice); i++) {
         key[padNo] = keyValue;
         HuWinComKeyWait(key[0], key[1], key[2], key[3], time);
     }
-    key[padNo] = 256;
+    key[padNo] = PAD_BUTTON_A;
     HuWinComKeyWait(key[0], key[1], key[2], key[3], time);
 }
 
+// Throw-path setup solves smooth cubic coefficients for one axis, with zero end curvature.
 static inline void CalcThrowCameraParam(float *pos, float *paramOut, float *paramIn, int num)
 {
     int i;
@@ -7917,6 +8142,8 @@ static inline void CalcThrowCameraParam(float *pos, float *paramOut, float *para
     }
 }
 
+// A candidate throw path prepares the shared interpolation coefficients for all three axes.
+// Point spacing uses only X and Y distances, even when Z changes along the throw.
 static void CapThrowCameraSet(float *x, float *y, float *z, int num)
 {
     int i;
@@ -7937,6 +8164,7 @@ static void CapThrowCameraSet(float *x, float *y, float *z, int num)
     CalcThrowCameraParam(z, capsuleBezierZ, capsuleTime, num);
 }
 
+// Path search and flight playback evaluate the prepared throw curve at fraction t.
 static void CapThrowCameraCalc(float t, float *x, float *y, float *z,
     HuVecF *out, int num)
 {
@@ -8032,6 +8260,7 @@ static void CapThrowCameraCalc(float t, float *x, float *y, float *z,
     out->z = outZ;
 }
 
+// Board collision setup resolves its hidden board model to the engine model used for tests.
 static void CapColMdlIdGet(void)
 {
     int boardNo = MBBoardNoGet();
@@ -8041,6 +8270,8 @@ static void CapColMdlIdGet(void)
     }
 }
 
+// Throw-path search tests its segment against triangles in the hidden board collision model.
+// Plane crossings update out even when the final point lies outside the triangle.
 static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
 {
     HSF_FACE *faceP;
@@ -8216,6 +8447,8 @@ static HuVec2f charSizeTbl[14] = {
     { 150.0f, 125.0f },
 };
 
+// Throw-path search tests a segment against six triangular faces around each other player.
+// Hidden players are skipped; solo mode considers only player zero.
 static BOOL CapColExec(int playerNo, HuVecF *posA, HuVecF *posB, HuVecF *out)
 {
     HuVecF faceVtx[4];
