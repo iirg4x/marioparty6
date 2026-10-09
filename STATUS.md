@@ -11,8 +11,10 @@ Byte percentages were generated from a verified full-project retail build with `
 | Area | Code | Data |
 | --- | ---: | ---: |
 | Entire project | 29.13% | 48.82% |
-| Main DOL | 87.77% | 98.84% |
+| Main DOL | 87.80% | 98.84% |
 | REL modules | 16.69% | 17.12% |
+
+DOL source: `src/gssdk_lib/asrpho/common/blocks/undersam.c` now builds from source; `main.dol` matches retail byte for byte.
 
 TT Wars (`ttwarsdll`) selects all **50 functions** from **3 complete translation units**; its linked REL matches retail.
 
