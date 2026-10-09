@@ -1,11 +1,17 @@
+/* Creates and updates player score displays and the course record display. */
 #define _MATH_H
 #include "dolphin/math.h"
 #include "REL/m608dll.h"
 
+/* Team-mode flag used to conditionally hide the shared record panel. */
+#define M608_TEAM_MODE_FLAG 0x30002U
+
 s32 lbl_1_data_410[15] = {
-    DATANUM(DATA_mgconst, 0), DATANUM(DATA_mgconst, 1), DATANUM(DATA_mgconst, 2), DATANUM(DATA_mgconst, 3), DATANUM(DATA_mgconst, 4),
-    DATANUM(DATA_mgconst, 5), DATANUM(DATA_mgconst, 6), DATANUM(DATA_mgconst, 7), DATANUM(DATA_mgconst, 8), DATANUM(DATA_mgconst, 9),
-    DATANUM(DATA_mgconst, 10), DATANUM(DATA_mgconst, 11), DATANUM(DATA_mgconst, 12), DATANUM(DATA_mgconst, 13), DATANUM(DATA_mgconst, 69)
+    DATANUM(DATA_mgconst, 0),  DATANUM(DATA_mgconst, 1),  DATANUM(DATA_mgconst, 2),
+    DATANUM(DATA_mgconst, 3),  DATANUM(DATA_mgconst, 4),  DATANUM(DATA_mgconst, 5),
+    DATANUM(DATA_mgconst, 6),  DATANUM(DATA_mgconst, 7),  DATANUM(DATA_mgconst, 8),
+    DATANUM(DATA_mgconst, 9),  DATANUM(DATA_mgconst, 10), DATANUM(DATA_mgconst, 11),
+    DATANUM(DATA_mgconst, 12), DATANUM(DATA_mgconst, 13), DATANUM(DATA_mgconst, 69)
 };
 
 struct _struct_lbl_1_data_44C_0x14 lbl_1_data_44C[5] = {
@@ -18,111 +24,132 @@ struct _struct_lbl_1_data_44C_0x14 lbl_1_data_44C[5] = {
 
 struct _struct_lbl_1_bss_3DF0_0x18 lbl_1_bss_3DF0[5];
 
+/* Called during setup to create the four rider panels and shared course-record panel. */
 void fn_1_6150(void)
 {
-    s32 spriteDataIndex;
-    MGSCORE *temp_r3;
-    s16 temp_r3_2;
-    s16 var_r29;
-    s32 var_r31;
+    s32 recordSpriteDataIndex;
+    MGSCORE *scoreDisplay;
+    s16 spriteGroupId;
+    s16 scoreBoxId;
+    s32 panelIndex;
 
-    var_r31 = 0;
-    while (var_r31 < 5) {
-        if (var_r31 < 4) {
-            var_r29 = MgScoreBoxCreateChar(lbl_1_data_44C[var_r31].unk4, lbl_1_data_44C[var_r31].unk6, lbl_1_bss_3E80.characterNos[var_r31]);
-            lbl_1_bss_3DF0[var_r31].unk0 = var_r29;
+    panelIndex = 0;
+    while (panelIndex < 5) {
+        if (panelIndex < 4) {
+            scoreBoxId = MgScoreBoxCreateChar(lbl_1_data_44C[panelIndex].boxWidth,
+                                              lbl_1_data_44C[panelIndex].boxHeight,
+                                              lbl_1_bss_3E80.characterNos[panelIndex]);
+            lbl_1_bss_3DF0[panelIndex].scoreBoxId = scoreBoxId;
         } else {
-            var_r29 = MgScoreBoxCreate(lbl_1_data_44C[var_r31].unk4, lbl_1_data_44C[var_r31].unk6);
-            lbl_1_bss_3DF0[var_r31].unk0 = var_r29;
+            scoreBoxId = MgScoreBoxCreate(lbl_1_data_44C[panelIndex].boxWidth,
+                                          lbl_1_data_44C[panelIndex].boxHeight);
+            lbl_1_bss_3DF0[panelIndex].scoreBoxId = scoreBoxId;
         }
-        MgScoreBoxPosSet(var_r29, (f32) lbl_1_data_44C[var_r31].unk0, (f32) lbl_1_data_44C[var_r31].unk2);
-        MgScoreBoxColorSet(var_r29, lbl_1_data_44C[var_r31].unk8, lbl_1_data_44C[var_r31].unk9, lbl_1_data_44C[var_r31].unkA);
-        temp_r3 = MgScoreCreate(10158128, 10158128, 0);
-        lbl_1_bss_3DF0[var_r31].unk4 = temp_r3;
-        MgScoreUnitBankSet(temp_r3, 17);
-        MgScoreMaxDigitSet(temp_r3, 4);
-        MgScorePosSet(temp_r3, (f32) (lbl_1_data_44C[var_r31].unk0 - 12), (f32) lbl_1_data_44C[var_r31].unk2);
-        MgScoreColorSet(temp_r3, lbl_1_data_44C[var_r31].unk10, lbl_1_data_44C[var_r31].unk11, lbl_1_data_44C[var_r31].unk12);
-        if (var_r31 >= 4) {
-            spriteDataIndex = 14;
-            lbl_1_bss_3DF0[var_r31].unk8 = HuSprAnimRead(HuDataSelHeapReadNum(lbl_1_data_410[spriteDataIndex], 268435456, HEAP_MODEL));
-            temp_r3_2 = HuSprGrpCreate(2);
-            lbl_1_bss_3DF0[var_r31].unkC = temp_r3_2;
-            lbl_1_bss_3DF0[var_r31].unkE = HuSprCreate(lbl_1_bss_3DF0[var_r31].unk8, 10, 0);
-            HuSprGrpMemberSet(temp_r3_2, 0, lbl_1_bss_3DF0[var_r31].unkE);
-            HuSprGrpPosSet(temp_r3_2, (f32) (lbl_1_data_44C[var_r31].unk0 - 40), (f32) lbl_1_data_44C[var_r31].unk2);
+        MgScoreBoxPosSet(scoreBoxId, (f32) lbl_1_data_44C[panelIndex].screenX,
+                         (f32) lbl_1_data_44C[panelIndex].screenY);
+        MgScoreBoxColorSet(scoreBoxId, lbl_1_data_44C[panelIndex].boxRed,
+                           lbl_1_data_44C[panelIndex].boxGreen, lbl_1_data_44C[panelIndex].boxBlue);
+        scoreDisplay = MgScoreCreate(DATANUM(DATA_mgconst, 48), DATANUM(DATA_mgconst, 48), 0);
+        lbl_1_bss_3DF0[panelIndex].scoreDisplay = scoreDisplay;
+        MgScoreUnitBankSet(scoreDisplay, 17);
+        MgScoreMaxDigitSet(scoreDisplay, 4);
+        MgScorePosSet(scoreDisplay, (f32) (lbl_1_data_44C[panelIndex].screenX - 12),
+                      (f32) lbl_1_data_44C[panelIndex].screenY);
+        MgScoreColorSet(scoreDisplay, lbl_1_data_44C[panelIndex].digitRed,
+                        lbl_1_data_44C[panelIndex].digitGreen,
+                        lbl_1_data_44C[panelIndex].digitBlue);
+        if (panelIndex >= 4) {
+            recordSpriteDataIndex = 14;
+            lbl_1_bss_3DF0[panelIndex].recordSpriteAnimation = HuSprAnimRead(HuDataSelHeapReadNum(
+                lbl_1_data_410[recordSpriteDataIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+            spriteGroupId = HuSprGrpCreate(2);
+            lbl_1_bss_3DF0[panelIndex].recordSpriteGroup = spriteGroupId;
+            lbl_1_bss_3DF0[panelIndex].recordSpriteId =
+                HuSprCreate(lbl_1_bss_3DF0[panelIndex].recordSpriteAnimation, 10, 0);
+            HuSprGrpMemberSet(spriteGroupId, 0, lbl_1_bss_3DF0[panelIndex].recordSpriteId);
+            HuSprGrpPosSet(spriteGroupId, (f32) (lbl_1_data_44C[panelIndex].screenX - 40),
+                           (f32) lbl_1_data_44C[panelIndex].screenY);
         }
-        var_r31 += 1;
+        panelIndex += 1;
     }
     fn_1_6604();
 }
 
-void fn_1_6534(s16 scoreIndex, s16 value)
+/* Sets the selected rider or record-panel score display; setup initializes the record panel and
+ * gameplay updates rider scores. */
+void fn_1_6534(s16 scoreIndex, s16 scoreValue)
 {
-    MgScoreValueSet(lbl_1_bss_3DF0[scoreIndex].unk4, (s32) value);
+    MgScoreValueSet(lbl_1_bss_3DF0[scoreIndex].scoreDisplay, (s32) scoreValue);
 }
 
+/* Called when a rider's rolling turn begins to show the four player score panels. */
 void fn_1_6578(void)
 {
-    s32 var_r31;
+    s32 playerIndex;
 
-    var_r31 = 0;
-    while (var_r31 < 4) {
-        MgScoreBoxDispSet(lbl_1_bss_3DF0[var_r31].unk0, 1);
-        MgScoreDispOn(lbl_1_bss_3DF0[var_r31].unk4);
-        HuSprAttrReset(lbl_1_bss_3DF0[var_r31].unkC, 0, 4);
-        var_r31 += 1;
+    playerIndex = 0;
+    while (playerIndex < 4) {
+        MgScoreBoxDispSet(lbl_1_bss_3DF0[playerIndex].scoreBoxId, 1);
+        MgScoreDispOn(lbl_1_bss_3DF0[playerIndex].scoreDisplay);
+        /* Only panel 4 creates a sprite group; zero-initialized player IDs still reach this
+         * reset. */
+        HuSprAttrReset(lbl_1_bss_3DF0[playerIndex].recordSpriteGroup, 0, HUSPR_ATTR_DISPOFF);
+        playerIndex += 1;
     }
 }
 
+/* Called after panel creation to hide the four rider panels; in team mode, also hides the record
+ * panel. */
 void fn_1_6604(void)
 {
-    s32 var_r31;
+    s32 playerIndex;
 
-    var_r31 = 0;
-    while (var_r31 < 4) {
-        MgScoreBoxDispSet(lbl_1_bss_3DF0[var_r31].unk0, 0);
-        MgScoreDispOff(lbl_1_bss_3DF0[var_r31].unk4);
-        var_r31 += 1;
+    playerIndex = 0;
+    while (playerIndex < 4) {
+        MgScoreBoxDispSet(lbl_1_bss_3DF0[playerIndex].scoreBoxId, 0);
+        MgScoreDispOff(lbl_1_bss_3DF0[playerIndex].scoreDisplay);
+        playerIndex += 1;
     }
-    if (_CheckFlag(196610U) != 0) {
-        MgScoreBoxDispSet(lbl_1_bss_3DF0[4].unk0, 0);
-        MgScoreDispOff(lbl_1_bss_3DF0[4].unk4);
-        HuSprAttrSet(lbl_1_bss_3DF0[4].unkC, 0, 4);
+    if (_CheckFlag(M608_TEAM_MODE_FLAG) != 0) {
+        MgScoreBoxDispSet(lbl_1_bss_3DF0[4].scoreBoxId, 0);
+        MgScoreDispOff(lbl_1_bss_3DF0[4].scoreDisplay);
+        HuSprAttrSet(lbl_1_bss_3DF0[4].recordSpriteGroup, 0, HUSPR_ATTR_DISPOFF);
     }
 }
 
-void fn_1_66C0(OMOBJ *arg0)
+/* Called by the record-result process; pulses the new record and saves it at frame 150. */
+void fn_1_66C0(OMOBJ *recordObject)
 {
-    f32 var_f31;
-    u32 temp_r30;
+    f32 recordScale;
+    u32 elapsedFrames;
 
-    var_f31 = ((float *) arg0->work)[0];
-    temp_r30 = arg0->work[2];
-    if ((s32) temp_r30 >= 150) {
-        if ((u32) arg0->work[1] != 0) {
-            var_f31 += 0.02f;
-            if (var_f31 >= 1.2f) {
-                var_f31 = 1.2f;
-                arg0->work[1] = 0;
+    recordScale = ((float *) recordObject->work)[0];
+    elapsedFrames = recordObject->work[2];
+    if ((s32) elapsedFrames >= 150) {
+        if ((u32) recordObject->work[1] != 0) {
+            recordScale += 0.02f;
+            if (recordScale >= 1.2f) {
+                recordScale = 1.2f;
+                recordObject->work[1] = 0;
             }
         } else {
-            var_f31 -= 0.04f;
-            if (var_f31 <= 1.0f) {
-                var_f31 = 1.0f;
-                arg0->work[1] = 1;
+            recordScale -= 0.04f;
+            if (recordScale <= 1.0f) {
+                recordScale = 1.0f;
+                recordObject->work[1] = 1;
             }
         }
-        MgScoreDigitScaleSet(lbl_1_bss_3DF0[4].unk4, var_f31, var_f31);
-        HuSprScaleSet(lbl_1_bss_3DF0[4].unkC, 0, var_f31, var_f31);
-        if ((s32) temp_r30 == 150) {
+        MgScoreDigitScaleSet(lbl_1_bss_3DF0[4].scoreDisplay, recordScale, recordScale);
+        HuSprScaleSet(lbl_1_bss_3DF0[4].recordSpriteGroup, 0, recordScale, recordScale);
+        if ((s32) elapsedFrames == 150) {
+            /* The panel switches from its pulse to the saved record at this exact frame. */
             GWRecordSet(GW_RECORD_M608, ((s32) lbl_1_bss_3E80.record) * 90);
             {
                 s16 score = ((s32) lbl_1_bss_3E80.record) * 90;
-                MgScoreValueSet(lbl_1_bss_3DF0[4].unk4, score);
+                MgScoreValueSet(lbl_1_bss_3DF0[4].scoreDisplay, score);
             }
         }
     }
-    ((float *) arg0->work)[0] = var_f31;
-    arg0->work[2] = temp_r30 + 1;
+    ((float *) recordObject->work)[0] = recordScale;
+    recordObject->work[2] = elapsedFrames + 1;
 }
