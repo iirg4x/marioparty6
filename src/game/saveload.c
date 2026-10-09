@@ -1,3 +1,4 @@
+// Manages the memory-card save file, its three board-save boxes, and save-screen flow.
 #define _MATH_H
 #include "datanum/win.h"
 #include "game/audio.h"
@@ -17,6 +18,11 @@
 #define SAVE_BOX_COMMON_OFS 0
 #define SAVE_BOX_BOARD_SYSTEM_OFS (sizeof(GW_COMMON))
 #define SAVE_BOX_BOARD_PLAYER_OFS (SAVE_BOX_BOARD_SYSTEM_OFS+sizeof(GW_SYSTEM))
+#define SL_ERASE_FILL_BIT_PATTERN 0xFF
+#define SL_BANK_AWARD_TINT_RED 48
+#define SL_BANK_AWARD_TINT_GREEN 38
+#define SL_BANK_AWARD_TINT_BLUE 84
+#define SL_BANK_AWARD_BACKDROP_GREEN 39
 
 #define SL_CUR_SLOT_MESS (MESS_MPSYSTEM_CARD_SLOTA+curSlotNo)
 
@@ -94,6 +100,7 @@ BOOL saveExecF;
 u8 curBoxNo;
 s16 curSlotNo;
 
+// Resets the shared save window handle and the default message-window positions.
 void SLWinInit(void)
 {
     SLWinId = HUWIN_NONE;
@@ -101,6 +108,7 @@ void SLWinInit(void)
     topWinPosY = 50.0f;
 }
 
+// Called before save-file access; mounts the selected card and offers format for broken media.
 s32 SLFileOpen(char *fileName)
 {
     s32 result;
@@ -147,12 +155,13 @@ s32 SLFileOpen(char *fileName)
     return CARD_RESULT_READY;
 }
 
-s32 SLFileCreate(char *fileName, u32 size, void *addr)
+// Called by SLSave for a new file; creates it, writes an ERASE marker buffer, then save data.
+s32 SLFileCreate(char *fileName, u32 size, void *saveData)
 {
     s32 result;
-    u32 byteNotUsed;
-    u32 filesNotUsed;
-    void *eraseBuf;
+    u32 freeBytes;
+    u32 freeFileEntries;
+    void *erasedFileData;
     int winId;
     if(SaveEnableF == FALSE) {
         return CARD_RESULT_READY;
@@ -162,24 +171,26 @@ s32 SLFileCreate(char *fileName, u32 size, void *addr)
         return result;
     }
     result = HuCardSectorSizeGet(curSlotNo);
+    // Positive nonstandard sector sizes pass this negative-result-only check.
     if(result < 0 && result != SAVE_SECTOR_SIZE) {
         SLMessOut(SL_MESS_CARD_INVALID);
         return CARD_RESULT_FATAL_ERROR;
     }
-    result = HuCardFreeSpaceGet(curSlotNo, &byteNotUsed, &filesNotUsed);
-    if(filesNotUsed == 0 && size > byteNotUsed) {
+    result = HuCardFreeSpaceGet(curSlotNo, &freeBytes, &freeFileEntries);
+    if(freeFileEntries == 0 && size > freeBytes) {
         SLMessOut(SL_MESS_CARD_FULL);
         return CARD_RESULT_INSSPACE;
     }
-    if(filesNotUsed == 0) {
+    if(freeFileEntries == 0) {
         SLMessOut(SL_MESS_CARD_NOENT);
         return CARD_RESULT_INSSPACE;
     }
-    if(size > byteNotUsed) {
+    if(size > freeBytes) {
         SLMessOut(SL_MESS_CARD_INSSPACE);
         return CARD_RESULT_INSSPACE;
     }
-    winId = SLWinOpen(MESS_MPSYSTEM_CARD_CREATEFILE, SL_CUR_SLOT_MESS, SL_MESSID_NONE, bottomWinPosY);
+    winId =
+        SLWinOpen(MESS_MPSYSTEM_CARD_CREATEFILE, SL_CUR_SLOT_MESS, SL_MESSID_NONE, bottomWinPosY);
     HuSRDisableF = TRUE;
     result = HuCardCreate(curSlotNo, fileName, size, &curFileInfo);
     if(result < 0) {
@@ -194,14 +205,16 @@ s32 SLFileCreate(char *fileName, u32 size, void *addr)
         SLMessOut(SL_MESS_FATAL_ERROR);
         return CARD_RESULT_FATAL_ERROR;
     }
-    eraseBuf = HuMemDirectMalloc(HEAP_HEAP, size);
-    memset(eraseBuf, size, 0);
-    memcpy(eraseBuf, SLEraseStr, sizeof(SLEraseStr));
-    result = HuCardWriteIdle(&curFileInfo, eraseBuf, size, 0);
+    erasedFileData = HuMemDirectMalloc(HEAP_HEAP, size);
+    // memset has a zero byte count, so only the six-byte ERASE marker is initialized before the
+    // full size is written to the card; the remaining bytes are uninitialized.
+    memset(erasedFileData, size, 0);
+    memcpy(erasedFileData, SLEraseStr, sizeof(SLEraseStr));
+    result = HuCardWriteIdle(&curFileInfo, erasedFileData, size, 0);
     if(result == CARD_RESULT_READY) {
-        result = HuCardWriteIdle(&curFileInfo, addr, size, 0);
+        result = HuCardWriteIdle(&curFileInfo, saveData, size, 0);
     }
-    HuMemDirectFree(eraseBuf);
+    HuMemDirectFree(erasedFileData);
     if(result < 0) {
         SLWinClose(winId);
         HuSRDisableF = FALSE;
@@ -224,7 +237,8 @@ s32 SLFileCreate(char *fileName, u32 size, void *addr)
     }
 }
 
-s32 SLFileWrite(s32 length, void *addr)
+// Called by SLSave for an existing file; shows the writing message and updates card metadata.
+s32 SLFileWrite(s32 length, void *saveData)
 {
     int winId;
     s32 result;
@@ -242,7 +256,7 @@ s32 SLFileWrite(s32 length, void *addr)
     HuWinMesWait(winId);
     SLSerialNoGet();
     HuSRDisableF = TRUE;
-    result = HuCardWriteIdle(&curFileInfo, addr, length, 0);
+    result = HuCardWriteIdle(&curFileInfo, saveData, length, 0);
     if(result == CARD_RESULT_READY) {
         result = SLStatSet(FALSE);
     }
@@ -252,14 +266,15 @@ s32 SLFileWrite(s32 length, void *addr)
     return result;
 }
 
-s32 SLFileRead(s32 length, void *addr)
+// Called by SLLoad after opening the file; reads bytes and displays card or I/O errors.
+s32 SLFileRead(s32 length, void *readBuffer)
 {
     s32 result;
     if(SaveEnableF == FALSE) {
         return CARD_RESULT_READY;
     }
     SLSerialNoGet();
-    result = HuCardRead(&curFileInfo, addr, length, 0);
+    result = HuCardRead(&curFileInfo, readBuffer, length, 0);
     if(result == CARD_RESULT_NOCARD) {
         SLMessOut(SL_MESS_NOCARD);
     } else if(result < 0) {
@@ -268,6 +283,7 @@ s32 SLFileRead(s32 length, void *addr)
     return result;
 }
 
+// Called after save-file reads or writes to close the open file unless saving is disabled.
 s32 SLFileClose(void)
 {
     s32 result;
@@ -278,26 +294,31 @@ s32 SLFileClose(void)
     return result;
 }
 
+// Selects memory-card slot A or B for subsequent save operations.
 void SLCurSlotNoSet(s16 slotNo)
 {
     curSlotNo = slotNo;
 }
 
+// Returns the selected memory-card slot.
 s16 SLCurSlotNoGet(void)
 {
     return curSlotNo;
 }
 
+// Selects one of the three board-save boxes.
 void SLCurBoxNoSet(s16 boxNo)
 {
     curBoxNo = boxNo;
 }
 
+// Returns the selected board-save box.
 s16 SLCurBoxNoGet(void)
 {
     return curBoxNo;
 }
 
+// Enables or disables saving; disabling also clears the common save-enable flag.
 void SLSaveFlagSet(BOOL saveFlag)
 {
     if(saveFlag == FALSE) {
@@ -306,50 +327,58 @@ void SLSaveFlagSet(BOOL saveFlag)
     SaveEnableF = saveFlag;
 }
 
+// Returns whether save operations are enabled.
 BOOL SLSaveFlagGet(void)
 {
     return SaveEnableF;
 }
 
+// Marks both the selected box and its backup as empty with the save-format tag.
 void SLSaveEmptySet(s16 slotNo, s16 boxNo)
 {
     memcpy(&saveBuf[slotNo][SLBoxDataOffsetGet(boxNo)], "EMPT", 4);
     memcpy(&saveBuf[slotNo][SLBoxDataOffsetGet(boxNo+SAVE_BOXNO_BACKUP)], "EMPT", 4);
 }
 
+// Builds card-save metadata; when eraseF is true, first fills the entire slot buffer with the erase
+// pattern.
 void SLSaveDataSlotMake(s16 slotNo, BOOL eraseF, OSTime *saveTime)
 {
-    u8 *buf = &saveBuf[slotNo][0];
-    ANIMDATA *anim;
-    u16 checkSum;
+    u8 *slotBuffer = &saveBuf[slotNo][0];
+    ANIMDATA *bannerAnimation;
+    u16 checksum;
     if(eraseF) {
-        memset(buf, 0xFF, SAVE_BUF_SIZE);
+        memset(slotBuffer, SL_ERASE_FILL_BIT_PATTERN, SAVE_BUF_SIZE);
     }
-    memcpy(buf, &commentTbl[0][0], CARD_COMMENT_SIZE/2);
-    memcpy(buf+SAVE_COMMENT_DATE_OFS, &commentTbl[1][0], CARD_COMMENT_SIZE/2);
-    anim = HuSprAnimDataRead(WIN_ANM_save_banner);
-    memcpy(buf+SAVE_BANNER_OFS, anim->bmp->data, CARD_BANNER_WIDTH*CARD_BANNER_HEIGHT);
-    memcpy(buf+SAVE_BANNER_TLUT_OFS, anim->bmp->palData, 512);
+    memcpy(slotBuffer, &commentTbl[0][0], CARD_COMMENT_SIZE/2);
+    memcpy(slotBuffer+SAVE_COMMENT_DATE_OFS, &commentTbl[1][0], CARD_COMMENT_SIZE/2);
+    bannerAnimation = HuSprAnimDataRead(WIN_ANM_save_banner);
+    memcpy(slotBuffer + SAVE_BANNER_OFS, bannerAnimation->bmp->data,
+           CARD_BANNER_WIDTH * CARD_BANNER_HEIGHT);
+    memcpy(slotBuffer+SAVE_BANNER_TLUT_OFS, bannerAnimation->bmp->palData, 512);
     SLSaveDataInfoSet(slotNo, saveTime);
-    checkSum = SLCheckSumSlotGet(slotNo, 0, SAVE_ICONBANNER_SIZE);
-    saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS] = checkSum >> 8;
-    saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS+1] = checkSum & 0xFF;
+    checksum = SLCheckSumSlotGet(slotNo, 0, SAVE_ICONBANNER_SIZE);
+    saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS] = checksum >> 8;
+    saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS+1] = checksum & 0xFF;
 }
 
+// Called after card format to rebuild metadata for the currently selected slot.
 void SLSaveDataMake(BOOL eraseF, OSTime *saveTime)
 {
     SLSaveDataSlotMake(curSlotNo, eraseF, saveTime);
 }
 
+// Writes the save date and a randomly selected icon, then refreshes the icon/banner checksum.
 void SLSaveDataInfoSet(s16 slotNo, OSTime *saveTime)
 {
     OSCalendarTime calendarTime;
     s16 digit;
     u16 year;
-    ANIMDATA *anim;
-    u16 checkSum;
+    ANIMDATA *iconAnimation;
+    u16 checksum;
     OSTicksToCalendarTime(*saveTime, &calendarTime);
     digit = (calendarTime.mon+1)/10;
+    // Calendar months are zero-based; the saved comment uses a human-readable month number.
     saveBuf[slotNo][SAVE_COMMENT_DATE_OFS] = digit+'0';
     digit = (calendarTime.mon+1)%10;
     saveBuf[slotNo][SAVE_COMMENT_DATE_OFS+1] = digit+'0';
@@ -368,46 +397,55 @@ void SLSaveDataInfoSet(s16 slotNo, OSTime *saveTime)
     saveBuf[slotNo][SAVE_COMMENT_DATE_OFS+8] = digit+'0';
     year -= digit*10;
     saveBuf[slotNo][SAVE_COMMENT_DATE_OFS+9] = year+'0';
-    anim = HuSprAnimDataRead(WIN_ANM_save_icon1+frandmod(4));
-    memcpy(&saveBuf[slotNo][SAVE_ICON_OFS], anim->bmp->data, CARD_ICON_WIDTH*CARD_ICON_HEIGHT*4);
-    memcpy(&saveBuf[slotNo][SAVE_ICON_TLUT_OFS], anim->bmp->palData, 512);
-    HuSprAnimKill(anim);
-    checkSum = SLCheckSumGet(0, SAVE_ICONBANNER_SIZE);
-    saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS] = checkSum >> 8;
-    saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS+1] = checkSum & 0xFF;
+    iconAnimation = HuSprAnimDataRead(WIN_ANM_save_icon1+frandmod(4));
+    memcpy(&saveBuf[slotNo][SAVE_ICON_OFS], iconAnimation->bmp->data,
+           CARD_ICON_WIDTH * CARD_ICON_HEIGHT * 4);
+    memcpy(&saveBuf[slotNo][SAVE_ICON_TLUT_OFS], iconAnimation->bmp->palData, 512);
+    HuSprAnimKill(iconAnimation);
+    checksum = SLCheckSumGet(0, SAVE_ICONBANNER_SIZE);
+    saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS] = checksum >> 8;
+    saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS+1] = checksum & 0xFF;
 }
 
+// Before saving a box, stamps common state with the current time and "SAVE", copies it, and updates
+// the save date.
 void SLCommonSet(void)
 {
-    u32 boxOfs = boxDataOfs[curBoxNo];
+    u32 boxDataOffset = boxDataOfs[curBoxNo];
     OSTime time = OSGetTime();
     GW_COMMON commonBackup;
-    GW_COMMON *backupP;
+    GW_COMMON *commonSnapshot;
     GwCommon.time = time;
     memcpy(&GwCommon.magic[0], "SAVE", 4);
-    memcpy(&saveBuf[curSlotNo][boxOfs+SAVE_BOX_COMMON_OFS], &GwCommon, sizeof(GW_COMMON));
+    memcpy(&saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_COMMON_OFS], &GwCommon, sizeof(GW_COMMON));
     SLSaveDataInfoSet(curSlotNo, &time);
     commonBackup = GwCommon;
-    backupP = &commonBackup;
-    memcpy(&SLGwCommonBackup, backupP, sizeof(GW_COMMON));
+    commonSnapshot = &commonBackup;
+    memcpy(&SLGwCommonBackup, commonSnapshot, sizeof(GW_COMMON));
 }
 
-void SLCommonSaveCopy(GW_COMMON *commonP, s16 slotNo, s16 boxNo)
+// Copies a common-state snapshot into an arbitrary slot and box in the save buffer.
+void SLCommonSaveCopy(GW_COMMON *commonData, s16 slotNo, s16 boxNo)
 {
-    u32 boxOfs = boxDataOfs[boxNo];
-    memcpy(&saveBuf[slotNo][boxOfs+SAVE_BOX_COMMON_OFS], commonP, sizeof(GW_COMMON));
+    u32 boxDataOffset = boxDataOfs[boxNo];
+    memcpy(&saveBuf[slotNo][boxDataOffset+SAVE_BOX_COMMON_OFS], commonData, sizeof(GW_COMMON));
 }
 
+// Called by board save flows to copy system and all player state into the selected box.
 void SLBoardSave(void)
 {
-    u32 boxOfs = boxDataOfs[curBoxNo];
+    u32 boxDataOffset = boxDataOfs[curBoxNo];
     s16 i;
-    memcpy(&saveBuf[curSlotNo][boxOfs+SAVE_BOX_BOARD_SYSTEM_OFS], &GwSystem, sizeof(GW_SYSTEM));
+    memcpy(&saveBuf[curSlotNo][boxDataOffset + SAVE_BOX_BOARD_SYSTEM_OFS], &GwSystem,
+           sizeof(GW_SYSTEM));
     for(i=0; i<GW_PLAYER_MAX; i++) {
-        memcpy(&saveBuf[curSlotNo][boxOfs+SAVE_BOX_BOARD_PLAYER_OFS+(i*sizeof(GW_PLAYER))], &GwPlayer[i], sizeof(GW_PLAYER));
+        memcpy(&saveBuf[curSlotNo]
+                       [boxDataOffset + SAVE_BOX_BOARD_PLAYER_OFS + (i * sizeof(GW_PLAYER))],
+               &GwPlayer[i], sizeof(GW_PLAYER));
     }
 }
 
+// Called by board and mode save flows to write all boxes, handling card errors and retries.
 s32 SLSave(void)
 {
     s32 result;
@@ -422,7 +460,8 @@ s32 SLSave(void)
             SLMessOut(SL_MESS_SERIAL_INVALID);
             goto savefail;
         }
-        SLCurWinId = SLWinOpen(MESS_MPSYSTEM_MES_SAVE_SAVE, SL_CUR_SLOT_MESS, SL_MESSID_NONE, topWinPosY);
+        SLCurWinId =
+            SLWinOpen(MESS_MPSYSTEM_MES_SAVE_SAVE, SL_CUR_SLOT_MESS, SL_MESSID_NONE, topWinPosY);
         result = SLFileCreate(SLSaveFileName, SAVE_BUF_SIZE, &saveBuf[curSlotNo][0]);
         SLWinClose(SLCurWinId);
         SLCurWinId = HUWIN_NONE;
@@ -448,7 +487,8 @@ s32 SLSave(void)
             SLMessOut(SL_MESS_SERIAL_INVALID);
             goto savefail;
         }
-        SLCurWinId = SLWinOpen(MESS_MPSYSTEM_MES_SAVE_SAVE, SL_CUR_SLOT_MESS, SL_MESSID_NONE, topWinPosY);
+        SLCurWinId =
+            SLWinOpen(MESS_MPSYSTEM_MES_SAVE_SAVE, SL_CUR_SLOT_MESS, SL_MESSID_NONE, topWinPosY);
         result = SLFileWrite(SAVE_BUF_SIZE, &saveBuf[curSlotNo][0]);
         SLWinClose(SLCurWinId);
         SLCurWinId = HUWIN_NONE;
@@ -499,6 +539,8 @@ s32 SLSave(void)
     return FALSE;
 }
 
+// Reads the file, then compares a checksum of bytes [0, SAVE_BOX_SIZE) with the u16 at offset
+// SAVE_BOX_SIZE; discards the result.
 s32 SLLoad(void)
 {
     s32 result = SLFileOpen(SLSaveFileName);
@@ -506,39 +548,47 @@ s32 SLLoad(void)
         result = SLFileRead(SAVE_BUF_SIZE, &saveBuf[curSlotNo][0]);
         SLFileClose();
         if(result >= 0) {
-            u16 *checkSumBuf = ((u16 *)&saveBuf[curSlotNo][SAVE_BOX_SIZE]);
-            u16 checkSum = SLCheckSumGet(0, SAVE_BOX_SIZE);
-            *checkSumBuf == checkSum;
+            u16 *storedChecksum = ((u16 *)&saveBuf[curSlotNo][SAVE_BOX_SIZE]);
+            u16 calculatedChecksum = SLCheckSumGet(0, SAVE_BOX_SIZE);
+            // This comparison has no effect; the routine still returns FALSE below.
+            *storedChecksum == calculatedChecksum;
         }
     }
     HuCardUnMount(curSlotNo);
     return FALSE;
 }
 
+// Called after selecting a loaded box; restores common state and its save-change snapshot.
 void SLCommonLoad(void)
 {
-    u32 boxOfs = boxDataOfs[curBoxNo];
+    u32 boxDataOffset = boxDataOfs[curBoxNo];
     GW_COMMON commonBackup;
-    GW_COMMON *backupP;
-    memcpy(&GwCommon, &saveBuf[curSlotNo][boxOfs+SAVE_BOX_COMMON_OFS], sizeof(GW_COMMON));
+    GW_COMMON *commonSnapshot;
+    memcpy(&GwCommon, &saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_COMMON_OFS], sizeof(GW_COMMON));
     commonBackup = GwCommon;
-    backupP = &commonBackup;
-    memcpy(&SLGwCommonBackup, backupP, sizeof(GW_COMMON));
+    commonSnapshot = &commonBackup;
+    memcpy(&SLGwCommonBackup, commonSnapshot, sizeof(GW_COMMON));
 }
 
-void SLCommonLoadCopy(GW_COMMON *commonP, s16 slotNo, s16 boxNo)
+// Copies common state from an arbitrary save-buffer slot and box to the caller's structure.
+void SLCommonLoadCopy(GW_COMMON *commonData, s16 slotNo, s16 boxNo)
 {
-    u32 boxOfs = boxDataOfs[boxNo];
-    memcpy(commonP, &saveBuf[slotNo][boxOfs+SAVE_BOX_COMMON_OFS], sizeof(GW_COMMON));
+    u32 boxDataOffset = boxDataOfs[boxNo];
+    memcpy(commonData, &saveBuf[slotNo][boxDataOffset+SAVE_BOX_COMMON_OFS], sizeof(GW_COMMON));
 }
 
+// Called when resuming a board; restores system/player state and player-selection settings.
 void SLBoardLoad(void)
 {
-    u32 boxOfs = boxDataOfs[curBoxNo];
+    u32 boxDataOffset = boxDataOfs[curBoxNo];
     s16 i;
-    memcpy(&GwSystem, &saveBuf[curSlotNo][boxOfs+SAVE_BOX_BOARD_SYSTEM_OFS], sizeof(GW_SYSTEM));
+    memcpy(&GwSystem, &saveBuf[curSlotNo][boxDataOffset + SAVE_BOX_BOARD_SYSTEM_OFS],
+           sizeof(GW_SYSTEM));
     for(i=0; i<GW_PLAYER_MAX; i++) {
-        memcpy(&GwPlayer[i], &saveBuf[curSlotNo][boxOfs+SAVE_BOX_BOARD_PLAYER_OFS+(i*sizeof(GW_PLAYER))], sizeof(GW_PLAYER));
+        memcpy(&GwPlayer[i],
+               &saveBuf[curSlotNo]
+                       [boxDataOffset + SAVE_BOX_BOARD_PLAYER_OFS + (i * sizeof(GW_PLAYER))],
+               sizeof(GW_PLAYER));
         GwPlayerConf[i].charNo = GwPlayer[i].charNo;
         GwPlayerConf[i].padNo = GwPlayer[i].padNo;
         GwPlayerConf[i].comDif = GwPlayer[i].comDif;
@@ -547,11 +597,13 @@ void SLBoardLoad(void)
     }
 }
 
+// Reads the selected card's serial number for later replacement-card detection.
 s32 SLSerialNoGet(void)
 {
     return CARDGetSerialNo(curSlotNo, &SLSerialNo[curSlotNo]);
 }
 
+// Checked during save access; accepts an unset serial or failed read, otherwise detects card swaps.
 BOOL SLSerialNoCheck(void)
 {
     u64 serialNo;
@@ -570,52 +622,58 @@ BOOL SLSerialNoCheck(void)
     }
 }
 
+// Used before accepting a save box; compares its stored trailing checksum with its data bytes.
 BOOL SLCheckSumBoxSlotCheck(s16 slotNo, s16 boxNo)
 {
-    u32 boxOfs = boxDataOfs[boxNo];
-    u16 *checkSumBuf = (u16 *)&saveBuf[slotNo][boxOfs+SAVE_BOX_SIZE-2];
-    u16 checkSum = SLCheckSumSlotGet(slotNo, boxOfs, SAVE_BOX_SIZE-2);
-    if(*checkSumBuf == checkSum) {
+    u32 boxDataOffset = boxDataOfs[boxNo];
+    u16 *storedChecksum = (u16 *)&saveBuf[slotNo][boxDataOffset+SAVE_BOX_SIZE-2];
+    u16 calculatedChecksum = SLCheckSumSlotGet(slotNo, boxDataOffset, SAVE_BOX_SIZE-2);
+    if(*storedChecksum == calculatedChecksum) {
         return TRUE;
     } else {
         return FALSE;
     }
 }
 
+// Checks the currently selected box in the currently selected card slot.
 BOOL SLCheckSumCheck(void)
 {
     return SLCheckSumBoxSlotCheck(curSlotNo, curBoxNo);
 }
 
-u16 SLCheckSumSlotGet(s16 slotNo, u32 ofs, u32 size)
+// Returns the 16-bit complement of the byte sum over a range in one card-slot buffer.
+u16 SLCheckSumSlotGet(s16 slotNo, u32 offset, u32 byteCount)
 {
-    u32 value;
+    u32 byteSum;
     u32 i;
-    for(i=value=0; i<size; i++) {
-        value = value+saveBuf[slotNo][ofs+i];
+    for(i=byteSum=0; i<byteCount; i++) {
+        byteSum = byteSum+saveBuf[slotNo][offset+i];
     }
-    value = ~value;
-    (void)value;
-    (void)value;
-    (void)value;
+    byteSum = ~byteSum;
+    (void)byteSum;
+    (void)byteSum;
+    (void)byteSum;
     (void)i;
     (void)i;
-    return ((u16)value) & 0xFFFF;
+    return ((u16)byteSum) & 0xFFFF;
 }
 
-u16 SLCheckSumGet(u32 ofs, u32 size)
+// Calculates a checksum over the selected card-slot buffer.
+u16 SLCheckSumGet(u32 offset, u32 byteCount)
 {
-    return SLCheckSumSlotGet(curSlotNo, ofs, size);
+    return SLCheckSumSlotGet(curSlotNo, offset, byteCount);
 }
 
+// Stores the selected box's checksum in its final two bytes, most-significant byte first.
 void SLCheckSumBoxSet(void)
 {
-    u32 boxOfs = boxDataOfs[curBoxNo];
-    u16 checkSum = SLCheckSumGet(boxOfs, SAVE_BOX_SIZE-2);
-    saveBuf[curSlotNo][boxOfs+SAVE_BOX_SIZE-2] = (checkSum >> 8) & 0xFF;
-    saveBuf[curSlotNo][boxOfs+SAVE_BOX_SIZE-1] = checkSum & 0xFF;
+    u32 boxDataOffset = boxDataOfs[curBoxNo];
+    u16 checksum = SLCheckSumGet(boxDataOffset, SAVE_BOX_SIZE-2);
+    saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_SIZE-2] = (checksum >> 8) & 0xFF;
+    saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_SIZE-1] = checksum & 0xFF;
 }
 
+// Updates all three primary box checksums, then restores the previously selected box.
 void SLCheckSumBoxAllSet(void)
 {
     s16 oldBoxNo = curBoxNo;
@@ -625,31 +683,39 @@ void SLCheckSumBoxAllSet(void)
     curBoxNo = oldBoxNo;
 }
 
+// Copies all primary boxes into the corresponding backup-box region.
 void SLSaveBackup(void)
 {
-    memcpy(&saveBuf[curSlotNo][SAVE_BOXBACKUP_OFS(0)], &saveBuf[curSlotNo][SAVE_BOX_OFS(0)], SAVE_BOX_SIZE*SAVE_BOX_MAX);
+    memcpy(&saveBuf[curSlotNo][SAVE_BOXBACKUP_OFS(0)], &saveBuf[curSlotNo][SAVE_BOX_OFS(0)],
+           SAVE_BOX_SIZE * SAVE_BOX_MAX);
 }
 
+// Replaces one primary box with its backup copy in the specified card-slot buffer.
 void SLBoxBackupSlotLoad(s16 slotNo, s16 boxNo)
 {
-    memcpy(&saveBuf[slotNo][boxDataOfs[boxNo]], &saveBuf[slotNo][boxDataOfs[boxNo+SAVE_BOXNO_BACKUP]], SAVE_BOX_SIZE);
+    memcpy(&saveBuf[slotNo][boxDataOfs[boxNo]],
+           &saveBuf[slotNo][boxDataOfs[boxNo + SAVE_BOXNO_BACKUP]], SAVE_BOX_SIZE);
 }
 
+// Restores a backup into the selected card slot for the requested box.
 void SLBoxBackupLoad(s16 boxNo)
 {
     SLBoxBackupSlotLoad(curSlotNo, boxNo);
 }
 
+// Returns the byte offset of a primary or backup box in the save-file buffer.
 u32 SLBoxDataOffsetGet(s16 boxNo)
 {
     return boxDataOfs[boxNo];
 }
 
+// Configures card-file comment/icon addresses and banner/icon formats and animation, restoring the
+// prior reset-suppression flag.
 s32 SLStatSet(BOOL errorOutF)
 {
     CARDStat stat;
     s32 fileNo = curFileInfo.fileNo;
-    s32 savedSR;
+    s32 previousResetDisableF;
     s32 result = CARDGetStatus(curSlotNo, fileNo, &stat);
     if(result == CARD_RESULT_NOCARD) {
         if(errorOutF) {
@@ -662,7 +728,7 @@ s32 SLStatSet(BOOL errorOutF)
         }
         return CARD_RESULT_FATAL_ERROR;
     }
-    savedSR = HuSRDisableF;
+    previousResetDisableF = HuSRDisableF;
     HuSRDisableF = TRUE;
     CARDSetCommentAddress(&stat, 0);
     CARDSetIconAddress(&stat, 64);
@@ -678,7 +744,7 @@ s32 SLStatSet(BOOL errorOutF)
     CARDSetIconSpeed(&stat, 4, CARD_STAT_SPEED_END);
     CARDSetIconAnim(&stat, CARD_STAT_ANIM_BOUNCE);
     result = CARDSetStatus(curSlotNo, fileNo, &stat);
-    HuSRDisableF = savedSR;
+    HuSRDisableF = previousResetDisableF;
     if(result == CARD_RESULT_NOCARD) {
         if(errorOutF) {
             SLMessOut(SL_MESS_NOCARD);
@@ -693,6 +759,7 @@ s32 SLStatSet(BOOL errorOutF)
     return result;
 }
 
+// Called by file open/create; mounts curSlotNo and validates sector size (slotNo is unused).
 s32 SLCardMount(s16 slotNo)
 {
     s32 result;
@@ -740,6 +807,7 @@ s32 SLCardMount(s16 slotNo)
     }
 }
 
+// Called after a format prompt; formats curSlotNo and initializes save data (slotNo is unused).
 s32 SLFormat(s16 slotNo)
 {
     s16 result;
@@ -748,7 +816,8 @@ s32 SLFormat(s16 slotNo)
         UnMountCnt = 0;
         return CARD_RESULT_READY;
     } else {
-        HUWINID winId = SLWinOpen(MESS_MPSYSTEM_CARD_FORMAT_WARN, SL_CUR_SLOT_MESS, SL_MESSID_NONE, bottomWinPosY);
+        HUWINID winId = SLWinOpen(MESS_MPSYSTEM_CARD_FORMAT_WARN, SL_CUR_SLOT_MESS, SL_MESSID_NONE,
+                                  bottomWinPosY);
         HuPrcSleep(30);
         (void)winId;
         (void)winId;
@@ -788,11 +857,14 @@ s32 SLFormat(s16 slotNo)
     (void)result;
 }
 
+// Registers a window owned by the caller so save messages reuse it.
 void SLWinIdSet(HUWINID winId)
 {
     SLWinId = winId;
 }
 
+// Opens or reuses a message window, installs optional insert strings, and waits for the message to
+// finish.
 static HUWINID SLWinOpen(s32 mesNum, s32 insertMesNum1, s32 insertMesNum2, s16 posY)
 {
     HUWINID winId;
@@ -824,6 +896,7 @@ static HUWINID SLWinOpen(s32 mesNum, s32 insertMesNum1, s32 insertMesNum2, s16 p
     return winId;
 }
 
+// Closes a temporary warning window but leaves a caller-owned save window open.
 static void SLWinClose(HUWINID winId)
 {
     if(SLWinId == winId) {
@@ -836,14 +909,16 @@ static void SLWinClose(HUWINID winId)
     HuWinWarningKill(winId);
 }
 
+// Displays card/save messages, waits for A on the reinsert prompt, and returns choices for prompts
+// that offer one.
 s16 SLMessOut(s16 messId)
 {
-    u32 mess;
+    u32 messageId;
     HUWINID winId;
     s16 choiceNo = -1;
-    u32 insertMes = 0;
-    BOOL choiceF = FALSE;
-    HUWIN *winP;
+    u32 insertedMessageId = 0;
+    BOOL hasChoicePrompt = FALSE;
+    HUWIN *window;
     if(SLWinId == HUWIN_NONE) {
         HuWinInit(1);
     }
@@ -852,76 +927,76 @@ s16 SLMessOut(s16 messId)
     switch(messId) {
         case SL_MESS_NOCARD:
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
-            mess = MESS_MPSYSTEM_CARD_NOCARD;
+            insertedMessageId = SL_CUR_SLOT_MESS;
+            messageId = MESS_MPSYSTEM_CARD_NOCARD;
             break;
 
         case SL_MESS_FATAL_ERROR:
-            mess = MESS_MPSYSTEM_CARD_FATAL_ERROR;
+            messageId = MESS_MPSYSTEM_CARD_FATAL_ERROR;
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
+            insertedMessageId = SL_CUR_SLOT_MESS;
             break;
 
         case SL_MESS_CARD_NOENT:
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
-            mess = MESS_MPSYSTEM_CARD_NOENT;
+            insertedMessageId = SL_CUR_SLOT_MESS;
+            messageId = MESS_MPSYSTEM_CARD_NOENT;
             break;
 
         case SL_MESS_CARD_INSSPACE:
-            mess = MESS_MPSYSTEM_CARD_INSSPACE;
+            messageId = MESS_MPSYSTEM_CARD_INSSPACE;
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
+            insertedMessageId = SL_CUR_SLOT_MESS;
             break;
 
         case SL_MESS_CARD_FULL:
-            mess = MESS_MPSYSTEM_CARD_FULL;
+            messageId = MESS_MPSYSTEM_CARD_FULL;
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
+            insertedMessageId = SL_CUR_SLOT_MESS;
             break;
 
         case SL_MESS_FORMAT_CHOICE:
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
-            mess = MESS_MPSYSTEM_CARD_FORMAT_CHOICE;
-            choiceF = TRUE;
+            insertedMessageId = SL_CUR_SLOT_MESS;
+            messageId = MESS_MPSYSTEM_CARD_FORMAT_CHOICE;
+            hasChoicePrompt = TRUE;
             break;
 
         case SL_MESS_FORMAT_ERROR:
-            mess = MESS_MPSYSTEM_CARD_FORMAT_ERROR;
+            messageId = MESS_MPSYSTEM_CARD_FORMAT_ERROR;
             break;
 
         case SL_MESS_WRONGDEVICE:
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
-            mess = MESS_MPSYSTEM_CARD_WRONGDEVICE;
+            insertedMessageId = SL_CUR_SLOT_MESS;
+            messageId = MESS_MPSYSTEM_CARD_WRONGDEVICE;
             break;
 
         case SL_MESS_CARD_INVALID:
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
-            mess = MESS_MPSYSTEM_CARD_INVALID;
+            insertedMessageId = SL_CUR_SLOT_MESS;
+            messageId = MESS_MPSYSTEM_CARD_INVALID;
             break;
 
         case SL_MESS_SERIAL_INVALID:
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
-            mess = MESS_MPSYSTEM_CARD_SERIAL_INVALID;
+            insertedMessageId = SL_CUR_SLOT_MESS;
+            messageId = MESS_MPSYSTEM_CARD_SERIAL_INVALID;
             break;
 
         case SL_MESS_NOSAVE_CHOICE:
-            mess = MESS_MPSYSTEM_NOSAVE_CHOICE;
-            choiceF = TRUE;
+            messageId = MESS_MPSYSTEM_NOSAVE_CHOICE;
+            hasChoicePrompt = TRUE;
             break;
 
         case SL_MESS_CARD_REINSERT:
             HuWinInsertMesSizeGet(SL_CUR_SLOT_MESS, 0);
-            insertMes = SL_CUR_SLOT_MESS;
-            mess = MESS_MPSYSTEM_CARD_REINSERT;
+            insertedMessageId = SL_CUR_SLOT_MESS;
+            messageId = MESS_MPSYSTEM_CARD_REINSERT;
             break;
 
         case SL_MESS_CARD_FORMAT_UNMOUNT:
-            mess = MESS_MPSYSTEM_CARD_FORMAT_UNMOUNT;
+            messageId = MESS_MPSYSTEM_CARD_FORMAT_UNMOUNT;
             break;
     }
     if(SLWinId == HUWIN_NONE) {
@@ -932,16 +1007,16 @@ s16 SLMessOut(s16 messId)
     } else {
         winId = SLWinId;
     }
-    winP = &winData[winId];
-    winP->padMask = HUWIN_PLAYER_1;
-    if(insertMes) {
-        HuWinInsertMesSet(winId, insertMes, 0);
+    window = &winData[winId];
+    window->padMask = HUWIN_PLAYER_1;
+    if(insertedMessageId) {
+        HuWinInsertMesSet(winId, insertedMessageId, 0);
     }
     HuWinAttrSet(winId, HUWIN_ATTR_NOCANCEL);
     HuWinWarningOpen(winId);
-    HuWinMesSet(winId, mess);
+    HuWinMesSet(winId, messageId);
     HuWinMesWait(winId);
-    if(choiceF) {
+    if(hasChoicePrompt) {
         if(messId == SL_MESS_FORMAT_CHOICE) {
             HuWinInsertMesSet(winId, SL_CUR_SLOT_MESS, 0);
             HuWinMesSet(winId, MESS_MPSYSTEM_CARD_FORMAT);
@@ -953,7 +1028,7 @@ s16 SLMessOut(s16 messId)
         while(!(HuPadBtnDown[0] & PAD_BUTTON_A)) {
             HuPrcVSleep();
         }
-        HuAudFXPlay(1);
+        HuAudFXPlay(MSM_SE_CMN_02);
     }
     if(SLWinId == HUWIN_NONE) {
         HuWinWarningClose(winId);
@@ -962,6 +1037,8 @@ s16 SLMessOut(s16 messId)
     return choiceNo;
 }
 
+// At the per-turn save point, saves under a wipe when enabled and permitted, forcing
+// GwCommon.saveEnableF true in the saved state.
 void SLSaveBoardTurnExec(void)
 {
     Hu3DAllKill();
@@ -989,10 +1066,12 @@ void SLSaveBoardTurnExec(void)
     WipeWait();
 }
 
+// At board end, saves when enabled; presents and clears any bank-star award first, and stores
+// saveEnableF false in common state.
 void SLSaveBoardEndExec(void)
 {
-    s16 sprId;
-    s16 sprId2;
+    s16 foregroundSpriteId;
+    s16 backgroundSpriteId;
     Hu3DAllKill();
     HuSprClose();
     HuSprInit();
@@ -1003,10 +1082,10 @@ void SLSaveBoardEndExec(void)
     }
     HuPrcVSleep();
     if(GwCommon.bankStarAward == 0) {
-        sprId = espEntry(WIN_ANM_52, 5010, 0);
-        espPosSet(sprId, 288.0f, 240.0f);
-        espScaleSet(sprId, 10, 10);
-        espColorSet(sprId, 0, 0, 0);
+        foregroundSpriteId = espEntry(WIN_ANM_52, 5010, 0);
+        espPosSet(foregroundSpriteId, 288.0f, 240.0f);
+        espScaleSet(foregroundSpriteId, 10, 10);
+        espColorSet(foregroundSpriteId, 0, 0, 0);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_PREV, 1);
         WipeWait();
         bottomWinPosY = 190.0f;
@@ -1021,16 +1100,18 @@ void SLSaveBoardEndExec(void)
         }
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_PREV, 1);
         WipeWait();
-        espKill(sprId);
+        espKill(foregroundSpriteId);
     } else {
-        sprId = espEntry(WIN_ANM_52, 5010, 0);
-        espPosSet(sprId, 288.0f, 240.0f);
-        espScaleSet(sprId, 10, 10);
-        espColorSet(sprId, 0x30, 0x26, 0x54);
-        sprId2 = espEntry(WIN_ANM_save_bg, 5000, 0);
-        espPosSet(sprId2, 288.0f, 209.0f);
-        espAttrReset(sprId2, HUSPR_ATTR_DISPOFF);
-        Hu3DBGColorSet(0x30, 0x27, 0x54);
+        foregroundSpriteId = espEntry(WIN_ANM_52, 5010, 0);
+        espPosSet(foregroundSpriteId, 288.0f, 240.0f);
+        espScaleSet(foregroundSpriteId, 10, 10);
+        espColorSet(foregroundSpriteId, SL_BANK_AWARD_TINT_RED, SL_BANK_AWARD_TINT_GREEN,
+                    SL_BANK_AWARD_TINT_BLUE);
+        backgroundSpriteId = espEntry(WIN_ANM_save_bg, 5000, 0);
+        espPosSet(backgroundSpriteId, 288.0f, 209.0f);
+        espAttrReset(backgroundSpriteId, HUSPR_ATTR_DISPOFF);
+        Hu3DBGColorSet(SL_BANK_AWARD_TINT_RED, SL_BANK_AWARD_BACKDROP_GREEN,
+                       SL_BANK_AWARD_TINT_BLUE);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_PREV, 20);
         WipeWait();
         SLBankAwardExec(GwCommon.bankStarAward);
@@ -1045,11 +1126,13 @@ void SLSaveBoardEndExec(void)
         }
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 20);
         WipeWait();
-        espKill(sprId2);
-        espKill(sprId);
+        espKill(backgroundSpriteId);
+        espKill(foregroundSpriteId);
     }
 }
 
+// Displays up to 9,999 bank stars in a result window, waits for the message to finish, then closes
+// the window.
 static HUWINID SLBankAwardExec(s16 award)
 {
     HUWINID winId = HUWIN_NONE;
@@ -1061,7 +1144,8 @@ static HUWINID SLBankAwardExec(s16 award)
     sprintf(bankAwardMes, "%d", award);
     HuWinInsertMesSizeGet((s32)bankAwardMes, 0);
     HuWinMesMaxSizeGet(1, &size, MESS_MPSYSTEM_MES_BANK_AWARD);
-    winId = HuWinExCreateFrame(-10000.0f, 480.0f - size.y - 16.0f - 40.0f, size.x, size.y - 16.0f, -1, 0);
+    winId = HuWinExCreateFrame(-10000.0f, 480.0f - size.y - 16.0f - 40.0f, size.x, size.y - 16.0f,
+                               -1, 0);
     HuWinInsertMesSet(winId, (s32)bankAwardMes, 0);
     HuWinExOpen(winId);
     HuWinMesSet(winId, MESS_MPSYSTEM_MES_BANK_AWARD);
@@ -1071,10 +1155,12 @@ static HUWINID SLBankAwardExec(s16 award)
     return winId;
 }
 
-void SLSaveModeExec(s16 sdModeF)
+// Saves changed common state from options/bank overlays, clearing any displayed bank-star award
+// before saving; unusedModeFlag is ignored.
+void SLSaveModeExec(s16 unusedModeFlag)
 {
-    s16 sprId;
-    s16 sprId2;
+    s16 foregroundSpriteId;
+    s16 backgroundSpriteId;
     HuWinComKeyReset();
     if(!SaveEnableF) {
         return;
@@ -1084,10 +1170,10 @@ void SLSaveModeExec(s16 sdModeF)
     }
     HuPrcVSleep();
     if(GwCommon.bankStarAward == 0) {
-        sprId = espEntry(WIN_ANM_52, 5010, 0);
-        espPosSet(sprId, 288.0f, 240.0f);
-        espScaleSet(sprId, 10, 10);
-        espColorSet(sprId, 0, 0, 0);
+        foregroundSpriteId = espEntry(WIN_ANM_52, 5010, 0);
+        espPosSet(foregroundSpriteId, 288.0f, 240.0f);
+        espScaleSet(foregroundSpriteId, 10, 10);
+        espColorSet(foregroundSpriteId, 0, 0, 0);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_PREV, 1);
         WipeWait();
         bottomWinPosY = 190.0f;
@@ -1100,16 +1186,18 @@ void SLSaveModeExec(s16 sdModeF)
         }
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_PREV, 1);
         WipeWait();
-        espKill(sprId);
+        espKill(foregroundSpriteId);
     } else {
-        sprId = espEntry(WIN_ANM_52, 5010, 0);
-        espPosSet(sprId, 288.0f, 240.0f);
-        espScaleSet(sprId, 10, 10);
-        espColorSet(sprId, 0x30, 0x26, 0x54);
-        sprId2 = espEntry(WIN_ANM_save_bg, 5000, 0);
-        espPosSet(sprId2, 288.0f, 209.0f);
-        espAttrReset(sprId2, HUSPR_ATTR_DISPOFF);
-        Hu3DBGColorSet(0x30, 0x27, 0x54);
+        foregroundSpriteId = espEntry(WIN_ANM_52, 5010, 0);
+        espPosSet(foregroundSpriteId, 288.0f, 240.0f);
+        espScaleSet(foregroundSpriteId, 10, 10);
+        espColorSet(foregroundSpriteId, SL_BANK_AWARD_TINT_RED, SL_BANK_AWARD_TINT_GREEN,
+                    SL_BANK_AWARD_TINT_BLUE);
+        backgroundSpriteId = espEntry(WIN_ANM_save_bg, 5000, 0);
+        espPosSet(backgroundSpriteId, 288.0f, 209.0f);
+        espAttrReset(backgroundSpriteId, HUSPR_ATTR_DISPOFF);
+        Hu3DBGColorSet(SL_BANK_AWARD_TINT_RED, SL_BANK_AWARD_BACKDROP_GREEN,
+                       SL_BANK_AWARD_TINT_BLUE);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_PREV, 20);
         WipeWait();
         SLBankAwardExec(GwCommon.bankStarAward);
@@ -1122,22 +1210,24 @@ void SLSaveModeExec(s16 sdModeF)
         }
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 20);
         WipeWait();
-        espKill(sprId2);
-        espKill(sprId);
+        espKill(backgroundSpriteId);
+        espKill(foregroundSpriteId);
     }
 }
 
+// Compares common state with both time fields zeroed, restores GwCommon.time, and leaves
+// SLGwCommonBackup.time zero.
 s32 SLSaveCheck(void)
 {
     OSTime time = GwCommon.time;
     s32 result;
     GW_COMMON commonBackup;
-    GW_COMMON *backupP;
+    GW_COMMON *commonSnapshot;
     GwCommon.time = 0;
     SLGwCommonBackup.time = 0;
     commonBackup = SLGwCommonBackup;
-    backupP = &commonBackup;
-    result = memcmp(&GwCommon, backupP, sizeof(GW_COMMON));
+    commonSnapshot = &commonBackup;
+    result = memcmp(&GwCommon, commonSnapshot, sizeof(GW_COMMON));
     GwCommon.time = time;
     return result;
 }
