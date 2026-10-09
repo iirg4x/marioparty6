@@ -1,5 +1,4 @@
-/* Message Checker REL: browses message directories and displays each entry. */
-/* Pad input changes the directory, entry, or language shown in the message windows. */
+/* Message Checker REL browser for message directories and entries. */
 #include "dolphin.h"
 #include "game/gamework.h"
 #include "game/object.h"
@@ -9,6 +8,9 @@
 #include "game/wipe.h"
 #include "messdir_enum.h"
 
+#define MESSAGE_WINDOW_DIMENSION_MASK 0xFFF0
+#define MESSAGE_KEY_WAIT_BIT_PATTERN 0xFF
+
 typedef void (*VoidFunc)(void);
 
 extern const VoidFunc _ctors[];
@@ -16,38 +18,38 @@ extern const VoidFunc _dtors[];
 
 static void fn_1_110(void);
 static void fn_1_188(void);
-static void fn_1_828(u32 messNum, HuVec2f *size);
+static void fn_1_828(u32 packedMessageId, HuVec2f *messageSize);
 
 /* Object manager passed to the browser child task when the overlay starts. */
 static OMOBJMAN *objman;
 
 void ObjectSetup(void);
 
-/* REL startup entry: runs registered constructors before setting up the checker. */
+/* REL loader entry: runs registered constructors, then starts the checker via ObjectSetup. */
 int _prolog(void)
 {
-    const VoidFunc *ctors = _ctors;
+    const VoidFunc *constructorEntry = _ctors;
 
-    while (*ctors != 0) {
-        (**ctors)();
-        ctors++;
+    while (*constructorEntry != 0) {
+        (**constructorEntry)();
+        constructorEntry++;
     }
     ObjectSetup();
     return 0;
 }
 
-/* REL shutdown entry: runs registered destructors as the overlay unloads. */
+/* REL loader entry: runs registered destructors when the checker overlay unloads. */
 void _epilog(void)
 {
-    const VoidFunc *dtors = _dtors;
+    const VoidFunc *destructorEntry = _dtors;
 
-    while (*dtors != 0) {
-        (**dtors)();
-        dtors++;
+    while (*destructorEntry != 0) {
+        (**destructorEntry)();
+        destructorEntry++;
     }
 }
 
-/* Called by _prolog after constructors to initialize windows and start the browser task. */
+/* Called by _prolog after constructors; initializes windows and starts the checker child task. */
 void ObjectSetup(void)
 {
     OSReport("******* Message Checker *********\n");
@@ -56,87 +58,31 @@ void ObjectSetup(void)
     HuPrcChildCreate(fn_1_110, 1000, 12288, 0, objman);
 }
 
-/* Mutable message-directory names in display order; '_' becomes '=' and '.' truncates lookup names. */
+/* Message-directory lookup names in display order; fn_1_188 changes '_' to '=' and truncates at
+ * '.'. */
 char *lbl_1_data_494[] = {
-    "001_chara_name",
-    "002_sys_guide",
-    "003_map_name",
-    "004_tag_name",
-    "005_mgpack_name",
-    "006_mg_name",
-    "007_staff_name",
-    "008_sbank_item",
-    "009_mbook_page",
-    "010_file_select",
-    "012_all_main_menu",
-    "013_opening",
-    "014_ending",
-    "020_party_setting",
-    "021_party_results",
-    "030_single_setting",
-    "031_single_result",
-    "040_mgm_main_menu",
-    "041_mgm_free",
-    "042_mgm_katinuki",
-    "043_mgm_tournament",
-    "044_mgm_decathlon",
-    "045_mgm_renshou",
-    "046_mgm_bingo",
-    "060_sbank_main_menu",
-    "061_option_single",
-    "062_option_sound",
-    "070_mic_setting",
-    "071_micquiz",
-    "072_micquiz_i",
-    "073_micquiz_q",
-    "074_micquiz_tutorial",
-    "075_micquiz_moriage",
-    "076_quiz_chara",
-    "077_micquiz_intro",
-    "079_quiz_lv",
-    "090_micgo",
-    "094_micgosuport",
-    "200_Board_ope",
-    "201_Board_star",
-    "204_Board_pause",
-    "206_Board_gate",
-    "208_Board_tutorial",
-    "209_Board_single",
-    "210_Board_opening",
-    "211_Board_snpc",
-    "215_Board_blast5",
-    "220_Board_w01",
-    "221_Board_w02",
-    "222_Board_w03",
-    "223_Board_w04",
-    "224_Board_w05",
-    "225_Board_w06",
-    "230_Capsule_Ex01",
-    "231_Capsule_Ex02",
-    "234_Capsule_Ex99",
-    "235_Capsule_Ex98",
-    "241_ShopEvent",
-    "242_CapsuleMasu",
-    "243_TeresaMasu",
-    "244_MiracleMasu",
-    "245_KettouMasu",
-    "246_DonkeyMasu",
-    "247_KoopaMasu",
-    "248_mgc_battle",
-    "500_mg_inst",
-    "598_mg_inst_sys",
-    "600_option_mess",
-    "647_mess",
-    "665_mic_min",
-    "677_message",
-    "679_mg_mess",
-    "LANGUAGE",
-    "mic_retyping",
-    "saf_test",
-    NULL,
+    "001_chara_name", "002_sys_guide", "003_map_name", "004_tag_name",
+    "005_mgpack_name", "006_mg_name", "007_staff_name", "008_sbank_item",
+    "009_mbook_page", "010_file_select", "012_all_main_menu", "013_opening",
+    "014_ending", "020_party_setting", "021_party_results", "030_single_setting",
+    "031_single_result", "040_mgm_main_menu", "041_mgm_free", "042_mgm_katinuki",
+    "043_mgm_tournament", "044_mgm_decathlon", "045_mgm_renshou", "046_mgm_bingo",
+    "060_sbank_main_menu", "061_option_single", "062_option_sound", "070_mic_setting",
+    "071_micquiz", "072_micquiz_i", "073_micquiz_q", "074_micquiz_tutorial",
+    "075_micquiz_moriage", "076_quiz_chara", "077_micquiz_intro", "079_quiz_lv",
+    "090_micgo", "094_micgosuport", "200_Board_ope", "201_Board_star",
+    "204_Board_pause", "206_Board_gate", "208_Board_tutorial", "209_Board_single",
+    "210_Board_opening", "211_Board_snpc", "215_Board_blast5", "220_Board_w01",
+    "221_Board_w02", "222_Board_w03", "223_Board_w04", "224_Board_w05",
+    "225_Board_w06", "230_Capsule_Ex01", "231_Capsule_Ex02", "234_Capsule_Ex99",
+    "235_Capsule_Ex98", "241_ShopEvent", "242_CapsuleMasu", "243_TeresaMasu",
+    "244_MiracleMasu", "245_KettouMasu", "246_DonkeyMasu", "247_KoopaMasu",
+    "248_mgc_battle", "500_mg_inst", "598_mg_inst_sys", "600_option_mess",
+    "647_mess", "665_mic_min", "677_message", "679_mg_mess",
+    "LANGUAGE", "mic_retyping", "saf_test", NULL,
 };
 
-/* Message IDs used by the language label window, indexed by GwLanguage. */
+/* Language label message IDs, indexed by the current GwLanguage value. */
 u32 lbl_1_data_5C4[] = {
     MESSNUM(MESS_LANGUAGE, 1),
     MESSNUM(MESS_LANGUAGE, 1),
@@ -146,7 +92,8 @@ u32 lbl_1_data_5C4[] = {
     MESSNUM(MESS_LANGUAGE, 13),
 };
 
-/* Child task started by ObjectSetup: shows the browser between wipes, then returns the REL. */
+/* Child task started by ObjectSetup: opens the checker after a wipe, then returns this REL after
+ * the browser exits. */
 static void fn_1_110(void)
 {
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 30);
@@ -168,187 +115,214 @@ static void fn_1_110(void)
     }
 }
 
-/* Called by the child after the opening wipe; displays messages and handles pad input for language, navigation, and exit. */
+/* Called by fn_1_110 after the opening wipe; displays directory entries and handles language,
+ * navigation, and exit input. */
 static void fn_1_188(void)
 {
-    char messNoText[8];
-    HuVec2f size;
-    char *name;
-    s16 messNo;
-    s16 dirNo;
-    HUWINID messWin;
-    s16 key;
-    HUWINID langWin;
-    HUWINID titleWin;
-    u32 messNum;
-    HUWIN *messWinData;
-    HUWINID dirWin;
-    s16 dimension;
-    s16 nextMessNo;
-    BOOL previousDir;
-    s16 messMax;
-    BOOL hasControl;
+    char entryNumberText[8];
+    HuVec2f messageWindowSize;
+    char *textCursor;
+    s16 messageIndex;
+    s16 directoryIndex;
+    HUWINID messageWin;
+    s16 pressedButtons;
+    HUWINID languageWin;
+    HUWINID entryNumberWin;
+    u32 packedMessageId;
+    HUWIN *messageWinData;
+    HUWINID directoryWin;
+    s16 storedDimension;
+    s16 firstMessageIndex;
+    BOOL revisitPreviousDirectory;
+    s16 entryCount;
+    BOOL messageHasKeyWait;
 
-    for (messNo = 0; lbl_1_data_494[messNo]; messNo++) {
-        name = lbl_1_data_494[messNo];
-        while (*name != '\0') {
-            if (*name == '_') {
-                *name = '=';
+    for (messageIndex = 0; lbl_1_data_494[messageIndex]; messageIndex++) {
+        textCursor = lbl_1_data_494[messageIndex];
+        while (*textCursor != '\0') {
+            if (*textCursor == '_') {
+                *textCursor = '=';
             }
-            if (*name == '.') {
-                *name = '\0';
+            if (*textCursor == '.') {
+                *textCursor = '\0';
             }
-            name++;
+            textCursor++;
         }
     }
 
-    titleWin = HuWinCreate(478.0f, 32.0f, 82, 42, 0);
-    HuWinAttrSet(titleWin, HUWIN_ATTR_ALIGN_CENTER);
-    HuWinMesSpeedSet(titleWin, 0);
-    HuWinScaleSet(titleWin, 0.8f, 0.8f);
+    entryNumberWin = HuWinCreate(478.0f, 32.0f, 82, 42, HUWIN_FRAME_DEFAULT);
+    HuWinAttrSet(entryNumberWin, HUWIN_ATTR_ALIGN_CENTER);
+    HuWinMesSpeedSet(entryNumberWin, 0);
+    HuWinScaleSet(entryNumberWin, 0.8f, 0.8f);
 
-    dirWin = HuWinCreate(24.0f, 32.0f, 522, 42, 0);
-    HuWinMesSpeedSet(dirWin, 0);
-    HuWinScaleSet(dirWin, 0.8f, 0.8f);
+    directoryWin = HuWinCreate(24.0f, 32.0f, 522, 42, HUWIN_FRAME_DEFAULT);
+    HuWinMesSpeedSet(directoryWin, 0);
+    HuWinScaleSet(directoryWin, 0.8f, 0.8f);
 
-    langWin = HuWinCreate(350.0f, 32.0f, 346, 42, 0);
-    HuWinMesSpeedSet(langWin, 0);
-    HuWinScaleSet(langWin, 0.8f, 0.8f);
-    HuWinBGTPLvlSet(langWin, 0.0f);
-    HuWinMesSet(langWin, lbl_1_data_5C4[GwLanguage]);
+    languageWin = HuWinCreate(350.0f, 32.0f, 346, 42, HUWIN_FRAME_DEFAULT);
+    HuWinMesSpeedSet(languageWin, 0);
+    HuWinScaleSet(languageWin, 0.8f, 0.8f);
+    HuWinBGTPLvlSet(languageWin, 0.0f);
+    HuWinMesSet(languageWin, lbl_1_data_5C4[GwLanguage]);
 
-    dirNo = nextMessNo = 0;
-    previousDir = FALSE;
-    while (lbl_1_data_494[dirNo]) {
-        HuWinMesSet(dirWin, MESSNUM_PTR(lbl_1_data_494[dirNo]));
-        messMax = HuWinMesMaxNumGet((u32)dirNo << 16);
-        if (!previousDir) {
-            nextMessNo = 0;
+    directoryIndex = firstMessageIndex = 0;
+    revisitPreviousDirectory = FALSE;
+    while (lbl_1_data_494[directoryIndex]) {
+        HuWinMesSet(directoryWin, MESSNUM_PTR(lbl_1_data_494[directoryIndex]));
+        /* The message API takes a directory index in the high half of this packed value. */
+        entryCount = HuWinMesMaxNumGet((u32)directoryIndex << 16);
+        if (!revisitPreviousDirectory) {
+            firstMessageIndex = 0;
         } else {
-            previousDir = FALSE;
-            nextMessNo = messMax - 1;
+            revisitPreviousDirectory = FALSE;
+            /* Revisit the previous directory at its last message so backing out from entry zero
+             * selects the preceding entry across the directory boundary. At directory index 0,
+             * the index wraps back to directory 0, whose last message is selected. */
+            firstMessageIndex = entryCount - 1;
         }
 
-        for (messNo = nextMessNo; messNo < messMax; messNo++) {
-            sprintf(messNoText, "%d", messNo);
-            HuWinMesSet(titleWin, MESSNUM_PTR(messNoText));
+        for (messageIndex = firstMessageIndex; messageIndex < entryCount; messageIndex++) {
+            sprintf(entryNumberText, "%d", messageIndex);
+            HuWinMesSet(entryNumberWin, MESSNUM_PTR(entryNumberText));
 
-            messNum = ((u32)dirNo << 16) | messNo;
-            fn_1_828(messNum, &size);
-            if (size.x == 255.0f) {
-                HuWinMesMaxSizeGet(1, &size, messNum);
+            packedMessageId = ((u32)directoryIndex << 16) | messageIndex;
+            fn_1_828(packedMessageId, &messageWindowSize);
+            if (messageWindowSize.x == 255.0f) {
+                /* This directory entry has no stored width, so ask the message engine to measure
+                 * it. */
+                HuWinMesMaxSizeGet(1, &messageWindowSize, packedMessageId);
             } else {
-                dimension = size.x;
-                size.x = (dimension * 21 + 31) & 65520;
-                dimension = size.y;
-                size.y = (dimension * 26 + 31) & 65520;
+                storedDimension = messageWindowSize.x;
+                /* Scale stored dimensions by 21 pixels per width unit and 26 per height unit, then
+                 * add a 16-pixel margin and align each dimension to 16 pixels. */
+                messageWindowSize.x = (storedDimension * 21 + 31) & MESSAGE_WINDOW_DIMENSION_MASK;
+                storedDimension = messageWindowSize.y;
+                messageWindowSize.y = (storedDimension * 26 + 31) & MESSAGE_WINDOW_DIMENSION_MASK;
             }
 
-            messWin = HuWinCreate(HUWIN_POS_CENTER, 200.0f, size.x, size.y, 0);
-            HuWinMesSpeedSet(messWin, 0);
+            messageWin = HuWinCreate(HUWIN_POS_CENTER, 200.0f, messageWindowSize.x,
+                                     messageWindowSize.y, HUWIN_FRAME_DEFAULT);
+            HuWinMesSpeedSet(messageWin, 0);
 
-            hasControl = FALSE;
-            name = HuWinMesPtrGet(messNum);
-            while (*name != '\0') {
-                if (*name == 255) {
-                    hasControl = TRUE;
+            messageHasKeyWait = FALSE;
+            textCursor = HuWinMesPtrGet(packedMessageId);
+            while (*textCursor != '\0') {
+                if (*textCursor == MESSAGE_KEY_WAIT_BIT_PATTERN) {
+                    messageHasKeyWait = TRUE;
                 }
-                name++;
+                textCursor++;
             }
 
-            messWinData = &winData[messWin];
-            messWinData->pushKey = PAD_BUTTON_START | PAD_BUTTON_X | PAD_BUTTON_Y |
+            messageWinData = &winData[messageWin];
+            /* These keys dismiss an in-message wait and become the browser's navigation input. */
+            messageWinData->pushKey = PAD_BUTTON_START | PAD_BUTTON_X | PAD_BUTTON_Y |
                 PAD_BUTTON_A | PAD_BUTTON_B | PAD_TRIGGER_L | PAD_TRIGGER_R;
-            HuWinMesSet(messWin, messNum);
-            while (messWinData->stat != HUWIN_STAT_NONE) {
+            HuWinMesSet(messageWin, packedMessageId);
+            while (messageWinData->stat != HUWIN_STAT_NONE) {
+                /* Convert held-button repeat state into a fresh press while the message is being
+                 * drawn. */
                 HuPadBtnDown[0] = HuPadBtnRep[0];
                 HuPrcVSleep();
             }
 
-            if (!hasControl) {
+            /* Only messages containing the key-wait marker use the key stored by the message
+             * window; other entries wait below for browser input. */
+            if (!messageHasKeyWait) {
                 while (!(HuPadBtnRep[0] &
                     (PAD_BUTTON_START | PAD_BUTTON_X | PAD_BUTTON_Y | PAD_BUTTON_A |
                         PAD_BUTTON_B | PAD_TRIGGER_L | PAD_TRIGGER_R))) {
                     HuPrcVSleep();
                 }
-                messWinData->activePadKey = HuPadBtnRep[0];
+                messageWinData->activePadKey = HuPadBtnRep[0];
             }
 
-            key = messWinData->activePadKey;
-            HuWinKill(messWin);
-            if (key & PAD_BUTTON_START) {
+            pressedButtons = messageWinData->activePadKey;
+            HuWinKill(messageWin);
+            if (pressedButtons & PAD_BUTTON_START) {
                 return;
             }
-            if (key & PAD_TRIGGER_R) {
+            if (pressedButtons & PAD_TRIGGER_R) {
                 break;
             }
-            if (key & PAD_TRIGGER_L) {
-                dirNo -= 2;
-                if (dirNo < 0) {
-                    dirNo = -1;
+            if (pressedButtons & PAD_TRIGGER_L) {
+                /* Compensate for the outer increment below so it lands on the preceding
+                 * directory. */
+                directoryIndex -= 2;
+                if (directoryIndex < 0) {
+                    directoryIndex = -1;
                 }
                 break;
             }
-            if (key & (PAD_BUTTON_X | PAD_BUTTON_Y)) {
-                if (key & PAD_BUTTON_X) {
+            if (pressedButtons & (PAD_BUTTON_X | PAD_BUTTON_Y)) {
+                /* X advances English, German, French, Italian, Spanish, then English; Y moves
+                 * backward through that cycle. From Japanese, X selects English and Y selects
+                 * Spanish. */
+                if (pressedButtons & PAD_BUTTON_X) {
                     GwLanguage++;
-                    if (GwLanguage > 5) {
-                        GwLanguage = 1;
+                    if (GwLanguage > HUWIN_LANG_SPAIN) {
+                        GwLanguage = HUWIN_LANG_ENGLISH;
                     }
                 } else {
                     GwLanguage--;
-                    if (GwLanguage <= 0) {
-                        GwLanguage = 5;
+                    if (GwLanguage <= HUWIN_LANG_JAPAN) {
+                        GwLanguage = HUWIN_LANG_SPAIN;
                     }
                 }
                 GWLanguageSet(GwLanguage);
                 GwCommonOrig.languageNo = GwLanguage;
+                /* Apply the new language to game settings and message lookup, reload its text, and
+                 * update the label. */
                 HuWinMesLanguageSet(GwLanguage);
                 HuWinMesRead();
-                HuWinMesSet(langWin, lbl_1_data_5C4[GwLanguage]);
-                messNo--;
-            } else if (key & PAD_BUTTON_B) {
-                messNo -= 2;
-                if (messNo < 0) {
-                    messNo = -1;
-                    dirNo -= 2;
-                    if (dirNo < 0) {
-                        dirNo = -1;
+                HuWinMesSet(languageWin, lbl_1_data_5C4[GwLanguage]);
+                /* Revisit this entry after the for-loop increment so it appears in the new
+                 * language. */
+                messageIndex--;
+            } else if (pressedButtons & PAD_BUTTON_B) {
+                /* Back up one entry; the for-loop increment returns to the preceding message. */
+                messageIndex -= 2;
+                if (messageIndex < 0) {
+                    messageIndex = -1;
+                    directoryIndex -= 2;
+                    if (directoryIndex < 0) {
+                        directoryIndex = -1;
                     }
-                    previousDir = TRUE;
+                    revisitPreviousDirectory = TRUE;
                     break;
                 }
             }
             HuPrcVSleep();
         }
 
-        dirNo++;
-        if (!lbl_1_data_494[dirNo]) {
-            dirNo = 0;
+        directoryIndex++;
+        if (!lbl_1_data_494[directoryIndex]) {
+            /* Wrap from the final directory to the first, then yield before browsing continues. */
+            directoryIndex = 0;
         }
         HuPrcVSleep();
     }
 }
 
-/* Called before each entry window; reads stored dimensions for the directory and entry indices packed in messNum. */
-static void fn_1_828(u32 messNum, HuVec2f *size)
+/* Called by fn_1_188 before each entry window; logs out-of-range directory or entry indices, then
+ * continues following packed offsets to read the stored dimensions. */
+static void fn_1_828(u32 packedMessageId, HuVec2f *messageSize)
 {
-    u32 dirNo = messNum >> 16;
-    u32 entryNo = messNum & 65535;
-    u32 *data = messDataPtr;
+    u32 directoryIndex = packedMessageId >> 16;
+    u32 entryIndex = packedMessageId & 0xFFFF;
+    u32 *directoryData = messDataPtr;
 
-    if (dirNo >= data[0]) {
+    if (directoryIndex >= directoryData[0]) {
         OSReport("Error: Message Dir Over\n");
     }
-    data++;
-    data += data[dirNo] >> 2;
+    directoryData++;
+    directoryData += directoryData[directoryIndex] >> 2;
 
-    if (entryNo >= data[0]) {
+    if (entryIndex >= directoryData[0]) {
         OSReport("Error: Message Number Over\n");
     }
-    data++;
-    data += data[entryNo] >> 2;
+    directoryData++;
+    directoryData += directoryData[entryIndex] >> 2;
 
-    size->x = (float)(data[0] >> 16);
-    size->y = (float)(data[0] & 65535);
+    messageSize->x = (float)(directoryData[0] >> 16);
+    messageSize->y = (float)(directoryData[0] & 0xFFFF);
 }
