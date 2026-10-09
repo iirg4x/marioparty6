@@ -4,15 +4,17 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **October 8, 2026**
+Last published full-project snapshot: **October 9, 2026**
 
 Byte percentages were generated from a verified full-project retail build with `tools/update_progress.py`.
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 28.40% | 47.90% |
+| Entire project | 28.79% | 48.36% |
 | Main DOL | 87.77% | 98.84% |
-| REL modules | 15.81% | 15.62% |
+| REL modules | 16.28% | 16.38% |
+
+Hyper Sniper (`m646Dll`) selects all **166 functions** from ten complete translation units; its linked REL matches retail.
 
 Pop Star (`m629Dll`) selects all **45 functions** from two complete translation units; its linked REL matches retail.
 
@@ -21,7 +23,7 @@ Minigame Instructions (`instDll`) selects all **49 functions** from six complete
 Mini-game Tour (`mgmfreedll`) selects all **109 functions** from native source. Its three translation units, data, and linked REL reproduce retail.
 
 Of the **82 unique numbered minigame modules** registered in `include/mgdata.inc`,
-**21 are fully source-selected** (`m602Dll`, `m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m629Dll`, `m630dll`, `m632dll`, `m633dll`, `m635dll`, `m637dll`, `m638Dll`, `m640dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m668DLL`, `m670dll`) and **61 remain**. This scope is distinct
+**22 are fully source-selected** (`m602Dll`, `m608dll`, `m612dll`, `m616dll`, `m618dll`, `m621dll`, `m629Dll`, `m630dll`, `m632dll`, `m633dll`, `m635dll`, `m637dll`, `m638Dll`, `m640dll`, `m646Dll`, `m650dll`, `m651dll`, `m656DLL`, `m657Dll`, `m659Dll`, `m668DLL`, `m670dll`) and **60 remain**. This scope is distinct
 from the game's 136 REL containers, which also include non-minigame modules.
 
 Board recovery is **40 / 40 owners Matching**. Board Single closes the final
