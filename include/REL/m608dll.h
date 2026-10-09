@@ -1,3 +1,4 @@
+/* Shared declarations for Snow Whirled course sequences and display state. */
 #ifndef M608DLL_H
 #define M608DLL_H
 #include "game/main.h"
@@ -22,171 +23,198 @@
 #ifndef M608_SCENE_CONSUMED_CONTEXT_H
 #define M608_SCENE_CONSUMED_CONTEXT_H
 
-/*
- * Target-backed consumed layout of the shared scene allocation.
- *
- * This is a consumed-layout context, not a recovered original declaration.
- * The unknown byte ranges are intentionally retained as unknown storage.
- * Types below use the project SDK declarations; in particular,
- * the object-manager slot is represented by its HUPROCESS pointer type.
- */
-/* The target allocates 0x3DE0 bytes; only the first 660 vector slots have observed consumers. */
-typedef struct M608PathSamples { Point3d points[660]; u8 unknown_tail[7920]; } M608PathSamples;
+/* Stores the sampled course path; the remaining bytes are not read by this module. */
+typedef struct M608PathSamples { Point3d points[660]; u8 unusedBytes[7920]; } M608PathSamples;
 typedef struct M608SceneConsumedContext {
-    /* 0x000 */ HUPROCESS *objectManager;
-    /* 0x004 */ u32 state;
-    /* 0x008 */ s32 frame;
-    /* 0x00C */ s32 activePlayer;
+    HUPROCESS *objectManager; /* Manager for course and player processes. */
+    u32 state; /* Active course-sequence state. */
+    s32 frame; /* Frames elapsed in the active sequence state. */
+    s32 activePlayer; /* Current rider index, 0 through 3. */
 
-    /* 0x010 */ HU3D_MOTIONID cameraMotions[10];
-    /* 0x024 */ HU3D_MODELID cameraModels[10];
-    /* 0x038 */ HU3D_MODELID activeCameraMotion;
-    /* 0x03A */ u8 unk_03A[2];
-    /* 0x03C */ OMOBJ *cameraObject;
-    /* 0x040 */ f32 cameraTime;
-    /* 0x044 */ f32 cameraMaxTime;
-    /* 0x048 */ u8 unk_048[2];
+    HU3D_MOTIONID cameraMotions[10]; /* Loaded camera motions. */
+    HU3D_MODELID cameraModels[10]; /* Camera models that play the motions. */
+    HU3D_MODELID activeCameraMotion; /* Camera model currently driving the view. */
+    /* Bytes between the camera model and process pointer; not read here. */
+    u8 unusedCameraBytes[2];
+    OMOBJ *cameraObject; /* Process that updates camera playback and position. */
+    f32 cameraTime; /* Elapsed camera-motion time in frames. */
+    f32 cameraMaxTime; /* Duration of the active camera motion in frames. */
+    /* Bytes before the scene model list; not read here. */
+    u8 unusedSceneBytes[2];
 
-    /* 0x04A */ HU3D_MODELID sceneModels[5];
-    /* 0x054 */ HU3D_MODELID playerModelsA[4];
-    /* 0x05C */ HU3D_MODELID playerModelsB[4];
-    /* 0x064 */ HU3D_MODELID playerModelsC[4];
-    /* 0x06C */ HU3D_MODELID mainModel;
-    /* 0x06E */ HU3D_MOTIONID mainMotion;
-    /* 0x070 */ Point3d positions_070[4];
-    /* 0x0A0 */ u8 unk_0A0[48];
-    /* 0x0D0 */ Point3d positions_0D0[4];
+    HU3D_MODELID sceneModels[5]; /* Background models selected for day or night. */
+    HU3D_MODELID playerModelsA[4]; /* Primary rider models used during the course. */
+    HU3D_MODELID playerModelsB[4]; /* Rider models used to read attachment hooks. */
+    HU3D_MODELID playerModelsC[4]; /* Alternate rider models used for attachments. */
+    HU3D_MODELID mainModel; /* Main moving course model. */
+    HU3D_MOTIONID mainMotion; /* Motion assigned to the main course model. */
+    /* Hook positions read from player model variant B. */
+    Point3d playerBoardHookPositions[4];
+    /* Bytes between model-hook position arrays; not read here. */
+    u8 unusedPlayerModelBytes[48];
+    /* Attachment positions read from player model variants B and C. */
+    Point3d playerAttachmentPositions[4];
 
-    /* 0x100 */ s16 characterNos[4];
-    /* 0x108 */ s16 padNos[4];
-    /* 0x110 */ HU3D_MODELID characterModels[4];
-    /* 0x118 */ HU3D_MOTIONID characterMotions[4][8];
-    /* 0x158 */ OMOBJ *playerObjects[4];
-    /* 0x168 */ HU3D_MODELID secondaryModels[4];
-    /* 0x170 */ HU3D_MODELID models_184_199[16];
-    /* 0x190 */ HU3D_MOTIONID motions_200_208[9];
-    /* 0x1A2 */ u8 unk_1A2[6];
-    /* 0x1A8 */ HU3D_MODELID models_212_213[2];
-    /* 0x1AC */ s32 timingSubstate;
+    s16 characterNos[4]; /* Character number assigned to each rider. */
+    s16 padNos[4]; /* Controller port assigned to each rider. */
+    HU3D_MODELID characterModels[4]; /* Loaded character models. */
+    HU3D_MOTIONID characterMotions[4][8]; /* Motion IDs loaded for each character. */
+    OMOBJ *playerObjects[4]; /* Process objects that update rider rotation. */
+    HU3D_MODELID secondaryModels[4]; /* Board models attached to each character. */
+    /* Course props used by scene setup, indexed by their setup code. */
+    HU3D_MODELID courseModels[16];
+    /* Joint motions used by the course props. */
+    HU3D_MOTIONID courseMotions[9];
+    /* Bytes before the two timed course models; not read here. */
+    u8 unusedTimingModelBytes[6];
+    /* Models whose motion callbacks advance the run. */
+    HU3D_MODELID timingModels[2];
+    s32 timingSubstate; /* Turn-animation step advanced by a motion callback. */
 
-    /* 0x1B0 */ f32 angle;
-    /* 0x1B4 */ f32 from;
-    /* 0x1B8 */ f32 to;
-    /* 0x1BC */ s32 frame_1BC;
-    /* 0x1C0 */ HU3D_MODELID models[27];
-    /* 0x1F6 */ HU3D_MOTIONID motions[27];
-    /* 0x22C */ Point3d positions_22C[27];
-    /* 0x370 */ OMOBJ *objects[27];
+    /* Current, starting, and target rider yaw, in degrees. */
+    f32 riderTurnAngle;
+    f32 riderTurnStartAngle;
+    f32 riderTurnTargetAngle;
+    /* Frames elapsed by the active rider-turn callback. */
+    s32 riderTurnFrame;
+    /* Models, motions, sampled positions, and updater processes for course props. */
+    HU3D_MODELID movingCourseModels[27];
+    HU3D_MOTIONID movingCourseMotions[27];
+    Point3d movingCoursePositions[27];
+    OMOBJ *movingCourseObjects[27];
 
-    /* 0x3DC */ s32 count;
-    /* 0x3E0 */ s32 scores[4];
-    /* 0x3F0 */ u32 record;
-    /* 0x3F4 */ s32 winners[4];
-    /* 0x404 */ s32 flag;
-    /* 0x408 */ s16 difficulty[4];
-    /* 0x410 */ s16 base[4];
-    /* 0x418 */ s16 interval[4];
-    /* 0x420 */ s16 counter[4];
-    /* 0x428 */ Point3d vector_428;
-    /* 0x434 */ Point3d vector_434;
-    /* 0x440 */ Point3d vector_440;
-    /* 0x44C */ s32 flag_44C;
-    /* 0x450 */ s32 audioHandle_450;
-    /* 0x454 */ s32 audioHandle_454;
+    /* Number of recorded course path samples. */
+    s32 coursePathSampleCount;
+    s32 scores[4]; /* Direction-match score for each rider. */
+    u32 record; /* Course record value; saved points are divided by 90 for comparisons, and new
+                 * match counts are multiplied by 90 for display and saving. */
+    s32 winners[4]; /* Whether each rider tied for the highest score: 1 yes, 0 no. */
+    /* Set when the results sequence detects a new record. */
+    s32 recordBeaten;
+    s16 difficulty[4]; /* Computer-player difficulty for each rider. */
+    s16 base[4]; /* Base rate used to choose computer button timing. */
+    s16 interval[4]; /* Frame threshold for computer direction presses; a 1% check can trigger
+                      * earlier. */
+    s16 aiRollFrameCounter[4]; /* Frames since each computer rider last pressed. */
+    /* Shadow center, target point, and up direction in world units. */
+    Point3d shadowCenter;
+    Point3d shadowTarget;
+    Point3d shadowUpDirection;
+    /* Randomly selected rider index used by the special course effect. */
+    s32 featuredRiderIndex;
+    /* Handles for the jump effect and streamed course music. */
+    s32 jumpSoundHandle;
+    s32 courseMusicStreamHandle;
 } M608SceneConsumedContext;
 
 #endif
 
-/* Callers copy a full Point3d before fn_1_5DA4.
- * Gekko passes the value record using a hidden pointer. */
+/* Updates the course shadow position from the current camera-hook position. */
 void fn_1_5DA4(Point3d position);
 BOOL fn_1_5F64(void);
-void fn_1_5F90(s16 modelIndex);
-void fn_1_5FDC(s16 modelIndex, s16 motionIndex);
-void fn_1_6534(s16 scoreIndex, s16 value);
-void fn_1_6958(s32 member);
+void fn_1_5F90(s16 coursePropIndex);
+void fn_1_5FDC(s16 coursePropIndex, s16 courseMotionIndex);
+void fn_1_6534(s16 scoreIndex, s16 scoreValue);
+void fn_1_6958(s32 spriteMemberIndex);
 void fn_1_69F4(void);
 u32 MgSeqModeNext(void);
 
-
-
 struct _struct_lbl_1_bss_3DF0_0x18 {
-    /* 0x00 */ s16 unk0;                            /* inferred */
-    /* 0x04 */ MGSCORE *unk4;                       /* inferred */
-    /* 0x08 */ ANIMDATA *unk8;                      /* inferred */
-    /* 0x0C */ s16 unkC;                            /* inferred */
-    /* 0x0E */ s16 unkE;                            /* inferred */
-    /* 0x10 */ u8 unknown10[8]; /* Target-backed unconsumed bytes, not padding. */
+    s16 scoreBoxId; /* Score-box resource ID. */
+    MGSCORE *scoreDisplay; /* Score digits and formatting state. */
+    ANIMDATA *recordSpriteAnimation; /* Record emblem animation, used by panel 4. */
+    s16 recordSpriteGroup; /* Group containing the record emblem. */
+    s16 recordSpriteId; /* Record emblem member within its sprite group. */
+    u8 unusedBytes[8]; /* Bytes not read by this module. */
 };
 
-/* size = 0x18 */
-
-/* Explicit bytes at 0x0B..0x0F have unknown semantics, not padding. */
+/* Position, dimensions, and colors used to build a score panel. */
 struct _struct_lbl_1_data_44C_0x14 {
-    s16 unk0, unk2, unk4, unk6;
-    u8 unk8, unk9, unkA, unkB;
-    u8 unknown0C[4];
-    u8 unk10, unk11, unk12, unk13;
+    s16 screenX; /* Panel horizontal position, in screen pixels. */
+    s16 screenY; /* Panel vertical position, in screen pixels. */
+    s16 boxWidth; /* Score-box width, in screen pixels. */
+    s16 boxHeight; /* Score-box height, in screen pixels. */
+    u8 boxRed; /* Score-box red color channel. */
+    u8 boxGreen; /* Score-box green color channel. */
+    u8 boxBlue; /* Score-box blue color channel. */
+    u8 boxUnusedByte; /* Stored but not passed to the score-box color setter. */
+    u8 unusedColorBytes[4]; /* Stored between box and digit colors; not read here. */
+    u8 digitRed; /* Score-digit red color channel. */
+    u8 digitGreen; /* Score-digit green color channel. */
+    u8 digitBlue; /* Score-digit blue color channel. */
+    u8 digitUnusedByte; /* Stored but not passed to the digit color setter. */
 };
 
-/* Retail-backed consumed view; other fields in these 80-byte records are unknown. */
+/* Camera-motion preset data; only randomizedHeight is read or changed here. */
 typedef struct M608Unknown80 {
-    u32 unknown00[2];
-    f32 field08;
-    u32 unknown0C[17];
+    u32 motionPresetWords[2]; /* Motion preset values not interpreted by this code. */
+    f32 randomizedHeight; /* Randomized vertical camera offset, in world units. */
+    u32 motionPresetData[17]; /* Remaining preset values not interpreted here. */
 } M608Unknown80;
-s32 fn_1_A0(s32 arg0, s32 arg1);
-void fn_1_104(s32 arg0);
-void fn_1_140(s16 mode, s16 frameNo);
-void fn_1_190(s16 arg1, s16 frameNo);
-void fn_1_57C(s16 mode, s16 frameNo);
-void fn_1_580(s16 arg1, s16 frameNo);
-void fn_1_1A2C(s16 arg1, s16 frameNo);
-void fn_1_1DD8(s16 arg1, s16 frameNo);
-void fn_1_2374(s16 arg1, s16 frameNo);
-void fn_1_2538(s16 mode, s16 frameNo);
-void fn_1_253C(s16 mode, s16 frameNo);
-void fn_1_2540(OMOBJ *arg0);
-void fn_1_2FD8(s16 modelId, s16 motId, BOOL lagF);
-void fn_1_33A4(OMOBJ *arg0);
-void fn_1_34D0(OMOBJ *arg0);
-void fn_1_3718(OMOBJ *arg0);
-void fn_1_388C(OMOBJ *arg0);
-void fn_1_38E8(HU3D_MODEL *modelP, f32 (*mtx)[3][4]);
+s32 fn_1_A0(s32 currentTrackHandle, s32 fallbackBgmId);
+void fn_1_104(s32 streamHandle);
+void fn_1_140(s16 sequenceMode, s16 frameNo);
+void fn_1_190(s16 sequenceMode, s16 frameNo);
+void fn_1_57C(s16 sequenceMode, s16 frameNo);
+void fn_1_580(s16 sequenceMode, s16 frameNo);
+void fn_1_1A2C(s16 sequenceMode, s16 frameNo);
+void fn_1_1DD8(s16 sequenceMode, s16 frameNo);
+void fn_1_2374(s16 sequenceMode, s16 frameNo);
+void fn_1_2538(s16 sequenceMode, s16 frameNo);
+void fn_1_253C(s16 sequenceMode, s16 frameNo);
+void fn_1_2540(OMOBJ *cameraObject);
+void fn_1_2FD8(s16 timingModelId, s16 motionId, BOOL timingCallbackF);
+void fn_1_33A4(OMOBJ *playerObject);
+void fn_1_34D0(OMOBJ *playerObject);
+void fn_1_3718(OMOBJ *courseObject);
+void fn_1_388C(OMOBJ *courseObject);
+void fn_1_38E8(HU3D_MODEL *cameraModel, f32 (*cameraMatrix)[3][4]);
 void fn_1_38EC(Point3d position);
-void fn_1_38F0(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_39B4(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_3A78(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_3B3C(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_3C00(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_3C84(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_3D7C(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_3E00(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_3F18(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_400C(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_40F0(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
-void fn_1_41D4(HSF_OBJECT *obj, HSF_TRANSFORM *transform, f32 (*prev)[3][4], f32 (*curr)[3][4]);
+void fn_1_38F0(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_39B4(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_3A78(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_3B3C(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_3C00(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_3C84(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_3D7C(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_3E00(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_3F18(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_400C(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_40F0(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
+void fn_1_41D4(HSF_OBJECT *hookObject, HSF_TRANSFORM *transform, f32 (*previousMatrix)[3][4],
+               f32 (*currentMatrix)[3][4]);
 void fn_1_42B8(void);
 void fn_1_437C(s16 layerNo);
 void fn_1_43C8(void);
 void fn_1_5DA4(Point3d position);
-void fn_1_5E6C(s32 arg0);
+void fn_1_5E6C(s32 cameraIndex);
 BOOL fn_1_5F64(void);
-void fn_1_5F90(s16 modelIndex);
-void fn_1_5FDC(s16 modelIndex, s16 motionIndex);
-void fn_1_605C(s16 arg0);
+void fn_1_5F90(s16 coursePropIndex);
+void fn_1_5FDC(s16 coursePropIndex, s16 courseMotionIndex);
+void fn_1_605C(s16 coursePropIndex);
 void fn_1_60CC(void);
 void fn_1_6148(void);
 void fn_1_614C(void);
 void fn_1_6150(void);
-void fn_1_6534(s16 scoreIndex, s16 value);
+void fn_1_6534(s16 scoreIndex, s16 scoreValue);
 void fn_1_6578(void);
 void fn_1_6604(void);
-void fn_1_66C0(OMOBJ *arg0);
+void fn_1_66C0(OMOBJ *recordObject);
 void fn_1_6828(void);
-void fn_1_6958(s32 member);
+void fn_1_6958(s32 spriteMemberIndex);
 void fn_1_69F4(void);
-u32 fn_1_6B90(s32 player);
+u32 fn_1_6B90(s32 playerIndex);
 extern /* button mask */
 MGSEQ_PARAM lbl_1_data_0;
 extern f32 lbl_1_data_28[14];
@@ -257,7 +285,11 @@ extern char lbl_1_data_67A[10];
 extern char *lbl_1_data_684[4];
 extern s32 lbl_1_data_694[27];
 extern struct _struct_lbl_1_bss_3DF0_0x18 lbl_1_bss_3DF0[5];
-typedef struct M608SpriteGroupWork { s16 currentMember; HUSPR_GROUPID group; ANIMDATA *anim[5]; } M608SpriteGroupWork;
+typedef struct M608SpriteGroupWork {
+    s16 currentMember; /* Visible prompt member, or -1 when all are hidden. */
+    HUSPR_GROUPID group; /* Group holding the course prompt sprites. */
+    ANIMDATA *anim[5]; /* Animation resource for each prompt member. */
+} M608SpriteGroupWork;
 extern M608SpriteGroupWork lbl_1_bss_3E68;
 extern M608SceneConsumedContext lbl_1_bss_3E80;
 extern const Point3d lbl_1_rodata_88;
