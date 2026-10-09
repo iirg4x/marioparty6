@@ -1,3 +1,4 @@
+/* Lift Leapers player, input, and lift state shared across its source files. */
 #ifndef M618DLL_H
 #define M618DLL_H
 
@@ -7,40 +8,51 @@
 #include "game/mg/seqman.h"
 #include "game/mg/timer.h"
 
-/* Target-backed consumed views; names do not claim original declarations. */
+/* Per-player state for Lift Leapers. */
 typedef struct M618Player {
-    MGPLAYER *player;
-    int unk04;
-    int unk08;
-    int unk0C;
-    int unk10;
-    int unk14;
-    HU3D_MOTIONID motion[4];
-    HU3D_MODELID model;
-    HuVecF pos24;
-    float unk30;
-    int unk34;
-    HuVecF pos38;
-    int unk44;
-    int unk48;
-    unsigned char unknown4C[4]; /* Observed next vector begins at +0x50. */
-    HuVecF pos50;
-    int unk5C;
-    int unk60;
-    float unk64;
+    MGPLAYER *player; /* Engine player controlled by this minigame. */
+    int moveDirection; /* Horizontal direction sign: 1 or -1. */
+    int fallState; /* 0 active, 1 returning on the recovery lift, 2 in the scripted fall jump, 3
+                    * traversing course sections. */
+    int fallFrames; /* Frames spent falling before the player is reset. */
+    int routeState; /* Stage-specific movement phase, advanced by the game. */
+    int actionFrames; /* Frames elapsed in timed stage actions. */
+    HU3D_MOTIONID motion[4]; /* Character motions used for stage and result poses. */
+    HU3D_MODELID model; /* Recovery lift model used to carry this player back to the course. */
+    HuVecF liftModelPosition; /* Current minigame-model position in course units. */
+    float recoveryAngle; /* Degrees through the player's lift return animation, from 0 to 90. */
+    int recoveryPositionValid; /* Set when a known collision mesh supplies a recovery position. */
+    HuVecF recoveryPosition; /* Course position the player is returned toward. */
+    int aiRouteChoice; /* AI-selected lift route: 0 for none, otherwise 1 through 4. */
+    int aiWaitFrames; /* Frames remaining before the CPU's next lift-jump decision; movement
+                       * continues during this wait. */
+    unsigned char unidentifiedBytes[4]; /* Purpose is not established by the game logic. */
+    HuVecF nearbyLiftPosition; /* Course position of the next lift used by the CPU. */
+    int stageSection; /* Current course section, numbered 0 through 3. */
+    int jumpFrames; /* Frames elapsed in the short scripted jump. */
+    float jumpStartHeight; /* Player height in course units when the jump begins. */
 } M618Player;
 
+/* CPU decision state and the controller values supplied to a player. */
 typedef struct M618Input {
-    int unk00, unk04, unk08, unk0C;
-    int stickX, stickY, button, unk1C;
-    int unk20;
+    int cpuDifficulty; /* CPU difficulty copied from the player settings. */
+    int decisionPending; /* AI decision transition flag. */
+    int decisionIndex; /* Current option within the selected lift route. */
+    int decisionCount; /* Number of options selected for this route. */
+    int stickX; /* Horizontal stick value passed to the player controller. */
+    int stickY; /* Vertical stick value passed to the player controller. */
+    int buttonDown; /* Newly pressed button bits passed to the player controller. */
+    int buttonHeld; /* Held button bits passed to the player controller. */
+    int aiSpeed; /* Horizontal AI movement magnitude. */
 } M618Input;
 
+/* A course model and its matching collision model. */
 typedef struct M618Model {
-    HU3D_MODELID model;
-    HU3D_MODELID colModel;
-    float unk04;
-    unsigned char unknown08[4]; /* Twelve-byte array stride; purpose unresolved. */
+    HU3D_MODELID model; /* Visible course model. */
+    HU3D_MODELID colModel; /* Collision model positioned at this course object's platform
+                            * position. */
+    float collisionHeight; /* Y coordinate of the synchronized collision model position. */
+    unsigned char unidentifiedBytes[4]; /* Purpose is not established by the game logic. */
 } M618Model;
 
 extern int lbl_1_bss_0;
@@ -87,22 +99,21 @@ void fn_1_644(void);
 void fn_1_84C(void);
 void fn_1_910(void);
 int fn_1_DA8(void);
-void fn_1_1B40(int);
+void fn_1_1B40(int cameraMode);
 int fn_1_1CD8(void);
 void fn_1_1CE0(void);
 void fn_1_214C(void);
-void fn_1_3294(int);
-void fn_1_44CC(int);
+void fn_1_3294(int playerNo);
+void fn_1_44CC(int playerNo);
 void fn_1_4BE0(void);
 void fn_1_52D0(void);
 void fn_1_6298(void);
-void fn_1_6704(int);
+void fn_1_6704(int modelIndex);
 void fn_1_6C0C(void);
-void fn_1_796C(int);
-void fn_1_8180(int);
-void fn_1_C450(M618Input *, int, int, int, int);
+void fn_1_796C(int winner);
+void fn_1_8180(int playerNo);
+void fn_1_C450(M618Input *input, int stickX, int stickY, int buttonDown, int buttonHeld);
 
-/* Complete existing no-argument SDK declarations for translator inference. */
 u32 MgSeqModeNext(void);
 u16 MgSeqModeChangeOff(void);
 u16 MgSeqModeChangeOn(void);
