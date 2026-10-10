@@ -1,5 +1,7 @@
+// Saves and restores CPU state when the process manager switches processes.
 #include "game/jmp.h"
 
+// Process creation and yield paths call this to save a resumable CPU context.
 s32 gcsetjmp(register jmp_buf *jump) {
     // clang-format off
     asm {
@@ -10,6 +12,7 @@ s32 gcsetjmp(register jmp_buf *jump) {
         stw r1, jump->sp
         stw r2, jump->r2
         stmw r13, jump->regs[0]
+        // Preserve the floating-point status register in the final saved slot.
         mffs f0
         stfd f14, jump->flt_regs[0]
         stfd f15, jump->flt_regs[1]
@@ -36,6 +39,7 @@ s32 gcsetjmp(register jmp_buf *jump) {
 }
 
 // clang-format off
+// The scheduler and yielding processes use this to transfer control; zero becomes one.
 asm s32 gclongjmp(register jmp_buf *jump, register s32 status) {
     nofralloc
     lwz r5, jump->lr
@@ -68,6 +72,7 @@ asm s32 gclongjmp(register jmp_buf *jump, register s32 status) {
     mr r3, status
     mtfsf 255, f0
     bnelr
+    // A resumed setjmp call must report a nonzero value.
     li r3, 1
     blr
 }
