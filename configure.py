@@ -1030,7 +1030,7 @@ config.libs = [
             Object(Matching, "gssdk_lib/asrpho/common/blocks/delaybl.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/dpgenuw.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/dpscruw.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/common/blocks/exev_dp.c"),
+            Object(Matching, "gssdk_lib/asrpho/common/blocks/exev_dp.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/fft_maye.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/fftmod.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/isoword.c"),

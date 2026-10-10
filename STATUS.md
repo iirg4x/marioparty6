@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 36.31% | 57.35% |
-| Main DOL | 88.69% | 99.05% |
+| Entire project | 36.32% | 57.35% |
+| Main DOL | 88.75% | 99.05% |
 | REL modules | 25.21% | 30.92% |
+
+DOL source: `src/gssdk_lib/asrpho/common/blocks/exev_dp.c` now builds from source; `main.dol` matches retail byte for byte.
 
 DOL source: `src/gssdk_lib/asrpho/common/blocks/pitchwin.c` now builds from source; `main.dol` matches retail byte for byte.
 

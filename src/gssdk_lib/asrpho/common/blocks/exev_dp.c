@@ -1,227 +1,248 @@
+/* Scores extra-event state chains used by the rec1600 speech recognizer. */
 #include "types.h"
 
 #include "gssdk/tos.h"
 
-typedef s16 (*ExtraEventStateScoreFunction)(void *context);
-typedef s32 (*ExtraEventFrameScoreFunction)(void *context);
-typedef s16 *(*ExtraEventScoreCacheFunction)(void *context);
+#define EXTRA_EVENT_SCORE_INFINITY 2147483647
+#define EXTRA_EVENT_MAX_SCORE (EXTRA_EVENT_SCORE_INFINITY - 2048)
+
+typedef s16 (*ExtraEventStateScoreFunction)(void *callbackContext, u32 stateId);
+typedef s32 (*ExtraEventFrameScoreFunction)(void *callbackContext);
+typedef s16 *(*ExtraEventScoreCacheFunction)(void *callbackContext);
 
 typedef struct ExtraEventCallbacks {
-void *context;
-ExtraEventStateScoreFunction readStateScore;
-void *reserved08;
-ExtraEventScoreCacheFunction getScoreCache;
-ExtraEventFrameScoreFunction readFrameScore;
+void *callbackContext; /* Opaque data passed to each score callback. */
+ExtraEventStateScoreFunction readStateScore; /* Returns the added cost for a state ID. */
+void *reservedCallback; /* Unused callback slot in this bundle. */
+ExtraEventScoreCacheFunction getScoreCache; /* Supplies cached state costs. */
+ExtraEventFrameScoreFunction readFrameScore; /* Returns the added cost for an input frame. */
 } ExtraEventCallbacks;
 
 typedef struct ExtraEventContextInfo {
-u32 stateCount;
-u16 *stateIds;
-u16 *transitionBounds;
-u32 transitionCount;
-s32 transitionScore;
-s32 initialScore;
+u32 stateCount; /* Number of configured state IDs. */
+u16 *stateIds; /* State IDs indexed by the dynamic-programming state table. */
+u16 *transitionBounds; /* Start and one-past-end state indices for each transition chain. */
+u32 transitionCount; /* Number of transition chains. */
+s32 transitionScore; /* Cost added when a chain advances from its first state. */
+s32 initialScore; /* Starting cost assigned to the first state. */
 } ExtraEventContextInfo;
 
 typedef struct ExtraEventState {
-s32 score;
-u32 stateId;
+s32 score; /* Accumulated signed cost for this state. */
+u32 stateId; /* ID used by the score callback and cache. */
 } ExtraEventState;
 
 typedef struct ExtraEventDP {
-TosBaseBlock base;
-TosQueuePort *input;
-void *callbackContext;
-ExtraEventStateScoreFunction readStateScore;
-ExtraEventFrameScoreFunction readFrameScore;
-ExtraEventScoreCacheFunction getScoreCache;
-s16 *scoreCache;
-u32 stateCount;
-u16 *stateIds;
-s32 bestScore;
-s32 accumulatedScore;
-u16 frameCount;
-u16 reserved52;
-s32 transitionScore;
-s32 initialScore;
-u32 reserved5C;
-u32 transitionCount;
-u16 *transitionBounds;
-ExtraEventState *states;
+TosBaseBlock base; /* TOS lifecycle and callback state for this block. */
+TosQueuePort *input; /* Single input port whose frames drive scoring. */
+void *callbackContext; /* Opaque data passed to the configured score callbacks. */
+ExtraEventStateScoreFunction readStateScore; /* Computes a state ID's added cost. */
+ExtraEventFrameScoreFunction readFrameScore; /* Computes an input frame's added cost. */
+ExtraEventScoreCacheFunction getScoreCache; /* Supplies the cache indexed by state ID. */
+s16 *scoreCache; /* Cached state costs; 32767 marks a cache miss. */
+u32 stateCount; /* Number of entries in states and stateIds. */
+u16 *stateIds; /* Configured IDs corresponding to each state entry. */
+s32 bestScore; /* Lower of the first and terminal state costs. */
+s32 accumulatedScore; /* Sum of frame costs processed by this block. */
+u16 frameCount; /* Processed-frame counter; initialized to 65535 before the first frame. */
+u16 reservedHalfword; /* Unused storage retained in the block layout. */
+s32 transitionScore; /* Cost added when a transition chain advances. */
+s32 initialScore; /* Initial cost assigned to the first state. */
+u32 reservedWord; /* Unused storage retained in the block layout. */
+u32 transitionCount; /* Number of configured transition chains. */
+u16 *transitionBounds; /* State-table boundaries delimiting each transition chain. */
+ExtraEventState *states; /* Dynamic-programming costs for configured states. */
 } ExtraEventDP;
 
 extern void *heap_Alloc(void *heap, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 
-static void InitViterbi(ExtraEventDP *block)
+/* Command 2 calls this to restart scoring and seed the configured state chain. */
+static void InitViterbi(ExtraEventDP *eventBlock)
 {
-ExtraEventState *state;
-u16 i;
+ExtraEventState *currentState;
+u32 stateIndex = 0;
 
-block->bestScore = 0;
-block->accumulatedScore = 0;
-block->frameCount = 0xFFFF;
+eventBlock->bestScore = 0;
+eventBlock->accumulatedScore = 0;
+eventBlock->frameCount = 65535;
 
-state = block->states;
-state->score = block->initialScore;
-state->stateId = block->stateIds[0];
-state++;
+currentState = eventBlock->states;
+currentState->score = eventBlock->initialScore;
+currentState->stateId = eventBlock->stateIds[0];
+currentState++;
+stateIndex++;
 
-for (i = 1; i < block->stateCount; i++) {
-    state->score = 0x7FFFF7FF;
-    state->stateId = block->stateIds[i];
-    state++;
+while (stateIndex < eventBlock->stateCount) {
+    currentState->score = EXTRA_EVENT_MAX_SCORE;
+    currentState->stateId = eventBlock->stateIds[stateIndex];
+    stateIndex++;
+    currentState++;
 }
 }
 
-static void DynProgExtraEventsProcess(ExtraEventDP *block)
+/* The process callback calls this for each input frame to update the state costs. */
+static void DynProgExtraEventsProcess(ExtraEventDP *eventBlock)
 {
-ExtraEventState *states;
-ExtraEventState *lastState;
-ExtraEventState *state;
-ExtraEventState *endState;
-s16 *scoreCache;
-s32 previousLastScore;
-s32 nextScore;
-s32 score;
-u16 transition;
+ s32 chainScore;
+ExtraEventState *stateTable;
+ExtraEventState *terminalState;
+ExtraEventState *transitionState;
+ExtraEventState *transitionEnd;
+ExtraEventState *scoredState;
 u16 stateIndex;
+s16 *stateScoreCache;
+u16 transitionIndex = 1;
+s32 candidateScore;
+s32 previousTerminalScore;
 
-states = block->states;
-lastState = &states[block->stateCount - 1];
-scoreCache = block->scoreCache;
-previousLastScore = lastState->score;
-nextScore = 0x7FFFFFFF;
+candidateScore = EXTRA_EVENT_SCORE_INFINITY;
+stateTable = eventBlock->states;
+terminalState = &stateTable[eventBlock->stateCount - 1];
+stateScoreCache = eventBlock->scoreCache;
+previousTerminalScore = terminalState->score;
 
-for (transition = 1; transition <= block->transitionCount; transition++) {
-    endState = &states[block->transitionBounds[transition + 1] - 1];
-    state = &states[block->transitionBounds[transition]];
-    score = states[0].score + block->transitionScore;
+for (; transitionIndex <= eventBlock->transitionCount; transitionIndex++) {
+    chainScore = stateTable[0].score + eventBlock->transitionScore;
+    transitionState = &eventBlock->states[eventBlock->transitionBounds[transitionIndex]];
+    transitionEnd = &eventBlock->states[eventBlock->transitionBounds[transitionIndex + 1]] - 1;
 
-    while (state < endState) {
-        s32 currentScore = state->score;
-
-        nextScore = score;
-        if (nextScore < currentScore) {
-            state->score = nextScore;
+    while (transitionState < transitionEnd) {
+        candidateScore = chainScore;
+        chainScore = transitionState->score;
+        if (candidateScore < chainScore) {
+            transitionState->score = candidateScore;
         }
-        score = currentScore;
-        state++;
+        transitionState++;
     }
 
-    if (state->score < previousLastScore) {
-        lastState->score = state->score;
+    /* Each chain is compared with the terminal cost saved before this update. */
+    if (transitionState->score < previousTerminalScore) {
+        terminalState->score = transitionState->score;
     }
-    if (nextScore < state->score) {
-        state->score = nextScore;
+    if (candidateScore < transitionState->score) {
+        transitionState->score = candidateScore;
     }
 }
 
-if (previousLastScore < states[0].score) {
-    states[0].score = lastState->score;
+if (previousTerminalScore < stateTable[0].score) {
+    stateTable[0].score = terminalState->score;
 }
 
-state = states;
-for (stateIndex = 0; stateIndex < block->stateCount; stateIndex++) {
-    score = scoreCache[state->stateId];
-    if (score == 0x7FFF) {
-        score = block->readStateScore(block->callbackContext);
-        scoreCache[state->stateId] = score;
+scoredState = eventBlock->states;
+for (stateIndex = 0; stateIndex < eventBlock->stateCount; stateIndex++) {
+    s16 callbackScore;
+    if ((callbackScore = stateScoreCache[scoredState->stateId]) == 32767) {
+        callbackScore =
+            eventBlock->readStateScore(eventBlock->callbackContext, scoredState->stateId);
+        stateScoreCache[scoredState->stateId] = callbackScore;
     }
 
-    state->score += (s16)score;
-    if (state->score > 0x7FFFF7FF) {
-        state->score = 0x7FFFF7FF;
+    scoredState->score += callbackScore;
+    if (scoredState->score > EXTRA_EVENT_MAX_SCORE) {
+        scoredState->score = EXTRA_EVENT_MAX_SCORE;
     }
-    state++;
+    scoredState++;
 }
 
-if (states[0].score < lastState->score) {
-    block->bestScore = states[0].score;
+if (stateTable[0].score < terminalState->score) {
+    eventBlock->bestScore = stateTable[0].score;
 } else {
-    block->bestScore = lastState->score;
+    eventBlock->bestScore = terminalState->score;
 }
 }
 
+/* TOS calls this process callback; only a non-null first input advances frame scoring. */
 static u32 ProcessExtraEventDP(
-TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+TosBaseBlock *tosBlock, void **inputs, s32 inputCount)
 {
-ExtraEventDP *block = (ExtraEventDP *)baseBlock;
+ExtraEventDP *eventBlock = (ExtraEventDP *)tosBlock;
 
 if (inputs[0] != NULL) {
-    block->frameCount++;
-    block->accumulatedScore += block->readFrameScore(block->callbackContext);
-    DynProgExtraEventsProcess(block);
+    eventBlock->frameCount++;
+    eventBlock->accumulatedScore += eventBlock->readFrameScore(eventBlock->callbackContext);
+    DynProgExtraEventsProcess(eventBlock);
 }
 
 return 0;
 }
 
-static u32 InitExtraEventDP(TosBaseBlock *baseBlock)
+/* TOS calls this initializer to bind the input port and apply profile key 15's element size. */
+static u32 InitExtraEventDP(TosBaseBlock *tosBlock)
 {
-ExtraEventDP *block = (ExtraEventDP *)baseBlock;
+ExtraEventDP *eventBlock = (ExtraEventDP *)tosBlock;
+u32 inputElementSize;
 
-block->input = baseBlock->input;
-block->input->inputSize = (u16)_tosGetProfileU32(baseBlock, 0x0F, 4);
+eventBlock->input = tosBlock->input;
+inputElementSize = (u16)_tosGetProfileU32(tosBlock, 15, 4);
+eventBlock->input->inputSize = inputElementSize;
 return 0;
 }
 
+/* TOS calls this control callback for score queries, startup, configuration, and shutdown. */
 static u32 ControlExtraEventDP(
-TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+ExtraEventDP *eventBlock, u32 command, void *commandData, u32 commandDataSize)
 {
-ExtraEventDP *block = (ExtraEventDP *)baseBlock;
-ExtraEventCallbacks *callbacks = (ExtraEventCallbacks *)argument;
-ExtraEventContextInfo *contextInfo = (ExtraEventContextInfo *)argument;
-TosContext *context;
+TosContext *ownerContext;
+TosBaseBlock *tosBlock = (TosBaseBlock *)eventBlock;
 
 switch ((u8)command) {
 case 1:
-    if (argument == NULL) {
+    if (commandData != NULL) {
+        *(s32 *)commandData = eventBlock->bestScore + eventBlock->accumulatedScore;
+    } else {
         return 1;
     }
-    *(s32 *)argument = block->bestScore + block->accumulatedScore;
     break;
 case 2:
-    InitViterbi(block);
-    block->base.process = (TosProcessFunction)ProcessExtraEventDP;
+    InitViterbi(eventBlock);
+    eventBlock->base.process = (TosProcessFunction)ProcessExtraEventDP;
     break;
 case 3:
-    break;
-case 6:
-    block->readStateScore = callbacks->readStateScore;
-    block->getScoreCache = callbacks->getScoreCache;
-    block->readFrameScore = callbacks->readFrameScore;
-    block->callbackContext = callbacks->context;
+    /* This command is accepted without changing the extra-event scorer. */
     break;
 case 7:
+    /* This command is accepted without changing the extra-event scorer. */
     break;
 case 8:
-    if (block->states != NULL) {
-        heap_Free(block->base.context->heap, block->states);
-        block->states = NULL;
+    {
+    TosContext *stateHeapContext = tosBlock->context;
+    if (eventBlock->states != NULL) {
+        heap_Free(stateHeapContext->heap, eventBlock->states);
+        eventBlock->states = NULL;
     }
 
-    context = block->base.context;
-    block->transitionCount = contextInfo->transitionCount;
-    block->transitionScore = contextInfo->transitionScore;
-    block->initialScore = contextInfo->initialScore;
-    block->stateCount = contextInfo->stateCount;
-    block->stateIds = contextInfo->stateIds;
-    block->transitionBounds = contextInfo->transitionBounds;
-    block->scoreCache = block->getScoreCache(block->callbackContext);
-    block->states = heap_Alloc(
-        context->heap, block->stateCount * sizeof(ExtraEventState));
-    if (block->states == NULL) {
-        _tosErrorLog(block, 1);
+    ownerContext = tosBlock->context;
+    eventBlock->transitionCount = ((ExtraEventContextInfo *)commandData)->transitionCount;
+    eventBlock->transitionScore = ((ExtraEventContextInfo *)commandData)->transitionScore;
+    eventBlock->initialScore = ((ExtraEventContextInfo *)commandData)->initialScore;
+    eventBlock->stateCount = ((ExtraEventContextInfo *)commandData)->stateCount;
+    eventBlock->stateIds = ((ExtraEventContextInfo *)commandData)->stateIds;
+    eventBlock->transitionBounds = ((ExtraEventContextInfo *)commandData)->transitionBounds;
+    eventBlock->scoreCache = eventBlock->getScoreCache(eventBlock->callbackContext);
+    eventBlock->states = heap_Alloc(
+        ownerContext->heap, eventBlock->stateCount * sizeof(ExtraEventState));
+    if (eventBlock->states == NULL) {
+        _tosErrorLog(eventBlock, 1);
     }
     break;
-case 0xFF:
-    if (block->states != NULL) {
-        heap_Free(block->base.context->heap, block->states);
-        block->states = NULL;
     }
-    tosBaseBlockDestruct(block);
+case 6:
+    eventBlock->readStateScore = ((ExtraEventCallbacks *)commandData)->readStateScore;
+    eventBlock->getScoreCache = ((ExtraEventCallbacks *)commandData)->getScoreCache;
+    eventBlock->readFrameScore = ((ExtraEventCallbacks *)commandData)->readFrameScore;
+    eventBlock->callbackContext = ((ExtraEventCallbacks *)commandData)->callbackContext;
     break;
+case 255:
+    {
+    ownerContext = tosBlock->context;
+    if (eventBlock->states != NULL) {
+        heap_Free(ownerContext->heap, eventBlock->states);
+        eventBlock->states = NULL;
+    }
+    tosBaseBlockDestruct(eventBlock);
+    break;
+    }
 default:
     return 0;
 }
@@ -229,6 +250,7 @@ default:
 return 1;
 }
 
+/* The rec1600 block table uses this constructor for its extra-event scoring block. */
 void *ConstructExtraEventDp(TosContext *context, u32 blockIndex)
 {
 return tosBaseBlockConstruct(
