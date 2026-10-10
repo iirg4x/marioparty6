@@ -322,17 +322,6 @@ config.rel_ldscript_replacements["s01Dll"] = [
         }""",
         ),
     ]
-config.rel_ldscript_replacements["openingDll"] = [
-        (
-            "        .text ALIGN(0x4):{}",
-            """        .text ALIGN(0x4):{
-            opening.o(.text)
-            opening.o(.text.object_setup)
-            opening.o(.text.after_setup)
-            *(.text)
-        }""",
-        ),
-    ]
 
 config.rel_ldscript_replacements["mdminidll"] = [
         (
@@ -1653,7 +1642,11 @@ config.libs = [
     Rel(
         "openingDll",
         objects={
-            Object(Matching, "REL/openingDll/opening.c"),
+            Object(
+                Matching,
+                "REL/openingDll/opening.c",
+                extra_cflags=["-sym", "on"],
+            ),
             Object(
                 Matching,
                 "REL/openingDll/runtime.c",

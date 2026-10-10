@@ -14,6 +14,8 @@ Byte percentages were generated from a verified full-project retail build with `
 | Main DOL | 88.95% | 99.05% |
 | REL modules | 27.64% | 31.61% |
 
+openingDll (`openingDll`) selects all **60 functions** from **2 complete translation units**; its linked REL matches retail.
+
 E. Gadd's Garage (`w02Dll`) selects all **137 functions** from **3 complete translation units**; its linked REL matches retail.
 
 DOL source: `src/gssdk_lib/asrpho/rec1600/creasp.c` now builds from source; `main.dol` matches retail byte for byte.
