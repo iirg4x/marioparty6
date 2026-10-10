@@ -1206,6 +1206,12 @@ config.libs = [
             Object(Matching, "REL/framework/heap.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/chara.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/subthread.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/camera.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/game_object2.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/handle.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/hu_archive.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/octtree.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/timer.cpp", extra_cflags=["-pooldata off"]),
         ],
     },
     Rel(

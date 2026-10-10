@@ -17,6 +17,10 @@ REL/framework/new.cpp:
 	.rodata     start:0x00000768 end:0x000007A0
 	.data       start:0x000005B8 end:0x000005E0
 
+REL/framework/camera.cpp:
+	.text       start:0x0001655C end:0x00016D30
+	.rodata     start:0x000007A0 end:0x00000810
+
 REL/framework/camera_ut1.cpp:
 	.text       start:0x0001890C end:0x00018C90
 	.rodata     start:0x00000870 end:0x000008B8
@@ -53,6 +57,11 @@ REL/framework/gxdl.cpp:
 	.rodata     start:0x00000AD0 end:0x00000B08
 	.data       start:0x000015F8 end:0x00001668
 
+REL/framework/hu_archive.cpp:
+	.text       start:0x0002806C end:0x00028698
+	.rodata     start:0x00000B08 end:0x00000B48
+	.data       start:0x00001668 end:0x000016B0
+
 REL/framework/linknode.cpp:
 	.text       start:0x00028A40 end:0x00028B34
 	.rodata     start:0x00000B48 end:0x00000B88
@@ -71,6 +80,11 @@ REL/framework/misc_rotarc.cpp:
 REL/framework/mt19937.cpp:
 	.text       start:0x0002B784 end:0x0002C784
 	.rodata     start:0x00000C50 end:0x00000CC0
+
+REL/framework/octtree.cpp:
+	.text       start:0x0002C784 end:0x0002CA88
+	.rodata     start:0x00000CC0 end:0x00000CF8
+	.data       start:0x00001728 end:0x00001740
 
 REL/framework/particle.cpp:
 	.text       start:0x0002DE70 end:0x0002E154
@@ -103,3 +117,8 @@ REL/framework/thread.cpp:
 	.text       start:0x00030BF4 end:0x0003106C
 	.rodata     start:0x00000F90 end:0x00000FE0
 	.data       start:0x000018D8 end:0x00001988
+
+REL/framework/timer.cpp:
+	.text       start:0x0003106C end:0x000314B8
+	.rodata     start:0x00000FE0 end:0x00001020
+	.data       start:0x00001988 end:0x000019A8

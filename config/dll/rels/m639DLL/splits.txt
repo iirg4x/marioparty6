@@ -17,6 +17,10 @@ REL/framework/new.cpp:
 	.rodata     start:0x00000660 end:0x00000698
 	.data       start:0x00000818 end:0x00000840
 
+REL/framework/camera.cpp:
+	.text       start:0x000112A4 end:0x00011A78
+	.rodata     start:0x00000698 end:0x00000708
+
 REL/framework/camera_ut1.cpp:
 	.text       start:0x00013654 end:0x000139D8
 	.rodata     start:0x00000768 end:0x000007B0
@@ -38,6 +42,11 @@ REL/framework/game_object.cpp:
 	.text       start:0x0001A9EC end:0x0001AB64
 	.rodata     start:0x000008E0 end:0x00000920
 	.data       start:0x00001690 end:0x000016B8
+
+REL/framework/game_object2.cpp:
+	.text       start:0x0001AB64 end:0x0001AC94
+	.rodata     start:0x00000920 end:0x00000960
+	.data       start:0x000016B8 end:0x000016D0
 
 REL/framework/game_object_man.cpp:
 	.text       start:0x0001BE48 end:0x0001BF8C
@@ -77,3 +86,8 @@ REL/framework/thread.cpp:
 	.text       start:0x00023650 end:0x00023AC8
 	.rodata     start:0x00000BA0 end:0x00000BF0
 	.data       start:0x000018B8 end:0x00001968
+
+REL/framework/timer.cpp:
+	.text       start:0x00023AC8 end:0x00023F14
+	.rodata     start:0x00000BF0 end:0x00000C2D
+	.data       start:0x00001968 end:0x00001985
