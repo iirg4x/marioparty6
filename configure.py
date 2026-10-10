@@ -1009,7 +1009,7 @@ config.libs = [
         "host": False,
         "objects": [
             Object(Matching, "gssdk_lib/gsapi/sid/sid.c"),
-            Object(NonMatching, "gssdk_lib/gsapi/callbacks.c"),
+            Object(Matching, "gssdk_lib/gsapi/callbacks.c"),
             Object(Matching, "gssdk_lib/gsapi/ctxfuncs.c"),
             Object(Matching, "gssdk_lib/gsapi/extaudio.c"),
             Object(NonMatching, "gssdk_lib/gsapi/gsapi.c"),

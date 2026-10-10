@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 33.84% | 55.84% |
-| Main DOL | 87.80% | 98.84% |
+| Entire project | 33.85% | 55.84% |
+| Main DOL | 87.89% | 98.84% |
 | REL modules | 22.40% | 28.59% |
+
+DOL source: `src/gssdk_lib/gsapi/callbacks.c` now builds from source; `main.dol` matches retail byte for byte.
 
 Clockwork Castle (`w06Dll`) selects all **76 functions** from **3 complete translation units**; its linked REL matches retail.
 
