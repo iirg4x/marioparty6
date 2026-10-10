@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 33.85% | 55.84% |
+| Entire project | 34.43% | 56.13% |
 | Main DOL | 87.89% | 98.84% |
-| REL modules | 22.40% | 28.59% |
+| REL modules | 23.10% | 29.06% |
+
+Shared C++ framework (`framework:camera.cpp`): **28 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
 DOL source: `src/gssdk_lib/gsapi/callbacks.c` now builds from source; `main.dol` matches retail byte for byte.
 
