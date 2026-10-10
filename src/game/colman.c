@@ -1,3 +1,4 @@
+// Provides collision detection and response for minigame models and bodies.
 #define _MATH_H
 #include "dolphin/math.h"
 
@@ -10,71 +11,103 @@ extern inline float fabsf(float x)
 #include "game/hu3d.h"
 #include "game/frand.h"
 
+#define COL_MAT_ATTR_MASK 0x3F0000 // Material bits encoding the surface response.
 
+#define COL_MAT_ATTR_1_BIT_PATTERN 0x010000
+#define COL_MAT_ATTR_2_BIT_PATTERN 0x020000
+#define COL_MAT_ATTR_3_BIT_PATTERN 0x030000
+#define COL_MAT_ATTR_4_BIT_PATTERN 0x040000
+#define COL_MAT_ATTR_5_BIT_PATTERN 0x050000
+#define COL_MAT_ATTR_6_BIT_PATTERN 0x060000
+#define COL_MAT_ATTR_7_BIT_PATTERN 0x070000
+#define COL_MAT_ATTR_8_BIT_PATTERN 0x080000
+#define COL_MAT_ATTR_9_BIT_PATTERN 0x100000
+#define COL_MAT_ATTR_10_BIT_PATTERN 0x180000
+#define COL_MAT_ATTR_11_BIT_PATTERN 0x200000
+#define COL_MAT_ATTR_12_BIT_PATTERN 0x280000
+#define COL_MAT_ATTR_13_BIT_PATTERN 0x300000
+#define COL_MAT_ATTR_14_BIT_PATTERN 0x380000
 
+// Skips later mesh tests when a pass leaves the mesh/body contact bits clear.
+// Immediate overlap correction can leave those bits clear too.
+#define COLBODY_ATTR_NO_CONTACT_FLAG 0x80000000
+#define COLBODY_ATTR_COLLISION_MASK 0x0C000000 // Mesh or body contact in the current pass.
+#define COLBODY_ATTR_PASS_CONTACT_MASK 0x7C000000 // Contact bits retained across collision passes.
+#define COLBODY_ATTR_PASS_RETAIN_MASK 0x83FFFFFF // Attribute bits preserved for the next pass.
 
+#define COLBODY_ATTR_MESH_CONTACT_FLAG 0x04000000 // A triangle mesh has a contact point for this
+                                                  // body.
+#define COLBODY_ATTR_BODY_CONTACT_FLAG 0x08000000 // A body pair recorded a collision.
+#define COLBODY_ATTR_SWEEP_CONTACT_FLAG 0x10000000 // A swept body contact was found.
+// An overlap was corrected immediately; retain its contact point after this pass.
+#define COLBODY_ATTR_CONTACT_CORRECTED_FLAG 0x20000000
+#define COLBODY_ATTR_BODY_PAIR_CONTACT_FLAG 0x40000000 // This body already resolved a pair contact.
+#define COLBODY_ATTR_CONTACT_POINT_LIMIT_FLAG 0x02000000 // The collision point list reached its
+                                                         // limit.
+#define COLBODY_ATTR_MESH_CONTACT_MASK 0x14000000 // Mesh contact state cleared before correction.
 
 typedef struct ColBroad_s {
-    float t;
-    COLBODY *body1;
-    COLBODY *body2;
-    s16 body1Idx;
-    s16 body2Idx;
-    int colResult;
+    float t; // Movement fraction chosen for resolving this body pair; mesh-test tolerance can
+             // exceed 1.
+    COLBODY *body1; // First body in the candidate pair.
+    COLBODY *body2; // Second body in the candidate pair.
+    s16 body1Idx; // Index of the first body in the body array.
+    s16 body2Idx; // Index of the second body in the body array.
+    int colResult; // Contact classification used by the narrow phase.
 } COLBROAD;
 
 typedef struct ColNarrow_s {
-    float t;
-    COLBROAD *broadP;
+    float t; // Contact time copied from the candidate pair.
+    COLBROAD *broadP; // Candidate pair to resolve in narrow-phase order.
 } COLNARROW;
 
 typedef struct ColWork_s {
-    HU3D_MODELID *mdlId;
-    s16 mdlNum;
-    s16 attr;
-    COLBROAD *broadCol;
-    int broadColNum;
-    COL_ATTRPARAM attrParam[7];
-    COL_ATTRPARAM attrParamHi[7];
-    COLBODY *body;
-    int bodyNum;
-    COLNARROW *narrowCol;
-    s16 *colOrder1;
-    s16 *colOrder2;
-    u32 unk;
+    HU3D_MODELID *mdlId; // Model IDs whose meshes participate in collision.
+    s16 mdlNum; // Number of registered model IDs.
+    s16 attr; // Collision-map state and per-frame mode bits.
+    COLBROAD *broadCol; // Broad-phase candidate-pair storage.
+    int broadColNum; // Number of candidate pairs found in the current pass.
+    COL_ATTRPARAM attrParam[7]; // Surface response parameters for material codes 0-6.
+    COL_ATTRPARAM attrParamHi[7]; // Surface response parameters for material codes 7-13.
+    COLBODY *body; // Collision bodies controlled by actors.
+    int bodyNum; // Number of body slots reserved for this map.
+    COLNARROW *narrowCol; // Narrow-phase pair storage ordered by contact time.
+    s16 *colOrder1; // Left bounds used while sorting collision times.
+    s16 *colOrder2; // Right bounds used while sorting collision times.
+    u32 reserved; // No collision routine reads or writes this storage.
 } COLWORK;
 
 typedef struct ColTri_s {
-    HuVecF norm;
-    HuVecF edgeNorm1;
-    HuVecF edgeNorm2;
-    HuVecF edgeNorm3;
-    float d;
-    HuVecF center;
-    float dist;
+    HuVecF norm; // Unit normal of the triangle plane.
+    HuVecF edgeNorm1; // Inward-facing normal for the first triangle edge.
+    HuVecF edgeNorm2; // Inward-facing normal for the second triangle edge.
+    HuVecF edgeNorm3; // Inward-facing normal for the third triangle edge.
+    float d; // Plane constant in dot(norm, point) + d = 0.
+    HuVecF center; // Triangle centroid in mesh-local coordinates.
+    float dist; // Squared radius enclosing all three vertices around center.
 } COLTRI;
 
 typedef struct ColMesh_s {
-    HSF_OBJECT *obj;
-    COLTRI *tri;
-    HuVecF *bodyPos;
-    HuVecF *bodyMove;
-    u8 mdlNo;
-    u32 mask;
-    HuVecF boundsCenter;
-    float boundsRadius;
-    Mtx mtx;
-    Mtx mtxOld;
-    Mtx mtxInv;
-    Mtx mtxInvOld;
+    HSF_OBJECT *obj; // HSF mesh object represented by this collision record.
+    COLTRI *tri; // Triangle plane and edge data built from the mesh faces.
+    HuVecF *bodyPos; // Per-body positions transformed into this mesh's local space.
+    HuVecF *bodyMove; // Per-body world-space displacement induced by this mesh's transform change.
+    u8 mdlNo; // Index of the owning model in the registered model list.
+    u32 mask; // Model collision mask tested against query and body masks.
+    HuVecF boundsCenter; // Mesh-local center of the broad-phase bounding sphere.
+    float boundsRadius; // Radius of the mesh-local broad-phase bounding sphere.
+    Mtx mtx; // Current local-to-world transform.
+    Mtx mtxOld; // Previous local-to-world transform.
+    Mtx mtxInv; // Current world-to-local transform.
+    Mtx mtxInvOld; // Previous world-to-local transform.
 } COLMESH;
 
-static COLWORK colWork;
+static COLWORK colWork; // Collision-map registrations, bodies, and response parameters.
 
-static BOOL colMapInitF;
-static BOOL CancelTRXF;
-static int colMeshCount;
-static COLMESH *colMesh;
+static BOOL colMapInitF; // True once model and triangle setup is complete.
+static BOOL CancelTRXF; // Selects current object transforms for the model with a motion.
+static int colMeshCount; // Number of mesh objects in all registered models.
+static COLMESH *colMesh; // Mesh transforms, bounds, triangles, and per-body movement.
 
 #define SWAP(a, b, type) \
 do { \
@@ -84,160 +117,171 @@ do { \
     b = temp; \
 } while(0)
 
-static void SortCollisions(COLNARROW *narrowP, int num)
+// Sorts narrow-phase collision records by contact time for ordered resolution.
+// Called by _BodyColNarrow before resolving body pairs.
+static void SortCollisions(COLNARROW *collisions, int collisionCount)
 {
-    s16 idx2; //r31
-    s16 *order1; //r30
-    s16 idx1; //r29
-    s16 *order2; //r28
-    int orderNum; //r27
-    int orderIdx; //r26
+    s16 rightIdx;
+    s16 *leftBounds;
+    s16 leftIdx;
+    s16 *rightBounds;
+    int partitionCount;
+    int partitionIdx;
 
+    float pivotTime;
 
-    float t;
-
-    order1 = colWork.colOrder1;
-    order2 = colWork.colOrder2;
-    order1[0] = 0;
-    order2[0] = num-1;
-    for(orderIdx=0, orderNum=1; orderIdx<orderNum; orderIdx++) {
-        t = narrowP[order1[orderIdx]].t;
-        idx1 = order1[orderIdx]+1;
-        idx2 = order2[orderIdx];
-        if(order2[orderIdx] > order1[orderIdx]) {
-            while(idx1 < idx2) {
-                if(narrowP[idx1].t < t) {
-                    if(t <= narrowP[idx2].t) {
-                        idx1++;
-                        idx2--;
+    leftBounds = colWork.colOrder1;
+    rightBounds = colWork.colOrder2;
+    leftBounds[0] = 0;
+    rightBounds[0] = collisionCount-1;
+    for(partitionIdx=0, partitionCount=1; partitionIdx<partitionCount; partitionIdx++) {
+        pivotTime = collisions[leftBounds[partitionIdx]].t;
+        leftIdx = leftBounds[partitionIdx]+1;
+        rightIdx = rightBounds[partitionIdx];
+        if(rightBounds[partitionIdx] > leftBounds[partitionIdx]) {
+            while(leftIdx < rightIdx) {
+                if(collisions[leftIdx].t < pivotTime) {
+                    if(pivotTime <= collisions[rightIdx].t) {
+                        leftIdx++;
+                        rightIdx--;
                     } else {
-                        SWAP(narrowP[idx1+1], narrowP[idx2], COLNARROW);
-                        idx1 += 2;
+                        SWAP(collisions[leftIdx+1], collisions[rightIdx], COLNARROW);
+                        leftIdx += 2;
                     }
                 } else {
-                    if(t <= narrowP[idx2].t) {
-                        SWAP(narrowP[idx2-1], narrowP[idx1], COLNARROW);
-                        idx2 -= 2;
+                    if(pivotTime <= collisions[rightIdx].t) {
+                        SWAP(collisions[rightIdx-1], collisions[leftIdx], COLNARROW);
+                        rightIdx -= 2;
                     } else {
-                        SWAP(narrowP[idx2], narrowP[idx1], COLNARROW);
-                        idx1++;
-                        idx2--;
+                        SWAP(collisions[rightIdx], collisions[leftIdx], COLNARROW);
+                        leftIdx++;
+                        rightIdx--;
                     }
                 }
             }
-            if(idx1 == idx2) {
-                if(t <= narrowP[idx1].t) {
-                    idx2--;
+            if(leftIdx == rightIdx) {
+                if(pivotTime <= collisions[leftIdx].t) {
+                    rightIdx--;
                 } else {
-                    idx1++;
+                    leftIdx++;
                 }
             }
-            if(idx2 == order1[orderIdx]) {
-                order1[orderNum] = idx1;
-                order2[orderNum] = order2[orderIdx];
-                orderNum++;
+            if(rightIdx == leftBounds[partitionIdx]) {
+                leftBounds[partitionCount] = leftIdx;
+                rightBounds[partitionCount] = rightBounds[partitionIdx];
+                partitionCount++;
             } else {
-                COLNARROW *col = &narrowP[order1[orderIdx]];
-                SWAP(narrowP[idx2], *col, COLNARROW);
-                order1[orderNum] = order1[orderIdx];
-                order2[orderNum] = idx2-1;
-                orderNum++;
-                order1[orderNum] = idx1;
-                order2[orderNum] = order2[orderIdx];
-                orderNum++;
+                COLNARROW *firstCollision = &collisions[leftBounds[partitionIdx]];
+                SWAP(collisions[rightIdx], *firstCollision, COLNARROW);
+                leftBounds[partitionCount] = leftBounds[partitionIdx];
+                rightBounds[partitionCount] = rightIdx-1;
+                partitionCount++;
+                leftBounds[partitionCount] = leftIdx;
+                rightBounds[partitionCount] = rightBounds[partitionIdx];
+                partitionCount++;
             }
         }
     }
 }
 
-static inline void RemoveMtxTrans(Mtx out, Mtx in)
+// Copies a matrix's rotation and scale rows while clearing translation.
+// Used by _BodyMeshCol when converting a body radius into mesh-local space.
+static inline void RemoveMtxTrans(Mtx outputMatrix, Mtx inputMatrix)
 {
-    HuVecF row1, row2, row3;
-    row1.x = in[0][0];
-    row1.y = in[0][1];
-    row1.z = in[0][2];
-    row2.x = in[1][0];
-    row2.y = in[1][1];
-    row2.z = in[1][2];
-    row3.x = in[2][0];
-    row3.y = in[2][1];
-    row3.z = in[2][2];
+    HuVecF firstRow, secondRow, thirdRow;
+    firstRow.x = inputMatrix[0][0];
+    firstRow.y = inputMatrix[0][1];
+    firstRow.z = inputMatrix[0][2];
+    secondRow.x = inputMatrix[1][0];
+    secondRow.y = inputMatrix[1][1];
+    secondRow.z = inputMatrix[1][2];
+    thirdRow.x = inputMatrix[2][0];
+    thirdRow.y = inputMatrix[2][1];
+    thirdRow.z = inputMatrix[2][2];
 
-    out[0][0] = row1.x;
-    out[0][1] = row1.y;
-    out[0][2] = row1.z;
-    out[0][3] = 0;
-    out[1][0] = row2.x;
-    out[1][1] = row2.y;
-    out[1][2] = row2.z;
-    out[1][3] = 0;
-    out[2][0] = row3.x;
-    out[2][1] = row3.y;
-    out[2][2] = row3.z;
-    out[2][3] = 0;
+    outputMatrix[0][0] = firstRow.x;
+    outputMatrix[0][1] = firstRow.y;
+    outputMatrix[0][2] = firstRow.z;
+    outputMatrix[0][3] = 0;
+    outputMatrix[1][0] = secondRow.x;
+    outputMatrix[1][1] = secondRow.y;
+    outputMatrix[1][2] = secondRow.z;
+    outputMatrix[1][3] = 0;
+    outputMatrix[2][0] = thirdRow.x;
+    outputMatrix[2][1] = thirdRow.y;
+    outputMatrix[2][2] = thirdRow.z;
+    outputMatrix[2][3] = 0;
 }
 
-static inline void MakeScaleMtx(Mtx out, Mtx in)
+// Replaces a matrix with diagonal scale values measured from each basis row.
+// Used by CheckPoint to scale the overlap correction.
+static inline void MakeScaleMtx(Mtx outputMatrix, Mtx inputMatrix)
 {
-    HuVecF row1, row2, row3;
-    row1.x = in[0][0];
-    row1.y = in[0][1];
-    row1.z = in[0][2];
-    row2.x = in[1][0];
-    row2.y = in[1][1];
-    row2.z = in[1][2];
-    row3.x = in[2][0];
-    row3.y = in[2][1];
-    row3.z = in[2][2];
-    out[0][0] = VECMag(&row1);
-    out[0][1] = 0;
-    out[0][2] = 0;
-    out[0][3] = 0;
-    out[1][0] = 0;
-    out[1][1] = VECMag(&row2);
-    out[1][2] = 0;
-    out[1][3] = 0;
-    out[2][0] = 0;
-    out[2][1] = 0;
-    out[2][2] = VECMag(&row3);
-    out[2][3] = 0;
+    HuVecF firstRow, secondRow, thirdRow;
+    firstRow.x = inputMatrix[0][0];
+    firstRow.y = inputMatrix[0][1];
+    firstRow.z = inputMatrix[0][2];
+    secondRow.x = inputMatrix[1][0];
+    secondRow.y = inputMatrix[1][1];
+    secondRow.z = inputMatrix[1][2];
+    thirdRow.x = inputMatrix[2][0];
+    thirdRow.y = inputMatrix[2][1];
+    thirdRow.z = inputMatrix[2][2];
+    outputMatrix[0][0] = VECMag(&firstRow);
+    outputMatrix[0][1] = 0;
+    outputMatrix[0][2] = 0;
+    outputMatrix[0][3] = 0;
+    outputMatrix[1][0] = 0;
+    outputMatrix[1][1] = VECMag(&secondRow);
+    outputMatrix[1][2] = 0;
+    outputMatrix[1][3] = 0;
+    outputMatrix[2][0] = 0;
+    outputMatrix[2][1] = 0;
+    outputMatrix[2][2] = VECMag(&thirdRow);
+    outputMatrix[2][3] = 0;
 }
 
-static inline void MakeMeshEject(COLBODY *bodyP, COLTRI *triP, HuVecF *out, HuVecF *norm)
+// Builds a body support offset from a triangle normal and body radius for _BodyMeshCol.
+// Y is zero when abs(normal.y) < 0.001, otherwise the signed half-radius.
+static inline void MakeMeshEject(COLBODY *body, COLTRI *triangle, HuVecF *eject,
+                                 HuVecF *planeNormal)
 {
     float halfRadius;
     float radius;
 
-    halfRadius = bodyP->param.radius;
-    radius = bodyP->param.radius;
-    *norm = triP->norm;
-    out->x = norm->x;
-    out->y = 0;
-    out->z = norm->z;
-    if(fabsf(out->x) > 0.001f || fabsf(out->z) > 0.001f) {
-        VECNormalize(out, out);
+    halfRadius = body->param.radius;
+    radius = body->param.radius;
+    *planeNormal = triangle->norm;
+    eject->x = planeNormal->x;
+    eject->y = 0;
+    eject->z = planeNormal->z;
+    if(fabsf(eject->x) > 0.001f || fabsf(eject->z) > 0.001f) {
+        VECNormalize(eject, eject);
     }
     halfRadius /= 2;
-    out->x *= radius;
-    if(fabsf(norm->y) < 0.001f) {
-        out->y = 0;
+    eject->x *= radius;
+    if(fabsf(planeNormal->y) < 0.001f) {
+        eject->y = 0;
     } else {
-        out->y = norm->y > 0 ? halfRadius : -halfRadius;
+        eject->y = planeNormal->y > 0 ? halfRadius : -halfRadius;
     }
-    out->z *= radius;
+    eject->z *= radius;
 }
 
-static inline float GetSign(float x)
+// Returns -1, 0, or 1 according to the sign of a value.
+// Used by SameSign when classifying triangle-plane distances.
+static inline float GetSign(float value)
 {
-    if(x < 0) {
+    if(value < 0) {
         return -1;
-    } else if(x > 0) {
+    } else if(value > 0) {
         return 1;
     } else {
         return 0;
     }
 }
 
+// Unused helper; its discarded constants have no runtime effect.
 static void UseFloat(void)
 {
     (void)0.0f;
@@ -247,43 +291,50 @@ static void UseFloat(void)
     (void)1.0f;
 }
 
-static COLMESH *SearchHsfObjectColMesh(HSF_OBJECT *obj)
+// Finds the collision mesh record associated with an HSF object.
+// Used while ColMtxCalcHsfObject walks a model's object hierarchy.
+static COLMESH *SearchHsfObjectColMesh(HSF_OBJECT *object)
 {
-    int no;
-    for(no=colMeshCount; no--;) {
-        if(colMesh[no].obj == obj) {
-            return &colMesh[no];
+    int meshIdx;
+    for(meshIdx=colMeshCount; meshIdx--;) {
+        if(colMesh[meshIdx].obj == object) {
+            return &colMesh[meshIdx];
         }
     }
     return NULL;
 }
 
-static void ColMtxTransApply(Mtx mtx, float x, float y, float z)
+// Adds a translation to the fourth column of a collision transform.
+// Used while composing model and object collision transforms.
+static void ColMtxTransApply(Mtx matrix, float translateX, float translateY, float translateZ)
 {
-    mtx[0][3] += x;
-    mtx[1][3] += y;
-    mtx[2][3] += z;
+    matrix[0][3] += translateX;
+    matrix[1][3] += translateY;
+    matrix[2][3] += translateZ;
 }
 
-static void ColMtxRot(Mtx mtx, float x, float y, float z)
+// Builds an X/Y/Z rotation matrix, concatenating nonzero rotations in order.
+// Used while composing model and object collision transforms; angles are degrees.
+static void ColMtxRot(Mtx matrix, float rotateX, float rotateY, float rotateZ)
 {
-    if(x != 0) {
-        MTXRotDeg(mtx, 'X', x);
+    if(rotateX != 0) {
+        MTXRotDeg(matrix, 'X', rotateX);
     } else {
-        MTXIdentity(mtx);
+        MTXIdentity(matrix);
     }
-    if(y != 0) {
+    if(rotateY != 0) {
         Mtx temp;
-        MTXRotDeg(temp, 'Y', y);
-        MTXConcat(temp, mtx, mtx);
+        MTXRotDeg(temp, 'Y', rotateY);
+        MTXConcat(temp, matrix, matrix);
     }
-    if(z != 0) {
+    if(rotateZ != 0) {
         Mtx temp;
-        MTXRotDeg(temp, 'Z', z);
-        MTXConcat(temp, mtx, mtx);
+        MTXRotDeg(temp, 'Z', rotateZ);
+        MTXConcat(temp, matrix, matrix);
     }
 }
 
+// Unused helper; its discarded constants have no runtime effect.
 static void UseFloat2(void)
 {
     (void)0.0001f;
@@ -291,54 +342,58 @@ static void UseFloat2(void)
     (void)4.0f;
 }
 
-static void ColBoundsGet(HuVecF *center, float *radius, HuVecF *vtx, int num)
+// Computes a vertex AABB center and the radius enclosing all supplied vertices.
+// Called by ColMapInit for each collision mesh; leaves outputs untouched for no vertices.
+static void ColBoundsGet(HuVecF *center, float *boundRadius, HuVecF *vertices, int vertexCount)
 {
-    HuVecF max;
-    HuVecF min;
-    HuVecF delta;
-    HuVecF *vtxP;
-    float maxDist;
-    float dist;
-    int i;
+    HuVecF maxPoint;
+    HuVecF minPoint;
+    HuVecF fromCenter;
+    HuVecF *vertex;
+    float maxDistanceSquared;
+    float distanceSquared;
+    int vertexIdx;
 
-    if(num == 0) {
+    if(vertexCount == 0) {
         return;
     }
-    vtxP = vtx;
-    max = *vtxP;
-    min = *vtxP;
-    vtxP++;
-    for(i=1; i<num; i++, vtxP++) {
-        if(max.x < vtxP->x) {
-            max.x = vtxP->x;
-        } else if(min.x > vtxP->x) {
-            min.x = vtxP->x;
+    vertex = vertices;
+    maxPoint = *vertex;
+    minPoint = *vertex;
+    vertex++;
+    for(vertexIdx=1; vertexIdx<vertexCount; vertexIdx++, vertex++) {
+        if(maxPoint.x < vertex->x) {
+            maxPoint.x = vertex->x;
+        } else if(minPoint.x > vertex->x) {
+            minPoint.x = vertex->x;
         }
-        if(max.y < vtxP->y) {
-            max.y = vtxP->y;
-        } else if(min.y > vtxP->y) {
-            min.y = vtxP->y;
+        if(maxPoint.y < vertex->y) {
+            maxPoint.y = vertex->y;
+        } else if(minPoint.y > vertex->y) {
+            minPoint.y = vertex->y;
         }
-        if(max.z < vtxP->z) {
-            max.z = vtxP->z;
-        } else if(min.z > vtxP->z) {
-            min.z = vtxP->z;
-        }
-    }
-    center->x = (min.x+max.x)/2.0f;
-    center->y = (min.y+max.y)/2.0f;
-    center->z = (min.z+max.z)/2.0f;
-    maxDist = 0;
-    for(i=num; i--;) {
-        VECSubtract(&vtx[i], center, &delta);
-        dist = VECSquareMag(&delta);
-        if(maxDist < dist) {
-            maxDist = dist;
+        if(maxPoint.z < vertex->z) {
+            maxPoint.z = vertex->z;
+        } else if(minPoint.z > vertex->z) {
+            minPoint.z = vertex->z;
         }
     }
-    *radius = sqrtf(maxDist);
+    center->x = (minPoint.x+maxPoint.x)/2.0f;
+    center->y = (minPoint.y+maxPoint.y)/2.0f;
+    center->z = (minPoint.z+maxPoint.z)/2.0f;
+    maxDistanceSquared = 0;
+    for(vertexIdx=vertexCount; vertexIdx--;) {
+        VECSubtract(&vertices[vertexIdx], center, &fromCenter);
+        distanceSquared = VECSquareMag(&fromCenter);
+        if(maxDistanceSquared < distanceSquared) {
+            maxDistanceSquared = distanceSquared;
+        }
+    }
+    *boundRadius = sqrtf(maxDistanceSquared);
 }
 
+// Expands a mesh face into one triangle's vertex indices for collision setup.
+// Used for triangle setup and each mesh collision or segment query.
 static void MakeIndexBuf(int *out, HSF_FACE *hsfFaceP, int idx)
 {
     switch(hsfFaceP->type) {
@@ -397,49 +452,51 @@ static void MakeIndexBuf(int *out, HSF_FACE *hsfFaceP, int idx)
     }
 }
 
+// Converts an HSF material collision attribute into the collision-system bit.
+// Used when recording mesh contacts and returning polygon-query material codes.
 static inline u32 ColMatCodeGet(u32 matAttr)
 {
-    switch(matAttr & 0x3F0000) {
-        case 0x10000:
+    switch(matAttr & COL_MAT_ATTR_MASK) {
+        case COL_MAT_ATTR_1_BIT_PATTERN:
             return (1 << 0);
 
-        case 0x20000:
+        case COL_MAT_ATTR_2_BIT_PATTERN:
             return (1 << 1);
 
-        case 0x30000:
+        case COL_MAT_ATTR_3_BIT_PATTERN:
             return (1 << 2);
 
-        case 0x40000:
+        case COL_MAT_ATTR_4_BIT_PATTERN:
             return (1 << 3);
 
-        case 0x50000:
+        case COL_MAT_ATTR_5_BIT_PATTERN:
             return (1 << 4);
 
-        case 0x60000:
+        case COL_MAT_ATTR_6_BIT_PATTERN:
             return (1 << 5);
 
-        case 0x70000:
+        case COL_MAT_ATTR_7_BIT_PATTERN:
             return (1 << 6);
 
-        case 0x80000:
+        case COL_MAT_ATTR_8_BIT_PATTERN:
             return (1 << 7);
 
-        case 0x100000:
+        case COL_MAT_ATTR_9_BIT_PATTERN:
             return (1 << 8);
 
-        case 0x180000:
+        case COL_MAT_ATTR_10_BIT_PATTERN:
             return (1 << 9);
 
-        case 0x200000:
+        case COL_MAT_ATTR_11_BIT_PATTERN:
             return (1 << 10);
 
-        case 0x280000:
+        case COL_MAT_ATTR_12_BIT_PATTERN:
             return (1 << 11);
 
-        case 0x300000:
+        case COL_MAT_ATTR_13_BIT_PATTERN:
             return (1 << 12);
 
-        case 0x380000:
+        case COL_MAT_ATTR_14_BIT_PATTERN:
             return (1 << 13);
 
         default:
@@ -447,8 +504,12 @@ static inline u32 ColMatCodeGet(u32 matAttr)
     }
 }
 
+// Maps a collision material bit to its parameter slot, or -1 when unsupported.
+// Used for contact response and the public surface-parameter accessors.
 static int ColCodeGet(u32 code)
 {
+    // The low group takes priority; bit 0x4000 selects this group but has no parameter slot.
+    // With only 0x4000 in this group, valid high-group surface bits are ignored.
     if(code & 0x407F) {
         if(code & 0x1) {
             return 0;
@@ -485,6 +546,8 @@ static int ColCodeGet(u32 code)
     return -1;
 }
 
+// Builds collision transforms recursively for supported HSF objects.
+// ColMtxCalcModelAll calls it during setup and refresh; it then visits child objects recursively.
 static void ColMtxCalcHsfObject(HSF_OBJECT *obj, Mtx mtx)
 {
     HSF_TRANSFORM *trxP;
@@ -532,6 +595,8 @@ static void ColMtxCalcHsfObject(HSF_OBJECT *obj, Mtx mtx)
     }
 }
 
+// Refreshes collision transforms for every model registered with the map.
+// Called by ColMapInit and UpdateMeshMtx; animated models use current object transforms.
 static void ColMtxCalcModelAll(void)
 {
     HU3D_MODEL *modelP;
@@ -552,6 +617,8 @@ static void ColMtxCalcModelAll(void)
 
 #define CLAMP_EPSILON(x) ((fabs(x) < 0.001f) ? 0 : (x))
 
+// Reports whether two distances lie on the same side of a collision plane.
+// Used by ColEjectDistGet and ColPlaneDistGet; two zero distances also have the same sign.
 static inline BOOL SameSign(float x, float y)
 {
     int signA = GetSign(x);
@@ -566,6 +633,8 @@ static inline BOOL SameSign(float x, float y)
     return result;
 }
 
+// Checks that a projected point is inside all three oriented triangle edges.
+// Used by plane and mesh collision tests; extFlag does not change the returned result.
 static inline BOOL ColPlaneEdgeCheck(HuVecF a, HuVecF b, HuVecF c, COLTRI *tri, BOOL extFlag)
 {
     HuVecF ab;
@@ -573,10 +642,11 @@ static inline BOOL ColPlaneEdgeCheck(HuVecF a, HuVecF b, HuVecF c, COLTRI *tri, 
     VECSubtract(&a, &b, &ab);
     VECSubtract(&a, &c, &ac);
 
-    if(VECDotProduct(&ab, &tri->edgeNorm1) >= 0 && VECDotProduct(&ac, &tri->edgeNorm2) >= 0 && VECDotProduct(&ab, &tri->edgeNorm3) >= 0) {
+    if (VECDotProduct(&ab, &tri->edgeNorm1) >= 0 && VECDotProduct(&ac, &tri->edgeNorm2) >= 0 &&
+        VECDotProduct(&ab, &tri->edgeNorm3) >= 0) {
         return TRUE;
     } else {
-        //TODO: Find less hacky matching code
+        // The extended test still returns false when a point is outside an edge.
         if(extFlag) {
            int a;
            (void)a;
@@ -587,6 +657,10 @@ static inline BOOL ColPlaneEdgeCheck(HuVecF a, HuVecF b, HuVecF c, COLTRI *tri, 
     }
 }
 
+// Tests one or both vertical ends of a body against a triangle plane and returns the shallowest
+// overlap.
+// Used by _BodyMeshCylCol; its signed support offset makes the non-flat test use the lower Y end
+// for either face-normal direction, or the center when the Y offset is zero.
 static inline BOOL ColPlaneYCheck(HuVecF *center, HuVecF *dir, COLTRI *tri, HuVecF *out, BOOL flatF)
 {
     HuVecF temp;
@@ -632,6 +706,8 @@ static inline BOOL ColPlaneYCheck(HuVecF *center, HuVecF *dir, COLTRI *tri, HuVe
     return result;
 }
 
+// Tests body corner points against a triangle plane and selects its shallowest overlap.
+// Used by ColEjectDistGet and mesh collision passes to select a support corner.
 static BOOL ColPlaneCheck(HuVecF *center, HuVecF *size, COLTRI *tri, HuVecF *eject, BOOL flatF)
 {
     HuVecF vtx[4];
@@ -644,6 +720,7 @@ static BOOL ColPlaneCheck(HuVecF *center, HuVecF *size, COLTRI *tri, HuVecF *eje
     float mind;
     result = FALSE;
 
+    // Only the (-X,-Z) and (+X,+Z) corners are sampled; flatF repeats them at both Y ends.
     if(flatF) {
         vtx[0].x = -size->x;
         vtx[0].z = -size->z;
@@ -686,7 +763,11 @@ static BOOL ColPlaneCheck(HuVecF *center, HuVecF *size, COLTRI *tri, HuVecF *eje
     return result;
 }
 
-static int ColEjectDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, HuVecF *size, float height, float maxDist, float minDist, HuVecF *vtx, int *vtxIdx, COLTRI *tri, float *outDist)
+// Finds a body's plane-crossing movement fraction or signed initial plane distance.
+// Used by _BodyMeshCylCol; negative results distinguish rejected and overlap cases.
+static int ColEjectDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, HuVecF *size, float height,
+                           float maxDist, float minDist, HuVecF *vtx, int *vtxIdx, COLTRI *tri,
+                           float *outDist)
 {
     float dist;
 
@@ -716,6 +797,8 @@ static int ColEjectDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, HuVecF *size
             }
             VECAdd(&a, &eject, &a);
             if(!ColPlaneEdgeCheck(a, vtx[vtxIdx[0]], vtx[vtxIdx[1]], tri, FALSE)) {
+                // Leave outDist untouched when the projected initial overlap lies outside the
+                // triangle.
                 return -6;
             } else {
                 *outDist = startD;
@@ -730,7 +813,8 @@ static int ColEjectDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, HuVecF *size
             return -3;
         }
         dist = -startD/dot;
-        if((dist < minDist && (minDist-dist) > 0.001f) || (maxDist < dist && (dist-maxDist) > 0.001f)) {
+        if ((dist < minDist && (minDist - dist) > 0.001f) ||
+            (maxDist < dist && (dist - maxDist) > 0.001f)) {
             return -2;
         }
         if(dist < minDist) {
@@ -738,18 +822,24 @@ static int ColEjectDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, HuVecF *size
         }
         VECScale(dir, &delta, dist);
         VECAdd(start, &delta, &a);
+        // Use the selected support corner without checking ColPlaneCheck's return value.
         ColPlaneCheck(start, size, tri, &eject, FALSE);
         VECAdd(&a, &eject, &a);
         if(!ColPlaneEdgeCheck(a, vtx[vtxIdx[0]], vtx[vtxIdx[1]], tri, FALSE)) {
             return -4;
         } else {
             *outDist = dist;
-            return -0;
+            return 0;
         }
     }
 }
 
-static int ColPlaneDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, float height, float maxDist, float minDist, HuVecF *vtx, int *vtxIdx, COLTRI *tri, float *outDist)
+// Finds a swept point's contact with a triangle plane and its edges.
+// outDist is a movement fraction on a crossing and the signed start distance for an initial
+// overlap.
+// Used by _BodyMeshCol and ColMapPolyGet.
+static int ColPlaneDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, float height, float maxDist,
+                           float minDist, HuVecF *vtx, int *vtxIdx, COLTRI *tri, float *outDist)
 {
     float dist;
     float startD;
@@ -786,7 +876,8 @@ static int ColPlaneDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, float height
             return -3;
         }
         dist = -startD/dot;
-        if((dist < minDist && (minDist-dist) > 0.001f) || (maxDist < dist && (dist-maxDist) > 0.001f)) {
+        if ((dist < minDist && (minDist - dist) > 0.001f) ||
+            (maxDist < dist && (dist - maxDist) > 0.001f)) {
             return -2;
         }
         if(dist < minDist) {
@@ -798,18 +889,21 @@ static int ColPlaneDistGet(HuVecF *start, HuVecF *end, HuVecF *dir, float height
             return -4;
         } else {
             *outDist = dist;
-            return -0;
+            return 0;
         }
     }
 }
 
 typedef struct ColLine_s {
-    float endA;
-    float startA;
-    float endB;
-    float startB;
+    float endA; // Upper vertical bound at the start of movement.
+    float startA; // Lower vertical bound at the start of movement.
+    float endB; // Upper bound for the overlap precheck; edge tests reuse their starting bounds.
+    float startB; // Lower bound for the overlap precheck; edge tests reuse their starting bounds.
 } COLLINE;
 
+// Calculates a vertical contact time for cylinder edge and body-pair tests.
+// Sets result and returns zero when the supplied overlap-precheck bounds overlap; otherwise
+// solves from the start bounds. Edge tests reuse their starting bounds for the precheck.
 static inline float _GetColLineTime(COLLINE *a, COLLINE *b, float t, BOOL *result)
 {
     COLLINE *maxP;
@@ -854,233 +948,258 @@ static inline float _GetColLineTime(COLLINE *a, COLLINE *b, float t, BOOL *resul
     return ret;
 }
 
-static inline BOOL _EdgeCylColInline(HuVecF *startPos, HuVecF *endPos, HuVecF *vtxStart, HuVecF *vtxEnd, HuVecF *dir, float *arg5, float *arg6)
+// Finds closest points on the movement and edge lines for _EdgeCylCol's distance test.
+static inline BOOL _EdgeCylColInline(HuVecF *startPos, HuVecF *movement, HuVecF *edgeStart,
+                                     HuVecF *edgeEnd, HuVecF *edgeDelta,
+                                     float *movementClosestParam, float *edgeClosestParam)
 {
-    float scale;
-    float endMag2;
-    float endDirDot;
-    float dirMag2;
-    float endDot;
-    float dirDot;
+    float determinant;
+    float movementMagSquared;
+    float movementEdgeDot;
+    float edgeMagSquared;
+    float startMovementDot;
+    float startEdgeDot;
 
-    HuVecF temp;
+    HuVecF edgeFromStart;
 
-    VECSubtract(vtxStart, startPos, &temp);
+    // edgeEnd is unused; edgeDelta supplies the direction of the edge line.
+    VECSubtract(edgeStart, startPos, &edgeFromStart);
 
-    endMag2 = VECDotProduct(endPos, endPos);
-    endDirDot = VECDotProduct(endPos, dir);
-    dirMag2 = VECDotProduct(dir, dir);
-    endDot = VECDotProduct(&temp, endPos);
-    dirDot = VECDotProduct(&temp, dir);
-    scale = (endMag2*dirMag2)-(endDirDot*endDirDot);
-    if(fabsf(scale) < 0.0001f) {
+    movementMagSquared = VECDotProduct(movement, movement);
+    movementEdgeDot = VECDotProduct(movement, edgeDelta);
+    edgeMagSquared = VECDotProduct(edgeDelta, edgeDelta);
+    startMovementDot = VECDotProduct(&edgeFromStart, movement);
+    startEdgeDot = VECDotProduct(&edgeFromStart, edgeDelta);
+    determinant = (movementMagSquared*edgeMagSquared)-(movementEdgeDot*movementEdgeDot);
+    if(fabsf(determinant) < 0.0001f) {
         return FALSE;
     }
-    *arg5 = ((dirMag2*endDot)-(endDirDot*dirDot))/scale;
-    *arg6 = ((endDirDot*endDot)-(endMag2*dirDot))/scale;
+    *movementClosestParam =
+        ((edgeMagSquared * startMovementDot) - (movementEdgeDot * startEdgeDot)) / determinant;
+    *edgeClosestParam =
+        ((movementEdgeDot * startMovementDot) - (movementMagSquared * startEdgeDot)) / determinant;
     return TRUE;
 }
 
+// Computes the dot product in double precision for cylinder collision math.
+// Used by cylinder and capsule edge tests to form their quadratic coefficients.
 static inline double GetVecDot(HuVecF a, HuVecF b)
 {
     return ((double)a.x*b.x)+((double)a.y*b.y)+((double)a.z*b.z);
 
 }
 
-static BOOL _EdgeCylCol(HuVecF *startPos, HuVecF *endPos, float radius, HuVecF vtxStart, HuVecF vtxEnd, float *colT, BOOL *validColF)
+// Finds horizontal cylinder contact with an edge for _BodyEdgeCylCol; reports initial overlap.
+static BOOL _EdgeCylCol(HuVecF *start, HuVecF *movement, float radius, HuVecF edgeStart,
+                        HuVecF edgeEnd, float *contactTime, BOOL *overlapAtStart)
 {
-    BOOL endZero;
-    BOOL vtxDeltaZero;
+    BOOL movementZero;
+    BOOL edgeZero;
 
-    double temp_f31;
-    double mag2;
-    double temp_f26;
-    double t;
+    double discriminant;
+    double quadraticA;
+    double quadraticB;
+    double firstRoot;
 
-    float startT;
-    float r2;
-    float temp_f21;
-    double edgeMag;
+    float projectionParam;
+    float radiusSquared;
+    float projectedEndTime;
+    double quadraticC;
 
-    double vtxDeltaNorm[3];
-    HuVecF vtxDelta;
-    HuVecF sp274;
-    HuVecF sp268;
-    HuVecF sp25C;
-    HuVecF sp250;
-    HuVecF sp244;
-    HuVecF sp238;
-    HuVecF sp22C;
+    double edgeUnit[3];
+    HuVecF edgeDelta;
+    HuVecF closestMovementPoint;
+    HuVecF closestEdgePoint;
+    HuVecF closestSeparation;
+    HuVecF degenerateSeparation;
+    HuVecF pointSeparation;
+    HuVecF startFromEdge;
+    HuVecF contactPosition;
 
-    double endMag2;
-    double sp138;
-    double sp130;
-    double vtxDeltaMag;
+    double movementMagSquared;
+    double startAlongEdge;
+    double movementAlongEdge;
+    double edgeLength;
 
-    float sp58;
-    float sp54;
-    float sp50;
-    float sp4C;
-    float sp48;
+    float movementClosestParam;
+    float edgeClosestParam;
+    float pointExitTime;
+    float edgeContactParam;
+    float edgeExitTime;
 
-    vtxStart.y = 0;
-    vtxEnd.y = 0;
-    *validColF = FALSE;
-    VECSubtract(&vtxEnd, &vtxStart, &vtxDelta);
-    r2 = radius*radius;
+    edgeStart.y = 0;
+    edgeEnd.y = 0;
+    *overlapAtStart = FALSE;
+    VECSubtract(&edgeEnd, &edgeStart, &edgeDelta);
+    radiusSquared = radius*radius;
 
-    if(_EdgeCylColInline(startPos, endPos, &vtxStart, &vtxEnd, &vtxDelta, &sp58, &sp54)) {
-        VECScale(endPos, &sp274, sp58);
-        VECAdd(startPos, &sp274, &sp274);
-        VECScale(&vtxDelta, &sp268, sp54);
-        VECAdd(&vtxStart, &sp268, &sp268);
-        VECSubtract(&sp274, &sp268, &sp25C);
-        if(VECSquareMag(&sp25C) > r2) {
+    if (_EdgeCylColInline(start, movement, &edgeStart, &edgeEnd, &edgeDelta, &movementClosestParam,
+                          &edgeClosestParam)) {
+        VECScale(movement, &closestMovementPoint, movementClosestParam);
+        VECAdd(start, &closestMovementPoint, &closestMovementPoint);
+        VECScale(&edgeDelta, &closestEdgePoint, edgeClosestParam);
+        VECAdd(&edgeStart, &closestEdgePoint, &closestEdgePoint);
+        VECSubtract(&closestMovementPoint, &closestEdgePoint, &closestSeparation);
+        if(VECSquareMag(&closestSeparation) > radiusSquared) {
             return FALSE;
         }
     } else {
-        endZero = VECSquareMag(endPos) < 0.0001f;
-        vtxDeltaZero = VECSquareMag(&vtxDelta) < 0.0001f;
-        if(endZero && vtxDeltaZero) {
-            VECSubtract(&vtxStart, startPos, &sp250);
-            if(VECSquareMag(&sp250) > r2) {
+        movementZero = VECSquareMag(movement) < 0.0001f;
+        edgeZero = VECSquareMag(&edgeDelta) < 0.0001f;
+        if(movementZero && edgeZero) {
+            VECSubtract(&edgeStart, start, &degenerateSeparation);
+            if(VECSquareMag(&degenerateSeparation) > radiusSquared) {
                 return FALSE;
             } else {
-                *colT = 0;
-                *validColF = TRUE;
+                *contactTime = 0;
+                *overlapAtStart = TRUE;
                 return TRUE;
             }
         }
-        if(!endZero && !vtxDeltaZero) {
-            sp54 = (VECDotProduct(startPos, &vtxDelta)-VECDotProduct(&vtxStart, &vtxDelta))/VECSquareMag(&vtxDelta);
-            VECScale(&vtxDelta, &sp250, sp54);
-            VECAdd(&vtxStart, &sp250, &sp250);
-            VECSubtract(&sp250, startPos, &sp250);
-            if(VECSquareMag(&sp250) > r2) {
+        if(!movementZero && !edgeZero) {
+            edgeClosestParam =
+                (VECDotProduct(start, &edgeDelta) - VECDotProduct(&edgeStart, &edgeDelta)) /
+                VECSquareMag(&edgeDelta);
+            VECScale(&edgeDelta, &degenerateSeparation, edgeClosestParam);
+            VECAdd(&edgeStart, &degenerateSeparation, &degenerateSeparation);
+            VECSubtract(&degenerateSeparation, start, &degenerateSeparation);
+            if(VECSquareMag(&degenerateSeparation) > radiusSquared) {
                 return FALSE;
             }
-            startT = (VECDotProduct(&vtxStart, endPos)-VECDotProduct(startPos, endPos))/VECSquareMag(endPos);
-            temp_f21 = (VECDotProduct(&vtxEnd, endPos)-VECDotProduct(startPos, endPos))/VECSquareMag(endPos);
-            if(VECDotProduct(&vtxDelta, endPos) > 0) {
-                if(0 <= startT && startT <= 1.0f) {
-                    *colT = startT;
+            projectionParam =
+                (VECDotProduct(&edgeStart, movement) - VECDotProduct(start, movement)) /
+                VECSquareMag(movement);
+            projectedEndTime =
+                (VECDotProduct(&edgeEnd, movement) - VECDotProduct(start, movement)) /
+                VECSquareMag(movement);
+            if(VECDotProduct(&edgeDelta, movement) > 0) {
+                if(0 <= projectionParam && projectionParam <= 1.0f) {
+                    *contactTime = projectionParam;
                      return TRUE;
-                } else if(0.0f <= temp_f21 && temp_f21 <= 1.0f) {
-                    *colT = 0;
-                    *validColF = TRUE;
+                } else if(0.0f <= projectedEndTime && projectedEndTime <= 1.0f) {
+                    *contactTime = 0;
+                    *overlapAtStart = TRUE;
                     return TRUE;
                 }
             } else {
-                if(0 <= temp_f21 && temp_f21 <= 1.0f) {
-                    *colT = temp_f21;
+                if(0 <= projectedEndTime && projectedEndTime <= 1.0f) {
+                    *contactTime = projectedEndTime;
                      return TRUE;
-                } else if(0 <= startT && startT <= 1.0f) {
-                    *colT = 0;
-                    *validColF = TRUE;
+                } else if(0 <= projectionParam && projectionParam <= 1.0f) {
+                    *contactTime = 0;
+                    *overlapAtStart = TRUE;
                     return TRUE;
                 }
             }
-            startT = (VECDotProduct(startPos, &vtxDelta)-VECDotProduct(&vtxStart, &vtxDelta))/VECSquareMag(&vtxDelta);
-            if(0 <= startT && startT <= 1.0f) {
-                *colT = 0;
-                *validColF = TRUE;
+            projectionParam =
+                (VECDotProduct(start, &edgeDelta) - VECDotProduct(&edgeStart, &edgeDelta)) /
+                VECSquareMag(&edgeDelta);
+            if(0 <= projectionParam && projectionParam <= 1.0f) {
+                *contactTime = 0;
+                *overlapAtStart = TRUE;
                 return TRUE;
             } else {
                 return FALSE;
             }
-        } else if(endZero) {
-            VECSubtract(&vtxStart, startPos, &sp244);
-            mag2 = GetVecDot(vtxDelta, vtxDelta);
-            temp_f26 = GetVecDot(vtxDelta, sp244);
-            edgeMag = GetVecDot(sp244, sp244)-r2;
+        } else if(movementZero) {
+            VECSubtract(&edgeStart, start, &pointSeparation);
+            quadraticA = GetVecDot(edgeDelta, edgeDelta);
+            quadraticB = GetVecDot(edgeDelta, pointSeparation);
+            quadraticC = GetVecDot(pointSeparation, pointSeparation)-radiusSquared;
 
-        } else if(vtxDeltaZero) {
-            VECSubtract(startPos, &vtxStart, &sp244);
-            mag2 = GetVecDot(*endPos, *endPos);
-            temp_f26 = GetVecDot(*endPos, sp244);
-            edgeMag = GetVecDot(sp244, sp244)-r2;
+        } else if(edgeZero) {
+            VECSubtract(start, &edgeStart, &pointSeparation);
+            quadraticA = GetVecDot(*movement, *movement);
+            quadraticB = GetVecDot(*movement, pointSeparation);
+            quadraticC = GetVecDot(pointSeparation, pointSeparation)-radiusSquared;
         }
-        temp_f31 = (temp_f26*temp_f26)-(mag2*edgeMag);
-        if(temp_f31 < 0) {
-            if(temp_f31 < -fabsf(temp_f31*0.0001f)) {
+        discriminant = (quadraticB*quadraticB)-(quadraticA*quadraticC);
+        if(discriminant < 0) {
+            if(discriminant < -fabsf(discriminant*0.0001f)) {
                 return FALSE;
             } else {
-                temp_f31 = 0;
+                discriminant = 0;
             }
         } else {
-            temp_f31 = sqrt(temp_f31);
+            discriminant = sqrt(discriminant);
         }
-        if(fabsf(mag2) < 0.0001f) {
+        if(fabsf(quadraticA) < 0.0001f) {
             return FALSE;
         }
-        t = (-temp_f26-temp_f31)/mag2;
-        if(t < 0) {
-            sp50 = (-temp_f26+temp_f31)/mag2;
-            if(sp50 < 0) {
+        firstRoot = (-quadraticB-discriminant)/quadraticA;
+        if(firstRoot < 0) {
+            pointExitTime = (-quadraticB+discriminant)/quadraticA;
+            if(pointExitTime < 0) {
                 return FALSE;
             } else {
-                t = 0;
-                *validColF = TRUE;
+                firstRoot = 0;
+                *overlapAtStart = TRUE;
             }
         }
-        if(t < -0.001f || 1.001f < t) {
+        if(firstRoot < -0.001f || 1.001f < firstRoot) {
             return FALSE;
         }
-        if(endZero) {
-            *colT = 0;
-            *validColF = TRUE;
+        if(movementZero) {
+            *contactTime = 0;
+            *overlapAtStart = TRUE;
         } else {
-            *colT = t;
+            *contactTime = firstRoot;
         }
         return TRUE;
     }
     {
-        VECSubtract(startPos, &vtxStart, &sp238);
-        endMag2 = GetVecDot(*endPos, *endPos);
-        vtxDeltaMag = sqrt(((double)vtxDelta.x*vtxDelta.x)+((double)vtxDelta.z*vtxDelta.z));
-        vtxDeltaNorm[0] = vtxDelta.x/vtxDeltaMag;
-        vtxDeltaNorm[1] = 0;
-        vtxDeltaNorm[2] = vtxDelta.z/vtxDeltaMag;
-        sp130 = (vtxDeltaNorm[0]*endPos->x)+(vtxDeltaNorm[2]*endPos->z);
-        sp138 = (vtxDeltaNorm[0]*sp238.x)+(vtxDeltaNorm[2]*sp238.z);
-        mag2 = endMag2-(sp130*sp130);
-        temp_f26 = GetVecDot(sp238, *endPos)-(sp130*sp138);
-        edgeMag = (GetVecDot(sp238, sp238)-(sp138*sp138))-r2;
-        temp_f31 = (temp_f26*temp_f26)-(mag2*edgeMag);
-        if(temp_f31 < 0) {
-            if(temp_f31 < -fabsf(temp_f31*0.0001f)) {
+        VECSubtract(start, &edgeStart, &startFromEdge);
+        movementMagSquared = GetVecDot(*movement, *movement);
+        edgeLength = sqrt(((double)edgeDelta.x*edgeDelta.x)+((double)edgeDelta.z*edgeDelta.z));
+        edgeUnit[0] = edgeDelta.x/edgeLength;
+        edgeUnit[1] = 0;
+        edgeUnit[2] = edgeDelta.z/edgeLength;
+        movementAlongEdge = (edgeUnit[0]*movement->x)+(edgeUnit[2]*movement->z);
+        startAlongEdge = (edgeUnit[0]*startFromEdge.x)+(edgeUnit[2]*startFromEdge.z);
+        quadraticA = movementMagSquared-(movementAlongEdge*movementAlongEdge);
+        quadraticB = GetVecDot(startFromEdge, *movement)-(movementAlongEdge*startAlongEdge);
+        quadraticC = (GetVecDot(startFromEdge, startFromEdge) - (startAlongEdge * startAlongEdge)) -
+                     radiusSquared;
+        discriminant = (quadraticB*quadraticB)-(quadraticA*quadraticC);
+        if(discriminant < 0) {
+            if(discriminant < -fabsf(discriminant*0.0001f)) {
                 return FALSE;
             } else {
-                temp_f31 = 0;
+                discriminant = 0;
             }
         } else {
-            temp_f31 = sqrt(temp_f31);
+            discriminant = sqrt(discriminant);
         }
-        if(fabsf(mag2) < 0.0001f) {
+        if(fabsf(quadraticA) < 0.0001f) {
             return FALSE;
         }
-        t = (-temp_f26-temp_f31)/mag2;
-        if(t < 0) {
-            sp48 = (-temp_f26+temp_f31)/mag2;
-            if(sp48 < 0) {
+        firstRoot = (-quadraticB-discriminant)/quadraticA;
+        if(firstRoot < 0) {
+            edgeExitTime = (-quadraticB+discriminant)/quadraticA;
+            if(edgeExitTime < 0) {
                 return FALSE;
             } else {
-                t = 0;
-                *validColF = TRUE;
+                firstRoot = 0;
+                *overlapAtStart = TRUE;
             }
         }
-        VECScale(endPos, &sp22C, t);
-        VECAdd(startPos, &sp22C, &sp22C);
-        sp4C = (VECDotProduct(&sp22C, &vtxDelta)-VECDotProduct(&vtxStart, &vtxDelta))/VECSquareMag(&vtxDelta);
-        if(sp4C < -0.001f || sp4C > 1.001f) {
+        VECScale(movement, &contactPosition, firstRoot);
+        VECAdd(start, &contactPosition, &contactPosition);
+        edgeContactParam =
+            (VECDotProduct(&contactPosition, &edgeDelta) - VECDotProduct(&edgeStart, &edgeDelta)) /
+            VECSquareMag(&edgeDelta);
+        if(edgeContactParam < -0.001f || edgeContactParam > 1.001f) {
             return FALSE;
         }
-        *colT = t;
+        *contactTime = firstRoot;
         return TRUE;
     }
 }
 
-static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, HuVecF *vtxStart, HuVecF *vtxEnd, float *colT, BOOL *colValidF, HuVecF *out)
+// Finds contact between a moving collision body and one edge of a mesh triangle.
+// Used by _BodyTriCylCol to combine horizontal contact with vertical interval overlap.
+static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *movement, COLBODY *bodyP, HuVecF *vtxStart,
+                            HuVecF *vtxEnd, float *colT, BOOL *colValidF, HuVecF *out)
 {
     BOOL lineValid;
 
@@ -1093,7 +1212,7 @@ static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, Hu
 
     HuVecF vtxDelta;
     HuVecF ejectPos;
-    HuVecF endPos2;
+    HuVecF horizontalMovement;
     HuVecF dir;
     HuVecF ejectVec;
     HuVecF start;
@@ -1129,7 +1248,7 @@ static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, Hu
             lineB.endB = vtxEnd->y;
             lineB.startB = vtxStart->y;
         }
-        t = _GetColLineTime(&lineA, &lineB, endPos->y, &lineValid);
+        t = _GetColLineTime(&lineA, &lineB, movement->y, &lineValid);
         if(t < 0 || 1 < t) {
             return FALSE;
         }
@@ -1146,7 +1265,7 @@ static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, Hu
         VECScale(&vtxDelta, &lineStart, dot);
         VECAdd(vtxStart, &lineStart, &lineStart);
         VECAdd(startPos, &ejectVec, &ejectPos);
-        VECAdd(&ejectPos, endPos, &ejectPos);
+        VECAdd(&ejectPos, movement, &ejectPos);
         ejectPos.y = 0;
         dot = (VECDotProduct(&ejectPos, &delta)-VECDotProduct(&start, &delta))/VECSquareMag(&delta);
         VECScale(&vtxDelta, &lineEnd, dot);
@@ -1162,7 +1281,7 @@ static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, Hu
             lineB.endB = lineEnd.y;
             lineB.startB = lineStart.y;
         }
-        t = _GetColLineTime(&lineA, &lineB, endPos->y, &lineValid);
+        t = _GetColLineTime(&lineA, &lineB, movement->y, &lineValid);
         if(t < 0 || 1 < t) {
             t = -1;
         }
@@ -1176,7 +1295,7 @@ static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, Hu
         VECScale(&vtxDelta, &lineStart, dot);
         VECAdd(vtxStart, &lineStart, &lineStart);
         PSVECSubtract(startPos, &ejectVec, &ejectPos);
-        VECAdd(&ejectPos, endPos, &ejectPos);
+        VECAdd(&ejectPos, movement, &ejectPos);
         ejectPos.y = 0;
         dot = (VECDotProduct(&ejectPos, &delta)-VECDotProduct(&start, &delta))/VECSquareMag(&delta);
         VECScale(&vtxDelta, &lineEnd, dot);
@@ -1192,7 +1311,8 @@ static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, Hu
             lineB.endB = lineEnd.y;
             lineB.startB = lineStart.y;
         }
-        t2 = _GetColLineTime(&lineA, &lineB, endPos->y, &lineValid);
+        // This second test overwrites lineValid even if the first test's time remains selected.
+        t2 = _GetColLineTime(&lineA, &lineB, movement->y, &lineValid);
         if(0.0f <= t2 && t2 <= 1.0f && (t < 0 || t2 < t)) {
             t = t2;
         }
@@ -1201,18 +1321,20 @@ static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, Hu
         }
     }
     ejectPos = *startPos;
-    endPos2 = *endPos;
+    horizontalMovement = *movement;
     ejectPos.y = 0;
-    endPos2.y = 0;
-    if(!_EdgeCylCol(&ejectPos, &endPos2, bodyP->param.radius, *vtxStart, *vtxEnd, &edgeColT, &edgeColF)) {
+    horizontalMovement.y = 0;
+    if (!_EdgeCylCol(&ejectPos, &horizontalMovement, bodyP->param.radius, *vtxStart, *vtxEnd,
+                     &edgeColT, &edgeColF)) {
         return FALSE;
     }
     *colT = (edgeColT >= t) ? edgeColT : t;
     *colValidF = lineValid && edgeColF;
     if(out) {
-        VECScale(endPos, &endColPos, *colT);
+        VECScale(movement, &endColPos, *colT);
         VECAdd(startPos, &endColPos, &endColPos);
-        dot = (VECDotProduct(&endColPos, &vtxDelta)-VECDotProduct(vtxStart, &vtxDelta))/VECSquareMag(&vtxDelta);
+        dot = (VECDotProduct(&endColPos, &vtxDelta) - VECDotProduct(vtxStart, &vtxDelta)) /
+              VECSquareMag(&vtxDelta);
         if(dot < 0) {
             dot = 0;
         } else if(dot > 1) {
@@ -1225,153 +1347,178 @@ static BOOL _BodyEdgeCylCol(HuVecF *startPos, HuVecF *endPos, COLBODY *bodyP, Hu
     return TRUE;
 }
 
-static inline BOOL _BodyTriCylCol(HuVecF *startPos, HuVecF *delta, COLBODY *bodyP, HuVecF *vtxBuf, int *index, float *colT, HuVecF *out)
+// Selects a triangle edge hit for _BodyMeshCylCol; returns its index, or -1 for no hit.
+// A later initial overlap always replaces the hit; a later earlier-time hit can replace it too.
+static inline BOOL _BodyTriCylCol(HuVecF *start, HuVecF *movement, COLBODY *body, HuVecF *vertices,
+                                  int *vertexIndices, float *contactTime, HuVecF *separation)
 {
-    HuVecF temp;
-    HuVecF *outP;
-    int ret;
-    BOOL result;
-    int sp44;
-    float t;
+    HuVecF candidateSeparation;
+    HuVecF *separationOutput;
+    int hitEdge;
+    BOOL edgeHit;
+    int initialOverlap;
+    float candidateTime;
 
-    int i;
+    int edgeIdx;
 
-    result = _BodyEdgeCylCol(startPos, delta, bodyP, &vtxBuf[index[2]], &vtxBuf[index[0]], colT, &sp44, out);
-    if(result) {
-        ret = 2;
+    edgeHit =
+        _BodyEdgeCylCol(start, movement, body, &vertices[vertexIndices[2]],
+                        &vertices[vertexIndices[0]], contactTime, &initialOverlap, separation);
+    if(edgeHit) {
+        hitEdge = 2;
     } else {
-        ret = -1;
+        hitEdge = -1;
     }
-    outP = (out) ? &temp : NULL;
-    for(i=0; i<2; i++) {
-        result = _BodyEdgeCylCol(startPos, delta, bodyP, &vtxBuf[index[i]], &vtxBuf[index[i+1]], &t, &sp44, outP);
-        if(result) {
-            if(ret < 0 || sp44 || (t >= 0 && *colT > t)) {
-                if(out) {
-                    *out = temp;
+    separationOutput = (separation) ? &candidateSeparation : NULL;
+    for(edgeIdx=0; edgeIdx<2; edgeIdx++) {
+        edgeHit = _BodyEdgeCylCol(start, movement, body, &vertices[vertexIndices[edgeIdx]],
+                                  &vertices[vertexIndices[edgeIdx + 1]], &candidateTime,
+                                  &initialOverlap, separationOutput);
+        if(edgeHit) {
+            if (hitEdge < 0 || initialOverlap ||
+                (candidateTime >= 0 && *contactTime > candidateTime)) {
+                if(separation) {
+                    *separation = candidateSeparation;
                 }
-                *colT = t;
-                ret = i;
+                *contactTime = candidateTime;
+                hitEdge = edgeIdx;
             }
         }
     }
-    return ret;
+    return hitEdge;
 }
 
-static BOOL _ColCapsuleEdgeCalc(HuVecF *pos, HuVecF *posNew, HuVecF *posDelta, float radius, float startT, float colT, HuVecF *vtxBuf, int *index, float *outT, HuVecF *adjust)
+// Tests all three triangle edges during _BodyMeshCol and returns an earlier capsule contact.
+static BOOL _ColCapsuleEdgeCalc(HuVecF *startPosition, HuVecF *endPosition, HuVecF *movement,
+                                float radius, float bestTime, float minimumTime, HuVecF *vertices,
+                                int *vertexIndices, float *contactTime, HuVecF *separation)
 {
-    HuVecF *vtx; //r29
-    int no; //r28
-    HuVecF *vtx2; //r24
+    HuVecF *edgeStart;
+    int edgeIdx;
+    HuVecF *edgeEnd;
 
-    double temp_f29;
-    float t;
-    double temp_f26;
-    double temp_f25;
-    double temp_f22;
-    double temp_f21;
-    double edgeMag;
-    float temp_f19;
+    double discriminant;
+    float candidateTime;
+    double quadraticA;
+    double quadraticB;
+    double startAlongEdge;
+    double movementAlongEdge;
+    double edgeLength;
+    float edgeContactParam;
 
+    double edgeUnit[3];
+    HuVecF edgeDelta;
+    HuVecF contactPosition;
+    HuVecF edgeProjection;
+    HuVecF parallelSeparation;
 
-    double edgeNorm[3];
-    HuVecF edge;
-    HuVecF spD8;
-    HuVecF vtxDir;
-    HuVecF spC0;
+    double movementMagSquared;
+    double radiusSquared;
+    double quadraticC;
+    float exitTime;
 
-    double deltaMag2;
-    double r2;
-    double sp60;
-    float temp_f18;
-
-
-    *outT = startT;
-    adjust->x = 0;
-    adjust->y = 0;
-    adjust->z = 0;
-    deltaMag2 = GetVecDot(*posDelta, *posDelta);
-    r2 = radius*radius;
-    for(no=3; no--;) {
-        vtx = &vtxBuf[index[no]];
-        vtx2 = &vtxBuf[index[(no+1)%3]];
-        VECSubtract(vtx2, vtx, &edge);
-        VECSubtract(pos, vtx, &vtxDir);
-        if(VECSquareMag(&edge) < 0.0001f) {
+    // endPosition is unused; movement contains the displacement for this test.
+    *contactTime = bestTime;
+    separation->x = 0;
+    separation->y = 0;
+    separation->z = 0;
+    movementMagSquared = GetVecDot(*movement, *movement);
+    radiusSquared = radius*radius;
+    for(edgeIdx=3; edgeIdx--;) {
+        edgeStart = &vertices[vertexIndices[edgeIdx]];
+        edgeEnd = &vertices[vertexIndices[(edgeIdx+1)%3]];
+        VECSubtract(edgeEnd, edgeStart, &edgeDelta);
+        VECSubtract(startPosition, edgeStart, &edgeProjection);
+        if(VECSquareMag(&edgeDelta) < 0.0001f) {
             continue;
         }
-        edgeMag = sqrt(((double)edge.x*edge.x)+((double)edge.y*edge.y)+((double)edge.z*edge.z));
-        edgeNorm[0] = edge.x/edgeMag;
-        edgeNorm[1] = edge.y/edgeMag;
-        edgeNorm[2] = edge.z/edgeMag;
-        temp_f21 = (edgeNorm[0]*posDelta->x)+(edgeNorm[1]*posDelta->y)+(edgeNorm[2]*posDelta->z);
-        temp_f22 = (edgeNorm[0]*vtxDir.x)+(edgeNorm[1]*vtxDir.y)+(edgeNorm[2]*vtxDir.z);
-        temp_f26 = deltaMag2-(temp_f21*temp_f21);
-        temp_f25 = GetVecDot(vtxDir, *posDelta)-(temp_f21*temp_f22);
-        sp60 = (GetVecDot(vtxDir, vtxDir)-(temp_f22*temp_f22))-r2;
-        if(0.0f == temp_f26) {
-            if(VECSquareMag(&edge) > deltaMag2) {
-                t = (VECDotProduct(pos, &edge)-VECDotProduct(vtx, &edge))/VECSquareMag(&edge);
-                if(t >= 0 && t <= 1) {
-                    VECScale(&edge, &spC0, t);
-                    VECAdd(vtx, &spC0, &spC0);
-                    VECSubtract(&spC0, pos, &spC0);
-                    if(VECSquareMag(&spC0) > r2) {
+        edgeLength =
+            sqrt(((double) edgeDelta.x * edgeDelta.x) + ((double) edgeDelta.y * edgeDelta.y) +
+                 ((double) edgeDelta.z * edgeDelta.z));
+        edgeUnit[0] = edgeDelta.x/edgeLength;
+        edgeUnit[1] = edgeDelta.y/edgeLength;
+        edgeUnit[2] = edgeDelta.z/edgeLength;
+        movementAlongEdge =
+            (edgeUnit[0] * movement->x) + (edgeUnit[1] * movement->y) + (edgeUnit[2] * movement->z);
+        startAlongEdge = (edgeUnit[0] * edgeProjection.x) + (edgeUnit[1] * edgeProjection.y) +
+                         (edgeUnit[2] * edgeProjection.z);
+        quadraticA = movementMagSquared-(movementAlongEdge*movementAlongEdge);
+        quadraticB = GetVecDot(edgeProjection, *movement)-(movementAlongEdge*startAlongEdge);
+        quadraticC =
+            (GetVecDot(edgeProjection, edgeProjection) - (startAlongEdge * startAlongEdge)) -
+            radiusSquared;
+        // Parallel movement can use the minimum time for an existing edge overlap.
+        // This branch leaves separation unchanged.
+        if(0.0f == quadraticA) {
+            if(VECSquareMag(&edgeDelta) > movementMagSquared) {
+                candidateTime = (VECDotProduct(startPosition, &edgeDelta) -
+                                 VECDotProduct(edgeStart, &edgeDelta)) /
+                                VECSquareMag(&edgeDelta);
+                if(candidateTime >= 0 && candidateTime <= 1) {
+                    VECScale(&edgeDelta, &parallelSeparation, candidateTime);
+                    VECAdd(edgeStart, &parallelSeparation, &parallelSeparation);
+                    VECSubtract(&parallelSeparation, startPosition, &parallelSeparation);
+                    if(VECSquareMag(&parallelSeparation) > radiusSquared) {
                         continue;
                     }
-                    *outT = colT;
+                    *contactTime = minimumTime;
                 }
             }
         } else {
-            temp_f29 = (temp_f25*temp_f25)-(temp_f26*sp60);
-            if(temp_f29 < 0) {
-                if(temp_f29 < -fabsf(temp_f29*0.0001f)) {
+            discriminant = (quadraticB*quadraticB)-(quadraticA*quadraticC);
+            if(discriminant < 0) {
+                if(discriminant < -fabsf(discriminant*0.0001f)) {
                     continue;
                 }
-                temp_f29 = 0;
+                discriminant = 0;
             } else {
-                temp_f29 = sqrt(temp_f29);
+                discriminant = sqrt(discriminant);
             }
-            if(fabsf(temp_f26) < 0.0001f) {
+            if(fabsf(quadraticA) < 0.0001f) {
                 continue;
             }
-            t = (-temp_f25-temp_f29)/temp_f26;
-            if(t < 0) {
-                temp_f18 = (-temp_f25+temp_f29)/temp_f26;
-                if(temp_f18 < 0) {
+            candidateTime = (-quadraticB-discriminant)/quadraticA;
+            if(candidateTime < 0) {
+                exitTime = (-quadraticB+discriminant)/quadraticA;
+                if(exitTime < 0) {
                     continue;
                 }
-                if(1 < temp_f18) {
+                if(1 < exitTime) {
                     continue;
                 }
-                t = colT;
+                candidateTime = minimumTime;
             } else {
-                if(*outT < t) {
+                if(*contactTime < candidateTime) {
                     continue;
                 }
-                if(colT > t) {
+                if(minimumTime > candidateTime) {
                     continue;
                 }
             }
-            VECScale(posDelta, &spD8, t);
-            VECAdd(&spD8, pos, &spD8);
-            temp_f19 = (VECDotProduct(&spD8, &edge)-VECDotProduct(vtx, &edge))/VECSquareMag(&edge);
-            if(temp_f19 < -0.001f) {
+            VECScale(movement, &contactPosition, candidateTime);
+            VECAdd(&contactPosition, startPosition, &contactPosition);
+            edgeContactParam = (VECDotProduct(&contactPosition, &edgeDelta) -
+                                VECDotProduct(edgeStart, &edgeDelta)) /
+                               VECSquareMag(&edgeDelta);
+            if(edgeContactParam < -0.001f) {
                 continue;
             }
-            if(temp_f19 > 1.001f) {
+            if(edgeContactParam > 1.001f) {
                 continue;
             }
-            *outT = t;
-            VECScale(&edge, &vtxDir, temp_f19);
-            VECAdd(&vtxDir, vtx, &vtxDir);
-            VECSubtract(&spD8, &vtxDir, adjust);
+            *contactTime = candidateTime;
+            VECScale(&edgeDelta, &edgeProjection, edgeContactParam);
+            VECAdd(&edgeProjection, edgeStart, &edgeProjection);
+            VECSubtract(&contactPosition, &edgeProjection, separation);
         }
     }
-    return *outT < startT;
+    return *contactTime < bestTime;
 }
 
-static BOOL _ColCapsuleVtxCalc(HuVecF *pos, HuVecF *posDelta, float radius, float startT, float colT, HuVecF *vtxBuf, int *index, float *outT, HuVecF *adjust)
+// Finds an earlier capsule contact with any triangle vertex and returns its separation vector.
+// Called by _BodyMeshCol after the edge test fails; checks all three vertices.
+static BOOL _ColCapsuleVtxCalc(HuVecF *pos, HuVecF *posDelta, float radius, float startT,
+                               float colT, HuVecF *vtxBuf, int *index, float *outT, HuVecF *adjust)
 {
     HuVecF *vtx;
     int no;
@@ -1407,9 +1554,11 @@ static BOOL _ColCapsuleVtxCalc(HuVecF *pos, HuVecF *posDelta, float radius, floa
         } else {
             outR = sqrtf(outR);
         }
+        // Use the projection's magnitude, discarding its sign even for a vertex behind the start.
         dtMag = sqrtf(dtMag);
         temp = dtMag-outR;
         t = temp/deltaMag;
+        // If the smaller root is negative, try the larger root instead of a start-overlap contact.
         if(t < 0) {
             t = dtMag+outR;
             t /= deltaMag;
@@ -1424,7 +1573,11 @@ static BOOL _ColCapsuleVtxCalc(HuVecF *pos, HuVecF *posDelta, float radius, floa
     return *outT != startT;
 }
 
-static inline float _ColCylAxisCheck(HuVecF *startA, HuVecF *velA, float radiusA, HuVecF *startB, HuVecF *velB, float radiusB)
+// Returns the horizontal entry time for two moving cylinder shapes.
+// Used by _ColCylTest and _ColCapsuleTest with Y components cleared; negligible relative movement
+// and negative entry times return -1.
+static inline float _ColCylAxisCheck(HuVecF *startA, HuVecF *velA, float radiusA, HuVecF *startB,
+                                     HuVecF *velB, float radiusB)
 {
     HuVecF deltaStart;
     HuVecF deltaVel;
@@ -1477,6 +1630,8 @@ static inline float _ColCylAxisCheck(HuVecF *startA, HuVecF *velA, float radiusA
     return ret;
 }
 
+// Updates each registered mesh transform and preserves its previous transform.
+// Called by ColBodyExec; the transforms update only once until ColDirtyClear.
 static void UpdateMeshMtx(void)
 {
     COLMESH *meshP;
@@ -1493,10 +1648,14 @@ static void UpdateMeshMtx(void)
     ColMtxCalcModelAll();
     meshP = colMesh;
     for(no=colMeshCount; no--; meshP++) {
+        // Ignore inversion failure; a singular transform leaves this mesh's previous inverse
+        // unchanged.
         MTXInverse(meshP->mtx, meshP->mtxInv);
     }
 }
 
+// Clears the current contact point slot before another contact is recorded.
+// Used during collision passes to reset the current point slot, not the whole point list.
 static inline void ClearColPoint(COLBODY *bodyP)
 {
     COLBODY_POINT *colPointP = &bodyP->colPoint[bodyP->colPointNum];
@@ -1507,9 +1666,10 @@ static inline void ClearColPoint(COLBODY *bodyP)
     colPointP->meshNo = -1;
     colPointP->obj = NULL;
     colPointP->faceNo = -1;
-    bodyP->param.attr &= ~0x04000000;
+    bodyP->param.attr &= ~COLBODY_ATTR_MESH_CONTACT_FLAG;
 }
 
+// Records mesh contact data in the body's current contact-point slot.
 #define InitColPoint(bodyP, bodyNo, norm, hsfFaceP, meshP, face) \
 do { \
     COLBODY_POINT *colPointP = &bodyP->colPoint[bodyP->colPointNum]; \
@@ -1521,16 +1681,16 @@ do { \
     colPointP->faceNo = face; \
 } while(0)
 
-
 static BOOL _BodyApplyColAttr(COLBODY *bodyP, COL_ATTRPARAM *attrParam, int code);
 
+// Applies a contact's surface response and reports whether collision processing should continue.
+// Used by mesh collision and response passes; invokes the body's correction hook on success.
 static inline BOOL _ColCorrection(COLBODY *bodyP)
 {
     COLBODY_POINT *colPointP = &bodyP->colPoint[bodyP->colPointNum];
     COL_ATTRPARAM *attrParam;
     int codeNo;
     BOOL ret;
-
 
     codeNo = ColCodeGet(colPointP->polyAttr);
     if(codeNo < 0) {
@@ -1547,14 +1707,16 @@ static inline BOOL _ColCorrection(COLBODY *bodyP)
 }
 
 typedef struct ColCylinder_s {
-    HuVecF startPos;
-    HuVecF vel;
-    float t;
-    float radius;
-    float height;
-    HuVecF outPos;
+    HuVecF startPos; // Body position at the start of the collision pass.
+    HuVecF vel; // Movement vector over the frame's collision interval.
+    float t; // Movement fraction used to evaluate the current contact position.
+    float radius; // Horizontal collision radius in world units.
+    float height; // Vertical collision extent in world units.
+    HuVecF outPos; // Unused vector storage; the body-pair tests do not access it.
 } COLCYLINDER;
 
+// Computes overlap and contact time between two moving cylinder shapes.
+// Used by _BodyColCylBroad to classify side, vertical, and existing-overlap contacts.
 static float _ColCylTest(COLCYLINDER *a, COLCYLINDER *b, int *result)
 {
     HuVecF endVec;
@@ -1570,8 +1732,8 @@ static float _ColCylTest(COLCYLINDER *a, COLCYLINDER *b, int *result)
 
     float endMag2;
     float colTime;
-    float aRadius;
-    float bRadius;
+    float aHalfHeight;
+    float bHalfHeight;
 
     float colLineTime;
     float ret;
@@ -1588,22 +1750,23 @@ static float _ColCylTest(COLCYLINDER *a, COLCYLINDER *b, int *result)
     VECAdd(&a->startPos, &endPosA, &endPosA);
     VECScale(&b->vel, &endPosB, b->t);
     VECAdd(&b->startPos, &endPosB, &endPosB);
-    aRadius = a->height/2;
-    bRadius = b->height/2;
+    aHalfHeight = a->height/2;
+    bHalfHeight = b->height/2;
 
+    lineA.endA = a->startPos.y+aHalfHeight;
+    lineA.startA = a->startPos.y-aHalfHeight;
+    lineA.endB = endPosA.y+aHalfHeight;
+    lineA.startB = endPosA.y-aHalfHeight;
 
-    lineA.endA = a->startPos.y+aRadius;
-    lineA.startA = a->startPos.y-aRadius;
-    lineA.endB = endPosA.y+aRadius;
-    lineA.startB = endPosA.y-aRadius;
-
-    lineB.endA = b->startPos.y+bRadius;
-    lineB.startA = b->startPos.y-bRadius;
-    lineB.endB = endPosB.y+bRadius;
-    lineB.startB = endPosB.y-bRadius;
+    lineB.endA = b->startPos.y+bHalfHeight;
+    lineB.startA = b->startPos.y-bHalfHeight;
+    lineB.endB = endPosB.y+bHalfHeight;
+    lineB.startB = endPosB.y-bHalfHeight;
     colLineTime = _GetColLineTime(&lineA, &lineB, relVel.y, &lineColResult);
     if(lineColResult) {
-        endDist = (bRadius+aRadius)-fabsf(b->startPos.y-a->startPos.y);
+        // Use the starting vertical separation to classify overlap at the current contact
+        // positions.
+        endDist = (bHalfHeight+aHalfHeight)-fabsf(b->startPos.y-a->startPos.y);
     }
     startA = a->startPos;
     startA.y = 0;
@@ -1655,6 +1818,8 @@ static float _ColCylTest(COLCYLINDER *a, COLCYLINDER *b, int *result)
     return ret;
 }
 
+// Computes overlap and contact time between two capsule-shaped bodies.
+// Used by _BodyColBroad with its radius-shifted vertical bounds.
 static float _ColCapsuleTest(COLCYLINDER *a, COLCYLINDER *b, int *result)
 {
     HuVecF endVec;
@@ -1700,6 +1865,8 @@ static float _ColCapsuleTest(COLCYLINDER *a, COLCYLINDER *b, int *result)
     lineB.startB = endPosB.y;
     colLineTime = _GetColLineTime(&lineA, &lineB, relVel.y, &lineColResult);
     if(lineColResult) {
+        // Classify overlap using the radius-shifted lower bounds, without adjusting for
+        // different heights.
         endDist = (0.5f*(a->height+b->height))-fabsf(endPosA.y-endPosB.y);
     }
     startA = a->startPos;
@@ -1752,6 +1919,8 @@ static float _ColCapsuleTest(COLCYLINDER *a, COLCYLINDER *b, int *result)
     return ret;
 }
 
+// Rejects points outside the triangle's centroid bound plus the supplied distance allowance.
+// Used by both mesh collision passes before testing a triangle.
 static inline BOOL CheckFacePoint(COLTRI *triP, HuVecF *p, float maxDist)
 {
     HuVecF pCenter;
@@ -1763,6 +1932,8 @@ static inline BOOL CheckFacePoint(COLTRI *triP, HuVecF *p, float maxDist)
     }
 }
 
+// Builds the cross-product normal from two triangle edges.
+// Unused helper; no collision pass calls it.
 static inline void CalcCross(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *out)
 {
     HuVecF ba;
@@ -1773,6 +1944,8 @@ static inline void CalcCross(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *out)
     VECNormalize(out, out);
 }
 
+// Transforms a mesh triangle's local normal into world space.
+// Used by mesh contact checks; transforms vertices before recomputing the normal.
 static inline void CalcMeshNorm(COLMESH *meshP, HuVecF a, HuVecF b, HuVecF c, HuVecF *out)
 {
     HuVecF ba;
@@ -1787,7 +1960,10 @@ static inline void CalcMeshNorm(COLMESH *meshP, HuVecF a, HuVecF b, HuVecF c, Hu
     VECNormalize(out, out);
 }
 
-static inline BOOL CheckPoint(COLBODY *bodyP, COLMESH *meshP, float arg, int *index, HuVecF *vtxBuf, HuVecF *out)
+// Corrects an initial overlap using the world face normal scaled by the mesh's basis-row lengths.
+// Used by _BodyMeshCol only while the body's current contact time is zero.
+static inline BOOL CheckPoint(COLBODY *bodyP, COLMESH *meshP, float planeOffset, int *index,
+                              HuVecF *vtxBuf, HuVecF *out)
 {
     int posNo;
     Mtx scaleMtx;
@@ -1798,16 +1974,20 @@ static inline BOOL CheckPoint(COLBODY *bodyP, COLMESH *meshP, float arg, int *in
     }
     MakeScaleMtx(scaleMtx, meshP->mtx);
     CalcMeshNorm(meshP, vtxBuf[index[0]], vtxBuf[index[1]], vtxBuf[index[2]], out);
-    VECScale(out, &temp, arg-0.0001f);
+    VECScale(out, &temp, planeOffset-0.0001f);
     MTXMultVec(scaleMtx, &temp, &temp);
     VECSubtract(&bodyP->oldPos, &temp, &bodyP->pos[posNo]);
     bodyP->oldPos = bodyP->pos[posNo];
     bodyP->oldColT = 1;
-    bodyP->param.attr &= ~0x10000000;
+    bodyP->param.attr &= ~COLBODY_ATTR_SWEEP_CONTACT_FLAG;
     return TRUE;
 }
 
-static inline BOOL ColSphereLineCheck(HuVecF *start, HuVecF *end, HuVecF *center, float radius, float *t)
+// Solves the smaller line/sphere root for mesh bounds rejection; the caller checks its range.
+// The quadratic subtracts radius directly, not radius squared. Zero-length movement still divides
+// by zero and returns TRUE.
+static inline BOOL ColSphereLineCheck(HuVecF *start, HuVecF *end, HuVecF *center, float radius,
+                                      float *t)
 {
     HuVecF startDelta;
     HuVecF lineDelta;
@@ -1829,48 +2009,48 @@ static inline BOOL ColSphereLineCheck(HuVecF *start, HuVecF *end, HuVecF *center
     return TRUE;
 }
 
-#define MESHCOL_ATTR (0x80000000|COLBODY_ATTR_MESHCOL_OFF|COLBODY_ATTR_COL_OFF)
+#define MESHCOL_ATTR (COLBODY_ATTR_NO_CONTACT_FLAG|COLBODY_ATTR_MESHCOL_OFF|COLBODY_ATTR_COL_OFF)
 
+// Resolves active bodies against triangle meshes using their configured shapes.
+// Called by ColBodyExec when cylinder mode is clear.
 static void _BodyMeshCol(void)
 {
-    COLBODY *bodyP; //r31
-    COLMESH *meshP; //r30
-    HSF_FACE *hsfFaceP; //r29
-    HuVecF *vtxBuf; //r28
-    COLTRI *triP; //r27
-    COLBODY *body2; //r24
-    int triNo; //r23
-    BOOL doneF; //r22
-    int colResult; //r21
-    int j; //r19
-    int posNo; //r17
+    COLBODY *bodyP;
+    COLMESH *meshP;
+    HSF_FACE *hsfFaceP;
+    HuVecF *vtxBuf;
+    COLTRI *triP;
+    COLBODY *body2;
+    int triNo;
+    BOOL doneF;
+    int colResult;
+    int j;
+    int posNo;
 
-    float radius; //f31
-    float maxDist; //f30
-    float temp_f26;
+    float radius;
+    float maxDist;
+    float movementMagSquared;
 
     HuVecF pos;
     HuVecF posNew;
     HuVecF posDelta;
-    HuVecF sp21C;
+    HuVecF contactNormal;
     HuVecF boundsDelta;
-    int index[3]; //sp+0x210
+    int index[3];
     HuVecF radiusVec;
-    HuVecF sp204;
-    HuVecF sp1F8;
-    HuVecF sp1EC;
-    HuVecF sp1E0;
+    HuVecF projectedPoint;
+    HuVecF planeCornerOffset;
+    HuVecF bodySupportOffset;
+    HuVecF worldContactPosition;
     HuVecF posAdjust;
     HuVecF norm;
     Mtx invNoTrans;
 
-
-
-    int no; //sp+0x64
+    int no;
     float boundsT[1];
-    int i; //sp+0x60
-    float colT; //sp+0x5C
-    int triNum; //sp+0x58
+    int i;
+    float colT;
+    int triNum;
     float capsuleColT;
 
     meshP = colMesh;
@@ -1879,7 +2059,8 @@ static void _BodyMeshCol(void)
         RemoveMtxTrans(invNoTrans, meshP->mtxInv);
         for(bodyP=colWork.body, i=0; i<colWork.bodyNum; i++, bodyP++) {
             body2 = bodyP;
-            if((bodyP->param.attr & COLBODY_ATTR_ACTIVE) && (bodyP->param.attr & MESHCOL_ATTR) == 0) {
+            if ((bodyP->param.attr & COLBODY_ATTR_ACTIVE) &&
+                (bodyP->param.attr & MESHCOL_ATTR) == 0) {
                 if(!(body2->param.mask & meshP->mask)) {
                     continue;
                 } else {
@@ -1891,11 +2072,12 @@ static void _BodyMeshCol(void)
                         MTXMultVec(meshP->mtxInvOld, &pos, &pos);
                         MTXMultVec(meshP->mtxInv, &posNew, &posNew);
                         VECSubtract(&posNew, &pos, &posDelta);
-                        temp_f26 = VECSquareMag(&posDelta);
+                        movementMagSquared = VECSquareMag(&posDelta);
                         VECSubtract(&pos, &meshP->boundsCenter, &boundsDelta);
                         if(VECSquareMag(&boundsDelta) > meshP->boundsRadius * meshP->boundsRadius) {
-                            if(!ColSphereLineCheck(&pos, &posNew, &meshP->boundsCenter, meshP->boundsRadius, boundsT)
-                                || boundsT[0] < 0.0f || 1.0f < boundsT[0]) {
+                            if (!ColSphereLineCheck(&pos, &posNew, &meshP->boundsCenter,
+                                                    meshP->boundsRadius, boundsT) ||
+                                boundsT[0] < 0.0f || 1.0f < boundsT[0]) {
                                 break;
                             }
                         }
@@ -1926,18 +2108,27 @@ static void _BodyMeshCol(void)
                                     VECScale(&triP->norm, &radiusVec, body2->param.radius);
                                     MTXMultVec(invNoTrans, &radiusVec, &radiusVec);
                                     radius = VECSquareMag(&radiusVec);
+                                    // Add half-height directly to the squared-radius and
+                                    // squared-movement allowance.
                                     maxDist = radius+(body2->param.height/2);
-                                    maxDist = maxDist+temp_f26;
+                                    maxDist = maxDist+movementMagSquared;
                                     if(CheckFacePoint(triP, &pos, maxDist)) {
                                         radius = sqrtf(radius);
-                                        colResult = ColPlaneDistGet(&pos, &posNew, &posDelta, radius, colT, bodyP->colT, vtxBuf, index, triP, &colT);
+                                        colResult = ColPlaneDistGet(&pos, &posNew, &posDelta,
+                                                                    radius, colT, bodyP->colT,
+                                                                    vtxBuf, index, triP, &colT);
                                         if(colResult == -6) {
-                                            MakeMeshEject(body2, triP, &sp1EC, &norm);
-                                            if(!ColPlaneCheck(&pos, &sp1EC, triP, &sp1F8, FALSE)) {
+                                            MakeMeshEject(body2, triP, &bodySupportOffset, &norm);
+                                            if (!ColPlaneCheck(&pos, &bodySupportOffset, triP,
+                                                               &planeCornerOffset, FALSE)) {
                                                 colResult = -1;
-                                                if(ColPlaneCheck(&pos, &sp1EC, triP, &sp1F8, TRUE)) {
-                                                    VECAdd(&pos, &sp1F8, &sp204);
-                                                    if(ColPlaneEdgeCheck(sp204, vtxBuf[index[0]], vtxBuf[index[1]], triP, FALSE)) {
+                                                if (ColPlaneCheck(&pos, &bodySupportOffset, triP,
+                                                                  &planeCornerOffset, TRUE)) {
+                                                    VECAdd(&pos, &planeCornerOffset,
+                                                           &projectedPoint);
+                                                    if (ColPlaneEdgeCheck(
+                                                            projectedPoint, vtxBuf[index[0]],
+                                                            vtxBuf[index[1]], triP, FALSE)) {
                                                         colResult = -6;
                                                     }
                                                 }
@@ -1958,7 +2149,8 @@ static void _BodyMeshCol(void)
                                                     ret = FALSE;
                                                     for(no=bodyP->colPointNum; no--;) {
                                                         colPointP = &bodyP->colPoint[no];
-                                                        if(colPointP->obj == meshP->obj &&  colPointP->faceNo == j) {
+                                                        if (colPointP->obj == meshP->obj &&
+                                                            colPointP->faceNo == j) {
                                                             ret = TRUE;
                                                             break;
                                                         }
@@ -1967,30 +2159,57 @@ static void _BodyMeshCol(void)
                                                         posAdjust.x = 0.0f;
                                                         posAdjust.y = 0.0f;
                                                         posAdjust.z = 0.0f;
-                                                        if(!_ColCapsuleEdgeCalc(&pos, &posNew, &posDelta, radius, bodyP->oldColT, bodyP->colT, vtxBuf, index, &capsuleColT, &posAdjust)
-                                                            && !_ColCapsuleVtxCalc(&pos, &posDelta, radius, bodyP->oldColT, bodyP->colT, vtxBuf, index, &capsuleColT, &posAdjust)) {
+                                                        if (!_ColCapsuleEdgeCalc(
+                                                                &pos, &posNew, &posDelta, radius,
+                                                                bodyP->oldColT, bodyP->colT, vtxBuf,
+                                                                index, &capsuleColT, &posAdjust) &&
+                                                            !_ColCapsuleVtxCalc(
+                                                                &pos, &posDelta, radius,
+                                                                bodyP->oldColT, bodyP->colT, vtxBuf,
+                                                                index, &capsuleColT, &posAdjust)) {
                                                             if(colResult == -6) {
-                                                                if(CheckPoint(bodyP, meshP, colT, index, vtxBuf, &sp21C)) {
-                                                                    VECSubtract(&bodyP->oldPos, &meshP->bodyMove[i], &bodyP->oldPos);
-                                                                    VECSubtract(&bodyP->pos[posNo], &meshP->bodyMove[i], &bodyP->pos[posNo]);
+                                                                if (CheckPoint(bodyP, meshP, colT,
+                                                                               index, vtxBuf,
+                                                                               &contactNormal)) {
+                                                                    VECSubtract(&bodyP->oldPos,
+                                                                                &meshP->bodyMove[i],
+                                                                                &bodyP->oldPos);
+                                                                    VECSubtract(&bodyP->pos[posNo],
+                                                                                &meshP->bodyMove[i],
+                                                                                &bodyP->pos[posNo]);
                                                                     doneF = TRUE;
                                                                     goto colPoint;
                                                                 }
                                                             }
                                                         } else {
-                                                            VECScale(&bodyP->moveDir, &sp1E0, capsuleColT);
-                                                            VECAdd(&sp1E0, &bodyP->oldPos, &sp1E0);
-                                                            bodyP->pos[posNo] = sp1E0;
+                                                            VECScale(&bodyP->moveDir,
+                                                                     &worldContactPosition,
+                                                                     capsuleColT);
+                                                            VECAdd(&worldContactPosition,
+                                                                   &bodyP->oldPos,
+                                                                   &worldContactPosition);
+                                                            bodyP->pos[posNo] =
+                                                                worldContactPosition;
+                                                            // The normalized edge/vertex
+                                                            // separation remains mesh-local;
+                                                            // only the fallback below recomputes
+                                                            // a world-space normal.
                                                             if(VECSquareMag(&posAdjust) > 0.001f) {
-                                                                VECNormalize(&posAdjust, &sp21C);
+                                                                VECNormalize(&posAdjust,
+                                                                             &contactNormal);
                                                             } else {
-                                                                CalcMeshNorm(meshP, vtxBuf[index[0]], vtxBuf[index[1]], vtxBuf[index[2]], &sp21C);
+                                                                CalcMeshNorm(meshP,
+                                                                             vtxBuf[index[0]],
+                                                                             vtxBuf[index[1]],
+                                                                             vtxBuf[index[2]],
+                                                                             &contactNormal);
                                                             }
                                                             bodyP->oldColT = capsuleColT;
                                                             if(bodyP->oldColT < 0) {
                                                                 bodyP->oldColT = bodyP->colT;
                                                             }
-                                                            bodyP->param.attr |= 0x10000000;
+                                                            bodyP->param.attr |=
+                                                                COLBODY_ATTR_SWEEP_CONTACT_FLAG;
                                                             goto colPoint;
                                                         }
                                                     }
@@ -1998,38 +2217,53 @@ static void _BodyMeshCol(void)
                                                 break;
 
                                             case 0:
-                                                CalcMeshNorm(meshP, vtxBuf[index[0]], vtxBuf[index[1]], vtxBuf[index[2]], &sp21C);
+                                                CalcMeshNorm(meshP, vtxBuf[index[0]],
+                                                             vtxBuf[index[1]], vtxBuf[index[2]],
+                                                             &contactNormal);
                                                 VECScale(&bodyP->moveDir, &bodyP->pos[posNo], colT);
-                                                VECAdd(&bodyP->pos[posNo], &bodyP->oldPos, &bodyP->pos[posNo]);
+                                                VECAdd(&bodyP->pos[posNo], &bodyP->oldPos,
+                                                       &bodyP->pos[posNo]);
                                                 bodyP->oldColT = colT;
-                                                bodyP->param.attr &= ~0x10000000;
+                                                bodyP->param.attr &=
+                                                    ~COLBODY_ATTR_SWEEP_CONTACT_FLAG;
                                                 goto colPoint;
 
                                             case -5:
-                                                if(CheckPoint(bodyP, meshP, colT, index, vtxBuf, &sp21C)) {
-                                                    VECSubtract(&bodyP->oldPos, &meshP->bodyMove[i], &bodyP->oldPos);
-                                                    VECSubtract(&bodyP->pos[posNo], &meshP->bodyMove[i], &bodyP->pos[posNo]);
+                                                if (CheckPoint(bodyP, meshP, colT, index, vtxBuf,
+                                                               &contactNormal)) {
+                                                    VECSubtract(&bodyP->oldPos, &meshP->bodyMove[i],
+                                                                &bodyP->oldPos);
+                                                    VECSubtract(&bodyP->pos[posNo],
+                                                                &meshP->bodyMove[i],
+                                                                &bodyP->pos[posNo]);
                                                     doneF = TRUE;
                                                     default:
                                                     colPoint:
-                                                    InitColPoint(bodyP, i, sp21C, hsfFaceP, meshP, j);
-                                                    bodyP->param.attr |= 0x04000000;
-                                                    if(doneF) {
-                                                        bodyP->param.attr |= 0x20000000;
-                                                        bodyP->param.attr &= ~0x14000000;
-                                                        _ColCorrection(bodyP);
-                                                        goto skipTri;
+                                                        InitColPoint(bodyP, i, contactNormal,
+                                                                     hsfFaceP, meshP, j);
+                                                        bodyP->param.attr |=
+                                                            COLBODY_ATTR_MESH_CONTACT_FLAG;
+                                                        if (doneF) {
+                                                            bodyP->param.attr |=
+                                                                COLBODY_ATTR_CONTACT_CORRECTED_FLAG;
+                                                            bodyP->param.attr &=
+                                                                ~COLBODY_ATTR_MESH_CONTACT_MASK;
+                                                            // Ignore the correction result; the
+                                                            // overlap adjustment still triggers
+                                                            // another mesh pass.
+                                                            _ColCorrection(bodyP);
+                                                            goto skipTri;
                                                     }
 
-                                                    bodyP->param.attr &= ~0x20000000;
-                                                }
+                                                    bodyP->param.attr &=
+                                                        ~COLBODY_ATTR_CONTACT_CORRECTED_FLAG;
+                                                    }
                                                 break;
 
                                             case -1:
                                             case -2:
                                             case -3:
                                                 break;
-
 
                                         }
                                     }
@@ -2045,7 +2279,8 @@ static void _BodyMeshCol(void)
     }
 }
 
-
+// Builds a cylinder support offset from a triangle normal, radius, and height for _BodyMeshCylCol.
+// Y is zero when abs(normal.y) < 0.001, otherwise the signed half-height.
 static inline void MakeCylEject(COLBODY *bodyP, COLTRI *triP, HuVecF *out, HuVecF *norm)
 {
     float halfHeight;
@@ -2070,51 +2305,54 @@ static inline void MakeCylEject(COLBODY *bodyP, COLTRI *triP, HuVecF *out, HuVec
     out->z *= radius;
 }
 
+// Resolves active bodies against triangle meshes using vertical cylinder tests.
+// Called by ColBodyExec when cylinder mode is set.
 static void _BodyMeshCylCol(void)
 {
-    COLBODY *bodyP; //r31
-    HSF_FACE *hsfFaceP; //r30
-    COLMESH *meshP; //r29
-    COLTRI *triP; //r28
-    HuVecF *vtxBuf; //r27
-    COLBODY *body2; //r24
+    COLBODY *bodyP;
+    HSF_FACE *hsfFaceP;
+    COLMESH *meshP;
+    COLTRI *triP;
+    HuVecF *vtxBuf;
+    COLBODY *body2;
     int i;
-    int posNo; //r22
-    BOOL doneF; //r19
-    int j; //r18
+    int posNo;
+    BOOL doneF;
+    int j;
 
-    float maxDist; //f31
-    float ejectDot; //f28
+    float maxDist;
+    float ejectDot;
     float deltaMag2;
 
-    HuVecF pos; //sp+0x224
-    HuVecF posNew; //sp+0x218
-    HuVecF posDelta; //sp+0x20C
-    HuVecF meshNorm; //sp+0x200
+    HuVecF pos;
+    HuVecF posNew;
+    HuVecF posDelta;
+    HuVecF meshNorm;
     HuVecF boundsDelta;
-    int index[3]; //sp+0x1F4
-    HuVecF ejectDir; //sp+0x1E8
-    HuVecF planeA; //sp+0x1DC
-    HuVecF axisVec; //sp+0x1D0
-    HuVecF finalPos; //sp+0x1C4
-    HuVecF posAdjust; //sp+0x1B8
-    HuVecF norm; //sp+0x1AC
+    int index[3];
+    HuVecF ejectDir;
+    HuVecF planeA;
+    HuVecF axisVec;
+    HuVecF finalPos;
+    HuVecF posAdjust;
+    HuVecF norm;
 
-    int no; //sp+0x80
+    int no;
     float boundsT[1];
-    int colResult; //sp+0x78
-    float colT; //sp+0x74
+    int colResult;
+    float colT;
     int triNo;
-    int triNum; //sp+0x70
-    int capsuleColResult; //sp+0xC
-    float axisLen; //f24
+    int triNum;
+    int capsuleColResult;
+    float axisLen;
 
     meshP = colMesh;
     posNo = (colWork.attr & 0x4) ? 1 : 0;
     for(no=colMeshCount; no--; meshP++) {
         for(bodyP=colWork.body, i=0; i<colWork.bodyNum; i++, bodyP++) {
             body2 = bodyP;
-            if((bodyP->param.attr & COLBODY_ATTR_ACTIVE) && (bodyP->param.attr & MESHCOL_ATTR) == 0) {
+            if ((bodyP->param.attr & COLBODY_ATTR_ACTIVE) &&
+                (bodyP->param.attr & MESHCOL_ATTR) == 0) {
                 if(!(body2->param.mask & meshP->mask)) {
                     continue;
                 } else {
@@ -2129,8 +2367,9 @@ static void _BodyMeshCylCol(void)
                         deltaMag2 = VECSquareMag(&posDelta);
                         VECSubtract(&pos, &meshP->boundsCenter, &boundsDelta);
                         if(VECSquareMag(&boundsDelta) > meshP->boundsRadius * meshP->boundsRadius) {
-                            if(!ColSphereLineCheck(&pos, &posNew, &meshP->boundsCenter, meshP->boundsRadius, boundsT)
-                                || boundsT[0] < 0.0f || 1.0f < boundsT[0]) {
+                            if (!ColSphereLineCheck(&pos, &posNew, &meshP->boundsCenter,
+                                                    meshP->boundsRadius, boundsT) ||
+                                boundsT[0] < 0.0f || 1.0f < boundsT[0]) {
                                 break;
                             }
                         }
@@ -2163,77 +2402,112 @@ static void _BodyMeshCylCol(void)
                                     maxDist = ejectDot+(body2->param.height/2);
                                     maxDist = deltaMag2+(maxDist*maxDist);
                                     if(CheckFacePoint(triP, &pos, maxDist)) {
-                                        colResult = ColEjectDistGet(&pos, &posNew, &posDelta, &ejectDir, ejectDot, colT, bodyP->colT, vtxBuf, index, triP, &colT);
+                                        colResult = ColEjectDistGet(
+                                            &pos, &posNew, &posDelta, &ejectDir, ejectDot, colT,
+                                            bodyP->colT, vtxBuf, index, triP, &colT);
                                         switch(colResult) {
                                             case -6:
-                                                if(ColPlaneYCheck(&pos, &ejectDir, triP, &axisVec, FALSE)) {
-                                                    ColPlaneCheck(&pos, &ejectDir, triP, &axisVec, FALSE);
+                                                if (ColPlaneYCheck(&pos, &ejectDir, triP, &axisVec,
+                                                                   FALSE)) {
+                                                    // Ignore the corner-test result; on failure,
+                                                    // keep the offset selected by ColPlaneYCheck.
+                                                    ColPlaneCheck(&pos, &ejectDir, triP, &axisVec,
+                                                                  FALSE);
                                                     VECAdd(&pos, &axisVec, &planeA);
-                                                    axisLen = triP->d+VECDotProduct(&triP->norm, &planeA);
+                                                    axisLen = triP->d +
+                                                              VECDotProduct(&triP->norm, &planeA);
                                                     VECScale(&triP->norm, &axisVec, axisLen);
                                                     VECSubtract(&planeA, &axisVec, &planeA);
-                                                    if(ColPlaneEdgeCheck(planeA, vtxBuf[index[0]], vtxBuf[index[1]], triP, FALSE)) {
-                                                        case -4:
-                                                        {
-                                                            COLBODY_POINT *colPointP;
-                                                            int no;
-                                                            BOOL ret;
+                                                    if (ColPlaneEdgeCheck(planeA, vtxBuf[index[0]],
+                                                                          vtxBuf[index[1]], triP,
+                                                                          FALSE)) {
+                                                    case -4: {
+                                                        COLBODY_POINT *colPointP;
+                                                        int no;
+                                                        BOOL ret;
 
-                                                            ret = FALSE;
-                                                            for(no=bodyP->colPointNum; no--;) {
-                                                                colPointP = &bodyP->colPoint[no];
-                                                                if(colPointP->obj == meshP->obj &&  colPointP->faceNo == j) {
-                                                                    ret = TRUE;
-                                                                    break;
-                                                                }
-                                                            }
-                                                            if(ret || VECSquareMag(&posDelta) < 0.0001f) {
+                                                        ret = FALSE;
+                                                        for (no = bodyP->colPointNum; no--;) {
+                                                            colPointP = &bodyP->colPoint[no];
+                                                            if (colPointP->obj == meshP->obj &&
+                                                                colPointP->faceNo == j) {
+                                                                ret = TRUE;
                                                                 break;
                                                             }
-                                                            capsuleColResult = _BodyTriCylCol(&pos, &posDelta, body2, vtxBuf, index, &colT, NULL);
-                                                            if(!(capsuleColResult < 0 || colT < bodyP->colT || bodyP->oldColT < colT)){
-                                                                VECScale(&bodyP->moveDir, &finalPos, colT);
-                                                                VECAdd(&finalPos, &bodyP->oldPos, &finalPos);
-                                                                bodyP->pos[posNo] = finalPos;
-                                                                CalcMeshNorm(meshP, vtxBuf[index[0]], vtxBuf[index[1]], vtxBuf[index[2]], &meshNorm);
-                                                                bodyP->oldColT = colT;
-                                                                bodyP->param.attr |= 0x10000000;
-                                                                goto colPoint;
-                                                            }
                                                         }
-
-                                                    }
+                                                        if (ret ||
+                                                            VECSquareMag(&posDelta) < 0.0001f) {
+                                                            break;
+                                                        }
+                                                        capsuleColResult = _BodyTriCylCol(
+                                                            &pos, &posDelta, body2, vtxBuf, index,
+                                                            &colT, NULL);
+                                                        if (!(capsuleColResult < 0 ||
+                                                              colT < bodyP->colT ||
+                                                              bodyP->oldColT < colT)) {
+                                                            VECScale(&bodyP->moveDir, &finalPos,
+                                                                     colT);
+                                                            VECAdd(&finalPos, &bodyP->oldPos,
+                                                                   &finalPos);
+                                                            bodyP->pos[posNo] = finalPos;
+                                                            CalcMeshNorm(meshP, vtxBuf[index[0]],
+                                                                         vtxBuf[index[1]],
+                                                                         vtxBuf[index[2]],
+                                                                         &meshNorm);
+                                                            bodyP->oldColT = colT;
+                                                            bodyP->param.attr |=
+                                                                COLBODY_ATTR_SWEEP_CONTACT_FLAG;
+                                                            goto colPoint;
+                                                        }
+                                                        }
+                                                        }
                                                 }
                                                 break;
 
                                             case 0:
-                                                CalcMeshNorm(meshP, vtxBuf[index[0]], vtxBuf[index[1]], vtxBuf[index[2]], &meshNorm);
+                                                CalcMeshNorm(meshP, vtxBuf[index[0]],
+                                                             vtxBuf[index[1]], vtxBuf[index[2]],
+                                                             &meshNorm);
                                                 VECScale(&bodyP->moveDir, &bodyP->pos[posNo], colT);
-                                                VECAdd(&bodyP->pos[posNo], &bodyP->oldPos, &bodyP->pos[posNo]);
+                                                VECAdd(&bodyP->pos[posNo], &bodyP->oldPos,
+                                                       &bodyP->pos[posNo]);
                                                 bodyP->oldColT = colT;
-                                                bodyP->param.attr &= ~0x10000000;
+                                                bodyP->param.attr &=
+                                                    ~COLBODY_ATTR_SWEEP_CONTACT_FLAG;
                                                 goto colPoint;
 
                                             case -5:
                                                 if(bodyP->colT == 0.0f) {
-                                                    CalcMeshNorm(meshP, vtxBuf[index[0]], vtxBuf[index[1]], vtxBuf[index[2]], &meshNorm);
+                                                    CalcMeshNorm(meshP, vtxBuf[index[0]],
+                                                                 vtxBuf[index[1]], vtxBuf[index[2]],
+                                                                 &meshNorm);
                                                     VECScale(&meshNorm, &posAdjust, colT-0.0001f);
-                                                    VECSubtract(&bodyP->oldPos, &posAdjust, &bodyP->pos[posNo]);
+                                                    VECSubtract(&bodyP->oldPos, &posAdjust,
+                                                                &bodyP->pos[posNo]);
                                                     bodyP->oldPos = bodyP->pos[posNo];
                                                     bodyP->oldColT = 1;
                                                     doneF = TRUE;
-                                                    bodyP->param.attr &= ~0x10000000;
+                                                    bodyP->param.attr &=
+                                                        ~COLBODY_ATTR_SWEEP_CONTACT_FLAG;
                                                     default:
                                                     colPoint:
-                                                    InitColPoint(bodyP, i, meshNorm, hsfFaceP, meshP, j);
-                                                    bodyP->param.attr |= 0x04000000;
-                                                    if(doneF) {
-                                                        bodyP->param.attr |= 0x20000000;
-                                                        bodyP->param.attr &= ~0x14000000;
-                                                        _ColCorrection(bodyP);
-                                                        goto skipTri;
+                                                        InitColPoint(bodyP, i, meshNorm, hsfFaceP,
+                                                                     meshP, j);
+                                                        bodyP->param.attr |=
+                                                            COLBODY_ATTR_MESH_CONTACT_FLAG;
+                                                        if (doneF) {
+                                                            bodyP->param.attr |=
+                                                                COLBODY_ATTR_CONTACT_CORRECTED_FLAG;
+                                                            bodyP->param.attr &=
+                                                                ~COLBODY_ATTR_MESH_CONTACT_MASK;
+                                                            // Ignore the correction result; the
+                                                            // overlap adjustment still triggers
+                                                            // another mesh pass.
+                                                            _ColCorrection(bodyP);
+                                                            goto skipTri;
                                                     }
-                                                    bodyP->param.attr &= ~0x20000000;
+                                                    bodyP->param.attr &=
+                                                        ~COLBODY_ATTR_CONTACT_CORRECTED_FLAG;
                                                 }
                                                 break;
 
@@ -2259,26 +2533,27 @@ static void _BodyMeshCylCol(void)
 
 #define BODYCOL_ATTR (COLBODY_ATTR_BODYCOL_OFF|COLBODY_ATTR_COL_OFF)
 
+// Builds broad-phase candidate pairs for active vertical cylinder bodies.
+// Called by ColBodyExec in cylinder mode; may discard a later mesh contact for another pass.
 static int _BodyColCylBroad(void)
 {
-    COLBODY *bodyP; //r31
-    COLBODY *body2; //r30
-    COLBROAD *broadP; //r29
-    int i; //r26
-    int j; //r25
-    BOOL resetPoint; //r24
-    BOOL ret; //r23
-    u8 clearPoint1; //r22
-    u8 clearPoint2; //r21
+    COLBODY *bodyP;
+    COLBODY *body2;
+    COLBROAD *broadP;
+    int i;
+    int j;
+    BOOL resetPoint;
+    BOOL ret;
+    u8 clearPoint1;
+    u8 clearPoint2;
 
+    float t;
 
-    float t; //f31
+    COLCYLINDER cylA;
+    COLCYLINDER cylB;
+    int colResult;
 
-    COLCYLINDER cylA; //sp+0x40
-    COLCYLINDER cylB; //sp+0x10
-    int colResult; //sp+0xC
-
-    int posIdx; //sp+0x8
+    int posIdx;
 
     ret = FALSE;
     colWork.broadColNum = 0;
@@ -2292,8 +2567,11 @@ static int _BodyColCylBroad(void)
             cylA.radius = bodyP->param.radius;
             cylA.height = bodyP->param.height;
             for(body2=bodyP+1, j=i+1; j<colWork.bodyNum; j++, body2++) {
-                if((body2->param.attr & COLBODY_ATTR_ACTIVE) && (body2->param.attr & BODYCOL_ATTR) == 0 && (bodyP->param.mask & body2->param.mask)) {
-                    if(!(bodyP->colBit[j >> 5] & (1 << (j & 0x1F))) || !(body2->colBit[i >> 5] & (1 << (i & 0x1F)))) {
+                if ((body2->param.attr & COLBODY_ATTR_ACTIVE) &&
+                    (body2->param.attr & BODYCOL_ATTR) == 0 &&
+                    (bodyP->param.mask & body2->param.mask)) {
+                    if (!(bodyP->colBit[j >> 5] & (1 << (j & 0x1F))) ||
+                        !(body2->colBit[i >> 5] & (1 << (i & 0x1F)))) {
                         cylB.startPos = body2->oldPos;
                         cylB.vel = body2->moveDir;
                         cylB.t = body2->colT;
@@ -2347,8 +2625,8 @@ static int _BodyColCylBroad(void)
                             broadP->body2Idx = j;
 
                             colWork.broadColNum++;
-                            bodyP->param.attr |= 0x08000000;
-                            body2->param.attr |= 0x08000000;
+                    bodyP->param.attr |= COLBODY_ATTR_BODY_CONTACT_FLAG;
+                    body2->param.attr |= COLBODY_ATTR_BODY_CONTACT_FLAG;
                         }
                     }
                 }
@@ -2358,26 +2636,27 @@ static int _BodyColCylBroad(void)
     return ret;
 }
 
+// Builds broad-phase candidate pairs for active collision bodies.
+// Called by ColBodyExec outside cylinder mode; may request another collision pass.
 static int _BodyColBroad(void)
 {
-    COLBODY *bodyP; //r31
-    COLBODY *body2; //r30
-    COLBROAD *broadP; //r29
-    int i; //r26
-    int j; //r25
-    BOOL resetPoint; //r24
-    BOOL ret; //r23
-    u8 clearPoint1; //r22
-    u8 clearPoint2; //r21
+    COLBODY *bodyP;
+    COLBODY *body2;
+    COLBROAD *broadP;
+    int i;
+    int j;
+    BOOL resetPoint;
+    BOOL ret;
+    u8 clearPoint1;
+    u8 clearPoint2;
 
+    float t;
 
-    float t; //f31
+    COLCYLINDER cylA;
+    COLCYLINDER cylB;
+    int colResult;
 
-    COLCYLINDER cylA; //sp+0x40
-    COLCYLINDER cylB; //sp+0x10
-    int colResult; //sp+0xC
-
-    int posIdx; //sp+0x8
+    int posIdx;
 
     ret = FALSE;
     colWork.broadColNum = 0;
@@ -2391,8 +2670,11 @@ static int _BodyColBroad(void)
             cylA.radius = bodyP->param.radius;
             cylA.height = bodyP->param.height;
             for(body2=bodyP+1, j=i+1; j<colWork.bodyNum; j++, body2++) {
-                if((body2->param.attr & COLBODY_ATTR_ACTIVE) && (body2->param.attr & BODYCOL_ATTR) == 0 && (bodyP->param.mask & body2->param.mask)) {
-                    if(!(bodyP->colBit[j >> 5] & (1 << (j & 0x1F))) || !(body2->colBit[i >> 5] & (1 << (i & 0x1F)))) {
+                if ((body2->param.attr & COLBODY_ATTR_ACTIVE) &&
+                    (body2->param.attr & BODYCOL_ATTR) == 0 &&
+                    (bodyP->param.mask & body2->param.mask)) {
+                    if (!(bodyP->colBit[j >> 5] & (1 << (j & 0x1F))) ||
+                        !(body2->colBit[i >> 5] & (1 << (i & 0x1F)))) {
                         cylB.startPos = body2->oldPos;
                         cylB.vel = body2->moveDir;
                         cylB.t = body2->colT;
@@ -2446,8 +2728,8 @@ static int _BodyColBroad(void)
                             broadP->body2Idx = j;
 
                             colWork.broadColNum++;
-                            bodyP->param.attr |= 0x08000000;
-                            body2->param.attr |= 0x08000000;
+                    bodyP->param.attr |= COLBODY_ATTR_BODY_CONTACT_FLAG;
+                    body2->param.attr |= COLBODY_ATTR_BODY_CONTACT_FLAG;
                         }
                     }
                 }
@@ -2459,25 +2741,28 @@ static int _BodyColBroad(void)
 
 #undef BODYCOL_ATTR
 
+// Resolves candidate body pairs in order of their chosen movement fraction.
+// Called by ColBodyExec after collection; each body's response requires a nonzero combined hook
+// result.
 static int _BodyColNarrow(void)
 {
-    COLBODY *body1; //r30
-    COLBODY *body2; //r31
-    COLBROAD *broadP; //r29
-    int colResult; //r28
-    int i; //r25
-    int cbResult1; //r24
-    int cbResult2; //r23
-    COLNARROW *narrowP; //r22
-    COLNARROW *narrow; //r21
-    int ret; //r20
-    int posNo; //r19
+    COLBODY *body1;
+    COLBODY *body2;
+    COLBROAD *broadP;
+    int colResult;
+    int i;
+    int cbResult1;
+    int cbResult2;
+    COLNARROW *narrowP;
+    COLNARROW *narrow;
+    int ret;
+    int posNo;
 
-    float h1; //f31
-    float h2; //f30
-    float r1; //f29
-    float r2; //f28
-    float dot; //f27
+    float h1;
+    float h2;
+    float r1;
+    float r2;
+    float dot;
 
     COL_NARROW_PARAM col1;
     COL_NARROW_PARAM col2;
@@ -2486,8 +2771,8 @@ static int _BodyColNarrow(void)
     HuVecF colDeltaNorm;
     HuVecF colDelta;
     HuVecF colXZDelta;
-    HuVecF norm1;
-    HuVecF norm2;
+    HuVecF originalMove1;
+    HuVecF originalMove2;
     HuVecF newMove1;
     HuVecF newMove2;
 
@@ -2506,26 +2791,27 @@ static int _BodyColNarrow(void)
         broadP = narrow->broadP;
         body1 = broadP->body1;
         body2 = broadP->body2;
-        if(!(body1->param.attr & 0x40000000) && !(body2->param.attr & 0x40000000)) {
+                if(!(body1->param.attr & COLBODY_ATTR_BODY_PAIR_CONTACT_FLAG) &&
+                   !(body2->param.attr & COLBODY_ATTR_BODY_PAIR_CONTACT_FLAG)) {
             body1->colBit[broadP->body2Idx >> 5] |= (1 << (broadP->body2Idx & 0x1F));
             body2->colBit[broadP->body1Idx >> 5] |= (1 << (broadP->body1Idx & 0x1F));
             r1 = broadP->body1->param.radius;
             r2 = broadP->body2->param.radius;
             h1 = broadP->body1->param.height/2;
             h2 = broadP->body2->param.height/2;
-            norm1 = body1->moveDir;
+            originalMove1 = body1->moveDir;
             col1.paramA = body1->param.paramA;
             col1.paramB = body1->param.paramB;
             col1.type = body1->param.type;
-            col1.normPos = norm1;
+            col1.normPos = originalMove1;
             col1.colResult = broadP->colResult;
             VECScale(&body1->moveDir, &col1.point, broadP->t);
             VECAdd(&col1.point, &body1->oldPos, &col1.point);
-            norm2 = body2->moveDir;
+            originalMove2 = body2->moveDir;
             col2.paramA = body2->param.paramA;
             col2.paramB = body2->param.paramB;
             col2.type = body2->param.type;
-            col2.normPos = norm2;
+            col2.normPos = originalMove2;
             col2.colResult = broadP->colResult;
 
             VECScale(&body2->moveDir, &col2.point, broadP->t);
@@ -2542,8 +2828,10 @@ static int _BodyColNarrow(void)
                 cbResult1 |= body1->param.narrowHook2(&col1, &col2);
             }
             newMove1 = col1.normPos;
-            col1.normPos = norm1;
-            col2.normPos = norm2;
+            // Keep body1's revised movement separately and restore both movement inputs before
+            // body2's hooks.
+            col1.normPos = originalMove1;
+            col2.normPos = originalMove2;
             cbResult2 = 0;
             if(body2->param.narrowHook) {
                 cbResult2 = body2->param.narrowHook(&col2, &col1);
@@ -2552,8 +2840,11 @@ static int _BodyColNarrow(void)
                 cbResult2 |= body2->param.narrowHook2(&col2, &col1);
             }
             newMove2 = col2.normPos;
-            col1.normPos = norm1;
-            col2.normPos = norm2;
+            col1.normPos = originalMove1;
+            col2.normPos = originalMove2;
+            // At the point limit, discard each body's hook result and stop its movement at the
+            // contact.
+            // Only body2 sets the contact-point-limit flag here.
             if(body1->colPointNum >= 8) {
                 body1->moveDir.x = 0;
                 body1->moveDir.y = 0;
@@ -2562,7 +2853,7 @@ static int _BodyColNarrow(void)
                 cbResult1 = 0;
             }
             if(body2->colPointNum >= 8) {
-                body2->param.attr |= 0x02000000;
+                    body2->param.attr |= COLBODY_ATTR_CONTACT_POINT_LIMIT_FLAG;
                 body2->moveDir.x = 0;
                 body2->moveDir.y = 0;
                 body2->moveDir.z = 0;
@@ -2570,6 +2861,8 @@ static int _BodyColNarrow(void)
                 cbResult2 = 0;
             }
             VECSubtract(&col2.point, &col1.point, &colDelta);
+            // For nearly coincident contact points, choose random X/Z separation and force
+            // Y to 0.01.
             if(VECSquareMag(&colDelta) < 0.0001f) {
                 colDelta.x = ((u32)frandmod(20)-10.0f)*0.01f;
                 colDelta.z = ((u32)frandmod(20)-10.0f)*0.01f;
@@ -2588,6 +2881,8 @@ static int _BodyColNarrow(void)
             if(cbResult1) {
                 ret = TRUE;
                 colResult = broadP->colResult;
+                // For existing overlaps, flag 0x40 forces side resolution and 0x80 forces
+                // vertical resolution.
                 if((body1->param.attr & 0x40) && colResult == 3) {
                     colResult = 2;
                 } else if((body1->param.attr & 0x80) && colResult == 2) {
@@ -2671,7 +2966,11 @@ static int _BodyColNarrow(void)
 
                     case 1:
                     case 3:
-                        if((colDeltaNorm.y < 0 && col1.normPos.y < 0) || (colDeltaNorm.y > 0 && col1.normPos.y > 0)) {
+                        // Remove the saved pre-hook Y movement toward the other body, even if the
+                        // hooks changed
+                        // the revised movement's Y component.
+                        if ((colDeltaNorm.y < 0 && col1.normPos.y < 0) ||
+                            (colDeltaNorm.y > 0 && col1.normPos.y > 0)) {
                             fixDir.y = col1.normPos.y;
                         }
                         if(body2->param.attr & 0x20) {
@@ -2691,7 +2990,7 @@ static int _BodyColNarrow(void)
                 VECSubtract(&body1->oldPos, &fixDir, &body1->oldPos);
                 body1->moveDir = newMove1;
                 body1->pos[posNo] = col1.point;
-                body1->param.attr |= 0x40000000;
+                body1->param.attr |= COLBODY_ATTR_BODY_PAIR_CONTACT_FLAG;
                 body1->colT = broadP->t;
                 body1->oldColT = 1;
                 ClearColPoint(body1);
@@ -2702,6 +3001,8 @@ static int _BodyColNarrow(void)
             if(cbResult2) {
                 ret = TRUE;
                 colResult = broadP->colResult;
+                // For existing overlaps, flag 0x40 forces side resolution and 0x80 forces
+                // vertical resolution.
                 if((body2->param.attr & 0x40) && colResult == 3) {
                     colResult = 2;
                 } else if((body2->param.attr & 0x80) && colResult == 2) {
@@ -2786,7 +3087,11 @@ static int _BodyColNarrow(void)
 
                     case 1:
                     case 3:
-                        if((colDeltaNorm.y < 0 && col2.normPos.y < 0) || (colDeltaNorm.y > 0 && col2.normPos.y > 0)) {
+                        // Remove the saved pre-hook Y movement toward the other body, even if the
+                        // hooks changed
+                        // the revised movement's Y component.
+                        if ((colDeltaNorm.y < 0 && col2.normPos.y < 0) ||
+                            (colDeltaNorm.y > 0 && col2.normPos.y > 0)) {
                             fixDir.y = col2.normPos.y;
                         }
                         if(body1->param.attr & 0x20) {
@@ -2800,13 +3105,15 @@ static int _BodyColNarrow(void)
                 } else {
                     fixDir = newMove2;
                 }
+                // Use a negative offset here, so subtracting it nudges body2's reconstructed start
+                // forward.
                 VECScale(&fixDir, &fixDir, -0.002f);
                 VECScale(&newMove2, &pointOfs, broadP->t);
                 VECSubtract(&col2.point, &pointOfs, &body2->oldPos);
                 VECSubtract(&body2->oldPos, &fixDir, &body2->oldPos);
                 body2->moveDir = newMove2;
                 body2->pos[posNo] = col2.point;
-                body2->param.attr |= 0x40000000;
+                body2->param.attr |= COLBODY_ATTR_BODY_PAIR_CONTACT_FLAG;
                 body2->colT = broadP->t;
                 body2->oldColT = 1;
                 ClearColPoint(body2);
@@ -2817,11 +3124,15 @@ static int _BodyColNarrow(void)
     return ret;
 }
 
+// Applies the selected surface response parameters to a body's current contact.
+// Called by _ColCorrection; its code parameter is unused. The contact limit stops movement and adds
+// a random nudge. Mesh displacement with squared magnitude above 0.0001 restarts movement and
+// restores a successful result.
 static BOOL _BodyApplyColAttr(COLBODY *bodyP, COL_ATTRPARAM *attrParam, int code)
 {
     COLBODY_POINT *point = &bodyP->colPoint[bodyP->colPointNum];
     int posIdx = (colWork.attr & 0x4) ? 1 : 0;
-    BOOL result = (bodyP->param.attr & 0x02000000) ? FALSE : TRUE;
+    BOOL result = (bodyP->param.attr & COLBODY_ATTR_CONTACT_POINT_LIMIT_FLAG) ? FALSE : TRUE;
     Mtx normMtx;
     HuVecF posOfs;
     HuVecF bounce;
@@ -2851,7 +3162,7 @@ static BOOL _BodyApplyColAttr(COLBODY *bodyP, COL_ATTRPARAM *attrParam, int code
         up.x = 0;
         up.y = 1;
         up.z = 0;
-        if(!(bodyP->param.attr & 0x10000000) || (bodyP->param.attr & 0x200)) {
+    if(!(bodyP->param.attr & COLBODY_ATTR_SWEEP_CONTACT_FLAG) || (bodyP->param.attr & 0x200)) {
             moveDir.y *= attrParam->yDeviate;
             upDot = VECDotProduct(&up, &point->normal);
             if(upDot > 0 && upDot > attrParam->maxDot) {
@@ -2873,6 +3184,7 @@ static BOOL _BodyApplyColAttr(COLBODY *bodyP, COL_ATTRPARAM *attrParam, int code
                 normMtx[2][1] = ((1-c)*(normal.z*normal.y))+(normal.x*s);
                 normMtx[2][2] = ((1-c)*(normal.z*normal.z))+c;
                 normMtx[0][3] = normMtx[1][3] = normMtx[2][3] = 0;
+                // Reflect the original movement, discarding the vertical adjustments made above.
                 MTXMultVec(normMtx, &bodyP->moveDir, &moveDir);
                 moveDir.x = -moveDir.x;
                 moveDir.y = -moveDir.y;
@@ -2900,6 +3212,8 @@ static BOOL _BodyApplyColAttr(COLBODY *bodyP, COL_ATTRPARAM *attrParam, int code
     return result;
 }
 
+// Applies pending mesh responses to active bodies after body-pair resolution in ColBodyExec.
+// Skips bodies already resolved as pairs and does not repeat an already-applied correction.
 static inline int _BodyColResponse(void)
 {
     COLBODY *bodyP;
@@ -2913,14 +3227,15 @@ static inline int _BodyColResponse(void)
         if(!(bodyP->param.attr & COLBODY_ATTR_ACTIVE)) {
             continue;
         }
-        if(!(bodyP->param.attr & 0x40000000)) {
-            if(bodyP->param.attr & 0x14000000) {
+                if(!(bodyP->param.attr & COLBODY_ATTR_BODY_PAIR_CONTACT_FLAG)) {
+            if(bodyP->param.attr & COLBODY_ATTR_MESH_CONTACT_MASK) {
                 bodyP->colT = bodyP->oldColT;
-                if((bodyP->param.attr & 0x20000000) || _ColCorrection(bodyP)) {
+                if ((bodyP->param.attr & COLBODY_ATTR_CONTACT_CORRECTED_FLAG) ||
+                    _ColCorrection(bodyP)) {
                     result = 1;
                 }
                 if(bodyP->colPointNum >= 8) {
-                    bodyP->param.attr |= 0x02000000;
+                    bodyP->param.attr |= COLBODY_ATTR_CONTACT_POINT_LIMIT_FLAG;
                 } else {
                     bodyP->colPointNum++;
                 }
@@ -2933,7 +3248,7 @@ static inline int _BodyColResponse(void)
     return result;
 }
 
-//Must be macro for stack ordering concerns
+// Finishes each collision pass by retaining contacts and clearing temporary state.
 #define _ColPointUpdate() \
 do { \
     COLBODY *bodyP; \
@@ -2941,24 +3256,26 @@ do { \
     bodyP = colWork.body; \
     for(no=colWork.bodyNum; no--; bodyP++) { \
         if(bodyP->param.attr & COLBODY_ATTR_ACTIVE) { \
-            if((bodyP->param.attr & 0x0C000000) == 0) { \
-                bodyP->param.attr |= 0x80000000; \
+            if((bodyP->param.attr & COLBODY_ATTR_COLLISION_MASK) == 0) { \
+                bodyP->param.attr |= COLBODY_ATTR_NO_CONTACT_FLAG; \
             } else { \
-                bodyP->param.attr &= ~0x80000000; \
+                bodyP->param.attr &= ~COLBODY_ATTR_NO_CONTACT_FLAG; \
             } \
-            if(bodyP->param.attr & 0x20000000) { \
+            if(bodyP->param.attr & COLBODY_ATTR_CONTACT_CORRECTED_FLAG) { \
                 if(bodyP->colPointNum >= 8) { \
-                    bodyP->param.attr |= 0x02000000; \
+                    bodyP->param.attr |= COLBODY_ATTR_CONTACT_POINT_LIMIT_FLAG; \
                 } else { \
                     bodyP->colPointNum++; \
                 } \
             } \
-            bodyP->hitAttr |= bodyP->param.attr & 0x7C000000; \
-            bodyP->param.attr &= 0x83FFFFFF; \
+            bodyP->hitAttr |= bodyP->param.attr & COLBODY_ATTR_PASS_CONTACT_MASK; \
+            bodyP->param.attr &= COLBODY_ATTR_PASS_RETAIN_MASK; \
         } \
     } \
 } while(0)
 
+// Refreshes body positions relative to each mesh for the current frame.
+// Unused helper that combines the body and mesh position refresh steps.
 static inline void _BodyMeshUpdate(int posNo)
 {
     COLBODY *bodyP;
@@ -2981,13 +3298,13 @@ static inline void _BodyMeshUpdate(int posNo)
     (void)bodyP;
 }
 
-
+// Calculates the unit inward-facing edge normals used by triangle collision checks.
+// Called by ColMakeTri after the triangle's plane normal is calculated.
 static inline void MakeNormal(HuVecF *a, HuVecF *b, HuVecF *c, COLTRI *out)
 {
     HuVecF ba;
     HuVecF cb;
     HuVecF ac;
-
 
     VECSubtract(b, a, &ba);
     VECSubtract(c, b, &cb);
@@ -3000,6 +3317,8 @@ static inline void MakeNormal(HuVecF *a, HuVecF *b, HuVecF *c, COLTRI *out)
     VECNormalize(&out->edgeNorm3, &out->edgeNorm3);
 }
 
+// Builds plane, edge, center, and bound data for one mesh triangle.
+// Called by ColMapInit while expanding each face into collision triangles.
 static inline void ColMakeTri(COLTRI *tri, Vec *vtxBuf, int *idx)
 {
     HuVecF ba;
@@ -3036,6 +3355,8 @@ COLBODY *ColBodyGet(int no)
     return &colWork.body[no];
 }
 
+// Clears collision-map bookkeeping and drops its model, body, and mesh registrations.
+// Does not free allocated storage; use ColMapKill for teardown that releases it.
 void ColMapClear(void)
 {
     CancelTRXF = FALSE;
@@ -3061,23 +3382,24 @@ static void UseFloat3(void)
     (void)3.0f;
 }
 
+// Registers collision models and builds triangle data before actors begin moving.
 void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
 {
-    COLTRI *triP; //r31
-    HuVecF *vtxBuf; //r30
-    HSF_FACE *hsfFaceP; //r29
-    int triNum; //r28
-    COLTRI *triOther; //r27
-    int no; //r26
-    COLBODY *bodyP; //r25
-    int meshNum; //r24
-    HSF_OBJECT *objP; //r23
-    int i; //r22
-    COLMESH *meshP; //r21
-    int objNum; //r20
-    int faceNo; //r19
+    COLTRI *triP;
+    HuVecF *vtxBuf;
+    HSF_FACE *hsfFaceP;
+    int triNum;
+    COLTRI *triOther;
+    int no;
+    COLBODY *bodyP;
+    int meshNum;
+    HSF_OBJECT *objP;
+    int i;
+    COLMESH *meshP;
+    int objNum;
+    int faceNo;
 
-    int index[3]; //sp+0x154
+    int index[3];
 
     if(ColMapInitCheck()) {
         return;
@@ -3091,7 +3413,8 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
         memset(colWork.body, 0, COLBODY_MAX*sizeof(COLBODY));
     }
     if(!colWork.narrowCol) {
-        colWork.narrowCol = HuMemDirectMallocNum(HEAP_MODEL, COLBODY_MAX*4*sizeof(COLNARROW), HU_MEMNUM_OVL);
+        colWork.narrowCol =
+            HuMemDirectMallocNum(HEAP_MODEL, COLBODY_MAX * 4 * sizeof(COLNARROW), HU_MEMNUM_OVL);
         memset(colWork.narrowCol, 0, COLBODY_MAX*4*sizeof(COLNARROW));
     }
     memcpy(colWork.mdlId, mdlId, mdlNum*sizeof(HU3D_MODELID));
@@ -3107,7 +3430,9 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
         colWork.attrParamHi[no].maxDot = 1;
         colWork.attrParamHi[no].attr = 0;
     }
-    colWork.broadCol = HuMemDirectMallocNum(HEAP_MODEL, ((colWork.bodyNum*(colWork.bodyNum+1))/2.0f)*sizeof(COLBROAD), HU_MEMNUM_OVL);
+    colWork.broadCol = HuMemDirectMallocNum(
+        HEAP_MODEL, ((colWork.bodyNum * (colWork.bodyNum + 1)) / 2.0f) * sizeof(COLBROAD),
+        HU_MEMNUM_OVL);
     colWork.colOrder1 = HuMemDirectMallocNum(HEAP_MODEL, COLBODY_MAX*4*sizeof(s16), HU_MEMNUM_OVL);
     colWork.colOrder2 = HuMemDirectMallocNum(HEAP_MODEL, COLBODY_MAX*4*sizeof(s16), HU_MEMNUM_OVL);
     for(no=bodyNum; no--;) {
@@ -3142,7 +3467,8 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
         objP = hsfP->object;
         for(objNum=hsfP->objectNum; objNum--; objP++) {
             if(objP->type == HSF_OBJ_MESH) {
-                for(triNum=0, hsfFaceP=objP->mesh.face->data, faceNo=objP->mesh.face->count; faceNo--; hsfFaceP++) {
+                for (triNum = 0, hsfFaceP = objP->mesh.face->data, faceNo = objP->mesh.face->count;
+                     faceNo--; hsfFaceP++) {
                     switch(hsfFaceP->type) {
                         case HSF_FACE_QUAD:
                             triNum += 2;
@@ -3160,7 +3486,8 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
                 vtxBuf = objP->mesh.vertex->data;
                 triP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(COLTRI)*triNum, HU_MEMNUM_OVL);
                 memset(triP, 0, sizeof(COLTRI)*triNum);
-                for(triNum=0, hsfFaceP=objP->mesh.face->data, faceNo=objP->mesh.face->count; faceNo--; hsfFaceP++) {
+                for (triNum = 0, hsfFaceP = objP->mesh.face->data, faceNo = objP->mesh.face->count;
+                     faceNo--; hsfFaceP++) {
                     switch(hsfFaceP->type) {
                         case HSF_FACE_QUAD:
                             MakeIndexBuf(index, hsfFaceP, 0);
@@ -3187,13 +3514,15 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
                             break;
                     }
                 }
+                // Warn at 256 meshes, but continue building this and subsequent mesh records.
                 if(meshNum == 256) {
         OSReport("( colman.c : ColMapInit ) | テンポラリのバッファをオーバーライトしています\n\0\0\0\0");
                 }
                 memset(&colMesh[meshNum], 0, sizeof(COLMESH));
                 colMesh[meshNum].tri = triP;
                 colMesh[meshNum].obj = objP;
-                colMesh[meshNum].bodyPos = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HuVecF)*colWork.bodyNum*2, HU_MEMNUM_OVL);
+                colMesh[meshNum].bodyPos = HuMemDirectMallocNum(
+                    HEAP_MODEL, sizeof(HuVecF) * colWork.bodyNum * 2, HU_MEMNUM_OVL);
                 colMesh[meshNum].bodyMove = colMesh[meshNum].bodyPos+colWork.bodyNum;
                 colMesh[meshNum].mask = -1;
                 colMesh[meshNum].mdlNo = no;
@@ -3213,6 +3542,7 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
     colWork.attr |= 0x10;
     ColMtxCalcModelAll();
     for(meshP=colMesh, no=colMeshCount; no--; meshP++) {
+        // Ignore inversion failure; a singular transform leaves the zeroed inverse in place.
         MTXInverse(meshP->mtx, meshP->mtxInv);
         memcpy(meshP->mtxOld, meshP->mtx, sizeof(Mtx));
         memcpy(meshP->mtxInvOld, meshP->mtxInv, sizeof(Mtx));
@@ -3220,6 +3550,7 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
     colMapInitF = TRUE;
 }
 
+// Sets the mesh mask used to include a registered model in collision queries.
 void ColMapMaskSet(int mdlNo, u32 mask)
 {
     COLMESH *meshP;
@@ -3234,6 +3565,8 @@ void ColMapMaskSet(int mdlNo, u32 mask)
     }
 }
 
+// Returns the collision mask assigned to a registered model.
+// An uninitialized map returns without a value; initialized maps return zero for an absent model.
 u32 ColMapMaskGet(int mdlNo)
 {
     COLMESH *meshP;
@@ -3249,6 +3582,7 @@ u32 ColMapMaskGet(int mdlNo)
     return 0;
 }
 
+// Disables cylinder collision mode and returns whether that mode was previously set.
 BOOL ColCylReset(void)
 {
     BOOL ret = (colWork.attr & 0x20) ? TRUE : FALSE;
@@ -3256,6 +3590,7 @@ BOOL ColCylReset(void)
     return ret;
 }
 
+// Enables cylinder collision mode and returns whether that mode was previously clear.
 BOOL ColCylSet(void)
 {
     BOOL ret = (colWork.attr & 0x20) ? FALSE : TRUE;
@@ -3263,6 +3598,7 @@ BOOL ColCylSet(void)
     return ret;
 }
 
+// Frees collision-map model, body, pair, and triangle storage during teardown.
 void ColMapKill(void)
 {
     int no;
@@ -3318,12 +3654,13 @@ BOOL ColMapInitCheck(void)
     return colMapInitF;
 }
 
+// Clears the dirty and per-frame collision state bits.
 void ColDirtyClear(void)
 {
     colWork.attr &= ~0x18;
 }
 
-
+// Stores response parameters for the material code selected by a polygon flag.
 void ColAttrParamSet(COL_ATTRPARAM *param, u32 polyAttr)
 {
     int code = ColCodeGet(polyAttr);
@@ -3335,6 +3672,7 @@ void ColAttrParamSet(COL_ATTRPARAM *param, u32 polyAttr)
     *dst = *param;
 }
 
+// Retrieves response parameters for the material code selected by a polygon flag.
 void ColAttrParamGet(COL_ATTRPARAM *param, u32 polyAttr)
 {
     int code = ColCodeGet(polyAttr);
@@ -3346,6 +3684,8 @@ void ColAttrParamGet(COL_ATTRPARAM *param, u32 polyAttr)
     *param = *dst;
 }
 
+// Sets an actor body's position in the current buffer; COLBODY_ATTR_RESET also copies it to the
+// other slot.
 void ColBodyPosSet(HuVecF *pos, int no)
 {
     COLBODY *bodyP = &colWork.body[no];
@@ -3357,6 +3697,7 @@ void ColBodyPosSet(HuVecF *pos, int no)
     }
 }
 
+// Reads the submitted position buffer, or the completed buffer after ColBodyExec swaps slots.
 void ColBodyPosGet(HuVecF *pos, int no)
 {
     int idx = (colWork.attr & 0x4) ? 1 : 0;
@@ -3366,6 +3707,8 @@ void ColBodyPosGet(HuVecF *pos, int no)
     *pos = colWork.body[no].pos[idx];
 }
 
+// Replaces the body's entire parameter block, including shape, mask, hooks, response, user data,
+// and flags.
 void ColBodyParamSet(COLBODY_PARAM *param, int no)
 {
     if(no >= 0 && no < colWork.bodyNum) {
@@ -3373,6 +3716,7 @@ void ColBodyParamSet(COLBODY_PARAM *param, int no)
     }
 }
 
+// Returns a body only when its index is within this map's reserved body range.
 COLBODY *ColBodyGetSafe(int no)
 {
     if(no >= 0 && no < colWork.bodyNum) {
@@ -3382,41 +3726,44 @@ COLBODY *ColBodyGetSafe(int no)
     }
 }
 
-BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *outCode, int *outMdlNo, HSF_OBJECT **outObj, int *outTriNo)
+// Casts a segment through masked collision meshes, selecting hits with the plane-test tolerance.
+// A hit up to 0.001 later than the current best can replace it, including beyond the segment end.
+BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *outCode,
+                   int *outMdlNo, HSF_OBJECT **outObj, int *outFaceNo)
 {
-    HSF_FACE *hsfFaceP; //r31
-    COLMESH *meshP; //r30
-    COLTRI *triP; //r28
-    int i; //r26
-    int j; //r27
-    int triNo; //r25
-    int triNum; //r24
-    u32 polyAttr; //r22
-    int mdlNo; //r21
-    HSF_OBJECT *obj; //r20
-    int no; //r19
-    BOOL temp; //r18
+    HSF_FACE *hsfFaceP;
+    COLMESH *meshP;
+    COLTRI *triP;
+    int i;
+    int j;
+    int faceNo;
+    int triNum;
+    u32 polyAttr;
+    int mdlNo;
+    HSF_OBJECT *obj;
+    int no;
+    BOOL temp;
 
-    float dist; //f31
-    float mag2; //f30
+    float dist;
+    float mag2;
 
-    HuVecF start; //sp+0x6C
-    HuVecF end; //sp+0x60
-    HuVecF delta; //sp+0x54
+    HuVecF start;
+    HuVecF end;
+    HuVecF delta;
 
-    int vtxIdx[3]; //sp+0x48
-    HuVecF outDelta; //sp+0x3C
-    HuVecF centerDist; //sp+0x30
-    HuVecF *vtx; //sp+0x2C
-    int colPlaneResult; //sp+0x28
-    float outDist; //sp+0x24
+    int vtxIdx[3];
+    HuVecF outDelta;
+    HuVecF centerDist;
+    HuVecF *vtx;
+    int colPlaneResult;
+    float outDist;
 
     meshP = colMesh;
     dist = 1;
     polyAttr = 0;
     mdlNo = 0;
     obj = NULL;
-    triNo = -1;
+    faceNo = -1;
     for(no=colMeshCount; no--;  meshP++) {
         if(mask & meshP->mask) {
             start = *pos1;
@@ -3452,13 +3799,15 @@ BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *ou
                             temp = TRUE;
                         }
                         if(temp != FALSE) {
-                            colPlaneResult = ColPlaneDistGet(&start, &end, &delta, 0, dist, 0, vtx, vtxIdx, triP, &outDist);
+                            colPlaneResult = ColPlaneDistGet(&start, &end, &delta, 0, dist, 0, vtx,
+                                                             vtxIdx, triP, &outDist);
                             if(colPlaneResult >= 0) {
                                 dist = outDist;
-                                polyAttr = ColMatCodeGet(meshP->obj->mesh.material[hsfFaceP->mat & 0xFFF].flags);
+                                polyAttr = ColMatCodeGet(
+                                    meshP->obj->mesh.material[hsfFaceP->mat & 0xFFF].flags);
                                 mdlNo = meshP->mdlNo;
                                 obj = meshP->obj;
-                                triNo = i;
+                                faceNo = i;
                             }
                         }
                     }
@@ -3466,7 +3815,7 @@ BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *ou
             }
         }
     }
-    if(triNo < 0) {
+    if(faceNo < 0) {
         return FALSE;
     }
     if(outPos) {
@@ -3483,23 +3832,26 @@ BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *ou
     if(outObj) {
         *outObj = obj;
     }
-    if(outTriNo) {
-        *outTriNo = triNo;
+    if(outFaceNo) {
+        *outFaceNo = faceNo;
     }
     return TRUE;
 }
 
+// Runs mesh and body collision passes after actor positions are submitted each frame.
+// Called by the actor update after position submission; another call is skipped until
+// ColDirtyClear.
 void ColBodyExec(void)
 {
-    COLBODY *bodyP; //r31
-    COLMESH *meshP; //r30
-    int i; //r27
-    int no; //r22
-    int colNum; //r21
-    int posNo; //r18
+    COLBODY *bodyP;
+    COLMESH *meshP;
+    int i;
+    int no;
+    int colNum;
+    int posNo;
 
-    HuVecF temp; //sp+0x3C
-    int otherPosNo; //sp+0x38
+    HuVecF temp;
+    int otherPosNo;
 
     posNo = (colWork.attr & 0x4) ? 1 : 0;
     otherPosNo = posNo ^ 1;
@@ -3552,6 +3904,8 @@ void ColBodyExec(void)
             }
         }
     }
+    // After calculating mesh-induced movement, consume reset and prior contact flags, keeping the
+    // low 16 attribute bits.
     for(bodyP=colWork.body, no=colWork.bodyNum; no--; bodyP++) {
         bodyP->param.attr &= 0xFFFF;
     }
@@ -3568,24 +3922,26 @@ void ColBodyExec(void)
         bodyP = colWork.body;
         for(no=colWork.bodyNum; no--; bodyP++) {
             if(bodyP->param.attr & COLBODY_ATTR_ACTIVE) {
-                if((bodyP->param.attr & 0x0C000000) == 0) {
-                    bodyP->param.attr |= 0x80000000;
+                if((bodyP->param.attr & COLBODY_ATTR_COLLISION_MASK) == 0) {
+                    bodyP->param.attr |= COLBODY_ATTR_NO_CONTACT_FLAG;
                 } else {
-                    bodyP->param.attr &= ~0x80000000;
+                    bodyP->param.attr &= ~COLBODY_ATTR_NO_CONTACT_FLAG;
                 }
-                if(bodyP->param.attr & 0x20000000) {
+                if(bodyP->param.attr & COLBODY_ATTR_CONTACT_CORRECTED_FLAG) {
                     if(bodyP->colPointNum >= 8) {
-                        bodyP->param.attr |= 0x02000000;
+                        bodyP->param.attr |= COLBODY_ATTR_CONTACT_POINT_LIMIT_FLAG;
                     } else {
                         bodyP->colPointNum++;
                     }
                 }
-                bodyP->hitAttr |= bodyP->param.attr & 0x7C000000;
-                bodyP->param.attr &= 0x83FFFFFF;
+                bodyP->hitAttr |= bodyP->param.attr & COLBODY_ATTR_PASS_CONTACT_MASK;
+                bodyP->param.attr &= COLBODY_ATTR_PASS_RETAIN_MASK;
             }
         }
     }
     bodyP = colWork.body;
+    // Finalize every reserved body slot, including inactive ones, and restore its saved contact
+    // flags.
     for(no=colWork.bodyNum; no--; bodyP++) {
         VECAdd(&bodyP->oldPos, &bodyP->moveDir, &bodyP->pos[posNo]);
         bodyP->param.attr |= bodyP->hitAttr;
@@ -3597,6 +3953,7 @@ void ColBodyExec(void)
             MTXMultVec(meshP->mtxInv, &meshP->bodyPos[i], &meshP->bodyPos[i]);
         }
     }
+    // Swap submission slots; completed positions stay in the opposite slot for ColBodyPosGet.
     colWork.attr ^= 0x4;
     colWork.attr |= 0x8;
 }
