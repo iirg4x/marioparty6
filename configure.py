@@ -1062,7 +1062,7 @@ config.libs = [
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/slidhist.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flfxblks/statio.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flfxblks/subsamp.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/trigglr.c"),
+            Object(Matching, "gssdk_lib/asrpho/common/blocks/flfxblks/trigglr.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flfxblks/voicing.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/ctxdata/ctxdata.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/ctxdata/langdata.c"),
