@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 30.20% | 50.80% |
+| Entire project | 30.44% | 50.94% |
 | Main DOL | 87.80% | 98.84% |
-| REL modules | 17.99% | 20.35% |
+| REL modules | 18.27% | 20.59% |
+
+Pixel Perfect (`m636dll`) selects all **64 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Jump the Gun (`m643DLL`) selects all **128 functions** from **5 complete translation units**; its linked REL matches retail.
 
