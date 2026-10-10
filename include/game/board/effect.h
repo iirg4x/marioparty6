@@ -85,7 +85,7 @@ struct MbParticle_s {
         };
         struct {
             u8 guideUnused10[4];
-            float unk14;
+            float spawnOffsetY;
             u8 guideUnused18[8];
         };
     };

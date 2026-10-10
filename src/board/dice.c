@@ -1,3 +1,4 @@
+// Runs the board's dice rolls, dice effects, and floating result numbers.
 #include "dolphin/math.h"
 
 #include "game/board/audio.h"
@@ -43,102 +44,93 @@ typedef u16 (*DICEPADBTNHOOK)(int playerNo);
 typedef void (*DICEMOTHOOK)(int playerNo);
 
 typedef struct DiceEff_s {
-    HuVecF rot;
-    float radius;
-    HuVecF scale;
+    HuVecF rot; // Rotation angles in degrees for the puff or triangle effect.
+    float radius; // Effect radius in world units.
+    HuVecF scale; // Per-axis effect scale.
 } DICE_EFF;
 
 typedef struct DiceWork_s {
-    int playerNo;
-    int diceType;
-    int max;
-    int no;
-    s8 valueTbl[DICE_VALUENUM_MAX];
-    int valueNum;
-    int tutorialVal[3];
-    BOOL padWinF;
-    s8 result[3];
-    HuVecF pos;
-    int color;
-    OMOBJ *obj;
-    DICE_EFF *eff;
-    u32 _unk4C;
-    void *dlBuf;
-    u32 dlSize;
-    ANIMDATA *animEffPuff;
-    ANIMDATA *animEffTri;
-    s8 puffTime;
-    s8 triTime;
+    int playerNo; // Player index, or GW_PLAYER_MAX for a roll without a player.
+    int diceType; // Board dice style used to select its model and value range.
+    int max; // Number of dice rolled in this sequence.
+    int no; // Index of the current die in the sequence.
+    s8 valueTbl[DICE_VALUENUM_MAX]; // Allowed face animation indices; valueNum gives the number of
+                                    // entries.
+    int valueNum; // Number of allowed faces in valueTbl.
+    int tutorialVal[3]; // Tutorial face values, with -1 for unused entries.
+    BOOL padWinF; // Whether to show the button help window for each die.
+    s8 result[3]; // Resolved value for each die in the roll sequence.
+    HuVecF pos; // World position where the dice are shown.
+    int color; // Dice color variant.
+    OMOBJ *obj; // Current die object, or NULL after it is removed.
+    DICE_EFF *eff; // Puff and triangle effect state.
+    u32 unusedStorage; // Unused storage in the dice roll work area.
+    void *dlBuf; // Display-list storage used by the dice effects.
+    u32 dlSize; // Size in bytes of dlBuf.
+    ANIMDATA *animEffPuff; // Puff effect animation data.
+    ANIMDATA *animEffTri; // Triangle effect animation data.
+    s8 puffTime; // Frames elapsed while drawing the puff effect.
+    s8 triTime; // Frames elapsed while drawing the triangle effect.
 } DICE_WORK;
 
 typedef struct DiceObjWork_s {
-    u8 killF : 1;
-    u8 lockF : 1;
-    u8 fadeF : 1;
-    u8 mode : 3;
-    u8 no : 2;
-    s16 lockTime;
-    s16 time;
-    s16 maxTime;
-    s16 valueNo;
-    int diceSeNo;
+    u8 killF : 1; // Set when the die object should be removed.
+    u8 lockF : 1; // Set while the die face is locked in place.
+    u8 fadeF : 1; // Retain this die after its hit animation for later fading.
+    u8 mode : 3; // Current die animation mode.
+    u8 no : 2; // Index of this die in the roll sequence.
+    s16 faceChangeTimer; // Frames elapsed since the last face change.
+    s16 time; // Frame counter for the reveal, hit, and disappearance animation phases.
+    s16 maxTime; // Progress limit used to normalize and finish the timed die animation phases.
+    s16 valueNo; // Selected index in the allowed face-value table.
+    int diceSeNo; // Dice sound handle: initially zero, then the loop handle, and -1 after stopping.
 } DICE_OBJ_WORK;
 
 typedef struct DiceFadeWork_s {
-    u8 killF : 1;
-    u8 fadeF : 1;
-    s16 playerNo;
-    u16 time;
-    u16 angle;
+    u8 killF : 1; // Set when the fade object should be removed.
+    u8 fadeF : 1; // Whether the retained die model is currently fading.
+    s16 playerNo; // Dice-fade cleanup slot; creation leaves it zero, so cleanup clears slot zero.
+    u16 time; // Frames elapsed in the fade animation.
+    u16 phase; // Frame phase in the 30-step die scale pulse.
 } DICE_FADE_WORK;
 
 typedef struct DiceNumWork_s {
-    u8 killF : 1;
-    u8 rotF : 1;
-    u8 updateF : 1;
-    u8 modelNo : 2;
-    u8 bendF : 1;
-    u8 playerNo : 2;
-    s8 value;
-    u8 color;
-    s16 bendMode;
-    s16 time;
-    s16 maxTime;
+    u8 killF : 1; // Set when the result number object should be removed.
+    u8 rotF : 1; // Use straight return movement and the final glow instead of the arcing arrival.
+    u8 updateF : 1; // Whether the result-number movement or bend animation is still active.
+    u8 digitCount : 2; // Number of digit models used for this result.
+    u8 bendF : 1; // Continue alternating bend phases after the current phase finishes.
+    u8 playerNo : 2; // Unread player index; the no-player slot truncates to zero in these two bits.
+    s8 value; // Resolved result or mapped coin amount shown by the number models.
+    u8 color; // Number color variant.
+    s16 bendMode; // Current bend animation mode.
+    s16 time; // Frames elapsed in the current number animation.
+    s16 maxTime; // Progress limit used by the current number animation.
 } DICE_NUM_WORK;
 
 typedef struct DiceSNpcNumWork_s {
-    u8 killF : 1;
-    u8 dispF : 1;
-    u8 _unk2 : 1;
-    u8 value;
+    u8 killF : 1; // Set when the board NPC number should be removed.
+    u8 dispF : 1; // Whether the board NPC number is visible.
+    u8 unusedFlag : 1; // Caller-supplied flag retained without affecting the displayed digits.
+    u8 value; // Number displayed beside the board NPC.
 } DICE_SNPC_NUM_WORK;
 
 typedef struct DiceNumVtx_s {
-    HuVecF pos;
-    float weight;
+    HuVecF pos; // Position of a number-model vertex in model space.
+    float weight; // Bend weight from 0 at the mesh bottom to 1 at the top.
 } DICE_NUM_VTX;
 
 static const int diceObjFileTbl[] = {
-    DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 24),
-    DATANUM(DATA_board, 25),
-    DATANUM(DATA_board, 34),
-    DATANUM(DATA_board, 28),
-    DATANUM(DATA_board, 32),
-    DATANUM(DATA_board, 31),
-    DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 31),
-    DATANUM(DATA_board, 23),
-    DATANUM(DATA_blast5, 3),
-    DATANUM(DATA_board, 29),
-    DATANUM(DATA_board, 30),
-    DATANUM(DATA_board, 33),
-    DATANUM(DATA_board, 26),
-    DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 24),
-    DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 23), DATANUM(DATA_board, 24),
+    DATANUM(DATA_board, 25), DATANUM(DATA_board, 34),
+    DATANUM(DATA_board, 28), DATANUM(DATA_board, 32),
+    DATANUM(DATA_board, 31), DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 31), DATANUM(DATA_board, 23),
+    DATANUM(DATA_blast5, 3), DATANUM(DATA_board, 29),
+    DATANUM(DATA_board, 30), DATANUM(DATA_board, 33),
+    DATANUM(DATA_board, 26), DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 23), DATANUM(DATA_board, 23),
+    DATANUM(DATA_board, 24), DATANUM(DATA_board, 23),
     DATANUM(DATA_board, 23)
 };
 
@@ -147,16 +139,11 @@ static const u8 diceFadeFlagTbl[24] = {
 };
 
 static const int numberFileTbl[] = {
-    DATANUM(DATA_board, 11),
-    DATANUM(DATA_board, 12),
-    DATANUM(DATA_board, 13),
-    DATANUM(DATA_board, 14),
-    DATANUM(DATA_board, 15),
-    DATANUM(DATA_board, 16),
-    DATANUM(DATA_board, 17),
-    DATANUM(DATA_board, 18),
-    DATANUM(DATA_board, 19),
-    DATANUM(DATA_board, 20)
+    DATANUM(DATA_board, 11), DATANUM(DATA_board, 12),
+    DATANUM(DATA_board, 13), DATANUM(DATA_board, 14),
+    DATANUM(DATA_board, 15), DATANUM(DATA_board, 16),
+    DATANUM(DATA_board, 17), DATANUM(DATA_board, 18),
+    DATANUM(DATA_board, 19), DATANUM(DATA_board, 20)
 };
 
 static HUPROCESS *diceProc[DICE_MAX];
@@ -272,8 +259,8 @@ static void DiceNumObjBendOMExec(OMOBJ *obj);
 static void DiceNumObjShrinkOMExec(OMOBJ *obj);
 static void DiceNumObjReset(int playerNo);
 static DICE_NUM_VTX *DiceNumObjMdlCopy(int modelId);
-static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx mtx1,
-    Mtx mtx2);
+static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx bottomMtx,
+    Mtx topMtx);
 static void DiceSNpcNumUpdate(OMOBJ *obj);
 
 void mbObjBiriQColorSet(MBMODELID modelId, BOOL setF, float alpha,
@@ -286,7 +273,7 @@ static void ev_DiceZoromeCoin(int playerNo, int coin);
 static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx);
 BOOL mbPauseEnableCheck(void);
-OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *pos1, HuVecF *pos2,
+OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
     int value, int color, BOOL followF);
 OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     BOOL flagF, int color);
@@ -305,6 +292,7 @@ void mbDiceTutorialNumSet(int playerNo, int tutorialVal);
 int mbDiceTutorialNumGet(int playerNo);
 int mbDiceValueNoGet(int playerNo);
 
+// Returns the magnitude used by dice effect angles and number color pulses.
 static inline float DiceAbsFloat(register float value)
 {
 #ifdef __MWERKS__
@@ -317,6 +305,7 @@ static inline float DiceAbsFloat(register float value)
 #endif
 }
 
+// Copies a three-component vector used for dice positions, labels, and effects.
 static inline void DiceVecCopy(register const HuVecF *src, register HuVecF *dst)
 {
 #ifdef __MWERKS__
@@ -334,6 +323,7 @@ static inline void DiceVecCopy(register const HuVecF *src, register HuVecF *dst)
 #endif
 }
 
+// Board setup clears dice process, hook, fade, and result-number object pointers.
 void mbDiceInit(void)
 {
     int i;
@@ -351,6 +341,7 @@ void mbDiceInit(void)
     }
 }
 
+// Starts the dice process; callers may wait here until its process is removed.
 static void DiceProcExec(int playerNo, int diceType, s8 *valueTbl,
     int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color)
 {
@@ -413,6 +404,7 @@ static void DiceProcExec(int playerNo, int diceType, s8 *valueTbl,
     }
 }
 
+// Public dice entry point used by board events and player turns.
 int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
     int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color)
 {
@@ -441,6 +433,7 @@ int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
 inline int mbDiceProcExec(int playerNo, int diceType, s8 *valueTbl,
     int *tutorialVal, BOOL padWinF, BOOL waitF, HuVecF *pos, int color);
 
+// Starts a roll with an optional first tutorial face; called by board events.
 int mbDiceExec(int playerNo, int diceType, s8 *valueTbl, int tutorialVal,
     BOOL padWinF, BOOL waitF, HuVecF *pos, int color)
 {
@@ -457,12 +450,14 @@ int mbDiceExec(int playerNo, int diceType, s8 *valueTbl, int tutorialVal,
         padWinF, waitF, pos, color);
 }
 
+// Rolls the player's normal board die and waits for its result.
 int mbDicePlayerExec(int playerNo, int diceType)
 {
     return mbDiceProcExec(playerNo, diceType, NULL, NULL, TRUE, TRUE, NULL,
         DICE_COLOR_GREEN);
 }
 
+// Rolls the seven Chance Trade face animations and returns their one-based result.
 int mbDiceChanceTradeExec(int playerNo)
 {
     s8 valueTbl[8];
@@ -477,6 +472,7 @@ int mbDiceChanceTradeExec(int playerNo)
     return mbDiceResultGet(playerNo);
 }
 
+// Rolls among the listed players' characters for the Chance Time event.
 int mbDiceChanceCharExec(int playerNo, int *playerNoTbl)
 {
     s8 valueTbl[GW_PLAYER_MAX + 1];
@@ -494,6 +490,7 @@ int mbDiceChanceCharExec(int playerNo, int *playerNoTbl)
     return mbDiceResultGet(playerNo);
 }
 
+// Dice process entry point created by DiceProcExec; runs each die and totals results.
 static void DiceProcMain(void)
 {
     int i;
@@ -555,6 +552,7 @@ static void DiceProcMain(void)
     HuPrcEnd();
 }
 
+// Process destructor registered by DiceProcExec; clears hooks, effects, and work.
 static void DiceProcDestroy(void)
 {
     DICE_WORK *work = HuPrcCurrentGet()->property;
@@ -568,6 +566,7 @@ static void DiceProcDestroy(void)
     HuMemDirectFree(work);
 }
 
+// Creates the roll help window before a die; called by DiceProcMain when enabled.
 static void DiceHelpWinCreate(DICE_WORK *work)
 {
     u32 mess;
@@ -587,6 +586,7 @@ static void DiceHelpWinCreate(DICE_WORK *work)
         int capsuleNum = mbPlayerCapsuleNumGet(work->playerNo);
 
         if (GWPartyGet() == FALSE) {
+            // Solo mode uses turn availability instead of the player's capsule inventory.
             capsuleNum = TRUE;
             if (GwSystem.turnNo <= 1) {
                 capsuleNum = FALSE;
@@ -609,6 +609,7 @@ static void DiceHelpWinCreate(DICE_WORK *work)
     mbWinCreateHelp(mess);
 }
 
+// Creates the animated die and its effects before DiceProcMain starts the roll.
 static void DiceObjCreate(DICE_WORK *work)
 {
     MBCAMERA *cameraP = mbCameraGet();
@@ -620,6 +621,7 @@ static void DiceObjCreate(DICE_WORK *work)
     obj = work->obj = omAddObj(mbObjMan, 258, 5, 0, DiceObjOMExec);
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
     obj->data = work;
+    // The block-die and other-die branches create the same model with the same settings.
     if (work->diceType != DICETYPE_BLOCK) {
         obj->mdlId[0] = mbObjCreate(
             mbBoardDataNumGet(diceObjFileTbl[work->diceType]), NULL, FALSE);
@@ -634,6 +636,7 @@ static void DiceObjCreate(DICE_WORK *work)
         mbObjMotionSet(obj->mdlId[0], 0, 0);
         mbObjMotionSpeedSet(obj->mdlId[0], 0.0f);
     }
+    // The initial face uses the table index directly, without mapping it through valueTbl.
     time = mbRandMod(work->valueNum) + 0.5f;
     mbObjMotionTimeSet(obj->mdlId[0], time);
     mbObjAlphaSet(obj->mdlId[0], 0);
@@ -645,7 +648,7 @@ static void DiceObjCreate(DICE_WORK *work)
     objWork->no = work->no;
     objWork->time = 0;
     objWork->maxTime = 20;
-    objWork->lockTime = 0;
+    objWork->faceChangeTimer = 0;
     objWork->valueNo = time;
     obj->trans.x = work->pos.x;
     obj->trans.y = work->pos.y + 250.0f;
@@ -657,10 +660,12 @@ static void DiceObjCreate(DICE_WORK *work)
         obj->trans.z);
     Hu3DModelPosSet(obj->mdlId[2], obj->trans.x, obj->trans.y,
         obj->trans.z);
+    // The die-to-camera vector is calculated here but is not used by the die effects.
     VECSubtract(&cameraP->eye, &obj->trans, &parManVec);
     obj->mdlId[3] = Hu3DHookFuncCreate(DiceObjEffPuffDraw);
     Hu3DModelCameraSet(obj->mdlId[3], HU3D_CAM0);
     Hu3DModelLayerSet(obj->mdlId[3], 5);
+    // The puff hook stays hidden; this file never enables it.
     Hu3DModelDispOff(obj->mdlId[3]);
     Hu3DData[obj->mdlId[3]].hookData = obj;
     work->puffTime = 0;
@@ -672,6 +677,7 @@ static void DiceObjCreate(DICE_WORK *work)
     work->triTime = 0;
 }
 
+// Object-manager callback that advances and removes the animated die each frame.
 static void DiceObjOMExec(OMOBJ *obj)
 {
     DICE_OBJ_WORK *objWork = omObjGetWork(obj, DICE_OBJ_WORK);
@@ -790,11 +796,11 @@ static void DiceObjOMExec(OMOBJ *obj)
     }
     if (!objWork->lockF && objWork->mode < 2 && work->valueNum > 1) {
         if (work->diceType != 14) {
-            if (objWork->lockTime++ > 4) {
+            if (objWork->faceChangeTimer++ > 4) {
                 s16 valueTbl[DICE_VALUENUM_MAX];
                 int valueNum;
 
-                objWork->lockTime = 0;
+                objWork->faceChangeTimer = 0;
                 valueNum = 0;
                 for (i = 0; i < work->valueNum; i++) {
                     if (i != objWork->valueNo) {
@@ -804,8 +810,8 @@ static void DiceObjOMExec(OMOBJ *obj)
                 objWork->valueNo = valueTbl[mbRandMod(valueNum)];
             }
         } else {
-            if (objWork->lockTime++ > 20) {
-                objWork->lockTime = 0;
+            if (objWork->faceChangeTimer++ > 20) {
+                objWork->faceChangeTimer = 0;
                 objWork->valueNo++;
                 if (objWork->valueNo >= work->valueNum) {
                     objWork->valueNo = 0;
@@ -826,6 +832,7 @@ static const float lbl_802C3868 = 0.033333335f;
 static const float lbl_802C386C = 1.15f;
 static const float lbl_802C3870 = 0.15f;
 
+// Object-manager callback that scales and optionally fades a die model each frame.
 static void DiceFadeOMExec(OMOBJ *obj)
 {
     DICE_FADE_WORK *work = omObjGetWork(obj, DICE_FADE_WORK);
@@ -841,12 +848,12 @@ static void DiceFadeOMExec(OMOBJ *obj)
         diceFadeOMObj[work->playerNo] = NULL;
         return;
     }
-    work->angle++;
-    if (work->angle >= 30) {
-        work->angle -= 30;
+    work->phase++;
+    if (work->phase >= 30) {
+        work->phase -= 30;
     }
     time = lbl_802C3868;
-    scale = time * (float)work->angle;
+    scale = time * (float)work->phase;
     scale = lbl_802C386C + (lbl_802C3870 * mbSinDeg((time = 360.0f * scale) - 90.0f));
     mbObjScaleSet(obj->mdlId[0], scale, scale, scale);
     if (work->fadeF) {
@@ -861,6 +868,7 @@ static void DiceFadeOMExec(OMOBJ *obj)
     }
 }
 
+// Starts fading the retained die model for a player or the no-player dice slot.
 void mbDiceFadeSet(int playerNo)
 {
     OMOBJ *obj;
@@ -877,6 +885,7 @@ void mbDiceFadeSet(int playerNo)
     }
 }
 
+// Stops the active dice process for a player, requesting its current die to close.
 void mbDiceKill(int playerNo)
 {
     if (diceProc[playerNo] != NULL) {
@@ -889,6 +898,7 @@ void mbDiceKill(int playerNo)
 
 inline void mbDiceKill(int playerNo);
 
+// Board shutdown helper that stops dice processes for all playable players.
 void mbDiceClose(void)
 {
     int i;
@@ -898,6 +908,7 @@ void mbDiceClose(void)
     }
 }
 
+// Marks the current die for removal; DiceObjOMExec performs the cleanup.
 static void DiceKill(DICE_WORK *work)
 {
     if (work->obj != NULL) {
@@ -905,6 +916,7 @@ static void DiceKill(DICE_WORK *work)
     }
 }
 
+// Waits for the allowed input to stop the current die or choose a board action.
 static void DiceExec(DICE_WORK *work)
 {
     u16 btn = 0;
@@ -944,6 +956,7 @@ static void DiceExec(DICE_WORK *work)
         if (btn == PAD_BUTTON_B && work->playerNo < GW_PLAYER_MAX) {
             capsuleNum = mbPlayerCapsuleNumGet(work->playerNo);
             if (GWPartyGet() == FALSE) {
+                // Solo mode uses turn availability instead of the player's capsule inventory.
                 capsuleNum = TRUE;
                 if (GwSystem.turnNo <= 1) {
                     capsuleNum = FALSE;
@@ -957,6 +970,8 @@ static void DiceExec(DICE_WORK *work)
     }
 }
 
+// Reads human button presses; CPUs return A immediately unless type 14 has a nonnegative override.
+// With that override, CPUs wait for its target face and clear it before returning A.
 static u16 DicePlayerPadBtn(int playerNo)
 {
     int valueNo;
@@ -983,6 +998,7 @@ static u16 DicePlayerPadBtn(int playerNo)
     return ret;
 }
 
+// Waits until DiceObjOMExec has finished revealing the die and accepts input.
 static void DiceReadyWait(DICE_WORK *work)
 {
     DICE_OBJ_WORK *objWork = omObjGetWork(work->obj, DICE_OBJ_WORK);
@@ -992,6 +1008,7 @@ static void DiceReadyWait(DICE_WORK *work)
     }
 }
 
+// Locks the current die, resolves its result, and notifies any registered hit hook.
 static void DiceObjHit(DICE_WORK *work)
 {
     OMOBJ *obj = work->obj;
@@ -1016,6 +1033,7 @@ static void DiceObjHit(DICE_WORK *work)
         && work->diceType != 11 && work->diceType != 12) {
         if (GWPartyGet() == FALSE && work->playerNo == 0
             && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            // Replace any supplied override with solo mode's microphone-based result, including -1.
             work->tutorialVal[work->no] = mbSingleCall(2, -1);
         }
         if (work->tutorialVal[work->no] >= 0) {
@@ -1043,6 +1061,7 @@ static void DiceObjHit(DICE_WORK *work)
     }
 }
 
+// Reports whether the selected player's dice process is inactive.
 BOOL mbDiceKillCheck(int playerNo)
 {
     if (playerNo < 0) {
@@ -1053,6 +1072,7 @@ BOOL mbDiceKillCheck(int playerNo)
 
 inline BOOL mbDiceKillCheck(int playerNo);
 
+// Board callers use this to wait until all playable players' dice processes end.
 BOOL mbDiceKillCheckAll(void)
 {
     int i;
@@ -1065,6 +1085,7 @@ BOOL mbDiceKillCheckAll(void)
     return TRUE;
 }
 
+// Returns the current or completed dice result for a player or shared dice slot.
 int mbDiceResultGet(int playerNo)
 {
     if (playerNo < 0) {
@@ -1073,6 +1094,7 @@ int mbDiceResultGet(int playerNo)
     return diceResult[playerNo];
 }
 
+// Installs the callback invoked immediately after that player's die is resolved.
 void mbDiceHitHookSet(int playerNo, DICEHITHOOK hook)
 {
     if (playerNo < 0) {
@@ -1081,6 +1103,7 @@ void mbDiceHitHookSet(int playerNo, DICEHITHOOK hook)
     diceHitHook[playerNo] = hook;
 }
 
+// External board events use this to hit the selected player's active die.
 void mbDiceObjHit(int playerNo)
 {
     if (playerNo < 0) {
@@ -1089,6 +1112,7 @@ void mbDiceObjHit(int playerNo)
     DiceObjHit(diceProc[playerNo]->property);
 }
 
+// Replaces the input source sampled by DiceExec for this player's roll.
 void mbDicePadBtnHookSet(int playerNo, DICEPADBTNHOOK hook)
 {
     if (playerNo < 0) {
@@ -1097,6 +1121,7 @@ void mbDicePadBtnHookSet(int playerNo, DICEPADBTNHOOK hook)
     dicePadBtnHook[playerNo] = hook;
 }
 
+// Registers the callback DiceProcMain invokes after DiceExec returns when the roll continues.
 void mbDiceMotHookSet(int playerNo, DICEMOTHOOK hook)
 {
     if (playerNo < 0) {
@@ -1105,6 +1130,7 @@ void mbDiceMotHookSet(int playerNo, DICEMOTHOOK hook)
     diceMotHook[playerNo] = hook;
 }
 
+// Returns the dice style stored in the active process for the selected player.
 int mbDiceTypeGet(int playerNo)
 {
     DICE_WORK *work;
@@ -1116,6 +1142,7 @@ int mbDiceTypeGet(int playerNo)
     return work->diceType;
 }
 
+// Sets the tutorial face override for the currently active die in this roll.
 void mbDiceTutorialNumSet(int playerNo, int tutorialVal)
 {
     DICE_WORK *work;
@@ -1127,6 +1154,7 @@ void mbDiceTutorialNumSet(int playerNo, int tutorialVal)
     work->tutorialVal[work->no] = tutorialVal;
 }
 
+// Returns the tutorial face override for the currently active die in this roll.
 int mbDiceTutorialNumGet(int playerNo)
 {
     DICE_WORK *work;
@@ -1138,6 +1166,7 @@ int mbDiceTutorialNumGet(int playerNo)
     return work->tutorialVal[work->no];
 }
 
+// Returns the currently selected index into the active die's allowed face table.
 int mbDiceValueNoGet(int playerNo)
 {
     DICE_WORK *work;
@@ -1151,11 +1180,13 @@ int mbDiceValueNoGet(int playerNo)
     return objWork->valueNo;
 }
 
+// Returns the configured number of dice for a dice style.
 int mbDiceMaxGet(int type)
 {
     return diceMaxTbl[type];
 }
 
+// Returns the configured face count, using the single-player table in solo mode.
 int mbDiceValueMaxGet(int type)
 {
     if (GWPartyGet() == FALSE) {
@@ -1165,6 +1196,7 @@ int mbDiceValueMaxGet(int type)
     }
 }
 
+// Projects a world-space result-number point to the camera's fixed-depth plane.
 static inline void DiceNumPosSet(HuVecF *src, HuVecF *dst)
 {
     HU3D_CAMERA *cameraP = &Hu3DCamera[0];
@@ -1187,17 +1219,21 @@ static inline void DiceNumPosSet(HuVecF *src, HuVecF *dst)
     MTXMultVec(lookAt, &normPos, dst);
 }
 
-OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *pos1, HuVecF *pos2,
+// DiceObjOMExec calls this after a hit to create digits that move from the die to the result
+// position.
+// Values above 99 are clamped; followF skips projection to camera 0's z = -2000 plane.
+OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
     int value, int color, BOOL followF)
 {
     int modelNo;
     int digit;
+    // The active dice work is fetched here but is not otherwise used by number creation.
     DICE_WORK *diceWork = diceProc[playerNo]->property;
     OMOBJ *obj;
     DICE_NUM_WORK *objWork;
     DICE_NUM_VTX **vtx;
     int modelId;
-    HU3D_MODELID tempMdlId;
+    HU3D_MODELID engineModelId;
     MBCAMERA *cameraP;
     Mtx rot;
 
@@ -1228,15 +1264,15 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *pos1, HuVecF *pos2,
         modelId = mbObjCreate(
             mbBoardDataNumGet(numberFileTbl[digit % 10]), NULL, FALSE);
         vtx[modelNo] = DiceNumObjMdlCopy(mbObjModelIDGet(modelId));
-        mbObjPosSetV(modelId, pos1);
+        mbObjPosSetV(modelId, startPos);
         mbObjMotionSet(modelId, 0, 0);
         mbObjMotionSpeedSet(modelId, 0.0f);
         mbObjMotionTimeSet(modelId, color + 0.5f);
         mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
         mbObjMtxSet(modelId, &rot);
-        tempMdlId = mbObjModelIDGet(modelId);
+        engineModelId = mbObjModelIDGet(modelId);
         mbObjCameraSet(modelId, HU3D_CAM1);
-        Hu3DModelLayerSet(tempMdlId, 4);
+        Hu3DModelLayerSet(engineModelId, 4);
         mbObjBiriQCreate(modelId);
         mbObjBiriQColorSet(modelId, TRUE, 0.0f, biriQColor);
         obj->mdlId[modelNo] = modelId;
@@ -1246,26 +1282,28 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *pos1, HuVecF *pos2,
             break;
         }
     }
-    objWork->modelNo = modelNo;
+    objWork->digitCount = modelNo;
     for (; modelNo < 2; modelNo++) {
         obj->mdlId[modelNo] = MB_MODEL_NONE;
     }
-    obj->trans.x = obj->scale.x = pos1->x;
-    obj->trans.y = obj->scale.y = pos1->y;
-    obj->trans.z = obj->scale.z = pos1->z;
-    if (pos2 != NULL) {
-        obj->rot.x = pos2->x;
-        obj->rot.y = pos2->y;
-        obj->rot.z = pos2->z;
+    obj->trans.x = obj->scale.x = startPos->x;
+    obj->trans.y = obj->scale.y = startPos->y;
+    obj->trans.z = obj->scale.z = startPos->z;
+    if (targetPos != NULL) {
+        obj->rot.x = targetPos->x;
+        obj->rot.y = targetPos->y;
+        obj->rot.z = targetPos->z;
+        // Lower the target by 50 world units when x differs from the start by more than 25.
+        // Otherwise, raise it by 50 when z differs from the start by more than 25.
         if (__fabsf(obj->rot.x - obj->trans.x) > 25.0f) {
             obj->rot.y += -50.0f;
         } else if (__fabsf(obj->rot.z - obj->trans.z) > 25.0f) {
             obj->rot.y -= -50.0f;
         }
     } else {
-        obj->rot.x = pos1->x;
-        obj->rot.y = pos1->y;
-        obj->rot.z = pos1->z;
+        obj->rot.x = startPos->x;
+        obj->rot.y = startPos->y;
+        obj->rot.z = startPos->z;
     }
     if (!followF) {
         DiceNumPosSet(&obj->rot, &obj->rot);
@@ -1274,6 +1312,7 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *pos1, HuVecF *pos2,
     return obj;
 }
 
+// Object-manager callback that moves, rotates, updates, and removes result numbers.
 static void DiceNumObjOMExec(OMOBJ *obj)
 {
     DICE_NUM_WORK *objWork = omObjGetWork(obj, DICE_NUM_WORK);
@@ -1284,8 +1323,8 @@ static void DiceNumObjOMExec(OMOBJ *obj)
     HuVecF basePos;
     HuVecF dir;
     int i;
-    Mtx rot1;
-    Mtx rot2;
+    Mtx bottomRot;
+    Mtx topRot;
 
     if (objWork->killF || mbExitCheck()) {
         mbDiceNumObjKill(obj);
@@ -1298,6 +1337,7 @@ static void DiceNumObjOMExec(OMOBJ *obj)
         objWork->updateF = FALSE;
     }
     time = (float)objWork->time / objWork->maxTime;
+    // This direction vector is calculated but unused; digit positions use time directly below.
     dir.z = HuCos(time * 90);
     dir.y = HuSin(time * 90);
     dir.x = HuSin(time * 180);
@@ -1311,15 +1351,15 @@ static void DiceNumObjOMExec(OMOBJ *obj)
         if (angle > 360.0f) {
             angle = 360.0f;
         }
-        MTXRotDeg(rot2, 'y', angle);
+        MTXRotDeg(topRot, 'y', angle);
         angle = (450 * time) - 90;
         if (angle < 0) {
             angle = 0;
         }
-        MTXRotDeg(rot1, 'y', angle);
-        DiceNumObjMdlBend(mbObjModelIDGet(obj->mdlId[i]), vtx[i], rot1,
-            rot2);
-        if (objWork->modelNo < 2) {
+        MTXRotDeg(bottomRot, 'y', angle);
+        DiceNumObjMdlBend(mbObjModelIDGet(obj->mdlId[i]), vtx[i], bottomRot,
+            topRot);
+        if (objWork->digitCount < 2) {
             bendPos.x = obj->rot.x;
             bendPos.y = obj->rot.y;
             bendPos.z = obj->rot.z;
@@ -1370,6 +1410,8 @@ static void DiceNumObjOMExec(OMOBJ *obj)
     }
 }
 
+// DiceNumObjBendStart starts this bonus animation, which bends the player's result digits and adds
+// sparkles.
 static void DiceNumObjBendOMExec(OMOBJ *obj)
 {
     DICE_NUM_WORK *objWork = omObjGetWork(obj, DICE_NUM_WORK);
@@ -1380,8 +1422,8 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
     float posY;
     float maxAngle;
     float colorTime;
-    Mtx rot1;
-    Mtx rot2;
+    Mtx bottomRot;
+    Mtx topRot;
     HuVecF pos;
     int i;
 
@@ -1403,8 +1445,8 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
             }
             maxAngle = rotAngle;
             angle = time * 720;
-            MTXRotDeg(rot2, 'z', maxAngle * HuSin(angle));
-            MTXIdentity(rot1);
+            MTXRotDeg(topRot, 'z', maxAngle * HuSin(angle));
+            MTXIdentity(bottomRot);
             posY = obj->rot.y;
             if (++objWork->time > objWork->maxTime) {
                 if (objWork->bendF) {
@@ -1424,12 +1466,12 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
             if (angle > 360) {
                 angle = 360;
             }
-            MTXRotDeg(rot2, 'y', angle);
+            MTXRotDeg(topRot, 'y', angle);
             angle = (450 * time) - 90;
             if (angle < 0) {
                 angle = 0;
             }
-            MTXRotDeg(rot1, 'y', angle);
+            MTXRotDeg(bottomRot, 'y', angle);
             posY = obj->rot.y + (100 * (2 * HuSin(time * 180)));
             if (++objWork->time > objWork->maxTime) {
                 if (objWork->bendF) {
@@ -1446,8 +1488,8 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
         GXColor biriQColor = { 255, 255, 255, 255 };
 
         if (obj->mdlId[i] >= 0) {
-            DiceNumObjMdlBend(mbObjModelIDGet(obj->mdlId[i]), vtx[i], rot1,
-                rot2);
+            DiceNumObjMdlBend(mbObjModelIDGet(obj->mdlId[i]), vtx[i], bottomRot,
+                topRot);
             mbObjPosGet(obj->mdlId[i], &pos);
             pos.y = posY;
             mbObjPosSetV(obj->mdlId[i], &pos);
@@ -1459,10 +1501,12 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
     if (obj->mdlId[2] >= 0) {
         MBPARTICLE *particleP = Hu3DData[obj->mdlId[2]].hookData;
 
-        particleP->unk14 = posY - obj->rot.y;
+        // Newly emitted bonus sparkles inherit the result number's current vertical rise.
+        particleP->spawnOffsetY = posY - obj->rot.y;
     }
 }
 
+// Releases the result-number models and their object-manager object.
 void mbDiceNumObjKill(OMOBJ *obj)
 {
     int i;
@@ -1475,6 +1519,7 @@ void mbDiceNumObjKill(OMOBJ *obj)
     omDelObj(HuPrcCurrentGet(), obj);
 }
 
+// Raises result numbers while deforming them, finally collapsing their width before removal.
 static void DiceNumObjShrinkOMExec(OMOBJ *obj)
 {
     DICE_NUM_WORK *objWork = omObjGetWork(obj, DICE_NUM_WORK);
@@ -1506,6 +1551,7 @@ static void DiceNumObjShrinkOMExec(OMOBJ *obj)
     }
 }
 
+// After a multi-die roll, moves result digits back toward their starting x/z with a glow.
 static void DiceNumObjReset(int playerNo)
 {
     int i;
@@ -1523,6 +1569,8 @@ static void DiceNumObjReset(int playerNo)
             obj->trans.x = obj->rot.x;
             obj->trans.y = obj->rot.y;
             obj->trans.z = obj->rot.z;
+            // Reverse the creation height adjustment when an x or z offset exceeds 25 world units.
+            // Raise 50 units for an x offset; otherwise lower 50 units for a z offset.
             if (__fabsf(obj->rot.x - obj->scale.x) > 25.0f) {
                 obj->rot.y -= -50.0f;
             } else if (__fabsf(obj->rot.z - obj->scale.z) > 25.0f) {
@@ -1535,6 +1583,8 @@ static void DiceNumObjReset(int playerNo)
     }
 }
 
+// Returns false while a result number is marked as moving or bending.
+// The shrink-out animation does not update this flag.
 BOOL mbDiceNumStopCheck(int playerNo)
 {
     int i;
@@ -1552,6 +1602,7 @@ BOOL mbDiceNumStopCheck(int playerNo)
     return TRUE;
 }
 
+// Requests removal of all result numbers owned by a player or the shared dice slot.
 void mbDiceNumKill(int playerNo)
 {
     int i;
@@ -1570,6 +1621,7 @@ void mbDiceNumKill(int playerNo)
     }
 }
 
+// Switches the player's result numbers to their short shrink-out animation.
 void mbDiceNumShrinkSet(int playerNo)
 {
     int i;
@@ -1594,6 +1646,7 @@ void mbDiceStub(void)
 {
 }
 
+// Combines this roll's floating result numbers into the number shown beside an NPC.
 OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos)
 {
     OMOBJ *obj;
@@ -1631,6 +1684,7 @@ OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos)
     return snpcObj;
 }
 
+// Starts the bend animation and sparkle effect on the player's face numbers for the reward.
 static void DiceNumObjBendStart(int playerNo)
 {
     int i;
@@ -1657,6 +1711,7 @@ static void DiceNumObjBendStart(int playerNo)
     }
 }
 
+// Removes reward sparkles and lets each digit's current bend phase finish.
 static void DiceNumObjBendStop(int playerNo)
 {
     int i, j;
@@ -1683,8 +1738,11 @@ static void DiceNumObjBendStop(int playerNo)
     }
 }
 
+// After DiceProcMain finishes a two- or three-die party roll with equal faces, plays the bonus
+// celebration and awards coins; rolling sevens increases the reward.
 static void ev_DiceZorome(DICE_WORK *work)
 {
+    // This stream selection is initialized but unused; the reward jingle uses streamId below.
     int streamNo = -1;
     HuVecF posPlayer;
     int coin;
@@ -1714,6 +1772,7 @@ static void ev_DiceZorome(DICE_WORK *work)
     }
     sprintf(diceMatchCoinStr, "%d", coin);
     mbMusPauseFadeOut(0, TRUE, 1000);
+    // This position read is unused; the coin shower reads its own player position.
     mbPlayerPosGet(work->playerNo, &posPlayer);
     DiceNumObjBendStart(work->playerNo);
     HuPrcSleep(10);
@@ -1735,6 +1794,8 @@ static u8 diceInEffAnimTbl[8] = {
     0, 1, 2, 2, 3, 3, 3, 3
 };
 
+// During the bonus, ev_DiceZorome scatters coins around the player and credits them after they
+// fall.
 static void ev_DiceZoromeCoin(int playerNo, int coin)
 {
     int coinObjId[64];
@@ -1796,6 +1857,7 @@ static void ev_DiceZoromeCoin(int playerNo, int coin)
     mbCoinAddExec(playerNo, coin);
 }
 
+// The particle system calls this to emit and animate sparkles around the face numbers.
 static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
@@ -1815,8 +1877,9 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
         createNum = 0.5f * particleP->num;
         particleP->count = 1;
         particleP->mode = 0;
-        particleP->blendMode = 1;
-        particleP->unk14 = 0.0f;
+        particleP->blendMode = MB_PARTICLE_BLEND_ADDCOL;
+        // Initialize sparkle emission without an additional vertical offset.
+        particleP->spawnOffsetY = 0.0f;
     }
     data = particleP->data;
     for (i = 0; i < particleP->num; i++, data++) {
@@ -1829,7 +1892,8 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
             data->pos.z = 0.0f;
             data->pos.y = 0.0f;
             data->pos.x = 0.0f;
-            data->pos.y += particleP->unk14;
+            // Start this new bonus sparkle at the result number's current vertical offset.
+            data->pos.y += particleP->spawnOffsetY;
             angle = 360.0f * frandf();
             pitch = (1.6f * frandf()) - 0.8f;
 #ifdef __MWERKS__
@@ -1916,6 +1980,7 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     }
 }
 
+// DiceObjCreate calls this to add the tumbling die's main particle effect.
 static HU3D_MODELID DiceInEffCreate(void)
 {
     int modelId;
@@ -1929,6 +1994,7 @@ static HU3D_MODELID DiceInEffCreate(void)
     return modelId;
 }
 
+// DiceObjCreate calls this to add the small dot particles around the tumbling die.
 static HU3D_MODELID DiceInDotEffCreate(void)
 {
     int modelId;
@@ -1940,6 +2006,7 @@ static HU3D_MODELID DiceInDotEffCreate(void)
     return modelId;
 }
 
+// DiceObjHit calls this for each particle system to switch it to impact mode.
 static void DiceHitEffSet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1949,6 +2016,7 @@ static void DiceHitEffSet(HU3D_MODELID modelId)
     particleP->time = 1;
 }
 
+// ParticleDraw calls this each active frame to animate the die's entrance and impact particles.
 static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
@@ -2061,6 +2129,7 @@ static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     }
 }
 
+// ParticleDraw calls this each active frame to scatter and fade dots around the moving or hit die.
 static void DiceInDotEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
@@ -2175,6 +2244,7 @@ static float diceInEffRotYRatio[3] = {
     1.0f / 1.0f, 1.0f / 2.0f, 1.0f / 3.0f
 };
 
+// DiceProcMain calls this once before the roll to prepare the puff and triangle effects.
 static void DiceObjEffCreate(DICE_WORK *work)
 {
     int hitOrderTbl[20] = {
@@ -2182,7 +2252,7 @@ static void DiceObjEffCreate(DICE_WORK *work)
         1, 1, 1, 1, 1, 1, 1, 1,
         2, 2, 2, 2, 2, 2
     };
-    float posY;
+    float yawAngle;
     u8 *dlAlloc;
     void *dlBuf;
     DICE_EFF *eff;
@@ -2203,23 +2273,23 @@ static void DiceObjEffCreate(DICE_WORK *work)
     for (i = 0; i < 100; i++) {
         u32 idx1;
         u32 idx2;
-        int temp;
+        int swapValue;
 
         idx1 = mbRandMod(DICE_EFF_TRI_MAX);
         idx2 = mbRandMod(DICE_EFF_TRI_MAX);
-        temp = hitOrderTbl[idx1];
+        swapValue = hitOrderTbl[idx1];
         hitOrderTbl[idx1] = hitOrderTbl[idx2];
-        hitOrderTbl[idx2] = temp;
+        hitOrderTbl[idx2] = swapValue;
     }
-    posY = 0.0f;
+    yawAngle = 0.0f;
     for (i = 0; i < DICE_EFF_TRI_MAX; i++, eff++) {
         eff->rot.x = 0.0f;
-        eff->rot.y = posY;
+        eff->rot.y = yawAngle;
         eff->radius = 150.0f;
         eff->scale.x = diceInEffRotYRatio[hitOrderTbl[i]];
         eff->scale.y = 1.0f;
         eff->scale.z = 1.0f + (2.0f * frandf());
-        posY += (360.0f * eff->scale.x) / 12.0f;
+        yawAngle += (360.0f * eff->scale.x) / 12.0f;
     }
     dlAlloc = HuMemDirectMallocNum(HEAP_HEAP, 4096, HU_MEMNUM_OVL);
     dlBuf = dlAlloc;
@@ -2247,6 +2317,7 @@ static void DiceObjEffCreate(DICE_WORK *work)
         mbBoardDataNumGet(DATANUM(DATA_board, 98)));
 }
 
+// DiceProcDestroy calls this to release the roll effects' buffers and animation data.
 static void DiceObjEffKill(DICE_WORK *work)
 {
     if (work->dlBuf != NULL) {
@@ -2267,6 +2338,7 @@ static void DiceObjEffKill(DICE_WORK *work)
     }
 }
 
+// The 3D model hook draws and advances the expanding puff around a die impact.
 static void DiceObjEffPuffDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     int i;
@@ -2333,6 +2405,7 @@ static void DiceObjEffPuffDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
+// The 3D model hook draws and advances the bright triangles around a die impact.
 static void DiceObjEffTriDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     int i;
@@ -2422,6 +2495,7 @@ static float diceCloudRotYRatio2[3] = {
     1.0f / 1.0f, 1.0f / 2.0f, 1.0f / 3.0f
 };
 
+// mbDiceNumObjCreate calls this to save a digit mesh and its bottom-to-top bend weights.
 static DICE_NUM_VTX *DiceNumObjMdlCopy(int modelId)
 {
     HU3D_MODEL *model = &Hu3DData[modelId];
@@ -2464,8 +2538,9 @@ static DICE_NUM_VTX *DiceNumObjMdlCopy(int modelId)
     return vtxBuf;
 }
 
-static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx mtx1,
-    Mtx mtx2)
+// The result-number animation callbacks blend each vertex's bottom and top transforms every frame.
+static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx bottomMtx,
+    Mtx topMtx)
 {
     HU3D_MODEL *model = &Hu3DData[modelId];
     HSF_DATA *hsf = model->hsf;
@@ -2479,13 +2554,13 @@ static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx mtx1,
             pos = obj->mesh.vertex->data;
             for (j = 0; j < obj->mesh.vertex->count;
                 j++, vtx++, pos++) {
-                HuVecF vtx1, vtx2;
+                HuVecF bottomPos, topPos;
 
-                MTXMultVec(mtx1, &vtx->pos, &vtx1);
-                MTXMultVec(mtx2, &vtx->pos, &vtx2);
-                pos->x = vtx1.x + (vtx->weight * (vtx2.x - vtx1.x));
-                pos->y = vtx1.y + (vtx->weight * (vtx2.y - vtx1.y));
-                pos->z = vtx1.z + (vtx->weight * (vtx2.z - vtx1.z));
+                MTXMultVec(bottomMtx, &vtx->pos, &bottomPos);
+                MTXMultVec(topMtx, &vtx->pos, &topPos);
+                pos->x = bottomPos.x + (vtx->weight * (topPos.x - bottomPos.x));
+                pos->y = bottomPos.y + (vtx->weight * (topPos.y - bottomPos.y));
+                pos->z = bottomPos.z + (vtx->weight * (topPos.z - bottomPos.z));
             }
             DCStoreRangeNoSync(obj->mesh.vertex->data,
                 obj->mesh.vertex->count * sizeof(HuVecF));
@@ -2494,6 +2569,8 @@ static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx mtx1,
     }
 }
 
+// mbDiceSNpcNumCreate calls this to show the roll's total as coin digits beside the board NPC.
+// The caller's flag is stored but does not affect these digits.
 OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     BOOL flagF, int color)
 {
@@ -2510,7 +2587,7 @@ OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     work = omObjGetWork(obj, DICE_SNPC_NUM_WORK);
     work->dispF = TRUE;
     work->killF = FALSE;
-    work->_unk2 = flagF;
+    work->unusedFlag = flagF;
     work->value = value;
     for (i = 0; i < 20; i++) {
         modelId = mbCoinObjCreate(i % 10, color);
@@ -2526,6 +2603,7 @@ OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     return obj;
 }
 
+// The object manager calls this each frame to position and scale the displayed coin digits.
 static void DiceSNpcNumUpdate(OMOBJ *obj)
 {
     int digitNum = 0;
@@ -2537,7 +2615,7 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
     HuVecF posNorm;
     float scaleX;
     float scaleY;
-    float rotZ;
+    float pitchAngle;
     float tanFov;
     float scale;
 
@@ -2555,6 +2633,7 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
     }
     HuAddVecF(&pos, &obj->trans, &obj->scale);
     mbPos3DtoNorm(&pos, 1, &posNorm);
+    // Keep the camera-space depth captured when the NPC number was created.
     posNorm.z = obj->rot.z;
     tanFov = HuSin(camera2P->fov * 0.5f)
         / HuCos(camera2P->fov * 0.5f);
@@ -2564,7 +2643,7 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
     posNorm.y *= scaleY;
     DiceVecCopy(&posNorm, &pos);
     mbCameraRotGet(&posNorm);
-    rotZ = -posNorm.x;
+    pitchAngle = -posNorm.x;
     for (i = 0; i < 20; i++) {
         mbCoinObjDispSet(obj->mdlId[i], FALSE);
     }
@@ -2579,7 +2658,7 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
             mbCoinObjDispSet(obj->mdlId[modelNo], TRUE);
             mbCoinObjPosSet(obj->mdlId[modelNo],
                 pos.x - (60.000004f * scale), pos.y, pos.z);
-            mbCoinObjRotSet(obj->mdlId[modelNo], rotZ, 0.0f, 0.0f);
+            mbCoinObjRotSet(obj->mdlId[modelNo], pitchAngle, 0.0f, 0.0f);
             mbCoinObjScaleSet(obj->mdlId[modelNo], scale, scale, scale);
             digitNum++;
         }
@@ -2592,7 +2671,7 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
                 mbCoinObjPosSet(obj->mdlId[modelNo],
                     pos.x + (60.000004f * scale), pos.y, pos.z);
             }
-            mbCoinObjRotSet(obj->mdlId[modelNo], rotZ, 0.0f, 0.0f);
+            mbCoinObjRotSet(obj->mdlId[modelNo], pitchAngle, 0.0f, 0.0f);
             mbCoinObjScaleSet(obj->mdlId[modelNo], scale, scale, scale);
         }
     }

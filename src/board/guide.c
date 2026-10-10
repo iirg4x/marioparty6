@@ -1,3 +1,4 @@
+/* Creates and animates the board guide, including its fade particle effects. */
 #define _MATH_H
 #define M_PI 3.141592653589793
 double sin(double);
@@ -14,23 +15,82 @@ double cos(double);
 
 #include "dolphin/mtx.h"
 
-#define DATA_board 0x50000
+#define DATA_board (5 << 16)
+#define GUIDE_OBJECT_NAME 1296189252
+#define GUIDE_FADE_PARTICLE_CAPACITY 200
+#define GUIDE_EFFECT_ALPHA_VARIATION 70
+#define GUIDE_EFFECT_ALPHA_BASE 150
+
+#define GUIDE_DATA_SUN_MODEL DATANUM(DATA_capsulechar4, 0)
+#define GUIDE_DATA_MOON_MODEL DATANUM(DATA_capsulechar4, 27)
+#define GUIDE_DATA_ATTACHED_MODEL DATANUM(DATA_capsulechar4, 53)
+#define GUIDE_SOUND_FADE_IN MSM_SE_BRD00_116
+#define GUIDE_SOUND_FADE_OUT MSM_SE_BRD00_117
+#define GUIDE_DATA_FILE_01 DATANUM(DATA_capsulechar4, 1)
+#define GUIDE_DATA_FILE_02 DATANUM(DATA_capsulechar4, 2)
+#define GUIDE_DATA_FILE_03 DATANUM(DATA_capsulechar4, 3)
+#define GUIDE_DATA_FILE_04 DATANUM(DATA_capsulechar4, 4)
+#define GUIDE_DATA_FILE_05 DATANUM(DATA_capsulechar4, 5)
+#define GUIDE_DATA_FILE_06 DATANUM(DATA_capsulechar4, 6)
+#define GUIDE_DATA_FILE_07 DATANUM(DATA_capsulechar4, 7)
+#define GUIDE_DATA_FILE_08 DATANUM(DATA_capsulechar4, 8)
+#define GUIDE_DATA_FILE_09 DATANUM(DATA_capsulechar4, 9)
+#define GUIDE_DATA_FILE_0A DATANUM(DATA_capsulechar4, 10)
+#define GUIDE_DATA_FILE_0B DATANUM(DATA_capsulechar4, 11)
+#define GUIDE_DATA_FILE_0C DATANUM(DATA_capsulechar4, 12)
+#define GUIDE_DATA_FILE_0D DATANUM(DATA_capsulechar4, 13)
+#define GUIDE_DATA_FILE_0E DATANUM(DATA_capsulechar4, 14)
+#define GUIDE_DATA_FILE_0F DATANUM(DATA_capsulechar4, 15)
+#define GUIDE_DATA_FILE_10 DATANUM(DATA_capsulechar4, 16)
+#define GUIDE_DATA_FILE_11 DATANUM(DATA_capsulechar4, 17)
+#define GUIDE_DATA_FILE_12 DATANUM(DATA_capsulechar4, 18)
+#define GUIDE_DATA_FILE_13 DATANUM(DATA_capsulechar4, 19)
+#define GUIDE_DATA_FILE_14 DATANUM(DATA_capsulechar4, 20)
+#define GUIDE_DATA_FILE_15 DATANUM(DATA_capsulechar4, 21)
+#define GUIDE_DATA_FILE_16 DATANUM(DATA_capsulechar4, 22)
+#define GUIDE_DATA_FILE_17 DATANUM(DATA_capsulechar4, 23)
+#define GUIDE_DATA_FILE_1C DATANUM(DATA_capsulechar4, 28)
+#define GUIDE_DATA_FILE_1D DATANUM(DATA_capsulechar4, 29)
+#define GUIDE_DATA_FILE_1E DATANUM(DATA_capsulechar4, 30)
+#define GUIDE_DATA_FILE_1F DATANUM(DATA_capsulechar4, 31)
+#define GUIDE_DATA_FILE_20 DATANUM(DATA_capsulechar4, 32)
+#define GUIDE_DATA_FILE_21 DATANUM(DATA_capsulechar4, 33)
+#define GUIDE_DATA_FILE_22 DATANUM(DATA_capsulechar4, 34)
+#define GUIDE_DATA_FILE_23 DATANUM(DATA_capsulechar4, 35)
+#define GUIDE_DATA_FILE_24 DATANUM(DATA_capsulechar4, 36)
+#define GUIDE_DATA_FILE_25 DATANUM(DATA_capsulechar4, 37)
+#define GUIDE_DATA_FILE_26 DATANUM(DATA_capsulechar4, 38)
+#define GUIDE_DATA_FILE_27 DATANUM(DATA_capsulechar4, 39)
+#define GUIDE_DATA_FILE_28 DATANUM(DATA_capsulechar4, 40)
+#define GUIDE_DATA_FILE_29 DATANUM(DATA_capsulechar4, 41)
+#define GUIDE_DATA_FILE_2A DATANUM(DATA_capsulechar4, 42)
+#define GUIDE_DATA_FILE_2B DATANUM(DATA_capsulechar4, 43)
+#define GUIDE_DATA_FILE_2C DATANUM(DATA_capsulechar4, 44)
+#define GUIDE_DATA_FILE_2D DATANUM(DATA_capsulechar4, 45)
+#define GUIDE_DATA_FILE_2E DATANUM(DATA_capsulechar4, 46)
+#define GUIDE_DATA_FILE_2F DATANUM(DATA_capsulechar4, 47)
+#define GUIDE_DATA_FILE_30 DATANUM(DATA_capsulechar4, 48)
+#define GUIDE_DATA_FILE_31 DATANUM(DATA_capsulechar4, 49)
 
 static int guideSunMotTbl[24] = {
-    0x00110001, 0x00110001, 0x00110002, 0x00110003, 0x00110004, 0x00110005,
-    0x00110006, 0x00110007, 0x00110008, 0x00110009, 0x0011000A, 0x0011000B,
-    0x0011000C, 0x0011000D, 0x0011000E, 0x0011000F, 0x00110010, 0x00110011,
-    0x00110012, 0x00110013, 0x00110014, 0x00110015, 0x00110016, 0x00110017,
+    GUIDE_DATA_FILE_01, GUIDE_DATA_FILE_01, GUIDE_DATA_FILE_02, GUIDE_DATA_FILE_03,
+    GUIDE_DATA_FILE_04, GUIDE_DATA_FILE_05, GUIDE_DATA_FILE_06, GUIDE_DATA_FILE_07,
+    GUIDE_DATA_FILE_08, GUIDE_DATA_FILE_09, GUIDE_DATA_FILE_0A, GUIDE_DATA_FILE_0B,
+    GUIDE_DATA_FILE_0C, GUIDE_DATA_FILE_0D, GUIDE_DATA_FILE_0E, GUIDE_DATA_FILE_0F,
+    GUIDE_DATA_FILE_10, GUIDE_DATA_FILE_11, GUIDE_DATA_FILE_12, GUIDE_DATA_FILE_13,
+    GUIDE_DATA_FILE_14, GUIDE_DATA_FILE_15, GUIDE_DATA_FILE_16, GUIDE_DATA_FILE_17,
 };
 
 static int guideMoonMotTbl[24] = {
-    0x0011001C, 0x0011001C, 0x0011001D, 0x0011001E, 0x0011001F, 0x00110020,
-    0x00110021, 0x00110022, 0x00110023, 0x00110023, 0x00110024, 0x00110025,
-    0x00110026, 0x00110027, 0x00110028, 0x00110029, 0x0011002A, 0x0011002B,
-    0x0011002C, 0x0011002D, 0x0011002E, 0x0011002F, 0x00110030, 0x00110031,
+    GUIDE_DATA_FILE_1C, GUIDE_DATA_FILE_1C, GUIDE_DATA_FILE_1D, GUIDE_DATA_FILE_1E,
+    GUIDE_DATA_FILE_1F, GUIDE_DATA_FILE_20, GUIDE_DATA_FILE_21, GUIDE_DATA_FILE_22,
+    GUIDE_DATA_FILE_23, GUIDE_DATA_FILE_23, GUIDE_DATA_FILE_24, GUIDE_DATA_FILE_25,
+    GUIDE_DATA_FILE_26, GUIDE_DATA_FILE_27, GUIDE_DATA_FILE_28, GUIDE_DATA_FILE_29,
+    GUIDE_DATA_FILE_2A, GUIDE_DATA_FILE_2B, GUIDE_DATA_FILE_2C, GUIDE_DATA_FILE_2D,
+    GUIDE_DATA_FILE_2E, GUIDE_DATA_FILE_2F, GUIDE_DATA_FILE_30, GUIDE_DATA_FILE_31,
 };
 
-static int guideMdlFileTbl[2] = { 0x00110000, 0x0011001B };
+static int guideMdlFileTbl[2] = { GUIDE_DATA_SUN_MODEL, GUIDE_DATA_MOON_MODEL };
 static int *guideMotTbl[2] = { guideSunMotTbl, guideMoonMotTbl };
 static s8 guideDefaultMotTbl[5] = { 1, 7, 4, 17, -1 };
 
@@ -46,46 +106,47 @@ void mbGuideInit(void)
 {
 }
 
+/* Board event setup calls this to create and place the selected sun or moon guide. */
 OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float scale, u32 attr)
 {
     OMOBJ *obj;
-    GUIDE_WORK *work;
+    GUIDE_WORK *guideWork;
     MBMODELID modelId;
     int motId;
     int i;
     int motNo;
-    s8 *motP;
+    s8 *motionEntry;
     u8 motEnable[25];
 
     for (i = 0; i < sizeof(motEnable); i++) {
         motEnable[i] = 0;
     }
-    for (motP = guideDefaultMotTbl; *motP >= 0; ) {
-        motEnable[*motP++] = 1;
+    for (motionEntry = guideDefaultMotTbl; *motionEntry >= 0; ) {
+        motEnable[*motionEntry++] = 1;
     }
     if (motTbl != NULL) {
-        for (motP = motTbl; *motP >= 0; ) {
-            motEnable[*motP++] = 1;
+        for (motionEntry = motTbl; *motionEntry >= 0; ) {
+            motEnable[*motionEntry++] = 1;
         }
     }
-    obj = omAddObjEx(mbObjMan, 0x100, 4, 0, OM_GRP_NONE, GuideOMExec);
+    obj = omAddObjEx(mbObjMan, 256, 4, 0, OM_GRP_NONE, GuideOMExec);
     for (i = 0; i < 4; i++) {
         obj->mdlId[i] = -1;
     }
-    omSetStatBit(obj, 0x100);
-    work = (GUIDE_WORK *)&obj->work[0];
-    work->name = 0x4D424744;
-    work->dispF = 1;
-    work->killF = 0;
-    work->altMtxF = 0;
-    work->motionF = 0;
-    work->screenF = 0;
-    work->mode = 0;
-    work->nextMotion = 0;
+    omSetStatBit(obj, 1 << 8);
+    guideWork = (GUIDE_WORK *)&obj->work[0];
+    guideWork->name = GUIDE_OBJECT_NAME;
+    guideWork->dispF = 1;
+    guideWork->killF = 0;
+    guideWork->altMtxF = 0;
+    guideWork->motionF = 0;
+    guideWork->screenF = 0;
+    guideWork->mode = 0;
+    guideWork->nextMotion = 0;
     modelId = (int)mbObjCreate(guideMdlFileTbl[guideNo], 0, 1);
     obj->mdlId[0] = modelId;
     if (guideNo == 1) {
-        obj->mdlId[1] = mbObjCreate(0x00110035, 0, 1);
+        obj->mdlId[1] = mbObjCreate(GUIDE_DATA_ATTACHED_MODEL, 0, 1);
         mbObjHookSet(modelId, "itemhook_R", obj->mdlId[1]);
     }
     for (i = 1; i < sizeof(motEnable); i++) {
@@ -98,11 +159,11 @@ OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float sc
         }
     }
     if (mbPauseProcCheck()) {
-        omSetStatBit(obj, 0xa0);
-        mbObjAttrSet(modelId, 0x00200000);
+        omSetStatBit(obj, (1 << 7) | (1 << 5));
+        mbObjAttrSet(modelId, HU3D_ATTR_NOPAUSE);
     }
     if (attr & MB_GUIDE_ATTR_SCREEN) {
-        work->screenF = 1;
+        guideWork->screenF = 1;
         mbObjCameraSet(modelId, 4);
         mbObjLayerSet(modelId, 3);
     } else {
@@ -120,11 +181,11 @@ OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float sc
     } else {
         motNo = 4;
     }
-    mbObjMotionSet(modelId, motNo, 0x40000001);
-    HuDataDirClose(0x00110000);
+    mbObjMotionSet(modelId, motNo, HU3D_MOTATTR_LOOP);
+    HuDataDirClose(GUIDE_DATA_SUN_MODEL);
     if (attr & MB_GUIDE_ATTR_ALTMTX) {
-        work->mode = 1;
-        work->phase = 0;
+        guideWork->mode = 1;
+        guideWork->phase = 0;
         while (!mbGuideIdleCheck(obj)) {
             HuPrcVSleep();
         }
@@ -132,6 +193,7 @@ OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float sc
     return obj;
 }
 
+/* Board event setup uses these options to create the current guide. */
 OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF, BOOL altMtxF, BOOL layerF)
 {
     u32 attr = MB_GUIDE_ATTR_NONE;
@@ -147,49 +209,56 @@ OMOBJ *mbGuideCreateFlag(HuVecF *pos, s8 *motTbl, BOOL screenF, BOOL altMtxF, BO
     return mbGuideCreate(mbGuideNoGet(), pos, NULL, motTbl, 1.0f, attr);
 }
 
+/* Board event setup calls this to create the current guide with default options. */
 OMOBJ *mbGuideCreateIn(void)
 {
     return mbGuideCreate(mbGuideNoGet(), NULL, NULL, NULL, 1.0f, MB_GUIDE_ATTR_NONE);
 }
 
+/* Board event scripts call this to hide the guide and let GuideOMExec release it. */
 void mbGuideKill(OMOBJ *obj)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
-    work->killF = 1;
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
+    guideWork->killF = 1;
     if (obj->mdlId[0] != 0) {
         mbObjDispSet(obj->mdlId[0], FALSE);
     }
 }
 
+/* Board event scripts run the exit fade and mark the guide for cleanup; endF does not change this
+ * behavior. */
 void mbGuideEnd(OMOBJ *obj, BOOL endF)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
-    work->mode = 3;
-    work->phase = 0;
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
+    guideWork->mode = 3;
+    guideWork->phase = 0;
     while (!mbGuideIdleCheck(obj)) {
         HuPrcVSleep();
     }
-    work->killF = 1;
+    guideWork->killF = 1;
     if (obj->mdlId[0] != 0) {
         mbObjDispSet(obj->mdlId[0], FALSE);
     }
 }
 
+/* Board event scripts call this to run the entrance fade and wait for GuideOMExec to finish. */
 void mbGuideFadeIn(OMOBJ *obj)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
-    work->mode = 1;
-    work->phase = 0;
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
+    guideWork->mode = 1;
+    guideWork->phase = 0;
     while (!mbGuideIdleCheck(obj)) {
         HuPrcVSleep();
     }
 }
 
+/* Board event scripts call this to run the exit fade and hide the guide after GuideOMExec
+ * finishes. */
 void mbGuideFadeOut(OMOBJ *obj)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
-    work->mode = 3;
-    work->phase = 0;
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
+    guideWork->mode = 3;
+    guideWork->phase = 0;
     while (!mbGuideIdleCheck(obj)) {
         HuPrcVSleep();
     }
@@ -198,29 +267,31 @@ void mbGuideFadeOut(OMOBJ *obj)
     }
 }
 
+/* Board event scripts call this to get the main model ID unless cleanup has been requested. */
 int mbGuideModelGet(OMOBJ *obj)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
     MBMODELID modelId = 0;
-    if (!work->killF) {
+    if (!guideWork->killF) {
         modelId = obj->mdlId[0];
     }
     return modelId;
 }
 
+/* Board event scripts call this to switch cameras; world mode also resets the model matrix. */
 void mbGuideScreenSet(OMOBJ *obj, BOOL screenF)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
     MBMODELID modelId = 0;
     Mtx mtx;
-    if (!work->killF) {
+    if (!guideWork->killF) {
         modelId = obj->mdlId[0];
         if (screenF) {
-            work->screenF = 1;
+            guideWork->screenF = 1;
             mbObjCameraSet(modelId, 4);
             mbObjLayerSet(modelId, 3);
         } else {
-            work->screenF = 0;
+            guideWork->screenF = 0;
             mbObjCameraSet(modelId, 1);
             mbObjLayerSet(modelId, 3);
             PSMTXIdentity(mtx);
@@ -229,55 +300,66 @@ void mbGuideScreenSet(OMOBJ *obj, BOOL screenF)
     }
 }
 
+/* Fade callers use this to wait until GuideOMExec returns the guide to idle mode. */
 BOOL mbGuideIdleCheck(OMOBJ *obj)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
-    return work->mode == 0;
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
+    return guideWork->mode == 0;
 }
 
+/* Board event scripts queue the motion GuideOMExec starts after the current motion ends while
+ * completion tracking is enabled. */
 void mbGuideMotionNextSet(OMOBJ *obj, s16 motNo)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
-    work->nextMotion = motNo;
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
+    guideWork->nextMotion = motNo;
 }
 
+/* Board event scripts set a guide motion and record which motion should follow it. */
 void mbGuideMotionSet(OMOBJ *obj, s16 motNo, BOOL shiftF)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
     MBMODELID modelId = obj->mdlId[0];
     if (shiftF) {
         mbObjMotionShiftSet(modelId, motNo, 0.0f, 12.0f, TRUE);
     } else {
         mbObjMotionSet(modelId, motNo, 1);
     }
-    work->motionF = 0;
-    work->nextMotion = motNo;
+    guideWork->motionF = 0;
+    guideWork->nextMotion = motNo;
 }
 
+/* Board event scripts set a guide motion and enable completion tracking; when it ends, GuideOMExec
+ * starts the stored nextMotion. */
 void mbGuideMotionShiftSet(OMOBJ *obj, s16 motNo, BOOL shiftF)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
     MBMODELID modelId = obj->mdlId[0];
     if (shiftF) {
         mbObjMotionShiftSet(modelId, motNo, 0.0f, 12.0f, FALSE);
     } else {
         mbObjMotionSet(modelId, motNo, 0);
     }
-    work->motionF = 1;
+    guideWork->motionF = 1;
 }
 
+/* Board event scripts call this to stop GuideOMExec from waiting on a motion completion. */
 void mbGuideMotionStop(OMOBJ *obj)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
-    work->motionF = 0;
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
+    guideWork->motionF = 0;
 }
 
+/* Board event scripts use this to check motion-wait status; it returns FALSE while GuideOMExec
+ * waits for completion and TRUE otherwise. */
 BOOL mbGuideMotionCheck(OMOBJ *obj)
 {
-    GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
-    return work->motionF != 1;
+    GUIDE_WORK *guideWork = (GUIDE_WORK *)&obj->work[0];
+    return guideWork->motionF != 1;
 }
 
+/* The object manager calls this each update to advance guide motion and fades, clean up killed
+ * guides, and face screen-space guides toward their camera. */
 static void GuideOMExec(OMOBJ *obj)
 {
     GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
@@ -356,6 +438,7 @@ static void GuideOMExec(OMOBJ *obj)
     }
 }
 
+/* GuideOMExec calls this each update to animate the entrance fade until the guide is visible. */
 static BOOL GuideFadeInUpdate(OMOBJ *obj)
 {
     GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
@@ -377,17 +460,17 @@ static BOOL GuideFadeInUpdate(OMOBJ *obj)
             obj->trans.z = pos.z;
             pos.y += 200.0f;
             mbObjFadeCreate(modelId, &pos);
-            mbObjFadeTexColorSet(modelId, 0x80, 0x80, 0x80, 0.5f);
+            mbObjFadeTexColorSet(modelId, 128, 128, 128, 0.5f);
             if (obj->mdlId[1] > 0) {
                 mbObjFadeCreate((s16)obj->mdlId[1], &pos);
-                mbObjFadeTexColorSet((s16)obj->mdlId[1], 0x80, 0x80, 0x80, 0.5f);
+                mbObjFadeTexColorSet((s16)obj->mdlId[1], 128, 128, 128, 0.5f);
             }
             obj->mdlId[2] = GuideFadeInEffectCreate(obj);
             Hu3DModelPosSetV(obj->mdlId[2], &pos);
             work->time = 0;
             work->timeMax = 60;
             work->phase++;
-            mbAudFXPlay(0x460);
+            mbAudFXPlay(GUIDE_SOUND_FADE_IN);
             break;
 
         case 1:
@@ -443,6 +526,7 @@ static BOOL GuideFadeInUpdate(OMOBJ *obj)
     return done;
 }
 
+/* GuideOMExec calls this each update to animate the exit fade until the guide is hidden. */
 static BOOL GuideFadeOutUpdate(OMOBJ *obj)
 {
     GUIDE_WORK *work = (GUIDE_WORK *)&obj->work[0];
@@ -463,17 +547,17 @@ static BOOL GuideFadeOutUpdate(OMOBJ *obj)
             obj->trans.z = pos.z;
             pos.y -= 50.0f;
             mbObjFadeCreate(modelId, &pos);
-            mbObjFadeTexColorSet(modelId, 0x80, 0x80, 0x80, 0.5f);
+            mbObjFadeTexColorSet(modelId, 128, 128, 128, 0.5f);
             if (obj->mdlId[1] > 0) {
                 mbObjFadeCreate((s16)obj->mdlId[1], &pos);
-                mbObjFadeTexColorSet((s16)obj->mdlId[1], 0x80, 0x80, 0x80, 0.5f);
+                mbObjFadeTexColorSet((s16)obj->mdlId[1], 128, 128, 128, 0.5f);
             }
             obj->mdlId[2] = GuideFadeOutEffectCreate(obj);
             Hu3DModelPosSetV(obj->mdlId[2], &obj->trans);
             work->time = 0;
             work->timeMax = 60;
             work->phase++;
-            mbAudFXPlay(0x461);
+            mbAudFXPlay(GUIDE_SOUND_FADE_OUT);
             break;
 
         case 1:
@@ -532,6 +616,8 @@ static BOOL GuideFadeOutUpdate(OMOBJ *obj)
     return done;
 }
 
+/* Guide creation and speaker lookup call this to select the sun guide outside party mode or on day
+ * one, and the moon guide otherwise. */
 int mbGuideNoGet(void)
 {
     int no = 0;
@@ -546,246 +632,267 @@ int mbGuideNoGet(void)
     return no;
 }
 
+/* Board message setup calls this to select the sun or moon guide's speaker slot. */
 int mbGuideSpeakerNoGet(void)
 {
     static int speakerTbl[2] = { 6, 7 };
     return speakerTbl[mbGuideNoGet()];
 }
 
+/* GuideFadeInUpdate calls this to create the entrance sparkles and attach their particle
+ * callback. */
 static MBMODELID GuideFadeInEffectCreate(OMOBJ *obj)
 {
     int particleId;
     Mtx mtx;
-    particleId = mbParticleCreate(HuSprAnimDataRead(mbBoardDataNumGet(DATANUM(DATA_board, 100))), 0xc8);
+    particleId = mbParticleCreate(HuSprAnimDataRead(mbBoardDataNumGet(DATANUM(DATA_board, 100))),
+                                  GUIDE_FADE_PARTICLE_CAPACITY);
     mbParticleHookSet(particleId, GuideFadeInEffectHook);
     Hu3DModelCameraSet(particleId, mbObjGet(obj->mdlId[0])->cameraBit);
     Hu3DModelLayerSet(particleId, mbObjGet(obj->mdlId[0])->layer + 1);
     mbObjMtxGet(obj->mdlId[0], &mtx);
     Hu3DModelMtxSet(particleId, &mtx);
     if (mbPauseProcCheck()) {
-        Hu3DModelAttrSet(particleId, 0x00200000);
+        Hu3DModelAttrSet(particleId, HU3D_ATTR_NOPAUSE);
     }
     return particleId;
 }
 
+/* GuideFadeOutUpdate calls this to create the exit sparkles and attach their particle callback. */
 static MBMODELID GuideFadeOutEffectCreate(OMOBJ *obj)
 {
     int particleId;
     Mtx mtx;
-    particleId = mbParticleCreate(HuSprAnimDataRead(mbBoardDataNumGet(DATANUM(DATA_board, 100))), 0xc8);
+    particleId = mbParticleCreate(HuSprAnimDataRead(mbBoardDataNumGet(DATANUM(DATA_board, 100))),
+                                  GUIDE_FADE_PARTICLE_CAPACITY);
     mbParticleHookSet(particleId, GuideFadeOutEffectHook);
     Hu3DModelCameraSet(particleId, mbObjGet(obj->mdlId[0])->cameraBit);
     Hu3DModelLayerSet(particleId, mbObjGet(obj->mdlId[0])->layer + 1);
     mbObjMtxGet(obj->mdlId[0], &mtx);
     Hu3DModelMtxSet(particleId, &mtx);
     if (mbPauseProcCheck()) {
-        Hu3DModelAttrSet(particleId, 0x00200000);
+        Hu3DModelAttrSet(particleId, HU3D_ATTR_NOPAUSE);
     }
     return particleId;
 }
 
-static void GuideFadeInEffectHook(HU3D_MODEL *modelP, MBPARTICLE *effP, Mtx matrix)
+/* The particle system calls this callback to emit and animate the entrance sparkles. */
+static void GuideFadeInEffectHook(HU3D_MODEL *model, MBPARTICLE *particleSystemP, Mtx modelMtx)
 {
     static u8 effNo[16] = { 0, 1, 2, 2, 3, 3, 3, 3, 0, 1, 2, 2, 3, 3, 3, 3 };
     static float effSize[4] = { 0.9f, 0.9f, 0.9f, 0.8f };
     static GXColor effColor[8] = {
-        { 0xDC, 0x40, 0x40, 0x00 }, { 0x40, 0xDC, 0x40, 0x00 },
-        { 0xDC, 0xDC, 0x40, 0x00 }, { 0x40, 0x40, 0xDC, 0x00 },
-        { 0xDC, 0x40, 0xDC, 0x00 }, { 0x40, 0xDC, 0xDC, 0x00 },
-        { 0xDC, 0x78, 0x40, 0x00 }, { 0x40, 0x78, 0xDC, 0x00 },
+        { 220, 64, 64, 0 }, { 64, 220, 64, 0 },
+        { 220, 220, 64, 0 }, { 64, 64, 220, 0 },
+        { 220, 64, 220, 0 }, { 64, 220, 220, 0 },
+        { 220, 120, 64, 0 }, { 64, 120, 220, 0 },
     };
-    MBPARTICLEDATA *data;
-    int i;
-    int spawn;
-    int type;
-    int colorIdx;
-    float f;
-    float weight;
+    MBPARTICLEDATA *particleData;
+    int particleIndex;
+    int particlesToSpawn;
+    int particleShape;
+    int colorIndex;
+    float randomValue;
+    float riseWeight;
 
-    if (effP->initF == 0) {
-        effP->initF = 1;
-        effP->stopF = 0;
-        effP->unk14 = 0.0f;
+    if (particleSystemP->initF == 0) {
+        particleSystemP->initF = 1;
+        particleSystemP->stopF = 0;
+        particleSystemP->spawnOffsetY = 0.0f;
     }
-    spawn = 0;
-    if (effP->stopF == 0) {
-        spawn = 6;
+    particlesToSpawn = 0;
+    if (particleSystemP->stopF == 0) {
+        particlesToSpawn = 6;
     }
-    data = effP->data;
-    for (i = 0; i < effP->num; i++, data++) {
-        if (spawn <= 0) {
+    particleData = particleSystemP->data;
+    for (particleIndex = 0; particleIndex < particleSystemP->num; particleIndex++, particleData++) {
+        if (particlesToSpawn <= 0) {
             break;
         }
-        if (data->time == 0) {
-            type = effNo[mbRandMod(16)];
-            data->rndNo = type;
-            data->vel.x = 360.0f * frandf();
-            data->vel.y = 80.0f * (0.3f + 0.7f * frandf());
-            data->vel.z = 130.0f * (0.7f + 0.3f * frandf());
-            data->scale = effSize[type] * (35.0f * (0.5f + 0.5f * frandf()));
-            data->guideScaleBase = data->scale;
-            colorIdx = mbRandMod(8);
-            f = 0.3f * frandf();
-            data->color.r = f * (255.0f - effColor[colorIdx].r) + effColor[colorIdx].r;
-            data->color.g = f * (255.0f - effColor[colorIdx].g) + effColor[colorIdx].g;
-            data->color.b = f * (255.0f - effColor[colorIdx].b) + effColor[colorIdx].b;
-            data->color.a = mbRandMod(0x46) + 0x96;
-            data->alphaF = data->color.a;
-            data->color.a = 0;
-            data->weight = 0.0f;
-            if (data->rndNo < 3) {
-                data->weight = 360.0f * frandf();
+        if (particleData->time == 0) {
+            particleShape = effNo[mbRandMod(16)];
+            particleData->rndNo = particleShape;
+            particleData->vel.x = 360.0f * frandf();
+            particleData->vel.y = 80.0f * (0.3f + 0.7f * frandf());
+            particleData->vel.z = 130.0f * (0.7f + 0.3f * frandf());
+            particleData->scale = effSize[particleShape] * (35.0f * (0.5f + 0.5f * frandf()));
+            particleData->guideScaleBase = particleData->scale;
+            colorIndex = mbRandMod(8);
+            randomValue = 0.3f * frandf();
+            particleData->color.r =
+                randomValue * (255.0f - effColor[colorIndex].r) + effColor[colorIndex].r;
+            particleData->color.g =
+                randomValue * (255.0f - effColor[colorIndex].g) + effColor[colorIndex].g;
+            particleData->color.b =
+                randomValue * (255.0f - effColor[colorIndex].b) + effColor[colorIndex].b;
+            particleData->color.a =
+                mbRandMod(GUIDE_EFFECT_ALPHA_VARIATION) + GUIDE_EFFECT_ALPHA_BASE;
+            particleData->alphaF = particleData->color.a;
+            particleData->color.a = 0;
+            particleData->weight = 0.0f;
+            if (particleData->rndNo < 3) {
+                particleData->weight = 360.0f * frandf();
             }
-            data->time = 30;
-            spawn--;
+            particleData->time = 30;
+            particlesToSpawn--;
         }
     }
-    data = effP->data;
-    for (i = 0; i < effP->num; i++, data++) {
-        if (data->time != 0) {
-            f = 0.033333335f * (float)data->time;
-            data->vel.x += 5.0f;
-            data->pos.x = f * (data->vel.z * mbSinDeg(data->vel.x));
-            data->pos.z = f * (data->vel.z * mbCosDeg(data->vel.x));
-            weight = 1.6666666f * (f - 0.4f);
-            if (weight < 0.0f) {
-                weight = 0.0f;
+    particleData = particleSystemP->data;
+    for (particleIndex = 0; particleIndex < particleSystemP->num; particleIndex++, particleData++) {
+        if (particleData->time != 0) {
+            randomValue = 0.033333335f * (float)particleData->time;
+            particleData->vel.x += 5.0f;
+            particleData->pos.x =
+                randomValue * (particleData->vel.z * mbSinDeg(particleData->vel.x));
+            particleData->pos.z =
+                randomValue * (particleData->vel.z * mbCosDeg(particleData->vel.x));
+            riseWeight = 1.6666666f * (randomValue - 0.4f);
+            if (riseWeight < 0.0f) {
+                riseWeight = 0.0f;
             }
-            data->pos.y = data->vel.y * (f * f);
-            data->scale -= 0.4f;
+            particleData->pos.y = particleData->vel.y * (randomValue * randomValue);
+            particleData->scale -= 0.4f;
         }
     }
-    data = effP->data;
-    for (i = 0; i < effP->num; i++, data++) {
-        if (data->time != 0) {
-            data->time--;
-            if (data->time < 10) {
-                data->scale *= 0.95f;
-                data->color.a *= 0.7f;
-                if (data->time == 0) {
-                    data->color.a = 0;
-                    data->scale = 0.0f;
+    particleData = particleSystemP->data;
+    for (particleIndex = 0; particleIndex < particleSystemP->num; particleIndex++, particleData++) {
+        if (particleData->time != 0) {
+            particleData->time--;
+            if (particleData->time < 10) {
+                particleData->scale *= 0.95f;
+                particleData->color.a *= 0.7f;
+                if (particleData->time == 0) {
+                    particleData->color.a = 0;
+                    particleData->scale = 0.0f;
                 }
-            } else if (effP->stopF == 0) {
-                f = data->color.a;
-                f = 1.0f + (f + 0.3f * (data->alphaF - f));
-                data->color.a = f;
+            } else if (particleSystemP->stopF == 0) {
+                randomValue = particleData->color.a;
+                randomValue = 1.0f + (randomValue + 0.3f * (particleData->alphaF - randomValue));
+                particleData->color.a = randomValue;
             }
-            if (data->color.r < 0xfa) {
-                data->color.r += 5;
+            if (particleData->color.r < 250) {
+                particleData->color.r += 5;
             }
-            if (data->color.g < 0xfa) {
-                data->color.g += 5;
+            if (particleData->color.g < 250) {
+                particleData->color.g += 5;
             }
-            if (data->color.b < 0xfa) {
-                data->color.b += 5;
+            if (particleData->color.b < 250) {
+                particleData->color.b += 5;
             }
-            if (effP->stopF != 0) {
-                data->color.a *= 0.8f;
+            if (particleSystemP->stopF != 0) {
+                particleData->color.a *= 0.8f;
             }
         }
     }
 }
 
-static void GuideFadeOutEffectHook(HU3D_MODEL *modelP, MBPARTICLE *effP, Mtx matrix)
+/* The particle system calls this callback to emit and animate the exit sparkles. */
+static void GuideFadeOutEffectHook(HU3D_MODEL *model, MBPARTICLE *particleSystemP, Mtx modelMtx)
 {
     static u8 effNo[16] = { 0, 1, 2, 2, 3, 3, 3, 3, 0, 1, 2, 2, 3, 3, 3, 3 };
     static float effSize[4] = { 0.9f, 0.9f, 0.9f, 0.8f };
     static GXColor effColor[8] = {
-        { 0xDC, 0x40, 0x40, 0x00 }, { 0x40, 0xDC, 0x40, 0x00 },
-        { 0xDC, 0xDC, 0x40, 0x00 }, { 0x40, 0x40, 0xDC, 0x00 },
-        { 0xDC, 0x40, 0xDC, 0x00 }, { 0x40, 0xDC, 0xDC, 0x00 },
-        { 0xDC, 0x78, 0x40, 0x00 }, { 0x40, 0x78, 0xDC, 0x00 },
+        { 220, 64, 64, 0 }, { 64, 220, 64, 0 },
+        { 220, 220, 64, 0 }, { 64, 64, 220, 0 },
+        { 220, 64, 220, 0 }, { 64, 220, 220, 0 },
+        { 220, 120, 64, 0 }, { 64, 120, 220, 0 },
     };
-    MBPARTICLEDATA *data;
-    int i;
-    int spawn;
-    int type;
-    int colorIdx;
-    float f;
-    float g;
-    HuVecF vec;
-    Mtx mtx;
+    MBPARTICLEDATA *particleData;
+    int particleIndex;
+    int particlesToSpawn;
+    int particleShape;
+    int colorIndex;
+    float randomValue;
+    float velocityScale;
+    HuVecF particleVector;
+    Mtx particleRotation;
 
-    if (effP->initF == 0) {
-        effP->initF = 1;
-        effP->stopF = 0;
-        effP->unk14 = 0.0f;
+    if (particleSystemP->initF == 0) {
+        particleSystemP->initF = 1;
+        particleSystemP->stopF = 0;
+        particleSystemP->spawnOffsetY = 0.0f;
     }
-    spawn = 0;
-    if (effP->stopF == 0) {
-        spawn = 6;
+    particlesToSpawn = 0;
+    if (particleSystemP->stopF == 0) {
+        particlesToSpawn = 6;
     }
-    data = effP->data;
-    for (i = 0; i < effP->num; i++, data++) {
-        if (spawn <= 0) {
+    particleData = particleSystemP->data;
+    for (particleIndex = 0; particleIndex < particleSystemP->num; particleIndex++, particleData++) {
+        if (particlesToSpawn <= 0) {
             break;
         }
-        if (data->time == 0) {
-            type = effNo[mbRandMod(16)];
-            data->rndNo = type;
-            f = 360.0f * frandf();
-            mbMtxRotAxisDeg(mtx, 'Y', f);
-            vec.x = vec.y = 0.0f;
-            vec.z = 0.016666668f * (600.0f * (0.7f + 0.3f * frandf()));
-            PSMTXMultVec(mtx, &vec, &data->vel);
-            f = 360.0f * frandf();
-            g = 0.7f + 0.3f * frandf();
-            vec.x = g * mbCosDeg(f);
-            vec.y = 0.2f + g * mbSinDeg(f);
-            vec.z = -0.8f;
-            PSMTXMultVec(mtx, &vec, &data->guideAccel);
-            PSVECScale(&data->guideAccel, &data->guideAccel, 0.55555564f);
-            PSVECScale(&data->vel, &data->pos, 1.0f);
-            data->pos.y += 5.0f;
-            data->scale = effSize[type] * (30.0f * (0.5f + 0.5f * frandf()));
-            data->guideScaleBase = data->scale;
-            colorIdx = mbRandMod(8);
-            data->no = colorIdx;
-            f = 0.8f + 0.2f * frandf();
-            data->color.r = f * (255.0f - effColor[colorIdx].r) + effColor[colorIdx].r;
-            data->color.g = f * (255.0f - effColor[colorIdx].g) + effColor[colorIdx].g;
-            data->color.b = f * (255.0f - effColor[colorIdx].b) + effColor[colorIdx].b;
-            data->color.a = mbRandMod(0x46) + 0x96;
-            data->alphaF = data->color.a;
-            data->color.a = 0;
-            data->weight = 0.0f;
-            if (data->rndNo < 3) {
-                data->weight = 360.0f * frandf();
+        if (particleData->time == 0) {
+            particleShape = effNo[mbRandMod(16)];
+            particleData->rndNo = particleShape;
+            randomValue = 360.0f * frandf();
+            mbMtxRotAxisDeg(particleRotation, 'Y', randomValue);
+            particleVector.x = particleVector.y = 0.0f;
+            particleVector.z = 0.016666668f * (600.0f * (0.7f + 0.3f * frandf()));
+            PSMTXMultVec(particleRotation, &particleVector, &particleData->vel);
+            randomValue = 360.0f * frandf();
+            velocityScale = 0.7f + 0.3f * frandf();
+            particleVector.x = velocityScale * mbCosDeg(randomValue);
+            particleVector.y = 0.2f + velocityScale * mbSinDeg(randomValue);
+            particleVector.z = -0.8f;
+            PSMTXMultVec(particleRotation, &particleVector, &particleData->guideAccel);
+            PSVECScale(&particleData->guideAccel, &particleData->guideAccel, 0.55555564f);
+            PSVECScale(&particleData->vel, &particleData->pos, 1.0f);
+            particleData->pos.y += 5.0f;
+            particleData->scale = effSize[particleShape] * (30.0f * (0.5f + 0.5f * frandf()));
+            particleData->guideScaleBase = particleData->scale;
+            colorIndex = mbRandMod(8);
+            particleData->no = colorIndex;
+            randomValue = 0.8f + 0.2f * frandf();
+            particleData->color.r =
+                randomValue * (255.0f - effColor[colorIndex].r) + effColor[colorIndex].r;
+            particleData->color.g =
+                randomValue * (255.0f - effColor[colorIndex].g) + effColor[colorIndex].g;
+            particleData->color.b =
+                randomValue * (255.0f - effColor[colorIndex].b) + effColor[colorIndex].b;
+            particleData->color.a =
+                mbRandMod(GUIDE_EFFECT_ALPHA_VARIATION) + GUIDE_EFFECT_ALPHA_BASE;
+            particleData->alphaF = particleData->color.a;
+            particleData->color.a = 0;
+            particleData->weight = 0.0f;
+            if (particleData->rndNo < 3) {
+                particleData->weight = 360.0f * frandf();
             }
-            data->time = 20;
-            spawn--;
+            particleData->time = 20;
+            particlesToSpawn--;
         }
     }
-    data = effP->data;
-    for (i = 0; i < effP->num; i++, data++) {
-        if (data->time != 0) {
-            PSVECAdd(&data->pos, &data->vel, &data->pos);
-            PSVECAdd(&data->vel, &data->guideAccel, &data->vel);
+    particleData = particleSystemP->data;
+    for (particleIndex = 0; particleIndex < particleSystemP->num; particleIndex++, particleData++) {
+        if (particleData->time != 0) {
+            PSVECAdd(&particleData->pos, &particleData->vel, &particleData->pos);
+            PSVECAdd(&particleData->vel, &particleData->guideAccel, &particleData->vel);
         }
     }
-    data = effP->data;
-    for (i = 0; i < effP->num; i++, data++) {
-        if (data->time != 0) {
-            data->time--;
-            if (data->time < 10) {
-                data->scale *= 0.95f;
-                data->color.a *= 0.7f;
-                if (data->time == 0) {
-                    data->color.a = 0;
-                    data->scale = 0.0f;
+    particleData = particleSystemP->data;
+    for (particleIndex = 0; particleIndex < particleSystemP->num; particleIndex++, particleData++) {
+        if (particleData->time != 0) {
+            particleData->time--;
+            if (particleData->time < 10) {
+                particleData->scale *= 0.95f;
+                particleData->color.a *= 0.7f;
+                if (particleData->time == 0) {
+                    particleData->color.a = 0;
+                    particleData->scale = 0.0f;
                 }
-            } else if (effP->stopF == 0) {
-                f = data->color.a;
-                f = 1.0f + (f + 0.3f * (data->alphaF - f));
-                data->color.a = f;
+            } else if (particleSystemP->stopF == 0) {
+                randomValue = particleData->color.a;
+                randomValue = 1.0f + (randomValue + 0.3f * (particleData->alphaF - randomValue));
+                particleData->color.a = randomValue;
             }
-            colorIdx = data->no;
-            data->color.r = data->color.r + 0.1f * ((float)effColor[colorIdx].r - data->color.r);
-            data->color.g = data->color.g + 0.1f * ((float)effColor[colorIdx].g - data->color.g);
-            data->color.b = data->color.b + 0.1f * ((float)effColor[colorIdx].b - data->color.b);
-            if (effP->stopF != 0) {
-                data->color.a *= 0.8f;
+            colorIndex = particleData->no;
+            particleData->color.r = particleData->color.r +
+                                    0.1f * ((float) effColor[colorIndex].r - particleData->color.r);
+            particleData->color.g = particleData->color.g +
+                                    0.1f * ((float) effColor[colorIndex].g - particleData->color.g);
+            particleData->color.b = particleData->color.b +
+                                    0.1f * ((float) effColor[colorIndex].b - particleData->color.b);
+            if (particleSystemP->stopF != 0) {
+                particleData->color.a *= 0.8f;
             }
         }
     }
