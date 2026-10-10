@@ -2236,6 +2236,37 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m667dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m667dll/map_players_effects.c",
+                extra_cflags=["-pooldata", "off", "-inline", "on,noauto"],
+            ),
+            Object(
+                Matching,
+                "REL/m667dll/model_sound_description.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m667dll/particles_tracks_materials.c",
+                extra_cflags=["-pooldata", "off", "-sym", "on"],
+            ),
+            Object(
+                Matching,
+                "REL/m667dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m667dll/startup.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
