@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 34.86% | 56.40% |
+| Entire project | 35.23% | 56.61% |
 | Main DOL | 88.56% | 99.04% |
-| REL modules | 23.48% | 29.38% |
+| REL modules | 23.92% | 29.72% |
+
+Stamp By Me (`m649Dll`) selects all **190 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Talkie Walkie (`m667dll`) selects all **172 functions** from **5 complete translation units**; its linked REL matches retail.
 
