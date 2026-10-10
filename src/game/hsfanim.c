@@ -1,5 +1,8 @@
+/* Manages HSF texture animation, texture scrolling, particles, water rendering, and model
+ * lifetimes. */
 #define _MATH_H
 #define M_PI 3.141592653589793
+#define PARTICLE_DISPLAY_LIST_MAX_SIZE 131072
 double sin(double x);
 double cos(double x);
 #include "game/hu3d.h"
@@ -12,31 +15,36 @@ double cos(double x);
 HU3D_TEXANIM Hu3DTexAnimData[HU3D_TEXANIM_MAX];
 HU3D_TEXSCROLL Hu3DTexScrData[HU3D_TEXSCROLL_MAX];
 
+/* Called by Hu3DInit to mark every texture-animation and texture-scroll slot free. */
 void Hu3DAnimInit(void)
 {
-    s16 i;
+    s16 slotIndex;
     HU3D_TEXANIM *texAnimP;
     HU3D_TEXSCROLL *texScrP;
-    for(texAnimP = &Hu3DTexAnimData[0], i=0; i<HU3D_TEXANIM_MAX; i++, texAnimP++) {
+    for (texAnimP = &Hu3DTexAnimData[0], slotIndex = 0; slotIndex < HU3D_TEXANIM_MAX;
+         slotIndex++, texAnimP++) {
         texAnimP->modelId = HU3D_MODELID_NONE;
     }
-    for(texScrP = &Hu3DTexScrData[0], i=0; i<HU3D_TEXSCROLL_MAX; i++, texScrP++) {
+    for (texScrP = &Hu3DTexScrData[0], slotIndex = 0; slotIndex < HU3D_TEXSCROLL_MAX;
+         slotIndex++, texScrP++) {
         texScrP->modelId = HU3D_MODELID_NONE;
     }
 }
 
-HU3D_ANIMID Hu3DAnimCreate(void *dataP, HU3D_MODELID modelId, char *bmpName)
+/* Attaches a sprite animation to every same-named HSF bitmap on the model. */
+HU3D_ANIMID Hu3DAnimCreate(void *animData, HU3D_MODELID modelId, char *bmpName)
 {
-    HU3D_TEXANIM *texAnimP;
+    HU3D_TEXANIM *texAnimEntry;
     HU3D_ANIMID animId;
-    
-    HSF_DATA *hsf;
-    HSF_ATTRIBUTE *attrP;
-    s16 i;
-    s16 bmpNum;
-    
-    for(texAnimP = &Hu3DTexAnimData[0], animId=0; animId<HU3D_TEXANIM_MAX; animId++, texAnimP++) {
-        if(texAnimP->modelId == HU3D_MODELID_NONE) {
+
+    HSF_DATA *modelHsf;
+    HSF_ATTRIBUTE *attribute;
+    s16 attributeIndex;
+    s16 matchingBitmapCount;
+
+    for (texAnimEntry = &Hu3DTexAnimData[0], animId = 0; animId < HU3D_TEXANIM_MAX;
+         animId++, texAnimEntry++) {
+        if(texAnimEntry->modelId == HU3D_MODELID_NONE) {
             break;
         }
     }
@@ -44,79 +52,88 @@ HU3D_ANIMID Hu3DAnimCreate(void *dataP, HU3D_MODELID modelId, char *bmpName)
         OSReport("Error: TexAnim Over\n");
         return HU3D_ANIMID_NONE;
     }
-    hsf = Hu3DData[modelId].hsf;
-    for(attrP=hsf->attribute, i=bmpNum=0; i<hsf->attributeNum; i++, attrP++) {
-        if(strcmp(bmpName, attrP->bitmap->name) == 0) {
-            HU3D_ATTR_ANIM *attrAnimP;
-            if(!attrP->animWorkP) {
-                attrAnimP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM), Hu3DData[modelId].mallocNo);
-                attrP->animWorkP = attrAnimP;
-                attrAnimP->attr = HU3D_ATTRANIM_ATTR_NONE;
+    modelHsf = Hu3DData[modelId].hsf;
+    for (attribute = modelHsf->attribute, attributeIndex = matchingBitmapCount = 0;
+         attributeIndex < modelHsf->attributeNum; attributeIndex++, attribute++) {
+        if(strcmp(bmpName, attribute->bitmap->name) == 0) {
+            HU3D_ATTR_ANIM *attributeAnim;
+            if(!attribute->animWorkP) {
+                attributeAnim = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM),
+                                                     Hu3DData[modelId].mallocNo);
+                attribute->animWorkP = attributeAnim;
+                attributeAnim->attr = HU3D_ATTRANIM_ATTR_NONE;
             } else {
-                attrAnimP = attrP->animWorkP;
-                if((attrAnimP->attr & HU3D_ATTRANIM_ATTR_ANIM2D) && Hu3DTexAnimData[attrAnimP->animId].modelId != HU3D_MODELID_NONE) {
-                    Hu3DTexAnimData[attrAnimP->animId].modelId = HU3D_MODEL_MAX;
+                attributeAnim = attribute->animWorkP;
+                if ((attributeAnim->attr & HU3D_ATTRANIM_ATTR_ANIM2D) &&
+                    Hu3DTexAnimData[attributeAnim->animId].modelId != HU3D_MODELID_NONE) {
+                    /* HU3D_MODEL_MAX makes Hu3DAnimKill skip this slot's model-attribute scan. */
+                    Hu3DTexAnimData[attributeAnim->animId].modelId = HU3D_MODEL_MAX;
                 }
             }
-            attrAnimP->attr |= HU3D_ATTRANIM_ATTR_ANIM2D;
-            attrAnimP->animId = animId;
-            attrAnimP->scale.x = attrAnimP->scale.y = 1;
-            attrAnimP->trans.x = attrAnimP->trans.y = 0;
-            bmpNum++;
+            attributeAnim->attr |= HU3D_ATTRANIM_ATTR_ANIM2D;
+            attributeAnim->animId = animId;
+            attributeAnim->scale.x = attributeAnim->scale.y = 1;
+            attributeAnim->trans.x = attributeAnim->trans.y = 0;
+            matchingBitmapCount++;
         }
     }
-    if(bmpNum == 0) {
+    if(matchingBitmapCount == 0) {
         OSReport("Error: Not Found TexAnim Name\n");
         return HU3D_ANIMID_NONE;
     }
-    if(!dataP) {
-        texAnimP->anim = NULL;
+    if(!animData) {
+        texAnimEntry->anim = NULL;
     } else {
-        texAnimP->anim = HuSprAnimRead(dataP);
-        texAnimP->anim->useNum++;
+        /* Already relocated input gains one reference in HuSprAnimRead and another below. */
+        texAnimEntry->anim = HuSprAnimRead(animData);
+        texAnimEntry->anim->useNum++;
     }
-    texAnimP->modelId = modelId;
-    texAnimP->time = 0;
-    texAnimP->bank = 0;
-    texAnimP->anmNo = 0;
-    texAnimP->attr = 0;
-    texAnimP->speed = 1;
+    texAnimEntry->modelId = modelId;
+    texAnimEntry->time = 0;
+    texAnimEntry->bank = 0;
+    texAnimEntry->anmNo = 0;
+    texAnimEntry->attr = HU3D_ANIM_ATTR_NONE;
+    texAnimEntry->speed = 1;
     return animId;
 }
 
-ANIMDATA *Hu3DAnimAnimSet(HU3D_ANIMID animId, ANIMDATA *animP)
+/* Returns NULL for unused slots or slots without animation data. Otherwise replaces the
+* animation, returns its previous data, and resets bank, frame, time, flags, and speed. */
+ANIMDATA *Hu3DAnimAnimSet(HU3D_ANIMID animId, ANIMDATA *newAnim)
 {
     HU3D_TEXANIM *texAnimP = &Hu3DTexAnimData[animId];
     if(texAnimP->modelId == HU3D_MODELID_NONE || !texAnimP->anim) {
         return NULL;
     } else {
-        ANIMDATA *old = texAnimP->anim;
-        old->useNum--;
-        texAnimP->anim = animP;
+        ANIMDATA *previousAnim = texAnimP->anim;
+        previousAnim->useNum--;
+        texAnimP->anim = newAnim;
         texAnimP->anim->useNum++;
         texAnimP->time = 0;
         texAnimP->bank = 0;
         texAnimP->anmNo = 0;
         texAnimP->attr = 0;
         texAnimP->speed = 1;
-        return old;
+        return previousAnim;
     }
 }
 
+/* Shares a sprite animation with every same-named HSF bitmap on another model. */
 HU3D_ANIMID Hu3DAnimLink(HU3D_ANIMID linkAnimId, HU3D_MODELID modelId, char *bmpName)
 {
-    HU3D_TEXANIM *texAnimP;
+    HU3D_TEXANIM *texAnimEntry;
     HU3D_ANIMID animId;
-    
-    HSF_DATA *hsf;
-    HSF_ATTRIBUTE *attrP;
-    s16 i;
-    s16 bmpNum;
-    
-    HU3D_TEXANIM *linkTexAnimP = &Hu3DTexAnimData[linkAnimId];
-    
-    for(texAnimP = &Hu3DTexAnimData[0], animId=0; animId<HU3D_TEXANIM_MAX; animId++, texAnimP++) {
-        if(texAnimP->modelId == HU3D_MODELID_NONE) {
+
+    HSF_DATA *modelHsf;
+    HSF_ATTRIBUTE *attribute;
+    s16 attributeIndex;
+    s16 matchingBitmapCount;
+
+    HU3D_TEXANIM *sourceAnimEntry = &Hu3DTexAnimData[linkAnimId];
+
+    for (texAnimEntry = &Hu3DTexAnimData[0], animId = 0; animId < HU3D_TEXANIM_MAX;
+         animId++, texAnimEntry++) {
+        if(texAnimEntry->modelId == HU3D_MODELID_NONE) {
             break;
         }
     }
@@ -124,112 +141,127 @@ HU3D_ANIMID Hu3DAnimLink(HU3D_ANIMID linkAnimId, HU3D_MODELID modelId, char *bmp
         OSReport("Error: TexAnim Over\n");
         return HU3D_ANIMID_NONE;
     }
-    hsf = Hu3DData[modelId].hsf;
-    for(attrP=hsf->attribute, i=bmpNum=0; i<hsf->attributeNum; i++, attrP++) {
-        if(strcmp(bmpName, attrP->bitmap->name) == 0) {
-            HU3D_ATTR_ANIM *attrAnimP;
-            if(!attrP->animWorkP) {
-                attrAnimP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM), Hu3DData[modelId].mallocNo);
-                attrP->animWorkP = attrAnimP;
-                attrAnimP->attr = HU3D_ATTRANIM_ATTR_NONE;
+    modelHsf = Hu3DData[modelId].hsf;
+    for (attribute = modelHsf->attribute, attributeIndex = matchingBitmapCount = 0;
+         attributeIndex < modelHsf->attributeNum; attributeIndex++, attribute++) {
+        if(strcmp(bmpName, attribute->bitmap->name) == 0) {
+            HU3D_ATTR_ANIM *attributeAnim;
+            if(!attribute->animWorkP) {
+                attributeAnim = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM),
+                                                     Hu3DData[modelId].mallocNo);
+                attribute->animWorkP = attributeAnim;
+                attributeAnim->attr = HU3D_ATTRANIM_ATTR_NONE;
             } else {
-                attrAnimP = attrP->animWorkP;
-                if((attrAnimP->attr & HU3D_ATTRANIM_ATTR_ANIM2D) && Hu3DTexAnimData[attrAnimP->animId].modelId != HU3D_MODELID_NONE) {
-                    Hu3DTexAnimData[attrAnimP->animId].modelId = HU3D_MODEL_MAX;
+                attributeAnim = attribute->animWorkP;
+                if ((attributeAnim->attr & HU3D_ATTRANIM_ATTR_ANIM2D) &&
+                    Hu3DTexAnimData[attributeAnim->animId].modelId != HU3D_MODELID_NONE) {
+                    /* HU3D_MODEL_MAX makes Hu3DAnimKill skip this slot's model-attribute scan. */
+                    Hu3DTexAnimData[attributeAnim->animId].modelId = HU3D_MODEL_MAX;
                 }
             }
-            attrAnimP->attr |= HU3D_ATTRANIM_ATTR_ANIM2D;
-            attrAnimP->animId = animId;
-            attrAnimP->scale.x = attrAnimP->scale.y = 1;
-            attrAnimP->trans.x = attrAnimP->trans.y = 0;
-            bmpNum++;
+            attributeAnim->attr |= HU3D_ATTRANIM_ATTR_ANIM2D;
+            attributeAnim->animId = animId;
+            attributeAnim->scale.x = attributeAnim->scale.y = 1;
+            attributeAnim->trans.x = attributeAnim->trans.y = 0;
+            matchingBitmapCount++;
         }
     }
-    if(bmpNum == 0) {
+    if(matchingBitmapCount == 0) {
         OSReport("Error: Not Found TexAnim Name\n");
         return HU3D_ANIMID_NONE;
     }
-    texAnimP->anim = linkTexAnimP->anim;
-    texAnimP->anim->useNum++;
-    texAnimP->modelId = modelId;
-    texAnimP->time = 0;
-    texAnimP->bank = 0;
-    texAnimP->anmNo = 0;
-    texAnimP->attr = HU3D_ANIM_ATTR_NONE;
-    texAnimP->speed = 1;
+    texAnimEntry->anim = sourceAnimEntry->anim;
+    texAnimEntry->anim->useNum++;
+    texAnimEntry->modelId = modelId;
+    texAnimEntry->time = 0;
+    texAnimEntry->bank = 0;
+    texAnimEntry->anmNo = 0;
+    texAnimEntry->attr = HU3D_ANIM_ATTR_NONE;
+    texAnimEntry->speed = 1;
     return animId;
 }
 
+/* Called by model teardown or clients to detach a texture animation and release its data
+ * reference. */
 void Hu3DAnimKill(HU3D_ANIMID animId)
 {
-    HU3D_TEXANIM *texAnimP = &Hu3DTexAnimData[animId];
-    if(texAnimP->modelId != HU3D_MODEL_MAX) {
-        HSF_DATA *hsf = Hu3DData[texAnimP->modelId].hsf;
-        if(hsf) {
-            HSF_ATTRIBUTE *attrP;
-            s16 i;
-            for(attrP=hsf->attribute, i=0; i<hsf->attributeNum; i++, attrP++) {
-                if(attrP->animWorkP) {
-                    HU3D_ATTR_ANIM *attrAnimP = attrP->animWorkP;
-                    if(attrAnimP->animId == animId) {
-                        attrAnimP->attr &= ~HU3D_ATTRANIM_ATTR_ANIM2D;
-                        if(attrAnimP->attr == HU3D_ATTRANIM_ATTR_NONE) {
-                            attrP->animWorkP = NULL;
-                            HuMemDirectFree(attrAnimP);
+    HU3D_TEXANIM *texAnimEntry = &Hu3DTexAnimData[animId];
+    if(texAnimEntry->modelId != HU3D_MODEL_MAX) {
+        HSF_DATA *modelHsf = Hu3DData[texAnimEntry->modelId].hsf;
+        if(modelHsf) {
+            HSF_ATTRIBUTE *attribute;
+            s16 attributeIndex;
+            for (attribute = modelHsf->attribute, attributeIndex = 0;
+                 attributeIndex < modelHsf->attributeNum; attributeIndex++, attribute++) {
+                if(attribute->animWorkP) {
+                    HU3D_ATTR_ANIM *attributeAnim = attribute->animWorkP;
+                    if(attributeAnim->animId == animId) {
+                        attributeAnim->attr &= ~HU3D_ATTRANIM_ATTR_ANIM2D;
+                        if(attributeAnim->attr == HU3D_ATTRANIM_ATTR_NONE) {
+                            attribute->animWorkP = NULL;
+                            HuMemDirectFree(attributeAnim);
                         }
                     }
                 }
             }
         }
     }
-    texAnimP->modelId = HU3D_MODELID_NONE;
-    if(--texAnimP->anim->useNum <= 0) {
-        HuMemDirectFree(texAnimP->anim);
+    texAnimEntry->modelId = HU3D_MODELID_NONE;
+    if(--texAnimEntry->anim->useNum <= 0) {
+        HuMemDirectFree(texAnimEntry->anim);
     }
 }
 
+/* Called when a model is destroyed to release each texture animation attached to it. */
 void Hu3DAnimModelKill(HU3D_MODELID modelId)
 {
-    HU3D_TEXANIM *texAnimP;
+    HU3D_TEXANIM *texAnimEntry;
     HU3D_ANIMID animId;
-    for(texAnimP = &Hu3DTexAnimData[0], animId=0; animId<HU3D_TEXANIM_MAX; animId++, texAnimP++) {
-        if(texAnimP->modelId == modelId) {
+    for (texAnimEntry = &Hu3DTexAnimData[0], animId = 0; animId < HU3D_TEXANIM_MAX;
+         animId++, texAnimEntry++) {
+        if(texAnimEntry->modelId == modelId) {
             Hu3DAnimKill(animId);
         }
     }
 }
 
+/* Called during global 3D cleanup to release all texture animations and scrolling. */
 void Hu3DAnimAllKill(void)
 {
-    HU3D_TEXANIM *texAnimP;
+    HU3D_TEXANIM *texAnimEntry;
     HU3D_ANIMID animId;
-    for(texAnimP = &Hu3DTexAnimData[0], animId=0; animId<HU3D_TEXANIM_MAX; animId++, texAnimP++) {
-        if(texAnimP->modelId != HU3D_MODELID_NONE) {
+    for (texAnimEntry = &Hu3DTexAnimData[0], animId = 0; animId < HU3D_TEXANIM_MAX;
+         animId++, texAnimEntry++) {
+        if(texAnimEntry->modelId != HU3D_MODELID_NONE) {
             Hu3DAnimKill(animId);
         }
     }
     Hu3DTexScrollAllKill();
 }
 
+/* Called by animation clients to add playback flags to a texture-animation slot. */
 void Hu3DAnimAttrSet(HU3D_ANIMID animId, u16 attr)
 {
     HU3D_TEXANIM *texAnimP = &Hu3DTexAnimData[animId];
     texAnimP->attr |= attr;
 }
 
+/* Called by animation clients to clear selected playback flags from a slot. */
 void Hu3DAnimAttrReset(HU3D_ANIMID animId, u16 attr)
 {
     HU3D_TEXANIM *texAnimP = &Hu3DTexAnimData[animId];
     texAnimP->attr &= ~attr;
 }
 
+/* Called by animation clients to set the slot's playback speed multiplier. */
 void Hu3DAnimSpeedSet(HU3D_ANIMID animId, float speed)
 {
     HU3D_TEXANIM *texAnimP = &Hu3DTexAnimData[animId];
-    
+
     texAnimP->speed = speed;
 }
 
+/* Called by animation clients to select a valid bank and restart at its first frame. */
 void Hu3DAnimBankSet(HU3D_ANIMID animId, u16 bank)
 {
     HU3D_TEXANIM *texAnimP = &Hu3DTexAnimData[animId];
@@ -241,6 +273,7 @@ void Hu3DAnimBankSet(HU3D_ANIMID animId, u16 bank)
     texAnimP->anmNo = texAnimP->time = 0;
 }
 
+/* Called by animation clients to select a frame and clear elapsed time within that frame. */
 void Hu3DAnmNoSet(HU3D_ANIMID animId, u16 anmNo)
 {
     HU3D_TEXANIM *texAnimP = &Hu3DTexAnimData[animId];
@@ -248,139 +281,154 @@ void Hu3DAnmNoSet(HU3D_ANIMID animId, u16 anmNo)
     texAnimP->time = 0;
 }
 
-s32 Hu3DAnimSet(HU3D_MODEL *modelP, HSF_ATTRIBUTE *attrP, s16 texSlotNo)
+/* Called while drawing an HSF attribute to load its current animated texture layer. */
+s32 Hu3DAnimSet(HU3D_MODEL *model, HSF_ATTRIBUTE *attribute, s16 textureSlot)
 {
-    ANIMPAT *pat;
-    HU3D_ATTR_ANIM *attrAnimP = attrP->animWorkP;
-    HU3D_TEXANIM *texAnimP = &Hu3DTexAnimData[attrAnimP->animId];
-    ANIMDATA *anim = texAnimP->anim;
-    s16 patNo = anim->bank[texAnimP->bank].frame[texAnimP->anmNo].pat;
-    ANIMLAYER *layer;
-    ANIMBMP *bmp;
-    if(patNo == -1) {
+    ANIMPAT *pattern;
+    HU3D_ATTR_ANIM *attributeAnim = attribute->animWorkP;
+    HU3D_TEXANIM *texAnimEntry = &Hu3DTexAnimData[attributeAnim->animId];
+    ANIMDATA *animData = texAnimEntry->anim;
+    s16 patternNo = animData->bank[texAnimEntry->bank].frame[texAnimEntry->anmNo].pat;
+    ANIMLAYER *patternLayer;
+    ANIMBMP *bitmap;
+    if(patternNo == -1) {
         return FALSE;
     } else {
-        s16 wrapS = (attrP->wrapS == TRUE) ? TRUE : FALSE;
-        s16 wrapT = (attrP->wrapT == TRUE) ? TRUE : FALSE;
-        pat = &anim->pat[patNo];
-        layer = &pat->layer[0];
-        bmp = &anim->bmp[layer->bmpNo];
-        HuSprTexLoad(texAnimP->anim, layer->bmpNo, texSlotNo, wrapS, wrapT, (modelP->attr & HU3D_ATTR_TEX_NEAR) ? GX_NEAR : GX_LINEAR);
-        attrAnimP->scale.x = (float)layer->sizeX/bmp->sizeX;
-        attrAnimP->scale.y = (float)layer->sizeY/bmp->sizeY;
-        attrAnimP->trans.x = (float)layer->startX/bmp->sizeX;
-        attrAnimP->trans.y = (float)layer->startY/bmp->sizeY;
-        
+        s16 wrapS = (attribute->wrapS == TRUE) ? TRUE : FALSE;
+        s16 wrapT = (attribute->wrapT == TRUE) ? TRUE : FALSE;
+        pattern = &animData->pat[patternNo];
+        patternLayer = &pattern->layer[0];
+        bitmap = &animData->bmp[patternLayer->bmpNo];
+        HuSprTexLoad(texAnimEntry->anim, patternLayer->bmpNo, textureSlot, wrapS, wrapT,
+                     (model->attr & HU3D_ATTR_TEX_NEAR) ? GX_NEAR : GX_LINEAR);
+        attributeAnim->scale.x = (float)patternLayer->sizeX/bitmap->sizeX;
+        attributeAnim->scale.y = (float)patternLayer->sizeY/bitmap->sizeY;
+        attributeAnim->trans.x = (float)patternLayer->startX/bitmap->sizeX;
+        attributeAnim->trans.y = (float)patternLayer->startY/bitmap->sizeY;
+
         return TRUE;
     }
 }
 
+/* Called once per Hu3D frame after sprite execution to advance animation and texture-scroll
+ * state. */
 void Hu3DAnimExec(void)
 {
-    HU3D_TEXSCROLL *texScrP;
-    HU3D_TEXANIM *texAnimP;
-    s16 i;
-    for(texAnimP=&Hu3DTexAnimData[0], i=0; i<HU3D_TEXANIM_MAX; i++, texAnimP++) {
-        if(texAnimP->modelId == HU3D_MODELID_NONE) {
+    HU3D_TEXSCROLL *scrollEntry;
+    HU3D_TEXANIM *animEntry;
+    s16 slotIndex;
+    for (animEntry = &Hu3DTexAnimData[0], slotIndex = 0; slotIndex < HU3D_TEXANIM_MAX;
+         slotIndex++, animEntry++) {
+        if(animEntry->modelId == HU3D_MODELID_NONE) {
             continue;
         }
-        if(Hu3DPauseF == FALSE || (texAnimP->attr & HU3D_ANIM_ATTR_PAUSE)) {
-            ANIMDATA *anim = texAnimP->anim;
-            ANIMBANK *bank = &anim->bank[texAnimP->bank];
-            ANIMFRAME *frame = &bank->frame[texAnimP->anmNo];
-            if(!(texAnimP->attr & HU3D_ANIM_ATTR_ANIMON)
-             || (frame->time == -1 && (texAnimP->attr & HU3D_ANIM_ATTR_LOOP))) {
-                s16 j;
-                for(j=0; j<(int)texAnimP->speed*minimumVcount; j++) {
-                    texAnimP->time++;
-                    if(texAnimP->time >= frame->time) {
-                        texAnimP->anmNo++;
-                        texAnimP->time -= frame->time;
-                        if(texAnimP->anmNo >= bank->timeNum) {
-                            texAnimP->anmNo--;
-                        } else if(frame[1].time == -1) {
-                            if(texAnimP->attr & HU3D_ANIM_ATTR_LOOP) {
-                                texAnimP->anmNo--;
+        /* HU3D_ANIM_ATTR_PAUSE lets this slot advance while the global 3D pause is active. */
+        if(Hu3DPauseF == FALSE || (animEntry->attr & HU3D_ANIM_ATTR_PAUSE)) {
+            ANIMDATA *animData = animEntry->anim;
+            ANIMBANK *animBank = &animData->bank[animEntry->bank];
+            ANIMFRAME *animFrame = &animBank->frame[animEntry->anmNo];
+            /* ANIMON normally stops advancement; a current time -1 frame bypasses it only with
+             * LOOP set. At an upcoming sentinel, LOOP holds the preceding frame; otherwise
+             * playback restarts. */
+            if(!(animEntry->attr & HU3D_ANIM_ATTR_ANIMON)
+             || (animFrame->time == -1 && (animEntry->attr & HU3D_ANIM_ATTR_LOOP))) {
+                s16 wholeFrameSteps;
+                for (wholeFrameSteps = 0; wholeFrameSteps < (int) animEntry->speed * minimumVcount;
+                     wholeFrameSteps++) {
+                    animEntry->time++;
+                    if(animEntry->time >= animFrame->time) {
+                        animEntry->anmNo++;
+                        animEntry->time -= animFrame->time;
+                        if(animEntry->anmNo >= animBank->timeNum) {
+                            animEntry->anmNo--;
+                        } else if(animFrame[1].time == -1) {
+                            if(animEntry->attr & HU3D_ANIM_ATTR_LOOP) {
+                                animEntry->anmNo--;
                             } else {
-                                texAnimP->anmNo = 0;
+                                animEntry->anmNo = 0;
                             }
                         }
-                        frame = &bank->frame[texAnimP->anmNo];
+                        animFrame = &animBank->frame[animEntry->anmNo];
                     }
                 }
-                texAnimP->time += (texAnimP->speed*minimumVcount)-j;
-                if(texAnimP->time >= frame->time) {
-                    texAnimP->anmNo++;
-                    texAnimP->time -= frame->time;
-                    if(texAnimP->anmNo >= bank->timeNum) {
-                        texAnimP->anmNo--;
-                    } else if(frame[1].time == -1) {
-                        if(texAnimP->attr & HU3D_ANIM_ATTR_LOOP) {
-                            texAnimP->anmNo--;
+                animEntry->time += (animEntry->speed*minimumVcount)-wholeFrameSteps;
+                if(animEntry->time >= animFrame->time) {
+                    animEntry->anmNo++;
+                    animEntry->time -= animFrame->time;
+                    if(animEntry->anmNo >= animBank->timeNum) {
+                        animEntry->anmNo--;
+                    } else if(animFrame[1].time == -1) {
+                        if(animEntry->attr & HU3D_ANIM_ATTR_LOOP) {
+                            animEntry->anmNo--;
                         } else {
-                            texAnimP->anmNo = 0;
+                            animEntry->anmNo = 0;
                         }
                     }
                 }
             }
         }
     }
-    for(texScrP=&Hu3DTexScrData[0], i=0; i<HU3D_TEXSCROLL_MAX; i++, texScrP++) {
-        if(texScrP->modelId == HU3D_MODELID_NONE) {
+    for (scrollEntry = &Hu3DTexScrData[0], slotIndex = 0; slotIndex < HU3D_TEXSCROLL_MAX;
+         slotIndex++, scrollEntry++) {
+        if(scrollEntry->modelId == HU3D_MODELID_NONE) {
             continue;
         }
-        if(Hu3DPauseF && !(texScrP->attr & HU3D_TEXSCR_ATTR_PAUSEDISABLE)) {
-            MTXRotDeg(texScrP->texMtx, 'Z', texScrP->rot);
-            mtxTransCat(texScrP->texMtx, texScrP->pos.x, texScrP->pos.y, texScrP->pos.z);
+        if(Hu3DPauseF && !(scrollEntry->attr & HU3D_TEXSCR_ATTR_PAUSEDISABLE)) {
+            MTXRotDeg(scrollEntry->texMtx, 'Z', scrollEntry->rot);
+            mtxTransCat(scrollEntry->texMtx, scrollEntry->pos.x, scrollEntry->pos.y,
+                        scrollEntry->pos.z);
         } else {
-            if(texScrP->attr & HU3D_TEXSCR_ATTR_POSMOVE) {
-                VECAdd(&texScrP->pos, &texScrP->posMove, &texScrP->pos);
-                if(texScrP->pos.x > 1.0f) {
-                    texScrP->pos.x -= 1.0f;
+            if(scrollEntry->attr & HU3D_TEXSCR_ATTR_POSMOVE) {
+                VECAdd(&scrollEntry->pos, &scrollEntry->posMove, &scrollEntry->pos);
+                if(scrollEntry->pos.x > 1.0f) {
+                    scrollEntry->pos.x -= 1.0f;
                 }
-                if(texScrP->pos.y > 1.0f) {
-                    texScrP->pos.y -= 1.0f;
+                if(scrollEntry->pos.y > 1.0f) {
+                    scrollEntry->pos.y -= 1.0f;
                 }
-                if(texScrP->pos.z > 1.0f) {
-                    texScrP->pos.z -= 1.0f;
+                if(scrollEntry->pos.z > 1.0f) {
+                    scrollEntry->pos.z -= 1.0f;
                 }
-                if(texScrP->pos.x < -1.0f) {
-                    texScrP->pos.x += 1.0f;
+                if(scrollEntry->pos.x < -1.0f) {
+                    scrollEntry->pos.x += 1.0f;
                 }
-                if(texScrP->pos.y < -1.0f) {
-                    texScrP->pos.y += 1.0f;
+                if(scrollEntry->pos.y < -1.0f) {
+                    scrollEntry->pos.y += 1.0f;
                 }
-                if(texScrP->pos.z < -1.0f) {
-                    texScrP->pos.z += 1.0f;
-                }
-            }
-            if(texScrP->attr & HU3D_TEXSCR_ATTR_ROTMOVE) {
-                texScrP->rot += texScrP->rotMove;
-                if(texScrP->rot > 360.0f) {
-                    texScrP->rot -= 360.0f;
-                }
-                if(texScrP->rot < -360.0f) {
-                    texScrP->rot += 360.0f;
+                if(scrollEntry->pos.z < -1.0f) {
+                    scrollEntry->pos.z += 1.0f;
                 }
             }
-            MTXRotDeg(texScrP->texMtx, 'Z', texScrP->rot);
-            mtxTransCat(texScrP->texMtx, texScrP->pos.x, texScrP->pos.y, texScrP->pos.z);
+            if(scrollEntry->attr & HU3D_TEXSCR_ATTR_ROTMOVE) {
+                scrollEntry->rot += scrollEntry->rotMove;
+                if(scrollEntry->rot > 360.0f) {
+                    scrollEntry->rot -= 360.0f;
+                }
+                if(scrollEntry->rot < -360.0f) {
+                    scrollEntry->rot += 360.0f;
+                }
+            }
+            MTXRotDeg(scrollEntry->texMtx, 'Z', scrollEntry->rot);
+            mtxTransCat(scrollEntry->texMtx, scrollEntry->pos.x, scrollEntry->pos.y,
+                        scrollEntry->pos.z);
         }
     }
 }
 
+/* Attaches a scrolling texture matrix to same-named HSF bitmaps on the model. */
 HU3D_TEXSCRID Hu3DTexScrollCreate(HU3D_MODELID modelId, char *bmpName)
 {
-    HU3D_TEXSCROLL *texScrP;
+    HU3D_TEXSCROLL *scrollEntry;
     HU3D_TEXSCRID texScrId;
-    
-    HSF_DATA *hsf;
-    HSF_ATTRIBUTE *attrP;
-    s16 i;
-    s16 bmpNum;
-    
-    for(texScrP=&Hu3DTexScrData[0], texScrId=0; texScrId<HU3D_TEXSCROLL_MAX; texScrId++, texScrP++) {
-        if(texScrP->modelId == HU3D_MODELID_NONE) {
+
+    HSF_DATA *modelHsf;
+    HSF_ATTRIBUTE *attribute;
+    s16 attributeIndex;
+    s16 matchingBitmapCount;
+
+    for (scrollEntry = &Hu3DTexScrData[0], texScrId = 0; texScrId < HU3D_TEXSCROLL_MAX;
+         texScrId++, scrollEntry++) {
+        if(scrollEntry->modelId == HU3D_MODELID_NONE) {
             break;
         }
     }
@@ -388,272 +436,308 @@ HU3D_TEXSCRID Hu3DTexScrollCreate(HU3D_MODELID modelId, char *bmpName)
         OSReport("Error: TexScroll Over\n");
         return HU3D_TEXSCRID_NONE;
     }
-    hsf = Hu3DData[modelId].hsf;
-    for(attrP=hsf->attribute, i=bmpNum=0; i<hsf->attributeNum; i++, attrP++) {
-        if(strcmp(bmpName, attrP->bitmap->name) == 0) {
-            HU3D_ATTR_ANIM *attrAnimP;
-            if(!attrP->animWorkP) {
-                attrAnimP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM), Hu3DData[modelId].mallocNo);
-                attrP->animWorkP = attrAnimP;
-                attrAnimP->attr = HU3D_ATTRANIM_ATTR_NONE;
+    modelHsf = Hu3DData[modelId].hsf;
+    for (attribute = modelHsf->attribute, attributeIndex = matchingBitmapCount = 0;
+         attributeIndex < modelHsf->attributeNum; attributeIndex++, attribute++) {
+        if(strcmp(bmpName, attribute->bitmap->name) == 0) {
+            HU3D_ATTR_ANIM *attributeAnim;
+            if(!attribute->animWorkP) {
+                attributeAnim = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM),
+                                                     Hu3DData[modelId].mallocNo);
+                attribute->animWorkP = attributeAnim;
+                attributeAnim->attr = HU3D_ATTRANIM_ATTR_NONE;
             } else {
-                attrAnimP = attrP->animWorkP;
+                attributeAnim = attribute->animWorkP;
             }
-            attrAnimP->attr |= HU3D_ATTRANIM_ATTR_TEXMTX;
-            attrAnimP->texScrId = texScrId;
-            attrAnimP->scale.x = attrAnimP->scale.y = 1;
-            attrAnimP->trans.x = attrAnimP->trans.y = 0;
-            bmpNum++;
+            attributeAnim->attr |= HU3D_ATTRANIM_ATTR_TEXMTX;
+            attributeAnim->texScrId = texScrId;
+            attributeAnim->scale.x = attributeAnim->scale.y = 1;
+            attributeAnim->trans.x = attributeAnim->trans.y = 0;
+            matchingBitmapCount++;
         }
     }
-    if(bmpNum == 0) {
+    if(matchingBitmapCount == 0) {
         OSReport("Error: Not Found TexAnim Name\n");
         return HU3D_TEXSCRID_NONE;
     }
-    texScrP->modelId = modelId;
-    texScrP->attr = HU3D_TEXSCR_ATTR_NONE;
-    texScrP->pos.x = texScrP->pos.y = texScrP->pos.z =  0;
-    texScrP->rot = 0;
-    MTXIdentity(texScrP->texMtx);
+    scrollEntry->modelId = modelId;
+    scrollEntry->attr = HU3D_TEXSCR_ATTR_NONE;
+    scrollEntry->pos.x = scrollEntry->pos.y = scrollEntry->pos.z =  0;
+    scrollEntry->rot = 0;
+    MTXIdentity(scrollEntry->texMtx);
     return texScrId;
 }
 
+/* Called by clients or global texture-scroll cleanup to detach a slot from surviving HSF
+ * attributes and mark it free. */
 void Hu3DTexScrollKill(HU3D_TEXSCRID texScrId)
 {
-    HU3D_TEXSCROLL *texScrP = &Hu3DTexScrData[texScrId];
-    HSF_DATA *hsf = Hu3DData[texScrP->modelId].hsf;
-    if(hsf) {
-        HSF_ATTRIBUTE *attrP;
-        s16 i;
-        for(attrP=hsf->attribute, i=0; i<hsf->attributeNum; i++, attrP++) {
-            if(attrP->animWorkP) {
-                HU3D_ATTR_ANIM *attrAnimP = attrP->animWorkP;
-                if(attrAnimP->texScrId == texScrId) {
-                    attrAnimP->attr &= ~HU3D_ATTRANIM_ATTR_TEXMTX;
-                    if(attrAnimP->attr == HU3D_ATTRANIM_ATTR_NONE) {
-                        attrP->animWorkP = NULL;
-                        HuMemDirectFree(attrAnimP);
+    HU3D_TEXSCROLL *scrollEntry = &Hu3DTexScrData[texScrId];
+    HSF_DATA *modelHsf = Hu3DData[scrollEntry->modelId].hsf;
+    if(modelHsf) {
+        HSF_ATTRIBUTE *attribute;
+        s16 attributeIndex;
+        for (attribute = modelHsf->attribute, attributeIndex = 0;
+             attributeIndex < modelHsf->attributeNum; attributeIndex++, attribute++) {
+            if(attribute->animWorkP) {
+                HU3D_ATTR_ANIM *attributeAnim = attribute->animWorkP;
+                if(attributeAnim->texScrId == texScrId) {
+                    attributeAnim->attr &= ~HU3D_ATTRANIM_ATTR_TEXMTX;
+                    if(attributeAnim->attr == HU3D_ATTRANIM_ATTR_NONE) {
+                        attribute->animWorkP = NULL;
+                        HuMemDirectFree(attributeAnim);
                     }
                 }
             }
         }
     }
-    texScrP->modelId = HU3D_MODELID_NONE;
+    scrollEntry->modelId = HU3D_MODELID_NONE;
 }
 
+/* Called during global 3D cleanup to release every active texture-scroll slot. */
 void Hu3DTexScrollAllKill(void)
 {
-    HU3D_TEXSCROLL *texScrP;
+    HU3D_TEXSCROLL *scrollEntry;
     HU3D_TEXSCRID texScrId;
-    for(texScrP=&Hu3DTexScrData[0], texScrId=0; texScrId<HU3D_TEXSCROLL_MAX; texScrId++, texScrP++) {
-        if(texScrP->modelId != HU3D_MODELID_NONE) {
+    for (scrollEntry = &Hu3DTexScrData[0], texScrId = 0; texScrId < HU3D_TEXSCROLL_MAX;
+         texScrId++, scrollEntry++) {
+        if(scrollEntry->modelId != HU3D_MODELID_NONE) {
             Hu3DTexScrollKill(texScrId);
         }
     }
 }
 
+/* Called by texture-scroll clients to set normalized translation and stop position motion. */
 void Hu3DTexScrollPosSet(HU3D_TEXSCRID texScrId, float posX, float posY, float posZ)
 {
-    HU3D_TEXSCROLL *texScrP = &Hu3DTexScrData[texScrId];
-    texScrP->attr &= ~HU3D_TEXSCR_ATTR_POSMOVE;
-    texScrP->pos.x = posX;
-    texScrP->pos.y = posY;
-    texScrP->pos.z = posZ;
+    HU3D_TEXSCROLL *scrollEntry = &Hu3DTexScrData[texScrId];
+    scrollEntry->attr &= ~HU3D_TEXSCR_ATTR_POSMOVE;
+    scrollEntry->pos.x = posX;
+    scrollEntry->pos.y = posY;
+    scrollEntry->pos.z = posZ;
 }
 
+/* Enables position motion and stores each supplied translation delta multiplied by the current
+ * minimumVcount for each Hu3DAnimExec update. */
 void Hu3DTexScrollPosMoveSet(HU3D_TEXSCRID texScrId, float posX, float posY, float posZ)
 {
-    HU3D_TEXSCROLL *texScrP = &Hu3DTexScrData[texScrId];
-    texScrP->attr |= HU3D_TEXSCR_ATTR_POSMOVE;
-    texScrP->posMove.x = posX*minimumVcount;
-    texScrP->posMove.y = posY*minimumVcount;
-    texScrP->posMove.z = posZ*minimumVcount;
+    HU3D_TEXSCROLL *scrollEntry = &Hu3DTexScrData[texScrId];
+    scrollEntry->attr |= HU3D_TEXSCR_ATTR_POSMOVE;
+    scrollEntry->posMove.x = posX*minimumVcount;
+    scrollEntry->posMove.y = posY*minimumVcount;
+    scrollEntry->posMove.z = posZ*minimumVcount;
 }
 
+/* Called by texture-scroll clients to set an angle in degrees and stop rotation motion. */
 void Hu3DTexScrollRotSet(HU3D_TEXSCRID texScrId, float rot)
 {
-    HU3D_TEXSCROLL *texScrP = &Hu3DTexScrData[texScrId];
-    texScrP->attr &= ~HU3D_TEXSCR_ATTR_ROTMOVE;
-    texScrP->rot = rot;
+    HU3D_TEXSCROLL *scrollEntry = &Hu3DTexScrData[texScrId];
+    scrollEntry->attr &= ~HU3D_TEXSCR_ATTR_ROTMOVE;
+    scrollEntry->rot = rot;
 }
 
+/* Enables rotation motion and stores the supplied degree delta multiplied by the current
+ * minimumVcount for each Hu3DAnimExec update. */
 void Hu3DTexScrollRotMoveSet(HU3D_TEXSCRID texScrId, float rot)
 {
-    HU3D_TEXSCROLL *texScrP = &Hu3DTexScrData[texScrId];
-    texScrP->attr |= HU3D_TEXSCR_ATTR_ROTMOVE;
-    texScrP->rotMove = rot*minimumVcount;
+    HU3D_TEXSCROLL *scrollEntry = &Hu3DTexScrData[texScrId];
+    scrollEntry->attr |= HU3D_TEXSCR_ATTR_ROTMOVE;
+    scrollEntry->rotMove = rot*minimumVcount;
 }
 
-void Hu3DTexScrollPauseDisableSet(HU3D_TEXSCRID texScrId, BOOL pauseDiableF)
+/* Called by texture-scroll clients to choose whether scrolling continues during global pause. */
+void Hu3DTexScrollPauseDisableSet(HU3D_TEXSCRID texScrId, BOOL pauseDisable)
 {
-    HU3D_TEXSCROLL *texScrP = &Hu3DTexScrData[texScrId];
-    if(pauseDiableF) {
-        texScrP->attr |= HU3D_TEXSCR_ATTR_PAUSEDISABLE;
+    HU3D_TEXSCROLL *scrollEntry = &Hu3DTexScrData[texScrId];
+    if(pauseDisable) {
+        scrollEntry->attr |= HU3D_TEXSCR_ATTR_PAUSEDISABLE;
     } else {
-        texScrP->attr &= ~HU3D_TEXSCR_ATTR_PAUSEDISABLE;
+        scrollEntry->attr &= ~HU3D_TEXSCR_ATTR_PAUSEDISABLE;
     }
 }
 
 static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx);
 
-HU3D_MODELID Hu3DParticleCreate(ANIMDATA *anim, s16 maxCnt)
+/* Called by effect setup to create a model whose hook draws a fixed pool of animated particles. */
+HU3D_MODELID Hu3DParticleCreate(ANIMDATA *animationData, s16 maxParticleCount)
 {
     HU3D_MODELID modelId = Hu3DHookFuncCreate(particleFunc);
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP;
-    HU3D_PARTICLE_DATA *particleDataP;
-    s16 i;
-    HuVecF *vtxBuf;
-    void *dlBuf;
-    BOOL old;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle;
+    HU3D_PARTICLE_DATA *particleData;
+    s16 particleIndex;
+    HuVecF *vertexBuffer;
+    void *displayListBuffer;
+    BOOL interruptState;
     Hu3DModelAttrSet(modelId, HU3D_ATTR_PARTICLE);
-    modelP->hookData = particleP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_PARTICLE), modelP->mallocNo);
-    particleP->anim = anim;
-    anim->useNum++;
-    particleP->maxCnt = maxCnt;
-    particleP->blendMode = HU3D_PARTICLE_BLEND_NORMAL;
-    particleP->hook = NULL;
-    particleP->count = 0;
-    particleP->attr = HU3D_PARTICLE_ATTR_NONE;
-    particleP->prevCount = 0;
-    particleP->dataCnt = particleP->emitCnt = 0;
-    particleP->data = particleDataP = HuMemDirectMallocNum(HEAP_MODEL, maxCnt*sizeof(HU3D_PARTICLE_DATA), modelP->mallocNo);
-    particleP->prevCounter = -1;
-    for(i=0; i<maxCnt; i++, particleDataP++) {
-        particleDataP->scale = 0.0f;
-        particleDataP->attr = 0;
-        particleDataP->cameraBit = HU3D_CAM_ALL;
-        particleDataP->zRot = 0;
-        particleDataP->pos.x = ((frand()&0x7F)-64)*20;
-        particleDataP->pos.y = ((frand()&0x7F)-64)*30;
-        particleDataP->pos.z = ((frand()&0x7F)-64)*20;
-        particleDataP->color.r = particleDataP->color.g = particleDataP->color.b = particleDataP->color.a = 255;
+    model->hookData = particle =
+        HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_PARTICLE), model->mallocNo);
+    particle->anim = animationData;
+    animationData->useNum++;
+    particle->maxCnt = maxParticleCount;
+    particle->blendMode = HU3D_PARTICLE_BLEND_NORMAL;
+    particle->hook = NULL;
+    particle->count = 0;
+    particle->attr = HU3D_PARTICLE_ATTR_NONE;
+    particle->prevCount = 0;
+    particle->dataCnt = particle->emitCnt = 0;
+    particle->data = particleData = HuMemDirectMallocNum(
+        HEAP_MODEL, maxParticleCount * sizeof(HU3D_PARTICLE_DATA), model->mallocNo);
+    particle->prevCounter = -1;
+    for(particleIndex=0; particleIndex<maxParticleCount; particleIndex++, particleData++) {
+        particleData->scale = 0.0f;
+        particleData->attr = 0;
+        particleData->cameraBit = HU3D_CAM_ALL;
+        particleData->zRot = 0;
+        particleData->pos.x = ((frand()&0x7F)-64)*20;
+        particleData->pos.y = ((frand()&0x7F)-64)*30;
+        particleData->pos.z = ((frand()&0x7F)-64)*20;
+        particleData->color.r = particleData->color.g = particleData->color.b =
+            particleData->color.a = 255;
     }
-    particleP->vtxBuf = vtxBuf = HuMemDirectMallocNum(HEAP_MODEL, maxCnt*sizeof(HuVecF)*4, modelP->mallocNo);
-    for(i=0; i<maxCnt*4; i++, vtxBuf++) {
-        vtxBuf->x = vtxBuf->y = vtxBuf->z = 0;
+    particle->vtxBuf = vertexBuffer =
+        HuMemDirectMallocNum(HEAP_MODEL, maxParticleCount * sizeof(HuVecF) * 4, model->mallocNo);
+    for(particleIndex=0; particleIndex<maxParticleCount*4; particleIndex++, vertexBuffer++) {
+        vertexBuffer->x = vertexBuffer->y = vertexBuffer->z = 0;
     }
-    particleP->dlBuf = dlBuf =  HuMemDirectMallocNum(HEAP_MODEL, (maxCnt*96)+128, modelP->mallocNo);
-    DCInvalidateRange(dlBuf, (maxCnt*96)+128);
+    particle->dlBuf = displayListBuffer =
+        HuMemDirectMallocNum(HEAP_MODEL, (maxParticleCount * 96) + 128, model->mallocNo);
+    DCInvalidateRange(displayListBuffer, (maxParticleCount*96)+128);
     if(HuLoadProcModeGet()) {
-        old = OSDisableInterrupts();
+        interruptState = OSDisableInterrupts();
     }
-    GXBeginDisplayList(dlBuf, 0x20000);
-    GXBegin(GX_QUADS, GX_VTXFMT0, maxCnt*4);
-    for(i=0; i<maxCnt; i++) {
-        GXPosition1x16(i*4);
-        GXColor1x16(i);
+    /* GX receives a fixed display-list capacity; the backing buffer is sized from the
+     * particle count. */
+    GXBeginDisplayList(displayListBuffer, PARTICLE_DISPLAY_LIST_MAX_SIZE);
+    GXBegin(GX_QUADS, GX_VTXFMT0, maxParticleCount*4);
+    for(particleIndex=0; particleIndex<maxParticleCount; particleIndex++) {
+        GXPosition1x16(particleIndex*4);
+        GXColor1x16(particleIndex);
         GXTexCoord1x16(0);
-        GXPosition1x16((i*4)+1);
-        GXColor1x16(i);
+        GXPosition1x16((particleIndex*4)+1);
+        GXColor1x16(particleIndex);
         GXTexCoord1x16(1);
-        GXPosition1x16((i*4)+2);
-        GXColor1x16(i);
+        GXPosition1x16((particleIndex*4)+2);
+        GXColor1x16(particleIndex);
         GXTexCoord1x16(2);
-        GXPosition1x16((i*4)+3);
-        GXColor1x16(i);
+        GXPosition1x16((particleIndex*4)+3);
+        GXColor1x16(particleIndex);
         GXTexCoord1x16(3);
     }
     GXEnd();
-    particleP->dlSize = GXEndDisplayList();
+    particle->dlSize = GXEndDisplayList();
     if(HuLoadProcModeGet()) {
-        OSRestoreInterrupts(old);
+        OSRestoreInterrupts(interruptState);
     }
     return modelId;
 }
 
-
+/* Called by effect clients to set the scale of every particle in a model's pool. */
 void Hu3DParticleScaleSet(HU3D_MODELID modelId, float scale)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    HU3D_PARTICLE_DATA *particleDataP;
-    s16 i;
-    for(particleDataP=particleP->data, i=0; i<particleP->maxCnt; i++, particleDataP++) {
-        particleDataP->scale = scale;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    HU3D_PARTICLE_DATA *particleData;
+    s16 particleIndex;
+    for (particleData = particle->data, particleIndex = 0; particleIndex < particle->maxCnt;
+         particleIndex++, particleData++) {
+        particleData->scale = scale;
     }
 }
 
-void Hu3DParticleZRotSet(HU3D_MODELID modelId, float zRot)
+/* Called by effect clients to set every particle's rotation around the Z axis in radians. */
+void Hu3DParticleZRotSet(HU3D_MODELID modelId, float zRotation)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    HU3D_PARTICLE_DATA *particleDataP;
-    s16 i;
-    for(particleDataP=particleP->data, i=0; i<particleP->maxCnt; i++, particleDataP++) {
-        particleDataP->zRot = zRot;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    HU3D_PARTICLE_DATA *particleData;
+    s16 particleIndex;
+    for (particleData = particle->data, particleIndex = 0; particleIndex < particle->maxCnt;
+         particleIndex++, particleData++) {
+        particleData->zRot = zRotation;
     }
 }
 
-void Hu3DParticleColSet(HU3D_MODELID modelId, u8 r, u8 g, u8 b)
+/* Called by effect clients to set the RGB color of every particle; alpha is left unchanged. */
+void Hu3DParticleColSet(HU3D_MODELID modelId, u8 red, u8 green, u8 blue)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    HU3D_PARTICLE_DATA *particleDataP;
-    s16 i;
-    for(particleDataP=particleP->data, i=0; i<particleP->maxCnt; i++, particleDataP++) {
-        particleDataP->color.r = r;
-        particleDataP->color.g = g;
-        particleDataP->color.b = b;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    HU3D_PARTICLE_DATA *particleData;
+    s16 particleIndex;
+    for (particleData = particle->data, particleIndex = 0; particleIndex < particle->maxCnt;
+         particleIndex++, particleData++) {
+        particleData->color.r = red;
+        particleData->color.g = green;
+        particleData->color.b = blue;
     }
 }
 
-void Hu3DParticleTPLvlSet(HU3D_MODELID modelId, float tpLvl)
+/* Called by effect clients to set each particle's 8-bit alpha from a normalized level. */
+void Hu3DParticleTPLvlSet(HU3D_MODELID modelId, float alphaLevel)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    HU3D_PARTICLE_DATA *particleDataP;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    HU3D_PARTICLE_DATA *particleData;
     u8 alpha;
-    s16 i;
-    for(particleDataP=particleP->data, alpha=tpLvl*255, i=0; i<particleP->maxCnt; i++, particleDataP++) {
-        particleDataP->color.a = alpha;
+    s16 particleIndex;
+    for (particleData = particle->data, alpha = alphaLevel * 255, particleIndex = 0;
+         particleIndex < particle->maxCnt; particleIndex++, particleData++) {
+        particleData->color.a = alpha;
     }
 }
 
+/* Called by effect clients to select the GX blend mode for the particle model. */
 void Hu3DParticleBlendModeSet(HU3D_MODELID modelId, u8 blendMode)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    particleP->blendMode = blendMode;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    particle->blendMode = blendMode;
 }
 
+/* Installs a draw callback gated by GlobalCounter and global pause, with NOPAUSE allowing paused
+ * updates. Shadow draws do not mark the callback as already run. */
 void Hu3DParticleHookSet(HU3D_MODELID modelId, HU3D_PARTICLE_HOOK hook)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    particleP->hook = hook;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    particle->hook = hook;
 }
 
+/* Called by effect clients to enable selected particle behavior flags. */
 void Hu3DParticleAttrSet(HU3D_MODELID modelId, u8 attr)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    particleP->attr |= attr;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    particle->attr |= attr;
 }
 
+/* Called by effect clients to clear selected particle behavior flags. */
 void Hu3DParticleAttrReset(HU3D_MODELID modelId, u8 attr)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    particleP->attr &= ~attr;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    particle->attr &= ~attr;
 }
 
+/* Called by effect clients to set the particle model's counter, updated per non-shadow draw. */
 void Hu3DParticleCntSet(HU3D_MODELID modelId, s16 count)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    particleP->count = count;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    particle->count = count;
 }
 
+/* Called by effect clients to enable particle sprite animation and select its starting bank. */
 void Hu3DParticleAnimModeSet(HU3D_MODELID modelId, s16 animBank)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
-    HU3D_PARTICLE *particleP = modelP->hookData;
-    particleP->attr |= HU3D_PARTICLE_ATTR_ANIMON;
-    particleP->animBank = animBank;
-    particleP->animTime = 0;
-    particleP->animNo = 0;
-    particleP->animSpeed = 1;
+    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_PARTICLE *particle = model->hookData;
+    particle->attr |= HU3D_PARTICLE_ATTR_ANIMON;
+    particle->animBank = animBank;
+    particle->animTime = 0;
+    particle->animNo = 0;
+    particle->animSpeed = 1;
 }
 
 static Vec basePos[] = {
@@ -670,6 +754,8 @@ static HuVec2f baseST[] = {
     { 0.0f, 1.0f },
 };
 
+/* Model hook builds and draws particle quads. Its counter increments on each non-shadow draw
+* while unpaused and STOPCNT is clear; NOPAUSE does not override this counter pause check. */
 static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx)
 {
     HuVecF *vtxBuf;
@@ -694,8 +780,8 @@ static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx)
     HuVecF finalVtx[4];
     HuVecF initVtx[4];
     ROMtx basePosMtx;
-    HuVecF sp8;
-    
+    HuVecF unusedVector;
+
     particleP = modelP->hookData;
     anim = particleP->anim;
     if(HmfInverseMtxF3X3(*mtx, mtxInv) == FALSE) {
@@ -713,8 +799,9 @@ static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx)
     particleDataP = particleP->data;
     vtxBuf = particleP->vtxBuf;
     PSMTXROMultVecArray(basePosMtx, &basePos[0], initVtx, 4);
-    sp8.z = 1;
-    
+    /* This component is assigned, but the vector is not read in the draw path. */
+    unusedVector.z = 1;
+
     for(i=0, dispF=FALSE; i<particleP->maxCnt; i++, particleDataP++) {
         if(particleDataP->scale && (particleDataP->cameraBit & Hu3DCameraBit)) {
             if(particleDataP->attr & HU3D_PARTICLE_ATTR_SCALEY) {
@@ -797,6 +884,8 @@ static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx)
             } else {
                 GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO);
             }
+            /* Particle depth writes are enabled when ZWRITE_OFF is set and disabled when it is
+             * clear. */
             if(modelP->attr & HU3D_ATTR_ZWRITE_OFF) {
                 GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
             } else {
@@ -807,12 +896,16 @@ static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx)
         GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_TEXA, GX_CA_RASA, GX_CA_ZERO);
         GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
         GXSetNumChans(1);
-        GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
+        GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_CLAMP,
+                      GX_AF_NONE);
         if(particleP->attr & HU3D_PARTICLE_ATTR_ANIMON) {
             animBank = &anim->bank[particleP->animBank];
             animFrame = &animBank->frame[particleP->animNo];
             animPat = &anim->pat[animFrame->pat];
-            HuSprTexLoad(particleP->anim, animPat->layer->bmpNo, GX_TEXMAP0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
+            HuSprTexLoad(particleP->anim, animPat->layer->bmpNo, GX_TEXMAP0, GX_CLAMP, GX_CLAMP,
+                         GX_LINEAR);
+            /* Sprite time advances on every draw with visible particles, including shadow and
+             * additional camera passes, when unpaused or NOPAUSE is set. */
             if(Hu3DPauseF == FALSE || (modelP->attr & HU3D_ATTR_NOPAUSE)) {
                 for(i=0; i<(s32)particleP->animSpeed*minimumVcount; i++) {
                     particleP->animTime += 1.0f;
@@ -870,6 +963,7 @@ static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx)
         GXSetVtxDesc(GX_VA_TEX0, GX_INDEX16);
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
         GXSetArray(GX_VA_TEX0, baseST, sizeof(HuVec2f));
+        /* Submit and count the whole pool, including zero-sized quads for hidden particles. */
         GXCallDisplayList(particleP->dlBuf, particleP->dlSize);
         totalPolyCnt += particleP->maxCnt;
     }
@@ -878,6 +972,8 @@ static void particleFunc(HU3D_MODEL *modelP, Mtx *mtx)
             particleP->count++;
         }
         if(particleP->prevCount != 0 && particleP->prevCount <= particleP->count) {
+            /* RESETCNT's zero assignment is overwritten below; reaching prevCount always
+             * leaves count at prevCount. */
             if(particleP->attr & HU3D_PARTICLE_ATTR_RESETCNT) {
                 particleP->count = 0;
             }
@@ -896,10 +992,10 @@ static float jitterTbl[] = {
     0.5f, 0.7f, 0.9f, 1.0f
 };
 
-
 static void ParManFunc();
 static void ParManHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx mtx);
 
+/* Clears manager process slots during 3D particle-system initialization. */
 void Hu3DParManInit(void)
 {
     s16 i;
@@ -908,7 +1004,8 @@ void Hu3DParManInit(void)
     }
 }
 
-static void Hu3DParManParticleInit(HU3D_MODELID modelId, s16 dataCnt, float scale)
+/* Installs the manager's draw callback and initializes its particle pool. */
+static void Hu3DParManParticleInit(HU3D_MODELID modelId, s16 ownerParManId, float scale)
 {
     HU3D_MODEL *modelP;
     HU3D_PARTICLE *particleP;
@@ -917,12 +1014,13 @@ static void Hu3DParManParticleInit(HU3D_MODELID modelId, s16 dataCnt, float scal
     Hu3DParticleHookSet(modelId, ParManHook);
     modelP = &Hu3DData[modelId];
     particleP = modelP->hookData;
-    particleP->dataCnt = dataCnt;
+    particleP->dataCnt = ownerParManId;
     for(particleDataP=particleP->data, i=0; i<particleP->maxCnt; i++, particleDataP++) {
         particleDataP->scale = scale;
     }
 }
 
+/* Creates a particle model and manager process using the supplied emission parameters. */
 HU3D_PARMANID Hu3DParManCreate(ANIMDATA *anim, s16 maxCnt, HU3D_PARMAN_PARAM *param)
 {
     HU3D_PARMANID parManId;
@@ -937,10 +1035,11 @@ HU3D_PARMANID Hu3DParManCreate(ANIMDATA *anim, s16 maxCnt, HU3D_PARMAN_PARAM *pa
         return HU3D_PARMANID_NONE;
     }
     modelId = Hu3DParticleCreate(anim, maxCnt);
-    
+
     Hu3DParManParticleInit(modelId, parManId, 0.0f);
     parManProc[parManId] = HuPrcCreate(ParManFunc, 0, 4096, 0);
-    parManProc[parManId]->property = parManP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(HU3D_PARMAN), HU_MEMNUM_OVL);
+    parManProc[parManId]->property = parManP =
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(HU3D_PARMAN), HU_MEMNUM_OVL);
     parManP->modelId = modelId;
     parManP->param = param;
     parManP->attr = HU3D_PARMAN_ATTR_NONE;
@@ -958,6 +1057,7 @@ HU3D_PARMANID Hu3DParManCreate(ANIMDATA *anim, s16 maxCnt, HU3D_PARMAN_PARAM *pa
     return parManId;
 }
 
+/* Creates a manager process that shares the source manager's particle model. */
 HU3D_PARMANID Hu3DParManLink(HU3D_PARMANID linkParManId, HU3D_PARMAN_PARAM *param)
 {
     HU3D_PARMANID parManId;
@@ -973,7 +1073,8 @@ HU3D_PARMANID Hu3DParManLink(HU3D_PARMANID linkParManId, HU3D_PARMAN_PARAM *para
     }
     linkParManP = parManProc[linkParManId]->property;
     parManProc[parManId] = HuPrcCreate(ParManFunc, 100, 4096, 0);
-    parManProc[parManId]->property = parManP = HuMemDirectMallocNum(HEAP_HEAP, sizeof(HU3D_PARMAN), HU_MEMNUM_OVL);
+    parManProc[parManId]->property = parManP =
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(HU3D_PARMAN), HU_MEMNUM_OVL);
     parManP->modelId = linkParManP->modelId;
     parManP->param = param;
     parManP->attr = HU3D_PARMAN_ATTR_NONE;
@@ -991,6 +1092,7 @@ HU3D_PARMANID Hu3DParManLink(HU3D_PARMANID linkParManId, HU3D_PARMAN_PARAM *para
     return parManId;
 }
 
+/* Stops one manager, hides its particles, and kills its model when no peers use it. */
 void Hu3DParManKill(HU3D_PARMANID parManId)
 {
     HU3D_PARMAN *parManLinkP;
@@ -1007,7 +1109,7 @@ void Hu3DParManKill(HU3D_PARMANID parManId)
         }
         for(i=0; i<HU3D_PARMAN_MAX; i++) {
             if(!parManProc[i]) {
-                continue;;
+                continue;
             }
             if(i != parManId) {
                 parManLinkP = parManProc[i]->property;
@@ -1019,13 +1121,16 @@ void Hu3DParManKill(HU3D_PARMANID parManId)
         if(i == HU3D_PARMAN_MAX) {
             Hu3DModelKill(parManP->modelId);
         }
+        /* If this is the callback owner and peers keep the model alive, dataCnt still names
+         * this manager's slot after it is cleared below. */
         HuPrcKill(parManProc[parManId]);
         parManProc[parManId] = NULL;
         HuMemDirectFree(parManP);
     }
-    
+
 }
 
+/* Stops every active manager during particle-effect teardown. */
 void Hu3DParManAllKill(void)
 {
     HU3D_PARMANID parManId;
@@ -1036,11 +1141,14 @@ void Hu3DParManAllKill(void)
     }
 }
 
+/* Returns the manager state stored in its process property. */
 HU3D_PARMAN *Hu3DParManPtrGet(HU3D_PARMANID parManId)
 {
     return parManProc[parManId]->property;
 }
 
+/* Sets the emission origin in the particle model's coordinates; the model transform places
+ * emitted particles in world space. */
 void Hu3DParManPosSet(HU3D_PARMANID parManId, float posX, float posY, float posZ)
 {
     HU3D_PARMAN *parManP = parManProc[parManId]->property;
@@ -1049,6 +1157,7 @@ void Hu3DParManPosSet(HU3D_PARMANID parManId, float posX, float posY, float posZ
     parManP->pos.z = posZ;
 }
 
+/* Sets the direction vector used for particle emission. */
 void Hu3DParManVecSet(HU3D_PARMANID parManId, float x, float y, float z)
 {
     HU3D_PARMAN *parManP = parManProc[parManId]->property;
@@ -1057,6 +1166,7 @@ void Hu3DParManVecSet(HU3D_PARMANID parManId, float x, float y, float z)
     parManP->vec.z = z;
 }
 
+/* Converts Euler angles to the manager's emission direction vector. */
 void Hu3DParManRotSet(HU3D_PARMANID parManId, float rotX, float rotY, float rotZ)
 {
     HU3D_PARMAN *parManP = parManProc[parManId]->property;
@@ -1067,30 +1177,36 @@ void Hu3DParManRotSet(HU3D_PARMANID parManId, float rotX, float rotY, float rotZ
     parManP->vec.z = rotMtx[2][2];
 }
 
+/* Enables behavior flags on a particle manager. */
 void Hu3DParManAttrSet(HU3D_PARMANID parManId, s32 attr)
 {
     HU3D_PARMAN *parManP = parManProc[parManId]->property;
     parManP->attr |= attr;
 }
 
+/* Clears selected behavior flags on a particle manager. */
 void Hu3DParManAttrReset(HU3D_PARMANID parManId, s32 attr)
 {
     HU3D_PARMAN *parManP = parManProc[parManId]->property;
     parManP->attr &= ~attr;
 }
 
+/* Returns the particle model shared by this manager. */
 HU3D_MODELID Hu3DParManModelIDGet(HU3D_PARMANID parManId)
 {
     HU3D_PARMAN *parManP = parManProc[parManId]->property;
     return parManP->modelId;
 }
 
+/* Sets the emission countdown; zero disables countdown updates. This does not clear TIMEUP, so a
+ * stopped manager must have that flag cleared separately. */
 void Hu3DParManTimeLimitSet(HU3D_PARMANID parManId, s32 timeLimit)
 {
     HU3D_PARMAN *parManP = parManProc[parManId]->property;
     parManP->timeLimit = timeLimit;
 }
 
+/* Enables vacuum behavior and sets its target position and acceleration speed. */
 void Hu3DParManVacumeSet(HU3D_PARMANID parManId, float x, float y, float z, float speed)
 {
     HU3D_PARMAN *parManP;
@@ -1102,6 +1218,7 @@ void Hu3DParManVacumeSet(HU3D_PARMANID parManId, float x, float y, float z, floa
     parManP->vacuumSpeed = speed;
 }
 
+/* Enables a fixed color-table index for particles emitted by this manager. */
 void Hu3DParManColorSet(HU3D_PARMANID parManId, s16 color)
 {
     HU3D_PARMAN *parManP;
@@ -1110,11 +1227,13 @@ void Hu3DParManColorSet(HU3D_PARMANID parManId, s16 color)
     parManP->color = color;
 }
 
+/* Sets the render layer on the manager's shared particle model. */
 void Hu3DParManLayerSet(HU3D_PARMANID parManId, s16 layer)
 {
     Hu3DModelLayerSet(Hu3DParManModelIDGet(parManId), layer);
 }
 
+/* Manager process emits particles at the configured rate and sleeps each frame. */
 static void ParManFunc()
 {
     HUPROCESS *processP;
@@ -1125,14 +1244,14 @@ static void ParManFunc()
     HU3D_PARTICLE_DATA *particleDataP;
     HU3D_PARTICLE_DATA *particleDataEnd;
     Vec vecDir;
-    Vec vel;
+    Vec spawnOffset;
     Vec dir;
     Vec up;
     float c;
     float s;
     float angleStart;
     float upRot;
-    float accelVal;
+    float emissionRate;
     float rot;
     s16 colorIdx;
     s16 circleIdx;
@@ -1146,16 +1265,22 @@ static void ParManFunc()
             HuPrcVSleep();
             continue;
         }
+        /* Manager PAUSE freezes particle motion, decay, and age in ParManHook, but scale jitter
+         * continues; emission here continues unless TIMEUP is set. */
         particleP = modelP->hookData;
         particleDataP = particleP->data;
+        /* RANDTIME90 and RANDTIME70 truncate accelRange before computing their random-span
+         * bounds. */
         if(parManP->attr & HU3D_PARMAN_ATTR_RANDTIME90) {
-            accelVal = param->accelRange*0.9+frandmod((u32)param->accelRange*0.1*1000.0)/1000.0f;
+            emissionRate = param->accelRange * 0.9 +
+                           frandmod((u32) param->accelRange * 0.1 * 1000.0) / 1000.0f;
         } else if(parManP->attr & HU3D_PARMAN_ATTR_RANDTIME70) {
-            accelVal = param->accelRange*0.7+frandmod((u32)param->accelRange*0.3*1000.0)/1000.0f;
+            emissionRate = param->accelRange * 0.7 +
+                           frandmod((u32) param->accelRange * 0.3 * 1000.0) / 1000.0f;
         } else {
-            accelVal = param->accelRange;
+            emissionRate = param->accelRange;
         }
-        parManP->accel += accelVal;
+        parManP->accel += emissionRate;
         circleIdx = 0;
         particleDataEnd = &particleP->data[particleP->maxCnt];
         if(parManP->attr & HU3D_PARMAN_ATTR_RANDANGLE) {
@@ -1176,17 +1301,17 @@ static void ParManFunc()
                         particleDataP->scaleBase = s;
                         particleDataP->scale = s;
                         particleDataP->pos = parManP->pos;
-                        vel.x = frandmod((u32)(param->scaleRange*2.0f))-param->scaleRange;
-                        vel.y = frandmod((u32)(param->scaleRange*2.0f))-param->scaleRange;
-                        vel.z = frandmod((u32)(param->scaleRange*2.0f))-param->scaleRange;
-                        if(HuMag2Point3D(vel.x, vel.y, vel.z) == 0) {
-                            vel.x = vel.y = vel.z = 0;
-                        } else { 
-                            VECNormalize(&vel, &vel);
+                        spawnOffset.x = frandmod((u32)(param->scaleRange*2.0f))-param->scaleRange;
+                        spawnOffset.y = frandmod((u32)(param->scaleRange*2.0f))-param->scaleRange;
+                        spawnOffset.z = frandmod((u32)(param->scaleRange*2.0f))-param->scaleRange;
+                        if(HuMag2Point3D(spawnOffset.x, spawnOffset.y, spawnOffset.z) == 0) {
+                            spawnOffset.x = spawnOffset.y = spawnOffset.z = 0;
+                        } else {
+                            VECNormalize(&spawnOffset, &spawnOffset);
                         }
-                        
-                        VECScale(&vel, &vel, param->scaleRange);
-                        VECAdd(&vel, &particleDataP->pos, &particleDataP->pos);
+
+                        VECScale(&spawnOffset, &spawnOffset, param->scaleRange);
+                        VECAdd(&spawnOffset, &particleDataP->pos, &particleDataP->pos);
                         VECNormalize(&parManP->vec, &vecDir);
                         if(parManP->attr & HU3D_PARMAN_ATTR_RANDANGLE) {
                             upRot = angleStart+(360.0f/param->accelRange)*circleIdx;
@@ -1277,6 +1402,7 @@ static void ParManFunc()
     }
 }
 
+/* Particle draw callback advances motion, color, scale, vacuum, and jitter state. */
 static void ParManHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx mtx)
 {
     HU3D_PARMAN_PARAM *param;
@@ -1297,7 +1423,8 @@ static void ParManHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx mtx)
                 parManP = parManProc[particleDataP->parManId]->property;
                 param = parManP->param;
                 if(parManP->attr & HU3D_PARMAN_ATTR_SCALEJITTER) {
-                    particleDataP->scale = particleDataP->scaleBase*jitterTbl[(parManP->jitterNo+i)&7];
+                    particleDataP->scale =
+                        particleDataP->scaleBase * jitterTbl[(parManP->jitterNo + i) & 7];
                 } else {
                     particleDataP->scale = particleDataP->scaleBase;
                 }
@@ -1363,7 +1490,10 @@ static float waterWaveTexMtx[2][3] = {
 static void CopyWaterFb(s16 layerNo);
 static void WaterLayerHook(s16 layerNo);
 
-void Hu3DWaterCreate(s16 layerNo, void *animBump, void *animSurface, void *animSky, BOOL mipMapF, HuVecF *posMin, HuVecF *posMax)
+/* Allocates water textures and installs layer callbacks. HU3D_WATER_ANIM_NONE selects built-in
+ * textures; NULL omits surface or sky, but rendering requires a bump animation. */
+void Hu3DWaterCreate(s16 layerNo, void *animBump, void *animSurface, void *animSky, BOOL mipMapF,
+                     HuVecF *posMin, HuVecF *posMax)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
     s16 fbWaterW;
@@ -1377,8 +1507,12 @@ void Hu3DWaterCreate(s16 layerNo, void *animBump, void *animSurface, void *animS
         fbWaterW = HU_FB_WIDTH;
         fbWaterH = HU_FB_HEIGHT;
     }
-    waterP->fbWater = HuMemDirectMallocNum(HEAP_MODEL, GXGetTexBufferSize(fbWaterW, fbWaterH, GX_TF_RGB565, GX_FALSE, 0), HU_MEMNUM_OVL);
-    waterP->fbDisp = HuMemDirectMallocNum(HEAP_MODEL, GXGetTexBufferSize(HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, GX_FALSE, 0), HU_MEMNUM_OVL);
+    waterP->fbWater = HuMemDirectMallocNum(
+        HEAP_MODEL, GXGetTexBufferSize(fbWaterW, fbWaterH, GX_TF_RGB565, GX_FALSE, 0),
+        HU_MEMNUM_OVL);
+    waterP->fbDisp = HuMemDirectMallocNum(
+        HEAP_MODEL, GXGetTexBufferSize(HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, GX_FALSE, 0),
+        HU_MEMNUM_OVL);
     if(layerNo >= HU3D_LAYER_HOOK_POST) {
         layerNo -= HU3D_LAYER_HOOK_POST;
     }
@@ -1409,6 +1543,7 @@ void Hu3DWaterCreate(s16 layerNo, void *animBump, void *animSurface, void *animS
     }
     waterP->posMin = *posMin;
     waterP->posMax = *posMax;
+    /* unk7C is never read by the game's code, so it keeps its offset name. */
     waterP->hiliteCol.r = waterP->hiliteCol.g = waterP->hiliteCol.b = 76;
     waterP->hiliteCol.a = 25;
     waterP->glowCol.r = waterP->glowCol.g = waterP->glowCol.b = waterP->glowCol.a = 255;
@@ -1425,6 +1560,7 @@ void Hu3DWaterCreate(s16 layerNo, void *animBump, void *animSurface, void *animS
     layerNo += HU3D_LAYER_HOOK_POST;
     waterP->layerNo = layerNo;
     waterP->cameraBit = HU3D_CAM0;
+    /* Reset this water-state slot when installing the water effect. */
     waterP->unk7C = 0;
     waterP->animWave = NULL;
     waterP->maxTime = 60;
@@ -1434,6 +1570,7 @@ void Hu3DWaterCreate(s16 layerNo, void *animBump, void *animSurface, void *animS
     Hu3DLayerHookSet(layerNo, WaterLayerHook);
 }
 
+/* Sets translation of the texture coordinates used to sample the water bump map. */
 void Hu3DWaterTexPosSet(float posX, float posY, float posZ)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
@@ -1442,6 +1579,7 @@ void Hu3DWaterTexPosSet(float posX, float posY, float posZ)
     waterP->texPos.z = posZ;
 }
 
+/* Sets scale of the texture coordinates used to sample the water bump map. */
 void Hu3DWaterTexScaleSet(float scaleX, float scaleY, float scaleZ)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
@@ -1450,12 +1588,15 @@ void Hu3DWaterTexScaleSet(float scaleX, float scaleY, float scaleZ)
     waterP->texScale.z = scaleZ;
 }
 
+/* Sets the world-space Y offset of the framebuffer capture and restore quad; the final water
+ * surface stays at its original height. */
 void Hu3DWaterPadYSet(float padY)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
     waterP->padY = padY;
 }
 
+/* Sets the water glow color and GX combine mode. */
 void Hu3DWaterGlowSet(s16 glowMode, GXColor *glowCol)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
@@ -1466,6 +1607,7 @@ void Hu3DWaterGlowSet(s16 glowMode, GXColor *glowCol)
     waterP->glowMode = glowMode;
 }
 
+/* Replaces the water's 2-by-3 indirect-texture distortion matrix. */
 void Hu3DWaterIndTexMtxSet(float texMtx[2][3])
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
@@ -1478,29 +1620,36 @@ void Hu3DWaterIndTexMtxSet(float texMtx[2][3])
     }
 }
 
+/* Sets the RGB intensity of the water highlight from a normalized level. */
 void Hu3DWaterHiliteSet(float level)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
     waterP->hiliteCol.r = waterP->hiliteCol.g = waterP->hiliteCol.b = level*255;
 }
 
+/* Sets the highlight alpha from a normalized transparency level. */
 void Hu3DWaterHiliteTPLvlSet(float tpLvl)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
     waterP->hiliteCol.a = tpLvl*255;
 }
 
+/* Selects which camera view renders the water effect. */
 void Hu3DWaterCameraSet(u16 cameraBit)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
     waterP->cameraBit = cameraBit;
 }
 
+/* Starts a free wave slot at pos; radius and radiusMax specify its initial and final quad
+ * widths. */
 void Hu3DWaterWaveCreate(HuVecF *pos, float radius, float radiusMax)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
     s16 i;
     s16 j;
+    /* On first use, load the wave texture and close the effect archive before checking for a
+     * free wave slot. */
     if(!waterP->animWave) {
         waterP->animWave = HuSprAnimDataRead(EFFECT_ANM_water_wave);
         HuDataDirClose(DATA_effect);
@@ -1517,6 +1666,7 @@ void Hu3DWaterWaveCreate(HuVecF *pos, float radius, float radiusMax)
     waterP->wave[i].pos = *pos;
     waterP->wave[i].radius = radius;
     waterP->wave[i].radiusMax = radiusMax;
+    /* The selected slot index is overwritten; this initializes matrix entries for slots 0 and 1. */
     for(i=0; i<2; i++) {
         for(j=0; j<3; j++) {
             waterP->wave[i].texMtx[i][j] = waterWaveTexMtx[i][j];
@@ -1524,6 +1674,7 @@ void Hu3DWaterWaveCreate(HuVecF *pos, float radius, float radiusMax)
     }
 }
 
+/* Pre-water layer callback captures the current framebuffer into the water texture. */
 static void CopyWaterFb(s16 layerNo)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
@@ -1542,6 +1693,7 @@ static void CopyWaterFb(s16 layerNo)
 static void DrawQuad(HuVecF *min, HuVecF *max);
 static void DrawWave(HU3D_WATER *waterP, s16 waveNo);
 
+/* Post-layer callback composites reflection, water surface, highlights, and active waves. */
 static void WaterLayerHook(s16 layerNo)
 {
     HU3D_WATER *waterP = &Hu3DWaterData;
@@ -1558,12 +1710,13 @@ static void WaterLayerHook(s16 layerNo)
     s32 tevStage;
     float diffLen;
     s32 i;
-    
+
     if(!(waterP->cameraBit & Hu3DCameraBit)) {
         return;
     }
     Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, GX_FALSE, waterP->fbDisp);
-    Hu3DTexLoad(waterP->fbWater, waterP->fbWaterW, waterP->fbWaterH, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, TRUE, GX_TEXMAP0);
+    Hu3DTexLoad(waterP->fbWater, waterP->fbWaterW, waterP->fbWaterH, GX_TF_RGB565, GX_CLAMP,
+                GX_CLAMP, TRUE, GX_TEXMAP0);
     GXSetNumTexGens(1);
     GXSetNumTevStages(1);
     MTXLightPerspective(proj, cameraP->fov, cameraP->aspect, 0.5f, -0.5f, 0.5f, 0.5f);
@@ -1587,10 +1740,12 @@ static void WaterLayerHook(s16 layerNo)
     posMax.y += waterP->padY;
     DrawQuad(&posMin, &posMax);
     Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, waterP->mipMapF, waterP->fbWater);
-    Hu3DTexLoad(waterP->fbDisp, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, TRUE, GX_TEXMAP0);
+    Hu3DTexLoad(waterP->fbDisp, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, TRUE,
+                GX_TEXMAP0);
     GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
     DrawQuad(&posMin, &posMax);
-    Hu3DTexLoad(waterP->fbWater, waterP->fbWaterW, waterP->fbWaterH, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, TRUE, GX_TEXMAP0);
+    Hu3DTexLoad(waterP->fbWater, waterP->fbWaterW, waterP->fbWaterH, GX_TF_RGB565, GX_CLAMP,
+                GX_CLAMP, TRUE, GX_TEXMAP0);
     HuSprTexLoad(waterP->animBump, 0, GX_TEXMAP1, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     if(waterP->animSky) {
         HuSprTexLoad(waterP->animSky, 0, GX_TEXMAP2, GX_REPEAT, GX_REPEAT, GX_LINEAR);
@@ -1697,14 +1852,19 @@ static void WaterLayerHook(s16 layerNo)
     GXSetTexCoordScaleManually(GX_TEXCOORD0, GX_FALSE, 0, 0);
 }
 
-void Hu3DTexLoad(void *buf, s16 w, s16 h, u32 format, GXTexWrapMode wrapS, GXTexWrapMode wrapT, BOOL filterF, GXTexMapID texMapId)
+/* Initializes and binds a texture object, selecting linear or nearest filtering. */
+void Hu3DTexLoad(void *buf, s16 w, s16 h, u32 format, GXTexWrapMode wrapS, GXTexWrapMode wrapT,
+                 BOOL filterF, GXTexMapID texMapId)
 {
     GXTexObj texObj;
     GXInitTexObj(&texObj, buf, w, h, format, wrapS, wrapT, GX_FALSE);
-    GXInitTexObjLOD(&texObj, (filterF) ? GX_LINEAR : GX_NEAR, (filterF) ? GX_LINEAR : GX_NEAR, 0, 0, 0, GX_FALSE, GX_FALSE, GX_ANISO_1);
+    GXInitTexObjLOD(&texObj, (filterF) ? GX_LINEAR : GX_NEAR, (filterF) ? GX_LINEAR : GX_NEAR, 0, 0,
+                    0, GX_FALSE, GX_FALSE, GX_ANISO_1);
     GXLoadTexObj(&texObj, texMapId);
 }
 
+/* Emits a textured quad across the supplied X/Z bounds, using min->y at min->x and max->y at
+ * max->x. */
 static void DrawQuad(HuVecF *min, HuVecF *max)
 {
     GXClearVtxDesc();
@@ -1725,6 +1885,8 @@ static void DrawQuad(HuVecF *min, HuVecF *max)
     GXEnd();
 }
 
+/* Called by WaterLayerHook for each selected camera to draw a wave, advance its age even during
+ * pause, and free its slot when age exceeds maxTime. */
 static void DrawWave(HU3D_WATER *waterP, s16 waveNo)
 {
     HU3D_WATERWAVE *waveP = &waterP->wave[waveNo];
@@ -1741,10 +1903,11 @@ static void DrawWave(HU3D_WATER *waterP, s16 waveNo)
     HuVecF max;
     float size;
     float len;
-    
+
     GXColor color;
-    
-    Hu3DTexLoad(waterP->fbWater, waterP->fbWaterW, waterP->fbWaterH, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, TRUE, GX_TEXMAP0);
+
+    Hu3DTexLoad(waterP->fbWater, waterP->fbWaterW, waterP->fbWaterH, GX_TF_RGB565, GX_CLAMP,
+                GX_CLAMP, TRUE, GX_TEXMAP0);
     HuSprTexLoad(waterP->animWave, 0, GX_TEXMAP1, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     if(waterP->animSky) {
         HuSprTexLoad(waterP->animSky, 0, GX_TEXMAP2, GX_REPEAT, GX_REPEAT, GX_LINEAR);
@@ -1803,6 +1966,8 @@ static void DrawWave(HU3D_WATER *waterP, s16 waveNo)
     MTXScale(texScale, waterP->texScale.x, waterP->texScale.y, waterP->texScale.z);
     MTXConcat(texScale, texTrans, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX3, GX_MTX2x4);
+    /* Wave sampling uses matrix 2 left by WaterLayerHook; the matrix just loaded into matrix 3
+     * is not selected here. */
     GXSetTexCoordGen(GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX2);
     GXSetIndTexOrder(GX_INDTEXSTAGE0, GX_TEXCOORD3, GX_TEXMAP1);
     GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
@@ -1840,44 +2005,50 @@ static void DrawWave(HU3D_WATER *waterP, s16 waveNo)
 }
 
 typedef struct ModelDieWork_s {
-    HU3D_MODELID modelId;
-    u32 file;
+    HU3D_MODELID modelId; /* Model whose motion controls its automatic lifetime. */
+    u32 memoryFileId; /* Memory-file identity captured when the model's lifetime process is
+                       * created. */
 } MODEL_DIE_WORK;
 
 static void ModelDieFunc(void);
 
+/* Creates a model whose process kills it after its motion ends. */
 HU3D_MODELID Hu3DModelDieCreate(void *data)
 {
     HU3D_MODELID modelId = Hu3DModelCreate(data);
     MODEL_DIE_WORK *work;
     HUPROCESS *process;
     HU3D_MODEL *modelP;
-    
+
     modelP = &Hu3DData[modelId];
     Hu3DModelAttrSet(modelId, HU3D_ATTR_DIE);
     modelP->hookData = process = HuPrcCreate(ModelDieFunc, 100, 4096, 0);
-    process->property = work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MODEL_DIE_WORK), HU_MEMNUM_OVL);
+    process->property = work =
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(MODEL_DIE_WORK), HU_MEMNUM_OVL);
     work->modelId = modelId;
-    work->file = HuMemMemoryFileGet(Hu3DData[modelId].hsf);
+    work->memoryFileId = HuMemMemoryFileGet(Hu3DData[modelId].hsf);
     return modelId;
 }
 
+/* Links a model and gives the instance the same motion-ended lifetime behavior. */
 HU3D_MODELID Hu3DModelLinkDieCreate(HU3D_MODELID linkMdlId)
 {
     HU3D_MODELID modelId = Hu3DModelLink(linkMdlId);
     MODEL_DIE_WORK *work;
     HUPROCESS *process;
     HU3D_MODEL *modelP;
-    
+
     modelP = &Hu3DData[modelId];
     Hu3DModelAttrSet(modelId, HU3D_ATTR_DIE);
     modelP->hookData = process = HuPrcCreate(ModelDieFunc, 100, 4096, 0);
-    process->property = work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MODEL_DIE_WORK), HU_MEMNUM_OVL);
+    process->property = work =
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(MODEL_DIE_WORK), HU_MEMNUM_OVL);
     work->modelId = modelId;
-    work->file = HuMemMemoryFileGet(Hu3DData[modelId].hsf);
+    work->memoryFileId = HuMemMemoryFileGet(Hu3DData[modelId].hsf);
     return modelId;
 }
 
+/* Frees the lifetime process data and stops the process attached to the model. */
 void Hu3DModelDieKill(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1886,17 +2057,18 @@ void Hu3DModelDieKill(HU3D_MODELID modelId)
     HuPrcKill(process);
 }
 
+/* Process watches the model motion and file identity, then destroys the model on completion. */
 static void ModelDieFunc(void)
 {
     HUPROCESS *process = HuPrcCurrentGet();
     MODEL_DIE_WORK *work = process->property;
     HU3D_MODELID modelId = work->modelId;
-    u32 file = work->file;
+    u32 memoryFileId = work->memoryFileId;
     while(1) {
         if(!Hu3DData[modelId].hsf) {
             break;
         }
-        if(file != HuMemMemoryFileGet(Hu3DData[modelId].hsf)) {
+        if(memoryFileId != HuMemMemoryFileGet(Hu3DData[modelId].hsf)) {
             break;
         }
         if(Hu3DMotionEndCheck(modelId)) {

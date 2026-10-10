@@ -1,3 +1,4 @@
+/* Microphone capture and spoken-response support used by game modes. */
 #define _MATH_H
 #include "dolphin.h"
 #include "game/armem.h"
@@ -11,16 +12,24 @@
 #include "game/process.h"
 #include "game/sprite.h"
 #include "game/window.h"
+#include "messdir_enum.h"
 
-typedef u8 undefined1;
-typedef u16 undefined2;
-typedef u32 undefined4;
-typedef u64 undefined8;
-typedef u32 uint;
-typedef u8 byte;
-typedef u16 ushort;
-typedef u64 ulonglong;
-typedef s64 longlong;
+#define MIC_ALLOC_TAG 805306368
+#define MIC_SESSION_ALLOC_TAG 805306369
+#define MIC_STATUS_SPRITE_DATA_NUM DATANUM(DATA_win, 50)
+#define MIC_DEVICE_ALERT_SPRITE_DATA_NUM DATANUM(DATA_win, 51)
+#define MIC_RECOGNIZED_WORD_CONFIRM_MESSAGE MESSNUM(MESS_MICQUIZ, 57)
+#define MIC_WRONG_DEVICE_MESSAGE MESSNUM(MESS_SAF_TEST, 21)
+#define MIC_DEVICE_UNAVAILABLE_MESSAGE MESSNUM(MESS_SAF_TEST, 20)
+#define MIC_THRESHOLD_MISSED_RESPONSE 4294967294
+#define MIC_ENGINE_CONDITION_RESPONSE 4294967292
+#define MIC_RESPONSE_NO_RESULT 4294967295
+#define MIC_FPSCR_FLAGS_KEEP_MASK 0xffffffef
+#define MIC_CACHE_LINE_LAST_BYTE 31
+#define MIC_CACHE_LINE_ALIGN_MASK 0xffffffe0
+#define MIC_VOLUME_SAMPLE_BUFFER_SIZE 88200
+#define MIC_RESPONSE_RECORD_SIZE 96
+
 typedef void (*MCResponseCallback)(u16 *response);
 
 extern s32 currentHeapHandle;
@@ -50,17 +59,20 @@ static void MCDeviceMesExec(void);
 static void MCListenerFunc(void);
 static void *MCThreadFunc(void *);
 static void MCThreadWakeup(OSAlarm *, OSContext *);
-static void MicNotifyCallBack(undefined4, s32, undefined4, uint);
-static void MicResultCallBack(undefined4, undefined4, undefined4);
-static void MicResultExec(undefined4, undefined4, MicResultNode_s *);
+static void MicNotifyCallBack(u32 callbackContext, s32 event,
+                              u32 sample, u32 value);
+static void MicResultCallBack(u32 callbackContext,
+                              u32 callbackData, u32 resultNode);
+static void MicResultExec(u32 callbackContext, u32 callbackData,
+                          MicResultNode_s *root);
 static s32 MicResultGet(s32);
-static s32 MicWriteResponseBuf(undefined2, undefined2 *);
+static s32 MicWriteResponseBuf(s16 responseType, u16 *entries);
 static void *MCDVDRead(const char *);
 static char *MakeMCFilename(char *, char *);
 static s32 ActivateContext(s16);
 void HuMCMicSet(s32);
 inline s32 HuMCMicSaveGet(void);
-int HuMCProbe(undefined4);
+int HuMCProbe(u32 channel);
 s32 HuMCMount(s32);
 void HuMCMicSprKill(void);
 void HuMCSelWinKill(void);
@@ -68,7 +80,7 @@ BOOL HuMCSelWinCheck(void);
 void HuMCSelModeSet(s16);
 void HuMCSelWinContextKill(void);
 void HuMCSessionExportReset(void);
-static int MicWriteResponse(s16, s32, void *, s16, s32);
+static int MicWriteResponse(s16, s32, void *, u16, s32);
 
 #define s_Silence_Error_8023abff "Silence Error!!!!!!!!!!\n"
 #define lbl_8023ABFF s_Silence_Error_8023abff
@@ -82,81 +94,75 @@ static int MicWriteResponse(s16, s32, void *, s16, s32);
 #define s_SILENCE_DETECTED_8023ad51 (lbl_8023A988 + 0x3c9)
 
 typedef struct MCVolData_s {
-    s16 *sample;
-    s32 sampleNo;
-    u32 index;
+    s16 *sample; /* Ring buffer of microphone PCM samples. */
+    s32 sampleNo; /* Next write position in the 44,100-sample PCM history buffer. */
+    u32 index; /* Microphone driver's next sample index. */
 } MCVolData_s;
 
 typedef struct MCLanguageData_s {
-    char japanese[0x27];
-    char english[0x29];
-    char *file[6];
+    char japanese[39]; /* Japanese language asset name. */
+    char english[41]; /* English language asset name. */
+    char *file[6]; /* Language asset path selected for each game language. */
 } MCLanguageData_s;
 
 typedef struct MCLngFileTbl_s {
-    char *file[6];
+    char *file[6]; /* Recognition-language data path for each game language. */
 } MCLngFileTbl_s;
 
 typedef struct MCResponseEntry_s {
-    u32 value0;
-    u32 value1;
+    u16 score; /* Recognition score for this candidate. */
+    s16 count; /* Number of recognized words in result. */
+    s16 *result; /* Word indices in shared speech storage, or the pad window process's selected
+                  * value. */
 } MCResponseEntry_s;
 
+typedef struct MCResponse_s {
+    s16 status; /* Zero for success; negative values report errors, cancellation, timeout or no
+                 * result. */
+    u16 score; /* Recognition score of the first candidate. */
+    s16 count; /* Number of recognized words in the first candidate. */
+    s16 *result; /* Word indices of the first candidate. */
+    s32 word; /* First speech-word index, a one-based pad-choice value, or -1 when unavailable. */
+    MCResponseEntry_s entry[10]; /* Candidates in recognition rank order. */
+} MCResponse_s;
+
 typedef struct MCResponseData_s {
-    u32 data[0x18];
+    u32 data[24]; /* One 96-byte microphone response record. */
 } MCResponseData_s;
 
 typedef struct MCContextData_s {
-    char path[0x40];
-    void *ctxData;
-    void *gcdData;
-    void *wrdData;
-    void *binData;
-    void *context;
+    char path[64]; /* Base path used to load this recognition context. */
+    void *ctxData; /* Loaded .ctx recognition-context file. */
+    void *gcdData; /* Loaded .gcd grammar data file. */
+    void *wrdData; /* Loaded .wrd word data file. */
+    void *binData; /* Loaded .bin word-index table. */
+    void *context; /* Recognition-engine context created from the loaded files. */
 } MCContextData_s;
 
-typedef struct MCUnkResponseEntry_s {
-    u16 score;
-    u16 unk;
-    s16 *word;
-} MCUnkResponseEntry_s;
-
-typedef struct MCUnkResponse_s {
-    s16 status;
-    u8 pad[0xe];
-    MCUnkResponseEntry_s entry[10];
-} MCUnkResponse_s;
-
 struct MicResultNode_s {
-    u32 unk0;
-    u16 count;
-    u16 score;
-    s32 *result;
-    struct MicResultNode_s *next;
+    s32 status; /* Recognition-engine status copied to every candidate; not read here. */
+    u16 count; /* Number of entries in result, including engine boundary entries. */
+    u16 score; /* Recognition score for this candidate. */
+    s32 *result; /* Engine word-offset sequence for the candidate. */
+    struct MicResultNode_s *next; /* Next candidate in rank order. */
 };
 
 typedef struct MicResponseEntry_s {
-    u16 score;
-    s16 count;
-    s16 *result;
+    u16 score; /* Recognition score copied to the response queue. */
+    s16 count; /* Number of recognized words in result. */
+    s16 *result; /* Word indices stored in the shared result buffer. */
 } MicResponseEntry_s;
 
 typedef struct MCSelWinWork_s {
-    s16 winId;
-    s16 choice;
-    HUPROCESS *proc;
-    f32 x;
-    f32 y;
-    u8 *item;
-    u8 *order;
+    s16 winId; /* Active choice-window ID, or -1 when no window exists. */
+    s16 choice; /* Selection-window state: idle, display, or hide. */
+    HUPROCESS *proc; /* Process that updates the selection window. */
+    f32 x; /* Requested window x position, including alignment sentinels. */
+    f32 y; /* Requested window y position, including alignment sentinels. */
+    u8 *item; /* Encoded message-choice list passed to the window system. */
+    u8 *order; /* Shuffled message indices used by the displayed choices. */
 } MCSelWinWork_s;
 
-/* .bss emission order = first-reference order (per compiled function), with
- * never-referenced statics sinking to the end — the declarations below only
- * document the layout. PlayerSession carries ATTRIBUTE_ALIGN(32): it is the
- * first .bss object, and the section's 32-byte alignment is what produces the
- * 0x18 link-time gap at 0x802870A8..0x802870C0 that dtk renders as a leading
- * pad object (pad_08_802870A8_bss) — there is no such object in this TU. */
 static u8 lbl_80287554[0x108];
 static MCVolData_s MCVolData;
 static char MCFileName[0x40];
@@ -210,7 +216,7 @@ static u32 pad_10_802C04D4_sbss;
 static s32 MCSprStat = 3;
 static s16 MCSessionCur = -1;
 static s16 MCSessionPrev = -1;
-static s32 HeapNum = 0x30000000;
+static s32 HeapNum = MIC_ALLOC_TAG;
 static s16 MCYesNoCtxId = -1;
 static s32 MCMicValue = -1;
 static s32 MCThreshold = 4000;
@@ -231,7 +237,6 @@ static char *LngFileTbl[] = {
     lbl_8023A988, lbl_8023A9AF, lbl_8023A9AF,
     lbl_8023A9AF, lbl_8023A9AF, lbl_8023A9AF
 };
-
 
 static const f32 lbl_802C1E48 = 0.0f;
 static const f32 lbl_802C1E4C = -100.0f;
@@ -256,12 +261,12 @@ static const f64 lbl_802C1EB0 = 10.0;
 static const f32 lbl_802C1EB8 = 1099511600000.0f;
 static const f64 lbl_802C1EC0 = 4503599627370496.0;
 
-/* 80091828 HuMCSysInit */
+/* Called during game startup to reset microphone state and detect the device. */
 
 void HuMCSysInit(void)
 
 {
-  short sVar2;
+  short playerIndex;
 
   MCResponseBuf = (u8 *)(MCContext = 0);
   MCInitF = 0;
@@ -269,10 +274,11 @@ void HuMCSysInit(void)
   MCAnswerProc = 0;
   MCThreadStack = 0;
   ContextCur = 0xffff;
-  HeapNum = 0x30000000;
+  HeapNum = MIC_ALLOC_TAG;
   InitMCSelWin();
+  /* Disable floating-point exception reporting before initializing speech support. */
   OSSetErrorHandler(0x10,0);
-  __OSFpscrEnableBits = __OSFpscrEnableBits & 0xffffffef;
+  __OSFpscrEnableBits = __OSFpscrEnableBits & MIC_FPSCR_FLAGS_KEEP_MASK;
   if (HuMCProbe(1) == 0) {
     HuMCMicSet(1);
   }
@@ -280,17 +286,18 @@ void HuMCSysInit(void)
     HuMCMicSet(2);
   }
   MCSessionCur = MCSessionPrev = -1;
-  for (sVar2 = 0; sVar2 < 4; sVar2++) {
-    PlayerSession[sVar2] = 0;
-    *(undefined1 *)((int)&MCSessionTimer + (int)sVar2) = 0;
+  for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+    PlayerSession[playerIndex] = 0;
+    *(u8 *)((int)&MCSessionTimer + (int)playerIndex) = 0;
   }
   return;
 }
 
+/* Called by speech modes to load recognition data and open the recognition engine. */
+/* The incoming value is ignored; the saved game language selects recognition data. Prerecord,
+* stream-mode, capture-start, final threshold and thread-creation results are also ignored. */
 
-/* 80091918 HuMCInit */
-
-s32 HuMCInit(s16 mountResult)
+s32 HuMCInit(s16 languageIndex)
 {
   s32 apiResult;
   s16 i;
@@ -298,22 +305,23 @@ s32 HuMCInit(s16 mountResult)
   s32 rawLanguage;
   s32 heapCheck;
 
-  mountResult;
-  (void)mountResult;
+  languageIndex;
+  (void)languageIndex;
   (void)rawLanguage;
   result = 0;
   if (MCResponseBuf != 0) {
+    /* Existing response storage causes an immediate return without a defined status value. */
     return;
   }
   MCWrongDeviceF = 0;
   if (MCMicValue != -1) {
     HuMCMicSet(MCMicValue);
   }
-  MCResponseBuf = HuMemDirectMallocNum(0,0x6000,0x30000000);
+  MCResponseBuf = HuMemDirectMallocNum(0,24576,MIC_ALLOC_TAG);
   MCResponseNo = MCResponseLastNo = 0;
-  MCResultData = HuMemDirectMallocNum(0,0x80,0x30000000);
+  MCResultData = HuMemDirectMallocNum(0,128,MIC_ALLOC_TAG);
   MCResultNum = 0;
-  MCContext = HuMemDirectMallocNum(0,sizeof(MCContextData_s) * 8,0x30000000);
+  MCContext = HuMemDirectMallocNum(0,sizeof(MCContextData_s) * 8,MIC_ALLOC_TAG);
   for (i = 0; i < 8; i++) {
     MCContext[i].context = 0;
   }
@@ -332,63 +340,64 @@ s32 HuMCInit(s16 mountResult)
   MCThreshold = 4000;
   MICInit();
   M2SInit();
-  if ((M2SBuffer = HuMemDirectMallocNum(0,0x100,0x30000000)) == 0) {
+  if ((M2SBuffer = HuMemDirectMallocNum(0,256,MIC_ALLOC_TAG)) == 0) {
     OSReport("Mic Error: Not enough Memory\n");
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
   if (M2SSetBuffer(M2SBuffer) == 0) {
     OSReport("Mic Error: M2SSetBuffer()\n");
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
-  if ((MicBuffer = HuMemDirectMallocNum(0,0x3000,0x30000000)) == 0) {
+  if ((MicBuffer = HuMemDirectMallocNum(0,12288,MIC_ALLOC_TAG)) == 0) {
     OSReport("Mic Error: Not enough Memory\n");
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
 
+  /* Keep the mount status for the caller, but continue engine setup even when mounting fails. */
   result = HuMCMount(1);
   M2SSetPrerecordSamples(100);
   M2SSetMode(3);
   MICStart(1);
   if ((apiResult = gsapi_Init(MicResultCallBack,0)) != 0) {
     OSReport("Mic Error: gsapi_Init() %x\n",apiResult);
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
   rawLanguage = GwCommon.languageNo;
-  mountResult = rawLanguage;
-  LanguageNo = mountResult;
+  languageIndex = rawLanguage;
+  LanguageNo = languageIndex;
   if ((LngData = MCDVDRead(LngFileTbl[LanguageNo])) == 0) {
     OSReport("Mic Error: Read Language Failue\n");
     gsapi_Close();
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
   if ((apiResult = gsapi_LanguageLoadBuffer(LngData,0)) != 0) {
     OSReport("Mic Error: gsapi_LanguageLoadBuffer().%x\n",apiResult);
     gsapi_Close();
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
   if ((apiResult = gsapi_EngineOpen(0,&MC_gsapiEngine)) != 0) {
     OSReport("Mic Error: gsapi_EngineOpen().%x\n",apiResult);
     gsapi_Close();
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
   MCSessionP = 0;
   if ((apiResult = gsapi_NotifySetCallback(MicNotifyCallBack)) != 0) {
     OSReport("Mic Error: gsapi_NotifySetCallback().%x\n",apiResult);
     gsapi_Close();
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
   if ((apiResult = gsapi_EngineSetMode(MC_gsapiEngine,1)) != 0) {
     OSReport("Mic Error: gsapi_EngineSetMode().%x\n",apiResult);
     gsapi_Close();
-    HuMemDirectFreeNum(0,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
     return -128;
   }
 
@@ -397,23 +406,22 @@ s32 HuMCInit(s16 mountResult)
   MCListenF = 0;
   MCContextCallback = 0;
   OSInitMessageQueue(&MCMessageQueue,MCMessageArray,2);
-  MCThreadStack = HuMemDirectMallocNum(0,0x4000,0x30000000);
-  OSCreateThread(&MCThread,MCThreadFunc,0,MCThreadStack + 0x4000,
-                 0x4000,0x1f,1);
+  MCThreadStack = HuMemDirectMallocNum(0,16384,MIC_ALLOC_TAG);
+  OSCreateThread(&MCThread,MCThreadFunc,0,MCThreadStack + 16384,
+                 16384,OS_PRIORITY_MAX,1);
   OSResumeThread(&MCThread);
   OSInitThreadQueue(&MCThreadQueue);
   MCInitF = 1;
   OSReport("HEAP HEAP Malloc Size %x\n",HuMemUsedMallocSizeGet(0));
   heapCheck = OSCheckHeap(currentHeapHandle);
   OSReport("OSAlloc Size Left %dkb(%x)\n",OSCheckHeap(currentHeapHandle) / 1024,heapCheck);
-  MCAnswerProc = HuPrcCreate(MCAnswerMain,65000,0x4000,0);
+  MCAnswerProc = HuPrcCreate(MCAnswerMain,65000,16384,0);
   HuPrcSetStat(MCAnswerProc,0xc);
   MCMicValue = -1;
   return result;
 }
 
-
-/* 80091de0 HuMCClose */
+/* Called when a speech-enabled mode exits to stop capture and release its resources. */
 
 void HuMCClose(void)
 
@@ -446,12 +454,13 @@ void HuMCClose(void)
     if (MC_gsapiEngine != 0) {
       gsapi_EngineClose(MC_gsapiEngine);
       gsapi_LanguageUnLoad();
+      /* Call EngineClose again after unloading the language; both close results are ignored. */
       gsapi_EngineClose(MC_gsapiEngine);
       gsapi_Close();
       MC_gsapiEngine = 0;
     }
-    HuMemDirectFreeNum(0,0x30000000);
-    HuMemDirectFreeNum(2,0x30000000);
+    HuMemDirectFreeNum(0,MIC_ALLOC_TAG);
+    HuMemDirectFreeNum(2,MIC_ALLOC_TAG);
     MCResponseBuf = (u8 *)(MCContext = 0);
     MICUnmount(0);
     MICUnmount(1);
@@ -463,8 +472,7 @@ void HuMCClose(void)
   return;
 }
 
-
-/* 80091f40 HuMCContextCreate */
+/* Called by a speech mode to load its word files and create a recognition context. */
 
 s16 HuMCContextCreate(char *path)
 
@@ -481,6 +489,7 @@ s16 HuMCContextCreate(char *path)
   }
   temp = HuMemDirectMalloc(0,0x100);
   strcpy(temp,path);
+  /* All non-Japanese languages append US to the full path; the dot scan does not alter it. */
   if (LanguageNo != 0) {
     scan = temp;
     while ((*scan != '\0') && (*scan != '.')) {
@@ -495,6 +504,8 @@ s16 HuMCContextCreate(char *path)
         break;
     }
   }
+  /* Compare the original path in occupied slots before the first free slot; stored paths may end in
+   * US. */
   for (index = 0; index < 8; index++) {
     if (MCContext[index].context == 0) {
       break;
@@ -518,6 +529,8 @@ s16 HuMCContextCreate(char *path)
   context->wrdData = MCDVDRead(filename);
   filename = MakeMCFilename(temp,lbl_802BF996);
   context->binData = MCDVDRead(filename);
+  /* Context-data errors are reported without aborting; parameter results are ignored, and the
+   * slot index is still returned. */
   error = gsapi_ContextSetCtxData(context->ctxData,&context->context);
   if (error != 0) {
     OSReport("Error CTX %x\n",error);
@@ -543,16 +556,16 @@ s16 HuMCContextCreate(char *path)
   return index;
 }
 
+/* When a speech mode releases a context, request deactivation, ignore its result, and free its
+ * .ctx, .gcd and .wrd files. The .bin buffer remains until microphone shutdown. */
 
-/* 8009221c HuMCContextKill */
-
-void HuMCContextKill(short param_1)
+void HuMCContextKill(short contextId)
 
 {
   MCContextData_s *context;
 
-  if (param_1 >= 0) {
-    context = &MCContext[param_1];
+  if (contextId >= 0) {
+    context = &MCContext[contextId];
     if (context->context) {
       gsapi_ContextDeActivate(context->context);
       HuMemDirectFree(context->ctxData);
@@ -563,22 +576,21 @@ void HuMCContextKill(short param_1)
   }
 }
 
+/* Sets the recognition threshold used when later contexts are configured. */
 
-/* 8009229c HuMCThresholdSet */
-
-void HuMCThresholdSet(undefined4 param_1)
+void HuMCThresholdSet(u32 threshold)
 
 {
-  MCThreshold = param_1;
+  MCThreshold = threshold;
   return;
 }
 
-
-/* 800922a4 HuMCContextSet */
+/* Activates one-shot recognition, queues its start command and returns one. Mode and parameter
+* results are ignored after activation. Pad fallback requests choices and returns zero. */
 
 static char lbl_8023AB60[] = "MIC Error: gsapi_ContextActivate() %x\n";
 
-s32 HuMCContextSet(s16 param_1)
+s32 HuMCContextSet(s16 contextId)
 
 {
   s32 result;
@@ -590,14 +602,14 @@ s32 HuMCContextSet(s16 param_1)
   if (HuMCMicSaveGet() != 1) {
     return 0;
   }
-  if ((MCStat != 0) || (MicOpenF != 0) || (param_1 < 0) || (MC_gsapiEngine == 0)) {
+  if ((MCStat != 0) || (MicOpenF != 0) || (contextId < 0) || (MC_gsapiEngine == 0)) {
     return 0;
   }
-  if ((result = ActivateContext(param_1)) != 0) {
+  if ((result = ActivateContext(contextId)) != 0) {
     OSReport(lbl_8023AB60,result);
     return 0;
   }
-  MCContextP = &MCContext[param_1];
+  MCContextP = &MCContext[contextId];
   MCResponseNo = MCResponseLastNo = 0;
   gsapi_EngineSetMode(MC_gsapiEngine,1);
   gsapi_EngineSetParam(MC_gsapiEngine,1,0);
@@ -609,8 +621,7 @@ s32 HuMCContextSet(s16 param_1)
   return 1;
 }
 
-
-/* 800923f4 HuMCStatGet */
+/* Called while waiting for a one-shot speech result; waits for a queued response. */
 
 static char lbl_8023AB87[] = "Error!!!!!!!!!!!!!!!!!!\n";
 
@@ -631,6 +642,8 @@ s32 HuMCStatGet(void)
   }
   while (MCResponseNo == 0) {
     if (MCListenF != 0) {
+      /* If listening stopped without a response, stop and restart the engine before waiting
+       * again. */
       OSReport(lbl_8023AB87);
       OSSendMessage(&MCMessageQueue,(OSMessage)2,1);
       OSSleepThread(&MCThreadQueue);
@@ -642,8 +655,7 @@ s32 HuMCStatGet(void)
   return HuMCResponseGet2();
 }
 
-
-/* 800924d4 HuMCResponseGet2 */
+/* Called after a one-shot wait to stop listening and fetch its queued response. */
 
 int HuMCResponseGet2(void)
 
@@ -652,12 +664,12 @@ int HuMCResponseGet2(void)
 
   if (HuMCSelWinCheck()) {
     HuMCSelModeSet(2);
-    if (*(short *)(MCResponseBuf + MCResponseLastNo * 0x60 + 4)) {
+    if (((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].count) {
       goto sel_response_valid;
     }
     return -1;
 sel_response_valid:
-    return *(s32 *)(MCResponseBuf + MCResponseLastNo * 0x60 + 0xc);
+    return ((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].word;
   }
   if (HuMCMicSaveGet() != 1) {
     return -1;
@@ -671,31 +683,33 @@ sel_response_valid:
   if (MCResponseNo == 0) {
     return -1;
   }
-  response = *(s16 *)(MCResponseBuf + MCResponseLastNo * 0x60);
+  response = ((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].status;
   if (response != 0) {
     return response;
   }
   if (MCResponseNo == MCResponseLastNo) {
     return -1;
   }
-  if (*(s16 *)(MCResponseBuf + MCResponseLastNo * 0x60 + 4)) {
+  if (((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].count) {
     goto response_valid;
   }
   return -1;
 response_valid:
-  return *(s32 *)(MCResponseBuf + MCResponseLastNo * 0x60 + 0xc);
+  return ((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].word;
 }
 
-/* 80092628 HuMCContextCallbackSet */
+/* Called by a speech mode to activate continuous recognition with an optional callback. Mode
+* and parameter results are ignored; successful activation still queues a start and returns one. */
 
-s32 HuMCContextCallbackSet(s16 param_1,MCResponseCallback param_2)
+s32 HuMCContextCallbackSet(s16 contextId,MCResponseCallback responseCallback)
 
 {
   s32 result;
 
   if (HuMCSelWinCheck()) {
-    if (param_2 != 0) {
-      MCContextCallback = param_2;
+    /* Pad fallback retains the existing callback when the supplied callback is NULL. */
+    if (responseCallback != 0) {
+      MCContextCallback = responseCallback;
     }
     MCResponseNo = MCResponseLastNo = 0;
     HuMCSelModeSet(1);
@@ -704,22 +718,22 @@ s32 HuMCContextCallbackSet(s16 param_1,MCResponseCallback param_2)
   if (HuMCMicSaveGet() != 1) {
     return 0;
   }
-  if ((MCStat != 0) || (MicOpenF != 0) || (param_1 < 0) || (MC_gsapiEngine == 0)) {
+  if ((MCStat != 0) || (MicOpenF != 0) || (contextId < 0) || (MC_gsapiEngine == 0)) {
     return 0;
   }
-  if ((result = ActivateContext(param_1)) != 0) {
+  if ((result = ActivateContext(contextId)) != 0) {
     OSReport(lbl_8023AB60,result);
     return 0;
   }
-  ContextCur = param_1;
-  MCContextP = &MCContext[param_1];
+  ContextCur = contextId;
+  MCContextP = &MCContext[contextId];
   MCResponseLastNo = MCResponseNo = 0;
   gsapi_EngineSetMode(MC_gsapiEngine,2);
   gsapi_EngineSetParam(MC_gsapiEngine,1,1);
   gsapi_EngineSetParam(MC_gsapiEngine,0,1);
   OSSendMessage(&MCMessageQueue,0,1);
-  if (param_2 != 0) {
-    MCContextCallback = param_2;
+  if (responseCallback != 0) {
+    MCContextCallback = responseCallback;
   }
   else {
     MCContextCallback = 0;
@@ -728,8 +742,7 @@ s32 HuMCContextCallbackSet(s16 param_1,MCResponseCallback param_2)
   return 1;
 }
 
-
-/* 8009279c HuMCResponseGet */
+/* Called by a continuous-recognition mode to stop listening and fetch a response. */
 
 int HuMCResponseGet(void)
 
@@ -738,12 +751,12 @@ int HuMCResponseGet(void)
 
   if (HuMCSelWinCheck()) {
     HuMCSelModeSet(2);
-    if (*(short *)(MCResponseBuf + MCResponseLastNo * 0x60 + 4)) {
+    if (((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].count) {
       goto response_valid;
     }
     return -1;
 response_valid:
-    return *(s32 *)(MCResponseBuf + MCResponseLastNo * 0x60 + 0xc);
+    return ((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].word;
   }
   if (HuMCMicSaveGet() != 1) {
     return -1;
@@ -754,7 +767,7 @@ response_valid:
   MCContextCallback = 0;
   OSSendMessage(&MCMessageQueue,(OSMessage)2,1);
   OSSleepThread(&MCThreadQueue);
-  response = *(s16 *)(MCResponseBuf + MCResponseLastNo * 0x60);
+  response = ((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].status;
   MCStat = 0;
   if (response != 0) {
     return response;
@@ -762,11 +775,13 @@ response_valid:
   if (MCResponseNo == MCResponseLastNo) {
     return -1;
   }
-  return *(s32 *)(MCResponseBuf + MCResponseLastNo * 0x60 + 0xc);
+  /* Unlike one-shot retrieval, return the stored word without checking its recognized-word
+   * count. */
+  return ((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].word;
 }
 
-
-/* 800928c0 HuMCCurResponseGet */
+/* Returns the next queued record; when none is ready, resets its summary fields
+   but leaves previous candidate entries intact. */
 
 u16 *HuMCCurResponseGet(void)
 {
@@ -788,8 +803,8 @@ u16 *HuMCCurResponseGet(void)
     return (u16 *)MCCurResponse;
 }
 
-
-/* 8009299c HuMCButtonGet */
+/* Returns the cached talk-button mask when microphone mode is selected and response storage
+ * exists. */
 
 s32 HuMCButtonGet(void)
 
@@ -800,8 +815,8 @@ s32 HuMCButtonGet(void)
   return MCButton;
 }
 
-
-/* 800929dc HuMCButtonDownGet */
+/* Returns cached new talk-button presses when microphone mode is selected and response storage
+ * exists. */
 
 s32 HuMCButtonDownGet(void)
 
@@ -812,26 +827,24 @@ s32 HuMCButtonDownGet(void)
   return MCButtonDown;
 }
 
-
-/* 80092a1c HuMCProbe */
+/* Polls the microphone driver for up to half a second during device setup. */
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
-int HuMCProbe(undefined4 param_1)
+int HuMCProbe(u32 channel)
 {
   int result;
   OSTick start;
 
   start = OSGetTick();
   while (OSTicksToMilliseconds(OSGetTick() - start) < 500) {
-    result = MICProbeEx(param_1);
+    result = MICProbeEx(channel);
     if (result != -1) {
       break;
     }
   }
   return result;
 }
-
 
 /* 80092aa0 HuMCMount */
 
@@ -840,6 +853,9 @@ int HuMCProbe(undefined4 param_1)
 static char lbl_8023ABA0[] = "MIC Error: M2SSetActiveChannel() %d\n";
 static char lbl_8023ABC5[] = "M2SSetShifts Error\n";
 
+/* Mounts chan for speech setup, accepting an already-mounted result. After device and channel
+* checks, logs shift rejection but continues. Gain and channel-1 start results are ignored,
+* so their failures do not change the returned success status. */
 inline s32 HuMCMount(s32 chan)
 {
   s32 result;
@@ -892,7 +908,7 @@ inline s32 HuMCMount(s32 chan)
   return result;
 }
 
-
+/* Polls a channel for up to half a second while a lost microphone is retried. */
 static inline s32 MCProbeSub(s32 chan)
 {
   s32 result;
@@ -907,6 +923,9 @@ static inline s32 MCProbeSub(s32 chan)
   return result;
 }
 
+/* Retries setup while the answer process or warning waits for a reconnect, accepting an
+* already-mounted result. After device and channel checks, logs shift rejection but continues.
+* Gain and channel-1 start results are ignored, so their failures do not change success. */
 static inline s32 MCMountSub(s32 chan)
 {
   s32 result;
@@ -948,10 +967,9 @@ static inline s32 MCMountSub(s32 chan)
   return result;
 }
 
-
-
 /* 80092c34 MCExtHandler */
 
+/* The microphone driver's detach callback marks capture unavailable and stops the speech stream. */
 void MCExtHandler(void)
 
 {
@@ -961,43 +979,45 @@ void MCExtHandler(void)
   return;
 }
 
-
 /* 80092c68 HuMCShiftsSet */
 
-void HuMCShiftsSet(undefined4 param_1)
+/* Saves the requested PCM bit shift and attempts to apply it immediately;
+   rejection is ignored and the saved value is retried during mounting. */
+void HuMCShiftsSet(u32 shifts)
 
 {
-  M2SShift = param_1;
-  M2SSetShifts(param_1);
+  M2SShift = shifts;
+  M2SSetShifts(shifts);
   return;
 }
 
-
 /* 80092c9c HuMCMicSprCreate */
 
-void HuMCMicSprCreate(f32 param_1,f32 param_2)
+/* Creates an initially hidden microphone-status sprite at x and y;
+   the answer process shows it while recognition is running. */
+void HuMCMicSprCreate(f32 x,f32 y)
 
 {
   void *data;
   ANIMDATA *anim;
   HUSPRID sprId;
-  
+
   if (HuMCMicSaveGet() == 1) {
-    data = HuAR_ARAMtoMRAMFileRead(0xf20032,0x30000000,2);
+    data = HuAR_ARAMtoMRAMFileRead(MIC_STATUS_SPRITE_DATA_NUM,MIC_ALLOC_TAG,2);
     anim = HuSprAnimRead(data);
     MCSprGrpId = HuSprGrpCreate(1);
     sprId = HuSprCreate(anim,1,0);
     HuSprGrpMemberSet(MCSprGrpId,0,sprId);
     HuSprGrpPosSet(MCSprGrpId,lbl_802C1E48,lbl_802C1E48);
-    HuSprPosSet(MCSprGrpId,0,param_1,param_2);
+    HuSprPosSet(MCSprGrpId,0,x,y);
     HuSprAttrSet(MCSprGrpId,0,4);
   }
   return;
 }
 
-
 /* 80092d6c HuMCMicSprKill */
 
+/* Microphone shutdown removes the status sprite group and clears its stored group ID. */
 void HuMCMicSprKill(void)
 
 {
@@ -1008,9 +1028,9 @@ void HuMCMicSprKill(void)
   return;
 }
 
-
 /* 80092da4 HuMCMicGet */
 
+/* Returns a pending microphone choice when one exists, otherwise the saved game microphone mode. */
 s32 HuMCMicGet(void)
 
 {
@@ -1020,7 +1040,6 @@ s32 HuMCMicGet(void)
   return GwCommon.mic;
 }
 
-
 /* 80092dcc HuMCMicSaveGet */
 
 inline s32 HuMCMicSaveGet(void)
@@ -1029,23 +1048,24 @@ inline s32 HuMCMicSaveGet(void)
   return GwCommon.mic;
 }
 
-
 /* 80092de0 HuMCMicSet */
 
-void HuMCMicSet(s32 param_1)
+/* Updates the saved microphone mode when speech storage is absent;
+   otherwise defers the choice until microphone shutdown. */
+void HuMCMicSet(s32 micChoice)
 
 {
   if (MCResponseBuf != 0) {
-    MCMicValue = param_1;
+    MCMicValue = micChoice;
   }
   else {
-    GwCommon.mic = (u8)param_1;
+    GwCommon.mic = (u8)micChoice;
   }
 }
 
-
 /* 80092e10 InitMCSelWin */
 
+/* Game startup clears the pad-answer window ID and its update-process pointer. */
 void InitMCSelWin(void)
 
 {
@@ -1054,10 +1074,11 @@ void InitMCSelWin(void)
   return;
 }
 
-
 /* 80092e34 HuMCSelWinCreate */
 
-void HuMCSelWinCreate(f32 param_1,f32 param_2)
+/* In pad-answer mode, creates choice-window storage and its update process,
+   saving x and y for later option layout. */
+void HuMCSelWinCreate(f32 x,f32 y)
 
 {
   s32 mic;
@@ -1065,11 +1086,11 @@ void HuMCSelWinCreate(f32 param_1,f32 param_2)
   mic = GwCommon.mic;
   if (mic == 2) {
     MCSelWinWork.winId = HuWinCreate((double)lbl_802C1E4C,(double)lbl_802C1E4C,0x20,0x20,0);
-    MCSelWinWork.x = param_1;
-    MCSelWinWork.y = param_2;
-    MCSelWinWork.item = (undefined1 *)HuMemDirectMallocNum(0,0x100,0x30000000);
+    MCSelWinWork.x = x;
+    MCSelWinWork.y = y;
+    MCSelWinWork.item = (u8 *)HuMemDirectMallocNum(0,256,MIC_ALLOC_TAG);
     *MCSelWinWork.item = 0;
-    MCSelWinWork.order = HuMemDirectMallocNum(0,0x40,0x30000000);
+    MCSelWinWork.order = HuMemDirectMallocNum(0,64,MIC_ALLOC_TAG);
     MCSelWinWork.choice = 0;
     MCSelWinWork.proc = HuPrcCreate(MCSelWinFunc,65000,0x2000,0);
     HuPrcSetStat(MCSelWinWork.proc,0xc);
@@ -1077,9 +1098,10 @@ void HuMCSelWinCreate(f32 param_1,f32 param_2)
   return;
 }
 
-
 /* 80092f64 HuMCSelWinKill */
 
+/* Shutdown removes the pad-answer window and its process,
+   then frees the encoded choices and option-order buffers. */
 void HuMCSelWinKill(void)
 
 {
@@ -1102,7 +1124,6 @@ void HuMCSelWinKill(void)
   return;
 }
 
-
 /* 80093050 HuMCSelWinItemRandSet */
 
 /* WARNING: Removing unreachable block (ram,0x800935ec) */
@@ -1110,6 +1131,8 @@ void HuMCSelWinKill(void)
 
 static char lbl_8023ABD9[] = "Error: HuMCSelWinItemRandSet() %d<%d\n";
 
+/* In pad-answer mode, prepares a hidden window for padNo using shownCount sorted choices,
+   including fixedItem, from the shuffled message range. */
 s32 HuMCSelWinItemRandSet(s32 messageBase,s16 itemCount,s16 fixedItem,
                           s16 shownCount,s16 padNo)
 {
@@ -1208,19 +1231,20 @@ s32 HuMCSelWinItemRandSet(s32 messageBase,s16 itemCount,s16 fixedItem,
   return MCSelWinWork.winId;
 }
 
-
 /* 80093614 HuMCSelWinItemSet */
 
-void HuMCSelWinItemSet(s32 param_1,s16 param_2,s16 param_3)
+/* Prepares all message choices for the given pad; the window stays hidden until recognition is
+ * requested. */
+void HuMCSelWinItemSet(s32 messageBase,s16 itemCount,s16 padNo)
 
 {
-  HuMCSelWinItemRandSet(param_1,param_2,0,param_2,param_3);
+  HuMCSelWinItemRandSet(messageBase,itemCount,0,itemCount,padNo);
   return;
 }
 
-
 /* 8009365c HuMCSelWinCheck */
 
+/* Tests whether a pad-answer window ID exists; it does not test whether the window is visible. */
 inline BOOL HuMCSelWinCheck(void)
 
 {
@@ -1230,9 +1254,9 @@ inline BOOL HuMCSelWinCheck(void)
   return TRUE;
 }
 
-
 /* 80093680 HuMCSelModeGet */
 
+/* Returns the pad-answer window's requested state, or -1 when no window exists. */
 int HuMCSelModeGet(void)
 
 {
@@ -1242,29 +1266,32 @@ int HuMCSelModeGet(void)
   return MCSelWinWork.choice;
 }
 
-
 /* 800936d0 HuMCSelModeSet */
 
-void HuMCSelModeSet(short param_1)
+/* Requests a pad-answer window state; hiding an active choice also cancels its selection. */
+void HuMCSelModeSet(short mode)
 
 {
   HUWIN *win;
-  
+
   if (MCSelWinWork.winId != -1) {
-    if (param_1 == 2) {
+    if (mode == 2) {
       win = &winData[MCSelWinWork.winId];
       if (win->stat == 3) {
         win->stat = 0;
         win->choice = -1;
       }
     }
-    MCSelWinWork.choice = param_1;
+    MCSelWinWork.choice = mode;
   }
 }
 
-
 /* 80093748 MCSelWinFunc */
 
+/* Runs for a pad-answer window: shows requested choices, queues the selected answer or
+ * cancellation,
+ * invokes the response callback, and hides the window. Pauses temporarily hide its
+ * sprites. */
 static void MCSelWinFunc(void)
 {
   HUWIN *win;
@@ -1311,6 +1338,8 @@ static void MCSelWinFunc(void)
             }
             HuPrcVSleep();
           }
+          /* The queued result points to this process's local response; the summary word is
+           * one-based. */
           MicWriteResponse(0,1,&response,10000,response + 1);
         } else if (choice == -1) {
           MicWriteResponse(-2,0,NULL,0,-1);
@@ -1331,10 +1360,12 @@ static void MCSelWinFunc(void)
   }
 }
 
-
 /* 80093aa0 HuMCSelWinContextSet */
 
-void HuMCSelWinContextSet(s16 param_1,MCResponseCallback param_2,u8 param_3)
+/* Starts a one-shot button-driven answer process when microphone support is enabled, replacing any
+ * existing listener. Starting it clears the previously configured timeout. */
+void HuMCSelWinContextSet(s16 contextId, MCResponseCallback responseCallback,
+                          u8 padNo)
 
 {
   if (HuMCMicSaveGet() == 0) {
@@ -1343,16 +1374,17 @@ void HuMCSelWinContextSet(s16 param_1,MCResponseCallback param_2,u8 param_3)
   if (MCListenerProc != 0) {
     HuMCSelWinContextKill();
   }
-  MCCallback = param_2;
+  MCCallback = responseCallback;
   MCListenerProc = HuPrcCreate(MCSelWinContextProc,65000,0x2000,0);
-  MCListenerProc->property = (void *)(((u32)param_3 << 16) | (u16)param_1);
+  MCListenerProc->property = (void *)(((u32)padNo << 16) | (u16)contextId);
   MCSelWinMaxTime = 0;
   return;
 }
 
-
 /* 80093b44 HuMCSelWinContextKill */
 
+/* Cancels the one-shot answer process by queuing a no-result response, hiding pad choices or
+ * stopping active one-shot speech recognition, then removing its listener process. */
 void HuMCSelWinContextKill(void)
 {
   s16 response;
@@ -1368,7 +1400,7 @@ void HuMCSelWinContextKill(void)
       OSSleepThread(&MCThreadQueue);
       MCStat = 0;
       if (MCResponseNo != 0) {
-        response = *(s16 *)(MCResponseBuf + MCResponseLastNo * 0x60);
+        response = ((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].status;
         if ((response == 0) && (MCResponseNo != MCResponseLastNo)) {
           (void)(MCResponseBuf + MCResponseLastNo * 0x60 + 4);
         }
@@ -1381,32 +1413,40 @@ void HuMCSelWinContextKill(void)
   MCListenerProc = 0;
 }
 
-
 /* 80093ce8 HuMCSelWinMaxTimeSet */
 
-void HuMCSelWinMaxTimeSet(f32 param_1)
+/* Sets the choice timeout in frames using seconds and the supplied frame rate. */
+static inline void MCSetTimeout(f32 seconds, const f32 *frameRate)
+{
+  MCSelWinMaxTime = *frameRate * seconds;
+}
+
+/* Configures the one-shot answer timeout in seconds, converted to an integer count at 60 frames
+ * per second. Starting a new answer process clears this timeout. */
+void HuMCSelWinMaxTimeSet(f32 seconds)
 
 {
-  MCSelWinMaxTime = *(volatile const f32 *)&lbl_802C1E8C * param_1;
+  MCSetTimeout(seconds, &lbl_802C1E8C);
   return;
 }
 
-
 /* 80093d0c HuMCSelWinMaxTimeGet */
 
+/* Returns the remaining answer timeout in frames, represented as a float. */
 f32 HuMCSelWinMaxTimeGet(void)
 
 {
   return (f32)MCSelWinMaxTime;
 }
 
-
 /* 80093d38 HuMCSelWinChoiceGet */
 
+/* Discards the previous queue positions, waits for a response, then returns the latest successful
+ * response's first word or -1 if the newly queued records contain no success. */
 int HuMCSelWinChoiceGet(void)
 
 {
-  s16 *response;
+  MCResponse_s *response;
   s16 zero;
   s16 index;
 
@@ -1419,8 +1459,8 @@ int HuMCSelWinChoiceGet(void)
   }
   index = MCResponseNo - 1;
   while (index >= 0) {
-    response = (s16 *)(MCResponseBuf + index * 0x60);
-    if (*response == 0) {
+    response = (MCResponse_s *)(MCResponseBuf + index * MIC_RESPONSE_RECORD_SIZE);
+    if (response->status == 0) {
       break;
     }
     index--;
@@ -1428,12 +1468,15 @@ int HuMCSelWinChoiceGet(void)
   if (index == -1) {
     return -1;
   }
-  return **(s16 **)(response + 4);
+  return *response->result;
 }
-
 
 /* 80093dec MCSelWinContextProc */
 
+/* Waits for the microphone talk button or the selected pad's R button, runs one-shot recognition
+ *
+ * or pad choices, and ends after a response or timeout. Speech retries recover stopped listening.
+ */
 static void MCSelWinContextProc(void)
 {
   HUPROCESS *proc;
@@ -1532,29 +1575,32 @@ static void MCSelWinContextProc(void)
   }
 }
 
-
 /* 8009482c HuMCListenerCreate */
 
-void HuMCListenerCreate(s16 param_1,MCResponseCallback param_2,u8 param_3)
+/* When microphone support is enabled, replaces the current listener process and stores its context,
+ * response callback, and pad number for continuous button-driven recognition. */
+void HuMCListenerCreate(s16 contextId, MCResponseCallback responseCallback,
+                        u8 padNo)
 
 {
   s32 mic;
 
   mic = GwCommon.mic;
   if (mic != 0) {
-    MCCallback = param_2;
+    MCCallback = responseCallback;
     if (MCListenerProc != 0) {
       HuPrcKill(MCListenerProc);
     }
     MCListenerProc = HuPrcCreate(MCListenerFunc,65000,0x2000,0);
-    MCListenerProc->property = (void *)(((u32)param_3 << 16) | (u16)param_1);
+    MCListenerProc->property = (void *)(((u32)padNo << 16) | (u16)contextId);
   }
   return;
 }
 
-
 /* 800948cc HuMCListenerKill */
 
+/* Queues a cancellation response, hides or removes pad choices, stops active continuous speech
+ * recognition, and removes the listener process. */
 void HuMCListenerKill(void)
 
 {
@@ -1572,7 +1618,7 @@ void HuMCListenerKill(void)
       MCContextCallback = 0;
       OSSendMessage(&MCMessageQueue,(OSMessage)2,1);
       OSSleepThread(&MCThreadQueue);
-      response = *(s16 *)(MCResponseBuf + MCResponseLastNo * 0x60);
+      response = ((MCResponse_s *)MCResponseBuf)[MCResponseLastNo].status;
       MCStat = 0;
       if (response == 0) {
         (void)(MCResponseNo == MCResponseLastNo);
@@ -1589,9 +1635,12 @@ void HuMCListenerKill(void)
   return;
 }
 
-
 /* 80094b48 MCListenerFunc */
 
+/* Repeatedly listens while the microphone talk button is held. If no response is queued on
+* release, waits up to 60 frames for one and then sleeps one additional frame before stopping.
+* A pad R press starts choices but requests hiding on the following frame. Pending valid
+* responses are forwarded to the callback. */
 static void MCListenerFunc(void)
 {
   HUPROCESS *process;
@@ -1643,13 +1692,15 @@ static void MCListenerFunc(void)
   }
 }
 
-
 /* 80095034 MCAnswerMain */
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
+/* Runs while speech support is open: retries a lost microphone, reads talk-button transitions,
+ * dispatches queued responses, and shows the status sprite only while recognition is running. */
 static void MCAnswerMain(void)
 {
+  /* oldButton and oldResponseNo have no initial values before their first comparisons. */
   u32 oldButton;
   s16 oldResponseNo;
   MCResponseCallback callback;
@@ -1685,6 +1736,7 @@ static void MCAnswerMain(void)
       }
     }
 
+    /* Ignore the button-read result; a failed read leaves the previous cached mask in use. */
     MICGetButton(1,&MCButton);
     MCButton &= 0x10;
     MCButtonDown = MCButton & (oldButton ^ MCButton);
@@ -1712,46 +1764,49 @@ static void MCAnswerMain(void)
   }
 }
 
-
 /* 800955e0 HuMCSessionSet */
 
-void HuMCSessionSet(short param_1)
+/* Selects the session ID used by later context activation in microphone mode; IDs below four,
+ * including -1 to skip session switching and -2 to restore the baseline session, are accepted. */
+void HuMCSessionSet(short playerIndex)
 
 {
   s32 mic;
 
   mic = GwCommon.mic;
-  if ((mic == 1) && (param_1 < 4)) {
-    MCSessionCur = param_1;
+  if ((mic == 1) && (playerIndex < 4)) {
+    MCSessionCur = playerIndex;
   }
   return;
 }
-
 
 /* 8009561c HuMCSessionClose */
 
+/* Releases every saved player session, clears current and previous session IDs, and frees the
+ * allocations tagged for player-session storage. */
 void HuMCSessionClose(void)
 
 {
-  short sVar1;
-  
-  for (sVar1 = 0; sVar1 < 4; sVar1++) {
-    if (PlayerSession[sVar1] != 0) {
-      gsapi_EngineSessionDataFree(PlayerSession[sVar1]);
+    short playerIndex;
+
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        if (PlayerSession[playerIndex] != 0) {
+            gsapi_EngineSessionDataFree(PlayerSession[playerIndex]);
     }
   }
   MCSessionCur = MCSessionPrev = -1;
-  for (sVar1 = 0; sVar1 < 4; sVar1++) {
-    PlayerSession[sVar1] = 0;
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        PlayerSession[playerIndex] = 0;
   }
-  HuMemDirectFreeNum(0,0x30000001);
+  HuMemDirectFreeNum(0,MIC_SESSION_ALLOC_TAG);
   return;
 }
 
-
 /* 800956e4 HuMCSessionKill */
 
-void HuMCSessionKill(short param_1)
+/* In microphone mode, restores the baseline engine session before freeing this player's saved
+ * session; both engine results are ignored. */
+void HuMCSessionKill(short playerIndex)
 
 {
   s32 mic;
@@ -1760,33 +1815,36 @@ void HuMCSessionKill(short param_1)
   if ((mic != 1) || (MC_gsapiEngine == 0)) {
     return;
   }
-  if (PlayerSession[param_1] != 0) {
+  if (PlayerSession[playerIndex] != 0) {
     gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
-    gsapi_EngineSessionDataFree(PlayerSession[param_1]);
-    PlayerSession[param_1] = 0;
+    gsapi_EngineSessionDataFree(PlayerSession[playerIndex]);
+    PlayerSession[playerIndex] = 0;
   }
   return;
 }
-
 
 /* 800957a4 HuMCUnkResponseCheck */
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
+/* Searches backward for the latest successful response. Saves it for confirmation when
+* at least two distinct first words occur among its first three candidate slots with nonzero
+* scores and the first distinct word's signed score minus the second's is at most 1000.
+* The score comparison does not use an absolute difference. */
 s32 HuMCUnkResponseCheck(void)
 {
-  MCUnkResponse_s *response;
+  MCResponse_s *response;
   s32 i;
   s16 word[3];
   s16 score[3];
   s16 count;
   s32 j;
 
-  *(s16 *)(MCUnkResponseData + 0x10) =
-      *(s16 *)(MCUnkResponseData + 0x18) =
-      *(s16 *)(MCUnkResponseData + 0x20) = 0;
+  ((MCResponse_s *)MCUnkResponseData)->entry[0].score =
+      ((MCResponse_s *)MCUnkResponseData)->entry[1].score =
+      ((MCResponse_s *)MCUnkResponseData)->entry[2].score = 0;
   for (i = MCResponseNo - 1; i >= 0; i--) {
-    response = (MCUnkResponse_s *)(MCResponseBuf + i * 0x60);
+    response = (MCResponse_s *)(MCResponseBuf + i * MIC_RESPONSE_RECORD_SIZE);
     if (response->status == 0) {
       break;
     }
@@ -1802,12 +1860,12 @@ s32 HuMCUnkResponseCheck(void)
   for (; i < 3; i++) {
     if (response->entry[i].score != 0) {
       for (j = 0; j < count; j++) {
-        if (*response->entry[i].word == word[j]) {
+        if (*response->entry[i].result == word[j]) {
           break;
         }
       }
       if (j == count) {
-        word[count] = *response->entry[i].word;
+        word[count] = *response->entry[i].result;
         score[count] = response->entry[i].score;
         count++;
       }
@@ -1817,12 +1875,11 @@ s32 HuMCUnkResponseCheck(void)
     return 0;
   }
   if ((score[0] - score[1]) <= 1000) {
-    *(MCUnkResponse_s *)MCUnkResponseData = *response;
+    *(MCResponse_s *)MCUnkResponseData = *response;
     return 1;
   }
   return 0;
 }
-
 
 /* 80095968 HuMCNewResponseGet */
 
@@ -1835,9 +1892,13 @@ static char lbl_8023AC3B[] =
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
+/* Confirms up to three distinct words from the saved ambiguous response with successive yes/no
+ *
+ * prompts. If the yes/no context cannot be created, returns the first candidate without
+ * confirmation. */
 s32 HuMCNewResponseGet(s32 messageBase)
 {
-  MCUnkResponse_s *response;
+  MCResponse_s *response;
   HuVec2f size;
   s16 word[3];
   s16 score[3];
@@ -1847,14 +1908,14 @@ s32 HuMCNewResponseGet(s32 messageBase)
   s32 choice;
   s32 window;
 
-  response = (MCUnkResponse_s *)MCUnkResponseData;
+  response = (MCResponse_s *)MCUnkResponseData;
   if (response->entry[0].score == 0) {
     return -1;
   }
   if (MCYesNoCtxId == -1) {
     MCYesNoCtxId = HuMCContextCreate(lbl_8023AC3B);
     if (MCYesNoCtxId == -1) {
-      return *response->entry[0].word;
+      return *response->entry[0].result;
     }
   }
 
@@ -1862,12 +1923,12 @@ s32 HuMCNewResponseGet(s32 messageBase)
   for (; i < 3; i++) {
     if (response->entry[i].score != 0) {
       for (j = 0; j < count; j++) {
-        if (*response->entry[i].word == word[j]) {
+        if (*response->entry[i].result == word[j]) {
           break;
         }
       }
       if (j == count) {
-        word[count] = *response->entry[i].word;
+        word[count] = *response->entry[i].result;
         score[count] = response->entry[i].score;
         count++;
       }
@@ -1879,14 +1940,14 @@ s32 HuMCNewResponseGet(s32 messageBase)
 
   for (i = 0; i < count; i++) {
     HuWinInsertMesSizeGet(messageBase + word[i],0);
-    HuWinMesMaxSizeGet(1,&size,0x1c0039);
+    HuWinMesMaxSizeGet(1,&size,MIC_RECOGNIZED_WORD_CONFIRM_MESSAGE);
     window = HuWinExCreateFrame(lbl_802C1E98,lbl_802C1E9C,
                                (s16)size.x,(s16)size.y,-1,0);
     HuWinExOpen(window);
     HuWinMesSpeedSet(window,0);
     HuWinAttrSet(window,0x800);
     HuWinInsertMesSet(window,messageBase + word[i],0);
-    HuWinMesSet(window,0x1c0039);
+    HuWinMesSet(window,MIC_RECOGNIZED_WORD_CONFIRM_MESSAGE);
     do {
       s32 context = MCYesNoCtxId;
       HuMCSelWinContextSet(context,NULL,0);
@@ -1903,16 +1964,18 @@ s32 HuMCNewResponseGet(s32 messageBase)
   return word[i];
 }
 
-
 /* 80095e20 HuMCSessionExportReset */
 
+/* During microphone context switching or shutdown, creates a baseline session if needed and
+ * saves the previous player's engine session. Imports a saved selected-player session or, for
+ * ID -2, the baseline; an unsaved player leaves the engine session unchanged. */
 void HuMCSessionExportReset(void)
 
 {
-  int iVar1;
+  int apiResult;
   s32 mic;
   char *strings;
-  
+
   strings = lbl_8023A988;
   mic = GwCommon.mic;
   if ((mic != 1) || (MCSessionCur == -1)) {
@@ -1920,42 +1983,44 @@ void HuMCSessionExportReset(void)
   }
   {
     if ((MCSessionP == 0) &&
-       (iVar1 = gsapi_EngineSessionDataExport(MC_gsapiEngine,&MCSessionP), iVar1 != 0)) {
-      OSReport(strings + 0x2c6,iVar1);
+       (apiResult = gsapi_EngineSessionDataExport(MC_gsapiEngine,&MCSessionP), apiResult != 0)) {
+      OSReport(strings + 710,apiResult);
     }
     if (MCSessionPrev >= 0) {
       gsapi_EngineSessionDataFree(PlayerSession[MCSessionPrev]);
-      HeapNum = 0x30000001;
-      iVar1 = gsapi_EngineSessionDataExport(MC_gsapiEngine,PlayerSession + MCSessionPrev);
-      if (iVar1 != 0) {
-        OSReport(strings + 0x2e2,iVar1,PlayerSession[MCSessionPrev]);
+      HeapNum = MIC_SESSION_ALLOC_TAG;
+      apiResult = gsapi_EngineSessionDataExport(MC_gsapiEngine,PlayerSession + MCSessionPrev);
+      if (apiResult != 0) {
+        OSReport(strings + 738,apiResult,PlayerSession[MCSessionPrev]);
       }
-      HeapNum = 0x30000000;
+      HeapNum = MIC_ALLOC_TAG;
     }
     MCSessionPrev = MCSessionCur;
     if (MCSessionCur == -2) {
-      iVar1 = gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
-      if (iVar1 != 0) {
-        OSReport(strings + 0x2fb,iVar1,MCSessionP);
+      apiResult = gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
+      if (apiResult != 0) {
+        OSReport(strings + 763,apiResult,MCSessionP);
       }
-    }
-    else if ((PlayerSession[MCSessionCur] != 0) &&
-            (iVar1 = gsapi_EngineSessionDataImport(MC_gsapiEngine,PlayerSession[MCSessionCur],0),
-            iVar1 != 0)) {
-      OSReport(strings + 0x314,iVar1);
+    } else if ((PlayerSession[MCSessionCur] != 0) &&
+               (apiResult =
+                    gsapi_EngineSessionDataImport(MC_gsapiEngine, PlayerSession[MCSessionCur], 0),
+                apiResult != 0)) {
+        OSReport(strings + 788, apiResult);
     }
     if (MCSessionCur >= 0) {
-      *(undefined1 *)((int)&MCSessionTimer + (int)MCSessionCur) = 0;
+      *(u8 *)((int)&MCSessionTimer + (int)MCSessionCur) = 0;
     }
   }
   return;
 }
 
-
 /* 80096008 MCDeviceMesExec */
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
+/* Pauses gameplay and shows the device warning until an A-button retry mounts the microphone,
+ * then resumes continuous recognition if needed. User and object pause are always cleared on exit;
+ * process, model-motion, and sprite pause stay set if the game was already paused. */
 static void MCDeviceMesExec(void)
 {
   char paused;
@@ -1979,7 +2044,7 @@ static void MCDeviceMesExec(void)
   HuSprPauseSet(1);
   HuPadRumbleAllStop();
 
-  fileData = HuAR_ARAMtoMRAMFileRead(0xf20033,0x30000000,2);
+  fileData = HuAR_ARAMtoMRAMFileRead(MIC_DEVICE_ALERT_SPRITE_DATA_NUM,MIC_ALLOC_TAG,2);
   anim = HuSprAnimRead(fileData);
   group = HuSprGrpCreate(1);
   sprite = HuSprCreate(anim,0,0);
@@ -2001,10 +2066,10 @@ static void MCDeviceMesExec(void)
 
   while (result != 0) {
     if (result == -2) {
-      HuWinMesSet(window,0x4a0015);
+      HuWinMesSet(window,MIC_WRONG_DEVICE_MESSAGE);
     }
     else {
-      HuWinMesSet(window,0x4a0014);
+      HuWinMesSet(window,MIC_DEVICE_UNAVAILABLE_MESSAGE);
     }
     HuWinMesWait(window);
     for (;;) {
@@ -2040,9 +2105,11 @@ static void MCDeviceMesExec(void)
   }
 }
 
-
 /* 80096534 MCThreadFunc */
 
+/* Runs the speech engine's start, audio-processing, and stop states from queued commands.
+ * Suspends for pad-answer mode, disabled microphone mode, or engine errors. A stop error suspends
+ * before waking stop waiters, leaving them asleep until this thread resumes. */
 static void *MCThreadFunc(void *arg)
 
 {
@@ -2077,6 +2144,8 @@ static void *MCThreadFunc(void *arg)
         }
         continue;
       case 1:
+        /* EngineRestart processes engine audio and pending restarts; its supplied argument is
+         * unused. */
         gsapi_EngineRestart(0);
         OSSetThreadPriority(&MCThread,0x1f);
         continue;
@@ -2098,9 +2167,10 @@ static void *MCThreadFunc(void *arg)
   }
 }
 
-
 /* 800966bc MCThreadWakeup */
 
+/* The five-millisecond pad-update alarm restores the speech thread's low priority; its arguments
+ * are unused. */
 static void MCThreadWakeup(OSAlarm *alarm, OSContext *context)
 
 {
@@ -2108,11 +2178,12 @@ static void MCThreadWakeup(OSAlarm *alarm, OSContext *context)
   return;
 }
 
-
 /* 800966e8 HuMCPeriodicProc */
 
 /* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
 
+/* Pad updates briefly raise the initialized microphone speech thread's priority and schedule a
+ * five-millisecond alarm to lower it again. */
 void HuMCPeriodicProc(void)
 
 {
@@ -2128,8 +2199,11 @@ void HuMCPeriodicProc(void)
   return;
 }
 
-
 /* 80096794 MicNotifyCallBack */
+
+/* Handles engine threshold, abnormal-signal and listening notifications, queuing failure responses
+ * and tracking listening state. Repeated failures may discard the current player's saved session;
+ * baseline-import and session-free results are ignored. */
 
 static char lbl_8023ACB2[] = "OVERLOAD";
 static char lbl_8023ACBB[] = "TOO QUIET";
@@ -2148,7 +2222,8 @@ static char * const MCErrorTbl[] = {
     lbl_8023ACC5, lbl_8023ACCF, lbl_8023ACDD
 };
 
-static void MicNotifyCallBack(undefined4 param_1,s32 event,undefined4 sample,uint value)
+static void MicNotifyCallBack(u32 callbackContext, s32 event,
+                              u32 sample, u32 value)
 
 {
   short session1;
@@ -2170,12 +2245,12 @@ static void MicNotifyCallBack(undefined4 param_1,s32 event,undefined4 sample,uin
         gsapi_EngineSessionDataFree(PlayerSession[session1]);
         PlayerSession[session1] = 0;
       }
-      *(undefined1 *)((int)&MCSessionTimer + (int)MCSessionCur) = 0;
+      *(u8 *)((int)&MCSessionTimer + (int)MCSessionCur) = 0;
     }
   case 4:
     if (event == 0) {
       OSReport(strings + 0x35e,value);
-      MicWriteResponse(0xfffffffe,0,0,0,0xffffffff);
+      MicWriteResponse(MIC_THRESHOLD_MISSED_RESPONSE,0,0,0,MIC_RESPONSE_NO_RESULT);
     }
     else {
       if ((MCSessionCur >= 0) && (MCSessionTimer[MCSessionCur]++ > 2)) {
@@ -2187,10 +2262,10 @@ static void MicNotifyCallBack(undefined4 param_1,s32 event,undefined4 sample,uin
           gsapi_EngineSessionDataFree(PlayerSession[session2]);
           PlayerSession[session2] = 0;
         }
-        *(undefined1 *)((int)&MCSessionTimer + (int)MCSessionCur) = 0;
+        *(u8 *)((int)&MCSessionTimer + (int)MCSessionCur) = 0;
       }
       if (value == 1) {
-        MicWriteResponse(0xfffffffc,0,0,0,0xffffffff);
+        MicWriteResponse(MIC_ENGINE_CONDITION_RESPONSE,0,0,0,MIC_RESPONSE_NO_RESULT);
       }
       OSReport(strings + 0x378,value,
                MCErrorTbl[value],sample);
@@ -2212,24 +2287,27 @@ static void MicNotifyCallBack(undefined4 param_1,s32 event,undefined4 sample,uin
   }
 }
 
-
 /* 80096a60 MicResultCallBack */
 
-void MicResultCallBack(undefined4 param_1,undefined4 param_2,undefined4 param_3)
+/* Called by the speech engine when a recognition result is ready. */
+
+void MicResultCallBack(u32 callbackContext, u32 callbackData, u32 resultNode)
 
 {
-  MicResultExec(param_1,param_2,(MicResultNode_s *)param_3);
+  MicResultExec(callbackContext,callbackData,(MicResultNode_s *)resultNode);
   return;
 }
 
-
 /* 80096a98 MicResultExec */
+
+/* Converts the engine's candidate list into the response queue for game modes. */
 
 static char lbl_8023AD88[] =
     "%d:%d(%d),%s\n\0"
     "NBEST Error %x\n\0\0";
 
-static void MicResultExec(undefined4 param_1,undefined4 param_2,MicResultNode_s *root)
+static void MicResultExec(u32 callbackContext, u32 callbackData,
+                          MicResultNode_s *root)
 
 {
   MicResultNode_s *node;
@@ -2243,6 +2321,7 @@ static void MicResultExec(undefined4 param_1,undefined4 param_2,MicResultNode_s 
   if (root->count != 0) {
     for (node = root, i = 0; i < 10; i++) {
       if (!node || (node->count == 0)) {
+        /* Missing candidates clear score and count only; their result pointer remains unset. */
         entry[i].score = 0;
         entry[i].count = 0;
         }
@@ -2251,8 +2330,12 @@ static void MicResultExec(undefined4 param_1,undefined4 param_2,MicResultNode_s 
           MCResultNum = 0;
         }
         resultP = &MCResultData[MCResultNum];
+        /* Copy each candidate using the first candidate's word count, even when this candidate's
+         * count differs; its reported count still comes from node. */
         for (j = 1; j < (root->count - 1); j++) {
           MCResultData[MCResultNum++] = MicResultGet(node->result[j]);
+          /* Ignore word-name lookup errors and log name even when the lookup leaves it
+           * unassigned. */
           gsapi_EngineGetParam(MC_gsapiEngine,node->result[j],&name);
           OSReport(lbl_8023AD88,i,MicResultGet(node->result[j]),node->score,name);
         }
@@ -2262,7 +2345,7 @@ static void MicResultExec(undefined4 param_1,undefined4 param_2,MicResultNode_s 
         node = node->next;
       }
     }
-    MicWriteResponseBuf(0,(undefined2 *)entry);
+MicWriteResponseBuf(0,(u16 *)entry);
     if (MCSessionCur >= 0) {
       MCSessionTimer[MCSessionCur] = 0;
     }
@@ -2273,50 +2356,53 @@ static void MicResultExec(undefined4 param_1,undefined4 param_2,MicResultNode_s 
   }
 }
 
-
 /* 80096ca4 MicResultGet */
 
-static s32 MicResultGet(s32 param_1)
+/* While converting speech candidates, maps an engine word offset through the current context's
+ * cumulative word-index table; returns -1 when no range contains it. */
+static s32 MicResultGet(s32 wordOffset)
 
 {
   s32 count;
   s32 total;
   s32 i;
   u16 *ptr;
-  
+
   ptr = MCContextP->binData;
   count = *ptr++;
   i = total = 0;
   for (; i < count; ptr++, i++) {
     total += *ptr;
-    if (total > param_1) {
+    if (total > wordOffset) {
       return i;
     }
   }
   return -1;
 }
 
-
 /* 80096d1c MicWriteResponse */
 
-static int MicWriteResponse(s16 param_1,s32 param_2,void *param_3,s16 param_4,
-                    s32 param_5)
+/* Queues a single speech, pad or cancellation response using the supplied result pointer.
+ * Clears the other candidate scores but preserves their counts and pointers. The queue position
+ * caps at 255; subsequent writes overwrite slot 255 without advancing it. */
+static int MicWriteResponse(s16 responseType, s32 validResult, void *responseData,
+                            u16 resultScore, s32 resultWord)
 
 {
-  short sVar1;
-  undefined2 *puVar2;
-  
-  puVar2 = (undefined2 *)(MCResponseBuf + MCResponseNo * 0x60);
-  *(s16 *)((u8 *)puVar2 + 0) = param_1;
-  *(s16 *)((u8 *)puVar2 + 2) = param_4;
-  *(s16 *)((u8 *)puVar2 + 4) = param_2;
-  *(void **)(puVar2 + 4) = param_3;
-  *(undefined4 *)(puVar2 + 6) = param_5;
-  *(s16 *)((u8 *)puVar2 + 0x10) = param_4;
-  *(s16 *)((u8 *)puVar2 + 0x12) = param_2;
-  *(void **)(puVar2 + 10) = param_3;
-  for (sVar1 = 1; sVar1 < 10; sVar1++) {
-    *(s16 *)((u8 *)puVar2 + sVar1 * 8 + 0x10) = 0;
+  short entryIndex;
+  MCResponse_s *response;
+
+  response = (MCResponse_s *)(MCResponseBuf + MCResponseNo * 96);
+  response->status = responseType;
+  response->score = resultScore;
+  response->count = validResult;
+  response->result = responseData;
+  response->word = resultWord;
+  response->entry[0].score = resultScore;
+  response->entry[0].count = validResult;
+  response->entry[0].result = responseData;
+  for (entryIndex = 1; entryIndex < 10; entryIndex++) {
+    response->entry[entryIndex].score = 0;
   }
   MCResponseNo = MCResponseNo + 1;
   if (MCResponseNo >= 0x100) {
@@ -2324,25 +2410,27 @@ static int MicWriteResponse(s16 param_1,s32 param_2,void *param_3,s16 param_4,
   }
   return MCResponseNo;
 }
-
 
 /* 80096dc0 MicWriteResponseBuf */
 
-static s32 MicWriteResponseBuf(undefined2 param_1,undefined2 *param_2)
+/* Queues ten speech candidates and derives the summary from the first, retaining their result
+ * pointers. The queue position caps at 255; subsequent writes overwrite slot 255 without
+ * advancing it. */
+static s32 MicWriteResponseBuf(s16 responseType, u16 *entries)
 
 {
-  short sVar2;
-  undefined2 *puVar3;
-  
-  puVar3 = (undefined2 *)(MCResponseBuf + MCResponseNo * 0x60);
-  *puVar3 = param_1;
-  puVar3[1] = *param_2;
-  *(s16 *)((u8 *)puVar3 + 4) = *(s16 *)((u8 *)param_2 + 2);
-  *(undefined4 *)(puVar3 + 4) = *(undefined4 *)(param_2 + 2);
-  *(int *)(puVar3 + 6) = (int)**(short **)(param_2 + 2);
-  for (sVar2 = 0; sVar2 < 10; sVar2++) {
-    *(MCResponseEntry_s *)((u8 *)puVar3 + sVar2 * 8 + 0x10) =
-        ((MCResponseEntry_s *)param_2)[sVar2];
+  short entryIndex;
+  MCResponse_s *response;
+
+  response = (MCResponse_s *)(MCResponseBuf + MCResponseNo * 96);
+  response->status = responseType;
+  response->score = ((MicResponseEntry_s *)entries)->score;
+  response->count = ((MCResponseEntry_s *)entries)->count;
+  response->result = ((MCResponseEntry_s *)entries)->result;
+  response->word = (int)*((MCResponseEntry_s *)entries)->result;
+  for (entryIndex = 0; entryIndex < 10; entryIndex++) {
+    response->entry[entryIndex] =
+        ((MCResponseEntry_s *)entries)[entryIndex];
   }
   MCResponseNo = MCResponseNo + 1;
   if (MCResponseNo >= 0x100) {
@@ -2351,38 +2439,40 @@ static s32 MicWriteResponseBuf(undefined2 param_1,undefined2 *param_2)
   return MCResponseNo;
 }
 
-
 /* 80096e7c MCDVDRead */
 
-static void *MCDVDRead(const char *param_1)
+/* Loads a recognition asset into storage tagged for microphone shutdown, then frees the DVD
+ * read buffer. Flushes the newly allocated destination before copying the file into it. */
+static void *MCDVDRead(const char *path)
 
 {
   void *__src;
   void *__dest;
-  
-  __src = (void *)HuDvdDataRead(param_1);
-  __dest = (void *)HuMemDirectMallocNum(0,DirDataSize,0x30000000);
-  DCFlushRange(__dest,DirDataSize + 0x1f & 0xffffffe0);
+
+  __src = (void *)HuDvdDataRead(path);
+  __dest = (void *)HuMemDirectMallocNum(0,DirDataSize,MIC_ALLOC_TAG);
+  DCFlushRange(__dest,DirDataSize + MIC_CACHE_LINE_LAST_BYTE & MIC_CACHE_LINE_ALIGN_MASK);
   memcpy(__dest,__src,DirDataSize);
   HuMemDirectFree(__src);
   return __dest;
 }
 
-
 /* 80096efc MakeMCFilename */
 
-static char *MakeMCFilename(char *param_1,char *param_2)
+/* While loading context files, copies the path up to its first dot and appends the requested
+ * extension in a shared filename buffer; the next call overwrites that buffer. */
+static char *MakeMCFilename(char *path, char *extension)
 
 {
   char *src;
   char *dst;
-  
-  src = param_1;
+
+  src = path;
   dst = MCFileName;
   while ((*src != '\0') && (*src != '.')) {
     *dst++ = *src++;
   }
-  src = param_2;
+  src = extension;
   while (*src != '\0') {
     *dst++ = *src++;
   }
@@ -2390,17 +2480,19 @@ static char *MakeMCFilename(char *param_1,char *param_2)
   return MCFileName;
 }
 
-
 /* 80096f84 ActivateContext */
 
+/* Prepares and activates a context for one-shot or continuous recognition, then saves and imports
+ * player sessions. Parameter errors are logged without aborting; session processing also runs
+ * when activation fails. Returns the activation result. */
 static s32 ActivateContext(s16 context)
 
 {
-  int iVar1;
+  int apiResult;
   s32 result;
   s32 mic;
   char *strings;
-  
+
   strings = lbl_8023A988;
   result = gsapi_ContextSetParam(MCContext[context].context,5,10);
   if (result != 0) {
@@ -2410,60 +2502,63 @@ static s32 ActivateContext(s16 context)
   mic = GwCommon.mic;
   if ((mic == 1) && (MCSessionCur != -1)) {
     if ((MCSessionP == 0) &&
-       (iVar1 = gsapi_EngineSessionDataExport(MC_gsapiEngine,&MCSessionP), iVar1 != 0)) {
-      OSReport(strings + 0x2c6,iVar1);
+       (apiResult = gsapi_EngineSessionDataExport(MC_gsapiEngine,&MCSessionP), apiResult != 0)) {
+      OSReport(strings + 710,apiResult);
     }
     if (MCSessionPrev >= 0) {
       gsapi_EngineSessionDataFree(PlayerSession[MCSessionPrev]);
-      HeapNum = 0x30000001;
-      iVar1 = gsapi_EngineSessionDataExport(MC_gsapiEngine,PlayerSession + MCSessionPrev);
-      if (iVar1 != 0) {
-        OSReport(strings + 0x2e2,iVar1,PlayerSession[MCSessionPrev]);
+      HeapNum = MIC_SESSION_ALLOC_TAG;
+      apiResult = gsapi_EngineSessionDataExport(MC_gsapiEngine,PlayerSession + MCSessionPrev);
+      if (apiResult != 0) {
+        OSReport(strings + 738,apiResult,PlayerSession[MCSessionPrev]);
       }
-      HeapNum = 0x30000000;
+      HeapNum = MIC_ALLOC_TAG;
     }
     MCSessionPrev = MCSessionCur;
     if (MCSessionCur == -2) {
-      iVar1 = gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
-      if (iVar1 != 0) {
-        OSReport(strings + 0x2fb,iVar1,MCSessionP);
+      apiResult = gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
+      if (apiResult != 0) {
+        OSReport(strings + 763,apiResult,MCSessionP);
       }
-    }
-    else if ((PlayerSession[MCSessionCur] != 0) &&
-            (iVar1 = gsapi_EngineSessionDataImport(MC_gsapiEngine,PlayerSession[MCSessionCur],0),
-            iVar1 != 0)) {
-      OSReport(strings + 0x314,iVar1);
+    } else if ((PlayerSession[MCSessionCur] != 0) &&
+               (apiResult =
+                    gsapi_EngineSessionDataImport(MC_gsapiEngine, PlayerSession[MCSessionCur], 0),
+                apiResult != 0)) {
+        OSReport(strings + 788, apiResult);
     }
     if (MCSessionCur >= 0) {
-      *(undefined1 *)((int)&MCSessionTimer + (int)MCSessionCur) = 0;
+        *(u8 *)((int)&MCSessionTimer + (int)MCSessionCur) = 0;
     }
   }
   return result;
 }
 
-
 /* 800971c4 heap_Open */
 
-undefined4 heap_Open(undefined4 *param_1)
+/* Speech-engine initialization receives a zero heap handle and success; no separate heap is
+ * created. */
+u32 heap_Open(u32 *heapHandle)
 
 {
-  *param_1 = 0;
+  *heapHandle = 0;
   return 0;
 }
 
-
 /* 800971d4 heap_Close */
 
-undefined4 heap_Close(void)
+/* Speech-engine shutdown releases every heap-0 block in the current speech memory group and
+ * reports success. */
+u32 heap_Close(void)
 
 {
   HuMemDirectFreeNum(0,HeapNum);
   return 0;
 }
 
-
 /* 80097200 heap_Alloc */
 
+/* Speech-engine memory requests use the tail of heap 0 with the current speech group number;
+ * the supplied heap handle is ignored. */
 void *heap_Alloc(void *heap, u32 size)
 
 {
@@ -2472,9 +2567,10 @@ void *heap_Alloc(void *heap, u32 size)
   return result;
 }
 
-
 /* 80097240 heap_Calloc */
 
+/* The speech engine requests zeroed storage here: count times size bytes, or NULL if no block
+ * fits. Uses the current speech group in heap 0's tail and ignores the supplied heap handle. */
 void *heap_Calloc(void *heap, u32 count, u32 size)
 
 {
@@ -2494,9 +2590,10 @@ void *heap_Calloc(void *heap, u32 count, u32 size)
   return result;
 }
 
-
 /* 800972b8 heap_Realloc */
 
+/* The speech engine resizes storage here in heap 0, ignoring the supplied heap handle. A NULL
+ * pointer gets tail storage in the current group; an existing block keeps its group when moved. */
 void *heap_Realloc(void *heap, void *ptr, u32 size)
 
 {
@@ -2517,9 +2614,9 @@ void *heap_Realloc(void *heap, void *ptr, u32 size)
   return result;
 }
 
-
 /* 80097330 heap_Free */
 
+/* The speech engine releases the supplied memory block; the heap argument is ignored. */
 void heap_Free(void *heap, void *ptr)
 
 {
@@ -2527,25 +2624,28 @@ void heap_Free(void *heap, void *ptr)
   return;
 }
 
-
 /* 80097358 HuMCVolSampleCreate */
 
+/* Before volume queries, allocates and clears a 44,100-sample PCM history buffer and resets its
+ * write position and microphone-driver sample index. */
 void HuMCVolSampleCreate(void)
 
 {
-  MCVolData.sample = (void *)HuMemDirectMallocNum(0,0x15888,0x30000000);
-  memset(MCVolData.sample,0,0x15888);
+  MCVolData.sample = (void *)HuMemDirectMallocNum(0,MIC_VOLUME_SAMPLE_BUFFER_SIZE,MIC_ALLOC_TAG);
+  memset(MCVolData.sample,0,MIC_VOLUME_SAMPLE_BUFFER_SIZE);
   MCVolData.sampleNo = 0;
   MCVolData.index = 0;
   return;
 }
-
 
 /* 800973d0 HuMCVolGet */
 
 /* WARNING: Removing unreachable block (ram,0x80097624) */
 /* WARNING: Removing unreachable block (ram,0x8009762c) */
 
+/* Updates PCM history from microphone channel 1 and scales the energy of the latest 1,024 samples
+ * into a volume value. Inactive capture clears the history and returns -1. The result is clamped
+ * only below zero, so it can exceed scale. */
 s32 HuMCVolGet(s32 minDb,u32 scale)
 
 {
@@ -2564,7 +2664,7 @@ s32 HuMCVolGet(s32 minDb,u32 scale)
 
   interrupts = OSDisableInterrupts();
   if (!MICIsActive(1)) {
-    memset(MCVolData.sample,0,0x15888);
+    memset(MCVolData.sample,0,MIC_VOLUME_SAMPLE_BUFFER_SIZE);
     MCVolData.sampleNo = 0;
     MCVolData.index = 0;
     OSRestoreInterrupts(interrupts);
