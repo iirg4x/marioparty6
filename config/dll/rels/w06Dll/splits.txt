@@ -5,3 +5,16 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/w06Dll/board_main.c:
+	.text       start:0x00000000 end:0x0000E3EC
+	.rodata     start:0x00000000 end:0x00000280
+	.data       start:0x00000000 end:0x00000820
+	.bss        start:0x00000000 end:0x000004B6
+
+REL/w06Dll/text_0E3EC.c:
+	.text       start:0x0000E3EC end:0x0000E50C
+
+REL/w06Dll/runtime.c:
+	.text       start:0x0000E50C end:0x0000EF50
+	.rodata     start:0x00000280 end:0x00000298
