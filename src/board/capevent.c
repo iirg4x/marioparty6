@@ -1,3 +1,4 @@
+/* Board capsule event dispatch and the shared capsule effects. */
 #include "dolphin/math.h"
 
 #include "game/gamework.h"
@@ -47,7 +48,7 @@ s8 mbPadStkYGet(int playerNo);
 #define CAPEVENT_DISPLAY_LIST_SIZE (1 << 16)
 
 #define CAPEVENT_PARTICLE_ATTR_ZWRITE_OFF (1 << 0)
-#define CAPEVENT_PARTICLE_ATTR_GRID_UV (1 << 1)
+#define CAPEVENT_PARTICLE_ATTR_FULL_TEXTURE_UV (1 << 1)
 #define CAPEVENT_PARTICLE_ATTR_IDENTITY_VIEW (1 << 2)
 #define CAPEVENT_PARTICLE_ATTR_ROTATE_3D (1 << 3)
 #define CAPEVENT_PARTICLE_ATTR_SCALE_XY (1 << 4)
@@ -91,7 +92,6 @@ static ANIMDATA *ringHitEffAnim1;
 static ANIMDATA *boostEffAnim;
 static int biriQMasuNum;
 
-
 static HUPROCESS *ev_CapBonusCoinProc[GW_PLAYER_MAX];
 static char ev_CapBonusCoinMes[16];
 static HUPROCESS *ev_CapMainProc[8];
@@ -116,11 +116,10 @@ typedef struct CapBonusCoinWork {
 
 typedef struct CapEffBoostWork {
     int modelId;
-    int time;
+    int particleCount;
     int objIdx;
     ANIMDATA *animP;
 } CAPEFFBOOSTWORK;
-
 
 typedef struct CapEffBoostParticleData {
     s16 time;
@@ -139,7 +138,6 @@ typedef struct CapEffBoostParticleData {
     int pat;
 } CAPEFFBOOSTPARTICLEWORK;
 
-
 typedef struct CapEffExplodeWork {
     int modelId;
     int num;
@@ -154,14 +152,12 @@ typedef struct CapEffSnowWork {
     ANIMDATA *animP;
 } CAPEFFSNOWWORK;
 
-
 typedef struct CapEffGlowWork {
     int modelId;
     int num;
     int objIdx;
     ANIMDATA *animP;
 } CAPEFFGLOWWORK;
-
 
 typedef struct CapEffGlowParticleData {
     s16 mode;
@@ -189,7 +185,6 @@ typedef struct CapEffGlowParticleData {
     int pat;
 } CAPEFFGLOWPARTICLEWORK;
 
-
 typedef struct CapEffSnowParticleWork {
     s16 angle;
     u8 _unk02[6];
@@ -206,7 +201,6 @@ typedef struct CapEffSnowParticleWork {
     u8 _unk68[4];
 } CAPEFFSNOWPARTWORK;
 
-
 typedef struct CapEffExplodeParticleWork {
     u8 _unk00[32];
     u8 blendMode;
@@ -217,7 +211,6 @@ typedef struct CapEffExplodeParticleWork {
     ANIMDATA *animP;
     void *data;
 } CAPEFFEXPLODEPARTWORK;
-
 
 typedef struct CapEffExplodeParticleData {
     s16 mode;
@@ -237,7 +230,6 @@ typedef struct CapEffExplodeParticleData {
     int pat;
 } CAPEFFEXPLODEPARTICLEWORK;
 
-
 typedef struct CapEffBoostParticleWork {
     u8 _unk00[32];
     u8 blendMode;
@@ -248,15 +240,15 @@ typedef struct CapEffBoostParticleWork {
 
 typedef struct CapEffGlowParticleWork {
     u8 _unk00[32];
-    u8 pat;
-    u8 blendMode;
+    u8 renderBlendMode;
+    u8 counterFlags;
     u8 _unk22[22];
     ANIMDATA *animP;
 } CAPEFFGLOWPARTWORK;
 
 typedef struct CapEffDispWork {
     u8 _unk00[4];
-    int dispF;
+    int particleCount;
 } CAPEFFDISPWORK;
 
 typedef struct CapEffGlowKinokoParticleSystemWork {
@@ -281,9 +273,9 @@ struct CapEffParticleSystemWork {
     s16 mode;
     s16 phase;
     u8 _unk04[28];
-    u8 dispAttr;
+    u8 renderBlendMode;
     u8 _unk21;
-    u8 blendMode;
+    u8 renderFlags;
     u8 _unk23[3];
     s16 num;
     int _unk28;
@@ -309,14 +301,12 @@ typedef struct CapEffGlowKinokoParticleWork {
     u8 _unk06[102];
 } CAPEFFGLOWKINOKOPARTICLEWORK;
 
-
 typedef struct CapEffRingWork {
     int modelId[3];
-    int dispF;
+    int particleCount;
     int objIdx;
     ANIMDATA *animP[3];
 } CAPEFFRINGWORK;
-
 
 typedef struct CapEffRingParticleWork {
     s16 _unk00;
@@ -334,7 +324,6 @@ typedef struct CapEffRingParticleWork {
     GXColor color;
     int _unk68;
 } CAPEFFRINGPARTICLEWORK;
-
 
 typedef struct CapEffMasuHitParticleWork {
     s16 _unk00;
@@ -355,14 +344,12 @@ typedef struct CapEffMasuHitParticleWork {
     int _unk68;
 } CAPEFFMASUHITPARTICLEWORK;
 
-
 typedef struct CapEffRingHitParticleWork {
     u8 _unk00[32];
     u8 blendMode;
     u8 _unk21;
     u8 dispAttr;
 } CAPEFFRINGHITPARTWORK;
-
 
 typedef struct CapEffRayParticleWork {
     int index;
@@ -380,7 +367,6 @@ typedef struct CapEffRayParticleWork {
     HuVecF prevVtx[16];
     GXColor colorLerp[8];
 } CAPEFFRAYPARTICLEWORK;
-
 
 typedef struct CapEffCoinWork {
     int modelId;
@@ -401,7 +387,6 @@ typedef struct CapEffCoinWork {
     OMOBJ *glowObj;
 } CAPEFFCOINWORK;
 
-
 typedef struct CapEffMoveWork {
     int playerNo;
     int state;
@@ -411,21 +396,20 @@ typedef struct CapEffMoveWork {
     BOOL useShiftF;
     int minYF;
     float minY;
-    float vel;
+    float gravityStep;
     HuVecF pos;
     HuVecF velocity;
     HuVecF posStart;
     HuVecF posEnd;
-    HuVecF moveDir;
+    HuVecF outboundEndPos;
     HuVecF rot;
     int moveTime;
     int time;
     float rotSpeed;
 } CAPEFFMOVEWORK;
 
-
 typedef struct CapObjMotionWork {
-    int _unk00;
+    int playerNo;
     int modelId;
     int time;
     int motNo;
@@ -435,7 +419,6 @@ typedef struct CapObjMotionWork {
     BOOL shiftF;
     BOOL nextAttr;
 } CAPOBJMOTIONWORK;
-
 
 typedef struct CapEffElectricPartWork {
     int activeNo;
@@ -454,7 +437,6 @@ typedef struct CapEffElectricPartWork {
     HuVecF modelPos;
 } CAPEFFELECTRICPARTWORK;
 
-
 typedef struct CapEffElectricWork {
     int modelId;
     int num;
@@ -462,7 +444,6 @@ typedef struct CapEffElectricWork {
     ANIMDATA *animP;
     CAPEFFELECTRICPARTWORK part[32];
 } CAPEFFELECTRICWORK;
-
 
 typedef struct CapEffRayWork {
     int modelId;
@@ -472,7 +453,6 @@ typedef struct CapEffRayWork {
     int displayListSize;
     CAPEFFRAYPARTICLEWORK *particleP;
 } CAPEFFRAYWORK;
-
 
 typedef struct CapEffMasuHitWork {
     int modelId;
@@ -488,7 +468,6 @@ typedef struct CapEffOpenWork {
     HuVecF pos;
 } CAPEFFOPENWORK;
 
-
 typedef struct CapCoinManWork {
     int objIdx;
     int activeF;
@@ -500,7 +479,7 @@ typedef struct CapCoinManWork {
     int _unk1C;
     float _unk20;
     HuVecF pos;
-    HuVecF vel;
+    HuVecF targetPos;
 } CAPCOINMANWORK;
 
 typedef struct CapStarManWork {
@@ -509,12 +488,12 @@ typedef struct CapStarManWork {
     int _unk08;
     int modelId;
     int playerNo;
-    int coinNum;
+    int starNum;
     int _unk18;
     int _unk1C;
     float _unk20;
     HuVecF pos;
-    HuVecF vel;
+    HuVecF targetPos;
 } CAPSTARMANWORK;
 
 typedef struct CapEffCapLoseWork {
@@ -528,7 +507,6 @@ typedef struct CapEffCapLoseWork {
     HuVecF pos;
     HuVecF vel;
 } CAPEFFCAPLOSEWORK;
-
 
 #define CAP_WORK_MAX 64
 
@@ -586,9 +564,9 @@ typedef struct CapWork {
     int capsuleNo;
     int masuId;
     int masuIdNext;
-    int _unk14;
-    int _unk18;
-    int _unk1C;
+    int moveF;
+    int stopF;
+    int trapF;
     EVCAPWORK objWork;
     CAPWORKFLAG flags;
     int _unkB6C;
@@ -605,15 +583,14 @@ typedef struct CapWork {
     OMOBJ *capLoseObj;
 } CAPWORK;
 
-
 typedef struct EvCapsuleData {
     void (*main)(void);
-    void (*unk04)(void);
-    void (*unk08)(void *);
-    int unk0C;
-    int unk10;
+    void (*cleanup)(void);
+    void (*trapSetup)(void *);
+    int statusDisplayMode;
+    int cameraViewMode;
     int bgDataNum;
-    int unk18;
+    int trapCapsuleF;
 } EVCAPSULEDATA;
 
 void mbev_CapKinoko(void);
@@ -801,7 +778,7 @@ static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
 static float ev_CapRotCamera(float angle);
 static void ev_CapComChoiceHook(void);
 static void ev_CapWorkOMExec(OMOBJ *obj);
-static void ev_CapWorkInit(EVCAPWORK *work, int bgId);
+static void ev_CapWorkInit(EVCAPWORK *work, int capsuleNo);
 static void ev_CapWorkClose(EVCAPWORK *work);
 static void ev_CapCall(CAPWORK *work, BOOL waitF);
 void mbev_CapWait(CAPWORK *work);
@@ -834,6 +811,7 @@ OMOBJ *mbev_CapEffBoostCreate(void);
 OMOBJ *mbev_CapEffSnowCreate(void);
 OMOBJ *mbev_CapEffGlowCreate(void);
 OMOBJ *mbev_CapEffGlowFireCreate(void);
+/* Adds a glow particle using a random capsule palette color and randomized alpha. */
 void mbev_CapEffGlowKinokoAddAlt(OMOBJ *obj, HuVecF *posP, int time,
     float scale, float xRange, float yRange, float zRange, int type);
 void mbev_CapEffElectricModelSet(OMOBJ *obj, int modelId, int effectId,
@@ -873,17 +851,17 @@ extern void mbStarObjDispSet(int objNo, BOOL dispF);
 extern void mbStarObjPosSetV(int objNo, HuVecF *pos);
 extern void mbStarObjScaleSet(int objNo, float x, float y, float z);
 static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx);
-static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int zNum);
+static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode);
 int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF pos, HuVecF rot, HuVecF scale,
     int unk10, int unk14, int unk18, GXColor color);
 OMOBJ *mbev_CapEffRingCreate(void);
-OMOBJ *mbev_CapEffRayCreate(float scale, float speed);
+OMOBJ *mbev_CapEffRayCreate(float yOffset, float widthSpread);
 OMOBJ *mbev_CapEffMasuHitCreate(void);
 int mbev_CapEffRayAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA, HuVecF *rotB,
     float scale, int time);
 void mbev_CapEffRayAlphaSet(OMOBJ *obj, float alpha);
 int mbev_CapEffMasuHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA,
-    HuVecF *rotB, float scale, float scaleY, int time);
+    HuVecF *rotB, float radius, float particleScale, int time);
 static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max);
 OMOBJ *mbev_CapEffCoinCreate(void);
 void mbev_CapEffCoinKill(OMOBJ *obj);
@@ -902,6 +880,10 @@ void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF);
 BOOL mbev_CapStatusDispCheck(int playerNo);
 void mbev_CapCameraViewSet(int playerNo, int viewNo, BOOL stopF);
 
+/* Runs the selected capsule action or a capsule-space event for the player.
+* mbCapUse calls this after direct capsule use succeeds; mbev_MasuCapStop calls
+* it when movement stops on a capsule space. The flags select the event path.
+* After executing an event, it returns FALSE even if the player stays on the same space. */
 int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
 {
     CAPWORK work;
@@ -988,9 +970,9 @@ int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = capsuleValue;
-    work._unk14 = moveF;
-    work._unk1C = 0;
-    work._unk18 = stopF;
+    work.moveF = moveF;
+    work.trapF = 0;
+    work.stopF = stopF;
     work.masuId = GwPlayer[work.playerNo].masuId;
     work.masuIdNext = -1;
     if (!moveF) {
@@ -1003,12 +985,12 @@ int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
     if (!moveF && !stopF) {
         mbev_CapEffOpenCreate(work.playerNo, work.masuId, TRUE, TRUE, TRUE);
     }
-    if (ev_CapsuleData[capsuleValue].unk08 != NULL) {
+    if (ev_CapsuleData[capsuleValue].trapSetup != NULL) {
         ev_CapWorkInit(&work.objWork, -1);
-        ev_CapsuleData[capsuleValue].unk08(&work);
+        ev_CapsuleData[capsuleValue].trapSetup(&work);
         ev_CapWorkClose(&work.objWork);
     }
-    if (stopF && ev_CapsuleData[work.capsuleNo].unk18 != 0
+    if (stopF && ev_CapsuleData[work.capsuleNo].trapCapsuleF != 0
         && mbCapUseModeGet(capsuleValue) == 2) {
         if ((capsuleValue == 22 || capsuleValue == 25)
             && GwPlayer[playerNo].moveNum <= 1) {
@@ -1016,7 +998,7 @@ int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
         }
         return TRUE;
     }
-    switch (ev_CapsuleData[work.capsuleNo].unk10) {
+    switch (ev_CapsuleData[work.capsuleNo].cameraViewMode) {
         case 1:
             mbCameraPlayerViewSet(work.playerNo, 0);
             break;
@@ -1024,7 +1006,7 @@ int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
             mbCameraPlayerViewSet(work.playerNo, 1);
             break;
     }
-    switch (ev_CapsuleData[work.capsuleNo].unk0C) {
+    switch (ev_CapsuleData[work.capsuleNo].statusDisplayMode) {
         case 0:
             if (!mbev_CapStatusDispCheck(work.playerNo)) {
                 mbev_CapStatusDispSetAll(FALSE, TRUE);
@@ -1060,8 +1042,6 @@ int mbev_CapCall(int playerNo, int capsuleValue, BOOL moveF, BOOL stopF)
     return FALSE;
 }
 
-
-
 extern EVCAPSULEDATA ev_CapsuleData[];
 extern int mbBGRead(int dataNum);
 s16 mbCoinDispCapsuleCreate(HuVecF *pos, int coinNum);
@@ -1073,6 +1053,9 @@ int mbev_CapPlayerSquishVoiceSet(int *playerNo, int masuId, BOOL voiceF);
 BOOL mbev_CapCullCheck(int playerNo, int masuId);
 BOOL mbev_CapPointCullCheck(HuVecF *pos);
 int mbev_CapPlayerComSelSameGet(int playerNo, int selection, BOOL sameF);
+/* Modes 0-2 sort by descending coins, stars or capsules and return the first candidate; the
+ * weight loop never reduces its roll, so later candidates cannot be selected. Ties follow the
+ * initial shuffle. Other modes choose uniformly. */
 int mbev_CapPlayerComSelRandomGet(int playerNo, int selection, int *playerList,
     int playerNum);
 void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
@@ -1083,6 +1066,7 @@ extern s16 mbCapMasuDispTypeGet(s16 masuId);
 void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL unk08, BOOL unk0C, BOOL unk10);
 BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2);
 
+/* Starts a trap on the next space before PlayerMove moves the player onto it. */
 BOOL mbev_CapCallTrap(int playerNo, int masuId, int masuIdNext)
 {
     int targetPlayerNo;
@@ -1103,17 +1087,19 @@ BOOL mbev_CapCallTrap(int playerNo, int masuId, int masuIdNext)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = mbCapMasuTypeGet(masuIdNext);
-    work._unk14 = 1;
-    work._unk1C = 1;
-    work._unk18 = 0;
+    work.moveF = 1;
+    work.trapF = 1;
+    work.stopF = 0;
     work.masuId = masuId;
     work.masuIdNext = masuIdNext;
     mbev_CapEffOpenCreate(work.playerNo, work.masuIdNext, TRUE, FALSE, FALSE);
-    if (ev_CapsuleData[work.capsuleNo].unk18 != 0) {
+    if (ev_CapsuleData[work.capsuleNo].trapCapsuleF != 0) {
         ev_CapCall(&work, FALSE);
     }
     return TRUE;
 }
+
+/* Starts Kettou from the board event flow, preserving its stop option. */
 void mbev_CapCallKettou(int playerNo, int masuId, BOOL stopF)
 {
     CAPWORK work;
@@ -1122,9 +1108,9 @@ void mbev_CapCallKettou(int playerNo, int masuId, BOOL stopF)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 41;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = masuId;
     work.masuIdNext = -1;
     work.flags._flag01 = stopF;
@@ -1137,6 +1123,7 @@ void mbev_CapCircuitCallKettou(void)
 {
 }
 
+/* Starts the Donkey capsule event for the player's current board space. */
 void mbev_CapCallDonkey(int playerNo)
 {
     CAPWORK work;
@@ -1145,15 +1132,16 @@ void mbev_CapCallDonkey(int playerNo)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 44;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     omVibrate(playerNo, 20, 7, 3);
     ev_CapCall(&work, TRUE);
 }
 
+/* Starts the Koopa capsule event for the player's current board space. */
 void mbev_CapCallKoopa(int playerNo)
 {
     CAPWORK work;
@@ -1162,9 +1150,9 @@ void mbev_CapCallKoopa(int playerNo)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 43;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     ev_CapCall(&work, TRUE);
@@ -1182,6 +1170,7 @@ void MBCapsuleStub7(void)
 {
 }
 
+/* Starts the Teresa capsule event at the supplied board space. */
 void mbev_CapCallTeresa(int playerNo, int masuId)
 {
     CAPWORK work;
@@ -1190,14 +1179,15 @@ void mbev_CapCallTeresa(int playerNo, int masuId)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 46;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = masuId;
     work.masuIdNext = -1;
     ev_CapCall(&work, TRUE);
 }
 
+/* Starts the Miracle capsule event at the supplied board space. */
 void mbev_CapCallMiracle(int playerNo, int masuId)
 {
     CAPWORK work;
@@ -1206,18 +1196,15 @@ void mbev_CapCallMiracle(int playerNo, int masuId)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 42;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = masuId;
     work.masuIdNext = -1;
     ev_CapCall(&work, TRUE);
 }
 
-
-
-
-
+/* Starts BiriQ's electric shock effect for the player on the current space. */
 void mbev_CapBiriQShockCreate(int playerNo)
 {
     OMOBJ *obj;
@@ -1227,9 +1214,9 @@ void mbev_CapBiriQShockCreate(int playerNo)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 21;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     biriQMasuNum = 60;
@@ -1239,6 +1226,7 @@ void mbev_CapBiriQShockCreate(int playerNo)
     biriQMasuNum = 0;
 }
 
+/* Returns the remaining BiriQ shock delay while the player has the effect. */
 int mbev_CapBiriQShockDelayGet(int playerNo)
 {
     if (GwPlayer[playerNo].biriQF) {
@@ -1247,6 +1235,7 @@ int mbev_CapBiriQShockDelayGet(int playerNo)
     return 0;
 }
 
+/* Ticks the BiriQ shock timer and removes its object when the timer expires. */
 static void ev_CapBiriQShockOMExec(OMOBJ *obj)
 {
     if (mbExitCheck() || --biriQMasuNum <= 0) {
@@ -1256,6 +1245,7 @@ static void ev_CapBiriQShockOMExec(OMOBJ *obj)
     }
 }
 
+/* Schedules the metal-shock capsule effect for the player's current space. */
 void mbev_CapBiriQMetalShockCreate(int playerNo)
 {
     HUPROCESS *process;
@@ -1266,9 +1256,9 @@ void mbev_CapBiriQMetalShockCreate(int playerNo)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 21;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     work.flags._flag07 = TRUE;
@@ -1282,6 +1272,7 @@ void mbev_CapBiriQMetalShockCreate(int playerNo)
     HuPrcDestructorSet2(process, ev_CapBiriQMetalShockDestroy);
 }
 
+/* Runs the queued metal-shock effect process, then ends that process. */
 static void ev_CapBiriQMetalShock(void)
 {
     void *workP = HuPrcCurrentGet()->property;
@@ -1290,7 +1281,7 @@ static void ev_CapBiriQMetalShock(void)
     HuPrcEnd();
 }
 
-
+/* Frees the work block when the metal-shock process is destroyed. */
 static void ev_CapBiriQMetalShockDestroy(void)
 {
     void *workP = HuPrcCurrentGet()->property;
@@ -1303,10 +1294,12 @@ void mbev_CapRandomBonusCoin(int playerNo, int capsuleNo, BOOL waitF)
     mbev_CapBonusCoinCall(playerNo, capsuleNo, -1, waitF);
 }
 
+/* Outside the board tutorial in party mode, awards positive coinNum directly; a negative coinNum
+ * rolls a bonus from player rank and capsule use mode, awarded only when positive. */
 void mbev_CapBonusCoinCall(int playerNo, int capsuleNo, int coinNum,
     BOOL waitF)
 {
-    int unk = 0;
+    int unusedValue = 0;
     int coinNumWork = 0;
     BOOL partyF = GwSystem.partyF;
 
@@ -1323,6 +1316,7 @@ void mbev_CapBonusCoinCall(int playerNo, int capsuleNo, int coinNum,
     }
 }
 
+/* Creates a process that awards the requested capsule bonus coins. */
 void mbev_CapBonusCoin(int playerNo, int coinNum, BOOL waitF, BOOL highF)
 {
     HUPROCESS *process;
@@ -1346,6 +1340,7 @@ void mbev_CapBonusCoin(int playerNo, int coinNum, BOOL waitF, BOOL highF)
     }
 }
 
+/* Reports whether the player's capsule bonus-coin process has finished. */
 BOOL mbev_CapBonusCoinCheck(int playerNo)
 {
     if (ev_CapBonusCoinProc[playerNo] != NULL) {
@@ -1355,6 +1350,7 @@ BOOL mbev_CapBonusCoinCheck(int playerNo)
     }
 }
 
+/* Awards the bonus coins and waits for the win message before ending. */
 static void ev_CapBonusCoin(void)
 {
     HUPROCESS *process;
@@ -1375,9 +1371,7 @@ static void ev_CapBonusCoin(void)
     HuPrcEnd();
 }
 
-
-
-
+/* Releases the player's bonus-coin process data when the process ends. */
 static void ev_CapBonusCoinKill(void)
 {
     HUPROCESS *process = HuPrcCurrentGet();
@@ -1387,6 +1381,8 @@ static void ev_CapBonusCoinKill(void)
     HuMemDirectFree(workP);
 }
 
+/* Opens the capsule bonus-coin message after the falling-coin animation, before the award is
+ * applied. */
 static void ev_CapBonusCoinWin(void)
 {
     bonusCoinWinId = mbWinCreate(2, CAPEVENT_MESS_BONUS_COIN, -1);
@@ -1394,18 +1390,21 @@ static void ev_CapBonusCoinWin(void)
     mbWinTopInsertMesSet((u32)ev_CapBonusCoinMes, 0);
 }
 
+/* Records the player and space whose next capsule-stop event should be skipped. */
 void mbev_CapMoveMasuSet(int playerNo, int masuId)
 {
     capsuleEventPlayer = playerNo;
     capsuleEventMasu = masuId;
 }
 
+/* Records the player and space whose next capsule-event check should be skipped. */
 void mbev_CapStopMasuSet(int playerNo, int masuId)
 {
     capsuleEventPrevPlayer = playerNo;
     capsuleEventPrevMasu = masuId;
 }
 
+/* Re-enters the Kettou capsule event after its board minigame ends. */
 void mbev_CapKettouEndCall(int playerNo)
 {
     CAPWORK work;
@@ -1414,9 +1413,9 @@ void mbev_CapKettouEndCall(int playerNo)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 41;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     work.flags._flag02 = TRUE;
@@ -1424,6 +1423,7 @@ void mbev_CapKettouEndCall(int playerNo)
     ev_CapCall(&work, TRUE);
 }
 
+/* Re-enters the Donkey capsule event after its board minigame ends. */
 void mbev_CapDonkeyEndCall(int playerNo)
 {
     CAPWORK work;
@@ -1432,9 +1432,9 @@ void mbev_CapDonkeyEndCall(int playerNo)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 44;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     work.flags._flag03 = TRUE;
@@ -1442,6 +1442,7 @@ void mbev_CapDonkeyEndCall(int playerNo)
     ev_CapCall(&work, TRUE);
 }
 
+/* Re-enters the Koopa capsule event after its board minigame ends. */
 void mbev_CapKoopaEndCall(int playerNo)
 {
     CAPWORK work;
@@ -1450,9 +1451,9 @@ void mbev_CapKoopaEndCall(int playerNo)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 43;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 0;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 0;
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     work.flags._flag04 = TRUE;
@@ -1472,6 +1473,7 @@ void mbev_CapKillerMultiCall(void)
 {
 }
 
+/* Starts the Killer ride after dice rolling selects the Killer movement path. */
 void mbev_CapKillerMoveCall(int playerNo)
 {
     CAPWORK work;
@@ -1480,9 +1482,9 @@ void mbev_CapKillerMoveCall(int playerNo)
     work.playerNo = playerNo;
     work.targetPlayerNo = -1;
     work.capsuleNo = 40;
-    work._unk14 = 0;
-    work._unk1C = 0;
-    work._unk18 = 1;
+    work.moveF = 0;
+    work.trapF = 0;
+    work.stopF = 1;
     work.masuId = GwPlayer[playerNo].masuId;
     work.masuIdNext = -1;
     ev_CapCall(&work, TRUE);
@@ -1549,6 +1551,7 @@ void mbev_CapBubbleHookSet(CAPSULE_HOOK hook)
     capsuleHook = hook;
 }
 
+/* Forwards capsule bubble parameters to the registered capsule hook. */
 void mbev_CapBubbleHookCall(int type, int modelId, BOOL flag1, BOOL flag2, BOOL flag3)
 {
     if (capsuleHook != NULL) {
@@ -1556,6 +1559,7 @@ void mbev_CapBubbleHookCall(int type, int modelId, BOOL flag1, BOOL flag2, BOOL 
     }
 }
 
+/* Forwards a story capsule event using its Koopa or invalid-capsule owner. */
 void mbev_CapBubbleHookCallStory(int eventType, int type, int modelId)
 {
     if (capsuleHook != NULL) {
@@ -1575,11 +1579,7 @@ void mbev_CapBankCoinInit(void)
     GwSystem.bankCoin = 0;
 }
 
-
-
-
-
-
+/* Initializes capsule processes, effect resources, random data, and state. */
 void mbev_CapInit(void)
 {
     int i;
@@ -1640,6 +1640,7 @@ void mbev_CapInit(void)
     }
 }
 
+/* Cleans up capsule resources and effects when the capsule process ends. */
 static void ev_CapKill(void)
 {
     HUPROCESS *process;
@@ -1649,8 +1650,8 @@ static void ev_CapKill(void)
     process = HuPrcCurrentGet();
     workP = process->property;
     if (workP->capsuleNo != -1) {
-        if (ev_CapsuleData[workP->capsuleNo].unk04 != NULL) {
-            hook = ev_CapsuleData[workP->capsuleNo].unk04;
+        if (ev_CapsuleData[workP->capsuleNo].cleanup != NULL) {
+            hook = ev_CapsuleData[workP->capsuleNo].cleanup;
             hook();
         }
     }
@@ -1696,7 +1697,7 @@ static void ev_CapKill(void)
     HuMemDirectFree(workP);
 }
 
-
+/* Starts the capsule event process and optionally waits for its completion. */
 static void ev_CapCall(CAPWORK *work, BOOL waitF)
 {
     CAPWORK *workP;
@@ -1717,9 +1718,9 @@ static void ev_CapCall(CAPWORK *work, BOOL waitF)
     workP->playerNo = work->playerNo;
     workP->targetPlayerNo = work->targetPlayerNo;
     workP->capsuleNo = work->capsuleNo;
-    workP->_unk14 = work->_unk14;
-    workP->_unk1C = work->_unk1C;
-    workP->_unk18 = work->_unk18;
+    workP->moveF = work->moveF;
+    workP->trapF = work->trapF;
+    workP->stopF = work->stopF;
     workP->masuId = work->masuId;
     workP->masuIdNext = work->masuIdNext;
     workP->processNo = i;
@@ -1750,6 +1751,7 @@ static void ev_CapCall(CAPWORK *work, BOOL waitF)
     }
 }
 
+/* Waits for capsule background loading and camera movement to finish. */
 void mbev_CapWait(CAPWORK *work)
 {
     EVCAPWORK *objWork;
@@ -1764,7 +1766,9 @@ void mbev_CapWait(CAPWORK *work)
     }
 }
 
-static void ev_CapWorkInit(EVCAPWORK *work, int bgId)
+/* Initializes capsule object work and loads its configured background. A negative capsuleNo
+ * returns early with bgId still zero, before the later negative-index branch can set it to -1. */
+static void ev_CapWorkInit(EVCAPWORK *work, int capsuleNo)
 {
     int i;
     int j;
@@ -1788,18 +1792,19 @@ static void ev_CapWorkInit(EVCAPWORK *work, int bgId)
     work->obj = omAddObjEx(mbObjMan, CAPEVENT_WORK_OBJ_PRIORITY, 0, 0, -1,
         ev_CapWorkOMExec);
     work->obj->data = work;
-    if (bgId < 0) {
+    if (capsuleNo < 0) {
         return;
     }
-    if (bgId < 0) {
+    if (capsuleNo < 0) {
         work->bgId = -1;
-    } else if (ev_CapsuleData[bgId].bgDataNum != -1) {
-        work->bgId = mbBGRead(ev_CapsuleData[bgId].bgDataNum);
+    } else if (ev_CapsuleData[capsuleNo].bgDataNum != -1) {
+        work->bgId = mbBGRead(ev_CapsuleData[capsuleNo].bgDataNum);
     } else {
         work->bgId = -1;
     }
 }
 
+/* Called by capsule event teardown to release its tracked motions, objects, sprites, and memory. */
 static void ev_CapWorkClose(EVCAPWORK *work)
 {
     int i;
@@ -1832,7 +1837,8 @@ static void ev_CapWorkClose(EVCAPWORK *work)
     }
 }
 
-
+/* Runs each object-manager update to keep tracked models and players at their masu-relative
+ * positions. */
 static void ev_CapWorkOMExec(OMOBJ *obj)
 {
     EVCAPWORK *work;
@@ -1861,6 +1867,7 @@ static void ev_CapWorkOMExec(OMOBJ *obj)
     }
 }
 
+/* Capsule event setup calls this to create a player motion in the first free tracked slot. */
 s16 mbev_CapPlayerMotionCreate(EVCAPWORK *work, int playerNo, int dataNum)
 {
     int i;
@@ -1878,6 +1885,9 @@ s16 mbev_CapPlayerMotionCreate(EVCAPWORK *work, int playerNo, int dataNum)
     return work->motId[i][playerNo];
 }
 
+/* Creates and tracks a board model, optionally closes its data directory, and loads its motions.
+ * Visibility is queued off and then on; without a yield, the hidden state may never be applied.
+ * The model is assigned layer 3 before returning. */
 int mbev_CapObjCreate(
     EVCAPWORK *work,
     int dataNum,
@@ -1918,6 +1928,7 @@ int mbev_CapObjCreate(
     return work->objId[objIdx];
 }
 
+/* Capsule event setup binds a tracked model to a masu and stores its local position offset. */
 void mbev_CapObjPosSet(EVCAPWORK *work, int objId, int masuId, HuVecF *pos)
 {
     int i;
@@ -1934,6 +1945,7 @@ void mbev_CapObjPosSet(EVCAPWORK *work, int objId, int masuId, HuVecF *pos)
     }
 }
 
+/* Tracks a player at a masu with an optional position offset; NULL clears the offset. */
 void mbev_CapPlayerPosSet(
     EVCAPWORK *work, int playerNo, int masuId, HuVecF *pos)
 {
@@ -1946,8 +1958,7 @@ void mbev_CapPlayerPosSet(
     }
 }
 
-
-
+/* Capsule event cleanup calls this to kill a tracked board model and release its slot. */
 void mbev_CapObjClose(EVCAPWORK *work, int objId)
 {
     int i;
@@ -1963,6 +1974,7 @@ void mbev_CapObjClose(EVCAPWORK *work, int objId)
     }
 }
 
+/* Capsule events call this to create a tracked sprite, initially selecting draw number 32. */
 s16 mbev_CapSprCreate(EVCAPWORK *work, unsigned int dataNum, s16 prio, s16 bank)
 {
     int i;
@@ -1980,6 +1992,7 @@ s16 mbev_CapSprCreate(EVCAPWORK *work, unsigned int dataNum, s16 prio, s16 bank)
     return work->sprId[i];
 }
 
+/* Capsule event cleanup calls this to kill a tracked sprite and free its slot. */
 void mbev_CapSprClose(EVCAPWORK *work, s16 sprId)
 {
     int i;
@@ -1995,6 +2008,7 @@ void mbev_CapSprClose(EVCAPWORK *work, s16 sprId)
     }
 }
 
+/* Capsule events use this to allocate and track temporary overlay memory for teardown. */
 void *mbev_CapMalloc(EVCAPWORK *work, int size)
 {
     int i;
@@ -2013,6 +2027,7 @@ void *mbev_CapMalloc(EVCAPWORK *work, int size)
     return work->mem[i];
 }
 
+/* Capsule effects release temporary heap data here when it is no longer needed. */
 void mbev_CapMallocClose(EVCAPWORK *work, void *ptr)
 {
     int i;
@@ -2028,6 +2043,9 @@ void mbev_CapMallocClose(EVCAPWORK *work, void *ptr)
     }
 }
 
+/* Capsule event setup optionally starts an opening effect over frames 0 through 25 and updates the
+ * capsule at masuId; mode selects the path, and keepCapsuleF preserves it only when mode is
+ * true. */
 void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL createF, BOOL mode,
     BOOL keepCapsuleF)
 {
@@ -2070,6 +2088,7 @@ void mbev_CapEffOpenCreate(int playerNo, int masuId, BOOL createF, BOOL mode,
     }
 }
 
+/* Child process created by mbev_CapEffOpenCreate; animates the capsule opening at its masu. */
 static void ev_CapEffOpen(void)
 {
     HUPROCESS *process;
@@ -2224,6 +2243,7 @@ static void ev_CapEffOpen(void)
     HuPrcEnd();
 }
 
+/* Process destructor for ev_CapEffOpen; frees the per-opening effect work block. */
 static void ev_CapEffOpenKill(void)
 {
     HUPROCESS *process = HuPrcCurrentGet();
@@ -2232,6 +2252,7 @@ static void ev_CapEffOpenKill(void)
     HuMemDirectFree(workP);
 }
 
+/* Used for capsule event entries with no action; ends the current event process. */
 void mbev_CapNull(void)
 {
     void *workP = HuPrcCurrentGet()->property;
@@ -2243,6 +2264,8 @@ void mbev_CapNullKill(void)
 {
 }
 
+/* Debug capsule event handler, registered in the event table to adjust the camera with player-one
+ * input. */
 void mbev_CapDebugCam(void)
 {
     CAPWORK *work;
@@ -2445,6 +2468,8 @@ void mbev_CapDebugCamKlll(void)
 {
 }
 
+/* Debug capsule event handler, registered in the event table to move among linked masus and place
+ * players. */
 void mbev_CapDebugWarp(void)
 {
     CAPWORK *work;
@@ -2519,7 +2544,7 @@ void mbev_CapDebugWarp(void)
                 }
             }
         }
-        if (HuPadBtnDown[0] & (PAD_BUTTON_A << 0)) {
+        if (HuPadBtnDown[0] & PAD_BUTTON_A) {
             GwPlayer[0].masuId = masuId;
             mbPlayerPosSetV(0, &pos);
             mbev_PlayerColMasuSet(0, masuId, TRUE);
@@ -2555,6 +2580,7 @@ void mbev_CapDebugWarpKill(void)
 {
 }
 
+/* Debug capsule event handler that opens the board masu selector, then ends. */
 void mbev_CapDebugPosSelect(void)
 {
     CAPWORK *work;
@@ -2572,6 +2598,8 @@ void mbev_CapDebugPosSelectKill(void)
 {
 }
 
+/* Slides the two duel participants' status panels into their side positions; optionally waits for
+ * both moves. */
 void mbev_CapStatusDispSet(int leftPlayer, int rightPlayer, BOOL waitF)
 {
     HuVecF posBegin;
@@ -2609,6 +2637,7 @@ void mbev_CapStatusDispSet(int leftPlayer, int rightPlayer, BOOL waitF)
     }
 }
 
+/* Slides duel status panels off the screen; optionally waits for both transitions to finish. */
 void mbev_CapDuelStatusOffSet(int leftPlayer, int rightPlayer, BOOL waitF)
 {
     HuVecF posEnd;
@@ -2640,7 +2669,7 @@ void mbev_CapDuelStatusOffSet(int leftPlayer, int rightPlayer, BOOL waitF)
     }
 }
 
-
+/* Shows the two duel participants' top status panels; optionally waits for their entrance. */
 void mbev_CapDuelStatusOnSet(int leftPlayer, int rightPlayer, BOOL waitF)
 {
     HuVecF posOff;
@@ -2663,6 +2692,8 @@ void mbev_CapDuelStatusOnSet(int leftPlayer, int rightPlayer, BOOL waitF)
     }
 }
 
+/* Hides the two duel participants' status panels and, when requested, waits before forcing them
+ * off. */
 void mbev_CapDuelStatusDispSet(int leftPlayer, int rightPlayer, BOOL waitF)
 {
     HuVecF posOff;
@@ -2685,6 +2716,8 @@ void mbev_CapDuelStatusDispSet(int leftPlayer, int rightPlayer, BOOL waitF)
     }
 }
 
+/* Changes visibility for every player's status panel, settling mixed visibility before showing
+ * all. */
 void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF)
 {
     int i;
@@ -2743,6 +2776,7 @@ void mbev_CapStatusDispSetAll(BOOL dispF, BOOL waitF)
     }
 }
 
+/* Returns whether only playerNo's status panel is visible among the four players. */
 BOOL mbev_CapStatusDispCheck(int playerNo)
 {
     int i;
@@ -2763,6 +2797,7 @@ BOOL mbev_CapStatusDispCheck(int playerNo)
     }
 }
 
+/* Capsule event setup clears the per-player object-manager handles for movement effects. */
 void mbev_CapPlayerMoveObjInit(void)
 {
     int i;
@@ -2772,6 +2807,8 @@ void mbev_CapPlayerMoveObjInit(void)
     }
 }
 
+/* Starts the capsule-hit movement with an upward velocity. With useMotF false, it enters the
+ * lift phase instead, although that phase's path and duration are still zeroed. */
 void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF, BOOL useShiftF)
 {
     OMOBJ *obj;
@@ -2801,7 +2838,7 @@ void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF, BOOL useShiftF)
     workP->minYF = TRUE;
     mbPlayerPosGet(playerNo, &workP->pos);
     workP->minY = workP->pos.y;
-    workP->vel = CAPEVENT_GRAVITY / 1.5f;
+    workP->gravityStep = CAPEVENT_GRAVITY / 1.5f;
     workP->velocity.x = workP->velocity.z = 0.0f;
     workP->velocity.y = 100.0f * 0.6f;
     if (workP->useMotF && workP->motNo != -1) {
@@ -2817,6 +2854,7 @@ void mbev_CapPlayerMoveHitCreate(int playerNo, BOOL useMotF, BOOL useShiftF)
     mbPlayerColSnapPlayerSet(workP->playerNo, FALSE);
 }
 
+/* Starts the per-frame upward ejection used by capsule movement events. */
 void mbev_CapPlayerMoveEjectCreate(int playerNo, BOOL useShiftF)
 {
     OMOBJ *obj;
@@ -2842,13 +2880,15 @@ void mbev_CapPlayerMoveEjectCreate(int playerNo, BOOL useShiftF)
     workP->minYF = TRUE;
     mbPlayerPosGet(playerNo, &workP->pos);
     workP->minY = workP->pos.y;
-    workP->vel = CAPEVENT_GRAVITY / 1.5f;
+    workP->gravityStep = CAPEVENT_GRAVITY / 1.5f;
     workP->velocity.x = workP->velocity.z = 0.0f;
     workP->velocity.y = 80.0f;
     workP->state = 0;
     mbPlayerColSnapPlayerSet(workP->playerNo, FALSE);
 }
 
+/* Starts the capsule lift-and-return movement, using the masu position to set its travel
+ * direction. */
 void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
 {
     OMOBJ *obj;
@@ -2873,7 +2913,7 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
     workP->minYF = TRUE;
     mbPlayerPosGet(playerNo, &workP->pos);
     workP->minY = workP->pos.y;
-    workP->vel = CAPEVENT_GRAVITY / 1.5f;
+    workP->gravityStep = CAPEVENT_GRAVITY / 1.5f;
     workP->velocity.x = workP->velocity.z = 0.0f;
     workP->velocity.y = 80.0f;
     workP->state = 1;
@@ -2884,7 +2924,7 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
     workP->posEnd.y += 1000.0f;
     PSVECSubtract(&workP->posStart, &masuPos, &delta);
     PSVECScale(&delta, &delta, 4.0f);
-    PSVECAdd(&workP->posEnd, &delta, &workP->moveDir);
+    PSVECAdd(&workP->posEnd, &delta, &workP->outboundEndPos);
     workP->moveTime = moveTime;
     workP->time = 0;
     workP->rotSpeed = 2.0f * (-0.5f
@@ -2894,6 +2934,8 @@ void mbev_CapPlayerMoveIdleCreate(int playerNo, int moveTime)
     mbPlayerColSnapPlayerSet(workP->playerNo, FALSE);
 }
 
+/* Sets the landing height for an active player movement effect instead of following the masu
+ * height. */
 void mbev_CapPlayerMoveMinYSet(int playerNo, float minY)
 {
     CAPEFFMOVEWORK *workP;
@@ -2906,18 +2948,20 @@ void mbev_CapPlayerMoveMinYSet(int playerNo, float minY)
     }
 }
 
-void mbev_CapPlayerMoveVelSet(int playerNo, float vel, HuVecF *moveDir)
+/* Replaces the gravity step and velocity vector of an active player movement effect. */
+void mbev_CapPlayerMoveVelSet(int playerNo, float gravityStep, HuVecF *moveDir)
 {
     CAPEFFMOVEWORK *workP;
     OMOBJ *obj = ev_CapEffMoveOMObj[playerNo];
 
     if (obj != NULL) {
         workP = omObjGetDataAs(obj, CAPEFFMOVEWORK);
-        workP->vel = vel;
+        workP->gravityStep = gravityStep;
         workP->velocity = *moveDir;
     }
 }
 
+/* Object-manager callback that advances a capsule movement effect and removes it when finished. */
 void mbev_CapPlayerMoveObjExec(OMOBJ *obj)
 {
     CAPEFFMOVEWORK *workP = obj->data;
@@ -2928,7 +2972,7 @@ void mbev_CapPlayerMoveObjExec(OMOBJ *obj)
     switch (workP->state) {
         case 0:
             PSVECAdd(&workP->pos, &workP->velocity, &workP->pos);
-            workP->velocity.y -= workP->vel;
+            workP->velocity.y -= workP->gravityStep;
             if (workP->minYF) {
                 mbMasuPosGet(GwPlayer[workP->playerNo].masuId, &pos);
                 minY = pos.y;
@@ -2953,7 +2997,7 @@ void mbev_CapPlayerMoveObjExec(OMOBJ *obj)
         case 1:
             weight = (float)++workP->time / 60.0f;
             mbev_CapBezierGetV(weight, (float *)&workP->posStart,
-                (float *)&workP->posEnd, (float *)&workP->moveDir,
+                (float *)&workP->posEnd, (float *)&workP->outboundEndPos,
                 (float *)&pos);
             mbPlayerPosSetV(workP->playerNo, &pos);
             mbPlayerRotSet(workP->playerNo, workP->rot.x,
@@ -2992,6 +3036,8 @@ void mbev_CapPlayerMoveObjExec(OMOBJ *obj)
     }
 }
 
+/* Returns TRUE when the movement object is absent or its state is at least 1, including the
+ * outward lift and hidden delay; the ballistic state 0 returns FALSE. */
 BOOL mbev_CapPlayerMoveObjCheck(int playerNo)
 {
     OMOBJ *obj = ev_CapEffMoveOMObj[playerNo];
@@ -3012,6 +3058,7 @@ void mbev_CapPlayerMoveObjClose(int playerNo)
     ev_CapEffMoveOMObj[playerNo] = NULL;
 }
 
+/* Clears all per-player movement-effect handles during capsule event teardown. */
 void mbev_CapPlayerMoveObjKill(void)
 {
     int i;
@@ -3021,6 +3068,7 @@ void mbev_CapPlayerMoveObjKill(void)
     }
 }
 
+/* Creates the capsule burst effect object before an event adds its particles. */
 OMOBJ *mbev_CapEffExplodeCreate(void)
 {
     CAPEFFEXPLODEWORK *workP;
@@ -3054,11 +3102,12 @@ OMOBJ *mbev_CapEffExplodeCreate(void)
     workP->objIdx = objIdx;
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->dispAttr = 0;
-    particleP->blendMode = 2;
+    particleP->renderBlendMode = 0;
+    particleP->renderFlags = 2;
     return obj;
 }
 
+/* Creates the capsule exhaust effect object before an event adds its particles. */
 OMOBJ *mbev_CapEffExhaustCreate(void)
 {
     CAPEFFEXPLODEWORK *workP;
@@ -3092,11 +3141,12 @@ OMOBJ *mbev_CapEffExhaustCreate(void)
     workP->objIdx = objIdx;
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->dispAttr = 0;
-    particleP->blendMode = 2;
+    particleP->renderBlendMode = 0;
+    particleP->renderFlags = 2;
     return obj;
 }
 
+/* Advances burst particles once per object-manager update and releases the effect on shutdown. */
 void mbev_CapEffExplodeOMExec(OMOBJ *obj)
 {
     CAPEFFEXPLODEWORK *workP;
@@ -3147,16 +3197,7 @@ void mbev_CapEffExplodeOMExec(OMOBJ *obj)
     }
 }
 
-
-
-
-
-
-
-
-
-
-
+/* Marks a burst effect for release by its next object-manager update. */
 void mbev_CapEffExplodeKill(OMOBJ *obj)
 {
     int i;
@@ -3169,6 +3210,8 @@ void mbev_CapEffExplodeKill(OMOBJ *obj)
     ev_CapEffExplodeOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Returns the number of active burst particles so capsule events can wait for the effect to
+ * finish. */
 int mbev_CapEffExplodeAnimGet(OMOBJ *obj)
 {
     int i;
@@ -3187,6 +3230,7 @@ int mbev_CapEffExplodeAnimGet(OMOBJ *obj)
     }
 }
 
+/* Replaces the sprite animation used by a burst effect before its next particle batch. */
 void mbev_CapEffExplodeAnimSet(OMOBJ *obj, int dataNum)
 {
     CAPEFFEXPLODEPARTWORK *particleP;
@@ -3211,6 +3255,8 @@ void mbev_CapEffExplodeAnimSet(OMOBJ *obj, int dataNum)
         HuSprAnimRead(HuDataReadNum(dataNum, HU_MEMNUM_OVL));
 }
 
+/* Adds one burst particle in the first inactive slot; it uses pos, vel, angleStep, active and
+ * fadeStep, forces RGB to white, and keeps color alpha. */
 int mbev_CapEffExplodeAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float active,
     float angleStep, float fadeStep, GXColor *color)
 {
@@ -3264,6 +3310,9 @@ int mbev_CapEffExplodeAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float active,
     return i;
 }
 
+/* Offsets a burst-particle pair along the normalized horizontal vector formed from vel->z and
+ * vel->x (both stay at pos if that vector is zero), gives opposite spin, and packs their slot IDs
+ * into the return value. */
 int mbev_CapEffExplodeKillerAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
     float active, float angleStep, float distance, float fadeStep,
     GXColor *color)
@@ -3277,7 +3326,7 @@ int mbev_CapEffExplodeKillerAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
     GXColor color1;
     GXColor color2;
     int result;
-    int result2;
+    int secondParticleId;
     GXColor *color1P;
     HuVecF *vel1P;
     HuVecF *pos1P;
@@ -3313,11 +3362,14 @@ int mbev_CapEffExplodeKillerAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
     vel2P = &vel2;
     pos2 = posTemp;
     pos2P = &pos2;
-    result2 = mbev_CapEffExplodeAdd(obj, pos2P, vel2P, active, -angleStep,
+    secondParticleId = mbev_CapEffExplodeAdd(obj, pos2P, vel2P, active, -angleStep,
         fadeStep, color2P);
-    return (result << 16) | result2;
+    return (result << 16) | secondParticleId;
 }
 
+/* Adds a burst-particle pair around an angle-selected point with opposite spin and randomized
+ * velocity, alpha and fade. The paired offsets coincide if horizontal velocity is zero, and the
+ * add routine forces RGB to white. */
 void mbev_CapEffExplodeCircleAdd(OMOBJ *obj, HuVecF *posP, float radius,
     float scale, float angle)
 {
@@ -3418,6 +3470,7 @@ void mbev_CapEffExplodeCircleAdd(OMOBJ *obj, HuVecF *posP, float radius,
         fadeStep, color2P);
 }
 
+/* Adds two randomized layers of drifting dust around the capsule position supplied by its event. */
 void mbev_CapEffDustCloudAdd(OMOBJ *obj, HuVecF *posP)
 {
     HuVecF posBase;
@@ -3447,8 +3500,8 @@ void mbev_CapEffDustCloudAdd(OMOBJ *obj, HuVecF *posP)
     int result;
     GXColor color4;
     GXColor color3;
-    int result4;
-    int result3;
+    int fourthParticleId;
+    int thirdParticleId;
     int i;
     GXColor *color1P;
     HuVecF *vel1P;
@@ -3611,7 +3664,7 @@ void mbev_CapEffDustCloudAdd(OMOBJ *obj, HuVecF *posP)
         vel3P = &vel3;
         pos3 = posTempSecond;
         pos3P = &pos3;
-        result3 = mbev_CapEffExplodeAdd(obj, pos3P, vel3P, active2, angleStep2, fadeStep2,
+        thirdParticleId = mbev_CapEffExplodeAdd(obj, pos3P, vel3P, active2, angleStep2, fadeStep2,
             color3P);
         posTempSecond.x = posSecond.x - (dirSecond.x * halfDistance2);
         posTempSecond.y = posSecond.y - (dirSecond.y * halfDistance2);
@@ -3625,11 +3678,12 @@ void mbev_CapEffDustCloudAdd(OMOBJ *obj, HuVecF *posP)
         vel4P = &vel4;
         pos4 = posTempSecond;
         pos4P = &pos4;
-        result4 = mbev_CapEffExplodeAdd(obj, pos4P, vel4P, active2, -angleStep2, fadeStep2,
+        fourthParticleId = mbev_CapEffExplodeAdd(obj, pos4P, vel4P, active2, -angleStep2, fadeStep2,
             color4P);
     }
 }
 
+/* Adds a radial dust burst at the position passed by capsule selection and movement events. */
 void mbev_CapEffDustExplodeAdd(OMOBJ *obj, HuVecF *posP)
 {
     HuVecF posBase;
@@ -3741,6 +3795,8 @@ void mbev_CapEffDustExplodeAdd(OMOBJ *obj, HuVecF *posP)
     }
 }
 
+/* Adds the heavier radial dust burst used by capsule impacts and landings, and starts a camera
+* shake. */
 void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF *posP)
 {
     HuVecF posBase;
@@ -3856,6 +3912,7 @@ void mbev_CapEffDustHeavyAdd(OMOBJ *obj, HuVecF *posP)
     mbCameraShakeSet(30, 50.0f);
 }
 
+/* Adds a rotation-aligned ring of dust particles for the requested capsule effect. */
 void mbev_CapEffDustMultiAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP, int num)
 {
     Mtx mtx;
@@ -3910,6 +3967,7 @@ void mbev_CapEffDustMultiAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP, int num)
     }
 }
 
+/* Capsule movement creates this object before the player starts moving. */
 OMOBJ *mbev_CapEffBoostCreate(void)
 {
     CAPEFFBOOSTWORK *workP;
@@ -3938,15 +3996,16 @@ OMOBJ *mbev_CapEffBoostCreate(void)
     workP->animP = animP;
     workP->modelId = modelId = ev_CapEffCreate(animP, 256);
     Hu3DModelLayerSet(workP->modelId, 5);
-    workP->time = 0;
+    workP->particleCount = 0;
     workP->objIdx = objIdx;
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->dispAttr = 0;
-    particleP->blendMode = 2;
+    particleP->renderBlendMode = 0;
+    particleP->renderFlags = 2;
     return obj;
 }
 
+/* The object manager advances the boost trail and fades particles each frame. */
 void mbev_CapEffBoostOMExec(OMOBJ *obj)
 {
     CAPEFFBOOSTWORK *workP;
@@ -3967,7 +4026,7 @@ void mbev_CapEffBoostOMExec(OMOBJ *obj)
         omDelObjEx(mbObjMan, obj);
         return;
     }
-    if (workP->time <= 0) {
+    if (workP->particleCount <= 0) {
         Hu3DModelAttrSet(workP->modelId, 1);
         return;
     }
@@ -3991,11 +4050,12 @@ void mbev_CapEffBoostOMExec(OMOBJ *obj)
         particleWorkP->color.a = particleWorkP->alpha * alpha;
         if (particleWorkP->time < 0) {
             particleWorkP->active = 0.0f;
-            workP->time--;
+            workP->particleCount--;
         }
     }
 }
 
+/* Capsule movement cleanup marks its boost trail for removal on the next update. */
 void mbev_CapEffBoostKill(OMOBJ *obj)
 {
     int i;
@@ -4008,6 +4068,7 @@ void mbev_CapEffBoostKill(OMOBJ *obj)
     ev_CapEffBoostOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Capsule event scripts use this count to check whether boost particles remain. */
 int mbev_CapEffBoostTimeGet(OMOBJ *obj)
 {
     int i;
@@ -4019,9 +4080,10 @@ int mbev_CapEffBoostTimeGet(OMOBJ *obj)
         }
     }
     workP = omObjGetDataAs(obj, CAPEFFBOOSTWORK);
-    return workP->time;
+    return workP->particleCount;
 }
 
+/* Capsule movement selects the blend mode before adding boost trail particles. */
 void mbev_CapEffBoostBlendModeSet(OMOBJ *obj, int blendMode)
 {
     int i;
@@ -4040,6 +4102,7 @@ void mbev_CapEffBoostBlendModeSet(OMOBJ *obj, int blendMode)
     particleP->blendMode = blendMode;
 }
 
+/* Capsule movement adds a trail particle at pos with its velocity and lifetime. */
 int mbev_CapEffBoostAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float active,
     float angleStep, int time, GXColor *color)
 {
@@ -4083,10 +4146,11 @@ int mbev_CapEffBoostAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float active,
     particleWorkP->pos.z = pos->z;
     particleWorkP->color = *color;
     particleWorkP->pat = 0;
-    workP->time++;
+    workP->particleCount++;
     return i;
 }
 
+/* Throwman creates this effect before dropping onto the activating player. */
 OMOBJ *mbev_CapEffSnowCreate(void)
 {
     CAPEFFSNOWWORK *workP;
@@ -4120,16 +4184,12 @@ OMOBJ *mbev_CapEffSnowCreate(void)
     workP->objIdx = objIdx;
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->dispAttr = 0;
-    particleP->blendMode = 2;
+    particleP->renderBlendMode = 0;
+    particleP->renderFlags = 2;
     return obj;
 }
 
-
-
-
-
-
+/* The object manager moves active snow particles and fades them each frame. */
 void mbev_CapEffSnowOMExec(OMOBJ *obj)
 {
     CAPEFFSNOWWORK *workP;
@@ -4179,6 +4239,7 @@ void mbev_CapEffSnowOMExec(OMOBJ *obj)
     }
 }
 
+/* Throwman cleanup marks its snow effect for removal on the next update. */
 void mbev_CapEffSnowKill(OMOBJ *obj)
 {
     int i;
@@ -4191,6 +4252,8 @@ void mbev_CapEffSnowKill(OMOBJ *obj)
     ev_CapEffSnowOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Returns the snow effect's accumulated successful particle additions; expired particles do
+ * not reduce this counter. */
 int mbev_CapEffSnowDispGet(OMOBJ *obj)
 {
     int i;
@@ -4202,9 +4265,10 @@ int mbev_CapEffSnowDispGet(OMOBJ *obj)
         }
     }
     workP = omObjGetDataAs(obj, CAPEFFDISPWORK);
-    return workP->dispF;
+    return workP->particleCount;
 }
 
+/* Throwman adds a snow particle at pos with the requested lifetime in frames. */
 int mbev_CapEffSnowAdd(OMOBJ *obj, HuVecF *pos, int time)
 {
     CAPEFFSNOWWORK *workP;
@@ -4251,6 +4315,7 @@ int mbev_CapEffSnowAdd(OMOBJ *obj, HuVecF *pos, int time)
     return i;
 }
 
+/* Capsule events create this glow-particle object before adding its effects. */
 OMOBJ *mbev_CapEffGlowCreate(void)
 {
     CAPEFFGLOWWORK *workP;
@@ -4284,11 +4349,12 @@ OMOBJ *mbev_CapEffGlowCreate(void)
     workP->objIdx = objIdx;
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->dispAttr = 1;
-    particleP->blendMode = 2;
+    particleP->renderBlendMode = 1;
+    particleP->renderFlags = 2;
     return obj;
 }
 
+/* Fire-themed capsule effects create this variant with the fire animation. */
 OMOBJ *mbev_CapEffGlowFireCreate(void)
 {
     CAPEFFGLOWWORK *workP;
@@ -4322,11 +4388,13 @@ OMOBJ *mbev_CapEffGlowFireCreate(void)
     workP->objIdx = objIdx;
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->dispAttr = 1;
-    particleP->blendMode = 2;
+    particleP->renderBlendMode = 1;
+    particleP->renderFlags = 2;
     return obj;
 }
 
+/* The object manager advances glow particles, applies their motion modes, and retires expired
+ * ones. */
 void mbev_CapEffGlowOMExec(OMOBJ *obj)
 {
     CAPEFFGLOWWORK *workP;
@@ -4420,11 +4488,7 @@ void mbev_CapEffGlowOMExec(OMOBJ *obj)
     }
 }
 
-
-
-
-
-
+/* Capsule event cleanup marks this glow-particle object for removal next update. */
 void mbev_CapEffGlowKill(OMOBJ *obj)
 {
     int i;
@@ -4437,6 +4501,7 @@ void mbev_CapEffGlowKill(OMOBJ *obj)
     ev_CapEffGlowOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Returns the number of active glow particles so capsule events can wait for them to finish. */
 int mbev_CapEffGlowDispGet(OMOBJ *obj)
 {
     int i;
@@ -4448,10 +4513,11 @@ int mbev_CapEffGlowDispGet(OMOBJ *obj)
         }
     }
     workP = omObjGetDataAs(obj, CAPEFFDISPWORK);
-    return workP->dispF;
+    return workP->particleCount;
 }
 
-void mbev_CapEffGlowPatSet(OMOBJ *obj, int pat)
+/* Capsule event code selects the glow model's render blend mode. */
+void mbev_CapEffGlowPatSet(OMOBJ *obj, int renderBlendMode)
 {
     int i;
     CAPEFFBOOSTWORK *workP;
@@ -4466,10 +4532,11 @@ void mbev_CapEffGlowPatSet(OMOBJ *obj, int pat)
     workP = omObjGetDataAs(obj, CAPEFFBOOSTWORK);
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->pat = pat;
+    particleP->renderBlendMode = renderBlendMode;
 }
 
-void mbev_CapEffGlowBlendModeSet(OMOBJ *obj, int blendMode)
+/* Capsule event code sets the glow render hook's display-counter control bits. */
+void mbev_CapEffGlowBlendModeSet(OMOBJ *obj, int counterFlags)
 {
     int i;
     CAPEFFBOOSTWORK *workP;
@@ -4484,9 +4551,10 @@ void mbev_CapEffGlowBlendModeSet(OMOBJ *obj, int blendMode)
     workP = omObjGetDataAs(obj, CAPEFFBOOSTWORK);
     modelP = &Hu3DData[workP->modelId];
     particleP = modelP->hookData;
-    particleP->blendMode = blendMode;
+    particleP->counterFlags = counterFlags;
 }
 
+/* Replaces the glow sprite animation when a capsule event changes its effect art. */
 void mbev_CapEffGlowAnimSet(OMOBJ *obj, int dataNum)
 {
     int i;
@@ -4506,8 +4574,10 @@ void mbev_CapEffGlowAnimSet(OMOBJ *obj, int dataNum)
     workP->animP = particleP->animP = HuSprAnimRead(HuDataReadNum(dataNum, HU_MEMNUM_OVL));
 }
 
+/* Adds a glow particle to the first inactive slot, using rotation-step followed by gravity
+ * inputs. */
 int mbev_CapEffGlowAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, int time, float scale,
-    float gravity, float rotStep, GXColor *color)
+    float angleStep, float gravityStep, GXColor *color)
 {
     CAPEFFGLOWWORK *workP;
     int i;
@@ -4549,8 +4619,8 @@ int mbev_CapEffGlowAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, int time, float sca
     } else {
         particleWorkP->timeStep = 1.0f;
     }
-    particleWorkP->gravity = rotStep;
-    particleWorkP->rotStep = gravity;
+    particleWorkP->gravity = gravityStep;
+    particleWorkP->rotStep = angleStep;
     particleWorkP->active = scale;
     particleWorkP->color = *color;
     particleWorkP->angle = 360.0f *
@@ -4561,6 +4631,8 @@ int mbev_CapEffGlowAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, int time, float sca
     return i;
 }
 
+/* Adds a glow particle at a randomized offset from posP; type selects its vertical motion, and
+ * colorP overrides the random color. */
 int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
     float xRange, float yRange, float zRange, int type, GXColor *colorP)
 {
@@ -4573,8 +4645,8 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
     GXColor *colorLocalP;
     HuVecF *velLocalP;
     HuVecF *posLocalP;
-    float gravity;
-    float rotStep;
+    float angleStep;
+    float gravityStep;
     float randF;
     int i;
 
@@ -4595,38 +4667,38 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
         case 1:
             velTemp.y = -1.0f * (1.0f + (0.2f
                 * MBCapsuleEffRandF()));
-            gravity = 0.0f;
-            rotStep = 0.0f;
+            angleStep = 0.0f;
+            gravityStep = 0.0f;
             if (mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE) & 1) {
-                gravity *= -1.0f;
+                angleStep *= -1.0f;
             }
             break;
 
         case 2:
             velTemp.y = 1.0f + (0.2f
                 * MBCapsuleEffRandF());
-            gravity = 0.05f + (0.02f
+            angleStep = 0.05f + (0.02f
                 * MBCapsuleEffRandF());
-            rotStep = 0.0f;
+            gravityStep = 0.0f;
             if (mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE) & 1) {
-                gravity *= -1.0f;
+                angleStep *= -1.0f;
             }
             break;
 
         case 3:
             velTemp.y = 0.0f;
-            gravity = 0.05f + (0.02f
+            angleStep = 0.05f + (0.02f
                 * MBCapsuleEffRandF());
-            rotStep = 9.8 / 120.0;
+            gravityStep = 9.8 / 120.0;
             if (mbRandMod(CAPEVENT_EFFECT_RANDOM_RANGE) & 1) {
-                gravity *= -1.0f;
+                angleStep *= -1.0f;
             }
             break;
 
         default:
             velTemp.y = 0.0f;
-            gravity = 0.0f;
-            rotStep = 0.0f;
+            angleStep = 0.0f;
+            gravityStep = 0.0f;
             break;
     }
     if (colorP != NULL) {
@@ -4645,10 +4717,12 @@ int mbev_CapEffGlowKinokoAdd(OMOBJ *obj, HuVecF *posP, int time, float scale,
     velLocalP = &vel;
     pos = posTemp;
     posLocalP = &pos;
-    return mbev_CapEffGlowAdd(obj, posLocalP, velLocalP, time, scale, gravity,
-        rotStep, colorLocalP);
+    return mbev_CapEffGlowAdd(obj, posLocalP, velLocalP, time, scale, angleStep,
+        gravityStep, colorLocalP);
 }
 
+/* Capsule glow bursts add a particle using a random palette color and randomized alpha,
+ * with position offsets and vertical motion selected by the supplied ranges and type. */
 void mbev_CapEffGlowKinokoAddAlt(OMOBJ *obj, HuVecF *posP, int time,
     float scale, float xRange, float yRange, float zRange, int type)
 {
@@ -4664,7 +4738,7 @@ void mbev_CapEffGlowKinokoAddAlt(OMOBJ *obj, HuVecF *posP, int time,
         zRange, type, &color);
 }
 
-
+/* Capsule event code stores per-particle setup values and clears the third extra field. */
 int mbev_CapEffGlowKinokoTimeSet(OMOBJ *obj, int index, int unk08, int unk0A)
 {
     int i;
@@ -4692,6 +4766,8 @@ int mbev_CapEffGlowKinokoTimeSet(OMOBJ *obj, int index, int unk08, int unk0A)
     return TRUE;
 }
 
+/* Capsule event code emits a ring of yellow particles from the supplied position and
+ * orientation. */
 void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP)
 {
     Mtx mtx;
@@ -4712,7 +4788,7 @@ void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP)
     float sinDirection;
     float cosAngle;
     float cosDirection2;
-    float timeScale;
+    float particleScale;
 
     if (rotP != NULL) {
         mtxRot(mtx, rotP->x, rotP->y, rotP->z);
@@ -4753,15 +4829,16 @@ void mbev_CapEffGlowCoinAdd(OMOBJ *obj, HuVecF *posP, HuVecF *rotP)
         velP = &vel;
         pos = *posP;
         posLocalP = &pos;
-        timeScale = 60.0f * (0.5f + (0.25f *
+        particleScale = 60.0f * (0.5f + (0.25f *
             MBCapsuleEffRandF()));
         mbev_CapEffGlowAdd(obj, posLocalP, velP,
             (int)(100.0f * (0.5f + (0.3f *
                 MBCapsuleEffRandF()))),
-                timeScale, 0.0f, CAPEVENT_GRAVITY / 60.0f, colorP);
+                particleScale, 0.0f, CAPEVENT_GRAVITY / 60.0f, colorP);
     }
 }
 
+/* ev_CapEffOpen creates this ring while the capsule opening effect runs. */
 OMOBJ *mbev_CapEffRingCreate(void)
 {
     CAPEFFRINGWORK *workP;
@@ -4786,7 +4863,7 @@ OMOBJ *mbev_CapEffRingCreate(void)
     obj->data = workData;
     workP = workData;
     memset(workP, 0, sizeof(CAPEFFRINGWORK));
-    workP->dispF = 0;
+    workP->particleCount = 0;
     workP->objIdx = i;
     for (j = 0; j < 3; j++) {
         animP = HuSprAnimRead(
@@ -4794,7 +4871,7 @@ OMOBJ *mbev_CapEffRingCreate(void)
         workP->animP[j] = animP;
         workP->modelId[j] = modelId = ev_CapEffCreate(animP, 32);
         Hu3DModelLayerSet(modelId, 5);
-        workP->dispF = 0;
+        workP->particleCount = 0;
         modelP = &Hu3DData[modelId];
         particleP = modelP->hookData;
         particleP->blendMode = 1;
@@ -4803,7 +4880,7 @@ OMOBJ *mbev_CapEffRingCreate(void)
     return obj;
 }
 
-
+/* Trap and throw events create this colored ring for impacts around a player. */
 OMOBJ *mbev_CapEffRingHitCreate(void)
 {
     CAPEFFRINGWORK *workP;
@@ -4828,7 +4905,7 @@ OMOBJ *mbev_CapEffRingHitCreate(void)
     obj->data = workData;
     workP = workData;
     memset(workP, 0, sizeof(CAPEFFRINGWORK));
-    workP->dispF = 0;
+    workP->particleCount = 0;
     workP->objIdx = i;
     for (j = 0; j < 3; j++) {
         if (j == 0) {
@@ -4838,7 +4915,7 @@ OMOBJ *mbev_CapEffRingHitCreate(void)
         }
         workP->modelId[j] = modelId = ev_CapEffCreate(animP, 32);
         Hu3DModelLayerSet(modelId, 5);
-        workP->dispF = 0;
+        workP->particleCount = 0;
         modelP = &Hu3DData[modelId];
         particleP = modelP->hookData;
         particleP->blendMode = 1;
@@ -4847,6 +4924,7 @@ OMOBJ *mbev_CapEffRingHitCreate(void)
     return obj;
 }
 
+/* The object manager advances ring particle fades and frees the effect after kill or exit. */
 void mbev_CapEffRingOMExec(OMOBJ *obj)
 {
     CAPEFFRINGWORK *workP;
@@ -4875,7 +4953,7 @@ void mbev_CapEffRingOMExec(OMOBJ *obj)
         return;
     }
     for (i = 0; i < 3; i++) {
-        if (workP->dispF <= 0) {
+        if (workP->particleCount <= 0) {
             Hu3DModelAttrSet(workP->modelId[i], 1);
         } else {
             Hu3DModelAttrReset(workP->modelId[i], 1);
@@ -4912,7 +4990,7 @@ void mbev_CapEffRingOMExec(OMOBJ *obj)
                     particleP->color.a = particleP->_unk1C * (1.0f - weight);
                     if (weight >= 1.0f) {
                         particleP->_unk40 = 0.0f;
-                        workP->dispF--;
+                        workP->particleCount--;
                     }
                     break;
                 }
@@ -4921,8 +4999,7 @@ void mbev_CapEffRingOMExec(OMOBJ *obj)
     }
 }
 
-
-
+/* Event cleanup marks this ring for release by its next object-manager update. */
 void mbev_CapEffRingKill(OMOBJ *obj)
 {
     int i;
@@ -4935,6 +5012,7 @@ void mbev_CapEffRingKill(OMOBJ *obj)
     ev_CapEffRingOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Ring callers use this count to wait until all ring particles have faded. */
 int mbev_CapEffRingDispGet(OMOBJ *obj)
 {
     int i;
@@ -4946,9 +5024,10 @@ int mbev_CapEffRingDispGet(OMOBJ *obj)
         }
     }
     workP = omObjGetDataAs(obj, CAPEFFRINGWORK);
-    return workP->dispF;
+    return workP->particleCount;
 }
 
+/* Capsule effects add a ring particle with its position, orientation, scale and fade times. */
 int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF pos, HuVecF rot, HuVecF scale,
     int unk10, int unk14, int index, GXColor color)
 {
@@ -4996,10 +5075,11 @@ int mbev_CapEffRingAdd(OMOBJ *obj, HuVecF pos, HuVecF rot, HuVecF scale,
     particleWorkP->_unk4C.z = rot.z;
     particleWorkP->_unk68 = 0;
     particleWorkP->_unk00 = 0;
-    workP->dispF++;
+    workP->particleCount++;
     return particleNo;
 }
 
+/* Impact events add a gold ring with the fixed hit fade used by the trap effect. */
 void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot,
     HuVecF *scale)
 {
@@ -5007,8 +5087,7 @@ void mbev_CapEffRingHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rot,
         capsuleRingColor);
 }
 
-
-
+/* Capsule effects replace the sprite animation for one of the ring's three particle models. */
 void mbev_CapEffRingAnimSet(OMOBJ *obj, int index, int dataNum)
 {
     int i;
@@ -5029,6 +5108,7 @@ void mbev_CapEffRingAnimSet(OMOBJ *obj, int index, int dataNum)
         HuSprAnimRead(HuDataReadNum(dataNum, HU_MEMNUM_OVL));
 }
 
+/* BiriQ creates this object to draw the electric arcs around the shocked player. */
 OMOBJ *mbev_CapEffElectricCreate(void)
 {
     CAPEFFELECTRICWORK *workP;
@@ -5069,6 +5149,9 @@ OMOBJ *mbev_CapEffElectricCreate(void)
     return obj;
 }
 
+/* Updates electric arcs when their step timers expire, following their model or world position.
+ * The segment and history loops reuse the outer arc index, changing how that scan advances.
+ * Their forward copies also propagate entry 0 through the remaining five entries. */
 void mbev_CapEffElectricOMExec(OMOBJ *obj)
 {
     CAPEFFELECTRICWORK *work = obj->data;
@@ -5150,6 +5233,7 @@ void mbev_CapEffElectricOMExec(OMOBJ *obj)
     }
 }
 
+/* BiriQ cleanup marks the electric arcs for release by their next object-manager update. */
 void mbev_CapEffElectricKill(OMOBJ *obj)
 {
     int i;
@@ -5163,6 +5247,7 @@ void mbev_CapEffElectricKill(OMOBJ *obj)
     ev_CapEffElectricOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Electric effect callers use this count to wait for all arcs to finish. */
 int mbev_CapEffElectricDispGet(OMOBJ *obj)
 {
     int i;
@@ -5175,9 +5260,10 @@ int mbev_CapEffElectricDispGet(OMOBJ *obj)
     }
     i >= 8;
     workP = omObjGetDataAs(obj, CAPEFFDISPWORK);
-    return workP->dispF;
+    return workP->particleCount;
 }
 
+/* BiriQ adds an arc at pos; time sets its phases and bank sets the frame interval between steps. */
 int mbev_CapEffElectricAdd(OMOBJ *obj, HuVecF *pos, int time, int bank)
 {
     CAPEFFELECTRICWORK *workP;
@@ -5230,6 +5316,7 @@ int mbev_CapEffElectricAdd(OMOBJ *obj, HuVecF *pos, int time, int bank)
     return particleNo;
 }
 
+/* BiriQ binds an arc to the player model so the trail follows its offset position. */
 void mbev_CapEffElectricModelSet(OMOBJ *obj, int modelId,
     int effectId, HuVecF *offset)
 {
@@ -5268,7 +5355,8 @@ void mbev_CapEffElectricModelSet(OMOBJ *obj, int modelId,
     }
 }
 
-OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
+/* ev_CapEffOpen creates this ribbon effect while sparks rise from the opening capsule. */
+OMOBJ *mbev_CapEffRayCreate(float yOffset, float widthSpread)
 {
     CAPEFFRAYPARTICLEWORK *particleP;
     CAPEFFRAYWORK *workP;
@@ -5325,11 +5413,11 @@ OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
         particleP->_unk30.x = particleP->_unk30.y = particleP->_unk30.z = 0.0f;
         for (j = 0; j < 16; j += 2) {
             t = (float)(j / 2) / 7.0f;
-            particleP->vtx[j].x = -0.05f - (unk04 * t);
-            particleP->vtx[j].y = unk00 + t;
+            particleP->vtx[j].x = -0.05f - (widthSpread * t);
+            particleP->vtx[j].y = yOffset + t;
             particleP->vtx[j].z = 0.0f;
-            particleP->vtx[j + 1].x = 0.05f + (unk04 * t);
-            particleP->vtx[j + 1].y = unk00 + t;
+            particleP->vtx[j + 1].x = 0.05f + (widthSpread * t);
+            particleP->vtx[j + 1].y = yOffset + t;
             particleP->vtx[j + 1].z = 0.0f;
             particleP->prevVtx[j] = particleP->vtx[j];
             particleP->prevVtx[j + 1] = particleP->vtx[j + 1];
@@ -5370,6 +5458,8 @@ OMOBJ *mbev_CapEffRayCreate(float unk00, float unk04)
     return obj;
 }
 
+/* Updates active ribbon scale, rotation and RGB over each duration. Interpolated alpha is
+ * overwritten by the starting alpha times the shared multiplier. */
 void mbev_CapEffRayOMExec(OMOBJ *obj)
 {
     CAPEFFRAYWORK *workP;
@@ -5416,6 +5506,7 @@ void mbev_CapEffRayOMExec(OMOBJ *obj)
         128 * sizeof(CAPEFFRAYPARTICLEWORK));
 }
 
+/* Capsule-opening cleanup marks the ribbon effect for release by its next object update. */
 void mbev_CapEffRayKill(OMOBJ *obj)
 {
     int i;
@@ -5430,6 +5521,7 @@ void mbev_CapEffRayKill(OMOBJ *obj)
     ev_CapEffRayOMObj[workP->objIdx] = (OMOBJ *)-1;
 }
 
+/* The model draw hook renders each active ribbon as a blended triangle strip. */
 void mbev_CapEffRayDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     CAPEFFRAYWORK *workP;
@@ -5485,13 +5577,7 @@ void mbev_CapEffRayDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
-
-
-
-
-
-
-
+/* Capsule-opening events start a ribbon at a position with start and end rotations. */
 int mbev_CapEffRayAdd(OMOBJ *obj, HuVecF *unk04, HuVecF *unk08, HuVecF *unk0C,
     float unk14, int unk10)
 {
@@ -5528,6 +5614,7 @@ int mbev_CapEffRayAdd(OMOBJ *obj, HuVecF *unk04, HuVecF *unk08, HuVecF *unk0C,
     return particleNo;
 }
 
+/* Capsule-opening animation sets the shared alpha multiplier for every ribbon segment. */
 void mbev_CapEffRayAlphaSet(OMOBJ *obj, float alpha)
 {
     CAPEFFRAYWORK *workP;
@@ -5544,6 +5631,7 @@ void mbev_CapEffRayAlphaSet(OMOBJ *obj, float alpha)
     workP->alpha = alpha;
 }
 
+/* Capsule events update whichever position, rotation or matrix they have for the ribbon model. */
 void mbev_CapEffRayTransformSet(OMOBJ *obj, HuVecF *pos, HuVecF *rot, Mtx *mtx)
 {
     CAPEFFRAYWORK *workP;
@@ -5568,6 +5656,7 @@ void mbev_CapEffRayTransformSet(OMOBJ *obj, HuVecF *pos, HuVecF *rot, Mtx *mtx)
     }
 }
 
+/* ev_CapEffOpen creates the burst that spreads around the opened board space. */
 OMOBJ *mbev_CapEffMasuHitCreate(void)
 {
     CAPEFFMASUHITWORK *workP;
@@ -5608,6 +5697,7 @@ OMOBJ *mbev_CapEffMasuHitCreate(void)
     return obj;
 }
 
+/* The object manager moves each burst particle along its interpolated rotation and fades it out. */
 void mbev_CapEffMasuHitOMExec(OMOBJ *obj)
 {
     CAPEFFMASUHITWORK *workP;
@@ -5686,6 +5776,7 @@ void mbev_CapEffMasuHitOMExec(OMOBJ *obj)
     }
 }
 
+/* Capsule-opening cleanup marks the board-space burst for its next update to release. */
 void mbev_CapEffMasuHitKill(OMOBJ *obj)
 {
     int i;
@@ -5700,8 +5791,9 @@ void mbev_CapEffMasuHitKill(OMOBJ *obj)
     ev_CapEffMasuHitOMObj[workP->objIdx] = (OMOBJ *)-1;
 }
 
+/* ev_CapEffOpen adds a burst particle with a start and end rotation at the masu. */
 int mbev_CapEffMasuHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA,
-    HuVecF *rotB, float scale, float scaleY, int time)
+    HuVecF *rotB, float radius, float particleScale, int time)
 {
     CAPEFFMASUHITWORK *workP;
     int i;
@@ -5733,17 +5825,18 @@ int mbev_CapEffMasuHitAdd(OMOBJ *obj, HuVecF *pos, HuVecF *rotA,
     particleWorkP->_unk00 = 0;
     particleWorkP->_unk02 = time;
     particleWorkP->_unk04 = 0;
-    particleWorkP->_unk40 = scaleY;
+    particleWorkP->_unk40 = particleScale;
     particleWorkP->_unk08 = *pos;
     particleWorkP->_unk14 = *rotA;
     particleWorkP->_unk20 = *rotB;
-    particleWorkP->_unk2C = scaleY;
-    particleWorkP->_unk30 = scale;
+    particleWorkP->_unk2C = particleScale;
+    particleWorkP->_unk30 = radius;
     particleWorkP->_unk68 = mbRandMod(4);
     particleWorkP->color.a = 0;
     return particleNo;
 }
 
+/* Capsule-opening effects update the burst model's supplied position, rotation or matrix. */
 void mbev_CapEffMasuHitTransformSet(OMOBJ *obj, HuVecF *pos, HuVecF *rot, Mtx *mtx)
 {
     CAPEFFMASUHITWORK *workP;
@@ -5766,6 +5859,7 @@ void mbev_CapEffMasuHitTransformSet(OMOBJ *obj, HuVecF *pos, HuVecF *rot, Mtx *m
     }
 }
 
+/* Capsule events create this pool to animate and release temporary coins. */
 OMOBJ *mbev_CapEffCoinCreate(void)
 {
     OMOBJ *obj;
@@ -5805,6 +5899,7 @@ OMOBJ *mbev_CapEffCoinCreate(void)
     return obj;
 }
 
+/* The object manager moves active coins and emits their landing particles or coin flash. */
 void mbev_CapEffCoinOMExec(OMOBJ *obj)
 {
     CAPEFFCOINWORK *workP;
@@ -6012,6 +6107,7 @@ void mbev_CapEffCoinOMExec(OMOBJ *obj)
     }
 }
 
+/* Capsule event cleanup marks the coin pool for release on its next object-manager update. */
 void mbev_CapEffCoinKill(OMOBJ *obj)
 {
     int i;
@@ -6029,6 +6125,7 @@ int mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF, BOOL waitF);
 int mbev_CapEffCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale,
     float gravity, int time, int arg);
 
+/* Capsule event scripts use this count to wait until every temporary coin has finished. */
 int mbev_CapEffCoinNumGet(OMOBJ *obj)
 {
     int i;
@@ -6051,6 +6148,7 @@ int mbev_CapEffCoinNumGet(OMOBJ *obj)
     return count;
 }
 
+/* Capsule events launch one coin from pos with velocity, scale, gravity and a frame lifetime. */
 int mbev_CapEffCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale,
     float gravity, int time, int arg)
 {
@@ -6097,6 +6195,7 @@ int mbev_CapEffCoinAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale,
     return coinNo;
 }
 
+/* Coin event callers set the height below which a falling coin can be retired. */
 BOOL mbev_CapEffCoinMaxYSet(OMOBJ *obj, int coinNo, float maxY)
 {
     CAPEFFCOINWORK *workP;
@@ -6113,6 +6212,7 @@ BOOL mbev_CapEffCoinMaxYSet(OMOBJ *obj, int coinNo, float maxY)
     return TRUE;
 }
 
+/* Capsule events launch a radial burst of coins from the supplied board position. */
 void mbev_CapEffCoinMultiAdd(OMOBJ *obj, HuVecF *pos, int num)
 {
     HuVecF pos2;
@@ -6161,6 +6261,7 @@ void mbev_CapEffCoinMultiAdd(OMOBJ *obj, HuVecF *pos, int num)
     }
 }
 
+/* Coin events attach one glow-particle effect to every coin in this pool. */
 void mbev_CapEffCoinGlowSet(OMOBJ *obj, OMOBJ *glowObj)
 {
     CAPEFFCOINWORK *workP;
@@ -6178,12 +6279,14 @@ void mbev_CapEffCoinGlowSet(OMOBJ *obj, OMOBJ *glowObj)
     }
 }
 
+/* Capsule events award coins with the falling-coin effect and no award-message hook. */
 void mbev_CapCoinAdd(
     OMOBJ *obj, int playerNo, int coinNum, BOOL highF)
 {
     ev_CapCoinAdd(obj, playerNo, coinNum, highF, NULL);
 }
 
+/* Capsule coin rewards rain coins onto the player, wait for them, then show the award. */
 static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
     void (*hook)(void))
 {
@@ -6247,6 +6350,7 @@ static void ev_CapCoinAdd(OMOBJ *obj, int playerNo, int coinNum, BOOL highF,
     mbev_CapCoinDisp(playerNo, coinNum, TRUE, TRUE);
 }
 
+/* Capsule events create this manager for coins that travel to a player or screen target. */
 OMOBJ *mbev_CapCoinManCreate(void)
 {
     CAPCOINMANWORK *workP;
@@ -6281,11 +6385,13 @@ OMOBJ *mbev_CapCoinManCreate(void)
         workP->_unk1C = 0;
         workP->_unk20 = 0.0f;
         workP->pos.x = workP->pos.y = workP->pos.z = 0.0f;
-        workP->vel.x = workP->vel.y = workP->vel.z = 0.0f;
+        workP->targetPos.x = workP->targetPos.y = workP->targetPos.z = 0.0f;
     }
     return obj;
 }
 
+/* Moves managed coins toward their targets and awards positive values when their timers end.
+ * The coins are retired before an interpolation weight of 1 is rendered. */
 void mbev_CapCoinManOMExec(OMOBJ *obj)
 {
     CAPCOINMANWORK *workP;
@@ -6312,7 +6418,7 @@ void mbev_CapCoinManOMExec(OMOBJ *obj)
     for (i = 0; i < 64; i++, workP++) {
         if (workP->activeF) {
             weight = (float)workP->_unk18 / (float)workP->_unk1C;
-            mbev_CapVecChase(weight, &workP->pos, &workP->vel, &pos);
+            mbev_CapVecChase(weight, &workP->pos, &workP->targetPos, &pos);
             if (workP->_unk20) {
                 sinValue = mbSinDeg(180.0f * weight);
                 pos.y += workP->_unk20 * sinValue;
@@ -6341,6 +6447,7 @@ void mbev_CapCoinManOMExec(OMOBJ *obj)
     }
 }
 
+/* Capsule event cleanup marks managed coins for release on the next object-manager update. */
 void mbev_CapCoinManKill(OMOBJ *obj)
 {
     int i;
@@ -6353,6 +6460,7 @@ void mbev_CapCoinManKill(OMOBJ *obj)
     ev_CapEffCoinManOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Capsule event scripts use this count to wait for managed coin animations. */
 int mbev_CapCoinManNumGet(OMOBJ *obj)
 {
     CAPCOINMANWORK *workP;
@@ -6376,9 +6484,10 @@ int mbev_CapCoinManNumGet(OMOBJ *obj)
     return count;
 }
 
-int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
-    float scale, float gravity, int unk1C, int playerNo, int coinNum,
-    int highF)
+/* Capsule events create a managed coin with a target, player award and travel duration. */
+int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
+    float scale, float arcHeight, int unk1C, int playerNo, int coinNum,
+    int screenSpaceF)
 {
     CAPCOINMANWORK *workP;
     int objIdx;
@@ -6401,14 +6510,14 @@ int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
         return -1;
     }
     workP->activeF = TRUE;
-    workP->_unk08 = highF;
+    workP->_unk08 = screenSpaceF;
     workP->playerNo = playerNo;
     workP->coinNum = coinNum;
     workP->_unk18 = 0;
     workP->_unk1C = unk1C;
-    workP->_unk20 = gravity;
+    workP->_unk20 = arcHeight;
     workP->pos = *pos;
-    workP->vel = *vel;
+    workP->targetPos = *targetPos;
     workP->modelId = mbCoinCreate2();
     mbCoinObjPosSetV((s16)workP->modelId, &workP->pos);
     angle = 360.0f * MBCapsuleEffRandF();
@@ -6418,6 +6527,9 @@ int mbev_CapCoinManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
     return workNo;
 }
 
+/* Starts a coin on a mode-selected, player-independent screen-space route with randomized
+ * target X, duration and arc height. At timer expiry, positive coinNum is awarded when
+ * playerNo is not -1. */
 int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
 {
     CAPCOINMANWORK *workP;
@@ -6426,30 +6538,30 @@ int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
     int result;
     int time;
     HuVecF pos;
-    HuVecF vel;
-    float gravity;
+    HuVecF targetPos;
+    float arcHeight;
     float angle;
 
     if (mode == 0) {
         pos.x = 80.0f;
         pos.y = 240.0f;
         pos.z = 1000.0f;
-        vel.x = 496.0f;
-        vel.y = 240.0f;
-        vel.z = 1000.0f;
-        vel.x += 25.0f * (0.5f - MBCapsuleEffRandF());
+        targetPos.x = 496.0f;
+        targetPos.y = 240.0f;
+        targetPos.z = 1000.0f;
+        targetPos.x += 25.0f * (0.5f - MBCapsuleEffRandF());
     } else {
         pos.x = 396.0f;
         pos.y = 240.0f;
         pos.z = 1000.0f;
-        vel.x = 180.0f;
-        vel.y = 240.0f;
-        vel.z = 1000.0f;
-        vel.x += 25.0f * (0.5f - MBCapsuleEffRandF());
+        targetPos.x = 180.0f;
+        targetPos.y = 240.0f;
+        targetPos.z = 1000.0f;
+        targetPos.x += 25.0f * (0.5f - MBCapsuleEffRandF());
     }
     time = (int)(30.0f * (1.0f
         + (0.3f * MBCapsuleEffRandF())));
-    gravity = -75.0f + (1.0f
+    arcHeight = -75.0f + (1.0f
         + (0.35f * MBCapsuleEffRandF()));
     for (objIdx = 0; objIdx < 8; objIdx++) {
         if (ev_CapEffCoinManOMObj[objIdx] == obj) {
@@ -6472,9 +6584,9 @@ int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
         workP->coinNum = coinNum;
         workP->_unk18 = 0;
         workP->_unk1C = time;
-        workP->_unk20 = gravity;
+        workP->_unk20 = arcHeight;
         workP->pos = pos;
-        workP->vel = vel;
+        workP->targetPos = targetPos;
         workP->modelId = mbCoinCreate2();
         mbCoinObjPosSetV((s16)workP->modelId, &workP->pos);
         angle = 360.0f * MBCapsuleEffRandF();
@@ -6490,20 +6602,22 @@ int mbev_CapCoinManAdd2(OMOBJ *obj, int mode, int playerNo, int coinNum)
     }
 }
 
+/* Capsule events animate a coin from from to to. At timer expiry, positive coinNum is awarded
+ * when playerNo is not -1. */
 int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
-    int playerNo, BOOL highF)
+    int playerNo, BOOL coinNum)
 {
     CAPCOINMANWORK *workP;
     int workNo;
     int objIdx;
     int result;
     int time;
-    float speed;
+    float arcHeight;
     float angle;
 
     time = (int)(60.0f * (0.3f
         + (0.05f * MBCapsuleEffRandF())));
-    speed = 100.0f * (2.0f
+    arcHeight = 100.0f * (2.0f
         + (0.5f * MBCapsuleEffRandF()));
 
     for (objIdx = 0; objIdx < 8; objIdx++) {
@@ -6524,12 +6638,12 @@ int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         workP->activeF = TRUE;
         workP->_unk08 = 0;
         workP->playerNo = playerNo;
-        workP->coinNum = highF;
+        workP->coinNum = coinNum;
         workP->_unk18 = 0;
         workP->_unk1C = time;
-        workP->_unk20 = speed;
+        workP->_unk20 = arcHeight;
         workP->pos = *from;
-        workP->vel = *to;
+        workP->targetPos = *to;
         workP->modelId = mbCoinCreate2();
         mbCoinObjPosSetV((s16)workP->modelId, &workP->pos);
         angle = 360.0f * MBCapsuleEffRandF();
@@ -6540,12 +6654,13 @@ int mbev_CapCoinManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         result = workNo;
     }
     if (result != -1) {
-        return highF;
+        return coinNum;
     } else {
         return 0;
     }
 }
 
+/* Capsule events create this manager for stars that travel to the screen or a player. */
 OMOBJ *mbev_CapStarManCreate(void)
 {
     CAPSTARMANWORK *workP;
@@ -6576,16 +6691,18 @@ OMOBJ *mbev_CapStarManCreate(void)
         workP->activeF = 0;
         workP->_unk08 = 0;
         workP->playerNo = -1;
-        workP->coinNum = 0;
+        workP->starNum = 0;
         workP->_unk18 = 0;
         workP->_unk1C = 0;
         workP->_unk20 = 0.0f;
         workP->pos.x = workP->pos.y = workP->pos.z = 0.0f;
-        workP->vel.x = workP->vel.y = workP->vel.z = 0.0f;
+        workP->targetPos.x = workP->targetPos.y = workP->targetPos.z = 0.0f;
     }
     return obj;
 }
 
+/* Moves managed stars toward their targets and awards positive values when their timers end.
+ * The stars are hidden before an interpolation weight of 1 is rendered. */
 void mbev_CapStarManOMExec(OMOBJ *obj)
 {
     CAPSTARMANWORK *workP;
@@ -6611,7 +6728,7 @@ void mbev_CapStarManOMExec(OMOBJ *obj)
     for (i = 0; i < 8; i++, workP++) {
         if (workP->activeF && workP->modelId != -1) {
             weight = (float)workP->_unk18 / (float)workP->_unk1C;
-            PSVECSubtract(&workP->vel, &workP->pos, &pos);
+            PSVECSubtract(&workP->targetPos, &workP->pos, &pos);
             PSVECScale(&pos, &pos, weight);
             PSVECAdd(&workP->pos, &pos, &pos);
             if (workP->_unk20) {
@@ -6627,19 +6744,20 @@ void mbev_CapStarManOMExec(OMOBJ *obj)
             if (++workP->_unk18 >= workP->_unk1C) {
                 mbStarObjDispSet(workP->modelId, FALSE);
                 workP->activeF = FALSE;
-                if (workP->playerNo != -1 && workP->coinNum > 0) {
+                if (workP->playerNo != -1 && workP->starNum > 0) {
                     if (!workP->_unk08) {
                         mbPlayerPosGet(workP->playerNo, &pos);
                         pos.y += 50.0f;
                         mbCoinEffCreate(&pos);
                     }
-                    mbPlayerStarAdd(workP->playerNo, workP->coinNum);
+                    mbPlayerStarAdd(workP->playerNo, workP->starNum);
                 }
             }
         }
     }
 }
 
+/* Capsule event cleanup marks managed stars for release on their next object-manager update. */
 void mbev_CapStarManKill(OMOBJ *obj)
 {
     int i;
@@ -6652,6 +6770,7 @@ void mbev_CapStarManKill(OMOBJ *obj)
     ev_CapEffStarManOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Capsule event scripts use this count to wait for every managed star animation. */
 int mbev_CapStarManNumGet(OMOBJ *obj)
 {
     CAPSTARMANWORK *workP;
@@ -6675,9 +6794,10 @@ int mbev_CapStarManNumGet(OMOBJ *obj)
     return count;
 }
 
-int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
-    float scale, float gravity, int unk1C, int playerNo, int coinNum,
-    int highF)
+/* Capsule events place one traveling star with its destination, duration and award. */
+int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *targetPos,
+    float scale, float arcHeight, int unk1C, int playerNo, int starNum,
+    int screenSpaceF)
 {
     CAPSTARMANWORK *workP;
     int objIdx;
@@ -6699,20 +6819,23 @@ int mbev_CapStarManObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel,
         return -1;
     }
     workP->activeF = TRUE;
-    workP->_unk08 = highF;
+    workP->_unk08 = screenSpaceF;
     workP->playerNo = playerNo;
-    workP->coinNum = coinNum;
+    workP->starNum = starNum;
     workP->_unk18 = 0;
     workP->_unk1C = unk1C;
-    workP->_unk20 = gravity;
+    workP->_unk20 = arcHeight;
     workP->pos = *pos;
-    workP->vel = *vel;
+    workP->targetPos = *targetPos;
     mbStarObjDispSet(workP->modelId, TRUE);
     mbStarObjPosSetV(workP->modelId, &workP->pos);
     mbStarObjScaleSet(workP->modelId, scale, scale, scale);
     return workNo;
 }
 
+/* Starts a star on a mode-selected, player-independent screen-space route with randomized
+ * target X, duration and arc height. At timer expiry, positive starNum is awarded when
+ * playerNo is not -1. */
 int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
 {
     CAPSTARMANWORK *workP;
@@ -6721,29 +6844,29 @@ int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
     int result;
     int time;
     HuVecF pos;
-    HuVecF vel;
-    float gravity;
+    HuVecF targetPos;
+    float arcHeight;
 
     if (mode == 0) {
         pos.x = 80.0f;
         pos.y = 240.0f;
         pos.z = 1000.0f;
-        vel.x = 496.0f;
-        vel.y = 240.0f;
-        vel.z = 1000.0f;
-        vel.x += 25.0f * (0.5f - MBCapsuleEffRandF());
+        targetPos.x = 496.0f;
+        targetPos.y = 240.0f;
+        targetPos.z = 1000.0f;
+        targetPos.x += 25.0f * (0.5f - MBCapsuleEffRandF());
     } else {
         pos.x = 396.0f;
         pos.y = 240.0f;
         pos.z = 1000.0f;
-        vel.x = 180.0f;
-        vel.y = 240.0f;
-        vel.z = 1000.0f;
-        vel.x += 25.0f * (0.5f - MBCapsuleEffRandF());
+        targetPos.x = 180.0f;
+        targetPos.y = 240.0f;
+        targetPos.z = 1000.0f;
+        targetPos.x += 25.0f * (0.5f - MBCapsuleEffRandF());
     }
     time = (int)(30.0f * (1.0f
         + (0.3f * MBCapsuleEffRandF())));
-    gravity = -75.0f + (1.0f
+    arcHeight = -75.0f + (1.0f
         + (0.35f * MBCapsuleEffRandF()));
     for (objIdx = 0; objIdx < 8; objIdx++) {
         if (ev_CapEffStarManOMObj[objIdx] == obj) {
@@ -6763,12 +6886,12 @@ int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
         workP->activeF = TRUE;
         workP->_unk08 = TRUE;
         workP->playerNo = playerNo;
-        workP->coinNum = starNum;
+        workP->starNum = starNum;
         workP->_unk18 = 0;
         workP->_unk1C = time;
-        workP->_unk20 = gravity;
+        workP->_unk20 = arcHeight;
         workP->pos = pos;
-        workP->vel = vel;
+        workP->targetPos = targetPos;
         mbStarObjDispSet(workP->modelId, TRUE);
         mbStarObjPosSetV(workP->modelId, &workP->pos);
         mbStarObjScaleSet(workP->modelId, 0.15f, 0.15f, 0.15f);
@@ -6781,19 +6904,21 @@ int mbev_CapStarManAdd2(OMOBJ *obj, int mode, int playerNo, int starNum)
     }
 }
 
+/* Starts a star traveling from from toward to. At timer expiry, starNum supplies the award amount
+ * only when it is positive and playerNo is not -1. */
 int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
-    int playerNo, BOOL highF)
+    int playerNo, BOOL starNum)
 {
     CAPSTARMANWORK *workP;
     int workNo;
     int objIdx;
     int result;
     int time;
-    float speed;
+    float arcHeight;
 
     time = (int)(60.0f * (0.3f
         + (0.05f * MBCapsuleEffRandF())));
-    speed = 100.0f * (2.0f
+    arcHeight = 100.0f * (2.0f
         + (0.5f * MBCapsuleEffRandF()));
 
     for (objIdx = 0; objIdx < 8; objIdx++) {
@@ -6814,24 +6939,25 @@ int mbev_CapStarManAdd(OMOBJ *obj, HuVecF *from, HuVecF *to,
         workP->activeF = TRUE;
         workP->_unk08 = 0;
         workP->playerNo = playerNo;
-        workP->coinNum = highF;
+        workP->starNum = starNum;
         workP->_unk18 = 0;
         workP->_unk1C = time;
-        workP->_unk20 = speed;
+        workP->_unk20 = arcHeight;
         workP->pos = *from;
-        workP->vel = *to;
+        workP->targetPos = *to;
         mbStarObjDispSet(workP->modelId, TRUE);
         mbStarObjPosSetV(workP->modelId, &workP->pos);
         mbStarObjScaleSet(workP->modelId, 1.0f, 1.0f, 1.0f);
         result = workNo;
     }
     if (result != -1) {
-        return highF;
+        return starNum;
     } else {
         return 0;
     }
 }
 
+/* Capsule-loss events create this pool to animate the colored marks that leave a capsule. */
 OMOBJ *mbev_CapEffCapLoseCreate(void)
 {
     CAPEFFCAPLOSEWORK *workP;
@@ -6867,6 +6993,7 @@ OMOBJ *mbev_CapEffCapLoseCreate(void)
     return obj;
 }
 
+/* The object manager moves and fades active capsule-loss marks, then releases each one. */
 void mbev_CapEffCapLoseOMExec(OMOBJ *obj)
 {
     CAPEFFCAPLOSEWORK *workP;
@@ -6907,7 +7034,7 @@ void mbev_CapEffCapLoseOMExec(OMOBJ *obj)
     }
 }
 
-
+/* Capsule event cleanup marks the loss effect for release on its next object-manager update. */
 void mbev_CapEffCapLoseKill(OMOBJ *obj)
 {
     int i;
@@ -6920,6 +7047,7 @@ void mbev_CapEffCapLoseKill(OMOBJ *obj)
     ev_CapEffCapLoseOMObj[i] = (OMOBJ *)-1;
 }
 
+/* Capsule events use this count to wait until all capsule-loss marks have faded. */
 int mbev_CapEffCapLoseNumGet(OMOBJ *obj)
 {
     CAPEFFCAPLOSEWORK *workP;
@@ -6943,7 +7071,8 @@ int mbev_CapEffCapLoseNumGet(OMOBJ *obj)
     return count;
 }
 
-
+/* Creates a colored capsule marker in the first free slot with its movement, scale and lifetime;
+ * returns the slot, or -1 when the pool is full. */
 int mbev_CapEffCapLoseObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale, int time,
     int capsuleNo)
 {
@@ -6985,7 +7114,8 @@ int mbev_CapEffCapLoseObjAdd(OMOBJ *obj, HuVecF *pos, HuVecF *vel, float scale, 
     return workNo;
 }
 
-void mbev_CapEffCapLoseAdd(OMOBJ *obj, int playerNo, int count, float height)
+/* When a player loses capsules, the effect object throws out capsule markers. */
+void mbev_CapEffCapLoseAdd(OMOBJ *obj, int playerNo, int count, float radius)
 {
     HuVecF playerPos;
     HuVecF pos;
@@ -7026,9 +7156,9 @@ void mbev_CapEffCapLoseAdd(OMOBJ *obj, int playerNo, int count, float height)
             angle += (360.0f / (float)count) +
                 (10.0f * MBCapsuleEffRandF());
             sinAnglePos = mbSinDeg(angle);
-            pos.x = playerPos.x + (height * sinAnglePos);
+            pos.x = playerPos.x + (radius * sinAnglePos);
             cosAnglePos = mbCosDeg(angle);
-            pos.z = playerPos.z + (height * cosAnglePos);
+            pos.z = playerPos.z + (radius * cosAnglePos);
             pos.y = playerPos.y;
             cosAngleX1 = mbCosDeg(angleX);
             sinAngle = mbSinDeg(angle);
@@ -7073,6 +7203,7 @@ void mbev_CapEffCapLoseAdd(OMOBJ *obj, int playerNo, int count, float height)
     }
 }
 
+/* Capsule effect setup creates particle storage and indexed quads for a hook model. */
 static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
 {
     CAPEFFPARTICLESYSTEMWORK *workP;
@@ -7115,8 +7246,8 @@ static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
     workP->animP = animP;
     HuSprAnimLock(animP);
     workP->num = max;
-    workP->dispAttr = 0;
-    workP->blendMode = HU3D_PARTICLE_BLEND_NORMAL;
+    workP->renderBlendMode = 0;
+    workP->renderFlags = HU3D_PARTICLE_BLEND_NORMAL;
     workP->_unk4C = 0;
     workP->_unk5C = 0;
     workP->_unk28 = 0;
@@ -7210,6 +7341,7 @@ static s16 ev_CapEffCreate(ANIMDATA *animP, s16 max)
     return modelId;
 }
 
+/* The model render hook builds capsule particle vertices and draws their quads. */
 static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
 {
     CAPEFFPARTICLESYSTEMWORK *workP;
@@ -7233,6 +7365,7 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
     s16 j;
 
     workP = modelP->hookData;
+    /* Keep a particle model from advancing its display state twice in one frame. */
     if (workP->_unk2C == GlobalCounter && !shadowModelDrawF) {
         return;
     }
@@ -7258,9 +7391,10 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
             GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC,
                 GX_CC_ZERO);
         }
-        if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_ZWRITE_OFF) {
+        if (workP->renderFlags & CAPEVENT_PARTICLE_ATTR_ZWRITE_OFF) {
             GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
         } else if (modelP->attr & HU3D_ATTR_ZWRITE_OFF) {
+            /* This hook enables depth writes when the model's ZWRITE_OFF attribute is set. */
             GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
         } else {
             GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
@@ -7279,7 +7413,7 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
         GX_LINEAR);
     GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
     GXSetZCompLoc(GX_FALSE);
-    switch (workP->dispAttr) {
+    switch (workP->renderBlendMode) {
         case 0:
             GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA,
                 GX_BL_INVSRCALPHA, GX_LO_NOOP);
@@ -7293,7 +7427,7 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 GX_LO_NOOP);
             break;
     }
-    if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_NO_CULL) {
+    if (workP->renderFlags & CAPEVENT_PARTICLE_ATTR_NO_CULL) {
         GXSetCullMode(GX_CULL_NONE);
     } else {
         GXSetCullMode(GX_CULL_BACK);
@@ -7311,7 +7445,7 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
     particleP = workP->data;
     vertexP = workP->vertices;
     stP = workP->texCoords;
-    if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_IDENTITY_VIEW) {
+    if (workP->renderFlags & CAPEVENT_PARTICLE_ATTR_IDENTITY_VIEW) {
         PSMTXIdentity(mtxInv);
         PSMTXIdentity(basePosMtx.mtx);
         baseVtx[0] = baseVtxOrig[0] = basePos[0];
@@ -7336,7 +7470,7 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
             vertexP++;
             continue;
         }
-        if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_SCALE_XY) {
+        if (workP->renderFlags & CAPEVENT_PARTICLE_ATTR_SCALE_XY) {
             baseVtx[0].x = baseVtxOrig[0].x * particleP->sizeX;
             baseVtx[0].y = baseVtxOrig[0].y * particleP->sizeY;
             baseVtx[1].x = baseVtxOrig[1].x * particleP->sizeX;
@@ -7350,13 +7484,15 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
         PSVECScale(&baseVtx[1], &scaleVtx[1], particleP->active);
         PSVECScale(&baseVtx[2], &scaleVtx[2], particleP->active);
         PSVECScale(&baseVtx[3], &scaleVtx[3], particleP->active);
-        if (workP->blendMode & CAPEVENT_PARTICLE_ATTR_ROTATE_3D) {
+        if (workP->renderFlags & CAPEVENT_PARTICLE_ATTR_ROTATE_3D) {
             mtxRot(rotMtx, particleP->rotX, particleP->rotY,
                 particleP->angle);
             PSMTXConcat(mtxInv, rotMtx, particleMtx);
         } else if (!particleP->angle) {
             PSMTXCopy(mtxInv, particleMtx);
         } else {
+            /* This Z-only path passes angle directly as radians; the 3D rotation path uses
+             * degrees. */
             PSMTXRotRad(rotMtx, 'Z', particleP->angle);
             PSMTXConcat(mtxInv, rotMtx, particleMtx);
         }
@@ -7369,7 +7505,7 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
 
     particleP = workP->data;
     stP = workP->texCoords;
-    if (!(workP->blendMode & CAPEVENT_PARTICLE_ATTR_GRID_UV)) {
+    if (!(workP->renderFlags & CAPEVENT_PARTICLE_ATTR_FULL_TEXTURE_UV)) {
         if (workP->grid == NULL) {
             for (i = 0; i < workP->num; i++, particleP++) {
                 patX = particleP->pat & 3;
@@ -7387,14 +7523,14 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 }
             }
         }
-    } else if (!(workP->blendMode & CAPEVENT_PARTICLE_ATTR_UV_LOCKED)) {
+    } else if (!(workP->renderFlags & CAPEVENT_PARTICLE_ATTR_UV_LOCKED)) {
         for (i = 0; i < workP->num; i++, particleP++) {
             for (j = 0; j < 4; j++, stP++) {
                 stP->x = baseST2[j].x;
                 stP->y = baseST2[j].y;
             }
         }
-        workP->blendMode |= CAPEVENT_PARTICLE_ATTR_UV_LOCKED;
+        workP->renderFlags |= CAPEVENT_PARTICLE_ATTR_UV_LOCKED;
     }
     DCFlushRangeNoSync(workP->vertices,
         workP->num * sizeof(HuVecF) * 4);
@@ -7419,6 +7555,8 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
         if (!(workP->_unk21 & CAPEVENT_PARTICLE_STATE_STOP_COUNTER)) {
             workP->_unk28++;
         }
+        /* Reaching the display-counter limit leaves it at that limit, even when the loop bit first
+         * resets it to zero. */
         if (workP->_unk30 != 0 && workP->_unk30 <= workP->_unk28) {
             if (workP->_unk21 & CAPEVENT_PARTICLE_STATE_LOOP) {
                 workP->_unk28 = 0;
@@ -7429,6 +7567,7 @@ static void ev_CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
+/* Capsule particle setup maps each grid cell to four texture coordinates. */
 static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode)
 {
     HU3D_MODEL *model;
@@ -7463,6 +7602,8 @@ static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode)
     memset(grid, 0, gridNum * sizeof(HuVec2f) * 4);
     for (y = 0; y < yNum; y++) {
         for (x = 0; x < xNum; x++) {
+            /* Nonzero mode swaps the X/Y loop indices but keeps their original step sizes.
+             * Rectangular grids can therefore produce texture coordinates beyond 1. */
             if (mode) {
                 grid->x = (float)y * xStep;
                 grid->y = (float)x * yStep;
@@ -7494,6 +7635,7 @@ static void ev_CapEffGridSet(s16 modelId, int xNum, int yNum, int mode)
     }
 }
 
+/* Capsule effect setup selects a color from the seven-color palette by index. */
 void mbev_CapEffColorSet(GXColor *color, int colorNo)
 {
     if (colorNo < 0) {
@@ -7502,10 +7644,7 @@ void mbev_CapEffColorSet(GXColor *color, int colorNo)
     *color = ev_CapsuleRandomColorTbl[colorNo % 7];
 }
 
-
-
-
-
+/* Capsule events use this to wait until a player's motion transition has ended. */
 BOOL mbev_CapPlayerMotShiftCheck(int playerNo)
 {
     int objId;
@@ -7519,6 +7658,9 @@ BOOL mbev_CapPlayerMotShiftCheck(int playerNo)
     return FALSE;
 }
 
+/* Sets a model motion directly or with an 8-frame blend; blended playback waits for the shift and
+ * non-looping end, while direct non-looping playback always sleeps once and repeats only while the
+ * end check is true. */
 void mbev_CapPlayerMotShiftSet(
     int modelId, int motionNo, u32 attr, BOOL shiftF)
 {
@@ -7546,6 +7688,9 @@ void mbev_CapPlayerMotShiftSet(
     }
 }
 
+/* Sets a player's motion directly or with an 8-frame blend; blended playback waits for the shift
+ * and non-looping end, while direct non-looping playback always sleeps once and repeats only while
+ * the end check is true. */
 void mbev_CapPlayerMotShiftWait(
     int playerNo, int motionNo, u32 attr, BOOL shiftF)
 {
@@ -7576,6 +7721,9 @@ void mbev_CapPlayerMotShiftWait(
     }
 }
 
+/* Starts a board-model motion and queues its successor. time counts updates that meet the
+ * completion check. The successor uses nextAttr for both its blend choice and attributes;
+ * unk18 is stored but unused. */
 void mbev_CapObjMotionSet(int modelId, int time, int motNo, int nextMotNo,
     u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr)
 {
@@ -7602,6 +7750,7 @@ void mbev_CapObjMotionSet(int modelId, int time, int motNo, int nextMotNo,
     }
 }
 
+/* The object manager checks an engine-model motion and starts its queued successor. */
 void mbev_CapObjMotionOMExec(OMOBJ *obj)
 {
     CAPOBJMOTIONWORK *work = obj->data;
@@ -7636,6 +7785,9 @@ void mbev_CapObjMotionOMExec(OMOBJ *obj)
     }
 }
 
+/* Starts a player motion and queues its successor. time counts updates that meet the completion
+ * check. The successor uses nextAttr for both its blend choice and attributes; unk18 is stored
+ * but unused. */
 void mbev_CapPlayerMotionSet(int playerNo, int time, int motNo,
     int nextMotNo, u32 attr, u32 unk18, BOOL shiftF, BOOL nextAttr)
 {
@@ -7647,7 +7799,7 @@ void mbev_CapPlayerMotionSet(int playerNo, int time, int motNo,
     work = obj->data = HuMemDirectMallocNum(
         HEAP_HEAP, sizeof(CAPOBJMOTIONWORK), HU_MEMNUM_OVL);
     memset(work, 0, sizeof(CAPOBJMOTIONWORK));
-    work->_unk00 = playerNo;
+    work->playerNo = playerNo;
     work->time = time;
     work->motNo = motNo;
     work->nextMotNo = nextMotNo;
@@ -7662,6 +7814,7 @@ void mbev_CapPlayerMotionSet(int playerNo, int time, int motNo,
     }
 }
 
+/* The object manager checks a player motion and starts its queued successor. */
 void mbev_CapPlayerMotionOMExec(OMOBJ *obj)
 {
     CAPOBJMOTIONWORK *work = obj->data;
@@ -7672,32 +7825,30 @@ void mbev_CapPlayerMotionOMExec(OMOBJ *obj)
         return;
     }
     if (work->attr & HU3D_MOTATTR_LOOP) {
-        if (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->_unk00)) == -1) {
-            float maxTime = mbPlayerMotionMaxTimeGet(work->_unk00);
+        if (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->playerNo)) == -1) {
+            float maxTime = mbPlayerMotionMaxTimeGet(work->playerNo);
 
-            if (mbPlayerMotionTimeGet(work->_unk00) + 1.0f >= maxTime) {
+            if (mbPlayerMotionTimeGet(work->playerNo) + 1.0f >= maxTime) {
                 done = TRUE;
             }
         }
-    } else if (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->_unk00)) == -1) {
-        if (mbPlayerMotionEndCheck(work->_unk00)) {
+    } else if (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->playerNo)) == -1) {
+        if (mbPlayerMotionEndCheck(work->playerNo)) {
             done = TRUE;
         }
     }
     if (done && --work->time <= 0) {
         if (work->nextAttr) {
-            mbPlayerMotionShiftSet(work->_unk00, work->nextMotNo, 0.0f,
+            mbPlayerMotionShiftSet(work->playerNo, work->nextMotNo, 0.0f,
                 8.0f, work->nextAttr);
         } else {
-            mbPlayerMotionSet(work->_unk00, work->nextMotNo, work->nextAttr);
+            mbPlayerMotionSet(work->playerNo, work->nextMotNo, work->nextAttr);
         }
         omDelObjEx(mbObjMan, obj);
     }
 }
 
-
-
-
+/* Capsule event scenes set every player idle, then wait for all motion shifts. */
 void mbev_CapPlayerIdleWait(void)
 {
     int i;
@@ -7728,6 +7879,7 @@ void mbev_CapPlayerIdleWait(void)
     }
 }
 
+/* A capsule event turns a player to the requested angle and waits for the turn. */
 void mbev_CapPlayerRotate(int playerNo, float angle)
 {
     mbPlayerRotateStart(playerNo, angle, 15);
@@ -7741,6 +7893,8 @@ void mbev_CapPlayerSquishSet(int *playerNo, int masuId)
     mbev_CapPlayerSquishVoiceSet(playerNo, masuId, FALSE);
 }
 
+/* Poses every player on the space at frame 20 of motion 10 and freezes playback. voiceF
+ * optionally suppresses the character voice for motion 46. */
 int mbev_CapPlayerSquishVoiceSet(int *out, int masuId, BOOL voiceF)
 {
     int playerNoWork[GW_PLAYER_MAX];
@@ -7766,6 +7920,7 @@ int mbev_CapPlayerSquishVoiceSet(int *out, int masuId, BOOL voiceF)
     return playerNum;
 }
 
+/* Capsule stun scenes wait for the hit pose, then both supported types loop motion 6. */
 void mbev_CapPlayerStunSet(int *playerNo, int playerNum, BOOL type)
 {
     int i;
@@ -7801,6 +7956,8 @@ void mbev_CapPlayerStunSet(int *playerNo, int playerNum, BOOL type)
     }
 }
 
+/* When a capsule shocks a player, the other players on the same space play the hit pose before
+ * the queued idle motion. */
 void mbev_CapPlayerShockSet(int playerNo)
 {
     int masuId;
@@ -7819,7 +7976,7 @@ void mbev_CapPlayerShockSet(int playerNo)
         work = obj->data = HuMemDirectMallocNum(
             HEAP_HEAP, sizeof(CAPOBJMOTIONWORK), HU_MEMNUM_OVL);
         memset(work, 0, sizeof(CAPOBJMOTIONWORK));
-        work->_unk00 = i;
+        work->playerNo = i;
         work->time = 0;
         work->motNo = 9;
         work->nextMotNo = 1;
@@ -7833,6 +7990,7 @@ void mbev_CapPlayerShockSet(int playerNo)
 
 static const float capCoinDispPosYOffset[1] = {250.0f};
 
+/* Capsule scenes select a player view or move the camera for a stopped player pose. */
 void mbev_CapCameraViewSet(int playerNo, int viewNo, BOOL stopF)
 {
     static HuVecF viewRot = { -33.0f, 0.0f, 0.0f };
@@ -7882,6 +8040,8 @@ void mbev_CapCameraViewSet(int playerNo, int viewNo, BOOL stopF)
     mbCameraMoveWait();
 }
 
+/* Requests the type-selected rumble pattern for each player; omVibrate applies it only to human
+ * players with rumble enabled while the wipe remains in its dummy state. */
 void mbev_CapVibrate(int type)
 {
     int i;
@@ -7903,8 +8063,8 @@ void mbev_CapVibrate(int type)
     }
 }
 
-
-
+/* Used by capsule events to reject targets on the acting player's side.
+ * Solo games only treat the same player as allied; team games compare teams. */
 BOOL mbev_CapPlayerCheck(int playerNo1, int playerNo2)
 {
     BOOL team1;
@@ -7931,6 +8091,8 @@ BOOL mbev_CapCullPlayerCheck(int playerNo)
     return mbev_CapCullCheck(playerNo, 0);
 }
 
+/* Tests whether the player's projected board-space bounds reach the view.
+ * Capsule throw and movement events use this before showing off-screen players. */
 BOOL mbev_CapCullCheck(int playerNo, int masuId)
 {
     static float charSize[][2] = {
@@ -7979,6 +8141,7 @@ BOOL mbev_CapCullCheck(int playerNo, int masuId)
     return FALSE;
 }
 
+/* Checks a world position against the normalized camera view rectangle. */
 BOOL mbev_CapPointCullCheck(HuVecF *pos)
 {
     HuVecF posNorm;
@@ -7991,6 +8154,7 @@ BOOL mbev_CapPointCullCheck(HuVecF *pos)
     return FALSE;
 }
 
+/* Counts players on a space; capsule movement uses this to detect shared spaces. */
 int mbev_CapPlayerMasuNumGet(int masuId)
 {
     int i;
@@ -8006,6 +8170,7 @@ int mbev_CapPlayerMasuNumGet(int masuId)
     return count;
 }
 
+/* Capsule targeting uses the first player index other than the acting player. */
 int mbev_CapPlayerNoSearch(int playerNo)
 {
     int i;
@@ -8018,6 +8183,8 @@ int mbev_CapPlayerNoSearch(int playerNo)
     return -1;
 }
 
+/* Builds a player list, optionally sorting by rank and moving the priority
+ * player to the front. Capsule event scenes use this to order participants. */
 int mbev_CapPlayerOrderGet(
     int *order, int excludePlayer, int priorityPlayer, BOOL orderF)
 {
@@ -8055,6 +8222,8 @@ int mbev_CapPlayerOrderGet(
     return count;
 }
 
+/* Capsule events show the coin result above the player. winMotF waits for the win/lose pose
+ * even when waitF is FALSE. waitF waits for the display and, with winMotF, restores idle. */
 int mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF, BOOL waitF)
 {
     HuVecF pos;
@@ -8086,6 +8255,7 @@ int mbev_CapCoinDisp(int playerNo, int coinNum, BOOL winMotF, BOOL waitF)
     return coinDisp;
 }
 
+/* Reports whether a space has either branch attribute used by capsule routes. */
 BOOL mbev_CapMasuMoveCheck(int masuId)
 {
     if ((mbMasuAttrGet(masuId) & mbBranchAttrGet())
@@ -8095,15 +8265,14 @@ BOOL mbev_CapMasuMoveCheck(int masuId)
     return FALSE;
 }
 
-
-
-
+/* Capsule event menus store the computer's choice and install the hook that sends its inputs. */
 void mbev_CapChoiceSet(int choice)
 {
     capsuleChoice = choice;
     mbWinTopComKeyHookSet(ev_CapComChoiceHook);
 }
 
+/* The computer choice hook repeats the selected inputs, then confirms with A. */
 static void ev_CapComChoiceHook(void)
 {
     int key[4];
@@ -8127,6 +8296,8 @@ static void ev_CapComChoiceHook(void)
     HuWinComKeyWait(key[0], key[1], key[2], key[3], delay);
 }
 
+/* Capsule movement takes the first open link; a Battan space skips its first exit only when
+ * it has at least two links. */
 s16 mbev_CapMasuLinkNextGet(s16 masuId, HuVecF *pos)
 {
     s16 linkTbl[10];
@@ -8170,6 +8341,7 @@ s16 mbev_CapMasuLinkNextGet(s16 masuId, HuVecF *pos)
     return nextMasu;
 }
 
+/* Capsule movement randomly chooses an open link, with the same Battan exit rule. */
 s16 mbev_CapMasuLinkNextRandomGet(s16 masuId, HuVecF *pos)
 {
     s16 masuTbl[MASU_LINK_MAX];
@@ -8220,13 +8392,14 @@ s16 mbev_CapMasuLinkNextRandomGet(s16 masuId, HuVecF *pos)
     return masuTbl[no];
 }
 
+/* Capsule movement finds the first parent space that is not a branch space. */
 s16 mbev_CapMasuValidPrevGet(s16 masuId, HuVecF *pos)
 {
     s16 linkTbl[MASU_LINK_MAX * 2];
     s16 prevMasu;
     s16 i;
     s16 linkNum;
-    BOOL validF;
+    BOOL blockedF;
     int linkMasu;
 
     if (masuId <= 0) {
@@ -8237,11 +8410,11 @@ s16 mbev_CapMasuValidPrevGet(s16 masuId, HuVecF *pos)
         linkMasu = linkTbl[i];
         if ((mbMasuAttrGet(linkMasu) & mbBranchAttrGet())
             || (mbMasuMAttrGet(linkMasu) & mbBranchMAttrGet())) {
-            validF = TRUE;
+            blockedF = TRUE;
         } else {
-            validF = FALSE;
+            blockedF = FALSE;
         }
-        if (validF) {
+        if (blockedF) {
             continue;
         }
         prevMasu = linkTbl[i];
@@ -8256,6 +8429,7 @@ s16 mbev_CapMasuValidPrevGet(s16 masuId, HuVecF *pos)
     return prevMasu;
 }
 
+/* Capsule movement gets the first parent space, including a branch space. */
 s16 mbev_CapMasuPrevGet(s16 masuId, HuVecF *pos)
 {
     s16 linkTbl[MASU_LINK_MAX * 2];
@@ -8280,13 +8454,12 @@ s16 mbev_CapMasuPrevGet(s16 masuId, HuVecF *pos)
     return prevMasu;
 }
 
-
-
 int mbev_CapPlayerComSelGet(int playerNo, int selection)
 {
     return mbev_CapPlayerComSelSameGet(playerNo, selection, FALSE);
 }
 
+/* Capsule computer targeting filters teammates and can limit targets to one space. */
 int mbev_CapPlayerComSelSameGet(int playerNo, int selection, BOOL sameF)
 {
     int playerList[4];
@@ -8333,6 +8506,9 @@ int mbev_CapPlayerComSelSameGet(int playerNo, int selection, BOOL sameF)
     return mbev_CapPlayerComSelRandomGet(playerNo, selection, playerList, playerNum);
 }
 
+/* Capsule computer targeting sorts modes 0-2 by descending coins, stars or capsules and
+ * returns the first candidate. The weight loop never reduces its roll, so later candidates
+ * cannot be selected. The initial shuffle breaks top-value ties; other modes choose uniformly. */
 int mbev_CapPlayerComSelRandomGet(int playerNo, int selection, int *playerList,
     int playerNum)
 {
@@ -8457,6 +8633,8 @@ int mbev_CapPlayerComSelRandomGet(int playerNo, int selection, int *playerList,
     return candidates[i];
 }
 
+/* Finds the selected player's slot, then adjusts it for earlier negative entries. The loop bound
+ * shrinks with that adjustment, so it can stop before all earlier negative entries are counted. */
 int mbev_CapPlayerComSelKettouGet(
     int playerNo, int selection, int *playerList, int playerNum)
 {
@@ -8480,6 +8658,7 @@ int mbev_CapPlayerComSelKettouGet(
     return selectedIndex;
 }
 
+/* Capsule camera motion gets the shortest signed difference between two angles. */
 float mbev_CapAngleWrap(float a, float b)
 {
     float result;
@@ -8503,6 +8682,7 @@ float mbev_CapAngleWrap(float a, float b)
     return result;
 }
 
+/* Capsule camera motion moves toward an angle by at most t degrees. */
 float mbev_CapAngleLerp(float a, float b, float t)
 {
     float result;
@@ -8544,6 +8724,7 @@ float mbev_CapAngleLerp(float a, float b, float t)
     return result;
 }
 
+/* Capsule camera motion moves from a toward b by the selected fraction of the turn. */
 float mbev_CapAngleSumLerp(float t, float a, float b)
 {
     float wrapAngle = mbev_CapAngleWrap(b, a);
@@ -8551,6 +8732,8 @@ float mbev_CapAngleSumLerp(float t, float a, float b)
     return mbev_CapAngleLerp(b, a, fabs(wrapAngle * t));
 }
 
+/* Debug warp rotates a board-link direction by the current camera rotation for stick
+ * comparisons. */
 static float ev_CapRotCamera(float angle)
 {
     MBCAMERA *camera;
@@ -8566,6 +8749,7 @@ static float ev_CapRotCamera(float angle)
     return 180.0 * (atan2(dir.x, dir.z) / M_PI);
 }
 
+/* Capsule movement computes src + weight * (target - src) for each vector component. */
 void mbev_CapVecChase(
     float weight, HuVecF *src, HuVecF *target, HuVecF *out)
 {
@@ -8576,6 +8760,7 @@ void mbev_CapVecChase(
     PSVECAdd(src, &delta, out);
 }
 
+/* Capsule movement derives pitch and yaw angles from a direction vector. */
 void mbev_CapVecRotGet(HuVecF *vec, HuVecF *rot)
 {
     HuVecF result;
@@ -8586,6 +8771,7 @@ void mbev_CapVecRotGet(HuVecF *vec, HuVecF *rot)
     *rot = result;
 }
 
+/* Capsule effects blend each color channel between two colors by t. */
 void mbev_CapColorLerp(float t, GXColor *a, GXColor *b, GXColor *out)
 {
     out->r = ((int)((float)a->r + (t * ((float)b->r - (float)a->r)))) & 255;
@@ -8594,6 +8780,7 @@ void mbev_CapColorLerp(float t, GXColor *a, GXColor *b, GXColor *out)
     out->a = ((int)((float)a->a + (t * ((float)b->a - (float)a->a)))) & 255;
 }
 
+/* Capsule trajectories calculate the four cubic Hermite blend weights at t. */
 void mbev_CapHermiteConstGet(float t, float *a, float *b, float *c, float *d)
 {
     float square = t * t;
@@ -8606,6 +8793,7 @@ void mbev_CapHermiteConstGet(float t, float *a, float *b, float *c, float *d)
     *d = cube - square;
 }
 
+/* Capsule trajectories evaluate a Hermite curve from four neighboring samples. */
 float mbev_CapHermiteConstGet2(float t, float a, float b, float c, float d)
 {
     float delta;
@@ -8628,6 +8816,7 @@ float mbev_CapHermiteConstGet2(float t, float a, float b, float c, float d)
         half0 = 0.5f;
         tangent0 = half0 * (delta + (b - a));
     }
+    /* A repeated b/d value selects c - b as the ending tangent, even when c differs. */
     if (b == d) {
         tangent1 = delta;
     } else {
@@ -8639,6 +8828,7 @@ float mbev_CapHermiteConstGet2(float t, float a, float b, float c, float d)
         + (h11 * tangent1);
 }
 
+/* Capsule trajectories evaluate the Hermite curve independently for each vector component. */
 void mbev_CapHermiteGetV(
     float t,
     HuVecF *a,
@@ -8652,6 +8842,7 @@ void mbev_CapHermiteGetV(
     out->z = mbev_CapHermiteConstGet2(t, a->z, b->z, c->z, d->z);
 }
 
+/* Capsule trajectories evaluate one component of a quadratic Bezier curve. */
 float mbev_CapBezierGet(float t, float a, float b, float c)
 {
     float temp = 1.0 - t;
@@ -8661,6 +8852,7 @@ float mbev_CapBezierGet(float t, float a, float b, float c)
     return result;
 }
 
+/* Capsule movement evaluates a quadratic Bezier curve for three vector components. */
 void mbev_CapBezierGetV(float t, float *a, float *b, float *c, float *out)
 {
     int i;
@@ -8670,6 +8862,7 @@ void mbev_CapBezierGetV(float t, float *a, float *b, float *c, float *out)
     }
 }
 
+/* Capsule movement gets the derivative of one component of a Bezier path. */
 float mbev_CapBezierSlopeGet(float t, float a, float b, float c)
 {
     float result = 2.0 * (((t - 1.0) * a) + ((1.0 - (2.0 * t)) * b)
@@ -8678,6 +8871,7 @@ float mbev_CapBezierSlopeGet(float t, float a, float b, float c)
     return result;
 }
 
+/* Capsule movement normalizes the Bezier path direction, defaulting to +Z if flat. */
 void mbev_CapBezierNormGetV(float t, float *a, float *b, float *c, float *out)
 {
     int i;

@@ -1,3 +1,4 @@
+// Loads HSF model data, resolving file offsets into the model's section and object links.
 #define _MATH_H
 #include "game/hsfload.h"
 #include "string.h"
@@ -43,26 +44,28 @@ static void BitmapLoad(void);
 static void MotionLoad(void);
 static void MatrixLoad(void);
 
-static s32 SearchObjectSetName(HSF_DATA *data, char *name);
-static HSF_BUFFER *SearchVertexPtr(s32 id);
-static HSF_BUFFER *SearchNormalPtr(s32 id);
-static HSF_BUFFER *SearchStPtr(s32 id);
-static HSF_BUFFER *SearchColorPtr(s32 id);
-static HSF_BUFFER *SearchFacePtr(s32 id);
-static HSF_CENV *SearchCenvPtr(s32 id);
-static HSF_PART *SearchPartPtr(s32 id);
-static HSF_PALETTE *SearchPalettePtr(s32 id);
+static s32 SearchObjectSetName(HSF_DATA *model, char *name);
+static HSF_BUFFER *SearchVertexPtr(s32 tableIndex);
+static HSF_BUFFER *SearchNormalPtr(s32 tableIndex);
+static HSF_BUFFER *SearchStPtr(s32 tableIndex);
+static HSF_BUFFER *SearchColorPtr(s32 tableIndex);
+static HSF_BUFFER *SearchFacePtr(s32 tableIndex);
+static HSF_CENV *SearchCenvPtr(s32 tableIndex);
+static HSF_PART *SearchPartPtr(s32 tableIndex);
+static HSF_PALETTE *SearchPalettePtr(s32 tableIndex);
 
-static HSF_BITMAP *SearchBitmapPtr(s32 id);
-static char *GetString(u32 *strOfs);
-static char *GetMotionString(u16 *strOfs);
+static HSF_BITMAP *SearchBitmapPtr(s32 tableIndex);
+static char *GetString(u32 *stringOffset);
+static char *GetMotionString(u16 *stringOffset);
 
-HSF_DATA *LoadHSF(void *data)
+// Called by model and motion setup to turn an HSF file image into a usable model.
+// The section loaders resolve the file's tables before envelope data is initialized.
+HSF_DATA *LoadHSF(void *hsfFile)
 {
-    HSF_DATA *hsf;
+    HSF_DATA *model;
     Model.root = NULL;
     objtop = NULL;
-    FileLoad(data);
+    FileLoad(hsfFile);
     SceneLoad();
     ColorLoad();
     PaletteLoad();
@@ -82,37 +85,41 @@ HSF_DATA *LoadHSF(void *data)
     MapAttrLoad();
     MotionLoad();
     MatrixLoad();
-    hsf = SetHsfModel();
-    InitEnvelope(hsf);
+    model = SetHsfModel();
+    InitEnvelope(model);
     objtop = NULL;
-    return hsf;
-    
+    return model;
+
 }
 
-void ClusterAdjustObject(HSF_DATA *model, HSF_DATA *srcModel)
+// Resolves a motion model's cluster target names against the displayed model.
+// HSF manager setup calls this after loading a model and its cluster motion.
+void ClusterAdjustObject(HSF_DATA *targetModel, HSF_DATA *sourceModel)
 {
     HSF_CLUSTER *cluster;
     s32 i;
-    if(!srcModel) {
+    if(!sourceModel) {
         return;
     }
-    if(srcModel->clusterNum == 0) {
+    if(sourceModel->clusterNum == 0) {
         return;
     }
-    cluster = srcModel->cluster;
+    cluster = sourceModel->cluster;
     if(cluster->adjusted) {
         return;
     }
     cluster->adjusted = 1;
-    for(i=0; i<srcModel->clusterNum; i++, cluster++) {
-        char *name = cluster->targetName;
-        cluster->target = SearchObjectSetName(model, name);
+    for(i=0; i<sourceModel->clusterNum; i++, cluster++) {
+        char *targetName = cluster->targetName;
+        cluster->target = SearchObjectSetName(targetModel, targetName);
     }
 }
 
-static void FileLoad(void *data)
+// Reads the HSF header and establishes pointers to its shared lookup tables.
+// LoadHSF calls this before any section-specific loader runs.
+static void FileLoad(void *hsfFile)
 {
-    fileptr = data;
+    fileptr = hsfFile;
     memcpy(&head, fileptr, sizeof(HSF_HEADER));
     memset(&Model, 0, sizeof(HSF_DATA));
     NSymIndex = (void **)((u32)fileptr+head.symbol.ofs);
@@ -122,533 +129,577 @@ static void FileLoad(void *data)
     MaterialTop = (HSF_MATERIAL *)((u32)fileptr+head.material.ofs);
 }
 
+// Copies the resolved section pointers into the file-backed model descriptor.
+// LoadHSF calls this after every section loader has populated Model.
 static HSF_DATA *SetHsfModel(void)
 {
-    HSF_DATA *data = fileptr;
-    data->scene = Model.scene;
-    data->sceneNum = Model.sceneNum;
-    data->attribute = Model.attribute;
-    data->attributeNum = Model.attributeNum;
-    data->bitmap = Model.bitmap;
-    data->bitmapNum = Model.bitmapNum;
-    data->cenv = Model.cenv;
-    data->cenvNum = Model.cenvNum;
-    data->skeleton = Model.skeleton;
-    data->skeletonNum = Model.skeletonNum;
-    data->face = Model.face;
-    data->faceNum = Model.faceNum;
-    data->material = Model.material;
-    data->materialNum = Model.materialNum;
-    data->motion = Model.motion;
-    data->motionNum = Model.motionNum;
-    data->normal = Model.normal;
-    data->normalNum = Model.normalNum;
-    data->root = Model.root;
-    data->objectNum = Model.objectNum;
-    data->object = objtop;
-    data->matrix = Model.matrix;
-    data->matrixNum = Model.matrixNum;
-    data->palette = Model.palette;
-    data->paletteNum = Model.paletteNum;
-    data->st = Model.st;
-    data->stNum = Model.stNum;
-    data->vertex = Model.vertex;
-    data->vertexNum = Model.vertexNum;
-    data->cenv = Model.cenv;
-    data->cenvNum = Model.cenvNum;
-    data->cluster = Model.cluster;
-    data->clusterNum = Model.clusterNum;
-    data->part = Model.part;
-    data->partNum = Model.partNum;
-    data->shape = Model.shape;
-    data->shapeNum = Model.shapeNum;
-    data->mapAttr = Model.mapAttr;
-    data->mapAttrNum = Model.mapAttrNum;
-    return data;
+    HSF_DATA *model = fileptr;
+    model->scene = Model.scene;
+    model->sceneNum = Model.sceneNum;
+    model->attribute = Model.attribute;
+    model->attributeNum = Model.attributeNum;
+    model->bitmap = Model.bitmap;
+    model->bitmapNum = Model.bitmapNum;
+    model->cenv = Model.cenv;
+    model->cenvNum = Model.cenvNum;
+    model->skeleton = Model.skeleton;
+    model->skeletonNum = Model.skeletonNum;
+    model->face = Model.face;
+    model->faceNum = Model.faceNum;
+    model->material = Model.material;
+    model->materialNum = Model.materialNum;
+    model->motion = Model.motion;
+    model->motionNum = Model.motionNum;
+    model->normal = Model.normal;
+    model->normalNum = Model.normalNum;
+    model->root = Model.root;
+    model->objectNum = Model.objectNum;
+    model->object = objtop;
+    model->matrix = Model.matrix;
+    model->matrixNum = Model.matrixNum;
+    model->palette = Model.palette;
+    model->paletteNum = Model.paletteNum;
+    model->st = Model.st;
+    model->stNum = Model.stNum;
+    model->vertex = Model.vertex;
+    model->vertexNum = Model.vertexNum;
+    model->cenv = Model.cenv;
+    model->cenvNum = Model.cenvNum;
+    model->cluster = Model.cluster;
+    model->clusterNum = Model.clusterNum;
+    model->part = Model.part;
+    model->partNum = Model.partNum;
+    model->shape = Model.shape;
+    model->shapeNum = Model.shapeNum;
+    model->mapAttr = Model.mapAttr;
+    model->mapAttrNum = Model.mapAttrNum;
+    return model;
 }
 
-char *SetName(u32 *strOfs)
+// Converts a file string-table offset to the corresponding model name.
+char *SetName(u32 *stringOffset)
 {
-    char *ret = GetString(strOfs);
-    return ret;
+    char *name = GetString(stringOffset);
+    return name;
 }
 
-static inline char *SetMotionName(u16 *strOfs)
+// Resolves the compact string offset stored in a motion track.
+static inline char *SetMotionName(u16 *stringOffset)
 {
-    char *ret = GetMotionString(strOfs);
-    return ret;
+    char *name = GetMotionString(stringOffset);
+    return name;
 }
 
+// Resolves material names and symbol-table attribute references in the file.
+// LoadHSF calls this before object setup so meshes can use the relocated render materials.
 static void MaterialLoad(void)
 {
     s32 i;
     s32 j;
     if(head.material.num) {
-        HSF_MATERIAL *fileMat = (HSF_MATERIAL *)((u32)fileptr+head.material.ofs);
-        HSF_MATERIAL *currMat;
-        HSF_MATERIAL *newMat;
+        HSF_MATERIAL *fileMaterials = (HSF_MATERIAL *)((u32)fileptr+head.material.ofs);
+        HSF_MATERIAL *sourceMaterial;
+        HSF_MATERIAL *loadedMaterial;
+        // The first pass visits each record; relocation happens in the pass below.
         for(i=0; i<head.material.num; i++) {
-            currMat = &fileMat[i];
+            sourceMaterial = &fileMaterials[i];
         }
-        newMat = fileMat;
-        Model.material = newMat;
+        loadedMaterial = fileMaterials;
+        Model.material = loadedMaterial;
         Model.materialNum = head.material.num;
-        fileMat = (HSF_MATERIAL *)((u32)fileptr+head.material.ofs);
-        for(i=0; i<head.material.num; i++, newMat++) {
-            currMat = &fileMat[i];
-            newMat->name = SetName((u32 *)&currMat->name);
-            newMat->pass = currMat->pass;
-            newMat->vtxMode = currMat->vtxMode;
-            newMat->litColor[0] = currMat->litColor[0];
-            newMat->litColor[1] = currMat->litColor[1];
-            newMat->litColor[2] = currMat->litColor[2];
-            newMat->color[0] = currMat->color[0];
-            newMat->color[1] = currMat->color[1];
-            newMat->color[2] = currMat->color[2];
-            newMat->shadowColor[0] = currMat->shadowColor[0];
-            newMat->shadowColor[1] = currMat->shadowColor[1];
-            newMat->shadowColor[2] = currMat->shadowColor[2];
-            newMat->hiliteScale = currMat->hiliteScale;
-            newMat->unk18 = currMat->unk18;
-            newMat->invAlpha = currMat->invAlpha;
-            newMat->unk20[0] = currMat->unk20[0];
-            newMat->unk20[1] = currMat->unk20[1];
-            newMat->refAlpha = currMat->refAlpha;
-            newMat->unk2C = currMat->unk2C;
-            newMat->attrNum = currMat->attrNum;
-            newMat->attr = (s32 *)(NSymIndex+((u32)currMat->attr));
-            rgba[i].r = newMat->litColor[0];
-            rgba[i].g = newMat->litColor[1];
-            rgba[i].b = newMat->litColor[2];
+        fileMaterials = (HSF_MATERIAL *)((u32)fileptr+head.material.ofs);
+        for(i=0; i<head.material.num; i++, loadedMaterial++) {
+            sourceMaterial = &fileMaterials[i];
+            loadedMaterial->name = SetName((u32 *)&sourceMaterial->name);
+            loadedMaterial->pass = sourceMaterial->pass;
+            loadedMaterial->vtxMode = sourceMaterial->vtxMode;
+            loadedMaterial->litColor[0] = sourceMaterial->litColor[0];
+            loadedMaterial->litColor[1] = sourceMaterial->litColor[1];
+            loadedMaterial->litColor[2] = sourceMaterial->litColor[2];
+            loadedMaterial->color[0] = sourceMaterial->color[0];
+            loadedMaterial->color[1] = sourceMaterial->color[1];
+            loadedMaterial->color[2] = sourceMaterial->color[2];
+            loadedMaterial->shadowColor[0] = sourceMaterial->shadowColor[0];
+            loadedMaterial->shadowColor[1] = sourceMaterial->shadowColor[1];
+            loadedMaterial->shadowColor[2] = sourceMaterial->shadowColor[2];
+            loadedMaterial->hiliteScale = sourceMaterial->hiliteScale;
+            /* HSF_MATERIAL.unk18, HSF_MATERIAL.unk20, HSF_MATERIAL.unk2C and HSF_CLUSTER.unk95 are
+             * only copied by the loader and never read by game code, so they keep their offset
+             * names. */
+            loadedMaterial->unk18 = sourceMaterial->unk18;
+            loadedMaterial->invAlpha = sourceMaterial->invAlpha;
+            loadedMaterial->unk20[0] = sourceMaterial->unk20[0];
+            loadedMaterial->unk20[1] = sourceMaterial->unk20[1];
+            loadedMaterial->refAlpha = sourceMaterial->refAlpha;
+            loadedMaterial->unk2C = sourceMaterial->unk2C;
+            loadedMaterial->attrNum = sourceMaterial->attrNum;
+            loadedMaterial->attr = (s32 *)(NSymIndex+((u32)sourceMaterial->attr));
+            rgba[i].r = loadedMaterial->litColor[0];
+            rgba[i].g = loadedMaterial->litColor[1];
+            rgba[i].b = loadedMaterial->litColor[2];
             rgba[i].a = 255;
-            for(j=0; j<newMat->attrNum; j++) {
-                newMat->attr[j] = newMat->attr[j];
+            for(j=0; j<loadedMaterial->attrNum; j++) {
+                // Attribute symbol entries are written back unchanged here.
+                loadedMaterial->attr[j] = loadedMaterial->attr[j];
             }
         }
     }
 }
 
+// Resolves attribute names and links each attribute to its bitmap record.
+// LoadHSF calls this after the bitmap table has been loaded.
 static void AttributeLoad(void)
 {
-    HSF_ATTRIBUTE *fileAttr;
-    HSF_ATTRIBUTE *newAttr;
-    HSF_ATTRIBUTE *tempAttr;
+    HSF_ATTRIBUTE *fileAttributes;
+    HSF_ATTRIBUTE *loadedAttribute;
+    HSF_ATTRIBUTE *attributeTable;
     s32 i;
     if(head.attribute.num) {
-        tempAttr = fileAttr = (HSF_ATTRIBUTE *)((u32)fileptr+head.attribute.ofs);
-        newAttr = tempAttr;
-        Model.attribute = newAttr;
+        attributeTable = fileAttributes = (HSF_ATTRIBUTE *)((u32)fileptr+head.attribute.ofs);
+        loadedAttribute = attributeTable;
+        Model.attribute = loadedAttribute;
         Model.attributeNum = head.attribute.num;
-        for(i=0; i<head.attribute.num; i++, newAttr++) {
-            if((u32)fileAttr[i].name != -1) {
-                newAttr->name = SetName((u32 *)&fileAttr[i].name);
+        for(i=0; i<head.attribute.num; i++, loadedAttribute++) {
+            if((u32)fileAttributes[i].name != -1) {
+                loadedAttribute->name = SetName((u32 *)&fileAttributes[i].name);
             } else {
-                newAttr->name = NULL;
+                loadedAttribute->name = NULL;
             }
-            newAttr->bitmap = SearchBitmapPtr((s32)fileAttr[i].bitmap);
+            loadedAttribute->bitmap = SearchBitmapPtr((s32)fileAttributes[i].bitmap);
         }
     }
 }
 
+// Registers the scene's fog settings when the HSF file contains a scene record.
+// LoadHSF calls this before loading material and geometry tables.
 static void SceneLoad(void)
 {
     HSF_SCENE *fileScene;
-    HSF_SCENE *newScene;
+    HSF_SCENE *scene;
     if(head.scene.num) {
         fileScene = (HSF_SCENE *)((u32)fileptr+head.scene.ofs);
-        newScene = fileScene;
-        newScene->fogEnd = fileScene->fogEnd;
-        newScene->fogStart = fileScene->fogStart;
-        Model.scene = newScene;
+        scene = fileScene;
+        scene->fogEnd = fileScene->fogEnd;
+        scene->fogStart = fileScene->fogStart;
+        Model.scene = scene;
         Model.sceneNum = head.scene.num;
     }
 }
 
+// Relocates the color table's names and points entries at the packed color data.
+// LoadHSF calls this before material loading.
 static void ColorLoad(void)
 {
     s32 i;
-    HSF_BUFFER *fileColor;
-    HSF_BUFFER *newColor;
-    void *data;
-    u32 colorOfs;
-    HSF_BUFFER *tempColor;
-    
+    HSF_BUFFER *fileColors;
+    HSF_BUFFER *loadedColor;
+    void *colorData;
+    u32 colorDataOffset;
+    HSF_BUFFER *colorTable;
+
     if(head.color.num) {
-        tempColor = fileColor = (HSF_BUFFER *)((u32)fileptr+head.color.ofs);
-        data = &fileColor[head.color.num];
-        for(i=0; i<head.color.num; i++, fileColor++);
-        newColor = tempColor;
-        Model.color = newColor;
+        colorTable = fileColors = (HSF_BUFFER *)((u32)fileptr+head.color.ofs);
+        colorData = &fileColors[head.color.num];
+        // The table is walked before its base is reset for the relocation pass.
+        for(i=0; i<head.color.num; i++, fileColors++);
+        loadedColor = colorTable;
+        Model.color = loadedColor;
         Model.colorNum = head.color.num;
-        fileColor = (HSF_BUFFER *)((u32)fileptr+head.color.ofs);
-        data = &fileColor[head.color.num];
-        for(i=0; i<head.color.num; i++, newColor++, fileColor++) {
-            colorOfs = (u32)fileColor->data;
-            newColor->name = SetName((u32 *)&fileColor->name);
-            newColor->data = (void *)((u32)data+colorOfs);
+        fileColors = (HSF_BUFFER *)((u32)fileptr+head.color.ofs);
+        colorData = &fileColors[head.color.num];
+        for(i=0; i<head.color.num; i++, loadedColor++, fileColors++) {
+            colorDataOffset = (u32)fileColors->data;
+            loadedColor->name = SetName((u32 *)&fileColors->name);
+            loadedColor->data = (void *)((u32)colorData+colorDataOffset);
         }
     }
 }
 
+// Resolves vertex-buffer names and points each buffer at its packed 3D positions in the HSF image.
+// LoadHSF calls this after attributes and before normals and texture coordinates.
 static void VertexLoad(void)
 {
-    s32 i, j;
-    HSF_BUFFER *fileVertex;
-    HSF_BUFFER *newVertex;
-    void *data;
-    HuVecF *dataPtr;
-    u32 dataOfs;
-    
+    s32 vertexIndex, positionIndex;
+    HSF_BUFFER *fileVertices;
+    HSF_BUFFER *loadedVertex;
+    void *vertexData;
+    HuVecF *vertexPosition;
+    u32 vertexDataOffset;
+
     if(head.vertex.num) {
-        vtxtop = fileVertex = (HSF_BUFFER *)((u32)fileptr+head.vertex.ofs);
-        data = (void *)&fileVertex[head.vertex.num];
-        for(i=0; i<head.vertex.num; i++, fileVertex++) {
-            for(j=0; j<(u32)fileVertex->count; j++) {
-                dataPtr = (HuVecF *)(((u32)data)+((u32)fileVertex->data)+(j*sizeof(HuVecF)));
+        vtxtop = fileVertices = (HSF_BUFFER *)((u32)fileptr+head.vertex.ofs);
+        vertexData = (void *)&fileVertices[head.vertex.num];
+        for(vertexIndex=0; vertexIndex<head.vertex.num; vertexIndex++, fileVertices++) {
+            for(positionIndex=0; positionIndex<(u32)fileVertices->count; positionIndex++) {
+                // This unused pass computes packed-position addresses; the later pass
+                // recomputes them and performs a self-copy.
+                vertexPosition = (HuVecF *) (((u32) vertexData) + ((u32) fileVertices->data) +
+                                             (positionIndex * sizeof(HuVecF)));
             }
         }
-        newVertex = vtxtop;
-        Model.vertex = newVertex;
+        loadedVertex = vtxtop;
+        Model.vertex = loadedVertex;
         Model.vertexNum = head.vertex.num;
-        fileVertex = (HSF_BUFFER *)((u32)fileptr+head.vertex.ofs);
-        VertexDataTop = data = (void *)&fileVertex[head.vertex.num];
-        for(i=0; i<head.vertex.num; i++, newVertex++, fileVertex++) {
-            dataOfs = (u32)fileVertex->data;
-            newVertex->count = fileVertex->count;
-            newVertex->name = SetName((u32 *)&fileVertex->name);
-            newVertex->data = (void *)((u32)data+dataOfs);
-            for(j=0; j<newVertex->count; j++) {
-                dataPtr = (HuVecF *)(((u32)data)+dataOfs+(j*sizeof(HuVecF)));
-                HuCopyVecF(&((HuVecF *)newVertex->data)[j], dataPtr);
+        fileVertices = (HSF_BUFFER *)((u32)fileptr+head.vertex.ofs);
+        VertexDataTop = vertexData = (void *)&fileVertices[head.vertex.num];
+        for (vertexIndex = 0; vertexIndex < head.vertex.num;
+             vertexIndex++, loadedVertex++, fileVertices++) {
+            vertexDataOffset = (u32)fileVertices->data;
+            loadedVertex->count = fileVertices->count;
+            loadedVertex->name = SetName((u32 *)&fileVertices->name);
+            loadedVertex->data = (void *)((u32)vertexData+vertexDataOffset);
+            for(positionIndex=0; positionIndex<loadedVertex->count; positionIndex++) {
+                vertexPosition = (HuVecF *) (((u32) vertexData) + vertexDataOffset +
+                                             (positionIndex * sizeof(HuVecF)));
+                HuCopyVecF(&((HuVecF *)loadedVertex->data)[positionIndex], vertexPosition);
             }
         }
     }
 }
 
+// Resolves normal-buffer names and points each buffer at its packed vector data.
+// LoadHSF calls this immediately after VertexLoad.
 static void NormalLoad(void)
 {
-    s32 i, j;
-    u32 dataOfs;
-    HSF_BUFFER *fileNormal;
-    HSF_BUFFER *newNormal;
-    HSF_BUFFER *tempNormal;
-    void *data;
-    
-    
+    s32 normalIndex, positionIndex;
+    u32 normalDataOffset;
+    HSF_BUFFER *fileNormals;
+    HSF_BUFFER *loadedNormal;
+    HSF_BUFFER *normalTable;
+    void *normalData;
+
     if(head.normal.num) {
-        s32 cenv_count = head.cenv.num;
-        tempNormal = fileNormal = (HSF_BUFFER *)((u32)fileptr+head.normal.ofs);
-        data = (void *)&fileNormal[head.normal.num];
-        newNormal = tempNormal;
-        Model.normal = newNormal;
+        s32 envelopeCount = head.cenv.num;
+        normalTable = fileNormals = (HSF_BUFFER *)((u32)fileptr+head.normal.ofs);
+        normalData = (void *)&fileNormals[head.normal.num];
+        loadedNormal = normalTable;
+        Model.normal = loadedNormal;
         Model.normalNum = head.normal.num;
-        fileNormal = (HSF_BUFFER *)((u32)fileptr+head.normal.ofs);
-        NormalDataTop = data = (void *)&fileNormal[head.normal.num];
-        for(i=0; i<head.normal.num; i++, newNormal++, fileNormal++) {
-            dataOfs = (u32)fileNormal->data;
-            newNormal->count = fileNormal->count;
-            newNormal->name = SetName((u32 *)&fileNormal->name);
-            newNormal->data = (void *)((u32)data+dataOfs);
+        fileNormals = (HSF_BUFFER *)((u32)fileptr+head.normal.ofs);
+        NormalDataTop = normalData = (void *)&fileNormals[head.normal.num];
+        for (normalIndex = 0; normalIndex < head.normal.num;
+             normalIndex++, loadedNormal++, fileNormals++) {
+            normalDataOffset = (u32)fileNormals->data;
+            loadedNormal->count = fileNormals->count;
+            loadedNormal->name = SetName((u32 *)&fileNormals->name);
+            loadedNormal->data = (void *)((u32)normalData+normalDataOffset);
         }
+        // This envelope count is read but does not affect normal-buffer relocation.
     }
 }
 
+// Resolves texture-coordinate buffer names and points each buffer at its packed UV pairs
+// in the HSF image.
+// LoadHSF calls this after normals and before face data.
 static void STLoad(void)
 {
-    s32 i, j;
-    HSF_BUFFER *fileST;
-    HSF_BUFFER *tempST;
-    HSF_BUFFER *newST;
-    void *data;
-    HuVec2f *dataElem;
-    u32 dataOfs;
-    
+    s32 bufferIndex, coordinateIndex;
+    HSF_BUFFER *fileCoordinates;
+    HSF_BUFFER *coordinateTable;
+    HSF_BUFFER *loadedCoordinate;
+    void *coordinateData;
+    HuVec2f *coordinate;
+    u32 coordinateDataOffset;
+
     if(head.st.num) {
-        tempST = fileST = (HSF_BUFFER *)((u32)fileptr+head.st.ofs);
-        data = (void *)&fileST[head.st.num];
-        for(i=0; i<head.st.num; i++, fileST++) {
-            for(j=0; j<(u32)fileST->count; j++) {
-                dataElem = (HuVec2f *)(((u32)data)+((u32)fileST->data)+(j*sizeof(HuVec2f)));
+        coordinateTable = fileCoordinates = (HSF_BUFFER *)((u32)fileptr+head.st.ofs);
+        coordinateData = (void *)&fileCoordinates[head.st.num];
+        for(bufferIndex=0; bufferIndex<head.st.num; bufferIndex++, fileCoordinates++) {
+            for(coordinateIndex=0; coordinateIndex<(u32)fileCoordinates->count; coordinateIndex++) {
+                // This unused pass computes packed-UV addresses; the later pass recomputes them
+                // and performs a self-copy.
+                coordinate = (HuVec2f *) (((u32) coordinateData) + ((u32) fileCoordinates->data) +
+                                          (coordinateIndex * sizeof(HuVec2f)));
             }
         }
-        newST = tempST;
-        Model.st = newST;
+        loadedCoordinate = coordinateTable;
+        Model.st = loadedCoordinate;
         Model.stNum = head.st.num;
-        fileST = (HSF_BUFFER *)((u32)fileptr+head.st.ofs);
-        data = (void *)&fileST[head.st.num];
-        for(i=0; i<head.st.num; i++, newST++, fileST++) {
-            dataOfs = (u32)fileST->data;
-            newST->count = fileST->count;
-            newST->name = SetName((u32 *)&fileST->name);
-            newST->data = (void *)((u32)data+dataOfs);
-            for(j=0; j<newST->count; j++) {
-                dataElem = (HuVec2f *)(((u32)data)+dataOfs+(j*sizeof(HuVec2f)));
-                HuCopyVec2F(&((HuVec2f *)newST->data)[j], dataElem);
+        fileCoordinates = (HSF_BUFFER *)((u32)fileptr+head.st.ofs);
+        coordinateData = (void *)&fileCoordinates[head.st.num];
+        for (bufferIndex = 0; bufferIndex < head.st.num;
+             bufferIndex++, loadedCoordinate++, fileCoordinates++) {
+            coordinateDataOffset = (u32)fileCoordinates->data;
+            loadedCoordinate->count = fileCoordinates->count;
+            loadedCoordinate->name = SetName((u32 *)&fileCoordinates->name);
+            loadedCoordinate->data = (void *)((u32)coordinateData+coordinateDataOffset);
+            for(coordinateIndex=0; coordinateIndex<loadedCoordinate->count; coordinateIndex++) {
+                coordinate = (HuVec2f *) (((u32) coordinateData) + coordinateDataOffset +
+                                          (coordinateIndex * sizeof(HuVec2f)));
+                HuCopyVec2F(&((HuVec2f *)loadedCoordinate->data)[coordinateIndex], coordinate);
             }
         }
     }
 }
 
+// Relocates face records and triangle-strip indices, using the final face record's
+// strip-data base for all faces.
+// LoadHSF calls this after the vertex, normal, color, and UV tables are ready.
 static void FaceLoad(void)
 {
-    HSF_BUFFER *fileFace;
-    HSF_BUFFER *newFace;
-    HSF_BUFFER *tempFace;
-    u32 dataOfs;
-    HSF_FACE *data;
-    HSF_FACE *fileFaceStrip;
-    HSF_FACE *newFaceStrip;
-    u8 *strip;
-    s32 i;
-    s32 j;
-    
+    HSF_BUFFER *fileFaces;
+    HSF_BUFFER *loadedFace;
+    HSF_BUFFER *faceTable;
+    u32 faceDataOffset;
+    HSF_FACE *faceData;
+    HSF_FACE *sourceFace;
+    HSF_FACE *loadedFacePart;
+    u8 *stripIndexData;
+    s32 faceIndex;
+    s32 partIndex;
+
     if(head.face.num) {
-        tempFace = fileFace = (HSF_BUFFER *)((u32)fileptr+head.face.ofs);
-        data = (HSF_FACE *)&fileFace[head.face.num];
-        newFace = tempFace;
-        Model.face = newFace;
+        faceTable = fileFaces = (HSF_BUFFER *)((u32)fileptr+head.face.ofs);
+        faceData = (HSF_FACE *)&fileFaces[head.face.num];
+        loadedFace = faceTable;
+        Model.face = loadedFace;
         Model.faceNum = head.face.num;
-        fileFace = (HSF_BUFFER *)((u32)fileptr+head.face.ofs);
-        data = (HSF_FACE *)&fileFace[head.face.num];
-        for(i=0; i<head.face.num; i++, newFace++, fileFace++) {
-            dataOfs = (u32)fileFace->data;
-            newFace->name = SetName((u32 *)&fileFace->name);
-            newFace->count = fileFace->count;
-            newFace->data = (void *)((u32)data+dataOfs);
-            strip = (u8 *)(&((HSF_FACE *)newFace->data)[newFace->count]);
+        fileFaces = (HSF_BUFFER *)((u32)fileptr+head.face.ofs);
+        faceData = (HSF_FACE *)&fileFaces[head.face.num];
+        for(faceIndex=0; faceIndex<head.face.num; faceIndex++, loadedFace++, fileFaces++) {
+            faceDataOffset = (u32)fileFaces->data;
+            loadedFace->name = SetName((u32 *)&fileFaces->name);
+            loadedFace->count = fileFaces->count;
+            loadedFace->data = (void *)((u32)faceData+faceDataOffset);
+            stripIndexData = (u8 *)(&((HSF_FACE *)loadedFace->data)[loadedFace->count]);
         }
-        newFace = tempFace;
-        for(i=0; i<head.face.num; i++, newFace++) {
-            fileFaceStrip = newFaceStrip = newFace->data;
-            for(j=0; j<newFace->count; j++, newFaceStrip++, fileFaceStrip++) {
-                if(fileFaceStrip->typeSrc == HSF_FACE_TRISTRIP) {
-                    newFaceStrip->strip.data = (HSF_FACE_INDEX *)(strip+(u32)fileFaceStrip->strip.data*(sizeof(HSF_FACE_INDEX)));
+        loadedFace = faceTable;
+        for(faceIndex=0; faceIndex<head.face.num; faceIndex++, loadedFace++) {
+            sourceFace = loadedFacePart = loadedFace->data;
+            for (partIndex = 0; partIndex < loadedFace->count;
+                 partIndex++, loadedFacePart++, sourceFace++) {
+                if(sourceFace->typeSrc == HSF_FACE_TRISTRIP) {
+                    loadedFacePart->strip.data =
+                        (HSF_FACE_INDEX *) (stripIndexData + (u32) sourceFace->strip.data *
+                                                                 (sizeof(HSF_FACE_INDEX)));
                 }
             }
         }
     }
 }
 
+// ObjectLoad calls this recursively to resolve child, mesh, and attachment links in the model tree.
 static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
 {
     u32 i;
-    HSF_OBJECT *childObj;
-    HSF_OBJECT *tempObj;
+    HSF_OBJECT *childObject;
+    HSF_OBJECT *rootCandidate;
     struct {
         HSF_OBJECT *parent;
         HSF_BUFFER *shape;
         HSF_CLUSTER *cluster;
-    } work;
-    
-    work.parent = parent;
+    } resolvedReference;
+
+    resolvedReference.parent = parent;
     object->type = object->type;
     switch(object->type) {
         case HSF_OBJ_MESH:
         {
-            HSF_MESH *data;
-            HSF_OBJECT *newObj;
-            
-            data = &object->mesh;
-            newObj = tempObj = object;
-            newObj->mesh.childNum = data->childNum;
-            newObj->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)data->child];
-            for(i=0; i<newObj->mesh.childNum; i++) {
-                childObj = &objtop[(u32)newObj->mesh.child[i]];
-                newObj->mesh.child[i] = childObj;
+            HSF_MESH *meshData;
+            HSF_OBJECT *resolvedObject;
+
+            meshData = &object->mesh;
+            resolvedObject = rootCandidate = object;
+            resolvedObject->mesh.childNum = meshData->childNum;
+            resolvedObject->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)meshData->child];
+            for(i=0; i<resolvedObject->mesh.childNum; i++) {
+                childObject = &objtop[(u32)resolvedObject->mesh.child[i]];
+                resolvedObject->mesh.child[i] = childObject;
             }
-            newObj->mesh.parent = parent;
+            resolvedObject->mesh.parent = parent;
             if(Model.root == NULL) {
-                Model.root = tempObj;
+                Model.root = rootCandidate;
             }
-            newObj->type = HSF_OBJ_MESH;
-            newObj->mesh.vertex = SearchVertexPtr((s32)data->vertex);
-            newObj->mesh.normal = SearchNormalPtr((s32)data->normal);
-            newObj->mesh.st = SearchStPtr((s32)data->st);
-            newObj->mesh.color = SearchColorPtr((s32)data->color);
-            newObj->mesh.face = SearchFacePtr((s32)data->face);
-            newObj->mesh.shape = (HSF_BUFFER **)&NSymIndex[(u32)data->shape];
-            for(i=0; i<newObj->mesh.shapeNum; i++) {
-                work.shape = &vtxtop[(u32)newObj->mesh.shape[i]];
-                newObj->mesh.shape[i] = work.shape;
+            resolvedObject->type = HSF_OBJ_MESH;
+            resolvedObject->mesh.vertex = SearchVertexPtr((s32)meshData->vertex);
+            resolvedObject->mesh.normal = SearchNormalPtr((s32)meshData->normal);
+            resolvedObject->mesh.st = SearchStPtr((s32)meshData->st);
+            resolvedObject->mesh.color = SearchColorPtr((s32)meshData->color);
+            resolvedObject->mesh.face = SearchFacePtr((s32)meshData->face);
+            resolvedObject->mesh.shape = (HSF_BUFFER **)&NSymIndex[(u32)meshData->shape];
+            for(i=0; i<resolvedObject->mesh.shapeNum; i++) {
+                resolvedReference.shape = &vtxtop[(u32)resolvedObject->mesh.shape[i]];
+                resolvedObject->mesh.shape[i] = resolvedReference.shape;
             }
-            newObj->mesh.cluster = (HSF_CLUSTER **)&NSymIndex[(u32)data->cluster];
-            for(i=0; i<newObj->mesh.clusterNum; i++) {
-                work.cluster = &ClusterTop[(u32)newObj->mesh.cluster[i]];
-                newObj->mesh.cluster[i] = work.cluster;
+            resolvedObject->mesh.cluster = (HSF_CLUSTER **)&NSymIndex[(u32)meshData->cluster];
+            for(i=0; i<resolvedObject->mesh.clusterNum; i++) {
+                resolvedReference.cluster = &ClusterTop[(u32)resolvedObject->mesh.cluster[i]];
+                resolvedObject->mesh.cluster[i] = resolvedReference.cluster;
             }
-            newObj->mesh.cenv = SearchCenvPtr((s32)data->cenv);
-            newObj->mesh.material = Model.material;
-            if((s32)data->attribute >= 0) {
-                newObj->mesh.attribute = Model.attribute;
+            resolvedObject->mesh.cenv = SearchCenvPtr((s32)meshData->cenv);
+            resolvedObject->mesh.material = Model.material;
+            if((s32)meshData->attribute >= 0) {
+                resolvedObject->mesh.attribute = Model.attribute;
             } else {
-                newObj->mesh.attribute = NULL;
+                resolvedObject->mesh.attribute = NULL;
             }
-            newObj->mesh.vtxtop = (void *)((u32)fileptr+(u32)data->vtxtop);
-            newObj->mesh.normtop = (void *)((u32)fileptr+(u32)data->normtop);
-            newObj->mesh.base.pos.x = data->base.pos.x;
-            newObj->mesh.base.pos.y = data->base.pos.y;
-            newObj->mesh.base.pos.z = data->base.pos.z;
-            newObj->mesh.base.rot.x = data->base.rot.x;
-            newObj->mesh.base.rot.y = data->base.rot.y;
-            newObj->mesh.base.rot.z = data->base.rot.z;
-            newObj->mesh.base.scale.x = data->base.scale.x;
-            newObj->mesh.base.scale.y = data->base.scale.y;
-            newObj->mesh.base.scale.z = data->base.scale.z;
-            newObj->mesh.mesh.min.x = data->mesh.min.x;
-            newObj->mesh.mesh.min.y = data->mesh.min.y;
-            newObj->mesh.mesh.min.z = data->mesh.min.z;
-            newObj->mesh.mesh.max.x = data->mesh.max.x;
-            newObj->mesh.mesh.max.y = data->mesh.max.y;
-            newObj->mesh.mesh.max.z = data->mesh.max.z;
-            for(i=0; i<data->childNum; i++) {
-                DispObject(newObj, newObj->mesh.child[i]);
+            resolvedObject->mesh.vtxtop = (void *)((u32)fileptr+(u32)meshData->vtxtop);
+            resolvedObject->mesh.normtop = (void *)((u32)fileptr+(u32)meshData->normtop);
+            resolvedObject->mesh.base.pos.x = meshData->base.pos.x;
+            resolvedObject->mesh.base.pos.y = meshData->base.pos.y;
+            resolvedObject->mesh.base.pos.z = meshData->base.pos.z;
+            resolvedObject->mesh.base.rot.x = meshData->base.rot.x;
+            resolvedObject->mesh.base.rot.y = meshData->base.rot.y;
+            resolvedObject->mesh.base.rot.z = meshData->base.rot.z;
+            resolvedObject->mesh.base.scale.x = meshData->base.scale.x;
+            resolvedObject->mesh.base.scale.y = meshData->base.scale.y;
+            resolvedObject->mesh.base.scale.z = meshData->base.scale.z;
+            resolvedObject->mesh.mesh.min.x = meshData->mesh.min.x;
+            resolvedObject->mesh.mesh.min.y = meshData->mesh.min.y;
+            resolvedObject->mesh.mesh.min.z = meshData->mesh.min.z;
+            resolvedObject->mesh.mesh.max.x = meshData->mesh.max.x;
+            resolvedObject->mesh.mesh.max.y = meshData->mesh.max.y;
+            resolvedObject->mesh.mesh.max.z = meshData->mesh.max.z;
+            for(i=0; i<meshData->childNum; i++) {
+                DispObject(resolvedObject, resolvedObject->mesh.child[i]);
             }
         }
         break;
-            
+
         case HSF_OBJ_NULL1:
         {
-            HSF_MESH *data;
-            HSF_OBJECT *newObj;
-            data = &object->mesh;
-            newObj = tempObj = object;
-            newObj->mesh.parent = parent;
-            newObj->mesh.childNum = data->childNum;
-            newObj->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)data->child];
-            for(i=0; i<newObj->mesh.childNum; i++) {
-                childObj = &objtop[(u32)newObj->mesh.child[i]];
-                newObj->mesh.child[i] = childObj;
+            HSF_MESH *meshData;
+            HSF_OBJECT *resolvedObject;
+            meshData = &object->mesh;
+            resolvedObject = rootCandidate = object;
+            resolvedObject->mesh.parent = parent;
+            resolvedObject->mesh.childNum = meshData->childNum;
+            resolvedObject->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)meshData->child];
+            for(i=0; i<resolvedObject->mesh.childNum; i++) {
+                childObject = &objtop[(u32)resolvedObject->mesh.child[i]];
+                resolvedObject->mesh.child[i] = childObject;
             }
             if(Model.root == NULL) {
-                Model.root = tempObj;
+                Model.root = rootCandidate;
             }
-            for(i=0; i<data->childNum; i++) {
-                DispObject(newObj, newObj->mesh.child[i]);
+            for(i=0; i<meshData->childNum; i++) {
+                DispObject(resolvedObject, resolvedObject->mesh.child[i]);
             }
         }
         break;
-        
+
         case HSF_OBJ_REPLICA:
         {
-            HSF_MESH *data;
-            HSF_OBJECT *newObj;
-            data = &object->mesh;
-            newObj = tempObj = object;
-            newObj->mesh.parent = parent;
-            newObj->mesh.childNum = data->childNum;
-            newObj->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)data->child];
-            for(i=0; i<newObj->mesh.childNum; i++) {
-                childObj = &objtop[(u32)newObj->mesh.child[i]];
-                newObj->mesh.child[i] = childObj;
+            HSF_MESH *meshData;
+            HSF_OBJECT *resolvedObject;
+            meshData = &object->mesh;
+            resolvedObject = rootCandidate = object;
+            resolvedObject->mesh.parent = parent;
+            resolvedObject->mesh.childNum = meshData->childNum;
+            resolvedObject->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)meshData->child];
+            for(i=0; i<resolvedObject->mesh.childNum; i++) {
+                childObject = &objtop[(u32)resolvedObject->mesh.child[i]];
+                resolvedObject->mesh.child[i] = childObject;
             }
             if(Model.root == NULL) {
-                Model.root = tempObj;
+                Model.root = rootCandidate;
             }
-            newObj->mesh.replica = &objtop[(u32)newObj->mesh.replica];
-            for(i=0; i<data->childNum; i++) {
-                DispObject(newObj, newObj->mesh.child[i]);
+            resolvedObject->mesh.replica = &objtop[(u32)resolvedObject->mesh.replica];
+            for(i=0; i<meshData->childNum; i++) {
+                DispObject(resolvedObject, resolvedObject->mesh.child[i]);
             }
         }
         break;
 
         case HSF_OBJ_ROOT:
         {
-            HSF_MESH *data;
-            HSF_OBJECT *newObj;
-            data = &object->mesh;
-            newObj = tempObj = object;
-            newObj->mesh.parent = parent;
-            newObj->mesh.childNum = data->childNum;
-            newObj->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)data->child];
-            for(i=0; i<newObj->mesh.childNum; i++) {
-                childObj = &objtop[(u32)newObj->mesh.child[i]];
-                newObj->mesh.child[i] = childObj;
+            HSF_MESH *meshData;
+            HSF_OBJECT *resolvedObject;
+            meshData = &object->mesh;
+            resolvedObject = rootCandidate = object;
+            resolvedObject->mesh.parent = parent;
+            resolvedObject->mesh.childNum = meshData->childNum;
+            resolvedObject->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)meshData->child];
+            for(i=0; i<resolvedObject->mesh.childNum; i++) {
+                childObject = &objtop[(u32)resolvedObject->mesh.child[i]];
+                resolvedObject->mesh.child[i] = childObject;
             }
             if(Model.root == NULL) {
-                Model.root = tempObj;
+                Model.root = rootCandidate;
             }
-            for(i=0; i<data->childNum; i++) {
-                DispObject(newObj, newObj->mesh.child[i]);
+            for(i=0; i<meshData->childNum; i++) {
+                DispObject(resolvedObject, resolvedObject->mesh.child[i]);
             }
         }
         break;
-        
+
         case HSF_OBJ_JOINT:
         {
-            HSF_MESH *data;
-            HSF_OBJECT *newObj;
-            data = &object->mesh;
-            newObj = tempObj = object;
-            newObj->mesh.parent = parent;
-            newObj->mesh.childNum = data->childNum;
-            newObj->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)data->child];
-            for(i=0; i<newObj->mesh.childNum; i++) {
-                childObj = &objtop[(u32)newObj->mesh.child[i]];
-                newObj->mesh.child[i] = childObj;
+            HSF_MESH *meshData;
+            HSF_OBJECT *resolvedObject;
+            meshData = &object->mesh;
+            resolvedObject = rootCandidate = object;
+            resolvedObject->mesh.parent = parent;
+            resolvedObject->mesh.childNum = meshData->childNum;
+            resolvedObject->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)meshData->child];
+            for(i=0; i<resolvedObject->mesh.childNum; i++) {
+                childObject = &objtop[(u32)resolvedObject->mesh.child[i]];
+                resolvedObject->mesh.child[i] = childObject;
             }
             if(Model.root == NULL) {
-                Model.root = tempObj;
+                Model.root = rootCandidate;
             }
-            for(i=0; i<data->childNum; i++) {
-                DispObject(newObj, newObj->mesh.child[i]);
+            for(i=0; i<meshData->childNum; i++) {
+                DispObject(resolvedObject, resolvedObject->mesh.child[i]);
             }
         }
         break;
-        
+
         case HSF_OBJ_NULL2:
         {
-            HSF_MESH *data;
-            HSF_OBJECT *newObj;
-            data = &object->mesh;
-            newObj = tempObj = object;
-            newObj->mesh.parent = parent;
-            newObj->mesh.childNum = data->childNum;
-            newObj->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)data->child];
-            for(i=0; i<newObj->mesh.childNum; i++) {
-                childObj = &objtop[(u32)newObj->mesh.child[i]];
-                newObj->mesh.child[i] = childObj;
+            HSF_MESH *meshData;
+            HSF_OBJECT *resolvedObject;
+            meshData = &object->mesh;
+            resolvedObject = rootCandidate = object;
+            resolvedObject->mesh.parent = parent;
+            resolvedObject->mesh.childNum = meshData->childNum;
+            resolvedObject->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)meshData->child];
+            for(i=0; i<resolvedObject->mesh.childNum; i++) {
+                childObject = &objtop[(u32)resolvedObject->mesh.child[i]];
+                resolvedObject->mesh.child[i] = childObject;
             }
             if(Model.root == NULL) {
-                Model.root = tempObj;
+                Model.root = rootCandidate;
             }
-            for(i=0; i<data->childNum; i++) {
-                DispObject(newObj, newObj->mesh.child[i]);
+            for(i=0; i<meshData->childNum; i++) {
+                DispObject(resolvedObject, resolvedObject->mesh.child[i]);
             }
         }
         break;
-        
+
         case HSF_OBJ_MAP:
         {
-            HSF_MESH *data;
-            HSF_OBJECT *newObj;
-            data = &object->mesh;
-            newObj = tempObj = object;
-            newObj->mesh.parent = parent;
-            newObj->mesh.childNum = data->childNum;
-            newObj->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)data->child];
-            for(i=0; i<newObj->mesh.childNum; i++) {
-                childObj = &objtop[(u32)newObj->mesh.child[i]];
-                newObj->mesh.child[i] = childObj;
+            HSF_MESH *meshData;
+            HSF_OBJECT *resolvedObject;
+            meshData = &object->mesh;
+            resolvedObject = rootCandidate = object;
+            resolvedObject->mesh.parent = parent;
+            resolvedObject->mesh.childNum = meshData->childNum;
+            resolvedObject->mesh.child = (HSF_OBJECT **)&NSymIndex[(u32)meshData->child];
+            for(i=0; i<resolvedObject->mesh.childNum; i++) {
+                childObject = &objtop[(u32)resolvedObject->mesh.child[i]];
+                resolvedObject->mesh.child[i] = childObject;
             }
             if(Model.root == NULL) {
-                Model.root = tempObj;
+                Model.root = rootCandidate;
             }
-            for(i=0; i<data->childNum; i++) {
-                DispObject(newObj, newObj->mesh.child[i]);
+            for(i=0; i<meshData->childNum; i++) {
+                DispObject(resolvedObject, resolvedObject->mesh.child[i]);
             }
         }
         break;
-        
+
         default:
             break;
     }
 }
 
+// ObjectLoad calls this to set the type tags for light and camera objects.
 static inline void FixupObject(HSF_OBJECT *object)
 {
     HSF_LIGHT *light;
     HSF_CAMERA *camera;
-    
+
     s32 type = object->type;
     switch(type) {
         case HSF_OBJ_LIGHT:
@@ -657,31 +708,32 @@ static inline void FixupObject(HSF_OBJECT *object)
             object->type = HSF_OBJ_LIGHT;
         }
         break;
-        
+
         case HSF_OBJ_CAMERA:
         {
             camera = &object->camera;
             object->type = HSF_OBJ_CAMERA;
         }
         break;
-        
+
         default:
             break;
-            
+
     }
 }
 
+// LoadHSF calls this after geometry tables are ready to resolve object links and build the tree.
 static void ObjectLoad(void)
 {
     s32 i;
     HSF_OBJECT *object;
-    HSF_OBJECT *newObj;
+    HSF_OBJECT *namedObject;
 
     if(head.object.num) {
         objtop = object = (HSF_OBJECT *)((u32)fileptr+head.object.ofs);
         for(i=0; i<head.object.num; i++, object++) {
-            newObj = object;
-            newObj->name = SetName((u32 *)&object->name);
+            namedObject = object;
+            namedObject->name = SetName((u32 *)&object->name);
         }
         object = objtop;
         for(i=0; i<head.object.num; i++, object++) {
@@ -698,6 +750,8 @@ static void ObjectLoad(void)
     }
 }
 
+// LoadHSF calls this to relocate envelope records and the dual- and multi-influence
+// weight arrays.
 static void CenvLoad(void)
 {
     HSF_CENV_MULTI *multiFile;
@@ -709,31 +763,37 @@ static void CenvLoad(void)
 
     HSF_CENV *cenvNew;
     HSF_CENV *cenvFile;
-    void *dataP;
-    void *weightP;
-    
+    void *envelopeDataBase;
+    void *envelopeWeightBase;
+
     s32 j;
     s32 i;
-    
+
     if(head.cenv.num) {
         cenvFile = (HSF_CENV *)((u32)fileptr+head.cenv.ofs);
-        dataP = &cenvFile[head.cenv.num];
-        weightP = dataP;
+        envelopeDataBase = &cenvFile[head.cenv.num];
+        envelopeWeightBase = envelopeDataBase;
         cenvNew = cenvFile;
         Model.cenvNum = head.cenv.num;
         Model.cenv = cenvFile;
         for(i=0; i<head.cenv.num; i++) {
-            cenvNew[i].singleData = (HSF_CENV_SINGLE *)((u32)cenvFile[i].singleData+(u32)dataP);
-            cenvNew[i].dualData = (HSF_CENV_DUAL *)((u32)cenvFile[i].dualData+(u32)dataP);
-            cenvNew[i].multiData = (HSF_CENV_MULTI *)((u32)cenvFile[i].multiData+(u32)dataP);
+            cenvNew[i].singleData =
+                (HSF_CENV_SINGLE *) ((u32) cenvFile[i].singleData + (u32) envelopeDataBase);
+            cenvNew[i].dualData =
+                (HSF_CENV_DUAL *) ((u32) cenvFile[i].dualData + (u32) envelopeDataBase);
+            cenvNew[i].multiData =
+                (HSF_CENV_MULTI *) ((u32) cenvFile[i].multiData + (u32) envelopeDataBase);
             cenvNew[i].singleCount = cenvFile[i].singleCount;
             cenvNew[i].dualCount = cenvFile[i].dualCount;
             cenvNew[i].multiCount = cenvFile[i].multiCount;
             cenvNew[i].copyCount = cenvFile[i].copyCount;
             cenvNew[i].vtxCount = cenvFile[i].vtxCount;
-            weightP = (void *)((u32)weightP+(cenvNew[i].singleCount*sizeof(HSF_CENV_SINGLE)));
-            weightP = (void *)((u32)weightP+(cenvNew[i].dualCount*sizeof(HSF_CENV_DUAL)));
-            weightP = (void *)((u32)weightP+(cenvNew[i].multiCount*sizeof(HSF_CENV_MULTI)));
+            envelopeWeightBase = (void *) ((u32) envelopeWeightBase +
+                                           (cenvNew[i].singleCount * sizeof(HSF_CENV_SINGLE)));
+            envelopeWeightBase = (void *) ((u32) envelopeWeightBase +
+                                           (cenvNew[i].dualCount * sizeof(HSF_CENV_DUAL)));
+            envelopeWeightBase = (void *) ((u32) envelopeWeightBase +
+                                           (cenvNew[i].multiCount * sizeof(HSF_CENV_MULTI)));
         }
         for(i=0; i<head.cenv.num; i++) {
             singleNew = singleFile = cenvNew[i].singleData;
@@ -743,14 +803,15 @@ static void CenvLoad(void)
                 singleNew[j].pos = singleFile[j].pos;
                 singleNew[j].normalNum = singleFile[j].normalNum;
                 singleNew[j].normal = singleFile[j].normal;
-                
+
             }
             dualNew = dualFile = cenvNew[i].dualData;
             for(j=0; j<cenvNew[i].dualCount; j++) {
                 dualNew[j].target1 = dualFile[j].target1;
                 dualNew[j].target2 = dualFile[j].target2;
                 dualNew[j].weightNum = dualFile[j].weightNum;
-                dualNew[j].weight = (HSF_CENV_DUAL_WEIGHT *)((u32)weightP+(u32)dualFile[j].weight);
+                dualNew[j].weight =
+                    (HSF_CENV_DUAL_WEIGHT *) ((u32) envelopeWeightBase + (u32) dualFile[j].weight);
             }
             multiNew = multiFile = cenvNew[i].multiData;
             for(j=0; j<cenvNew[i].multiCount; j++) {
@@ -759,13 +820,16 @@ static void CenvLoad(void)
                 multiNew[j].posNum = multiFile[j].posNum;
                 multiNew[j].normal = multiFile[j].normal;
                 multiNew[j].normalNum = multiFile[j].normalNum;
-                multiNew[j].weight = (HSF_CENV_MULTI_WEIGHT *)((u32)weightP+(u32)multiFile[j].weight);
+                multiNew[j].weight = (HSF_CENV_MULTI_WEIGHT *) ((u32) envelopeWeightBase +
+                                                                (u32) multiFile[j].weight);
             }
             dualNew = dualFile = cenvNew[i].dualData;
+            // This pass reads each relocated dual-weight pointer without changing the weights.
             for(j=0; j<cenvNew[i].dualCount; j++) {
-                HSF_CENV_DUAL_WEIGHT *discard = dualNew[j].weight;
+                HSF_CENV_DUAL_WEIGHT *dualWeight = dualNew[j].weight;
             }
             multiNew = multiFile = cenvNew[i].multiData;
+            // This pass walks each multi-influence weight array without changing its entries.
             for(j=0; j<cenvNew[i].multiCount; j++) {
                 HSF_CENV_MULTI_WEIGHT *weight = multiNew[j].weight;
                 s32 k;
@@ -775,12 +839,13 @@ static void CenvLoad(void)
     }
 }
 
+// LoadHSF calls this to expose the skeleton table and resolve each skeleton name.
 static void SkeletonLoad(void)
 {
     HSF_SKELETON *skeletonFile;
     HSF_SKELETON *skeletonNew;
     s32 i;
-    
+
     if(head.skeleton.num) {
         skeletonNew = skeletonFile = (HSF_SKELETON *)((u32)fileptr+head.skeleton.ofs);
         Model.skeletonNum = head.skeleton.num;
@@ -800,14 +865,15 @@ static void SkeletonLoad(void)
     }
 }
 
+// LoadHSF calls this to attach each part's vertex-index list to the HSF data block.
 static void PartLoad(void)
 {
     HSF_PART *partFile;
     HSF_PART *partNew;
-    
+
     u16 *data;
     s32 i, j;
-    
+
     if(head.part.num) {
         partNew = partFile = (HSF_PART *)((u32)fileptr+head.part.ofs);
         Model.partNum = head.part.num;
@@ -818,19 +884,21 @@ static void PartLoad(void)
             partNew->num = partFile[i].num;
             partNew->vertex = &data[(u32)partFile[i].vertex];
             for(j=0; j<partNew->num; j++) {
+                // This pass leaves the packed vertex-index entries unchanged.
                 partNew->vertex[j] = partNew->vertex[j];
             }
         }
     }
 }
 
+// LoadHSF calls this to resolve cluster names, part links, and vertex-buffer references.
 static void ClusterLoad(void)
 {
     HSF_CLUSTER *clusterFile;
     HSF_CLUSTER *clusterNew;
-    
+
     s32 i, j;
-    
+
     if(head.cluster.num) {
         clusterNew = clusterFile = (HSF_CLUSTER *)((u32)fileptr+head.cluster.ofs);
         Model.clusterNum = head.cluster.num;
@@ -855,6 +923,7 @@ static void ClusterLoad(void)
     }
 }
 
+// LoadHSF calls this to resolve each shape's vertex-buffer references.
 static void ShapeLoad(void)
 {
     s32 i, j;
@@ -882,6 +951,7 @@ static void ShapeLoad(void)
     }
 }
 
+// LoadHSF calls this to point map attributes at their packed 16-bit data.
 static void MapAttrLoad(void)
 {
     s32 i;
@@ -889,7 +959,7 @@ static void MapAttrLoad(void)
     HSF_MAPATTR *mapAttrFile;
     HSF_MAPATTR *mapAttrNew;
     u16 *data;
-    
+
     if(head.mapAttr.num) {
         mapAttrFile = mapAttrBase = (HSF_MAPATTR *)((u32)fileptr+head.mapAttr.ofs);
         mapAttrNew = mapAttrBase;
@@ -902,24 +972,27 @@ static void MapAttrLoad(void)
     }
 }
 
+// LoadHSF calls this to resolve bitmap names, palette data, and pixel-data addresses.
 static void BitmapLoad(void)
 {
     HSF_BITMAP *bitmapFile;
     HSF_BITMAP *bitmapTemp;
     HSF_BITMAP *bitmapNew;
     HSF_PALETTE *palette;
-    void *dataP;
+    void *bitmapPixelDataBase;
     s32 i;
-    
+
     if(head.bitmap.num) {
         bitmapTemp = bitmapFile = (HSF_BITMAP *)((u32)fileptr+head.bitmap.ofs);
-        dataP = &bitmapFile[head.bitmap.num];
+        bitmapPixelDataBase = &bitmapFile[head.bitmap.num];
+        // Advance to the table end for Model.bitmap; the relocation pass below resets bitmapFile to
+        // the table base.
         for(i=0; i<head.bitmap.num; i++, bitmapFile++);
         bitmapNew = bitmapTemp;
         Model.bitmap = bitmapFile;
         Model.bitmapNum = head.bitmap.num;
         bitmapFile = (HSF_BITMAP *)((u32)fileptr+head.bitmap.ofs);
-        dataP = &bitmapFile[head.bitmap.num];
+        bitmapPixelDataBase = &bitmapFile[head.bitmap.num];
         for(i=0; i<head.bitmap.num; i++, bitmapFile++, bitmapNew++) {
             bitmapNew->name = SetName((u32 *)&bitmapFile->name);
             bitmapNew->dataFmt = bitmapFile->dataFmt;
@@ -931,11 +1004,12 @@ static void BitmapLoad(void)
             if(palette) {
                 bitmapNew->palData = palette->data;
             }
-            bitmapNew->data = (void *)((u32)dataP+(u32)bitmapFile->data);
+            bitmapNew->data = (void *)((u32)bitmapPixelDataBase+(u32)bitmapFile->data);
         }
     }
 }
 
+// LoadHSF calls this to resolve palette names and point each palette at its packed colors.
 static void PaletteLoad(void)
 {
     s32 i;
@@ -943,14 +1017,16 @@ static void PaletteLoad(void)
     HSF_PALETTE *paletteFile;
     HSF_PALETTE *paletteTemp;
     HSF_PALETTE *paletteNew;
-    
+
     void *dataBase;
     u16 *dataTemp;
     u16 *data;
-    
+
     if(head.palette.num) {
         paletteTemp = paletteFile = (HSF_PALETTE *)((u32)fileptr+head.palette.ofs);
         dataBase = (u16 *)&paletteFile[head.palette.num];
+        // This pass computes packed-color pointers; the relocation pass below recomputes and stores
+        // them.
         for(i=0; i<head.palette.num; i++, paletteFile++) {
             dataTemp = (u16 *)((u32)dataBase+(u32)paletteFile->data);
         }
@@ -966,12 +1042,14 @@ static void PaletteLoad(void)
             paletteNew->data = data;
             paletteNew->palSize = paletteFile->palSize;
             for(j=0; j<paletteFile->palSize; j++) {
+                // This pass leaves the packed palette entries unchanged.
                 data[j] = data[j];
             }
         }
     }
 }
 
+// Motion name lookup calls this to strip the prefix and trailing object-name suffix.
 char *MakeObjectName(s8 *name)
 {
     static char buf[768];
@@ -1003,12 +1081,14 @@ char *MakeObjectName(s8 *name)
     return buf;
 }
 
+// FindObjectName uses this comparison for model names; it returns strcmp's result unchanged.
 s32 CmpObjectName(char *name1, char *name2)
 {
     s32 temp = 0;
     return strcmp(name1, name2);
 }
 
+// Motion loaders call this to read a track name from the optional dictionary or HSF string table.
 static inline char *MotionGetName(HSF_TRACK *track)
 {
     char *ret;
@@ -1020,11 +1100,12 @@ static inline char *MotionGetName(HSF_TRACK *track)
     return ret;
 }
 
+// MotionLoadTransform calls this to map a track target name to the model object-table index.
 static inline s32 FindObjectName(char *name)
 {
     s32 i;
     HSF_OBJECT *object;
-    
+
     object = objtop;
     for(i=0; i<head.object.num; i++, object++) {
         if(!CmpObjectName(object->name, name)) {
@@ -1034,11 +1115,12 @@ static inline s32 FindObjectName(char *name)
     return -1;
 }
 
+// MotionLoadCluster calls this when motion targets clusters in the displayed model.
 static inline s32 FindClusterName(char *name)
 {
     s32 i;
     HSF_CLUSTER *cluster;
-    
+
     cluster = ClusterTop;
     for(i=0; i<head.cluster.num; i++, cluster++) {
         if(!strcmp(cluster->name[0], name)) {
@@ -1048,11 +1130,12 @@ static inline s32 FindClusterName(char *name)
     return -1;
 }
 
+// MotionLoadCluster calls this when the loaded file is itself a motion-only model.
 static inline s32 FindMotionClusterName(char *name)
 {
     s32 i;
     HSF_CLUSTER *cluster;
-    
+
     cluster = MotionModel->cluster;
     for(i=0; i<MotionModel->clusterNum; i++, cluster++) {
         if(!strcmp(cluster->name[0], name)) {
@@ -1062,11 +1145,12 @@ static inline s32 FindMotionClusterName(char *name)
     return -1;
 }
 
+// MotionLoadAttribute calls this to map an attribute track name in the displayed model.
 static inline s32 FindAttributeName(char *name)
 {
     s32 i;
     HSF_ATTRIBUTE *attribute;
-    
+
     attribute = AttributeTop;
     for(i=0; i<head.attribute.num; i++, attribute++) {
         if(!attribute->name) {
@@ -1079,11 +1163,12 @@ static inline s32 FindAttributeName(char *name)
     return -1;
 }
 
+// MotionLoadAttribute calls this when attributes belong to the motion-only model.
 static inline s32 FindMotionAttributeName(char *name)
 {
     s32 i;
     HSF_ATTRIBUTE *attribute;
-    
+
     attribute = MotionModel->attribute;
     for(i=0; i<MotionModel->attributeNum; i++, attribute++) {
         if(!attribute->name) {
@@ -1096,6 +1181,7 @@ static inline s32 FindMotionAttributeName(char *name)
     return -1;
 }
 
+// MotionLoad calls this to resolve object targets and curve data for transform and morph tracks.
 static inline void MotionLoadTransform(HSF_TRACK *track, void *data)
 {
     float *stepData;
@@ -1117,26 +1203,27 @@ static inline void MotionLoadTransform(HSF_TRACK *track, void *data)
             outTrack->data = stepData;
         }
         break;
-        
+
         case HSF_CURVE_LINEAR:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
-        
+
         case HSF_CURVE_BEZIER:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
-        
+
         case HSF_CURVE_CONST:
             break;
     }
 }
 
+// MotionLoad calls this to resolve a cluster target and its step, linear, or Bezier samples.
 static inline void MotionLoadCluster(HSF_TRACK *track, void *data)
 {
     s32 dataNum;
@@ -1145,7 +1232,7 @@ static inline void MotionLoadCluster(HSF_TRACK *track, void *data)
     float *bezierData;
     HSF_TRACK *outTrack;
     char *name;
-    
+
     outTrack = track;
     name = SetMotionName(&track->target);
     if(!MotionOnly) {
@@ -1162,26 +1249,27 @@ static inline void MotionLoadCluster(HSF_TRACK *track, void *data)
             outTrack->data = stepData;
         }
         break;
-        
+
         case HSF_CURVE_LINEAR:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
-        
+
         case HSF_CURVE_BEZIER:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
-        
+
         case HSF_CURVE_CONST:
             break;
     }
 }
 
+// MotionLoad calls this to resolve cluster-weight track targets and curve samples.
 static inline void MotionLoadClusterWeight(HSF_TRACK *track, void *data)
 {
     s32 dataNum;
@@ -1190,7 +1278,7 @@ static inline void MotionLoadClusterWeight(HSF_TRACK *track, void *data)
     float *bezierData;
     HSF_TRACK *outTrack;
     char *name;
-    
+
     outTrack = track;
     name = SetMotionName(&track->target);
     if(!MotionOnly) {
@@ -1207,26 +1295,27 @@ static inline void MotionLoadClusterWeight(HSF_TRACK *track, void *data)
             outTrack->data = stepData;
         }
         break;
-        
+
         case HSF_CURVE_LINEAR:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
-        
+
         case HSF_CURVE_BEZIER:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
-        
+
         case HSF_CURVE_CONST:
             break;
     }
 }
 
+// MotionLoad calls this to point material tracks at their step, linear, or Bezier samples.
 static inline void MotionLoadMaterial(HSF_TRACK *track, void *data)
 {
     float *stepData;
@@ -1243,26 +1332,28 @@ static inline void MotionLoadMaterial(HSF_TRACK *track, void *data)
             outTrack->data = stepData;
         }
         break;
-        
+
         case HSF_CURVE_LINEAR:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
-        
+
         case HSF_CURVE_BEZIER:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
-        
+
         case HSF_CURVE_CONST:
             break;
     }
 }
 
+// MotionLoad calls this to resolve attribute targets when cluster is not -1 and point
+// curve or bitmap-key data at its samples.
 static inline void MotionLoadAttribute(HSF_TRACK *track, void *data)
 {
     HSF_BITMAP_KEY *fileBitmap;
@@ -1282,7 +1373,7 @@ static inline void MotionLoadAttribute(HSF_TRACK *track, void *data)
             outTrack->attrIdx = FindMotionAttributeName(name);
         }
     }
-    
+
     switch(track->curveType) {
         case HSF_CURVE_STEP:
         {
@@ -1290,21 +1381,21 @@ static inline void MotionLoadAttribute(HSF_TRACK *track, void *data)
             outTrack->data = stepData;
         }
         break;
-        
+
         case HSF_CURVE_LINEAR:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
-        
+
         case HSF_CURVE_BEZIER:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
-        
+
         case HSF_CURVE_BITMAP:
         {
             newBitmap = fileBitmap = (HSF_BITMAP_KEY *)((u32)data+(u32)track->data);
@@ -1319,6 +1410,7 @@ static inline void MotionLoadAttribute(HSF_TRACK *track, void *data)
     }
 }
 
+// LoadHSF calls this after model attributes and materials are available to prepare motion tracks.
 static void MotionLoad(void)
 {
     HSF_MOTION *fileMotion;
@@ -1327,7 +1419,7 @@ static void MotionLoad(void)
     HSF_TRACK *trackStart;
     void *trackData;
     s32 i;
-    
+
     MotionOnly = FALSE;
     MotionModel = NULL;
     if(head.motion.num) {
@@ -1344,29 +1436,29 @@ static void MotionLoad(void)
                 case HSF_TRACK_MORPH:
                     MotionLoadTransform(&trackStart[i], trackData);
                     break;
-                    
+
                 case HSF_TRACK_CLUSTER:
                     MotionLoadCluster(&trackStart[i], trackData);
                     break;
-                    
+
                 case HSF_TRACK_CLUSTER_WEIGHT:
                     MotionLoadClusterWeight(&trackStart[i], trackData);
                     break;
-                    
+
                 case HSF_TRACK_MATERIAL:
                     MotionLoadMaterial(&trackStart[i], trackData);
                     break;
-                    
+
                 case HSF_TRACK_ATTRIBUTE:
                     MotionLoadAttribute(&trackStart[i], trackData);
                     break;
-                    
+
                 default:
                     break;
             }
         }
     }
-    //HACK: Bump register of i to r31
+    // These repeated reads do not alter the loaded motion data or the returned model.
     (void)i;
     (void)i;
     (void)i;
@@ -1396,10 +1488,11 @@ static void MotionLoad(void)
     (void)i;
 }
 
+// LoadHSF calls this to point the matrix table at the matrix records following its header.
 static void MatrixLoad(void)
 {
     HSF_MATRIX *matrixFile;
-    
+
     if(head.matrix.num) {
         matrixFile = (HSF_MATRIX *)((u32)fileptr+head.matrix.ofs);
         matrixFile->data = (Mtx *)((u32)fileptr+head.matrix.ofs+sizeof(HSF_MATRIX));
@@ -1408,126 +1501,138 @@ static void MatrixLoad(void)
     }
 }
 
-static s32 SearchObjectSetName(HSF_DATA *data, char *name)
+// ClusterAdjustObject calls this to find a target object by name in a model's object table.
+static s32 SearchObjectSetName(HSF_DATA *model, char *name)
 {
-    HSF_OBJECT *object = data->object;
-    s32 i;
-    for(i=0; i<data->objectNum; i++, object++) {
+    HSF_OBJECT *object = model->object;
+    s32 objectIndex;
+    for(objectIndex=0; objectIndex<model->objectNum; objectIndex++, object++) {
         if(!CmpObjectName(object->name, name)) {
-            return i;
+            return objectIndex;
         }
     }
     OSReport("Search Object Error %s\n", name);
     return -1;
 }
 
-static HSF_BUFFER *SearchVertexPtr(s32 id)
+// DispObject and ClusterLoad call this to resolve a vertex-table index; -1 means no buffer.
+static HSF_BUFFER *SearchVertexPtr(s32 tableIndex)
 {
-    HSF_BUFFER *vertex; 
-    if(id == -1) {
+    HSF_BUFFER *vertex;
+    if(tableIndex == -1) {
         return NULL;
     }
     vertex = (HSF_BUFFER *)((u32)fileptr+head.vertex.ofs);
-    vertex += id;
+    vertex += tableIndex;
     return vertex;
 }
 
-static HSF_BUFFER *SearchNormalPtr(s32 id)
+// DispObject calls this to resolve a normal-table index; -1 means the mesh has no normal buffer.
+static HSF_BUFFER *SearchNormalPtr(s32 tableIndex)
 {
-    HSF_BUFFER *normal; 
-    if(id == -1) {
+    HSF_BUFFER *normal;
+    if(tableIndex == -1) {
         return NULL;
     }
     normal = (HSF_BUFFER *)((u32)fileptr+head.normal.ofs);
-    normal += id;
+    normal += tableIndex;
     return normal;
 }
 
-static HSF_BUFFER *SearchStPtr(s32 id)
+// DispObject calls this to resolve a texture-coordinate-table index; -1 means no buffer.
+static HSF_BUFFER *SearchStPtr(s32 tableIndex)
 {
-    HSF_BUFFER *st; 
-    if(id == -1) {
+    HSF_BUFFER *st;
+    if(tableIndex == -1) {
         return NULL;
     }
     st = (HSF_BUFFER *)((u32)fileptr+head.st.ofs);
-    st += id;
+    st += tableIndex;
     return st;
 }
 
-static HSF_BUFFER *SearchColorPtr(s32 id)
+// DispObject calls this to resolve a color-table index; -1 means the mesh has no color buffer.
+static HSF_BUFFER *SearchColorPtr(s32 tableIndex)
 {
-    HSF_BUFFER *color; 
-    if(id == -1) {
+    HSF_BUFFER *color;
+    if(tableIndex == -1) {
         return NULL;
     }
     color = (HSF_BUFFER *)((u32)fileptr+head.color.ofs);
-    color += id;
+    color += tableIndex;
     return color;
 }
 
-static HSF_BUFFER *SearchFacePtr(s32 id)
+// DispObject calls this to resolve a face-table index; -1 means the mesh has no face buffer.
+static HSF_BUFFER *SearchFacePtr(s32 tableIndex)
 {
-    HSF_BUFFER *face; 
-    if(id == -1) {
+    HSF_BUFFER *face;
+    if(tableIndex == -1) {
         return NULL;
     }
     face = (HSF_BUFFER *)((u32)fileptr+head.face.ofs);
-    face += id;
+    face += tableIndex;
     return face;
 }
 
-static HSF_CENV *SearchCenvPtr(s32 id)
+// DispObject calls this to resolve an envelope-table index; -1 means the mesh has no envelope.
+static HSF_CENV *SearchCenvPtr(s32 tableIndex)
 {
-    HSF_CENV *cenv; 
-    if(id == -1) {
+    HSF_CENV *cenv;
+    if(tableIndex == -1) {
         return NULL;
     }
     cenv = (HSF_CENV *)((u32)fileptr+head.cenv.ofs);
-    cenv += id;
+    cenv += tableIndex;
     return cenv;
 }
 
-static HSF_PART *SearchPartPtr(s32 id)
+// ClusterLoad calls this to resolve a cluster's part-table index; -1 means no part is linked.
+static HSF_PART *SearchPartPtr(s32 tableIndex)
 {
-    HSF_PART *part; 
-    if(id == -1) {
+    HSF_PART *part;
+    if(tableIndex == -1) {
         return NULL;
     }
     part = (HSF_PART *)((u32)fileptr+head.part.ofs);
-    part += id;
+    part += tableIndex;
     return part;
 }
 
-static HSF_PALETTE *SearchPalettePtr(s32 id)
+// BitmapLoad calls this to resolve a bitmap's palette-table index; -1 means no palette is linked.
+static HSF_PALETTE *SearchPalettePtr(s32 tableIndex)
 {
-    HSF_PALETTE *palette; 
-    if(id == -1) {
+    HSF_PALETTE *palette;
+    if(tableIndex == -1) {
         return NULL;
     }
     palette = Model.palette;
-    palette += id;
+    palette += tableIndex;
     return palette;
 }
 
-static HSF_BITMAP *SearchBitmapPtr(s32 id)
+// MotionLoadAttribute calls this to resolve a bitmap-key index; -1 means no bitmap is linked.
+static HSF_BITMAP *SearchBitmapPtr(s32 tableIndex)
 {
-    HSF_BITMAP *bitmap; 
-    if(id == -1) {
+    HSF_BITMAP *bitmap;
+    if(tableIndex == -1) {
         return NULL;
     }
     bitmap = (HSF_BITMAP *)((u32)fileptr+head.bitmap.ofs);
-    bitmap += id;
+    bitmap += tableIndex;
     return bitmap;
 }
 
-static char *GetString(u32 *strOfs)
+// SetName calls this to return a model string at its byte offset in the HSF string table.
+static char *GetString(u32 *stringOffset)
 {
-    char *ret = &StringTable[*strOfs];
-    return ret;
+    char *text = &StringTable[*stringOffset];
+    return text;
 }
 
-static char *GetMotionString(u16 *strOfs)
+// SetMotionName calls this to return a motion string at its 16-bit offset in the same table.
+static char *GetMotionString(u16 *stringOffset)
 {
-    char *ret = &StringTable[*strOfs];
-    return ret;
+    char *text = &StringTable[*stringOffset];
+    return text;
 }
