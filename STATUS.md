@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 37.55% | 57.55% |
+| Entire project | 38.36% | 57.77% |
 | Main DOL | 88.95% | 99.05% |
-| REL modules | 26.66% | 31.25% |
+| REL modules | 27.64% | 31.61% |
+
+E. Gadd's Garage (`w02Dll`) selects all **137 functions** from **3 complete translation units**; its linked REL matches retail.
 
 DOL source: `src/gssdk_lib/asrpho/rec1600/creasp.c` now builds from source; `main.dol` matches retail byte for byte.
 
