@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 35.67% | 57.09% |
+| Entire project | 36.30% | 57.34% |
 | Main DOL | 88.62% | 99.04% |
-| REL modules | 24.44% | 30.50% |
+| REL modules | 25.21% | 30.92% |
+
+Faire Square (`w03Dll`) selects all **64 functions** from **3 complete translation units**; its linked REL matches retail.
 
 DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/combiner.c` now builds from source; `main.dol` matches retail byte for byte.
 
