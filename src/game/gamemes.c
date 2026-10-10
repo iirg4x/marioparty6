@@ -1,5 +1,4 @@
-/* Block math.h's extern inline sqrtf: its weak _half/_three statics would
- * prepend 16 bytes to .sdata2 that the original gamemes.o does not have. */
+/* Message system for timers, minigame notices, pause prompts, and score boxes. */
 #define _MATH_H
 #define M_PI 3.141592653589793
 double sin(double);
@@ -23,17 +22,34 @@ extern inline double fabs(double x)
 #include "game/pad.h"
 #include "game/objdll.h"
 #include "game/mgdata.h"
+#include "messdir_enum.h"
 
-#define MSM_SE_CMN_04 3
-#define MSM_SE_CMN_06 5
-#define MSM_SE_CMN_07 6
+#define GAMEMES_MESS_PAUSE_HEADER MESSNUM(MESS_MG_INST_SYS, 16)
+#define GAMEMES_MESS_PAUSE_EXIT_PROMPT MESSNUM(MESS_MG_INST_SYS, 9)
+#define GAMEMES_MG_UNSELECTED 65535
+
+/* Border tile codes combine with row offsets in the score panel's indirect texture. */
+#define SCOREBOX_TILE_LEFT_OUTER_BASE 160
+#define SCOREBOX_TILE_LEFT_MIDDLE_BASE 176
+#define SCOREBOX_TILE_LEFT_INNER_BASE 192
+#define SCOREBOX_TILE_RIGHT_INNER_BASE 112
+#define SCOREBOX_TILE_RIGHT_MIDDLE_BASE 128
+#define SCOREBOX_TILE_RIGHT_OUTER_BASE 144
+#define SCOREBOX_TILE_HORIZONTAL_EDGE_BASE 96
+#define SCOREBOX_TILE_VERTICAL_LEFT 208
+#define SCOREBOX_TILE_VERTICAL_RIGHT 241
+#define SCOREBOX_TILE_INTERIOR 210
+#define SCOREBOX_MIN_SIZE 48
+
+#define GAMEMES_GLYPH_DATA_MASK 0x7FFFFFFF
+#define GAMEMES_GLYPH_RAISED_FLAG 0x80000000
 
 typedef struct GameMesEntry_s {
-    GAMEMESCREATE create;
-    GAMEMESEXEC exec;
-    HuVec2f pos;
-    HuVec2f scale;
-    int timeMax;
+    GAMEMESCREATE create; /* Initializes one message slot from its arguments. */
+    GAMEMESEXEC exec; /* Updates and draws the message once per frame. */
+    HuVec2f pos; /* Default screen position in pixels. */
+    HuVec2f scale; /* Default horizontal and vertical display scale. */
+    int timeMax; /* Default lifetime used by the message implementation. */
 } GAMEMES_ENTRY;
 
 GAMEMES GameMesData[GAMEMES_MAX];
@@ -71,32 +87,28 @@ GAMEMES_ENTRY GameMesTbl[] = {
 };
 
 static s16 startMesTbl[MG_TYPE_MAX] = {
-    GAMEMES_MES_MG_4P,
-    GAMEMES_MES_MG_1VS3,
-    GAMEMES_MES_MG_2VS2,
-    GAMEMES_MES_MG_BATTLE,
-    GAMEMES_MES_MG_KUPA,
-    GAMEMES_MES_MG_LAST,
-    GAMEMES_MES_MG_KETTOU,
-    GAMEMES_MES_MG_DONKEY,
+    GAMEMES_MES_MG_4P, GAMEMES_MES_MG_1VS3, GAMEMES_MES_MG_2VS2, GAMEMES_MES_MG_BATTLE,
+    GAMEMES_MES_MG_KUPA, GAMEMES_MES_MG_LAST, GAMEMES_MES_MG_KETTOU, GAMEMES_MES_MG_DONKEY,
     GAMEMES_MES_MG_SD
 };
 
 static char asciiTbl[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-static char kanaTbl[] = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｧｨｩｪｫｬｭｮｯｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾊﾋﾌﾍﾎﾊﾋﾌﾍﾎｰ";
+static char kanaTbl[] =
+    "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｧｨｩｪｫｬｭｮｯｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾊﾋﾌﾍﾎﾊﾋﾌﾍﾎｰ";
 static char numberTbl[] = "0123456789";
 static char punctTbl[] = "!?.";
 static int *fontBufs[5] = {};
 
 static void CreateFontBuf(void);
 
+/* Called during game startup to reset message slots and load message resources. */
 void GameMesInit(void)
 {
-    GAMEMES *mes = &GameMesData[0];
-    int i;
-    for(i=GAMEMES_MAX; i; i--, mes++) {
-        mes->mesNo = GAMEMES_MES_NULL;
-        mes->buf = NULL;
+    GAMEMES *message = &GameMesData[0];
+    int remainingSlots;
+    for(remainingSlots=GAMEMES_MAX; remainingSlots; remainingSlots--, message++) {
+        message->mesNo = GAMEMES_MES_NULL;
+        message->buf = NULL;
     }
     GameMesCloseF = FALSE;
     GameMesDebugF = FALSE;
@@ -115,48 +127,52 @@ void *GameMesDataRead(unsigned int dataNum)
     return HuAR_ARAMtoMRAMFileRead(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
 }
 
+/* Called by the main game loop to update active messages and their shared timeout. */
 void GameMesExec(void)
 {
-    GAMEMES *mes;
-    GAMEMES_ENTRY *mesTbl;
-    int j;
-    u8 stat;
-    int i;
-    BOOL result;
+    GAMEMES *message;
+    GAMEMES_ENTRY *messageType;
+    int otherSlot;
+    u8 combinedStatus;
+    int slot;
+    BOOL keepMessage;
     GameMesVWait = HuSysVWaitGet(GameMesVWait);
     if(!Hu3DPauseF) {
-        result = FALSE;
-        stat = GAMEMES_STAT_NONE;
-        mes = &GameMesData[0];
-        for(i=0; i<GAMEMES_MAX; i++, mes++) {
-            if(mes->stat == GAMEMES_STAT_NONE) {
+        keepMessage = FALSE;
+        combinedStatus = GAMEMES_STAT_NONE;
+        message = &GameMesData[0];
+        for(slot=0; slot<GAMEMES_MAX; slot++, message++) {
+            if(message->stat == GAMEMES_STAT_NONE) {
                 continue;
             }
-            if(mes->exec) {
-                result = mes->exec(mes);
+            if(message->exec) {
+                keepMessage = message->exec(message);
             } else {
-                mesTbl = &GameMesTbl[mes->mesNo];
-                if(mes->mesNo != GAMEMES_MES_NULL && NULL != mesTbl->exec) {
-                    result = mesTbl->exec(mes);
+                messageType = &GameMesTbl[message->mesNo];
+                if(message->mesNo != GAMEMES_MES_NULL && NULL != messageType->exec) {
+                    keepMessage = messageType->exec(message);
                 }
             }
-            if(result == FALSE) {
-                mes->stat = GAMEMES_STAT_NONE;
+            if(keepMessage == FALSE) {
+                message->stat = GAMEMES_STAT_NONE;
                 if(!GameMesDebugF) {
-                    for(j=0; j<GAMEMES_MAX; j++) {
-                        if(GameMesData[j].stat != GAMEMES_STAT_NONE) {
+                    /* This loop stops at another active slot, but its index is not used
+                     * afterward. */
+                    for(otherSlot=0; otherSlot<GAMEMES_MAX; otherSlot++) {
+                        if(GameMesData[otherSlot].stat != GAMEMES_STAT_NONE) {
                             break;
                         }
                     }
                 }
-                if(!mes->buf) {
-                    HuMemDirectFree(mes->buf);
-                    mes->buf = NULL;
+                if(!message->buf) {
+                    /* This guard allows only a NULL buffer through to the free call. */
+                    HuMemDirectFree(message->buf);
+                    message->buf = NULL;
                 }
             }
-            stat |= mes->stat;
+            combinedStatus |= message->stat;
         }
-        if(stat == GAMEMES_STAT_NONE || (stat & GAMEMES_STAT_TIMEEND)) {
+        if(combinedStatus == GAMEMES_STAT_NONE || (combinedStatus & GAMEMES_STAT_TIMEEND)) {
             if(GameMesTime > 0) {
                 GameMesTime -= GameMesVWait;
             }
@@ -164,135 +180,147 @@ void GameMesExec(void)
     }
 }
 
+/* Reserves a free message slot and invokes the selected type's setup callback. */
 static GAMEMESID CreateGameMes(s16 mesNo, va_list args)
 {
-    GAMEMES *mes = &GameMesData[0];
-    GAMEMES_ENTRY *mesTbl = &GameMesTbl[(u8)mesNo];
-    int i;
-    int mesId;
+    GAMEMES *message = &GameMesData[0];
+    GAMEMES_ENTRY *messageType = &GameMesTbl[(u8)mesNo];
+    int spriteSlotOrCreateResult;
+    int messageId;
 
-    for(mesId=0; mesId<GAMEMES_MAX; mesId++, mes++) {
-        if(mes->stat == GAMEMES_STAT_NONE) {
+    for(messageId=0; messageId<GAMEMES_MAX; messageId++, message++) {
+        if(message->stat == GAMEMES_STAT_NONE) {
             break;
         }
     }
-    if(mesId >= GAMEMES_MAX) {
+    if(messageId >= GAMEMES_MAX) {
         return GAMEMES_ID_NONE;
     }
-    mes->stat |= GAMEMES_STAT_EXIST;
-    if(mes->buf) {
-        HuMemDirectFree(mes->buf);
+    message->stat |= GAMEMES_STAT_EXIST;
+    if(message->buf) {
+        HuMemDirectFree(message->buf);
     }
-    mes->buf = NULL;
-    mes->mesNo = mesNo;
-    mes->time = 0;
-    mes->pos.x = mesTbl->pos.x;
-    mes->pos.y = mesTbl->pos.y;
-    mes->scale.x = mesTbl->scale.x;
-    mes->scale.y = mesTbl->scale.y;
-    mes->unk18 = 0;
-    mes->color.g = 255;
-    mes->timeMax = mesTbl->timeMax;
-    mes->timerVal = mes->subMode = mes->work = mes->charNum = 0;
-    mes->angle = mes->winScale = 0;
-    mes->dispMode = mes->dispValue = 0;
-    for(i=0; i<GAMEMES_SPRMAX; i++) {
-        mes->sprId[i] = mes->grpId[i] = HUSPR_NONE;
+    message->buf = NULL;
+    message->mesNo = mesNo;
+    message->time = 0;
+    message->pos.x = messageType->pos.x;
+    message->pos.y = messageType->pos.y;
+    message->scale.x = messageType->scale.x;
+    /* Copies the message type's default vertical display scale. */
+    message->scale.y = messageType->scale.y;
+    /* Initializes this message field to zero. */
+    message->unk18 = 0;
+    message->color.g = 255;
+    message->timeMax = messageType->timeMax;
+    message->timerVal = message->subMode = message->work = message->charNum = 0;
+    message->angle = message->winScale = 0;
+    message->dispMode = message->dispValue = 0;
+    for (spriteSlotOrCreateResult = 0; spriteSlotOrCreateResult < GAMEMES_SPRMAX;
+         spriteSlotOrCreateResult++) {
+        message->sprId[spriteSlotOrCreateResult] = message->grpId[spriteSlotOrCreateResult] =
+            HUSPR_NONE;
     }
-    if(NULL != mesTbl->create) {
-        i = mesTbl->create(mes, args);
-        if(i == FALSE) {
-            mes->stat = GAMEMES_STAT_NONE;
+    if(NULL != messageType->create) {
+        spriteSlotOrCreateResult = messageType->create(message, args);
+        if(spriteSlotOrCreateResult == FALSE) {
+            message->stat = GAMEMES_STAT_NONE;
             return GAMEMES_ID_NONE;
         }
     }
     GameMesTime = 30;
-    return mesId;
+    return messageId;
 }
 
-GAMEMESID GameMesCreate(s16 mesNo, ...)
+/* Called by game, board, and minigame sequences to create a message or timer. */
+GAMEMESID GameMesCreate(s16 messageTypeId, ...)
 {
-    GAMEMESID id;
+    GAMEMESID messageId;
     va_list args;
-    va_start(args, mesNo);
+    va_start(args, messageTypeId);
     GameMesLanguageNo = GWLanguageGet();
-    if(mesNo == GAMEMES_MES_MG) {
-        if(GwSystem.mgNo == 0xffff) {
-            mesNo = GAMEMES_MES_MG_4P;
+    if(messageTypeId == GAMEMES_MES_MG) {
+        if(GwSystem.mgNo == GAMEMES_MG_UNSELECTED) {
+            messageTypeId = GAMEMES_MES_MG_4P;
         } else {
-            mesNo = startMesTbl[MgDataTbl[GwSystem.mgNo].type];
+            messageTypeId = startMesTbl[MgDataTbl[GwSystem.mgNo].type];
         }
     }
-    id = CreateGameMes(mesNo, args);
+    messageId = CreateGameMes(messageTypeId, args);
     va_end(args);
-    return id;
+    return messageId;
 }
 
-GAMEMES *GameMesGet(GAMEMESID id)
+/* Returns the message slot for a valid ID; callers use it to inspect or adjust it. */
+GAMEMES *GameMesGet(GAMEMESID messageId)
 {
-    if(id >= 0 && id < GAMEMES_MAX) {
-        return &GameMesData[id];
+    if(messageId >= 0 && messageId < GAMEMES_MAX) {
+        return &GameMesData[messageId];
     }
     return NULL;
 }
 
-u8 GameMesStatGet(GAMEMESID id)
+/* Returns one slot's status, or the combined status when passed GAMEMES_ID_NONE. */
+u8 GameMesStatGet(GAMEMESID messageId)
 {
-    GAMEMES *mes;
-    u8 stat;
-    stat = GAMEMES_STAT_NONE;
-    if(id < 0) {
-        int i;
-        mes = &GameMesData[0];
-        for(i=GAMEMES_MAX; i; i--, mes++) {
-            stat |= mes->stat;
+    GAMEMES *message;
+    u8 combinedStatus;
+    combinedStatus = GAMEMES_STAT_NONE;
+    if(messageId < 0) {
+        int remainingSlots;
+        message = &GameMesData[0];
+        for(remainingSlots=GAMEMES_MAX; remainingSlots; remainingSlots--, message++) {
+            combinedStatus |= message->stat;
         }
     } else {
-        if(id < GAMEMES_MAX) {
-            stat = GameMesData[id].stat;
+        if(messageId < GAMEMES_MAX) {
+            combinedStatus = GameMesData[messageId].stat;
         }
     }
-    return stat;
+    return combinedStatus;
 }
 
-void GameMesPosSet(GAMEMESID id, float posX, float posY)
+/* Callers set a live message's screen position here for its next GameMesExec update. */
+void GameMesPosSet(GAMEMESID messageId, float posX, float posY)
 {
-    if(id < 0) {
+    if(messageId < 0) {
         return;
     }
-    if(id >= GAMEMES_MAX) {
+    if(messageId >= GAMEMES_MAX) {
         return;
     }
-    GameMesData[id].pos.x = posX;
-    GameMesData[id].pos.y = posY;
+    GameMesData[messageId].pos.x = posX;
+    GameMesData[messageId].pos.y = posY;
 }
 
-void GameMesDispSet(GAMEMESID id, s16 mode, s16 value)
+/* Callers queue a display command here for the message's next GameMesExec update. */
+void GameMesDispSet(GAMEMESID messageId, s16 displayMode, s16 displayValue)
 {
-    if(id < 0) {
+    if(messageId < 0) {
         return;
     }
-    if(id >= GAMEMES_MAX) {
+    if(messageId >= GAMEMES_MAX) {
         return;
     }
-    GameMesData[id].dispMode = mode;
-    GameMesData[id].dispValue = value;
+    GameMesData[messageId].dispMode = displayMode;
+    GameMesData[messageId].dispValue = displayValue;
 }
 
-void GameMesKill(GAMEMESID id)
+/* Callers mark a live message here so GameMesExec removes it on the next update. */
+void GameMesKill(GAMEMESID messageId)
 {
-    if(id < 0) {
+    if(messageId < 0) {
         return;
     }
-    if(id >= GAMEMES_MAX) {
+    if(messageId >= GAMEMES_MAX) {
         return;
     }
-    if(GameMesData[id].stat == GAMEMES_STAT_NONE) {
+    if(GameMesData[messageId].stat == GAMEMES_STAT_NONE) {
         return;
     }
-    GameMesData[id].stat = GAMEMES_STAT_KILL;
+    GameMesData[messageId].stat = GAMEMES_STAT_KILL;
 }
 
+/* Runs one final message update while shutting down the message system. */
 void GameMesClose(void)
 {
     GameMesCloseF = TRUE;
@@ -302,11 +330,13 @@ void GameMesClose(void)
     GameMesDebugF = FALSE;
 }
 
+/* Used by callers waiting for message completion or an explicit kill request. */
 BOOL GameMesKillCheck(void)
 {
-    u8 stat = GameMesStatGet(GAMEMES_ID_NONE);
-    if(stat == GAMEMES_STAT_NONE || (stat & (GAMEMES_STAT_TIMEEND|GAMEMES_STAT_KILL))) {
-        if(GameMesTime <= 0 || (stat & GAMEMES_STAT_KILL)) {
+    u8 combinedStatus = GameMesStatGet(GAMEMES_ID_NONE);
+    if (combinedStatus == GAMEMES_STAT_NONE ||
+        (combinedStatus & (GAMEMES_STAT_TIMEEND | GAMEMES_STAT_KILL))) {
+        if(GameMesTime <= 0 || (combinedStatus & GAMEMES_STAT_KILL)) {
             return TRUE;
         }
     }
@@ -318,15 +348,16 @@ void GameMesStub(void)
 
 }
 
-void GameMesSprKill(GAMEMES *mes)
+/* Releases all sprite groups and individual sprites owned by a message slot. */
+void GameMesSprKill(GAMEMES *message)
 {
-    int i;
-    for(i=0; i<GAMEMES_SPRMAX; i++) {
-        if(mes->grpId[i] >= 0) {
-            HuSprGrpKill(mes->grpId[i]);
+    int spriteSlot;
+    for(spriteSlot=0; spriteSlot<GAMEMES_SPRMAX; spriteSlot++) {
+        if(message->grpId[spriteSlot] >= 0) {
+            HuSprGrpKill(message->grpId[spriteSlot]);
         }
-        if(mes->sprId[i] >= 0) {
-            HuSprKill(mes->sprId[i]);
+        if(message->sprId[spriteSlot] >= 0) {
+            HuSprKill(message->sprId[spriteSlot]);
         }
     }
 }
@@ -335,191 +366,197 @@ void GameMesSprKill(GAMEMES *mes)
 #define TIMER_SUBMODE_SHOW 2
 #define TIMER_SUBMODE_DIGITUP 3
 
-BOOL GameMesTimerInit(GAMEMES *mes, va_list args)
+/* GameMesTbl setup callback: creates the two-digit timer and its background sprite. */
+BOOL GameMesTimerInit(GAMEMES *message, va_list args)
 {
-    HUSPR_GROUPID gid;
-    ANIMDATA *anim;
-    HUSPRID sprid;
+    HUSPR_GROUPID spriteGroup;
+    ANIMDATA *animation;
+    HUSPRID sprite;
 
-    int maxTime, posX, posY;
-    s16 i;
-    maxTime = va_arg(args, int);
-    posX = va_arg(args, int);
-    posY = va_arg(args, int);
-    if(maxTime <= 0 && maxTime > 99) {
-        maxTime = 99;
+    int initialSeconds, screenX, screenY;
+    s16 digitSlot;
+    initialSeconds = va_arg(args, int);
+    screenX = va_arg(args, int);
+    screenY = va_arg(args, int);
+    /* This condition is impossible, so the supplied time value remains unclamped here. */
+    if(initialSeconds <= 0 && initialSeconds > 99) {
+        initialSeconds = 99;
     }
-    mes->timerVal = maxTime;
-    if(posX >= 0) {
-        mes->pos.x = posX;
+    message->timerVal = initialSeconds;
+    if(screenX >= 0) {
+        message->pos.x = screenX;
     }
-    if(posY >= 0) {
-        mes->pos.y = posY;
+    if(screenY >= 0) {
+        message->pos.y = screenY;
     }
-    mes->work = 0;
-    mes->subMode = TIMER_SUBMODE_SHOW;
-    mes->angle = 0;
-    gid = HuSprGrpCreate(3);
-    mes->grpId[0] = gid;
-    HuSprGrpScaleSet(gid, mes->scale.x, mes->scale.y);
-    anim = HuSprAnimRead(GameMesDataRead(GAMEMES_ANM_timerDigit));
-    posX = 11;
-    for(i=0; i<2; posX -= 22, i++) {
-        sprid = HuSprCreate(anim, 5, 0);
-        HuSprGrpMemberSet(gid, i, sprid);
-        HuSprSpeedSet(gid, i, 0);
-        HuSprPosSet(gid, i, posX, 1);
-        HuSprColorSet(gid, i, 112, 233, 255);
+    message->work = 0;
+    message->subMode = TIMER_SUBMODE_SHOW;
+    message->angle = 0;
+    spriteGroup = HuSprGrpCreate(3);
+    message->grpId[0] = spriteGroup;
+    HuSprGrpScaleSet(spriteGroup, message->scale.x, message->scale.y);
+    animation = HuSprAnimRead(GameMesDataRead(GAMEMES_ANM_timerDigit));
+    screenX = 11;
+    for(digitSlot=0; digitSlot<2; screenX -= 22, digitSlot++) {
+        sprite = HuSprCreate(animation, 5, 0);
+        HuSprGrpMemberSet(spriteGroup, digitSlot, sprite);
+        HuSprSpeedSet(spriteGroup, digitSlot, 0);
+        HuSprPosSet(spriteGroup, digitSlot, screenX, 1);
+        HuSprColorSet(spriteGroup, digitSlot, 112, 233, 255);
     }
-    anim = HuSprAnimRead(GameMesDataRead(GAMEMES_ANM_timerBack));
-    sprid = HuSprCreate(anim, 7, 0);
-    HuSprGrpMemberSet(gid, 2, sprid);
-    HuSprPosSet(gid, 2, 0, 0);
-    HuSprTPLvlSet(gid, 2, 1.0f);
-    HuSprGrpPosSet(gid, -100, -100);
+    animation = HuSprAnimRead(GameMesDataRead(GAMEMES_ANM_timerBack));
+    sprite = HuSprCreate(animation, 7, 0);
+    HuSprGrpMemberSet(spriteGroup, 2, sprite);
+    HuSprPosSet(spriteGroup, 2, 0, 0);
+    HuSprTPLvlSet(spriteGroup, 2, 1.0f);
+    /* The first update moves the group to the message position. */
+    HuSprGrpPosSet(spriteGroup, -100, -100);
     return TRUE;
 }
 
-BOOL GameMesTimerExec(GAMEMES *mes)
+/* GameMesTbl update callback: applies timer commands, animates digits, and expires the timer. */
+BOOL GameMesTimerExec(GAMEMES *message)
 {
-    HUSPR_GROUPID gid = mes->grpId[0];
-    s16 i;
-    u8 digit[2];
-    float scale, tpLvl;
-    if(mes->dispMode != 0 && mes->subMode != GAMEMES_SUBMODE_NULL) {
-        switch(mes->dispMode) {
+    HUSPR_GROUPID spriteGroup = message->grpId[0];
+    s16 digitSlot;
+    u8 digits[2];
+    float digitScale, transparency;
+    if(message->dispMode != 0 && message->subMode != GAMEMES_SUBMODE_NULL) {
+        switch(message->dispMode) {
             case GAMEMES_DISP_SET:
-                switch(mes->dispValue) {
+                switch(message->dispValue) {
                     case -1:
-                        mes->stat |= GAMEMES_STAT_TIMEEND;
-                        mes->subMode = GAMEMES_SUBMODE_NULL;
-                        mes->angle = 0;
+                        message->stat |= GAMEMES_STAT_TIMEEND;
+                        message->subMode = GAMEMES_SUBMODE_NULL;
+                        message->angle = 0;
                         break;
 
                     case 0:
-                        mes->subMode = TIMER_SUBMODE_SHOW;
-                        mes->angle = 0;
+                        message->subMode = TIMER_SUBMODE_SHOW;
+                        message->angle = 0;
                         break;
 
                     case 1:
-                        mes->subMode = TIMER_SUBMODE_DIGITUP;
-                        mes->angle = 0;
+                        message->subMode = TIMER_SUBMODE_DIGITUP;
+                        message->angle = 0;
                         break;
                 }
-                mes->dispMode = GAMEMES_DISP_NONE;
+                message->dispMode = GAMEMES_DISP_NONE;
                 break;
 
             case GAMEMES_DISP_UPDATE:
-                if(mes->dispValue < 0 && !(mes->stat & GAMEMES_STAT_TIMEEND)) {
-                    mes->stat |= GAMEMES_STAT_TIMEEND;
-                    mes->subMode = GAMEMES_SUBMODE_NULL;
-                    mes->angle = 0;
+                if(message->dispValue < 0 && !(message->stat & GAMEMES_STAT_TIMEEND)) {
+                    message->stat |= GAMEMES_STAT_TIMEEND;
+                    message->subMode = GAMEMES_SUBMODE_NULL;
+                    message->angle = 0;
                 } else {
-                    if(mes->dispValue > 99) {
-                        mes->timerVal = 99;
+                    if(message->dispValue > 99) {
+                        /* Updated values are capped here, unlike the initial value in setup. */
+                        message->timerVal = 99;
                     } else {
-                        if(mes->timerVal != mes->dispValue) {
-                            mes->timerVal = mes->dispValue;
-                            if(mes->dispValue <= 5) {
+                        if(message->timerVal != message->dispValue) {
+                            message->timerVal = message->dispValue;
+                            if(message->dispValue <= 5) {
                                 HuAudFXPlay(MSM_SE_CMN_07);
-                                mes->subMode = TIMER_SUBMODE_DIGITUP;
-                                mes->angle = 0;
-                                HuSprColorSet(gid, 0, 255, 112, 160);
-                                HuSprColorSet(gid, 1, 255, 112, 160);
+                                message->subMode = TIMER_SUBMODE_DIGITUP;
+                                message->angle = 0;
+                                HuSprColorSet(spriteGroup, 0, 255, 112, 160);
+                                HuSprColorSet(spriteGroup, 1, 255, 112, 160);
                             } else {
-                                HuSprColorSet(gid, 0, 112, 233, 255);
-                                HuSprColorSet(gid, 1, 112, 233, 255);
+                                HuSprColorSet(spriteGroup, 0, 112, 233, 255);
+                                HuSprColorSet(spriteGroup, 1, 112, 233, 255);
                             }
                         }
                     }
                 }
-                mes->dispMode = GAMEMES_DISP_NONE;
+                message->dispMode = GAMEMES_DISP_NONE;
                 break;
 
             case GAMEMES_DISP_HIDE:
-                for(i=0; i<2; i++) {
-                    HuSprDispOn(gid, i);
+                /* The HIDE command calls the display-on routine for both timer digits. */
+                for(digitSlot=0; digitSlot<2; digitSlot++) {
+                    HuSprDispOn(spriteGroup, digitSlot);
                 }
-                mes->subMode = TIMER_SUBMODE_DIGITUP;
-                mes->dispMode = GAMEMES_DISP_NONE;
+                message->subMode = TIMER_SUBMODE_DIGITUP;
+                message->dispMode = GAMEMES_DISP_NONE;
                 break;
 
             default:
-                mes->dispMode = GAMEMES_DISP_NONE;
+                message->dispMode = GAMEMES_DISP_NONE;
                 break;
         }
     }
-    if(mes->subMode == TIMER_SUBMODE_OFF) {
+    if(message->subMode == TIMER_SUBMODE_OFF) {
         return TRUE;
     }
-    if(mes->timerVal > 99) {
-        digit[0] = digit[1] = 9;
+    if(message->timerVal > 99) {
+        digits[0] = digits[1] = 9;
     } else {
-        int value = mes->timerVal/10;
-        digit[1] = value;
-        digit[0] = mes->timerVal-(value*10);
+        int tensDigit = message->timerVal/10;
+        digits[1] = tensDigit;
+        digits[0] = message->timerVal-(tensDigit*10);
     }
-    HuSprGrpPosSet(gid, mes->pos.x, mes->pos.y);
-    HuSprGrpScaleSet(gid, mes->scale.x, mes->scale.y);
-    for(i=0; i<2; i++) {
-        HuSprBankSet(gid, i, digit[i]);
+    HuSprGrpPosSet(spriteGroup, message->pos.x, message->pos.y);
+    HuSprGrpScaleSet(spriteGroup, message->scale.x, message->scale.y);
+    for(digitSlot=0; digitSlot<2; digitSlot++) {
+        HuSprBankSet(spriteGroup, digitSlot, digits[digitSlot]);
     }
-    if(mes->subMode != GAMEMES_SUBMODE_NONE) {
-        switch(mes->subMode) {
+    if(message->subMode != GAMEMES_SUBMODE_NONE) {
+        switch(message->subMode) {
             case TIMER_SUBMODE_SHOW:
             {
                 float scaleX, scaleY;
-                scale = fabs(((5*HuSin(mes->angle))+1)-(HuSin(130)*5));
-                scaleX = mes->scale.x*scale;
-                scaleY = mes->scale.y*scale;
-                mes->angle += 5.0f*GameMesVWait;
-                if(mes->angle > 130) {
-                    mes->subMode = GAMEMES_SUBMODE_NONE;
+                digitScale = fabs(((5*HuSin(message->angle))+1)-(HuSin(130)*5));
+                scaleX = message->scale.x*digitScale;
+                scaleY = message->scale.y*digitScale;
+                message->angle += 5.0f*GameMesVWait;
+                if(message->angle > 130) {
+                    message->subMode = GAMEMES_SUBMODE_NONE;
                 } else {
-                    HuSprGrpScaleSet(gid, scaleX, scaleY);
+                    HuSprGrpScaleSet(spriteGroup, scaleX, scaleY);
                 }
             }
                 break;
 
             case TIMER_SUBMODE_DIGITUP:
-                scale = 1+HuSin(mes->angle);
-                tpLvl = 1-(0.5*HuSin(mes->angle));
-                mes->angle += 18.0f*GameMesVWait;
-                if(mes->angle > 180) {
-                    mes->subMode = GAMEMES_SUBMODE_NONE;
-                    scale = 1;
-                    tpLvl = 1;
+                digitScale = 1+HuSin(message->angle);
+                transparency = 1-(0.5*HuSin(message->angle));
+                message->angle += 18.0f*GameMesVWait;
+                if(message->angle > 180) {
+                    message->subMode = GAMEMES_SUBMODE_NONE;
+                    digitScale = 1;
+                    transparency = 1;
                 }
-                for(i=0; i<2; i++) {
-                    HuSprScaleSet(gid, i, scale, scale);
-                    HuSprTPLvlSet(gid, i, tpLvl);
+                for(digitSlot=0; digitSlot<2; digitSlot++) {
+                    HuSprScaleSet(spriteGroup, digitSlot, digitScale, digitScale);
+                    HuSprTPLvlSet(spriteGroup, digitSlot, transparency);
                 }
                 break;
 
             case GAMEMES_SUBMODE_NULL:
-                HuSprGrpScaleSet(gid, mes->scale.x, mes->scale.y);
-                for(i=0; i<2; i++) {
-                    HuSprScaleSet(gid, i, 1, 1);
-                    HuSprTPLvlSet(gid, i, 1);
+                HuSprGrpScaleSet(spriteGroup, message->scale.x, message->scale.y);
+                for(digitSlot=0; digitSlot<2; digitSlot++) {
+                    HuSprScaleSet(spriteGroup, digitSlot, 1, 1);
+                    HuSprTPLvlSet(spriteGroup, digitSlot, 1);
                 }
-                mes->angle++;
-                if(mes->angle < 60) {
+                message->angle++;
+                if(message->angle < 60) {
                     break;
                 }
-                tpLvl = 1.0-((mes->angle-60)/20);
-                if(tpLvl <= 0) {
-                    tpLvl = 0;
-                    mes->subMode = GAMEMES_SUBMODE_NONE;
-                    mes->stat |= GAMEMES_STAT_KILL;
+                transparency = 1.0-((message->angle-60)/20);
+                if(transparency <= 0) {
+                    transparency = 0;
+                    message->subMode = GAMEMES_SUBMODE_NONE;
+                    message->stat |= GAMEMES_STAT_KILL;
                 }
-                for(i=0; i<3; i++) {
-                    HuSprTPLvlSet(gid, i, tpLvl);
+                for(digitSlot=0; digitSlot<3; digitSlot++) {
+                    HuSprTPLvlSet(spriteGroup, digitSlot, transparency);
                 }
                 break;
         }
     }
-    if(GameMesCloseF || (mes->stat & GAMEMES_STAT_KILL)) {
-        GameMesSprKill(mes);
+    if(GameMesCloseF || (message->stat & GAMEMES_STAT_KILL)) {
+        GameMesSprKill(message);
         return FALSE;
     }
     return TRUE;
@@ -529,7 +566,7 @@ BOOL GameMesTimerExec(GAMEMES *mes)
 #undef TIMER_SUBMODE_SHOW
 #undef TIMER_SUBMODE_DIGITUP
 
-
+/* Called by GameMesInit to allocate and clear lookup buffers for message fonts. */
 static void CreateFontBuf(void)
 {
     if(!fontBufs[0]) {
@@ -554,100 +591,108 @@ static void CreateFontBuf(void)
     }
 }
 
-static ANIMDATA *CreateFontChar(char *str, s16 flag);
+static ANIMDATA *CreateFontChar(char *character, s16 flags);
 
 #define STR_CHAR_MAX 100
 
-int GameMesStrCreate(GAMEMES *mes, char *str, s16 flag)
+/* Builds a centered sprite group for a message's supported single-byte text. */
+int GameMesStrCreate(GAMEMES *message, char *text, s16 flags)
 {
-    s16 charNum;
-    s16 x;
-    s16 i;
-    s16 strId;
-    char *s;
-    ANIMDATA **charAnimTbl;
-    s16 *charX;
-    s16 spaceNum;
-    HUSPR_GROUPID gid;
+    s16 glyphCount;
+    s16 penX;
+    s16 glyphIndex;
+    s16 groupSlot;
+    char *character;
+    ANIMDATA **glyphAnimations;
+    s16 *glyphPositions;
+    s16 spaceCount;
+    HUSPR_GROUPID spriteGroup;
 
-    for(strId=0; strId<GAMEMES_SPRMAX; strId++) {
-        if(mes->grpId[strId] == HUSPR_GROUP_NONE) {
+    for(groupSlot=0; groupSlot<GAMEMES_SPRMAX; groupSlot++) {
+        if(message->grpId[groupSlot] == HUSPR_GROUP_NONE) {
             break;
         }
     }
-    if(strId == GAMEMES_SPRMAX) {
+    if(groupSlot == GAMEMES_SPRMAX) {
         return GAMEMES_STR_NONE;
     }
-    charAnimTbl = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(ANIMDATA *));
-    charX = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(s16));
+    glyphAnimations = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(ANIMDATA *));
+    glyphPositions = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(s16));
 
-    for(s=str, x=0, charNum=spaceNum=0; *s; s++) {
-        if(*s == ' ') {
-            x += 56;
-            spaceNum++;
+    for(character=text, penX=0, glyphCount=spaceCount=0; *character; character++) {
+        if(*character == ' ') {
+            penX += 56;
+            spaceCount++;
         } else {
-            charAnimTbl[charNum] = CreateFontChar(s, flag);
-            if(charAnimTbl[charNum]) {
-                charX[charNum] = x;
-                x += 56;
-                charNum++;
+            glyphAnimations[glyphCount] = CreateFontChar(character, flags);
+            if(glyphAnimations[glyphCount]) {
+                glyphPositions[glyphCount] = penX;
+                penX += 56;
+                glyphCount++;
             }
         }
     }
-    gid = HuSprGrpCreate(charNum+spaceNum);
-    mes->grpId[strId] = gid;
-    x = (x/2)-28;
-    for(i=0; i<charNum; i++) {
-        HUSPRID sprid = HuSprCreate(charAnimTbl[i], 5, 0);
-        HuSprGrpMemberSet(gid, i, sprid);
-        HuSprPosSet(gid, i, charX[i]-x, 0);
+    /* Spaces count toward group capacity and centering, but receive no sprite member. */
+    spriteGroup = HuSprGrpCreate(glyphCount+spaceCount);
+    message->grpId[groupSlot] = spriteGroup;
+    penX = (penX/2)-28;
+    for(glyphIndex=0; glyphIndex<glyphCount; glyphIndex++) {
+        HUSPRID sprite = HuSprCreate(glyphAnimations[glyphIndex], 5, 0);
+        HuSprGrpMemberSet(spriteGroup, glyphIndex, sprite);
+        HuSprPosSet(spriteGroup, glyphIndex, glyphPositions[glyphIndex]-penX, 0);
     }
-    mes->charNum = charNum;
-    HuMemDirectFree(charAnimTbl);
-    HuMemDirectFree(charX);
-    return strId;
+    message->charNum = glyphCount;
+    HuMemDirectFree(glyphAnimations);
+    HuMemDirectFree(glyphPositions);
+    return groupSlot;
 }
 
-int GameMesStrCopy(GAMEMES *mes, s16 id)
+/* Used by minigame message updates to duplicate an existing text sprite group. */
+int GameMesStrCopy(GAMEMES *message, s16 sourceGroupSlot)
 {
-    s16 strId;
-    for(strId=0; strId<GAMEMES_SPRMAX; strId++) {
-        if(mes->grpId[strId] == HUSPR_GROUP_NONE) {
+    s16 groupSlot;
+    for(groupSlot=0; groupSlot<GAMEMES_SPRMAX; groupSlot++) {
+        if(message->grpId[groupSlot] == HUSPR_GROUP_NONE) {
             break;
         }
     }
-    if(strId == GAMEMES_SPRMAX) {
+    if(groupSlot == GAMEMES_SPRMAX) {
         return GAMEMES_STR_NONE;
     }
-    mes->grpId[strId] = HuSprGrpCopy(mes->grpId[id]);
-    return strId;
+    message->grpId[groupSlot] = HuSprGrpCopy(message->grpId[sourceGroupSlot]);
+    return groupSlot;
 }
 
-static ANIMDATA *CreateFontChar(char *str, s16 flag)
+/* Resolves one supported character byte to its animation; bytes 222 and 223 are skipped. */
+static ANIMDATA *CreateFontChar(char *character, s16 flags)
 {
-    char *tbl;
-    s16 i;
+    char *characterTable;
+    s16 characterIndex;
     unsigned int dataNum;
-    char c;
-    c = *str;
-    if(c == 222 || c == 223) {
+    char characterCode;
+    characterCode = *character;
+    if(characterCode == 222 || characterCode == 223) {
         return NULL;
     }
-    for(i=0,tbl=asciiTbl; *tbl; i++, tbl++) {
-        if(*tbl == c) {
-            dataNum = GAMEMES_ANM_letterAUpper+i;
+    /* flags is accepted by the caller but does not affect this character lookup. */
+    for (characterIndex = 0, characterTable = asciiTbl; *characterTable;
+         characterIndex++, characterTable++) {
+        if(*characterTable == characterCode) {
+            dataNum = GAMEMES_ANM_letterAUpper+characterIndex;
             return HuSprAnimRead(GameMesDataRead(dataNum));
         }
     }
-    for(i=0,tbl=numberTbl; *tbl; i++, tbl++) {
-        if(*tbl == c) {
-            dataNum = GAMEMES_ANM_number0+i;
+    for (characterIndex = 0, characterTable = numberTbl; *characterTable;
+         characterIndex++, characterTable++) {
+        if(*characterTable == characterCode) {
+            dataNum = GAMEMES_ANM_number0+characterIndex;
             return HuSprAnimRead(GameMesDataRead(dataNum));
         }
     }
-    for(i=0,tbl=punctTbl; *tbl; i++, tbl++) {
-        if(*tbl == c) {
-            dataNum = GAMEMES_ANM_punctExcl+i;
+    for (characterIndex = 0, characterTable = punctTbl; *characterTable;
+         characterIndex++, characterTable++) {
+        if(*characterTable == characterCode) {
+            dataNum = GAMEMES_ANM_punctExcl+characterIndex;
             return HuSprAnimRead(GameMesDataRead(dataNum));
         }
     }
@@ -656,6 +701,7 @@ static ANIMDATA *CreateFontChar(char *str, s16 flag)
 
 static void PauseExec(void);
 
+/* Called by the system pause handler to create the minigame pause prompt process. */
 void GameMesPauseCreate(void)
 {
     GameMesPauseEnable(FALSE);
@@ -667,6 +713,7 @@ void GameMesPauseCreate(void)
     pauseWaitF = FALSE;
 }
 
+/* Runs in a separate process to show minigame instructions and wait for resume. */
 static void PauseExec(void)
 {
     GAMEMES mes;
@@ -684,7 +731,7 @@ static void PauseExec(void)
     for(i=0; i<GAMEMES_SPRMAX; i++) {
         mes.sprId[i] = mes.grpId[i] = HUSPR_NONE;
     }
-    GameMesStrWinCreate(&mes, 0x420010);
+    GameMesStrWinCreate(&mes, GAMEMES_MESS_PAUSE_HEADER);
     for(i=0; i<mes.charNum; i++) {
         HuSprPriSet(mes.grpId[0], i, 0);
     }
@@ -705,7 +752,7 @@ static void PauseExec(void)
         } else {
             instMes = MgDataTbl[mgNo].instMes[1];
         }
-        if(MgDataTbl[mgNo].ovl == 0x53) {
+        if(MgDataTbl[mgNo].ovl == DLL_m678dll) {
             int subGame = GwSystem.subGameNo;
             if(subGame == 1) {
                 instMes = MgDataTbl[mgNo].instMes[1];
@@ -725,7 +772,7 @@ static void PauseExec(void)
             HuWinDispOn(winId[2]);
             HuWinMesSpeedSet(winId[2], 0);
             HuWinAttrSet(winId[2], HUWIN_ATTR_ALIGN_CENTER);
-            HuWinMesSet(winId[2], 0x420009);
+            HuWinMesSet(winId[2], GAMEMES_MESS_PAUSE_EXIT_PROMPT);
         }
         if(instMes[2]) {
             s16 insertMesNo;
@@ -831,6 +878,7 @@ void GameMesPauseCancel(void)
     pauseCancelF = TRUE;
 }
 
+/* Enables or blocks the system pause controls unless the current mode disables pausing. */
 void GameMesPauseEnable(BOOL enable)
 {
     if(_CheckFlag(FLAG_MG_PAUSE_OFF) || _CheckFlag(FLAGNUM(FLAG_GROUP_SYSTEM, 5))) {
@@ -864,6 +912,7 @@ static PRACTICE practiceTbl[] = {
 
 static void PracticeExec(void);
 
+/* Called when a practice minigame overlay loads to start its exit-icon child process. */
 void GameMesPracticeCreate(void)
 {
     HUPROCESS *parent = HuPrcCurrentGet();
@@ -878,20 +927,22 @@ void GameMesPracticeCreate(void)
         }
     }
     if(practiceTbl[i].ovl != DLL_NONE) {
-        HuPrcSetStat(HuPrcChildCreate(PracticeExec, 10, 8192, 0, parent), HU_PRC_STAT_PAUSE_ON|HU_PRC_STAT_UPAUSE_ON);
+        HuPrcSetStat(HuPrcChildCreate(PracticeExec, 10, 8192, 0, parent),
+                     HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
     }
 }
 
+/* Shows the practice exit icon and watches for the mode's human-player Z-button exit input. */
 static void PracticeExec(void)
 {
     float angle;
     s16 id;
-    HUSPR_GROUPID gid;
-    MGDATA *mgP;
-    BOOL exitF;
-    PRACTICE *practiceP;
-    HUSPRID sprid;
-    ANIMDATA *anim;
+    HUSPR_GROUPID practiceGroup;
+    MGDATA *minigame;
+    BOOL exitRequested;
+    PRACTICE *practiceEntry;
+    HUSPRID exitSprite;
+    ANIMDATA *exitAnimation;
 
     static float posTbl[PRACTICE_POS_NUM] = {
         53,
@@ -907,28 +958,28 @@ static void PracticeExec(void)
             break;
         }
     }
-    practiceP = &practiceTbl[id];
+    practiceEntry = &practiceTbl[id];
     id = MgNoGet(omcurovl);
     if(id != -1) {
-        mgP = &MgDataTbl[id];
+        minigame = &MgDataTbl[id];
     } else {
-        mgP = &MgDataTbl[0];
+        minigame = &MgDataTbl[0];
     }
-    gid = HuSprGrpCreate(1);
-    HuSprGrpPosSet(gid, 0, 0);
-    anim = HuSprAnimRead(GameMesDataRead(GAMEMES_ANM_practiceExit));
-    sprid = HuSprCreate(anim, 0, 0);
-    HuSprGrpMemberSet(gid, 0, sprid);
-    HuSprPosSet(gid, 0, 288, posTbl[practiceP->posNo]);
+    practiceGroup = HuSprGrpCreate(1);
+    HuSprGrpPosSet(practiceGroup, 0, 0);
+    exitAnimation = HuSprAnimRead(GameMesDataRead(GAMEMES_ANM_practiceExit));
+    exitSprite = HuSprCreate(exitAnimation, 0, 0);
+    HuSprGrpMemberSet(practiceGroup, 0, exitSprite);
+    HuSprPosSet(practiceGroup, 0, 288, posTbl[practiceEntry->posNo]);
     do {
         if(!wipeFadeInF || WipeCheckIn() || omPauseChk()) {
-            HuSprAttrSet(gid, 0, 4);
+            HuSprAttrSet(practiceGroup, 0, 4);
             HuPrcVSleep();
             continue;
         }
-        HuSprAttrReset(gid, 0, 4);
-        exitF = FALSE;
-        switch(mgP->type) {
+        HuSprAttrReset(practiceGroup, 0, 4);
+        exitRequested = FALSE;
+        switch(minigame->type) {
             case MG_TYPE_4P:
             case MG_TYPE_1VS3:
             case MG_TYPE_2VS2:
@@ -937,37 +988,39 @@ static void PracticeExec(void)
             case MG_TYPE_LAST:
             case MG_TYPE_DONKEY:
                 for(id=0; id<GW_PLAYER_MAX; id++) {
-                    if((HuPadBtnDown[GwPlayerConf[id].padNo] & PAD_TRIGGER_Z) && GwPlayerConf[id].type == GW_PLAYER_TYPE_MAN) {
+                    if ((HuPadBtnDown[GwPlayerConf[id].padNo] & PAD_TRIGGER_Z) &&
+                        GwPlayerConf[id].type == GW_PLAYER_TYPE_MAN) {
                         break;
                     }
                 }
                 if(id != GW_PLAYER_MAX) {
-                    exitF = TRUE;
+                    exitRequested = TRUE;
                 }
                 break;
 
             case MG_TYPE_KETTOU:
                 for(id=0; id<GW_PLAYER_MAX; id++) {
-                    if((HuPadBtnDown[GwPlayerConf[id].padNo] & PAD_TRIGGER_Z) && GwPlayerConf[id].type == GW_PLAYER_TYPE_MAN && GwPlayerConf[id].grpNo < 2) {
+                    if ((HuPadBtnDown[GwPlayerConf[id].padNo] & PAD_TRIGGER_Z) &&
+                        GwPlayerConf[id].type == GW_PLAYER_TYPE_MAN && GwPlayerConf[id].grpNo < 2) {
                         break;
                     }
                 }
                 if(id != GW_PLAYER_MAX) {
-                    exitF = TRUE;
+                    exitRequested = TRUE;
                 }
                 break;
 
             default:
                 break;
         }
-        if(exitF) {
+        if(exitRequested) {
             break;
         }
-        HuSprTPLvlSet(gid, 0, 0.7f);
+        HuSprTPLvlSet(practiceGroup, 0, 0.7f);
         angle += 2;
         HuPrcVSleep();
     } while(1);
-    HuSprAttrSet(gid, 0, 4);
+    HuSprAttrSet(practiceGroup, 0, 4);
     omSysExitReq = TRUE;
     HuPrcEnd();
     while(1) {
@@ -979,15 +1032,16 @@ void GameMesEnd(void)
 {
 }
 
-void GameMesExitCheck(OMOBJ *obj)
+/* Called by the minigame exit-check object to leave after Z during a pause prompt. */
+void GameMesExitCheck(OMOBJ *exitCheckObject)
 {
     MgExitReq = FALSE;
-    if(obj->work[0] == 0) {
+    if(exitCheckObject->work[0] == 0) {
         if(MgNoGet(omcurovl) == -1) {
-            omDelObjEx(HuPrcCurrentGet(), obj);
+            omDelObjEx(HuPrcCurrentGet(), exitCheckObject);
             return;
         } else {
-            obj->work[0]++;
+            exitCheckObject->work[0]++;
         }
     }
     if(!omPauseChk() || _CheckFlag(FLAG_MG_PRACTICE) || !pauseWaitF) {
@@ -999,27 +1053,28 @@ void GameMesExitCheck(OMOBJ *obj)
         omSysPauseCtrl(FALSE);
         omSysExitReq = TRUE;
         MgExitReq = TRUE;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(HuPrcCurrentGet(), exitCheckObject);
     }
 }
 
-static void ScoreBoxBGMake(ANIMDATA *anim, s16 num);
+static void ScoreBoxBGMake(ANIMDATA *animation, s16 characterCount);
 
-static void ScoreBoxDraw(HUSPRITE *sp)
+/* Draws a score panel by combining its mask, generated background, and optional character art. */
+static void ScoreBoxDraw(HUSPRITE *sprite)
 {
-    ANIMBMP *bmp = sp->bg->bmp;
-    float sizeX = bmp->sizeX*16;
-    float sizeY = bmp->sizeY*16;
+    ANIMBMP *bitmap = sprite->bg->bmp;
+    float sizeX = bitmap->sizeX*16;
+    float sizeY = bitmap->sizeY*16;
     Mtx modelview;
     HuVec2f vtx[4];
     GXColor color;
-    GXSetScissor(sp->scissorX, sp->scissorY, sp->scissorW, sp->scissorH);
+    GXSetScissor(sprite->scissorX, sprite->scissorY, sprite->scissorW, sprite->scissorH);
     GXSetNumTexGens(1);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
-    color.r = sp->r;
-    color.g = sp->g;
-    color.b = sp->b;
-    color.a = sp->a;
+    color.r = sprite->r;
+    color.g = sprite->g;
+    color.b = sprite->b;
+    color.a = sprite->a;
     GXSetTevColor(GX_TEVREG0, color);
     GXSetNumTevStages(3);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
@@ -1038,25 +1093,28 @@ static void ScoreBoxDraw(HUSPRITE *sp)
     GXSetTevAlphaIn(GX_TEVSTAGE2, GX_CA_ZERO, GX_CA_A0, GX_CA_APREV, GX_CA_ZERO);
     GXSetTevAlphaOp(GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
     GXSetNumChans(1);
-    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP, GX_AF_SPOT);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0, GX_DF_CLAMP,
+                  GX_AF_SPOT);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
     GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
     GXSetZCompLoc(GX_TRUE);
-    PSMTXScale(modelview, sp->scale.x, sp->scale.y, 1.0f);
-    mtxTransCat(modelview, sp->pos.x, sp->pos.y, 0);
-    PSMTXConcat(*sp->groupMtx, modelview, modelview);
+    PSMTXScale(modelview, sprite->scale.x, sprite->scale.y, 1.0f);
+    mtxTransCat(modelview, sprite->pos.x, sprite->pos.y, 0);
+    PSMTXConcat(*sprite->groupMtx, modelview, modelview);
     GXLoadPosMtxImm(modelview, GX_PNMTX0);
     HuSprTexLoad(ScoreBoxMaskAnim, 0, GX_TEXMAP0, GX_CLAMP, GX_CLAMP, GX_NEAR);
-    HuSprTexLoad(sp->bg, 0, GX_TEXMAP1, GX_CLAMP, GX_CLAMP, GX_NEAR);
+    HuSprTexLoad(sprite->bg, 0, GX_TEXMAP1, GX_CLAMP, GX_CLAMP, GX_NEAR);
     HuSprTexLoad(ScoreBoxAnim, 0, GX_TEXMAP2, GX_CLAMP, GX_CLAMP, GX_NEAR);
     GXSetNumIndStages(2);
     GXSetTexCoordScaleManually(GX_TEXCOORD0, GX_TRUE, sizeX, sizeY);
     GXSetIndTexOrder(GX_INDTEXSTAGE0, GX_TEXCOORD0, GX_TEXMAP1);
     GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_16, GX_ITS_16);
-    GXSetTevIndTile(GX_TEVSTAGE0, GX_INDTEXSTAGE0, 16, 16, 16, 16, GX_ITF_4, GX_ITM_0, GX_ITB_NONE, GX_ITBA_OFF);
+    GXSetTevIndTile(GX_TEVSTAGE0, GX_INDTEXSTAGE0, 16, 16, 16, 16, GX_ITF_4, GX_ITM_0, GX_ITB_NONE,
+                    GX_ITBA_OFF);
     GXSetIndTexOrder(GX_INDTEXSTAGE1, GX_TEXCOORD0, GX_TEXMAP1);
     GXSetIndTexCoordScale(GX_INDTEXSTAGE1, GX_ITS_16, GX_ITS_16);
-    GXSetTevIndTile(GX_TEVSTAGE1, GX_INDTEXSTAGE1, 16, 16, 16, 16, GX_ITF_4, GX_ITM_0, GX_ITB_NONE, GX_ITBA_OFF);
+    GXSetTevIndTile(GX_TEVSTAGE1, GX_INDTEXSTAGE1, 16, 16, 16, 16, GX_ITF_4, GX_ITM_0, GX_ITB_NONE,
+                    GX_ITBA_OFF);
     vtx[0].x = (-sizeX/2)/2;
     vtx[0].y = (-sizeY/2)/2;
     vtx[1].x = (sizeX/2)/2;
@@ -1082,9 +1140,10 @@ static void ScoreBoxDraw(HUSPRITE *sp)
     GXSetTexCoordScaleManually(GX_TEXCOORD1, GX_FALSE, 0, 0);
 }
 
-static void ScoreBoxBGMake(ANIMDATA *anim, s16 num)
+/* ScoreBoxCreate calls this to build the indirect tile map for a panel and its character art. */
+static void ScoreBoxBGMake(ANIMDATA *animation, s16 characterCount)
 {
-    s16 i, j;
+    s16 row, column;
     u8 *bmpData;
     s16 blockW;
     s16 w;
@@ -1092,71 +1151,89 @@ static void ScoreBoxBGMake(ANIMDATA *anim, s16 num)
     s16 h;
     s16 k;
 
-    w = anim->bmp->sizeX;
-    h = anim->bmp->sizeY;
+    w = animation->bmp->sizeX;
+    h = animation->bmp->sizeY;
     blockW = (w+7) & 0xF8;
     blockH = (h+3) & 0xFC;
-    bmpData = anim->bmp->data = HuMemDirectMallocNum(HEAP_HEAP, blockW*blockH, HU_MEMNUM_OVL);
-    for(i=0; i<h; i++) {
-        if(i < 3) {
-            for(j=0; j<w; j++) {
-                if(j == 0) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = i+0xA0;
-                } else if(j == 1) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = i+0xB0;
-                } else if(j == 2) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = i+0xC0;
-                } else if(j == w-3) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = i+0x70;
-                } else if(j == w-2) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = i+0x80;
-                } else if(j == w-1) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = i+0x90;
+    bmpData = animation->bmp->data = HuMemDirectMallocNum(HEAP_HEAP, blockW*blockH, HU_MEMNUM_OVL);
+    for(row=0; row<h; row++) {
+        if(row < 3) {
+            for(column=0; column<w; column++) {
+                if(column == 0) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = row + SCOREBOX_TILE_LEFT_OUTER_BASE;
+                } else if(column == 1) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = row + SCOREBOX_TILE_LEFT_MIDDLE_BASE;
+                } else if(column == 2) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = row + SCOREBOX_TILE_LEFT_INNER_BASE;
+                } else if(column == w-3) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = row + SCOREBOX_TILE_RIGHT_INNER_BASE;
+                } else if(column == w-2) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = row + SCOREBOX_TILE_RIGHT_MIDDLE_BASE;
+                } else if(column == w-1) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = row + SCOREBOX_TILE_RIGHT_OUTER_BASE;
                 } else {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = i+0x60;
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = row + SCOREBOX_TILE_HORIZONTAL_EDGE_BASE;
                 }
             }
-        } else if(i >= h-3) {
-            for(j=0; j<w; j++) {
-                s16 v = i-(h-6);
-                if(j == 0) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = v+0xA0;
-                } else if(j == 1) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = v+0xB0;
-                } else if(j == 2) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = v+0xC0;
-                } else if(j == w-3) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = v+0x70;
-                } else if(j == w-2) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = v+0x80;
-                } else if(j == w-1) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = v+0x90;
+        } else if(row >= h-3) {
+            for(column=0; column<w; column++) {
+                s16 edgeRow = row-(h-6);
+                if(column == 0) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = edgeRow + SCOREBOX_TILE_LEFT_OUTER_BASE;
+                } else if(column == 1) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = edgeRow + SCOREBOX_TILE_LEFT_MIDDLE_BASE;
+                } else if(column == 2) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = edgeRow + SCOREBOX_TILE_LEFT_INNER_BASE;
+                } else if(column == w-3) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = edgeRow + SCOREBOX_TILE_RIGHT_INNER_BASE;
+                } else if(column == w-2) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = edgeRow + SCOREBOX_TILE_RIGHT_MIDDLE_BASE;
+                } else if(column == w-1) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = edgeRow + SCOREBOX_TILE_RIGHT_OUTER_BASE;
                 } else {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = v+0x60;
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = edgeRow + SCOREBOX_TILE_HORIZONTAL_EDGE_BASE;
                 }
             }
         } else {
-            for(j=0; j<w; j++) {
-                if(j == 0) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0xD0;
-                } else if(j == w-1) {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0xF1;
+            for(column=0; column<w; column++) {
+                if(column == 0) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = SCOREBOX_TILE_VERTICAL_LEFT;
+                } else if(column == w-1) {
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = SCOREBOX_TILE_VERTICAL_RIGHT;
                 } else {
-                    bmpData[(j&7)+((j>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = 0xD2;
+                    bmpData[(column & 7) + ((column >> 3) << 5) + (row >> 2) * (blockW * 4) +
+                            (row & 3) * 8] = SCOREBOX_TILE_INTERIOR;
                 }
             }
         }
     }
-    if(num) {
-        for(k=0; k<num; k++) {
-            for(i=0; i<6; i++) {
-                for(j=0; j<6; j++) {
-                    bmpData[((j+k*5)&7)+(((j+k*5)>>3)<<5)+(i>>2)*(blockW*4)+(i&3)*8] = i+(j*16);
+    if(characterCount) {
+        for(k=0; k<characterCount; k++) {
+            for(row=0; row<6; row++) {
+                for(column=0; column<6; column++) {
+                    bmpData[((column + k * 5) & 7) + (((column + k * 5) >> 3) << 5) +
+                            (row >> 2) * (blockW * 4) + (row & 3) * 8] = row + (column * 16);
                 }
             }
         }
     }
-    DCStoreRangeNoSync(anim->bmp->data, blockW*blockH);
+    DCStoreRangeNoSync(animation->bmp->data, blockW*blockH);
 }
 
 void MgScoreBoxInit(void)
@@ -1171,11 +1248,12 @@ HUSPR_GROUPID MgScoreBoxCreate(s16 sizeX, s16 sizeY)
     return ScoreBoxCreate(sizeX, sizeY, 0, NULL);
 }
 
-HUSPR_GROUPID MgScoreBoxCreateChar(s16 sizeX, s16 sizeY, s16 charId)
+/* Called by minigame score setup to create a panel containing one character tile. */
+HUSPR_GROUPID MgScoreBoxCreateChar(s16 sizeX, s16 sizeY, s16 characterId)
 {
-    u8 chars[1];
-    chars[0] = charId;
-    return ScoreBoxCreate(sizeX, sizeY, 1, chars);
+    u8 characterTiles[1];
+    characterTiles[0] = characterId;
+    return ScoreBoxCreate(sizeX, sizeY, 1, characterTiles);
 }
 
 HUSPR_GROUPID MgScoreBoxCreateCharMulti(s16 sizeX, s16 sizeY, s16 num, u8 *chars)
@@ -1183,7 +1261,8 @@ HUSPR_GROUPID MgScoreBoxCreateCharMulti(s16 sizeX, s16 sizeY, s16 num, u8 *chars
     return ScoreBoxCreate(sizeX, sizeY, num, chars);
 }
 
-static HUSPR_GROUPID ScoreBoxCreate(s16 sizeX, s16 sizeY, s16 num, u8 *chars)
+/* Allocates a score panel, generates its background, and adds any requested character tiles. */
+static HUSPR_GROUPID ScoreBoxCreate(s16 sizeX, s16 sizeY, s16 characterCount, u8 *characterTiles)
 {
     HUSPR_GROUPID gid;
     HUSPRID sprid;
@@ -1191,27 +1270,28 @@ static HUSPR_GROUPID ScoreBoxCreate(s16 sizeX, s16 sizeY, s16 num, u8 *chars)
     s16 i;
     sizeX = (sizeX+7) & 0xFFF8;
     sizeY = (sizeY+7) & 0xFFF8;
-    if(sizeX < 0x30) {
-        sizeX = 0x30;
+    if(sizeX < SCOREBOX_MIN_SIZE) {
+        sizeX = SCOREBOX_MIN_SIZE;
     }
-    if(sizeY < 0x30) {
-        sizeY = 0x30;
+    if(sizeY < SCOREBOX_MIN_SIZE) {
+        sizeY = SCOREBOX_MIN_SIZE;
     }
-    gid = HuSprGrpCreate(num+1);
+    gid = HuSprGrpCreate(characterCount+1);
     if(!ScoreBoxMaskAnim) {
-        ScoreBoxMaskAnim = HuSprAnimDataRead(DATANUM(DATA_mgconst, 0x2f));
+        ScoreBoxMaskAnim = HuSprAnimDataRead(DATANUM(DATA_mgconst, 47));
     }
     if(!ScoreBoxAnim) {
-        ScoreBoxAnim = HuSprAnimDataRead(DATANUM(DATA_mgconst, 0x2e));
+        ScoreBoxAnim = HuSprAnimDataRead(DATANUM(DATA_mgconst, 46));
     }
     sprid = HuSprFuncCreate(ScoreBoxDraw, 100);
     HuSprGrpMemberSet(gid, 0, sprid);
     HuSprData[sprid].bg = anim = HuSprAnimMake(sizeX/8, sizeY/8, ANIM_BMP_IA4);
-    ScoreBoxBGMake(anim, num);
+    ScoreBoxBGMake(anim, characterCount);
     HuSprColorSet(gid, 0, 64, 64, 64);
     HuSprTPLvlSet(gid, 0, 1.0f);
-    for(i=0; i<num; i++) {
-        anim = HuSprAnimRead(HuDataSelHeapReadNum(DATA_mgconst+chars[i], HU_MEMNUM_OVL, HEAP_MODEL));
+    for(i=0; i<characterCount; i++) {
+        anim = HuSprAnimRead(
+            HuDataSelHeapReadNum(DATA_mgconst + characterTiles[i], HU_MEMNUM_OVL, HEAP_MODEL));
         sprid = HuSprCreate(anim, 100, 0);
         HuSprGrpMemberSet(gid, i+1, sprid);
         HuSprPosSet(gid, i+1, -(sizeX/2)+24+(i*40), 0);
@@ -1240,12 +1320,13 @@ void MgScoreBoxPosSet(HUSPR_GROUPID gid, float posX, float posY)
     HuSprGrpPosSet(gid, posX, posY);
 }
 
-void MgScoreBoxDispSet(HUSPR_GROUPID gid, BOOL disp)
+/* Called by minigame HUD updates to show or hide every sprite in a score panel. */
+void MgScoreBoxDispSet(HUSPR_GROUPID gid, BOOL display)
 {
-    if(disp) {
-        HuSprGrpAttrReset(gid, 4);
+    if(display) {
+        HuSprGrpAttrReset(gid, HUSPR_ATTR_DISPOFF);
     } else {
-        HuSprGrpAttrSet(gid, 4);
+        HuSprGrpAttrSet(gid, HUSPR_ATTR_DISPOFF);
     }
 }
 
@@ -1412,72 +1493,75 @@ static unsigned int fontFileTbl[] = {
     GAMEMES_ANM_number0
 };
 
-GAMEMESID GameMesStrWinCreate(GAMEMES *mes, u32 winMessId)
+/* Reads a window's current message and builds its centered glyph sprites in a message slot. */
+GAMEMESID GameMesStrWinCreate(GAMEMES *message, u32 windowMessageId)
 {
-    char *mesPtr;
-    s16 x;
-    s16 *charY;
-    unsigned int *fileTbl;
-    s16 charNum;
-    s16 i;
-    GAMEMESID strId;
-    unsigned int dataNum;
-    s16 *charX;
-    ANIMDATA **charAnimTbl;
-    HUSPR_GROUPID gid;
-    HUSPRID sprid;
+    char *messageText;
+    s16 penX;
+    s16 *glyphY;
+    unsigned int *fontFile;
+    s16 glyphCount;
+    s16 glyphIndex;
+    GAMEMESID groupSlot;
+    unsigned int animationDataNum;
+    s16 *glyphX;
+    ANIMDATA **glyphAnimations;
+    HUSPR_GROUPID spriteGroup;
+    HUSPRID sprite;
     HuWinInit(0);
-    for(strId=0; strId<GAMEMES_SPRMAX; strId++) {
-        if(mes->grpId[strId] == HUSPR_GROUP_NONE) {
+    for(groupSlot=0; groupSlot<GAMEMES_SPRMAX; groupSlot++) {
+        if(message->grpId[groupSlot] == HUSPR_GROUP_NONE) {
             break;
         }
     }
-    if(strId == GAMEMES_SPRMAX) {
+    if(groupSlot == GAMEMES_SPRMAX) {
         return GAMEMES_STR_NONE;
     }
-    fileTbl = fontFileTbl;
-    charAnimTbl = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(ANIMDATA *));
-    charX = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(s16));
-    charY = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(s16));
-    for(mesPtr=HuWinMesPtrGet(winMessId), x=0, charNum=0; *mesPtr; mesPtr++) {
-        if(mesPtr[0] < 48 && mesPtr[0] != ' ' && mesPtr[0] != 16) {
+    fontFile = fontFileTbl;
+    glyphAnimations = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(ANIMDATA *));
+    glyphX = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(s16));
+    glyphY = HuMemDirectMalloc(HEAP_HEAP, STR_CHAR_MAX*sizeof(s16));
+    for (messageText = HuWinMesPtrGet(windowMessageId), penX = 0, glyphCount = 0; *messageText;
+         messageText++) {
+        if(messageText[0] < 48 && messageText[0] != ' ' && messageText[0] != 16) {
             continue;
         }
-        dataNum = fileTbl[mesPtr[0]];
-        charAnimTbl[charNum] = HuSprAnimRead(GameMesDataRead(dataNum & 0x7fffffff));
-        charX[charNum] = x;
-        if(mesPtr[0] == ' ' || mesPtr[0] == 16) {
-            charY[charNum] = 0;
-            x += 28;
-        } else if(mesPtr[0] >= 'a' && mesPtr[0] <= 'z') {
-            charY[charNum] = 4;
-            x += 42;
-        } else if(mesPtr[0] == 194 || mesPtr[0] == 195) {
-            charY[charNum] = 0;
-            x += 56;
-        } else if(mesPtr[0] == '\\') {
-            charY[charNum] = 0;
-            x += 56;
-        } else if(dataNum & 0x80000000) {
-            charY[charNum] = -2;
-            x += 56;
+        animationDataNum = fontFile[messageText[0]];
+        glyphAnimations[glyphCount] =
+            HuSprAnimRead(GameMesDataRead(animationDataNum & GAMEMES_GLYPH_DATA_MASK));
+        glyphX[glyphCount] = penX;
+        if(messageText[0] == ' ' || messageText[0] == 16) {
+            glyphY[glyphCount] = 0;
+            penX += 28;
+        } else if(messageText[0] >= 'a' && messageText[0] <= 'z') {
+            glyphY[glyphCount] = 4;
+            penX += 42;
+        } else if(messageText[0] == 194 || messageText[0] == 195) {
+            glyphY[glyphCount] = 0;
+            penX += 56;
+        } else if(messageText[0] == '\\') {
+            glyphY[glyphCount] = 0;
+            penX += 56;
+        } else if(animationDataNum & GAMEMES_GLYPH_RAISED_FLAG) {
+            glyphY[glyphCount] = -2;
+            penX += 56;
         } else {
-            charY[charNum] = 0;
-            x += 56;
+            glyphY[glyphCount] = 0;
+            penX += 56;
         }
-        charNum++;
+        glyphCount++;
     }
-    gid = HuSprGrpCreate(charNum);
-    mes->grpId[strId] = gid;
-    x = (x/2)-28;
-    for(i=0; i<charNum; i++) {
-        sprid = HuSprCreate(charAnimTbl[i], 0, 0);
-        HuSprGrpMemberSet(gid, i, sprid);
-        HuSprPosSet(gid, i, charX[i]-x, charY[i]);
+    spriteGroup = HuSprGrpCreate(glyphCount);
+    message->grpId[groupSlot] = spriteGroup;
+    penX = (penX/2)-28;
+    for(glyphIndex=0; glyphIndex<glyphCount; glyphIndex++) {
+        sprite = HuSprCreate(glyphAnimations[glyphIndex], 0, 0);
+        HuSprGrpMemberSet(spriteGroup, glyphIndex, sprite);
+        HuSprPosSet(spriteGroup, glyphIndex, glyphX[glyphIndex]-penX, glyphY[glyphIndex]);
     }
-    mes->charNum = charNum;
-    HuMemDirectFree(charAnimTbl);
-    HuMemDirectFree(charX);
-    HuMemDirectFree(charY);
-    return strId;
+    message->charNum = glyphCount;
+    HuMemDirectFree(glyphAnimations);
+    HuMemDirectFree(glyphX);
+    HuMemDirectFree(glyphY);
+    return groupSlot;
 }
