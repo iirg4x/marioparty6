@@ -6,7 +6,62 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/framework/heap.cpp:
+	.text       start:0x000157C4 end:0x00015944
+	.rodata     start:0x00000978 end:0x000009B0
+	.data       start:0x00000A10 end:0x00000A30
+	.bss        start:0x00000080 end:0x00000088
+
 REL/framework/new.cpp:
 	.text       start:0x00015B14 end:0x00015CDC
 	.rodata     start:0x000009C0 end:0x000009F8
 	.data       start:0x00000A30 end:0x00000A58
+
+REL/framework/event_hm.cpp:
+	.text       start:0x0001CBE4 end:0x0001D8B4
+	.rodata     start:0x00000B20 end:0x00000B58
+	.data       start:0x00000B38 end:0x00000B80
+
+REL/framework/game_object.cpp:
+	.text       start:0x0001D8B4 end:0x0001DA2C
+	.rodata     start:0x00000B58 end:0x00000B98
+	.data       start:0x00000B80 end:0x00000BA8
+
+REL/framework/game_object_man.cpp:
+	.text       start:0x0001ED10 end:0x0001EE54
+	.rodata     start:0x00000BD8 end:0x00000C18
+
+REL/framework/linknode.cpp:
+	.text       start:0x0002037C end:0x00020470
+	.rodata     start:0x00000C18 end:0x00000C58
+
+REL/framework/minigame_core.cpp:
+	.text       start:0x00020D58 end:0x000218D4
+	.ctors      start:0x00000018 end:0x0000001C
+	.rodata     start:0x00000C58 end:0x00000CB0
+	.data       start:0x00000C68 end:0x00000CA0
+	.bss        start:0x00000098 end:0x000000A8
+
+REL/framework/mt19937.cpp:
+	.text       start:0x00022D64 end:0x00023D64
+	.rodata     start:0x00000CB8 end:0x00000D28
+
+REL/framework/random.cpp:
+	.text       start:0x00023D64 end:0x00023EF4
+	.ctors      start:0x0000001C end:0x00000020
+	.rodata     start:0x00000D28 end:0x00000D68
+	.bss        start:0x000000B0 end:0x00000A78
+
+REL/framework/startup.cpp:
+	.text       start:0x00024938 end:0x000249DC
+	.rodata     start:0x00000D80 end:0x00000DC0
+
+REL/framework/subthread.cpp:
+	.text       start:0x000249DC end:0x00024CCC
+	.rodata     start:0x00000DC0 end:0x00000E00
+	.data       start:0x00000CC0 end:0x00000D20
+
+REL/framework/thread.cpp:
+	.text       start:0x00024CCC end:0x00025144
+	.rodata     start:0x00000E00 end:0x00000E50
+	.data       start:0x00000D20 end:0x00000DD0

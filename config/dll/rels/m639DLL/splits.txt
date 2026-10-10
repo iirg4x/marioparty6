@@ -6,7 +6,74 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/framework/heap.cpp:
+	.text       start:0x00010D8C end:0x00010F0C
+	.rodata     start:0x00000618 end:0x00000650
+	.data       start:0x000007F8 end:0x00000818
+	.bss        start:0x000000F0 end:0x000000F8
+
 REL/framework/new.cpp:
 	.text       start:0x000110DC end:0x000112A4
 	.rodata     start:0x00000660 end:0x00000698
 	.data       start:0x00000818 end:0x00000840
+
+REL/framework/camera_ut1.cpp:
+	.text       start:0x00013654 end:0x000139D8
+	.rodata     start:0x00000768 end:0x000007B0
+
+REL/framework/chara.cpp:
+	.text       start:0x000139D8 end:0x00013B1C
+	.rodata     start:0x000007B0 end:0x000007E8
+
+REL/framework/chara_motion.cpp:
+	.text       start:0x00013B6C end:0x00014B0C
+	.rodata     start:0x000007E8 end:0x00000828
+	.data       start:0x00001540 end:0x000015A0
+
+REL/framework/debug.cpp:
+	.text       start:0x00014B0C end:0x00014D54
+	.rodata     start:0x00000828 end:0x00000880
+
+REL/framework/game_object.cpp:
+	.text       start:0x0001A9EC end:0x0001AB64
+	.rodata     start:0x000008E0 end:0x00000920
+	.data       start:0x00001690 end:0x000016B8
+
+REL/framework/game_object_man.cpp:
+	.text       start:0x0001BE48 end:0x0001BF8C
+	.rodata     start:0x00000960 end:0x000009A0
+
+REL/framework/linknode.cpp:
+	.text       start:0x0001D4B4 end:0x0001D5A8
+	.rodata     start:0x000009A0 end:0x000009E0
+
+REL/framework/minigame_core.cpp:
+	.text       start:0x0001E1AC end:0x0001ED28
+	.ctors      start:0x00000030 end:0x00000034
+	.rodata     start:0x000009E0 end:0x00000A38
+	.data       start:0x00001778 end:0x000017B0
+	.bss        start:0x00000120 end:0x00000130
+
+REL/framework/mt19937.cpp:
+	.text       start:0x000201B8 end:0x000211B8
+	.rodata     start:0x00000A40 end:0x00000AB0
+
+REL/framework/random.cpp:
+	.text       start:0x000226E8 end:0x00022878
+	.ctors      start:0x00000034 end:0x00000038
+	.rodata     start:0x00000AC8 end:0x00000B08
+	.bss        start:0x00000138 end:0x00000B00
+
+REL/framework/startup.cpp:
+	.text       start:0x000232BC end:0x00023360
+	.rodata     start:0x00000B20 end:0x00000B60
+
+REL/framework/subthread.cpp:
+	.text       start:0x00023360 end:0x00023650
+	.rodata     start:0x00000B60 end:0x00000BA0
+	.data       start:0x00001858 end:0x000018B8
+
+REL/framework/thread.cpp:
+	.text       start:0x00023650 end:0x00023AC8
+	.rodata     start:0x00000BA0 end:0x00000BF0
+	.data       start:0x000018B8 end:0x00001968

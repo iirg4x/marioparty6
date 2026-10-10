@@ -6,7 +6,83 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/framework/heap.cpp:
+	.text       start:0x0000FDF4 end:0x0000FF74
+	.rodata     start:0x000006D8 end:0x00000710
+	.data       start:0x00000808 end:0x00000828
+	.bss        start:0x000000F8 end:0x00000100
+
 REL/framework/new.cpp:
 	.text       start:0x00010144 end:0x0001030C
 	.rodata     start:0x00000720 end:0x00000758
 	.data       start:0x00000828 end:0x00000850
+
+REL/framework/camera_ut1.cpp:
+	.text       start:0x00012504 end:0x00012888
+	.rodata     start:0x00000828 end:0x00000870
+
+REL/framework/chara.cpp:
+	.text       start:0x00012DC4 end:0x00012F08
+	.rodata     start:0x00000878 end:0x000008B0
+
+REL/framework/chara_motion.cpp:
+	.text       start:0x00012F58 end:0x00013EF8
+	.rodata     start:0x000008B0 end:0x000008F0
+	.data       start:0x00001588 end:0x000015E8
+
+REL/framework/debug.cpp:
+	.text       start:0x00013EF8 end:0x00014140
+	.rodata     start:0x000008F0 end:0x00000948
+
+REL/framework/event_hm.cpp:
+	.text       start:0x00019D80 end:0x0001AA50
+	.rodata     start:0x000009A8 end:0x000009E0
+	.data       start:0x000016C8 end:0x00001710
+
+REL/framework/game_object.cpp:
+	.text       start:0x0001AA50 end:0x0001ABC8
+	.rodata     start:0x000009E0 end:0x00000A20
+	.data       start:0x00001710 end:0x00001738
+
+REL/framework/game_object_man.cpp:
+	.text       start:0x0001BEAC end:0x0001BFF0
+	.rodata     start:0x00000A60 end:0x00000AA0
+
+REL/framework/linknode.cpp:
+	.text       start:0x0001D518 end:0x0001D60C
+	.rodata     start:0x00000AA0 end:0x00000AE0
+
+REL/framework/minigame_core.cpp:
+	.text       start:0x0001E210 end:0x0001ED8C
+	.ctors      start:0x0000002C end:0x00000030
+	.rodata     start:0x00000AE0 end:0x00000B38
+	.data       start:0x000017F8 end:0x00001830
+	.bss        start:0x00000130 end:0x00000140
+
+REL/framework/mt19937.cpp:
+	.text       start:0x00020FF0 end:0x00021FF0
+	.rodata     start:0x00000B40 end:0x00000BB0
+
+REL/framework/random.cpp:
+	.text       start:0x00023520 end:0x000236B0
+	.ctors      start:0x00000030 end:0x00000034
+	.rodata     start:0x00000BC8 end:0x00000C08
+	.bss        start:0x00000148 end:0x00000B10
+
+REL/framework/sphere.cpp:
+	.text       start:0x00025F2C end:0x00026454
+	.rodata     start:0x00000CA0 end:0x00000D08
+
+REL/framework/startup.cpp:
+	.text       start:0x00026454 end:0x000264F8
+	.rodata     start:0x00000D08 end:0x00000D48
+
+REL/framework/subthread.cpp:
+	.text       start:0x000264F8 end:0x000267E8
+	.rodata     start:0x00000D48 end:0x00000D88
+	.data       start:0x000019C0 end:0x00001A20
+
+REL/framework/thread.cpp:
+	.text       start:0x000267E8 end:0x00026C60
+	.rodata     start:0x00000D88 end:0x00000DD8
+	.data       start:0x00001A20 end:0x00001AD0

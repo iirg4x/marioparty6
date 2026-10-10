@@ -6,7 +6,65 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/framework/heap.cpp:
+	.text       start:0x0000E0BC end:0x0000E23C
+	.rodata     start:0x00000688 end:0x000006C0
+	.data       start:0x00000A88 end:0x00000AA8
+	.bss        start:0x00000A78 end:0x00000A80
+
 REL/framework/new.cpp:
 	.text       start:0x0000E40C end:0x0000E5D4
 	.rodata     start:0x000006D8 end:0x00000710
 	.data       start:0x00000AA8 end:0x00000AD0
+
+REL/framework/camera_ut1.cpp:
+	.text       start:0x00010DC0 end:0x00011144
+	.rodata     start:0x000007E0 end:0x00000828
+
+REL/framework/debug.cpp:
+	.text       start:0x00011680 end:0x000118C8
+	.rodata     start:0x00000830 end:0x00000888
+
+REL/framework/game_object.cpp:
+	.text       start:0x00017560 end:0x000176D8
+	.rodata     start:0x000008E8 end:0x00000928
+	.data       start:0x00000C50 end:0x00000C78
+
+REL/framework/game_object_man.cpp:
+	.text       start:0x0001888C end:0x000189D0
+	.rodata     start:0x00000928 end:0x00000968
+
+REL/framework/linknode.cpp:
+	.text       start:0x00019EF8 end:0x00019FEC
+	.rodata     start:0x00000968 end:0x000009A8
+
+REL/framework/minigame_core.cpp:
+	.text       start:0x0001ABF0 end:0x0001B76C
+	.ctors      start:0x00000024 end:0x00000028
+	.rodata     start:0x000009A8 end:0x00000A00
+	.data       start:0x00000D20 end:0x00000D58
+	.bss        start:0x00000AB8 end:0x00000AC8
+
+REL/framework/mt19937.cpp:
+	.text       start:0x0001CBFC end:0x0001DBFC
+	.rodata     start:0x00000A08 end:0x00000A78
+
+REL/framework/random.cpp:
+	.text       start:0x0001DBFC end:0x0001DD8C
+	.ctors      start:0x00000028 end:0x0000002C
+	.rodata     start:0x00000A78 end:0x00000AB8
+	.bss        start:0x00000AD0 end:0x00001498
+
+REL/framework/startup.cpp:
+	.text       start:0x00020848 end:0x000208EC
+	.rodata     start:0x00000B50 end:0x00000B90
+
+REL/framework/subthread.cpp:
+	.text       start:0x000208EC end:0x00020BDC
+	.rodata     start:0x00000B90 end:0x00000BD0
+	.data       start:0x00000DE0 end:0x00000E40
+
+REL/framework/thread.cpp:
+	.text       start:0x00020BDC end:0x00021054
+	.rodata     start:0x00000BD0 end:0x00000C20
+	.data       start:0x00000E40 end:0x00000EF0
