@@ -13,28 +13,32 @@
 #define M670_SE_ROUND_CYCLE_CUE 2198
 #define M670_SE_WORD_RECOGNIZED 2202
 typedef struct M670MicResponse_s {
-    s16 status;
-    u16 confidence;
-    s16 count;
-    s16 unk06;
-    s16 *values;
+    s16 status; /* Recognition status; nonzero responses are ignored. */
+    u16 confidence; /* Recognition confidence compared with the game's 3000 threshold. */
+    s16 count; /* Number of recognized values in this response. */
+    s16 reservedWord; /* Not read by this callback. */
+    s16 *values; /* Recognized word indexes supplied by the microphone system. */
 } M670MICRESPONSE;
-/* The microphone selection window uses this table to label the recognized word. */
+/* The callback writes "a" to entry 1, but no code reads this string table. */
 char *lbl_1_data_28[8] = {0};
 
 static int lbl_1_bss_8;
 static int lbl_1_bss_4;
 static int lbl_1_bss_0;
-/* HuMCListenerCreate calls this for each microphone response during the main round. */
-void fn_1_A0(u16 *response)
+/* HuMCListenerCreate calls this per response; nonzero status or empty responses return. At
+ * confidence
+ * >= 3000 it maps the first value only in solo state 1 (unknown values leave selectedWord
+ * unchanged), but still starts the call motion and cue. */
+void fn_1_A0(u16 *micResponse)
 {
-    if (((M670MICRESPONSE *)response)->status != 0 || ((M670MICRESPONSE *)response)->count == 0) {
+    if (((M670MICRESPONSE *) micResponse)->status != 0 ||
+        ((M670MICRESPONSE *) micResponse)->count == 0) {
         return;
     }
-    if (((M670MICRESPONSE *)response)->confidence >= 3000) {
+    if (((M670MICRESPONSE *)micResponse)->confidence >= 3000) {
         lbl_1_data_28[1] = "a";
         if (lbl_1_bss_10.playerState[lbl_1_bss_10.soloPlayer] == 1) {
-            switch (*((M670MICRESPONSE *)response)->values) {
+            switch (*((M670MICRESPONSE *)micResponse)->values) {
             case 0: lbl_1_bss_10.selectedWord = 0; break;
             case 1: lbl_1_bss_10.selectedWord = 1; break;
             case 2: lbl_1_bss_10.selectedWord = 2; break;
@@ -66,7 +70,8 @@ void fn_1_218(s16 mode, s16 frameNo)
     }
     MgActorExec();
 }
-/* The start hook calls this after message playback, so background music begins without overlapping it. */
+/* The start hook starts the round BGM when the start-message effect is active and no stream handle
+ * has been set. */
 int fn_1_2AC(int music, int id)
 {
     int result = music;
@@ -115,11 +120,13 @@ void fn_1_42C(s16 mode, s16 frameNo)
     MgActorExec();
     fn_1_34C();
 }
-/* The main hook runs the timed round, handles microphone input, and advances when players finish. */
+/* The main hook updates each frame; on timeout it kills the listener for a human solo player and
+ * sets COMSTK for the solo player. After 60 timeout frames it sets COMSTK for all players; it
+ * advances when all opponents retire or those 60 frames elapse. */
 void fn_1_5AC(s16 mode, s16 frameNo)
 {
     int i;
-    int unk = 1;
+    int unusedFlag = 1; /* Initialized but never read by the round update. */
     if (frameNo == 0) {
         MgTimerParamSet(lbl_1_bss_10.timer, 3600, 0, 0);
         MgTimerModeOnSet(lbl_1_bss_10.timer, 1);
@@ -210,7 +217,8 @@ void fn_1_B4C(s16 mode, s16 frameNo)
     MgActorExec();
     fn_1_34C();
 }
-/* The pre-winner hook stages the winning players and camera before moving to the winner phase. */
+/* The results sequence calls this on entry to award the winning side, position surviving opponents
+ * for their group result, and switch to the solo-win or group-win camera before the next phase. */
 void fn_1_C68(s16 mode, s16 frameNo)
 {
     int i, survivorCount, slot;
@@ -272,7 +280,8 @@ void fn_1_C68(s16 mode, s16 frameNo)
                         player = lbl_1_bss_10.players[i];
                         Hu3DModelObjPosGet(lbl_1_bss_10.winnerModel, names[slot], &resultPos);
                         OSReport("pos ... %f, %f, %f\n", resultPos.x, resultPos.y, resultPos.z);
-                        Hu3DModelAttrSet(player->actor->mdlId, HU3D_MOTATTR_LOOP | HU3D_ATTR_DISPOFF);
+                        Hu3DModelAttrSet(player->actor->mdlId,
+                                         HU3D_MOTATTR_LOOP | HU3D_ATTR_DISPOFF);
                         CharMotionSet(player->charNo, player->omObj->mtnId[0]);
                         Hu3DModelPosSetV(player->actor->mdlId, &resultPos);
                         Hu3DModelRotSet(player->actor->mdlId, 0.0f, 0.0f, 0.0f);
@@ -302,7 +311,8 @@ void fn_1_C68(s16 mode, s16 frameNo)
         }
     }
 }
-/* The winner hook selects each surviving player's result motion on entry to the phase. */
+/* The winner hook selects result motions on entry; surviving opponents always receive motion 5
+ * because their mask bit implies remainingPlayers is nonzero. */
 void fn_1_12C4(s16 mode, s16 frameNo)
 {
     int i, motion;
@@ -312,7 +322,8 @@ void fn_1_12C4(s16 mode, s16 frameNo)
             player = lbl_1_bss_10.players[i];
             if (lbl_1_bss_10.group[i] == 0) {
                 if (lbl_1_bss_10.remainingPlayers == 0) {
-                    CharMotionShiftSet(lbl_1_bss_10.characterNo[i], player->omObj->mtnId[5], 0.0f, 6.0f, 0);
+                    CharMotionShiftSet(lbl_1_bss_10.characterNo[i], player->omObj->mtnId[5], 0.0f,
+                                       6.0f, 0);
                 }
             } else if (lbl_1_bss_10.remainingPlayers & (1 << i)) {
                 if (lbl_1_bss_10.remainingPlayers == 0) {
@@ -320,7 +331,8 @@ void fn_1_12C4(s16 mode, s16 frameNo)
                 } else {
                     motion = 5;
                 }
-                CharMotionShiftSet(lbl_1_bss_10.characterNo[i], player->omObj->mtnId[motion], 0.0f, 6.0f, 0);
+                CharMotionShiftSet(lbl_1_bss_10.characterNo[i], player->omObj->mtnId[motion], 0.0f,
+                                   6.0f, 0);
             }
         }
     }
@@ -329,7 +341,8 @@ void fn_1_12C4(s16 mode, s16 frameNo)
 void fn_1_1428(s16 mode, s16 frameNo)
 {
 }
-/* The close hook releases the microphone response window when the sequence ends. */
+/* On sequence close, calls HuMCResponseGet and discards its result, then closes the microphone
+ * subsystem. */
 void fn_1_142C(s16 mode, s16 frameNo)
 {
     if (frameNo == 0) {

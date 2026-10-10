@@ -1,4 +1,4 @@
-/* Builds the camera, pillars, players, microphone context, and sequence for the microgame. */
+/* Builds Fruit Talktail's camera, word pillars, players, microphone context, and sequence. */
 #include "REL/m670dll.h"
 #include "game/main.h"
 #include "game/audio.h"
@@ -42,13 +42,15 @@ unsigned int lbl_1_data_110[12] = {
     DATANUM(DATA_mariomot, 7), DATANUM(DATA_mariomot, 94),
     DATANUM(DATA_mariomot, 23), DATANUM(DATA_mariomot, 34), 0, 0
 };
-/* Scene setup and CPU movement use this to normalize a direction, generating one if it is near zero. */
+/* Scene setup and CPU movement normalize directions; near zero, this substitutes a random unit
+ * direction with negative y and returns FALSE. */
 BOOL fn_1_1460(HuVecF *src, HuVecF *dst)
 {
     BOOL valid;
     if (PSVECSquareMag(src) < 1e-6) {
         dst->x = .01f * ((float)(u32)frandmod(20) - 10.0f);
         dst->z = .01f * ((float)(u32)frandmod(20) - 10.0f);
+        /* frandmod(1) yields zero, so the fallback's vertical component is always negative. */
         dst->y = (u32)frandmod(1) != 0U ? .01f : -.01f;
         PSVECNormalize(dst, dst);
         valid = FALSE;
@@ -59,12 +61,12 @@ BOOL fn_1_1460(HuVecF *src, HuVecF *dst)
     return valid;
 }
 /* The pillar update uses this to play a sound with left-right panning from a world position. */
-void fn_1_15B8(int sound, HuVecF *pos)
+void fn_1_15B8(int soundId, HuVecF *worldPos)
 {
     HuVecF screen;
     int pan, handle;
 
-    Hu3D3Dto2D(pos, 1, &screen);
+    Hu3D3Dto2D(worldPos, 1, &screen);
     pan = screen.x;
     pan /= 5;
     if (pan < 48) {
@@ -72,10 +74,11 @@ void fn_1_15B8(int sound, HuVecF *pos)
     } else if (pan > 127) {
         pan = 127;
     }
-    handle = HuAudFXPlay(sound);
+    handle = HuAudFXPlay(soundId);
     HuAudFXPanning(handle, pan);
 }
-/* Called by the overlay prolog to create the playfield, players, microphone listener, and sequence. */
+/* Called by the overlay prolog to create the playfield, players, microphone context and selection
+ * window, and sequence. */
 void fn_1_1658(void)
 {
     MGACTOR_PARAM param;
@@ -104,7 +107,8 @@ void fn_1_1658(void)
     Hu3DCameraPerspectiveSet(1, 45.0f, 20.0f, 8000.0f, 1.2f);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     for (i = 0; i < 3; i++) {
-        lbl_1_bss_10.cameraMotion[i] = Hu3DMotionCreate(HuDataSelHeapReadNum(lbl_1_data_104[i], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_10.cameraMotion[i] =
+            Hu3DMotionCreate(HuDataSelHeapReadNum(lbl_1_data_104[i], HU_MEMNUM_OVL, HEAP_MODEL));
         lbl_1_bss_10.cameraModel[i] = Hu3DModelCameraCreate(lbl_1_bss_10.cameraMotion[i], 1);
         Hu3DCameraMotionOff(lbl_1_bss_10.cameraModel[i]);
     }
@@ -132,32 +136,38 @@ void fn_1_1658(void)
     Hu3DShadowCreate(8.5f, 5000.0f, 11000.0f);
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
     for (i = 0; i < 3; i++) {
-        lbl_1_bss_10.models[i] = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_F0[i], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_10.models[i] =
+            Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_F0[i], HU_MEMNUM_OVL, HEAP_MODEL));
     }
     Hu3DModelShadowMapObjSet(lbl_1_bss_10.models[2], "Cylinder12");
     Hu3DModelLayerSet(lbl_1_bss_10.models[2], 2);
     lbl_1_bss_10.collisionCount = 0;
-    lbl_1_bss_10.positionModel = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m670, 7), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_10.positionModel =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m670, 7), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelAttrSet(lbl_1_bss_10.positionModel, HU3D_ATTR_DISPOFF);
-    lbl_1_bss_10.winnerModel = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m670, 8), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_10.winnerModel =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m670, 8), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelAttrSet(lbl_1_bss_10.winnerModel, HU3D_ATTR_DISPOFF);
     {
         char *positionNames[24] = {"D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08",
             "D09", "D10", "D11", "D12", "D13", "D14", "D15", "D16", "D17", "D18",
             "D19", "D20", "D21", "D22", "D23", "D24"};
     for (i = 0; i < 24; i++) {
-        Hu3DModelObjPosGet(lbl_1_bss_10.positionModel, positionNames[i], &lbl_1_bss_10.pillarPos[i]);
+        Hu3DModelObjPosGet(lbl_1_bss_10.positionModel, positionNames[i],
+                           &lbl_1_bss_10.pillarPos[i]);
     }
     }
     pattern = lbl_1_data_250[lbl_1_bss_10.pattern];
     for (i = 0; i < 24; i++) {
         type = *pattern;
-        model = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_78[type], HU_MEMNUM_OVL, HEAP_MODEL));
+        model =
+            Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_78[type], HU_MEMNUM_OVL, HEAP_MODEL));
         lbl_1_bss_10.pillarModel[i] = model;
         Hu3DModelShadowMapObjSet(model, "dai");
         Hu3DModelLayerSet(model, 5);
         for (j = 0; j < 4; j++) {
-            lbl_1_bss_10.pillarMotion[i][j] = Hu3DJointMotion(model, HuDataSelHeapReadNum(lbl_1_data_90[type][j], HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_10.pillarMotion[i][j] = Hu3DJointMotion(
+                model, HuDataSelHeapReadNum(lbl_1_data_90[type][j], HU_MEMNUM_OVL, HEAP_MODEL));
         }
         lbl_1_bss_10.collisionModel[i] = lbl_1_bss_10.collisionModels[lbl_1_bss_10.collisionCount] =
             Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m670, 9), HU_MEMNUM_OVL, HEAP_MODEL));
@@ -188,8 +198,10 @@ void fn_1_1658(void)
         lbl_1_bss_10.padNo[i] = GwPlayerConf[i].padNo;
         lbl_1_bss_10.playerState[i] = 0;
         param.correctHookParam = i;
-        lbl_1_bss_10.players[i] = player = MgPlayerCreate(i, &param, 4, 1,
-            ~(MGPLAYER_ACTFLAG_PUNCH | MGPLAYER_ACTFLAG_KICK | MGPLAYER_ACTFLAG_HIPDROP), lbl_1_data_110);
+        lbl_1_bss_10.players[i] = player = MgPlayerCreate(
+            i, &param, 4, 1,
+            ~(MGPLAYER_ACTFLAG_PUNCH | MGPLAYER_ACTFLAG_KICK | MGPLAYER_ACTFLAG_HIPDROP),
+            lbl_1_data_110);
         MgPlayerVibrateCreate(player);
         if (GwPlayerConf[i].grpNo == 0) {
             lbl_1_bss_10.group[i] = 0;
@@ -200,14 +212,16 @@ void fn_1_1658(void)
             MgPlayerPosSet(player, &playerPos);
             Hu3DModelPosSetV(lbl_1_bss_10.players[i]->actor->mdlId, &playerPos);
             MgPlayerDespawn(player);
-            lbl_1_bss_10.playerObjects[i] = omAddObjEx(lbl_1_bss_10.objman, 16384, 0, 0, -1, fn_1_2690);
+            lbl_1_bss_10.playerObjects[i] =
+                omAddObjEx(lbl_1_bss_10.objman, 16384, 0, 0, -1, fn_1_2690);
             Hu3DModelLayerSet(lbl_1_bss_10.players[i]->actor->mdlId, 2);
         } else {
             lbl_1_bss_10.group[i] = 1;
             Hu3DModelObjPosGet(lbl_1_bss_10.positionModel, spawnNames[away], &playerPos);
             playerPos.y = -1500.0f;
             MgPlayerPosSet(player, &playerPos);
-            lbl_1_bss_10.playerObjects[i] = omAddObjEx(lbl_1_bss_10.objman, 16384, 0, 0, -1, fn_1_28E8);
+            lbl_1_bss_10.playerObjects[i] =
+                omAddObjEx(lbl_1_bss_10.objman, 16384, 0, 0, -1, fn_1_28E8);
             Hu3DModelLayerSet(lbl_1_bss_10.players[i]->actor->mdlId, 5);
             away++;
         }
