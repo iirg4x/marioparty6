@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 34.43% | 56.13% |
-| Main DOL | 87.89% | 98.84% |
+| Entire project | 34.47% | 56.13% |
+| Main DOL | 88.09% | 98.85% |
 | REL modules | 23.10% | 29.06% |
+
+DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/trigglr.c` now builds from source; `main.dol` matches retail byte for byte.
 
 Shared C++ framework (`framework:camera.cpp`): **28 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
