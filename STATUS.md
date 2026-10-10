@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 30.51% | 51.05% |
+| Entire project | 33.34% | 55.62% |
 | Main DOL | 87.80% | 98.84% |
-| REL modules | 18.37% | 20.77% |
+| REL modules | 21.80% | 28.24% |
+
+Shared C++ framework (`framework:random.cpp`): **22 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
 Shared C++ framework (`framework:new.cpp`): **1 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
