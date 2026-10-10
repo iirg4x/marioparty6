@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 33.34% | 55.62% |
+| Entire project | 33.84% | 55.84% |
 | Main DOL | 87.80% | 98.84% |
-| REL modules | 21.80% | 28.24% |
+| REL modules | 22.40% | 28.59% |
+
+Clockwork Castle (`w06Dll`) selects all **76 functions** from **3 complete translation units**; its linked REL matches retail.
 
 Shared C++ framework (`framework:random.cpp`): **22 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
