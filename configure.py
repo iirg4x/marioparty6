@@ -299,8 +299,8 @@ cflags_gssdk = [
 config.linker_version = "GC/2.6"
 config.rel_strip_partial = False
 config.rel_empty_file = "REL/empty.c"
-config.rel_ldscript_replacements = {
-    "w01Dll": [
+config.rel_ldscript_replacements = {}
+config.rel_ldscript_replacements["w01Dll"] = [
         (
             "        .text ALIGN(0x4):{}",
             """        .text ALIGN(0x4):{
@@ -310,8 +310,8 @@ config.rel_ldscript_replacements = {
             *(.text)
         }""",
         ),
-    ],
-    "s01Dll": [
+    ]
+config.rel_ldscript_replacements["s01Dll"] = [
         (
             "        .text ALIGN(0x4):{}",
             """        .text ALIGN(0x4):{
@@ -321,8 +321,8 @@ config.rel_ldscript_replacements = {
             *(.text)
         }""",
         ),
-    ],
-    "openingDll": [
+    ]
+config.rel_ldscript_replacements["openingDll"] = [
         (
             "        .text ALIGN(0x4):{}",
             """        .text ALIGN(0x4):{
@@ -332,8 +332,7 @@ config.rel_ldscript_replacements = {
             *(.text)
         }""",
         ),
-    ],
-}
+    ]
 
 config.rel_ldscript_replacements["mdminidll"] = [
         (
