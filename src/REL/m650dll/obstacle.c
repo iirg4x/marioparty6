@@ -1,3 +1,4 @@
+/* Collision checks, obstacle reactions, and obstacle drawing for Throw Me a Bone. */
 #include "REL/m650/m650.h"
 
 void fn_1_A0(void);
@@ -14,49 +15,49 @@ void fn_1_3B8(void);
 void fn_1_484(void);
 void fn_1_550(void);
 void fn_1_8EC(void);
-void fn_1_F90(OMOBJ *obj);
+void fn_1_F90(OMOBJ *object);
 void fn_1_1228(void);
 void fn_1_14FC(void);
 void fn_1_1830(void);
 void fn_1_1AE4(void);
-void fn_1_2010(s16 arg0);
+void fn_1_2010(s16 player);
 void fn_1_21CC(OMOBJ *obj);
 void fn_1_22A8(s16 player, s16 motion);
-void fn_1_2320(s16 arg0, s16 arg1);
+void fn_1_2320(s16 player, s16 motion);
 void fn_1_23C4(s16 player, s16 motion, float blend);
 void fn_1_2464(s16 player);
 void fn_1_2558(void);
 void fn_1_25B0(void);
 void fn_1_26D0(void);
-void fn_1_273C(s16 arg0);
+void fn_1_273C(s16 player);
 void fn_1_289C(s16 player);
-s16 fn_1_2CAC(s16 arg0);
-void fn_1_2F1C(s16 arg0);
+s16 fn_1_2CAC(s16 player);
+void fn_1_2F1C(s16 player);
 void fn_1_33F8(s16 player);
 void fn_1_3F28(s16 player);
 void fn_1_4430(s16 player);
-void fn_1_473C(s16 arg0);
-void fn_1_48C0(s16 arg0);
-void fn_1_49C8(s16 arg0);
-void fn_1_4BD4(s16 arg0);
-s16 fn_1_4D58(s16 arg0);
+void fn_1_473C(s16 player);
+void fn_1_48C0(s16 player);
+void fn_1_49C8(s16 player);
+void fn_1_4BD4(s16 player);
+s16 fn_1_4D58(s16 frame);
 void fn_1_5258(void);
 void fn_1_5308(void);
 void fn_1_5354(void);
 void fn_1_5394(void);
 void fn_1_54D4(void);
-void fn_1_5544(s16 arg0);
-void fn_1_5600(s16 unusedPlayer, f32 value, f32 *out0, f32 *out1);
+void fn_1_5544(s16 player);
+void fn_1_5600(s16 player, f32 value, f32 *out0, f32 *out1);
 s16 fn_1_5728(void);
-void fn_1_5A24(s16 arg0);
+void fn_1_5A24(s16 player);
 void fn_1_5E40(void);
 void fn_1_62E0(void);
-void fn_1_6478(HU3D_MODEL *modelP, Mtx *mtx);
+void fn_1_6478(HU3D_MODEL *model, Mtx *mtx);
 s16 fn_1_69B0(s16 player);
-s16 fn_1_6D88(s16 player, HuVecF *pos);
-s16 fn_1_6EE4(HuVecF *a, HuVecF *b, float radius);
+s16 fn_1_6D88(s16 player, HuVecF *position);
+s16 fn_1_6EE4(HuVecF *firstPosition, HuVecF *secondPosition, float radius);
 void fn_1_6F54(void);
-s16 fn_1_7000(s16 unusedPlayer, HuVecF *pos, float angle, s16 candidate);
+s16 fn_1_7000(s16 player, HuVecF *position, float angle, s16 obstacleIndex);
 
 extern GXColor lbl_1_data_40[2];
 extern Point3d lbl_1_data_28;
@@ -113,8 +114,8 @@ M650Point lbl_1_data_248[32] = {
     { { 0.0f, 0.0f, 4750.0f }, 1 },
     { { 700.0f, 0.0f, 4750.0f }, 1 },
 };
-s32 lbl_1_data_448[2] = { 7143426, 7143432 };
-s32 lbl_1_data_450[2] = { 7143427, 7143433 };
+s32 lbl_1_data_448[2] = { DATANUM(DATA_m650, 2), DATANUM(DATA_m650, 8) };
+s32 lbl_1_data_450[2] = { DATANUM(DATA_m650, 3), DATANUM(DATA_m650, 9) };
 
 s16 lbl_1_bss_4B6;
 s16 lbl_1_bss_4B4;
@@ -122,298 +123,323 @@ s16 lbl_1_bss_4AC[4];
 M650Cell lbl_1_bss_2AC[32][4];
 s32 lbl_1_bss_2A8;
 
+/* Called from fn_1_F0 during round setup to load obstacle models and install camera draw hooks. */
 void fn_1_62E0(void)
 {
-    u16 cameraIDs[4] = { 1, 2, 4, 8 };
-    s32 i;
+    u16 cameraMasks[4] = { 1, 2, 4, 8 };
+    s32 cameraIndex;
 
     lbl_1_bss_2A8 = 0;
     memset(lbl_1_bss_2AC, 0, 512U);
-    lbl_1_bss_4B6 = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_448[lbl_1_bss_0.night], 268435456, HEAP_MODEL));
-    lbl_1_bss_4B4 = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_450[lbl_1_bss_0.night], 268435456, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_4B6, 65535U);
-    Hu3DModelCameraSet(lbl_1_bss_4B4, 65535U);
-    Hu3DModelAttrSet(lbl_1_bss_4B6, 1U);
-    Hu3DModelAttrSet(lbl_1_bss_4B4, 1U);
-    i = 0;
-    while (i < 4) {
-        lbl_1_bss_4AC[i] = Hu3DHookFuncCreate(fn_1_6478);
-        Hu3DModelCameraSet(lbl_1_bss_4AC[i], cameraIDs[i]);
-        i += 1;
+    lbl_1_bss_4B6 = Hu3DModelCreate(
+        HuDataSelHeapReadNum(lbl_1_data_448[lbl_1_bss_0.night], 1 << 28, HEAP_MODEL));
+    lbl_1_bss_4B4 = Hu3DModelCreate(
+        HuDataSelHeapReadNum(lbl_1_data_450[lbl_1_bss_0.night], 1 << 28, HEAP_MODEL));
+    Hu3DModelCameraSet(lbl_1_bss_4B6, HU3D_CAM_ALL);
+    Hu3DModelCameraSet(lbl_1_bss_4B4, HU3D_CAM_ALL);
+    Hu3DModelAttrSet(lbl_1_bss_4B6, HU3D_ATTR_DISPOFF);
+    Hu3DModelAttrSet(lbl_1_bss_4B4, HU3D_ATTR_DISPOFF);
+    cameraIndex = 0;
+    while (cameraIndex < 4) {
+        lbl_1_bss_4AC[cameraIndex] = Hu3DHookFuncCreate(fn_1_6478);
+        Hu3DModelCameraSet(lbl_1_bss_4AC[cameraIndex], cameraMasks[cameraIndex]);
+        cameraIndex += 1;
     }
 }
 
-void fn_1_6478(HU3D_MODEL *modelP, Mtx *mtx)
+/* Camera draw hook installed by fn_1_62E0; draws each obstacle and record prop in its current
+ * state. */
+void fn_1_6478(HU3D_MODEL *ignoredModel, Mtx *parentTransform)
 {
-    /* Retail initializes four rows through this three-row matrix.
-     * Preserve the observed out-of-bounds behavior, not a portable fix. */
-    Mtx spC;
-    HSF_DATA *sp8;
-    HU3D_MODEL *temp_r25;
-    M650Cell *temp_r31;
-    s32 var_r30;
-    s32 var_r29;
-    s32 var_r28;
-    M650Player *temp_r26;
-    s16 var_r27;
-    f32 var_f31;
-    f32 temp_f30;
-    f32 temp_f29;
-    HSF_OBJECT *temp_r24;
-    HSF_OBJECT *temp_r23;
-    HSF_OBJECT *temp_r22;
+    Mtx transform;
+    HSF_DATA *sceneData;
+    HU3D_MODEL *modelData;
+    M650Cell *cell;
+    s32 pointIndex;
+    s32 row;
+    s32 column;
+    M650Player *currentPlayer;
+    s16 motionModel;
+    f32 recordZOffset;
+    f32 motionFrame;
+    f32 motionEndFrame;
+    HSF_OBJECT *treeObject;
+    HSF_OBJECT *rockObject;
+    HSF_OBJECT *shadowObject;
 
     Hu3DModelObjDrawInit();
-    temp_r25 = &Hu3DData[lbl_1_bss_4B6];
-    sp8 = temp_r25->hsf;
-    temp_r24 = Hu3DModelObjPtrGet(lbl_1_bss_4B6, "m650_03N");
-    temp_r23 = Hu3DModelObjPtrGet(lbl_1_bss_4B4, "m650_04N");
-    temp_r22 = Hu3DModelObjPtrGet(lbl_1_bss_4B6, "shadow");
-    var_r30 = 0;
-    while (var_r30 < 32) {
-        temp_r31 = &lbl_1_bss_2AC[var_r30][lbl_1_bss_2A8];
-        if (temp_r31->state != 2) {
-                switch (temp_r31->state) {
+    modelData = &Hu3DData[lbl_1_bss_4B6];
+    /* This scene pointer is fetched here but the draw decisions use named HSF objects. */
+    sceneData = modelData->hsf;
+    treeObject = Hu3DModelObjPtrGet(lbl_1_bss_4B6, "m650_03N");
+    rockObject = Hu3DModelObjPtrGet(lbl_1_bss_4B4, "m650_04N");
+    shadowObject = Hu3DModelObjPtrGet(lbl_1_bss_4B6, "shadow");
+    pointIndex = 0;
+    while (pointIndex < 32) {
+        cell = &lbl_1_bss_2AC[pointIndex][lbl_1_bss_2A8];
+        /* Broken props stay hidden from this camera pass. */
+        if (cell->state != 2) {
+                switch (cell->state) {
                 case 2:
                     break;
                 case 3:
-                    var_r29 = 0;
-                    while (var_r29 < 4) {
-                        var_r28 = 0;
-                        while (var_r28 < 4) {
-                            if (var_r29 == var_r28) {
-                                spC[var_r29][var_r28] = 1.0f;
+                    /* This loop writes four rows even though the affine matrix has only three. */
+                    row = 0;
+                    while (row < 4) {
+                        column = 0;
+                        while (column < 4) {
+                            if (row == column) {
+                                transform[row][column] = 1.0f;
                             } else {
-                                spC[var_r29][var_r28] = 0.0f;
+                                transform[row][column] = 0.0f;
                             }
-                            var_r28 += 1;
+                            column += 1;
                         }
-                        var_r29 += 1;
+                        row += 1;
                     }
                     if (lbl_1_bss_0.recordChanged != 0) {
-                        var_f31 = 350.0f;
+                        recordZOffset = 350.0f;
                     } else {
-                        var_f31 = 0.0f;
+                        recordZOffset = 0.0f;
                     }
-                    mtxTransCat(spC, lbl_1_data_1F8[var_r30].pos.x, 0.5f + lbl_1_data_1F8[var_r30].pos.y, var_f31 + lbl_1_data_1F8[var_r30].pos.z);
-                    PSMTXConcat(*mtx, spC, spC);
-                    if (lbl_1_data_1F8[var_r30].kind == 0) {
-                        Hu3DModelObjPtrDraw(lbl_1_bss_4B6, temp_r24, spC);
+                    mtxTransCat(transform, lbl_1_data_1F8[pointIndex].pos.x,
+                                0.5f + lbl_1_data_1F8[pointIndex].pos.y,
+                                recordZOffset + lbl_1_data_1F8[pointIndex].pos.z);
+                    PSMTXConcat(*parentTransform, transform, transform);
+                    if (lbl_1_data_1F8[pointIndex].isRock == 0) {
+                        Hu3DModelObjPtrDraw(lbl_1_bss_4B6, treeObject, transform);
                     } else {
-                        Hu3DModelObjPtrDraw(lbl_1_bss_4B4, temp_r23, spC);
+                        Hu3DModelObjPtrDraw(lbl_1_bss_4B4, rockObject, transform);
                     }
-                    Hu3DModelObjPtrDraw(lbl_1_bss_4B6, temp_r22, spC);
+                    Hu3DModelObjPtrDraw(lbl_1_bss_4B6, shadowObject, transform);
                     break;
                 default:
                     break;
                 case 0:
-                    var_r29 = 0;
-                    while (var_r29 < 4) {
-                        var_r28 = 0;
-                        while (var_r28 < 4) {
-                            if (var_r29 == var_r28) {
-                                spC[var_r29][var_r28] = 1.0f;
+                    /* This branch also writes four rows into a three-row affine matrix. */
+                    row = 0;
+                    while (row < 4) {
+                        column = 0;
+                        while (column < 4) {
+                            if (row == column) {
+                                transform[row][column] = 1.0f;
                             } else {
-                                spC[var_r29][var_r28] = 0.0f;
+                                transform[row][column] = 0.0f;
                             }
-                            var_r28 += 1;
+                            column += 1;
                         }
-                        var_r29 += 1;
+                        row += 1;
                     }
-                    mtxTransCat(spC, lbl_1_data_248[var_r30].pos.x, 0.5f + lbl_1_data_248[var_r30].pos.y, lbl_1_data_248[var_r30].pos.z);
-                    PSMTXConcat(*mtx, spC, spC);
-                    if (lbl_1_data_248[var_r30].kind == 0) {
-                        Hu3DModelObjPtrDraw(lbl_1_bss_4B6, temp_r24, spC);
+                    mtxTransCat(transform, lbl_1_data_248[pointIndex].pos.x,
+                                0.5f + lbl_1_data_248[pointIndex].pos.y,
+                                lbl_1_data_248[pointIndex].pos.z);
+                    PSMTXConcat(*parentTransform, transform, transform);
+                    if (lbl_1_data_248[pointIndex].isRock == 0) {
+                        Hu3DModelObjPtrDraw(lbl_1_bss_4B6, treeObject, transform);
                     } else {
-                        Hu3DModelObjPtrDraw(lbl_1_bss_4B4, temp_r23, spC);
+                        Hu3DModelObjPtrDraw(lbl_1_bss_4B4, rockObject, transform);
                     }
-                    Hu3DModelObjPtrDraw(lbl_1_bss_4B6, temp_r22, spC);
+                    Hu3DModelObjPtrDraw(lbl_1_bss_4B6, shadowObject, transform);
                     break;
                 case 1:
-                    temp_r26 = &lbl_1_bss_28[lbl_1_bss_2A8];
-                    if (lbl_1_data_248[var_r30].kind == 0) {
-                        var_r27 = temp_r26->model7A;
+                    currentPlayer = &lbl_1_bss_28[lbl_1_bss_2A8];
+                    if (lbl_1_data_248[pointIndex].isRock == 0) {
+                        motionModel = currentPlayer->model7A;
                     } else {
-                        var_r27 = temp_r26->model7C;
+                        motionModel = currentPlayer->model7C;
                     }
-                    temp_f30 = Hu3DMotionTimeGet(var_r27);
-                    temp_f29 = Hu3DMotionMaxTimeGet(var_r27);
-                    if (temp_f30 >= temp_f29) {
-                        if ((temp_r31->timer % 4) == 0) {
-                            Hu3DModelAttrSet(var_r27, 1U);
-                        } else if ((temp_r31->timer % 4) == 2) {
-                            Hu3DModelAttrReset(var_r27, 1U);
-                            Hu3DModelAttrReset(var_r27, 1U);
+                    motionFrame = Hu3DMotionTimeGet(motionModel);
+                    motionEndFrame = Hu3DMotionMaxTimeGet(motionModel);
+                    if (motionFrame >= motionEndFrame) {
+                        if ((cell->timer % 4) == 0) {
+                            Hu3DModelAttrSet(motionModel, HU3D_ATTR_DISPOFF);
+                        } else if ((cell->timer % 4) == 2) {
+                            Hu3DModelAttrReset(motionModel, HU3D_ATTR_DISPOFF);
+                            /* The same model flag is reset a second time here. */
+                            Hu3DModelAttrReset(motionModel, HU3D_ATTR_DISPOFF);
                         }
-                        temp_r31->timer += 1;
-                        if (temp_r31->timer >= 30) {
-                            Hu3DModelAttrSet(var_r27, 1U);
-                            temp_r31->state = 2;
+                        cell->timer += 1;
+                        if (cell->timer >= 30) {
+                            Hu3DModelAttrSet(motionModel, HU3D_ATTR_DISPOFF);
+                            cell->state = 2;
                         }
                     }
                     break;
                 }
         }
-        var_r30 += 1;
+        pointIndex += 1;
     }
+    /* Advance the player slot once per draw-hook call; the slot is not derived from camera
+     * identity. */
     lbl_1_bss_2A8 = (lbl_1_bss_2A8 + 1) % 4;
 }
 
-s16 fn_1_69B0(s16 player)
+/* Called after the runner moves toward the bone; detects prop or lane-wall collisions and stores
+ * the runner's reflected rebound direction. */
+s16 fn_1_69B0(s16 playerNo)
 {
-    M650Player *work = &lbl_1_bss_28[player];
-    HuVecF pos;
-    HuVecF reflected;
-    HuVecF normal;
+    M650Player *playerData = &lbl_1_bss_28[playerNo];
+    HuVecF playerPosition;
+    HuVecF reflectedDirection;
+    HuVecF collisionNormal;
     s32 wallSounds[4] = { M650_EFFECT_2040, M650_EFFECT_2041, M650_EFFECT_2042, M650_EFFECT_2043 };
     s32 treeSounds[4] = { M650_EFFECT_2044, M650_EFFECT_2045, M650_EFFECT_2046, M650_EFFECT_2047 };
     s32 rockSounds[4] = { M650_EFFECT_2048, M650_EFFECT_2049, M650_EFFECT_2050, M650_EFFECT_2051 };
-    int i;
-    s16 model;
+    int obstacleIndex;
+    s16 obstacleEffectModel;
 
-    Hu3DModelPosGet(work->model20, &pos);
-    for (i = 0; i < 32; i++) {
-        if (lbl_1_bss_2AC[i][player].state == 0 && fn_1_6EE4(&pos, &lbl_1_data_248[i].pos, 150.0f)) {
-            if (lbl_1_data_248[i].kind == 0) {
-                model = work->model7A;
+    Hu3DModelPosGet(playerData->model20, &playerPosition);
+    for (obstacleIndex = 0; obstacleIndex < 32; obstacleIndex++) {
+        if (lbl_1_bss_2AC[obstacleIndex][playerNo].state == 0 &&
+            fn_1_6EE4(&playerPosition, &lbl_1_data_248[obstacleIndex].pos, 150.0f)) {
+            if (lbl_1_data_248[obstacleIndex].isRock == 0) {
+                obstacleEffectModel = playerData->model7A;
             } else {
-                model = work->model7C;
+                obstacleEffectModel = playerData->model7C;
             }
-            Hu3DModelPosSetV(model, &lbl_1_data_248[i].pos);
-            Hu3DMotionTimeSet(model, 0.0f);
-            Hu3DMotionSpeedSet(model, 1.0f);
-            Hu3DModelAttrReset(model, 1);
-            Hu3DModelPosSetV(work->model78, &lbl_1_data_248[i].pos);
-            Hu3DMotionTimeSet(work->model78, 0.0f);
-            Hu3DMotionSpeedSet(work->model78, 1.0f);
-            Hu3DModelAttrReset(work->model78, 1);
-            lbl_1_bss_2AC[i][player].state = 1;
-            normal.x = pos.x - lbl_1_data_248[i].pos.x;
-            normal.y = 0.0f;
-            normal.z = pos.z - lbl_1_data_248[i].pos.z;
-            C_VECReflect(&work->direction, &normal, &reflected);
-            PSVECNormalize(&reflected, &work->reflected);
-            if (lbl_1_data_248[i].kind == 0) {
-                HuAudFXPlay(treeSounds[player]);
+            Hu3DModelPosSetV(obstacleEffectModel, &lbl_1_data_248[obstacleIndex].pos);
+            Hu3DMotionTimeSet(obstacleEffectModel, 0.0f);
+            Hu3DMotionSpeedSet(obstacleEffectModel, 1.0f);
+            Hu3DModelAttrReset(obstacleEffectModel, HU3D_ATTR_DISPOFF);
+            Hu3DModelPosSetV(playerData->model78, &lbl_1_data_248[obstacleIndex].pos);
+            Hu3DMotionTimeSet(playerData->model78, 0.0f);
+            Hu3DMotionSpeedSet(playerData->model78, 1.0f);
+            Hu3DModelAttrReset(playerData->model78, HU3D_ATTR_DISPOFF);
+            lbl_1_bss_2AC[obstacleIndex][playerNo].state = 1;
+            collisionNormal.x = playerPosition.x - lbl_1_data_248[obstacleIndex].pos.x;
+            collisionNormal.y = 0.0f;
+            collisionNormal.z = playerPosition.z - lbl_1_data_248[obstacleIndex].pos.z;
+            C_VECReflect(&playerData->direction, &collisionNormal, &reflectedDirection);
+            PSVECNormalize(&reflectedDirection, &playerData->reflectedDirection);
+            if (lbl_1_data_248[obstacleIndex].isRock == 0) {
+                HuAudFXPlay(treeSounds[playerNo]);
             } else {
-                HuAudFXPlay(rockSounds[player]);
+                HuAudFXPlay(rockSounds[playerNo]);
             }
             return 1;
         }
     }
-    if (pos.x <= -1150.0f) {
-        normal.x = 1.0f;
-        normal.y = normal.z = 0.0f;
-        C_VECReflect(&work->direction, &normal, &reflected);
-        PSVECNormalize(&reflected, &work->reflected);
-        HuAudFXPlay(wallSounds[player]);
+    if (playerPosition.x <= -1150.0f) {
+        collisionNormal.x = 1.0f;
+        collisionNormal.y = collisionNormal.z = 0.0f;
+        C_VECReflect(&playerData->direction, &collisionNormal, &reflectedDirection);
+        PSVECNormalize(&reflectedDirection, &playerData->reflectedDirection);
+        HuAudFXPlay(wallSounds[playerNo]);
         return 1;
     }
-    if (pos.x >= 1150.0f) {
-        normal.x = -1.0f;
-        normal.y = normal.z = 0.0f;
-        C_VECReflect(&work->direction, &normal, &reflected);
-        PSVECNormalize(&reflected, &work->reflected);
-        HuAudFXPlay(wallSounds[player]);
+    if (playerPosition.x >= 1150.0f) {
+        collisionNormal.x = -1.0f;
+        collisionNormal.y = collisionNormal.z = 0.0f;
+        C_VECReflect(&playerData->direction, &collisionNormal, &reflectedDirection);
+        PSVECNormalize(&reflectedDirection, &playerData->reflectedDirection);
+        HuAudFXPlay(wallSounds[playerNo]);
         return 1;
     }
     return 0;
 }
 
-s16 fn_1_6D88(s16 player, HuVecF *pos)
+/* Called during per-frame throw movement to find the first available obstacle the item reaches. */
+s16 fn_1_6D88(s16 playerNo, HuVecF *thrownPosition)
 {
-    HuVecF horizontal;
-    M650Player *work;
-    int candidate;
+    HuVecF obstacleGroundPosition;
+    M650Player *playerData;
+    int obstacleIndex;
 
-    work = &lbl_1_bss_28[player];
-    horizontal.x = pos->x;
-    horizontal.y = 0.0f;
-    horizontal.z = pos->z;
-    for (candidate = 0; candidate < 32; candidate++) {
-        if (lbl_1_bss_2AC[candidate][player].state == 0 &&
-            fn_1_6EE4(&horizontal, &lbl_1_data_248[candidate].pos, 90.0f)) {
-            if (lbl_1_data_248[candidate].kind == 1 && pos->y < 160.0f) {
-                return candidate;
+    playerData = &lbl_1_bss_28[playerNo];
+    obstacleGroundPosition.x = thrownPosition->x;
+    obstacleGroundPosition.y = 0.0f;
+    obstacleGroundPosition.z = thrownPosition->z;
+    for (obstacleIndex = 0; obstacleIndex < 32; obstacleIndex++) {
+        if (lbl_1_bss_2AC[obstacleIndex][playerNo].state == 0 &&
+            fn_1_6EE4(&obstacleGroundPosition, &lbl_1_data_248[obstacleIndex].pos, 90.0f)) {
+            if (lbl_1_data_248[obstacleIndex].isRock == 1 && thrownPosition->y < 160.0f) {
+                return obstacleIndex;
             }
-            if (lbl_1_data_248[candidate].kind == 0 && pos->y < 180.0f) {
-                return candidate;
+            if (lbl_1_data_248[obstacleIndex].isRock == 0 && thrownPosition->y < 180.0f) {
+                return obstacleIndex;
             }
         }
     }
     return -1;
 }
 
-s16 fn_1_6EE4(HuVecF *a, HuVecF *b, float radius)
+/* Collision helper used by fn_1_69B0 and fn_1_6D88; compares 3D distance with a strict radius. */
+s16 fn_1_6EE4(HuVecF *firstPoint, HuVecF *secondPoint, float radius)
 {
-    float distance;
+    float distanceSquared;
 
-    distance = PSVECSquareDistance(a, b);
-    if (distance < radius * radius) {
+    distanceSquared = PSVECSquareDistance(firstPoint, secondPoint);
+    if (distanceSquared < radius * radius) {
         return 1;
     }
     return 0;
 }
 
+/* Called when results are prepared; hides the course obstacles and shows the five record props. */
 void fn_1_6F54(void)
 {
-    int row;
-    int player;
+    int obstacleIndex;
+    int playerNo;
 
-    for (row = 0; row < 32; row++) {
-        for (player = 0; player < 4; player++) {
-            lbl_1_bss_2AC[row][player].state = 2;
+    for (obstacleIndex = 0; obstacleIndex < 32; obstacleIndex++) {
+        for (playerNo = 0; playerNo < 4; playerNo++) {
+            lbl_1_bss_2AC[obstacleIndex][playerNo].state = 2;
         }
     }
-    for (row = 0; row < 5; row++) {
-        for (player = 0; player < 4; player++) {
-            lbl_1_bss_2AC[row][player].state = 3;
+    for (obstacleIndex = 0; obstacleIndex < 5; obstacleIndex++) {
+        for (playerNo = 0; playerNo < 4; playerNo++) {
+            lbl_1_bss_2AC[obstacleIndex][playerNo].state = 3;
         }
     }
 }
 
-s16 fn_1_7000(s16 unusedPlayer, HuVecF *pos, float angle, s16 candidate)
+/* CPU aiming calls this to test whether an obstacle lies within the aiming line's clearance.
+ * Projection is not limited to the forward 800-unit segment. */
+s16 fn_1_7000(s16 playerNo, HuVecF *throwStart, float angleDegrees, s16 obstacleIndex)
 {
-    HuVecF direction;
-    HuVecF delta;
+    HuVecF throwDirection;
+    HuVecF obstacleDelta;
     HuVecF projection;
-    HuVecF closest;
-    float ratio;
-    float factor;
+    HuVecF closestPoint;
+    float remainingPathRatio;
+    float projectionFactor;
     float threshold;
-    float perpendicular;
+    float perpendicularDistance;
 
-    if (candidate >= 32) {
+    if (obstacleIndex >= 32) {
         return 0;
     }
-    direction.x = 800.0 * sin((M_PI * angle) / 180.0);
-    direction.y = 0.0f;
-    direction.z = 800.0 * cos((M_PI * angle) / 180.0);
-    delta.x = lbl_1_data_248[candidate].pos.x - pos->x;
-    delta.y = 0.0f;
-    delta.z = lbl_1_data_248[candidate].pos.z - pos->z;
-    factor = PSVECDotProduct(&direction, &delta) / PSVECSquareMag(&direction);
-    projection.x = factor * direction.x;
+    throwDirection.x = 800.0 * sin((M_PI * angleDegrees) / 180.0);
+    throwDirection.y = 0.0f;
+    throwDirection.z = 800.0 * cos((M_PI * angleDegrees) / 180.0);
+    obstacleDelta.x = lbl_1_data_248[obstacleIndex].pos.x - throwStart->x;
+    obstacleDelta.y = 0.0f;
+    obstacleDelta.z = lbl_1_data_248[obstacleIndex].pos.z - throwStart->z;
+    projectionFactor =
+        PSVECDotProduct(&throwDirection, &obstacleDelta) / PSVECSquareMag(&throwDirection);
+    projection.x = projectionFactor * throwDirection.x;
     projection.y = 0.0f;
-    projection.z = factor * direction.z;
-    ratio = sqrtf(PSVECSquareMag(&projection));
-    closest.x = pos->x + projection.x;
-    closest.y = 0.0f;
-    closest.z = pos->z + projection.z;
-    direction.x = lbl_1_data_248[candidate].pos.x - closest.x;
-    direction.y = 0.0f;
-    direction.z = lbl_1_data_248[candidate].pos.z - closest.z;
-    perpendicular = sqrtf(PSVECSquareMag(&direction));
-    ratio = (800.0f - ratio) / 800.0f;
-    if (ratio < 0.0f) {
-        ratio = 0.0f;
+    projection.z = projectionFactor * throwDirection.z;
+    remainingPathRatio = sqrtf(PSVECSquareMag(&projection));
+    closestPoint.x = throwStart->x + projection.x;
+    closestPoint.y = 0.0f;
+    closestPoint.z = throwStart->z + projection.z;
+    throwDirection.x = lbl_1_data_248[obstacleIndex].pos.x - closestPoint.x;
+    throwDirection.y = 0.0f;
+    throwDirection.z = lbl_1_data_248[obstacleIndex].pos.z - closestPoint.z;
+    perpendicularDistance = sqrtf(PSVECSquareMag(&throwDirection));
+    remainingPathRatio = (800.0f - remainingPathRatio) / 800.0f;
+    if (remainingPathRatio < 0.0f) {
+        remainingPathRatio = 0.0f;
     }
-    if (direction.x < 0.0f) {
-        threshold = 150.0f + (45.0f * ratio);
+    if (throwDirection.x < 0.0f) {
+        /* A negative-X offset from the projected point widens clearance as that point nears the
+         * throw start. */
+        threshold = 150.0f + (45.0f * remainingPathRatio);
     } else {
-        threshold = 150.0f - (45.0f * ratio);
+        threshold = 150.0f - (45.0f * remainingPathRatio);
     }
-    if (perpendicular <= threshold) {
+    if (perpendicularDistance <= threshold) {
         return 1;
     }
     return 0;
