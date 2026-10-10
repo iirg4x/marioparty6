@@ -1,18 +1,11 @@
-/* Sequence callbacks and shared labels for the 633biribiri minigame. */
+/* Sequence callbacks and shared labels for the Ray of Fright minigame. */
 #include "REL/m633dll.h"
 
+#define M633_GAMEPLAY_BGM_ID 75
+
 MGSEQ_PARAM lbl_1_data_0 = {
-    0,
-    0,
-    fn_1_224,
-    fn_1_310,
-    fn_1_55C,
-    fn_1_690,
-    fn_1_AB0,
-    fn_1_C78,
-    fn_1_118C,
-    fn_1_1284,
-    fn_1_1288,
+    0, 0, fn_1_224, fn_1_310, fn_1_55C, fn_1_690, fn_1_AB0, fn_1_C78,
+    fn_1_118C, fn_1_1284, fn_1_1288,
 };
 
 char lbl_1_data_28[25] = "633biribiri-EDpattern1P1";
@@ -53,46 +46,32 @@ char lbl_1_data_188[24] = "633biribiri-nozzleNull";
 
 char lbl_1_data_1A0[24] = "hit!!!!!!!!(%f)\n";
 
-s32 lbl_1_data_1B8[6] = { DATANUM(DATA_m633, 12), DATANUM(DATA_m633, 13), DATANUM(DATA_m633, 14), DATANUM(DATA_m633, 15), DATANUM(DATA_m633, 20), DATANUM(DATA_m633, 21) };
+s32 lbl_1_data_1B8[6] = { DATANUM(DATA_m633, 12), DATANUM(DATA_m633, 13), DATANUM(DATA_m633, 14),
+                          DATANUM(DATA_m633, 15), DATANUM(DATA_m633, 20), DATANUM(DATA_m633, 21) };
 
-s32 lbl_1_data_1D0[4] = { DATANUM(DATA_m633, 25), DATANUM(DATA_m633, 27), DATANUM(DATA_m633, 26), DATANUM(DATA_m633, 24) };
+s32 lbl_1_data_1D0[4] = { DATANUM(DATA_m633, 25), DATANUM(DATA_m633, 27), DATANUM(DATA_m633, 26),
+                          DATANUM(DATA_m633, 24) };
 
 unsigned int lbl_1_data_1E0[16] = {
-    DATANUM(DATA_mariomot, 0),
-    DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2),
-    DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4),
-    DATANUM(DATA_mariomot, 6),
-    DATANUM(DATA_mariomot, 40),
-    DATANUM(DATA_mariomot, 35),
-    DATANUM(DATA_mariomot, 10),
-    DATANUM(DATA_mariomot, 9),
-    DATANUM(DATA_mariomot, 30),
-    DATANUM(DATA_mariomot, 20),
-    DATANUM(DATA_mariomot, 61),
-    DATANUM(DATA_mario, 86),
-    DATANUM(DATA_mariomot, 24),
-    0,
+    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
+    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
+    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 6),
+    DATANUM(DATA_mariomot, 40), DATANUM(DATA_mariomot, 35),
+    DATANUM(DATA_mariomot, 10), DATANUM(DATA_mariomot, 9),
+    DATANUM(DATA_mariomot, 30), DATANUM(DATA_mariomot, 20),
+    DATANUM(DATA_mariomot, 61), DATANUM(DATA_mario, 86),
+    DATANUM(DATA_mariomot, 24), 0,
 };
 
 unsigned int lbl_1_data_220[16] = {
-    DATANUM(DATA_mariomot, 0),
-    DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2),
-    DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4),
-    DATANUM(DATA_mariomot, 38),
-    DATANUM(DATA_mariomot, 40),
-    DATANUM(DATA_mariomot, 35),
-    DATANUM(DATA_mariomot, 10),
-    DATANUM(DATA_mariomot, 9),
-    DATANUM(DATA_mariomot, 30),
-    DATANUM(DATA_mariomot, 20),
-    DATANUM(DATA_mariomot, 61),
-    DATANUM(DATA_mario, 86),
-    DATANUM(DATA_mariomot, 24),
-    0,
+    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
+    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
+    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 38),
+    DATANUM(DATA_mariomot, 40), DATANUM(DATA_mariomot, 35),
+    DATANUM(DATA_mariomot, 10), DATANUM(DATA_mariomot, 9),
+    DATANUM(DATA_mariomot, 30), DATANUM(DATA_mariomot, 20),
+    DATANUM(DATA_mariomot, 61), DATANUM(DATA_mario, 86),
+    DATANUM(DATA_mariomot, 24), 0,
 };
 
 u32 lbl_1_data_260[4] = { 100U, 70U, 30U, 0U };
@@ -103,19 +82,20 @@ u32 lbl_1_data_280[4] = { 15U, 25U, 40U, 100U };
 
 M633Work lbl_1_bss_0;
 
-/* Starts the requested BGM when no stream is active and the sequence message state permits music. */
+/* Starts the requested BGM when no handle is active and the sequence message has
+ * GAMEMES_STAT_FXPLAY set. */
 s32 fn_1_A0(s32 streamHandle, s32 bgmId)
 {
     s32 result;
 
     result = streamHandle;
-    if (result == -1 && (GameMesStatGet(MgSeqGameMesIdGet()) & 16) != 0) {
+    if (result == -1 && (GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0) {
         result = HuAudBGMPlay((s16) bgmId);
     }
     return result;
 }
 
-/* Fades an active sequence stream out; fn_1_AB0 uses this when the result phase begins. */
+/* Fades an active sequence stream out; fn_1_AB0 uses this when the finish phase begins. */
 void fn_1_104(s32 streamHandle)
 {
     if (streamHandle != -1) {
@@ -145,7 +125,7 @@ void fn_1_140(void)
     }
 }
 
-/* Sequence callback: advances actors and voice panning, then moves to the next mode. */
+/* Sequence callback: updates actors and voice panning, then requests the next sequence mode. */
 void fn_1_224(s16 mode, s16 frameNo)
 {
     MgActorExec();
@@ -153,7 +133,8 @@ void fn_1_224(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
-/* Starts the opening camera motion, installs per-slot callbacks on entry, and advances when the waiting slots report completion. */
+/* On entry, starts camera motion 0 and assigns slot callbacks; requests the next mode after the
+ * motion ends and three group-zero slots reach state 4. */
 void fn_1_310(s16 mode, s16 frameNo)
 {
     s32 completedPlayerCount;
@@ -185,7 +166,8 @@ void fn_1_310(s16 mode, s16 frameNo)
     if (fn_1_7F40() != 0) {
         playerNo = 0;
         while (playerNo < 4) {
-            if (((s32) lbl_1_bss_0.outsideGroupZero[playerNo] == 0) && ((u32) (lbl_1_bss_0.playerObjects[playerNo])->work[1] == 4U)) {
+            if (((s32) lbl_1_bss_0.outsideGroupZero[playerNo] == 0) &&
+                ((u32) (lbl_1_bss_0.playerObjects[playerNo])->work[1] == 4U)) {
                 completedPlayerCount += 1;
             }
             playerNo += 1;
@@ -196,15 +178,17 @@ void fn_1_310(s16 mode, s16 frameNo)
     }
 }
 
-/* Sequence callback that starts BGM once and updates actors and their voice panning. */
+/* Starts the BGM only when no stream is active and the sequence message has GAMEMES_STAT_FXPLAY,
+ * then updates actors and character voice pan. */
 void fn_1_55C(s16 mode, s16 frameNo)
 {
-    lbl_1_bss_0.bgmHandle = fn_1_A0(lbl_1_bss_0.bgmHandle, 75);
+    lbl_1_bss_0.bgmHandle = fn_1_A0(lbl_1_bss_0.bgmHandle, M633_GAMEPLAY_BGM_ID);
     MgActorExec();
     fn_1_140();
 }
 
-/* Starts the round, updates players, actors, and the arena, then advances when everyone is eliminated or time expires. */
+/* Starts the round, updates players, actors, and the arena, then requests the next mode when no
+ * outside-group players remain or the timer ends. */
 void fn_1_690(s16 mode, s16 frameNo)
 {
     s16 model;
@@ -225,7 +209,9 @@ void fn_1_690(s16 mode, s16 frameNo)
                 Hu3DModelPosGet(model, &spawnPosition);
                 MgPlayerSpawn(lbl_1_bss_0.players[playerNo], &spawnPosition);
                 (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_34AC;
-                CharMotionShiftSet((lbl_1_bss_0.players[playerNo])->charNo, *((lbl_1_bss_0.players[playerNo])->omObj)->mtnId, 0.0f, 6.0f, 0U);
+                CharMotionShiftSet((lbl_1_bss_0.players[playerNo])->charNo,
+                                   *((lbl_1_bss_0.players[playerNo])->omObj)->mtnId, 0.0f, 6.0f,
+                                   0U);
             }
             playerNo += 1;
         }
@@ -266,7 +252,8 @@ void fn_1_690(s16 mode, s16 frameNo)
     }
 }
 
-/* Result transition callback: fades audio, stops the looping effect, and counts down before the sequence advances. */
+/* On entry, fades the BGM and stops rotation sound; hides the countdown display while the timer
+ * has not reached its end, then clears or decrements the segment countdown. */
 void fn_1_AB0(s16 mode, s16 frameNo)
 {
 
@@ -290,7 +277,9 @@ void fn_1_AB0(s16 mode, s16 frameNo)
     lbl_1_bss_0.segmentUpdateCountdown -= 1;
 }
 
-/* Sequence results callback: places surviving characters, selects winners, awards coins, and advances the sequence. */
+/* On frame 0, places surviving outside-group characters; marks every outside-group slot as a
+ * winner, including removed slots, or picks the first group-zero slot when none remain; assigns
+ * winners 10 coins outside practice and requests the next mode. */
 void fn_1_C78(s16 mode, s16 frameNo)
 {
     s16 winners[4] = { -1, -1, -1, -1 };
@@ -398,7 +387,7 @@ void fn_1_C78(s16 mode, s16 frameNo)
     }
 }
 
-/* Final sequence callback: plays the winner or non-winner motion for each remaining player. */
+/* On frame 0, starts the winner or non-winner motion for each player not marked removed. */
 void fn_1_118C(s16 mode, s16 frameNo)
 {
     s32 playerNo;

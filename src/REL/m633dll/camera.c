@@ -1,7 +1,8 @@
 /* Selects camera motions and updates the minigame camera from its current pose. */
 #include "REL/m633dll.h"
 
-/* Updates camera 1 from the current camera-motion pose, including its position, aim, and roll direction. */
+/* Reads camera 1's position, up vector, and target; ignores the returned up vector, keeps the
+ * target, and rebuilds position and up with roll forced to zero. */
 void fn_1_73D8(void)
 {
     Point3d cameraPosition;
@@ -11,7 +12,7 @@ void fn_1_73D8(void)
     Point3d computedCameraPosition;
     Point3d computedCameraTarget;
     Point3d rolledCameraUp;
-    Vec dir;
+    Vec cameraUpDirection;
     Point3d cameraDirection;
     f32 cameraYaw;
     f32 cameraPitch;
@@ -36,40 +37,56 @@ void fn_1_73D8(void)
     computedCameraTarget.x = Center.x;
     computedCameraTarget.y = Center.y;
     computedCameraTarget.z = Center.z;
-    dir.x = HuSin(cameraYaw) * HuSin(cameraPitch);
-    dir.y = HuCos(cameraPitch);
-    dir.z = HuCos(cameraYaw) * HuSin(cameraPitch);
+    cameraUpDirection.x = HuSin(cameraYaw) * HuSin(cameraPitch);
+    cameraUpDirection.y = HuCos(cameraPitch);
+    cameraUpDirection.z = HuCos(cameraYaw) * HuSin(cameraPitch);
     PSVECSubtract(&computedCameraPosition, &computedCameraTarget, &cameraDirection);
     PSVECNormalize(&cameraDirection, &cameraDirection);
-    rolledCameraUp.x = dir.x * (cameraDirection.x * cameraDirection.x + (1.0f - cameraDirection.x * cameraDirection.x) * HuCos(cameraRoll))
-        + dir.y * (cameraDirection.x * cameraDirection.y * (1.0f - HuCos(cameraRoll)) - cameraDirection.z * HuSin(cameraRoll))
-        + dir.z * (cameraDirection.x * cameraDirection.z * (1.0f - HuCos(cameraRoll)) + cameraDirection.y * HuSin(cameraRoll));
-    rolledCameraUp.y = dir.y * (cameraDirection.y * cameraDirection.y + (1.0f - cameraDirection.y * cameraDirection.y) * HuCos(cameraRoll))
-        + dir.x * (cameraDirection.x * cameraDirection.y * (1.0f - HuCos(cameraRoll)) + cameraDirection.z * HuSin(cameraRoll))
-        + dir.z * (cameraDirection.y * cameraDirection.z * (1.0f - HuCos(cameraRoll)) - cameraDirection.x * HuSin(cameraRoll));
-    rolledCameraUp.z = dir.z * (cameraDirection.z * cameraDirection.z + (1.0f - cameraDirection.z * cameraDirection.z) * HuCos(cameraRoll))
-        + (dir.x * (cameraDirection.x * cameraDirection.z * (1.0 - HuCos(cameraRoll)) - cameraDirection.y * HuSin(cameraRoll))
-        + dir.y * (cameraDirection.y * cameraDirection.z * (1.0 - HuCos(cameraRoll)) + cameraDirection.x * HuSin(cameraRoll)));
+    rolledCameraUp.x =
+        cameraUpDirection.x * (cameraDirection.x * cameraDirection.x +
+                               (1.0f - cameraDirection.x * cameraDirection.x) * HuCos(cameraRoll)) +
+        cameraUpDirection.y * (cameraDirection.x * cameraDirection.y * (1.0f - HuCos(cameraRoll)) -
+                               cameraDirection.z * HuSin(cameraRoll)) +
+        cameraUpDirection.z * (cameraDirection.x * cameraDirection.z * (1.0f - HuCos(cameraRoll)) +
+                               cameraDirection.y * HuSin(cameraRoll));
+    rolledCameraUp.y =
+        cameraUpDirection.y * (cameraDirection.y * cameraDirection.y +
+                               (1.0f - cameraDirection.y * cameraDirection.y) * HuCos(cameraRoll)) +
+        cameraUpDirection.x * (cameraDirection.x * cameraDirection.y * (1.0f - HuCos(cameraRoll)) +
+                               cameraDirection.z * HuSin(cameraRoll)) +
+        cameraUpDirection.z * (cameraDirection.y * cameraDirection.z * (1.0f - HuCos(cameraRoll)) -
+                               cameraDirection.x * HuSin(cameraRoll));
+    rolledCameraUp.z =
+        cameraUpDirection.z * (cameraDirection.z * cameraDirection.z +
+                               (1.0f - cameraDirection.z * cameraDirection.z) * HuCos(cameraRoll)) +
+        (cameraUpDirection.x * (cameraDirection.x * cameraDirection.z * (1.0 - HuCos(cameraRoll)) -
+                                cameraDirection.y * HuSin(cameraRoll)) +
+         cameraUpDirection.y * (cameraDirection.y * cameraDirection.z * (1.0 - HuCos(cameraRoll)) +
+                                cameraDirection.x * HuSin(cameraRoll)));
     PSVECNormalize(&rolledCameraUp, &rolledCameraUp);
-    Hu3DCameraPosSet(1, computedCameraPosition.x, computedCameraPosition.y, computedCameraPosition.z, rolledCameraUp.x, rolledCameraUp.y, rolledCameraUp.z, computedCameraTarget.x, computedCameraTarget.y, computedCameraTarget.z);
+    Hu3DCameraPosSet(1, computedCameraPosition.x, computedCameraPosition.y,
+                     computedCameraPosition.z, rolledCameraUp.x, rolledCameraUp.y, rolledCameraUp.z,
+                     computedCameraTarget.x, computedCameraTarget.y, computedCameraTarget.z);
 }
 
 /* Starts the indexed camera motion and turns off the previously active camera motion. */
 void fn_1_7E70(s32 motionIndex)
 {
-    s16 priorMotionIndex;
-    s16 motionId;
+    s16 loadedCameraMotionId;
+    s16 cameraModelId;
 
-    priorMotionIndex = lbl_1_bss_0.cameraMotionIds[motionIndex];
-    motionId = lbl_1_bss_0.cameraModelIds[motionIndex];
-    Hu3DCameraMotionStart(motionId, 1U);
+    /* Playback starts on the camera model; the separate motion-resource ID read here has no
+     * effect. */
+    loadedCameraMotionId = lbl_1_bss_0.cameraMotionIds[motionIndex];
+    cameraModelId = lbl_1_bss_0.cameraModelIds[motionIndex];
+    Hu3DCameraMotionStart(cameraModelId, 1U);
     lbl_1_bss_0.cameraMotionTime = 0.0f;
-    lbl_1_bss_0.cameraMotionMaxTime = Hu3DMotionMaxTimeGet(motionId);
+    lbl_1_bss_0.cameraMotionMaxTime = Hu3DMotionMaxTimeGet(cameraModelId);
     if (lbl_1_bss_0.activeCameraModelId != -1) {
         Hu3DCameraMotionOff(lbl_1_bss_0.activeCameraModelId);
     }
-    lbl_1_bss_0.activeCameraModelId = motionId;
-    Hu3DCameraMotionOn(motionId, 1U);
+    lbl_1_bss_0.activeCameraModelId = cameraModelId;
+    Hu3DCameraMotionOn(cameraModelId, 1U);
 }
 
 /* Reports whether the active camera motion has reached its end. */

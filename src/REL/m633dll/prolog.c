@@ -5,7 +5,8 @@ extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 extern void fn_1_128C(void);
 
-/* The REL loader calls this on entry; run registered constructors before initializing minigame state. */
+/* The REL loader calls this on entry; run registered constructors before initializing minigame
+ * state. */
 int _prolog(void)
 {
     const VoidFunc *ctor = _ctors;
