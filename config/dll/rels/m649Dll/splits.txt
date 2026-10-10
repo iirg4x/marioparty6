@@ -5,3 +5,39 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m649Dll/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/m649Dll/main.c:
+	.text       start:0x000000A0 end:0x000013D8
+	.rodata     start:0x00000000 end:0x00000098
+	.data       start:0x00000000 end:0x00000458
+	.bss        start:0x00000000 end:0x000005AC
+
+REL/m649Dll/camera.c:
+	.text       start:0x000013D8 end:0x00004ECC
+	.rodata     start:0x00000098 end:0x00000158
+
+REL/m649Dll/player.c:
+	.text       start:0x00004ECC end:0x00006990
+	.rodata     start:0x00000158 end:0x000001E8
+
+REL/m649Dll/prop.c:
+	.text       start:0x00006990 end:0x00008F58
+	.rodata     start:0x000001E8 end:0x00000300
+	.data       start:0x00000458 end:0x00000538
+
+REL/m649Dll/effect.c:
+	.text       start:0x00008F58 end:0x0000A220
+	.rodata     start:0x00000300 end:0x000003E8
+	.data       start:0x00000538 end:0x00000560
+
+REL/m649Dll/score.c:
+	.text       start:0x0000A220 end:0x0000A684
+	.rodata     start:0x000003E8 end:0x000003F8
+	.data       start:0x00000560 end:0x00000590
+
+REL/m649Dll/runtime.c:
+	.text       start:0x0000A684 end:0x0000B0C8
+	.rodata     start:0x000003F8 end:0x00000410

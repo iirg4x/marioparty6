@@ -2267,6 +2267,52 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m649Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m649Dll/camera.c",
+                extra_cflags=["-lang", "c", "-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m649Dll/effect.c",
+                extra_cflags=["-lang", "c", "-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m649Dll/main.c",
+                extra_cflags=["-lang", "c", "-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m649Dll/player.c",
+                extra_cflags=["-lang", "c", "-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m649Dll/prolog.c",
+                extra_cflags=["-lang", "c", "-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m649Dll/prop.c",
+                extra_cflags=["-lang", "c", "-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m649Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/m649Dll/score.c",
+                extra_cflags=["-lang", "c", "-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
