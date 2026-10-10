@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 34.54% | 56.21% |
-| Main DOL | 88.50% | 99.04% |
+| Entire project | 34.55% | 56.21% |
+| Main DOL | 88.56% | 99.04% |
 | REL modules | 23.10% | 29.06% |
+
+DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/slidhist.c` now builds from source; `main.dol` matches retail byte for byte.
 
 DOL source: `src/msm/msmsys.c` now builds from source; `main.dol` matches retail byte for byte.
 

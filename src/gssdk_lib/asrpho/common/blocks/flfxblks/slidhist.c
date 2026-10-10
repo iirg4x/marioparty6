@@ -1,3 +1,5 @@
+// Tracks recent TriggerLR peak-energy values to estimate a lower quantile.
+
 #include "types.h"
 
 #include <string.h>
@@ -9,82 +11,102 @@ extern void heap_Free(void *heap, void *ptr);
 extern f32 floorf(f32 value);
 extern f32 ceilf(f32 value);
 
+// Adds a tracked candidate's peak to the rolling histogram.
+// TriggerLR calls this at candidate update intervals and when a candidate ends.
 void SlidingHisto_NewItem(TriggerLR *block, f32 item)
 {
-    s32 bin;
-    s32 oldBin;
+    s32 itemBin;
+    s32 expiredBin;
+    f32 minimum = block->histogramMinimum;
+    f32 range = block->histogramRange;
+    f32 maximum = minimum + range;
 
-    if (item > block->histogramMinimum + block->histogramRange) {
-        bin = block->histogramLastBin;
-    } else if (item < block->histogramMinimum) {
-        bin = 0;
+    if (item > maximum) {
+        itemBin = block->histogramLastBin;
+    } else if (item < minimum) {
+        itemBin = 0;
     } else {
-        bin = (s32)floorf(
-            (item - block->histogramMinimum +
-             0.5f * block->histogramBinWidth) /
-            block->histogramBinWidth);
+        // Add half a bin width before flooring so values round to the nearest bin.
+        f32 offset = item - minimum;
+        f32 binWidth = block->histogramBinWidth;
+        f32 halfWidth = binWidth / 2.0f;
+        f32 centered = halfWidth + offset;
+        f32 position = centered / binWidth;
+        f32 roundedPosition = floorf(position);
+        itemBin = (s32)roundedPosition;
     }
 
-    block->histogramBins[bin]++;
+    block->histogramBins[itemBin]++;
     block->histogramItemCount++;
 
-    oldBin = *block->histogramHistoryWrite;
-    *block->histogramHistoryWrite = bin;
-    block->histogramHistoryWrite++;
-    if (block->histogramHistoryWrite == block->histogramHistoryEnd) {
+    expiredBin = *block->histogramHistoryWrite;
+    *block->histogramHistoryWrite = itemBin;
+    if (++block->histogramHistoryWrite == block->histogramHistoryEnd) {
         block->histogramHistoryWrite = block->histogramHistory;
     }
 
-    if (oldBin >= 0) {
-        block->histogramBins[oldBin]--;
+    if (expiredBin >= 0) {
+        // Remove the value being overwritten so the histogram covers only recent peaks.
+        block->histogramBins[expiredBin]--;
         block->histogramItemCount--;
     }
 }
 
+// Returns the first bin whose accumulated count reaches ceil(0.001 + quantile * item count).
+// TriggerLR calls this after histogram updates and after restoring valid saved state.
 f32 SlidingHisto_LowerQuantile(TriggerLR *block, f32 quantile)
 {
-    u32 count = 0;
-    u32 target;
-    u32 *bin = block->histogramBins;
-    s32 binIndex;
+    u32 *currentBin = block->histogramBins;
+    u32 accumulatedItems = 0;
+    u32 targetItemCount;
 
-    target = (u32)ceilf(
+    // The small bias makes a zero quantile select the first occupied bin.
+    targetItemCount = (u32)ceilf(
         (f32)(0.001 + quantile * block->histogramItemCount));
     do {
-        count += *bin++;
-    } while (count < target);
+        accumulatedItems += *currentBin++;
+    } while (accumulatedItems < targetItemCount);
 
-    binIndex = (s32)(bin - block->histogramBins) - 1;
-    return block->histogramMinimum + block->histogramBinWidth * binIndex;
+    return block->histogramMinimum +
+           block->histogramBinWidth *
+               ((s32)(currentBin - block->histogramBins) - 1);
 }
 
+// Empties the histogram and marks every history slot unused.
+// ControlTriggerLR calls this while resetting or loading saved trigger state.
 void SlidingHisto_Clear(TriggerLR *block)
 {
-    u32 *bin = block->histogramBins + block->histogramBinCount;
-    s32 *history;
+    u32 *currentBin = block->histogramBins + block->histogramBinCount;
+    s32 *historyEntry;
 
-    while (bin > block->histogramBins) {
-        *--bin = 0;
+    while (currentBin > block->histogramBins) {
+        *--currentBin = 0;
     }
     block->histogramItemCount = 0;
 
-    history = block->histogramHistory;
-    while (history < block->histogramHistoryEnd) {
-        *history++ = -1;
+    historyEntry = block->histogramHistory;
+    while (historyEntry < block->histogramHistoryEnd) {
+        *historyEntry++ = -1;
     }
 }
 
+// Reads the histogram settings and allocates its bins and rolling history.
+// InitTriggerLR calls this while constructing the speech trigger block.
 u32 SlidingHisto_Init(TriggerLR *block)
 {
     TosContext *context = block->base.context;
+    f32 minimum;
     f32 maximum;
-    u32 *bin;
-    s32 *history;
+    f32 range;
+    u32 *currentBin;
+    s32 *historyEntry;
     u32 result = 0;
 
-    block->histogramMinimum = _tosGetProfileFloat(block, 12, 6.5f);
+    minimum = _tosGetProfileFloat(block, 12, 6.5f);
     maximum = _tosGetProfileFloat(block, 13, 27.0f);
-    block->histogramRange = maximum - block->histogramMinimum;
+    range = maximum - minimum;
+    block->histogramMinimum = minimum;
+    block->histogramRange = range;
 
     block->histogramBinCount = _tosGetProfileU32(block, 14, 150);
     block->histogramBins = heap_Calloc(
@@ -104,20 +126,23 @@ u32 SlidingHisto_Init(TriggerLR *block)
         _tosErrorLog(block, 2);
         result = 1;
     } else {
-        bin = block->histogramBins + block->histogramBinCount;
-        while (bin > block->histogramBins) {
-            *--bin = 0;
+        // Start with no recorded peaks in the histogram.
+        currentBin = block->histogramBins + block->histogramBinCount;
+        while (currentBin > block->histogramBins) {
+            *--currentBin = 0;
         }
         block->histogramItemCount = 0;
 
-        history = block->histogramHistory;
-        while (history < block->histogramHistoryEnd) {
-            *history++ = -1;
+        historyEntry = block->histogramHistory;
+        while (historyEntry < block->histogramHistoryEnd) {
+            *historyEntry++ = -1;
         }
     }
     return result;
 }
 
+// Releases the histogram allocations when TriggerLR is destructed.
+// ControlTriggerLR calls this during block destruction.
 void SlidingHisto_Free(TriggerLR *block)
 {
     TosContext *context = block->base.context;
@@ -130,45 +155,61 @@ void SlidingHisto_Free(TriggerLR *block)
     }
 }
 
+// Returns the bytes TriggerLR reserves for the saved rolling history.
 u32 SlidingHisto_sizeof_SessionData(TriggerLR *block)
 {
     return block->histogramHistoryLength * sizeof(s32) + sizeof(u32);
 }
 
+// Restores histogram counts and the ring position from TriggerLR session data.
+// ControlTriggerLR calls this when loading saved trigger state.
 void SlidingHisto_PutSession(
     TriggerLR *block, const SlidingHistoSessionData *session)
 {
-    u32 *bin = block->histogramBins + block->histogramBinCount;
-    s32 *history;
     s32 historyBin;
+    s32 *historyEntry;
+    s32 *clearHistoryEntry;
+    u32 *currentBin;
+    u32 writeIndex;
+    s32 *historyWrite;
+    u32 historyLength;
+    u32 historyBytes;
 
-    while (bin > block->histogramBins) {
-        *--bin = 0;
+    currentBin = block->histogramBins;
+    currentBin += block->histogramBinCount;
+
+    while (currentBin > block->histogramBins) {
+        *--currentBin = 0;
     }
     block->histogramItemCount = 0;
 
-    history = block->histogramHistory;
-    while (history < block->histogramHistoryEnd) {
-        *history++ = -1;
+    // Mark every history slot unused, although the saved history overwrites all of them below.
+    clearHistoryEntry = block->histogramHistory;
+    while (clearHistoryEntry < block->histogramHistoryEnd) {
+        *clearHistoryEntry++ = -1;
     }
 
-    block->histogramHistoryWrite =
-        block->histogramHistory + session->historyWriteIndex;
+    writeIndex = session->historyWriteIndex;
+    historyWrite = block->histogramHistory + writeIndex;
+    block->histogramHistoryWrite = historyWrite;
+    historyLength = block->histogramHistoryLength;
+    historyBytes = historyLength * sizeof(s32);
     memcpy(
-        block->histogramHistory, session->history,
-        block->histogramHistoryLength * sizeof(s32));
+        block->histogramHistory, session->history, historyBytes);
 
-    history = block->histogramHistory;
-    while (history < block->histogramHistoryEnd) {
-        historyBin = *history;
+    historyEntry = block->histogramHistory;
+    while (historyEntry < block->histogramHistoryEnd) {
+        historyBin = *historyEntry;
         if (historyBin >= 0) {
             block->histogramBins[historyBin]++;
             block->histogramItemCount++;
         }
-        history++;
+        historyEntry++;
     }
 }
 
+// Copies the rolling history and write position into TriggerLR session data.
+// ControlTriggerLR calls this when saving trigger state.
 void SlidingHisto_GetSession(
     TriggerLR *block, SlidingHistoSessionData *session)
 {
