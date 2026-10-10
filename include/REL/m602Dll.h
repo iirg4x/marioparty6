@@ -1,3 +1,4 @@
+/* Declares Odd Card Out shared state, layouts, and callbacks. */
 #ifndef M602DLL_H
 #define M602DLL_H
 #include "game/main.h"
@@ -22,71 +23,64 @@
 #include "math.h"
 #include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/fdlibm.h"
 #include <stddef.h>
-/* Retail-consumed M602 layouts. Field names describe consumers, not recovered names. */
+/* CPU players prepare their response and its countdown trigger for all ten rounds. */
 typedef struct {
-    s16 unknown000[10]; /* fn_1_96EC/9D10: signed halfwords at 0x00 + index*2. */
-    s16 unknown014[10]; /* Same consumers at 0x14 + index*2; record stride 0x28. */
+    s16 responseChoice[10]; /* The player's predicted choice index (0, 1, or 2) for each round. */
+    s16 choiceTriggerValue[10]; /* Timer value at which fn_1_9D10 applies that round's choice. */
 } M602Bss250Record;
 
 typedef struct {
-    s32 cameraBit;
-    f32 fov, nearPlane, farPlane, aspect;
+    s32 cameraBit; /* Camera selection mask. */
+    f32 fov, nearPlane, farPlane, aspect; /* Perspective angle, clipping distances, and aspect. */
+    /* Pixel viewport and depth range. */
     f32 viewportX, viewportY, viewportW, viewportH, minZ, maxZ;
-    Point3d pos, up, target;
+    Point3d pos, up, target; /* World position, up direction, and look-at point. */
 } M602CameraParams;
 
 typedef struct {
-    s16 model[5];
-    s16 anim[5];
-    s32 unknown014, unknown018;
-    Point3d scale, pos, rot;
-    s16 unknown040;
-    f32 unknown044;
-    s32 unknown048, unknown04C, unknown050;
+    s16 model[5]; /* One model handle for each card image. */
+    s16 anim[5]; /* Texture-animation handle for each image model. */
+    s32 cardImage, animationBank; /* Displayed image (0..4) and bank within that image. */
+    Point3d scale, pos, rot; /* Column scale, world position, and rotation in degrees. */
+    s16 turnFrames; /* Frames left in the current turn; zero means stopped. */
+    f32 turnDegreesPerFrame; /* Y rotation added each frame while turning. */
+    s32 pendingImage, pendingBank, shuffleFrames; /* Final face (-1 when unset) and reveal delay. */
 } M602BssA0Record;
 
 typedef struct { Point3d pos, up, target; } M602CameraPose;
-/* arg1 is stored as a full word without extension at target 0x2D40. */
 
 struct _struct_lbl_1_bss_318_0x58 {
-    /* 0x00 */ s16 unk0;                            /* inferred */
-    /* 0x02 */ s16 unk2;                            /* inferred */
-    /* 0x04 */ s16 unk4;                            /* inferred */
-    /* 0x06 */ s16 unk6;                            /* inferred */
-    /* 0x08 */ s16 unk8;                            /* inferred */
-    /* 0x0A */ s16 unkA;                            /* inferred */
-    /* 0x0C */ s16 motion[12]; /* Created/read as twelve motion IDs. */
-    /* 0x24 */ s16 unk24;                           /* inferred */
-    /* 0x26..27: natural alignment before float fields. */
-    /* 0x28 */ Point3d pos;
-    /* 0x34 */ Point3d rot;
-    /* 0x40 */ Point3d scale;
-    /* 0x4C */ s16 unk4C;                           /* inferred */
-    /* 0x4E */ s16 unk4E;                           /* inferred */
-    /* 0x50 */ s16 unk50;                           /* inferred */
-    /* 0x52 */ s16 unk52;                           /* inferred */
-    /* 0x54 */ s16 unk54;                           /* inferred */
-    /* 0x56 */ s16 unk56;                           /* inferred */
+    s16 playerIndex; /* Player slot (0..3), saved at setup and otherwise unused. */
+    s16 character; /* Character number used by CharModel and CharMotion calls. */
+    s16 controller; /* Controller port for button input. */
+    s16 team; /* Configured group number, saved at setup and otherwise unused. */
+    s16 cpuDifficulty; /* CPU difficulty (0..3); -1 for a human player. */
+    s16 model; /* Character model handle. */
+    s16 motion[12]; /* Handles for the twelve entries in the character-motion table. */
+    s16 motionIndex; /* Current entry in motion; entry eight is the flattened pose. */
+    Point3d pos; /* Standing world position. */
+    Point3d rot; /* Standing rotation in degrees. */
+    Point3d scale; /* Initial model scale. */
+    s16 localLight; /* Model-local light handle used by the player highlight. */
+    s16 cardModel; /* Card model attached to the character's hand. */
+    s16 cardAnimation; /* Texture animation for the held card. */
+    s16 cardChoice; /* Selected column (0..2); three means the card is hidden. */
+    s16 score; /* Correct answers, capped at the winning score of two. */
+    s16 choiceButtons; /* B/A/trigger-R bits used for choices; X input becomes trigger-R. */
 };
-
-/* size = 0x58 */
 
 struct _struct_lbl_1_bss_3C_0x8 {
-    /* 0x0 */ s16 unk0;                             /* inferred */
-    /* 0x2 */ s16 choices[3];
+    s16 cardImage; /* Image (0..4) shared by all three cards this round. */
+    s16 choices[3]; /* Animation bank for each column; exactly one differs. */
 };
-
-/* size = 0x8 */
 
 struct _struct_lbl_1_data_4B4_0xC {
-    /* 0x0 */ f32 unk0;                             /* inferred */
-    /* 0x4 */ f32 unk4;                             /* inferred */
-    /* 0x8 */ u8 unknown8[4]; /* Unconsumed retail zero bytes; original type unknown. */
+    f32 x; /* Horizontal screen position in pixels. */
+    f32 y; /* Vertical screen position in pixels. */
+    u8 unreadBytes[4]; /* Zero-filled bytes that the game never reads. */
 };
 
-/* size = 0xC */
-
-/* Consumed light layout: short handle, aligned vectors, and RGBA color. */
+/* Stage light position, direction, and color. */
 typedef struct {
     s16 id;
     Point3d pos;
@@ -306,15 +300,15 @@ void fn_1_A0(void);
 
 void fn_1_10C(s16 mode, s16 frameNo);
 
-void fn_1_210(s16 arg1, s16 frameNo);
+void fn_1_210(s16 mode, s16 frameNo);
 
 void fn_1_278(s16 mode, s16 frameNo);
 
-void fn_1_2AC(s16 arg1, s16 frameNo);
+void fn_1_2AC(s16 mode, s16 frameNo);
 
-void fn_1_7B8(s16 arg1, s16 frameNo);
+void fn_1_7B8(s16 mode, s16 frameNo);
 
-void fn_1_8F0(s16 arg1, s16 frameNo);
+void fn_1_8F0(s16 mode, s16 frameNo);
 
 void fn_1_A5C(s16 mode, s16 frameNo);
 
@@ -322,9 +316,9 @@ void fn_1_AB8(s16 mode, s16 frameNo);
 
 void fn_1_AD8(void);
 
-u8 fn_1_D54(s16 arg0);
+u8 fn_1_D54(s16 frameNo);
 
-void fn_1_1418(s16 arg0);
+void fn_1_1418(s16 shakeFrames);
 
 void fn_1_1428(void);
 
@@ -332,7 +326,7 @@ void fn_1_1770(void);
 
 void fn_1_1774(void);
 
-void fn_1_1778(s16 unused);
+void fn_1_1778(s16 frameNo);
 
 void fn_1_177C(void);
 
@@ -356,27 +350,27 @@ void fn_1_2998(void);
 
 s16 fn_1_2B28(void);
 
-void fn_1_2BB0(s16 arg0, s16 arg1);
+void fn_1_2BB0(s16 flipFrames, s16 halfTurns);
 
-void fn_1_2C00(s16 arg0, s16 arg1, s16 arg2);
+void fn_1_2C00(s16 columnIndex, s16 flipFrames, s16 halfTurns);
 
-void fn_1_2CBC(s16 arg0, s32 arg1);
+void fn_1_2CBC(s16 roundNumber, s32 shuffleFrames);
 
 s16 fn_1_2D5C(void);
 
-s16 fn_1_2E3C(s16 arg0);
+s16 fn_1_2E3C(s16 columnIndex);
 
-void fn_1_2FDC(s16 arg0);
+void fn_1_2FDC(s16 effectFrames);
 
-s32 fn_1_3000(s32 arg0);
+s32 fn_1_3000(s32 startTurn);
 
-s16 fn_1_34A4(s16 arg0);
+s16 fn_1_34A4(s16 frameNo);
 
 void fn_1_3908(void);
 
 void fn_1_39D0(void);
 
-void fn_1_3FD0(s16 arg0, s16 arg1, s16 arg2);
+void fn_1_3FD0(s16 columnIndex, s16 cardImageIndex, s16 animationBank);
 
 void fn_1_411C(void);
 
@@ -404,27 +398,27 @@ void fn_1_4EEC(void);
 
 s16 fn_1_4F90(void);
 
-s16 fn_1_4FE8(s16 arg0);
+s16 fn_1_4FE8(s16 player);
 
-s16 fn_1_502C(s16 arg0);
+s16 fn_1_502C(s16 player);
 
 s16 fn_1_5048(void);
 
-s16 fn_1_50D4(s16 arg0);
+s16 fn_1_50D4(s16 player);
 
-void fn_1_50F0(s16 arg0);
+void fn_1_50F0(s16 player);
 
-void fn_1_5150(s16 arg0);
+void fn_1_5150(s16 player);
 
 s16 fn_1_5170(void);
 
 s16 fn_1_51D4(void);
 
-s16 fn_1_5238(s16 arg0);
+s16 fn_1_5238(s16 player);
 
 void fn_1_5254(void);
 
-s8 fn_1_5C7C(s16 arg0);
+s8 fn_1_5C7C(s16 frameNo);
 
 void fn_1_6078(void);
 
@@ -440,15 +434,15 @@ void fn_1_6F00(void);
 
 s16 fn_1_6F14(void);
 
-void fn_1_8D90(s16 arg0, s32 arg1);
+void fn_1_8D90(s16 player, s32 correct);
 
-s16 fn_1_8E64(s16 arg0);
+s16 fn_1_8E64(s16 frameNo);
 
 void fn_1_90B4(void);
 
 void fn_1_9378(void);
 
-void fn_1_9480(s32 arg0);
+void fn_1_9480(s32 reset);
 
 void fn_1_96EC(void);
 
@@ -466,21 +460,21 @@ void fn_1_A034(void);
 
 void fn_1_A074(void);
 
-void fn_1_A648(s16 arg0);
+void fn_1_A648(s16 frameNo);
 
 void fn_1_A78C(void);
 
 void fn_1_A81C(void);
 
-void fn_1_A914(s16 arg0, s16 arg1);
+void fn_1_A914(s16 player, s16 score);
 
-s16 fn_1_AB40(s16 arg0);
+s16 fn_1_AB40(s16 player);
 
 s32 fn_1_AB5C(void);
 
 void fn_1_AB64(void);
 
-void fn_1_AB68(s32 arg0);
+void fn_1_AB68(s32 reset);
 typedef char m602_player_size[(sizeof(struct _struct_lbl_1_bss_318_0x58) == 88) ? 1 : -1];
 typedef char m602_stage_size[(sizeof(M602BssA0Record) == 84) ? 1 : -1];
 typedef char m602_light_size[(sizeof(M602Light) == 32) ? 1 : -1];

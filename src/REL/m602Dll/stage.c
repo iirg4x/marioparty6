@@ -1,23 +1,25 @@
+/* Maintains Odd Card Out card columns, round combinations, and stage effects. */
 #define _MATH_H
 #include "REL/m602Dll.h"
 
+/* The signed words below contain unused positive and negative 1000.0 values. */
+#define M602_POSITIVE_1000_BITS 0x447A0000
+#define M602_NEGATIVE_1000_BITS (-998637568)
+#define MSM_SE_M602_WINNER_STAGE 1576
+#define M602_CARD_STOPPED_BACK_FLAG (1 << 0)
+#define M602_CARD_STOPPED_FRONT_FLAG (1 << 1)
+#define M602_CARD_TURNING_BACK_FLAG (1 << 2)
+#define M602_CARD_TURNING_FRONT_FLAG (1 << 3)
+
+/* Five card-image resources followed by unused words. */
 s32 lbl_1_data_E8[13] = {
-    3997711,
-    3997712,
-    3997713,
-    3997714,
-    3997715,
-    0,
-    0,
-    0,
-    1148846080,
-    0,
-    0,
-    -998637568,
+    DATANUM(DATA_m602, 15), DATANUM(DATA_m602, 16), DATANUM(DATA_m602, 17), DATANUM(DATA_m602, 18),
+    DATANUM(DATA_m602, 19), 0, 0, 0,
+    M602_POSITIVE_1000_BITS, 0, 0, M602_NEGATIVE_1000_BITS,
     -1,
 };
 
-s32 lbl_1_data_11C[2] = { 3997702, 3997703 };
+s32 lbl_1_data_11C[2] = { DATANUM(DATA_m602, 6), DATANUM(DATA_m602, 7) };
 
 M602CameraParams lbl_1_data_124[3] = {
     {
@@ -87,9 +89,9 @@ M602CameraParams lbl_1_data_214 = {
     { 0.0f, -19.0f, 0.0f },
 };
 
-char lbl_1_data_264[9] = { 54, 48, 50, 95, 99, 97, 114, 100, 0 };
+char lbl_1_data_264[9] = "602_card";
 
-char lbl_1_data_26D[11] = { 116, 101, 115, 116, 0, 0, 0, 0, 0, 0, 0 };
+char lbl_1_data_26D[11] = "test";
 
 /* const */
 static const Point3d lbl_1_rodata_60 = { 0.0f, 0.0f, -160.0f };
@@ -104,32 +106,47 @@ static const Point3d lbl_1_rodata_90 = { 0.7f, 0.8f, 0.05f };
 
 static const Point3d lbl_1_rodata_9C = { 0.9f, 1.15f, 0.05f };
 
+/* Three columns hold card images, banks, transforms, and current/pending flip timing. */
 M602BssA0Record lbl_1_bss_A0[3];
 
+/* The five selectable card-face texture animations. */
 ANIMDATA *lbl_1_bss_8C[5];
 
+/* Each round has one image index and three animation-bank choices. */
 struct _struct_lbl_1_bss_3C_0x8 lbl_1_bss_3C[10];
 
+/* Model displaying the captured card-camera image. */
 s16 lbl_1_bss_3A;
 
+/* Texture animation binding the captured image to its display model. */
 s16 lbl_1_bss_38;
 
+/* Two animated models switched by the descending-model impact countdown. */
 s16 lbl_1_bss_34[2];
 
+/* Frames remaining for the alternate model shown during the impact reaction. */
 s16 lbl_1_bss_32;
 
+/* Animated card-view model whose position, scale, and speed depend on how many columns turn. */
 s16 lbl_1_bss_30;
 
+/* Stage animation shown after the winning cards turn sideways. */
 s16 lbl_1_bss_2E;
 
+/* Winner-stage phase: zero turns cards, positive waits, negative runs the final motion. */
 s16 lbl_1_bss_2C;
 
+/* Settling delay after all three cards finish turning sideways. */
 s16 lbl_1_bss_2A;
 
+/* Image index remembered during shuffling while a column is not turning with its back visible;
+* random draws exclude it, and selecting the final round image leaves it unchanged. */
 u8 lbl_1_bss_28;
 
+/* 576 by 288 texture receiving the three card-camera views. */
 ANIMDATA *lbl_1_bss_24;
 
+/* Current round number, capped at ten. */
 s16 lbl_1_bss_20;
 
 void fn_1_1770(void)
@@ -142,7 +159,8 @@ void fn_1_1774(void)
 
 }
 
-void fn_1_1778(s16 unused)
+/* The round sequence invokes this empty stage callback each frame. */
+void fn_1_1778(s16 frameNo)
 {
 
 }
@@ -167,100 +185,127 @@ void fn_1_1788(void)
 
 }
 
+/* The round callback queries the round number to stop play after the tenth round. */
 s16 fn_1_178C(void)
 {
     return lbl_1_bss_20;
 }
 
+/* Called by intro setup to create the three card views, their display texture, and stage models. */
 void fn_1_179C(void)
 {
-    s32 var_r30;
-    s32 var_r31;
-    u16 var_r29;
-    s16 layer;
+    s32 cardImageIndex;
+    s32 stageIndex;
+    u16 cameraMask;
+    s16 cardLayer;
     u32 bufferSize;
 
-    /* The loop index is 0..2; each path assigns the camera mask before use. */
-    var_r31 = 0;
-    while (var_r31 < 3) {
-        Hu3DCameraCreate(lbl_1_data_124[var_r31].cameraBit);
-        Hu3DCameraViewportSet(lbl_1_data_124[var_r31].cameraBit, lbl_1_data_124[var_r31].viewportX, lbl_1_data_124[var_r31].viewportY, lbl_1_data_124[var_r31].viewportW, lbl_1_data_124[var_r31].viewportH, lbl_1_data_124[var_r31].minZ, lbl_1_data_124[var_r31].maxZ);
-        Hu3DCameraPerspectiveSet(lbl_1_data_124[var_r31].cameraBit, lbl_1_data_124[var_r31].fov, lbl_1_data_124[var_r31].nearPlane, lbl_1_data_124[var_r31].farPlane, lbl_1_data_124[var_r31].aspect);
-        Hu3DCameraScissorSet(lbl_1_data_124[var_r31].cameraBit, (u32) lbl_1_data_124[var_r31].viewportX, (u32) lbl_1_data_124[var_r31].viewportY, (u32) lbl_1_data_124[var_r31].viewportW, (u32) lbl_1_data_124[var_r31].viewportH);
-        Hu3DCameraPosSetV(lbl_1_data_124[var_r31].cameraBit, &lbl_1_data_124[var_r31].pos, &lbl_1_data_124[var_r31].up, &lbl_1_data_124[var_r31].target);
-        var_r31 += 1;
+    stageIndex = 0;
+    while (stageIndex < 3) {
+        Hu3DCameraCreate(lbl_1_data_124[stageIndex].cameraBit);
+        Hu3DCameraViewportSet(
+            lbl_1_data_124[stageIndex].cameraBit, lbl_1_data_124[stageIndex].viewportX,
+            lbl_1_data_124[stageIndex].viewportY, lbl_1_data_124[stageIndex].viewportW,
+            lbl_1_data_124[stageIndex].viewportH, lbl_1_data_124[stageIndex].minZ,
+            lbl_1_data_124[stageIndex].maxZ);
+        Hu3DCameraPerspectiveSet(
+            lbl_1_data_124[stageIndex].cameraBit, lbl_1_data_124[stageIndex].fov,
+            lbl_1_data_124[stageIndex].nearPlane, lbl_1_data_124[stageIndex].farPlane,
+            lbl_1_data_124[stageIndex].aspect);
+        Hu3DCameraScissorSet(
+            lbl_1_data_124[stageIndex].cameraBit, (u32) lbl_1_data_124[stageIndex].viewportX,
+            (u32) lbl_1_data_124[stageIndex].viewportY, (u32) lbl_1_data_124[stageIndex].viewportW,
+            (u32) lbl_1_data_124[stageIndex].viewportH);
+        Hu3DCameraPosSetV(lbl_1_data_124[stageIndex].cameraBit, &lbl_1_data_124[stageIndex].pos,
+                          &lbl_1_data_124[stageIndex].up, &lbl_1_data_124[stageIndex].target);
+        stageIndex += 1;
     }
-    var_r31 = 0;
-    while (var_r31 < 5) {
-        lbl_1_bss_8C[var_r31] = HuSprAnimRead(HuDataSelHeapReadNum(lbl_1_data_E8[var_r31], 268435456, HEAP_MODEL));
-        var_r31 += 1;
+    stageIndex = 0;
+    while (stageIndex < 5) {
+        lbl_1_bss_8C[stageIndex] = HuSprAnimRead(
+            HuDataSelHeapReadNum(lbl_1_data_E8[stageIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+        stageIndex += 1;
     }
-    for (var_r31 = 0; var_r31 < 3; var_r31++) {
-        lbl_1_bss_A0[var_r31].unknown014 = 0;
-        lbl_1_bss_A0[var_r31].unknown018 = 0;
-        lbl_1_bss_A0[var_r31].unknown040 = 0;
-        lbl_1_bss_A0[var_r31].unknown044 = 0.0f;
-        lbl_1_bss_A0[var_r31].unknown048 = -1;
-        lbl_1_bss_A0[var_r31].unknown04C = -1;
-        var_r30 = 0;
-        while (var_r30 < 5) {
-            lbl_1_bss_A0[var_r31].model[var_r30] = Hu3DModelCreate(HuDataSelHeapReadNum(3997696, 268435456, HEAP_MODEL));
-            if (var_r31 == 0) {
-                var_r29 = 1;
+    for (stageIndex = 0; stageIndex < 3; stageIndex++) {
+        lbl_1_bss_A0[stageIndex].cardImage = 0;
+        lbl_1_bss_A0[stageIndex].animationBank = 0;
+        lbl_1_bss_A0[stageIndex].turnFrames = 0;
+        lbl_1_bss_A0[stageIndex].turnDegreesPerFrame = 0.0f;
+        lbl_1_bss_A0[stageIndex].pendingImage = -1;
+        lbl_1_bss_A0[stageIndex].pendingBank = -1;
+        cardImageIndex = 0;
+        while (cardImageIndex < 5) {
+            lbl_1_bss_A0[stageIndex].model[cardImageIndex] = Hu3DModelCreate(
+                HuDataSelHeapReadNum(DATANUM(DATA_m602, 0), HU_MEMNUM_OVL, HEAP_MODEL));
+            if (stageIndex == 0) {
+                cameraMask = 1;
             }
-            if (var_r31 == 1) {
-                var_r29 = 2;
+            if (stageIndex == 1) {
+                cameraMask = 2;
             }
-            if (var_r31 == 2) {
-                var_r29 = 4;
+            if (stageIndex == 2) {
+                cameraMask = 4;
             }
-            layer = 5;
-            Hu3DModelCameraSet(lbl_1_bss_A0[var_r31].model[var_r30], var_r29);
-            Hu3DModelLayerSet(lbl_1_bss_A0[var_r31].model[var_r30], layer);
-            lbl_1_bss_A0[var_r31].pos.x = lbl_1_bss_A0[var_r31].pos.y = lbl_1_bss_A0[var_r31].pos.z = 0.0f;
-            lbl_1_bss_A0[var_r31].rot.x = lbl_1_bss_A0[var_r31].rot.z = 0.0f;
-            lbl_1_bss_A0[var_r31].rot.y = 180.0f;
-            lbl_1_bss_A0[var_r31].scale.x = lbl_1_bss_A0[var_r31].scale.y = lbl_1_bss_A0[var_r31].scale.z = 1.0f;
-            Hu3DModelPosSetV(lbl_1_bss_A0[var_r31].model[var_r30], &lbl_1_bss_A0[var_r31].pos);
-            Hu3DModelRotSetV(lbl_1_bss_A0[var_r31].model[var_r30], &lbl_1_bss_A0[var_r31].rot);
-            Hu3DModelScaleSetV(lbl_1_bss_A0[var_r31].model[var_r30], &lbl_1_bss_A0[var_r31].scale);
-            lbl_1_bss_A0[var_r31].anim[var_r30] = Hu3DAnimCreate(lbl_1_bss_8C[var_r30], lbl_1_bss_A0[var_r31].model[var_r30], lbl_1_data_264);
-            Hu3DAnimBankSet(lbl_1_bss_A0[var_r31].anim[var_r30], (u16) lbl_1_bss_A0[var_r31].unknown018);
-            if (var_r30 != lbl_1_bss_A0[var_r31].unknown014) {
-                Hu3DModelAttrSet(lbl_1_bss_A0[var_r31].model[var_r30], 1U);
+            cardLayer = 5;
+            Hu3DModelCameraSet(lbl_1_bss_A0[stageIndex].model[cardImageIndex], cameraMask);
+            Hu3DModelLayerSet(lbl_1_bss_A0[stageIndex].model[cardImageIndex], cardLayer);
+            lbl_1_bss_A0[stageIndex].pos.x = lbl_1_bss_A0[stageIndex].pos.y =
+                lbl_1_bss_A0[stageIndex].pos.z = 0.0f;
+            lbl_1_bss_A0[stageIndex].rot.x = lbl_1_bss_A0[stageIndex].rot.z = 0.0f;
+            lbl_1_bss_A0[stageIndex].rot.y = 180.0f;
+            lbl_1_bss_A0[stageIndex].scale.x = lbl_1_bss_A0[stageIndex].scale.y =
+                lbl_1_bss_A0[stageIndex].scale.z = 1.0f;
+            Hu3DModelPosSetV(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
+                             &lbl_1_bss_A0[stageIndex].pos);
+            Hu3DModelRotSetV(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
+                             &lbl_1_bss_A0[stageIndex].rot);
+            Hu3DModelScaleSetV(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
+                               &lbl_1_bss_A0[stageIndex].scale);
+            lbl_1_bss_A0[stageIndex].anim[cardImageIndex] =
+                Hu3DAnimCreate(lbl_1_bss_8C[cardImageIndex],
+                               lbl_1_bss_A0[stageIndex].model[cardImageIndex], lbl_1_data_264);
+            Hu3DAnimBankSet(lbl_1_bss_A0[stageIndex].anim[cardImageIndex],
+                            (u16) lbl_1_bss_A0[stageIndex].animationBank);
+            if (cardImageIndex != lbl_1_bss_A0[stageIndex].cardImage) {
+                Hu3DModelAttrSet(lbl_1_bss_A0[stageIndex].model[cardImageIndex], HU3D_ATTR_DISPOFF);
             }
-            var_r30 += 1;
+            cardImageIndex += 1;
         }
     }
     Hu3DCameraLayerHookSet(8, 0, fn_1_2250);
-    lbl_1_bss_3A = Hu3DModelCreate(HuDataSelHeapReadNum(3997700, 268435456, HEAP_MODEL));
+    lbl_1_bss_3A =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m602, 4), HU_MEMNUM_OVL, HEAP_MODEL));
     Hu3DModelCameraSet(lbl_1_bss_3A, 8U);
     Hu3DModelLayerSet(lbl_1_bss_3A, 0);
     lbl_1_bss_24 = HuSprAnimMake(576, 288, 0);
     lbl_1_bss_24->bmp->palData = NULL;
     lbl_1_bss_24->bmp->palNum = 0;
-    bufferSize = GXGetTexBufferSize(576U, 288U, 6U, 0U, 0U);
-    lbl_1_bss_24->bmp->data = HuMemDirectMallocNum(HEAP_MODEL, bufferSize, 268435456U);
+    bufferSize = GXGetTexBufferSize(576U, 288U, GX_TF_RGBA8, 0U, 0U);
+    lbl_1_bss_24->bmp->data = HuMemDirectMallocNum(HEAP_MODEL, bufferSize, HU_MEMNUM_OVL);
     lbl_1_bss_38 = Hu3DAnimCreate(lbl_1_bss_24, lbl_1_bss_3A, lbl_1_data_26D);
     lbl_1_bss_32 = 0;
-    var_r31 = 0;
-    while (var_r31 < 2) {
-        lbl_1_bss_34[var_r31] = Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_11C[var_r31], 268435456, HEAP_MODEL));
-        Hu3DModelAmbSet(lbl_1_bss_34[var_r31], 1.0f, 1.0f, 1.0f);
-        if (var_r31 != 0) {
-            Hu3DModelAttrSet(lbl_1_bss_34[var_r31], 1U);
+    stageIndex = 0;
+    while (stageIndex < 2) {
+        lbl_1_bss_34[stageIndex] = Hu3DModelCreate(
+            HuDataSelHeapReadNum(lbl_1_data_11C[stageIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+        Hu3DModelAmbSet(lbl_1_bss_34[stageIndex], 1.0f, 1.0f, 1.0f);
+        if (stageIndex != 0) {
+            Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_ATTR_DISPOFF);
         } else {
-            Hu3DModelAttrSet(lbl_1_bss_34[var_r31], 1073741825U);
+            Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_MOTATTR_LOOP);
         }
-        Hu3DModelPosSet(lbl_1_bss_34[var_r31], lbl_1_rodata_60.x, lbl_1_rodata_60.y, lbl_1_rodata_60.z);
-        Hu3DModelScaleSet(lbl_1_bss_34[var_r31], lbl_1_rodata_6C.x, lbl_1_rodata_6C.y, lbl_1_rodata_6C.z);
-        Hu3DModelCameraSet(lbl_1_bss_34[var_r31], 7U);
-        Hu3DModelLayerSet(lbl_1_bss_34[var_r31], 4);
-        var_r31 += 1;
+        Hu3DModelPosSet(lbl_1_bss_34[stageIndex], lbl_1_rodata_60.x, lbl_1_rodata_60.y,
+                        lbl_1_rodata_60.z);
+        Hu3DModelScaleSet(lbl_1_bss_34[stageIndex], lbl_1_rodata_6C.x, lbl_1_rodata_6C.y,
+                          lbl_1_rodata_6C.z);
+        Hu3DModelCameraSet(lbl_1_bss_34[stageIndex], 7U);
+        Hu3DModelLayerSet(lbl_1_bss_34[stageIndex], 4);
+        stageIndex += 1;
     }
-    lbl_1_bss_30 = Hu3DModelCreate(HuDataSelHeapReadNum(3997704, 268435456, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_30, 1U);
-    Hu3DModelAttrSet(lbl_1_bss_30, 1073741825U);
+    lbl_1_bss_30 =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m602, 8), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelAttrSet(lbl_1_bss_30, HU3D_ATTR_DISPOFF);
+    Hu3DModelAttrSet(lbl_1_bss_30, HU3D_MOTATTR_LOOP);
     Hu3DModelPosSet(lbl_1_bss_30, lbl_1_rodata_78.x, lbl_1_rodata_78.y, lbl_1_rodata_78.z);
     Hu3DModelScaleSet(lbl_1_bss_30, lbl_1_rodata_90.x, lbl_1_rodata_90.y, lbl_1_rodata_90.z);
     Hu3DModelCameraSet(lbl_1_bss_30, 7U);
@@ -269,97 +314,110 @@ void fn_1_179C(void)
     fn_1_39D0();
     lbl_1_bss_20 = 0;
     Hu3DBGColorSet(0U, 178U, 235U);
-    lbl_1_bss_2E = Hu3DModelCreate(HuDataSelHeapReadNum(3997705, 268435456, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_2E, 1U);
-    Hu3DModelAttrSet(lbl_1_bss_2E, 1073741825U);
+    lbl_1_bss_2E =
+        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m602, 9), HU_MEMNUM_OVL, HEAP_MODEL));
+    Hu3DModelAttrSet(lbl_1_bss_2E, HU3D_ATTR_DISPOFF);
+    Hu3DModelAttrSet(lbl_1_bss_2E, HU3D_MOTATTR_LOOP);
     Hu3DModelCameraSet(lbl_1_bss_2E, 4U);
     Hu3DModelLayerSet(lbl_1_bss_2E, 5);
 }
 
+/* Card-display layer hook: capture the three card views, then clear depth for the stage draw. */
 void fn_1_2250(s16 layerNo)
 {
     Hu3DFbCopyExec(0, 0, 576, 288, GX_TF_RGBA8, 0, lbl_1_bss_24->bmp->data);
     Hu3DZClear();
 }
 
+/* Called by the exit sequence to release the card-view texture animation. */
 void fn_1_22A0(void)
 {
     HuSprAnimKill(lbl_1_bss_24);
     lbl_1_bss_24 = NULL;
 }
 
+/* Round and result callbacks call this each frame to shuffle, turn, and display the card
+ * columns. */
 void fn_1_22DC(void)
 {
-    s16 var_r29;
-    s32 var_r30;
-    s32 var_r31;
-    u8 var_r28;
+    s16 turningColumnCount;
+    s32 cardImageIndex;
+    s32 columnIndex;
+    u8 shuffledImage;
 
-    /* The random value is consumed only when at least one countdown is > 0,
-     * the same predicate which initializes it in the preceding do/while. */
-    var_r29 = 0;
-    if ((lbl_1_bss_A0->unknown050 > 0) || (lbl_1_bss_A0[1].unknown050 > 0) || (lbl_1_bss_A0[2].unknown050 > 0)) {
+    /* Change the shuffled face only while a column is waiting for its final card. */
+    turningColumnCount = 0;
+    if ((lbl_1_bss_A0->shuffleFrames > 0) || (lbl_1_bss_A0[1].shuffleFrames > 0) ||
+        (lbl_1_bss_A0[2].shuffleFrames > 0)) {
         do {
-            var_r28 = (u8) frand() % 5;
-        } while (var_r28 == lbl_1_bss_28);
+            shuffledImage = (u8) frand() % 5;
+        } while (shuffledImage == lbl_1_bss_28);
     }
-    for (var_r31 = 0; var_r31 < 3; var_r31++) {
-        if ((lbl_1_bss_A0[var_r31].unknown048 >= 0) && (lbl_1_bss_A0[var_r31].unknown04C >= 0) && (lbl_1_bss_A0[var_r31].unknown050 > 0)) {
-            lbl_1_bss_A0[var_r31].unknown050 -= 1;
-            if (lbl_1_bss_A0[var_r31].unknown050 <= 0) {
-                fn_1_3FD0((s16) var_r31, (s16) lbl_1_bss_A0[var_r31].unknown048, (s16) lbl_1_bss_A0[var_r31].unknown04C);
-                lbl_1_bss_A0[var_r31].unknown048 = -1;
-                lbl_1_bss_A0[var_r31].unknown04C = -1;
-                lbl_1_bss_A0[var_r31].unknown050 = 0;
-            } else if ((s32) (fn_1_2E3C((s16) var_r31) & 4) != 0) {
-                fn_1_3FD0((s16) var_r31, (s16) (u8) var_r28, 0);
+    for (columnIndex = 0; columnIndex < 3; columnIndex++) {
+        if ((lbl_1_bss_A0[columnIndex].pendingImage >= 0) &&
+            (lbl_1_bss_A0[columnIndex].pendingBank >= 0) &&
+            (lbl_1_bss_A0[columnIndex].shuffleFrames > 0)) {
+            lbl_1_bss_A0[columnIndex].shuffleFrames -= 1;
+            if (lbl_1_bss_A0[columnIndex].shuffleFrames <= 0) {
+                fn_1_3FD0((s16) columnIndex, (s16) lbl_1_bss_A0[columnIndex].pendingImage,
+                          (s16) lbl_1_bss_A0[columnIndex].pendingBank);
+                lbl_1_bss_A0[columnIndex].pendingImage = -1;
+                lbl_1_bss_A0[columnIndex].pendingBank = -1;
+                lbl_1_bss_A0[columnIndex].shuffleFrames = 0;
+            } else if ((s32) (fn_1_2E3C((s16) columnIndex) & M602_CARD_TURNING_BACK_FLAG) != 0) {
+                /* All turning backs share this frame's shuffled image and its first bank. */
+                fn_1_3FD0((s16) columnIndex, shuffledImage, 0);
             } else {
-                lbl_1_bss_28 = (u8) lbl_1_bss_A0[var_r31].unknown014;
+                lbl_1_bss_28 = (u8) lbl_1_bss_A0[columnIndex].cardImage;
             }
         }
-        if (lbl_1_bss_A0[var_r31].unknown040 > 0) {
-            lbl_1_bss_A0[var_r31].rot.y += lbl_1_bss_A0[var_r31].unknown044;
-            if (lbl_1_bss_A0[var_r31].rot.y >= 360.0f) {
-                lbl_1_bss_A0[var_r31].rot.y -= 360.0f;
+        if (lbl_1_bss_A0[columnIndex].turnFrames > 0) {
+            lbl_1_bss_A0[columnIndex].rot.y += lbl_1_bss_A0[columnIndex].turnDegreesPerFrame;
+            if (lbl_1_bss_A0[columnIndex].rot.y >= 360.0f) {
+                lbl_1_bss_A0[columnIndex].rot.y -= 360.0f;
             }
-            if (lbl_1_bss_A0[var_r31].rot.y <= -360.0f) {
-                lbl_1_bss_A0[var_r31].rot.y += 360.0f;
+            if (lbl_1_bss_A0[columnIndex].rot.y <= -360.0f) {
+                lbl_1_bss_A0[columnIndex].rot.y += 360.0f;
             }
-            lbl_1_bss_A0[var_r31].unknown040 -= 1;
-            if (lbl_1_bss_A0[var_r31].unknown040 <= 0) {
-                lbl_1_bss_A0[var_r31].unknown040 = 0;
-                lbl_1_bss_A0[var_r31].unknown044 = 0.0f;
-                if (((-90.0f <= lbl_1_bss_A0[var_r31].rot.y) && (lbl_1_bss_A0[var_r31].rot.y <= 90.0f)) || (lbl_1_bss_A0[var_r31].rot.y <= -270.0f) || (270.0f <= lbl_1_bss_A0[var_r31].rot.y)) {
-                    lbl_1_bss_A0[var_r31].rot.y = 0.0f;
+            lbl_1_bss_A0[columnIndex].turnFrames -= 1;
+            if (lbl_1_bss_A0[columnIndex].turnFrames <= 0) {
+                lbl_1_bss_A0[columnIndex].turnFrames = 0;
+                lbl_1_bss_A0[columnIndex].turnDegreesPerFrame = 0.0f;
+                if (((-90.0f <= lbl_1_bss_A0[columnIndex].rot.y) &&
+                     (lbl_1_bss_A0[columnIndex].rot.y <= 90.0f)) ||
+                    (lbl_1_bss_A0[columnIndex].rot.y <= -270.0f) ||
+                    (270.0f <= lbl_1_bss_A0[columnIndex].rot.y)) {
+                    lbl_1_bss_A0[columnIndex].rot.y = 0.0f;
                 } else {
-                    lbl_1_bss_A0[var_r31].rot.y = 180.0f;
+                    lbl_1_bss_A0[columnIndex].rot.y = 180.0f;
                 }
             }
-            var_r30 = 0;
-            while (var_r30 < 5) {
-                Hu3DModelRotSetV(lbl_1_bss_A0[var_r31].model[var_r30], &lbl_1_bss_A0[var_r31].rot);
-                var_r30 += 1;
+            cardImageIndex = 0;
+            while (cardImageIndex < 5) {
+                Hu3DModelRotSetV(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
+                                 &lbl_1_bss_A0[columnIndex].rot);
+                cardImageIndex += 1;
             }
-            var_r29 += 1;
+            turningColumnCount += 1;
         }
     }
-    if (var_r29 < 3) {
+    if (turningColumnCount < 3) {
         Hu3DModelPosSet(lbl_1_bss_30, lbl_1_rodata_84.x, lbl_1_rodata_84.y, lbl_1_rodata_84.z);
         Hu3DModelScaleSet(lbl_1_bss_30, lbl_1_rodata_9C.x, lbl_1_rodata_9C.y, lbl_1_rodata_9C.z);
-        Hu3DModelAttrReset(lbl_1_bss_30, 1U);
+        Hu3DModelAttrReset(lbl_1_bss_30, HU3D_ATTR_DISPOFF);
         Hu3DMotionSpeedSet(lbl_1_bss_30, 2.0f);
     } else {
         Hu3DModelPosSet(lbl_1_bss_30, lbl_1_rodata_78.x, lbl_1_rodata_78.y, lbl_1_rodata_78.z);
         Hu3DModelScaleSet(lbl_1_bss_30, lbl_1_rodata_90.x, lbl_1_rodata_90.y, lbl_1_rodata_90.z);
-        Hu3DModelAttrReset(lbl_1_bss_30, 1U);
+        Hu3DModelAttrReset(lbl_1_bss_30, HU3D_ATTR_DISPOFF);
         Hu3DMotionSpeedSet(lbl_1_bss_30, 4.0f);
     }
     if (lbl_1_bss_32 != 0) {
-        Hu3DModelAttrSet(lbl_1_bss_34[0], 1U);
-        Hu3DModelAttrReset(lbl_1_bss_34[1], 1U);
+        Hu3DModelAttrSet(lbl_1_bss_34[0], HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrReset(lbl_1_bss_34[1], HU3D_ATTR_DISPOFF);
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_34[0], 1U);
-        Hu3DModelAttrSet(lbl_1_bss_34[1], 1U);
+        Hu3DModelAttrReset(lbl_1_bss_34[0], HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrSet(lbl_1_bss_34[1], HU3D_ATTR_DISPOFF);
     }
     lbl_1_bss_32 -= 1;
     if (lbl_1_bss_32 < 0) {
@@ -367,155 +425,187 @@ void fn_1_22DC(void)
     }
 }
 
+/* Called at each round start to choose the flip duration and schedule the next card combination. */
 void fn_1_2998(void)
 {
-    s16 angle;
-    s16 count;
+    s16 flipFrames;
+    s16 halfTurnsOrShuffleFrames;
 
-    angle = frand() % 60 + 90;
-    count = angle / 10;
-    count % 2 ? count-- : 0;
+    flipFrames = frand() % 60 + 90;
+    halfTurnsOrShuffleFrames = flipFrames / 10;
+    /* The first round starts on the back; later rounds start on the front. */
+    halfTurnsOrShuffleFrames % 2 ? halfTurnsOrShuffleFrames-- : 0;
     if (lbl_1_bss_20 == 0) {
-        count += 1;
+        halfTurnsOrShuffleFrames += 1;
     }
     lbl_1_bss_20 += 1;
     if (lbl_1_bss_20 > 10) {
         lbl_1_bss_20 = 10;
     }
-    fn_1_2BB0(angle, count);
-    count = 0.5f + (360.0f / lbl_1_bss_A0[0].unknown044) * ((count - 1) / 2.0f);
-    fn_1_2CBC(lbl_1_bss_20, count);
+    fn_1_2BB0(flipFrames, halfTurnsOrShuffleFrames);
+    /* The final front-facing half-turn is excluded from the shuffle interval. */
+    halfTurnsOrShuffleFrames = 0.5f + (360.0f / lbl_1_bss_A0[0].turnDegreesPerFrame) *
+                                          ((halfTurnsOrShuffleFrames - 1) / 2.0f);
+    fn_1_2CBC(lbl_1_bss_20, halfTurnsOrShuffleFrames);
 }
 
+/* Called during the reveal to spin the odd card once; returns column one if no pair matches. */
 s16 fn_1_2B28(void)
 {
-    s16 temp_r3;
+    s16 oddColumn;
 
-    temp_r3 = fn_1_2D5C();
-    if (temp_r3 != 3) {
-        fn_1_2C00(temp_r3, 90, 2);
-        if (temp_r3 == 0) { return 0; }
-        if (temp_r3 == 1) { return 1; }
-        if (temp_r3 == 2) { return 2; }
+    oddColumn = fn_1_2D5C();
+    if (oddColumn != 3) {
+        fn_1_2C00(oddColumn, 90, 2);
+        if (oddColumn == 0) { return 0; }
+        if (oddColumn == 1) { return 1; }
+        if (oddColumn == 2) { return 2; }
     }
     return 1;
 }
 
-void fn_1_2BB0(s16 arg0, s16 arg1)
+/* Round setup and the no-winner sequence call this to start equal turns on all three columns. */
+void fn_1_2BB0(s16 flipFrames, s16 halfTurns)
 {
-    s32 var_r31;
+    s32 columnIndex;
 
-    var_r31 = 0;
-    while (var_r31 < 3) {
-        fn_1_2C00((s16) var_r31, arg0, arg1);
-        var_r31 += 1;
+    columnIndex = 0;
+    while (columnIndex < 3) {
+        fn_1_2C00((s16) columnIndex, flipFrames, halfTurns);
+        columnIndex += 1;
     }
 }
 
-void fn_1_2C00(s16 arg0, s16 arg1, s16 arg2)
+/* Called by card-turn setup to assign a column duration in frames and a count of half-turns. */
+void fn_1_2C00(s16 columnIndex, s16 flipFrames, s16 halfTurns)
 {
-    if ((arg0 < 0) || (arg0 > 2)) {
+    if ((columnIndex < 0) || (columnIndex > 2)) {
         return;
     }
-    lbl_1_bss_A0[arg0].unknown040 = arg1;
-    lbl_1_bss_A0[arg0].unknown044 = (180.0f * (f32) arg2) / (f32) arg1;
+    lbl_1_bss_A0[columnIndex].turnFrames = flipFrames;
+    lbl_1_bss_A0[columnIndex].turnDegreesPerFrame = (180.0f * (f32) halfTurns) / (f32) flipFrames;
 }
 
-void fn_1_2CBC(s16 arg0, s32 arg1)
+/* Round setup schedules the prepared image and animation bank after the shuffle countdown;
+ * the caller supplies a round number from one through ten. */
+void fn_1_2CBC(s16 roundNumber, s32 shuffleFrames)
 {
-    s32 var_r31;
+    s32 columnIndex;
 
-    arg0 -= 1;
-    var_r31 = 0;
-    while (var_r31 < 3) {
-        lbl_1_bss_A0[var_r31].unknown048 = (s32) lbl_1_bss_3C[arg0].unk0;
-        lbl_1_bss_A0[var_r31].unknown04C = (s32) lbl_1_bss_3C[arg0].choices[var_r31];
-        lbl_1_bss_A0[var_r31].unknown050 = arg1;
-        var_r31 += 1;
+    roundNumber -= 1;
+    columnIndex = 0;
+    while (columnIndex < 3) {
+        lbl_1_bss_A0[columnIndex].pendingImage = (s32) lbl_1_bss_3C[roundNumber].cardImage;
+        lbl_1_bss_A0[columnIndex].pendingBank =
+            (s32) lbl_1_bss_3C[roundNumber].choices[columnIndex];
+        lbl_1_bss_A0[columnIndex].shuffleFrames = shuffleFrames;
+        columnIndex += 1;
     }
 }
 
+/* Reveal and scoring callbacks use the first equal pair to find the odd column; three means
+ * no pair. Three equal cards return column two because the first pair takes precedence. */
 s16 fn_1_2D5C(void)
 {
-    if ((lbl_1_bss_A0->unknown014 == lbl_1_bss_A0[1].unknown014) && (lbl_1_bss_A0->unknown018 == lbl_1_bss_A0[1].unknown018)) {
+    if ((lbl_1_bss_A0->cardImage == lbl_1_bss_A0[1].cardImage) &&
+        (lbl_1_bss_A0->animationBank == lbl_1_bss_A0[1].animationBank)) {
         return 2;
     }
-    if ((lbl_1_bss_A0->unknown014 == lbl_1_bss_A0[2].unknown014) && (lbl_1_bss_A0->unknown018 == lbl_1_bss_A0[2].unknown018)) {
+    if ((lbl_1_bss_A0->cardImage == lbl_1_bss_A0[2].cardImage) &&
+        (lbl_1_bss_A0->animationBank == lbl_1_bss_A0[2].animationBank)) {
         return 1;
     }
-    if ((lbl_1_bss_A0[1].unknown014 == lbl_1_bss_A0[2].unknown014) && (lbl_1_bss_A0[1].unknown018 == lbl_1_bss_A0[2].unknown018)) {
+    if ((lbl_1_bss_A0[1].cardImage == lbl_1_bss_A0[2].cardImage) &&
+        (lbl_1_bss_A0[1].animationBank == lbl_1_bss_A0[2].animationBank)) {
         return 0;
     }
     return 3;
 }
 
-s16 fn_1_2E3C(s16 arg0)
+/* Round updates query a column: bits zero/one mark a stopped back/front, bits two/three a moving
+ * back/front. Exact edge-on angles count as backs. */
+s16 fn_1_2E3C(s16 columnIndex)
 {
-    if (lbl_1_bss_A0[arg0].unknown040 == 0) {
-        if (((-90.0f < lbl_1_bss_A0[arg0].rot.y) && (lbl_1_bss_A0[arg0].rot.y < 90.0f)) || (lbl_1_bss_A0[arg0].rot.y < -270.0f) || (270.0f < lbl_1_bss_A0[arg0].rot.y)) {
-            return 2;
+    if (lbl_1_bss_A0[columnIndex].turnFrames == 0) {
+        if (((-90.0f < lbl_1_bss_A0[columnIndex].rot.y) &&
+             (lbl_1_bss_A0[columnIndex].rot.y < 90.0f)) ||
+            (lbl_1_bss_A0[columnIndex].rot.y < -270.0f) ||
+            (270.0f < lbl_1_bss_A0[columnIndex].rot.y)) {
+            return M602_CARD_STOPPED_FRONT_FLAG;
         }
-        return 1;
+        return M602_CARD_STOPPED_BACK_FLAG;
     }
-    if (((-90.0f < lbl_1_bss_A0[arg0].rot.y) && (lbl_1_bss_A0[arg0].rot.y < 90.0f)) || (lbl_1_bss_A0[arg0].rot.y < -270.0f) || (270.0f < lbl_1_bss_A0[arg0].rot.y)) {
-        return 8;
+    if (((-90.0f < lbl_1_bss_A0[columnIndex].rot.y) && (lbl_1_bss_A0[columnIndex].rot.y < 90.0f)) ||
+        (lbl_1_bss_A0[columnIndex].rot.y < -270.0f) || (270.0f < lbl_1_bss_A0[columnIndex].rot.y)) {
+        return M602_CARD_TURNING_FRONT_FLAG;
     }
-    return 4;
+    return M602_CARD_TURNING_BACK_FLAG;
 }
 
-void fn_1_2FDC(s16 arg0)
+/* The player-reaction update calls this when the descending model reaches the player's height;
+ * an active stage-model effect keeps its existing countdown. */
+void fn_1_2FDC(s16 effectFrames)
 {
     if (lbl_1_bss_32 <= 0) {
-        lbl_1_bss_32 = arg0;
+        lbl_1_bss_32 = effectFrames;
     }
 }
 
-s32 fn_1_3000(s32 arg0)
+/* Winner-stage updates turn all cards sideways, hide their faces, and wait for a short settling
+ * delay. */
+s32 fn_1_3000(s32 startTurn)
 {
-    s16 var_r29;
-    s16 var_r30;
-    s16 var_r31;
+    s16 finishedColumnCount;
+    s16 cardImageIndex;
+    s16 columnIndex;
 
-    var_r29 = 0;
-    for (var_r31 = 0; var_r31 < 3; var_r31++) {
-        if (arg0 != 0) {
+    finishedColumnCount = 0;
+    for (columnIndex = 0; columnIndex < 3; columnIndex++) {
+        if (startTurn != 0) {
+            /* A fresh winner sequence forces every column through a 270-degree turn. */
             lbl_1_bss_2A = 0;
-            lbl_1_bss_A0[var_r31].unknown040 = 45;
-            lbl_1_bss_A0[var_r31].unknown044 = (f32) (270 / lbl_1_bss_A0[var_r31].unknown040);
+            lbl_1_bss_A0[columnIndex].turnFrames = 45;
+            lbl_1_bss_A0[columnIndex].turnDegreesPerFrame =
+                (f32) (270 / lbl_1_bss_A0[columnIndex].turnFrames);
         }
-        if (lbl_1_bss_A0[var_r31].unknown040 > 0) {
-            lbl_1_bss_A0[var_r31].rot.y += lbl_1_bss_A0[var_r31].unknown044;
-            if (lbl_1_bss_A0[var_r31].rot.y >= 360.0f) {
-                lbl_1_bss_A0[var_r31].rot.y -= 360.0f;
+        if (lbl_1_bss_A0[columnIndex].turnFrames > 0) {
+            lbl_1_bss_A0[columnIndex].rot.y += lbl_1_bss_A0[columnIndex].turnDegreesPerFrame;
+            if (lbl_1_bss_A0[columnIndex].rot.y >= 360.0f) {
+                lbl_1_bss_A0[columnIndex].rot.y -= 360.0f;
             }
-            if (lbl_1_bss_A0[var_r31].rot.y <= -360.0f) {
-                lbl_1_bss_A0[var_r31].rot.y += 360.0f;
+            if (lbl_1_bss_A0[columnIndex].rot.y <= -360.0f) {
+                lbl_1_bss_A0[columnIndex].rot.y += 360.0f;
             }
-            lbl_1_bss_A0[var_r31].unknown040 -= 1;
-            if (lbl_1_bss_A0[var_r31].unknown040 <= 0) {
-                lbl_1_bss_A0[var_r31].unknown040 = 0;
-                lbl_1_bss_A0[var_r31].unknown044 = 0.0f;
-                if (((0.0f <= lbl_1_bss_A0[var_r31].rot.y) && (lbl_1_bss_A0[var_r31].rot.y <= 180.0f)) || ((-360.0f <= lbl_1_bss_A0[var_r31].rot.y) && (lbl_1_bss_A0[var_r31].rot.y <= -180.0f))) {
-                    lbl_1_bss_A0[var_r31].rot.y = 90.0f;
+            lbl_1_bss_A0[columnIndex].turnFrames -= 1;
+            if (lbl_1_bss_A0[columnIndex].turnFrames <= 0) {
+                lbl_1_bss_A0[columnIndex].turnFrames = 0;
+                lbl_1_bss_A0[columnIndex].turnDegreesPerFrame = 0.0f;
+                if (((0.0f <= lbl_1_bss_A0[columnIndex].rot.y) &&
+                     (lbl_1_bss_A0[columnIndex].rot.y <= 180.0f)) ||
+                    ((-360.0f <= lbl_1_bss_A0[columnIndex].rot.y) &&
+                     (lbl_1_bss_A0[columnIndex].rot.y <= -180.0f))) {
+                    lbl_1_bss_A0[columnIndex].rot.y = 90.0f;
                 } else {
-                    lbl_1_bss_A0[var_r31].rot.y = 270.0f;
+                    lbl_1_bss_A0[columnIndex].rot.y = 270.0f;
                 }
-                var_r30 = 0;
-                while (var_r30 < 5) {
-                    Hu3DModelAttrSet(lbl_1_bss_A0[var_r31].model[var_r30], 1U);
-                    var_r30 += 1;
+                cardImageIndex = 0;
+                while (cardImageIndex < 5) {
+                    Hu3DModelAttrSet(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
+                                     HU3D_ATTR_DISPOFF);
+                    cardImageIndex += 1;
                 }
-                var_r29 += 1;
+                finishedColumnCount += 1;
             }
-            var_r30 = 0;
-            while (var_r30 < 5) {
-                Hu3DModelRotSetV(lbl_1_bss_A0[var_r31].model[var_r30], &lbl_1_bss_A0[var_r31].rot);
-                var_r30 += 1;
+            cardImageIndex = 0;
+            while (cardImageIndex < 5) {
+                Hu3DModelRotSetV(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
+                                 &lbl_1_bss_A0[columnIndex].rot);
+                cardImageIndex += 1;
             }
         }
     }
-    Hu3DModelAttrSet(lbl_1_bss_30, 1U);
-    if (var_r29 >= 3) {
+    Hu3DModelAttrSet(lbl_1_bss_30, HU3D_ATTR_DISPOFF);
+    if (finishedColumnCount >= 3) {
         lbl_1_bss_2A = 1;
     }
     if (lbl_1_bss_2A > 0) {
@@ -527,171 +617,199 @@ s32 fn_1_3000(s32 arg0)
     return 0;
 }
 
-s16 fn_1_34A4(s16 arg0)
+/* Pre-winner and winner-display callbacks turn the cards sideways and play the final stage
+ * motion; -1 begins the winner display and 1 marks the end of that motion. */
+s16 fn_1_34A4(s16 frameNo)
 {
-    f32 temp_f31;
-    s16 var_r30;
-    s16 var_r31;
+    f32 motionEnd;
+    s16 stageReady;
+    s16 stageIndex;
 
-    if (arg0 == 0) {
+    if (frameNo == 0) {
         fn_1_3000(1);
         lbl_1_bss_2C = 0;
     } else {
         if (lbl_1_bss_2C < 0) {
             if (lbl_1_bss_2C == -1) {
-                var_r31 = 0;
-                while (var_r31 < 2) {
-                    Hu3DModelAttrSet(lbl_1_bss_34[var_r31], 1U);
-                    var_r31 += 1;
+                stageIndex = 0;
+                while (stageIndex < 2) {
+                    Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_ATTR_DISPOFF);
+                    stageIndex += 1;
                 }
-                Hu3DCameraViewportSet(lbl_1_data_214.cameraBit, lbl_1_data_214.viewportX, lbl_1_data_214.viewportY, lbl_1_data_214.viewportW, lbl_1_data_214.viewportH, lbl_1_data_214.minZ, lbl_1_data_214.maxZ);
-                Hu3DCameraPerspectiveSet(lbl_1_data_214.cameraBit, lbl_1_data_214.fov, lbl_1_data_214.nearPlane, lbl_1_data_214.farPlane, lbl_1_data_214.aspect);
-                Hu3DCameraScissorSet(lbl_1_data_214.cameraBit, (u32) lbl_1_data_214.viewportX, (u32) lbl_1_data_214.viewportY, (u32) lbl_1_data_214.viewportW, (u32) lbl_1_data_214.viewportH);
-                Hu3DCameraPosSetV(lbl_1_data_214.cameraBit, &lbl_1_data_214.pos, &lbl_1_data_214.up, &lbl_1_data_214.target);
-                Hu3DModelAttrReset(lbl_1_bss_2E, 1U);
+                Hu3DCameraViewportSet(lbl_1_data_214.cameraBit, lbl_1_data_214.viewportX,
+                                      lbl_1_data_214.viewportY, lbl_1_data_214.viewportW,
+                                      lbl_1_data_214.viewportH, lbl_1_data_214.minZ,
+                                      lbl_1_data_214.maxZ);
+                Hu3DCameraPerspectiveSet(lbl_1_data_214.cameraBit, lbl_1_data_214.fov,
+                                         lbl_1_data_214.nearPlane, lbl_1_data_214.farPlane,
+                                         lbl_1_data_214.aspect);
+                Hu3DCameraScissorSet(lbl_1_data_214.cameraBit, (u32) lbl_1_data_214.viewportX,
+                                     (u32) lbl_1_data_214.viewportY, (u32) lbl_1_data_214.viewportW,
+                                     (u32) lbl_1_data_214.viewportH);
+                Hu3DCameraPosSetV(lbl_1_data_214.cameraBit, &lbl_1_data_214.pos, &lbl_1_data_214.up,
+                                  &lbl_1_data_214.target);
+                Hu3DModelAttrReset(lbl_1_bss_2E, HU3D_ATTR_DISPOFF);
                 Hu3DMotionTimeSet(lbl_1_bss_2E, 0.0f);
-                Hu3DModelAttrSet(lbl_1_bss_2E, 1073741825U);
-                HuAudFXPlay(1576);
+                Hu3DModelAttrSet(lbl_1_bss_2E, HU3D_MOTATTR_LOOP);
+                HuAudFXPlay(MSM_SE_M602_WINNER_STAGE);
                 fn_1_4C84();
                 lbl_1_bss_2C -= 1;
             }
             if (lbl_1_bss_2C < -1) {
-                temp_f31 = Hu3DMotionMaxTimeGet(lbl_1_bss_2E);
-                if ((1.0f + Hu3DMotionTimeGet(lbl_1_bss_2E)) >= temp_f31) {
+                motionEnd = Hu3DMotionMaxTimeGet(lbl_1_bss_2E);
+                if ((1.0f + Hu3DMotionTimeGet(lbl_1_bss_2E)) >= motionEnd) {
                     lbl_1_bss_2C = -512;
-                    Hu3DModelAttrSet(lbl_1_bss_2E, 1073741826U);
+                    Hu3DModelAttrSet(lbl_1_bss_2E, HU3D_MOTATTR_PAUSE);
                 } else {
                     lbl_1_bss_2C = -20;
                 }
             }
         }
         if (lbl_1_bss_2C > 0) {
-            var_r30 = 0;
-            var_r31 = 0;
-            while (var_r31 < 2) {
-                if ((Hu3DMotionTimeGet(lbl_1_bss_34[var_r31]) <= 50.0f) || (280.0f <= Hu3DMotionTimeGet(lbl_1_bss_34[var_r31]))) {
-                    Hu3DModelAttrSet(lbl_1_bss_34[var_r31], 1073741826U);
+            stageReady = 0;
+            stageIndex = 0;
+            while (stageIndex < 2) {
+                if ((Hu3DMotionTimeGet(lbl_1_bss_34[stageIndex]) <= 50.0f) ||
+                    (280.0f <= Hu3DMotionTimeGet(lbl_1_bss_34[stageIndex]))) {
+                    Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_MOTATTR_PAUSE);
                 } else {
-                    var_r30 += 1;
+                    stageReady += 1;
                 }
-                var_r31 += 1;
+                stageIndex += 1;
             }
-            if (var_r30 == 0) {
+            if (stageReady == 0) {
                 lbl_1_bss_2C = -1;
             }
         }
         if (lbl_1_bss_2C == 0) {
-            var_r30 = fn_1_3000(0);
-            if (var_r30 != 0) { lbl_1_bss_2C += 1; }
+            stageReady = fn_1_3000(0);
+            if (stageReady != 0) { lbl_1_bss_2C += 1; }
         }
     }
     fn_1_3908();
+    /* Minus one signals the transition; minus 512 signals the completed final motion. */
     if (lbl_1_bss_2C == -512) { return 1; }
     if (lbl_1_bss_2C == -1) { return -1; }
     return 0;
 }
 
+/* Result callbacks pause the two stage motions outside their central playback interval. */
 void fn_1_3908(void)
 {
-    s16 var_r31;
+    s16 stageIndex;
 
-    var_r31 = 0;
-    while (var_r31 < 2) {
-        if ((Hu3DMotionTimeGet(lbl_1_bss_34[var_r31]) <= 50.0f) || (280.0f <= Hu3DMotionTimeGet(lbl_1_bss_34[var_r31]))) {
-            Hu3DModelAttrSet(lbl_1_bss_34[var_r31], 1073741826U);
+    stageIndex = 0;
+    while (stageIndex < 2) {
+        if ((Hu3DMotionTimeGet(lbl_1_bss_34[stageIndex]) <= 50.0f) ||
+            (280.0f <= Hu3DMotionTimeGet(lbl_1_bss_34[stageIndex]))) {
+            Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_MOTATTR_PAUSE);
         }
-        var_r31 += 1;
+        stageIndex += 1;
     }
 }
 
+/* Intro setup prepares ten rounds, with one distinct animation bank among each group of three
+ * cards. */
 void fn_1_39D0(void)
 {
-    s16 previous;
-    s16 work;
-    s16 selected;
-    s16 other;
-    s16 i;
+    s16 previousOddColumn;
+    s16 previousRoundOrSwapBank;
+    s16 oddColumn;
+    s16 randomChoiceOrSwapBank;
+    s16 roundIndex;
 
-    for (i = 0; i < 10; i++) {
-        if (i == 0) {
-            lbl_1_bss_3C[i].unk0 = (u8)frand() % 5;
+    for (roundIndex = 0; roundIndex < 10; roundIndex++) {
+        if (roundIndex == 0) {
+            lbl_1_bss_3C[roundIndex].cardImage = (u8)frand() % 5;
         } else {
-            work = i - 1;
+            previousRoundOrSwapBank = roundIndex - 1;
+            /* Consecutive rounds use different card images even when their banks repeat. */
             do {
-                lbl_1_bss_3C[i].unk0 = (u8)frand() % 5;
-            } while (lbl_1_bss_3C[i].unk0 == lbl_1_bss_3C[work].unk0);
+                lbl_1_bss_3C[roundIndex].cardImage = (u8)frand() % 5;
+            } while (lbl_1_bss_3C[roundIndex].cardImage ==
+                     lbl_1_bss_3C[previousRoundOrSwapBank].cardImage);
         }
-        lbl_1_bss_3C[i].choices[0] = 0;
-        lbl_1_bss_3C[i].choices[1] = (u8)frand() % 4 + 1;
-        lbl_1_bss_3C[i].choices[2] = lbl_1_bss_3C[i].choices[(u8)frand() % 2];
-        other = (u8)frand() % 10;
-        if (other < 5) {
-            other = lbl_1_bss_3C[i].choices[0];
-            lbl_1_bss_3C[i].choices[0] = lbl_1_bss_3C[i].choices[1];
-            lbl_1_bss_3C[i].choices[1] = other;
+        lbl_1_bss_3C[roundIndex].choices[0] = 0;
+        lbl_1_bss_3C[roundIndex].choices[1] = (u8)frand() % 4 + 1;
+        lbl_1_bss_3C[roundIndex].choices[2] = lbl_1_bss_3C[roundIndex].choices[(u8)frand() % 2];
+        randomChoiceOrSwapBank = (u8)frand() % 10;
+        if (randomChoiceOrSwapBank < 5) {
+            randomChoiceOrSwapBank = lbl_1_bss_3C[roundIndex].choices[0];
+            lbl_1_bss_3C[roundIndex].choices[0] = lbl_1_bss_3C[roundIndex].choices[1];
+            lbl_1_bss_3C[roundIndex].choices[1] = randomChoiceOrSwapBank;
         }
-        other = (u8)frand() % 10;
-        if (other < 5) {
-            other = lbl_1_bss_3C[i].choices[1];
-            lbl_1_bss_3C[i].choices[1] = lbl_1_bss_3C[i].choices[2];
-            lbl_1_bss_3C[i].choices[2] = other;
+        randomChoiceOrSwapBank = (u8)frand() % 10;
+        if (randomChoiceOrSwapBank < 5) {
+            randomChoiceOrSwapBank = lbl_1_bss_3C[roundIndex].choices[1];
+            lbl_1_bss_3C[roundIndex].choices[1] = lbl_1_bss_3C[roundIndex].choices[2];
+            lbl_1_bss_3C[roundIndex].choices[2] = randomChoiceOrSwapBank;
         }
-        other = (u8)frand() % 10;
-        if (other < 5) {
-            other = lbl_1_bss_3C[i].choices[0];
-            lbl_1_bss_3C[i].choices[0] = lbl_1_bss_3C[i].choices[2];
-            lbl_1_bss_3C[i].choices[2] = other;
+        randomChoiceOrSwapBank = (u8)frand() % 10;
+        if (randomChoiceOrSwapBank < 5) {
+            randomChoiceOrSwapBank = lbl_1_bss_3C[roundIndex].choices[0];
+            lbl_1_bss_3C[roundIndex].choices[0] = lbl_1_bss_3C[roundIndex].choices[2];
+            lbl_1_bss_3C[roundIndex].choices[2] = randomChoiceOrSwapBank;
         }
     }
-    selected = previous = -1;
-    for (i = 0; i < 10; i++) {
-        if (lbl_1_bss_3C[i].choices[0] == lbl_1_bss_3C[i].choices[1]) {
-            selected = 2;
-        } else if (lbl_1_bss_3C[i].choices[0] == lbl_1_bss_3C[i].choices[2]) {
-            selected = 1;
+    oddColumn = previousOddColumn = -1;
+    for (roundIndex = 0; roundIndex < 10; roundIndex++) {
+        if (lbl_1_bss_3C[roundIndex].choices[0] == lbl_1_bss_3C[roundIndex].choices[1]) {
+            oddColumn = 2;
+        } else if (lbl_1_bss_3C[roundIndex].choices[0] == lbl_1_bss_3C[roundIndex].choices[2]) {
+            oddColumn = 1;
         } else {
-            selected = 0;
+            oddColumn = 0;
         }
-        if (previous >= 0 && previous == selected) {
-            other = (u8)frand() % 100;
-            if (other >= 4) {
-                if (other < 52) {
-                    other = selected + 1;
-                    if (other > 2) { other = 0; }
-                    if (other < 0) { other = 2; }
-                    work = lbl_1_bss_3C[i].choices[selected];
-                    lbl_1_bss_3C[i].choices[selected] = lbl_1_bss_3C[i].choices[other];
-                    lbl_1_bss_3C[i].choices[other] = work;
+        /* Usually move a repeated odd-card position to an adjacent column. */
+        if (previousOddColumn >= 0 && previousOddColumn == oddColumn) {
+            randomChoiceOrSwapBank = (u8)frand() % 100;
+            if (randomChoiceOrSwapBank >= 4) {
+                if (randomChoiceOrSwapBank < 52) {
+                    randomChoiceOrSwapBank = oddColumn + 1;
+                    if (randomChoiceOrSwapBank > 2) { randomChoiceOrSwapBank = 0; }
+                    if (randomChoiceOrSwapBank < 0) { randomChoiceOrSwapBank = 2; }
+                    previousRoundOrSwapBank = lbl_1_bss_3C[roundIndex].choices[oddColumn];
+                    lbl_1_bss_3C[roundIndex].choices[oddColumn] =
+                        lbl_1_bss_3C[roundIndex].choices[randomChoiceOrSwapBank];
+                    lbl_1_bss_3C[roundIndex].choices[randomChoiceOrSwapBank] =
+                        previousRoundOrSwapBank;
                 } else {
-                    other = selected - 1;
-                    if (other > 2) { other = 0; }
-                    if (other < 0) { other = 2; }
-                    work = lbl_1_bss_3C[i].choices[selected];
-                    lbl_1_bss_3C[i].choices[selected] = lbl_1_bss_3C[i].choices[other];
-                    lbl_1_bss_3C[i].choices[other] = work;
+                    randomChoiceOrSwapBank = oddColumn - 1;
+                    if (randomChoiceOrSwapBank > 2) { randomChoiceOrSwapBank = 0; }
+                    if (randomChoiceOrSwapBank < 0) { randomChoiceOrSwapBank = 2; }
+                    previousRoundOrSwapBank = lbl_1_bss_3C[roundIndex].choices[oddColumn];
+                    lbl_1_bss_3C[roundIndex].choices[oddColumn] =
+                        lbl_1_bss_3C[roundIndex].choices[randomChoiceOrSwapBank];
+                    lbl_1_bss_3C[roundIndex].choices[randomChoiceOrSwapBank] =
+                        previousRoundOrSwapBank;
                 }
             }
         }
-        previous = selected;
-        selected = -1;
+        /* Remember the position before any swap, including when the odd card moved. */
+        previousOddColumn = oddColumn;
+        oddColumn = -1;
     }
 }
 
-void fn_1_3FD0(s16 arg0, s16 arg1, s16 arg2)
+/* Shuffle updates select a column image and restart the chosen animation bank on all five
+ * face models, including the four hidden images. */
+void fn_1_3FD0(s16 columnIndex, s16 cardImageIndex, s16 animationBank)
 {
-    s16 var_r31;
+    s16 modelIndex;
 
-    lbl_1_bss_A0[arg0].unknown014 = (s32) arg1;
-    lbl_1_bss_A0[arg0].unknown018 = (s32) arg2;
-    var_r31 = 0;
-    while (var_r31 < 5) {
-        if (var_r31 != arg1) {
-            Hu3DModelAttrSet(lbl_1_bss_A0[arg0].model[var_r31], 1U);
+    lbl_1_bss_A0[columnIndex].cardImage = (s32) cardImageIndex;
+    lbl_1_bss_A0[columnIndex].animationBank = (s32) animationBank;
+    modelIndex = 0;
+    while (modelIndex < 5) {
+        if (modelIndex != cardImageIndex) {
+            Hu3DModelAttrSet(lbl_1_bss_A0[columnIndex].model[modelIndex], HU3D_ATTR_DISPOFF);
         }
-        if (var_r31 == arg1) {
-            Hu3DModelAttrReset(lbl_1_bss_A0[arg0].model[var_r31], 1U);
+        if (modelIndex == cardImageIndex) {
+            Hu3DModelAttrReset(lbl_1_bss_A0[columnIndex].model[modelIndex], HU3D_ATTR_DISPOFF);
         }
-        Hu3DAnimBankSet((&lbl_1_bss_A0[arg0].model[var_r31])[5], (u16) lbl_1_bss_A0[arg0].unknown018);
-        var_r31 += 1;
+        /* The texture-animation IDs follow the five model IDs in each column. */
+        Hu3DAnimBankSet((&lbl_1_bss_A0[columnIndex].model[modelIndex])[5],
+                        (u16) lbl_1_bss_A0[columnIndex].animationBank);
+        modelIndex += 1;
     }
 }
