@@ -17,6 +17,10 @@ REL/framework/new.cpp:
 	.rodata     start:0x000004F0 end:0x00000528
 	.data       start:0x00000428 end:0x00000450
 
+REL/framework/camera.cpp:
+	.text       start:0x0000E694 end:0x0000EE68
+	.rodata     start:0x00000528 end:0x00000598
+
 REL/framework/camera_ut1.cpp:
 	.text       start:0x00010298 end:0x0001061C
 	.rodata     start:0x000005F8 end:0x00000640
@@ -94,3 +98,8 @@ REL/framework/thread.cpp:
 	.text       start:0x00023390 end:0x00023808
 	.rodata     start:0x00000B88 end:0x00000BD8
 	.data       start:0x00001588 end:0x00001638
+
+REL/framework/timer.cpp:
+	.text       start:0x00023808 end:0x00023C54
+	.rodata     start:0x00000BD8 end:0x00000C15
+	.data       start:0x00001638 end:0x00001655
