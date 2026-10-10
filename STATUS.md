@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 35.23% | 56.61% |
+| Entire project | 35.66% | 57.08% |
 | Main DOL | 88.56% | 99.04% |
-| REL modules | 23.92% | 29.72% |
+| REL modules | 24.44% | 30.50% |
+
+resultDll (`resultDll`) selects all **76 functions** from **6 complete translation units**; its linked REL matches retail.
 
 Stamp By Me (`m649Dll`) selects all **190 functions** from **8 complete translation units**; its linked REL matches retail.
 
