@@ -1,177 +1,191 @@
+// Combines speech energy and band values into a history-based feature frame.
 #include "gssdk/tos.h"
 
 #include <string.h>
 
 typedef struct Combiner {
-    TosBaseBlock base;
-    u32 frameCount;
-    u16 historyIndex;
-    u16 bandCount;
-    u16 vectorLength;
-    f32 *history[8];
-    f32 *historyAllocation;
-    u8 flushing;
+    TosBaseBlock baseBlock; // Queue ports and callbacks used by the speech-processing graph.
+    u32 framesProcessed; // Number of input frames seen, adjusted while draining the history.
+    u16 writeFrameIndex; // Slot to write next in the eight-frame circular history.
+    u16 bandCount; // Number of band values carried by each input frame.
+    u16 frameVectorLength; // Float count in each history slot, including energy and derived values.
+    f32 *frameHistory[8]; // Eight circular feature-frame slots, indexed by write position and age.
+    f32 *historyStorage; // Allocation backing frameHistory; freed when this block is destroyed.
+    u8 isFlushing; // Set while delayed output frames are being emitted after a flush request.
 } Combiner;
 
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 extern u8 qCheckInputQueues(TosQueuePort *input, u32 count);
 
+// Sets frame sizes from profile key 2 and allocates the eight-frame history
+// when the TOS graph initializes the combiner.
 static u32 CombinerInit(TosBaseBlock *baseBlock)
 {
     Combiner *block = (Combiner *)baseBlock;
     TosContext *context = baseBlock->context;
-    f32 *history;
+    f32 *frameStorage;
+    s32 historySlot;
 
-    block->bandCount = (u16)_tosGetProfileU32(block, 2, 12);
-    block->vectorLength = block->bandCount * 3 + 3;
-    block->base.input->inputSize =
+    // Profile key 2 selects the number of speech bands; 12 is the default.
+    block->bandCount = _tosGetProfileU32(block, 2, 12);
+    block->frameVectorLength = block->bandCount * 3 + 3;
+    block->baseBlock.input->inputSize =
         (block->bandCount + 2) * sizeof(f32);
-    block->base.output->outputSize =
-        (block->vectorLength - 1) * sizeof(f32);
-    block->historyAllocation = heap_Calloc(
-        context->heap, block->vectorLength * 8, sizeof(f32));
-    if (block->historyAllocation == NULL) {
+    block->baseBlock.output->outputSize =
+        (block->frameVectorLength - 1) * sizeof(f32);
+    block->historyStorage = heap_Calloc(
+        context->heap, block->frameVectorLength * 8, sizeof(f32));
+    if (block->historyStorage == NULL) {
         return 2;
     }
 
-    history = block->historyAllocation;
-    block->history[0] = history;
-    history += block->vectorLength;
-    block->history[1] = history;
-    history += block->vectorLength;
-    block->history[2] = history;
-    history += block->vectorLength;
-    block->history[3] = history;
-    history += block->vectorLength;
-    block->history[4] = history;
-    history += block->vectorLength;
-    block->history[5] = history;
-    history += block->vectorLength;
-    block->history[6] = history;
-    history += block->vectorLength;
-    block->history[7] = history;
-    block->historyIndex = 0;
+    for (historySlot = 0, frameStorage = block->historyStorage; historySlot < 8;
+         historySlot++, frameStorage += block->frameVectorLength) {
+        block->frameHistory[historySlot] = frameStorage;
+    }
+    block->writeFrameIndex = 0;
     return 0;
 }
 
+// Process an input frame into the history and queue an aligned feature vector after warm-up.
+// The TOS scheduler calls this on each graph pass, including input-free flush passes.
 static void CombinerProcess(
-    TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
+    TosBaseBlock *baseBlock, void **inputs, s32 inputPortCount)
 {
     Combiner *block = (Combiner *)baseBlock;
-    f32 *input = inputs[0];
-    f32 *outputSource = NULL;
+    f32 *outputFrame = NULL;
+    f32 *inputFrame = inputs[0];
     TosQueue *outputQueue = baseBlock->output->queue;
+    s32 bandIndex;
+    f32 *currentHistoryFrame;
+    f32 *oneFrameBack;
+    f32 *twoFramesBack;
+    f32 *deltaValues;
+    f32 *threeFramesBack;
+    f32 *fourFramesBack;
+    f32 energyValue;
+    u16 frameIndex;
 
-    if (input != NULL) {
-        u16 index = block->historyIndex;
-        f32 *current = block->history[index & 7];
-        f32 *previous1 = block->history[(index + 7) & 7];
-        f32 *previous2 = block->history[(index + 6) & 7];
-        f32 *previous3 = block->history[(index + 5) & 7];
-        f32 *previous4 = block->history[(index + 4) & 7];
-        f32 *delta = previous2 + block->bandCount + 3;
-        s32 i;
+    if (inputFrame != NULL) {
+        frameIndex = block->writeFrameIndex;
+        energyValue = *inputFrame++;
+        inputFrame++; // The input layout reserves one float between energy and band data.
+        currentHistoryFrame = block->frameHistory[frameIndex & 7];
+        oneFrameBack = block->frameHistory[(frameIndex + 7) & 7];
+        twoFramesBack = block->frameHistory[(frameIndex + 6) & 7];
+        deltaValues = twoFramesBack + 1;
+        threeFramesBack = block->frameHistory[(frameIndex + 5) & 7];
+        fourFramesBack = block->frameHistory[(frameIndex + 4) & 7];
 
-        block->frameCount++;
-        current[0] = input[0];
-        outputSource = previous3 + 1;
-        previous2[1] = 0.2f *
-                       (2.0f * input[0] + previous1[0] - previous3[0] -
-                        2.0f * previous4[0]);
-        previous3[2] = previous2[1] - previous4[1];
+        block->framesProcessed++;
+        currentHistoryFrame[0] = energyValue;
+        outputFrame = threeFramesBack + 1;
+        // Store a weighted four-frame difference for energy and each band; the next
+        // feature group stores the change in that difference.
+        twoFramesBack[1] = 0.2f *
+                           (2.0f * energyValue + oneFrameBack[0] - threeFramesBack[0] -
+                            2.0f * fourFramesBack[0]);
+        threeFramesBack[2] = twoFramesBack[1] - fourFramesBack[1];
 
-        current += 3;
-        previous1 += 3;
-        previous3 += 3;
-        previous4 += 3;
-        input += 2;
-        for (i = 0; i < block->bandCount; i++) {
-            *current++ = *input;
-            *delta++ = 0.375f *
-                       (2.0f * *input++ + *previous1++ - *previous3++ -
-                        2.0f * *previous4++);
+        currentHistoryFrame += 3;
+        oneFrameBack += 3;
+        threeFramesBack += 3;
+        fourFramesBack += 3;
+        deltaValues += block->bandCount + 2;
+        bandIndex = 0;
+        while (bandIndex < block->bandCount) {
+            *currentHistoryFrame++ = *inputFrame;
+            *deltaValues++ = 0.375f *
+                             (2.0f * *inputFrame++ + *oneFrameBack++ - *threeFramesBack++ -
+                              2.0f * *fourFramesBack++);
+            bandIndex++;
         }
 
-        delta -= block->bandCount;
-        previous3 += block->bandCount;
-        for (i = 0; i < block->bandCount; i++) {
-            *previous3++ = *delta++ - *previous4++;
+        deltaValues -= block->bandCount;
+        threeFramesBack += block->bandCount;
+        for (bandIndex = 0; bandIndex < block->bandCount; bandIndex++) {
+            *threeFramesBack++ = *deltaValues++ - *fourFramesBack++;
         }
     }
 
-    if (block->flushing != 0) {
-        block->frameCount--;
-        if (block->frameCount == 4) {
-            block->flushing = 0;
+    if (block->isFlushing != 0) {
+        block->framesProcessed--;
+        if (block->framesProcessed == 4) {
+            block->isFlushing = 0;
         }
-        outputSource = block->history[(block->historyIndex + 5) & 7] + 1;
+        outputFrame = block->frameHistory[(block->writeFrameIndex + 5) & 7] + 1;
     }
 
-    if (outputSource != NULL && block->frameCount > 3) {
-        f32 *output = qEnQueueOne(outputQueue);
-        s32 i;
+    if (outputFrame != NULL && block->framesProcessed > 3) {
+        // qEnQueueOne returns NULL for an idle unbounded queue; this block writes
+        // the returned slot directly, so the graph must activate its output queue.
+        f32 *outputValues = qEnQueueOne(outputQueue);
 
-        if (block->frameCount > 6) {
-            for (i = 0; i < block->vectorLength - 1; i++) {
-                *output++ = *outputSource++;
+        // During warm-up and flush, zero-fill missing history: counts 4–5 lack both
+        // energy-difference slots and the final two band groups; count 6 lacks the
+        // second energy-difference slot and final band group.
+        if (block->framesProcessed > 6) {
+            for (bandIndex = 0; bandIndex < block->frameVectorLength - 1; bandIndex++) {
+                *outputValues++ = *outputFrame++;
             }
-        } else if (block->frameCount == 6) {
-            *output++ = *outputSource;
-            outputSource += 2;
-            *output++ = 0.0f;
-            for (i = 0; i < block->bandCount * 2; i++) {
-                *output++ = *outputSource++;
+        } else if (block->framesProcessed == 6) {
+            *outputValues++ = *outputFrame;
+            outputFrame += 2;
+            *outputValues++ = 0.0f;
+            for (bandIndex = 0; bandIndex < block->bandCount * 2; bandIndex++) {
+                *outputValues++ = *outputFrame++;
             }
-            for (i = 0; i < block->bandCount; i++) {
-                *output++ = 0.0f;
+            for (bandIndex = 0; bandIndex < block->bandCount; bandIndex++) {
+                *outputValues++ = 0.0f;
             }
         } else {
-            *output++ = 0.0f;
-            *output++ = 0.0f;
-            outputSource += 2;
-            for (i = 0; i < block->bandCount; i++) {
-                *output++ = *outputSource++;
+            *outputValues++ = 0.0f;
+            *outputValues++ = 0.0f;
+            outputFrame += 2;
+            for (bandIndex = 0; bandIndex < block->bandCount; bandIndex++) {
+                *outputValues++ = *outputFrame++;
             }
-            for (i = 0; i < block->bandCount * 2; i++) {
-                *output++ = 0.0f;
+            for (bandIndex = 0; bandIndex < block->bandCount * 2; bandIndex++) {
+                *outputValues++ = 0.0f;
             }
         }
     }
 
-    if (outputSource != NULL) {
-        block->historyIndex = (block->historyIndex + 1) & 7;
+    if (outputFrame != NULL) {
+        block->writeFrameIndex = (block->writeFrameIndex + 1) & 7;
     }
 }
 
+// Handles flush, reset, and destruction commands sent by the TOS graph.
 static u32 CombinerControl(
-    TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
+    TosBaseBlock *baseBlock, u32 command, void *controlArgument, u32 controlArgumentSize)
 {
     Combiner *block = (Combiner *)baseBlock;
 
     switch ((u8)command) {
     case 2:
-        if (block->frameCount == 0) {
-            if (argument == NULL ||
-                qCheckInputQueues(block->base.input, 1) == 0) {
+        if (block->framesProcessed == 0) {
+            if (controlArgument == NULL ||
+                qCheckInputQueues(block->baseBlock.input, 1) == 0) {
                 break;
             }
         }
-        block->flushing = 1;
-        if (block->frameCount < 3) {
-            block->frameCount += 4;
+        block->isFlushing = 1;
+        if (block->framesProcessed < 3) {
+            block->framesProcessed += 4;
         } else {
-            block->frameCount = 7;
+            block->framesProcessed = 7;
         }
         break;
     case 1:
-        block->frameCount = 0;
+        block->framesProcessed = 0;
         memset(
-            block->historyAllocation, 0,
-            block->vectorLength * 8 * sizeof(f32));
+            block->historyStorage, 0,
+            block->frameVectorLength * 8 * sizeof(f32));
         break;
     case 255:
-        heap_Free(block->base.context->heap, block->historyAllocation);
+        heap_Free(block->baseBlock.context->heap, block->historyStorage);
         tosBaseBlockDestruct(block);
         break;
     default:
@@ -180,6 +194,7 @@ static u32 CombinerControl(
     return 1;
 }
 
+// Creates the one-input, one-output block used by the speech recognizer.
 void *ConstructCombiner(TosContext *context, u32 blockIndex)
 {
     return tosBaseBlockConstruct(
