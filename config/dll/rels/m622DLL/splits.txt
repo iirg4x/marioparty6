@@ -6,7 +6,56 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/framework/heap.cpp:
+	.text       start:0x0000C2D4 end:0x0000C454
+	.rodata     start:0x000003D0 end:0x00000408
+	.data       start:0x00000478 end:0x00000498
+	.bss        start:0x00000100 end:0x00000108
+
 REL/framework/new.cpp:
 	.text       start:0x0000C624 end:0x0000C7EC
 	.rodata     start:0x00000418 end:0x00000450
 	.data       start:0x00000498 end:0x000004C0
+
+REL/framework/camera_ut1.cpp:
+	.text       start:0x0000CFF8 end:0x0000D37C
+	.rodata     start:0x000004C0 end:0x00000508
+
+REL/framework/debug.cpp:
+	.text       start:0x0000D37C end:0x0000D5C4
+	.rodata     start:0x00000508 end:0x00000560
+
+REL/framework/linknode.cpp:
+	.text       start:0x0000D96C end:0x0000DA60
+	.rodata     start:0x00000560 end:0x000005A0
+
+REL/framework/minigame_core.cpp:
+	.text       start:0x0000E664 end:0x0000F1E0
+	.ctors      start:0x00000014 end:0x00000018
+	.rodata     start:0x000005A0 end:0x000005F8
+	.data       start:0x000004E0 end:0x00000518
+	.bss        start:0x00000128 end:0x00000138
+
+REL/framework/mt19937.cpp:
+	.text       start:0x00010670 end:0x00011670
+	.rodata     start:0x00000600 end:0x00000670
+
+REL/framework/random.cpp:
+	.text       start:0x00011670 end:0x00011800
+	.ctors      start:0x00000018 end:0x0000001C
+	.rodata     start:0x00000670 end:0x000006B0
+	.bss        start:0x00000140 end:0x00000B08
+
+REL/framework/startup.cpp:
+	.text       start:0x00012244 end:0x000122E8
+	.rodata     start:0x000006C8 end:0x00000708
+
+REL/framework/subthread.cpp:
+	.text       start:0x000122E8 end:0x000125D8
+	.rodata     start:0x00000708 end:0x00000748
+	.data       start:0x00000538 end:0x00000598
+
+REL/framework/thread.cpp:
+	.text       start:0x000125D8 end:0x00012A50
+	.rodata     start:0x00000748 end:0x00000798
+	.data       start:0x00000598 end:0x00000648

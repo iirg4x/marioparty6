@@ -6,7 +6,66 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/framework/heap.cpp:
+	.text       start:0x00010E98 end:0x00011018
+	.rodata     start:0x00000588 end:0x000005C0
+	.data       start:0x000007E0 end:0x00000800
+	.bss        start:0x00000090 end:0x00000098
+
 REL/framework/new.cpp:
 	.text       start:0x000111E8 end:0x000113B0
 	.rodata     start:0x000005D0 end:0x00000608
 	.data       start:0x00000800 end:0x00000828
+
+REL/framework/event_hm.cpp:
+	.text       start:0x000182B8 end:0x00018F88
+	.rodata     start:0x00000730 end:0x00000768
+	.data       start:0x00000908 end:0x00000950
+
+REL/framework/game_object.cpp:
+	.text       start:0x00018F88 end:0x00019100
+	.rodata     start:0x00000768 end:0x000007A8
+	.data       start:0x00000950 end:0x00000978
+
+REL/framework/game_object_man.cpp:
+	.text       start:0x0001A3E4 end:0x0001A528
+	.rodata     start:0x000007E8 end:0x00000828
+
+REL/framework/linknode.cpp:
+	.text       start:0x0001BA50 end:0x0001BB44
+	.rodata     start:0x00000828 end:0x00000868
+
+REL/framework/minigame_core.cpp:
+	.text       start:0x0001C42C end:0x0001CFA8
+	.ctors      start:0x0000001C end:0x00000020
+	.rodata     start:0x00000868 end:0x000008C0
+	.data       start:0x00000A38 end:0x00000A70
+	.bss        start:0x000000A8 end:0x000000B8
+
+REL/framework/mt19937.cpp:
+	.text       start:0x0001F20C end:0x0002020C
+	.rodata     start:0x000008C8 end:0x00000938
+
+REL/framework/particle.cpp:
+	.text       start:0x0002020C end:0x000204F0
+	.rodata     start:0x00000938 end:0x00000970
+
+REL/framework/random.cpp:
+	.text       start:0x000204F0 end:0x00020680
+	.ctors      start:0x00000020 end:0x00000024
+	.rodata     start:0x00000970 end:0x000009B0
+	.bss        start:0x000000C0 end:0x00000A88
+
+REL/framework/startup.cpp:
+	.text       start:0x000210C4 end:0x00021168
+	.rodata     start:0x000009C8 end:0x00000A08
+
+REL/framework/subthread.cpp:
+	.text       start:0x00021168 end:0x00021458
+	.rodata     start:0x00000A08 end:0x00000A48
+	.data       start:0x00000B10 end:0x00000B70
+
+REL/framework/thread.cpp:
+	.text       start:0x00021458 end:0x000218D0
+	.rodata     start:0x00000A48 end:0x00000A98
+	.data       start:0x00000B70 end:0x00000C1C
