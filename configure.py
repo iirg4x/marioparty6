@@ -1016,7 +1016,7 @@ config.libs = [
             Object(Matching, "gssdk_lib/gsapi/wrddata.c"),
             Object(NonMatching, "gssdk_lib/asrpho/asrspi.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/convert.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/rec1600/creasp.c"),
+            Object(Matching, "gssdk_lib/asrpho/rec1600/creasp.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/creaspch.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/creaspt.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/creatree.c"),

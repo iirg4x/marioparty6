@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 37.52% | 57.55% |
-| Main DOL | 88.75% | 99.05% |
+| Entire project | 37.55% | 57.55% |
+| Main DOL | 88.95% | 99.05% |
 | REL modules | 26.66% | 31.25% |
+
+DOL source: `src/gssdk_lib/asrpho/rec1600/creasp.c` now builds from source; `main.dol` matches retail byte for byte.
 
 Castaway Bay (`w05Dll`) selects all **119 functions** from **3 complete translation units**; its linked REL matches retail.
 
