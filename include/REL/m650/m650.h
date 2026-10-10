@@ -1,3 +1,4 @@
+/* Shared Throw Me a Bone state and data declarations. */
 #include "game/main.h"
 #include "game/object.h"
 #include "game/audio.h"
@@ -23,8 +24,9 @@
 #ifndef M650_H
 #define M650_H
 
-/* Effect IDs observed at the audio consumers; original effect names unknown. */
+/* Sound effect resources used by Throw Me a Bone. */
 enum M650EffectId {
+    M650_EFFECT_1001 = 1001,
     M650_EFFECT_2028 = 2028,
     M650_EFFECT_2029 = 2029,
     M650_EFFECT_2030 = 2030,
@@ -51,76 +53,76 @@ enum M650EffectId {
     M650_EFFECT_2051 = 2051
 };
 
-/* Consumer-derived layouts. Explicit unknown intervals do not imply original field types. */
+/* Shared state used by the Throw Me a Bone sequence and callbacks. */
 typedef struct M650Scene {
-    MGTIMER *timer;
-    s32 record;
-    s16 winner;
-    s16 night;
-    s16 state;
-    s16 frame;
-    s16 unk10;
-    s16 unk12;
-    s16 recordChanged;
-    s16 unk16;
-    int audio;
+    MGTIMER *timer; /* Shared elapsed-time display used outside Decathlon. */
+    s32 record; /* Best time, in timer ticks, loaded for this round. */
+    s16 winner; /* Winning player index, or -1 when nobody wins. */
+    s16 night; /* 0 for the daytime course, nonzero for the nighttime course. */
+    s16 state; /* Step within the opening or results sequence. */
+    s16 frame; /* Frames elapsed in the current sequence step. */
+    s16 roundEnding; /* Set while player actions are being stopped for results. */
+    s16 resultsScene; /* Selects the character pose used on the results screen. */
+    s16 recordChanged; /* Nonzero when this round beats the saved record. */
+    s16 winnerAnimationState; /* 0 idle, 1 bounce, 2 walk-off. */
+    int audio; /* Handle for the minigame music stream. */
 } M650Scene;
 
 typedef struct M650Player {
-    /* No direct accesses establish these first two bytes of the 160-byte record. */
-    u8 unknown00[2];
-    s16 model;
-    s16 motionIDs[5];
-    /* Five motion IDs end at byte 14; charNo is consumed at byte 16. */
-    u8 unknown0E[2];
-    s16 charNo;
-    s16 unk12;
-    s16 unk14;
-    s16 unk16;
-    s16 unk18;
-    s16 unk1A;
-    s16 unk1C;
-    s16 model1E;
-    s16 model20;
-    s16 jointMotionIDs[4];
-    HuVecF direction;
-    HuVecF reflected;
-    float unk44;
-    float unk48;
-    float unk4C;
-    u8 flag50;
-    u8 unk51;
-    s16 model52;
-    s16 model54;
-    /* No recovered direct accesses between the model at byte 84 and vector at 100. */
-    u8 unknown56[14];
-    HuVecF pos;
-    MGTIMER *timer;
-    s16 unk74;
-    s16 unk76;
-    s16 model78;
-    s16 model7A;
-    s16 model7C;
-    s16 candidateIDs[12];
-    s16 candidateCount;
-    s16 unk98;
-    s16 unk9A;
-    s16 unk9C;
+    u8 unknown00[2]; /* This part of the player state is neither read nor written. */
+    s16 model; /* Character model handle used by the character motion system. */
+    s16 motionIDs[5]; /* Character motion handles indexed by the minigame motion table. */
+    u8 unknown0E[2]; /* This part of the player state is neither read nor written. */
+    s16 charNo; /* Character slot selected for this player. */
+    s16 padNo; /* Controller port assigned to this player. */
+    s16 computerDifficulty; /* CPU difficulty, or -1 for a human player. */
+    s16 throwWait; /* Frames remaining in the spin penalty after a runner collision. */
+    s16 actionFrame; /* Frame counter reused by throwing, runner rebound, and bone pickup
+                      * actions. */
+    s16 bounceFrameCount; /* Frames elapsed while the item is moving. */
+    s16 state; /* Current player action state. */
+    s16 model1E; /* Auxiliary player model shown during selected action states. */
+    s16 model20; /* Player's animated body model used for movement and joint motions. */
+    s16 jointMotionIDs[4]; /* Joint motion handles for the shared animated player model. */
+    HuVecF direction; /* Runner's X/Z step toward the bone, also used for collision reflection. */
+    HuVecF reflectedDirection; /* Unit direction after the most recent bounce. */
+    float turnAngle; /* Current left/right turn angle in degrees. */
+    float movementSpeed; /* Chase and results movement speed in world units per frame; rebound
+                          * moves at half this value. */
+    float horizontalDistance; /* Accumulated horizontal travel during the throw. */
+    u8 turnTowardPositiveAngle; /* Nonzero while the turn angle increases. */
+    s16 model52; /* Attached item model used by the character's item hook. */
+    s16 model54; /* Per-player shadow or ground effect model. */
+    u8 unknown56[14]; /* This part of the player state is neither read nor written. */
+    HuVecF boneVelocity; /* Bone velocity in world units per frame during throws and the results
+                          * bounce. */
+    MGTIMER *timer; /* Per-player elapsed-time display used in Decathlon. */
+    s16 reachedGoal; /* Nonzero after this player reaches the far end of the course. */
+    s16 timerValue; /* Elapsed timer ticks recorded for this player. */
+    s16 model78; /* Additional per-player effect model with motion initially stopped. */
+    s16 model7A; /* Additional per-player effect model with motion initially stopped. */
+    s16 model7C; /* Additional per-player effect model with motion initially stopped. */
+    s16 candidateIDs[12]; /* Nearby obstacle indices considered by the computer player. */
+    s16 candidateCount; /* Number of valid entries in candidateIDs. */
+    s16 throwDelay; /* Randomized delay before a computer player chooses a throw. */
+    s16 decisionFrameCount; /* Frames spent waiting for a computer throw decision. */
+    s16 riskyThrowMode; /* CPU mode that accepts blocked aim or no obstacles before the decision
+                        * timeout and ignores the lane boundary afterward. */
 } M650Player;
 
 typedef struct M650Cell {
-    s16 state;
-    s16 timer;
+    s16 state; /* 0 available, 1 breaking, 2 hidden, 3 record prop. */
+    s16 timer; /* Frames spent blinking after the break motion ends. */
 } M650Cell;
 
 typedef struct M650Point {
-    HuVecF pos;
-    s16 kind;
+    HuVecF pos; /* Obstacle location in world units. */
+    s16 isRock; /* 0 selects the tree model; 1 selects the rock model. */
 } M650Point;
 
 typedef struct M650Motion {
-    s32 file;
-    u32 unk4;
+    s32 file; /* Data resource number for this player motion. */
+    u32 flags; /* Motion flags passed to the character motion system. */
 } M650Motion;
 
 extern M650Scene lbl_1_bss_0;
@@ -140,12 +142,12 @@ void fn_1_168(s16 mode, s16 frame);
 void fn_1_188(s16 mode, s16 frame);
 void fn_1_1C8(s16 mode, s16 frame);
 void fn_1_200(s16 mode, s16 frame);
-void fn_1_6478(HU3D_MODEL *modelP, Mtx *mtx);
-s16 fn_1_6D88(s16 player, HuVecF *pos);
+void fn_1_6478(HU3D_MODEL *model, Mtx *mtx);
+s16 fn_1_6D88(s16 player, HuVecF *position);
 void fn_1_23C4(s16 player, s16 motion, float blend);
-void fn_1_5600(s16 unusedPlayer, float value, float *out0, float *out1);
-s16 fn_1_6EE4(HuVecF *a, HuVecF *b, float radius);
-s16 fn_1_7000(s16 unusedPlayer, HuVecF *pos, float angle, s16 candidate);
+void fn_1_5600(s16 player, float value, float *out0, float *out1);
+s16 fn_1_6EE4(HuVecF *firstPosition, HuVecF *secondPosition, float radius);
+s16 fn_1_7000(s16 player, HuVecF *position, float angle, s16 obstacleIndex);
 void fn_1_289C(s16 player);
 void fn_1_14FC(void);
 void fn_1_1830(void);
@@ -158,7 +160,7 @@ void fn_1_2558(void);
 void fn_1_25B0(void);
 void fn_1_550(void);
 void fn_1_8EC(void);
-void fn_1_F90(OMOBJ *obj);
+void fn_1_F90(OMOBJ *object);
 void fn_1_6F54(void);
 s16 fn_1_4D58(s16 frame);
 
