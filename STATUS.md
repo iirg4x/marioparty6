@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 36.32% | 57.35% |
+| Entire project | 36.45% | 57.37% |
 | Main DOL | 88.75% | 99.05% |
-| REL modules | 25.21% | 30.92% |
+| REL modules | 25.36% | 30.96% |
+
+w10Dll (`w10Dll`) selects all **46 functions** from **3 complete translation units**; its linked REL matches retail.
 
 DOL source: `src/gssdk_lib/asrpho/common/blocks/exev_dp.c` now builds from source; `main.dol` matches retail byte for byte.
 
