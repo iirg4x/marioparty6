@@ -2369,6 +2369,25 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "w10Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/w10Dll/board.c",
+            ),
+            Object(
+                Matching,
+                "REL/w10Dll/prolog.c",
+            ),
+            Object(
+                Matching,
+                "REL/w10Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
