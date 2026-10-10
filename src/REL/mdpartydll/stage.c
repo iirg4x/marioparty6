@@ -1,3 +1,4 @@
+/* Party Mode stage effects, including the transition backdrop and particles. */
 /* Select the SDK math inline bodies before headers that also expose math. */
 #include "dolphin/math.h"
 
@@ -23,28 +24,24 @@ enum {
 };
 
 typedef struct MdpartyStageTextureWork {
-    HuVecF unk_00;
-    HuVecF unk_0C;
-    GXColor color;
-    float unk_1C;
-    float unk_20;
-    float unk_24;
+    HuVecF matrixRow0; /* First row of the indirect texture transform. */
+    HuVecF matrixRow1; /* Second row of the indirect texture transform. */
+    GXColor color; /* Color used to tint the captured stage image. */
+    float textureScrollY; /* Current vertical scroll offset. */
+    float textureScrollStep; /* Scroll offset added by each draw. */
+    float remainingFrames; /* Frames left in the 90-frame effect. */
 } MDPARTY_STAGE_TEXTURE_WORK;
 
 typedef struct MdpartyStageParticleTarget {
-    u8 scale;
-    u8 alpha;
+    u8 scale; /* Target particle scale. */
+    u8 alpha; /* Target particle alpha. */
 } MDPARTY_STAGE_PARTICLE_TARGET;
 
 u32 lbl_1_data_F10[9] = {
-    DATANUM(DATA_mdparty, 130),
-    DATANUM(DATA_mdparty, 131),
-    DATANUM(DATA_mdparty, 129),
-    DATANUM(DATA_mdparty, 132),
-    DATANUM(DATA_mdparty, 137),
-    DATANUM(DATA_mdparty, 137),
-    DATANUM(DATA_mdparty, 137),
-    DATANUM(DATA_mdparty, 137),
+    DATANUM(DATA_mdparty, 130), DATANUM(DATA_mdparty, 131),
+    DATANUM(DATA_mdparty, 129), DATANUM(DATA_mdparty, 132),
+    DATANUM(DATA_mdparty, 137), DATANUM(DATA_mdparty, 137),
+    DATANUM(DATA_mdparty, 137), DATANUM(DATA_mdparty, 137),
     DATANUM(DATA_mdparty, 137),
 };
 
@@ -80,36 +77,40 @@ void fn_1_42F34(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 void fn_1_43778(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 void fn_1_4459C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
 
-float fn_1_3F424(float arg0, float arg1, float time, float duration)
+/* Eases from the start value to the end value over the supplied frame span. */
+float fn_1_3F424(float startValue, float endValue, float time, float duration)
 {
     if (time <= 0.0f) {
-        return arg0;
+        return startValue;
     }
     if (time >= duration) {
-        return arg1;
+        return endValue;
     }
-    return arg0 + ((arg1 - arg0) * sind((90.0f / duration) * time));
+    return startValue + ((endValue - startValue) * sind((90.0f / duration) * time));
 }
 
-float fn_1_3F50C(float arg0, float arg1, float arg2, float arg3)
+/* Linearly interpolates between endpoint values using elapsed time and duration. */
+float fn_1_3F50C(float startValue, float endValue, float time, float duration)
 {
-    if (arg2 <= 0.0f) {
-        return arg0;
+    if (time <= 0.0f) {
+        return startValue;
     }
-    if (arg2 >= arg3) {
-        return arg1;
+    if (time >= duration) {
+        return endValue;
     }
-    return arg0 + ((arg2 / arg3) * (arg1 - arg0));
+    return startValue + ((time / duration) * (endValue - startValue));
 }
 
-float fn_1_3F550(float arg0, float arg1, float arg2)
+/* Moves a value toward its target by the weight used by the stage effects. */
+float fn_1_3F550(float currentValue, float targetValue, float weight)
 {
-    if (arg0 == arg1) {
-        return arg1;
+    if (currentValue == targetValue) {
+        return targetValue;
     }
-    return (arg1 + (arg0 * (arg2 - 1.0f))) / arg2;
+    return (targetValue + (currentValue * (weight - 1.0f))) / weight;
 }
 
+/* Captures the current screen for the stage overlay on the registered draw layer. */
 void fn_1_3F580(s16 layerNo)
 {
     if (lbl_1_bss_A90) {
@@ -119,6 +120,7 @@ void fn_1_3F580(s16 layerNo)
     }
 }
 
+/* Draw hook: combines the captured screen with the stage overlay textures. */
 void fn_1_3F5EC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     HU3D_CAMERA *camera;
@@ -157,7 +159,7 @@ void fn_1_3F5EC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
         GX_PTIDENTITY);
 
     PSMTXTrans(
-        tmpMtx, 0.0f, work->unk_1C += work->unk_20, 0.0f);
+        tmpMtx, 0.0f, work->textureScrollY += work->textureScrollStep, 0.0f);
     PSMTXScale(scaleMtx, 0.8f, 0.8f, 1.0f);
     PSMTXConcat(scaleMtx, tmpMtx, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
@@ -211,39 +213,43 @@ void fn_1_3F5EC(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXSetIndTexMtx(GX_ITM_0, (float (*)[3])work, -1);
 }
 
+/* Advances the transition overlay and removes its draw hook when its timer expires. */
 void fn_1_3FA6C(OMOBJ *obj)
 {
     MDPARTY_STAGE_TEXTURE_WORK *work = lbl_1_bss_AF0;
 
-    work->unk_00.x = work->unk_0C.x = 0.0f;
-    work->unk_00.y = work->unk_0C.y = 0.0f;
-    work->unk_00.z = work->unk_0C.z =
-        (0.09f * work->unk_24) / 90.0f;
-    work->unk_20 = (-0.02f * work->unk_24) / 90.0f;
-    if ((work->unk_24 -= 1.0f) < 0.0f) {
+    work->matrixRow0.x = work->matrixRow1.x = 0.0f;
+    work->matrixRow0.y = work->matrixRow1.y = 0.0f;
+    work->matrixRow0.z = work->matrixRow1.z =
+        (0.09f * work->remainingFrames) / 90.0f;
+    work->textureScrollStep = (-0.02f * work->remainingFrames) / 90.0f;
+    if ((work->remainingFrames -= 1.0f) < 0.0f) {
         Hu3DModelAttrSet(obj->mdlId[0], HU3D_ATTR_DISPOFF);
         Hu3DLayerHookReset(1);
         obj->objFunc = NULL;
     }
 }
 
-void fn_1_3FB6C(s16 arg0, HuVecF *arg1)
+/* Starts the screen overlay for one of the two stage texture work slots. */
+void fn_1_3FB6C(s16 textureSlot, HuVecF *position)
 {
     OMOBJ *obj = lbl_1_bss_A84;
 
     if (obj) {
-        lbl_1_bss_AF0[arg0].unk_1C = 0.0f;
-        lbl_1_bss_AF0[arg0].unk_24 = 90.0f;
+        lbl_1_bss_AF0[textureSlot].textureScrollY = 0.0f;
+        lbl_1_bss_AF0[textureSlot].remainingFrames = 90.0f;
+        /* The overlay model stays at this fixed depth regardless of input z. */
         Hu3DModelPosSet(
-            obj->mdlId[arg0], arg1->x, arg1->y, -840.0f);
-        Hu3DModelAttrReset(obj->mdlId[arg0], HU3D_ATTR_DISPOFF);
+            obj->mdlId[textureSlot], position->x, position->y, -840.0f);
+        Hu3DModelAttrReset(obj->mdlId[textureSlot], HU3D_ATTR_DISPOFF);
         Hu3DLayerHookSet(1, fn_1_3F580);
         obj->objFunc = fn_1_3FA6C;
     }
 }
 
-inline void fn_1_3FB6C(s16 arg0, HuVecF *arg1);
+inline void fn_1_3FB6C(s16 textureSlot, HuVecF *position);
 
+/* Object create callback: prepares the screen-capture model and its textures. */
 void fn_1_3FC60(OMOBJ *obj)
 {
     HU3D_MODEL *model = NULL;
@@ -271,6 +277,7 @@ void fn_1_3FC60(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Releases the screen-capture model and texture buffer during object cleanup. */
 void fn_1_3FE44(OMOBJ *obj)
 {
     HU3D_MODEL *model = NULL;
@@ -285,11 +292,13 @@ void fn_1_3FE44(OMOBJ *obj)
         }
         lbl_1_bss_A90 = NULL;
     }
+    /* This only clears the local parameter; the caller owns the object pointer. */
     obj = NULL;
 }
 
 inline void fn_1_3FE44(OMOBJ *obj);
 
+/* Creates the stage object whose create callback initializes the overlay. */
 void fn_1_3FEF4(void)
 {
     lbl_1_bss_A84 =
@@ -297,6 +306,7 @@ void fn_1_3FEF4(void)
             fn_1_3FC60);
 }
 
+/* Stops the screen overlay and clears its stage object pointer. */
 void fn_1_3FF44(void)
 {
     if (lbl_1_bss_A84) {
@@ -307,11 +317,14 @@ void fn_1_3FF44(void)
 
 inline void fn_1_3FF44(void);
 
-void fn_1_40020(HuVecF *arg0)
+/* Starts the primary stage screen overlay at the supplied world position. */
+void fn_1_40020(HuVecF *position)
 {
-    fn_1_3FB6C(0, arg0);
+    fn_1_3FB6C(0, position);
 }
 
+/* Layer hook fades the captured screen over the stage, then captures the rendered frame for the
+ * next draw. */
 void fn_1_400E0(s16 layerNo)
 {
     GXTexObj texObj;
@@ -403,18 +416,21 @@ void fn_1_400E0(s16 layerNo)
     Hu3DZClear();
 }
 
+/* Registers the screen-fade draw hook on stage layer 14. */
 void fn_1_40A9C(void)
 {
     Hu3DLayerHookSet(14, fn_1_400E0);
 }
 
+/* Removes the screen-fade draw hook from stage layer 14. */
 void fn_1_40AC8(void)
 {
     Hu3DLayerHookReset(14);
 }
 
+/* Adds one colored burst particle at a stage position with its lifetime and scale. */
 void fn_1_40AEC(
-    s16 arg0, float arg1, float arg2, HuVecF *arg3, GXColor arg4)
+    s16 particleNo, float lifetime, float targetScale, HuVecF *position, GXColor color)
 {
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
@@ -422,24 +438,25 @@ void fn_1_40AEC(
 
     model = &Hu3DData[lbl_1_bss_AEC];
     particle = model->hookData;
-    data = &particle->data[arg0];
+    data = &particle->data[particleNo];
     data->time = 1;
-    data->pos.x = arg3->x;
-    data->pos.y = arg3->y;
-    data->pos.z = arg3->z;
+    data->pos.x = position->x;
+    data->pos.y = position->y;
+    data->pos.z = position->z;
     data->scale = 0.0f;
-    data->color.r = arg4.r;
-    data->color.g = arg4.g;
-    data->color.b = arg4.b;
-    data->color.a = arg4.a;
+    data->color.r = color.r;
+    data->color.g = color.g;
+    data->color.b = color.b;
+    data->color.a = color.a;
     data->vel.x = 0.0f;
-    data->vel.y = arg1;
-    data->accel.x = arg2;
-    data->accel.y = arg4.a;
+    data->vel.y = lifetime;
+    data->accel.x = targetScale;
+    data->accel.y = color.a;
     particle->dataCnt++;
     model->attr &= ~HU3D_ATTR_DISPOFF;
 }
 
+/* Particle draw hook: grows and fades each burst particle over its lifetime. */
 void fn_1_40BEC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *data;
@@ -466,6 +483,7 @@ void fn_1_40BEC(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates the eight-particle additive burst effect used by Party Mode events. */
 void fn_1_40EAC(void)
 {
     lbl_1_bss_AEC = Hu3DParticleCreate(lbl_1_bss_B40[0], 8);
@@ -479,32 +497,37 @@ void fn_1_40EAC(void)
         lbl_1_bss_AEC, HU3D_PARTICLE_BLEND_ADDCOL);
 }
 
+/* Removes the burst particle model during stage cleanup. */
 void fn_1_40FC0(void)
 {
     Hu3DModelKill(lbl_1_bss_AEC);
 }
 
-void fn_1_40FEC(s16 arg0, float arg1, HuVecF *arg2, GXColor arg3)
+/* Starts one of four radial burst emitters at the supplied stage position using the supplied
+ * color. */
+void fn_1_40FEC(s16 effectNo, float lifetime, HuVecF *position, GXColor color)
 {
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
 
-    model = &Hu3DData[lbl_1_bss_AE4[arg0]];
+    model = &Hu3DData[lbl_1_bss_AE4[effectNo]];
     particle = model->hookData;
-    Hu3DModelPosSetV(lbl_1_bss_AE4[arg0], arg2);
+    Hu3DModelPosSetV(lbl_1_bss_AE4[effectNo], position);
     data = particle->data;
+    /* The active-state write is immediately replaced by the idle state. */
     data->time = 1;
-    data->color.r = arg3.r;
-    data->color.g = arg3.g;
-    data->color.b = arg3.b;
-    data->color.a = arg3.a;
+    data->color.r = color.r;
+    data->color.g = color.g;
+    data->color.b = color.b;
+    data->color.a = color.a;
     data->time = 0;
-    data->parManId = arg1;
+    data->parManId = lifetime;
     particle->dataCnt = 1;
     model->attr &= ~HU3D_ATTR_DISPOFF;
 }
 
+/* Particle draw hook: emits a rotating radial burst, then fades it out. */
 void fn_1_410D4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *first;
@@ -562,6 +585,7 @@ void fn_1_410D4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates four radial burst models, each with sixteen particles. */
 void fn_1_4161C(void)
 {
     s16 i;
@@ -582,6 +606,7 @@ void fn_1_4161C(void)
 
 inline void fn_1_4161C(void);
 
+/* Removes the four radial burst models during stage cleanup. */
 void fn_1_417DC(void)
 {
     s16 i;
@@ -591,6 +616,7 @@ void fn_1_417DC(void)
     }
 }
 
+/* Resets and enables the large stage particle emitter. */
 void fn_1_41834(void)
 {
     s16 i;
@@ -608,6 +634,7 @@ void fn_1_41834(void)
     model->attr &= ~HU3D_ATTR_DISPOFF;
 }
 
+/* Particle draw hook: emits colored particles around the stage in a falling arc. */
 void fn_1_418D4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *data;
@@ -632,9 +659,11 @@ void fn_1_418D4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
                 if (spawnCount < 7) {
                     color = rand8() + 128;
                     color &= MDPARTY_COLOR_COMPONENT_MASK;
+                    /* The sampled red value is discarded; red is forced to full intensity. */
                     data->color.r = 255;
                     color = rand8() + 128;
                     color &= MDPARTY_COLOR_COMPONENT_MASK;
+                    /* The sampled green value is also discarded. */
                     data->color.g = 255;
                     color = rand8() % 204;
                     color &= MDPARTY_COLOR_COMPONENT_MASK;
@@ -684,6 +713,7 @@ void fn_1_418D4(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates the large stage particle emitter and installs its draw hook. */
 void fn_1_42060(void)
 {
     lbl_1_bss_AE2 = Hu3DParticleCreate(lbl_1_bss_B40[2], 1000);
@@ -695,32 +725,35 @@ void fn_1_42060(void)
     Hu3DParticleHookSet(lbl_1_bss_AE2, fn_1_418D4);
 }
 
+/* Removes the large stage particle emitter during cleanup. */
 void fn_1_42160(void)
 {
     Hu3DModelKill(lbl_1_bss_AE2);
 }
 
-void fn_1_4218C(s16 arg0, float arg1, HuVecF *arg2)
+/* Starts one of four radial burst models at a position for a given lifetime. */
+void fn_1_4218C(s16 effectNo, float lifetime, HuVecF *position)
 {
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
 
-    model = &Hu3DData[lbl_1_bss_ADA[arg0]];
+    model = &Hu3DData[lbl_1_bss_ADA[effectNo]];
     particle = model->hookData;
-    Hu3DModelPosSetV(lbl_1_bss_ADA[arg0], arg2);
+    Hu3DModelPosSetV(lbl_1_bss_ADA[effectNo], position);
     data = particle->data;
     data->time = 0;
-    data->parManId = arg1;
+    data->parManId = lifetime;
     particle->dataCnt = 1;
     model->attr &= ~HU3D_ATTR_DISPOFF;
 }
 
+/* Particle draw hook: expands particles outward, then shrinks and hides them. */
 void fn_1_42258(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *first;
     HU3D_PARTICLE_DATA *data;
-    HuVecF random;
+    HuVecF randomVector;
     HuVecF direction;
     float speed;
     s16 i;
@@ -728,10 +761,10 @@ void fn_1_42258(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 
     if (particle->dataCnt == 1) {
         for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
-            random.x = frandmod(100) - 50;
-            random.y = frandmod(100) - 50;
-            random.z = frandmod(100) - 50;
-            PSVECNormalize(&random, &direction);
+            randomVector.x = frandmod(100) - 50;
+            randomVector.y = frandmod(100) - 50;
+            randomVector.z = frandmod(100) - 50;
+            PSVECNormalize(&randomVector, &direction);
             speed = 200.0f;
             data->vel.x = direction.x * speed;
             data->vel.y = direction.y * speed;
@@ -784,6 +817,7 @@ void fn_1_42258(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     }
 }
 
+/* Creates four radial burst particle models. */
 void fn_1_42B40(void)
 {
     s16 i;
@@ -801,6 +835,7 @@ void fn_1_42B40(void)
     }
 }
 
+/* Removes the four radial burst models. */
 void fn_1_42CD4(void)
 {
     s16 i;
@@ -810,52 +845,57 @@ void fn_1_42CD4(void)
     }
 }
 
-void fn_1_42D2C(s16 arg0, s16 arg1)
+/* Shows or hides one of the two small stage particle models. */
+void fn_1_42D2C(s16 effectNo, s16 show)
 {
-    if (arg1) {
-        Hu3DModelAttrReset(lbl_1_bss_AD6[arg0], HU3D_ATTR_DISPOFF);
+    if (show) {
+        Hu3DModelAttrReset(lbl_1_bss_AD6[effectNo], HU3D_ATTR_DISPOFF);
     } else {
-        Hu3DModelAttrSet(lbl_1_bss_AD6[arg0], HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrSet(lbl_1_bss_AD6[effectNo], HU3D_ATTR_DISPOFF);
     }
 }
 
-void fn_1_42DA8(s16 arg0, HuVecF *arg1, GXColor *arg2)
+/* Starts every particle in one small model, optionally setting its color and position. */
+void fn_1_42DA8(s16 effectNo, HuVecF *position, GXColor *color)
 {
     s16 i;
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
 
-    model = &Hu3DData[lbl_1_bss_AD6[arg0]];
+    model = &Hu3DData[lbl_1_bss_AD6[effectNo]];
     particle = model->hookData;
     for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
         data->time = 1;
-        if (arg2 != NULL) {
-            data->color.r = arg2->r;
-            data->color.g = arg2->g;
-            data->color.b = arg2->b;
+        if (color != NULL) {
+            data->color.r = color->r;
+            data->color.g = color->g;
+            data->color.b = color->b;
         }
     }
-    if (arg1 != NULL) {
-        Hu3DModelPosSetV(lbl_1_bss_AD6[arg0], arg1);
+    if (position != NULL) {
+        Hu3DModelPosSetV(lbl_1_bss_AD6[effectNo], position);
     }
-    Hu3DModelAttrReset(lbl_1_bss_AD6[arg0], HU3D_ATTR_DISPOFF);
+    Hu3DModelAttrReset(lbl_1_bss_AD6[effectNo], HU3D_ATTR_DISPOFF);
 }
 
-void fn_1_42EAC(s16 arg0)
+/* Marks every particle in one small model for its fade-out state. */
+void fn_1_42EAC(s16 effectNo)
 {
     s16 i;
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
 
-    model = &Hu3DData[lbl_1_bss_AD6[arg0]];
+    model = &Hu3DData[lbl_1_bss_AD6[effectNo]];
     particle = model->hookData;
     for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
         data->time = 2;
     }
 }
 
+/* Particle hook registered by fn_1_433AC; eases each small particle to its target scale and
+ * alpha. */
 void fn_1_42F34(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     MDPARTY_STAGE_PARTICLE_TARGET particleTarget[
@@ -911,6 +951,7 @@ void fn_1_42F34(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates two small stage particle models and registers their particle hook. */
 void fn_1_433AC(void)
 {
     s16 i;
@@ -927,6 +968,7 @@ void fn_1_433AC(void)
     }
 }
 
+/* Removes the two small stage particle models during cleanup. */
 void fn_1_43518(void)
 {
     s16 i;
@@ -936,46 +978,50 @@ void fn_1_43518(void)
     }
 }
 
-void fn_1_43570(s16 arg0, s16 arg1)
+/* Shows or hides one of the two large sparkle particle models. */
+void fn_1_43570(s16 effectNo, s16 show)
 {
-    if (arg1) {
-        Hu3DModelAttrReset(lbl_1_bss_AD2[arg0], HU3D_ATTR_DISPOFF);
+    if (show) {
+        Hu3DModelAttrReset(lbl_1_bss_AD2[effectNo], HU3D_ATTR_DISPOFF);
     } else {
-        Hu3DModelAttrSet(lbl_1_bss_AD2[arg0], HU3D_ATTR_DISPOFF);
+        Hu3DModelAttrSet(lbl_1_bss_AD2[effectNo], HU3D_ATTR_DISPOFF);
     }
 }
 
-void fn_1_435EC(s16 arg0, HuVecF *arg1, GXColor *arg2)
+/* Starts one sparkle emitter with the supplied position and RGB base color. */
+void fn_1_435EC(s16 effectNo, HuVecF *position, GXColor *color)
 {
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
 
-    model = &Hu3DData[lbl_1_bss_AD2[arg0]];
+    model = &Hu3DData[lbl_1_bss_AD2[effectNo]];
     particle = model->hookData;
     particle->dataCnt = 1;
-    if (arg2 != NULL) {
-        particle->pos.x = arg2->r;
-        particle->pos.y = arg2->g;
-        particle->pos.z = arg2->b;
+    if (color != NULL) {
+        particle->pos.x = color->r;
+        particle->pos.y = color->g;
+        particle->pos.z = color->b;
     }
-    if (arg1 != NULL) {
-        particle->unk_10.x = arg1->x;
-        particle->unk_10.y = arg1->y;
-        particle->unk_10.z = arg1->z;
+    if (position != NULL) {
+        particle->spawnCenter.x = position->x;
+        particle->spawnCenter.y = position->y;
+        particle->spawnCenter.z = position->z;
     }
-    Hu3DModelAttrReset(lbl_1_bss_AD2[arg0], HU3D_ATTR_DISPOFF);
+    Hu3DModelAttrReset(lbl_1_bss_AD2[effectNo], HU3D_ATTR_DISPOFF);
 }
 
-void fn_1_43724(s16 arg0)
+/* Stops new sparkle emission from one of the two large particle models. */
+void fn_1_43724(s16 effectNo)
 {
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
 
-    model = &Hu3DData[lbl_1_bss_AD2[arg0]];
+    model = &Hu3DData[lbl_1_bss_AD2[effectNo]];
     particle = model->hookData;
     particle->dataCnt = 0;
 }
 
+/* Particle hook registered by fn_1_43D78; emits a brief colored sparkle spray. */
 void fn_1_43778(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *data;
@@ -1007,9 +1053,9 @@ void fn_1_43778(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             data->accel.x *= 2.0f;
             data->accel.y *= 5.0f;
             data->accel.z *= 2.0f;
-            data->pos.x = particle->unk_10.x + frandmod(100) - 50;
-            data->pos.y = particle->unk_10.y + frandmod(100) - 50;
-            data->pos.z = particle->unk_10.z + frandmod(100) - 50;
+            data->pos.x = particle->spawnCenter.x + frandmod(100) - 50;
+            data->pos.y = particle->spawnCenter.y + frandmod(100) - 50;
+            data->pos.z = particle->spawnCenter.z + frandmod(100) - 50;
             random = frandmod(128);
             color = particle->pos.x + random;
             if (color > 255.0f) {
@@ -1048,6 +1094,7 @@ void fn_1_43778(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates the two large sparkle particle models and registers their draw hook. */
 void fn_1_43D78(void)
 {
     s16 i;
@@ -1064,6 +1111,7 @@ void fn_1_43D78(void)
     }
 }
 
+/* Removes the two large sparkle particle models during cleanup. */
 void fn_1_43EE4(void)
 {
     s16 i;
@@ -1073,7 +1121,8 @@ void fn_1_43EE4(void)
     }
 }
 
-void fn_1_43F3C(s16 groupNo, HuVecF *pos, s16 mode)
+/* Starts, fades, or hides the paired player-color effects for the selected group. */
+void fn_1_43F3C(s16 groupNo, HuVecF *position, s16 mode)
 {
     GXColor colors[2] = {
         { 255, 114, 46, 0 },
@@ -1081,8 +1130,8 @@ void fn_1_43F3C(s16 groupNo, HuVecF *pos, s16 mode)
     };
 
     if (mode == 1) {
-        fn_1_42DA8(groupNo, pos, &colors[groupNo]);
-        fn_1_435EC(groupNo, pos, &colors[groupNo]);
+        fn_1_42DA8(groupNo, position, &colors[groupNo]);
+        fn_1_435EC(groupNo, position, &colors[groupNo]);
     } else if (mode == 0) {
         fn_1_42EAC(groupNo);
         fn_1_43724(groupNo);
@@ -1092,6 +1141,7 @@ void fn_1_43F3C(s16 groupNo, HuVecF *pos, s16 mode)
     }
 }
 
+/* Shows or hides all five particle models belonging to a stage effect group. */
 void fn_1_44300(s16 groupNo, s16 show)
 {
     s16 i;
@@ -1105,7 +1155,8 @@ void fn_1_44300(s16 groupNo, s16 show)
     }
 }
 
-void fn_1_443B4(s16 groupNo, HuVecF *pos, GXColor *color)
+/* Starts each of the group's five emitters with a shared position and base color. */
+void fn_1_443B4(s16 groupNo, HuVecF *position, GXColor *color)
 {
     s16 i;
     HU3D_MODEL *model;
@@ -1120,18 +1171,19 @@ void fn_1_443B4(s16 groupNo, HuVecF *pos, GXColor *color)
             particle->pos.y = color->g;
             particle->pos.z = color->b;
         }
-        if (pos != NULL) {
-            particle->unk_10.x = pos->x;
-            particle->unk_10.y = pos->y;
-            particle->unk_10.z = pos->z;
+        if (position != NULL) {
+            particle->spawnCenter.x = position->x;
+            particle->spawnCenter.y = position->y;
+            particle->spawnCenter.z = position->z;
         }
         Hu3DModelAttrReset(
             lbl_1_bss_A96[groupNo][i], HU3D_ATTR_DISPOFF);
     }
 }
 
-inline void fn_1_443B4(s16 groupNo, HuVecF *pos, GXColor *color);
+inline void fn_1_443B4(s16 groupNo, HuVecF *position, GXColor *color);
 
+/* Resets the per-model spawn counter for all five emitters in a group. */
 void fn_1_4451C(s16 groupNo)
 {
     s16 i;
@@ -1145,6 +1197,7 @@ void fn_1_4451C(s16 groupNo)
     }
 }
 
+/* Particle hook registered by fn_1_44B1C; emits one falling colored sparkle per frame. */
 void fn_1_4459C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 {
     HU3D_PARTICLE_DATA *data;
@@ -1176,9 +1229,9 @@ void fn_1_4459C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
             data->accel.x *= 2.0f;
             data->accel.y *= 2.0f;
             data->accel.z *= 2.0f;
-            data->pos.x = particle->unk_10.x + frandmod(100) - 50;
-            data->pos.y = particle->unk_10.y;
-            data->pos.z = particle->unk_10.z + frandmod(100) - 50;
+            data->pos.x = particle->spawnCenter.x + frandmod(100) - 50;
+            data->pos.y = particle->spawnCenter.y;
+            data->pos.z = particle->spawnCenter.z + frandmod(100) - 50;
             random = frandmod(32);
             color = particle->pos.x + random;
             if (color > 255.0f) {
@@ -1215,6 +1268,7 @@ void fn_1_4459C(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
         particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates six groups of five particle models used for stage event effects. */
 void fn_1_44B1C(void)
 {
     s16 particleCount[5] = { 10, 10, 10, 10, 256 };
@@ -1243,6 +1297,7 @@ void fn_1_44B1C(void)
 
 inline void fn_1_44B1C(void);
 
+/* Removes all thirty grouped particle models during stage cleanup. */
 void fn_1_44D48(void)
 {
     s16 i;
@@ -1255,11 +1310,12 @@ void fn_1_44D48(void)
     }
 }
 
-void fn_1_44DCC(OMOBJMAN *objman)
+/* Stage setup: creates the backdrop and every particle model used by Party Mode. */
+void fn_1_44DCC(OMOBJMAN *objectManager)
 {
     s16 i;
 
-    lbl_1_bss_A80 = objman;
+    lbl_1_bss_A80 = objectManager;
     fn_1_3FEF4();
     for (i = 0; i < 9; i++) {
         lbl_1_bss_B40[i] = HuSprAnimRead(
@@ -1275,6 +1331,7 @@ void fn_1_44DCC(OMOBJMAN *objman)
     fn_1_44B1C();
 }
 
+/* Stage cleanup: removes particle models, layer hooks, and the screen overlay. */
 void fn_1_4581C(void)
 {
     fn_1_40FC0();
@@ -1288,14 +1345,16 @@ void fn_1_4581C(void)
     fn_1_3FF44();
 }
 
-void fn_1_45A48(HuVecF *arg0)
+/* Starts the screen overlay and a blue burst at the supplied stage position. */
+void fn_1_45A48(HuVecF *position)
 {
-    fn_1_3FB6C(0, arg0);
+    fn_1_3FB6C(0, position);
     fn_1_40AEC(
-        5, 120.0f, 3000.0f, arg0, (GXColor) { 128, 128, 255, 128 });
+        5, 120.0f, 3000.0f, position, (GXColor) { 128, 128, 255, 128 });
 }
 
-void fn_1_45C40(s16 arg0, HuVecF *arg1, s16 arg2)
+/* Adds a player-colored burst and radial effect slightly above the given position. */
+void fn_1_45C40(s16 particleNo, HuVecF *position, s16 colorNo)
 {
     GXColor colors[5] = {
         { 254, 77, 75, 255 },
@@ -1306,14 +1365,15 @@ void fn_1_45C40(s16 arg0, HuVecF *arg1, s16 arg2)
     };
     HuVecF pos;
 
-    pos.x = arg1->x;
-    pos.y = arg1->y;
-    pos.z = arg1->z + 10.0f;
-    fn_1_40AEC(arg0, 10.0f, 500.0f, &pos, colors[arg2]);
-    fn_1_40FEC(arg0, 10.0f, &pos, colors[arg2]);
+    pos.x = position->x;
+    pos.y = position->y;
+    pos.z = position->z + 10.0f;
+    fn_1_40AEC(particleNo, 10.0f, 500.0f, &pos, colors[colorNo]);
+    fn_1_40FEC(particleNo, 10.0f, &pos, colors[colorNo]);
 }
 
-void fn_1_45F3C(s16 arg0, HuVecF *arg1, s16 arg2, s16 arg3)
+/* Emits one of two colored event bursts, selecting the radial or tall effect by mode. */
+void fn_1_45F3C(s16 particleNo, HuVecF *position, s16 colorNo, s16 mode)
 {
     GXColor colors[5] = {
         { 254, 77, 75, 255 },
@@ -1324,26 +1384,28 @@ void fn_1_45F3C(s16 arg0, HuVecF *arg1, s16 arg2, s16 arg3)
     };
     HuVecF pos;
 
-    pos.x = arg1->x;
-    pos.y = arg1->y;
-    pos.z = arg1->z;
+    pos.x = position->x;
+    pos.y = position->y;
+    pos.z = position->z;
     Hu3DZClearLayerSet(7);
-    if (arg3 == 0) {
-        fn_1_40AEC(arg0, 20.0f, 300.0f, &pos, colors[arg2]);
-        fn_1_4218C(arg0, 30.0f, &pos);
+    if (mode == 0) {
+        fn_1_40AEC(particleNo, 20.0f, 300.0f, &pos, colors[colorNo]);
+        fn_1_4218C(particleNo, 30.0f, &pos);
     } else {
-        fn_1_40AEC(arg0, 60.0f, 300.0f, &pos, colors[arg2]);
-        fn_1_40FEC(arg0, 30.0f, &pos, colors[arg2]);
+        fn_1_40AEC(particleNo, 60.0f, 300.0f, &pos, colors[colorNo]);
+        fn_1_40FEC(particleNo, 30.0f, &pos, colors[colorNo]);
     }
 }
 
+/* Registers the screen fade hook and starts the large stage particle emitter. */
 void fn_1_463E0(void)
 {
     fn_1_40A9C();
     fn_1_41834();
 }
 
-void fn_1_464A0(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo)
+/* Controls one grouped stage effect: start it, reset its spawn counters, or hide it. */
+void fn_1_464A0(s16 groupNo, HuVecF *position, s16 mode, s16 colorNo)
 {
     GXColor colors[7] = {
         { 254, 77, 75, 0 },
@@ -1356,7 +1418,7 @@ void fn_1_464A0(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo)
     };
 
     if (mode == 1) {
-        fn_1_443B4(groupNo, pos, &colors[colorNo]);
+        fn_1_443B4(groupNo, position, &colors[colorNo]);
     } else if (mode == 0) {
         fn_1_4451C(groupNo);
     } else if (mode == 2) {
