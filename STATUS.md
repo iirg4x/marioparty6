@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 35.66% | 57.08% |
-| Main DOL | 88.56% | 99.04% |
+| Entire project | 35.67% | 57.09% |
+| Main DOL | 88.62% | 99.04% |
 | REL modules | 24.44% | 30.50% |
+
+DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/combiner.c` now builds from source; `main.dol` matches retail byte for byte.
 
 resultDll (`resultDll`) selects all **76 functions** from **6 complete translation units**; its linked REL matches retail.
 
