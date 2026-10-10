@@ -1,3 +1,5 @@
+/* Coordinates MSM sound-file loading, group stacks, effects, and output mode. */
+#include "dolphin/math.h"
 #include "msm/msmsys.h"
 #include "msm/msmfio.h"
 #include "msm/msmmem.h"
@@ -7,6 +9,8 @@
 
 static MSM_SYS sys;
 
+/* Each AI DMA completion updates MSM audio on the first installed call and every third call after
+ * that, then chains the prior callback. */
 static void msmSysServer(void)
 {
     if (sndIsInstalled() == 1) {
@@ -20,159 +24,171 @@ static void msmSysServer(void)
     sys.oldAIDCallback();
 }
 
-static s32 msmSysSetAuxParam(s32 auxA, s32 auxB)
+/* Initialization and msmSysSetAux prepare effect callbacks here. Negative requests retain the
+* current choice and slots marked MSM_AUXNO_NULL stay disabled. If both stored choices are negative,
+* no callbacks are installed. Reverb preparation clears each copied tempDisableFX setting. */
+static s32 msmSysSetAuxParam(s32 requestedAuxA, s32 requestedAuxB)
 {
-    s32 unused_1[2];
-    SND_AUX_CALLBACK auxcb[2];
-    s32 unused_2[2];
-    MSM_AUXPARAM *auxParam;
-    MSM_AUX *aux;
-    u32 result;
-    s32 i;
+    s32 reservedStackWordsA[2];
+    SND_AUX_CALLBACK auxCallbacks[2];
+    s32 reservedStackWordsB[2];
+    MSM_AUXPARAM *auxParameter;
+    MSM_AUX *auxState;
+    u32 prepareResult;
+    s32 auxIndex;
 
-    if (sys.auxParamNo[0] != MSM_AUXNO_NULL && auxA >= 0) {
-        sys.auxParamNo[0] = auxA;
+    if (sys.auxParamNo[0] != MSM_AUXNO_NULL && requestedAuxA >= 0) {
+        sys.auxParamNo[0] = requestedAuxA;
     }
-    if (sys.auxParamNo[1] != MSM_AUXNO_NULL && auxB >= 0) {
-        sys.auxParamNo[1] = auxB;
+    if (sys.auxParamNo[1] != MSM_AUXNO_NULL && requestedAuxB >= 0) {
+        sys.auxParamNo[1] = requestedAuxB;
     }
     if (sys.auxParamNo[0] < 0 && sys.auxParamNo[1] < 0) {
         return 0;
     }
-    for (i = 0; i < 2; i++) {
-        if (sys.auxParamNo[i] < 0) {
-            auxcb[i] = NULL;
+    for (auxIndex = 0; auxIndex < 2; auxIndex++) {
+        if (sys.auxParamNo[auxIndex] < 0) {
+            auxCallbacks[auxIndex] = NULL;
             continue;
         }
-        auxParam = &sys.auxParam[sys.auxParamNo[i]];
-        aux = &sys.aux[i];
-        switch (auxParam->type) {
+        auxParameter = &sys.auxParam[sys.auxParamNo[auxIndex]];
+        auxState = &sys.aux[auxIndex];
+        switch (auxParameter->type) {
             case MSM_AUX_REVERBHI:
-                auxcb[i] = sndAuxCallbackReverbHI;
-                aux->revHi.tempDisableFX = auxParam->revHi.tempDisableFX;
-                aux->revHi.coloration = auxParam->revHi.coloration;
-                aux->revHi.mix = auxParam->revHi.mix;
-                aux->revHi.time = auxParam->revHi.time;
-                aux->revHi.damping = auxParam->revHi.damping;
-                aux->revHi.preDelay = auxParam->revHi.preDelay;
-                aux->revHi.crosstalk = auxParam->revHi.crosstalk;
-                result = sndAuxCallbackPrepareReverbHI(&aux->revHi);
+                auxCallbacks[auxIndex] = sndAuxCallbackReverbHI;
+                auxState->revHi.tempDisableFX = auxParameter->revHi.tempDisableFX;
+                auxState->revHi.coloration = auxParameter->revHi.coloration;
+                auxState->revHi.mix = auxParameter->revHi.mix;
+                auxState->revHi.time = auxParameter->revHi.time;
+                auxState->revHi.damping = auxParameter->revHi.damping;
+                auxState->revHi.preDelay = auxParameter->revHi.preDelay;
+                auxState->revHi.crosstalk = auxParameter->revHi.crosstalk;
+                prepareResult = sndAuxCallbackPrepareReverbHI(&auxState->revHi);
                 break;
 
             case MSM_AUX_REVERBSTD:
-                auxcb[i] = sndAuxCallbackReverbSTD;
-                aux->revStd.tempDisableFX = auxParam->revStd.tempDisableFX;
-                aux->revStd.coloration = auxParam->revStd.coloration;
-                aux->revStd.mix = auxParam->revStd.mix;
-                aux->revStd.time = auxParam->revStd.time;
-                aux->revStd.damping = auxParam->revStd.damping;
-                aux->revStd.preDelay = auxParam->revStd.preDelay;
-                result = sndAuxCallbackPrepareReverbSTD(&aux->revStd);
+                auxCallbacks[auxIndex] = sndAuxCallbackReverbSTD;
+                auxState->revStd.tempDisableFX = auxParameter->revStd.tempDisableFX;
+                auxState->revStd.coloration = auxParameter->revStd.coloration;
+                auxState->revStd.mix = auxParameter->revStd.mix;
+                auxState->revStd.time = auxParameter->revStd.time;
+                auxState->revStd.damping = auxParameter->revStd.damping;
+                auxState->revStd.preDelay = auxParameter->revStd.preDelay;
+                prepareResult = sndAuxCallbackPrepareReverbSTD(&auxState->revStd);
                 break;
 
             case MSM_AUX_CHORUS:
-                auxcb[i] = sndAuxCallbackChorus;
-                aux->chorus.baseDelay = auxParam->chorus.baseDelay;
-                aux->chorus.variation = auxParam->chorus.variation;
-                aux->chorus.period = auxParam->chorus.period;
-                result = sndAuxCallbackPrepareChorus(&aux->chorus);
+                auxCallbacks[auxIndex] = sndAuxCallbackChorus;
+                auxState->chorus.baseDelay = auxParameter->chorus.baseDelay;
+                auxState->chorus.variation = auxParameter->chorus.variation;
+                auxState->chorus.period = auxParameter->chorus.period;
+                prepareResult = sndAuxCallbackPrepareChorus(&auxState->chorus);
                 break;
 
             case MSM_AUX_DELAY:
-                auxcb[i] = sndAuxCallbackDelay;
-                aux->delay.delay[0] = auxParam->delay.delay[0];
-                aux->delay.feedback[0] = auxParam->delay.feedback[0];
-                aux->delay.output[0] = auxParam->delay.output[0];
-                aux->delay.delay[1] = auxParam->delay.delay[1];
-                aux->delay.feedback[1] = auxParam->delay.feedback[1];
-                aux->delay.output[1] = auxParam->delay.output[1];
-                aux->delay.delay[2] = auxParam->delay.delay[2];
-                aux->delay.feedback[2] = auxParam->delay.feedback[2];
-                aux->delay.output[2] = auxParam->delay.output[2];
-                result = sndAuxCallbackPrepareDelay(&aux->delay);
+                auxCallbacks[auxIndex] = sndAuxCallbackDelay;
+                auxState->delay.delay[0] = auxParameter->delay.delay[0];
+                auxState->delay.feedback[0] = auxParameter->delay.feedback[0];
+                auxState->delay.output[0] = auxParameter->delay.output[0];
+                auxState->delay.delay[1] = auxParameter->delay.delay[1];
+                auxState->delay.feedback[1] = auxParameter->delay.feedback[1];
+                auxState->delay.output[1] = auxParameter->delay.output[1];
+                auxState->delay.delay[2] = auxParameter->delay.delay[2];
+                auxState->delay.feedback[2] = auxParameter->delay.feedback[2];
+                auxState->delay.output[2] = auxParameter->delay.output[2];
+                prepareResult = sndAuxCallbackPrepareDelay(&auxState->delay);
                 break;
         }
-        if (result == FALSE) {
+        if (prepareResult == FALSE) {
+            /* The public setter treats this nonzero result as an invalid effect setting. */
             return TRUE;
         }
     }
-    sndSetAuxProcessingCallbacks(0, auxcb[0], &sys.aux[0], 0xFF, 0, auxcb[1], &sys.aux[1], 0xFF, 0);
+    sndSetAuxProcessingCallbacks(0, auxCallbacks[0], &sys.aux[0], SND_MIDI_NONE, 0,
+        auxCallbacks[1], &sys.aux[1], SND_MIDI_NONE, 0);
     return FALSE;
 }
 
-static s32 msmSysLoadBaseGroup(void *buf)
+/* msmSysLoadGroup calls this for group index zero to load and register the full base set. */
+static s32 msmSysLoadBaseGroup(void *sampleBuffer)
 {
     DVDFileInfo file;
-    s32 i;
-    MSM_GRP_HEAD *grpData;
-    MSM_GRP_INFO *grpInfo;
+    s32 baseGroupIndex;
+    MSM_GRP_HEAD *groupData;
+    MSM_GRP_INFO *groupInfo;
 
     if (msmFioOpen(sys.msmEntryNum, &file) != TRUE) {
         return MSM_ERR_OPENFAIL;
     }
-    for(i = 0; i < sys.baseGrpNum; i++) {
-        grpData = sys.grpData[i];
-        grpInfo = &sys.grpInfo[sys.info->baseGrp[i]];
-        if (msmFioRead(&file, grpData, grpInfo->dataSize, grpInfo->dataOfs + sys.header->grpDataOfs) < 0) {
+    for (baseGroupIndex = 0; baseGroupIndex < sys.baseGrpNum; baseGroupIndex++) {
+        groupData = sys.grpData[baseGroupIndex];
+        groupInfo = &sys.grpInfo[sys.info->baseGrp[baseGroupIndex]];
+        if (msmFioRead(&file, groupData, groupInfo->dataSize,
+            groupInfo->dataOfs + sys.header->grpDataOfs) < 0) {
             msmFioClose(&file);
             return MSM_ERR_READFAIL;
         }
-        if (msmFioRead(&file, buf, grpInfo->sampSize, grpInfo->sampOfs + sys.header->sampOfs) < 0) {
+        if (msmFioRead(&file, sampleBuffer, groupInfo->sampSize,
+            groupInfo->sampOfs + sys.header->sampOfs) < 0) {
             msmFioClose(&file);
             return MSM_ERR_READFAIL;
         }
-        if (!sndPushGroup((void*) (grpData->projOfs + (u32) grpData), grpInfo->gid, buf,
-            (void*) (grpData->sdirOfs + (u32) grpData), (void*) (grpData->poolOfs + (u32) grpData)))
+        if (!sndPushGroup((void*) (groupData->projOfs + (u32) groupData), groupInfo->gid,
+            sampleBuffer, (void*) (groupData->sdirOfs + (u32) groupData),
+            (void*) (groupData->poolOfs + (u32) groupData)))
         {
             msmFioClose(&file);
             return MSM_ERR_GRP_FAILPUSH;
         }
-        sys.aramP += grpInfo->sampSize;
+        sys.aramP += groupInfo->sampSize;
     }
     msmFioClose(&file);
     return 0;
 }
 
-s32 msmSysSearchGroupStack(s32 grpId, s32 no)
+/* Group loaders choose the last empty slot or encode the newest replaceable slot as -(index + 1).
+* If no eligible slot is empty or replaceable, the returned replacement value is uninitialized. */
+s32 msmSysSearchGroupStack(s32 groupIndex, s32 excludedSlot)
 {
-    MSM_GRP_STACK *stack;
-    u32 stackNo;
-    s32 i;
-    s32 stackNoB;
-    s32 stackNoA;
-    s32 maxNo;
-    s32 stackMax;
+    MSM_GRP_STACK *groupStack;
+    u32 loadSequence;
+    s32 stackIndex;
+    s32 newestSlotResult;
+    s32 emptySlotIndex;
+    s32 newestSequence;
+    s32 stackCapacity;
 
-    stackNoA = -1;
-    maxNo = 0;
-    if (sys.grpInfo[grpId].stackNo == 0) {
-        stack = sys.grpStackA;
-        stackMax = sys.grpStackAMax;
+    emptySlotIndex = -1;
+    newestSequence = 0;
+    if (sys.grpInfo[groupIndex].stackNo == 0) {
+        groupStack = sys.grpStackA;
+        stackCapacity = sys.grpStackAMax;
     } else {
-        stack = sys.grpStackB;
-        stackMax = sys.grpStackBMax;
+        groupStack = sys.grpStackB;
+        stackCapacity = sys.grpStackBMax;
     }
-    for (i = 0; i < stackMax; stack++, i++) {
-        if (i == no) {
+    for (stackIndex = 0; stackIndex < stackCapacity; groupStack++, stackIndex++) {
+        if (stackIndex == excludedSlot) {
             continue;
         }
-        if ((stackNo = stack->num) != 0) {
-            if (stack->baseGrpF == 0 && stackNo > maxNo) {
-                maxNo = stackNo;
-                stackNoB = -(i + 1);
+        if ((loadSequence = groupStack->num) != 0) {
+            if (groupStack->baseGrpF == 0 && loadSequence > newestSequence) {
+                newestSequence = loadSequence;
+                newestSlotResult = -(stackIndex + 1);
             }
         } else {
-            stackNoA = i;
+            emptySlotIndex = stackIndex;
         }
     }
-    return (stackNoA < 0) ? stackNoB : stackNoA;
+    return (emptySlotIndex < 0) ? newestSlotResult : emptySlotIndex;
 }
 
+/* msmSysInit calls this to read group metadata and allocate base and stack buffers. */
 s32 msmSysGroupInit(DVDFileInfo *file)
 {
-    s32 i;
-    MSM_GRP_STACK *stack;
-    MSM_GRP_INFO *grpInfo;
+    s32 groupIndex;
+    MSM_GRP_STACK *groupStack;
+    MSM_GRP_INFO *groupInfo;
 
     sys.grpMax = sys.info->grpMax;
     sys.grpLoadMode = MSM_GROUP_LOAD_MANUAL;
@@ -207,41 +223,43 @@ s32 msmSysGroupInit(DVDFileInfo *file)
     } else {
         sys.grpSet = NULL;
     }
-    for (i = 0; i < sys.grpStackAMax; i++) {
-        stack = &sys.grpStackA[i];
-        stack->grpId = stack->baseGrpF = 0;
-        stack->num = 0;
-        stack->buf = (void*) ((u32) sys.grpBufA + sys.info->grpBufSizeA * i);
+    for (groupIndex = 0; groupIndex < sys.grpStackAMax; groupIndex++) {
+        groupStack = &sys.grpStackA[groupIndex];
+        groupStack->grpId = groupStack->baseGrpF = 0;
+        groupStack->num = 0;
+        groupStack->buf = (void*) ((u32) sys.grpBufA + sys.info->grpBufSizeA * groupIndex);
     }
-    for (i = 0; i < sys.grpStackBMax; i++) {
-        stack = &sys.grpStackB[i];
-        stack->grpId = stack->baseGrpF = 0;
-        stack->num = 0;
-        stack->buf = (void*) ((u32) sys.grpBufB + sys.info->grpBufSizeB * i);
+    for (groupIndex = 0; groupIndex < sys.grpStackBMax; groupIndex++) {
+        groupStack = &sys.grpStackB[groupIndex];
+        groupStack->grpId = groupStack->baseGrpF = 0;
+        groupStack->num = 0;
+        groupStack->buf = (void*) ((u32) sys.grpBufB + sys.info->grpBufSizeB * groupIndex);
     }
     sys.sampSize = 0;
-    for (i = 0; i < sys.baseGrpNum; i++) {
-        grpInfo = &sys.grpInfo[sys.info->baseGrp[i]];
-        if ((sys.grpData[i] = msmMemAlloc(grpInfo->dataSize)) == NULL) {
+    for (groupIndex = 0; groupIndex < sys.baseGrpNum; groupIndex++) {
+        groupInfo = &sys.grpInfo[sys.info->baseGrp[groupIndex]];
+        if ((sys.grpData[groupIndex] = msmMemAlloc(groupInfo->dataSize)) == NULL) {
             return MSM_ERR_OUTOFMEM;
         }
-        if (sys.sampSize < grpInfo->sampSize) {
-            sys.sampSize = grpInfo->sampSize;
+        if (sys.sampSize < groupInfo->sampSize) {
+            sys.sampSize = groupInfo->sampSize;
         }
-        grpInfo->sampSize *= -1;
+        /* A negative size marks base-group entries for the pass below. */
+        groupInfo->sampSize *= -1;
     }
     sys.sampSizeBase = 0;
-    for (i = 1; i < sys.grpMax; i++) {
-        grpInfo = &sys.grpInfo[i];
-        if (grpInfo->sampSize < 0) {
-            grpInfo->sampSize *= -1;
-        } else if (sys.sampSizeBase < grpInfo->sampSize) {
-            sys.sampSizeBase = grpInfo->sampSize;
+    for (groupIndex = 1; groupIndex < sys.grpMax; groupIndex++) {
+        groupInfo = &sys.grpInfo[groupIndex];
+        if (groupInfo->sampSize < 0) {
+            groupInfo->sampSize *= -1;
+        } else if (sys.sampSizeBase < groupInfo->sampSize) {
+            sys.sampSizeBase = groupInfo->sampSize;
         }
     }
     return 0;
 }
 
+/* Stream operations use this for nested critical sections; only the first entry disables IRQs. */
 void msmSysIrqDisable(void)
 {
     if (sys.irqDepth++ == 0) {
@@ -249,6 +267,7 @@ void msmSysIrqDisable(void)
     }
 }
 
+/* Stream operations use this to restore IRQs when the final nested critical section exits. */
 void msmSysIrqEnable(void)
 {
     if (sys.irqDepth != 0) {
@@ -258,74 +277,81 @@ void msmSysIrqEnable(void)
     }
 }
 
-static inline BOOL msmSysCheckBaseGroupNo(s32 grpId)
+/* msmSysLoadGroupBase uses this to avoid adding a table index already in the base list. */
+static inline BOOL msmSysCheckBaseGroupNo(s32 groupIndex)
 {
-    s32 i;
+    s32 baseGroupIndex;
 
-    for (i = 0; i < sys.baseGrpNum + sys.grpStackAOfs + sys.grpStackBOfs; i++) {
-        if (sys.info->baseGrp[i] == grpId) {
+    for (baseGroupIndex = 0; baseGroupIndex < sys.baseGrpNum + sys.grpStackAOfs +
+        sys.grpStackBOfs; baseGroupIndex++) {
+        if (sys.info->baseGrp[baseGroupIndex] == groupIndex) {
             return TRUE;
         }
     }
     return FALSE;
 }
 
-BOOL msmSysCheckBaseGroup(s32 grpId)
+/* Music and sound-effect updates use this to keep active base-group sounds classified. */
+BOOL msmSysCheckBaseGroup(s32 soundGroupId)
 {
-    s32 i;
+    s32 baseGroupIndex;
 
-    for (i = 0; i < sys.baseGrpNum + sys.grpStackAOfs + sys.grpStackBOfs; i++) {
-        if (sys.grpInfo[sys.info->baseGrp[i]].gid == grpId) {
+    for (baseGroupIndex = 0; baseGroupIndex < sys.baseGrpNum + sys.grpStackAOfs +
+        sys.grpStackBOfs; baseGroupIndex++) {
+        if (sys.grpInfo[sys.info->baseGrp[baseGroupIndex]].gid == soundGroupId) {
             return TRUE;
         }
     }
     return FALSE;
 }
 
-void *msmSysGetGroupDataPtr(s32 grpId)
+/* Music playback uses this to find the loaded data buffer for a song's group-table index. */
+void *msmSysGetGroupDataPtr(s32 requestedGroupIndex)
 {
-    MSM_GRP_STACK *grp;
-    s32 i;
+    MSM_GRP_STACK *groupStack;
+    s32 groupIndex;
 
-    for (i = 0; i < sys.baseGrpNum; i++) {
-        if (sys.info->baseGrp[i] == grpId) {
-            return sys.grpData[i];
+    for (groupIndex = 0; groupIndex < sys.baseGrpNum; groupIndex++) {
+        if (sys.info->baseGrp[groupIndex] == requestedGroupIndex) {
+            return sys.grpData[groupIndex];
         }
     }
-    for (i = 0; i < sys.grpStackAMax; i++) {
-        grp = &sys.grpStackA[i];
-        if (grp->num != 0 && grp->grpId == grpId) {
-            return grp->buf;
+    for (groupIndex = 0; groupIndex < sys.grpStackAMax; groupIndex++) {
+        groupStack = &sys.grpStackA[groupIndex];
+        if (groupStack->num != 0 && groupStack->grpId == requestedGroupIndex) {
+            return groupStack->buf;
         }
     }
-    for (i = 0; i < sys.grpStackBMax; i++) {
-        grp = &sys.grpStackB[i];
-        if (grp->num != 0 && grp->grpId == grpId) {
-            return grp->buf;
+    for (groupIndex = 0; groupIndex < sys.grpStackBMax; groupIndex++) {
+        groupStack = &sys.grpStackB[groupIndex];
+        if (groupStack->num != 0 && groupStack->grpId == requestedGroupIndex) {
+            return groupStack->buf;
         }
     }
     return NULL;
 }
 
-BOOL msmSysCheckLoadGroupID(s32 grpId)
+/* Music playback and group loading use this to check whether a sound library ID is loaded. */
+BOOL msmSysCheckLoadGroupID(s32 soundGroupId)
 {
-    MSM_GRP_STACK *grp;
-    s32 i;
+    MSM_GRP_STACK *groupStack;
+    s32 groupIndex;
 
-    for (i = 0; i < sys.baseGrpNum + sys.grpStackAOfs + sys.grpStackBOfs; i++) {
-        if (sys.grpInfo[sys.info->baseGrp[i]].gid == grpId) {
+    for (groupIndex = 0; groupIndex < sys.baseGrpNum + sys.grpStackAOfs +
+        sys.grpStackBOfs; groupIndex++) {
+        if (sys.grpInfo[sys.info->baseGrp[groupIndex]].gid == soundGroupId) {
             return TRUE;
         }
     }
-    for (i = 0; i < sys.grpStackAMax; i++) {
-        grp = &sys.grpStackA[i];
-        if (grp->num != 0 && sys.grpInfo[grp->grpId].gid == grpId) {
+    for (groupIndex = 0; groupIndex < sys.grpStackAMax; groupIndex++) {
+        groupStack = &sys.grpStackA[groupIndex];
+        if (groupStack->num != 0 && sys.grpInfo[groupStack->grpId].gid == soundGroupId) {
             return TRUE;
         }
     }
-    for (i = 0; i < sys.grpStackBMax; i++) {
-        grp = &sys.grpStackB[i];
-        if (grp->num != 0 && sys.grpInfo[grp->grpId].gid == grpId) {
+    for (groupIndex = 0; groupIndex < sys.grpStackBMax; groupIndex++) {
+        groupStack = &sys.grpStackB[groupIndex];
+        if (groupStack->num != 0 && sys.grpInfo[groupStack->grpId].gid == soundGroupId) {
             return TRUE;
         }
     }
@@ -341,12 +367,15 @@ s32 msmSysGetOutputMode(void)
     return sys.outputMode;
 }
 
+/* Audio setup and file-select apply modes here; unsupported surround stores stereo and returns 1.
+* Other unrecognized modes select stereo in MusyX but pass the stored input mode to streaming and
+* return 0. */
 BOOL msmSysSetOutputMode(SND_OUTPUTMODE mode)
 {
     SND_OUTPUTMODE outputMode;
-    BOOL failF;
+    BOOL modeUnavailable;
 
-    failF = 0;
+    modeUnavailable = 0;
     sys.outputMode = mode;
     switch (mode) {
         case SND_OUTPUTMODE_MONO:
@@ -358,7 +387,7 @@ BOOL msmSysSetOutputMode(SND_OUTPUTMODE mode)
             } else {
                 sys.outputMode = SND_OUTPUTMODE_STEREO;
                 outputMode = SND_OUTPUTMODE_STEREO;
-                failF = 1;
+                modeUnavailable = 1;
             }
             break;
         case SND_OUTPUTMODE_STEREO:
@@ -369,68 +398,73 @@ BOOL msmSysSetOutputMode(SND_OUTPUTMODE mode)
     sndOutputMode(outputMode);
     msmStreamSetOutputMode(sys.outputMode);
     OSSetSoundMode((mode != SND_OUTPUTMODE_MONO) ? 1 : 0);
-    return failF;
+    return modeUnavailable;
 }
 
-s32 msmSysSetAux(s32 auxA, s32 auxB)
+/* The game audio manager calls this after choosing effects; it clears old callbacks and applies new
+ * ones. */
+s32 msmSysSetAux(s32 requestedAuxA, s32 requestedAuxB)
 {
-    s32 i;
+    s32 auxIndex;
 
     sndSetAuxProcessingCallbacks(0, NULL, NULL, 0, 0, NULL, NULL, 0, 0);
-    for (i = 1; i >= 0; i--) {
-        if (sys.auxParamNo[i] < 0) {
+    for (auxIndex = 1; auxIndex >= 0; auxIndex--) {
+        if (sys.auxParamNo[auxIndex] < 0) {
             continue;
         }
-        switch (sys.auxParam[sys.auxParamNo[i]].type) {
-            case 0:
-                sndAuxCallbackShutdownReverbHI(&sys.aux[i].revHi);
+        switch (sys.auxParam[sys.auxParamNo[auxIndex]].type) {
+            case MSM_AUX_REVERBHI:
+                sndAuxCallbackShutdownReverbHI(&sys.aux[auxIndex].revHi);
                 break;
-            case 1:
-                sndAuxCallbackShutdownReverbSTD(&sys.aux[i].revStd);
+            case MSM_AUX_REVERBSTD:
+                sndAuxCallbackShutdownReverbSTD(&sys.aux[auxIndex].revStd);
                 break;
-            case 2:
-                sndAuxCallbackShutdownChorus(&sys.aux[i].chorus);
+            case MSM_AUX_CHORUS:
+                sndAuxCallbackShutdownChorus(&sys.aux[auxIndex].chorus);
                 break;
-            case 3:
-                sndAuxCallbackShutdownDelay(&sys.aux[i].delay);
+            case MSM_AUX_DELAY:
+                sndAuxCallbackShutdownDelay(&sys.aux[auxIndex].delay);
                 break;
             }
     }
-    if (msmSysSetAuxParam(auxA, auxB) != 0) {
+    if (msmSysSetAuxParam(requestedAuxA, requestedAuxB) != 0) {
         return MSM_ERR_INVALID_AUXPARAM;
     }
     return 0;
 }
 
-s32 msmSysGetSampSize(BOOL baseGrp)
+/* The audio manager passes a group index or zero: nonzero gets one-group space, zero the base
+ * set. */
+s32 msmSysGetSampSize(BOOL singleGroupRequest)
 {
-    if (baseGrp != 0) {
+    if (singleGroupRequest != 0) {
         return sys.sampSizeBase;
     }
     return sys.sampSize;
 }
 
+/* Group-set changes call this to unload replaceable groups while preserving pinned groups. */
 s32 msmSysDelGroupAll(void)
 {
-    MSM_GRP_STACK *grp;
-    s32 i;
+    MSM_GRP_STACK *groupStack;
+    s32 stackIndex;
 
-    for (i = 0; i < sys.grpStackBMax; i++) {
-        grp = &sys.grpStackB[i];
-        if (grp->num != 0 && grp->baseGrpF == 0) {
-            grp->num = 0;
+    for (stackIndex = 0; stackIndex < sys.grpStackBMax; stackIndex++) {
+        groupStack = &sys.grpStackB[stackIndex];
+        if (groupStack->num != 0 && groupStack->baseGrpF == 0) {
+            groupStack->num = 0;
             sndPopGroup();
-            sys.aramP -= sys.grpInfo[grp->grpId].sampSize;
+            sys.aramP -= sys.grpInfo[groupStack->grpId].sampSize;
             sys.grpLoadNum--;
             sys.grpStackBDepth--;
         }
     }
-    for (i = 0; i < sys.grpStackAMax; i++) {
-        grp = &sys.grpStackA[i];
-        if (grp->num != 0 && grp->baseGrpF == 0) {
-            grp->num = 0;
+    for (stackIndex = 0; stackIndex < sys.grpStackAMax; stackIndex++) {
+        groupStack = &sys.grpStackA[stackIndex];
+        if (groupStack->num != 0 && groupStack->baseGrpF == 0) {
+            groupStack->num = 0;
             sndPopGroup();
-            sys.aramP -= sys.grpInfo[grp->grpId].sampSize;
+            sys.aramP -= sys.grpInfo[groupStack->grpId].sampSize;
             sys.grpLoadNum--;
             sys.grpStackADepth--;
         }
@@ -438,49 +472,52 @@ s32 msmSysDelGroupAll(void)
     return 0;
 }
 
-s32 msmSysDelGroupBase(s32 grpNum)
+/* Common-group changes use this to remove pinned groups. With none pinned it returns; otherwise a
+ * nonzero count below the total first unloads replaceable groups, while zero or at least the total
+ * clears both stacks. */
+s32 msmSysDelGroupBase(s32 groupsToDelete)
 {
-    s32 j;
-    MSM_GRP_STACK *grp;
-    s32 i;
-    s32 grpId;
+    s32 stackIndex;
+    s32 deletionIndex;
+    s32 groupIndex;
+    MSM_GRP_STACK *groupStack;
 
     if (sys.grpStackAOfs + sys.grpStackBOfs == 0) {
         return 0;
     }
-    if (grpNum >= sys.grpStackAOfs + sys.grpStackBOfs) {
-        grpNum = 0;
+    if (groupsToDelete >= sys.grpStackAOfs + sys.grpStackBOfs) {
+        groupsToDelete = 0;
     }
-    if (grpNum != 0) {
+    if (groupsToDelete != 0) {
         msmSysDelGroupAll();
-        for (i = 0; i < grpNum; i++) {
+        for (deletionIndex = 0; deletionIndex < groupsToDelete; deletionIndex++) {
             if (sys.grpLoadNum == 0) {
                 break;
             }
-            grpId = sys.grpLoadId[sys.grpLoadNum - 1];
-            if (sys.grpInfo[grpId].stackNo == 0) {
-                for (j = 0; j < sys.grpStackAMax; j++) {
-                    grp = &sys.grpStackA[j];
-                    if (grp->num != 0 && grp->grpId == grpId) {
+            groupIndex = sys.grpLoadId[sys.grpLoadNum - 1];
+            if (sys.grpInfo[groupIndex].stackNo == 0) {
+                for (stackIndex = 0; stackIndex < sys.grpStackAMax; stackIndex++) {
+                    MSM_GRP_STACK *groupSlot = &sys.grpStackA[stackIndex];
+                    if (groupSlot->num != 0 && groupSlot->grpId == groupIndex) {
                         sndPopGroup();
-                        sys.aramP -= sys.grpInfo[grp->grpId].sampSize;
+                        sys.aramP -= sys.grpInfo[groupSlot->grpId].sampSize;
                         sys.grpLoadNum--;
-                        grp->num = 0;
-                        grp->baseGrpF = 0;
+                        groupSlot->num = 0;
+                        groupSlot->baseGrpF = 0;
                         sys.grpStackADepth--;
                         sys.grpStackAOfs--;
                         break;
                     }
                 }
             } else {
-                for (j = 0; j < sys.grpStackBMax; j++) {
-                    grp = &sys.grpStackB[j];
-                    if (grp->num != 0 && grp->grpId == grpId) {
+                for (stackIndex = 0; stackIndex < sys.grpStackBMax; stackIndex++) {
+                    MSM_GRP_STACK *groupSlot = &sys.grpStackB[stackIndex];
+                    if (groupSlot->num != 0 && groupSlot->grpId == groupIndex) {
                         sndPopGroup();
-                        sys.aramP -= sys.grpInfo[grp->grpId].sampSize;
+                        sys.aramP -= sys.grpInfo[groupSlot->grpId].sampSize;
                         sys.grpLoadNum--;
-                        grp->num = 0;
-                        grp->baseGrpF = 0;
+                        groupSlot->num = 0;
+                        groupSlot->baseGrpF = 0;
                         sys.grpStackBDepth--;
                         sys.grpStackBOfs--;
                         break;
@@ -489,24 +526,24 @@ s32 msmSysDelGroupBase(s32 grpNum)
             }
         }
     } else {
-        for (i = 0; i < sys.grpStackAMax; i++) {
-            grp = &sys.grpStackA[i];
-            if (grp->num != 0) {
+        for (stackIndex = 0; stackIndex < sys.grpStackAMax; stackIndex++) {
+            groupStack = &sys.grpStackA[stackIndex];
+            if (groupStack->num != 0) {
                 sndPopGroup();
-                sys.aramP -= sys.grpInfo[grp->grpId].sampSize;
+                sys.aramP -= sys.grpInfo[groupStack->grpId].sampSize;
                 sys.grpLoadNum--;
-                grp->baseGrpF = 0;
-                grp->num = 0;
+                groupStack->baseGrpF = 0;
+                groupStack->num = 0;
             }
         }
-        for (i = 0; i < sys.grpStackBMax; i++) {
-            grp = &sys.grpStackB[i];
-            if (grp->num != 0) {
+        for (stackIndex = 0; stackIndex < sys.grpStackBMax; stackIndex++) {
+            groupStack = &sys.grpStackB[stackIndex];
+            if (groupStack->num != 0) {
                 sndPopGroup();
-                sys.aramP -= sys.grpInfo[grp->grpId].sampSize;
+                sys.aramP -= sys.grpInfo[groupStack->grpId].sampSize;
                 sys.grpLoadNum--;
-                grp->baseGrpF = 0;
-                grp->num = 0;
+                groupStack->baseGrpF = 0;
+                groupStack->num = 0;
             }
         }
         sys.grpStackBOfs = 0;
@@ -517,82 +554,102 @@ s32 msmSysDelGroupBase(s32 grpNum)
     return 0;
 }
 
-static inline s32 msmSysPushGroup(DVDFileInfo *file, void *buf, MSM_GRP_STACK *grp, s32 grpId)
+/* msmSysPushGroup calls this after reading a group to register its project and samples with
+ * MusyX. */
+static inline s32 msmSysAddGroup(void *sampleBuffer, MSM_GRP_STACK *groupSlot,
+    MSM_GRP_INFO *groupInfo)
 {
-    MSM_GRP_INFO *grpInfo;
-    MSM_GRP_HEAD *grpBuf;
-    s32 result;
+    s32 pushResult;
+    MSM_GRP_HEAD *groupData;
 
-    grpInfo = &sys.grpInfo[grpId];
-    if (msmFioRead(file, grp->buf, grpInfo->dataSize, grpInfo->dataOfs + sys.header->grpDataOfs) < 0) {
-        return MSM_ERR_READFAIL;
-    }
-    if (msmFioRead(file, buf, grpInfo->sampSize, grpInfo->sampOfs + sys.header->sampOfs) < 0) {
-        return MSM_ERR_READFAIL;
-    }
-    grp->grpId = grpId;
-    grpBuf = grp->buf;
-    if (!sndPushGroup((void*) (grpBuf->projOfs + (u32) grpBuf), grpInfo->gid, buf,
-        (void*) (grpBuf->sdirOfs + (u32) grpBuf), (void*) (grpBuf->poolOfs + (u32) grpBuf)))
+    groupData = groupSlot->buf;
+    if (!sndPushGroup((void*) (groupData->projOfs + (u32) groupData), groupInfo->gid,
+        sampleBuffer, (void*) (groupData->sdirOfs + (u32) groupData),
+        (void*) (groupData->poolOfs + (u32) groupData)))
     {
-        result = MSM_ERR_GRP_FAILPUSH;
+        pushResult = MSM_ERR_GRP_FAILPUSH;
     } else {
-        result = 0;
-        sys.aramP += grpInfo->sampSize;
-        sys.grpLoadId[sys.grpLoadNum++] = grp->grpId;
+        pushResult = 0;
+        sys.aramP += groupInfo->sampSize;
+        sys.grpLoadId[sys.grpLoadNum++] = groupSlot->grpId;
     }
-    if (result != 0) {
-        return result;
+    return pushResult;
+}
+
+/* Group-load helpers call this to read one group's data and samples, then register it with
+ * MusyX. */
+static inline s32 msmSysPushGroup(DVDFileInfo *file, void *sampleBuffer,
+    MSM_GRP_STACK *groupSlot, s32 groupIndex)
+{
+    s32 pushResult;
+    MSM_GRP_INFO *groupInfo;
+
+    groupInfo = &sys.grpInfo[groupIndex];
+    if (msmFioRead(file, groupSlot->buf, groupInfo->dataSize,
+        groupInfo->dataOfs + sys.header->grpDataOfs) < 0) {
+        return MSM_ERR_READFAIL;
     }
-    grp->num = sys.grpNum++;
+    if (msmFioRead(file, sampleBuffer, groupInfo->sampSize,
+        groupInfo->sampOfs + sys.header->sampOfs) < 0) {
+        return MSM_ERR_READFAIL;
+    }
+    groupSlot->grpId = groupIndex;
+    pushResult = msmSysAddGroup(sampleBuffer, groupSlot, groupInfo);
+    if (pushResult != 0) {
+        return pushResult;
+    }
+    groupSlot->num = sys.grpNum++;
     return 0;
 }
 
-s32 msmSysLoadGroupBase(s32 grpId, void *buf)
+/* The audio manager calls this when a common sound group must remain loaded as a base group. */
+s32 msmSysLoadGroupBase(s32 groupIndex, void *sampleBuffer)
 {
-    s32 baseGrpNo;
-    s32 stackNo;
-    s32 result;
-    s32 stackLevel;
-    MSM_GRP_STACK *grp;
+    s32 baseGroupSlot;
+    s32 stackBank;
+    s32 loadResult;
+    s32 stackSlotIndex;
+    MSM_GRP_STACK *groupSlot;
+    u8 reservedGroupWorkspace[8];
     DVDFileInfo file;
 
-    if (grpId < 1 || grpId >= sys.grpMax) {
+    if (groupIndex < 1 || groupIndex >= sys.grpMax) {
         return MSM_ERR_64;
     }
-    result = msmSysDelGroupAll();
-    if (result != 0) {
-        return result;
+    /* Ordinary groups are cleared before a group is added to the pinned list. */
+    loadResult = msmSysDelGroupAll();
+    if (loadResult != 0) {
+        return loadResult;
     }
-    baseGrpNo = sys.baseGrpNum + sys.grpStackAOfs + sys.grpStackBOfs;
-    if (msmSysCheckBaseGroupNo(grpId)) {
+    baseGroupSlot = sys.baseGrpNum + sys.grpStackAOfs + sys.grpStackBOfs;
+    if (msmSysCheckBaseGroupNo(groupIndex)) {
         return 0;
     }
-    if (baseGrpNo >= 0xF) {
+    if (baseGroupSlot >= 15) {
         return MSM_ERR_STACK_OVERFLOW;
     }
-    stackLevel = msmSysSearchGroupStack(grpId, -1);
-    if (stackLevel < 0) {
+    stackSlotIndex = msmSysSearchGroupStack(groupIndex, -1);
+    if (stackSlotIndex < 0) {
         return MSM_ERR_STACK_OVERFLOW;
     }
-    stackNo = sys.grpInfo[grpId].stackNo;
-    if (!stackNo) {
-        grp = &sys.grpStackA[stackLevel];
+    stackBank = sys.grpInfo[groupIndex].stackNo;
+    if (!stackBank) {
+        groupSlot = &sys.grpStackA[stackSlotIndex];
     } else {
-        grp = &sys.grpStackB[stackLevel];
+        groupSlot = &sys.grpStackB[stackSlotIndex];
     }
     if (msmFioOpen(sys.msmEntryNum, &file) != 1) {
         return MSM_ERR_OPENFAIL;
     }
-    result = msmSysPushGroup(&file, buf, grp, grpId);
-    if (result != 0) {
+    loadResult = msmSysPushGroup(&file, sampleBuffer, groupSlot, groupIndex);
+    if (loadResult != 0) {
         msmFioClose(&file);
-        return result;
+        return loadResult;
     }
     msmFioClose(&file);
-    sys.info->baseGrp[baseGrpNo] = grpId;
-    grp->baseGrpF = 1;
-    if (stackNo == 0) {
+    sys.info->baseGrp[baseGroupSlot] = groupIndex;
+    groupSlot->baseGrpF = 1;
+    if (stackBank == 0) {
         sys.grpStackAOfs++;
         sys.grpStackADepth++;
     } else {
@@ -602,106 +659,126 @@ s32 msmSysLoadGroupBase(s32 grpId, void *buf)
     return 0;
 }
 
-static s32 msmSysLoadGroupSub(DVDFileInfo *file, s32 grpId, void *buf)
+/* Manual loads reload a dependency unless it is in the base list, then evict and replace stack
+* entries as needed. Success returns the last displaced group-table index, or zero if none was
+* displaced. */
+static s32 msmSysLoadGroupSub(DVDFileInfo *file, s32 groupIndex, void *sampleBuffer)
 {
-    s32 grpIdResult;
-    s32 i;
-    s32 stackLevel;
-    s32 result;
+    s32 replacedGroupIndex;
+    s32 dependencyCheck;
+    s32 stackSlotIndex;
+    s32 loadResult;
     u8 *stackDepth;
-    MSM_GRP_STACK *grpStack;
-    MSM_GRP_INFO *grpInfo;
-
-    grpIdResult = 0;
-    grpInfo = &sys.grpInfo[grpId];
-    if (grpInfo->stackNo == 0) {
-        grpStack = sys.grpStackA;
+    MSM_GRP_STACK *groupStack;
+    MSM_GRP_INFO *groupInfo;
+    replacedGroupIndex = 0;
+    groupInfo = &sys.grpInfo[groupIndex];
+    if (groupInfo->stackNo == 0)
+    {
+        groupStack = sys.grpStackA;
         stackDepth = &sys.grpStackADepth;
-    } else {
-        grpStack = sys.grpStackB;
+    }
+    else
+    {
+        groupStack = sys.grpStackB;
         stackDepth = &sys.grpStackBDepth;
     }
-    if (grpInfo->subGrpId != 0) {
-        if (!msmSysCheckBaseGroup(sys.grpInfo[grpInfo->subGrpId].gid)) {
-            stackLevel = -1;
-            for (i = 0; i < 2; i++) {
-                stackLevel = msmSysSearchGroupStack(grpInfo->subGrpId, stackLevel);
-                if (stackLevel < 0) {
-                    stackLevel = -(stackLevel + 1);
-                    (*stackDepth)--;
+    if (groupInfo->subGrpId != 0)
+    {
+        if (!msmSysCheckBaseGroup(sys.grpInfo[groupInfo->subGrpId].gid))
+        {
+            stackSlotIndex = -1;
+            for (dependencyCheck = 0; dependencyCheck < 2; dependencyCheck++)
+            {
+                stackSlotIndex = msmSysSearchGroupStack(groupInfo->subGrpId, stackSlotIndex);
+                if (0 > stackSlotIndex)
+                {
+                    stackSlotIndex = -(1 + stackSlotIndex);
+                    (* stackDepth)--;
                     sndPopGroup();
-                    sys.aramP -= sys.grpInfo[grpStack[stackLevel].grpId].sampSize;
+                    sys.aramP -= sys.grpInfo[groupStack[stackSlotIndex].grpId].sampSize;
                     sys.grpLoadNum--;
-                    grpIdResult = grpStack[stackLevel].grpId;
-                    grpStack[stackLevel].num = 0;
+                    replacedGroupIndex = groupStack[stackSlotIndex].grpId;
+                    groupStack[stackSlotIndex].num = 0;
                 }
             }
-            result = msmSysPushGroup(file, buf, &grpStack[stackLevel], grpInfo->subGrpId);
-            if (result != 0) {
-                return result;
+            loadResult = msmSysPushGroup(file, sampleBuffer, &groupStack[stackSlotIndex],
+                groupInfo->subGrpId);
+            if (loadResult != 0)
+            {
+                return loadResult;
             }
-            (*stackDepth)++;
+            (* stackDepth)++;
         }
     }
-    stackLevel = msmSysSearchGroupStack(grpId, -1);
-    if (stackLevel < 0) {
-        stackLevel = -(stackLevel + 1);
-        (*stackDepth)--;
+    stackSlotIndex = msmSysSearchGroupStack(groupIndex, -1);
+    if (0 > stackSlotIndex)
+    {
+        stackSlotIndex = -(stackSlotIndex + 1);
+        (* stackDepth)--;
         sndPopGroup();
-        sys.aramP -= sys.grpInfo[grpStack[stackLevel].grpId].sampSize;
+        sys.aramP -= sys.grpInfo[groupStack[stackSlotIndex].grpId].sampSize;
         sys.grpLoadNum--;
-        grpIdResult = grpStack[stackLevel].grpId;
+        replacedGroupIndex = groupStack[stackSlotIndex].grpId;
     }
-    result = msmSysPushGroup(file, buf, &grpStack[stackLevel], grpId);
-    if (result == 0) {
-        result = grpIdResult;
+    loadResult = msmSysPushGroup(file, sampleBuffer, &groupStack[stackSlotIndex], groupIndex);
+    if (loadResult == 0)
+    {
+        loadResult = replacedGroupIndex;
     }
-    (*stackDepth)++;
-    return result;
+    /* The stack depth advances even if the requested group's push failed. */
+    (* stackDepth)++;
+    return loadResult;
 }
 
-static inline void msmSysPopGroup(s32 no)
+/* A-stack reloads call this before rebuilding B-stack entries in the MusyX group stack. */
+static inline void msmSysPopGroup(s32 stackIndex)
 {
-    MSM_GRP_STACK *grp;
+    MSM_GRP_STACK *groupStack;
 
-    grp = &sys.grpStackB[no];
-    if (grp->num != 0 && grp->baseGrpF == 0) {
+    groupStack = &sys.grpStackB[stackIndex];
+    if (groupStack->num != 0 && groupStack->baseGrpF == 0) {
         sndPopGroup();
-        sys.aramP -= sys.grpInfo[grp->grpId].sampSize;
+        sys.aramP -= sys.grpInfo[groupStack->grpId].sampSize;
         sys.grpLoadNum--;
     }
 }
 
-s32 msmSysLoadGroup(s32 grpId, void *buf, BOOL flag)
+/* Audio requests call this to load a group on its stack; a NULL sample buffer returns success
+ * without loading, and the legacy flag argument is ignored. */
+s32 msmSysLoadGroup(s32 groupIndex, void *sampleBuffer, BOOL callerFlag)
 {
-    MSM_GRP_STACK *grpStack;
-    MSM_GRP_INFO *grpInfo;
+    MSM_GRP_STACK *groupStack;
+    MSM_GRP_INFO *groupInfo;
     s32 pushResult;
-    s32 i;
-    s32 result;
+    s32 stackIndex;
+    s32 manualLoadResult;
     DVDFileInfo file;
 
-    if (buf == NULL) {
+    if (sampleBuffer == NULL) {
         return 0;
     }
-    if (grpId == 0) {
-        return msmSysLoadBaseGroup(buf);
+    if (groupIndex == 0) {
+        return msmSysLoadBaseGroup(sampleBuffer);
     }
-    grpInfo = &sys.grpInfo[grpId];
-    if (msmSysCheckLoadGroupID(grpInfo->gid)) {
+    groupInfo = &sys.grpInfo[groupIndex];
+    if (msmSysCheckLoadGroupID(groupInfo->gid)) {
         return 0;
     }
     if (msmFioOpen(sys.msmEntryNum, &file) != TRUE) {
         return MSM_ERR_OPENFAIL;
     }
     if (sys.grpLoadMode != MSM_GROUP_LOAD_MANUAL) {
-        result = MSM_ERR_STACK_OVERFLOW;
-        if (grpInfo->stackNo == 0) {
-            for (i = 0; i < sys.grpStackAMax; i++) {
-                grpStack = &sys.grpStackA[i];
-                if (grpStack->num == 0) {
-                    pushResult = msmSysPushGroup(&file, buf, grpStack, grpId);
-                    result = pushResult;
+        MSM_GRP_STACK *groupStackA;
+        s32 loadResult;
+
+        loadResult = MSM_ERR_STACK_OVERFLOW;
+        if (groupInfo->stackNo == 0) {
+            for (stackIndex = 0; stackIndex < sys.grpStackAMax; stackIndex++) {
+                groupStackA = &sys.grpStackA[stackIndex];
+                if (groupStackA->num == 0) {
+                    pushResult = msmSysPushGroup(&file, sampleBuffer, groupStackA, groupIndex);
+                    loadResult = pushResult;
                     if (pushResult == 0) {
                         sys.grpStackADepth++;
                     }
@@ -709,11 +786,11 @@ s32 msmSysLoadGroup(s32 grpId, void *buf, BOOL flag)
                 }
             }
         } else {
-            for (i = 0; i < sys.grpStackBMax; i++) {
-                grpStack = &sys.grpStackB[i];
-                if (grpStack->num == 0) {
-                    pushResult = msmSysPushGroup(&file, buf, grpStack, grpId);
-                    result = pushResult;
+            for (stackIndex = 0; stackIndex < sys.grpStackBMax; stackIndex++) {
+                groupStack = &sys.grpStackB[stackIndex];
+                if (groupStack->num == 0) {
+                    pushResult = msmSysPushGroup(&file, sampleBuffer, groupStack, groupIndex);
+                    loadResult = pushResult;
                     if (pushResult == 0) {
                         sys.grpStackBDepth++;
                     }
@@ -722,17 +799,18 @@ s32 msmSysLoadGroup(s32 grpId, void *buf, BOOL flag)
             }
         }
         msmFioClose(&file);
-        return result;
+        return loadResult;
     }
-    if (grpInfo->stackNo == 0) {
-        for (i = 0; i < sys.grpStackBMax; i++) {
-            msmSysPopGroup(i);
+    if (groupInfo->stackNo == 0) {
+        /* Rebuild B-stack entries after changing A so sound-library pop order stays valid. */
+        for (stackIndex = 0; stackIndex < sys.grpStackBMax; stackIndex++) {
+            msmSysPopGroup(stackIndex);
         }
-        result = msmSysLoadGroupSub(&file, grpId, buf);
-        for (i = 0; i < sys.grpStackBMax; i++) {
-            grpStack = &sys.grpStackB[i];
-            if (grpStack->num != 0 && grpStack->baseGrpF == 0) {
-                pushResult = msmSysPushGroup(&file, buf, grpStack, grpStack->grpId);
+        manualLoadResult = msmSysLoadGroupSub(&file, groupIndex, sampleBuffer);
+        for (stackIndex = 0; stackIndex < sys.grpStackBMax; stackIndex++) {
+            groupStack = &sys.grpStackB[stackIndex];
+            if (groupStack->num != 0 && groupStack->baseGrpF == 0) {
+                pushResult = msmSysPushGroup(&file, sampleBuffer, groupStack, groupStack->grpId);
                 if (pushResult != 0) {
                     msmFioClose(&file);
                     return pushResult;
@@ -740,48 +818,52 @@ s32 msmSysLoadGroup(s32 grpId, void *buf, BOOL flag)
             }
         }
     } else {
-        result = msmSysLoadGroupSub(&file, grpId, buf);
+        manualLoadResult = msmSysLoadGroupSub(&file, groupIndex, sampleBuffer);
     }
     msmFioClose(&file);
-    return result;
+    return manualLoadResult;
 }
 
-void msmSysSetGroupLoadMode(s32 mode)
+/* Boot selects automatic free-slot loads or the manual stack-eviction path here. */
+void msmSysSetGroupLoadMode(s32 loadMode)
 {
-    sys.grpLoadMode = mode;
+    sys.grpLoadMode = loadMode;
 }
 
+/* Reset handling calls this to invoke sndIsInstalled; this wrapper discards its result. */
 void msmSysCheckInit(void)
 {
     sndIsInstalled();
 }
 
-s32 msmSysInit(MSM_INIT *init, MSM_ARAM *aram)
+/* Game audio startup loads MSM metadata, initializes sound systems, and installs the AI
+ * callback. */
+s32 msmSysInit(MSM_INIT *initParams, MSM_ARAM *aramConfig)
 {
-    s32 result;
-    void *temp;
+    s32 initResult;
+    void *minimumHeapBlock;
 
     SND_HOOKS sndHooks = { msmMemAlloc, msmMemFree };
     DVDFileInfo file;
     if (sndIsInstalled() == 1) {
         return MSM_ERR_INSTALLED;
     }
-    result = 0;
+    initResult = 0;
     sys.irqDepth = 0;
-    msmMemInit(init->heap, init->heapSize);
-    msmFioInit(init->open, init->read, init->close);
-    sys.msmEntryNum = DVDConvertPathToEntrynum(init->msmPath);
+    msmMemInit(initParams->heap, initParams->heapSize);
+    msmFioInit(initParams->open, initParams->read, initParams->close);
+    sys.msmEntryNum = DVDConvertPathToEntrynum(initParams->msmPath);
     if (sys.msmEntryNum < 0) {
         return MSM_ERR_OPENFAIL;
     }
     if (msmFioOpen(sys.msmEntryNum, &file) != 1) {
         return MSM_ERR_OPENFAIL;
     }
-    if ((sys.header = msmMemAlloc(0x60)) == NULL) {
+    if ((sys.header = msmMemAlloc(96)) == NULL) {
         msmFioClose(&file);
         return MSM_ERR_OUTOFMEM;
     }
-    if (msmFioRead(&file, sys.header, 0x60, 0) < 0) {
+    if (msmFioRead(&file, sys.header, 96, 0) < 0) {
         msmFioClose(&file);
         return MSM_ERR_READFAIL;
     }
@@ -797,19 +879,21 @@ s32 msmSysInit(MSM_INIT *init, MSM_ARAM *aram)
         msmFioClose(&file);
         return MSM_ERR_READFAIL;
     }
-    if (aram != NULL) {
-        if (aram->skipARInit == 0) {
-            ARInit(aram->stackIndex, aram->aramEnd);
+    if (aramConfig != NULL) {
+        /* Reserve ARAM from the supplied stack settings, or check the caller's limit. The
+         * skipARInit path still calls ARInit(NULL, 0) and ARQInit after that check. */
+        if (aramConfig->skipARInit == 0) {
+            ARInit(aramConfig->stackIndex, aramConfig->aramEnd);
             ARQInit();
-            aram = (MSM_ARAM *)ARAlloc(sys.info->aramSize);
-            if ((u32)aram != ARGetBaseAddress()) {
+            aramConfig = (MSM_ARAM *)ARAlloc(sys.info->aramSize);
+            if ((u32)aramConfig != ARGetBaseAddress()) {
                 msmFioClose(&file);
                 return MSM_ERR_OUTOFAMEM;
             }
             sys.arInitF = FALSE;
         }
         else {
-            if ((sys.info->aramSize + ARGetBaseAddress()) > aram->aramEnd) {
+            if ((sys.info->aramSize + ARGetBaseAddress()) > aramConfig->aramEnd) {
                 msmFioClose(&file);
                 return MSM_ERR_OUTOFAMEM;
             }
@@ -818,75 +902,80 @@ s32 msmSysInit(MSM_INIT *init, MSM_ARAM *aram)
             sys.arInitF = TRUE;
         }
     }
-    result = msmSysGroupInit(&file);
-    if (result != 0) {
+    initResult = msmSysGroupInit(&file);
+    if (initResult != 0) {
         msmFioClose(&file);
-        return result;
+        return initResult;
     }
-    result = msmMusInit(&sys, &file);
-    if (result != 0) {
+    initResult = msmMusInit(&sys, &file);
+    if (initResult != 0) {
         msmFioClose(&file);
-        return result;
+        return initResult;
     }
-    result = msmSeInit(&sys, &file);
-    if (result != 0) {
+    initResult = msmSeInit(&sys, &file);
+    if (initResult != 0) {
         msmFioClose(&file);
-        return result;
+        return initResult;
     }
     sys.auxParamNo[0] = sys.info->auxParamA == MSM_AUXNO_NULL ? MSM_AUXNO_NULL : MSM_AUXNO_UNSET;
     sys.auxParamNo[1] = sys.info->auxParamB == MSM_AUXNO_NULL ? MSM_AUXNO_NULL : MSM_AUXNO_UNSET;
     if ((s32)sys.header->auxParamSize == 0) {
-        result = 0;
+        initResult = 0;
     }
     else {
         if ((sys.auxParam = msmMemAlloc(sys.header->auxParamSize)) == NULL) {
-            result = MSM_ERR_OUTOFMEM;
+            initResult = MSM_ERR_OUTOFMEM;
         }
         else {
-            if (msmFioRead(&file, sys.auxParam, sys.header->auxParamSize, sys.header->auxParamOfs) < 0) {
-                result = MSM_ERR_READFAIL;
-            }
-            else {
-                result = 0;
+            if (msmFioRead(&file, sys.auxParam, sys.header->auxParamSize, sys.header->auxParamOfs) <
+                0) {
+                initResult = MSM_ERR_READFAIL;
+            } else {
+                initResult = 0;
             }
         }
     }
-    if (result != 0) {
+    if (initResult != 0) {
         msmFioClose(&file);
-        return result;
+        return initResult;
     }
     msmFioClose(&file);
-    result = msmStreamInit(init->pdtPath);
-    if (result < 0) {
-        return result;
+    initResult = msmStreamInit(initParams->pdtPath);
+    if (initResult < 0) {
+        return initResult;
     }
     AIInit(NULL);
     if (sys.info->surroundF == 2) {
-        result = TRUE;
+        /* Only the file's value 2 enables MusyX's surround flag. */
+        initResult = TRUE;
     } else {
-        result = FALSE;
+        initResult = FALSE;
     }
     sndSetHooks(&sndHooks);
-    if (sndInit(sys.info->voices, sys.info->music, sys.info->sfx, 1, result,
+    if (sndInit(sys.info->voices, sys.info->music, sys.info->sfx, 1, initResult,
         sys.info->aramSize) != 0) {
         return MSM_ERR_INITFAIL;
     }
+    /* msmSysServer chains this callback after its periodic audio updates. */
     sys.oldAIDCallback = AIRegisterDMACallback(msmSysServer);
     sys.timer = 1;
-    result = msmStreamAmemAlloc();
-    if (result < 0) {
+    initResult = msmStreamAmemAlloc();
+    if (initResult < 0) {
         sndQuit();
-        return result;
+        return initResult;
     }
-    sys.aramP = result + 0x500;
+    /* The ARAM cursor starts 1280 bytes past the stream buffer size. */
+    sys.aramP = initResult + 1280;
     if ((int)sys.info->minMem != 0) {
-        temp = msmMemAlloc(sys.info->minMem + 0x100);
-        if (temp == NULL) {
+        /* When minMem is nonzero, startup allocates minMem + 256 bytes to check heap availability,
+         * then frees the block. */
+        minimumHeapBlock = msmMemAlloc(sys.info->minMem + 256);
+        if (minimumHeapBlock == NULL) {
             msmStreamAmemFree();
             sndQuit();
             return MSM_ERR_OUTOFMEM;
         }
-        msmMemFree(temp);
+        msmMemFree(minimumHeapBlock);
     }
     if (msmSysSetAuxParam(sys.info->auxParamA, sys.info->auxParamB) != 0) {
         msmStreamAmemFree();
@@ -894,6 +983,7 @@ s32 msmSysInit(MSM_INIT *init, MSM_ARAM *aram)
         return MSM_ERR_INVALID_AUXPARAM;
     }
     msmSysSetOutputMode(OSGetSoundMode() == 0 ? SND_OUTPUTMODE_MONO : SND_OUTPUTMODE_STEREO);
-    sndVolume(0x7F, 0, 0xFF);
+    /* Start standard music and effect volume groups at full volume. */
+    sndVolume(127, 0, SND_ALL_VOLGROUPS);
     return 0;
 }

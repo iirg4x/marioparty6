@@ -1091,7 +1091,7 @@ config.libs = [
         "cflags": cflags_msm,
         "host": False,
         "objects": [
-            Object(NonMatching, "msm/msmsys.c"),
+            Object(Matching, "msm/msmsys.c"),
             Object(Matching, "msm/msmmem.c"),
             Object(Matching, "msm/msmfio.c"),
             Object(Matching, "msm/msmmus.c"),
