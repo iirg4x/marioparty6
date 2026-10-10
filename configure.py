@@ -1178,6 +1178,15 @@ config.libs = [
             ),
         ],
     },
+    {
+        "lib": "framework",
+        "mw_version": "GC/1.3.2",
+        "cflags": cflags_rel,
+        "host": False,
+        "objects": [
+            Object(Matching, "REL/framework/new.cpp", extra_cflags=["-pooldata off"]),
+        ],
+    },
     Rel(
         "bootDll",
         objects={

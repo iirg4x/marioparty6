@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 30.44% | 50.94% |
+| Entire project | 30.51% | 51.05% |
 | Main DOL | 87.80% | 98.84% |
-| REL modules | 18.27% | 20.59% |
+| REL modules | 18.37% | 20.77% |
+
+Shared C++ framework (`framework:new.cpp`): **1 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
 Pixel Perfect (`m636dll`) selects all **64 functions** from **8 complete translation units**; its linked REL matches retail.
 
