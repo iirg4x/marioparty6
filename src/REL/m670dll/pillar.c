@@ -14,7 +14,8 @@ float lbl_1_bss_3B8[24];
 #define M670_SE_PILLAR_RISE_COMPLETE 2201
 #define M670_SE_ROUND_CYCLE_CUE 2198
 #define M670_SE_PILLAR_CYCLE_CUE 2203
-/* Sequence and pillar updates call this to start a word animation, lower pillars, or reset a round. */
+/* Sequence and pillar updates use this to change round animation states; state 2 resets the
+ * nonselected pillars and then clears selectedWord to -1. */
 void fn_1_2A24(unsigned int state)
 {
     int i;
@@ -128,7 +129,8 @@ int fn_1_2F44(HuVecF *pos)
     Hu3DModelPosGet(model, &pillarPos);
     return 100.0f - pillarPos.y < 1.0f;
 }
-/* The pillar object's per-frame callback raises, drops, and resets pillars as the round state changes. */
+/* The pillar object's per-frame callback raises, drops, and resets pillars as the round state
+ * changes. */
 void fn_1_3098(OMOBJ *obj)
 {
     int i;
@@ -220,11 +222,12 @@ void fn_1_3098(OMOBJ *obj)
         s8 *pattern = lbl_1_data_250[lbl_1_bss_10.pattern];
         int done = 1;
         for (i = 0; i < 24; pattern++, i++) {
-            if (*pattern != lbl_1_bss_10.selectedWord && !Hu3DMotionEndCheck(lbl_1_bss_10.pillarModel[i])) {
+            if (*pattern != lbl_1_bss_10.selectedWord &&
+                !Hu3DMotionEndCheck(lbl_1_bss_10.pillarModel[i])) {
                 done = 0;
             }
         }
-        /* State 5 starts the next pillar drop once this state is reached. */
+        /* Completion is checked above but does not gate the transition to the drop state. */
         fn_1_2A24(5);
         break;
     }

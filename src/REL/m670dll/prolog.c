@@ -1,4 +1,4 @@
-/* Starts the microphone pillar game when its overlay is loaded and runs its teardown on unload. */
+/* Starts Fruit Talktail when its overlay loads and runs its teardown when the overlay unloads. */
 #include "REL/m670dll.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];

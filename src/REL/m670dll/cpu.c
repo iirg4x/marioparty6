@@ -3,7 +3,8 @@
 #include "game/frand.h"
 #include "game/gamework.h"
 #include "game/pad.h"
-/* Scene setup calls this after creating players to initialize each computer player's round state. */
+/* Scene setup calls this after creating players to initialize each computer player's round
+ * state. */
 void fn_1_3B30(void)
 {
     int i;
@@ -46,6 +47,7 @@ void fn_1_3BDC(void)
                     case 2: cpu->timer = frandmod(60) + 60; break;
                     case 3: cpu->timer = 0; break;
                     }
+                    /* The common random delay overwrites the difficulty-specific value above. */
                     cpu->timer = frandmod(60) + 60;
                     cpu->state = 2;
                 }
@@ -133,7 +135,7 @@ void fn_1_3BDC(void)
                     cpu->targetPos = lbl_1_bss_10.pillarPos[selected];
                     cpu->targetPos.y = 0.0f;
                     cpu->timer = 0;
-                    cpu->buttonTimer = 0;
+                    cpu->buttonPressFlag = 0;
                     cpu->state = 6;
                 } else {
                     cpu->timer = frandmod(60) + 30;
@@ -153,7 +155,7 @@ void fn_1_3BDC(void)
                 pillarNo = fn_1_2DE8(&pos);
                 height = fn_1_2EF4(pillarNo);
                 if (100.0f != height) {
-                    cpu->buttonTimer = 30;
+                    cpu->buttonPressFlag = 30;
                 }
                 cpu->timer++;
                 if (cpu->timer >= 120) {
@@ -164,11 +166,11 @@ void fn_1_3BDC(void)
                     fn_1_1460(&dir, &dir);
                     MgPlayerPadSet(cpu->player, (int)(56.0f * dir.x),
                         (int)(-56.0f * dir.z),
-                        cpu->buttonTimer == 30 ? PAD_BUTTON_A : 0,
-                        cpu->buttonTimer != 0 ? PAD_BUTTON_A : 0);
+                        cpu->buttonPressFlag == 30 ? PAD_BUTTON_A : 0,
+                        cpu->buttonPressFlag != 0 ? PAD_BUTTON_A : 0);
                 }
-                if (cpu->buttonTimer != 0) {
-                    cpu->buttonTimer = 0;
+                if (cpu->buttonPressFlag != 0) {
+                    cpu->buttonPressFlag = 0;
                 }
                 break;
             }
