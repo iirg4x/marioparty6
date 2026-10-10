@@ -1,3 +1,4 @@
+// Board player setup, turn flow, movement and player-state helpers.
 #include "dolphin/math.h"
 #include "dolphin/os.h"
 
@@ -22,6 +23,7 @@
 #include "game/msm.h"
 
 #include "messdir_enum.h"
+#include "msm_se.h"
 
 #include "string.h"
 
@@ -47,9 +49,9 @@ enum {
     PLAYER_MOVE_NUM_OBJ_PRIORITY = 32258,
     PLAYER_MOVE_PROCESS_PRIORITY = 8205,
     PLAYER_MOVE_PROCESS_STACK_SIZE = 24576,
-    PLAYER_MOVE_COUNT_SFX = 1006,
-    PLAYER_COIN_GAIN_SFX = 1101,
-    PLAYER_COIN_LOSS_SFX = 1102
+    PLAYER_MOVE_COUNT_SFX = MSM_SE_BRD00_02,
+    PLAYER_COIN_GAIN_SFX = MSM_SE_BRD00_97,
+    PLAYER_COIN_LOSS_SFX = MSM_SE_BRD00_98
 };
 
 #define FLAG_BOARD_WALKDONE FLAGNUM(FLAG_GROUP_COMMON, 16)
@@ -64,19 +66,33 @@ static GXColor metalHiliteColor;
 static BOOL playerColSnapF;
 
 typedef struct PlayerColWork {
+    // Set when the collision object begins its movement animation.
     u8 motStartF : 1;
-    u8 killF : 1;
+    // Requests recalculation of the collision marker's position on the next eligible update.
+    u8 resyncF : 1;
+    // Requests snapping the player to its board-space position.
     u8 snapF : 1;
-    u8 restF : 1;
+    // Stored TRUE when this player is marked as not resting.
+    u8 notRestF : 1;
+    // Player index represented by this collision object.
     u8 playerNo : 2;
+    // Collision transition stage: 0 settled, 1 moving to a corner, 2 turning to yaw zero.
     u8 state : 2;
+    // Enables circular collision placement around a shared space.
     u8 circleF;
+    // Current board space used by the collision object.
     u8 masuId;
+    // Destination board space used by the collision object.
     u8 masuIdNext;
+    // Elapsed collision-animation frames.
     s8 time;
+    // Total collision-animation frames.
     s8 maxTime;
+    // Alignment padding in the collision object's work record.
     u8 _pad06[2];
+    // Starting yaw used while rotating around a space.
     float rotYStart;
+    // Radius of the circular placement around a space.
     float radius;
 } PLAYERCOLWORK;
 
@@ -89,54 +105,27 @@ static GXColor metalDefaultColor[2] = {
 #define CHAR_MOTDIR(name) DATA_##name##mot
 
 static const int charMdlFileTbl[CHARNO_MAX] = {
-    CHAR_MDLFILE(mario),
-    CHAR_MDLFILE(luigi),
-    CHAR_MDLFILE(peach),
-    CHAR_MDLFILE(yoshi),
-    CHAR_MDLFILE(wario),
-    CHAR_MDLFILE(daisy),
-    CHAR_MDLFILE(waluigi),
-    CHAR_MDLFILE(kinopio),
-    CHAR_MDLFILE(teresa),
-    CHAR_MDLFILE(minikoopa),
-    CHAR_MDLFILE(kinopiko),
-    CHAR_MDLFILE(minikoopaR),
-    CHAR_MDLFILE(minikoopaG),
-    CHAR_MDLFILE(minikoopaB)
+    CHAR_MDLFILE(mario), CHAR_MDLFILE(luigi), CHAR_MDLFILE(peach), CHAR_MDLFILE(yoshi),
+    CHAR_MDLFILE(wario), CHAR_MDLFILE(daisy), CHAR_MDLFILE(waluigi), CHAR_MDLFILE(kinopio),
+    CHAR_MDLFILE(teresa), CHAR_MDLFILE(minikoopa), CHAR_MDLFILE(kinopiko), CHAR_MDLFILE(minikoopaR),
+    CHAR_MDLFILE(minikoopaG), CHAR_MDLFILE(minikoopaB)
 };
 
 static const int charMotDirTbl[CHARNO_MAX] = {
-    CHAR_MOTDIR(mario),
-    CHAR_MOTDIR(luigi),
-    CHAR_MOTDIR(peach),
-    CHAR_MOTDIR(yoshi),
-    CHAR_MOTDIR(wario),
-    CHAR_MOTDIR(daisy),
-    CHAR_MOTDIR(waluigi),
-    CHAR_MOTDIR(kinopio),
-    CHAR_MOTDIR(teresa),
-    CHAR_MOTDIR(minikoopa),
-    CHAR_MOTDIR(kinopiko),
-    CHAR_MOTDIR(minikoopa),
-    CHAR_MOTDIR(minikoopa),
-    CHAR_MOTDIR(minikoopa)
+    CHAR_MOTDIR(mario), CHAR_MOTDIR(luigi), CHAR_MOTDIR(peach), CHAR_MOTDIR(yoshi),
+    CHAR_MOTDIR(wario), CHAR_MOTDIR(daisy), CHAR_MOTDIR(waluigi), CHAR_MOTDIR(kinopio),
+    CHAR_MOTDIR(teresa), CHAR_MOTDIR(minikoopa), CHAR_MOTDIR(kinopiko), CHAR_MOTDIR(minikoopa),
+    CHAR_MOTDIR(minikoopa), CHAR_MOTDIR(minikoopa)
 };
 
 static const u16 charMotNoTbl[15] = {
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_300),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_301),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_302),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_303),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_304),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_322),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_306),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_307),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_324),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_357),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_311),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_346),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_348),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_386),
+    CHAR_MOTNO(CHARMOT_HSF_c000m1_300), CHAR_MOTNO(CHARMOT_HSF_c000m1_301),
+    CHAR_MOTNO(CHARMOT_HSF_c000m1_302), CHAR_MOTNO(CHARMOT_HSF_c000m1_303),
+    CHAR_MOTNO(CHARMOT_HSF_c000m1_304), CHAR_MOTNO(CHARMOT_HSF_c000m1_322),
+    CHAR_MOTNO(CHARMOT_HSF_c000m1_306), CHAR_MOTNO(CHARMOT_HSF_c000m1_307),
+    CHAR_MOTNO(CHARMOT_HSF_c000m1_324), CHAR_MOTNO(CHARMOT_HSF_c000m1_357),
+    CHAR_MOTNO(CHARMOT_HSF_c000m1_311), CHAR_MOTNO(CHARMOT_HSF_c000m1_346),
+    CHAR_MOTNO(CHARMOT_HSF_c000m1_348), CHAR_MOTNO(CHARMOT_HSF_c000m1_386),
     CHAR_MOTNO(CHARMOT_HSF_c000m1_320)
 };
 
@@ -168,6 +157,7 @@ static void MetalEffectHook(
 static void PlayerBiriQKill(int playerNo);
 static void PlayerBiriQFlashSet(int playerNo);
 static void PlayerBiriQOMExec(OMOBJ *objP);
+// Scales a player or board vector component by component.
 static inline void HuVecMul(
     register HuVecF *srcP, register HuVecF *scaleP,
     register HuVecF *dstP)
@@ -189,6 +179,7 @@ static inline void HuVecMul(
     }
 }
 
+// Copies a three-component board position or rotation vector.
 static inline void HuVecCopy(
     register HuVecF *srcP, register HuVecF *dstP)
 {
@@ -204,7 +195,7 @@ static inline void HuVecCopy(
 }
 
 static float GetBiriQEffectRadius(
-    OMOBJ *objP, int playerNo, int *effectCount);
+    OMOBJ *objP, int playerNo, int *meshGroupInfo);
 static void BiriQEffectCreate(OMOBJ *objP);
 static void BiriQEffect1Hook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx matrix);
@@ -263,12 +254,14 @@ void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
 float mbSinDeg(float angle);
 float mbAngleEaseOut(float angleStart, float angleEnd, float weight);
 
+// Creates player models and collision objects when the board initializes.
+// With noEventF true, resets player setup, spaces, capsules and playerMode.
 void mbPlayerInit(BOOL noEventF)
 {
-    MBPLAYERWORK *workP = &playerWork[0];
-    int motDataNum[20];
-    int i;
-    int j;
+    MBPLAYERWORK *playerWorkP = &playerWork[0];
+    int characterMotionData[20];
+    int playerIndex;
+    int entryIndex;
 
     memset(playerWork, 0, sizeof(playerWork));
     ResetMetalColor();
@@ -276,155 +269,158 @@ void mbPlayerInit(BOOL noEventF)
         GwSystem.turnPlayerNo = 0;
     }
     if (noEventF) {
-        int startMasu = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
-        int grp;
-        int charNo;
+        int startSpaceId = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
+        int teamNo;
+        int characterId;
 
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
             if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-                GwPlayer[i].comF = TRUE;
-                GwPlayerConf[i].type = TRUE;
+                GwPlayer[playerIndex].comF = TRUE;
+                GwPlayerConf[playerIndex].type = TRUE;
             }
             if (GWPartyGet() != FALSE) {
+                // The flag query's result is ignored in the party-board branch.
                 _CheckFlag(FLAG_BOARD_TUTORIAL);
-            } else if (i > 0) {
-                GwPlayerConf[i].charNo = singleCharNoTbl[i];
-                GwPlayer[i].comF = TRUE;
-                GwPlayerConf[i].type = TRUE;
+            } else if (playerIndex > 0) {
+                GwPlayerConf[playerIndex].charNo = singleCharNoTbl[playerIndex];
+                GwPlayer[playerIndex].comF = TRUE;
+                GwPlayerConf[playerIndex].type = TRUE;
             }
-            GwPlayer[i].charNo = GwPlayerConf[i].charNo;
-            GwPlayerConf[i].charNo = GwPlayerConf[i].charNo;
-            GwPlayer[i].padNo = GwPlayerConf[i].padNo;
-            GwPlayerConf[i].padNo = GwPlayerConf[i].padNo;
-            GwPlayer[i].comF = GwPlayerConf[i].type;
-            GwPlayerConf[i].type = GwPlayerConf[i].type;
-            GwPlayer[i].comDif = GwPlayerConf[i].comDif;
-            GwPlayerConf[i].comDif = GwPlayerConf[i].comDif;
-            GwPlayer[i].masuId = startMasu;
-            GwPlayer[i].masuIdNext = startMasu;
-            GwPlayer[i].statusColor = 0;
-            GwPlayer[i].diceMode = 0;
-            for (j = 0; j < 3; j++) {
-                GwPlayer[i].capsule[j] = -1;
+            GwPlayer[playerIndex].charNo = GwPlayerConf[playerIndex].charNo;
+            // The remaining configuration self-assignments leave the selected values unchanged.
+            GwPlayerConf[playerIndex].charNo = GwPlayerConf[playerIndex].charNo;
+            GwPlayer[playerIndex].padNo = GwPlayerConf[playerIndex].padNo;
+            GwPlayerConf[playerIndex].padNo = GwPlayerConf[playerIndex].padNo;
+            GwPlayer[playerIndex].comF = GwPlayerConf[playerIndex].type;
+            GwPlayerConf[playerIndex].type = GwPlayerConf[playerIndex].type;
+            GwPlayer[playerIndex].comDif = GwPlayerConf[playerIndex].comDif;
+            GwPlayerConf[playerIndex].comDif = GwPlayerConf[playerIndex].comDif;
+            GwPlayer[playerIndex].masuId = startSpaceId;
+            GwPlayer[playerIndex].masuIdNext = startSpaceId;
+            GwPlayer[playerIndex].statusColor = 0;
+            GwPlayer[playerIndex].diceMode = 0;
+            for (entryIndex = 0; entryIndex < 3; entryIndex++) {
+                GwPlayer[playerIndex].capsule[entryIndex] = -1;
             }
-            GwPlayer[i].team = grp = GwPlayerConf[i].grpNo;
-            GwPlayerConf[i].grpNo = grp;
-            GwPlayer[i].orderNo = i;
-            mbPlayerMetalSet(i, FALSE);
-            mbPlayerBiriQSet(i, FALSE);
+            GwPlayer[playerIndex].team = teamNo = GwPlayerConf[playerIndex].grpNo;
+            GwPlayerConf[playerIndex].grpNo = teamNo;
+            GwPlayer[playerIndex].orderNo = playerIndex;
+            mbPlayerMetalSet(playerIndex, FALSE);
+            mbPlayerBiriQSet(playerIndex, FALSE);
         }
-        for (charNo = 0; charNo < CHARNO_MAX; charNo++) {
-            if (CharMotionAMemPGet(charNo)) {
+        for (characterId = 0; characterId < CHARNO_MAX; characterId++) {
+            if (CharMotionAMemPGet(characterId)) {
                 if (GWPartyGet() == FALSE &&
-                    charNo == mbSingleTeamCharGet()) {
+                    characterId == mbSingleTeamCharGet()) {
                     continue;
                 }
-                for (j = 0; j < GW_PLAYER_MAX; j++) {
-                    if (charNo == GwPlayer[j].charNo) {
+                for (entryIndex = 0; entryIndex < GW_PLAYER_MAX; entryIndex++) {
+                    if (characterId == GwPlayer[entryIndex].charNo) {
                         break;
                     }
                 }
-                if (j >= GW_PLAYER_MAX) {
-                    CharDataClose(charNo);
+                if (entryIndex >= GW_PLAYER_MAX) {
+                    CharDataClose(characterId);
                 }
             }
         }
-        for (charNo = 0; charNo < GW_PLAYER_MAX; charNo++) {
-            if (!CharMotionAMemPGet(GwPlayer[charNo].charNo)) {
-                CharMotionInit(GwPlayer[charNo].charNo);
+        for (characterId = 0; characterId < GW_PLAYER_MAX; characterId++) {
+            if (!CharMotionAMemPGet(GwPlayer[characterId].charNo)) {
+                CharMotionInit(GwPlayer[characterId].charNo);
             }
         }
         if (GWPartyGet() == FALSE) {
-            charNo = mbSingleTeamCharGet();
+            characterId = mbSingleTeamCharGet();
 
-            if (!CharMotionAMemPGet(charNo)) {
-                CharMotionInit(charNo);
+            if (!CharMotionAMemPGet(characterId)) {
+                CharMotionInit(characterId);
             }
         }
         GwSystem.playerMode = 0;
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
+    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++, playerWorkP++) {
         MBMODELID modelId;
-        GW_PLAYER *playerP;
-        int charNo;
+        GW_PLAYER *playerData;
+        int characterId;
 
-        workP->startTurnHook = workP->endTurnHook = NULL;
-        workP->rotateObj = workP->moveObj = workP->posFixObj = NULL;
-        playerP = GWPlayerGet(i);
-        playerP->playerNo = workP->playerNo = i;
-        GwPlayerConf[i].type = GwPlayer[i].comF;
-        GwPlayerConf[i].padNo = GwPlayer[i].padNo;
-        GwPlayerConf[i].grpNo = mbPlayerGrpGet(i);
-        GwPlayerConf[i].comDif = GwPlayer[i].comDif;
-        charNo = GwPlayer[i].charNo;
-        GwPlayerConf[i].charNo = charNo;
-        for (j = 0; j < 15; j++) {
-            motDataNum[j] = charMotDirTbl[charNo] | charMotNoTbl[j];
+        playerWorkP->startTurnHook = playerWorkP->endTurnHook = NULL;
+        playerWorkP->rotateObj = playerWorkP->moveObj = playerWorkP->posFixObj = NULL;
+        playerData = GWPlayerGet(playerIndex);
+        playerData->playerNo = playerWorkP->playerNo = playerIndex;
+        GwPlayerConf[playerIndex].type = GwPlayer[playerIndex].comF;
+        GwPlayerConf[playerIndex].padNo = GwPlayer[playerIndex].padNo;
+        GwPlayerConf[playerIndex].grpNo = mbPlayerGrpGet(playerIndex);
+        GwPlayerConf[playerIndex].comDif = GwPlayer[playerIndex].comDif;
+        characterId = GwPlayer[playerIndex].charNo;
+        GwPlayerConf[playerIndex].charNo = characterId;
+        for (entryIndex = 0; entryIndex < 15; entryIndex++) {
+            characterMotionData[entryIndex] = charMotDirTbl[characterId] | charMotNoTbl[entryIndex];
         }
-        motDataNum[j] = HU_DATANUM_NONE;
-        modelId = workP->objId =
-            mbObjCharCreate(charNo, charMdlFileTbl[charNo], motDataNum, FALSE);
-        mbPlayerMotionVoiceOnSet(i, 7, FALSE);
-        mbPlayerMotionVoiceOnSet(i, 12, FALSE);
-        mbPlayerMotionVoiceOnSet(i, 8, FALSE);
-        mbPlayerMotionVoiceOnSet(i, 13, FALSE);
-        workP->colObj =
+        characterMotionData[entryIndex] = HU_DATANUM_NONE;
+        modelId = playerWorkP->objId =
+            mbObjCharCreate(characterId, charMdlFileTbl[characterId], characterMotionData, FALSE);
+        mbPlayerMotionVoiceOnSet(playerIndex, 7, FALSE);
+        mbPlayerMotionVoiceOnSet(playerIndex, 12, FALSE);
+        mbPlayerMotionVoiceOnSet(playerIndex, 8, FALSE);
+        mbPlayerMotionVoiceOnSet(playerIndex, 13, FALSE);
+        playerWorkP->colObj =
             omAddObjEx(mbObjMan, PLAYER_OBJ_PRIORITY, 0, 0, -1,
                 PlayerColOMExec);
-        omObjGetWork(workP->colObj, PLAYERCOLWORK)->playerNo = i;
-        omObjGetWork(workP->colObj, PLAYERCOLWORK)->killF = TRUE;
-        omObjGetWork(workP->colObj, PLAYERCOLWORK)->masuIdNext =
-            GwPlayer[i].masuId;
-        mbPlayerMatClone(i);
-        workP->motNo = 1;
-        mbObjMotionSet(modelId, workP->motNo, HU3D_MOTATTR_LOOP);
-        GwPlayer[i].dispLightF = TRUE;
-        GwPlayer[i].masuIdPrev = -1;
-        mbPlayerWorkGet(i)->moveEndF = TRUE;
-        CharModelDataClose(charNo);
+        omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK)->playerNo = playerIndex;
+        omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK)->resyncF = TRUE;
+        omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK)->masuIdNext =
+            GwPlayer[playerIndex].masuId;
+        mbPlayerMatClone(playerIndex);
+        playerWorkP->motNo = 1;
+        mbObjMotionSet(modelId, playerWorkP->motNo, HU3D_MOTATTR_LOOP);
+        GwPlayer[playerIndex].dispLightF = TRUE;
+        GwPlayer[playerIndex].masuIdPrev = -1;
+        mbPlayerWorkGet(playerIndex)->moveEndF = TRUE;
+        CharModelDataClose(characterId);
     }
     mbPlayerColSnapSet(FALSE);
     if (GWPartyGet() != FALSE) {
         mbPlayerPosResetAll();
     } else {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            if (i > 0) {
-                GwPlayer[i].masuId = 0;
-                GwPlayer[i].masuIdNext = 0;
-                GwPlayer[i].masuIdPrev = 0;
-                mbPlayerDispSet(i, FALSE);
+        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+            if (playerIndex > 0) {
+                GwPlayer[playerIndex].masuId = 0;
+                GwPlayer[playerIndex].masuIdNext = 0;
+                GwPlayer[playerIndex].masuIdPrev = 0;
+                mbPlayerDispSet(playerIndex, FALSE);
             } else {
-                mbPlayerPosReset(i);
+                mbPlayerPosReset(playerIndex);
             }
         }
     }
     CharEffectLayerSet(5);
 }
 
+// Releases each player's model, cloned material, effects and dice display on board shutdown.
 void mbPlayerClose(void)
 {
-    MBPLAYERWORK *workP;
-    int i;
+    MBPLAYERWORK *playerWorkP;
+    int playerIndex;
 
-    workP = &playerWork[0];
-    for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
-        GW_PLAYER *playerP;
+    playerWorkP = &playerWork[0];
+    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++, playerWorkP++) {
+        GW_PLAYER *playerData;
 
-        playerP = GWPlayerGet(i);
+        playerData = GWPlayerGet(playerIndex);
 
-        if (workP->objId != MB_MODEL_NONE) {
-            PlayerMetalKill(i);
-            PlayerBiriQKill(i);
-            mbObjKill(workP->objId);
-            workP->objId = MB_MODEL_NONE;
+        if (playerWorkP->objId != MB_MODEL_NONE) {
+            PlayerMetalKill(playerIndex);
+            PlayerBiriQKill(playerIndex);
+            mbObjKill(playerWorkP->objId);
+            playerWorkP->objId = MB_MODEL_NONE;
         }
-        if (workP->matCopy) {
-            HSF_MATERIAL *matCopy = workP->matCopy;
+        if (playerWorkP->matCopy) {
+            HSF_MATERIAL *materialCopy = playerWorkP->matCopy;
 
-            HuMemDirectFree(matCopy);
-            workP->matCopy = NULL;
+            HuMemDirectFree(materialCopy);
+            playerWorkP->matCopy = NULL;
         }
-        mbDiceNumKill(i);
+        mbDiceNumKill(playerIndex);
     }
 }
 
@@ -433,31 +429,38 @@ MBPLAYERWORK *mbPlayerWorkGet(int playerNo)
     return &playerWork[playerNo];
 }
 
+// Installs the callback run as a player's turn begins.
 void mbPlayerTurnInitHookSet(void (*hook)(int playerNo))
 {
     turnInitHook = hook;
 }
 
+// Installs the callback run as a player's turn ends.
 void mbPlayerTurnCloseHookSet(void (*hook)(int playerNo))
 {
     turnCloseHook = hook;
 }
 
+// Stores the per-player callback run at the start of that player's turn.
 void mbPlayerStartTurnHookSet(int playerNo, MBPLAYERTURNHOOK hook)
 {
     playerWork[playerNo].startTurnHook = hook;
 }
 
+// Stores the per-player callback run at the end of that player's turn.
 void mbPlayerEndTurnHookSet(int playerNo, MBPLAYERTURNHOOK hook)
 {
     playerWork[playerNo].endTurnHook = hook;
 }
 
+// Stores the callback used while the player moves between board spaces.
 void mbPlayerMoveHookSet(int playerNo, MBPLAYERMOVEHOOK hook)
 {
     playerWork[playerNo].moveHook = hook;
 }
 
+// Runs turns from GwSystem.turnPlayerNo through the final board player.
+// intrF resumes the current turn at its saved player mode.
 void mbTurnExec(BOOL intrF)
 {
     int playerNo;
@@ -467,23 +470,24 @@ void mbTurnExec(BOOL intrF)
     playerNo = GwSystem.turnPlayerNo;
     for (; playerNo < GW_PLAYER_MAX; playerNo++) {
         int orderNo;
-        int i;
+        int otherPlayerNo;
 
         GwSystem.turnPlayerNo = playerNo;
         orderNo = 1;
         GwPlayer[playerNo].orderNo = 0;
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            if (playerNo != i) {
-                GwPlayer[i].orderNo = orderNo++;
+        for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+            if (playerNo != otherPlayerNo) {
+                GwPlayer[otherPlayerNo].orderNo = orderNo++;
             }
-            mbPlayerMotionSet(i, 1, HU3D_MOTATTR_LOOP);
-            GwPlayer[i].masuIdNext = GwPlayer[i].masuId;
+            mbPlayerMotionSet(otherPlayerNo, 1, HU3D_MOTATTR_LOOP);
+            GwPlayer[otherPlayerNo].masuIdNext = GwPlayer[otherPlayerNo].masuId;
         }
         PlayerTurn(playerNo);
         turnIntrF = FALSE;
     }
 }
 
+// Runs the single-player board turn for player zero, optionally resuming it.
 void mbSingleTurnExec(BOOL intrF)
 {
     turnIntrF = intrF;
@@ -495,16 +499,17 @@ void mbSingleTurnExec(BOOL intrF)
     turnIntrF = FALSE;
 }
 
+// mbTurnExec and mbSingleTurnExec call this to run dice, movement, space events and turn callbacks.
 static void PlayerTurn(int playerNo)
 {
     BOOL telopF = FALSE;
     BOOL killerF;
     BOOL eventResult;
-    BOOL partyF;
+    BOOL partyAtStartF;
     int timeTurn;
-    BOOL partyF2;
-    BOOL partyF3;
-    int i;
+    BOOL partyAfterStartHookF;
+    BOOL partyAtEndF;
+    int telopFrame;
 
     GwSystem.turnPlayerNo = playerNo;
     mbPlayerPosReset(playerNo);
@@ -524,8 +529,8 @@ static void PlayerTurn(int playerNo)
             turnInitHook(playerNo);
         }
         mbStatusDispForceSetAll(TRUE);
-        partyF = GwSystem.partyF;
-        if (partyF && playerNo == 0) {
+        partyAtStartF = GwSystem.partyF;
+        if (partyAtStartF && playerNo == 0) {
             timeTurn = GwSystem.timeTurn;
             if (timeTurn > 0) {
                 mbTelopTimeCreate();
@@ -543,7 +548,7 @@ static void PlayerTurn(int playerNo)
         workP = &playerWork[playerNo];
         workP->masuNext = 0;
         if (telopF) {
-            for (i = 0; i < 100; i++) {
+            for (telopFrame = 0; telopFrame < 100; telopFrame++) {
                 HuPrcVSleep();
             }
         }
@@ -551,8 +556,8 @@ static void PlayerTurn(int playerNo)
         omVibrate(playerNo, 20, 20, 0);
         mbPauseDisableSet(FALSE);
         mbTutorialCall(3);
-        partyF2 = GwSystem.partyF;
-        if (partyF2 || GwSystem.turnNo == 1) {
+        partyAfterStartHookF = GwSystem.partyF;
+        if (partyAfterStartHookF || GwSystem.turnNo == 1) {
             mbTelopPlayerCreate(playerNo);
         }
         GwPlayer[playerNo].moveNum = -1;
@@ -560,6 +565,7 @@ static void PlayerTurn(int playerNo)
         GwSystem.playerMode = 0;
     }
 repeat:
+    // Completed stages fall through; playerMode records the stage to resume after an interruption.
     switch (GwSystem.playerMode) {
         case 0:
         case 2:
@@ -625,8 +631,8 @@ repeat:
     }
     ev_PlayerEndTurn(playerNo);
     mbTutorialCall(4);
-    partyF3 = GwSystem.partyF;
-    if (partyF3) {
+    partyAtEndF = GwSystem.partyF;
+    if (partyAtEndF) {
         if (playerNo != GW_PLAYER_MAX - 1) {
             mbWipeSpecialFadeInCreate(5, 1);
         } else {
@@ -639,6 +645,7 @@ repeat:
     }
 }
 
+// Restores the player's camera view after an interrupt or special wipe.
 static BOOL PlayerViewSet(
     int playerNo, BOOL intrF, BOOL waitF, BOOL carF)
 {
@@ -666,6 +673,7 @@ static BOOL PlayerViewSet(
     return intrF;
 }
 
+// DiceRun uses this to map the selected board dice index to the dice implementation type.
 int mbPlayerDiceTypeGet(int diceNo)
 {
     int diceTypeTbl[7][2] = {
@@ -677,37 +685,39 @@ int mbPlayerDiceTypeGet(int diceNo)
         { 5, 4 },
         { 6, 3 }
     };
-    int i;
+    int mappingIndex;
 
-    for (i = 0; i < 7; i++) {
-        if (diceNo == diceTypeTbl[i][0]) {
-            return diceTypeTbl[i][1];
+    for (mappingIndex = 0; mappingIndex < 7; mappingIndex++) {
+        if (diceNo == diceTypeTbl[mappingIndex][0]) {
+            return diceTypeTbl[mappingIndex][1];
         }
     }
     return 0;
 }
 
+// PlayerTurn calls this to handle capsule selection and dice use, then store the move count.
 static BOOL DiceRun(int playerNo)
 {
     BOOL killerF = FALSE;
-    int capsuleNum;
-    BOOL capsuleSkipF = FALSE;
-    int result;
-    int value;
+    int capsuleCount;
+    BOOL skipCapsuleSelectF = FALSE;
+    int diceResult;
+    int presetDiceValue;
 
     GwPlayer[playerNo].diceNum = 1;
 repeat:
-    capsuleNum = mbPlayerCapsuleNumGet(playerNo);
+    capsuleCount = mbPlayerCapsuleNumGet(playerNo);
     if (GWPartyGet() == FALSE) {
-        capsuleNum = 1;
+        // Solo mode offers capsule selection regardless of inventory, except on the first turn.
+        capsuleCount = 1;
         if (GwSystem.turnNo <= 1) {
-            capsuleNum = 0;
+            capsuleCount = 0;
         }
     }
-    if (GwPlayer[playerNo].capsuleUse == -1 && !capsuleSkipF &&
-        capsuleNum != 0) {
+    if (GwPlayer[playerNo].capsuleUse == -1 && !skipCapsuleSelectF &&
+        capsuleCount != 0) {
         GwSystem.playerMode = 0;
-        result = mbCapSelect();
+        diceResult = mbCapSelect();
         if (GwPlayer[playerNo].capsuleUse != -1) {
             GwPlayer[playerNo].capsuleUseNum++;
         }
@@ -718,44 +728,44 @@ repeat:
         }
         GwSystem.playerMode = 2;
         if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            int tutorialVal[4];
-            int i;
+            int tutorialDiceValues[4];
+            int dieIndex;
             int diceType;
-            int diceMax;
+            int diceCount;
 
             diceType = mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode);
-            diceMax = mbDiceMaxGet(diceType);
-            for (i = 0; i < diceMax; i++) {
-                value = mbTutorialCall(5);
-                if (value < 0) {
-                    value = mbRandMod(mbDiceValueMaxGet(diceType));
+            diceCount = mbDiceMaxGet(diceType);
+            for (dieIndex = 0; dieIndex < diceCount; dieIndex++) {
+                presetDiceValue = mbTutorialCall(5);
+                if (presetDiceValue < 0) {
+                    presetDiceValue = mbRandMod(mbDiceValueMaxGet(diceType));
                 }
-                tutorialVal[i] = value;
+                tutorialDiceValues[dieIndex] = presetDiceValue;
             }
-            if (diceMax <= 1) {
-                result = mbDiceExec(playerNo, diceType, NULL,
-                    tutorialVal[0], FALSE, TRUE, NULL, 0);
+            if (diceCount <= 1) {
+                diceResult = mbDiceExec(playerNo, diceType, NULL,
+                    tutorialDiceValues[0], FALSE, TRUE, NULL, 0);
             } else {
-                result = mbDiceProcExec(playerNo, diceType, NULL,
-                    tutorialVal, FALSE, TRUE, NULL, 0);
+                diceResult = mbDiceProcExec(playerNo, diceType, NULL,
+                    tutorialDiceValues, FALSE, TRUE, NULL, 0);
             }
             mbTutorialCall(6);
         } else {
-            value = -1;
+            presetDiceValue = -1;
 
             if (GWPartyGet() == FALSE) {
-                value = mbSingleCall(0, -1);
+                presetDiceValue = mbSingleCall(0, -1);
             } else if (GwPlayer[playerNo].comF &&
                 mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode) == 14) {
-                value = mbMasuPKinokoValueGet(
+                presetDiceValue = mbMasuPKinokoValueGet(
                     playerNo, GwPlayer[playerNo].masuId);
             }
-            result = mbDiceExec(playerNo,
+            diceResult = mbDiceExec(playerNo,
                 mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode), NULL,
-                value, TRUE, TRUE, NULL, 0);
+                presetDiceValue, TRUE, TRUE, NULL, 0);
         }
     }
-    switch (result) {
+    switch (diceResult) {
         case -3:
             if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 mbSingleCall(1, -1);
@@ -774,34 +784,35 @@ repeat:
             if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
                 mbSingleCall(1, -1);
             }
-            capsuleSkipF = FALSE;
+            skipCapsuleSelectF = FALSE;
             mbDiceKill(playerNo);
-            mbAudFXPlay(3);
+            mbAudFXPlay(MSM_SE_CMN_04);
             break;
         case -7:
-            capsuleSkipF = TRUE;
+            skipCapsuleSelectF = TRUE;
             mbDiceKill(playerNo);
             break;
         case -5:
         default:
             break;
     }
-    if (result <= 0) {
+    if (diceResult <= 0) {
         goto repeat;
     }
     if (GwPlayer[playerNo].diceMode == 5) {
         killerF = TRUE;
     }
     GwPlayer[playerNo].diceMode = 0;
-    GwPlayer[playerNo].moveNum = result;
+    GwPlayer[playerNo].moveNum = diceResult;
     mbMoveNumCreate(playerNo, TRUE);
     mbDiceNumKill(playerNo);
     if (GWPartyGet() == FALSE) {
-        mbSingleCall(3, result);
+        mbSingleCall(3, diceResult);
     }
     return killerF;
 }
 
+// Starts the player's movement process and waits until it finishes.
 static void PlayerMoveCall(int playerNo)
 {
     MBPLAYERWORK *workP = &playerWork[playerNo];
@@ -818,62 +829,63 @@ static void PlayerMoveCall(int playerNo)
     _SetFlag(FLAG_BOARD_WALKDONE);
 }
 
+// Movement process created by PlayerMoveCall; advances one board space per pass.
 static void PlayerMove(void)
 {
-    MBPLAYERWORK *workP = HuPrcCurrentGet()->property;
-    int playerNo = workP->playerNo;
-    s16 masuIdNext;
-    BOOL hiddenF;
+    MBPLAYERWORK *playerWorkP = HuPrcCurrentGet()->property;
+    int playerNo = playerWorkP->playerNo;
+    s16 nextSpaceId;
+    BOOL spaceHiddenF;
 
     mbPlayerWorkGet(playerNo)->_unk0C = 0;
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
-    workP->moveHook = NULL;
+    playerWorkP->moveHook = NULL;
 repeat:
     GwPlayer[playerNo].masuIdPrev = GwPlayer[playerNo].masuId;
     if (!_CheckFlag(FLAG_BOARD_DEBUG) ||
         _CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        if (mbev_Branch(playerNo, &masuIdNext)) {
+        if (mbev_Branch(playerNo, &nextSpaceId)) {
             goto end;
         }
     } else {
-        if (mbev_BranchDebug(playerNo, &masuIdNext) || masuIdNext < 0) {
+        if (mbev_BranchDebug(playerNo, &nextSpaceId) || nextSpaceId < 0) {
             goto end;
         }
     }
-    masuIdNext = mbev_GateMasu(
-        playerNo, GwPlayer[playerNo].masuId, masuIdNext);
-    GwPlayer[playerNo].masuIdNext = masuIdNext;
+    nextSpaceId = mbev_GateMasu(
+        playerNo, GwPlayer[playerNo].masuId, nextSpaceId);
+    GwPlayer[playerNo].masuIdNext = nextSpaceId;
     mbPlayerWorkGet(playerNo)->_unk08 = -1;
-    workP->_unk06 = masuIdNext;
-    if (workP->moveF) {
+    playerWorkP->_unk06 = nextSpaceId;
+    if (playerWorkP->moveF) {
         HuPrcSleep(-1);
     }
     PlayerColKill(playerNo);
     mbev_CapCallTrap(
-        playerNo, GwPlayer[playerNo].masuId, masuIdNext);
-    mbev_MasuMasuEnd(masuIdNext);
-    if (workP->moveHook) {
+        playerNo, GwPlayer[playerNo].masuId, nextSpaceId);
+    mbev_MasuMasuEnd(nextSpaceId);
+    if (playerWorkP->moveHook) {
         mbPlayerWorkGet(playerNo)->_unk0C = 4;
-        workP->moveHook(playerNo);
-        workP->moveHook = NULL;
+        playerWorkP->moveHook(playerNo);
+        playerWorkP->moveHook = NULL;
     } else {
         mbPlayerMasuMove(playerNo, TRUE);
     }
     mbPlayerWorkGet(playerNo)->_unk0C = 0;
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
     mbPlayerWorkGet(playerNo)->masuMoveF = FALSE;
-    GwPlayer[playerNo].masuId = masuIdNext;
+    GwPlayer[playerNo].masuId = nextSpaceId;
     mbTutorialCall(8);
-    hiddenF = !mbMasuDispCheck(masuIdNext);
-    if (!hiddenF && GwPlayer[playerNo].biriQF) {
+    spaceHiddenF = !mbMasuDispCheck(nextSpaceId);
+    if (!spaceHiddenF && GwPlayer[playerNo].biriQF) {
         PlayerBiriQFlashSet(playerNo);
         mbev_CapBiriQShockCreate(playerNo);
     }
     if (!mbev_MasuMasuStart(playerNo)) {
-        masuIdNext = GwPlayer[playerNo].masuId;
-        if (!mbev_MasuMove(playerNo, masuIdNext)) {
-            hiddenF = !mbMasuDispCheck(masuIdNext);
-            if (!hiddenF) {
+        nextSpaceId = GwPlayer[playerNo].masuId;
+        if (!mbev_MasuMove(playerNo, nextSpaceId)) {
+            spaceHiddenF = !mbMasuDispCheck(nextSpaceId);
+            if (!spaceHiddenF) {
                 mbAudFXPlay(PLAYER_MOVE_COUNT_SFX);
                 GwPlayer[playerNo].moveNum--;
                 if (GwPlayer[playerNo].moveNum < 0) {
@@ -885,8 +897,8 @@ repeat:
             }
         }
     }
-    if (workP->moveF) {
-        workP->_unk10_3 = TRUE;
+    if (playerWorkP->moveF) {
+        playerWorkP->_unk10_3 = TRUE;
         HuPrcSleep(-1);
     }
     mbTutorialCall(9);
@@ -894,11 +906,11 @@ repeat:
         goto repeat;
     }
 end:
-    workP->moveHook = NULL;
+    playerWorkP->moveHook = NULL;
     mbMoveNumKill(playerNo);
     mbPlayerWorkGet(playerNo)->_unk0C = 0;
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
-    if (workP->moveF) {
+    if (playerWorkP->moveF) {
         mbPlayerRotateStart(playerNo, 0, 15);
         while (!mbPlayerRotateCheck(playerNo)) {
             HuPrcVSleep();
@@ -911,13 +923,15 @@ end:
     HuPrcEnd();
 }
 
+// Process destructor that clears the player's movement-process handle.
 static void PlayerMoveDestroy(void)
 {
-    MBPLAYERWORK *workP = HuPrcCurrentGet()->property;
+    MBPLAYERWORK *playerWorkP = HuPrcCurrentGet()->property;
 
-    workP->moveProc = NULL;
+    playerWorkP->moveProc = NULL;
 }
 
+// Invokes and clears the player's start-turn hook when it reports completion.
 static void ev_PlayerStartTurn(int playerNo)
 {
     if (playerWork[playerNo].startTurnHook) {
@@ -927,6 +941,7 @@ static void ev_PlayerStartTurn(int playerNo)
     }
 }
 
+// Invokes and clears the player's end-turn hook when it reports completion.
 static void ev_PlayerEndTurn(int playerNo)
 {
     if (playerWork[playerNo].endTurnHook) {
@@ -936,30 +951,35 @@ static void ev_PlayerEndTurn(int playerNo)
     }
 }
 
+// Sets the destination space, then moves the player there.
 void mbPlayerMasuMoveTo(int playerNo, int masuId, BOOL waitF)
 {
     GwPlayer[playerNo].masuIdNext = masuId;
     mbPlayerMasuMove(playerNo, waitF);
 }
 
+// Walks toward the selected space, setting masuMoveF only while this call runs.
+// With waitF false, that flag is cleared before the movement finishes.
 void mbPlayerMasuMove(int playerNo, BOOL waitF)
 {
-    MBPLAYERWORK *workP = &playerWork[playerNo];
-    MBPLAYERWORK *workP2;
+    MBPLAYERWORK *playerWorkP = &playerWork[playerNo];
+    MBPLAYERWORK *playerWorkAfterMoveP;
 
-    workP->masuMoveF = TRUE;
+    playerWorkP->masuMoveF = TRUE;
     mbPlayerMoveExec(
         playerNo, NULL, NULL, mbPlayerWalkSpeedGet(), NULL, waitF);
-    workP2 = &playerWork[playerNo];
-    workP2->masuMoveF = FALSE;
+    playerWorkAfterMoveP = &playerWork[playerNo];
+    playerWorkAfterMoveP->masuMoveF = FALSE;
 }
 
+// Moves the player to an explicit world position using the normal walking speed.
 void mbPlayerMasuMovePos(int playerNo, HuVecF *pos, BOOL waitF)
 {
     mbPlayerMoveExec(
         playerNo, NULL, pos, mbPlayerWalkSpeedGet(), NULL, waitF);
 }
 
+// Walks to the given board space with a caller-selected duration.
 void mbPlayerMasuMoveSpeed(
     int playerNo, int masuId, s16 maxTime, BOOL waitF)
 {
@@ -975,6 +995,7 @@ void mbPlayerMasuMoveSpeed(
     workP2->masuMoveF = FALSE;
 }
 
+// Starts movement; adjacent-space jumps and climbs select their own motion and duration.
 void mbPlayerMoveExec(int playerNo, HuVecF *srcPos, HuVecF *dstPos,
     s16 maxTime, HuVecF *rot, BOOL waitF)
 {
@@ -989,15 +1010,21 @@ enum {
 };
 
 typedef struct PlayerMoveWork {
-    u8 killF : 1;
-    u8 mode : 2;
+    // Stops the movement object's update callback.
+    u8 stopUpdateF : 1;
+    // Selects walking, jumping or climbing movement.
+    u8 movementMode : 2;
+    // Player whose model is being moved.
     u8 playerNo : 2;
-    s16 time;
-    s16 maxTime;
+    // Elapsed movement frames.
+    s16 elapsedFrames;
+    // Total movement frames.
+    s16 totalFrames;
 } PLAYERMOVEWORK;
 
 static void PlayerMoveOMExec(OMOBJ *objP);
 
+// Called by movement helpers to start travel between positions or adjacent spaces.
 void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
     float motSpeed, u32 motAttr, s16 maxTime, HuVecF *rot, BOOL waitF)
 {
@@ -1020,7 +1047,7 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
         objP->rot.x = dstPos->x;
         objP->rot.y = dstPos->y;
         objP->rot.z = dstPos->z;
-        workP->mode = PLAYER_MOVE_MODE_RUN;
+        workP->movementMode = PLAYER_MOVE_MODE_RUN;
     } else {
         MASU *masuPrev;
         MASU *masuNext;
@@ -1044,11 +1071,11 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
                 mode = PLAYER_MOVE_MODE_RUN;
             }
         }
-        workP->mode = mode;
+        workP->movementMode = mode;
         mbMasuPosGet(GwPlayer[playerNo].masuIdNext, &objP->rot);
     }
     if (motNo == 0) {
-        switch (workP->mode) {
+        switch (workP->movementMode) {
             case PLAYER_MOVE_MODE_RUN:
                 mbPlayerWorkGet(playerNo)->_unk0C = 1;
                 mbPlayerMotionShiftSet(playerNo, 3, 0.0f, 4.0f,
@@ -1067,6 +1094,7 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
                 maxTime = 100;
                 motSpeed = 2.0f;
                 VECSubtract(&objP->rot, &objP->trans, &moveDir);
+                // The climb duration is then replaced with a distance-based frame count.
                 maxTime = VECMag(&moveDir) / 15.000001f;
                 if (objP->trans.y >= objP->rot.y) {
                     moveDir.x = -moveDir.x;
@@ -1103,8 +1131,8 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
     objP->scale.y = objP->trans.y;
     objP->scale.z = objP->trans.z;
     workP->playerNo = playerNo;
-    workP->time = 0;
-    workP->maxTime = maxTime;
+    workP->elapsedFrames = 0;
+    workP->totalFrames = maxTime;
     {
         int movePlayerNo = workP->playerNo;
 
@@ -1112,7 +1140,7 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
             int movePlayerNo2;
             int moveMaxTime;
 
-            moveMaxTime = workP->maxTime;
+            moveMaxTime = workP->totalFrames;
             movePlayerNo2 = workP->playerNo;
             mbPlayerWorkGet(movePlayerNo2)->_unk08 = moveMaxTime;
         }
@@ -1123,23 +1151,25 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
             HuPrcVSleep();
         }
     }
+    // These work flags reset on return even when nonblocking movement is still active.
     mbPlayerWorkGet(playerNo)->_unk0C = 0;
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
 }
 
+// Object update callback that interpolates movement and raises the jump arc when needed.
 static void PlayerMoveOMExec(OMOBJ *objP)
 {
     PLAYERMOVEWORK *workP = omObjGetWork(objP, PLAYERMOVEWORK);
     float weight;
 
-    if (mbExitCheck() || workP->killF) {
+    if (mbExitCheck() || workP->stopUpdateF) {
         GwPlayer[workP->playerNo].moveF = FALSE;
         omDelObjEx(HuPrcCurrentGet(), objP);
         playerWork[workP->playerNo].moveObj = NULL;
         return;
     }
-    workP->time++;
-    weight = (float)workP->time / workP->maxTime;
+    workP->elapsedFrames++;
+    weight = (float)workP->elapsedFrames / workP->totalFrames;
     objP->trans.x = objP->scale.x
         + (weight * (objP->rot.x - objP->scale.x));
     objP->trans.y = objP->scale.y
@@ -1153,7 +1183,7 @@ static void PlayerMoveOMExec(OMOBJ *objP)
         if (moveWorkP->masuMoveF) {
             int movePlayerNo2;
             MBPLAYERWORK *moveWorkP2;
-            int moveTime = workP->maxTime - workP->time;
+            int moveTime = workP->totalFrames - workP->elapsedFrames;
 
             movePlayerNo2 = workP->playerNo;
             moveWorkP2 = &playerWork[movePlayerNo2];
@@ -1161,13 +1191,13 @@ static void PlayerMoveOMExec(OMOBJ *objP)
             moveWorkP2->_unk08 = moveTime;
         }
     }
-    if (workP->time >= workP->maxTime) {
+    if (workP->elapsedFrames >= workP->totalFrames) {
         GwPlayer[workP->playerNo].moveF = FALSE;
         mbPlayerPosSet(workP->playerNo, objP->rot.x, objP->rot.y,
             objP->rot.z);
         omDelObjEx(HuPrcCurrentGet(), objP);
         playerWork[workP->playerNo].moveObj = NULL;
-    } else if (workP->mode != PLAYER_MOVE_MODE_JUMP) {
+    } else if (workP->movementMode != PLAYER_MOVE_MODE_JUMP) {
         mbPlayerPosSet(workP->playerNo, objP->trans.x, objP->trans.y,
             objP->trans.z);
     } else {
@@ -1182,7 +1212,7 @@ static void PlayerMoveOMExec(OMOBJ *objP)
 
             moveWorkP->moveEndF = FALSE;
         }
-        if (workP->time >= workP->maxTime - 2) {
+        if (workP->elapsedFrames >= workP->totalFrames - 2) {
             weight = 1.0f;
             {
                 MBPLAYERWORK *moveWorkP;
@@ -1193,12 +1223,12 @@ static void PlayerMoveOMExec(OMOBJ *objP)
                 moveWorkP->moveEndF = TRUE;
             }
         } else {
-            weight = (float)workP->time / (workP->maxTime - 2);
+            weight = (float)workP->elapsedFrames / (workP->totalFrames - 2);
         }
         mbPlayerPosSet(workP->playerNo, objP->trans.x,
             objP->trans.y + (100.0f * (2.0f * HuSin(weight * 180.0f))),
             objP->trans.z);
-        if (workP->time == workP->maxTime - 5) {
+        if (workP->elapsedFrames == workP->totalFrames - 5) {
             mbPlayerMotionShiftSet(workP->playerNo, 5, 2.0f, 2.0f,
                 HU3D_MOTATTR_NONE);
         }
@@ -1206,14 +1236,21 @@ static void PlayerMoveOMExec(OMOBJ *objP)
 }
 
 typedef struct PlayerRotateWork {
-    u8 killF : 1;
+    // Stops the rotation object's update callback.
+    u8 stopUpdateF : 1;
+    // Player whose facing direction is changing.
     s8 playerNo;
-    s16 maxTime;
-    s16 time;
+    // Total rotation frames.
+    s16 totalFrames;
+    // Elapsed rotation frames.
+    s16 elapsedFrames;
 } PLAYERROTATEWORK;
 
 static void PlayerRotateOMExec(OMOBJ *objP);
 
+// Turn and movement flow use this to start a turn toward endAngle.
+// Nonpositive maxTime does nothing; a difference truncating to zero degrees snaps next update.
+// Other turns apply the final angle after maxTime interpolation updates.
 void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime)
 {
     OMOBJ *objP;
@@ -1230,17 +1267,17 @@ void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime)
             PLAYER_OBJ_PRIORITY, 0, 0, -1, PlayerRotateOMExec);
     }
     workP = omObjGetWork(objP, PLAYERROTATEWORK);
-    workP->killF = FALSE;
-    workP->maxTime = maxTime;
+    workP->stopUpdateF = FALSE;
+    workP->totalFrames = maxTime;
     workP->playerNo = playerNo;
-    workP->time = 0;
+    workP->elapsedFrames = 0;
     objP->rot.y = mbPlayerRotYGet(playerNo);
     objP->scale.z = endAngle;
     angle = fmod(endAngle - objP->rot.y, 360.0f);
     if ((s16)angle == 0) {
         mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 5.0f,
             HU3D_MOTATTR_LOOP);
-        workP->killF = TRUE;
+        workP->stopUpdateF = TRUE;
     } else {
         if (angle < 0.0f) {
             angle += 360.0f;
@@ -1259,6 +1296,7 @@ void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime)
     }
 }
 
+// Rotation-object update callback that eases the player's yaw to its requested angle.
 static void PlayerRotateOMExec(OMOBJ *objP)
 {
     PLAYERROTATEWORK *workP = omObjGetWork(objP, PLAYERROTATEWORK);
@@ -1266,28 +1304,30 @@ static void PlayerRotateOMExec(OMOBJ *objP)
     float angle;
     float weight;
 
-    if (workP->killF || mbExitCheck()) {
+    if (workP->stopUpdateF || mbExitCheck()) {
         mbPlayerRotYSet(workP->playerNo, objP->scale.z);
         playerWork[workP->playerNo].rotateObj = NULL;
         omDelObjEx(HuPrcCurrentGet(), objP);
         return;
     }
-    angle = (float)(workP->time++) / workP->maxTime;
+    angle = (float)(workP->elapsedFrames++) / workP->totalFrames;
     weight = HuSin(angle * 90.0f);
     rotY = objP->rot.y + (weight * objP->scale.y);
     mbPlayerRotYSet(workP->playerNo, rotY);
-    if (workP->time >= workP->maxTime) {
-        workP->killF = TRUE;
+    if (workP->elapsedFrames >= workP->totalFrames) {
+        workP->stopUpdateF = TRUE;
         mbPlayerMotionSet(workP->playerNo, 1, HU3D_MOTATTR_LOOP);
         return;
     }
 }
 
+// Reports whether the player's timed rotation object has finished.
 BOOL mbPlayerRotateCheck(int playerNo)
 {
     return playerWork[playerNo].rotateObj == NULL;
 }
 
+// Reports whether every player's timed rotation object has finished.
 BOOL mbPlayerRotateCheckAll(void)
 {
     int i;
@@ -1300,6 +1340,7 @@ BOOL mbPlayerRotateCheckAll(void)
     return TRUE;
 }
 
+// Called when the player throws a dice; hits the dice object after 27 frames, then idles.
 void mbPlayerDiceMotExec(int playerNo)
 {
     int time;
@@ -1316,14 +1357,20 @@ void mbPlayerDiceMotExec(int playerNo)
 }
 
 typedef struct MoveNumWork {
+    // Stops the move-count display object's update callback.
     u8 killF : 1;
+    // Whether the move-count display is visible.
     u8 dispF : 1;
+    // Player whose remaining movement is shown.
     u8 playerNo : 2;
+    // Records the walking-view creation flag; the display update never reads this bit.
     u8 carF : 1;
 } MOVENUMWORK;
 
 static void MoveNumOMExec(OMOBJ *objP);
 
+// Called when the turn UI needs to show remaining moves, including after a dice roll.
+// Creates the numbered move display in the requested color; an existing display is left unchanged.
 void mbMoveNumCreateColor(int playerNo, BOOL carF, int color)
 {
     int modelId;
@@ -1374,11 +1421,13 @@ void mbMoveNumCreateColor(int playerNo, BOOL carF, int color)
     }
 }
 
+// Creates the standard-color move display used by ordinary turn movement.
 void mbMoveNumCreate(int playerNo, BOOL carF)
 {
     mbMoveNumCreateColor(playerNo, carF, 0);
 }
 
+// Move-display object callback; positions visible digits beside the moving player.
 static void MoveNumOMExec(OMOBJ *objP)
 {
     int digitNum = 0;
@@ -1457,6 +1506,7 @@ static void MoveNumOMExec(OMOBJ *objP)
     }
 }
 
+// Requests move-display removal; the object callback releases its digit models.
 void mbMoveNumKill(int playerNo)
 {
     if (playerWork[playerNo].moveNumObj) {
@@ -1467,6 +1517,7 @@ void mbMoveNumKill(int playerNo)
     }
 }
 
+// Shows or hides the move digits while the display object remains active.
 void mbMoveNumDispSet(int playerNo, BOOL dispF)
 {
     if (playerWork[playerNo].moveNumObj) {
@@ -1481,6 +1532,8 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext);
 static void PlayerColCornerSnap(int playerNo, int masuId, int cornerNo);
 static void PlayerColInit(int playerNo, int masuId, int cornerNo);
 
+// Repositions active players after board positions change, keeping shared spaces clear.
+// Called by board movement setup when several players may occupy the same spaces.
 void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
 {
     BOOL circleF;
@@ -1498,7 +1551,7 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
             }
             omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
                 GwPlayer[i].masuIdNext;
-            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF) {
+            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->notRestF) {
                 continue;
             }
         }
@@ -1547,6 +1600,8 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
     }
 }
 
+// Assigns corner positions to players on one space, optionally snapping them now.
+// Called when a player's board-space position is set.
 void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
 {
     HuVecF pos;
@@ -1556,7 +1611,7 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
     int num = 0;
     int i;
     int j;
-    int temp;
+    int cornerNo;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (playerNo != i) {
@@ -1569,6 +1624,7 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
         }
         orderNo[num] = GwPlayer[i].orderNo;
         if (playerNo == i) {
+            // Put the requested player first before assigning the group's corners.
             orderNo[num] = -1;
         }
         playerNoTbl[num] = i;
@@ -1579,21 +1635,21 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
     for (i = 0; i < num - 1; i++) {
         for (j = i + 1; j < num; j++) {
             if (orderNo[i] > orderNo[j]) {
-                temp = orderNo[i];
+                cornerNo = orderNo[i];
                 orderNo[i] = orderNo[j];
-                orderNo[j] = temp;
-                temp = playerNoTbl[i];
+                orderNo[j] = cornerNo;
+                cornerNo = playerNoTbl[i];
                 playerNoTbl[i] = playerNoTbl[j];
-                playerNoTbl[j] = temp;
+                playerNoTbl[j] = cornerNo;
             }
         }
     }
     for (j = 0; j < num; j++) {
         i = playerNoTbl[j];
-        temp = j;
+        cornerNo = j;
 
-        if (temp != 0) {
-            mbMasuCornerRotPosGet(masuId, temp - 1, &pos);
+        if (cornerNo != 0) {
+            mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
         } else {
             mbMasuPosGet(masuId, &pos);
         }
@@ -1602,14 +1658,16 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
         omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
         if (snapF) {
             mbPlayerPosSetV(i, &pos);
-            PlayerColCornerSnap(i, masuId, temp);
-        } else if (temp != mbPlayerMasuCornerGet(i) || circleF) {
-            PlayerColInit(i, masuId, temp);
+            PlayerColCornerSnap(i, masuId, cornerNo);
+        } else if (cornerNo != mbPlayerMasuCornerGet(i) || circleF) {
+            PlayerColInit(i, masuId, cornerNo);
         }
-        mbPlayerMasuCornerSet(i, temp);
+        mbPlayerMasuCornerSet(i, cornerNo);
     }
 }
 
+// Board events place the requested player at the space center and others at the requested radius.
+// With playerNo negative, every occupant uses an outer corner.
 void mbev_PlayerColCircleAdd(
     int playerNo, int masuId, BOOL snapF, float radius)
 {
@@ -1620,7 +1678,7 @@ void mbev_PlayerColCircleAdd(
     int num = 0;
     int i;
     int j;
-    int temp;
+    int cornerNo;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (playerNo != i) {
@@ -1635,6 +1693,7 @@ void mbev_PlayerColCircleAdd(
         omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->radius = radius;
         orderNo[num] = GwPlayer[i].orderNo;
         if (playerNo == i) {
+            // Put the requested player first before assigning the group's corners.
             orderNo[num] = -1;
         }
         playerNoTbl[num] = i;
@@ -1645,27 +1704,28 @@ void mbev_PlayerColCircleAdd(
     for (i = 0; i < num - 1; i++) {
         for (j = i + 1; j < num; j++) {
             if (orderNo[i] > orderNo[j]) {
-                temp = orderNo[i];
+                cornerNo = orderNo[i];
                 orderNo[i] = orderNo[j];
-                orderNo[j] = temp;
-                temp = playerNoTbl[i];
+                orderNo[j] = cornerNo;
+                cornerNo = playerNoTbl[i];
                 playerNoTbl[i] = playerNoTbl[j];
-                playerNoTbl[j] = temp;
+                playerNoTbl[j] = cornerNo;
             }
         }
     }
     for (j = 0; j < num; j++) {
         i = playerNoTbl[j];
-        temp = j;
+        cornerNo = j;
 
-        if (playerNo < 0 && temp == 0) {
-            temp = num;
+        if (playerNo < 0 && cornerNo == 0) {
+            // The negative-player form moves the first-ranked player to corner num.
+            cornerNo = num;
         }
         mbMasuPosGet(masuId, &posCenter);
-        if (temp != 0) {
+        if (cornerNo != 0) {
             float scale;
 
-            mbMasuCornerRotPosGet(masuId, temp - 1, &pos);
+            mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
             VECSubtract(&pos, &posCenter, &pos);
             scale = radius / VECMag(&pos);
             VECScale(&pos, &pos, scale);
@@ -1673,14 +1733,16 @@ void mbev_PlayerColCircleAdd(
         }
         if (snapF) {
             mbPlayerPosSetV(i, &posCenter);
-            PlayerColCornerSnap(i, masuId, temp);
+            PlayerColCornerSnap(i, masuId, cornerNo);
         } else {
-            PlayerColInit(i, masuId, temp);
+            PlayerColInit(i, masuId, cornerNo);
         }
-        mbPlayerMasuCornerSet(i, temp);
+        mbPlayerMasuCornerSet(i, cornerNo);
     }
 }
 
+// Shifts the other players on a space when one player joins their group.
+// Called by board events that place a player onto an occupied space.
 void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
 {
     BOOL circleF;
@@ -1698,7 +1760,7 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
         if (playerWork[i].colObj) {
             omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
                 GwPlayer[i].masuIdNext;
-            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF ||
+            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->notRestF ||
                 !omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
                 continue;
             }
@@ -1735,16 +1797,18 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
     }
 }
 
+// Returns positions for a selected group of players arranged around a space.
+// Called by board events that arrange players for a shared-space scene.
 void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
 {
     int orderNo[GW_PLAYER_MAX];
     int playerNoSort[GW_PLAYER_MAX];
     int useF[GW_PLAYER_MAX] = { 0, 0, 0, 0 };
-    HuVecF pos[GW_PLAYER_MAX];
+    HuVecF posByPlayer[GW_PLAYER_MAX];
     int num;
     int i;
     int j;
-    int temp;
+    int cornerNo;
 
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (playerNoTbl[i] >= 0) {
@@ -1758,6 +1822,7 @@ void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
         }
         orderNo[num] = GwPlayer[i].orderNo;
         if (orderNo[num] != 0 && !mbPlayerColSnapGet(i)) {
+            // Sort players with snapping disabled later, except those with order zero.
             orderNo[num] += GW_PLAYER_MAX;
         }
         playerNoSort[num] = i;
@@ -1766,34 +1831,35 @@ void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
     for (i = 0; i < num - 1; i++) {
         for (j = i + 1; j < num; j++) {
             if (orderNo[i] > orderNo[j]) {
-                temp = orderNo[i];
+                cornerNo = orderNo[i];
 
                 orderNo[i] = orderNo[j];
-                orderNo[j] = temp;
-                temp = playerNoSort[i];
+                orderNo[j] = cornerNo;
+                cornerNo = playerNoSort[i];
                 playerNoSort[i] = playerNoSort[j];
-                playerNoSort[j] = temp;
+                playerNoSort[j] = cornerNo;
             }
         }
     }
     for (j = 0; j < num; j++) {
         i = playerNoSort[j];
-        temp = j;
+        cornerNo = j;
 
-        if (temp != 0) {
-            mbMasuCornerRotPosGet(masuId, temp - 1, &pos[i]);
+        if (cornerNo != 0) {
+            mbMasuCornerRotPosGet(masuId, cornerNo - 1, &posByPlayer[i]);
         } else {
-            mbMasuPosGet(masuId, &pos[i]);
+            mbMasuPosGet(masuId, &posByPlayer[i]);
         }
     }
     for (i = 0; i < GW_PLAYER_MAX; i++) {
         if (playerNoTbl[i] >= 0) {
-            HuVecCopy(&pos[playerNoTbl[i]], &posTbl[i]);
+            HuVecCopy(&posByPlayer[playerNoTbl[i]], &posTbl[i]);
         }
     }
 }
 
-void mbev_PlayerColMasuSet(int playerNo, int masuId, BOOL waitF)
+// Refreshes the group's collision positions using the supplied space for one player.
+void mbev_PlayerColMasuSet(int playerNo, int masuId, BOOL snapF)
 {
     int masuIdTbl[GW_PLAYER_MAX];
     int i;
@@ -1802,9 +1868,10 @@ void mbev_PlayerColMasuSet(int playerNo, int masuId, BOOL waitF)
         masuIdTbl[i] = -1;
     }
     masuIdTbl[playerNo] = masuId;
-    mbev_PlayerColMasuAllSet(masuIdTbl, waitF);
+    mbev_PlayerColMasuAllSet(masuIdTbl, snapF);
 }
 
+// Reassigns snapped players when this player's next space changes.
 static void PlayerColCornerSet(int playerNo, int masuIdNext)
 {
     BOOL circleF;
@@ -1832,7 +1899,7 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext)
         if (i == playerNo) {
             continue;
         }
-        if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->restF ||
+        if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->notRestF ||
             !omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
             continue;
         }
@@ -1866,6 +1933,8 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext)
     }
 }
 
+// When snapping is enabled, records the current model position relative to the supplied space.
+// Stores the requested corner and resets collision motion state and yaw.
 static void PlayerColCornerSnap(int playerNo, int masuId, int cornerNo)
 {
     MBPLAYERWORK *playerWorkP = mbPlayerWorkGet(playerNo);
@@ -1878,7 +1947,7 @@ static void PlayerColCornerSnap(int playerNo, int masuId, int cornerNo)
     if (workP->snapF) {
         workP->motStartF = FALSE;
         workP->state = 0;
-        workP->killF = FALSE;
+        workP->resyncF = FALSE;
         workP->masuId = masuId;
         playerWorkP->masuCorner = cornerNo;
         mbMasuMtxGet(workP->masuId, masuMtx);
@@ -1893,6 +1962,7 @@ static void PlayerColCornerSnap(int playerNo, int masuId, int cornerNo)
     }
 }
 
+// When snapping is enabled, starts a walk from the player's current position to a new space corner.
 static void PlayerColInit(int playerNo, int masuId, int cornerNo)
 {
     MBPLAYERWORK *playerWorkP = mbPlayerWorkGet(playerNo);
@@ -1908,7 +1978,7 @@ static void PlayerColInit(int playerNo, int masuId, int cornerNo)
     if (workP->snapF) {
         workP->motStartF = FALSE;
         workP->state = 1;
-        workP->killF = FALSE;
+        workP->resyncF = FALSE;
         workP->masuId = masuId;
         playerWorkP->masuCorner = cornerNo;
         mbMasuMtxGet(workP->masuId, masuMtx);
@@ -1939,6 +2009,7 @@ static void PlayerColInit(int playerNo, int masuId, int cornerNo)
     }
 }
 
+// Reports whether all player collision markers have finished their transitions.
 BOOL mbPlayerColCheck(void)
 {
     int i;
@@ -1958,7 +2029,8 @@ static void PlayerColKill(int playerNo)
 {
 }
 
-void mbev_PlayerColReserve(int playerNo, int masuId, BOOL waitF)
+// Reserves a space for one player and updates the positions of its group.
+void mbev_PlayerColReserve(int playerNo, int masuId, BOOL snapF)
 {
     int masuIdTbl[GW_PLAYER_MAX];
     int i;
@@ -1967,9 +2039,11 @@ void mbev_PlayerColReserve(int playerNo, int masuId, BOOL waitF)
         masuIdTbl[i] = -1;
     }
     masuIdTbl[playerNo] = masuId;
-    mbev_PlayerColMasuAllSet(masuIdTbl, waitF);
+    mbev_PlayerColMasuAllSet(masuIdTbl, snapF);
 }
 
+// Per-frame callback that animates a player's collision marker and turn.
+// Installed as the callback for the player's collision object.
 static void PlayerColOMExec(OMOBJ *obj)
 {
     PLAYERCOLWORK *workP = omObjGetWork(obj, PLAYERCOLWORK);
@@ -1995,12 +2069,12 @@ static void PlayerColOMExec(OMOBJ *obj)
         PlayerColCornerSet(playerNo, workP->masuIdNext);
     }
     if (!workP->snapF || playerWorkP->moveObj || playerWorkP->posFixObj) {
-        workP->killF = TRUE;
+        workP->resyncF = TRUE;
         workP->state = 0;
         return;
     }
-    if (workP->killF) {
-        workP->killF = FALSE;
+    if (workP->resyncF) {
+        workP->resyncF = FALSE;
         workP->masuId = GwPlayer[playerNo].masuId;
         workP->masuIdNext = GwPlayer[playerNo].masuIdNext;
         mbMasuMtxGet(workP->masuId, masuMtx);
@@ -2061,6 +2135,7 @@ static void PlayerColOMExec(OMOBJ *obj)
             break;
 
         case 2:
+            // Completion clears movement, but the interpolation below still overwrites yaw zero.
             if (workP->time > workP->maxTime) {
                 mbPlayerRotYSet(playerNo, 0.0f);
                 GwPlayer[playerNo].moveF = FALSE;
@@ -2076,6 +2151,8 @@ static void PlayerColOMExec(OMOBJ *obj)
     mbPlayerPosSetV(playerNo, &pos);
 }
 
+// Ignores playerNo; with global snapping enabled, snaps stationary players on the selected space.
+// Individual snapF flags gate only the collision-state reset; players with snapF false still move.
 void mbev_PlayerColSet(int playerNo, int masuId)
 {
     int i;
@@ -2112,7 +2189,7 @@ void mbev_PlayerColSet(int playerNo, int masuId)
         }
         workP->motStartF = FALSE;
         workP->state = 0;
-        workP->killF = FALSE;
+        workP->resyncF = FALSE;
         workP->masuId = masuId;
         playerWorkP->masuCorner = cornerNo;
         mbMasuMtxGet(workP->masuId, masuMtx);
@@ -2127,6 +2204,7 @@ void mbev_PlayerColSet(int playerNo, int masuId)
     }
 }
 
+// Enables or disables snapping for every active player collision object.
 void mbPlayerColSnapSet(BOOL snapF)
 {
     BOOL snap = snapF ? TRUE : FALSE;
@@ -2143,6 +2221,7 @@ void mbPlayerColSnapSet(BOOL snapF)
     playerColSnapF = snapF;
 }
 
+// Enables or disables snapping for one player's collision object.
 void mbPlayerColSnapPlayerSet(int playerNo, BOOL snapF)
 {
     BOOL snap = snapF ? TRUE : FALSE;
@@ -2155,6 +2234,7 @@ void mbPlayerColSnapPlayerSet(int playerNo, BOOL snapF)
     }
 }
 
+// Returns whether one player's collision object is currently allowed to snap.
 BOOL mbPlayerColSnapGet(int playerNo)
 {
     PLAYERCOLWORK *workP =
@@ -2163,6 +2243,7 @@ BOOL mbPlayerColSnapGet(int playerNo)
     return workP->snapF;
 }
 
+// Updates one player's collision rest flag; the stored flag is inverse to restF.
 void mbPlayerColRestSet(int playerNo, BOOL restF)
 {
     BOOL rest = restF ? FALSE : TRUE;
@@ -2171,10 +2252,11 @@ void mbPlayerColRestSet(int playerNo, BOOL restF)
         PLAYERCOLWORK *workP =
             omObjGetWork(playerWork[playerNo].colObj, PLAYERCOLWORK);
 
-        workP->restF = rest;
+        workP->notRestF = rest;
     }
 }
 
+// Gives one player first order and assigns the remaining players afterward.
 void mbPlayerColFirstSet(int playerNo)
 {
     int orderNo = 1;
@@ -2188,6 +2270,7 @@ void mbPlayerColFirstSet(int playerNo)
     }
 }
 
+// Reassigns collision-placement order within each occupied space according to corner order.
 void mbPlayerColOrderReset(void)
 {
     s8 playerNo[GW_PLAYER_MAX];
@@ -2198,7 +2281,7 @@ void mbPlayerColOrderReset(void)
     int k;
     int num;
     s16 masuId;
-    s8 temp;
+    s8 orderNoSwap;
 
     memset(fixF, 0, GW_PLAYER_MAX);
     for (i = 0; i < GW_PLAYER_MAX; i++) {
@@ -2208,7 +2291,7 @@ void mbPlayerColOrderReset(void)
         if (playerWork[i].colObj) {
             workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
 
-            workP->restF = restF;
+            workP->notRestF = restF;
         }
         if (GwPlayer[i].masuId == 0) {
             continue;
@@ -2231,9 +2314,9 @@ void mbPlayerColOrderReset(void)
             for (j = 0; j < num - 1; j++) {
                 for (k = j + 1; k < num; k++) {
                     if (orderNo[j] > orderNo[k]) {
-                        temp = orderNo[j];
+                        orderNoSwap = orderNo[j];
                         orderNo[j] = orderNo[k];
-                        orderNo[k] = temp;
+                        orderNo[k] = orderNoSwap;
                     }
                 }
             }
@@ -2257,6 +2340,9 @@ static char *eyeMatNameTbl[CHARNO_MAX][2] = {
     { "Clswaluigi_eye_l1_AUTO1", "Clswaluigi_eye_l1_AUTO2" }
 };
 
+// Darkens non-eye materials when eye names are available; later character rows pass null names to
+// strcmp.
+// When darkF is false, restores the saved materials.
 void mbPlayerEyeMatDarkSet(int playerNo, BOOL darkF)
 {
     BOOL validF;
@@ -2300,6 +2386,7 @@ void mbPlayerEyeMatDarkSet(int playerNo, BOOL darkF)
     DCStoreRange(hsf->material, hsf->materialNum * sizeof(HSF_MATERIAL));
 }
 
+// Saves the player's current materials so later effects can restore them.
 void mbPlayerMatClone(int playerNo)
 {
     HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
@@ -2316,32 +2403,53 @@ void mbPlayerMatClone(int playerNo)
 }
 
 typedef struct PlayerMetalWork {
+    // Requests removal of the metal-effect object.
     u8 killF : 1;
-    u8 _unk0_1 : 1;
-    u8 _unk0_2 : 1;
+    // Set after the metal appearance has finished fading in.
+    u8 fadeInDoneF : 1;
+    // Starts the fade-out after the player's metal status ends.
+    u8 fadeOutF : 1;
+    // Enables the metal particle effect while the player is visible.
     u8 effectF : 1;
+    // Player represented by this metal-effect object.
     u8 playerNo : 2;
+    // Elapsed frames in the current metal fade.
     s16 time;
+    // Total frames in the current metal fade.
     s16 maxTime;
-    s16 _unk06;
-    s16 _unk08;
+    // Index of the largest mesh in the character model's object array.
+    s16 meshObjectIndex;
+    // Number of occupied vertex groups in the five-by-five-by-five grid.
+    s16 vertexGroupCount;
 } PLAYERMETALWORK;
 
 typedef struct PlayerBiriQWork {
+    // Requests removal of the electric-effect object.
     u8 killF : 1;
-    u8 _unk0_1 : 1;
+    // Marks completion of the initial electric flash.
+    u8 initialFlashDoneF : 1;
+    // Requests a new electric flash.
     u8 flashF : 1;
-    u8 _unk0_3 : 1;
+    // Set when the player's electric status ends.
+    u8 statusEndedF : 1;
+    // Enables the electric particle effect while the player is visible.
     u8 effectF : 1;
+    // Player represented by this electric-effect object.
     u8 playerNo : 2;
+    // Elapsed frames in the current flash.
     s16 time;
+    // Total frames in the current flash.
     s16 maxTime;
-    s16 _unk06;
-    s16 _unk08;
+    // Index of the largest mesh in the character model's object array.
+    s16 meshObjectIndex;
+    // Number of occupied vertex groups in the five-by-five-by-five grid.
+    s16 vertexGroupCount;
 } PLAYERBIRIQWORK;
 
 static void PlayerBiriQEffectSet(int playerNo, BOOL effectF);
 
+// Per-frame callback that blends the metal effect in or out and removes it.
+// Installed as the callback for the player's metal-effect object.
 static void PlayerMetalOMExec(OMOBJ *objP)
 {
     PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
@@ -2355,12 +2463,12 @@ static void PlayerMetalOMExec(OMOBJ *objP)
         workP->killF = TRUE;
     }
     if (!workP->killF) {
-        if (!GwPlayer[workP->playerNo].metalF && !workP->_unk0_2) {
-            workP->_unk0_2 = TRUE;
+        if (!GwPlayer[workP->playerNo].metalF && !workP->fadeOutF) {
+            workP->fadeOutF = TRUE;
             workP->time = 0;
             workP->maxTime = 20;
         }
-        if (workP->_unk0_2) {
+        if (workP->fadeOutF) {
             workP->time++;
             weight = (float)workP->time / workP->maxTime;
             if (weight > 1.0f) {
@@ -2371,7 +2479,7 @@ static void PlayerMetalOMExec(OMOBJ *objP)
             if (workP->time >= workP->maxTime) {
                 workP->killF = TRUE;
             }
-        } else if (!workP->_unk0_1) {
+        } else if (!workP->fadeInDoneF) {
             workP->time++;
             weight = (float)workP->time / workP->maxTime;
             if (weight > 1.0f) {
@@ -2379,7 +2487,7 @@ static void PlayerMetalOMExec(OMOBJ *objP)
             }
             mbObjMetalTPLvlSet(mbPlayerObjIDGet(workP->playerNo), weight);
             if (workP->time >= workP->maxTime) {
-                workP->_unk0_1 = TRUE;
+                workP->fadeInDoneF = TRUE;
             }
         }
         if (objP->mdlId[0] >= 0) {
@@ -2405,6 +2513,7 @@ static void PlayerMetalOMExec(OMOBJ *objP)
     }
 }
 
+// Starts or requests removal of the player's metal transformation.
 void mbPlayerMetalSet(int playerNo, BOOL metalF)
 {
     OMOBJ *objP;
@@ -2427,8 +2536,8 @@ void mbPlayerMetalSet(int playerNo, BOOL metalF)
         }
         workP = omObjGetWork(objP, PLAYERMETALWORK);
         workP->playerNo = playerNo;
-        workP->_unk0_2 = FALSE;
-        workP->_unk0_1 = FALSE;
+        workP->fadeOutF = FALSE;
+        workP->fadeInDoneF = FALSE;
         workP->effectF = TRUE;
         workP->time = 0;
         workP->maxTime = 20;
@@ -2442,6 +2551,7 @@ void mbPlayerMetalSet(int playerNo, BOOL metalF)
     }
 }
 
+// Stops the player's metal model effect and marks its object for deletion.
 static void PlayerMetalKill(int playerNo)
 {
     OMOBJ *objP = playerWork[playerNo].metalObj;
@@ -2457,6 +2567,7 @@ static void PlayerMetalKill(int playerNo)
     }
 }
 
+// Enables or hides the player's metal and electric particles; material effects remain active.
 void mbPlayerEffectSet(int playerNo, BOOL effectF)
 {
     OMOBJ *objP = playerWork[playerNo].metalObj;
@@ -2469,12 +2580,14 @@ void mbPlayerEffectSet(int playerNo, BOOL effectF)
     PlayerBiriQEffectSet(playerNo, effectF);
 }
 
+// Restores the default shadow and highlight colors used by the metal effect.
 static void ResetMetalColor(void)
 {
     metalShadowColor = metalDefaultColor[0];
     metalHiliteColor = metalDefaultColor[1];
 }
 
+// Sets the colors used for the metal transformation's shadow and highlights.
 void mbPlayerMetalColorSet(
     const GXColor *shadowColor, const GXColor *hiliteColor)
 {
@@ -2482,8 +2595,9 @@ void mbPlayerMetalColorSet(
     metalHiliteColor = *hiliteColor;
 }
 
+// Builds vertex groups for the electric effect and returns the mesh height.
 static float GetBiriQEffectRadius(
-    OMOBJ *objP, int playerNo, int *effectCount)
+    OMOBJ *objP, int playerNo, int *meshGroupInfo)
 {
     int count;
     HSF_DATA *hsfP;
@@ -2507,8 +2621,9 @@ static float GetBiriQEffectRadius(
     int x;
     int y;
     int z;
-    float radius;
+    float meshHeight;
 
+    // Both assignments initialize the first mesh-index slot; the second entry is unused.
     objectNo[0] = objectNo[0] = -1;
     maxVertexNum = groupNum = 0;
     hsfP = Hu3DData[mbPlayerModelIDGet(playerNo)].hsf;
@@ -2526,7 +2641,7 @@ static float GetBiriQEffectRadius(
         }
     }
     vertexNum = maxVertexNum;
-    effectCount[0] = objectNo[0];
+    meshGroupInfo[0] = objectNo[0];
     dataP = HuMemDirectMallocNum(HEAP_HEAP,
         (125 + 125 + (125 * 8)) * sizeof(s16), HU_MEMNUM_OVL);
     objP->data = dataP;
@@ -2534,7 +2649,7 @@ static float GetBiriQEffectRadius(
     countP = groupP + 125;
     vertexNoP = countP + 125;
     memset(countP, 0, 125 * sizeof(s16));
-    meshP = &hsfP->object[effectCount[0]];
+    meshP = &hsfP->object[meshGroupInfo[0]];
     VECScale(&meshP->mesh.mesh.min, &min, -1.0f);
     VECSubtract(&meshP->mesh.mesh.max,
         &meshP->mesh.mesh.min, &size);
@@ -2552,6 +2667,7 @@ static float GetBiriQEffectRadius(
     }
     vertexNum = meshP->mesh.vertex->count;
     vertexP = meshP->mesh.vertex->data;
+    // Divide the mesh into 125 cells, retaining a random sample of at most eight vertices per cell.
     for (i = 0; i < vertexNum; i++, vertexP++) {
         VECAdd(vertexP, &min, &pos);
         HuVecMul(&pos, &size, &pos);
@@ -2596,11 +2712,12 @@ static float GetBiriQEffectRadius(
             }
         }
     }
-    effectCount[1] = count;
-    radius = meshP->mesh.mesh.max.y - meshP->mesh.mesh.min.y;
-    return radius;
+    meshGroupInfo[1] = count;
+    meshHeight = meshP->mesh.mesh.max.y - meshP->mesh.mesh.min.y;
+    return meshHeight;
 }
 
+// Creates the metal particles and groups player mesh vertices for their spawn points.
 static void MetalEffectCreate(OMOBJ *objP)
 {
     PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
@@ -2639,6 +2756,7 @@ static void MetalEffectCreate(OMOBJ *objP)
         MBPARTICLE *modelParticleP;
         void *dataP;
 
+    // Both assignments initialize the first mesh-index slot; the second entry is unused.
     objectNo[0] = objectNo[0] = -1;
     maxVertexNum = groupNum = 0;
     hsfP = Hu3DData[mbPlayerModelIDGet(workP->playerNo)].hsf;
@@ -2655,7 +2773,7 @@ static void MetalEffectCreate(OMOBJ *objP)
         }
     }
     vertexNum = maxVertexNum;
-    workP->_unk06 = objectNo[0];
+    workP->meshObjectIndex = objectNo[0];
     {
         modelId = objP->mdlId[0];
         hookData = Hu3DData[modelId].hookData;
@@ -2673,7 +2791,7 @@ static void MetalEffectCreate(OMOBJ *objP)
     countP = groupP + 125;
     vertexNoP = countP + 125;
     memset(countP, 0, 125 * sizeof(s16));
-    meshObjectP = &hsfP->object[workP->_unk06];
+    meshObjectP = &hsfP->object[workP->meshObjectIndex];
     VECScale(&meshObjectP->mesh.mesh.min, &min, -1.0f);
     VECSubtract(&meshObjectP->mesh.mesh.max,
         &meshObjectP->mesh.mesh.min, &size);
@@ -2691,6 +2809,7 @@ static void MetalEffectCreate(OMOBJ *objP)
     }
     vertexNum = meshObjectP->mesh.vertex->count;
     vertexP = meshObjectP->mesh.vertex->data;
+    // Divide the mesh into 125 cells, retaining a random sample of at most eight vertices per cell.
     for (i = 0; i < vertexNum; i++, vertexP++) {
         VECAdd(vertexP, &min, &pos);
         HuVecMul(&pos, &size, &pos);
@@ -2735,10 +2854,11 @@ static void MetalEffectCreate(OMOBJ *objP)
             }
         }
     }
-    workP->_unk08 = count;
+    workP->vertexGroupCount = count;
     }
 }
 
+// Particle callback that emits and animates sparks from the metal player mesh.
 static void MetalEffectHook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx matrix)
 {
@@ -2784,20 +2904,20 @@ static void MetalEffectHook(
     cameraPos.y = modelMtx[1][3];
     cameraPos.z = modelMtx[2][3];
     hsfP = Hu3DData[mbPlayerModelIDGet(workP->playerNo)].hsf;
-    objectP = &hsfP->object[workP->_unk06];
+    objectP = &hsfP->object[workP->meshObjectIndex];
     Hu3DModelObjMtxGet(
         mbPlayerModelIDGet(workP->playerNo), objectP->name, modelMtx);
     dataP = particleP->data;
     for (i = 0; i < particleP->num; i++, dataP++) {
         if (dataP->time == 0) {
-            if (workP->_unk0_2) {
+            if (workP->fadeOutF) {
                 continue;
             }
             dataP->time++;
             groupP = objP->data;
             countP = groupP + 125;
             vertexNoP = countP + 125;
-            groupNo = groupP[mbRandMod(workP->_unk08)];
+            groupNo = groupP[mbRandMod(workP->vertexGroupCount)];
             randomNo = mbRandMod(countP[groupNo]);
             groupNo = vertexNoP[(groupNo * 8) + randomNo];
             dataP->vertexNo = groupNo;
@@ -2848,6 +2968,8 @@ static void MetalEffectHook(
     }
 }
 
+// Per-frame callback that flashes the electric effect and removes it when cleared.
+// Installed as the callback for the player's electric-effect object.
 static void PlayerBiriQOMExec(OMOBJ *objP)
 {
     PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
@@ -2861,19 +2983,19 @@ static void PlayerBiriQOMExec(OMOBJ *objP)
         workP->killF = TRUE;
     }
     if (!workP->killF) {
-        if (!GwPlayer[workP->playerNo].biriQF && !workP->_unk0_3) {
-            workP->_unk0_3 = TRUE;
+        if (!GwPlayer[workP->playerNo].biriQF && !workP->statusEndedF) {
+            workP->statusEndedF = TRUE;
             workP->time = 0;
             workP->maxTime = 20;
         }
-        if (workP->_unk0_3) {
+        if (workP->statusEndedF) {
             workP->killF = TRUE;
         } else if (workP->flashF) {
             workP->time = 0;
             workP->maxTime = 24;
             workP->flashF = FALSE;
-            workP->_unk0_1 = FALSE;
-        } else if (!workP->_unk0_1) {
+            workP->initialFlashDoneF = FALSE;
+        } else if (!workP->initialFlashDoneF) {
             GXColor color = { 255, 255, 255, 255 };
             int colorNoTbl[4] = { 1, 3, 2, 3 };
             float level = 1.0f;
@@ -2885,7 +3007,7 @@ static void PlayerBiriQOMExec(OMOBJ *objP)
             mbObjBiriQColorSet(
                 mbPlayerObjIDGet(workP->playerNo), colorNo, level, color);
             if (workP->time >= workP->maxTime) {
-                workP->_unk0_1 = TRUE;
+                workP->initialFlashDoneF = TRUE;
                 mbObjBiriQColorSet(mbPlayerObjIDGet(workP->playerNo),
                     FALSE, 0.0f, color);
                 if (objP->mdlId[0] < 0) {
@@ -2932,6 +3054,7 @@ static void PlayerBiriQOMExec(OMOBJ *objP)
     }
 }
 
+// Starts or requests removal of the player's electric status effect.
 void mbPlayerBiriQSet(int playerNo, BOOL biriQF)
 {
     OMOBJ *objP;
@@ -2956,8 +3079,8 @@ void mbPlayerBiriQSet(int playerNo, BOOL biriQF)
         }
         workP = omObjGetWork(objP, PLAYERBIRIQWORK);
         workP->playerNo = playerNo;
-        workP->_unk0_3 = FALSE;
-        workP->_unk0_1 = FALSE;
+        workP->statusEndedF = FALSE;
+        workP->initialFlashDoneF = FALSE;
         workP->time = 0;
         workP->maxTime = 20;
         workP->effectF = TRUE;
@@ -2967,6 +3090,7 @@ void mbPlayerBiriQSet(int playerNo, BOOL biriQF)
     }
 }
 
+// Requests a new electric-status flash in the per-frame object callback.
 static void PlayerBiriQFlashSet(int playerNo)
 {
     OMOBJ *objP = playerWork[playerNo].biriQObj;
@@ -2978,6 +3102,8 @@ static void PlayerBiriQFlashSet(int playerNo)
     }
 }
 
+// Releases the electric material hook and particle allocations, and marks the effect object
+// for later deletion.
 static void PlayerBiriQKill(int playerNo)
 {
     OMOBJ *objP = playerWork[playerNo].biriQObj;
@@ -2999,6 +3125,7 @@ static void PlayerBiriQKill(int playerNo)
     }
 }
 
+// Enables or hides the player's electric particles without clearing the status.
 static void PlayerBiriQEffectSet(int playerNo, BOOL effectF)
 {
     OMOBJ *objP = playerWork[playerNo].biriQObj;
@@ -3010,6 +3137,7 @@ static void PlayerBiriQEffectSet(int playerNo, BOOL effectF)
     }
 }
 
+// Creates the two electric particle layers around the player's mesh.
 static void BiriQEffectCreate(OMOBJ *objP)
 {
     PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
@@ -3017,14 +3145,15 @@ static void BiriQEffectCreate(OMOBJ *objP)
     HU3D_MODELID modelId;
     HU3D_MODELID modelId2;
     HU3D_MODELID sourceModelId;
-    int effectCount[2];
-    float radius;
+    // Mesh object index in slot 0 and occupied vertex-group count in slot 1.
+    int meshGroupInfo[2];
+    float meshHeight;
     int particleNum;
 
-    radius = GetBiriQEffectRadius(objP, workP->playerNo, effectCount);
-    workP->_unk06 = effectCount[0];
-    workP->_unk08 = effectCount[1];
-    particleNum = 21.0f * (0.006666667f * radius);
+    meshHeight = GetBiriQEffectRadius(objP, workP->playerNo, meshGroupInfo);
+    workP->meshObjectIndex = meshGroupInfo[0];
+    workP->vertexGroupCount = meshGroupInfo[1];
+    particleNum = 21.0f * (0.006666667f * meshHeight);
     objP->mdlId[0] = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
         mbBoardDataNumGet(DATANUM(DATA_board, 107)), HU_MEMNUM_OVL)),
         (s16)particleNum);
@@ -3067,6 +3196,7 @@ static void BiriQEffectCreate(OMOBJ *objP)
     }
 }
 
+// Particle callback that spawns and animates electric sparks on the player mesh.
 static void BiriQEffect1Hook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx matrix)
 {
@@ -3105,20 +3235,20 @@ static void BiriQEffect1Hook(
     cameraPos.y = modelMtx[1][3];
     cameraPos.z = modelMtx[2][3];
     hsfP = Hu3DData[mbPlayerModelIDGet(workP->playerNo)].hsf;
-    objectP = &hsfP->object[workP->_unk06];
+    objectP = &hsfP->object[workP->meshObjectIndex];
     Hu3DModelObjMtxGet(
         mbPlayerModelIDGet(workP->playerNo), objectP->name, modelMtx);
     dataP = particleP->data;
     for (i = 0; i < particleP->num; i++, dataP++) {
         if (dataP->time == 0) {
-            if (workP->_unk0_3) {
+            if (workP->statusEndedF) {
                 continue;
             }
             dataP->time++;
             groupP = objP->data;
             countP = groupP + 125;
             vertexNoP = countP + 125;
-            groupNo = groupP[mbRandMod(workP->_unk08)];
+            groupNo = groupP[mbRandMod(workP->vertexGroupCount)];
             randomNo = mbRandMod(countP[groupNo]);
             groupNo = vertexNoP[(groupNo * 8) + randomNo];
             dataP->vertexNo = groupNo;
@@ -3170,6 +3300,7 @@ static void BiriQEffect1Hook(
     }
 }
 
+// Particle callback that copies the first electric layer and brightens it white.
 static void BiriQEffect2Hook(
     HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx matrix)
 {
@@ -3204,26 +3335,28 @@ static void BiriQEffect2Hook(
     }
 }
 
+// Opening's player-order setup calls this while sorting roll results to exchange player slots.
+// Configuration, board data, and runtime state move together; collision objects stay in place.
 void mbPlayerSwap(int playerNo1, int playerNo2)
 {
-    GW_PLAYER player;
-    MBPLAYERWORK work;
-    GW_PLAYER_CONF playerConf;
+    GW_PLAYER playerData;
+    MBPLAYERWORK playerWorkCopy;
+    GW_PLAYER_CONF playerConfig;
     OMOBJ *colObj1;
     OMOBJ *colObj2;
 
     colObj1 = mbPlayerWorkGet(playerNo1)->colObj;
     colObj2 = mbPlayerWorkGet(playerNo2)->colObj;
-    playerConf = GwPlayerConf[playerNo1];
+    playerConfig = GwPlayerConf[playerNo1];
     GwPlayerConf[playerNo1] = GwPlayerConf[playerNo2];
-    GwPlayerConf[playerNo2] = playerConf;
-    player = GwPlayer[playerNo1];
+    GwPlayerConf[playerNo2] = playerConfig;
+    playerData = GwPlayer[playerNo1];
     GwPlayer[playerNo1] = GwPlayer[playerNo2];
-    GwPlayer[playerNo2] = player;
-    memcpy(&work, mbPlayerWorkGet(playerNo1), sizeof(MBPLAYERWORK));
+    GwPlayer[playerNo2] = playerData;
+    memcpy(&playerWorkCopy, mbPlayerWorkGet(playerNo1), sizeof(MBPLAYERWORK));
     memcpy(mbPlayerWorkGet(playerNo1), mbPlayerWorkGet(playerNo2),
         sizeof(MBPLAYERWORK));
-    memcpy(mbPlayerWorkGet(playerNo2), &work, sizeof(MBPLAYERWORK));
+    memcpy(mbPlayerWorkGet(playerNo2), &playerWorkCopy, sizeof(MBPLAYERWORK));
     mbPlayerWorkGet(playerNo1)->colObj = colObj1;
     mbPlayerWorkGet(playerNo2)->colObj = colObj2;
     GwPlayer[playerNo1].padNo = GwPlayerConf[playerNo1].padNo;
@@ -3232,47 +3365,36 @@ void mbPlayerSwap(int playerNo1, int playerNo2)
     GwPlayerConf[playerNo2].padNo = GwPlayerConf[playerNo2].padNo;
 }
 
+// Returns the message ID for the character name currently assigned to a player.
 u32 mbPlayerNameMesGet(int playerNo)
 {
     u32 nameTbl[CHARNO_MAX] = {
-        MESS_CHARANAME_MARIO,
-        MESS_CHARANAME_LUIGI,
-        MESS_CHARANAME_PEACH,
-        MESS_CHARANAME_YOSHI,
-        MESS_CHARANAME_WARIO,
-        MESS_CHARANAME_DAISY,
-        MESS_CHARANAME_WALUIGI,
-        MESS_CHARANAME_KINOPIO,
-        MESS_CHARANAME_TERESA,
-        MESS_CHARANAME_MINIKOOPA,
-        MESS_CHARANAME_KINOPICO,
-        MESS_CHARANAME_MINIKOOPAR,
-        MESS_CHARANAME_MINIKOOPAG,
-        MESS_CHARANAME_MINIKOOPAB
+        MESS_CHARANAME_MARIO, MESS_CHARANAME_LUIGI,
+        MESS_CHARANAME_PEACH, MESS_CHARANAME_YOSHI,
+        MESS_CHARANAME_WARIO, MESS_CHARANAME_DAISY,
+        MESS_CHARANAME_WALUIGI, MESS_CHARANAME_KINOPIO,
+        MESS_CHARANAME_TERESA, MESS_CHARANAME_MINIKOOPA,
+        MESS_CHARANAME_KINOPICO, MESS_CHARANAME_MINIKOOPAR,
+        MESS_CHARANAME_MINIKOOPAG, MESS_CHARANAME_MINIKOOPAB
     };
 
     return nameTbl[GwPlayer[playerNo].charNo];
 }
 
+// Returns the display string for the player's character; the three Mini Koopa variants have no
+// entry.
 char *mbPlayerNameGet(int playerNo)
 {
     char *nameTbl[CHARNO_MAX] = {
-        "Mario",
-        "Luigi",
-        "Peach",
-        "Yoshi",
-        "Wario",
-        "Daisy",
-        "Waluigi",
-        "Kinopio",
-        "Teresa",
-        "Mini Koopa",
-        "Kinopiko"
+        "Mario", "Luigi", "Peach", "Yoshi", "Wario", "Daisy", "Waluigi", "Kinopio",
+        "Teresa", "Mini Koopa", "Kinopiko"
     };
 
     return nameTbl[GwPlayer[playerNo].charNo];
 }
 
+// Maps sorted, distinct character pairs from IDs 0-10 to message offsets; -1 marks no entry.
+// There is no row for a first ID of 10, and the lookup does not bound-check character IDs.
 static s8 tagIdTbl[110] = {
     -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
     -1, -1, 10, 11, 12, 13, 14, 15, 16, 17, 18,
@@ -3288,103 +3410,112 @@ static s8 tagIdTbl[110] = {
 
 char lbl_8024767A[14] = "%d:%d->%d\n";
 
+// Returns the tag-team name message for the two characters on a team.
 u32 mbPlayerTagNameMesGet(int teamNo)
 {
-    int charNo1;
-    int charNo2;
-    int temp;
+    int firstCharNo;
+    int secondCharNo;
+    int charNoSwap;
     int tagId;
 
-    charNo1 = GwPlayer[mbPlayerTeamFindPlayer(teamNo, 0)].charNo;
-    charNo2 = GwPlayer[mbPlayerTeamFindPlayer(teamNo, 1)].charNo;
-    if (charNo1 > charNo2) {
-        temp = charNo1;
-        charNo1 = charNo2;
-        charNo2 = temp;
+    firstCharNo = GwPlayer[mbPlayerTeamFindPlayer(teamNo, 0)].charNo;
+    secondCharNo = GwPlayer[mbPlayerTeamFindPlayer(teamNo, 1)].charNo;
+    if (firstCharNo > secondCharNo) {
+        charNoSwap = firstCharNo;
+        firstCharNo = secondCharNo;
+        secondCharNo = charNoSwap;
     }
-    tagId = tagIdTbl[(charNo1 * 11) + charNo2];
-    OSReport(lbl_8024767A, charNo1, charNo2, tagId);
+    tagId = tagIdTbl[(firstCharNo * 11) + secondCharNo];
+    OSReport(lbl_8024767A, firstCharNo, secondCharNo, tagId);
     if (tagId == -1) {
         return MESSNUM(MESS_TAG_NAME, 55);
     }
     return MESSNUM(MESS_TAG_NAME, 0) + tagId;
 }
 
+// Sets the ambient light color applied to the player's board model.
 void mbPlayerAmbSet(int playerNo, float ambR, float ambG, float ambB)
 {
     mbObjAmbSet(mbPlayerObjIDGet(playerNo), ambR, ambG, ambB);
 }
 
+// Returns the board-model object ID for one player.
 MBMODELID mbPlayerObjIDGet(int playerNo)
 {
     return playerWork[playerNo].objId;
 }
 
+// Returns the rendered model ID for one player's board model.
 HU3D_MODELID mbPlayerModelIDGet(int playerNo)
 {
     return mbObjModelIDGet(playerWork[playerNo].objId);
 }
 
+// Returns whether every player is controlled by the computer.
 BOOL mbPlayerAllComCheck(void)
 {
-    int i;
+    int playerIndex;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (!GwPlayer[i].comF) {
+    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        if (!GwPlayer[playerIndex].comF) {
             return FALSE;
         }
     }
     return TRUE;
 }
 
+// Finds the other player assigned to the same team as playerNo.
 int mbPlayerTeamFind(int playerNo)
 {
-    int i;
+    int teammateNo;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (i == playerNo) {
+    for (teammateNo = 0; teammateNo < GW_PLAYER_MAX; teammateNo++) {
+        if (teammateNo == playerNo) {
             continue;
         }
-        if (mbPlayerGrpGet(playerNo) == mbPlayerGrpGet(i)) {
+        if (mbPlayerGrpGet(playerNo) == mbPlayerGrpGet(teammateNo)) {
             break;
         }
     }
-    return i;
+    return teammateNo;
 }
 
+// Finds a player assigned to a different team from playerNo.
 int mbPlayerTeamFindOther(int playerNo)
 {
-    int i;
+    int otherPlayerNo;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (i == playerNo) {
+    for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+        if (otherPlayerNo == playerNo) {
             continue;
         }
-        if (mbPlayerGrpGet(playerNo) != mbPlayerGrpGet(i)) {
+        if (mbPlayerGrpGet(playerNo) != mbPlayerGrpGet(otherPlayerNo)) {
             break;
         }
     }
-    return i;
+    return otherPlayerNo;
 }
 
+// Finds the memberNo-th player assigned to teamNo.
 int mbPlayerTeamFindPlayer(int teamNo, int memberNo)
 {
-    int i;
-    int no;
+    int playerIndex;
+    int teamMemberIndex;
 
-    no = 0;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (teamNo != mbPlayerGrpGet(i)) {
+    teamMemberIndex = 0;
+    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        if (teamNo != mbPlayerGrpGet(playerIndex)) {
             continue;
         }
-        if (no == memberNo) {
-            return i;
+        if (teamMemberIndex == memberNo) {
+            return playerIndex;
         }
-        no++;
+        teamMemberIndex++;
     }
     return -1;
 }
 
+// Board events use this to choose the other teammate, or the same player outside team mode.
 int mbPlayerTeamFindOpp(int playerNo)
 {
     if (!GWTeamFGet()) {
@@ -3393,6 +3524,8 @@ int mbPlayerTeamFindOpp(int playerNo)
     return mbPlayerTeamFind(playerNo);
 }
 
+// Turn and event logic uses this to compare team IDs when team mode is active.
+// Outside team mode, only two references to the same player compare equal.
 BOOL mbPlayerTeamCheckSame(int playerNo1, int playerNo2)
 {
     BOOL sameF;
@@ -3408,6 +3541,7 @@ BOOL mbPlayerTeamCheckSame(int playerNo1, int playerNo2)
     return sameF;
 }
 
+// Board ranking and events get a player's team ID, or their own index outside team mode.
 int mbPlayerTeamGet(int playerNo)
 {
     if (!GWTeamFGet()) {
@@ -3436,10 +3570,11 @@ void mbPlayerCullRadiusSet(int playerNo, float radius)
     mbObjCullRadiusSet(mbPlayerObjIDGet(playerNo), radius);
 }
 
-void mbPlayerStubValSet(int playerNo, BOOL value)
+void mbPlayerStubValSet(int playerNo, BOOL unusedFlag)
 {
 }
 
+// Board setup and player re-entry call this to place one player at their current space.
 void mbPlayerPosReset(int playerNo)
 {
     HuVecF pos;
@@ -3449,33 +3584,37 @@ void mbPlayerPosReset(int playerNo)
     PlayerColCornerSnap(playerNo, GwPlayer[playerNo].masuId, 0);
 }
 
+// Board events call this after moving or revealing players to arrange everyone at their current
+// space.
 void mbPlayerPosResetAll(void)
 {
-    int i;
-    int j;
+    int playerIndex;
+    int otherPlayerIndex;
     int cornerNo;
     s16 masuId;
     s8 orderNo;
     HuVecF pos;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        orderNo = GwPlayer[i].orderNo;
-        masuId = GwPlayer[i].masuId;
+    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        orderNo = GwPlayer[playerIndex].orderNo;
+        masuId = GwPlayer[playerIndex].masuId;
         cornerNo = 0;
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
-            if (i != j && masuId == GwPlayer[j].masuId
-                && orderNo > GwPlayer[j].orderNo) {
+        for (otherPlayerIndex = 0; otherPlayerIndex < GW_PLAYER_MAX;
+             otherPlayerIndex++) {
+            if (playerIndex != otherPlayerIndex
+                && masuId == GwPlayer[otherPlayerIndex].masuId
+                && orderNo > GwPlayer[otherPlayerIndex].orderNo) {
                 cornerNo++;
             }
         }
-        mbPlayerMasuCornerSet(i, cornerNo);
+        mbPlayerMasuCornerSet(playerIndex, cornerNo);
         if (cornerNo == 0) {
             mbMasuPosGet(masuId, &pos);
         } else {
             mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
         }
-        mbPlayerPosSetV(i, &pos);
-        PlayerColCornerSnap(i, masuId, cornerNo);
+        mbPlayerPosSetV(playerIndex, &pos);
+        PlayerColCornerSnap(playerIndex, masuId, cornerNo);
     }
 }
 
@@ -3519,6 +3658,7 @@ void mbPlayerRotGet(int playerNo, HuVecF *rot)
     mbObjRotGet(mbPlayerObjIDGet(playerNo), rot);
 }
 
+// Board movement and setup code call this to set a player's yaw in the [0, 360) degree range.
 void mbPlayerRotYSet(int playerNo, float rotY)
 {
     rotY = fmod(rotY, 360);
@@ -3548,6 +3688,8 @@ void mbPlayerScaleGet(int playerNo, HuVecF *scale)
     mbObjScaleGet(mbPlayerObjIDGet(playerNo), scale);
 }
 
+// Changes the player's animation; a current-motion request also ignores attr and offset updates.
+// Motion 10 sets a 4-unit vertical offset; other newly selected motions clear it.
 void mbPlayerMotionSet(int playerNo, int motNo, u32 attr)
 {
     GW_PLAYER *playerP;
@@ -3570,6 +3712,8 @@ int mbPlayerMotionGet(int playerNo)
     return playerWork[playerNo].motNo;
 }
 
+// Board events and minigame code start animation transitions here.
+// A request for the current motion is ignored; motion 10 sets a 4-unit offset and others clear it.
 void mbPlayerMotionShiftSet(int playerNo, int motNo, float start, float end,
     u32 attr)
 {
@@ -3593,6 +3737,7 @@ int mbPlayerMotionCreate(int playerNo, int dataNum)
     return mbObjMotionCreate(mbPlayerObjIDGet(playerNo), dataNum);
 }
 
+// Releases the motion slot, then returns TRUE unconditionally.
 int mbPlayerMotionKill(int playerNo, int motNo)
 {
     mbObjMotionKill(mbPlayerObjIDGet(playerNo), motNo);
@@ -3624,6 +3769,7 @@ void mbPlayerMotionStartEndSet(int playerNo, float start, float end)
     mbObjMotionStartEndSet(mbPlayerObjIDGet(playerNo), start, end);
 }
 
+// Board effects call this to enable model attributes on a player's model.
 void mbPlayerAttrSet(int playerNo, u32 attr)
 {
     MBMODELID modelId = mbPlayerObjIDGet(playerNo);
@@ -3631,6 +3777,7 @@ void mbPlayerAttrSet(int playerNo, u32 attr)
     mbObjAttrSet(modelId, attr);
 }
 
+// Board effects call this to clear model attributes from a player's model.
 void mbPlayerAttrReset(int playerNo, u32 attr)
 {
     MBMODELID modelId = mbPlayerObjIDGet(playerNo);
@@ -3643,6 +3790,7 @@ void mbPlayerMotionVoiceOnSet(int playerNo, int motNo, BOOL voiceOnF)
     mbObjMotionVoiceOnSet(mbPlayerObjIDGet(playerNo), motNo, voiceOnF);
 }
 
+// Event processes poll this after changing animation to wait for shifts and motions to finish.
 BOOL mbPlayerMotionEndCheck(int playerNo)
 {
     int modelId;
@@ -3652,18 +3800,20 @@ BOOL mbPlayerMotionEndCheck(int playerNo)
     return mbObjMotionShiftIDGet(modelId) < 0 && mbObjMotionEndCheck(modelId);
 }
 
+// Board opening and event processes poll this until every player's motion has ended.
 BOOL mbPlayerMotionEndCheckAll(void)
 {
-    int i;
+    int playerIndex;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (!mbPlayerMotionEndCheck(i)) {
+    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        if (!mbPlayerMotionEndCheck(playerIndex)) {
             return FALSE;
         }
     }
     return TRUE;
 }
 
+// Event processes call this to sleep until one player's current motion ends.
 void mbPlayerMotionEndWait(int playerNo)
 {
     while (!mbPlayerMotionEndCheck(playerNo)) {
@@ -3676,6 +3826,8 @@ void mbPlayerMotIdleSet(int playerNo)
     mbPlayerMotionShiftSet(playerNo, 1, 0, 8, HU3D_MOTATTR_LOOP);
 }
 
+// Board events call this to set a player's coins, using the first teammate's shared balance in team
+// play.
 void mbPlayerCoinSet(int playerNo, int coinNum)
 {
     if (!GWTeamFGet()) {
@@ -3686,6 +3838,7 @@ void mbPlayerCoinSet(int playerNo, int coinNum)
     }
 }
 
+// Board events and menus call this to read a player's coins, including the shared team balance.
 int mbPlayerCoinGet(int playerNo)
 {
     if (!GWTeamFGet()) {
@@ -3696,6 +3849,9 @@ int mbPlayerCoinGet(int playerNo)
     }
 }
 
+// Requests a balance change and records positive amounts in this game's earned total, capped at
+// 999.
+// Team mode uses the first member's totals; practice mode skips only the balance update.
 void mbPlayerCoinAdd(int playerNo, int coinNum)
 {
     GW_PLAYER *playerP;
@@ -3723,20 +3879,23 @@ s16 mbPlayerTeamCoinGet(int teamNo)
     return GWPlayerCoinGet(mbPlayerTeamFindPlayer(teamNo, 0));
 }
 
+// Board event selection uses this to find the largest current coin balance.
 int mbPlayerMaxCoinGet(void)
 {
     int maxCoin;
-    int i;
+    int playerIndex;
 
     maxCoin = 0;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (mbPlayerCoinGet(i) >= maxCoin) {
-            maxCoin = mbPlayerCoinGet(i);
+    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        if (mbPlayerCoinGet(playerIndex) >= maxCoin) {
+            maxCoin = mbPlayerCoinGet(playerIndex);
         }
     }
     return maxCoin;
 }
 
+// Board events call this to set a player's stars, using the first teammate's shared count in team
+// play.
 void mbPlayerStarSet(int playerNo, int starNum)
 {
     if (!GWTeamFGet()) {
@@ -3747,6 +3906,7 @@ void mbPlayerStarSet(int playerNo, int starNum)
     }
 }
 
+// Board events and menus call this to read a player's stars, including the shared team count.
 int mbPlayerStarGet(int playerNo)
 {
     if (!GWTeamFGet()) {
@@ -3757,11 +3917,12 @@ int mbPlayerStarGet(int playerNo)
     }
 }
 
+// Board events call this when awarding or removing stars and play the star-count sound.
 void mbPlayerStarAdd(int playerNo, int starNum)
 {
     int star;
 
-    mbAudFXPlay(8);
+    mbAudFXPlay(MSM_SE_CMN_09);
     star = mbPlayerStarGet(playerNo) + starNum;
     if (star < 0) {
         star = 0;
@@ -3779,59 +3940,68 @@ s16 mbPlayerGrpStarGet(int teamNo)
     return GWPlayerStarGet(mbPlayerTeamFindPlayer(teamNo, 0));
 }
 
+// Roulette CPU selection uses the player with the shortest route to a type-7 Star space.
+// Returns a random player if every route search fails.
 int mbPlayerBestPathGet(void)
 {
-    int i;
-    int bestPlayer;
-    int len;
-    int minLen;
+    int playerIndex;
+    int bestPlayerNo;
+    int pathLength;
+    int shortestPathLength;
 
-    minLen = 9999;
-    bestPlayer = -1;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        len = mbMasuFind_TypeStepGet2(GwPlayer[i].masuId, 7, TRUE, TRUE);
-        if (len < minLen) {
-            minLen = len;
-            bestPlayer = i;
+    shortestPathLength = 9999;
+    bestPlayerNo = -1;
+    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        pathLength = mbMasuFind_TypeStepGet2(
+            GwPlayer[playerIndex].masuId, 7, TRUE, TRUE);
+        if (pathLength < shortestPathLength) {
+            shortestPathLength = pathLength;
+            bestPlayerNo = playerIndex;
         }
     }
-    if (bestPlayer < 0) {
+    if (bestPlayerNo < 0) {
         return mbRandMod(GW_PLAYER_MAX);
     } else {
-        return bestPlayer;
+        return bestPlayerNo;
     }
 }
 
+// Board results and event logic use this to rank players by stars first, then coins.
 int mbPlayerRankGet(int playerNo)
 {
     int score[GW_PLAYER_MAX];
-    int i;
+    int otherPlayerNo;
     int rank;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        score[i] = mbPlayerCoinGet(i) | (mbPlayerStarGet(i) * 1024);
+    for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+        score[otherPlayerNo] = mbPlayerCoinGet(otherPlayerNo)
+            | (mbPlayerStarGet(otherPlayerNo) * 1024);
     }
     rank = 0;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (i != playerNo && score[playerNo] < score[i]) {
+    for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+        if (otherPlayerNo != playerNo
+            && score[playerNo] < score[otherPlayerNo]) {
             rank++;
         }
     }
     return rank;
 }
 
+// Team results use this to rank teams by stars first, then their shared coin balance.
 s16 mbPlayerTeamRankGet(int teamNo)
 {
     int score[2];
-    int i;
+    int otherTeamNo;
     int rank;
 
-    for (i = 0; i < 2; i++) {
-        score[i] = mbPlayerTeamCoinGet(i) | (mbPlayerGrpStarGet(i) * 2048);
+    for (otherTeamNo = 0; otherTeamNo < 2; otherTeamNo++) {
+        score[otherTeamNo] = mbPlayerTeamCoinGet(otherTeamNo)
+            | (mbPlayerGrpStarGet(otherTeamNo) * 2048);
     }
     rank = 0;
-    for (i = 0; i < 2; i++) {
-        if (i != teamNo && score[teamNo] < score[i]) {
+    for (otherTeamNo = 0; otherTeamNo < 2; otherTeamNo++) {
+        if (otherTeamNo != teamNo
+            && score[teamNo] < score[otherTeamNo]) {
             rank++;
         }
     }
@@ -3853,6 +4023,8 @@ int mbPlayerCapsuleMaxGet(void)
     return (GWTeamFGet() == FALSE) ? 3 : 5;
 }
 
+// Capsule inventory helpers use this to address a slot, splitting the six team slots across two
+// players.
 static inline s8 *PlayerCapsulePtrGet(int playerNo, int index)
 {
     if (!GWTeamFGet()) {
@@ -3860,71 +4032,75 @@ static inline s8 *PlayerCapsulePtrGet(int playerNo, int index)
     } else {
         int memberNo = (index < 3) ? 0 : 1;
         int teamNo = mbPlayerGrpGet(playerNo);
-        int no = -1;
-        int j;
+        int teamMemberIndex = -1;
+        int scanPlayerNo;
 
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
-            if (teamNo == mbPlayerGrpGet(j)) {
-                no++;
-                if (no == memberNo) {
+        for (scanPlayerNo = 0; scanPlayerNo < GW_PLAYER_MAX; scanPlayerNo++) {
+            if (teamNo == mbPlayerGrpGet(scanPlayerNo)) {
+                teamMemberIndex++;
+                if (teamMemberIndex == memberNo) {
                     break;
                 }
             }
         }
-        if (j >= GW_PLAYER_MAX) {
+        if (scanPlayerNo >= GW_PLAYER_MAX) {
             return NULL;
         }
-        return &GwPlayer[j].capsule[index - (memberNo * 3)];
+        return &GwPlayer[scanPlayerNo].capsule[index - (memberNo * 3)];
     }
 }
 
+// Capsule shop and board events call this to place a capsule in the first empty inventory slot.
 int mbPlayerCapsuleAdd(int playerNo, int capsuleNo)
 {
     GW_PLAYER *playerP = GWPlayerGet(playerNo);
-    int max = mbPlayerCapsuleMaxGet();
-    int i;
+    int capsuleLimit = mbPlayerCapsuleMaxGet();
+    int capsuleIndex;
 
-    for (i = 0; i < max; i++) {
+    for (capsuleIndex = 0; capsuleIndex < capsuleLimit; capsuleIndex++) {
         s8 *capsuleP;
 
-        if (mbPlayerCapsuleGet(playerNo, i) != -1) {
+        if (mbPlayerCapsuleGet(playerNo, capsuleIndex) != -1) {
             continue;
         }
-        *PlayerCapsulePtrGet(playerNo, i) = capsuleNo;
-        return i;
+        *PlayerCapsulePtrGet(playerNo, capsuleIndex) = capsuleNo;
+        return capsuleIndex;
     }
     return -1;
 }
 
+// Capsule use and shop code call this to remove a slot and shift later capsules down.
 int mbPlayerCapsuleRemove(int playerNo, int index)
 {
     int capsuleNo = mbPlayerCapsuleGet(playerNo, index);
     GW_PLAYER *playerP = GWPlayerGet(playerNo);
-    int max;
-    int i;
+    int capsuleLimit;
+    int capsuleIndex;
 
     if (capsuleNo == -1) {
         return capsuleNo;
     }
-    max = mbPlayerCapsuleMaxGet();
-    for (i = index; i < max - 1; i++) {
-        *PlayerCapsulePtrGet(playerNo, i) =
-            *PlayerCapsulePtrGet(playerNo, i + 1);
+    capsuleLimit = mbPlayerCapsuleMaxGet();
+    for (capsuleIndex = index; capsuleIndex < capsuleLimit - 1;
+         capsuleIndex++) {
+        *PlayerCapsulePtrGet(playerNo, capsuleIndex) =
+            *PlayerCapsulePtrGet(playerNo, capsuleIndex + 1);
     }
-    for (; i < max; i++) {
-        *PlayerCapsulePtrGet(playerNo, i) = -1;
+    for (; capsuleIndex < capsuleLimit; capsuleIndex++) {
+        *PlayerCapsulePtrGet(playerNo, capsuleIndex) = -1;
     }
     return capsuleNo;
 }
 
+// Capsule menu code calls this to find the slot containing a selected capsule.
 int mbPlayerCapsuleFind(int playerNo, int capsuleNo)
 {
-    int max = mbPlayerCapsuleMaxGet();
-    int i;
+    int capsuleLimit = mbPlayerCapsuleMaxGet();
+    int capsuleIndex;
 
-    for (i = 0; i < max; i++) {
-        if (capsuleNo == mbPlayerCapsuleGet(playerNo, i)) {
-            return i;
+    for (capsuleIndex = 0; capsuleIndex < capsuleLimit; capsuleIndex++) {
+        if (capsuleNo == mbPlayerCapsuleGet(playerNo, capsuleIndex)) {
+            return capsuleIndex;
         }
     }
     return -1;
@@ -3940,31 +4116,34 @@ s8 mbPlayerTeamCapsuleGet(int teamNo, int index)
     return mbPlayerCapsuleGet(mbPlayerTeamFindPlayer(teamNo, 0), index);
 }
 
+// Counts capsules up to the first empty slot in one player's three-slot share.
 static inline int PlayerCountCapsules(int playerNo)
 {
-    int i;
+    int capsuleCount;
 
-    for (i = 0; i < 3; i++) {
-        if (GwPlayer[playerNo].capsule[i] == -1) {
+    for (capsuleCount = 0; capsuleCount < 3; capsuleCount++) {
+        if (GwPlayer[playerNo].capsule[capsuleCount] == -1) {
             break;
         }
     }
-    return i;
+    return capsuleCount;
 }
 
+// Board menus and events call this to count a player's capsules, including their teammate's share.
 int mbPlayerCapsuleNumGet(int playerNo)
 {
-    int num = PlayerCountCapsules(playerNo);
+    int capsuleCount = PlayerCountCapsules(playerNo);
 
     if (GWTeamFGet()) {
-        int otherPlayer = mbPlayerTeamFind(playerNo);
+        int teammateNo = mbPlayerTeamFind(playerNo);
 
-        num += PlayerCountCapsules(otherPlayer);
-        if (num > 5) {
-            num = 5;
+        capsuleCount += PlayerCountCapsules(teammateNo);
+        // Teams can use at most five of their six capsule storage slots.
+        if (capsuleCount > 5) {
+            capsuleCount = 5;
         }
     }
-    return num;
+    return capsuleCount;
 }
 
 int mbPlayerTeamCapsuleNumGet(int teamNo)
@@ -3972,18 +4151,21 @@ int mbPlayerTeamCapsuleNumGet(int teamNo)
     return mbPlayerCapsuleNumGet(mbPlayerTeamFindPlayer(teamNo, 0));
 }
 
+// PlayerTurn uses this after movement to test for another player on the specified space.
+// Teammates also count as other players.
 BOOL mbPlayerKettouCheck(int playerNo, s16 masuId)
 {
-    int i;
+    int otherPlayerNo;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (playerNo != i && masuId == GwPlayer[i].masuId) {
+    for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+        if (playerNo != otherPlayerNo && masuId == GwPlayer[otherPlayerNo].masuId) {
             return TRUE;
         }
     }
     return FALSE;
 }
 
+// Board events call this to play the character voice associated with a win or loss animation.
 void mbPlayerWinLoseVoicePlay(int playerNo, int motNo, int seId)
 {
     MBOBJMODEL *objP = mbObjGet(mbPlayerObjIDGet(playerNo));
@@ -3997,6 +4179,7 @@ int mbPlayerVoicePanPlay(int playerNo, s16 seId)
     return mbObjSePlay(mbPlayerObjIDGet(playerNo), seId);
 }
 
+// Board events call this to play a character voice positioned at the player's current location.
 int mbPlayerVoicePlay(int playerNo, s16 seId)
 {
     HuVecF pos;
@@ -4008,6 +4191,7 @@ int mbPlayerVoicePlay(int playerNo, s16 seId)
         GwPlayer[playerNo].charNo, seId, MSM_VOL_MAX, pan);
 }
 
+// Board events request player visibility; players on space zero are always hidden.
 void mbPlayerDispSet(int playerNo, BOOL dispF)
 {
     if (GwPlayer[playerNo].masuId == 0) {
@@ -4021,6 +4205,7 @@ BOOL mbPlayerDispGet(int playerNo)
     return mbObjDispGet(mbPlayerObjIDGet(playerNo));
 }
 
+// Indexes a 13-color table by character ID; Mini Koopa B's index 13 reads beyond the table.
 GXColor mbPlayerColorGet(int playerNo)
 {
     GXColor color[] = {
@@ -4050,9 +4235,9 @@ const s8 lbl_8021A9E4[20] = {
     0, 0, 0, 0
 };
 
-void mbPlayerBlackoutSet(BOOL value)
+void mbPlayerBlackoutSet(BOOL blackoutEnabledF)
 {
-    blackoutF = value;
+    blackoutF = blackoutEnabledF;
 }
 
 BOOL mbPlayerBlackoutGet(void)
@@ -4070,11 +4255,13 @@ s8 mbPlayerMasuCornerGet(int playerNo)
     return playerWork[playerNo].masuCorner;
 }
 
+// Shows and applies coin changes from plus, cap-coin, and minus spaces; the last-five effect
+// triples the amount.
 static void MasuCoinExec(int playerNo, int coinNum)
 {
     HuVecF pos;
-    BOOL doneF;
-    s8 dispId;
+    BOOL motionDoneF;
+    s8 coinDisplayId;
 
     if (coinNum < 0) {
         omVibrate(playerNo, 20, 4, 4);
@@ -4090,7 +4277,7 @@ static void MasuCoinExec(int playerNo, int coinNum)
     } else {
         mbAudFXPlay(PLAYER_COIN_LOSS_SFX);
     }
-    dispId = mbCoinDispMasuCreate(&pos, coinNum, FALSE);
+    coinDisplayId = mbCoinDispMasuCreate(&pos, coinNum, FALSE);
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
@@ -4105,16 +4292,17 @@ static void MasuCoinExec(int playerNo, int coinNum)
     }
     mbCoinAddExec(playerNo, coinNum);
     mbCameraMoveWait();
-    for (doneF = FALSE;
-         !mbCoinDispKillCheck(dispId) || !doneF;) {
-        if (mbPlayerMotionEndCheck(playerNo) && !doneF) {
+    for (motionDoneF = FALSE;
+         !mbCoinDispKillCheck(coinDisplayId) || !motionDoneF;) {
+        if (mbPlayerMotionEndCheck(playerNo) && !motionDoneF) {
             mbPlayerMotIdleSet(playerNo);
-            doneF = TRUE;
+            motionDoneF = TRUE;
         }
         HuPrcVSleep();
     }
 }
 
+// The plus-space event shows a base three-coin reward with a close-up; MasuCoinExec may triple it.
 void mbPlayerPlusMasuExec(int playerNo)
 {
     mbCameraMoveOnSet(TRUE);
@@ -4122,6 +4310,7 @@ void mbPlayerPlusMasuExec(int playerNo)
     MasuCoinExec(playerNo, 3);
 }
 
+// The coin-cap event shows a base five-coin reward with a close-up; MasuCoinExec may triple it.
 void mbPlayerCapCoinMasuExec(int playerNo)
 {
     mbCameraMoveOnSet(TRUE);
@@ -4129,6 +4318,7 @@ void mbPlayerCapCoinMasuExec(int playerNo)
     MasuCoinExec(playerNo, 5);
 }
 
+// The minus-space event shows a base three-coin loss with a close-up; MasuCoinExec may triple it.
 void mbPlayerMinusMasuExec(int playerNo)
 {
     mbCameraMoveOnSet(TRUE);
