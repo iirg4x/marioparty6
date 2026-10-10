@@ -1,5 +1,5 @@
-/* Block math.h's extern inline sqrtf: its weak _half/_three statics would
- * prepend 16 bytes to .sdata2 that the original mggamemes.o does not have. */
+/* Builds and animates minigame notices, draw and winner messages, and score/time record
+ * displays. */
 #define _MATH_H
 #define M_PI 3.141592653589793
 double sin(double);
@@ -9,11 +9,19 @@ double cos(double);
 #include "game/audio.h"
 #include "game/gamework.h"
 #include "game/sprite.h"
+#include "messdir_enum.h"
 
 #define MSM_SE_CMN_26 0x19
 #define MSM_SE_CMN_27 0x1A
 #define MSM_SE_CMN_28 0x1B
 #define MSM_SE_CMN_29 0x1C
+
+#define GAMEMES_MESS_MINIGAME_START MESSNUM(MESS_MG_INST_SYS, 10)
+#define GAMEMES_MESS_MINIGAME_FINISH MESSNUM(MESS_MG_INST_SYS, 11)
+#define GAMEMES_MESS_WINNER MESSNUM(MESS_MG_INST_SYS, 12)
+#define GAMEMES_MESS_DRAW MESSNUM(MESS_MG_INST_SYS, 13)
+#define GAMEMES_RECORD_VALUE_MAX 999999
+#define GAMEMES_RECORD_HUNDRED_THOUSANDS 100000
 
 #define sind(x) sin((M_PI * (x)) / 180.0)
 #define cosd(x) cos((M_PI * (x)) / 180.0)
@@ -22,7 +30,8 @@ static float WinnerMesNameY[4];
 static float WinnerMesNameX[4];
 static int WinnerMesCharNo[4];
 static int WinnerMesSprNum[5];
-static s16 WinnerMesSprX[6];
+static s16 WinnerMesSprWidth[6]; /* Layout widths: 56 per counted character, including restored name
+                                  * spaces. */
 static float DrawMesY[15][6];
 static int DrawMesTime[15][6];
 static float SdMesTPLvl[6][15];
@@ -32,39 +41,44 @@ static int MesUnk1[15];
 static int SdMesScaleTime[15];
 static float SdMesScale[15];
 static float SprRareZRot[15];
-static float SprOrbitAngle[15][2];
+/* Per-letter motion values: degrees or pixel displacements, depending on message style. */
+static float SprMotionState[15][2];
 static float SprMainAngle[15][2];
-static float SprPosY[15][2];
-static float SprPosX[15][2];
+static float SprOffsetY[15][2];
+static float SprOffsetX[15][2];
 
-static int WinnerMesXOfs;
+static int WinnerMesOffset; /* Winner entrance displacement, applied to X or Y by layout. */
 static float GameMesScale;
 static float GameMesTPLvl;
 static int MgMesTime;
 static int GameMesLetterNum;
 static int SdMesWork[2];
 static int RecordMesValue;
-static int RecordMesLanguageNo;
+static int RecordMesFormatType; /* Record format: integer, alternate integer, time, or hidden. */
 static int WinnerMesLanguageNo;
 static int WinnerMesCharNum;
 
-static char *WinnerMesNameTbl[16*6] = {
-    "\xCF\xD8\xB5", "MARIO", "MARIO", "MARIO", "MARIO", "MARIO",
-    "\xD9\xB2\xB0\xBC\xDE", "LUIGI", "LUIGI", "LUIGI", "LUIGI", "LUIGI",
-    "\xCB\xDF\xB0\xC1", "PEACH", "PEACH", "PEACH", "PEACH", "PEACH",
-    "\xD6\xAF\xBC\xB0", "YOSHI", "YOSHI", "YOSHI", "YOSHI", "YOSHI",
-    "\xDC\xD8\xB5", "WARIO", "WARIO", "WARIO", "WARIO", "WARIO",
-    "\xC3\xDE\xB2\xBC\xDE\xB0", "DAISY", "DAISY", "DAISY", "DAISY", "DAISY",
-    "\xDC\xD9\xB2\xB0\xBC\xDE", "WALUIGI", "WALUIGI", "WALUIGI", "WALUIGI", "WALUIGI",
-    "\xB7\xC9\xCB\xDF\xB5", "TOAD", "TOAD", "TOAD", "TOAD", "TOAD",
+/* Most characters use the same name in all five non-Japanese languages. */
+#define WINNER_NAME_REPEAT(name) name, name, name, name, name
+#define WINNER_KID_JP "\xD0\xC6\xB8\xAF\xCA\xDF"
+
+static char *WinnerMesNameTbl[16 * 6] = {
+    "\xCF\xD8\xB5", WINNER_NAME_REPEAT("MARIO"),
+    "\xD9\xB2\xB0\xBC\xDE", WINNER_NAME_REPEAT("LUIGI"),
+    "\xCB\xDF\xB0\xC1", WINNER_NAME_REPEAT("PEACH"),
+    "\xD6\xAF\xBC\xB0", WINNER_NAME_REPEAT("YOSHI"),
+    "\xDC\xD8\xB5", WINNER_NAME_REPEAT("WARIO"),
+    "\xC3\xDE\xB2\xBC\xDE\xB0", WINNER_NAME_REPEAT("DAISY"),
+    "\xDC\xD9\xB2\xB0\xBC\xDE", WINNER_NAME_REPEAT("WALUIGI"),
+    "\xB7\xC9\xCB\xDF\xB5", WINNER_NAME_REPEAT("TOAD"),
     "\xC3\xDA\xBB", "BOO", "BUU HUU", "BOO", "BOO", "BOO",
-    "\xD0\xC6\xB8\xAF\xCA\xDF", "KOOPA KID", "MINI BOWSER", "MINI BOWSER", "MINI BOWSER", "MINI BOWSER",
-    "\xB7\xC9\xCB\xDF\xBA", "TOADETTE", "TOADETTE", "TOADETTE", "TOADETTE", "TOADETTE",
-    "\xD0\xC6\xB8\xAF\xCA\xDFR", "RED K.KID", "M.BOWSER R", "MINI B.ROUGE", "MINI B.ROSSO", "MINI B.ROJO",
-    "\xD0\xC6\xB8\xAF\xCA\xDFG", "GREEN K.KID", "M.BOWSER G", "MINI B.VERT", "MINI B.VERDE", "MINI B.VERDE",
-    "\xD0\xC6\xB8\xAF\xCA\xDF" "B", "BLUE K.KID", "M.BOWSER B", "MINI B.BLEU", "MINI B.BLU", "MINI B.AZUL",
+    WINNER_KID_JP, "KOOPA KID", "MINI BOWSER", "MINI BOWSER", "MINI BOWSER", "MINI BOWSER",
+    "\xB7\xC9\xCB\xDF\xBA", WINNER_NAME_REPEAT("TOADETTE"),
+    WINNER_KID_JP "R", "RED K.KID", "M.BOWSER R", "MINI B.ROUGE", "MINI B.ROSSO", "MINI B.ROJO",
+    WINNER_KID_JP "G", "GREEN K.KID", "M.BOWSER G", "MINI B.VERT", "MINI B.VERDE", "MINI B.VERDE",
+    WINNER_KID_JP "B", "BLUE K.KID", "M.BOWSER B", "MINI B.BLEU", "MINI B.BLU", "MINI B.AZUL",
     "\xC4\xDE\xDD\xB7\xB0", "DK", "DONKEY KONG", "DK", "DK", "DK",
-    "\xB8\xAF\xCA\xDF", "BOWSER\0", "BOWSER\0", "BOWSER\0", "BOWSER\0", "BOWSER\0"
+    "\xB8\xAF\xCA\xDF", WINNER_NAME_REPEAT("BOWSER\0")
 };
 
 static int WinnerMesGrpInfo[96] = {
@@ -104,13 +118,15 @@ static s16 WinnerMesOfsTbl[2][4][5][2] = {
 static void FixWinnerNameOfs(int grpId, int charNo, float scale, int sprNum);
 static float GetGameMesWidth(GAMEMES *mes, int type, int no, float scale);
 
+/* Initializes the four-player start or finish message from the callback table; draw mode delegates
+ * to the draw initializer. */
 BOOL GameMesMg4PInit(GAMEMES *mes, va_list args)
 {
-    s16 j;
-    u32 mesId;
-    GAMEMESID strMes;
-    float x;
-    float y;
+    s16 charIndex;
+    u32 messageId;
+    GAMEMESID spriteGroupSlot;
+    float spriteX;
+    float spriteY;
 
     mes->subMode = va_arg(args, int);
     if(mes->subMode == GAMEMES_MG_TYPE_DRAW) {
@@ -119,23 +135,25 @@ BOOL GameMesMg4PInit(GAMEMES *mes, va_list args)
     }
     mes->mesMode = 1;
     mes->angle = 0;
-    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
-    strMes = GameMesStrWinCreate(mes, mesId);
-    for(j=0; j<mes->charNum; j++) {
-        x = GetGameMesWidth(mes, 0, j, 1.0f);
-        y = mes->pos.y;
-        SprPosX[j][0] = SprPosX[j][1] = 56.0f;
-        SprPosY[j][0] = SprPosY[j][1] = 56.0f + mes->pos.y;
+    messageId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                        : GAMEMES_MESS_MINIGAME_FINISH;
+    /* Creation sets up the message sprites; this path does not use the returned group slot. */
+    spriteGroupSlot = GameMesStrWinCreate(mes, messageId);
+    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+        spriteX = GetGameMesWidth(mes, 0, charIndex, 1.0f);
+        spriteY = mes->pos.y;
+        SprOffsetX[charIndex][0] = SprOffsetX[charIndex][1] = 56.0f;
+        SprOffsetY[charIndex][0] = SprOffsetY[charIndex][1] = 56.0f + mes->pos.y;
         if(mes->subMode == GAMEMES_MG_TYPE_START) {
-            x -= SprPosX[j][0];
-            y -= SprPosY[j][0];
-            HuSprScaleSet(mes->grpId[0], j, mes->scale.x, mes->scale.y);
+            spriteX -= SprOffsetX[charIndex][0];
+            spriteY -= SprOffsetY[charIndex][0];
+            HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x, mes->scale.y);
         } else {
-            HuSprScaleSet(mes->grpId[0], j, 0.0f, 0.0f);
+            HuSprScaleSet(mes->grpId[0], charIndex, 0.0f, 0.0f);
         }
-        HuSprPosSet(mes->grpId[0], j, x, y);
-        HuSprPriSet(mes->grpId[0], j, 5);
-        SprMainAngle[j][0] = SprMainAngle[j][1] = 0.0f;
+        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+        HuSprPriSet(mes->grpId[0], charIndex, 5);
+        SprMainAngle[charIndex][0] = SprMainAngle[charIndex][1] = 0.0f;
     }
     GameMesLetterNum = 1;
     MgMesTime = 0;
@@ -143,11 +161,12 @@ BOOL GameMesMg4PInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* Advances the four-player message animation each frame from the callback table. */
 BOOL GameMesMg4PExec(GAMEMES *mes)
 {
-    s16 j;
-    float y;
-    float x;
+    s16 charIndex;
+    float spriteY;
+    float spriteX;
 
     mes->time += GameMesVWait;
     if(mes->time >= mes->timeMax && mes->mesMode == 0) {
@@ -164,38 +183,42 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
                             GameMesLetterNum = mes->charNum;
                         }
                     }
-                    for(j=0; j<GameMesLetterNum; j++) {
-                        x = GetGameMesWidth(mes, 0, j, 1.0f);
-                        y = mes->pos.y;
-                        if(mes->time <= 10.0f + (j * 8)) {
-                            SprMainAngle[j][0] += 9.0f;
-                            if(SprMainAngle[j][0] >= 90.0f) {
-                                SprMainAngle[j][0] = 90.0f;
+                    for(charIndex=0; charIndex<GameMesLetterNum; charIndex++) {
+                        spriteX = GetGameMesWidth(mes, 0, charIndex, 1.0f);
+                        spriteY = mes->pos.y;
+                        if(mes->time <= 10.0f + (charIndex * 8)) {
+                            SprMainAngle[charIndex][0] += 9.0f;
+                            if(SprMainAngle[charIndex][0] >= 90.0f) {
+                                SprMainAngle[charIndex][0] = 90.0f;
                             }
-                            x -= SprPosX[j][0];
-                            SprPosY[j][0] = (168.0f + SprPosY[j][1]) * sind(90.0f - SprMainAngle[j][0]);
-                            y += 168.0f;
-                            y -= SprPosY[j][0];
+                            spriteX -= SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] = (168.0f + SprOffsetY[charIndex][1]) *
+                                                    sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteY += 168.0f;
+                            spriteY -= SprOffsetY[charIndex][0];
                         } else {
-                            SprMainAngle[j][1] += 9.0f;
-                            if(SprMainAngle[j][1] >= 90.0f) {
-                                SprMainAngle[j][1] = 90.0f;
+                            SprMainAngle[charIndex][1] += 9.0f;
+                            if(SprMainAngle[charIndex][1] >= 90.0f) {
+                                SprMainAngle[charIndex][1] = 90.0f;
                             }
-                            SprPosX[j][0] = SprPosX[j][1] * sind(90.0f - SprMainAngle[j][1]);
-                            x -= SprPosX[j][0];
-                            SprPosY[j][0] = 168.0 * (1.0 - sind(SprMainAngle[j][1]));
-                            y += SprPosY[j][0];
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][1]);
+                            spriteX -= SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                168.0 * (1.0 - sind(SprMainAngle[charIndex][1]));
+                            spriteY += SprOffsetY[charIndex][0];
                         }
-                        HuSprPosSet(mes->grpId[0], j, x, y);
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
                     }
                 }
                 if(mes->time >= 60) {
                     GameMesScale = (sind((mes->time-60)*9.0f)*0.5)+1.0;
-                    for(j=0; j<mes->charNum; j++) {
-                        x = GetGameMesWidth(mes, 0, j, GameMesScale);
-                        y = mes->pos.y;
-                        HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        spriteX = GetGameMesWidth(mes, 0, charIndex, GameMesScale);
+                        spriteY = mes->pos.y;
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+                        HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 60) {
@@ -213,11 +236,12 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
             } else {
                 if(mes->time <= 20) {
                     GameMesScale = sind(mes->time*4.5f);
-                    for(j=0; j<mes->charNum; j++) {
-                        x = GetGameMesWidth(mes, 2, j, GameMesScale);
-                        y = mes->pos.y;
-                        HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        spriteX = GetGameMesWidth(mes, 2, charIndex, GameMesScale);
+                        spriteY = mes->pos.y;
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+                        HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -234,30 +258,33 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
                             GameMesLetterNum = mes->charNum;
                         }
                     }
-                    for(j=0; j<GameMesLetterNum; j++) {
-                        x = GetGameMesWidth(mes, 2, j, 1.0f);
-                        y = mes->pos.y;
-                        if(MgMesTime <= 10.0f + (j * 8)) {
-                            SprMainAngle[j][0] += 9.0f;
-                            if(SprMainAngle[j][0] >= 90.0f) {
-                                SprMainAngle[j][0] = 90.0f;
+                    for(charIndex=0; charIndex<GameMesLetterNum; charIndex++) {
+                        spriteX = GetGameMesWidth(mes, 2, charIndex, 1.0f);
+                        spriteY = mes->pos.y;
+                        if(MgMesTime <= 10.0f + (charIndex * 8)) {
+                            SprMainAngle[charIndex][0] += 9.0f;
+                            if(SprMainAngle[charIndex][0] >= 90.0f) {
+                                SprMainAngle[charIndex][0] = 90.0f;
                             }
-                            SprPosX[j][0] = SprPosX[j][1] * sind(SprMainAngle[j][0]);
-                            x -= SprPosX[j][0];
-                            SprPosY[j][0] = 168.0 * sind(90.0f + SprMainAngle[j][0]);
-                            y += 168.0f;
-                            y -= SprPosY[j][0];
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * sind(SprMainAngle[charIndex][0]);
+                            spriteX -= SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                168.0 * sind(90.0f + SprMainAngle[charIndex][0]);
+                            spriteY += 168.0f;
+                            spriteY -= SprOffsetY[charIndex][0];
                         } else {
-                            x -= SprPosX[j][0];
-                            SprMainAngle[j][1] += 9.0f;
-                            if(SprMainAngle[j][1] >= 90.0f) {
-                                SprMainAngle[j][1] = 90.0f;
+                            spriteX -= SprOffsetX[charIndex][0];
+                            SprMainAngle[charIndex][1] += 9.0f;
+                            if(SprMainAngle[charIndex][1] >= 90.0f) {
+                                SprMainAngle[charIndex][1] = 90.0f;
                             }
-                            SprPosY[j][0] = (168.0f + SprPosY[j][1]) * sind(SprMainAngle[j][1]);
-                            y += 168.0f;
-                            y -= SprPosY[j][0];
+                            SprOffsetY[charIndex][0] = (168.0f + SprOffsetY[charIndex][1]) *
+                                                       sind(SprMainAngle[charIndex][1]);
+                            spriteY += 168.0f;
+                            spriteY -= SprOffsetY[charIndex][0];
                         }
-                        HuSprPosSet(mes->grpId[0], j, x, y);
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
                     }
                     MgMesTime++;
                 }
@@ -276,8 +303,8 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
                 mes->mesMode = 0;
                 mes->stat |= GAMEMES_STAT_KILL;
             }
-            for(j=0; j<mes->charNum; j++) {
-                HuSprTPLvlSet(mes->grpId[0], j, GameMesTPLvl);
+            for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                HuSprTPLvlSet(mes->grpId[0], charIndex, GameMesTPLvl);
             }
             break;
 
@@ -294,13 +321,15 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* Initializes the one-versus-three message from the callback table; draw mode delegates to the draw
+ * initializer. */
 BOOL GameMesMg1Vs3Init(GAMEMES *mes, va_list args)
 {
-    s16 j;
-    u32 mesId;
-    GAMEMESID strMes;
-    float x;
-    float y;
+    s16 charIndex;
+    u32 messageId;
+    GAMEMESID spriteGroupSlot;
+    float spriteX;
+    float spriteY;
 
     mes->subMode = va_arg(args, int);
     if(mes->subMode == GAMEMES_MG_TYPE_DRAW) {
@@ -309,42 +338,47 @@ BOOL GameMesMg1Vs3Init(GAMEMES *mes, va_list args)
     }
     mes->mesMode = 1;
     mes->angle = 0;
-    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
-    strMes = GameMesStrWinCreate(mes, mesId);
-    for(j=0; j<mes->charNum; j++) {
-        x = GetGameMesWidth(mes, 0, j, 1.0f);
-        y = mes->pos.y;
-        if(j == 0) {
-            SprPosX[j][0] = SprPosX[j][1] = 56.0f + GetGameMesWidth(mes, 0, 0, 1.0f);
+    messageId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                        : GAMEMES_MESS_MINIGAME_FINISH;
+    /* Creation sets up the message sprites; this path does not use the returned group slot. */
+    spriteGroupSlot = GameMesStrWinCreate(mes, messageId);
+    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+        spriteX = GetGameMesWidth(mes, 0, charIndex, 1.0f);
+        spriteY = mes->pos.y;
+        if(charIndex == 0) {
+            SprOffsetX[charIndex][0] = SprOffsetX[charIndex][1] =
+                56.0f + GetGameMesWidth(mes, 0, 0, 1.0f);
         } else {
-            SprPosX[j][0] = SprPosX[j][1] = 56.0f + (2.0f*mes->pos.x - GetGameMesWidth(mes, 0, 1, 1.0f));
+            SprOffsetX[charIndex][0] = SprOffsetX[charIndex][1] =
+                56.0f + (2.0f * mes->pos.x - GetGameMesWidth(mes, 0, 1, 1.0f));
         }
-        SprPosY[j][0] = SprPosY[j][1] = 56.0f + mes->pos.y;
+        SprOffsetY[charIndex][0] = SprOffsetY[charIndex][1] = 56.0f + mes->pos.y;
         if(mes->subMode == GAMEMES_MG_TYPE_START) {
-            if(j == 0) {
-                x -= SprPosX[j][0];
-                y += SprPosY[j][0];
+            if(charIndex == 0) {
+                spriteX -= SprOffsetX[charIndex][0];
+                spriteY += SprOffsetY[charIndex][0];
             } else {
-                x += SprPosX[j][0];
-                y -= SprPosY[j][0];
+                spriteX += SprOffsetX[charIndex][0];
+                spriteY -= SprOffsetY[charIndex][0];
             }
-            HuSprScaleSet(mes->grpId[0], j, mes->scale.x, mes->scale.y);
+            HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x, mes->scale.y);
         } else {
-            HuSprScaleSet(mes->grpId[0], j, 0.0f, 0.0f);
+            HuSprScaleSet(mes->grpId[0], charIndex, 0.0f, 0.0f);
         }
-        HuSprPosSet(mes->grpId[0], j, x, y);
-        HuSprPriSet(mes->grpId[0], j, 5);
-        SprMainAngle[j][0] = SprMainAngle[j][1] = 0.0f;
+        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+        HuSprPriSet(mes->grpId[0], charIndex, 5);
+        SprMainAngle[charIndex][0] = SprMainAngle[charIndex][1] = 0.0f;
     }
     GameMesPauseEnable(FALSE);
     return TRUE;
 }
 
+/* Advances the one-versus-three message animation each frame from the callback table. */
 BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
 {
-    s16 j;
-    float x;
-    float y;
+    s16 charIndex;
+    float spriteX;
+    float spriteY;
 
     mes->time += GameMesVWait;
     if(mes->time >= mes->timeMax && mes->mesMode == 0) {
@@ -356,34 +390,39 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
         case 1:
             if(mes->subMode == GAMEMES_MG_TYPE_START) {
                 if(mes->time <= 60) {
-                    for(j=0; j<mes->charNum; j++) {
-                        SprMainAngle[j][0] += 2.25f;
-                        if(SprMainAngle[j][0] >= 90.0f) {
-                            SprMainAngle[j][0] = 90.0f;
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        SprMainAngle[charIndex][0] += 2.25f;
+                        if(SprMainAngle[charIndex][0] >= 90.0f) {
+                            SprMainAngle[charIndex][0] = 90.0f;
                         }
-                        x = GetGameMesWidth(mes, 0, j, 1.0f);
-                        y = mes->pos.y;
-                        if(j == 0) {
-                            SprPosX[j][0] = SprPosX[j][1] * (1.0 - sind(SprMainAngle[j][0]));
-                            x -= SprPosX[j][0];
-                            SprPosY[j][0] = SprPosY[j][1] * sind(90.0f - SprMainAngle[j][0]);
-                            y += SprPosY[j][0];
+                        spriteX = GetGameMesWidth(mes, 0, charIndex, 1.0f);
+                        spriteY = mes->pos.y;
+                        if(charIndex == 0) {
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * (1.0 - sind(SprMainAngle[charIndex][0]));
+                            spriteX -= SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                SprOffsetY[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteY += SprOffsetY[charIndex][0];
                         } else {
-                            SprPosX[j][0] = SprPosX[j][1] * (1.0 - sind(SprMainAngle[j][0]));
-                            x += SprPosX[j][0];
-                            SprPosY[j][0] = SprPosY[j][1] * sind(90.0f - SprMainAngle[j][0]);
-                            y -= SprPosY[j][0];
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * (1.0 - sind(SprMainAngle[charIndex][0]));
+                            spriteX += SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                SprOffsetY[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteY -= SprOffsetY[charIndex][0];
                         }
-                        HuSprPosSet(mes->grpId[0], j, x, y);
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
                     }
                 }
                 if(mes->time >= 60) {
                     GameMesScale = (sind((mes->time-60)*9.0f)*0.5)+1.0;
-                    for(j=0; j<mes->charNum; j++) {
-                        x = GetGameMesWidth(mes, 0, j, GameMesScale);
-                        y = mes->pos.y;
-                        HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        spriteX = GetGameMesWidth(mes, 0, charIndex, GameMesScale);
+                        spriteY = mes->pos.y;
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+                        HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 60) {
@@ -401,11 +440,12 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
             } else {
                 if(mes->time <= 20) {
                     GameMesScale = sind(mes->time*4.5f);
-                    for(j=0; j<mes->charNum; j++) {
-                        x = GetGameMesWidth(mes, 2, j, GameMesScale);
-                        y = mes->pos.y;
-                        HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        spriteX = GetGameMesWidth(mes, 2, charIndex, GameMesScale);
+                        spriteY = mes->pos.y;
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+                        HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -417,29 +457,33 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time >= 50) {
-                    for(j=0; j<mes->charNum; j++) {
-                        SprMainAngle[j][0] += 2.25f;
-                        if(SprMainAngle[j][0] >= 90.0f) {
-                            SprMainAngle[j][0] = 90.0f;
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        SprMainAngle[charIndex][0] += 2.25f;
+                        if(SprMainAngle[charIndex][0] >= 90.0f) {
+                            SprMainAngle[charIndex][0] = 90.0f;
                         }
-                        x = GetGameMesWidth(mes, 2, j, 1.0f);
-                        y = mes->pos.y;
-                        if(j == 0) {
-                            SprPosX[j][0] = SprPosX[j][1] * sind(90.0f - SprMainAngle[j][0]);
-                            x -= SprPosX[j][1];
-                            x += SprPosX[j][0];
-                            SprPosY[j][0] = SprPosY[j][1] * (1.0 - sind(SprMainAngle[j][0]));
-                            y += SprPosY[j][1];
-                            y -= SprPosY[j][0];
+                        spriteX = GetGameMesWidth(mes, 2, charIndex, 1.0f);
+                        spriteY = mes->pos.y;
+                        if(charIndex == 0) {
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteX -= SprOffsetX[charIndex][1];
+                            spriteX += SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                SprOffsetY[charIndex][1] * (1.0 - sind(SprMainAngle[charIndex][0]));
+                            spriteY += SprOffsetY[charIndex][1];
+                            spriteY -= SprOffsetY[charIndex][0];
                         } else {
-                            SprPosX[j][0] = SprPosX[j][1] * sind(90.0f - SprMainAngle[j][0]);
-                            x += SprPosX[j][1];
-                            x -= SprPosX[j][0];
-                            SprPosY[j][0] = SprPosY[j][1] * (1.0 - sind(SprMainAngle[j][0]));
-                            y -= SprPosY[j][1];
-                            y += SprPosY[j][0];
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteX += SprOffsetX[charIndex][1];
+                            spriteX -= SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                SprOffsetY[charIndex][1] * (1.0 - sind(SprMainAngle[charIndex][0]));
+                            spriteY -= SprOffsetY[charIndex][1];
+                            spriteY += SprOffsetY[charIndex][0];
                         }
-                        HuSprPosSet(mes->grpId[0], j, x, y);
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
                     }
                 }
                 if(mes->time >= 120) {
@@ -457,8 +501,8 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
                 mes->mesMode = 0;
                 mes->stat |= GAMEMES_STAT_KILL;
             }
-            for(j=0; j<mes->charNum; j++) {
-                HuSprTPLvlSet(mes->grpId[0], j, GameMesTPLvl);
+            for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                HuSprTPLvlSet(mes->grpId[0], charIndex, GameMesTPLvl);
             }
             break;
 
@@ -475,14 +519,16 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
     return TRUE;
 }
 
+/* Initializes the two-versus-two message from the callback table; draw mode delegates to the draw
+ * initializer. */
 BOOL GameMesMg2Vs2Init(GAMEMES *mes, va_list args)
 {
-    s16 j;
-    s16 center;
-    u32 mesId;
-    GAMEMESID strMes;
-    float x;
-    float y;
+    s16 charIndex;
+    s16 centerIndex;
+    u32 messageId;
+    GAMEMESID spriteGroupSlot;
+    float spriteX;
+    float spriteY;
 
     mes->subMode = va_arg(args, int);
     if(mes->subMode == GAMEMES_MG_TYPE_DRAW) {
@@ -491,51 +537,60 @@ BOOL GameMesMg2Vs2Init(GAMEMES *mes, va_list args)
     }
     mes->mesMode = 1;
     mes->angle = 0;
-    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
-    strMes = GameMesStrWinCreate(mes, mesId);
-    for(j=0; j<mes->charNum; j++) {
-        x = GetGameMesWidth(mes, 0, j, 1.0f);
-        y = mes->pos.y;
-        center = mes->charNum / 2;
-        if(j < center) {
-            SprPosX[j][0] = SprPosX[j][1] = 56.0f + GetGameMesWidth(mes, 0, center-1, 1.0f);
-        } else if(j > center) {
-            SprPosX[j][0] = SprPosX[j][1] = 56.0f + (2.0f*mes->pos.x - GetGameMesWidth(mes, 0, center+1, 1.0f));
+    messageId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                        : GAMEMES_MESS_MINIGAME_FINISH;
+    /* Creation sets up the message sprites; this path does not use the returned group slot. */
+    spriteGroupSlot = GameMesStrWinCreate(mes, messageId);
+    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+        spriteX = GetGameMesWidth(mes, 0, charIndex, 1.0f);
+        spriteY = mes->pos.y;
+        centerIndex = mes->charNum / 2;
+        if(charIndex < centerIndex) {
+            SprOffsetX[charIndex][0] = SprOffsetX[charIndex][1] =
+                56.0f + GetGameMesWidth(mes, 0, centerIndex - 1, 1.0f);
+        } else if(charIndex > centerIndex) {
+            SprOffsetX[charIndex][0] = SprOffsetX[charIndex][1] =
+                56.0f + (2.0f * mes->pos.x - GetGameMesWidth(mes, 0, centerIndex + 1, 1.0f));
         }
-        SprPosY[j][0] = SprPosY[j][1] = 56.0f + mes->pos.y;
+        SprOffsetY[charIndex][0] = SprOffsetY[charIndex][1] = 56.0f + mes->pos.y;
         if(mes->subMode == GAMEMES_MG_TYPE_START) {
-            if(j == center) {
+            if(charIndex == centerIndex) {
                 GameMesScale = 0.0f;
             } else {
-                if(j < center) {
-                    x += SprPosX[j][0];
-                    y -= SprPosY[j][0];
+                /* The first update reverses these initial horizontal offsets for the side
+                 * letters. */
+                if(charIndex < centerIndex) {
+                    spriteX += SprOffsetX[charIndex][0];
+                    spriteY -= SprOffsetY[charIndex][0];
                 } else {
-                    x -= SprPosX[j][0];
-                    y += SprPosY[j][0];
+                    spriteX -= SprOffsetX[charIndex][0];
+                    spriteY += SprOffsetY[charIndex][0];
                 }
                 GameMesScale = 1.0f;
             }
-            HuSprScaleSet(mes->grpId[0], j, mes->scale.x, mes->scale.y);
+            /* Start letters use the message scale here, including the center letter;
+             * the first update applies its zero scale. */
+            HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x, mes->scale.y);
         } else {
             GameMesScale = 0.0f;
-            HuSprScaleSet(mes->grpId[0], j, GameMesScale, GameMesScale);
+            HuSprScaleSet(mes->grpId[0], charIndex, GameMesScale, GameMesScale);
         }
-        HuSprPosSet(mes->grpId[0], j, x, y);
-        HuSprPriSet(mes->grpId[0], j, 5);
-        SprMainAngle[j][0] = SprMainAngle[j][1] = 0.0f;
+        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+        HuSprPriSet(mes->grpId[0], charIndex, 5);
+        SprMainAngle[charIndex][0] = SprMainAngle[charIndex][1] = 0.0f;
     }
     MgMesTime = 0;
     GameMesPauseEnable(FALSE);
     return TRUE;
 }
 
+/* Advances the two-versus-two message animation each frame from the callback table. */
 BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
 {
-    s16 j;
-    s16 center;
-    float x;
-    float y;
+    s16 charIndex;
+    s16 centerIndex;
+    float spriteX;
+    float spriteY;
 
     mes->time += GameMesVWait;
     if(mes->time >= mes->timeMax && mes->mesMode == 0) {
@@ -547,15 +602,15 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
         case 1:
             if(mes->subMode == GAMEMES_MG_TYPE_START) {
                 if(mes->time <= 60) {
-                    for(j=0; j<mes->charNum; j++) {
-                        SprMainAngle[j][0] += 2.25f;
-                        if(SprMainAngle[j][0] >= 90.0f) {
-                            SprMainAngle[j][0] = 90.0f;
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        SprMainAngle[charIndex][0] += 2.25f;
+                        if(SprMainAngle[charIndex][0] >= 90.0f) {
+                            SprMainAngle[charIndex][0] = 90.0f;
                         }
-                        x = GetGameMesWidth(mes, 0, j, 1.0f);
-                        y = mes->pos.y;
-                        center = mes->charNum / 2;
-                        if(j == center) {
+                        spriteX = GetGameMesWidth(mes, 0, charIndex, 1.0f);
+                        spriteY = mes->pos.y;
+                        centerIndex = mes->charNum / 2;
+                        if(charIndex == centerIndex) {
                             if(mes->time < 20) {
                                 GameMesScale = 0.0f;
                             } else {
@@ -564,19 +619,24 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
                                     GameMesScale = 1.0f;
                                 }
                             }
-                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
-                        } else if(j < center) {
-                            SprPosX[j][0] = SprPosX[j][1] * (1.0 - sind(SprMainAngle[j][0]));
-                            x -= SprPosX[j][0];
-                            SprPosY[j][0] = SprPosY[j][1] * sind(90.0f-SprMainAngle[j][0]);
-                            y -= SprPosY[j][0];
+                            HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x * GameMesScale,
+                                          mes->scale.y * GameMesScale);
+                        } else if(charIndex < centerIndex) {
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * (1.0 - sind(SprMainAngle[charIndex][0]));
+                            spriteX -= SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                SprOffsetY[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteY -= SprOffsetY[charIndex][0];
                         } else {
-                            SprPosX[j][0] = SprPosX[j][1] * (1.0 - sind(SprMainAngle[j][0]));
-                            x += SprPosX[j][0];
-                            SprPosY[j][0] = SprPosY[j][1] * sind(90.0f-SprMainAngle[j][0]);
-                            y += SprPosY[j][0];
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * (1.0 - sind(SprMainAngle[charIndex][0]));
+                            spriteX += SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                SprOffsetY[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteY += SprOffsetY[charIndex][0];
                         }
-                        HuSprPosSet(mes->grpId[0], j, x, y);
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
                     }
                     if(mes->time >= 20) {
                         MgMesTime++;
@@ -584,11 +644,12 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
                 }
                 if(mes->time >= 60) {
                     GameMesScale = (sind((mes->time-60)*9.0f)*0.5)+1.0;
-                    for(j=0; j<mes->charNum; j++) {
-                        x = GetGameMesWidth(mes, 0, j, GameMesScale);
-                        y = mes->pos.y;
-                        HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        spriteX = GetGameMesWidth(mes, 0, charIndex, GameMesScale);
+                        spriteY = mes->pos.y;
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+                        HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 60) {
@@ -606,11 +667,12 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
             } else {
                 if(mes->time <= 20) {
                     GameMesScale = sind(mes->time*4.5f);
-                    for(j=0; j<mes->charNum; j++) {
-                        x = GetGameMesWidth(mes, 2, j, GameMesScale);
-                        y = mes->pos.y;
-                        HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        spriteX = GetGameMesWidth(mes, 2, charIndex, GameMesScale);
+                        spriteY = mes->pos.y;
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
+                        HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -622,41 +684,46 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time >= 50) {
-                    for(j=0; j<mes->charNum; j++) {
-                        SprMainAngle[j][0] += 2.25f;
-                        if(SprMainAngle[j][0] >= 90.0f) {
-                            SprMainAngle[j][0] = 90.0f;
+                    for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                        SprMainAngle[charIndex][0] += 2.25f;
+                        if(SprMainAngle[charIndex][0] >= 90.0f) {
+                            SprMainAngle[charIndex][0] = 90.0f;
                         }
-                        x = GetGameMesWidth(mes, 2, j, 1.0f);
-                        y = mes->pos.y;
-                        center = mes->charNum / 2;
-                        if(j == center) {
+                        spriteX = GetGameMesWidth(mes, 2, charIndex, 1.0f);
+                        spriteY = mes->pos.y;
+                        centerIndex = mes->charNum / 2;
+                        if(charIndex == centerIndex) {
                             GameMesScale = (sind(MgMesTime*4.5f)*3.0)+1.0;
                             if(MgMesTime > 20) {
                                 GameMesScale = 1.0f;
                             }
-                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                            HuSprScaleSet(mes->grpId[0], charIndex, mes->scale.x * GameMesScale,
+                                          mes->scale.y * GameMesScale);
                             GameMesTPLvl = sind(MgMesTime*4.5f);
                             if(MgMesTime > 20) {
                                 GameMesTPLvl = 1.0f;
                             }
-                            HuSprTPLvlSet(mes->grpId[0], j, 1.0f-GameMesTPLvl);
-                        } else if(j < center) {
-                            SprPosX[j][0] = SprPosX[j][1] * sind(90.0f-SprMainAngle[j][0]);
-                            x -= SprPosX[j][1];
-                            x += SprPosX[j][0];
-                            SprPosY[j][0] = SprPosY[j][1] * (1.0-sind(SprMainAngle[j][0]));
-                            y -= SprPosY[j][1];
-                            y += SprPosY[j][0];
+                            HuSprTPLvlSet(mes->grpId[0], charIndex, 1.0f-GameMesTPLvl);
+                        } else if(charIndex < centerIndex) {
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteX -= SprOffsetX[charIndex][1];
+                            spriteX += SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                SprOffsetY[charIndex][1] * (1.0 - sind(SprMainAngle[charIndex][0]));
+                            spriteY -= SprOffsetY[charIndex][1];
+                            spriteY += SprOffsetY[charIndex][0];
                         } else {
-                            SprPosX[j][0] = SprPosX[j][1] * sind(90.0f-SprMainAngle[j][0]);
-                            x += SprPosX[j][1];
-                            x -= SprPosX[j][0];
-                            SprPosY[j][0] = SprPosY[j][1] * (1.0-sind(SprMainAngle[j][0]));
-                            y += SprPosY[j][1];
-                            y -= SprPosY[j][0];
+                            SprOffsetX[charIndex][0] =
+                                SprOffsetX[charIndex][1] * sind(90.0f - SprMainAngle[charIndex][0]);
+                            spriteX += SprOffsetX[charIndex][1];
+                            spriteX -= SprOffsetX[charIndex][0];
+                            SprOffsetY[charIndex][0] =
+                                SprOffsetY[charIndex][1] * (1.0 - sind(SprMainAngle[charIndex][0]));
+                            spriteY += SprOffsetY[charIndex][1];
+                            spriteY -= SprOffsetY[charIndex][0];
                         }
-                        HuSprPosSet(mes->grpId[0], j, x, y);
+                        HuSprPosSet(mes->grpId[0], charIndex, spriteX, spriteY);
                     }
                     MgMesTime++;
                 }
@@ -675,8 +742,8 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
                 mes->mesMode = 0;
                 mes->stat |= GAMEMES_STAT_KILL;
             }
-            for(j=0; j<mes->charNum; j++) {
-                HuSprTPLvlSet(mes->grpId[0], j, GameMesTPLvl);
+            for(charIndex=0; charIndex<mes->charNum; charIndex++) {
+                HuSprTPLvlSet(mes->grpId[0], charIndex, GameMesTPLvl);
             }
             break;
 
@@ -693,6 +760,7 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl for the Battle minigame message. */
 BOOL GameMesMgBattleInit(GAMEMES *mes, va_list args)
 {
     s16 j;
@@ -708,7 +776,10 @@ BOOL GameMesMgBattleInit(GAMEMES *mes, va_list args)
     }
     mes->mesMode = 1;
     mes->angle = 0;
-    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
+    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                    : GAMEMES_MESS_MINIGAME_FINISH;
+    /* Creation fills the message's sprites and character count;
+     * the returned group slot is unused. */
     strMes = GameMesStrWinCreate(mes, mesId);
     for(j=0; j<mes->charNum; j++) {
         if(mes->subMode == GAMEMES_MG_TYPE_START) {
@@ -718,12 +789,14 @@ BOOL GameMesMgBattleInit(GAMEMES *mes, va_list args)
             HuSprPriSet(mes->grpId[0], j, 5);
             HuSprScaleSet(mes->grpId[0], j, mes->scale.x, mes->scale.y);
         } else {
+            /* These finish X/Y calculations are unused; the creator's positions remain until the
+             * first update. */
             x = GetGameMesWidth(mes, 0, j, 1.0f);
             y = mes->pos.y;
             GameMesScale = 0.0f;
             HuSprScaleSet(mes->grpId[0], j, GameMesScale, GameMesScale);
         }
-        SprOrbitAngle[j][0] = SprOrbitAngle[j][1] = 0.0f;
+        SprMotionState[j][0] = SprMotionState[j][1] = 0.0f;
         SprMainAngle[j][0] = SprMainAngle[j][1] = 0.0f;
     }
     MgMesTime = 0;
@@ -731,6 +804,8 @@ BOOL GameMesMgBattleInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec animates Battle letters each frame: start timeouts fade,
+ * while finish letters gather and orbit away. */
 BOOL GameMesMgBattleExec(GAMEMES *mes)
 {
     s16 j;
@@ -760,22 +835,24 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                             }
                             radius = (112.0f+mes->pos.x)*(1.0f-sind(SprMainAngle[j][0]));
                             angle = (360.0f/mes->charNum)*(j-2);
-                            SprOrbitAngle[j][0] += 5.0f;
-                            angle += SprOrbitAngle[j][0];
+                            SprMotionState[j][0] += 5.0f;
+                            angle += SprMotionState[j][0];
                             x += radius*cosd(angle);
                             y += radius*sind(angle);
                         } else if(mes->time < 55) {
                             x = mes->pos.x;
                             y = mes->pos.y;
                             center = mes->charNum / 2;
-                            SprOrbitAngle[j][1] += (GetGameMesWidth(mes, 0, center, 1.0f)-GetGameMesWidth(mes, 0, 0, 1.0f))/15.0f;
+                            SprMotionState[j][1] += (GetGameMesWidth(mes, 0, center, 1.0f) -
+                                                    GetGameMesWidth(mes, 0, 0, 1.0f)) /
+                                                   15.0f;
                             if(j < center) {
-                                x -= SprOrbitAngle[j][1];
+                                x -= SprMotionState[j][1];
                                 if(x < GetGameMesWidth(mes, 0, j, 1.0f)) {
                                     x = GetGameMesWidth(mes, 0, j, 1.0f);
                                 }
                             } else {
-                                x += SprOrbitAngle[j][1];
+                                x += SprMotionState[j][1];
                                 if(x > GetGameMesWidth(mes, 0, j, 1.0f)) {
                                     x = GetGameMesWidth(mes, 0, j, 1.0f);
                                 }
@@ -793,7 +870,8 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 0, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 60) {
@@ -815,7 +893,8 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 2, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -832,14 +911,16 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                             x = GetGameMesWidth(mes, 2, j, 1.0f);
                             y = mes->pos.y;
                             center = mes->charNum / 2;
-                            SprOrbitAngle[j][1] += (GetGameMesWidth(mes, 2, center, 1.0f)-GetGameMesWidth(mes, 2, 0, 1.0f))/15.0f;
+                            SprMotionState[j][1] += (GetGameMesWidth(mes, 2, center, 1.0f) -
+                                                    GetGameMesWidth(mes, 2, 0, 1.0f)) /
+                                                   15.0f;
                             if(j < center) {
-                                x += SprOrbitAngle[j][1];
+                                x += SprMotionState[j][1];
                                 if(x > mes->pos.x) {
                                     x = mes->pos.x;
                                 }
                             } else {
-                                x -= SprOrbitAngle[j][1];
+                                x -= SprMotionState[j][1];
                                 if(x < mes->pos.x) {
                                     x = mes->pos.x;
                                 }
@@ -853,8 +934,8 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                             }
                             radius = (112.0f+mes->pos.x)*(1.0f-sind(90.0f-SprMainAngle[j][0]));
                             angle = (360.0f/mes->charNum)*(j-2);
-                            SprOrbitAngle[j][0] -= 5.0f;
-                            angle += SprOrbitAngle[j][0];
+                            SprMotionState[j][0] -= 5.0f;
+                            angle += SprMotionState[j][0];
                             x += radius*cosd(angle);
                             y += radius*sind(angle);
                         }
@@ -895,6 +976,7 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl for the Koopa minigame message. */
 BOOL GameMesMgKoopaInit(GAMEMES *mes, va_list args)
 {
     s16 j;
@@ -910,18 +992,22 @@ BOOL GameMesMgKoopaInit(GAMEMES *mes, va_list args)
     }
     mes->mesMode = 1;
     mes->angle = 0;
-    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
+    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                    : GAMEMES_MESS_MINIGAME_FINISH;
+    /* Creation fills the message's sprites and character count;
+     * the returned group slot is unused. */
     strMes = GameMesStrWinCreate(mes, mesId);
     for(j=0; j<mes->charNum; j++) {
         x = GetGameMesWidth(mes, 0, j, 1.0f);
         y = mes->pos.y;
         if(mes->subMode == GAMEMES_MG_TYPE_START) {
-            SprOrbitAngle[j][0] = SprOrbitAngle[j][1] = 56.0f+(2.0f*mes->pos.x)-GetGameMesWidth(mes, 0, 0, 1.0f);
-            x += SprOrbitAngle[j][0];
+            SprMotionState[j][0] = SprMotionState[j][1] =
+                56.0f + (2.0f * mes->pos.x) - GetGameMesWidth(mes, 0, 0, 1.0f);
+            x += SprMotionState[j][0];
             HuSprScaleSet(mes->grpId[0], j, mes->scale.x, mes->scale.y);
         } else {
-            SprOrbitAngle[j][0] = 0.0f;
-            SprOrbitAngle[j][1] = 2.0f*mes->pos.x-GetGameMesWidth(mes, 0, 0, 1.0f);
+            SprMotionState[j][0] = 0.0f;
+            SprMotionState[j][1] = 2.0f*mes->pos.x-GetGameMesWidth(mes, 0, 0, 1.0f);
             GameMesScale = 0.0f;
             HuSprScaleSet(mes->grpId[0], j, GameMesScale, GameMesScale);
         }
@@ -932,6 +1018,7 @@ BOOL GameMesMgKoopaInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec calls this each frame to slide Koopa letters into and out of the message line. */
 BOOL GameMesMgKoopaExec(GAMEMES *mes)
 {
     s16 j;
@@ -951,17 +1038,17 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
                     for(j=0; j<mes->charNum; j++) {
                         if(j == mes->charNum-1) {
                             if(mes->time >= 35) {
-                                SprOrbitAngle[j][0] -= SprOrbitAngle[j][1]/20.0f;
+                                SprMotionState[j][0] -= SprMotionState[j][1]/20.0f;
                             }
-                            x = GetGameMesWidth(mes, 0, j, 1.0f)+SprOrbitAngle[j][0];
+                            x = GetGameMesWidth(mes, 0, j, 1.0f)+SprMotionState[j][0];
                             if(x < GetGameMesWidth(mes, 0, j, 1.0f)) {
                                 x = GetGameMesWidth(mes, 0, j, 1.0f);
                             }
                         } else {
                             if(mes->time >= 15) {
-                                SprOrbitAngle[j][0] -= SprOrbitAngle[j][1]/20.0f;
+                                SprMotionState[j][0] -= SprMotionState[j][1]/20.0f;
                             }
-                            x = GetGameMesWidth(mes, 0, j, 1.0f)+SprOrbitAngle[j][0];
+                            x = GetGameMesWidth(mes, 0, j, 1.0f)+SprMotionState[j][0];
                             if(x < GetGameMesWidth(mes, 0, j, 1.0f)) {
                                 x = GetGameMesWidth(mes, 0, j, 1.0f);
                             }
@@ -976,7 +1063,8 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 0, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 60) {
@@ -998,7 +1086,8 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 2, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -1013,12 +1102,12 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
                     for(j=0; j<mes->charNum; j++) {
                         if(j == mes->charNum-1) {
                             if(mes->time >= 70) {
-                                SprOrbitAngle[j][0] += SprOrbitAngle[j][1]/20.0f;
+                                SprMotionState[j][0] += SprMotionState[j][1]/20.0f;
                             }
                         } else {
-                            SprOrbitAngle[j][0] += SprOrbitAngle[j][1]/20.0f;
+                            SprMotionState[j][0] += SprMotionState[j][1]/20.0f;
                         }
-                        x = GetGameMesWidth(mes, 2, j, 1.0f)-SprOrbitAngle[j][0];
+                        x = GetGameMesWidth(mes, 2, j, 1.0f)-SprMotionState[j][0];
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
                     }
@@ -1056,6 +1145,7 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl for the Rare minigame message. */
 BOOL GameMesMgRareInit(GAMEMES *mes, va_list args)
 {
     s16 j;
@@ -1071,20 +1161,24 @@ BOOL GameMesMgRareInit(GAMEMES *mes, va_list args)
     }
     mes->mesMode = 1;
     mes->angle = 0;
-    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
+    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                    : GAMEMES_MESS_MINIGAME_FINISH;
+    /* Creation fills the message's sprites and character count;
+     * the returned group slot is unused. */
     strMes = GameMesStrWinCreate(mes, mesId);
     for(j=0; j<mes->charNum; j++) {
         x = GetGameMesWidth(mes, 0, j, 1.0f);
         y = mes->pos.y;
         if(mes->subMode == GAMEMES_MG_TYPE_START) {
-            SprOrbitAngle[j][0] = SprOrbitAngle[j][1] = 56.0f+(2.0f*mes->pos.x)-GetGameMesWidth(mes, 0, 0, 1.0f);
-            x += SprOrbitAngle[j][0];
+            SprMotionState[j][0] = SprMotionState[j][1] =
+                56.0f + (2.0f * mes->pos.x) - GetGameMesWidth(mes, 0, 0, 1.0f);
+            x += SprMotionState[j][0];
             HuSprScaleSet(mes->grpId[0], j, mes->scale.x, mes->scale.y);
             SprRareZRot[j] = 600.0f;
             HuSprZRotSet(mes->grpId[0], j, SprRareZRot[j]);
         } else {
-            SprOrbitAngle[j][0] = 0.0f;
-            SprOrbitAngle[j][1] = 2.0f*mes->pos.x-GetGameMesWidth(mes, 0, 0, 1.0f);
+            SprMotionState[j][0] = 0.0f;
+            SprMotionState[j][1] = 2.0f*mes->pos.x-GetGameMesWidth(mes, 0, 0, 1.0f);
             GameMesScale = 0.0f;
             HuSprScaleSet(mes->grpId[0], j, GameMesScale, GameMesScale);
             SprRareZRot[j] = 0.0f;
@@ -1096,6 +1190,7 @@ BOOL GameMesMgRareInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec calls this each frame to roll Rare minigame letters into and away from the line. */
 BOOL GameMesMgRareExec(GAMEMES *mes)
 {
     s16 j;
@@ -1113,8 +1208,8 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
             if(mes->subMode == GAMEMES_MG_TYPE_START) {
                 if(mes->time <= 60 && mes->time >= 20) {
                     for(j=0; j<mes->charNum; j++) {
-                        SprOrbitAngle[j][0] -= SprOrbitAngle[j][1]/20.0f;
-                        x = GetGameMesWidth(mes, 0, j, 1.0f)+SprOrbitAngle[j][0];
+                        SprMotionState[j][0] -= SprMotionState[j][1]/20.0f;
+                        x = GetGameMesWidth(mes, 0, j, 1.0f)+SprMotionState[j][0];
                         if(x < GetGameMesWidth(mes, 0, j, 1.0f)) {
                             x = GetGameMesWidth(mes, 0, j, 1.0f);
                         }
@@ -1132,7 +1227,8 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 0, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 60) {
@@ -1154,7 +1250,8 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 2, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -1167,8 +1264,8 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
                 }
                 if(mes->time >= 50) {
                     for(j=0; j<mes->charNum; j++) {
-                        SprOrbitAngle[j][0] += SprOrbitAngle[j][1]/20.0f;
-                        x = GetGameMesWidth(mes, 2, j, 1.0f)-SprOrbitAngle[j][0];
+                        SprMotionState[j][0] += SprMotionState[j][1]/20.0f;
+                        x = GetGameMesWidth(mes, 2, j, 1.0f)-SprMotionState[j][0];
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
                         SprRareZRot[j] -= 30.0f;
@@ -1208,6 +1305,7 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl for the Kettou minigame message. */
 BOOL GameMesMgKettouInit(GAMEMES *mes, va_list args)
 {
     s16 j;
@@ -1224,7 +1322,10 @@ BOOL GameMesMgKettouInit(GAMEMES *mes, va_list args)
     }
     mes->mesMode = 1;
     mes->angle = 0;
-    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
+    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                    : GAMEMES_MESS_MINIGAME_FINISH;
+    /* Creation fills the message's sprites and character count;
+     * the returned group slot is unused. */
     strMes = GameMesStrWinCreate(mes, mesId);
     for(j=0; j<mes->charNum; j++) {
         x = GetGameMesWidth(mes, 0, j, 1.0f);
@@ -1234,18 +1335,18 @@ BOOL GameMesMgKettouInit(GAMEMES *mes, va_list args)
             if(j == center) {
                 GameMesScale = 0.0f;
             } else {
-                SprOrbitAngle[j][0] = SprOrbitAngle[j][1] = 56.0f+mes->pos.y;
+                SprMotionState[j][0] = SprMotionState[j][1] = 56.0f+mes->pos.y;
                 if(j < center) {
-                    y -= SprOrbitAngle[j][0];
+                    y -= SprMotionState[j][0];
                 } else {
-                    y += SprOrbitAngle[j][0];
+                    y += SprMotionState[j][0];
                 }
                 GameMesScale = 1.0f;
             }
             HuSprScaleSet(mes->grpId[0], j, GameMesScale, GameMesScale);
         } else {
-            SprOrbitAngle[j][0] = 0.0f;
-            SprOrbitAngle[j][1] = 56.0f+mes->pos.y;
+            SprMotionState[j][0] = 0.0f;
+            SprMotionState[j][1] = 56.0f+mes->pos.y;
             GameMesScale = 0.0f;
             HuSprScaleSet(mes->grpId[0], j, GameMesScale, GameMesScale);
         }
@@ -1257,6 +1358,7 @@ BOOL GameMesMgKettouInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec calls this each frame to bring the center Kettou letter forward during the reveal. */
 BOOL GameMesMgKettouExec(GAMEMES *mes)
 {
     s16 j;
@@ -1276,7 +1378,7 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                 if(mes->time <= 60 && mes->time >= 20) {
                     for(j=0; j<mes->charNum; j++) {
                         x = GetGameMesWidth(mes, 0, j, 1.0f);
-                        SprOrbitAngle[j][0] -= SprOrbitAngle[j][1]/20.0f;
+                        SprMotionState[j][0] -= SprMotionState[j][1]/20.0f;
                         center = mes->charNum / 2;
                         if(j == center) {
                             y = mes->pos.y;
@@ -1284,14 +1386,15 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                             if(MgMesTime > 20) {
                                 GameMesScale = 1.0f;
                             }
-                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                          mes->scale.y * GameMesScale);
                         } else if(j < center) {
-                            y = mes->pos.y-SprOrbitAngle[j][0];
+                            y = mes->pos.y-SprMotionState[j][0];
                             if(y > mes->pos.y) {
                                 y = mes->pos.y;
                             }
                         } else {
-                            y = mes->pos.y+SprOrbitAngle[j][0];
+                            y = mes->pos.y+SprMotionState[j][0];
                             if(y < mes->pos.y) {
                                 y = mes->pos.y;
                             }
@@ -1306,7 +1409,8 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 0, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 60) {
@@ -1328,7 +1432,8 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 2, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -1342,7 +1447,7 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                 if(mes->time >= 50) {
                     for(j=0; j<mes->charNum; j++) {
                         x = GetGameMesWidth(mes, 2, j, 1.0f);
-                        SprOrbitAngle[j][0] += SprOrbitAngle[j][1]/20.0f;
+                        SprMotionState[j][0] += SprMotionState[j][1]/20.0f;
                         center = mes->charNum / 2;
                         if(j == center) {
                             y = mes->pos.y;
@@ -1350,16 +1455,17 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                             if(MgMesTime > 20) {
                                 GameMesScale = 1.0f;
                             }
-                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                          mes->scale.y * GameMesScale);
                             GameMesTPLvl = sind(MgMesTime*4.5f);
                             if(MgMesTime > 20) {
                                 GameMesTPLvl = 1.0f;
                             }
                             HuSprTPLvlSet(mes->grpId[0], j, 1.0f-GameMesTPLvl);
                         } else if(j < center) {
-                            y = mes->pos.y-SprOrbitAngle[j][0];
+                            y = mes->pos.y-SprMotionState[j][0];
                         } else {
-                            y = mes->pos.y+SprOrbitAngle[j][0];
+                            y = mes->pos.y+SprMotionState[j][0];
                         }
                         HuSprPosSet(mes->grpId[0], j, x, y);
                     }
@@ -1398,6 +1504,7 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl for the Donkey minigame message. */
 BOOL GameMesMgDonkeyInit(GAMEMES *mes, va_list args)
 {
     s16 j;
@@ -1414,7 +1521,10 @@ BOOL GameMesMgDonkeyInit(GAMEMES *mes, va_list args)
     }
     mes->mesMode = 1;
     mes->angle = 0;
-    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
+    mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                    : GAMEMES_MESS_MINIGAME_FINISH;
+    /* Creation fills the message's sprites and character count;
+     * the returned group slot is unused. */
     strMes = GameMesStrWinCreate(mes, mesId);
     for(j=0; j<mes->charNum; j++) {
         x = GetGameMesWidth(mes, 0, j, 1.0f);
@@ -1424,20 +1534,20 @@ BOOL GameMesMgDonkeyInit(GAMEMES *mes, va_list args)
             if(j == center) {
                 GameMesScale = 0.0f;
             } else {
-                SprOrbitAngle[j][0] = SprOrbitAngle[j][1] = 56.0f+mes->pos.y;
+                SprMotionState[j][0] = SprMotionState[j][1] = 56.0f+mes->pos.y;
                 if(j < center) {
-                    x -= SprOrbitAngle[j][0];
-                    y -= SprOrbitAngle[j][0];
+                    x -= SprMotionState[j][0];
+                    y -= SprMotionState[j][0];
                 } else {
-                    x += SprOrbitAngle[j][0];
-                    y -= SprOrbitAngle[j][0];
+                    x += SprMotionState[j][0];
+                    y -= SprMotionState[j][0];
                 }
                 GameMesScale = 1.0f;
             }
             HuSprScaleSet(mes->grpId[0], j, GameMesScale, GameMesScale);
         } else {
-            SprOrbitAngle[j][0] = 0.0f;
-            SprOrbitAngle[j][1] = 56.0f+mes->pos.y;
+            SprMotionState[j][0] = 0.0f;
+            SprMotionState[j][1] = 56.0f+mes->pos.y;
             GameMesScale = 0.0f;
             HuSprScaleSet(mes->grpId[0], j, GameMesScale, GameMesScale);
         }
@@ -1449,6 +1559,7 @@ BOOL GameMesMgDonkeyInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec calls this each frame as Donkey message letters enter, pulse, and leave. */
 BOOL GameMesMgDonkeyExec(GAMEMES *mes)
 {
     s16 j;
@@ -1468,7 +1579,7 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                 if(mes->time <= 60 && mes->time >= 20) {
                     for(j=0; j<mes->charNum; j++) {
                         x = GetGameMesWidth(mes, 0, j, 1.0f);
-                        SprOrbitAngle[j][0] -= SprOrbitAngle[j][1]/20.0f;
+                        SprMotionState[j][0] -= SprMotionState[j][1]/20.0f;
                         center = mes->charNum / 2;
                         if(j == center) {
                             y = mes->pos.y;
@@ -1476,22 +1587,23 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                             if(MgMesTime > 20) {
                                 GameMesScale = 1.0f;
                             }
-                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                          mes->scale.y * GameMesScale);
                         } else if(j < center) {
-                            x = GetGameMesWidth(mes, 0, j, 1.0f)-SprOrbitAngle[j][0];
+                            x = GetGameMesWidth(mes, 0, j, 1.0f)-SprMotionState[j][0];
                             if(x > GetGameMesWidth(mes, 0, j, 1.0f)) {
                                 x = GetGameMesWidth(mes, 0, j, 1.0f);
                             }
-                            y = mes->pos.y-SprOrbitAngle[j][0];
+                            y = mes->pos.y-SprMotionState[j][0];
                             if(y > mes->pos.y) {
                                 y = mes->pos.y;
                             }
                         } else {
-                            x = GetGameMesWidth(mes, 0, j, 1.0f)+SprOrbitAngle[j][0];
+                            x = GetGameMesWidth(mes, 0, j, 1.0f)+SprMotionState[j][0];
                             if(x < GetGameMesWidth(mes, 0, j, 1.0f)) {
                                 x = GetGameMesWidth(mes, 0, j, 1.0f);
                             }
-                            y = mes->pos.y-SprOrbitAngle[j][0];
+                            y = mes->pos.y-SprMotionState[j][0];
                             if(y > mes->pos.y) {
                                 y = mes->pos.y;
                             }
@@ -1506,7 +1618,8 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 0, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 60) {
@@ -1528,7 +1641,8 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                         x = GetGameMesWidth(mes, 2, j, GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -1542,7 +1656,7 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                 if(mes->time >= 50) {
                     for(j=0; j<mes->charNum; j++) {
                         x = GetGameMesWidth(mes, 2, j, 1.0f);
-                        SprOrbitAngle[j][0] += SprOrbitAngle[j][1]/20.0f;
+                        SprMotionState[j][0] += SprMotionState[j][1]/20.0f;
                         center = mes->charNum / 2;
                         if(j == center) {
                             y = mes->pos.y;
@@ -1550,18 +1664,19 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                             if(MgMesTime > 20) {
                                 GameMesScale = 1.0f;
                             }
-                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                            HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                          mes->scale.y * GameMesScale);
                             GameMesTPLvl = sind(MgMesTime*4.5f);
                             if(MgMesTime > 20) {
                                 GameMesTPLvl = 1.0f;
                             }
                             HuSprTPLvlSet(mes->grpId[0], j, 1.0f-GameMesTPLvl);
                         } else if(j < center) {
-                            x = GetGameMesWidth(mes, 2, j, 1.0f)-SprOrbitAngle[j][0];
-                            y = mes->pos.y-SprOrbitAngle[j][0];
+                            x = GetGameMesWidth(mes, 2, j, 1.0f)-SprMotionState[j][0];
+                            y = mes->pos.y-SprMotionState[j][0];
                         } else {
-                            x = GetGameMesWidth(mes, 2, j, 1.0f)+SprOrbitAngle[j][0];
-                            y = mes->pos.y-SprOrbitAngle[j][0];
+                            x = GetGameMesWidth(mes, 2, j, 1.0f)+SprMotionState[j][0];
+                            y = mes->pos.y-SprMotionState[j][0];
                         }
                         HuSprPosSet(mes->grpId[0], j, x, y);
                     }
@@ -1600,6 +1715,8 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl for the layered minigame message,
+ * which can contain up to 15 characters. */
 BOOL GameMesMgSdInit(GAMEMES *mes, va_list args)
 {
     s16 i;
@@ -1633,7 +1750,8 @@ BOOL GameMesMgSdInit(GAMEMES *mes, va_list args)
     }
     for(i=0; i<6; i++) {
         if(i == 0) {
-            u32 mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0x42000A : 0x42000B;
+            u32 mesId = (mes->subMode == GAMEMES_MG_TYPE_START) ? GAMEMES_MESS_MINIGAME_START
+                                                                : GAMEMES_MESS_MINIGAME_FINISH;
             strMes = GameMesStrWinCreate(mes, mesId);
         } else {
             strMes = GameMesStrCopy(mes, (s16)(int)strMes);
@@ -1643,7 +1761,8 @@ BOOL GameMesMgSdInit(GAMEMES *mes, va_list args)
                 x = mes->pos.x+(mes->scale.x*(((-mes->charNum*56)/2)+(j*56)+28));
                 y = mes->pos.y;
                 if(i == 0) {
-                    HuSprScaleSet(mes->grpId[i], j, mes->scale.x*SdMesScale[j], mes->scale.y*SdMesScale[j]);
+                    HuSprScaleSet(mes->grpId[i], j, mes->scale.x * SdMesScale[j],
+                                  mes->scale.y * SdMesScale[j]);
                 } else {
                     HuSprScaleSet(mes->grpId[i], j, mes->scale.x, mes->scale.y);
                 }
@@ -1659,9 +1778,11 @@ BOOL GameMesMgSdInit(GAMEMES *mes, va_list args)
                 }
             }
             HuSprPosSet(mes->grpId[i], j, x, y);
-            HuSprPriSet(mes->grpId[i], j, (mes->subMode == GAMEMES_MG_TYPE_START) ? (i+5) : (j+(i+5)));
+            HuSprPriSet(mes->grpId[i], j,
+                        (mes->subMode == GAMEMES_MG_TYPE_START) ? (i + 5) : (j + (i + 5)));
             if(i == 0) {
-                HuSprTPLvlSet(mes->grpId[i], j, (mes->subMode == GAMEMES_MG_TYPE_START) ? 0.0f : 1.0f);
+                HuSprTPLvlSet(mes->grpId[i], j,
+                              (mes->subMode == GAMEMES_MG_TYPE_START) ? 0.0f : 1.0f);
                 SdMesTPLvl[i][j] = (mes->subMode == GAMEMES_MG_TYPE_START) ? 0.0f : 1.0f;
             } else {
                 HuSprTPLvlSet(mes->grpId[i], j, 1.0f/(i+1));
@@ -1679,6 +1800,7 @@ BOOL GameMesMgSdInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec calls this each frame to reveal or dismiss the layered minigame text. */
 BOOL GameMesMgSdExec(GAMEMES *mes)
 {
     s16 j;
@@ -1730,7 +1852,8 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                                 }
                                 HuSprDispOn(mes->grpId[i], j);
                             }
-                            HuSprScaleSet(mes->grpId[i], j, mes->scale.x*SdMesScale[j], mes->scale.y*SdMesScale[j]);
+                            HuSprScaleSet(mes->grpId[i], j, mes->scale.x * SdMesScale[j],
+                                          mes->scale.y * SdMesScale[j]);
                             if(i == 0) {
                                 SdMesTPLvl[0][j] += 0.017f;
                                 if(SdMesTPLvl[0][j] > 1.0f) {
@@ -1763,6 +1886,8 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                                         x += frandmod(7)*(0.1f*(frandmod(2) != 0 ? 1 : -1));
                                         y += frandmod(7)*(0.1f*(frandmod(2) != 0 ? 1 : -1));
                                         HuSprPosSet(mes->grpId[i], j, x, y);
+                                        /* The first trailing layer also moves the main
+                                         * letter to its jittered position. */
                                         if(i == 1) {
                                             HuSprPosSet(mes->grpId[0], j, x, y);
                                         }
@@ -1775,10 +1900,13 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                 if(mes->time >= timeStart) {
                     GameMesScale = (sind((mes->time-timeStart)*9.0f)*0.5)+1.0;
                     for(j=0; j<mes->charNum; j++) {
-                        x = mes->pos.x+(mes->scale.x*(((-mes->charNum*56)/2)+(j*56)+28)*GameMesScale);
+                        x = mes->pos.x +
+                            (mes->scale.x * (((-mes->charNum * 56) / 2) + (j * 56) + 28) *
+                             GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == timeStart) {
@@ -1797,10 +1925,13 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                 if(mes->time <= 20) {
                     GameMesScale = sind(mes->time*4.5f);
                     for(j=0; j<mes->charNum; j++) {
-                        x = mes->pos.x+(mes->scale.x*(((-mes->charNum*56)/2)+(j*56)+28)*GameMesScale);
+                        x = mes->pos.x +
+                            (mes->scale.x * (((-mes->charNum * 56) / 2) + (j * 56) + 28) *
+                             GameMesScale);
                         y = mes->pos.y;
                         HuSprPosSet(mes->grpId[0], j, x, y);
-                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                        HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                      mes->scale.y * GameMesScale);
                     }
                 }
                 if(mes->time == 20) {
@@ -1812,6 +1943,8 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time >= 50) {
+                    /* Dismissal updates only the main group;
+                     * the five copied groups keep their setup state. */
                     for(i=0; i<1; i++) {
                         for(j=0; j<SdMesWork[0]; j++) {
                             x = mes->pos.x+(mes->scale.x*(((-mes->charNum*56)/2)+(j*56)+28));
@@ -1835,7 +1968,8 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                                         SdMesScale[j] = 0.0f;
                                     }
                                 }
-                                HuSprScaleSet(mes->grpId[i], j, mes->scale.x*SdMesScale[j], mes->scale.y*SdMesScale[j]);
+                                HuSprScaleSet(mes->grpId[i], j, mes->scale.x * SdMesScale[j],
+                                              mes->scale.y * SdMesScale[j]);
                                 SdMesTPLvl[i][j] -= 0.07f;
                                 if(SdMesTPLvl[i][j] < 0.0f) {
                                     SdMesTPLvl[i][j] = 0.0f;
@@ -1887,6 +2021,7 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl to build the draw message layers. */
 BOOL GameMesMgDrawInit(GAMEMES *mes, va_list args)
 {
     s16 i;
@@ -1896,6 +2031,8 @@ BOOL GameMesMgDrawInit(GAMEMES *mes, va_list args)
     float scale;
     GAMEMESID strMes;
 
+    /* Ignore args and force the draw submode and message type,
+     * including requests delegated by another initializer. */
     mes->subMode = GAMEMES_MG_TYPE_DRAW;
     mes->mesNo = GAMEMES_MES_MG_DRAW;
     mes->mesMode = 1;
@@ -1912,7 +2049,7 @@ BOOL GameMesMgDrawInit(GAMEMES *mes, va_list args)
     SdMesWork[1] = 0;
     for(i=0; i<6; i++) {
         if(i == 0) {
-            strMes = GameMesStrWinCreate(mes, 0x42000D);
+            strMes = GameMesStrWinCreate(mes, GAMEMES_MESS_DRAW);
         } else {
             strMes = GameMesStrCopy(mes, (s16)(int)strMes);
         }
@@ -1931,6 +2068,8 @@ BOOL GameMesMgDrawInit(GAMEMES *mes, va_list args)
             } else {
                 scale = 6.0f/mes->charNum;
             }
+            /* Replace horizontal scale after positioning this glyph;
+             * subsequent glyph positions use the fitted scale. */
             mes->scale.x = scale;
             if(i == 0) {
                 HuSprScaleSet(mes->grpId[i], j, 0, 0);
@@ -1943,6 +2082,7 @@ BOOL GameMesMgDrawInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec calls this each frame to animate the draw text and its trailing copies. */
 BOOL GameMesMgDrawExec(GAMEMES *mes)
 {
     s16 i;
@@ -1961,7 +2101,8 @@ BOOL GameMesMgDrawExec(GAMEMES *mes)
                     x = GetGameMesWidth(mes, 1, j, GameMesScale);
                     y = mes->pos.y;
                     HuSprPosSet(mes->grpId[0], j, x, y);
-                    HuSprScaleSet(mes->grpId[0], j, mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                    HuSprScaleSet(mes->grpId[0], j, mes->scale.x * GameMesScale,
+                                  mes->scale.y * GameMesScale);
                 }
             }
             if(mes->time == 20) {
@@ -2006,6 +2147,8 @@ BOOL GameMesMgDrawExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl to format a supplied score or time;
+ * overlay 0x6B instead loads that subgame's saved record. */
 BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
 {
     s16 no;
@@ -2022,12 +2165,12 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
     mes->angle = 0;
     switch(omcurovl) {
         case 0x53:
-            RecordMesLanguageNo = 0;
+            RecordMesFormatType = 0;
             num = 0;
             break;
 
         case 0x0D:
-            RecordMesLanguageNo = 1;
+            RecordMesFormatType = 1;
             num = 1;
             break;
 
@@ -2037,19 +2180,19 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
         case 0x35:
         case 0x37:
         case 0x39:
-            RecordMesLanguageNo = 2;
+            RecordMesFormatType = 2;
             num = 0;
             break;
 
         case 0x6B:
             recordNo = GwSystem.subGameNo;
             RecordMesValue = GWMikeActRecordGet((s16)(int)recordNo);
-            RecordMesLanguageNo = 2;
+            RecordMesFormatType = 2;
             num = 0;
             break;
 
         default:
-            RecordMesLanguageNo = -1;
+            RecordMesFormatType = -1;
             num = 0;
             break;
     }
@@ -2077,21 +2220,23 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
         HuSprGrpMemberSet(mes->grpId[0], i+2, sprId);
         HuSprPriSet(mes->grpId[0], i+2, 2);
     }
-    if(RecordMesLanguageNo == 1) {
+    if(RecordMesFormatType == 1) {
         animP = HuSprAnimRead(GameMesDataRead(DATANUM(DATA_gamemes, 15)));
         sprId = HuSprCreate(animP, 0, 0);
         HuSprGrpMemberSet(mes->grpId[0], 10, sprId);
         HuSprPriSet(mes->grpId[0], 10, 2);
     }
-    if(RecordMesLanguageNo < 2) {
+    /* Integer records cap at 999999; both formatting paths consume
+     * RecordMesValue while extracting digits. */
+    if(RecordMesFormatType < 2) {
         no = 0;
-        if(RecordMesValue > 999999) {
-            RecordMesValue = 999999;
+        if(RecordMesValue > GAMEMES_RECORD_VALUE_MAX) {
+            RecordMesValue = GAMEMES_RECORD_VALUE_MAX;
         }
-        num = RecordMesValue/100000;
+        num = RecordMesValue/GAMEMES_RECORD_HUNDRED_THOUSANDS;
         if(num != 0) {
             HuSprBankSet(mes->grpId[0], no+2, num);
-            RecordMesValue -= num*100000;
+            RecordMesValue -= num*GAMEMES_RECORD_HUNDRED_THOUSANDS;
             no++;
         }
         num = RecordMesValue/10000;
@@ -2123,7 +2268,7 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
         for(i=no; i<8; i++) {
             HuSprDispOff(mes->grpId[0], i+2);
         }
-        if(RecordMesLanguageNo == 1) {
+        if(RecordMesFormatType == 1) {
             num = 16;
             HuSprPosSet(mes->grpId[0], 10, 48+(-((no*44)+48)/2)+(no*44)+num, 32);
         } else {
@@ -2132,12 +2277,14 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
         HuSprPosSet(mes->grpId[0], 1, 24+(-((no*44)+48)/2)-num, 32);
         for(i=0; i<no; i++) {
             HuSprPosSet(mes->grpId[0], i+2, 70+(-((no*44)+48)/2)+(i*44)-num, 32);
-            if(RecordMesLanguageNo == -1) {
+            if(RecordMesFormatType == -1) {
                 HuSprDispOff(mes->grpId[0], i+2);
             }
         }
-    } else if(RecordMesLanguageNo == 2) {
+    } else if(RecordMesFormatType == 2) {
         no = 0;
+        /* Interpret the record as 60-Hz frames and extract minutes, seconds,
+         * and truncated hundredths. */
         num = RecordMesValue/36000;
         if(num != 0) {
             HuSprBankSet(mes->grpId[0], no+2, num);
@@ -2195,6 +2342,8 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec animates and closes the record display; practice mode marks it ended
+ * and removes its sprites immediately. */
 BOOL GameMesMgRecordExec(GAMEMES *mes)
 {
     if(!_CheckFlag(FLAG_MG_PRACTICE)) {
@@ -2208,8 +2357,10 @@ BOOL GameMesMgRecordExec(GAMEMES *mes)
             case 1:
                 if(mes->time <= 20) {
                     GameMesScale = sind(mes->time*4.5f);
+                    /* The reveal fixes this group's position at (288, 240), ignoring mes->pos. */
                     HuSprGrpPosSet(mes->grpId[0], 288, 240);
-                    HuSprGrpScaleSet(mes->grpId[0], mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                    HuSprGrpScaleSet(mes->grpId[0], mes->scale.x * GameMesScale,
+                                     mes->scale.y * GameMesScale);
                 }
                 if(mes->time == 20) {
                     HuAudFXPlay(MSM_SE_CMN_28);
@@ -2233,7 +2384,8 @@ BOOL GameMesMgRecordExec(GAMEMES *mes)
                     GameMesScale = 0;
                     mes->stat |= GAMEMES_STAT_KILL;
                 }
-                HuSprGrpScaleSet(mes->grpId[0], mes->scale.x*GameMesScale, mes->scale.y*GameMesScale);
+                HuSprGrpScaleSet(mes->grpId[0], mes->scale.x * GameMesScale,
+                                 mes->scale.y * GameMesScale);
                 break;
         }
     } else {
@@ -2247,6 +2399,7 @@ BOOL GameMesMgRecordExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* GameMesCreate selects this initializer from GameMesTbl to build the winner name display. */
 BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
 {
     int i;
@@ -2266,12 +2419,16 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
     float scale;
 
     type = va_arg(args, int);
+    /* This condition rejects no value; the consumed type does not select text,
+     * which is always the winner message. */
     if(type < 0 && type >= 6) {
         return FALSE;
     }
-    mesId = 0x42000C;
+    mesId = GAMEMES_MESS_WINNER;
+    /* The text creators populate grpId and charNum; their returned group slots
+     * are assigned but unused here. */
     strMes = GameMesStrWinCreate(mes, mesId);
-    WinnerMesSprX[0] = mes->charNum*56;
+    WinnerMesSprWidth[0] = mes->charNum*56;
     WinnerMesSprNum[0] = mes->charNum;
     if(mes->charNum <= 6) {
         scale = 1.0f;
@@ -2288,6 +2445,8 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
             charCount++;
         }
     }
+    /* Three-winner layouts for languages 3 and 4 rotate the order
+     * from [0, 1, 2] to [2, 0, 1]. */
     if((GameMesLanguageNo == 3 || GameMesLanguageNo == 4) && charCount == 3) {
         temp = chars[0];
         chars[0] = chars[2];
@@ -2309,12 +2468,15 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
         nameMes = WinnerMesNameTbl[(charNo*6)+WinnerMesLanguageNo];
         nameFlag = 0;
         strMes = GameMesStrCreate(mes, nameMes, nameFlag);
+        /* Restore the space in these localized names to the layout count;
+         * GameMesStrCreate counts only their non-space glyphs. */
         if(GameMesLanguageNo == 1) {
             if(charNo == 9 || charNo == 11 || charNo == 12 || charNo == 13) {
                 mes->charNum++;
             }
         } else if(GameMesLanguageNo == 2) {
-            if(charNo == 8 || charNo == 9 || charNo == 11 || charNo == 12 || charNo == 13 || charNo == 14) {
+            if (charNo == 8 || charNo == 9 || charNo == 11 || charNo == 12 || charNo == 13 ||
+                charNo == 14) {
                 mes->charNum++;
             }
         } else if(GameMesLanguageNo == 3 || GameMesLanguageNo == 4 || GameMesLanguageNo == 5) {
@@ -2324,100 +2486,108 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
         }
         WinnerMesCharNo[WinnerMesCharNum] = charNo;
         WinnerMesCharNum++;
-        WinnerMesSprX[WinnerMesCharNum] = mes->charNum*56;
+        WinnerMesSprWidth[WinnerMesCharNum] = mes->charNum*56;
         WinnerMesSprNum[WinnerMesCharNum] = mes->charNum;
     }
     if(WinnerMesCharNum == 0) {
         return FALSE;
     }
+    /* From here charNum counts text groups:
+     * the winner heading followed by one group per winner. */
     mes->charNum = WinnerMesCharNum+1;
     mes->mesMode = 1;
     mes->angle = 0;
-    WinnerMesXOfs = 600;
+    WinnerMesOffset = 600;
     for(y=0, i=0; i<mes->charNum; i++) {
         if(WinnerMesCharNum == 1) {
-            nameLen = WinnerMesSprX[1]/56;
+            nameLen = WinnerMesSprWidth[1]/56;
             if(nameLen <= 5) {
                 mes->winScale = 1;
-                ofs = WinnerMesSprX[1];
+                ofs = WinnerMesSprWidth[1];
             } else {
                 mes->winScale = 5.0f/nameLen;
                 ofs = 280;
             }
             if(i != 0) {
-                FixWinnerNameOfs(mes->grpId[i], WinnerMesCharNo[i-1], mes->winScale, WinnerMesSprX[i]/56);
+                FixWinnerNameOfs(mes->grpId[i], WinnerMesCharNo[i - 1], mes->winScale,
+                                 WinnerMesSprWidth[i] / 56);
             }
-            x = ofs+WinnerMesSprX[0]+32.0f;
+            x = ofs+WinnerMesSprWidth[0]+32.0f;
             if(i == 0) {
-                x = ((576.0f-x)/2)+(x-(WinnerMesSprX[0]/2));
+                x = ((576.0f-x)/2)+(x-(WinnerMesSprWidth[0]/2));
             } else {
                 x = ((576.0f-x)/2)+(ofs/2);
             }
         } else if(i == 0) {
             x = 288.0f;
         } else if(WinnerMesCharNum == 2) {
-            if(WinnerMesSprX[i]/56 <= 4) {
+            if(WinnerMesSprWidth[i]/56 <= 4) {
                 mes->winScale = 1;
             } else {
-                mes->winScale = 4.0f/(WinnerMesSprX[i]/56);
+                mes->winScale = 4.0f/(WinnerMesSprWidth[i]/56);
             }
             if(i != 0) {
-                FixWinnerNameOfs(mes->grpId[i], WinnerMesCharNo[i-1], mes->winScale, WinnerMesSprX[i]/56);
+                FixWinnerNameOfs(mes->grpId[i], WinnerMesCharNo[i - 1], mes->winScale,
+                                 WinnerMesSprWidth[i] / 56);
             }
             if(i == 1) {
-                x = 272.0f-((WinnerMesSprX[1]*mes->winScale)/2);
-                if(WinnerMesSprX[i]/56 < 4) {
-                    x -= ((4-(WinnerMesSprX[i]/56))*56)/2.0f;
+                x = 272.0f-((WinnerMesSprWidth[1]*mes->winScale)/2);
+                if(WinnerMesSprWidth[i]/56 < 4) {
+                    x -= ((4-(WinnerMesSprWidth[i]/56))*56)/2.0f;
                 }
             } else {
-                x = 304.0f+((WinnerMesSprX[2]*mes->winScale)/2);
-                if(WinnerMesSprX[i]/56 < 4) {
-                    x += ((4-(WinnerMesSprX[i]/56))*56)/2.0f;
+                x = 304.0f+((WinnerMesSprWidth[2]*mes->winScale)/2);
+                if(WinnerMesSprWidth[i]/56 < 4) {
+                    x += ((4-(WinnerMesSprWidth[i]/56))*56)/2.0f;
                 }
             }
         } else if(WinnerMesCharNum == 3) {
-            if(WinnerMesSprX[i]/56 <= 4) {
+            if(WinnerMesSprWidth[i]/56 <= 4) {
                 mes->winScale = 1;
             } else {
-                mes->winScale = 4.0f/(WinnerMesSprX[i]/56);
+                mes->winScale = 4.0f/(WinnerMesSprWidth[i]/56);
             }
             if(i != 0) {
-                FixWinnerNameOfs(mes->grpId[i], WinnerMesCharNo[i-1], mes->winScale, WinnerMesSprX[i]/56);
+                FixWinnerNameOfs(mes->grpId[i], WinnerMesCharNo[i - 1], mes->winScale,
+                                 WinnerMesSprWidth[i] / 56);
             }
             if(i == 1) {
                 x = 288;
             } else if(i == 2) {
-                x = 272.0f-((WinnerMesSprX[2]*mes->winScale)/2);
-                if(WinnerMesSprX[i]/56 < 4) {
-                    x -= ((4-(WinnerMesSprX[i]/56))*56)/2.0f;
+                x = 272.0f-((WinnerMesSprWidth[2]*mes->winScale)/2);
+                if(WinnerMesSprWidth[i]/56 < 4) {
+                    x -= ((4-(WinnerMesSprWidth[i]/56))*56)/2.0f;
                 }
             } else {
-                x = 304.0f+((WinnerMesSprX[3]*mes->winScale)/2);
-                if(WinnerMesSprX[i]/56 < 4) {
-                    x += ((4-(WinnerMesSprX[i]/56))*56)/2.0f;
+                x = 304.0f+((WinnerMesSprWidth[3]*mes->winScale)/2);
+                if(WinnerMesSprWidth[i]/56 < 4) {
+                    x += ((4-(WinnerMesSprWidth[i]/56))*56)/2.0f;
                 }
             }
         } else if(WinnerMesCharNum == 4) {
-            if(WinnerMesSprX[i]/56 <= 4) {
+            if(WinnerMesSprWidth[i]/56 <= 4) {
                 mes->winScale = 1;
             } else {
-                mes->winScale = 4.0f/(WinnerMesSprX[i]/56);
+                mes->winScale = 4.0f/(WinnerMesSprWidth[i]/56);
             }
             if(i != 0) {
-                FixWinnerNameOfs(mes->grpId[i], WinnerMesCharNo[i-1], mes->winScale, WinnerMesSprX[i]/56);
+                FixWinnerNameOfs(mes->grpId[i], WinnerMesCharNo[i - 1], mes->winScale,
+                                 WinnerMesSprWidth[i] / 56);
             }
             if((i%2) != 0) {
-                x = 272.0f-((WinnerMesSprX[i]*mes->winScale)/2);
-                if(WinnerMesSprX[i]/56 < 4) {
-                    x -= ((4-(WinnerMesSprX[i]/56))*56)/2.0f;
+                x = 272.0f-((WinnerMesSprWidth[i]*mes->winScale)/2);
+                if(WinnerMesSprWidth[i]/56 < 4) {
+                    x -= ((4-(WinnerMesSprWidth[i]/56))*56)/2.0f;
                 }
             } else {
-                x = 304.0f+((WinnerMesSprX[i]*mes->winScale)/2);
-                if(WinnerMesSprX[i]/56 < 4) {
-                    x += ((4-(WinnerMesSprX[i]/56))*56)/2.0f;
+                x = 304.0f+((WinnerMesSprWidth[i]*mes->winScale)/2);
+                if(WinnerMesSprWidth[i]/56 < 4) {
+                    x += ((4-(WinnerMesSprWidth[i]/56))*56)/2.0f;
                 }
             }
         }
+        /* Four winners and the heading make five entries, indexing one past the four-entry X/Y
+         * arrays. */
         WinnerMesNameX[i] = x;
         if(WinnerMesCharNum == 1) {
             switch(omcurovl) {
@@ -2447,13 +2617,20 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
                     if(night == 0) {
                         WinnerMesNameY[i] = 357.0f;
                     } else {
-                        WinnerMesNameY[i] = 240.0f+WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0 : 1][WinnerMesCharNum-1][i][1];
+                        WinnerMesNameY[i] =
+                            240.0f +
+                            WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0
+                                                                                               : 1]
+                                           [WinnerMesCharNum - 1][i][1];
                     }
                     break;
                 }
 
                 default:
-                    WinnerMesNameY[i] = 240.0f+WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0 : 1][WinnerMesCharNum-1][i][1];
+                    WinnerMesNameY[i] =
+                        240.0f +
+                        WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0 : 1]
+                                       [WinnerMesCharNum - 1][i][1];
                     break;
             }
         } else if(WinnerMesCharNum == 2) {
@@ -2482,7 +2659,11 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
                             WinnerMesNameY[i] -= 70.0f;
                         }
                     } else {
-                        WinnerMesNameY[i] = 240.0f+WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0 : 1][WinnerMesCharNum-1][i][1];
+                        WinnerMesNameY[i] =
+                            240.0f +
+                            WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0
+                                                                                               : 1]
+                                           [WinnerMesCharNum - 1][i][1];
                     }
                     break;
                 }
@@ -2496,57 +2677,62 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
                     break;
 
                 default:
-                    WinnerMesNameY[i] = 240.0f+WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0 : 1][WinnerMesCharNum-1][i][1];
+                    WinnerMesNameY[i] =
+                        240.0f +
+                        WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0 : 1]
+                                       [WinnerMesCharNum - 1][i][1];
                     break;
             }
         } else {
-            WinnerMesNameY[i] = 240.0f+WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0 : 1][WinnerMesCharNum-1][i][1];
+            WinnerMesNameY[i] =
+                240.0f + WinnerMesOfsTbl[(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) ? 0 : 1]
+                                        [WinnerMesCharNum - 1][i][1];
         }
         x = WinnerMesNameX[i];
         y = WinnerMesNameY[i];
         if(WinnerMesCharNum == 1) {
             if(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) {
                 if(i == 1) {
-                    y += WinnerMesXOfs;
+                    y += WinnerMesOffset;
                 }
             } else {
                 if(i == 1) {
-                    x -= WinnerMesXOfs;
+                    x -= WinnerMesOffset;
                 }
             }
         } else if(WinnerMesCharNum == 2) {
             if(i == 1) {
-                x -= WinnerMesXOfs;
+                x -= WinnerMesOffset;
             } else if(i == 2) {
-                x += WinnerMesXOfs;
+                x += WinnerMesOffset;
             }
         } else if(WinnerMesCharNum == 3) {
             if(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) {
                 if(i == 1) {
-                    y += WinnerMesXOfs;
+                    y += WinnerMesOffset;
                 } else if(i == 2) {
-                    x -= WinnerMesXOfs;
+                    x -= WinnerMesOffset;
                 } else if(i == 3) {
-                    x += WinnerMesXOfs;
+                    x += WinnerMesOffset;
                 }
             } else {
                 if(i == 1) {
-                    y -= WinnerMesXOfs;
+                    y -= WinnerMesOffset;
                 } else if(i == 2) {
-                    x -= WinnerMesXOfs;
+                    x -= WinnerMesOffset;
                 } else if(i == 3) {
-                    x += WinnerMesXOfs;
+                    x += WinnerMesOffset;
                 }
             }
         } else if(WinnerMesCharNum == 4) {
             if(i == 1) {
-                x -= WinnerMesXOfs;
+                x -= WinnerMesOffset;
             } else if(i == 2) {
-                x += WinnerMesXOfs;
+                x += WinnerMesOffset;
             } else if(i == 3) {
-                x -= WinnerMesXOfs;
+                x -= WinnerMesOffset;
             } else if(i == 4) {
-                x += WinnerMesXOfs;
+                x += WinnerMesOffset;
             }
         }
         HuSprGrpPosSet(mes->grpId[i], x, y);
@@ -2555,6 +2741,8 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
         } else {
             HuSprGrpScaleSet(mes->grpId[i], mes->winScale, 1.0f);
         }
+        /* Restored name spaces include an empty member with sprite ID -1 in this loop; HuSprPriSet
+         * does not skip it. */
         for(charNo=0; charNo<WinnerMesSprNum[i]; charNo++) {
             HuSprPriSet(mes->grpId[i], charNo, 2);
         }
@@ -2562,6 +2750,7 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
     return TRUE;
 }
 
+/* GameMesExec calls this each frame to animate and close the winner name display. */
 BOOL GameMesMgWinExec(GAMEMES *mes)
 {
     int i;
@@ -2585,53 +2774,53 @@ BOOL GameMesMgWinExec(GAMEMES *mes)
                 HuSprGrpZRotSet(mes->grpId[0], zRot);
                 scale = sind((t/20.0f)*90.0f);
                 HuSprGrpScaleSet(mes->grpId[0], mes->scale.x*scale, mes->scale.y*scale);
-                WinnerMesXOfs -= 30;
+                WinnerMesOffset -= 30;
                 for(i=1; i<mes->charNum; i++) {
                     x = WinnerMesNameX[i];
                     y = WinnerMesNameY[i];
                     if(WinnerMesCharNum == 1) {
                         if(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) {
                             if(i == 1) {
-                                y += WinnerMesXOfs;
+                                y += WinnerMesOffset;
                             }
                         } else {
                             if(i == 1) {
-                                x -= WinnerMesXOfs;
+                                x -= WinnerMesOffset;
                             }
                         }
                     } else if(WinnerMesCharNum == 2) {
                         if(i == 1) {
-                            x -= WinnerMesXOfs;
+                            x -= WinnerMesOffset;
                         } else if(i == 2) {
-                            x += WinnerMesXOfs;
+                            x += WinnerMesOffset;
                         }
                     } else if(WinnerMesCharNum == 3) {
                         if(GameMesLanguageNo == 3 || GameMesLanguageNo == 4) {
                             if(i == 1) {
-                                y += WinnerMesXOfs;
+                                y += WinnerMesOffset;
                             } else if(i == 2) {
-                                x -= WinnerMesXOfs;
+                                x -= WinnerMesOffset;
                             } else if(i == 3) {
-                                x += WinnerMesXOfs;
+                                x += WinnerMesOffset;
                             }
                         } else {
                             if(i == 1) {
-                                y -= WinnerMesXOfs;
+                                y -= WinnerMesOffset;
                             } else if(i == 2) {
-                                x -= WinnerMesXOfs;
+                                x -= WinnerMesOffset;
                             } else if(i == 3) {
-                                x += WinnerMesXOfs;
+                                x += WinnerMesOffset;
                             }
                         }
                     } else if(WinnerMesCharNum == 4) {
                         if(i == 1) {
-                            x -= WinnerMesXOfs;
+                            x -= WinnerMesOffset;
                         } else if(i == 2) {
-                            x += WinnerMesXOfs;
+                            x += WinnerMesOffset;
                         } else if(i == 3) {
-                            x -= WinnerMesXOfs;
+                            x -= WinnerMesOffset;
                         } else if(i == 4) {
-                            x += WinnerMesXOfs;
+                            x += WinnerMesOffset;
                         }
                     }
                     HuSprGrpPosSet(mes->grpId[i], x, y);
@@ -2665,6 +2854,7 @@ BOOL GameMesMgWinExec(GAMEMES *mes)
     return TRUE;
 }
 
+/* Winner-name layout calls this after sprite setup to center split names in some languages. */
 static void FixWinnerNameOfs(int grpId, int charNo, float scale, int sprNum)
 {
     int i;
@@ -2699,6 +2889,7 @@ static void FixWinnerNameOfs(int grpId, int charNo, float scale, int sprNum)
     }
 }
 
+/* Message callbacks use this to place a character, including language-specific spacing. */
 static float GetGameMesWidth(GAMEMES *mes, int type, int no, float scale)
 {
     float x;
