@@ -5,3 +5,16 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/w03Dll/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
+REL/w03Dll/board.c:
+	.text       start:0x000000A0 end:0x00012A8C
+	.rodata     start:0x00000000 end:0x000002B8
+	.data       start:0x00000000 end:0x000009EC
+	.bss        start:0x00000000 end:0x000005C6
+
+REL/w03Dll/runtime.c:
+	.text       start:0x00012A8C end:0x000134D0
+	.rodata     start:0x000002B8 end:0x000002D0

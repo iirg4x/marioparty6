@@ -2349,6 +2349,27 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "w03Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/w03Dll/board.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/w03Dll/prolog.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/w03Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
