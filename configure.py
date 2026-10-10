@@ -2388,6 +2388,27 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "w05Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/w05Dll/prolog.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/w05Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/w05Dll/text_000A0.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":

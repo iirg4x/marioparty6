@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 36.45% | 57.37% |
+| Entire project | 37.52% | 57.55% |
 | Main DOL | 88.75% | 99.05% |
-| REL modules | 25.36% | 30.96% |
+| REL modules | 26.66% | 31.25% |
+
+Castaway Bay (`w05Dll`) selects all **119 functions** from **3 complete translation units**; its linked REL matches retail.
 
 w10Dll (`w10Dll`) selects all **46 functions** from **3 complete translation units**; its linked REL matches retail.
 
