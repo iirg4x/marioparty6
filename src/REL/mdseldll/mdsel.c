@@ -1,3 +1,5 @@
+/* Mode-selection overlay: builds the six-choice screen, handles player input, and enters the
+ * selected mode. */
 #include "datadir_enum.h"
 #include "messdir_enum.h"
 
@@ -38,78 +40,83 @@ typedef void (*VoidFunc)(void);
 typedef void (*MCResponseCallback)(u16 *response);
 
 typedef struct Lbl1Bss1D4Entry {
-    HU3D_MODELID modelId;
-    s16 pad;
-    s32 fxHandle;
+    HU3D_MODELID modelId; /* Model whose sound is tracked; NONE marks a free slot. */
+    s16 reserved; /* Alignment field. */
+    s32 fxHandle; /* Active sound handle, or -1 when no sound is tracked. */
 } LBL_1_BSS_1D4_ENTRY;
 
 typedef struct Lbl1Data8Entry {
-    s16 groupNo;
-    s16 memberNo;
-    s16 animNo;
-    s16 priority;
-    s16 bank;
-    s16 pad;
-    HuVec2f pos;
-    HuVec2f scale;
-    float zRot;
+    s16 groupNo; /* Sprite group that receives this marker. */
+    s16 memberNo; /* Member slot in the sprite group. */
+    s16 animNo; /* Index of the loaded marker animation. */
+    s16 priority; /* Sprite draw priority. */
+    s16 bank; /* Initial animation bank. */
+    s16 reserved; /* Alignment field. */
+    HuVec2f pos; /* Initial marker position in screen units. */
+    HuVec2f scale; /* Initial horizontal and vertical scale. */
+    float zRot; /* Initial rotation in degrees. */
 } LBL_1_DATA_8_ENTRY;
 
+/* Elapsed time, duration, and control points for the menu's model transition paths. */
 typedef struct MdselBezierWork {
-    u8 unk_00[4];
-    float time;
-    float duration;
-    HuVecF control[3];
-    u8 unk_30[88];
+    u8 reservedHeader[4]; /* Preserved bytes with no use in this file. */
+    float time; /* Elapsed menu animation time in frames. */
+    float duration; /* Total menu animation time in frames. */
+    HuVecF control[3]; /* Start, bend, and end positions in model space. */
+    u8 reservedTail[88]; /* Preserved bytes with no use in this file. */
 } MDSEL_BEZIER_WORK;
 
+/* Per-model movement and animation state for the first decorative choice group. */
 typedef struct Lbl1Bss8ACEntry {
-    s16 unk_00;
-    s16 unk_02;
-    float unk_04;
-    float unk_08;
-    HuVecF unk_0C;
-    float unk_18;
-    float unk_1C;
-    float unk_20;
-    float unk_24;
-    float unk_28;
-    u8 unk_2C[4];
-    float unk_30;
-    u8 unk_34[12];
-    s16 unk_40;
-    s16 unk_42;
-    s16 unk_44;
-    s16 unk_46;
-    float unk_48;
-    float unk_4C;
-    float unk_50;
-    u8 unk_54[4];
-    HuVecF unk_58;
-    HuVecF unk_64;
-    u8 unk_70[24];
+    s16 active; /* Zero hides this moving model; nonzero advances it. */
+    s16 reservedState; /* Preserved state with no use in this file. */
+    float phase; /* Current bob phase in update frames. */
+    float phaseDuration; /* Frames in one bob cycle. */
+    HuVecF position; /* Model position in world units. */
+    float horizontalSpeed; /* Horizontal movement in world units per update. */
+    float bobAmplitude; /* Vertical bob range in world units. */
+    float rotationAmplitude; /* Current rotation range in degrees. */
+    float rotationPhase; /* Current rotation phase in update frames. */
+    float rotationDuration; /* Frames in one rotation cycle. */
+    u8 reservedMotion[4]; /* Preserved bytes with no use in this file. */
+    float soundCountdown; /* Decremented before the sound check; an initial zero skips the sound. */
+    u8 reservedAudio[12]; /* Preserved bytes with no use in this file. */
+    s16 movementState; /* 0 chooses a move; 100, 200, 300, and 400 are animation states. */
+    s16 movementVariant; /* Selects the duration and follow-up state for a move. */
+    s16 stateTimer; /* Frames since the last intensity decrease. */
+    s16 intensity; /* Sound intensity, clamped to 0 through 30. */
+    float stateElapsed; /* Frames elapsed in the current movement state. */
+    float stateDuration; /* Frames assigned to the current movement state. */
+    float targetYaw; /* Target model heading in degrees. */
+    u8 reservedHeading[4]; /* Preserved bytes with no use in this file. */
+    HuVecF startPosition; /* Current movement state's start in world units. */
+    HuVecF endPosition; /* Current movement state's destination in world units. */
+    u8 reservedTail[24]; /* Preserved bytes with no use in this file. */
 } LBL_1_BSS_8AC_ENTRY;
 
+/* Per-model timing, endpoints, and direction for the second decorative choice group. */
 typedef struct Lbl1Bss24CEntry {
-    s16 unk_00;
-    s16 unk_02;
-    float unk_04;
-    float unk_08;
-    HuVecF unk_0C;
-    HuVecF unk_18;
-    u8 unk_24[12];
-    float unk_30;
-    float unk_34;
-    u8 unk_38[80];
+    s16 direction; /* 0 moves left to right; 1 moves right to left. */
+    s16 reservedDirection; /* Preserved state with no use in this file. */
+    float elapsed; /* Frames elapsed on the model's crossing path. */
+    float duration; /* Total frames for the model's crossing path. */
+    HuVecF startPosition; /* Crossing start in world units. */
+    HuVecF endPosition; /* Crossing destination in world units. */
+    u8 reservedPath[12]; /* Preserved bytes with no use in this file. */
+    float targetYaw; /* Target heading in degrees for the guide model. */
+    float lowerYVariant; /* 1 lowers the guide model to y=-400; 0 uses its normal height. */
+    u8 reservedTail[80]; /* Preserved bytes with no use in this file. */
 } LBL_1_BSS_24C_ENTRY;
 
+/* Microphone listener response data read by the recognition callback. */
 typedef struct MdselMicResponse {
-    s16 status;
-    s16 unk_02;
-    s16 count;
-    s16 pad;
-    s16 *result;
-    s32 unk_0C;
+    s16 status; /* Zero is successful; the callback also requires count > 0 before reading
+                 * result. */
+    s16 reservedStatus; /* Preserved response field with no use in this file. */
+    s16 count; /* Number of recognized word IDs in result. */
+    s16 reservedCount; /* Preserved alignment field. */
+    s16 *result; /* Recognized mode-choice word IDs. */
+    s32 reservedTail; /* Preserved response field with no use in this file. */
 } MDSEL_MIC_RESPONSE;
 
 extern const VoidFunc _ctors[];
@@ -214,7 +221,7 @@ void fn_1_1370(OMOBJ *obj);
 void fn_1_5614(OMOBJ *obj);
 void fn_1_607C(OMOBJ *obj);
 void fn_1_651C(MDSEL_MIC_RESPONSE *response);
-void fn_1_EF48(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix);
+void fn_1_EF48(HU3D_MODEL *model, HU3D_PARTICLE *emitter, Mtx matrix);
 void fn_1_F790(void);
 void fn_1_2A78(s16 layerNo);
 void fn_1_2828(void);
@@ -239,6 +246,8 @@ void fn_1_E1FC(void);
 s16 fn_1_E7B0(void);
 void ObjectSetup(void);
 
+/* Window callback registered by fn_1_1DDC; plays the guide voice when a new main-menu entry
+ * appears. */
 void fn_1_0(HUWINID winId, u32 mess, s16 index)
 {
     s32 messNum[3] = {
@@ -279,6 +288,7 @@ void fn_1_0(HUWINID winId, u32 mess, s16 index)
     }
 }
 
+/* Returns from the mode-selection screen to the overlay chosen in the current menu state. */
 void fn_1_1B4(void)
 {
     OMOVLHIS *history = omOvlHisGet(0);
@@ -306,6 +316,8 @@ void fn_1_1B4(void)
     }
 }
 
+/* Closes character data and frees DATA_board, DATA_board_us, and DATA_capsule, then reports heap
+ * use. */
 void fn_1_2CC(void)
 {
     CharDataClose(-1);
@@ -321,6 +333,7 @@ void fn_1_2CC(void)
     OSReport(lbl_1_data_112);
 }
 
+/* Reports the remaining mode-selection archive allocations when the overlay is leaving. */
 void fn_1_37C(void)
 {
     OSReport(lbl_1_data_114);
@@ -332,6 +345,7 @@ void fn_1_37C(void)
     OSReport(lbl_1_data_112);
 }
 
+/* Applies a sprite attribute to every member of a sprite group. */
 void fn_1_40C(HUSPR_GROUPID groupId, s32 attr)
 {
     s16 memberNo;
@@ -344,6 +358,7 @@ void fn_1_40C(HUSPR_GROUPID groupId, s32 attr)
 
 inline void fn_1_40C(HUSPR_GROUPID groupId, s32 attr);
 
+/* Clears a sprite attribute from every member of a sprite group. */
 void fn_1_48C(HUSPR_GROUPID groupId, s32 attr)
 {
     s16 memberNo;
@@ -356,25 +371,29 @@ void fn_1_48C(HUSPR_GROUPID groupId, s32 attr)
 
 inline void fn_1_48C(HUSPR_GROUPID groupId, s32 attr);
 
-float fn_1_50C(float arg0, float arg1, float arg2, float arg3)
+/* Interpolates between two values over a bounded elapsed time, returning the endpoints outside the
+ * interval. */
+float fn_1_50C(float startValue, float endValue, float time, float duration)
 {
-    if (arg2 <= 0.0f) {
-        return arg0;
+    if (time <= 0.0f) {
+        return startValue;
     }
-    if (arg2 >= arg3) {
-        return arg1;
+    if (time >= duration) {
+        return endValue;
     }
-    return arg0 + ((arg2 / arg3) * (arg1 - arg0));
+    return startValue + ((time / duration) * (endValue - startValue));
 }
 
-float fn_1_550(float arg0, float arg1, float arg2)
+/* Blends a current value toward a sample using the supplied weight. */
+float fn_1_550(float currentValue, float sampleValue, float weight)
 {
-    if (arg0 == arg1 || arg2 <= 1.0f) {
-        return arg1;
+    if (currentValue == sampleValue || weight <= 1.0f) {
+        return sampleValue;
     }
-    return (arg1 + (arg0 * (arg2 - 1.0f))) / arg2;
+    return (sampleValue + (currentValue * (weight - 1.0f))) / weight;
 }
 
+/* Blends each component of a 3D position toward the corresponding target component. */
 void fn_1_598(HuVecF *dst, const HuVecF *src, float weight)
 {
     dst->x = fn_1_550(dst->x, src->x, weight);
@@ -384,51 +403,56 @@ void fn_1_598(HuVecF *dst, const HuVecF *src, float weight)
 
 inline void fn_1_598(HuVecF *dst, const HuVecF *src, float weight);
 
-float fn_1_724(float arg0, float arg1, float time, float duration)
+/* Moves a value from its start to end using a quarter-cycle sine curve over the given duration. */
+float fn_1_724(float startValue, float endValue, float time, float duration)
 {
     if (time <= 0.0f) {
-        return arg0;
+        return startValue;
     }
     if (time >= duration) {
-        return arg1;
+        return endValue;
     }
-    return arg0 + ((arg1 - arg0) * sind((90.0f / duration) * time));
+    return startValue + ((endValue - startValue) * sind((90.0f / duration) * time));
 }
 
-float fn_1_80C(float arg0, float arg1, float time, float duration)
+/* Moves a value through a full-cycle sine curve and returns to its start when the duration ends. */
+float fn_1_80C(float startValue, float endValue, float time, float duration)
 {
     if (time <= 0.0f) {
-        return arg0;
+        return startValue;
     }
     if (time >= duration) {
-        return arg0;
+        return startValue;
     }
-    return arg0 + ((arg1 - arg0) * sind((360.0f / duration) * time));
+    return startValue + ((endValue - startValue) * sind((360.0f / duration) * time));
 }
 
-inline float fn_1_80C(float arg0, float arg1, float time, float duration);
+inline float fn_1_80C(float startValue, float endValue, float time, float duration);
 
-float fn_1_8E8(float arg0, float arg1, float time, float duration)
+/* Moves a value through a half-cycle sine curve and returns to its start when the duration ends. */
+float fn_1_8E8(float startValue, float endValue, float time, float duration)
 {
     if (time <= 0.0f) {
-        return arg0;
+        return startValue;
     }
     if (time >= duration) {
-        return arg0;
+        return startValue;
     }
-    return arg0 + ((arg1 - arg0) * sind((180.0f / duration) * time));
+    return startValue + ((endValue - startValue) * sind((180.0f / duration) * time));
 }
 
-inline float fn_1_8E8(float arg0, float arg1, float time, float duration);
+inline float fn_1_8E8(float startValue, float endValue, float time, float duration);
 
-float fn_1_9C4(float arg0, float arg1, float arg2, float arg3)
+/* Evaluates one component of the menu model's quadratic Bezier path. */
+float fn_1_9C4(float startValue, float controlValue, float endValue, float time)
 {
-    float temp = 1.0f - arg3;
+    float inverseTime = 1.0f - time;
 
-    return (arg2 * (arg3 * arg3))
-        + ((arg0 * (temp * temp)) + ((arg1 * (temp * arg3)) * 2.0f));
+    return (endValue * (time * time)) + ((startValue * (inverseTime * inverseTime)) +
+                                         ((controlValue * (inverseTime * time)) * 2.0f));
 }
 
+/* Evaluates a quadratic Bezier path independently for each position component. */
 void fn_1_A20(
     HuVecF *dst, const HuVecF *a, const HuVecF *b, const HuVecF *c, float t)
 {
@@ -437,22 +461,25 @@ void fn_1_A20(
     dst->z = fn_1_9C4(a->z, b->z, c->z, t);
 }
 
-float fn_1_C28(float arg0, float arg1, float arg2)
+/* Blends a current scalar toward a target using the menu animation's weight calculation. */
+float fn_1_C28(float currentValue, float targetValue, float weight)
 {
-    return (arg1 + (arg0 * (arg2 - 1.0f))) / arg2;
+    return (targetValue + (currentValue * (weight - 1.0f))) / weight;
 }
 
-float fn_1_C48(float arg0, float arg1, float arg2, float arg3)
+/* Interpolates between two values over a bounded elapsed time. */
+float fn_1_C48(float startValue, float endValue, float time, float duration)
 {
-    if (arg2 <= 0.0f) {
-        return arg0;
+    if (time <= 0.0f) {
+        return startValue;
     }
-    if (arg2 >= arg3) {
-        return arg1;
+    if (time >= duration) {
+        return endValue;
     }
-    return arg0 + ((arg2 / arg3) * (arg1 - arg0));
+    return startValue + ((time / duration) * (endValue - startValue));
 }
 
+/* Moves a model along a position path while easing its heading toward that path. */
 void fn_1_C8C(
     HU3D_MODELID modelId, HuVecF *start, HuVecF *end, float time,
     float duration)
@@ -486,11 +513,13 @@ inline void fn_1_C8C(
     HU3D_MODELID modelId, HuVecF *start, HuVecF *end, float time,
     float duration);
 
-void fn_1_FEC(s16 arg0)
+/* Sets the camera's menu-choice endpoints from the selected choice's position in the three-column
+ * layout. */
+void fn_1_FEC(s16 dataIndex)
 {
     float divisor = 4.0f;
 
-    if (arg0 == -1) {
+    if (dataIndex == -1) {
         lbl_1_bss_19AC[1].x = 0.0f;
         lbl_1_bss_19AC[1].y = 1860.0f;
         lbl_1_bss_19AC[1].z = 4180.0f;
@@ -498,24 +527,25 @@ void fn_1_FEC(s16 arg0)
         lbl_1_bss_19AC[3].y = 317.0f;
         lbl_1_bss_19AC[3].z = 100.0f;
     } else {
-        lbl_1_bss_19AC[1].x = lbl_1_data_28[arg0].x / divisor;
-        lbl_1_bss_19AC[1].y = 1860.0f + lbl_1_data_28[arg0].y / divisor;
-        lbl_1_bss_19AC[1].z = 4080.0f + lbl_1_data_28[arg0].z / divisor;
-        lbl_1_bss_19AC[3].x = lbl_1_data_28[arg0].x / divisor;
-        lbl_1_bss_19AC[3].y = 317.0f + lbl_1_data_28[arg0].y / divisor;
-        lbl_1_bss_19AC[3].z = lbl_1_data_28[arg0].z / divisor;
+        lbl_1_bss_19AC[1].x = lbl_1_data_28[dataIndex].x / divisor;
+        lbl_1_bss_19AC[1].y = 1860.0f + lbl_1_data_28[dataIndex].y / divisor;
+        lbl_1_bss_19AC[1].z = 4080.0f + lbl_1_data_28[dataIndex].z / divisor;
+        lbl_1_bss_19AC[3].x = lbl_1_data_28[dataIndex].x / divisor;
+        lbl_1_bss_19AC[3].y = 317.0f + lbl_1_data_28[dataIndex].y / divisor;
+        lbl_1_bss_19AC[3].z = lbl_1_data_28[dataIndex].z / divisor;
     }
 }
 
+/* Sets the camera endpoints for the current menu row using that row's choice positions. */
 void fn_1_11D4(void)
 {
     float divisor;
-    float unused;
+    float ignoredScale; /* Assigned the constant 2.0 but never read. */
     float y;
     s16 index;
 
     divisor = 1.0f;
-    unused = 2.0f;
+    ignoredScale = 2.0f;
     y = 250.0f;
     index = lbl_1_bss_1A30[1] + (3 * lbl_1_bss_1A30[2]);
     if (lbl_1_bss_1A30[0] == 5) {
@@ -531,6 +561,8 @@ void fn_1_11D4(void)
 
 inline void fn_1_11D4(void);
 
+/* Per-frame camera object callback registered by fn_1_1734; eases the view toward the selected
+ * choice. */
 void fn_1_1370(OMOBJ *obj)
 {
     fn_1_598(&lbl_1_bss_19AC[0], &lbl_1_bss_19AC[1], 15.0f);
@@ -542,6 +574,7 @@ void fn_1_1370(OMOBJ *obj)
         lbl_1_bss_19AC[2].z);
 }
 
+/* Creates the menu camera and schedules its per-frame position update. */
 void fn_1_1734(void)
 {
     Hu3DCameraCreate(1);
@@ -563,11 +596,13 @@ void fn_1_1734(void)
 
 inline void fn_1_1734(void);
 
+/* Destroys the camera used to frame the mode-selection menu. */
 void fn_1_1964(void)
 {
     Hu3DCameraKill(1);
 }
 
+/* Creates the two fixed lights used to illuminate mode-selection models. */
 void fn_1_1988(void)
 {
     HuVecF pos[2] = { { 0.0f, 1.0f, 1.0f }, { -1.0f, 1.0f, -1.0f } };
@@ -584,6 +619,7 @@ void fn_1_1988(void)
 
 inline void fn_1_1988(void);
 
+/* Destroys the fixed lights created for the mode-selection models. */
 void fn_1_1AD8(void)
 {
     s16 i;
@@ -593,6 +629,7 @@ void fn_1_1AD8(void)
     }
 }
 
+/* Opens the requested menu window, using the standard display call for the first window. */
 void fn_1_1B30(s16 winNo)
 {
     if (winNo == 0) {
@@ -604,6 +641,7 @@ void fn_1_1B30(s16 winNo)
 
 inline void fn_1_1B30(s16 winNo);
 
+/* Closes the requested menu window, using the standard display call for the first window. */
 void fn_1_1BA0(s16 winNo)
 {
     if (winNo == 0) {
@@ -615,6 +653,7 @@ void fn_1_1BA0(s16 winNo)
 
 inline void fn_1_1BA0(s16 winNo);
 
+/* Waits for the active message in the requested menu window to finish. */
 void fn_1_1C10(s16 winNo)
 {
     HuWinMesWait(lbl_1_bss_1A40[winNo]);
@@ -622,6 +661,8 @@ void fn_1_1C10(s16 winNo)
 
 inline void fn_1_1C10(s16 winNo);
 
+/* Reads the player's choice from a menu window, optionally disabling cancellation while the choice
+ * is pending. */
 s16 fn_1_1C4C(s16 winNo, s16 mode)
 {
     s16 choice = 0;
@@ -640,6 +681,8 @@ s16 fn_1_1C4C(s16 winNo, s16 mode)
 
 inline s16 fn_1_1C4C(s16 winNo, s16 mode);
 
+/* Displays a centered message in a menu window at the requested text speed and runs its completion
+ * callback. */
 void fn_1_1D20(s16 winNo, s32 messNum, s16 speed)
 {
     HuWinAttrSet(lbl_1_bss_1A40[winNo], HUWIN_ATTR_ALIGN_CENTER);
@@ -652,6 +695,7 @@ void fn_1_1D20(s16 winNo, s32 messNum, s16 speed)
 
 inline void fn_1_1D20(s16 winNo, s32 messNum, s16 speed);
 
+/* Initializes the four message windows used by the mode-selection screen. */
 void fn_1_1DDC(void)
 {
     s16 i;
@@ -683,6 +727,7 @@ void fn_1_1DDC(void)
 
 inline void fn_1_1DDC(void);
 
+/* Destroys the mode-selection message windows and clears the window system state. */
 void fn_1_2024(void)
 {
     s16 i;
@@ -693,6 +738,7 @@ void fn_1_2024(void)
     HuWinAllKill();
 }
 
+/* Makes the requested primary message window active, closing the previous one when necessary. */
 void fn_1_2080(s16 winNo)
 {
     if (lbl_1_data_150[0] != -1 && lbl_1_data_150[0] != winNo) {
@@ -705,6 +751,7 @@ void fn_1_2080(s16 winNo)
     }
 }
 
+/* Closes and forgets the active primary message window and its message. */
 void fn_1_21DC(void)
 {
     if (lbl_1_data_150[0] != -1) {
@@ -714,6 +761,7 @@ void fn_1_21DC(void)
     lbl_1_data_154[0] = -1;
 }
 
+/* Waits for the current primary-window message to finish when one is open. */
 void fn_1_2288(void)
 {
     if (lbl_1_data_150[0] != -1) {
@@ -721,6 +769,7 @@ void fn_1_2288(void)
     }
 }
 
+/* Returns the current primary-window choice, or zero when no window is active. */
 s16 fn_1_22E8(s16 mode)
 {
     if (lbl_1_data_150[0] != -1) {
@@ -729,6 +778,8 @@ s16 fn_1_22E8(s16 mode)
     return 0;
 }
 
+/* Shows a message in the primary window, reopening it when needed and avoiding a redundant message
+ * update. */
 void fn_1_23E0(s16 winNo, s32 messNum, s16 speed)
 {
     fn_1_2080(winNo);
@@ -738,6 +789,7 @@ void fn_1_23E0(s16 winNo, s32 messNum, s16 speed)
     }
 }
 
+/* Shows or updates the secondary guide message window. */
 void fn_1_25F8(s32 messNum)
 {
     if (lbl_1_data_150[1] == -1) {
@@ -751,6 +803,7 @@ void fn_1_25F8(s32 messNum)
     }
 }
 
+/* Closes and forgets the secondary guide message window. */
 void fn_1_277C(void)
 {
     if (lbl_1_data_150[1] != -1) {
@@ -760,6 +813,7 @@ void fn_1_277C(void)
     lbl_1_data_154[1] = -1;
 }
 
+/* Loads and positions the sprite group that marks the selected mode on the menu. */
 void fn_1_2828(void)
 {
     LBL_1_DATA_8_ENTRY *desc = lbl_1_data_8;
@@ -790,13 +844,15 @@ void fn_1_2828(void)
 
 inline void fn_1_2828(void);
 
+/* This function has an empty body at this address in the mode-selection overlay. */
 void fn_1_2A74(void)
 {
 }
 
+/* Layer 15 draw hook installed by fn_1_30FC; draws the tinted menu backdrop. */
 void fn_1_2A78(s16 layerNo)
 {
-    float unused;
+    float ignoredPulse; /* Stores the computed pulse, which this hook never uses. */
     GXTexObj texObj;
     Mtx44 projection;
     Mtx trans;
@@ -852,7 +908,8 @@ void fn_1_2A78(s16 layerNo)
         MTXConcat(rot, trans, model);
         mtxTransCat(model, 320.0f, 240.0f, 0.0f);
         GXLoadPosMtxImm(model, GX_PNMTX0);
-        unused = fn_1_724(0.0f, 1.0f, ++lbl_1_bss_2C, 60.0f);
+        /* The pulse value is discarded; only its frame counter advances. */
+        ignoredPulse = fn_1_724(0.0f, 1.0f, ++lbl_1_bss_2C, 60.0f);
 
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
         GXPosition3f32(-50.0f, -50.0f, 0.0f);
@@ -875,6 +932,7 @@ void fn_1_2A78(s16 layerNo)
     }
 }
 
+/* Installs the backdrop drawing hook when its framebuffer texture is available. */
 void fn_1_30FC(void)
 {
     if (lbl_1_bss_28) {
@@ -882,12 +940,14 @@ void fn_1_30FC(void)
     }
 }
 
+/* Allocates the framebuffer texture used by the menu backdrop hook. */
 void fn_1_313C(void)
 {
     lbl_1_bss_28 = HuMemDirectMallocNum(
         HEAP_MODEL, GXGetTexBufferSize(640, 480, GX_TF_RGBA8, FALSE, 0), HU_MEMNUM_OVL);
 }
 
+/* Removes the backdrop hook and frees its framebuffer texture during menu cleanup. */
 void fn_1_318C(void)
 {
     Hu3DLayerHookReset(15);
@@ -897,6 +957,7 @@ void fn_1_318C(void)
     lbl_1_bss_28 = NULL;
 }
 
+/* Ends the current guide-model display interval and restores its looping idle motion. */
 void fn_1_31E4(OMOBJ *obj)
 {
     if (++obj->work[0] > 120) {
@@ -906,6 +967,7 @@ void fn_1_31E4(OMOBJ *obj)
     }
 }
 
+/* Starts the guide animation and sound for the first set of mode choices. */
 void fn_1_3274(void)
 {
     OMOBJ *obj = lbl_1_bss_30;
@@ -921,6 +983,7 @@ void fn_1_3274(void)
 
 inline void fn_1_3274(void);
 
+/* Ends the current guide-model display interval and restores its looping idle motion. */
 void fn_1_3328(OMOBJ *obj)
 {
     if (++obj->work[0] > 120) {
@@ -930,6 +993,7 @@ void fn_1_3328(OMOBJ *obj)
     }
 }
 
+/* Starts the guide animation and sound for the second set of mode choices. */
 void fn_1_33B8(void)
 {
     OMOBJ *obj = lbl_1_bss_30;
@@ -945,6 +1009,7 @@ void fn_1_33B8(void)
 
 inline void fn_1_33B8(void);
 
+/* Per-frame model callback installed by fn_1_3910; advances moving models and their sound state. */
 void fn_1_346C(OMOBJ *obj)
 {
     LBL_1_BSS_8AC_ENTRY *entry;
@@ -953,40 +1018,40 @@ void fn_1_346C(OMOBJ *obj)
 
     for (i = 0; i < 30; i++) {
         entry = &lbl_1_bss_9BC[i];
-        if (entry->unk_00 == 0) {
+        if (entry->active == 0) {
             continue;
         }
-        entry->unk_30 -= 1.0f;
-        if (entry->unk_30 == 0.0f) {
+        entry->soundCountdown -= 1.0f;
+        if (entry->soundCountdown == 0.0f) {
             lbl_1_bss_19EC[i] = fn_1_5F60(obj->mdlId[i], MSM_SE_GUIDE_39);
         }
-        entry->unk_0C.x += entry->unk_18;
-        pos.x = entry->unk_0C.x;
-        pos.y = entry->unk_0C.y
+        entry->position.x += entry->horizontalSpeed;
+        pos.x = entry->position.x;
+        pos.y = entry->position.y
             + fn_1_80C(
-                0.0f, entry->unk_1C, entry->unk_04, entry->unk_08);
-        pos.z = entry->unk_0C.z;
+                0.0f, entry->bobAmplitude, entry->phase, entry->phaseDuration);
+        pos.z = entry->position.z;
         Hu3DModelPosSetV(obj->mdlId[i], &pos);
-        if (++entry->unk_04 > entry->unk_08) {
-            entry->unk_04 = 0.0f;
+        if (++entry->phase > entry->phaseDuration) {
+            entry->phase = 0.0f;
         }
         if (pos.x > 2000.0f) {
             fn_1_5EA4(lbl_1_bss_19EC[i]);
-            entry->unk_00 = 0;
+            entry->active = 0;
             Hu3DModelAttrSet(obj->mdlId[i], HU3D_ATTR_DISPOFF);
         }
         pos.y = fn_1_80C(
-            0.0f, entry->unk_20, entry->unk_24, entry->unk_28);
+            0.0f, entry->rotationAmplitude, entry->rotationPhase, entry->rotationDuration);
         Hu3DModelRotSet(obj->mdlId[i], 0.0f, 90.0f + pos.y, 0.0f);
-        if (++entry->unk_24 > entry->unk_28) {
-            entry->unk_20 = frandmod(60);
-            entry->unk_24 = 0.0f;
-            entry->unk_28 = frandmod(120) + 60;
+        if (++entry->rotationPhase > entry->rotationDuration) {
+            entry->rotationAmplitude = frandmod(60);
+            entry->rotationPhase = 0.0f;
+            entry->rotationDuration = frandmod(120) + 60;
         }
     }
     for (i = 0; i < 30; i++) {
         entry = &lbl_1_bss_9BC[i];
-        if (entry->unk_00 != 0) {
+        if (entry->active != 0) {
             break;
         }
     }
@@ -995,6 +1060,7 @@ void fn_1_346C(OMOBJ *obj)
     }
 }
 
+/* Initializes the first mode-choice model group with randomized movement and animation state. */
 void fn_1_3910(void)
 {
     OMOBJ *obj = lbl_1_bss_30;
@@ -1003,23 +1069,23 @@ void fn_1_3910(void)
 
     for (i = 0; i < 30; i++) {
         entry = &lbl_1_bss_9BC[i];
-        entry->unk_00 = (rand8() % 2) + 1;
-        entry->unk_30 = rand8() % 10;
-        entry->unk_0C.x = -2000.0f - frandmod(500);
-        entry->unk_0C.y = 700.0f + frandmod(200);
-        entry->unk_0C.z = frandmod(3000) - 500;
-        entry->unk_04 = frandmod(120);
-        entry->unk_08 = frandmod(120) + 120;
-        entry->unk_18 = 5.0f + (i % 10);
-        entry->unk_1C = 100.0f + frandmod(200);
-        entry->unk_20 = frandmod(60);
-        entry->unk_24 = 0.0f;
-        entry->unk_28 = frandmod(120) + 60;
+        entry->active = (rand8() % 2) + 1;
+        entry->soundCountdown = rand8() % 10;
+        entry->position.x = -2000.0f - frandmod(500);
+        entry->position.y = 700.0f + frandmod(200);
+        entry->position.z = frandmod(3000) - 500;
+        entry->phase = frandmod(120);
+        entry->phaseDuration = frandmod(120) + 120;
+        entry->horizontalSpeed = 5.0f + (i % 10);
+        entry->bobAmplitude = 100.0f + frandmod(200);
+        entry->rotationAmplitude = frandmod(60);
+        entry->rotationPhase = 0.0f;
+        entry->rotationDuration = frandmod(120) + 60;
         Hu3DMotionShiftSet(
             obj->mdlId[i], obj->mtnId[0], 0.0f, 0.0f,
             HU3D_MOTATTR_LOOP);
         Hu3DModelAttrReset(obj->mdlId[i], HU3D_ATTR_DISPOFF);
-        Hu3DModelPosSetV(obj->mdlId[i], &entry->unk_0C);
+        Hu3DModelPosSetV(obj->mdlId[i], &entry->position);
         Hu3DModelRotSet(obj->mdlId[i], 0.0f, 90.0f, 0.0f);
     }
     obj->objFunc = fn_1_346C;
@@ -1027,6 +1093,7 @@ void fn_1_3910(void)
 
 inline void fn_1_3910(void);
 
+/* Called by fn_1_607C each frame; advances the two active models through their movement states. */
 void fn_1_3CC0(void)
 {
     OMOBJ *obj = lbl_1_bss_30;
@@ -1036,47 +1103,47 @@ void fn_1_3CC0(void)
 
     for (i = 0; i < 2; i++) {
         entry = &lbl_1_bss_8AC[i];
-        entry->unk_44++;
-        if (entry->unk_44 > 180) {
-            entry->unk_44 = 0;
-            entry->unk_46--;
-            if (entry->unk_46 < 0) {
-                entry->unk_46 = 0;
+        entry->stateTimer++;
+        if (entry->stateTimer > 180) {
+            entry->stateTimer = 0;
+            entry->intensity--;
+            if (entry->intensity < 0) {
+                entry->intensity = 0;
             }
         }
-        if (entry->unk_4C <= 100.0f && entry->unk_40 == 100
+        if (entry->stateDuration <= 100.0f && entry->movementState == 100
             && rand8() % 6 == 0) {
             fn_1_FEC0(obj->mdlId[i + 30], MSM_SE_GUIDE_56, 16, 100);
         }
-        switch (entry->unk_40) {
+        switch (entry->movementState) {
             case 0:
-                entry->unk_40 = 100;
-                entry->unk_48 = 0.0f;
-                if (entry->unk_42 == 0) {
-                    entry->unk_4C = (rand8() % 100) + 120;
+                entry->movementState = 100;
+                entry->stateElapsed = 0.0f;
+                if (entry->movementVariant == 0) {
+                    entry->stateDuration = (rand8() % 100) + 120;
                 } else {
-                    entry->unk_4C = (rand8() % 30) + 60;
+                    entry->stateDuration = (rand8() % 30) + 60;
                 }
-                if (entry->unk_42 == 2) {
+                if (entry->movementVariant == 2) {
                     if (rand8() % 2 == 0) {
-                        entry->unk_42 = 0;
+                        entry->movementVariant = 0;
                     } else {
-                        entry->unk_42 = 1;
+                        entry->movementVariant = 1;
                     }
                 }
-                Hu3DModelPosGet(obj->mdlId[i + 30], &entry->unk_58);
-                Hu3DModelPosGet(obj->mdlId[i + 30], &entry->unk_64);
-                if (entry->unk_58.x > 0.0f) {
+                Hu3DModelPosGet(obj->mdlId[i + 30], &entry->startPosition);
+                Hu3DModelPosGet(obj->mdlId[i + 30], &entry->endPosition);
+                if (entry->startPosition.x > 0.0f) {
                     if (i == 0) {
-                        entry->unk_64.x = (frandmod(200) + 400) * -1;
+                        entry->endPosition.x = (frandmod(200) + 400) * -1;
                     } else {
-                        entry->unk_64.x = (frandmod(100) + 400) * -1;
+                        entry->endPosition.x = (frandmod(100) + 400) * -1;
                     }
                 } else {
                     if (i == 0) {
-                        entry->unk_64.x = frandmod(200) + 400;
+                        entry->endPosition.x = frandmod(200) + 400;
                     } else {
-                        entry->unk_64.x = frandmod(100) + 400;
+                        entry->endPosition.x = frandmod(100) + 400;
                     }
                 }
                 Hu3DMotionShiftSet(
@@ -1085,56 +1152,57 @@ void fn_1_3CC0(void)
                 break;
             case 100:
                 fn_1_C8C(
-                    obj->mdlId[i + 30], &entry->unk_58, &entry->unk_64,
-                    entry->unk_48, entry->unk_4C);
-                if (++entry->unk_48 > entry->unk_4C) {
-                    entry->unk_40 = 200;
-                    entry->unk_48 = 0.0f;
-                    entry->unk_50 = frandmod(360) - 180;
-                    if (entry->unk_42 == 1) {
-                        entry->unk_40 = 0;
-                        entry->unk_42 = 2;
+                    obj->mdlId[i + 30], &entry->startPosition, &entry->endPosition,
+                    entry->stateElapsed, entry->stateDuration);
+                if (++entry->stateElapsed > entry->stateDuration) {
+                    entry->movementState = 200;
+                    entry->stateElapsed = 0.0f;
+                    entry->targetYaw = frandmod(360) - 180;
+                    if (entry->movementVariant == 1) {
+                        entry->movementState = 0;
+                        entry->movementVariant = 2;
                     }
                 }
                 break;
             case 200:
                 Hu3DModelRotGet(obj->mdlId[i + 30], &rot);
-                rot.y = fn_1_C28(rot.y, entry->unk_50, 30.0f);
+                rot.y = fn_1_C28(rot.y, entry->targetYaw, 30.0f);
                 Hu3DModelRotSetV(obj->mdlId[i + 30], &rot);
-                entry->unk_42 = 0;
-                if (++entry->unk_48 > 30.0f) {
+                entry->movementVariant = 0;
+                if (++entry->stateElapsed > 30.0f) {
                     Hu3DMotionShiftSet(
                         obj->mdlId[i + 30], obj->mtnId[30], 0.0f, 8.0f,
                         HU3D_MOTATTR_LOOP);
-                    entry->unk_40 = 300;
-                    entry->unk_48 = 0.0f;
-                    entry->unk_4C = rand8() + 120;
+                    entry->movementState = 300;
+                    entry->stateElapsed = 0.0f;
+                    entry->stateDuration = rand8() + 120;
                 }
                 break;
             case 300:
-                if (++entry->unk_48 > entry->unk_4C) {
+                if (++entry->stateElapsed > entry->stateDuration) {
                     if (rand8() % 2 == 0) {
                         Hu3DMotionShiftSet(
                             obj->mdlId[i + 30], obj->mtnId[31], 0.0f,
                             8.0f, HU3D_MOTATTR_LOOP);
-                        entry->unk_40 = 200;
-                        entry->unk_48 = 0.0f;
-                        entry->unk_50 = frandmod(360) - 180;
+                        entry->movementState = 200;
+                        entry->stateElapsed = 0.0f;
+                        entry->targetYaw = frandmod(360) - 180;
                     } else {
-                        entry->unk_40 = 0;
+                        entry->movementState = 0;
                     }
                 }
                 break;
             case 400:
-                if (++entry->unk_48 > entry->unk_4C) {
-                    entry->unk_40 = 0;
-                    entry->unk_42 = 1;
+                if (++entry->stateElapsed > entry->stateDuration) {
+                    entry->movementState = 0;
+                    entry->movementVariant = 1;
                 }
                 break;
         }
     }
 }
 
+/* On recognized word ID 2, sets both guide models to idle motion and plays a sound by intensity. */
 void fn_1_46DC(void)
 {
     OMOBJ *obj = lbl_1_bss_30;
@@ -1143,16 +1211,16 @@ void fn_1_46DC(void)
 
     for (i = 0; i < 2; i++) {
         entry = &lbl_1_bss_8AC[i];
-        entry->unk_40 = 400;
-        entry->unk_48 = 0.0f;
-        entry->unk_4C = 20.0f;
-        entry->unk_46++;
-        if (entry->unk_46 > 30) {
-            entry->unk_46 = 30;
+        entry->movementState = 400;
+        entry->stateElapsed = 0.0f;
+        entry->stateDuration = 20.0f;
+        entry->intensity++;
+        if (entry->intensity > 30) {
+            entry->intensity = 30;
         }
-        if (entry->unk_46 > 10) {
+        if (entry->intensity > 10) {
             fn_1_FEC0(obj->mdlId[i + 30], MSM_SE_GUIDE_59, 16, 100);
-        } else if (entry->unk_46 > 5) {
+        } else if (entry->intensity > 5) {
             fn_1_FEC0(obj->mdlId[i + 30], MSM_SE_GUIDE_58, 16, 100);
         } else {
             fn_1_FEC0(obj->mdlId[i + 30], MSM_SE_GUIDE_57, 16, 100);
@@ -1165,6 +1233,8 @@ void fn_1_46DC(void)
 
 inline void fn_1_46DC(void);
 
+/* Called each frame by fn_1_607C; eases the guide model's height and yaw and picks new offsets when
+ * its timer expires. */
 void fn_1_485C(void)
 {
     LBL_1_BSS_24C_ENTRY *entry;
@@ -1175,87 +1245,91 @@ void fn_1_485C(void)
     i = 9;
     entry = &lbl_1_bss_24C[9];
     obj = lbl_1_bss_30;
+    /* The last guide model is forced visible on every update. */
     Hu3DModelDispOn(obj->mdlId[i + 35]);
     Hu3DModelPosGet(obj->mdlId[i + 35], &pos);
     if (lbl_1_bss_3C == 1) {
         pos.y = fn_1_C28(pos.y, -400.0f, 10.0f);
-        entry->unk_34 = 0.0f;
+        entry->lowerYVariant = 0.0f;
     } else {
         pos.y = fn_1_C28(pos.y, -200.0f, 10.0f);
     }
-    if (entry->unk_34 == 1.0f) {
+    if (entry->lowerYVariant == 1.0f) {
         pos.y = fn_1_C28(pos.y, -400.0f, 10.0f);
     }
     Hu3DModelPosSet(obj->mdlId[i + 35], pos.x, pos.y, pos.z);
     if (lbl_1_bss_3C == 0) {
-        if (lbl_1_bss_24C[0].unk_00 == 1) {
+        if (lbl_1_bss_24C[0].direction == 1) {
             Hu3DModelPosSet(obj->mdlId[i + 35], -800.0f, pos.y, -100.0f);
         } else {
             Hu3DModelPosSet(obj->mdlId[i + 35], 820.0f, pos.y, -120.0f);
         }
     }
     Hu3DModelRotGet(obj->mdlId[i + 35], &pos);
-    pos.y = fn_1_C28(pos.y, entry->unk_30, 15.0f);
+    pos.y = fn_1_C28(pos.y, entry->targetYaw, 15.0f);
     Hu3DModelRotSet(obj->mdlId[i + 35], -40.0f, pos.y, 0.0f);
     Hu3DModelScaleSet(obj->mdlId[i + 35], 1.5f, 1.5f, 1.5f);
-    if (++entry->unk_04 > entry->unk_08) {
-        entry->unk_04 = 0.0f;
-        entry->unk_08 = rand8() + 90;
-        entry->unk_30 = frandmod(90) - 45;
-        entry->unk_34 = 0.0f;
+    if (++entry->elapsed > entry->duration) {
+        entry->elapsed = 0.0f;
+        entry->duration = rand8() + 90;
+        entry->targetYaw = frandmod(90) - 45;
+        entry->lowerYVariant = 0.0f;
         if (rand8() % 2 == 0) {
-            entry->unk_34 = 1.0f;
+            entry->lowerYVariant = 1.0f;
         }
     }
 }
 
 inline void fn_1_485C(void);
 
+/* Per-frame object callback installed by fn_1_5290; advances the second choice group's crossing
+ * models. */
 void fn_1_4CF4(OMOBJ *obj)
 {
-    LBL_1_BSS_24C_ENTRY *unused;
+    LBL_1_BSS_24C_ENTRY *ignoredEntries; /* Assigned the table address but never read. */
     LBL_1_BSS_24C_ENTRY *entry;
     HuVecF pos;
     s16 i;
 
-    unused = lbl_1_bss_24C;
+    ignoredEntries = lbl_1_bss_24C;
     for (i = 0; i < lbl_1_bss_3A; i++) {
         entry = &lbl_1_bss_24C[i];
-        if (entry->unk_04 == 0.0f) {
+        if (entry->elapsed == 0.0f) {
             fn_1_FEC0(obj->mdlId[i + 35], MSM_SE_MENU_28, 16, -1);
         }
         pos.x = fn_1_C48(
-            entry->unk_0C.x, entry->unk_18.x, entry->unk_04,
-            entry->unk_08);
+            entry->startPosition.x, entry->endPosition.x, entry->elapsed,
+            entry->duration);
         pos.z = fn_1_C48(
-            entry->unk_0C.z, entry->unk_18.z, entry->unk_04,
-            entry->unk_08);
-        pos.y = fn_1_8E8(-300.0f, 1000.0f, entry->unk_04, entry->unk_08);
+            entry->startPosition.z, entry->endPosition.z, entry->elapsed,
+            entry->duration);
+        pos.y = fn_1_8E8(-300.0f, 1000.0f, entry->elapsed, entry->duration);
         Hu3DModelPosSet(obj->mdlId[i + 35], pos.x, pos.y, pos.z);
-        if (entry->unk_00 == 0) {
-            pos.x = fn_1_C48(-90.0f, 90.0f, entry->unk_04, entry->unk_08);
+        if (entry->direction == 0) {
+            pos.x = fn_1_C48(-90.0f, 90.0f, entry->elapsed, entry->duration);
             Hu3DModelRotSet(obj->mdlId[i + 35], pos.x, 90.0f, 0.0f);
         } else {
-            pos.x = fn_1_C48(-90.0f, 90.0f, entry->unk_04, entry->unk_08);
+            pos.x = fn_1_C48(-90.0f, 90.0f, entry->elapsed, entry->duration);
             Hu3DModelRotSet(obj->mdlId[i + 35], pos.x, -90.0f, 0.0f);
         }
-        if (entry->unk_04 == entry->unk_08 - 5.0f) {
+        if (entry->elapsed == entry->duration - 5.0f) {
             fn_1_FEC0(obj->mdlId[i + 35], MSM_SE_MENU_29, 16, -1);
         }
-        if (++entry->unk_04 > entry->unk_08) {
+        if (++entry->elapsed > entry->duration) {
             Hu3DModelDispOff(obj->mdlId[i + 35]);
         }
     }
-    if (lbl_1_bss_24C[lbl_1_bss_3A - 1].unk_04
-        > lbl_1_bss_24C[lbl_1_bss_3A - 1].unk_08) {
+    if (lbl_1_bss_24C[lbl_1_bss_3A - 1].elapsed
+        > lbl_1_bss_24C[lbl_1_bss_3A - 1].duration) {
         lbl_1_bss_3C = 0;
         obj->objFunc = NULL;
     }
 }
 
+/* Chooses and starts a movement pattern for models in the second choice group. */
 void fn_1_5290(void)
 {
-    LBL_1_BSS_24C_ENTRY *unused;
+    LBL_1_BSS_24C_ENTRY *ignoredEntries; /* Assigned the table address but never read. */
     LBL_1_BSS_24C_ENTRY *entry;
     s16 i;
     OMOBJ *obj;
@@ -1263,8 +1337,8 @@ void fn_1_5290(void)
     s16 mode;
 
     obj = lbl_1_bss_30;
-    unused = lbl_1_bss_24C;
-    mode = lbl_1_bss_24C[0].unk_00;
+    ignoredEntries = lbl_1_bss_24C;
+    mode = lbl_1_bss_24C[0].direction;
     mode++;
     mode %= 2;
     count = (rand8() % 8) + 1;
@@ -1272,23 +1346,23 @@ void fn_1_5290(void)
     lbl_1_bss_3C = 1;
     for (i = 0; i < count; i++) {
         entry = &lbl_1_bss_24C[i];
-        entry->unk_04 = ((-5 * i) - 20) - (rand8() % 3);
-        entry->unk_08 = 120.0f;
-        entry->unk_00 = mode;
-        if (entry->unk_00 == 0) {
-            entry->unk_0C.x = -800.0f;
-            entry->unk_0C.y = 0.0f;
-            entry->unk_0C.z = -100.0f;
-            entry->unk_18.x = (800.0f + frandmod(100)) - 50.0f;
-            entry->unk_18.y = 0.0f;
-            entry->unk_18.z = (-150.0f + frandmod(100)) - 50.0f;
+        entry->elapsed = ((-5 * i) - 20) - (rand8() % 3);
+        entry->duration = 120.0f;
+        entry->direction = mode;
+        if (entry->direction == 0) {
+            entry->startPosition.x = -800.0f;
+            entry->startPosition.y = 0.0f;
+            entry->startPosition.z = -100.0f;
+            entry->endPosition.x = (800.0f + frandmod(100)) - 50.0f;
+            entry->endPosition.y = 0.0f;
+            entry->endPosition.z = (-150.0f + frandmod(100)) - 50.0f;
         } else {
-            entry->unk_18.x = -800.0f;
-            entry->unk_18.y = 0.0f;
-            entry->unk_18.z = -100.0f;
-            entry->unk_0C.x = (800.0f + frandmod(100)) - 50.0f;
-            entry->unk_0C.y = 0.0f;
-            entry->unk_0C.z = (-150.0f + frandmod(100)) - 50.0f;
+            entry->endPosition.x = -800.0f;
+            entry->endPosition.y = 0.0f;
+            entry->endPosition.z = -100.0f;
+            entry->startPosition.x = (800.0f + frandmod(100)) - 50.0f;
+            entry->startPosition.y = 0.0f;
+            entry->startPosition.z = (-150.0f + frandmod(100)) - 50.0f;
         }
         Hu3DModelDispOn(obj->mdlId[i + 35]);
         if (i > 0) {
@@ -1298,6 +1372,7 @@ void fn_1_5290(void)
     obj->objFunc = fn_1_4CF4;
 }
 
+/* Creates the guide models and motions used by both animated choice groups. */
 void fn_1_5614(OMOBJ *obj)
 {
     s16 i;
@@ -1358,14 +1433,17 @@ void fn_1_5614(OMOBJ *obj)
             obj->mdlId[i + 35], obj->mtnId[i + 35], 0.0f, 0.0f,
             HU3D_MOTATTR_LOOP);
     }
-    lbl_1_bss_24C[0].unk_00 = 1;
+    lbl_1_bss_24C[0].direction = 1;
     obj->objFunc = NULL;
 }
 
+/* This function has an empty body at this address in the mode-selection overlay. */
 void fn_1_5BEC(void)
 {
 }
 
+/* Called by fn_1_607C each frame; pans sounds by projected x and fades volume as absolute world x
+ * passes 1500. */
 void fn_1_5BF0(void)
 {
     HuVecF modelPos;
@@ -1410,11 +1488,12 @@ void fn_1_5BF0(void)
         if (lbl_1_bss_1D4[i].fxHandle > 0) {
             HuAudFXPanning(lbl_1_bss_1D4[i].fxHandle, pan);
             HuAudFXVolSet(lbl_1_bss_1D4[i].fxHandle, volume);
-            i == 0;
+            i == 0; /* This comparison has no effect on the active sound. */
         }
     }
 }
 
+/* Stops and clears the sound tracked for one model slot. */
 void fn_1_5EA4(s16 index)
 {
     if (lbl_1_bss_1D4[index].modelId != HU3D_MODELID_NONE) {
@@ -1426,6 +1505,8 @@ void fn_1_5EA4(s16 index)
     }
 }
 
+/* Claims a free model sound slot and starts the sound, returning its index or -1 when all are
+ * occupied. */
 s16 fn_1_5F60(HU3D_MODELID modelId, s32 fxNo)
 {
     s16 i;
@@ -1443,6 +1524,7 @@ s16 fn_1_5F60(HU3D_MODELID modelId, s32 fxNo)
     return i;
 }
 
+/* Clears all model sound slots before mode-selection audio starts. */
 void fn_1_6018(void)
 {
     s16 i;
@@ -1455,6 +1537,8 @@ void fn_1_6018(void)
 
 inline void fn_1_6018(void);
 
+/* Per-frame object callback registered by fn_1_6C04; updates tracked sounds and both animated
+ * choice groups. */
 void fn_1_607C(OMOBJ *obj)
 {
     fn_1_5BF0();
@@ -1462,6 +1546,8 @@ void fn_1_607C(OMOBJ *obj)
     fn_1_485C();
 }
 
+/* Microphone listener callback registered by fn_1_6C04; maps recognized words to guide
+ * animations. */
 void fn_1_651C(MDSEL_MIC_RESPONSE *response)
 {
     if (response->status != 0 || response->count == 0) {
@@ -1499,9 +1585,11 @@ void fn_1_651C(MDSEL_MIC_RESPONSE *response)
     }
 }
 
+/* Initializes the microphone listener when available and adds the mode-selection objects to the
+ * object manager. */
 void fn_1_6C04(void)
 {
-    s16 local = 0;
+    s16 unusedStatus = 0; /* Initialized but never read by microphone setup. */
 
     lbl_1_bss_38 = 0;
     if (GwCommon.mic == 1) {
@@ -1533,6 +1621,7 @@ void fn_1_6C04(void)
 
 inline void fn_1_6C04(void);
 
+/* Stops the microphone listener and closes its context when microphone setup succeeded. */
 void fn_1_6DFC(void)
 {
     lbl_1_data_15C = 0;
@@ -1545,6 +1634,7 @@ void fn_1_6DFC(void)
 
 inline void fn_1_6DFC(void);
 
+/* Checks microphone availability and initializes its connection when the menu needs it. */
 s16 fn_1_6E54(void)
 {
     s16 result = TRUE;
@@ -1574,6 +1664,7 @@ s16 fn_1_6E54(void)
     return result;
 }
 
+/* Creates the three models and looping motions for the first mode-choice display. */
 void fn_1_6F40(OMOBJ *obj)
 {
     s16 i;
@@ -1588,6 +1679,7 @@ void fn_1_6F40(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Kills the first mode-choice display's models and motions and removes its object. */
 void fn_1_702C(OMOBJ *obj)
 {
     s16 i;
@@ -1604,6 +1696,8 @@ void fn_1_702C(OMOBJ *obj)
 
 inline void fn_1_702C(OMOBJ *obj);
 
+/* Per-frame display-object callback installed by fn_1_76DC; advances guide sound cues and motion
+ * attributes. */
 void fn_1_70BC(OMOBJ *obj)
 {
     float motionTime;
@@ -1687,12 +1781,15 @@ void fn_1_70BC(OMOBJ *obj)
     }
 }
 
-void fn_1_75A4(s16 arg0)
+/* The argument only selects the -1 reset case: that clears looping on all six; otherwise, when the
+ * global menu choice changes, loops and unpauses that guide model and clears looping on the
+ * rest. */
+void fn_1_75A4(s16 modelIndex)
 {
     OMOBJ *obj = lbl_1_bss_10;
     s16 i;
 
-    if (arg0 == -1) {
+    if (modelIndex == -1) {
         obj->work[0] = 99;
         for (i = 0; i < 6; i++) {
             Hu3DModelAttrReset(obj->mdlId[i], HU3D_MOTATTR_LOOP);
@@ -1710,8 +1807,9 @@ void fn_1_75A4(s16 arg0)
     }
 }
 
-inline void fn_1_75A4(s16 arg0);
+inline void fn_1_75A4(s16 modelIndex);
 
+/* Creates the six-model guide display and starts its animation update callback. */
 void fn_1_76DC(OMOBJ *obj)
 {
     s16 i;
@@ -1727,6 +1825,7 @@ void fn_1_76DC(OMOBJ *obj)
     obj->objFunc = fn_1_70BC;
 }
 
+/* Kills the six-model guide display's models and motions and removes its object. */
 void fn_1_77D8(OMOBJ *obj)
 {
     s16 i;
@@ -1743,6 +1842,8 @@ void fn_1_77D8(OMOBJ *obj)
 
 inline void fn_1_77D8(OMOBJ *obj);
 
+/* Per-frame transition callback installed by fn_1_7EC4 or fn_1_E1FC; moves the first decorative
+ * model along its Bezier path. */
 void fn_1_7868(OMOBJ *obj)
 {
     MDSEL_BEZIER_WORK *work = &lbl_1_bss_128;
@@ -1754,6 +1855,7 @@ void fn_1_7868(OMOBJ *obj)
 
     Hu3DModelPosGet(obj->mdlId[0], &modelPos);
     Hu3DModelRotGet(obj->mdlId[0], &modelRot);
+    /* This first scale calculation is overwritten below before it is applied. */
     modelScale = fn_1_50C(
         5.0f, 2.0f, work->time - (work->duration / 2.0f),
         work->duration / 2.0f);
@@ -1774,6 +1876,7 @@ void fn_1_7868(OMOBJ *obj)
     modelRot.y = fn_1_550(modelRot.y, modelPos.y, 15.0f);
     Hu3DModelRotSetV(obj->mdlId[0], &modelRot);
     Hu3DModelPosGet(obj->mdlId[0], &pos);
+    /* The current scale is read but not used; the particle effect only needs position. */
     Hu3DModelScaleGet(obj->mdlId[0], &scale);
     fn_1_FA9C(4, &pos, 1, 5);
     if (work->time == 45.0f) {
@@ -1787,6 +1890,7 @@ void fn_1_7868(OMOBJ *obj)
     }
 }
 
+/* Starts the first decorative model's selection transition and its associated sound. */
 void fn_1_7EC4(void)
 {
     OMOBJ *obj = lbl_1_bss_14;
@@ -1819,6 +1923,10 @@ void fn_1_7EC4(void)
 
 inline void fn_1_7EC4(void);
 
+/* Moves the second decorative model along its Bezier path. The first scale calculation is
+ *
+ * overwritten before application; the later scale read is unused, and only position feeds
+ * particles. */
 void fn_1_809C(OMOBJ *obj)
 {
     MDSEL_BEZIER_WORK *work = &lbl_1_bss_A0;
@@ -1863,17 +1971,18 @@ void fn_1_809C(OMOBJ *obj)
     }
 }
 
+/* Starts the second decorative model's selection transition and its associated sound. */
 void fn_1_86F8(void)
 {
     OMOBJ *obj = lbl_1_bss_18;
     MDSEL_BEZIER_WORK *work = &lbl_1_bss_A0;
-    float value;
+    float destinationY;
     s16 index;
 
     if (lbl_1_bss_1A30[1] != 0) {
-        value = 100.0f;
+        destinationY = 100.0f;
         if (lbl_1_bss_1A30[0] == 5) {
-            value = 400.0f;
+            destinationY = 400.0f;
         }
         index = lbl_1_bss_1A30[1] + (3 * lbl_1_bss_1A30[2]);
         work->control[0].x = 1150.0f;
@@ -1883,7 +1992,7 @@ void fn_1_86F8(void)
         work->control[1].y = 2250.0f;
         work->control[1].z = 6000.0f;
         work->control[2].x = lbl_1_data_28[index].x;
-        work->control[2].y = value;
+        work->control[2].y = destinationY;
         work->control[2].z = lbl_1_data_28[index].z;
         work->time = 0.0f;
         work->duration = 90.0f;
@@ -1896,6 +2005,7 @@ void fn_1_86F8(void)
 
 inline void fn_1_86F8(void);
 
+/* Creates the first animated title model and its five motions for the mode-choice display. */
 void fn_1_88D0(OMOBJ *obj)
 {
     s16 i;
@@ -1914,6 +2024,8 @@ void fn_1_88D0(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Kills the first two stored motions and the first animated title model, then removes its
+ * object. */
 void fn_1_8A58(OMOBJ *obj)
 {
     s16 i;
@@ -1930,6 +2042,8 @@ void fn_1_8A58(OMOBJ *obj)
 
 inline void fn_1_8A58(OMOBJ *obj);
 
+/* Creates the second animated title model and its companion, then creates five motions for the
+ * title model. */
 void fn_1_8AE0(OMOBJ *obj)
 {
     s16 i;
@@ -1950,6 +2064,8 @@ void fn_1_8AE0(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
+/* Clears the second title model's hook, kills both models and the first two stored motions, then
+ * removes the object. */
 void fn_1_8CA4(OMOBJ *obj)
 {
     s16 i;
@@ -1968,6 +2084,7 @@ void fn_1_8CA4(OMOBJ *obj)
 
 inline void fn_1_8CA4(OMOBJ *obj);
 
+/* Updates the selection sprite bank and visibility from the current menu choice. */
 void fn_1_8D44(void)
 {
     if (lbl_1_data_2D0 != lbl_1_bss_1A30[0]) {
@@ -1980,6 +2097,7 @@ void fn_1_8D44(void)
 
 inline void fn_1_8D44(void);
 
+/* Hides the selection sprite when a menu choice transition begins. */
 void fn_1_8E38(void)
 {
     lbl_1_data_2D0 = -1;
@@ -1988,6 +2106,8 @@ void fn_1_8E38(void)
 
 inline void fn_1_8E38(void);
 
+/* Projects the selected choice onto the screen and eases the selection sprite's position and
+ * size. */
 void fn_1_8EC8(void)
 {
     HuVecF pos;
@@ -2016,6 +2136,7 @@ void fn_1_8EC8(void)
 
 inline void fn_1_8EC8(void);
 
+/* Converts a menu-choice position into the elevated, offset position used by its display model. */
 void fn_1_90FC(HuVecF *pos)
 {
     lbl_1_bss_94.x = pos->x - 200.0f;
@@ -2025,6 +2146,7 @@ void fn_1_90FC(HuVecF *pos)
 
 inline void fn_1_90FC(HuVecF *pos);
 
+/* Places and shows the display model at the selected choice's menu position. */
 void fn_1_9160(HuVecF *pos)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2038,6 +2160,7 @@ void fn_1_9160(HuVecF *pos)
 
 inline void fn_1_9160(HuVecF *pos);
 
+/* Hides the selected-choice display model while the menu is changing choices. */
 void fn_1_927C(void)
 {
     OMOBJ *obj = lbl_1_bss_1C;
@@ -2047,6 +2170,8 @@ void fn_1_927C(void)
 
 inline void fn_1_927C(void);
 
+/* Eases the display model's position, rotation, and scale toward the selected choice and updates
+ * its marker. */
 void fn_1_92BC(OMOBJ *obj)
 {
     HuVecF pos;
@@ -2063,6 +2188,7 @@ void fn_1_92BC(OMOBJ *obj)
     fn_1_8EC8();
 }
 
+/* Creates the selected-choice display model and schedules its transform update. */
 void fn_1_97D4(OMOBJ *obj)
 {
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
@@ -2075,6 +2201,7 @@ void fn_1_97D4(OMOBJ *obj)
     obj->objFunc = fn_1_92BC;
 }
 
+/* Kills the selected-choice model and motion and removes its object. */
 void fn_1_98B0(OMOBJ *obj)
 {
     if (obj) {
@@ -2087,6 +2214,8 @@ void fn_1_98B0(OMOBJ *obj)
 
 inline void fn_1_98B0(OMOBJ *obj);
 
+/* Releases the display objects and microphone state, kills the choice particle models, then
+ * initializes the selection sprite, message windows, lights, and camera. */
 void fn_1_9910(void)
 {
     fn_1_702C(lbl_1_bss_C);
@@ -2102,6 +2231,7 @@ void fn_1_9910(void)
     fn_1_1734();
 }
 
+/* Child process created by fn_1_A5D4; runs the menu, then returns or calls the selected mode. */
 void fn_1_A310(void)
 {
     s16 result = 0;
@@ -2134,6 +2264,8 @@ void fn_1_A310(void)
     }
 }
 
+/* Creates the mode-selection camera, lights, windows, sprites, display objects, and main menu
+ * process. */
 void fn_1_A5D4(void)
 {
     lbl_1_bss_8 = omInitObjMan(27, MDSEL_OBJECT_MANAGER_PRIORITY);
@@ -2163,11 +2295,14 @@ void fn_1_A5D4(void)
         MDSEL_MAIN_PROCESS_STACK_SIZE, 0, lbl_1_bss_8);
 }
 
+/* Closes all open data directories before this overlay releases its loaded data. */
 void fn_1_B0C8(void)
 {
     HuDataDirCloseAll();
 }
 
+/* Resets overlay exit and initialization flags, releases stale archive data, and starts the
+ * mode-selection screen. */
 void ObjectSetup(void)
 {
     OSReport(lbl_1_data_2D2);
@@ -2188,6 +2323,7 @@ void ObjectSetup(void)
     fn_1_A5D4();
 }
 
+/* Runs this overlay's constructors before entering its setup routine. */
 int _prolog(void)
 {
     const VoidFunc *ctors = _ctors;
@@ -2200,6 +2336,7 @@ int _prolog(void)
     return 0;
 }
 
+/* Runs this overlay's registered destructors when the module is unloaded. */
 void _epilog(void)
 {
     const VoidFunc *dtors = _dtors;
@@ -2210,6 +2347,8 @@ void _epilog(void)
     }
 }
 
+/* Starts the mode-selection music, initializes the choice camera, and opens the screen with a
+ * wipe. */
 BOOL fn_1_B304(void)
 {
     HuPrcSleep(5);
@@ -2220,6 +2359,8 @@ BOOL fn_1_B304(void)
     return TRUE;
 }
 
+/* Sets the starting menu choice from the previous overlay, or selects the first choice on a fresh
+ * entry. */
 s16 fn_1_B414(void)
 {
     s16 i;
@@ -2247,6 +2388,7 @@ s16 fn_1_B414(void)
     return TRUE;
 }
 
+/* Displays the alternate menu prompt and returns its window choice. */
 s16 fn_1_B804(void)
 {
     HuAudFXPlayPan(MSM_SE_GUIDE_28, (MSM_PAN_LEFT + MSM_PAN_CENTER) / 2);
@@ -2257,6 +2399,8 @@ s16 fn_1_B804(void)
 
 inline s16 fn_1_B804(void);
 
+/* Called by fn_1_E7B0 in the menu process; updates the choice and guide display until accept or
+ * cancel. */
 s16 fn_1_BAB4(void)
 {
     s16 index;
@@ -2460,6 +2604,7 @@ restart:
     return result;
 }
 
+/* Closes the menu prompt and animates the selected display models before the chosen mode starts. */
 void fn_1_E1FC(void)
 {
     MDSEL_BEZIER_WORK *workA;
@@ -2541,6 +2686,8 @@ void fn_1_E1FC(void)
     HuPrcSleep(50);
 }
 
+/* Runs the opening sequence, initial prompt, choice loop, and selection transition for the menu
+ * process. */
 s16 fn_1_E7B0(void)
 {
     s16 result = 0;
@@ -2554,6 +2701,7 @@ s16 fn_1_E7B0(void)
     return result;
 }
 
+/* Shows or hides the five particle models belonging to one mode-choice group. */
 void fn_1_ECAC(s16 groupNo, s16 show)
 {
     s16 i;
@@ -2567,32 +2715,35 @@ void fn_1_ECAC(s16 groupNo, s16 show)
     }
 }
 
-void fn_1_ED60(s16 groupNo, HuVecF *pos, GXColor *color)
+/* Configures the particle models in a choice group for the current menu display state. */
+void fn_1_ED60(s16 groupNo, HuVecF *spawnPosition, GXColor *color)
 {
     s16 i;
     HU3D_MODEL *model;
-    HU3D_PARTICLE *particle;
+    HU3D_PARTICLE *emitter;
 
     for (i = 0; i < 5; i++) {
         model = &Hu3DData[lbl_1_bss_44[groupNo][i]];
-        particle = model->hookData;
-        particle->dataCnt = 1;
+        emitter = model->hookData;
+        emitter->dataCnt = 1;
         if (color != NULL) {
-            particle->pos.x = color->r;
-            particle->pos.y = color->g;
-            particle->pos.z = color->b;
+            emitter->pos.x = color->r;
+            emitter->pos.y = color->g;
+            emitter->pos.z = color->b;
         }
-        if (pos != NULL) {
-            particle->unk_10.x = pos->x;
-            particle->unk_10.y = pos->y;
-            particle->unk_10.z = pos->z;
+        if (spawnPosition != NULL) {
+            /* This emitter vector is used as the center for new particles' spawn positions. */
+            emitter->spawnCenter.x = spawnPosition->x;
+            emitter->spawnCenter.y = spawnPosition->y;
+            emitter->spawnCenter.z = spawnPosition->z;
         }
         Hu3DModelAttrReset(lbl_1_bss_44[groupNo][i], HU3D_ATTR_DISPOFF);
     }
 }
 
-inline void fn_1_ED60(s16 groupNo, HuVecF *pos, GXColor *color);
+inline void fn_1_ED60(s16 groupNo, HuVecF *spawnPosition, GXColor *color);
 
+/* Clears the per-particle hook state for each model in a choice group. */
 void fn_1_EEC8(s16 groupNo)
 {
     s16 i;
@@ -2606,77 +2757,82 @@ void fn_1_EEC8(s16 groupNo)
     }
 }
 
-void fn_1_EF48(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
+/* fn_1_F4E4 installs this hook; the renderer calls it once per frame to spawn or advance
+ * choice-group particles. */
+void fn_1_EF48(HU3D_MODEL *model, HU3D_PARTICLE *emitter, Mtx matrix)
 {
-    HU3D_PARTICLE_DATA *data;
+    HU3D_PARTICLE_DATA *particleData;
     s16 i;
     s16 spawnCount = 0;
-    float color;
-    float random;
+    float colorComponent;
+    float randomValue;
 
-    if (particle->count == 0) {
-        for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
-            data->time = 0;
+    if (emitter->count == 0) {
+        for (i = 0, particleData = emitter->data; i < emitter->maxCnt; i++, particleData++) {
+            particleData->time = 0;
         }
-        particle->dataCnt = 1;
-        particle->pos.x = 255.0f;
-        particle->pos.y = 255.0f;
-        particle->pos.z = 255.0f;
+        emitter->dataCnt = 1;
+        emitter->pos.x = 255.0f;
+        emitter->pos.y = 255.0f;
+        emitter->pos.z = 255.0f;
     }
 
-    for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
-        if (data->time == 0 && particle->dataCnt == 1 && spawnCount < 1) {
+    for (i = 0, particleData = emitter->data; i < emitter->maxCnt; i++, particleData++) {
+        if (particleData->time == 0 && emitter->dataCnt == 1 && spawnCount < 1) {
             spawnCount++;
-            data->time = 1;
-            data->vel.x = 0.0f;
-            data->vel.y = frandmod(30) + 30;
-            data->accel.x = frandmod(100) - 50;
-            data->accel.y = -frandmod(100) - 50;
-            data->accel.z = frandmod(100) - 50;
-            PSVECNormalize(&data->accel, &data->accel);
-            data->accel.x *= 2.0f;
-            data->accel.z *= 2.0f;
-            data->colorIdx = frandmod(10) + 5;
-            data->pos.x = particle->unk_10.x + 3 * (frandmod(100) - 50);
-            data->pos.y = particle->unk_10.y;
-            data->pos.z = particle->unk_10.z + 3 * (frandmod(100) - 50);
-            random = frandmod(32);
-            color = particle->pos.x + random;
-            if (color > 255.0f) {
-                color = 255.0f;
+            particleData->time = 1;
+            particleData->vel.x = 0.0f;
+            particleData->vel.y = frandmod(30) + 30;
+            particleData->accel.x = frandmod(100) - 50;
+            particleData->accel.y = -frandmod(100) - 50;
+            particleData->accel.z = frandmod(100) - 50;
+            PSVECNormalize(&particleData->accel, &particleData->accel);
+            particleData->accel.x *= 2.0f;
+            particleData->accel.z *= 2.0f;
+            particleData->colorIdx = frandmod(10) + 5;
+            /* The source vector is the spawn center; x and z spread by about 150 model units. */
+            particleData->pos.x = emitter->spawnCenter.x + 3 * (frandmod(100) - 50);
+            particleData->pos.y = emitter->spawnCenter.y;
+            particleData->pos.z = emitter->spawnCenter.z + 3 * (frandmod(100) - 50);
+            randomValue = frandmod(32);
+            colorComponent = emitter->pos.x + randomValue;
+            if (colorComponent > 255.0f) {
+                colorComponent = 255.0f;
             }
-            data->color.r = color;
-            color = particle->pos.y + random;
-            if (color > 255.0f) {
-                color = 255.0f;
+            particleData->color.r = colorComponent;
+            colorComponent = emitter->pos.y + randomValue;
+            if (colorComponent > 255.0f) {
+                colorComponent = 255.0f;
             }
-            data->color.g = color;
-            color = particle->pos.z + random;
-            if (color > 255.0f) {
-                color = 255.0f;
+            particleData->color.g = colorComponent;
+            colorComponent = emitter->pos.z + randomValue;
+            if (colorComponent > 255.0f) {
+                colorComponent = 255.0f;
             }
-            data->color.b = color;
-            data->color.a = 0;
-        } else if (data->time == 1) {
-            data->pos.y += data->colorIdx;
-            data->colorIdx += data->accel.y;
+            particleData->color.b = colorComponent;
+            particleData->color.a = 0;
+        } else if (particleData->time == 1) {
+            particleData->pos.y += particleData->colorIdx;
+            particleData->colorIdx += particleData->accel.y;
             if (rand8() % 5 == 0) {
-                data->zRot = MTXDegToRad(frandmod(360));
-                data->color.a = frandmod(127) + 128;
+                particleData->zRot = MTXDegToRad(frandmod(360));
+                particleData->color.a = frandmod(127) + 128;
             }
-            random = fn_1_C48(1.0f, 0.0f, data->vel.x, data->vel.y);
-            data->scale = 100.0f * random;
-            if (++data->vel.x > data->vel.y) {
-                data->time = 0;
-                data->scale = 0.0f;
-                data->color.a = 0;
+            randomValue = fn_1_C48(1.0f, 0.0f, particleData->vel.x, particleData->vel.y);
+            particleData->scale = 100.0f * randomValue;
+            if (++particleData->vel.x > particleData->vel.y) {
+                particleData->time = 0;
+                particleData->scale = 0.0f;
+                particleData->color.a = 0;
             }
         }
     }
     DCFlushRangeNoSync(
-        particle->data, particle->maxCnt * sizeof(HU3D_PARTICLE_DATA));
+        emitter->data, emitter->maxCnt * sizeof(HU3D_PARTICLE_DATA));
 }
 
+/* Creates particle emitters for the six choice groups and assigns their layer, position, and blend
+ * mode. */
 void fn_1_F4E4(void)
 {
     s16 particleCount[5] = { 10, 10, 10, 10, 256 };
@@ -2703,6 +2859,7 @@ void fn_1_F4E4(void)
 
 inline void fn_1_F4E4(void);
 
+/* Kills the particle models created for the six choice groups. */
 void fn_1_F70C(void)
 {
     s16 i;
@@ -2715,6 +2872,7 @@ void fn_1_F70C(void)
     }
 }
 
+/* Loads the five choice-group sprite animations and creates the menu particle emitters. */
 void fn_1_F790(void)
 {
     s16 i;
@@ -2726,6 +2884,7 @@ void fn_1_F790(void)
     fn_1_F4E4();
 }
 
+/* Kills the stored particle models for all six choice groups. */
 void fn_1_FA18(void)
 {
     s16 j;
@@ -2738,6 +2897,8 @@ void fn_1_FA18(void)
     }
 }
 
+/* Updates each choice group's particle visibility, position, and emission state for the menu
+ * mode. */
 void fn_1_FA9C(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo)
 {
     GXColor colors[7] = {
@@ -2759,6 +2920,7 @@ void fn_1_FA9C(s16 groupNo, HuVecF *pos, s16 mode, s16 colorNo)
     }
 }
 
+/* Plays a sound with stereo pan calculated from a supplied 3D position. */
 void fn_1_FDF8(HuVecF *pos, s32 fxNo)
 {
     HuVecF screenPos;
@@ -2777,6 +2939,8 @@ void fn_1_FDF8(HuVecF *pos, s32 fxNo)
     HuAudFXPlayPan(fxNo, pan);
 }
 
+/* Plays a sound at a model's screen position, or plays it without panning when no model is
+ * supplied. */
 void fn_1_FEC0(HU3D_MODELID modelId, s32 fxNo, s16 panRange, s16 volume)
 {
     HuVecF modelPos;
@@ -2804,8 +2968,6 @@ void fn_1_FEC0(HU3D_MODELID modelId, s32 fxNo, s16 panRange, s16 volume)
         HuAudFXPlay(fxNo);
     }
 }
-
-
 
 u32 lbl_1_data_0[1] = { DATANUM(DATA_mdsel, 10) };
 s16 lbl_1_data_4[2] = { 1, 0 };

@@ -573,9 +573,9 @@ void fn_1_23700(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
             var_r31->accel.x *= lbl_1_rodata_358;
             var_r31->accel.y *= lbl_1_rodata_364;
             var_r31->accel.z *= lbl_1_rodata_358;
-            var_r31->pos.x = (particle->unk_10.x + (f32) frandmod(100)) - lbl_1_rodata_350;
-            var_r31->pos.y = (particle->unk_10.y + (f32) frandmod(100)) - lbl_1_rodata_350;
-            var_r31->pos.z = (particle->unk_10.z + (f32) frandmod(100)) - lbl_1_rodata_350;
+            var_r31->pos.x = (particle->spawnCenter.x + (f32) frandmod(100)) - lbl_1_rodata_350;
+            var_r31->pos.y = (particle->spawnCenter.y + (f32) frandmod(100)) - lbl_1_rodata_350;
+            var_r31->pos.z = (particle->spawnCenter.z + (f32) frandmod(100)) - lbl_1_rodata_350;
             var_f30 = (f32) frandmod(128);
             var_f31 = particle->pos.x + var_f30;
             if (var_f31 > lbl_1_rodata_2D8) {
@@ -654,9 +654,9 @@ void fn_1_24524(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
             var_r31->accel.x *= lbl_1_rodata_358;
             var_r31->accel.z *= lbl_1_rodata_358;
             var_r31->colorIdx = (f32) (frandmod(10) + 5);
-            var_r31->pos.x = (particle->unk_10.x + (f32) frandmod(100)) - lbl_1_rodata_350;
-            var_r31->pos.y = particle->unk_10.y;
-            var_r31->pos.z = (particle->unk_10.z + (f32) frandmod(100)) - lbl_1_rodata_350;
+            var_r31->pos.x = (particle->spawnCenter.x + (f32) frandmod(100)) - lbl_1_rodata_350;
+            var_r31->pos.y = particle->spawnCenter.y;
+            var_r31->pos.z = (particle->spawnCenter.z + (f32) frandmod(100)) - lbl_1_rodata_350;
             var_f30 = (f32) frandmod(32);
             var_f31 = particle->pos.x + var_f30;
             if (var_f31 > lbl_1_rodata_2D8) {

@@ -426,7 +426,7 @@ typedef struct Hu3DParticle_s {
     s16 dataCnt;
     s16 emitCnt;
     HuVecF pos;
-    HuVecF unk_10;
+    HuVecF spawnCenter;
     void *work;
     s16 animBank;
     s16 animNo;
