@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 38.43% | 57.79% |
-| Main DOL | 89.33% | 99.11% |
+| Entire project | 38.48% | 57.79% |
+| Main DOL | 89.60% | 99.11% |
 | REL modules | 27.64% | 31.61% |
+
+DOL source: `src/gssdk_lib/asrpho/rec1600/creaspt.c` now builds from source; `main.dol` matches retail byte for byte.
 
 DOL source: `src/dolphin/mic/mic.c` now builds from source; `main.dol` matches retail byte for byte.
 

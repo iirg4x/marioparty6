@@ -996,7 +996,7 @@ config.libs = [
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/convert.c"),
             Object(Matching, "gssdk_lib/asrpho/rec1600/creasp.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/creaspch.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/rec1600/creaspt.c"),
+            Object(Matching, "gssdk_lib/asrpho/rec1600/creaspt.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/creatree.c"),
             Object(NonMatching, "gssdk_lib/asrpho/rec1600/crsptrch.c"),
             Object(Matching, "gssdk_lib/asrpho/rec1600/ctrl.c"),
