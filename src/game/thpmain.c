@@ -1,3 +1,4 @@
+/* Starts THP movie playback and draws its frames as a model or sprite. */
 #define _MATH_H
 #include "game/thpmain.h"
 #include "game/hu3d.h"
@@ -8,124 +9,163 @@
 
 #include "string.h"
 
+#define THP_PROCESS_PRIORITY 100
+#define THP_PROCESS_STACK_BYTES 12288
+#define THP_DECODE_STACK_BYTES 8192
+#define THP_AUDIO_MIX_CURRENT_BUFFER 2
+#define THP_DEFAULT_VOLUME 110.0f
+#define THP_DRAW_SPRITE 0
+#define THP_DRAW_MODEL 1
+#define THP_STATE_START 0
+#define THP_STATE_STOP 1
+#define THP_STATE_CLOSE 2
+#define THP_STATE_RESTART 3
+#define THP_STATE_PLAY 4
+
 static void THPTestProc(void);
-static void THPViewFunc(HU3D_MODEL *arg0, Mtx *arg1);
-static void THPViewSprFunc(HUSPRITE *arg0);
-static void THPDecodeFunc(void *param);
+static void THPViewFunc(HU3D_MODEL *model, Mtx *matrix);
+static void THPViewSprFunc(HUSPRITE *sprite);
+static void THPDecodeFunc(void *callbackContext);
 
-static char THPFileName[64];
+static char THPFileName[64]; /* DVD path copied by the movie creator. */
 
-static UnkThpStruct04 videoInfo;
+static UnkThpStruct04 videoInfo; /* Opened movie's width and height in pixels. */
 static s32 decodeRate;
-static u8 *decodeStackP;
+static u8 *decodeStackP; /* Stack memory for the OS idle decoder thread. */
 static OSThread *decodeThread;
-static s16 THPLoopF;
-static s16 THPStat;
-static s32 THPFrame;
-static s16 THPStart;
-HUPROCESS *THPProc;
+static s16 THPLoopF; /* Preload stores its low byte; only the value 1 enables frame wrapping. */
+static s16 THPStat; /* Playback command/state consumed by THPTestProc. */
+static s32 THPFrame; /* Zero-based index most recently drawn; reset to zero at creation. */
+static s16 THPStart; /* Set after preload and idle decoder setup complete. */
+HUPROCESS *THPProc; /* Only one movie playback process may exist at a time. */
 
-HUSPRID HuTHPSprCreateVol(char *path, s16 loop, s16 prio, float volume)
+/* Instruction and minigame menus call this to create a sprite movie with a chosen mix volume.
+ * Its process opens the file and preloads frames before drawing can begin. */
+HUSPRID HuTHPSprCreateVol(char *moviePath, s16 loopMovie, s16 drawPriority, float audioMixVolume)
 {
-    HUSPRID sprId;
+    HUSPRID movieSpriteId;
 
     if(THPProc) {
         return HUSPR_NONE;
     }
     THPStart = 0;
-    THPProc = HuPrcCreate(THPTestProc, 0x64, 0x3000, 0);
+    THPProc = HuPrcCreate(THPTestProc, THP_PROCESS_PRIORITY, THP_PROCESS_STACK_BYTES, 0);
     if(!THPProc) {
         return HUSPR_NONE;
     }
-    sprId = HuSprFuncCreate(THPViewSprFunc, prio);
-    if(sprId == HUSPR_NONE) {
+    movieSpriteId = HuSprFuncCreate(THPViewSprFunc, drawPriority);
+    if(movieSpriteId == HUSPR_NONE) {
+        /* Sprite creation failure leaves the already-created playback process alive
+         * and skips movie initialization. */
         return HUSPR_NONE;
     }
-    THPSimpleInit(2);
-    SimpleControl.unk19C = 0;
-    SimpleControl.unk19E = sprId;
-    SimpleControl.unkBC = volume;
-    strcpy(THPFileName, path);
-    THPLoopF = loop;
-    THPStat = 0;
+    /* Decoder initialization's return value is ignored. */
+    THPSimpleInit(THP_AUDIO_MIX_CURRENT_BUFFER);
+    /* Configure the shared player for a sprite and set its THP audio mix gain. */
+    SimpleControl.drawMode = THP_DRAW_SPRITE;
+    SimpleControl.drawObjectId = movieSpriteId;
+    SimpleControl.currentVolume = audioMixVolume;
+    strcpy(THPFileName, moviePath);
+    THPLoopF = loopMovie;
+    THPStat = THP_STATE_START;
     THPFrame = 0;
-    return sprId;
+    return movieSpriteId;
 }
 
-HUSPRID HuTHPSprCreate(char *path, s16 loop, s16 prio)
+/* Sprite movie callers use this wrapper for the default THP mix volume. */
+HUSPRID HuTHPSprCreate(char *moviePath, s16 loopMovie, s16 drawPriority)
 {
-    return HuTHPSprCreateVol(path, loop, prio, 110.0f);
+    return HuTHPSprCreateVol(moviePath, loopMovie, drawPriority, THP_DEFAULT_VOLUME);
 }
 
-HU3D_MODELID HuTHP3DCreateVol(char *path, s16 loop, float volume)
+/* Movie scenes call this to create a model player; its process opens and plays the file. */
+HU3D_MODELID HuTHP3DCreateVol(char *moviePath, s16 loopMovie, float audioMixVolume)
 {
-    HU3D_MODELID modelId;
+    HU3D_MODELID movieModelId;
 
     if(THPProc) {
         return HU3D_MODELID_NONE;
     }
     THPStart = 0;
-    THPProc = HuPrcCreate(THPTestProc, 0x64, 0x3000, 0);
+    THPProc = HuPrcCreate(THPTestProc, THP_PROCESS_PRIORITY, THP_PROCESS_STACK_BYTES, 0);
     if(!THPProc) {
         return HU3D_MODELID_NONE;
     }
-    THPSimpleInit(2);
-    SimpleControl.unk19C = 1;
-    modelId = Hu3DHookFuncCreate(THPViewFunc);
-    SimpleControl.unk19E = modelId;
-    SimpleControl.unkBC = volume;
-    strcpy(THPFileName, path);
-    THPLoopF = loop;
-    THPStat = 0;
+    /* Decoder initialization's return value is ignored. */
+    THPSimpleInit(THP_AUDIO_MIX_CURRENT_BUFFER);
+    /* Configure the shared player for a model and set its THP audio mix gain. */
+    SimpleControl.drawMode = THP_DRAW_MODEL;
+    /* Model-slot exhaustion is unchecked; the invalid model ID is saved and passed
+     * to model-attribute setup. */
+    movieModelId = Hu3DHookFuncCreate(THPViewFunc);
+    SimpleControl.drawObjectId = movieModelId;
+    SimpleControl.currentVolume = audioMixVolume;
+    strcpy(THPFileName, moviePath);
+    THPLoopF = loopMovie;
+    THPStat = THP_STATE_START;
     THPFrame = 0;
-    Hu3DModelAttrSet(SimpleControl.unk19E, 1);
-    return modelId;
+    /* Keep the model hidden until playback setup and preload finish. */
+    Hu3DModelAttrSet(SimpleControl.drawObjectId, HU3D_ATTR_DISPOFF);
+    return movieModelId;
 }
 
-HU3D_MODELID HuTHP3DCreate(char *path, s16 loop) {
-    return HuTHP3DCreateVol(path, loop, 110.0f);
+/* Model movie callers use this wrapper for the default THP mix volume. */
+HU3D_MODELID HuTHP3DCreate(char *moviePath, s16 loopMovie) {
+    return HuTHP3DCreateVol(moviePath, loopMovie, THP_DEFAULT_VOLUME);
 }
 
+/* Movie owners request this state to stop audio, cancel reads and clear queued frames. */
 void HuTHPStop(void) {
-    THPStat = 1;
+    THPStat = THP_STATE_STOP;
 }
 
+/* A movie-owning scene calls this to make the playback process release the movie. */
 void HuTHPClose(void) {
-    THPStat = 2;
+    THPStat = THP_STATE_CLOSE;
 }
 
+/* Movie owners request this state to stop the current playback and preload from its start. */
 void HuTHPRestart(void) {
-    THPStat = 3;
+    THPStat = THP_STATE_RESTART;
 }
 
+/* Movie owners call this to detect completion after the final decoded frame is drawn. */
 BOOL HuTHPEndCheck(void) {
-    s32 totalFrame;
-    
+    s32 lastFrameIndex;
+
     if(!THPProc) {
         return TRUE;
     }
     if(!THPStart) {
         return FALSE;
     }
-    totalFrame = THPSimpleGetTotalFrame() - 1;
-    if(totalFrame <= 0) {
+    /* Frame indices start at zero, so compare against the final index. */
+    lastFrameIndex = THPSimpleGetTotalFrame() - 1;
+    /* Movies with at most one frame never report completion while a process is active. */
+    if(lastFrameIndex <= 0) {
         return FALSE;
     }
-    return (totalFrame <= THPFrame);
+    return (lastFrameIndex <= THPFrame);
 }
 
+/* Movie scenes use this to read the index of the frame most recently drawn. */
 s32 HuTHPFrameGet(void) {
     return THPFrame;
 }
 
+/* Movie scenes use this to read the frame count from the opened THP header. */
 s32 HuTHPTotalFrameGet(void) {
     return THPSimpleGetTotalFrame();
 }
 
-void HuTHPSetVolume(s32 left, s32 right) {
-    THPSimpleSetVolume(left, right);
+/* Movie owners request a target mix level (0-127) and ramp duration (0-60000).
+ * Only an opened movie with audio accepts the update and clamps both values; zero duration
+ * applies the level immediately. The returned success/failure status is ignored. */
+void HuTHPSetVolume(s32 targetVolume, s32 rampDuration) {
+    THPSimpleSetVolume(targetVolume, rampDuration);
 }
 
+/* Instruction and minigame menu teardown poll this; TRUE means a movie process still exists. */
 BOOL HuTHPProcCheck(void)
 {
     if(THPProc) {
@@ -135,33 +175,39 @@ BOOL HuTHPProcCheck(void)
     }
 }
 
+/* Movie draw setup uses this to wait until playback starts and the first decoded frame is ready. */
 BOOL HuTHPStartCheck(void)
 {
-    if(!THPStart || SimpleControl.unk144[0].unk0C < 0) {
+    /* The decoder marks the first frame ready by replacing this negative sentinel. */
+    if(!THPStart || SimpleControl.videoBuffers[0].frameIndex < 0) {
         return FALSE;
     }
     return TRUE;
 }
 
+/* Creator calls start this process, which opens, preloads, plays, and releases the movie. */
 static void THPTestProc(void) {
-    s32 temp_r29;
-    u32 var_r28;
-    void *temp_r30;
+    s32 requiredBufferBytes;
+    u32 startAudioPlayback;
+    void *movieBuffer;
 
     while(THPSimpleOpen(THPFileName) == 0) {
         OSReport("THPSimpleOpen fail");
         HuPrcVSleep();
     }
+    /* The helper returns the movie's pixel width and height for frame drawing. */
     THPSimpleGetVideoInfo(&videoInfo);
-    temp_r29 = THPSimpleCalcNeedMemory();
-    OSReport("Size %x\n", temp_r29);
-    temp_r30 = HuMemDirectMalloc(HEAP_MODEL, temp_r29);
-    memset(temp_r30, 0, temp_r29);
-    DCFlushRange(temp_r30, temp_r29);
-    if(temp_r30 == 0) {
+    requiredBufferBytes = THPSimpleCalcNeedMemory();
+    OSReport("Size %x\n", requiredBufferBytes);
+    movieBuffer = HuMemDirectMalloc(HEAP_MODEL, requiredBufferBytes);
+    /* Clear the movie workspace before the decoder uses it during preload. */
+    memset(movieBuffer, 0, requiredBufferBytes);
+    DCFlushRange(movieBuffer, requiredBufferBytes);
+    /* Allocation failure is reported here; the earlier workspace clear assumes success. */
+    if(movieBuffer == 0) {
         OSReport("Can't allocate the memory\n");
     }
-    THPSimpleSetBuffer(temp_r30);
+    THPSimpleSetBuffer(movieBuffer);
     while(THPSimplePreLoad(THPLoopF) == 0) {
         OSReport("THPSimplePreLoad fail");
         HuPrcVSleep();
@@ -170,57 +216,64 @@ static void THPTestProc(void) {
     if(VIGetNextField() == 1) {
         HuPrcVSleep();
     }
-    decodeStackP = HuMemDirectMalloc(HEAP_HEAP, 0x2000);
-    decodeThread = OSSetIdleFunction(THPDecodeFunc, NULL, decodeStackP + 0x2000, 0x2000);
+    decodeStackP = HuMemDirectMalloc(HEAP_HEAP, THP_DECODE_STACK_BYTES);
+    /* Idle-thread creation is unchecked: a busy idle slot returns NULL, but startup
+     * is still marked complete and shutdown uses the returned handle. */
+    decodeThread = OSSetIdleFunction(THPDecodeFunc, NULL,
+                                   decodeStackP + THP_DECODE_STACK_BYTES, THP_DECODE_STACK_BYTES);
     decodeRate = 0;
     THPStart = 1;
-    if(SimpleControl.unk19C == 1) {
-        Hu3DModelAttrReset(SimpleControl.unk19E, 1);
+    if(SimpleControl.drawMode == THP_DRAW_MODEL) {
+        /* Reveal the model after video setup and preload finish. */
+        Hu3DModelAttrReset(SimpleControl.drawObjectId, HU3D_ATTR_DISPOFF);
     } else {
-        HUSPRITE *sp = &HuSprData[SimpleControl.unk19E];
-        sp->attr &= ~HUSPR_ATTR_DISPOFF;
+        HUSPRITE *sprite = &HuSprData[SimpleControl.drawObjectId];
+        sprite->attr &= ~HUSPR_ATTR_DISPOFF;
     }
     while(1) {
-        if(THPStat == 2) {
+        if(THPStat == THP_STATE_CLOSE) {
             break;
         }
         switch (THPStat) {
-            case 0:
-                var_r28 = 1;
-                THPStat = 4;
+            case THP_STATE_START:
+    startAudioPlayback = 1;
+                THPStat = THP_STATE_PLAY;
                 break;
-            case 1:
+            case THP_STATE_STOP:
+                /* Repeat the stop/reset each update until another command replaces this state. */
                 THPSimpleAudioStop();
                 THPSimpleLoadStop();
                 break;
-            case 3:
+            case THP_STATE_RESTART:
                 THPSimpleAudioStop();
                 THPSimpleLoadStop();
                 while(THPSimplePreLoad(THPLoopF) == 0) {
                     OSReport("THPSimplePreLoad fail");
                     HuPrcVSleep();
                 }
-                THPStat = 0;
-                var_r28 = 1;
+                THPStat = THP_STATE_START;
+                startAudioPlayback = 1;
                 break;
         }
-        if(var_r28 != 0) {
+        /* A stop requested before the first START leaves this flag uninitialized
+         * at its first test, which can enable audio again after the stop/reset. */
+        if(startAudioPlayback != 0) {
             THPSimpleAudioStart();
-            var_r28 = 0;
+            startAudioPlayback = 0;
         }
         HuPrcVSleep();
     }
-    if(SimpleControl.unk19C == 1) {
-        Hu3DModelKill(SimpleControl.unk19E);
+    if(SimpleControl.drawMode == THP_DRAW_MODEL) {
+        Hu3DModelKill(SimpleControl.drawObjectId);
     } else {
-        HuSprKill(SimpleControl.unk19E);
+        HuSprKill(SimpleControl.drawObjectId);
     }
     OSCancelThread(decodeThread);
     HuMemDirectFree(decodeStackP);
     THPSimpleAudioStop();
     THPSimpleLoadStop();
     THPSimpleClose();
-    HuMemDirectFree(temp_r30);
+    HuMemDirectFree(movieBuffer);
     THPSimpleQuit();
     THPProc = NULL;
     HuPrcKill(HuPrcCurrentGet());
@@ -229,51 +282,64 @@ static void THPTestProc(void) {
     }
 }
 
-static void THPViewFunc(HU3D_MODEL *modelP, Mtx *mtx) {
-    GXColor color = { 0xFF, 0xFF, 0xFF, 0xFF };
+/* Hu3DHookFuncCreate installs this callback; the model renderer invokes it to draw each movie
+ * frame. */
+static void THPViewFunc(HU3D_MODEL *model, Mtx *matrix) {
+    GXColor frameColor = { 255, 255, 255, 255 };
 
-    if(!THPStart || SimpleControl.unk144[0].unk0C < 0) {
+    /* Do not draw until setup completes and the decoder has published a frame. */
+    if(!THPStart || SimpleControl.videoBuffers[0].frameIndex < 0) {
         return;
     }
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
     GXSetCullMode(GX_CULL_NONE);
-    THPFrame = THPSimpleDrawCurrentFrame(RenderMode, &color, *mtx, -videoInfo.unk00 / 2, videoInfo.unk04 / 2, videoInfo.unk00, -videoInfo.unk04);
+    /* Unsigned -width / 2 wraps before division, giving the model a nonnegative X origin. */
+    THPFrame = THPSimpleDrawCurrentFrame(RenderMode, &frameColor, *matrix, -videoInfo.width / 2,
+                                         videoInfo.height / 2, videoInfo.width, -videoInfo.height);
+    /* Each model draw that passes the readiness checks enables audio mixing again. */
     THPSimpleAudioStart();
 }
 
-static void THPViewSprFunc(HUSPRITE *sp) {
+/* HuSprFuncCreate installs this callback; the sprite renderer invokes it to draw each movie
+ * frame. */
+static void THPViewSprFunc(HUSPRITE *sprite) {
     Vec axis = { 0.0f, 0.0f, 1.0f };
-    GXColor color;
-    s32 ofsX;
-    s32 ofsY;
+    GXColor frameColor;
+    s32 frameOriginX;
+    s32 frameOriginY;
     Mtx modelview;
-    Mtx rot;
-    if(!THPStart || SimpleControl.unk144[0].unk0C < 0) {
+    Mtx rotationMatrix;
+    /* Do not draw until setup completes and the decoder has published a frame. */
+    if(!THPStart || SimpleControl.videoBuffers[0].frameIndex < 0) {
         return;
     }
-    color.r = sp->r;
-    color.g = sp->g;
-    color.b = sp->b;
-    color.a = sp->a;
-    if(sp->zRot != 0.0f) {
-        MTXRotAxisRad(rot, &axis, MTXDegToRad(sp->zRot));
-        MTXScale(modelview, sp->scale.x, sp->scale.y, 1.0f);
-        MTXConcat(rot, modelview, modelview);
+    frameColor.r = sprite->r;
+    frameColor.g = sprite->g;
+    frameColor.b = sprite->b;
+    frameColor.a = sprite->a;
+    if(sprite->zRot != 0.0f) {
+        MTXRotAxisRad(rotationMatrix, &axis, MTXDegToRad(sprite->zRot));
+        MTXScale(modelview, sprite->scale.x, sprite->scale.y, 1.0f);
+        MTXConcat(rotationMatrix, modelview, modelview);
     } else {
-        MTXScale(modelview, sp->scale.x, sp->scale.y, 1.0f);
+        MTXScale(modelview, sprite->scale.x, sprite->scale.y, 1.0f);
     }
-    mtxTransCat(modelview, sp->pos.x, sp->pos.y, 0.0f);
-    PSMTXConcat(*sp->groupMtx, modelview, modelview);
-    ofsX = -((s32) videoInfo.unk00 / 2);
-    ofsY = -((s32) videoInfo.unk04 / 2);
+    mtxTransCat(modelview, sprite->pos.x, sprite->pos.y, 0.0f);
+    PSMTXConcat(*sprite->groupMtx, modelview, modelview);
+    /* Place the movie's top-left corner around the centered sprite origin. */
+    frameOriginX = -((s32) videoInfo.width / 2);
+    frameOriginY = -((s32) videoInfo.height / 2);
     GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
-    THPFrame = THPSimpleDrawCurrentFrame(RenderMode, &color, modelview, ofsX, ofsY, videoInfo.unk00, videoInfo.unk04);
+    THPFrame = THPSimpleDrawCurrentFrame(RenderMode, &frameColor, modelview, frameOriginX,
+                                         frameOriginY, videoInfo.width, videoInfo.height);
 }
 
-static void THPDecodeFunc(void *param)
+/* OSSetIdleFunction runs this decoder thread; it yields for a retrace after each decode attempt
+ * until the movie process requests close. */
+static void THPDecodeFunc(void *callbackContext)
 {
     while(1) {
-        if(THPStat == 2) {
+        if(THPStat == THP_STATE_CLOSE) {
             break;
         }
         if(THPSimpleDecode() == 1) {
@@ -283,18 +349,21 @@ static void THPDecodeFunc(void *param)
     }
 }
 
-void HuTHPMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
+/* Material hook for movie-textured models; binds the latest decoded YUV planes during drawing. */
+void HuTHPMatHook(HU3D_DRAW_OBJ *drawObject, HSF_MATERIAL *material)
 {
-    if(!THPStart || SimpleControl.unk144[0].unk0C < 0) {
+    /* Retain the ordinary material setup while no decoded frame is available. */
+    if(!THPStart || SimpleControl.videoBuffers[0].frameIndex < 0) {
         if(material->attrNum == 0) {
-            Hu3DTevStageNoTexSet(drawObj, material);
+            Hu3DTevStageNoTexSet(drawObject, material);
         } else {
-            Hu3DTevStageTexSet(drawObj, material);
+            Hu3DTevStageTexSet(drawObject, material);
         }
         return;
     } else {
-        u16 thpW = SimpleControl.unk80.unk00;
-        u16 thpH = SimpleControl.unk80.unk04;
+        /* Movie dimensions are pixels; each chroma plane is half-size in both axes. */
+        u16 videoWidth = SimpleControl.videoInfo.width;
+        u16 videoHeight = SimpleControl.videoInfo.height;
         GXTexObj texY;
         GXTexObj texCb;
         GXTexObj texCr;
@@ -334,20 +403,28 @@ void HuTHPMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
         GXSetTevAlphaOp(GX_TEVSTAGE3, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
         GXSetTevSwapMode(GX_TEVSTAGE3, GX_TEV_SWAP0, GX_TEV_SWAP0);
         GXSetTevKColorSel(GX_TEVSTAGE3, GX_TEV_KCSEL_K2);
-        GXSetTevColorS10(GX_TEVREG0, (GXColorS10) { 0xFFA6, 0, 0xFF8E, 0x0087 });
-        GXSetTevKColor(GX_KCOLOR0, (GXColor) { 0, 0, 0xE2, 0x58 });
-        GXSetTevKColor(GX_KCOLOR1, (GXColor) { 0xB3, 0, 0, 0xB6 });
-        GXSetTevKColor(GX_KCOLOR2, (GXColor) { 0xFF, 0, 0xFF, 0x80 });
+        /* These coefficients and offsets convert the movie's YUV planes to RGB. */
+        GXSetTevColorS10(GX_TEVREG0, (GXColorS10) { 65446, 0, 65422, 135 });
+        GXSetTevKColor(GX_KCOLOR0, (GXColor) { 0, 0, 226, 88 });
+        GXSetTevKColor(GX_KCOLOR1, (GXColor) { 179, 0, 0, 182 });
+        GXSetTevKColor(GX_KCOLOR2, (GXColor) { 255, 0, 255, 128 });
         GXSetTevSwapModeTable(GX_TEV_SWAP0, GX_CH_RED, GX_CH_GREEN, GX_CH_BLUE, GX_CH_ALPHA);
-        GXInitTexObj(&texY, SimpleControl.unk144[bufIdx].unk00, (s32)thpW, (s32)thpH, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
-        GXInitTexObjLOD(&texY, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
+        GXInitTexObj(&texY, SimpleControl.videoBuffers[bufIdx].yPlane, (s32) videoWidth,
+                     (s32) videoHeight, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+        GXInitTexObjLOD(&texY, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE,
+                        GX_ANISO_1);
         GXLoadTexObj(&texY, GX_TEXMAP0);
-        GXInitTexObj(&texCb, SimpleControl.unk144[bufIdx].unk04, thpW >> 1, thpH >> 1, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
-        GXInitTexObjLOD(&texCb, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
+        /* Chroma planes are half the luma width and height. */
+        GXInitTexObj(&texCb, SimpleControl.videoBuffers[bufIdx].cbPlane, videoWidth >> 1,
+                     videoHeight >> 1, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+        GXInitTexObjLOD(&texCb, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE,
+                        GX_ANISO_1);
         GXLoadTexObj(&texCb, GX_TEXMAP1);
-        GXInitTexObj(&texCr, SimpleControl.unk144[bufIdx].unk08, thpW >> 1, thpH >> 1, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
-        GXInitTexObjLOD(&texCr, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
+        GXInitTexObj(&texCr, SimpleControl.videoBuffers[bufIdx].crPlane, videoWidth >> 1,
+                     videoHeight >> 1, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+        GXInitTexObjLOD(&texCr, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE,
+                        GX_ANISO_1);
         GXLoadTexObj(&texCr, GX_TEXMAP2);
-        THPFrame = SimpleControl.unk144[0].unk0C;
+        THPFrame = SimpleControl.videoBuffers[0].frameIndex;
     }
 }
