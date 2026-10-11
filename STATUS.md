@@ -14,6 +14,8 @@ Byte percentages were generated from a verified full-project retail build with `
 | Main DOL | 88.95% | 99.05% |
 | REL modules | 27.64% | 31.61% |
 
+Towering Treetop (`w01Dll`) selects all **151 functions** from **2 complete translation units**; its linked REL matches retail.
+
 Mode Select (`mdseldll`) selects all **132 functions** from **2 complete translation units**; its linked REL matches retail.
 
 File Select (`fileseldll`) selects all **88 functions** from **4 complete translation units**; its linked REL matches retail.

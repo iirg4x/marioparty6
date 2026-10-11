@@ -1,3 +1,4 @@
+// Board-specific models, events, and motion used by Towering Treetop.
 #include "dolphin.h"
 #include "humath.h"
 #include "REL/w01Dll_world01.h"
@@ -26,11 +27,123 @@
 #include "game/sprite.h"
 #include "game/wipe.h"
 #include "string.h"
+#include "messdir_enum.h"
+#include "datadir_enum.h"
+#include "msm_grp.h"
 
 void mbWipeDissolveFadeOut(void);
 void mbWipeDissolveFadeIn(void);
 
 #define MBNO_WORLD_1 0
+
+#define W01_DATA_DAY DATA_w01
+#define W01_DATA_NIGHT DATA_w01n
+#define W01_FILE_MASU 4
+#define W01_FILE_GATE 5
+#define W01_FILE_SCROLL 2
+#define W01_FILE_CAP_THROW_COLLISION 3
+#define W01_FILE_SHOP 22
+#define W01_FILE_SHOP_RETURN 26
+#define W01_FILE_SHOP_MODEL 23
+#define W01_FILE_PATH_MARKER 8
+#define W01_FILE_PATH_MODEL 9
+#define W01_FILE_SPRING_MODEL 10
+#define W01_FILE_SPRING_MAIN_MODEL 11
+#define W01_OBJ_ATTR_BOARD_MODEL HU3D_MOTATTR_LOOP
+#define W01_OBJ_ATTR_EFFECT_PAUSED HU3D_MOTATTR_PAUSE
+#define W01_FILE_EFFECT_ROOT 27
+#define W01_FILE_EFFECT_CHILD 31
+#define W01_MESSAGE_OPENING_1 MESSNUM(MESS_BOARD_W01, 22)
+#define W01_MESSAGE_OPENING_2 MESSNUM(MESS_BOARD_W01, 23)
+#define W01_MESSAGE_OPENING_3 MESSNUM(MESS_BOARD_W01, 24)
+#define W01_MASU_ATTR_EVENT_GROUP_MASK 0x00001C00
+#define W01_MASU_ATTR_EVENT_INDEX_MASK 0x00030000
+#define W01_MASU_ATTR_MOVE_HOOK_DASH (1 << 8)
+#define W01_MASU_ATTR_MOVE_HOOK_PATH (1 << 14)
+#define W01_MASU_ATTR_MOVE_HOOK_SPRING_A (1 << 22)
+#define W01_MASU_ATTR_MOVE_HOOK_SPRING_B (1 << 20)
+#define W01_MASU_ATTR_MOVE_HOOK_FLOAT (1 << 18)
+#define W01_MASU_ATTR_MOVE_HOOK_STAR (1 << 24)
+#define W01_MASU_ATTR_HATENA_SHOP (1 << 3)
+#define W01_MASU_ATTR_HATENA_STAR (1 << 29)
+#define W01_MASU_ATTR_HATENA_EVENT (1 << 6)
+#define W01_MASU_ATTR_HATENA_CAPSULE (1 << 15)
+#define W01_MASU_ATTR_EVENT_TYPE_MASK 0xE0000000
+#define W01_MASU_ATTR_LINK (1 << 13)
+
+#define W01_DATA_DIR_LIGHT_EFFECT DATA_capsuleshop
+#define W01_MODEL_LIGHT_DAY DATANUM(DATA_capsuleshop, 5)
+#define W01_MODEL_LIGHT_NIGHT DATANUM(DATA_capsuleshop, 0)
+#define W01_FILE_WH_EFFECT_STAR_ANIM 51
+#define W01_MODEL_GATE_BASE DATANUM(DATA_capsuleshop, 8)
+#define W01_MESSAGE_WH_INTRO_DAY MESSNUM(MESS_BOARD_W01, 4)
+#define W01_MESSAGE_WH_INTRO_NIGHT MESSNUM(MESS_BOARD_W01, 9)
+#define W01_MESSAGE_WH_CHOICE_DAY MESSNUM(MESS_BOARD_W01, 5)
+#define W01_MESSAGE_WH_CHOICE_NIGHT MESSNUM(MESS_BOARD_W01, 10)
+#define W01_MESSAGE_WH_PLAYER_MOVE_DAY MESSNUM(MESS_BOARD_W01, 6)
+#define W01_MESSAGE_WH_PLAYER_MOVE_NIGHT MESSNUM(MESS_BOARD_W01, 11)
+#define W01_MESSAGE_WH_CHOICE_HELP MESSNUM(MESS_BOARD_W01, 8)
+#define W01_MESSAGE_WH_RESULT MESSNUM(MESS_BOARD_W01, 7)
+#define W01_SOUND_WH_EVENT_DAY 987
+#define W01_SOUND_WH_EVENT_NIGHT 961
+
+// Board resource IDs selected by the current time of day.
+#define W01_MODEL_NEXT_TURN_DAY DATANUM(DATA_w01, 37)
+#define W01_MODEL_NEXT_TURN_NIGHT DATANUM(DATA_w01n, 40)
+#define W01_MODEL_COIN_NIGHT DATANUM(DATA_w01n, 34)
+#define W01_DATA_DIR_DAY W01_DATA_DAY
+#define W01_DATA_DIR_NIGHT W01_DATA_NIGHT
+
+// Player motions and messages used by the spring, next-turn, and star events.
+#define W01_PLAYER_MOTION_SPRING_LAUNCH DATANUM(DATA_mariomot, 99)
+#define W01_PLAYER_MOTION_STAR_COLLECT DATANUM(DATA_mariomot, 30)
+#define W01_PLAYER_MOTION_STAR_REACTION DATANUM(DATA_mariomot, 25)
+#define W01_PLAYER_MOTION_PATH_RIDE DATANUM(DATA_mariomot, 10)
+#define W01_PLAYER_MOTION_BIRI_TOSS DATANUM(DATA_mariomot, 23)
+#define W01_PLAYER_MOTION_BIRI_REACTION DATANUM(DATA_mariomot, 98)
+#define W01_MESSAGE_NEXT_TURN_HELP MESSNUM(MESS_BOARD_OPE, 12)
+#define W01_MESSAGE_STAR_DAY MESSNUM(MESS_BOARD_W01, 0)
+#define W01_MESSAGE_STAR_NIGHT MESSNUM(MESS_BOARD_W01, 2)
+#define W01_MESSAGE_STAR_RESULT_DAY MESSNUM(MESS_BOARD_W01, 1)
+#define W01_MESSAGE_STAR_RESULT_NIGHT MESSNUM(MESS_BOARD_W01, 3)
+#define W01_DATA_STAR_ANIM_DAY DATANUM(DATA_board, 99)
+#define W01_DATA_STAR_ANIM_NIGHT DATANUM(DATA_board, 94)
+#define W01_FILE_FLOATING_MASU 14
+#define W01_FILE_MOTION_VARIANT_A 12
+#define W01_FILE_MOTION_VARIANT_B 13
+#define W01_FILE_MASU_MOTION_EFFECT 50
+#define W01_FILE_COIN_FIELD_MAIN 32
+
+#define W01_COLOR_TREE_BARK_BIT_PATTERN 0x685747FF
+#define W01_COLOR_TREE_LIGHT_BIT_PATTERN 0xBEB095FF
+#define W01_MODEL_BOARD_SCENERY_DAY_1 DATANUM(DATA_w01, 6)
+#define W01_MODEL_BOARD_SCENERY_DAY_2 DATANUM(DATA_w01, 7)
+#define W01_MODEL_BOARD_SCENERY_DAY_3 DATANUM(DATA_w01, 18)
+#define W01_MODEL_BOARD_SCENERY_DAY_4 DATANUM(DATA_w01, 19)
+#define W01_MODEL_BOARD_SCENERY_DAY_5 DATANUM(DATA_w01, 20)
+#define W01_MODEL_BOARD_SCENERY_NIGHT_3 DATANUM(DATA_w01, 21)
+#define W01_MODEL_COIN_FIELD_DAY DATANUM(DATA_w01, 33)
+#define W01_MODEL_COIN_FIELD_NIGHT DATANUM(DATA_w01n, 33)
+#define W01_MODEL_MASU_EFFECT_K_H1 DATANUM(DATA_w01, 15)
+#define W01_MODEL_MASU_EFFECT_K_H2 DATANUM(DATA_w01, 16)
+#define W01_MODEL_MASU_EFFECT_K_H3 DATANUM(DATA_w01, 17)
+#define W01_MODEL_MASU_SF_DAY DATANUM(DATA_w01, 35)
+#define W01_MODEL_MASU_MF_DAY DATANUM(DATA_w01, 38)
+#define W01_MODEL_MASU_SF_NIGHT DATANUM(DATA_w01, 36)
+#define W01_MODEL_MASU_MF_NIGHT DATANUM(DATA_w01, 39)
+#define W01_MASU_ATTR_SPECIAL_A (1 << 22)
+#define W01_MASU_ATTR_SPECIAL_A_LINK_0 (1 << 23)
+#define W01_MASU_ATTR_SPECIAL_A_LINK_1 (1 << 26)
+#define W01_MASU_ATTR_SPECIAL_B (1 << 20)
+#define W01_MASU_ATTR_SPECIAL_B_LINK_0 (1 << 21)
+#define W01_MASU_ATTR_SPECIAL_B_LINK_1 (1 << 25)
+#define W01_MODEL_LIGHT_DETAIL_DAY_1 DATANUM(DATA_capsuleshop, 6)
+#define W01_MODEL_LIGHT_DETAIL_DAY_2 DATANUM(DATA_capsuleshop, 7)
+#define W01_MODEL_LIGHT_DETAIL_NIGHT_1 DATANUM(DATA_capsuleshop, 1)
+#define W01_MODEL_LIGHT_DETAIL_NIGHT_2 DATANUM(DATA_capsuleshop, 4)
+#define W01_MODEL_WH_EFFECT_DAY_1 DATANUM(DATA_w01, 28)
+#define W01_MODEL_WH_EFFECT_DAY_2 DATANUM(DATA_w01, 29)
+#define W01_MODEL_WH_EFFECT_DAY_3 DATANUM(DATA_w01, 30)
 
 static inline BOOL MBTimeDayGet(void)
 {
@@ -41,10 +154,10 @@ typedef void (*VoidFunc)(void);
 typedef float (*W01CurveEval)();
 
 typedef struct W01StarMasuWork {
-    u8 unk00[4];
-    u8 count;
-    u8 order[8];
-    u8 index;
+    u8 unusedPrefix[4]; // Not accessed by the board's star-space code.
+    u8 count; // Number of available star positions.
+    u8 order[8]; // Order in which the star positions are visited.
+    u8 index; // Current entry in the star-position order.
 } W01_STAR_MASU_WORK;
 
 typedef struct W01CoinEffect {
@@ -74,126 +187,125 @@ typedef struct W01PathWork {
     BOOL initF;
     W01_PATH_MARKER marker[6];
     s16 modelId[7];
-    u8 unk5E[0x12];
+    u8 unusedBytesBeforeEndpoints[18];
     HuVecF endPoint[2];
     s16 lastMasuId;
-    u8 unk8A[2];
+    u8 unusedBytesAtEnd[2];
 } W01_PATH_WORK;
 
 typedef struct W01MotionWork {
-    s32 unk00;
+    s32 activePlayerNo; // Player attached to the moving path, or -1 when idle.
     MBMODELID modelId[3];
-    float unk0C[4];
-    float unk1C;
-    float unk20;
-    float unk24[2];
-    HuVecF unk2C;
-    HuVecF unk38[2];
+    float swingState[4]; // Two angles in radians, then their angular velocities.
+    float firstMass; // First segment's relative mass in the swing calculation.
+    float secondMass; // Second segment's relative mass in the swing calculation.
+    float armLength[2]; // Segment lengths in board-space units.
+    HuVecF anchorPos; // Board-space origin of the moving path assembly.
+    HuVecF endpointPos[2]; // Board-space endpoints for the two segments.
 } W01_MOTION_WORK;
 
 typedef struct W01MasuMotionWork {
-    BOOL active;
-    MBMODELID modelId;
-    s16 masuId;
-    HU3D_MODELID effectModelId[2];
-    char objName[0x10];
+    BOOL active; // True while the space follows its playing model motion.
+    MBMODELID modelId; // Animated scenery carrying the space.
+    s16 masuId; // Board space positioned at the moving joint.
+    HU3D_MODELID effectModelId[2]; // Reusable falling particle models.
+    char objName[16]; // Model joint used to locate the space.
 } W01_MASU_MOTION_WORK;
 
 typedef struct W01MasuModelWork {
-    BOOL active;
-    BOOL dayF;
-    MBMODELID modelId;
-    s16 masuId;
-    s16 linkMasuId[2];
-    char objName[0x10];
+    BOOL active; // True when the route's space position should be refreshed.
+    BOOL dayF; // True selects the long launch; false selects the shorter hop.
+    MBMODELID modelId; // Spring route scenery model.
+    s16 masuId; // Space at the spring model's moving joint.
+    s16 linkMasuId[2]; // Destinations for the launch and hop routes, respectively.
+    char objName[16]; // Model joint carrying the spring's board space.
 } W01_MASU_MODEL_WORK;
 
 typedef struct W01WhParticle {
-    HuVecF pos;
-    HuVecF rot;
-    HuVecF baseRot;
-    HuVecF velocity;
-    HuVecF acceleration;
-    s16 delay;
-    u8 unk3E[2];
-    float phase;
-    float phaseVelocity;
+    HuVecF pos; // Position in board space.
+    HuVecF rot; // Particle orientation in degrees.
+    HuVecF baseRot; // Orientation restored before presenting the rides.
+    HuVecF velocity; // Translational velocity in board units per second.
+    HuVecF acceleration; // Per-axis multiplier for the shared wind acceleration.
+    s16 delay; // Frames before release; -1 keeps the particle attached.
+    u8 unusedAfterDelay[2]; // Not accessed by the particle update.
+    float phase; // Swing angle in radians after release.
+    float phaseVelocity; // Change in swing angle per second.
 } W01_WH_PARTICLE;
 
 typedef struct W01WhEffectWork {
-    MBMODELID modelId;
-    char objName[0x12];
-    W01_WH_PARTICLE *particle;
-    s32 particleCount;
-    s32 state;
-    s16 unk20;
-    u8 unk22[2];
-    s32 playerNo;
-    HuVecF pos;
-    HuVecF rot;
-    OMOBJ *object;
-    s16 time;
-    s16 maxTime;
-    u8 unk48[4];
-    s32 unk4C;
+    MBMODELID modelId; // Ride model carrying the player.
+    char objName[18]; // Model joint name loaded for this ride.
+    W01_WH_PARTICLE *particle; // Particles surrounding the ride.
+    s32 particleCount; // Number of entries in the particle array.
+    s32 state; // Nonzero keeps all particles attached; zero allows timed releases.
+    s16 fadeState; // One while fading out; zero leaves opacity unchanged.
+    u8 unusedAfterFadeState[2]; // Not accessed by the ride update.
+    s32 playerNo; // Rider's player number, or -1 when empty.
+    HuVecF pos; // Target position; Y is 1000 units above the model's base.
+    HuVecF bobVelocity; // Y is vertical velocity in board units per second; X and Z are only
+                        // cleared.
+    OMOBJ *object; // Object manager entry that updates this ride.
+    s16 time; // Elapsed fade frames.
+    s16 maxTime; // Fade duration in frames.
+    u8 unusedAfterTimers[4]; // Not accessed by the ride update.
+    s32 pathMotionF; // Nonzero follows the scripted path instead of vertical bobbing.
 } W01_WH_EFFECT_WORK;
 
 typedef struct W01WhEffectStorage {
     W01_WH_EFFECT_WORK work[3];
-    s32 unkF0;
+    s32 unusedTail; // Not accessed by the special-space event.
 } W01_WH_EFFECT_STORAGE;
 
 typedef struct W01SortEntry {
-    HuVecF pos;
-    s32 workIndex;
-    float facing;
+    HuVecF pos; // Particle position in camera space, used for depth sorting.
+    s32 workIndex; // Ride index selecting the particle's glow color.
+    float facing; // Camera-depth component of the local Y axis, used to shade the daytime glow.
 } W01_SORT_ENTRY;
 
 typedef struct W01BiriWork W01_BIRI_WORK;
 
 typedef struct W01BiriEntry {
     MBMODELID modelId;
-    u8 pad02[2];
-    HuVecF pos;
-    HuVecF unk10;
-    HuVecF rot;
-    s16 state;
-    s16 index;
-    float unk2C;
-    float unk30;
-    float unk34;
-    float angle;
-    float targetY;
-    float orbitAngle;
-    float orbitDirection;
-    float unk48;
-    float unk4C;
-    float stateValue;
-    s16 unk54;
-    s16 timer;
-    s16 maxTime;
-    s16 unk5A;
-    HuVecF startPos;
-    HuVecF targetPos;
-    W01_BIRI_WORK *work;
+    HuVecF pos; // Current position in board space.
+    HuVecF homePos; // Position used when the Biri returns to its starting point.
+    HuVecF rot; // Current model rotation in degrees.
+    s16 state; // Current movement state; zero is idle.
+    s16 index; // Entry slot used to identify this Biri in the shared event state.
+    float bobAmplitude; // World-space amplitude used by the idle bobbing motion.
+    float spinAngle; // Current spin angle in degrees.
+    float spinSpeed; // Spin angle change per update in degrees.
+    float phaseAngle; // Initial angular offset used by this entry's board effect.
+    float targetY; // Height in board space while circling a player.
+    float orbitAngle; // Current angle around the player in degrees.
+    float orbitDirection; // Direction of orbit, either 1.0f or -1.0f.
+    float orbitRadius; // Current distance from the player in board units.
+    float targetOrbitRadius; // Radius restored after the approach transition.
+    float orbitRadiusTransition; // Radial velocity in board units per second while easing the orbit
+                                 // radius.
+    s16 delayTimer; // Frames remaining before the next idle movement begins.
+    s16 timer; // Frames elapsed in the current movement state.
+    s16 maxTime; // Frame limit for the current movement state.
+    s16 idleDuration; // Idle interval in frames restored after a return movement.
+    HuVecF startPos; // Starting point for the current travel segment.
+    HuVecF targetPos; // Destination for the current travel segment.
+    W01_BIRI_WORK *work; // Shared board effect state that owns this entry.
 } W01_BIRI_ENTRY;
 
 struct W01BiriWork {
-    MBMODELID modelId;
-    u8 pad02[2];
-    HuVecF pos;
-    HuVecF rot;
-    HuVecF baseRot;
-    W01_BIRI_ENTRY entry[5];
-    float phase;
-    float phaseVelocity;
-    s32 state;
+    MBMODELID modelId; // Scenery model above the five Biri members.
+    HuVecF pos; // Group model's fixed position in board space.
+    HuVecF rot; // Group model's current orientation in degrees.
+    HuVecF baseRot; // Orientation to which the group's swing is added.
+    W01_BIRI_ENTRY entry[5]; // Independently moving Biri members.
+    float phase; // Group swing angle in radians.
+    float phaseVelocity; // Swing-angle change per second.
+    s32 state; // Zero is ambient motion; one starts circling; two is the attack phase.
 };
 
 typedef struct W01ParticleWork {
     MBMODELID modelId[6];
     HU3D_MODELID particleModelId;
-    u8 pad0E[2];
 } W01_PARTICLE_WORK;
 
 typedef struct W01GateWork {
@@ -224,7 +336,6 @@ typedef struct W01NextTimeWork {
 
 typedef struct W01SpringSegmentWork {
     MBMODELID modelId;
-    u8 pad02[2];
     HuVecF pos;
     HuVecF vel;
 } W01_SPRING_SEGMENT_WORK;
@@ -240,48 +351,43 @@ typedef struct W01SpringWork {
     s32 state;
     MBMODELID pathModelId[16];
     MBMODELID mainModelId;
-    u8 pad56[2];
     W01_SPRING_SEGMENT_WORK segment[4];
 } W01_SPRING_WORK;
 
 typedef struct W01FloatWork {
     s32 active;
     MBMODELID modelId;
-    u8 pad06[2];
     HuVecF pos;
     HuVecF velocity;
     s16 masuId;
     s16 time;
     s16 maxTime;
-    u8 pad26[2];
     float speed;
 } W01_FLOAT_WORK;
 
 typedef struct W01CoinEntry {
-    BOOL active;
-    MBMODELID modelId;
-    u8 pad06[2];
-    HuVecF vel;
-    s16 state;
-    s16 delay;
-    s16 blinkTime;
-    u8 pad1A[2];
-    s32 playerNo;
-    float targetY;
-    HuVecF pos;
-    HuVecF rot;
-    HU3D_MODELID particleModelId;
+    BOOL active; // True while this falling object is being animated.
+    MBMODELID modelId; // Day coin or night falling-object model.
+    HuVecF vel; // Velocity in board units per second.
+    s16 state; // Zero is the opening burst; one falls to a target; two bounces and blinks.
+    s16 delay; // Frames until the falling object becomes visible.
+    s16 blinkTime; // Frame counter alternating visibility after a night hit.
+    s32 playerNo; // Player struck or awarded a coin, or -1 for an empty space.
+    float targetY; // Board-space height that ends the current fall.
+    HuVecF pos; // Current position in board space.
+    HuVecF rot; // Model rotation in degrees.
+    HU3D_MODELID particleModelId; // Landing effect for an unoccupied space.
 } W01_COIN_ENTRY;
 
 typedef struct W01Work13D8 {
-    HuVecF pos;
-    MBMODELID modelId;
-    u8 unk0E[2];
-    s32 count;
-    W01_COIN_ENTRY *data;
-    s16 playerMotion[4];
-    float unk20[4];
-    s16 coinCount[4];
+    HuVecF pos; // Model joint from which the opening coin burst is launched.
+    MBMODELID modelId; // Day/night scenery that triggers the falling objects.
+    u8 unusedAfterModelId[2]; // Not accessed by the coin event.
+    s32 count; // Falling-object capacity: 50 by day or 30 at night.
+    W01_COIN_ENTRY *data; // Falling objects reused for each group of players.
+    s16 playerMotion[4]; // Reaction motion loaded for each player during the event.
+    float hitReactionAmount[4]; // Set to 0.5 when a night coin strikes each player.
+    s16 coinCount[4]; // Available coins for loss effects, indexed by player or team.
 } W01_WORK_13D8;
 
 extern const VoidFunc _ctors[];
@@ -396,11 +502,8 @@ void fn_1_139E8(s32 value);
 void fn_1_13D04(void);
 void fn_1_13D8C(const HuVecF *pos, s32 count);
 void fn_1_13F50(void);
-#pragma push
-#pragma section code_type ".text.common"
 float fn_1_14A90(HuVecF *a, HuVecF *b, HuVecF *c, float t);
 float fn_1_14BF0(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t);
-#pragma pop
 
 extern s8 mbPadStkXGet(s32 playerNo);
 extern int mbCoinAddProcExec(int playerNo, int coinNum, BOOL dispF,
@@ -483,389 +586,7 @@ extern HuVecF lbl_1_data_7D4;
 extern HuVecF lbl_1_data_7E0;
 extern u32 lbl_1_data_3CC[6];
 
-#pragma push
-#pragma section code_type ".text.common"
-
-float fn_1_14D34(float a, float b, float c, float d, float t);
-
-float fn_1_14108(W01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t)
-{
-    int i;
-    int div;
-    float sampleLength;
-    float baseT;
-    float sampleT;
-    float deltaT;
-
-    div = 10;
-    baseT = 0.0f;
-    deltaT = (t - baseT) / div;
-    sampleT = baseT;
-    sampleLength = 0.0f;
-    for (i = 0; i < div - 1; i++) {
-        sampleT += deltaT;
-        sampleLength += eval(a, b, c, d, sampleT);
-    }
-    sampleLength = deltaT * 0.5
-        * (eval(a, b, c, d, baseT) + eval(a, b, c, d, t)
-            + (2.0 * sampleLength));
-    return sampleLength;
-}
-
-float fn_1_142B0(W01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t)
-{
-    int div = 10;
-    float baseT = 0.0f;
-    float pathLength = 0.0f;
-    float deltaT = t - baseT;
-    float edgeLength = deltaT
-        * (eval(a, b, c, d, baseT) + eval(a, b, c, d, t))
-        * 0.5f;
-    float sampleLength;
-    int j;
-    int i;
-
-    for (i = 1; i <= div; i *= 2) {
-        sampleLength = 0.0f;
-        for (j = 1; j <= i; j++) {
-            sampleLength += eval(a, b, c, d,
-                baseT + deltaT * (j - 0.5f));
-        }
-        sampleLength *= deltaT;
-        pathLength = (1.0f / 3.0f)
-            * (edgeLength + (2.0f * sampleLength));
-        deltaT *= 0.5f;
-        edgeLength = (edgeLength + sampleLength) * 0.5f;
-    }
-    return pathLength;
-}
-
-
-float fn_1_144C0(W01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t, float distance, int maxStep)
-{
-    int step;
-    float sampleLength;
-    float pathLength;
-    float oldT;
-    float minLength;
-
-    minLength = 0.1f;
-    step = 0;
-    do {
-        pathLength = fn_1_142B0(eval, a, b, c, d, t) - distance;
-        if (fabs(sampleLength = eval(a, b, c, d, t)) < minLength) {
-            sampleLength = 1.0f;
-        }
-        oldT = t;
-        t -= pathLength / sampleLength;
-        step++;
-    } while (t != oldT && step < maxStep);
-    return t;
-}
-
-float fn_1_147DC(W01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t, float distance, int maxStep)
-{
-    int step;
-    float sampleLength;
-    float pathLength;
-    float oldT;
-    float minLength;
-
-    minLength = 0.1f;
-    step = 0;
-    do {
-        pathLength = fn_1_14108(eval, a, b, c, d, t) - distance;
-        if (fabs(sampleLength = eval(a, b, c, d, t)) < minLength) {
-            sampleLength = 1.0f;
-        }
-        oldT = t;
-        t -= pathLength / sampleLength;
-        step++;
-    } while (t != oldT && step < maxStep);
-    return t;
-}
-
-float fn_1_14A90(HuVecF *a, HuVecF *b, HuVecF *c, float t)
-{
-    HuVecF slope;
-
-    slope.x = mbBezierCalcSlope(a->x, b->x, c->x, t);
-    slope.y = mbBezierCalcSlope(a->y, b->y, c->y, t);
-    slope.z = mbBezierCalcSlope(a->z, b->z, c->z, t);
-    return VECMag(&slope);
-}
-
-float fn_1_14B34(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t)
-{
-    HuVecF slope;
-
-    slope.x = fn_1_14D34(a->x, b->x, c->x, d->x, t);
-    slope.y = fn_1_14D34(a->y, b->y, c->y, d->y, t);
-    slope.z = fn_1_14D34(a->z, b->z, c->z, d->z, t);
-    return VECMag(&slope);
-}
-
-float fn_1_14BF0(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t)
-{
-    HuVecF slope;
-
-    slope.x = mbHermiteCalcSlope(a->x, b->x, c->x, d->x, t);
-    slope.y = mbHermiteCalcSlope(a->y, b->y, c->y, d->y, t);
-    slope.z = mbHermiteCalcSlope(a->z, b->z, c->z, d->z, t);
-    return VECMag(&slope);
-}
-
-float fn_1_14CAC(float a, float b, float c, float d, float t)
-{
-    float invT = 1.0f - t;
-
-    return (a * (invT * invT * invT))
-        + (b * (3.0f * t * invT * invT))
-        + (c * (3.0f * t * t * invT))
-        + (d * (t * t * t));
-}
-
-float fn_1_14D34(float a, float b, float c, float d, float t)
-{
-    float t2 = t * t;
-
-    return (a * ((-3.0f * t2) - (6.0f * t) - 3.0f))
-        + (b * ((9.0f * t2) - (12.0f * t) + 3.0f))
-        + (c * ((-9.0f * t2) + (6.0f * t)))
-        + ((3.0f * t2) * d);
-}
-
-
-void fn_1_14E0C(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, HuVecF *out,
-    float t)
-{
-    out->x = fn_1_14CAC(a->x, b->x, c->x, d->x, t);
-    out->y = fn_1_14CAC(a->y, b->y, c->y, d->y, t);
-    out->z = fn_1_14CAC(a->z, b->z, c->z, d->z, t);
-}
-
-void fn_1_150CC(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, HuVecF *out,
-    float t)
-{
-    out->x = fn_1_14D34(a->x, b->x, c->x, d->x, t);
-    out->y = fn_1_14D34(a->y, b->y, c->y, d->y, t);
-    out->z = fn_1_14D34(a->z, b->z, c->z, d->z, t);
-}
-
-void fn_1_1547C(HuVecF *points, int count, HuVecF *out, float t)
-{
-    HuVecF *allocTbl = HuMemDirectMallocNum(
-        HEAP_HEAP, count * sizeof(HuVecF), HU_MEMNUM_OVL);
-    HuVecF *bezierTbl = allocTbl;
-    int i;
-    int j;
-
-    memcpy(bezierTbl, points, count * sizeof(HuVecF));
-    for (i = 1; i < count; i++) {
-        for (j = 0; j < count - i; j++) {
-            bezierTbl[j].x = bezierTbl[j].x
-                + (t * (bezierTbl[j + 1].x - bezierTbl[j].x));
-            bezierTbl[j].y = bezierTbl[j].y
-                + (t * (bezierTbl[j + 1].y - bezierTbl[j].y));
-            bezierTbl[j].z = bezierTbl[j].z
-                + (t * (bezierTbl[j + 1].z - bezierTbl[j].z));
-        }
-    }
-    *out = bezierTbl[0];
-    HuMemDirectFree(bezierTbl);
-}
-
-float fn_1_155EC(int index, int degree, float t)
-{
-    float valueA;
-    float valueB;
-    float divisor;
-
-    if (degree == 0) {
-        if (t >= lbl_1_bss_1620[index]
-            && t < lbl_1_bss_1620[index + 1]) {
-            return 1.0f;
-        }
-        return 0.0f;
-    }
-    divisor = lbl_1_bss_1620[index + degree] - lbl_1_bss_1620[index];
-    if (divisor > 0.0f) {
-        valueA = ((t - lbl_1_bss_1620[index])
-                     * fn_1_155EC(index, degree - 1, t))
-            / divisor;
-    } else {
-        valueA = 0.0f;
-    }
-    divisor = lbl_1_bss_1620[index + degree + 1]
-        - lbl_1_bss_1620[index + 1];
-    if (divisor > 0.0f) {
-        valueB = ((lbl_1_bss_1620[index + degree + 1] - t)
-                     * fn_1_155EC(index + 1, degree - 1, t))
-            / divisor;
-    } else {
-        valueB = 0.0f;
-    }
-    return valueA + valueB;
-}
-
-void fn_1_15B60(HuVecF *points, int count, HuVecF *out, float t)
-{
-    int knotNo;
-    int degree = 3;
-    int i;
-    HuVecF pos;
-    float value;
-    float *freeTbl;
-    float *knotTbl;
-
-    if (t < 0.0f) {
-        *out = points[0];
-        return;
-    }
-    if (t >= 1.0f) {
-        *out = points[count - 1];
-        return;
-    }
-    knotTbl = HuMemDirectMallocNum(HEAP_HEAP,
-        (count + degree + 1) * sizeof(float), HU_MEMNUM_OVL);
-    lbl_1_bss_1620 = knotTbl;
-    knotNo = 0;
-    for (i = 0; i <= degree; i++) {
-        lbl_1_bss_1620[knotNo++] = 0.0f;
-    }
-    for (i = 0; i < (count - degree) - 1; i++) {
-        lbl_1_bss_1620[knotNo++] = (float)(i + 1) / (count - degree);
-    }
-    for (i = 0; i <= degree; i++) {
-        lbl_1_bss_1620[knotNo++] = 1.0f;
-    }
-    pos.x = pos.y = pos.z = 0.0f;
-    for (i = 0; i < count; i++) {
-        value = fn_1_155EC(i, degree, t);
-        pos.x += value * points[i].x;
-        pos.y += value * points[i].y;
-        pos.z += value * points[i].z;
-    }
-    freeTbl = lbl_1_bss_1620;
-    HuMemDirectFree(freeTbl);
-    *out = pos;
-}
-
-void fn_1_15E1C(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d)
-{
-    HuVecF *point;
-    HuVecF pointB;
-    HuVecF pointC;
-    HuVecF pointD;
-
-    if (index > count - 1) {
-        index = count - 1;
-    }
-    point = &points[index];
-    if (index == count - 1) {
-        pointB = point[0];
-        pointC = pointB;
-        pointD = pointB;
-    } else if (index == count - 2) {
-        pointB = point[1];
-        pointC = pointB;
-        pointD = pointB;
-    } else if (index == count - 3) {
-        pointB = point[1];
-        pointC = point[2];
-        pointD = pointC;
-    } else {
-        pointB = point[1];
-        pointC = point[2];
-        pointD = point[3];
-    }
-    *a = point[0];
-    *b = pointB;
-    *c = pointC;
-    *d = pointD;
-}
-
-void fn_1_15FF8(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d)
-{
-    HuVecF *point;
-    HuVecF slopeA;
-    HuVecF slopeB;
-
-    if (index > count - 1) {
-        index = count - 1;
-    }
-    point = &points[index];
-    if (index == 0) {
-        VECSubtract(&point[1], &point[0], &slopeA);
-    } else {
-        VECSubtract(&point[1], &point[-1], &slopeA);
-    }
-    if (index == count - 2) {
-        VECSubtract(&point[1], &point[0], &slopeB);
-    } else {
-        VECSubtract(&point[2], &point[0], &slopeB);
-    }
-    VECScale(&slopeA, &slopeA, 0.5f);
-    VECScale(&slopeB, &slopeB, 0.5f);
-    *a = point[0];
-    *b = point[1];
-    *c = slopeA;
-    *d = slopeB;
-}
-
-void fn_1_16148(HuVecF *a, HuVecF *b, HuVecF *out, float t)
-{
-    HuVecF delta;
-
-    VECSubtract(b, a, &delta);
-    VECScale(&delta, &delta, t);
-    VECAdd(a, &delta, out);
-}
-
-void fn_1_161AC(int playerNo, HuVecF *dstPos, float dstRotY,
-    float jumpHeight, int maxTime)
-{
-    HuVecF srcPos;
-    HuVecF pos;
-    HuVecF delta;
-    int time;
-    float srcRotY;
-    float t;
-    float rotT;
-
-    mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
-    mbPlayerPosGet(playerNo, &srcPos);
-    srcRotY = mbPlayerRotYGet(playerNo);
-    VECSubtract(dstPos, &srcPos, &delta);
-    for (time = 0; time <= maxTime; time++) {
-        t = time / (float)maxTime;
-        if ((u32)time == maxTime - 6) {
-            mbPlayerMotionShiftSet(
-                playerNo, 5, 0.0f, 2.0f, HU3D_MOTATTR_NONE);
-        }
-        pos.x = srcPos.x + (t * delta.x);
-        pos.y = srcPos.y + (t * delta.y)
-            + (jumpHeight * HuSin(180.0f * t));
-        pos.z = srcPos.z + (t * delta.z);
-        mbPlayerPosSetV(playerNo, &pos);
-        rotT = time / 6.0f;
-        if (rotT > 1.0f) {
-            rotT = 1.0f;
-        }
-        mbPlayerRotYSet(playerNo, mbAngleLerp(srcRotY, dstRotY, rotT));
-        mbPlayerWorkGet(playerNo)->_unk08 = maxTime - time;
-        HuPrcVSleep();
-    }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
-}
-
-#pragma pop
+#include "REL/w01Dll/common.h"
 
 HuVecF lbl_1_data_0[12] = {
     { 404.027008f, 1906.98206f, 1602.27002f },
@@ -994,6 +715,7 @@ extern u32 lbl_1_data_7A8[5];
 extern u32 lbl_1_data_7F8[3];
 extern HuVecF lbl_1_data_780;
 
+// The board loader runs constructors and registers the board when this module opens.
 int _prolog(void)
 {
     const VoidFunc *ctors = _ctors;
@@ -1006,6 +728,7 @@ int _prolog(void)
     return 0;
 }
 
+// The board loader runs the registered destructors when this module closes.
 void _epilog(void)
 {
     const VoidFunc *dtors = _dtors;
@@ -1016,44 +739,47 @@ void _epilog(void)
     }
 }
 
+// The board loader calls this to register Towering Treetop setup and teardown.
 void ObjectSetup(void)
 {
     GWPartySet(TRUE);
     mbObjectSetup(MBNO_WORLD_1, MB1_Create, MB1_Kill);
 }
 
+// ObjectSetup registers this initializer; it loads the time-of-day board data
+// and installs the board's movement, event, camera, and turn callbacks.
 void MB1_Create(void)
 {
-    s16 *modelId = lbl_1_bss_15F4;
+    s16 *modelIds = lbl_1_bss_15F4;
     int boardNo = MBBoardNoGet();
-    int time;
-    int i;
+    int timeOfDayIndex;
+    int modelIndex;
 
-    HuAudSndGrpSetSet(0x16);
+    HuAudSndGrpSetSet(MSM_GRP_BRD01);
     lbl_1_bss_1618 = (W01_STAR_MASU_WORK *)GwSystem.boardWork;
-    mbObjDirSet(0xD70000, 0xD80000);
-    mbMasuInit(MBTimeDayGet() ? 0xD70000 : 0xD80000);
-    modelId[0] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 4, 0, FALSE);
-    mbObjAttrSet(modelId[0], 0x40000001);
-    time = MBTimeDayGet() ? 0 : 1;
-    for (i = 0; lbl_1_data_3F4[time][i] != 0; i++) {
-        (&modelId[1])[i] = mbObjCreate(
-            (lbl_1_data_3F4[time][i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+    mbObjDirSet(W01_DATA_DAY, W01_DATA_NIGHT);
+    mbMasuInit(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT);
+    modelIds[0] = mbObjCreate(
+        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_MASU, 0, FALSE);
+    mbObjAttrSet(modelIds[0], W01_OBJ_ATTR_BOARD_MODEL);
+    timeOfDayIndex = MBTimeDayGet() ? 0 : 1;
+    for (modelIndex = 0; lbl_1_data_3F4[timeOfDayIndex][modelIndex] != 0; modelIndex++) {
+        (&modelIds[1])[modelIndex] = mbObjCreate(
+            (lbl_1_data_3F4[timeOfDayIndex][modelIndex] & 0xFFFF)
+                | (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT),
             0, FALSE);
-        mbObjAttrSet((&modelId[1])[i], 0x40000001);
+        mbObjAttrSet((&modelIds[1])[modelIndex], W01_OBJ_ATTR_BOARD_MODEL);
     }
-    (&modelId[1])[i] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 5, 0, FALSE);
-    mbObjLayerSet((&modelId[1])[i], 1);
-    i++;
-    mbScrollInit((MBTimeDayGet() ? 0xD70000 : 0xD80000) | 2);
+    (&modelIds[1])[modelIndex] = mbObjCreate(
+        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_GATE, 0, FALSE);
+    mbObjLayerSet((&modelIds[1])[modelIndex], 1);
+    modelIndex++;
+    mbScrollInit((MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_SCROLL);
     mbCapThrowColCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 3);
+        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_CAP_THROW_COLLISION);
     mbLightFuncSet(MB1_LightSet, MB1_LightReset);
     if (mbSaveNewF) {
-        memset(lbl_1_bss_1618, 0, 0x10);
+        memset(lbl_1_bss_1618, 0, 16);
         fn_1_139F8();
     }
     mbPlayerTurnInitHookSet(fn_1_914);
@@ -1063,9 +789,9 @@ void MB1_Create(void)
     mbOpeningStarInstHookSet(0);
     mbOpeningViewSet(&lbl_1_data_408, &lbl_1_data_414, 10000.0f);
     mbev_ShopExInit(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x16, fn_1_9F4);
+        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_SHOP, fn_1_9F4);
     mbev_ShopBackCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x1A,
+        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_SHOP_RETURN,
         -1, -1, TRUE);
     mbev_MasuMoveEndSet(fn_1_760);
     mbev_MasuMoveStartSet(fn_1_734);
@@ -1074,7 +800,7 @@ void MB1_Create(void)
     mbMapCameraSet(0, &lbl_1_data_3FC, 18500.0f);
     mbMapHookSet(fn_1_AC4);
     mbev_NextTimeSet(fn_1_B68);
-    omAddObjEx(mbObjMan, 0x200C, 0, 0, -1, fn_1_6D4);
+    omAddObjEx(mbObjMan, 8204, 0, 0, -1, fn_1_6D4);
     fn_1_10A0();
     fn_1_2A1C();
     fn_1_45A0();
@@ -1089,9 +815,10 @@ void MB1_Create(void)
     fn_1_10AA8();
     fn_1_12A4C();
     fn_1_13D04();
-    HuDataDirClose(MBTimeDayGet() ? 0xD70000 : 0xD80000);
+    HuDataDirClose(MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT);
 }
 
+// ObjectSetup registers this cleanup callback when the board is loaded.
 void MB1_Kill(void)
 {
     fn_1_4750();
@@ -1103,18 +830,21 @@ void MB1_Kill(void)
     fn_1_5EF0();
 }
 
+// MB1_Create installs this as the opening instruction callback; it shows the
+// three Towering Treetop introduction messages before the board starts.
 void fn_1_644(void)
 {
     s16 winNo;
 
-    winNo = mbWinCreate(2, 0x2F0016, mbGuideSpeakerNoGet());
+    winNo = mbWinCreate(2, W01_MESSAGE_OPENING_1, mbGuideSpeakerNoGet());
     mbWinWait(winNo);
-    winNo = mbWinCreate(2, 0x2F0017, mbGuideSpeakerNoGet());
+    winNo = mbWinCreate(2, W01_MESSAGE_OPENING_2, mbGuideSpeakerNoGet());
     mbWinWait(winNo);
-    winNo = mbWinCreate(2, 0x2F0018, mbGuideSpeakerNoGet());
+    winNo = mbWinCreate(2, W01_MESSAGE_OPENING_3, mbGuideSpeakerNoGet());
     mbWinWait(winNo);
 }
 
+// MB1_Create adds this object to mbObjMan; it runs board updates until exit.
 void fn_1_6D4(OMOBJ *obj)
 {
     if (mbExitCheck()) {
@@ -1131,57 +861,62 @@ void fn_1_6D4(OMOBJ *obj)
     }
 }
 
+// MB1_Create registers this callback when a player starts moving between spaces.
 int fn_1_734(int playerNo, s16 id)
 {
     fn_1_4D78(id);
     return 0;
 }
 
+// MB1_Create registers this callback after a space move to dispatch its effects.
 int fn_1_760(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & 0x00030000) {
-        fn_1_7B70(mbev_MasuBitGet(mAttr, 0x00030000) - 1);
+    if (mAttr & W01_MASU_ATTR_EVENT_INDEX_MASK) {
+        fn_1_7B70(mbev_MasuBitGet(mAttr, W01_MASU_ATTR_EVENT_INDEX_MASK) - 1);
     }
-    if (mAttr & 0x00000100) {
+    if (mAttr & W01_MASU_ATTR_MOVE_HOOK_DASH) {
         mbPlayerMoveHookSet(playerNo, fn_1_2D08);
     }
-    if (mAttr & 0x00004000) {
+    if (mAttr & W01_MASU_ATTR_MOVE_HOOK_PATH) {
         mbPlayerMoveHookSet(playerNo, fn_1_4F94);
     }
-    if ((mAttr & 0x00400000) || (mAttr & 0x00100000)) {
+    if ((mAttr & W01_MASU_ATTR_MOVE_HOOK_SPRING_A)
+        || (mAttr & W01_MASU_ATTR_MOVE_HOOK_SPRING_B)) {
         mbPlayerMoveHookSet(playerNo, fn_1_8860);
     }
-    if (mAttr & 0x00040000) {
+    if (mAttr & W01_MASU_ATTR_MOVE_HOOK_FLOAT) {
         mbPlayerMoveHookSet(playerNo, fn_1_E234);
     }
-    if (mAttr & 0x01000000) {
+    if (mAttr & W01_MASU_ATTR_MOVE_HOOK_STAR) {
         fn_1_126EC(playerNo, id);
     }
     return 0;
 }
 
+// MB1_Create installs this space-event callback for question-mark spaces.
 int MB1Ev_MasuHatena(int playerNo, s16 id)
 {
     u32 mAttr = mbMasuMAttrGet(id);
 
-    if (mAttr & 0x00000008) {
+    if (mAttr & W01_MASU_ATTR_HATENA_SHOP) {
         fn_1_5FB4(playerNo, id);
         return 0;
     }
-    if (mAttr & 0x20000000) {
+    if (mAttr & W01_MASU_ATTR_HATENA_STAR) {
         fn_1_9AEC(playerNo, id);
     }
-    if (mAttr & 0x00000040) {
+    if (mAttr & W01_MASU_ATTR_HATENA_EVENT) {
         fn_1_F1F4(playerNo, id);
     }
-    if (mAttr & 0x00008000) {
+    if (mAttr & W01_MASU_ATTR_HATENA_CAPSULE) {
         fn_1_10CB8(playerNo, id);
     }
     return 1;
 }
 
+// MB1_Create registers this hook before each player's turn begins.
 void fn_1_914(int playerNo)
 {
     fn_1_87E8();
@@ -1189,6 +924,7 @@ void fn_1_914(int playerNo)
     fn_1_4C6C(playerNo);
 }
 
+// MB1_Create registers this hook after each player's turn ends.
 void fn_1_944(int playerNo)
 {
     fn_1_2A08();
@@ -1197,6 +933,7 @@ void fn_1_944(int playerNo)
     fn_1_44C0();
 }
 
+// mbLightFuncSet installs this callback to enable board lighting and daytime fog.
 void MB1_LightSet(void)
 {
     s16 *modelId = lbl_1_bss_15F4;
@@ -1207,25 +944,31 @@ void MB1_LightSet(void)
     }
 }
 
+// mbLightFuncSet installs this callback when board lighting is being cleared.
 void MB1_LightReset(void)
 {
 }
 
+// mbev_ShopExInit registers this callback to attach the day or night shop display; it ignores
+// shopNo.
 void fn_1_9F4(int modelId, int shopNo)
 {
     BOOL dayF = (GwSystem.curTime == 0);
     s16 objId;
 
-    objId = mbObjCreate((dayF ? 0xD70000 : 0xD80000) | 0x17, NULL, TRUE);
-    mbObjAttrSet(objId, 0x40000001);
+    objId = mbObjCreate(
+        (dayF ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_SHOP_MODEL,
+        NULL, TRUE);
+    mbObjAttrSet(objId, W01_OBJ_ATTR_BOARD_MODEL);
     mbObjHookSet((s16)modelId, lbl_1_data_420, objId);
     mbObjCullRadiusSet((s16)modelId, 400.0f);
     mbObjCullRadiusSet(objId, 400.0f);
 }
 
-void fn_1_AC4(int value)
+// The map-view hook suspends ambient particles and daytime fog while the map is open.
+void fn_1_AC4(int mapOpenF)
 {
-    if (value != 0) {
+    if (mapOpenF != 0) {
         fn_1_139E8(0);
         if (GwSystem.curTime == 0) {
             Hu3DFogClear();
@@ -1238,6 +981,7 @@ void fn_1_AC4(int value)
     }
 }
 
+// mbev_NextTimeSet installs this callback to show the display during time changes.
 void fn_1_B68(void)
 {
     W01_NEXT_TIME_WORK *work = &lbl_1_bss_15E8;
@@ -1251,24 +995,24 @@ void fn_1_B68(void)
     }
     memset(work, 0, sizeof(*work));
     if (GwSystem.curTime == 0) {
-        work->modelId = mbObjCreate(0xD70025, NULL, FALSE);
+        work->modelId = mbObjCreate(W01_MODEL_NEXT_TURN_DAY, NULL, FALSE);
     } else {
-        work->modelId = mbObjCreate(0xD80028, NULL, FALSE);
+        work->modelId = mbObjCreate(W01_MODEL_NEXT_TURN_NIGHT, NULL, FALSE);
     }
     mbObjMotionSpeedSet(work->modelId, 0.0f);
     mbObjMotionShapeSpeedSet(work->modelId, 0.0f);
     fn_1_950C(FALSE);
-    process = HuPrcChildCreate(fn_1_DD0, 0x2007, 0x8000, 0, mbMainProc);
+    process = HuPrcChildCreate(fn_1_DD0, 8199, 32768, 0, mbMainProc);
     winNo = -1;
     do {
         if (work->active != FALSE) {
             if (winNo < 0) {
-                winNo = mbWinCreateHelp(0x26000C);
+                winNo = mbWinCreateHelp(W01_MESSAGE_NEXT_TURN_HELP);
                 mbWinPosSet(winNo, 228, 408);
             }
             for (i = 0; i < GW_PLAYER_MAX; i++) {
                 if (GwPlayer[i].comF == FALSE
-                    && (HuPadBtnDown[GwPlayer[i].padNo] & 0x1000)) {
+                    && (HuPadBtnDown[GwPlayer[i].padNo] & PAD_BUTTON_START)) {
                     HuPrcKill(process);
                     work->forceEnd = TRUE;
                     break;
@@ -1288,9 +1032,10 @@ void fn_1_B68(void)
         mbPlayerDispSet(i, TRUE);
     }
     dayF = (GwSystem.curTime == 0);
-    HuDataDirClose(dayF ? 0xD70000 : 0xD80000);
+    HuDataDirClose(dayF ? W01_DATA_DAY : W01_DATA_NIGHT);
 }
 
+// fn_1_B68 starts this process to show the time-change title and tour the changed board features.
 void fn_1_DD0(void)
 {
     W01_NEXT_TIME_WORK *work = &lbl_1_bss_15E8;
@@ -1309,10 +1054,10 @@ void fn_1_DD0(void)
     mbWipeFadeOut();
     work->active = TRUE;
     if (GwSystem.curTime == 0) {
-        masuId = mbMasuFind_MAttrIdGet(-1, 0x00400000);
+        masuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_ATTR_MOVE_HOOK_SPRING_A);
         time = 0;
     } else {
-        masuId = mbMasuFind_MAttrIdGet(-1, 0x00100000);
+        masuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_ATTR_MOVE_HOOK_SPRING_B);
         time = 1;
     }
     mbMasuPosGet(masuId, &pos);
@@ -1329,7 +1074,7 @@ void fn_1_DD0(void)
     mbObjMotionShapeSpeedSet(work->modelId, 1.0f);
     HuPrcSleep(120);
     mbWipeFadeOut();
-    masuId = mbMasuFind_MAttrIdGet(-1, 0x8);
+    masuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_ATTR_HATENA_SHOP);
     mbMasuPosGet(masuId, &pos);
     pos.y -= 500.0f;
     mbCameraMovePos(&pos, &lbl_1_data_45C[time][0], NULL,
@@ -1346,6 +1091,7 @@ void fn_1_DD0(void)
     HuPrcEnd();
 }
 
+// MB1_Create builds the six spaces and seven connecting models along the upper curved path.
 void fn_1_10A0(void)
 {
     W01_PATH_WORK *work = &lbl_1_bss_155C;
@@ -1358,11 +1104,11 @@ void fn_1_10A0(void)
     work->startPos.x = -1123.03f;
     work->startPos.y = 3430.0f;
     work->startPos.z = -152.14f;
-    work->startMasuId = mbMasuFind_MAttrIdGet(-1, 0x10);
+    work->startMasuId = mbMasuFind_MAttrIdGet(-1, (1 << 4));
     work->endPos.x = 1090.968f;
     work->endPos.y = 3430.0f;
     work->endPos.z = 68.8458f;
-    work->endMasuId = mbMasuFind_MAttrIdGet(-1, 0x20);
+    work->endMasuId = mbMasuFind_MAttrIdGet(-1, (1 << 5));
     PSVECSubtract(&work->endPos, &work->startPos, &work->delta);
     work->length = PSVECMag(&work->delta);
     work->angle = (float)((atan2(-work->delta.x, -work->delta.z) / M_PI)
@@ -1371,7 +1117,8 @@ void fn_1_10A0(void)
     for (i = 0; i < 6; i++, marker++) {
         dayF = (GwSystem.curTime == 0);
         marker->modelId = mbObjCreate(
-            (dayF ? 0xD70000 : 0xD80000) | 0x8, NULL, TRUE);
+            (dayF ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_PATH_MARKER,
+            NULL, TRUE);
         mbObjRotYSet(marker->modelId, work->angle);
         attr = mbev_MasuAttrGet(i + 1, 7);
         marker->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, 7);
@@ -1389,7 +1136,8 @@ void fn_1_10A0(void)
     for (i = 0; i < 7; i++) {
         dayF2 = (GwSystem.curTime == 0);
         work->modelId[i] = mbObjCreate(
-            (dayF2 ? 0xD70000 : 0xD80000) | 0x9, NULL, TRUE);
+            (dayF2 ? W01_DATA_DAY : W01_DATA_NIGHT) | W01_FILE_PATH_MODEL,
+            NULL, TRUE);
     }
     work->initF = TRUE;
 }
@@ -1416,6 +1164,8 @@ void fn_1_10A0(void)
     ) \
     / (4.0f * spanLength * spanLength)
 
+// Estimate length from zero to endT using ten trapezoid intervals.
+// w01CurveT uses this for upper-path and spring-route parameter corrections.
 static inline float w01CurveLen2(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
     HuVecF *p2, float endT)
 {
@@ -1443,26 +1193,22 @@ static inline float w01CurveLen2(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
     return sampleLength;
 }
 
+// Correct the quadratic path parameter for a distance using up to ten steps.
+// Speeds below 0.1 in magnitude use 1.0 as the correction divisor.
 static inline float w01CurveT(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
-    HuVecF *p2, float workT, float distance, double *slopeValue)
+    HuVecF *p2, float workT, float distance)
 {
     float result;
     float slope;
     float oldT;
     float minLength;
     s32 stepCount;
-    double absSlope;
-    double slopeMagnitude;
 
     minLength = 0.1f;
     stepCount = 0;
     do {
         result = w01CurveLen2(eval, p0, p1, p2, workT) - distance;
-        *slopeValue = slope = eval(p0, p1, p2,
-            NULL, workT);
-        slopeMagnitude = __fabs(*slopeValue);
-        absSlope = slopeMagnitude;
-        if (absSlope < minLength) {
+        if (fabs(slope = eval(p0, p1, p2, NULL, workT)) < minLength) {
             slope = 1.0f;
         }
         oldT = workT;
@@ -1472,6 +1218,8 @@ static inline float w01CurveT(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
     return workT;
 }
 
+// Estimate the full quadratic path length with four midpoint refinements.
+// Upper-path and spring-route positioning use the result to space their models along the curve.
 static inline float w01CurveLen(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
     HuVecF *p2)
 {
@@ -1506,6 +1254,8 @@ static inline float w01CurveLen(W01CurveEval eval, HuVecF *p0, HuVecF *p1,
     return simpsonLength;
 }
 
+// The board update eases the upper path's bend and repositions its models and spaces.
+// A player on the path with movement finished supplies the bend target; otherwise use the midpoint.
 void fn_1_13CC(void)
 {
     W01_PATH_WORK *work;
@@ -1531,8 +1281,6 @@ void fn_1_13CC(void)
     float distance;
     float t;
     float targetLength;
-    double lengthDelta;
-    double slopeValue;
 
     work = &lbl_1_bss_155C;
     marker = work->marker;
@@ -1570,22 +1318,20 @@ void fn_1_13CC(void)
         }
     } else {
     default_target_length:
+        // When entered with no active player, this fallback leaves masuId unset for the later sound
+        // check.
         targetLength = 0.5f * work->length;
     }
     if (work->initF == FALSE) {
-        double lengthMagnitude;
-        double absLengthDelta;
-
         work->halfLength += 0.05f * (targetLength - work->halfLength);
-        lengthDelta = targetLength - work->halfLength;
-        lengthMagnitude = __fabs(lengthDelta);
-        absLengthDelta = lengthMagnitude;
-        if (absLengthDelta < 1.0f) {
+        if (fabs(targetLength - work->halfLength) < 1.0f) {
             return;
         }
     } else {
         work->halfLength = targetLength;
         work->initF = FALSE;
+        // The initial pass reads the current player's space without rechecking whether a player is
+        // active.
         work->lastMasuId = GwPlayer[playerNo].masuId;
     }
     if (masuId >= 0 && work->lastMasuId != masuId) {
@@ -1608,7 +1354,7 @@ void fn_1_13CC(void)
     for (i = 0; i < 6; i++, marker++) {
         if (i < 5) {
             t = w01CurveT((W01CurveEval)(u32)fn_1_14A90, &work->startPos,
-                &controlPos, &work->endPos, t, distance, &slopeValue);
+                &controlPos, &work->endPos, t, distance);
             mbBezierCalcV(&work->startPos, &controlPos, &work->endPos,
                 &curvePos, t);
         } else {
@@ -1700,6 +1446,7 @@ static const float lbl_1_rodata_F8[14] = {
     -80.0f, -90.0f, -80.0f, -80.0f, -80.0f, -80.0f, -80.0f
 };
 
+// MB1_Create builds the spring route and initializes its four hanging segments.
 void fn_1_2A1C(void)
 {
     W01_SPRING_WORK *work;
@@ -1718,11 +1465,11 @@ void fn_1_2A1C(void)
     work->startPos.x = 747.0f;
     work->startPos.y = 4993.0f;
     work->startPos.z = -1309.0f;
-    work->startMasuId = mbMasuFind_MAttrIdGet(-1, 0x100);
+    work->startMasuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_ATTR_MOVE_HOOK_DASH);
     work->endPos.x = 2708.0f;
     work->endPos.y = 4037.0f;
     work->endPos.z = 18.0f;
-    work->endMasuId = mbMasuFind_MAttrIdGet(-1, 0x200);
+    work->endMasuId = mbMasuFind_MAttrIdGet(-1, (1 << 9));
     PSVECSubtract(&work->endPos, &work->startPos, &work->dir);
     work->length = PSVECMag(&work->dir);
     work->angle = HuAtan(-work->dir.x, -work->dir.z);
@@ -1730,31 +1477,34 @@ void fn_1_2A1C(void)
     for (i = 0; i < 16; i++) {
         dayF1 = !GwSystem.curTime;
         if (dayF1 != FALSE) {
-            dataDir1 = 0xD70000;
+            dataDir1 = W01_DATA_DAY;
         } else {
-            dataDir1 = 0xD80000;
+            dataDir1 = W01_DATA_NIGHT;
         }
-        work->pathModelId[i] = mbObjCreate(dataDir1 | 0xA, NULL, TRUE);
+        work->pathModelId[i] = mbObjCreate(
+            dataDir1 | W01_FILE_SPRING_MODEL, NULL, TRUE);
         mbObjRotYSet(work->pathModelId[i], work->angle);
     }
     dayF2 = !GwSystem.curTime;
     if (dayF2 != FALSE) {
-        dataDir2 = 0xD70000;
+        dataDir2 = W01_DATA_DAY;
     } else {
-        dataDir2 = 0xD80000;
+        dataDir2 = W01_DATA_NIGHT;
     }
-    work->mainModelId = mbObjCreate(dataDir2 | 0xB, NULL, TRUE);
+    work->mainModelId = mbObjCreate(
+        dataDir2 | W01_FILE_SPRING_MAIN_MODEL, NULL, TRUE);
     mbObjRotYSet(work->mainModelId, work->angle);
     fn_1_3214(0.05f);
     mbObjPosGet(work->mainModelId, &pos);
     for (i = 0; i < 4; i++, segment++) {
         dayF3 = !GwSystem.curTime;
         if (dayF3 != FALSE) {
-            dataDir3 = 0xD70000;
+            dataDir3 = W01_DATA_DAY;
         } else {
-            dataDir3 = 0xD80000;
+            dataDir3 = W01_DATA_NIGHT;
         }
-        segment->modelId = mbObjCreate(dataDir3 | 0xA, NULL, TRUE);
+        segment->modelId = mbObjCreate(
+            dataDir3 | W01_FILE_SPRING_MODEL, NULL, TRUE);
         mbObjScaleSet(segment->modelId, 0.7f, 0.7f, 0.5f);
         segment->pos.x = pos.x;
         segment->pos.y = pos.y - (50.0f * (i + 1));
@@ -1763,6 +1513,7 @@ void fn_1_2A1C(void)
     }
 }
 
+// The move hook carries a player along the spring route, then jumps them to its exit space.
 void fn_1_2D08(int playerNo)
 {
     W01_SPRING_WORK *work;
@@ -1783,7 +1534,7 @@ void fn_1_2D08(int playerNo)
     mbPlayerWorkGet(playerNo)->_unk08 = 100;
     mbObjPosGet(work->segment[3].modelId, &targetPos);
     targetPos.y += lbl_1_rodata_F8[GwPlayer[playerNo].charNo];
-    motionId = mbPlayerMotionCreate(playerNo, 0x930063);
+    motionId = mbPlayerMotionCreate(playerNo, W01_PLAYER_MOTION_SPRING_LAUNCH);
     mbPlayerPosGet(playerNo, &playerPos);
     PSVECSubtract(&targetPos, &playerPos, &delta);
     angle = HuAtan(work->dir.x, work->dir.z);
@@ -1859,6 +1610,7 @@ void fn_1_2D08(int playerNo)
     ) \
     / (4.0f * valueC * valueC)
 
+// Spring setup, reset, and travel use this to bend the route and position its hanging attachment.
 void fn_1_3214(float value)
 {
     W01_SPRING_WORK *work;
@@ -1879,7 +1631,6 @@ void fn_1_3214(float value)
     float t;
     float temp;
     float distance;
-    double slopeValue;
 
     work = &lbl_1_bss_1494;
     valueATemp = value * work->length;
@@ -1899,7 +1650,7 @@ void fn_1_3214(float value)
     for (i = 0; i < 16; i++) {
         if (i < 15) {
             t = w01CurveT((W01CurveEval)(u32)fn_1_14A90, &work->startPos,
-                &controlPos, &work->endPos, t, distance, &slopeValue);
+                &controlPos, &work->endPos, t, distance);
             mbBezierCalcV(&work->startPos, &controlPos, &work->endPos,
                 &curvePos, t);
         } else {
@@ -1936,6 +1687,7 @@ void fn_1_3214(float value)
 
 #undef FN3214_HEIGHT
 
+// The board update simulates the hanging spring segments and carries any player attached to them.
 void fn_1_4004(void)
 {
     W01_SPRING_WORK *work;
@@ -1992,6 +1744,7 @@ void fn_1_4004(void)
     }
 }
 
+// The turn-close hook restores the spring route and stops its hanging segments.
 void fn_1_44C0(void)
 {
     W01_SPRING_WORK *work;
@@ -2011,6 +1764,7 @@ void fn_1_44C0(void)
     }
 }
 
+// MB1_Create calls this once to create the floating spaces and their visual effects.
 void fn_1_45A0(void)
 {
     W01_FLOAT_WORK *work;
@@ -2022,15 +1776,17 @@ void fn_1_45A0(void)
     lbl_1_bss_148C = work;
     for (i = 0; i < lbl_1_bss_1490; i++, work++) {
         work->modelId = mbObjCreate(
-            (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0xE, NULL, TRUE);
+            (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
+                | W01_FILE_FLOATING_MASU,
+            NULL, TRUE);
         mbObjAttrSet(work->modelId, HU3D_MOTATTR_LOOP);
         work->pos.x = lbl_1_data_48C[i].x;
         work->pos.y = 1000.0f + lbl_1_data_48C[i].y;
         work->pos.z = lbl_1_data_48C[i].z;
         mbObjPosSet(work->modelId, work->pos.x, work->pos.y - 1000.0f,
             work->pos.z);
-        attr = mbev_MasuAttrGet(i + 1, 0x1C00);
-        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, 0x1C00);
+        attr = mbev_MasuAttrGet(i + 1, W01_MASU_ATTR_EVENT_GROUP_MASK);
+        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, W01_MASU_ATTR_EVENT_GROUP_MASK);
         work->maxTime = 240;
         work->time = mbRandMod(work->maxTime);
         work->speed = 1.0f;
@@ -2038,6 +1794,7 @@ void fn_1_45A0(void)
     lbl_1_bss_1488 = -1;
 }
 
+// MB1_Kill releases the floating-space work array when the board closes.
 void fn_1_4750(void)
 {
     if (lbl_1_bss_148C != NULL) {
@@ -2048,6 +1805,7 @@ void fn_1_4750(void)
     }
 }
 
+// The board update bobs the floating spaces and depresses the one occupied by the active player.
 void fn_1_47B0(void)
 {
     W01_FLOAT_WORK *work = lbl_1_bss_148C;
@@ -2106,16 +1864,19 @@ void fn_1_47B0(void)
     }
 }
 
+// The turn-start hook settles the floating space beneath this player before movement begins.
 void fn_1_4C6C(s32 playerNo)
 {
     s32 i;
 
     lbl_1_bss_1488 = GwPlayer[playerNo].masuId;
+    // Settle immediately: these updates run without waiting for another frame.
     for (i = 0; i < 100; i++) {
         fn_1_47B0();
     }
 }
 
+// The turn-close hook restores floating-space positions and clears their occupied states.
 void fn_1_4CD0(void)
 {
     W01_FLOAT_WORK *work = lbl_1_bss_148C;
@@ -2135,6 +1896,7 @@ void fn_1_4D78(s16 masuId)
     lbl_1_bss_1488 = masuId;
 }
 
+// MB1_Create calls this to create moving path models for the board's path event.
 void fn_1_4D88(void)
 {
     W01_MOTION_WORK *work;
@@ -2144,32 +1906,37 @@ void fn_1_4D88(void)
     s32 j;
 
     work = lbl_1_bss_1438;
-    lbl_1_bss_1436 = mbMasuFind_MAttrIdGet(-1, 0x4000);
+    lbl_1_bss_1436 = mbMasuFind_MAttrIdGet(-1, W01_MASU_ATTR_MOVE_HOOK_PATH);
     mbMasuPosGet(lbl_1_bss_1436, &lbl_1_bss_1428);
-    lbl_1_bss_1434 = mbMasuFind_MAttrIdGet(-1, 0x2000);
+    lbl_1_bss_1434 = mbMasuFind_MAttrIdGet(-1, W01_MASU_ATTR_LINK);
     mbMasuPosGet(lbl_1_bss_1434, &lbl_1_bss_141C);
     PSVECSubtract(&lbl_1_bss_141C, &lbl_1_bss_1428, &lbl_1_bss_1410);
     for (i = 0; i < 1; i++, work++) {
-        work->unk24[0] = 550.0f;
-        work->unk24[1] = 150.0f;
+        work->armLength[0] = 550.0f;
+        work->armLength[1] = 150.0f;
         for (j = 0; j < 2; j++) {
             dayF1 = !GwSystem.curTime;
             work->modelId[j] = mbObjCreate(
-                (dayF1 ? 0xD70000 : 0xD80000) | 0xC, NULL, TRUE);
+                (dayF1 ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
+                    | W01_FILE_MOTION_VARIANT_A,
+                NULL, TRUE);
         }
         dayF2 = !GwSystem.curTime;
         work->modelId[2] = mbObjCreate(
-            (dayF2 ? 0xD70000 : 0xD80000) | 0xD, NULL, TRUE);
-        work->unk1C = 1.0f;
-        work->unk20 = 20.0f;
-        work->unk0C[0] = work->unk0C[1] = 0.0f;
-        work->unk0C[2] = work->unk0C[3] = 0.0f;
-        work->unk2C = lbl_1_data_4E0[i];
-        work->unk00 = -1;
+            (dayF2 ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
+                | W01_FILE_MOTION_VARIANT_B,
+            NULL, TRUE);
+        work->firstMass = 1.0f;
+        work->secondMass = 20.0f;
+        work->swingState[0] = work->swingState[1] = 0.0f;
+        work->swingState[2] = work->swingState[3] = 0.0f;
+        work->anchorPos = lbl_1_data_4E0[i];
+        work->activePlayerNo = -1;
         fn_1_5888(i);
     }
 }
 
+// The path-space move hook calls this while the player rides the swinging path.
 void fn_1_4F94(int playerNo)
 {
     W01_MOTION_WORK *work;
@@ -2181,7 +1948,7 @@ void fn_1_4F94(int playerNo)
     HuVecF pos2;
     HuVecF playerPos2;
     s16 motionId;
-    s32 temp;
+    s32 remainingMoveFrames;
     u32 time;
     s32 time2;
     float angle;
@@ -2196,9 +1963,12 @@ void fn_1_4F94(int playerNo)
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
     mbPlayerWorkGet(playerNo)->_unk08 = 100;
     GwPlayer[playerNo].masuIdNext = lbl_1_bss_1434;
-    motionId = mbPlayerMotionCreate(playerNo, 0x930063);
+        motionId = mbPlayerMotionCreate(playerNo, W01_PLAYER_MOTION_SPRING_LAUNCH);
+    // Query the character's item hook here; the returned pointer is unused.
     hook = CharModelItemHookGet(GwPlayer[playerNo].charNo, 4, FALSE);
     mbPlayerPosGet(playerNo, &playerPos);
+    // This preliminary subtraction reads targetPos before it is set; the boarding loop replaces
+    // delta.
     PSVECSubtract(&targetPos, &playerPos, &delta);
     angle = (float)((atan2(lbl_1_bss_1410.x, lbl_1_bss_1410.z) / M_PI)
         * 180.0);
@@ -2209,7 +1979,7 @@ void fn_1_4F94(int playerNo)
         if (time == 12) {
             mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 8.0f, FALSE);
         }
-        targetPos = work->unk38[0];
+        targetPos = work->endpointPos[0];
         targetPos.y -= 100.0f;
         PSVECSubtract(&targetPos, &playerPos, &delta);
         pos.x = playerPos.x + (weight * delta.x);
@@ -2219,17 +1989,19 @@ void fn_1_4F94(int playerNo)
         mbPlayerPosSetV(playerNo, &pos);
         HuPrcVSleep();
     }
-    work->unk1C = 20.0f;
-    work->unk0C[2] = 2.0f;
-    work->unk00 = playerNo;
+    work->firstMass = 20.0f;
+    work->swingState[2] = 2.0f;
+    work->activePlayerNo = playerNo;
     mbAudFXPlay(0x594);
     for (time = 0; time < 120; time++) {
         HuPrcVSleep();
     }
-    work->unk1C = 1.0f;
-    work->unk00 = -1;
+    work->firstMass = 1.0f;
+    work->activePlayerNo = -1;
     mbAudFXPlay(0x594);
     mbMasuPosGet(lbl_1_bss_1434, &targetPos);
+    // Face the last boarding delta here; the destination delta below only drives the landing
+    // position.
     angle = (float)((atan2(delta.x, delta.z) / M_PI) * 180.0);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, FALSE);
     mbPlayerPosGet(playerNo, &playerPos2);
@@ -2250,8 +2022,8 @@ void fn_1_4F94(int playerNo)
             rotWeight = 1.0f;
         }
         mbPlayerRotYSet(playerNo, mbAngleLerp(rotY, angle, rotWeight));
-        temp = 18 - time2;
-        mbPlayerWorkGet(playerNo)->_unk08 = temp;
+        remainingMoveFrames = 18 - time2;
+        mbPlayerWorkGet(playerNo)->_unk08 = remainingMoveFrames;
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
@@ -2260,6 +2032,7 @@ void fn_1_4F94(int playerNo)
     mbPlayerColSnapPlayerSet(playerNo, TRUE);
 }
 
+// The board update object calls this each frame to advance the linked-path swing.
 void fn_1_5560(s32 value)
 {
     W01_MOTION_WORK *work;
@@ -2272,41 +2045,44 @@ void fn_1_5560(s32 value)
     float acceleration1;
 
     work = &lbl_1_bss_1438[value];
-    angle = work->unk0C[0] - work->unk0C[1];
-    massRatio = work->unk20 / (work->unk1C + work->unk20);
-    lengthRatio = work->unk24[1] / work->unk24[0];
-    gravity = -1960.0f / work->unk24[0];
+    angle = work->swingState[0] - work->swingState[1];
+    massRatio = work->secondMass / (work->firstMass + work->secondMass);
+    lengthRatio = work->armLength[1] / work->armLength[0];
+    gravity = -1960.0f / work->armLength[0];
     denominator = lengthRatio - (massRatio * lengthRatio * mbCosRad(angle)
         * mbCosRad(angle));
     if (denominator != 0.0f) {
         acceleration0 = (gravity * gravity * lengthRatio
-            * (-mbSinRad(work->unk0C[0])
-                + (massRatio * mbCosRad(angle) * mbSinRad(work->unk0C[1])))
+            * (-mbSinRad(work->swingState[0])
+                + (massRatio * mbCosRad(angle) * mbSinRad(work->swingState[1])))
             - (massRatio * lengthRatio
-                * ((lengthRatio * work->unk0C[3] * work->unk0C[3])
-                    + (work->unk0C[2] * work->unk0C[2] * mbCosRad(angle)))
+                * ((lengthRatio * work->swingState[3] * work->swingState[3])
+                    + (work->swingState[2] * work->swingState[2]
+                        * mbCosRad(angle)))
                 * mbSinRad(angle))) / denominator;
         acceleration1 = ((gravity * gravity * mbCosRad(angle)
-            * mbSinRad(work->unk0C[0]))
-            - (gravity * gravity * mbSinRad(work->unk0C[1]))
-            + (((work->unk0C[2] * work->unk0C[2])
-                + (massRatio * lengthRatio * work->unk0C[3] * work->unk0C[3]
+            * mbSinRad(work->swingState[0]))
+            - (gravity * gravity * mbSinRad(work->swingState[1]))
+            + (((work->swingState[2] * work->swingState[2])
+                + (massRatio * lengthRatio
+                    * work->swingState[3] * work->swingState[3]
                     * mbCosRad(angle))) * mbSinRad(angle)))
             / denominator;
     } else {
         acceleration0 = acceleration1 = 0.0f;
     }
-    work->unk0C[2] += 0.016666668f * acceleration0;
-    work->unk0C[3] += 0.016666668f * acceleration1;
-    work->unk0C[0] += 0.016666668f * work->unk0C[2];
-    work->unk0C[1] += 0.016666668f * work->unk0C[3];
-    if (work->unk00 < 0) {
-        work->unk0C[2] *= 0.99f;
-        work->unk0C[3] *= 0.99f;
+    work->swingState[2] += 0.016666668f * acceleration0;
+    work->swingState[3] += 0.016666668f * acceleration1;
+    work->swingState[0] += 0.016666668f * work->swingState[2];
+    work->swingState[1] += 0.016666668f * work->swingState[3];
+    if (work->activePlayerNo < 0) {
+        work->swingState[2] *= 0.99f;
+        work->swingState[3] *= 0.99f;
     }
     fn_1_5888(value);
 }
 
+// Setup and swing updates call this to place the two path segments and rider.
 void fn_1_5888(s32 index)
 {
     Mtx matrix;
@@ -2325,15 +2101,18 @@ void fn_1_5888(s32 index)
     s32 i;
 
     work = &lbl_1_bss_1438[index];
-    points[0].x = work->unk24[0] * mbSinRad(work->unk0C[0]);
-    points[0].y = -work->unk24[0] * mbCosRad(work->unk0C[0]);
+    points[0].x = work->armLength[0] * mbSinRad(work->swingState[0]);
+    points[0].y = -work->armLength[0] * mbCosRad(work->swingState[0]);
     points[0].z = 0.0f;
-    points[1].x = points[0].x + (work->unk24[1] * mbSinRad(work->unk0C[1]));
-    points[1].y = points[0].y - (work->unk24[1] * mbCosRad(work->unk0C[1]));
+    points[1].x = points[0].x
+        + (work->armLength[1] * mbSinRad(work->swingState[1]));
+    points[1].y = points[0].y
+        - (work->armLength[1] * mbCosRad(work->swingState[1]));
     points[1].z = 0.0f;
     angle = -((atan2(lbl_1_bss_1410.z, lbl_1_bss_1410.x) / M_PI) * 180.0);
     mbMtxRotAxisDeg(matrix, 'y', angle);
-    mtxTransCat(matrix, work->unk2C.x, work->unk2C.y, work->unk2C.z);
+    mtxTransCat(matrix, work->anchorPos.x, work->anchorPos.y,
+        work->anchorPos.z);
     quat2.x = sin(M_PI / 4.0);
     quat2.y = quat2.z = 0.0f;
     quat2.w = cos(M_PI / 4.0);
@@ -2341,37 +2120,39 @@ void fn_1_5888(s32 index)
     normal.y = 0.0f;
     normal.z = lbl_1_bss_1410.x;
     PSVECNormalize(&normal, &normal);
-    previous = work->unk2C;
+    previous = work->anchorPos;
     for (i = 0; i < 2; i++) {
         PSMTXMultVec(matrix, &points[i], &pos);
         PSVECSubtract(&pos, &previous, &delta);
-        work->unk38[i] = pos;
+        work->endpointPos[i] = pos;
         mbObjPosSet(work->modelId[i], pos.x - (0.5f * delta.x),
             pos.y - (0.5f * delta.y), pos.z - (0.5f * delta.z));
-        C_QUATRotAxisRad(&quat1, &normal, work->unk0C[i]);
+        C_QUATRotAxisRad(&quat1, &normal, work->swingState[i]);
         PSQUATMultiply(&quat1, &quat2, &quat3);
         PSMTXQuat(rot, &quat3);
-        PSMTXScale(scale, 1.0f, 1.0f, work->unk24[i] / 100.0f);
+        PSMTXScale(scale, 1.0f, 1.0f, work->armLength[i] / 100.0f);
         PSMTXConcat(rot, scale, rot);
         mbObjMtxSet(work->modelId[i], &rot);
-        if (work->unk00 >= 0 && i == 0) {
-            mbPlayerPosSet(work->unk00, pos.x, pos.y - 100.0f, pos.z);
+        if (work->activePlayerNo >= 0 && i == 0) {
+            mbPlayerPosSet(work->activePlayerNo, pos.x, pos.y - 100.0f, pos.z);
         }
         previous = pos;
     }
     mbObjPosSetV(work->modelId[2], &pos);
 }
 
+// The end-of-turn callback resets the swinging path before the next player moves.
 void fn_1_5C18(void)
 {
     W01_MOTION_WORK *work = lbl_1_bss_1438;
 
-    work->unk1C = 1.0f;
-    work->unk20 = 20.0f;
-    work->unk0C[0] = work->unk0C[1] = 0.0f;
-    work->unk0C[2] = work->unk0C[3] = 0.0f;
+    work->firstMass = 1.0f;
+    work->secondMass = 20.0f;
+    work->swingState[0] = work->swingState[1] = 0.0f;
+    work->swingState[2] = work->swingState[3] = 0.0f;
 }
 
+// MB1_Create calls this to create the day/night coin field and load its animations.
 void fn_1_5C7C(void)
 {
     W01_WORK_13D8 *work;
@@ -2393,12 +2174,12 @@ void fn_1_5C7C(void)
     }
     dayF2 = !GwSystem.curTime;
     if (dayF2 != FALSE) {
-        dataDir = 0xD70000;
+        dataDir = W01_DATA_DIR_DAY;
     } else {
-        dataDir = 0xD80000;
+        dataDir = W01_DATA_DIR_NIGHT;
     }
-    work->modelId = mbObjCreate(dataDir | 0x20, lbl_1_data_4FC[time], FALSE);
-    mbObjMotionSet(work->modelId, 0, 0x40000001);
+    work->modelId = mbObjCreate(dataDir | W01_FILE_COIN_FIELD_MAIN, lbl_1_data_4FC[time], FALSE);
+    mbObjMotionSet(work->modelId, 0, HU3D_MOTATTR_LOOP);
     mbObjPosSet(work->modelId, 0.0f, 4300.0f, -1350.0f);
 
     if (!GwSystem.curTime) {
@@ -2423,19 +2204,20 @@ void fn_1_5C7C(void)
             data->modelId = mbCoinCreate2();
             mbCoinObjDispSet(data->modelId, FALSE);
         } else {
-            data->modelId = mbObjCreate(0xD80022, NULL, TRUE);
+            data->modelId = mbObjCreate(W01_MODEL_COIN_NIGHT, NULL, TRUE);
             mbObjDispSet(data->modelId, FALSE);
         }
     }
 
     lbl_1_bss_13D0[0] = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x50063), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(W01_DATA_STAR_ANIM_DAY), HU_MEMNUM_OVL, HEAP_MODEL));
     HuSprAnimLock(lbl_1_bss_13D0[0]);
     lbl_1_bss_13D0[1] = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x5005E), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(W01_DATA_STAR_ANIM_NIGHT), HU_MEMNUM_OVL, HEAP_MODEL));
     HuSprAnimLock(lbl_1_bss_13D0[1]);
 }
 
+// MB1_Kill releases the coin-event entries and its day/night particle animations.
 void fn_1_5EF0(void)
 {
     s32 i;
@@ -2454,6 +2236,8 @@ void fn_1_5EF0(void)
     }
 }
 
+// The question-mark-space callback runs the falling-coin event for all players.
+// Day coins increase their totals; night objects hit players and remove coins.
 void fn_1_5FB4(s32 playerNo, s16 id)
 {
     s32 masuCount;
@@ -2538,12 +2322,12 @@ void fn_1_5FB4(s32 playerNo, s16 id)
         }
         data->state = 0;
     }
-    motionId = mbPlayerMotionCreate(playerNo, 0x93001E);
+    motionId = mbPlayerMotionCreate(playerNo, W01_PLAYER_MOTION_STAR_COLLECT);
     for (i = 0; i < 4; i++) {
-        work->playerMotion[i] = mbPlayerMotionCreate(i, 0x930019);
+        work->playerMotion[i] = mbPlayerMotionCreate(i, W01_PLAYER_MOTION_STAR_REACTION);
     }
     mbPlayerPosGet(playerNo, &playerPos);
-    linkMasuId = mbMasuAttrFindLink(id, 0x2000);
+    linkMasuId = mbMasuAttrFindLink(id, W01_MASU_ATTR_LINK);
     mbMasuPosGet(linkMasuId, &linkPos);
     mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
     mbPlayerPosGet(playerNo, &startPos);
@@ -2578,9 +2362,9 @@ void fn_1_5FB4(s32 playerNo, s16 id)
         -1.0f, 30);
     mbCameraMoveWait();
     if (!GwSystem.curTime) {
-        winId = mbWinCreate(2, 0x2F0000, 17);
+        winId = mbWinCreate(2, W01_MESSAGE_STAR_DAY, 17);
     } else {
-        winId = mbWinCreate(2, 0x2F0002, 18);
+        winId = mbWinCreate(2, W01_MESSAGE_STAR_NIGHT, 18);
     }
     mbWinWait(winId);
     HuPrcSleep(30);
@@ -2615,6 +2399,7 @@ void fn_1_5FB4(s32 playerNo, s16 id)
     for (i = 0; i < 4; i++) {
         CharModelVoiceFlagSet(GwPlayer[i].charNo, FALSE);
     }
+    // Players sharing a space appear together and are processed only once.
     playerF = 0;
     for (i = 0; i < 4; i++) {
         if (playerF & (1 << i)) {
@@ -2712,6 +2497,7 @@ void fn_1_5FB4(s32 playerNo, s16 id)
                 coinAdd[curPlayerNo] = -coinNum[curPlayerNo];
             }
         }
+        // The same amounts also enable the floating totals for affected players.
         mbCoinAddAllProcExecV(coinAdd, coinAdd, TRUE);
         mbWipeFadeOut();
     }
@@ -2726,13 +2512,15 @@ void fn_1_5FB4(s32 playerNo, s16 id)
     mbWipeFadeIn();
     HuMemDirectFree(dataOrder);
     if (!GwSystem.curTime) {
-        winId = mbWinCreate(2, 0x2F0001, 17);
+        winId = mbWinCreate(2, W01_MESSAGE_STAR_RESULT_DAY, 17);
     } else {
-        winId = mbWinCreate(2, 0x2F0003, 18);
+        winId = mbWinCreate(2, W01_MESSAGE_STAR_RESULT_NIGHT, 18);
     }
     mbWinWait(winId);
 }
 
+// The coin-event process advances falling objects each frame and counts active entries.
+// Night hits bounce away and blink; the actual coin totals change after the animation.
 s32 fn_1_6D98(void)
 {
     W01_COIN_ENTRY *data;
@@ -2814,7 +2602,7 @@ s32 fn_1_6D98(void)
                         omVibrate(data->playerNo, 20, 7, 3);
                         mbPlayerMotionShiftSet(data->playerNo, 6, 0.0f, 4.0f,
                             HU3D_MOTATTR_LOOP);
-                        work->unk20[data->playerNo] = 0.5f;
+                        work->hitReactionAmount[data->playerNo] = 0.5f;
                         if (!GWTeamFGet()) {
                             if (work->coinCount[data->playerNo] > 0) {
                                 mbPlayerPosGet(data->playerNo, &pos);
@@ -2855,6 +2643,7 @@ s32 fn_1_6D98(void)
     return count;
 }
 
+// The coin event creates a day burst or night animated puff at an unoccupied space.
 HU3D_MODELID fn_1_7388(HuVecF *pos)
 {
     HU3D_MODELID modelId;
@@ -2872,6 +2661,7 @@ HU3D_MODELID fn_1_7388(HuVecF *pos)
     return modelId;
 }
 
+// The daytime landing-particle callback scatters a short burst and frees it when faded.
 void fn_1_7448(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     GXColor color = { 255, 255, 192, 192 };
@@ -2921,6 +2711,7 @@ void fn_1_7448(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
     }
 }
 
+// The night landing-particle callback seeds the puff and frees it once playback pauses.
 void fn_1_77AC(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     GXColor color = { 255, 255, 255, 192 };
@@ -2952,6 +2743,7 @@ void fn_1_77AC(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
     }
 }
 
+// MB1_Create loads the three animated spaces and their two reusable falling effects.
 void fn_1_7944(void)
 {
     W01_MASU_MOTION_WORK *work;
@@ -2960,16 +2752,18 @@ void fn_1_7944(void)
 
     work = lbl_1_bss_137C;
     lbl_1_bss_1378 = HuSprAnimDataRead(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x32);
+        (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
+            | W01_FILE_MASU_MOTION_EFFECT);
     HuSprAnimLock(lbl_1_bss_1378);
     for (i = 0; i < 3; i++, work++) {
         work->modelId = mbObjCreate(
             (lbl_1_data_550[i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+                | (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT),
             NULL, FALSE);
         mbObjMotionSpeedSet(work->modelId, 0.0f);
-        attr = mbev_MasuAttrGet(i + 1, 0x00030000);
-        work->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, 0x00030000);
+    attr = mbev_MasuAttrGet(i + 1, W01_MASU_ATTR_EVENT_INDEX_MASK);
+    work->masuId = mbMasuFind_MAttrMatchIdGet(
+        -1, attr, W01_MASU_ATTR_EVENT_INDEX_MASK);
         strcpy(work->objName, lbl_1_data_56C[i]);
 
         work->effectModelId[0] = mbParticleCreate(lbl_1_bss_1378, 20);
@@ -2984,6 +2778,7 @@ void fn_1_7944(void)
     }
 }
 
+// MB1_Kill releases the sprite animation shared by the three animated-space effects.
 void fn_1_7B20(void)
 {
     if (lbl_1_bss_1378) {
@@ -2992,6 +2787,7 @@ void fn_1_7B20(void)
     }
 }
 
+// The space-move completion callback starts the selected space motion and its particles.
 void fn_1_7B70(s32 index)
 {
     W01_MASU_MOTION_WORK *work = &lbl_1_bss_137C[index];
@@ -3006,6 +2802,7 @@ void fn_1_7B70(s32 index)
     work->active = TRUE;
 }
 
+// The board update follows each active space's model joint until its motion finishes.
 void fn_1_7C14(void)
 {
     W01_MASU_MOTION_WORK *work;
@@ -3022,6 +2819,7 @@ void fn_1_7C14(void)
             }
             modelId = mbObjModelIDGet(work->modelId);
             modelP = &Hu3DData[modelId];
+            // Sample one frame ahead when updating the space's collision position.
             Hu3DMotionExec(modelId, modelP->motId,
                 1.0f + mbObjMotionTimeGet(work->modelId), FALSE);
             Hu3DModelObjPosGet(modelId, work->objName, &pos);
@@ -3031,6 +2829,7 @@ void fn_1_7C14(void)
     }
 }
 
+// Starting an animated space places and reveals both of its reusable particle models.
 void fn_1_7D14(W01_MASU_MOTION_WORK *work, HuVecF *pos)
 {
     s32 i;
@@ -3041,6 +2840,7 @@ void fn_1_7D14(W01_MASU_MOTION_WORK *work, HuVecF *pos)
     }
 }
 
+// This animated-space particle callback drops a fading ring, then hides it for reuse.
 void fn_1_7D84(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     GXColor color = { 255, 255, 192, 192 };
@@ -3085,6 +2885,7 @@ void fn_1_7D84(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
     }
 }
 
+// This animated-space particle callback spreads a falling burst, then hides it for reuse.
 void fn_1_80B4(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     GXColor color = { 255, 255, 192, 192 };
@@ -3134,6 +2935,8 @@ void fn_1_80B4(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
     }
 }
 
+// MB1_Create loads the two spring routes and removes the link unavailable at this time.
+// The two routes use opposite day/night states even though their assets share a directory.
 void fn_1_8474(void)
 {
     W01_MASU_MODEL_WORK *work;
@@ -3166,9 +2969,9 @@ void fn_1_8474(void)
         }
         dayF2 = !GwSystem.curTime;
         if (dayF2 != FALSE) {
-            dataDir = 0xD70000;
+            dataDir = W01_DATA_DIR_DAY;
         } else {
-            dataDir = 0xD80000;
+            dataDir = W01_DATA_DIR_NIGHT;
         }
         work->modelId = mbObjCreate((dataNum & 0xFFFF) | dataDir, NULL,
             FALSE);
@@ -3187,6 +2990,7 @@ void fn_1_8474(void)
         if (work->dayF != FALSE) {
             for (j = 0; j < masuP->linkNum; j++) {
                 if (masuP->linkTbl[j] == work->linkMasuId[1]) {
+                    // Each later link overwrites the same removed slot.
                     for (k = j + 1; k < masuP->linkNum; k++) {
                         masuP->linkTbl[j] = masuP->linkTbl[k];
                     }
@@ -3196,6 +3000,7 @@ void fn_1_8474(void)
         } else {
             for (j = 0; j < masuP->linkNum; j++) {
                 if (masuP->linkTbl[j] == work->linkMasuId[0]) {
+                    // Each later link overwrites the same removed slot.
                     for (k = j + 1; k < masuP->linkNum; k++) {
                         masuP->linkTbl[j] = masuP->linkTbl[k];
                     }
@@ -3209,10 +3014,11 @@ void fn_1_8474(void)
     }
 
     lbl_1_bss_1334 = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(0x50063), HU_MEMNUM_OVL, HEAP_MODEL));
+        mbBoardDataNumGet(W01_DATA_STAR_ANIM_DAY), HU_MEMNUM_OVL, HEAP_MODEL));
     HuSprAnimLock(lbl_1_bss_1334);
 }
 
+// MB1_Kill releases the animation used by the spring route's player trail.
 void fn_1_8798(void)
 {
     if (lbl_1_bss_1334) {
@@ -3221,6 +3027,7 @@ void fn_1_8798(void)
     }
 }
 
+// Before a player's turn, place both spring spaces at their current model joints.
 void fn_1_87E8(void)
 {
     W01_MASU_MODEL_WORK *work;
@@ -3237,6 +3044,8 @@ void fn_1_87E8(void)
     }
 }
 
+// The spring-space movement hook launches or hops the player to its available linked space.
+// The route's day state selects the long spinning launch and trailing particles.
 void fn_1_8860(int playerNo)
 {
     s32 workNo2;
@@ -3264,7 +3073,7 @@ void fn_1_8860(int playerNo)
     float srcRotY;
 
     masuId = GwPlayer[playerNo].masuId;
-    if (mbMasuMAttrGet(masuId) & 0x00400000) {
+    if (mbMasuMAttrGet(masuId) & W01_MASU_ATTR_MOVE_HOOK_SPRING_A) {
         workNo = 0;
     } else {
         workNo = 1;
@@ -3369,7 +3178,8 @@ void fn_1_8860(int playerNo)
             mbPlayerWorkGet(playerNo)->_unk08 = time;
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, 0x40000001);
+        mbPlayerMotionShiftSet(
+            playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
         GwPlayer[playerNo].masuId = work->linkMasuId[1];
     }
     GwPlayer[playerNo].moveF = FALSE;
@@ -3377,6 +3187,7 @@ void fn_1_8860(int playerNo)
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
 }
 
+// The spring trail callback fades emitted particles and frees the completed trail.
 void fn_1_9134(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     MBPARTICLEDATA *data;
@@ -3417,6 +3228,7 @@ void fn_1_9134(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
     }
 }
 
+// Each spring-launch frame activates one trail particle near the player's position.
 void fn_1_939C(HU3D_MODELID modelId, s32 particleNo, HuVecF *pos)
 {
     MBPARTICLE *particleWorkP;
@@ -3434,6 +3246,7 @@ void fn_1_939C(HU3D_MODELID modelId, s32 particleNo, HuVecF *pos)
     particleP->mode = 2;
 }
 
+// The time-change presentation hides or reveals the spring models and their space updates.
 void fn_1_950C(BOOL dispF)
 {
     W01_MASU_MODEL_WORK *work;
@@ -3446,6 +3259,7 @@ void fn_1_950C(BOOL dispF)
     }
 }
 
+// MB1_Create calls this to load the day/night special-space effect and particles.
 void fn_1_9574(void)
 {
     W01_WH_EFFECT_WORK *work;
@@ -3457,19 +3271,21 @@ void fn_1_9574(void)
     work = lbl_1_bss_1240.work;
     modelIdP = lbl_1_bss_1238;
     modelIdP[0] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x1B, NULL, FALSE);
-    mbObjAttrSet(modelIdP[0], 0x40000002);
+        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT)
+            | W01_FILE_EFFECT_ROOT, NULL, FALSE);
+    mbObjAttrSet(modelIdP[0], W01_OBJ_ATTR_EFFECT_PAUSED);
     mbObjPosSet(modelIdP[0], 410.0f, 1900.0f, 1137.0f);
 
     modelIdP[1] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x1F, NULL, FALSE);
-    mbObjAttrSet(modelIdP[1], 0x40000001);
+        (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT)
+            | W01_FILE_EFFECT_CHILD, NULL, FALSE);
+    mbObjAttrSet(modelIdP[1], W01_OBJ_ATTR_BOARD_MODEL);
     mbObjHookSet(modelIdP[0], lbl_1_data_638, modelIdP[1]);
 
     if (MBTimeDayGet()) {
-        modelIdP[2] = mbObjCreate(0x130005, lbl_1_data_5D4, FALSE);
+        modelIdP[2] = mbObjCreate(W01_MODEL_LIGHT_DAY, lbl_1_data_5D4, FALSE);
     } else {
-        modelIdP[2] = mbObjCreate(0x130000, lbl_1_data_5E4, FALSE);
+        modelIdP[2] = mbObjCreate(W01_MODEL_LIGHT_NIGHT, lbl_1_data_5E4, FALSE);
     }
     if (!MBTimeDayGet()) {
         modelIdP[3] = Hu3DLLightCreateV(
@@ -3480,7 +3296,7 @@ void fn_1_9574(void)
         Hu3DLLightInfinitytSet(
             mbObjModelIDGet(modelIdP[2]), modelIdP[3]);
     }
-    mbObjMotionSet(modelIdP[2], 1, 0x40000001);
+    mbObjMotionSet(modelIdP[2], 1, HU3D_MOTATTR_LOOP);
     mbObjDispSet(modelIdP[2], FALSE);
     mbObjPosGet(modelIdP[0], &pos);
     mbObjPosSetV(modelIdP[2], &pos);
@@ -3488,25 +3304,26 @@ void fn_1_9574(void)
     for (i = 0; i < 3; i++, work++) {
         work->modelId = mbObjCreate(
             (lbl_1_data_5F4[i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+                | (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT),
             NULL, FALSE);
         strcpy(work->objName, lbl_1_data_610[i]);
         mbObjDispSet(work->modelId, FALSE);
         work->particleCount = fn_1_B434(&work->particle);
         work->state = 1;
-        work->object = omAddObjEx(mbObjMan, 0x200C, 0, 0, -1, fn_1_ACDC);
+        work->object = omAddObjEx(mbObjMan, 8204, 0, 0, -1, fn_1_ACDC);
         work->object->work[0] = i;
         work->playerNo = -1;
     }
 
     for (i = 0; i < 4; i++) {
-        attr = mbev_MasuAttrGet(i + 2, 0xE0000000);
+        attr = mbev_MasuAttrGet(i + 2, W01_MASU_ATTR_EVENT_TYPE_MASK);
         lbl_1_bss_1230[i] =
-            mbMasuFind_MAttrMatchIdGet(-1, attr, 0xE0000000);
+            mbMasuFind_MAttrMatchIdGet(-1, attr, W01_MASU_ATTR_EVENT_TYPE_MASK);
     }
 
     lbl_1_bss_121C = HuSprAnimRead(HuDataSelHeapReadNum(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x33,
+        (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
+            | W01_FILE_WH_EFFECT_STAR_ANIM,
         HU_MEMNUM_OVL, HEAP_MODEL));
     HuSprAnimLock(lbl_1_bss_121C);
     lbl_1_bss_120C[0] = fn_1_C7DC(&lbl_1_bss_1214[0]);
@@ -3518,9 +3335,10 @@ void fn_1_9574(void)
     lbl_1_bss_1224.x = 12000.0f;
     lbl_1_bss_1224.y = 3000.0f;
     lbl_1_bss_1224.z = 2400.0f;
-    HuDataDirClose(0x130000);
+    HuDataDirClose(W01_DATA_DIR_LIGHT_EFFECT);
 }
 
+// MB1_Kill releases the special-space glow animation and particle buffers.
 void fn_1_99E4(void)
 {
     W01_WH_EFFECT_WORK *work;
@@ -3547,6 +3365,8 @@ void fn_1_99E4(void)
     }
 }
 
+// MB1Ev_MasuHatena calls this for the board's special-space event.
+// It presents the day/night choice, launches the player, and moves them to a destination space.
 void fn_1_9AEC(s32 playerNo, s16 id)
 {
     MBMODELID *modelIdP;
@@ -3585,27 +3405,28 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     modelIdP = lbl_1_bss_1238;
     mbObjMotionSpeedSet(modelIdP[0], 1.0f);
     modelId = modelIdP[0];
-    mbObjAttrReset(modelId, 0x40000002);
+    mbObjAttrReset(modelId, W01_OBJ_ATTR_EFFECT_PAUSED);
     mbObjDispSet(modelIdP[2], TRUE);
     mbObjMotionSet(modelIdP[2], 1, HU3D_MOTATTR_LOOP);
     mbPlayerRotateStart(playerNo, 180, 15);
-    linkMasuId = mbMasuAttrFindLink(id, 0x2000);
+    linkMasuId = mbMasuAttrFindLink(id, W01_MASU_ATTR_LINK);
     mbMasuPosGet(linkMasuId, &linkPos);
     if (MBTimeDayGet()) {
-        winId = mbWinCreate(2, 0x2F0004, 8);
+        winId = mbWinCreate(2, W01_MESSAGE_WH_INTRO_DAY, 8);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(987);
+        mbAudFXPlay(W01_SOUND_WH_EVENT_DAY);
     } else {
-        winId = mbWinCreate(2, 0x2F0009, 9);
+        winId = mbWinCreate(2, W01_MESSAGE_WH_INTRO_NIGHT, 9);
         mbAudFXDelaySet(30);
-        mbAudFXPlay(961);
+        mbAudFXPlay(W01_SOUND_WH_EVENT_NIGHT);
     }
     mbWinWait(winId);
     if (MBTimeDayGet()) {
-        winId = mbWinCreateChoice(2, 0x2F0005, 8, 0);
+        winId = mbWinCreateChoice(2, W01_MESSAGE_WH_CHOICE_DAY, 8, 0);
     } else {
-        winId = mbWinCreateChoice(2, 0x2F000A, 9, 0);
+        winId = mbWinCreateChoice(2, W01_MESSAGE_WH_CHOICE_NIGHT, 9, 0);
     }
+    // Read the stored choice once before waiting; this result is discarded.
     mbWinChoiceGet(winId);
     if (GwPlayer[playerNo].comF) {
         distance = mbMasuFind_IdStepGet(id, lbl_1_bss_1616);
@@ -3643,9 +3464,9 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     mbCameraMoveWait();
     mbObjMotionShiftSet(modelIdP[2], 2, 0.0f, 4.0f, 0);
     if (!GwSystem.curTime) {
-        winId = mbWinCreate(2, 0x2F0006, 8);
+        winId = mbWinCreate(2, W01_MESSAGE_WH_PLAYER_MOVE_DAY, 8);
     } else {
-        winId = mbWinCreate(2, 0x2F000B, 9);
+        winId = mbWinCreate(2, W01_MESSAGE_WH_PLAYER_MOVE_NIGHT, 9);
     }
     for (i = 0; i < 3; i++, work++) {
         fn_1_B7D8(i);
@@ -3667,8 +3488,8 @@ void fn_1_9AEC(s32 playerNo, s16 id)
         HuPrcVSleep();
     }
     mbWinWait(winId);
-    motionId = mbPlayerMotionCreate(playerNo, 0x930063);
-    helpWinId = mbWinCreateHelp(0x2F0008);
+    motionId = mbPlayerMotionCreate(playerNo, W01_PLAYER_MOTION_SPRING_LAUNCH);
+    helpWinId = mbWinCreateHelp(W01_MESSAGE_WH_CHOICE_HELP);
     mbWinPosSet(helpWinId, 216, 384);
     for (i = 0; i < 4; i++) {
         dataOrder[i] = i;
@@ -3703,9 +3524,9 @@ void fn_1_9AEC(s32 playerNo, s16 id)
     fn_1_AFD4(choice, playerNo);
     mbWinKill(helpWinId);
     if (!GwSystem.curTime) {
-        winId = mbWinCreate(2, 0x2F0007, 8);
+        winId = mbWinCreate(2, W01_MESSAGE_WH_RESULT, 8);
     } else {
-        winId = mbWinCreate(2, 0x2F0007, 9);
+        winId = mbWinCreate(2, W01_MESSAGE_WH_RESULT, 9);
     }
     mbWinWait(winId);
     mbObjMotionShiftSet(modelIdP[2], 3, 0.0f, 4.0f, HU3D_MOTATTR_LOOP);
@@ -3766,11 +3587,14 @@ void fn_1_9AEC(s32 playerNo, s16 id)
         Hu3DModelAttrSet(lbl_1_bss_1220, 1);
     }
     GwPlayer[playerNo].masuId = masuId;
-    mbObjAttrSet(modelIdP[0], 0x40000002);
+    mbObjAttrSet(modelIdP[0], W01_OBJ_ATTR_EFFECT_PAUSED);
     mbObjMotionTimeSet(modelIdP[0], 0.0f);
     mbObjDispSet(modelIdP[2], FALSE);
 }
 
+// The special-space event lets the player choose one of three rides with a ten-second countdown.
+// Left/right input moves between them; confirmation or timeout keeps the settled choice.
+// A choice movement finishes before timeout is checked, and its rotation wait pauses the countdown.
 s32 fn_1_A82C(s32 playerNo)
 {
     HuVecF pos;
@@ -3801,6 +3625,7 @@ s32 fn_1_A82C(s32 playerNo)
     time = 600;
     while (TRUE) {
         if (state == 0) {
+            // CPU input changes only on sampled frames; before the first sample, btnDown is unset.
             if (GwPlayer[playerNo].comF != FALSE) {
                 if (delay == 0) {
                     btnDown = PAD_BUTTON_A;
@@ -3879,6 +3704,7 @@ s32 fn_1_A82C(s32 playerNo)
     return choice;
 }
 
+// Each special-space object's update applies fading and vertical motion, carrying its rider.
 void fn_1_ACDC(OMOBJ *object)
 {
     W01_WH_EFFECT_WORK *work;
@@ -3889,17 +3715,17 @@ void fn_1_ACDC(OMOBJ *object)
     float alpha;
 
     work = &lbl_1_bss_1240.work[object->work[0]];
-    switch (work->unk20) {
+    switch (work->fadeState) {
     case 1:
         alpha = (float)work->time++ / (float)work->maxTime;
         mbObjAlphaSet(work->modelId,
-            (s32)(u8)(255.0f * (1.0f - alpha)));
+            (s32)(255.0f * (1.0f - alpha)));
         if (work->time > work->maxTime) {
-            work->unk20 = 0;
+            work->fadeState = 0;
         }
     }
 
-    if (work->unk4C != 0) {
+    if (work->pathMotionF != 0) {
         pos.x = work->pos.x;
         pos.y = work->pos.y - 1000.0f;
         pos.z = work->pos.z;
@@ -3917,9 +3743,9 @@ void fn_1_ACDC(OMOBJ *object)
         acceleration = -980.0f;
         deltaY = work->pos.y - pos.y;
         acceleration += 500.0f * (deltaY - 1000.0f) / bounce;
-        work->rot.y += (1.0f / 60.0f) * acceleration;
-        pos.y += (1.0f / 60.0f) * work->rot.y;
-        work->rot.y *= 0.9f;
+        work->bobVelocity.y += (1.0f / 60.0f) * acceleration;
+        pos.y += (1.0f / 60.0f) * work->bobVelocity.y;
+        work->bobVelocity.y *= 0.9f;
     }
 
     if (work->playerNo >= 0) {
@@ -3931,16 +3757,18 @@ void fn_1_ACDC(OMOBJ *object)
     fn_1_BB44(work, &pos);
 }
 
+// The special-space event attaches or detaches its rider; attaching also gives a downward impulse.
 void fn_1_AFD4(s32 index, s32 state)
 {
     W01_WH_EFFECT_WORK *work = &lbl_1_bss_1240.work[index];
 
     if (state >= 0) {
-        work->rot.y += -833.333374f;
+        work->bobVelocity.y += -833.333374f;
     }
     work->playerNo = state;
 }
 
+// The special-space event moves its chosen model and rider along the selected eight-second path.
 void fn_1_B01C(s32 index, s32 type)
 {
     W01_WH_EFFECT_WORK *work;
@@ -3968,7 +3796,7 @@ void fn_1_B01C(s32 index, s32 type)
     source = data;
     memcpy(source, lbl_1_data_5B4[type], size);
     source[0] = objPos;
-    work->unk4C = 1;
+    work->pathMotionF = 1;
     work->pos.x = objPos.x;
     work->pos.y = 1000.0f + objPos.y;
     work->pos.z = objPos.z;
@@ -4004,9 +3832,9 @@ void fn_1_B01C(s32 index, s32 type)
         work->pos.z = pos.z;
         HuPrcVSleep();
     }
-    work->rot.x = work->rot.y = work->rot.z = 0.0f;
+    work->bobVelocity.x = work->bobVelocity.y = work->bobVelocity.z = 0.0f;
     work->pos.y += 100.0f;
-    work->unk4C = 0;
+    work->pathMotionF = 0;
     particle = work->particle;
     for (i = 0; i < work->particleCount; i++, particle++) {
         if (particle->delay < 0) {
@@ -4016,15 +3844,17 @@ void fn_1_B01C(s32 index, s32 type)
     HuMemDirectFree(source);
 }
 
+// The special-space event starts a thirty-frame fade of the selected model.
 void fn_1_B3F8(s32 index)
 {
     W01_WH_EFFECT_WORK *work = &lbl_1_bss_1240.work[index];
 
-    work->unk20 = 1;
+    work->fadeState = 1;
     work->time = 0;
     work->maxTime = 30;
 }
 
+// Special-space setup creates particles from a subdivided polyhedron and initializes their motion.
 s32 fn_1_B434(W01_WH_PARTICLE **particleP)
 {
     HuVecF pos;
@@ -4065,6 +3895,7 @@ s32 fn_1_B434(W01_WH_PARTICLE **particleP)
     return particleCount;
 }
 
+// The special-space event resets its particles, opacity, and rider before presenting the choices.
 void fn_1_B7D8(s32 index)
 {
     W01_WH_EFFECT_WORK *work;
@@ -4087,11 +3918,12 @@ void fn_1_B7D8(s32 index)
     }
     work->state = 1;
     work->playerNo = -1;
-    work->rot.x = work->rot.y = work->rot.z = 0.0f;
-    work->unk4C = 0;
+    work->bobVelocity.x = work->bobVelocity.y = work->bobVelocity.z = 0.0f;
+    work->pathMotionF = 0;
     mbObjAlphaSet(work->modelId, 255);
 }
 
+// The special-space event releases an unchosen model's particles before fading it.
 void fn_1_B97C(s32 index)
 {
     W01_WH_EFFECT_WORK *work = &lbl_1_bss_1240.work[index];
@@ -4099,6 +3931,8 @@ void fn_1_B97C(s32 index)
     work->state = 0;
 }
 
+// Schedule 60 percent of the chosen ride's particles across duration, after a 60-frame delay.
+// Some scheduled releases can outlast the path; the unscheduled particles are released at its end.
 void fn_1_B9A8(s32 index, s32 duration)
 {
     W01_WH_EFFECT_WORK *work;
@@ -4142,6 +3976,7 @@ void fn_1_B9A8(s32 index, s32 duration)
     work->state = 0;
 }
 
+// Each ride object's update keeps waiting particles attached, then applies wind and gravity.
 void fn_1_BB44(W01_WH_EFFECT_WORK *work, const HuVecF *origin)
 {
     Mtx rotation;
@@ -4221,6 +4056,8 @@ void fn_1_BB44(W01_WH_EFFECT_WORK *work, const HuVecF *origin)
     }
 }
 
+// The special-space render hook draws all ride particles and depth-sorts their glow quads.
+// The first ride model's visibility controls the entire group of particle drawings.
 void fn_1_BFA0(HU3D_MODEL *model, Mtx *input)
 {
     Mtx matrix;
@@ -4366,6 +4203,7 @@ static const s32 lbl_1_rodata_348[19] = {
     -1
 };
 
+// Ride display-list setup emits the indexed, colored geometry until the -1 terminator.
 void fn_1_C694(const s32 *displayData, u32 color)
 {
     s32 count;
@@ -4387,7 +4225,7 @@ void fn_1_C694(const s32 *displayData, u32 color)
     }
 }
 
-
+// Special-space setup builds the colored particle geometry and returns its display-list size.
 s32 fn_1_C7DC(void **displayList)
 {
     u32 colorA;
@@ -4397,12 +4235,12 @@ s32 fn_1_C7DC(void **displayList)
     void *list;
     u32 size;
 
-    colorA = 0x685747FF;
-    colorB = 0xBEB095FF;
-    allocation = HuMemDirectMallocNum(HEAP_HEAP, 0x1000, HU_MEMNUM_OVL);
+    colorA = W01_COLOR_TREE_BARK_BIT_PATTERN;
+    colorB = W01_COLOR_TREE_LIGHT_BIT_PATTERN;
+    allocation = HuMemDirectMallocNum(HEAP_HEAP, 4096, HU_MEMNUM_OVL);
     listBuffer = allocation;
-    DCInvalidateRange(listBuffer, 0x1000);
-    GXBeginDisplayList(listBuffer, 0x1000);
+    DCInvalidateRange(listBuffer, 4096);
+    GXBeginDisplayList(listBuffer, 4096);
     fn_1_C694(lbl_1_rodata_30C, colorA);
     fn_1_C694(lbl_1_rodata_348, colorB);
     size = GXEndDisplayList();
@@ -4414,6 +4252,7 @@ s32 fn_1_C7DC(void **displayList)
     return size;
 }
 
+// Special-space setup builds the textured glow quad and returns its display-list size.
 s32 fn_1_CAA4(void **displayList)
 {
     void *buffer;
@@ -4421,10 +4260,10 @@ s32 fn_1_CAA4(void **displayList)
     void *list;
     u32 size;
 
-    buffer = HuMemDirectMallocNum(HEAP_HEAP, 0x1000, HU_MEMNUM_OVL);
+    buffer = HuMemDirectMallocNum(HEAP_HEAP, 4096, HU_MEMNUM_OVL);
     listBuffer = buffer;
-    DCInvalidateRange(listBuffer, 0x1000);
-    GXBeginDisplayList(listBuffer, 0x1000);
+    DCInvalidateRange(listBuffer, 4096);
+    GXBeginDisplayList(listBuffer, 4096);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     GXPosition3f32(-35.0f, 35.0f, 0.0f);
     GXTexCoord2f32(0.0f, 0.0f);
@@ -4443,6 +4282,8 @@ s32 fn_1_CAA4(void **displayList)
     return size;
 }
 
+// Ride particle setup splits each triangle into four and projects new vertices to a radius.
+// Copying the input first allows the source and destination arrays to be the same.
 s32 fn_1_CCEC(const HuVecF *src, s32 triangleCount, float inset,
     HuVecF *dst)
 {
@@ -4504,12 +4345,13 @@ s32 fn_1_CCEC(const HuVecF *src, s32 triangleCount, float inset,
     return outputCount / 3;
 }
 
+// The particle-geometry helper expands a scaled tetrahedron into four indexed triangles.
 s32 fn_1_D080(HuVecF *dst, float scale)
 {
     s32 i;
 
     for (i = 0; i < 4; i++, dst += 3) {
-        dst[0] = lbl_1_data_674[lbl_1_data_6A4[(3 * i) + 0]];
+        dst[0] = lbl_1_data_674[lbl_1_data_6A4[3 * i]];
         dst[1] = lbl_1_data_674[lbl_1_data_6A4[(3 * i) + 1]];
         dst[2] = lbl_1_data_674[lbl_1_data_6A4[(3 * i) + 2]];
         PSVECScale(&dst[0], &dst[0], scale);
@@ -4519,6 +4361,7 @@ s32 fn_1_D080(HuVecF *dst, float scale)
     return 4;
 }
 
+// Ride particle setup expands a scaled octahedron into its eight indexed triangles.
 s32 fn_1_D1D0(HuVecF *dst, float scale)
 {
     s32 i;
@@ -4534,6 +4377,7 @@ s32 fn_1_D1D0(HuVecF *dst, float scale)
     return 8;
 }
 
+// Ride particle setup compacts coincident vertices, keeping the first within each tolerance.
 s32 fn_1_D320(HuVecF *src, s32 count, HuVecF *dst)
 {
     float epsilon = 0.0001f;
@@ -4572,6 +4416,7 @@ s32 fn_1_D320(HuVecF *src, s32 count, HuVecF *dst)
     return result;
 }
 
+// The ride render hook sorts particles by camera-space depth before drawing their glow quads.
 void fn_1_D50C(W01_SORT_ENTRY *entry, s32 first, s32 last)
 {
     float pivot;
@@ -4606,6 +4451,7 @@ void fn_1_D50C(W01_SORT_ENTRY *entry, s32 first, s32 last)
     }
 }
 
+// MB1_Create measures each segment of the launch path so the rider advances by distance.
 void fn_1_DEA4(void)
 {
     HuVecF a;
@@ -4676,6 +4522,7 @@ void fn_1_DEA4(void)
     }
 }
 
+// The launch-path solver estimates distance to a parameter using ten trapezoid intervals.
 static inline float W01HermiteIntegrate(W01CurveEval eval,
     HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t)
 {
@@ -4701,6 +4548,8 @@ static inline float W01HermiteIntegrate(W01CurveEval eval,
     return sampleLength;
 }
 
+// The launch movement estimates the curve parameter for its traveled distance with bounded steps.
+// Sampled speeds below 0.1 in magnitude use 1.0 as the correction divisor.
 static inline float W01CurveNewton(W01CurveEval eval, HuVecF *a,
     HuVecF *b, HuVecF *c, HuVecF *d, float t, float distance, int maxStep)
 {
@@ -4724,6 +4573,7 @@ static inline float W01CurveNewton(W01CurveEval eval, HuVecF *a,
     return t;
 }
 
+// After the launch path, hop the rider onto the destination space and return to idle.
 static inline void W01PlayerJumpFinish(int playerNo, HuVecF *dstPos,
     float dstRotY, float jumpHeight, int maxTime)
 {
@@ -4763,6 +4613,8 @@ static inline void W01PlayerJumpFinish(int playerNo, HuVecF *dstPos,
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
 }
 
+// The space-move completion callback installs this movement hook to carry a player
+// along the launch path.
 void fn_1_E234(int playerNo)
 {
     HuVecF a;
@@ -4798,7 +4650,7 @@ void fn_1_E234(int playerNo)
     GwPlayer[playerNo].moveF = TRUE;
     mbPlayerWorkGet(playerNo)->_unk08 = 100;
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    motionId = mbPlayerMotionCreate(playerNo, 0x93000A);
+    motionId = mbPlayerMotionCreate(playerNo, W01_PLAYER_MOTION_PATH_RIDE);
     mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 8.0f, FALSE);
     masuId = GwPlayer[playerNo].masuId;
     linkMasuId = mbMasuLinkGet(masuId, 0);
@@ -4886,6 +4738,7 @@ void fn_1_E234(int playerNo)
     mbPlayerColSnapPlayerSet(playerNo, TRUE);
 }
 
+// MB1_Create calls this once to create the board's Biri group and its five members.
 void fn_1_ED00(void)
 {
     HuVecF pos;
@@ -4906,11 +4759,11 @@ void fn_1_ED00(void)
     entry = work->entry;
     dayF = !GwSystem.curTime;
     if (dayF != FALSE) {
-        dataDir = 0xD70000;
+        dataDir = W01_DATA_DIR_DAY;
     } else {
-        dataDir = 0xD80000;
+        dataDir = W01_DATA_DIR_NIGHT;
     }
-    work->modelId = mbObjCreate(dataDir | 0x29, NULL, FALSE);
+    work->modelId = mbObjCreate(DATANUM(dataDir, 41), NULL, FALSE);
     work->pos.x = 1871.0f;
     work->pos.y = 2479.0f;
     work->pos.z = 1078.0f;
@@ -4926,34 +4779,36 @@ void fn_1_ED00(void)
         memset(entry, 0, sizeof(W01_BIRI_ENTRY));
         entryDayF = !GwSystem.curTime;
         if (entryDayF != FALSE) {
-            entryDataDir = 0xD70000;
+            entryDataDir = W01_DATA_DIR_DAY;
         } else {
-            entryDataDir = 0xD80000;
+            entryDataDir = W01_DATA_DIR_NIGHT;
         }
-        entry->modelId = mbObjCreate(entryDataDir | 0x2A, NULL, TRUE);
-        mbObjBiriQCreate((s16)(entry->modelId + 0));
-        mbObjAttrSet(entry->modelId, 0x40000001);
+        entry->modelId = mbObjCreate(DATANUM(entryDataDir, 42), NULL, TRUE);
+        mbObjBiriQCreate((MBMODELID)entry->modelId);
+        mbObjAttrSet(entry->modelId, HU3D_MOTATTR_LOOP);
         angle = 360.0f * frandf();
-        entry->angle = angle;
+        entry->phaseAngle = angle;
         radius = 100.0f * (1.6f * frandf());
         pos.x = radius * mbCosDeg(angle);
         pos.y = -420.0f;
         pos.z = radius * mbSinDeg(angle);
-        PSMTXMultVec(matrix, &pos, &entry->unk10);
+        PSMTXMultVec(matrix, &pos, &entry->homePos);
         entry->index = i;
-        entry->unk2C = 60.000003814697266f + (100.0f * frandf());
-        entry->unk30 = 360.0f * frandf();
-        entry->unk34 = 8.0f * ((2.0f * frandf()) - 1.0f);
-        entry->unk48 = entry->unk4C = 80.0f
+        entry->bobAmplitude = 60.000003814697266f + (100.0f * frandf());
+        entry->spinAngle = 360.0f * frandf();
+        entry->spinSpeed = 8.0f * ((2.0f * frandf()) - 1.0f);
+        entry->orbitRadius = entry->targetOrbitRadius = 80.0f
             + (100.0f * (0.5f * frandf()));
-        entry->maxTime = entry->unk5A = (s16)(30.0f
+        entry->maxTime = entry->idleDuration = (s16)(30.0f
             + (12.0f * frandf()));
         entry->timer = mbRandMod(entry->maxTime);
         entry->work = work;
     }
 }
 
-
+// Biri cleanup calls mbObjBiriQKill five times on the same group scenery model and ignores its
+// result;
+// setup installs BiriQ hooks on the five member models instead.
 void fn_1_F06C(void)
 {
     s32 i;
@@ -4963,10 +4818,12 @@ void fn_1_F06C(void)
     work = &lbl_1_bss_EFC;
     entry = work->entry;
     for (i = 0; i < 5; i++, entry++) {
-        mbObjBiriQKill(*(volatile MBMODELID *)&work->modelId);
+        mbObjBiriQKill((MBMODELID)work->modelId);
     }
 }
 
+// MB1_Create's board update object calls this each frame to swing the Biri group
+// and update each member's movement.
 void fn_1_F0D0(void)
 {
     W01_BIRI_WORK *work;
@@ -4988,6 +4845,7 @@ void fn_1_F0D0(void)
     }
 }
 
+// The question-mark-space Biri event surrounds the player and removes coins on a hit.
 void fn_1_F1F4(s32 playerNo, s16 id)
 {
     s16 motionId[2];
@@ -5006,8 +4864,8 @@ void fn_1_F1F4(s32 playerNo, s16 id)
 
     work = &lbl_1_bss_EFC;
     entry = work->entry;
-    motionId[0] = mbPlayerMotionCreate(playerNo, 0x930017);
-    motionId[1] = mbPlayerMotionCreate(playerNo, 0x930062);
+    motionId[0] = mbPlayerMotionCreate(playerNo, W01_PLAYER_MOTION_BIRI_TOSS);
+    motionId[1] = mbPlayerMotionCreate(playerNo, W01_PLAYER_MOTION_BIRI_REACTION);
     mbCameraPlayerViewSet(playerNo, 1);
     mbPlayerMotionShiftSet(playerNo, motionId[0], 0.0f, 4.0f, 0);
     work->state = 1;
@@ -5024,7 +4882,7 @@ void fn_1_F1F4(s32 playerNo, s16 id)
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerNo, motionId[1], 0.0f, 8.0f,
-        0x40000001);
+        HU3D_MOTATTR_LOOP);
     work->state = 2;
     padNo = GwPlayer[playerNo].padNo;
     lbl_1_bss_EF8 = -1;
@@ -5039,7 +4897,7 @@ void fn_1_F1F4(s32 playerNo, s16 id)
         HuPrcVSleep();
     }
     fn_1_10900();
-    mbPlayerMotionShiftSet(playerNo, 15, 0.0f, 4.0f, 0x40000001);
+    mbPlayerMotionShiftSet(playerNo, 15, 0.0f, 4.0f, HU3D_MOTATTR_LOOP);
     omVibrate(playerNo, 20, 7, 3);
     CharFXPlay(GwPlayer[playerNo].charNo, 0x240);
     coinPos.x = playerPos.x;
@@ -5072,13 +4930,16 @@ void fn_1_F1F4(s32 playerNo, s16 id)
     }
 }
 
+// Day and night board scenery models loaded by MB1_Create.
 u32 lbl_1_data_3CC[6] = {
-    0x00D70006, 0x00D70007, 0x00D70012,
-    0x00D70013, 0x00D70014, 0,
+    W01_MODEL_BOARD_SCENERY_DAY_1, W01_MODEL_BOARD_SCENERY_DAY_2,
+    W01_MODEL_BOARD_SCENERY_DAY_3, W01_MODEL_BOARD_SCENERY_DAY_4,
+    W01_MODEL_BOARD_SCENERY_DAY_5, 0,
 };
 
 u32 lbl_1_data_3E4[4] = {
-    0x00D70006, 0x00D70007, 0x00D70015, 0,
+    W01_MODEL_BOARD_SCENERY_DAY_1, W01_MODEL_BOARD_SCENERY_DAY_2,
+    W01_MODEL_BOARD_SCENERY_NIGHT_3, 0,
 };
 
 u32 *lbl_1_data_3F4[2] = {
@@ -5126,8 +4987,8 @@ HuVecF lbl_1_data_4E0[1] = {
     { -1314.0f, 3120.0f, 1251.0f },
 };
 
-int lbl_1_data_4EC[2] = { 0x00D70021, -1 };
-int lbl_1_data_4F4[2] = { 0x00D80021, -1 };
+int lbl_1_data_4EC[2] = { W01_MODEL_COIN_FIELD_DAY, -1 };
+int lbl_1_data_4F4[2] = { W01_MODEL_COIN_FIELD_NIGHT, -1 };
 int *lbl_1_data_4FC[2] = { lbl_1_data_4EC, lbl_1_data_4F4 };
 char lbl_1_data_504[9] = "b01_m210";
 char lbl_1_data_50D[11] = "b01_m210n";
@@ -5136,18 +4997,24 @@ HuVecF lbl_1_data_518 = { -19.0f, 0.0f, 0.0f };
 HuVecF lbl_1_data_524 = { 0.0f, 400.0f, 0.0f };
 s32 lbl_1_data_530[4] = { 6, 8, 10, 12 };
 s32 lbl_1_data_540[4] = { 5, 4, 3, 2 };
-u32 lbl_1_data_550[3] = { 0x00D7000F, 0x00D70010, 0x00D70011 };
+u32 lbl_1_data_550[3] = {
+    W01_MODEL_MASU_EFFECT_K_H1,
+    W01_MODEL_MASU_EFFECT_K_H2,
+    W01_MODEL_MASU_EFFECT_K_H3,
+};
 char lbl_1_data_55C[5] = "k_h1";
 char lbl_1_data_561[5] = "k_h2";
 char lbl_1_data_566[6] = "k_h3";
 char *lbl_1_data_56C[3] = {
     lbl_1_data_55C, lbl_1_data_561, lbl_1_data_566,
 };
-u32 lbl_1_data_578[2] = { 0x00D70023, 0x00D70026 };
-u32 lbl_1_data_580[2] = { 0x00D70024, 0x00D70027 };
+u32 lbl_1_data_578[2] = { W01_MODEL_MASU_SF_DAY, W01_MODEL_MASU_MF_DAY };
+u32 lbl_1_data_580[2] = { W01_MODEL_MASU_SF_NIGHT, W01_MODEL_MASU_MF_NIGHT };
 u32 lbl_1_data_588[2][3] = {
-    { 0x00400000, 0x00800000, 0x04000000 },
-    { 0x00100000, 0x00200000, 0x02000000 },
+    { W01_MASU_ATTR_SPECIAL_A, W01_MASU_ATTR_SPECIAL_A_LINK_0,
+        W01_MASU_ATTR_SPECIAL_A_LINK_1 },
+    { W01_MASU_ATTR_SPECIAL_B, W01_MASU_ATTR_SPECIAL_B_LINK_0,
+        W01_MASU_ATTR_SPECIAL_B_LINK_1 },
 };
 char lbl_1_data_5A0[5] = "sf_h";
 char lbl_1_data_5A5[7] = "mf_h";
@@ -5157,12 +5024,17 @@ HuVecF *lbl_1_data_5B4[4] = {
 };
 s32 lbl_1_data_5C4[4] = { 12, 12, 12, 12 };
 int lbl_1_data_5D4[4] = {
-    0x00130006, 0x00130006, 0x00130007, -1,
+    W01_MODEL_LIGHT_DETAIL_DAY_1, W01_MODEL_LIGHT_DETAIL_DAY_1,
+    W01_MODEL_LIGHT_DETAIL_DAY_2, -1,
 };
 int lbl_1_data_5E4[4] = {
-    0x00130001, 0x00130001, 0x00130004, -1,
+    W01_MODEL_LIGHT_DETAIL_NIGHT_1, W01_MODEL_LIGHT_DETAIL_NIGHT_1,
+    W01_MODEL_LIGHT_DETAIL_NIGHT_2, -1,
 };
-u32 lbl_1_data_5F4[3] = { 0x00D7001C, 0x00D7001D, 0x00D7001E };
+u32 lbl_1_data_5F4[3] = {
+    W01_MODEL_WH_EFFECT_DAY_1, W01_MODEL_WH_EFFECT_DAY_2,
+    W01_MODEL_WH_EFFECT_DAY_3,
+};
 char lbl_1_data_600[5] = "w_h1";
 char lbl_1_data_605[5] = "w_h2";
 char lbl_1_data_60A[6] = "w_h3";
@@ -5208,6 +5080,7 @@ s32 lbl_1_data_71C[25] = {
 };
 HuVecF lbl_1_data_780 = { 0.0f, 0.0f, 20.0f };
 
+// The Biri approach calculation clamps inverse-sine inputs to the valid endpoint angles.
 static inline float fn_1_F66CAsin(float ratio)
 {
     if (ratio >= 1.0f) {
@@ -5219,6 +5092,7 @@ static inline float fn_1_F66CAsin(float ratio)
     return asinf(ratio);
 }
 
+// The Biri group update advances one member's idle, circling, attack, or return movement.
 void fn_1_F66C(W01_BIRI_ENTRY *entry)
 {
     W01_BIRI_WORK *work;
@@ -5249,9 +5123,9 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
                 PSVECSubtract(&playerPos, &entry->pos, &delta);
                 angle = (atan2(delta.x, delta.z) / M_PI) * 180.0f;
                 distance = PSVECMag(&delta);
-                if (distance < entry->unk48) {
-                    ratio = entry->unk48
-                        / sqrtf((entry->unk48 * entry->unk48)
+                if (distance < entry->orbitRadius) {
+                    ratio = entry->orbitRadius
+                        / sqrtf((entry->orbitRadius * entry->orbitRadius)
                             + (distance * distance));
                     if (ratio >= 1.0f) {
                         pitch = 1.5707964f;
@@ -5263,7 +5137,7 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
                     rotY = 1.5707964f - pitch;
                 } else if (distance != 0.0f) {
                     rotY = 1.5707964f
-                        - fn_1_F66CAsin(entry->unk48 / distance);
+                        - fn_1_F66CAsin(entry->orbitRadius / distance);
                 } else {
                     rotY = 0.0f;
                 }
@@ -5276,25 +5150,25 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
                 }
                 entry->targetY = 150.0f + playerPos.y
                     - (100.0f * (1.3f * frandf()));
-                entry->stateValue = 0.0f;
-            } else if (entry->unk54 != 0) {
-                entry->unk54--;
+                entry->orbitRadiusTransition = 0.0f;
+            } else if (entry->delayTimer != 0) {
+                entry->delayTimer--;
             } else if (entry->timer > entry->maxTime) {
                 entry->timer = 0;
-                entry->unk54 = (s16)(30.0f + (30.0f * frandf()));
-                work->phaseVelocity += 0.5f * mbCosDeg(entry->angle);
+                entry->delayTimer = (s16)(30.0f + (30.0f * frandf()));
+                work->phaseVelocity += 0.5f * mbCosDeg(entry->phaseAngle);
             } else {
                 time = (float)entry->timer++ / (float)entry->maxTime;
                 angle = 360.0f * time;
-                pos.x = 0.5f * (entry->unk2C * mbSinDeg(angle));
-                pos.y = entry->unk2C * (mbCosDeg(angle) - 1.0f);
+                pos.x = 0.5f * (entry->bobAmplitude * mbSinDeg(angle));
+                pos.y = entry->bobAmplitude * (mbCosDeg(angle) - 1.0f);
                 pos.z = 0.0f;
-                mbMtxRotAxisDeg(matrix, 'y', entry->unk30);
+                mbMtxRotAxisDeg(matrix, 'y', entry->spinAngle);
                 PSMTXMultVec(matrix, &pos, &pos);
-                entry->unk30 += entry->unk34;
+                entry->spinAngle += entry->spinSpeed;
                 mbMtxRot(matrix, work->rot.x, work->rot.y, work->rot.z);
-                mtxTransCat(matrix, entry->unk10.x, entry->unk10.y,
-                    entry->unk10.z);
+                mtxTransCat(matrix, entry->homePos.x, entry->homePos.y,
+                    entry->homePos.z);
                 PSMTXMultVec(matrix, &pos, &pos);
                 PSVECSubtract(&pos, &entry->pos, &delta);
                 entry->pos = pos;
@@ -5307,21 +5181,23 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
         }
 
         case 1: {
-            if (entry->unk48 != entry->unk4C || entry->stateValue != 0.0f) {
-                entry->stateValue -= 20.0f;
-                entry->unk48 += (1.0f / 60.0f) * entry->stateValue;
-                if (entry->unk48 < entry->unk4C && entry->stateValue < 0.0f) {
+            if (entry->orbitRadius != entry->targetOrbitRadius ||
+                entry->orbitRadiusTransition != 0.0f) {
+                entry->orbitRadiusTransition -= 20.0f;
+                entry->orbitRadius += (1.0f / 60.0f) * entry->orbitRadiusTransition;
+                if (entry->orbitRadius < entry->targetOrbitRadius &&
+                    entry->orbitRadiusTransition < 0.0f) {
                     entry->orbitAngle += entry->orbitDirection
-                        * ((360.0f * (entry->unk4C - entry->unk48))
-                            / (6.2831855f * entry->unk4C));
-                    entry->stateValue = 0.0f;
-                    entry->unk48 = entry->unk4C;
+                        * ((360.0f * (entry->targetOrbitRadius - entry->orbitRadius))
+                            / (6.2831855f * entry->targetOrbitRadius));
+                    entry->orbitRadiusTransition = 0.0f;
+                    entry->orbitRadius = entry->targetOrbitRadius;
                 }
             }
             mbPlayerPosGet(playerNo, &playerPos);
-            pos.x = playerPos.x - (entry->unk48 * mbSinDeg(entry->orbitAngle));
+            pos.x = playerPos.x - (entry->orbitRadius * mbSinDeg(entry->orbitAngle));
             pos.y = entry->targetY;
-            pos.z = playerPos.z - (entry->unk48 * mbCosDeg(entry->orbitAngle));
+            pos.z = playerPos.z - (entry->orbitRadius * mbCosDeg(entry->orbitAngle));
             PSVECSubtract(&pos, &entry->pos, &delta);
             rot.x = (atan2(-delta.y,
                 sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / M_PI)
@@ -5400,12 +5276,12 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
             time = (float)entry->timer++ / (float)entry->maxTime;
             if (entry->timer > entry->maxTime) {
                 entry->state = 1;
-                entry->stateValue = 600.0f;
+                entry->orbitRadiusTransition = 600.0f;
             }
             break;
 
         case 6: {
-            PSVECSubtract(&entry->unk10, &entry->pos, &delta);
+            PSVECSubtract(&entry->homePos, &entry->pos, &delta);
             rot.x = (atan2(-delta.y,
                 sqrtf((delta.z * delta.z) + (delta.x * delta.x))) / M_PI)
                 * 180.0f;
@@ -5413,9 +5289,9 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
             distance = PSVECMag(&delta);
             if ((distance < 50.0f) || (++entry->timer > entry->maxTime)) {
                 entry->state = 0;
-                entry->pos = entry->unk10;
+                entry->pos = entry->homePos;
                 entry->timer = 0;
-                entry->maxTime = entry->unk5A;
+                entry->maxTime = entry->idleDuration;
             } else {
                 angle = 360.0f * (100.0f / (6.2831855f * distance));
                 if (angle > 20.0f) {
@@ -5434,6 +5310,7 @@ void fn_1_F66C(W01_BIRI_ENTRY *entry)
     mbObjRotSetV(entry->modelId, &entry->rot);
 }
 
+// The Biri state query reports when every member is idle or already returning home.
 BOOL fn_1_1089C(void)
 {
     W01_BIRI_ENTRY *entry = lbl_1_bss_EFC.entry;
@@ -5447,23 +5324,27 @@ BOOL fn_1_1089C(void)
     return TRUE;
 }
 
+// After the first Biri hit, cancel remaining approaches and ease them back into circling.
 void fn_1_10900(void)
 {
     W01_BIRI_ENTRY *entry = lbl_1_bss_EFC.entry;
+    // This color is initialized but unused by the Biri movement loop.
     GXColor color = { 0, 0, 0, 255 };
     s32 i;
 
     for (i = 0; i < 5; i++, entry++) {
         if (entry->state >= 1 && entry->state <= 4) {
             entry->state = 1;
-            entry->stateValue = 600.0f;
+            entry->orbitRadiusTransition = 600.0f;
         }
     }
 }
 
+// The Biri event starts a timed approach for the first count members before their hit.
 void fn_1_10998(s32 count)
 {
     W01_BIRI_ENTRY *entry = lbl_1_bss_EFC.entry;
+    // This color is initialized but unused by the approach setup loop.
     GXColor color = { 0, 0, 0, 255 };
     s32 i;
 
@@ -5480,6 +5361,7 @@ void fn_1_10998(s32 count)
     }
 }
 
+// MB1_Create calls this to load the event's particle models and day/night space data.
 void fn_1_10AA8(void)
 {
     W01_PARTICLE_WORK *work = &lbl_1_bss_EE8;
@@ -5489,24 +5371,27 @@ void fn_1_10AA8(void)
     for (i = 0; i < 5; i++) {
         work->modelId[i] = mbObjCreate(
             (lbl_1_data_7A8[i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+            | (MBTimeDayGet() ? W01_DATA_DAY : W01_DATA_NIGHT),
             NULL, FALSE);
         if (i != 0) {
             mbObjDispSet(work->modelId[i], FALSE);
         }
     }
     work->modelId[5] = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x30, NULL, FALSE);
+        DATANUM((MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT), 48),
+        NULL, FALSE);
     mbObjDispSet(work->modelId[5], FALSE);
     layer = mbMasuLayerGet();
     mbMasuLayerSet(1);
-    mbMasuDataRead((MBTimeDayGet() ? 0xD70000 : 0xD80000) | 1);
+    mbMasuDataRead((MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT)
+        | 1);
     mbMasuLayerSet(layer);
     lbl_1_bss_EE4 = HuSprAnimDataRead(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x31);
+        DATANUM((MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT), 49));
     HuSprAnimLock(lbl_1_bss_EE4);
 }
 
+// MB1_Kill releases the button-mashing event's particle animation when the board closes.
 void fn_1_10C68(void)
 {
     if (lbl_1_bss_EE4) {
@@ -5515,6 +5400,7 @@ void fn_1_10C68(void)
     }
 }
 
+// The question-mark-space callback runs the five-second button-mashing event and may move players.
 void fn_1_10CB8(s32 playerNo, s16 id)
 {
     W01_PARTICLE_WORK *work;
@@ -5566,9 +5452,9 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     inputF = 0;
     soundId = -1;
     work = &lbl_1_bss_EE8;
-    motionId = mbPlayerMotionCreate(playerNo, 0x930064);
+    motionId = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 100));
     mbPlayerPosGet(playerNo, &initialPos);
-    firstMasuId = mbMasuAttrFindLink(id, 0x2000);
+    firstMasuId = mbMasuAttrFindLink(id, W01_MASU_ATTR_LINK);
     mbMasuPosGet(firstMasuId, &firstTarget);
     PSVECSubtract(&firstTarget, &initialPos, &direction);
     targetAngle = (float)((atan2(direction.x, direction.z) / M_PI) * 180.0);
@@ -5596,7 +5482,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbPlayerWorkGet(playerNo)->_unk08 = firstCountdown;
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, 0x40000001);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
 
     secondMasuId = mbMasuLinkGet(firstMasuId, 0);
     mbMasuPosGet(secondMasuId, &secondTarget);
@@ -5627,13 +5513,13 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbPlayerWorkGet(playerNo)->_unk08 = secondCountdown;
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, 0x40000001);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
 
     mbCameraMovePos(&lbl_1_data_7BC, &lbl_1_data_7C8, &lbl_1_data_7D4,
         4500.0f, -1.0f, 30);
     mbCameraMoveWait();
     HuPrcSleep(12);
-    winNo = mbWinCreate(2, 0x2F000F, -1);
+    winNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W01, 15), -1);
     mbWinWait(winNo);
 
     motionTime = (s32)mbPlayerMotionTimeGet(playerNo);
@@ -5642,7 +5528,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     Hu3DMotionCalc(mbPlayerModelIDGet(playerNo));
     Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(playerNo)),
         CharModelItemHookGet(GwPlayer[playerNo].charNo, 4, 0), hookMtx);
-    mbPlayerMotionSet(playerNo, 1, 0x40000001);
+    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
     mbPlayerMotionTimeSet(playerNo, (float)motionTime);
     Hu3DMotionCalc(mbPlayerModelIDGet(playerNo));
     mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 30.0f, 0);
@@ -5663,29 +5549,29 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         CharModelItemHookGet(GwPlayer[playerNo].charNo, 4, 0),
         work->modelId[5]);
 
-    helpWinNo = mbWinCreateHelp(0x2F0014);
+    helpWinNo = mbWinCreateHelp(MESSNUM(MESS_BOARD_W01, 20));
     mbWinPosSet(helpWinNo, 192, 336);
     padNo = GwPlayer[playerNo].padNo;
     mashCount = 0;
     {
         idleTime = 0;
         motionSpeed = 0.0f;
-        mbObjAttrSet(mbPlayerObjIDGet(playerNo), 0x40000001);
+        mbObjAttrSet(mbPlayerObjIDGet(playerNo), HU3D_MOTATTR_LOOP);
         transitionF = 0;
         gameMesId = GameMesCreate(1, 5, -1, -1);
-        HuSprGrpDrawNoSet(GameMesGet(gameMesId)->grpId[0], 0x20);
+        HuSprGrpDrawNoSet(GameMesGet(gameMesId)->grpId[0], 32);
         timer = 300;
         for (i = 0; (u32)i <= 300; i++) {
             if (GwPlayer[playerNo].comF) {
                 if (frandf() < 0.2f) {
-                    buttons = 0x100;
+                    buttons = PAD_BUTTON_A;
                 } else {
                     buttons = 0;
                 }
             } else {
                 buttons = HuPadBtnDown[padNo];
             }
-            if (buttons & 0x100) {
+            if (buttons & PAD_BUTTON_A) {
                 if (mbObjMotionEndCheck(work->modelId[1])) {
                     if (mashCount == 0) {
                         mbObjDispSet(work->modelId[0], FALSE);
@@ -5737,7 +5623,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
     mbStatusDispForceSetAll(FALSE);
     mbCameraMovePos(NULL, NULL, NULL, 3200.0f, -1.0f, -1);
     mbCameraMoveWait();
-    mbPlayerMotionSet(playerNo, 1, 0x40000001);
+    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
     mbPlayerPosReset(playerNo);
     mbPlayerColSnapPlayerSet(playerNo, TRUE);
     mbObjHookReset(mbPlayerObjIDGet(playerNo));
@@ -5746,14 +5632,14 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbObjDispSet(work->modelId[i], FALSE);
     }
     mbObjDispSet(work->modelId[2], TRUE);
-    mbObjAttrSet(work->modelId[2], 0x40000041);
+    mbObjAttrSet(work->modelId[2], (HU3D_MOTATTR_LOOP | HU3D_MOTATTR_SHAPE_LOOP));
     mbObjMotionTimeSet(work->modelId[2], 0.0f);
     mbObjMotionSpeedSet(work->modelId[2], 1.0f);
     mbObjMotionShapeTimeSet(work->modelId[2], 0.0f);
     mbObjMotionShapeSpeedSet(work->modelId[2], 1.0f);
     mbWipeDissolveFadeIn();
     soundId = mbAudFXPlay(0x599);
-    winNo = mbWinCreate(2, 0x2F0010, -1);
+    winNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W01, 16), -1);
     mbWinWait(winNo);
 
     mbMasuLayerSet(1);
@@ -5779,7 +5665,7 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         for (i = 0; i < 4; i++) {
             omVibrate((s16)i, 20, 20, 0);
         }
-        winNo = mbWinCreate(2, 0x2F0011, -1);
+        winNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W01, 17), -1);
         HuPrcSleep(17);
         fn_1_11C14(&lbl_1_data_7E0);
         mbWinWait(winNo);
@@ -5793,10 +5679,10 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbCameraMovePos(&lbl_1_data_7BC, &lbl_1_data_7C8, &lbl_1_data_7D4,
             4500.0f, -1.0f, -1);
         mbWipeDissolveFadeIn();
-        winNo = mbWinCreate(2, 0x2F0013, -1);
+        winNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W01, 19), -1);
         mbWinWait(winNo);
     } else {
-        mbObjAttrReset(work->modelId[2], 0x40000041);
+        mbObjAttrReset(work->modelId[2], (HU3D_MOTATTR_LOOP | HU3D_MOTATTR_SHAPE_LOOP));
         while (!mbObjMotionEndCheck(work->modelId[2])) {
             HuPrcVSleep();
         }
@@ -5807,22 +5693,25 @@ void fn_1_10CB8(s32 playerNo, s16 id)
         mbObjMotionSpeedSet(work->modelId[4], 1.0f);
         mbObjMotionShapeTimeSet(work->modelId[4], 0.0f);
         mbObjMotionShapeSpeedSet(work->modelId[4], 1.0f);
-        winNo = mbWinCreate(2, 0x2F0012, -1);
+        winNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W01, 18), -1);
         mbWinWait(winNo);
     }
     mbPlayerMotionKill(playerNo, motionId);
 }
 
 u32 lbl_1_data_7A8[5] = {
-    0x00D7002B, 0x00D7002C, 0x00D7002D, 0x00D7002E, 0x00D7002F,
+    DATANUM(DATA_w01, 43), DATANUM(DATA_w01, 44), DATANUM(DATA_w01, 45), DATANUM(DATA_w01, 46),
+    DATANUM(DATA_w01, 47),
 };
 HuVecF lbl_1_data_7BC = { 0.0f, 950.0f, 3000.0f };
 HuVecF lbl_1_data_7C8 = { -19.0f, 0.0f, 0.0f };
 HuVecF lbl_1_data_7D4 = { 0.0f, 250.0f, 0.0f };
 HuVecF lbl_1_data_7E0 = { 0.0f, 900.0f, 2500.0f };
 char lbl_1_data_7EC[12] = "b01_m082";
-u32 lbl_1_data_7F8[3] = { 0x00D70034, 0x00D70035, 0x00D70036 };
+u32 lbl_1_data_7F8[3] = { DATANUM(DATA_w01, 52), DATANUM(DATA_w01, 53), DATANUM(DATA_w01, 54) };
 
+// A successful button-mashing event starts a burst of one hundred particles at the supplied
+// position.
 void fn_1_11C14(HuVecF *pos)
 {
     W01_PARTICLE_WORK *work = &lbl_1_bss_EE8;
@@ -5833,6 +5722,7 @@ void fn_1_11C14(HuVecF *pos)
     Hu3DModelPosSetV(work->particleModelId, pos);
 }
 
+// The event particle hook initializes the burst, applies gravity and fading, then removes it.
 void fn_1_11C84(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
 {
     GXColor color = { 255, 255, 192, 192 };
@@ -5885,6 +5775,7 @@ void fn_1_11C84(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
     }
 }
 
+// After the successful event, move each eligible player to the space linked in the alternate layer.
 void fn_1_12090(void)
 {
     s16 motionId[2];
@@ -5909,8 +5800,8 @@ void fn_1_12090(void)
     mbMasuLayerSet(0);
     for (playerNo = 0; playerNo < 4; playerNo++) {
         if (nextMasuId[playerNo] != 0) {
-            motionId[0] = mbPlayerMotionCreate(playerNo, 0x930012);
-            motionId[1] = mbPlayerMotionCreate(playerNo, 0x930013);
+            motionId[0] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 18));
+            motionId[1] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 19));
             mbCameraPlayerViewSetFast(playerNo, 2);
             mbCameraShakeSet(30, 500.0f);
             mbWipeDissolveFadeIn();
@@ -5939,7 +5830,7 @@ void fn_1_12090(void)
             HuPrcSleep(30);
             mbWipeDissolveFadeOut();
             mbPlayerRotYSet(playerNo, 0.0f);
-            mbPlayerMotionSet(playerNo, 1, 0x40000001);
+            mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
             mbPlayerColSnapPlayerSet(playerNo, TRUE);
             mbPlayerMotionKill(playerNo, motionId[0]);
             mbPlayerMotionKill(playerNo, motionId[1]);
@@ -5948,6 +5839,7 @@ void fn_1_12090(void)
     }
 }
 
+// The turn-start hook restores the button-mashing event's idle model and hides its outcome models.
 void fn_1_12454(void)
 {
     W01_PARTICLE_WORK *work = &lbl_1_bss_EE8;
@@ -5962,25 +5854,28 @@ void fn_1_12454(void)
     }
 }
 
+// MB1_Create builds the gate models and stores the gate and linked-space positions.
 void fn_1_124C8(void)
 {
     W01_GATE_WORK *work = &lbl_1_bss_EB4;
     s16 linkMasuId;
 
-    work->baseModelId = mbObjCreate(0x130008, NULL, FALSE);
+    work->baseModelId = mbObjCreate(W01_MODEL_GATE_BASE, NULL, FALSE);
     mbObjDispSet(work->baseModelId, FALSE);
     mbObjLayerSet(work->baseModelId, 3);
     mbObjScaleSet(work->baseModelId, 2.0f, 2.0f, 2.0f);
     work->hookModelId = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x18, NULL, FALSE);
-    mbObjAttrSet(work->hookModelId, 0x40000002);
+        DATANUM((MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT), 24),
+        NULL, FALSE);
+    mbObjAttrSet(work->hookModelId, W01_OBJ_ATTR_EFFECT_PAUSED);
     work->hookChildModelId = mbObjCreate(
-        (MBTimeDayGet() ? 0xD70000 : 0xD80000) | 0x19, NULL, FALSE);
-    mbObjAttrSet(work->hookChildModelId, 0x40000001);
+        DATANUM((MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT), 25),
+        NULL, FALSE);
+    mbObjAttrSet(work->hookChildModelId, HU3D_MOTATTR_LOOP);
     mbObjHookSet(work->hookModelId, lbl_1_data_7EC, work->hookChildModelId);
-    work->masuId = mbMasuFind_MAttrIdGet(-1, 0x01000000);
+    work->masuId = mbMasuFind_MAttrIdGet(-1, W01_MASU_ATTR_MOVE_HOOK_STAR);
     mbMasuPosGet(work->masuId, &work->masuPos);
-    linkMasuId = mbMasuAttrFindLink(work->masuId, 0x2000);
+    linkMasuId = mbMasuAttrFindLink(work->masuId, W01_MASU_ATTR_LINK);
     mbMasuPosGet(linkMasuId, &work->linkPos);
     PSVECSubtract(&work->masuPos, &work->linkPos, &work->direction);
     work->rotY = (float)((atan2(work->direction.x, work->direction.z) / M_PI)
@@ -5988,9 +5883,12 @@ void fn_1_124C8(void)
     mbObjRotSet(work->baseModelId, 0.0f, work->rotY, 0.0f);
     mbObjRotSet(work->hookModelId, 0.0f, work->rotY, 0.0f);
     mbObjPosSetV(work->hookModelId, &work->linkPos);
-    HuDataDirClose(0x130000);
+    HuDataDirClose(W01_DATA_DIR_LIGHT_EFFECT);
 }
 
+// fn_1_760 calls this for the gate space; the daytime branch shows its restriction.
+// At night, animate the gate effect model and turn the player before invoking Teresa
+// at the gate space.
 void fn_1_126EC(s32 playerNo, s16 id)
 {
     W01_GATE_WORK *work = &lbl_1_bss_EB4;
@@ -6005,7 +5903,7 @@ void fn_1_126EC(s32 playerNo, s16 id)
 
     if (MBTimeDayGet()) {
         mbPlayerMotIdleSet(playerNo);
-        winNo = mbWinCreate(2, 0x2F0015, -1);
+        winNo = mbWinCreate(2, MESSNUM(MESS_BOARD_W01, 21), -1);
         mbWinWait(winNo);
         return;
     }
@@ -6015,7 +5913,7 @@ void fn_1_126EC(s32 playerNo, s16 id)
     mbObjDispSet(work->baseModelId, TRUE);
     mbev_CapTeresaFadeCreate(work->baseModelId);
     hookModelId = work->hookModelId;
-    mbObjAttrReset(hookModelId, 0x40000002);
+    mbObjAttrReset(hookModelId, W01_OBJ_ATTR_EFFECT_PAUSED);
     omVibrate(playerNo, 20, 7, 3);
     target.x = work->linkPos.x + (0.6f * work->direction.x);
     target.y = work->linkPos.y + (0.6f * work->direction.y);
@@ -6048,11 +5946,12 @@ void fn_1_126EC(s32 playerNo, s16 id)
     mbObjDispSet(work->baseModelId, FALSE);
     mbev_CapCallTeresa(playerNo, work->masuId);
     mbObjMotionTimeSet(work->hookModelId, 0.0f);
-    mbObjAttrSet(work->hookModelId, 0x40000002);
+    mbObjAttrSet(work->hookModelId, W01_OBJ_ATTR_EFFECT_PAUSED);
     mbMoveNumDispSet(playerNo, TRUE);
     mbWipeDissolveFadeIn();
 }
 
+// MB1_Create initializes the drifting ambient particles and their draw callback.
 void fn_1_12A4C(void)
 {
     W01_SNOW_PARTICLE *particle;
@@ -6071,7 +5970,7 @@ void fn_1_12A4C(void)
     for (i = 0; i < 3; i++) {
         lbl_1_bss_4A4[i] = HuSprAnimRead(HuDataSelHeapReadNum(
             (lbl_1_data_7F8[i] & 0xFFFF)
-                | (MBTimeDayGet() ? 0xD70000 : 0xD80000),
+                | (MBTimeDayGet() ? W01_DATA_DIR_DAY : W01_DATA_DIR_NIGHT),
             HU_MEMNUM_OVL, HEAP_MODEL));
         HuSprAnimLock(lbl_1_bss_4A4[i]);
     }
@@ -6086,6 +5985,7 @@ void fn_1_12A4C(void)
     lbl_1_bss_EB0 = TRUE;
 }
 
+// MB1_Kill releases the three ambient particle textures when the board closes.
 void fn_1_12CF0(void)
 {
     s32 i;
@@ -6096,6 +5996,7 @@ void fn_1_12CF0(void)
     }
 }
 
+// The model draw hook renders drifting daytime particles, fading those close to the camera.
 void fn_1_12D58(HU3D_MODEL *modelP, Mtx *mtx)
 {
     W01_SNOW_PARTICLE *particle;
@@ -6161,6 +6062,7 @@ void fn_1_12D58(HU3D_MODEL *modelP, Mtx *mtx)
     }
 }
 
+// Ambient particle setup builds the textured quad display list used by its draw hook.
 u32 fn_1_130C4(void **displayList)
 {
     void *buffer;
@@ -6168,10 +6070,10 @@ u32 fn_1_130C4(void **displayList)
     void *list;
     u32 size;
 
-    buffer = HuMemDirectMallocNum(HEAP_HEAP, 0x2000, HU_MEMNUM_OVL);
+    buffer = HuMemDirectMallocNum(HEAP_HEAP, 8192, HU_MEMNUM_OVL);
     listBuffer = buffer;
-    DCInvalidateRange(listBuffer, 0x2000);
-    GXBeginDisplayList(listBuffer, 0x2000);
+    DCInvalidateRange(listBuffer, 8192);
+    GXBeginDisplayList(listBuffer, 8192);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     GXPosition3f32(-25.0f, 0.0f, 25.0f);
     GXTexCoord2f32(1.0f, 0.0f);
@@ -6190,6 +6092,7 @@ u32 fn_1_130C4(void **displayList)
     return size;
 }
 
+// The board update drifts the ambient particles with wind and wraps them around the camera view.
 void fn_1_1330C(void)
 {
     W01_SNOW_PARTICLE *particle = lbl_1_bss_4B0;
@@ -6285,6 +6188,7 @@ void fn_1_139E8(s32 value)
     lbl_1_bss_EB0 = value;
 }
 
+// New-board setup shuffles the candidate Star spaces and starts at the first shuffled entry.
 void fn_1_139F8(void)
 {
     s32 i;
@@ -6293,7 +6197,7 @@ void fn_1_139F8(void)
     u8 value;
 
     lbl_1_bss_1618->index = 0;
-    lbl_1_bss_1618->count = mbMasuMAttrListGet(0x80, NULL);
+    lbl_1_bss_1618->count = mbMasuMAttrListGet((1 << 7), NULL);
     for (i = 0; i < lbl_1_bss_1618->count; i++) {
         lbl_1_bss_1618->order[i] = i;
     }
@@ -6306,17 +6210,21 @@ void fn_1_139F8(void)
     }
 }
 
+// Board setup activates the current shuffled Star space and creates its Star marker; it ignores the
+// returned candidate count.
 void fn_1_13B38(void)
 {
     s32 count;
     s16 masuList[8];
 
-    count = mbMasuMAttrListGet(0x80, masuList);
+    count = mbMasuMAttrListGet((1 << 7), masuList);
     lbl_1_bss_1616 = masuList[lbl_1_bss_1618->order[lbl_1_bss_1618->index]];
     mbMasuTypeSet(lbl_1_bss_1616, 7);
     mbStarMasuNextSet(lbl_1_bss_1616);
 }
 
+// The Star-move hook restores the old space to blue and advances to the next shuffled Star space.
+// It discards the old position and refreshed candidate count.
 void fn_1_13BC4(void)
 {
     s32 count;
@@ -6326,7 +6234,7 @@ void fn_1_13BC4(void)
     mbMasuPosGet(lbl_1_bss_1616, &pos);
     mbMasuTypeSet(lbl_1_bss_1616, 1);
     lbl_1_bss_1618->index = (lbl_1_bss_1618->index + 1) % lbl_1_bss_1618->count;
-    count = mbMasuMAttrListGet(0x80, masuList);
+    count = mbMasuMAttrListGet((1 << 7), masuList);
     lbl_1_bss_1616 = masuList[lbl_1_bss_1618->order[lbl_1_bss_1618->index]];
     mbMasuTypeSet(lbl_1_bss_1616, 7);
     mbStarMasuNextSet(lbl_1_bss_1616);
@@ -6337,6 +6245,7 @@ s16 fn_1_13CBC(s32 playerNo)
     return mbMasuFind_TypeIdGet(GwPlayer[playerNo].masuId, 7, TRUE, TRUE);
 }
 
+// MB1_Create prepares thirty-two hidden coin models for the board's coin-loss effects.
 void fn_1_13D04(void)
 {
     W01_COIN_EFFECT *effect;
@@ -6344,13 +6253,16 @@ void fn_1_13D04(void)
     s16 modelId;
 
     for (effect = lbl_1_bss_0, i = 0; i < 32; i++, effect++) {
-        modelId = mbObjCreate(mbBoardDataNumGet(0x50004), NULL, TRUE);
+        modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_board, 4)), NULL, TRUE);
         effect->modelId = modelId;
         effect->active = FALSE;
         mbObjDispSet(effect->modelId, FALSE);
     }
 }
 
+// Coin-loss events search for inactive coin effects and launch them.
+// The pointer stays advanced between coins while each search allows 32 entries, so later searches
+// can pass the end of the pool.
 void fn_1_13D8C(const HuVecF *pos, s32 count)
 {
     W01_COIN_EFFECT *effect;
@@ -6381,6 +6293,7 @@ void fn_1_13D8C(const HuVecF *pos, s32 count)
     }
 }
 
+// The board update moves and spins active coin effects, fading them during their final five frames.
 void fn_1_13F50(void)
 {
     W01_COIN_EFFECT *effect;
@@ -6407,21 +6320,6 @@ void fn_1_13F50(void)
         }
     }
 }
-
-#pragma push
-#pragma section code_type ".text.after_common"
-
-void fn_1_1644C(void)
-{
-    lbl_1_bss_161C = OSGetTick();
-}
-
-OSTick fn_1_16478(void)
-{
-    return OSGetTick() - lbl_1_bss_161C;
-}
-
-#pragma pop
 
 float *lbl_1_bss_1620;
 OSTick lbl_1_bss_161C;

@@ -1,3 +1,4 @@
+// Interfaces for Towering Treetop board objects and motion helpers.
 #ifndef REL_W01DLL_WORLD01_H
 #define REL_W01DLL_WORLD01_H
 
@@ -17,14 +18,17 @@ int mbCapThrowColCreate(int dataNum);
 
 void *mbMalloc(s32 size);
 
-float mbBezierCalcSlope(float a, float b, float c, float t);
-float mbHermiteCalcSlope(float a, float b, float c, float d, float t);
-float mbAngleLerp(float a, float b, float t);
-float mbSinDeg(float angle);
-float mbCosDeg(float angle);
-float mbSinRad(float angle);
-void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angle);
-void mbMtxRot(Mtx mtx, float x, float y, float z);
+/* Curve derivatives use normalized progress from the start to the end value. */
+float mbBezierCalcSlope(float start, float control, float end, float progress);
+float mbHermiteCalcSlope(float start, float end, float startTangent, float endTangent,
+    float progress);
+/* Interpolates angles in degrees along the shortest arc. */
+float mbAngleLerp(float startAngle, float endAngle, float progress);
+float mbSinDeg(float angleDegrees);
+float mbCosDeg(float angleDegrees);
+float mbSinRad(float angleRadians);
+void mbMtxRotAxisDeg(Mtx mtx, u8 axis, float angleDegrees);
+void mbMtxRot(Mtx mtx, float xDegrees, float yDegrees, float zDegrees);
 
 void mbScrollInit(int dataNum);
 void mbMapCameraSet(const HuVecF *rot, const HuVecF *pos, float zoom);
