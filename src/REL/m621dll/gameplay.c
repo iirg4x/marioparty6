@@ -1,3 +1,4 @@
+/* Player, target-stack, camera, sound and effect behavior for the minigame. */
 #include "REL/m621dll.h"
 #include "game/audio.h"
 #include "game/data.h"
@@ -9,20 +10,25 @@
 #include "game/gamework.h"
 #include "game/gamemes.h"
 
+#define M621_SE_TARGET_APPEAR 1775
+#define M621_SE_SEGMENT_HIT 1776
+#define M621_SE_TARGET_COLLAPSE 1777
+#define M621_SE_ROUND_START 1778
+#define M621_AVAILABLE_COLLISION_MASK 0xFFFFFFFEU
+
 struct M621Effect_s {
-    s16 active;
-    HU3D_MODELID model;
+    s16 active; /* Nonzero while the linked effect model is playing. */
+    HU3D_MODELID model; /* Linked model instance for this effect. */
 };
 
 void fn_1_5168(OMOBJ *obj);
 
 struct M621Environment_s {
-    /* The 16-byte allocation's first four bytes have no recovered access. */
-    u8 unk_00[4];
-    OMOBJ *modelObj;
-    HU3D_MODELID hookModel;
-    HU3D_MOTIONID hookMotion;
-    HU3D_MODELID model;
+    u8 reservedBytes[4]; /* Unused bytes; their game meaning is unknown. */
+    OMOBJ *modelObj; /* Scene model object containing the stage assets. */
+    HU3D_MODELID hookModel; /* Hook model attached to the character model. */
+    HU3D_MOTIONID hookMotion; /* Hook animation motion. */
+    HU3D_MODELID model; /* Character model receiving the hook model. */
 };
 
 M621Environment *lbl_1_bss_4C;
@@ -65,7 +71,6 @@ s32 lbl_1_data_9C[4][2] = {
     {DATANUM(DATA_m621, 23), DATANUM(DATA_m621, 31)},
     {DATANUM(DATA_m621, 24), DATANUM(DATA_m621, 32)}
 };
-/* Unreferenced initializer; vector type inferred from its three float words. */
 HuVecF lbl_1_data_BC = {0.0f, 1.0f, 0.0f};
 char *lbl_1_data_258[21] = {
     "621sambo-samboitiA", "621sambo-samboitiB", "621sambo-samboitiC",
@@ -76,7 +81,7 @@ char *lbl_1_data_258[21] = {
     "621sambo-samboitiQ", "621sambo-samboitiR", "621sambo-samboitiS",
     "621sambo-samboitiT", "621sambo-samboitiU", "621sambo-samboitiV"
 };
-u32 lbl_1_data_2AC = ~1U;
+u32 lbl_1_data_2AC = M621_AVAILABLE_COLLISION_MASK;
 
 unsigned int lbl_1_data_2B0[17] = {
     DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
@@ -96,14 +101,14 @@ HuVecF lbl_1_data_344[4] = {
     {401.0f, 420.0f, 0.0f}, {521.0f, 420.0f, 0.0f}
 };
 
-
-s32 fn_1_420(HuVecF *pos, s16 soundId)
+/* Project a world position to the screen and play a sound with position-based volume and pan. */
+s32 fn_1_420(HuVecF *worldPosition, s16 soundId)
 {
     HuVecF screenPos;
     s16 pan;
     s16 volume;
 
-    Hu3D3Dto2D(pos, HU3D_CAM0, &screenPos);
+    Hu3D3Dto2D(worldPosition, HU3D_CAM0, &screenPos);
     if (screenPos.x > 608.0f) {
         pan = 80;
     } else if (screenPos.x < 32.0f) {
@@ -121,27 +126,33 @@ s32 fn_1_420(HuVecF *pos, s16 soundId)
     return HuAudFXPlayVolPan(soundId, volume, pan);
 }
 
+/* Play a sound at full volume with the requested stereo pan. */
 s32 fn_1_594(s16 pan, s16 soundId)
 {
     return HuAudFXPlayVolPan(soundId, 127, pan);
 }
 
-void fn_1_5C8(s32 sound)
+/* Stop the audio effect identified by its active sound handle. */
+void fn_1_5C8(s32 soundHandle)
 {
-    HuAudFXStop(sound);
+    HuAudFXStop(soundHandle);
 }
 
+/* Round-controller init callback, created by sequence init: initialize state and create camera,
+ * environment, player and effect objects. */
 void fn_1_5F0(OMOBJ *obj)
 {
-    s32 i;
+    s32 playerIndex;
 
+    /* This computes and discards a random value from the current tick; the shared random seed is
+     * unchanged. */
     frandom(OSGetTick());
     lbl_1_bss_8 = _CheckFlag(FLAG_INST_DECA);
     fn_1_A0(10, sizeof(M621Camera), fn_1_B4C);
     lbl_1_bss_4C = fn_1_A0(10, 16, fn_1_D28);
-    for (i = 0; i < 4; i++) {
-        lbl_1_bss_10[i] = fn_1_A0(20, sizeof(M621Player), fn_1_13EC);
-        lbl_1_bss_10[i]->playerNo = i;
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        lbl_1_bss_10[playerIndex] = fn_1_A0(20, sizeof(M621Player), fn_1_13EC);
+        lbl_1_bss_10[playerIndex]->playerNo = playerIndex;
     }
     lbl_1_bss_C = 0;
     fn_1_27A0();
@@ -149,51 +160,55 @@ void fn_1_5F0(OMOBJ *obj)
     fn_1_140(obj, fn_1_70C);
 }
 
+/* Round update: start the round sound on fade-in, then hand updates to the round-phase callback. */
 void fn_1_70C(OMOBJ *obj)
 {
-    M621Round *work = obj->data;
+    M621Round *round = obj->data;
 
     if (MgSeqModeGet() == MGSEQ_MODE_FADEIN) {
-        work->sound = fn_1_594(64, 1778);
-        work->timer = 0;
+        round->sound = fn_1_594(64, M621_SE_ROUND_START);
+        round->timer = 0;
         fn_1_140(obj, fn_1_778);
         return;
     }
 }
 
+/* During fade-in, stop the round-start sound at update 220. In pre-winner mode, select positive-
+* score leaders and ties unless instruction/demo mode is active; the coin helper separately
+* suppresses practice bonuses. */
 void fn_1_778(OMOBJ *obj)
 {
-    s16 i;
-    M621Round *work = obj->data;
+    s16 playerIndex;
+    M621Round *round = obj->data;
     s16 winnerCount;
     s16 bestScore;
     M621Player *winners[4];
 
     if (MgSeqModeGet() == MGSEQ_MODE_FADEIN) {
-        work->timer++;
-        if (work->timer == 220) {
-            HuAudFXStop(work->sound);
+        round->timer++;
+        if (round->timer == 220) {
+            HuAudFXStop(round->sound);
         }
     }
     if (MgSeqModeGet() == MGSEQ_MODE_PREWIN) {
         if (!lbl_1_bss_8) {
             winnerCount = 0;
             bestScore = 0;
-            for (i = 0; i < 4; i++) {
-                if (lbl_1_bss_10[i]->score > 0) {
-                    if (lbl_1_bss_10[i]->score > bestScore) {
-                        winners[0] = lbl_1_bss_10[i];
+            for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+                if (lbl_1_bss_10[playerIndex]->score > 0) {
+                    if (lbl_1_bss_10[playerIndex]->score > bestScore) {
+                        winners[0] = lbl_1_bss_10[playerIndex];
                         winnerCount = 1;
-                        bestScore = lbl_1_bss_10[i]->score;
-                    } else if (bestScore == lbl_1_bss_10[i]->score) {
-                        winners[winnerCount] = lbl_1_bss_10[i];
+                        bestScore = lbl_1_bss_10[playerIndex]->score;
+                    } else if (bestScore == lbl_1_bss_10[playerIndex]->score) {
+                        winners[winnerCount] = lbl_1_bss_10[playerIndex];
                         winnerCount++;
                     }
                 }
             }
-            for (i = 0; i < winnerCount; i++) {
-                winners[i]->winnerF = TRUE;
-                fn_1_52D4(winners[i]->playerNo, 10);
+            for (playerIndex = 0; playerIndex < winnerCount; playerIndex++) {
+                winners[playerIndex]->winnerF = TRUE;
+                fn_1_52D4(winners[playerIndex]->playerNo, 10);
             }
             switch (winnerCount) {
                 case 0:
@@ -215,22 +230,24 @@ void fn_1_778(OMOBJ *obj)
                     break;
             }
         }
-        work->timer = 0;
+        round->timer = 0;
         fn_1_140(obj, fn_1_A5C);
         return;
     }
 }
 
+/* Wait at least 60 updates for all players to face their starting angle, or time out at 180;
+ * instruction/demo mode stores all four scores and fades out, otherwise the sequence advances. */
 void fn_1_A5C(OMOBJ *obj)
 {
-    M621Round *work = obj->data;
-    s32 i;
+    M621Round *round = obj->data;
+    s32 playerIndex;
 
-    work->timer++;
-    if ((lbl_1_bss_C >= 4 && work->timer >= 60) || work->timer >= 180) {
+    round->timer++;
+    if ((lbl_1_bss_C >= 4 && round->timer >= 60) || round->timer >= 180) {
         if (lbl_1_bss_8) {
-            for (i = 0; i < 4; i++) {
-                fn_1_5328(lbl_1_bss_10[i]->playerNo, lbl_1_bss_10[i]->score);
+            for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+                fn_1_5328(lbl_1_bss_10[playerIndex]->playerNo, lbl_1_bss_10[playerIndex]->score);
             }
             MgSeqModeSet(MGSEQ_MODE_FADEOUT);
         } else {
@@ -241,115 +258,137 @@ void fn_1_A5C(OMOBJ *obj)
     }
 }
 
+/* Camera-object init callback, created during round setup: load both camera motions before enabling
+ * the phase callback. */
 void fn_1_B4C(OMOBJ *obj)
 {
-    M621Camera *work = obj->data;
+    M621Camera *camera = obj->data;
 
     Hu3DCameraCreate(HU3D_CAM0);
     Hu3DCameraPerspectiveSet(HU3D_CAM0, 45.0f, 20.0f, 15000.0f, 1.2f);
     Hu3DCameraViewportSet(HU3D_CAM0, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
-    work->motion[0] = Hu3DMotionCreate(HuDataSelHeapReadNum(DATANUM(DATA_m621, 25), HU_MEMNUM_OVL, HEAP_MODEL));
-    work->motion[1] = Hu3DMotionCreate(HuDataSelHeapReadNum(DATANUM(DATA_m621, 26), HU_MEMNUM_OVL, HEAP_MODEL));
-    work->cameraModel = Hu3DModelCameraCreate(work->motion[0], HU3D_CAM0);
-    Hu3DMotionSpeedSet(work->cameraModel, 1.0f);
-    Hu3DCameraMotionStart(work->cameraModel, HU3D_CAM0);
-    work->state = 0;
+    camera->motion[0] =
+        Hu3DMotionCreate(HuDataSelHeapReadNum(DATANUM(DATA_m621, 25), HU_MEMNUM_OVL, HEAP_MODEL));
+    camera->motion[1] =
+        Hu3DMotionCreate(HuDataSelHeapReadNum(DATANUM(DATA_m621, 26), HU_MEMNUM_OVL, HEAP_MODEL));
+    camera->cameraModel = Hu3DModelCameraCreate(camera->motion[0], HU3D_CAM0);
+    Hu3DMotionSpeedSet(camera->cameraModel, 1.0f);
+    Hu3DCameraMotionStart(camera->cameraModel, HU3D_CAM0);
+    camera->unusedState = 0;
     fn_1_140(obj, fn_1_C90);
 }
 
+/* Wait until the sequence enters main mode, then advance to the callback that disables
+ * camera-object updates. */
 void fn_1_C90(OMOBJ *obj)
 {
-    M621Camera *work = obj->data;
+    M621Camera *camera = obj->data;
 
     if (MgSeqModeGet() == MGSEQ_MODE_MAIN) {
-        work->state = 0;
+        camera->unusedState = 0;
         fn_1_140(obj, fn_1_CEC);
         return;
     }
 }
 
+/* Disable the camera object's phase callback after main mode begins. */
 void fn_1_CEC(OMOBJ *obj)
 {
-    M621Camera *work = obj->data;
+    M621Camera *camera = obj->data;
 
     fn_1_140(obj, NULL);
 }
 
+/* Environment-object init callback, created during round setup: load scene models, motions,
+ * collision and hook assets. */
 void fn_1_D28(OMOBJ *obj)
 {
     COL_ATTRPARAM attr;
-    s32 i;
-    M621Environment *work = obj->data;
+    s32 modelIndex;
+    M621Environment *environment = obj->data;
 
-    work->modelObj = omAddObjEx(lbl_1_bss_0, 32730, 5, 2, -1, NULL);
-    for (i = 0; i < 5; i++) {
-        if (lbl_1_data_3C[fn_1_5340()][i] != -1) {
-            work->modelObj->mdlId[i] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                lbl_1_data_3C[fn_1_5340()][i], HU_MEMNUM_OVL, HEAP_MODEL));
+    environment->modelObj = omAddObjEx(lbl_1_bss_0, 32730, 5, 2, -1, NULL);
+    for (modelIndex = 0; modelIndex < 5; modelIndex++) {
+        if (lbl_1_data_3C[fn_1_5340()][modelIndex] != -1) {
+            environment->modelObj->mdlId[modelIndex] = Hu3DModelCreate(HuDataSelHeapReadNum(
+                lbl_1_data_3C[fn_1_5340()][modelIndex], HU_MEMNUM_OVL, HEAP_MODEL));
         } else {
-            work->modelObj->mdlId[i] = 0;
+            /* An absent scene asset uses model ID 0; the loop-attribute pass below still applies to
+             * that ID. */
+            environment->modelObj->mdlId[modelIndex] = 0;
         }
     }
-    for (i = 0; i < 2; i++) {
-        if (lbl_1_data_64[fn_1_5340()][i] != -1) {
-            work->modelObj->mtnId[i] = Hu3DJointMotion(work->modelObj->mdlId[i],
-                HuDataSelHeapReadNum(lbl_1_data_64[fn_1_5340()][i], HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DMotionSet(work->modelObj->mdlId[i], work->modelObj->mtnId[i]);
+    for (modelIndex = 0; modelIndex < 2; modelIndex++) {
+        if (lbl_1_data_64[fn_1_5340()][modelIndex] != -1) {
+            environment->modelObj->mtnId[modelIndex] =
+                Hu3DJointMotion(environment->modelObj->mdlId[modelIndex],
+                                HuDataSelHeapReadNum(lbl_1_data_64[fn_1_5340()][modelIndex],
+                                                     HU_MEMNUM_OVL, HEAP_MODEL));
+            Hu3DMotionSet(environment->modelObj->mdlId[modelIndex],
+                          environment->modelObj->mtnId[modelIndex]);
         } else {
-            work->modelObj->mtnId[i] = 0;
+            environment->modelObj->mtnId[modelIndex] = 0;
         }
     }
-    for (i = 0; i < 4; i++) {
-        Hu3DModelAttrSet(work->modelObj->mdlId[i], HU3D_MOTATTR_LOOP);
+    for (modelIndex = 0; modelIndex < 4; modelIndex++) {
+        Hu3DModelAttrSet(environment->modelObj->mdlId[modelIndex], HU3D_MOTATTR_LOOP);
     }
-    for (i = 4; i < 5; i++) {
-        Hu3DModelDispOff(work->modelObj->mdlId[i]);
+    for (modelIndex = 4; modelIndex < 5; modelIndex++) {
+        Hu3DModelDispOff(environment->modelObj->mdlId[modelIndex]);
     }
-    MgActorColMapInit(&work->modelObj->mdlId[4], 1, 40);
+    MgActorColMapInit(&environment->modelObj->mdlId[4], 1, 40);
     MgActorColAttrParamGet(&attr, 1);
     attr.yDeviate = 0.0f;
     MgActorColAttrParamSet(&attr, 1);
-    work->hookModel = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m621, 20),
+    environment->hookModel = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m621, 20),
         HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(work->hookModel, HU3D_MOTATTR_LOOP);
-    Hu3DModelScaleSet(work->hookModel, 0.6f, 0.6f, 0.6f);
-    work->hookMotion = Hu3DJointMotion(work->hookModel,
+    Hu3DModelAttrSet(environment->hookModel, HU3D_MOTATTR_LOOP);
+    Hu3DModelScaleSet(environment->hookModel, 0.6f, 0.6f, 0.6f);
+    environment->hookMotion = Hu3DJointMotion(environment->hookModel,
         HuDataSelHeapReadNum(DATANUM(DATA_m621, 36), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(work->hookModel, work->hookMotion);
-    work->model = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m621, 19),
+    Hu3DMotionSet(environment->hookModel, environment->hookMotion);
+    environment->model = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m621, 19),
         HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(work->model, HU3D_MOTATTR_LOOP);
-    Hu3DModelHookSet(work->model, "jango_mot", work->hookModel);
+    Hu3DModelAttrSet(environment->model, HU3D_MOTATTR_LOOP);
+    Hu3DModelHookSet(environment->model, "jango_mot", environment->hookModel);
     fn_1_140(obj, NULL);
 }
 
-void fn_1_106C(M621Player *work, s32 motionNo, float blendTime, u32 attr)
+/* Request a character motion when it differs from this helper's cached request; gameplay actor
+ * updates select their own motions separately. */
+void fn_1_106C(M621Player *player, s32 motionNo, float blendTime, u32 motionAttr)
 {
-    if (work->motionNo != motionNo) {
-        work->motionNo = motionNo;
-        CharMotionShiftSet(work->charNo, work->player->omObj->mtnId[motionNo],
-            0.0f, blendTime, attr);
+    if (player->motionNo != motionNo) {
+        player->motionNo = motionNo;
+        CharMotionShiftSet(player->charNo, player->player->omObj->mtnId[motionNo],
+            0.0f, blendTime, motionAttr);
     }
 }
 
-int fn_1_10E8(HuVecF *src, HuVecF *dst)
+/* Normalize a direction for collision response, generating a random fallback when its squared
+* magnitude is below 0.000001. The return value reports whether it met that threshold; callers use
+* the output and ignore the result. */
+int fn_1_10E8(HuVecF *sourceDirection, HuVecF *normalizedDirection)
 {
     int result;
 
-    if (PSVECSquareMag(src) < 0.000001) {
-        dst->x = 0.01f * ((float)(u32)frandmod(20) - 10.0f);
-        dst->z = 0.01f * ((float)(u32)frandmod(20) - 10.0f);
-        dst->y = frandmod(1) != 0U ? 0.01f : -0.01f;
-        PSVECNormalize(dst, dst);
+    if (PSVECSquareMag(sourceDirection) < 0.000001) {
+        normalizedDirection->x = 0.01f * ((float)(u32)frandmod(20) - 10.0f);
+        normalizedDirection->z = 0.01f * ((float)(u32)frandmod(20) - 10.0f);
+        /* Modulus 1 is always zero, so the fallback's Y component is -0.01 before normalization. */
+        normalizedDirection->y = frandmod(1) != 0U ? 0.01f : -0.01f;
+        PSVECNormalize(normalizedDirection, normalizedDirection);
         result = 0;
     } else {
-        PSVECNormalize(src, dst);
+        PSVECNormalize(sourceDirection, normalizedDirection);
         result = 1;
     }
     return result;
 }
 
-int fn_1_1240(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
+/* Narrow-collision hook: ignore unrelated contacts and adjust the player response for a collision
+ * from above. */
+int fn_1_1240(COL_NARROW_PARAM *firstCollider, COL_NARROW_PARAM *secondCollider)
 {
     HuVecF delta;
     HuVecF up;
@@ -357,12 +396,13 @@ int fn_1_1240(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
     M621Player *player;
     float dot;
 
-    if (a->type != 0 || b->type < 5 || b->type >= 8 || b->paramB == 0) {
+    if (firstCollider->type != 0 || secondCollider->type < 5 || secondCollider->type >= 8 ||
+        secondCollider->paramB == 0) {
         return 0;
     }
-    player = lbl_1_bss_10[a->paramB];
-    PSVECSubtract(&b->point, &a->point, &delta);
-    fn_1_10E8(&delta, &delta);
+    player = lbl_1_bss_10[firstCollider->paramB];
+    PSVECSubtract(&secondCollider->point, &firstCollider->point, &delta);
+    fn_1_10E8(&delta, &delta); /* Replace delta in place with its unit direction. */
     up.x = 0.0f;
     up.y = 1.0f;
     up.z = 0.0f;
@@ -376,251 +416,271 @@ int fn_1_1240(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             fn_1_10E8(&horizontal, &horizontal);
         }
         PSVECScale(&horizontal, &horizontal, -50.0f);
-        a->normPos = horizontal;
+        firstCollider->normPos = horizontal;
     }
     return 1;
 }
 
+/* Player-object init callback, created once per player during round setup: create its actor and
+ * score displays, then begin intro updates. */
 void fn_1_13EC(OMOBJ *obj)
 {
-    M621Player *work = obj->data;
+    M621Player *player = obj->data;
     MGACTOR_PARAM param = {0};
     HuVecF pos;
     HSF_OBJECT *hsf;
     HU3D_MODELID model;
 
-    work->timer = 0;
-    work->charNo = GwPlayerConf[work->playerNo].charNo;
-    work->attackF = 0;
-    work->score = 0;
-    work->winnerF = 0;
+    player->timer = 0;
+    player->charNo = GwPlayerConf[player->playerNo].charNo;
+    player->attackF = 0;
+    player->score = 0;
+    player->winnerF = 0;
     param.height = 150.0f;
     param.radius = 40.0f;
-    param.param = work->playerNo;
+    param.param = player->playerNo;
     param.type = 0;
     param.attr = 0;
     param.correctHookParam = 0;
     param.narrowHook = fn_1_1240;
     param.correctHook = NULL;
-    work->player = MgPlayerCreate(work->playerNo, &param, 8, HU3D_CAM0,
+    /* The player constructor replaces the landing-motion entry in the shared list with its
+     * alternate motion before loading the character. */
+    player->player = MgPlayerCreate(player->playerNo, &param, 8, HU3D_CAM0,
         MGPLAYER_ACTFLAG_WALK | MGPLAYER_ACTFLAG_JUMP | MGPLAYER_ACTFLAG_PUNCH
         | MGPLAYER_ACTFLAG_KICK | MGPLAYER_ACTFLAG_STUN, lbl_1_data_2B0);
-    work->computerF = GwPlayerConf[work->playerNo].type;
-    work->difficulty = GwPlayerConf[work->playerNo].comDif;
-    work->cpuState = 0;
-    work->target = NULL;
-    work->cpuDelay = 0;
-    work->cpuTimer = 0;
-    work->delay = 0;
-    MgPlayerComStkOn(work->player);
-    Hu3DModelShadowSet(work->player->actor->mdlId);
+    player->computerF = GwPlayerConf[player->playerNo].type;
+    player->difficulty = GwPlayerConf[player->playerNo].comDif;
+    player->cpuState = 0;
+    player->target = NULL;
+    player->cpuDelay = 0;
+    player->cpuTimer = 0;
+    player->vibrationDelay = 0;
+    MgPlayerComStkOn(player->player);
+    Hu3DModelShadowSet(player->player->actor->mdlId);
     model = Hu3DModelCreate(HuDataSelHeapReadNum(
-        lbl_1_data_8C[work->playerNo], HU_MEMNUM_OVL, HEAP_MODEL));
-    hsf = Hu3DModelObjPtrGet(model, lbl_1_data_334[work->playerNo]);
+        lbl_1_data_8C[player->playerNo], HU_MEMNUM_OVL, HEAP_MODEL));
+    hsf = Hu3DModelObjPtrGet(model, lbl_1_data_334[player->playerNo]);
     pos.x = hsf->mesh.base.pos.x;
     pos.y = hsf->mesh.base.pos.y;
     pos.z = hsf->mesh.base.pos.z;
-    MgActorPosSet(work->player->actor, &pos);
-    work->baseRotation = hsf->mesh.base.rot.y;
-    MgActorRotYSet(work->player->actor, work->baseRotation);
-    work->basePos = pos;
-    work->scoreBox = MgScoreBoxCreateChar(90, 40, work->charNo);
-    MgScoreBoxPosSet(work->scoreBox, lbl_1_data_344[work->playerNo].x,
-        lbl_1_data_344[work->playerNo].y);
-    MgScoreBoxDispSet(work->scoreBox, FALSE);
-    work->scoreDisplay = MgScoreCreate(DATANUM(DATA_mgconst, 49), -1, 1);
-    MgScoreMaxDigitSet(work->scoreDisplay, 2);
-    MgScoreDispOff(work->scoreDisplay);
-    MgScorePosSet(work->scoreDisplay, 10.0f + lbl_1_data_344[work->playerNo].x,
-        lbl_1_data_344[work->playerNo].y);
-    MgScoreColorSet(work->scoreDisplay, 255, 216, 21);
-    MgScoreValueSet(work->scoreDisplay, 0);
+    MgActorPosSet(player->player->actor, &pos);
+    player->baseRotation = hsf->mesh.base.rot.y;
+    MgActorRotYSet(player->player->actor, player->baseRotation);
+    player->basePos = pos;
+    player->scoreBox = MgScoreBoxCreateChar(90, 40, player->charNo);
+    MgScoreBoxPosSet(player->scoreBox, lbl_1_data_344[player->playerNo].x,
+        lbl_1_data_344[player->playerNo].y);
+    MgScoreBoxDispSet(player->scoreBox, FALSE);
+    player->scoreDisplay = MgScoreCreate(DATANUM(DATA_mgconst, 49), -1, 1);
+    MgScoreMaxDigitSet(player->scoreDisplay, 2);
+    MgScoreDispOff(player->scoreDisplay);
+    MgScorePosSet(player->scoreDisplay, 10.0f + lbl_1_data_344[player->playerNo].x,
+        lbl_1_data_344[player->playerNo].y);
+    MgScoreColorSet(player->scoreDisplay, 255, 216, 21);
+    MgScoreValueSet(player->scoreDisplay, 0);
     CharEffectLayerSet(5);
-    work->timer = 0;
+    player->timer = 0;
     fn_1_140(obj, fn_1_175C);
 }
 
+/* Run the player intro animation until main mode, then show score displays and enable normal
+ * control. */
 void fn_1_175C(OMOBJ *obj)
 {
-    M621Player *work = obj->data;
+    M621Player *player = obj->data;
 
-    work->delay--;
-    work->timer++;
-    if (work->timer == 155) {
-        fn_1_106C(work, 7, 1.0f, 0);
-    } else if (work->timer == 205) {
-        fn_1_106C(work, 0, 5.0f, HU3D_MOTATTR_LOOP);
+    player->vibrationDelay--;
+    player->timer++;
+    if (player->timer == 155) {
+        fn_1_106C(player, 7, 1.0f, 0);
+    } else if (player->timer == 205) {
+        fn_1_106C(player, 0, 5.0f, HU3D_MOTATTR_LOOP);
     }
     if (MgSeqModeGet() == MGSEQ_MODE_MAIN) {
-        MgScoreBoxDispSet(work->scoreBox, TRUE);
-        MgScoreDispOn(work->scoreDisplay);
-        MgPlayerComStkOff(work->player);
-        work->timer = 0;
+        MgScoreBoxDispSet(player->scoreBox, TRUE);
+        MgScoreDispOn(player->scoreDisplay);
+        MgPlayerComStkOff(player->player);
+        player->timer = 0;
         fn_1_140(obj, fn_1_1844);
         return;
     }
 }
 
+/* Update player attacks, computer control and ground placement; stop input when the sequence
+ * finishes. */
 void fn_1_1844(OMOBJ *obj)
 {
-    M621Player *work = obj->data;
+    M621Player *player = obj->data;
     MGACTOR_COLMAP_POLY poly;
     HuVecF pos;
     HuVecF from;
     HuVecF to;
 
-    work->delay--;
-    if (work->player->mode == MGPLAYER_MODE_PUNCH || work->player->mode == MGPLAYER_MODE_KICK) {
-        if (!work->attackF) {
-            work->attackF = TRUE;
+    player->vibrationDelay--;
+    if (player->player->mode == MGPLAYER_MODE_PUNCH || player->player->mode == MGPLAYER_MODE_KICK) {
+        if (!player->attackF) {
+            player->attackF = TRUE;
         }
     } else {
-        work->attackF = FALSE;
-        work->unk_26 = 0;
-        if (work->computerF) {
+        player->attackF = FALSE;
+        player->unusedState = 0;
+        if (player->computerF) {
             fn_1_215C(obj);
         }
     }
-    MgActorPosGet(work->player->actor, &pos);
+    MgActorPosGet(player->player->actor, &pos);
     from = to = pos;
     from.y = 10000.0f;
     to.y = -10000.0f;
-    if (MgActorColMapPolyGet(&from, &to, -1, &poly) && pos.y < poly.pos.y) {
+    if (MgActorColMapPolyGet(&from, &to, ~0U, &poly) && pos.y < poly.pos.y) {
         pos.y = poly.pos.y;
-        MgActorPosSet(work->player->actor, &pos);
+        MgActorPosSet(player->player->actor, &pos);
     }
     if (MgSeqModeGet() == MGSEQ_MODE_FINISH) {
-        MgPlayerPadSet(work->player, 0, 0, 0, 0);
-        work->timer = 3;
+        MgPlayerPadSet(player->player, 0, 0, 0, 0);
+        player->timer = 3;
         fn_1_140(obj, fn_1_19C4);
         return;
     }
 }
 
+/* After FINISH, clear gameplay input while preserving Start and Z; wait for the engine's idle
+ * motion, then freeze stick-driven movement and begin facing alignment. */
 void fn_1_19C4(OMOBJ *obj)
 {
-    M621Player *work = obj->data;
+    M621Player *player = obj->data;
 
-    MgPlayerPadSet(work->player, 0, 0, 0, 0);
-    if (work->player->motNo == 0) {
-        MgPlayerComStkOn(work->player);
+    MgPlayerPadSet(player->player, 0, 0, 0, 0);
+    if (player->player->motNo == 0) {
+        MgPlayerComStkOn(player->player);
         fn_1_140(obj, fn_1_1A3C);
         return;
     }
 }
 
+/* After the player reaches idle motion, rotate toward the starting angle and count it once
+ * aligned; the saved starting position is not restored. */
 void fn_1_1A3C(OMOBJ *obj)
 {
-    M621Player *work = obj->data;
+    M621Player *player = obj->data;
     float rotation;
 
-    MgPlayerPadSet(work->player, 0, 0, 0, 0);
-    MgActorRotYGet(work->player->actor, &rotation);
-    if (rotation == work->baseRotation) {
+    MgPlayerPadSet(player->player, 0, 0, 0, 0);
+    MgActorRotYGet(player->player->actor, &rotation);
+    if (rotation == player->baseRotation) {
         lbl_1_bss_C++;
         fn_1_140(obj, fn_1_1B5C);
         return;
     }
-    if (rotation < work->baseRotation) {
+    if (rotation < player->baseRotation) {
         rotation += 6.0f;
-        if (rotation > work->baseRotation) {
-            rotation = work->baseRotation;
+        if (rotation > player->baseRotation) {
+            rotation = player->baseRotation;
         }
     } else {
         rotation -= 6.0f;
-        if (rotation < work->baseRotation) {
-            rotation = work->baseRotation;
+        if (rotation < player->baseRotation) {
+            rotation = player->baseRotation;
         }
     }
-    MgActorRotYSet(work->player->actor, rotation);
+    MgActorRotYSet(player->player->actor, rotation);
 }
 
+/* Hold the aligned player until winner mode; disable its update callback early when the
+ * instruction/demo flag is set. */
 void fn_1_1B5C(OMOBJ *obj)
 {
-    M621Player *work = obj->data;
+    M621Player *player = obj->data;
 
-    MgPlayerPadSet(work->player, 0, 0, 0, 0);
+    MgPlayerPadSet(player->player, 0, 0, 0, 0);
     if (lbl_1_bss_8) {
         fn_1_140(obj, NULL);
         return;
     }
     if (MgSeqModeGet() == MGSEQ_MODE_WINNER) {
-        work->timer = 0;
+        player->timer = 0;
         fn_1_140(obj, fn_1_1BF4);
         return;
     }
 }
 
+/* Winner-phase player callback, installed when winner mode begins: play the selected winner or
+ * non-winner motion. */
 void fn_1_1BF4(OMOBJ *obj)
 {
-    M621Player *work = obj->data;
+    M621Player *player = obj->data;
 
-    if (work->winnerF) {
-        fn_1_106C(work, 8, 4.0f, 0);
+    if (player->winnerF) {
+        fn_1_106C(player, 8, 4.0f, 0);
     } else {
-        fn_1_106C(work, 9, 4.0f, 0);
+        fn_1_106C(player, 9, 4.0f, 0);
     }
     fn_1_140(obj, NULL);
 }
 
+/* Pick a random target slot; if frandf rounds to 1.0, force index 3 back to 0. Return it only if
+ * that slot is active. */
 M621Target *fn_1_1C7C(void)
 {
-    s32 index;
+    s32 targetIndex;
 
-    index = 3.0f * frandf();
-    if (index >= 3) {
-        index = 0;
+    targetIndex = 3.0f * frandf();
+    if (targetIndex >= 3) {
+        targetIndex = 0;
     }
-    if (lbl_1_bss_40[index]->state != 1) {
+    if (lbl_1_bss_40[targetIndex]->state != 1) {
         return NULL;
     }
-    return lbl_1_bss_40[index];
+    return lbl_1_bss_40[targetIndex];
 }
 
-M621Target *fn_1_1D08(M621Player *work)
+/* Choose an active target for computer control, favoring the nearest target or an unclaimed one. */
+M621Target *fn_1_1D08(M621Player *player)
 {
     HuVecF pos;
     HuVecF delta;
     s8 occupied[3];
-    s32 i;
+    s32 candidateIndex;
     M621Target *target;
     float nearestDistance;
     float distance;
 
     target = NULL;
     if (frandf() < 0.55f) {
-        MgActorPosGet(work->player->actor, &pos);
-        for (i = 0; i < 3; i++) {
-            if (lbl_1_bss_40[i]->state == 1) {
+        MgActorPosGet(player->player->actor, &pos);
+        for (candidateIndex = 0; candidateIndex < 3; candidateIndex++) {
+            if (lbl_1_bss_40[candidateIndex]->state == 1) {
                 if (target == NULL) {
-                    target = lbl_1_bss_40[i];
-                    PSVECSubtract(&target->pos, &pos, &delta);
+                    target = lbl_1_bss_40[candidateIndex];
+                    PSVECSubtract(&target->position, &pos, &delta);
                     delta.y = 0.0f;
                     nearestDistance = PSVECSquareMag(&delta);
                 } else {
-                    PSVECSubtract(&lbl_1_bss_40[i]->pos, &pos, &delta);
+                    PSVECSubtract(&lbl_1_bss_40[candidateIndex]->position, &pos, &delta);
                     delta.y = 0.0f;
                     distance = PSVECSquareMag(&delta);
                     if (distance < nearestDistance) {
-                        target = lbl_1_bss_40[i];
+                        target = lbl_1_bss_40[candidateIndex];
                         nearestDistance = distance;
                     }
                 }
             }
         }
     } else {
-        for (i = 0; i < 3; i++) {
-            occupied[i] = 0;
+        for (candidateIndex = 0; candidateIndex < 3; candidateIndex++) {
+            occupied[candidateIndex] = 0;
         }
-        for (i = 0; i < 4; i++) {
-            if (lbl_1_bss_10[i]->computerF && lbl_1_bss_10[i]->target != NULL
-                && lbl_1_bss_10[i]->target->state == 1) {
-                occupied[lbl_1_bss_10[i]->target->targetNo] = 1;
+        for (candidateIndex = 0; candidateIndex < 4; candidateIndex++) {
+            if (lbl_1_bss_10[candidateIndex]->computerF &&
+                lbl_1_bss_10[candidateIndex]->target != NULL &&
+                lbl_1_bss_10[candidateIndex]->target->state == 1) {
+                occupied[lbl_1_bss_10[candidateIndex]->target->targetNo] = 1;
             }
         }
-        for (i = 0; i < 3; i++) {
-            if (!occupied[i] && lbl_1_bss_40[i]->state == 1) {
-                target = lbl_1_bss_40[i];
+        for (candidateIndex = 0; candidateIndex < 3; candidateIndex++) {
+            if (!occupied[candidateIndex] && lbl_1_bss_40[candidateIndex]->state == 1) {
+                target = lbl_1_bss_40[candidateIndex];
                 break;
             }
         }
@@ -628,9 +688,11 @@ M621Target *fn_1_1D08(M621Player *work)
     return target;
 }
 
-s16 fn_1_1F9C(M621Player *work)
+/* Computer-player updates request a random action delay at difficulties 0 through 2; other
+ * difficulty settings receive zero delay. */
+s16 fn_1_1F9C(M621Player *player)
 {
-    switch (work->difficulty) {
+    switch (player->difficulty) {
     case 0:
         return (s32)(60.0f * frandf()) + 120;
     case 1:
@@ -642,20 +704,22 @@ s16 fn_1_1F9C(M621Player *work)
     }
 }
 
-s16 fn_1_2074(M621Player *work)
+/* At difficulty 2 or higher, report when the selected target is within 200 horizontal units and
+ * less than 250 units above the player, including targets below the player. */
+s16 fn_1_2074(M621Player *player)
 {
     HuVecF targetPos;
     HuVecF playerPos;
     HuVecF delta;
 
-    if (work->difficulty < 2) {
+    if (player->difficulty < 2) {
         return 0;
     }
-    if (work->target == NULL || work->target->state != 1) {
+    if (player->target == NULL || player->target->state != 1) {
         return 0;
     }
-    MgActorPosGet(work->target->part[0].actor, &targetPos);
-    MgActorPosGet(work->player->actor, &playerPos);
+    MgActorPosGet(player->target->part[0].actor, &targetPos);
+    MgActorPosGet(player->player->actor, &playerPos);
     PSVECSubtract(&targetPos, &playerPos, &delta);
     if (delta.y < 250.0f && delta.x * delta.x + delta.z * delta.z < 40000.0f) {
         return 1;
@@ -663,6 +727,7 @@ s16 fn_1_2074(M621Player *work)
     return 0;
 }
 
+/* Drive computer-player movement and target selection during the normal player update. */
 void fn_1_215C(OMOBJ *obj)
 {
     HuVecF partPos;
@@ -671,18 +736,18 @@ void fn_1_215C(OMOBJ *obj)
     HuVecF delta;
     HuVecF stick;
     float height;
-    M621Player *work = obj->data;
+    M621Player *player = obj->data;
 
-    if (work->target == NULL || work->target->state != 1) {
-        work->target = fn_1_1D08(work);
-        work->cpuDelay = fn_1_1F9C(work) / 2;
-        work->cpuTimer = 0;
+    if (player->target == NULL || player->target->state != 1) {
+        player->target = fn_1_1D08(player);
+        player->cpuDelay = fn_1_1F9C(player) / 2;
+        player->cpuTimer = 0;
     }
-    if (work->target != NULL) {
-        MgActorPosGet(work->player->actor, &pos);
-        switch (work->cpuState) {
+    if (player->target != NULL) {
+        MgActorPosGet(player->player->actor, &pos);
+        switch (player->cpuState) {
         case 0:
-            targetPos = work->target->pos;
+            targetPos = player->target->position;
             PSVECSubtract(&targetPos, &pos, &delta);
             height = delta.y;
             PSVECNormalize(&delta, &stick);
@@ -690,69 +755,71 @@ void fn_1_215C(OMOBJ *obj)
             stick.z = (s32)stick.z;
             stick.x = (s32)stick.x;
             PSVECScale(&stick, &stick, 4.0f);
-            if (work->cpuDelay > 0) {
-                work->cpuDelay--;
+            if (player->cpuDelay > 0) {
+                player->cpuDelay--;
             }
-            if (work->cpuDelay <= 0 && fn_1_2074(work)) {
-                MgPlayerPadSet(work->player, stick.x, -stick.z, PAD_BUTTON_A, PAD_BUTTON_A);
-                work->cpuState = 1;
-                work->cpuTimer = 0;
+            if (player->cpuDelay <= 0 && fn_1_2074(player)) {
+                MgPlayerPadSet(player->player, stick.x, -stick.z, PAD_BUTTON_A, PAD_BUTTON_A);
+                player->cpuState = 1;
+                player->cpuTimer = 0;
                 return;
             }
             if (PSVECSquareMag(&delta) < 14400.0f) {
-                if (work->cpuDelay <= 0) {
-                    MgPlayerPadSet(work->player, stick.x, -stick.z, PAD_BUTTON_B, PAD_BUTTON_B);
-                    work->cpuDelay = fn_1_1F9C(work);
+                if (player->cpuDelay <= 0) {
+                    MgPlayerPadSet(player->player, stick.x, -stick.z, PAD_BUTTON_B, PAD_BUTTON_B);
+                    player->cpuDelay = fn_1_1F9C(player);
                 } else {
-                    MgPlayerPadSet(work->player, stick.x, -stick.z, 0, 0);
+                    MgPlayerPadSet(player->player, stick.x, -stick.z, 0, 0);
                 }
-                work->cpuTimer = 0;
+                player->cpuTimer = 0;
                 return;
             }
-            if (work->player->actor->colGroundAttr & 256) {
-                MgPlayerPadSet(work->player, stick.x, -stick.z, PAD_BUTTON_A, PAD_BUTTON_A);
-                work->cpuState = 2;
+            if (player->player->actor->colGroundAttr & 0x100) {
+                MgPlayerPadSet(player->player, stick.x, -stick.z, PAD_BUTTON_A, PAD_BUTTON_A);
+                player->cpuState = 2;
                 return;
             }
-            MgPlayerPadSet(work->player, stick.x, -stick.z, 0, 0);
-            work->cpuTimer++;
-            if (work->cpuTimer > 40) {
-                work->target = NULL;
+            MgPlayerPadSet(player->player, stick.x, -stick.z, 0, 0);
+            player->cpuTimer++;
+            if (player->cpuTimer > 40) {
+                player->target = NULL;
                 return;
             }
             break;
         case 1:
-            MgActorPosGet(work->target->part[0].actor, &partPos);
+            MgActorPosGet(player->target->part[0].actor, &partPos);
             PSVECSubtract(&partPos, &pos, &delta);
             height = delta.y;
             PSVECNormalize(&delta, &delta);
             PSVECScale(&delta, &delta, 40.0f);
-            if (work->player->actor->velY < 0.0f && height < 150.0f) {
-                MgPlayerPadSet(work->player, delta.x, -delta.z, PAD_BUTTON_B, PAD_BUTTON_B);
-                work->cpuState = 0;
+            if (player->player->actor->velY < 0.0f && height < 150.0f) {
+                MgPlayerPadSet(player->player, delta.x, -delta.z, PAD_BUTTON_B, PAD_BUTTON_B);
+                player->cpuState = 0;
                 return;
             }
-            MgPlayerPadSet(work->player, delta.x, -delta.z, 0, PAD_BUTTON_A);
-            if (!MgPlayerModeAttrCheck(work->player, MGPLAYER_MODEATTR_AIR)) {
-                work->cpuState = 0;
+            MgPlayerPadSet(player->player, delta.x, -delta.z, 0, PAD_BUTTON_A);
+            if (!MgPlayerModeAttrCheck(player->player, MGPLAYER_MODEATTR_AIR)) {
+                player->cpuState = 0;
                 return;
             }
             break;
         case 2:
-            MgActorPosGet(work->target->part[0].actor, &partPos);
+            MgActorPosGet(player->target->part[0].actor, &partPos);
             PSVECSubtract(&partPos, &pos, &delta);
             height = delta.y;
             PSVECNormalize(&delta, &delta);
             PSVECScale(&delta, &delta, 80.0f);
-            MgPlayerPadSet(work->player, delta.x, -delta.z, 0, PAD_BUTTON_A);
-            if (!MgPlayerModeAttrCheck(work->player, MGPLAYER_MODEATTR_AIR)) {
-                work->cpuState = 0;
+            MgPlayerPadSet(player->player, delta.x, -delta.z, 0, PAD_BUTTON_A);
+            if (!MgPlayerModeAttrCheck(player->player, MGPLAYER_MODEATTR_AIR)) {
+                player->cpuState = 0;
             }
             break;
         }
     }
 }
 
+/* When building a target stack, reserve the next available segment mask; the scan stops before bit
+ * 0. */
 u32 fn_1_26A4(void)
 {
     u32 mask;
@@ -766,11 +833,13 @@ u32 fn_1_26A4(void)
     return 0;
 }
 
-void fn_1_270C(u32 mask)
+/* Return the released segment mask to the available set. */
+void fn_1_270C(u32 collisionMask)
 {
-    lbl_1_data_2AC |= mask;
+    lbl_1_data_2AC |= collisionMask;
 }
 
+/* Return the number of available segment masks, capped at 23. */
 s16 fn_1_272C(void)
 {
     s16 count;
@@ -785,9 +854,10 @@ s16 fn_1_272C(void)
     return count > 23 ? 23 : count;
 }
 
+/* Load shared target models and create the three target-slot objects. */
 void fn_1_27A0(void)
 {
-    s32 i;
+    s32 targetSlot;
 
     lbl_1_bss_3E = Hu3DModelCreateData(DATANUM(DATA_m621, 12));
     lbl_1_bss_3C = Hu3DModelCreateData(DATANUM(DATA_m621, 13));
@@ -800,14 +870,15 @@ void fn_1_27A0(void)
     Hu3DModelDispOff(lbl_1_bss_38);
     Hu3DModelDispOff(lbl_1_bss_36);
     Hu3DModelDispOff(lbl_1_bss_3A);
-    for (i = 0; i < 3; i++) {
-        lbl_1_bss_40[i] = fn_1_A0(30, sizeof(M621Target), fn_1_29E8);
-        lbl_1_bss_40[i]->targetNo = i;
-        lbl_1_bss_40[i]->initialF = 1;
-        lbl_1_bss_40[i]->model = Hu3DModelLink(lbl_1_bss_38);
+    for (targetSlot = 0; targetSlot < 3; targetSlot++) {
+        lbl_1_bss_40[targetSlot] = fn_1_A0(30, sizeof(M621Target), fn_1_29E8);
+        lbl_1_bss_40[targetSlot]->targetNo = targetSlot;
+        lbl_1_bss_40[targetSlot]->firstStackF = 1;
+        lbl_1_bss_40[targetSlot]->model = Hu3DModelLink(lbl_1_bss_38);
     }
 }
 
+/* On fade-in, initialize this target slot and start its 150-update spawn countdown. */
 void fn_1_29E8(OMOBJ *obj)
 {
     M621Target *target = obj->data;
@@ -815,18 +886,20 @@ void fn_1_29E8(OMOBJ *obj)
     if (MgSeqModeGet() == MGSEQ_MODE_FADEIN) {
         target->state = 0;
         target->timer = 150;
-        target->positionNo = -1;
+        target->spawnPointNo = -1;
         fn_1_140(obj, fn_1_3678);
         return;
     }
 }
 
+/* When the top segment is hit, knock down the stack and score the top plus each remaining standing
+ * segment. */
 void fn_1_2A54(M621Player *player, M621Target *target)
 {
     HuVecF pos;
     s32 delay;
     s32 score;
-    s32 i;
+    s32 partIndex;
     M621TargetPart *part;
 
     delay = 0;
@@ -843,20 +916,20 @@ void fn_1_2A54(M621Player *player, M621Target *target)
         part->timer = 0;
         part->state = 3;
         MgActorPosGet(part->actor, &pos);
-        fn_1_420(&pos, 1776);
+        fn_1_420(&pos, M621_SE_SEGMENT_HIT);
         pos.y += 75.0f;
         pos.z += 80.0f;
         fn_1_51F4(player->playerNo, &pos);
         score = 1;
-        for (i = 1; i < target->partCount; i++) {
-            part = &target->part[i];
+        for (partIndex = 1; partIndex < target->partCount; partIndex++) {
+            part = &target->part[partIndex];
             if (part->state == 2) {
                 MgActorPushSet(part->actor, &lbl_1_data_30);
                 MgActorColAttrSet(part->actor, COLBODY_ATTR_BODYCOL_OFF);
                 part->timer = delay;
                 delay += 10;
                 part->state = 4;
-                part->effectNo = player->playerNo;
+                part->effectPlayerNo = player->playerNo;
                 score++;
             }
         }
@@ -868,17 +941,18 @@ void fn_1_2A54(M621Player *player, M621Target *target)
             player->score = 99;
         }
         MgScoreValueSet(player->scoreDisplay, player->score);
-        if (player->delay <= 0) {
+        if (player->vibrationDelay <= 0) {
             omVibrate(player->player->playerNo, 10, 10, 0);
-            player->delay = 0;
+            player->vibrationDelay = 0; /* A hit does not arm another vibration cooldown. */
         }
     }
 }
 
-void fn_1_2C6C(M621Player *player, M621Target *target, s16 index)
+/* Release the selected target segment and update the stack and player score state. */
+void fn_1_2C6C(M621Player *player, M621Target *target, s16 partIndex)
 {
     HuVecF pos;
-    M621TargetPart *part = &target->part[index];
+    M621TargetPart *part = &target->part[partIndex];
 
     if (target->part[0].state == 2 && part->state == 2) {
         PSVECSubtract(&part->actor->pos, &player->player->actor->pos, &pos);
@@ -891,7 +965,7 @@ void fn_1_2C6C(M621Player *player, M621Target *target, s16 index)
         part->timer = 0;
         part->state = 3;
         MgActorPosGet(part->actor, &pos);
-        fn_1_420(&pos, 1776);
+        fn_1_420(&pos, M621_SE_SEGMENT_HIT);
         pos.y += 50.0f;
         pos.z += 55.0f;
         fn_1_51F4(player->playerNo, &pos);
@@ -900,36 +974,40 @@ void fn_1_2C6C(M621Player *player, M621Target *target, s16 index)
             player->score = 99;
         }
         MgScoreValueSet(player->scoreDisplay, player->score);
-        if (player->delay <= 0) {
+        if (player->vibrationDelay <= 0) {
             omVibrate(player->player->playerNo, 10, 10, 0);
-            player->delay = 0;
+            player->vibrationDelay = 0; /* A hit does not arm another vibration cooldown. */
         }
     }
 }
 
+/* Begin the segment's five-update removal countdown and link an effect model. The linked model
+ * remains hidden at the origin and is not released by this module. */
 void fn_1_2E10(M621TargetPart *part)
 {
     HuVecF pos;
 
     part->state = 5;
+    /* The fetched position is not used by this cleanup step. */
     MgActorPosGet(part->actor, &pos);
     part->effectModel = Hu3DModelLink(lbl_1_bss_36);
     part->timer = 5;
 }
 
-int fn_1_2E68(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
+/* Narrow-collision hook: handle a player's attack contact with a target segment. */
+int fn_1_2E68(COL_NARROW_PARAM *firstCollider, COL_NARROW_PARAM *secondCollider)
 {
     M621Player *player;
-    s32 index;
-    s32 i;
+    s32 partIndex;
+    s32 playerIndex;
     M621Target *target;
 
-    if (b->type == 2 || b->type == 3) {
+    if (secondCollider->type == 2 || secondCollider->type == 3) {
         player = NULL;
-        target = lbl_1_bss_40[a->type - 5];
-        for (i = 0; i < 4; i++) {
-            if (b->paramB - 256 == lbl_1_bss_10[i]->player->actor->no) {
-                player = lbl_1_bss_10[i];
+        target = lbl_1_bss_40[firstCollider->type - 5];
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+            if (secondCollider->paramB - 256 == lbl_1_bss_10[playerIndex]->player->actor->no) {
+                player = lbl_1_bss_10[playerIndex];
                 break;
             }
         }
@@ -937,34 +1015,38 @@ int fn_1_2E68(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             return 0;
         }
         player->attackF = 2;
-        if (player->player->actor->colGroundAttr & 1) {
-            for (index = target->partCount - 1; index >= 0; index--) {
-                if (target->part[index].state == 2) {
-                    if (index == 0) {
+        if (player->player->actor->colGroundAttr & 0x1) {
+            for (partIndex = target->partCount - 1; partIndex >= 0; partIndex--) {
+                if (target->part[partIndex].state == 2) {
+                    if (partIndex == 0) {
                         fn_1_2A54(player, target);
                     } else {
-                        fn_1_2C6C(player, target, index);
+                        fn_1_2C6C(player, target, partIndex);
                     }
                     break;
                 }
             }
-        } else if (a->paramB == 1) {
+        } else if (firstCollider->paramB == 1) {
             fn_1_2A54(player, target);
         } else {
-            fn_1_2C6C(player, target, a->paramB - 1);
+            fn_1_2C6C(player, target, firstCollider->paramB - 1);
         }
     }
     return 0;
 }
 
-int fn_1_2FFC(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
+/* Narrow-collision hook: accept contacts when the second collider is a target-part type from 5
+ * through 7. */
+int fn_1_2FFC(COL_NARROW_PARAM *firstCollider, COL_NARROW_PARAM *secondCollider)
 {
-    if (b->type >= 5 && b->type < 8) {
+    if (secondCollider->type >= 5 && secondCollider->type < 8) {
         return 1;
     }
     return 0;
 }
 
+/* Mesh-correction hook: begin removal for a knocked-away segment, or clear a standing segment's
+ * local vertical velocity after the correction. */
 void fn_1_3024(MGACTOR *actor, int param)
 {
     M621TargetPart *part = (M621TargetPart *)param;
@@ -976,16 +1058,18 @@ void fn_1_3024(MGACTOR *actor, int param)
     }
 }
 
+/* Build a random initial stack; its size is not clamped and can reach eight if frandf returns 1.0.
+ * Later stacks use fewer available masks directly, or clamp a random size to seven. */
 void fn_1_3084(M621Target *target)
 {
     MGACTOR_PARAM param;
     HuVecF pos;
     s32 count;
-    s32 i;
+    s32 partIndex;
     float height;
 
     count = fn_1_272C();
-    if (target->initialF) {
+    if (target->firstStackF) {
         target->partCount = (s32)(5.0f * frandf()) + 3;
         target->rotation = 0.0f;
     } else {
@@ -999,7 +1083,7 @@ void fn_1_3084(M621Target *target)
         }
         target->rotation = 360.0f * frandf();
     }
-    target->height = 90.0f * (target->partCount + 1);
+    target->stackHeight = 90.0f * (target->partCount + 1);
     target->turnTimer = 30;
     param.height = 150.0f + (80.0f + 90.0f * (target->partCount - 2));
     param.radius = 130.0f;
@@ -1011,8 +1095,8 @@ void fn_1_3084(M621Target *target)
     param.attr = COLBODY_ATTR_MESHCOL_OFF;
     target->actor = MgActorCreate(&param, -1);
     MgActorColMaskSet(target->actor, 1);
-    pos = target->pos;
-    pos.y -= target->height;
+    pos = target->position;
+    pos.y -= target->stackHeight;
     MgActorPosSet(target->actor, &pos);
     param.height = 90.0f;
     param.radius = 60.0f;
@@ -1021,7 +1105,7 @@ void fn_1_3084(M621Target *target)
     param.correctHook = fn_1_3024;
     param.attr = COLBODY_ATTR_MESHCOL_OFF;
     target->part[0].model = Hu3DModelLink(lbl_1_bss_3E);
-    target->part[0].mask = fn_1_26A4();
+    target->part[0].collisionMask = fn_1_26A4();
     target->part[0].velocity.x = target->part[0].velocity.y = target->part[0].velocity.z = 0.0f;
     Hu3DModelDispOn(target->part[0].model);
     Hu3DModelShadowSet(target->part[0].model);
@@ -1029,7 +1113,8 @@ void fn_1_3084(M621Target *target)
     param.param = 1;
     param.correctHookParam = (int)&target->part[0];
     target->part[0].actor = MgActorCreate(&param, target->part[0].model);
-    MgActorColMaskSet(target->part[0].actor, target->part[0].mask);
+    MgActorColMaskSet(target->part[0].actor, target->part[0].collisionMask);
+    /* Clamp the head directly to -70..70 degrees; the stack angle is not wrapped first. */
     target->headRotation = target->rotation;
     if (target->headRotation > 70.0f) {
         target->headRotation = 70.0f;
@@ -1037,41 +1122,44 @@ void fn_1_3084(M621Target *target)
         target->headRotation = -70.0f;
     }
     MgActorRotYSet(target->part[0].actor, target->headRotation);
-    pos = target->pos;
-    pos.y += (80.0f + 90.0f * (target->partCount - 2)) - target->height;
+    pos = target->position;
+    pos.y += (80.0f + 90.0f * (target->partCount - 2)) - target->stackHeight;
     MgActorPosSet(target->part[0].actor, &pos);
     target->part[0].actor->gravity = 0.0f;
     target->part[0].state = 1;
-    for (i = 1; i < target->partCount; i++) {
-        target->part[i].model = Hu3DModelLink(lbl_1_bss_3C);
-        target->part[i].mask = fn_1_26A4();
-        target->part[i].velocity.x = target->part[i].velocity.y = target->part[i].velocity.z = 0.0f;
-        Hu3DModelDispOn(target->part[i].model);
-        Hu3DModelShadowSet(target->part[i].model);
-        if (i == 1) {
+    for (partIndex = 1; partIndex < target->partCount; partIndex++) {
+        target->part[partIndex].model = Hu3DModelLink(lbl_1_bss_3C);
+        target->part[partIndex].collisionMask = fn_1_26A4();
+        target->part[partIndex].velocity.x = target->part[partIndex].velocity.y =
+            target->part[partIndex].velocity.z = 0.0f;
+        Hu3DModelDispOn(target->part[partIndex].model);
+        Hu3DModelShadowSet(target->part[partIndex].model);
+        if (partIndex == 1) {
             height = 80.0f;
         } else {
             height = 90.0f;
         }
         param.height = height;
-        param.param = i + 1;
-        param.correctHookParam = (int)&target->part[i];
-        target->part[i].actor = MgActorCreate(&param, target->part[i].model);
-        MgActorColMaskSet(target->part[i].actor, target->part[i].mask);
-        pos = target->pos;
-        pos.y += 90.0f * (target->partCount - i - 1) - target->height;
-        MgActorPosSet(target->part[i].actor, &pos);
-        target->part[i].actor->gravity = 0.0f;
-        MgActorRotYSet(target->part[i].actor, target->rotation);
-        target->part[i].state = 1;
+        param.param = partIndex + 1;
+        param.correctHookParam = (int)&target->part[partIndex];
+        target->part[partIndex].actor = MgActorCreate(&param, target->part[partIndex].model);
+        MgActorColMaskSet(target->part[partIndex].actor, target->part[partIndex].collisionMask);
+        pos = target->position;
+        pos.y += 90.0f * (target->partCount - partIndex - 1) - target->stackHeight;
+        MgActorPosSet(target->part[partIndex].actor, &pos);
+        target->part[partIndex].actor->gravity = 0.0f;
+        MgActorRotYSet(target->part[partIndex].actor, target->rotation);
+        target->part[partIndex].state = 1;
     }
 }
 
+/* During the spawn countdown, choose a separated scene position and display the target once
+ * fewer than 30 updates remain; the next callback builds the stack at zero. */
 void fn_1_3678(OMOBJ *obj)
 {
     HuVecF delta;
     HSF_OBJECT *hsf;
-    s32 i;
+    s32 targetSlot;
     M621Target *target = obj->data;
 
     if (MgSeqModeGet() == MGSEQ_MODE_FINISH || MgSeqModeGet() == MGSEQ_MODE_PREWIN
@@ -1086,32 +1174,35 @@ void fn_1_3678(OMOBJ *obj)
     }
     if (target->timer < 30) {
         do {
-            target->positionNo = 21.0f * frandf();
-            hsf = Hu3DModelObjPtrGet(lbl_1_bss_3A, lbl_1_data_258[target->positionNo]);
-            target->pos.x = hsf->mesh.base.pos.x;
-            target->pos.y = hsf->mesh.base.pos.y;
-            target->pos.z = hsf->mesh.base.pos.z;
-            for (i = 0; i < 3; i++) {
-                if (target->targetNo == lbl_1_bss_40[i]->targetNo
-                    || lbl_1_bss_40[i]->positionNo < 0) {
+            /* A random value rounded to 1.0 selects index 21, one past lbl_1_data_258; the code
+             * looks up and dereferences that entry before the loop condition retries indices of 21
+             * or greater. */
+            target->spawnPointNo = 21.0f * frandf();
+            hsf = Hu3DModelObjPtrGet(lbl_1_bss_3A, lbl_1_data_258[target->spawnPointNo]);
+            target->position.x = hsf->mesh.base.pos.x;
+            target->position.y = hsf->mesh.base.pos.y;
+            target->position.z = hsf->mesh.base.pos.z;
+            for (targetSlot = 0; targetSlot < 3; targetSlot++) {
+                if (target->targetNo == lbl_1_bss_40[targetSlot]->targetNo
+                    || lbl_1_bss_40[targetSlot]->spawnPointNo < 0) {
                     continue;
                 }
-                PSVECSubtract(&target->pos, &lbl_1_bss_40[i]->pos, &delta);
+                PSVECSubtract(&target->position, &lbl_1_bss_40[targetSlot]->position, &delta);
                 delta.y = 0.0f;
                 if (PSVECSquareMag(&delta) < 62500.0f) {
-                    target->positionNo = 22;
+                    target->spawnPointNo = 22; /* Retry after finding a nearby occupied position. */
                     break;
                 }
             }
-        } while (target->positionNo >= 21);
-        Hu3DModelPosSetV(target->model, &target->pos);
+        } while (target->spawnPointNo >= 21);
+        Hu3DModelPosSetV(target->model, &target->position);
         Hu3DModelDispOn(target->model);
         Hu3DMotionTimeSet(target->model, 0.0f);
         Hu3DModelLayerSet(target->model, 1);
-        if (target->initialF) {
-            for (i = 0; i < 4; i++) {
-                lbl_1_bss_10[i]->delay = 30;
-                omVibrate(lbl_1_bss_10[i]->player->playerNo, 30, 4, 4);
+        if (target->firstStackF) {
+            for (targetSlot = 0; targetSlot < 4; targetSlot++) {
+                lbl_1_bss_10[targetSlot]->vibrationDelay = 30;
+                omVibrate(lbl_1_bss_10[targetSlot]->player->playerNo, 30, 4, 4);
             }
         }
         fn_1_140(obj, fn_1_390C);
@@ -1119,9 +1210,11 @@ void fn_1_3678(OMOBJ *obj)
     }
 }
 
+/* Target-slot update after the appearance timer: build the stack and notify players of the new
+ * target. */
 void fn_1_390C(OMOBJ *obj)
 {
-    s32 i;
+    s32 playerIndex;
     M621Target *target = obj->data;
 
     if (MgSeqModeGet() == MGSEQ_MODE_FINISH || MgSeqModeGet() == MGSEQ_MODE_PREWIN
@@ -1133,30 +1226,32 @@ void fn_1_390C(OMOBJ *obj)
     if (target->timer <= 0) {
         fn_1_3084(target);
         target->timer = 0;
-        if (target->initialF) {
-            for (i = 0; i < 4; i++) {
-                lbl_1_bss_10[i]->delay = target->partCount * 6;
-                omVibrate(lbl_1_bss_10[i]->player->playerNo, target->partCount * 6, 4, 4);
+        if (target->firstStackF) {
+            for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+                lbl_1_bss_10[playerIndex]->vibrationDelay = target->partCount * 6;
+                omVibrate(lbl_1_bss_10[playerIndex]->player->playerNo, target->partCount * 6, 4, 4);
             }
-            target->initialF = 0;
+            target->firstStackF = 0;
             if (lbl_1_data_37E) {
-                fn_1_594(64, 1775);
+                fn_1_594(64, M621_SE_TARGET_APPEAR);
                 lbl_1_data_37E = 0;
             }
         } else {
-            fn_1_420(&target->pos, 1775);
+            fn_1_420(&target->position, M621_SE_TARGET_APPEAR);
         }
         fn_1_140(obj, fn_1_3A78);
         return;
     }
 }
 
+/* Target-slot assembly update: raise the segments and enable target collision when assembly
+ * completes. */
 void fn_1_3A78(OMOBJ *obj)
 {
     HuVecF pos;
     float time;
     float height;
-    s16 i;
+    s16 partIndex;
     M621Target *target = obj->data;
 
     if (MgSeqModeGet() == MGSEQ_MODE_FINISH || MgSeqModeGet() == MGSEQ_MODE_PREWIN
@@ -1170,23 +1265,24 @@ void fn_1_3A78(OMOBJ *obj)
     if (time < 0.0f) {
         time = 0.0f;
     }
-    height = 25.0f * ((s16)(target->height * time) / 25);
-    for (i = 0; i < target->partCount; i++) {
-        pos = target->pos;
-        if (i == 0) {
+    /* Integer truncation and division keep the remaining rise offset in 25-unit steps. */
+    height = 25.0f * ((s16)(target->stackHeight * time) / 25);
+    for (partIndex = 0; partIndex < target->partCount; partIndex++) {
+        pos = target->position;
+        if (partIndex == 0) {
             pos.y += 1.0f + ((80.0f + 90.0f * (target->partCount - 2)) - height);
         } else {
-            pos.y += 1.0f + (90.0f * (target->partCount - i - 1) - height);
+            pos.y += 1.0f + (90.0f * (target->partCount - partIndex - 1) - height);
         }
-        MgActorPosSet(target->part[i].actor, &pos);
+        MgActorPosSet(target->part[partIndex].actor, &pos);
     }
-    pos = target->pos;
+    pos = target->position;
     pos.y = 1.0f + (pos.y - height);
     MgActorPosSet(target->actor, &pos);
     if (time <= 0.0f) {
-        for (i = 0; i < target->partCount; i++) {
-            target->part[i].timer = 0;
-            target->part[i].state = 2;
+        for (partIndex = 0; partIndex < target->partCount; partIndex++) {
+            target->part[partIndex].timer = 0;
+            target->part[partIndex].state = 2;
         }
         MgActorColAttrReset(target->part[target->partCount - 1].actor, COLBODY_ATTR_MESHCOL_OFF);
         MgActorColAttrReset(target->actor, COLBODY_ATTR_MESHCOL_OFF);
@@ -1196,6 +1292,8 @@ void fn_1_3A78(OMOBJ *obj)
     }
 }
 
+/* Live target-slot update each actor tick: move the stack and update segment states, collision
+ * height and falling effects. */
 void fn_1_3E18(OMOBJ *obj)
 {
     MGACTOR_COLMAP_POLY poly;
@@ -1208,8 +1306,8 @@ void fn_1_3E18(OMOBJ *obj)
     float wobble;
     float maxHeight;
     float height;
-    s16 i;
-    s16 j;
+    s16 partIndex;
+    s16 belowPartIndex;
     s16 standingCount;
     s16 inactiveCount;
     M621TargetPart *part;
@@ -1228,8 +1326,8 @@ void fn_1_3E18(OMOBJ *obj)
     if (Hu3DMotionEndCheck(target->model)) {
         Hu3DModelDispOff(target->model);
     }
-    for (i = 0; i < target->partCount; i++) {
-        M621TargetPart *currentPart = &target->part[i];
+    for (partIndex = 0; partIndex < target->partCount; partIndex++) {
+        M621TargetPart *currentPart = &target->part[partIndex];
         switch (currentPart->state) {
         case 1:
             break;
@@ -1248,7 +1346,7 @@ void fn_1_3E18(OMOBJ *obj)
             return;
         }
         target->timer = 30.0f + 90.0f * frandf();
-        target->positionNo = -1;
+        target->spawnPointNo = -1;
         fn_1_140(obj, fn_1_3678);
         return;
     }
@@ -1282,31 +1380,33 @@ void fn_1_3E18(OMOBJ *obj)
         if (target->part[0].state == 2) {
             MgActorRotYSet(target->part[0].actor, target->headRotation);
         }
-        for (i = 1; i < target->partCount; i++) {
-            if (target->part[i].state == 2) {
-                MgActorRotYSet(target->part[i].actor, target->rotation);
+        for (partIndex = 1; partIndex < target->partCount; partIndex++) {
+            if (target->part[partIndex].state == 2) {
+                MgActorRotYSet(target->part[partIndex].actor, target->rotation);
             }
         }
     } else {
         push.x = push.y = push.z = 0.0f;
     }
     if (target->actor != NULL) {
-        MgActorPosGet(target->actor, &target->pos);
+        MgActorPosGet(target->actor, &target->position);
         MgActorRotYSet(target->actor, target->rotation);
         MgActorPushSet(target->actor, &push);
     }
-    for (i = 0; i < target->partCount; i++) {
-        part = &target->part[i];
+    for (partIndex = 0; partIndex < target->partCount; partIndex++) {
+        part = &target->part[partIndex];
         below = NULL;
-        for (j = i + 1; j < target->partCount; j++) {
-            if (target->part[j].state == 2) {
-                below = &target->part[j];
+        for (belowPartIndex = partIndex + 1; belowPartIndex < target->partCount; belowPartIndex++) {
+            if (target->part[belowPartIndex].state == 2) {
+                below = &target->part[belowPartIndex];
                 break;
             }
         }
         switch (part->state) {
         case 2:
             part->timer++;
+            /* Decrement before computing wobble; the remaining standing-segment count sets this
+             * segment's phase offset. */
             standingCount--;
             wobble = 10.0 * sin((M_PI * (((360.0f * part->timer) / 120.0f)
                 + (120.0f * standingCount))) / 180.0);
@@ -1315,23 +1415,23 @@ void fn_1_3E18(OMOBJ *obj)
                 MgActorPosGet(part->actor, &pos);
                 PSVECAdd(&pos, &part->velocity, &pos);
                 MgActorPosGet(below->actor, &belowPos);
-                if (i == 0 && 80.0f + belowPos.y >= pos.y) {
+                if (partIndex == 0 && 80.0f + belowPos.y >= pos.y) {
                     pos.y = 80.0f + belowPos.y;
                     part->velocity.y = 0.0f;
-                } else if (i != 0 && 90.0f + belowPos.y >= pos.y) {
+                } else if (partIndex != 0 && 90.0f + belowPos.y >= pos.y) {
                     pos.y = 90.0f + belowPos.y;
                     part->velocity.y = 0.0f;
                 }
-                pos.x = target->pos.x + wobble;
-                pos.z = target->pos.z;
+                pos.x = target->position.x + wobble;
+                pos.z = target->position.z;
                 MgActorPosSetRaw(part->actor, &pos);
-                height = (pos.y - target->pos.y) + (i == 0 ? 150.0f : 90.0f);
+                height = (pos.y - target->position.y) + (partIndex == 0 ? 150.0f : 90.0f);
             } else {
                 MgActorPosGet(part->actor, &currentPos);
                 top = bottom = currentPos;
                 top.y = 10000.0f;
                 bottom.y = -10000.0f;
-                if (MgActorColMapPolyGet(&top, &bottom, ~0U, &poly)) {
+        if (MgActorColMapPolyGet(&top, &bottom, ~0U, &poly)) {
                     if (currentPos.y < poly.pos.y) {
                         currentPos.y = poly.pos.y;
                         MgActorPosSet(part->actor, &currentPos);
@@ -1339,12 +1439,12 @@ void fn_1_3E18(OMOBJ *obj)
                         MgActorColAttrReset(part->actor, COLBODY_ATTR_MESHCOL_OFF);
                         part->actor->gravity = 150.0f;
                         MgActorPosGet(part->actor, &pos);
-                        pos.x = target->pos.x + wobble;
-                        pos.z = target->pos.z;
+                        pos.x = target->position.x + wobble;
+                        pos.z = target->position.z;
                         MgActorPosSetRaw(part->actor, &pos);
                     }
                 }
-                height = i == 0 ? 150.0f : 90.0f;
+                height = partIndex == 0 ? 150.0f : 90.0f;
             }
             if (height > maxHeight) {
                 maxHeight = height;
@@ -1366,10 +1466,10 @@ void fn_1_3E18(OMOBJ *obj)
             part->timer--;
             if (part->timer <= 0) {
                 MgActorPosGet(part->actor, &pos);
-                fn_1_420(&pos, 1776);
+                fn_1_420(&pos, M621_SE_SEGMENT_HIT);
                 pos.y += 50.0f;
                 pos.z += 55.0f;
-                fn_1_51F4(part->effectNo, &pos);
+                fn_1_51F4(part->effectPlayerNo, &pos);
                 fn_1_2E10(part);
             }
             break;
@@ -1379,7 +1479,7 @@ void fn_1_3E18(OMOBJ *obj)
                 MgActorKill(part->actor);
                 Hu3DModelKill(part->model);
                 part->state = 0;
-                fn_1_270C(part->mask);
+                fn_1_270C(part->collisionMask);
             }
             break;
         }
@@ -1389,23 +1489,25 @@ void fn_1_3E18(OMOBJ *obj)
     }
 }
 
+/* During finish, pre-winner, or winner cleanup, stop target movement and show its collapse; after
+ * 30 updates, play the shared collapse sound once before falling cleanup. */
 void fn_1_47B4(OMOBJ *obj)
 {
     HuVecF pos;
     HuVecF belowPos;
     float wobble;
-    s16 i;
-    s16 j;
+    s16 partIndex;
+    s16 belowPartIndex;
     s16 inactiveCount;
-    s16 standingCount;
+    s16 wobblePhaseIndex;
     M621TargetPart *part;
     M621TargetPart *below;
     M621Target *target = obj->data;
 
     inactiveCount = 0;
-    standingCount = 0;
-    for (i = 0; i < target->partCount; i++) {
-        M621TargetPart *currentPart = &target->part[i];
+    wobblePhaseIndex = 0;
+    for (partIndex = 0; partIndex < target->partCount; partIndex++) {
+        M621TargetPart *currentPart = &target->part[partIndex];
         switch (currentPart->state) {
         case 0:
             inactiveCount++;
@@ -1420,7 +1522,7 @@ void fn_1_47B4(OMOBJ *obj)
         MgActorPushSet(target->actor, &lbl_1_data_30);
     }
     if (target->timer == 0) {
-        Hu3DModelPosSetV(target->model, &target->pos);
+        Hu3DModelPosSetV(target->model, &target->position);
         Hu3DModelDispOn(target->model);
         Hu3DMotionTimeSet(target->model, 0.0f);
         Hu3DModelLayerSet(target->model, 1);
@@ -1429,41 +1531,42 @@ void fn_1_47B4(OMOBJ *obj)
     if (target->timer >= 30) {
         target->timer = 0;
         if (lbl_1_data_380) {
-            fn_1_594(64, 1777);
+            fn_1_594(64, M621_SE_TARGET_COLLAPSE);
             lbl_1_data_380 = 0;
         }
         fn_1_140(obj, fn_1_4CB0);
         return;
     }
-    for (i = 0; i < target->partCount; i++) {
-        part = &target->part[i];
+    for (partIndex = 0; partIndex < target->partCount; partIndex++) {
+        part = &target->part[partIndex];
         below = NULL;
-        for (j = i + 1; j < target->partCount; j++) {
-            if (target->part[j].state == 2) {
-                below = &target->part[j];
+        for (belowPartIndex = partIndex + 1; belowPartIndex < target->partCount; belowPartIndex++) {
+            if (target->part[belowPartIndex].state == 2) {
+                below = &target->part[belowPartIndex];
                 break;
             }
         }
         switch (part->state) {
         case 2:
             part->timer++;
-            standingCount--;
+            /* The phase index starts at zero and descends for each standing segment. */
+            wobblePhaseIndex--;
             wobble = 10.0 * sin((M_PI * (((360.0f * part->timer) / 120.0f)
-                + (120.0f * standingCount))) / 180.0);
+                + (120.0f * wobblePhaseIndex))) / 180.0);
             if (below != NULL) {
                 part->velocity.y -= 0.7f;
                 MgActorPosGet(part->actor, &pos);
                 PSVECAdd(&pos, &part->velocity, &pos);
                 MgActorPosGet(below->actor, &belowPos);
-                if (i == 0 && 80.0f + belowPos.y >= pos.y) {
+                if (partIndex == 0 && 80.0f + belowPos.y >= pos.y) {
                     pos.y = 80.0f + belowPos.y;
                     part->velocity.y = 0.0f;
-                } else if (i != 0 && 90.0f + belowPos.y >= pos.y) {
+                } else if (partIndex != 0 && 90.0f + belowPos.y >= pos.y) {
                     pos.y = 90.0f + belowPos.y;
                     part->velocity.y = 0.0f;
                 }
-                pos.x = target->pos.x + wobble;
-                pos.z = target->pos.z;
+                pos.x = target->position.x + wobble;
+                pos.z = target->position.z;
                 MgActorPosSetRaw(part->actor, &pos);
             } else {
                 MgActorColAttrReset(part->actor, COLBODY_ATTR_MESHCOL_OFF);
@@ -1491,21 +1594,23 @@ void fn_1_47B4(OMOBJ *obj)
                 MgActorKill(part->actor);
                 Hu3DModelKill(part->model);
                 part->state = 0;
-                fn_1_270C(part->mask);
+                fn_1_270C(part->collisionMask);
             }
             break;
         }
     }
 }
 
+/* Update falling and removal states after collapse, stopping when every segment is removed.
+ * Assembly can also install this callback while segments are rising; state 1 is left unchanged. */
 void fn_1_4CB0(OMOBJ *obj)
 {
     HuVecF pos;
     HuVecF belowPos;
-    s16 i;
-    s16 j;
+    s16 partIndex;
+    s16 belowPartIndex;
     s16 inactiveCount;
-    /* This countdown remains in the cleanup phase after its wobble is gone. */
+
     s16 standingCount;
     M621TargetPart *part;
     M621TargetPart *below;
@@ -1513,8 +1618,8 @@ void fn_1_4CB0(OMOBJ *obj)
 
     inactiveCount = 0;
     standingCount = 0;
-    for (i = 0; i < target->partCount; i++) {
-        M621TargetPart *currentPart = &target->part[i];
+    for (partIndex = 0; partIndex < target->partCount; partIndex++) {
+        M621TargetPart *currentPart = &target->part[partIndex];
         switch (currentPart->state) {
         case 0:
             inactiveCount++;
@@ -1525,19 +1630,19 @@ void fn_1_4CB0(OMOBJ *obj)
         fn_1_140(obj, NULL);
         return;
     }
-    for (i = 0; i < target->partCount; i++) {
-        part = &target->part[i];
+    for (partIndex = 0; partIndex < target->partCount; partIndex++) {
+        part = &target->part[partIndex];
         below = NULL;
-        for (j = i + 1; j < target->partCount; j++) {
-            if (target->part[j].state == 2) {
-                below = &target->part[j];
+        for (belowPartIndex = partIndex + 1; belowPartIndex < target->partCount; belowPartIndex++) {
+            if (target->part[belowPartIndex].state == 2) {
+                below = &target->part[belowPartIndex];
                 break;
             }
         }
         switch (part->state) {
         case 2:
             part->timer++;
-            standingCount--;
+            standingCount--; /* This cleanup counter is not read by the falling-segment logic. */
             MgActorColAttrSet(part->actor, COLBODY_ATTR_MESHCOL_OFF);
             part->actor->gravity = 150.0f;
             if (below != NULL) {
@@ -1545,15 +1650,15 @@ void fn_1_4CB0(OMOBJ *obj)
                 MgActorPosGet(part->actor, &pos);
                 PSVECAdd(&pos, &part->velocity, &pos);
                 MgActorPosGet(below->actor, &belowPos);
-                if (i == 0 && 80.0f + belowPos.y >= pos.y) {
+                if (partIndex == 0 && 80.0f + belowPos.y >= pos.y) {
                     pos.y = 80.0f + belowPos.y;
                     part->velocity.y = 0.0f;
-                } else if (i != 0 && 90.0f + belowPos.y >= pos.y) {
+                } else if (partIndex != 0 && 90.0f + belowPos.y >= pos.y) {
                     pos.y = 90.0f + belowPos.y;
                     part->velocity.y = 0.0f;
                 }
-                pos.x = target->pos.x;
-                pos.z = target->pos.z;
+                pos.x = target->position.x;
+                pos.z = target->position.z;
                 MgActorPosSetRaw(part->actor, &pos);
             } else {
                 part->actor->gravity = 150.0f;
@@ -1584,35 +1689,39 @@ void fn_1_4CB0(OMOBJ *obj)
                 MgActorKill(part->actor);
                 Hu3DModelKill(part->model);
                 part->state = 0;
-                fn_1_270C(part->mask);
+                fn_1_270C(part->collisionMask);
             }
             break;
         }
     }
 }
 
+/* Effect-object init callback, created during round setup: load four reusable segment effects and
+ * initialize the pool. */
 void fn_1_5054(OMOBJ *obj)
 {
-    s32 i;
-    M621Effect *work = obj->data;
+    s32 effectIndex;
+    M621Effect *effectPool = obj->data;
 
-    for (i = 0; i < 4; i++) {
-        lbl_1_bss_2C[i] = Hu3DModelCreateData(lbl_1_data_9C[i][0]);
-        lbl_1_bss_24[i] = Hu3DJointMotionData(lbl_1_bss_2C[i], lbl_1_data_9C[i][1]);
-        Hu3DModelDispOff(lbl_1_bss_2C[i]);
+    for (effectIndex = 0; effectIndex < 4; effectIndex++) {
+        lbl_1_bss_2C[effectIndex] = Hu3DModelCreateData(lbl_1_data_9C[effectIndex][0]);
+        lbl_1_bss_24[effectIndex] =
+            Hu3DJointMotionData(lbl_1_bss_2C[effectIndex], lbl_1_data_9C[effectIndex][1]);
+        Hu3DModelDispOff(lbl_1_bss_2C[effectIndex]);
     }
-    memset(work, 0, 21 * sizeof(M621Effect));
+    memset(effectPool, 0, 21 * sizeof(M621Effect));
     fn_1_140(obj, fn_1_5168);
 }
 
+/* Effect-object update callback: release linked models after their motions end. */
 void fn_1_5168(OMOBJ *obj)
 {
     M621Effect *effect;
-    s32 i;
-    M621Effect *work = obj->data;
+    s32 effectIndex;
+    M621Effect *effectPool = obj->data;
 
-    for (i = 0; i < 21; i++) {
-        effect = &work[i];
+    for (effectIndex = 0; effectIndex < 21; effectIndex++) {
+        effect = &effectPool[effectIndex];
         if (effect->active == 1 && Hu3DMotionEndCheck(effect->model)) {
             Hu3DModelKill(effect->model);
             effect->active = 0;
@@ -1620,18 +1729,20 @@ void fn_1_5168(OMOBJ *obj)
     }
 }
 
-void fn_1_51F4(s16 effectNo, HuVecF *pos)
+/* Start the requested segment effect at a world position in the first free slot; drop it if all 21
+ * slots are active. */
+void fn_1_51F4(s16 effectPlayerNo, HuVecF *effectPosition)
 {
     M621Effect *effect;
-    s32 i;
+    s32 effectIndex;
 
-    for (i = 0; i < 21; i++) {
-        effect = &lbl_1_bss_20[i];
+    for (effectIndex = 0; effectIndex < 21; effectIndex++) {
+        effect = &lbl_1_bss_20[effectIndex];
         if (effect->active == 0) {
-            effect->model = Hu3DModelLink(lbl_1_bss_2C[effectNo]);
-            Hu3DMotionSet(effect->model, lbl_1_bss_24[effectNo]);
+            effect->model = Hu3DModelLink(lbl_1_bss_2C[effectPlayerNo]);
+            Hu3DMotionSet(effect->model, lbl_1_bss_24[effectPlayerNo]);
             Hu3DModelDispOn(effect->model);
-            Hu3DModelPosSetV(effect->model, pos);
+            Hu3DModelPosSetV(effect->model, effectPosition);
             Hu3DModelLayerSet(effect->model, 2);
             effect->active = 1;
             break;
@@ -1639,6 +1750,7 @@ void fn_1_51F4(s16 effectNo, HuVecF *pos)
     }
 }
 
+/* Set a player's minigame coin bonus outside practice mode. */
 void fn_1_52D4(s32 playerNo, s16 coins)
 {
     if (!_CheckFlag(FLAG_MG_PRACTICE)) {
@@ -1646,24 +1758,28 @@ void fn_1_52D4(s32 playerNo, s16 coins)
     }
 }
 
+/* Store a player's minigame score in the game-wide player record. */
 void fn_1_5328(s32 playerNo, s32 score)
 {
     GwPlayer[playerNo].mgScore = score;
 }
 
+/* Return the current night-setting flag used to select scene assets. */
 s16 fn_1_5340(void)
 {
     return GwMgNightF;
 }
 
+/* Return the absolute value of a float through the double-precision helper. */
 float fn_1_5350(float value)
 {
     return fn_1_537C(value);
 }
 
+/* Return the absolute value of a double. */
 double fn_1_537C(double value)
 {
-    return __fabs(value);
+    return fabs(value);
 }
 
 s16 lbl_1_data_37E = 1;
