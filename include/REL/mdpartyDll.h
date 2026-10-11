@@ -1,3 +1,4 @@
+/* Public entry points for Party Mode character and stage effects. */
 #ifndef _MDPARTYDLL_H
 #define _MDPARTYDLL_H
 
