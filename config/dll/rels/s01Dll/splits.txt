@@ -6,9 +6,14 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
+REL/s01Dll/prolog.c:
+	.text       start:0x00000000 end:0x000000A0
+
 REL/s01Dll/s01.c:
-	.text       start:0x00000000 end:0x0000366C
-	.rodata     start:0x00000000 end:0x00000078
+	.text       start:0x000000A0 end:0x0000366C
+	.rodata     start:0x00000000 end:0x000000B8
+	.data       start:0x00000000 end:0x00000134
+	.bss        start:0x00000000 end:0x0000004C
 
 REL/s01Dll/runtime.c:
 	.text       start:0x0000366C end:0x000040B0

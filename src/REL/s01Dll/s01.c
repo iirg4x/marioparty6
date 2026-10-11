@@ -1,9 +1,14 @@
+// Board setup, route markers, NPCs, and player events for Thirsty Gulch.
 #include "dolphin.h"
+#include "datadir_enum.h"
 #include "math.h"
+#include "datanum/charmot.h"
+#include "game/audio.h"
 #include "game/gamework.h"
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/process.h"
+#include "game/wipe.h"
 #include "game/board/main.h"
 #include "game/board/masu.h"
 #include "game/board/object.h"
@@ -11,40 +16,50 @@
 typedef void (*VoidFunc)(void);
 
 typedef struct S01Marker {
-    s16 modelId;
-    s16 masuId;
+    s16 markerModelId;
+    s16 markerMasuId;
 } S01Marker;
 
 typedef struct S01Npc {
-    s16 modelId;
-    s16 pad;
-    s32 eventNo;
+    s16 npcModelId;
+    s16 padding;
+    s32 eventId;
 } S01Npc;
 
 typedef struct S01PosRot {
-    HuVecF pos;
-    float rotY;
+    HuVecF position;
+    float headingDegrees;
 } S01PosRot;
 
 typedef struct S01PlayerMoveWork {
-    s16 motionId;
-    HuVecF pos;
-    HuVecF targetPos;
-    HuVecF startPos;
+    s16 playerMotionId;
+    HuVecF currentPosition;
+    HuVecF destination;
+    HuVecF origin;
 } S01PlayerMoveWork;
 
 typedef struct S01MotionPair {
-    s16 first;
-    s16 second;
+    s16 travelMotionId;
+    s16 jumpMotionId;
 } S01MotionPair;
 
 typedef struct S01WarpWork {
-    HuVecF delta;
-    HuVecF pos;
-    HuVecF jumpPos;
-    HuVecF targetPos;
-    HuVecF playerPos;
+    // Holds approach displacement, then falling velocity.
+    HuVecF movementVector;
+    HuVecF currentPosition;
+    HuVecF fallPosition;
+    HuVecF destination;
+    HuVecF playerOrigin;
 } S01WarpWork;
+
+enum {
+    S01_OBJECT_PRIORITY = 8204,
+};
+
+#define S01_MASU_SINGLE_RETURN_EVENT_BIT (1 << 7)
+#define S01_MASU_NPC_EVENT_MASK (7 << 4)
+#define S01_MASU_MARKER_MOVE_INDEX_MASK 3
+#define S01_MASU_MARKER_LOCATION_MASK (3 << 2)
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -68,78 +83,78 @@ extern int lbl_1_data_10C[2];
 extern char lbl_1_data_114[8];
 extern HuVecF lbl_1_data_11C;
 extern HuVecF lbl_1_data_128;
-extern float lbl_1_rodata_78;
-extern float lbl_1_rodata_7C;
-extern float lbl_1_rodata_80;
-extern float lbl_1_rodata_84;
-extern float lbl_1_rodata_88;
-extern float lbl_1_rodata_8C;
-extern float lbl_1_rodata_90;
-extern float lbl_1_rodata_94;
-extern float lbl_1_rodata_98;
-extern float lbl_1_rodata_9C;
-extern float lbl_1_rodata_A0;
-extern float lbl_1_rodata_A4;
-extern float lbl_1_rodata_A8;
-extern float lbl_1_rodata_AC;
-extern float lbl_1_rodata_B0;
-extern float lbl_1_rodata_B4;
+#define lbl_1_rodata_78 6500.0f
+#define lbl_1_rodata_7C 9800.0f
+#define lbl_1_rodata_80 5000.0f
+#define lbl_1_rodata_84 70000.0f
+#define lbl_1_rodata_88 200.0f
+#define lbl_1_rodata_8C 4.0f
+#define lbl_1_rodata_90 42.0f
+#define lbl_1_rodata_94 100.0f
+#define lbl_1_rodata_98 3.5f
+#define lbl_1_rodata_9C 2400.0f
+#define lbl_1_rodata_A0 -1.0f
+#define lbl_1_rodata_A4 120.0f
+#define lbl_1_rodata_A8 -16.333334f
+#define lbl_1_rodata_AC 0.016666668f
+#define lbl_1_rodata_B0 -980.00006f
+#define lbl_1_rodata_B4 90.0f
 extern s32 lbl_1_bss_44;
 
 void fn_1_A0(void);
 void fn_1_F4(void);
-void fn_1_270(OMOBJ *obj);
-void fn_1_274(OMOBJ *obj);
-int fn_1_2B8(int playerNo, s16 id);
-int fn_1_314(int playerNo, s16 id);
-int fn_1_374(int playerNo, s16 id);
-void fn_1_3E0(int playerNo);
-void fn_1_3E4(int playerNo);
+void fn_1_270(OMOBJ *boardObject);
+void fn_1_274(OMOBJ *boardObject);
+int fn_1_2B8(int playerIndex, s16 masuId);
+int fn_1_314(int playerIndex, s16 masuId);
+int fn_1_374(int playerIndex, s16 masuId);
+void fn_1_3E0(int playerIndex);
+void fn_1_3E4(int playerIndex);
 void fn_1_404(void);
 void fn_1_468(void);
 void fn_1_46C(BOOL enterF);
 void fn_1_4C8(void);
-void fn_1_590(int playerNo, int eventNo);
+void fn_1_590(int playerIndex, int eventId);
 void fn_1_87C(void);
 void fn_1_8F0(void);
-void fn_1_9B8(int playerNo, int eventNo);
+void fn_1_9B8(int playerIndex, int eventId);
 void fn_1_A50(void);
 void fn_1_AFC(void);
 void fn_1_C38(void);
 void fn_1_CEC(void);
-void fn_1_DAC(int playerNo, s16 id);
+void fn_1_DAC(int playerIndex, s16 masuId);
 
 void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(OMOBJ *));
 void HuAudSndGrpSetSet(s16 grpSet);
 void HuDataDirClose(int dataNum);
 void mbLightFuncSet(VoidFunc setHook, VoidFunc resetHook);
-void mbMapCameraSet(const HuVecF *rot, const HuVecF *pos, float zoom);
+void mbMapCameraSet(const HuVecF *rot, const HuVecF *position, float zoom);
 void mbMapHookSet(void (*hook)(BOOL enterF));
-void mbOpeningViewSet(HuVecF *rot, HuVecF *pos, float zoom);
-void mbPlayerTurnCloseHookSet(void (*hook)(int playerNo));
-void mbPlayerTurnInitHookSet(void (*hook)(int playerNo));
+void mbOpeningViewSet(HuVecF *rot, HuVecF *position, float zoom);
+void mbPlayerTurnCloseHookSet(void (*hook)(int playerIndex));
+void mbPlayerTurnInitHookSet(void (*hook)(int playerIndex));
 void mbScrollInit(int dataNum);
-float mbSinDeg(float angle);
+float mbSinDeg(float headingDegrees);
 int mbAudFXPlay(int seId);
 void mbAudFXStop(int handle);
-void mbCameraPlayerViewSetFast(int playerNo, int viewNo);
+void mbCameraPlayerViewSetFast(int playerIndex, int viewNo);
 void mbCameraShakeSet(int maxTime, float power);
 void mbCameraFocusObjSet(int modelId);
-void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset,
+void mbCameraMovePlayer(s16 playerIndex, HuVecF *rot, HuVecF *offset,
     float zoom, float fov, s16 maxTime);
-void mbCameraMovePos(HuVecF *pos, HuVecF *rot, HuVecF *offset,
+void mbCameraMovePos(HuVecF *position, HuVecF *rot, HuVecF *offset,
     float zoom, float fov, s16 maxTime);
-void mbMoveNumDispSet(int playerNo, BOOL display);
+void mbMoveNumDispSet(int playerIndex, BOOL display);
 void mbPauseDisableSet(BOOL disable);
-void mbPlayerColSnapPlayerSet(int playerNo, BOOL snapF);
-int mbPlayerMotionCreate(int playerNo, int dataNum);
-int mbPlayerMotionKill(int playerNo, int motNo);
+void mbPlayerColSnapPlayerSet(int playerIndex, BOOL snapF);
+int mbPlayerMotionCreate(int playerIndex, int dataNum);
+int mbPlayerMotionKill(int playerIndex, int motNo);
 void mbPlayerMotionShiftSet(
-    int playerNo, int motNo, float start, float end, u32 attr);
-void mbPlayerPosGet(int playerNo, HuVecF *pos);
-void mbPlayerPosSetV(int playerNo, const HuVecF *pos);
-void mbPlayerRotYSet(int playerNo, float rotY);
-void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime);
+    int playerIndex, int motNo, float start, float end, u32 attr);
+void mbPlayerPosGet(int playerIndex, HuVecF *position);
+void mbPlayerPosSetV(int playerIndex, const HuVecF *position);
+void mbPlayerRotYSet(int playerIndex, float rotY);
+void mbPlayerRotateStart(int playerIndex, s16 endAngle, s16 maxTime);
 void mbSingleReturnWrite(void);
 void mbWipeCreate(s16 mode, s16 type, s16 time);
 void mbWipeDissolveFadeOut(void);
@@ -149,47 +164,30 @@ void mbWipeSpecialCreate(int state, int type, int time);
 void mbWipeSpecialKill(void);
 void mbWipeSpecialWait(void);
 
-int _prolog(void)
-{
-    const VoidFunc *ctors = _ctors;
+#include "REL/s01Dll/common.h"
 
-    while (*ctors != 0) {
-        (**ctors)();
-        ctors++;
-    }
-    fn_1_A0();
-    return 0;
-}
-
-void _epilog(void)
-{
-    const VoidFunc *dtors = _dtors;
-
-    while (*dtors != 0) {
-        (**dtors)();
-        dtors++;
-    }
-}
-
+// Selects single-player mode and registers the Thirsty Gulch board hooks.
 void fn_1_A0(void)
 {
     GwSystem.partyF = FALSE;
     mbObjectSetup(6, fn_1_F4, fn_1_270);
 }
 
+// Loads Thirsty Gulch board assets and installs board, camera, and turn hooks.
 void fn_1_F4(void)
 {
-    s16 *modelId = &lbl_1_bss_3C;
+    s16 *boardModelId = &lbl_1_bss_3C;
     s32 boardNo;
 
+    // The current board number is queried here, but this setup does not use the result.
     boardNo = MBBoardNoGet();
 
-    HuAudSndGrpSetSet(0x1D);
+    HuAudSndGrpSetSet(MSM_GRP_SBRD);
     lbl_1_bss_40 = GwSystem.boardWork;
-    mbMasuInit(0xC70000);
-    *modelId = mbObjCreate(0xC70002, NULL, FALSE);
-    mbObjAttrSet(*modelId, 0x40000001);
-    mbScrollInit(0xC70001);
+    mbMasuInit(DATANUM(DATA_s01, 0));
+    *boardModelId = mbObjCreate(DATANUM(DATA_s01, 2), NULL, FALSE);
+    mbObjAttrSet(*boardModelId, HU3D_MOTATTR_LOOP);
+    mbScrollInit(DATANUM(DATA_s01, 1));
     mbLightFuncSet(fn_1_404, fn_1_468);
     mbPlayerTurnInitHookSet(fn_1_3E0);
     mbPlayerTurnCloseHookSet(fn_1_3E4);
@@ -199,703 +197,426 @@ void fn_1_F4(void)
     mbev_MasuHatenaSet(fn_1_374);
     mbMapCameraSet(NULL, &lbl_1_data_0, lbl_1_rodata_7C);
     mbMapHookSet(fn_1_46C);
-    omAddObjEx(mbObjMan, 0x200C, 0, 0, -1, fn_1_274);
+    omAddObjEx(mbObjMan, S01_OBJECT_PRIORITY, 0, 0, -1, fn_1_274);
     fn_1_4C8();
     fn_1_8F0();
     fn_1_AFC();
     fn_1_C38();
-    HuDataDirClose(0xC70000);
+    HuDataDirClose(DATANUM(DATA_s01, 0));
 }
 
-void fn_1_270(OMOBJ *obj)
+// No close-time returnWork is needed for the board object manager.
+void fn_1_270(OMOBJ *boardObject)
 {
 }
 
-void fn_1_274(OMOBJ *obj)
+// Board object-manager callback: updates board effects until the board exits.
+void fn_1_274(OMOBJ *boardObject)
 {
     if (mbExitCheck()) {
-        omDelObjEx((OMOBJMAN *)HuPrcCurrentGet(), obj);
+        omDelObjEx((OMOBJMAN *)HuPrcCurrentGet(), boardObject);
     } else {
         fn_1_A50();
         fn_1_CEC();
     }
 }
 
-int fn_1_2B8(int playerNo, s16 id)
+// Masu-start hook: starts the return sequence on its special route square.
+int fn_1_2B8(int playerIndex, s16 masuId)
 {
-    u32 attr = mbMasuMAttrGet(id);
+    u32 masuAttributes = mbMasuMAttrGet(masuId);
 
-    if (attr & 0x80) {
-        fn_1_DAC(playerNo, id);
+    if (masuAttributes & S01_MASU_SINGLE_RETURN_EVENT_BIT) {
+        fn_1_DAC(playerIndex, masuId);
     }
     return 0;
 }
 
-int fn_1_314(int playerNo, s16 id)
+// Called after a player reaches a square; starts the reactions assigned to its event.
+int fn_1_314(int playerIndex, s16 masuId)
 {
-    u32 attr = mbMasuMAttrGet(id);
+    u32 masuAttributes = mbMasuMAttrGet(masuId);
 
-    if (attr & 0x70) {
-        fn_1_9B8(playerNo, mbev_MasuBitGet(attr, 0x70));
+    if (masuAttributes & S01_MASU_NPC_EVENT_MASK) {
+        fn_1_9B8(playerIndex, mbev_MasuBitGet(masuAttributes, S01_MASU_NPC_EVENT_MASK));
     }
     return 0;
 }
 
-int fn_1_374(int playerNo, s16 id)
+// Hatena-square hook: moves the player to the selected route marker.
+int fn_1_374(int playerIndex, s16 masuId)
 {
-    u32 attr = mbMasuMAttrGet(id);
+    u32 masuAttributes = mbMasuMAttrGet(masuId);
 
-    if (attr & 0x3) {
-        fn_1_590(playerNo, mbev_MasuBitGet(attr, 0x3) - 1);
+    if (masuAttributes & S01_MASU_MARKER_MOVE_INDEX_MASK) {
+        fn_1_590(playerIndex, mbev_MasuBitGet(masuAttributes,
+            S01_MASU_MARKER_MOVE_INDEX_MASK) - 1);
         return 0;
     }
     return 0;
 }
 
-void fn_1_3E0(int playerNo)
+// Thirsty Gulch has no board-specific player-turn start effect.
+void fn_1_3E0(int playerIndex)
 {
 }
 
-void fn_1_3E4(int playerNo)
+void fn_1_3E4(int playerIndex)
 {
     fn_1_87C();
 }
 
+// Board light hook: imports the board model's static lights and sets the scene fog.
 void fn_1_404(void)
 {
-    s16 *modelId = &lbl_1_bss_3C;
+    s16 *boardModelId = &lbl_1_bss_3C;
 
-    Hu3DModelLightInfoSet(mbObjModelIDGet(modelId[0]), TRUE);
+    Hu3DModelLightInfoSet(mbObjModelIDGet(boardModelId[0]), TRUE);
     Hu3DFogSet(lbl_1_rodata_80, lbl_1_rodata_84, 200, 200, 100);
 }
 
+// The board does not need a separate light reset when its light hook is removed.
 void fn_1_468(void)
 {
 }
 
-void fn_1_46C(BOOL enterF)
+// Map hook: clears fog while entering the map and restores it on exit.
+void fn_1_46C(BOOL enteringArea)
 {
-    if (enterF) {
+    if (enteringArea) {
         Hu3DFogClear();
     } else {
         Hu3DFogSet(lbl_1_rodata_80, lbl_1_rodata_84, 200, 200, 100);
     }
 }
 
+// Creates the three route markers and records the masu attached to each.
 void fn_1_4C8(void)
 {
     S01Marker *marker = lbl_1_bss_30;
-    u32 attr;
-    s32 i;
+    u32 masuAttributes;
+    s32 markerIndex;
 
-    for (i = 0; i < 3; i++, marker++) {
-        marker->modelId = mbObjCreate(lbl_1_data_24[i], NULL, FALSE);
-        mbObjPosSetV(marker->modelId, &lbl_1_data_30[i]);
-        mbObjMotionSpeedSet(marker->modelId, 0.0f);
-        attr = mbev_MasuAttrGet(i + 1, 0xC);
-        marker->masuId = mbMasuFind_MAttrMatchIdGet(-1, attr, 0xC);
+    for (markerIndex = 0; markerIndex < 3; markerIndex++, marker++) {
+        marker->markerModelId = mbObjCreate(lbl_1_data_24[markerIndex], NULL, FALSE);
+        mbObjPosSetV(marker->markerModelId, &lbl_1_data_30[markerIndex]);
+        mbObjMotionSpeedSet(marker->markerModelId, 0.0f);
+        masuAttributes = mbev_MasuAttrGet(markerIndex + 1, S01_MASU_MARKER_LOCATION_MASK);
+        marker->markerMasuId = mbMasuFind_MAttrMatchIdGet(-1, masuAttributes,
+            S01_MASU_MARKER_LOCATION_MASK);
     }
 }
 
-#include "dolphin.h"
-#include "humath.h"
-#include "math.h"
-#include "game/gamework.h"
-#include "game/hu3d.h"
-#include "game/memory.h"
-#include "game/process.h"
-#include "game/board/player.h"
-#include "string.h"
-
-typedef float (*S01CurveEval)();
-
-extern float *lbl_1_bss_48;
-
-float mbBezierCalcSlope(float a, float b, float c, float t);
-float mbHermiteCalcSlope(float a, float b, float c, float d, float t);
-float mbAngleLerp(float a, float b, float t);
-
-#pragma push
-#pragma section code_type ".text.common"
-
-float fn_1_1EF8(float a, float b, float c, float d, float t);
-
-float fn_1_12CC(S01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t)
+// Animates a player along the board route to the marker selected by its event.
+void fn_1_590(int playerIndex, int eventId)
 {
-    int i;
-    int div;
-    float sampleLength;
-    float baseT;
-    float sampleT;
-    float deltaT;
+    S01Marker *marker = &lbl_1_bss_30[eventId];
+    S01PlayerMoveWork routeMove;
+    int soundHandle;
+    s32 elapsedFrame;
+    float progress;
 
-    div = 10;
-    baseT = 0.0f;
-    deltaT = (t - baseT) / div;
-    sampleT = baseT;
-    sampleLength = 0.0f;
-    for (i = 0; i < div - 1; i++) {
-        sampleT += deltaT;
-        sampleLength += eval(a, b, c, d, sampleT);
-    }
-    sampleLength = deltaT * 0.5
-        * (eval(a, b, c, d, baseT) + eval(a, b, c, d, t)
-            + (2.0 * sampleLength));
-    return sampleLength;
-}
-
-float fn_1_1474(S01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t)
-{
-    int div = 10;
-    float baseT = 0.0f;
-    float pathLength = 0.0f;
-    float deltaT = t - baseT;
-    float edgeLength = deltaT
-        * (eval(a, b, c, d, baseT) + eval(a, b, c, d, t))
-        * 0.5f;
-    float sampleLength;
-    int j;
-    int i;
-
-    for (i = 1; i <= div; i *= 2) {
-        sampleLength = 0.0f;
-        for (j = 1; j <= i; j++) {
-            sampleLength += eval(a, b, c, d,
-                baseT + deltaT * (j - 0.5f));
-        }
-        sampleLength *= deltaT;
-        pathLength = (1.0f / 3.0f)
-            * (edgeLength + (2.0f * sampleLength));
-        deltaT *= 0.5f;
-        edgeLength = (edgeLength + sampleLength) * 0.5f;
-    }
-    return pathLength;
-}
-
-float fn_1_1684(S01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t, float distance, int maxStep)
-{
-    int step;
-    float sampleLength;
-    float pathLength;
-    float oldT;
-    float minLength;
-
-    minLength = 0.1f;
-    step = 0;
-    do {
-        pathLength = fn_1_1474(eval, a, b, c, d, t) - distance;
-        if (fabs(sampleLength = eval(a, b, c, d, t)) < minLength) {
-            sampleLength = 1.0f;
-        }
-        oldT = t;
-        t -= pathLength / sampleLength;
-        step++;
-    } while (t != oldT && step < maxStep);
-    return t;
-}
-
-float fn_1_19A0(S01CurveEval eval, HuVecF *a, HuVecF *b, HuVecF *c,
-    HuVecF *d, float t, float distance, int maxStep)
-{
-    int step;
-    float sampleLength;
-    float pathLength;
-    float oldT;
-    float minLength;
-
-    minLength = 0.1f;
-    step = 0;
-    do {
-        pathLength = fn_1_12CC(eval, a, b, c, d, t) - distance;
-        if (fabs(sampleLength = eval(a, b, c, d, t)) < minLength) {
-            sampleLength = 1.0f;
-        }
-        oldT = t;
-        t -= pathLength / sampleLength;
-        step++;
-    } while (t != oldT && step < maxStep);
-    return t;
-}
-
-float fn_1_1C54(HuVecF *a, HuVecF *b, HuVecF *c, float t)
-{
-    HuVecF slope;
-    slope.x = mbBezierCalcSlope(a->x, b->x, c->x, t);
-    slope.y = mbBezierCalcSlope(a->y, b->y, c->y, t);
-    slope.z = mbBezierCalcSlope(a->z, b->z, c->z, t);
-    return VECMag(&slope);
-}
-
-float fn_1_1CF8(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t)
-{
-    HuVecF slope;
-    slope.x = fn_1_1EF8(a->x, b->x, c->x, d->x, t);
-    slope.y = fn_1_1EF8(a->y, b->y, c->y, d->y, t);
-    slope.z = fn_1_1EF8(a->z, b->z, c->z, d->z, t);
-    return VECMag(&slope);
-}
-
-float fn_1_1DB4(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, float t)
-{
-    HuVecF slope;
-    slope.x = mbHermiteCalcSlope(a->x, b->x, c->x, d->x, t);
-    slope.y = mbHermiteCalcSlope(a->y, b->y, c->y, d->y, t);
-    slope.z = mbHermiteCalcSlope(a->z, b->z, c->z, d->z, t);
-    return VECMag(&slope);
-}
-
-float fn_1_1E70(float a, float b, float c, float d, float t)
-{
-    float invT = 1.0f - t;
-    return (a * (invT * invT * invT))
-        + (b * (3.0f * t * invT * invT))
-        + (c * (3.0f * t * t * invT))
-        + (d * (t * t * t));
-}
-
-float fn_1_1EF8(float a, float b, float c, float d, float t)
-{
-    float t2 = t * t;
-    return (a * ((-3.0f * t2) - (6.0f * t) - 3.0f))
-        + (b * ((9.0f * t2) - (12.0f * t) + 3.0f))
-        + (c * ((-9.0f * t2) + (6.0f * t)))
-        + ((3.0f * t2) * d);
-}
-
-void fn_1_1FD0(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, HuVecF *out,
-    float t)
-{
-    out->x = fn_1_1E70(a->x, b->x, c->x, d->x, t);
-    out->y = fn_1_1E70(a->y, b->y, c->y, d->y, t);
-    out->z = fn_1_1E70(a->z, b->z, c->z, d->z, t);
-}
-
-void fn_1_2290(HuVecF *a, HuVecF *b, HuVecF *c, HuVecF *d, HuVecF *out,
-    float t)
-{
-    out->x = fn_1_1EF8(a->x, b->x, c->x, d->x, t);
-    out->y = fn_1_1EF8(a->y, b->y, c->y, d->y, t);
-    out->z = fn_1_1EF8(a->z, b->z, c->z, d->z, t);
-}
-
-void fn_1_2640(HuVecF *points, int count, HuVecF *out, float t)
-{
-    HuVecF *allocTbl = HuMemDirectMallocNum(
-        HEAP_HEAP, count * sizeof(HuVecF), HU_MEMNUM_OVL);
-    HuVecF *bezierTbl = allocTbl;
-    int i;
-    int j;
-    memcpy(bezierTbl, points, count * sizeof(HuVecF));
-    for (i = 1; i < count; i++) {
-        for (j = 0; j < count - i; j++) {
-            bezierTbl[j].x = bezierTbl[j].x
-                + (t * (bezierTbl[j + 1].x - bezierTbl[j].x));
-            bezierTbl[j].y = bezierTbl[j].y
-                + (t * (bezierTbl[j + 1].y - bezierTbl[j].y));
-            bezierTbl[j].z = bezierTbl[j].z
-                + (t * (bezierTbl[j + 1].z - bezierTbl[j].z));
-        }
-    }
-    *out = bezierTbl[0];
-    HuMemDirectFree(bezierTbl);
-}
-
-float fn_1_27B0(int index, int degree, float t)
-{
-    float valueA;
-    float valueB;
-    float divisor;
-    if (degree == 0) {
-        if (t >= lbl_1_bss_48[index] && t < lbl_1_bss_48[index + 1]) {
-            return 1.0f;
-        }
-        return 0.0f;
-    }
-    divisor = lbl_1_bss_48[index + degree] - lbl_1_bss_48[index];
-    if (divisor > 0.0f) {
-        valueA = ((t - lbl_1_bss_48[index])
-                     * fn_1_27B0(index, degree - 1, t)) / divisor;
-    } else {
-        valueA = 0.0f;
-    }
-    divisor = lbl_1_bss_48[index + degree + 1] - lbl_1_bss_48[index + 1];
-    if (divisor > 0.0f) {
-        valueB = ((lbl_1_bss_48[index + degree + 1] - t)
-                     * fn_1_27B0(index + 1, degree - 1, t)) / divisor;
-    } else {
-        valueB = 0.0f;
-    }
-    return valueA + valueB;
-}
-
-void fn_1_2D24(HuVecF *points, int count, HuVecF *out, float t)
-{
-    int knotNo;
-    int degree = 3;
-    int i;
-    HuVecF pos;
-    float value;
-    float *freeTbl;
-    float *knotTbl;
-    if (t < 0.0f) { *out = points[0]; return; }
-    if (t >= 1.0f) { *out = points[count - 1]; return; }
-    knotTbl = HuMemDirectMallocNum(HEAP_HEAP,
-        (count + degree + 1) * sizeof(float), HU_MEMNUM_OVL);
-    lbl_1_bss_48 = knotTbl;
-    knotNo = 0;
-    for (i = 0; i <= degree; i++) lbl_1_bss_48[knotNo++] = 0.0f;
-    for (i = 0; i < (count - degree) - 1; i++)
-        lbl_1_bss_48[knotNo++] = (float)(i + 1) / (count - degree);
-    for (i = 0; i <= degree; i++) lbl_1_bss_48[knotNo++] = 1.0f;
-    pos.x = pos.y = pos.z = 0.0f;
-    for (i = 0; i < count; i++) {
-        value = fn_1_27B0(i, degree, t);
-        pos.x += value * points[i].x;
-        pos.y += value * points[i].y;
-        pos.z += value * points[i].z;
-    }
-    freeTbl = lbl_1_bss_48;
-    HuMemDirectFree(freeTbl);
-    *out = pos;
-}
-
-void fn_1_2FE0(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d)
-{
-    HuVecF *point;
-    HuVecF pointB, pointC, pointD;
-    if (index > count - 1) index = count - 1;
-    point = &points[index];
-    if (index == count - 1) { pointB = point[0]; pointC = pointB; pointD = pointB; }
-    else if (index == count - 2) { pointB = point[1]; pointC = pointB; pointD = pointB; }
-    else if (index == count - 3) { pointB = point[1]; pointC = point[2]; pointD = pointC; }
-    else { pointB = point[1]; pointC = point[2]; pointD = point[3]; }
-    *a = point[0]; *b = pointB; *c = pointC; *d = pointD;
-}
-
-void fn_1_31BC(HuVecF *points, int index, int count, HuVecF *a, HuVecF *b,
-    HuVecF *c, HuVecF *d)
-{
-    HuVecF *point;
-    HuVecF slopeA, slopeB;
-    if (index > count - 1) index = count - 1;
-    point = &points[index];
-    if (index == 0) VECSubtract(&point[1], &point[0], &slopeA);
-    else VECSubtract(&point[1], &point[-1], &slopeA);
-    if (index == count - 2) VECSubtract(&point[1], &point[0], &slopeB);
-    else VECSubtract(&point[2], &point[0], &slopeB);
-    VECScale(&slopeA, &slopeA, 0.5f);
-    VECScale(&slopeB, &slopeB, 0.5f);
-    *a = point[0]; *b = point[1]; *c = slopeA; *d = slopeB;
-}
-
-void fn_1_330C(HuVecF *a, HuVecF *b, HuVecF *out, float t)
-{
-    HuVecF delta;
-    VECSubtract(b, a, &delta);
-    VECScale(&delta, &delta, t);
-    VECAdd(a, &delta, out);
-}
-
-void fn_1_3370(int playerNo, HuVecF *dstPos, float dstRotY,
-    float jumpHeight, int maxTime)
-{
-    HuVecF srcPos, pos, delta;
-    int time;
-    float srcRotY, t, rotT;
-    mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
-    mbPlayerPosGet(playerNo, &srcPos);
-    srcRotY = mbPlayerRotYGet(playerNo);
-    VECSubtract(dstPos, &srcPos, &delta);
-    for (time = 0; time <= maxTime; time++) {
-        t = time / (float)maxTime;
-        if ((u32)time == maxTime - 6)
-            mbPlayerMotionShiftSet(playerNo, 5, 0.0f, 2.0f, HU3D_MOTATTR_NONE);
-        pos.x = srcPos.x + (t * delta.x);
-        pos.y = srcPos.y + (t * delta.y) + (jumpHeight * HuSin(180.0f * t));
-        pos.z = srcPos.z + (t * delta.z);
-        mbPlayerPosSetV(playerNo, &pos);
-        rotT = time / 6.0f;
-        if (rotT > 1.0f) rotT = 1.0f;
-        mbPlayerRotYSet(playerNo, mbAngleLerp(srcRotY, dstRotY, rotT));
-        mbPlayerWorkGet(playerNo)->_unk08 = maxTime - time;
-        HuPrcVSleep();
-    }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
-}
-
-#pragma pop
-
-void fn_1_590(int playerNo, int eventNo)
-{
-    S01Marker *marker = &lbl_1_bss_30[eventNo];
-    S01PlayerMoveWork move;
-    int sound;
-    s32 time;
-    float t;
-
-    move.motionId = mbPlayerMotionCreate(playerNo, 0x930022);
-    mbPlayerRotateStart(playerNo, 0, 15);
-    mbCameraPlayerViewSetFast(playerNo, 2);
+    routeMove.playerMotionId = mbPlayerMotionCreate(playerIndex, CHARMOT_HSF_c000m1_344);
+    mbPlayerRotateStart(playerIndex, 0, 15);
+    mbCameraPlayerViewSetFast(playerIndex, 2);
     mbCameraShakeSet(48, lbl_1_rodata_88);
-    sound = mbAudFXPlay(0x60D);
+    soundHandle = mbAudFXPlay(MSM_SE_SBRD_08);
     HuPrcSleep(48);
-    mbPlayerMotionShiftSet(playerNo, 9, 0.0f,
+    mbPlayerMotionShiftSet(playerIndex, 9, 0.0f,
         lbl_1_rodata_8C, 0);
-    mbMasuPosGet(GwPlayer[playerNo].masuId, &move.startPos);
-    mbMasuPosGet(marker->masuId, &move.targetPos);
-    GwPlayer[playerNo].masuIdNext = marker->masuId;
-    mbMasuNextSet(marker->masuId);
-    mbPlayerColSnapPlayerSet(playerNo, FALSE);
+    mbMasuPosGet(GwPlayer[playerIndex].masuId, &routeMove.origin);
+    mbMasuPosGet(marker->markerMasuId, &routeMove.destination);
+    GwPlayer[playerIndex].masuIdNext = marker->markerMasuId;
+    mbMasuNextSet(marker->markerMasuId);
+    mbPlayerColSnapPlayerSet(playerIndex, FALSE);
 
-    for (time = 0; (u32)time <= 42; time++) {
-        t = time / lbl_1_rodata_90;
-        if ((u32)time == 0) {
-            mbObjMotionSpeedSet(marker->modelId, 1.0f);
-            mbAudFXPlay(0x60E);
-            mbAudFXStop(sound);
-        } else if ((u32)time == 24) {
-            mbPlayerMotionShiftSet(playerNo, move.motionId,
+    // The player follows a linear route with a short sine-shaped hop above it.
+    for (elapsedFrame = 0; (u32)elapsedFrame <= 42; elapsedFrame++) {
+        progress = elapsedFrame / lbl_1_rodata_90;
+        if ((u32)elapsedFrame == 0) {
+            mbObjMotionSpeedSet(marker->markerModelId, 1.0f);
+            mbAudFXPlay(MSM_SE_SBRD_09);
+            mbAudFXStop(soundHandle);
+        } else if ((u32)elapsedFrame == 24) {
+            mbPlayerMotionShiftSet(playerIndex, routeMove.playerMotionId,
                 0.0f, 8.0f, 0);
         }
-        move.pos.x = move.startPos.x
-            + t * (move.targetPos.x - move.startPos.x);
-        move.pos.y = move.startPos.y
-            + t * (move.targetPos.y - move.startPos.y)
+        routeMove.currentPosition.x = routeMove.origin.x
+            + progress * (routeMove.destination.x - routeMove.origin.x);
+        routeMove.currentPosition.y = routeMove.origin.y
+            + progress * (routeMove.destination.y - routeMove.origin.y)
             + lbl_1_rodata_94
-                * (lbl_1_rodata_98 * mbSinDeg(180.0f * t));
-        move.pos.z = move.startPos.z
-            + t * (move.targetPos.z - move.startPos.z);
-        mbPlayerPosSetV(playerNo, &move.pos);
+                * (lbl_1_rodata_98 * mbSinDeg(180.0f * progress));
+        routeMove.currentPosition.z = routeMove.origin.z
+            + progress * (routeMove.destination.z - routeMove.origin.z);
+        mbPlayerPosSetV(playerIndex, &routeMove.currentPosition);
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 6, 0.0f,
-        lbl_1_rodata_8C, 0x40000001);
+    mbPlayerMotionShiftSet(playerIndex, 6, 0.0f,
+        lbl_1_rodata_8C, HU3D_MOTATTR_LOOP);
     HuPrcSleep(60);
     mbWipeFadeOut();
-    mbPlayerColSnapPlayerSet(playerNo, TRUE);
-    mbPlayerMotionKill(playerNo, move.motionId);
-    GwPlayer[playerNo].masuId = marker->masuId;
+    mbPlayerColSnapPlayerSet(playerIndex, TRUE);
+    mbPlayerMotionKill(playerIndex, routeMove.playerMotionId);
+    GwPlayer[playerIndex].masuId = marker->markerMasuId;
 }
 
+// Stops each route marker after a player's turn closes.
 void fn_1_87C(void)
 {
     S01Marker *marker = lbl_1_bss_30;
-    s32 i;
+    s32 markerIndex;
 
-    for (i = 0; i < 3; i++, marker++) {
-        mbObjMotionSpeedSet(marker->modelId, 0.0f);
-        mbObjMotionTimeSet(marker->modelId, 0.0f);
+    for (markerIndex = 0; markerIndex < 3; markerIndex++, marker++) {
+        mbObjMotionSpeedSet(marker->markerModelId, 0.0f);
+        mbObjMotionTimeSet(marker->markerModelId, 0.0f);
     }
 }
 
+// Creates and places the five Thirsty Gulch NPCs during board setup.
 void fn_1_8F0(void)
 {
     S01Npc *npc = lbl_1_bss_8;
-    s32 i;
+    s32 npcIndex;
 
-    for (i = 0; i < 5; i++, npc++) {
-        npc->modelId = mbObjCreate(0xC70006, lbl_1_data_A4, FALSE);
-        mbObjPosSetV(npc->modelId, &lbl_1_data_54[i].pos);
-        mbObjRotYSet(npc->modelId, lbl_1_data_54[i].rotY);
-        mbObjMotionSet(npc->modelId, 1, 0x40000001);
-        npc->eventNo = lbl_1_data_B0[i];
+    for (npcIndex = 0; npcIndex < 5; npcIndex++, npc++) {
+        npc->npcModelId = mbObjCreate(DATANUM(DATA_s01, 6), lbl_1_data_A4, FALSE);
+        mbObjPosSetV(npc->npcModelId, &lbl_1_data_54[npcIndex].position);
+        mbObjRotYSet(npc->npcModelId, lbl_1_data_54[npcIndex].headingDegrees);
+        mbObjMotionSet(npc->npcModelId, 1, HU3D_MOTATTR_LOOP);
+        npc->eventId = lbl_1_data_B0[npcIndex];
     }
 }
 
-void fn_1_9B8(int playerNo, int eventNo)
+// Starts reactions for each board character assigned to the reached square's event.
+void fn_1_9B8(int playerIndex, int eventId)
 {
     S01Npc *npc = lbl_1_bss_8;
-    s32 i;
+    s32 npcIndex;
 
-    for (i = 0; i < 5; i++, npc++) {
-        if (eventNo == npc->eventNo) {
-            mbObjMotionShiftSet(npc->modelId, 2, 0.0f,
+    for (npcIndex = 0; npcIndex < 5; npcIndex++, npc++) {
+        if (eventId == npc->eventId) {
+            mbObjMotionShiftSet(npc->npcModelId, 2, 0.0f,
                 lbl_1_rodata_8C, 0);
-            mbObjMotionShapeSet(npc->modelId, 2, 0);
+            mbObjMotionShapeSet(npc->npcModelId, 2, 0);
         }
     }
 }
 
+// Board update: returns finished NPC reactions to their idle animation.
 void fn_1_A50(void)
 {
     S01Npc *npc = lbl_1_bss_8;
-    s32 i;
+    s32 npcIndex;
 
-    for (i = 0; i < 5; i++, npc++) {
-        if (mbObjMotionGet(npc->modelId) != 1
-            && mbObjMotionEndCheck(npc->modelId)) {
-            mbObjMotionShiftSet(npc->modelId, 1, 0.0f,
-                lbl_1_rodata_8C, 0x40000001);
-            mbObjMotionShapeSet(npc->modelId, 1, 0x40000040);
+    for (npcIndex = 0; npcIndex < 5; npcIndex++, npc++) {
+        if (mbObjMotionGet(npc->npcModelId) != 1
+            && mbObjMotionEndCheck(npc->npcModelId)) {
+            mbObjMotionShiftSet(npc->npcModelId, 1, 0.0f,
+                lbl_1_rodata_8C, HU3D_MOTATTR_LOOP);
+            mbObjMotionShapeSet(npc->npcModelId, 1, HU3D_MOTATTR_SHAPE_LOOP);
         }
     }
 }
 
+// Creates three route characters with shuffled looping animations.
 void fn_1_AFC(void)
 {
-    s16 *modelId = lbl_1_bss_2;
-    s32 motion[16];
-    s32 motionCount = 5;
-    s32 randomA;
-    s32 randomB;
-    s32 temp;
-    s32 i;
+    s16 *routeModelId = lbl_1_bss_2;
+    s32 motionIds[16];
+    s32 motionOptionCount = 5;
+    s32 firstRandomIndex;
+    s32 secondRandomIndex;
+    s32 displacedMotion;
+    s32 motionIndex;
 
-    for (i = 0; i < motionCount; i++) {
-        motion[i] = i + 1;
+    for (motionIndex = 0; motionIndex < motionOptionCount; motionIndex++) {
+        motionIds[motionIndex] = motionIndex + 1;
     }
-    for (i = 0; i < 100; i++) {
-        randomA = mbRandMod(motionCount);
-        randomB = mbRandMod(motionCount);
-        temp = motion[randomA];
-        motion[randomA] = motion[randomB];
-        motion[randomB] = temp;
+    for (motionIndex = 0; motionIndex < 100; motionIndex++) {
+        firstRandomIndex = mbRandMod(motionOptionCount);
+        secondRandomIndex = mbRandMod(motionOptionCount);
+        displacedMotion = motionIds[firstRandomIndex];
+        motionIds[firstRandomIndex] = motionIds[secondRandomIndex];
+        motionIds[secondRandomIndex] = displacedMotion;
     }
-    for (i = 0; i < 3; i++, modelId++) {
-        *modelId = mbObjCreate(0xC70009, lbl_1_data_F4, FALSE);
-        mbObjPosSetV(*modelId, &lbl_1_data_C4[i].pos);
-        mbObjRotYSet(*modelId, lbl_1_data_C4[i].rotY);
-        mbObjMotionSet(*modelId, motion[i], 0x40000001);
+    for (motionIndex = 0; motionIndex < 3; motionIndex++, routeModelId++) {
+        *routeModelId = mbObjCreate(DATANUM(DATA_s01, 9), lbl_1_data_F4, FALSE);
+        mbObjPosSetV(*routeModelId, &lbl_1_data_C4[motionIndex].position);
+        mbObjRotYSet(*routeModelId, lbl_1_data_C4[motionIndex].headingDegrees);
+        mbObjMotionSet(*routeModelId, motionIds[motionIndex], HU3D_MOTATTR_LOOP);
     }
 }
 
+// Creates the small sign model and places it at the board's "jyango" point.
 void fn_1_C38(void)
 {
-    s16 *modelId = &lbl_1_bss_0;
-    HuVecF pos;
+    s16 *signModelId = &lbl_1_bss_0;
+    HuVecF position;
 
-    modelId[0] = mbObjCreate(0xC70010, lbl_1_data_10C, TRUE);
-    mbObjMotionSet(modelId[0], 1, 0x40000001);
-    mbObjScaleSet(modelId[0], 0.5f, 0.5f, 0.5f);
-    Hu3DModelObjPosGet(mbObjModelIDGet(lbl_1_bss_3C), lbl_1_data_114, &pos);
-    mbObjPosSetV(modelId[0], &pos);
+    signModelId[0] = mbObjCreate(DATANUM(DATA_s01, 16), lbl_1_data_10C, TRUE);
+    mbObjMotionSet(signModelId[0], 1, HU3D_MOTATTR_LOOP);
+    mbObjScaleSet(signModelId[0], 0.5f, 0.5f, 0.5f);
+    Hu3DModelObjPosGet(mbObjModelIDGet(lbl_1_bss_3C), lbl_1_data_114, &position);
+    mbObjPosSetV(signModelId[0], &position);
 }
 
+// Board update: turns the sign toward its target point and follows that point.
 void fn_1_CEC(void)
 {
-    s16 *modelId = &lbl_1_bss_0;
-    HuVecF objectPos;
-    HuVecF targetPos;
-    HuVecF delta;
-    float angle;
+    s16 *signModelId = &lbl_1_bss_0;
+    HuVecF signPosition;
+    HuVecF signTarget;
+    HuVecF signDirection;
+    float headingDegrees;
 
-    mbObjPosGet(modelId[0], &objectPos);
+    mbObjPosGet(signModelId[0], &signPosition);
     Hu3DModelObjPosGet(mbObjModelIDGet(lbl_1_bss_3C), lbl_1_data_114,
-        &targetPos);
-    PSVECSubtract(&targetPos, &objectPos, &delta);
-    angle = (float)(180.0
-        * (atan2(delta.x, delta.z) / 3.141592653589793));
-    mbObjRotYSet(modelId[0], angle);
-    mbObjPosSetV(modelId[0], &targetPos);
+        &signTarget);
+    PSVECSubtract(&signTarget, &signPosition, &signDirection);
+    headingDegrees = (float)(180.0
+        * (atan2(signDirection.x, signDirection.z) / 3.141592653589793));
+    mbObjRotYSet(signModelId[0], headingDegrees);
+    mbObjPosSetV(signModelId[0], &signTarget);
 }
 
-void fn_1_DAC(int playerNo, s16 id)
+// Runs the return-square animation, then exits the single-player board
+// and discards pending results.
+void fn_1_DAC(int playerIndex, s16 masuId)
 {
     S01Marker *marker = &lbl_1_bss_30[2];
-    S01MotionPair motions;
-    S01WarpWork work;
-    s16 currentMasu;
-    int sound;
-    s32 time;
-    float t;
-    float angle;
+    S01MotionPair playerMotions;
+    S01WarpWork returnWork;
+    s16 currentMasuId;
+    int soundHandle;
+    s32 elapsedFrame;
+    float progress;
+    float headingDegrees;
 
     mbPauseDisableSet(TRUE);
-    motions.first = mbPlayerMotionCreate(playerNo, 0x930017);
-    motions.second = mbPlayerMotionCreate(playerNo, 0x930022);
-    mbMoveNumDispSet(playerNo, FALSE);
-    mbCameraMovePlayer((s16)playerNo, &lbl_1_data_11C, NULL,
+    playerMotions.travelMotionId = mbPlayerMotionCreate(playerIndex, CHARMOT_HSF_c000m1_323);
+    playerMotions.jumpMotionId = mbPlayerMotionCreate(playerIndex, CHARMOT_HSF_c000m1_344);
+    mbMoveNumDispSet(playerIndex, FALSE);
+    mbCameraMovePlayer((s16)playerIndex, &lbl_1_data_11C, NULL,
         lbl_1_rodata_9C, lbl_1_rodata_A0, 120);
-    currentMasu = GwPlayer[playerNo].masuId;
-    mbMasuPosGet(currentMasu, &work.playerPos);
-    mbMasuPosGet(id, &work.targetPos);
-    PSVECSubtract(&work.targetPos, &work.playerPos, &work.delta);
-    angle = (float)(180.0
-        * (atan2(work.delta.x, work.delta.z) / 3.141592653589793));
-    mbPlayerRotYSet(playerNo, angle);
-    mbPlayerMotionShiftSet(playerNo, 2, 0.0f,
-        lbl_1_rodata_8C, 0x40000001);
+    currentMasuId = GwPlayer[playerIndex].masuId;
+    mbMasuPosGet(currentMasuId, &returnWork.playerOrigin);
+    mbMasuPosGet(masuId, &returnWork.destination);
+    PSVECSubtract(&returnWork.destination, &returnWork.playerOrigin, &returnWork.movementVector);
+    headingDegrees = (float)(180.0
+        * (atan2(returnWork.movementVector.x, returnWork.movementVector.z) / 3.141592653589793));
+    mbPlayerRotYSet(playerIndex, headingDegrees);
+    mbPlayerMotionShiftSet(playerIndex, 2, 0.0f,
+        lbl_1_rodata_8C, HU3D_MOTATTR_LOOP);
 
-    for (time = 0; (u32)time <= 120; time++) {
-        t = time / lbl_1_rodata_A4;
-        work.pos.x = work.playerPos.x + t * work.delta.x;
-        work.pos.y = work.playerPos.y + t * work.delta.y;
-        work.pos.z = work.playerPos.z + t * work.delta.z;
-        mbPlayerPosSetV(playerNo, &work.pos);
-        if (time % 30 == 0) {
-            omVibrate((s16)playerNo, 20, 7, 3);
+    for (elapsedFrame = 0; (u32)elapsedFrame <= 120; elapsedFrame++) {
+        progress = elapsedFrame / lbl_1_rodata_A4;
+        returnWork.currentPosition.x =
+            returnWork.playerOrigin.x + progress * returnWork.movementVector.x;
+        returnWork.currentPosition.y =
+            returnWork.playerOrigin.y + progress * returnWork.movementVector.y;
+        returnWork.currentPosition.z =
+            returnWork.playerOrigin.z + progress * returnWork.movementVector.z;
+        mbPlayerPosSetV(playerIndex, &returnWork.currentPosition);
+        if (elapsedFrame % 30 == 0) {
+            omVibrate((s16)playerIndex, 20, 7, 3);
         }
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, motions.first, 0.0f,
-        lbl_1_rodata_8C, 0x40000001);
+    mbPlayerMotionShiftSet(playerIndex, playerMotions.travelMotionId, 0.0f,
+        lbl_1_rodata_8C, HU3D_MOTATTR_LOOP);
     HuPrcSleep(30);
     mbCameraShakeSet(60, lbl_1_rodata_88);
-    sound = mbAudFXPlay(0x60D);
+    soundHandle = mbAudFXPlay(MSM_SE_SBRD_08);
     HuPrcSleep(60);
-    mbObjMotionSpeedSet(marker->modelId, 1.0f);
-    omVibrate((s16)playerNo, 20, 20, 0);
-    mbAudFXPlay(0x60E);
-    mbAudFXStop(sound);
+    mbObjMotionSpeedSet(marker->markerModelId, 1.0f);
+    omVibrate((s16)playerIndex, 20, 20, 0);
+    mbAudFXPlay(MSM_SE_SBRD_09);
+    mbAudFXStop(soundHandle);
     HuPrcSleep(12);
-    mbPlayerMotionShiftSet(playerNo, 9, 0.0f,
+    mbPlayerMotionShiftSet(playerIndex, 9, 0.0f,
         lbl_1_rodata_8C, 0);
     mbCameraFocusObjSet(-1);
-    work.delta.x = work.delta.y = work.delta.z = 0.0f;
-    mbPlayerPosGet(playerNo, &work.jumpPos);
+    returnWork.movementVector.x = returnWork.movementVector.y = returnWork.movementVector.z = 0.0f;
+    mbPlayerPosGet(playerIndex, &returnWork.fallPosition);
 
-    for (time = 0; (u32)time < 72; time++) {
-        work.delta.y += lbl_1_rodata_A8;
-        work.jumpPos.y += lbl_1_rodata_AC * work.delta.y;
-        mbPlayerPosSetV(playerNo, &work.jumpPos);
-        if ((u32)time == 18) {
-            mbPlayerMotionShiftSet(playerNo, motions.second,
-                0.0f, 8.0f, 0x40000001);
+    // The player accelerates downward for 72 updates before the outgoing frame is captured.
+    for (elapsedFrame = 0; (u32)elapsedFrame < 72; elapsedFrame++) {
+        returnWork.movementVector.y += lbl_1_rodata_A8;
+        returnWork.fallPosition.y += lbl_1_rodata_AC * returnWork.movementVector.y;
+        mbPlayerPosSetV(playerIndex, &returnWork.fallPosition);
+        if ((u32)elapsedFrame == 18) {
+            mbPlayerMotionShiftSet(playerIndex, playerMotions.jumpMotionId,
+                0.0f, 8.0f, HU3D_MOTATTR_LOOP);
         }
         HuPrcVSleep();
     }
     mbWipeDissolveFadeOut();
     mbCameraMovePos(NULL, &lbl_1_data_128, NULL, lbl_1_rodata_88,
         lbl_1_rodata_A0, -1);
-    mbObjDispSet(marker->modelId, FALSE);
-    work.jumpPos.y = work.playerPos.y;
-    work.delta.y = lbl_1_rodata_B0;
-    mbPlayerPosSetV(playerNo, &work.jumpPos);
-    mbWipeCreate(1, 0x81, 30);
+    mbObjDispSet(marker->markerModelId, FALSE);
+    // Reset to the approach height and begin another fall with downward velocity.
+    returnWork.fallPosition.y = returnWork.playerOrigin.y;
+    returnWork.movementVector.y = lbl_1_rodata_B0;
+    mbPlayerPosSetV(playerIndex, &returnWork.fallPosition);
+    mbWipeCreate(1, WIPE_TYPE_CROSS_COPY, 30);
     mbMusFadeOutSpeed(0, 1000);
     mbWipeSpecialCreate(1, 6, 90);
-    mbAudFXPlay(0x60F);
+    mbAudFXPlay(MSM_SE_SBRD_10);
 
-    for (time = 0; (u32)time <= 90; time++) {
-        t = time / lbl_1_rodata_B4;
-        work.delta.y += lbl_1_rodata_A8;
-        work.jumpPos.y += lbl_1_rodata_AC * work.delta.y;
-        mbPlayerPosSetV(playerNo, &work.jumpPos);
+    // The following loop computes progress but does not use it.
+    for (elapsedFrame = 0; (u32)elapsedFrame <= 90; elapsedFrame++) {
+        progress = elapsedFrame / lbl_1_rodata_B4;
+        returnWork.movementVector.y += lbl_1_rodata_A8;
+        returnWork.fallPosition.y += lbl_1_rodata_AC * returnWork.movementVector.y;
+        mbPlayerPosSetV(playerIndex, &returnWork.fallPosition);
         HuPrcVSleep();
     }
     mbWipeSpecialWait();
     mbWipeFadeOutTime(1);
     mbWipeSpecialKill();
-    mbPlayerMotionKill(playerNo, motions.first);
-    mbPlayerMotionKill(playerNo, motions.second);
+    mbPlayerMotionKill(playerIndex, playerMotions.travelMotionId);
+    mbPlayerMotionKill(playerIndex, playerMotions.jumpMotionId);
     mbSingleReturnWrite();
 }
 
-#pragma push
-#pragma section code_type ".text.after_common"
+float *lbl_1_bss_48;
+s32 lbl_1_bss_44;
+u32 *lbl_1_bss_40;
+s16 lbl_1_bss_3C;
+S01Marker lbl_1_bss_30[3];
+S01Npc lbl_1_bss_8[5];
+s16 lbl_1_bss_2[3];
+s16 lbl_1_bss_0;
 
-void fn_1_3610(void)
-{
-    lbl_1_bss_44 = OSGetTick();
-}
-
-s32 fn_1_363C(void)
-{
-    return OSGetTick() - lbl_1_bss_44;
-}
-
-#pragma pop
+HuVecF lbl_1_data_0 = {0.0f, 0.0f, 300.0f};
+HuVecF lbl_1_data_C = {-28.0f, 0.0f, 0.0f};
+HuVecF lbl_1_data_18 = {0.0f, 0.0f, 0.0f};
+s32 lbl_1_data_24[3] = {DATANUM(DATA_s01, 3), DATANUM(DATA_s01, 4), DATANUM(DATA_s01, 5)};
+HuVecF lbl_1_data_30[3] = {
+    {-150.0f, 566.0f, -375.0f},
+    {191.0f, 828.0f, -1272.0f},
+    {-806.0f, 887.0f, -1481.0f}
+};
+S01PosRot lbl_1_data_54[5] = {
+    {{-556.0f, -8.0f, 756.0f}, 41.0f},
+    {{190.0f, 219.0f, 160.0f}, -15.0f},
+    {{-1204.0f, 384.0f, -465.0f}, 37.0f},
+    {{-1123.0f, 338.0f, -548.0f}, 22.0f},
+    {{1480.0f, 661.0f, -1111.0f}, -40.0f}
+};
+int lbl_1_data_A4[3] = {DATANUM(DATA_s01, 7), DATANUM(DATA_s01, 8), -1};
+s32 lbl_1_data_B0[5] = {1, 2, 3, 3, 4};
+S01PosRot lbl_1_data_C4[3] = {
+    {{-203.0f, -11.0f, 857.0f}, 50.0f},
+    {{523.0f, 99.0f, 411.0f}, -55.0f},
+    {{-801.0f, 653.0f, -870.0f}, 45.0f}
+};
+int lbl_1_data_F4[6] = {
+    DATANUM(DATA_s01, 10), DATANUM(DATA_s01, 11), DATANUM(DATA_s01, 12), DATANUM(DATA_s01, 13),
+    DATANUM(DATA_s01, 14), -1
+};
+int lbl_1_data_10C[2] = {DATANUM(DATA_s01, 17), -1};
+char lbl_1_data_114[8] = "jyango";
+HuVecF lbl_1_data_11C = {-15.0f, 0.0f, 0.0f};
+HuVecF lbl_1_data_128 = {-90.0f, 0.0f, 0.0f};
