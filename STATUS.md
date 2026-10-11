@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 38.48% | 57.79% |
-| Main DOL | 89.60% | 99.11% |
+| Entire project | 38.50% | 57.81% |
+| Main DOL | 89.74% | 99.14% |
 | REL modules | 27.64% | 31.61% |
+
+DOL source: `src/gssdk_lib/asrpho/common/blocks/flblocks/acne.c` now builds from source; `main.dol` matches retail byte for byte.
 
 DOL source: `src/gssdk_lib/asrpho/rec1600/creaspt.c` now builds from source; `main.dol` matches retail byte for byte.
 

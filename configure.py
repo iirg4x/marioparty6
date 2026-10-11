@@ -1016,7 +1016,7 @@ config.libs = [
             Object(Matching, "gssdk_lib/asrpho/common/blocks/pitchwin.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/stacker.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/undersam.c"),
-            Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/acne.c"),
+            Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/acne.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/dctlift.c"),
             Object(NonMatching, "gssdk_lib/asrpho/common/blocks/flblocks/gender.c"),
             Object(Matching, "gssdk_lib/asrpho/common/blocks/flblocks/logexp.c"),
