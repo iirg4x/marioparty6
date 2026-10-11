@@ -10,9 +10,9 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 38.50% | 57.83% |
+| Entire project | 39.49% | 58.15% |
 | Main DOL | 89.74% | 99.14% |
-| REL modules | 27.64% | 31.65% |
+| REL modules | 28.83% | 32.17% |
 
 Boot (`bootDll`) selects all **68 functions** from **4 complete translation units**; its linked REL matches retail.
 
@@ -101,7 +101,7 @@ owner with **58 / 58 functions** matching instructions and effective physical
 relocations. Its source-selected build, including the consistent gamework
 provider interface, reproduces the retail DOL and all 136 RELs byte-for-byte.
 
-**Minigame Mode (`mdminidll`) now selects all 259 functions from native source.**
+Mini-Game Mode (`mdminidll`) selects all **259 functions** from **3 complete translation units**; its linked REL matches retail.
 Fresh compilation verifies instruction bytes and effective relocations for every
 function, with zero protected-function losses. All six allocated sections and
 the complete linked REL are retail-identical. Composed translation units supply
