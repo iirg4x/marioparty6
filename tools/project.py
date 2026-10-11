@@ -38,6 +38,7 @@ class Object:
         self.options: Dict[str, Any] = {
             "add_to_all": True,
             "asflags": None,
+            "extab_padding": None,
             "extra_asflags": None,
             "cflags": None,
             "extra_cflags": None,
@@ -63,6 +64,8 @@ class ProjectConfig:
         self.binutils_path: Optional[Path] = None  # If None, download
         self.dtk_tag: Optional[str] = None  # Git tag
         self.dtk_path: Optional[Path] = None  # If None, download
+        self.dtk_extab_tag: Optional[str] = None  # DTK tag for padding normalization
+        self.dtk_extab_path: Optional[Path] = None  # Existing binary override
         self.compilers_tag: Optional[str] = None  # 1
         self.compilers_path: Optional[Path] = None  # If None, download
         self.objdiff_tag: Optional[str] = None  # Git tag
@@ -315,6 +318,33 @@ def generate_build_ninja(
     else:
         sys.exit("ProjectConfig.dtk_tag missing")
 
+    # Padding normalization uses a separate DTK; ordinary binary tooling is unchanged.
+    dtk_extab: Optional[Path] = None
+    if any(
+        (
+            obj.options.get("extab_padding")
+            if obj.options.get("extab_padding") is not None
+            else lib.get("extab_padding")
+        )
+        is not None
+        for lib in config.libs or []
+        for obj in lib["objects"]
+    ):
+        if config.dtk_extab_path is not None:
+            if not config.dtk_extab_path.is_file():
+                sys.exit("ProjectConfig.dtk_extab_path must be an existing DTK binary")
+            dtk_extab = config.dtk_extab_path
+        elif config.dtk_extab_tag:
+            dtk_extab = build_tools_path / f"dtk-extab{EXE}"
+            n.build(
+                outputs=dtk_extab,
+                rule="download_tool",
+                implicit=download_tool,
+                variables={"tool": "dtk", "tag": config.dtk_extab_tag},
+            )
+        else:
+            sys.exit("ProjectConfig.dtk_extab_tag missing for extab_padding")
+
     if config.sjiswrap_path:
         sjiswrap = config.sjiswrap_path
     elif config.sjiswrap_tag:
@@ -443,6 +473,16 @@ def generate_build_ninja(
         mwcc_implicit.append(transform_dep)
         mwcc_sjis_implicit.append(transform_dep)
 
+    # Optional per-object exception-table padding normalization.
+    mwcc_extab_cmd = (
+        f'{CHAIN}{mwcc_cmd} && {dtk_extab} extab clean --padding "$extab_padding" $out $out'
+    )
+    mwcc_sjis_extab_cmd = (
+        f'{CHAIN}{mwcc_sjis_cmd} && {dtk_extab} extab clean --padding "$extab_padding" $out $out'
+    )
+    mwcc_extab_implicit = [*mwcc_implicit, dtk_extab]
+    mwcc_sjis_extab_implicit = [*mwcc_sjis_implicit, dtk_extab]
+
     n.comment("Link ELF file")
     n.rule(
         name="link",
@@ -480,6 +520,20 @@ def generate_build_ninja(
         deps="gcc",
     )
     n.newline()
+
+    if dtk_extab is not None:
+        for rule_name, command in (
+            ("mwcc_extab", mwcc_extab_cmd),
+            ("mwcc_sjis_extab", mwcc_sjis_extab_cmd),
+        ):
+            n.rule(
+                name=rule_name,
+                command=command,
+                description="MWCC $out",
+                depfile="$basefile.d",
+                deps="gcc",
+            )
+            n.newline()
 
     n.comment("Assemble asm")
     n.rule(
@@ -724,19 +778,30 @@ def generate_build_ninja(
             if shift_jis is None:
                 shift_jis = config.shift_jis
 
+            build_rule = "mwcc_sjis" if shift_jis else "mwcc"
+            build_implicit = mwcc_sjis_implicit if shift_jis else mwcc_implicit
+            variables = {
+                "mw_version": Path(options["mw_version"]),
+                "cflags": cflags_str,
+                "basedir": os.path.dirname(src_base_path),
+                "basefile": src_base_path,
+            }
+            extab_padding = options.get("extab_padding")
+            if extab_padding is not None:
+                build_rule = "mwcc_sjis_extab" if shift_jis else "mwcc_extab"
+                build_implicit = (
+                    mwcc_sjis_extab_implicit if shift_jis else mwcc_extab_implicit
+                )
+                variables["extab_padding"] = bytes(extab_padding).hex()
+
             # Add MWCC build rule
             n.comment(f"{obj.name}: {lib_name} (linked {obj.completed})")
             n.build(
                 outputs=src_obj_path,
-                rule="mwcc_sjis" if shift_jis else "mwcc",
+                rule=build_rule,
                 inputs=src_path,
-                variables={
-                    "mw_version": Path(options["mw_version"]),
-                    "cflags": cflags_str,
-                    "basedir": os.path.dirname(src_base_path),
-                    "basefile": src_base_path,
-                },
-                implicit=mwcc_sjis_implicit if shift_jis else mwcc_implicit,
+                variables=variables,
+                implicit=build_implicit,
             )
 
             # Add ctx build rule
