@@ -14,6 +14,8 @@ Byte percentages were generated from a verified full-project retail build with `
 | Main DOL | 88.95% | 99.05% |
 | REL modules | 27.64% | 31.61% |
 
+Mode Select (`mdseldll`) selects all **132 functions** from **2 complete translation units**; its linked REL matches retail.
+
 File Select (`fileseldll`) selects all **88 functions** from **4 complete translation units**; its linked REL matches retail.
 
 openingDll (`openingDll`) selects all **60 functions** from **2 complete translation units**; its linked REL matches retail.
