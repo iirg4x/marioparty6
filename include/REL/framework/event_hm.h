@@ -1,6 +1,7 @@
 /* Defines channel-event callbacks and the owning map used to dispatch them by type. */
 #ifndef FRAMEWORK_EVENT_HM_H
 #define FRAMEWORK_EVENT_HM_H
+#include "REL/framework/tree_node.h"
 
 /* Assigning a parent pointer preserves this low-bit node tag. */
 #define HANDLER_PARENT_TAG_MASK 0x1UL
@@ -9,9 +10,9 @@ void *operator new(unsigned long);
 void operator delete(void *);
 inline void *operator new(unsigned long, void *storage) { return storage; }
 
-/* A message carrying an event type and additional data to its registered callbacks. */
+/* The channel and event-type words at the start of a message passed to callbacks. */
 struct EventMessage {
-    unsigned long context; // Additional message data; this dispatcher does not read it.
+    unsigned long channel; // Channel already selected by the sender's dispatch; not read here.
     int type; // Event type used to select callbacks.
 };
 
@@ -21,7 +22,7 @@ struct EventCallback {
     virtual void receive(EventMessage *);
 };
 
-/* A callback interface that can register with an event channel. */
+/* Registers a callback on event channels and removes it from every channel on destruction. */
 struct EventListener : EventCallback {
     EventListener();
     virtual ~EventListener();
@@ -41,23 +42,11 @@ struct HandlerValue {
 
 struct HandlerNode;
 /* Parent link with a low-bit tag retained when insertion sets the pointer. */
-struct HandlerParent {
-    unsigned long parentBits; // Parent pointer together with HANDLER_PARENT_TAG_MASK.
-    /* insertNode assigns the parent without overwriting the existing node tag. */
-    HandlerParent& operator=(HandlerNode *node) {
-        parentBits = (unsigned long)node | (parentBits & HANDLER_PARENT_TAG_MASK);
-        return *this;
-    }
-};
+typedef TreeParent HandlerParent;
 /* The shared left-link layout also provides the tree's end anchor. */
-struct HandlerAnchor {
-    void *left; // Left child on nodes, or the tree root on the end anchor; null when absent.
-    HandlerAnchor() : left(0) {}
-};
+typedef TreeAnchor HandlerAnchor;
 /* A tree node containing one callback registration and its tree links. */
-struct HandlerNode : HandlerAnchor {
-    HandlerNode *right; // Right child, or null when absent.
-    HandlerParent parent; // Tagged link to the parent, including the end anchor at the root.
+struct HandlerNode : TreeNodeBase {
     HandlerValue entry; // Event type and the registered callback.
 };
 
@@ -122,10 +111,11 @@ struct HandlerBegin : HandlerValueCompare {
 struct HandlerIteratorBase {};
 /* Refers to one callback entry during dispatch or destruction. */
 struct HandlerIterator : HandlerIteratorBase {
-    HandlerNode *currentNode; // Current entry, or the tree's end anchor after the last entry.
+    TreeNodeBase *currentNode; // Current entry, or the tree's end anchor after the last entry.
     HandlerIterator(HandlerNode *node) : currentNode(node) {}
-    HandlerValue& operator*() const { return currentNode->entry; }
-    HandlerIterator& operator++();
+    HandlerValue& operator*() const { return static_cast<HandlerNode *>(currentNode)->entry; }
+    /* Dispatch and destruction advance to the next event-type entry, or the end anchor. */
+    HandlerIterator& operator++() { advanceTreeNode(currentNode); return *this; }
     bool operator!=(const HandlerIterator& other) const { return currentNode != other.currentNode; }
 };
 
@@ -183,7 +173,5 @@ struct EventHandlerManager : EventListener {
     void addHandler(EventCallback *, int);
     virtual void receive(EventMessage *);
 };
-
-void rebalanceHandlerTree(HandlerNode *, HandlerNode *);
 
 #endif

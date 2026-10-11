@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 39.49% | 58.15% |
+| Entire project | 41.26% | 58.42% |
 | Main DOL | 89.74% | 99.14% |
-| REL modules | 28.83% | 32.17% |
+| REL modules | 30.98% | 32.62% |
+
+Shared C++ framework (`framework:octtree_debug.cpp`): **30 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
 Burnstile (`m668DLL`) selects all **91 functions** from **6 complete translation units**; its linked REL matches retail.
 

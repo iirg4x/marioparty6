@@ -7,13 +7,13 @@ extern "C" {
 
 static const char rcsid[] = "$Id: event_hm.cpp,v 1.21 2004/09/09 12:24:38 saf Exp $";
 
-/* At construction, create the owned callback map and register the requested channel. */
+/* Create the callback map and register its channel after the event manager is active. */
 EventHandlerManager::EventHandlerManager(int channel) : handlers(new HandlerMap)
 {
     registerChannel(channel);
 }
 
-/* On destruction, delete every callback before the map owner releases the tree nodes. */
+/* On destruction, delete callbacks in event-type order before the map releases its nodes. */
 EventHandlerManager::~EventHandlerManager()
 {
     HandlerMap& handlerMap = *handlers;
@@ -33,7 +33,7 @@ void EventHandlerManager::addHandler(EventCallback *handler, int eventType)
     handlerMap.insert(entry);
 }
 
-/* On receipt of a channel event, invoke every callback registered for its type. */
+/* Channel dispatch calls this to forward the same message to every matching registration. */
 void EventHandlerManager::receive(EventMessage *message)
 {
     HandlerMap& handlerMap = *handlers;
@@ -56,13 +56,13 @@ HandlerIterator HandlerTree::lowerBound(const int& eventType)
             bound = currentNode;
             currentNode = (HandlerNode*)currentNode->left;
         } else {
-            currentNode = currentNode->right;
+            currentNode = static_cast<HandlerNode *>(currentNode->right);
         }
     }
     return bound;
 }
 
-/* receive uses this to mark the end of callbacks with the requested event type. */
+/* receive uses this to find the first registration strictly after the requested event type. */
 HandlerIterator HandlerTree::upperBound(const int& eventType)
 {
     HandlerNode *currentNode = root();
@@ -72,17 +72,17 @@ HandlerIterator HandlerTree::upperBound(const int& eventType)
             bound = currentNode;
             currentNode = (HandlerNode*)currentNode->left;
         } else {
-            currentNode = currentNode->right;
+            currentNode = static_cast<HandlerNode *>(currentNode->right);
         }
     }
     return bound;
 }
 
-/* The tree destructor releases a subtree here; callback objects were deleted by the manager. */
+/* Tree destruction frees descendants before their node; the manager already deleted callbacks. */
 void HandlerTree::erase(HandlerNode *node)
 {
     if (node->left) erase((HandlerNode*)node->left);
-    if (node->right) erase(node->right);
+    if (node->right) erase(static_cast<HandlerNode *>(node->right));
     valueAllocator().destroy(&node->entry);
     nodeAllocator().deallocate(node, 1);
 }
@@ -93,19 +93,19 @@ HandlerIterator HandlerTree::insert(const HandlerValue& entry)
     HandlerNode *insertionParent = (HandlerNode*)&nodeStorage.second();
     HandlerNode *searchNode = root();
     bool insertLeft = true;
-    bool insertFirst = true;
+    bool becomesFirst = true;
     while (searchNode != 0) {
         insertionParent = searchNode;
         if (ordering.first()(entry.eventType, searchNode->entry.eventType)) {
             searchNode = (HandlerNode*)searchNode->left;
             insertLeft = true;
         } else {
-            searchNode = searchNode->right;
+            searchNode = static_cast<HandlerNode *>(searchNode->right);
             insertLeft = false;
-            insertFirst = false;
+            becomesFirst = false;
         }
     }
-    return insertNode(insertionParent, insertLeft, insertFirst, entry);
+    return insertNode(insertionParent, insertLeft, becomesFirst, entry);
 }
 
 /* Map construction sets the first iterator to the empty tree's end anchor. */
@@ -118,7 +118,7 @@ HandlerTree::HandlerTree(const HandlerValueCompare& compare, const HandlerAlloca
 /* insert calls this after choosing a parent, to allocate, link and rebalance the new entry. */
 template <class Value>
 HandlerNode *HandlerTree::insertNode(HandlerNode *insertionParent, bool insertLeft,
-                                     bool insertFirst, const Value &entry)
+                                     bool becomesFirst, const Value &entry)
 {
     if (size() > maxSize() - 1) {
         fprintf(stderr, "tree::insert length error\n");
@@ -131,8 +131,8 @@ HandlerNode *HandlerTree::insertNode(HandlerNode *insertionParent, bool insertLe
     if (insertLeft) insertionParent->left = newNode;
     else insertionParent->right = newNode;
     ++entryStorage.second();
-    rebalanceHandlerTree(newNode, root());
+    rebalanceTreeAfterInsert(newNode, root());
     // A path containing only left branches makes this the new first entry.
-    if (insertFirst) beginNode() = newNode;
+    if (becomesFirst) beginNode() = newNode;
     return newNode;
 }
