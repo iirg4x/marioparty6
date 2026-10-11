@@ -1,15 +1,21 @@
+// Opens THP movie files, buffers their frames, and feeds decoded video and audio to playback.
 #include "game/THPSimple.h"
 #include "game/THPDraw.h"
 
-#define ALIGN32(val) (((val) + 0x1F) & ~0x1F)
+#define THP_ALIGNMENT_MASK 0x1F
+#define ROUND_UP_32(val) (((val) + THP_ALIGNMENT_MASK) & ~THP_ALIGNMENT_MASK)
+#define THP_WORK_AREA_SIZE 4096
+#define AUDIO_MIX_SAMPLE_COUNT 160
+#define THP_FILE_VERSION 65536
+#define AI_DMA_CACHED_ADDRESS_BIT_PATTERN 0x80000000
 
 static void __THPSimpleDVDCallback(s32 result, DVDFileInfo *fileInfo);
-static s32 VideoDecode(void *arg0);
+static s32 VideoDecode(void *frameComponentData);
 static void THPAudioMixCallback(void);
 
 UnkThpStruct10 SimpleControl;
-static u8 SoundBuffer[2][0x280];
-static u8 WorkBuffer[0x40] ATTRIBUTE_ALIGN(32);
+static u8 SoundBuffer[2][640];
+static u8 WorkBuffer[64] ATTRIBUTE_ALIGN(32);
 
 static s32 SoundBufferIndex;
 static void *LastAudioBuffer;
@@ -21,27 +27,30 @@ static s32 AudioSystem;
 static void (*OldAIDCallback)();
 static s32 Initialized;
 
-BOOL THPSimpleInit(s32 arg0)
+// HuTHPSprCreateVol and HuTHP3DCreateVol call this to initialize the decoder for movie playback.
+BOOL THPSimpleInit(s32 audioSystemMode)
 {
-    BOOL interruptOld;
+    BOOL previousInterruptState;
 
     memset(&SimpleControl, 0, sizeof(SimpleControl));
     LCEnable();
     if(THPInit() == FALSE) {
         return 0;
     }
-    interruptOld = OSDisableInterrupts();
-    AudioSystem = arg0;
+    previousInterruptState = OSDisableInterrupts();
+    AudioSystem = audioSystemMode;
     SoundBufferIndex = 0;
     LastAudioBuffer = NULL;
     CurAudioBuffer = NULL;
     OldAIDCallback = AIRegisterDMACallback(THPAudioMixCallback);
+    // A nonzero audio mode needs an existing DMA callback. Failure removes the new callback
+    // but leaves locked cache enabled and the THP decoder initialized.
     if(OldAIDCallback == NULL && AudioSystem != 0) {
         AIRegisterDMACallback(NULL);
-        OSRestoreInterrupts(interruptOld);
+        OSRestoreInterrupts(previousInterruptState);
         return 0;
     }
-    OSRestoreInterrupts(interruptOld);
+    OSRestoreInterrupts(previousInterruptState);
     if(AudioSystem == 0) {
         memset(SoundBuffer, 0, sizeof(SoundBuffer));
         DCFlushRange(SoundBuffer, sizeof(SoundBuffer));
@@ -52,107 +61,119 @@ BOOL THPSimpleInit(s32 arg0)
     return 1;
 }
 
+// THPTestProc calls this after stopping playback to disable locked cache and restore a saved
+// non-null audio DMA callback. With no saved callback, it leaves the callback unchanged;
+// it does not stop DMA.
 void THPSimpleQuit(void) {
-    s32 temp_r31;
+    s32 interruptState;
 
     LCDisable();
-    temp_r31 = OSDisableInterrupts();
+    interruptState = OSDisableInterrupts();
     if(OldAIDCallback) {
         AIRegisterDMACallback(OldAIDCallback);
     }
-    OSRestoreInterrupts(temp_r31);
+    OSRestoreInterrupts(interruptState);
     Initialized = 0;
 }
 
-s32 THPSimpleOpen(char *arg0) {
-    s32 var_r31;
-    s32 i;
+// THPTestProc calls this until the movie opens and its header and component records are readable.
+s32 THPSimpleOpen(char *fileName) {
+    s32 componentInfoOffset;
+    s32 componentIndex;
 
     if(Initialized == 0) {
         return 0;
     }
-    if(SimpleControl.unk98 != 0) {
+    if(SimpleControl.movieOpen != 0) {
         return 0;
     }
-    memset(&SimpleControl.unk80, 0, sizeof(SimpleControl.unk80));
-    memset(SimpleControl.unk88, 0, sizeof(SimpleControl.unk88));
-    if(DVDOpen(arg0, &SimpleControl.unk00) == 0) {
+    memset(&SimpleControl.videoInfo, 0, sizeof(SimpleControl.videoInfo));
+    memset(SimpleControl.audioInfoData, 0, sizeof(SimpleControl.audioInfoData));
+    if(DVDOpen(fileName, &SimpleControl.fileInfo) == 0) {
         return 0;
     }
-    if(THPSimpleRead(&SimpleControl.unk00, &WorkBuffer, 0x40, 0) < 0) {
-        DVDClose(&SimpleControl.unk00);
+    if(THPSimpleRead(&SimpleControl.fileInfo, &WorkBuffer, 64, 0) < 0) {
+        DVDClose(&SimpleControl.fileInfo);
         return 0;
     }
-    memcpy(&SimpleControl.unk3C, &WorkBuffer, sizeof(SimpleControl.unk3C));
-    if(strcmp(SimpleControl.unk3C.mMagic, "THP") != 0) {
-        DVDClose(&SimpleControl.unk00);
+    memcpy(&SimpleControl.header, &WorkBuffer, sizeof(SimpleControl.header));
+    if(strcmp(SimpleControl.header.mMagic, "THP") != 0) {
+        DVDClose(&SimpleControl.fileInfo);
         return 0;
     }
-    if(SimpleControl.unk3C.mVersion != 0x10000) {
-        DVDClose(&SimpleControl.unk00);
+    if(SimpleControl.header.mVersion != THP_FILE_VERSION) {
+        DVDClose(&SimpleControl.fileInfo);
         return 0;
     }
-    var_r31 = SimpleControl.unk3C.mCompInfoDataOffsets;
-    if(THPSimpleRead(&SimpleControl.unk00, &WorkBuffer, 0x20, var_r31) < 0) {
-        DVDClose(&SimpleControl.unk00);
+    componentInfoOffset = SimpleControl.header.mCompInfoDataOffsets;
+    if(THPSimpleRead(&SimpleControl.fileInfo, &WorkBuffer, 32, componentInfoOffset) < 0) {
+        DVDClose(&SimpleControl.fileInfo);
         return 0;
     }
-    memcpy(&SimpleControl.unk6C, &WorkBuffer, sizeof(SimpleControl.unk6C));
-    var_r31 += sizeof(SimpleControl.unk6C);
-    SimpleControl.unk9F = 0;
-    for(i = 0; i < SimpleControl.unk6C.mNumComponents; i++) {
-        switch (SimpleControl.unk6C.mFrameComp[i]) {
+    memcpy(&SimpleControl.componentInfo, &WorkBuffer, sizeof(SimpleControl.componentInfo));
+    componentInfoOffset += sizeof(SimpleControl.componentInfo);
+    SimpleControl.hasAudio = 0;
+    for (componentIndex = 0; componentIndex < SimpleControl.componentInfo.mNumComponents;
+         componentIndex++) {
+        switch (SimpleControl.componentInfo.mFrameComp[componentIndex]) {
             case 0:
-                if(THPSimpleRead(&SimpleControl.unk00, &WorkBuffer, 0x20, var_r31) < 0) {
-                    DVDClose(&SimpleControl.unk00);
+                if (THPSimpleRead(&SimpleControl.fileInfo, &WorkBuffer, 32, componentInfoOffset) <
+                    0) {
+                    DVDClose(&SimpleControl.fileInfo);
                     return 0;
                 }
-                memcpy(&SimpleControl.unk80, &WorkBuffer, sizeof(SimpleControl.unk80));
-                var_r31 += sizeof(SimpleControl.unk80);
+                memcpy(&SimpleControl.videoInfo, &WorkBuffer, sizeof(SimpleControl.videoInfo));
+                componentInfoOffset += sizeof(SimpleControl.videoInfo);
                 break;
             case 1:
-                if(THPSimpleRead(&SimpleControl.unk00, &WorkBuffer, 0x20, var_r31) < 0) {
-                    DVDClose(&SimpleControl.unk00);
+                if (THPSimpleRead(&SimpleControl.fileInfo, &WorkBuffer, 32, componentInfoOffset) <
+                    0) {
+                    DVDClose(&SimpleControl.fileInfo);
                     return 0;
                 }
-                memcpy(SimpleControl.unk88, &WorkBuffer, sizeof(SimpleControl.unk88));
-                SimpleControl.unk9F = 1;
-                var_r31 += sizeof(SimpleControl.unk88);
+                memcpy(SimpleControl.audioInfoData, &WorkBuffer,
+                       sizeof(SimpleControl.audioInfoData));
+                SimpleControl.hasAudio = 1;
+                componentInfoOffset += sizeof(SimpleControl.audioInfoData);
                 break;
             default:
+                // An unsupported component type fails here without closing the opened DVD file.
                 return 0;
         }
     }
-    SimpleControl.unkA0 = SimpleControl.unk3C.mMovieDataOffsets;
-    SimpleControl.unkB4 = SimpleControl.unk3C.mFirstFrameSize;
-    SimpleControl.unkB0 = 0;
-    SimpleControl.unkB8 = 0;
-    SimpleControl.unkA4 = 0;
-    SimpleControl.unk144[0].unk0C = -1;
-    SimpleControl.unkAC = 0;
-    SimpleControl.unk194 = 0;
-    SimpleControl.unk198 = 0;
-    SimpleControl.unk9C = 0;
-    SimpleControl.unk9D = 0;
-    SimpleControl.unk9E = 0;
-    SimpleControl.unk98 = 1;
-    SimpleControl.unkC0 = SimpleControl.unkBC;
-    SimpleControl.unkC8 = 0;
+    SimpleControl.nextFrameOffset = SimpleControl.header.mMovieDataOffsets;
+    SimpleControl.nextFrameSize = SimpleControl.header.mFirstFrameSize;
+    SimpleControl.readFrameSlot = 0;
+    SimpleControl.nextFrameNumber = 0;
+    SimpleControl.readError = 0;
+    SimpleControl.videoBuffers[0].frameIndex = -1;
+    SimpleControl.decodeFrameSlot = 0;
+    SimpleControl.audioDecodeSlot = 0;
+    SimpleControl.audioMixSlot = 0;
+    SimpleControl.loadingActive = 0;
+    SimpleControl.audioActive = 0;
+    SimpleControl.loopMovie = 0;
+    SimpleControl.movieOpen = 1;
+    SimpleControl.targetVolume = SimpleControl.currentVolume;
+    SimpleControl.volumeRampSamples = 0;
     return 1;
 }
 
-static void ReadCallback(s32 result, DVDFileInfo* fileInfo)
+// DVDReadAsyncPrio calls this when a read completes; THPSimpleRead returns the saved status.
+static void ReadCallback(s32 readResult, DVDFileInfo* fileInfo)
 {
-    ReadResult = result;
+    // DVD completion is consumed by THPSimpleRead after the waiting process wakes.
+    ReadResult = readResult;
     CallbackStatus = TRUE;
 }
 
-s32 THPSimpleRead(DVDFileInfo *fileInfo, void *addr, s32 length, s32 offset)
+// THPSimpleOpen reads metadata and THPSimplePreLoad reads frames through this blocking helper.
+s32 THPSimpleRead(DVDFileInfo *movieFile, void *readBuffer, s32 readLength, s32 fileOffset)
 {
-    BOOL ret;
+    BOOL readQueued;
     CallbackStatus = FALSE;
-    ret = DVDReadAsyncPrio(fileInfo, addr, length, offset, ReadCallback, 0);
-    if(ret == FALSE) {
+    readQueued = DVDReadAsyncPrio(movieFile, readBuffer, readLength, fileOffset, ReadCallback, 0);
+    if(readQueued == FALSE) {
         return DVD_RESULT_FATAL_ERROR;
     }
     while(!CallbackStatus) {
@@ -161,230 +182,279 @@ s32 THPSimpleRead(DVDFileInfo *fileInfo, void *addr, s32 length, s32 offset)
     return ReadResult;
 }
 
+// THPTestProc calls this during shutdown after stopping audio and frame loading.
 s32 THPSimpleClose(void) {
-    if(SimpleControl.unk98 != 0 && SimpleControl.unk9C == 0) {
-        if(SimpleControl.unk9F != 0) {
-            if(SimpleControl.unk9D == 1) {
+    if(SimpleControl.movieOpen != 0 && SimpleControl.loadingActive == 0) {
+        if(SimpleControl.hasAudio != 0) {
+            if(SimpleControl.audioActive == 1) {
                 return 0;
             }
         } else {
-            SimpleControl.unk9D = 0;
+            SimpleControl.audioActive = 0;
         }
-        if(SimpleControl.unkA8 == 0) {
-            SimpleControl.unk98 = 0;
-            DVDClose(&SimpleControl.unk00);
+        if(SimpleControl.readPending == 0) {
+            SimpleControl.movieOpen = 0;
+            DVDClose(&SimpleControl.fileInfo);
             return 1;
         }
     }
     return 0;
 }
 
+// THPTestProc calls this after opening the movie to size its decoded planes and frame buffers.
 s32 THPSimpleCalcNeedMemory(void) {
-    s32 var_r31;
+    s32 requiredBytes;
 
-    if(SimpleControl.unk98 != 0) {
-        var_r31 = ALIGN32(SimpleControl.unk3C.mBufferSize) * 10;
-        var_r31 += ALIGN32(SimpleControl.unk80.unk00 * SimpleControl.unk80.unk04);
-        var_r31 += ALIGN32(SimpleControl.unk80.unk00 * SimpleControl.unk80.unk04 / 4);
-        var_r31 += ALIGN32(SimpleControl.unk80.unk00 * SimpleControl.unk80.unk04 / 4);
-        var_r31 += ALIGN32(SimpleControl.unk80.unk00 * SimpleControl.unk80.unk04);
-        var_r31 += ALIGN32(SimpleControl.unk80.unk00 * SimpleControl.unk80.unk04 / 4);
-        var_r31 += ALIGN32(SimpleControl.unk80.unk00 * SimpleControl.unk80.unk04 / 4);
-        if(SimpleControl.unk9F != 0) {
-            var_r31 += ALIGN32(SimpleControl.unk3C.mAudioMaxSamples * 4) * 4;
+    if(SimpleControl.movieOpen != 0) {
+        requiredBytes = ROUND_UP_32(SimpleControl.header.mBufferSize) * 10;
+        requiredBytes +=
+            ROUND_UP_32(SimpleControl.videoInfo.width * SimpleControl.videoInfo.height);
+        requiredBytes +=
+            ROUND_UP_32(SimpleControl.videoInfo.width * SimpleControl.videoInfo.height / 4);
+        requiredBytes +=
+            ROUND_UP_32(SimpleControl.videoInfo.width * SimpleControl.videoInfo.height / 4);
+        requiredBytes +=
+            ROUND_UP_32(SimpleControl.videoInfo.width * SimpleControl.videoInfo.height);
+        requiredBytes +=
+            ROUND_UP_32(SimpleControl.videoInfo.width * SimpleControl.videoInfo.height / 4);
+        requiredBytes +=
+            ROUND_UP_32(SimpleControl.videoInfo.width * SimpleControl.videoInfo.height / 4);
+        if(SimpleControl.hasAudio != 0) {
+            requiredBytes += ROUND_UP_32(SimpleControl.header.mAudioMaxSamples * 4) * 4;
         }
-        var_r31 += 0x1000;
-        return var_r31;
+        // Reserve a fixed 4 KiB working area in addition to the frame buffers.
+        requiredBytes += THP_WORK_AREA_SIZE;
+        return requiredBytes;
     }
     return 0;
 }
 
-s32 THPSimpleSetBuffer(void *arg0) {
-    u8 *var_r31;
-    u32 temp_r28;
-    u32 temp_r29;
-    u32 i;
+// THPTestProc calls this after allocating the size returned by THPSimpleCalcNeedMemory.
+// Buffers are assigned only for an open movie with loading stopped; active audio returns zero.
+// A closed movie or active loading leaves the buffers untouched but still returns one.
+s32 THPSimpleSetBuffer(void *bufferMemory) {
+    u8 *nextBuffer;
+    u32 yPlaneBytes;
+    u32 chromaPlaneBytes;
+    u32 bufferIndex;
 
-    if(SimpleControl.unk98 != 0 && SimpleControl.unk9C == 0) {
-        if(SimpleControl.unk9D == 1) {
+    if(SimpleControl.movieOpen != 0 && SimpleControl.loadingActive == 0) {
+        if(SimpleControl.audioActive == 1) {
             return 0;
         }
-        temp_r28 = ALIGN32(SimpleControl.unk80.unk00 * SimpleControl.unk80.unk04);
-        temp_r29 = ALIGN32(SimpleControl.unk80.unk00 * SimpleControl.unk80.unk04 / 4);
-        var_r31 = arg0;
-        for(i = 0; i < 2; i++) {
-            SimpleControl.unk144[i].unk00 = var_r31;
-            DCInvalidateRange(var_r31, temp_r28);
-            var_r31 += temp_r28;
-            SimpleControl.unk144[i].unk04 = var_r31;
-            DCInvalidateRange(var_r31, temp_r29);
-            var_r31 += temp_r29;
-            SimpleControl.unk144[i].unk08 = var_r31;
-            DCInvalidateRange(var_r31, temp_r29);
-            var_r31 += temp_r29;
+        yPlaneBytes = ROUND_UP_32(SimpleControl.videoInfo.width * SimpleControl.videoInfo.height);
+        chromaPlaneBytes =
+            ROUND_UP_32(SimpleControl.videoInfo.width * SimpleControl.videoInfo.height / 4);
+        nextBuffer = bufferMemory;
+        for(bufferIndex = 0; bufferIndex < 2; bufferIndex++) {
+            SimpleControl.videoBuffers[bufferIndex].yPlane = nextBuffer;
+            DCInvalidateRange(nextBuffer, yPlaneBytes);
+            nextBuffer += yPlaneBytes;
+            SimpleControl.videoBuffers[bufferIndex].cbPlane = nextBuffer;
+            DCInvalidateRange(nextBuffer, chromaPlaneBytes);
+            nextBuffer += chromaPlaneBytes;
+            SimpleControl.videoBuffers[bufferIndex].crPlane = nextBuffer;
+            DCInvalidateRange(nextBuffer, chromaPlaneBytes);
+            nextBuffer += chromaPlaneBytes;
         }
-        for(i = 0; i < 10; i++) {
-            SimpleControl.unkCC[i].unk00 = (s32*) var_r31;
-            var_r31 += ALIGN32(SimpleControl.unk3C.mBufferSize);
-            SimpleControl.unkCC[i].unk08 = 0;
+        for(bufferIndex = 0; bufferIndex < 10; bufferIndex++) {
+            SimpleControl.readBuffers[bufferIndex].frameData = (s32*) nextBuffer;
+            nextBuffer += ROUND_UP_32(SimpleControl.header.mBufferSize);
+            SimpleControl.readBuffers[bufferIndex].frameReady = 0;
         }
-        if(SimpleControl.unk9F != 0) {
-            for(i = 0; i < 4; i++) {
-                SimpleControl.unk164[i].unk00 = var_r31;
-                SimpleControl.unk164[i].unk04 = var_r31;
-                SimpleControl.unk164[i].unk08 = 0;
-                var_r31 += ALIGN32(SimpleControl.unk3C.mAudioMaxSamples * 4);
+        if(SimpleControl.hasAudio != 0) {
+            for(bufferIndex = 0; bufferIndex < 4; bufferIndex++) {
+                SimpleControl.audioBuffers[bufferIndex].sampleBuffer = nextBuffer;
+                SimpleControl.audioBuffers[bufferIndex].sampleCursor = nextBuffer;
+                SimpleControl.audioBuffers[bufferIndex].samplesRemaining = 0;
+                nextBuffer += ROUND_UP_32(SimpleControl.header.mAudioMaxSamples * 4);
             }
         }
-        SimpleControl.unk94 = var_r31;
+        SimpleControl.decodeWork = nextBuffer;
     }
     return 1;
 }
 
+// The DVD callback and THPSimpleDecode call this when the loader has a free frame-buffer slot.
 static inline void THPSimpleInlineFunc(void) {
-    if(SimpleControl.unkB8 > SimpleControl.unk3C.mNumFrames - 1) {
-        if(SimpleControl.unk9E != 1) {
+    if(SimpleControl.nextFrameNumber > SimpleControl.header.mNumFrames - 1) {
+        if(SimpleControl.loopMovie != 1) {
             return;
         }
-        SimpleControl.unkB8 = 0;
-        SimpleControl.unkA0 = SimpleControl.unk3C.mMovieDataOffsets;
-        SimpleControl.unkB4 = SimpleControl.unk3C.mFirstFrameSize;
+        SimpleControl.nextFrameNumber = 0;
+        SimpleControl.nextFrameOffset = SimpleControl.header.mMovieDataOffsets;
+        SimpleControl.nextFrameSize = SimpleControl.header.mFirstFrameSize;
     }
-    SimpleControl.unkA8 = 1;
-    if(DVDReadAsyncPrio(&SimpleControl.unk00, SimpleControl.unkCC[SimpleControl.unkB0].unk00, SimpleControl.unkB4, SimpleControl.unkA0, __THPSimpleDVDCallback, 2) != 1) {
-        SimpleControl.unkA8 = 0;
-        SimpleControl.unkA4 = 1;
+    // The frame slots wrap independently of the movie frame number.
+    SimpleControl.readPending = 1;
+    if (DVDReadAsyncPrio(&SimpleControl.fileInfo,
+                         SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameData,
+                         SimpleControl.nextFrameSize, SimpleControl.nextFrameOffset,
+                         __THPSimpleDVDCallback, 2) != 1) {
+        SimpleControl.readPending = 0;
+        SimpleControl.readError = 1;
     }
 }
 
-static void __THPSimpleDVDCallback(s32 result, DVDFileInfo *fileInfo) {
-    s32 var_r31;
+// Any status except fatal or canceled is treated as a completed read; the frame ring advances.
+// Another read is queued only when loading is active, the next slot is free, and readError is
+// clear. Fatal completion sets readError without clearing readPending; cancellation leaves
+// both flags unchanged.
+static void __THPSimpleDVDCallback(s32 readStatus, DVDFileInfo *fileInfo) {
+    s32 nextReadSlot;
 
-    if(result == -1) {
-        SimpleControl.unkA4 = 1;
+    if(readStatus == DVD_RESULT_FATAL_ERROR) {
+        SimpleControl.readError = 1;
         return;
     }
-    if(result != -3) {
-        SimpleControl.unkA8 = 0;
-        SimpleControl.unkCC[SimpleControl.unkB0].unk04 = SimpleControl.unkB8;
-        SimpleControl.unkB8++;
-        SimpleControl.unkCC[SimpleControl.unkB0].unk08 = 1;
-        SimpleControl.unkA0 += SimpleControl.unkB4;
-        SimpleControl.unkB4 = *SimpleControl.unkCC[SimpleControl.unkB0].unk00;
-        if(SimpleControl.unkB0 + 1 >= 10) {
-            var_r31 = 0;
+    // A canceled read is being discarded while playback stops.
+    if(readStatus != DVD_RESULT_CANCELED) {
+        SimpleControl.readPending = 0;
+        SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameNumber =
+            SimpleControl.nextFrameNumber;
+        SimpleControl.nextFrameNumber++;
+        SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameReady = 1;
+        SimpleControl.nextFrameOffset += SimpleControl.nextFrameSize;
+        SimpleControl.nextFrameSize =
+            *SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameData;
+        if(SimpleControl.readFrameSlot + 1 >= 10) {
+            nextReadSlot = 0;
         } else {
-            var_r31 = SimpleControl.unkB0 + 1;
+            nextReadSlot = SimpleControl.readFrameSlot + 1;
         }
-        SimpleControl.unkB0 = var_r31;
-        if(SimpleControl.unkCC[SimpleControl.unkB0].unk08 == 0 && SimpleControl.unkA4 == 0 && SimpleControl.unk9C == 1) {
+        SimpleControl.readFrameSlot = nextReadSlot;
+        if (SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameReady == 0 &&
+            SimpleControl.readError == 0 && SimpleControl.loadingActive == 1) {
             THPSimpleInlineFunc();
         }
     }
 }
 
-s32 THPSimplePreLoad(s32 arg0) {
-    u32 var_r30;
-    s32 i;
+// THPTestProc calls this before playback and after restart. The requested loop flag is stored
+// only after preloading, so the initial preload does not wrap a short looping movie.
+s32 THPSimplePreLoad(s32 loopMovie) {
+    u32 preloadFrameCount;
+    s32 frameIndex;
 
-    if(SimpleControl.unk98 != 0 && SimpleControl.unk9C == 0) {
-        var_r30 = 10;
-        if(arg0 == 0 && SimpleControl.unk3C.mNumFrames < 10) {
-            var_r30 = SimpleControl.unk3C.mNumFrames;
+    if(SimpleControl.movieOpen != 0 && SimpleControl.loadingActive == 0) {
+        preloadFrameCount = 10;
+        if(loopMovie == 0 && SimpleControl.header.mNumFrames < 10) {
+            preloadFrameCount = SimpleControl.header.mNumFrames;
         }
-        for(i = 0; i < var_r30; i++) {
-            if(THPSimpleRead(&SimpleControl.unk00, SimpleControl.unkCC[SimpleControl.unkB0].unk00, SimpleControl.unkB4, SimpleControl.unkA0) < 0) {
-                SimpleControl.unkA4 = 1;
+        for(frameIndex = 0; frameIndex < preloadFrameCount; frameIndex++) {
+            if (THPSimpleRead(&SimpleControl.fileInfo,
+                              SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameData,
+                              SimpleControl.nextFrameSize, SimpleControl.nextFrameOffset) < 0) {
+                SimpleControl.readError = 1;
                 return 0;
             }
-            SimpleControl.unkA0 += SimpleControl.unkB4;
-            SimpleControl.unkB4 = *SimpleControl.unkCC[SimpleControl.unkB0].unk00;
-            SimpleControl.unkCC[SimpleControl.unkB0].unk08 = 1;
-            SimpleControl.unkCC[SimpleControl.unkB0].unk04 = SimpleControl.unkB8;
-            SimpleControl.unkB0 = (SimpleControl.unkB0 + 1 >= 10) ? 0 : (SimpleControl.unkB0 + 1);
-            SimpleControl.unkB8++;
-            if(SimpleControl.unkB8 > SimpleControl.unk3C.mNumFrames - 1 && SimpleControl.unk9E == 1) {
-                SimpleControl.unkB8 = 0;
-                SimpleControl.unkA0 = SimpleControl.unk3C.mMovieDataOffsets;
-                SimpleControl.unkB4 = SimpleControl.unk3C.mFirstFrameSize;
+            SimpleControl.nextFrameOffset += SimpleControl.nextFrameSize;
+            SimpleControl.nextFrameSize =
+                *SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameData;
+            SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameReady = 1;
+            SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameNumber =
+                SimpleControl.nextFrameNumber;
+            SimpleControl.readFrameSlot =
+                (SimpleControl.readFrameSlot + 1 >= 10) ? 0 : (SimpleControl.readFrameSlot + 1);
+            SimpleControl.nextFrameNumber++;
+            if (SimpleControl.nextFrameNumber > SimpleControl.header.mNumFrames - 1 &&
+                SimpleControl.loopMovie == 1) {
+                SimpleControl.nextFrameNumber = 0;
+                SimpleControl.nextFrameOffset = SimpleControl.header.mMovieDataOffsets;
+                SimpleControl.nextFrameSize = SimpleControl.header.mFirstFrameSize;
             }
         }
-        SimpleControl.unk9E = arg0;
-        SimpleControl.unk9C = 1;
+        SimpleControl.loopMovie = loopMovie;
+        SimpleControl.loadingActive = 1;
         return 1;
     }
     return 0;
 }
 
+// THPTestProc enables movie audio when playback begins or resumes from a stop.
 void THPSimpleAudioStart(void) {
-    SimpleControl.unk9D = 1;
+    SimpleControl.audioActive = 1;
 }
 
+// THPTestProc disables movie audio before stopping or restarting frame loading.
 void THPSimpleAudioStop(void) {
-    SimpleControl.unk9D = 0;
+    SimpleControl.audioActive = 0;
 }
 
+// THPTestProc calls this after stopping audio to stop loading and reset movie state.
+// A pending read is passed to DVDCancel; its result is ignored before readPending is cleared.
 s32 THPSimpleLoadStop(void) {
-    s32 i;
+    s32 bufferIndex;
 
-    if(SimpleControl.unk98 != 0 && SimpleControl.unk9D == 0) {
-        SimpleControl.unk9C = 0;
-        if(SimpleControl.unkA8 != 0) {
-            DVDCancel(&SimpleControl.unk00.cb);
-            SimpleControl.unkA8 = 0;
+    if(SimpleControl.movieOpen != 0 && SimpleControl.audioActive == 0) {
+        SimpleControl.loadingActive = 0;
+        if(SimpleControl.readPending != 0) {
+            DVDCancel(&SimpleControl.fileInfo.cb);
+            SimpleControl.readPending = 0;
         }
-        for(i = 0; i < 10; i++) {
-            SimpleControl.unkCC[i].unk08 = 0;
+        for(bufferIndex = 0; bufferIndex < 10; bufferIndex++) {
+            SimpleControl.readBuffers[bufferIndex].frameReady = 0;
         }
-        for(i = 0; i < 4; i++) {
-            SimpleControl.unk164[i].unk08 = 0;
+        for(bufferIndex = 0; bufferIndex < 4; bufferIndex++) {
+            SimpleControl.audioBuffers[bufferIndex].samplesRemaining = 0;
         }
-        SimpleControl.unk144[0].unk0C = -1;
-        SimpleControl.unkA0 = SimpleControl.unk3C.mMovieDataOffsets;
-        SimpleControl.unkB4 = SimpleControl.unk3C.mFirstFrameSize;
-        SimpleControl.unkB0 = 0;
-        SimpleControl.unkB8 = 0;
-        SimpleControl.unkA4 = 0;
-        SimpleControl.unkAC = 0;
-        SimpleControl.unk194 = 0;
-        SimpleControl.unk198 = 0;
-        SimpleControl.unkBC = SimpleControl.unkC0;
-        SimpleControl.unkC8 = 0;
+        SimpleControl.videoBuffers[0].frameIndex = -1;
+        SimpleControl.nextFrameOffset = SimpleControl.header.mMovieDataOffsets;
+        SimpleControl.nextFrameSize = SimpleControl.header.mFirstFrameSize;
+        SimpleControl.readFrameSlot = 0;
+        SimpleControl.nextFrameNumber = 0;
+        SimpleControl.readError = 0;
+        SimpleControl.decodeFrameSlot = 0;
+        SimpleControl.audioDecodeSlot = 0;
+        SimpleControl.audioMixSlot = 0;
+        SimpleControl.currentVolume = SimpleControl.targetVolume;
+        SimpleControl.volumeRampSamples = 0;
         return 1;
     }
     return 0;
 }
 
+// THPDecodeFunc calls this once per retrace to decode the next buffered frame and audio component.
 s32 THPSimpleDecode(void) {
-    u8 *var_r29;
-    s32 *var_r30;
-    s32 temp_r27;
-    s32 temp_r26;
-    s32 temp_r25;
-    s32 var_r28;
-    s32 i;
+    u8 *componentData;
+    s32 *componentSizes;
+    s32 interruptState;
+    s32 decodedAudioSamples;
+    s32 nextInterruptState;
+    s32 nextFrameSlot;
+    s32 componentIndex;
 
-    if(SimpleControl.unkCC[SimpleControl.unkAC].unk08 != 0) {
-        var_r30 = SimpleControl.unkCC[SimpleControl.unkAC].unk00 + 2;
-        var_r29 = (u8*) (&SimpleControl.unkCC[SimpleControl.unkAC].unk00[SimpleControl.unk6C.mNumComponents] + 2);
-        if(SimpleControl.unk9F != 0) {
-            if(SimpleControl.unk164[SimpleControl.unk194].unk08 == 0) {
-                for(i = 0; i < SimpleControl.unk6C.mNumComponents; var_r29 += *var_r30, var_r30++, i++) {
-                    switch (SimpleControl.unk6C.mFrameComp[i]) {
+    if(SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameReady != 0) {
+        componentSizes = SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameData + 2;
+        componentData = (u8 *) (&SimpleControl.readBuffers[SimpleControl.decodeFrameSlot]
+                                     .frameData[SimpleControl.componentInfo.mNumComponents] +
+                                2);
+        if(SimpleControl.hasAudio != 0) {
+            if(SimpleControl.audioBuffers[SimpleControl.audioDecodeSlot].samplesRemaining == 0) {
+                for (componentIndex = 0;
+                     componentIndex < SimpleControl.componentInfo.mNumComponents;
+                     componentData += *componentSizes, componentSizes++, componentIndex++) {
+                    switch (SimpleControl.componentInfo.mFrameComp[componentIndex]) {
                         case 0:
-                            if(VideoDecode(var_r29) == 0) {
+                            if(VideoDecode(componentData) == 0) {
                                 return 1;
                             }
                             break;
                         case 1:
-                            temp_r26 = THPAudioDecode(SimpleControl.unk164[SimpleControl.unk194].unk00, var_r29, 0);
-                            temp_r27 = OSDisableInterrupts();
-                            SimpleControl.unk164[SimpleControl.unk194].unk08 = temp_r26;
-                            SimpleControl.unk164[SimpleControl.unk194].unk04 = SimpleControl.unk164[SimpleControl.unk194].unk00;
-                            OSRestoreInterrupts(temp_r27);
-                            SimpleControl.unk194++;
-                            if(SimpleControl.unk194 >= 4) {
-                                SimpleControl.unk194 = 0;
+                            decodedAudioSamples = THPAudioDecode(
+                                SimpleControl.audioBuffers[SimpleControl.audioDecodeSlot]
+                                    .sampleBuffer,
+                                componentData, 0);
+                            interruptState = OSDisableInterrupts();
+                            SimpleControl.audioBuffers[SimpleControl.audioDecodeSlot]
+                                .samplesRemaining = decodedAudioSamples;
+                            SimpleControl.audioBuffers[SimpleControl.audioDecodeSlot].sampleCursor =
+                                SimpleControl.audioBuffers[SimpleControl.audioDecodeSlot]
+                                    .sampleBuffer;
+                            OSRestoreInterrupts(interruptState);
+                            SimpleControl.audioDecodeSlot++;
+                            if(SimpleControl.audioDecodeSlot >= 4) {
+                                SimpleControl.audioDecodeSlot = 0;
                             }
                             break;
                     }
@@ -393,290 +463,327 @@ s32 THPSimpleDecode(void) {
                 return 3;
             }
         } else {
-            for(i = 0; i < SimpleControl.unk6C.mNumComponents; var_r29 += *var_r30, var_r30++, i++) {
-                if((s32) SimpleControl.unk6C.mFrameComp[i] != 0) {
-                    (void) i; // required to match. Optimized out unreachable code?
-                } else if(VideoDecode(var_r29) == 0) {
+            for (componentIndex = 0; componentIndex < SimpleControl.componentInfo.mNumComponents;
+                 componentData += *componentSizes, componentSizes++, componentIndex++) {
+                if((s32) SimpleControl.componentInfo.mFrameComp[componentIndex] != 0) {
+                    (void) componentIndex; // Audio components have no video plane to update.
+                } else if(VideoDecode(componentData) == 0) {
                     return 1;
                 }
             }
         }
-        SimpleControl.unkCC[SimpleControl.unkAC].unk08 = 0;
-        if(SimpleControl.unkAC + 1 >= 10) {
-            var_r28 = 0;
+        SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameReady = 0;
+        if(SimpleControl.decodeFrameSlot + 1 >= 10) {
+            nextFrameSlot = 0;
         } else {
-            var_r28 = SimpleControl.unkAC + 1;
+            nextFrameSlot = SimpleControl.decodeFrameSlot + 1;
         }
-        SimpleControl.unkAC = var_r28;
-        temp_r25 = OSDisableInterrupts();
-        if(SimpleControl.unkCC[SimpleControl.unkB0].unk08 == 0 && SimpleControl.unkA8 == 0 && SimpleControl.unkA4 == 0 && SimpleControl.unk9C == 1) {
+        SimpleControl.decodeFrameSlot = nextFrameSlot;
+        nextInterruptState = OSDisableInterrupts();
+        if (SimpleControl.readBuffers[SimpleControl.readFrameSlot].frameReady == 0 &&
+            SimpleControl.readPending == 0 && SimpleControl.readError == 0 &&
+            SimpleControl.loadingActive == 1) {
             THPSimpleInlineFunc();
         }
-        OSRestoreInterrupts(temp_r25);
+        OSRestoreInterrupts(nextInterruptState);
         return 0;
     } else {
         return 2;
     }
 }
 
-static s32 VideoDecode(void *arg0) {
-    s32 result;
-    s32 nextBuf = (bufIdx + 1) & 1;
-    
-    result = THPVideoDecode(arg0, SimpleControl.unk144[nextBuf].unk00, SimpleControl.unk144[nextBuf].unk04, SimpleControl.unk144[nextBuf].unk08, SimpleControl.unk94);
-    bufIdx = nextBuf;
-    if(result == 0) {
-        SimpleControl.unk144[0].unk0C = SimpleControl.unkCC[SimpleControl.unkAC].unk04;
+// THPSimpleDecode calls this for each video component to decode into the alternate YUV planes.
+// The display slot advances even on decode failure. Success writes videoBuffers[0].frameIndex,
+// the shared tag for the last successful frame.
+static s32 VideoDecode(void *frameComponentData) {
+    s32 decodeStatus;
+    s32 nextVideoBuffer = (bufIdx + 1) & 1;
+
+    decodeStatus = THPVideoDecode(
+        frameComponentData, SimpleControl.videoBuffers[nextVideoBuffer].yPlane,
+        SimpleControl.videoBuffers[nextVideoBuffer].cbPlane,
+        SimpleControl.videoBuffers[nextVideoBuffer].crPlane, SimpleControl.decodeWork);
+    bufIdx = nextVideoBuffer;
+    if(decodeStatus == 0) {
+        SimpleControl.videoBuffers[0].frameIndex =
+            SimpleControl.readBuffers[SimpleControl.decodeFrameSlot].frameNumber;
         return 1;
     }
     return 0;
 }
 
-s32 THPSimpleDrawCurrentFrame(GXRenderModeObj *arg0, GXColor *arg1, Mtx arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6) {
-    if(SimpleControl.unk144[0].unk0C >= 0) {
-        THPGXYuv2RgbSetup(arg0, arg1, arg2);
-        THPGXYuv2RgbDraw(SimpleControl.unk144[bufIdx].unk00, SimpleControl.unk144[bufIdx].unk04, SimpleControl.unk144[bufIdx].unk08, arg3, arg4, SimpleControl.unk80.unk00, SimpleControl.unk80.unk04, arg5, arg6);
+// THPViewFunc and THPViewSprFunc call this to draw the selected video buffer.
+// A failed decode can change that selection without updating the returned frame number.
+s32 THPSimpleDrawCurrentFrame(GXRenderModeObj *renderMode, GXColor *drawColor, Mtx modelView,
+                              s32 originX, s32 originY, s32 drawWidth, s32 drawHeight) {
+    if(SimpleControl.videoBuffers[0].frameIndex >= 0) {
+        THPGXYuv2RgbSetup(renderMode, drawColor, modelView);
+        THPGXYuv2RgbDraw(
+            SimpleControl.videoBuffers[bufIdx].yPlane, SimpleControl.videoBuffers[bufIdx].cbPlane,
+            SimpleControl.videoBuffers[bufIdx].crPlane, originX, originY,
+            SimpleControl.videoInfo.width, SimpleControl.videoInfo.height, drawWidth, drawHeight);
         THPGXRestore();
-        return SimpleControl.unk144[0].unk0C;
+        return SimpleControl.videoBuffers[0].frameIndex;
     }
     return -1;
 }
 
+// Maps the 0-127 movie volume setting to a Q15 audio multiplier.
 static u16 VolumeTable[] = {
-    0x0000, 0x0002, 0x0008, 0x0012, 0x0020, 0x0032, 0x0049, 0x0063,
-    0x0082, 0x00A4, 0x00CB, 0x00F5, 0x0124, 0x0157, 0x018E, 0x01C9,
-    0x0208, 0x024B, 0x0292, 0x02DD, 0x032C, 0x037F, 0x03D7, 0x0432,
-    0x0492, 0x04F5, 0x055D, 0x05C9, 0x0638, 0x06AC, 0x0724, 0x07A0,
-    0x0820, 0x08A4, 0x092C, 0x09B8, 0x0A48, 0x0ADD, 0x0B75, 0x0C12,
-    0x0CB2, 0x0D57, 0x0DFF, 0x0EAC, 0x0F5D, 0x1012, 0x10CA, 0x1187,
-    0x1248, 0x130D, 0x13D7, 0x14A4, 0x1575, 0x164A, 0x1724, 0x1801,
-    0x18E3, 0x19C8, 0x1AB2, 0x1BA0, 0x1C91, 0x1D87, 0x1E81, 0x1F7F,
-    0x2081, 0x2187, 0x2291, 0x239F, 0x24B2, 0x25C8, 0x26E2, 0x2801,
-    0x2923, 0x2A4A, 0x2B75, 0x2CA3, 0x2DD6, 0x2F0D, 0x3048, 0x3187,
-    0x32CA, 0x3411, 0x355C, 0x36AB, 0x37FF, 0x3956, 0x3AB1, 0x3C11,
-    0x3D74, 0x3EDC, 0x4048, 0x41B7, 0x432B, 0x44A3, 0x461F, 0x479F,
-    0x4923, 0x4AAB, 0x4C37, 0x4DC7, 0x4F5C, 0x50F4, 0x5290, 0x5431,
-    0x55D6, 0x577E, 0x592B, 0x5ADC, 0x5C90, 0x5E49, 0x6006, 0x61C7,
-    0x638C, 0x6555, 0x6722, 0x68F4, 0x6AC9, 0x6CA2, 0x6E80, 0x7061,
-    0x7247, 0x7430, 0x761E, 0x7810, 0x7A06, 0x7C00, 0x7DFE, 0x8000
+    0, 2, 8, 18, 32, 50, 73, 99,
+    130, 164, 203, 245, 292, 343, 398, 457,
+    520, 587, 658, 733, 812, 895, 983, 1074,
+    1170, 1269, 1373, 1481, 1592, 1708, 1828, 1952,
+    2080, 2212, 2348, 2488, 2632, 2781, 2933, 3090,
+    3250, 3415, 3583, 3756, 3933, 4114, 4298, 4487,
+    4680, 4877, 5079, 5284, 5493, 5706, 5924, 6145,
+    6371, 6600, 6834, 7072, 7313, 7559, 7809, 8063,
+    8321, 8583, 8849, 9119, 9394, 9672, 9954, 10241,
+    10531, 10826, 11125, 11427, 11734, 12045, 12360, 12679,
+    13002, 13329, 13660, 13995, 14335, 14678, 15025, 15377,
+    15732, 16092, 16456, 16823, 17195, 17571, 17951, 18335,
+    18723, 19115, 19511, 19911, 20316, 20724, 21136, 21553,
+    21974, 22398, 22827, 23260, 23696, 24137, 24582, 25031,
+    25484, 25941, 26402, 26868, 27337, 27810, 28288, 28769,
+    29255, 29744, 30238, 30736, 31238, 31744, 32254, 32768
 };
 
-static void MixAudio(void *arg0, void *arg1, u32 arg2) {
-    s32 var_r31;
-    u32 var_r27;
-    u32 var_r28;
-    s32 i;
-    u16 temp_r24;
-    s16 *var_r26;
-    s16 *var_r30;
-    s16 *var_r29;
+// THPAudioMixCallback calls this to output queued stereo movie samples, optionally adding DMA
+// audio. Unfilled output retains DMA audio when supplied, otherwise it is filled with silence.
+static void MixAudio(void *outputSamples, void *sourceSamples, u32 sampleCount) {
+    s32 mixedSample;
+    u32 chunkSamples;
+    u32 samplesRemaining;
+    s32 sampleIndex;
+    u16 volumeScale;
+    s16 *sourceSample;
+    s16 *outputSample;
+    s16 *movieSample;
 
-    if(arg1) {
-        if(SimpleControl.unk98 != 0 && SimpleControl.unk9D == 1 && SimpleControl.unk9F != 0) {
-            var_r28 = arg2;
-            var_r30 = arg0;
-            var_r26 = arg1;
+    if(sourceSamples) {
+        if (SimpleControl.movieOpen != 0 && SimpleControl.audioActive == 1 &&
+            SimpleControl.hasAudio != 0) {
+            samplesRemaining = sampleCount;
+            outputSample = outputSamples;
+            sourceSample = sourceSamples;
             while(1) {
-                if(SimpleControl.unk164[SimpleControl.unk198].unk08 == 0) {
+                if(SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining == 0) {
                     break;
                 }
-                if(SimpleControl.unk164[SimpleControl.unk198].unk08 >= var_r28) {
-                    var_r27 = var_r28;
+                if (SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining >=
+                    samplesRemaining) {
+                    chunkSamples = samplesRemaining;
                 } else {
-                    var_r27 = SimpleControl.unk164[SimpleControl.unk198].unk08;
+                    chunkSamples =
+                        SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining;
                 }
-                var_r29 = SimpleControl.unk164[SimpleControl.unk198].unk04;
-                for(i = 0; i < var_r27; i++) {
-                    if(SimpleControl.unkC8 != 0) {
-                        SimpleControl.unkC8--;
-                        SimpleControl.unkBC += SimpleControl.unkC4;
+                movieSample = SimpleControl.audioBuffers[SimpleControl.audioMixSlot].sampleCursor;
+                for(sampleIndex = 0; sampleIndex < chunkSamples; sampleIndex++) {
+                    if(SimpleControl.volumeRampSamples != 0) {
+                        SimpleControl.volumeRampSamples--;
+                        SimpleControl.currentVolume += SimpleControl.volumeStep;
                     } else {
-                        SimpleControl.unkBC = SimpleControl.unkC0;
+                        SimpleControl.currentVolume = SimpleControl.targetVolume;
                     }
-                    temp_r24 = VolumeTable[(s32) SimpleControl.unkBC];
-                    var_r31 = *var_r26 + ((temp_r24 * *var_r29) >> 0xF);
-                    if(var_r31 < -0x8000) {
-                        var_r31 = -0x8000;
+                    // The lookup applies the current volume ramp to both stereo channels.
+                    volumeScale = VolumeTable[(s32) SimpleControl.currentVolume];
+                    mixedSample = *sourceSample + ((volumeScale * *movieSample) >> 15);
+                    if(mixedSample < -32768) {
+                        mixedSample = -32768;
                     }
-                    if(var_r31 > 0x7FFF) {
-                        var_r31 = 0x7FFF;
+                    if(mixedSample > 32767) {
+                        mixedSample = 32767;
                     }
-                    *var_r30 = var_r31;
-                    var_r30++;
-                    var_r26++;
-                    var_r29++;
-                    var_r31 = *var_r26 + ((temp_r24 * *var_r29) >> 0xF);
-                    if(var_r31 < -0x8000) {
-                        var_r31 = -0x8000;
+                    *outputSample = mixedSample;
+                    outputSample++;
+                    sourceSample++;
+                    movieSample++;
+                    mixedSample = *sourceSample + ((volumeScale * *movieSample) >> 15);
+                    if(mixedSample < -32768) {
+                        mixedSample = -32768;
                     }
-                    if(var_r31 > 0x7FFF) {
-                        var_r31 = 0x7FFF;
+                    if(mixedSample > 32767) {
+                        mixedSample = 32767;
                     }
-                    *var_r30 = var_r31;
-                    var_r30++;
-                    var_r26++;
-                    var_r29++;
+                    *outputSample = mixedSample;
+                    outputSample++;
+                    sourceSample++;
+                    movieSample++;
                 }
-                var_r28 -= var_r27;
-                SimpleControl.unk164[SimpleControl.unk198].unk08 -= var_r27;
-                SimpleControl.unk164[SimpleControl.unk198].unk04 = var_r29;
-                if(SimpleControl.unk164[SimpleControl.unk198].unk08 == 0) {
-                    SimpleControl.unk198++;
-                    if(SimpleControl.unk198 >= 4) {
-                        SimpleControl.unk198 = 0;
+                samplesRemaining -= chunkSamples;
+                SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining -=
+                    chunkSamples;
+                SimpleControl.audioBuffers[SimpleControl.audioMixSlot].sampleCursor = movieSample;
+                if(SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining == 0) {
+                    SimpleControl.audioMixSlot++;
+                    if(SimpleControl.audioMixSlot >= 4) {
+                        SimpleControl.audioMixSlot = 0;
                     }
                 }
-                if(var_r28 == 0) {
+                if(samplesRemaining == 0) {
                     return;
                 }
             }
-            memcpy(var_r30, var_r26, var_r28 * 4);
+            memcpy(outputSample, sourceSample, samplesRemaining * 4);
         } else {
-            memcpy(arg0, arg1, arg2 * 4);
+            memcpy(outputSamples, sourceSamples, sampleCount * 4);
         }
-    } else if(SimpleControl.unk98 != 0 && SimpleControl.unk9D == 1 && SimpleControl.unk9F != 0) {
-        var_r28 = arg2;
-        var_r30 = arg0;
+    } else if (SimpleControl.movieOpen != 0 && SimpleControl.audioActive == 1 &&
+               SimpleControl.hasAudio != 0) {
+        samplesRemaining = sampleCount;
+        outputSample = outputSamples;
         while(1) {
-            if(SimpleControl.unk164[SimpleControl.unk198].unk08 == 0) {
+            if(SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining == 0) {
                 break;
             }
-            if(SimpleControl.unk164[SimpleControl.unk198].unk08 >= var_r28) {
-                var_r27 = var_r28;
+            if (SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining >=
+                samplesRemaining) {
+                chunkSamples = samplesRemaining;
             } else {
-                var_r27 = SimpleControl.unk164[SimpleControl.unk198].unk08;
+                chunkSamples =
+                    SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining;
             }
-            var_r29 = SimpleControl.unk164[SimpleControl.unk198].unk04;
-            for(i = 0; i < var_r27; i++) {
-                if(SimpleControl.unkC8 != 0) {
-                    SimpleControl.unkC8--;
-                    SimpleControl.unkBC += SimpleControl.unkC4;
+            movieSample = SimpleControl.audioBuffers[SimpleControl.audioMixSlot].sampleCursor;
+            for(sampleIndex = 0; sampleIndex < chunkSamples; sampleIndex++) {
+                if(SimpleControl.volumeRampSamples != 0) {
+                    SimpleControl.volumeRampSamples--;
+                    SimpleControl.currentVolume += SimpleControl.volumeStep;
                 } else {
-                    SimpleControl.unkBC = SimpleControl.unkC0;
+                    SimpleControl.currentVolume = SimpleControl.targetVolume;
                 }
-                temp_r24 = VolumeTable[(s32) SimpleControl.unkBC];
-                var_r31 = (temp_r24 * *var_r29) >> 0xF;
-                if(var_r31 < -0x8000) {
-                    var_r31 = -0x8000;
+                volumeScale = VolumeTable[(s32) SimpleControl.currentVolume];
+                mixedSample = (volumeScale * *movieSample) >> 15;
+                if(mixedSample < -32768) {
+                    mixedSample = -32768;
                 }
-                if(var_r31 > 0x7FFF) {
-                    var_r31 = 0x7FFF;
+                if(mixedSample > 32767) {
+                    mixedSample = 32767;
                 }
-                *var_r30 = var_r31;
-                var_r30++;
-                var_r29++;
-                var_r31 = (temp_r24 * *var_r29) >> 0xF;
-                if(var_r31 < -0x8000) {
-                    var_r31 = -0x8000;
+                *outputSample = mixedSample;
+                outputSample++;
+                movieSample++;
+                mixedSample = (volumeScale * *movieSample) >> 15;
+                if(mixedSample < -32768) {
+                    mixedSample = -32768;
                 }
-                if(var_r31 > 0x7FFF) {
-                    var_r31 = 0x7FFF;
+                if(mixedSample > 32767) {
+                    mixedSample = 32767;
                 }
-                *var_r30 = var_r31;
-                var_r30++;
-                var_r29++;
+                *outputSample = mixedSample;
+                outputSample++;
+                movieSample++;
             }
-            var_r28 -= var_r27;
-            SimpleControl.unk164[SimpleControl.unk198].unk08 -= var_r27;
-            SimpleControl.unk164[SimpleControl.unk198].unk04 = var_r29;
-            if(SimpleControl.unk164[SimpleControl.unk198].unk08 == 0) {
-                SimpleControl.unk198++;
-                if(SimpleControl.unk198 >= 4) {
-                    SimpleControl.unk198 = 0;
+            samplesRemaining -= chunkSamples;
+            SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining -= chunkSamples;
+            SimpleControl.audioBuffers[SimpleControl.audioMixSlot].sampleCursor = movieSample;
+            if(SimpleControl.audioBuffers[SimpleControl.audioMixSlot].samplesRemaining == 0) {
+                SimpleControl.audioMixSlot++;
+                if(SimpleControl.audioMixSlot >= 4) {
+                    SimpleControl.audioMixSlot = 0;
                 }
             }
-            if(var_r28 == 0) {
+            if(samplesRemaining == 0) {
                 return;
             }
         }
-        memset(var_r30, 0, var_r28 * 4);
+        memset(outputSample, 0, samplesRemaining * 4);
     } else {
-        memset(arg0, 0, arg2 * 4);
+        memset(outputSamples, 0, sampleCount * 4);
     }
 }
 
-s32 THPSimpleGetVideoInfo(UnkThpStruct04 *arg0) {
-    if(SimpleControl.unk98 != 0) {
-        memcpy(arg0, &SimpleControl.unk80, 8);
+// THPTestProc reads the opened movie's decoded video dimensions before allocating its buffers.
+s32 THPSimpleGetVideoInfo(UnkThpStruct04 *videoInfo) {
+    if(SimpleControl.movieOpen != 0) {
+        memcpy(videoInfo, &SimpleControl.videoInfo, sizeof(UnkThpStruct04));
         return 1;
     }
     return 0;
 }
 
+// Returns the opened THP header's frame rate, or zero before a movie is open.
 float THPSimpleGetFrameRate(void)
 {
-    if(SimpleControl.unk98 != 0) {
-        return SimpleControl.unk3C.mFrameRate;
+    if(SimpleControl.movieOpen != 0) {
+        return SimpleControl.header.mFrameRate;
     }
     return 0;
 }
 
+// HuTHPEndCheck and HuTHPTotalFrameGet read the opened movie's frame count through this helper.
 s32 THPSimpleGetTotalFrame(void) {
-    if(SimpleControl.unk98 != 0) {
-        return SimpleControl.unk3C.mNumFrames;
+    if(SimpleControl.movieOpen != 0) {
+        return SimpleControl.header.mNumFrames;
     }
     return 0;
 }
 
+// AI calls this at DMA boundaries to mix movie audio into a 160-frame stereo output block.
+// Mode 0 has no other audio source. Mode 1 uses the DMA buffer saved at the preceding callback
+// (none on the first); other modes use the buffer selected by OldAIDCallback during this call.
 static void THPAudioMixCallback(void) {
-    s32 temp_r31;
+    s32 interruptState;
 
     if(AudioSystem == 0) {
         SoundBufferIndex ^= 1;
         AIInitDMA((u32) SoundBuffer[SoundBufferIndex], sizeof(SoundBuffer[0]));
-        temp_r31 = OSEnableInterrupts();
-        MixAudio(SoundBuffer[SoundBufferIndex], 0, 0xA0);
+        interruptState = OSEnableInterrupts();
+        MixAudio(SoundBuffer[SoundBufferIndex], 0, AUDIO_MIX_SAMPLE_COUNT);
         DCFlushRange(SoundBuffer[SoundBufferIndex], sizeof(SoundBuffer[0]));
-        OSRestoreInterrupts(temp_r31);
+        OSRestoreInterrupts(interruptState);
     } else {
         if(AudioSystem == 1) {
             if(LastAudioBuffer) {
                 CurAudioBuffer = LastAudioBuffer;
             }
             OldAIDCallback();
-            LastAudioBuffer = (u8*) AIGetDMAStartAddr() + 0x80000000;
+            LastAudioBuffer = (u8*) AIGetDMAStartAddr() + AI_DMA_CACHED_ADDRESS_BIT_PATTERN;
         } else {
             OldAIDCallback();
-            CurAudioBuffer = (u8*) AIGetDMAStartAddr() + 0x80000000;
+            CurAudioBuffer = (u8*) AIGetDMAStartAddr() + AI_DMA_CACHED_ADDRESS_BIT_PATTERN;
         }
         SoundBufferIndex ^= 1;
         AIInitDMA((u32) SoundBuffer[SoundBufferIndex], sizeof(SoundBuffer[0]));
-        temp_r31 = OSEnableInterrupts();
+        interruptState = OSEnableInterrupts();
         if(CurAudioBuffer) {
             DCInvalidateRange(CurAudioBuffer, sizeof(SoundBuffer[0]));
         }
-        MixAudio(SoundBuffer[SoundBufferIndex], CurAudioBuffer, 0xA0);
+        MixAudio(SoundBuffer[SoundBufferIndex], CurAudioBuffer, AUDIO_MIX_SAMPLE_COUNT);
         DCFlushRange(SoundBuffer[SoundBufferIndex], sizeof(SoundBuffer[0]));
-        OSRestoreInterrupts(temp_r31);
+        OSRestoreInterrupts(interruptState);
     }
 }
 
-s32 THPSimpleSetVolume(s32 left, s32 right) {
-    s32 temp_r29;
+// HuTHPSetVolume updates an open movie with audio, clamping the level to 0-127 and duration
+// to 0-60000. Zero duration applies the level immediately; otherwise the ramp advances over
+// duration times 32 mixed movie sample frames.
+s32 THPSimpleSetVolume(s32 targetVolume, s32 rampDuration) {
+    s32 interruptState;
 
-    if(SimpleControl.unk98 != 0 && SimpleControl.unk9F != 0) {
-        if(left > 127) {
-            left = 127;
+    if(SimpleControl.movieOpen != 0 && SimpleControl.hasAudio != 0) {
+        if(targetVolume > 127) {
+            targetVolume = 127;
         }
-        if(left < 0) {
-            left = 0;
+        if(targetVolume < 0) {
+            targetVolume = 0;
         }
-        if(right > 60000) {
-            right = 60000;
+        if(rampDuration > 60000) {
+            rampDuration = 60000;
         }
-        if(right < 0) {
-            right = 0;
+        if(rampDuration < 0) {
+            rampDuration = 0;
         }
-        temp_r29 = OSDisableInterrupts();
-        SimpleControl.unkC0 = left;
-        if(right != 0) {
-            SimpleControl.unkC8 = (right << 5);
-            SimpleControl.unkC4 = (SimpleControl.unkC0 - SimpleControl.unkBC) / SimpleControl.unkC8;
+        interruptState = OSDisableInterrupts();
+        SimpleControl.targetVolume = targetVolume;
+        if(rampDuration != 0) {
+            SimpleControl.volumeRampSamples = (rampDuration << 5);
+            SimpleControl.volumeStep = (SimpleControl.targetVolume - SimpleControl.currentVolume) /
+                                       SimpleControl.volumeRampSamples;
         } else {
-            SimpleControl.unkC8 = 0;
-            SimpleControl.unkBC = SimpleControl.unkC0;
+            SimpleControl.volumeRampSamples = 0;
+            SimpleControl.currentVolume = SimpleControl.targetVolume;
         }
-        OSRestoreInterrupts(temp_r29);
+        OSRestoreInterrupts(interruptState);
         return 1;
     }
     return 0;
