@@ -1,3 +1,4 @@
+// Builds and runs the animated book opening shown between startup and the title menu.
 #include "dolphin.h"
 #include "dolphin/math.h"
 #include "humath.h"
@@ -12,6 +13,7 @@
 #include "game/sprite.h"
 #include "game/window.h"
 #include "game/wipe.h"
+#include "messdir_enum.h"
 
 enum {
     OPENING_CAMERA_BIT = 1,
@@ -33,9 +35,10 @@ enum {
     CHAR_FOCUS_RANDOM_LATE_THRESHOLD = 240,
     CHAR_FOCUS_RANDOM_REARM_BASE = 10,
 
-    GUIDE_FOCUS_SELECTOR_CHAR_MASK = 255,
-    GUIDE_FOCUS_SELECTOR_ALT = 32768,
+    GUIDE_FOCUS_SELECTOR_CHAR_MASK = 0xFF,
+    GUIDE_FOCUS_SELECTOR_ALT_BIT = 0x8000,
     GUIDE_FOCUS_CHAR_A = 10,
+    GUIDE_FOCUS_CHAR_B = 11,
 
     POSTDRAW_COPY_X = 0,
     POSTDRAW_COPY_Y = 80,
@@ -44,8 +47,6 @@ enum {
     POSTDRAW_COPY_MIPMAP = 0,
 
     OPENING_PROMPT_MESSAGE = 65541,
-    OPENING_MESSAGE_BASE = 720896,
-
     OPENING_CHAR_ANIM_FRAME_BASE = 14,
     OPENING_CHAR_ANIM_FRAME_STEP = 7,
     OPENING_GUIDE_ANIM_FRAME_BASE = 70,
@@ -53,7 +54,7 @@ enum {
     OPENING_GUIDE_ANIM_FRAME_OTHER_BASE = 74,
     OPENING_GUIDE_ANIM_FRAME_OTHER_ALT_BASE = 76,
     OPENING_SWAP_ANIM_FRAME_BASE = 11,
-    OPENING_SWAP_ANIM_FRAME_GUIDE_BASE = 57,
+    OPENING_SWAP_ANIM_FRAME_TERESA_BASE = 57,
 
     OPENING_FX_ID_0 = 1200,
     OPENING_FX_ID_1 = 1201,
@@ -77,6 +78,9 @@ enum {
 #define BOOK_Y_PHASE_SCALE 2.0f
 #define BOOK_X_RADIUS_SCALE 5.0
 #define BOOK_Y_RADIUS_SCALE 20.0
+#define OPENING_MESSAGE_BASE MESSNUM(MESS_OPENING, 0)
+#define OPENING_SCRATCH_BUFFER_SIZE (1024 * 1024)
+#define OPENING_STREAM_INTRO 0
 
 extern s16 FbCopyMode;
 extern s32 OpeningEndF;
@@ -85,7 +89,7 @@ extern s32 CharLightFocusF;
 extern float FilterTPLvl;
 extern HuVecF StarPos;
 extern float OpeningBgRotZ;
-extern HuVec2f GuideDist;
+extern HuVec2f GuideAngle;
 extern s16 OpeningBgState;
 extern s16 OpeningWinId[4];
 extern float BookRadius;
@@ -110,7 +114,6 @@ extern char OpeningBookFramePrimaryObjectName[];
 extern char OpeningBookFrameSecondaryObjectName[];
 extern char OpeningBackgroundRootObjectName[];
 
-
 extern s16 BootLightId[3];
 
 static void OpeningBgUpdate(void);
@@ -119,7 +122,7 @@ void OpeningExec(s32 enablePrompt);
 void OpeningEventExec(void);
 void OpeningKill(void);
 static void FilterDraw(float alpha);
-static void SetStarDist(s16 modelIndex, float distance);
+static void SetGuideAngle(s16 modelIndex, float angleDeg);
 static void RotateGuide(u32 frameCount);
 static void CharWaitEvent(u32 frameCount);
 static void BlinkGuide(u32 frameCount);
@@ -129,9 +132,9 @@ static void CharObjStarStart(u32 frameCount);
 static void ObjStarStart(u32 frameCount);
 static void ObjStarEnd(void);
 static void CharHappyEvent(u32 frameCount);
-static void MessStart(s16 arg0, u32 message, s16 frameCount);
+static void MessStart(s16 windowIndex, u32 message, s16 frameCount);
 
-static void EventCreate(void (*callback)(void), s32 arg0, s32 arg1);
+static void EventCreate(void (*callback)(void), s32 eventArg0, s32 eventArg1);
 static void PreDrawHook(s16 layerNo);
 static void PostDrawHook(s16 layerNo);
 static void GuideCharFocus(u32 guideChar, s32 frameCount);
@@ -146,12 +149,13 @@ static void CharFocusRight(void);
 static void CharFocusRandom(u32 frameCount);
 static void BookOpenEvent(void);
 static void BookExec(void);
-static void MoveGuide(s32 modelIndex, s32 dist);
+static void MoveGuide(s32 modelIndex, s32 angleDeg);
 static void OpeningCameraSet(HuVecF *rotDeg, HuVecF *target, float distance);
 
+// BootExec calls this after title data loads to create the book, characters, and frame buffers.
 void OpeningCreate(void)
 {
-    void *temp;
+    void *scratchBuffer;
     s16 i;
 
     OpeningMdlId[0] = Hu3DModelCreate(
@@ -196,12 +200,14 @@ void OpeningCreate(void)
     Hu3DMotionSpeedSet(OpeningMdlId[7], 2.0f);
     Hu3DModelScaleSet(OpeningMdlId[7], 2.0f, 2.0f, 2.0f);
 
-    temp = HuMemDirectMallocNum(HEAP_DVD, 1048576, HU_MEMNUM_OVL);
+    // Temporarily reserve 1 MiB in the DVD heap while allocating the first page buffer; no data is
+    // written to this temporary block.
+    scratchBuffer = HuMemDirectMallocNum(HEAP_DVD, OPENING_SCRATCH_BUFFER_SIZE, HU_MEMNUM_OVL);
     BookFrameBuf[0] = HuMemDirectMallocNum(
         HEAP_DVD,
         GXGetTexBufferSize(POSTDRAW_COPY_W, POSTDRAW_COPY_H, GX_TF_RGBA8, POSTDRAW_COPY_MIPMAP, 0),
         HU_MEMNUM_OVL);
-    HuMemDirectFree(temp);
+    HuMemDirectFree(scratchBuffer);
     BookFrameBuf[1] = HuMemDirectMallocNum(
         HEAP_HEAP,
         GXGetTexBufferSize(POSTDRAW_COPY_W, POSTDRAW_COPY_H, GX_TF_RGBA8, POSTDRAW_COPY_MIPMAP, 0),
@@ -211,8 +217,10 @@ void OpeningCreate(void)
     BookFrameBufAnim[0]->bmp->data = BookFrameBuf[0];
     BookFrameBufAnim[1] = HuSprAnimMake(POSTDRAW_COPY_W, POSTDRAW_COPY_H, 0);
     BookFrameBufAnim[1]->bmp->data = BookFrameBuf[1];
-    BookFrameBufAnimId[0] = Hu3DAnimCreate(BookFrameBufAnim[0], OpeningMdlId[1], OpeningBookFramePrimaryObjectName);
-    BookFrameBufAnimId[1] = Hu3DAnimCreate(BookFrameBufAnim[1], OpeningMdlId[1], OpeningBookFrameSecondaryObjectName);
+    BookFrameBufAnimId[0] =
+        Hu3DAnimCreate(BookFrameBufAnim[0], OpeningMdlId[1], OpeningBookFramePrimaryObjectName);
+    BookFrameBufAnimId[1] =
+        Hu3DAnimCreate(BookFrameBufAnim[1], OpeningMdlId[1], OpeningBookFrameSecondaryObjectName);
 
     FilterFrameBuf = HuMemDirectMallocNum(
         HEAP_HEAP,
@@ -225,7 +233,8 @@ void OpeningCreate(void)
     }
 
     for (i = 0; i < 12; i++) {
-        OpeningCharAnimId[i] = Hu3DAnimCreate(OpeningCharAnim[0], OpeningMdlId[2], OpeningCharTexNameTbl[i]);
+        OpeningCharAnimId[i] =
+            Hu3DAnimCreate(OpeningCharAnim[0], OpeningMdlId[2], OpeningCharTexNameTbl[i]);
     }
 
     HuPrcChildCreate(BookExec, 256, 4096, 0, HuPrcCurrentGet());
@@ -238,6 +247,7 @@ void OpeningCreate(void)
     OpeningDispOff();
 }
 
+// Hides every opening model before a new opening sequence begins.
 void OpeningDispOff(void)
 {
     s16 i;
@@ -247,6 +257,8 @@ void OpeningDispOff(void)
     }
 }
 
+// BootExec calls this to play the opening; when enablePrompt is nonzero, controller 0 can skip
+// with Start, or with A only while omcurovl is 1.
 void OpeningExec(s32 enablePrompt)
 {
     HUPROCESS *eventProcess;
@@ -312,10 +324,10 @@ void OpeningExec(s32 enablePrompt)
         HuWinAttrSet(OpeningWinId[i], HUWIN_ATTR_ALIGN_CENTER);
     }
 
-    GuideDist.x = -225.0f;
-    GuideDist.y = -135.0f;
-    SetStarDist(10, GuideDist.x);
-    SetStarDist(11, GuideDist.y);
+    GuideAngle.x = -225.0f;
+    GuideAngle.y = -135.0f;
+    SetGuideAngle(10, GuideAngle.x);
+    SetGuideAngle(11, GuideAngle.y);
 
     messageWinId = HuWinCreate(16.0f, 326.0f, 544, 42, 0);
     HuWinAttrSet(messageWinId, HUWIN_ATTR_ALIGN_CENTER);
@@ -331,7 +343,7 @@ void OpeningExec(s32 enablePrompt)
     Hu3DGLightColorSet(BootLightId[0], 255, 255, 255, 255);
     Hu3DGLightColorSet(BootLightId[1], 0, 0, 0, 255);
 
-    HuAudSStreamPlay(0);
+    HuAudSStreamPlay(OPENING_STREAM_INTRO);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 30);
     while (WipeCheck()) {
         HuPrcVSleep();
@@ -380,6 +392,7 @@ void OpeningExec(s32 enablePrompt)
     }
 }
 
+// Runs as a child process of OpeningExec and sequences the book, character, and message events.
 void OpeningEventExec(void)
 {
     OpeningBgState = 0;
@@ -405,30 +418,36 @@ void OpeningEventExec(void)
     }
 
     OpeningBgState = 2;
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 60);
+    EventCreate((void (*)(void)) GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_B,
+                60);
     EventCreate(CharFocusRight, 0, 0);
     MessStart(0, OPENING_MESSAGE_BASE + 4, 80);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 40);
+    EventCreate((void (*)(void)) GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_A,
+                40);
     EventCreate(CharFocusLeft, 0, 0);
 
     OpeningBgState = 3;
     MessStart(0, OPENING_MESSAGE_BASE + 5, 70);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 40);
+    EventCreate((void (*)(void)) GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_B,
+                40);
     EventCreate(CharFocusRight, 0, 0);
 
     OpeningBgState = 4;
     MessStart(0, OPENING_MESSAGE_BASE + 6, 60);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 40);
+    EventCreate((void (*)(void)) GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_A,
+                40);
     EventCreate(CharFocusLeft, 0, 0);
 
     OpeningBgState = 3;
     MessStart(0, OPENING_MESSAGE_BASE + 7, 60);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 40);
+    EventCreate((void (*)(void)) GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_B,
+                40);
     EventCreate(CharFocusRight, 0, 0);
 
     OpeningBgState = 4;
     MessStart(0, OPENING_MESSAGE_BASE + 6, 50);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 40);
+    EventCreate((void (*)(void)) GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_A,
+                40);
     EventCreate(CharFocusLeft, 0, 0);
 
     OpeningBgState = 3;
@@ -436,10 +455,10 @@ void OpeningEventExec(void)
 
     OpeningBgState = 5;
     EventCreate((void (*)(void))GuideCharFocus,
-                GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A,
+                GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_A,
                 10000);
     EventCreate((void (*)(void))GuideCharFocus,
-                GUIDE_FOCUS_SELECTOR_ALT | 11,
+                GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_B,
                 10000);
     EventCreate((void (*)(void))CharFocusRandom, 600, 0);
     MessStart(0, OPENING_MESSAGE_BASE + 8, 240);
@@ -463,8 +482,8 @@ void OpeningEventExec(void)
     SwapAnimFrame(6, OPENING_SWAP_ANIM_FRAME_BASE + 5 * OPENING_CHAR_ANIM_FRAME_STEP);
     SwapAnimFrame(7, OPENING_SWAP_ANIM_FRAME_BASE + 6 * OPENING_CHAR_ANIM_FRAME_STEP);
     HuPrcSleep(30);
-    SwapAnimFrame(8, OPENING_SWAP_ANIM_FRAME_GUIDE_BASE);
-    SwapAnimFrame(9, OPENING_SWAP_ANIM_FRAME_GUIDE_BASE + OPENING_CHAR_ANIM_FRAME_STEP);
+    SwapAnimFrame(8, OPENING_SWAP_ANIM_FRAME_TERESA_BASE);
+    SwapAnimFrame(9, OPENING_SWAP_ANIM_FRAME_TERESA_BASE + OPENING_CHAR_ANIM_FRAME_STEP);
     HuPrcSleep(60);
 
     EventCreate((void (*)(void))CharObjLightEnd, 20, 0);
@@ -474,8 +493,10 @@ void OpeningEventExec(void)
     HuPrcSleep(60);
 
     CharLightFocusF = CharFocusCancelF = 0;
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | GUIDE_FOCUS_CHAR_A, 20);
-    EventCreate((void (*)(void))GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT | 11, 20);
+    EventCreate((void (*)(void)) GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_A,
+                20);
+    EventCreate((void (*)(void)) GuideCharFocus, GUIDE_FOCUS_SELECTOR_ALT_BIT | GUIDE_FOCUS_CHAR_B,
+                20);
     HuPrcSleep(170);
 
     MessStart(0, OPENING_MESSAGE_BASE + 12, 240);
@@ -514,6 +535,7 @@ void OpeningEventExec(void)
     }
 }
 
+// The camera layer calls this before drawing the opening models to set its close view.
 static void PreDrawHook(s16 layerNo)
 {
     HuVecF rotDeg;
@@ -528,6 +550,8 @@ static void PreDrawHook(s16 layerNo)
     OpeningCameraSet(&rotDeg, &target, 450.f);
 }
 
+// After layer 0 draws the character stage, capture its image for the book pages and optionally
+// tint it. Set the camera and clear depth before the layer-1 book and other opening models draw.
 static void PostDrawHook(s16 layerNo)
 {
     HuVecF rotDeg;
@@ -591,6 +615,7 @@ static void PostDrawHook(s16 layerNo)
     Hu3DZClear();
 }
 
+// BootExec calls this after the opening to release its page animation wrappers.
 void OpeningKill(void)
 {
     Hu3DAnimKill(BookFrameBufAnimId[0]);
@@ -599,13 +624,14 @@ void OpeningKill(void)
     HuSprAnimKill(BookFrameBufAnim[1]);
 }
 
+// OpeningEventExec schedules this event to animate the background and guide positions.
 static void OpeningBgUpdate(void)
 {
     HSF_OBJECT *bgObj;
     s16 prevState;
     s32 counter;
     s32 frameNo;
-    float temp;
+    float transitionFraction;
     float savedRotZ;
 
     prevState = -1;
@@ -623,18 +649,20 @@ static void OpeningBgUpdate(void)
             if (counter > 1000) {
                 break;
             }
-            temp = (float)sin(3.141592653589793 * (90.f * (counter / 1000.f)) / 180.);
-            bgObj->mesh.base.rot.z = -200.f * temp;
+            transitionFraction = (float)sin(3.141592653589793 * (90.f * (counter / 1000.f)) / 180.);
+            bgObj->mesh.base.rot.z = -200.f * transitionFraction;
+            // This computed frame index is unused; the guide positions are set directly below.
             frameNo = (s32)(bgObj->mesh.base.rot.z / 19.0f);
             if (bgObj->mesh.base.rot.z > -120.f) {
-                GuideDist.x = -45.0f;
+                GuideAngle.x = -45.0f;
             } else {
-                GuideDist.x = -225.0f;
+                GuideAngle.x = -225.0f;
             }
-            SetStarDist(10, GuideDist.x);
+            SetGuideAngle(10, GuideAngle.x);
+            // The second frame-index calculation is also unused.
             frameNo = (s32)(bgObj->mesh.base.rot.z / 19.0f);
-            GuideDist.y = -135.0f;
-            SetStarDist(11, GuideDist.y);
+            GuideAngle.y = -135.0f;
+            SetGuideAngle(11, GuideAngle.y);
             OpeningBgRotZ = bgObj->mesh.base.rot.z;
             break;
         case 2:
@@ -642,9 +670,9 @@ static void OpeningBgUpdate(void)
             if (counter > 30) {
                 break;
             }
-            temp = counter / 30.f;
+            transitionFraction = counter / 30.f;
             bgObj->mesh.base.rot.z = -200. +
-                20. * sin(3.141592653589793 * (90.f * temp) / 180.);
+                20. * sin(3.141592653589793 * (90.f * transitionFraction) / 180.);
             if (counter == 1) {
                 EventCreate((void (*)(void))MoveGuide, 11, -150);
             }
@@ -660,9 +688,9 @@ static void OpeningBgUpdate(void)
             if (counter > 30) {
                 break;
             }
-            temp = counter / 30.f;
+            transitionFraction = counter / 30.f;
             bgObj->mesh.base.rot.z = savedRotZ +
-                (-200.f - savedRotZ) * sin(3.141592653589793 * (90.f * temp) / 180.);
+                (-200.f - savedRotZ) * sin(3.141592653589793 * (90.f * transitionFraction) / 180.);
             break;
         case 4:
             if (counter == 0) {
@@ -672,9 +700,9 @@ static void OpeningBgUpdate(void)
             if (counter > 30) {
                 break;
             }
-            temp = counter / 30.f;
+            transitionFraction = counter / 30.f;
             bgObj->mesh.base.rot.z = savedRotZ +
-                (-160.f - savedRotZ) * sin(3.141592653589793 * (90.f * temp) / 180.);
+                (-160.f - savedRotZ) * sin(3.141592653589793 * (90.f * transitionFraction) / 180.);
             break;
         case 5:
             if (counter == 0) {
@@ -684,29 +712,32 @@ static void OpeningBgUpdate(void)
             if (counter > 30) {
                 break;
             }
-            temp = counter / 30.f;
+            transitionFraction = counter / 30.f;
             bgObj->mesh.base.rot.z = savedRotZ +
-                (-180.f - savedRotZ) * sin(3.141592653589793 * (90.f * temp) / 180.);
+                (-180.f - savedRotZ) * sin(3.141592653589793 * (90.f * transitionFraction) / 180.);
             break;
         }
         HuPrcVSleep();
     }
 }
 
-static void MoveGuide(s32 modelIndex, s32 dist)
+// OpeningBgUpdate moves a guide to angleDeg over 20 frames, starting from its stored GuideAngle.
+// This event changes the object's position without updating GuideAngle.
+static void MoveGuide(s32 modelIndex, s32 angleDeg)
 {
     s16 i;
-    float startDist;
+    float startAngleDeg;
     float wave;
 
-    startDist = (&GuideDist.x)[modelIndex - 10];
+    startAngleDeg = (&GuideAngle.x)[modelIndex - 10];
     for (i = 1; i <= 20; i++) {
         wave = (float)sin(3.141592653589793 * (90.f * (i / 20.f)) / 180.);
-        SetStarDist(modelIndex, startDist + wave * ((float)dist - startDist));
+        SetGuideAngle(modelIndex, startAngleDeg + wave * ((float)angleDeg - startAngleDeg));
         HuPrcVSleep();
     }
 }
 
+// OpeningEventExec schedules this event to alternate both guide characters' blinking frames.
 static void BlinkGuide(u32 frameCount)
 {
     s16 phase;
@@ -729,6 +760,8 @@ static void BlinkGuide(u32 frameCount)
     SetCharAnimFrame(11, OPENING_GUIDE_ANIM_FRAME_OTHER_BASE);
 }
 
+// OpeningEventExec starts a guide pulse for up to frameCount frames. Clear any previous cancel
+// request on entry, then stop on a new one; CharLightFocusF holds the scale at rest after a toggle.
 static void GuideCharFocus(u32 guideChar, s32 frameCount)
 {
     s16 frame;
@@ -738,8 +771,9 @@ static void GuideCharFocus(u32 guideChar, s32 frameCount)
     float focusValue;
     HSF_OBJECT *object;
 
-    alternate = guideChar & GUIDE_FOCUS_SELECTOR_ALT;
+    alternate = guideChar & GUIDE_FOCUS_SELECTOR_ALT_BIT;
     CharFocusCancelF = 0;
+    // Bit 0x8000 chooses the alternate pose; only the low eight bits select the character.
     guideChar &= GUIDE_FOCUS_SELECTOR_CHAR_MASK;
     object = Hu3DModelObjPtrGet(
         OpeningMdlId[2],
@@ -821,6 +855,9 @@ static void GuideCharFocus(u32 guideChar, s32 frameCount)
     object->mesh.base.scale.x = object->mesh.base.scale.y = GUIDE_FOCUS_VALUE_REST;
 }
 
+// OpeningEventExec starts this event during the introduction and keeps both guide rotations
+// updating until the process is killed. Extra sway amplitude reaches zero after frameCount's
+// update, so the following update applies no sway.
 static void RotateGuide(u32 frameCount)
 {
     HSF_OBJECT *bgObject;
@@ -855,6 +892,7 @@ static void RotateGuide(u32 frameCount)
     }
 }
 
+// OpeningEventExec schedules this event to grow the light around the character lineup.
 static void CharObjLightStart(u32 frameCount)
 {
     HuVecF pos;
@@ -883,15 +921,19 @@ static void CharObjLightStart(u32 frameCount)
         if (i > 0.3 * frameCount) {
             startFrame = (float)i - 0.3f * frameCount;
             endFrame = 0.7f * frameCount;
-            scaleX = 0.8999999761581421 *
-                     (sin(3.141592653589793 * (130.f * ((float)startFrame / (float)endFrame)) / 180.) *
-                      (1.0 / sin(2.2689280275926285)));
+            scaleX =
+                0.8999999761581421 *
+                (sin(3.141592653589793 * (130.f * ((float) startFrame / (float) endFrame)) / 180.) *
+                 (1.0 / sin(2.2689280275926285)));
         }
+        // The loop reads scaleX before assigning it in the first 30% of frames; scaleY holds its
+        // last value after 70%.
         Hu3DModelScaleSet(OpeningMdlId[OPENING_MODEL_LIGHT], scaleX, scaleY, 1.0f);
         HuPrcVSleep();
     }
 }
 
+// OpeningEventExec schedules this event to shrink the character light after the lineup change.
 static void CharObjLightEnd(u32 frameCount)
 {
     s16 frame;
@@ -906,6 +948,7 @@ static void CharObjLightEnd(u32 frameCount)
     }
 }
 
+// OpeningEventExec schedules this event to grow the star around the character lineup.
 static void CharObjStarStart(u32 frameCount)
 {
     HuVecF pos;
@@ -943,10 +986,13 @@ static void CharObjStarStart(u32 frameCount)
         if (i > 0.3 * halfFrames) {
             startFrame = (float)i - 0.3f * halfFrames;
             endFrame = 0.7f * halfFrames;
-            scaleX = 0.8999999761581421 *
-                     (sin(3.141592653589793 * (130.f * ((float)startFrame / (float)endFrame)) / 180.) *
-                      (1.0 / sin(2.2689280275926285)));
+            scaleX =
+                0.8999999761581421 *
+                (sin(3.141592653589793 * (130.f * ((float) startFrame / (float) endFrame)) / 180.) *
+                 (1.0 / sin(2.2689280275926285)));
         }
+        // The loop reads scaleX before assigning it in the first 30% of halfFrames; scaleY holds
+        // its last value after 70%.
         Hu3DModelScaleSet(OpeningMdlId[OPENING_MODEL_STAR_CORE], scaleX, scaleY, scaleX);
         HuPrcVSleep();
     }
@@ -965,6 +1011,7 @@ static void CharObjStarStart(u32 frameCount)
     }
 }
 
+// OpeningEventExec schedules this event to shrink the character star before the book closes.
 static void CharObjStarEnd(u32 frameCount)
 {
     s16 frame;
@@ -989,6 +1036,7 @@ static void CharObjStarEnd(u32 frameCount)
     }
 }
 
+// OpeningEventExec schedules this process to keep the side star drifting around the book.
 static void ObjStarExec(void)
 {
     HuVecF pos;
@@ -1014,6 +1062,8 @@ static void ObjStarExec(void)
     }
 }
 
+// OpeningEventExec reveals and grows the side star, initially using book x, fixed y = 80, and
+// book z + 150. ObjStarExec then overwrites both positions from the unchanged StarPos.
 static void ObjStarStart(u32 frameCount)
 {
     HuVecF pos;
@@ -1043,6 +1093,8 @@ static void ObjStarStart(u32 frameCount)
     }
 }
 
+// OpeningEventExec spins the first side-star model, starts another model's motion at its position,
+// then moves StarPos toward (0, -40, 500) with a vertical arc.
 static void ObjStarEnd(void)
 {
     HuVecF vec;
@@ -1096,6 +1148,8 @@ static void ObjStarEnd(void)
             1.0 -
                 cos(3.141592653589793 * (90.f * rot) / 180.));
         PSVECAdd(&pos, &vec, &vec);
+        // The vertical arc crosses zero after 50 frames, so this 60-frame move ends above its
+        // target height.
         vec.y -= 100. *
                  sin(3.141592653589793 * (180.f * ((float)i / 50.f)) / 180.);
         StarPos = vec;
@@ -1108,6 +1162,7 @@ static void ObjStarEnd(void)
     }
 }
 
+// OpeningEventExec schedules this event to trigger randomized character idle animations.
 static void CharWaitEvent(u32 frameCount)
 {
     s16 i;
@@ -1135,6 +1190,7 @@ static void CharWaitEvent(u32 frameCount)
     HuPrcSleep(CHAR_EVENT_FINAL_WAIT);
 }
 
+// OpeningEventExec schedules this event to turn the character lineup toward the left.
 static void CharFocusLeft(void)
 {
     s16 i;
@@ -1145,6 +1201,7 @@ static void CharFocusLeft(void)
     HuPrcSleep(10);
 }
 
+// OpeningEventExec schedules this event to turn the character lineup toward the right.
 static void CharFocusRight(void)
 {
     s16 i;
@@ -1155,6 +1212,8 @@ static void CharFocusRight(void)
     HuPrcSleep(10);
 }
 
+// OpeningEventExec schedules this event to vary character focus, then hold the lead character's
+// pose.
 static void CharFocusRandom(u32 frameCount)
 {
     s16 charIndex;
@@ -1180,7 +1239,8 @@ static void CharFocusRandom(u32 frameCount)
                 if (countdowns[charIndex] == 0) {
                     if (focusStarted == 0 && charIndex == CHAR_FOCUS_RANDOM_FOCUS_CHAR &&
                         elapsed > CHAR_FOCUS_RANDOM_LATE_THRESHOLD) {
-                        SetCharAnimFrame(CHAR_FOCUS_RANDOM_FOCUS_CHAR, CHAR_FOCUS_RANDOM_FOCUS_FRAME);
+                        SetCharAnimFrame(CHAR_FOCUS_RANDOM_FOCUS_CHAR,
+                                         CHAR_FOCUS_RANDOM_FOCUS_FRAME);
                         focusStarted = 1;
                         continue;
                     }
@@ -1190,6 +1250,9 @@ static void CharFocusRandom(u32 frameCount)
                         (s16)((charIndex * 7) + CHAR_FOCUS_RANDOM_FRAME_BASE +
                               (phases[charIndex] & 1)));
                     phases[charIndex]++;
+                    // Near the end, the shrinking random range can truncate to zero; that zero is
+                    // still
+                    // passed to frandmod without a guard.
                     rearmLimit = (s32)(40.f * remainingFraction);
                     countdowns[charIndex] = (s16)(
                         frandmod((s16)rearmLimit) +
@@ -1206,6 +1269,7 @@ static void CharFocusRandom(u32 frameCount)
     HuPrcSleep(CHAR_EVENT_FINAL_WAIT);
 }
 
+// OpeningEventExec schedules this event to play randomized happy animations across the lineup.
 static void CharHappyEvent(u32 frameCount)
 {
     s16 frame;
@@ -1233,33 +1297,42 @@ static void CharHappyEvent(u32 frameCount)
     HuPrcSleep(CHAR_EVENT_FINAL_WAIT);
 }
 
-static void SetStarDist(s16 modelIndex, float distance)
+// OpeningExec and OpeningBgUpdate place a guide model on the circular stage path at this angle.
+static void SetGuideAngle(s16 modelIndex, float angleDeg)
 {
     HSF_OBJECT *object;
 
     object = Hu3DModelObjPtrGet(OpeningMdlId[2], OpeningCharObjNameTbl[modelIndex]);
-    object->mesh.base.pos.x = 450. * sin(3.141592653589793 * distance / 180.);
-    object->mesh.base.pos.y = 450. * cos(3.141592653589793 * distance / 180.);
+    object->mesh.base.pos.x = 450. * sin(3.141592653589793 * angleDeg / 180.);
+    object->mesh.base.pos.y = 450. * cos(3.141592653589793 * angleDeg / 180.);
 }
 
+// Opening setup and events select a character's animation data from OpeningCharAnim and restart
+// its texture animation at bank 0, frame 0.
 static void SetCharAnimFrame(s16 animIndex, s16 frameIndex)
 {
     Hu3DAnimAnimSet(OpeningCharAnimId[animIndex], OpeningCharAnim[frameIndex]);
 }
 
+// OpeningEventExec schedules a delayed animation change so all characters can change together.
 static void SwapAnimFrame(s16 animIndex, s16 frameIndex)
 {
     EventCreate((void (*)(void))SwapAnimFrameEvent, animIndex, frameIndex);
 }
 
+// EventCreate starts this callback, which waits five frames before changing one character's
+// animation data.
 static void SwapAnimFrameEvent(s32 animIndex, s32 frameIndex)
 {
-    s16 unused = 0;
+    s16 unusedValue = 0;
+
+    // This initialized local is unused; the callback still waits before changing the animation.
     HuPrcSleep(5);
     Hu3DAnimAnimSet(OpeningCharAnimId[animIndex], OpeningCharAnim[frameIndex]);
 }
 
-static void MessStart(s16 arg0, u32 message, s16 frameCount)
+// OpeningEventExec selects a dialogue window, sets or clears its message, and optionally waits.
+static void MessStart(s16 windowIndex, u32 message, s16 frameCount)
 {
     s16 i;
 
@@ -1267,11 +1340,11 @@ static void MessStart(s16 arg0, u32 message, s16 frameCount)
         HuWinDispOff(OpeningWinId[i]);
     }
 
-    HuWinDispOn(OpeningWinId[arg0]);
+    HuWinDispOn(OpeningWinId[windowIndex]);
     if (message != 0) {
-        HuWinMesSet(OpeningWinId[arg0], message);
+        HuWinMesSet(OpeningWinId[windowIndex], message);
     } else {
-        HuWinHomeClear(OpeningWinId[arg0]);
+        HuWinHomeClear(OpeningWinId[windowIndex]);
     }
 
     if (frameCount >= 0 && frameCount != 0) {
@@ -1279,6 +1352,7 @@ static void MessStart(s16 arg0, u32 message, s16 frameCount)
     }
 }
 
+// OpeningEventExec starts this animation to open the book and move it into its resting pose.
 static void BookOpen(void)
 {
     Mtx matrix;
@@ -1312,12 +1386,14 @@ static void BookOpen(void)
                    0.0f, 0.0f);
         Hu3DModelMtxSet(OpeningMdlId[1], &matrix);
 
-        BookRadius = 0.05000000074505806 + 0.949999988079071 * (1.0 - sin(3.141592653589793 * (90.f * rate) / 180.));
+        BookRadius = 0.05000000074505806 +
+                     0.949999988079071 * (1.0 - sin(3.141592653589793 * (90.f * rate) / 180.));
 
         HuPrcVSleep();
     }
 }
 
+// BookOpen schedules this callback to pause the book motion 120 frames after opening begins.
 static void BookOpenEvent(void)
 {
     HuPrcSleep(120);
@@ -1325,6 +1401,7 @@ static void BookOpenEvent(void)
     Hu3DModelClusterAttrSet(OpeningMdlId[OPENING_MODEL_BOOK], 0, HU3D_CLUSTER_ATTR_PAUSE);
 }
 
+// OpeningCreate starts this child process to keep the open book gently moving while visible.
 static void BookExec(void)
 {
     HU3D_MODEL *model;
@@ -1338,10 +1415,13 @@ static void BookExec(void)
             HuPrcVSleep();
         } while ((model->attr & HU3D_ATTR_DISPOFF) != 0);
 
+        // Use the previous offset for this position; the offset calculated below is applied on the
+        // next visible update.
         PSVECAdd(&BookPos, &BookOfs, &model->pos);
 
         BookOfs.x = BookRadius * (BOOK_X_RADIUS_SCALE * sin(M_PI * phaseDeg / 180.0));
-        BookOfs.y = BookRadius * (BOOK_Y_RADIUS_SCALE * cos(M_PI * (BOOK_Y_PHASE_SCALE * phaseDeg) / 180.0));
+        BookOfs.y = BookRadius *
+                    (BOOK_Y_RADIUS_SCALE * cos(M_PI * (BOOK_Y_PHASE_SCALE * phaseDeg) / 180.0));
         model->rot = BookRot;
 
         phaseDeg += 1.0f;
@@ -1351,6 +1431,7 @@ static void BookExec(void)
     } while (TRUE);
 }
 
+// EventCreate starts this child process to invoke a callback with its two stored values.
 static void EventExec(void)
 {
     HUPROCESS *process;
@@ -1362,6 +1443,7 @@ static void EventExec(void)
     HuPrcEnd();
 }
 
+// The event process destructor releases the callback data allocated by EventCreate.
 static void EventDestroy(void)
 {
     HUPROCESS *process;
@@ -1370,7 +1452,8 @@ static void EventDestroy(void)
     HuMemDirectFree(process->property);
 }
 
-static void EventCreate(void (*callback)(void), s32 arg0, s32 arg1)
+// Opening routines use this helper to run a callback asynchronously with two integer values.
+static void EventCreate(void (*callback)(void), s32 eventArg0, s32 eventArg1)
 {
     HUPROCESS *process;
     s32 *work;
@@ -1380,10 +1463,12 @@ static void EventCreate(void (*callback)(void), s32 arg0, s32 arg1)
     process->property = work;
     HuPrcDestructorSet2(process, EventDestroy);
     work[0] = (s32)callback;
-    work[1] = arg0;
-    work[2] = arg1;
+    work[1] = eventArg0;
+    work[2] = eventArg1;
 }
 
+// The opening camera hooks aim from x/y rotation, target, and distance; the z rotation is read but
+// not applied.
 static void OpeningCameraSet(HuVecF *rotDeg, HuVecF *target, float distance)
 {
     HuVecF pos;
@@ -1422,6 +1507,7 @@ static void OpeningCameraSet(HuVecF *rotDeg, HuVecF *target, float distance)
 const GXColor OpeningFilterPrimaryColor = { 154, 112, 86, 255 };
 const GXColor OpeningFilterSecondaryColor = { 166, 166, 166, 255 };
 
+// PostDrawHook draws the tinted page image over the captured frame using the requested opacity.
 static void FilterDraw(float alpha)
 {
     Mtx44 proj;
@@ -1455,7 +1541,8 @@ static void FilterDraw(float alpha)
     GXSetTevAlphaOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
     GXSetNumTexGens(1);
     GXSetNumTevStages(2);
-    GXInitTexObj(&texObj, FilterFrameBuf, POSTDRAW_COPY_W, POSTDRAW_COPY_H, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+    GXInitTexObj(&texObj, FilterFrameBuf, POSTDRAW_COPY_W, POSTDRAW_COPY_H, GX_TF_I8, GX_CLAMP,
+                 GX_CLAMP, GX_FALSE);
     GXInitTexObjLOD(&texObj, GX_NEAR, GX_NEAR, 0.0f, 0.0f, 0.0f, GX_FALSE, GX_FALSE, GX_ANISO_1);
     GXLoadTexObj(&texObj, GX_TEXMAP0);
     GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
@@ -1471,7 +1558,6 @@ static void FilterDraw(float alpha)
     GXEnd();
 }
 
-
 s16 OpeningMdlId[8];
 s16 OpeningUnusedBss;
 void *BookFrameBuf[2];
@@ -1486,7 +1572,7 @@ HuVecF BookRot;
 float BookRadius;
 s16 OpeningWinId[4];
 s16 OpeningBgState;
-HuVec2f GuideDist;
+HuVec2f GuideAngle;
 float OpeningBgRotZ;
 HuVecF StarPos;
 float FilterTPLvl;
@@ -1543,33 +1629,15 @@ u32 OpeningCharFileTbl[80] = {
 };
 
 char *OpeningCharTexNameTbl[12] = {
-    "Dummy_mario",
-    "Dummy_Luigi",
-    "Dummy_peach",
-    "Dummy_yoshi",
-    "Dummy_wario",
-    "Dummy_daisy",
-    "Dummy_waluigi",
-    "Dummy_kinopio",
-    "Dummy_teresa",
-    "Dummy_minikoopa",
-    "guide001",
-    "guide002",
+    "Dummy_mario", "Dummy_Luigi", "Dummy_peach", "Dummy_yoshi",
+    "Dummy_wario", "Dummy_daisy", "Dummy_waluigi", "Dummy_kinopio",
+    "Dummy_teresa", "Dummy_minikoopa", "guide001", "guide002",
 };
 
 char *OpeningCharObjNameTbl[12] = {
-    "op_stage011-mario",
-    "op_stage011-luigi",
-    "op_stage011-peach",
-    "op_stage011-yoshi",
-    "op_stage011-wario",
-    "op_stage011-daisy",
-    "op_stage011-waluigi",
-    "op_stage011-kinopio",
-    "op_stage011-teresa",
-    "op_stage011-minikoopa",
-    "op_stage011-soruru",
-    "op_stage011-luluna",
+    "op_stage011-mario", "op_stage011-luigi", "op_stage011-peach", "op_stage011-yoshi",
+    "op_stage011-wario", "op_stage011-daisy", "op_stage011-waluigi", "op_stage011-kinopio",
+    "op_stage011-teresa", "op_stage011-minikoopa", "op_stage011-soruru", "op_stage011-luluna",
 };
 
 HuVecF BookDefPos = { 0.0f, 0.0f, -2000.0f };

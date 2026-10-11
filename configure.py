@@ -1183,12 +1183,11 @@ config.libs = [
     Rel(
         "bootDll",
         objects={
-            Object(Matching, "REL/bootDll/boot.c", mw_version=config.linker_version),
+            Object(Matching, "REL/bootDll/boot.c"),
             Object(Matching, "REL/bootDll/data.c"),
             Object(
                 Matching,
                 "REL/bootDll/opening.c",
-                mw_version=config.linker_version,
                 extra_cflags=["-pooldata off"],
             ),
         },

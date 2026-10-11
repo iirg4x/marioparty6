@@ -14,6 +14,8 @@ Byte percentages were generated from a verified full-project retail build with `
 | Main DOL | 89.74% | 99.14% |
 | REL modules | 27.64% | 31.65% |
 
+Boot (`bootDll`) selects all **68 functions** from **4 complete translation units**; its linked REL matches retail.
+
 Thirsty Gulch (`s01Dll`) selects all **63 functions** from **3 complete translation units**; its linked REL matches retail.
 
 DOL source: `src/gssdk_lib/asrpho/common/blocks/flblocks/acne.c` now builds from source; `main.dol` matches retail byte for byte.

@@ -1,3 +1,4 @@
+// Starts the system warning, Nintendo startup screen, and title menu.
 #include "dolphin.h"
 #include "dolphin/os/OSReset.h"
 #include "game/audio.h"
@@ -48,7 +49,7 @@ enum {
     BLINK_PERIOD_FRAMES = 30,
     BOOT_PAD_SKIP_MASK = PAD_BUTTON_A | PAD_BUTTON_START,
     CAMERA_OUT_VIEW_PRIORITY = 32730,
-    SUBSTICK_INPUT_MASK = 248,
+    SUBSTICK_INPUT_MASK = 0xF8,
 };
 
 void BootExec(void);
@@ -63,9 +64,10 @@ void *NintendoDataDecode(void);
 void CharInit(void);
 void GameMesInit(void);
 void OpeningCreate(void);
-void OpeningExec(s32 arg);
+void OpeningExec(s32 enablePrompt);
 void OpeningKill(void);
 
+// The overlay loader calls this entry point before BootExec starts.
 int _prolog(void)
 {
     const VoidFunc *ctor;
@@ -78,6 +80,7 @@ int _prolog(void)
     return 0;
 }
 
+// The overlay loader calls this entry point while unloading the boot overlay.
 void _epilog(void)
 {
     const VoidFunc *dtor;
@@ -87,6 +90,7 @@ void _epilog(void)
     }
 }
 
+// Sets up the boot scene, camera callbacks, lighting, and player defaults before BootExec.
 void ObjectSetup(void)
 {
     s32 i;
@@ -123,6 +127,7 @@ void ObjectSetup(void)
     }
 }
 
+// Runs from the boot process created by ObjectSetup; sequences startup screens and title input.
 void BootExec(void)
 {
     HUPROCESS *process;
@@ -137,6 +142,7 @@ void BootExec(void)
     OSTick start;
     void *buf;
 
+    // The current-process pointer is fetched here but is not used by the startup sequence.
     process = HuPrcCurrentGet();
     firstRun = FALSE;
     asyncStat = HU_DATA_STAT_NONE;
@@ -165,7 +171,8 @@ void BootExec(void)
         HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
 
         waitSprite = HuSprCreate(HuSprAnimRead(HuDataSelHeapReadNum(OPENING_WAIT_SPRITE_DATA,
-                                                                    HU_MEMNUM_OVL, HEAP_MODEL)), 0, 0);
+                                                                    HU_MEMNUM_OVL, HEAP_MODEL)),
+                                 0, 0);
         HuSprGrpMemberSet(group, 2, waitSprite);
         HuSprPosSet(group, 2, 288.0f, 206.0f);
         HuSprAttrSet(group, 2, HUSPR_ATTR_DISPOFF | HUSPR_ATTR_LINEAR);
@@ -220,14 +227,16 @@ void BootExec(void)
             }
             BootTitleCreate();
 
-            anim = HuSprAnimRead(HuDataSelHeapReadNum(NINTENDO_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+            anim = HuSprAnimRead(
+                HuDataSelHeapReadNum(NINTENDO_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
             titleSprite = HuSprCreate(anim, 0, 0);
             HuSprGrpMemberSet(group, 1, titleSprite);
             HuSprPosSet(group, 1, 288.0f, 240.0f);
             HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
 
             waitSprite = HuSprCreate(HuSprAnimRead(HuDataSelHeapReadNum(OPENING_WAIT_SPRITE_DATA,
-                                                                        HU_MEMNUM_OVL, HEAP_MODEL)), 0, 0);
+                                                                        HU_MEMNUM_OVL, HEAP_MODEL)),
+                                     0, 0);
             HuSprGrpMemberSet(group, 2, waitSprite);
             HuSprPosSet(group, 2, 288.0f, 206.0f);
             HuSprAttrSet(group, 2, HUSPR_ATTR_DISPOFF);
@@ -351,6 +360,8 @@ title_exec:
     }
 }
 
+// BootExec offers progressive scan on eligible startup; when progressive mode is off, B must
+// be held. The 600-frame timeout accepts the current selection, which initially is progressive.
 void BootProgExec(void)
 {
     static u16 posTbl[] = { 221, 311, 357, 311 };
@@ -386,17 +397,20 @@ void BootProgExec(void)
 
     group = HuSprGrpCreate(3);
 
-    anim = HuSprAnimRead(HuDataSelHeapReadNum(PROGRESSIVE_MSG_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+    anim =
+        HuSprAnimRead(HuDataSelHeapReadNum(PROGRESSIVE_MSG_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 0, sprite);
     HuSprPosSet(group, 0, 288.0f, 240.0f);
 
-    anim = HuSprAnimRead(HuDataSelHeapReadNum(PROGRESSIVE_CURSOR_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+    anim = HuSprAnimRead(
+        HuDataSelHeapReadNum(PROGRESSIVE_CURSOR_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 1, sprite);
     HuSprPosSet(group, 1, posTbl[selection * 2], posTbl[selection * 2 + 1]);
 
-    anim = HuSprAnimRead(HuDataSelHeapReadNum(PROGRESSIVE_CURSOR_SEL_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+    anim = HuSprAnimRead(
+        HuDataSelHeapReadNum(PROGRESSIVE_CURSOR_SEL_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 2, sprite);
     HuSprPosSet(group, 2, posTbl[selection * 2], posTbl[selection * 2 + 1]);
@@ -414,7 +428,8 @@ void BootProgExec(void)
             frame = 0;
         }
 
-        if ((HuPadBtnDown[0] | HuPadBtnDown[1] | HuPadBtnDown[2] | HuPadBtnDown[3]) & PAD_BUTTON_A) {
+        if ((HuPadBtnDown[0] | HuPadBtnDown[1] | HuPadBtnDown[2] | HuPadBtnDown[3]) &
+            PAD_BUTTON_A) {
             HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
             HuSprPosSet(group, 2, posTbl[selection * 2], posTbl[selection * 2 + 1]);
             HuSprAttrReset(group, 2, HUSPR_ATTR_DISPOFF);
@@ -443,9 +458,11 @@ void BootProgExec(void)
 
     group = HuSprGrpCreate(1);
     if (selection == 0) {
-        anim = HuSprAnimRead(HuDataSelHeapReadNum(PROGRESSIVE_ON_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+        anim = HuSprAnimRead(
+            HuDataSelHeapReadNum(PROGRESSIVE_ON_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
     } else {
-        anim = HuSprAnimRead(HuDataSelHeapReadNum(PROGRESSIVE_OFF_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+        anim = HuSprAnimRead(
+            HuDataSelHeapReadNum(PROGRESSIVE_OFF_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
     }
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 0, sprite);
@@ -458,7 +475,8 @@ void BootProgExec(void)
 
     HuPrcSleep(60);
     for (frame = 0; frame < 180; frame++) {
-        if ((HuPadBtnDown[0] | HuPadBtnDown[1] | HuPadBtnDown[2] | HuPadBtnDown[3]) & PAD_BUTTON_A) {
+        if ((HuPadBtnDown[0] | HuPadBtnDown[1] | HuPadBtnDown[2] | HuPadBtnDown[3]) &
+            PAD_BUTTON_A) {
             break;
         }
         HuPrcVSleep();
@@ -472,6 +490,8 @@ void BootProgExec(void)
     HuPrcSleep(30);
 }
 
+// The object manager positions the title view from the camera's x/y rotation, target, and zoom;
+// it reads the z rotation but does not apply it.
 void CameraOutView(OMOBJ *object)
 {
     static u16 cameraMask[] = { 1, 2 };
@@ -514,6 +534,8 @@ void CameraOutView(OMOBJ *object)
     }
 }
 
+// The object manager calls this callback, but its private move flag is never set here, so it
+// returns immediately.
 void CameraMove(OMOBJ *object)
 {
     static s32 moveF;
@@ -607,6 +629,8 @@ void CameraMove(OMOBJ *object)
     }
 }
 
+// BootExec calls this after title data is available to create and initially hide the title logo
+// models.
 void BootTitleCreate(void)
 {
     TitleMdlId[0] = Hu3DModelCreateData(TITLE_HSF_PARTY);
@@ -619,6 +643,8 @@ void BootTitleCreate(void)
     Hu3DModelLayerSet(TitleMdlId[0], 1);
 }
 
+// BootExec calls this while the title screen is active; returns 1 on Start or 0 after the
+// 2100-frame input timeout.
 s32 BootTitleExec(s32 firstRun)
 {
     s16 frame;
@@ -685,6 +711,7 @@ s32 BootTitleExec(s32 firstRun)
     return 0;
 }
 
+// BootExec decodes the embedded Nintendo startup image before creating its sprite.
 void *NintendoDataDecode(void)
 {
     u32 *src;
@@ -703,6 +730,7 @@ void *NintendoDataDecode(void)
     return dst;
 }
 
+// Decodes a packed image buffer whose first two words give its size and decode type.
 void *WarningDataDecode(u32 *src)
 {
     u32 size;
@@ -719,6 +747,8 @@ void *WarningDataDecode(u32 *src)
     return dst;
 }
 
+// BootExec calls this on first boot to show the safety warning; after 90 frames, any button
+// press on any controller dismisses it; otherwise the prompt times out after 3510 frames.
 void BootWarningExec(void)
 {
     HUSPR_GROUPID group;
@@ -779,6 +809,7 @@ void BootWarningExec(void)
     WipeWait();
 
     HuPrcSleep(INITIAL_WAIT_FRAMES);
+    // This initialization is unused; the blink loop computes the prompt's opacity in tpLevel.
     tpLevelStack[0] = 0.0f;
     phaseSign = 1;
     HuSprDispOn(group, PRESS_START_SPRITE_MEMBER);
