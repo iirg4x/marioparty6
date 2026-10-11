@@ -1236,25 +1236,21 @@ config.libs = [
     Rel(
         "fileseldll",
         objects={
-            Object(Matching, "REL/fileseldll/filesel.c", mw_version=config.linker_version),
+            Object(Matching, "REL/fileseldll/filesel.c"),
             Object(
                 Matching,
                 "REL/fileseldll/filename.c",
-                mw_version=config.linker_version,
                 extra_cflags=["-pooldata off"],
             ),
             Object(
                 Matching,
                 "REL/fileseldll/saveload.c",
-                mw_version=config.linker_version,
-                extra_cflags=["-pooldata off", "-inline noauto"],
+                extra_cflags=["-pooldata off"],
             ),
             Object(
                 Matching,
                 "REL/fileseldll/runtime.c",
                 source="REL/fileseldll/runtime.c",
-                mw_version=config.linker_version,
-                extra_cflags=["-DMP6_REL_RUNTIME=1", "-DMP6_FILESEL_RUNTIME=1"],
             ),
         },
     ),

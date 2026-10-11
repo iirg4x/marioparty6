@@ -1,3 +1,4 @@
+/* Shared File Select slot, keyboard, and save-window declarations. */
 #ifndef _FILESELDLL_H
 #define _FILESELDLL_H
 
@@ -41,33 +42,58 @@ enum {
 };
 
 typedef struct FileselBox_s {
+    /* Nonzero when the panel is marked occupied; scene setup also uses this for placeholders. */
     s32 hasSave;
+    /* Sprite group used to draw the slot's text and card details. */
     HUSPR_GROUPID spriteGroup;
+    /* Window used for this slot's text. */
     HUWINID window;
+    /* 3D model of the save slot. */
     HU3D_MODELID slotModel;
+    /* 3D model that displays the player name. */
     HU3D_MODELID textModel;
+    /* First status model used for slot decoration. */
     HU3D_MODELID stateModel1;
+    /* Second status model used for slot decoration. */
     HU3D_MODELID stateModel2;
+    /* Third status model used for slot decoration. */
     HU3D_MODELID stateModel3;
+    /* Current visual state of the slot animation. */
     s16 visualState;
+    /* Saved board pattern variant; -1 for a new save or an empty slot. */
     s16 patternVariant;
+    /* Saved star count shown on the slot. */
     s16 displayNumber;
+    /* Animation applied to the slot frame. */
     HU3D_ANIMID frameAnimation;
+    /* Animation applied to the board pattern. */
     HU3D_ANIMID patternAnimation;
+    /* Calendar date copied from the save data. */
     OSCalendarTime saveTime;
+    /* Null-terminated player name copied from the save data. */
     char fileName[FILESEL_FILENAME_LENGTH];
+    /* Animation data that presents the captured save-slot panel on the text model. */
     ANIMDATA *cardTextureAnim;
+    /* Texture buffer receiving the rendered save-slot panel. */
     void *cardTextureBuffer;
+    /* Decimal slot number text inserted into its message window. */
     u8 slotNumberText[2];
+    /* Motion mode set by selection and transition flows and read by the slot's child process. */
     u8 motionState;
+    /* Base slot position in model coordinates, before waveOffset is added. */
     Vec basePosition;
+    /* Per-frame wave displacement in model coordinates. */
     Vec waveOffset;
+    /* Child process that updates this slot's motion. */
     HUPROCESS *motionProcess;
 } FILESEL_BOX;
 
 typedef struct NameKeyboard_s {
+    /* Key center X position in screen pixels. */
     s16 x;
+    /* Key center Y position in screen pixels. */
     s16 y;
+    /* Character code or page/delete/confirm command. */
     u16 val;
 } NAMEKEYBOARD;
 
