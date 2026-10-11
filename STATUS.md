@@ -14,6 +14,8 @@ Byte percentages were generated from a verified full-project retail build with `
 | Main DOL | 89.74% | 99.14% |
 | REL modules | 30.98% | 32.62% |
 
+Party Mode (`mdpartydll`) selects all **334 functions** from **3 complete translation units**; its linked REL matches retail.
+
 Shared C++ framework (`framework:octtree_debug.cpp`): **30 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
 Burnstile (`m668DLL`) selects all **91 functions** from **6 complete translation units**; its linked REL matches retail.
