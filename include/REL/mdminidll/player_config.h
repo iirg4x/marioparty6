@@ -1,21 +1,21 @@
+/* Player choices and controller assignments collected by the minigame-mode menu. */
 #ifndef REL_MDMINIDLL_PLAYER_CONFIG_H
 #define REL_MDMINIDLL_PLAYER_CONFIG_H
 #include "dolphin/types.h"
 
-/* Reconstructed from four 14-byte records and their GW_PLAYER consumers. */
+/* These choices are copied to the game player configuration when a mode starts. */
 typedef struct MDMinidllPlayerConfig {
-    s16 unknown_00;
-    s16 unknown_02;
-    s16 comF;
-    s16 comDif;
-    s16 charNo;
-    s16 padNo;
-    /* Observed record extent; original fields/purpose are unknown. */
-    u8 unknown_0C[2];
+    s16 selectionPhase; /* Selection phase: 0 choosing, 1 character chosen, 2 CPU difficulty
+                         * chosen. */
+    s16 unusedSetupValue; /* Cleared on player setup; the menu does not otherwise access this
+                           * value. */
+    s16 comF; /* 0 for a human player, 1 for a CPU player. */
+    s16 comDif; /* CPU difficulty index, 0-2 or 0-3 when the extra difficulty is available. */
+    s16 charNo; /* Character-card index selected for this player. */
+    s16 padNo; /* Controller index assigned to this player, 0-3. */
+    u8 unusedTail[2]; /* Not accessed by the player-selection callbacks. */
 } MDMinidllPlayerConfig;
 extern MDMinidllPlayerConfig lbl_1_bss_7CC[4];
-/* Retail consumes signed halfwords at +0 and +2. The symbol's declared extent
- * is two bytes; +2 is an observed adjacent unknown interval. This incomplete
- * view makes no capacity or original-type claim. */
+/* Entry 0 holds the human-player count; entry 1 holds the selected menu mode. */
 extern s16 lbl_1_bss_804[];
 #endif

@@ -1,25 +1,24 @@
+/* Texture distortion, scrolling and lifetime state for minigame-menu scene effects. */
 #ifndef REL_MDMINIDLL_LAYER_EFFECT_STATE_H
 #define REL_MDMINIDLL_LAYER_EFFECT_STATE_H
 
 #include "dolphin/types.h"
 
-/* Consumed target-backed view only. The purpose, original declaration, and
- * usable record capacity remain unknown; offset 0x18..0x1B is untyped. */
+/* The six matrix coefficients are read together by the distortion material hook. */
 typedef struct MDMinidllLayerEffectStateView {
-    /* 0x00 */ f32 field_00;
-    /* 0x04 */ f32 field_04;
-    /* 0x08 */ f32 field_08;
-    /* 0x0C */ f32 field_0C;
-    /* 0x10 */ f32 field_10;
-    /* 0x14 */ f32 field_14;
-    /* 0x18 */ u8 unknown_18[4];
-    /* 0x1C */ f32 field_1C;
-    /* 0x20 */ f32 field_20;
-    /* 0x24 */ f32 field_24;
+    f32 warpSFromS; /* S-input coefficient for the warped S texture coordinate. */
+    f32 warpSFromT; /* T-input coefficient for the warped S texture coordinate. */
+    f32 warpSOffset; /* Offset coefficient for the warped S texture coordinate. */
+    f32 warpTFromS; /* S-input coefficient for the warped T texture coordinate. */
+    f32 warpTFromT; /* T-input coefficient for the warped T texture coordinate. */
+    f32 warpTOffset; /* Offset coefficient for the warped T texture coordinate. */
+    u8 tintChannels[4]; /* Red, green, blue and alpha channels passed to the blend stages. */
+    f32 scrollY; /* Vertical warp-texture translation, in texture coordinates. */
+    f32 scrollStep; /* Vertical translation added on each material-hook call. */
+    f32 remainingUpdates; /* Starts at 90; a negative value ends the distortion effect. */
 } MDMinidllLayerEffectStateView;
 
-/* Retail .bss object: 0x8E8..0x937, extent 0x50. This is not an original
- * source array declaration and does not assert a usable record count. */
-extern u8 lbl_1_bss_8E8[80];
+/* Two state slots are available; the object update callback advances only the first. */
+extern MDMinidllLayerEffectStateView lbl_1_bss_8E8[2];
 
 #endif
