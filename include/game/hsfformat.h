@@ -197,7 +197,7 @@ typedef struct HsfAttribute_s {
     u8 unk10[4];
     float nbtTpLvl;
     u8 unk18[8];
-    float unk20;
+    float textureEnable;
     u8 unk24[4];
     HuVec2f scale;
     HuVec2f trans;

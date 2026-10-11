@@ -1,3 +1,4 @@
+/* Motion playback, blending, and animation-track evaluation for HSF models. */
 #define _MATH_H
 #define M_PI 3.141592653589793
 double sin(double x);
@@ -12,15 +13,17 @@ double cos(double x);
 #include "game/EnvelopeExec.h"
 #include "game/ShapeExec.h"
 
-#define HU3D_MOTATTR_SHIFT_ALL (HU3D_MOTATTR_SHIFT_LOOP|HU3D_MOTATTR_SHIFT_PAUSE|HU3D_MOTATTR_SHIFT_REV)
+#define HU3D_MOTATTR_SHIFT_ALL                                                                     \
+    (HU3D_MOTATTR_SHIFT_LOOP | HU3D_MOTATTR_SHIFT_PAUSE | HU3D_MOTATTR_SHIFT_REV)
 #define HU3D_MOTATTR_NOSHIFT_ALL (HU3D_MOTATTR_LOOP|HU3D_MOTATTR_PAUSE|HU3D_MOTATTR_REV)
 #define HU3D_MOTATTR_ALL (HU3D_MOTATTR_SHIFT_ALL|HU3D_MOTATTR_NOSHIFT_ALL)
+#define texMtxAnimEnabled textureEnable
 
 HU3D_MOTION Hu3DMotion[HU3D_MOTION_MAX];
 
 static HSF_BITMAP *bitMapPtr;
 
-
+/* Sets a pointer-sized field to NULL at each HU3D_MOTION-sized offset from Hu3DData. */
 void Hu3DMotionInit(void)
 {
     HU3D_MOTION *motP;
@@ -30,6 +33,7 @@ void Hu3DMotionInit(void)
     }
 }
 
+/* Creates a motion slot from an independently loaded HSF; callers later attach it to a model. */
 HU3D_MOTIONID Hu3DMotionCreate(void *data)
 {
     HU3D_MOTION *motP;
@@ -49,6 +53,7 @@ HU3D_MOTIONID Hu3DMotionCreate(void *data)
     return motId;
 }
 
+/* Creates a motion slot that shares the selected model's HSF data. */
 HU3D_MOTIONID Hu3DMotionModelCreate(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -70,6 +75,7 @@ HU3D_MOTIONID Hu3DMotionModelCreate(HU3D_MODELID modelId)
     return motId;
 }
 
+/* Releases a motion slot if no other model uses it; its source model is ignored by this check. */
 BOOL Hu3DMotionKill(HU3D_MOTIONID motId)
 {
     HU3D_MOTION *motP = &Hu3DMotion[motId];
@@ -105,6 +111,7 @@ BOOL Hu3DMotionKill(HU3D_MOTIONID motId)
     return TRUE;
 }
 
+/* Called during HSF manager shutdown to release every motion slot that can be killed. */
 void Hu3DMotionAllKill(void)
 {
     HU3D_MOTION *motP;
@@ -116,6 +123,8 @@ void Hu3DMotionAllKill(void)
     }
 }
 
+/* Selects the main motion; NONE clears its motion assignments and resets main speed/time unless
+* the current main slot is the model's source slot. */
 void Hu3DMotionSet(HU3D_MODELID modelId, HU3D_MOTIONID motId)
 {
     if(motId == HU3D_MOTIONID_NONE) {
@@ -142,6 +151,7 @@ void Hu3DMotionSet(HU3D_MODELID modelId, HU3D_MOTIONID motId)
     }
 }
 
+/* Starts an overlay motion on a model at time zero and normal speed. */
 void Hu3DMotionOverlaySet(HU3D_MODELID modelId, HU3D_MOTIONID motId)
 {
     Hu3DData[modelId].motIdOvl = motId;
@@ -149,33 +159,39 @@ void Hu3DMotionOverlaySet(HU3D_MODELID modelId, HU3D_MOTIONID motId)
     Hu3DData[modelId].motOvlWork.speed = 1;
 }
 
+/* Detaches the model's overlay motion. */
 void Hu3DMotionOverlayReset(HU3D_MODELID modelId)
 {
     Hu3DData[modelId].motIdOvl = HU3D_MOTIONID_NONE;
 }
 
+/* Returns the current playback time of the model's overlay motion. */
 float Hu3DMotionOverlayTimeGet(HU3D_MODELID modelId)
 {
     return Hu3DData[modelId].motOvlWork.time;
 }
 
+/* Returns the duration of the motion currently assigned as the overlay. */
 float Hu3DMotionOverlayMaxTimeGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return Hu3DMotionMotionMaxTimeGet(modelP->motIdOvl);
 }
 
+/* Sets overlay playback time and marks the model for motion evaluation. */
 void Hu3DMotionOverlayTimeSet(HU3D_MODELID modelId, float time)
 {
     Hu3DData[modelId].attr |= HU3D_ATTR_MOTION_MODEL;
     Hu3DData[modelId].motOvlWork.time = time;
 }
 
+/* Sets the per-frame playback multiplier for the model's overlay motion. */
 void Hu3DMotionOverlaySpeedSet(HU3D_MODELID modelId, float speed)
 {
     Hu3DData[modelId].motOvlWork.speed = speed;
 }
 
+/* Checks the overlay endpoint selected by its reverse-playback flag. */
 BOOL Hu3DMotionOverlayEndCheck(HU3D_MODELID modelId)
 {
     if(!(Hu3DData[modelId].motAttr  & HU3D_MOTATTR_OVL_REV)) {
@@ -185,6 +201,9 @@ BOOL Hu3DMotionOverlayEndCheck(HU3D_MODELID modelId)
     }
 }
 
+/* Begins a transition to motId; an existing pending motion first becomes the main motion.
+ * On that replacement, attr's shift bits set the main flags. The new motion starts at start
+ * with speed 1; end is the blend duration. */
 void Hu3DMotionShiftSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, float start, float end, u32 attr)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -234,6 +253,7 @@ void Hu3DMotionShiftSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, float start, 
     modelP->motAttr &= ~HU3D_MOTATTR;
 }
 
+/* Assigns a shape animation and initializes its playback range and speed. */
 void Hu3DMotionShapeSet(HU3D_MODELID modelId, HU3D_MOTIONID motId)
 {
     Hu3DData[modelId].motIdShape = motId;
@@ -243,34 +263,40 @@ void Hu3DMotionShapeSet(HU3D_MODELID modelId, HU3D_MOTIONID motId)
     Hu3DData[modelId].motShapeWork.end = Hu3DMotionShapeMaxTimeGet(modelId);
 }
 
+/* Returns the motion slot assigned to the model's shape animation. */
 HU3D_MOTIONID Hu3DMotionShapeIDGet(HU3D_MODELID modelId)
 {
     return Hu3DData[modelId].motIdShape;
 }
 
+/* Sets the playback multiplier for the model's shape animation. */
 void Hu3DMotionShapeSpeedSet(HU3D_MODELID modelId, float speed)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->motShapeWork.speed = speed;
 }
 
+/* Sets shape-animation time and marks the model for motion evaluation. */
 void Hu3DMotionShapeTimeSet(HU3D_MODELID modelId, float time)
 {
     Hu3DData[modelId].attr |= HU3D_ATTR_MOTION_MODEL;
     Hu3DData[modelId].motShapeWork.time = time;
 }
 
+/* Returns the current time of the model's shape animation. */
 float Hu3DMotionShapeTimeGet(HU3D_MODELID modelId)
 {
     return Hu3DData[modelId].motShapeWork.time;
 }
 
+/* Returns the duration of the motion assigned to the model's shape animation. */
 float Hu3DMotionShapeMaxTimeGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return Hu3DMotionMotionMaxTimeGet(modelP->motIdShape);
 }
 
+/* Sets shape playback bounds; looping wraps at or beyond end and only below start. */
 void Hu3DMotionShapeStartEndSet(HU3D_MODELID modelId, float start, float end)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -278,6 +304,7 @@ void Hu3DMotionShapeStartEndSet(HU3D_MODELID modelId, float start, float end)
     modelP->motShapeWork.end = end;
 }
 
+/* Assigns a cluster animation to the first free cluster slot and returns that slot. */
 s16 Hu3DMotionClusterSet(HU3D_MODELID modelId, HU3D_MOTIONID motId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -297,6 +324,8 @@ s16 Hu3DMotionClusterSet(HU3D_MODELID modelId, HU3D_MOTIONID motId)
     return HU3D_CLUSTER_NONE;
 }
 
+/* Replaces the motion in a cluster slot, resetting its time and speed but retaining its cluster
+ * attributes. */
 s16 Hu3DMotionClusterNoSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 clusterNo)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -309,11 +338,13 @@ s16 Hu3DMotionClusterNoSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 cluste
     return clusterNo;
 }
 
+/* Removes the model's shape-animation assignment. */
 void Hu3DMotionShapeReset(HU3D_MODELID modelId)
 {
     Hu3DData[modelId].motIdShape = HU3D_MOTIONID_NONE;
 }
 
+/* Removes cluster motion assignments; per-slot time, speed, and attributes remain unchanged. */
 void Hu3DMotionClusterReset(HU3D_MODELID modelId, s16 clusterNo)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -334,37 +365,42 @@ void Hu3DMotionClusterReset(HU3D_MODELID modelId, s16 clusterNo)
     }
 }
 
+/* Sets the playback multiplier for one cluster animation. */
 void Hu3DMotionClusterSpeedSet(HU3D_MODELID modelId, s16 clusterNo, float speed)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->clusterSpeed[clusterNo] = speed;
 }
 
+/* Sets the current playback time for one cluster animation. */
 void Hu3DMotionClusterTimeSet(HU3D_MODELID modelId, s16 clusterNo, float time)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->clusterTime[clusterNo] = time;
 }
 
-
+/* Returns the duration of the motion assigned to one cluster slot. */
 float Hu3DMotionClusterMaxTimeGet(HU3D_MODELID modelId, s16 clusterNo)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return Hu3DMotionMotionMaxTimeGet(modelP->motIdCluster[clusterNo]);
 }
 
+/* Returns the model's current main-motion slot. */
 HU3D_MOTIONID Hu3DMotionIDGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return modelP->motId;
 }
 
+/* Returns the model's pending transition-motion slot. */
 HU3D_MOTIONID Hu3DMotionShiftIDGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return modelP->motIdShift;
 }
 
+/* Sets main-motion time, clamped to zero and the motion's maximum time. */
 void Hu3DMotionTimeSet(HU3D_MODELID modelId, float time)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -375,23 +411,30 @@ void Hu3DMotionTimeSet(HU3D_MODELID modelId, float time)
         time = 0;
     }
     modelP->motWork.time = time;
-    if(modelP->hsf != ((void *)-1) && modelP->hsf->cenvNum != 0 && (modelP->motAttr & HU3D_MOTATTR_PAUSE)) {
+    /* Camera-only records carry -1 instead of HSF data. Paused models with envelopes
+    * request deformation work after their playback time changes. */
+    if (modelP->hsf != ((void *) -1) && modelP->hsf->cenvNum != 0 &&
+        (modelP->motAttr & HU3D_MOTATTR_PAUSE)) {
         modelP->attr |= HU3D_ATTR_MOTION_MODEL;
     }
 }
 
+/* Returns the current main-motion playback time. */
 float Hu3DMotionTimeGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return modelP->motWork.time;
 }
 
+/* Returns the current time of the motion being blended in. */
 float Hu3DMotionShiftTimeGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     return modelP->motShiftWork.time;
 }
 
+/* Returns the main motion's duration after converting maxTime + 0.0001 through s16;
+ * returns zero if no main motion is set. */
 float Hu3DMotionMaxTimeGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -407,6 +450,8 @@ float Hu3DMotionMaxTimeGet(HU3D_MODELID modelId)
     return maxTime;
 }
 
+/* Returns the pending motion's duration after converting maxTime + 0.0001 through s16;
+ * returns zero when none is assigned. */
 float Hu3DMotionShiftMaxTimeGet(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -422,6 +467,7 @@ float Hu3DMotionShiftMaxTimeGet(HU3D_MODELID modelId)
     return maxTime;
 }
 
+/* Sets the playback range for the motion being blended in. */
 void Hu3DMotionShiftStartEndSet(HU3D_MODELID modelId, float start, float end)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -429,6 +475,8 @@ void Hu3DMotionShiftStartEndSet(HU3D_MODELID modelId, float start, float end)
     modelP->motShiftWork.end = end;
 }
 
+/* Returns a motion slot's duration after converting maxTime + 0.0001 through s16;
+ * returns zero for an empty slot. */
 float Hu3DMotionMotionMaxTimeGet(HU3D_MOTIONID motId)
 {
     HU3D_MOTION *motP = &Hu3DMotion[motId];
@@ -442,6 +490,7 @@ float Hu3DMotionMotionMaxTimeGet(HU3D_MOTIONID motId)
     return maxTime;
 }
 
+/* Sets the playback range for the model's main motion. */
 void Hu3DMotionStartEndSet(HU3D_MODELID modelId, float start, float end)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -449,6 +498,7 @@ void Hu3DMotionStartEndSet(HU3D_MODELID modelId, float start, float end)
     modelP->motWork.end = end;
 }
 
+/* Checks the main-motion endpoint according to the model's reverse flag. */
 BOOL Hu3DMotionEndCheck(HU3D_MODELID modelId)
 {
     if(!(Hu3DData[modelId].motAttr & HU3D_MOTATTR_REV)) {
@@ -458,18 +508,21 @@ BOOL Hu3DMotionEndCheck(HU3D_MODELID modelId)
     }
 }
 
+/* Sets the per-frame playback multiplier for the model's main motion. */
 void Hu3DMotionSpeedSet(HU3D_MODELID modelId, float speed)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->motWork.speed = speed;
 }
 
+/* Sets the per-frame playback multiplier for the transition motion. */
 void Hu3DMotionShiftSpeedSet(HU3D_MODELID modelId, float speed)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->motShiftWork.speed = speed;
 }
 
+/* Holds the selected object's requested position, rotation, or scale at its base value. */
 void Hu3DMotionNoMotSet(HU3D_MODELID modelId, char *objName, u32 forceAttr)
 {
     HSF_OBJECT *objP = Hu3DModelObjPtrGet(modelId, objName);
@@ -509,6 +562,7 @@ void Hu3DMotionNoMotSet(HU3D_MODELID modelId, char *objName, u32 forceAttr)
     }
 }
 
+/* Releases the requested forced transform components on the selected object. */
 void Hu3DMotionNoMotReset(HU3D_MODELID modelId, char *objName, u32 forceAttr)
 {
     HSF_OBJECT *objP = Hu3DModelObjPtrGet(modelId, objName);
@@ -516,6 +570,8 @@ void Hu3DMotionNoMotReset(HU3D_MODELID modelId, char *objName, u32 forceAttr)
     constData->attr &= ~forceAttr;
 }
 
+/* Sets selected current transform components to value and blocks their animation-track writes.
+ * A base-transform reset can still overwrite forced scale components. */
 void Hu3DMotionForceSet(HU3D_MODELID modelId, char *objName, u32 forceAttr, float value)
 {
     HSF_OBJECT *objP = Hu3DModelObjPtrGet(modelId, objName);
@@ -555,13 +611,14 @@ void Hu3DMotionForceSet(HU3D_MODELID modelId, char *objName, u32 forceAttr, floa
     }
 }
 
+/* Stores the callback and selects the first object whose name contains NOW, if one exists. */
 void Hu3DMotionTimingHookSet(HU3D_MODELID modelId, HU3D_TIMING_HOOK timingHook)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HSF_DATA *hsf = modelP->hsf;
     s16 i;
     HSF_OBJECT *objPtr;
-    
+
     modelP->timingHook = timingHook;
     for(objPtr=hsf->object, i=0; i<hsf->objectNum; objPtr++, i++) {
         HSF_OBJECT *obj = objPtr;
@@ -575,32 +632,35 @@ void Hu3DMotionTimingHookSet(HU3D_MODELID modelId, HU3D_TIMING_HOOK timingHook)
     }
 }
 
+/* Clears the callback used for the model's NOW timing track. */
 void Hu3DMotionTimingHookReset(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     modelP->timingHook = NULL;
 }
 
-
+/* Adds motion-slot attributes used by playback and motion evaluation. */
 void Hu3DMotionAttrSet(HU3D_MOTIONID motId, u16 attr)
 {
     HU3D_MOTION *motP = &Hu3DMotion[motId];
     motP->attr |= attr;
 }
 
+/* Removes selected attributes from a motion slot. */
 void Hu3DMotionAttrReset(HU3D_MOTIONID motId, u16 attr)
 {
     HU3D_MOTION *motP = &Hu3DMotion[motId];
     motP->attr &= ~attr;
 }
 
+/* Called from the HSF manager's per-frame update to advance active motion clocks for one model. */
 void Hu3DMotionNext(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HU3D_MOTION *motP = &Hu3DMotion[modelP->motId];
     u32 attr = modelP->motAttr;
     HSF_MOTION *hsfMotP;
-    
+
     if(modelP->motId != HU3D_MOTIONID_NONE) {
         hsfMotP = motP->hsf->motion;
         motP = &Hu3DMotion[modelP->motId];
@@ -611,11 +671,15 @@ void Hu3DMotionNext(HU3D_MODELID modelId)
             } else {
                 modelP->motWork.time -= modelP->motWork.speed*minimumVcountf;
             }
+            /* Main-motion loops preserve overshoot with one wrap. Overlay, shift, shape,
+            * and cluster loops instead snap to the opposite endpoint. */
             if(attr & HU3D_MOTATTR_LOOP) {
                 if(modelP->motWork.time < modelP->motWork.start) {
-                    modelP->motWork.time = modelP->motWork.end-(modelP->motWork.start-modelP->motWork.time);
+                    modelP->motWork.time =
+                        modelP->motWork.end - (modelP->motWork.start - modelP->motWork.time);
                 } else if(modelP->motWork.time >= modelP->motWork.end) {
-                    modelP->motWork.time = modelP->motWork.start+(modelP->motWork.time-modelP->motWork.end);
+                    modelP->motWork.time =
+                        modelP->motWork.start + (modelP->motWork.time - modelP->motWork.end);
                 }
             } else if(modelP->motWork.time < modelP->motWork.start) {
                 modelP->motWork.time = modelP->motWork.start;
@@ -658,6 +722,9 @@ void Hu3DMotionNext(HU3D_MODELID modelId)
                 modelP->motWork.start = modelP->motShiftWork.start;
                 modelP->motWork.end = modelP->motShiftWork.end;
                 modelP->motIdShift = HU3D_MOTIONID_NONE;
+                /* Converted shift flags include the HU3D_MOTATTR tag, so any promoted flag makes
+                * the shape-pause test below succeed. With none, shape advances forward without
+                * looping, ignoring its own pause, reverse, and loop flags for this call. */
                 attr = HU3D_MOTATTR_NONE;
                 if(modelP->motAttr & HU3D_MOTATTR_SHIFT_LOOP) {
                     attr |= HU3D_MOTATTR_LOOP;
@@ -746,12 +813,13 @@ void Hu3DMotionNext(HU3D_MODELID modelId)
             }
         }
     }
-    
+
 }
 
 #define HU3D_CONST_FORCE_POS (HU3D_CONST_FORCE_POSX|HU3D_CONST_FORCE_POSY|HU3D_CONST_FORCE_POSZ)
 #define HU3D_CONST_FORCE_ROT (HU3D_CONST_FORCE_ROTX|HU3D_CONST_FORCE_ROTY|HU3D_CONST_FORCE_ROTZ)
-#define HU3D_CONST_FORCE_SCALE (HU3D_CONST_FORCE_SCALEX|HU3D_CONST_FORCE_SCALEY|HU3D_CONST_FORCE_SCALEZ)
+#define HU3D_CONST_FORCE_SCALE                                                                     \
+    (HU3D_CONST_FORCE_SCALEX | HU3D_CONST_FORCE_SCALEY | HU3D_CONST_FORCE_SCALEZ)
 
 #define HU3D_CONST_FORCE_ANY (HU3D_CONST_FORCE_POS|HU3D_CONST_FORCE_ROT|HU3D_CONST_FORCE_SCALE)
 
@@ -760,9 +828,10 @@ static BOOL TimingHookCheck(HU3D_MODELID modelId, HU3D_MOTIONID motId, HSF_OBJEC
 
 #define OBJ_TRX_NONE ((float *)-1)
 
-float *GetObjTRXPtr(HSF_OBJECT *arg0, u16 channel);
+float *GetObjTRXPtr(HSF_OBJECT *objPtr, u16 channel);
 
-void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL copyXFormF)
+/* Evaluates one motion's tracks into a model during Hu3DMotionCalc. */
+void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL preserveXFormF)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
     HU3D_MOTION *motP = &Hu3DMotion[motId];
@@ -774,7 +843,7 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
     HSF_OBJECT *objP;
     HSF_CONSTDATA *constData;
     HSF_TRACK *trackPEnd;
-    if(copyXFormF == FALSE) {
+    if(preserveXFormF == FALSE) {
         s16 attr;
         s16 i;
         for(i=0; i<hsf->objectNum; objPtr++, i++) {
@@ -782,6 +851,8 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
             if(objP->constData) {
                 constData = objP->constData;
                 if(constData->attr & HU3D_CONST_FORCE_ANY) {
+                    /* This short mask loses scale-force bits; the hilite flag makes it negative and
+                     * thereby preserves all scale components during this reset. */
                     s16 forceAttr = constData->attr;
                     if(!(forceAttr & HU3D_CONST_FORCE_POSX)) {
                         objP->mesh.curr.pos.x = objP->mesh.base.pos.x;
@@ -821,7 +892,7 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
     for(trackPEnd = &trackP[hsfMotP->numTracks]; trackP < trackPEnd; trackP++) {
         switch(trackP->type) {
             HSF_CLUSTER *clusterP;
-            
+
             case HSF_TRACK_TRANSFORM:
                 if(trackP->target < hsf->objectNum && trackP->target != -1) {
                     objP = &hsf->object[trackP->target];
@@ -834,10 +905,17 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
                     } else if(objP->type == HSF_OBJ_LIGHT) {
                         SetObjLightMotion(modelId, trackP, GetCurve(trackP, time));
                     } else if(trackP->channel == HSF_CHANNEL_LOCK) {
-                        if((motP->attr & HU3D_ATTR_MOT_RESET_LOCK) && 0.0 == modelP->motWork.start && GetCurve(trackP, time) == 1.0f && MLoopCheck(objP)) { 
+                        /* A 1.0 lock key can move the main-motion loop start, even in an overlay or
+                         * shape pass, and invoke the NOW hook. Invoking the hook leaves the lock
+                         * unchanged; otherwise 1.0 releases it and other values lock it. */
+                        if ((motP->attr & HU3D_ATTR_MOT_RESET_LOCK) &&
+                            0.0 == modelP->motWork.start && GetCurve(trackP, time) == 1.0f &&
+                            MLoopCheck(objP)) {
                             modelP->motWork.start = time;
                         }
-                        if(!modelP->timingHook || objP != modelP->timingHookObj || GetCurve(trackP, time) != 1.0f || !TimingHookCheck(modelId, motId, objP)) {
+                        if (!modelP->timingHook || objP != modelP->timingHookObj ||
+                            GetCurve(trackP, time) != 1.0f ||
+                            !TimingHookCheck(modelId, motId, objP)) {
                             if(objP->constData) {
                                 constData = objP->constData;
                                 if(GetCurve(trackP, time) == 1.0f) {
@@ -848,6 +926,8 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
                             }
                         }
                     } else if(trackP->channel == HSF_CHANNEL_DISPOFF) {
+                        /* Value 1.0 clears the runtime display-off flag; every other value sets
+                         * it. */
                         if(objP->constData) {
                             constData = objP->constData;
                             if(GetCurve(trackP, time) == 1.0f) {
@@ -864,7 +944,7 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
                     }
                 }
                 break;
-            
+
             case HSF_TRACK_MORPH:
             {
                 HSF_TRACK *track = trackP;
@@ -875,20 +955,20 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
                 }
             }
                 break;
-            
+
             case HSF_TRACK_MATERIAL:
                 if(!(modelP->attr & HU3D_ATTR_CURVE_MOTOFF) && trackP->attrIdx < hsf->materialNum) {
                     SetObjMatMotion(modelId, trackP, GetCurve(trackP, time));
                 }
                 break;
-            
+
             case HSF_TRACK_CLUSTER:
                 if (!(modelP->attr & HU3D_ATTR_CURVE_MOTOFF)) {
                     clusterP = &hsf->cluster[trackP->cluster];
                     clusterP->index = GetClusterCurve(trackP, time);
                 }
                 break;
-            
+
             case HSF_TRACK_CLUSTER_WEIGHT:
                 if (!(modelP->attr & HU3D_ATTR_CURVE_MOTOFF)) {
                     HSF_TRACK *track = trackP;
@@ -896,10 +976,12 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
                     clusterP->weight[track->clusterWeight] = GetClusterWeightCurve(track, time);
                 }
                 break;
-            
+
             case HSF_TRACK_ATTRIBUTE:
             {
                 HSF_TRACK *track = trackP;
+                /* Tracks whose cluster field differs from -1 bypass HU3D_ATTR_CURVE_MOTOFF;
+                * that flag blocks only attribute tracks with cluster == -1. */
                 if(track->cluster != -1 || !(modelP->attr & HU3D_ATTR_CURVE_MOTOFF)) {
                     if(track->attrIdx != -1 && track->attrIdx < hsf->attributeNum) {
                         SetObjAttrMotion(modelId, track, GetCurve(track, time));
@@ -911,6 +993,7 @@ void Hu3DMotionExec(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time, BOOL 
     }
 }
 
+/* Detects the MLOOP marker in an object's name for motion-lock restart handling. */
 static BOOL MLoopCheck(HSF_OBJECT *objPtr)
 {
     char *name;
@@ -922,6 +1005,7 @@ static BOOL MLoopCheck(HSF_OBJECT *objPtr)
     return FALSE;
 }
 
+/* Calls the model timing hook for a NOW marker and records the update frame. */
 static BOOL TimingHookCheck(HU3D_MODELID modelId, HU3D_MOTIONID motId, HSF_OBJECT *objP)
 {
     char *name;
@@ -930,6 +1014,8 @@ static BOOL TimingHookCheck(HU3D_MODELID modelId, HU3D_MOTIONID motId, HSF_OBJEC
             HU3D_MODEL *modelP = &Hu3DData[modelId];
             HU3D_TIMING_HOOK timingHook;
             BOOL lagF;
+            /* The lag flag is false only when the previous hook call was one frame counter
+            * tick ago; a second call during the same tick also reports lag. */
             if(GlobalCounter-modelP->endCounter == 1) {
                 lagF = FALSE;
             } else {
@@ -944,6 +1030,7 @@ static BOOL TimingHookCheck(HU3D_MODELID modelId, HU3D_MOTIONID motId, HSF_OBJEC
     return FALSE;
 }
 
+/* Applies camera tracks from the model's current main motion when camera motion is enabled. */
 void Hu3DCameraMotionExec(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -961,6 +1048,8 @@ void Hu3DCameraMotionExec(HU3D_MODELID modelId)
     }
 }
 
+/* Blends pending transform tracks into current transforms; if no main motion is set,
+* first resets every object to its base transform, including forced components. */
 void Hu3DSubMotionExec(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -995,16 +1084,26 @@ void Hu3DSubMotionExec(HU3D_MODELID modelId)
                     obj = &hsf->object[trackP->target];
                     channel = trackP->channel;
                     if(channel == HSF_CHANNEL_LOCK) {
-                        if((motP->attr & HU3D_ATTR_MOT_RESET_LOCK) && 0.0 == modelP->motShiftWork.start && GetCurve(trackP, modelP->motShiftWork.time) == 1.0f && MLoopCheck(obj)) { 
+                        /* Sub-motion lock tracks can move the shift-loop start and invoke the NOW
+                         * hook, but do not change the object's lock flag. */
+                        if ((motP->attr & HU3D_ATTR_MOT_RESET_LOCK) &&
+                            0.0 == modelP->motShiftWork.start &&
+                            GetCurve(trackP, modelP->motShiftWork.time) == 1.0f &&
+                            MLoopCheck(obj)) {
                             modelP->motShiftWork.start = modelP->motShiftWork.time;
                         }
-                        if(modelP->timingHook && obj == modelP->timingHookObj && GetCurve(trackP, modelP->motShiftWork.time) == 1.0f) {
+                        if (modelP->timingHook && obj == modelP->timingHookObj &&
+                            GetCurve(trackP, modelP->motShiftWork.time) == 1.0f) {
                             TimingHookCheck(modelId, modelP->motIdShift, obj);
                         }
                     } else {
                         float *trxP = GetObjTRXPtr(obj, channel);
                         if(trxP != OBJ_TRX_NONE) {
-                            if(channel == HSF_CHANNEL_ROTX || channel == HSF_CHANNEL_ROTY || channel == HSF_CHANNEL_ROTZ) {
+                            if (channel == HSF_CHANNEL_ROTX || channel == HSF_CHANNEL_ROTY ||
+                                channel == HSF_CHANNEL_ROTZ) {
+                                /* Correct negative angles by one turn and adjust across the
+                                 * 180-degree boundary before blending. These corrections also
+                                 * modify the stored current angle in place. */
                                 float rot = GetCurve(trackP, modelP->motShiftWork.time);
                                 if(rot < 0.0f) {
                                     rot += 360.0f;
@@ -1023,7 +1122,8 @@ void Hu3DSubMotionExec(HU3D_MODELID modelId)
                                 }
                                 *trxP = (invWeight*(*trxP))+(weight*rot);
                             } else {
-                                *trxP = (invWeight*(*trxP))+(weight*GetCurve(trackP, modelP->motShiftWork.time));
+                                *trxP = (invWeight * (*trxP)) +
+                                        (weight * GetCurve(trackP, modelP->motShiftWork.time));
                             }
                         }
                     }
@@ -1034,6 +1134,7 @@ void Hu3DSubMotionExec(HU3D_MODELID modelId)
     }
 }
 
+/* Returns a current position, rotation, or scale component unless that component is forced. */
 __declspec(weak) float *GetObjTRXPtr(HSF_OBJECT *objPtr, u16 channel)
 {
     HSF_CONSTDATA *constData = objPtr->constData;
@@ -1092,6 +1193,8 @@ __declspec(weak) float *GetObjTRXPtr(HSF_OBJECT *objPtr, u16 channel)
     return OBJ_TRX_NONE;
 }
 
+/* Applies a material color or alpha track after clamping its value to [0, 1].
+* Inverse-alpha tracks are ignored while HU3D_ATTR_TPLVL_SET is active. */
 void SetObjMatMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1107,51 +1210,52 @@ void SetObjMatMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
         case HSF_CHANNEL_LITCOLOR_R:
             matP->litColor[0] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_LITCOLOR_G:
             matP->litColor[1] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_LITCOLOR_B:
             matP->litColor[2] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_COLOR_R:
             matP->color[0] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_COLOR_G:
             matP->color[1] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_COLOR_B:
             matP->color[2] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_SHADOWCOLOR_R:
             matP->shadowColor[0] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_SHADOWCOLOR_G:
             matP->shadowColor[1] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_SHADOWCOLOR_B:
             matP->shadowColor[2] = weight*255;
             break;
-        
+
         case HSF_CHANNEL_INVALPHA:
             if(!(modelP->attr & HU3D_ATTR_TPLVL_SET)) {
                 matP->invAlpha = weight;
             }
             break;
-        
+
         case HSF_CHANNEL_REFALPHA:
             matP->refAlpha = weight;
             break;
     }
 }
 
+/* Applies a texture-attribute track, creating per-model animation work when needed. */
 void SetObjAttrMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1177,13 +1281,15 @@ void SetObjAttrMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
         case HSF_CHANNEL_BITMAP:
             if(!attrP->animWorkP) {
                 if(modelP->linkMdlId != HU3D_MODELID_NONE) {
-                    attrAnimP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM), Hu3DData[modelId].mallocNoLink);
+                    attrAnimP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM),
+                                                     Hu3DData[modelId].mallocNoLink);
                     attrP->animWorkP = attrAnimP;
                 } else {
-                    attrAnimP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM), Hu3DData[modelId].mallocNo);
+                    attrAnimP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(HU3D_ATTR_ANIM),
+                                                     Hu3DData[modelId].mallocNo);
                     attrP->animWorkP = attrAnimP;
                 }
-                
+
                 attrAnimP->attr = 0;
                 attrAnimP->trans3D.x = attrAnimP->trans3D.y = attrAnimP->trans3D.z = 0;
                 attrAnimP->rot.x = attrAnimP->rot.y = attrAnimP->rot.z = 0;
@@ -1192,9 +1298,9 @@ void SetObjAttrMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 attrAnimP = attrP->animWorkP;
             }
             if(trackP->channel != HSF_CHANNEL_BITMAP) {
-                attrAnimP->attr |= 0x4;
+                attrAnimP->attr |= HU3D_ATTRANIM_ATTR_ANIM3D;
             } else {
-                attrAnimP->attr |= 0x8;
+                attrAnimP->attr |= HU3D_ATTRANIM_ATTR_BMPANIM;
             }
             break;
     }
@@ -1202,57 +1308,59 @@ void SetObjAttrMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
         case HSF_CHANNEL_POSX:
             attrAnimP->trans3D.x = value;
             break;
-        
+
         case HSF_CHANNEL_POSY:
             attrAnimP->trans3D.y = value;
             break;
-        
+
         case HSF_CHANNEL_POSZ:
             attrAnimP->trans3D.z = value;
             break;
-        
+
         case HSF_CHANNEL_ROTX:
             attrAnimP->rot.x = value;
             break;
-        
+
         case HSF_CHANNEL_ROTY:
             attrAnimP->rot.y = value;
             break;
-        
+
         case HSF_CHANNEL_ROTZ:
             attrAnimP->rot.z = value;
             break;
-        
+
         case HSF_CHANNEL_SCALEX:
             attrAnimP->scale3D.x = value;
             break;
-        
+
         case HSF_CHANNEL_SCALEY:
             attrAnimP->scale3D.y = value;
             break;
-        
+
         case HSF_CHANNEL_SCALEZ:
             attrAnimP->scale3D.z = value;
             break;
-            
+
         case HSF_CHANNEL_64:
-            attrP->unk20 = weight;
+            /* hsfdraw checks for exactly 1.0 to enable animated texture-matrix handling. */
+            attrP->texMtxAnimEnabled = weight;
             break;
-        
+
         case HSF_CHANNEL_KCOLOR:
             attrP->kColor = weight;
             break;
-        
+
         case HSF_CHANNEL_NBT_TPLVL:
             attrP->nbtTpLvl = value;
             break;
-        
+
         case HSF_CHANNEL_BITMAP:
             attrAnimP->bitMapPtr = bitMapPtr;
             break;
     }
 }
 
+/* Applies one camera track to every camera selected by the model's camera mask. */
 void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1264,12 +1372,15 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
     if(cameraBit == HU3D_CAM_NONE) {
         return;
     }
+    /* The code clamps weight, but camera channels below use value directly. */
     weight = value;
     if(value > 1) {
         weight = 1;
     } else if(value < 0) {
         weight = 0;
     }
+    /* Position and target tracks scale the sum of value and model position, including
+    * the model translation itself. Model rotation is not applied to these channels. */
     switch(trackP->channel) {
         case HSF_CHANNEL_POSX:
             newValue = modelP->scale.x*(value+modelP->pos.x);
@@ -1279,7 +1390,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-        
+
         case HSF_CHANNEL_POSY:
             newValue = modelP->scale.y*(value+modelP->pos.y);
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
@@ -1288,7 +1399,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-        
+
         case HSF_CHANNEL_POSZ:
             newValue = modelP->scale.z*(value+modelP->pos.z);
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
@@ -1297,7 +1408,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-         
+
          case HSF_CHANNEL_TARGETX:
             newValue = modelP->scale.x*(value+modelP->pos.x);
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
@@ -1306,7 +1417,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-        
+
         case HSF_CHANNEL_TARGETY:
             newValue = modelP->scale.y*(value+modelP->pos.y);
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
@@ -1315,7 +1426,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-        
+
         case HSF_CHANNEL_TARGETZ:
             newValue = modelP->scale.z*(value+modelP->pos.z);
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
@@ -1324,7 +1435,9 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-        
+
+        /* Rotates world-up around the normalized target-to-camera direction by value degrees,
+        * then normalizes the result for the camera's up vector. */
         case HSF_CHANNEL_UPROT:
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
                 if(bit & cameraBit) {
@@ -1340,7 +1453,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-            
+
         case HSF_CHANNEL_FOV:
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
                 if(bit & cameraBit) {
@@ -1348,7 +1461,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-        
+
         case HSF_CHANNEL_NEAR:
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
                 if(bit & cameraBit) {
@@ -1356,7 +1469,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
                 }
             }
             break;
-        
+
         case HSF_CHANNEL_FAR:
             for(i=0, bit=1; i<HU3D_CAM_MAX; i++, bit <<= 1) {
                 if(bit & cameraBit) {
@@ -1367,6 +1480,7 @@ void SetObjCameraMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
     }
 }
 
+/* Applies one light track to the light corresponding to its HSF object target. */
 void SetObjLightMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1396,41 +1510,43 @@ void SetObjLightMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
     } else if(value < 0) {
         weight = 0;
     }
+    /* Position tracks change the stored position without updating direction.
+    * Target tracks rebuild direction using all three stored target coordinates. */
     switch(trackP->channel) {
         case HSF_CHANNEL_LIGHTCOLOR_R:
             lightP->color.r = 255.0f*weight;
             break;
-        
+
         case HSF_CHANNEL_LIGHTCOLOR_G:
             lightP->color.g = 255.0f*weight;
             break;
-        
+
         case HSF_CHANNEL_LIGHTCOLOR_B:
             lightP->color.b = 255.0f*weight;
             break;
-        
+
         case HSF_CHANNEL_POSX:
             lightP->pos.x = value;
             break;
-        
+
         case HSF_CHANNEL_POSY:
             lightP->pos.y = value;
             break;
-        
+
         case HSF_CHANNEL_POSZ:
             lightP->pos.z = value;
             break;
-        
+
         case HSF_CHANNEL_TARGETX:
             lightP->offset.x = value;
             Hu3DGLightPosAimSetV(modelP->lightId[lightId], &lightP->pos, &lightP->offset);
             break;
-        
+
         case HSF_CHANNEL_TARGETY:
             lightP->offset.y = value;
             Hu3DGLightPosAimSetV(modelP->lightId[lightId], &lightP->pos, &lightP->offset);
             break;
-        
+
         case HSF_CHANNEL_TARGETZ:
             lightP->offset.z = value;
             Hu3DGLightPosAimSetV(modelP->lightId[lightId], &lightP->pos, &lightP->offset);
@@ -1438,15 +1554,16 @@ void SetObjLightMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
     }
 }
 
+/* Samples the selected curve type; bitmap tracks update bitMapPtr and return zero here. */
 float GetCurve(HSF_TRACK *trackP, float time)
 {
     switch (trackP->curveType) {
         case HSF_CURVE_LINEAR:
             return GetLinear(trackP->numKeyframes, trackP->data, time);
-        
+
         case HSF_CURVE_BEZIER:
             return GetBezier(trackP->numKeyframes, trackP, time);
-        
+
         case HSF_CURVE_BITMAP:
             bitMapPtr = GetBitMap(trackP->numKeyframes, trackP->data, time);
             break;
@@ -1455,13 +1572,15 @@ float GetCurve(HSF_TRACK *trackP, float time)
             float *data = (float *)&trackP->data;
             return *data;
         }
-        
+
         case HSF_CURVE_STEP:
             return GetConstant(trackP->numKeyframes, trackP->data, time);
     }
     return 0;
 }
 
+/* Samples the preceding step key; time zero or a single key returns the first value.
+ * Other times before the first key read preceding storage rather than clamping. */
 float GetConstant(s32 keyNum, HSF_CONSTANT_KEY *key, float time)
 {
     HSF_CONSTANT_KEY *data = key;
@@ -1477,6 +1596,8 @@ float GetConstant(s32 keyNum, HSF_CONSTANT_KEY *key, float time)
     return data[0][-1];
 }
 
+/* Interpolates surrounding keys and clamps above the final key; time zero or one key
+ * returns the first value. Other times before the first key use key[-1]. */
 float GetLinear(s32 keyNum, HSF_LINEAR_KEY *key, float time)
 {
     float ret;
@@ -1489,13 +1610,17 @@ float GetLinear(s32 keyNum, HSF_LINEAR_KEY *key, float time)
         if(time < key[i][0]) {
             s16 prevIdx = i-1;
             diff = key[i][0]-key[prevIdx][0];
-            ret = key[prevIdx][1] + (time - key[prevIdx][0]) * ((key[i][1] - key[prevIdx][1]) / diff);
+            ret =
+                key[prevIdx][1] + (time - key[prevIdx][0]) * ((key[i][1] - key[prevIdx][1]) / diff);
             return ret;
         }
     }
     return key[keyNum-1][1];
 }
 
+/* Samples a Bezier curve and caches the upper key index in trackP->start.
+ * Time zero or one key returns the first value; other times before the first key
+ * can select index zero and then use key[-1] instead of clamping. */
 __declspec(weak) float GetBezier(s32 keyNum, HSF_TRACK *trackP, float time)
 {
     HSF_BEZIER_KEY *key = trackP->data;
@@ -1509,11 +1634,7 @@ __declspec(weak) float GetBezier(s32 keyNum, HSF_TRACK *trackP, float time)
     float tt3;
     float ttt;
     float ttt2;
-    
-    
-    
 
-    
     if (time == 0.0f || keyNum == 1) {
         return key[0][1];
     }
@@ -1558,6 +1679,9 @@ __declspec(weak) float GetBezier(s32 keyNum, HSF_TRACK *trackP, float time)
         + key[1][3] * (ttt - tt);
 }
 
+/* Selects a bitmap key by converting its seconds to 60-frame motion time.
+ * Time zero or one key selects the first bitmap; other times before the first key
+ * return key[-1].data rather than clamping. */
 HSF_BITMAP *GetBitMap(s32 keyNum, HSF_BITMAP_KEY *key, float time)
 {
     s16 i;
@@ -1572,6 +1696,7 @@ HSF_BITMAP *GetBitMap(s32 keyNum, HSF_BITMAP_KEY *key, float time)
     return key[-1].data;
 }
 
+/* Creates a motion and resolves its track targets against the model's HSF objects. */
 HU3D_MOTIONID Hu3DJointMotion(HU3D_MODELID modelId, void *data)
 {
     HU3D_MOTIONID motId = Hu3DMotionCreate(data);
@@ -1579,9 +1704,10 @@ HU3D_MOTIONID Hu3DJointMotion(HU3D_MODELID modelId, void *data)
     return motId;
 }
 
-static s32 SearchObjectIndex(HSF_DATA *hsf, u32 arg1);
-static s32 SearchAttributeIndex(HSF_DATA *hsf, u32 arg1);
+static s32 SearchObjectIndex(HSF_DATA *hsf, u32 nameOffset);
+static s32 SearchAttributeIndex(HSF_DATA *hsf, u32 nameOffset);
 
+/* Resolves transform/morph object targets and missing attribute indices when attaching a motion. */
 void JointModel_Motion(HU3D_MODELID modelId, HU3D_MOTIONID motId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1599,14 +1725,14 @@ void JointModel_Motion(HU3D_MODELID modelId, HU3D_MOTIONID motId)
                 track->target = SearchObjectIndex(hsf, track->target);
             }
                 break;
-            
+
             case HSF_TRACK_MORPH:
             {
                 HSF_TRACK *track = trackP;
                 track->target = SearchObjectIndex(hsf, track->target);
             }
                 break;
-            
+
             case HSF_TRACK_ATTRIBUTE:
             {
                 HSF_TRACK *track = trackP;
@@ -1624,6 +1750,7 @@ void JointModel_Motion(HU3D_MODELID modelId, HU3D_MOTIONID motId)
     }
 }
 
+/* Called by model update code to evaluate active motions and deform the model's HSF. */
 void Hu3DMotionCalc(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1643,6 +1770,8 @@ void Hu3DMotionCalc(HU3D_MODELID modelId)
         ClusterMotionExec(modelP);
     }
     if(modelP->motIdShape != HU3D_MOTIONID_NONE) {
+        /* With no main motion, shape evaluation resets base transforms after any
+         * sub-motion and overlay passes, discarding their unforced transform results. */
         if(modelP->motId == HU3D_MOTIONID_NONE) {
             Hu3DMotionExec(modelId, modelP->motIdShape, modelP->motShapeWork.time, FALSE);
         } else {
@@ -1665,12 +1794,13 @@ void Hu3DMotionCalc(HU3D_MODELID modelId)
     modelP->attr |= HU3D_ATTR_MOT_EXEC;
 }
 
-static s32 SearchObjectIndex(HSF_DATA *hsf, u32 arg1)
+/* Resolves an encoded HSF object name to its index in the model's object array. */
+static s32 SearchObjectIndex(HSF_DATA *hsf, u32 nameOffset)
 {
     s32 i;
     HSF_OBJECT *objPtr = hsf->object;
-    char *name = SetName(&arg1);
-    
+    char *name = SetName(&nameOffset);
+
     for (i=0; i<hsf->objectNum; i++, objPtr++) {
         if(!CmpObjectName(objPtr->name, name)) {
             return i;
@@ -1679,11 +1809,12 @@ static s32 SearchObjectIndex(HSF_DATA *hsf, u32 arg1)
     return -1;
 }
 
-static s32 SearchAttributeIndex(HSF_DATA *hsf, u32 arg1)
+/* Resolves an encoded attribute name to the first attribute name that prefixes it. */
+static s32 SearchAttributeIndex(HSF_DATA *hsf, u32 nameOffset)
 {
     size_t nameLen;
     HSF_ATTRIBUTE *attrP = hsf->attribute;
-    char *name = SetName(&arg1);
+    char *name = SetName(&nameOffset);
     s32 i;
     for (i=0; i<hsf->attributeNum; i++, attrP++) {
         if(attrP->name) {
@@ -1696,19 +1827,22 @@ static s32 SearchAttributeIndex(HSF_DATA *hsf, u32 arg1)
     return -1;
 }
 
-void Hu3DSubMotionSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, float time)
+/* Selects a sub-motion with a held blend weight supplied as a fraction.
+ * The incoming motion's playback time is left unchanged. */
+void Hu3DSubMotionSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, float blendWeight)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
-    
+
     modelP->motIdShift = motId;
     Hu3DModelAttrSet(modelId, HU3D_MOTATTR_EXECSHIFT);
-    modelP->motOvlWork.start = 100.0*time;
+    modelP->motOvlWork.start = 100.0*blendWeight;
     modelP->motOvlWork.end = 100;
     modelP->motShiftWork.speed = 1;
     modelP->motShiftWork.start = 0;
     modelP->motShiftWork.end = Hu3DMotionMotionMaxTimeGet(motId);
 }
 
+/* Cancels the pending sub-motion and clears its execution flag. */
 void Hu3DSubMotionReset(HU3D_MODELID modelId)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1716,13 +1850,15 @@ void Hu3DSubMotionReset(HU3D_MODELID modelId)
     Hu3DModelAttrReset(modelId, HU3D_MOTATTR_EXECSHIFT);
 }
 
-void Hu3DSubMotionTimeSet(HU3D_MODELID modelId, float time)
+/* Sets the blend weight from a fraction; playback holds it while EXECSHIFT is set. */
+void Hu3DSubMotionTimeSet(HU3D_MODELID modelId, float blendWeight)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
-    modelP->motOvlWork.start = 100.0*time;
+    modelP->motOvlWork.start = 100.0*blendWeight;
     modelP->motOvlWork.end = 100;
 }
 
+/* Sets playback time for the motion currently being blended in. */
 void Hu3DMotionShiftTimeSet(HU3D_MODELID modelId, float time)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];

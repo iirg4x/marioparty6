@@ -1,3 +1,5 @@
+// Controls the board's roaming Donkey Kong or Bowser NPC and its space events.
+// Supplies the fade, metal, and BiriQ material effects used by board models.
 #include <string.h>
 #include <stdlib.h>
 
@@ -23,16 +25,13 @@ extern inline float fabsf(float value)
     return __fabsf(value);
 }
 
+// Returns an absolute value for the NPC movement and direction updates that call it.
 static inline float SNpcAbsFloat(register float value)
 {
-#ifdef __MWERKS__
     asm {
         fabs value, value
     }
     return value;
-#else
-    return __fabsf(value);
-#endif
 }
 
 #define SNPC_MAGIC 'SNPC'
@@ -43,143 +42,241 @@ static inline float SNpcAbsFloat(register float value)
 #define SNPC_DATA_FADE_TEXTURE DATANUM(DATA_board, 103)
 #define SNPC_DATA_METAL_TEXMAP4 DATANUM(DATA_board, 105)
 #define SNPC_DATA_METAL_TEXMAP5 DATANUM(DATA_board, 104)
+#define SNPC_MIN_SCORE_SENTINEL 10000000
+#define SNPC_CANDIDATE_SCORE_MAX 1000000
 
 typedef struct MBSNPCSAVEWORK {
+    // Selects nighttime Bowser when set; daytime uses Donkey Kong.
     u8 isKoopa : 1;
+    // Reserved bits in the saved NPC flags.
     u8 unusedFlags : 7;
+    // Board space currently occupied by the roaming NPC.
     u8 masuId;
+    // Failed extra-die rolls since the last successful roll, capped at three;
+    // early turns can suppress the selected effect.
     u8 effectMissCount;
 } MBSNPCSAVEWORK;
 
 typedef struct SNPCMOTDATA {
+    // Motion asset loaded into the NPC model's motion slot.
     int dataNum;
+    // Playback rate in motion frames per update.
     float speed;
+    // Nonzero makes the motion repeat.
     u16 loopF;
+    // Optional first frame; zero leaves the motion's default start.
     u8 startFrame;
+    // Optional last frame; zero leaves the motion's default end.
     u8 endFrame;
 } SNPCMOTDATA;
 
 typedef struct SNPCMOTNEXTDATA {
-    s16 motNo;
-    s16 frame[3];
+    // Sound-event table index; zero disables frame-triggered sounds for this motion.
+    s16 soundEventNo;
+    // Motion frames that trigger the sound; negative entries end the list.
+    s16 soundFrame[3];
 } SNPCMOTNEXTDATA;
 
 typedef struct MBSNPCWORK {
-    u32 dataNum;
-    u32 unk04;
+    // Space-attribute mask excluded from route endpoints and next-star placement; traversal is
+    // allowed.
+    u32 excludedMasuAttr;
+    // Masu type temporarily replaced while the NPC is on a space.
+    u32 savedMasuType;
+    // Current entry in the character's motion table; -1 before selecting a motion.
     int motNo;
-    BOOL unk0C;
-    int motShiftNo;
+    // True while the next movement follows a jump or climb connection.
+    BOOL jumpMoveF;
+    // Motion frame last checked for sound events; -1 after changing motions.
+    int lastSoundFrame;
+    // Stored world position of the roaming character.
     HuVecF pos;
+    // Stored model rotation in degrees.
     HuVecF rot;
+    // Active NPC turn, movement, or position-fix callback; NULL when finished.
     OMOBJ *rotateObj;
+    // Dice result displayed above the NPC while it moves.
     OMOBJ *diceNumObj;
+    // Active camera zoom callback; NULL when finished.
     OMOBJ *zoomObj;
+    // Active star display callback; NULL after its models are released.
     OMOBJ *starObj;
+    // Active player movement callback during an NPC encounter.
     OMOBJ *moveObj;
+    // Board models: slot zero is the NPC and slot two is its space marker.
     MBMODELID objId[8];
+    // Board-model motion slots for the character's motion table.
     MBMODELID motionId[19];
+    // Chosen movement route as space IDs, terminated by zero.
     s16 pathTbl[273];
 } MBSNPCWORK;
 
 typedef struct SNPCZOOMWORK {
+    // Skips starting-zoom capture on later updates.
     u8 initF : 1;
+    // Requests removal on the next object-manager update.
     u8 killF : 1;
-    u8 unk00 : 6;
-    u8 unk01;
+    // Unused flag bits.
+    u8 unusedFlags : 6;
+    // Unused byte.
+    u8 unusedByte;
+    // Elapsed transition frames.
     s16 time;
+    // Transition duration in frames.
     s16 maxTime;
-    s16 unk06;
+    // Unused field.
+    s16 unused;
+    // Camera zoom captured when the transition starts.
     float startZoom;
+    // Requested camera zoom at the end of the transition.
     float targetZoom;
 } SNPCZOOMWORK;
 
 typedef struct SNPCROTATEWORK {
+    // Skips starting-position or angle setup on later updates.
     u8 initF : 1;
+    // Requests removal on the next object-manager update.
     u8 killF : 1;
-    u8 unk00 : 6;
-    u8 unk01;
+    // Unused flag bits.
+    u8 unusedFlags : 6;
+    // Unused byte.
+    u8 unusedByte;
+    // Elapsed frames in the current movement or turn.
     s16 time;
+    // Duration of the current movement or turn in frames.
     s16 maxTime;
-    s16 unk06;
+    // Position-fix phase: zero moves the NPC, one turns it.
+    s16 phase;
+    // Requested model heading in degrees.
     float targetAngle;
 } SNPCROTATEWORK;
 
 typedef struct SNPCSTAREFFWORK {
+    // Skips star-display and appearance-sound setup on later updates.
     u8 initF : 1;
+    // Requests release of the star model and particles on the next update.
     u8 killF : 1;
-    u8 loopF : 1;
-    u8 unk00 : 1;
-    u8 unk01 : 4;
+    // Selects Bowser's appearance sound; false selects Donkey Kong's.
+    u8 isKoopa : 1;
+    // Starts the star lower and lowers it further while it shrinks.
+    u8 lowerStarF : 1;
+    // Unused flag bits.
+    u8 unusedFlags : 4;
+    // Elapsed frames in the current star-animation phase.
     s16 time;
+    // Duration of the current star-animation phase in frames.
     s16 maxTime;
-    s16 unk06;
-    s16 effectNo;
+    // Unused field.
+    s16 unused;
+    // Sequence phase: zero starts, one descends, two bobs, three shrinks.
+    s16 phase;
+    // Appearance-sound handle; set to -1 after stopping it.
     int soundId;
 } SNPCSTAREFFWORK;
 
 typedef struct SNPCMOVEWORK {
+    // Cancels the player's movement on the next object-manager update.
     u8 killF : 1;
+    // Space connection: zero walks, one jumps, two climbs.
     u8 mode : 2;
+    // Player being moved, from zero to three.
     u8 playerNo : 2;
-    u8 initF : 1;
-    u8 unk00 : 2;
+    // Unused flag.
+    u8 unusedInitF : 1;
+    // Unused flag bits.
+    u8 unusedFlags : 2;
+    // Elapsed movement frames.
     s16 time;
+    // Movement duration in frames.
     s16 maxTime;
 } SNPCMOVEWORK;
 
 typedef struct SNPCMOVEOMWORK {
+    // Skips starting-position and heading setup on later updates.
     u8 initF : 1;
+    // Cancels the NPC movement on the next update.
     u8 killF : 1;
+    // NPC travel style: zero walks, one arcs over a jump or climb connection.
     u8 mode : 2;
+    // Unused player-number bits.
     u8 playerNo : 2;
-    u8 unk00 : 2;
+    // Unused flag bits.
+    u8 reservedFlags : 2;
+    // Elapsed movement frames.
     s16 time;
+    // Movement duration in frames.
     s16 maxTime;
-    s16 unk06;
-    s16 unk08;
+    // Frames used to ease the NPC's turn toward its movement direction.
+    s16 turnEaseFrame;
+    // Phase of the jump or climb movement animation.
+    s16 jumpPhase;
+    // Destination space for the current connection.
     s16 masuId;
 } SNPCMOVEOMWORK;
 
 typedef struct SNPCCHANCEPATH {
+    // Space to restore when the search backtracks.
     s16 masuId;
+    // Next outgoing or incoming link to examine after backtracking.
     s16 linkNo;
+    // Remaining counted-space steps when this stack entry was saved.
     s16 chance;
-    s16 unk06;
+    // Unused entry field in the reachability search.
+    s16 unusedEntry;
 } SNPCCHANCEPATH;
 
 typedef struct SNPCCHANCEINDEX {
+    // First incoming link in the packed reverse-link table.
     s16 start;
+    // Number of incoming links for this space.
     s16 count;
 } SNPCCHANCEINDEX;
 
 typedef struct MBOBJFADEWORK {
+    // Identifies this model's hook data as a fade effect.
     u32 magic;
+    // Texture used to mask the faded model.
     ANIMDATA *anim;
+    // World-space origin of the fade texture projection.
     HuVecF pos;
+    // Fade texture projection rotation in degrees.
     HuVecF rot;
+    // Divisor for vertical texture scaling; drawing clamps values below 0.000001.
     float alpha;
+    // RGB tint multiplied by the fade texture and added to the model color.
     GXColor color;
 } MBOBJFADEWORK;
 
 typedef struct MBOBJMETALWORK {
+    // Identifies this model's hook data as a metal effect.
     u32 magic;
+    // Metal shading textures loaded into texture maps four and five.
     ANIMDATA *anim[2];
+    // Metal shading strength; values at or below 0.05 skip the extra stages.
     float tpLvl;
+    // Tint applied to the metal shadow texture.
     GXColor shadowColor;
+    // Tint applied to the metal highlight texture.
     GXColor hiliteColor;
 } MBOBJMETALWORK;
 
 typedef struct MBOBJBIRIQWORK {
+    // Identifies this model's hook data as a BiriQ effect.
     u32 magic;
+    // Color-combine recipe index, from zero to three.
     int mode;
+    // Effect strength; values at or below 0.01 skip the extra stages.
     float level;
+    // RGB effect tint; its alpha is replaced by the effect strength when drawing.
     GXColor color;
 } MBOBJBIRIQWORK;
 
 typedef struct MBOBJBIRIQTEV {
+    // TEV add or subtract operation for this color or alpha recipe.
     u8 op;
+    // TEV register receiving this recipe's output.
     u8 outReg;
+    // Four color or alpha inputs to the TEV operation.
     u8 input[4];
 } MBOBJBIRIQTEV;
 
@@ -227,8 +324,8 @@ static u32 snpcMagic;
 #define SNPC_MOTION_SLOT_NUM 19
 #define SNPC_CHANCE_TBL_SIZE MASU_MAX
 #define SNPC_CHANCE_BRANCH_PADDING 16
-#define SNPC_CHANCE_DISTANCE_BYTES (SNPC_CHANCE_TBL_SIZE + sizeof(float) - 2)
-#define SNPC_CHANCE_MASU_BYTES ((SNPC_CHANCE_TBL_SIZE + sizeof(float) - 2) * sizeof(u32))
+#define SNPC_CHANCE_ID_BYTES (SNPC_CHANCE_TBL_SIZE + sizeof(float) - 2)
+#define SNPC_CHANCE_DISTANCE_BYTES ((SNPC_CHANCE_TBL_SIZE + sizeof(float) - 2) * sizeof(u32))
 
 #define SNPC_DONKEY_DATA_MODEL DATANUM(DATA_capsulechar1, 31)
 #define SNPC_KOOPA_DATA_MODEL DATANUM(DATA_capsulechar1, 0)
@@ -261,12 +358,13 @@ enum {
     SNPC_MOVE_OBJ_PRIORITY = 256,
     SNPC_CHANCE_EXCLUDE = 100,
     SNPC_FLAG_KOOPA = 128,
-    SNPC_STAR_OBJ_GROUP = 4,
+    SNPC_STAR_MODEL_SLOT_COUNT = 4,
     SNPC_STAR_PARTICLE_ATTR = 100,
     SNPC_STAR_PARTICLE_MAX = 100,
 };
 
 static void SNpcStarFunc(void);
+// Material hooks call this to count texture and TEV stages for a textured star model material.
 static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
     int *tevStageNum, int *texGenNum);
 static void GetStarNoTexTevStage(HU3D_DRAW_OBJ *drawObj,
@@ -310,7 +408,7 @@ static void SNpcDiceMotHook(int playerNo);
 static void SNpcPlayerMoveFunc(int playerNo);
 static void SNpcPlayerMoveObjExec(OMOBJ *obj);
 static void SNpcStarObjExec(OMOBJ *obj);
-static void SNpcStarCreate(int type, BOOL loopF, HuVecF *pos);
+static void SNpcStarCreate(int type, BOOL lowerStarF, HuVecF *pos);
 static HU3D_MODELID SNpcStarEffCreate(ANIMDATA *anim, int type);
 static void SNpcStarEffKill(s16 parManId);
 static BOOL SNpcMoveExec(void);
@@ -322,11 +420,11 @@ static void SNpcKoopaFire2Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx);
 static void SNpcKoopaFire3Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx);
-static void StarChangeExec(s8 *playerNoTbl, int starF, int amount);
+static void StarChangeExec(s8 *playerNoTbl, int coinF, int amount);
 static int MasuNextGet(int masuId, int linkNo);
 static void SNpcMoveOMExec(OMOBJ *obj);
 static OMOBJ *SNpcDiceExec(int diceValue, int diceNum);
-static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
+static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
     u32 mAttr, s16 *pathTbl, float chance);
 
 extern void *mbMallocNum(s32 size, u32 num);
@@ -341,7 +439,7 @@ extern void Hu3DMotionShiftStartEndSet(HU3D_MODELID modelId, float start,
 extern void HuPrcVSleep(void);
 extern float mbCameraZoomGet(void);
 extern void mbCameraZoomSet(float zoom);
-extern int mbSNpcMasuStarNextGet(int masuId, int type, int *linkNoTbl,
+extern int mbSNpcMasuStarNextGet(int masuId, int type, int *eligibleTypeTbl,
     u32 attr);
 extern void mbDiceObjHit(int playerNo);
 extern void mbPlayerMoveHookSet(int playerNo, void (*hook)(int playerNo));
@@ -402,7 +500,7 @@ extern void mbComChoiceUpSet(void);
 extern int mbCameraStackPush(void);
 extern void mbCameraStackPop(int maxTime);
 extern void mbCameraMoveMasu(s16 masuId, HuVecF *rot, HuVecF *offset,
-    float zoom, float fov, int maxTime);
+    float zoom, float fov, s16 maxTime);
 extern void mbCameraMovePlayer(s16 playerNo, HuVecF *rot, HuVecF *offset,
     float zoom, float fov, s16 maxTime);
 extern void mbCameraMoveWait(void);
@@ -537,14 +635,8 @@ static HU3D_PARMAN_PARAM snpcStarEffParam[2] = {
 };
 
 static GXTevKColorSel kColorTbl[8] = {
-    GX_TEV_KCSEL_8_8,
-    GX_TEV_KCSEL_7_8,
-    GX_TEV_KCSEL_6_8,
-    GX_TEV_KCSEL_5_8,
-    GX_TEV_KCSEL_4_8,
-    GX_TEV_KCSEL_3_8,
-    GX_TEV_KCSEL_2_8,
-    GX_TEV_KCSEL_1_8,
+    GX_TEV_KCSEL_8_8, GX_TEV_KCSEL_7_8, GX_TEV_KCSEL_6_8, GX_TEV_KCSEL_5_8,
+    GX_TEV_KCSEL_4_8, GX_TEV_KCSEL_3_8, GX_TEV_KCSEL_2_8, GX_TEV_KCSEL_1_8,
 };
 
 static int biriQMatNumTbl[4] = {
@@ -596,6 +688,7 @@ static int starMdlTbl[2] = {
     DATANUM(DATA_capsulechar1, 32),
 };
 
+// Clears the runtime pointers before board setup creates the roaming NPC.
 void mbSNpcInit(void)
 {
     snpcMagic = 0;
@@ -603,21 +696,22 @@ void mbSNpcInit(void)
     snpcWork = NULL;
 }
 
-void mbSNpcCreate(MBSNPCSAVEWORK *saveWork, u32 dataNum)
+// Creates the roaming NPC during board event setup and registers its turn hooks.
+void mbSNpcCreate(MBSNPCSAVEWORK *saveWork, u32 excludedMasuAttr)
 {
-    int isKoopa;
+    int isDay;
 
     snpcSaveWork = saveWork;
     snpcWork = mbMalloc(sizeof(MBSNPCWORK));
-    snpcWork->dataNum = dataNum;
+    snpcWork->excludedMasuAttr = excludedMasuAttr;
     if (mbSaveNewF) {
         snpcSaveWork->masuId = (u8)mbMasuFind_AttrIdGet(MASU_NULL,
             MASU_FLAG_START);
         snpcSaveWork->masuId = (u8)SNpcMasuStarNextGet(TRUE);
         snpcSaveWork->effectMissCount = 0;
     }
-    isKoopa = (GwSystem.curTime == 0);
-    snpcSaveWork->isKoopa = isKoopa ? 0 : 1;
+    isDay = (GwSystem.curTime == 0);
+    snpcSaveWork->isKoopa = isDay ? 0 : 1;
     SNpcMasuSet(snpcSaveWork->masuId, FALSE);
     SNpcObjCreate();
     mbPlayerEndTurnHookSet(0, SNpcMoveExec);
@@ -628,6 +722,7 @@ void mbSNpcCreate(MBSNPCSAVEWORK *saveWork, u32 dataNum)
     snpcMagic = SNPC_MAGIC;
 }
 
+// Releases the NPC during board-event teardown and clears only player three's end-of-turn hook.
 void mbSNpcKill(void)
 {
     MBSNPCWORK *work;
@@ -643,6 +738,7 @@ void mbSNpcKill(void)
     }
 }
 
+// Returns the NPC's current board space, or zero when the NPC is not active.
 int mbSNpcMasuGet(void)
 {
     if (snpcMagic != SNPC_MAGIC) {
@@ -651,6 +747,7 @@ int mbSNpcMasuGet(void)
     return snpcSaveWork->masuId;
 }
 
+// Selects the NPC's win reaction when a board event requests that pose.
 void mbSNpcMotWinSet(void)
 {
     if (snpcMagic == SNPC_MAGIC) {
@@ -659,6 +756,7 @@ void mbSNpcMotWinSet(void)
     }
 }
 
+// Returns the active NPC to its idle motion when requested by a board event.
 void mbSNpcMotIdleSet(void)
 {
     if (snpcMagic == SNPC_MAGIC) {
@@ -666,6 +764,7 @@ void mbSNpcMotIdleSet(void)
     }
 }
 
+// Shows or hides the active NPC for board events such as the last-five display.
 void mbSNpcDispSet(BOOL dispF)
 {
     if (snpcMagic == SNPC_MAGIC) {
@@ -677,6 +776,7 @@ static void SNpcStarFunc(void)
 {
 }
 
+// Snaps the NPC back to its space and restores its idle motion after an event.
 void mbSNpcMotReset(void)
 {
     if (snpcMagic == SNPC_MAGIC) {
@@ -685,6 +785,7 @@ void mbSNpcMotReset(void)
     }
 }
 
+// Hooks a player's walk callback when that player reaches the NPC's space.
 void mbSNpcPlayerWalkSet(int playerNo, int masuId)
 {
     if (snpcMagic == SNPC_MAGIC && masuId == snpcSaveWork->masuId) {
@@ -692,6 +793,7 @@ void mbSNpcPlayerWalkSet(int playerNo, int masuId)
     }
 }
 
+// Runs the star encounter called by board event flow when a player reaches the NPC.
 void mbSNpcStarExec(int playerNo, int masuId)
 {
     HuVecF playerPos;
@@ -699,7 +801,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
     HuVecF playerRot;
     float angle;
     int streamNo;
-    int zoom;
+    s16 cameraMoveFrames;
     int isKoopa;
     int state;
     int winNo;
@@ -894,9 +996,9 @@ void mbSNpcStarExec(int playerNo, int masuId)
         mbMasuPosGet(masuId, &npcPos);
         PSVECSubtract(&npcPos, &playerPos, &npcPos);
         angle = PSVECMag(&npcPos) * 0.00066666666f;
-        zoom = (s16)(u32)(angle * 60.0f);
+        cameraMoveFrames = (u32)(angle * 60.0f);
         mbCameraMoveMasu((s16)nextMasu, NULL, NULL,
-            mbCameraPlayerViewZoomGet(2), -1.0f, zoom);
+            mbCameraPlayerViewZoomGet(2), -1.0f, cameraMoveFrames);
         winNo = mbWinCreate(2, snpcMesTbl[3][isKoopa],
             mbGuideSpeakerNoGet());
         mbWinPause((s16)winNo);
@@ -963,6 +1065,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
     }
 }
 
+// Runs the NPC's movement and encounter rewards from the end-of-turn hook.
 static BOOL SNpcMoveExec(void)
 {
     int typeTbl[3] = { 1, 2, -1 };
@@ -993,6 +1096,7 @@ static BOOL SNpcMoveExec(void)
     int j;
 
     jingleNo = -1;
+    // Earlier players return without a Boolean result; the turn handler still tests it.
     if (GwSystem.turnPlayerNo < 3) {
         return;
     }
@@ -1024,6 +1128,7 @@ static BOOL SNpcMoveExec(void)
             snpcSaveWork->effectMissCount = 3;
         }
     }
+    // Early turns force one die after updating the extra-die roll history.
     if (GwSystem.turnNo < 2) {
         diceNum = 1;
     }
@@ -1043,7 +1148,7 @@ static BOOL SNpcMoveExec(void)
         }
     }
     diceValue = SNpcDiceValueGet(snpcSaveWork->masuId, diceNum * 10, typeTbl,
-        snpcWork->dataNum, snpcWork->pathTbl, roll);
+        snpcWork->excludedMasuAttr, snpcWork->pathTbl, roll);
     snpcWork->diceNumObj = SNpcDiceExec(diceValue, diceNum);
     SNpcZoomSet(mbCameraPlayerViewZoomGet(2));
     SNpcMasuReset(TRUE);
@@ -1067,6 +1172,8 @@ static BOOL SNpcMoveExec(void)
                 first = mbPlayerTeamFindPlayer(j, 0);
                 second = mbPlayerTeamFindPlayer(j, 1);
 
+                // For two hit teammates, reserve the first 20 shared coins for the first member
+                // and the first shared star for the second; assign excess to the other member.
                 if (hitTbl[first] && hitTbl[second]) {
                     coinTbl[second] = starTbl[first] = 0;
                     if (coinTbl[first] > 20) {
@@ -1450,7 +1557,8 @@ static BOOL SNpcMoveExec(void)
     return FALSE;
 }
 
-static void StarChangeExec(s8 *playerNoTbl, int starF, int amount)
+// Applies a star or coin change for players selected by SNpcMoveExec.
+static void StarChangeExec(s8 *playerNoTbl, int coinF, int amount)
 {
     int addNum[GW_PLAYER_MAX] ATTRIBUTE_ALIGN(8);
     BOOL dispF[GW_PLAYER_MAX];
@@ -1481,7 +1589,7 @@ static void StarChangeExec(s8 *playerNoTbl, int starF, int amount)
         addNum[playerNo] = amount;
         dispF[playerNo] = amount;
     }
-    if (starF == 0) {
+    if (coinF == 0) {
         mbStarAddAllProcExecV(addNum, dispF, TRUE);
     } else {
         mbCoinAddAllProcExecV(addNum, dispF, TRUE);
@@ -1492,6 +1600,7 @@ static void StarChangeExec(s8 *playerNoTbl, int starF, int amount)
     HuPrcSleep(20);
 }
 
+// Finds the next route entry for SNpcMoveExec, skipping jump or climb intermediates.
 static int MasuNextGet(int masuId, int linkNo)
 {
     int linkNoTbl[3] = { 1, 2, -1 };
@@ -1517,13 +1626,14 @@ static int MasuNextGet(int masuId, int linkNo)
         jumpF = TRUE;
         nextLinkNo = linkNo + 3;
     }
-    snpcWork->unk0C = FALSE;
+    snpcWork->jumpMoveF = FALSE;
     if (jumpF) {
-        snpcWork->unk0C = TRUE;
+        snpcWork->jumpMoveF = TRUE;
     }
     return nextLinkNo;
 }
 
+// Advances the NPC along its route each frame after SNpcMoveExec creates this object.
 static void SNpcMoveOMExec(OMOBJ *obj)
 {
     SNPCMOVEOMWORK *work;
@@ -1542,9 +1652,9 @@ static void SNpcMoveOMExec(OMOBJ *obj)
     }
     if (!work->initF) {
         work->initF = TRUE;
-        work->unk06 = 0;
+        work->turnEaseFrame = 0;
         work->time = 0;
-        work->unk08 = 0;
+        work->jumpPhase = 0;
         SNpcObjPosGet(&obj->trans);
         SNpcObjRotGet(&obj->rot);
         mbMasuPosGet(work->masuId, &obj->scale);
@@ -1556,7 +1666,7 @@ static void SNpcMoveOMExec(OMOBJ *obj)
         work->maxTime = (s16)(time / 16.666666f);
         obj->rot.z = (float)(180.0
             * (atan2(move.x, move.z) / 3.141592653589793));
-        if (snpcWork->unk0C != 0) {
+        if (snpcWork->jumpMoveF != 0) {
             work->mode = 1;
             SNpcObjMotShiftSet(3);
         } else {
@@ -1565,13 +1675,13 @@ static void SNpcMoveOMExec(OMOBJ *obj)
     }
 
     work->time++;
-    work->unk06++;
+    work->turnEaseFrame++;
     time = (float)work->time / (float)work->maxTime;
     pos.x = obj->trans.x + (time * (obj->scale.x - obj->trans.x));
     pos.y = obj->trans.y + (time * (obj->scale.y - obj->trans.y));
     pos.z = obj->trans.z + (time * (obj->scale.z - obj->trans.z));
 
-    weight = 0.16666667f * (float)work->unk06;
+    weight = 0.16666667f * (float)work->turnEaseFrame;
     if (weight > 1.0f) {
         weight = 1.0f;
     }
@@ -1585,19 +1695,19 @@ static void SNpcMoveOMExec(OMOBJ *obj)
             endF = TRUE;
         }
     } else {
-        switch (work->unk08) {
+        switch (work->jumpPhase) {
         case 0:
             if (SNpcObjMotEndCheck()) {
                 SNpcObjMotShiftSet(4);
                 work->time = 0;
                 work->maxTime = 35;
-                work->unk08++;
+                work->jumpPhase++;
             }
             break;
         case 1:
             if (work->time >= work->maxTime - 5) {
                 SNpcObjMotShiftSet(5);
-                work->unk08++;
+                work->jumpPhase++;
             }
             /* fall through */
         case 2:
@@ -1609,7 +1719,7 @@ static void SNpcMoveOMExec(OMOBJ *obj)
                 if (snpcSaveWork->isKoopa == 1) {
                     mbCameraShakeSet(12, 100.0f);
                 }
-                work->unk08++;
+                work->jumpPhase++;
             }
             break;
         case 3:
@@ -1631,6 +1741,7 @@ static void SNpcMoveOMExec(OMOBJ *obj)
     }
 }
 
+// Starts a per-frame turn update for the NPC's movement and event sequences.
 static void SNpcTargetAngleSet(float angle)
 {
     snpcWork->rotateObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
@@ -1638,6 +1749,7 @@ static void SNpcTargetAngleSet(float angle)
     omObjGetWork(snpcWork->rotateObj, SNPCROTATEWORK)->targetAngle = angle;
 }
 
+// Waits for the turn update and model-motion blend after a movement or event turn.
 static void SNpcRotateWait(void)
 {
     BOOL endF;
@@ -1658,6 +1770,7 @@ check:
     }
 }
 
+// Turns the roaming NPC toward its requested heading and blends its walk or turn motion each frame.
 static void SNpcRotateUpdate(OMOBJ *obj)
 {
     SNPCROTATEWORK *work;
@@ -1678,7 +1791,7 @@ static void SNpcRotateUpdate(OMOBJ *obj)
     if (!work->initF) {
         work->initF = TRUE;
         work->time = 0;
-        work->unk06 = 0;
+        work->phase = 0;
         SNpcObjRotGet(&obj->rot);
         obj->scale.y = mbAngleWrap2(work->targetAngle, obj->rot.y);
         magnitude = obj->scale.y;
@@ -1712,12 +1825,15 @@ static void SNpcRotateUpdate(OMOBJ *obj)
     }
 }
 
+// After an encounter leaves the NPC displaced, starts its per-frame return beside its space.
 static void SNpcPosFixCreate(void)
 {
     snpcWork->rotateObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0, 0,
         OM_GRP_NONE, SNpcPosFixUpdate);
 }
 
+// Each frame, moves the NPC to its offset beside the current space, then eases its heading to zero
+// degrees.
 static void SNpcPosFixUpdate(OMOBJ *obj)
 {
     SNPCROTATEWORK *work;
@@ -1738,7 +1854,7 @@ static void SNpcPosFixUpdate(OMOBJ *obj)
     }
     if (!work->initF) {
         work->initF = TRUE;
-        work->unk06 = 0;
+        work->phase = 0;
         SNpcObjPosGet(&pos);
         SNpcObjRotGet(&startRot);
         SNpcPosFixSnap();
@@ -1755,7 +1871,7 @@ static void SNpcPosFixUpdate(OMOBJ *obj)
         work->time = 0;
         SNpcObjMotShiftSet(1);
     }
-    if (work->unk06 == 0) {
+    if (work->phase == 0) {
         work->time++;
         time = (float)work->time / (float)work->maxTime;
         pos.x = obj->trans.x
@@ -1766,7 +1882,7 @@ static void SNpcPosFixUpdate(OMOBJ *obj)
             + (time * (obj->scale.z - obj->trans.z));
         SNpcObjPosSetV(&pos);
         if (work->time >= work->maxTime) {
-            work->unk06++;
+            work->phase++;
             SNpcObjRotGet(&obj->rot);
             work->targetAngle = 0.0f;
             obj->scale.y = mbAngleWrap2(work->targetAngle, obj->rot.y);
@@ -1801,6 +1917,7 @@ done:
     return;
 }
 
+// Starts or retargets the board camera zoom transition requested by the NPC sequence.
 static void SNpcZoomSet(float zoom)
 {
     if (!SNpcZoomCheck()) {
@@ -1817,6 +1934,7 @@ static BOOL SNpcZoomCheck(void)
     return snpcWork->zoomObj != NULL;
 }
 
+// Waits for the camera zoom transition started by SNpcZoomSet to finish.
 static void SNpcZoomWait(void)
 {
     while (snpcWork->zoomObj != NULL) {
@@ -1824,6 +1942,7 @@ static void SNpcZoomWait(void)
     }
 }
 
+// Interpolates the board camera from its current zoom to the NPC sequence's target over 21 frames.
 static void SNpcZoomUpdate(OMOBJ *obj)
 {
     SNPCZOOMWORK *work;
@@ -1853,6 +1972,8 @@ static void SNpcZoomUpdate(OMOBJ *obj)
         + (time * (work->targetZoom - work->startZoom)));
 }
 
+// Displays a predetermined NPC dice total using at most two dice, waits for the roll to finish,
+// and creates its number model.
 static OMOBJ *SNpcDiceExec(int diceValue, int diceNum)
 {
     HuVecF pos;
@@ -1904,6 +2025,7 @@ static u16 SNpcDiceBtnHook(int playerNo)
     return PAD_BUTTON_A;
 }
 
+// Plays the NPC dice throw motion and triggers the dice hit at the character-specific frame.
 static void SNpcDiceMotHook(int playerNo)
 {
     int time;
@@ -1920,7 +2042,8 @@ static void SNpcDiceMotHook(int playerNo)
 }
 
 typedef struct SNPCMASUTBL {
-    int value[2];
+    // Table values for Donkey Kong at index zero and Bowser at index one.
+    int npcValue[2];
 } SNPCMASUTBL;
 
 const float lbl_802C332C[1] = { 2.0f };
@@ -1935,25 +2058,29 @@ const SNPCMASUTBL lbl_802C333C = {{
     SNPC_MASU_SE_KOOPA,
 }};
 
+// Replaces the space type and removes its capsule; setF also plays the change sound and refreshes
+// the marker. Reset restores only the type.
 static void SNpcMasuSet(int masuId, BOOL setF)
 {
     SNPCMASUTBL masuTypeTbl = lbl_802C3334;
     SNPCMASUTBL masuSeTbl = lbl_802C333C;
 
     snpcSaveWork->masuId = (u8)masuId;
-    snpcWork->unk04 = mbMasuTypeGet((s16)masuId);
+    snpcWork->savedMasuType = mbMasuTypeGet((s16)masuId);
     mbMasuTypeSet((s16)masuId,
-        masuTypeTbl.value[snpcSaveWork->isKoopa]);
+        masuTypeTbl.npcValue[snpcSaveWork->isKoopa]);
     mbMasuCapsuleSet((s16)masuId, -1);
     if (setF) {
-        mbAudFXPlay((s16)masuSeTbl.value[snpcSaveWork->isKoopa]);
+        mbAudFXPlay((s16)masuSeTbl.npcValue[snpcSaveWork->isKoopa]);
         SNpcObjMasuSet(masuId);
     }
 }
 
+// Restores the saved board-space type when the roaming NPC leaves, optionally playing the reset
+// sound.
 static void SNpcMasuReset(BOOL setF)
 {
-    mbMasuTypeSet(snpcSaveWork->masuId, snpcWork->unk04);
+    mbMasuTypeSet(snpcSaveWork->masuId, snpcWork->savedMasuType);
     if (setF) {
         mbAudFXPlay((s16)SNPC_MASU_RESET_SE);
         SNpcObjMasuSet(snpcSaveWork->masuId);
@@ -1961,21 +2088,24 @@ static void SNpcMasuReset(BOOL setF)
     snpcSaveWork->masuId = 0;
 }
 
+// Chooses the next star space; playerF reduces the forward and reverse nearby-space exclusion
+// ranges.
 static int SNpcMasuStarNextGet(BOOL playerF)
 {
     int result;
     int type;
-    int linkNoTbl[3] = { 1, 2, -1 };
+    int eligibleTypeTbl[3] = { 1, 2, -1 };
 
     type = 10;
     if (playerF) {
         type = 4;
     }
-    result = mbSNpcMasuStarNextGet(snpcSaveWork->masuId, type, linkNoTbl,
-        snpcWork->dataNum);
+    result = mbSNpcMasuStarNextGet(snpcSaveWork->masuId, type, eligibleTypeTbl,
+        snpcWork->excludedMasuAttr);
     return result;
 }
 
+// Snaps the NPC model to the neighboring path position used when it settles on its current space.
 static void SNpcPosFixSnap(void)
 {
     int masuId;
@@ -2014,10 +2144,9 @@ const float lbl_802C334C[1] = { 14.0f };
 const float lbl_802C3350[1] = { 7.0f };
 const float lbl_802C3354[1] = { 30.0f };
 
-/* The native vector-copy primitive reads all three components before writing. */
+// Copies NPC and effect vectors, reading all components before writing to the destination.
 static inline void SNpcVecCopy(register const HuVecF *src, register HuVecF *dst)
 {
-#ifdef __MWERKS__
     register __vec2x32float__ xy;
     register float z;
     asm {
@@ -2026,10 +2155,6 @@ static inline void SNpcVecCopy(register const HuVecF *src, register HuVecF *dst)
         psq_st xy, 0(dst), 0, 0
         stfs z, 8(dst)
     }
-#else
-    HuVecF value = *src;
-    *dst = value;
-#endif
 }
 
 static inline MBPARTICLE *SNpcParticleGet(HU3D_MODELID modelId)
@@ -2037,6 +2162,8 @@ static inline MBPARTICLE *SNpcParticleGet(HU3D_MODELID modelId)
     return Hu3DData[modelId].hookData;
 }
 
+// Runs Bowser's fire-breath sequence, updating its particle streams from the character's item-hook
+// matrix.
 static void SNpcKoopaFireExec(void)
 {
     int fire3Id;
@@ -2132,6 +2259,8 @@ static void SNpcKoopaFireExec(void)
 
 const HuVecF lbl_8021AA28 = { -70.0f, 320.0f, 20.0f };
 
+// The particle update callback emits Bowser's fire, then moves and fades the remaining particles.
+// SNpcKoopaFireExec stops emission by clearing the particle model's mode.
 static void SNpcKoopaFireHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
@@ -2269,6 +2398,8 @@ static void SNpcKoopaFireHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     }
 }
 
+// The particle update callback overlays each Bowser fire stream with an additive copy.
+// It mirrors the source particles each update and reduces their alpha to 80 percent.
 static void SNpcKoopaFire2Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
@@ -2301,6 +2432,8 @@ static void SNpcKoopaFire2Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     }
 }
 
+// The particle update callback emits Bowser's shorter-lived fire stream during his breath effect.
+// Its particles move outward and approach their target size and alpha over ten updates.
 static void SNpcKoopaFire3Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
     Mtx mtx)
 {
@@ -2395,6 +2528,7 @@ static void SNpcKoopaFire3Hook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
 
 const HuVecF lbl_8021AA64 = { 0.0f, 0.0f, -1.0f };
 
+// Runs Donkey Kong's descending effect model or Bowser's fire-breath effect during the NPC event.
 static void SNpcEffectExec(void)
 {
     if (snpcSaveWork->isKoopa == 0) {
@@ -2425,6 +2559,7 @@ static void SNpcEffectExec(void)
     }
 }
 
+// Moves the selected player along the space connection while the roaming NPC event is active.
 static void SNpcPlayerMoveFunc(int playerNo)
 {
     OMOBJ *obj;
@@ -2523,6 +2658,8 @@ static void SNpcPlayerMoveFunc(int playerNo)
         break;
     }
     mbPlayerMotionSpeedSet(playerNo, motSpeed);
+    // Apply the destination bearing even after the climb branch set a heading;
+    // setAngle is not consulted.
     PSVECSubtract(&obj->rot, &obj->trans, &playerRot);
     rotY = (float)(9e+01 - (180.0
         * (atan2(playerRot.z, playerRot.x) / 3.141592653589793)));
@@ -2544,6 +2681,7 @@ static void SNpcPlayerMoveFunc(int playerNo)
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
 }
 
+// Advances the selected player's position each frame and adds the jump arc for jump connections.
 static void SNpcPlayerMoveObjExec(OMOBJ *obj)
 {
     SNPCMOVEWORK *work;
@@ -2608,6 +2746,8 @@ static void SNpcPlayerMoveObjExec(OMOBJ *obj)
     }
 }
 
+// Plays the requested sound-table entry for the active NPC character; the second argument is
+// unused.
 static void SNpcSePlay(int seNo, int unused)
 {
     if (snpcSeTbl[seNo][snpcSaveWork->isKoopa] != 0) {
@@ -2615,6 +2755,7 @@ static void SNpcSePlay(int seNo, int unused)
     }
 }
 
+// Checks the current motion frame and plays any character sound scheduled for that point.
 static void SNpcMotSetNext(void)
 {
     const SNPCMOTNEXTDATA *nextMot;
@@ -2624,7 +2765,7 @@ static void SNpcMotSetNext(void)
     frame = 0;
     nextMot = snpcNextMotTbl[snpcSaveWork->isKoopa];
     nextMot = &nextMot[snpcWork->motNo];
-    if (nextMot->motNo == 0) {
+    if (nextMot->soundEventNo == 0) {
         return;
     }
     if (mbObjMotionShiftIDGet(snpcWork->objId[0]) != -1) {
@@ -2634,19 +2775,21 @@ static void SNpcMotSetNext(void)
         frame = (int)mbObjMotionTimeGet(snpcWork->objId[0]);
     }
     i = 0;
-    if (snpcWork->motShiftNo >= 0) {
+    if (snpcWork->lastSoundFrame >= 0) {
         for (i = 0; i < 3; i++) {
-            if (snpcWork->motShiftNo < nextMot->frame[i]) {
+            if (snpcWork->lastSoundFrame < nextMot->soundFrame[i]) {
                 break;
             }
         }
     }
-    if (i < 3 && nextMot->frame[i] >= 0 && nextMot->frame[i] <= frame) {
-        SNpcSePlay(nextMot->motNo, 0);
+    if (i < 3 && nextMot->soundFrame[i] >= 0 && nextMot->soundFrame[i] <= frame) {
+        SNpcSePlay(nextMot->soundEventNo, 0);
     }
-    snpcWork->motShiftNo = frame;
+    snpcWork->lastSoundFrame = frame;
 }
 
+// Creates the roaming character model, loads its motions, and creates the hidden space effect
+// model.
 static void SNpcObjCreate(void)
 {
     int modelData[2] = { SNPC_DONKEY_DATA_MODEL, SNPC_KOOPA_DATA_MODEL };
@@ -2671,6 +2814,7 @@ static void SNpcObjCreate(void)
     mbObjLayerSet(snpcWork->objId[2], 2);
 }
 
+// Releases all board models owned by the roaming NPC and clears its motion slots during teardown.
 static void SNpcObjKill(void)
 {
     int i;
@@ -2691,6 +2835,7 @@ static void SNpcObjDispSet(BOOL dispF)
     mbObjDispSet(snpcWork->objId[0], dispF);
 }
 
+// Stores and applies the roaming NPC model's base position when an event moves it directly.
 static void SNpcObjPosSet(float x, float y, float z)
 {
     snpcWork->pos.x = x;
@@ -2699,6 +2844,8 @@ static void SNpcObjPosSet(float x, float y, float z)
     mbObjPosSetV(snpcWork->objId[0], &snpcWork->pos);
 }
 
+// NPC movement and event updates copy this position into the stored NPC position and apply it
+// to the model.
 static void SNpcObjPosSetV(const HuVecF *pos)
 {
     SNpcVecCopy(pos, &snpcWork->pos);
@@ -2710,6 +2857,7 @@ static void SNpcObjPosGet(HuVecF *pos)
     SNpcVecCopy(&snpcWork->pos, pos);
 }
 
+// Stores and applies the roaming NPC model's rotation during turns and space transitions.
 static void SNpcObjRotSet(float x, float y, float z)
 {
     snpcWork->rot.x = x;
@@ -2718,6 +2866,7 @@ static void SNpcObjRotSet(float x, float y, float z)
     mbObjRotSetV(snpcWork->objId[0], &snpcWork->rot);
 }
 
+// Position-fix setup restores the stored NPC rotation and applies it to the model.
 static void SNpcObjRotSetV(const HuVecF *rot)
 {
     SNpcVecCopy(rot, &snpcWork->rot);
@@ -2729,6 +2878,7 @@ static void SNpcObjRotGet(HuVecF *rot)
     SNpcVecCopy(&snpcWork->rot, rot);
 }
 
+// Selects an NPC motion and applies its speed, loop setting, and optional frame range.
 static void SNpcObjMotSet(int motNo)
 {
     const SNPCMOTDATA *motData;
@@ -2749,10 +2899,11 @@ static void SNpcObjMotSet(int motNo)
         }
         mbObjMotionStartEndSet(snpcWork->objId[0], start, end);
     }
-    snpcWork->motShiftNo = -1;
+    snpcWork->lastSoundFrame = -1;
     snpcWork->motNo = motNo;
 }
 
+// Blends the NPC into a new motion and applies that motion's speed and optional frame range.
 static void SNpcObjMotShiftSet(int motNo)
 {
     const SNPCMOTDATA *motData;
@@ -2780,10 +2931,11 @@ static void SNpcObjMotShiftSet(int motNo)
         Hu3DMotionShiftStartEndSet(mbObjModelIDGet(snpcWork->objId[0]),
             (float)start, (float)end);
     }
-    snpcWork->motShiftNo = -1;
+    snpcWork->lastSoundFrame = -1;
     snpcWork->motNo = motNo;
 }
 
+// Reports whether the active NPC motion has ended and any transition blend has finished.
 static BOOL SNpcObjMotEndCheck(void)
 {
     BOOL endF;
@@ -2796,6 +2948,7 @@ static BOOL SNpcObjMotEndCheck(void)
     return endF;
 }
 
+// Waits until the active NPC motion and its transition blend have both finished.
 static void SNpcObjMotEndWait(void)
 {
     while (!SNpcObjMotEndCheck()) {
@@ -2803,6 +2956,7 @@ static void SNpcObjMotEndWait(void)
     }
 }
 
+// Shows the NPC's space marker at the selected board space while its event is running.
 static void SNpcObjMasuSet(int masuId)
 {
     HuVecF pos;
@@ -2819,6 +2973,8 @@ static void SNpcMasuEffDispSet(void)
     mbObjDispSet(snpcWork->objId[2], FALSE);
 }
 
+// Marks spaces rejected by the current branch flag and attribute filters as unavailable to route
+// searches.
 static inline int SNpcChanceBranchMask(int masuId)
 {
     if (mbBranchAttrCheck(masuId)) {
@@ -2827,6 +2983,7 @@ static inline int SNpcChanceBranchMask(int masuId)
     return -1;
 }
 
+// Allocates the link table and extra branch entries used by a weighted route search.
 static inline u8 *SNpcChanceLinkAlloc(int linkTblNum)
 {
     return HuMemDirectMallocNum(0,
@@ -2834,6 +2991,7 @@ static inline u8 *SNpcChanceLinkAlloc(int linkTblNum)
         HU_MEMNUM_OVL);
 }
 
+// Builds the board-wide table of reachable spaces and their remaining movement chances.
 u8 *mbMasuChanceCreate(int masuId, int chance, int branchChance)
 {
     int linkCount;
@@ -3006,6 +3164,8 @@ void mbMasuChanceKill(void *work)
     HuMemDirectFree(work);
 }
 
+// Assigns value to unassigned spaces whose types are listed, or whose types are absent when
+// inverseF is set.
 void mbMasuChanceTypeSet(u8 *chanceTbl, u8 value, int *typeTbl, BOOL inverseF)
 {
     int masuNum;
@@ -3033,6 +3193,8 @@ void mbMasuChanceTypeSet(u8 *chanceTbl, u8 value, int *typeTbl, BOOL inverseF)
     }
 }
 
+// Star-route selection marks unassigned spaces whose flags or attributes match the filter.
+// inverseF instead selects spaces with neither requested mask set.
 void mbMasuChanceFlagSet(u8 *chanceTbl, u8 value, u32 flag, u32 mAttr,
     BOOL inverseF)
 {
@@ -3055,6 +3217,7 @@ void mbMasuChanceFlagSet(u8 *chanceTbl, u8 value, u32 flag, u32 mAttr,
     }
 }
 
+// Marks each player's current space with the supplied value in the route table.
 void mbMasuChancePlayerSet(u8 *chanceTbl, int value)
 {
     int i;
@@ -3064,6 +3227,8 @@ void mbMasuChancePlayerSet(u8 *chanceTbl, int value)
     }
 }
 
+// Star relocation chooses among the farthest eligible spaces, trying up to twenty candidates.
+// The start space may use a different origin and candidate limit before distances are compared.
 int mbMasuChanceSet(u8 *chanceTbl, int masuId)
 {
     HuVecF basePos;
@@ -3092,10 +3257,10 @@ int mbMasuChanceSet(u8 *chanceTbl, int masuId)
             maxNum = 50;
         }
     }
-    masuTbl = HuMemDirectMallocNum(0, SNPC_CHANCE_DISTANCE_BYTES,
+    masuTbl = HuMemDirectMallocNum(0, SNPC_CHANCE_ID_BYTES,
         HU_MEMNUM_OVL);
     masuTblBase = masuTbl;
-    distanceTbl = HuMemDirectMallocNum(0, SNPC_CHANCE_MASU_BYTES,
+    distanceTbl = HuMemDirectMallocNum(0, SNPC_CHANCE_DISTANCE_BYTES,
         HU_MEMNUM_OVL);
     distanceTblBase = distanceTbl;
     masuNum = mbMasuNumGet();
@@ -3136,28 +3301,38 @@ int mbMasuChanceSet(u8 *chanceTbl, int masuId)
         }
         i++;
     }
+    // After twenty rejected capsule checks, keep the last candidate even if its capsule is present.
     HuMemDirectFree(masuTblBase);
     HuMemDirectFree(distanceTblBase);
     return targetId;
 }
 
-static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
+// SNpcMoveExec chooses its dice result here and receives a zero-terminated movement route.
+// Routes favor encounters with players who have fewer stars for Donkey Kong or more for Bowser.
+static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
     u32 mAttr, s16 *pathTbl, float chance)
 {
     typedef struct SNPCCHANCEPATHLOCAL {
+        // Space to restore when the route search backtracks.
         s16 masuId;
+        // Next outgoing link to examine after backtracking.
         s16 linkNo;
+        // Counted-space distance from the route's starting space.
         s16 chance;
-        u8 unk06;
+        // True when the route reaches a space type requested by this search.
+        u8 eligibleSpaceF;
     } SNPCCHANCEPATHLOCAL;
     typedef struct SNPCCOMPACTPATH {
-        u8 chanceF;
+        // True when this entry is an eligible destination for the NPC.
+        u8 eligibleSpaceF;
+        // Space ID retained in this candidate route.
         u8 masuId;
+        // Counted-space distance; -1 terminates the candidate route.
         s16 chance;
     } SNPCCOMPACTPATH;
     s8 *masuState;
     s8 *branchCount;
-    int nextMasu;
+    int searchValue;
     SNPCCHANCEPATHLOCAL *pathStack;
     SNPCCHANCEPATHLOCAL *path;
     SNPCCOMPACTPATH *candidate;
@@ -3183,7 +3358,7 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
     int displayState;
     SNPCCOMPACTPATH *newCandidate;
 
-    pathCapacity = diceNum + 10;
+    pathCapacity = maxSteps + 10;
     allocationCapacity = pathCapacity + 2;
     masuState = mbMalloc(256);
     pathStack = mbMalloc(allocationCapacity * (int)sizeof(*pathStack));
@@ -3211,7 +3386,7 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
         current = GwPlayer[i].masuId;
         masuState[current] = masuState[current] | 2;
     }
-    if (diceNum != 0) {
+    if (maxSteps != 0) {
         current = masuId;
         linkNo = 0;
         chanceCount = 0;
@@ -3223,8 +3398,8 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
             advanced = FALSE;
             masu = mbMasuGet((s16)current);
             while (linkNo < masu->linkNum && !advanced) {
-                nextMasu = masu->linkTbl[linkNo++];
-                if ((s8)masuState[nextMasu] < 0) {
+                searchValue = masu->linkTbl[linkNo++];
+                if ((s8)masuState[searchValue] < 0) {
                     continue;
                 }
                 if (pathCount < pathCapacity) {
@@ -3233,9 +3408,9 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
                     path->linkNo = (s16)linkNo;
                     path->chance = (s16)chanceCount;
                     path++;
-                    path->unk06 = 0;
+                    path->eligibleSpaceF = 0;
                     pathCount++;
-                    current = nextMasu;
+                    current = searchValue;
                     linkNo = 0;
                     if (masuState[current] & 1) {
                         chanceCount++;
@@ -3246,7 +3421,7 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
 
                         for (j = 0; typeTbl[j] >= 0; j++) {
                             if (type == typeTbl[j]) {
-                                path->unk06 = 1;
+                                path->eligibleSpaceF = 1;
                                 break;
                             }
                         }
@@ -3256,9 +3431,9 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
                     i = 1;
                     j = 0;
                     for (;
-                        i < pathCount && pathStack[i].chance <= diceNum;
+                        i < pathCount && pathStack[i].chance <= maxSteps;
                         i++) {
-                        if (pathStack[i].unk06 != 0) {
+                        if (pathStack[i].eligibleSpaceF != 0) {
                             j++;
                         }
                     }
@@ -3271,7 +3446,7 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
                         candidateTbl[candidateNum++] = candidate;
                         for (i = 1; i < pathCount; i++, candidate++) {
                             candidate->masuId = (u8)pathStack[i].masuId;
-                            candidate->chanceF = pathStack[i].unk06;
+                            candidate->eligibleSpaceF = pathStack[i].eligibleSpaceF;
                             candidate->chance = pathStack[i].chance;
                         }
                         candidate->chance = -1;
@@ -3306,10 +3481,10 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
         maxStars = 0;
 
         for (j = 0; j < GW_PLAYER_MAX; j++) {
-            nextMasu = mbPlayerStarGet(j);
+            searchValue = mbPlayerStarGet(j);
 
-            if (maxStars < nextMasu) {
-                maxStars = nextMasu;
+            if (maxStars < searchValue) {
+                maxStars = searchValue;
             }
             playerFixed[j] = 0;
         }
@@ -3344,27 +3519,29 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
                             if (playerFixed[j] != 0) {
                                 continue;
                             }
-                            if (candidate->chance < diceNum + 1) {
+                            if (candidate->chance < maxSteps + 1) {
                                 playerDistance[j] = candidate->chance;
                             } else {
+                                // Exclude this player from later candidate routes too after this
+                                // route reaches them beyond the step limit.
                                 playerFixed[j] = 1;
                             }
                         }
                     }
                     candidate++;
                 }
-                minScore = 1000000;
+                minScore = SNPC_CANDIDATE_SCORE_MAX;
                 for (j = 0; j < GW_PLAYER_MAX; j++) {
                     if (playerDistance[j] != 0) {
                         if (!snpcSaveWork->isKoopa) {
-                            nextMasu = playerDistance[j]
+                            searchValue = playerDistance[j]
                                 + mbPlayerStarGet(j) * 20;
                         } else {
-                            nextMasu = playerDistance[j]
+                            searchValue = playerDistance[j]
                                 + (maxStars - mbPlayerStarGet(j)) * 20;
                         }
-                        if (minScore > nextMasu) {
-                            minScore = nextMasu;
+                        if (minScore > searchValue) {
+                            minScore = searchValue;
                         }
                     }
                 }
@@ -3373,25 +3550,25 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
             for (i = 0; i < candidateNum - 1; i++) {
                 for (j = i + 1; j < candidateNum; j++) {
                     if (score[i] > score[j]) {
-                        nextMasu = score[i];
+                        searchValue = score[i];
                         candidate = candidateTbl[i];
 
                         score[i] = score[j];
                         candidateTbl[i] = candidateTbl[j];
-                        score[j] = nextMasu;
+                        score[j] = searchValue;
                         candidateTbl[j] = candidate;
                     }
                 }
             }
             {
-                minScore = 10000000;
+                minScore = SNPC_MIN_SCORE_SENTINEL;
                 i = 0;
                 while (i < candidateNum && minScore >= score[i]) {
                     minScore = score[i];
                     i++;
                 }
-                nextMasu = i;
-                candidateNum = mbRandMod(nextMasu);
+                searchValue = i;
+                candidateNum = mbRandMod(searchValue);
                 {
 
                     candidate = candidateTbl[candidateNum];
@@ -3399,20 +3576,20 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
                     j = 0;
                     for (;
                         candidate[i].chance >= 0
-                            && candidate[i].chance <= diceNum;
+                            && candidate[i].chance <= maxSteps;
                         i++) {
-                        if (candidate[i].chanceF != 0) {
+                        if (candidate[i].eligibleSpaceF != 0) {
                             j++;
                         }
                     }
                     selectedIndex = -1;
                     for (i = 0; j > 0; i++) {
                         pathTbl[i] = (s16)candidate[i].masuId;
-                        if (candidate[i].chanceF != 0) {
+                        if (candidate[i].eligibleSpaceF != 0) {
                             j--;
                             if (masuState[pathTbl[i]] > 0
                                 && candidate[i].chance >= (int)(0.5f
-                                    + ((float)diceNum * chance))) {
+                                    + ((float)maxSteps * chance))) {
                                 j = 0;
                             } else {
                                 selectedIndex = i;
@@ -3444,13 +3621,14 @@ static int SNpcDiceValueGet(int masuId, int diceNum, const int *typeTbl,
     return chanceCount;
 }
 
-int mbSNpcMasuStarNextGet(int masuId, int type, int *linkNoTbl, u32 attr)
+// Chooses the roaming NPC's next star space while excluding occupied and disallowed spaces.
+int mbSNpcMasuStarNextGet(int masuId, int type, int *eligibleTypeTbl, u32 attr)
 {
     u8 *chanceTbl;
     int targetId;
 
     chanceTbl = mbMasuChanceCreate(masuId, type + 1, type / 4 + 1);
-    mbMasuChanceTypeSet(chanceTbl, SNPC_CHANCE_EXCLUDE, linkNoTbl, TRUE);
+    mbMasuChanceTypeSet(chanceTbl, SNPC_CHANCE_EXCLUDE, eligibleTypeTbl, TRUE);
     mbMasuChanceFlagSet(chanceTbl, SNPC_CHANCE_EXCLUDE, 0, attr, FALSE);
     mbMasuChancePlayerSet(chanceTbl, SNPC_CHANCE_EXCLUDE);
     targetId = mbMasuChanceSet(chanceTbl, masuId);
@@ -3458,25 +3636,27 @@ int mbSNpcMasuStarNextGet(int masuId, int type, int *linkNoTbl, u32 attr)
     return targetId;
 }
 
-static void SNpcStarCreate(int type, BOOL loopF, HuVecF *pos)
+// mbSNpcStarExec and SNpcMoveExec call this when a star appears beside a player or target space.
+// Create the star model and its particle effect; SNpcStarObjExec animates both.
+static void SNpcStarCreate(int type, BOOL lowerStarF, HuVecF *pos)
 {
     OMOBJ *obj;
 
     if (type == 0) {
         obj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY,
-            SNPC_STAR_OBJ_GROUP, 0, OM_GRP_NONE, SNpcStarObjExec);
+            SNPC_STAR_MODEL_SLOT_COUNT, 0, OM_GRP_NONE, SNpcStarObjExec);
         snpcWork->starObj = obj;
-        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->loopF = FALSE;
+        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->isKoopa = FALSE;
     } else {
         obj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY,
-            SNPC_STAR_OBJ_GROUP, 0, OM_GRP_NONE, SNpcStarObjExec);
+            SNPC_STAR_MODEL_SLOT_COUNT, 0, OM_GRP_NONE, SNpcStarObjExec);
         snpcWork->starObj = obj;
-        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->loopF = TRUE;
+        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->isKoopa = TRUE;
     }
 
-    omSetStatBit(obj, SNPC_MOVE_OBJ_PRIORITY);
-    if (loopF) {
-        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->unk00 = TRUE;
+    omSetStatBit(obj, OM_STAT_MODELPAUSE);
+    if (lowerStarF) {
+        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->lowerStarF = TRUE;
     }
     SNpcVecCopy(pos, &obj->trans);
 
@@ -3488,6 +3668,7 @@ static void SNpcStarCreate(int type, BOOL loopF, HuVecF *pos)
             HU_MEMNUM_OVL, HEAP_MODEL)), type);
 }
 
+// NPC event sequences wait here until the star object's per-frame callback removes it.
 static void SNpcStarWait(void)
 {
     while (snpcWork->starObj != NULL) {
@@ -3495,10 +3676,12 @@ static void SNpcStarWait(void)
     }
 }
 
+// The object manager calls this each frame to animate the roaming star and its particles.
+// It also releases both effects when the animation finishes or the board is exiting.
 static void SNpcStarObjExec(OMOBJ *obj)
 {
     SNPCSTAREFFWORK *work;
-    float time;
+    float phase;
 
     work = omObjGetWork(obj, SNPCSTAREFFWORK);
     if (mbExitCheck() || work->killF) {
@@ -3514,14 +3697,14 @@ static void SNpcStarObjExec(OMOBJ *obj)
         work->initF = TRUE;
         work->time = 0;
         work->maxTime = 0;
-        work->effectNo = 0;
+        work->phase = 0;
         obj->trans.y += 3e+02f;
-        if (!work->unk00) {
+        if (!work->lowerStarF) {
             obj->trans.y += 7e+01f;
         }
         obj->rot.z = 0.0f;
         mbObjDispSet(obj->mdlId[0], TRUE);
-        if (!work->loopF) {
+        if (!work->isKoopa) {
             work->soundId = mbAudFXPlay(MSM_SE_BRD00_91);
         } else {
             work->soundId = mbAudFXPlay(MSM_SE_BRD00_114);
@@ -3531,26 +3714,26 @@ static void SNpcStarObjExec(OMOBJ *obj)
     if (work->time > work->maxTime) {
         work->time = work->maxTime;
     }
-    switch (work->effectNo) {
+    switch (work->phase) {
     case 0:
         work->maxTime = 120;
-        work->effectNo++;
+        work->phase++;
     case 1:
-        time = (float)work->time / (float)work->maxTime;
-        time = 1.0f - time;
-        obj->rot.z = 5e+02f * time;
+        phase = (float)work->time / (float)work->maxTime;
+        phase = 1.0f - phase;
+        obj->rot.z = 5e+02f * phase;
         if (work->time >= work->maxTime) {
-            work->effectNo++;
+            work->phase++;
             work->time = 0;
             work->maxTime = 60;
         }
         break;
     case 2:
-        time = (float)work->time / (float)work->maxTime;
+        phase = (float)work->time / (float)work->maxTime;
         obj->rot.z = 100.0f * (0.2f
-            * mbSinDeg(180.0f + (lbl_802C3330[0] * time)));
+            * mbSinDeg(180.0f + (lbl_802C3330[0] * phase)));
         if (work->time >= work->maxTime) {
-            work->effectNo++;
+            work->phase++;
             work->time = 0;
             work->maxTime = 30;
             mbParManAttrSet((int)obj->mdlId[1], 1);
@@ -3558,7 +3741,7 @@ static void SNpcStarObjExec(OMOBJ *obj)
                 mbAudFXStop(work->soundId);
                 work->soundId = -1;
             }
-            if (!work->loopF) {
+            if (!work->isKoopa) {
                 mbAudFXPlay(MSM_SE_BRD00_93);
             } else {
                 mbAudFXPlay(MSM_SE_BRD00_93);
@@ -3570,18 +3753,19 @@ static void SNpcStarObjExec(OMOBJ *obj)
         if (obj->rot.y >= lbl_802C3330[0]) {
             obj->rot.y -= lbl_802C3330[0];
         }
-        time = (float)work->time / (float)work->maxTime;
-        time = 1.0f - time;
-        if (time <= 0.0f) {
-            time = 1e-05f;
+        phase = (float)work->time / (float)work->maxTime;
+        phase = 1.0f - phase;
+        if (phase <= 0.0f) {
+            phase = 1e-05f;
         }
-        obj->scale.z = time;
-        obj->scale.x = time;
-        if (work->unk00) {
+        // Shrink only X and Z; the star's Y scale stays at one.
+        obj->scale.z = phase;
+        obj->scale.x = phase;
+        if (work->lowerStarF) {
             obj->rot.z -= 5.0000005f;
         }
         if (work->time >= work->maxTime) {
-            work->effectNo++;
+            work->phase++;
             work->killF = TRUE;
         }
         break;
@@ -3596,6 +3780,7 @@ static void SNpcStarObjExec(OMOBJ *obj)
         obj->trans.y + obj->rot.z, obj->trans.z);
 }
 
+// SNpcStarCreate calls this to configure the star's particle model for its variant.
 static HU3D_MODELID SNpcStarEffCreate(ANIMDATA *anim, int type)
 {
     HU3D_MODELID modelId;
@@ -3616,6 +3801,8 @@ static void SNpcStarEffKill(s16 parManId)
     mbParManKill((s16)parManId);
 }
 
+// Material hooks count the stages used by a textured material before adding their own effects.
+// Includes its highlight, shadow, reflection, toon, and projected-texture stages.
 static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
     int *tevStageNum, int *texGenNum)
 {
@@ -3691,6 +3878,7 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
             lightOnF = TRUE;
         }
     }
+    // Highlight vertex modes leave lightOnF unset; enabling shine still tests it.
     if (Hu3DShineF && lightOnF) {
         shineF = TRUE;
     } else {
@@ -3699,7 +3887,9 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
     if (material->attrNum == 1) {
         texGen = tevStage = 1;
         attribute = &object->mesh.attribute[material->attr[0]];
-        if (1.0f == attribute->unk20) {
+        // HSF texture-matrix animation enables this material's animated texture path.
+        if (1.0f == attribute->textureEnable) {
+            // TEV color mode zero uses an additional stage to combine the material color.
             if (attribute->unk8[2] == 0) {
                 tevStage++;
             } else if (!(model->attr & HU3D_ATTR_TOON_MAP)) {
@@ -3740,7 +3930,9 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
                 texGen++;
                 matHiliteF = FALSE;
             } else {
-                if (1.0f != attribute->unk20) {
+                // Hilite setup needs a separate coordinate generator when texture-matrix animation
+                // is off.
+                if (1.0f != attribute->textureEnable) {
                     texGen++;
                 }
                 tevStage++;
@@ -3768,7 +3960,9 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
                 bumpAttrNo = i;
                 texGen++;
                 texBlendF = TRUE;
-            } else if (1.0f != attribute->unk20) {
+            // Attributes without texture-matrix animation are handled as the material's special
+            // attribute.
+            } else if (1.0f != attribute->textureEnable) {
                 specialAttrNo = i;
                 continue;
             } else {
@@ -3779,6 +3973,7 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
                     }
                 } else if (texBlendF) {
                     texBlendF = FALSE;
+                // TEV color mode zero needs a stage for its default texture-color combine path.
                 } else if (attribute->unk8[2] == 0) {
                     tevStage++;
                 } else if (texCol[i].a == 1 || texCol[i].a == 2) {
@@ -3849,6 +4044,8 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
     *texGenNum = (u16)texGen;
 }
 
+// Material hooks count the stages used by an untextured material before adding their own effects.
+// Includes its highlight, shadow, reflection, toon, and projected-texture stages.
 static void GetStarNoTexTevStage(HU3D_DRAW_OBJ *drawObj,
     HSF_MATERIAL *material, int *tevStageNum, int *texGenNum)
 {
@@ -3911,6 +4108,7 @@ static void GetStarNoTexTevStage(HU3D_DRAW_OBJ *drawObj,
     *texGenNum = (s16)texGen;
 }
 
+// The star material hook selects textured or untextured shading and receives the stage counts.
 void mbObjStarTevStageSet(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
     int *tevStageNum, int *texGenNum)
 {
@@ -3923,6 +4121,9 @@ void mbObjStarTevStageSet(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
     }
 }
 
+// Guide appearance and exit animations call this to install the projected fade effect on their
+// models.
+// Attach the material hook and load the texture used to calculate the fade.
 void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
 {
     int hu3DModelId;
@@ -3953,6 +4154,7 @@ void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
         mbBoardDataNumGet(SNPC_DATA_FADE_TEXTURE), HU_MEMNUM_OVL, HEAP_MODEL));
 }
 
+// Guide animations call this when removing a fade effect from a model.
 void mbObjFadeKill(MBMODELID modelId)
 {
     int hu3DModelId;
@@ -3974,6 +4176,7 @@ void mbObjFadeKill(MBMODELID modelId)
     model->hookData = NULL;
 }
 
+// The model renderer calls this for each hooked material while drawing a faded guide model.
 static void FadeMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     MBOBJFADEWORK *work;
@@ -4033,6 +4236,7 @@ static void FadeMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     }
 }
 
+// Guide animation updates call this to move and rotate the fade texture with the scene.
 void mbObjFadeTexRotSet(MBMODELID modelId, HuVecF *pos, HuVecF *rot)
 {
     int hu3DModelId;
@@ -4046,6 +4250,7 @@ void mbObjFadeTexRotSet(MBMODELID modelId, HuVecF *pos, HuVecF *rot)
     SNpcVecCopy(rot, &work->rot);
 }
 
+// Guide setup calls this to choose the fade texture tint and its vertical texture scaling.
 void mbObjFadeTexColorSet(MBMODELID modelId, u8 r, u8 g, u8 b, float alpha)
 {
     int hu3DModelId;
@@ -4061,6 +4266,8 @@ void mbObjFadeTexColorSet(MBMODELID modelId, u8 r, u8 g, u8 b, float alpha)
     work->alpha = alpha;
 }
 
+// Player metal-effect setup calls this before changing a model's metallic level or colors.
+// Attach the material hook and load the two textures used for the metal shading.
 void mbObjMetalCreate(MBMODELID modelId)
 {
     int hu3DModelId;
@@ -4099,6 +4306,7 @@ void mbObjMetalCreate(MBMODELID modelId)
         mbBoardDataNumGet(SNPC_DATA_METAL_TEXMAP5), HU_MEMNUM_OVL, HEAP_MODEL));
 }
 
+// Player effect cleanup calls this to remove the metal hook and its textures when installed.
 BOOL mbObjMetalKill(MBMODELID modelId)
 {
     int hu3DModelId;
@@ -4128,6 +4336,8 @@ BOOL mbObjMetalKill(MBMODELID modelId)
     return TRUE;
 }
 
+// Player metal-effect updates set the shading strength used by the material hook, fading it
+// between zero and one.
 void mbObjMetalTPLvlSet(MBMODELID modelId, float tpLvl)
 {
     int hu3DModelId;
@@ -4140,6 +4350,7 @@ void mbObjMetalTPLvlSet(MBMODELID modelId, float tpLvl)
     work->tpLvl = tpLvl;
 }
 
+// Player metal-effect setup sets the shadow and highlight tints used by the material hook.
 void mbObjMetalColorSet(MBMODELID modelId, GXColor shadowColor,
     GXColor hiliteColor)
 {
@@ -4154,6 +4365,7 @@ void mbObjMetalColorSet(MBMODELID modelId, GXColor shadowColor,
     work->hiliteColor = hiliteColor;
 }
 
+// The model renderer calls this for each hooked material to add the player's metal shading.
 static void MetalMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     MBOBJMETALWORK *work;
@@ -4270,6 +4482,7 @@ static void MetalMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
         GX_TRUE, GX_TEVPREV);
 }
 
+// Player, dice, and board-object effect setup calls this before applying BiriQ colors.
 void mbObjBiriQCreate(MBMODELID modelId)
 {
     int hu3DModelId;
@@ -4297,6 +4510,7 @@ void mbObjBiriQCreate(MBMODELID modelId)
     }
 }
 
+// Player or board-object cleanup calls this to remove an installed BiriQ material hook.
 BOOL mbObjBiriQKill(MBMODELID modelId)
 {
     int hu3DModelId;
@@ -4324,6 +4538,8 @@ BOOL mbObjBiriQKill(MBMODELID modelId)
     return TRUE;
 }
 
+// Player and dice effect updates select a BiriQ recipe (zero to three), strength, and tint.
+// Ignores models without BiriQ hook data.
 void mbObjBiriQColorSet(MBMODELID modelId, BOOL mode, float level,
     GXColor color)
 {
@@ -4345,6 +4561,7 @@ void mbObjBiriQColorSet(MBMODELID modelId, BOOL mode, float level,
     work->color = color;
 }
 
+// The model renderer calls this for each hooked material to apply its BiriQ color effect.
 static void BiriQMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     MBOBJBIRIQWORK *work;
