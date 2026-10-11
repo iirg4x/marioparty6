@@ -8,12 +8,12 @@ Sections:
 
 REL/m667dll/startup.c:
 	.text       start:0x00000000 end:0x000000A0
-	.bss        start:0x00000000 end:0x00000004
+	.bss        start:0x00000000 end:0x00000008
 
 REL/m667dll/map_players_effects.c:
 	.text       start:0x000000A0 end:0x00006C88
-	.rodata     start:0x00000000 end:0x000001FC
-	.data       start:0x00000000 end:0x00000554
+	.rodata     start:0x00000000 end:0x00000200
+	.data       start:0x00000000 end:0x00000558
 	.bss        start:0x00000008 end:0x00000030
 
 REL/m667dll/particles_tracks_materials.c:
