@@ -1,3 +1,5 @@
+/* Speech-mean adaptation and spectral normalization for the ASR feature graph. */
+
 #include <stddef.h>
 #include <string.h>
 
@@ -17,60 +19,100 @@ extern f32 HLnOnePlusExpHFloat(f32 value);
 extern f32 LogAdd(f32 value1, f32 value2);
 
 typedef struct Acne {
+    /* TOS graph callbacks and the block's input and output ports. */
     TosBaseBlock base;
+    /* FIFO of feature frames waiting for segment normalization. */
     TosQueue *queue;
-    u16 queueDepthLimit;
+    /* Queue length at which state 1 emits its oldest frame; the queue itself has no capacity
+     * limit. */
+    u16 queueEmissionLength;
+    /* 0 emits each frame, 1 retains speech frames, and 2 waits for activity. */
     s32 state;
+    /* Set while queued frames are being emitted during a drain. */
     u8 drainingQueue;
-    u8 smoothedMeanValid;
+    /* Enables normalization with smoothedMean; a failed refresh does not clear this flag. */
+    u8 meanNormalizationEnabled;
+    /* Per-band smoothed adaptive speech mean in log-amplitude units. */
     f32 *smoothedMean;
+    /* Per-band speech mean updated from incoming feature frames. */
     f32 *adaptiveMean;
+    /* Per-band noise estimate copied from the feature extractor. */
     f32 *noiseEstimate;
+    /* Latest scalar reference used when converting every queued frame to output energy. */
     f32 inputReference;
+    /* Accumulated weight used while adapting the speech mean. */
     f32 accumulatedWeight;
+    /* Count of zero-activity frames since the first input, capped at 50 until reset. */
     s32 zeroFrameCount;
+    /* Capped total activity weight used for the uniform correction applied to every band. */
     f32 cumulativeWeight;
+    /* Progress toward refreshing the smoothed mean. */
     f32 smoothingProgress;
+    /* Number of feature frames received since the last reset. */
     u32 frameCount;
+    /* Consecutive zero-activity frames used to end a speech segment. */
     s32 consecutiveZeroFrames;
+    /* Number of spectral bands in each feature frame. */
     u32 bandCount;
+    /* Smoothing progress required before refreshing smoothedMean. */
     f32 smoothingThreshold;
+    /* Maximum silent frames accepted before the block returns to silence. */
     s32 maximumConsecutiveZeroFrames;
+    /* Maximum accumulated activity weight before queued frames are drained. */
     f32 maximumAccumulatedWeight;
+    /* Minimum scalar energy written to the normalized output. */
     f32 scalarFloor;
+    /* Ratio used for positive and negative adaptive-mean and residual corrections. */
     f32 adaptationRatio;
+    /* Offset applied to each per-band noise estimate before comparison. */
     f32 noiseFloorOffset;
+    /* Lower bound applied to the adjusted-input minus adaptive-mean difference before each mean
+     * update. */
     f32 minimumBandDifference;
-    /* Exact four-byte ABI reserve; semantic role unrecovered, never accessed. */
-    u32 reserved80;
+    /* Unused storage between the per-band settings and initialization weight. */
+    u32 unusedStorage;
+    /* Initial activity weight used when the speech means are seeded. */
     f32 initialWeight;
+    /* Per-band output floors applied with the smoothed mean, or copied as output before it is
+     * available. */
     const f32 *noiseFloors;
+    /* Initial per-band speech means; initialization always uses the 11 kHz table. */
     const f32 *initialMean;
+    /* Smoothing matrices; initialization always uses the 11 kHz set. */
     const Smoother1600Info *smootherInfo;
+    /* Smoother used to prepare the initial mean and refresh the adaptive per-band mean. */
     Smoother *smoother;
 } Acne;
 
+/* Scalar values saved after the three per-band arrays in an ASR session. */
 typedef struct AcneSessionScalars {
+    /* Scalar reference used by queued frames. */
     f32 inputReference;
+    /* Activity weight accumulated before the session was saved. */
     f32 accumulatedWeight;
+    /* Number of silent frames tracked at the time of saving. */
     s32 zeroFrameCount;
+    /* Capped activity weight used for mean correction. */
     f32 cumulativeWeight;
+    /* Progress toward the next smoothed-mean refresh. */
     f32 smoothingProgress;
+    /* Number of feature frames processed before the save. */
     u32 frameCount;
+    /* Consecutive silent frames at the time of saving. */
     s32 consecutiveZeroFrames;
 } AcneSessionScalars;
 
 typedef char AcneMinimumBandDifferenceOffset[
-    (offsetof(Acne, minimumBandDifference) == 0x7C) ? 1 : -1];
-typedef char AcneReserved80Offset[
-    (offsetof(Acne, reserved80) == 0x80) ? 1 : -1];
+    (offsetof(Acne, minimumBandDifference) == 124) ? 1 : -1];
+typedef char AcneUnusedStorageOffset[
+    (offsetof(Acne, unusedStorage) == 128) ? 1 : -1];
 typedef char AcneInitialWeightOffset[
-    (offsetof(Acne, initialWeight) == 0x84) ? 1 : -1];
+    (offsetof(Acne, initialWeight) == 132) ? 1 : -1];
 typedef char AcneSmootherOffset[
-    (offsetof(Acne, smoother) == 0x94) ? 1 : -1];
-typedef char AcneSize[(sizeof(Acne) == 0x98) ? 1 : -1];
+    (offsetof(Acne, smoother) == 148) ? 1 : -1];
+typedef char AcneSize[(sizeof(Acne) == 152) ? 1 : -1];
 typedef char AcneSessionScalarsSize[
-    (sizeof(AcneSessionScalars) == 0x1C) ? 1 : -1];
+    (sizeof(AcneSessionScalars) == 28) ? 1 : -1];
 
 static const f32 g_SpeechMeanInit11kHz[21] = {
     7.5637002f,  8.22809982f, 8.59599972f, 8.69009972f,
@@ -91,8 +133,8 @@ static const f32 g_NoiseFloors11kHz[21] = {
 };
 
 static u8 Reset(Acne *block);
-static void AcneGetSession(Acne *block, void *sessionData);
-static void AcnePutSession(Acne *block, const void *sessionData);
+static void AcneGetSession(Acne *block, u8 *session);
+static void AcnePutSession(Acne *block, const u8 *session);
 static u8 NormalizeAndEnQ(Acne *block);
 static void ProcessAcne(
     TosBaseBlock *baseBlock, void **inputs, s32 inputCount);
@@ -100,6 +142,7 @@ static u32 ControlAcne(
     TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize);
 static u32 InitAcne(TosBaseBlock *baseBlock);
 
+/* Clears queued frames and seeds the adaptive speech model for a new session. */
 static u8 Reset(Acne *block)
 {
     qQueueReset(block->queue);
@@ -112,15 +155,18 @@ static u8 Reset(Acne *block)
         memcpy(
             block->smoothedMean, block->initialMean,
             block->bandCount * sizeof(f32));
+        /* Smooth the starting mean before processing new frames. Failure keeps the emptied queue,
+        * state 2, cleared drain flag, and copied or partly smoothed means; the normalization
+        * flag and remaining estimator state are unchanged. */
         if ((u8)Smoothing(block->smoother, block->smoothedMean)) {
             return 1;
         }
-        block->smoothedMeanValid = 1;
+        block->meanNormalizationEnabled = 1;
     } else {
         memset(
             block->adaptiveMean, 0,
             block->bandCount * sizeof(f32));
-        block->smoothedMeanValid = 0;
+        block->meanNormalizationEnabled = 0;
     }
 
     memset(
@@ -136,15 +182,16 @@ static u8 Reset(Acne *block)
     return 0;
 }
 
-static void AcneGetSession(Acne *block, void *sessionData)
+/* Saves the estimator state and per-band arrays for a TOS session snapshot. */
+static void AcneGetSession(Acne *block, u8 *session)
 {
-    u8 *session = (u8 *)sessionData;
     u32 arraySize = block->bandCount * sizeof(f32);
     AcneSessionScalars *scalars;
 
-    *(u32 *)(session + 0) = block->state;
+    *(u32 *)session = block->state;
     session[4] = block->drainingQueue;
-    session[8] = block->smoothedMeanValid;
+    session[8] = block->meanNormalizationEnabled;
+    /* The session header reserves twelve bytes before the per-band arrays. */
     session += 12;
 
     memcpy(session, block->smoothedMean, arraySize);
@@ -164,15 +211,16 @@ static void AcneGetSession(Acne *block, void *sessionData)
     scalars->consecutiveZeroFrames = block->consecutiveZeroFrames;
 }
 
-static void AcnePutSession(Acne *block, const void *sessionData)
+/* Restores the estimator state and per-band arrays when a TOS session resumes. */
+static void AcnePutSession(Acne *block, const u8 *session)
 {
-    const u8 *session = (const u8 *)sessionData;
     u32 arraySize = block->bandCount * sizeof(f32);
     const AcneSessionScalars *scalars;
 
-    block->state = *(const u32 *)(session + 0);
+    block->state = *(const u32 *)session;
     block->drainingQueue = session[4];
-    block->smoothedMeanValid = session[8];
+    block->meanNormalizationEnabled = session[8];
+    /* Skip the saved state and flags before restoring the per-band arrays. */
     session += 12;
 
     memcpy(block->smoothedMean, session, arraySize);
@@ -192,38 +240,47 @@ static void AcnePutSession(Acne *block, const void *sessionData)
     block->consecutiveZeroFrames = scalars->consecutiveZeroFrames;
 }
 
+/* Attempts to normalize and publish one queued feature frame. A smoothing failure drops the
+* frame but retains its queue node; a drain loop stalls if no unread frame remains to release it. */
 static u8 NormalizeAndEnQ(Acne *block)
 {
-    f32 *input;
+    f32 *outputElement;
+    const f32 *noiseFloor;
     f32 *output;
     f32 *outputEnd;
     f32 *mean;
-    const f32 *noiseFloor;
-    f32 *outputElement;
+    u32 bandCount;
+    f32 *input;
+
+    noiseFloor = block->noiseFloors;
+    bandCount = block->bandCount;
 
     input = qDeQueueOne(block->queue, 0);
     if (input == NULL) {
         return 0;
     }
 
+    /* A refresh clears progress and overwrites smoothedMean before smoothing. Failure keeps
+     * those changes and leaves meanNormalizationEnabled unchanged. */
     if (block->smoothingProgress > block->smoothingThreshold) {
         block->smoothingProgress = 0.0f;
         memcpy(
             block->smoothedMean, block->adaptiveMean,
-            block->bandCount * sizeof(f32));
+            bandCount * sizeof(f32));
         if ((u8)Smoothing(block->smoother, block->smoothedMean)) {
             return 0;
         }
-        block->smoothedMeanValid = 1;
+        block->meanNormalizationEnabled = 1;
     }
 
     outputElement = qEnQueueOne(block->base.output[0].queue);
+    /* Queue elements store scalar energy in slot zero and spectral bands after it. */
     output = outputElement + 1;
-    if (block->smoothedMeanValid) {
-        memcpy(output, input, block->bandCount * sizeof(f32));
-        outputEnd = output + block->bandCount;
+    if (block->meanNormalizationEnabled) {
+        /* Subtract the learned speech mean, then apply the per-band noise floor. */
+        outputEnd = output + bandCount;
+        memcpy(output, input, bandCount * sizeof(f32));
         mean = block->smoothedMean;
-        noiseFloor = block->noiseFloors;
 
         while (output < outputEnd) {
             *output -= *mean++;
@@ -239,23 +296,27 @@ static u8 NormalizeAndEnQ(Acne *block)
         }
     } else {
         memcpy(
-            output, block->noiseFloors,
-            block->bandCount * sizeof(f32));
+            /* With mean normalization disabled, emit the configured floors for the spectral
+             * bands. */
+            output, noiseFloor,
+            bandCount * sizeof(f32));
     }
 
     outputElement[0] = LogAdd(
-        input[block->bandCount] - block->inputReference,
+        input[bandCount] - block->inputReference,
         block->scalarFloor);
     qFreeUnusedElemements(block->queue);
     return 1;
 }
 
+/* Queues and adapts a fresh feature frame unless a pending drain emits one queued frame and
+* returns first. TOS has already dequeued fresh inputs, so that drain callback discards them. */
 static void ProcessAcne(
     TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
 {
     Acne *block = (Acne *)baseBlock;
+    u32 bandCount;
     f32 *input;
-    f32 *noiseInput;
     f32 *featureInput;
     f32 *queuedInput;
     f32 activity;
@@ -280,32 +341,34 @@ static void ProcessAcne(
         return;
     }
 
-    input = (f32 *)inputs[0];
-    if (input == NULL) {
+    if (inputs[0] == NULL) {
         return;
     }
 
-    noiseInput = (f32 *)inputs[1];
-    activity = *(f32 *)inputs[2];
+    input = (f32 *)inputs[0];
     featureInput = (f32 *)inputs[3];
+    /* The side input's first two values are scalar frame energy and its reference; activity is
+     * input 2. */
+    activity = *(f32 *)inputs[2];
+    bandCount = block->bandCount;
     scalarInput = featureInput[0];
     block->inputReference = featureInput[1];
-    arraySize = block->bandCount * sizeof(f32);
-    memcpy(block->noiseEstimate, noiseInput, arraySize);
+    arraySize = bandCount * sizeof(f32);
+    memcpy(block->noiseEstimate, inputs[1], arraySize);
 
     queuedInput = qEnQueueOne(block->queue);
     memcpy(queuedInput, input, arraySize);
-    queuedInput[block->bandCount] = scalarInput;
+    queuedInput[bandCount] = scalarInput;
     block->frameCount++;
 
     if (activity > 0.001f) {
         f32 weight;
         f32 positiveRate;
         f32 negativeRate;
-        f32 meanCorrection = 0.0f;
-        f32 *mean = block->adaptiveMean;
-        f32 *meanEnd = mean + block->bandCount;
+        f32 meanCorrection;
         f32 *noise = block->noiseEstimate;
+        f32 *mean = block->adaptiveMean;
+        f32 *meanEnd = mean + bandCount;
         f32 *queued = queuedInput;
 
         block->accumulatedWeight += activity;
@@ -315,6 +378,7 @@ static void ProcessAcne(
                 block->maximumAccumulatedWeight;
         }
 
+        /* Activity controls how quickly the adaptive model follows this frame. */
         weight = activity / block->accumulatedWeight;
         block->smoothingProgress += weight;
         positiveRate = weight * block->adaptationRatio;
@@ -326,15 +390,18 @@ static void ProcessAcne(
             negativeRate = 1.0f;
         }
 
-        while (mean < meanEnd) {
-            f32 adjustedInput =
-                *noise++ + block->noiseFloorOffset;
+        meanCorrection = 0.0f;
+
+        for (; mean < meanEnd; mean++, queued++, noise++) {
+            f32 noiseFloor =
+                *noise + block->noiseFloorOffset;
+            f32 adjustedInput = *queued;
             f32 difference;
             f32 update;
             f32 residual;
 
-            if (*queued > adjustedInput) {
-                adjustedInput = *queued;
+            if (adjustedInput < noiseFloor) {
+                adjustedInput = noiseFloor;
             }
             difference = adjustedInput - *mean;
             if (difference < block->minimumBandDifference) {
@@ -349,23 +416,21 @@ static void ProcessAcne(
 
             residual = adjustedInput - *mean;
             if (residual > 0.0f) {
-                meanCorrection +=
-                    residual * block->adaptationRatio;
+                update = residual * block->adaptationRatio;
             } else {
-                meanCorrection +=
-                    residual / block->adaptationRatio;
+                update = residual / block->adaptationRatio;
             }
-            mean++;
-            queued++;
+            meanCorrection += update;
         }
 
+        /* Apply a weighted band-average residual correction to every band, capped at +/-0.7. */
         block->cumulativeWeight += activity;
         if (block->cumulativeWeight > 200.0f) {
             block->cumulativeWeight = 200.0f;
         }
         weight = activity / block->cumulativeWeight;
         block->smoothingProgress += weight;
-        meanCorrection *= weight / (f32)block->bandCount;
+        meanCorrection *= weight / (f32)bandCount;
         if (meanCorrection > 0.7f) {
             meanCorrection = 0.7f;
         }
@@ -375,11 +440,12 @@ static void ProcessAcne(
 
         mean = block->adaptiveMean;
         while (mean < meanEnd) {
-            *mean++ += meanCorrection;
+            *mean += meanCorrection;
+            mean++;
         }
     }
 
-    if (activity == 0.0f && block->frameCount != 0) {
+    if (!activity && block->frameCount != 0) {
         block->consecutiveZeroFrames++;
         block->zeroFrameCount++;
         if (block->zeroFrameCount > 50) {
@@ -389,9 +455,17 @@ static void ProcessAcne(
         block->consecutiveZeroFrames = 0;
     }
 
+    /* State 1 holds speech frames; the other states flush or wait for them. */
     switch (block->state) {
     case 0:
         NormalizeAndEnQ(block);
+        break;
+    case 2:
+        if (activity > 0.001f) {
+            block->state = 1;
+        } else {
+            NormalizeAndEnQ(block);
+        }
         break;
     case 1:
         if (block->consecutiveZeroFrames >
@@ -401,91 +475,95 @@ static void ProcessAcne(
                 NormalizeAndEnQ(block);
             }
         } else if (qQueueNbrElements(block->queue) ==
-            block->queueDepthLimit) {
-            NormalizeAndEnQ(block);
-        }
-        break;
-    case 2:
-        if (activity > 0.001f) {
-            block->state = 1;
-        } else {
+            block->queueEmissionLength) {
             NormalizeAndEnQ(block);
         }
         break;
     }
 }
 
+/* Command 2 requests a drain on the next process callback, 3 saves when given a session buffer, 4
+ * restores or resets, and 255 destroys the block. */
 static u32 ControlAcne(
     TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
 {
-    Acne *block = (Acne *)baseBlock;
     u32 *sessionOffset = (u32 *)argumentSize;
-    u32 sessionSize =
-        (block->bandCount * 3 + 10) * sizeof(u32);
 
     switch ((u8)command) {
     case 2:
-        block->drainingQueue = 1;
-        return 1;
-
-    case 3:
-        if (argument != NULL) {
-            AcneGetSession(
-                block, (u8 *)argument + *sessionOffset);
-        }
-        *sessionOffset += sessionSize;
-        return 1;
+        ((Acne *)baseBlock)->drainingQueue = 1;
+        break;
 
     case 4:
         if (argument != NULL) {
             AcnePutSession(
-                block, (u8 *)argument + *sessionOffset);
-            *sessionOffset += sessionSize;
-        } else if (Reset(block)) {
+                (Acne *)baseBlock, (u8 *)argument + *sessionOffset);
+            /* The session payload includes a 12-byte header, three band arrays, and seven saved
+             * scalar values. */
+            *sessionOffset +=
+                (((Acne *)baseBlock)->bandCount * 3 + 10) * sizeof(u32);
+        } else if (Reset((Acne *)baseBlock)) {
             return 0;
         }
-        return 1;
+        break;
 
-    case 0xFF: {
-        TosContext *context = block->base.context;
+    case 3:
+        if (argument != NULL) {
+            AcneGetSession(
+                (Acne *)baseBlock, (u8 *)argument + *sessionOffset);
+        }
+        /* Advance over the header, three band arrays, and seven scalars even without a session
+         * buffer. */
+        *sessionOffset +=
+            (((Acne *)baseBlock)->bandCount * 3 + 10) * sizeof(u32);
+        break;
 
-        qQueueControl(block->queue, 0xFF, 0, NULL);
-        heap_Free(context->heap, block->adaptiveMean);
-        smtDestruct(block->smoother, context);
-        tosBaseBlockDestruct(block);
-        return 1;
+    case 255: {
+        TosContext *context = baseBlock->context;
+
+        qQueueControl(((Acne *)baseBlock)->queue, 255, 0, NULL);
+        heap_Free(context->heap, ((Acne *)baseBlock)->adaptiveMean);
+        smtDestruct(((Acne *)baseBlock)->smoother, context);
+        tosBaseBlockDestruct(baseBlock);
+        break;
     }
+
+    default:
+        return 0;
     }
 
-    return 0;
+    return 1;
 }
 
+/* Allocates the block queues and speech-model buffers when the graph starts. */
 static u32 InitAcne(TosBaseBlock *baseBlock)
 {
     Acne *block = (Acne *)baseBlock;
     TosContext *context = baseBlock->context;
-    u16 bandCount;
+    u32 bandCount;
     u32 arraySize;
-    u32 queueElementSize;
+    f32 knotSpacing;
+    const Smoother1600Info *smootherInfo;
 
-    bandCount = (u16)_tosGetProfileU32(block, 9, 21);
-    block->bandCount = bandCount;
+    /* Profile values select the feature width and the queued-frame threshold for emission. */
+    bandCount = block->bandCount =
+        (u16)_tosGetProfileU32(block, 9, 21);
     arraySize = bandCount * sizeof(f32);
-    queueElementSize = (bandCount + 1) * sizeof(f32);
     baseBlock->input[0].inputSize = (u16)arraySize;
     baseBlock->input[1].inputSize = (u16)arraySize;
     baseBlock->input[2].inputSize = sizeof(f32);
-    baseBlock->input[3].inputSize = 0x18;
-    baseBlock->output[0].outputSize = (u16)queueElementSize;
+    baseBlock->input[3].inputSize = 24;
+    baseBlock->output[0].outputSize =
+        (u16)((bandCount + 1) * sizeof(f32));
 
-    block->queueDepthLimit =
+    block->queueEmissionLength =
         (u16)_tosGetProfileU32(block, 2, 100);
-    block->queue = qQueueConstruct(context, 0xFF, 1);
+    block->queue = qQueueConstruct(context, 255, 1);
     if (block->queue == NULL) {
         return 1;
     }
     if (qQueueInitEx(
-            block->queue, (u16)queueElementSize, 1, 0) == NULL) {
+            block->queue, (u16)((bandCount + 1) * sizeof(f32)), 1, 0) == NULL) {
         return 1;
     }
 
@@ -512,10 +590,12 @@ static u32 InitAcne(TosBaseBlock *baseBlock)
     block->noiseFloors = g_NoiseFloors11kHz;
     block->initialMean = g_SpeechMeanInit11kHz;
     block->smootherInfo = &Smoother1600Info11kHz;
+    knotSpacing = _tosGetProfileFloat(block, 8, 2.6f);
+    smootherInfo = block->smootherInfo;
     block->smoother = smtConstruct(
         context, bandCount,
-        _tosGetProfileFloat(block, 8, 2.6f), 0.0f,
-        block->smootherInfo);
+        knotSpacing, 0.0f,
+        smootherInfo);
 
     if (Reset(block)) {
         return 1;
@@ -523,6 +603,7 @@ static u32 InitAcne(TosBaseBlock *baseBlock)
     return 0;
 }
 
+/* Allocates the adaptive feature block and installs its TOS callbacks during graph construction. */
 TosBaseBlock *ConstructAcne(TosContext *context, u32 blockIndex)
 {
     return tosBaseBlockConstruct(
