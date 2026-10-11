@@ -96,6 +96,12 @@ parser.add_argument(
     help="path to decomp-toolkit binary or source (optional)",
 )
 parser.add_argument(
+    "--dtk-extab",
+    metavar="BINARY",
+    type=Path,
+    help="path to DTK for exception-table padding normalization (optional)",
+)
+parser.add_argument(
     "--sjiswrap",
     metavar="EXE",
     type=Path,
@@ -121,6 +127,7 @@ version_num = VERSIONS.index(config.version)
 # Apply arguments
 config.build_dir = args.build_dir
 config.dtk_path = args.dtk
+config.dtk_extab_path = args.dtk_extab
 config.binutils_path = args.binutils
 config.compilers_path = args.compilers
 config.debug = args.debug
@@ -136,6 +143,7 @@ if args.no_asm:
 config.binutils_tag = "2.42-1"
 config.compilers_tag = "20240706"
 config.dtk_tag = "v0.9.2"
+config.dtk_extab_tag = "v1.6.1"
 config.objdiff_tag = "v3.8.2"
 config.sjiswrap_tag = "v1.1.1"
 config.wibo_tag = "0.6.11"
@@ -367,6 +375,7 @@ config.libs = [
             Object(
                 NonMatching,
                 "Runtime.PPCEABI.H/Gecko_ExceptionPPC.cpp",
+                extab_padding=[0x25, 0x00],
                 cflags=[
                     (
                         "-str reuse,readonly"
