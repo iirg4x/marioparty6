@@ -1,5 +1,8 @@
-#define _MATH_H
+/* Burnstile sequence parameters, resource IDs, formation positions, and shared callback state. */
+#include "dolphin/math.h"
+#include "REL/m668DLL/player.h"
 #include "REL/m668DLL/data.h"
+#include "datadir_enum.h"
 #include "game/mg/actman.h"
 #include "game/hu3d.h"
 #include "game/sprite.h"
@@ -23,11 +26,14 @@ M668SequenceDataRecord lbl_1_data_0 = {
       0, 127, 0, 5 },
 };
 
+/* Character motion resource IDs loaded by the stage and player callbacks. */
 unsigned int lbl_1_data_3C[10] = {
-    9633792, 9633793, 9633794, 9633795, 9633796,
-    9306135, 9633798, 9633799, 9633812, 0,
+    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1), DATANUM(DATA_mariomot, 2),
+    DATANUM(DATA_mariomot, 3), DATANUM(DATA_mariomot, 4), DATANUM(DATA_mario, 23),
+    DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 7), DATANUM(DATA_mariomot, 20), 0,
 };
 
+/* World-space starting positions for the four player formations. */
 HuVecF lbl_1_data_64[4] = {
     { -650.0f, 0.0f, 0.0f },
     { -450.0f, 0.0f, 0.0f },
@@ -35,6 +41,7 @@ HuVecF lbl_1_data_64[4] = {
     {  650.0f, 0.0f, 0.0f },
 };
 
+/* World-space reference points for team steering and course-edge checks. */
 HuVecF lbl_1_data_94[2] = {
     { -550.0f, 0.0f, 0.0f },
     {  550.0f, 0.0f, 0.0f },
@@ -42,13 +49,12 @@ HuVecF lbl_1_data_94[2] = {
 
 s32 lbl_1_data_AC = 1;
 
-/* MWCC allocates BSS objects in reverse declaration order. */
 void *lbl_1_bss_644;
 void *lbl_1_bss_640;
 HuVecF lbl_1_bss_340[64];
 HuVecF lbl_1_bss_40[64];
 ANIMDATA *lbl_1_bss_3C;
-s16 *lbl_1_bss_2C[4];
+M668PlayerWork *lbl_1_bss_2C[4];
 s16 *lbl_1_bss_28[1];
 s32 lbl_1_bss_24;
 M668StageWork *lbl_1_bss_20;
