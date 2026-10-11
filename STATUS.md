@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 38.36% | 57.77% |
-| Main DOL | 88.95% | 99.05% |
+| Entire project | 38.43% | 57.79% |
+| Main DOL | 89.33% | 99.11% |
 | REL modules | 27.64% | 31.61% |
+
+DOL source: `src/dolphin/mic/mic.c` now builds from source; `main.dol` matches retail byte for byte.
 
 Towering Treetop (`w01Dll`) selects all **151 functions** from **2 complete translation units**; its linked REL matches retail.
 

@@ -1,10 +1,10 @@
+/* Controls the GameCube microphone adapter and its sample ring buffers. */
+
 #include <string.h>
 
 #include <dolphin/exi.h>
 #include <dolphin/mic.h>
 #include <dolphin/os.h>
-
-#pragma force_active on
 
 #define MIC_EXI_ID 0x0A000000
 
@@ -20,34 +20,44 @@
 #define MIC_STATUS_64BYTES 0x2000
 #define MIC_STATUS_128BYTES 0x4000
 #define MIC_STATUS_ACTIVE 0x8000
+#define MIC_STATUS_DEVICE_ID (1 << 4)
+
+#define MIC_TIMEOUT_RATE_0_BUFFER_0 58765
+#define MIC_TIMEOUT_RATE_0_BUFFER_1 117531
+#define MIC_TIMEOUT_RATE_0_BUFFER_2 235062
+#define MIC_TIMEOUT_RATE_1_BUFFER_0 29362
+#define MIC_TIMEOUT_RATE_2_BUFFER_0 14661
 
 typedef struct MICControlBlock {
-    s32 result_code;
-    BOOL is_attached;
-    BOOL is_active;
-    OSThreadQueue thread_queue;
-    MICCallback exi_callback;
-    MICCallback tx_callback;
-    MICCallback detach_callback;
-    MICCallback attach_callback;
-    MICCallback mount_callback;
-    MICCallback set_callback;
-    u32 last_status;
-    u32 status;
-    u32 field_34;
-    u32 error_count;
-    s32 hw_buff_size;
-    u32 sample_rate;
-    u32 gain;
-    s16* buff_ring_base;
-    s32 buff_size;
-    s32 buff_ring_size;
-    s32 buff_ring_cur;
-    u32 button;
-    u32 last_button;
-    u32 button_time_delta;
-    OSTick button_time_last;
-    s32 timeout;
+    s32 result_code; /* Result of the current or most recent adapter operation. */
+    BOOL is_attached; /* Whether the adapter is attached to the EXI channel. */
+    BOOL is_active; /* Whether the adapter is currently streaming samples. */
+    OSThreadQueue thread_queue; /* Waiters for synchronous adapter operations. */
+    MICCallback exi_callback; /* Callback for completed EXI status work. */
+    MICCallback tx_callback; /* Callback for completed sample DMA work. */
+    MICCallback detach_callback; /* Callback after the adapter is removed. */
+    MICCallback attach_callback; /* Callback after an operation completes. */
+    MICCallback mount_callback; /* Callback used while mounting the adapter. */
+    MICCallback set_callback; /* Callback that applies the queued status word during a status
+                               * event. */
+    u32 last_status; /* Most recently applied adapter status, from a read or a successful status
+                      * write. */
+    u32 status; /* Status word waiting to be written to the adapter. */
+    u32 unused_word; /* Unused word retained in the adapter state block. */
+    u32 error_count; /* Number of input overrun conditions seen. */
+    s32 hw_buff_size; /* Number of bytes delivered by one hardware transfer. */
+    u32 sample_rate; /* Samples per second reported by the adapter. */
+    u32 gain; /* Current microphone gain setting. */
+    u8* buff_ring_base; /* Aligned byte storage for the sample ring buffer. */
+    s32 buff_size; /* Byte count remaining after aligning the caller's buffer base. */
+    s32 buff_ring_size; /* Ring byte capacity truncated to a whole number of hardware transfers. */
+    s32 buff_ring_cur; /* Byte offset of the next sample DMA destination. */
+    u32 button; /* Debounced microphone button state. */
+    u32 last_button; /* Most recently sampled raw button state. */
+    u32 button_time_delta; /* Elapsed ticks carried into the next button sample. */
+    OSTick button_time_last; /* Tick at which button debounce timing was last updated. */
+    s32 timeout; /* Delay in ticks before the microphone timeout alarm resets an attached
+                  * channel. */
 } MICControlBlock;
 
 static s32 __MICDoMount(s32 chan);
@@ -76,13 +86,28 @@ static OSAlarm __alarm;
 static OSAlarm __timeout[2];
 static BOOL __init = FALSE;
 
+/* Transfer timeout values indexed by the adapter's sample-rate and hardware-buffer codes. */
 static u32 __MICTimeoutTable[4][4] = {
-    {0xE58D, 0x1CB1B, 0x39636, 0x39636},
-    {0x72B2, 0xE58D, 0x1CB1B, 0x1CB1B},
-    {0x3945, 0x72B2, 0xE58D, 0xE58D},
-    {0x3945, 0x72B2, 0xE58D, 0xE58D},
+    {MIC_TIMEOUT_RATE_0_BUFFER_0, MIC_TIMEOUT_RATE_0_BUFFER_1,
+     MIC_TIMEOUT_RATE_0_BUFFER_2, MIC_TIMEOUT_RATE_0_BUFFER_2},
+    {MIC_TIMEOUT_RATE_1_BUFFER_0, MIC_TIMEOUT_RATE_0_BUFFER_0,
+     MIC_TIMEOUT_RATE_0_BUFFER_1, MIC_TIMEOUT_RATE_0_BUFFER_1},
+    {MIC_TIMEOUT_RATE_2_BUFFER_0, MIC_TIMEOUT_RATE_1_BUFFER_0,
+     MIC_TIMEOUT_RATE_0_BUFFER_0, MIC_TIMEOUT_RATE_0_BUFFER_0},
+    {MIC_TIMEOUT_RATE_2_BUFFER_0, MIC_TIMEOUT_RATE_1_BUFFER_0,
+     MIC_TIMEOUT_RATE_0_BUFFER_0, MIC_TIMEOUT_RATE_0_BUFFER_0},
 };
 
+/* Returns whether an EXI device ID belongs to the microphone adapter. */
+static inline BOOL __MICCheckID(const u32* id) {
+    if (*id == MIC_EXI_ID) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
+/* Initializes microphone state and periodic polling before the API is used. */
 void MICInit(void) {
     if (__init == FALSE) {
         s32 i;
@@ -110,6 +135,7 @@ void MICInit(void) {
     }
 }
 
+/* Classifies the device on an EXI channel before an application mounts it. */
 s32 MICProbeEx(s32 chan) {
     BOOL enabled;
     s32 probe;
@@ -154,6 +180,8 @@ s32 MICProbeEx(s32 chan) {
     return result;
 }
 
+/* Begins attaching a microphone and aligns the caller's sample buffer for DMA, dropping its leading
+ * unaligned bytes. */
 s32 MICMountAsync(s32 chan, s16* buffer, s32 size, MICCallback detachCallback,
                   MICCallback attachCallback) {
     MICControlBlock* cb;
@@ -196,7 +224,7 @@ s32 MICMountAsync(s32 chan, s16* buffer, s32 size, MICCallback detachCallback,
     cb->attach_callback = attachCallback;
     cb->mount_callback = NULL;
     cb->set_callback = NULL;
-    cb->buff_ring_base = (s16*)(((u32)buffer + 31) & ~31);
+    cb->buff_ring_base = (u8*)(((u32)buffer + 31) & ~31);
     cb->buff_size = size - ((u32)cb->buff_ring_base - (u32)buffer);
     cb->buff_ring_cur = 0;
 
@@ -211,6 +239,7 @@ s32 MICMountAsync(s32 chan, s16* buffer, s32 size, MICCallback detachCallback,
     return __MICDoMount(chan);
 }
 
+/* Mounts a microphone and waits for the asynchronous attach operation to finish. */
 s32 MICMount(s32 chan, s16* buffer, s32 size, MICCallback detachCallback) {
     s32 result = MICMountAsync(chan, buffer, size, detachCallback, __MICSyncCallback);
 
@@ -220,6 +249,7 @@ s32 MICMount(s32 chan, s16* buffer, s32 size, MICCallback detachCallback) {
     return __MICSync(chan);
 }
 
+/* Detaches an attached idle microphone and clears its channel state. */
 s32 MICUnmount(s32 chan) {
     s32 result;
     MICControlBlock* cb;
@@ -235,6 +265,7 @@ s32 MICUnmount(s32 chan) {
     return MIC_RESULT_READY;
 }
 
+/* Reports the usable byte size of the microphone sample ring buffer. */
 s32 MICGetRingbuffsize(s32 chan, s32* size) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -255,6 +286,7 @@ s32 MICGetRingbuffsize(s32 chan, s32* size) {
     return MIC_RESULT_READY;
 }
 
+/* Reports the microphone sample rate currently returned by the adapter. */
 s32 MICGetSampleRate(s32 chan, s32* rate) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -275,15 +307,7 @@ s32 MICGetSampleRate(s32 chan, s32* rate) {
     return MIC_RESULT_READY;
 }
 
-s32 MICSetGain(s32 chan, s32 gain) {
-    s32 result = MICSetGainAsync(chan, gain, __MICSyncCallback);
-
-    if (result < MIC_RESULT_READY) {
-        return result;
-    }
-    return __MICSync(chan);
-}
-
+/* Queues a gain change for the next microphone status update. */
 s32 MICSetGainAsync(s32 chan, s32 gain, MICCallback callback) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -317,6 +341,17 @@ s32 MICSetGainAsync(s32 chan, s32 gain, MICCallback callback) {
     return MIC_RESULT_READY;
 }
 
+/* Requests a gain change and waits for the microphone status handler to finish. */
+s32 MICSetGain(s32 chan, s32 gain) {
+    s32 result = MICSetGainAsync(chan, gain, __MICSyncCallback);
+
+    if (result < MIC_RESULT_READY) {
+        return result;
+    }
+    return __MICSync(chan);
+}
+
+/* Returns the debounced microphone button state to the caller. */
 s32 MICGetButton(s32 chan, u32* button) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -337,6 +372,7 @@ s32 MICGetButton(s32 chan, u32* button) {
     return MIC_RESULT_READY;
 }
 
+/* Returns the device identifier reported by an attached microphone. */
 s32 MICGetDeviceID(s32 chan, u32* id) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -357,21 +393,15 @@ s32 MICGetDeviceID(s32 chan, u32* id) {
     return MIC_RESULT_READY;
 }
 
-s32 MICStart(s32 chan) {
-    s32 result = MICStartAsync(chan, __MICSyncCallback);
-
-    if (result < MIC_RESULT_READY) {
-        return result;
-    }
-    return __MICSync(chan);
-}
-
+/* Queues asynchronous microphone sampling, derives its timeout from status codes, and clears the
+ * destination ring. */
 s32 MICStartAsync(s32 chan, MICCallback callback) {
     MICControlBlock* cb;
     BOOL enabled;
     s32 result;
     s32 rate;
     s32 size;
+    u32 status;
 
     if (!__init || chan < 0 || chan >= 2) {
         return MIC_RESULT_FATAL_ERROR;
@@ -383,7 +413,8 @@ s32 MICStartAsync(s32 chan, MICCallback callback) {
         return result;
     }
 
-    cb->status = cb->last_status | MIC_STATUS_ACTIVE;
+    status = cb->last_status | MIC_STATUS_ACTIVE;
+    cb->status = status;
     cb->attach_callback = callback;
     cb->set_callback = __MICSetCallback;
     cb->error_count = 0;
@@ -398,8 +429,9 @@ s32 MICStartAsync(s32 chan, MICCallback callback) {
     return MIC_RESULT_READY;
 }
 
-s32 MICStop(s32 chan) {
-    s32 result = MICStopAsync(chan, __MICSyncCallback);
+/* Starts microphone sampling and waits until the adapter accepts the request. */
+s32 MICStart(s32 chan) {
+    s32 result = MICStartAsync(chan, __MICSyncCallback);
 
     if (result < MIC_RESULT_READY) {
         return result;
@@ -407,10 +439,12 @@ s32 MICStop(s32 chan) {
     return __MICSync(chan);
 }
 
+/* Queues a request to stop microphone sampling without blocking the caller. */
 s32 MICStopAsync(s32 chan, MICCallback callback) {
     MICControlBlock* cb;
     BOOL enabled;
     s32 result;
+    u32 status;
 
     if (!__init || chan < 0 || chan >= 2) {
         return MIC_RESULT_FATAL_ERROR;
@@ -420,15 +454,27 @@ s32 MICStopAsync(s32 chan, MICCallback callback) {
     if ((result = __MICGetControlBlock(chan, TRUE, &cb)) < MIC_RESULT_READY) {
         OSRestoreInterrupts(enabled);
         return result;
+    } else {
+        status = cb->last_status & ~MIC_STATUS_ACTIVE;
+        cb->status = status;
+        cb->attach_callback = callback;
+        cb->set_callback = __MICSetCallback;
+        OSRestoreInterrupts(enabled);
+        return MIC_RESULT_READY;
     }
-
-    cb->status = cb->last_status & ~MIC_STATUS_ACTIVE;
-    cb->attach_callback = callback;
-    cb->set_callback = __MICSetCallback;
-    OSRestoreInterrupts(enabled);
-    return MIC_RESULT_READY;
 }
 
+/* Stops microphone sampling and waits for the status update to complete. */
+s32 MICStop(s32 chan) {
+    s32 result = MICStopAsync(chan, __MICSyncCallback);
+
+    if (result < MIC_RESULT_READY) {
+        return result;
+    }
+    return __MICSync(chan);
+}
+
+/* Returns the current sample position in the microphone ring buffer. */
 s32 MICGetCurrentTop(s32 chan) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -450,6 +496,7 @@ s32 MICGetCurrentTop(s32 chan) {
     return result;
 }
 
+/* Advances a sample position and subtracts one ring length when the boundary is crossed. */
 s32 MICUpdateIndex(s32 chan, s32 index, s32 samples) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -476,6 +523,7 @@ s32 MICUpdateIndex(s32 chan, s32 index, s32 samples) {
     return index;
 }
 
+/* Returns the number of samples available from an index to the write position. */
 s32 MICGetSamplesLeft(s32 chan, s32 index) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -504,6 +552,7 @@ s32 MICGetSamplesLeft(s32 chan, s32 index) {
     return result;
 }
 
+/* Copies available microphone samples from the ring into a caller buffer. */
 s32 MICGetSamples(s32 chan, s16* buffer, s32 index, s32 samples) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -531,7 +580,7 @@ s32 MICGetSamples(s32 chan, s16* buffer, s32 index, s32 samples) {
         if (index == cb->buff_ring_cur) {
             break;
         }
-        *destination++ = *(s16*)((u8*)cb->buff_ring_base + index);
+        *destination++ = *(s16*)&cb->buff_ring_base[index];
         index += sizeof(s16);
     }
 
@@ -539,6 +588,7 @@ s32 MICGetSamples(s32 chan, s16* buffer, s32 index, s32 samples) {
     return i;
 }
 
+/* Reports whether the microphone is currently streaming samples. */
 BOOL MICIsActive(s32 chan) {
     if (!__init || chan < 0 || chan >= 2) {
         return FALSE;
@@ -546,6 +596,7 @@ BOOL MICIsActive(s32 chan) {
     return __MICBlock[chan].is_active;
 }
 
+/* Reports whether the microphone is attached to the requested EXI channel. */
 BOOL MICIsAttached(s32 chan) {
     if (!__init || chan < 0 || chan >= 2) {
         return FALSE;
@@ -553,54 +604,70 @@ BOOL MICIsAttached(s32 chan) {
     return __MICBlock[chan].is_attached;
 }
 
+/* Validates the locked EXI device, initializes microphone status, and completes or rolls back the
+ * mount. */
 static s32 __MICDoMount(s32 chan) {
+    MICControlBlock* cb;
     s32 result;
+    BOOL enabled;
     u32 id;
     u32 status;
-    MICControlBlock* cb = &__MICBlock[chan];
-    BOOL enabled = OSDisableInterrupts();
+    cb = &__MICBlock[chan];
+    enabled = OSDisableInterrupts();
 
     cb->is_attached = TRUE;
 
     if (!EXIGetID(chan, 0, &id)) {
         result = MIC_RESULT_NOCARD;
-    } else if (id != MIC_EXI_ID) {
-        result = MIC_RESULT_WRONGDEVICE;
     } else {
-        result = MIC_RESULT_READY;
-    }
-
-    if (result >= MIC_RESULT_READY &&
-        (result = __MICRawReset(chan)) >= MIC_RESULT_READY &&
-        (result = __MICRawReadStatus(chan, &status)) >= MIC_RESULT_READY) {
-        __MICUpdateStatus(chan, status, FALSE);
-        cb->button = 0;
-        cb->last_button = 0;
-        cb->button_time_delta = 0;
-        cb->button_time_last = OSGetTick();
-
-        if (EXIProbe(chan)) {
-            EXISetExiCallback(chan, __MICExiHandler);
-            EXIUnlock(chan);
-            OSRestoreInterrupts(enabled);
-
-            if (cb->attach_callback) {
-                MICCallback attach = cb->attach_callback;
-                cb->attach_callback = NULL;
-                attach(chan, result);
-            }
-            __MICPutControlBlock(cb, result);
-            return MIC_RESULT_READY;
+        if (__MICCheckID(&id)) {
+            result = MIC_RESULT_READY;
+        } else {
+            result = MIC_RESULT_WRONGDEVICE;
         }
-        result = MIC_RESULT_NOCARD;
     }
 
+    if (result >= MIC_RESULT_READY) {
+        result = __MICRawReset(chan);
+        if (result >= MIC_RESULT_READY) {
+            result = __MICRawReadStatus(chan, &status);
+            if (result >= MIC_RESULT_READY) {
+                __MICUpdateStatus(chan, status, FALSE);
+                cb->button = 0;
+                cb->last_button = 0;
+                cb->button_time_delta = 0;
+                cb->button_time_last = OSGetTick();
+
+                if (!EXIProbe(chan)) {
+                    result = MIC_RESULT_NOCARD;
+                    goto unmount;
+                }
+                EXISetExiCallback(chan, __MICExiHandler);
+                EXIUnlock(chan);
+                OSRestoreInterrupts(enabled);
+
+                {
+                    MICCallback attach = cb->attach_callback;
+                    if (attach) {
+                        cb->attach_callback = NULL;
+                        attach(chan, result);
+                    }
+                }
+                __MICPutControlBlock(cb, result);
+                return MIC_RESULT_READY;
+            }
+        }
+    }
+
+unmount:
     EXIUnlock(chan);
     __MICDoUnmount(chan, result);
     OSRestoreInterrupts(enabled);
     return result;
 }
 
+/* Clears adapter state and invokes any pending attach callback after an unmount or mount
+ * failure. */
 static void __MICDoUnmount(s32 chan, s32 result) {
     MICControlBlock* cb = &__MICBlock[chan];
     MICCallback callback;
@@ -624,6 +691,7 @@ static void __MICDoUnmount(s32 chan, s32 result) {
     }
 }
 
+/* Resumes mounting when the EXI channel lock becomes available. */
 static void __MICUnlockedCallback(s32 chan, OSContext* context) {
     MICControlBlock* cb = &__MICBlock[chan];
     MICCallback callback = cb->mount_callback;
@@ -634,6 +702,7 @@ static void __MICUnlockedCallback(s32 chan, OSContext* context) {
     }
 }
 
+/* Advances the asynchronous mount state machine after EXI callbacks. */
 static void __MICMountCallback(s32 chan, s32 result) {
     MICControlBlock* cb = &__MICBlock[chan];
 
@@ -651,6 +720,7 @@ static void __MICMountCallback(s32 chan, s32 result) {
     }
 }
 
+/* Writes the pending status word when a status event allows the channel to be selected. */
 static void __MICSetCallback(s32 chan, s32 result) {
     MICControlBlock* cb = &__MICBlock[chan];
     u32 status = cb->status;
@@ -660,6 +730,7 @@ static void __MICSetCallback(s32 chan, s32 result) {
     }
 }
 
+/* Sleeps a synchronous API caller until its adapter operation finishes. */
 static s32 __MICSync(s32 chan) {
     MICControlBlock* cb = &__MICBlock[chan];
     BOOL enabled = OSDisableInterrupts();
@@ -671,10 +742,12 @@ static s32 __MICSync(s32 chan) {
     return cb->result_code;
 }
 
+/* Wakes the thread waiting for a synchronous microphone operation. */
 static void __MICSyncCallback(s32 chan, s32 result) {
     OSWakeupThread(&__MICBlock[chan].thread_queue);
 }
 
+/* Handles EXI removal interrupts and notifies the attached microphone users. */
 static void __MICExtHandler(s32 chan, OSContext* context) {
     MICControlBlock* cb = &__MICBlock[chan];
 
@@ -701,19 +774,26 @@ static void __MICExtHandler(s32 chan, OSContext* context) {
     }
 }
 
+/* Handles an EXI status event while the microphone is streaming samples. */
 static void __MICExiHandler(s32 chan, OSContext* context) {
     MICControlBlock* cb;
-    s32 result = MIC_RESULT_FATAL_ERROR;
+    s32 result;
 
     OSCancelAlarm(&__timeout[chan]);
     cb = &__MICBlock[chan];
 
     if (cb->is_attached && cb->is_active) {
-        if (EXILock(chan, 0, NULL)) {
+        if (!EXILock(chan, 0, NULL)) {
+            result = MIC_RESULT_FATAL_ERROR;
+        } else {
             u32 status;
 
-            if ((result = __MICRawReadStatus(chan, &status)) >= MIC_RESULT_READY &&
-                __MICUpdateStatus(chan, status, TRUE)) {
+            result = __MICRawReadStatus(chan, &status);
+            if (result < MIC_RESULT_READY) {
+                EXIUnlock(chan);
+            } else if (!__MICUpdateStatus(chan, status, TRUE)) {
+                EXIUnlock(chan);
+            } else {
                 if (status & MIC_STATUS_BUFOVRFLW) {
                     cb->error_count++;
                     status &= ~MIC_STATUS_BUFOVRFLW;
@@ -726,16 +806,19 @@ static void __MICExiHandler(s32 chan, OSContext* context) {
 
                 if (cb->is_active) {
                     result = __MICRawReadDataAsync(
-                        chan, (s16*)((u8*)cb->buff_ring_base + cb->buff_ring_cur),
+                        chan, (s16*)&cb->buff_ring_base[cb->buff_ring_cur],
                         cb->hw_buff_size, __MICTxHandler);
                     if (result >= MIC_RESULT_READY) {
                         goto skip_unlock;
                     }
-                } else if (!EXIProbe(chan)) {
-                    result = MIC_RESULT_NOCARD;
+                    EXIUnlock(chan);
+                } else {
+                    if (!EXIProbe(chan)) {
+                        result = MIC_RESULT_NOCARD;
+                    }
+                    EXIUnlock(chan);
                 }
             }
-            EXIUnlock(chan);
         }
 
     skip_unlock:
@@ -754,6 +837,7 @@ static void __MICExiHandler(s32 chan, OSContext* context) {
     }
 }
 
+/* Finishes a sample DMA transfer and schedules the next timeout window. */
 static void __MICTxHandler(s32 chan, OSContext* context) {
     s32 result;
     MICControlBlock* cb = &__MICBlock[chan];
@@ -801,6 +885,7 @@ unlock:
     }
 }
 
+/* Polls attached idle microphones from the periodic alarm callback. */
 static void __MICAlarmCallback(OSAlarm* alarm, OSContext* context) {
     s32 chan;
 
@@ -832,6 +917,7 @@ static void __MICAlarmCallback(OSAlarm* alarm, OSContext* context) {
     }
 }
 
+/* Resets an attached microphone when its sample-transfer timeout alarm fires. */
 static void __MICTimeoutCallback(OSAlarm* alarm, OSContext* context) {
     s32 chan;
     MICControlBlock* cb;
@@ -859,6 +945,7 @@ static void __MICTimeoutCallback(OSAlarm* alarm, OSContext* context) {
     }
 }
 
+/* Selects the EXI channel and sends the adapter reset command. */
 static s32 __MICRawReset(s32 chan) {
     BOOL enabled = OSDisableInterrupts();
     BOOL failed;
@@ -876,12 +963,11 @@ static s32 __MICRawReset(s32 chan) {
     failed |= !EXIDeselect(chan);
     OSRestoreInterrupts(enabled);
 
-    if (failed) {
-        return MIC_RESULT_NOCARD;
-    }
-    return MIC_RESULT_READY;
+    return failed ? MIC_RESULT_NOCARD : MIC_RESULT_READY;
 }
 
+/* The output is assigned even if an EXI transfer fails; the return code carries the transfer result
+ * separately. */
 static s32 __MICRawReadStatus(s32 chan, u32* status) {
     BOOL enabled = OSDisableInterrupts();
     BOOL failed;
@@ -909,6 +995,7 @@ static s32 __MICRawReadStatus(s32 chan, u32* status) {
     return MIC_RESULT_READY;
 }
 
+/* Writes one status word to the microphone adapter over EXI. */
 static s32 __MICRawWriteStatus(s32 chan, u32 status) {
     BOOL enabled = OSDisableInterrupts();
     BOOL failed;
@@ -933,6 +1020,8 @@ static s32 __MICRawWriteStatus(s32 chan, u32 status) {
     return MIC_RESULT_READY;
 }
 
+/* Invalidates the destination cache, then starts asynchronous microphone sample DMA into the ring
+ * buffer. */
 static s32 __MICRawReadDataAsync(s32 chan, s16* data, u32 len, EXICallback callback) {
     BOOL enabled;
     BOOL failed;
@@ -962,6 +1051,7 @@ static s32 __MICRawReadDataAsync(s32 chan, s16* data, u32 len, EXICallback callb
     return MIC_RESULT_READY;
 }
 
+/* Reserves a channel state block for an API operation under interrupt lock. */
 static s32 __MICGetControlBlock(s32 chan, BOOL skip_active_check, MICControlBlock** micblock) {
     s32 result;
     MICControlBlock* cb = &__MICBlock[chan];
@@ -984,6 +1074,7 @@ static s32 __MICGetControlBlock(s32 chan, BOOL skip_active_check, MICControlBloc
     return result;
 }
 
+/* Publishes an operation result in the reserved channel state block. */
 static void __MICPutControlBlock(MICControlBlock* micblock, s32 result) {
     BOOL enabled = OSDisableInterrupts();
 
@@ -995,9 +1086,14 @@ static void __MICPutControlBlock(MICControlBlock* micblock, s32 result) {
     OSRestoreInterrupts(enabled);
 }
 
+/* Decodes adapter status, updates stream settings, and resets and rereads the adapter when tracked
+ * bits change. */
 static BOOL __MICUpdateStatus(s32 chan, u32 status, BOOL check_change) {
-    MICControlBlock* cb = &__MICBlock[chan];
-    BOOL enabled = OSDisableInterrupts();
+    MICControlBlock* cb;
+    BOOL enabled;
+
+    cb = &__MICBlock[chan];
+    enabled = OSDisableInterrupts();
 
     switch (status & (MIC_STATUS_64BYTES | MIC_STATUS_128BYTES)) {
         case 0:
@@ -1023,10 +1119,13 @@ static BOOL __MICUpdateStatus(s32 chan, u32 status, BOOL check_change) {
             break;
     }
 
-    if (status & MIC_STATUS_GAIN15) {
-        cb->gain = 15;
-    } else {
+    switch (status & MIC_STATUS_GAIN15) {
+    case 0:
         cb->gain = 0;
+        break;
+    default:
+        cb->gain = 15;
+        break;
     }
     cb->buff_ring_size = cb->hw_buff_size * (cb->buff_size / cb->hw_buff_size);
 
@@ -1053,6 +1152,7 @@ static BOOL __MICUpdateStatus(s32 chan, u32 status, BOOL check_change) {
     return TRUE;
 }
 
+/* Debounces the microphone button using the elapsed system tick count. */
 static void __MICUpdateButton(s32 chan) {
     MICControlBlock* cb;
     BOOL enabled;
@@ -1085,5 +1185,3 @@ static void __MICUpdateButton(s32 chan) {
     cb->button_time_delta = delta;
     OSRestoreInterrupts(enabled);
 }
-
-#pragma force_active reset

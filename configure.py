@@ -968,7 +968,7 @@ config.libs = [
         "host": False,
         "objects": [
             Object(
-                NonMatching,
+                Matching,
                 "dolphin/mic/mic.c",
                 extra_cflags=["-use_lmw_stmw on"],
             ),
