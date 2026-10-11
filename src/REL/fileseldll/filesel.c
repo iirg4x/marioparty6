@@ -1,3 +1,4 @@
+/* File Select overlay startup, save-slot presentation, and slot selection. */
 #include "dolphin.h"
 #include "REL/fileseldll.h"
 #include "datanum/filesel.h"
@@ -27,46 +28,65 @@ typedef void (*VoidFunc)(void);
 enum {
     FILESEL_OUTVIEW_OBJECT_PRIORITY = 32730,
     FILESEL_SLOT_SPRITE_PRIORITY = 95,
-    FILESEL_DECIMAL_DIGIT_MASK = 15,
-    FILESEL_SUBSTICK_STEP_MASK = 248,
-    FILESEL_SOUND_05 = 1155,
-    FILESEL_SOUND_06 = 1156,
-    FILESEL_SOUND_07 = 1157,
-    FILESEL_SOUND_08 = 1158,
-    FILESEL_SOUND_09 = 1159,
-    FILESEL_SOUND_10 = 1160,
-    FILESEL_SOUND_11 = 1161,
-    FILESEL_SOUND_13 = 1163,
-    FILESEL_SOUND_14 = 1164,
-    FILESEL_SOUND_15 = 1165,
-    FILESEL_SOUND_17 = 1167,
+    FILESEL_DECIMAL_DIGIT_MASK = 0xF,
+    FILESEL_SUBSTICK_STEP_MASK = 0xF8,
 };
 
-/* lbl_1_bss_348 element (fn_1_8F34 / fn_1_ABF8 / fn_1_B234), 6 bytes */
-typedef struct b234_point { s16 x; s16 y; u16 flag; } B234Point;
-/* fn_1_B234 out rect */
-typedef struct b234_rect { f32 x0; f32 y0; f32 x1; f32 y1; } B234Rect;
+/* Point coordinates plus an associated 16-bit flag from the File Select point table. */
+typedef struct b234_point {
+    /* Horizontal coordinate in the point table. */
+    s16 x;
+    /* Vertical coordinate in the point table. */
+    s16 y;
+    /* Point attribute flags; the meaning of individual bits is not established here. */
+    u16 flag;
+} B234Point;
+/* Coordinate bounds passed to the keyboard navigation helper. */
+typedef struct b234_rect {
+    /* Minimum horizontal coordinate. */
+    f32 minX;
+    /* Minimum vertical coordinate. */
+    f32 minY;
+    /* Maximum horizontal coordinate. */
+    f32 maxX;
+    /* Maximum vertical coordinate. */
+    f32 maxY;
+} B234Rect;
 
-/* lbl_1_bss_18 element (fn_1_8510 / fn_1_8688 / fn_1_82F0), stride 0x28 */
+/* Per-model distortion texture matrix, tint, offset, and remaining effect time. */
 typedef struct bss18_entry {
-    /* 0x00 */ Vec unk_0;
-    /* 0x0C */ Vec unk_c;
-    /* 0x18 */ GXColor unk_18;
-    /* 0x1C */ f32 unk_1c;
-    /* 0x20 */ f32 unk_20;
-    /* 0x24 */ f32 unk_24;
+    /* First row of the indirect texture matrix. */
+    Vec indirectMatrixRow0;
+    /* Second row of the indirect texture matrix. */
+    Vec indirectMatrixRow1;
+    /* Tint applied to the card distortion model. */
+    GXColor tint;
+    /* Current vertical texture offset. */
+    f32 textureOffset;
+    /* Texture offset increment applied on each material-hook invocation. */
+    f32 textureOffsetStep;
+    /* Remaining lifetime in frames. */
+    f32 framesRemaining;
 } BSS18_ENTRY; /* size = 0x28 */
 
-/* fn_1_7B64 rodata block */
-typedef struct vec5 { Vec v[5]; } VEC5;
+/* Five particle emission points on the selected slot model. */
+typedef struct vec5 {
+    /* Five local-space particle emission offsets. */
+    Vec v[5];
+} VEC5;
 
-/* lbl_1_data_48C[] element (NameEnterInit sprite table), stride 0xC */
+/* Sprite asset and placement settings used to build the name keyboard. */
 typedef struct data48c {
-    /* 0x0 */ s32 unk_0;
-    /* 0x4 */ u8  unk_4;
-    /* 0x6 */ s16 unk_6;
-    /* 0x8 */ s16 unk_8;
-    /* 0xA */ s16 unk_A;
+    /* File Select sprite data number. */
+    s32 dataNumber;
+    /* Sprite animation bank. */
+    u8 bank;
+    /* Sprite draw priority. */
+    s16 priority;
+    /* Horizontal offset in pixels from the keyboard sprite group's origin. */
+    s16 x;
+    /* Vertical offset in pixels from the keyboard sprite group's origin. */
+    s16 y;
 } DATA48C; /* size 0xC */
 
 extern const VoidFunc _ctors[];
@@ -135,7 +155,7 @@ extern s64 SLSerialNo[];
 
 s32 SLSaveFlagGet(void);
 void SLSaveFlagSet(s32 flag);
-void SLSaveDataMake(s32 arg, OSTime *time);
+void SLSaveDataMake(s32 initializationMode, OSTime *time);
 void SLSaveEmptySet(s16 slot, s16 idx);
 s32 SLBoxDataOffsetGet(s16 boxNo);
 void SLCommonLoad(void);
@@ -157,17 +177,17 @@ void fn_1_6E8(void);
 void fn_1_C60(void);
 void fn_1_C8C(void);
 void fn_1_179C(void);
-void fn_1_2654(s16 arg);
+void fn_1_2654(s16 slotSelection);
 void fn_1_2A40(void);
 void fn_1_35AC(void);
-void fn_1_3C80(s16 id, Vec *pos);
-void fn_1_3CC0(s16 id, f32 x, f32 y, f32 z);
-void fn_1_3CF4(s16 id, s32 flag);
-void fn_1_50DC(void (*func)(void), s32 arg1);
+void fn_1_3C80(s16 boxNo, Vec *position);
+void fn_1_3CC0(s16 boxNo, f32 x, f32 y, f32 z);
+void fn_1_3CF4(s16 boxNo, s32 motionMode);
+void fn_1_50DC(void (*func)(void), s32 processProperty);
 void fn_1_5130(void);
-void fn_1_6314(s16 id, s32 flag);
-void fn_1_63A0(s16 id, s32 flag);
-s32 FileselEraseConfirm(s16 arg0);
+void fn_1_6314(s16 boxNo, s32 active);
+void fn_1_63A0(s16 boxNo, s32 active);
+s32 FileselEraseConfirm(s16 boxNo);
 s32 fn_1_69B0(void);
 void FileselWipeDraw(void);
 void fn_1_7B64(void);
@@ -175,27 +195,28 @@ void fn_1_7A0C(void);
 void fn_1_7DEC(void);
 void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
 void fn_1_82F0(OMOBJ *obj);
-void fn_1_8510(s16 id, Vec *pos);
+void fn_1_8510(s16 effectIndex, Vec *position);
 void fn_1_8688(OMOBJ *p);
 void fn_1_8A34(void);
-void fn_1_8F34(s32 arg0, s16 idx);
+void fn_1_8F34(s32 callbackData, s16 selectedKeyIndex);
 s16 fn_1_AAEC(s16 winId);
-s16 fn_1_ABF8(s16 id, f32 refX, f32 refY, f32 dirX, f32 dirY);
+s16 fn_1_ABF8(s16 currentKeyIndex, f32 originX, f32 originY, f32 directionX, f32 directionY);
 void fn_1_B234(B234Rect *r);
 void NameEnterClose(void);
 void fn_1_3D14(void);
-s32 FileselCopy(s16 arg);
+s32 FileselCopy(s16 sourceBoxNo);
 
 void FileselInit(void);
 void fn_1_15AC(void);
-void fn_1_36C4(s16 a, s16 b);
-void fn_1_6E54(s16 a, s32 b);
+void fn_1_36C4(s16 boxNo, s16 slotNumber);
+void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot);
 void NameEnterInit(void);
-void fn_1_CB4(s32 arg);
+void fn_1_CB4(s32 showSlots);
 s32 FileselSelect(void);
 
 /* ======================================================================== */
 
+/* Overlay entry: build the object manager and hand off to File Select. */
 int _prolog(void)
 {
     const VoidFunc *ctor;
@@ -208,6 +229,7 @@ int _prolog(void)
     return 0;
 }
 
+/* Overlay shutdown: run the registered destructors before unloading. */
 void _epilog(void)
 {
     const VoidFunc *dtor;
@@ -218,6 +240,7 @@ void _epilog(void)
 }
 
 /* 0x00A0 */
+/* Called by _prolog to create File Select cameras, windows, and main process. */
 void ObjectSetup(void)
 {
     HU3D_LIGHTID lightId;
@@ -232,7 +255,8 @@ void ObjectSetup(void)
                                     1.0f, -1.5f, -1.0f,
                                     255, 255, 255);
     Hu3DGLightInfinitytSet(lightId);
-    lbl_1_bss_344 = omAddObjEx(lbl_1_bss_340, FILESEL_OUTVIEW_OBJECT_PRIORITY, 0, 0, -1, omOutViewMulti);
+    lbl_1_bss_344 =
+        omAddObjEx(lbl_1_bss_340, FILESEL_OUTVIEW_OBJECT_PRIORITY, 0, 0, -1, omOutViewMulti);
     lbl_1_bss_344->work[0] = 2;
     Hu3DCameraCreate(3);
     Hu3DCameraPerspectiveSet(1, 5.0f, 20.0f, 15000.0f, 1.2f);
@@ -248,11 +272,12 @@ void ObjectSetup(void)
     HuWinInit(1);
     HuWinMesLanguageSet(GwLanguage);
     HuWinMesRead();
-    HuAudSStreamPlay(2);
+    HuAudSStreamPlay(MSM_STREAM_TITLE);
     OSReport(lbl_1_data_E2, SAVE_BOX_SIZE);
 }
 
 /* 0x0374 */
+/* Main File Select process: load card data, handle the chosen slot, then transition overlays. */
 void FileselMain(void)
 {
     s32 flag;
@@ -272,7 +297,7 @@ void FileselMain(void)
         goto L_56C;
     }
     if (status == -1) {
-        HuAudFXPlay(FILESEL_SOUND_17);
+        HuAudFXPlay(MSM_SE_FILESEL_17);
         fn_1_CB4(0);
         GwCommon = GwCommonOrig;
         fn_1_6E54(0, 0);
@@ -280,7 +305,7 @@ void FileselMain(void)
         flag = 0;
         goto L_56C;
     }
-    HuAudFXPlay(FILESEL_SOUND_17);
+    HuAudFXPlay(MSM_SE_FILESEL_17);
     fn_1_CB4(1);
 L_454:
     status = FileselSelect();
@@ -348,6 +373,8 @@ L_56C:
 }
 
 /* 0x0680 */
+/* FileselMain calls this when leaving without saving. Disable microphone mode if channel 1
+ * detection or mounting fails; initialization status is ignored before closing speech resources. */
 void fn_1_680(void)
 {
     if (HuMCProbe(1) != 0) {
@@ -360,10 +387,12 @@ void fn_1_680(void)
         }
         HuMCClose();
     }
-    HuMCMicGet();
+    HuMCMicGet(); /* The current setting is read, but this function does not use the returned
+                   * value. */
 }
 
 /* 0x06E8 */
+/* FileselMain calls this at startup to load the scene, slot art, and effects. */
 void fn_1_6E8(void)
 {
     Vec camPos;
@@ -384,7 +413,8 @@ void fn_1_6E8(void)
     Hu3DShadowPosSet(&camPos, &camUp, &camTarget);
     Hu3DShadowTPLvlSet(0.0f);
 
-    lbl_1_bss_2D8[1] = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_BACKGROUND, HU_MEMNUM_OVL, 2));
+    lbl_1_bss_2D8[1] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_BACKGROUND, HU_MEMNUM_OVL, 2));
     Hu3DModelCameraSet(lbl_1_bss_2D8[1], 2);
     Hu3DModelLayerSet(lbl_1_bss_2D8[1], 1);
     Hu3DMotionSpeedSet(lbl_1_bss_2D8[1], 0.05f);
@@ -400,7 +430,8 @@ void fn_1_6E8(void)
     Hu3DModelRotSet(lbl_1_bss_2D8[0], -20.0f, -30.0f, 30.0f);
     Hu3DModelShadowMapSet(lbl_1_bss_2D8[0]);
 
-    lbl_1_bss_2D8[2] = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_DATA_SELECT, HU_MEMNUM_OVL, 2));
+    lbl_1_bss_2D8[2] =
+        Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_DATA_SELECT, HU_MEMNUM_OVL, 2));
     Hu3DModelCameraSet(lbl_1_bss_2D8[2], 2);
     Hu3DModelLayerSet(lbl_1_bss_2D8[2], 1);
     Hu3DModelAttrSet(lbl_1_bss_2D8[2], HU3D_ATTR_DISPOFF);
@@ -434,6 +465,7 @@ void fn_1_6E8(void)
 }
 
 /* 0x0C60 */
+/* Camera 1 layer hook: draw the full-screen depth polygon with the RGBA framebuffer format. */
 void fn_1_C60(void)
 {
     GXSetPixelFmt(GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
@@ -441,12 +473,15 @@ void fn_1_C60(void)
 }
 
 /* 0x0C8C */
+/* Camera 2 layer hook: restore the normal RGB framebuffer format. */
 void fn_1_C8C(void)
 {
     GXSetPixelFmt(GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 }
 
-void fn_1_CB4(s32 mode)
+/* After card initialization, animate the book and reveal three slots only when showSlots is
+ * nonzero. The duration uses the fourth slot model after the setup loop. */
+void fn_1_CB4(s32 showSlots)
 {
     Mtx objMtx;
     Vec rot;
@@ -495,7 +530,7 @@ void fn_1_CB4(s32 mode)
             rot.x + (340.0f - rot.x) * rate,
             rot.y + (360.0f - rot.y) * rate2,
             rot.z + -rot.z * rate2);
-        if (mode != 0) {
+        if (showSlots != 0) {
             if (t >= 70.0f) {
                 if (70.0f == t) {
                     Hu3DModelAttrReset(lbl_1_bss_2D8[2], HU3D_ATTR_DISPOFF);
@@ -509,7 +544,8 @@ void fn_1_CB4(s32 mode)
                 Hu3DMtxRotGet(objMtx, &rotV);
                 trans.x = trans.x + -260.0f * rate;
                 trans.y = trans.y + -50.0f * rate;
-                trans.z = trans.z + 500.0 * sin(3.141592653589793 * (180.0 * ((t - 70.0f) / (total - 70.0f))) / 180.0);
+                trans.z = trans.z + 500.0 * sin(3.141592653589793 *
+                                                (180.0 * ((t - 70.0f) / (total - 70.0f))) / 180.0);
                 Hu3DModelPosSetV(lbl_1_bss_2D8[2], &trans);
                 rotV.x = rotV.x * (1.0 - rate);
                 rotV.y = rotV.y * (1.0 - rate);
@@ -542,7 +578,7 @@ void fn_1_CB4(s32 mode)
             }
         }
     }
-    if (mode != 0) {
+    if (showSlots != 0) {
         lbl_1_bss_2DE = HuWinCreate(16.0f, 326.0f, 544, 42, 0);
         HuWinAttrSet(lbl_1_bss_2DE, HUWIN_ATTR_ALIGN_CENTER);
         HuWinPriSet(lbl_1_bss_2DE, 100);
@@ -552,39 +588,43 @@ void fn_1_CB4(s32 mode)
 }
 
 /* 0x15AC */
+/* Child process from scene setup: gently animate the book and data-select model. */
 void fn_1_15AC(void)
 {
     Mtx mtx;
-    f32 a;
-    f32 b;
+    f32 verticalPhase;
+    f32 rotationPhase;
 
-    a = 0.0f;
-    b = 45.0f;
+    verticalPhase = 0.0f;
+    rotationPhase = 45.0f;
     while (1) {
-        a += 2.0f;
-        if (a > 360.0f) {
-            a -= 360.0f;
+        verticalPhase += 2.0f;
+        if (verticalPhase > 360.0f) {
+            verticalPhase -= 360.0f;
         }
-        b += 1.1;
-        if (b > 360.0f) {
-            b -= 360.0f;
+        rotationPhase += 1.1;
+        if (rotationPhase > 360.0f) {
+            rotationPhase -= 360.0f;
         }
-        PSMTXTrans(mtx, 0.0f, (f32)(3.0 * sin(3.141592653589793 * a / 180.0)), 0.0f);
-        mtxRotCat(mtx, 0.0f, 0.0f, (f32)sin(3.141592653589793 * b / 180.0));
+        PSMTXTrans(mtx, 0.0f, (f32)(3.0 * sin(3.141592653589793 * verticalPhase / 180.0)), 0.0f);
+        mtxRotCat(mtx, 0.0f, 0.0f, (f32)sin(3.141592653589793 * rotationPhase / 180.0));
         Hu3DModelMtxSet(lbl_1_bss_2D8[0], &mtx);
-        PSMTXTrans(mtx, (f32)sin(3.141592653589793 * a / 180.0), (f32)(3.0 * sin(3.141592653589793 * b / 180.0)), 0.0f);
+        PSMTXTrans(mtx, (f32) sin(3.141592653589793 * verticalPhase / 180.0),
+                   (f32) (3.0 * sin(3.141592653589793 * rotationPhase / 180.0)), 0.0f);
         Hu3DModelMtxSet(lbl_1_bss_2D8[2], &mtx);
         HuPrcVSleep();
     }
 }
 
 /* 0x179C */
+/* Delayed child process from the reveal animation: open the main message window. */
 void fn_1_179C(void)
 {
     HuWinExOpen(lbl_1_bss_2E0);
     HuPrcEnd();
 }
 
+/* Called by FileselMain for each selection pass; handles slot navigation and actions. */
 s32 FileselSelect(void)
 {
     s16 sel;
@@ -632,7 +672,8 @@ L_192C:
             w = &lbl_1_bss_D8[sel];
             t = (f32)i / 10.0f;
             fn_1_3CC0(sel, sv[sel].x, sv[sel].y, 20.0f * t + sv[sel].z);
-            t = (f32)(sin(3.141592653589793 * (130.0f * t) / 180.0) * (1.0 / sin(2.2689280275926285)));
+            t = (f32) (sin(3.141592653589793 * (130.0f * t) / 180.0) *
+                       (1.0 / sin(2.2689280275926285)));
             Hu3DModelScaleSet(w->slotModel,
                 (f32)(1.5 + 0.5 * t),
                 (f32)(1.5 + 0.5 * t),
@@ -739,7 +780,7 @@ L_192C:
                             SLSaveEmptySet(curSlotNo, i);
                         }
                     }
-                    fxId = HuAudFXPlay(FILESEL_SOUND_15);
+                    fxId = HuAudFXPlay(MSM_SE_FILESEL_15);
                     ret = FileClear(-1);
                     HuAudFXStop(fxId);
                     if (ret == FILESEL_RESULT_CANCEL) {
@@ -758,7 +799,7 @@ L_192C:
                     time = OSGetTime();
                     SLSaveDataMake(0, &time);
                     SLCommonSet();
-                    fxId = HuAudFXPlay(FILESEL_SOUND_15);
+                    fxId = HuAudFXPlay(MSM_SE_FILESEL_15);
                     ret = FileSaveMesOpen(-1, FILE_SELECT_SAVING);
                     HuAudFXStop(fxId);
                     if (ret == FILESEL_RESULT_CANCEL) {
@@ -787,10 +828,10 @@ L_192C:
                 sel = FILESEL_RESULT_CANCEL;
                 goto L_2414;
             }
-            if (HuPadDStkRep[0] & 1) {
+            if (HuPadDStkRep[0] & 0x1) {
                 dir = -1;
             }
-            if (HuPadDStkRep[0] & 2) {
+            if (HuPadDStkRep[0] & 0x2) {
                 dir = 1;
             }
             if (dir == 0) {
@@ -802,12 +843,13 @@ L_192C:
             if (sel + dir >= 3) {
                 continue;
             }
-            HuAudFXPlay(FILESEL_SOUND_05);
+            HuAudFXPlay(MSM_SE_FILESEL_05);
             fn_1_3CF4(sel + dir, 0);
             fn_1_3CF4(sel, 1);
             for (i = 1; i <= 10; i++) {
                 t = (f32)i / 10.0f;
-                t = (f32)(sin(3.141592653589793 * (130.0f * t) / 180.0) * (1.0 / sin(2.2689280275926285)));
+                t = (f32) (sin(3.141592653589793 * (130.0f * t) / 180.0) *
+                           (1.0 / sin(2.2689280275926285)));
                 w = &lbl_1_bss_D8[sel + dir];
                 Hu3DModelScaleSet(w->slotModel,
                     (f32)(1.5 + 0.5 * t),
@@ -862,7 +904,9 @@ L_254C:
 }
 
 /* 0x2654 */
-void fn_1_2654(s16 arg)
+/* FileselSelect calls this before name entry to raise the three slots and move the data-select
+ * model. */
+void fn_1_2654(s16 slotSelection)
 {
     f32 scale;
     s16 i;
@@ -870,28 +914,32 @@ void fn_1_2654(s16 arg)
     for (i = 0; i < 3; i++) {
         Hu3DModelPosGet(lbl_1_bss_D8[i].slotModel, &lbl_1_bss_68[i]);
     }
-    Hu3DModelPosGet(*(s16 *)((u8 *)lbl_1_bss_2D8 + 4), &lbl_1_bss_68[i]);
-    if (arg == -1) {
+    Hu3DModelPosGet(lbl_1_bss_2D8[2], &lbl_1_bss_68[i]);
+    if (slotSelection == -1) {
         for (i = 1; i <= 10; i++) {
             scale = 1.0 - cos(3.141592653589793 * (90.0 * ((double)i / 10.0)) / 180.0);
             fn_1_3CC0(0, lbl_1_bss_68[0].x, lbl_1_bss_68[0].y + 350.0f * scale, lbl_1_bss_68[0].z);
             fn_1_3CC0(1, lbl_1_bss_68[1].x, lbl_1_bss_68[1].y + 350.0f * scale, lbl_1_bss_68[1].z);
             fn_1_3CC0(2, lbl_1_bss_68[2].x, lbl_1_bss_68[2].y + 350.0f * scale, lbl_1_bss_68[2].z);
-            Hu3DModelPosSet(*(s16 *)((u8 *)lbl_1_bss_2D8 + 4), lbl_1_bss_68[3].x - 200.0f * scale, lbl_1_bss_68[3].y, lbl_1_bss_68[3].z);
+            Hu3DModelPosSet(lbl_1_bss_2D8[2], lbl_1_bss_68[3].x - 200.0f * scale, lbl_1_bss_68[3].y,
+                            lbl_1_bss_68[3].z);
             HuPrcVSleep();
         }
     } else {
         for (i = 1; i <= 10; i++) {
             scale = 1.0 - cos(3.141592653589793 * (90.0 * ((double)i / 10.0)) / 180.0);
-            switch (arg) {
+            switch (slotSelection) {
             case 0:
-                fn_1_3CC0(0, lbl_1_bss_68[0].x, lbl_1_bss_68[0].y + 300.0f * scale, lbl_1_bss_68[0].z);
+                fn_1_3CC0(0, lbl_1_bss_68[0].x, lbl_1_bss_68[0].y + 300.0f * scale,
+                          lbl_1_bss_68[0].z);
                 break;
             case 1:
-                fn_1_3CC0(1, lbl_1_bss_68[1].x, lbl_1_bss_68[1].y - 400.0f * scale, lbl_1_bss_68[1].z);
+                fn_1_3CC0(1, lbl_1_bss_68[1].x, lbl_1_bss_68[1].y - 400.0f * scale,
+                          lbl_1_bss_68[1].z);
                 break;
             case 2:
-                fn_1_3CC0(2, lbl_1_bss_68[2].x, lbl_1_bss_68[2].y + 300.0f * scale, lbl_1_bss_68[2].z);
+                fn_1_3CC0(2, lbl_1_bss_68[2].x, lbl_1_bss_68[2].y + 300.0f * scale,
+                          lbl_1_bss_68[2].z);
                 break;
             }
             HuPrcVSleep();
@@ -900,6 +948,8 @@ void fn_1_2654(s16 arg)
 }
 
 /* 0x2A40 */
+/* Called after name entry to return the three slot models and data-select model to their
+ * saved positions. */
 void fn_1_2A40(void)
 {
     Vec v14;
@@ -913,7 +963,7 @@ void fn_1_2A40(void)
         Hu3DModelPosGet(lbl_1_bss_D8[i].slotModel, &v14);
         PSVECSubtract(&v14, &lbl_1_bss_68[i], &v20[i]);
     }
-    Hu3DModelPosGet(*(s16 *)((u8 *)lbl_1_bss_2D8 + 4), &v14);
+    Hu3DModelPosGet(lbl_1_bss_2D8[2], &v14);
     PSVECSubtract(&v14, &lbl_1_bss_68[i], &v20[i]);
     for (i = 1; i <= 10; i++) {
         scale = 1.0 - sin(3.141592653589793 * (90.0 * ((double)i / 10.0)) / 180.0);
@@ -924,147 +974,157 @@ void fn_1_2A40(void)
         }
         PSVECScale(&v20[j], &v14, scale);
         PSVECAdd(&lbl_1_bss_68[j], &v14, &v8);
-        Hu3DModelPosSetV(*(s16 *)((u8 *)lbl_1_bss_2D8 + 4), &v8);
+        Hu3DModelPosSetV(lbl_1_bss_2D8[2], &v8);
         HuPrcVSleep();
     }
 }
 
 /* 0x2C6C */
+/* Called during scene setup to create the four card panels, their text, and animated slot
+ * models. */
 void FileselInit(void)
 {
-    FILESEL_BOX *p;
+    FILESEL_BOX *box;
     s16 j;
-    HUSPR_GROUPID grp;
+    HUSPR_GROUPID spriteGroup;
     s16 i;
-    HSF_DATA *hsf;
-    HUSPRID spr;
-    HUWINID win;
-    ANIMDATA *animB;
-    HSF_OBJECT *obj;
-    ANIMDATA *animC;
-    ANIMDATA *animA;
+    HSF_DATA *modelData;
+    HUSPRID sprite;
+    HUWINID panelWindow;
+    ANIMDATA *digitAnimation;
+    HSF_OBJECT *slotObject;
+    ANIMDATA *markerAnimation;
+    ANIMDATA *letterAnimation;
 
     HuSprExecLayerCameraSet(64, 2, 1);
     HuSprExecLayerCameraSet(120, 1, 8);
-    animA = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_08, HU_MEMNUM_OVL, 2));
-    grp = HuSprGrpCreate(1);
-    spr = HuSprCreate(animA, 0, 0);
-    HuSprGrpMemberSet(grp, 0, spr);
-    HuSprGrpDrawNoSet(grp, 64);
-    HuSprGrpPosSet(grp, 288.0f, 240.0f);
-    HuSprGrpScaleSet(grp, 20.0f, 20.0f);
-    animB = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_07, HU_MEMNUM_OVL, 2));
-    animC = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_06, HU_MEMNUM_OVL, 2));
+    letterAnimation = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_08, HU_MEMNUM_OVL, 2));
+    spriteGroup = HuSprGrpCreate(1);
+    sprite = HuSprCreate(letterAnimation, 0, 0);
+    HuSprGrpMemberSet(spriteGroup, 0, sprite);
+    HuSprGrpDrawNoSet(spriteGroup, 64);
+    HuSprGrpPosSet(spriteGroup, 288.0f, 240.0f);
+    HuSprGrpScaleSet(spriteGroup, 20.0f, 20.0f);
+    digitAnimation = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_07, HU_MEMNUM_OVL, 2));
+    markerAnimation = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_06, HU_MEMNUM_OVL, 2));
     lbl_1_bss_CC[0] = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_09, HU_MEMNUM_OVL, 2));
     lbl_1_bss_CC[1] = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_11, HU_MEMNUM_OVL, 2));
     lbl_1_bss_CC[2] = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_10, HU_MEMNUM_OVL, 2));
     for (i = 0; i < 8; i++) {
         lbl_1_bss_A8[i] = HuSprAnimRead(HuDataSelHeapReadNum(lbl_1_data_98[i], HU_MEMNUM_OVL, 2));
     }
+    /* This self-assignment has no effect; the slot loop below resets the index. */
     i = i;
     for (i = 0; i < 4; i++) {
-        p = &lbl_1_bss_D8[i];
-        win = HuWinCreate((f32)(288.0 * (i & 1)), (f32)(168.0 * (i / 2)), 192, 112, 0);
-        p->window = win;
-        p->waveOffset.x = p->waveOffset.y = p->waveOffset.z = 0.0f;
-        HuWinScaleSet(win, 1.5f, 1.5f);
-        HuWinBGTPLvlSet(win, 0.0f);
-        HuWinAttrSet(win, HUWIN_ATTR_ALIGN_CENTER | HUWIN_ATTR_OUTLINE);
-        p->cardTextureAnim = HuSprAnimMake(320, 168, ANIM_BMP_RGB5A3);
-        p->cardTextureBuffer = p->cardTextureAnim->bmp->data = HuMemDirectMallocNum(0, GXGetTexBufferSize(320, 168, GX_TF_RGB5A3, 0, 0), HU_MEMNUM_OVL);
-        HuWinDrawNoSet(win, 120);
-        HuWinMesSpeedSet(win, 0);
-        HuWinMesSet(win, MESSNUM(MESS_SAF_TEST, 9));
-        grp = HuSprGrpCreate(17);
-        p->spriteGroup = grp;
-        HuSprGrpPosSet(grp, (f32)(288.0 * (i & 1)), (f32)(168.0 * (i / 2)));
-        HuSprGrpScaleSet(grp, 1.5f, 1.5f);
+        box = &lbl_1_bss_D8[i];
+        panelWindow = HuWinCreate((f32)(288.0 * (i & 0x1)), (f32)(168.0 * (i / 2)), 192, 112, 0);
+        box->window = panelWindow;
+        box->waveOffset.x = box->waveOffset.y = box->waveOffset.z = 0.0f;
+        HuWinScaleSet(panelWindow, 1.5f, 1.5f);
+        HuWinBGTPLvlSet(panelWindow, 0.0f);
+        HuWinAttrSet(panelWindow, HUWIN_ATTR_ALIGN_CENTER | HUWIN_ATTR_OUTLINE);
+        box->cardTextureAnim = HuSprAnimMake(320, 168, ANIM_BMP_RGB5A3);
+        box->cardTextureBuffer = box->cardTextureAnim->bmp->data = HuMemDirectMallocNum(
+            0, GXGetTexBufferSize(320, 168, GX_TF_RGB5A3, 0, 0), HU_MEMNUM_OVL);
+        HuWinDrawNoSet(panelWindow, 120);
+        HuWinMesSpeedSet(panelWindow, 0);
+        HuWinMesSet(panelWindow, MESSNUM(MESS_SAF_TEST, 9));
+        spriteGroup = HuSprGrpCreate(17);
+        box->spriteGroup = spriteGroup;
+        HuSprGrpPosSet(spriteGroup, (f32)(288.0 * (i & 0x1)), (f32)(168.0 * (i / 2)));
+        HuSprGrpScaleSet(spriteGroup, 1.5f, 1.5f);
         for (j = 0; j < 10; j++) {
-            spr = HuSprCreate(animB, FILESEL_SLOT_SPRITE_PRIORITY, 0);
-            HuSprGrpMemberSet(grp, j, spr);
-            HuSprPosSet(grp, j, (f32)(j * 12 + 42), 70.0f);
-            HuSprAttrReset(grp, j, HUSPR_ATTR_LINEAR);
+            sprite = HuSprCreate(digitAnimation, FILESEL_SLOT_SPRITE_PRIORITY, 0);
+            HuSprGrpMemberSet(spriteGroup, j, sprite);
+            HuSprPosSet(spriteGroup, j, (f32)(j * 12 + 42), 70.0f);
+            HuSprAttrReset(spriteGroup, j, HUSPR_ATTR_LINEAR);
         }
-        spr = HuSprCreate(animC, FILESEL_SLOT_SPRITE_PRIORITY, 0);
-        HuSprGrpMemberSet(grp, 10, spr);
-        HuSprPosSet(grp, 10, 70.0f, 96.0f);
-        HuSprAttrReset(grp, 10, HUSPR_ATTR_LINEAR);
+        sprite = HuSprCreate(markerAnimation, FILESEL_SLOT_SPRITE_PRIORITY, 0);
+        HuSprGrpMemberSet(spriteGroup, 10, sprite);
+        HuSprPosSet(spriteGroup, 10, 70.0f, 96.0f);
+        HuSprAttrReset(spriteGroup, 10, HUSPR_ATTR_LINEAR);
         for (j = 0; j < 5; j++) {
-            spr = HuSprCreate(animB, FILESEL_SLOT_SPRITE_PRIORITY, 0);
-            HuSprGrpMemberSet(grp, j + 12, spr);
-            HuSprPosSet(grp, j + 12, (f32)(j * 12 + 88), 96.0f);
-            HuSprAttrReset(grp, j + 12, HUSPR_ATTR_LINEAR);
+            sprite = HuSprCreate(digitAnimation, FILESEL_SLOT_SPRITE_PRIORITY, 0);
+            HuSprGrpMemberSet(spriteGroup, j + 12, sprite);
+            HuSprPosSet(spriteGroup, j + 12, (f32)(j * 12 + 88), 96.0f);
+            HuSprAttrReset(spriteGroup, j + 12, HUSPR_ATTR_LINEAR);
         }
-        HuSprGrpDrawNoSet(grp, 120);
-        p->slotModel = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI, HU_MEMNUM_OVL, 2));
-        Hu3DModelCameraSet(p->slotModel, 2);
-        Hu3DModelLayerSet(p->slotModel, 1);
-        Hu3DModelAttrSet(p->slotModel, HU3D_MOTATTR_LOOP);
-        j = Hu3DMotionMaxTimeGet(p->slotModel);
-        Hu3DMotionTimeSet(p->slotModel, frandmod(j));
-        p->frameAnimation = Hu3DAnimCreate(lbl_1_bss_CC[0], p->slotModel, lbl_1_data_1A0);
-        p->patternAnimation = Hu3DAnimCreate(lbl_1_bss_A8[0], p->slotModel, lbl_1_data_1AD);
-        Hu3DModelShadowSet(p->slotModel);
-        p->textModel = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI_MOJI, HU_MEMNUM_OVL, 2));
-        Hu3DModelCameraSet(p->textModel, 2);
-        Hu3DModelLayerSet(p->textModel, 2);
-        Hu3DAnimCreate(p->cardTextureAnim, p->textModel, lbl_1_data_1BB);
-        p->motionProcess = HuPrcChildCreate(fn_1_3D14, 16, 12288, 0, HuPrcCurrentGet());
-        obj = Hu3DModelObjPtrGet(p->slotModel, lbl_1_data_1C8);
-        strcpy(obj->name, lbl_1_data_190[i]);
-        p->stateModel1 = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI_HIKARI, HU_MEMNUM_OVL, 2));
-        Hu3DModelCameraSet(p->stateModel1, 2);
-        Hu3DModelLayerSet(p->stateModel1, 2);
-        Hu3DModelAttrSet(p->stateModel1, HU3D_ATTR_DISPOFF);
-        p->stateModel2 = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI_HIKARI2, HU_MEMNUM_OVL, 2));
-        Hu3DModelCameraSet(p->stateModel2, 2);
-        Hu3DModelLayerSet(p->stateModel2, 2);
-        Hu3DModelAttrSet(p->stateModel2, HU3D_ATTR_DISPOFF);
-        p->stateModel3 = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI_HIKARI2, HU_MEMNUM_OVL, 2));
-        Hu3DModelCameraSet(p->stateModel3, 2);
-        Hu3DModelLayerSet(p->stateModel3, 2);
-        Hu3DModelAttrSet(p->stateModel3, HU3D_ATTR_DISPOFF);
-        hsf = Hu3DData[p->stateModel3].hsf;
-        for (j = 0; j < hsf->materialNum; j++) {
-            hsf->material[j].litColor[0] = hsf->material[j].color[0] = 241;
-            hsf->material[j].litColor[1] = hsf->material[j].color[1] = 123;
-            hsf->material[j].litColor[2] = hsf->material[j].color[2] = 18;
+        HuSprGrpDrawNoSet(spriteGroup, 120);
+        box->slotModel = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI, HU_MEMNUM_OVL, 2));
+        Hu3DModelCameraSet(box->slotModel, 2);
+        Hu3DModelLayerSet(box->slotModel, 1);
+        Hu3DModelAttrSet(box->slotModel, HU3D_MOTATTR_LOOP);
+        j = Hu3DMotionMaxTimeGet(box->slotModel);
+        Hu3DMotionTimeSet(box->slotModel, frandmod(j));
+        box->frameAnimation = Hu3DAnimCreate(lbl_1_bss_CC[0], box->slotModel, lbl_1_data_1A0);
+        box->patternAnimation = Hu3DAnimCreate(lbl_1_bss_A8[0], box->slotModel, lbl_1_data_1AD);
+        Hu3DModelShadowSet(box->slotModel);
+        box->textModel =
+            Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI_MOJI, HU_MEMNUM_OVL, 2));
+        Hu3DModelCameraSet(box->textModel, 2);
+        Hu3DModelLayerSet(box->textModel, 2);
+        Hu3DAnimCreate(box->cardTextureAnim, box->textModel, lbl_1_data_1BB);
+        box->motionProcess = HuPrcChildCreate(fn_1_3D14, 16, 12288, 0, HuPrcCurrentGet());
+        slotObject = Hu3DModelObjPtrGet(box->slotModel, lbl_1_data_1C8);
+        strcpy(slotObject->name, lbl_1_data_190[i]);
+        box->stateModel1 =
+            Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI_HIKARI, HU_MEMNUM_OVL, 2));
+        Hu3DModelCameraSet(box->stateModel1, 2);
+        Hu3DModelLayerSet(box->stateModel1, 2);
+        Hu3DModelAttrSet(box->stateModel1, HU3D_ATTR_DISPOFF);
+        box->stateModel2 =
+            Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI_HIKARI2, HU_MEMNUM_OVL, 2));
+        Hu3DModelCameraSet(box->stateModel2, 2);
+        Hu3DModelLayerSet(box->stateModel2, 2);
+        Hu3DModelAttrSet(box->stateModel2, HU3D_ATTR_DISPOFF);
+        box->stateModel3 =
+            Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_SIORI_HIKARI2, HU_MEMNUM_OVL, 2));
+        Hu3DModelCameraSet(box->stateModel3, 2);
+        Hu3DModelLayerSet(box->stateModel3, 2);
+        Hu3DModelAttrSet(box->stateModel3, HU3D_ATTR_DISPOFF);
+        modelData = Hu3DData[box->stateModel3].hsf;
+        for (j = 0; j < modelData->materialNum; j++) {
+            modelData->material[j].litColor[0] = modelData->material[j].color[0] = 241;
+            modelData->material[j].litColor[1] = modelData->material[j].color[1] = 123;
+            modelData->material[j].litColor[2] = modelData->material[j].color[2] = 18;
         }
-        p->visualState = 0;
-        Hu3DModelAttrSet(p->slotModel, HU3D_ATTR_DISPOFF);
-        p->hasSave = 1;
-        strcpy(p->fileName, lbl_1_data_1DD);
-        OSTicksToCalendarTime(OSGetTime(), &p->saveTime);
-        p->displayNumber = 10;
+        box->visualState = 0;
+        Hu3DModelAttrSet(box->slotModel, HU3D_ATTR_DISPOFF);
+        box->hasSave = 1;
+        strcpy(box->fileName, lbl_1_data_1DD);
+        OSTicksToCalendarTime(OSGetTime(), &box->saveTime);
+        box->displayNumber = 10;
         fn_1_36C4(i, i % 3);
     }
     Hu3DCameraLayerHookSet(1, 1, (HU3D_LAYER_HOOK)fn_1_35AC);
 }
 
 /* 0x35AC */
+/* Camera 1 layer callback: copy each card panel into its texture before the scene is drawn. */
 void fn_1_35AC(void)
 {
     s16 i;
 
     for (i = 0; i < 4; i++) {
         FILESEL_BOX *w = &lbl_1_bss_D8[i];
-        Hu3DFbCopyExec(1.1111111640930176 * (288.0 * (i & 1)),
+        Hu3DFbCopyExec(1.1111111640930176 * (288.0 * (i & 0x1)),
                        168.0 * (i / 2),
                        320, 168, 5, 0, w->cardTextureBuffer);
     }
 }
 
 /* 0x36C4 */
-void fn_1_36C4(s16 a, s16 b)
+/* Called after loading, creating, copying, or erasing a save to refresh one panel's details. */
+void fn_1_36C4(s16 boxNo, s16 slotNumber)
 {
-    FILESEL_BOX *p = &lbl_1_bss_D8[a];
+    FILESEL_BOX *p = &lbl_1_bss_D8[boxNo];
     s16 sprId = p->spriteGroup;
     OSCalendarTime *q = &p->saveTime;
     u8 i;
     u8 len;
     char buf[12];
 
-    p->slotNumberText[0] = (u8)(b + '1');
+    p->slotNumberText[0] = (u8)(slotNumber + '1');
     p->slotNumberText[1] = 0;
     HuWinInsertMesSet(p->window, (u32)p->slotNumberText, 0);
     if (p->hasSave == 0) {
@@ -1078,10 +1138,12 @@ void fn_1_36C4(s16 a, s16 b)
         }
         HuSprBankSet(sprId, 2, 11);
         HuSprBankSet(sprId, 5, 11);
+        /* Bank 10 is immediately replaced by bank 14 on this sprite before the next frame. */
         HuSprBankSet(sprId, 12, 10);
         HuSprBankSet(sprId, 12, 14);
         HuSprBankSet(sprId, 13, 0);
         Hu3DAnimAnimSet(p->patternAnimation, lbl_1_bss_A8[0]);
+        /* Sprite 13 is reset to bank 0 twice in this empty-slot path. */
         HuSprBankSet(sprId, 13, 0);
         for (i = 0; i < 3; i++) {
             HuSprAttrSet(sprId, i + 14, HUSPR_ATTR_DISPOFF);
@@ -1110,9 +1172,12 @@ void fn_1_36C4(s16 a, s16 b)
         HuWinInsertMesSet(p->window, (u32)p->fileName, 1);
         HuWinMesSet(p->window, FILE_SELECT_NAME_TEMPLATE);
         HuSprBankSet(sprId, 12, 14);
+        /* Hide members 13 through 16; the final call for member 17 is ignored because the group has
+        * only 17 members. */
         for (i = 0; i < 5; i++) {
             HuSprAttrSet(sprId, i + 13, HUSPR_ATTR_DISPOFF);
         }
+        /* Clamp the stored display count as well as the number shown on the panel. */
         if (p->displayNumber > 9999) {
             p->displayNumber = 9999;
         }
@@ -1139,17 +1204,19 @@ void fn_1_36C4(s16 a, s16 b)
 }
 
 /* 0x3C80 */
-void fn_1_3C80(s16 id, Vec *pos)
+/* Called by slot animations to store a panel's base position in model coordinates. */
+void fn_1_3C80(s16 boxNo, Vec *position)
 {
-    FILESEL_BOX *p = &lbl_1_bss_D8[id];
+    FILESEL_BOX *p = &lbl_1_bss_D8[boxNo];
 
-    p->basePosition = *pos;
+    p->basePosition = *position;
 }
 
 /* 0x3CC0 */
-void fn_1_3CC0(s16 id, f32 x, f32 y, f32 z)
+/* Called by slot animations to store a panel's base position in model coordinates. */
+void fn_1_3CC0(s16 boxNo, f32 x, f32 y, f32 z)
 {
-    FILESEL_BOX *p = &lbl_1_bss_D8[id];
+    FILESEL_BOX *p = &lbl_1_bss_D8[boxNo];
 
     p->basePosition.x = x;
     p->basePosition.y = y;
@@ -1157,12 +1224,14 @@ void fn_1_3CC0(s16 id, f32 x, f32 y, f32 z)
 }
 
 /* 0x3CF4 */
-void fn_1_3CF4(s16 id, s32 flag)
+/* FileselSelect and the reveal process switch a slot between its motion modes here. */
+void fn_1_3CF4(s16 boxNo, s32 motionMode)
 {
-    lbl_1_bss_D8[id].motionState = (u8)flag;
+    lbl_1_bss_D8[boxNo].motionState = (u8)motionMode;
 }
 
 /* 0x3D14 */
+/* Child process created for each slot in FileselInit; animate its idle motion and state models. */
 void fn_1_3D14(void)
 {
     s16 prevState;
@@ -1224,14 +1293,17 @@ void fn_1_3D14(void)
             p->waveOffset.x = amp * (2.0 * sin(3.141592653589793 * angleY / 180.0));
             p->waveOffset.y = amp * (2.0 * sin(3.141592653589793 * (angleY / 2.0f) / 180.0));
         }
-        Hu3DModelPosSet(p->slotModel, p->basePosition.x + p->waveOffset.x, p->basePosition.y + p->waveOffset.y,
-            p->basePosition.z + p->waveOffset.z);
+        Hu3DModelPosSet(p->slotModel, p->basePosition.x + p->waveOffset.x,
+                        p->basePosition.y + p->waveOffset.y, p->basePosition.z + p->waveOffset.z);
         if ((Hu3DModelAttrGet(p->slotModel) & HU3D_ATTR_DISPOFF) == 0) {
             Hu3DModelAttrReset(p->textModel, HU3D_ATTR_DISPOFF);
             Hu3DModelObjMtxGet(p->slotModel, lbl_1_data_190[i], mtx);
             Hu3DModelMtxSet(p->textModel, &mtx);
             src = &Hu3DData[p->slotModel];
             dst = &Hu3DData[p->stateModel1];
+            /* The state model's matrix is copied back into the slot model; position, scale,
+             * and rotation are then copied from the slot into the state model. The next two
+             * state models do the same. */
             PSMTXCopy(dst->mtx, src->mtx);
             dst->pos = src->pos;
             dst->scale = src->scale;
@@ -1271,6 +1343,8 @@ void fn_1_3D14(void)
             Hu3DModelAttrReset(p->stateModel3, HU3D_ATTR_DISPOFF);
             break;
         }
+        /* The first update compares an unset previous state; later updates compare the
+         * preceding frame's visual state. */
         if (prevState != p->visualState) {
             wavePhase = 0.0f;
         }
@@ -1302,7 +1376,8 @@ void fn_1_3D14(void)
     }
 }
 
-/* 0x457C (clone of bootDll CameraMove retargeted to camera index [1]) */
+/* Camera control helper: when lbl_1_bss_0[0] is nonzero, apply stick and trigger input to the
+ * File Select scene camera. */
 void fn_1_457C(OMOBJ *object)
 {
     HuVecF eye;
@@ -1345,6 +1420,8 @@ void fn_1_457C(OMOBJ *object)
 
     rotZ = CRotM[1].z;
 
+    /* Compute the rolled pan direction with the unnormalized eye-to-center vector.
+     * Normalize the resulting direction only when preparing vertical C-stick panning. */
     roll.x = (up.x * ((delta.x * delta.x) +
                ((1.0f - (delta.x * delta.x)) *
                 cos(3.141592653589793 * rotZ / 180.0)))) +
@@ -1396,13 +1473,15 @@ void fn_1_457C(OMOBJ *object)
 }
 
 /* 0x50DC */
-void fn_1_50DC(void (*func)(void), s32 arg1)
+/* The reveal flow calls this to start a child process with an integer property. */
+void fn_1_50DC(void (*func)(void), s32 processProperty)
 {
     HUPROCESS *proc = HuPrcChildCreate(func, 16, 12288, 0, HuPrcCurrentGet());
-    proc->property = (void *)arg1;
+    proc->property = (void *)processProperty;
 }
 
 /* 0x5130 */
+/* Child process used by copy and erase flows to flip the data-select model between banks. */
 void fn_1_5130(void)
 {
     HUPROCESS *proc;
@@ -1424,8 +1503,9 @@ void fn_1_5130(void)
     HuPrcEnd();
 }
 
-/* 0x5244 */
-s32 FileselCopy(s16 arg)
+/* FileselSelect calls this after the player chooses Copy; wait for a destination and copy the
+ * save. */
+s32 FileselCopy(s16 sourceBoxNo)
 {
     HUPROCESS *proc;
     HUPROCESS *procB;
@@ -1471,7 +1551,7 @@ s32 FileselCopy(s16 arg)
     for (i = 0; i < 3; i++) {
         Hu3DModelPosGet(lbl_1_bss_D8[i].slotModel, &pos[i]);
     }
-    HuWinInsertMesSet(lbl_1_bss_2E0, (u32)lbl_1_bss_D8[arg].fileName, 0);
+    HuWinInsertMesSet(lbl_1_bss_2E0, (u32)lbl_1_bss_D8[sourceBoxNo].fileName, 0);
     HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_COPY_DESTINATION);
     HuWinMesWait(lbl_1_bss_2E0);
     HuWinMesSet(lbl_1_bss_2DE, MESSNUM(MESS_SYS_GUIDE, 2));
@@ -1489,7 +1569,8 @@ s32 FileselCopy(s16 arg)
     }
     for (i = 1; i <= 5; i++) {
         scale = (f32)i / 5.0f;
-        Hu3DModelScaleSet(lbl_1_bss_D8[cur].slotModel, (f32)(1.5 + 0.5 * scale), (f32)(1.5 + 0.5 * scale), (f32)(1.5 + 0.5 * scale));
+        Hu3DModelScaleSet(lbl_1_bss_D8[cur].slotModel, (f32) (1.5 + 0.5 * scale),
+                          (f32) (1.5 + 0.5 * scale), (f32) (1.5 + 0.5 * scale));
         sz = pos[cur].z + 20.0f * scale;
         sy = pos[cur].y;
         sx = pos[cur].x;
@@ -1504,13 +1585,13 @@ s32 FileselCopy(s16 arg)
     for (;;) {
         if (emptyCnt > 1) {
             dir = 0;
-            if (HuPadDStkRep[0] & 1) {
+            if (HuPadDStkRep[0] & 0x1) {
                 dir = -1;
-            } else if (HuPadDStkRep[0] & 2) {
+            } else if (HuPadDStkRep[0] & 0x2) {
                 dir = 1;
             }
             if (dir != 0) {
-                HuAudFXPlay(FILESEL_SOUND_05);
+                HuAudFXPlay(MSM_SE_FILESEL_05);
                 prev = cur;
                 cur += dir;
                 if (cur < 0) {
@@ -1527,7 +1608,8 @@ s32 FileselCopy(s16 arg)
                     }
                 }
                 for (i = 1; i <= 5; i++) {
-                    scale = sin(3.141592653589793 * (130.0 * (i / 5.0)) / 180.0) * (1.0 / sin(2.2689280275926285));
+                    scale = sin(3.141592653589793 * (130.0 * (i / 5.0)) / 180.0) *
+                            (1.0 / sin(2.2689280275926285));
                     scale = 1.5 + 0.5 * scale;
                     Hu3DModelScaleSet(lbl_1_bss_D8[cur].slotModel, scale, scale, scale);
                     scale = i / 5.0;
@@ -1579,26 +1661,32 @@ s32 FileselCopy(s16 arg)
         HuWinHomeClear(lbl_1_bss_2E0);
         for (i = 1; i <= 20; i++) {
             scale = (f32)(1.5 * (1.0 - sin(3.141592653589793 * (90.0 * (i / 20.0)) / 180.0)));
-            Hu3DModelScaleSet(lbl_1_bss_D8[cur].slotModel, 1.5f * scale, 1.5f * scale, 1.5f * scale);
+            Hu3DModelScaleSet(lbl_1_bss_D8[cur].slotModel, 1.5f * scale, 1.5f * scale,
+                              1.5f * scale);
             HuPrcVSleep();
         }
         lbl_1_bss_D8[cur].visualState = 0;
-        memcpy(&saveBuf[curSlotNo][SLBoxDataOffsetGet(cur)], &saveBuf[curSlotNo][SLBoxDataOffsetGet(arg)], SAVE_BOX_SIZE);
-        sndH = HuAudFXPlay(FILESEL_SOUND_06);
+        /* Copy into the save buffer before writing the card; a failed save does not undo this
+         * copy. */
+        memcpy(&saveBuf[curSlotNo][SLBoxDataOffsetGet(cur)],
+               &saveBuf[curSlotNo][SLBoxDataOffsetGet(sourceBoxNo)], SAVE_BOX_SIZE);
+        sndH = HuAudFXPlay(MSM_SE_FILESEL_06);
         ret = FileSaveMesOpen(-1, FILE_SELECT_COPYING);
         HuAudFXStop(sndH);
-        HuAudFXPlay(FILESEL_SOUND_07);
+        HuAudFXPlay(MSM_SE_FILESEL_07);
+        /* Treat a canceled save as card removal so the selection flow reloads the card. */
         if (ret == FILESEL_RESULT_CANCEL) {
             ret = -4;
         }
         if (ret == 0) {
             lbl_1_bss_D8[cur].hasSave = 1;
-            lbl_1_bss_D8[cur].patternVariant = lbl_1_bss_D8[arg].patternVariant;
-            lbl_1_bss_D8[cur].saveTime = lbl_1_bss_D8[arg].saveTime;
-            lbl_1_bss_D8[cur].displayNumber = lbl_1_bss_D8[arg].displayNumber;
-            memcpy(lbl_1_bss_D8[cur].fileName, lbl_1_bss_D8[arg].fileName, FILESEL_FILENAME_LENGTH);
+            lbl_1_bss_D8[cur].patternVariant = lbl_1_bss_D8[sourceBoxNo].patternVariant;
+            lbl_1_bss_D8[cur].saveTime = lbl_1_bss_D8[sourceBoxNo].saveTime;
+            lbl_1_bss_D8[cur].displayNumber = lbl_1_bss_D8[sourceBoxNo].displayNumber;
+            memcpy(lbl_1_bss_D8[cur].fileName, lbl_1_bss_D8[sourceBoxNo].fileName,
+                   FILESEL_FILENAME_LENGTH);
             fn_1_36C4(cur, cur);
-            HuAudFXPlay(FILESEL_SOUND_10);
+            HuAudFXPlay(MSM_SE_FILESEL_10);
             rz = pos[cur].z;
             ry = pos[cur].y;
             rx = pos[cur].x;
@@ -1656,27 +1744,30 @@ s32 FileselCopy(s16 arg)
 }
 
 /* 0x6314 */
-void fn_1_6314(s16 id, s32 flag)
+/* Switch a slot's frame between its first highlight animation and its normal animation. */
+void fn_1_6314(s16 boxNo, s32 active)
 {
-    if (flag != 0) {
-        Hu3DAnimAnimSet(lbl_1_bss_D8[id].frameAnimation, lbl_1_bss_CC[1]);
+    if (active != 0) {
+        Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[1]);
     } else {
-        Hu3DAnimAnimSet(lbl_1_bss_D8[id].frameAnimation, lbl_1_bss_CC[0]);
+        Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[0]);
     }
 }
 
 /* 0x63A0 */
-void fn_1_63A0(s16 id, s32 flag)
+/* Called during copy prompts to show or restore the alternate slot frame animation. */
+void fn_1_63A0(s16 boxNo, s32 active)
 {
-    if (flag != 0) {
-        Hu3DAnimAnimSet(lbl_1_bss_D8[id].frameAnimation, lbl_1_bss_CC[2]);
+    if (active != 0) {
+        Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[2]);
     } else {
-        Hu3DAnimAnimSet(lbl_1_bss_D8[id].frameAnimation, lbl_1_bss_CC[0]);
+        Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[0]);
     }
 }
 
-/* 0x642C */
-s32 FileselEraseConfirm(s16 arg0)
+/* FileselSelect calls this after Erase; confirm it, clear the card save, and refresh the slot
+* panel. Declining or canceling the confirmation returns zero without erasing. */
+s32 FileselEraseConfirm(s16 boxNo)
 {
     HUWIN *w;
     s32 ret;
@@ -1691,8 +1782,8 @@ s32 FileselEraseConfirm(s16 arg0)
     w = &winData[lbl_1_bss_2E0];
     proc1 = HuPrcChildCreate(fn_1_5130, 16, 12288, 0, HuPrcCurrentGet());
     proc1->property = (void *)3;
-    Hu3DAnimAnimSet(lbl_1_bss_D8[arg0].frameAnimation, lbl_1_bss_CC[1]);
-    HuWinInsertMesSet(lbl_1_bss_2E0, (u32)&lbl_1_bss_D8[arg0].fileName, 0);
+    Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[1]);
+    HuWinInsertMesSet(lbl_1_bss_2E0, (u32)&lbl_1_bss_D8[boxNo].fileName, 0);
     HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_ERASE_CONFIRMATION);
     HuWinMesWait(lbl_1_bss_2E0);
     HuWinChoiceSet(lbl_1_bss_2E0, -1);
@@ -1703,7 +1794,7 @@ s32 FileselEraseConfirm(s16 arg0)
             UnMountCnt = 0;
             proc2 = HuPrcChildCreate(fn_1_5130, 16, 12288, 0, HuPrcCurrentGet());
             proc2->property = (void *)1;
-            Hu3DAnimAnimSet(lbl_1_bss_D8[arg0].frameAnimation, lbl_1_bss_CC[0]);
+            Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[0]);
             return -4;
         }
         HuPrcVSleep();
@@ -1716,31 +1807,34 @@ s32 FileselEraseConfirm(s16 arg0)
         UnMountCnt = 0;
         proc3 = HuPrcChildCreate(fn_1_5130, 16, 12288, 0, HuPrcCurrentGet());
         proc3->property = (void *)1;
-        Hu3DAnimAnimSet(lbl_1_bss_D8[arg0].frameAnimation, lbl_1_bss_CC[0]);
+        Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[0]);
         return -4;
     }
     if (ret == 0) {
-        fxId = HuAudFXPlay(FILESEL_SOUND_08);
-        SLSaveEmptySet(curSlotNo, arg0);
+        fxId = HuAudFXPlay(MSM_SE_FILESEL_08);
+        /* Mark both the box and its backup empty before saving; failure does not restore their
+         * tags. */
+        SLSaveEmptySet(curSlotNo, boxNo);
         ret = FileSaveMesOpen(-1, FILE_SELECT_ERASING);
         HuAudFXStop(fxId);
-        fxId = HuAudFXPlay(FILESEL_SOUND_09);
+        fxId = HuAudFXPlay(MSM_SE_FILESEL_09);
         if (ret == 0) {
-            HuAudFXPlay(FILESEL_SOUND_11);
+            HuAudFXPlay(MSM_SE_FILESEL_11);
         for (i = 1; i <= 20; i++) {
                 s = 1.0 - sin(3.141592653589793 * (90.0 * ((double)i / 20.0)) / 180.0);
-                Hu3DModelScaleSet(lbl_1_bss_D8[arg0].slotModel, 1.5f * s, 1.5f * s, 1.5f * s);
+                Hu3DModelScaleSet(lbl_1_bss_D8[boxNo].slotModel, 1.5f * s, 1.5f * s, 1.5f * s);
                 HuPrcVSleep();
             }
             HuPrcSleep(30);
-            lbl_1_bss_D8[arg0].hasSave = 0;
-            lbl_1_bss_D8[arg0].hasSave = 0;
-            fn_1_36C4(arg0, arg0);
-            lbl_1_bss_D8[arg0].visualState = 1;
-            Hu3DAnimAnimSet(lbl_1_bss_D8[arg0].frameAnimation, lbl_1_bss_CC[0]);
+            /* The same empty-state value is assigned twice in this path. */
+            lbl_1_bss_D8[boxNo].hasSave = 0;
+            lbl_1_bss_D8[boxNo].hasSave = 0;
+            fn_1_36C4(boxNo, boxNo);
+            lbl_1_bss_D8[boxNo].visualState = 1;
+            Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[0]);
         for (i = 1; i <= 10; i++) {
                 s = (double)i / 10.0;
-                Hu3DModelScaleSet(lbl_1_bss_D8[arg0].slotModel, 1.5f * s, 1.5f * s, 1.5f * s);
+                Hu3DModelScaleSet(lbl_1_bss_D8[boxNo].slotModel, 1.5f * s, 1.5f * s, 1.5f * s);
                 HuPrcVSleep();
             }
             HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_ERASE_COMPLETE);
@@ -1751,10 +1845,13 @@ s32 FileselEraseConfirm(s16 arg0)
     }
     proc4 = HuPrcChildCreate(fn_1_5130, 16, 12288, 0, HuPrcCurrentGet());
     proc4->property = (void *)1;
-    Hu3DAnimAnimSet(lbl_1_bss_D8[arg0].frameAnimation, lbl_1_bss_CC[0]);
+    Hu3DAnimAnimSet(lbl_1_bss_D8[boxNo].frameAnimation, lbl_1_bss_CC[0]);
     return ret;
 }
 
+/* FileselSelect calls this before naming a new save. Restore common defaults and force mono or
+ * stereo from the system sound mode. Detect and mount the channel-1 microphone, ignoring
+ * initialization status, then close speech resources and return the resulting microphone mode. */
 /* 0x69B0 */
 s32 fn_1_69B0(void)
 {
@@ -1778,6 +1875,7 @@ s32 fn_1_69B0(void)
 }
 
 /* 0x6A8C */
+/* Camera-layer helper: draw a full-screen polygon at the far depth with color writes disabled. */
 void FileselWipeDraw(void)
 {
     HU3D_CAMERA *cam = &Hu3DCamera[Hu3DCameraNo];
@@ -1786,11 +1884,12 @@ void FileselWipeDraw(void)
     Vec camPos;
     Vec target;
     Vec up;
-    f32 nearz;
+    f32 farDepth;
 
     C_MTXPerspective(proj, cam->fov, cam->aspect, cam->near, cam->far);
     GXSetProjection(proj, 0);
-    GXSetViewport(cam->viewportX, cam->viewportY, cam->viewportW, cam->viewportH, cam->viewportNear, cam->viewportFar);
+    GXSetViewport(cam->viewportX, cam->viewportY, cam->viewportW, cam->viewportH, cam->viewportNear,
+                  cam->viewportFar);
     GXSetScissor(cam->scissorX, cam->scissorY, cam->scissorW, cam->scissorH);
     GXClearVtxDesc();
     GXSetVtxDesc(9, 1);
@@ -1816,21 +1915,23 @@ void FileselWipeDraw(void)
     C_MTXLookAt(view, &camPos, &up, &target);
     GXLoadPosMtxImm(view, 0);
 
-    nearz = cam->far - 1.0f;
-    camPos.x = camPos.y = nearz * tan(3.141592653589793 * (cam->fov / 2.0f) / 180.0);
+    farDepth = cam->far - 1.0f;
+    camPos.x = camPos.y = farDepth * tan(3.141592653589793 * (cam->fov / 2.0f) / 180.0);
     camPos.x = camPos.x * cam->aspect;
 
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-    GXPosition3f32(-camPos.x, -camPos.y, -nearz);
-    GXPosition3f32(camPos.x, -camPos.y, -nearz);
-    GXPosition3f32(camPos.x, camPos.y, -nearz);
-    GXPosition3f32(-camPos.x, camPos.y, -nearz);
+    GXPosition3f32(-camPos.x, -camPos.y, -farDepth);
+    GXPosition3f32(camPos.x, -camPos.y, -farDepth);
+    GXPosition3f32(camPos.x, camPos.y, -farDepth);
+    GXPosition3f32(-camPos.x, camPos.y, -farDepth);
 
     GXSetColorUpdate(1);
 }
 
 /* 0x6E54 */
-void fn_1_6E54(s16 a, s32 b)
+/* After selection, center the book and start the camera zoom. When the selected-slot
+ * animation is enabled, move the chosen slot toward the book as the other slots shrink. */
+void fn_1_6E54(s16 selectedBoxNo, s32 animateSelectedSlot)
 {
     HUPROCESS *proc1;
     HUPROCESS *proc2;
@@ -1839,7 +1940,7 @@ void fn_1_6E54(s16 a, s32 b)
     FILESEL_BOX *bp;
     Vec vpos;
     static const Vec l_19c = {0.0f, 0.0f, 15.0f};
-    Vec scale30;
+    Vec transformVector;
     Vec pos24;
     Vec pos18;
     Vec rot0c;
@@ -1865,11 +1966,11 @@ void fn_1_6E54(s16 a, s32 b)
     if (rot0c.z > 180.0f) {
         rot0c.z -= 360.0f;
     }
-    if (b == 0) {
+    if (animateSelectedSlot == 0) {
         HuWinDispOff(lbl_1_bss_2DE);
         HuWinExClose(lbl_1_bss_2E0);
-        Hu3DModelScaleGet(lbl_1_bss_2D8[2], &scale30);
-        if (scale30.x > 0.1f) {
+        Hu3DModelScaleGet(lbl_1_bss_2D8[2], &transformVector);
+        if (transformVector.x > 0.1f) {
             for (i = 1; i <= 10; i++) {
                 phase = (f32)i / 10.0f;
                 Hu3DModelRotSet(lbl_1_bss_2D8[2], 0.0f, 520.0f * phase, 0.0f);
@@ -1880,34 +1981,35 @@ void fn_1_6E54(s16 a, s32 b)
         }
         for (i = 1; i <= 20; i++) {
             phase = (f32)sin(3.141592653589793 * (90.0 * ((f32)i / 20.0f)) / 180.0);
-            scale30.x = (1.0 - phase) * pos18.x;
-            scale30.y = (1.0 - phase) * pos18.y;
-            scale30.z = (1.0 - phase) * pos18.z;
-            Hu3DModelPosSetV(lbl_1_bss_2D8[0], &scale30);
-            scale30.x = (1.0 - phase) * rot0c.x;
-            scale30.y = (1.0 - phase) * rot0c.y;
-            scale30.z = (1.0 - phase) * rot0c.z;
-            Hu3DModelRotSetV(lbl_1_bss_2D8[0], &scale30);
+            transformVector.x = (1.0 - phase) * pos18.x;
+            transformVector.y = (1.0 - phase) * pos18.y;
+            transformVector.z = (1.0 - phase) * pos18.z;
+            Hu3DModelPosSetV(lbl_1_bss_2D8[0], &transformVector);
+            transformVector.x = (1.0 - phase) * rot0c.x;
+            transformVector.y = (1.0 - phase) * rot0c.y;
+            transformVector.z = (1.0 - phase) * rot0c.z;
+            Hu3DModelRotSetV(lbl_1_bss_2D8[0], &transformVector);
             HuPrcVSleep();
         }
         proc1 = HuPrcChildCreate(fn_1_7A0C, 16, 12288, 0, HuPrcCurrentGet());
         proc1->property = (void *)0;
         HuPrcSleep(40);
-        HuAudFXPlay(FILESEL_SOUND_14);
+        HuAudFXPlay(MSM_SE_FILESEL_14);
         fn_1_8510(0, &vpos);
     } else {
+        /* Both loops set the selected slot's state; the loop index is not used here. */
         for (i = 0; i < 3; i++) {
-            lbl_1_bss_D8[a].motionState = 0;
+            lbl_1_bss_D8[selectedBoxNo].motionState = 0;
         }
         HuWinDispOff(lbl_1_bss_2DE);
         HuWinExClose(lbl_1_bss_2E0);
         for (i = 0; i < 3; i++) {
-            lbl_1_bss_D8[a].motionState = 2;
+            lbl_1_bss_D8[selectedBoxNo].motionState = 2;
         }
         for (i = 1; i <= 10; i++) {
             phase = (f32)i / 10.0f;
             for (j = 0; j < 3; j++) {
-                if (j != a) {
+                if (j != selectedBoxNo) {
                     bp = &lbl_1_bss_D8[j];
                     Hu3DModelRotSet(bp->slotModel, 0.0f, 520.0f * phase, 0.0f);
                     sv = 1.5 * (1.0 - phase);
@@ -1919,7 +2021,7 @@ void fn_1_6E54(s16 a, s32 b)
             Hu3DModelScaleSet(lbl_1_bss_2D8[2], sv, sv, sv);
             HuPrcVSleep();
         }
-        bp = &lbl_1_bss_D8[a];
+        bp = &lbl_1_bss_D8[selectedBoxNo];
         Hu3DModelPosGet(bp->slotModel, &pos24);
         OSReport(lbl_1_data_1F3, pos24.x, pos24.y, pos24.z);
         if (frandmod(2) == 0) {
@@ -1931,28 +2033,31 @@ void fn_1_6E54(s16 a, s32 b)
         for (i = 1; i <= 80; i++) {
             if (i <= 20) {
                 phase = (f32)sin(3.141592653589793 * (90.0 * ((f32)i / 20.0f)) / 180.0);
-                scale30.x = (1.0 - phase) * pos18.x;
-                scale30.y = (1.0 - phase) * pos18.y;
-                scale30.z = (1.0 - phase) * pos18.z;
-                Hu3DModelPosSetV(lbl_1_bss_2D8[0], &scale30);
-                scale30.x = (1.0 - phase) * rot0c.x;
-                scale30.y = (1.0 - phase) * rot0c.y;
-                scale30.z = (1.0 - phase) * rot0c.z;
-                Hu3DModelRotSetV(lbl_1_bss_2D8[0], &scale30);
+                transformVector.x = (1.0 - phase) * pos18.x;
+                transformVector.y = (1.0 - phase) * pos18.y;
+                transformVector.z = (1.0 - phase) * pos18.z;
+                Hu3DModelPosSetV(lbl_1_bss_2D8[0], &transformVector);
+                transformVector.x = (1.0 - phase) * rot0c.x;
+                transformVector.y = (1.0 - phase) * rot0c.y;
+                transformVector.z = (1.0 - phase) * rot0c.z;
+                Hu3DModelRotSetV(lbl_1_bss_2D8[0], &transformVector);
                 Hu3DShadowTPLvlSet(0.5 * (1.0 - phase));
             }
             if (i == 10) {
                 proc2 = HuPrcChildCreate(fn_1_7B64, 16, 12288, 0, HuPrcCurrentGet());
-                proc2->property = (void *)a;
-                HuAudFXPlay(FILESEL_SOUND_13);
+                proc2->property = (void *)selectedBoxNo;
+                HuAudFXPlay(MSM_SE_FILESEL_13);
             }
             if (i > 10) {
                 phase = ((f32)i - 10.0f) / 70.0f;
-                scale30.x = (1.0 - phase) * pos24.x;
-                scale30.y = (1.0 - phase) * pos24.y + 100.0 * sin(3.141592653589793 * (180.0f * phase) / 180.0);
-                scale30.z = pos24.z + 300.0 * sin(3.141592653589793 * (180.0f * phase) / 180.0) - 150.0f * phase;
-                wp = &lbl_1_bss_D8[a];
-                wp->basePosition = scale30;
+                transformVector.x = (1.0 - phase) * pos24.x;
+                transformVector.y = (1.0 - phase) * pos24.y +
+                            100.0 * sin(3.141592653589793 * (180.0f * phase) / 180.0);
+                transformVector.z = pos24.z +
+                                    300.0 * sin(3.141592653589793 * (180.0f * phase) / 180.0) -
+                                    150.0f * phase;
+                wp = &lbl_1_bss_D8[selectedBoxNo];
+                wp->basePosition = transformVector;
                 Hu3DModelRotSet(bp->slotModel, 0.0f, 480.0f * phase, 45.0f * phase * dirf);
                 sv = 1.125 + 1.125 * (1.0 - phase);
                 Hu3DModelScaleSet(bp->slotModel, sv, sv, sv);
@@ -1962,7 +2067,7 @@ void fn_1_6E54(s16 a, s32 b)
                 proc3->property = (void *)0;
             }
             if (i == 75) {
-                HuAudFXPlay(FILESEL_SOUND_14);
+                HuAudFXPlay(MSM_SE_FILESEL_14);
                 fn_1_8510(0, &vpos);
             }
             HuPrcVSleep();
@@ -1971,6 +2076,7 @@ void fn_1_6E54(s16 a, s32 b)
 }
 
 /* 0x7A0C */
+/* Child process launched by fn_1_6E54 to ease the File Select camera zoom. */
 void fn_1_7A0C(void)
 {
     HU3D_CAMERA *cam = &Hu3DCamera[1];
@@ -1988,6 +2094,7 @@ void fn_1_7A0C(void)
 }
 
 /* 0x7B64 */
+/* Child process launched for a slot animation; emit particles from its moving model. */
 void fn_1_7B64(void)
 {
     HUPROCESS *proc;
@@ -2029,9 +2136,13 @@ void fn_1_7B64(void)
                 } else {
                     PSVECNormalize(&dir, &dir);
                 }
+                /* Retain X and Z from the three-dimensional direction, normalized only when
+                 * nonzero, and force the emission Y component to -0.5. */
                 Hu3DParManVecSet(lbl_1_bss_98[i], dir.x, -0.5f, dir.z);
             }
         } else {
+            /* Stop emission when the attachment reaches z <= 0; this loop never clears the stop
+            * flag again, even if the attachment returns to positive z. */
             for (i = 0; i < 5; i++) {
                 Hu3DParManAttrSet(lbl_1_bss_98[i], 1);
             }
@@ -2041,6 +2152,7 @@ void fn_1_7B64(void)
 }
 
 /* 0x7DEC */
+/* Layer hook installed by fn_1_8510: copy the full framebuffer into the card effect's texture. */
 void fn_1_7DEC(void)
 {
     if (lbl_1_bss_C != 0) {
@@ -2051,6 +2163,7 @@ void fn_1_7DEC(void)
 }
 
 /* 0x7E58 */
+/* Material hook installed on the card effect models to draw their animated texture. */
 void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 {
     HU3D_CAMERA *cam = &Hu3DCamera[Hu3DCameraNo];
@@ -2064,7 +2177,7 @@ void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     f32 transS;
 
     q = drawObj->model->hookData;
-    q->unk_1c = q->unk_1c + q->unk_20;
+    q->textureOffset = q->textureOffset + q->textureOffsetStep;
 
     GXInitTexObj(&texObj, lbl_1_bss_C, 640, 480, GX_TF_RGB565, 0, 0, 0);
     GXInitTexObjLOD(&texObj, 1, 1, 0.0f, 0.0f, 0.0f, 0, 0, 0);
@@ -2082,14 +2195,14 @@ void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     PSMTXConcat(texMtx, tmpMtx, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX1, GX_MTX3x4);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1, GX_FALSE, GX_PTIDENTITY);
-    PSMTXTrans(tmpMtx, 0.0f, q->unk_1c, 0.0f);
+    PSMTXTrans(tmpMtx, 0.0f, q->textureOffset, 0.0f);
     PSMTXScale(scaleMtx, 0.8f, 0.8f, 1.0f);
     PSMTXConcat(scaleMtx, tmpMtx, texMtx);
     GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
     GXSetTexCoordGen2(GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);
     GXSetTexCoordGen2(GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
 
-    GXSetTevColor(1, q->unk_18);
+    GXSetTevColor(1, q->tint);
     GXSetTevOrder(0, 0, 1, 0);
     GXSetTevColorIn(0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO, GX_CC_TEXC);
     GXSetTevColorOp(0, 0, 0, 0, 1, 0);
@@ -2108,6 +2221,7 @@ void fn_1_7E58(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 }
 
 /* 0x82F0 */
+/* Object callback installed by fn_1_8510; update effect lifetime and tint each frame. */
 void fn_1_82F0(OMOBJ *obj)
 {
     BSS18_ENTRY *e;
@@ -2115,24 +2229,26 @@ void fn_1_82F0(OMOBJ *obj)
     f32 t;
 
     for (i = 0, e = lbl_1_bss_18; i < 2; i++, e++) {
-        if (e->unk_24 <= 0.0f) {
+        if (e->framesRemaining <= 0.0f) {
             continue;
         }
-        e->unk_0.x = 0.0f;
-        e->unk_0.y = 0.0f;
-        e->unk_0.z = 0.09f * e->unk_24 / 120.0f;
-        e->unk_c.x = 0.0f;
-        e->unk_c.y = 0.0f;
-        e->unk_c.z = 0.09f * e->unk_24 / 120.0f;
-        e->unk_20 = -0.02f * e->unk_24 / 120.0f;
-        t = (e->unk_24 - 80.0f) / 40.0f;
+        e->indirectMatrixRow0.x = 0.0f;
+        e->indirectMatrixRow0.y = 0.0f;
+        e->indirectMatrixRow0.z = 0.09f * e->framesRemaining / 120.0f;
+        e->indirectMatrixRow1.x = 0.0f;
+        e->indirectMatrixRow1.y = 0.0f;
+        e->indirectMatrixRow1.z = 0.09f * e->framesRemaining / 120.0f;
+        e->textureOffsetStep = -0.02f * e->framesRemaining / 120.0f;
+        t = (e->framesRemaining - 80.0f) / 40.0f;
         if (t >= 0.0f) {
-            e->unk_18.r = 0;
-            e->unk_18.g = 16.0f * t;
-            e->unk_18.b = 64.0f * t;
+            e->tint.r = 0;
+            e->tint.g = 16.0f * t;
+            e->tint.b = 64.0f * t;
         }
-        e->unk_24 = e->unk_24 - 1.0f;
-        if (e->unk_24 <= 0.0f) {
+        e->framesRemaining = e->framesRemaining - 1.0f;
+        /* Expiring either effect disables the shared capture hook and the object's update
+         * callback, even if the other effect still has time remaining. */
+        if (e->framesRemaining <= 0.0f) {
             Hu3DLayerHookReset(10);
             Hu3DModelAttrSet(obj->mdlId[i], HU3D_ATTR_DISPOFF);
             obj->objFunc = 0;
@@ -2141,29 +2257,31 @@ void fn_1_82F0(OMOBJ *obj)
 }
 
 /* 0x8510 */
-void fn_1_8510(s16 id, Vec *pos)
+/* Called when a slot effect starts; place its model and install its update and layer hooks. */
+void fn_1_8510(s16 effectIndex, Vec *position)
 {
-    OMOBJ *p = lbl_1_bss_8;
+    OMOBJ *effectObject = lbl_1_bss_8;
 
-    if (p == 0) {
+    if (effectObject == 0) {
         return;
     }
-    if (id >= 2 || id < 0) {
+    if (effectIndex >= 2 || effectIndex < 0) {
         return;
     }
-    lbl_1_bss_18[id].unk_1c = 0.0f;
-    lbl_1_bss_18[id].unk_24 = 120.0f;
-    Hu3DModelDispOn(p->mdlId[id]);
-    Hu3DModelPosSet(p->mdlId[id], pos->x, pos->y, pos->z);
-    Hu3DModelRotSet(p->mdlId[id], 90.0f, 0.0f, 0.0f);
-    Hu3DModelScaleSet(p->mdlId[id], 1.0f, 1.0f, 1.0f);
+    lbl_1_bss_18[effectIndex].textureOffset = 0.0f;
+    lbl_1_bss_18[effectIndex].framesRemaining = 120.0f;
+    Hu3DModelDispOn(effectObject->mdlId[effectIndex]);
+    Hu3DModelPosSet(effectObject->mdlId[effectIndex], position->x, position->y, position->z);
+    Hu3DModelRotSet(effectObject->mdlId[effectIndex], 90.0f, 0.0f, 0.0f);
+    Hu3DModelScaleSet(effectObject->mdlId[effectIndex], 1.0f, 1.0f, 1.0f);
     Hu3DLayerHookSet(10, (HU3D_LAYER_HOOK)fn_1_7DEC);
-    p->objFunc = fn_1_82F0;
+    effectObject->objFunc = fn_1_82F0;
 }
 
 /* 0x8688 */
 const GXColor lbl_1_rodata_238[2] = {{0, 16, 64, 16}, {0, 0, 0, 0}};
 
+/* Object-manager callback from scene setup: create the card effect models and textures. */
 void fn_1_8688(OMOBJ *p)
 {
     GXColor color;
@@ -2174,7 +2292,8 @@ void fn_1_8688(OMOBJ *p)
     omSetStatBit(p, OM_STAT_MODELPAUSE);
     lbl_1_bss_10 = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_25, HU_MEMNUM_OVL, 2));
     lbl_1_bss_14 = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_ANM_25, HU_MEMNUM_OVL, 2));
-    lbl_1_bss_C = HuMemDirectMallocNum(2, GXGetTexBufferSize(640, 480, GX_TF_RGB565, 0, 0), HU_MEMNUM_OVL);
+    lbl_1_bss_C =
+        HuMemDirectMallocNum(2, GXGetTexBufferSize(640, 480, GX_TF_RGB565, 0, 0), HU_MEMNUM_OVL);
     for (i = 0; i < 2; i++) {
         p->mdlId[i] = Hu3DModelCreate(HuDataSelHeapReadNum(FILESEL_HSF_OBJ1, HU_MEMNUM_OVL, 2));
         Hu3DModelPosSet(p->mdlId[i], 0.0f, 0.0f, 0.0f);
@@ -2184,14 +2303,14 @@ void fn_1_8688(OMOBJ *p)
         Hu3DModelLayerSet(p->mdlId[i], 3);
         Hu3DModelAttrSet(p->mdlId[i], HU3D_ATTR_DISPOFF);
         Hu3DModelMatHookSet(p->mdlId[i], fn_1_7E58);
-        lbl_1_bss_18[i].unk_0.x = lbl_1_bss_18[i].unk_0.y = lbl_1_bss_18[i].unk_0.z =
-            lbl_1_bss_18[i].unk_c.x = lbl_1_bss_18[i].unk_c.y = lbl_1_bss_18[i].unk_c.z =
-                0.0f;
+        lbl_1_bss_18[i].indirectMatrixRow0.x = lbl_1_bss_18[i].indirectMatrixRow0.y =
+            lbl_1_bss_18[i].indirectMatrixRow0.z = lbl_1_bss_18[i].indirectMatrixRow1.x =
+                lbl_1_bss_18[i].indirectMatrixRow1.y = lbl_1_bss_18[i].indirectMatrixRow1.z = 0.0f;
         color = lbl_1_rodata_238[0];
         cp = &color;
-        lbl_1_bss_18[i].unk_18 = *cp;
-        lbl_1_bss_18[i].unk_1c = 0.0f;
-        lbl_1_bss_18[i].unk_20 = 0.0f;
+        lbl_1_bss_18[i].tint = *cp;
+        lbl_1_bss_18[i].textureOffset = 0.0f;
+        lbl_1_bss_18[i].textureOffsetStep = 0.0f;
         mdl = &Hu3DData[p->mdlId[i]];
         mdl->hookData = &lbl_1_bss_18[i];
     }
@@ -2200,6 +2319,7 @@ void fn_1_8688(OMOBJ *p)
 }
 
 /* 0x8A34 */
+/* Effect cleanup helper: release models, animations, and texture memory. */
 void fn_1_8A34(void)
 {
     OMOBJ *obj = lbl_1_bss_8;
@@ -2215,6 +2335,7 @@ void fn_1_8A34(void)
         }
         omDelObjEx(lbl_1_bss_340, obj);
     }
+    /* Only the local pointer is cleared; lbl_1_bss_8 retains the deleted object's address. */
     obj = 0;
     if (lbl_1_bss_10 != 0) {
         HuSprAnimKill(lbl_1_bss_10);
@@ -2239,14 +2360,8 @@ char lbl_1_data_60[20] = "book_014-itemhook03";
 char lbl_1_data_74[20] = "book_015-itemhook04";
 char *lbl_1_data_88[4] = {lbl_1_data_38, lbl_1_data_4C, lbl_1_data_60, lbl_1_data_74};
 int lbl_1_data_98[8] = {
-    FILESEL_ANM_12,
-    FILESEL_ANM_13,
-    FILESEL_ANM_14,
-    FILESEL_ANM_15,
-    FILESEL_ANM_16,
-    FILESEL_ANM_17,
-    FILESEL_ANM_18,
-    FILESEL_ANM_19,
+    FILESEL_ANM_12, FILESEL_ANM_13, FILESEL_ANM_14, FILESEL_ANM_15,
+    FILESEL_ANM_16, FILESEL_ANM_17, FILESEL_ANM_18, FILESEL_ANM_19,
 };
 char lbl_1_data_B8[42] = "******* FileSelect ObjectSetup *********\n";
 char lbl_1_data_E2[4] = "%d\n";

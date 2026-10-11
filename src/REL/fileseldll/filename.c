@@ -1,3 +1,4 @@
+/* File Select name keyboard, cursor navigation, and save-file name entry. */
 #include "dolphin/math.h"
 #include "dolphin.h"
 #include "REL/fileseldll.h"
@@ -34,7 +35,6 @@ enum {
     NAMEKEYBOARD_COMMAND_MIN = NAMEKEYBOARD_PAGE_ALPHA,
     NAMEKEYBOARD_COMMAND_MAX = NAMEKEYBOARD_CONFIRM,
     NAME_SYMBOL_CODE = 14 << 8,
-    FILESEL_SFX_KEYBOARD_CHANGE = 1162,
     NAME_SPR_KEYBOARD_ALPHA = 3,
     NAME_SPR_KEYBOARD_SYMBOL = 4,
     NAME_SPR_KEYBOARD_JAPANESE = 5,
@@ -50,22 +50,25 @@ enum {
 };
 
 typedef struct NameKeyboardBounds_s {
+    /* Keyboard edge coordinates in screen pixels, expanded for edge wrapping. */
     f32 minX;
+    /* Top keyboard edge in screen pixels, expanded for edge wrapping. */
     f32 minY;
+    /* Right keyboard edge in screen pixels, expanded for edge wrapping. */
     f32 maxX;
+    /* Bottom keyboard edge in screen pixels, expanded for edge wrapping. */
     f32 maxY;
 } NAMEKEYBOARD_BOUNDS;
 
 typedef struct NameSpriteConfig_s {
+    /* File Select sprite data number and animation bank. */
     s32 dataNum;
     u8 bank;
+    /* Draw priority and position in pixels relative to the keyboard sprite group. */
     s16 priority;
     s16 x;
     s16 y;
 } NAME_SPRITE_CONFIG;
-
-
-
 
 void fn_1_8F34(s32 unused, s16 keyNo);
 s16 fn_1_AAEC(s16 nameWinId);
@@ -147,6 +150,8 @@ s16 nameCharNo;
 char nameMes[NAME_MES_LENGTH];
 NAMEKEYBOARD *keyboard;
 
+/* Called during File Select scene setup to create keyboard sprites and page windows,
+* and cache the suggested names. */
 void NameEnterInit(void)
 {
     HUSPR_GROUPID grp;
@@ -200,25 +205,28 @@ void NameEnterInit(void)
     }
 }
 
-void fn_1_8F34(s32 unused, s16 keyNo)
+/* Keyboard cursor helper: position the two cursor sprites and hide the second on command keys. */
+void fn_1_8F34(s32 callbackData, s16 selectedKeyIndex)
 {
     u16 btn;
 
-    btn = keyboard[keyNo].val;
+    btn = keyboard[selectedKeyIndex].val;
     HuSprPosSet(lbl_1_bss_42E, 0,
-        24.0f + ((f32)keyboard[keyNo].x - 288.0f),
-        ((f32)keyboard[keyNo].y - 200.0f) - 12.0f);
+        24.0f + ((f32)keyboard[selectedKeyIndex].x - 288.0f),
+        ((f32)keyboard[selectedKeyIndex].y - 200.0f) - 12.0f);
     if (btn >= NAMEKEYBOARD_PAGE_ALPHA && btn <= NAMEKEYBOARD_CONFIRM) {
         HuSprAttrSet(lbl_1_bss_42E, 1, HUSPR_ATTR_DISPOFF);
     } else {
         HuSprAttrReset(lbl_1_bss_42E, 1, HUSPR_ATTR_DISPOFF);
         HuSprPosSet(lbl_1_bss_42E, 1,
-            10.0f + ((f32)keyboard[keyNo].x - 288.0f),
-            12.0f + ((f32)keyboard[keyNo].y - 200.0f));
+            10.0f + ((f32)keyboard[selectedKeyIndex].x - 288.0f),
+            12.0f + ((f32)keyboard[selectedKeyIndex].y - 200.0f));
     }
 }
 
-s32 NameEnterMain(s16 boxNo)
+/* FileselSelect calls this for an empty slot; read keyboard input until naming the new save
+ * ends. */
+s32 NameEnterMain(s16 selectedBoxNo)
 {
     NAMEKEYBOARD_BOUNDS bounds;
     s16 keyNo;
@@ -352,8 +360,12 @@ L_95A8:
     }
 
 L_99B4:
+    /* Start moves focus to Confirm without finishing entry. An existing cursor byte counts
+    * as content; at the character limit there is no cursor, so an all-space name can be
+    * replaced with a suggestion. */
     if (HuPadBtnDown[0] & PAD_BUTTON_START) {
-        for (keyNo = 0; keyboard[keyNo].val != 0 && keyboard[keyNo].val != NAMEKEYBOARD_CONFIRM; keyNo++) {
+        for (keyNo = 0; keyboard[keyNo].val != 0 && keyboard[keyNo].val != NAMEKEYBOARD_CONFIRM;
+             keyNo++) {
         }
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_ALPHA, 8);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_SYMBOL, 8);
@@ -379,7 +391,8 @@ L_99B4:
         goto L_A3D8;
     }
     if (HuPadBtnDown[0] & PAD_BUTTON_A) {
-        if (keyboard[keyNo].val >= NAMEKEYBOARD_PAGE_ALPHA && keyboard[keyNo].val <= NAMEKEYBOARD_CONFIRM) {
+        if (keyboard[keyNo].val >= NAMEKEYBOARD_PAGE_ALPHA &&
+            keyboard[keyNo].val <= NAMEKEYBOARD_CONFIRM) {
             goto L_E84;
         }
         if (nameCharNo >= NAME_CHARACTER_LIMIT) {
@@ -390,9 +403,9 @@ L_99B4:
         for (j = k = 0; j < nameCharNo; j++) {
             if (nameMesTemp[j] > 255) {
                 nameMes[k++] = (u8)(nameMesTemp[j] >> 8);
-                nameMes[k++] = nameMesTemp[j] & 255;
+                nameMes[k++] = nameMesTemp[j] & 0xFF;
             } else {
-                nameMes[k++] = nameMesTemp[j] & 255;
+                nameMes[k++] = nameMesTemp[j] & 0xFF;
             }
         }
         if (nameCharNo < NAME_CHARACTER_LIMIT) {
@@ -405,7 +418,8 @@ L_99B4:
         if (nameCharNo < NAME_CHARACTER_LIMIT) {
             goto L_A088;
         }
-        for (keyNo = 0; keyboard[keyNo].val != 0 && keyboard[keyNo].val != NAMEKEYBOARD_CONFIRM; keyNo++) {
+        for (keyNo = 0; keyboard[keyNo].val != 0 && keyboard[keyNo].val != NAMEKEYBOARD_CONFIRM;
+             keyNo++) {
         }
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_CONFIRM_ICON, 5);
         isCommandKey = 1;
@@ -442,7 +456,7 @@ L_99B4:
             HuPrcSleep(30);
         }
         for (j = 0;; j++) {
-            *((s8 *)&GwCommon.name[j]) = lbl_1_bss_D8[boxNo].fileName[j] = nameMes[j];
+            *((s8 *)&GwCommon.name[j]) = lbl_1_bss_D8[selectedBoxNo].fileName[j] = nameMes[j];
             if (nameMes[j] == 0) {
                 break;
             }
@@ -464,9 +478,9 @@ L_99B4:
         for (j = k = 0; j < nameCharNo; j++) {
             if (nameMesTemp[j] > 255) {
                 nameMes[k++] = (u8)(nameMesTemp[j] >> 8);
-                nameMes[k++] = nameMesTemp[j] & 255;
+                nameMes[k++] = nameMesTemp[j] & 0xFF;
             } else {
-                nameMes[k++] = nameMesTemp[j] & 255;
+                nameMes[k++] = nameMesTemp[j] & 0xFF;
             }
         }
         nameMes[k] = NAME_MES_CURSOR;
@@ -507,7 +521,7 @@ L_99B4:
 
 L_A3D8:
     if (keyboardNo != prevKeyboard) {
-        HuAudFXPlay(FILESEL_SFX_KEYBOARD_CHANGE);
+        HuAudFXPlay(MSM_SE_FILESEL_12);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_ALPHA, 8);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_SYMBOL, 8);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_JAPANESE, 8);
@@ -575,6 +589,9 @@ L_AA78:
     return result;
 }
 
+/* Used by confirmation and Start: supply a random name only when every byte is a space or
+ * control byte 16. Cursor byte 191 counts as content. Return the suggested name's length, or
+ * zero when the current name is kept. */
 s16 fn_1_AAEC(s16 nameWinId)
 {
     s16 nameLength;
@@ -593,44 +610,52 @@ s16 fn_1_AAEC(s16 nameWinId)
     return 0;
 }
 
-s16 fn_1_ABF8(s16 id, f32 refX, f32 refY, f32 dirX, f32 dirY)
+/* Select a key in the requested direction. When the current key is a command key, a nearly
+ * aligned command candidate may replace a closer candidate if it is less than 55 pixels
+ * farther away. */
+s16 fn_1_ABF8(s16 currentKeyIndex, f32 originX, f32 originY, f32 directionX, f32 directionY)
 {
-    f32 ndx, ndy;
-    f32 len;
-    f32 px, py;
-    f32 dist;
-    f32 angDist;
-    f32 best;
+    f32 normalizedDirectionX, normalizedDirectionY;
+    f32 directionLength;
+    f32 candidateX, candidateY;
+    f32 candidateDistance;
+    f32 directionDistance;
+    f32 nearestDistance;
     s16 i;
-    s16 bestIdx;
+    s16 nearestKeyIndex;
 
-    len = sqrtf(dirX * dirX + dirY * dirY);
-    ndx = dirX / len;
-    ndy = dirY / len;
-    best = 409600.0f;
-    bestIdx = -1;
+    directionLength = sqrtf(directionX * directionX + directionY * directionY);
+    normalizedDirectionX = directionX / directionLength;
+    normalizedDirectionY = directionY / directionLength;
+    nearestDistance = 409600.0f;
+    nearestKeyIndex = -1;
     for (i = 0; keyboard[i].val != 0; i++) {
-        if (i != id) {
-            px = (f32)keyboard[i].x - refX;
-            py = (f32)keyboard[i].y - refY;
-            dist = sqrtf(px * px + py * py);
-            px = px / dist;
-            py = py / dist;
-            angDist = sqrtf((px - ndx) * (px - ndx) + (py - ndy) * (py - ndy));
-            if (keyboard[id].val >= NAMEKEYBOARD_PAGE_ALPHA && keyboard[id].val <= NAMEKEYBOARD_CONFIRM &&
-                keyboard[i].val >= NAMEKEYBOARD_PAGE_ALPHA && keyboard[i].val <= NAMEKEYBOARD_CONFIRM &&
-                angDist < 0.1 && dist < 55.0f + best) {
-                best = dist;
-                bestIdx = i;
-            } else if (angDist < 0.8 && dist < best) {
-                best = dist;
-                bestIdx = i;
+        if (i != currentKeyIndex) {
+            candidateX = (f32)keyboard[i].x - originX;
+            candidateY = (f32)keyboard[i].y - originY;
+            candidateDistance = sqrtf(candidateX * candidateX + candidateY * candidateY);
+            candidateX = candidateX / candidateDistance;
+            candidateY = candidateY / candidateDistance;
+            directionDistance =
+                sqrtf((candidateX - normalizedDirectionX) * (candidateX - normalizedDirectionX) +
+                      (candidateY - normalizedDirectionY) * (candidateY - normalizedDirectionY));
+            if (keyboard[currentKeyIndex].val >= NAMEKEYBOARD_PAGE_ALPHA &&
+                keyboard[currentKeyIndex].val <= NAMEKEYBOARD_CONFIRM &&
+                keyboard[i].val >= NAMEKEYBOARD_PAGE_ALPHA &&
+                keyboard[i].val <= NAMEKEYBOARD_CONFIRM && directionDistance < 0.1 &&
+                candidateDistance < 55.0f + nearestDistance) {
+                nearestDistance = candidateDistance;
+                nearestKeyIndex = i;
+            } else if (directionDistance < 0.8 && candidateDistance < nearestDistance) {
+                nearestDistance = candidateDistance;
+                nearestKeyIndex = i;
             }
         }
     }
-    return bestIdx;
+    return nearestKeyIndex;
 }
 
+/* NameEnterMain calls this after changing keyboard pages to refresh edge-wrap bounds. */
 void fn_1_B234(NAMEKEYBOARD_BOUNDS *bounds)
 {
     s16 i;
@@ -657,6 +682,7 @@ void fn_1_B234(NAMEKEYBOARD_BOUNDS *bounds)
     bounds->maxY += 20.0f;
 }
 
+/* Called before name entry to show the keyboard sprites and first keyboard window. */
 void NameEnterClose(void)
 {
     s16 i;

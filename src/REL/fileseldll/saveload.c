@@ -1,3 +1,4 @@
+/* File Select memory-card checks, save repair, load, erase, and write flow. */
 #include "dolphin/math.h"
 
 #include "REL/fileseldll.h"
@@ -12,8 +13,7 @@
 
 u32 lbl_1_data_568 = FILECARD_MESSID_NONE;       /* this TU: save-mes id (fileMesId), init -1 */
 
-
-/* Main-DOL save state used by this REL. */
+/* File Select save state supplied by the main executable. */
 extern s16 curSlotNo;
 extern s16 SLWinId;
 extern char SLSaveFileName[];
@@ -23,7 +23,7 @@ extern s64 SLSerialNo[];
 extern s32 SR_ExecResetMenu;
 extern CARDFileInfo curFileInfo;
 
-/* Save-library calls used by this translation unit. */
+/* Save-library operations used by the card flow below. */
 s32 SLSaveFlagGet(void);
 void SLWinIdSet(s16 winId);
 s32 SLSerialNoCheck(void);
@@ -32,7 +32,7 @@ s32 SLStatSet(s32 stat);
 void SLCheckSumBoxAllSet(void);
 void SLSaveBackup(void);
 s32 SLCurBoxNoSet(s32 boxNo);
-void SLSaveDataMake(s32 arg, OSTime *time);
+void SLSaveDataMake(s32 initializationMode, OSTime *time);
 u16 SLCheckSumGet(s32 start, s32 len);
 void SLCurSlotNoSet(s32 slotNo);
 void SLSaveEmptySet(s16 slot, s16 idx);
@@ -49,19 +49,21 @@ s32 FileCardOpen(const char *fileName);
 s32 FileCardRead(s32 length, void *addr);
 s32 FileCardClose(void);
 s32 FileCardMount(s16 slot);
-s32 FileCardFormat(s16 arg);
+s32 FileCardFormat(s16 slot);
 s32 FileCardLoad(void);
 s32 FileCardCopy(const char *fileName, s32 size, void *addr);
 s32 FileCardWrite(s32 length, const void *addr);
 s32 FileSave(void);
 s16 FileMessOut(s16 mode);
-s32 FileCardChoice(s16 mesNo, s16 winId);
+s32 FileCardChoice(s16 choiceFlags, s16 sourceWindowId);
 
 /* ======================================================================== */
 /* functions in strict ascending target-address order */
 /* ======================================================================== */
 
 /* 0xB5B4 */
+/* After name entry, hide its sprites and all three stored window IDs. Only the first two
+* IDs are initialized as keyboard windows; the third remains zero. */
 void FileCommonInit(void)
 {
     s16 i;
@@ -74,7 +76,9 @@ void FileCommonInit(void)
     }
 }
 
-s32 FileBoxInit(s16 arg)
+/* FileselMain calls this to select card slot A, inspect its three save boxes, and repair
+ * damaged data. Any previously selected card slot is overwritten. */
+s32 FileBoxInit(s16 sourceWindowId)
 {
     s32 brokenFlag = 0;
     s16 i;
@@ -85,10 +89,10 @@ s32 FileBoxInit(s16 arg)
     OSTime time;
 
     UnMountCnt = 0;
-    if (arg == -1) {
+    if (sourceWindowId == -1) {
         winId = HuWinWarningCreate(HUWIN_POS_CENTER, 160.0f, 478, 94);
     } else {
-        winId = arg;
+        winId = sourceWindowId;
     }
     SLWinIdSet(winId);
     SLCurSlotNoSet(0);
@@ -123,7 +127,7 @@ s32 FileBoxInit(s16 arg)
                 result = -2;
             }
             goto cleanup;
-        } else if (strncmp((char *)saveBuf[curSlotNo], "ERASE", 5) == 0) {
+        } else if (strncmp((char *)&saveBuf[curSlotNo][SAVE_COMMENT_OFS], "ERASE", 5) == 0) {
             time = OSGetTime();
             SLSaveDataMake(1, &time);
             for (i = 0; i < 3; i++) {
@@ -145,8 +149,10 @@ s32 FileBoxInit(s16 arg)
             }
             for (i = 0; i < 3; i++) {
                 SLCurBoxNoSet(i);
-                if (strncmp((char *)(saveBuf[curSlotNo] + SLBoxDataOffsetGet(i)), "SAVE", 4) == 0 ||
-                    strncmp((char *)(saveBuf[curSlotNo] + SLBoxDataOffsetGet(i + 3)), "SAVE", 4) == 0) {
+                if (strncmp((char *) (saveBuf[curSlotNo] + SLBoxDataOffsetGet(i)), "SAVE", 4) ==
+                        0 ||
+                    strncmp((char *) (saveBuf[curSlotNo] + SLBoxDataOffsetGet(i + 3)), "SAVE", 4) ==
+                        0) {
                     if (SLCheckSumCheck() == 0) {
                         OSReport("Box%d Broken!\n", i);
                         SLBoxBackupLoad(i);
@@ -157,12 +163,16 @@ s32 FileBoxInit(s16 arg)
                             boxStatus[i] = 1;
                         }
                     }
-                } else if (strncmp((char *)(saveBuf[curSlotNo] + SLBoxDataOffsetGet(i)), "EMPT", 4) != 0 &&
-                           strncmp((char *)(saveBuf[curSlotNo] + SLBoxDataOffsetGet(i + 3)), "EMPT", 4) != 0) {
+                } else if (strncmp((char *) (saveBuf[curSlotNo] + SLBoxDataOffsetGet(i)), "EMPT",
+                                   4) != 0 &&
+                           strncmp((char *) (saveBuf[curSlotNo] + SLBoxDataOffsetGet(i + 3)),
+                                   "EMPT", 4) != 0) {
                     boxStatus[i] = 3;
                     SLSaveEmptySet(curSlotNo, i);
-                } else if (strncmp((char *)(saveBuf[curSlotNo] + SLBoxDataOffsetGet(i)), "EMPT", 4) == 0 ||
-                           strncmp((char *)(saveBuf[curSlotNo] + SLBoxDataOffsetGet(i + 3)), "EMPT", 4) == 0) {
+                } else if (strncmp((char *) (saveBuf[curSlotNo] + SLBoxDataOffsetGet(i)), "EMPT",
+                                   4) == 0 ||
+                           strncmp((char *) (saveBuf[curSlotNo] + SLBoxDataOffsetGet(i + 3)),
+                                   "EMPT", 4) == 0) {
                     SLSaveEmptySet(curSlotNo, i);
                 }
                 SLCommonLoad();
@@ -189,6 +199,8 @@ s32 FileBoxInit(s16 arg)
             } else {
                 for (i = 0; i < 3; i++) {
                     char buf[8];
+                    /* Formatting the box number also stores the format-string address in result;
+                    * the later save call replaces it before the error checks. */
                     sprintf(buf, (char *)(result = (s32)"%d"), i + 1);
                     if (boxStatus[i] == 1) {
                         HuWinInsertMesSet(winId, (u32)buf, 0);
@@ -243,7 +255,7 @@ s32 FileBoxInit(s16 arg)
         fn_1_36C4(i, i);
     }
 cleanup:
-    if (arg == -1) {
+    if (sourceWindowId == -1) {
         HuWinWarningClose(winId);
         SLWinIdSet(-1);
         HuWinWarningKill(winId);
@@ -252,6 +264,7 @@ cleanup:
 }
 
 /* 0xBF9C */
+/* FileBoxInit calls this after finding no save file to check whether a save can be created. */
 s32 FileCheckCardSpace(void)
 {
     s32 result;
@@ -263,10 +276,13 @@ s32 FileCheckCardSpace(void)
         return result;
     }
     result = HuCardSectorSizeGet(curSlotNo);
+    /* This second sector-size check rejects negative results only; an unexpected
+    * positive size passes here even though FileCardMount checked the earlier size. */
     if (result < 0 && result != SAVE_SECTOR_SIZE) {
         FileMessOut(8);
         return CARD_RESULT_FATAL_ERROR;
     }
+    /* Ignore the free-space query's status and decide from its byte and file counters. */
     result = HuCardFreeSpaceGet(curSlotNo, &byteNotUsed, &filesNotUsed);
     if (filesNotUsed == 0 && byteNotUsed < SAVE_BUF_SIZE) {
         FileMessOut(4);
@@ -284,6 +300,9 @@ s32 FileCheckCardSpace(void)
 }
 
 /* 0xC098 */
+/* Create or reuse a warning window, then try mounting and opening the save file.
+ * On failure, discard that result and remount to check space. A passing space check
+ * returns success without reopening the file. A newly created window starts hidden. */
 s32 FileCardWarning(s16 winId)
 {
     s32 warnId;
@@ -308,10 +327,14 @@ s32 FileCardWarning(s16 winId)
             code = status;
         } else {
             status = HuCardSectorSizeGet(curSlotNo);
+            /* This repeated sector-size check rejects negative results only; an unexpected
+            * positive size passes here. */
             if (status < 0 && status != SAVE_SECTOR_SIZE) {
                 FileMessOut(8);
                 code = CARD_RESULT_FATAL_ERROR;
             } else {
+                /* Ignore the free-space query's status and decide from its byte and file
+                 * counters. */
                 status = HuCardFreeSpaceGet(curSlotNo, &byteNotUsed, &filesNotUsed);
                 if (filesNotUsed == 0 && byteNotUsed < SAVE_BUF_SIZE) {
                     FileMessOut(4);
@@ -342,6 +365,8 @@ s32 FileCardWarning(s16 winId)
 }
 
 /* 0xC278 */
+/* After naming an empty box, FileselSelect uses this to test whether the card already has
+* the save file. Return one only when both mounting and opening succeed. */
 s32 FileTestOpen(void)
 {
     s32 ret;
@@ -354,6 +379,7 @@ s32 FileTestOpen(void)
 }
 
 /* 0xC2F0 */
+/* Card load/save callers use this dialog loop to handle removal, formatting, and retry choices. */
 s32 FileCardErrorExec(s32 err, s16 winId)
 {
     s32 result;
@@ -370,7 +396,7 @@ s32 FileCardErrorExec(s32 err, s16 winId)
     UnMountCnt = 0;
     if (err == -6) {
         for (;;) {
-            result = FileCardChoice(FILECARD_FLAG_CANCEL | 7, winId);
+            result = FileCardChoice(FILECARD_FLAG_CANCEL | 0x7, winId);
             if (UnMountCnt != 0 && result == 2) {
                 HuWinWarningOpen(winId);
                 HuWinInsertMesSet(winId, curSlotNo + FILE_SELECT_CARD_SLOT_A, 0);
@@ -392,6 +418,8 @@ s32 FileCardErrorExec(s32 err, s16 winId)
                 HuWinMesWait(winId);
                 result = HuWinChoiceGet(winId, 1);
                 if (result == 0) {
+                    /* Request formatting, then return the retry result regardless of the
+                     * format operation's result. */
                     result = FileCardFormat(curSlotNo);
                     HuWinWarningClose(winId);
                     return -3;
@@ -419,7 +447,7 @@ s32 FileCardErrorExec(s32 err, s16 winId)
             while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0) {
                 HuPrcVSleep();
             }
-            HuAudFXPlay(1);
+            HuAudFXPlay(MSM_SE_CMN_02);
             HuWinWarningClose(winId);
             UnMountCnt = 0;
             return -5;
@@ -427,7 +455,7 @@ s32 FileCardErrorExec(s32 err, s16 winId)
     }
     if (err == -9) {
         for (;;) {
-            result = FileCardChoice(FILECARD_FLAG_CANCEL | 13, winId);
+            result = FileCardChoice(FILECARD_FLAG_CANCEL | 0xD, winId);
             if (result == FILESEL_RESULT_CANCEL) {
                 HuWinWarningClose(winId);
                 UnMountCnt = 0;
@@ -465,13 +493,13 @@ s32 FileCardErrorExec(s32 err, s16 winId)
             while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0) {
                 HuPrcVSleep();
             }
-            HuAudFXPlay(1);
+            HuAudFXPlay(MSM_SE_CMN_02);
             HuWinWarningClose(winId);
             UnMountCnt = 0;
             return -5;
         }
     }
-    result = FileCardChoice(FILECARD_FLAG_CANCEL | 5, winId);
+    result = FileCardChoice(FILECARD_FLAG_CANCEL | 0x5, winId);
     if (result == FILESEL_RESULT_CANCEL) {
         HuWinWarningClose(winId);
         UnMountCnt = 0;
@@ -489,13 +517,16 @@ s32 FileCardErrorExec(s32 err, s16 winId)
     while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0) {
         HuPrcVSleep();
     }
-    HuAudFXPlay(1);
+    HuAudFXPlay(MSM_SE_CMN_02);
     HuWinWarningClose(winId);
     UnMountCnt = 0;
     return -5;
 }
 
 /* 0xC898 */
+/* When saving is enabled, mount and open the named save file, reporting the handled card
+ * errors. Unlisted open errors, including busy, return success. When saving is disabled,
+ * return success without opening the file. */
 s32 FileCardOpen(const char *fileName)
 {
     s32 ret;
@@ -537,6 +568,8 @@ s32 FileCardOpen(const char *fileName)
 }
 
 /* 0xC9D0 */
+/* When saving is enabled, read bytes from the open card file and report read errors; otherwise
+ * return success without reading. */
 s32 FileCardRead(s32 length, void *addr)
 {
     s32 ret;
@@ -555,6 +588,7 @@ s32 FileCardRead(s32 length, void *addr)
 }
 
 /* 0xCA58 */
+/* Closes the current card file when card saving is enabled. */
 s32 FileCardClose(void)
 {
     s32 ret;
@@ -566,6 +600,10 @@ s32 FileCardClose(void)
     return ret;
 }
 
+/* Card operations call this to mount the active slot and validate its sector size.
+* Unlisted mount results are discarded; a valid sector size can return success after an
+* unlisted mount error. */
+/* The slot argument is retained by this interface; mounting uses the active curSlotNo. */
 s32 FileCardMount(s16 slot)
 {
     s32 ret;
@@ -574,38 +612,43 @@ s32 FileCardMount(s16 slot)
     if (ret == -2) {
         FileMessOut(7);
         return ret;
-    }
-    if (ret == CARD_RESULT_FATAL_ERROR) {
+    } else if (ret == CARD_RESULT_FATAL_ERROR) {
         FileMessOut(1);
         return CARD_RESULT_FATAL_ERROR;
-    }
-    if (ret == -3) {
+    } else if (ret == -3) {
         FileMessOut(0);
         return -3;
-    }
-    if (ret == -6) {
+    } else if (ret == -6) {
         ret = HuCardSectorSizeGet(curSlotNo);
         if (ret > 0 && ret != SAVE_SECTOR_SIZE) {
             FileMessOut(8);
             return -2;
+        } else {
+            UnMountCnt = 0;
+            FileMessOut(5);
+            return -6;
         }
-        UnMountCnt = 0;
-        FileMessOut(5);
-        return -6;
+    } else {
+        ret = HuCardSectorSizeGet(curSlotNo);
+        if (ret < 0) {
+            FileMessOut(1);
+            return ret;
+        } else {
+            if (ret != SAVE_SECTOR_SIZE) {
+                FileMessOut(8);
+                return -2;
+            }
+            return 0;
+        }
     }
-    ret = HuCardSectorSizeGet(curSlotNo);
-    if (ret < 0) {
-        FileMessOut(1);
-        return ret;
-    }
-    if (ret != SAVE_SECTOR_SIZE) {
-        FileMessOut(8);
-        return -2;
-    }
-    return 0;
 }
 /* 0xCBC8 */
-s32 FileCardFormat(s16 arg)
+/* After format confirmation, format the active curSlotNo; slot only selects the warning text.
+ * Removal before formatting returns success without formatting the card. HuCardFormat clears
+ * reset/disc-error suppression even if it was already set. Unhandled negative format results
+ * still request serial refresh, rebuild save metadata and checksums, and repeat the
+ * message-close call. */
+s32 FileCardFormat(s16 slot)
 {
     s16 ret;
     s16 win;
@@ -616,7 +659,7 @@ s32 FileCardFormat(s16 arg)
         UnMountCnt = 0;
         return 0;
     }
-    win = FileCardMesOpen(FILE_SELECT_CARD_FORMAT_WARNING, arg + FILE_SELECT_CARD_SLOT_A, -1, 70);
+    win = FileCardMesOpen(FILE_SELECT_CARD_FORMAT_WARNING, slot + FILE_SELECT_CARD_SLOT_A, -1, 70);
     HuPrcSleep(30);
     if (UnMountCnt & (1 << curSlotNo)) {
         FileCardMesClose(win);
@@ -652,6 +695,10 @@ s32 FileCardFormat(s16 arg)
 }
 
 /* 0xCDA8 */
+/* FileBoxInit reads the save image when saving is enabled; otherwise it uses the existing
+ * buffer. Unlisted open errors, including busy, are treated as success before reading.
+ * The card-close result and checksum comparison over the first SAVE_BOX_SIZE bytes are
+ * ignored. */
 s32 FileCardLoad(void)
 {
     s32 rc;
@@ -719,6 +766,7 @@ s32 FileCardLoad(void)
         if (ret >= 0) {
             p = (u16 *)&saveBuf[curSlotNo][SAVE_BOX_SIZE];
             sum = SLCheckSumGet(0, SAVE_BOX_SIZE);
+            /* This checksum comparison computes a result that is neither stored nor tested. */
             *p == sum;
         }
     }
@@ -726,6 +774,8 @@ s32 FileCardLoad(void)
 }
 
 /* 0xCFF4 */
+/* When saving is enabled, create a card save file, write its erase marker and supplied image,
+ * and update status; otherwise return success without writing. */
 s32 FileCardCopy(const char *fileName, s32 size, void *addr)
 {
     s32 warnA;
@@ -745,10 +795,13 @@ s32 FileCardCopy(const char *fileName, s32 size, void *addr)
         return ret;
     }
     ret = HuCardSectorSizeGet(curSlotNo);
+    /* This repeated sector-size check rejects negative results only; an unexpected
+    * positive size passes here. */
     if (ret < 0 && ret != SAVE_SECTOR_SIZE) {
         FileMessOut(8);
         return CARD_RESULT_FATAL_ERROR;
     }
+    /* Ignore the free-space query's status and decide from its byte and file counters. */
     ret = HuCardFreeSpaceGet(curSlotNo, &byteNotUsed, &filesNotUsed);
     if (filesNotUsed == 0 && size > byteNotUsed) {
         FileMessOut(4);
@@ -762,8 +815,11 @@ s32 FileCardCopy(const char *fileName, s32 size, void *addr)
         FileMessOut(3);
         return -9;
     }
-    warnA = FileCardMesOpen(FILE_SELECT_CARD_CREATE_FILE, curSlotNo + FILE_SELECT_CARD_SLOT_A, -1, 160);
+    warnA =
+        FileCardMesOpen(FILE_SELECT_CARD_CREATE_FILE, curSlotNo + FILE_SELECT_CARD_SLOT_A, -1, 160);
     warnB = FileStatusMesOpen(FILE_SELECT_SAVING, curSlotNo + FILE_SELECT_CARD_SLOT_A, -1, 70);
+    /* Suppress reset and disc error handling during creation and writing; afterward the
+    * shared flag is cleared even if it was already set on entry. */
     HuSRDisableF = 1;
     ret = HuCardCreate(curSlotNo, fileName, size, &curFileInfo);
     if (ret < 0) {
@@ -785,6 +841,8 @@ s32 FileCardCopy(const char *fileName, s32 size, void *addr)
     }
     SLSerialNoGet();
     buf = HuMemDirectMalloc(0, size);
+    /* The zero-length fill writes nothing; the card is first given an ERASE marker before the save
+     * data. */
     memset(buf, size, 0);
     memcpy(buf, SLEraseStr, 6);
     ret = HuCardWriteIdle(&curFileInfo, buf, size, 0);
@@ -819,15 +877,17 @@ s32 FileCardCopy(const char *fileName, s32 size, void *addr)
     return 0;
 }
 
-s32 FileClear(s16 arg)
+/* Called when creating the first card save file to write the new selected box and its empty
+ * neighboring boxes. */
+s32 FileClear(s16 sourceWindowId)
 {
     s32 winId;
     s32 ret;
 
-    if (arg == -1) {
+    if (sourceWindowId == -1) {
         winId = HuWinWarningCreate(HUWIN_POS_CENTER, 160.0f, 478, 94);
     } else {
-        winId = arg;
+        winId = sourceWindowId;
     }
     SLWinIdSet(winId);
     do {
@@ -838,7 +898,7 @@ s32 FileClear(s16 arg)
         }
         ret = FileCardErrorExec(ret, winId);
     } while (ret == -3);
-    if (arg == -1) {
+    if (sourceWindowId == -1) {
         SLWinIdSet(-1);
         HuWinWarningKill(winId);
     }
@@ -846,6 +906,8 @@ s32 FileClear(s16 arg)
 }
 
 /* 0xD448 */
+/* When saving is enabled, write the supplied bytes to the open card file and update card
+ * status; otherwise return success without writing. */
 s32 FileCardWrite(s32 length, const void *addr)
 {
     s32 winId;
@@ -857,6 +919,8 @@ s32 FileCardWrite(s32 length, const void *addr)
     if (lbl_1_data_568 != -1) {
         winId = (s16)FileStatusMesOpen(lbl_1_data_568, curSlotNo + FILE_SELECT_CARD_SLOT_A, -1, 70);
     }
+    /* Suppress reset and disc error handling for the write; afterward the shared flag is
+    * cleared even if it was already set on entry. */
     HuSRDisableF = 1;
     HuPrcSleep(60);
     SLSerialNoGet();
@@ -871,6 +935,10 @@ s32 FileCardWrite(s32 length, const void *addr)
     return ret;
 }
 
+/* FileSaveMesOpen calls this to checksum and back up the save image, write it when saving is
+ * enabled, and classify card errors. Unlisted open errors, including busy, are treated as
+ * success. A serial mismatch preserves the classified open result (zero or -4) after showing
+ * its message; the final card-close result is ignored. */
 s32 FileSave(void)
 {
     s32 rv;
@@ -933,14 +1001,18 @@ s32 FileSave(void)
         if (SLSerialNoCheck() == 0) {
             FileMessOut(9);
         } else {
-            winId1 = (s16)FileCardMesOpen(FILE_SELECT_CARD_WRITE, curSlotNo + FILE_SELECT_CARD_SLOT_A, -1, 70);
+            winId1 = (s16) FileCardMesOpen(FILE_SELECT_CARD_WRITE,
+                                           curSlotNo + FILE_SELECT_CARD_SLOT_A, -1, 70);
             buf = saveBuf[curSlotNo];
             if (SLSaveFlagGet() == 0) {
                 wret = 0;
             } else {
                 if (lbl_1_data_568 != FILECARD_MESSID_NONE) {
-                    winId2 = (s16)FileStatusMesOpen(lbl_1_data_568, curSlotNo + FILE_SELECT_CARD_SLOT_A, -1, 70);
+                    winId2 = (s16) FileStatusMesOpen(lbl_1_data_568,
+                                                     curSlotNo + FILE_SELECT_CARD_SLOT_A, -1, 70);
                 }
+                /* Suppress reset and disc error handling for this write; afterward the shared flag
+                 * is cleared even if it was already set on entry. */
                 HuSRDisableF = 1;
                 HuPrcSleep(60);
                 SLSerialNoGet();
@@ -961,6 +1033,8 @@ s32 FileSave(void)
             } else if (rv == -2) {
                 FileMessOut(7);
             } else if (rv == -6) {
+                /* The sector-size result replaces the write error; an unexpected positive
+                 * size is returned after the invalid-card message. */
                 rv = HuCardSectorSizeGet(curSlotNo);
                 if (rv > 0 && rv != SAVE_SECTOR_SIZE) {
                     FileMessOut(8);
@@ -980,18 +1054,20 @@ s32 FileSave(void)
 }
 
 /* 0xD90C */
-s32 FileSaveMesOpen(s16 winId_in, s32 arg1)
+/* Save, copy and erase callers use this retry loop to show progress and resolve card errors.
+* A zero save result becomes -5 if the subsequent serial check detects a different card. */
+s32 FileSaveMesOpen(s16 sourceWindowId, s32 statusMessageId)
 {
     s32 winId;
     s32 ret;
 
-    if (winId_in == -1) {
+    if (sourceWindowId == -1) {
         winId = HuWinWarningCreate(HUWIN_POS_CENTER, 160.0f, 478, 94);
     } else {
-        winId = winId_in;
+        winId = sourceWindowId;
     }
     SLWinIdSet(winId);
-    lbl_1_data_568 = arg1;
+    lbl_1_data_568 = statusMessageId;
     do {
         ret = FileSave();
         if (SLSerialNoCheck() != 0) {
@@ -1007,7 +1083,7 @@ s32 FileSaveMesOpen(s16 winId_in, s32 arg1)
         }
         ret = FileCardErrorExec(ret, winId);
     } while (ret == -3);
-    if (winId_in == -1) {
+    if (sourceWindowId == -1) {
         SLWinIdSet(-1);
         HuWinWarningKill(winId);
     }
@@ -1016,7 +1092,8 @@ s32 FileSaveMesOpen(s16 winId_in, s32 arg1)
 }
 
 /* 0xDA18 */
-HUWINID FileStatusMesOpen(u32 mesId, u32 insMes0, u32 insMes1, s16 arg3)
+/* Saving callers use this to show a centered status message sized for its text and inserts. */
+HUWINID FileStatusMesOpen(u32 mesId, u32 insMes0, u32 insMes1, s16 windowY)
 {
     HuVec2f maxSize;
     HUWINID winId;
@@ -1028,7 +1105,7 @@ HUWINID FileStatusMesOpen(u32 mesId, u32 insMes0, u32 insMes1, s16 arg3)
         HuWinInsertMesSizeGet(insMes1, 1);
     }
     HuWinMesMaxSizeGet(1, &maxSize, mesId);
-    winId = HuWinWarningCreate(HUWIN_POS_CENTER, (f32)arg3, maxSize.x, maxSize.y);
+    winId = HuWinWarningCreate(HUWIN_POS_CENTER, (f32)windowY, maxSize.x, maxSize.y);
     HuWinWarningOpen(winId);
     if (insMes0 != FILECARD_MESSID_NONE) {
         HuWinInsertMesSet(winId, insMes0, 0);
@@ -1042,6 +1119,7 @@ HUWINID FileStatusMesOpen(u32 mesId, u32 insMes0, u32 insMes1, s16 arg3)
 }
 
 /* 0xDB5C */
+/* Closes and destroys a status window returned by FileStatusMesOpen. */
 void FileStatusMesClose(s16 winId)
 {
     if (winId >= 0) {
@@ -1051,6 +1129,7 @@ void FileStatusMesClose(s16 winId)
 }
 
 /* 0xDBA0 */
+/* Card operations use this to show a message in the shared warning window or a temporary one. */
 HUWINID FileCardMesOpen(u32 messNum, u32 insMesNum1, u32 insMesNum2, s16 posY)
 {
     HUWINID winId;
@@ -1067,7 +1146,8 @@ HUWINID FileCardMesOpen(u32 messNum, u32 insMesNum1, u32 insMesNum2, s16 posY)
     }
     HuWinMesMaxSizeGet(1, &maxSize, messNum);
     if (SLWinId == -1) {
-        winId = ((HUWINID (*)(f32, f32, int, int))HuWinWarningCreate)(-10000.0f, posY, (int)maxSize.x, (int)maxSize.y);
+        winId = HuWinWarningCreate(
+            HUWIN_POS_CENTER, posY, maxSize.x, maxSize.y);
     } else {
         winId = SLWinId;
     }
@@ -1084,6 +1164,7 @@ HUWINID FileCardMesOpen(u32 messNum, u32 insMesNum1, u32 insMesNum2, s16 posY)
 }
 
 /* 0xDD24 */
+/* Closes a temporary card message window while preserving the shared save window. */
 void FileCardMesClose(s16 winId)
 {
     if (SLWinId != winId && winId >= 0) {
@@ -1093,6 +1174,8 @@ void FileCardMesClose(s16 winId)
 }
 
 /* 0xDD84 */
+/* Card operations call this to show their error message; selected modes also ask a choice or wait
+ * for A. */
 s16 FileMessOut(s16 mode)
 {
     s16 warnId;
@@ -1188,6 +1271,7 @@ s16 FileMessOut(s16 mode)
     HuWinMesWait(warnId);
     if (flag != 0) {
         choice = HuWinChoiceGet(warnId, 1);
+        /* Only mode 10 sets flag, so this mode-5 confirmation branch is never reached. */
         if (mode == 5 && choice == 0) {
             HuWinInsertMesSet(warnId, curSlotNo + FILE_SELECT_CARD_SLOT_A, 0);
             HuWinMesSet(warnId, FILE_SELECT_CARD_FORMAT);
@@ -1199,7 +1283,7 @@ s16 FileMessOut(s16 mode)
     while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0) {
             HuPrcVSleep();
         }
-        HuAudFXPlay(1);
+        HuAudFXPlay(MSM_SE_CMN_02);
     }
     if (SLWinId == -1) {
         HuWinWarningClose(warnId);
@@ -1209,7 +1293,8 @@ s16 FileMessOut(s16 mode)
 }
 
 /* 0xE210 */
-s32 FileCardChoice(s16 arg0, s16 arg1)
+/* FileCardErrorExec calls this to display the retry, format, and cancel choices for an error. */
+s32 FileCardChoice(s16 choiceFlags, s16 sourceWindowId)
 {
     s16 choices[10];
     HuVec2f maxSize;
@@ -1219,7 +1304,7 @@ s32 FileCardChoice(s16 arg0, s16 arg1)
     s16 v;
     HUWIN *w;
 
-    v = arg0 & ~FILECARD_FLAG_CANCEL;
+    v = choiceFlags & ~FILECARD_FLAG_CANCEL;
     if (v == 7) {
         msgId = FILE_SELECT_CARD_CHOICE_1;
         choices[0] = 1;
@@ -1236,21 +1321,21 @@ s32 FileCardChoice(s16 arg0, s16 arg1)
         choices[1] = 4;
     }
     HuWinMesMaxSizeGet(1, &maxSize, msgId);
-    w = &winData[arg1];
+    w = &winData[sourceWindowId];
     if ((f32)w->winH < maxSize.y) {
-        HuWinWarningClose(arg1);
+        HuWinWarningClose(sourceWindowId);
         winId = HuWinWarningCreate(HUWIN_POS_CENTER, 160.0f, (s16)maxSize.x, (s16)maxSize.y);
     } else {
-        winId = arg1;
+        winId = sourceWindowId;
     }
     HuWinWarningOpen(winId);
-    if ((arg0 & FILECARD_FLAG_CANCEL) == 0) {
+    if ((choiceFlags & FILECARD_FLAG_CANCEL) == 0) {
         HuWinAttrSet(winId, HUWIN_ATTR_NOCANCEL);
     }
     HuWinMesSet(winId, msgId);
     HuWinMesWait(winId);
     choice = HuWinChoiceGet(winId, 0);
-    if (arg1 != winId) {
+    if (sourceWindowId != winId) {
         HuWinWarningClose(winId);
         HuWinWarningKill(winId);
     }

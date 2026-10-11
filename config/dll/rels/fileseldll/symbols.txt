@@ -339,7 +339,6 @@ keyboardMain = .data:0x00000218; // type:object size:0x16E
 keyboardNumSpc = .data:0x00000386; // type:object size:0xF6
 keyboardTbl = .data:0x0000047C; // type:object size:0x10
 nameSpriteConfig = .data:0x0000048C; // type:object size:0xD8
-gap_04_00000564_data = .data:0x00000564; // type:object size:0x4
 lbl_1_data_568 = .data:0x00000568; // type:object size:0x4 data:4byte
 lbl_1_data_56C = .data:0x0000056C; // type:object size:0x6 data:string
 lbl_1_data_572 = .data:0x00000572; // type:object size:0x19 data:string
