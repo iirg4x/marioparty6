@@ -1,11 +1,8 @@
+/* Shared state used by Party Mode menus, players, cameras, and effects. */
 #ifndef _REL_MDPARTYDLL_GLOBALS_H
 #define _REL_MDPARTYDLL_GLOBALS_H
 
-/*
- * Private owner declarations. GC/1.3.2 must see these before the functions,
- * while their definitions remain at the end of mdparty.c to reproduce the
- * retail data/BSS order and register allocation.
- */
+/* Shared Party Mode menu, player, camera, and effect state. */
 
 extern s16 lbl_1_bss_28;
 extern s16 lbl_1_bss_2A;
