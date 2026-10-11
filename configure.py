@@ -300,17 +300,6 @@ config.linker_version = "GC/2.6"
 config.rel_strip_partial = False
 config.rel_empty_file = "REL/empty.c"
 config.rel_ldscript_replacements = {}
-config.rel_ldscript_replacements["s01Dll"] = [
-        (
-            "        .text ALIGN(0x4):{}",
-            """        .text ALIGN(0x4):{
-            s01.o(.text)
-            s01.o(.text.common)
-            s01.o(.text.after_common)
-            *(.text)
-        }""",
-        ),
-    ]
 
 config.rel_ldscript_replacements["mdminidll"] = [
         (
@@ -1655,14 +1644,18 @@ config.libs = [
         objects={
             Object(
                 Matching,
-                "REL/s01Dll/s01.c",
-                mw_version=config.linker_version,
+                "REL/s01Dll/prolog.c",
             ),
             Object(
                 Matching,
                 "REL/s01Dll/runtime.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/s01Dll/s01.c",
+                extra_cflags=["-sym", "on"],
             ),
         },
     ),
