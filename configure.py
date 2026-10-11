@@ -1098,6 +1098,8 @@ config.libs = [
             Object(Matching, "REL/framework/hu_archive.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/octtree.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/timer.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/event.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/octtree_debug.cpp", extra_cflags=["-pooldata off"]),
         ],
     },
     Rel(

@@ -13,7 +13,7 @@ void operator delete(void *);
 struct OctreeDebugNode {
     unsigned long triangleOffset; // First entry in the leaf's triangle-index range.
     unsigned long triangleCount; // Number of entries in that range.
-    float bounds[6]; // Minimum and maximum coordinates of the node's box.
+    float bounds[6]; // Minimum X/Y/Z followed by maximum X/Y/Z in the vertex table's coordinates.
     OctreeDebugNode *children[8]; // Child pointers after the archive indices are resolved.
 };
 // A triangle stores three vertex-table indices and one debug palette index.

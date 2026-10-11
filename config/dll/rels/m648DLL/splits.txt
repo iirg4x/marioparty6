@@ -29,6 +29,12 @@ REL/framework/debug.cpp:
 	.text       start:0x0001347C end:0x000136C4
 	.rodata     start:0x00000620 end:0x00000678
 
+REL/framework/event.cpp:
+	.text       start:0x000136C4 end:0x00016190
+	.rodata     start:0x00000678 end:0x000006D8
+	.data       start:0x00000770 end:0x000007F8
+	.bss        start:0x00000620 end:0x00000628
+
 REL/framework/game_object.cpp:
 	.text       start:0x0001935C end:0x000194D4
 	.rodata     start:0x000006D8 end:0x00000718

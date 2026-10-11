@@ -21,6 +21,12 @@ REL/framework/camera.cpp:
 	.text       start:0x00013494 end:0x00013C68
 	.rodata     start:0x000007C0 end:0x00000830
 
+REL/framework/event.cpp:
+	.text       start:0x00013CA0 end:0x00016714
+	.rodata     start:0x00000830 end:0x00000890
+	.data       start:0x00000730 end:0x000007A8
+	.bss        start:0x00000078 end:0x00000080
+
 REL/framework/event_hm.cpp:
 	.text       start:0x000198E0 end:0x0001A5B0
 	.rodata     start:0x00000890 end:0x000008C8

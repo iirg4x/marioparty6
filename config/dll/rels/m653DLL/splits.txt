@@ -38,6 +38,12 @@ REL/framework/debug.cpp:
 	.text       start:0x00011C8C end:0x00011ED4
 	.rodata     start:0x000006C0 end:0x00000718
 
+REL/framework/event.cpp:
+	.text       start:0x00011ED4 end:0x00014948
+	.rodata     start:0x00000718 end:0x00000778
+	.data       start:0x000011E8 end:0x00001260
+	.bss        start:0x000000D8 end:0x000000E0
+
 REL/framework/event_hm.cpp:
 	.text       start:0x00017544 end:0x00018214
 	.rodata     start:0x00000778 end:0x000007B0

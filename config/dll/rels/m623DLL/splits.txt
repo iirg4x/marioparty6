@@ -38,6 +38,12 @@ REL/framework/debug.cpp:
 	.text       start:0x00019724 end:0x0001996C
 	.rodata     start:0x00000858 end:0x000008B0
 
+REL/framework/event.cpp:
+	.text       start:0x0001996C end:0x0001C438
+	.rodata     start:0x000008B0 end:0x00000910
+	.data       start:0x00001638 end:0x000016C0
+	.bss        start:0x000007B0 end:0x000007B8
+
 REL/framework/game_object.cpp:
 	.text       start:0x0001F604 end:0x0001F77C
 	.rodata     start:0x00000910 end:0x00000950
@@ -84,6 +90,11 @@ REL/framework/octtree.cpp:
 	.text       start:0x00027488 end:0x0002778C
 	.rodata     start:0x00000BD8 end:0x00000C10
 	.data       start:0x00001908 end:0x00001920
+
+REL/framework/octtree_debug.cpp:
+	.text       start:0x0002778C end:0x00028848
+	.rodata     start:0x00000C20 end:0x00000CA8
+	.data       start:0x00001920 end:0x00001968
 
 REL/framework/particle.cpp:
 	.text       start:0x00028B74 end:0x00028E58

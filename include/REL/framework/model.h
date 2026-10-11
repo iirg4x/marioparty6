@@ -7,7 +7,8 @@ extern "C" {
 #include "game/hu3d.h"
 }
 
-// Stores a Hu3D model handle and releases its current model when replaced or destroyed.
+// Stores a Hu3D handle; Replace releases any nonnegative current handle, even when it is reused.
+// Destruction replaces the handle with -1.
 class Model {
 public:
     short modelId; // Index in Hu3DData, or -1 when no model is owned.
