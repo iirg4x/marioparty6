@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 41.26% | 58.42% |
-| Main DOL | 89.74% | 99.14% |
+| Entire project | 41.30% | 58.46% |
+| Main DOL | 89.98% | 99.23% |
 | REL modules | 30.98% | 32.62% |
+
+DOL source: `src/Runtime.PPCEABI.H/Gecko_ExceptionPPC.cpp` now builds from source; `main.dol` matches retail byte for byte.
 
 Party Mode (`mdpartydll`) selects all **334 functions** from **3 complete translation units**; its linked REL matches retail.
 

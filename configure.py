@@ -373,7 +373,7 @@ config.libs = [
             Object(Matching, "Runtime.PPCEABI.H/runtime.c"),
             Object(Matching, "Runtime.PPCEABI.H/__init_cpp_exceptions.cpp"),
             Object(
-                NonMatching,
+                Matching,
                 "Runtime.PPCEABI.H/Gecko_ExceptionPPC.cpp",
                 extab_padding=[0x25, 0x00],
                 cflags=[
