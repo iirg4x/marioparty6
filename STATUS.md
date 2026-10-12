@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 41.32% | 58.46% |
+| Entire project | 41.64% | 58.63% |
 | Main DOL | 90.12% | 99.24% |
-| REL modules | 30.98% | 32.62% |
+| REL modules | 31.36% | 32.90% |
+
+Miracle Book (`miraclebookdll`) selects all **58 functions** from **3 complete translation units**; its linked REL matches retail.
 
 DOL source: `src/gssdk_lib/asrpho/common/blocks/fftmod.c` now builds from source; `main.dol` matches retail byte for byte.
 

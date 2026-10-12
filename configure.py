@@ -1642,12 +1642,21 @@ config.libs = [
     Rel(
         "miraclebookdll",
         objects={
-            Object(NonMatching, "REL/miraclebookdll/miraclebook.c"),
+            Object(
+                Matching,
+                "REL/miraclebookdll/book.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
             Object(
                 Matching,
                 "REL/miraclebookdll/runtime.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/miraclebookdll/setup.c",
+                extra_cflags=["-pooldata", "off"],
             ),
         },
     ),
