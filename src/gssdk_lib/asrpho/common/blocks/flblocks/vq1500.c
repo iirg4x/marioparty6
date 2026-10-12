@@ -197,7 +197,7 @@ static void FreeVq1500(Vq1500 *block)
     tosBaseBlockDestruct(block);
 }
 
-void *ConstructVq(TosContext *context, u32 blockIndex)
+void *ConstructVq(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1, IdleVq1500Process, InitVq1500Process,

@@ -108,7 +108,7 @@ for (i = 0; i < block->numberInputs; i++) {
 return 0;
 }
 
-void *ConstructStacker(TosContext *context, u32 blockIndex)
+void *ConstructStacker(TosContext *context, u8 blockIndex)
 {
 return tosBaseBlockConstruct(
     context, blockIndex, 2, 1, ProcessStacker, InitStacker,

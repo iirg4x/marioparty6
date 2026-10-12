@@ -519,7 +519,7 @@ static void ProcessGender(
     }
 }
 
-void *ConstructGender(TosContext *context, u32 blockIndex)
+void *ConstructGender(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 4, 1, ProcessGender, InitGender,

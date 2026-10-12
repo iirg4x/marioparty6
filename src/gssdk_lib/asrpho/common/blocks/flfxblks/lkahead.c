@@ -89,7 +89,7 @@ block->queued = 0;
 return 0;
 }
 
-void *ConstructLookAhead(TosContext *context, u32 blockIndex)
+void *ConstructLookAhead(TosContext *context, u8 blockIndex)
 {
 return tosBaseBlockConstruct(
     context, blockIndex, 1, 1, (TosProcessFunction)ProcessLookAhead,

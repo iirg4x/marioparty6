@@ -62,7 +62,7 @@ baseBlock->output->outputSize = block->elementSize;
 return 0;
 }
 
-void *ConstructGenderFilter(TosContext *context, u32 blockIndex)
+void *ConstructGenderFilter(TosContext *context, u8 blockIndex)
 {
 struct TosProfileBlock {
     TosContext *context;

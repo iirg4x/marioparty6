@@ -746,7 +746,7 @@ static u32 InitPitchCombiner(TosBaseBlock *baseBlock)
     return 0;
 }
 
-void *ConstructPitchCombiner(TosContext *context, u32 blockIndex)
+void *ConstructPitchCombiner(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 3, 1,

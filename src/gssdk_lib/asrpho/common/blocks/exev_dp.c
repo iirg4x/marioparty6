@@ -251,7 +251,7 @@ return 1;
 }
 
 /* The rec1600 block table uses this constructor for its extra-event scoring block. */
-void *ConstructExtraEventDp(TosContext *context, u32 blockIndex)
+void *ConstructExtraEventDp(TosContext *context, u8 blockIndex)
 {
 return tosBaseBlockConstruct(
     context, blockIndex, 1, 0, (TosProcessFunction)ProcessExtraEventDP,

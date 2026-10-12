@@ -180,7 +180,7 @@ u32 InitMedian(TosBaseBlock *baseBlock)
     return result;
 }
 
-void *ConstructMedian(TosContext *context, u32 blockIndex)
+void *ConstructMedian(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1,

@@ -140,7 +140,7 @@ static u32 InitStationarity(Stationarity *block)
     return 0;
 }
 
-void *ConstructStationarity(TosContext *context, u32 blockIndex)
+void *ConstructStationarity(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
     context, blockIndex, 2, 1, (TosProcessFunction)ProcessStationarity,

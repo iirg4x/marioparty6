@@ -110,7 +110,7 @@ static u32 InitDCTLift(TosBaseBlock *baseBlock)
     return 0;
 }
 
-void *ConstructDCTLift(TosContext *context, u32 blockIndex)
+void *ConstructDCTLift(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1, ProcessDCTLift, InitDCTLift,

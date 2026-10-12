@@ -81,7 +81,7 @@ return 0;
 }
 
 /* Creates the block registered in the speech pipeline's block definitions. */
-void *ConstructUndersampler(TosContext *context, u32 blockIndex)
+void *ConstructUndersampler(TosContext *context, u8 blockIndex)
 {
 return tosBaseBlockConstruct(
     context, blockIndex, 1, 1, (TosProcessFunction)ProcessUndersampler,

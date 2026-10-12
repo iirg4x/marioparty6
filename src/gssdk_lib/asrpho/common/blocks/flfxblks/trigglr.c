@@ -615,7 +615,7 @@ static u32 InitTriggerLR(TosBaseBlock *baseBlock)
 
 // Creates a four-input TriggerLR block for the configured speech-recognition pipeline.
 // The ASR profile's block table calls this constructor when building that pipeline.
-TosBaseBlock *ConstructTriggerLR(TosContext *context, u32 blockIndex)
+TosBaseBlock *ConstructTriggerLR(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 4, 0, ProcessTriggerLR, InitTriggerLR,

@@ -438,7 +438,7 @@ static u32 InitSHS_VUV(TosBaseBlock *baseBlock)
     return 0;
 }
 
-void *ConstructSHS_VUV(TosContext *context, u32 blockIndex)
+void *ConstructSHS_VUV(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 2, 2, ProcessSHS_VUV, InitSHS_VUV,

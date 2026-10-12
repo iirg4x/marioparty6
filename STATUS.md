@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 41.30% | 58.46% |
-| Main DOL | 89.98% | 99.23% |
+| Entire project | 41.32% | 58.46% |
+| Main DOL | 90.12% | 99.24% |
 | REL modules | 30.98% | 32.62% |
+
+DOL source: `src/gssdk_lib/asrpho/common/blocks/fftmod.c` now builds from source; `main.dol` matches retail byte for byte.
 
 DOL source: `src/Runtime.PPCEABI.H/Gecko_ExceptionPPC.cpp` now builds from source; `main.dol` matches retail byte for byte.
 

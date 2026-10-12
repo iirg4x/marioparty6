@@ -257,7 +257,7 @@ u32 InitMel(TosBaseBlock *baseBlock)
     return 0;
 }
 
-void *ConstructMel(TosContext *context, u32 blockIndex)
+void *ConstructMel(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1, ProcessMel, InitMel, ControlMel,
