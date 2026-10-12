@@ -496,7 +496,7 @@ static u32 InitSpecSub(TosBaseBlock *baseBlock)
     return 0;
 }
 
-void *ConstructSpecSub(TosContext *context, u32 blockIndex)
+void *ConstructSpecSub(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 2, 4, ProcessSpecSub, InitSpecSub,

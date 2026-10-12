@@ -195,7 +195,7 @@ static u32 CombinerControl(
 }
 
 // Creates the one-input, one-output block used by the speech recognizer.
-void *ConstructCombiner(TosContext *context, u32 blockIndex)
+void *ConstructCombiner(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1, CombinerProcess, CombinerInit,

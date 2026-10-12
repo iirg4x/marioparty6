@@ -222,7 +222,7 @@ static u32 InitWindow(TosBaseBlock *baseBlock)
     return 0;
 }
 
-void *ConstructWindow(TosContext *context, u32 blockIndex)
+void *ConstructWindow(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1, ProcessWindow, InitWindow, ControlWindow,

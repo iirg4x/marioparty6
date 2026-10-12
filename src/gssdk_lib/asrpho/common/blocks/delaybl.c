@@ -134,7 +134,7 @@ block->flushRemaining = 0;
 return 0;
 }
 
-void *ConstructDelayBlock(TosContext *context, u32 blockIndex)
+void *ConstructDelayBlock(TosContext *context, u8 blockIndex)
 {
 return tosBaseBlockConstruct(
     context, blockIndex, 1, 1, (TosProcessFunction)ProcessDelayBlock,

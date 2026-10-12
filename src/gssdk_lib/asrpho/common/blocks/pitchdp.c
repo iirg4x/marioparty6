@@ -508,7 +508,7 @@ static u32 InitPitchDP(TosBaseBlock *baseBlock)
     return 0;
 }
 
-void *ConstructPitchDP(TosContext *context, u32 blockIndex)
+void *ConstructPitchDP(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1, ProcessPitchDP, InitPitchDP,

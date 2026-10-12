@@ -160,7 +160,7 @@ extern u8 _tosControl(
     void *owner, u32 command, u32 argument0, u32 argument1);
 extern void tosBaseBlockDestruct(void *block);
 extern TosBaseBlock *tosBaseBlockConstruct(
-    TosContext *context, u32 blockIndex, u8 inputCount, u8 outputCount,
+    TosContext *context, u8 blockIndex, u8 inputCount, u8 outputCount,
     TosProcessFunction process, TosInitFunction init,
     TosControlFunction control, u32 size);
 extern u8 tosBaseBlockDisableInputQueues(TosBaseBlock *block);

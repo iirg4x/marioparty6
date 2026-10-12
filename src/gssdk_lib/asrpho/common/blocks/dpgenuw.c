@@ -722,7 +722,7 @@ static u32 ControlDpGenUw(
     return 1;
 }
 
-void *ConstructDpGenUw(TosContext *context, u32 blockIndex)
+void *ConstructDpGenUw(TosContext *context, u8 blockIndex)
 {
     DpGenUw *block = (DpGenUw *)tosBaseBlockConstruct(
         context, blockIndex, 1, 1, IdleDpGenUwProcess,

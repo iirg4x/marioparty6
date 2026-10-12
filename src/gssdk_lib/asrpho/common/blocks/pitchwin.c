@@ -172,7 +172,7 @@ static u32 InitPitchWindow(TosBaseBlock *baseBlock)
 }
 
 // Construct the rec1600 pitch-window block with one input and one output.
-void *ConstructPitchWindow(TosContext *context, u32 blockIndex)
+void *ConstructPitchWindow(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 1, 1, ProcessPitchWindow, InitPitchWindow,

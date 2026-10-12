@@ -604,7 +604,7 @@ static u32 InitAcne(TosBaseBlock *baseBlock)
 }
 
 /* Allocates the adaptive feature block and installs its TOS callbacks during graph construction. */
-TosBaseBlock *ConstructAcne(TosContext *context, u32 blockIndex)
+TosBaseBlock *ConstructAcne(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
         context, blockIndex, 4, 1, ProcessAcne, InitAcne,

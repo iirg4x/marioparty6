@@ -724,7 +724,7 @@ static u32 ControlDpScoreUw(
     return 1;
 }
 
-void *ConstructDpScoreUw(TosContext *context, u32 blockIndex)
+void *ConstructDpScoreUw(TosContext *context, u8 blockIndex)
 {
     DpScoreUw *block = (DpScoreUw *)tosBaseBlockConstruct(
         context, blockIndex, 1, 1, IdleDpScoreUwProcess,

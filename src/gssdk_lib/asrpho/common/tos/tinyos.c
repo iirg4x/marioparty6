@@ -979,7 +979,7 @@ u32 _tosGetProfileU32(
 }
 
 TosBaseBlock *tosBaseBlockConstruct(
-    TosContext *context, u32 blockIndex, u8 inputCount,
+    TosContext *context, u8 blockIndex, u8 inputCount,
     u8 outputCount, TosProcessFunction process,
     TosInitFunction init, TosControlFunction control, u32 size)
 {
