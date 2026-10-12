@@ -645,7 +645,7 @@ HU3D_LIGHTID Hu3DGLightCreate(float posX, float posY, float posZ, float dirX, fl
 HU3D_LIGHTID Hu3DGLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color);
 HU3D_LLIGHTID Hu3DLLightCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float dirX, float dirY, float dirZ, u8 colorR, u8 colorG, u8 colorB);
 HU3D_LLIGHTID Hu3DLLightCreateV(HU3D_MODELID modelId, HuVecF *pos, HuVecF *dir, GXColor *color);
-void Hu3DGLightSpotSet(HU3D_LIGHTID lightId, GXSpotFn spotFunc, float cutoff);
+void Hu3DGLightSpotSet(HU3D_LIGHTID lightId, float cutoff, GXSpotFn spotFunc);
 void Hu3DLLightSpotSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId, float cutoff, GXSpotFn spotFunc);
 void Hu3DGLightInfinitytSet(HU3D_LIGHTID lightId);
 void Hu3DLLightInfinitytSet(HU3D_MODELID modelId, HU3D_LLIGHTID lightId);
