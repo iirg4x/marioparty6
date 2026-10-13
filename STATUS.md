@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 41.64% | 58.63% |
+| Entire project | 42.05% | 58.83% |
 | Main DOL | 90.12% | 99.24% |
-| REL modules | 31.36% | 32.90% |
+| REL modules | 31.86% | 33.22% |
+
+Wrasslin' Rapids (`m664dll`) selects all **71 functions** from **3 complete translation units**; its linked REL matches retail.
 
 Miracle Book (`miraclebookdll`) selects all **58 functions** from **3 complete translation units**; its linked REL matches retail.
 
