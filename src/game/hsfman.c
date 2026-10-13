@@ -1,9 +1,5 @@
 /* Initializes and renders the game's 3D models, cameras, lights, and effects. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double x);
-double cos(double x);
-double tan(double x);
+#include "dolphin/math.h"
 #include "string.h"
 #include "game/init.h"
 #include "game/disp.h"
@@ -255,8 +251,7 @@ void Hu3DExec(void)
             continue;
         }
         GXInvalidateVtxCache();
-        cameraBit = (1 << Hu3DCameraNo);
-        Hu3DCameraBit = cameraBit;
+        Hu3DCameraBit = cameraBit = (1 << Hu3DCameraNo);
         if(Hu3DShadowCamBit == HU3D_CAM0) {
             Hu3DShadow = &Hu3DShadowBuf[0];
         } else if(Hu3DShadowCamBit & Hu3DCameraBit) {
@@ -409,7 +404,6 @@ void Hu3DExec(void)
     HuSprFinish();
     Hu3DAnimExec();
     HuPerfEnd(HUPERF_USR1);
-    (void)hookFunc;
 }
 
 /* Called when an overlay or save flow closes its scene to release scene resources and reset

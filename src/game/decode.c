@@ -76,14 +76,22 @@ static void HuDecodeLz(DECODE *decode)
     (*(dest)) += (*(decode)->src++) << 8; \
     (*(dest)) += (*(decode)->src++) << 0
 
+// Consume the stream's declared output size; the resource loader supplies the size used below.
+static inline void SlideReadHeader(DECODE *decode)
+{
+    s32 declaredOutputSize;
+    declaredOutputSize = (*decode->src++) << 24;
+    declaredOutputSize += (*decode->src++) << 16;
+    declaredOutputSize += (*decode->src++) << 8;
+    declaredOutputSize += *decode->src++;
+}
+
 // HuDecodeData calls this for SLIDE resources; early references before output start become zeroes.
 static void HuDecodeSlide(DECODE *decode)
 {
     u8 *outputStart;
     u32 controlBitsRemaining, controlBits;
-    u32 declaredOutputSize;
-    SlideReadUint(decode, &declaredOutputSize);
-    // The stream's declared size is read but this decoder uses decode->size instead.
+    SlideReadHeader(decode);
     controlBitsRemaining = 0;
     controlBits = 0;
     outputStart = decode->dst;
@@ -106,7 +114,6 @@ static void HuDecodeSlide(DECODE *decode)
             runLength = (distance >> 12) & 0xF;
             distance &= 0xFFF;
             backrefCursor = decode->dst-distance;
-            (void)distance;
             if(runLength == 0) {
                 runLength = (*decode->src++)+18;
             } else {
@@ -134,9 +141,7 @@ static void HuDecodeSlide(DECODE *decode)
 static void HuDecodeFslide(DECODE *decode)
 {
     u32 controlBitsRemaining, controlBits;
-    u32 declaredOutputSize;
-    SlideReadUint(decode, &declaredOutputSize);
-    // The stream's declared size is read but this decoder uses decode->size instead.
+    SlideReadHeader(decode);
     controlBitsRemaining = 0;
     controlBits = 0;
     while(decode->size) {
@@ -158,7 +163,6 @@ static void HuDecodeFslide(DECODE *decode)
             runLength = (distance >> 12) & 0xF;
             distance &= 0xFFF;
             backrefCursor = decode->dst-distance;
-            (void)distance;
             if(runLength == 0) {
                 runLength = (*decode->src++)+18;
             } else {
@@ -283,6 +287,7 @@ static int HuDecodeZlib(DECODE *decode)
         return zlibResult;
     }
     zlibResult = inflate(&stream, Z_FINISH);
+    // Any non-stream-end result ends the stream; a Z_OK result is reported as Z_BUF_ERROR.
     if(zlibResult != Z_STREAM_END) {
         inflateEnd(&stream);
         return (zlibResult == Z_OK) ? Z_BUF_ERROR : zlibResult;
