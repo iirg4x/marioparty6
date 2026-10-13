@@ -21,18 +21,6 @@ typedef struct MgmfreeSpriteInit {
     f32 zRot;
 } MGMFREE_SPRITE_INIT;
 
-extern HU3D_LIGHTID lbl_1_bss_9E0[2];
-extern HUWINID lbl_1_bss_9DC[2];
-extern u32 lbl_1_data_388;
-extern ANIMDATA *lbl_1_bss_554[11];
-extern HUSPR_GROUPID lbl_1_bss_53E[10];
-extern HUSPRID lbl_1_bss_518[19];
-extern u32 lbl_1_data_10[11];
-extern s16 lbl_1_data_3C[10];
-extern MGMFREE_SPRITE_INIT lbl_1_data_50[19];
-extern ANIMDATA *lbl_1_bss_4DC[7];
-extern u32 lbl_1_bss_4C0[7];
-
 void fn_1_0(HUWINID winId, u32 mess, s16 index);
 void fn_1_E5AC(HUSPR_GROUPID groupId, s32 attr);
 
@@ -40,22 +28,8 @@ void fn_1_E5AC(HUSPR_GROUPID groupId, s32 attr);
 #include <game/object.h>
 #include <game/thpmain.h>
 
-extern ANIMDATA *lbl_1_bss_40;
-extern OMOBJMAN *lbl_1_bss_8;
-extern OMOBJ *lbl_1_bss_20;
-extern OMOBJ *lbl_1_bss_44;
-extern u8 lbl_1_bss_3A[6];
-extern s16 lbl_1_bss_4A8;
-extern HUSPRID lbl_1_bss_4AA[2];
-extern HUSPR_GROUPID lbl_1_bss_4AE;
-extern HU3D_ANIMID lbl_1_bss_4B0[7];
-extern s16 lbl_1_bss_580[8][32][2];
-extern s16 lbl_1_bss_9D0[4];
-extern s16 lbl_1_data_3AE;
-extern s16 lbl_1_data_3CC;
-extern s16 lbl_1_data_3CE;
-
-#include <REL/mgmfreedll/include/game/audio.h>
+#include <msm_se.h>
+#include <msm_stream.h>
 #include <game/data.h>
 #include <game/frand.h>
 #include <game/gamework.h>
@@ -65,7 +39,6 @@ extern s16 lbl_1_data_3CE;
 enum { MGMFREE_SE_MODE_MENU_ENTRY_FX = 1217 };
 #define MGMFREE_SE_RANDOM_MODEL_DISPLAY_START 1220
 
-extern OMOBJ *lbl_1_bss_30;
 /* These records track menu model animation state and transition timing. */
 typedef struct MgmfreeModelState {
     s16 state;
@@ -81,27 +54,23 @@ typedef struct MgmfreeModelState {
     u8 unusedAfterTransition[4];
 } MGMFREE_MODEL_STATE;
 
-extern MGMFREE_MODEL_STATE lbl_1_bss_A8[16];
 void fn_1_6848(s16 mode);
 f32 fn_1_E35C(f32 start, f32 end, f32 time, f32 duration);
 f32 fn_1_E3E8(f32 start, f32 end, f32 time, f32 duration);
 
 #include <dolphin/os.h>
-extern char lbl_1_data_38C[];
-extern s32 lbl_1_bss_0;
-extern s16 lbl_1_bss_980[8];
-extern s16 lbl_1_bss_990[8];
-extern s16 lbl_1_bss_9A0[4][6];
-extern s16 lbl_1_data_0[8];
 
-/* Category display order used by the menu list; -1 ends the sequence. */
+/* Category display order used by the menu list; its fixed seven-entry loop ignores the trailing
+ * -1. */
 s16 lbl_1_data_0[8] = {0, 1, 2, 3, 6, 7, 4, -1};
+/* Packed sprite-animation resources loaded by fn_1_DA4 for the menu's sprite groups. */
 u32 lbl_1_data_10[11] = {
     DATANUM(DATA_mgmfree, 19), DATANUM(DATA_mgmfree, 22), DATANUM(DATA_mgmfree, 26),
     DATANUM(DATA_mgmfree, 23), DATANUM(DATA_mgmfree, 24), DATANUM(DATA_mgmfree, 25),
     DATANUM(DATA_mgmfree, 16), DATANUM(DATA_mgmfree, 17), DATANUM(DATA_mgmfree, 18),
     DATANUM(DATA_mgmfree, 20), DATANUM(DATA_mgmfree, 21)
 };
+/* Number of sprite members allocated for each of the ten menu sprite groups. */
 s16 lbl_1_data_3C[10] = {1, 1, 4, 2, 2, 2, 2, 1, 2, 2};
 /* Sprite initializers loaded by fn_1_DA4 for the menu's animation groups. */
 MGMFREE_SPRITE_INIT lbl_1_data_50[19] = {
@@ -136,11 +105,13 @@ u8 lbl_1_data_2B8[200] = { 0, 0, 0, 1, 0, 2, 0, 3, 0, 1, 0, 0, 0, 2, 0, 3, 0, 2,
                            0, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3, 0, 0, 0, 2, 0, 1, 0, 3, 0,
                            0, 0, 3, 0, 1, 0, 2, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0, 3, 0, 0, 0, 2,
                            0, 2, 0, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 3 };
+/* Maps each on-screen player slot to its character-model/player index; reordering this table
+* determines player groups when a minigame launches. */
 s16 lbl_1_data_380[4] = {0, 1, 2, 3};
 /* Last text-message ID used by the window callback's sound de-duplication. */
 u32 lbl_1_data_388 = -1;
 char lbl_1_data_38C[] = "# ========== win callback :: %d\n";
-/* Movie state: 0–6 advance playback; 100 is ready and 999 requests close. */
+/* Preview startup states are 0–6; 100 is ready, and 999 blocks preview changes during teardown. */
 s16 lbl_1_data_3AE = 100;
 
 HU3D_LIGHTID lbl_1_bss_9E0[2];
@@ -148,7 +119,10 @@ HUWINID lbl_1_bss_9DC[2];
 s32 lbl_1_bss_9D8;
 /* Current category, page, and selection state shared by the menu flow. */
 s16 lbl_1_bss_9D0[4];
+/* Cached player index, type, CPU difficulty, character, and pad settings for four players; each
+ * row's second entry is set to zero. */
 s16 lbl_1_bss_9A0[4][6];
+/* Per-category minigame totals and unlocked counts used by the list and side panel. */
 s16 lbl_1_bss_990[8];
 s16 lbl_1_bss_980[8];
 /* Each list entry stores a minigame data index or -1, plus its unlock flag. */
@@ -156,6 +130,7 @@ s16 lbl_1_bss_580[8][32][2];
 ANIMDATA *lbl_1_bss_554[11];
 HUSPR_GROUPID lbl_1_bss_53E[10];
 HUSPRID lbl_1_bss_518[19];
+/* Starting and target X coordinates for the four player character models during reordering. */
 f32 lbl_1_bss_508[4];
 f32 lbl_1_bss_4F8[4];
 ANIMDATA *lbl_1_bss_4DC[7];
@@ -166,8 +141,9 @@ HUSPR_GROUPID lbl_1_bss_4AE;
 HUSPRID lbl_1_bss_4AA[2];
 s16 lbl_1_bss_4A8;
 MGMFREE_MODEL_STATE lbl_1_bss_A8[16];
-/* Scale values used by the four option markers and the cursor. */
+/* Scale values for the four option markers. */
 f32 lbl_1_bss_98[4];
+/* Eased base scale blended with the pulse before setting the player-grouping cursor's scale. */
 f32 lbl_1_bss_94;
 HUWINID lbl_1_bss_84[8];
 HUWINID lbl_1_bss_80[2];
@@ -176,7 +152,9 @@ HUWINID lbl_1_bss_78;
 /* These ten-character buffers hold formatted unlocked and total minigame counts. */
 char lbl_1_bss_6E[10];
 char lbl_1_bss_64[10];
+/* Visibility flags for the twelve randomized models in the selection scene. */
 s16 lbl_1_bss_4C[12];
+/* Elapsed phase for the option cursor pulse; advances from 0 through 30, then resets to 0. */
 f32 lbl_1_bss_48;
 OMOBJ *lbl_1_bss_44;
 ANIMDATA *lbl_1_bss_40;
@@ -210,6 +188,7 @@ void fn_1_0(HUWINID winId, u32 mess, s16 index)
     OSReport(lbl_1_data_38C, (s16)index);
     if (lbl_1_data_388 != mess) {
         lbl_1_data_388 = mess;
+        /* The list ends immediately, so every new message takes the default-pan sound path. */
         for (i = 0; ; i++) {
             if (sentinel[i] == -1) {
                 HuAudFXPlay(sounds[index]);
@@ -227,7 +206,8 @@ void fn_1_0(HUWINID winId, u32 mess, s16 index)
     }
 }
 
-/* Initialize the four menu counters from the current mode and its available item counts. */
+/* Set the initial category from the current mode, cache four player configurations, and build
+ * per-category minigame and unlocked counts. */
 void fn_1_1A4(void)
 {
     s16 i;
@@ -292,7 +272,7 @@ void fn_1_1A4(void)
     }
 }
 
-/* Create and place the shared MGMfree camera during scene setup. */
+/* Initialize all MGMfree cameras with the same perspective, viewport, and starting pose. */
 void fn_1_624(void)
 {
     Hu3DCameraCreate(HU3D_CAM_ALL);
@@ -355,7 +335,8 @@ void fn_1_998(s16 winNo)
     }
 }
 
-/* Set centered message text and its reveal speed, resetting duplicate-sound tracking. */
+/* Set centered message text and its reveal speed; reset duplicate-sound tracking only when the
+* requested message differs from the last callback message. */
 void fn_1_A08(s16 winNo, u32 messNum, s16 speed)
 {
     HuWinAttrSet(lbl_1_bss_9DC[winNo], HUWIN_ATTR_ALIGN_CENTER);
@@ -482,8 +463,8 @@ void fn_1_11C0(void)
     }
 }
 
-/* Advance the title movie's close, start-check, playback-wait, and sprite-ready states each object
- * tick. */
+/* Advance the selected minigame preview through closing, creation, first-frame readiness, and a
+* fixed settling delay; creation jumps directly to state 5, skipping states 3 and 4. */
 void fn_1_1218(OMOBJ *obj)
 {
     switch (lbl_1_data_3AE) {
@@ -531,7 +512,7 @@ void fn_1_1218(OMOBJ *obj)
     }
 }
 
-/* Select the sprite set for the current menu category and prepare its playback state. */
+/* Refresh the selected minigame's instruction image and choose its placeholder or movie preview. */
 void fn_1_1400(s16 mode)
 {
     s16 category;
@@ -545,6 +526,7 @@ void fn_1_1400(s16 mode)
         }
         category = lbl_1_bss_9D0[0];
         index = (lbl_1_bss_9D0[2] + 2 * lbl_1_bss_9D0[1]) + 2 * lbl_1_bss_9D0[3];
+        /* Read the instruction image before the later missing/locked-entry check. */
         lbl_1_bss_40 = HuSprAnimRead(HuDataSelHeapReadNum(
             MgDataTbl[lbl_1_bss_580[category][index][0]].instPic[0][0], HU_MEMNUM_OVL, HEAP_MODEL));
         HuSprAnimLock(lbl_1_bss_40);
@@ -578,7 +560,8 @@ void fn_1_16B4(s16 layerNo)
     GXCopyTex(bitmap->data, 0);
 }
 
-/* Wait for the title movie to finish before closing its player and marking playback complete. */
+/* During menu teardown, wait for preview state 100 or 999, mark it closed, and request closing
+* until its playback process has ended. This does not wait for the movie's final frame. */
 void fn_1_171C(void)
 {
     do {
@@ -595,7 +578,8 @@ void fn_1_171C(void)
 s16 lbl_1_data_3CC = -1;
 s16 lbl_1_data_3CE = -1;
 
-/* Initialize the option cursor and title-movie playback state and callback. */
+/* Create the instruction-image/movie-preview sprite group, initialize its playback state, and
+* install the preview update callback and texture-copy hook. */
 void fn_1_1790(void)
 {
     lbl_1_bss_4AE = HuSprGrpCreate(2);
@@ -720,6 +704,8 @@ void fn_1_1C74(OMOBJ *obj)
     }
     record = &lbl_1_bss_A8[11];
     if (record->transitionTarget != (f32)lbl_1_bss_9D0[0] && 0.0f == record->transitionActive) {
+        /* Route the 7/0 category wrap through endpoint 8 rather than all intermediate category
+         * values. */
         if (7.0f == record->transitionTarget && lbl_1_bss_9D0[0] == 0) {
             record->value.transitionStart = 7.0f;
             record->transitionTarget = 8.0f;
@@ -775,6 +761,7 @@ void fn_1_2590(OMOBJ *obj)
     s16 i;
 
     omSetStatBit(obj, 256);
+    /* This query sets flag to 0 or 1, leaving the third asset choices below unreachable. */
     if (GWBankFlagGet(60) != 0) {
         flag = 1;
     } else {
@@ -821,19 +808,12 @@ void fn_1_2590(OMOBJ *obj)
     obj->objFunc = fn_1_1C74;
 }
 
-extern s16 lbl_1_data_380[4];
-/* The target SDK declares this conversion helper elsewhere; host builds need its prototype here. */
-#if defined(__MWERKS__)
-
-#else
-void Hu3D3Dto2D(HuVecF *src, s16 cameraBit, HuVecF *dst);
-#endif
-
 void fn_1_2BF8(void)
 {
 }
 
-/* Create four category character models and four linked markers, then set their camera scissors. */
+/* Create four player character models and one base marker with three linked copies, then set
+* the player cameras' scissors. */
 void fn_1_2BFC(OMOBJ *obj)
 {
     s16 *row = lbl_1_bss_9A0[0];
@@ -866,6 +846,7 @@ void fn_1_2BFC(OMOBJ *obj)
     }
     for (i = 0; i < 4; i++) {
         Hu3DModelPosGet(obj->mdlId[i], &pos);
+        /* Project the common player-row height rather than the character-specific model height. */
         pos.y = 360;
         Hu3D3Dto2D(&pos, 1 << (i + 1), &screen);
         screen.x *= 1.1111112f;
@@ -875,7 +856,8 @@ void fn_1_2BFC(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
-/* Update each category camera scissor from its projected model position. */
+/* Update each player camera's scissor from its reordered character model, projecting at the
+* common Y position of 360 rather than the character-specific height. */
 void fn_1_3004(void)
 {
     HuVecF pos;
@@ -893,7 +875,8 @@ void fn_1_3004(void)
     }
 }
 
-/* Create the model and joint motion that display the minigame selection scene. */
+/* Create the selection-scene models, attach and start a joint motion on the main model, and leave
+ * the secondary model static. */
 void fn_1_3124(OMOBJ *obj)
 {
     omSetStatBit(obj, OM_STAT_MODELPAUSE);
@@ -914,7 +897,8 @@ void fn_1_3124(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
-/* Release the selection-scene model and its motion when the object is removed. */
+/* If given an object, kill its motion and animated model, then remove it; the static secondary
+* model is not killed here. Clearing obj affects only this local parameter. */
 void fn_1_32D0(OMOBJ *obj)
 {
     if (obj) {
@@ -924,8 +908,6 @@ void fn_1_32D0(OMOBJ *obj)
     }
     obj = NULL;
 }
-
-extern u8 lbl_1_bss_C[16];
 
 /* As the registered selection-display callback, position its models and update the selected-model
  * scissor. */
@@ -967,6 +949,7 @@ void fn_1_3330(OMOBJ *obj)
     if (y <= 0.0f) {
         y = 0.0f;
         height = 128.0f + screen.y;
+        /* Rechecking the already-zero Y forces it to 1; the computed height is left unclamped. */
         if (y <= 0.0f) {
             y = 1.0f;
         }
@@ -976,7 +959,7 @@ void fn_1_3330(OMOBJ *obj)
 
 void fn_1_3330(OMOBJ *obj);
 
-/* Create the three paired model groups used by the menu's animated selection display. */
+/* Create three animated selection-display models and a static base, then install their callback. */
 void fn_1_361C(OMOBJ *obj)
 {
     s32 filePairs[3][2] = {
@@ -1011,16 +994,12 @@ void fn_1_361C(OMOBJ *obj)
     obj->objFunc = fn_1_3330;
 }
 
-extern OMOBJ *lbl_1_bss_24;
-extern s16 lbl_1_bss_38;
-extern f32 lbl_1_bss_48;
-extern f32 lbl_1_bss_94;
-extern f32 lbl_1_bss_98[4];
 f32 fn_1_E3A0(f32 start, f32 end, f32 time);
 f32 fn_1_E4D0(f32 start, f32 end, f32 time, f32 duration);
 void fn_1_E62C(HUSPR_GROUPID groupId, s32 attr);
 
-/* Release the paired models, motions, and object created for the selection display. */
+/* Release the three animated models, their motions, the static base model, and the selection
+* display object. Clearing obj affects only this local parameter. */
 void fn_1_3904(OMOBJ *obj)
 {
     s16 i;
@@ -1054,7 +1033,7 @@ void fn_1_39BC(void)
     HuSprScaleSet(lbl_1_bss_53E[7], 0, scale, scale);
 }
 
-/* Place the option cursor beside the current category when that category has a visible selector. */
+/* Position and show the player-grouping cursor for categories 1, 2, and 4 or grouping mode 1. */
 void fn_1_3AE8(void)
 {
     if (lbl_1_bss_9D0[0] == 1 || lbl_1_bss_9D0[0] == 4) {
@@ -1088,7 +1067,8 @@ void fn_1_3C3C(void)
     }
 }
 
-/* Show one option marker at its category-specific position and expand it from its hidden state. */
+/* Show an inactive option marker at its fixed position with scale 4; subsequent updates ease
+* its stored scale from 2 toward 1. */
 void fn_1_3D08(s16 index)
 {
     s16 position[4][2] = {{36, 110}, {364, 110}, {288, 394}, {288, 229}};
@@ -1103,7 +1083,8 @@ void fn_1_3D08(s16 index)
     }
 }
 
-/* Hide one option marker and clear its active flag after a selection transition. */
+/* Hide an active navigation marker and clear its flag during initialization, paging, or
+ * grouping. */
 void fn_1_3EA0(s16 index)
 {
     OMOBJ *obj = lbl_1_bss_24;
@@ -1146,7 +1127,7 @@ void fn_1_3F20(s16 mode)
     }
 }
 
-/* Hide the four category option groups during menu transitions. */
+/* Hide the four player controller/CPU-difficulty sprite groups. */
 void fn_1_41D8(void)
 {
     s16 i = 0;
@@ -1175,7 +1156,8 @@ void fn_1_4414(OMOBJ *obj)
     obj->objFunc = fn_1_4238;
 }
 
-/* Remove a menu object from the module's object manager when it is no longer active. */
+/* Remove a nonnull menu object from the module's manager; clearing obj affects only this local
+* parameter and leaves the caller's stored pointer unchanged. */
 void fn_1_44D4(OMOBJ *obj)
 {
     if (obj) {
@@ -1184,21 +1166,10 @@ void fn_1_44D4(OMOBJ *obj)
     obj = NULL;
 }
 
-#if defined(__MWERKS__)
-/* The target runtime provides sprintf; host builds use its standard-library declaration. */
-int sprintf();
-#else
-#include <stdio.h>
-#endif
+char lbl_1_data_426[] = "%2d";
 
-extern HUWINID lbl_1_bss_84[8];
-extern HUWINID lbl_1_bss_78;
-extern char lbl_1_bss_64[10];
-extern char lbl_1_bss_6E[10];
-extern char lbl_1_data_426[];
-
-/* Fill the eight minigame windows with names and put unlocked/total counts in the side info
- * window. */
+/* Fill the eight minigame windows with names, locked-entry messages, or cleared blanks, and put
+ * unlocked/total counts in the side info window. */
 void fn_1_451C(void)
 {
     s16 i;
@@ -1230,13 +1201,11 @@ void fn_1_451C(void)
     HuWinMesSpeedSet(lbl_1_bss_78, 0);
 }
 
-extern u8 lbl_1_bss_28[8];
-extern HUWINID lbl_1_bss_78;
-extern HUWINID lbl_1_bss_84[8];
 void fn_1_451C(void);
 f32 fn_1_E264(f32 start, f32 end, f32 time, f32 duration);
 
-/* Slide the minigame windows upward as the registered object callback advances its frame count. */
+/* Slide the eight minigame windows, side count window, and list marker upward; show the prompt when
+ * the callback finishes. */
 void fn_1_4860(OMOBJ *obj)
 {
     f32 position;
@@ -1296,7 +1265,8 @@ void fn_1_4ECC(OMOBJ *obj)
     }
 }
 
-/* Hide the category cursor and install the callback that slides the item windows away. */
+/* Hide the minigame-list cursor and prompt window, then install the callback that slides item
+* windows away. */
 void fn_1_514C(void)
 {
     OMOBJ *obj = *(OMOBJ **)&lbl_1_bss_28[0];
@@ -1308,7 +1278,8 @@ void fn_1_514C(void)
     obj->objFunc = fn_1_4ECC;
 }
 
-/* Show the minigame list and either open or close its side information windows. */
+/* Show and position the minigame list, count window, and list background for mode 1; hide all
+* three for other modes. */
 void fn_1_51BC(s16 mode)
 {
     s16 i;
@@ -1332,10 +1303,7 @@ void fn_1_51BC(s16 mode)
          fn_1_E5AC(lbl_1_bss_53E[0], HUSPR_ATTR_DISPOFF);
 }
 
-extern HUWINID lbl_1_bss_7A[3];
-extern HUWINID lbl_1_bss_80[2];
-
-/* Show the two item-detail windows and their sprite group before drawing item details. */
+/* Show the two-choice prompt windows and their sprite group before reading input in fn_1_B278. */
 void fn_1_56E4(void)
 {
     s16 index;
@@ -1348,7 +1316,7 @@ void fn_1_56E4(void)
     }
 }
 
-/* Hide the two item-detail windows and their sprite group after the item prompt. */
+/* Hide the two-choice prompt windows and their sprite group after its input loop ends. */
 void fn_1_5750(void)
 {
     s16 index;
@@ -1387,13 +1355,8 @@ void fn_1_5828(void)
     }
 }
 
-extern OMOBJ *lbl_1_bss_1C;
-
-extern HUWINID lbl_1_bss_7A[3];
-extern HUWINID lbl_1_bss_80[2];
-
-/* Create eight list windows, the side count/info window, two detail windows, and three choice
- * windows. */
+/* Create eight list windows, the side count window, two two-choice prompt windows, and three
+* three-choice prompt windows. */
 void fn_1_5894(OMOBJ *obj)
 {
     s16 i;
@@ -1410,6 +1373,7 @@ void fn_1_5894(OMOBJ *obj)
     HuWinScaleSet(lbl_1_bss_78, 0.8f, 0.8f);
     fn_1_51BC(0);
     HuSprGrpPosSet(lbl_1_bss_53E[8], 288.0f, 240.0f);
+    /* The next position write overwrites the initial Y of 18 with -18. */
     HuSprPosSet(lbl_1_bss_53E[8], 1, 0.0f, 18.0f);
     HuSprPosSet(lbl_1_bss_53E[8], 1, 0.0f, -18.0f);
     for (i = 0; i < 2; i++) {
@@ -1421,6 +1385,7 @@ void fn_1_5894(OMOBJ *obj)
         HuWinMesSet(lbl_1_bss_80[i], i + MESSNUM(MESS_MGM_FREE, 4));
     }
     HuSprGrpPosSet(lbl_1_bss_53E[9], 288.0f, 240.0f);
+    /* The next position write overwrites the initial Y of 18 with -42. */
     HuSprPosSet(lbl_1_bss_53E[9], 1, 0.0f, 18.0f);
     HuSprPosSet(lbl_1_bss_53E[9], 1, 0.0f, -42.0f);
     for (i = 0; i < 3; i++) {
@@ -1434,7 +1399,8 @@ void fn_1_5894(OMOBJ *obj)
     obj->objFunc = NULL;
 }
 
-/* Destroy the minigame-list and item-detail windows when their object is removed. */
+/* Destroy the list, side-info, two-choice, and three-choice windows, then remove their object.
+* Clearing obj affects only this local parameter. */
 void fn_1_5E4C(OMOBJ *obj)
 {
     s16 i;
@@ -1455,7 +1421,8 @@ void fn_1_5E4C(OMOBJ *obj)
     obj = NULL;
 }
 
-/* Animate the selection models and their motion from the current menu state each frame. */
+/* Move the selection-scene models during their transition and update the player character
+* cameras' scissors. */
 void fn_1_5F48(OMOBJ *obj)
 {
     Vec position;
@@ -1526,11 +1493,10 @@ void fn_1_5F48(OMOBJ *obj)
     fn_1_3004();
 }
 
-extern OMOBJ *lbl_1_bss_34;
-extern s16 lbl_1_bss_4C[12];
-extern char lbl_1_data_42A[];
+char lbl_1_data_42A[] = "free_play-null_npc1";
 
-/* Start or reset the selection-scene model motion for the requested transition mode. */
+/* Set the selection-scene entry offsets for nonzero mode or return model 10 to x=0 for mode 0, then
+ * install the transition callback. */
 void fn_1_65E0(s16 mode)
 {
     Vec position;
@@ -1592,7 +1558,8 @@ void fn_1_6848(s16 mode)
     }
 }
 
-/* Place the six revealed models around the active selection model during its update callback. */
+/* During updates, place the visible first six models around model 4 and position the other six from
+ * model 5's named joint. */
 void fn_1_6A84(OMOBJ *obj)
 {
     Vec position;
@@ -1664,8 +1631,6 @@ void fn_1_6F48(void)
 }
 
 /* Initialized strings and halfwords following the menu data. */
-char lbl_1_data_426[] = "%2d";
-char lbl_1_data_42A[] = "free_play-null_npc1";
 char lbl_1_data_43E[] = "minigame index -1\n";
 char lbl_1_data_451[] = "minigame number error!!\n";
 char lbl_1_data_46A[] = "\n\nIDX ======= %d,%d,%d,%d\n";
@@ -1676,11 +1641,6 @@ s16 lbl_1_data_4DE = -1;
 
 #include <game/pad.h>
 #include <game/wipe.h>
-
-extern u32 lbl_1_bss_4;
-extern s32 lbl_1_bss_9D8;
-extern f32 lbl_1_bss_4F8[4];
-extern f32 lbl_1_bss_508[4];
 
 extern BOOL MgPauseExitF;
 extern s32 omovlevtno;
@@ -1699,7 +1659,7 @@ static inline void inline_0(int id)
     GwSystem.mgNo = id - GW_MGNO_BASE;
 }
 
-/* Run the free-play mode process, dispatching its category and minigame selection flow. */
+/* Run free-play selection, launch the selected minigame, or return to the previous overlay. */
 void fn_1_717C(void)
 {
     s32 result;
@@ -1776,6 +1736,8 @@ void fn_1_717C(void)
                 MgInstExitF = TRUE;
                 _SetFlag(FLAGNUM(FLAG_GROUP_SYSTEM, 4));
                 _SetFlag(FLAG_INST_MG_MODE);
+                /* Always clear the minigame night flag and enable instruction display for this
+                 * launch. */
                 GwMgNightF = 0;
                 GWMgInstDispSet(TRUE);
                 inline_0(mgNo + GW_MGNO_BASE);
@@ -1793,7 +1755,8 @@ void fn_1_717C(void)
     }
 }
 
-/* Initialize MGMfree's object manager, scene, windows, sprites, and input callbacks. */
+/* Initialize MGMfree's object manager, scene, windows, and sprites, then start the free-play
+ * process. */
 void fn_1_7AE8(void)
 {
     lbl_1_bss_8 = omInitObjMan(27, 8192);
@@ -1846,7 +1809,7 @@ void _epilog(void)
     }
 }
 
-/* Show the option markers available for the current category and remaining item count. */
+/* Show valid page-navigation markers for the current category and page, and position the cursor. */
 void fn_1_8658(void)
 {
     s16 count = lbl_1_bss_990[lbl_1_bss_9D0[0]];
@@ -1872,13 +1835,15 @@ void fn_1_8658(void)
         lbl_1_bss_9D0[2] * 264 + 153, (lbl_1_bss_9D0[3] << 5) + 256);
 }
 
+/* Hide both page-navigation markers during the menu transition. */
 void fn_1_8ADC(void)
 {
     fn_1_3EA0(2);
     fn_1_3EA0(3);
 }
 
-/* Handle category, page, and item navigation, returning the resulting change code. */
+/* Handle category, page, and item navigation. Return 1 only if the category or absolute item
+* index changed; this final comparison replaces the temporary navigation codes. */
 s16 fn_1_8B78(void)
 {
     s16 change = 0;
@@ -2042,7 +2007,8 @@ s32 fn_1_AB00(void)
     return 1;
 }
 
-/* Display the confirmation prompt and return the selected action to the caller. */
+/* Display exit confirmation and return its choice; leave the window open for choice 0 and close
+* it for a nonzero result. */
 s16 fn_1_B160(void)
 {
     s16 result = 0;
@@ -2110,7 +2076,8 @@ s16 fn_1_B278(void)
     return result;
 }
 
-/* Wait for input on the three-choice prompt and return its accepted result. */
+/* Wait for input on the three-choice prompt, store the accepted game number, and return 1 for
+ * accept or 0 for cancel. */
 s16 fn_1_B4E8(void)
 {
     s16 result = 0;
@@ -2231,7 +2198,8 @@ s16 fn_1_B75C(void)
     return result;
 }
 
-/* Set the selected model's rotation or restore its normal pose for the active menu state. */
+/* Set the four player character models' rotations for the current grouping, or restore their
+* default rotations. */
 void fn_1_C870(s16 mode)
 {
     s16 index;
@@ -2263,7 +2231,8 @@ void fn_1_C870(s16 mode)
     }
 }
 
-/* Apply the requested item order and animate the four category models into that order. */
+/* Apply the requested player order and run the same six-update position interpolation twice.
+* The second pass restarts from the saved positions after camera masks and rotations change. */
 void fn_1_CAD4(s16 *order, s16 mode)
 {
     Vec position;
@@ -2306,10 +2275,8 @@ void fn_1_CAD4(s16 *order, s16 mode)
     fn_1_3F20(1);
 }
 
-extern s16 lbl_1_data_2B0[4];
-extern u8 lbl_1_data_2B8[200];
-
-/* Process player input for the current category and item page, returning a menu action. */
+/* Cycle player-group arrangements with left/right input. Return 1 for A to launch, 0 for B to
+* restore player order and return to the list, or -1 when X's exit confirmation is accepted. */
 s16 fn_1_D324(void)
 {
     s16 rowNo = 0;

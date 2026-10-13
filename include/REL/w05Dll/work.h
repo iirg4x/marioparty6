@@ -1,4 +1,4 @@
-/* Model motion and light transitions used by the board object callback. */
+/* Work records for Castaway Bay board models, events, effects, and sea surface. */
 #ifndef W05_WORK_H
 #define W05_WORK_H
 #include "dolphin/types.h"
@@ -9,15 +9,15 @@ typedef struct W05ModelMotion_s {
     s32 state;
     s32 elapsed;
     s32 delay;
-    s32 direction;
-    s32 status;
+    s32 currentPoint;
+    s32 targetPoint;
     f32 angle;
     f32 secondAngle;
     s32 delayTimer;
     HuVecF position;
     HuVecF displacement;
     HuVecF rotation;
-    HuVecF rotationDelta;
+    HuVecF targetPosition;
 } W05_MODEL_MOTION;
 
 typedef struct W05PlayerMotion_s {
@@ -50,18 +50,18 @@ typedef struct W05FlyingModel_s {
     s32 elapsed;
     s32 duration;
     s32 delay;
-    s32 motionState;
-    f32 drag;
+    s32 blinkDelay;
+    f32 gravity;
     HuVecF position;
-    HuVecF rotation;
-    HuVecF rotationSpeed;
-    HuVecF velocity;
+    HuVecF fallVelocity;
+    HuVecF spinAngles;
+    HuVecF launchTarget;
 } W05_FLYING_MODEL;
 
 /* One sea-surface vertex: each axis has its own sine wave; y uses base.y - amplitude.y as its
  * baseline. */
 typedef struct W05SeaWave_s {
-    HuVecF phase; /* Degrees, advanced by speed each frame and wrapped at 360. */
+    HuVecF phase; /* Degrees, advanced by speed on unpaused updates and wrapped at 360. */
     HuVecF amplitude;
     HuVecF speed;
     HuVecF base;
@@ -93,7 +93,8 @@ typedef struct W05BoardWork_s {
     };
     s32 rockingModel;
     s32 rockingEffectModel;
-    s32 seaModel; /* Its HSF vertices and texture coordinates are rewritten every frame. */
+    s32 seaModel; /* Hidden source model for the custom sea mesh; separate vertex and texture arrays
+                   * animate it. */
     union {
         u8 modelSetupTail[16];
         struct {
@@ -161,15 +162,17 @@ typedef struct W05BoardWork_s {
     s32 firstHookMoving;
     f32 firstHookPhaseWeight;
     f32 secondHookPhaseWeight;
-    f32 firstHookSway[3]; /* Degrees: x tilt, height bob and z tilt; each changes by up to 3 degrees
-                           * in either direction per frame. */
+    f32 firstHookSway[3]; /* Sine phases in degrees for x tilt, five-unit height bob and z tilt;
+                           * each advances by up to 3 degrees per update. */
     f32 secondHookSway[3];
     f32 hookMovementScale;
-    f32 secondHookSwing; /* Extra z swing of the second hook, decaying by 1% per frame. */
+    f32 secondHookSwing; /* Phase weight for the second hook's ten-degree z swing; multiplied by
+                          * 0.99 per render-hook update. */
     f32 movementFactorX;
     f32 movementFactorZ;
     s32 particlesEnabled;
-    s32 splashTimer; /* Frames to the next splash under the second hook while it moves. */
+    s32 splashTimer; /* Frames to the next splash at the first hook's chihook point while
+                      * secondHookMoving is set. */
     s32 secondHookMoving;
     s32 firstHookPlayer; /* Player carried on the first hook, or -1; placed at
                           * firstHookPlayerPoint. */
@@ -189,12 +192,13 @@ typedef struct W05BoardWork_s {
     u8 boardEventState[8];
     W05_TEX_COORD *seaTexCoordsAlt; /* Flushed with the sea's other buffers every frame. */
     u8 seaState[4];
-    W05_TEX_COORD *seaTexCoordBase; /* The model's own texture coordinates. */
+    W05_TEX_COORD *seaTexCoordBase; /* Base warp coordinates computed from sea vertex x/z positions
+                                     * during setup. */
     W05_TEX_COORD *seaTexCoords; /* seaTexCoordBase shifted by the flow offset. */
     u8 seaBufferState[8];
     HuVecF *seaVertices;
     s32 seaVertexCount;
-    f32 seaFlowOffsetS; /* Texture scroll, moved against the flow direction each frame. */
+    f32 seaFlowOffsetS; /* Texture scroll, moved against the flow direction on unpaused updates. */
     f32 seaFlowOffsetT;
     s32 seaFlowTimer;
     s32 seaFlowDuration; /* Frames of one flow cycle: 10 to 20 seconds, chosen again each cycle. */

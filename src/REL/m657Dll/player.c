@@ -137,7 +137,8 @@ void fn_1_21CC(OMOBJ *obj)
     omSetRot(obj, player->rot.x, player->rot.y, player->rot.z);
 }
 
-/* Called during player-object creation to attach the rocket body and team-colored parts. */
+/* Called during player-object creation to attach the rocket body and its left, right, and center
+ * parts. */
 void fn_1_23F4(OMOBJ *obj)
 {
     M657Player *work = obj->data;
