@@ -465,10 +465,12 @@ s32 THPSimpleDecode(void) {
         } else {
             for (componentIndex = 0; componentIndex < SimpleControl.componentInfo.mNumComponents;
                  componentData += *componentSizes, componentSizes++, componentIndex++) {
-                if((s32) SimpleControl.componentInfo.mFrameComp[componentIndex] != 0) {
-                    (void) componentIndex; // Audio components have no video plane to update.
-                } else if(VideoDecode(componentData) == 0) {
-                    return 1;
+                switch(SimpleControl.componentInfo.mFrameComp[componentIndex]) {
+                    case 0:
+                        if(VideoDecode(componentData) == 0) {
+                            return 1;
+                        }
+                        break;
                 }
             }
         }

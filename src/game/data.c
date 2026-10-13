@@ -32,9 +32,12 @@ static DATADIRSTAT DataDirStat[] = {
 
 #undef DATADIR
 
-u32 DirDataSize; // Full file length in bytes; DVD reads and resident archive lookups update it.
+u32 DirDataSize; // DVD-reported file length, or a resident slot's dvdFile.length; ARAM uploads
+                 // round it to 32 bytes.
+// Synchronous and ARAM archive loads do not populate the slot's dvdFile.length.
 static u32 DataDirMax; // Number of archives in the path table, excluding its NULL terminator.
-static s32 shortAccessSleep; // Nonzero yields each frame while direct DVD reads are pending.
+static s32 shortAccessSleep; // Yield flag for direct DVD waits; it stays zero because this file
+                             // never sets it.
 static HUDATASTAT ATTRIBUTE_ALIGN(32) ReadDataStat[DATA_MAX_READSTAT]; // Active archive pool.
 
 // Game startup resolves the archive paths and clears the fixed pool of active archive reads.
@@ -155,7 +158,8 @@ HUDATASTAT *HuDataDirRead(int dataNum)
     return readStat;
 }
 
-// Called by numbered readers; reuses an archive or loads it for the requested memory tag.
+// Called by numbered readers; loads missing archives under the requested tag, but reuses resident
+// archives without changing their tag.
 static HUDATASTAT *HuDataDirReadNum(int dataNum, s32 memoryTag)
 {
     HUDATASTAT *readStat;
@@ -199,6 +203,8 @@ static HUDATASTAT *HuDataDirReadNum(int dataNum, s32 memoryTag)
 }
 
 // The ARAM completion callback registers its copied archive in the read-status pool.
+// Its close test uses the pointer's existing record's dirId, but the close call uses dataNum;
+// an untracked pointer follows HuDataGetStatus's one-past-pool path before a slot is chosen.
 HUDATASTAT *HuDataDirSet(void *archivePtr, int dataNum)
 {
     HUDATASTAT *readStat = HuDataGetStatus(archivePtr);
@@ -313,8 +319,8 @@ s32 HuDataDirReadAsync(int dataNum)
     return statId;
 }
 
-// Numbered asynchronous readers start a tagged DVD read for a missing archive when a slot is free.
-// This path skips ARAM lookup and returns no slot when the archive is already resident.
+// Numbered asynchronous readers track archive closure under the requested tag while starting an
+// unnumbered DVD read.
 s32 HuDataDirReadNumAsync(int dataNum, s32 memoryTag)
 {
     HUDATASTAT *readStat;
@@ -410,7 +416,7 @@ void *HuDataReadNum(int dataNum, s32 memoryTag)
     return decodedData;
 }
 
-// Called by resource loaders that choose a heap; decodes one entry into that heap.
+// Decodes one entry into HEAP_SOUND, HEAP_MODEL, or HEAP_DVD; other heap IDs use HEAP_HEAP.
 void *HuDataSelHeapRead(int dataNum, HEAPID heap)
 {
     HUDATASTAT *readStat;
@@ -448,7 +454,8 @@ void *HuDataSelHeapRead(int dataNum, HEAPID heap)
     return decodedData;
 }
 
-// Called by resource loaders that choose a heap and memory tag; decodes one entry for them.
+// Decodes into HEAP_SOUND, HEAP_MODEL, or HEAP_DVD; other heap IDs use HEAP_HEAP, and only
+// non-sound allocations use the tag.
 void *HuDataSelHeapReadNum(int dataNum, s32 memoryTag, HEAPID heap)
 {
     HUDATASTAT *readStat;
@@ -502,8 +509,8 @@ static void **HuDataReadMultiSub(int *dataNumbers, BOOL useMemoryTag, s32 memory
     s32 *archiveIds;
     char **archivePaths;
     void **loadedArchives;
-    void **decodedFiles;
     s32 fileIndex, missingArchiveCount, numFiles;
+    void **decodedFiles;
     u32 archiveId;
     for (fileIndex = 0, missingArchiveCount = 0; dataNumbers[fileIndex] != HU_DATANUM_NONE;
          fileIndex++) {
@@ -545,7 +552,6 @@ static void **HuDataReadMultiSub(int *dataNumbers, BOOL useMemoryTag, s32 memory
         s32 statId;
         if((statId = HuDataReadStatusGet()) == HU_DATA_STAT_NONE) {
             OSReport("data.c: Data Work Max Error\n");
-            (void)missingArchiveCount; // Discard the count; only the ID and path lists are freed.
             HuMemDirectFree(archiveIds);
             HuMemDirectFree(archivePaths);
             return NULL;
@@ -668,7 +674,7 @@ void HuDataDirCloseAll(void)
 
 }
 
-// Short forced reads open the containing archive directly, without using the resident pool.
+// Rejects archive indices at or above DataDirMax, then opens the DVD entry; open failures panic.
 static BOOL HuDataDVDdirDirectOpen(int dataNum, DVDFileInfo *fileInfo)
 {
 	s32 archiveId = dataNum >> 16;
@@ -684,8 +690,8 @@ static BOOL HuDataDVDdirDirectOpen(int dataNum, DVDFileInfo *fileInfo)
 	return TRUE;
 }
 
-// Short forced reads wait for a DVD range, yielding frames only when shortAccessSleep is set.
-// The returned value is the submission result, not the number of bytes read.
+// Submits a direct DVD range read and returns its submission result after command state 0.
+// Nonzero states, including errors, keep the wait running; shortAccessSleep controls yielding.
 static s32 HuDataDVDdirDirectRead(DVDFileInfo *fileInfo, void *readBuffer, s32 readBytes,
                                   s32 readOffset)
 {
@@ -701,7 +707,8 @@ static s32 HuDataDVDdirDirectRead(DVDFileInfo *fileInfo, void *readBuffer, s32 r
 	return result;
 }
 
-// Called by HuDataReadNumHeapShortForce after its DVD read; decodes the entry into the chosen heap.
+// Decodes into HEAP_SOUND, HEAP_MODEL, or HEAP_DVD; other heap IDs use HEAP_HEAP, and only
+// non-sound allocations use the tag.
 static void *HuDataDecodeIt(u8 *alignedReadBuffer, s32 entryHeaderOffset, s32 memoryTag,
                             HEAPID targetHeap)
 {
@@ -753,7 +760,8 @@ static void *HuDataDecodeIt(u8 *alignedReadBuffer, s32 entryHeaderOffset, s32 me
     return decodedData;
 }
 
-// Character motion loading reads just the selected entry from DVD, then decodes into its heap.
+// Character motion loading reads an aligned DVD span containing the selected entry, then decodes
+// into HEAP_SOUND, HEAP_MODEL, or HEAP_DVD; other heap IDs use HEAP_HEAP.
 void *HuDataReadNumHeapShortForce(u32 dataNum, s32 memoryTag, HEAPID targetHeap)
 {
 	DVDFileInfo fileInfo;
@@ -805,6 +813,7 @@ void *HuDataReadNumHeapShortForce(u32 dataNum, s32 memoryTag, HEAPID targetHeap)
 	} else {
 		entryOffset++;
 		entrySpanOrOffsetBytes = (*entryOffset)-dvdReadOffsetBytes;
+		// This file-length assignment is overwritten by the rounded span below.
 		readLengthBytes = fileInfo.length;
 	}
 

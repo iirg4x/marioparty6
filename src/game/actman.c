@@ -13,6 +13,8 @@
 
 #define ACTOR_MAX COLBODY_MAX
 #define PLAYER_MAX GW_PLAYER_MAX
+#define MGACTOR_ATTR_COL_OFF (1 << 0)
+#define MGACTOR_COLMESH_NONE 65535
 #define COLBODY_ATTR_COL_RESULT_MASK 0x34000000
 #define COLBODY_ATTR_PRESERVED_MASK 0xFEFF0000
 #define MGPLAYER_VIBATTR_HIPDROP_LAND (1 << 9)
@@ -22,7 +24,7 @@ typedef struct ActManWork_s {
     MGPLAYER *player;
     /* Actor state indexed by collision-body number. */
     MGACTOR *actor;
-    /* Temporary actors attached to each player's hit or squish effect. */
+    /* Temporary collision actors for each player's punch, kick, or hip drop. */
     MGACTOR *effPlayer[4];
     /* Selects cylindrical rather than spherical collision-body positioning. */
     BOOL colCylF;
@@ -538,11 +540,11 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
                     result = FALSE;
                 }
             }
-            (void)playerP2;
             if(!result) {
                 break;
             }
-            if(MgPlayerVibAttrCheck(playerP1, 0x7)) {
+            if (MgPlayerVibAttrCheck(playerP1, MGPLAYER_VIBATTR_SQUISH | MGPLAYER_VIBATTR_HEADJUMP |
+                                                   MGPLAYER_VIBATTR_SQUISH_FAST)) {
                 break;
             }
             {
@@ -582,7 +584,6 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             }
             MgPlayerVibAttrSet(playerP2, MGPLAYER_VIBATTR_HIT_SRC);
             MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_HIT);
-            (void)playerP2;
             return FALSE;
         }
         break;
@@ -600,7 +601,6 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             }
             MgPlayerVibAttrSet(playerP2, MGPLAYER_VIBATTR_KNOCKBACK_SRC);
             MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_KNOCKBACK);
-            (void)playerP2;
             return FALSE;
         }
         break;
@@ -634,7 +634,6 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             MgPlayerVibAttrSet(playerP2, MGPLAYER_VIBATTR_SQUISH_HARD_SRC);
             MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_SQUISH_HARD);
             _CharFXPlay(playerP1->charNo, CHARVOICEID(15), 0);
-            (void)playerP2;
             return FALSE;
         }
         break;
@@ -873,7 +872,7 @@ void MgActorColMapMaskSet(int mdlNo, u32 mask)
     ColMapMaskSet(mdlNo, mask);
 }
 
-/* Returns the current polygon mask for a collision-map model. */
+/* Returns the collision-map model mask; the result is undefined if the map is uninitialized. */
 u32 MgActorColMapMaskGet(int mdlNo)
 {
     return ColMapMaskGet(mdlNo);
@@ -1193,7 +1192,7 @@ static void PlayerModePunch(MGPLAYER *playerP)
             MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
             no = playerP->actor->no;
             body = ColBodyGetSafe(no);
-            param.param = body->param.paramA+0x100;
+            param.param = body->param.paramA+COLBODY_MAX;
             param.type = 2;
             param.height = 120;
             param.radius = 60;
@@ -1256,7 +1255,7 @@ static void PlayerModeKick(MGPLAYER *playerP)
             playerP->timer = 20;
             no = playerP->actor->no;
             body = ColBodyGetSafe(no);
-            param.param = body->param.paramA+0x100;
+            param.param = body->param.paramA+COLBODY_MAX;
             param.type = 3;
             param.height = 120;
             param.radius = 60;
@@ -1333,7 +1332,7 @@ static void PlayerModeHipDrop(MGPLAYER *playerP)
                 MGACTOR_PARAM param;
                 no = playerP->actor->no;
                 body = ColBodyGetSafe(no);
-                param.param = body->param.paramA+0x100;
+                param.param = body->param.paramA+COLBODY_MAX;
                 param.type = 4;
                 param.height = 10;
                 param.radius = 80;
@@ -1733,7 +1732,7 @@ static inline void InitColPoint(MGACTOR *actorP, COLBODY *colBody)
         actorP->terminalVelY = (point->colOfs.y < 0) ? (100*point->colOfs.y) : 0;
     } else {
         memset(&actorP->colOfs, 0, sizeof(HuVecF));
-        actorP->colMesh = 0xFFFF;
+        actorP->colMesh = MGACTOR_COLMESH_NONE;
         actorP->colObj = NULL;
         actorP->colFace = -1;
         actorP->terminalVelY = 0;
@@ -1937,7 +1936,7 @@ void MgActorExec(void)
         colBody = ColBodyGet(i);
         if(colBody->param.attr & COLBODY_ATTR_ACTIVE) {
             actorP = &actmanWork.actor[i];
-            if(actorP->attr & 0x1) {
+            if(actorP->attr & MGACTOR_ATTR_COL_OFF) {
                 continue;
             }
             if(actorP->mdlId >= 0) {
@@ -1971,7 +1970,7 @@ void MgActorExec(void)
         colBody = ColBodyGet(i);
         if(colBody->param.attr & COLBODY_ATTR_ACTIVE) {
             actorP = &actmanWork.actor[i];
-            if(actorP->attr & 0x1) {
+            if(actorP->attr & MGACTOR_ATTR_COL_OFF) {
                 continue;
             }
             /* If a correction callback changed the actor position, keep that override and
@@ -2018,7 +2017,8 @@ void MgActorExec(void)
     }
 }
 
-/* Returns the first map polygon hit by a segment, when collision data is ready. */
+/* Queries a map segment when collision data is ready. A hit up to 0.001 later in segment
+* fraction than the current best can replace it, including beyond the segment endpoint. */
 BOOL MgActorColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, MGACTOR_COLMAP_POLY *outPoly)
 {
     if(!ColMapInitCheck()) {
@@ -2065,7 +2065,7 @@ void MgActorPosSetRaw(MGACTOR *actorP, HuVecF *pos)
     }
 }
 
-/* Gets an actor's base position from its collision body's stored center. */
+/* Gets the actor's base position from its stored center using the collision body's shape. */
 void MgActorPosGet(MGACTOR *actorP, HuVecF *pos)
 {
     COLBODY *colBody;
@@ -2170,7 +2170,7 @@ void MgPlayerSpawn(MGPLAYER *playerP, HuVecF *pos)
 void MgPlayerColDisable(MGACTOR *actorP)
 {
     COLBODY *colBody;
-    actorP->attr |= 0x1;
+    actorP->attr |= MGACTOR_ATTR_COL_OFF;
     colBody = ColBodyGet(actorP->no);
     colBody->param.attr |= COLBODY_ATTR_COL_OFF;
 }
@@ -2179,7 +2179,7 @@ void MgPlayerColDisable(MGACTOR *actorP)
 void MgPlayerColEnable(MGACTOR *actorP, HuVecF *pos)
 {
     COLBODY *colBody;
-    actorP->attr &= ~0x1;
+    actorP->attr &= ~MGACTOR_ATTR_COL_OFF;
     colBody = ColBodyGet(actorP->no);
     colBody->param.attr &= ~COLBODY_ATTR_COL_OFF;
     MgActorPosSet(actorP, pos);
@@ -2254,7 +2254,8 @@ BOOL MgPlayerStunSet(MGPLAYER *playerP, int stunType, float angle, int maxTime)
     return TRUE;
 }
 
-/* Clears active stun and squish presentation before a player is repositioned. */
+/* Clears stun state and light-squish presentation unless stun actions are disabled.
+* Clearing the squish flag restores model scale but leaves collision-body height unchanged. */
 BOOL MgPlayerModeIdleSet(MGPLAYER *playerP)
 {
     if (!(playerP->actionFlag & MGPLAYER_ACTFLAG_STUN) ||

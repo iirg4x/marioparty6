@@ -1,5 +1,6 @@
 // Manages the memory-card save file, its three board-save boxes, and save-screen flow.
-#define _MATH_H
+#include "dolphin/math.h"
+#include "messdir_enum.h"
 #include "datanum/win.h"
 #include "game/audio.h"
 #include "game/pad.h"
@@ -42,26 +43,26 @@
 #define SL_MESS_CARD_REINSERT 11
 #define SL_MESS_CARD_FORMAT_UNMOUNT 12
 
-#define MESS_MPSYSTEM_CARD_NOCARD 0x90001
-#define MESS_MPSYSTEM_CARD_FORMAT_CHOICE 0x90002
-#define MESS_MPSYSTEM_CARD_WRONGDEVICE 0x90003
-#define MESS_MPSYSTEM_CARD_FATAL_ERROR 0x90004
-#define MESS_MPSYSTEM_CARD_INSSPACE 0x90005
-#define MESS_MPSYSTEM_CARD_NOENT 0x90006
-#define MESS_MPSYSTEM_CARD_CREATEFILE 0x90007
-#define MESS_MPSYSTEM_MES_CARD_WRITE 0x9000b
-#define MESS_MPSYSTEM_NOSAVE_CHOICE 0x90018
-#define MESS_MPSYSTEM_CARD_FORMAT 0x9001a
-#define MESS_MPSYSTEM_CARD_FORMAT_WARN 0x9001b
-#define MESS_MPSYSTEM_CARD_FORMAT_ERROR 0x9001c
-#define MESS_MPSYSTEM_CARD_INVALID 0x90021
-#define MESS_MPSYSTEM_CARD_SERIAL_INVALID 0x90022
-#define MESS_MPSYSTEM_CARD_FORMAT_UNMOUNT 0x90026
-#define MESS_MPSYSTEM_MES_SAVE_SAVE 0x9002a
-#define MESS_MPSYSTEM_CARD_FULL 0x90035
-#define MESS_MPSYSTEM_CARD_SLOTA 0x90036
-#define MESS_MPSYSTEM_CARD_REINSERT 0x9003a
-#define MESS_MPSYSTEM_MES_BANK_AWARD 0x90043
+#define MESS_MPSYSTEM_CARD_NOCARD MESSNUM(MESS_FILE_SELECT, 1)
+#define MESS_MPSYSTEM_CARD_FORMAT_CHOICE MESSNUM(MESS_FILE_SELECT, 2)
+#define MESS_MPSYSTEM_CARD_WRONGDEVICE MESSNUM(MESS_FILE_SELECT, 3)
+#define MESS_MPSYSTEM_CARD_FATAL_ERROR MESSNUM(MESS_FILE_SELECT, 4)
+#define MESS_MPSYSTEM_CARD_INSSPACE MESSNUM(MESS_FILE_SELECT, 5)
+#define MESS_MPSYSTEM_CARD_NOENT MESSNUM(MESS_FILE_SELECT, 6)
+#define MESS_MPSYSTEM_CARD_CREATEFILE MESSNUM(MESS_FILE_SELECT, 7)
+#define MESS_MPSYSTEM_MES_CARD_WRITE MESSNUM(MESS_FILE_SELECT, 11)
+#define MESS_MPSYSTEM_NOSAVE_CHOICE MESSNUM(MESS_FILE_SELECT, 24)
+#define MESS_MPSYSTEM_CARD_FORMAT MESSNUM(MESS_FILE_SELECT, 26)
+#define MESS_MPSYSTEM_CARD_FORMAT_WARN MESSNUM(MESS_FILE_SELECT, 27)
+#define MESS_MPSYSTEM_CARD_FORMAT_ERROR MESSNUM(MESS_FILE_SELECT, 28)
+#define MESS_MPSYSTEM_CARD_INVALID MESSNUM(MESS_FILE_SELECT, 33)
+#define MESS_MPSYSTEM_CARD_SERIAL_INVALID MESSNUM(MESS_FILE_SELECT, 34)
+#define MESS_MPSYSTEM_CARD_FORMAT_UNMOUNT MESSNUM(MESS_FILE_SELECT, 38)
+#define MESS_MPSYSTEM_MES_SAVE_SAVE MESSNUM(MESS_FILE_SELECT, 42)
+#define MESS_MPSYSTEM_CARD_FULL MESSNUM(MESS_FILE_SELECT, 53)
+#define MESS_MPSYSTEM_CARD_SLOTA MESSNUM(MESS_FILE_SELECT, 54)
+#define MESS_MPSYSTEM_CARD_REINSERT MESSNUM(MESS_FILE_SELECT, 58)
+#define MESS_MPSYSTEM_MES_BANK_AWARD MESSNUM(MESS_FILE_SELECT, 67)
 
 void SLCurBoxNoSet(s16 boxNo);
 static HUWINID SLWinOpen(s32 mesNum, s32 insertMesNum1, s32 insertMesNum2, s16 posY);
@@ -87,6 +88,8 @@ static u8 commentTbl[2][CARD_COMMENT_SIZE/2] = {
     "00/00/0000"
 };
 
+// When false, file open/create/read/write/close return READY without card I/O; reads leave
+// the destination unchanged.
 BOOL SaveEnableF = TRUE;
 static int SLCurWinId = HUWIN_NONE;
 char SLSaveFileName[] = "MARIPA6";
@@ -152,10 +155,13 @@ s32 SLFileOpen(char *fileName)
             }
         }
     }
+    // Any HuCardOpen result not handled above, including other errors, is treated as READY.
     return CARD_RESULT_READY;
 }
 
 // Called by SLSave for a new file; creates it, writes an ERASE marker buffer, then save data.
+// After creation starts, exit paths force reset suppression off rather than restoring its prior
+// value.
 s32 SLFileCreate(char *fileName, u32 size, void *saveData)
 {
     s32 result;
@@ -176,6 +182,7 @@ s32 SLFileCreate(char *fileName, u32 size, void *saveData)
         SLMessOut(SL_MESS_CARD_INVALID);
         return CARD_RESULT_FATAL_ERROR;
     }
+    // The free-space status is ignored; the following tests use its output variables regardless.
     result = HuCardFreeSpaceGet(curSlotNo, &freeBytes, &freeFileEntries);
     if(freeFileEntries == 0 && size > freeBytes) {
         SLMessOut(SL_MESS_CARD_FULL);
@@ -238,6 +245,7 @@ s32 SLFileCreate(char *fileName, u32 size, void *saveData)
 }
 
 // Called by SLSave for an existing file; shows the writing message and updates card metadata.
+// After the write, reset suppression is forced off rather than restored to its prior value.
 s32 SLFileWrite(s32 length, void *saveData)
 {
     int winId;
@@ -356,6 +364,7 @@ void SLSaveDataSlotMake(s16 slotNo, BOOL eraseF, OSTime *saveTime)
     memcpy(slotBuffer + SAVE_BANNER_OFS, bannerAnimation->bmp->data,
            CARD_BANNER_WIDTH * CARD_BANNER_HEIGHT);
     memcpy(slotBuffer+SAVE_BANNER_TLUT_OFS, bannerAnimation->bmp->palData, 512);
+    // This routine leaves the loaded banner allocation alive after copying its bitmap and palette.
     SLSaveDataInfoSet(slotNo, saveTime);
     checksum = SLCheckSumSlotGet(slotNo, 0, SAVE_ICONBANNER_SIZE);
     saveBuf[slotNo][SAVE_ICONBANNER_CHECKSUM_OFS] = checksum >> 8;
@@ -368,7 +377,8 @@ void SLSaveDataMake(BOOL eraseF, OSTime *saveTime)
     SLSaveDataSlotMake(curSlotNo, eraseF, saveTime);
 }
 
-// Writes the save date and a randomly selected icon, then refreshes the icon/banner checksum.
+// Writes the save date and a randomly selected icon into slotNo. The checksum stored there is
+// calculated from curSlotNo, even when the two slot numbers differ.
 void SLSaveDataInfoSet(s16 slotNo, OSTime *saveTime)
 {
     OSCalendarTime calendarTime;
@@ -446,6 +456,8 @@ void SLBoardSave(void)
 }
 
 // Called by board and mode save flows to write all boxes, handling card errors and retries.
+// A format failure after an existing-file write returns a negative error immediately; board/mode
+// callers treat that nonzero result as a successful save.
 s32 SLSave(void)
 {
     s32 result;
@@ -520,6 +532,7 @@ s32 SLSave(void)
             fatalF = TRUE;
         }
     }
+    // The close result is ignored; success below depends on the earlier create/write result.
     SLFileClose();
     if(result >= 0) {
         HuCardUnMount(curSlotNo);
@@ -645,16 +658,11 @@ BOOL SLCheckSumCheck(void)
 u16 SLCheckSumSlotGet(s16 slotNo, u32 offset, u32 byteCount)
 {
     u32 byteSum;
-    u32 i;
+    s32 i;
     for(i=byteSum=0; i<byteCount; i++) {
         byteSum = byteSum+saveBuf[slotNo][offset+i];
     }
     byteSum = ~byteSum;
-    (void)byteSum;
-    (void)byteSum;
-    (void)byteSum;
-    (void)i;
-    (void)i;
     return ((u16)byteSum) & 0xFFFF;
 }
 
@@ -667,7 +675,7 @@ u16 SLCheckSumGet(u32 offset, u32 byteCount)
 // Stores the selected box's checksum in its final two bytes, most-significant byte first.
 void SLCheckSumBoxSet(void)
 {
-    u32 boxDataOffset = boxDataOfs[curBoxNo];
+    s32 boxDataOffset = boxDataOfs[curBoxNo];
     u16 checksum = SLCheckSumGet(boxDataOffset, SAVE_BOX_SIZE-2);
     saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_SIZE-2] = (checksum >> 8) & 0xFF;
     saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_SIZE-1] = checksum & 0xFF;
@@ -794,6 +802,8 @@ s32 SLCardMount(s16 slotNo)
             }
         }
     } else {
+        // Other mount results, including unhandled errors, are overwritten by this sector-size
+        // check; a standard sector size makes this path return READY.
         result = HuCardSectorSizeGet(curSlotNo);
         if(result < 0) {
             SLMessOut(SL_MESS_FATAL_ERROR);
@@ -807,7 +817,9 @@ s32 SLCardMount(s16 slotNo)
     }
 }
 
-// Called after a format prompt; formats curSlotNo and initializes save data (slotNo is unused).
+// Called after a format prompt; uses curSlotNo (slotNo is unused). A recorded detach clears
+// UnMountCnt and returns CARD_RESULT_READY without formatting. Otherwise it formats the card and
+// rebuilds metadata and box checksums unless the result is fatal, no-card, or wrong-device.
 s32 SLFormat(s16 slotNo)
 {
     s16 result;
@@ -819,14 +831,14 @@ s32 SLFormat(s16 slotNo)
         HUWINID winId = SLWinOpen(MESS_MPSYSTEM_CARD_FORMAT_WARN, SL_CUR_SLOT_MESS, SL_MESSID_NONE,
                                   bottomWinPosY);
         HuPrcSleep(30);
-        (void)winId;
-        (void)winId;
         if(UnMountCnt & (1 << curSlotNo)) {
             SLWinClose(winId);
             SLMessOut(SL_MESS_CARD_FORMAT_UNMOUNT);
             UnMountCnt = 0;
             return CARD_RESULT_READY;
         } else {
+            // HuCardFormat forces reset suppression off; the cached serial is cleared even on
+            // failure.
             result = HuCardFormat(curSlotNo);
             SLSerialNo[curSlotNo] = 0;
             if(result < 0) {
@@ -853,8 +865,6 @@ s32 SLFormat(s16 slotNo)
             }
         }
     }
-    (void)result;
-    (void)result;
 }
 
 // Registers a window owned by the caller so save messages reuse it.
@@ -1008,6 +1018,7 @@ s16 SLMessOut(s16 messId)
         winId = SLWinId;
     }
     window = &winData[winId];
+    // Force controller 1 input and disable cancellation; these settings stay on a reused window.
     window->padMask = HUWIN_PLAYER_1;
     if(insertedMessageId) {
         HuWinInsertMesSet(winId, insertedMessageId, 0);
@@ -1037,8 +1048,9 @@ s16 SLMessOut(s16 messId)
     return choiceNo;
 }
 
-// At the per-turn save point, saves under a wipe when enabled and permitted, forcing
-// GwCommon.saveEnableF true in the saved state.
+// At the per-turn save point, tears down 3D state and resets sprites before checking whether
+// saving is enabled and permitted. When allowed, saves under a wipe with
+// GwCommon.saveEnableF forced true in the saved state.
 void SLSaveBoardTurnExec(void)
 {
     Hu3DAllKill();
@@ -1046,6 +1058,7 @@ void SLSaveBoardTurnExec(void)
     HuSprInit();
     espInit();
     HuWinComKeyReset();
+    // GWSaveModeGet changes the MAX sentinel to NEVER before testing whether saving is permitted.
     if(!SaveEnableF || GWSaveModeGet() == GW_SAVE_MODE_NEVER) {
         return;
     }
@@ -1066,11 +1079,12 @@ void SLSaveBoardTurnExec(void)
     WipeWait();
 }
 
-// At board end, saves when enabled; presents and clears any bank-star award first, and stores
-// saveEnableF false in common state.
+// At board end, tears down 3D state and resets sprites even when saving is disabled. When
+// enabled, presents and clears any bank-star award before saving, and stores saveEnableF false
+// in common state.
 void SLSaveBoardEndExec(void)
 {
-    s16 foregroundSpriteId;
+    s16 backdropSpriteId;
     s16 backgroundSpriteId;
     Hu3DAllKill();
     HuSprClose();
@@ -1082,10 +1096,10 @@ void SLSaveBoardEndExec(void)
     }
     HuPrcVSleep();
     if(GwCommon.bankStarAward == 0) {
-        foregroundSpriteId = espEntry(WIN_ANM_52, 5010, 0);
-        espPosSet(foregroundSpriteId, 288.0f, 240.0f);
-        espScaleSet(foregroundSpriteId, 10, 10);
-        espColorSet(foregroundSpriteId, 0, 0, 0);
+        backdropSpriteId = espEntry(WIN_ANM_52, 5010, 0);
+        espPosSet(backdropSpriteId, 288.0f, 240.0f);
+        espScaleSet(backdropSpriteId, 10, 10);
+        espColorSet(backdropSpriteId, 0, 0, 0);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_PREV, 1);
         WipeWait();
         bottomWinPosY = 190.0f;
@@ -1100,12 +1114,12 @@ void SLSaveBoardEndExec(void)
         }
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_PREV, 1);
         WipeWait();
-        espKill(foregroundSpriteId);
+        espKill(backdropSpriteId);
     } else {
-        foregroundSpriteId = espEntry(WIN_ANM_52, 5010, 0);
-        espPosSet(foregroundSpriteId, 288.0f, 240.0f);
-        espScaleSet(foregroundSpriteId, 10, 10);
-        espColorSet(foregroundSpriteId, SL_BANK_AWARD_TINT_RED, SL_BANK_AWARD_TINT_GREEN,
+        backdropSpriteId = espEntry(WIN_ANM_52, 5010, 0);
+        espPosSet(backdropSpriteId, 288.0f, 240.0f);
+        espScaleSet(backdropSpriteId, 10, 10);
+        espColorSet(backdropSpriteId, SL_BANK_AWARD_TINT_RED, SL_BANK_AWARD_TINT_GREEN,
                     SL_BANK_AWARD_TINT_BLUE);
         backgroundSpriteId = espEntry(WIN_ANM_save_bg, 5000, 0);
         espPosSet(backgroundSpriteId, 288.0f, 209.0f);
@@ -1127,12 +1141,12 @@ void SLSaveBoardEndExec(void)
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 20);
         WipeWait();
         espKill(backgroundSpriteId);
-        espKill(foregroundSpriteId);
+        espKill(backdropSpriteId);
     }
 }
 
-// Displays up to 9,999 bank stars in a result window, waits for the message to finish, then closes
-// the window.
+// Displays up to 9,999 bank stars in a result window and waits for the message to finish.
+// Closes and kills the window, then returns its former ID; both callers ignore that result.
 static HUWINID SLBankAwardExec(s16 award)
 {
     HUWINID winId = HUWIN_NONE;
@@ -1159,7 +1173,7 @@ static HUWINID SLBankAwardExec(s16 award)
 // before saving; unusedModeFlag is ignored.
 void SLSaveModeExec(s16 unusedModeFlag)
 {
-    s16 foregroundSpriteId;
+    s16 backdropSpriteId;
     s16 backgroundSpriteId;
     HuWinComKeyReset();
     if(!SaveEnableF) {
@@ -1170,10 +1184,10 @@ void SLSaveModeExec(s16 unusedModeFlag)
     }
     HuPrcVSleep();
     if(GwCommon.bankStarAward == 0) {
-        foregroundSpriteId = espEntry(WIN_ANM_52, 5010, 0);
-        espPosSet(foregroundSpriteId, 288.0f, 240.0f);
-        espScaleSet(foregroundSpriteId, 10, 10);
-        espColorSet(foregroundSpriteId, 0, 0, 0);
+        backdropSpriteId = espEntry(WIN_ANM_52, 5010, 0);
+        espPosSet(backdropSpriteId, 288.0f, 240.0f);
+        espScaleSet(backdropSpriteId, 10, 10);
+        espColorSet(backdropSpriteId, 0, 0, 0);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_PREV, 1);
         WipeWait();
         bottomWinPosY = 190.0f;
@@ -1186,12 +1200,12 @@ void SLSaveModeExec(s16 unusedModeFlag)
         }
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_PREV, 1);
         WipeWait();
-        espKill(foregroundSpriteId);
+        espKill(backdropSpriteId);
     } else {
-        foregroundSpriteId = espEntry(WIN_ANM_52, 5010, 0);
-        espPosSet(foregroundSpriteId, 288.0f, 240.0f);
-        espScaleSet(foregroundSpriteId, 10, 10);
-        espColorSet(foregroundSpriteId, SL_BANK_AWARD_TINT_RED, SL_BANK_AWARD_TINT_GREEN,
+        backdropSpriteId = espEntry(WIN_ANM_52, 5010, 0);
+        espPosSet(backdropSpriteId, 288.0f, 240.0f);
+        espScaleSet(backdropSpriteId, 10, 10);
+        espColorSet(backdropSpriteId, SL_BANK_AWARD_TINT_RED, SL_BANK_AWARD_TINT_GREEN,
                     SL_BANK_AWARD_TINT_BLUE);
         backgroundSpriteId = espEntry(WIN_ANM_save_bg, 5000, 0);
         espPosSet(backgroundSpriteId, 288.0f, 209.0f);
@@ -1211,7 +1225,7 @@ void SLSaveModeExec(s16 unusedModeFlag)
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 20);
         WipeWait();
         espKill(backgroundSpriteId);
-        espKill(foregroundSpriteId);
+        espKill(backdropSpriteId);
     }
 }
 

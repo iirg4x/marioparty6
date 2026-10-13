@@ -1,5 +1,5 @@
 /* Creates and updates the minigame countdown and score timers. */
-#define _MATH_H
+#include "dolphin/math.h"
 
 #include "game/gamemes.h"
 #include "game/memory.h"
@@ -8,8 +8,13 @@
 #include "game/mg/timer.h"
 #include "datanum/mgconst.h"
 
+#define MGTIMER_PROCESS_PRIORITY 4096
+#define MGTIMER_PROCESS_STACK_SIZE 4608
+
 /* Timer values are frames at 60 frames per second; positions are screen pixels. */
 
+/* RECORD and WIDESCORE use 60-second groups, SCORE uses 100-second groups, and NORMAL
+ * does not use this grouping. */
 const static s16 MinuteLenTbl[4] = {
     0, 60, 100, 60
 };
@@ -66,8 +71,9 @@ static const HuVec2f digitOfsTbl[MGTIMER_TYPE_MAX][15] = {
 
 static TIMERFUNC modeTbl[MGTIMER_MODE_MAX] = { TimerExecOff, TimerExecOn };
 
-/* Called by minigame setup to allocate a timer, create its display, and start its update
- * process. */
+/* Minigame setup creates a timer, score-style sprites, and its update process; the normal message
+ * display is created when shown. A failed update-process creation reaches the child link without
+ * a NULL check. */
 MGTIMER* MgTimerCreate(int type) {
     MGTIMER* timer;
     int spriteIndex;
@@ -116,13 +122,15 @@ MGTIMER* MgTimerCreate(int type) {
     }
     MgTimerColorSet(timer, 255, 255, 255);
     UpdateSprite(timer);
-    timer->proc = HuPrcChildCreate(TimerExec, 0x1000, 0x1200, 0, HuPrcCurrentGet());
+    timer->proc = HuPrcChildCreate(TimerExec, MGTIMER_PROCESS_PRIORITY, MGTIMER_PROCESS_STACK_SIZE,
+                                   0, HuPrcCurrentGet());
     timer->proc->property = timer;
     return timer;
 }
 
-/* Called by the owning minigame during cleanup to stop the timer and release its display
- * resources. */
+/* Called by the owning minigame during cleanup to kill the timer process and release its display
+* resources. The kill result is ignored, so resource cleanup continues if the process was already
+* killed. */
 void MgTimerKill(MGTIMER* timer) {
     HuPrcKill(timer->proc);
     KillSprite(timer);
@@ -196,7 +204,7 @@ void MgTimerRecordSet(MGTIMER* timer, int recordTime) {
     }
 }
 
-/* Minigame UI code changes the RGB color used by the seven live timer digits. */
+/* Minigame UI code changes the RGB color of the five live digits and their two separators. */
 void MgTimerColorSet(MGTIMER* timer, u8 red, u8 green, u8 blue) {
     int spriteIndex;
     timer->digitR = red;
@@ -247,7 +255,8 @@ static void TimerExecOff(MGTIMER* timer) {
     }
 }
 
-/* modeTbl active callback: advances one frame per tick and applies the selected end behavior. */
+/* modeTbl active callback: shows the display if needed, advances one frame per tick, and applies
+ * the selected end behavior. */
 static void TimerExecOn(MGTIMER* timer) {
     int pollIndex;
     s16 currentMode;
@@ -294,7 +303,8 @@ static void TimerExecOn(MGTIMER* timer) {
     }
 }
 
-/* MgTimerCreate builds the digit and crown sprites for score-style timer displays. */
+/* MgTimerCreate builds the digit and crown sprites for score-style timer displays. Digit colors
+ * and separator banks use the returned sprite IDs even when creation returns -1. */
 static void CreateSprite(MGTIMER* timer) {
     int spriteIndex;
 
@@ -345,8 +355,8 @@ static void UpdateSprite(MGTIMER* timer) {
     int spriteIndex;
     s32 seconds;
     s32 centiseconds;
-    s32 minutes;
-    s32 elapsedFrames;
+    s32 wholeGroups;
+    s32 displayFrames;
     u8 red;
     u8 green;
     u8 blue;
@@ -375,35 +385,40 @@ static void UpdateSprite(MGTIMER* timer) {
             if (timer->boxId != -1) {
                 MgScoreBoxPosSet(timer->boxId, timer->pos.x - 8.0f, timer->pos.y - 8.0f);
             }
-            /* The live timer digits cap at 9:59.99; record-time digits are formatted separately
-             * below. */
+            /* At 35,999 frames or more, force the live banks to 9:59.99 for every score-style type.
+             * SCORE uses 100-second groups below this threshold; record banks are formatted
+             * separately. */
             if (timer->time >= 35999) {
-                minutes = 9;
+                wholeGroups = 9;
                 seconds = 59;
                 centiseconds = 99;
             } else {
                 /* The enclosing branch already guarantees this value is below the display cap. */
-                elapsedFrames = (timer->time >= 35999) ? 35999 : timer->time;
-                minutes = elapsedFrames / (timer->timeUnit * 60);
-                seconds = (elapsedFrames % (timer->timeUnit * 60)) / 60;
+                displayFrames = (timer->time >= 35999) ? 35999 : timer->time;
+                wholeGroups = displayFrames / (timer->timeUnit * 60);
+                seconds = (displayFrames % (timer->timeUnit * 60)) / 60;
                 /* Convert the remaining sub-second frames to truncated centiseconds using 100/60;
                  * the record-time display uses the same conversion below. */
-                centiseconds = 1.6666666f * ((elapsedFrames % 3600) % 60);
+                centiseconds = 1.6666666f * ((displayFrames % 3600) % 60);
             }
-            espBankSet(timer->espId[0], minutes % 10);
+            /* Live and record digit banks use stored sprite IDs without checking whether creation
+             * succeeded. */
+            espBankSet(timer->espId[0], wholeGroups % 10);
             espBankSet(timer->espId[2], seconds / 10);
             espBankSet(timer->espId[3], seconds % 10);
             espBankSet(timer->espId[5], centiseconds / 10);
             espBankSet(timer->espId[6], centiseconds % 10);
 
-            minutes = timer->recordTime / (timer->timeUnit * 60);
+            wholeGroups = timer->recordTime / (timer->timeUnit * 60);
             seconds = (timer->recordTime % (timer->timeUnit * 60)) / 60;
             centiseconds = 1.6666666f * ((timer->recordTime % 3600) % 60);
-            espBankSet(timer->espId[7], minutes % 10);
+            espBankSet(timer->espId[7], wholeGroups % 10);
             espBankSet(timer->espId[9], seconds / 10);
             espBankSet(timer->espId[10], seconds % 10);
             espBankSet(timer->espId[12], centiseconds / 10);
-            espBankSet(timer->espId[13],  centiseconds - (centiseconds / 10 * 10));
+            espBankSet(timer->espId[13],  centiseconds % 10);
+            /* End-of-timer flash alternates the live digits between their selected color and yellow
+             * every 10 global frames. */
             if (timer->flashFlag & MGTIMER_FLASH_COLOR) {
                 if (((GlobalCounter / 10) & 1) == 0) {
                     red = timer->digitR;
@@ -420,6 +435,7 @@ static void UpdateSprite(MGTIMER* timer) {
                     }
                 }
             }
+            /* The record flash pulses the record digits and crown between 1.0 and 1.2 scale. */
             if (timer->flashFlag & MGTIMER_FLASH_RECORD) {
                 if (timer->scaleDir) {
                     if ((timer->digitScale += 0.02f) >= 1.2f) {
@@ -439,6 +455,8 @@ static void UpdateSprite(MGTIMER* timer) {
                     }
                 }
             }
+            /* Apply fade opacity to existing sprites. The box receives the same opacity once for
+             * each of the 15 sprite slots, including empty slots. */
             if (timer->flashFlag & MGTIMER_FLASH_FADEOUT) {
                 transparencyLevel = 1.0f - (0.016666668f * timer->fadeOutTime);
                 for (spriteIndex = 0; spriteIndex < 15; spriteIndex++) {
@@ -457,10 +475,11 @@ static void UpdateSprite(MGTIMER* timer) {
                 }
             }
     }
-    (void)seconds;
 }
 
-/* Minigame callers show the timer message or all timer sprites and its score box. */
+/* Minigame callers create the normal timer message if absent, or show all timer sprites and
+ * set the score box visibility from boxDispF. dispOnF becomes TRUE even if message creation
+ * fails, so TimerExecOn does not automatically retry. */
 void MgTimerDispOn(MGTIMER* timer) {
     int spriteIndex;
 
@@ -489,7 +508,8 @@ void MgTimerDispOn(MGTIMER* timer) {
     timer->dispOnF = TRUE;
 }
 
-/* Minigame callers hide the timer message or all timer sprites and its score box. */
+/* Minigame callers hide timer sprites and their score box. Normal mode queues the message's
+* delayed end sequence and clears its ID immediately, before the message disappears. */
 void MgTimerDispOff(MGTIMER* timer) {
     int spriteIndex;
 
@@ -517,7 +537,9 @@ void MgTimerDispOff(MGTIMER* timer) {
     timer->dispOnF = FALSE;
 }
 
-/* Record-screen callers show the timer message or record-style digits and score box. */
+/* Record-screen callers create the normal timer message if absent, or show all timer sprites
+ * and set the score box visibility from boxDispF. dispOnF becomes TRUE even if message creation
+ * fails, so TimerExecOn does not automatically retry. */
 void MgTimerRecordDispOn(MGTIMER* timer) {
     int spriteIndex;
 
@@ -545,7 +567,8 @@ void MgTimerRecordDispOn(MGTIMER* timer) {
     timer->dispOnF = TRUE;
 }
 
-/* Record-screen callers hide the timer message or record-style digits and score box. */
+/* Record-screen callers hide timer sprites and their score box. Normal mode queues the
+* message's delayed end sequence and clears its ID immediately, before it disappears. */
 void MgTimerRecordDispOff(MGTIMER* timer) {
     int spriteIndex;
 

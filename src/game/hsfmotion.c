@@ -1,8 +1,5 @@
 /* Motion playback, blending, and animation-track evaluation for HSF models. */
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double x);
-double cos(double x);
+#include "dolphin/math.h"
 #include "game/hu3d.h"
 #include "game/hsfload.h"
 #include "game/init.h"
@@ -522,7 +519,8 @@ void Hu3DMotionShiftSpeedSet(HU3D_MODELID modelId, float speed)
     modelP->motShiftWork.speed = speed;
 }
 
-/* Holds the selected object's requested position, rotation, or scale at its base value. */
+/* Sets requested current transform components to their base values and blocks track writes; a
+ * base-transform reset can still overwrite forced scales. */
 void Hu3DMotionNoMotSet(HU3D_MODELID modelId, char *objName, u32 forceAttr)
 {
     HSF_OBJECT *objP = Hu3DModelObjPtrGet(modelId, objName);
@@ -611,7 +609,8 @@ void Hu3DMotionForceSet(HU3D_MODELID modelId, char *objName, u32 forceAttr, floa
     }
 }
 
-/* Stores the callback and selects the first object whose name contains NOW, if one exists. */
+/* Stores the callback and selects the first object whose name contains NOW; if none exists,
+ * timingHookObj is left unchanged. */
 void Hu3DMotionTimingHookSet(HU3D_MODELID modelId, HU3D_TIMING_HOOK timingHook)
 {
     HU3D_MODEL *modelP = &Hu3DData[modelId];
@@ -1134,8 +1133,9 @@ void Hu3DSubMotionExec(HU3D_MODELID modelId)
     }
 }
 
-/* Returns a current position, rotation, or scale component unless that component is forced. */
-__declspec(weak) float *GetObjTRXPtr(HSF_OBJECT *objPtr, u16 channel)
+/* Returns a pointer to a current position, rotation, or scale component; forced or unsupported
+ * channels return the -1 sentinel. */
+float *GetObjTRXPtr(HSF_OBJECT *objPtr, u16 channel)
 {
     HSF_CONSTDATA *constData = objPtr->constData;
     if(channel <= HSF_CHANNEL_POSZ) {
@@ -1490,7 +1490,8 @@ void SetObjLightMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
     float weight;
     s16 i;
     s16 lightId;
-    for(i=lightId=0; i<hsf->objectNum; i++, objPtr++) {
+    lightId = 0;
+    for(i=lightId; i<hsf->objectNum; i++, objPtr++) {
         HSF_OBJECT *obj = objPtr;
         if(obj->type == HSF_OBJ_LIGHT) {
             if(i == trackP->target) {
@@ -1502,7 +1503,6 @@ void SetObjLightMotion(HU3D_MODELID modelId, HSF_TRACK *trackP, float value)
     if(i == hsf->objectNum) {
         return;
     }
-    (void)lightId;
     lightP = &Hu3DGlobalLight[modelP->lightId[lightId]];
     weight = value;
     if(value > 1) {
@@ -1621,7 +1621,7 @@ float GetLinear(s32 keyNum, HSF_LINEAR_KEY *key, float time)
 /* Samples a Bezier curve and caches the upper key index in trackP->start.
  * Time zero or one key returns the first value; other times before the first key
  * can select index zero and then use key[-1] instead of clamping. */
-__declspec(weak) float GetBezier(s32 keyNum, HSF_TRACK *trackP, float time)
+float GetBezier(s32 keyNum, HSF_TRACK *trackP, float time)
 {
     HSF_BEZIER_KEY *key = trackP->data;
     HSF_BEZIER_KEY *keyPrev;
