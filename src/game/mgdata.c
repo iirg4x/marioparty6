@@ -7,13 +7,14 @@
 
 #include "datanum/instpic.h"
 
-#define DECA_SCORE_TIME 0 // Lower normalized results earn more points.
+#define DECA_SCORE_TIME 0 // Selects the descending breakpoint-comparison branch.
 #define DECA_SCORE_POINT 1 // Higher normalized results earn more points.
 #define DECA_SCORE_NUM 11
 #define MGDATA_COLOR_GOLD 4292351487u
 #define MGDATA_COLOR_GREEN 1124039423u
+#define MGDATA_COLOR_WHITE 4294967295u
 
-int MgModeSubMode;
+s16 MgModeSubMode;
 s16 MgModeScore[GW_PLAYER_MAX];
 s16 MgGameNo;
 u8 MgModePlayNum;
@@ -60,7 +61,7 @@ typedef struct MgDecaPoint_s {
 
 typedef struct MgDecaScore_s {
     s32 overlayNo; // Minigame overlay ID whose result uses this curve.
-    s16 scoreType; // Whether better results increase or decrease the curve value.
+    s16 scoreType; // Selects whether the scan compares normalized results with <= or >=.
     s16 pointCount; // Number of initialized points in the curve.
     MGDECAPOINT points[10]; // Result-to-score breakpoints, in curve order.
 } MGDECASCORE;
@@ -201,8 +202,9 @@ static MGDECASCORE MgDecaScoreTbl[DECA_SCORE_NUM] = {
         }
     },
     {
-        // MgDecaScoreCalc selects overlay 514, not this curve; these scores are 3.0009 times
-        // overlay 514's.
+        // MgDecaScoreCalc selects overlay 514, not this curve; the normalized result breakpoints
+        // are
+        // about 3.0009 times overlay 514's, while the decathlon score breakpoints are unchanged.
         5141,
         DECA_SCORE_POINT,
         7,
@@ -234,7 +236,8 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
     overlayNo = -1;
     // Map each decathlon slot to its overlay curve and normalize its raw result using that slot's
     // scale.
-    // A zero result on these time-based slots bypasses interpolation and returns zero.
+    // A zero result in a time-score slot skips the curve and scores zero; positive results
+    // use that slot's descending normalized-value breakpoints.
     switch(decathlonGameIndex) {
         case 0:
             if(gameResult == 0) {
@@ -244,7 +247,7 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
                 overlayNo = 502;
             }
             break;
-        
+
         case 1:
             if(gameResult == 0) {
                 decathlonScore = 0;
@@ -253,17 +256,17 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
                 overlayNo = 504;
             }
             break;
-       
+
        case 2:
             normalizedResult = gameResult;
             overlayNo = 563;
             break;
-       
+
        case 3:
             normalizedResult = gameResult;
             overlayNo = 506;
             break;
-       
+
        case 4:
             if(gameResult == 0) {
                 decathlonScore = 0;
@@ -272,12 +275,12 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
                 overlayNo = 507;
             }
             break;
-       
+
        case 5:
             normalizedResult = gameResult;
             overlayNo = 510;
             break;
-       
+
        case 6:
             if(gameResult == 0) {
                 decathlonScore = 0;
@@ -286,7 +289,7 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
                 overlayNo = 511;
             }
             break;
-       
+
        case 8:
             if(gameResult == 0) {
                 decathlonScore = 0;
@@ -295,7 +298,7 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
                 overlayNo = 512;
             }
             break;
-       
+
        case 7:
             if(gameResult == 0) {
                 decathlonScore = 0;
@@ -304,7 +307,7 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
                 overlayNo = 513;
             }
             break;
-       
+
        case 9:
             normalizedResult = gameResult/100.0f;
             overlayNo = 514;
@@ -313,7 +316,7 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
     // Unmapped slots keep the initial score of 1000; zero-result slots above keep their explicit
     // zero.
     if(overlayNo > 0) {
-        
+
         int scoreEntryIndex;
         for (scoreEntry = &MgDecaScoreTbl[0], scoreEntryIndex = DECA_SCORE_NUM; scoreEntryIndex--;
              scoreEntry++) {
@@ -371,5 +374,5 @@ int MgDecaScoreCalc(int decathlonGameIndex, int gameResult)
 }
 
 int lbl_802BF860 = MGDATA_COLOR_GOLD;
-int lbl_802BF864 = 0xFFFFFFFF;
+int lbl_802BF864 = MGDATA_COLOR_WHITE;
 int lbl_802BF868 = MGDATA_COLOR_GREEN;

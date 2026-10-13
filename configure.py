@@ -2263,6 +2263,57 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "mgmtournamentdll",
+        objects={
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/bracket.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/camera.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/characters.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/host.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/math.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/preview.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1", "-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/scene.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmtournamentdll/window.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":

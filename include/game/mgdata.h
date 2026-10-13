@@ -1,3 +1,4 @@
+/* Shared minigame metadata, instruction resources, and mode state used by game menus. */
 #ifndef _GAME_MGDATA_H
 #define _GAME_MGDATA_H
 
@@ -29,7 +30,7 @@ enum {
 	MG_INST_TYPE_MAX //3
 };
 
-enum { 
+enum {
 	MG_INST_PAGE_INST, //0
 	MG_INST_PAGE_CONTROL, //1
 	MG_INST_PAGE_CONTROL2, //2
@@ -56,7 +57,8 @@ enum {
 #define MG_FLAG_DISABLE_NIGHT (1 << 10)
 #define MG_FLAG_DISABLE_DAY (1 << 11)
 
-#define MG_FLAG_PACK_ALL (MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_SKILL|MG_FLAG_PACK_ACTION)
+#define MG_FLAG_PACK_ALL                                                                           \
+    (MG_FLAG_PACK_EASY | MG_FLAG_PACK_WEIRD | MG_FLAG_PACK_SKILL | MG_FLAG_PACK_ACTION)
 
 #define MgModeWorkGet() ((void *)MgModeWork)
 
@@ -78,7 +80,7 @@ extern MGDATA MgDataTbl[];
 extern GW_COMMON GwCommonBackup;
 extern u8 MgModeWork[256];
 
-extern int MgModeSubMode;
+extern s16 MgModeSubMode;
 extern s16 MgModeScore[GW_PLAYER_MAX];
 extern s16 MgGameNo;
 extern u8 MgModePlayNum;

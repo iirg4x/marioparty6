@@ -5,3 +5,51 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/mgmtournamentdll/preview.c:
+	.text       start:0x00000000 end:0x00000E9C
+	.rodata     start:0x00000000 end:0x00000040
+	.bss        start:0x00000000 end:0x000000A8
+
+REL/mgmtournamentdll/camera.c:
+	.text       start:0x00000E9C end:0x0000199C
+	.rodata     start:0x00000040 end:0x00000098
+	.data       start:0x00000000 end:0x00000140
+	.bss        start:0x000000A8 end:0x000000C8
+
+REL/mgmtournamentdll/window.c:
+	.text       start:0x0000199C end:0x00002E28
+	.rodata     start:0x00000098 end:0x000000C0
+	.data       start:0x00000140 end:0x00000278
+	.bss        start:0x000000C8 end:0x000000D8
+
+REL/mgmtournamentdll/bracket.c:
+	.text       start:0x00002E28 end:0x00005154
+	.rodata     start:0x000000C0 end:0x000000F8
+	.data       start:0x00000278 end:0x00000440
+	.bss        start:0x000000D8 end:0x000000F0
+
+REL/mgmtournamentdll/host.c:
+	.text       start:0x00005154 end:0x00006278
+	.rodata     start:0x000000F8 end:0x00000150
+	.data       start:0x00000440 end:0x00000510
+	.bss        start:0x000000F0 end:0x00000108
+
+REL/mgmtournamentdll/characters.c:
+	.text       start:0x00006278 end:0x0000D69C
+	.rodata     start:0x00000150 end:0x000001F0
+	.data       start:0x00000510 end:0x00000848
+	.bss        start:0x00000108 end:0x00000130
+
+REL/mgmtournamentdll/scene.c:
+	.text       start:0x0000D69C end:0x0000E378
+	.rodata     start:0x000001F0 end:0x00000228
+	.data       start:0x00000848 end:0x00000898
+
+REL/mgmtournamentdll/math.c:
+	.text       start:0x0000E378 end:0x0000E590
+	.rodata     start:0x00000228 end:0x00000250
+
+REL/mgmtournamentdll/runtime.c:
+	.text       start:0x0000E590 end:0x0000EFD4
+	.rodata     start:0x00000250 end:0x00000268

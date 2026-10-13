@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 42.05% | 58.83% |
+| Entire project | 42.54% | 59.00% |
 | Main DOL | 90.12% | 99.24% |
-| REL modules | 31.86% | 33.22% |
+| REL modules | 32.46% | 33.50% |
+
+Mount Duel (`mgmtournamentdll`) selects all **125 functions** from **9 complete translation units**; its linked REL matches retail.
 
 REL source cleanup: `miraclebookdll`, `w05Dll`, `ttwarsdll`, `m657Dll`, `mgmfreedll`; reviewed source cleanup and generated progress; all selected RELs match retail byte for byte.
 
