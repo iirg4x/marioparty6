@@ -21,7 +21,8 @@ void fn_1_4ECC(OMOBJ *obj);
 void fn_1_E5AC(HUSPR_GROUPID groupId, s32 attr);
 void fn_1_E62C(HUSPR_GROUPID groupId, s32 attr);
 
-/* Run the main mode loop, dispatching the active menu state until it returns or exits. */
+/* Run selection and player reordering using shared menu state; mode is unused. Return 0 to
+* launch the selection or 1 to exit the menu. */
 s32 fn_1_E0C0(s16 mode)
 {
     s16 index;
@@ -97,7 +98,7 @@ f32 fn_1_E35C(f32 start, f32 end, f32 time, f32 duration)
     return start + ((time / duration) * (end - start));
 }
 
-/* Move a value toward its target by averaging over the remaining frame count. */
+/* Blend start toward end by 1/time; snap to end for time <= 1. Menu updates reuse a weight of 5. */
 f32 fn_1_E3A0(f32 start, f32 end, f32 time)
 {
     if (start == end || time <= 1.0f) {

@@ -2216,7 +2216,7 @@ config.libs = [
             ),
             Object(
                 Matching,
-                "REL/w05Dll/text_000A0.c",
+                "REL/w05Dll/board.c",
                 extra_cflags=["-pooldata", "off"],
             ),
         },

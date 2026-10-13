@@ -52,98 +52,38 @@ OMOBJ *lbl_1_bss_C;
 void *lbl_1_bss_8;
 u8 *lbl_1_bss_4;
 OMOBJ *lbl_1_bss_0;
-extern char *lbl_1_data_40[][2];
 
 typedef struct W05EffectWork_s {
     s32 modelId; /* Board particle model that receives the effect. */
-    s32 count; /* Number of yellow particles still active in this effect. */
+    s32 count; /* Number of particles still active in this shared effect. */
     void *animation; /* Sprite animation data retained for the particle model. */
 } W05_EFFECT_WORK;
 
 typedef struct W05EffectOwner_s {
     s32 modelId; /* Board particle model that owns the active particles. */
-    s32 activeCount; /* Number of yellow particles still active in this effect. */
+    s32 activeCount; /* Number of particles still active in this shared effect. */
     void *animation; /* Sprite animation data retained for the particle model. */
 } W05_EFFECT_OWNER;
 
 typedef struct W05ColorEffectWork_s {
     s32 modelId; /* Board particle model used for colored particles. */
     s32 activeCount; /* Particles that have not finished fading. */
-    s32 state; /* Effect state stored with the board particle task. */
+    s32 state; /* Cleared during setup; otherwise unused by this module. */
     ANIMDATA *animation; /* Sprite animation data retained for the particle model. */
 } W05_COLOR_EFFECT_WORK;
-
-/* Retail w05Dll .rodata 0x0..0x3A0. */
-
-/* Sets up the start, raised midpoint, and destination for a moving board object. */
 
 extern s32 mbWipeSpecialCheck(void);
 extern s32 mbWipeSpecialStatGet(void);
 
-/* Creates particles across the board event's sampled geometry. */
-
-/* Emits a yellow burst in the plane of the supplied rotation. */
-
-/* Emits stationary white particles within the event bounds and starts their scale transition. */
-
-/* Emits sixteen yellow particles from a position, with randomized speed and direction. */
-
-/* Emits stationary fading particles over a rounded area around the supplied position. */
-
-/* Emits a rotating ring of particles in the plane defined by the supplied rotation. */
-
-/* Emits an upward burst, spreading each particle around the supplied position. */
-
-/* Moves a board effect along its attachment's vertical axis and emits fading particles. */
-
-extern f32 lbl_1_data_558[];
-extern f32 lbl_1_data_590[];
-
-/* Scales a player on the board attachment, holds it there, then spins it upward. */
-
-/* Raises the effect over 24 frames, then hides it and removes the object next frame. */
-
 void mbMapSprAdd(s16 spriteId, s16 spaceId);
 
-extern HuVecF lbl_1_data_3A8;
-extern HuVecF lbl_1_data_3B4;
-extern f32 lbl_1_data_3C0;
-extern HuVecF lbl_1_data_418;
-extern HuVecF lbl_1_data_424;
-extern f32 lbl_1_data_430;
-extern HuVecF lbl_1_data_434;
-extern HuVecF lbl_1_data_440;
-extern f32 lbl_1_data_44C;
-extern HuVecF lbl_1_data_450;
-extern HuVecF lbl_1_data_45C;
-extern f32 lbl_1_data_468;
-extern HuVecF lbl_1_data_46C;
-extern HuVecF lbl_1_data_478;
-extern f32 lbl_1_data_484;
-extern HuVecF lbl_1_data_488;
-extern HuVecF lbl_1_data_494;
-extern f32 lbl_1_data_4A0;
 void mbWipeFadeIn(void);
 void mbWipeFadeOut(void);
 void mbWipeWait(void);
 void mbTelopTimeChangeCreate(void);
 BOOL mbTelopTimeChangeCheck(void);
 
-/* Hides the players while the time-change camera sequence and help window run. */
-
-/* Resolves the board resource's model for the current time of day. */
-
-/* Creates the board's hooked machinery and chooses its initial space type. */
-
-/* Attaches both board models to the selected hook and resets its event motion. */
-
-/* Chooses a board link by target-space distance, with difficulty-based random detours. */
-
-extern HuVecF lbl_1_data_4D4;
-extern HuVecF lbl_1_data_4E0;
 int mbGuideSpeakerNoGet(void);
-
-/* Rehooks the board machinery around its day/night transition and updates the special space. */
 
 void mbStarGetExec(int playerNo);
 
@@ -151,13 +91,9 @@ void mbev_CapObjMotionSet(int modelId, int time, int motionNo, int nextMotion,
                         u32 attr, u32 nextAttr, BOOL shift, BOOL nextShift);
 s16 mbev_CapMasuPrevGet(s16 spaceId, HuVecF *position);
 
-/* Runs the star purchase and carries the player through the changing board machinery. */
-
 void mbev_CapPlayerRotate(int playerNo, float angle);
 
 void mbZtarGetExec(int playerNo);
-
-/* Runs the second hook's Ztar event, then launches the player back to the marked board space. */
 
 extern u32 mbCapEffNum;
 extern s16 *mbCapEffData;
@@ -169,38 +105,11 @@ extern s16 *mbCapEffData;
         } \
     } while (0)
 
-extern HuVecF lbl_1_data_8E4;
-extern HuVecF lbl_1_data_8F0;
-extern HuVecF lbl_1_data_8FC;
-extern HuVecF lbl_1_data_908;
-
-/* The next value of the board's shared effect noise table, from -1 to 1. */
-
-/* Offsets a shared noise sample for the ambient spray's radial placement. */
-
-/* The board's per-frame update: waves the sea surface and scrolls its texture, emits the ambient
-   spray, fades the night lamps, sways both hooks and carries what hangs on them. */
-
 typedef struct W05TwinEffectWork_s {
     s32 modelId[2];
     s32 activeCount[2];
     ANIMDATA *animation;
 } W05_TWIN_EFFECT_WORK;
-
-/* Emits a rising blue-gray particle with scale and opacity based on strength. */
-
-/* Captures the particle's final color before sampling its lifetime variation. */
-
-/* The hooks' own copy of the rising particle (fn_1_19A90), with its noise read through
- * W05EffectRand. */
-
-/* While the first hook swings, emits rising particles around it each frame: four rounds of one
-   particle on each side of the hook and two behind it, stronger the faster it swings. */
-
-/* While the second hook swings, emits rising particles around it each frame: four rounds of one
-   particle on each side of the hook and one behind it, stronger the faster it swings. */
-
-extern HuVecF lbl_1_data_6BC[];
 
 extern BOOL mbSaveNewF;
 
@@ -210,8 +119,6 @@ void mbev_ShopInit(int dataNum);
 void mbev_ShopBackCreate(int dataNum, int motionNum, BOOL nightF, BOOL allocF);
 void mbev_NextTimeSet(void (*nextTimeHook)(void));
 void mbLightFuncSet(void (*createHook)(void), void (*killHook)(void));
-
-extern s32 lbl_1_data_50[];
 
 void mbBranchMAttrSet(u32 attr);
 void mbOpeningInstHookSet(void (*hook)(void));
@@ -223,17 +130,9 @@ void mbCapThrowHookSet();
 void mbOpeningViewSet(HuVecF *rotation, HuVecF *position, f32 zoom);
 void mbMapCameraSet(const HuVecF *rotation, const HuVecF *position, f32 zoom);
 
-/* Allocates the board's state and initializes its lights and moving attachments. */
-
 void mbev_CapStatusDispSetAll(int enabled, int immediate);
 int mbev_CapCoinDisp(int playerNo, int coins, int display, int wait);
 void mbev_Scroll(int playerNo, int mode);
-
-/* Offers the coin event, runs its timed movement, then returns the player to the board. */
-
-/* Starts the player's movement state and the computer player's input timers. */
-
-/* Gets the raft's player attachment transform and its forward-facing rotation. */
 
 typedef struct W05ArrivalWork_s {
     u8 objectState[132];
@@ -246,37 +145,13 @@ typedef struct W05ArrivalWork_s {
 int mbCoinAddExec(int playerNo, int coinNum);
 void mbev_CapPlayerMotShiftWait(int playerNo, int motionNo, u32 attr, BOOL shiftF);
 
-/* Offers the raft ride for ten coins, follows its motion and camera, and handles the optional
-   detour. The board-space event calls this while the current player's move is suspended. */
-
-/* Steers the computer player toward falling coins and schedules its jump input. */
-
-/* Stops a board model's motion while the raft event is inactive. */
-
-/* Allows a board model's motion to advance while the raft event is active. */
-
-/* Updates raft motion speed and emits spray at the animated strokes each frame. */
-
-/* Emits spray around the raft's attachment while its movement effect is active. */
-
-/* Allocates and initializes the state used to move a board model. */
-
 typedef struct W05ParticleWork_s {
     s32 modelId; /* Board particle model advanced by the task callback. */
     s32 activeCount; /* Particles currently visible or moving. */
 } W05_PARTICLE_WORK;
 
-/* Follows the raft attachment each frame and finishes its motion when stopped. */
-
-/* Advances the board particles, hiding the model when none remain active. */
-
-/* Starts a particle in the first free slot, retaining only the supplied alpha. */
-
 void mbev_CapBezierGetV(f32 time, HuVecF *start, HuVecF *control,
                        HuVecF *end, HuVecF *position);
-
-/* Moves the model along its final arc, then plays the arrival motion.
-   The particle emitter replaces the uninitialized RGB components with white. */
 
 typedef struct W05TeresaSceneWork_s {
     u8 modelState[32];
@@ -295,39 +170,16 @@ void mbev_CapTeresaFadeKill(int modelId);
 
 void mbWipeDissolveFadeIn(void);
 
-/* Brings Boo toward the player at night before running the Boo space event. */
-
-/* Starts a shrinking board particle, with optional gravity and rotation. */
-
-/* Moves and shrinks active particles, using a curved scale transition when requested. */
-
 void mbev_CapVecChase(float weight, HuVecF *start, HuVecF *end, HuVecF *out);
-/* Updates the light transition and records a skip button; removes itself on board exit. */
-
 typedef struct W05TwinParticleWork_s {
     s32 modelId[2];
     s32 activeCount[2];
     ANIMDATA *animation;
 } W05_TWIN_PARTICLE_WORK;
 
-/* Starts a particle in either effect model; its object state is read before the null check. */
-
-extern s32 lbl_1_data_50[];
-
-/* Creates a flying model in the first vacant slot and sets its launch direction. */
-
-/* Collects a flying coin or knocks away a nearby hazard when it reaches the player. */
-
-extern HuVecF lbl_1_data_0;
-extern HuVecF lbl_1_data_C;
-
-/* Raises and bobs two event models, then lowers them and shakes the camera on impact. */
-
-/* Builds the models attached to the board's linked event spaces during setup. */
-
 typedef struct W05SurfaceVertex_s {
     HuVecF phase; /* Independent wave phases in degrees for each axis. */
-    HuVecF amplitude; /* Displacement applied around the original vertex position. */
+    HuVecF amplitude; /* Sine amplitudes; the y baseline is position.y minus amplitude.y. */
     HuVecF phaseStep; /* Added to the phases when the surface animation advances. */
     HuVecF position; /* Original model vertex coordinates. */
 } W05_SURFACE_VERTEX;
@@ -362,68 +214,23 @@ typedef struct W05DrawWork_s {
     s32 warpDisabled;
 } W05_DRAW_WORK;
 
-extern GXColor lbl_1_data_8C0, lbl_1_data_8C4, lbl_1_data_8C8;
-extern f32 lbl_1_data_8CC[2][3];
-
-/* Builds the board surface's texture arrays and triangle display list at board setup. */
-
-/* Draws the board surface, optionally distorting its texture with a second map. */
-
-/* Gets a Donkey Kong attachment's board transform after updating both models. */
-
-/* Gets the selected Bowser attachment's board transform through its linked models. */
-
-/* Carries a player to the marked space, then restores the camera and raft poses. */
-
-extern f32 lbl_1_data_850[][2];
 void mbWipeSpecialFadeInCreate(int type, int durationFrames);
 void mbWipeSpecialFadeOutCreate(int type, int durationFrames);
 
-/* Jumps the player onto a linked board mechanism and returns after its time-change animation. */
-
-extern HuVecF lbl_1_data_770[2];
-extern HuVecF lbl_1_data_788[14];
-
-/* Runs the two characters' lifting event and moves each player to another player's board space. */
-
-extern f32 lbl_1_data_728[][2];
 f32 mbev_CapAngleSumLerp(float weight, float start, float end);
 
-/* Moves the tossing model between launch points, then turns and releases flying items. */
-
-extern HuVecF lbl_1_data_64C;
-extern HuVecF lbl_1_data_658;
-extern f32 lbl_1_data_664;
-extern f32 lbl_1_data_668[][2];
-extern f32 lbl_1_data_680[][2];
-extern f32 lbl_1_data_698[];
-extern f32 lbl_1_data_6A4[];
-extern f32 lbl_1_data_6B0[];
 void mbWipeDissolveFadeInTime(int durationFrames);
 void mbWipeDissolveFadeOutTime(int durationFrames);
 
 void mbev_CapPlayerMotShiftSet(int modelId, int motionNo, u32 attr, BOOL shiftF);
 
-/* Plays the cannon event's camera, character and three machinery motions before restoring play. */
-
 s16 mbCoinDispCreate(HuVecF *position, int coinNum, int sign, BOOL playSe);
-
-/* Charges up to five coins, carries the player off the raft, then restores the destination view. */
-
-/* Advances flying items through launch, falling, collision and disappearance states. */
-
-/* Applies player input, jump physics and reaction motions during the flying-item event. */
-
-extern s32 lbl_1_data_748[3];
-extern HuVecF lbl_1_data_754[2];
 
 void mbCapCapsuleGet(int playerNo, int capsuleNo);
 int mbCapUseMesGet(int capsuleNo);
 OMOBJ *mbev_CapEffCoinCreate(void);
 void mbev_CapEffCoinKill(OMOBJ *object);
 void mbev_CapCoinAdd(OMOBJ *object, int playerNo, int coinNum, BOOL highF);
-
-/* Runs the two characters' board event and resolves the player's reward choice. */
 
 void fn_1_A0(void);
 void fn_1_F4(void);
@@ -432,7 +239,7 @@ void fn_1_1DBC(OMOBJ *object);
 void fn_1_1FB8(void);
 void fn_1_2010(void);
 void fn_1_2094(void);
-void fn_1_20C0(s32 mode, f32 x, f32 y, f32 z);
+void fn_1_20C0(s32 duration, f32 x, f32 y, f32 z);
 int fn_1_20F8(int playerNo, s16 spaceId);
 void fn_1_21D8(int playerNo);
 s32 fn_1_2228(void);
@@ -527,8 +334,8 @@ s32 fn_1_1EE80(HuVecF position, HuVecF velocity, f32 scale,
 void fn_1_1F090(HuVecF *position, f32 radius, f32 height, s32 count);
 void fn_1_1F57C(HuVecF position, HuVecF rotation, s32 count);
 void fn_1_1F9B0(HuVecF position, s32 count);
-/* Selects the day or night archive for Castaway Bay board assets, leaving other directories
- * unchanged. */
+/* Applies the board language or pause asset mapping, then selects Castaway Bay's day or night
+ * archive. */
 static inline int W05BoardDataNumGet(int dataNum) {
     int directory;
 
@@ -554,7 +361,7 @@ static inline f32 W05CosDeg(f32 angle) {
     return mbCosDeg(angle);
 }
 
-/* Advances the board effect noise index and returns its signed sample in the range -1 to 1. */
+/* Advances the shared effect noise index and returns its sample in the range 0 to 1. */
 static inline f32 W05EffectRand(void) {
     s16 sample;
 
@@ -970,7 +777,8 @@ void fn_1_F4(void) {
     mbMapCameraSet(NULL, &lbl_1_data_368, lbl_1_data_374);
 }
 
-/* Tears down Castaway Bay's main model and cannon collision resources when board setup ends. */
+/* Releases Castaway Bay's main model and capsule throw-path collision resources during board
+ * shutdown. */
 void fn_1_1D50(void) {
     if (lbl_1_bss_18 >= 0) {
         mbObjKill(lbl_1_bss_18);
@@ -1020,7 +828,7 @@ void fn_1_1DBC(OMOBJ *object) {
     }
 }
 
-/* Shows the Castaway Bay guide before the hooks move for the day/night change. */
+/* Shows the opening guide, then demonstrates the ships swapping positions in explanation mode. */
 void fn_1_1FB8(void) {
     mbWinCreate(2, MESSNUM(MESS_BOARD_W05, 48), mbGuideSpeakerNoGet());
     mbWinTopWait();
@@ -1029,7 +837,7 @@ void fn_1_1FB8(void) {
     mbWipeDissolveFadeInTime(60);
 }
 
-/* Applies the sea lighting tint for the current day/night setting. */
+/* Sets the day or night background clear color and imports the main board model's lights. */
 void fn_1_2010(void) {
     void *boardWork;
 
@@ -1046,15 +854,15 @@ void fn_1_2094(void) {
     Hu3DBGColorSet(255U, 255U, 255U);
 }
 
-/* Records an active board request with a mode and three coordinates. */
-void fn_1_20C0(s32 mode, f32 x, f32 y, f32 z) {
+/* Stores a target light rotation and frame duration for the board update; retains elapsed time. */
+void fn_1_20C0(s32 duration, f32 x, f32 y, f32 z) {
     s32 *work = (s32 *)lbl_1_bss_8;
 
     work[81] = 1;
     ((f32 *)work)[76] = x;
     ((f32 *)work)[77] = y;
     ((f32 *)work)[78] = z;
-    work[80] = mode;
+    work[80] = duration;
 }
 
 /* Routes a question-mark landing to the Castaway Bay event selected by its space attributes. */
@@ -1158,7 +966,7 @@ void fn_1_2324(s32 enabled) {
     }
 }
 
-/* Updates the night cannon event's enabled state when its board hook is called. */
+/* At night, the capsule throw hook fades lamps out at throw start and back in at throw end. */
 void fn_1_246C(s32 mode) {
     s32 *work = (s32 *) lbl_1_bss_8;
 
@@ -1220,6 +1028,7 @@ void fn_1_24C4(void) {
     }
     mbWipeFadeOut();
     HuPrcVSleep();
+    /* This view's center, rotation and zoom are overwritten by the next view before yielding. */
     mbCameraCenterSetV(&lbl_1_data_3A8);
     mbCameraRotSetV(&lbl_1_data_3B4);
     mbCameraZoomSet(lbl_1_data_3C0);
@@ -1281,7 +1090,8 @@ void fn_1_24C4(void) {
     mbWinKill(window);
 }
 
-/* Sleeps until skipping is enabled and requested; fades out once both wipe checks are clear. */
+/* Yields while skipping is unavailable; when skip is requested and enabled, fades out if both wipe
+ * checks are clear. */
 void fn_1_285C(void) {
     W05_BOARD_WORK *state;
 
@@ -1299,7 +1109,8 @@ void fn_1_285C(void) {
 
 const s8 lbl_1_rodata_5C[4] = {30, 20, 10};
 
-/* Chooses a linked space near the day target or far from the night target, with a COM detour. */
+/* Chooses a route toward the type-7 special space in arrangement zero or away from the type-10
+ * space otherwise, with COM detours; forceNearest chooses the nearest route in either case. */
 s32 fn_1_28C8(s32 playerNo, s32 linkCount, s16 *links, s32 forceNearest) {
     void *boardSnapshot[1];
     s32 selectedLink;
@@ -1437,7 +1248,7 @@ void fn_1_2B54(void) {
     fn_1_3540();
 }
 
-/* Reattaches the hook machinery for the current time of day during board setup or turn close. */
+/* Reattaches the two ship models to the selected hook model for the stored arrangement. */
 void fn_1_3308(s32 hookIndex) {
     W05_BOARD_WORK *board = lbl_1_bss_8;
 
@@ -1474,8 +1285,7 @@ void fn_1_3308(s32 hookIndex) {
     }
 }
 
-/* Marks the board's existing special space as the day or night event during setup and turn
- * close. */
+/* Sets the existing special space for the stored Donkey Kong or Bowser ship arrangement. */
 void fn_1_3540(void) {
     void *boardWorkSnapshot[1];
     s32 space;
@@ -1505,7 +1315,9 @@ HuVecF lbl_1_data_4D4 = {16.0f, 294.0f, 2384.0f};
 HuVecF lbl_1_data_4E0 = {-35.0f, 0.0f, 0.0f};
 HuVecF lbl_1_data_4EC = {0.0f, 0.0f, 1.0f};
 
-/* Moves the hooks between day and night poses while hiding the players and changing the camera. */
+/* Animates the ships swapping positions with hidden players and a temporary camera. Normally
+ * toggles their stored arrangement; explanation mode retains arrangement zero when entered from
+ * zero. */
 void fn_1_35F0(s32 fadeEnabled, s32 specialFade, s32 explainTransition) {
     W05_BOARD_WORK *board;
     s32 cameraModel;
@@ -1636,7 +1448,8 @@ void fn_1_35F0(s32 fadeEnabled, s32 specialFade, s32 explainTransition) {
     }
 }
 
-/* Sends the current player's star event to the active hook and closes its night data. */
+/* Dispatches the supplied player's Star or Ztar event from the stored ship arrangement, then
+ * closes the shared character archive. */
 void fn_1_42B4(s32 argument) {
     void *moduleWork = lbl_1_bss_8;
 
@@ -2286,7 +2099,8 @@ void fn_1_7610(s32 hookIndex) {
                  (s16)boardWork->secondHookModel);
 }
 
-/* Event sequences use this to read a first-hook attachment's position, orientation, or matrix. */
+/* Event sequences read a first-hook attachment's position or full matrix. Rotation output uses
+* its forward direction for pitch/yaw and always sets roll to zero. */
 void fn_1_76A4(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
     Mtx parentMatrix;
     Mtx attachmentMatrix;
@@ -2367,7 +2181,8 @@ void fn_1_76A4(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
 
 HuVecF lbl_1_data_51C = {0.0f, 0.0f, 1.0f};
 
-/* Event sequences use this to read a second-hook attachment's position, orientation, or matrix. */
+/* Event sequences read a second-hook attachment's position or full matrix. Rotation output uses
+* its forward direction for pitch/yaw and always sets roll to zero. */
 void fn_1_7AF8(s32 selector, HuVecF *position, HuVecF *rotation, Mtx matrix) {
     Mtx parentMatrix;
     Mtx attachmentMatrix;
@@ -2573,6 +2388,7 @@ void fn_1_814C(OMOBJ *object) {
         mbPlayerRotSetV(playerNo, &rotation);
         mbPlayerMtxSet(playerNo, &rotationMatrix);
         velocity.x = velocity.y = velocity.z = 0.0f;
+        /* The caller sets only opacity; fn_1_1EE80 forces the particle RGB channels to white. */
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
@@ -2611,6 +2427,7 @@ void fn_1_8670(OMOBJ *object) {
     switch ((s32)object->work[0]) {
     case 0:
         progress = (f32)++object->work[1] / 24.0f;
+        /* This spin matrix is calculated but never applied to the effect model. */
         mtxRot(rotationMatrix, 0.0f, 1440.0f * progress, 0.0f);
         fn_1_7AF8(3, &position, &rotation, attachmentMatrix);
         attachmentMatrix[0][3] = attachmentMatrix[1][3] = attachmentMatrix[2][3] = 0.0f;
@@ -2623,6 +2440,7 @@ void fn_1_8670(OMOBJ *object) {
         mbObjPosSetV((s16)modelId, &position);
         mbObjDispSet((s16)modelId, 1);
         velocity.x = velocity.y = velocity.z = 0.0f;
+        /* The caller sets only opacity; fn_1_1EE80 forces the particle RGB channels to white. */
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
@@ -2663,7 +2481,8 @@ void fn_1_8A2C(HuVecF *destination, u32 parameter) {
     object->work[3] = 0;
 }
 
-/* Advances the moving model along its hook-to-destination arc on each object-manager update. */
+/* Advances the final 40% of the hook-to-destination arc each frame, then replaces the moving
+ * model with the arrival effect and may request the raft hit event. */
 void fn_1_8B58(OMOBJ *object) {
     HuVecF position;
     HuVecF velocity;
@@ -2687,6 +2506,7 @@ void fn_1_8B58(OMOBJ *object) {
         mbObjPosSetV(modelId, &position);
         mbObjDispSet(modelId, TRUE);
         velocity.x = velocity.y = velocity.z = 0.0f;
+        /* The caller sets only opacity; fn_1_1EE80 forces the particle RGB channels to white. */
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
@@ -2724,8 +2544,8 @@ void fn_1_8B58(OMOBJ *object) {
     }
 }
 
-/* Handles the Boo-marked space after a move: by night Boo carries the player between linked
- * spaces. */
+/* Runs the normal Boo space event by day; at night first flies Boo between linked spaces while
+ * the player reacts, then runs the same event. */
 void fn_1_8FC0(s32 playerNo, s32 spaceId) {
     int motionData[16];
     HuVecF playerPosition;
@@ -3184,6 +3004,8 @@ thirdTarget = &lbl_1_data_5C8[(frand() & W05_RANDOM_VALUE_MASK) & 1] + 4;
                     goto ride_finished;
                 }
             }
+            /* The later >0.75 rumble branch cannot run: those frames already satisfy the >0.35
+             * test. */
             if (board->raftMotionProgress > 0.35f) {
                 vibrationFrames++;
                 if (vibrationFrames % 20 == 1) {
@@ -3267,7 +3089,8 @@ ride_finished:
 
 HuVecF lbl_1_data_634 = {0.0f, 0.0f, 1.0f};
 
-/* Gets the raft hook transform for the ride event and its per-frame player update. */
+/* Gets the raft player-hook position or full matrix for ride updates; rotation output derives
+* pitch/yaw from its forward direction and always sets roll to zero. */
 void fn_1_B078(HuVecF *position, HuVecF *rotation, Mtx matrix) {
     W05_BOARD_WORK *board;
     Mtx raftMatrix;
@@ -3663,6 +3486,7 @@ void fn_1_CE08(s32 playerNo, u32 spaceAttribute, s32 duration) {
         mbPlayerPosSetV(playerNo, &position);
         mbPlayerRotSetV(playerNo, &rotation);
         velocity.x = velocity.y = velocity.z = 0.0f;
+        /* The caller sets only opacity; fn_1_1EE80 forces the particle RGB channels to white. */
         color.a = 128;
         fn_1_1EE80(position, velocity,
             100.0f * (0.5f + 0.5f *
@@ -3684,8 +3508,8 @@ void fn_1_CE08(s32 playerNo, u32 spaceAttribute, s32 duration) {
     HuPrcSleep(90);
 }
 
-/* Runs the raft ride event: deducts coins, moves the player with the raft hook, then lands at
- * spaceId. */
+/* Handles a raft detour hit: takes up to five coins, tosses the player off the raft and drifts
+ * them beside its hook, then places them at spaceId. */
 void fn_1_D390(s32 playerNo, s32 spaceId, s32 motionNo, s32 soundId, HuVecF *offset) {
     Mtx matrix;
     HuVecF startPosition;
@@ -3816,6 +3640,9 @@ void fn_1_D390(s32 playerNo, s32 spaceId, s32 motionNo, s32 soundId, HuVecF *off
     HuPrcSleep(10);
 }
 
+/* Searches nine player offsets, optionally skipping zero, excluding occupied slots and positions
+ * within 75 units of another player on this space. Assumes a slot qualifies: otherwise returns 9
+ * and reads past the offset table. */
 s32 fn_1_DFB0(s32 playerNo, s32 spaceId, s32 *occupiedSlots, HuVecF *position,
               s32 skipFirst) {
     HuVecF playerPosition;
@@ -3857,7 +3684,8 @@ s32 fn_1_DFB0(s32 playerNo, s32 spaceId, s32 *occupiedSlots, HuVecF *position,
     return slot;
 }
 
-/* Follows the raft hook after the ride and removes the follower when the event ends. */
+/* Starts the raft motion at frame 4770 and follows its player hook with the supplied model;
+ * a stop request seeks the raft to its final frame before removing the follower. */
 void fn_1_E120(OMOBJ *object) {
     HuVecF position;
     HuVecF rotation;
@@ -4161,7 +3989,7 @@ s32 fn_1_F87C(s32 inputEnabled) {
     HuVecF rotation;
     W05_BOARD_WORK *board;
     W05_PLAYER_MOTION *player;
-    s32 active;
+    s32 readyToFinish;
     s32 historyIndex;
     f32 averagedSpeed;
     f32 movementSpeed;
@@ -4169,7 +3997,7 @@ s32 fn_1_F87C(s32 inputEnabled) {
 
     board = lbl_1_bss_8;
     player = board->playerMotion;
-    active = 0;
+    readyToFinish = 0;
     if (inputEnabled > 0) {
         if (GwPlayer[player->playerNo].comF == 0) {
             player->stickX = HuPadStkX[GwPlayer[player->playerNo].padNo];
@@ -4222,7 +4050,7 @@ s32 fn_1_F87C(s32 inputEnabled) {
             mbPlayerMotionShiftSet(player->playerNo, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
         }
         player->rotation.y += 20.0f * player->facingDirection;
-        active = 1;
+        readyToFinish = 1;
         break;
     case 2:
         player->position.y += player->velocity.y;
@@ -4275,7 +4103,7 @@ s32 fn_1_F87C(s32 inputEnabled) {
             player->state = 0;
             player->stateFrames = 0;
         }
-        active = 1;
+        readyToFinish = 1;
         break;
     }
     if (player->position.x > 600.0f) {
@@ -4304,7 +4132,7 @@ s32 fn_1_F87C(s32 inputEnabled) {
     rotation.y += board->playerFacingAngle;
     mbPlayerPosSetV(player->playerNo, &position);
     mbPlayerRotSetV(player->playerNo, &rotation);
-    return active;
+    return readyToFinish;
 }
 
 /* Releases the temporary buffer retained by the board event work. */
@@ -4461,31 +4289,32 @@ void fn_1_10A18(s32 modelId) {
     motion->state = 0;
     motion->elapsed = 0;
     motion->delay = 0;
-    motion->direction = 1;
-    motion->status = 0;
+    motion->currentPoint = 1;
+    motion->targetPoint = 0;
     motion->angle = motion->secondAngle = 0.0f;
     motion->delayTimer =
         60.0f * (3.0f + 2.0f * (3.7252903e-09f * (f32) mbRandMod(W05_RANDOM_RANGE)));
     mbObjPosGet(modelId, &motion->position);
     motion->displacement.x = motion->displacement.y = motion->displacement.z = 0.0f;
     mbObjRotGet(modelId, &motion->rotation);
-    motion->rotationDelta.x = motion->rotationDelta.y = motion->rotationDelta.z = 0.0f;
+    motion->targetPosition.x = motion->targetPosition.y = motion->targetPosition.z = 0.0f;
 }
 
-/* Advances the event model's movement state while the event has time remaining. */
+/* Advances the tossing model's movement, turn and item release each event frame; expired time
+ * prevents new moves but lets pending movement and turning finish. */
 s32 fn_1_10B90(s32 remainingFrames) {
     HuVecF difference;
     HuVecF position;
     W05_BOARD_WORK *board;
     W05_MODEL_MOTION *motion;
-    s32 active;
+    s32 readyToFinish;
     s32 nextPosition;
     f32 progress;
     f32 launchDirection;
 
     board = lbl_1_bss_8;
     motion = board->motion;
-    active = 0;
+    readyToFinish = 0;
     if (motion->delayTimer > 0) {
         motion->delayTimer--;
     }
@@ -4496,12 +4325,12 @@ s32 fn_1_10B90(s32 remainingFrames) {
             motion->delay = 0;
             motion->state = 1;
         }
-        active = 1;
+        readyToFinish = 1;
         break;
     case 1:
         do {
-            motion->status = (frand() & 0x7FFF) & 3;
-        } while (motion->direction == motion->status);
+            motion->targetPoint = (frand() & 0x7FFF) & 3;
+        } while (motion->currentPoint == motion->targetPoint);
         if ((f32)remainingFrames < 30.0f) {
             motion->elapsed = 0;
             motion->delay = 60;
@@ -4511,35 +4340,35 @@ s32 fn_1_10B90(s32 remainingFrames) {
             motion->delay = 24;
             motion->state = 2;
         }
-        active = 1;
+        readyToFinish = 1;
         break;
     case 2:
         if (motion->elapsed == 0) {
-            motion->position = board->movingModelPositions[motion->direction];
-            if (motion->status > motion->direction) {
-                nextPosition = motion->direction + 1;
-            } else if (motion->status < motion->direction) {
-                nextPosition = motion->direction - 1;
+            motion->position = board->movingModelPositions[motion->currentPoint];
+            if (motion->targetPoint > motion->currentPoint) {
+                nextPosition = motion->currentPoint + 1;
+            } else if (motion->targetPoint < motion->currentPoint) {
+                nextPosition = motion->currentPoint - 1;
             }
-            motion->rotationDelta = board->movingModelPositions[nextPosition];
-            PSVECSubtract(&motion->rotationDelta, &motion->position, &difference);
+            motion->targetPosition = board->movingModelPositions[nextPosition];
+            PSVECSubtract(&motion->targetPosition, &motion->position, &difference);
             mbObjRotSet(motion->modelId, 0.0f,
                         180.0 * (atan2(difference.x, difference.z) / M_PI), 0.0f);
             mbAudFXPlay(1501);
             mbObjMotionShiftSet(motion->modelId, 3, 0.0f, 8.0f, 0);
         }
         progress = (f32)++motion->elapsed / (f32)motion->delay;
-        mbev_CapVecChase(progress, &motion->position, &motion->rotationDelta, &position);
+        mbev_CapVecChase(progress, &motion->position, &motion->targetPosition, &position);
         position.y += 3.0 * (100.0 * sin(M_PI * (180.0f * progress) / 180.0));
         mbObjPosSetV(motion->modelId, &position);
         if (progress >= 1.0f) {
-            if (motion->status > motion->direction) {
-                motion->direction++;
-            } else if (motion->status < motion->direction) {
-                motion->direction--;
+            if (motion->targetPoint > motion->currentPoint) {
+                motion->currentPoint++;
+            } else if (motion->targetPoint < motion->currentPoint) {
+                motion->currentPoint--;
             }
             mbObjMotionShiftSet(motion->modelId, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-            if (motion->status == motion->direction) {
+            if (motion->targetPoint == motion->currentPoint) {
                 motion->elapsed = 0;
                 motion->delay = 12;
                 motion->state = 3;
@@ -4555,7 +4384,7 @@ s32 fn_1_10B90(s32 remainingFrames) {
             mbObjRotGet(motion->modelId, &position);
             motion->angle = position.y;
             PSVECSubtract(&board->effectOrigin,
-                          &board->movingModelPositions[motion->direction], &difference);
+                          &board->movingModelPositions[motion->currentPoint], &difference);
             motion->secondAngle = 180.0 * (atan2(difference.x, difference.z) / M_PI);
         }
         progress = (f32)++motion->elapsed / (f32)motion->delay;
@@ -4574,9 +4403,10 @@ s32 fn_1_10B90(s32 remainingFrames) {
             mbAudFXPlay(1502);
             mbObjPosGet(motion->modelId, &position);
             position.y += 100.0f;
-            launchDirection = lbl_1_data_728[motion->direction][0] +
-                (lbl_1_data_728[motion->direction][1] - lbl_1_data_728[motion->direction][0]) *
-                (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
+            launchDirection = lbl_1_data_728[motion->currentPoint][0] +
+                              (lbl_1_data_728[motion->currentPoint][1] -
+                               lbl_1_data_728[motion->currentPoint][0]) *
+                                  (3.7252903e-09f * (f32) mbRandMod(W05_RANDOM_RANGE));
             if (GwSystem.curTime == 0) {
                 if ((frand() & 7) == 0) {
                     fn_1_122DC(1, &position, launchDirection, progress);
@@ -4600,13 +4430,13 @@ s32 fn_1_10B90(s32 remainingFrames) {
             motion->state = 0;
             mbObjMotionShiftSet(motion->modelId, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
         }
-        active = 1;
+        readyToFinish = 1;
         break;
     }
-    return active;
+    return readyToFinish;
 }
 
-/* Releases the temporary flying-item records when the board event resets them. */
+/* Releases the tossing model's movement record when the board event ends. */
 void fn_1_114E4(void) {
     void *savedBuffer[1];
     void *releasedBuffer;
@@ -4638,7 +4468,8 @@ entry += 80;
     }
 }
 
-/* Advances active flying items once per event update and removes them when their time expires. */
+/* Advances flying-item launch, fall and hit states each event frame. When event time ends,
+ * waiting and falling items are removed; launches and hit reactions finish first. */
 s32 fn_1_115CC(s32 remainingFrames) {
     HuVecF position;
     HuVecF particleVelocity;
@@ -4661,11 +4492,11 @@ s32 fn_1_115CC(s32 remainingFrames) {
             switch (model->state) {
             case 0:
                 progress = (f32)++model->elapsed / (f32)model->duration;
-                mbev_CapVecChase(progress, &model->position, &model->velocity, &position);
+                mbev_CapVecChase(progress, &model->position, &model->launchTarget, &position);
                 position.y += 3.0 * (100.0 * sin(M_PI * (180.0f * progress) / 180.0));
                 switch (model->type) {
                 case 0:
-                    model->rotationSpeed.y += 5.0f;
+                    model->spinAngles.y += 5.0f;
                     break;
                 case 1:
                     break;
@@ -4690,10 +4521,10 @@ s32 fn_1_115CC(s32 remainingFrames) {
                     break;
                 }
                 mbObjPosSetV(model->modelId, &position);
-                mbObjRotSetV(model->modelId, &model->rotationSpeed);
+                mbObjRotSetV(model->modelId, &model->spinAngles);
                 if (progress >= 1.0f) {
                     model->position = position;
-                    model->rotation.x = model->rotation.y = model->rotation.z = 0.0f;
+                    model->fallVelocity.x = model->fallVelocity.y = model->fallVelocity.z = 0.0f;
                     model->elapsed = 0;
                     model->duration = 0;
                     model->state = 1;
@@ -4711,16 +4542,16 @@ s32 fn_1_115CC(s32 remainingFrames) {
                 }
                 break;
             case 2:
-                PSVECAdd(&model->position, &model->rotation, &model->position);
-                model->rotation.y -= model->drag;
-                model->rotation.y *= 0.95f;
+                PSVECAdd(&model->position, &model->fallVelocity, &model->position);
+                model->fallVelocity.y -= model->gravity;
+                model->fallVelocity.y *= 0.95f;
                 switch (model->type) {
                 case 0:
-                    model->rotationSpeed.y += 4.0f + 2.5f *
+                    model->spinAngles.y += 4.0f + 2.5f *
                         (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
                     break;
                 case 1:
-                    model->rotationSpeed.x += 4.0f + 2.5f *
+                    model->spinAngles.x += 4.0f + 2.5f *
                         (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
                     break;
                 case 2:
@@ -4744,17 +4575,19 @@ s32 fn_1_115CC(s32 remainingFrames) {
                     break;
                 }
                 mbObjPosSetV(model->modelId, &model->position);
-                mbObjRotSetV(model->modelId, &model->rotationSpeed);
+                mbObjRotSetV(model->modelId, &model->spinAngles);
                 if (model->position.y <= 50.0f + board->effectOrigin.y) {
                     model->position.y = 50.0f + board->effectOrigin.y;
                     mbObjPosSetV(model->modelId, &model->position);
+                    /* Ground contact prepares a bounce and selects state 3, but immediately removes
+                     * the model, so the bounce never advances. */
                     bounceSpeed = 100.0f * (0.1f + 0.05f *
                         (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
                     bounceAngle = 360.0f *
                         (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
-                    model->rotation.x = bounceSpeed * sin(M_PI * bounceAngle / 180.0);
-                    model->rotation.z = bounceSpeed * cos(M_PI * bounceAngle / 180.0);
-                    model->rotation.y = 100.0f * (0.2f + 0.1f *
+                    model->fallVelocity.x = bounceSpeed * sin(M_PI * bounceAngle / 180.0);
+                    model->fallVelocity.z = bounceSpeed * cos(M_PI * bounceAngle / 180.0);
+                    model->fallVelocity.y = 100.0f * (0.2f + 0.1f *
                         (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
                     model->elapsed = 0;
                     model->duration = 18;
@@ -4772,21 +4605,21 @@ s32 fn_1_115CC(s32 remainingFrames) {
                 }
                 break;
             case 3:
-                PSVECAdd(&model->position, &model->rotation, &model->position);
-                model->rotation.y -= model->drag;
+                PSVECAdd(&model->position, &model->fallVelocity, &model->position);
+                model->fallVelocity.y -= model->gravity;
                 if (model->type == 0) {
-                    model->rotationSpeed.y += 10.0f;
+                    model->spinAngles.y += 10.0f;
                 }
                 mbObjPosSetV(model->modelId, &model->position);
-                mbObjRotSetV(model->modelId, &model->rotationSpeed);
-                if (model->motionState <= 0) {
+                mbObjRotSetV(model->modelId, &model->spinAngles);
+                if (model->blinkDelay <= 0) {
                     if ((model->elapsed & 1) != 0) {
                         mbObjDispSet(model->modelId, 0);
                     } else {
                         mbObjDispSet(model->modelId, 1);
                     }
                 } else {
-                    model->motionState--;
+                    model->blinkDelay--;
                 }
                 if (++model->elapsed >= model->duration) {
                     mbObjKill(model->modelId);
@@ -4796,6 +4629,8 @@ s32 fn_1_115CC(s32 remainingFrames) {
             case 4:
                 break;
             }
+            /* Count includes items removed in this update, so the last removal reports finished
+             * next frame. */
             activeCount++;
         }
     }
@@ -4857,30 +4692,30 @@ void fn_1_122DC(s32 type, HuVecF *position, f32 direction, f32 strength) {
         model->elapsed = 0;
         model->duration = 60.0 * (0.8 + 0.2f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
         model->delay = 30.0f * strength;
-        model->motionState = 0;
-        model->drag = 0.98f;
+        model->blinkDelay = 0;
+        model->gravity = 0.98f;
         model->position = *position;
-        model->rotation.x = model->rotation.y = model->rotation.z = 0.0f;
-        model->rotationSpeed.x = model->rotationSpeed.y = model->rotationSpeed.z = 0.0f;
+        model->fallVelocity.x = model->fallVelocity.y = model->fallVelocity.z = 0.0f;
+        model->spinAngles.x = model->spinAngles.y = model->spinAngles.z = 0.0f;
         switch (model->type) {
         case 0:
-            model->rotationSpeed.y = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
+            model->spinAngles.y = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
             break;
         case 1:
-            model->rotationSpeed.x = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
-            model->rotationSpeed.y = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
-            model->rotationSpeed.z = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
+            model->spinAngles.x = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
+            model->spinAngles.y = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
+            model->spinAngles.z = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
             break;
         }
         magnitude = fabs(direction);
         if (direction < 0.0f) {
             mbev_CapVecChase(magnitude, &board->effectOrigin, &board->effectBackward,
-                            &model->velocity);
+                            &model->launchTarget);
         } else {
             mbev_CapVecChase(magnitude, &board->effectOrigin, &board->effectForward,
-                            &model->velocity);
+                            &model->launchTarget);
         }
-        model->velocity.y += 100.0f * (10.0f + 2.0f * strength);
+        model->launchTarget.y += 100.0f * (10.0f + 2.0f * strength);
     }
 }
 
@@ -4938,14 +4773,14 @@ s32 fn_1_12720(s32 modelIndex) {
             magnitude = 100.0f * (0.1f + 0.05f *
                 (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
             angle = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
-            model->rotation.x = magnitude * sin(M_PI * angle / 180.0);
-            model->rotation.z = magnitude * cos(M_PI * angle / 180.0);
-            model->rotation.y = 100.0f * (0.2f + 0.1f *
+            model->fallVelocity.x = magnitude * sin(M_PI * angle / 180.0);
+            model->fallVelocity.z = magnitude * cos(M_PI * angle / 180.0);
+            model->fallVelocity.y = 100.0f * (0.2f + 0.1f *
                 (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
             model->elapsed = 0;
             model->duration = 30;
             model->state = 3;
-            model->motionState = 18;
+            model->blinkDelay = 18;
             burstRotation.x = 90.0f * (-0.5f +
                 (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
             burstRotation.y = 360.0f * (-0.5f +
@@ -4962,8 +4797,8 @@ s32 fn_1_12720(s32 modelIndex) {
     return collided;
 }
 
-/* Runs the night linked-space encounter, presents its reward choice and restores the board
- * scene. */
+/* Runs the daytime linked-space encounter, offers its capsule or coin reward and restores the
+ * board scene. */
 void fn_1_12D20(int playerNo, int spaceId) {
     int motionData[16];
     HuVecF characterPositions[2];
@@ -5216,8 +5051,8 @@ HuVecF lbl_1_data_788[14] = {
     {0.0f, 115.0f, 0.0f}
 };
 
-/* Runs the day linked-space lift scene and resolves the player's choice about moving another
- * player. */
+/* Runs the nighttime lift encounter and transfers all four players to another player's space
+ * using one random cyclic offset. The transfer still occurs if the initial offer is declined. */
 void fn_1_13C3C(int playerNo, int spaceId) {
     int playerMotions[16];
     int motionData[16];
@@ -5776,7 +5611,8 @@ f32 lbl_1_data_850[14][2] = {
     {-209.99998f, 400.0f}
 };
 
-/* Plays the linked-space jump event and returns the player to the destination board space. */
+/* Jumps the player onto the linked mechanism, returns them to the original space, then swaps
+ * the ships' stored arrangement. */
 void fn_1_160E4(s32 playerNo, s32 spaceId) {
     HuVecF startPosition;
     HuVecF linkedPosition;
@@ -6068,6 +5904,8 @@ void fn_1_1698C(void) {
     DCFlushRange(board->textureCoords, vertexCount * 8);
     DCFlushRange(board->baseWarpCoords, vertexCount * 8);
     DCFlushRange(board->colors, vertexCount * 4);
+    /* Setup flushes only vertexCount * 4 bytes of the 12-byte vertex array; the render hook later
+     * flushes the full array. */
     DCFlushRange(board->positions, vertexCount * 4);
     displayListStart = displayList = W05SurfaceScratchAlloc();
     DCFlushRange(displayList, 65536);
@@ -6250,6 +6088,7 @@ void fn_1_17A84(HU3D_MODEL *hookModel, Mtx *hookMatrix) {
     vertexBuffer = hsf->vertex;
     vertex = board->seaVertices;
     wave = board->seaWaves;
+    /* Pause freezes wave phases and flow offsets; spray, lamps and hook sway below still update. */
     for (i = 0; i < board->seaVertexCount; wave++, vertex++, i++) {
         if (!omPauseChk()) {
             if ((wave->phase.x += wave->speed.x) >= 360.0f) {
@@ -6507,6 +6346,8 @@ void fn_1_19460(void) {
              particleIndex++, particleData++) {
             particleData->dispF = 0;
         }
+        /* This tests the completed particle-loop index, so both 512-particle models use layer 6 and
+         * additive blending. */
         if (particleIndex == 0) {
             Hu3DModelLayerSet(work->modelId[effectIndex], 5);
             particle->blendMode = MB_PARTICLE_BLEND_NORMAL;
@@ -6579,7 +6420,8 @@ s32 fn_1_1980C(void) {
     return values[2] + values[3];
 }
 
-/* Starts a particle in the selected hook effect model; the board update advances it. */
+/* Starts a particle in the selected hook effect model for its frame-update task. Reads the
+ * task's data before the null check, so the task must already exist. */
 void fn_1_19864(HuVecF *position, HuVecF *velocity, f32 scale,
                f32 rotation, f32 gravity, GXColor *color, s32 duration, s32 additive) {
     W05_TWIN_PARTICLE_WORK *work;
@@ -6635,7 +6477,7 @@ void fn_1_19864(HuVecF *position, HuVecF *velocity, f32 scale,
     }
 }
 
-/* Emits a rising blue-gray particle; the board update calls this for sea spray and hook wakes. */
+/* Emits a rising blue-gray particle for ambient sea spray, raft spray and the raft-hit sequence. */
 void fn_1_19A90(HuVecF *position, f32 strength) {
     HuVecF velocity;
     GXColor color;
@@ -6788,7 +6630,7 @@ void fn_1_1C0AC(void) {
     }
 }
 
-/* Creates the yellow particle model and registers its per-frame board update. */
+/* Creates the shared scale-effect particle model and registers its per-frame board update. */
 void fn_1_1D82C(void) {
     W05_EFFECT_WORK *work;
     MBPARTICLE *particle;
@@ -6820,7 +6662,8 @@ void fn_1_1D82C(void) {
     mbParticleAttrSet(work->modelId, MB_PARTICLE_ATTR_STOPCNT);
 }
 
-/* Advances yellow particles and releases the effect after board exit; registered by fn_1_1D82C. */
+/* Advances the shared scale-effect particles and releases the effect after board exit; registered
+ * by fn_1_1D82C. */
 void fn_1_1D95C(OMOBJ *object) {
     W05_PARTICLE_WORK *work;
     HU3D_MODEL *model;
@@ -6881,12 +6724,13 @@ void fn_1_1D95C(OMOBJ *object) {
     }
 }
 
-/* Clears the global handle before the yellow particle task is prepared. */
+/* Clears the shared scale-effect handle so its next callback releases the particle model and
+ * task. */
 void fn_1_1DC08(void) {
     lbl_1_bss_10 = 0;
 }
 
-/* Returns the number of active yellow particles, or zero when its task is absent. */
+/* Returns the shared effect's active particle count, or zero when its task is absent. */
 s32 fn_1_1DC1C(void) {
     OMOBJ *obj;
     W05_EFFECT_WORK *work;
@@ -6900,7 +6744,7 @@ s32 fn_1_1DC1C(void) {
     }
 }
 
-/* Changes the blend mode used by the yellow particle model. */
+/* Changes the blend mode used by the shared scale-effect particle model. */
 void fn_1_1DC6C(s32 blendMode) {
     OMOBJ *obj;
 
@@ -6917,7 +6761,8 @@ void fn_1_1DC6C(s32 blendMode) {
     }
 }
 
-/* Starts a yellow particle with the supplied motion, size, lifetime, and color. */
+/* Starts a particle in the shared scale effect with the supplied motion, size, lifetime and
+ * color. */
 s32 fn_1_1DCE4(HuVecF position, HuVecF velocity, f32 scale,
               f32 duration, f32 rotationSpeed, f32 gravity, GXColor color) {
     W05_PARTICLE_WORK *work;
@@ -7011,7 +6856,8 @@ void fn_1_1DF14(HuVecF *position, HuVecF *rotation) {
     }
 }
 
-/* Emits stationary white particles throughout the board effect bounds. */
+/* Emits stationary white particles within the inset board effect bounds and starts their scale
+ * transition. */
 void fn_1_1E3C0(s32 count) {
     HuVecF position;
     HuVecF velocity;
@@ -7044,7 +6890,7 @@ void fn_1_1E3C0(s32 count) {
     }
 }
 
-/* Emits a sixteen-particle yellow ring around an event model. */
+/* Emits sixteen yellow particles in a ring around the supplied position. */
 void fn_1_1E6D0(HuVecF *position) {
     HuVecF velocity;
     GXColor color;
@@ -7055,6 +6901,8 @@ void fn_1_1E6D0(HuVecF *position) {
     angle = 360.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
     for (emitted = 0; emitted < 16; emitted++) {
         speed = 5.0f * (0.5f + (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
+        /* Each angle increment grows with the particle index, so these directions are not evenly
+         * spaced. */
         angle += 22.5f * emitted +
             10.0f * (-0.5f + (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
         velocity.x = speed * sin(M_PI * angle / 180.0);
@@ -7073,7 +6921,8 @@ void fn_1_1E6D0(HuVecF *position) {
     }
 }
 
-/* Primes a newly emitted particle so the yellow effect update can advance it. */
+/* Selects the grow-then-shrink scale curve for a newly emitted particle, starting almost
+ * invisible. */
 void fn_1_1EA60(s32 particleIndex) {
     MBPARTICLEDATA *particleData;
     OMOBJ *particleObject;
@@ -7167,7 +7016,7 @@ void fn_1_1EC00(OMOBJ *object) {
     }
 }
 
-/* Clears the global handle before the colored particle task is prepared. */
+/* Clears the fading effect handle so its next callback releases the particle model and task. */
 void fn_1_1EE24(void) {
     lbl_1_bss_14 = 0;
 }
@@ -7183,7 +7032,8 @@ int fn_1_1EE38(void) {
     return (int)effectCounts[1];
 }
 
-/* Starts a drifting colored particle; its alpha is retained for the fade update. */
+/* Starts a drifting particle for the fade update, forcing its RGB channels to white and
+ * retaining only the supplied alpha. */
 s32 fn_1_1EE80(HuVecF position, HuVecF velocity, f32 scale,
               f32 rotationSpeed, f32 ageStep, GXColor color) {
     W05_PARTICLE_WORK *work;
@@ -7230,7 +7080,8 @@ s32 fn_1_1EE80(HuVecF position, HuVecF velocity, f32 scale,
     return particleIndex;
 }
 
-/* Emits stationary fading particles across a rounded volume around the event point. */
+/* Emits stationary fading particles around the event point in x/z. The radial cosine attenuates
+* the random height added above position->y + 50. */
 void fn_1_1F090(HuVecF *position, f32 radius, f32 height, s32 count) {
     HuVecF emissionPosition;
     HuVecF velocity;
@@ -7251,6 +7102,8 @@ void fn_1_1F090(HuVecF *position, f32 radius, f32 height, s32 count) {
             cos(M_PI * (90.0f * radialFraction) / 180.0));
         emissionPosition.z = position->z + distance * cos(M_PI * angle / 180.0);
         velocity.x = velocity.y = velocity.z = 0.0f;
+        /* The sampled gray RGB is discarded by fn_1_1EE80, which forces white and keeps only the
+         * supplied alpha. */
         shade = 63.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
         color.r = 192.0f + shade;
         color.g = 192.0f + shade;
@@ -7263,7 +7116,8 @@ void fn_1_1F090(HuVecF *position, f32 radius, f32 height, s32 count) {
     }
 }
 
-/* Emits a rotating ring of fading particles in the supplied event plane. */
+/* Emits an expanding ring of fading particles in the supplied event plane; each particle
+ * spins individually. */
 void fn_1_1F57C(HuVecF position, HuVecF rotation, s32 count) {
     Mtx rotationMatrix;
     HuVecF emissionPosition;
@@ -7289,6 +7143,8 @@ void fn_1_1F57C(HuVecF position, HuVecF rotation, s32 count) {
         velocity.z = 0.075f * (100.0f * cosine) *
             (0.9f + 0.1f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
         PSMTXMultVec(rotationMatrix, &velocity, &velocity);
+        /* The sampled gray RGB is discarded by fn_1_1EE80, which forces white and keeps only the
+         * supplied alpha. */
         shade = 63.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
         color.r = (u8)(shade + 192);
         color.g = (u8)(shade + 192);
@@ -7324,6 +7180,8 @@ void fn_1_1F9B0(HuVecF position, s32 count) {
         cosine = mbCosDeg(angle);
         velocity.z = 0.05f * (100.0f * cosine) *
             (0.9f + 0.1f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE)));
+        /* The sampled gray RGB is discarded by fn_1_1EE80, which forces white and keeps only the
+         * supplied alpha. */
         shade = 63.0f * (3.7252903e-09f * (f32)mbRandMod(W05_RANDOM_RANGE));
         color.r = (u8)(shade + 192);
         color.g = (u8)(shade + 192);

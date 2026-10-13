@@ -21,7 +21,7 @@ static M657ComTiming lbl_1_data_1F8[4] = {
 
 OMOBJ *lbl_1_bss_40;
 
-/* Creates the computer-input controller and its per-team records. */
+/* Creates the computer-input controller; player creation callbacks register its team records. */
 void fn_1_4570(OMOBJMAN *objman)
 {
     OMOBJ *obj;

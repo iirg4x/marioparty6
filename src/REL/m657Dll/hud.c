@@ -7,6 +7,31 @@
 
 OMOBJ *lbl_1_bss_48;
 
+/* Sprite data IDs for the gauge: one entry 17 sprite and eight entry 16 sprites. */
+s32 lbl_1_data_280[9] = {
+    DATANUM(DATA_m657, 17), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16),
+    DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16),
+    DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16)
+};
+/* Sprite priorities paired with the gauge cap and segment data above. */
+s16 lbl_1_data_2A4[9] = { 60, 70, 70, 70, 70, 70, 70, 70, 70 };
+s32 lbl_1_data_2B8[14] = {
+    DATANUM(DATA_mgconst, 32), DATANUM(DATA_mgconst, 33),
+    DATANUM(DATA_mgconst, 34), DATANUM(DATA_mgconst, 35),
+    DATANUM(DATA_mgconst, 36), DATANUM(DATA_mgconst, 37),
+    DATANUM(DATA_mgconst, 38), DATANUM(DATA_mgconst, 39),
+    DATANUM(DATA_mgconst, 40), DATANUM(DATA_mgconst, 41),
+    DATANUM(DATA_mgconst, 42), DATANUM(DATA_mgconst, 43),
+    DATANUM(DATA_mgconst, 44), DATANUM(DATA_mgconst, 45)
+};
+/* Screen positions for the gauge cap and its eight vertical segments. */
+HuVec2f lbl_1_data_2F0[9] = {
+    { 288, 430 }, { 288, 0 }, { 288, 64 }, { 288, 128 }, { 288, 192 },
+    { 288, 256 }, { 288, 320 }, { 288, 384 }, { 288, 448 }
+};
+/* HUD marker origins for team 0 and team 1, respectively. */
+HuVec2f lbl_1_data_338[2] = { { 272, 52 }, { 304, 52 } };
+
 /* Creates the HUD object and allocates its sprite handles during setup. */
 void fn_1_4E58(OMOBJMAN *objman)
 {
@@ -23,8 +48,6 @@ void fn_1_4E58(OMOBJMAN *objman)
 void fn_1_4EE0(void)
 {
 }
-
-extern HuVec2f lbl_1_data_338[2];
 
 /* Called by the sequence callbacks to move a team's marker with its arena height. */
 void fn_1_4EE4(s16 team)
@@ -64,31 +87,6 @@ void fn_1_5020(void)
     espDispOff(spriteWork->playerSprites[0]);
     espDispOff(spriteWork->playerSprites[1]);
 }
-
-/* Sprite data IDs for the gauge: one entry 17 sprite and eight entry 16 sprites. */
-s32 lbl_1_data_280[9] = {
-    DATANUM(DATA_m657, 17), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16),
-    DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16),
-    DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16)
-};
-/* Sprite priorities paired with the gauge cap and segment data above. */
-s16 lbl_1_data_2A4[9] = { 60, 70, 70, 70, 70, 70, 70, 70, 70 };
-s32 lbl_1_data_2B8[14] = {
-    DATANUM(DATA_mgconst, 32), DATANUM(DATA_mgconst, 33),
-    DATANUM(DATA_mgconst, 34), DATANUM(DATA_mgconst, 35),
-    DATANUM(DATA_mgconst, 36), DATANUM(DATA_mgconst, 37),
-    DATANUM(DATA_mgconst, 38), DATANUM(DATA_mgconst, 39),
-    DATANUM(DATA_mgconst, 40), DATANUM(DATA_mgconst, 41),
-    DATANUM(DATA_mgconst, 42), DATANUM(DATA_mgconst, 43),
-    DATANUM(DATA_mgconst, 44), DATANUM(DATA_mgconst, 45)
-};
-/* Screen positions for the gauge cap and its eight vertical segments. */
-HuVec2f lbl_1_data_2F0[9] = {
-    { 288, 430 }, { 288, 0 }, { 288, 64 }, { 288, 128 }, { 288, 192 },
-    { 288, 256 }, { 288, 320 }, { 288, 384 }, { 288, 448 }
-};
-/* HUD marker origins for team 0 and team 1, respectively. */
-HuVec2f lbl_1_data_338[2] = { { 272, 52 }, { 304, 52 } };
 
 /* Creates the gauge sprites and one character marker for each configured team. */
 void fn_1_5094(void)

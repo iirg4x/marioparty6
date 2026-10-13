@@ -17,7 +17,8 @@ char lbl_1_data_8C[5][10] = {
     "col", "post_R", "post_L", "post_R_C", "post_L_C"
 };
 
-/* Creates the paused arena object and allocates its scene state during setup. */
+/* Creates the arena object with automatic model transform syncing disabled and allocates its scene
+ * state. */
 void fn_1_15C0(OMOBJMAN *objman)
 {
     OMOBJ *obj;
@@ -118,7 +119,7 @@ void fn_1_19B4(OMOBJ *obj)
     Hu3DModelCameraSet(model, 3);
 }
 
-/* Starts the spaceship door motion at normal playback speed. */
+/* Starts the spaceship door motion by restoring its playback speed to 1.0. */
 void fn_1_1AD4(void)
 {
     HU3D_MODELID model = lbl_1_bss_28->mdlId[2];

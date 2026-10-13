@@ -161,7 +161,7 @@ void fn_1_5C8(void)
     HuVecF dir = { 0.3f, -0.8f, 0.3f };
     HuVecF lightParam = { 20, 45, 1000 };
 
-    /* Retail passes this vector as the initial color, then overwrites it. */
+    /* The vector supplies the initial color bytes; the light is set to white below. */
     light = lbl_1_data_0->light = Hu3DGLightCreateV(&pos, &dir, (GXColor *)&lightParam);
     Hu3DGLightPointSet(light, 1000.0f, 1.0f, GX_DA_MEDIUM);
     Hu3DGLightStaticSet(light, TRUE);
@@ -276,8 +276,9 @@ void fn_1_CA0(s16 mode, s16 frameNo)
     }
 }
 
-/* MGSEQ_PARAM result callback that records both winners when times sum to zero, a tie for equal
- * times, or the lower-absolute-time winner and a 10-coin bonus. */
+/* MGSEQ_PARAM result callback that records both players as winners when the times sum to zero
+ * (including two zero times), records a tie for equal nonzero times, or records the player with
+ * the lower-absolute time as the winner and awards that player 10 coins. */
 void fn_1_D28(s16 mode, s16 frameNo)
 {
     M657PlayerView *player;

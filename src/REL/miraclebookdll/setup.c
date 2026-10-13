@@ -1,7 +1,7 @@
 // Miracle Book overlay startup and shared state declarations.
 #include "dolphin.h"
 
-#include "REL/miraclebookdll/include/game/audio.h"
+#include "game/audio.h"
 
 #include "game/data.h"
 
@@ -63,10 +63,6 @@ extern u32 lbl_1_data_750[];
 extern char lbl_1_data_758[];
 
 extern char lbl_1_data_778[];
-
-extern s32 lbl_1_bss_0;
-
-extern OMOBJMAN *lbl_1_bss_4;
 
 extern OMOBJ *lbl_1_bss_8;
 
@@ -259,24 +255,6 @@ void fn_1_92B4(OMOBJ *obj);
 void fn_1_95B8(void);
 
 void fn_1_9718(void);
-
-extern s16 lbl_1_data_280[][7];
-
-extern s32 lbl_1_data_398[20];
-
-extern f32 lbl_1_data_3E8[120];
-
-extern HU3D_PARMAN_PARAM lbl_1_data_5C8;
-
-extern u32 lbl_1_data_6F4[21];
-
-extern u32 lbl_1_data_748[2];
-
-extern u32 lbl_1_data_750[2];
-
-extern char lbl_1_data_758[32];
-
-extern char lbl_1_data_778[33];
 
 OMOBJMAN *lbl_1_bss_4;
 

@@ -9,8 +9,6 @@
 
 #include "msm_stream.h"
 
-#include "REL/miraclebookdll/include/game/audio.h"
-
 #include "game/data.h"
 
 #include "game/esprite.h"
@@ -104,137 +102,9 @@ s32 lbl_1_data_50[20][7] = {
     {1, 2, 2, 2, 1, 1, 1},
 };
 
-extern s16 lbl_1_data_280[][7];
-
-extern HU3D_PARMAN_PARAM lbl_1_data_5C8;
-
-extern u32 lbl_1_data_750[];
-
-extern char lbl_1_data_758[];
-
-extern char lbl_1_data_778[];
-
 extern s32 lbl_1_bss_0;
 
 extern OMOBJMAN *lbl_1_bss_4;
-
-extern OMOBJ *lbl_1_bss_8;
-
-extern void *lbl_1_bss_C;
-
-extern ANIMDATA *lbl_1_bss_10;
-
-extern ANIMDATA *lbl_1_bss_14;
-
-extern UNK_MIRACLEBOOK_HOOK lbl_1_bss_18[2];
-
-extern s16 lbl_1_bss_68[5];
-
-extern OMOBJMAN *lbl_1_bss_74;
-
-extern HuVecF lbl_1_bss_78;
-
-extern f32 lbl_1_bss_84;
-
-extern f32 lbl_1_bss_88;
-
-extern s32 lbl_1_bss_8C;
-
-extern s16 lbl_1_bss_90[3];
-
-extern s32 lbl_1_bss_98[2];
-
-extern s32 lbl_1_bss_A0;
-
-extern s32 lbl_1_bss_A4[2];
-
-extern s32 lbl_1_bss_AC;
-
-extern s32 lbl_1_bss_B0;
-
-extern s32 lbl_1_bss_B4[22];
-
-extern s32 lbl_1_bss_10C;
-
-extern s32 lbl_1_bss_110;
-
-extern s32 lbl_1_bss_114;
-
-extern f32 lbl_1_bss_118;
-
-extern f32 lbl_1_bss_11C;
-
-extern f32 lbl_1_bss_120[4];
-
-extern s32 lbl_1_bss_130;
-
-extern s32 lbl_1_bss_134;
-
-extern s32 lbl_1_bss_138;
-
-extern s32 lbl_1_bss_13C;
-
-extern s32 lbl_1_bss_140;
-
-extern s16 lbl_1_bss_144[20];
-
-extern s16 lbl_1_bss_16C[2][2];
-
-extern s16 lbl_1_bss_174[2];
-
-extern s16 lbl_1_bss_178;
-
-extern s16 lbl_1_bss_17A;
-
-extern s32 lbl_1_bss_17C;
-
-extern s32 lbl_1_bss_180;
-
-extern f32 lbl_1_bss_184[6];
-
-extern f32 lbl_1_bss_19C;
-
-extern s32 lbl_1_bss_1A0;
-
-extern OM_CAMERA_VIEW lbl_1_bss_1A4;
-
-extern s16 lbl_1_bss_1C0[2];
-
-extern s32 lbl_1_bss_1D4;
-
-extern s32 lbl_1_bss_1D8;
-
-extern s32 lbl_1_bss_1C4;
-
-extern f32 lbl_1_bss_1C8[3];
-
-extern s32 lbl_1_bss_1DC;
-
-extern s32 lbl_1_bss_1E0;
-
-extern s32 lbl_1_bss_1E4;
-
-extern u8 lbl_1_bss_1E8[];
-
-extern s16 lbl_1_bss_1FC[2][7];
-
-extern s16 lbl_1_bss_218;
-
-extern s16 lbl_1_bss_21A;
-
-extern s16 lbl_1_bss_21C;
-
-extern s32 lbl_1_bss_220;
-
-extern s32 lbl_1_bss_224;
-
-extern u32 lbl_1_data_6F4[];
-
-extern u32 lbl_1_data_748[];
-
-extern s32 lbl_1_data_398[];
-
-extern f32 lbl_1_data_3E8[];
 
 void fn_1_A0(void);
 
@@ -367,6 +237,116 @@ HU3D_PARMAN_PARAM lbl_1_data_5C8 = {
     {{240, 224, 32, 255}, {255, 255, 64, 255}, {0, 0, 0, 0}, {0, 0, 0, 0}},
     {{192, 128, 16, 0}, {192, 64, 16, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
 };
+
+s32 lbl_1_bss_224;
+
+s32 lbl_1_bss_220;
+
+s16 lbl_1_bss_21C;
+
+s16 lbl_1_bss_21A;
+
+s16 lbl_1_bss_218;
+
+s16 lbl_1_bss_1FC[2][7];
+
+u8 lbl_1_bss_1E8[20];
+
+s32 lbl_1_bss_1E4;
+
+s32 lbl_1_bss_1E0;
+
+s32 lbl_1_bss_1DC;
+
+s32 lbl_1_bss_1D8;
+
+s32 lbl_1_bss_1D4;
+
+f32 lbl_1_bss_1C8[3];
+
+s32 lbl_1_bss_1C4;
+
+s16 lbl_1_bss_1C0[2];
+
+OM_CAMERA_VIEW lbl_1_bss_1A4;
+
+s32 lbl_1_bss_1A0;
+
+f32 lbl_1_bss_19C;
+
+f32 lbl_1_bss_184[6];
+
+s32 lbl_1_bss_180;
+
+s32 lbl_1_bss_17C;
+
+s16 lbl_1_bss_17A;
+
+s16 lbl_1_bss_178;
+
+s16 lbl_1_bss_174[2];
+
+s16 lbl_1_bss_16C[2][2];
+
+s16 lbl_1_bss_144[20];
+
+s32 lbl_1_bss_140;
+
+s32 lbl_1_bss_13C;
+
+s32 lbl_1_bss_138;
+
+s32 lbl_1_bss_134;
+
+s32 lbl_1_bss_130;
+
+f32 lbl_1_bss_120[4];
+
+f32 lbl_1_bss_11C;
+
+f32 lbl_1_bss_118;
+
+s32 lbl_1_bss_114;
+
+s32 lbl_1_bss_110;
+
+s32 lbl_1_bss_10C;
+
+s32 lbl_1_bss_B4[22];
+
+s32 lbl_1_bss_B0;
+
+s32 lbl_1_bss_AC;
+
+s32 lbl_1_bss_A4[2];
+
+s32 lbl_1_bss_A0;
+
+s32 lbl_1_bss_98[2];
+
+s16 lbl_1_bss_90[3];
+
+s32 lbl_1_bss_8C;
+
+f32 lbl_1_bss_88;
+
+f32 lbl_1_bss_84;
+
+HuVecF lbl_1_bss_78;
+
+OMOBJMAN *lbl_1_bss_74;
+
+s16 lbl_1_bss_68[5];
+
+UNK_MIRACLEBOOK_HOOK lbl_1_bss_18[2];
+
+ANIMDATA *lbl_1_bss_14;
+
+ANIMDATA *lbl_1_bss_10;
+
+void *lbl_1_bss_C;
+
+OMOBJ *lbl_1_bss_8;
 
 // Called when the Miracle Book overlay starts to load its menu and display objects.
 void fn_1_2AC(OMOBJMAN *objectManager)
@@ -1066,6 +1046,32 @@ void fn_1_A30(void)
         break;
     }
 }
+
+u32 lbl_1_data_6F4[21] = {
+    MESSNUM(MESS_MBOOK_PAGE, 20), MESSNUM(MESS_MBOOK_PAGE, 0),
+    MESSNUM(MESS_MBOOK_PAGE, 1), MESSNUM(MESS_MBOOK_PAGE, 2),
+    MESSNUM(MESS_MBOOK_PAGE, 3), MESSNUM(MESS_MBOOK_PAGE, 4),
+    MESSNUM(MESS_MBOOK_PAGE, 5), MESSNUM(MESS_MBOOK_PAGE, 6),
+    MESSNUM(MESS_MBOOK_PAGE, 7), MESSNUM(MESS_MBOOK_PAGE, 8),
+    MESSNUM(MESS_MBOOK_PAGE, 9), MESSNUM(MESS_MBOOK_PAGE, 10),
+    MESSNUM(MESS_MBOOK_PAGE, 11), MESSNUM(MESS_MBOOK_PAGE, 12),
+    MESSNUM(MESS_MBOOK_PAGE, 13), MESSNUM(MESS_MBOOK_PAGE, 14),
+    MESSNUM(MESS_MBOOK_PAGE, 15), MESSNUM(MESS_MBOOK_PAGE, 16),
+    MESSNUM(MESS_MBOOK_PAGE, 17), MESSNUM(MESS_MBOOK_PAGE, 18),
+    MESSNUM(MESS_MBOOK_PAGE, 19),
+};
+
+u32 lbl_1_data_748[2] = {
+    MESSNUM(MESS_MBOOK_PAGE, 21), MESSNUM(MESS_MBOOK_PAGE, 22),
+};
+
+u32 lbl_1_data_750[2] = {
+    MESSNUM(MESS_SYS_GUIDE, 14), MESSNUM(MESS_SYS_GUIDE, 15),
+};
+
+char lbl_1_data_758[32] = "mgbook_siori005-end_shiori_root";
+
+char lbl_1_data_778[33] = "mgbook_siori6-end_siori_hirahira";
 
 // Called by page navigation to find the next unlocked entry in the requested direction.
 s32 fn_1_2FCC(s32 dir)
@@ -2482,139 +2488,3 @@ void fn_1_9718(void)
         }
     }
 }
-
-u32 lbl_1_data_6F4[21] = {
-    MESSNUM(MESS_MBOOK_PAGE, 20), MESSNUM(MESS_MBOOK_PAGE, 0),
-    MESSNUM(MESS_MBOOK_PAGE, 1), MESSNUM(MESS_MBOOK_PAGE, 2),
-    MESSNUM(MESS_MBOOK_PAGE, 3), MESSNUM(MESS_MBOOK_PAGE, 4),
-    MESSNUM(MESS_MBOOK_PAGE, 5), MESSNUM(MESS_MBOOK_PAGE, 6),
-    MESSNUM(MESS_MBOOK_PAGE, 7), MESSNUM(MESS_MBOOK_PAGE, 8),
-    MESSNUM(MESS_MBOOK_PAGE, 9), MESSNUM(MESS_MBOOK_PAGE, 10),
-    MESSNUM(MESS_MBOOK_PAGE, 11), MESSNUM(MESS_MBOOK_PAGE, 12),
-    MESSNUM(MESS_MBOOK_PAGE, 13), MESSNUM(MESS_MBOOK_PAGE, 14),
-    MESSNUM(MESS_MBOOK_PAGE, 15), MESSNUM(MESS_MBOOK_PAGE, 16),
-    MESSNUM(MESS_MBOOK_PAGE, 17), MESSNUM(MESS_MBOOK_PAGE, 18),
-    MESSNUM(MESS_MBOOK_PAGE, 19),
-};
-
-u32 lbl_1_data_748[2] = {
-    MESSNUM(MESS_MBOOK_PAGE, 21), MESSNUM(MESS_MBOOK_PAGE, 22),
-};
-
-u32 lbl_1_data_750[2] = {
-    MESSNUM(MESS_SYS_GUIDE, 14), MESSNUM(MESS_SYS_GUIDE, 15),
-};
-
-char lbl_1_data_758[32] = "mgbook_siori005-end_shiori_root";
-
-char lbl_1_data_778[33] = "mgbook_siori6-end_siori_hirahira";
-
-s32 lbl_1_bss_224;
-
-s32 lbl_1_bss_220;
-
-s16 lbl_1_bss_21C;
-
-s16 lbl_1_bss_21A;
-
-s16 lbl_1_bss_218;
-
-s16 lbl_1_bss_1FC[2][7];
-
-u8 lbl_1_bss_1E8[20];
-
-s32 lbl_1_bss_1E4;
-
-s32 lbl_1_bss_1E0;
-
-s32 lbl_1_bss_1DC;
-
-s32 lbl_1_bss_1D8;
-
-s32 lbl_1_bss_1D4;
-
-f32 lbl_1_bss_1C8[3];
-
-s32 lbl_1_bss_1C4;
-
-s16 lbl_1_bss_1C0[2];
-
-OM_CAMERA_VIEW lbl_1_bss_1A4;
-
-s32 lbl_1_bss_1A0;
-
-f32 lbl_1_bss_19C;
-
-f32 lbl_1_bss_184[6];
-
-s32 lbl_1_bss_180;
-
-s32 lbl_1_bss_17C;
-
-s16 lbl_1_bss_17A;
-
-s16 lbl_1_bss_178;
-
-s16 lbl_1_bss_174[2];
-
-s16 lbl_1_bss_16C[2][2];
-
-s16 lbl_1_bss_144[20];
-
-s32 lbl_1_bss_140;
-
-s32 lbl_1_bss_13C;
-
-s32 lbl_1_bss_138;
-
-s32 lbl_1_bss_134;
-
-s32 lbl_1_bss_130;
-
-f32 lbl_1_bss_120[4];
-
-f32 lbl_1_bss_11C;
-
-f32 lbl_1_bss_118;
-
-s32 lbl_1_bss_114;
-
-s32 lbl_1_bss_110;
-
-s32 lbl_1_bss_10C;
-
-s32 lbl_1_bss_B4[22];
-
-s32 lbl_1_bss_B0;
-
-s32 lbl_1_bss_AC;
-
-s32 lbl_1_bss_A4[2];
-
-s32 lbl_1_bss_A0;
-
-s32 lbl_1_bss_98[2];
-
-s16 lbl_1_bss_90[3];
-
-s32 lbl_1_bss_8C;
-
-f32 lbl_1_bss_88;
-
-f32 lbl_1_bss_84;
-
-HuVecF lbl_1_bss_78;
-
-OMOBJMAN *lbl_1_bss_74;
-
-s16 lbl_1_bss_68[5];
-
-UNK_MIRACLEBOOK_HOOK lbl_1_bss_18[2];
-
-ANIMDATA *lbl_1_bss_14;
-
-ANIMDATA *lbl_1_bss_10;
-
-void *lbl_1_bss_C;
-
-OMOBJ *lbl_1_bss_8;

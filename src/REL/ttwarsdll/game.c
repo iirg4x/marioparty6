@@ -1,7 +1,7 @@
 // Runs the config menu and board gameplay for the TT Wars minigame.
 #include "dolphin/math.h"
-#include "REL/ttwarsdll/include/game/hu3d.h"
-#include "REL/ttwarsdll/include/game/object.h"
+#include "game/hu3d.h"
+#include "game/object.h"
 #include "game/frand.h"
 #include "game/pad.h"
 #include "game/printfunc.h"
@@ -20,49 +20,16 @@ typedef struct TTWarsRecord_s {
     HU3D_MODELID tileModel; // Model displayed for this board tile.
 } TTWarsRecord;
 
-extern OMOBJ *lbl_1_bss_1464[256];
-extern TTWarsRecord lbl_1_bss_1C[16][16];
-extern s32 lbl_1_bss_4;
-extern s32 lbl_1_bss_8;
-extern char lbl_1_data_EE[];
-extern char lbl_1_data_120[];
-extern char lbl_1_data_122[];
-extern char lbl_1_data_124[];
-extern char lbl_1_data_126[];
 s32 fn_1_49C4(void);
 void fn_1_1198(s32 direction);
 void fn_1_20E0(void);
-extern s32 lbl_1_bss_1430;
-extern u16 lbl_1_bss_1446[4];
-extern HUPROCESS *lbl_1_bss_1870;
-extern s32 lbl_1_bss_14;
-extern s32 lbl_1_bss_10;
-extern s32 lbl_1_bss_1434;
-extern s32 lbl_1_bss_142C;
-extern s32 lbl_1_bss_C;
-extern OMOBJ *lbl_1_bss_1864;
-extern s32 lbl_1_bss_141C[4];
 void fn_1_1DCC(void);
 s32 fn_1_2F70(s32 column, s32 row);
 s32 fn_1_2E80(s32 column, s32 row);
 void fn_1_25E0(OMOBJ *obj);
 void fn_1_24A8(OMOBJ *obj);
-extern u32 lbl_1_bss_0;
-extern u32 lbl_1_bss_18;
-extern char lbl_1_data_9C[];
-extern char lbl_1_data_A8[];
-extern char lbl_1_data_BA[];
-extern char lbl_1_data_CC[];
-extern char lbl_1_data_DB[];
-extern char lbl_1_data_12F[];
-extern char lbl_1_data_136[];
-extern char lbl_1_data_13C[];
-extern char lbl_1_data_13F[];
-extern char lbl_1_data_147[];
 extern f32 CZoom;
 extern Vec Center;
-extern f32 lbl_1_bss_1450;
-extern char lbl_1_data_5E[];
 void fn_1_30FC(void);
 void fn_1_31E8(void);
 void fn_1_47F8(void);
@@ -75,22 +42,10 @@ void fn_1_21B8(void);
 s32 fn_1_300C(void);
 void fn_1_1318(void);
 void fn_1_352C(void);
-extern HU3D_MODELID lbl_1_bss_1438[2];
-extern HU3D_MODELID lbl_1_bss_143C[4];
-extern HU3D_MODELID lbl_1_bss_1444;
-extern HU3D_MODELID lbl_1_bss_144E;
-extern HU3D_MODELID lbl_1_bss_1454[8];
 void fn_1_F88(s32 direction);
 void fn_1_308C(void);
 void fn_1_18A4(void);
 void fn_1_344(OMOBJ *obj);
-extern OMOBJ *lbl_1_bss_1868;
-extern s32 lbl_1_bss_186C;
-extern Point3d lbl_1_data_0;
-extern s32 lbl_1_data_18;
-extern OM_CAMERA_VIEW lbl_1_data_1C;
-extern char lbl_1_data_38[];
-extern Point3d lbl_1_data_C;
 void fn_1_5BC(OMOBJ *obj);
 void fn_1_3704(void);
 void fn_1_D88(void);
@@ -412,6 +367,22 @@ void fn_1_C38(OMOBJ *obj) {
     }
 }
 
+char lbl_1_data_9C[] = "CONFIG MENU";
+char lbl_1_data_A8[] = "X SIZE:%d (%d-%d)";
+char lbl_1_data_BA[] = "Y SIZE:%d (%d-%d)";
+char lbl_1_data_CC[] = "HOLE:%d (2-%d)";
+char lbl_1_data_DB[] = "PLAYER(S):%d (1-4)";
+char lbl_1_data_EE[] = "------------------------------------------------\n";
+char lbl_1_data_120[] = "#";
+char lbl_1_data_122[] = " ";
+char lbl_1_data_124[] = "\n";
+char lbl_1_data_126[] = "HOLE:%d\n";
+char lbl_1_data_12F[] = "RAMDOM";
+char lbl_1_data_136[] = "%d:%d";
+char lbl_1_data_13C[] = ">>";
+char lbl_1_data_13F[] = "GAME:%d";
+char lbl_1_data_147[] = "Y:SKIP";
+
 // Draws the current board dimensions, hole count, and player-count settings from the menu callback.
 void fn_1_D88(void)
 {
@@ -442,7 +413,8 @@ void fn_1_D88(void)
     print8(216, 216, (1.5f), lbl_1_data_DB, lbl_1_bss_10);
 }
 
-// Rotates the selected row's safe-tile/hole pattern when gameplay input requests a horizontal move.
+// Rotates the selected row's safe-tile/hole pattern and wraps registered pieces to their new
+// columns.
 void fn_1_F88(s32 direction)
 {
     s32 index;
@@ -940,8 +912,8 @@ void fn_1_352C(void)
     }
 }
 
-// Builds the configured board, randomly marks its holes, and adds a board-size offset to camera
-// zoom.
+// Builds the configured board, randomly marking the configured number of holes in each row, and
+// adds a board-size offset to camera zoom.
 void fn_1_3704(void)
 {
     s32 row;
@@ -1055,19 +1027,3 @@ s32 fn_1_49C4(void)
     }
     return count;
 }
-
-char lbl_1_data_9C[] = "CONFIG MENU";
-char lbl_1_data_A8[] = "X SIZE:%d (%d-%d)";
-char lbl_1_data_BA[] = "Y SIZE:%d (%d-%d)";
-char lbl_1_data_CC[] = "HOLE:%d (2-%d)";
-char lbl_1_data_DB[] = "PLAYER(S):%d (1-4)";
-char lbl_1_data_EE[] = "------------------------------------------------\n";
-char lbl_1_data_120[] = "#";
-char lbl_1_data_122[] = " ";
-char lbl_1_data_124[] = "\n";
-char lbl_1_data_126[] = "HOLE:%d\n";
-char lbl_1_data_12F[] = "RAMDOM";
-char lbl_1_data_136[] = "%d:%d";
-char lbl_1_data_13C[] = ">>";
-char lbl_1_data_13F[] = "GAME:%d";
-char lbl_1_data_147[] = "Y:SKIP";
