@@ -1671,12 +1671,15 @@ config.libs = [
     Rel(
         "staffdll",
         objects={
-            Object(NonMatching, "REL/staffdll/staff.c"),
             Object(
                 Matching,
                 "REL/staffdll/runtime.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/staffdll/staff.c",
             ),
         },
     ),
