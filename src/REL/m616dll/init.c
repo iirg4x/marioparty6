@@ -14,18 +14,6 @@
 #include "datadir_enum.h"
 #include <string.h>
 
-typedef struct M616CpuParam {
-    u32 unreadCpuSetting; /* CPU setting stored with the difficulty data but not read by this
-                           * game. */
-    u32 repeatPercent; /* Chance, from 0 to 100, of repeating the prior answer. */
-} M616CpuParam;
-extern MGSEQ_PARAM lbl_1_data_0;
-extern s32 lbl_1_data_1F0[17];
-extern s32 lbl_1_data_234[6];
-extern s32 lbl_1_data_24C[13];
-extern unsigned int lbl_1_data_280[12];
-extern M616CpuParam lbl_1_data_2B0[4];
-extern s32 lbl_1_data_2D0[3];
 /* Called from the REL prolog after constructors; create resources and register the sequence
  * callbacks. */
 void fn_1_1590(void)

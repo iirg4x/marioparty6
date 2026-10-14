@@ -15,25 +15,12 @@
 #include "datadir_enum.h"
 #include <string.h>
 
-/* Sounds for choice changes, results, and completed character motions. */
+/* Sounds for choice changes, results, and completed player display-model motions. */
 #define M616_SFX_CHOICE_CHANGED 1741
 #define M616_SFX_RESULT_FIRST 1742
 #define M616_SFX_RESULT_SECOND 1743
 #define M616_SFX_MOTION_COMPLETE_FIRST 1745
 #define M616_SFX_MOTION_COMPLETE_SECOND 1744
-
-typedef struct M616CpuParam {
-    u32 unreadCpuSetting; /* CPU setting stored with the difficulty data but not read by this
-                           * game. */
-    u32 repeatPercent; /* Chance, from 0 to 100, of repeating the prior answer. */
-} M616CpuParam;
-extern MGSEQ_PARAM lbl_1_data_0;
-extern s32 lbl_1_data_1F0[17];
-extern s32 lbl_1_data_234[6];
-extern s32 lbl_1_data_24C[13];
-extern unsigned int lbl_1_data_280[12];
-extern M616CpuParam lbl_1_data_2B0[4];
-extern s32 lbl_1_data_2D0[3];
 
 /* Position sampled from the P1stmov object and used to place the lead character's landing dust. */
 HuVecF lbl_1_bss_0;
