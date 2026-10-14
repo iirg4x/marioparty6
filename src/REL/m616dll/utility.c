@@ -14,19 +14,6 @@
 #include "datadir_enum.h"
 #include <string.h>
 
-typedef struct M616CpuParam {
-    u32 unreadCpuSetting; /* CPU setting stored with the difficulty data but not read by this
-                           * game. */
-    u32 repeatPercent; /* Chance, from 0 to 100, of repeating the prior answer. */
-} M616CpuParam;
-extern MGSEQ_PARAM lbl_1_data_0;
-extern s32 lbl_1_data_1F0[17];
-extern s32 lbl_1_data_234[6];
-extern s32 lbl_1_data_24C[13];
-extern unsigned int lbl_1_data_280[12];
-extern M616CpuParam lbl_1_data_2B0[4];
-extern s32 lbl_1_data_2D0[3];
-
 M616Work lbl_1_bss_10;
 /* Called by sequence setup and camera changes to replace the active camera motion and reset its
  * elapsed time. */
@@ -59,7 +46,8 @@ void fn_1_2104(s32 playerNo, s32 motionNo)
     Hu3DMotionSet(lbl_1_bss_10.playerModels[playerNo], lbl_1_bss_10.playerMotions[motionNo]);
 }
 
-/* Called by sequence callbacks to change a player's base pose; motion 12 is always restarted. */
+/* Called by sequence callbacks to change a player's base pose; motion 12 is always restarted.
+ * Every change or restart applies looping to the base motion. */
 void fn_1_215C(s32 playerNo, s32 motionNo)
 {
     if (motionNo == 12 || lbl_1_bss_10.playerBaseMotions[playerNo][motionNo]

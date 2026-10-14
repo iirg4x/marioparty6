@@ -14,18 +14,6 @@
 #include "datadir_enum.h"
 #include <string.h>
 
-typedef struct M616CpuParam {
-    u32 unreadCpuSetting; /* CPU setting stored with the difficulty data but not read by this
-                           * game. */
-    u32 repeatPercent; /* Chance, from 0 to 100, of repeating the prior answer. */
-} M616CpuParam;
-extern MGSEQ_PARAM lbl_1_data_0;
-extern s32 lbl_1_data_1F0[17];
-extern s32 lbl_1_data_234[6];
-extern s32 lbl_1_data_24C[13];
-extern unsigned int lbl_1_data_280[12];
-extern M616CpuParam lbl_1_data_2B0[4];
-extern s32 lbl_1_data_2D0[3];
 /* When CPU choices are prepared for a round, choose 1 to 4 at random in round zero; later, repeat
  * the prior answer with the difficulty's repeat chance or choose a different answer, and choose an
  * input frame from 0 through 269. */
@@ -62,6 +50,7 @@ s32 fn_1_2580(s32 playerNo)
 {
     return lbl_1_bss_10.cpuChoices[playerNo];
 }
+
 /* Data IDs for the 17 camera motions, indexed by cameraIndex. */
 s32 lbl_1_data_1F0[17] = {
     DATANUM(DATA_m616, 0), DATANUM(DATA_m616, 1), DATANUM(DATA_m616, 2),

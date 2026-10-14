@@ -6,6 +6,22 @@
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/mg/timer.h"
+#include "game/mg/seqman.h"
+
+typedef struct M616CpuParam {
+    u32 unreadCpuSetting; /* CPU setting stored with the difficulty data but not read by this
+                           * game. */
+    u32 repeatPercent; /* Chance, from 0 to 100, of repeating the prior answer. */
+} M616CpuParam;
+
+/* Sequence callbacks and model-motion tables shared by the round setup and updates. */
+extern MGSEQ_PARAM lbl_1_data_0;
+extern s32 lbl_1_data_1F0[17];
+extern s32 lbl_1_data_234[6];
+extern s32 lbl_1_data_24C[13];
+extern unsigned int lbl_1_data_280[12];
+extern M616CpuParam lbl_1_data_2B0[4];
+extern s32 lbl_1_data_2D0[3];
 
 typedef struct M616Work {
     OMOBJMAN *objectManager; /* Object manager for the camera update callback. */
@@ -40,9 +56,9 @@ typedef struct M616Work {
     MGTIMER *timer; /* Countdown timer for the answer window. */
     s32 timingState; /* Next opening-animation event handled by fn_1_139C. */
     HU3D_MODELID resultModels[4]; /* Per-seat result props shown for winners. */
-    HuVecF shadowPos; /* Position of the scene shadow light. */
-    HuVecF shadowTarget; /* Point the scene shadow light aims toward. */
-    HuVecF shadowUp; /* Up direction used to orient the scene shadow light. */
+    HuVecF shadowPos; /* Position of the scene shadow camera. */
+    HuVecF shadowTarget; /* Target point for the scene shadow camera. */
+    HuVecF shadowUp; /* Up direction used to orient the scene shadow camera. */
     s32 streamNo; /* Active streamed music handle, or -1 when none is active. */
 } M616Work;
 
