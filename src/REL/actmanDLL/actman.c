@@ -18,20 +18,13 @@ static void SeqModeClose(s16 mode, s16 frameNo);
 
 /* MgSeqCreate copies this table and calls each hook during its corresponding sequence mode. */
 static MGSEQ_PARAM seqParam = {
-    0,
-    MGSEQ_TIMER_TOP,
-    SeqModeInit,
-    SeqModeFadeIn,
-    SeqModeStart,
-    SeqModeMain,
-    SeqModeFinish,
-    SeqModePreWin,
-    SeqModeWin,
-    SeqModeFadeOut,
-    SeqModeClose
+    0, MGSEQ_TIMER_TOP, SeqModeInit, SeqModeFadeIn,
+    SeqModeStart, SeqModeMain, SeqModeFinish, SeqModePreWin,
+    SeqModeWin, SeqModeFadeOut, SeqModeClose
 };
 
-/* Player objects created for the scene; player zero drives the camera and winner animation. */
+/* Player objects created for the scene; player zero drives the camera, and the winner hook passes
+ * its model ID as CharMotionShiftSet's character number. */
 static MGPLAYER *player[GW_PLAYER_MAX];
 /* Actor manager used to schedule the map and manage scene objects. */
 static OMOBJMAN *objman;
@@ -176,8 +169,9 @@ static void SeqModePreWin(s16 mode, s16 frameNo)
     MgSeqModeNext();
 }
 
-/* MG sequence winner hook: start player zero's motion on frame one, then raise its model each
- * frame. */
+/* MG sequence winner hook: on frame one, create player zero's win motion, pass its model ID as
+ * CharMotionShiftSet's character number, and place its model at Center; on other frames, set its
+ * model Y position to Center.y plus twice the frame number. */
 static void SeqModeWin(s16 mode, s16 frameNo)
 {
     if(frameNo == 1) {
@@ -189,7 +183,8 @@ static void SeqModeWin(s16 mode, s16 frameNo)
     }
 }
 
-/* MG sequence fade-out hook: request the close mode at frame 60. */
+/* MG sequence fade-out hook: the request at frame 60 is not reached with the default 60-frame
+ * phase, whose hook runs on frames 0 through 59. */
 static void SeqModeFadeOut(s16 mode, s16 frameNo)
 {
     if(frameNo >= 60) {
@@ -197,8 +192,8 @@ static void SeqModeFadeOut(s16 mode, s16 frameNo)
     }
 }
 
-/* Called once in close mode before overlay return; sets the sequence manager's next-mode
- * request. */
+/* Close hook: on the CLOSE and EXIT paths, sets the next-mode request, which is not consumed
+ * before either path returns to the overlay. */
 static void SeqModeClose(s16 mode, s16 frameNo)
 {
     MgSeqModeNext();
