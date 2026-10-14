@@ -1,68 +1,138 @@
+// Combines pitch, normalized energy and voicing histories into delayed speech features.
 #include "types.h"
 
 #include "gssdk/tos.h"
+extern u32 _tosErrorLog(void *block, u32 error);
+
+#define PITCH_COMBINER_RESET_COMMAND 200
+#define PITCH_COMBINER_FLUSH_COMMAND 201
+#define PITCH_COMBINER_DESTRUCT_COMMAND 255
+#define PITCH_COMBINER_BAND_COUNT_PROFILE 1
+#define PITCH_COMBINER_VOICED_OUTPUT_PROFILE 2
+#define PITCH_COMBINER_UNVOICED_OUTPUT_PROFILE 3
+
+typedef struct PitchHistory {
+    f32 *samples; // First sample in the circular history.
+    f32 *output; // Sample consumed by the delayed feature output.
+    f32 *write; // Next history sample to fill.
+    f32 *end; // One past the final allocated sample.
+} PitchHistory;
 
 typedef struct PitchCombiner {
-    TosBaseBlock base;
-    f32 *normEnergyHistory;
-    f32 *normEnergyOutput;
-    f32 *normEnergyWrite;
-    f32 *normEnergyEnd;
-    f32 *normEnergyFilter;
-    f32 *logPitchHistory;
-    f32 *logPitchOutput;
-    f32 *logPitchWrite;
-    f32 *logPitchEnd;
-    f32 *logPitchFilter;
-    f32 *voicingHistory;
-    f32 *voicingOutput;
-    f32 *voicingWrite;
-    f32 *voicingEnd;
-    f32 *pitchSlopeHistory;
-    f32 *pitchSlopeOutput;
-    f32 *pitchSlopeWrite;
-    f32 *pitchSlopeEnd;
-    f32 *meanPitchHistory;
-    f32 *meanPitchOutput;
-    f32 *meanPitchWrite;
-    f32 *meanPitchEnd;
-    f32 *normEnergySlopeHistory;
-    f32 *normEnergySlopeOutput;
-    f32 *normEnergySlopeWrite;
-    f32 *normEnergySlopeEnd;
-    f32 pitchDelta;
-    f32 *pitchCoefficients;
-    f32 *normEnergyCoefficients;
-    u8 pitchWindowLength;
-    u8 normEnergyWindowLength;
-    u8 delayLength;
-    u8 voicedFrameCount;
-    u8 queuedFrameCount;
-    u8 voiced;
-    u8 previousVoiced;
-    u8 beginVoiced;
-    u8 endVoiced;
-    u8 initializeNormEnergy;
-    u16 pitchCoefficientDivisor;
-    u16 normEnergyCoefficientDivisor;
-    f32 lastMeanPitch;
-    f32 lastPitchSlope;
-    u8 unused;
-    u8 outputFeatureCount;
-    u8 flushing;
-    u8 flushPitch;
-    u8 flushNormEnergy;
-    u8 pitchFilterReady;
-    u16 bandCount;
-    f32 voicedOutput;
-    f32 unvoicedOutput;
+    TosBaseBlock base; // Speech graph ports, callbacks and owning context.
+    PitchHistory normEnergy; // Circular history of maximum input band energy.
+    f32 *normEnergyFilter; // First energy sample used by the current filter window.
+    PitchHistory logPitch; // Circular history of logarithmic pitch samples.
+    f32 *logPitchFilter; // First pitch sample used by the current voiced window.
+    PitchHistory voicing; // Input voicing bytes stored as floats; only 1.0 is voiced.
+    PitchHistory pitchSlope; // Circular history of pitch-window slope values.
+    PitchHistory meanPitch; // Circular history of pitch-window mean values.
+    PitchHistory normEnergySlope; // Circular history of normalized energy slopes.
+    f32 pitchDelta; // Delayed log pitch minus the mean for its corresponding window.
+    f32 *pitchCoefficients; // Seven coefficients for the pitch slope calculation.
+    f32 *normEnergyCoefficients; // Five coefficients for the energy slope calculation.
+    u8 pitchWindowLength; // Number of pitch samples in a voiced analysis window.
+    u8 normEnergyWindowLength; // Number of energy samples in an analysis window.
+    u8 delayLength; // Number of samples allocated to each circular history.
+    u8 voicedFrameCount; // Frames in the voiced window; decremented after each full window.
+    u8 queuedFrameCount; // Delayed input frames not yet emitted as output features.
+    u8 voiced; // Whether the current input frame is voiced (1) or unvoiced (0).
+    u8 previousVoiced; // Voicing state from the preceding input frame.
+    u8 beginVoiced; // Set at a voiced run's start; cleared only after a complete voiced window.
+    u8 endVoiced; // Set when a voiced run ends with window length minus one frames held.
+    u8 initializeNormEnergy; // Set while the initial energy slope history is filled.
+    u16 pitchCoefficientDivisor; // Divisor applied to the pitch slope sum.
+    u16 normEnergyCoefficientDivisor; // Divisor applied to the energy slope sum.
+    f32 lastMeanPitch; // Most recent mean log pitch, repeated after voicing ends.
+    f32 lastPitchSlope; // Most recent pitch slope, repeated after voicing ends.
+    u8 unused; // Not read by the pitch combiner.
+    u8 outputFeatureCount; // Number of floats written for each output frame.
+    u8 flushing; // Set while queued frames are emitted after input ends.
+    u8 flushPitch; // Pending pitch padding attempt; cleared even when too few frames remain.
+    u8 flushNormEnergy; // Set until the energy slope history is padded for flushing.
+    u8 pitchFilterReady; // Set when a completed voiced window advances the pitch filter.
+    u16 bandCount; // Number of energy bands in each input spectrum.
+    f32 voicedOutput; // Configured output value for a voiced frame.
+    f32 unvoicedOutput; // Configured output value for an unvoiced frame.
 } PitchCombiner;
 
 extern void *heap_Calloc(void *heap, u32 count, u32 size);
 extern void heap_Free(void *heap, void *ptr);
 extern f32 logf_check(f32 value);
 
-#pragma dont_inline on
+// Clears a feature history and restores its initial read and write positions.
+// InitPitchCombiner and PitchCombinerReset call this when preparing the block.
+static inline void ResetPitchHistory(PitchHistory *history, u8 length)
+{
+    u16 i;
+
+    history->output = history->write = history->samples;
+    history->end = history->samples + length;
+    for (i = 0; i < length; i++) {
+        history->samples[i] = 0.0f;
+    }
+}
+
+// Stores a new feature sample and advances the circular history's write position.
+// ProcessPitchCombiner uses this when recording a frame's maximum band energy.
+static inline void PushPitchHistory(PitchHistory *history, f32 value)
+{
+    *history->write++ = value;
+    if (history->write == history->end) {
+        history->write = history->samples;
+    }
+}
+
+// Averages the current voiced window, wrapping across the pitch history's end.
+// LogPitchProcessing calls this after a complete voiced pitch window is ready.
+static f32 MeanPitchHistory(PitchCombiner *block)
+{
+    f32 *sample;
+    u16 i;
+    f32 sum;
+    u8 length;
+
+    sample = block->logPitchFilter;
+    i = 0;
+    sum = 0.0f;
+    length = block->pitchWindowLength;
+    for (; i < length; i++) {
+        sum += *sample++;
+        if (sample == block->logPitch.end) {
+            sample = block->logPitch.samples;
+        }
+    }
+    sum /= length;
+    return sum;
+}
+
+// Applies the slope coefficients to the current voiced window.
+// LogPitchProcessing calls this after a complete voiced pitch window is ready.
+static inline void ComputePitchSlope(PitchCombiner *block, f32 *output)
+{
+    u8 pitchWindowLength;
+    f32 *pitch;
+    f32 *coefficient;
+    u8 i;
+    f32 sum;
+
+    i = 0;
+    pitch = block->logPitchFilter;
+    coefficient = block->pitchCoefficients;
+    sum = 0.0f;
+    pitchWindowLength = block->pitchWindowLength;
+    for (; i < pitchWindowLength; i++) {
+        sum += *pitch++ * *coefficient++;
+        if (pitch == block->logPitch.end) {
+            pitch = block->logPitch.samples;
+        }
+    }
+    sum /= block->pitchCoefficientDivisor;
+    *output = sum;
+}
+
+// Returns the largest value among the energy bands in a new input frame.
+// ProcessPitchCombiner calls this for each spectrum; even a zero count reads its first value.
 static f32 MaxFloatInArray(f32 *values, u16 count)
 {
     f32 maximum = values[0];
@@ -76,12 +146,13 @@ static f32 MaxFloatInArray(f32 *values, u16 count)
     }
     return maximum;
 }
-#pragma dont_inline reset
 
+// Tracks voiced runs and advances the voicing history for each input frame.
+// ProcessPitchCombiner calls this after storing the frame's voicing value.
 static void StatusProcessing(PitchCombiner *block)
 {
     block->previousVoiced = block->voiced;
-    if (*block->voicingWrite == 1.0f) {
+    if (*block->voicing.write == 1.0f) {
         if (block->voiced == 0) {
             block->voiced = 1;
             block->beginVoiced = 1;
@@ -95,12 +166,14 @@ static void StatusProcessing(PitchCombiner *block)
         block->voicedFrameCount = 0;
     }
 
-    block->voicingWrite++;
-    if (block->voicingWrite == block->voicingEnd) {
-        block->voicingWrite = block->voicingHistory;
+    block->voicing.write++;
+    if (block->voicing.write == block->voicing.end) {
+        block->voicing.write = block->voicing.samples;
     }
 }
 
+// Seeds the earlier half-window of pitch results with the first complete result.
+// LogPitchProcessing calls this after producing the first complete voiced window.
 static void CheckBeginVoicedFlag(PitchCombiner *block)
 {
     f32 *destination;
@@ -111,40 +184,42 @@ static void CheckBeginVoicedFlag(PitchCombiner *block)
         return;
     }
 
-    source = block->meanPitchWrite - 1;
-    if (source < block->meanPitchHistory) {
-        source = block->meanPitchEnd - 1;
+    source = block->meanPitch.write - 1;
+    if (source < block->meanPitch.samples) {
+        source = block->meanPitch.end - 1;
     }
     destination = source - 1;
-    if (destination < block->meanPitchHistory) {
-        destination = block->meanPitchEnd - 1;
+    if (destination < block->meanPitch.samples) {
+        destination = block->meanPitch.end - 1;
     }
     for (i = 0; i < block->pitchWindowLength / 2; i++) {
         *destination = *source;
         destination--;
-        if (destination < block->meanPitchHistory) {
-            destination = block->meanPitchEnd - 1;
+        if (destination < block->meanPitch.samples) {
+            destination = block->meanPitch.end - 1;
         }
     }
 
-    source = block->pitchSlopeWrite - 1;
-    if (source < block->pitchSlopeHistory) {
-        source = block->pitchSlopeEnd - 1;
+    source = block->pitchSlope.write - 1;
+    if (source < block->pitchSlope.samples) {
+        source = block->pitchSlope.end - 1;
     }
     destination = source - 1;
-    if (destination < block->pitchSlopeHistory) {
-        destination = block->pitchSlopeEnd - 1;
+    if (destination < block->pitchSlope.samples) {
+        destination = block->pitchSlope.end - 1;
     }
     for (i = 0; i < block->pitchWindowLength / 2; i++) {
         *destination = *source;
         destination--;
-        if (destination < block->pitchSlopeHistory) {
-            destination = block->pitchSlopeEnd - 1;
+        if (destination < block->pitchSlope.samples) {
+            destination = block->pitchSlope.end - 1;
         }
     }
     block->beginVoiced = 0;
 }
 
+// Repeats the last pitch results across the trailing half-window of a voiced run.
+// LogPitchProcessing calls this while advancing histories without a full voiced window.
 static void CheckEndVoicedFlag(PitchCombiner *block)
 {
     f32 *destination;
@@ -154,93 +229,70 @@ static void CheckEndVoicedFlag(PitchCombiner *block)
         return;
     }
 
-    destination = block->meanPitchWrite - 1;
-    if (destination < block->meanPitchHistory) {
-        destination = block->meanPitchEnd - 1;
+    destination = block->meanPitch.write - 1;
+    if (destination < block->meanPitch.samples) {
+        destination = block->meanPitch.end - 1;
     }
     for (i = 0; i < block->pitchWindowLength / 2; i++) {
         *destination = block->lastMeanPitch;
         destination++;
-        if (destination == block->meanPitchEnd) {
-            destination = block->meanPitchHistory;
+        if (destination == block->meanPitch.end) {
+            destination = block->meanPitch.samples;
         }
     }
 
-    destination = block->pitchSlopeWrite - 1;
-    if (destination < block->pitchSlopeHistory) {
-        destination = block->pitchSlopeEnd - 1;
+    destination = block->pitchSlope.write - 1;
+    if (destination < block->pitchSlope.samples) {
+        destination = block->pitchSlope.end - 1;
     }
     for (i = 0; i < block->pitchWindowLength / 2; i++) {
         *destination = block->lastPitchSlope;
         destination++;
-        if (destination == block->pitchSlopeEnd) {
-            destination = block->pitchSlopeHistory;
+        if (destination == block->pitchSlope.end) {
+            destination = block->pitchSlope.samples;
         }
     }
     block->endVoiced = 0;
 }
 
+// Updates pitch results for full voiced windows and pads their run boundaries.
+// ProcessPitchCombiner calls this once the input delay contains a full pitch window.
 static void LogPitchProcessing(PitchCombiner *block)
 {
     if (block->voicedFrameCount == block->pitchWindowLength) {
-        f32 *coefficient;
-        f32 *pitch;
-        f32 result;
-        u8 i;
-        u8 pitchWindowLength;
-        u16 j;
+        f32 slope;
 
         block->pitchFilterReady = 1;
-        i = 0;
-        pitch = block->logPitchFilter;
-        coefficient = block->pitchCoefficients;
-        result = 0.0f;
-        pitchWindowLength = block->pitchWindowLength;
-        for (; i < pitchWindowLength; i++) {
-            result += *pitch++ * *coefficient++;
-            if (pitch == block->logPitchEnd) {
-                pitch = block->logPitchHistory;
-            }
+        ComputePitchSlope(block, &slope);
+        *block->pitchSlope.write = slope;
+        block->lastPitchSlope = *block->pitchSlope.write++;
+        if (block->pitchSlope.write == block->pitchSlope.end) {
+            block->pitchSlope.write = block->pitchSlope.samples;
         }
-        result /= block->pitchCoefficientDivisor;
-        *block->pitchSlopeWrite = result;
-        block->lastPitchSlope = *block->pitchSlopeWrite++;
-        if (block->pitchSlopeWrite == block->pitchSlopeEnd) {
-            block->pitchSlopeWrite = block->pitchSlopeHistory;
-        }
-
-        pitch = block->logPitchFilter;
-        j = 0;
-        result = 0.0f;
-        pitchWindowLength = block->pitchWindowLength;
-        for (; j < pitchWindowLength; j++) {
-            result += *pitch++;
-            if (pitch == block->logPitchEnd) {
-                pitch = block->logPitchHistory;
-            }
-        }
-        result /= pitchWindowLength;
-        *block->meanPitchWrite = result;
-        block->lastMeanPitch = *block->meanPitchWrite++;
-        if (block->meanPitchWrite == block->meanPitchEnd) {
-            block->meanPitchWrite = block->meanPitchHistory;
+        *block->meanPitch.write = MeanPitchHistory(block);
+        block->lastMeanPitch = *block->meanPitch.write++;
+        if (block->meanPitch.write == block->meanPitch.end) {
+            block->meanPitch.write = block->meanPitch.samples;
         }
 
         CheckBeginVoicedFlag(block);
+        // Keep the preceding samples so the next voiced frame completes a sliding window.
         block->voicedFrameCount--;
     } else {
-        block->pitchSlopeWrite++;
-        if (block->pitchSlopeWrite == block->pitchSlopeEnd) {
-            block->pitchSlopeWrite = block->pitchSlopeHistory;
+        block->pitchSlope.write++;
+        if (block->pitchSlope.write == block->pitchSlope.end) {
+            block->pitchSlope.write = block->pitchSlope.samples;
         }
-        block->meanPitchWrite++;
-        if (block->meanPitchWrite == block->meanPitchEnd) {
-            block->meanPitchWrite = block->meanPitchHistory;
+        block->meanPitch.write++;
+        if (block->meanPitch.write == block->meanPitch.end) {
+            block->meanPitch.write = block->meanPitch.samples;
         }
         CheckEndVoicedFlag(block);
     }
 }
 
+// Calculates energy slope values and primes their history on the first window.
+// ProcessPitchCombiner calls this once enough input frames have been queued.
 static void NormE_Processing(PitchCombiner *block)
 {
     f32 *energy = block->normEnergyFilter;
@@ -250,29 +302,29 @@ static void NormE_Processing(PitchCombiner *block)
 
     for (i = 0; i < block->normEnergyWindowLength; i++) {
         result += *energy++ * *coefficient++;
-        if (energy == block->normEnergyEnd) {
-            energy = block->normEnergyHistory;
+        if (energy == block->normEnergy.end) {
+            energy = block->normEnergy.samples;
         }
     }
     result /= block->normEnergyCoefficientDivisor;
-    *block->normEnergySlopeWrite++ = result;
-    if (block->normEnergySlopeWrite == block->normEnergySlopeEnd) {
-        block->normEnergySlopeWrite = block->normEnergySlopeHistory;
+    *block->normEnergySlope.write++ = result;
+    if (block->normEnergySlope.write == block->normEnergySlope.end) {
+        block->normEnergySlope.write = block->normEnergySlope.samples;
     }
 
     block->normEnergyFilter++;
-    if (block->normEnergyFilter == block->normEnergyEnd) {
-        block->normEnergyFilter = block->normEnergyHistory;
+    if (block->normEnergyFilter == block->normEnergy.end) {
+        block->normEnergyFilter = block->normEnergy.samples;
     }
 
     if (block->initializeNormEnergy != 0) {
         f32 latest;
-        f32 *destination = block->normEnergySlopeHistory;
+        f32 *destination = block->normEnergySlope.samples;
 
-        if (block->normEnergySlopeWrite == block->normEnergySlopeHistory) {
-            latest = block->normEnergySlopeEnd[-1];
+        if (block->normEnergySlope.write == block->normEnergySlope.samples) {
+            latest = block->normEnergySlope.end[-1];
         } else {
-            latest = block->normEnergySlopeWrite[-1];
+            latest = block->normEnergySlope.write[-1];
         }
         for (i = 0; i < block->normEnergyWindowLength / 2; i++) {
             *destination++ = latest;
@@ -281,34 +333,38 @@ static void NormE_Processing(PitchCombiner *block)
     }
 }
 
+// Advances every output cursor after one feature frame has been consumed.
+// ProcessPitchCombiner and FlushPitchCombiner call this after queueing output.
 static void OutputProcedure(PitchCombiner *block)
 {
-    block->logPitchOutput++;
-    if (block->logPitchOutput == block->logPitchEnd) {
-        block->logPitchOutput = block->logPitchHistory;
+    block->logPitch.output++;
+    if (block->logPitch.output == block->logPitch.end) {
+        block->logPitch.output = block->logPitch.samples;
     }
-    block->meanPitchOutput++;
-    if (block->meanPitchOutput == block->meanPitchEnd) {
-        block->meanPitchOutput = block->meanPitchHistory;
+    block->meanPitch.output++;
+    if (block->meanPitch.output == block->meanPitch.end) {
+        block->meanPitch.output = block->meanPitch.samples;
     }
-    block->pitchSlopeOutput++;
-    if (block->pitchSlopeOutput == block->pitchSlopeEnd) {
-        block->pitchSlopeOutput = block->pitchSlopeHistory;
+    block->pitchSlope.output++;
+    if (block->pitchSlope.output == block->pitchSlope.end) {
+        block->pitchSlope.output = block->pitchSlope.samples;
     }
-    block->normEnergyOutput++;
-    if (block->normEnergyOutput == block->normEnergyEnd) {
-        block->normEnergyOutput = block->normEnergyHistory;
+    block->normEnergy.output++;
+    if (block->normEnergy.output == block->normEnergy.end) {
+        block->normEnergy.output = block->normEnergy.samples;
     }
-    block->normEnergySlopeOutput++;
-    if (block->normEnergySlopeOutput == block->normEnergySlopeEnd) {
-        block->normEnergySlopeOutput = block->normEnergySlopeHistory;
+    block->normEnergySlope.output++;
+    if (block->normEnergySlope.output == block->normEnergySlope.end) {
+        block->normEnergySlope.output = block->normEnergySlope.samples;
     }
-    block->voicingOutput++;
-    if (block->voicingOutput == block->voicingEnd) {
-        block->voicingOutput = block->voicingHistory;
+    block->voicing.output++;
+    if (block->voicing.output == block->voicing.end) {
+        block->voicing.output = block->voicing.samples;
     }
 }
 
+// Pads pending feature histories and emits at most one delayed frame per call after input ends.
+// ProcessPitchCombiner calls this on an empty input while flushing is active.
 static u8 FlushPitchCombiner(PitchCombiner *block)
 {
     if (block->queuedFrameCount != 0) {
@@ -319,28 +375,29 @@ static u8 FlushPitchCombiner(PitchCombiner *block)
         u8 halfLength;
 
         if (block->flushPitch != 0) {
+            // Extend pitch results only when at least window length minus one frames remain.
             if (block->queuedFrameCount >=
                 (u8)(block->pitchWindowLength - 1)) {
                 halfLength = block->pitchWindowLength / 2;
-                source = block->pitchSlopeWrite - 1;
-                if (source < block->pitchSlopeHistory) {
-                    source = block->pitchSlopeEnd - 1;
+                source = block->pitchSlope.write - 1;
+                if (source < block->pitchSlope.samples) {
+                    source = block->pitchSlope.end - 1;
                 }
                 for (i = 0; i < halfLength; i++) {
-                    *block->pitchSlopeWrite++ = *source;
-                    if (block->pitchSlopeWrite == block->pitchSlopeEnd) {
-                        block->pitchSlopeWrite = block->pitchSlopeHistory;
+                    *block->pitchSlope.write++ = *source;
+                    if (block->pitchSlope.write == block->pitchSlope.end) {
+                        block->pitchSlope.write = block->pitchSlope.samples;
                     }
                 }
 
-                source = block->meanPitchWrite - 1;
-                if (source < block->meanPitchHistory) {
-                    source = block->meanPitchEnd - 1;
+                source = block->meanPitch.write - 1;
+                if (source < block->meanPitch.samples) {
+                    source = block->meanPitch.end - 1;
                 }
                 for (i = 0; i < halfLength; i++) {
-                    *block->meanPitchWrite++ = *source;
-                    if (block->meanPitchWrite == block->meanPitchEnd) {
-                        block->meanPitchWrite = block->meanPitchHistory;
+                    *block->meanPitch.write++ = *source;
+                    if (block->meanPitch.write == block->meanPitch.end) {
+                        block->meanPitch.write = block->meanPitch.samples;
                     }
                 }
             }
@@ -348,29 +405,29 @@ static u8 FlushPitchCombiner(PitchCombiner *block)
         }
 
         if (block->flushNormEnergy != 0) {
-            source = block->normEnergySlopeWrite - 1;
-            destination = block->normEnergySlopeWrite;
+            source = block->normEnergySlope.write - 1;
+            destination = block->normEnergySlope.write;
             halfLength = block->normEnergyWindowLength / 2;
-            if (source < block->normEnergySlopeHistory) {
-                source = block->normEnergySlopeEnd - 1;
+            if (source < block->normEnergySlope.samples) {
+                source = block->normEnergySlope.end - 1;
             }
             for (i = 0; i < halfLength; i++) {
                 *destination++ = *source;
-                if (destination == block->normEnergySlopeEnd) {
-                    destination = block->normEnergySlopeHistory;
+                if (destination == block->normEnergySlope.end) {
+                    destination = block->normEnergySlope.samples;
                 }
             }
             block->flushNormEnergy = 0;
         }
 
         block->pitchDelta =
-            *block->logPitchOutput - *block->meanPitchOutput;
+            *block->logPitch.output - *block->meanPitch.output;
         output = qEnQueueOne(block->base.output->queue);
         *output++ = 32.0f * block->pitchDelta;
-        *output++ = 53.0f * *block->pitchSlopeOutput;
-        *output++ = 1.107 * *block->normEnergyOutput;
-        *output++ = 0.832 * *block->normEnergySlopeOutput;
-        if (*block->voicingOutput == 1.0f) {
+        *output++ = 53.0f * *block->pitchSlope.output;
+        *output++ = 1.107 * *block->normEnergy.output;
+        *output++ = 0.832 * *block->normEnergySlope.output;
+        if (*block->voicing.output == 1.0f) {
             *output = block->voicedOutput;
         } else {
             *output = block->unvoicedOutput;
@@ -387,6 +444,8 @@ static u8 FlushPitchCombiner(PitchCombiner *block)
     return 0;
 }
 
+// Consumes one pitch, voicing, and spectrum frame and emits ready features.
+// tosRun invokes this for input frames and empty-input ticks; inputCount is unused.
 static void ProcessPitchCombiner(
     TosBaseBlock *baseBlock, void **inputs, s32 inputCount)
 {
@@ -395,18 +454,16 @@ static void ProcessPitchCombiner(
     if (inputs[0] != NULL) {
         f32 *output;
 
-        *block->normEnergyWrite++ =
-            MaxFloatInArray((f32 *)inputs[2] + 1, block->bandCount);
-        if (block->normEnergyWrite == block->normEnergyEnd) {
-            block->normEnergyWrite = block->normEnergyHistory;
+        // Skip the spectrum's leading value and take the maximum of its configured bands.
+        PushPitchHistory(&block->normEnergy,
+            MaxFloatInArray((f32 *)inputs[2] + 1, block->bandCount));
+
+        *block->logPitch.write++ = logf_check(*(f32 *)inputs[0]);
+        if (block->logPitch.write == block->logPitch.end) {
+            block->logPitch.write = block->logPitch.samples;
         }
 
-        *block->logPitchWrite++ = logf_check(*(f32 *)inputs[0]);
-        if (block->logPitchWrite == block->logPitchEnd) {
-            block->logPitchWrite = block->logPitchHistory;
-        }
-
-        *block->voicingWrite = *(u8 *)inputs[1];
+        *block->voicing.write = *(u8 *)inputs[1];
         block->queuedFrameCount++;
         StatusProcessing(block);
 
@@ -414,11 +471,11 @@ static void ProcessPitchCombiner(
             LogPitchProcessing(block);
         }
         if (block->voiced == 0) {
-            block->logPitchFilter = block->logPitchWrite;
+            block->logPitchFilter = block->logPitch.write;
         } else if (block->pitchFilterReady == 1) {
             block->logPitchFilter++;
-            if (block->logPitchFilter == block->logPitchEnd) {
-                block->logPitchFilter = block->logPitchHistory;
+            if (block->logPitchFilter == block->logPitch.end) {
+                block->logPitchFilter = block->logPitch.samples;
             }
             block->pitchFilterReady = 0;
         }
@@ -428,14 +485,15 @@ static void ProcessPitchCombiner(
         }
 
         if (block->queuedFrameCount == block->delayLength) {
+            // Emit scaled pitch deviation, pitch slope, band energy, energy slope and voicing.
             block->pitchDelta =
-                *block->logPitchOutput - *block->meanPitchOutput;
+                *block->logPitch.output - *block->meanPitch.output;
             output = qEnQueueOne(block->base.output->queue);
             *output++ = 32.0f * block->pitchDelta;
-            *output++ = 53.0f * *block->pitchSlopeOutput;
-            *output++ = 1.107 * *block->normEnergyOutput;
-            *output++ = 0.832 * *block->normEnergySlopeOutput;
-            if (*block->voicingOutput == 1.0f) {
+            *output++ = 53.0f * *block->pitchSlope.output;
+            *output++ = 1.107 * *block->normEnergy.output;
+            *output++ = 0.832 * *block->normEnergySlope.output;
+            if (*block->voicing.output == 1.0f) {
                 *output = block->voicedOutput;
             } else {
                 *output = block->unvoicedOutput;
@@ -449,89 +507,25 @@ static void ProcessPitchCombiner(
     }
 }
 
+// Clears histories and frame state when the TOS block receives its reset command.
+// The cached lastPitchSlope is left unchanged.
 static void PitchCombinerReset(PitchCombiner *block)
 {
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->voicingHistory;
+    ResetPitchHistory(&block->voicing, block->delayLength);
+    ResetPitchHistory(&block->normEnergy, block->delayLength);
+    ResetPitchHistory(&block->logPitch, block->delayLength);
+    ResetPitchHistory(&block->meanPitch, block->delayLength);
+    ResetPitchHistory(&block->pitchSlope, block->delayLength);
+    ResetPitchHistory(&block->normEnergySlope, block->delayLength);
 
-        block->voicingWrite = history;
-        block->voicingOutput = history;
-        block->voicingEnd = history + length;
-        for (; i < length; i++) {
-            block->voicingHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->normEnergyHistory;
-
-        block->normEnergyWrite = history;
-        block->normEnergyOutput = history;
-        block->normEnergyEnd = history + length;
-        for (; i < length; i++) {
-            block->normEnergyHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->logPitchHistory;
-
-        block->logPitchWrite = history;
-        block->logPitchOutput = history;
-        block->logPitchEnd = history + length;
-        for (; i < length; i++) {
-            block->logPitchHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->meanPitchHistory;
-
-        block->meanPitchWrite = history;
-        block->meanPitchOutput = history;
-        block->meanPitchEnd = history + length;
-        for (; i < length; i++) {
-            block->meanPitchHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->pitchSlopeHistory;
-
-        block->pitchSlopeWrite = history;
-        block->pitchSlopeOutput = history;
-        block->pitchSlopeEnd = history + length;
-        for (; i < length; i++) {
-            block->pitchSlopeHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->normEnergySlopeHistory;
-
-        block->normEnergySlopeWrite = history;
-        block->normEnergySlopeOutput = history;
-        block->normEnergySlopeEnd = history + length;
-        for (; i < length; i++) {
-            block->normEnergySlopeHistory[i] = 0.0f;
-        }
-    }
-
-    block->meanPitchWrite =
-        block->meanPitchHistory + block->pitchWindowLength / 2;
-    block->pitchSlopeWrite =
-        block->pitchSlopeHistory + block->pitchWindowLength / 2;
-    block->normEnergySlopeWrite =
-        block->normEnergySlopeHistory + block->normEnergyWindowLength / 2;
-    block->logPitchFilter = block->logPitchOutput;
-    block->normEnergyFilter = block->normEnergyOutput;
+    block->meanPitch.write =
+        block->meanPitch.samples + block->pitchWindowLength / 2;
+    block->pitchSlope.write =
+        block->pitchSlope.samples + block->pitchWindowLength / 2;
+    block->normEnergySlope.write =
+        block->normEnergySlope.samples + block->normEnergyWindowLength / 2;
+    block->logPitchFilter = block->logPitch.output;
+    block->normEnergyFilter = block->normEnergy.output;
 
     block->pitchDelta = 0.0f;
     block->lastMeanPitch = 0.0f;
@@ -548,25 +542,27 @@ static void PitchCombinerReset(PitchCombiner *block)
     block->pitchFilterReady = 0;
 }
 
+// Handles reset, flush, and destruction through the speech graph's control callback.
+// Only the command's low byte is used; the argument pointer and size are ignored.
 static u32 ControlPitchCombiner(
     TosBaseBlock *baseBlock, u32 command, void *argument, u32 argumentSize)
 {
     PitchCombiner *block = (PitchCombiner *)baseBlock;
 
     switch ((u8)command) {
-    case 200:
+    case PITCH_COMBINER_RESET_COMMAND:
         PitchCombinerReset(block);
         break;
-    case 201:
+    case PITCH_COMBINER_FLUSH_COMMAND:
         block->flushing = 1;
         break;
-    case 255:
-        heap_Free(block->base.context->heap, block->normEnergyHistory);
-        heap_Free(block->base.context->heap, block->logPitchHistory);
-        heap_Free(block->base.context->heap, block->voicingHistory);
-        heap_Free(block->base.context->heap, block->pitchSlopeHistory);
-        heap_Free(block->base.context->heap, block->meanPitchHistory);
-        heap_Free(block->base.context->heap, block->normEnergySlopeHistory);
+    case PITCH_COMBINER_DESTRUCT_COMMAND:
+        heap_Free(block->base.context->heap, block->normEnergy.samples);
+        heap_Free(block->base.context->heap, block->logPitch.samples);
+        heap_Free(block->base.context->heap, block->voicing.samples);
+        heap_Free(block->base.context->heap, block->pitchSlope.samples);
+        heap_Free(block->base.context->heap, block->meanPitch.samples);
+        heap_Free(block->base.context->heap, block->normEnergySlope.samples);
         heap_Free(block->base.context->heap, block->pitchCoefficients);
         heap_Free(block->base.context->heap, block->normEnergyCoefficients);
         tosBaseBlockDestruct(block);
@@ -577,13 +573,15 @@ static u32 ControlPitchCombiner(
     return 1;
 }
 
+// Allocates histories and sets window coefficients during speech graph initialization.
+// The graph invokes this through the initializer registered by ConstructPitchCombiner.
 static u32 InitPitchCombiner(TosBaseBlock *baseBlock)
 {
     PitchCombiner *block = (PitchCombiner *)baseBlock;
     TosContext *context = baseBlock->context;
     u32 bandCount;
 
-    bandCount = _tosGetProfileU32(block, 1, 21);
+    bandCount = _tosGetProfileU32(block, PITCH_COMBINER_BAND_COUNT_PROFILE, 21);
     block->bandCount = (u16)bandCount;
     block->lastMeanPitch = 0.0f;
     block->outputFeatureCount = 5;
@@ -601,116 +599,50 @@ static u32 InitPitchCombiner(TosBaseBlock *baseBlock)
             ? block->pitchWindowLength
             : block->normEnergyWindowLength;
 
-    block->normEnergyHistory =
+    block->normEnergy.samples =
         heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->logPitchHistory =
+    block->logPitch.samples =
         heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->voicingHistory =
+    block->voicing.samples =
         heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->pitchSlopeHistory =
+    block->pitchSlope.samples =
         heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->meanPitchHistory =
+    block->meanPitch.samples =
         heap_Calloc(context->heap, block->delayLength, sizeof(f32));
-    block->normEnergySlopeHistory =
+    block->normEnergySlope.samples =
         heap_Calloc(context->heap, block->delayLength, sizeof(f32));
     block->pitchCoefficients =
         heap_Calloc(context->heap, block->pitchWindowLength, sizeof(f32));
     block->normEnergyCoefficients = heap_Calloc(
         context->heap, block->normEnergyWindowLength, sizeof(f32));
 
-    if (block->normEnergyHistory == NULL ||
-        block->logPitchHistory == NULL ||
-        block->voicingHistory == NULL ||
-        block->pitchSlopeHistory == NULL ||
-        block->meanPitchHistory == NULL ||
-        block->normEnergySlopeHistory == NULL ||
+    if (block->normEnergy.samples == NULL ||
+        block->logPitch.samples == NULL ||
+        block->voicing.samples == NULL ||
+        block->pitchSlope.samples == NULL ||
+        block->meanPitch.samples == NULL ||
+        block->normEnergySlope.samples == NULL ||
         block->pitchCoefficients == NULL ||
         block->normEnergyCoefficients == NULL) {
         _tosErrorLog(block, 2);
         return 1;
     }
 
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->voicingHistory;
+    ResetPitchHistory(&block->voicing, block->delayLength);
+    ResetPitchHistory(&block->normEnergy, block->delayLength);
+    ResetPitchHistory(&block->logPitch, block->delayLength);
+    ResetPitchHistory(&block->meanPitch, block->delayLength);
+    ResetPitchHistory(&block->pitchSlope, block->delayLength);
+    ResetPitchHistory(&block->normEnergySlope, block->delayLength);
 
-        block->voicingWrite = history;
-        block->voicingOutput = history;
-        block->voicingEnd = history + length;
-        for (; i < length; i++) {
-            block->voicingHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->normEnergyHistory;
-
-        block->normEnergyWrite = history;
-        block->normEnergyOutput = history;
-        block->normEnergyEnd = history + length;
-        for (; i < length; i++) {
-            block->normEnergyHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->logPitchHistory;
-
-        block->logPitchWrite = history;
-        block->logPitchOutput = history;
-        block->logPitchEnd = history + length;
-        for (; i < length; i++) {
-            block->logPitchHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->meanPitchHistory;
-
-        block->meanPitchWrite = history;
-        block->meanPitchOutput = history;
-        block->meanPitchEnd = history + length;
-        for (; i < length; i++) {
-            block->meanPitchHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->pitchSlopeHistory;
-
-        block->pitchSlopeWrite = history;
-        block->pitchSlopeOutput = history;
-        block->pitchSlopeEnd = history + length;
-        for (; i < length; i++) {
-            block->pitchSlopeHistory[i] = 0.0f;
-        }
-    }
-    {
-        u8 length = block->delayLength;
-        u16 i = 0;
-        f32 *history = block->normEnergySlopeHistory;
-
-        block->normEnergySlopeWrite = history;
-        block->normEnergySlopeOutput = history;
-        block->normEnergySlopeEnd = history + length;
-        for (; i < length; i++) {
-            block->normEnergySlopeHistory[i] = 0.0f;
-        }
-    }
-
-    block->meanPitchWrite =
-        block->meanPitchHistory + block->pitchWindowLength / 2;
-    block->pitchSlopeWrite =
-        block->pitchSlopeHistory + block->pitchWindowLength / 2;
-    block->normEnergySlopeWrite =
-        block->normEnergySlopeHistory + block->normEnergyWindowLength / 2;
-    block->logPitchFilter = block->logPitchOutput;
-    block->normEnergyFilter = block->normEnergyOutput;
+    block->meanPitch.write =
+        block->meanPitch.samples + block->pitchWindowLength / 2;
+    block->pitchSlope.write =
+        block->pitchSlope.samples + block->pitchWindowLength / 2;
+    block->normEnergySlope.write =
+        block->normEnergySlope.samples + block->normEnergyWindowLength / 2;
+    block->logPitchFilter = block->logPitch.output;
+    block->normEnergyFilter = block->normEnergy.output;
     block->pitchDelta = 0.0f;
 
     block->pitchCoefficients[0] = -3.0f;
@@ -741,11 +673,15 @@ static u32 InitPitchCombiner(TosBaseBlock *baseBlock)
     block->flushNormEnergy = 1;
     block->pitchFilterReady = 0;
 
-    block->voicedOutput = _tosGetProfileFloat(block, 2, 0.0f);
-    block->unvoicedOutput = _tosGetProfileFloat(block, 3, 100000.0f);
+    block->voicedOutput =
+        _tosGetProfileFloat(block, PITCH_COMBINER_VOICED_OUTPUT_PROFILE, 0.0f);
+    block->unvoicedOutput =
+        _tosGetProfileFloat(block, PITCH_COMBINER_UNVOICED_OUTPUT_PROFILE, 100000.0f);
     return 0;
 }
 
+// Creates a speech feature block with pitch, voicing and spectrum inputs and one output.
+// Speech graph construction uses this to register the processing and control callbacks.
 void *ConstructPitchCombiner(TosContext *context, u8 blockIndex)
 {
     return tosBaseBlockConstruct(
