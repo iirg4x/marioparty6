@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 42.59% | 59.00% |
+| Entire project | 42.93% | 59.28% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 32.46% | 33.50% |
+| REL modules | 32.87% | 33.96% |
+
+staffdll (`staffdll`) selects all **97 functions** from **2 complete translation units**; its linked REL matches retail.
 
 DOL source: `src/gssdk_lib/asrpho/common/blocks/flfxblks/pitchco.c` now builds from source; `main.dol` matches retail byte for byte.
 
