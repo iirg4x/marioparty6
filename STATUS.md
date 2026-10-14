@@ -14,6 +14,8 @@ Byte percentages were generated from a verified full-project retail build with `
 | Main DOL | 90.12% | 99.24% |
 | REL modules | 32.46% | 33.50% |
 
+Pokey Punch-out (`m621dll`) selects all **86 functions** from **4 complete translation units**; its linked REL matches retail.
+
 Mount Duel (`mgmtournamentdll`) selects all **125 functions** from **9 complete translation units**; its linked REL matches retail.
 
 REL source cleanup: `miraclebookdll`, `w05Dll`, `ttwarsdll`, `m657Dll`, `mgmfreedll`; reviewed source cleanup and generated progress; all selected RELs match retail byte for byte.

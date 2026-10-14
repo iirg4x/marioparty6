@@ -177,7 +177,5 @@ void fn_1_51F4(s16 effectPlayerNo, HuVecF *effectPosition);
 void fn_1_52D4(s32 playerNo, s16 coins);
 void fn_1_5328(s32 playerNo, s32 score);
 s16 fn_1_5340(void);
-float fn_1_5350(float value);
-double fn_1_537C(double value);
 
 #endif
