@@ -410,7 +410,7 @@ int fn_1_1240(COL_NARROW_PARAM *firstCollider, COL_NARROW_PARAM *secondCollider)
     if (dot < -cos(M_PI / 3.0)) {
         horizontal = delta;
         horizontal.y = 0.0f;
-        if (fn_1_5350(PSVECSquareMag(&horizontal)) < 0.001) {
+        if (fabsf(PSVECSquareMag(&horizontal)) < 0.001) {
             horizontal.x = 1.0f;
         } else {
             fn_1_10E8(&horizontal, &horizontal);
@@ -1768,18 +1768,6 @@ void fn_1_5328(s32 playerNo, s32 score)
 s16 fn_1_5340(void)
 {
     return GwMgNightF;
-}
-
-/* Return the absolute value of a float through the double-precision helper. */
-float fn_1_5350(float value)
-{
-    return fn_1_537C(value);
-}
-
-/* Return the absolute value of a double. */
-double fn_1_537C(double value)
-{
-    return fabs(value);
 }
 
 s16 lbl_1_data_37E = 1;
