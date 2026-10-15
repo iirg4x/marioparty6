@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 43.44% | 59.97% |
+| Entire project | 43.70% | 60.13% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 33.49% | 35.08% |
+| REL modules | 33.81% | 35.34% |
+
+T Minus Five (`m658dll`) selects all **146 functions** from **4 complete translation units**; its linked REL matches retail.
 
 Option Mode (`optionDll`) selects all **61 functions** from **5 complete translation units**; its linked REL matches retail.
 
