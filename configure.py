@@ -1579,12 +1579,31 @@ config.libs = [
     Rel(
         "optionDll",
         objects={
-            Object(NonMatching, "REL/optionDll/option.c"),
+            Object(
+                Matching,
+                "REL/optionDll/main.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/optionDll/option.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/optionDll/records.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
             Object(
                 Matching,
                 "REL/optionDll/runtime.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/optionDll/sound_test.c",
+                extra_cflags=["-pooldata", "off"],
             ),
         },
     ),

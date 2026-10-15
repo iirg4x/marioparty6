@@ -1,29 +1,34 @@
+/* Option Mode models, sprites, and shared menu helpers. */
 #include "dolphin.h"
 #include "game/audio.h"
 #include "game/esprite.h"
 #include "game/hu3d.h"
 #include "game/mgdata.h"
 #include "game/object.h"
+#include "game/pad.h"
 #include "game/process.h"
 #include "game/saveload.h"
 #include "game/sprite.h"
 #include "game/wipe.h"
 #include "game/window.h"
+#include "datadir_enum.h"
+#include "messdir_enum.h"
+#include "msm_se.h"
+#include <math.h>
+
+#define OPTION_MODEL_END ((u32)-1)
+
+void fn_1_C3FC(s16 selection);
+s16 fn_1_C324(s16 flag, s16 type);
 
 typedef void (*VoidFunc)(void);
 
 typedef struct OptionAudioEntry {
-    s8 type;
-    u8 pad[11];
-    s32 id;
+    s8 type; /* Zero selects streamed music, one selects sound effects, and -1 ends a list. */
+    s32 marker; /* -1 for audio rows; zero for the terminating row. */
+    s32 message; /* Message displayed for this sound test entry. */
+    s32 audioId; /* Stream or sound effect identifier. */
 } OptionAudioEntry;
-
-typedef struct OptionMessageEntry {
-    s8 type;
-    u8 pad[7];
-    s32 message;
-    s32 value;
-} OptionMessageEntry;
 
 typedef struct OptionModelEntry {
     u32 dataNum;
@@ -52,15 +57,29 @@ typedef struct OptionDecaRecord {
 
 typedef struct OptionPrizeEntry {
     s16 flag;
-    s16 unk2;
+    s16 tableEndMarker; /* -1 marks the final row in the prize table. */
     u32 name;
     u32 description;
     s16 id;
     s16 unkE;
 } OptionPrizeEntry;
 
+typedef struct OptionRecordDisplayEntry {
+    s16 minigameId;
+    u8 recordId;
+    u8 displayType;
+    s32 message;
+} OptionRecordDisplayEntry;
+
+typedef struct OptionSelectionData {
+    s16 selectedIndex;
+    s16 optionCount;
+    s16 animationA[10];
+    s16 choiceAnimationBank[10];
+} OptionSelectionData;
+
 typedef struct OptionWork {
-    s16 micEnabled;
+    s16 rumbleEnabled; /* Saved controller vibration setting. */
     s16 micStatus;
     s16 soundMode;
     s16 boardRecord[6];
@@ -76,68 +95,87 @@ typedef struct OptionWork {
     u8 consecutiveRecord[100];
 } OptionWork;
 
+OptionModelEntry lbl_1_data_1AB0[26] = {
+    {DATANUM(DATA_option, 0), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, HU3D_MOTATTR_LOOP, 2, 0},
+    {DATANUM(DATA_option, 1), -1, 0, {0.00000000f, 0.00000000f, -1000.00000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 3), -1, 0, {0.00000000f, 0.00000000f, 50.0000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.29999995f, 1.29999995f, 1.29999995f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 4), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 5), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 6), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 7), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(DATA_option, 8), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, HU3D_MOTATTR_LOOP, 2, 0},
+    {OPTION_MODEL_END, -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0}
+};
+
+s32 lbl_1_data_2060[60] = {
+    DATANUM(DATA_option, 9), DATANUM(DATA_option, 10),
+    DATANUM(DATA_option, 11), DATANUM(DATA_option, 12),
+    DATANUM(DATA_option, 13), DATANUM(DATA_option, 14),
+    DATANUM(DATA_option, 15), DATANUM(DATA_option, 16),
+    DATANUM(DATA_option, 17), DATANUM(DATA_option, 18),
+    DATANUM(DATA_option, 19), DATANUM(DATA_option, 20),
+    DATANUM(DATA_option, 21), DATANUM(DATA_option, 22),
+    DATANUM(DATA_option, 23), DATANUM(DATA_option, 24),
+    DATANUM(DATA_option, 25), DATANUM(DATA_option, 26),
+    DATANUM(DATA_option, 27), DATANUM(DATA_option, 28),
+    DATANUM(DATA_option, 29), DATANUM(DATA_option, 30),
+    DATANUM(DATA_option, 31), DATANUM(DATA_option, 33),
+    DATANUM(DATA_option, 32), DATANUM(DATA_option, 36),
+    DATANUM(DATA_option, 37), DATANUM(DATA_option, 38),
+    DATANUM(DATA_option, 39), DATANUM(DATA_option, 40),
+    DATANUM(DATA_option, 41), DATANUM(DATA_option, 42),
+    DATANUM(DATA_option, 43), DATANUM(DATA_option, 44),
+    DATANUM(DATA_option, 45), DATANUM(DATA_option, 46),
+    DATANUM(DATA_option, 47), DATANUM(DATA_option, 48),
+    DATANUM(DATA_option, 49), DATANUM(DATA_option, 50),
+    DATANUM(DATA_option, 51), DATANUM(DATA_option, 52),
+    DATANUM(DATA_option, 53), DATANUM(DATA_option, 54),
+    DATANUM(DATA_option, 55), DATANUM(DATA_option, 56),
+    DATANUM(DATA_option, 57), DATANUM(DATA_option, 58),
+    DATANUM(DATA_option, 60), DATANUM(DATA_option, 61),
+    DATANUM(DATA_option, 62), DATANUM(DATA_option, 63),
+    DATANUM(DATA_option, 64), DATANUM(DATA_option, 65),
+    DATANUM(DATA_option, 66), DATANUM(DATA_option, 67),
+    DATANUM(DATA_option, 68), DATANUM(DATA_option, 69),
+    DATANUM(DATA_option, 70), DATANUM(DATA_option, 71)
+};
+
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
-extern s16 lbl_1_bss_6;
-extern HUPROCESS *lbl_1_bss_838;
-extern HUPROCESS *lbl_1_bss_83C;
-extern OMOBJ *lbl_1_bss_840;
-extern OptionWork lbl_1_bss_8;
 extern s16 lbl_1_bss_5D4;
 extern OptionAnimPair lbl_1_bss_5D6[17];
 extern s16 lbl_1_bss_63C[];
 extern s16 lbl_1_bss_66E[];
 extern s16 lbl_1_bss_6A2[];
 extern s16 lbl_1_bss_6A0;
-extern u32 lbl_1_bss_848[];
-extern char lbl_1_bss_9D8[5][4];
-extern s16 lbl_1_bss_9EC[7][2];
-extern char lbl_1_bss_A08[7][30];
-extern s16 lbl_1_bss_AE0[7][2];
-extern OptionMessageEntry *lbl_1_bss_AFC;
 extern ANIMDATA *lbl_1_bss_BF8[];
-extern OptionPrizeEntry lbl_1_data_0[];
-extern OM_CAMERA_VIEW lbl_1_data_320;
-extern OM_CAMERA_VIEW lbl_1_data_33C;
-extern char lbl_1_data_40C[];
-extern char lbl_1_data_472[];
-extern char lbl_1_data_479[];
-extern char lbl_1_data_486[];
-extern char lbl_1_data_450[];
-extern char lbl_1_data_462[];
-extern char lbl_1_data_46A[];
-extern char lbl_1_data_1AA8[];
-extern OptionModelEntry lbl_1_data_1AB0[];
-extern s32 lbl_1_data_2060[60];
-extern float lbl_1_rodata_10;
-extern float lbl_1_rodata_14;
-extern float lbl_1_rodata_18;
-extern float lbl_1_rodata_1C;
-extern float lbl_1_rodata_20;
-extern float lbl_1_rodata_24;
-extern float lbl_1_rodata_28;
-extern float lbl_1_rodata_2C;
-extern float lbl_1_rodata_30;
-extern float lbl_1_rodata_34;
-extern float lbl_1_rodata_38;
-extern float lbl_1_rodata_3C;
-extern float lbl_1_rodata_40;
-extern float lbl_1_rodata_44;
-extern float lbl_1_rodata_48;
-extern float lbl_1_rodata_4C;
-extern float lbl_1_rodata_50;
-extern float lbl_1_rodata_54;
-extern float lbl_1_rodata_58;
-extern float lbl_1_rodata_5C;
-extern float lbl_1_rodata_60;
-extern float lbl_1_rodata_64;
-extern float lbl_1_rodata_68;
-extern float lbl_1_rodata_6C;
-extern float lbl_1_rodata_70;
+extern s16 lbl_1_bss_BF0[4];
 
 void fn_1_A0(void);
 void fn_1_804(void);
 void fn_1_FDC(void);
+void fn_1_1044(void);
+void fn_1_EA6C(void);
+void fn_1_1084(void);
+void fn_1_3AE0(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
+s16 fn_1_3318(s16 modelId, OptionSelectionData *selection, u32 *messages);
 void fn_1_18B8(s16 cameraNo);
 void fn_1_18D8(void);
 void fn_1_19B8(s32 value);
@@ -145,410 +183,236 @@ void fn_1_19E0(void);
 void fn_1_E6F8(void);
 void fn_1_F1D8(void);
 void fn_1_F394(void);
+void fn_1_F0B0(void);
+void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
+BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2);
 void fn_1_3BD8(OMOBJ *obj);
+s16 fn_1_1DF0(s16 currentOption);
+
+void fn_1_B1A0(s16 mode, s16 argument);
+void fn_1_4738(void);
+void fn_1_6898(void);
+void fn_1_5620(void);
+void fn_1_6504(s16 prizeNo);
+void fn_1_6590(s16 firstPrize);
+void fn_1_7728(s16 firstEntry);
+void fn_1_7A74(void);
+void fn_1_85E4(s16 item, float progress);
+void fn_1_879C(void);
+void fn_1_8CA4(s16 recordIndex);
+void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage);
+void fn_1_C3FC(s16 selection);
+float fn_1_F684(s16 groupId, s16 memberNo);
+void fn_1_B02C(s16 first, s16 count);
+void fn_1_9F74(void);
+void fn_1_C484(void);
+void fn_1_E538(s16 page);
 extern int HuMCMicGet(void);
 int sprintf(char *buffer, const char *format, int value);
 
-int _prolog(void)
-{
-    const VoidFunc *ctors = _ctors;
-
-    while (*ctors != 0) {
-        (**ctors)();
-        ctors++;
-    }
-    fn_1_A0();
-    return 0;
-}
-
-void _epilog(void)
-{
-    const VoidFunc *dtors = _dtors;
-
-    while (*dtors != 0) {
-        (**dtors)();
-        dtors++;
-    }
-}
-
-void fn_1_A0(void)
-{
-    HuVecF shadowPos;
-    HuVecF shadowTarget;
-    HuVecF shadowUp;
-    s16 lightId;
-    s32 j;
-    s32 i;
-
-    OSReport(lbl_1_data_40C);
-    lbl_1_bss_83C = omInitObjMan(50, 8192);
-    omSysPauseEnable(FALSE);
-    Hu3DCameraCreate(3);
-    Hu3DCameraPerspectiveSet(1, lbl_1_rodata_10, lbl_1_rodata_14,
-        lbl_1_rodata_18, lbl_1_rodata_1C);
-    Hu3DCameraViewportSet(1, lbl_1_rodata_20, lbl_1_rodata_20,
-        lbl_1_rodata_24, lbl_1_rodata_28, lbl_1_rodata_20,
-        lbl_1_rodata_2C);
-    Hu3DCameraPerspectiveSet(2, lbl_1_rodata_30, lbl_1_rodata_14,
-        lbl_1_rodata_18, lbl_1_rodata_1C);
-    Hu3DCameraViewportSet(2, lbl_1_rodata_20, lbl_1_rodata_20,
-        lbl_1_rodata_24, lbl_1_rodata_28, lbl_1_rodata_20,
-        lbl_1_rodata_2C);
-    omCameraViewSetMulti(1, &lbl_1_data_320);
-    omCameraViewSetMulti(2, &lbl_1_data_33C);
-    lightId = (int)Hu3DGLightCreate(lbl_1_rodata_20, lbl_1_rodata_34,
-        lbl_1_rodata_38, lbl_1_rodata_20, lbl_1_rodata_3C,
-        lbl_1_rodata_40, 255, 255, 255);
-    Hu3DGLightInfinitytSet(lightId);
-    lbl_1_bss_840 = omAddObjEx(lbl_1_bss_83C, 32730, 0, 0, -1,
-        omOutViewMulti);
-    lbl_1_bss_840->work[0] = 2;
-    omAddObjEx(lbl_1_bss_83C, 0, 32, 32, -1, fn_1_3BD8);
-    HuWinInit(0);
-    HuPrcChildCreate(fn_1_804, 1000, 12288, 0, lbl_1_bss_83C);
-    Hu3DShadowCreate(lbl_1_rodata_44, lbl_1_rodata_14,
-        lbl_1_rodata_48);
-    shadowPos.x = lbl_1_rodata_20;
-    shadowPos.y = lbl_1_rodata_38;
-    shadowPos.z = lbl_1_rodata_4C;
-    shadowUp.y = lbl_1_rodata_2C;
-    shadowUp.x = shadowUp.z = lbl_1_rodata_20;
-    shadowTarget.x = shadowTarget.y = shadowTarget.z = lbl_1_rodata_20;
-    Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
-    Hu3DShadowTPLvlSet(lbl_1_rodata_50);
-
-    lbl_1_bss_8.micEnabled = GwCommon.vibrateF ? TRUE : FALSE;
-    lbl_1_bss_8.micStatus = HuMCMicGet();
-    if (OSGetSoundMode() == OS_SOUND_MODE_MONO) {
-        lbl_1_bss_8.soundMode = GwCommon.outputMode = 0;
-    } else if (GwCommon.outputMode != 0) {
-        lbl_1_bss_8.soundMode = GwCommon.outputMode;
-    } else {
-        lbl_1_bss_8.soundMode = GwCommon.outputMode = 1;
-    }
-
-    for (j = 0; j < 6; j++) {
-        for (i = 0; i < 11; i++) {
-            lbl_1_bss_8.boardCharacterRecord[j][i] =
-                GwCommon.charPlayNum[j][i];
-        }
-        lbl_1_bss_8.boardRecord[j] = GwCommon.boardPlayNum[j];
-    }
-    for (j = 0; j < 10; j++) {
-        lbl_1_bss_8.decaRecord[j].character = GwCommon.decaScore[j].charNo;
-        for (i = 0; i < 10; i++) {
-            lbl_1_bss_8.decaRecord[j].score[i] =
-                GwCommon.decaScore[j].mgScore[i];
-        }
-        lbl_1_bss_8.decaRecord[j].finalScore =
-            GwCommon.decaScore[j].finalScore;
-    }
-
-    for (i = 2, lbl_1_bss_6 = 0; lbl_1_data_0[i].unk2 != -1; i++) {
-        if (lbl_1_data_0[i].flag != -1) {
-            lbl_1_bss_8.prizeId[lbl_1_bss_6] = lbl_1_data_0[i].id;
-            lbl_1_bss_8.prizeUnlocked[lbl_1_bss_6] =
-                GWSinglePrizeSaveFlagGet(lbl_1_data_0[i].flag);
-            lbl_1_bss_8.prizeName[lbl_1_bss_6] = lbl_1_data_0[i].name;
-            lbl_1_bss_8.prizeDescription[lbl_1_bss_6] =
-                lbl_1_data_0[i].description;
-            lbl_1_bss_6++;
-        }
-    }
-    for (i = 0; i < 81; i++) {
-        lbl_1_bss_8.minigameUnlocked[i] = GWMgUnlockGet(i + 601);
-    }
-    lbl_1_bss_8.consecutiveRecordCount = GwCommon.renshoMgRecordNum;
-    for (i = 0; i < 100; i++) {
-        lbl_1_bss_8.consecutiveRecord[i] = GwCommon.renshoMgRecord[i];
-    }
-    HuAudBGMPlay(7);
-}
-
-void fn_1_FDC(void)
-{
-    HuAudSStreamAllFadeOut(1000);
-    WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 40);
-    while (WipeCheck()) {
-        HuPrcVSleep();
-    }
-    Hu3DAllKill();
-    HuSprClose();
-    HuSprInit();
-    espInit();
-    SLSaveModeExec(FALSE);
-    omOvlReturnEx(1, TRUE);
-    while (TRUE) {
-        HuPrcVSleep();
-    }
-}
-
-void fn_1_1044(void)
-{
-    HuPrcChildCreate(fn_1_FDC, 1000, 4096, 0, lbl_1_bss_83C);
-}
-
-void fn_1_1084(void)
-{
-    s16 spriteId;
-    s16 i;
-
-    fn_1_F1D8();
-    Hu3DModelShadowMapSet(lbl_1_bss_66E[0]);
-    Hu3DModelShadowSet(lbl_1_bss_66E[2]);
-    Hu3DModelShadowSet(lbl_1_bss_66E[6]);
-    Hu3DModelHookSet(lbl_1_bss_66E[2], lbl_1_data_450,
-        lbl_1_bss_66E[6]);
-    Hu3DMotionSet(lbl_1_bss_66E[2], lbl_1_bss_63C[3]);
-    Hu3DModelAttrSet(lbl_1_bss_66E[2], HU3D_MOTATTR_LOOP);
-    lbl_1_bss_838 = HuPrcChildCreate(fn_1_19E0, 1000, 4096, 0,
-        lbl_1_bss_83C);
-    fn_1_19B8(0);
-    HuPrcChildCreate(fn_1_18D8, 1000, 4096, 0, lbl_1_bss_83C);
-    fn_1_F394();
-    for (i = 0; i < 17; i++) {
-        Hu3DModelScaleSet(lbl_1_bss_66E[i + 7], lbl_1_rodata_20,
-            lbl_1_rodata_20, lbl_1_rodata_20);
-        lbl_1_bss_5D6[i].animId1 = Hu3DAnimCreate(lbl_1_bss_BF8[0],
-            lbl_1_bss_66E[i + 7], lbl_1_data_462);
-        lbl_1_bss_5D6[i].animId2 = Hu3DAnimCreate(lbl_1_bss_BF8[0],
-            lbl_1_bss_66E[i + 7], lbl_1_data_46A);
-        lbl_1_bss_5D6[i].modelId = lbl_1_bss_66E[i + 7];
-        if (i >= 7) {
-            Hu3DModelLayerSet(lbl_1_bss_66E[i + 7], 3);
-        }
-    }
-    for (i = 14; i <= 23; i++) {
-        Hu3DModelLayerSet(lbl_1_bss_66E[i], 4);
-    }
-    Hu3DModelLayerSet(lbl_1_bss_66E[24], 4);
-    HuSprExecLayerCameraSet(64, 2, 2);
-    lbl_1_bss_5D4 = HuSprGrpCreate(105);
-
-    spriteId = HuSprCreate(lbl_1_bss_BF8[23], 100, 0);
-    HuSprGrpMemberSet(lbl_1_bss_5D4, 0, spriteId);
-    spriteId = HuSprCreate(lbl_1_bss_BF8[23], 100, 2);
-    HuSprGrpMemberSet(lbl_1_bss_5D4, 1, spriteId);
-    spriteId = HuSprCreate(lbl_1_bss_BF8[23], 100, 5);
-    HuSprGrpMemberSet(lbl_1_bss_5D4, 2, spriteId);
-    spriteId = HuSprCreate(lbl_1_bss_BF8[23], 100, 7);
-    HuSprGrpMemberSet(lbl_1_bss_5D4, 3, spriteId);
-    spriteId = HuSprCreate(lbl_1_bss_BF8[16], 110, 0);
-    HuSprGrpMemberSet(lbl_1_bss_5D4, 4, spriteId);
-    HuSprDrawNoSet(lbl_1_bss_5D4, 4, 64);
-    spriteId = HuSprCreate(lbl_1_bss_BF8[21], 100, 0);
-    HuSprGrpMemberSet(lbl_1_bss_5D4, 5, spriteId);
-    spriteId = HuSprCreate(lbl_1_bss_BF8[22], 100, 0);
-    HuSprGrpMemberSet(lbl_1_bss_5D4, 6, spriteId);
-    spriteId = HuSprCreate(lbl_1_bss_BF8[24], 100, 0);
-    HuSprGrpMemberSet(lbl_1_bss_5D4, 7, spriteId);
-    HuSprScaleSet(lbl_1_bss_5D4, 7, lbl_1_rodata_54,
-        lbl_1_rodata_2C);
-
-    for (i = 0; i < 11; i++) {
-        spriteId = HuSprCreate(lbl_1_bss_BF8[15], 100, 0);
-        HuSprGrpMemberSet(lbl_1_bss_5D4, i + 8, spriteId);
-    }
-    for (i = 0; i < 50; i++) {
-        spriteId = HuSprCreate(lbl_1_bss_BF8[19], 100, 0);
-        HuSprGrpMemberSet(lbl_1_bss_5D4, i + 19, spriteId);
-    }
-    for (i = 0; i < 10; i++) {
-        spriteId = HuSprCreate(lbl_1_bss_BF8[18], 100, 0);
-        HuSprGrpMemberSet(lbl_1_bss_5D4, i + 69, spriteId);
-    }
-    for (i = 0; i < 10; i++) {
-        spriteId = HuSprCreate(lbl_1_bss_BF8[17], 100, 0);
-        HuSprGrpMemberSet(lbl_1_bss_5D4, i + 79, spriteId);
-    }
-    for (i = 0; i < 5; i++) {
-        spriteId = HuSprCreate(lbl_1_bss_BF8[20], 100, 0);
-        HuSprGrpMemberSet(lbl_1_bss_5D4, i + 89, spriteId);
-    }
-    for (i = 0; i < 11; i++) {
-        spriteId = HuSprCreate(lbl_1_bss_BF8[i + 37], 100, 0);
-        HuSprGrpMemberSet(lbl_1_bss_5D4, i + 94, spriteId);
-    }
-    HuSprGrpPosSet(lbl_1_bss_5D4, lbl_1_rodata_58, lbl_1_rodata_5C);
-    for (i = 0; i < 105; i++) {
-        HuSprAttrSet(lbl_1_bss_5D4, i, HUSPR_ATTR_DISPOFF);
-    }
-    fn_1_E6F8();
-
-    lbl_1_bss_6A2[0] = HuWinExCreateFrame(lbl_1_rodata_60,
-        lbl_1_rodata_64, 544, 80, -1, 3);
-    HuWinAttrSet(lbl_1_bss_6A2[0], 2048);
-    HuWinMesSpeedSet(lbl_1_bss_6A2[0], 0);
-    HuWinPadMaskSet(lbl_1_bss_6A2[0], 1);
-    lbl_1_bss_6A0 = HuWinCreate(lbl_1_rodata_60, lbl_1_rodata_68,
-        544, 40, 0);
-    HuWinBGTPLvlSet(lbl_1_bss_6A0, lbl_1_rodata_20);
-    HuWinAttrSet(lbl_1_bss_6A0, 2048);
-    HuWinMesSpeedSet(lbl_1_bss_6A0, 0);
-    HuWinDispOff(lbl_1_bss_6A0);
-    HuWinPriSet(lbl_1_bss_6A0, 10);
-    Hu3DCameraLayerHookSet(2, 4, fn_1_18B8);
-}
-
-void fn_1_18B8(s16 cameraNo)
-{
-    Hu3DZClear();
-}
-
-void fn_1_18D8(void)
-{
-    float rot;
-
-    Hu3DAnimCreate(HuDataSelHeapReadNum(12451874, HU_MEMNUM_OVL,
-        HEAP_MODEL), lbl_1_bss_66E[1], lbl_1_data_472);
-    Hu3DAnimCreate(HuDataSelHeapReadNum(12451875, HU_MEMNUM_OVL,
-        HEAP_MODEL), lbl_1_bss_66E[1], lbl_1_data_479);
-    rot = lbl_1_rodata_20;
-    while (TRUE) {
-        Hu3DModelRotSet(lbl_1_bss_66E[1], lbl_1_rodata_20,
-            lbl_1_rodata_20, rot);
-        rot -= lbl_1_rodata_6C;
-        if (rot < lbl_1_rodata_20) {
-            rot += lbl_1_rodata_70;
-        }
-        HuPrcVSleep();
-    }
-}
-
-void fn_1_19B8(s32 value)
-{
-    void **property = &lbl_1_bss_838->property;
-
-    *property = (void *)value;
-}
-
+/* The settings list calls this when the player previews a sound entry. */
 void fn_1_E688(OptionAudioEntry *entry)
 {
     HuAudSStreamAllFadeOut(150);
+    /* This call has no playback effect; the preceding call fades all streamed tracks. */
     HuAudStreamFadeOut(10);
     if (entry->type == 0) {
         HuPrcSleep(30);
-        HuAudSStreamPlay((s16)entry->id);
+        HuAudSStreamPlay((s16)entry->audioId);
     } else {
-        HuAudFXPlay(entry->id);
+        HuAudFXPlay(entry->audioId);
         HuPrcSleep(20);
     }
 }
 
-void fn_1_E538(s16 page)
+/* Scene setup calls this to build the microphone test's volume meter sprites. */
+void fn_1_E6F8(void)
 {
-    OptionMessageEntry *entry = lbl_1_bss_AFC;
-    s16 entryCount;
-    s16 pageCount;
-    s16 row;
-    s16 column;
-
-    for (entryCount = 0; entry->type != -1; entryCount++, entry++) {
-    }
-    pageCount = (entryCount + 1) / 2;
-    entry = &lbl_1_bss_AFC[page * 2];
-    for (row = 0; row < 7; row++) {
-        for (column = 0; column < 2; column++, entry++) {
-            if (column + (row * 2) + (page * 2) >= entryCount) {
-                HuWinMesSet(lbl_1_bss_AE0[row][column],
-                    (s32)lbl_1_data_1AA8);
-            } else {
-                HuWinMesSet(lbl_1_bss_AE0[row][column], entry->message);
-            }
-        }
-    }
-}
-
-void fn_1_6504(s16 prizeNo)
-{
-    if (lbl_1_bss_8.prizeUnlocked[prizeNo] == FALSE) {
-        HuWinMesSet(lbl_1_bss_6A2[0], 1638501);
-    } else {
-        HuWinMesSet(lbl_1_bss_6A2[0],
-            lbl_1_bss_8.prizeDescription[prizeNo]);
-    }
-}
-
-void fn_1_6590(s16 firstPrize)
-{
+    s16 spriteId;
     s16 i;
 
-    for (i = 0; i < 7; i++) {
-        if (lbl_1_bss_8.prizeUnlocked[firstPrize + i] == FALSE) {
-            HuWinMesSet(lbl_1_bss_9EC[i][0], 1638450);
-            lbl_1_bss_A08[i][0] = 14;
-            lbl_1_bss_A08[i][1] = 19;
-            lbl_1_bss_A08[i][2] = 16;
-            lbl_1_bss_A08[i][3] = 195;
-            lbl_1_bss_A08[i][4] = 195;
-            lbl_1_bss_A08[i][5] = 195;
-            lbl_1_bss_A08[i][6] = 0;
-            HuWinMesSet(lbl_1_bss_9EC[i][1], (u32)lbl_1_bss_A08[i]);
-        } else {
-            HuWinMesSet(lbl_1_bss_9EC[i][0],
-                lbl_1_bss_8.prizeName[firstPrize + i]);
-            lbl_1_bss_A08[i][0] = 14;
-            lbl_1_bss_A08[i][1] = 19;
-            lbl_1_bss_A08[i][2] = 16;
-            sprintf(&lbl_1_bss_A08[i][3], lbl_1_data_486,
-                lbl_1_bss_8.prizeId[firstPrize + i]);
-            if (lbl_1_bss_A08[i][2] == '0') {
-                lbl_1_bss_A08[i][2] = ' ';
-                if (lbl_1_bss_A08[i][3] == '0') {
-                    lbl_1_bss_A08[i][3] = ' ';
+    lbl_1_bss_BF0[0] = HuSprGrpCreate(29);
+    spriteId = HuSprCreate(lbl_1_bss_BF8[48], 100, 0);
+    HuSprGrpMemberSet(lbl_1_bss_BF0[0], 0, spriteId);
+    HuSprPosSet(lbl_1_bss_BF0[0], 0, -170.0f, 10.0f);
+    for (i = 0; i < 4; i++) {
+        spriteId = HuSprCreate(lbl_1_bss_BF8[49], 100, 0);
+        HuSprGrpMemberSet(lbl_1_bss_BF0[0], i + 1, spriteId);
+        HuSprPosSet(lbl_1_bss_BF0[0], i + 1, -161.0f,
+            -10.0f);
+    }
+    for (i = 0; i < 8; i++) {
+        spriteId = HuSprCreate(lbl_1_bss_BF8[50], 110, 0);
+        HuSprGrpMemberSet(lbl_1_bss_BF0[0], i + 5, spriteId);
+        HuSprPosSet(lbl_1_bss_BF0[0], i + 5, i * 38 - 50, 10.0f);
+    }
+    for (i = 0; i < 8; i++) {
+        spriteId = HuSprCreate(lbl_1_bss_BF8[51], 105, 0);
+        HuSprGrpMemberSet(lbl_1_bss_BF0[0], i + 13, spriteId);
+        HuSprPosSet(lbl_1_bss_BF0[0], i + 13, i * 38 - 50,
+            10.0f);
+    }
+    for (i = 0; i < 8; i++) {
+        spriteId = HuSprCreate(lbl_1_bss_BF8[i + 52], 100, 0);
+        HuSprGrpMemberSet(lbl_1_bss_BF0[0], i + 21, spriteId);
+        HuSprPosSet(lbl_1_bss_BF0[0], i + 21, i * 38 - 50,
+            10.0f);
+    }
+    HuSprGrpPosSet(lbl_1_bss_BF0[0], 288.0f, 200.0f);
+    for (i = 0; i < 29; i++) {
+        HuSprAttrSet(lbl_1_bss_BF0[0], i, HUSPR_ATTR_DISPOFF);
+    }
+}
+
+/* Runs the microphone volume test with mode 1 forced temporarily.
+ * Restores the previous microphone setting after the test or a mount failure. */
+void fn_1_EA6C(void)
+{
+    s16 index;
+    s16 window;
+    s16 inputCount;
+    s16 mode = 0;
+    s32 oldMicSetting;
+    HUPROCESS *child;
+    s32 micVolume;
+    float progress;
+    float scale;
+
+    oldMicSetting = HuMCMicGet();
+    HuMCMicSet(1);
+    /* The initialization status is ignored; the explicit mount result controls the test screen. */
+    HuMCInit(0);
+    if (HuMCMount(1) != 0) {
+        HuMCClose();
+        HuMCMicSet(oldMicSetting);
+        HuWinDispOff(lbl_1_bss_6A0);
+        HuWinMesSet(lbl_1_bss_6A2[0], MESSNUM(MESS_OPTION_MESS, 67));
+        HuWinMesWait(lbl_1_bss_6A2[0]);
+        HuWinKeyWaitEntry(lbl_1_bss_6A2[0]);
+        HuWinMesWait(lbl_1_bss_6A2[0]);
+    } else {
+        HuSprGrpPosSet(lbl_1_bss_5D4, 288.0f, 200.0f);
+        HuSprAttrReset(lbl_1_bss_5D4, 4, 4);
+        for (index = 0; index < 29; index++) {
+            HuSprAttrReset(lbl_1_bss_BF0[0], index, 4);
+        }
+        for (index = 0; index < 4; index++) {
+            HuSprScaleSet(lbl_1_bss_BF0[0], index + 1,
+                0.0f, 0.0f);
+        }
+        for (index = 0; index < 8; index++) {
+            HuSprAttrSet(lbl_1_bss_BF0[0], index + 21, 4);
+        }
+        window = HuWinCreate(-10000.0f, 53.0f, 400, 40, 0);
+        HuWinPriSet(window, 10);
+        HuWinBGTPLvlSet(window, 0.0f);
+        HuWinAttrSet(window, 2048);
+        HuWinMesSpeedSet(window, 0);
+        HuWinMesSet(window, MESSNUM(MESS_OPTION_MESS, 65));
+        HuAudFXPlay(MSM_SE_MENU_38);
+        for (index = 1; index <= 10; index++) {
+            progress = (float)index / 10.0f;
+            HuWinPosSet(window,
+                288.0f - 200.0f * progress,
+                200.0f - 147.0f * progress);
+            HuWinScaleSet(window, progress, progress);
+            HuSprGrpScaleSet(lbl_1_bss_5D4, progress, progress);
+            HuSprGrpScaleSet(lbl_1_bss_BF0[0], progress, progress);
+            HuPrcVSleep();
+        }
+        HuMCVolSampleCreate();
+        HuMCShiftsSet(0);
+        HuWinMesSet(lbl_1_bss_6A2[0], MESSNUM(MESS_OPTION_MESS, 66));
+        HuWinMesSet(lbl_1_bss_6A0, MESSNUM(MESS_SYS_GUIDE, 22));
+        inputCount = 0;
+        for (;;) {
+            HuPrcVSleep();
+            if ((HuPadBtnDown[0] & 0x200) != 0) {
+                break;
+            }
+            for (index = 0; index < 8; index++) {
+                HuSprAttrSet(lbl_1_bss_BF0[0], index + 21, 4);
+            }
+            if (HuMCButtonGet() != 0) {
+                if ((inputCount++ & 15) == 0) {
+                    child = HuPrcChildCreate(fn_1_F0B0, 1000, 8192, 0,
+                        HuPrcCurrentGet());
+                    child->property = (void *)(mode++ & 3);
+                }
+                micVolume = HuMCVolGet(-50, 8);
+                for (index = 0; index < micVolume; index++) {
+                    HuSprAttrReset(lbl_1_bss_BF0[0], index + 21, 4);
                 }
             }
-            HuWinMesSet(lbl_1_bss_9EC[i][1], (u32)lbl_1_bss_A08[i]);
         }
+        for (index = 0; index < 8; index++) {
+            HuSprAttrSet(lbl_1_bss_BF0[0], index + 21, 4);
+        }
+        HuAudFXPlay(MSM_SE_MENU_39);
+        HuWinDispOff(lbl_1_bss_6A0);
+        for (index = 1; index <= 10; index++) {
+            progress = 1.0f -
+                (float)index / 10.0f;
+            HuWinPosSet(window,
+                288.0f - 200.0f * progress,
+                200.0f - 147.0f * progress);
+            HuWinScaleSet(window, progress, progress);
+            HuSprGrpScaleSet(lbl_1_bss_5D4, progress, progress);
+            HuSprGrpScaleSet(lbl_1_bss_BF0[0], progress, progress);
+            HuPrcVSleep();
+        }
+        HuWinKill(window);
+        for (index = 0; index < 105; index++) {
+            HuSprAttrSet(lbl_1_bss_5D4, index, 4);
+        }
+        for (index = 0; index < 29; index++) {
+            HuSprAttrSet(lbl_1_bss_BF0[0], index, 4);
+        }
+        HuSprGrpScaleSet(lbl_1_bss_5D4, 1.0f,
+            1.0f);
+        HuSprGrpPosSet(lbl_1_bss_5D4, 288.0f,
+            240.0f);
+        HuMCClose();
+        HuMCMicSet(oldMicSetting);
     }
 }
 
-void fn_1_B02C(s16 first, s16 count)
+/* The microphone test starts this child once per 16 updates with the talk button held, cycling
+* four overlapping feedback sprites that shrink and fade in. */
+void fn_1_F0B0(void)
 {
-    s16 i;
+    HUPROCESS *process;
+    s32 memberNo;
+    s32 frame;
+    float progress;
+    float scale;
 
-    for (i = 0; i < 5; i++) {
-        if (first + i >= count) {
-            HuWinHomeClear(lbl_1_bss_9EC[i][0]);
-            HuWinHomeClear(lbl_1_bss_9EC[i][1]);
-        } else {
-            sprintf(lbl_1_bss_9D8[i], lbl_1_data_486, first + i + 1);
-            HuWinInsertMesSet(lbl_1_bss_9EC[i][0],
-                (u32)lbl_1_bss_9D8[i], 0);
-            HuWinMesSet(lbl_1_bss_9EC[i][0], 4390973);
-            HuWinMesSet(lbl_1_bss_9EC[i][1],
-                MgDataTbl[lbl_1_bss_8.consecutiveRecord[first + i]].nameMes);
-        }
+    process = HuPrcCurrentGet();
+    memberNo = (s32)process->property;
+    memberNo++;
+    HuSprScaleSet(lbl_1_bss_BF0[0], memberNo, 0.0f,
+        0.0f);
+    for (frame = 1; frame <= 55; frame++) {
+        progress = (float)frame / 55.0f;
+        scale = cos((3.141592653589793 *
+            (90.0f * progress)) / 180.0);
+        HuSprScaleSet(lbl_1_bss_BF0[0], memberNo, scale, scale);
+        HuSprTPLvlSet(lbl_1_bss_BF0[0], memberNo, progress);
+        HuPrcVSleep();
+    }
+    HuPrcEnd();
+    while (TRUE) {
+        HuPrcVSleep();
     }
 }
 
-s16 fn_1_C324(s16 flag, s16 type)
-{
-    MGDATA *data = MgDataTbl;
-    s16 count = 0;
-    s16 index = count;
-
-    while (data->ovl != 65535) {
-        if ((data->flag & flag) && data->type == type) {
-            if (lbl_1_bss_8.minigameUnlocked[index] == FALSE) {
-                lbl_1_bss_848[count] = 4390943;
-            } else {
-                lbl_1_bss_848[count] = data->nameMes;
-            }
-            count++;
-        }
-        index++;
-        data++;
-    }
-    return count;
-}
-
+/* Option Mode resource setup calls this to load models and joint motions. */
 void fn_1_F1D8(void)
 {
     OptionModelEntry *entry = lbl_1_data_1AB0;
     s16 i;
 
-    for (i = 0; entry->dataNum != 4294967295; entry++, i++) {
+    for (i = 0; entry->dataNum != OPTION_MODEL_END; entry++, i++) {
         if (entry->jointModel == -1) {
             lbl_1_bss_66E[i] = Hu3DModelCreateData(entry->dataNum);
             Hu3DModelPosSetV(lbl_1_bss_66E[i], &entry->pos);
@@ -565,6 +429,7 @@ void fn_1_F1D8(void)
     }
 }
 
+/* Option Mode resource setup calls this to load its sprite animations. */
 void fn_1_F394(void)
 {
     s16 i;
@@ -574,6 +439,7 @@ void fn_1_F394(void)
     }
 }
 
+/* Menu callbacks call this to select both texture animations on a model. */
 void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2)
 {
     s16 i;
@@ -591,6 +457,7 @@ void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2)
     }
 }
 
+/* Choice screens call this before deciding whether a model needs an animation change. */
 BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2)
 {
     HU3D_TEXANIM *anim;
@@ -615,6 +482,7 @@ BOOL fn_1_F544(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2)
     return TRUE;
 }
 
+/* Option screens call this to read a control sprite's current horizontal scale. */
 float fn_1_F684(s16 groupId, s16 memberNo)
 {
     HUSPRITE *sprite = &HuSprData[HuSprGrpData[groupId].sprId[memberNo]];
