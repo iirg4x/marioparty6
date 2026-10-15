@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 42.93% | 59.28% |
+| Entire project | 43.44% | 59.97% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 32.87% | 33.96% |
+| REL modules | 33.49% | 35.08% |
+
+Option Mode (`optionDll`) selects all **61 functions** from **5 complete translation units**; its linked REL matches retail.
 
 staffdll (`staffdll`) selects all **97 functions** from **2 complete translation units**; its linked REL matches retail.
 
