@@ -2344,6 +2344,32 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m658dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m658dll/gameplay.c",
+                extra_cflags=["-pooldata", "off", "-inline", "noauto"],
+            ),
+            Object(
+                Matching,
+                "REL/m658dll/main.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m658dll/math_camera.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m658dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
