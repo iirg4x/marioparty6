@@ -6,11 +6,26 @@ Sections:
 	.data       type:data align:8
 	.bss        type:bss align:8
 
-REL/optionDll/option.c:
-	.text       start:0x00000000 end:0x0000F6D4
-	.rodata     start:0x00000000 end:0x00000348
-	.data       start:0x00000000 end:0x00002150
+REL/optionDll/main.c:
+	.text       start:0x00000000 end:0x00004738
+	.rodata     start:0x00000000 end:0x00000118
+	.data       start:0x00000000 end:0x00000450
 	.bss        start:0x00000000 end:0x00000CE8
+
+REL/optionDll/records.c:
+	.text       start:0x00004738 end:0x0000C484
+	.rodata     start:0x00000118 end:0x00000260
+	.data       start:0x00000450 end:0x00000510
+
+REL/optionDll/sound_test.c:
+	.text       start:0x0000C484 end:0x0000E688
+	.rodata     start:0x00000260 end:0x000002F0
+	.data       start:0x00000510 end:0x00001AB0
+
+REL/optionDll/option.c:
+	.text       start:0x0000E688 end:0x0000F6D4
+	.rodata     start:0x000002F0 end:0x00000348
+	.data       start:0x00001AB0 end:0x00002150
 
 REL/optionDll/runtime.c:
 	.text       start:0x0000F6D4 end:0x00010118
