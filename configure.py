@@ -1245,7 +1245,16 @@ config.libs = [
     Rel(
         "endingdll",
         objects={
-            Object(NonMatching, "REL/endingdll/ending.c"),
+            Object(
+                Matching,
+                "REL/endingdll/effects.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/endingdll/ending.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
             Object(
                 Matching,
                 "REL/endingdll/runtime.c",

@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 43.70% | 60.13% |
+| Entire project | 44.32% | 60.62% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 33.81% | 35.34% |
+| REL modules | 34.56% | 36.13% |
+
+Ending (`endingdll`) selects all **159 functions** from **3 complete translation units**; its linked REL matches retail.
 
 T Minus Five (`m658dll`) selects all **146 functions** from **4 complete translation units**; its linked REL matches retail.
 
