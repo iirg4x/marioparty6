@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 44.32% | 60.62% |
+| Entire project | 44.69% | 60.86% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 34.56% | 36.13% |
+| REL modules | 35.01% | 36.54% |
+
+Ball Dozers (`m627dll`) selects all **94 functions** from **3 complete translation units**; its linked REL matches retail.
 
 Ending (`endingdll`) selects all **159 functions** from **3 complete translation units**; its linked REL matches retail.
 
