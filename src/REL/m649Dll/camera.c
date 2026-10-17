@@ -303,9 +303,6 @@ static inline Vec *m649_local_1810_018BC(void)
 /* Returns the tangent using the double-precision math routine. */
 extern inline float tanf(float x) { return (float)tan(x); }
 
-/* Provides the single-precision remainder operation used by the angle helpers. */
-_MATH_INLINE float fmodf(float x, float m) { return (float)fmod((double)x, (double)m); }
-
 /* fn_1_49E4 finds or reserves the resource's cache slot before loading a joint motion. */
 static inline s32 m649_local_4858_049E4(s32 handle)
 {
