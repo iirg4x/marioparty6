@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 44.69% | 60.86% |
+| Entire project | 45.23% | 60.99% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 35.01% | 36.54% |
+| REL modules | 35.66% | 36.75% |
+
+Endurance Alley (`mgmrenshodll`) selects all **123 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Ball Dozers (`m627dll`) selects all **94 functions** from **3 complete translation units**; its linked REL matches retail.
 
