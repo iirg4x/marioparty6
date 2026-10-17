@@ -235,8 +235,6 @@ static inline OMOBJ *m649_local_6DB0_06FAC(s32 type, s32 id)
     return NULL;
 }
 
-_MATH_INLINE float fmodf(float x, float m) { return (float)fmod((double)x, (double)m); }
-
 /* Called by fn_1_83BC when a route starts to select the prop's motion and blend time. */
 static inline void m649_local_6E38_07120(OMOBJ *object, s32 index)
 {

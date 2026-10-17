@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 45.23% | 60.99% |
+| Entire project | 45.78% | 61.26% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 35.66% | 36.75% |
+| REL modules | 36.33% | 37.19% |
+
+Banana Shake (`m675Dll`) selects all **237 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Endurance Alley (`mgmrenshodll`) selects all **123 functions** from **8 complete translation units**; its linked REL matches retail.
 

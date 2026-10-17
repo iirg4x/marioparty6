@@ -72,6 +72,9 @@ double fmod(double x, double y);
 double log(double x);
 double pow(double x, double y);
 float tanf(float x);
+#ifndef _MATH_H
+_MATH_INLINE float fmodf(float x, float m) { return (float)fmod((double)x, (double)m); }
+#endif /* _MATH_H */
 
 #ifdef __MWERKS__
 extern inline double fabs(double x)
