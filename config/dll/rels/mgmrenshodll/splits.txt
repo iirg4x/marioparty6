@@ -5,3 +5,48 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/mgmrenshodll/preview.c:
+	.text       start:0x00000000 end:0x00000E9C
+	.rodata     start:0x00000000 end:0x00000040
+	.bss        start:0x00000000 end:0x000000A8
+
+REL/mgmrenshodll/camera.c:
+	.text       start:0x00000E9C end:0x00001250
+	.rodata     start:0x00000040 end:0x00000060
+	.data       start:0x00000000 end:0x00000010
+	.bss        start:0x000000A8 end:0x000000B8
+
+REL/mgmrenshodll/messages.c:
+	.text       start:0x00001250 end:0x00002C88
+	.rodata     start:0x00000060 end:0x00000080
+	.data       start:0x00000010 end:0x000001C8
+	.bss        start:0x000000B8 end:0x000000C8
+
+REL/mgmrenshodll/course.c:
+	.text       start:0x00002C88 end:0x000078FC
+	.rodata     start:0x00000080 end:0x000000E8
+	.data       start:0x000001C8 end:0x00000298
+	.bss        start:0x000000C8 end:0x00000118
+
+REL/mgmrenshodll/scenery.c:
+	.text       start:0x000078FC end:0x0000927C
+	.rodata     start:0x000000E8 end:0x00000150
+	.data       start:0x00000298 end:0x00000338
+	.bss        start:0x00000118 end:0x00000140
+
+REL/mgmrenshodll/player.c:
+	.text       start:0x0000927C end:0x0000DC60
+	.rodata     start:0x00000150 end:0x000001D0
+	.data       start:0x00000338 end:0x00000500
+	.bss        start:0x00000140 end:0x00000150
+
+REL/mgmrenshodll/main.c:
+	.text       start:0x0000DC60 end:0x0000F810
+	.rodata     start:0x000001D0 end:0x00000248
+	.data       start:0x00000500 end:0x00000558
+	.bss        start:0x00000150 end:0x0000015C
+
+REL/mgmrenshodll/runtime.c:
+	.text       start:0x0000F810 end:0x00010254
+	.rodata     start:0x00000248 end:0x00000260
