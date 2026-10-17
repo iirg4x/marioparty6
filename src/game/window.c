@@ -1,8 +1,5 @@
 // Manages the game's message windows, text rendering, choices, and speaker portraits.
-#define _MATH_H
-#define M_PI 3.141592653589793
-double sin(double x);
-double cos(double x);
+#include "dolphin/math.h"
 #include "game/window.h"
 #include "game/gamework.h"
 #include "game/process.h"
@@ -21,7 +18,10 @@ double cos(double x);
 #include "stdarg.h"
 
 #define WIN_COMKEY_MAX 256
+#define WIN_COMKEY_INDEX_MASK 255
 #define WIN_TILE_DIMENSION_MASK 65520
+#define WIN_BG_BLOCK_WIDTH_MASK 248
+#define WIN_BG_BLOCK_HEIGHT_MASK 252
 #define WIN_MESSAGE_INDEX_MASK 65535
 #define WIN_DECIMAL_DIGIT_MASK 15
 #define WIN_INLINE_MESSAGE_POINTER_BIT_PATTERN 0x80000000U
@@ -36,8 +36,8 @@ typedef struct spcFontTbl_s {
 } SPCFONTTBL;
 
 typedef struct winComKey_s {
-    s16 remainingPolls; // Scripted-input polls remaining; each unpaused HuWinComKeyGet call
-                        // consumes one.
+    s16 remainingPolls; // Scripted-input polls remaining; calls that read this entry consume one
+                        // poll.
     u32 controllerKey[GW_PLAYER_MAX]; // Input mask supplied for each controller port during this
                                       // entry.
 } WINCOMKEY;
@@ -347,7 +347,7 @@ HUWINID HuWinCreate(float posX, float posY, s16 winW, s16 winH, s16 frame)
     winP->charEntry = HuMemDirectMalloc(HEAP_HEAP, sizeof(WINCHARENTRY)*winP->charEntryMax);
     winP->attr = HUWIN_ATTR_NONE;
     winP->stat = HUWIN_STAT_NONE;
-    /* unk94 is never read by the game's code, so it keeps its offset name. */
+    /* This field is retained in window state but is not read by the game. */
     winP->unk94 = 0;
     winP->mesTime = 0;
     winP->mesX = winP->mesY = 0;
@@ -705,8 +705,8 @@ static u8 winBGMake(ANIMDATA *bgAnim)
 
     w = bgAnim->bmp->sizeX;
     h = bgAnim->bmp->sizeY;
-    blockW = (w+7) & 248;
-    blockH = (h+3) & 252;
+    blockW = (w+7) & WIN_BG_BLOCK_WIDTH_MASK;
+    blockH = (h+3) & WIN_BG_BLOCK_HEIGHT_MASK;
     bmpData = bgAnim->bmp->data = HuMemDirectMallocNum(HEAP_HEAP, blockW*blockH, HU_MEMNUM_OVL);
     for(i=0; i<h; i++) {
         if(i == 0) {
@@ -1195,8 +1195,8 @@ static void HuWinChoice(HUWIN *winP) {
     WINCHOICE *choiceP;
     float choiceDist;
     float minChoiceDist;
-    s16 choiceDistY;
     s16 key;
+    s16 choiceDistY;
     s16 choiceCurrX;
     s16 choiceCurrY;
     s16 choiceCurr;
@@ -1371,7 +1371,6 @@ static void HuWinChoice(HUWIN *winP) {
     } else if((key & PAD_BUTTON_B) && !(winP->attr & HUWIN_ATTR_NOCANCEL)) {
         HuAudFXPlay(MSM_SE_CMN_04);
         // Canceling keeps the previously stored activePadKey.
-        (void)key;
         winP->choice = -1;
         winP->stat = 0;
     }
@@ -1572,7 +1571,7 @@ void HuWinBGColSet(HUWINID winId, GXColor *bgCol)
 }
 
 // Sets the reveal threshold, advanced by three timing units per frame; zero removes the glyph
-// delay.
+// delay and retains the current timer value.
 void HuWinMesSpeedSet(HUWINID winId, s16 mesSpeed)
 {
     HUWIN *winP = &winData[winId];
@@ -1668,7 +1667,7 @@ static char *mesWordTblEngPlural[10] = {
 };
 
 // Concatenates decimal digits from the whole inserted message, ignoring nondigits and skipping
-// the arguments of the handled message controls.
+// the arguments of the handled message controls. Its 12-byte digit buffer has no bounds check.
 int HuWinAtoi(char *message)
 {
     char *messageCursor;
@@ -1701,10 +1700,6 @@ int HuWinAtoi(char *message)
     for(placeValue=1, digitIndex=digitCount-1; digitIndex>=0; digitIndex--, placeValue *= 10) {
         value += digit[digitIndex]*placeValue;
     }
-    (void)messageCursor;
-    (void)messageCursor;
-    (void)messageCursor;
-    (void)messageCursor;
     return value;
 }
 
@@ -1762,8 +1757,7 @@ static char *HuWinMesCopy(HUWINID winId, char *messP)
     winP->mesCopy = messageOutput = HuMemDirectMalloc(HEAP_HEAP, messageLength*2);
     for(messageInput=messP; *messageInput;) {
         if(*messageInput == 25) {
-            *messageOutput = *messageInput;
-            messageOutput++;
+            *messageOutput++ = *messageInput;
             messageInput++;
             insertMesNo = *messageInput-1;
             if(winP->messDataInsert[insertMesNo]) {
@@ -1784,15 +1778,14 @@ static char *HuWinMesCopy(HUWINID winId, char *messP)
             }
 
         }
-        *messageOutput = *messageInput;
-        messageOutput++;
+        *messageOutput++ = *messageInput;
         messageInput++;
     }
     *messageOutput = 0;
     return winP->mesCopy;
 }
 
-// Checks whether a message contains a count insertion that needs plural handling.
+// Checks for the pluralizing count control, skipping the argument bytes of other handled controls.
 static BOOL HuWinMesCopyCheck(char *messP)
 {
     char *s = messP;
@@ -1900,7 +1893,8 @@ void HuWinMesWait(HUWINID winId)
     }
 }
 
-// Adds an animated sprite to a window, used for speaker portraits and other window artwork.
+// Adds an animated sprite to a window for portraits and other artwork; returns 11 if no slot is
+// free, leaving the newly created sprite unattached.
 s16 HuWinAnimSet(HUWINID winId, ANIMDATA *anim, s16 animBank, float posX, float posY)
 {
     HUWIN *winP = &winData[winId];
@@ -1908,7 +1902,8 @@ s16 HuWinAnimSet(HUWINID winId, ANIMDATA *anim, s16 animBank, float posX, float 
     return HuWinSprSet(winId, sprId, posX, posY);
 }
 
-// Adds a sprite to the first free window sprite slot at the requested window-relative point.
+// Adds a sprite to the first free window slot at the requested window-relative point; returns 11
+// if all slots are full, leaving the sprite unattached.
 s16 HuWinSprSet(HUWINID winId, HUSPRID sprId, float posX, float posY)
 {
     HUWIN *winP = &winData[winId];
@@ -1983,8 +1978,8 @@ void HuWinDispOn(HUWINID winId)
     winP->attr &= ~HUWIN_ATTR_DISPOFF;
 }
 
-// Queues neutral keys (or HUWIN_COMKEY_NONE passthrough per controller) for time input polls,
-// then the requested keys for one poll of the shared queue.
+// Queues neutral keys (or HUWIN_COMKEY_NONE passthrough per controller) for time polls (zero still
+// consumes one poll), then the requested keys for one poll of the shared queue.
 void HuWinComKeyWait(s32 keyP1, s32 keyP2, s32 keyP3, s32 keyP4, s16 time)
 {
     _HuWinComKeySet((keyP1 == HUWIN_COMKEY_NONE) ? HUWIN_COMKEY_NONE : 0,
@@ -2000,7 +1995,8 @@ void HuWinComKeySet(s32 keyP1, s32 keyP2, s32 keyP3, s32 keyP4)
     _HuWinComKeySet(keyP1, keyP2, keyP3, keyP4, 1);
 }
 
-// Appends one scripted input entry, indexed by controller port, to the window input ring buffer.
+// Writes one scripted input entry, indexed by controller port, at the current ring index; wrapping
+// does not check whether unread entries will be overwritten.
 void _HuWinComKeySet(s32 keyP1, s32 keyP2, s32 keyP3, s32 keyP4, s16 time)
 {
     winComKeyBuf[comKeyIdx].controllerKey[0] = keyP1;
@@ -2009,7 +2005,7 @@ void _HuWinComKeySet(s32 keyP1, s32 keyP2, s32 keyP3, s32 keyP4, s16 time)
     winComKeyBuf[comKeyIdx].controllerKey[3] = keyP4;
     winComKeyBuf[comKeyIdx].remainingPolls = time;
     comKeyIdx++;
-    comKeyIdx &= 255;
+    comKeyIdx &= WIN_COMKEY_INDEX_MASK;
 }
 
 // Reads live input from enabled controller ports when paused or no script is queued.
@@ -2041,7 +2037,7 @@ void HuWinComKeyGet(HUWINID winId, u32 *key)
         winComKeyBuf[comKeyIdxNow].remainingPolls--;
         if(winComKeyBuf[comKeyIdxNow].remainingPolls <= 0) {
             comKeyIdxNow++;
-            comKeyIdxNow &= 255;
+            comKeyIdxNow &= WIN_COMKEY_INDEX_MASK;
         }
     }
 }
@@ -2097,7 +2093,8 @@ void HuWinMesSizeCancelCRSet(s32 cancelCR)
 }
 
 // Measures an inclusive message-number range, then clears insertion sizes and resets tab width
-// and newline handling. If messEnd precedes messStart, returns 100 by 100 without those resets.
+// and newline handling. If messEnd precedes messStart, sets maxSize to 100 by 100 without those
+// resets.
 void HuWinMesMaxSizeBetGet(HuVec2f *maxSize, u32 messStart, u32 messEnd)
 {
     u32 i;
@@ -2268,7 +2265,7 @@ static s32 GetMesMaxSizeSub2(HUWIN *winP, void *data)
                 break;
 
             case 10:
-                if(!(winP->attr & 256)) {
+                if(!(winP->attr & HUWIN_ATTR_NOCR)) {
                     charW = 0;
                     messEnd = TRUE;
                 }
@@ -2361,10 +2358,11 @@ void HuWinDisablePlayerReset(HUWINID winId, u8 controllerBits)
     winP->disablePlayer &= ~controllerBits;
 }
 
-// No-op message callback that callers may explicitly install when no action is needed.
+// Optional message callback for callers that want no window-specific action.
 void HuWinCallbackStub(HUWINID winId, u32 mess, s16 c)
 {
     (void)mess;
+    // The callback leaves the message window unchanged.
     &winData[winId];
 
 }
@@ -2389,7 +2387,7 @@ static unsigned int speakerFileTbl[HUWIN_SPEAKER_MAX] = {
     WIN_ANM_face_wanwan, WIN_ANM_face_sunmoon
 };
 
-// Creates the file-selection message window; sun, moon, and sun/moon speakers use themed frames.
+// Creates an extended message window; sun, moon, and sun/moon speakers select themed frames.
 HUWINID HuWinExCreate(float x, float y, s16 w, s16 h, s16 speakerNo)
 {
     s16 frame;
