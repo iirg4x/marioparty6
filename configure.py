@@ -2400,6 +2400,52 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "mgmrenshodll",
+        objects={
+            Object(
+                Matching,
+                "REL/mgmrenshodll/camera.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmrenshodll/course.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmrenshodll/main.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmrenshodll/messages.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmrenshodll/player.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmrenshodll/preview.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmrenshodll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmrenshodll/scenery.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
