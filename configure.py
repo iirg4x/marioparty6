@@ -2723,6 +2723,27 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "micquizdll",
+        objects={
+            Object(
+                Matching,
+                "REL/micquizdll/effects.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/micquizdll/quiz.c",
+                extra_cflags=["-pooldata", "off", "-sym", "on"],
+            ),
+            Object(
+                Matching,
+                "REL/micquizdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
