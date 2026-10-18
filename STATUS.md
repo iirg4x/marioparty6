@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 46.33% | 61.49% |
+| Entire project | 46.98% | 61.64% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 36.99% | 37.57% |
+| REL modules | 37.78% | 37.81% |
+
+Mario Party 6 (`micquizseldll`) selects all **173 functions** from **2 complete translation units**; its linked REL matches retail.
 
 Decathlon Park (`mgmdecathlondll`) selects all **120 functions** from **8 complete translation units**; its linked REL matches retail.
 
