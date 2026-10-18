@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 46.98% | 61.64% |
+| Entire project | 47.95% | 61.93% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 37.78% | 37.81% |
+| REL modules | 38.95% | 38.28% |
+
+Battle Bridge (`mgmbattledll`) selects all **145 functions** from **6 complete translation units**; its linked REL matches retail.
 
 Mario Party 6 (`micquizseldll`) selects all **173 functions** from **2 complete translation units**; its linked REL matches retail.
 
