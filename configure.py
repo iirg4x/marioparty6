@@ -2590,6 +2590,52 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "mgmbingodll",
+        objects={
+            Object(
+                Matching,
+                "REL/mgmbingodll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmbingodll/text_00000.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmbingodll/text_00E9C.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmbingodll/text_014B8.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmbingodll/text_03B6C.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmbingodll/text_0BF3C.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmbingodll/text_10548.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mgmbingodll/text_11410.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":

@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 47.95% | 61.93% |
+| Entire project | 48.59% | 62.27% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 38.95% | 38.28% |
+| REL modules | 39.73% | 38.84% |
+
+Treetop Bingo (`mgmbingodll`) selects all **140 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Battle Bridge (`mgmbattledll`) selects all **145 functions** from **6 complete translation units**; its linked REL matches retail.
 
