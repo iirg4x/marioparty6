@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 52.76% | 63.63% |
+| Entire project | 53.14% | 63.95% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 44.78% | 41.06% |
+| REL modules | 45.25% | 41.59% |
+
+Trick or Tree (`m662dll`) selects all **97 functions** from **5 complete translation units**; its linked REL matches retail.
 
 Solo Mode (`mdsingdll`) selects all **306 functions** from **3 complete translation units**; its linked REL matches retail.
 
