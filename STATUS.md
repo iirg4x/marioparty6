@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 48.59% | 62.27% |
+| Entire project | 50.61% | 62.71% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 39.73% | 38.84% |
+| REL modules | 42.19% | 39.56% |
+
+Mic Mode (`mdmicdll`) selects all **326 functions** from **3 complete translation units**; its linked REL matches retail.
 
 Treetop Bingo (`mgmbingodll`) selects all **140 functions** from **8 complete translation units**; its linked REL matches retail.
 
