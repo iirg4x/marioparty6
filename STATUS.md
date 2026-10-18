@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 54.82% | 65.12% |
+| Entire project | 55.16% | 65.37% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 47.29% | 43.50% |
+| REL modules | 47.69% | 43.91% |
+
+Rocky Road (`m644dll`) selects all **148 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Speak Up (`micquizdll`) selects all **373 functions** from **3 complete translation units**; its linked REL matches retail.
 
