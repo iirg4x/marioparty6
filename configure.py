@@ -1560,12 +1560,21 @@ config.libs = [
     Rel(
         "mdsingdll",
         objects={
-            Object(NonMatching, "REL/mdsingdll/mdsing.c"),
+            Object(
+                Matching,
+                "REL/mdsingdll/mdsing.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
             Object(
                 Matching,
                 "REL/mdsingdll/runtime.c",
                 mw_version=config.linker_version,
                 extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/mdsingdll/stage.c",
+                extra_cflags=["-pooldata", "off"],
             ),
         },
     ),

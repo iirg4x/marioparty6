@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 51.00% | 63.09% |
+| Entire project | 52.76% | 63.63% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 42.66% | 40.18% |
+| REL modules | 44.78% | 41.06% |
+
+Solo Mode (`mdsingdll`) selects all **306 functions** from **3 complete translation units**; its linked REL matches retail.
 
 Conveyor Bolt (`m631Dll`) selects all **128 functions** from **4 complete translation units**; its linked REL matches retail.
 
