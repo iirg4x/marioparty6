@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 53.14% | 63.95% |
+| Entire project | 54.82% | 65.12% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 45.25% | 41.59% |
+| REL modules | 47.29% | 43.50% |
+
+Speak Up (`micquizdll`) selects all **373 functions** from **3 complete translation units**; its linked REL matches retail.
 
 Trick or Tree (`m662dll`) selects all **97 functions** from **5 complete translation units**; its linked REL matches retail.
 
