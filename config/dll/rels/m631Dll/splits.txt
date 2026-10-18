@@ -5,3 +5,23 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m631Dll/game.c:
+	.text       start:0x00000000 end:0x00005284
+	.rodata     start:0x00000000 end:0x00000290
+	.data       start:0x00000000 end:0x00000100
+	.bss        start:0x00000000 end:0x00000010
+
+REL/m631Dll/actor.c:
+	.text       start:0x00005284 end:0x0000AAD8
+	.rodata     start:0x00000290 end:0x00000490
+	.data       start:0x00000100 end:0x00000298
+
+REL/m631Dll/utilities.c:
+	.text       start:0x0000AAD8 end:0x0000B288
+	.rodata     start:0x00000490 end:0x000004A8
+	.bss        start:0x00000010 end:0x00001420
+
+REL/m631Dll/runtime.c:
+	.text       start:0x0000B288 end:0x0000BCCC
+	.rodata     start:0x000004A8 end:0x000004C0
