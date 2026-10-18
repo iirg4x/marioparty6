@@ -5,3 +5,46 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m644dll/prolog.c:
+	.text       start:0x00000000 end:0x000000B0
+
+REL/m644dll/menu.c:
+	.text       start:0x000000B0 end:0x000005A8
+	.rodata     start:0x00000000 end:0x00000010
+	.data       start:0x00000000 end:0x00000040
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m644dll/camera.c:
+	.text       start:0x000005A8 end:0x00001690
+	.rodata     start:0x00000010 end:0x000000F0
+	.data       start:0x00000040 end:0x00000070
+	.bss        start:0x00000008 end:0x00000040
+
+REL/m644dll/scene.c:
+	.text       start:0x00001690 end:0x0000215C
+	.rodata     start:0x000000F0 end:0x00000168
+	.data       start:0x00000070 end:0x00000178
+	.bss        start:0x00000040 end:0x00000078
+
+REL/m644dll/player.c:
+	.text       start:0x0000215C end:0x00006394
+	.rodata     start:0x00000168 end:0x000001E0
+	.data       start:0x00000178 end:0x000002C0
+	.bss        start:0x00000078 end:0x000003D8
+
+REL/m644dll/routes.c:
+	.text       start:0x00006394 end:0x00007CB8
+	.rodata     start:0x000001E0 end:0x00000458
+	.data       start:0x000002C0 end:0x000003D8
+	.bss        start:0x000003D8 end:0x00000760
+
+REL/m644dll/stage.c:
+	.text       start:0x00007CB8 end:0x000096CC
+	.rodata     start:0x00000458 end:0x00000510
+	.data       start:0x000003D8 end:0x00000500
+	.bss        start:0x00000760 end:0x000007F0
+
+REL/m644dll/runtime.c:
+	.text       start:0x000096CC end:0x0000A110
+	.rodata     start:0x00000510 end:0x00000528
