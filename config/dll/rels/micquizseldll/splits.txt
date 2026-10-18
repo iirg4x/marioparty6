@@ -5,3 +5,13 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/micquizseldll/quiz.c:
+	.text       start:0x00000000 end:0x00012FD0
+	.rodata     start:0x00000000 end:0x000002B8
+	.data       start:0x00000000 end:0x0000052A
+	.bss        start:0x00000000 end:0x000002E4
+
+REL/micquizseldll/runtime.c:
+	.text       start:0x00012FD0 end:0x00013A14
+	.rodata     start:0x000002B8 end:0x000002D0

@@ -2538,6 +2538,22 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "micquizseldll",
+        objects={
+            Object(
+                Matching,
+                "REL/micquizseldll/quiz.c",
+                extra_cflags=["-pooldata", "off", "-sym", "on"],
+            ),
+            Object(
+                Matching,
+                "REL/micquizseldll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
