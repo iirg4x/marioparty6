@@ -2657,6 +2657,32 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m631Dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m631Dll/actor.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m631Dll/game.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m631Dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/m631Dll/utilities.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":

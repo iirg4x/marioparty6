@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 50.61% | 62.71% |
+| Entire project | 51.00% | 63.09% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 42.19% | 39.56% |
+| REL modules | 42.66% | 40.18% |
+
+Conveyor Bolt (`m631Dll`) selects all **128 functions** from **4 complete translation units**; its linked REL matches retail.
 
 Mic Mode (`mdmicdll`) selects all **326 functions** from **3 complete translation units**; its linked REL matches retail.
 
