@@ -2636,6 +2636,27 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "mdmicdll",
+        objects={
+            Object(
+                Matching,
+                "REL/mdmicdll/effects.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mdmicdll/mic_mode.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/mdmicdll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
