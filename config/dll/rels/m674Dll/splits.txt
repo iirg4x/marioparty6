@@ -5,3 +5,48 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m674Dll/main.c:
+	.text       start:0x00000000 end:0x00000F8C
+	.rodata     start:0x00000000 end:0x00000050
+	.data       start:0x00000000 end:0x000000C8
+	.bss        start:0x00000000 end:0x00000048
+
+REL/m674Dll/scene.c:
+	.text       start:0x00000F8C end:0x000052FC
+	.rodata     start:0x00000050 end:0x00000118
+	.data       start:0x000000C8 end:0x000000D8
+	.bss        start:0x00000048 end:0x000002E0
+
+REL/m674Dll/player.c:
+	.text       start:0x000052FC end:0x00008ACC
+	.rodata     start:0x00000118 end:0x00000290
+	.data       start:0x000000D8 end:0x00000270
+	.bss        start:0x000002E0 end:0x00000310
+
+REL/m674Dll/targets.c:
+	.text       start:0x00008ACC end:0x0000E0C4
+	.rodata     start:0x00000290 end:0x00000560
+	.data       start:0x00000270 end:0x00000678
+	.bss        start:0x00000310 end:0x000006C0
+
+REL/m674Dll/effects.c:
+	.text       start:0x0000E0C4 end:0x0000FA48
+	.rodata     start:0x00000560 end:0x000008B8
+	.data       start:0x00000678 end:0x00000680
+	.bss        start:0x000006C0 end:0x000006C8
+
+REL/m674Dll/score.c:
+	.text       start:0x0000FA48 end:0x000101B0
+	.rodata     start:0x000008B8 end:0x000008F0
+	.data       start:0x00000680 end:0x000006B0
+	.bss        start:0x000006C8 end:0x000006D0
+
+REL/m674Dll/collision.c:
+	.text       start:0x000101B0 end:0x000114EC
+	.rodata     start:0x000008F0 end:0x00000928
+	.bss        start:0x000006D0 end:0x000006D4
+
+REL/m674Dll/runtime.c:
+	.text       start:0x000114EC end:0x00011F30
+	.rodata     start:0x00000928 end:0x00000940
