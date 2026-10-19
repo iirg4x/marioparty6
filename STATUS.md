@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 55.84% | 65.59% |
+| Entire project | 56.25% | 66.04% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 48.52% | 44.27% |
+| REL modules | 49.02% | 44.99% |
+
+Strawberry Shortfuse (`m680Dll`) selects all **110 functions** from **5 complete translation units**; its linked REL matches retail.
 
 Sink or Swim (`m625Dll`) selects all **96 functions** from **8 complete translation units**; its linked REL matches retail.
 
