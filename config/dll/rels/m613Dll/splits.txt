@@ -5,3 +5,45 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m613Dll/geometry.c:
+	.text       start:0x00000000 end:0x000011F8
+	.rodata     start:0x00000000 end:0x00000080
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m613Dll/bitmap.c:
+	.text       start:0x000011F8 end:0x00003C80
+	.rodata     start:0x00000080 end:0x000000B0
+	.data       start:0x00000000 end:0x00000078
+	.bss        start:0x00000008 end:0x000000F8
+
+REL/m613Dll/player.c:
+	.text       start:0x00003C80 end:0x0000EE98
+	.rodata     start:0x000000B0 end:0x00000130
+	.data       start:0x00000078 end:0x00000178
+	.bss        start:0x000000F8 end:0x00000400
+
+REL/m613Dll/easing.c:
+	.text       start:0x0000EE98 end:0x0000F048
+	.rodata     start:0x00000130 end:0x00000158
+
+REL/m613Dll/camera.c:
+	.text       start:0x0000F048 end:0x0000F3C4
+	.rodata     start:0x00000158 end:0x00000160
+	.data       start:0x00000178 end:0x00000210
+
+REL/m613Dll/progress.c:
+	.text       start:0x0000F3C4 end:0x00010774
+	.rodata     start:0x00000160 end:0x000001B8
+	.data       start:0x00000210 end:0x00000270
+	.bss        start:0x00000400 end:0x00001258
+
+REL/m613Dll/sequence.c:
+	.text       start:0x00010774 end:0x00011024
+	.rodata     start:0x000001B8 end:0x00000258
+	.data       start:0x00000270 end:0x00000298
+	.bss        start:0x00001258 end:0x00001264
+
+REL/m613Dll/runtime.c:
+	.text       start:0x00011024 end:0x00011A68
+	.rodata     start:0x00000258 end:0x00000270

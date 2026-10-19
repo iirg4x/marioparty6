@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 57.42% | 66.66% |
+| Entire project | 58.01% | 66.98% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 50.44% | 46.00% |
+| REL modules | 51.15% | 46.53% |
+
+Mowtown (`m613Dll`) selects all **103 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Tally Me Banana (`m674Dll`) selects all **248 functions** from **8 complete translation units**; its linked REL matches retail.
 
