@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 55.16% | 65.37% |
+| Entire project | 55.84% | 65.59% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 47.69% | 43.91% |
+| REL modules | 48.52% | 44.27% |
+
+Sink or Swim (`m625Dll`) selects all **96 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Rocky Road (`m644dll`) selects all **148 functions** from **8 complete translation units**; its linked REL matches retail.
 
