@@ -5,3 +5,51 @@ Sections:
 	.rodata     type:rodata align:8
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m626Dll/text_00000.c:
+	.text       start:0x00000000 end:0x0000052C
+	.rodata     start:0x00000000 end:0x00000028
+	.data       start:0x00000000 end:0x00000138
+	.bss        start:0x00000000 end:0x00000038
+
+REL/m626Dll/text_0052C.c:
+	.text       start:0x0000052C end:0x00000A08
+	.rodata     start:0x00000028 end:0x00000030
+
+REL/m626Dll/support.c:
+	.text       start:0x00000A08 end:0x00004284
+	.rodata     start:0x00000030 end:0x000000C8
+	.data       start:0x00000138 end:0x00000148
+	.bss        start:0x00000038 end:0x000002D0
+
+REL/m626Dll/text_04284.c:
+	.text       start:0x00004284 end:0x000044D4
+	.rodata     start:0x000000C8 end:0x000000D8
+
+REL/m626Dll/player.c:
+	.text       start:0x000044D4 end:0x00008C50
+	.rodata     start:0x000000D8 end:0x000002C8
+	.data       start:0x00000148 end:0x00000470
+	.bss        start:0x000002D0 end:0x00000308
+
+REL/m626Dll/scenery.c:
+	.text       start:0x00008C50 end:0x0000BA34
+	.rodata     start:0x000002C8 end:0x00000478
+	.data       start:0x00000470 end:0x000008C0
+	.bss        start:0x00000308 end:0x000006C8
+
+REL/m626Dll/effects.c:
+	.text       start:0x0000BA34 end:0x0000E268
+	.rodata     start:0x00000478 end:0x000005B8
+	.data       start:0x000008C0 end:0x00000908
+	.bss        start:0x000006C8 end:0x000006D0
+
+REL/m626Dll/collision.c:
+	.text       start:0x0000E268 end:0x00010F30
+	.rodata     start:0x000005B8 end:0x00000610
+	.data       start:0x00000908 end:0x00000918
+	.bss        start:0x000006D0 end:0x000006D4
+
+REL/m626Dll/runtime.c:
+	.text       start:0x00010F30 end:0x00011974
+	.rodata     start:0x00000610 end:0x00000628
