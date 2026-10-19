@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 56.83% | 66.34% |
+| Entire project | 57.42% | 66.66% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 49.72% | 45.49% |
+| REL modules | 50.44% | 46.00% |
+
+Tally Me Banana (`m674Dll`) selects all **248 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Snow Brawl (`m626Dll`) selects all **233 functions** from **9 complete translation units**; its linked REL matches retail.
 
