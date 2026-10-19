@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 56.25% | 66.04% |
+| Entire project | 56.83% | 66.34% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 49.02% | 44.99% |
+| REL modules | 49.72% | 45.49% |
+
+Snow Brawl (`m626Dll`) selects all **233 functions** from **9 complete translation units**; its linked REL matches retail.
 
 Strawberry Shortfuse (`m680Dll`) selects all **110 functions** from **5 complete translation units**; its linked REL matches retail.
 
