@@ -5,3 +5,34 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m660dll/text_00000.c:
+	.text       start:0x00000000 end:0x00006BF8
+	.rodata     start:0x00000000 end:0x00000330
+	.data       start:0x00000000 end:0x00000100
+	.bss        start:0x00000000 end:0x00002688
+
+REL/m660dll/text_06BF8.c:
+	.text       start:0x00006BF8 end:0x0000A3E4
+	.rodata     start:0x00000330 end:0x000004B8
+	.data       start:0x00000100 end:0x00000480
+
+REL/m660dll/text_0A3E4.c:
+	.text       start:0x0000A3E4 end:0x0000D29C
+	.rodata     start:0x000004B8 end:0x00000890
+	.data       start:0x00000480 end:0x00000530
+
+REL/m660dll/text_0D29C.c:
+	.text       start:0x0000D29C end:0x0000E6F4
+	.rodata     start:0x00000890 end:0x000008F0
+	.data       start:0x00000530 end:0x00000540
+
+REL/m660dll/text_0E6F4.c:
+	.text       start:0x0000E6F4 end:0x000157F4
+	.rodata     start:0x000008F0 end:0x00000B98
+	.data       start:0x00000540 end:0x0000055C
+	.bss        start:0x00002688 end:0x00004250
+
+REL/m660dll/runtime.c:
+	.text       start:0x000157F4 end:0x00016238
+	.rodata     start:0x00000B98 end:0x00000BB0
