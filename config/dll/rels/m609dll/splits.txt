@@ -5,3 +5,41 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m609dll/startup.c:
+	.text       start:0x00000000 end:0x00004B48
+	.rodata     start:0x00000000 end:0x00000208
+	.data       start:0x00000000 end:0x00000058
+	.bss        start:0x00000000 end:0x00006D80
+
+REL/m609dll/course.c:
+	.text       start:0x00004B48 end:0x0000D1CC
+	.rodata     start:0x00000208 end:0x00000368
+	.data       start:0x00000058 end:0x000003C8
+	.bss        start:0x00006D80 end:0x00006D88
+
+REL/m609dll/model_setup.c:
+	.text       start:0x0000D1CC end:0x0001115C
+	.rodata     start:0x00000368 end:0x00000FF0
+	.data       start:0x000003C8 end:0x000003F8
+	.bss        start:0x00006D88 end:0x00006E28
+
+REL/m609dll/intro.c:
+	.text       start:0x0001115C end:0x00011E2C
+	.rodata     start:0x00000FF0 end:0x00001030
+
+REL/m609dll/player.c:
+	.text       start:0x00011E2C end:0x0001661C
+	.rodata     start:0x00001030 end:0x000010C8
+	.data       start:0x000003F8 end:0x00000858
+	.bss        start:0x00006E28 end:0x00006E68
+
+REL/m609dll/texture_matrix.c:
+	.text       start:0x0001661C end:0x000172B8
+	.rodata     start:0x000010C8 end:0x000010E0
+	.data       start:0x00000858 end:0x0000087A
+	.bss        start:0x00006E68 end:0x00006E8C
+
+REL/m609dll/runtime.c:
+	.text       start:0x000172B8 end:0x00017CFC
+	.rodata     start:0x000010E0 end:0x000010F8
