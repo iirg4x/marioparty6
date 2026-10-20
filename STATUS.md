@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 59.97% | 69.71% |
+| Entire project | 60.70% | 70.86% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 53.53% | 50.99% |
+| REL modules | 54.41% | 52.87% |
+
+Boo'd Off the Stage (`m660dll`) selects all **114 functions** from **6 complete translation units**; its linked REL matches retail.
 
 Blooper Scooper (`m619Dll`) selects all **131 functions** from **5 complete translation units**; its linked REL matches retail.
 
