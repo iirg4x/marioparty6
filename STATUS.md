@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 59.47% | 69.35% |
+| Entire project | 59.97% | 69.71% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 52.93% | 50.40% |
+| REL modules | 53.53% | 50.99% |
+
+Blooper Scooper (`m619Dll`) selects all **131 functions** from **5 complete translation units**; its linked REL matches retail.
 
 Daft Rafts (`m609dll`) selects all **119 functions** from **7 complete translation units**; its linked REL matches retail.
 
