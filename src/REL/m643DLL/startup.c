@@ -2,6 +2,7 @@
 #include "dolphin/math.h"
 #include "REL/m643DLL/m643.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/memory.h"
 #include <string.h>
 OMOBJMAN *lbl_1_bss_0;

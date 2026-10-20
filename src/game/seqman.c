@@ -2,6 +2,7 @@
 #define _MATH_H
 
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/mg/timer.h"
 #include "game/gamemes.h"
 #include "game/process.h"

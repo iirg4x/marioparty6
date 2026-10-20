@@ -5,6 +5,7 @@
 #include "dolphin/types.h"
 #include "dolphin/mtx/GeoTypes.h"
 #include "game/mg/actman.h"
+#include "game/charman.h"
 
 typedef struct M664PlayerRecord {
     MGPLAYER *player; /* Actor-manager player and its collision actor. */

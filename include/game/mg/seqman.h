@@ -2,7 +2,6 @@
 #define _MG_SEQMAN_H
 
 #include "dolphin/types.h"
-#include "game/charman.h"
 
 typedef void (*MGSEQ_FUNC)(s16 mode, s16 frameNo);
 

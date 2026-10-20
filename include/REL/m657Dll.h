@@ -6,6 +6,7 @@
 #include "game/object.h"
 #include "game/hu3d.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/mg/score.h"
 
 typedef struct {

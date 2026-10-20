@@ -5,6 +5,7 @@
 #include "dolphin/types.h"
 #include "game/hu3d.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/process.h"
 
 /* A frame of button, stick, trigger and directional-repeat input from one pad. */

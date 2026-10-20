@@ -3,6 +3,7 @@
 #include "game/object.h"
 #include "game/audio.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 
 void fn_1_F0(s16 mode, s16 frameNo);
 void fn_1_3BC(s16 mode, s16 frameNo);

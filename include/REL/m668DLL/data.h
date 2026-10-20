@@ -2,6 +2,7 @@
 #ifndef M668_DATA_H
 #define M668_DATA_H
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 
 /* Sequence API parameters followed by initialized bytes retained with the data. */
 typedef struct M668SequenceDataRecord {

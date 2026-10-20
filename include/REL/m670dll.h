@@ -6,6 +6,7 @@
 #include "game/object.h"
 #include "game/hu3d.h"
 #include "game/mg/actman.h"
+#include "game/charman.h"
 #include "game/mg/timer.h"
 
 typedef struct M670Cpu_s {

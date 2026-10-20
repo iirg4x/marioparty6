@@ -1,5 +1,6 @@
 /* Manages minigame player and actor movement, collision, animation, and reactions. */
 #include "game/mg/actman.h"
+#include "game/charman.h"
 #include "game/mg/colman.h"
 #include "game/object.h"
 #include "game/gamework.h"

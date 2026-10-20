@@ -7,6 +7,7 @@
 #include "game/sprite.h"
 #include "game/frand.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 
 #define M613_MODEL_DATA_GROUP_FLAG 0x10000000
 #define MSM_SE_M613_PROGRESS 1711

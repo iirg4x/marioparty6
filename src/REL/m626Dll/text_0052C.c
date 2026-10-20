@@ -3,6 +3,7 @@
 #include "game/flag.h"
 #include "game/gamework.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 
 s32 fn_1_824(s16 mode, s16 frameNo);
 s32 fn_1_8B90(s32 player);

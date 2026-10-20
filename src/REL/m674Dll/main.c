@@ -6,6 +6,7 @@
 #include "game/gamework.h"
 #include "game/wipe.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/mg/timer.h"
 #include "datadir_enum.h"
 #include "REL/m674Dll/scene.h"

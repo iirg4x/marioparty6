@@ -9,6 +9,7 @@
 #include "game/memory.h"
 #include "game/data.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "string.h"
 
 /* Course model labels and zeroed cells retained with the scene data. */

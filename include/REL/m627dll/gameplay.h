@@ -4,6 +4,7 @@
 #include "dolphin/types.h"
 #include "dolphin/mtx.h"
 #include "game/mg/actman.h"
+#include "game/charman.h"
 #include "game/object.h"
 
 typedef struct M627Entry {

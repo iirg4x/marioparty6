@@ -1,6 +1,7 @@
 /* Sequence hooks and object-manager setup for the minigame overlay. */
 #include "REL/m621dll.h"
 #include "game/mg/actman.h"
+#include "game/charman.h"
 #include "game/audio.h"
 #include "game/gamemes.h"
 #include "game/memory.h"

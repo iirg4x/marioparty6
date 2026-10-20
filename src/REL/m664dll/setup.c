@@ -3,6 +3,7 @@
 #include "game/hu3d.h"
 #include "game/object.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/mg/actman.h"
 #include "game/audio.h"
 #include "game/gamemes.h"

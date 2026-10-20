@@ -5,6 +5,7 @@
 #include "game/audio.h"
 #include "game/data.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "msm_stream.h"
 #define MSM_SE_M675_2224 2224
 typedef void (*VoidFunc)(void);

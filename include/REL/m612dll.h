@@ -5,6 +5,7 @@
 #include "game/main.h"
 #include "game/object.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 
 /* Scene-wide objects and models used by the four Memory Lane boards. */
 typedef struct M612Scene {

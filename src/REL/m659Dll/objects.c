@@ -12,6 +12,7 @@
 #include "game/main.h"
 #include "game/frand.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "string.h"
 
 extern HU3D_MODELID lbl_1_bss_3C[8];
