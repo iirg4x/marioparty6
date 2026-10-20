@@ -5,3 +5,27 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m619Dll/scene.c:
+	.text       start:0x00000000 end:0x0000A1F4
+	.rodata     start:0x00000000 end:0x00000330
+	.data       start:0x00000000 end:0x00000118
+	.bss        start:0x00000000 end:0x00000010
+
+REL/m619Dll/player.c:
+	.text       start:0x0000A1F4 end:0x0000C69C
+	.rodata     start:0x00000330 end:0x000003D8
+	.data       start:0x00000118 end:0x00000138
+
+REL/m619Dll/particle_setup.c:
+	.text       start:0x0000C69C end:0x0000E05C
+	.rodata     start:0x000003D8 end:0x00000468
+
+REL/m619Dll/motion_callbacks.c:
+	.text       start:0x0000E05C end:0x0000E788
+	.rodata     start:0x00000468 end:0x00000480
+	.bss        start:0x00000010 end:0x00001420
+
+REL/m619Dll/runtime.c:
+	.text       start:0x0000E788 end:0x0000F1CC
+	.rodata     start:0x00000480 end:0x00000498
