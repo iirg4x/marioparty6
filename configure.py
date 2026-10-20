@@ -3164,6 +3164,37 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m647dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m647dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/m647dll/text_00000.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m647dll/text_00A74.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m647dll/text_064B8.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m647dll/text_AFB0.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":

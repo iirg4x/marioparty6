@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 60.70% | 70.86% |
+| Entire project | 61.10% | 71.20% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 54.41% | 52.87% |
+| REL modules | 54.90% | 53.43% |
+
+Insectiride (`m647dll`) selects all **154 functions** from **5 complete translation units**; its linked REL matches retail.
 
 Boo'd Off the Stage (`m660dll`) selects all **114 functions** from **6 complete translation units**; its linked REL matches retail.
 
