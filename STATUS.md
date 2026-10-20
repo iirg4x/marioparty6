@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 58.01% | 66.98% |
+| Entire project | 58.69% | 67.47% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 51.15% | 46.53% |
+| REL modules | 51.98% | 47.32% |
+
+Pier Factor (`m676Dll`) selects all **287 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Mowtown (`m613Dll`) selects all **103 functions** from **8 complete translation units**; its linked REL matches retail.
 

@@ -5,3 +5,48 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m676Dll/main.c:
+	.text       start:0x00000000 end:0x000016A0
+	.rodata     start:0x00000000 end:0x000000F0
+	.data       start:0x00000000 end:0x00000120
+	.bss        start:0x00000000 end:0x000001A0
+
+REL/m676Dll/camera_audio.c:
+	.text       start:0x000016A0 end:0x00005A10
+	.rodata     start:0x000000F0 end:0x000001B8
+	.data       start:0x00000120 end:0x00000130
+	.bss        start:0x000001A0 end:0x00000438
+
+REL/m676Dll/text_05A10.c:
+	.text       start:0x00005A10 end:0x000088C0
+	.rodata     start:0x000001B8 end:0x00000318
+	.data       start:0x00000130 end:0x000002D0
+	.bss        start:0x00000438 end:0x00000480
+
+REL/m676Dll/text_088C0.c:
+	.text       start:0x000088C0 end:0x00010288
+	.rodata     start:0x00000318 end:0x00000640
+	.data       start:0x000002D0 end:0x000007A0
+	.bss        start:0x00000480 end:0x000010A8
+
+REL/m676Dll/effects.c:
+	.text       start:0x00010288 end:0x00011F34
+	.rodata     start:0x00000640 end:0x000009C8
+	.data       start:0x000007A0 end:0x000007B0
+	.bss        start:0x000010A8 end:0x000010B0
+
+REL/m676Dll/score.c:
+	.text       start:0x00011F34 end:0x0001269C
+	.rodata     start:0x000009C8 end:0x00000A00
+	.data       start:0x000007B0 end:0x000007E0
+	.bss        start:0x000010B0 end:0x000010B8
+
+REL/m676Dll/collision.c:
+	.text       start:0x0001269C end:0x00014198
+	.rodata     start:0x00000A00 end:0x00000A40
+	.bss        start:0x000010B8 end:0x000010BC
+
+REL/m676Dll/runtime.c:
+	.text       start:0x00014198 end:0x00014BDC
+	.rodata     start:0x00000A40 end:0x00000A58
