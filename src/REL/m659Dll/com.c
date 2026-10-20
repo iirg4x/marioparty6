@@ -2,6 +2,7 @@
 #include "REL/m659/com.h"
 #include "game/memory.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "string.h"
 
 OMOBJ *lbl_1_bss_60;

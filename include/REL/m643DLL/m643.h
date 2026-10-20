@@ -2,6 +2,7 @@
 #ifndef REL_M643_H
 #define REL_M643_H
 #include "game/mg/actman.h"
+#include "game/charman.h"
 
 /* Introduction timing and audio used by the minigame sequence callbacks. */
 typedef struct M643SequenceWork_s {

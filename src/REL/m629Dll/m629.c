@@ -2,6 +2,7 @@
 #include "game/main.h"
 #include "game/object.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 /* The sequence controller keeps timer handles without accessing their internal state. */
 typedef struct MgTimer_s MGTIMER;
 MGTIMER *MgTimerCreate(int type);

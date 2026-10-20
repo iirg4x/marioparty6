@@ -20,6 +20,7 @@ extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
 void fn_1_804(void);
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/gamework.h"
 #include "game/audio.h"
 #include "game/flag.h"

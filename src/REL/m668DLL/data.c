@@ -4,6 +4,7 @@
 #include "REL/m668DLL/data.h"
 #include "datadir_enum.h"
 #include "game/mg/actman.h"
+#include "game/charman.h"
 #include "game/hu3d.h"
 #include "game/sprite.h"
 #include "REL/m668DLL/rotor.h"

@@ -3,6 +3,7 @@
 #define M668_PLAYER_H
 #include "REL/m668DLL/rotor.h"
 #include "game/mg/actman.h"
+#include "game/charman.h"
 
 /* Per-player state shared by the Burnstile object callbacks. */
 typedef struct M668PlayerWork_s {

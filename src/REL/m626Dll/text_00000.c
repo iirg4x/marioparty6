@@ -6,6 +6,7 @@
 #include "game/memory.h"
 #include "game/object.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "REL/m626Dll/setup.h"
 
 typedef void (*VoidFunc)(void);

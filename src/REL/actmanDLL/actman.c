@@ -3,6 +3,7 @@
 #include "dolphin.h"
 #include "game/gamework.h"
 #include "game/mg/actman.h"
+#include "game/charman.h"
 #include "game/mg/seqman.h"
 #include "datanum/actman.h"
 

@@ -7,6 +7,7 @@
 #include "game/object.h"
 #include "game/mg/timer.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 
 typedef struct M651Work14 {
     s32 resultStarted; /* Set when either player reaches the finish. */

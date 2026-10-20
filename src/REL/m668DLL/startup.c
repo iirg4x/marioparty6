@@ -1,6 +1,7 @@
 /* Burnstile REL startup, sequence callbacks, and object work setup. */
 #include "dolphin/math.h"
 #include "game/mg/actman.h"
+#include "game/charman.h"
 #include "game/mg/seqman.h"
 #include "REL/m668DLL/data.h"
 

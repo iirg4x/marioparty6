@@ -4,6 +4,7 @@
 #include "game/gamemes.h"
 #include "game/mgdata.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/gamework.h"
 #include "game/object.h"
 #include "game/frand.h"

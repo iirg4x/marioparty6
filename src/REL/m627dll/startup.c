@@ -1,6 +1,7 @@
 /* Creates the scene and runs the minigame's sequence and actor updates. */
 #include <math.h>
 #include "game/mg/actman.h"
+#include "game/charman.h"
 #include "game/mg/seqman.h"
 #include "game/audio.h"
 #include "game/gamemes.h"

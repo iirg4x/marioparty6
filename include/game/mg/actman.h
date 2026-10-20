@@ -4,7 +4,6 @@
 #include "game/object.h"
 #include "game/hu3d.h"
 #include "game/pad.h"
-#include "game/charman.h"
 #include "game/mg/colman.h"
 
 typedef struct MgPlayer_s MGPLAYER;

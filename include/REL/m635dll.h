@@ -5,6 +5,7 @@
 #include "game/main.h"
 #include "game/object.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 
 #define M635_SFX_SCORE_TEAM_0 1859
 #define M635_SFX_SCORE_TEAM_1 1860

@@ -5,6 +5,7 @@
 #include "game/main.h"
 #include "game/object.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/mg/actman.h"
 #include "game/mg/score.h"
 

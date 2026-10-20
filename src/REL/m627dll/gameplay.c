@@ -12,6 +12,7 @@
 #include "game/flag.h"
 #include "game/wipe.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #include "game/mg/timer.h"
 #include "game/mg/score.h"
 #include "game/pad.h"

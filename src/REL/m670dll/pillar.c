@@ -9,6 +9,7 @@ float lbl_1_bss_3B8[24];
 #include "game/audio.h"
 #include "game/frand.h"
 #include "game/mg/seqman.h"
+#include "game/charman.h"
 #define M670_SE_PILLAR_LAMP_CUE 2199
 #define M670_SE_PILLAR_DROP 2200
 #define M670_SE_PILLAR_RISE_COMPLETE 2201
