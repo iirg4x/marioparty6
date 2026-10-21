@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 61.94% | 72.54% |
+| Entire project | 62.49% | 72.81% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 55.92% | 55.62% |
+| REL modules | 56.59% | 56.05% |
+
+Trap Ease Artist (`m620Dll`) selects all **243 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Light Up My Night (`m617dll`) selects all **107 functions** from **8 complete translation units**; its linked REL matches retail.
 
