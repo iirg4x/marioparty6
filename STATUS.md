@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 61.10% | 71.20% |
+| Entire project | 61.94% | 72.54% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 54.90% | 53.43% |
+| REL modules | 55.92% | 55.62% |
+
+Light Up My Night (`m617dll`) selects all **107 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Insectiride (`m647dll`) selects all **154 functions** from **5 complete translation units**; its linked REL matches retail.
 
