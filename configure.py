@@ -3195,6 +3195,52 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m617dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m617dll/prolog.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m617dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/m617dll/text_00118.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m617dll/text_058DC.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m617dll/text_093D0.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m617dll/text_0D3CC.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m617dll/text_0E1F0.c",
+                extra_cflags=["-pooldata", "off", "-sym", "on"],
+            ),
+            Object(
+                Matching,
+                "REL/m617dll/text_187C8.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":

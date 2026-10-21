@@ -5,3 +5,38 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m617dll/prolog.c:
+	.text       start:0x00000000 end:0x00000118
+
+REL/m617dll/text_00118.c:
+	.text       start:0x00000118 end:0x000058DC
+	.rodata     start:0x00000000 end:0x000001E8
+	.data       start:0x00000000 end:0x00000100
+	.bss        start:0x00000000 end:0x00004CD0
+
+REL/m617dll/text_058DC.c:
+	.text       start:0x000058DC end:0x000093D0
+	.rodata     start:0x000001E8 end:0x00000340
+	.data       start:0x00000100 end:0x00000118
+
+REL/m617dll/text_093D0.c:
+	.text       start:0x000093D0 end:0x0000D3CC
+	.rodata     start:0x00000340 end:0x00000C80
+	.data       start:0x00000118 end:0x00000220
+
+REL/m617dll/text_0D3CC.c:
+	.text       start:0x0000D3CC end:0x0000E1F0
+	.rodata     start:0x00000C80 end:0x00000CE8
+
+REL/m617dll/text_0E1F0.c:
+	.text       start:0x0000E1F0 end:0x000187C8
+	.rodata     start:0x00000CE8 end:0x000011B8
+
+REL/m617dll/text_187C8.c:
+	.text       start:0x000187C8 end:0x00018CE0
+	.rodata     start:0x000011B8 end:0x000011E0
+
+REL/m617dll/runtime.c:
+	.text       start:0x00018CE0 end:0x00019724
+	.rodata     start:0x000011E0 end:0x000011F8
