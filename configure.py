@@ -3287,6 +3287,32 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m642dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m642dll/main.c",
+                extra_cflags=["-pooldata", "off", "-inline", "off", "-sym", "on"],
+            ),
+            Object(
+                Matching,
+                "REL/m642dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/m642dll/startup.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m642dll/text_07878.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
