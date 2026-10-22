@@ -5,3 +5,19 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m666dll/text_000A0.c:
+	.text       start:0x00000000 end:0x000008BC
+	.rodata     start:0x00000000 end:0x00000038
+	.data       start:0x00000000 end:0x00000070
+	.bss        start:0x00000000 end:0x00000148
+
+REL/m666dll/text_008BC.c:
+	.text       start:0x000008BC end:0x0000DC98
+	.rodata     start:0x00000038 end:0x00000320
+	.data       start:0x00000070 end:0x00000890
+	.bss        start:0x00000148 end:0x00000EB2
+
+REL/m666dll/runtime.c:
+	.text       start:0x0000DC98 end:0x0000E6DC
+	.rodata     start:0x00000320 end:0x00000338
