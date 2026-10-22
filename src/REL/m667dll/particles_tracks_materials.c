@@ -43,13 +43,13 @@ void fn_1_6C88(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
     /* A zero system count clears every slot's scale before any live-particle updates. */
     if (particle->count == 0) {
         data = particle->data;
-        for (slotIndex = 0; slotIndex < particle->maxCnt; (void)(slotIndex++, data++)) {
+        for (slotIndex = 0; slotIndex < particle->maxCnt; slotIndex++, data++) {
             data->scale = 0.0f;
         }
     }
 
     data = particle->data;
-    for (slotIndex = 0; slotIndex < particle->maxCnt; (void)(slotIndex++, data++)) {
+    for (slotIndex = 0; slotIndex < particle->maxCnt; slotIndex++, data++) {
         if (data->scale && data->parManId == -1) {
             data->vel.x *= config[slotIndex].velocityMultiplier[0];
             data->vel.y *= config[slotIndex].velocityMultiplier[1];
@@ -104,16 +104,12 @@ void fn_1_6C88(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 #include "dolphin/types.h"
 #include "dolphin/gx.h"
 #include "dolphin/gx/GXVert.h"
-#include "dolphin/mtx.h"
 #include "game/charman.h"
 #include "game/data.h"
 #include "game/flag.h"
 #include "game/frand.h"
 #include "game/gamemes.h"
-#include "game/gamework.h"
-#include "game/hu3d.h"
 #include "game/main.h"
-#include "game/memory.h"
 #include "game/mg/actman.h"
 #include "game/mg/seqman.h"
 #include "game/mic.h"
@@ -147,22 +143,18 @@ s16 fn_1_7104(OMOBJ *poolItem, s16 cameraMask,
     particle = (HU3D_PARTICLE *) model->hookData;
     configWork = (M667ParticleConfigView *) particle->work;
     particleData = particle->data + particle->emitCnt;
-    slot = particle->emitCnt;
-    while (slot < particle->maxCnt) {
+    for (slot = particle->emitCnt; slot < particle->maxCnt; slot++, particleData++) {
         if (!particleData->scale) {
             break;
         }
-        (void)(slot++, particleData++);
     }
 
     if (slot >= particle->maxCnt) {
         particleData = particle->data;
-        slot = 0;
-        while (slot < particle->maxCnt) {
+        for (slot = 0; slot < particle->maxCnt; slot++, particleData++) {
             if (!particleData->scale) {
                 break;
             }
-            (void)(slot++, particleData++);
         }
     }
 
@@ -361,10 +353,8 @@ void fn_1_7664(void *work)
         particle->work = parameters;
         particle->count = 1;
         data = particle->data;
-        particleIndex = 0;
-        while (particleIndex < particle->maxCnt) {
+        for (particleIndex = 0; particleIndex < particle->maxCnt; particleIndex++, data++) {
             data->scale = 0.0f;
-            (void)(particleIndex++, data++);
         }
         index++;
     }
@@ -666,7 +656,6 @@ void fn_1_7EF0(Point3d *start, Point3d *end, Point3d *out, f32 blend)
 
 extern f64 atan2(f64 y, f64 x);
 extern f64 fmod(f64 x, f64 y);
-extern f64 fn_1_6C54(f64 value);
 
 /* Map and player movement convert an XZ direction to a yaw angle in degrees. */
 f32 fn_1_7F48(HuVecF *direction)
@@ -691,7 +680,7 @@ f32 fn_1_7FA0(f32 start, f32 end, f32 blend)
         endAngle += 360.0f;
     }
     delta = endAngle - startAngle;
-    if (fn_1_6C54(delta) > 180.0) {
+    if (fabs(delta) > 180.0) {
         delta -= 360.0f;
     }
     return startAngle + delta * blend;
@@ -913,15 +902,14 @@ s8 *fn_1_895C(s32 model)
     modelData = &Hu3DData[model];
     savedColors = HuMemDirectMallocNum(HEAP_HEAP, modelData->hsf->materialNum * 3, HU_MEMNUM_OVL);
     writeColor = savedColors;
-    (void)(materialIndex = 0, material = modelData->hsf->material);
-    while (materialIndex < modelData->hsf->materialNum) {
+    for (materialIndex = 0, material = modelData->hsf->material;
+         materialIndex < modelData->hsf->materialNum; materialIndex++, material++) {
         *writeColor = (s8)material->color[0];
         writeColor++;
         *writeColor = (s8)material->color[1];
         writeColor++;
         *writeColor = (s8)material->color[2];
         writeColor++;
-        (void)(materialIndex++, material++);
     }
     return savedColors;
 }
@@ -937,21 +925,16 @@ void fn_1_8A34(s32 model, s8 *colors)
 
     modelData = &Hu3DData[model];
     readColor = colors;
-    (void)(materialIndex = 0, material = modelData->hsf->material);
-    while (materialIndex < modelData->hsf->materialNum) {
+    for (materialIndex = 0, material = modelData->hsf->material;
+         materialIndex < modelData->hsf->materialNum; materialIndex++, material++) {
         material->color[0] = (u8)*readColor;
         readColor++;
         material->color[1] = (u8)*readColor;
         readColor++;
         material->color[2] = (u8)*readColor;
         readColor++;
-        (void)(materialIndex++, material++);
     }
 }
-
-#include "dolphin/math.h"
-#include "REL/m667dll/recovered.h"
-#include "game/memory.h"
 
 /* Player setup multiplies the saved signed RGB bytes by that player's tint factors.
  * Scaled channels are converted to material color bytes without clamping. */
@@ -965,9 +948,8 @@ void fn_1_8AE4(s32 model, const s8 *colors, f32 redScale, f32 greenScale, f32 bl
 
     modelData = &Hu3DData[model];
     savedColor = colors;
-    (void)(materialIndex = 0, material = modelData->hsf->material);
-
-    for (; materialIndex < modelData->hsf->materialNum; (void)(materialIndex++, material++)) {
+    for (materialIndex = 0, material = modelData->hsf->material;
+         materialIndex < modelData->hsf->materialNum; materialIndex++, material++) {
         material->color[0] = *savedColor * redScale;
         ++savedColor;
         material->color[1] = *savedColor * greenScale;
@@ -995,7 +977,6 @@ void fn_1_8C30(s32 modelId, char *objectName, s32 targetModelId)
     Hu3DModelScaleSetV(targetModelId, &scale);
 }
 
-extern f64 fn_1_6C54(f64 value);
 /* Entry landing, throwing, and impact sounds use screen X for pan and world Z for volume.
  * Within Z -700 through 700, volume falls with distance from Z 110; outside that interval
  * it jumps to 64 below -700 or 110 above 700. */
@@ -1025,7 +1006,7 @@ void fn_1_8CBC(HuVecF *worldPos, s32 soundId)
     } else if (worldPos->z < -700.0f) {
         volume = 64;
     } else {
-        depthDistance = (f32)fn_1_6C54((f64)(worldPos->z - 110.0f));
+        depthDistance = (f32)fabs((f64)(worldPos->z - 110.0f));
         positionFactor = depthDistance / 1400.0f;
         volume = (s16)(110 - (s32)(46.0f * positionFactor));
     }

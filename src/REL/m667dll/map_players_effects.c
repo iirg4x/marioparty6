@@ -1,8 +1,6 @@
 /* Talkie Walkie scene progression, map and player control, and entry effects. */
 #include "game/frand.h"
 #include "dolphin/types.h"
-
-/* Talkie Walkie scene setup, sequence phases, and player motion callbacks. */
 #include <math.h>
 #include "REL/m667dll/recovered.h"
 #include "game/memory.h"
@@ -16,6 +14,23 @@
 #include "game/object.h"
 #include "game/hsfex.h"
 #include "datadir_enum.h"
+#include "dolphin/gx/GXStruct.h"
+#include "dolphin/mtx/GeoTypes.h"
+#include "game/mg/seqman.h"
+#include "humath.h"
+#include "REL/m667dll/completion.h"
+#include "messdir_enum.h"
+#include "game/mg/colman.h"
+#include "dolphin/pad.h"
+#include "game/hu3d.h"
+#include "game/wipe.h"
+#include "game/pad.h"
+#include "game/main.h"
+#include "dolphin/gx.h"
+#include "dolphin.h"
+#include "dolphin/mtx.h"
+#include "game/flag.h"
+#include "dolphin/gx/GXVert.h"
 
 #define MSM_STREAM_M667_TALKIE_WALKIE 73
 #define M667_PLAYER_RED_RGBA_BIT_PATTERN 0xFF0000FF
@@ -23,96 +38,163 @@
 #define M667_PLAYER_YELLOW_RGBA_BIT_PATTERN 0xFFFF00FF
 #define M667_PLAYER_GREEN_RGBA_BIT_PATTERN 0x00FF00FF
 
-/* Scene setup creates object-manager work records with this helper. */
-void *fn_1_A0(s32 priority, u32 bytes, void (*update)(OMOBJ *))
-{
-    OMOBJ *object;
+/* Each model-effect type supplies draw and update callbacks plus its pool sizing. */
+typedef struct M667RegistryDescriptorView {
+    void (*render)(void);
+    void (*update)(M667ModelEffectView *item, s32 event);
+    s32 itemBytes;
+    s32 count;
+} M667RegistryDescriptorView;
 
-    object = omAddObjEx(lbl_1_bss_0, priority, 0, 0, 0, update);
-    if (bytes != 0) {
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, HU_MEMNUM_OVL);
-        memset(object->data, 0, bytes);
-    } else {
-        object->data = NULL;
+void fn_1_1C0(s16 mode, s16 frameNo);
+void fn_1_1F4(s16 mode, s16 frameNo);
+void fn_1_1F8(s16 mode, s16 frameNo);
+void fn_1_254(s16 mode, s16 frameNo);
+void fn_1_280(s16 mode, s16 frameNo);
+void fn_1_2F0(s16 mode, s16 frameNo);
+void fn_1_31C(s16 mode, s16 frameNo);
+void fn_1_320(s16 mode, s16 frameNo);
+void fn_1_324(s16 mode, s16 frameNo);
+void fn_1_3E0(MGPLAYER *player);
+void fn_1_4A8(MGPLAYER *player);
+void fn_1_55C(MGPLAYER *player);
+void fn_1_5D78(void);
+void fn_1_6060(M667ModelEffectView *state, s32 event);
+void fn_1_6064(M667ModelEffectView *effect, s32 event);
+void fn_1_61A8(M667ModelEffectView *item, s32 event);
+void fn_1_67D8(M667ModelEffectView *item, s32 event);
+void fn_1_6844(M667ModelEffectView *item, s32 event);
+void fn_1_68B0(M667ModelEffectView *item, s32 event);
+void fn_1_691C(M667ModelEffectView *item, s32 event);
+
+/* Player creation replaces c000m1_304 with c000m1_464 in this list, then loads the motions
+* through the zero terminator. */
+unsigned int lbl_1_data_30[17] = {
+    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
+    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
+    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 5),
+    DATANUM(DATA_mariomot, 56), DATANUM(DATA_mariomot, 8),
+    DATANUM(DATA_mariomot, 10), DATANUM(DATA_mariomot, 9),
+    DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 32),
+    DATANUM(DATA_mariomot, 90), DATANUM(DATA_mariomot, 89),
+    DATANUM(DATA_mariomot, 20), DATANUM(DATA_mariomot, 34)
+};
+f32 lbl_1_data_74[14] = {
+    50.0f, 50.0f, 50.0f, 50.0f, 50.0f, 50.0f, 50.0f, 30.0f, 75.0f, 30.0f, 30.0f, 30.0f, 30.0f, 30.0f
+};
+f32 lbl_1_data_AC[14] = {
+    12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f
+};
+f32 lbl_1_data_E4[14] = {
+    12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f
+};
+M667AIView lbl_1_data_11C[4] = {
+    {
+        30,
+        30,
+        {20, 80, -1},
+        {30, 70, -1},
+        {0, 70, 30, -1, 0}
+    },
+    {
+        40,
+        40,
+        {40, 60, -1},
+        {45, 55, -1},
+        {0, 55, 45, -1, 0}
+    },
+    {
+        50,
+        50,
+        {60, 40, -1},
+        {60, 40, -1},
+        {0, 40, 60, -1, 0}
+    },
+    {
+        60,
+        80,
+        {100, 0, -1},
+        {75, 25, -1},
+        {0, 25, 75, -1, 0}
     }
-    return object->data;
-}
+};
+s32 lbl_1_data_1EC[5] = {8, 4, 1, 2};
+HuVecF lbl_1_data_200[4] = {
+    {-600.0f, 100.0f, -300.0f},
+    {-600.0f, 100.0f, 300.0f},
+    {600.0f, 100.0f, 300.0f},
+    {600.0f, 100.0f, -300.0f}
+};
+HuVecF lbl_1_data_230[4][2] = {
+    {{-1800.0f, 50.0f, -1300.0f}, {1800.0f, 50.0f, -1300.0f}},
+    {{1800.0f, 50.0f, -1300.0f}, {-1800.0f, 50.0f, -1300.0f}},
+    {{-1400.0f, -400.0f, 400.0f}, {1200.0f, -400.0f, 400.0f}},
+    {{1200.0f, -400.0f, 400.0f}, {-1400.0f, -400.0f, 400.0f}}
+};
+s32 lbl_1_data_290[2] = {600, 540};
+char lbl_1_data_298[] = "667kumo-kumo1P";
+char lbl_1_data_2A7[] = "667kumo-kumo2P";
+char lbl_1_data_2B6[] = "667kumo-kumo3P";
+char lbl_1_data_2C5[] = "667kumo-kumo4P";
+char lbl_1_data_2D4[] = "667start-1p01";
+char lbl_1_data_2E2[] = "667start-3p01";
+char lbl_1_data_2F0[] = "667start-1p02";
+char lbl_1_data_2FE[] = "667start-3p02";
+char lbl_1_data_30C[] = "667-1PEND";
+char lbl_1_data_316[] = "667-2PEND";
+char lbl_1_data_320[] = "667-3PEND";
+char lbl_1_data_32A[] = "667-4PEND";
+char *lbl_1_data_334[12] = {
+    lbl_1_data_298, lbl_1_data_2A7, lbl_1_data_2B6, lbl_1_data_2C5, lbl_1_data_2D4,
+    lbl_1_data_2E2, lbl_1_data_2F0, lbl_1_data_2FE, lbl_1_data_30C, lbl_1_data_316,
+    lbl_1_data_320, lbl_1_data_32A
+};
+/* Twelve four-byte rows; only the first three signed bytes are consumed. */
+s8 lbl_1_data_364[12][4] = {
+    {0, 2, 0, 0}, {0, 2, 1, 0}, {0, 2, 2, 0}, {0, 2, 3, 0}, {1, 4, 3, 0}, {1, 4, 3, 0},
+    {1, 4, 3, 0}, {1, 4, 3, 0}, {1, 5, 2, 0}, {1, 6, 0, 0}, {1, 6, 0, 0}, {1, 6, 0, 0}
+};
+HuVecF lbl_1_data_394[4] = {
+    { 0.0f, 2.0f, 0.0f }, { 0.0f, 5.0f, 0.0f }, { 3.0f, 5.0f, 0.0f }, { 3.0f, 2.0f, 0.0f }
+};
+s32 lbl_1_data_3C4[4] = {
+    M667_PLAYER_RED_RGBA_BIT_PATTERN, M667_PLAYER_BLUE_RGBA_BIT_PATTERN,
+    M667_PLAYER_YELLOW_RGBA_BIT_PATTERN, M667_PLAYER_GREEN_RGBA_BIT_PATTERN
+};
+HuVecF lbl_1_data_3D4 = {0.0f, 2000.0f, 2000.0f};
+HuVecF lbl_1_data_3E0 = {-0.0f, -1.0f, -1.0f};
+/* Light setup reads the initial RGBA color from the first four bytes. */
+u8 lbl_1_data_3EC[32] = {
+    255, 255, 255, 255, 0, 0, 0, 0, 67, 72, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 255, 255, 210, 255
+};
+HuVecF lbl_1_data_40C = {0.0f, 0.0f, 2000.0f};
+HuVecF lbl_1_data_418 = {0.0f, 0.0f, -1.0f};
+GXColor lbl_1_data_424[2] = {{255, 255, 255, 0}, {242, 234, 255, 0}};
+f32 lbl_1_data_42C[4] = {120.0f, 120.0f, 120.0f, 120.0f};
+f32 lbl_1_data_43C[4] = {20.0f, 20.0f, 20.0f, 100.0f};
+MGPLAYER_MODE_FUNC lbl_1_data_44C[18] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, fn_1_3E0, fn_1_4A8, fn_1_55C
+};
+M667RegistryDescriptorView lbl_1_data_494[8] = {
+    {0, fn_1_67D8, 80, 15},
+    {0, fn_1_6844, 80, 15},
+    {0, fn_1_68B0, 80, 15},
+    {0, fn_1_691C, 80, 15},
+    {0, fn_1_6060, 80, 1},
+    {0, fn_1_6064, 80, 10},
+    {fn_1_5D78, fn_1_61A8, 80, 64},
+    {0, 0, 0, 0}
+};
+char lbl_1_data_514[] = "/mic/ctx/m667_words";
 
-/* Object setup uses this helper to install each object's update callback. */
-void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback)
-{
-    object->objFunc = callback;
-}
-
-/* Minigame startup creates the actor manager, selects spherical collision positioning, and
- * starts its sequence process. */
-void fn_1_148(void)
-{
-    lbl_1_bss_0 = MgActorObjectSetup();
-    MgActorColCylReset();
-    HuPrcChildCreate(fn_1_19C, 100, 12288, 0, lbl_1_bss_0);
-}
-
-/* The child creates the sequence process, then advances actor simulation once per frame. */
-void fn_1_19C(void)
-{
-    MgSeqCreate(&lbl_1_data_0);
-    while (1) {
-        MgActorExec();
-        HuPrcVSleep();
-    }
-}
-
-/* The sequence transition callback resets the scene and advances to the next mode. */
-void fn_1_1C0(s16 mode, s16 frameNo)
-{
-    lbl_1_data_28 = -1;
-    fn_1_768();
-    MgSeqModeNext();
-}
-
-void fn_1_1F4(s16 mode, s16 frameNo) {}
-
-/* The sequence starts its minigame stream when the start message reaches FX-play. */
-void fn_1_1F8(s16 mode, s16 frameNo)
-{
-    if (lbl_1_data_28 == -1 &&
-        (GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0) {
-        lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_M667_TALKIE_WALKIE);
-    }
-}
-
-/* The main sequence advances after the scene determines the outcome and enters result mode 3. */
-void fn_1_254(s16 mode, s16 frameNo)
-{
-    if (fn_1_B90() != 0) MgSeqModeNext();
-}
-
-/* The finish sequence fades the minigame stream at frame zero, then waits for scene mode 4. */
-void fn_1_280(s16 mode, s16 frameNo)
-{
-    if (MgSeqFrameNoGet() == 0 && lbl_1_data_28 != -1) {
-        HuAudSStreamFadeOut(lbl_1_data_28, 100);
-        lbl_1_data_28 = -1;
-    }
-    if (fn_1_BDC() != 0) MgSeqModeNext();
-}
-
-/* The pre-winner sequence advances after the ending scene reaches mode 5. */
-void fn_1_2F0(s16 mode, s16 frameNo)
-{
-    if (fn_1_C28() != 0) MgSeqModeNext();
-}
-
-void fn_1_31C(s16 mode, s16 frameNo) {}
-void fn_1_320(s16 mode, s16 frameNo) {}
-
-/* Sequence shutdown attempts response retrieval if microphone input setup was requested,
- * discards the result, and closes microphone input. */
-void fn_1_324(s16 mode, s16 frameNo)
-{
-    fn_1_7A4();
-}
+M667SceneView *lbl_1_bss_2C;
+M667PlayerView *lbl_1_bss_1C[4];
+M667MapView *lbl_1_bss_18;
+void *lbl_1_bss_14;
+M667CameraView *lbl_1_bss_10;
+M667RegistryView *lbl_1_bss_C;
+M667Entries *lbl_1_bss_8;
 
 /* AI choices sum the requested random draws, then scan cumulative weights for a choice.
  * The scan
@@ -273,13 +355,13 @@ void *fn_1_8F58(s32 index);
 void fn_1_7F4(void)
 {
     HuVecF position;
-    s32 unusedWord;
+    s32 reservedWord;
     s16 model;
     s16 playerIndex;
     s32 index;
     M667PlayerView *player;
 
-    unusedWord = 0;
+    reservedWord = 0;
     if (lbl_1_bss_2C == NULL) {
         return;
     }
@@ -392,10 +474,6 @@ typedef struct SceneObjectsView {
     OMOBJ *objects[7];
 } SceneObjectsView;
 
-/* Twelve four-byte rows; only the first three signed bytes are consumed. */
-extern s8 lbl_1_data_364[12][4];
-extern char *lbl_1_data_334[12];
-
 /* Scene setup reads a named node's world translation for kind 0 or its local base position
  * for kind 1. A missing kind-0 node returns the model translation; a missing kind-1 node
  * leaves the supplied position unchanged. */
@@ -407,7 +485,7 @@ void fn_1_D6C(s32 index, HuVecF *position)
     s32 kind;
 
     if (lbl_1_bss_18 != NULL) {
-        (void)lbl_1_data_364[index];
+        lbl_1_data_364[index];
         kind = lbl_1_data_364[index][0];
         model = ((SceneObjectsView *) lbl_1_bss_2C)
                     ->objects[lbl_1_data_364[index][1]]
@@ -428,174 +506,6 @@ void fn_1_D6C(s32 index, HuVecF *position)
         }
     }
 }
-#include <math.h>
-#include "REL/m667dll/recovered.h"
-#include "dolphin/types.h"
-#include "REL/m667dll/recovered.h"
-#include "dolphin/gx/GXStruct.h"
-#include "dolphin/mtx/GeoTypes.h"
-#include "game/mg/actman.h"
-#include "game/mg/seqman.h"
-#include "humath.h"
-
-/* Each model-effect type supplies draw and update callbacks plus its pool sizing. */
-typedef struct M667RegistryDescriptorView {
-    void (*render)(void);
-    void (*update)(M667ModelEffectView *item, s32 event);
-    s32 itemBytes;
-    s32 count;
-} M667RegistryDescriptorView;
-
-void fn_1_1C0(s16 mode, s16 frameNo);
-void fn_1_1F4(s16 mode, s16 frameNo);
-void fn_1_1F8(s16 mode, s16 frameNo);
-void fn_1_254(s16 mode, s16 frameNo);
-void fn_1_280(s16 mode, s16 frameNo);
-void fn_1_2F0(s16 mode, s16 frameNo);
-void fn_1_31C(s16 mode, s16 frameNo);
-void fn_1_320(s16 mode, s16 frameNo);
-void fn_1_324(s16 mode, s16 frameNo);
-void fn_1_3E0(MGPLAYER *player);
-void fn_1_4A8(MGPLAYER *player);
-void fn_1_55C(MGPLAYER *player);
-void fn_1_5D78(void);
-void fn_1_6060(M667ModelEffectView *state, s32 event);
-void fn_1_6064(M667ModelEffectView *effect, s32 event);
-void fn_1_61A8(M667ModelEffectView *item, s32 event);
-void fn_1_67D8(M667ModelEffectView *item, s32 event);
-void fn_1_6844(M667ModelEffectView *item, s32 event);
-void fn_1_68B0(M667ModelEffectView *item, s32 event);
-void fn_1_691C(M667ModelEffectView *item, s32 event);
-
-MGSEQ_PARAM lbl_1_data_0 = {
-    60, 2, fn_1_1C0, fn_1_1F4, fn_1_1F8, fn_1_254, fn_1_280, fn_1_2F0, fn_1_31C, fn_1_320, fn_1_324
-};
-s32 lbl_1_data_28 = -1;
-/* Player creation replaces c000m1_304 with c000m1_464 in this list, then loads the motions
-* through the zero terminator. */
-unsigned int lbl_1_data_30[17] ATTRIBUTE_ALIGN(8) = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 5),
-    DATANUM(DATA_mariomot, 56), DATANUM(DATA_mariomot, 8),
-    DATANUM(DATA_mariomot, 10), DATANUM(DATA_mariomot, 9),
-    DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 32),
-    DATANUM(DATA_mariomot, 90), DATANUM(DATA_mariomot, 89),
-    DATANUM(DATA_mariomot, 20), DATANUM(DATA_mariomot, 34)
-};
-f32 lbl_1_data_74[14] = {
-    50.0f, 50.0f, 50.0f, 50.0f, 50.0f, 50.0f, 50.0f, 30.0f, 75.0f, 30.0f, 30.0f, 30.0f, 30.0f, 30.0f
-};
-f32 lbl_1_data_AC[14] = {
-    12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f
-};
-f32 lbl_1_data_E4[14] = {
-    12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f, 12.0f
-};
-M667AIView lbl_1_data_11C[4] = {
-    {
-        30,
-        30,
-        {20, 80, -1},
-        {30, 70, -1},
-        {0, 70, 30, -1, 0}
-    },
-    {
-        40,
-        40,
-        {40, 60, -1},
-        {45, 55, -1},
-        {0, 55, 45, -1, 0}
-    },
-    {
-        50,
-        50,
-        {60, 40, -1},
-        {60, 40, -1},
-        {0, 40, 60, -1, 0}
-    },
-    {
-        60,
-        80,
-        {100, 0, -1},
-        {75, 25, -1},
-        {0, 25, 75, -1, 0}
-    }
-};
-s32 lbl_1_data_1EC[5] = {8, 4, 1, 2};
-HuVecF lbl_1_data_200[4] = {
-    {-600.0f, 100.0f, -300.0f},
-    {-600.0f, 100.0f, 300.0f},
-    {600.0f, 100.0f, 300.0f},
-    {600.0f, 100.0f, -300.0f}
-};
-HuVecF lbl_1_data_230[4][2] = {
-    {{-1800.0f, 50.0f, -1300.0f}, {1800.0f, 50.0f, -1300.0f}},
-    {{1800.0f, 50.0f, -1300.0f}, {-1800.0f, 50.0f, -1300.0f}},
-    {{-1400.0f, -400.0f, 400.0f}, {1200.0f, -400.0f, 400.0f}},
-    {{1200.0f, -400.0f, 400.0f}, {-1400.0f, -400.0f, 400.0f}}
-};
-s32 lbl_1_data_290[2] = {600, 540};
-char lbl_1_data_298[] = "667kumo-kumo1P";
-char lbl_1_data_2A7[] = "667kumo-kumo2P";
-char lbl_1_data_2B6[] = "667kumo-kumo3P";
-char lbl_1_data_2C5[] = "667kumo-kumo4P";
-char lbl_1_data_2D4[] = "667start-1p01";
-char lbl_1_data_2E2[] = "667start-3p01";
-char lbl_1_data_2F0[] = "667start-1p02";
-char lbl_1_data_2FE[] = "667start-3p02";
-char lbl_1_data_30C[] = "667-1PEND";
-char lbl_1_data_316[] = "667-2PEND";
-char lbl_1_data_320[] = "667-3PEND";
-char lbl_1_data_32A[] = "667-4PEND";
-char *lbl_1_data_334[12] = {
-    lbl_1_data_298, lbl_1_data_2A7, lbl_1_data_2B6, lbl_1_data_2C5, lbl_1_data_2D4,
-    lbl_1_data_2E2, lbl_1_data_2F0, lbl_1_data_2FE, lbl_1_data_30C, lbl_1_data_316,
-    lbl_1_data_320, lbl_1_data_32A
-};
-s8 lbl_1_data_364[12][4] = {
-    {0, 2, 0, 0}, {0, 2, 1, 0}, {0, 2, 2, 0}, {0, 2, 3, 0}, {1, 4, 3, 0}, {1, 4, 3, 0},
-    {1, 4, 3, 0}, {1, 4, 3, 0}, {1, 5, 2, 0}, {1, 6, 0, 0}, {1, 6, 0, 0}, {1, 6, 0, 0}
-};
-HuVecF lbl_1_data_394[4] = {
-    { 0.0f, 2.0f, 0.0f }, { 0.0f, 5.0f, 0.0f }, { 3.0f, 5.0f, 0.0f }, { 3.0f, 2.0f, 0.0f }
-};
-s32 lbl_1_data_3C4[4] = {
-    M667_PLAYER_RED_RGBA_BIT_PATTERN, M667_PLAYER_BLUE_RGBA_BIT_PATTERN,
-    M667_PLAYER_YELLOW_RGBA_BIT_PATTERN, M667_PLAYER_GREEN_RGBA_BIT_PATTERN
-};
-HuVecF lbl_1_data_3D4 = {0.0f, 2000.0f, 2000.0f};
-HuVecF lbl_1_data_3E0 = {-0.0f, -1.0f, -1.0f};
-/* Light setup reads the initial RGBA color from the first four bytes. */
-u8 lbl_1_data_3EC[32] = {
-    255, 255, 255, 255, 0, 0, 0, 0, 67, 72, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 255, 255, 210, 255
-};
-HuVecF lbl_1_data_40C = {0.0f, 0.0f, 2000.0f};
-HuVecF lbl_1_data_418 = {0.0f, 0.0f, -1.0f};
-GXColor lbl_1_data_424[2] = {{255, 255, 255, 0}, {242, 234, 255, 0}};
-f32 lbl_1_data_42C[4] = {120.0f, 120.0f, 120.0f, 120.0f};
-f32 lbl_1_data_43C[4] = {20.0f, 20.0f, 20.0f, 100.0f};
-MGPLAYER_MODE_FUNC lbl_1_data_44C[18] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, fn_1_3E0, fn_1_4A8, fn_1_55C
-};
-M667RegistryDescriptorView lbl_1_data_494[8] = {
-    {0, fn_1_67D8, 80, 15},
-    {0, fn_1_6844, 80, 15},
-    {0, fn_1_68B0, 80, 15},
-    {0, fn_1_691C, 80, 15},
-    {0, fn_1_6060, 80, 1},
-    {0, fn_1_6064, 80, 10},
-    {fn_1_5D78, fn_1_61A8, 80, 64},
-    {0, 0, 0, 0}
-};
-char lbl_1_data_514[] = "/mic/ctx/m667_words";
-
-/* Map, player state, and effects. */
-#include "REL/m667dll/completion.h"
-#include "messdir_enum.h"
-#include "game/mg/colman.h"
-#include "dolphin/pad.h"
 
 #define M667_ACTOR_COL_ATTR_FLAGS 0x40000010U
 #define M667_DIRECTION_INPUT_MASK                                                                  \
@@ -604,6 +514,8 @@ char lbl_1_data_514[] = "/mic/ctx/m667_words";
 #define MSM_SE_M667_ENTRY_THROW_STEP_2 2184
 #define MSM_SE_M667_ENTRY_THROW_STEP_3 2185
 #define MSM_SE_M667_ENTRY_LAND 2186
+#define MSM_SE_M667_ENTRY_HIT 576
+#define MSM_SE_M667_ENDING 2187
 #define M667_AI_ROUTE_GRID_FLAG (1 << 0)
 #define M667_AI_ROUTE_ENTRY_FLAG (1 << 1)
 #define M667_AI_STAY_FLAG (1 << 4)
@@ -613,7 +525,6 @@ char lbl_1_data_514[] = "/mic/ctx/m667_words";
 #define M667_AI_X_POSITIVE_FLAG (1 << 3)
 
 extern f32 fn_1_7FA0(f32 start, f32 end, f32 t);
-extern f64 fn_1_6C54(f64 value);
 void fn_1_8CBC(HuVecF *position, s32 sound);
 extern void fn_1_2878(s16 index);
 extern f32 fn_1_7F48(HuVecF *direction);
@@ -648,20 +559,17 @@ s32 fn_1_EC0(HuVecF *position)
     return 1;
 }
 
-extern f32 lbl_1_data_74[14];
-extern HuVecF lbl_1_data_394[4];
-extern s32 lbl_1_data_3C4[4];
-
-/* Player setup groups each player; only majority-group players receive an active map slot. */
+/* The player-object initializer calls this to group each player; only majority-team players get
+ * an active map slot. */
 void fn_1_1000(M667PlayerView *player)
 {
     HuVecF position;
-    s32 unusedWord;
+    s32 reservedWord;
     s32 playerIndex;
     s32 group;
     s32 slot;
 
-    unusedWord = 0;
+    reservedWord = 0;
     if (lbl_1_bss_18 != NULL) {
         playerIndex = player->index;
         group = player->group;
@@ -697,16 +605,14 @@ void fn_1_1000(M667PlayerView *player)
     }
 }
 
-/* Map setup records each model ID for collision-map initialization. */
+/* The map initializer calls this to add a model to the collision-map setup list. */
 void fn_1_1238(M667MapView *work, s16 modelId)
 {
     work->modelIds[work->modelCount] = modelId;
     work->modelCount++;
 }
 
-extern s32 lbl_1_data_290[2];
-
-/* Map setup initializes the two moving map models before the object starts updating them. */
+/* The map initializer calls this for each moving board model before per-frame updates begin. */
 void fn_1_1258(s32 index)
 {
     M667MapModel *record;
@@ -722,7 +628,8 @@ void fn_1_1258(s32 index)
     }
 }
 
-/* The map object update advances each moving map model along its two-point path. */
+/* The map object's frame callback calls this to advance one moving model along its two-point
+ * path. */
 void fn_1_1338(s32 index)
 {
     Point3d position;
@@ -737,8 +644,8 @@ void fn_1_1338(s32 index)
         dataIndex = record->index + (index * 2);
         if (record->elapsedFrames == 0) {
             PSVECSubtract(
-                (Point3d *)((u8 *)lbl_1_data_230 + (dataIndex * 24)),
-                (Point3d *)((u8 *)lbl_1_data_230 + (dataIndex * 24) + 12),
+                &lbl_1_data_230[dataIndex][0],
+                &lbl_1_data_230[dataIndex][1],
                 &direction);
             angle = fn_1_7F48(&direction);
             Hu3DModelRotSet(record->model, 0.0f,
@@ -751,8 +658,8 @@ void fn_1_1338(s32 index)
             t = 1.0f;
         }
         fn_1_7EF0(
-            (Point3d *)((u8 *)lbl_1_data_230 + (dataIndex * 24)),
-            (Point3d *)((u8 *)lbl_1_data_230 + (dataIndex * 24) + 12),
+            &lbl_1_data_230[dataIndex][0],
+            &lbl_1_data_230[dataIndex][1],
             t, &position);
         Hu3DModelPosSetV(record->model, &position);
         if (t >= 1.0f) {
@@ -762,7 +669,7 @@ void fn_1_1338(s32 index)
     }
 }
 
-/* Player setup enables the tile model assigned to a player and saves its original material
+/* Player setup calls this to enable the assigned tile model and save its original material
  * colors. */
 void fn_1_1554(s32 index)
 {
@@ -779,7 +686,7 @@ void fn_1_1554(s32 index)
     }
 }
 
-/* Map teardown hides a tile model, frees its saved colors, and releases the slot. */
+/* Map teardown calls this to hide a tile, free its saved colors, and release its player slot. */
 void fn_1_1628(s32 index)
 {
     M667MapSlot *slot = NULL;
@@ -796,7 +703,7 @@ void fn_1_1628(s32 index)
 
 void fn_1_8AE4(s32 model, u8 *data, f32 red, f32 green, f32 blue);
 
-/* Player setup tints the tile model from that player's RGB color. */
+/* Player setup calls this to tint an enabled tile model with its player's RGB color. */
 void fn_1_16B8(s32 index, void *color)
 {
     M667MapSlot *slot;
@@ -815,7 +722,7 @@ void fn_1_16B8(s32 index, void *color)
     }
 }
 
-/* Map movement places an enabled tile at its grid coordinates. */
+/* Player movement calls this to store grid coordinates and place the enabled tile on the board. */
 void fn_1_1810(s32 index, s32 x, s32 z)
 {
     HuVecF position;
@@ -834,10 +741,7 @@ void fn_1_1810(s32 index, s32 x, s32 z)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
-/* AI movement reads the indexed map slot without checking whether it is enabled; absent map
- * state returns without supplying a pointer value. */
+/* Player movement and AI read this slot; absent map state returns without supplying a pointer. */
 M667MapSlot *fn_1_1934(s32 index)
 {
     if (lbl_1_bss_18 == NULL) {
@@ -846,9 +750,8 @@ M667MapSlot *fn_1_1934(s32 index)
     return &lbl_1_bss_18->slots[index];
 }
 
-#include "REL/m667dll/recovered.h"
-
-/* Player input moves a tile by one grid step when the destination is unoccupied. */
+/* The player-input callback calls this to move a tile one grid step when its destination is
+ * free. */
 void fn_1_1968(s32 index, s32 dx, s32 dz)
 {
     extern void fn_1_1810(s32 index, s32 x, s32 z);
@@ -879,9 +782,7 @@ void fn_1_1968(s32 index, s32 dx, s32 dz)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
-/* Movement handlers read the world position of an enabled tile model. */
+/* Movement handlers call this to read an enabled tile model's world position. */
 void fn_1_1A5C(s32 index, HuVecF *position)
 {
     M667MapSlot *slot;
@@ -893,10 +794,7 @@ void fn_1_1A5C(s32 index, HuVecF *position)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
-/* Check another enabled tile for this grid cell; absent map state or a disabled current tile
- * returns without supplying an occupancy value. */
+/* Player input calls this to test another enabled tile for the proposed grid cell. */
 s32 fn_1_1AD4(s32 index, s32 x, s32 z)
 {
     M667MapSlot *other;
@@ -921,9 +819,7 @@ s32 fn_1_1AD4(s32 index, s32 x, s32 z)
     return 0;
 }
 
-#include "REL/m667dll/recovered.h"
-
-/* Map teardown calls this helper to release all four player tile slots. */
+/* The map teardown callback calls this to release all four player tile slots. */
 void fn_1_1B98(void)
 {
     extern void fn_1_1628(s32 index);
@@ -933,11 +829,7 @@ void fn_1_1B98(void)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-#include "game/hu3d.h"
-#include "game/charman.h"
-
-/* Set the camera callback's mode and clear its unused reset word. */
+/* Set the camera callback's mode and reset its frame timer. */
 void fn_1_1BD8(s32 mode)
 {
     if (lbl_1_bss_10 != NULL) {
@@ -989,8 +881,6 @@ void fn_1_1DE0(M667PlayerView *work, s32 motion, f32 blend, u32 attr)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
 /* Scene phases reset a player's action timer and step when selecting a different action mode. */
 void fn_1_1E5C(M667PlayerView *state, s32 mode)
 {
@@ -1032,9 +922,6 @@ s32 fn_1_1EB8(M667PlayerView *work, s16 frames)
     return t >= (1.0f);
 }
 
-#include "REL/m667dll/recovered.h"
-#include "game/mic.h"
-
 /* The microphone response stores its status, confidence, recognized-value count, and values. */
 typedef struct M667MicResponse {
     s16 status;
@@ -1072,8 +959,6 @@ void fn_1_1FB4(u16 *response)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
 /* Collisions and effect callbacks request a free pooled effect item at a world position. */
 u16 *fn_1_2098(u32 index, HuVecF *position)
 {
@@ -1104,14 +989,10 @@ u16 *fn_1_2098(u32 index, HuVecF *position)
     return NULL;
 }
 
-#include "dolphin/types.h"
-
 void fn_1_21B8(u16 *flags)
 {
     *flags |= 2;
 }
-
-#include "REL/m667dll/recovered.h"
 
 /* Entry collision handlers switch an entry mode and reset its timer on change. */
 void fn_1_21CC(s16 index, s32 mode)
@@ -1132,8 +1013,6 @@ M667Entry *fn_1_2230(s16 index)
     if (lbl_1_bss_8 == NULL) return NULL;
     return &lbl_1_bss_8->entries[index];
 }
-
-#include "REL/m667dll/recovered.h"
 
 const HuVecF lbl_1_rodata_4C = {0.0f, 0.0f, 0.0f};
 
@@ -1157,8 +1036,6 @@ s16 fn_1_2270(s32 ownerPlayerIndex)
     }
     return -1;
 }
-
-#include "REL/m667dll/recovered.h"
 
 /* Entry setup builds the jump curve and initializes its actor for the selected landing point. */
 void fn_1_2338(s16 index, HuVecF *start, HuVecF *end, f32 height)
@@ -1206,8 +1083,6 @@ void fn_1_2338(s16 index, HuVecF *start, HuVecF *end, f32 height)
         entry->mode = 2;
     }
 }
-
-#include "REL/m667dll/recovered.h"
 
 /* Scene teardown kills the actor for every entry before its object is released. */
 void fn_1_25E8(void)
@@ -1279,8 +1154,6 @@ void fn_1_2644(s16 entryIndex)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
 /* The entry update after landing or contact selects inactive mode, disables body collisions,
  * and hides the entry model. */
 void fn_1_2878(s16 index)
@@ -1295,13 +1168,11 @@ void fn_1_2878(s16 index)
     Hu3DModelAttrSet(entry->modelId, 1U);
 }
 
-#include "REL/m667dll/recovered.h"
-
-extern M667PlayerView *lbl_1_bss_1C[4];
 void fn_1_8CBC(HuVecF *position, s32 sound);
 
-/* Entry collision handling emits impact effects and switches the hit entry to its landing state. */
-void fn_1_28D8(COLBODY *body)
+/* The collision manager calls this on entry impact to emit effects and switch the entry to
+ * landing. */
+void fn_1_28D8(COLBODY *contactBody)
 {
     extern M667Entry *fn_1_2230(s16 index);
     extern u16 *fn_1_2098(u32 index, HuVecF *position);
@@ -1311,7 +1182,7 @@ void fn_1_28D8(COLBODY *body)
     M667Entry *entry;
     u16 *effect;
 
-    index = body->param.paramB & 0xFF;
+    index = contactBody->param.paramB & 0xFF;
     entry = fn_1_2230(index);
     MgActorPosGet(entry->actor, &position);
     /* Both returned handles are captured, but not subsequently consumed. */
@@ -1322,14 +1193,15 @@ void fn_1_28D8(COLBODY *body)
     fn_1_21CC(index, 3);
 }
 
-/* Reject same-type or same-team pairs; apply actor and player effects only when a is an entry. */
-int fn_1_2998(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
+/* The collision manager calls this for candidate pairs; entry hits trigger actor and player
+ * effects. */
+int fn_1_2998(COL_NARROW_PARAM *firstCollider, COL_NARROW_PARAM *secondCollider)
 {
     extern M667Entry *fn_1_2230(s16 index);
     extern u16 *fn_1_2098(u32 index, HuVecF *position);
     extern void fn_1_1E5C(M667PlayerView *state, s32 mode);
     extern void fn_1_21CC(s16 index, s32 mode);
-    HuVecF unusedEntryOrigin;
+    HuVecF entryPositionSnapshot;
     HuVecF playerPosition;
     HuVecF direction;
     HuVecF effectPosition;
@@ -1338,24 +1210,25 @@ int fn_1_2998(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
     s16 entryIndex;
     s16 playerIndex;
 
-    if (a->type == b->type) {
+    if (firstCollider->type == secondCollider->type) {
         return 0;
     }
-    if (((a->paramB >> 8) & 0xFF) == ((b->paramB >> 8) & 0xFF)) {
+    if (((firstCollider->paramB >> 8) & 0xFF) ==
+        ((secondCollider->paramB >> 8) & 0xFF)) {
         return 0;
     }
-    if (a->type == 5) {
-        entryIndex = a->paramB & 0xFF;
+    if (firstCollider->type == 5) {
+        entryIndex = firstCollider->paramB & 0xFF;
         entry = fn_1_2230(entryIndex);
         fn_1_21CC(entryIndex, 3);
-        playerIndex = b->paramB & 0xFF;
+        playerIndex = secondCollider->paramB & 0xFF;
         player = lbl_1_bss_1C[playerIndex];
         MgActorColAttrSet(player->player->actor, M667_ACTOR_COL_ATTR_FLAGS);
         MgActorColAttrReset(player->player->actor, 1);
         MgActorColAttrSet(entry->actor, M667_ACTOR_COL_ATTR_FLAGS);
         MgActorColAttrReset(entry->actor, 1);
         player->player->actor->gravity = 0.0f;
-        unusedEntryOrigin = entry->position;
+        entryPositionSnapshot = entry->position;
         MgActorPosGet(player->player->actor, &playerPosition);
         direction.x = 0.0f;
         direction.y = (1.0f);
@@ -1365,18 +1238,12 @@ int fn_1_2998(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
         omVibrate(player->index, 20, 20, 0);
         MgActorPosGet(entry->actor, &effectPosition);
         fn_1_2098(entry->ownerPlayerIndex, &effectPosition);
-        fn_1_8CBC(&effectPosition, 2186);
-        CharFXPlay(player->player->charNo, 576);
+        fn_1_8CBC(&effectPosition, MSM_SE_M667_ENTRY_LAND);
+        CharFXPlay(player->player->charNo, MSM_SE_M667_ENTRY_HIT);
     }
     return 1;
 }
 
-#include "REL/m667dll/recovered.h"
-#include "game/mic.h"
-
-extern char lbl_1_data_514[];
-extern void *lbl_1_bss_14;
-extern M667PlayerView *lbl_1_bss_1C[4];
 void *fn_1_8F58(s32 index);
 void fn_1_38E4(OMOBJ *object);
 void fn_1_378C(OMOBJ *object);
@@ -1417,8 +1284,6 @@ void fn_1_2B68(OMOBJ *object)
     fn_1_140(object, fn_1_2D3C);
 }
 
-#include "REL/m667dll/recovered.h"
-
 void fn_1_2DCC(OMOBJ *object);
 void fn_1_30C4(OMOBJ *object);
 void fn_1_3300(OMOBJ *object);
@@ -1448,13 +1313,6 @@ void fn_1_2D3C(OMOBJ *object)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-#include "game/audio.h"
-#include "game/hu3d.h"
-#include "game/mic.h"
-
-extern M667PlayerView *lbl_1_bss_1C[4];
-
 extern s32 fn_1_8E5C(s32 soundId);
 extern void fn_1_1C1C(s32 mode);
 extern s32 fn_1_1D18(void);
@@ -1475,7 +1333,7 @@ void fn_1_2DCC(OMOBJ *object)
         work->soundAge += 1;
         switch (lbl_1_bss_2C->soundState) {
         case 0:
-            lbl_1_bss_2C->soundHandle = fn_1_8E5C(2187);
+            lbl_1_bss_2C->soundHandle = fn_1_8E5C(MSM_SE_M667_ENDING);
             work->soundState = 1;
             break;
         case 1:
@@ -1538,11 +1396,6 @@ void fn_1_2DCC(OMOBJ *object)
     }
 }
 
-#include "game/object.h"
-#include "game/mg/seqman.h"
-#include "REL/m667dll/recovered.h"
-
-extern M667PlayerView *lbl_1_bss_1C[4];
 s32 fn_1_C74(void *player);
 void fn_1_CFC(s32 mode);
 
@@ -1588,17 +1441,12 @@ void fn_1_30C4(OMOBJ *object)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-#include "game/mic.h"
-#include "game/wipe.h"
-
 typedef struct ResultPhaseView {
     s16 timer;
     s16 sceneMode;
     s16 phase;
 } ResultPhaseView;
 
-extern f32 lbl_1_data_42C[4];
 void fn_1_6BF0(s32 player, s16 effect);
 void fn_1_CFC(s32 mode);
 
@@ -1609,10 +1457,10 @@ void fn_1_3300(OMOBJ *object)
     ResultPhaseView *work;
     s32 index;
     s32 winnerIds[3];
-    s32 unusedWord;
+    s32 reservedWord;
 
     work = object->data;
-    unusedWord = 0;
+    reservedWord = 0;
     MgSeqModeChangeOff();
     switch (work->phase) {
     case 0:
@@ -1649,11 +1497,6 @@ void fn_1_3300(OMOBJ *object)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-#include "game/audio.h"
-#include "game/wipe.h"
-
-extern f32 lbl_1_data_43C[4];
 s32 fn_1_8E5C(s32 soundId);
 void fn_1_7F4(void);
 void fn_1_CFC(s32 mode);
@@ -1666,15 +1509,15 @@ void fn_1_34EC(OMOBJ *object)
     M667SceneView *work;
     s32 index;
     s16 model;
-    s32 unusedWord;
+    s32 reservedWord;
 
     work = object->data;
-    unusedWord = 0;
+    reservedWord = 0;
     if (lbl_1_bss_2C->singlePlayerResultObject) {
         work->soundAge++;
         switch (lbl_1_bss_2C->soundState) {
         case 0:
-            lbl_1_bss_2C->soundHandle = fn_1_8E5C(2187);
+            lbl_1_bss_2C->soundHandle = fn_1_8E5C(MSM_SE_M667_ENDING);
             work->soundState = 1;
             break;
         case 1:
@@ -1723,22 +1566,17 @@ void fn_1_34EC(OMOBJ *object)
     }
 }
 
-#include <math.h>
-#include "REL/m667dll/recovered.h"
-
 typedef struct LightSetupView {
-    s16 unknown_00; /* No light-object callback reads or writes this word. */
+    s16 reservedWord; /* Reserved word in the light object's setup work. */
     s16 phase;
-    u8 unknown_04[4]; /* No light-object callback accesses these bytes. */
+    u8 reservedBytes[4]; /* Reserved bytes in the light object's setup work. */
     s32 lightId;
 } LightSetupView;
 
 const HuVecF lbl_1_rodata_70 = {100.0f, 8000.0f, 0.0f};
 const HuVecF lbl_1_rodata_7C = {0.0f, 1.0f, 0.0f};
 const HuVecF lbl_1_rodata_88 = {0.0f, 0.0f, 0.0f};
-extern HuVecF lbl_1_data_3D4, lbl_1_data_3E0;
 /* Light setup reads its initial RGBA color from this data block. */
-extern u8 lbl_1_data_3EC[32];
 void fn_1_38D0(OMOBJ *object);
 
 /* Scene object creation configures the directional light and shadow used by the board. */
@@ -1765,8 +1603,6 @@ void fn_1_378C(OMOBJ *object)
     fn_1_140(object, fn_1_38D0);
 }
 
-#include "game/object.h"
-
 /* The light object's update callback is intentionally idle after setup. */
 void fn_1_38D0(OMOBJ *object)
 {
@@ -1774,8 +1610,6 @@ void fn_1_38D0(OMOBJ *object)
     /* Lighting and shadow setup is complete, so this object's update has no visible work. */
     objectWork = object->data;
 }
-
-#include "REL/m667dll/recovered.h"
 
 void fn_1_39D4(OMOBJ *object);
 
@@ -1796,8 +1630,6 @@ void fn_1_38E4(OMOBJ *object)
     work->timer = 0;
     fn_1_140(object, fn_1_39D4);
 }
-
-#include "REL/m667dll/recovered.h"
 
 /* The camera object's update callback tracks its active motion until the motion ends. */
 void fn_1_39D4(OMOBJ *object)
@@ -1828,12 +1660,9 @@ void fn_1_39D4(OMOBJ *object)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
-/* The map initializer copies this zero-filled template into an unused local. */
-typedef struct M667MapUnknownTemplate { u32 words[8]; } M667MapUnknownTemplate;
-const M667MapUnknownTemplate lbl_1_rodata_BC = {{0, 0, 0, 0, 0, 0, 0, 0}};
-extern HuVecF lbl_1_data_200[4];
+/* The map initializer copies this zero-filled template into a local. */
+typedef struct M667MapReservedTemplate { u32 reservedWords[8]; } M667MapReservedTemplate;
+const M667MapReservedTemplate lbl_1_rodata_BC = {{0, 0, 0, 0, 0, 0, 0, 0}};
 void fn_1_1238(M667MapView *work, s16 model);
 void fn_1_3D20(OMOBJ *object);
 
@@ -1846,12 +1675,12 @@ void fn_1_3ACC(OMOBJ *object)
     s32 index;
     s32 model;
     COL_ATTRPARAM attr;
-    M667MapUnknownTemplate unusedMapTemplate;
-    s32 unusedWord;
+    M667MapReservedTemplate reservedMapTemplate;
+    s32 reservedWord;
 
     work = object->data;
-    unusedWord = 0;
-    unusedMapTemplate = lbl_1_rodata_BC;
+    reservedWord = 0;
+    reservedMapTemplate = lbl_1_rodata_BC;
     fn_1_1238(work, lbl_1_bss_2C->collisionObject->mdlId[0]);
     MgActorColMapInit(work->modelIds, lbl_1_bss_18->modelCount, 40);
     for (index = 0; index < 4; index++) {
@@ -1881,8 +1710,6 @@ void fn_1_3ACC(OMOBJ *object)
     fn_1_140(object, fn_1_3D20);
 }
 
-#include "REL/m667dll/recovered.h"
-
 /* In day mode, the map update advances its two animations before scene mode 4. */
 void fn_1_3D20(OMOBJ *object)
 {
@@ -1893,15 +1720,7 @@ void fn_1_3D20(OMOBJ *object)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-#include "game/gamework.h"
-
 const MGACTOR_PARAM lbl_1_rodata_DC = {0.0f, 0.0f, 0, 0, 0, 0, 0, 0};
-extern unsigned int lbl_1_data_30[];
-extern M667AIView lbl_1_data_11C[4];
-extern MGPLAYER_MODE_FUNC lbl_1_data_44C[];
-extern HuVecF lbl_1_data_40C, lbl_1_data_418;
-extern GXColor lbl_1_data_424[];
 s32 fn_1_730(M667PlayerView *work);
 void fn_1_1DB8(MGACTOR *actor, int context);
 void fn_1_1000(M667PlayerView *work);
@@ -1982,8 +1801,6 @@ void fn_1_3D74(OMOBJ *object)
     fn_1_140(object, fn_1_4170);
 }
 
-#include "REL/m667dll/recovered.h"
-
 void fn_1_8C30(s32 model, char *name, s32 target);
 void fn_1_42CC(OMOBJ *object);
 void fn_1_47A8(OMOBJ *object);
@@ -2031,8 +1848,6 @@ void fn_1_4170(OMOBJ *object)
         work->flags &= ~2;
     }
 }
-
-#include "REL/m667dll/completion.h"
 
 extern void fn_1_1DE0(M667PlayerView *work, s32 motion, f32 blend, u32 attr);
 extern void fn_1_1EA0(M667PlayerView *work, f32 angle);
@@ -2143,8 +1958,6 @@ void fn_1_42CC(OMOBJ *object)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
 /* Action mode 2 marks play active and preassigns mode 3. Tile players then switch to mode 4;
  * the lone player's mode-3 selection leaves its existing action timer and step unchanged. */
 void fn_1_47A8(OMOBJ *object)
@@ -2197,9 +2010,6 @@ void fn_1_481C(OMOBJ *object)
 increment:
     work->actionTimer += 1;
 }
-
-#include "REL/m667dll/recovered.h"
-#include "game/pad.h"
 
 void fn_1_54E4(OMOBJ *object);
 void fn_1_1968(s32 index, s32 x, s32 z);
@@ -2373,7 +2183,7 @@ void fn_1_4E6C(OMOBJ *object)
         fn_1_1E5C(work, 3);
         return;
     case 2:
-        frames = (s16)((s32)(fn_1_6C54((f64)(work->rotationStartY - (180.0f))) /
+        frames = (s16)((s32)(fabs((f64)(work->rotationStartY - (180.0f))) /
                             90.0) * 10);
         result = fn_1_1EB8(work, frames);
         if (result != 0) {
@@ -2383,8 +2193,6 @@ void fn_1_4E6C(OMOBJ *object)
         break;
     }
 }
-
-#include "REL/m667dll/recovered.h"
 
 void fn_1_1DE0(M667PlayerView *work, s32 motion, f32 blend, u32 attr);
 
@@ -2409,9 +2217,6 @@ void fn_1_5110(OMOBJ *object)
     }
     work->actionTimer += 1;
 }
-
-#include "REL/m667dll/recovered.h"
-#include "humath.h"
 
 /* A struck player moves by its knockback velocity, then is hidden and has gravity cleared below
  * screen Y -100. */
@@ -2466,8 +2271,6 @@ void fn_1_5330(OMOBJ *object)
     MgActorPosSet(work->player->actor, &position);
 }
 
-#include "REL/m667dll/recovered.h"
-
 void fn_1_1DE0(M667PlayerView *work, s32 motion, f32 blend, u32 attr);
 
 /* Action mode 10 resets yaw every update; it requests motion 10 only when the action timer is
@@ -2488,8 +2291,6 @@ void fn_1_5458(OMOBJ *object)
     }
 }
 
-#include "REL/m667dll/recovered.h"
-
 /* The AI player update routes input generation through the shared AI dispatcher. */
 void fn_1_54E4(OMOBJ *object)
 {
@@ -2497,8 +2298,6 @@ void fn_1_54E4(OMOBJ *object)
     objectWork = object->data;
     fn_1_551C(object);
 }
-
-#include "REL/m667dll/recovered.h"
 
 /* During action mode 3, the AI dispatcher selects tile controls for players with a map slot
  * and grid movement for the lone player without one. */
@@ -2515,12 +2314,7 @@ void fn_1_551C(OMOBJ *object)
     }
 }
 
-#include "game/main.h"
-#include "game/object.h"
-#include "REL/m667dll/recovered.h"
-
 s32 fn_1_344(s32 modulus, s32 count, s32 *weights);
-extern s32 lbl_1_data_1EC[5];
 
 /* fn_1_551C calls this during action mode 3 for an AI player without a map slot;
  * it builds grid movement choices and checks nearby thrown entries. */
@@ -2638,10 +2432,7 @@ void fn_1_5580(OMOBJ *object)
     }
 }
 
-#include <math.h>
-#include "REL/m667dll/completion.h"
-
-s32 abs(s32);                                       /* extern */
+s32 abs(s32);
 M667MapSlot *fn_1_1934(s32);
 s32 fn_1_344(s32, s32, s32 *);
 
@@ -2742,17 +2533,10 @@ void fn_1_5898(OMOBJ *object) {
     }
 }
 
-#include <math.h>
-#include "REL/m667dll/recovered.h"
-#include "game/hu3d.h"
-#include "game/memory.h"
-
 typedef struct M667RegistryTemplate80 {
-    u32 unknownWords[20]; /* The setup callback copies this template but never reads its
-                           * contents. */
+    u32 reservedWords[20]; /* Zero-filled work copied during effect setup. */
 } M667RegistryTemplate80;
 
-extern M667RegistryDescriptorView lbl_1_data_494[];
 const M667RegistryTemplate80 lbl_1_rodata_128 = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
 extern void fn_1_5E64(HU3D_MODEL *model, Mtx *matrix);
@@ -2761,7 +2545,7 @@ extern void fn_1_5C6C(OMOBJ *object);
 /* The effect object initializer creates the render hook and initializes each effect pool. */
 void fn_1_5AF8(OMOBJ *object)
 {
-    M667RegistryTemplate80 unusedEffectTemplate;
+    M667RegistryTemplate80 reservedEffectTemplate;
     M667RegistryView *work;
     const M667RegistryDescriptorView *descriptor;
     M667ModelEffectView *item;
@@ -2771,7 +2555,7 @@ void fn_1_5AF8(OMOBJ *object)
     s32 bufferBytes;
 
     work = object->data;
-    unusedEffectTemplate = lbl_1_rodata_128;
+    reservedEffectTemplate = lbl_1_rodata_128;
     work->model = Hu3DHookFuncCreate(fn_1_5E64);
     descriptorIndex = 0;
     for (;;) {
@@ -2800,20 +2584,18 @@ void fn_1_5AF8(OMOBJ *object)
     fn_1_140(object, fn_1_5C6C);
 }
 
-#include "REL/m667dll/recovered.h"
-
 /* The effect object's update callback advances and retires active pooled effects. */
 void fn_1_5C6C(OMOBJ *object)
 {
     void *objectWork;
-    s32 unusedWord;
+    s32 reservedWord;
     s32 index;
     u16 *item;
     void *pool;
     M667RegistryEntryView *entry;
 
     objectWork = object->data;
-    unusedWord = 15;
+    reservedWord = 15;
     if (lbl_1_bss_2C->mode < 4) {
         index = 0;
 nextEntry:
@@ -2836,10 +2618,6 @@ nextEntry:
         }
     }
 }
-
-#include "dolphin/gx.h"
-#include "REL/m667dll/recovered.h"
-#include "game/hu3d.h"
 
 /* The line-effect renderer installs the GX state used to draw colored trail segments. */
 void fn_1_5D78(void)
@@ -2871,13 +2649,13 @@ typedef struct M667RenderItemView {
 void fn_1_5E64(HU3D_MODEL *model, Mtx *matrix)
 {
     Mtx local;
-    s32 unusedWord;
+    s32 reservedWord;
     s32 index;
     void *pool;
     M667RegistryEntryView *entry;
     M667RenderItemView *item;
 
-    unusedWord = 15;
+    reservedWord = 15;
     PSMTXIdentity(local);
     PSMTXConcat(*matrix, local, local);
     GXLoadPosMtxImm(local, 0);
@@ -2902,19 +2680,16 @@ nextEntry:
     }
 }
 
-#include "REL/m667dll/recovered.h"
-#include "game/hu3d.h"
-
 /* Scene teardown clears remaining effect items and destroys their shared render hook. */
 void fn_1_5F74(void)
 {
-    s32 unusedWord;
+    s32 reservedWord;
     s32 index;
     u16 *item;
     void *pool;
     M667RegistryEntryView *entry;
 
-    unusedWord = 15;
+    reservedWord = 15;
     index = 0;
 nextEntry:
     entry = &lbl_1_bss_C->entries[index];
@@ -2934,13 +2709,8 @@ nextEntry:
     Hu3DModelKill(lbl_1_bss_C->model);
 }
 
-#include "REL/m667dll/recovered.h"
-
 /* This registered effect has no per-event work. */
 void fn_1_6060(M667ModelEffectView *state, s32 event) {}
-
-#include "REL/m667dll/recovered.h"
-#include "game/memory.h"
 
 typedef struct M667ParticlePointView {
     HuVecF position;
@@ -2996,24 +2766,13 @@ void fn_1_6064(M667ModelEffectView *effect, s32 event)
     }
 }
 
-#include <math.h>
-#include "dolphin.h"
-#include "dolphin/mtx.h"
-#include "dolphin/gx.h"
-#include "game/memory.h"
-#include "REL/m667dll/recovered.h"
-#include <string.h>
-
 extern s32 fn_1_EC0(HuVecF *position);
-extern void fn_1_6C6C(f32 x, f32 y, f32 z);
-extern void fn_1_6C60(u32 color);
-extern void fn_1_6C5C(void);
 
 /* The effect-pool callback advances and draws a bouncing, fading line trail. */
 void fn_1_61A8(M667ModelEffectView *item, s32 event)
 {
     extern s32 fn_1_EC0(HuVecF *position);
-    s32 unusedWord = 15;
+    s32 reservedWord = 15;
     s32 i;
     s32 count;
     u8 lineWidth;
@@ -3107,18 +2866,16 @@ void fn_1_61A8(M667ModelEffectView *item, s32 event)
         count = item->pointCount;
         GXBegin(GX_LINESTRIP, GX_VTXFMT0, count);
         for (i = 0; i < count; i++) {
-            fn_1_6C6C(
+            GXPosition3f32(
                 item->points[i].position.x,
                 item->points[i].position.y,
                 item->points[i].position.z);
-            fn_1_6C60(*(u32 *) &item->points[i].color);
+            GXColor1u32(*(u32 *) &item->points[i].color);
         }
-        fn_1_6C5C();
+        GXEnd();
         break;
     }
 }
-
-#include "REL/m667dll/recovered.h"
 
 void fn_1_21B8(u16 *flags);
 
@@ -3165,19 +2922,6 @@ const M667Entry lbl_1_rodata_1B4 = {
 };
 
 /* Talkie Walkie model callbacks, entry setup, and small game-state helpers. */
-#include <math.h>
-#include "REL/m667dll/recovered.h"
-#include "game/gamework.h"
-#include "game/flag.h"
-#include "dolphin/gx/GXVert.h"
-
-M667SceneView *lbl_1_bss_2C;
-M667PlayerView *lbl_1_bss_1C[4];
-M667MapView *lbl_1_bss_18;
-void *lbl_1_bss_14;
-M667CameraView *lbl_1_bss_10;
-M667RegistryView *lbl_1_bss_C;
-M667Entries *lbl_1_bss_8;
 
 /* The model-effect system calls this hook to link entry model 12 on event 2. */
 void fn_1_67D8(M667ModelEffectView *effect, s32 event)
@@ -3223,9 +2967,6 @@ void fn_1_691C(M667ModelEffectView *effect, s32 event)
     fn_1_66AC(effect, event);
 }
 
-/* Entry setup uses these actor parameters and copies the unused entry template. */
-extern const MGACTOR_PARAM lbl_1_rodata_194;
-extern const M667Entry lbl_1_rodata_1B4;
 int fn_1_2998(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b);
 void fn_1_6B84(OMOBJ *object);
 
@@ -3301,19 +3042,3 @@ void fn_1_6BF0(s32 player, s16 amount)
 
 /* Map setup and updates read the night-mode state to enable moving map models only by day. */
 s16 fn_1_6C44(void) { return GwMgNightF; }
-
-/* Return an absolute magnitude for rotation and sound-volume calculations. */
-f64 fn_1_6C54(f64 value) { return fabs(value); }
-
-/* The trail renderer calls this after emitting its vertices; the helper performs no work. */
-void fn_1_6C5C(void) {}
-
-/* Send a packed RGBA vertex color through the FIFO during trail drawing. */
-void fn_1_6C60(u32 word) { GXWGFifo.u32 = word; }
-/* Send three vertex coordinates through the FIFO during immediate drawing. */
-void fn_1_6C6C(f32 x, f32 y, f32 z)
-{
-    GXWGFifo.f32 = x;
-    GXWGFifo.f32 = y;
-    GXWGFifo.f32 = z;
-}

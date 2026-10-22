@@ -5,7 +5,6 @@
 #include "dolphin/gx.h"
 #include "dolphin/gx/GXVert.h"
 #include "dolphin/mtx.h"
-#include "dolphin/types.h"
 #include "game/audio.h"
 #include "game/charman.h"
 #include "game/data.h"
