@@ -3313,6 +3313,27 @@ config.libs = [
             ),
         },
     ),
+    Rel(
+        "m666dll",
+        objects={
+            Object(
+                Matching,
+                "REL/m666dll/runtime.c",
+                mw_version=config.linker_version,
+                extra_cflags=["-DMP6_REL_RUNTIME=1"],
+            ),
+            Object(
+                Matching,
+                "REL/m666dll/text_000A0.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+            Object(
+                Matching,
+                "REL/m666dll/text_008BC.c",
+                extra_cflags=["-pooldata", "off"],
+            ),
+        },
+    ),
 ]
 
 if args.mode == "configure":
