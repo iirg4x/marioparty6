@@ -5,3 +5,23 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m642dll/startup.c:
+	.text       start:0x00000000 end:0x00000320
+	.data       start:0x00000000 end:0x00000030
+	.bss        start:0x00000000 end:0x00000008
+
+REL/m642dll/main.c:
+	.text       start:0x00000320 end:0x00007878
+	.rodata     start:0x00000000 end:0x00000288
+	.data       start:0x00000030 end:0x000004D0
+	.bss        start:0x00000008 end:0x00000030
+
+REL/m642dll/text_07878.c:
+	.text       start:0x00007878 end:0x000092E4
+	.rodata     start:0x00000288 end:0x000002E8
+	.data       start:0x000004D0 end:0x00001BCC
+
+REL/m642dll/runtime.c:
+	.text       start:0x000092E4 end:0x00009D28
+	.rodata     start:0x000002E8 end:0x00000300
