@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 62.49% | 72.81% |
+| Entire project | 62.82% | 73.24% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 56.59% | 56.05% |
+| REL modules | 56.98% | 56.75% |
+
+Cashapult (`m642dll`) selects all **151 functions** from **4 complete translation units**; its linked REL matches retail.
 
 Trap Ease Artist (`m620Dll`) selects all **243 functions** from **8 complete translation units**; its linked REL matches retail.
 
