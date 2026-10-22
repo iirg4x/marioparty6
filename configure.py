@@ -2101,7 +2101,7 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m667dll/map_players_effects.c",
-                extra_cflags=["-pooldata", "off", "-inline", "on,noauto"],
+                extra_cflags=["-pooldata", "off", "-inline", "off", "-sym", "on"],
             ),
             Object(
                 Matching,
@@ -2111,7 +2111,7 @@ config.libs = [
             Object(
                 Matching,
                 "REL/m667dll/particles_tracks_materials.c",
-                extra_cflags=["-pooldata", "off", "-sym", "on"],
+                extra_cflags=["-pooldata", "off", "-sym", "on", "-inline", "off"],
             ),
             Object(
                 Matching,

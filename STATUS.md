@@ -4,7 +4,7 @@ This page is the public project snapshot for the supported `GP6E01` build. It is
 
 ## Progress
 
-Last published full-project snapshot: **October 9, 2026**
+Last published full-project snapshot: **October 22, 2026**
 
 Byte percentages were generated from a verified full-project retail build with `tools/update_progress.py`.
 
