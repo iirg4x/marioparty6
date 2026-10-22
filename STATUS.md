@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 62.82% | 73.24% |
+| Entire project | 63.29% | 73.60% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 56.98% | 56.75% |
+| REL modules | 57.56% | 57.35% |
+
+Shoot Yer Mouth Off (`m666dll`) selects all **110 functions** from **3 complete translation units**; its linked REL matches retail.
 
 Cashapult (`m642dll`) selects all **151 functions** from **4 complete translation units**; its linked REL matches retail.
 
