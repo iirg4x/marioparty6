@@ -5,3 +5,31 @@ Sections:
 	.rodata     type:rodata align:32
 	.data       type:data align:8
 	.bss        type:bss align:8
+
+REL/m665dll/main.c:
+	.text       start:0x00000000 end:0x00000C64
+	.rodata     start:0x00000000 end:0x00000050
+	.data       start:0x00000000 end:0x00000068
+	.bss        start:0x00000000 end:0x00000010
+
+REL/m665dll/scene.c:
+	.text       start:0x00000C64 end:0x00001C60
+	.rodata     start:0x00000050 end:0x000000F0
+	.data       start:0x00000068 end:0x00000100
+	.bss        start:0x00000010 end:0x00000280
+
+REL/m665dll/player.c:
+	.text       start:0x00001C60 end:0x0000C40C
+	.rodata     start:0x000000F0 end:0x00000418
+	.data       start:0x00000100 end:0x00000338
+	.bss        start:0x00000280 end:0x00000CA8
+
+REL/m665dll/opponent.c:
+	.text       start:0x0000C40C end:0x00013BD8
+	.rodata     start:0x00000418 end:0x00000640
+	.data       start:0x00000338 end:0x000003B7
+	.bss        start:0x00000CA8 end:0x00000EB8
+
+REL/m665dll/runtime.c:
+	.text       start:0x00013BD8 end:0x0001461C
+	.rodata     start:0x00000640 end:0x00000658
