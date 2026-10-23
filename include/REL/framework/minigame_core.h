@@ -12,30 +12,30 @@ template <class Time> Time secondsToFrames(Time seconds);
 // Keeps one current game interface so shared callbacks and result helpers can reach it.
 template <class Game> class MinigameSingleton {
 public:
-    static MinigameSingleton *self; // Current interface; zero before construction and after
+    static Game *self; // Current interface; zero before construction and after
                                     // deletion.
 
     // During game construction, require that no other interface is active, then select this one.
     MinigameSingleton()
     {
         !self ? (void)0 : __msl_assertion_failed("self == 0", "singleton.h", 50);
-        self = this;
+        self = static_cast<Game *>(this);
     }
 
     // Game deletion clears the interface used by shared callbacks.
     ~MinigameSingleton() { self = 0; }
 
     // Frame callbacks use this when game construction is already complete.
-    static MinigameSingleton &getUnchecked() { return *self; }
+    static Game &getUnchecked() { return *self; }
     // Result helpers require an active game before reading its shared state.
-    static MinigameSingleton &getChecked()
+    static Game &getChecked()
     {
         (self != 0) ? (void)0 : __msl_assertion_failed("self != 0", "singleton.h", 38);
         return *self;
     }
 };
 
-template <class Game> MinigameSingleton<Game> *MinigameSingleton<Game>::self;
+template <class Game> Game *MinigameSingleton<Game>::self;
 
 // Base interface used by the game's object-manager callbacks and result messages.
 class MinigameCore : public MinigameSingleton<MinigameCore> {
