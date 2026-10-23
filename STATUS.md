@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 63.29% | 73.60% |
+| Entire project | 63.97% | 73.95% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 57.56% | 57.35% |
+| REL modules | 58.37% | 57.91% |
+
+Verbal Assault (`m665dll`) selects all **133 functions** from **5 complete translation units**; its linked REL matches retail.
 
 Shoot Yer Mouth Off (`m666dll`) selects all **110 functions** from **3 complete translation units**; its linked REL matches retail.
 
