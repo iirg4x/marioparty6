@@ -10,9 +10,11 @@ Byte percentages were generated from a verified full-project retail build with `
 
 | Area | Code | Data |
 | --- | ---: | ---: |
-| Entire project | 63.97% | 73.95% |
+| Entire project | 64.67% | 74.15% |
 | Main DOL | 90.36% | 99.25% |
-| REL modules | 58.37% | 57.91% |
+| REL modules | 59.22% | 58.25% |
+
+Mole-it! (`m641Dll`) selects all **92 functions** from **8 complete translation units**; its linked REL matches retail.
 
 Verbal Assault (`m665dll`) selects all **133 functions** from **5 complete translation units**; its linked REL matches retail.
 
