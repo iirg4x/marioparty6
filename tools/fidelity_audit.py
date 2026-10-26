@@ -319,11 +319,14 @@ def float_spellings(code):
         digits = len(re.sub(r"[eE].*", "", literal).replace(".", "").lstrip("0"))
         if digits < 8:
             continue
-        value = struct.unpack("<f", struct.pack("<f", float(literal)))[0]
-        for precision in range(1, 10):
-            short = "%.*g" % (precision, value)
-            if struct.unpack("<f", struct.pack("<f", float(short)))[0] == value:
-                break
+        try:
+            value = struct.unpack("<f", struct.pack("<f", float(literal)))[0]
+            for precision in range(1, 10):
+                short = "%.*g" % (precision, value)
+                if struct.unpack("<f", struct.pack("<f", float(short)))[0] == value:
+                    break
+        except OverflowError:
+            continue                                     # beyond a float's range: not this rule's case
         if len(short.replace(".", "").replace("-", "").lstrip("0")) < digits:
             if "." not in short and "e" not in short:
                 short += ".0"
