@@ -14,12 +14,21 @@ Usage::
 The snapshot is read first to obtain ``commit``.  Files are then fetched from
 that commit through ``git cat-file --batch`` and only the ``cleanup`` key is
 added or replaced in the JSON document.
+
+Since 27 October 2026 the index shows all unfaithful code (user: "Clean up
+index in both local and main should show all unfaithful code"). Besides the
+lexical pointer and pragma scan below, every game-code file goes through the
+recovery's faithfulness audit (``fidelity_audit.py`` next to this file, the
+same rules the recovery's own checks gate on), and the whole tree goes through its
+cross-file rules: declarations that disagree, helpers written in several files,
+file names made from addresses. No exemption is applied.
 """
 
 from __future__ import annotations
 
 import argparse
 import bisect
+import importlib.util
 import json
 import os
 import re
@@ -28,7 +37,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 
 SOURCE_SUFFIXES = (".c", ".h", ".cpp", ".hpp", ".cc", ".cxx")
@@ -93,7 +102,183 @@ CATEGORY_DEFINITIONS: Tuple[Mapping[str, str], ...] = (
         "description": "MUST_MATCH conditional containing real source code.",
     },
 )
+# Families group categories in the viewer's filter. The viewer reads them from the document.
+FAMILY_DEFINITIONS: Tuple[Mapping[str, str], ...] = (
+    {"id": "library-rebuilt", "label": "Library code rebuilt",
+     "description": "Library or header code written again by hand instead of used: MSL C++ containers, inline helpers."},
+    {"id": "declarations", "label": "Declarations",
+     "description": "Declarations that disagree between files or repeat a header's."},
+    {"id": "statements", "label": "Placeholder statements",
+     "description": "Statements that only steer the compiler, and assertions with invented conditions."},
+    {"id": "match-hack", "label": "Match workarounds",
+     "description": "Pragmas, inline asm, compiler guards, intrinsics and prototype casts."},
+    {"id": "invented-structure", "label": "Invented structure",
+     "description": "Linkage and structure the original did not have."},
+    {"id": "invented-data", "label": "Invented data", "description": "Padding, raw words and strings kept as labels."},
+    {"id": "raw-numbers", "label": "Raw numbers", "description": "Numbers the original wrote as names."},
+    {"id": "placeholders", "label": "Decompiler and address names",
+     "description": "Names from the decompiler or made from addresses: locals, fields, labels, types, files."},
+    {"id": "comments", "label": "Process comments",
+     "description": "Comments about the recovery process or left by the decompiler."},
+    {"id": "pointer-access", "label": "Pointer access", "description": "Fields reached through casts and offsets."},
+    {"id": "pointer-cast", "label": "Pointer casts", "description": "Pointer casts."},
+)
+
+# The audit's rules, one category each: (audit category, rule) -> (id, label, family, description). A rule of None
+# covers every rule of that audit category.
+AUDIT_CATEGORIES: Mapping[Tuple[str, Optional[str]], Tuple[str, str, str, str]] = {
+    ("library-lookalike", "MSL error exit through a data label"): (
+        "msl-error-label", "MSL error exit by label", "library-rebuilt",
+        "A container error message passed to fprintf(stderr) by a data label: MSL C++ code rebuilt by hand."),
+    ("library-lookalike", "MSL compressed pair rebuilt"): (
+        "msl-compressed-pair", "MSL compressed pair", "library-rebuilt",
+        "first()/second() accessors of MSL's __compressed_pair, rebuilt instead of using std:: containers."),
+    ("library-lookalike", "MSL tree node rebuilt"): (
+        "msl-tree-node", "MSL tree node", "library-rebuilt",
+        "A red-black tree node with its colour packed into the parent pointer: MSL's tree rebuilt."),
+    ("library-lookalike", "MSL allocator rebuilt"): (
+        "msl-allocator", "MSL allocator", "library-rebuilt", "A hand-written allocate/deallocate pair: std::allocator rebuilt."),
+    ("duplicates", "helper defined in several files"): (
+        "duplicate-helper", "helper in several files", "library-rebuilt",
+        "An inline helper with the same body in more than one file: header or library code written again per file."),
+    ("linkage", "C linkage on C++ code"): (
+        "cpp-extern-c", "extern \"C\" in C++", "invented-structure",
+        "An extern \"C\" definition in a C++ file, keeping an address name for a C++ function or class member."),
+    ("declarations", "local prototype of a header function"): (
+        "local-prototype", "local prototype", "declarations",
+        "A function declared again in a source file although a header declares it; the original included the header."),
+    ("declarations", "function declared with different types"): (
+        "conflicting-prototype", "conflicting prototype", "declarations",
+        "One function declared with different return or parameter types in different files."),
+    ("declarations", "declared without parameters"): (
+        "unprototyped", "f() declaration", "declarations",
+        "A C declaration with an empty parameter list, leaving the arguments unchecked, where others give parameters."),
+    ("declarations", "global declared with different types"): (
+        "conflicting-global", "conflicting global", "declarations", "One global declared with different types in different files."),
+    ("declarations", "own data declared extern"): (
+        "own-extern", "own data extern", "declarations", "A file declares extern the data it defines itself."),
+    ("statements", "placeholder statement"): (
+        "placeholder-statement", "placeholder statement", "statements",
+        "A statement that only reads, (void)x;, x = x; or an empty if: there to steer the compiler."),
+    ("statements", "assertion with an invented condition"): (
+        "invented-assert", "invented assertion", "statements",
+        "An SDK assertion whose condition never reaches retail, so it was invented."),
+    ("no-op-code", None): (
+        "no-op", "no-op code", "statements",
+        "Arithmetic that changes nothing (+0, *1, |0, <<0, !!), empty statements, do-while-zero, double casts, x = x."),
+    ("steering", "inline asm"): ("inline-asm", "inline asm", "match-hack", "Inline assembly in game code."),
+    ("steering", "placement attribute"): (
+        "placement-attribute", "__declspec/__attribute__", "match-hack", "__declspec or __attribute__ in game code."),
+    ("steering", "prototype cast at a call"): (
+        "prototype-cast", "prototype cast", "match-hack",
+        "A function cast to another prototype where it is called; its header prototype is what is wrong."),
+    ("visibility", "MWCC-only guard"): (
+        "mwcc-guard", "__MWERKS__ guard", "match-hack", "Declarations visible only to MWCC through #if __MWERKS__."),
+    ("intrinsics", "intrinsic"): ("intrinsic", "intrinsic", "match-hack", "A compiler intrinsic in game code."),
+    ("invented-data", "pad/filler storage"): (
+        "pad-storage", "pad storage", "invented-data", "Storage named pad, filler, dummy, unused or reserved."),
+    ("invented-data", "raw hex initializer"): (
+        "raw-hex-initializer", "raw hex initializer", "invented-data",
+        "An initializer of eight or more long hex words: data not given its types."),
+    ("invented-data", "string kept as a data label"): (
+        "string-label", "string as data label", "invented-data",
+        "A string literal kept as a named data object and passed by that name."),
+    ("raw-numbers", "raw hex number"): (
+        "raw-number", "raw number", "raw-numbers", "A data number, flag id or bit pattern the original wrote as a name."),
+    ("raw-numbers", "raw decimal number"): (
+        "raw-number", "raw number", "raw-numbers", "A data number, flag id or bit pattern the original wrote as a name."),
+    ("raw-numbers", "unnamed audio resource ID"): (
+        "audio-id", "unnamed audio id", "raw-numbers", "A sound, music or stream id passed as a number."),
+    ("raw-numbers", "string as character codes"): (
+        "char-codes", "string as char codes", "raw-numbers", "A string written as character codes."),
+    ("placeholders", "decompiler name"): (
+        "decompiler-name", "decompiler name", "placeholders", "temp_r31, var_r30, sp10, uVar1 and other decompiler names."),
+    ("placeholders", "offset-named field"): (
+        "offset-field", "offset-named field", "placeholders", "A struct field named by its offset (unk1C, field5C)."),
+    ("placeholders", "numbered generic name"): (
+        "numbered-name", "numbered generic name", "placeholders", "A decompiler name renamed to a word and a number."),
+    ("placeholders", "decompiler goto label"): (
+        "decompiler-label", "decompiler label", "placeholders", "A jump target named by the decompiler or by an address."),
+    ("placeholders", "address-named goto label"): (
+        "decompiler-label", "decompiler label", "placeholders", "A jump target named by the decompiler or by an address."),
+    ("placeholders", "address-named type"): (
+        "address-type", "address-named type", "placeholders",
+        "A type named by an address (InsertTree2C080): one original type rebuilt once per place."),
+    ("file-names", "address-named source file"): (
+        "address-file", "address-named file", "placeholders", "A source file named by an address (text_00118.c)."),
+    ("probe-comments", None): (
+        "process-comment", "process comment", "comments", "A comment about probes, permuters, matching or registers."),
+    ("comments", "process note"): (
+        "process-comment", "process comment", "comments", "A comment about probes, permuters, matching or registers."),
+    ("comments", "decompiler comment"): (
+        "decompiler-comment", "decompiler comment", "comments", "Ghidra's address and WARNING comments, bare offset tags."),
+    ("comments", "comment without its function"): (
+        "orphan-comment", "orphan comment", "comments", "A comment left behind without the function it described."),
+}
+# Covered by the lexical scan above (pointer access, pragmas), or documentation and layout rather than code.
+AUDIT_SKIPPED = {("steering", "pragma"), ("offset-access", None), ("comments", "no file description"),
+                 ("comments", "uncommented function"), ("layout", None), ("address-names", None)}
+GAME_CODE = ("src/game/", "src/board/", "src/REL/", "include/game/", "include/REL/", "include/board/")
+
+for _id, _label, _family, _description in AUDIT_CATEGORIES.values():
+    if all(item["id"] != _id for item in CATEGORY_DEFINITIONS):
+        CATEGORY_DEFINITIONS += ({"id": _id, "label": _label, "family": _family, "description": _description},)
 CATEGORY_ORDER = {item["id"]: index for index, item in enumerate(CATEGORY_DEFINITIONS)}
+
+
+def _load_audit() -> Any:
+    """fidelity_audit.py next to this file (the site and the dashboard vendor it), else the recovery's own copy."""
+    here = Path(__file__).resolve()
+    candidates = [here.with_name("fidelity_audit.py")]
+    candidates += [parent / "shape-v1" / "tools" / "fidelity_audit.py" for parent in here.parents]
+    path = next((candidate for candidate in candidates if candidate.is_file()), None)
+    if path is None:
+        raise ImportError("fidelity_audit.py is missing next to cleanup_index.py")
+    spec = importlib.util.spec_from_file_location("mp6_fidelity_audit", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+_AUDIT = _load_audit()
+
+
+def _audit_category(finding: Mapping[str, Any]) -> Optional[Tuple[str, str, str, str]]:
+    category, rule = finding["category"], finding["rule"]
+    if (category, rule) in AUDIT_SKIPPED or (category, None) in AUDIT_SKIPPED:
+        return None
+    known = AUDIT_CATEGORIES.get((category, rule)) or AUDIT_CATEGORIES.get((category, None))
+    if known:
+        return known
+    slug = re.sub(r"[^a-z0-9]+", "-", rule.lower()).strip("-")
+    return (slug, rule, category, "{} ({}).".format(rule, category))
+
+
+def _audit_sites(findings: Iterable[Mapping[str, Any]], sources: Mapping[str, str]) -> List[dict]:
+    """Site records of audit findings; the source excerpt is the finding's line."""
+    sites = []
+    lines_of: Dict[str, List[str]] = {}
+    for finding in findings:
+        mapped = _audit_category(finding)
+        if mapped is None:
+            continue
+        path = finding["file"]
+        lines = lines_of.setdefault(path, sources.get(path, "").split("\n"))
+        line = max(1, int(finding["line"] or 1))
+        excerpt = lines[line - 1].strip() if line - 1 < len(lines) else ""
+        sites.append({"path": path, "line": line, "endLine": line, "category": mapped[0],
+                      "detail": str(finding["text"])[:300], "source": " ".join(excerpt.split())[:220]})
+    return sites
+
+
+def is_game_code(path: str) -> bool:
+    return path.startswith(GAME_CODE)
+
+
+def scan_repository(sources: Mapping[str, str]) -> List[dict]:
+    """The audit's cross-file rules over every file at once: {path: text} -> site records."""
+    return _audit_sites(_AUDIT.repository_findings(dict(sources)), sources)
 
 
 class CleanupIndexError(RuntimeError):
@@ -265,11 +450,11 @@ def _snapshot_document(snapshot_path: Path) -> Tuple[dict, str]:
 
 
 def _source_paths(repo: Path, commit: str) -> List[str]:
-    raw = _git(repo, "ls-tree", "-r", "--name-only", commit, "--", "src")
+    raw = _git(repo, "ls-tree", "-r", "--name-only", commit, "--", "src", "include")
     paths = []
     for value in raw.decode("utf-8", "replace").splitlines():
         path = value.strip()
-        if path.startswith("src/") and path.lower().endswith(SOURCE_SUFFIXES):
+        if path.startswith(("src/", "include/")) and path.lower().endswith(SOURCE_SUFFIXES):
             paths.append(path)
     return sorted(set(paths))
 
@@ -930,6 +1115,12 @@ def scan_source(path: str, source: str) -> List[dict]:
         if candidate.offset is not None:
             site["offset"] = candidate.offset
         sites.append(site)
+    if is_game_code(path):
+        suffix = path[path.rfind("."):].lower()
+        findings = _AUDIT.scan_text(source, path, suffix)
+        if suffix in (".c", ".cpp", ".cp"):
+            findings += _AUDIT.statement_findings(source, path)
+        sites.extend(_audit_sites(findings, {path: source}))
     return sites
 
 
@@ -938,37 +1129,52 @@ def build_cleanup(repo: Path, commit: str, generated_at: Optional[str] = None) -
 
     commit = _validate_commit(repo, commit)
     paths = _source_paths(repo, commit)
-    sites: List[dict] = []
-    for path, source in _pinned_sources(repo, commit, paths):
-        sites.extend(scan_source(path, source))
-    sites.sort(
-        key=lambda item: (
-            item["path"],
-            item["line"],
-            item["endLine"],
-            CATEGORY_ORDER[item["category"]],
-            item["source"],
-        )
-    )
-    methodology = [
-        "Candidates are syntax-level cleanup signals, not confirmed mismatches or bugs.",
-        "The scan covers committed C/C++ sources and headers under src/, including game code, SDK, and support libraries. Assembly files and headers outside src/ are excluded.",
-        "Comments, string literals, and character literals are blanked before matching; line numbers refer to the pinned source.",
-        "Pointer casts are counted at the outermost expression, so nested casts in one access are not emitted again.",
-        "Function declarations and prototypes are skipped when a pointer type has no expression operand.",
-        "The scanner is lexical and intentionally non-exhaustive; unsupported type spellings, function-pointer casts, and array declarators are omitted.",
-        "Numeric additions and subtractions attached to a pointer-cast expression are indexed as cast+offset; pointer-to-integer and raw-offset heuristics are intentionally omitted.",
-        "Pragmas count once except push/pop plumbing. A MUST_MATCH conditional counts once only when it contains non-directive code; pragma-only regions stay under pragma.",
+    sources = dict(_pinned_sources(repo, commit, paths))
+    methodology = METHODOLOGY + [
         "Source is read from snapshot.commit through git object storage; the current checkout and binary files are never scanned.",
     ]
+    return cleanup_document(sources, commit, generated_at, methodology)
+
+
+METHODOLOGY = [
+    "The index lists all unfaithful code: every place the source differs from what the original programmers wrote, as far as the rules can tell. No exemption is applied, including evidence-based ones the recovery once accepted.",
+    "Game code (src/game, src/board, src/REL and their headers under include/) goes through the recovery's faithfulness audit: library code rebuilt by hand, placeholder statements, invented assertions, match workarounds, raw numbers, decompiler and address names, process comments.",
+    "Cross-file rules compare the whole tree: one function or global declared with different types, prototypes repeated outside their header, inline helpers written in several files, file names made from addresses. A REL's own names are compared within that REL; DOL functions everywhere.",
+    "Every C/C++ file under src/ and include/, SDK and libraries included, also goes through the lexical pointer-cast, pragma and MUST_MATCH scan.",
+    "Comments, string literals, and character literals are blanked before matching; line numbers refer to the scanned source.",
+    "Pointer casts are counted at the outermost expression, so nested casts in one access are not emitted again. Pragmas count once except push/pop plumbing. A MUST_MATCH conditional counts once only when it contains non-directive code.",
+    "Function and data names made from addresses (fn_1_XXXX, lbl_1_data_XXX) are not listed: the project keeps them until the original names are known.",
+]
+
+
+def cleanup_document(sources: Mapping[str, str], commit: str, generated_at: Optional[str] = None,
+                     methodology: Optional[Sequence[str]] = None, scan: Any = None, repository: Any = None) -> dict:
+    """The cleanup payload for {path: text}, shared by the published site (git objects) and the local dashboard
+    (the working tree, which passes cached versions of `scan` and `repository`)."""
+
+    sites: List[dict] = []
+    for path in sorted(sources):
+        sites.extend((scan or scan_source)(path, sources[path]))
+    sites.extend((repository or scan_repository)(sources))
+    categories = [dict(item) for item in CATEGORY_DEFINITIONS]
+    known = {item["id"] for item in categories}
+    order = dict(CATEGORY_ORDER)
+    for site in sites:
+        if site["category"] not in known:                 # a rule added to the audit after this table
+            known.add(site["category"])
+            order[site["category"]] = len(order)
+            categories.append({"id": site["category"], "label": site["category"].replace("-", " "),
+                               "family": "match-hack", "description": site.get("detail", "")[:120]})
+    sites.sort(key=lambda item: (item["path"], item["line"], item["endLine"], order[item["category"]], item["source"]))
     return {
         "schemaVersion": 1,
         "commit": commit,
         "generatedAt": generated_at or datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "scannedFiles": len(paths),
-        "categories": [dict(item) for item in CATEGORY_DEFINITIONS],
+        "scannedFiles": len(sources),
+        "families": [dict(item) for item in FAMILY_DEFINITIONS],
+        "categories": categories,
         "sites": sites,
-        "methodology": methodology,
+        "methodology": list(methodology if methodology is not None else METHODOLOGY),
     }
 
 

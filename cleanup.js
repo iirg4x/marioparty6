@@ -90,6 +90,20 @@
     const raw = snapshot?.cleanup;
     if (!isObject(raw) || Number(raw.schemaVersion) !== 1 || !Array.isArray(raw.sites)) return null;
 
+    // The document names its families since the index lists all unfaithful code (27 Oct 2026); an older
+    // document keeps the three built-in ones.
+    if (Array.isArray(raw.families)) {
+      const families = raw.families
+        .filter(isObject)
+        .map((family) => ({ id: asText(family.id), label: asText(family.label, humanize(family.id)) }))
+        .filter((family) => family.id);
+      if (families.length) {
+        FAMILY_DEFS.splice(0, FAMILY_DEFS.length, ...families);
+        FAMILY_BY_ID.clear();
+        for (const family of FAMILY_DEFS) FAMILY_BY_ID.set(family.id, family);
+      }
+    }
+
     const categories = [];
     const categoryById = new Map();
     const addCategory = (value, fallbackFamily = "pointer-access") => {
