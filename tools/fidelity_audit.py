@@ -39,6 +39,7 @@ Usage:
 import argparse
 import json
 import re
+import struct
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -224,7 +225,9 @@ CODE_RULES = {
         # the original names the sound. The id is the first argument of the HuAud play calls and msmSePlay,
         # the second of the board voice calls; volumes, pans, delays and handles are not ids.
         ("unnamed audio resource ID", re.compile(
-            r"\b(?:HuAud(?:FXPlay\w*|FXEmiterPlay|BGMPlay|JinglePlay|SStream(?:Chan)?Play|SeqPlay)|msmSePlay)"
+            r"\b(?:HuAud(?:FXPlay\w*|FXEmiterPlay|BGMPlay|JinglePlay|SStream(?:Chan)?Play|SeqPlay)|msmSePlay|"
+            # the board's wrappers (27 Oct, w11Dll: mbAudFXPlay(1539) behind a locally invented name)
+            r"mbAud(?:FX(?:Obj(?:Set|Create|EmitterSet|EmitterCreate|RefSet)|Play|PosPlay|EmitterPlay)|GuidePlay))"
             r"\s*\(\s*(?:0[xX][0-9A-Fa-f]+|[0-9]+)[uUlL]*\s*(?=[,)])")),
         ("unnamed audio resource ID", re.compile(
             r"\b(?:mbPlayerVoice(?:Pan)?Play|mbObjSePlay)\s*\([^,()]*(?:\([^()]*\)[^,()]*)*,"
@@ -241,6 +244,10 @@ CODE_RULES = {
         ("offset-named field", re.compile(r"(?<=[\.>])(?:field|unk)_?[0-9A-Fa-f]{1,4}\b")),
         # m2c's control-flow labels: `goto block_20;` is decompiler structure, not something a programmer wrote
         ("decompiler goto label", re.compile(r"\bgoto[ \t]+(?:block|loop)_\d+\b")),
+        # a sound, stream or music id named in a source file (27 Oct, w11Dll's MSM_SE_BRDTT_NET_START 1539, w03Dll's 17
+        # MSM_SE_W03_*): the names belong to msm_se.h; a name made up here pretends to be one
+        ("sound id named outside msm_se.h", re.compile(
+            r"^[ \t]*#[ \t]*define[ \t]+MSM_(?:SE|STREAM|MUS|GRP)_\w+[ \t]+\(?[ \t]*(?:0[xX][0-9A-Fa-f]+|\d+)", re.MULTILINE)),
         # the same labels named by address: goto L_99B4
         ("address-named goto label", re.compile(r"\bgoto[ \t]+L_(?=[0-9A-Fa-f]*\d)[0-9A-Fa-f]{3,8}\b")),
         # a type invented once per place that uses it, named by an address: InsertTree2C080, Owner9F58,
@@ -298,6 +305,45 @@ ALWAYS_PLACEHOLDER = re.compile(r"\b(?:localValue|localVar|localVariable|tempVal
 # these can (value1/value2 in a comparator), so they count only when a file numbers three or more of them
 # (arg0 is m2c's own spelling and already a decompiler name):
 SOMETIMES_PLACEHOLDER = re.compile(r"\b(value|var|val|temp|tmp|local|result|param)(\d+)\b")
+
+
+FLOAT_LITERAL = re.compile(r"(?<![\w.])(\d+\.\d*|\.\d+)(?:[eE][-+]?\d+)?[fF]\b")
+
+
+def float_spellings(code):
+    """(offset, detail) for float literals written with more digits than a float holds, as a decompiler prints them:
+    -0.699999988f is the float -0.7f (27 Oct, w11Dll). A programmer writes the short form; both compile the same."""
+    hits = []
+    for match in FLOAT_LITERAL.finditer(code):
+        literal = match.group(0)[:-1]
+        digits = len(re.sub(r"[eE].*", "", literal).replace(".", "").lstrip("0"))
+        if digits < 8:
+            continue
+        value = struct.unpack("<f", struct.pack("<f", float(literal)))[0]
+        for precision in range(1, 10):
+            short = "%.*g" % (precision, value)
+            if struct.unpack("<f", struct.pack("<f", float(short)))[0] == value:
+                break
+        if len(short.replace(".", "").replace("-", "").lstrip("0")) < digits:
+            if "." not in short and "e" not in short:
+                short += ".0"
+            hits.append((match.start(), f"{match.group(0)} is the float {short}f"))
+    return hits
+
+
+LATE_INCLUDE = re.compile(r"^[ \t]*#[ \t]*include\b", re.MULTILINE)
+TOP_DEFINITION = re.compile(r"^(?:static[ \t]+)?(?:inline[ \t]+)?[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)[ \t]*\([^;{}]*\)\s*\{",
+                            re.MULTILINE)
+
+
+def late_includes(code):
+    """Offsets of #include lines after the first function definition: files joined from fragments keep each fragment's
+    includes where it started (27 Oct, w06Dll's board_main.c includes game/board/main.h five times mid-file)."""
+    first = next((m.start() for m in TOP_DEFINITION.finditer(code)
+                  if m.group(1) not in ("if", "while", "for", "switch")), None)
+    if first is None:
+        return []
+    return [m.start() for m in LATE_INCLUDE.finditer(code) if m.start() > first]
 
 
 def numbered_placeholders(code):
@@ -404,6 +450,11 @@ def scan_text(text, display, suffix, with_address_names=False):
         add("raw-numbers", "string as character codes", offset, detail=detail)
     for offset, detail in numbered_placeholders(code):
         add("placeholders", "numbered generic name", offset, detail=detail)
+    for offset, detail in float_spellings(code):
+        add("raw-numbers", "float in decompiler spelling", offset, detail=detail)
+    if suffix in (".c", ".cpp", ".cp"):
+        for offset in late_includes(code):
+            add("invented-structure", "include after code", offset)
     if suffix in (".cpp", ".cp"):
         for match in EXTERN_C_DEFINITION.finditer(code):
             if match.group(1) not in ENTRY_POINTS:
@@ -683,7 +734,7 @@ def scaffolding(text):
     repeat       the same `extern` declaration again."""
     lines = text.splitlines()
     found = {key: [] for key in SCAFFOLD_RULES}
-    defined, externs = set(), {}
+    defined, externs = {}, {}
     for number, line in enumerate(lines, 1):
         if DECOMPILER_COMMENT.search(line):
             found["decompiler"].append(number)
@@ -698,8 +749,11 @@ def scaffolding(text):
             continue
         definition = DATA_DEFINITION.match(line)
         if definition and not PROTOTYPE_LINE.match(line) and not line.startswith(("typedef", "return")):
-            defined.add(definition.group(1))
-    found["own extern"] = sorted(n for name, n in externs.items() if name in defined)
+            defined.setdefault(definition.group(1), number)
+    # only an extern after the definition repeats it: one before the definition can be what retail needs, since MWCC
+    # reaches a global already defined in the file through a cached section base and one only declared by its own
+    # address (27 Oct, w11Dll: moving the model handles above fn_1_1F4 cost a register and changed the code)
+    found["own extern"] = sorted(n for name, n in externs.items() if name in defined and n > defined[name])
     first_comment = next((n for n, line in enumerate(lines, 1) if line.strip()), 0)
     for number, line in enumerate(lines, 1):
         if number == first_comment or not TOP_COMMENT.match(line) or DECOMPILER_COMMENT.search(line):
@@ -820,6 +874,31 @@ def normal_type(text, aliases=SAME_TYPE):
     return text.replace(" ", "")
 
 
+FUNCTION_POINTER_TYPEDEF = re.compile(r"^[ \t]*typedef[ \t]+([^;()]+?)[ \t]*\([ \t]*\*[ \t]*([A-Za-z_]\w*)[ \t]*\)"
+                                      r"[ \t]*\(([^;()]*)\)[ \t]*;", re.MULTILINE)
+
+
+def top_level_split(text):
+    """Split at commas outside parentheses: `int, void (*f)(int, int)` is two parameters."""
+    parts, depth, start = [], 0, 0
+    for index, char in enumerate(text):
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        if char == "," and depth == 0:
+            parts.append(text[start:index])
+            start = index + 1
+    parts.append(text[start:])
+    return parts
+
+
+def function_pointer_type(param, aliases):
+    """`void (*hook)(int no)` -> 'void(*)(int)'; None when the parameter is not a function pointer."""
+    match = re.match(r"^\s*(.+?)\(\s*\*\s*[A-Za-z_]?\w*\s*\)\s*\((.*)\)\s*$", param, re.S)
+    if not match:
+        return None
+    inner = parameter_types(match.group(2), False, aliases) or ()
+    return normal_type(match.group(1), aliases) + "(*)(" + ",".join(inner or ("void",)) + ")"
+
+
 def parameter_types(params, cpp, aliases=SAME_TYPE):
     """('int', 'Vec*') for 'int no, Vec *pos'; None for `()` in C, where it leaves the arguments unchecked."""
     params = params.strip()
@@ -828,7 +907,11 @@ def parameter_types(params, cpp, aliases=SAME_TYPE):
     if params == "void":
         return ()
     types = []
-    for param in params.split(","):
+    for param in top_level_split(params):
+        pointer = function_pointer_type(param, aliases)
+        if pointer:
+            types.append(pointer)
+            continue
         words = re.findall(r"[A-Za-z_]\w*|\*|\.\.\.|\[[^\]]*\]", param)
         if len(words) > 1 and re.match(r"[A-Za-z_]", words[-1]) and words[-1] not in TYPE_WORDS \
                 and not (len(words) == 2 and words[0] in ("struct", "union", "enum")):
@@ -845,6 +928,9 @@ def repository_findings(sources):
     for display, text in sources.items():
         code, _comments = split_code_and_comments(text)
         parsed[display] = (code, brace_depths(code))
+        for match in FUNCTION_POINTER_TYPEDEF.finditer(code):
+            inner = parameter_types(match.group(3), False) or ()
+            aliases.setdefault(match.group(2), normal_type(match.group(1)) + "(*)(" + ",".join(inner or ("void",)) + ")")
         for match in TYPEDEF.finditer(code):
             base = " ".join(re.sub(r"\b(?:struct|union|enum|const)\b", " ", match.group(1)).split())
             if base != match.group(2):
@@ -858,6 +944,7 @@ def repository_findings(sources):
     declarations = defaultdict(list)          # (scope, name) -> [(display, offset, return, params)]
     header_names = {}                         # (scope, name) -> header
     defined = defaultdict(set)                # display -> names defined there
+    definers = defaultdict(set)               # (scope, name) -> files defining it with external linkage
     globals_ = defaultdict(list)              # (scope, name) -> [(display, offset, type)]
     helpers = defaultdict(list)               # body -> [(display, offset, name)]
     for display, (code, depths) in parsed.items():
@@ -869,6 +956,8 @@ def repository_findings(sources):
         for match in DEFINITION.finditer(code):
             if depths[match.start()] == 0:
                 defined[display].add(match.group(1))
+                if not match.group(0).lstrip().startswith("static"):
+                    definers[(scope, match.group(1))].add(display)
         for match in DECLARATION.finditer(code):
             storage, returned, name, params = match.groups()
             if depths[match.start()] or name in NOT_A_TYPE or returned.strip() in NOT_A_TYPE or "static" in storage:
@@ -915,12 +1004,18 @@ def repository_findings(sources):
                 add("declarations", "function declared with different types", display, offset,
                     f"{name}: {returned} ({', '.join(params)}) here; elsewhere {'; '.join(others[:2])}")
         header = header_names.get((scope, name)) or header_names.get(("DOL", name))
-        if header:
-            for display, offset, _r, _p in entries:
-                if display.endswith((".c", ".cpp", ".cp")) and is_game_path(display) \
-                        and name not in defined[display]:
-                    add("declarations", "local prototype of a header function", display, offset,
-                        f"{name}: declared in {header}; the original included it")
+        owners = definers.get((scope, name)) or definers.get(("DOL", name)) or set()
+        for display, offset, _r, _p in entries:
+            if not display.endswith((".c", ".cpp", ".cp")) or not is_game_path(display) or name in defined[display]:
+                continue
+            if header:
+                add("declarations", "local prototype of a header function", display, offset,
+                    f"{name}: declared in {header}; the original included it")
+            elif owners:
+                # no header declares it at all (27 Oct, w11Dll: mbWipeCreate, mbHermiteCalc, mbScrollInit): the header of
+                # the defining file is missing it
+                add("declarations", "prototype of another file's function", display, offset,
+                    f"{name}: defined in {sorted(owners)[0]}, whose header does not declare it; declare it there")
     for (scope, name), entries in globals_.items():
         if len({shape for _d, _o, shape in entries}) > 1:
             for display, offset, shape in entries:

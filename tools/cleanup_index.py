@@ -156,7 +156,7 @@ AUDIT_CATEGORIES: Mapping[Tuple[str, Optional[str]], Tuple[str, str, str, str]] 
     ("declarations", "global declared with different types"): (
         "conflicting-global", "conflicting global", "declarations", "One global declared with different types in different files."),
     ("declarations", "own data declared extern"): (
-        "own-extern", "own data extern", "declarations", "A file declares extern the data it defines itself."),
+        "own-extern", "own data extern", "declarations", "A file declares extern data it has already defined (a repeat)."),
     ("statements", "placeholder statement"): (
         "placeholder-statement", "placeholder statement", "statements",
         "A statement that only reads, (void)x;, x = x; or an empty if: there to steer the compiler."),
@@ -214,6 +214,19 @@ AUDIT_CATEGORIES: Mapping[Tuple[str, Optional[str]], Tuple[str, str, str, str]] 
         "decompiler-comment", "decompiler comment", "comments", "Ghidra's address and WARNING comments, bare offset tags."),
     ("comments", "comment without its function"): (
         "orphan-comment", "orphan comment", "comments", "A comment left behind without the function it described."),
+    # from the hands-on w11Dll review (27 Oct)
+    ("placeholders", "sound id named outside msm_se.h"): (
+        "local-sound-name", "sound name made up locally", "invented-data",
+        "A sound, stream or music id given a name in a source file instead of msm_se.h's."),
+    ("raw-numbers", "float in decompiler spelling"): (
+        "float-spelling", "decompiler float spelling", "raw-numbers",
+        "A float written with more digits than it holds (-0.699999988f for -0.7f), as a decompiler prints it."),
+    ("invented-structure", "include after code"): (
+        "late-include", "include after code", "invented-structure",
+        "An #include after the first function: fragments joined into one file kept their own includes."),
+    ("declarations", "prototype of another file's function"): (
+        "missing-header-prototype", "prototype without a header", "declarations",
+        "Another file's function declared in a source file because its own header does not declare it."),
 }
 # Covered by the lexical scan above (pointer access, pragmas), or documentation and layout rather than code.
 AUDIT_SKIPPED = {("steering", "pragma"), ("offset-access", None), ("comments", "no file description"),
