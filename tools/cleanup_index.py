@@ -188,7 +188,9 @@ AUDIT_CATEGORIES: Mapping[Tuple[str, Optional[str]], Tuple[str, str, str, str]] 
     ("raw-numbers", "raw decimal number"): (
         "raw-number", "raw number", "raw-numbers", "A data number, flag id or bit pattern the original wrote as a name."),
     ("raw-numbers", "unnamed audio resource ID"): (
-        "audio-id", "unnamed audio id", "raw-numbers", "A sound, music or stream id passed as a number."),
+        "audio-id", "sound id as a number", "raw-numbers",
+        "A sound, music or stream id passed as a number. An id msm_se.h or msm_stream.h names must use the name; an id "
+        "neither names stays a number until it is named (the user's decision), and is listed so it is found then."),
     ("raw-numbers", "string as character codes"): (
         "char-codes", "string as char codes", "raw-numbers", "A string written as character codes."),
     ("placeholders", "decompiler name"): (
@@ -217,7 +219,7 @@ AUDIT_CATEGORIES: Mapping[Tuple[str, Optional[str]], Tuple[str, str, str, str]] 
     # from the hands-on w11Dll review (27 Oct)
     ("placeholders", "sound id named outside msm_se.h"): (
         "local-sound-name", "sound name made up locally", "invented-data",
-        "A sound, stream or music id given a name in a source file instead of msm_se.h's."),
+        "A sound, stream or music id given a made-up name in a source file; write the number until msm_se.h names it."),
     ("raw-numbers", "float in decompiler spelling"): (
         "float-spelling", "decompiler float spelling", "raw-numbers",
         "A float written with more digits than it holds (-0.699999988f for -0.7f), as a decompiler prints it."),
