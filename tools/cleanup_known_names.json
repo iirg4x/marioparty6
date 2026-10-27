@@ -1,5 +1,5 @@
 {
- "about": "Original names of code MP6 still calls by address, each shown by an original artifact. The cleanup index lists every use of the address name. The first names come from Nintendo's link map on the Mario Kart: Double Dash!! (USA) debug disc (2004-07-05): in 198 file sections of MP6's libraries the symbol sizes run in the same order as the map's, 497 names already agree, and these take the map's name.",
+ "about": "Original names MP6's code does not use yet, each shown by an original artifact. 'names': address names whose original name Nintendo's link map on the Mario Kart: Double Dash!! (USA) debug disc gives (the file's symbol sizes run in the same order). 'files': source file names each retail REL's assert texts carry. 'counters': function statics whose compiler number differs from the link map's.",
  "names": [
   {
    "address_name": "lbl_802B1950",
@@ -90,6 +90,762 @@
    "name": "Unit01",
    "where": "dolphin/mtx/mtx.c (.sdata)",
    "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  }
+ ],
+ "files": [
+  {
+   "module": "m603DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m603DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m603DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m603DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m603DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m603DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m603DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m603DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m603DLL",
+   "file": "zako.cpp",
+   "evidence": "the retail m603DLL.rel's assert texts name zako.cpp as their source file"
+  },
+  {
+   "module": "m604DLL",
+   "file": "a_set.h",
+   "evidence": "the retail m604DLL.rel's assert texts name a_set.h as their source file"
+  },
+  {
+   "module": "m604DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m604DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m604DLL",
+   "file": "misc.cpp",
+   "evidence": "the retail m604DLL.rel's assert texts name misc.cpp as their source file"
+  },
+  {
+   "module": "m604DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m604DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m604DLL",
+   "file": "mtx64.h",
+   "evidence": "the retail m604DLL.rel's assert texts name mtx64.h as their source file"
+  },
+  {
+   "module": "m604DLL",
+   "file": "patapata.cpp",
+   "evidence": "the retail m604DLL.rel's assert texts name patapata.cpp as their source file"
+  },
+  {
+   "module": "m604DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m604DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m604DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m604DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m605DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m605DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m605DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m605DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m605DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m605DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m605DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m605DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m610DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m610DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m610DLL",
+   "file": "geom.h",
+   "evidence": "the retail m610DLL.rel's assert texts name geom.h as their source file"
+  },
+  {
+   "module": "m610DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m610DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m610DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m610DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m610DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m610DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m610DLL",
+   "file": "vector3.h",
+   "evidence": "the retail m610DLL.rel's assert texts name vector3.h as their source file"
+  },
+  {
+   "module": "m611DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m611DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m611DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m611DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m611DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m611DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m611DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m611DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m611DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m611DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m622DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m622DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m622DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m622DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m622DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m622DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m622DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m622DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m623DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m623DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m623DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m623DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m623DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m623DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m623DLL",
+   "file": "player_table_1vs3.cpp",
+   "evidence": "the retail m623DLL.rel's assert texts name player_table_1vs3.cpp as their source file"
+  },
+  {
+   "module": "m623DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m623DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m624DLL",
+   "file": "attacker.cpp",
+   "evidence": "the retail m624DLL.rel's assert texts name attacker.cpp as their source file"
+  },
+  {
+   "module": "m624DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m624DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m624DLL",
+   "file": "man_map.cpp",
+   "evidence": "the retail m624DLL.rel's assert texts name man_map.cpp as their source file"
+  },
+  {
+   "module": "m624DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m624DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m624DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m624DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m624DLL",
+   "file": "player_runner.cpp",
+   "evidence": "the retail m624DLL.rel's assert texts name player_runner.cpp as their source file"
+  },
+  {
+   "module": "m624DLL",
+   "file": "player_table_1vs1.cpp",
+   "evidence": "the retail m624DLL.rel's assert texts name player_table_1vs1.cpp as their source file"
+  },
+  {
+   "module": "m624DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m624DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m628DLL",
+   "file": "act_player.cpp",
+   "evidence": "the retail m628DLL.rel's assert texts name act_player.cpp as their source file"
+  },
+  {
+   "module": "m628DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m628DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m628DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m628DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m628DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m628DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m628DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m628DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m634DLL",
+   "file": "act_player.cpp",
+   "evidence": "the retail m634DLL.rel's assert texts name act_player.cpp as their source file"
+  },
+  {
+   "module": "m634DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m634DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m634DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m634DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m634DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m634DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m639DLL",
+   "file": "charger.cpp",
+   "evidence": "the retail m639DLL.rel's assert texts name charger.cpp as their source file"
+  },
+  {
+   "module": "m639DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m639DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m639DLL",
+   "file": "game_master.cpp",
+   "evidence": "the retail m639DLL.rel's assert texts name game_master.cpp as their source file"
+  },
+  {
+   "module": "m639DLL",
+   "file": "man_map.cpp",
+   "evidence": "the retail m639DLL.rel's assert texts name man_map.cpp as their source file"
+  },
+  {
+   "module": "m639DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m639DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m639DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m639DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m639DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m639DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m639DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m639DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m648DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m648DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m648DLL",
+   "file": "kuribo.cpp",
+   "evidence": "the retail m648DLL.rel's assert texts name kuribo.cpp as their source file"
+  },
+  {
+   "module": "m648DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m648DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m648DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m648DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m648DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m648DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m652DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m652DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m652DLL",
+   "file": "man_map.cpp",
+   "evidence": "the retail m652DLL.rel's assert texts name man_map.cpp as their source file"
+  },
+  {
+   "module": "m652DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m652DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m652DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m652DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m652DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m652DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m652DLL",
+   "file": "player_table_1vs1.cpp",
+   "evidence": "the retail m652DLL.rel's assert texts name player_table_1vs1.cpp as their source file"
+  },
+  {
+   "module": "m652DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m652DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m653DLL",
+   "file": "dossun.cpp",
+   "evidence": "the retail m653DLL.rel's assert texts name dossun.cpp as their source file"
+  },
+  {
+   "module": "m653DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m653DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m653DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m653DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m653DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m653DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m653DLL",
+   "file": "player_table_1vs1.cpp",
+   "evidence": "the retail m653DLL.rel's assert texts name player_table_1vs1.cpp as their source file"
+  },
+  {
+   "module": "m653DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m653DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m654DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m654DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m654DLL",
+   "file": "man_map.cpp",
+   "evidence": "the retail m654DLL.rel's assert texts name man_map.cpp as their source file"
+  },
+  {
+   "module": "m654DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m654DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m654DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m654DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m654DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m654DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m654DLL",
+   "file": "player_table_1vs1.cpp",
+   "evidence": "the retail m654DLL.rel's assert texts name player_table_1vs1.cpp as their source file"
+  },
+  {
+   "module": "m654DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m654DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m654DLL",
+   "file": "switch_panel.cpp",
+   "evidence": "the retail m654DLL.rel's assert texts name switch_panel.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "goal.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name goal.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "heiho.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name heiho.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "icon.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name icon.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "man_map.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name man_map.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "model_motion.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name model_motion.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "player.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name player.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "player_table_1vs1.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name player_table_1vs1.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "rope.cpp",
+   "evidence": "the retail m655DLL.rel's assert texts name rope.cpp as their source file"
+  },
+  {
+   "module": "m655DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m655DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m671DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m671DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m671DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m671DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m671DLL",
+   "file": "model_motion.cpp",
+   "evidence": "the retail m671DLL.rel's assert texts name model_motion.cpp as their source file"
+  },
+  {
+   "module": "m671DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m671DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m672DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m672DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m672DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m672DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m672DLL",
+   "file": "model_motion.cpp",
+   "evidence": "the retail m672DLL.rel's assert texts name model_motion.cpp as their source file"
+  },
+  {
+   "module": "m672DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m672DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m673DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m673DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m673DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m673DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m673DLL",
+   "file": "model_motion.cpp",
+   "evidence": "the retail m673DLL.rel's assert texts name model_motion.cpp as their source file"
+  },
+  {
+   "module": "m673DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m673DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "event_table.cpp",
+   "evidence": "the retail m677DLL.rel's assert texts name event_table.cpp as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m677DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "icon.cpp",
+   "evidence": "the retail m677DLL.rel's assert texts name icon.cpp as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "map.cpp",
+   "evidence": "the retail m677DLL.rel's assert texts name map.cpp as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m677DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "model_motion.cpp",
+   "evidence": "the retail m677DLL.rel's assert texts name model_motion.cpp as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m677DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "rope.cpp",
+   "evidence": "the retail m677DLL.rel's assert texts name rope.cpp as their source file"
+  },
+  {
+   "module": "m677DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m677DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m681DLL",
+   "file": "free.cpp",
+   "evidence": "the retail m681DLL.rel's assert texts name free.cpp as their source file"
+  },
+  {
+   "module": "m681DLL",
+   "file": "model.cpp",
+   "evidence": "the retail m681DLL.rel's assert texts name model.cpp as their source file"
+  },
+  {
+   "module": "m681DLL",
+   "file": "model_motion.cpp",
+   "evidence": "the retail m681DLL.rel's assert texts name model_motion.cpp as their source file"
+  },
+  {
+   "module": "m681DLL",
+   "file": "monitor.cpp",
+   "evidence": "the retail m681DLL.rel's assert texts name monitor.cpp as their source file"
+  },
+  {
+   "module": "m681DLL",
+   "file": "p_info.cpp",
+   "evidence": "the retail m681DLL.rel's assert texts name p_info.cpp as their source file"
+  },
+  {
+   "module": "m681DLL",
+   "file": "singleton.h",
+   "evidence": "the retail m681DLL.rel's assert texts name singleton.h as their source file"
+  },
+  {
+   "module": "m699Dll",
+   "file": "m699effect.c",
+   "evidence": "the retail m699Dll.rel's assert texts name m699effect.c as their source file"
+  }
+ ],
+ "counters": [
+  {
+   "source": "src/dolphin/dvd/dvd.c",
+   "static": "dmaCount",
+   "ours": 349,
+   "original": 347,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/dvd/dvd.c",
+   "static": "immCount",
+   "ours": 347,
+   "original": 345,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/dvd/fstload.c",
+   "static": "block",
+   "ours": 16,
+   "original": 18,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXAttr.c",
+   "static": "tbl1",
+   "ours": 245,
+   "original": 263,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXAttr.c",
+   "static": "tbl2",
+   "ours": 246,
+   "original": 264,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXAttr.c",
+   "static": "tbl3",
+   "ours": 247,
+   "original": 265,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXInit.c",
+   "static": "calledOnce",
+   "ours": 33,
+   "original": 37,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXInit.c",
+   "static": "peCount",
+   "ours": 31,
+   "original": 35,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXInit.c",
+   "static": "resetFuncRegistered",
+   "ours": 153,
+   "original": 70,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXInit.c",
+   "static": "time",
+   "ours": 32,
+   "original": 36,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXPixel.c",
+   "static": "p2f",
+   "ours": 279,
+   "original": 362,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/gx/GXTev.c",
+   "static": "c2r",
+   "ours": 428,
+   "original": 364,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/pad/Pad.c",
+   "static": "recalibrated",
+   "ours": 370,
+   "original": 388,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/si/SIBios.c",
+   "static": "cmdFixDevice",
+   "ours": 304,
+   "original": 327,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/si/SIBios.c",
+   "static": "cmdTypeAndStatus",
+   "ours": 350,
+   "original": 372,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "source": "src/dolphin/vi/vi.c",
+   "static": "message",
+   "ours": 346,
+   "original": 343,
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   }
  ]
 }

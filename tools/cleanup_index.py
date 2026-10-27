@@ -240,10 +240,17 @@ GAME_CODE = ("src/game/", "src/board/", "src/REL/", "include/game/", "include/RE
 KNOWN_NAME = ("known-original-name", "original name known", "placeholders",
               "An address name (fn_, lbl_) whose original name an original artifact shows: a link map, a $Id line, "
               "a retail string. It must take that name.")
+KNOWN_FILE = ("known-original-file", "original file name known", "placeholders",
+              "A module's retail assert texts name the source file they were compiled from (__FILE__), and no file of "
+              "the module, its framework or the headers has that name: the code is in a file named otherwise.")
+COUNTER_DRIFT = ("compiler-counter", "compiler counter differs", "invented-structure",
+                 "MWCC numbers a function's statics (name$N) from one counter that the source and headers before it "
+                 "advance. Nintendo's link map shows another number: the file or its headers are shaped differently "
+                 "from Nintendo's, though the bytes match.")
 KNOWN_NAMES_FILE = "cleanup_known_names.json"
 SYMBOL_FILES = re.compile(r"config/(?:GP6E01|dll/rels/[^/]+)/symbols\.txt")
 
-for _id, _label, _family, _description in list(AUDIT_CATEGORIES.values()) + [KNOWN_NAME]:
+for _id, _label, _family, _description in list(AUDIT_CATEGORIES.values()) + [KNOWN_NAME, KNOWN_FILE, COUNTER_DRIFT]:
     if all(item["id"] != _id for item in CATEGORY_DEFINITIONS):
         CATEGORY_DEFINITIONS += ({"id": _id, "label": _label, "family": _family, "description": _description},)
 CATEGORY_ORDER = {item["id"]: index for index, item in enumerate(CATEGORY_DEFINITIONS)}
@@ -304,19 +311,67 @@ def scan_repository(sources: Mapping[str, str]) -> List[dict]:
     return _audit_sites(_AUDIT.repository_findings(dict(sources)), sources)
 
 
-def _load_known_names() -> List[Mapping[str, str]]:
-    """[{"address_name", "name", "where", "evidence"}] from cleanup_known_names.json, or none."""
+def _load_known(section: str = "names") -> List[Mapping[str, Any]]:
+    """One section of cleanup_known_names.json: "names" [{"address_name", "name", "where", "evidence"}],
+    "files" [{"module", "file", "evidence"}] or "counters" [{"source", "static", "ours", "original", "evidence"}]."""
     path = Path(__file__).resolve().with_name(KNOWN_NAMES_FILE)
     if not path.is_file():
         return []
-    return json.loads(path.read_text(encoding="utf-8"))["names"]
+    return json.loads(path.read_text(encoding="utf-8")).get(section, [])
+
+
+def _load_known_names() -> List[Mapping[str, Any]]:
+    return _load_known("names")
+
+
+def scan_known_files(texts: Mapping[str, str]) -> List[dict]:
+    """A module whose retail asserts name a source file that neither the module, the framework nor any header has."""
+    modules: Dict[str, List[str]] = {}
+    present = set()
+    for path in texts:
+        name = path.rsplit("/", 1)[-1].lower()
+        parts = path.split("/")
+        if path.startswith("src/REL/") and len(parts) > 3:
+            modules.setdefault(parts[2].lower(), []).append(path)
+            present.add((parts[2].lower(), name))
+        if path.startswith(("src/REL/framework/", "include/")):
+            present.add(("*", name))
+    sites = []
+    for entry in _load_known("files"):
+        module, name = entry["module"].lower(), entry["file"].lower()
+        files = sorted(modules.get(module, []))
+        if not files or (module, name) in present or ("*", name) in present:
+            continue
+        sites.append({"path": files[0], "line": 1, "endLine": 1, "category": KNOWN_FILE[0],
+                      "detail": "{}: {}; no file of the module has that name".format(entry["module"], entry["evidence"]),
+                      "source": entry["file"]})
+    return sites
+
+
+def scan_counter_drift(texts: Mapping[str, str]) -> List[dict]:
+    """The declaration of each function static whose compiler number differs from Nintendo's link map."""
+    sites = []
+    for entry in _load_known("counters"):
+        source = texts.get(entry["source"])
+        if source is None:
+            continue
+        lines = source.split("\n")
+        declaration = re.compile(r"\bstatic\b[^;]*\b" + re.escape(entry["static"]) + r"\b")
+        number = next((n for n, line in enumerate(lines, 1) if declaration.search(line)), 1)
+        sites.append({"path": entry["source"], "line": number, "endLine": number, "category": COUNTER_DRIFT[0],
+                      "detail": "{0}${1} here, {0}${2} in Nintendo's build ({3})".format(
+                          entry["static"], entry["ours"], entry["original"], entry["evidence"]),
+                      "source": " ".join(lines[number - 1].split())[:220] if number - 1 < len(lines) else ""})
+    return sites
 
 
 def scan_known_names(texts: Mapping[str, str]) -> List[dict]:
-    """Every place a source or a symbols.txt still uses an address name whose original name is known."""
+    """Every place a source or a symbols.txt still uses an address name whose original name is known, every
+    module missing a file its retail asserts name, and every static whose compiler number is not Nintendo's."""
     names = {entry["address_name"]: entry for entry in _load_known_names()}
+    extra = scan_known_files(texts) + scan_counter_drift(texts)
     if not names:
-        return []
+        return extra
     pattern = re.compile(r"\b(" + "|".join(re.escape(name) for name in sorted(names)) + r")\b")
     sites = []
     for path in sorted(texts):
@@ -329,7 +384,7 @@ def scan_known_names(texts: Mapping[str, str]) -> List[dict]:
                               "detail": "{} is {} in {} ({})".format(match.group(1), entry["name"], entry["where"],
                                                                      entry["evidence"])[:300],
                               "source": " ".join(line.split())[:220]})
-    return sites
+    return sites + extra
 
 
 def _symbol_files(repo: Path, commit: str) -> Dict[str, str]:

@@ -455,6 +455,8 @@ def scan_text(text, display, suffix, with_address_names=False):
         add("placeholders", "numbered generic name", offset, detail=detail)
     for offset, detail in float_spellings(code):
         add("raw-numbers", "float in decompiler spelling", offset, detail=detail)
+    for category, rule, offset, detail in retail_string_findings(text, code, display):
+        add(category, rule, offset, detail=detail)
     if suffix in (".c", ".cpp", ".cp"):
         for offset in late_includes(code):
             add("invented-structure", "include after code", offset)
@@ -593,6 +595,90 @@ ASSERT_STATEMENT = re.compile(r"^\s*(?:ASSERT|ASSERTMSG[0-9]?|ASSERTLINE|ASSERTM
 # the one assertion the user accepted (14 Oct 05:10Z, m658dll fn_1_5E48/5EFC): `ASSERT(FALSE);` right under a case
 # or default label marks an unsupported case. Release builds compile it to ((void)0), and that expression statement
 # keeps the case its own jump-table target (an empty `;`, `break;` or empty macro does not), so no condition is
+# retail strings: the original's own text names functions and variables (27 Oct: m657's fn_1_47EC prints
+# "Error: M657ComPlayerSet() - !*com != NULL"; hu_archive.cpp's assert text says `idx`, the code `index`)
+FUNCTION_START = re.compile(r"^[A-Za-z_][\w \t\*]*?\b(\w+)\s*\([^;{}()]*(?:\([^;{}()]*\)[^;{}()]*)*\)\s*\{", re.MULTILINE)
+ADDRESS_FUNCTION = re.compile(r"fn_(?:\d+_)?[0-9A-Fa-f]+$")
+STRING_SPAN = re.compile(r'"[^"\n]*"')
+NAMED_IN_STRING = re.compile(r"^(?:\s*(?:Error|ERROR|Warning|WARNING)\s*:?\s*)?([A-Za-z_][A-Za-z0-9_]{3,})\s*\(\s*\)")
+ASSERT_CALL = re.compile(r"__msl_assertion_failed\s*\(\s*\"")
+ASSERT_ORIGIN = re.compile(r'\s*,\s*"([^"\n]+)"\s*,\s*(\d+)')       # after the text: the file and line
+SOURCE_LITERAL = re.compile(r"[A-Za-z_][\w-]*\.(?:c|cpp|cp|h|hpp)")
+LINE_AFTER = re.compile(r"\s*,\s*(0x[0-9A-Fa-f]+|\d+)\b")
+IDENTIFIER = re.compile(r"\b[A-Za-z_]\w*\b")
+C_WORDS = {"NULL", "TRUE", "FALSE", "true", "false", "sizeof", "this", "nullptr"}
+
+
+def _bodies(code):
+    """(name, body start, body end) of every function definition; strings and comments are blanked in `code`."""
+    for match in FUNCTION_START.finditer(code):
+        depth, at = 0, match.end() - 1
+        while at < len(code):
+            if code[at] == "{":
+                depth += 1
+            elif code[at] == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            at += 1
+        yield match.group(1), match.end(), at
+
+
+def retail_string_findings(text, code, display=""):
+    """[(category, rule, offset, detail)]: an address-named function a retail string in it names, an assert text
+    that names variables its code does not use, an assert whose retail file name is another file (the original
+    wrote that code there, often a header's inline), and MSL's assert written out by hand."""
+    found = []
+    defined = {name for name, _start, _end in _bodies(code)}
+    for name, start, end in _bodies(code):
+        if not ADDRESS_FUNCTION.fullmatch(name):
+            continue
+        body = code[start:end]
+        for span in STRING_SPAN.finditer(code, start, end):
+            literal = text[span.start() + 1:span.end() - 1]
+            named = NAMED_IN_STRING.match(literal)
+            if not named or named.group(1) in defined or re.search(r"\b" + named.group(1) + r"\s*\(", body):
+                continue
+            found.append(("placeholders", "function a retail string names", span.start(),
+                          f"{name} prints \"{literal[:80]}\": the original called it {named.group(1)}"))
+            break
+    for call in ASSERT_CALL.finditer(code):
+        quote = call.end() - 1
+        close = code.find('"', quote + 1)
+        literal = text[quote + 1:close]
+        statement = max(code.rfind(";", 0, call.start()), code.rfind("{", 0, call.start()),
+                        code.rfind("}", 0, call.start()))
+        condition = code[statement + 1:call.start()]
+        written = set(IDENTIFIER.findall(condition))
+        missing = sorted(set(IDENTIFIER.findall(literal)) - written - C_WORDS)
+        origin = ASSERT_ORIGIN.match(text, close + 1)
+        place = (f"; the original assert is {origin.group(1)}:{origin.group(2)}, so written as assert() it sits "
+                 f"on line {origin.group(2)} (this is line {text.count(chr(10), 0, call.start()) + 1})") if origin else ""
+        found.append(("library-lookalike", "MSL assert written out", call.start(),
+                      f"assert({literal[:80]}) written out as its expansion{place}"))
+        own = display.replace("\\", "/").rsplit("/", 1)[-1]
+        if origin and own and origin.group(1) != own:
+            found.append(("invented-structure", "assert from another file", call.start(),
+                          f"the retail assert is {origin.group(1)}:{origin.group(2)}; the original wrote this "
+                          f"code in {origin.group(1)}"))
+        if missing and written:
+            found.append(("placeholders", "assert text names other variables", call.start(),
+                          f"the retail assert text \"{literal[:80]}\" names {', '.join(missing[:4])}, "
+                          f"which the code does not use"))
+    # __FILE__ and __LINE__ written as the retail values (OSPanic("data.c", 66, ...)): the original wrote the
+    # macros, so the call sits on that line of that file
+    for span in STRING_SPAN.finditer(code):
+        literal = text[span.start() + 1:span.end() - 1]
+        number = LINE_AFTER.match(text, span.end())
+        if not SOURCE_LITERAL.fullmatch(literal) or not number or "__msl_assertion_failed" in code[
+                max(0, span.start() - 60):span.start()]:
+            continue
+        found.append(("library-lookalike", "__FILE__ and __LINE__ written out", span.start(),
+                      f"\"{literal}\", {number.group(1)}: the original wrote __FILE__, __LINE__ on line "
+                      f"{int(number.group(1), 0)} of {literal} (this is line {text.count(chr(10), 0, span.start()) + 1})"))
+    return found
+
+
 # invented
 ASSERT_UNREACHABLE = re.compile(r"^\s*ASSERT\s*\(\s*FALSE\s*\)\s*;")
 NOT_A_CAST_CALL = re.compile(r"\b(?:sizeof)\s*\(")
