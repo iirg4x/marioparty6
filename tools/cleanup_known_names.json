@@ -86,6 +86,18 @@
    "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
   },
   {
+   "address_name": "lbl_80216990",
+   "name": "Zero",
+   "where": "MSL_C.PPCEABI.bare.H/e_fmod.c (.rodata)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Pokemon XD's Master.MAP, Super Mario Strikers' MarioSoccerR.MAP (2005)"
+  },
+  {
+   "address_name": "lbl_802C0C88",
+   "name": "zero",
+   "where": "MSL_C.PPCEABI.bare.H/e_log.c (.sbss)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Pokemon XD's Master.MAP"
+  },
+  {
    "address_name": "lbl_802169D0",
    "name": "two_over_pi",
    "where": "MSL_C.PPCEABI.bare.H/e_rem_pio2.c (.rodata)",
@@ -164,6 +176,12 @@
    "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
+   "address_name": "lbl_80244B20",
+   "name": "lens",
+   "where": "musyx/runtime/CheapReverb/creverb.c (.data)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Super Mario Strikers' MarioSoccerR.MAP (2005)"
+  },
+  {
    "address_name": "lbl_802C22C0",
    "name": "value0_3",
    "where": "musyx/runtime/CheapReverb/creverb.c (.sdata2)",
@@ -186,6 +204,24 @@
    "name": "HandleReverb",
    "where": "musyx/runtime/CheapReverb/creverb.c (.text)",
    "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "lbl_80244B50",
+   "name": "rsmpTab12khz",
+   "where": "musyx/runtime/Chorus/chorus_fx.c (.data)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Super Mario Strikers' MarioSoccerR.MAP (2005)"
+  },
+  {
+   "address_name": "lbl_802C2318",
+   "name": "i2fMagic",
+   "where": "musyx/runtime/Chorus/chorus_fx.c (.sdata2)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Super Mario Strikers' MarioSoccerR.MAP (2005)"
+  },
+  {
+   "address_name": "lbl_80244B30",
+   "name": "lens",
+   "where": "musyx/runtime/StdReverb/reverb.c (.data)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Pokemon XD's Master.MAP, Super Mario Strikers' MarioSoccerR.MAP (2005)"
   },
   {
    "address_name": "lbl_802C2300",
@@ -216,6 +252,12 @@
    "name": "HandleReverb",
    "where": "musyx/runtime/StdReverb/reverb.c (.text)",
    "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "lbl_80216578",
+   "name": "itdOffTab",
+   "where": "musyx/runtime/hardware.c (.rodata)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Pokemon XD's Master.MAP, Super Mario Strikers' MarioSoccerR.MAP (2005)"
   },
   {
    "address_name": "lbl_802C0C28",
@@ -416,6 +458,18 @@
    "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
   },
   {
+   "address_name": "lbl_8023FBB8",
+   "name": "toneup_tab",
+   "where": "musyx/runtime/synth_ac.c (.data)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Pokemon XD's Master.MAP, Super Mario Strikers' MarioSoccerR.MAP (2005)"
+  },
+  {
+   "address_name": "lbl_8023FDB8",
+   "name": "tonedown_tab",
+   "where": "musyx/runtime/synth_ac.c (.data)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Pokemon XD's Master.MAP, Super Mario Strikers' MarioSoccerR.MAP (2005)"
+  },
+  {
    "address_name": "lbl_802C0B08",
    "name": "result",
    "where": "musyx/runtime/synthdata.c (.sbss)",
@@ -480,6 +534,12 @@
    "name": "base",
    "where": "musyx/runtime/synthdata.c (.sbss)",
    "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802A4850",
+   "name": "newsmp",
+   "where": "musyx/runtime/synthmacros.c (.bss)",
+   "evidence": "the link maps agree: Hudson's huos.MAP (2003), Pokemon XD's Master.MAP, Super Mario Strikers' MarioSoccerR.MAP (2005)"
   }
  ],
  "files": [
@@ -1144,7 +1204,7 @@
    "static": "block",
    "ours": 16,
    "original": 18,
-   "evidence": "Nintendo's link map on the Mario Kart: Double Dash!! debug disc and Hudson's huos.MAP (2003) give the same number, so it is not an SDK version difference"
+   "evidence": "3 independent Nintendo SDK builds give the same number (the link maps of Hudson Selection Vol. 4, Mario Kart: Double Dash!! debug and Super Mario Strikers), so it is our source or headers, not an SDK version"
   },
   {
    "source": "src/dolphin/gx/GXAttr.c",
@@ -1186,7 +1246,7 @@
    "static": "resetFuncRegistered",
    "ours": 153,
    "original": 70,
-   "evidence": "Nintendo's link map on the Mario Kart: Double Dash!! debug disc and Hudson's huos.MAP (2003) give the same number, so it is not an SDK version difference"
+   "evidence": "3 independent Nintendo SDK builds give the same number (the link maps of Hudson Selection Vol. 4, Mario Kart: Double Dash!! debug and Super Mario Strikers), so it is our source or headers, not an SDK version"
   },
   {
    "source": "src/dolphin/gx/GXInit.c",
@@ -1214,7 +1274,7 @@
    "static": "recalibrated",
    "ours": 370,
    "original": 388,
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+   "evidence": "the link maps of Mario Kart: Double Dash!! debug and Super Mario Strikers give the same number, so it is our source or headers, not an SDK version"
   },
   {
    "source": "src/dolphin/si/SIBios.c",
@@ -1228,7 +1288,7 @@
    "static": "cmdTypeAndStatus",
    "ours": 350,
    "original": 372,
-   "evidence": "Nintendo's link map on the Mario Kart: Double Dash!! debug disc and Hudson's huos.MAP (2003) give the same number, so it is not an SDK version difference"
+   "evidence": "3 independent Nintendo SDK builds give the same number (the link maps of Hudson Selection Vol. 4, Mario Kart: Double Dash!! debug and Super Mario Strikers), so it is our source or headers, not an SDK version"
   },
   {
    "source": "src/dolphin/vi/vi.c",

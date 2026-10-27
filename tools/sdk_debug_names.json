@@ -5,89 +5,125 @@
    "functions": {
     "PPCMfmsr": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "PPCMtmsr": {
      "params": [
       "newMSR"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMfhid0": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "PPCMthid0": {
      "params": [
       "newHID0"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMfl2cr": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "PPCMtl2cr": {
      "params": [
       "newL2cr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMtdec": {
      "params": [
       "newDec"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCSync": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "PPCHalt": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "PPCMtmmcr0": {
      "params": [
       "newMmcr0"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMtmmcr1": {
      "params": [
       "newMmcr1"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMtpmc1": {
      "params": [
       "newPmc1"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMtpmc2": {
      "params": [
       "newPmc2"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMtpmc3": {
      "params": [
       "newPmc3"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMtpmc4": {
      "params": [
       "newPmc4"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMffpscr": {
      "params": [],
      "locals": [
       "m"
-     ]
+     ],
+     "types": []
     },
     "PPCMtfpscr": {
      "params": [
@@ -95,31 +131,43 @@
      ],
      "locals": [
       "m"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "PPCMfhid2": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "PPCMthid2": {
      "params": [
       "newhid2"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCMtwpar": {
      "params": [
       "newwpar"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "PPCDisableSpeculation": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "PPCSetFpNonIEEEMode": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -128,34 +176,42 @@
    "functions": {
     "__OSFPRInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DisableWriteGatherPipe": {
      "params": [],
      "locals": [
       "hid2"
-     ]
+     ],
+     "types": []
     },
     "OSGetConsoleType": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "ClearArena": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "InquiryCallback": {
      "params": [
       "block"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "DVDCommandBlock *"
+     ]
     },
     "OSInit": {
      "params": [],
      "locals": [
       "bi2StartAddr",
       "consoleType"
-     ]
+     ],
+     "types": []
     },
     "OSExceptionInit": {
      "params": [],
@@ -168,15 +224,18 @@
       "oldOpCode",
       "opCodeAddr",
       "ops"
-     ]
+     ],
+     "types": []
     },
     "__OSDBIntegrator": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSDBJump": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSSetExceptionHandler": {
      "params": [
@@ -185,38 +244,55 @@
      ],
      "locals": [
       "oldHandler"
+     ],
+     "types": [
+      "unsigned char",
+      "function *"
      ]
     },
     "__OSGetExceptionHandler": {
      "params": [
       "exception"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "OSExceptionVector": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSDefaultExceptionHandler": {
      "params": [
       "exception",
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "OSContext *"
+     ]
     },
     "__OSPSInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSGetDIConfig": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSRegisterVersion": {
      "params": [
       "id"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "char const *"
+     ]
     }
    }
   },
@@ -227,25 +303,37 @@
      "params": [
       "paddr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "OSPhysicalToUncached": {
      "params": [
       "paddr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "OSCachedToPhysical": {
      "params": [
       "caddr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *"
+     ]
     },
     "OSUncachedToPhysical": {
      "params": [
       "ucaddr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *"
+     ]
     }
    }
   },
@@ -256,7 +344,8 @@
      "params": [],
      "locals": [
       "alarm"
-     ]
+     ],
+     "types": []
     },
     "SetTimer": {
      "params": [
@@ -264,17 +353,24 @@
      ],
      "locals": [
       "delta"
+     ],
+     "types": [
+      "OSAlarm *"
      ]
     },
     "OSInitAlarm": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSCreateAlarm": {
      "params": [
       "alarm"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSAlarm *"
+     ]
     },
     "InsertAlarm": {
      "params": [
@@ -286,6 +382,11 @@
       "next",
       "prev",
       "time"
+     ],
+     "types": [
+      "OSAlarm *",
+      "long long",
+      "function *"
      ]
     },
     "OSSetAlarm": {
@@ -296,6 +397,11 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "OSAlarm *",
+      "long long",
+      "function *"
      ]
     },
     "OSCancelAlarm": {
@@ -305,6 +411,9 @@
      "locals": [
       "enabled",
       "next"
+     ],
+     "types": [
+      "OSAlarm *"
      ]
     },
     "DecrementerExceptionCallback": {
@@ -317,6 +426,9 @@
       "handler",
       "next",
       "time"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "DecrementerExceptionHandler": {
@@ -324,7 +436,11 @@
       "exception",
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "OSContext *"
+     ]
     },
     "OnReset": {
      "params": [
@@ -333,6 +449,9 @@
      "locals": [
       "alarm",
       "next"
+     ],
+     "types": [
+      "int"
      ]
     }
    }
@@ -345,21 +464,33 @@
       "list",
       "cell"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "Cell *",
+      "Cell *"
+     ]
     },
     "DLLookup": {
      "params": [
       "list",
       "cell"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "Cell *",
+      "Cell *"
+     ]
     },
     "DLExtract": {
      "params": [
       "list",
       "cell"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "Cell *",
+      "Cell *"
+     ]
     },
     "DLInsert": {
      "params": [
@@ -369,6 +500,10 @@
      "locals": [
       "next",
       "prev"
+     ],
+     "types": [
+      "Cell *",
+      "Cell *"
      ]
     },
     "DLOverlap": {
@@ -379,6 +514,11 @@
      ],
      "locals": [
       "cell"
+     ],
+     "types": [
+      "Cell *",
+      "void *",
+      "void *"
      ]
     },
     "OSAllocFromHeap": {
@@ -392,6 +532,10 @@
       "leftoverSize",
       "newCell",
       "requested"
+     ],
+     "types": [
+      "int",
+      "unsigned long"
      ]
     },
     "OSFreeToHeap": {
@@ -402,6 +546,10 @@
      "locals": [
       "cell",
       "hd"
+     ],
+     "types": [
+      "int",
+      "void *"
      ]
     },
     "OSSetCurrentHeap": {
@@ -410,6 +558,9 @@
      ],
      "locals": [
       "prev"
+     ],
+     "types": [
+      "int"
      ]
     },
     "OSInitAlloc": {
@@ -422,6 +573,11 @@
       "arraySize",
       "hd",
       "i"
+     ],
+     "types": [
+      "void *",
+      "void *",
+      "int"
      ]
     },
     "OSCreateHeap": {
@@ -433,6 +589,10 @@
       "cell",
       "hd",
       "heap"
+     ],
+     "types": [
+      "void *",
+      "void *"
      ]
     },
     "OSCheckHeap": {
@@ -444,6 +604,9 @@
       "free",
       "hd",
       "total"
+     ],
+     "types": [
+      "int"
      ]
     }
    }
@@ -453,23 +616,31 @@
    "functions": {
     "OSGetArenaHi": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSGetArenaLo": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSSetArenaHi": {
      "params": [
       "newHi"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *"
+     ]
     },
     "OSSetArenaLo": {
      "params": [
       "newLo"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *"
+     ]
     },
     "OSAllocFromArenaLo": {
      "params": [
@@ -479,6 +650,10 @@
      "locals": [
       "arenaLo",
       "ptr"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     }
    }
@@ -492,14 +667,16 @@
       "errFlag",
       "reg16",
       "start_tick"
-     ]
+     ],
+     "types": []
     },
     "__OSStopAudioSystem": {
      "params": [],
      "locals": [
       "reg16",
       "start_tick"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -508,72 +685,100 @@
    "functions": {
     "DCEnable": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DCInvalidateRange": {
      "params": [
       "addr",
       "nBytes"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long"
+     ]
     },
     "DCFlushRange": {
      "params": [
       "addr",
       "nBytes"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long"
+     ]
     },
     "DCStoreRange": {
      "params": [
       "addr",
       "nBytes"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long"
+     ]
     },
     "DCFlushRangeNoSync": {
      "params": [
       "addr",
       "nBytes"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long"
+     ]
     },
     "ICInvalidateRange": {
      "params": [
       "addr",
       "nBytes"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long"
+     ]
     },
     "ICFlashInvalidate": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "ICEnable": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "LCDisable": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "L2Init": {
      "params": [],
      "locals": [
       "oldMSR"
-     ]
+     ],
+     "types": []
     },
     "L2Enable": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "L2Disable": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "L2GlobalInvalidate": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DMAErrorHandler": {
      "params": [
@@ -581,11 +786,15 @@
      ],
      "locals": [
       "hid2"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "__OSCacheInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -597,7 +806,11 @@
       "dummy",
       "fpucontext"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "OSContext *"
+     ]
     },
     "__OSSaveFPUContext": {
      "params": [
@@ -605,45 +818,67 @@
       "dummy2",
       "fpucontext"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "OSContext *"
+     ]
     },
     "OSSaveFPUContext": {
      "params": [
       "fpucontext"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSContext *"
+     ]
     },
     "OSSetCurrentContext": {
      "params": [
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSContext *"
+     ]
     },
     "OSGetCurrentContext": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSSaveContext": {
      "params": [
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSContext *"
+     ]
     },
     "OSLoadContext": {
      "params": [
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSContext *"
+     ]
     },
     "OSGetStackPointer": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSClearContext": {
      "params": [
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSContext *"
+     ]
     },
     "OSInitContext": {
      "params": [
@@ -651,7 +886,12 @@
       "pc",
       "newsp"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSContext *",
+      "unsigned long",
+      "unsigned long"
+     ]
     },
     "OSDumpContext": {
      "params": [
@@ -663,6 +903,9 @@
       "fpuContext",
       "i",
       "p"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "OSSwitchFPUContext": {
@@ -670,11 +913,16 @@
       "exception",
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "OSContext *"
+     ]
     },
     "__OSContextInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -687,6 +935,9 @@
      ],
      "locals": [
       "marker"
+     ],
+     "types": [
+      "char const *"
      ]
     },
     "OSPanic": {
@@ -699,6 +950,11 @@
       "i",
       "marker",
       "p"
+     ],
+     "types": [
+      "char const *",
+      "int",
+      "char const *"
      ]
     },
     "OSSetErrorHandler": {
@@ -713,6 +969,10 @@
       "msr",
       "oldHandler",
       "thread"
+     ],
+     "types": [
+      "unsigned short",
+      "function *"
      ]
     },
     "__OSUnhandledException": {
@@ -726,6 +986,12 @@
       "fpscr",
       "msr",
       "now"
+     ],
+     "types": [
+      "unsigned char",
+      "OSContext *",
+      "unsigned long",
+      "unsigned long"
      ]
     }
    }
@@ -745,13 +1011,21 @@
       "list",
       "numArgs",
       "ptr"
+     ],
+     "types": [
+      "void *",
+      "long",
+      "char * *"
      ]
     },
     "Run": {
      "params": [
       "entryPoint"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *"
+     ]
     },
     "StartDol": {
      "params": [
@@ -760,6 +1034,10 @@
      ],
      "locals": [
       "paramsWork"
+     ],
+     "types": [
+      "struct const *",
+      "void *"
      ]
     },
     "ReadDisc": {
@@ -770,47 +1048,64 @@
      ],
      "locals": [
       "block"
+     ],
+     "types": [
+      "void *",
+      "long",
+      "long"
      ]
     },
     "Callback": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "IsStreamEnabled": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSGetExecParams": {
      "params": [
       "params"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "struct *"
+     ]
     },
     "__OSSetExecParams": {
      "params": [
       "params",
       "addr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "struct const *",
+      "struct *"
+     ]
     },
     "StopStreaming": {
      "params": [],
      "locals": [
       "block"
-     ]
+     ],
+     "types": []
     },
     "GetApploaderPosition": {
      "params": [],
      "locals": [
       "apploaderOffsetInTGC",
       "tgcHeader"
-     ]
+     ],
+     "types": []
     },
     "LoadApploader": {
      "params": [],
      "locals": [
       "header"
-     ]
+     ],
+     "types": []
     },
     "LoadDol": {
      "params": [
@@ -825,13 +1120,20 @@
       "length",
       "offset",
       "paramsWork"
+     ],
+     "types": [
+      "struct const *",
+      "function *"
      ]
     },
     "IsNewApploader": {
      "params": [
       "header"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "struct *"
+     ]
     },
     "__OSBootDolSimple": {
      "params": [
@@ -847,6 +1149,15 @@
       "dolEntry",
       "header",
       "params"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "void *",
+      "void *",
+      "int",
+      "long",
+      "char * *"
      ]
     },
     "__OSBootDol": {
@@ -862,6 +1173,11 @@
       "i",
       "saveEnd",
       "saveStart"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "char * const *"
      ]
     }
    }
@@ -873,13 +1189,19 @@
      "params": [
       "c"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "IsSjisTrailByte": {
      "params": [
       "c"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "GetFontCode": {
      "params": [
@@ -888,6 +1210,9 @@
      "locals": [
       "i",
       "j"
+     ],
+     "types": [
+      "unsigned short"
      ]
     },
     "Decode": {
@@ -907,17 +1232,25 @@
       "q",
       "r25",
       "r7"
+     ],
+     "types": [
+      "unsigned char *",
+      "unsigned char *"
      ]
     },
     "GetFontSize": {
      "params": [
       "buf"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char *"
+     ]
     },
     "OSGetFontEncode": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "ReadROM": {
      "params": [
@@ -927,13 +1260,21 @@
      ],
      "locals": [
       "len"
+     ],
+     "types": [
+      "void *",
+      "int",
+      "int"
      ]
     },
     "ReadFont": {
      "params": [
       "buffer"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *"
+     ]
     },
     "OSLoadFont": {
      "params": [
@@ -952,6 +1293,10 @@
       "src",
       "x",
       "y"
+     ],
+     "types": [
+      "OSFontHeader *",
+      "void *"
      ]
     },
     "ExpandFontSheet": {
@@ -962,6 +1307,10 @@
      "locals": [
       "colorIndex",
       "i"
+     ],
+     "types": [
+      "unsigned char *",
+      "unsigned char *"
      ]
     },
     "OSInitFont": {
@@ -971,6 +1320,9 @@
      "locals": [
       "size",
       "temp"
+     ],
+     "types": [
+      "OSFontHeader *"
      ]
     },
     "OSGetFontTexture": {
@@ -988,6 +1340,13 @@
       "numChars",
       "row",
       "sheet"
+     ],
+     "types": [
+      "char const *",
+      "void *",
+      "long *",
+      "long *",
+      "long *"
      ]
     },
     "OSGetFontWidth": {
@@ -997,6 +1356,10 @@
      ],
      "locals": [
       "code"
+     ],
+     "types": [
+      "char const *",
+      "long *"
      ]
     }
    }
@@ -1006,17 +1369,22 @@
    "functions": {
     "OSDisableInterrupts": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSEnableInterrupts": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSRestoreInterrupts": {
      "params": [
       "level"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "__OSSetInterruptHandler": {
      "params": [
@@ -1025,17 +1393,25 @@
      ],
      "locals": [
       "oldHandler"
+     ],
+     "types": [
+      "signed short",
+      "function *"
      ]
     },
     "__OSGetInterruptHandler": {
      "params": [
       "interrupt"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "signed short"
+     ]
     },
     "__OSInterruptInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "SetInterruptMask": {
      "params": [
@@ -1044,6 +1420,10 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "__OSMaskInterrupts": {
@@ -1055,6 +1435,9 @@
       "local",
       "mask",
       "prev"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__OSUnmaskInterrupts": {
@@ -1066,6 +1449,9 @@
       "local",
       "mask",
       "prev"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__OSDispatchInterrupt": {
@@ -1080,6 +1466,9 @@
       "prio",
       "reg",
       "unmasked"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "ExternalInterruptHandler": {
@@ -1087,7 +1476,11 @@
       "exception",
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "OSContext *"
+     ]
     }
    }
   },
@@ -1096,7 +1489,8 @@
    "functions": {
     "__OSModuleInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -1107,19 +1501,24 @@
      "params": [],
      "locals": [
       "BootInfo"
-     ]
+     ],
+     "types": []
     },
     "OSGetConsoleSimulatedMemSize": {
      "params": [],
      "locals": [
       "memSize"
-     ]
+     ],
+     "types": []
     },
     "OnReset": {
      "params": [
       "final"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "MEMIntrruptHandler": {
      "params": [
@@ -1128,28 +1527,37 @@
      "locals": [
       "addr",
       "cause"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "Config24MB": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "Config48MB": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "RealMode": {
      "params": [
       "addr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "__OSInitMemoryProtection": {
      "params": [],
      "locals": [
       "enabled",
       "size"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -1163,6 +1571,9 @@
      "locals": [
       "__next",
       "mutex"
+     ],
+     "types": [
+      "OSThread *"
      ]
     }
    }
@@ -1178,6 +1589,10 @@
      "locals": [
       "argvToPass",
       "exceptionContext"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "OSGetSaveRegion": {
@@ -1185,7 +1600,11 @@
       "start",
       "end"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "void *"
+     ]
     }
    }
   },
@@ -1199,6 +1618,9 @@
      "locals": [
       "__next",
       "__prev"
+     ],
+     "types": [
+      "OSResetFunctionInfo *"
      ]
     },
     "__OSCallResetFunctions": {
@@ -1209,26 +1631,36 @@
       "err",
       "info",
       "priority"
+     ],
+     "types": [
+      "int"
      ]
     },
     "Reset": {
      "params": [
       "resetCode"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "KillThreads": {
      "params": [],
      "locals": [
       "next",
       "thread"
-     ]
+     ],
+     "types": []
     },
     "__OSDoHotReset": {
      "params": [
       "resetCode"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "__OSShutdownDevices": {
      "params": [
@@ -1237,6 +1669,9 @@
      "locals": [
       "disableRecalibration",
       "rc"
+     ],
+     "types": [
+      "int"
      ]
     },
     "OSResetSystem": {
@@ -1247,13 +1682,19 @@
      ],
      "locals": [
       "sram"
+     ],
+     "types": [
+      "int",
+      "unsigned long",
+      "int"
      ]
     },
     "OSGetResetCode": {
      "params": [],
      "locals": [
       "resetCode"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -1264,7 +1705,8 @@
      "params": [],
      "locals": [
       "callback"
-     ]
+     ],
+     "types": []
     },
     "OSGetResetButtonState": {
      "params": [],
@@ -1274,11 +1716,13 @@
       "now",
       "reg",
       "state"
-     ]
+     ],
+     "types": []
     },
     "OSGetResetSwitchState": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSSetResetButtonTimer": {
      "params": [
@@ -1286,6 +1730,9 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "unsigned char"
      ]
     }
    }
@@ -1300,11 +1747,15 @@
      "locals": [
       "cmd",
       "err"
+     ],
+     "types": [
+      "void *"
      ]
     },
     "WriteSramCallback": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "WriteSram": {
      "params": [
@@ -1315,11 +1766,17 @@
      "locals": [
       "cmd",
       "err"
+     ],
+     "types": [
+      "void *",
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "__OSInitSram": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "LockSram": {
      "params": [
@@ -1327,15 +1784,20 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__OSLockSram": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSLockSramEx": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "UnlockSram": {
      "params": [
@@ -1345,23 +1807,34 @@
      "locals": [
       "p",
       "sram"
+     ],
+     "types": [
+      "int",
+      "unsigned long"
      ]
     },
     "__OSUnlockSram": {
      "params": [
       "commit"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "__OSUnlockSramEx": {
      "params": [
       "commit"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "__OSSyncSram": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSReadROM": {
      "params": [
@@ -1372,6 +1845,11 @@
      "locals": [
       "cmd",
       "err"
+     ],
+     "types": [
+      "void *",
+      "long",
+      "long"
      ]
     },
     "OSGetLanguage": {
@@ -1379,7 +1857,8 @@
      "locals": [
       "language",
       "sram"
-     ]
+     ],
+     "types": []
     },
     "OSSetLanguage": {
      "params": [
@@ -1387,6 +1866,9 @@
      ],
      "locals": [
       "sram"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "OSGetWirelessID": {
@@ -1396,6 +1878,9 @@
      "locals": [
       "id",
       "sram"
+     ],
+     "types": [
+      "long"
      ]
     },
     "OSSetWirelessID": {
@@ -1405,6 +1890,10 @@
      ],
      "locals": [
       "sram"
+     ],
+     "types": [
+      "long",
+      "unsigned short"
      ]
     },
     "OSGetGbsMode": {
@@ -1412,7 +1901,8 @@
      "locals": [
       "mode",
       "sram"
-     ]
+     ],
+     "types": []
     },
     "OSSetGbsMode": {
      "params": [
@@ -1420,6 +1910,9 @@
      ],
      "locals": [
       "sram"
+     ],
+     "types": [
+      "unsigned short"
      ]
     }
    }
@@ -1432,13 +1925,20 @@
       "sw",
       "name"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSStopwatch *",
+      "char *"
+     ]
     },
     "OSStartStopwatch": {
      "params": [
       "sw"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSStopwatch *"
+     ]
     },
     "OSStopStopwatch": {
      "params": [
@@ -1446,6 +1946,9 @@
      ],
      "locals": [
       "interval"
+     ],
+     "types": [
+      "OSStopwatch *"
      ]
     },
     "OSCheckStopwatch": {
@@ -1454,13 +1957,19 @@
      ],
      "locals": [
       "currTotal"
+     ],
+     "types": [
+      "OSStopwatch *"
      ]
     },
     "OSResetStopwatch": {
      "params": [
       "sw"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSStopwatch *"
+     ]
     }
    }
   },
@@ -1469,13 +1978,15 @@
    "functions": {
     "SystemCallVector": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSInitSystemCall": {
      "params": [],
      "locals": [
       "addr"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -1484,7 +1995,8 @@
    "functions": {
     "DefaultSwitchThreadCallback": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSThreadInit": {
      "params": [],
@@ -1492,35 +2004,49 @@
       "__prev",
       "prio",
       "thread"
-     ]
+     ],
+     "types": []
     },
     "OSSetCurrentThread": {
      "params": [
       "thread"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSThread *"
+     ]
     },
     "OSInitMutexQueue": {
      "params": [
       "queue"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSMutexQueue *"
+     ]
     },
     "OSInitThreadQueue": {
      "params": [
       "queue"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSThreadQueue *"
+     ]
     },
     "OSGetCurrentThread": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSSwitchThread": {
      "params": [
       "nextThread"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSThread *"
+     ]
     },
     "__OSIsThreadActive": {
      "params": [
@@ -1528,6 +2054,9 @@
      ],
      "locals": [
       "active"
+     ],
+     "types": [
+      "OSThread *"
      ]
     },
     "OSDisableScheduler": {
@@ -1535,14 +2064,16 @@
      "locals": [
       "count",
       "enabled"
-     ]
+     ],
+     "types": []
     },
     "OSEnableScheduler": {
      "params": [],
      "locals": [
       "count",
       "enabled"
-     ]
+     ],
+     "types": []
     },
     "SetRun": {
      "params": [
@@ -1550,6 +2081,9 @@
      ],
      "locals": [
       "__prev"
+     ],
+     "types": [
+      "OSThread *"
      ]
     },
     "UnsetRun": {
@@ -1560,6 +2094,9 @@
       "__next",
       "__prev",
       "queue"
+     ],
+     "types": [
+      "OSThread *"
      ]
     },
     "__OSGetEffectivePriority": {
@@ -1570,6 +2107,9 @@
       "blocked",
       "mutex",
       "priority"
+     ],
+     "types": [
+      "OSThread *"
      ]
     },
     "SetEffectivePriority": {
@@ -1580,6 +2120,10 @@
      "locals": [
       "__next",
       "__prev"
+     ],
+     "types": [
+      "OSThread *",
+      "long"
      ]
     },
     "UpdatePriority": {
@@ -1588,6 +2132,9 @@
      ],
      "locals": [
       "priority"
+     ],
+     "types": [
+      "OSThread *"
      ]
     },
     "SelectThread": {
@@ -1601,11 +2148,15 @@
       "nextThread",
       "priority",
       "queue"
+     ],
+     "types": [
+      "int"
      ]
     },
     "__OSReschedule": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSCreateThread": {
      "params": [
@@ -1622,6 +2173,15 @@
       "enabled",
       "i",
       "sp"
+     ],
+     "types": [
+      "OSThread *",
+      "function *",
+      "void *",
+      "void *",
+      "unsigned long",
+      "long",
+      "unsigned short"
      ]
     },
     "OSExitThread": {
@@ -1633,6 +2193,9 @@
       "__prev",
       "currentThread",
       "enabled"
+     ],
+     "types": [
+      "void *"
      ]
     },
     "OSCancelThread": {
@@ -1643,6 +2206,9 @@
       "__next",
       "__prev",
       "enabled"
+     ],
+     "types": [
+      "OSThread *"
      ]
     },
     "OSResumeThread": {
@@ -1654,6 +2220,9 @@
       "__prev",
       "enabled",
       "suspendCount"
+     ],
+     "types": [
+      "OSThread *"
      ]
     },
     "OSSuspendThread": {
@@ -1665,6 +2234,9 @@
       "__prev",
       "enabled",
       "suspendCount"
+     ],
+     "types": [
+      "OSThread *"
      ]
     },
     "OSSleepThread": {
@@ -1676,6 +2248,9 @@
       "__prev",
       "currentThread",
       "enabled"
+     ],
+     "types": [
+      "OSThreadQueue *"
      ]
     },
     "OSWakeupThread": {
@@ -1686,6 +2261,9 @@
       "__next",
       "enabled",
       "thread"
+     ],
+     "types": [
+      "OSThreadQueue *"
      ]
     },
     "OSSetThreadPriority": {
@@ -1695,13 +2273,20 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "OSThread *",
+      "long"
      ]
     },
     "OSGetThreadPriority": {
      "params": [
       "thread"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSThread *"
+     ]
     },
     "OSClearStack": {
      "params": [
@@ -1711,6 +2296,9 @@
       "p",
       "pattern",
       "sp"
+     ],
+     "types": [
+      "unsigned char"
      ]
     }
    }
@@ -1720,11 +2308,13 @@
    "functions": {
     "OSGetTime": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OSGetTick": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__OSGetSystemTime": {
      "params": [],
@@ -1732,7 +2322,8 @@
       "enabled",
       "result",
       "timeAdjustAddr"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -1741,19 +2332,23 @@
    "functions": {
     "__check_pad3": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__set_debug_bba": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__get_debug_bba": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__start": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__copy_rom_section": {
      "params": [
@@ -1761,25 +2356,36 @@
       "src",
       "size"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "void *",
+      "unsigned long"
+     ]
     },
     "__init_bss_section": {
      "params": [
       "dst",
       "size"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long"
+     ]
     },
     "__init_registers": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__init_data": {
      "params": [],
      "locals": [
       "bii",
       "dci"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -1788,18 +2394,21 @@
    "functions": {
     "DBInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__DBExceptionDestinationAux": {
      "params": [],
      "locals": [
       "context",
       "contextAddr"
-     ]
+     ],
+     "types": []
     },
     "__DBExceptionDestination": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__DBIsExceptionMarked": {
      "params": [
@@ -1807,11 +2416,15 @@
      ],
      "locals": [
       "mask"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "DBPrintf": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -1822,14 +2435,21 @@
      "params": [
       "m"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "? [] *"
+     ]
     },
     "C_MTXCopy": {
      "params": [
       "src",
       "dst"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "? [] const *",
+      "? [] *"
+     ]
     },
     "C_MTXConcat": {
      "params": [
@@ -1840,6 +2460,11 @@
      "locals": [
       "m",
       "mTmp"
+     ],
+     "types": [
+      "? [] const *",
+      "? [] const *",
+      "? [] *"
      ]
     },
     "C_MTXInvXpose": {
@@ -1851,6 +2476,10 @@
       "det",
       "m",
       "mTmp"
+     ],
+     "types": [
+      "? [] const *",
+      "? [] *"
      ]
     },
     "C_MTXRotRad": {
@@ -1862,6 +2491,11 @@
      "locals": [
       "cosA",
       "sinA"
+     ],
+     "types": [
+      "? [] *",
+      "char",
+      "float"
      ]
     },
     "C_MTXRotTrig": {
@@ -1871,7 +2505,13 @@
       "sinA",
       "cosA"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "? [] *",
+      "char",
+      "float",
+      "float"
+     ]
     },
     "C_MTXTrans": {
      "params": [
@@ -1880,7 +2520,13 @@
       "yT",
       "zT"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "? [] *",
+      "float",
+      "float",
+      "float"
+     ]
     },
     "C_MTXScale": {
      "params": [
@@ -1889,7 +2535,13 @@
       "yS",
       "zS"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "? [] *",
+      "float",
+      "float",
+      "float"
+     ]
     },
     "C_MTXLookAt": {
      "params": [
@@ -1902,6 +2554,12 @@
       "vLook",
       "vRight",
       "vUp"
+     ],
+     "types": [
+      "? [] *",
+      "struct const *",
+      "struct const *",
+      "struct const *"
      ]
     }
    }
@@ -1921,6 +2579,13 @@
       "angle",
       "cot",
       "tmp"
+     ],
+     "types": [
+      "? [] *",
+      "float",
+      "float",
+      "float",
+      "float"
      ]
     },
     "C_MTXOrtho": {
@@ -1935,6 +2600,15 @@
      ],
      "locals": [
       "tmp"
+     ],
+     "types": [
+      "? [] *",
+      "float",
+      "float",
+      "float",
+      "float",
+      "float",
+      "float"
      ]
     }
    }
@@ -1949,6 +2623,10 @@
      ],
      "locals": [
       "mag"
+     ],
+     "types": [
+      "struct const *",
+      "struct *"
      ]
     },
     "C_VECCrossProduct": {
@@ -1959,6 +2637,11 @@
      ],
      "locals": [
       "vTmp"
+     ],
+     "types": [
+      "struct const *",
+      "struct const *",
+      "struct *"
      ]
     }
    }
@@ -1968,13 +2651,15 @@
    "functions": {
     "__DVDInitWA": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "ProcessNextCommand": {
      "params": [],
      "locals": [
       "n"
-     ]
+     ],
+     "types": []
     },
     "__DVDInterruptHandler": {
      "params": [
@@ -1987,13 +2672,17 @@
       "intr",
       "mask",
       "reg"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "AlarmHandler": {
      "params": [],
      "locals": [
       "processed"
-     ]
+     ],
+     "types": []
     },
     "AlarmHandlerForTimeout": {
      "params": [
@@ -2002,13 +2691,19 @@
      "locals": [
       "cb",
       "exceptionContext"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "SetTimeoutAlarm": {
      "params": [
       "timeout"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long long"
+     ]
     },
     "Read": {
      "params": [
@@ -2017,13 +2712,20 @@
       "offset",
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long",
+      "unsigned long",
+      "function *"
+     ]
     },
     "AudioBufferOn": {
      "params": [],
      "locals": [
       "id"
-     ]
+     ],
+     "types": []
     },
     "HitCache": {
      "params": [
@@ -2034,6 +2736,10 @@
       "blockNumOfCurrStart",
       "blockNumOfPrevEnd",
       "cacheBlockSize"
+     ],
+     "types": [
+      "struct *",
+      "struct *"
      ]
     },
     "DoJustRead": {
@@ -2043,7 +2749,13 @@
       "offset",
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long",
+      "unsigned long",
+      "function *"
+     ]
     },
     "SeekTwiceBeforeRead": {
      "params": [
@@ -2054,6 +2766,12 @@
      ],
      "locals": [
       "offsetToSeek"
+     ],
+     "types": [
+      "void *",
+      "unsigned long",
+      "unsigned long",
+      "function *"
      ]
     },
     "WaitBeforeRead": {
@@ -2064,7 +2782,14 @@
       "callback",
       "wait"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *",
+      "unsigned long",
+      "unsigned long",
+      "function *",
+      "long long"
+     ]
     },
     "DVDLowRead": {
      "params": [
@@ -2077,6 +2802,12 @@
       "blockNumOfCurrStart",
       "blockNumOfPrevEnd",
       "diff"
+     ],
+     "types": [
+      "void *",
+      "unsigned long",
+      "unsigned long",
+      "function *"
      ]
     },
     "DVDLowSeek": {
@@ -2084,39 +2815,60 @@
       "offset",
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "function *"
+     ]
     },
     "DVDLowWaitCoverClose": {
      "params": [
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "function *"
+     ]
     },
     "DVDLowReadDiskID": {
      "params": [
       "diskID",
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "DVDDiskID *",
+      "function *"
+     ]
     },
     "DVDLowStopMotor": {
      "params": [
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "function *"
+     ]
     },
     "DVDLowRequestError": {
      "params": [
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "function *"
+     ]
     },
     "DVDLowInquiry": {
      "params": [
       "info",
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "DVDDriveInfo *",
+      "function *"
+     ]
     },
     "DVDLowAudioStream": {
      "params": [
@@ -2125,14 +2877,24 @@
       "offset",
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "unsigned long",
+      "function *"
+     ]
     },
     "DVDLowRequestAudioStatus": {
      "params": [
       "subcmd",
       "callback"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "function *"
+     ]
     },
     "DVDLowAudioBufferConfig": {
      "params": [
@@ -2143,6 +2905,11 @@
      "locals": [
       "bufSize",
       "trigger"
+     ],
+     "types": [
+      "int",
+      "unsigned long",
+      "function *"
      ]
     },
     "DVDLowReset": {
@@ -2150,17 +2917,20 @@
      "locals": [
       "reg",
       "resetStart"
-     ]
+     ],
+     "types": []
     },
     "DVDLowBreak": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DVDLowClearCallback": {
      "params": [],
      "locals": [
       "old"
-     ]
+     ],
+     "types": []
     },
     "__DVDLowSetWAType": {
      "params": [
@@ -2169,13 +2939,20 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "unsigned long",
+      "long"
      ]
     },
     "__DVDLowTestAlarm": {
      "params": [
       "alarm"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSAlarm const *"
+     ]
     }
    }
   },
@@ -2184,14 +2961,19 @@
    "functions": {
     "__DVDFSInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "isSame": {
      "params": [
       "path",
       "string"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "char const *",
+      "char const *"
+     ]
     },
     "DVDConvertPathToEntrynum": {
      "params": [
@@ -2208,6 +2990,9 @@
       "origPathPtr",
       "ptr",
       "stringPtr"
+     ],
+     "types": [
+      "char const *"
      ]
     },
     "DVDOpen": {
@@ -2218,13 +3003,20 @@
      "locals": [
       "currentDir",
       "entry"
+     ],
+     "types": [
+      "char const *",
+      "DVDFileInfo *"
      ]
     },
     "DVDClose": {
      "params": [
       "fileInfo"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "DVDFileInfo *"
+     ]
     },
     "myStrncpy": {
      "params": [
@@ -2234,6 +3026,11 @@
      ],
      "locals": [
       "i"
+     ],
+     "types": [
+      "char *",
+      "char *",
+      "unsigned long"
      ]
     },
     "entryToPath": {
@@ -2245,6 +3042,11 @@
      "locals": [
       "loc",
       "name"
+     ],
+     "types": [
+      "unsigned long",
+      "char *",
+      "unsigned long"
      ]
     },
     "DVDConvertEntrynumToPath": {
@@ -2255,6 +3057,11 @@
      ],
      "locals": [
       "loc"
+     ],
+     "types": [
+      "long",
+      "char *",
+      "unsigned long"
      ]
     },
     "DVDGetCurrentDir": {
@@ -2262,7 +3069,11 @@
       "path",
       "maxlen"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "char *",
+      "unsigned long"
+     ]
     },
     "DVDReadAsyncPrio": {
      "params": [
@@ -2273,7 +3084,15 @@
       "callback",
       "prio"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "DVDFileInfo *",
+      "void *",
+      "long",
+      "long",
+      "function *",
+      "long"
+     ]
     },
     "cbForReadAsync": {
      "params": [
@@ -2282,6 +3101,10 @@
      ],
      "locals": [
       "fileInfo"
+     ],
+     "types": [
+      "long",
+      "DVDCommandBlock *"
      ]
     },
     "DVDReadPrio": {
@@ -2298,11 +3121,19 @@
       "result",
       "retVal",
       "state"
+     ],
+     "types": [
+      "DVDFileInfo *",
+      "void *",
+      "long",
+      "long",
+      "long"
      ]
     },
     "cbForReadSync": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DVDGetTransferredSize": {
      "params": [
@@ -2311,6 +3142,9 @@
      "locals": [
       "bytes",
       "cb"
+     ],
+     "types": [
+      "DVDFileInfo *"
      ]
     }
    }
@@ -2320,15 +3154,18 @@
    "functions": {
     "defaultOptionalCommandChecker": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DVDInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "stateReadingFST": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "cbForStateReadingFST": {
      "params": [
@@ -2336,6 +3173,9 @@
      ],
      "locals": [
       "finished"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "cbForStateError": {
@@ -2344,27 +3184,38 @@
      ],
      "locals": [
       "finished"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "stateError": {
      "params": [
       "error"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "stateTimeout": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "stateGettingError": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "CategorizeError": {
      "params": [
       "error"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "CheckCancel": {
      "params": [
@@ -2372,6 +3223,9 @@
      ],
      "locals": [
       "finished"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "cbForStateGettingError": {
@@ -2383,105 +3237,145 @@
       "errorCategory",
       "resume",
       "status"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "cbForUnrecoveredError": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "cbForUnrecoveredErrorRetry": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "stateGoToRetry": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "cbForStateGoToRetry": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "stateCheckID": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "stateCheckID3": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "stateCheckID2a": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "cbForStateCheckID2a": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "stateCheckID2": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "cbForStateCheckID1": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "cbForStateCheckID2": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "cbForStateCheckID3": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "AlarmHandler": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "stateCoverClosed": {
      "params": [],
      "locals": [
       "finished"
-     ]
+     ],
+     "types": []
     },
     "stateCoverClosed_CMD": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "cbForStateCoverClosed": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "stateMotorStopped": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "cbForStateMotorStopped": {
      "params": [
       "intType"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "stateReady": {
      "params": [],
      "locals": [
       "finished"
-     ]
+     ],
+     "types": []
     },
     "stateBusy": {
      "params": [
@@ -2489,6 +3383,9 @@
      ],
      "locals": [
       "finished"
+     ],
+     "types": [
+      "DVDCommandBlock *"
      ]
     },
     "IsImmCommandWithResult": {
@@ -2497,6 +3394,9 @@
      ],
      "locals": [
       "i"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "IsDmaCommand": {
@@ -2505,6 +3405,9 @@
      ],
      "locals": [
       "i"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "cbForStateBusy": {
@@ -2514,6 +3417,9 @@
      "locals": [
       "finished",
       "result"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "issueCommand": {
@@ -2524,6 +3430,10 @@
      "locals": [
       "level",
       "result"
+     ],
+     "types": [
+      "long",
+      "DVDCommandBlock *"
      ]
     },
     "DVDReadAbsAsyncPrio": {
@@ -2537,6 +3447,14 @@
      ],
      "locals": [
       "idle"
+     ],
+     "types": [
+      "DVDCommandBlock *",
+      "void *",
+      "long",
+      "long",
+      "function *",
+      "long"
      ]
     },
     "DVDReadAbsAsyncForBS": {
@@ -2549,6 +3467,13 @@
      ],
      "locals": [
       "idle"
+     ],
+     "types": [
+      "DVDCommandBlock *",
+      "void *",
+      "long",
+      "long",
+      "function *"
      ]
     },
     "DVDReadDiskID": {
@@ -2559,6 +3484,11 @@
      ],
      "locals": [
       "idle"
+     ],
+     "types": [
+      "DVDCommandBlock *",
+      "DVDDiskID *",
+      "function *"
      ]
     },
     "DVDCancelStreamAsync": {
@@ -2568,6 +3498,10 @@
      ],
      "locals": [
       "idle"
+     ],
+     "types": [
+      "DVDCommandBlock *",
+      "function *"
      ]
     },
     "DVDCancelStream": {
@@ -2579,6 +3513,9 @@
       "result",
       "retVal",
       "state"
+     ],
+     "types": [
+      "DVDCommandBlock *"
      ]
     },
     "cbForCancelStreamSync": {
@@ -2586,7 +3523,11 @@
       "result",
       "block"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long",
+      "DVDCommandBlock *"
+     ]
     },
     "DVDInquiryAsync": {
      "params": [
@@ -2596,11 +3537,17 @@
      ],
      "locals": [
       "idle"
+     ],
+     "types": [
+      "DVDCommandBlock *",
+      "DVDDriveInfo *",
+      "function *"
      ]
     },
     "DVDReset": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DVDGetCommandBlockStatus": {
      "params": [
@@ -2609,6 +3556,9 @@
      "locals": [
       "enabled",
       "retVal"
+     ],
+     "types": [
+      "DVDCommandBlock const *"
      ]
     },
     "DVDGetDriveStatus": {
@@ -2616,7 +3566,8 @@
      "locals": [
       "enabled",
       "retVal"
-     ]
+     ],
+     "types": []
     },
     "DVDSetAutoInvalidation": {
      "params": [
@@ -2624,19 +3575,24 @@
      ],
      "locals": [
       "prev"
+     ],
+     "types": [
+      "int"
      ]
     },
     "DVDPause": {
      "params": [],
      "locals": [
       "level"
-     ]
+     ],
+     "types": []
     },
     "DVDResume": {
      "params": [],
      "locals": [
       "level"
-     ]
+     ],
+     "types": []
     },
     "DVDCancelAsync": {
      "params": [
@@ -2647,6 +3603,10 @@
       "enabled",
       "finished",
       "old"
+     ],
+     "types": [
+      "DVDCommandBlock *",
+      "function *"
      ]
     },
     "DVDCancel": {
@@ -2658,11 +3618,15 @@
       "enabled",
       "result",
       "state"
+     ],
+     "types": [
+      "DVDCommandBlock *"
      ]
     },
     "cbForCancelSync": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DVDCancelAllAsync": {
      "params": [
@@ -2672,11 +3636,15 @@
       "enabled",
       "p",
       "retVal"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "DVDGetCurrentDiskID": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DVDCheckDisk": {
      "params": [],
@@ -2685,7 +3653,8 @@
       "enabled",
       "retVal",
       "state"
-     ]
+     ],
+     "types": []
     },
     "__DVDPrepareResetAsync": {
      "params": [
@@ -2693,13 +3662,19 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "__DVDTestAlarm": {
      "params": [
       "alarm"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "OSAlarm const *"
+     ]
     }
    }
   },
@@ -2711,7 +3686,8 @@
      "locals": [
       "i",
       "q"
-     ]
+     ],
+     "types": []
     },
     "__DVDPushWaitingQueue": {
      "params": [
@@ -2721,6 +3697,10 @@
      "locals": [
       "enabled",
       "q"
+     ],
+     "types": [
+      "long",
+      "DVDCommandBlock *"
      ]
     },
     "PopWaitingQueuePrio": {
@@ -2731,6 +3711,9 @@
       "enabled",
       "q",
       "tmp"
+     ],
+     "types": [
+      "long"
      ]
     },
     "__DVDPopWaitingQueue": {
@@ -2739,7 +3722,8 @@
       "enabled",
       "i",
       "q"
-     ]
+     ],
+     "types": []
     },
     "__DVDCheckWaitingQueue": {
      "params": [],
@@ -2747,7 +3731,8 @@
       "enabled",
       "i",
       "q"
-     ]
+     ],
+     "types": []
     },
     "__DVDDequeueWaitingQueue": {
      "params": [
@@ -2757,6 +3742,9 @@
       "enabled",
       "next",
       "prev"
+     ],
+     "types": [
+      "DVDCommandBlock *"
      ]
     },
     "__DVDIsBlockInWaitingQueue": {
@@ -2767,6 +3755,9 @@
       "i",
       "q",
       "start"
+     ],
+     "types": [
+      "DVDCommandBlock *"
      ]
     }
    }
@@ -2780,6 +3771,9 @@
      ],
      "locals": [
       "i"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "Convert": {
@@ -2790,6 +3784,9 @@
       "errorCode",
       "errorNum",
       "statusCode"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__DVDStoreErrorCode": {
@@ -2799,6 +3796,9 @@
      "locals": [
       "num",
       "sram"
+     ],
+     "types": [
+      "unsigned long"
      ]
     }
    }
@@ -2813,6 +3813,10 @@
      ],
      "locals": [
       "i"
+     ],
+     "types": [
+      "char const *",
+      "unsigned long"
      ]
     },
     "DVDCompareDiskID": {
@@ -2830,6 +3834,10 @@
       "length",
       "version1",
       "version2"
+     ],
+     "types": [
+      "DVDDiskID const *",
+      "DVDDiskID const *"
      ]
     }
    }
@@ -2839,7 +3847,8 @@
    "functions": {
     "__DVDPrintFatalMessage": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -2851,7 +3860,11 @@
       "result",
       "block"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long",
+      "DVDCommandBlock *"
+     ]
     },
     "__fstLoad": {
      "params": [],
@@ -2861,7 +3874,8 @@
       "id",
       "idTmpBuf",
       "state"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -2876,6 +3890,10 @@
      "locals": [
       "i",
       "ptr"
+     ],
+     "types": [
+      "long",
+      "DVDFileInfo *"
      ]
     },
     "__AM_arq_callback": {
@@ -2887,6 +3905,9 @@
       "ptr",
       "read_request_length",
       "remainder"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__AM_arq_poll_callback": {
@@ -2896,6 +3917,9 @@
      "locals": [
       "i",
       "ptr"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "AMLoadFile": {
@@ -2910,6 +3934,10 @@
       "old",
       "readLength",
       "roundLength"
+     ],
+     "types": [
+      "char *",
+      "unsigned long *"
      ]
     },
     "AMPushData": {
@@ -2921,6 +3949,10 @@
       "old",
       "ptr",
       "round_length"
+     ],
+     "types": [
+      "void *",
+      "unsigned long"
      ]
     },
     "__AMPushBuffered": {
@@ -2939,11 +3971,19 @@
       "remainder",
       "round_file_length",
       "stack_index"
+     ],
+     "types": [
+      "char *",
+      "void *",
+      "unsigned long",
+      "function *",
+      "int"
      ]
     },
     "AMGetZeroBuffer": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AMInit": {
      "params": [
@@ -2954,6 +3994,10 @@
       "__AMZeroBuffer",
       "i",
       "ptr"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     }
    }
@@ -2977,6 +4021,11 @@
       "zeroBase16",
       "zeroBase4",
       "zeroBase8"
+     ],
+     "types": [
+      "struct *",
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "SPGetSoundEntry": {
@@ -2984,7 +4033,11 @@
       "table",
       "index"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "struct *",
+      "unsigned long"
+     ]
     },
     "SPPrepareSound": {
      "params": [
@@ -3000,6 +4053,11 @@
       "p",
       "p1",
       "srcBits"
+     ],
+     "types": [
+      "struct *",
+      "_AXVPB *",
+      "unsigned long"
      ]
     }
    }
@@ -3009,7 +4067,8 @@
    "functions": {
     "getEncoderType": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "cntlzd": {
      "params": [
@@ -3019,13 +4078,17 @@
       "hi",
       "lo",
       "value"
+     ],
+     "types": [
+      "unsigned long long"
      ]
     },
     "VISetRegs": {
      "params": [],
      "locals": [
       "regIndex"
-     ]
+     ],
+     "types": []
     },
     "__VIRetraceHandler": {
      "params": [
@@ -3037,13 +4100,19 @@
       "reg",
       "x",
       "y"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "getTiming": {
      "params": [
       "mode"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "@enum$2vi_c"
+     ]
     },
     "__VIInit": {
      "params": [
@@ -3057,6 +4126,9 @@
       "tm",
       "tv",
       "vct"
+     ],
+     "types": [
+      "@enum$2vi_c"
      ]
     },
     "AdjustPosition": {
@@ -3066,13 +4138,17 @@
      "locals": [
       "coeff",
       "frac"
+     ],
+     "types": [
+      "unsigned short"
      ]
     },
     "ImportAdjustingValues": {
      "params": [],
      "locals": [
       "sram"
-     ]
+     ],
+     "types": []
     },
     "VIInit": {
      "params": [],
@@ -3081,14 +4157,16 @@
       "tv",
       "tvInBootrom",
       "value"
-     ]
+     ],
+     "types": []
     },
     "VIWaitForRetrace": {
      "params": [],
      "locals": [
       "count",
       "enabled"
-     ]
+     ],
+     "types": []
     },
     "setInterruptRegs": {
      "params": [
@@ -3098,6 +4176,9 @@
       "borrow",
       "hct",
       "vct"
+     ],
+     "types": [
+      "struct *"
      ]
     },
     "setPicConfig": {
@@ -3111,7 +4192,17 @@
       "wpl",
       "xof"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned short",
+      "@enum$3vi_c",
+      "unsigned short",
+      "unsigned short",
+      "unsigned char *",
+      "unsigned char *",
+      "unsigned char *",
+      "unsigned char *"
+     ]
     },
     "setBBIntervalRegs": {
      "params": [
@@ -3119,6 +4210,9 @@
      ],
      "locals": [
       "val"
+     ],
+     "types": [
+      "struct *"
      ]
     },
     "setScalingRegs": {
@@ -3129,6 +4223,11 @@
      ],
      "locals": [
       "scale"
+     ],
+     "types": [
+      "unsigned short",
+      "unsigned short",
+      "int"
      ]
     },
     "calcFbbs": {
@@ -3146,6 +4245,16 @@
       "bytesPerLine",
       "tmp",
       "xoffInWords"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned short",
+      "unsigned short",
+      "unsigned char",
+      "@enum$3vi_c",
+      "unsigned short",
+      "unsigned long *",
+      "unsigned long *"
      ]
     },
     "setFbbRegs": {
@@ -3158,6 +4267,13 @@
      ],
      "locals": [
       "shifted"
+     ],
+     "types": [
+      "struct *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *"
      ]
     },
     "setHorizontalRegs": {
@@ -3171,6 +4287,11 @@
       "hbeHi",
       "hbeLo",
       "hbs"
+     ],
+     "types": [
+      "struct *",
+      "unsigned short",
+      "unsigned short"
      ]
     },
     "setVerticalRegs": {
@@ -3193,11 +4314,23 @@
       "actualPsbOdd",
       "c",
       "d"
+     ],
+     "types": [
+      "unsigned short",
+      "unsigned short",
+      "unsigned char",
+      "unsigned short",
+      "unsigned short",
+      "unsigned short",
+      "unsigned short",
+      "unsigned short",
+      "int"
      ]
     },
     "PrintDebugPalCaution": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "VIConfigure": {
      "params": [
@@ -3210,6 +4343,9 @@
       "tm",
       "tvInBootrom",
       "tvInGame"
+     ],
+     "types": [
+      "_GXRenderModeObj const *"
      ]
     },
     "VIFlush": {
@@ -3217,7 +4353,8 @@
      "locals": [
       "enabled",
       "regIndex"
-     ]
+     ],
+     "types": []
     },
     "VISetNextFrameBuffer": {
      "params": [
@@ -3225,6 +4362,9 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "void *"
      ]
     },
     "VISetBlack": {
@@ -3234,6 +4374,9 @@
      "locals": [
       "enabled",
       "tm"
+     ],
+     "types": [
+      "int"
      ]
     },
     "GetCurrentDisplayPosition": {
@@ -3245,6 +4388,10 @@
       "hcount",
       "vcount",
       "vcount0"
+     ],
+     "types": [
+      "unsigned long *",
+      "unsigned long *"
      ]
     },
     "getCurrentHalfLine": {
@@ -3252,18 +4399,21 @@
      "locals": [
       "hcount",
       "vcount"
-     ]
+     ],
+     "types": []
     },
     "getCurrentFieldEvenOdd": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "VIGetNextField": {
      "params": [],
      "locals": [
       "enabled",
       "nextField"
-     ]
+     ],
+     "types": []
     },
     "VIGetCurrentLine": {
      "params": [],
@@ -3271,14 +4421,16 @@
       "enabled",
       "halfLine",
       "tm"
-     ]
+     ],
+     "types": []
     },
     "VIGetTvFormat": {
      "params": [],
      "locals": [
       "enabled",
       "format"
-     ]
+     ],
+     "types": []
     },
     "__VIDisplayPositionToXY": {
      "params": [
@@ -3289,6 +4441,12 @@
      ],
      "locals": [
       "halfLine"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "signed short *",
+      "signed short *"
      ]
     },
     "__VIGetCurrentPosition": {
@@ -3299,6 +4457,10 @@
      "locals": [
       "hcount",
       "vcount"
+     ],
+     "types": [
+      "signed short *",
+      "signed short *"
      ]
     }
    }
@@ -3310,7 +4472,8 @@
      "params": [],
      "locals": [
       "n"
-     ]
+     ],
+     "types": []
     },
     "sendSlaveAddr": {
      "params": [
@@ -3318,6 +4481,9 @@
      ],
      "locals": [
       "i"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "__VISendI2CData": {
@@ -3329,6 +4495,11 @@
      "locals": [
       "data",
       "i"
+     ],
+     "types": [
+      "unsigned char",
+      "unsigned char *",
+      "int"
      ]
     }
    }
@@ -3344,11 +4515,16 @@
      "locals": [
       "buffer",
       "i"
+     ],
+     "types": [
+      "unsigned char *",
+      "unsigned char *"
      ]
     },
     "__VIInitPhilips": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -3359,59 +4535,81 @@
      "params": [],
      "locals": [
       "time"
-     ]
+     ],
+     "types": []
     },
     "initGpioExi": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__VISetSCL": {
      "params": [
       "value"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "__VIGetSCL": {
      "params": [],
      "locals": [
       "value"
-     ]
+     ],
+     "types": []
     },
     "__VISetSDA": {
      "params": [
       "value"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "__VIGetSDA": {
      "params": [],
      "locals": [
       "value"
-     ]
+     ],
+     "types": []
     },
     "setVideoReset": {
      "params": [
       "value"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "setI2CEnable": {
      "params": [
       "value"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "gpioOutput": {
      "params": [
       "value"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "gpioOE": {
      "params": [
       "value"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "gpioOut": {
      "params": [
@@ -3420,6 +4618,10 @@
      ],
      "locals": [
       "cmd"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned char"
      ]
     },
     "gpioInput": {
@@ -3428,6 +4630,9 @@
      ],
      "locals": [
       "cmd"
+     ],
+     "types": [
+      "unsigned char *"
      ]
     }
    }
@@ -3439,7 +4644,10 @@
      "params": [
       "attr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long"
+     ]
     },
     "DEMOLoadFont": {
      "params": [
@@ -3451,6 +4659,11 @@
       "fontTMtx",
       "height",
       "width"
+     ],
+     "types": [
+      "_GXTexMapID",
+      "_GXTexMtx",
+      "@enum$6DEMOPuts_c"
      ]
     },
     "DEMOSetupScrnSpc": {
@@ -3463,6 +4676,11 @@
       "mMtx",
       "pMtx",
       "top"
+     ],
+     "types": [
+      "long",
+      "long",
+      "float"
      ]
     },
     "DEMOInitCaption": {
@@ -3471,7 +4689,12 @@
       "width",
       "height"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long",
+      "long",
+      "long"
+     ]
     },
     "DEMOPuts": {
      "params": [
@@ -3488,6 +4711,12 @@
       "str",
       "t",
       "w"
+     ],
+     "types": [
+      "signed short",
+      "signed short",
+      "signed short",
+      "char *"
      ]
     },
     "DEMOPrintf": {
@@ -3500,18 +4729,29 @@
      "locals": [
       "buf",
       "vlist"
+     ],
+     "types": [
+      "signed short",
+      "signed short",
+      "signed short",
+      "char *"
      ]
     },
     "DEMOInitROMFont": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DEMOSetROMFontSize": {
      "params": [
       "size",
       "space"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "signed short",
+      "signed short"
+     ]
     },
     "DrawFontChar": {
      "params": [
@@ -3530,6 +4770,13 @@
       "texLeft",
       "texRight",
       "texTop"
+     ],
+     "types": [
+      "int",
+      "int",
+      "int",
+      "int",
+      "int"
      ]
     },
     "LoadSheet": {
@@ -3540,6 +4787,10 @@
      "locals": [
       "mtx",
       "texObj"
+     ],
+     "types": [
+      "void *",
+      "_GXTexMapID"
      ]
     },
     "DEMORFPuts": {
@@ -3555,6 +4806,12 @@
       "width",
       "xChar",
       "yChar"
+     ],
+     "types": [
+      "signed short",
+      "signed short",
+      "signed short",
+      "char *"
      ]
     },
     "DEMOGetRFTextWidth": {
@@ -3565,6 +4822,9 @@
       "cx",
       "maxWidth",
       "width"
+     ],
+     "types": [
+      "char *"
      ]
     },
     "DEMOGetRFTextHeight": {
@@ -3573,6 +4833,9 @@
      ],
      "locals": [
       "height"
+     ],
+     "types": [
+      "char *"
      ]
     }
    }
@@ -3588,7 +4851,8 @@
      "params": [],
      "locals": [
       "i"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -3603,6 +4867,9 @@
       "chanBit",
       "cmd",
       "data"
+     ],
+     "types": [
+      "long"
      ]
     },
     "PADDisable": {
@@ -3612,13 +4879,17 @@
      "locals": [
       "chanBit",
       "enabled"
+     ],
+     "types": [
+      "long"
      ]
     },
     "DoReset": {
      "params": [],
      "locals": [
       "chanBit"
-     ]
+     ],
+     "types": []
     },
     "UpdateOrigin": {
      "params": [
@@ -3627,6 +4898,9 @@
      "locals": [
       "chanBit",
       "origin"
+     ],
+     "types": [
+      "long"
      ]
     },
     "PADOriginCallback": {
@@ -3634,21 +4908,33 @@
       "chan",
       "error"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long",
+      "unsigned long"
+     ]
     },
     "PADOriginUpdateCallback": {
      "params": [
       "chan",
       "error"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long",
+      "unsigned long"
+     ]
     },
     "PADProbeCallback": {
      "params": [
       "chan",
       "error"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long",
+      "unsigned long"
+     ]
     },
     "PADTypeAndStatusCallback": {
      "params": [
@@ -3660,6 +4946,10 @@
       "error",
       "rc",
       "recalibrate"
+     ],
+     "types": [
+      "long",
+      "unsigned long"
      ]
     },
     "PADReceiveCheckCallback": {
@@ -3670,6 +4960,10 @@
      "locals": [
       "chanBit",
       "error"
+     ],
+     "types": [
+      "long",
+      "unsigned long"
      ]
     },
     "PADReset": {
@@ -3679,6 +4973,9 @@
      "locals": [
       "disableBits",
       "enabled"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "PADRecalibrate": {
@@ -3688,6 +4985,9 @@
      "locals": [
       "disableBits",
       "enabled"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "PADInit": {
@@ -3695,7 +4995,8 @@
      "locals": [
       "chan",
       "time"
-     ]
+     ],
+     "types": []
     },
     "PADRead": {
      "params": [
@@ -3709,27 +5010,41 @@
       "enabled",
       "motor",
       "sr"
+     ],
+     "types": [
+      "PADStatus *"
      ]
     },
     "PADSetSpec": {
      "params": [
       "spec"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "SPEC0_MakeStatus": {
      "params": [
       "status",
       "data"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "PADStatus *",
+      "unsigned long *"
+     ]
     },
     "SPEC1_MakeStatus": {
      "params": [
       "status",
       "data"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "PADStatus *",
+      "unsigned long *"
+     ]
     },
     "ClampS8": {
      "params": [
@@ -3739,6 +5054,10 @@
      "locals": [
       "max",
       "min"
+     ],
+     "types": [
+      "signed char",
+      "signed char"
      ]
     },
     "ClampU8": {
@@ -3746,7 +5065,11 @@
       "var",
       "org"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "unsigned char"
+     ]
     },
     "SPEC2_MakeStatus": {
      "params": [
@@ -3756,11 +5079,17 @@
      ],
      "locals": [
       "origin"
+     ],
+     "types": [
+      "long",
+      "PADStatus *",
+      "unsigned long *"
      ]
     },
     "PADSync": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "OnReset": {
      "params": [
@@ -3768,6 +5097,9 @@
      ],
      "locals": [
       "sync"
+     ],
+     "types": [
+      "int"
      ]
     },
     "SamplingHandler": {
@@ -3776,6 +5108,9 @@
      ],
      "locals": [
       "exceptionContext"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "PADSetSamplingCallback": {
@@ -3784,6 +5119,9 @@
      ],
      "locals": [
       "prev"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "__PADDisableRecalibration": {
@@ -3793,6 +5131,9 @@
      "locals": [
       "enabled",
       "prev"
+     ],
+     "types": [
+      "int"
      ]
     }
    }
@@ -3807,6 +5148,9 @@
      "locals": [
       "old",
       "old_callback"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "AIInitDMA": {
@@ -3816,21 +5160,30 @@
      ],
      "locals": [
       "old"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "AIStartDMA": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AIResetStreamSampleCount": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AISetStreamTrigger": {
      "params": [
       "trigger"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "AISetStreamPlayState": {
      "params": [
@@ -3840,11 +5193,15 @@
       "old",
       "vol_left",
       "vol_right"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "AIGetStreamPlayState": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AISetDSPSampleRate": {
      "params": [
@@ -3856,11 +5213,15 @@
       "play_state",
       "vol_left",
       "vol_right"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "AIGetDSPSampleRate": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AI_set_stream_sample_rate": {
      "params": [
@@ -3872,37 +5233,52 @@
       "play_state",
       "vol_left",
       "vol_right"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "AIGetStreamSampleRate": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AISetStreamVolLeft": {
      "params": [
       "vol"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "AIGetStreamVolLeft": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AISetStreamVolRight": {
      "params": [
       "vol"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "AIGetStreamVolRight": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AIInit": {
      "params": [
       "stack"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char *"
+     ]
     },
     "__AISHandler": {
      "params": [
@@ -3910,6 +5286,9 @@
      ],
      "locals": [
       "exceptionContext"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "__AIDHandler": {
@@ -3919,13 +5298,19 @@
      "locals": [
       "exceptionContext",
       "tmp"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "__AICallbackStackSwitch": {
      "params": [
       "cb"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "void *"
+     ]
     },
     "__AI_SRC_INIT": {
      "params": [],
@@ -3941,7 +5326,8 @@
       "temp1",
       "volume",
       "walking"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -3955,6 +5341,9 @@
      "locals": [
       "old",
       "old_callback"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "ARGetDMAStatus": {
@@ -3962,7 +5351,8 @@
      "locals": [
       "old",
       "val"
-     ]
+     ],
+     "types": []
     },
     "ARStartDMA": {
      "params": [
@@ -3973,6 +5363,12 @@
      ],
      "locals": [
       "old"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "ARAlloc": {
@@ -3982,6 +5378,9 @@
      "locals": [
       "old",
       "tmp"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "ARFree": {
@@ -3990,6 +5389,9 @@
      ],
      "locals": [
       "old"
+     ],
+     "types": [
+      "unsigned long *"
      ]
     },
     "ARInit": {
@@ -4000,6 +5402,10 @@
      "locals": [
       "old",
       "refresh"
+     ],
+     "types": [
+      "unsigned long *",
+      "unsigned long"
      ]
     },
     "__ARHandler": {
@@ -4009,21 +5415,27 @@
      "locals": [
       "exceptionContext",
       "tmp"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "__ARClearInterrupt": {
      "params": [],
      "locals": [
       "tmp"
-     ]
+     ],
+     "types": []
     },
     "__ARGetInterruptStatus": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__ARWaitForDMA": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__ARWriteDMA": {
      "params": [
@@ -4031,7 +5443,12 @@
       "aram_addr",
       "length"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "unsigned long"
+     ]
     },
     "__ARReadDMA": {
      "params": [
@@ -4039,7 +5456,12 @@
       "aram_addr",
       "length"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "unsigned long"
+     ]
     },
     "__ARChecksize": {
      "params": [],
@@ -4063,7 +5485,8 @@
       "save_pad_5",
       "test_data",
       "test_data_pad"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -4072,23 +5495,28 @@
    "functions": {
     "__ARQPopTaskQueueHi": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__ARQServiceQueueLo": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__ARQCallbackHack": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__ARQInterruptServiceRoutine": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "ARQInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "ARQPostRequest": {
      "params": [
@@ -4103,6 +5531,16 @@
      ],
      "locals": [
       "level"
+     ],
+     "types": [
+      "ARQRequest *",
+      "unsigned long",
+      "unsigned long",
+      "unsigned long",
+      "unsigned long",
+      "unsigned long",
+      "unsigned long",
+      "function *"
      ]
     }
    }
@@ -4112,13 +5550,17 @@
    "functions": {
     "AXInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AXInitEx": {
      "params": [
       "outputBufferMode"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     }
    }
   },
@@ -4131,53 +5573,68 @@
       "i",
       "voice",
       "voices"
-     ]
+     ],
+     "types": []
     },
     "__AXGetStackHead": {
      "params": [
       "priority"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "__AXServiceCallbackStack": {
      "params": [],
      "locals": [
       "p"
-     ]
+     ],
+     "types": []
     },
     "__AXInitVoiceStacks": {
      "params": [],
      "locals": [
       "i"
-     ]
+     ],
+     "types": []
     },
     "__AXAllocInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXPushFreeStack": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_AXVPB *"
+     ]
     },
     "__AXPopFreeStack": {
      "params": [],
      "locals": [
       "p"
-     ]
+     ],
+     "types": []
     },
     "__AXPushCallbackStack": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_AXVPB *"
+     ]
     },
     "__AXPopCallbackStack": {
      "params": [],
      "locals": [
       "p"
-     ]
+     ],
+     "types": []
     },
     "__AXRemoveFromStack": {
      "params": [
@@ -4187,6 +5644,9 @@
       "head",
       "i",
       "tail"
+     ],
+     "types": [
+      "_AXVPB *"
      ]
     },
     "__AXPushStackHead": {
@@ -4194,7 +5654,11 @@
       "p",
       "priority"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_AXVPB *",
+      "unsigned long"
+     ]
     },
     "__AXPopStackFromBottom": {
      "params": [
@@ -4202,6 +5666,9 @@
      ],
      "locals": [
       "p"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "AXFreeVoice": {
@@ -4210,6 +5677,9 @@
      ],
      "locals": [
       "old"
+     ],
+     "types": [
+      "_AXVPB *"
      ]
     },
     "AXAcquireVoice": {
@@ -4222,6 +5692,11 @@
       "i",
       "old",
       "p"
+     ],
+     "types": [
+      "unsigned long",
+      "function *",
+      "unsigned long"
      ]
     }
    }
@@ -4235,73 +5710,105 @@
       "i",
       "pA",
       "pB"
-     ]
+     ],
+     "types": []
     },
     "__AXGetAuxAInput": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxAInputDpl2": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxAOutput": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxAOutputDpl2R": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxAOutputDpl2Ls": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxAOutputDpl2Rs": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxBInput": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxBOutput": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxBForDPL2": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXGetAuxBOutputDPL2": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *"
+     ]
     },
     "__AXProcessAux": {
      "params": [],
      "locals": [
       "auxData"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -4310,19 +5817,24 @@
    "functions": {
     "__AXGetCommandListCycles": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXGetCommandListAddress": {
      "params": [],
      "locals": [
       "address"
-     ]
+     ],
+     "types": []
     },
     "__AXWriteToCommandList": {
      "params": [
       "data"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned short"
+     ]
     },
     "__AXNextFrame": {
      "params": [
@@ -4332,11 +5844,16 @@
      "locals": [
       "data",
       "pCommandList"
+     ],
+     "types": [
+      "void *",
+      "void *"
      ]
     },
     "__AXClInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -4353,27 +5870,35 @@
       "i",
       "profile",
       "src"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__AXOutAiCallback": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXDSPInitCallback": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXDSPResumeCallback": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXDSPDoneCallback": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXOutInitDSP": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXOutInit": {
      "params": [
@@ -4382,6 +5907,9 @@
      "locals": [
       "i",
       "p"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "AXRegisterCallback": {
@@ -4391,6 +5919,9 @@
      "locals": [
       "enabled",
       "oldCB"
+     ],
+     "types": [
+      "function *"
      ]
     }
    }
@@ -4400,7 +5931,8 @@
    "functions": {
     "__AXGetStudio": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXDepopFade": {
      "params": [
@@ -4411,21 +5943,31 @@
      "locals": [
       "delta",
       "frames"
+     ],
+     "types": [
+      "long *",
+      "long *",
+      "signed short *"
      ]
     },
     "__AXPrintStudio": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXSPBInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXDepopVoice": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_AXPB *"
+     ]
     }
    }
   },
@@ -4434,7 +5976,8 @@
    "functions": {
     "__AXGetNumVoices": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXServiceVPB": {
      "params": [
@@ -4449,6 +5992,9 @@
       "src",
       "src_",
       "sync"
+     ],
+     "types": [
+      "_AXVPB *"
      ]
     },
     "__AXDumpVPB": {
@@ -4457,6 +6003,9 @@
      ],
      "locals": [
       "ppbDsp"
+     ],
+     "types": [
+      "_AXVPB *"
      ]
     },
     "__AXSyncPBs": {
@@ -4467,17 +6016,24 @@
       "cycles",
       "i",
       "pvpb"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__AXGetPBs": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__AXSetPBDefault": {
      "params": [
       "p"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_AXVPB *"
+     ]
     },
     "__AXVPBInit": {
      "params": [],
@@ -4488,7 +6044,8 @@
       "ppbi",
       "ppbu",
       "pvpb"
-     ]
+     ],
+     "types": []
     },
     "AXSetVoiceSrcType": {
      "params": [
@@ -4498,6 +6055,10 @@
      "locals": [
       "old",
       "ppb"
+     ],
+     "types": [
+      "_AXVPB *",
+      "unsigned long"
      ]
     },
     "AXSetVoiceState": {
@@ -4507,6 +6068,10 @@
      ],
      "locals": [
       "old"
+     ],
+     "types": [
+      "_AXVPB *",
+      "unsigned short"
      ]
     },
     "AXSetVoiceAddr": {
@@ -4518,6 +6083,10 @@
       "dst",
       "old",
       "src"
+     ],
+     "types": [
+      "_AXVPB *",
+      "_AXPBADDR *"
      ]
     },
     "AXSetVoiceSrc": {
@@ -4529,6 +6098,10 @@
       "dst",
       "old",
       "src"
+     ],
+     "types": [
+      "_AXVPB *",
+      "_AXPBSRC *"
      ]
     }
    }
@@ -4540,7 +6113,8 @@
      "params": [],
      "locals": [
       "profile"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -4561,6 +6135,9 @@
      ],
      "locals": [
       "db"
+     ],
+     "types": [
+      "int"
      ]
     },
     "__MIXSetPan": {
@@ -4572,25 +6149,35 @@
       "ispan",
       "pan",
       "span"
+     ],
+     "types": [
+      "MIXChannel *"
      ]
     },
     "__MIXResetChannel": {
      "params": [
       "channel"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "MIXChannel *"
+     ]
     },
     "__MIXClampPan": {
      "params": [
       "pan"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     },
     "MIXInit": {
      "params": [],
      "locals": [
       "i"
-     ]
+     ],
+     "types": []
     },
     "MIXInitChannel": {
      "params": [
@@ -4608,13 +6195,26 @@
       "mixerCtrl",
       "old",
       "p"
+     ],
+     "types": [
+      "_AXVPB *",
+      "unsigned long",
+      "int",
+      "int",
+      "int",
+      "int",
+      "int",
+      "int"
      ]
     },
     "MIXReleaseChannel": {
      "params": [
       "axvpb"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_AXVPB *"
+     ]
     },
     "MIXSetInput": {
      "params": [
@@ -4623,6 +6223,10 @@
      ],
      "locals": [
       "channel"
+     ],
+     "types": [
+      "_AXVPB *",
+      "int"
      ]
     },
     "MIXSetPan": {
@@ -4632,6 +6236,10 @@
      ],
      "locals": [
       "channel"
+     ],
+     "types": [
+      "_AXVPB *",
+      "int"
      ]
     },
     "MIXUpdateSettings": {
@@ -4644,7 +6252,8 @@
       "p",
       "setNewInputLevel",
       "setNewMixLevel"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -4653,39 +6262,48 @@
    "functions": {
     "DSPCheckMailToDSP": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DSPCheckMailFromDSP": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DSPReadMailFromDSP": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DSPSendMailToDSP": {
      "params": [
       "mail"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "DSPAssertInt": {
      "params": [],
      "locals": [
       "old",
       "tmp"
-     ]
+     ],
+     "types": []
     },
     "DSPInit": {
      "params": [],
      "locals": [
       "old",
       "tmp"
-     ]
+     ],
+     "types": []
     },
     "DSPCheckInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DSPAddTask": {
      "params": [
@@ -4693,6 +6311,9 @@
      ],
      "locals": [
       "old"
+     ],
+     "types": [
+      "STRUCT_DSP_TASK *"
      ]
     },
     "DSPAssertTask": {
@@ -4701,6 +6322,9 @@
      ],
      "locals": [
       "old"
+     ],
+     "types": [
+      "STRUCT_DSP_TASK *"
      ]
     }
    }
@@ -4710,7 +6334,8 @@
    "functions": {
     "__DSP_debug_printf": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -4725,6 +6350,9 @@
       "exceptionContext",
       "mail",
       "tmp"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "__DSP_exec_task": {
@@ -4732,7 +6360,11 @@
       "curr",
       "next"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "STRUCT_DSP_TASK *",
+      "STRUCT_DSP_TASK *"
+     ]
     },
     "__DSP_boot_task": {
      "params": [
@@ -4740,6 +6372,9 @@
      ],
      "locals": [
       "mail"
+     ],
+     "types": [
+      "STRUCT_DSP_TASK *"
      ]
     },
     "__DSP_insert_task": {
@@ -4748,13 +6383,19 @@
      ],
      "locals": [
       "temp"
+     ],
+     "types": [
+      "STRUCT_DSP_TASK *"
      ]
     },
     "__DSP_remove_task": {
      "params": [
       "task"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "STRUCT_DSP_TASK *"
+     ]
     }
    }
   },
@@ -4765,7 +6406,8 @@
      "params": [],
      "locals": [
       "track"
-     ]
+     ],
+     "types": []
     },
     "DTKFlushTracks": {
      "params": [
@@ -4773,11 +6415,15 @@
      ],
      "locals": [
       "temp"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "DTKGetState": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -4786,7 +6432,8 @@
    "functions": {
     "__CARDDefaultApiCallback": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__CARDSyncCallback": {
      "params": [
@@ -4794,6 +6441,9 @@
      ],
      "locals": [
       "card"
+     ],
+     "types": [
+      "long"
      ]
     },
     "__CARDExtHandler": {
@@ -4803,6 +6453,9 @@
      "locals": [
       "callback",
       "card"
+     ],
+     "types": [
+      "long"
      ]
     },
     "__CARDExiHandler": {
@@ -4814,6 +6467,9 @@
       "card",
       "result",
       "status"
+     ],
+     "types": [
+      "long"
      ]
     },
     "__CARDTxHandler": {
@@ -4824,6 +6480,9 @@
       "callback",
       "card",
       "err"
+     ],
+     "types": [
+      "long"
      ]
     },
     "__CARDUnlockedHandler": {
@@ -4833,6 +6492,9 @@
      "locals": [
       "callback",
       "card"
+     ],
+     "types": [
+      "long"
      ]
     },
     "__CARDEnableInterrupt": {
@@ -4843,6 +6505,10 @@
      "locals": [
       "cmd",
       "err"
+     ],
+     "types": [
+      "long",
+      "int"
      ]
     },
     "__CARDReadStatus": {
@@ -4853,6 +6519,10 @@
      "locals": [
       "cmd",
       "err"
+     ],
+     "types": [
+      "long",
+      "unsigned char *"
      ]
     },
     "__CARDClearStatus": {
@@ -4862,6 +6532,9 @@
      "locals": [
       "cmd",
       "err"
+     ],
+     "types": [
+      "long"
      ]
     },
     "TimeoutHandler": {
@@ -4872,13 +6545,19 @@
       "callback",
       "card",
       "chan"
+     ],
+     "types": [
+      "OSAlarm *"
      ]
     },
     "SetupTimeoutAlarm": {
      "params": [
       "card"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "CARDControl *"
+     ]
     },
     "Retry": {
      "params": [
@@ -4886,6 +6565,9 @@
      ],
      "locals": [
       "card"
+     ],
+     "types": [
+      "long"
      ]
     },
     "UnlockedCallback": {
@@ -4896,6 +6578,10 @@
      "locals": [
       "callback",
       "card"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "__CARDStart": {
@@ -4908,6 +6594,11 @@
       "card",
       "enabled",
       "result"
+     ],
+     "types": [
+      "long",
+      "function *",
+      "function *"
      ]
     },
     "__CARDReadSegment": {
@@ -4918,6 +6609,10 @@
      "locals": [
       "card",
       "result"
+     ],
+     "types": [
+      "long",
+      "function *"
      ]
     },
     "__CARDWritePage": {
@@ -4928,6 +6623,10 @@
      "locals": [
       "card",
       "result"
+     ],
+     "types": [
+      "long",
+      "function *"
      ]
     },
     "__CARDEraseSector": {
@@ -4939,6 +6638,11 @@
      "locals": [
       "card",
       "result"
+     ],
+     "types": [
+      "long",
+      "unsigned long",
+      "function *"
      ]
     },
     "CARDInit": {
@@ -4946,17 +6650,22 @@
      "locals": [
       "card",
       "chan"
-     ]
+     ],
+     "types": []
     },
     "__CARDGetFontEncode": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__CARDSetDiskID": {
      "params": [
       "diskID"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "DVDDiskID const *"
+     ]
     },
     "__CARDGetControlBlock": {
      "params": [
@@ -4967,6 +6676,10 @@
       "card",
       "enabled",
       "result"
+     ],
+     "types": [
+      "long",
+      "CARDControl * *"
      ]
     },
     "__CARDPutControlBlock": {
@@ -4976,6 +6689,10 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "CARDControl *",
+      "long"
      ]
     },
     "CARDGetResultCode": {
@@ -4984,6 +6701,9 @@
      ],
      "locals": [
       "card"
+     ],
+     "types": [
+      "long"
      ]
     },
     "__CARDSync": {
@@ -4994,13 +6714,19 @@
       "card",
       "enabled",
       "result"
+     ],
+     "types": [
+      "long"
      ]
     },
     "OnReset": {
      "params": [
       "final"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "int"
+     ]
     }
    }
   },
@@ -5009,13 +6735,17 @@
    "functions": {
     "CARDRand": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "CARDSrand": {
      "params": [
       "seed"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned int"
+     ]
     },
     "exnor_1st": {
      "params": [
@@ -5026,6 +6756,10 @@
       "i",
       "wk",
       "work"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "exnor": {
@@ -5037,6 +6771,10 @@
       "i",
       "wk",
       "work"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "bitrev": {
@@ -5048,6 +6786,9 @@
       "j",
       "k",
       "wk"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "ReadArrayUnlock": {
@@ -5062,6 +6803,13 @@
       "card",
       "cmd",
       "err"
+     ],
+     "types": [
+      "long",
+      "unsigned long",
+      "void *",
+      "long",
+      "int"
      ]
     },
     "GetInitVal": {
@@ -5069,7 +6817,8 @@
      "locals": [
       "tick",
       "tmp"
-     ]
+     ],
+     "types": []
     },
     "DummyLen": {
      "params": [],
@@ -5078,7 +6827,8 @@
       "tick",
       "tmp",
       "wk"
-     ]
+     ],
+     "types": []
     },
     "__CARDUnlock": {
      "params": [
@@ -5107,6 +6857,10 @@
       "task",
       "wk",
       "wk1"
+     ],
+     "types": [
+      "long",
+      "unsigned char *"
      ]
     },
     "InitCallback": {
@@ -5118,6 +6872,9 @@
       "chan",
       "param",
       "task"
+     ],
+     "types": [
+      "void *"
      ]
     },
     "DoneCallback": {
@@ -5141,6 +6898,9 @@
       "task",
       "wk",
       "wk1"
+     ],
+     "types": [
+      "void *"
      ]
     }
    }
@@ -5156,6 +6916,10 @@
      "locals": [
       "callback",
       "card"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "__CARDRead": {
@@ -5168,6 +6932,13 @@
      ],
      "locals": [
       "card"
+     ],
+     "types": [
+      "long",
+      "unsigned long",
+      "long",
+      "void *",
+      "function *"
      ]
     },
     "BlockWriteCallback": {
@@ -5178,6 +6949,10 @@
      "locals": [
       "callback",
       "card"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "__CARDWrite": {
@@ -5190,6 +6965,13 @@
      ],
      "locals": [
       "card"
+     ],
+     "types": [
+      "long",
+      "unsigned long",
+      "long",
+      "void *",
+      "function *"
      ]
     }
    }
@@ -5201,7 +6983,10 @@
      "params": [
       "card"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "CARDControl *"
+     ]
     },
     "WriteCallback": {
      "params": [
@@ -5213,6 +6998,10 @@
       "card",
       "fat0",
       "fat1"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "EraseCallback": {
@@ -5225,6 +7014,10 @@
       "callback",
       "card",
       "fat"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "__CARDFreeBlock": {
@@ -5237,6 +7030,11 @@
       "card",
       "fat",
       "nextBlock"
+     ],
+     "types": [
+      "long",
+      "unsigned short",
+      "function *"
      ]
     },
     "__CARDUpdateFatBlock": {
@@ -5248,6 +7046,11 @@
      "locals": [
       "addr",
       "card"
+     ],
+     "types": [
+      "long",
+      "unsigned short *",
+      "function *"
      ]
     }
    }
@@ -5259,7 +7062,10 @@
      "params": [
       "card"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "CARDControl *"
+     ]
     },
     "WriteCallback": {
      "params": [
@@ -5271,6 +7077,10 @@
       "card",
       "dir0",
       "dir1"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "EraseCallback": {
@@ -5283,6 +7093,10 @@
       "callback",
       "card",
       "dir"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "__CARDUpdateDir": {
@@ -5295,6 +7109,10 @@
       "card",
       "check",
       "dir"
+     ],
+     "types": [
+      "long",
+      "function *"
      ]
     }
    }
@@ -5312,6 +7130,12 @@
      "locals": [
       "i",
       "p"
+     ],
+     "types": [
+      "void *",
+      "int",
+      "unsigned short *",
+      "unsigned short *"
      ]
     },
     "VerifyID": {
@@ -5325,6 +7149,9 @@
       "id",
       "rand",
       "sramEx"
+     ],
+     "types": [
+      "CARDControl *"
      ]
     },
     "VerifyDir": {
@@ -5340,6 +7167,10 @@
       "dir",
       "errors",
       "i"
+     ],
+     "types": [
+      "CARDControl *",
+      "int *"
      ]
     },
     "VerifyFAT": {
@@ -5357,6 +7188,10 @@
       "fatp",
       "i",
       "nBlock"
+     ],
+     "types": [
+      "CARDControl *",
+      "int *"
      ]
     },
     "__CARDVerify": {
@@ -5366,6 +7201,9 @@
      "locals": [
       "errors",
       "result"
+     ],
+     "types": [
+      "CARDControl *"
      ]
     },
     "CARDCheckExAsync": {
@@ -5393,6 +7231,11 @@
       "updateDir",
       "updateFat",
       "updateOrphan"
+     ],
+     "types": [
+      "long",
+      "long *",
+      "function *"
      ]
     },
     "CARDCheckEx": {
@@ -5402,6 +7245,10 @@
      ],
      "locals": [
       "result"
+     ],
+     "types": [
+      "long",
+      "long *"
      ]
     },
     "CARDCheck": {
@@ -5410,6 +7257,9 @@
      ],
      "locals": [
       "xferBytes"
+     ],
+     "types": [
+      "long"
      ]
     }
    }
@@ -5424,6 +7274,9 @@
      "locals": [
       "sectorSize",
       "size"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__CARDDisable": {
@@ -5432,13 +7285,19 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "int"
      ]
     },
     "CARDProbe": {
      "params": [
       "chan"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long"
+     ]
     },
     "CARDProbeEx": {
      "params": [
@@ -5452,6 +7311,11 @@
       "id",
       "probe",
       "result"
+     ],
+     "types": [
+      "long",
+      "long *",
+      "long *"
      ]
     },
     "DoMount": {
@@ -5468,6 +7332,9 @@
       "status",
       "step",
       "vendorID"
+     ],
+     "types": [
+      "long"
      ]
     },
     "__CARDMountCallback": {
@@ -5478,6 +7345,10 @@
      "locals": [
       "callback",
       "card"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "CARDMountAsync": {
@@ -5490,6 +7361,12 @@
      "locals": [
       "card",
       "enabled"
+     ],
+     "types": [
+      "long",
+      "void *",
+      "function *",
+      "function *"
      ]
     },
     "CARDMount": {
@@ -5500,6 +7377,11 @@
      ],
      "locals": [
       "result"
+     ],
+     "types": [
+      "long",
+      "void *",
+      "function *"
      ]
     },
     "DoUnmount": {
@@ -5510,6 +7392,10 @@
      "locals": [
       "card",
       "enabled"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "CARDUnmount": {
@@ -5519,6 +7405,9 @@
      "locals": [
       "card",
       "result"
+     ],
+     "types": [
+      "long"
      ]
     }
    }
@@ -5536,6 +7425,10 @@
       "c2",
       "entName",
       "n"
+     ],
+     "types": [
+      "CARDDir *",
+      "char const *"
      ]
     },
     "__CARDAccess": {
@@ -5545,6 +7438,10 @@
      ],
      "locals": [
       "diskID"
+     ],
+     "types": [
+      "CARDControl *",
+      "CARDDir *"
      ]
     },
     "__CARDGetFileNo": {
@@ -5558,6 +7455,11 @@
       "ent",
       "fileNo",
       "result"
+     ],
+     "types": [
+      "CARDControl *",
+      "char const *",
+      "long *"
      ]
     },
     "CARDOpen": {
@@ -5572,11 +7474,17 @@
       "ent",
       "fileNo",
       "result"
+     ],
+     "types": [
+      "long",
+      "char const *",
+      "CARDFileInfo *"
      ]
     },
     "__CARDIsOpened": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -5591,6 +7499,10 @@
      "locals": [
       "callback",
       "card"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "CARDDeleteAsync": {
@@ -5605,6 +7517,11 @@
       "ent",
       "fileNo",
       "result"
+     ],
+     "types": [
+      "long",
+      "char const *",
+      "function *"
      ]
     },
     "CARDDelete": {
@@ -5614,6 +7531,10 @@
      ],
      "locals": [
       "result"
+     ],
+     "types": [
+      "long",
+      "char const *"
      ]
     }
    }
@@ -5629,7 +7550,8 @@
      "params": [],
      "locals": [
       "hid2"
-     ]
+     ],
+     "types": []
     },
     "__GXDefaultTexRegionCallback": {
      "params": [
@@ -5639,13 +7561,20 @@
      "locals": [
       "fmt",
       "mm"
+     ],
+     "types": [
+      "_GXTexObj const *",
+      "_GXTexMapID"
      ]
     },
     "__GXDefaultTlutRegionCallback": {
      "params": [
       "idx"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "__GXDefaultVerifyCallback": {
      "params": [
@@ -5653,7 +7582,12 @@
       "id",
       "msg"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "@enum$6GXInit_c",
+      "unsigned long",
+      "char const *"
+     ]
     },
     "__GXShutdown": {
      "params": [
@@ -5663,6 +7597,9 @@
       "peCountNew",
       "reg",
       "timeNew"
+     ],
+     "types": [
+      "int"
      ]
     },
     "GXInit": {
@@ -5677,6 +7614,10 @@
       "reg1",
       "reg2",
       "regAddr"
+     ],
+     "types": [
+      "void *",
+      "unsigned long"
      ]
     },
     "__GXInitGX": {
@@ -5689,7 +7630,8 @@
       "rmode",
       "tex_obj",
       "white"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -5698,11 +7640,13 @@
    "functions": {
     "GXOverflowHandler": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXUnderflowHandler": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXBreakPointHandler": {
      "params": [
@@ -5710,6 +7654,9 @@
      ],
      "locals": [
       "exceptionContext"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "GXCPInterruptHandler": {
@@ -5717,7 +7664,11 @@
       "interrupt",
       "context"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "signed short",
+      "OSContext *"
+     ]
     },
     "GXInitFifoBase": {
      "params": [
@@ -5727,6 +7678,11 @@
      ],
      "locals": [
       "realFifo"
+     ],
+     "types": [
+      "struct *",
+      "void *",
+      "unsigned long"
      ]
     },
     "GXInitFifoPtrs": {
@@ -5738,6 +7694,11 @@
      "locals": [
       "enabled",
       "realFifo"
+     ],
+     "types": [
+      "struct *",
+      "void *",
+      "void *"
      ]
     },
     "GXInitFifoLimits": {
@@ -5748,6 +7709,11 @@
      ],
      "locals": [
       "realFifo"
+     ],
+     "types": [
+      "struct *",
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "GXSetCPUFifo": {
@@ -5758,6 +7724,9 @@
       "enabled",
       "realFifo",
       "reg"
+     ],
+     "types": [
+      "struct *"
      ]
     },
     "GXSetGPFifo": {
@@ -5767,6 +7736,9 @@
      "locals": [
       "enabled",
       "realFifo"
+     ],
+     "types": [
+      "struct *"
      ]
     },
     "GXGetGPStatus": {
@@ -5777,7 +7749,14 @@
       "cmdIdle",
       "brkpt"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char *",
+      "unsigned char *",
+      "unsigned char *",
+      "unsigned char *",
+      "unsigned char *"
+     ]
     },
     "GXGetFifoBase": {
      "params": [
@@ -5785,6 +7764,9 @@
      ],
      "locals": [
       "realFifo"
+     ],
+     "types": [
+      "struct const *"
      ]
     },
     "GXGetFifoSize": {
@@ -5793,6 +7775,9 @@
      ],
      "locals": [
       "realFifo"
+     ],
+     "types": [
+      "struct const *"
      ]
     },
     "GXSetBreakPtCallback": {
@@ -5802,39 +7787,56 @@
      "locals": [
       "enabled",
       "oldcb"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "__GXFifoInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__GXFifoReadEnable": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__GXFifoReadDisable": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__GXFifoLink": {
      "params": [
       "en"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "__GXWriteFifoIntEnable": {
      "params": [
       "hiWatermarkEn",
       "loWatermarkEn"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "unsigned char"
+     ]
     },
     "__GXWriteFifoIntReset": {
      "params": [
       "hiWatermarkClr",
       "loWatermarkClr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "unsigned char"
+     ]
     },
     "__GXCleanGPFifo": {
      "params": [],
@@ -5843,15 +7845,18 @@
       "cpuFifo",
       "dummyFifo",
       "gpFifo"
-     ]
+     ],
+     "types": []
     },
     "GXGetCPUFifo": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXGetGPFifo": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -5866,27 +7871,37 @@
       "nTex",
       "reg",
       "regAddr"
-     ]
+     ],
+     "types": []
     },
     "GXSetVtxDesc": {
      "params": [
       "attr",
       "type"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXAttr",
+      "_GXAttrType"
+     ]
     },
     "SETVCDATTR": {
      "params": [
       "Attr",
       "Type"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXAttr",
+      "_GXAttrType"
+     ]
     },
     "__GXSetVCD": {
      "params": [],
      "locals": [
       "regAddr"
-     ]
+     ],
+     "types": []
     },
     "__GXCalculateVLim": {
      "params": [],
@@ -5897,7 +7912,8 @@
       "vh",
       "vl",
       "vlm"
-     ]
+     ],
+     "types": []
     },
     "GXGetVtxDesc": {
      "params": [
@@ -5906,11 +7922,16 @@
      ],
      "locals": [
       "cpType"
+     ],
+     "types": [
+      "_GXAttr",
+      "_GXAttrType *"
      ]
     },
     "GXClearVtxDesc": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXSetVtxAttrFmt": {
      "params": [
@@ -5924,6 +7945,13 @@
       "va",
       "vb",
       "vc"
+     ],
+     "types": [
+      "_GXVtxFmt",
+      "_GXAttr",
+      "_GXCompCnt",
+      "_GXCompType",
+      "unsigned char"
      ]
     },
     "SETVAT": {
@@ -5936,7 +7964,16 @@
       "type",
       "shft"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "_GXAttr",
+      "_GXCompCnt",
+      "_GXCompType",
+      "unsigned char"
+     ]
     },
     "GXSetVtxAttrFmtv": {
      "params": [
@@ -5947,6 +7984,10 @@
       "va",
       "vb",
       "vc"
+     ],
+     "types": [
+      "_GXVtxFmt",
+      "_GXVtxAttrFmtList const *"
      ]
     },
     "__GXSetVAT": {
@@ -5954,7 +7995,8 @@
      "locals": [
       "i",
       "regAddr"
-     ]
+     ],
+     "types": []
     },
     "GXGetVtxAttrFmt": {
      "params": [
@@ -5968,6 +8010,13 @@
       "va",
       "vb",
       "vc"
+     ],
+     "types": [
+      "_GXVtxFmt",
+      "_GXAttr",
+      "_GXCompCnt *",
+      "_GXCompType *",
+      "unsigned char *"
      ]
     },
     "GetFracForNrm": {
@@ -5976,6 +8025,9 @@
      ],
      "locals": [
       "frac"
+     ],
+     "types": [
+      "_GXCompType"
      ]
     },
     "GXSetArray": {
@@ -5988,11 +8040,17 @@
       "cpAttr",
       "phyAddr",
       "regAddr"
+     ],
+     "types": [
+      "_GXAttr",
+      "void *",
+      "unsigned char"
      ]
     },
     "GXInvalidateVtxCache": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXSetTexCoordGen2": {
      "params": [
@@ -6010,6 +8068,14 @@
       "reg",
       "regAddr",
       "row"
+     ],
+     "types": [
+      "_GXTexCoordID",
+      "_GXTexGenType",
+      "_GXTexGenSrc",
+      "unsigned long",
+      "unsigned char",
+      "unsigned long"
      ]
     },
     "GXSetNumTexGens": {
@@ -6018,6 +8084,9 @@
      ],
      "locals": [
       "regAddr"
+     ],
+     "types": [
+      "unsigned char"
      ]
     }
    }
@@ -6030,11 +8099,16 @@
       "token",
       "val"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXMiscToken",
+      "unsigned long"
+     ]
     },
     "GXFlush": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__GXAbortWait": {
      "params": [
@@ -6043,6 +8117,9 @@
      "locals": [
       "time0",
       "time1"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "__GXAbortWaitPECopyDone": {
@@ -6050,15 +8127,18 @@
      "locals": [
       "peCnt0",
       "peCnt1"
-     ]
+     ],
+     "types": []
     },
     "__GXAbort": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXAbortFrame": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXSetDrawSync": {
      "params": [
@@ -6067,30 +8147,37 @@
      "locals": [
       "enabled",
       "reg"
+     ],
+     "types": [
+      "unsigned short"
      ]
     },
     "GXReadDrawSync": {
      "params": [],
      "locals": [
       "token"
-     ]
+     ],
+     "types": []
     },
     "GXSetDrawDone": {
      "params": [],
      "locals": [
       "enabled",
       "reg"
-     ]
+     ],
+     "types": []
     },
     "GXWaitDrawDone": {
      "params": [],
      "locals": [
       "enabled"
-     ]
+     ],
+     "types": []
     },
     "GXDrawDone": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXPokeAlphaMode": {
      "params": [
@@ -6099,6 +8186,10 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "_GXCompare",
+      "unsigned char"
      ]
     },
     "GXPokeAlphaRead": {
@@ -6107,6 +8198,9 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "_GXAlphaReadMode"
      ]
     },
     "GXPokeAlphaUpdate": {
@@ -6115,6 +8209,9 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "GXPokeBlendMode": {
@@ -6126,6 +8223,12 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "_GXBlendMode",
+      "_GXBlendFactor",
+      "_GXBlendFactor",
+      "_GXLogicOp"
      ]
     },
     "GXPokeColorUpdate": {
@@ -6134,6 +8237,9 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "GXPokeDstAlpha": {
@@ -6143,6 +8249,10 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char",
+      "unsigned char"
      ]
     },
     "GXPokeDither": {
@@ -6151,6 +8261,9 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "GXPokeZMode": {
@@ -6161,6 +8274,11 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char",
+      "_GXCompare",
+      "unsigned char"
      ]
     },
     "GXSetDrawSyncCallback": {
@@ -6170,6 +8288,9 @@
      "locals": [
       "enabled",
       "oldcb"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "GXTokenInterruptHandler": {
@@ -6180,6 +8301,9 @@
       "exceptionContext",
       "reg",
       "token"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "GXSetDrawDoneCallback": {
@@ -6189,6 +8313,9 @@
      "locals": [
       "enabled",
       "oldcb"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "GXFinishInterruptHandler": {
@@ -6198,13 +8325,17 @@
      "locals": [
       "exceptionContext",
       "reg"
+     ],
+     "types": [
+      "OSContext *"
      ]
     },
     "__GXPEInit": {
      "params": [],
      "locals": [
       "reg"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -6215,7 +8346,8 @@
      "params": [],
      "locals": [
       "dState"
-     ]
+     ],
+     "types": []
     },
     "GXBegin": {
      "params": [
@@ -6223,28 +8355,42 @@
       "vtxfmt",
       "nverts"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXPrimitive",
+      "_GXVtxFmt",
+      "unsigned short"
+     ]
     },
     "__GXSendFlushPrim": {
      "params": [],
      "locals": [
       "i",
       "numD"
-     ]
+     ],
+     "types": []
     },
     "GXSetLineWidth": {
      "params": [
       "width",
       "texOffsets"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "_GXTexOffset"
+     ]
     },
     "GXSetPointSize": {
      "params": [
       "pointSize",
       "texOffsets"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char",
+      "_GXTexOffset"
+     ]
     },
     "GXEnableTexOffsets": {
      "params": [
@@ -6252,7 +8398,12 @@
       "line_enable",
       "point_enable"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXTexCoordID",
+      "unsigned char",
+      "unsigned char"
+     ]
     },
     "GXSetCullMode": {
      "params": [
@@ -6260,6 +8411,9 @@
      ],
      "locals": [
       "hwMode"
+     ],
+     "types": [
+      "_GXCullMode"
      ]
     },
     "GXSetCoPlanar": {
@@ -6268,11 +8422,15 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "__GXSetGenMode": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -6291,6 +8449,12 @@
       "mode",
       "ver2",
       "verf"
+     ],
+     "types": [
+      "_GXRenderModeObj const *",
+      "_GXRenderModeObj *",
+      "unsigned short",
+      "unsigned short"
      ]
     },
     "GXSetDispCopySrc": {
@@ -6300,7 +8464,13 @@
       "wd",
       "ht"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned short",
+      "unsigned short",
+      "unsigned short",
+      "unsigned short"
+     ]
     },
     "GXSetDispCopyDst": {
      "params": [
@@ -6308,13 +8478,19 @@
      ],
      "locals": [
       "stride"
+     ],
+     "types": [
+      "unsigned short"
      ]
     },
     "GXSetDispCopyFrame2Field": {
      "params": [
       "mode"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXCopyMode"
+     ]
     },
     "GXSetCopyClamp": {
      "params": [
@@ -6323,6 +8499,9 @@
      "locals": [
       "clmpB",
       "clmpT"
+     ],
+     "types": [
+      "_GXFBClamp"
      ]
     },
     "__GXGetNumXfbLines": {
@@ -6334,6 +8513,10 @@
       "count",
       "iScaleD",
       "realHt"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "GXGetYScaleFactor": {
@@ -6347,6 +8530,10 @@
       "realHt",
       "tgtHt",
       "yScale"
+     ],
+     "types": [
+      "unsigned short",
+      "unsigned short"
      ]
     },
     "GXSetDispCopyYScale": {
@@ -6358,6 +8545,9 @@
       "ht",
       "iScale",
       "reg"
+     ],
+     "types": [
+      "float"
      ]
     },
     "GXSetCopyClear": {
@@ -6367,6 +8557,10 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "_GXColor &",
+      "unsigned long"
      ]
     },
     "GXSetCopyFilter": {
@@ -6380,13 +8574,22 @@
       "coeff0",
       "coeff1",
       "msLoc"
+     ],
+     "types": [
+      "unsigned char",
+      "? [] const *",
+      "unsigned char",
+      "unsigned char const *"
      ]
     },
     "GXSetDispCopyGamma": {
      "params": [
       "gamma"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXGamma"
+     ]
     },
     "__GXVerifCopy": {
      "params": [
@@ -6400,6 +8603,10 @@
       "dy",
       "x0",
       "y0"
+     ],
+     "types": [
+      "void *",
+      "unsigned char"
      ]
     },
     "GXCopyDisp": {
@@ -6412,13 +8619,18 @@
       "phyAddr",
       "reg",
       "tempPeCtrl"
+     ],
+     "types": [
+      "void *",
+      "unsigned char"
      ]
     },
     "GXClearBoundingBox": {
      "params": [],
      "locals": [
       "reg"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -6439,6 +8651,11 @@
       "d",
       "obj",
       "r"
+     ],
+     "types": [
+      "_GXLightObj *",
+      "float",
+      "_GXSpotFn"
      ]
     },
     "GXInitLightPos": {
@@ -6450,6 +8667,12 @@
      ],
      "locals": [
       "obj"
+     ],
+     "types": [
+      "_GXLightObj *",
+      "float",
+      "float",
+      "float"
      ]
     },
     "GXInitLightColor": {
@@ -6459,6 +8682,10 @@
      ],
      "locals": [
       "obj"
+     ],
+     "types": [
+      "_GXLightObj *",
+      "_GXColor &"
      ]
     },
     "GXLoadLightObjImm": {
@@ -6472,13 +8699,20 @@
       "obj",
       "xfAddr",
       "xfData"
+     ],
+     "types": [
+      "_GXLightObj const *",
+      "_GXLightID"
      ]
     },
     "ConvLightID2Num": {
      "params": [
       "id"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXLightID"
+     ]
     },
     "GXSetChanAmbColor": {
      "params": [
@@ -6490,6 +8724,10 @@
       "reg",
       "regAddr",
       "rgb"
+     ],
+     "types": [
+      "_GXChannelID",
+      "_GXColor &"
      ]
     },
     "GXSetChanMatColor": {
@@ -6502,6 +8740,10 @@
       "reg",
       "regAddr",
       "rgb"
+     ],
+     "types": [
+      "_GXChannelID",
+      "_GXColor &"
      ]
     },
     "GXSetNumChans": {
@@ -6510,6 +8752,9 @@
      ],
      "locals": [
       "regAddr"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "GXSetChanCtrl": {
@@ -6526,6 +8771,15 @@
       "idx",
       "reg",
       "regAddr"
+     ],
+     "types": [
+      "_GXChannelID",
+      "unsigned char",
+      "_GXColorSrc",
+      "_GXColorSrc",
+      "unsigned long",
+      "_GXDiffuseFn",
+      "_GXAttnFn"
      ]
     }
    }
@@ -6539,7 +8793,12 @@
       "rowTileS",
       "colTileS"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXTexFmt",
+      "unsigned long *",
+      "unsigned long *"
+     ]
     },
     "GXGetTexBufferSize": {
      "params": [
@@ -6557,6 +8816,13 @@
       "tileBytes",
       "tileShiftX",
       "tileShiftY"
+     ],
+     "types": [
+      "unsigned short",
+      "unsigned short",
+      "unsigned long",
+      "unsigned char",
+      "unsigned char"
      ]
     },
     "GXInitTexObj": {
@@ -6580,6 +8846,16 @@
       "rowC",
       "rowT",
       "t"
+     ],
+     "types": [
+      "_GXTexObj *",
+      "void *",
+      "unsigned short",
+      "unsigned short",
+      "_GXTexFmt",
+      "_GXTexWrapMode",
+      "_GXTexWrapMode",
+      "unsigned char"
      ]
     },
     "GXInitTexObjCI": {
@@ -6596,6 +8872,17 @@
      ],
      "locals": [
       "t"
+     ],
+     "types": [
+      "_GXTexObj *",
+      "void *",
+      "unsigned short",
+      "unsigned short",
+      "_GXCITexFmt",
+      "_GXTexWrapMode",
+      "_GXTexWrapMode",
+      "unsigned char",
+      "unsigned long"
      ]
     },
     "GXInitTexObjLOD": {
@@ -6615,6 +8902,17 @@
       "lmax",
       "lmin",
       "t"
+     ],
+     "types": [
+      "_GXTexObj *",
+      "_GXTexFilter",
+      "_GXTexFilter",
+      "float",
+      "float",
+      "float",
+      "unsigned char",
+      "unsigned char",
+      "_GXAnisotropy"
      ]
     },
     "GXGetTexObjFmt": {
@@ -6623,6 +8921,9 @@
      ],
      "locals": [
       "t"
+     ],
+     "types": [
+      "_GXTexObj const *"
      ]
     },
     "GXGetTexObjMipMap": {
@@ -6631,6 +8932,9 @@
      ],
      "locals": [
       "t"
+     ],
+     "types": [
+      "_GXTexObj const *"
      ]
     },
     "GXLoadTexObjPreLoaded": {
@@ -6649,6 +8953,11 @@
       "r",
       "t",
       "tlr"
+     ],
+     "types": [
+      "_GXTexObj const *",
+      "_GXTexRegion const *",
+      "_GXTexMapID"
      ]
     },
     "GXLoadTexObj": {
@@ -6658,6 +8967,10 @@
      ],
      "locals": [
       "r"
+     ],
+     "types": [
+      "_GXTexObj const *",
+      "_GXTexMapID"
      ]
     },
     "GXInitTlutObj": {
@@ -6669,6 +8982,12 @@
      ],
      "locals": [
       "t"
+     ],
+     "types": [
+      "_GXTlutObj *",
+      "void *",
+      "_GXTlutFmt",
+      "unsigned short"
      ]
     },
     "GXLoadTlut": {
@@ -6680,6 +8999,10 @@
       "r",
       "t",
       "tlut_offset"
+     ],
+     "types": [
+      "_GXTlutObj const *",
+      "unsigned long"
      ]
     },
     "GXInitTexCacheRegion": {
@@ -6694,6 +9017,14 @@
      "locals": [
       "WidthExp2",
       "t"
+     ],
+     "types": [
+      "_GXTexRegion *",
+      "unsigned char",
+      "unsigned long",
+      "_GXTexCacheSize",
+      "unsigned long",
+      "_GXTexCacheSize"
      ]
     },
     "GXInitTlutRegion": {
@@ -6704,6 +9035,11 @@
      ],
      "locals": [
       "t"
+     ],
+     "types": [
+      "_GXTlutRegion *",
+      "unsigned long",
+      "_GXTlutSize"
      ]
     },
     "GXInvalidateTexAll": {
@@ -6711,7 +9047,8 @@
      "locals": [
       "reg0",
       "reg1"
-     ]
+     ],
+     "types": []
     },
     "GXSetTexRegionCallback": {
      "params": [
@@ -6719,6 +9056,9 @@
      ],
      "locals": [
       "oldcb"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "GXSetTlutRegionCallback": {
@@ -6727,6 +9067,9 @@
      ],
      "locals": [
       "oldcb"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "__SetSURegs": {
@@ -6739,6 +9082,10 @@
       "s_bias",
       "t_bias",
       "w"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "__GXSetSUTexRegs": {
@@ -6751,13 +9098,17 @@
       "nStages",
       "ptref",
       "tmap"
-     ]
+     ],
+     "types": []
     },
     "__GXSetTmemConfig": {
      "params": [
       "config"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     }
    }
   },
@@ -6779,6 +9130,18 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXIndTexStageID",
+      "_GXIndTexFormat",
+      "_GXIndTexBiasSel",
+      "_GXIndTexMtxID",
+      "_GXIndTexWrap",
+      "_GXIndTexWrap",
+      "unsigned char",
+      "unsigned char",
+      "_GXIndTexAlphaSel"
      ]
     },
     "GXSetIndTexCoordScale": {
@@ -6787,33 +9150,49 @@
       "scale_s",
       "scale_t"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXIndTexStageID",
+      "_GXIndTexScale",
+      "_GXIndTexScale"
+     ]
     },
     "GXSetNumIndStages": {
      "params": [
       "nIndStages"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "GXSetTevDirect": {
      "params": [
       "tev_stage"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXTevStageID"
+     ]
     },
     "__GXUpdateBPMask": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__GXSetIndirectMask": {
      "params": [
       "mask"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "__GXFlushTextureState": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -6829,6 +9208,10 @@
       "atmp",
       "ctmp",
       "tevReg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTevMode"
      ]
     },
     "GXSetTevColorIn": {
@@ -6841,6 +9224,13 @@
      ],
      "locals": [
       "tevReg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTevColorArg",
+      "_GXTevColorArg",
+      "_GXTevColorArg",
+      "_GXTevColorArg"
      ]
     },
     "GXSetTevAlphaIn": {
@@ -6853,6 +9243,13 @@
      ],
      "locals": [
       "tevReg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTevAlphaArg",
+      "_GXTevAlphaArg",
+      "_GXTevAlphaArg",
+      "_GXTevAlphaArg"
      ]
     },
     "GXSetTevColorOp": {
@@ -6866,6 +9263,14 @@
      ],
      "locals": [
       "tevReg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTevOp",
+      "_GXTevBias",
+      "_GXTevScale",
+      "unsigned char",
+      "_GXTevRegID"
      ]
     },
     "GXSetTevAlphaOp": {
@@ -6879,6 +9284,14 @@
      ],
      "locals": [
       "tevReg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTevOp",
+      "_GXTevBias",
+      "_GXTevScale",
+      "unsigned char",
+      "_GXTevRegID"
      ]
     },
     "GXSetTevColorS10": {
@@ -6889,6 +9302,10 @@
      "locals": [
       "regBG",
       "regRA"
+     ],
+     "types": [
+      "_GXTevRegID",
+      "_GXColorS10 &"
      ]
     },
     "GXSetTevKColor": {
@@ -6899,6 +9316,10 @@
      "locals": [
       "regBG",
       "regRA"
+     ],
+     "types": [
+      "_GXTevKColorID",
+      "_GXColor &"
      ]
     },
     "GXSetTevKColorSel": {
@@ -6908,6 +9329,10 @@
      ],
      "locals": [
       "Kreg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTevKColorSel"
      ]
     },
     "GXSetTevKAlphaSel": {
@@ -6917,6 +9342,10 @@
      ],
      "locals": [
       "Kreg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTevKAlphaSel"
      ]
     },
     "GXSetTevSwapMode": {
@@ -6927,6 +9356,11 @@
      ],
      "locals": [
       "pTevReg"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTevSwapSel",
+      "_GXTevSwapSel"
      ]
     },
     "GXSetTevSwapModeTable": {
@@ -6939,6 +9373,13 @@
      ],
      "locals": [
       "Kreg"
+     ],
+     "types": [
+      "_GXTevSwapSel",
+      "_GXTevColorChan",
+      "_GXTevColorChan",
+      "_GXTevColorChan",
+      "_GXTevColorChan"
      ]
     },
     "GXSetAlphaCompare": {
@@ -6951,6 +9392,13 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "_GXCompare",
+      "unsigned char",
+      "_GXAlphaOp",
+      "_GXCompare",
+      "unsigned char"
      ]
     },
     "GXSetZTexture": {
@@ -6963,6 +9411,11 @@
       "type",
       "zenv0",
       "zenv1"
+     ],
+     "types": [
+      "_GXZTexOp",
+      "_GXTexFmt",
+      "unsigned long"
      ]
     },
     "GXSetTevOrder": {
@@ -6976,13 +9429,22 @@
       "ptref",
       "tcoord",
       "tmap"
+     ],
+     "types": [
+      "_GXTevStageID",
+      "_GXTexCoordID",
+      "_GXTexMapID",
+      "_GXChannelID"
      ]
     },
     "GXSetNumTevStages": {
      "params": [
       "nStages"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     }
    }
   },
@@ -7017,6 +9479,14 @@
       "fogclr",
       "fsel",
       "proj"
+     ],
+     "types": [
+      "_GXFogType",
+      "float",
+      "float",
+      "float",
+      "float",
+      "_GXColor &"
      ]
     },
     "GXSetFogRangeAdj": {
@@ -7029,6 +9499,11 @@
       "i",
       "range_adj",
       "range_c"
+     ],
+     "types": [
+      "unsigned char",
+      "unsigned short",
+      "_GXFogAdjTable const *"
      ]
     },
     "GXSetBlendMode": {
@@ -7041,6 +9516,12 @@
      "locals": [
       "blend_en",
       "reg"
+     ],
+     "types": [
+      "_GXBlendMode",
+      "_GXBlendFactor",
+      "_GXBlendFactor",
+      "_GXLogicOp"
      ]
     },
     "GXSetColorUpdate": {
@@ -7049,6 +9530,9 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "GXSetAlphaUpdate": {
@@ -7057,6 +9541,9 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "GXSetZMode": {
@@ -7067,13 +9554,21 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char",
+      "_GXCompare",
+      "unsigned char"
      ]
     },
     "GXSetZCompLoc": {
      "params": [
       "before_tex"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned char"
+     ]
     },
     "GXSetPixelFmt": {
      "params": [
@@ -7083,6 +9578,10 @@
      "locals": [
       "aa",
       "oldPeCtrl"
+     ],
+     "types": [
+      "_GXPixelFmt",
+      "_GXZFmt16"
      ]
     },
     "GXSetDither": {
@@ -7091,6 +9590,9 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char"
      ]
     },
     "GXSetDstAlpha": {
@@ -7100,6 +9602,10 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char",
+      "unsigned char"
      ]
     },
     "GXSetFieldMask": {
@@ -7109,6 +9615,10 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char",
+      "unsigned char"
      ]
     },
     "GXSetFieldMode": {
@@ -7118,6 +9628,10 @@
      ],
      "locals": [
       "reg"
+     ],
+     "types": [
+      "unsigned char",
+      "unsigned char"
      ]
     }
    }
@@ -7131,7 +9645,12 @@
       "y",
       "z"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "float",
+      "float",
+      "float"
+     ]
     },
     "GXPosition3s16": {
      "params": [
@@ -7139,14 +9658,23 @@
       "y",
       "z"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "signed short",
+      "signed short",
+      "signed short"
+     ]
     },
     "GXPosition2f32": {
      "params": [
       "x",
       "y"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "float",
+      "float"
+     ]
     },
     "GXNormal3f32": {
      "params": [
@@ -7154,27 +9682,43 @@
       "y",
       "z"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "float",
+      "float",
+      "float"
+     ]
     },
     "GXColor1u32": {
      "params": [
       "x"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "GXTexCoord2f32": {
      "params": [
       "x",
       "y"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "float",
+      "float"
+     ]
     },
     "GXTexCoord2s16": {
      "params": [
       "x",
       "y"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "signed short",
+      "signed short"
+     ]
     }
    }
   },
@@ -7187,26 +9731,37 @@
       "reg",
       "xfAddr",
       "xfData"
-     ]
+     ],
+     "types": []
     },
     "GXSetProjection": {
      "params": [
       "mtx",
       "type"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "? [] const *",
+      "_GXProjectionType"
+     ]
     },
     "GXSetProjectionv": {
      "params": [
       "ptr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "float const *"
+     ]
     },
     "GXGetProjectionv": {
      "params": [
       "ptr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "float *"
+     ]
     },
     "GXLoadPosMtxImm": {
      "params": [
@@ -7218,6 +9773,10 @@
       "reg",
       "xfAddr",
       "xfData"
+     ],
+     "types": [
+      "? [] const *",
+      "unsigned long"
      ]
     },
     "GXLoadNrmMtxImm": {
@@ -7230,13 +9789,20 @@
       "reg",
       "xfAddr",
       "xfData"
+     ],
+     "types": [
+      "? [] const *",
+      "unsigned long"
      ]
     },
     "GXSetCurrentMtx": {
      "params": [
       "id"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long"
+     ]
     },
     "GXLoadTexMtxImm": {
      "params": [
@@ -7250,6 +9816,11 @@
       "reg",
       "xfAddr",
       "xfData"
+     ],
+     "types": [
+      "? [] const *",
+      "unsigned long",
+      "_GXTexMtxType"
      ]
     },
     "__GXSetViewport": {
@@ -7266,7 +9837,8 @@
       "xfData",
       "zmax",
       "zmin"
-     ]
+     ],
+     "types": []
     },
     "GXSetViewportJitter": {
      "params": [
@@ -7278,7 +9850,16 @@
       "farz",
       "field"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "float",
+      "float",
+      "float",
+      "float",
+      "float",
+      "float",
+      "unsigned long"
+     ]
     },
     "GXSetViewport": {
      "params": [
@@ -7289,7 +9870,15 @@
       "nearz",
       "farz"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "float",
+      "float",
+      "float",
+      "float",
+      "float",
+      "float"
+     ]
     },
     "GXSetScissor": {
      "params": [
@@ -7303,6 +9892,12 @@
       "lf",
       "rt",
       "tp"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long",
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "GXSetScissorBoxOffset": {
@@ -7314,6 +9909,10 @@
       "hx",
       "hy",
       "reg"
+     ],
+     "types": [
+      "long",
+      "long"
      ]
     },
     "GXSetClipMode": {
@@ -7322,6 +9921,9 @@
      ],
      "locals": [
       "regAddr"
+     ],
+     "types": [
+      "_GXClipMode"
      ]
     },
     "__GXSetMatrixIndex": {
@@ -7330,6 +9932,9 @@
      ],
      "locals": [
       "regAddr"
+     ],
+     "types": [
+      "_GXAttr"
      ]
     }
    }
@@ -7339,7 +9944,8 @@
    "functions": {
     "__GXVerifyGlobal": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__GXVerifyCP": {
      "params": [
@@ -7347,13 +9953,19 @@
      ],
      "locals": [
       "nrmCnt"
+     ],
+     "types": [
+      "_GXVtxFmt"
      ]
     },
     "__GXVerifyState": {
      "params": [
       "vtxfmt"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXVtxFmt"
+     ]
     },
     "__GXVerifyVATImm": {
      "params": [
@@ -7362,7 +9974,13 @@
       "type",
       "frac"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXAttr",
+      "_GXCompCnt",
+      "_GXCompType",
+      "unsigned char"
+     ]
     },
     "GXSetVerifyCallback": {
      "params": [
@@ -7370,6 +9988,9 @@
      ],
      "locals": [
       "old_cb"
+     ],
+     "types": [
+      "function *"
      ]
     }
    }
@@ -7382,35 +10003,49 @@
      "locals": [
       "i",
       "texgen_type"
-     ]
+     ],
+     "types": []
     },
     "InitializeXFVerifyData": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "CheckDirty": {
      "params": [
       "index",
       "name"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "char const *"
+     ]
     },
     "CheckClean": {
      "params": [
       "index",
       "name"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long",
+      "char const *"
+     ]
     },
     "CheckCTGColors": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__GXVertexPacketHas": {
      "params": [
       "attr"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "_GXAttr"
+     ]
     },
     "CheckVertexPacket": {
      "params": [],
@@ -7419,20 +10054,23 @@
       "numHostTexAbsent",
       "numHostTextures",
       "numMatrixIndices"
-     ]
+     ],
+     "types": []
     },
     "CheckSourceRows": {
      "params": [],
      "locals": [
       "i"
-     ]
+     ],
+     "types": []
     },
     "CheckTextureOrder": {
      "params": [],
      "locals": [
       "count",
       "done"
-     ]
+     ],
+     "types": []
     },
     "CheckRAM": {
      "params": [
@@ -7446,6 +10084,13 @@
       "dirtyBit",
       "i",
       "printedPreamble"
+     ],
+     "types": [
+      "unsigned char",
+      "unsigned long",
+      "unsigned long",
+      "@enum$6GXVerifXF_c",
+      "char *"
      ]
     },
     "CheckBumpmapTextures": {
@@ -7456,7 +10101,8 @@
       "Preamble",
       "i",
       "lightRAMOffset"
-     ]
+     ],
+     "types": []
     },
     "CheckTextureTransformMatrices": {
      "params": [],
@@ -7467,13 +10113,15 @@
       "StartingAddress",
       "Val",
       "i"
-     ]
+     ],
+     "types": []
     },
     "CheckInputForms": {
      "params": [],
      "locals": [
       "i"
-     ]
+     ],
+     "types": []
     },
     "CheckLight": {
      "params": [
@@ -7483,6 +10131,9 @@
       "i",
       "lightRAMOffset",
       "printedPreamble"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "CheckColor0": {
@@ -7492,7 +10143,8 @@
       "haveLight",
       "i",
       "lightUsed"
-     ]
+     ],
+     "types": []
     },
     "CheckColor1": {
      "params": [],
@@ -7502,7 +10154,8 @@
       "i",
       "lightUsed",
       "usingColor1"
-     ]
+     ],
+     "types": []
     },
     "CheckViewport": {
      "params": [],
@@ -7511,7 +10164,8 @@
       "vl",
       "vr",
       "vt"
-     ]
+     ],
+     "types": []
     },
     "ComputeSignExponentMantissa": {
      "params": [
@@ -7522,6 +10176,12 @@
      ],
      "locals": [
       "intVal"
+     ],
+     "types": [
+      "float",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *"
      ]
     },
     "CheckFloatingPointValue": {
@@ -7535,6 +10195,11 @@
       "mantissa",
       "sign",
       "valuef"
+     ],
+     "types": [
+      "unsigned char",
+      "unsigned long",
+      "char *"
      ]
     },
     "CheckMatrixRAMRanges": {
@@ -7542,21 +10207,24 @@
      "locals": [
       "i",
       "label"
-     ]
+     ],
+     "types": []
     },
     "CheckNormalRAMRanges": {
      "params": [],
      "locals": [
       "i",
       "label"
-     ]
+     ],
+     "types": []
     },
     "CheckDMatrixRAMRanges": {
      "params": [],
      "locals": [
       "i",
       "label"
-     ]
+     ],
+     "types": []
     },
     "CheckLightRAMRanges": {
      "params": [],
@@ -7565,38 +10233,46 @@
       "label",
       "lightRAMOffset",
       "lightSource"
-     ]
+     ],
+     "types": []
     },
     "CheckControlRAMRanges": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "CheckFloatingPointRanges": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "CheckMatrixIndices": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "CheckErrors": {
      "params": [],
      "locals": [
       "i",
       "registerName"
-     ]
+     ],
+     "types": []
     },
     "CheckWarnings": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "DumpXFRegisters": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__GXVerifyXF": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -7610,7 +10286,8 @@
       "scis_l",
       "scis_r",
       "scis_t"
-     ]
+     ],
+     "types": []
     },
     "__GXVerifyBUMP": {
      "params": [],
@@ -7620,7 +10297,8 @@
       "nBmp",
       "nTev",
       "nTex"
-     ]
+     ],
+     "types": []
     },
     "__GXVerifyTEX": {
      "params": [],
@@ -7636,7 +10314,8 @@
       "nlevels",
       "texId",
       "w2"
-     ]
+     ],
+     "types": []
     },
     "__GXVerifyTEV": {
      "params": [],
@@ -7650,13 +10329,15 @@
       "i",
       "nCol",
       "nTev"
-     ]
+     ],
+     "types": []
     },
     "__GXVerifyPE": {
      "params": [],
      "locals": [
       "i"
-     ]
+     ],
+     "types": []
     }
    }
   },
@@ -7671,6 +10352,10 @@
      "locals": [
       "reg",
       "regAddr"
+     ],
+     "types": [
+      "_GXPerf0",
+      "_GXPerf1"
      ]
     },
     "GXReadGPMetric": {
@@ -7683,27 +10368,34 @@
       "cpCtr1",
       "cpCtr2",
       "cpCtr3"
+     ],
+     "types": [
+      "unsigned long *",
+      "unsigned long *"
      ]
     },
     "GXClearGPMetric": {
      "params": [],
      "locals": [
       "reg"
-     ]
+     ],
+     "types": []
     },
     "GXReadGP0Metric": {
      "params": [],
      "locals": [
       "cnt0",
       "cnt1"
-     ]
+     ],
+     "types": []
     },
     "GXReadGP1Metric": {
      "params": [],
      "locals": [
       "cnt0",
       "cnt1"
-     ]
+     ],
+     "types": []
     },
     "GXReadMemMetric": {
      "params": [
@@ -7718,11 +10410,24 @@
       "rf_req",
       "fi_req"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *"
+     ]
     },
     "GXClearMemMetric": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "GXReadPixMetric": {
      "params": [
@@ -7733,13 +10438,22 @@
       "clr_pixels_in",
       "copy_clks"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *"
+     ]
     },
     "GXClearPixMetric": {
      "params": [],
      "locals": [
       "reg"
-     ]
+     ],
+     "types": []
     },
     "GXSetVCacheMetric": {
      "params": [
@@ -7748,6 +10462,9 @@
      "locals": [
       "reg",
       "regAddr"
+     ],
+     "types": [
+      "_GXVCachePerf"
      ]
     },
     "GXReadVCacheMetric": {
@@ -7756,13 +10473,19 @@
       "miss",
       "stall"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *"
+     ]
     },
     "GXClearVCacheMetric": {
      "params": [],
      "locals": [
       "regAddr"
-     ]
+     ],
+     "types": []
     },
     "GXReadXfRasMetric": {
      "params": [
@@ -7771,7 +10494,13 @@
       "ras_busy",
       "clocks"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *",
+      "unsigned long *"
+     ]
     }
    }
   },
@@ -7780,35 +10509,43 @@
    "functions": {
     "EXI2_Init": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "EXI2_EnableInterrupts": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "EXI2_Poll": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "EXI2_ReadN": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "EXI2_WriteN": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "EXI2_Reserve": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "EXI2_Unreserve": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "AMC_IsStub": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -7817,7 +10554,8 @@
    "functions": {
     "Hu_IsStub": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   },
@@ -7831,6 +10569,10 @@
      ],
      "locals": [
       "exi2"
+     ],
+     "types": [
+      "long",
+      "EXIControl *"
      ]
     },
     "CompleteTransfer": {
@@ -7843,6 +10585,9 @@
       "exi",
       "i",
       "len"
+     ],
+     "types": [
+      "long"
      ]
     },
     "EXIImm": {
@@ -7858,6 +10603,13 @@
       "enabled",
       "exi",
       "i"
+     ],
+     "types": [
+      "long",
+      "void *",
+      "long",
+      "unsigned long",
+      "function *"
      ]
     },
     "EXIImmEx": {
@@ -7869,6 +10621,12 @@
      ],
      "locals": [
       "xLen"
+     ],
+     "types": [
+      "long",
+      "void *",
+      "long",
+      "unsigned long"
      ]
     },
     "EXIDma": {
@@ -7882,6 +10640,13 @@
      "locals": [
       "enabled",
       "exi"
+     ],
+     "types": [
+      "long",
+      "void *",
+      "long",
+      "unsigned long",
+      "function *"
      ]
     },
     "EXISync": {
@@ -7892,6 +10657,9 @@
       "enabled",
       "exi",
       "rc"
+     ],
+     "types": [
+      "long"
      ]
     },
     "EXIClearInterrupts": {
@@ -7904,6 +10672,12 @@
      "locals": [
       "cpr",
       "prev"
+     ],
+     "types": [
+      "long",
+      "int",
+      "int",
+      "int"
      ]
     },
     "EXISetExiCallback": {
@@ -7915,11 +10689,16 @@
       "enabled",
       "exi",
       "prev"
+     ],
+     "types": [
+      "long",
+      "function *"
      ]
     },
     "EXIProbeReset": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__EXIProbe": {
      "params": [
@@ -7931,6 +10710,9 @@
       "exi",
       "rc",
       "t"
+     ],
+     "types": [
+      "long"
      ]
     },
     "EXIProbe": {
@@ -7941,13 +10723,19 @@
       "exi",
       "id",
       "rc"
+     ],
+     "types": [
+      "long"
      ]
     },
     "EXIProbeEx": {
      "params": [
       "chan"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long"
+     ]
     },
     "__EXIAttach": {
      "params": [
@@ -7957,6 +10745,10 @@
      "locals": [
       "enabled",
       "exi"
+     ],
+     "types": [
+      "long",
+      "function *"
      ]
     },
     "EXIAttach": {
@@ -7968,6 +10760,10 @@
       "enabled",
       "exi",
       "rc"
+     ],
+     "types": [
+      "long",
+      "function *"
      ]
     },
     "EXIDetach": {
@@ -7977,6 +10773,9 @@
      "locals": [
       "enabled",
       "exi"
+     ],
+     "types": [
+      "long"
      ]
     },
     "EXISelect": {
@@ -7989,6 +10788,11 @@
       "cpr",
       "enabled",
       "exi"
+     ],
+     "types": [
+      "long",
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "EXIDeselect": {
@@ -7999,6 +10803,9 @@
       "cpr",
       "enabled",
       "exi"
+     ],
+     "types": [
+      "long"
      ]
     },
     "EXIIntrruptHandler": {
@@ -8011,6 +10818,10 @@
       "chan",
       "exceptionContext",
       "exi"
+     ],
+     "types": [
+      "signed short",
+      "OSContext *"
      ]
     },
     "TCIntrruptHandler": {
@@ -8023,6 +10834,10 @@
       "chan",
       "exceptionContext",
       "exi"
+     ],
+     "types": [
+      "signed short",
+      "OSContext *"
      ]
     },
     "EXTIntrruptHandler": {
@@ -8035,13 +10850,18 @@
       "chan",
       "exceptionContext",
       "exi"
+     ],
+     "types": [
+      "signed short",
+      "OSContext *"
      ]
     },
     "EXIInit": {
      "params": [],
      "locals": [
       "id"
-     ]
+     ],
+     "types": []
     },
     "EXILock": {
      "params": [
@@ -8053,6 +10873,11 @@
       "enabled",
       "exi",
       "i"
+     ],
+     "types": [
+      "long",
+      "unsigned long",
+      "function *"
      ]
     },
     "EXIUnlock": {
@@ -8063,6 +10888,9 @@
       "enabled",
       "exi",
       "unlockedCallback"
+     ],
+     "types": [
+      "long"
      ]
     },
     "EXIGetState": {
@@ -8071,6 +10899,9 @@
      ],
      "locals": [
       "exi"
+     ],
+     "types": [
+      "long"
      ]
     },
     "UnlockedHandler": {
@@ -8079,6 +10910,9 @@
      ],
      "locals": [
       "id"
+     ],
+     "types": [
+      "long"
      ]
     },
     "EXIGetID": {
@@ -8093,6 +10927,11 @@
       "err",
       "exi",
       "startTime"
+     ],
+     "types": [
+      "long",
+      "unsigned long",
+      "unsigned long *"
      ]
     }
    }
@@ -8109,6 +10948,11 @@
      "locals": [
       "cmd",
       "err"
+     ],
+     "types": [
+      "long",
+      "unsigned long",
+      "unsigned long *"
      ]
     },
     "__OSEnableBarnacle": {
@@ -8118,17 +10962,23 @@
      ],
      "locals": [
       "id"
+     ],
+     "types": [
+      "long",
+      "unsigned long"
      ]
     },
     "InitializeUART": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "QueueLength": {
      "params": [],
      "locals": [
       "cmd"
-     ]
+     ],
+     "types": []
     },
     "WriteUARTN": {
      "params": [
@@ -8143,6 +10993,10 @@
       "ptr",
       "qLen",
       "xLen"
+     ],
+     "types": [
+      "void *",
+      "unsigned long"
      ]
     }
    }
@@ -8152,19 +11006,24 @@
    "functions": {
     "SIBusy": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "SIIsChanBusy": {
      "params": [
       "chan"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long"
+     ]
     },
     "SIClearTCInterrupt": {
      "params": [],
      "locals": [
       "reg"
-     ]
+     ],
+     "types": []
     },
     "CompleteTransfer": {
      "params": [],
@@ -8174,7 +11033,8 @@
       "rLen",
       "sr",
       "temp"
-     ]
+     ],
+     "types": []
     },
     "SITransferNext": {
      "params": [
@@ -8183,6 +11043,9 @@
      "locals": [
       "i",
       "packet"
+     ],
+     "types": [
+      "long"
      ]
     },
     "SIInterruptHandler": {
@@ -8198,6 +11061,10 @@
       "sr",
       "vcount",
       "x"
+     ],
+     "types": [
+      "signed short",
+      "OSContext *"
      ]
     },
     "SIEnablePollingInterrupt": {
@@ -8209,6 +11076,9 @@
       "i",
       "rc",
       "reg"
+     ],
+     "types": [
+      "int"
      ]
     },
     "SIRegisterPollingHandler": {
@@ -8218,6 +11088,9 @@
      "locals": [
       "enabled",
       "i"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "SIUnregisterPollingHandler": {
@@ -8227,11 +11100,15 @@
      "locals": [
       "enabled",
       "i"
+     ],
+     "types": [
+      "function *"
      ]
     },
     "SIInit": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "__SITransfer": {
      "params": [
@@ -8248,6 +11125,14 @@
       "i",
       "rLen",
       "sr"
+     ],
+     "types": [
+      "long",
+      "void *",
+      "unsigned long",
+      "void *",
+      "unsigned long",
+      "function *"
      ]
     },
     "SIGetStatus": {
@@ -8258,6 +11143,9 @@
       "chanShift",
       "enabled",
       "sr"
+     ],
+     "types": [
+      "long"
      ]
     },
     "SISetCommand": {
@@ -8265,11 +11153,16 @@
       "chan",
       "command"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long",
+      "unsigned long"
+     ]
     },
     "SITransferCommands": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     },
     "SISetXY": {
      "params": [
@@ -8279,6 +11172,10 @@
      "locals": [
       "enabled",
       "poll"
+     ],
+     "types": [
+      "unsigned long",
+      "unsigned long"
      ]
     },
     "SIEnablePolling": {
@@ -8288,6 +11185,9 @@
      "locals": [
       "en",
       "enabled"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "SIDisablePolling": {
@@ -8296,6 +11196,9 @@
      ],
      "locals": [
       "enabled"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "SIGetResponseRaw": {
@@ -8304,6 +11207,9 @@
      ],
      "locals": [
       "sr"
+     ],
+     "types": [
+      "long"
      ]
     },
     "SIGetResponse": {
@@ -8314,6 +11220,10 @@
      "locals": [
       "enabled",
       "rc"
+     ],
+     "types": [
+      "long",
+      "void *"
      ]
     },
     "AlarmHandler": {
@@ -8323,6 +11233,9 @@
      "locals": [
       "chan",
       "packet"
+     ],
+     "types": [
+      "OSAlarm *"
      ]
     },
     "SITransfer": {
@@ -8340,6 +11253,15 @@
       "fire",
       "now",
       "packet"
+     ],
+     "types": [
+      "long",
+      "void *",
+      "unsigned long",
+      "void *",
+      "unsigned long",
+      "function *",
+      "long long"
      ]
     },
     "CallTypeAndStatusCallback": {
@@ -8350,6 +11272,10 @@
      "locals": [
       "callback",
       "i"
+     ],
+     "types": [
+      "long",
+      "unsigned long"
      ]
     },
     "GetTypeCallback": {
@@ -8362,6 +11288,10 @@
       "fix",
       "id",
       "type"
+     ],
+     "types": [
+      "long",
+      "unsigned long"
      ]
     },
     "SIGetType": {
@@ -8372,6 +11302,9 @@
       "diff",
       "enabled",
       "type"
+     ],
+     "types": [
+      "long"
      ]
     },
     "SIGetTypeAsync": {
@@ -8383,6 +11316,10 @@
       "enabled",
       "i",
       "type"
+     ],
+     "types": [
+      "long",
+      "function *"
      ]
     },
     "SIDecodeType": {
@@ -8391,13 +11328,19 @@
      ],
      "locals": [
       "error"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "SIProbe": {
      "params": [
       "chan"
      ],
-     "locals": []
+     "locals": [],
+     "types": [
+      "long"
+     ]
     }
    }
   },
@@ -8412,11 +11355,15 @@
       "enabled",
       "progressive",
       "xy"
+     ],
+     "types": [
+      "unsigned long"
      ]
     },
     "SIRefreshSamplingRate": {
      "params": [],
-     "locals": []
+     "locals": [],
+     "types": []
     }
    }
   }

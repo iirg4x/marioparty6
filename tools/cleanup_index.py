@@ -392,6 +392,36 @@ def _parameter_names(text: str) -> List[str]:
     return names
 
 
+SDK_TYPEDEFS = {"u8": "unsigned char", "s8": "signed char", "u16": "unsigned short", "s16": "short",
+                "u32": "unsigned long", "s32": "long", "u64": "unsigned long long", "s64": "long long",
+                "f32": "float", "f64": "double", "BOOL": "int", "size_t": "unsigned long", "vu32": "unsigned long",
+                "vu16": "unsigned short", "signed short": "short", "signed long": "long", "signed int": "int"}
+BASIC_TYPES = set(SDK_TYPEDEFS.values()) | {"char", "unsigned char", "short", "unsigned short", "int", "unsigned int",
+                                            "long", "unsigned long", "float", "double", "void", "long long"}
+
+
+def _canonical_type(text: str) -> str:
+    """A type spelled the way the comparison needs: qualifiers dropped, SDK typedefs resolved, one * per level."""
+    stars = text.count("*") + text.count("[")
+    words = re.sub(r"\b(?:const|volatile|struct|union|enum|register)\b|[\*\[\]&]", " ", text).split()
+    base = " ".join(words) if words else "?"
+    return SDK_TYPEDEFS.get(base, base) + "*" * stars
+
+
+def _parameter_types(text: str) -> List[str]:
+    types = []
+    for part in text.split(","):
+        part = part.strip()
+        if part in ("", "void", "..."):
+            continue
+        if re.search(r"\(\s*\*", part):
+            types.append("function*")
+            continue
+        found = re.search(r"([A-Za-z_]\w*)\s*((?:\[[^\]]*\])*)\s*$", part)
+        types.append(_canonical_type(part[:found.start(1)] + (found.group(2) or "")) if found else "?")
+    return types
+
+
 def _block_end(code: str, brace: int) -> int:
     depth = 0
     for at in range(brace, len(code)):
@@ -430,6 +460,16 @@ def scan_sdk_debug_names(texts: Mapping[str, str]) -> List[dict]:
                 if len(ours) == len(original["params"]) and ours != original["params"]:
                     site(file, match.start(), text, "{}: Nintendo's debug info names the parameters ({}); here ({})".format(
                         match.group(1), ", ".join(original["params"]), ", ".join(ours)))
+                # the DWARF resolves typedefs (u32 is unsigned long), so only plain C types compare
+                ours_types = _parameter_types(match.group(2))
+                theirs_types = [_canonical_type(t) for t in original.get("types", [])]
+                if len(ours_types) == len(theirs_types):
+                    differing = [(a, b, n) for a, b, n in zip(ours_types, theirs_types, original["params"])
+                                 if a != b and a.rstrip("*") in BASIC_TYPES and b.rstrip("*") in BASIC_TYPES
+                                 and b != "void*"]          # DWARF 1's generic pointer hides the depth
+                    if differing:
+                        site(file, match.start(), text, "{}: Nintendo's debug info types {}".format(
+                            match.group(1), "; ".join(f"{n} as {b}, here {a}" for a, b, n in differing)))
                 if not original["locals"]:
                     continue
                 body = code[match.end():_block_end(code, match.end() - 1)]
