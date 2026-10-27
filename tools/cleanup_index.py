@@ -1257,7 +1257,7 @@ METHODOLOGY = [
     "Comments, string literals, and character literals are blanked before matching; line numbers refer to the scanned source.",
     "Pointer casts are counted at the outermost expression, so nested casts in one access are not emitted again. Pragmas count once except push/pop plumbing. A MUST_MATCH conditional counts once only when it contains non-directive code.",
     "Function and data names made from addresses (fn_1_XXXX, lbl_1_data_XXX) are not listed: the project keeps them until the original names are known.",
-    "Once an original artifact shows the name (a link map, a $Id line, a retail string), the address name is listed as 'original name known' wherever a source or a symbols.txt still uses it. The first such artifact is Nintendo's link map on the Mario Kart: Double Dash!! debug disc (2004-07-05), which names library data MP6 shares.",
+    "Once an original artifact shows the name (a link map, a $Id line, a retail string), the address name is listed as 'original name known' wherever a source or a symbols.txt still uses it. The artifacts so far: Hudson's own engine left unstripped on Hudson Selection Vol. 4 (huos.elf and huos.MAP, matched to MP6 by code or by symbol order), Nintendo's link map on the Mario Kart: Double Dash!! debug disc, and MP6's own retail assert texts, which name source files.",
 ]
 
 
