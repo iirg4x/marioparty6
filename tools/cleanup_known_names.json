@@ -1,0 +1,95 @@
+{
+ "about": "Original names of code MP6 still calls by address, each shown by an original artifact. The cleanup index lists every use of the address name. The first names come from Nintendo's link map on the Mario Kart: Double Dash!! (USA) debug disc (2004-07-05): in 198 file sections of MP6's libraries the symbol sizes run in the same order as the map's, 497 names already agree, and these take the map's name.",
+ "names": [
+  {
+   "address_name": "lbl_802B1950",
+   "name": "protopool",
+   "where": "MSL_C.PPCEABI.bare.H/alloc.c (.bss)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_80216810",
+   "name": "fix_pool_sizes",
+   "where": "MSL_C.PPCEABI.bare.H/alloc.c (.rodata)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_802B1988",
+   "name": "stderr_buff",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_files.c (.bss)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_802B1A88",
+   "name": "stdout_buff",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_files.c (.bss)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_802B1B88",
+   "name": "stdin_buff",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_files.c (.bss)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_802169D0",
+   "name": "two_over_pi",
+   "where": "MSL_C.PPCEABI.bare.H/e_rem_pio2.c (.rodata)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_80216AD8",
+   "name": "npio2_hw",
+   "where": "MSL_C.PPCEABI.bare.H/e_rem_pio2.c (.rodata)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_80216B58",
+   "name": "init_jk",
+   "where": "MSL_C.PPCEABI.bare.H/k_rem_pio2.c (.rodata)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_80216B68",
+   "name": "PIo2",
+   "where": "MSL_C.PPCEABI.bare.H/k_rem_pio2.c (.rodata)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_80216BA8",
+   "name": "T",
+   "where": "MSL_C.PPCEABI.bare.H/k_tan.c (.rodata)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_802B1C88",
+   "name": "signal_funcs",
+   "where": "MSL_C.PPCEABI.bare.H/signal.c (.bss)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_802B1CD0",
+   "name": "gTRKMsgBufs",
+   "where": "TRK_MINNOW_DOLPHIN/msgbuf.c (.bss)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_802B1CA0",
+   "name": "gTRKEventQueue",
+   "where": "TRK_MINNOW_DOLPHIN/nubevent.c (.bss)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_80245BDC",
+   "name": "gTRKStepStatus",
+   "where": "TRK_MINNOW_DOLPHIN/targimpl.c (.data)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  },
+  {
+   "address_name": "lbl_802BF9F0",
+   "name": "Unit01",
+   "where": "dolphin/mtx/mtx.c (.sdata)",
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+  }
+ ]
+}

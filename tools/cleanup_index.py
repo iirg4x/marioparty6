@@ -234,8 +234,16 @@ AUDIT_CATEGORIES: Mapping[Tuple[str, Optional[str]], Tuple[str, str, str, str]] 
 AUDIT_SKIPPED = {("steering", "pragma"), ("offset-access", None), ("comments", "no file description"),
                  ("comments", "uncommented function"), ("layout", None), ("address-names", None)}
 GAME_CODE = ("src/game/", "src/board/", "src/REL/", "include/game/", "include/REL/", "include/board/")
+# An address name whose original name an original artifact shows (27 Oct: Nintendo's link map on the Mario Kart:
+# Double Dash!! debug disc names MSL, TRK and SDK data MP6 still calls lbl_). The names are in
+# cleanup_known_names.json next to this file; each one is listed until the code takes it.
+KNOWN_NAME = ("known-original-name", "original name known", "placeholders",
+              "An address name (fn_, lbl_) whose original name an original artifact shows: a link map, a $Id line, "
+              "a retail string. It must take that name.")
+KNOWN_NAMES_FILE = "cleanup_known_names.json"
+SYMBOL_FILES = re.compile(r"config/(?:GP6E01|dll/rels/[^/]+)/symbols\.txt")
 
-for _id, _label, _family, _description in AUDIT_CATEGORIES.values():
+for _id, _label, _family, _description in list(AUDIT_CATEGORIES.values()) + [KNOWN_NAME]:
     if all(item["id"] != _id for item in CATEGORY_DEFINITIONS):
         CATEGORY_DEFINITIONS += ({"id": _id, "label": _label, "family": _family, "description": _description},)
 CATEGORY_ORDER = {item["id"]: index for index, item in enumerate(CATEGORY_DEFINITIONS)}
@@ -294,6 +302,41 @@ def is_game_code(path: str) -> bool:
 def scan_repository(sources: Mapping[str, str]) -> List[dict]:
     """The audit's cross-file rules over every file at once: {path: text} -> site records."""
     return _audit_sites(_AUDIT.repository_findings(dict(sources)), sources)
+
+
+def _load_known_names() -> List[Mapping[str, str]]:
+    """[{"address_name", "name", "where", "evidence"}] from cleanup_known_names.json, or none."""
+    path = Path(__file__).resolve().with_name(KNOWN_NAMES_FILE)
+    if not path.is_file():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))["names"]
+
+
+def scan_known_names(texts: Mapping[str, str]) -> List[dict]:
+    """Every place a source or a symbols.txt still uses an address name whose original name is known."""
+    names = {entry["address_name"]: entry for entry in _load_known_names()}
+    if not names:
+        return []
+    pattern = re.compile(r"\b(" + "|".join(re.escape(name) for name in sorted(names)) + r")\b")
+    sites = []
+    for path in sorted(texts):
+        if not (path.startswith(("src/", "include/")) or SYMBOL_FILES.fullmatch(path)):
+            continue
+        for number, line in enumerate(texts[path].split("\n"), 1):
+            for match in pattern.finditer(line):
+                entry = names[match.group(1)]
+                sites.append({"path": path, "line": number, "endLine": number, "category": KNOWN_NAME[0],
+                              "detail": "{} is {} in {} ({})".format(match.group(1), entry["name"], entry["where"],
+                                                                     entry["evidence"])[:300],
+                              "source": " ".join(line.split())[:220]})
+    return sites
+
+
+def _symbol_files(repo: Path, commit: str) -> Dict[str, str]:
+    """config/GP6E01/symbols.txt and every REL's symbols.txt at the commit."""
+    raw = _git(repo, "ls-tree", "-r", "--name-only", commit, "--", "config")
+    paths = [p.strip() for p in raw.decode("utf-8", "replace").splitlines() if SYMBOL_FILES.fullmatch(p.strip())]
+    return dict(_pinned_sources(repo, commit, paths))
 
 
 class CleanupIndexError(RuntimeError):
@@ -1148,7 +1191,7 @@ def build_cleanup(repo: Path, commit: str, generated_at: Optional[str] = None) -
     methodology = METHODOLOGY + [
         "Source is read from snapshot.commit through git object storage; the current checkout and binary files are never scanned.",
     ]
-    return cleanup_document(sources, commit, generated_at, methodology)
+    return cleanup_document(sources, commit, generated_at, methodology, symbols=_symbol_files(repo, commit))
 
 
 METHODOLOGY = [
@@ -1159,18 +1202,22 @@ METHODOLOGY = [
     "Comments, string literals, and character literals are blanked before matching; line numbers refer to the scanned source.",
     "Pointer casts are counted at the outermost expression, so nested casts in one access are not emitted again. Pragmas count once except push/pop plumbing. A MUST_MATCH conditional counts once only when it contains non-directive code.",
     "Function and data names made from addresses (fn_1_XXXX, lbl_1_data_XXX) are not listed: the project keeps them until the original names are known.",
+    "Once an original artifact shows the name (a link map, a $Id line, a retail string), the address name is listed as 'original name known' wherever a source or a symbols.txt still uses it. The first such artifact is Nintendo's link map on the Mario Kart: Double Dash!! debug disc (2004-07-05), which names library data MP6 shares.",
 ]
 
 
 def cleanup_document(sources: Mapping[str, str], commit: str, generated_at: Optional[str] = None,
-                     methodology: Optional[Sequence[str]] = None, scan: Any = None, repository: Any = None) -> dict:
+                     methodology: Optional[Sequence[str]] = None, scan: Any = None, repository: Any = None,
+                     symbols: Optional[Mapping[str, str]] = None) -> dict:
     """The cleanup payload for {path: text}, shared by the published site (git objects) and the local dashboard
-    (the working tree, which passes cached versions of `scan` and `repository`)."""
+    (the working tree, which passes cached versions of `scan` and `repository`). `symbols` holds the symbols.txt
+    files, read only for address names whose original name is known."""
 
     sites: List[dict] = []
     for path in sorted(sources):
         sites.extend((scan or scan_source)(path, sources[path]))
     sites.extend((repository or scan_repository)(sources))
+    sites.extend(scan_known_names({**dict(sources), **dict(symbols or {})}))
     categories = [dict(item) for item in CATEGORY_DEFINITIONS]
     known = {item["id"] for item in categories}
     order = dict(CATEGORY_ORDER)
