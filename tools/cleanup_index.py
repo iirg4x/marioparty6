@@ -250,6 +250,9 @@ COUNTER_DRIFT = ("compiler-counter", "compiler counter differs", "invented-struc
 SDK_DEBUG = ("sdk-debug-name", "name differs from Nintendo's debug info", "placeholders",
              "An SDK or MSL parameter, local or struct member named otherwise than in Nintendo's own DWARF: the debug "
              "SDK libraries on the Interactive Multi-Game Demo Disk (July 2004) were built with debug info.")
+STRUCTURE = ("original-structure", "structure differs from the original build", "invented-structure",
+             "Linkage, scope or header placement the original builds show otherwise: a function static or global "
+             "in the original, a variable declared inside a function there, an inline its SDK header defines.")
 KNOWN_NAMES_FILE = "cleanup_known_names.json"
 SDK_DEBUG_FILE = "sdk_debug_names.json"
 SDK_FOLDERS = ("src/dolphin/", "src/MSL_C.PPCEABI.bare.H/", "src/Runtime.PPCEABI.H/", "src/amcstubs/", "src/OdemuExi2/",
@@ -257,7 +260,7 @@ SDK_FOLDERS = ("src/dolphin/", "src/MSL_C.PPCEABI.bare.H/", "src/Runtime.PPCEABI
 SYMBOL_FILES = re.compile(r"config/(?:GP6E01|dll/rels/[^/]+)/symbols\.txt")
 
 for _id, _label, _family, _description in list(AUDIT_CATEGORIES.values()) + [KNOWN_NAME, KNOWN_FILE, COUNTER_DRIFT,
-                                                                             SDK_DEBUG]:
+                                                                             SDK_DEBUG, STRUCTURE]:
     if all(item["id"] != _id for item in CATEGORY_DEFINITIONS):
         CATEGORY_DEFINITIONS += ({"id": _id, "label": _label, "family": _family, "description": _description},)
 CATEGORY_ORDER = {item["id"]: index for index, item in enumerate(CATEGORY_DEFINITIONS)}
@@ -509,12 +512,71 @@ def scan_sdk_debug_names(texts: Mapping[str, str]) -> List[dict]:
     return sites
 
 
+def scan_structure(texts: Mapping[str, str]) -> List[dict]:
+    """Linkage, static scope and header inlines that the original builds show otherwise (cleanup_known_names.json
+    "linkage", "function_statics", "header_inlines")."""
+    sites = []
+
+    def add(path, offset, source, detail):
+        line = source.count("\n", 0, offset) + 1
+        excerpt = source.split("\n")[line - 1] if offset or source else ""
+        sites.append({"path": path, "line": line, "endLine": line, "category": STRUCTURE[0], "detail": detail[:300],
+                      "source": " ".join(excerpt.split())[:220]})
+
+    for entry in _load_known("linkage"):
+        text = texts.get(entry["source"])
+        if text is None:
+            continue
+        code = _mask_literals_and_comments(text)
+        match = re.search(r"^((?:static\s+|inline\s+)*)[A-Za-z_][\w \t\*]*?\b" + re.escape(entry["name"]) +
+                          r"\s*\([^;{}]*\)\s*\{", code, re.MULTILINE)
+        if match and ("static" in match.group(1)) != (entry["original"] == "static"):
+            add(entry["source"], match.start(), text, "{} is {} in the original ({}); here {}".format(
+                entry["name"], entry["original"], entry["evidence"],
+                "static" if "static" in match.group(1) else "global"))
+    for entry in _load_known("function_statics"):
+        text = texts.get(entry["source"])
+        if text is None:
+            continue
+        flat = _mask_literals_and_comments(text)
+        for _ in range(8):
+            flat = re.sub(r"\{[^{}]*\}", lambda m: " " * len(m.group(0)), flat)
+        match = re.search(r"^[^\n;()]*\b" + re.escape(entry["name"]) + r"\b\s*(?:\[[^\]]*\]\s*)*(?:=|;)", flat,
+                          re.MULTILINE)
+        if match and "extern" not in match.group(0):
+            add(entry["source"], match.start(), text, "{} is a static inside a function in the original ({}); here "
+                "it is declared at file level".format(entry["name"], entry["evidence"]))
+    for entry in _load_known("header_inlines"):
+        text = texts.get(entry["header"])
+        missing = [f for f in entry["functions"] if text is None or not re.search(
+            r"\b" + re.escape(f) + r"\s*\([^;{}]*\)\s*\{", _mask_literals_and_comments(text))]
+        if not missing:
+            continue
+        path = entry["header"] if text is not None else entry.get("near", entry["header"])
+        if path not in texts:
+            continue
+        add(path, 0, texts[path], "{} defines the inline{} {} in the original ({}){}".format(
+            entry["original_header"], "s" if len(missing) > 1 else "", ", ".join(missing), entry["evidence"],
+            "" if text is not None else "; this tree has no such header"))
+    # MSL's inlines written again in the game's or the SDK's own headers
+    for entry in _load_known("msl_inlines"):
+        for path in sorted(texts):
+            if not path.startswith("include/") or path.startswith("include/PowerPC_EABI_Support/"):
+                continue
+            match = re.search(r"\b" + re.escape(entry["function"]) + r"\s*\([^;{}]*\)\s*\{",
+                              _mask_literals_and_comments(texts[path]))
+            if match:
+                add(path, match.start(), texts[path], "{} is MSL's inline from {} ({}); here a copy in another "
+                    "header".format(entry["function"], entry["original_header"], entry["evidence"]))
+    return sites
+
+
 def scan_known_names(texts: Mapping[str, str]) -> List[dict]:
     """Every place a source or a symbols.txt still uses an address name whose original name is known, every
-    module missing a file its retail asserts name, every static whose compiler number is not Nintendo's, and every
-    SDK name Nintendo's debug info gives otherwise."""
+    module missing a file its retail asserts name, every static whose compiler number is not Nintendo's, every
+    SDK name Nintendo's debug info gives otherwise, and the original builds' linkage and header structure."""
     names = {entry["address_name"]: entry for entry in _load_known_names()}
-    extra = scan_known_files(texts) + scan_counter_drift(texts) + scan_sdk_debug_names(texts)
+    extra = scan_known_files(texts) + scan_counter_drift(texts) + scan_sdk_debug_names(texts) + scan_structure(texts)
     if not names:
         return extra
     pattern = re.compile(r"\b(" + "|".join(re.escape(name) for name in sorted(names)) + r")\b")

@@ -1297,5 +1297,334 @@
    "original": 343,
    "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   }
+ ],
+ "linkage": [
+  {
+   "source": "src/dolphin/ai/ai.c",
+   "name": "__AI_set_stream_sample_rate",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/ai/ai.c",
+   "name": "__AISHandler",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/ai/ai.c",
+   "name": "__AIDHandler",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/ai/ai.c",
+   "name": "__AICallbackStackSwitch",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/ai/ai.c",
+   "name": "__AI_SRC_INIT",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/mtx/mtx.c",
+   "name": "__PSMTXRotAxisRadInternal",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/os/__ppc_eabi_init.c",
+   "name": "__init_cpp",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/os/OSMemory.c",
+   "name": "Config24MB",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/os/OSMemory.c",
+   "name": "Config48MB",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/os/OSMemory.c",
+   "name": "RealMode",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/dolphin/thp/THPDec.c",
+   "name": "__THPPrepBitStream",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/game/ClusterExec.c",
+   "name": "SetClusterMain",
+   "original": "static",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/data.c",
+   "name": "HuDataDirReadNum",
+   "original": "global",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/hsfdraw.c",
+   "name": "PGObjCall",
+   "original": "static",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/hsfdraw.c",
+   "name": "PGObjCalc",
+   "original": "static",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/hsfdraw.c",
+   "name": "PGObjReplica",
+   "original": "static",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/mapspace.c",
+   "name": "PolygonRangeCheck",
+   "original": "static",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/mapspace.c",
+   "name": "GetPolygonCircleMtx",
+   "original": "global",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/mapspace.c",
+   "name": "PrecalcPntToTriangle",
+   "original": "global",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/objdll.c",
+   "name": "omDLLSearch",
+   "original": "static",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/objmain.c",
+   "name": "omMain",
+   "original": "global",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/pad.c",
+   "name": "PadReadVSync",
+   "original": "global",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/saveload.c",
+   "name": "SLCardMount",
+   "original": "static",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/game/saveload.c",
+   "name": "SLMessOut",
+   "original": "static",
+   "evidence": "Hudson's huos.elf, whose 2003 engine is an earlier version of MP6's"
+  },
+  {
+   "source": "src/MSL_C.PPCEABI.bare.H/alloc.c",
+   "name": "deallocate_from_fixed_pools",
+   "original": "global",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/msm/msmsys.c",
+   "name": "msmSysSearchGroupStack",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/msm/msmsys.c",
+   "name": "msmSysGroupInit",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/musyx/runtime/hw_dolphin.c",
+   "name": "salCallback",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/musyx/runtime/hw_dolphin.c",
+   "name": "dspInitCallback",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/musyx/runtime/hw_dolphin.c",
+   "name": "dspResumeCallback",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/musyx/runtime/snd3d.c",
+   "name": "AddStartingEmitter",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/musyx/runtime/snd3d.c",
+   "name": "StartContinousEmitters",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/musyx/runtime/stream.c",
+   "name": "SetHWMix",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/musyx/runtime/synth_adsr.c",
+   "name": "salChangeADSRState",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/musyx/runtime/synth_vsamples.c",
+   "name": "vsUpdateBuffer",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/Runtime.PPCEABI.H/runtime.c",
+   "name": "__save_fpr",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/Runtime.PPCEABI.H/runtime.c",
+   "name": "__restore_fpr",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/Runtime.PPCEABI.H/runtime.c",
+   "name": "__save_gpr",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/Runtime.PPCEABI.H/runtime.c",
+   "name": "__restore_gpr",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/TRK_MINNOW_DOLPHIN/mem_TRK.c",
+   "name": "TRK_fill_mem",
+   "original": "static",
+   "evidence": "Hudson's huos.elf"
+  },
+  {
+   "source": "src/TRK_MINNOW_DOLPHIN/targimpl.c",
+   "name": "TRKExceptionHandler",
+   "original": "global",
+   "evidence": "Hudson's huos.elf"
+  }
+ ],
+ "function_statics": [
+  {
+   "source": "src/musyx/runtime/hw_dspctrl.c",
+   "name": "voices",
+   "evidence": "the link maps of Hudson Selection Vol. 4, Mario Kart: Double Dash!! debug, Super Mario Strikers and Pokemon XD"
+  },
+  {
+   "source": "src/musyx/runtime/hw_dspctrl.c",
+   "name": "pbOffsets",
+   "evidence": "the link maps of Hudson Selection Vol. 4, Mario Kart: Double Dash!! debug, Super Mario Strikers and Pokemon XD"
+  }
+ ],
+ "header_inlines": [
+  {
+   "header": "include/dolphin/gx/GXGeometry.h",
+   "original_header": "dolphin/gx/GXGeometry.h",
+   "functions": [
+    "GXEnd"
+   ],
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  },
+  {
+   "header": "include/dolphin/gx/GXRegs.h",
+   "near": "include/dolphin/gx/GXPriv.h",
+   "original_header": "GXRegs.h, the SDK's private register header",
+   "functions": [
+    "__GXReadCPCounterU32",
+    "__GXReadMEMCounterU32",
+    "__GXReadPECounterU32"
+   ],
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  },
+  {
+   "header": "include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include/math_ppc.h",
+   "near": "include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h",
+   "original_header": "MSL_C/PPC_EABI/Include/math_ppc.h",
+   "functions": [
+    "fabs",
+    "sqrtf"
+   ],
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  },
+  {
+   "header": "include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include/cmath_gcn.h",
+   "near": "include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h",
+   "original_header": "MSL_C/PPC_EABI/Include/cmath_gcn.h",
+   "functions": [
+    "expf",
+    "fabsf",
+    "sinf"
+   ],
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  }
+ ],
+ "msl_inlines": [
+  {
+   "function": "sqrtf",
+   "original_header": "MSL_C/PPC_EABI/Include/math_ppc.h",
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  },
+  {
+   "function": "fabs",
+   "original_header": "MSL_C/PPC_EABI/Include/math_ppc.h",
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  },
+  {
+   "function": "fabsf",
+   "original_header": "MSL_C/PPC_EABI/Include/cmath_gcn.h",
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  },
+  {
+   "function": "sinf",
+   "original_header": "MSL_C/PPC_EABI/Include/cmath_gcn.h",
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  },
+  {
+   "function": "expf",
+   "original_header": "MSL_C/PPC_EABI/Include/cmath_gcn.h",
+   "evidence": "the July 2004 Interactive Multi-Game Demo Disk's debug SDK DWARF"
+  }
  ]
 }
