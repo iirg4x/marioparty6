@@ -247,10 +247,17 @@ COUNTER_DRIFT = ("compiler-counter", "compiler counter differs", "invented-struc
                  "MWCC numbers a function's statics (name$N) from one counter that the source and headers before it "
                  "advance. Nintendo's link map shows another number: the file or its headers are shaped differently "
                  "from Nintendo's, though the bytes match.")
+SDK_DEBUG = ("sdk-debug-name", "name differs from Nintendo's debug info", "placeholders",
+             "An SDK or MSL parameter, local or struct member named otherwise than in Nintendo's own DWARF: the debug "
+             "SDK libraries on the Interactive Multi-Game Demo Disk (July 2004) were built with debug info.")
 KNOWN_NAMES_FILE = "cleanup_known_names.json"
+SDK_DEBUG_FILE = "sdk_debug_names.json"
+SDK_FOLDERS = ("src/dolphin/", "src/MSL_C.PPCEABI.bare.H/", "src/Runtime.PPCEABI.H/", "src/amcstubs/", "src/OdemuExi2/",
+               "src/odenotstub/", "include/dolphin/")
 SYMBOL_FILES = re.compile(r"config/(?:GP6E01|dll/rels/[^/]+)/symbols\.txt")
 
-for _id, _label, _family, _description in list(AUDIT_CATEGORIES.values()) + [KNOWN_NAME, KNOWN_FILE, COUNTER_DRIFT]:
+for _id, _label, _family, _description in list(AUDIT_CATEGORIES.values()) + [KNOWN_NAME, KNOWN_FILE, COUNTER_DRIFT,
+                                                                             SDK_DEBUG]:
     if all(item["id"] != _id for item in CATEGORY_DEFINITIONS):
         CATEGORY_DEFINITIONS += ({"id": _id, "label": _label, "family": _family, "description": _description},)
 CATEGORY_ORDER = {item["id"]: index for index, item in enumerate(CATEGORY_DEFINITIONS)}
@@ -365,11 +372,109 @@ def scan_counter_drift(texts: Mapping[str, str]) -> List[dict]:
     return sites
 
 
+FUNCTION_DEFINITION = re.compile(r"^[A-Za-z_][\w \t\*]*?\b([A-Za-z_]\w*)\s*\(([^;{}()]*(?:\([^;{}()]*\)[^;{}()]*)*)\)"
+                                 r"\s*\{", re.MULTILINE)
+LOCAL_DECLARATION = re.compile(r"^\s*(?:(?:const|volatile|static|register|unsigned|signed|struct|union|enum)\s+)*"
+                               r"([A-Za-z_]\w*)(?:\s+|\s*\*+\s*)([A-Za-z_]\w*(?:\s*\[[^\]]*\])*(?:\s*=[^,;]*)?"
+                               r"(?:\s*,\s*\**\s*[A-Za-z_]\w*(?:\s*\[[^\]]*\])*(?:\s*=[^,;]*)?)*)\s*;", re.MULTILINE)
+STRUCT_DEFINITION = re.compile(r"\b(?:typedef\s+)?struct\s+([A-Za-z_]\w*)?\s*\{")
+NOT_A_TYPE = {"return", "goto", "case", "else", "do", "while", "if", "for", "switch", "break", "continue", "sizeof"}
+
+
+def _parameter_names(text: str) -> List[str]:
+    names = []
+    for part in text.split(","):
+        part = re.sub(r"\[[^\]]*\]", "", part).strip()
+        if part in ("", "void", "..."):
+            continue
+        found = re.search(r"\(\s*\*\s*([A-Za-z_]\w*)\s*\)", part) or re.search(r"([A-Za-z_]\w*)\s*$", part)
+        names.append(found.group(1) if found else "?")
+    return names
+
+
+def _block_end(code: str, brace: int) -> int:
+    depth = 0
+    for at in range(brace, len(code)):
+        depth += {"{": 1, "}": -1}.get(code[at], 0)
+        if depth == 0:
+            return at
+    return len(code)
+
+
+def scan_sdk_debug_names(texts: Mapping[str, str]) -> List[dict]:
+    """SDK and MSL parameters, locals and struct members named otherwise than in Nintendo's DWARF."""
+    path = Path(__file__).resolve().with_name(SDK_DEBUG_FILE)
+    if not path.is_file():
+        return []
+    table = json.loads(path.read_text(encoding="utf-8"))
+    sites = []
+
+    def site(file, offset, source, detail):
+        line = source.count("\n", 0, offset) + 1
+        excerpt = source.split("\n")[line - 1] if line - 1 < source.count("\n") + 1 else ""
+        sites.append({"path": file, "line": line, "endLine": line, "category": SDK_DEBUG[0], "detail": detail[:300],
+                      "source": " ".join(excerpt.split())[:220]})
+
+    for file in sorted(texts):
+        if not file.startswith(SDK_FOLDERS):
+            continue
+        text = texts[file]
+        code = _mask_literals_and_comments(text)
+        original_file = table["files"].get(file.rsplit("/", 1)[-1].lower()) if file.endswith(".c") else None
+        if original_file:
+            for match in FUNCTION_DEFINITION.finditer(code):
+                original = original_file["functions"].get(match.group(1))
+                if not original:
+                    continue
+                ours = _parameter_names(match.group(2))
+                if len(ours) == len(original["params"]) and ours != original["params"]:
+                    site(file, match.start(), text, "{}: Nintendo's debug info names the parameters ({}); here ({})".format(
+                        match.group(1), ", ".join(original["params"]), ", ".join(ours)))
+                if not original["locals"]:
+                    continue
+                body = code[match.end():_block_end(code, match.end() - 1)]
+                extra = set()
+                for declaration in LOCAL_DECLARATION.finditer(body):
+                    if declaration.group(1) in NOT_A_TYPE:
+                        continue
+                    for part in declaration.group(2).split(","):
+                        found = re.match(r"\s*\**\s*([A-Za-z_]\w*)", part)
+                        if found and found.group(1) not in NOT_A_TYPE:
+                            extra.add(found.group(1))
+                extra -= set(original["locals"]) | set(original["params"])
+                if extra:
+                    site(file, match.start(), text, "{}: locals {} are not Nintendo's; its debug info has {}".format(
+                        match.group(1), ", ".join(sorted(extra)), ", ".join(original["locals"])))
+        for match in STRUCT_DEFINITION.finditer(code):
+            end = _block_end(code, match.end() - 1)
+            tail = re.match(r"\s*([A-Za-z_]\w*)", code[end + 1:end + 80])
+            name = match.group(1) or (tail.group(1) if tail else None)
+            members = table["structs"].get(name or "") or table["structs"].get(tail.group(1) if tail else "")
+            if not members:
+                continue
+            # preprocessor lines (#if/#endif around members) are not members
+            body = re.sub(r"^[ \t]*#[^\n]*", "", code[match.end():end], flags=re.MULTILINE)
+            depth, ours = 0, []
+            for statement in re.split(r";", body):
+                depth_before = depth
+                depth += statement.count("{") - statement.count("}")
+                if depth_before == 0 and depth == 0:
+                    found = re.search(r"([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)*(?::\s*\d+\s*)?$", statement.strip())
+                    if found:
+                        ours.append(found.group(1))
+            extra = [member for member in ours if member not in members]
+            if extra:
+                site(file, match.start(), text, "struct {}: members {} are not Nintendo's; its debug info has {}".format(
+                    name, ", ".join(extra[:6]), ", ".join(members[:12])))
+    return sites
+
+
 def scan_known_names(texts: Mapping[str, str]) -> List[dict]:
     """Every place a source or a symbols.txt still uses an address name whose original name is known, every
-    module missing a file its retail asserts name, and every static whose compiler number is not Nintendo's."""
+    module missing a file its retail asserts name, every static whose compiler number is not Nintendo's, and every
+    SDK name Nintendo's debug info gives otherwise."""
     names = {entry["address_name"]: entry for entry in _load_known_names()}
-    extra = scan_known_files(texts) + scan_counter_drift(texts)
+    extra = scan_known_files(texts) + scan_counter_drift(texts) + scan_sdk_debug_names(texts)
     if not names:
         return extra
     pattern = re.compile(r"\b(" + "|".join(re.escape(name) for name in sorted(names)) + r")\b")

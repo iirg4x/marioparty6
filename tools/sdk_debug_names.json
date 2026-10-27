@@ -1,0 +1,9791 @@
+{
+ "files": {
+  "ppcarch.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\base\\src\\PPCArch.c",
+   "functions": {
+    "PPCMfmsr": {
+     "params": [],
+     "locals": []
+    },
+    "PPCMtmsr": {
+     "params": [
+      "newMSR"
+     ],
+     "locals": []
+    },
+    "PPCMfhid0": {
+     "params": [],
+     "locals": []
+    },
+    "PPCMthid0": {
+     "params": [
+      "newHID0"
+     ],
+     "locals": []
+    },
+    "PPCMfl2cr": {
+     "params": [],
+     "locals": []
+    },
+    "PPCMtl2cr": {
+     "params": [
+      "newL2cr"
+     ],
+     "locals": []
+    },
+    "PPCMtdec": {
+     "params": [
+      "newDec"
+     ],
+     "locals": []
+    },
+    "PPCSync": {
+     "params": [],
+     "locals": []
+    },
+    "PPCHalt": {
+     "params": [],
+     "locals": []
+    },
+    "PPCMtmmcr0": {
+     "params": [
+      "newMmcr0"
+     ],
+     "locals": []
+    },
+    "PPCMtmmcr1": {
+     "params": [
+      "newMmcr1"
+     ],
+     "locals": []
+    },
+    "PPCMtpmc1": {
+     "params": [
+      "newPmc1"
+     ],
+     "locals": []
+    },
+    "PPCMtpmc2": {
+     "params": [
+      "newPmc2"
+     ],
+     "locals": []
+    },
+    "PPCMtpmc3": {
+     "params": [
+      "newPmc3"
+     ],
+     "locals": []
+    },
+    "PPCMtpmc4": {
+     "params": [
+      "newPmc4"
+     ],
+     "locals": []
+    },
+    "PPCMffpscr": {
+     "params": [],
+     "locals": [
+      "m"
+     ]
+    },
+    "PPCMtfpscr": {
+     "params": [
+      "newFPSCR"
+     ],
+     "locals": [
+      "m"
+     ]
+    },
+    "PPCMfhid2": {
+     "params": [],
+     "locals": []
+    },
+    "PPCMthid2": {
+     "params": [
+      "newhid2"
+     ],
+     "locals": []
+    },
+    "PPCMtwpar": {
+     "params": [
+      "newwpar"
+     ],
+     "locals": []
+    },
+    "PPCDisableSpeculation": {
+     "params": [],
+     "locals": []
+    },
+    "PPCSetFpNonIEEEMode": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "os.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OS.c",
+   "functions": {
+    "__OSFPRInit": {
+     "params": [],
+     "locals": []
+    },
+    "DisableWriteGatherPipe": {
+     "params": [],
+     "locals": [
+      "hid2"
+     ]
+    },
+    "OSGetConsoleType": {
+     "params": [],
+     "locals": []
+    },
+    "ClearArena": {
+     "params": [],
+     "locals": []
+    },
+    "InquiryCallback": {
+     "params": [
+      "block"
+     ],
+     "locals": []
+    },
+    "OSInit": {
+     "params": [],
+     "locals": [
+      "bi2StartAddr",
+      "consoleType"
+     ]
+    },
+    "OSExceptionInit": {
+     "params": [],
+     "locals": [
+      "cb",
+      "destAddr",
+      "exception",
+      "handlerSize",
+      "handlerStart",
+      "oldOpCode",
+      "opCodeAddr",
+      "ops"
+     ]
+    },
+    "__OSDBIntegrator": {
+     "params": [],
+     "locals": []
+    },
+    "__OSDBJump": {
+     "params": [],
+     "locals": []
+    },
+    "__OSSetExceptionHandler": {
+     "params": [
+      "exception",
+      "handler"
+     ],
+     "locals": [
+      "oldHandler"
+     ]
+    },
+    "__OSGetExceptionHandler": {
+     "params": [
+      "exception"
+     ],
+     "locals": []
+    },
+    "OSExceptionVector": {
+     "params": [],
+     "locals": []
+    },
+    "OSDefaultExceptionHandler": {
+     "params": [
+      "exception",
+      "context"
+     ],
+     "locals": []
+    },
+    "__OSPSInit": {
+     "params": [],
+     "locals": []
+    },
+    "__OSGetDIConfig": {
+     "params": [],
+     "locals": []
+    },
+    "OSRegisterVersion": {
+     "params": [
+      "id"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "osaddress.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSAddress.c",
+   "functions": {
+    "OSPhysicalToCached": {
+     "params": [
+      "paddr"
+     ],
+     "locals": []
+    },
+    "OSPhysicalToUncached": {
+     "params": [
+      "paddr"
+     ],
+     "locals": []
+    },
+    "OSCachedToPhysical": {
+     "params": [
+      "caddr"
+     ],
+     "locals": []
+    },
+    "OSUncachedToPhysical": {
+     "params": [
+      "ucaddr"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "osalarm.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSAlarm.c",
+   "functions": {
+    "OSCheckAlarmQueue": {
+     "params": [],
+     "locals": [
+      "alarm"
+     ]
+    },
+    "SetTimer": {
+     "params": [
+      "alarm"
+     ],
+     "locals": [
+      "delta"
+     ]
+    },
+    "OSInitAlarm": {
+     "params": [],
+     "locals": []
+    },
+    "OSCreateAlarm": {
+     "params": [
+      "alarm"
+     ],
+     "locals": []
+    },
+    "InsertAlarm": {
+     "params": [
+      "alarm",
+      "fire",
+      "handler"
+     ],
+     "locals": [
+      "next",
+      "prev",
+      "time"
+     ]
+    },
+    "OSSetAlarm": {
+     "params": [
+      "alarm",
+      "tick",
+      "handler"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "OSCancelAlarm": {
+     "params": [
+      "alarm"
+     ],
+     "locals": [
+      "enabled",
+      "next"
+     ]
+    },
+    "DecrementerExceptionCallback": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "alarm",
+      "exceptionContext",
+      "handler",
+      "next",
+      "time"
+     ]
+    },
+    "DecrementerExceptionHandler": {
+     "params": [
+      "exception",
+      "context"
+     ],
+     "locals": []
+    },
+    "OnReset": {
+     "params": [
+      "final"
+     ],
+     "locals": [
+      "alarm",
+      "next"
+     ]
+    }
+   }
+  },
+  "osalloc.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSAlloc.c",
+   "functions": {
+    "DLAddFront": {
+     "params": [
+      "list",
+      "cell"
+     ],
+     "locals": []
+    },
+    "DLLookup": {
+     "params": [
+      "list",
+      "cell"
+     ],
+     "locals": []
+    },
+    "DLExtract": {
+     "params": [
+      "list",
+      "cell"
+     ],
+     "locals": []
+    },
+    "DLInsert": {
+     "params": [
+      "list",
+      "cell"
+     ],
+     "locals": [
+      "next",
+      "prev"
+     ]
+    },
+    "DLOverlap": {
+     "params": [
+      "list",
+      "start",
+      "end"
+     ],
+     "locals": [
+      "cell"
+     ]
+    },
+    "OSAllocFromHeap": {
+     "params": [
+      "heap",
+      "size"
+     ],
+     "locals": [
+      "cell",
+      "hd",
+      "leftoverSize",
+      "newCell",
+      "requested"
+     ]
+    },
+    "OSFreeToHeap": {
+     "params": [
+      "heap",
+      "ptr"
+     ],
+     "locals": [
+      "cell",
+      "hd"
+     ]
+    },
+    "OSSetCurrentHeap": {
+     "params": [
+      "heap"
+     ],
+     "locals": [
+      "prev"
+     ]
+    },
+    "OSInitAlloc": {
+     "params": [
+      "arenaStart",
+      "arenaEnd",
+      "maxHeaps"
+     ],
+     "locals": [
+      "arraySize",
+      "hd",
+      "i"
+     ]
+    },
+    "OSCreateHeap": {
+     "params": [
+      "start",
+      "end"
+     ],
+     "locals": [
+      "cell",
+      "hd",
+      "heap"
+     ]
+    },
+    "OSCheckHeap": {
+     "params": [
+      "heap"
+     ],
+     "locals": [
+      "cell",
+      "free",
+      "hd",
+      "total"
+     ]
+    }
+   }
+  },
+  "osarena.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSArena.c",
+   "functions": {
+    "OSGetArenaHi": {
+     "params": [],
+     "locals": []
+    },
+    "OSGetArenaLo": {
+     "params": [],
+     "locals": []
+    },
+    "OSSetArenaHi": {
+     "params": [
+      "newHi"
+     ],
+     "locals": []
+    },
+    "OSSetArenaLo": {
+     "params": [
+      "newLo"
+     ],
+     "locals": []
+    },
+    "OSAllocFromArenaLo": {
+     "params": [
+      "size",
+      "align"
+     ],
+     "locals": [
+      "arenaLo",
+      "ptr"
+     ]
+    }
+   }
+  },
+  "osaudiosystem.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSAudioSystem.c",
+   "functions": {
+    "__OSInitAudioSystem": {
+     "params": [],
+     "locals": [
+      "errFlag",
+      "reg16",
+      "start_tick"
+     ]
+    },
+    "__OSStopAudioSystem": {
+     "params": [],
+     "locals": [
+      "reg16",
+      "start_tick"
+     ]
+    }
+   }
+  },
+  "oscache.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSCache.c",
+   "functions": {
+    "DCEnable": {
+     "params": [],
+     "locals": []
+    },
+    "DCInvalidateRange": {
+     "params": [
+      "addr",
+      "nBytes"
+     ],
+     "locals": []
+    },
+    "DCFlushRange": {
+     "params": [
+      "addr",
+      "nBytes"
+     ],
+     "locals": []
+    },
+    "DCStoreRange": {
+     "params": [
+      "addr",
+      "nBytes"
+     ],
+     "locals": []
+    },
+    "DCFlushRangeNoSync": {
+     "params": [
+      "addr",
+      "nBytes"
+     ],
+     "locals": []
+    },
+    "ICInvalidateRange": {
+     "params": [
+      "addr",
+      "nBytes"
+     ],
+     "locals": []
+    },
+    "ICFlashInvalidate": {
+     "params": [],
+     "locals": []
+    },
+    "ICEnable": {
+     "params": [],
+     "locals": []
+    },
+    "LCDisable": {
+     "params": [],
+     "locals": []
+    },
+    "L2Init": {
+     "params": [],
+     "locals": [
+      "oldMSR"
+     ]
+    },
+    "L2Enable": {
+     "params": [],
+     "locals": []
+    },
+    "L2Disable": {
+     "params": [],
+     "locals": []
+    },
+    "L2GlobalInvalidate": {
+     "params": [],
+     "locals": []
+    },
+    "DMAErrorHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "hid2"
+     ]
+    },
+    "__OSCacheInit": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "oscontext.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSContext.c",
+   "functions": {
+    "__OSLoadFPUContext": {
+     "params": [
+      "dummy",
+      "fpucontext"
+     ],
+     "locals": []
+    },
+    "__OSSaveFPUContext": {
+     "params": [
+      "dummy1",
+      "dummy2",
+      "fpucontext"
+     ],
+     "locals": []
+    },
+    "OSSaveFPUContext": {
+     "params": [
+      "fpucontext"
+     ],
+     "locals": []
+    },
+    "OSSetCurrentContext": {
+     "params": [
+      "context"
+     ],
+     "locals": []
+    },
+    "OSGetCurrentContext": {
+     "params": [],
+     "locals": []
+    },
+    "OSSaveContext": {
+     "params": [
+      "context"
+     ],
+     "locals": []
+    },
+    "OSLoadContext": {
+     "params": [
+      "context"
+     ],
+     "locals": []
+    },
+    "OSGetStackPointer": {
+     "params": [],
+     "locals": []
+    },
+    "OSClearContext": {
+     "params": [
+      "context"
+     ],
+     "locals": []
+    },
+    "OSInitContext": {
+     "params": [
+      "context",
+      "pc",
+      "newsp"
+     ],
+     "locals": []
+    },
+    "OSDumpContext": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "currentContext",
+      "enabled",
+      "fpuContext",
+      "i",
+      "p"
+     ]
+    },
+    "OSSwitchFPUContext": {
+     "params": [
+      "exception",
+      "context"
+     ],
+     "locals": []
+    },
+    "__OSContextInit": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "oserror.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSError.c",
+   "functions": {
+    "OSReport": {
+     "params": [
+      "msg"
+     ],
+     "locals": [
+      "marker"
+     ]
+    },
+    "OSPanic": {
+     "params": [
+      "file",
+      "line",
+      "msg"
+     ],
+     "locals": [
+      "i",
+      "marker",
+      "p"
+     ]
+    },
+    "OSSetErrorHandler": {
+     "params": [
+      "error",
+      "handler"
+     ],
+     "locals": [
+      "enabled",
+      "fpscr",
+      "i",
+      "msr",
+      "oldHandler",
+      "thread"
+     ]
+    },
+    "__OSUnhandledException": {
+     "params": [
+      "exception",
+      "context",
+      "dsisr",
+      "dar"
+     ],
+     "locals": [
+      "fpscr",
+      "msr",
+      "now"
+     ]
+    }
+   }
+  },
+  "osexec.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSExec.c",
+   "functions": {
+    "PackArgs": {
+     "params": [
+      "addr",
+      "argc",
+      "argv"
+     ],
+     "locals": [
+      "bootInfo2",
+      "i",
+      "list",
+      "numArgs",
+      "ptr"
+     ]
+    },
+    "Run": {
+     "params": [
+      "entryPoint"
+     ],
+     "locals": []
+    },
+    "StartDol": {
+     "params": [
+      "params",
+      "entry"
+     ],
+     "locals": [
+      "paramsWork"
+     ]
+    },
+    "ReadDisc": {
+     "params": [
+      "addr",
+      "length",
+      "offset"
+     ],
+     "locals": [
+      "block"
+     ]
+    },
+    "Callback": {
+     "params": [],
+     "locals": []
+    },
+    "IsStreamEnabled": {
+     "params": [],
+     "locals": []
+    },
+    "__OSGetExecParams": {
+     "params": [
+      "params"
+     ],
+     "locals": []
+    },
+    "__OSSetExecParams": {
+     "params": [
+      "params",
+      "addr"
+     ],
+     "locals": []
+    },
+    "StopStreaming": {
+     "params": [],
+     "locals": [
+      "block"
+     ]
+    },
+    "GetApploaderPosition": {
+     "params": [],
+     "locals": [
+      "apploaderOffsetInTGC",
+      "tgcHeader"
+     ]
+    },
+    "LoadApploader": {
+     "params": [],
+     "locals": [
+      "header"
+     ]
+    },
+    "LoadDol": {
+     "params": [
+      "params",
+      "getInterface"
+     ],
+     "locals": [
+      "addr",
+      "appGetEntry",
+      "appGetNext",
+      "appInit",
+      "length",
+      "offset",
+      "paramsWork"
+     ]
+    },
+    "IsNewApploader": {
+     "params": [
+      "header"
+     ],
+     "locals": []
+    },
+    "__OSBootDolSimple": {
+     "params": [
+      "doloffset",
+      "restartCode",
+      "regionStart",
+      "regionEnd",
+      "argsUseDefault",
+      "argc",
+      "argv"
+     ],
+     "locals": [
+      "dolEntry",
+      "header",
+      "params"
+     ]
+    },
+    "__OSBootDol": {
+     "params": [
+      "doloffset",
+      "restartCode",
+      "argv"
+     ],
+     "locals": [
+      "argvToPass",
+      "argvlen",
+      "doloffInString",
+      "i",
+      "saveEnd",
+      "saveStart"
+     ]
+    }
+   }
+  },
+  "osfont.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSFont.c",
+   "functions": {
+    "IsSjisLeadByte": {
+     "params": [
+      "c"
+     ],
+     "locals": []
+    },
+    "IsSjisTrailByte": {
+     "params": [
+      "c"
+     ],
+     "locals": []
+    },
+    "GetFontCode": {
+     "params": [
+      "code"
+     ],
+     "locals": [
+      "i",
+      "j"
+     ]
+    },
+    "Decode": {
+     "params": [
+      "s",
+      "d"
+     ],
+     "locals": [
+      "cnt",
+      "code",
+      "flag",
+      "i",
+      "j",
+      "k",
+      "os",
+      "p",
+      "q",
+      "r25",
+      "r7"
+     ]
+    },
+    "GetFontSize": {
+     "params": [
+      "buf"
+     ],
+     "locals": []
+    },
+    "OSGetFontEncode": {
+     "params": [],
+     "locals": []
+    },
+    "ReadROM": {
+     "params": [
+      "buf",
+      "length",
+      "offset"
+     ],
+     "locals": [
+      "len"
+     ]
+    },
+    "ReadFont": {
+     "params": [
+      "buffer"
+     ],
+     "locals": []
+    },
+    "OSLoadFont": {
+     "params": [
+      "fontData",
+      "temp"
+     ],
+     "locals": [
+      "column",
+      "fontCode",
+      "imageSrc",
+      "imageT",
+      "numChars",
+      "row",
+      "sheet",
+      "size",
+      "src",
+      "x",
+      "y"
+     ]
+    },
+    "ExpandFontSheet": {
+     "params": [
+      "src",
+      "dst"
+     ],
+     "locals": [
+      "colorIndex",
+      "i"
+     ]
+    },
+    "OSInitFont": {
+     "params": [
+      "fontData"
+     ],
+     "locals": [
+      "size",
+      "temp"
+     ]
+    },
+    "OSGetFontTexture": {
+     "params": [
+      "string",
+      "image",
+      "x",
+      "y",
+      "width"
+     ],
+     "locals": [
+      "code",
+      "column",
+      "fontCode",
+      "numChars",
+      "row",
+      "sheet"
+     ]
+    },
+    "OSGetFontWidth": {
+     "params": [
+      "string",
+      "width"
+     ],
+     "locals": [
+      "code"
+     ]
+    }
+   }
+  },
+  "osinterrupt.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSInterrupt.c",
+   "functions": {
+    "OSDisableInterrupts": {
+     "params": [],
+     "locals": []
+    },
+    "OSEnableInterrupts": {
+     "params": [],
+     "locals": []
+    },
+    "OSRestoreInterrupts": {
+     "params": [
+      "level"
+     ],
+     "locals": []
+    },
+    "__OSSetInterruptHandler": {
+     "params": [
+      "interrupt",
+      "handler"
+     ],
+     "locals": [
+      "oldHandler"
+     ]
+    },
+    "__OSGetInterruptHandler": {
+     "params": [
+      "interrupt"
+     ],
+     "locals": []
+    },
+    "__OSInterruptInit": {
+     "params": [],
+     "locals": []
+    },
+    "SetInterruptMask": {
+     "params": [
+      "mask",
+      "current"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "__OSMaskInterrupts": {
+     "params": [
+      "global"
+     ],
+     "locals": [
+      "enabled",
+      "local",
+      "mask",
+      "prev"
+     ]
+    },
+    "__OSUnmaskInterrupts": {
+     "params": [
+      "global"
+     ],
+     "locals": [
+      "enabled",
+      "local",
+      "mask",
+      "prev"
+     ]
+    },
+    "__OSDispatchInterrupt": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "cause",
+      "handler",
+      "interrupt",
+      "intsr",
+      "prio",
+      "reg",
+      "unmasked"
+     ]
+    },
+    "ExternalInterruptHandler": {
+     "params": [
+      "exception",
+      "context"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "oslink.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSLink.c",
+   "functions": {
+    "__OSModuleInit": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "osmemory.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSMemory.c",
+   "functions": {
+    "OSGetPhysicalMemSize": {
+     "params": [],
+     "locals": [
+      "BootInfo"
+     ]
+    },
+    "OSGetConsoleSimulatedMemSize": {
+     "params": [],
+     "locals": [
+      "memSize"
+     ]
+    },
+    "OnReset": {
+     "params": [
+      "final"
+     ],
+     "locals": []
+    },
+    "MEMIntrruptHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "addr",
+      "cause"
+     ]
+    },
+    "Config24MB": {
+     "params": [],
+     "locals": []
+    },
+    "Config48MB": {
+     "params": [],
+     "locals": []
+    },
+    "RealMode": {
+     "params": [
+      "addr"
+     ],
+     "locals": []
+    },
+    "__OSInitMemoryProtection": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "size"
+     ]
+    }
+   }
+  },
+  "osmutex.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSMutex.c",
+   "functions": {
+    "__OSUnlockAllMutex": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "__next",
+      "mutex"
+     ]
+    }
+   }
+  },
+  "osreboot.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSReboot.c",
+   "functions": {
+    "__OSReboot": {
+     "params": [
+      "resetCode",
+      "bootDol"
+     ],
+     "locals": [
+      "argvToPass",
+      "exceptionContext"
+     ]
+    },
+    "OSGetSaveRegion": {
+     "params": [
+      "start",
+      "end"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "osreset.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSReset.c",
+   "functions": {
+    "OSRegisterResetFunction": {
+     "params": [
+      "info"
+     ],
+     "locals": [
+      "__next",
+      "__prev"
+     ]
+    },
+    "__OSCallResetFunctions": {
+     "params": [
+      "final"
+     ],
+     "locals": [
+      "err",
+      "info",
+      "priority"
+     ]
+    },
+    "Reset": {
+     "params": [
+      "resetCode"
+     ],
+     "locals": []
+    },
+    "KillThreads": {
+     "params": [],
+     "locals": [
+      "next",
+      "thread"
+     ]
+    },
+    "__OSDoHotReset": {
+     "params": [
+      "resetCode"
+     ],
+     "locals": []
+    },
+    "__OSShutdownDevices": {
+     "params": [
+      "doRecal"
+     ],
+     "locals": [
+      "disableRecalibration",
+      "rc"
+     ]
+    },
+    "OSResetSystem": {
+     "params": [
+      "reset",
+      "resetCode",
+      "forceMenu"
+     ],
+     "locals": [
+      "sram"
+     ]
+    },
+    "OSGetResetCode": {
+     "params": [],
+     "locals": [
+      "resetCode"
+     ]
+    }
+   }
+  },
+  "osresetsw.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSResetSW.c",
+   "functions": {
+    "__OSResetSWInterruptHandler": {
+     "params": [],
+     "locals": [
+      "callback"
+     ]
+    },
+    "OSGetResetButtonState": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "fire",
+      "now",
+      "reg",
+      "state"
+     ]
+    },
+    "OSGetResetSwitchState": {
+     "params": [],
+     "locals": []
+    },
+    "__OSSetResetButtonTimer": {
+     "params": [
+      "min"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    }
+   }
+  },
+  "osrtc.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSRtc.c",
+   "functions": {
+    "ReadSram": {
+     "params": [
+      "buffer"
+     ],
+     "locals": [
+      "cmd",
+      "err"
+     ]
+    },
+    "WriteSramCallback": {
+     "params": [],
+     "locals": []
+    },
+    "WriteSram": {
+     "params": [
+      "buffer",
+      "offset",
+      "size"
+     ],
+     "locals": [
+      "cmd",
+      "err"
+     ]
+    },
+    "__OSInitSram": {
+     "params": [],
+     "locals": []
+    },
+    "LockSram": {
+     "params": [
+      "offset"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "__OSLockSram": {
+     "params": [],
+     "locals": []
+    },
+    "__OSLockSramEx": {
+     "params": [],
+     "locals": []
+    },
+    "UnlockSram": {
+     "params": [
+      "commit",
+      "offset"
+     ],
+     "locals": [
+      "p",
+      "sram"
+     ]
+    },
+    "__OSUnlockSram": {
+     "params": [
+      "commit"
+     ],
+     "locals": []
+    },
+    "__OSUnlockSramEx": {
+     "params": [
+      "commit"
+     ],
+     "locals": []
+    },
+    "__OSSyncSram": {
+     "params": [],
+     "locals": []
+    },
+    "__OSReadROM": {
+     "params": [
+      "buffer",
+      "length",
+      "offset"
+     ],
+     "locals": [
+      "cmd",
+      "err"
+     ]
+    },
+    "OSGetLanguage": {
+     "params": [],
+     "locals": [
+      "language",
+      "sram"
+     ]
+    },
+    "OSSetLanguage": {
+     "params": [
+      "language"
+     ],
+     "locals": [
+      "sram"
+     ]
+    },
+    "OSGetWirelessID": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "id",
+      "sram"
+     ]
+    },
+    "OSSetWirelessID": {
+     "params": [
+      "chan",
+      "id"
+     ],
+     "locals": [
+      "sram"
+     ]
+    },
+    "OSGetGbsMode": {
+     "params": [],
+     "locals": [
+      "mode",
+      "sram"
+     ]
+    },
+    "OSSetGbsMode": {
+     "params": [
+      "mode"
+     ],
+     "locals": [
+      "sram"
+     ]
+    }
+   }
+  },
+  "osstopwatch.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSStopwatch.c",
+   "functions": {
+    "OSInitStopwatch": {
+     "params": [
+      "sw",
+      "name"
+     ],
+     "locals": []
+    },
+    "OSStartStopwatch": {
+     "params": [
+      "sw"
+     ],
+     "locals": []
+    },
+    "OSStopStopwatch": {
+     "params": [
+      "sw"
+     ],
+     "locals": [
+      "interval"
+     ]
+    },
+    "OSCheckStopwatch": {
+     "params": [
+      "sw"
+     ],
+     "locals": [
+      "currTotal"
+     ]
+    },
+    "OSResetStopwatch": {
+     "params": [
+      "sw"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "ossync.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSSync.c",
+   "functions": {
+    "SystemCallVector": {
+     "params": [],
+     "locals": []
+    },
+    "__OSInitSystemCall": {
+     "params": [],
+     "locals": [
+      "addr"
+     ]
+    }
+   }
+  },
+  "osthread.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSThread.c",
+   "functions": {
+    "DefaultSwitchThreadCallback": {
+     "params": [],
+     "locals": []
+    },
+    "__OSThreadInit": {
+     "params": [],
+     "locals": [
+      "__prev",
+      "prio",
+      "thread"
+     ]
+    },
+    "OSSetCurrentThread": {
+     "params": [
+      "thread"
+     ],
+     "locals": []
+    },
+    "OSInitMutexQueue": {
+     "params": [
+      "queue"
+     ],
+     "locals": []
+    },
+    "OSInitThreadQueue": {
+     "params": [
+      "queue"
+     ],
+     "locals": []
+    },
+    "OSGetCurrentThread": {
+     "params": [],
+     "locals": []
+    },
+    "__OSSwitchThread": {
+     "params": [
+      "nextThread"
+     ],
+     "locals": []
+    },
+    "__OSIsThreadActive": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "active"
+     ]
+    },
+    "OSDisableScheduler": {
+     "params": [],
+     "locals": [
+      "count",
+      "enabled"
+     ]
+    },
+    "OSEnableScheduler": {
+     "params": [],
+     "locals": [
+      "count",
+      "enabled"
+     ]
+    },
+    "SetRun": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "__prev"
+     ]
+    },
+    "UnsetRun": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "__next",
+      "__prev",
+      "queue"
+     ]
+    },
+    "__OSGetEffectivePriority": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "blocked",
+      "mutex",
+      "priority"
+     ]
+    },
+    "SetEffectivePriority": {
+     "params": [
+      "thread",
+      "priority"
+     ],
+     "locals": [
+      "__next",
+      "__prev"
+     ]
+    },
+    "UpdatePriority": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "priority"
+     ]
+    },
+    "SelectThread": {
+     "params": [
+      "yield"
+     ],
+     "locals": [
+      "__next",
+      "currentContext",
+      "currentThread",
+      "nextThread",
+      "priority",
+      "queue"
+     ]
+    },
+    "__OSReschedule": {
+     "params": [],
+     "locals": []
+    },
+    "OSCreateThread": {
+     "params": [
+      "thread",
+      "func",
+      "param",
+      "stack",
+      "stackSize",
+      "priority",
+      "attr"
+     ],
+     "locals": [
+      "__prev",
+      "enabled",
+      "i",
+      "sp"
+     ]
+    },
+    "OSExitThread": {
+     "params": [
+      "val"
+     ],
+     "locals": [
+      "__next",
+      "__prev",
+      "currentThread",
+      "enabled"
+     ]
+    },
+    "OSCancelThread": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "__next",
+      "__prev",
+      "enabled"
+     ]
+    },
+    "OSResumeThread": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "__next",
+      "__prev",
+      "enabled",
+      "suspendCount"
+     ]
+    },
+    "OSSuspendThread": {
+     "params": [
+      "thread"
+     ],
+     "locals": [
+      "__next",
+      "__prev",
+      "enabled",
+      "suspendCount"
+     ]
+    },
+    "OSSleepThread": {
+     "params": [
+      "queue"
+     ],
+     "locals": [
+      "__next",
+      "__prev",
+      "currentThread",
+      "enabled"
+     ]
+    },
+    "OSWakeupThread": {
+     "params": [
+      "queue"
+     ],
+     "locals": [
+      "__next",
+      "enabled",
+      "thread"
+     ]
+    },
+    "OSSetThreadPriority": {
+     "params": [
+      "thread",
+      "priority"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "OSGetThreadPriority": {
+     "params": [
+      "thread"
+     ],
+     "locals": []
+    },
+    "OSClearStack": {
+     "params": [
+      "val"
+     ],
+     "locals": [
+      "p",
+      "pattern",
+      "sp"
+     ]
+    }
+   }
+  },
+  "ostime.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\OSTime.c",
+   "functions": {
+    "OSGetTime": {
+     "params": [],
+     "locals": []
+    },
+    "OSGetTick": {
+     "params": [],
+     "locals": []
+    },
+    "__OSGetSystemTime": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "result",
+      "timeAdjustAddr"
+     ]
+    }
+   }
+  },
+  "__start.c": {
+   "path": "C:\\tmp\\dolphin2003May\\build\\libraries\\os\\src\\init\\__start.c",
+   "functions": {
+    "__check_pad3": {
+     "params": [],
+     "locals": []
+    },
+    "__set_debug_bba": {
+     "params": [],
+     "locals": []
+    },
+    "__get_debug_bba": {
+     "params": [],
+     "locals": []
+    },
+    "__start": {
+     "params": [],
+     "locals": []
+    },
+    "__copy_rom_section": {
+     "params": [
+      "dst",
+      "src",
+      "size"
+     ],
+     "locals": []
+    },
+    "__init_bss_section": {
+     "params": [
+      "dst",
+      "size"
+     ],
+     "locals": []
+    },
+    "__init_registers": {
+     "params": [],
+     "locals": []
+    },
+    "__init_data": {
+     "params": [],
+     "locals": [
+      "bii",
+      "dci"
+     ]
+    }
+   }
+  },
+  "db.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\db\\src\\db.c",
+   "functions": {
+    "DBInit": {
+     "params": [],
+     "locals": []
+    },
+    "__DBExceptionDestinationAux": {
+     "params": [],
+     "locals": [
+      "context",
+      "contextAddr"
+     ]
+    },
+    "__DBExceptionDestination": {
+     "params": [],
+     "locals": []
+    },
+    "__DBIsExceptionMarked": {
+     "params": [
+      "exception"
+     ],
+     "locals": [
+      "mask"
+     ]
+    },
+    "DBPrintf": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "mtx.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\mtx\\src\\mtx.c",
+   "functions": {
+    "C_MTXIdentity": {
+     "params": [
+      "m"
+     ],
+     "locals": []
+    },
+    "C_MTXCopy": {
+     "params": [
+      "src",
+      "dst"
+     ],
+     "locals": []
+    },
+    "C_MTXConcat": {
+     "params": [
+      "a",
+      "b",
+      "ab"
+     ],
+     "locals": [
+      "m",
+      "mTmp"
+     ]
+    },
+    "C_MTXInvXpose": {
+     "params": [
+      "src",
+      "invX"
+     ],
+     "locals": [
+      "det",
+      "m",
+      "mTmp"
+     ]
+    },
+    "C_MTXRotRad": {
+     "params": [
+      "m",
+      "axis",
+      "rad"
+     ],
+     "locals": [
+      "cosA",
+      "sinA"
+     ]
+    },
+    "C_MTXRotTrig": {
+     "params": [
+      "m",
+      "axis",
+      "sinA",
+      "cosA"
+     ],
+     "locals": []
+    },
+    "C_MTXTrans": {
+     "params": [
+      "m",
+      "xT",
+      "yT",
+      "zT"
+     ],
+     "locals": []
+    },
+    "C_MTXScale": {
+     "params": [
+      "m",
+      "xS",
+      "yS",
+      "zS"
+     ],
+     "locals": []
+    },
+    "C_MTXLookAt": {
+     "params": [
+      "m",
+      "camPos",
+      "camUp",
+      "target"
+     ],
+     "locals": [
+      "vLook",
+      "vRight",
+      "vUp"
+     ]
+    }
+   }
+  },
+  "mtx44.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\mtx\\src\\mtx44.c",
+   "functions": {
+    "C_MTXPerspective": {
+     "params": [
+      "m",
+      "fovY",
+      "aspect",
+      "n",
+      "f"
+     ],
+     "locals": [
+      "angle",
+      "cot",
+      "tmp"
+     ]
+    },
+    "C_MTXOrtho": {
+     "params": [
+      "m",
+      "t",
+      "b",
+      "l",
+      "r",
+      "n",
+      "f"
+     ],
+     "locals": [
+      "tmp"
+     ]
+    }
+   }
+  },
+  "vec.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\mtx\\src\\vec.c",
+   "functions": {
+    "C_VECNormalize": {
+     "params": [
+      "src",
+      "unit"
+     ],
+     "locals": [
+      "mag"
+     ]
+    },
+    "C_VECCrossProduct": {
+     "params": [
+      "a",
+      "b",
+      "axb"
+     ],
+     "locals": [
+      "vTmp"
+     ]
+    }
+   }
+  },
+  "dvdlow.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dvd\\src\\dvdlow.c",
+   "functions": {
+    "__DVDInitWA": {
+     "params": [],
+     "locals": []
+    },
+    "ProcessNextCommand": {
+     "params": [],
+     "locals": [
+      "n"
+     ]
+    },
+    "__DVDInterruptHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "cause",
+      "cb",
+      "exceptionContext",
+      "intr",
+      "mask",
+      "reg"
+     ]
+    },
+    "AlarmHandler": {
+     "params": [],
+     "locals": [
+      "processed"
+     ]
+    },
+    "AlarmHandlerForTimeout": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "cb",
+      "exceptionContext"
+     ]
+    },
+    "SetTimeoutAlarm": {
+     "params": [
+      "timeout"
+     ],
+     "locals": []
+    },
+    "Read": {
+     "params": [
+      "addr",
+      "length",
+      "offset",
+      "callback"
+     ],
+     "locals": []
+    },
+    "AudioBufferOn": {
+     "params": [],
+     "locals": [
+      "id"
+     ]
+    },
+    "HitCache": {
+     "params": [
+      "curr",
+      "prev"
+     ],
+     "locals": [
+      "blockNumOfCurrStart",
+      "blockNumOfPrevEnd",
+      "cacheBlockSize"
+     ]
+    },
+    "DoJustRead": {
+     "params": [
+      "addr",
+      "length",
+      "offset",
+      "callback"
+     ],
+     "locals": []
+    },
+    "SeekTwiceBeforeRead": {
+     "params": [
+      "addr",
+      "length",
+      "offset",
+      "callback"
+     ],
+     "locals": [
+      "offsetToSeek"
+     ]
+    },
+    "WaitBeforeRead": {
+     "params": [
+      "addr",
+      "length",
+      "offset",
+      "callback",
+      "wait"
+     ],
+     "locals": []
+    },
+    "DVDLowRead": {
+     "params": [
+      "addr",
+      "length",
+      "offset",
+      "callback"
+     ],
+     "locals": [
+      "blockNumOfCurrStart",
+      "blockNumOfPrevEnd",
+      "diff"
+     ]
+    },
+    "DVDLowSeek": {
+     "params": [
+      "offset",
+      "callback"
+     ],
+     "locals": []
+    },
+    "DVDLowWaitCoverClose": {
+     "params": [
+      "callback"
+     ],
+     "locals": []
+    },
+    "DVDLowReadDiskID": {
+     "params": [
+      "diskID",
+      "callback"
+     ],
+     "locals": []
+    },
+    "DVDLowStopMotor": {
+     "params": [
+      "callback"
+     ],
+     "locals": []
+    },
+    "DVDLowRequestError": {
+     "params": [
+      "callback"
+     ],
+     "locals": []
+    },
+    "DVDLowInquiry": {
+     "params": [
+      "info",
+      "callback"
+     ],
+     "locals": []
+    },
+    "DVDLowAudioStream": {
+     "params": [
+      "subcmd",
+      "length",
+      "offset",
+      "callback"
+     ],
+     "locals": []
+    },
+    "DVDLowRequestAudioStatus": {
+     "params": [
+      "subcmd",
+      "callback"
+     ],
+     "locals": []
+    },
+    "DVDLowAudioBufferConfig": {
+     "params": [
+      "enable",
+      "size",
+      "callback"
+     ],
+     "locals": [
+      "bufSize",
+      "trigger"
+     ]
+    },
+    "DVDLowReset": {
+     "params": [],
+     "locals": [
+      "reg",
+      "resetStart"
+     ]
+    },
+    "DVDLowBreak": {
+     "params": [],
+     "locals": []
+    },
+    "DVDLowClearCallback": {
+     "params": [],
+     "locals": [
+      "old"
+     ]
+    },
+    "__DVDLowSetWAType": {
+     "params": [
+      "type",
+      "seekLoc"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "__DVDLowTestAlarm": {
+     "params": [
+      "alarm"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "dvdfs.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dvd\\src\\dvdfs.c",
+   "functions": {
+    "__DVDFSInit": {
+     "params": [],
+     "locals": []
+    },
+    "isSame": {
+     "params": [
+      "path",
+      "string"
+     ],
+     "locals": []
+    },
+    "DVDConvertPathToEntrynum": {
+     "params": [
+      "pathPtr"
+     ],
+     "locals": [
+      "dirLookAt",
+      "extention",
+      "extentionStart",
+      "i",
+      "illegal",
+      "isDir",
+      "length",
+      "origPathPtr",
+      "ptr",
+      "stringPtr"
+     ]
+    },
+    "DVDOpen": {
+     "params": [
+      "fileName",
+      "fileInfo"
+     ],
+     "locals": [
+      "currentDir",
+      "entry"
+     ]
+    },
+    "DVDClose": {
+     "params": [
+      "fileInfo"
+     ],
+     "locals": []
+    },
+    "myStrncpy": {
+     "params": [
+      "dest",
+      "src",
+      "maxlen"
+     ],
+     "locals": [
+      "i"
+     ]
+    },
+    "entryToPath": {
+     "params": [
+      "entry",
+      "path",
+      "maxlen"
+     ],
+     "locals": [
+      "loc",
+      "name"
+     ]
+    },
+    "DVDConvertEntrynumToPath": {
+     "params": [
+      "entrynum",
+      "path",
+      "maxlen"
+     ],
+     "locals": [
+      "loc"
+     ]
+    },
+    "DVDGetCurrentDir": {
+     "params": [
+      "path",
+      "maxlen"
+     ],
+     "locals": []
+    },
+    "DVDReadAsyncPrio": {
+     "params": [
+      "fileInfo",
+      "addr",
+      "length",
+      "offset",
+      "callback",
+      "prio"
+     ],
+     "locals": []
+    },
+    "cbForReadAsync": {
+     "params": [
+      "result",
+      "block"
+     ],
+     "locals": [
+      "fileInfo"
+     ]
+    },
+    "DVDReadPrio": {
+     "params": [
+      "fileInfo",
+      "addr",
+      "length",
+      "offset",
+      "prio"
+     ],
+     "locals": [
+      "block",
+      "enabled",
+      "result",
+      "retVal",
+      "state"
+     ]
+    },
+    "cbForReadSync": {
+     "params": [],
+     "locals": []
+    },
+    "DVDGetTransferredSize": {
+     "params": [
+      "fileinfo"
+     ],
+     "locals": [
+      "bytes",
+      "cb"
+     ]
+    }
+   }
+  },
+  "dvd.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dvd\\src\\dvd.c",
+   "functions": {
+    "defaultOptionalCommandChecker": {
+     "params": [],
+     "locals": []
+    },
+    "DVDInit": {
+     "params": [],
+     "locals": []
+    },
+    "stateReadingFST": {
+     "params": [],
+     "locals": []
+    },
+    "cbForStateReadingFST": {
+     "params": [
+      "intType"
+     ],
+     "locals": [
+      "finished"
+     ]
+    },
+    "cbForStateError": {
+     "params": [
+      "intType"
+     ],
+     "locals": [
+      "finished"
+     ]
+    },
+    "stateError": {
+     "params": [
+      "error"
+     ],
+     "locals": []
+    },
+    "stateTimeout": {
+     "params": [],
+     "locals": []
+    },
+    "stateGettingError": {
+     "params": [],
+     "locals": []
+    },
+    "CategorizeError": {
+     "params": [
+      "error"
+     ],
+     "locals": []
+    },
+    "CheckCancel": {
+     "params": [
+      "resume"
+     ],
+     "locals": [
+      "finished"
+     ]
+    },
+    "cbForStateGettingError": {
+     "params": [
+      "intType"
+     ],
+     "locals": [
+      "error",
+      "errorCategory",
+      "resume",
+      "status"
+     ]
+    },
+    "cbForUnrecoveredError": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "cbForUnrecoveredErrorRetry": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "stateGoToRetry": {
+     "params": [],
+     "locals": []
+    },
+    "cbForStateGoToRetry": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "stateCheckID": {
+     "params": [],
+     "locals": []
+    },
+    "stateCheckID3": {
+     "params": [],
+     "locals": []
+    },
+    "stateCheckID2a": {
+     "params": [],
+     "locals": []
+    },
+    "cbForStateCheckID2a": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "stateCheckID2": {
+     "params": [],
+     "locals": []
+    },
+    "cbForStateCheckID1": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "cbForStateCheckID2": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "cbForStateCheckID3": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "AlarmHandler": {
+     "params": [],
+     "locals": []
+    },
+    "stateCoverClosed": {
+     "params": [],
+     "locals": [
+      "finished"
+     ]
+    },
+    "stateCoverClosed_CMD": {
+     "params": [],
+     "locals": []
+    },
+    "cbForStateCoverClosed": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "stateMotorStopped": {
+     "params": [],
+     "locals": []
+    },
+    "cbForStateMotorStopped": {
+     "params": [
+      "intType"
+     ],
+     "locals": []
+    },
+    "stateReady": {
+     "params": [],
+     "locals": [
+      "finished"
+     ]
+    },
+    "stateBusy": {
+     "params": [
+      "block"
+     ],
+     "locals": [
+      "finished"
+     ]
+    },
+    "IsImmCommandWithResult": {
+     "params": [
+      "command"
+     ],
+     "locals": [
+      "i"
+     ]
+    },
+    "IsDmaCommand": {
+     "params": [
+      "command"
+     ],
+     "locals": [
+      "i"
+     ]
+    },
+    "cbForStateBusy": {
+     "params": [
+      "intType"
+     ],
+     "locals": [
+      "finished",
+      "result"
+     ]
+    },
+    "issueCommand": {
+     "params": [
+      "prio",
+      "block"
+     ],
+     "locals": [
+      "level",
+      "result"
+     ]
+    },
+    "DVDReadAbsAsyncPrio": {
+     "params": [
+      "block",
+      "addr",
+      "length",
+      "offset",
+      "callback",
+      "prio"
+     ],
+     "locals": [
+      "idle"
+     ]
+    },
+    "DVDReadAbsAsyncForBS": {
+     "params": [
+      "block",
+      "addr",
+      "length",
+      "offset",
+      "callback"
+     ],
+     "locals": [
+      "idle"
+     ]
+    },
+    "DVDReadDiskID": {
+     "params": [
+      "block",
+      "diskID",
+      "callback"
+     ],
+     "locals": [
+      "idle"
+     ]
+    },
+    "DVDCancelStreamAsync": {
+     "params": [
+      "block",
+      "callback"
+     ],
+     "locals": [
+      "idle"
+     ]
+    },
+    "DVDCancelStream": {
+     "params": [
+      "block"
+     ],
+     "locals": [
+      "enabled",
+      "result",
+      "retVal",
+      "state"
+     ]
+    },
+    "cbForCancelStreamSync": {
+     "params": [
+      "result",
+      "block"
+     ],
+     "locals": []
+    },
+    "DVDInquiryAsync": {
+     "params": [
+      "block",
+      "info",
+      "callback"
+     ],
+     "locals": [
+      "idle"
+     ]
+    },
+    "DVDReset": {
+     "params": [],
+     "locals": []
+    },
+    "DVDGetCommandBlockStatus": {
+     "params": [
+      "block"
+     ],
+     "locals": [
+      "enabled",
+      "retVal"
+     ]
+    },
+    "DVDGetDriveStatus": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "retVal"
+     ]
+    },
+    "DVDSetAutoInvalidation": {
+     "params": [
+      "autoInval"
+     ],
+     "locals": [
+      "prev"
+     ]
+    },
+    "DVDPause": {
+     "params": [],
+     "locals": [
+      "level"
+     ]
+    },
+    "DVDResume": {
+     "params": [],
+     "locals": [
+      "level"
+     ]
+    },
+    "DVDCancelAsync": {
+     "params": [
+      "block",
+      "callback"
+     ],
+     "locals": [
+      "enabled",
+      "finished",
+      "old"
+     ]
+    },
+    "DVDCancel": {
+     "params": [
+      "block"
+     ],
+     "locals": [
+      "command",
+      "enabled",
+      "result",
+      "state"
+     ]
+    },
+    "cbForCancelSync": {
+     "params": [],
+     "locals": []
+    },
+    "DVDCancelAllAsync": {
+     "params": [
+      "callback"
+     ],
+     "locals": [
+      "enabled",
+      "p",
+      "retVal"
+     ]
+    },
+    "DVDGetCurrentDiskID": {
+     "params": [],
+     "locals": []
+    },
+    "DVDCheckDisk": {
+     "params": [],
+     "locals": [
+      "coverReg",
+      "enabled",
+      "retVal",
+      "state"
+     ]
+    },
+    "__DVDPrepareResetAsync": {
+     "params": [
+      "callback"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "__DVDTestAlarm": {
+     "params": [
+      "alarm"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "dvdqueue.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dvd\\src\\dvdqueue.c",
+   "functions": {
+    "__DVDClearWaitingQueue": {
+     "params": [],
+     "locals": [
+      "i",
+      "q"
+     ]
+    },
+    "__DVDPushWaitingQueue": {
+     "params": [
+      "prio",
+      "block"
+     ],
+     "locals": [
+      "enabled",
+      "q"
+     ]
+    },
+    "PopWaitingQueuePrio": {
+     "params": [
+      "prio"
+     ],
+     "locals": [
+      "enabled",
+      "q",
+      "tmp"
+     ]
+    },
+    "__DVDPopWaitingQueue": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "i",
+      "q"
+     ]
+    },
+    "__DVDCheckWaitingQueue": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "i",
+      "q"
+     ]
+    },
+    "__DVDDequeueWaitingQueue": {
+     "params": [
+      "block"
+     ],
+     "locals": [
+      "enabled",
+      "next",
+      "prev"
+     ]
+    },
+    "__DVDIsBlockInWaitingQueue": {
+     "params": [
+      "block"
+     ],
+     "locals": [
+      "i",
+      "q",
+      "start"
+     ]
+    }
+   }
+  },
+  "dvderror.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dvd\\src\\dvderror.c",
+   "functions": {
+    "ErrorCode2Num": {
+     "params": [
+      "errorCode"
+     ],
+     "locals": [
+      "i"
+     ]
+    },
+    "Convert": {
+     "params": [
+      "error"
+     ],
+     "locals": [
+      "errorCode",
+      "errorNum",
+      "statusCode"
+     ]
+    },
+    "__DVDStoreErrorCode": {
+     "params": [
+      "error"
+     ],
+     "locals": [
+      "num",
+      "sram"
+     ]
+    }
+   }
+  },
+  "dvdidutils.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dvd\\src\\dvdidutils.c",
+   "functions": {
+    "strnlen": {
+     "params": [
+      "str",
+      "maxlen"
+     ],
+     "locals": [
+      "i"
+     ]
+    },
+    "DVDCompareDiskID": {
+     "params": [
+      "id1",
+      "id2"
+     ],
+     "locals": [
+      "company1",
+      "company2",
+      "diskNum1",
+      "diskNum2",
+      "game1",
+      "game2",
+      "length",
+      "version1",
+      "version2"
+     ]
+    }
+   }
+  },
+  "dvdfatal.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dvd\\src\\dvdFatal.c",
+   "functions": {
+    "__DVDPrintFatalMessage": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "fstload.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dvd\\src\\emu_level2\\fstload.c",
+   "functions": {
+    "cb": {
+     "params": [
+      "result",
+      "block"
+     ],
+     "locals": []
+    },
+    "__fstLoad": {
+     "params": [],
+     "locals": [
+      "arenaHi",
+      "bootInfo",
+      "id",
+      "idTmpBuf",
+      "state"
+     ]
+    }
+   }
+  },
+  "am.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\am\\src\\am.c",
+   "functions": {
+    "__AM_dvd_callback": {
+     "params": [
+      "result",
+      "handle"
+     ],
+     "locals": [
+      "i",
+      "ptr"
+     ]
+    },
+    "__AM_arq_callback": {
+     "params": [
+      "task"
+     ],
+     "locals": [
+      "i",
+      "ptr",
+      "read_request_length",
+      "remainder"
+     ]
+    },
+    "__AM_arq_poll_callback": {
+     "params": [
+      "task"
+     ],
+     "locals": [
+      "i",
+      "ptr"
+     ]
+    },
+    "AMLoadFile": {
+     "params": [
+      "path",
+      "length"
+     ],
+     "locals": [
+      "buffer",
+      "ch",
+      "dvdFileInfo",
+      "old",
+      "readLength",
+      "roundLength"
+     ]
+    },
+    "AMPushData": {
+     "params": [
+      "buffer",
+      "length"
+     ],
+     "locals": [
+      "old",
+      "ptr",
+      "round_length"
+     ]
+    },
+    "__AMPushBuffered": {
+     "params": [
+      "path",
+      "buffer",
+      "buffer_size",
+      "callback",
+      "async_flag"
+     ],
+     "locals": [
+      "actual_read_length",
+      "old",
+      "ptr",
+      "read_request_length",
+      "remainder",
+      "round_file_length",
+      "stack_index"
+     ]
+    },
+    "AMGetZeroBuffer": {
+     "params": [],
+     "locals": []
+    },
+    "AMInit": {
+     "params": [
+      "aramBase",
+      "aramBytes"
+     ],
+     "locals": [
+      "__AMZeroBuffer",
+      "i",
+      "ptr"
+     ]
+    }
+   }
+  },
+  "sp.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\sp\\src\\sp.c",
+   "functions": {
+    "SPInitSoundTable": {
+     "params": [
+      "table",
+      "aramBase",
+      "zeroBase"
+     ],
+     "locals": [
+      "adpcm",
+      "aramBase16",
+      "aramBase4",
+      "aramBase8",
+      "i",
+      "sound",
+      "zeroBase16",
+      "zeroBase4",
+      "zeroBase8"
+     ]
+    },
+    "SPGetSoundEntry": {
+     "params": [
+      "table",
+      "index"
+     ],
+     "locals": []
+    },
+    "SPPrepareSound": {
+     "params": [
+      "sound",
+      "axvpb",
+      "sampleRate"
+     ],
+     "locals": [
+      "currentAddr",
+      "endAddr",
+      "loopAddr",
+      "old",
+      "p",
+      "p1",
+      "srcBits"
+     ]
+    }
+   }
+  },
+  "vi.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\vi\\src\\vi.c",
+   "functions": {
+    "getEncoderType": {
+     "params": [],
+     "locals": []
+    },
+    "cntlzd": {
+     "params": [
+      "bit"
+     ],
+     "locals": [
+      "hi",
+      "lo",
+      "value"
+     ]
+    },
+    "VISetRegs": {
+     "params": [],
+     "locals": [
+      "regIndex"
+     ]
+    },
+    "__VIRetraceHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext",
+      "inter",
+      "reg",
+      "x",
+      "y"
+     ]
+    },
+    "getTiming": {
+     "params": [
+      "mode"
+     ],
+     "locals": []
+    },
+    "__VIInit": {
+     "params": [
+      "mode"
+     ],
+     "locals": [
+      "a",
+      "encoderType",
+      "hct",
+      "nonInter",
+      "tm",
+      "tv",
+      "vct"
+     ]
+    },
+    "AdjustPosition": {
+     "params": [
+      "acv"
+     ],
+     "locals": [
+      "coeff",
+      "frac"
+     ]
+    },
+    "ImportAdjustingValues": {
+     "params": [],
+     "locals": [
+      "sram"
+     ]
+    },
+    "VIInit": {
+     "params": [],
+     "locals": [
+      "dspCfg",
+      "tv",
+      "tvInBootrom",
+      "value"
+     ]
+    },
+    "VIWaitForRetrace": {
+     "params": [],
+     "locals": [
+      "count",
+      "enabled"
+     ]
+    },
+    "setInterruptRegs": {
+     "params": [
+      "tm"
+     ],
+     "locals": [
+      "borrow",
+      "hct",
+      "vct"
+     ]
+    },
+    "setPicConfig": {
+     "params": [
+      "fbSizeX",
+      "xfbMode",
+      "panPosX",
+      "panSizeX",
+      "wordPerLine",
+      "std",
+      "wpl",
+      "xof"
+     ],
+     "locals": []
+    },
+    "setBBIntervalRegs": {
+     "params": [
+      "tm"
+     ],
+     "locals": [
+      "val"
+     ]
+    },
+    "setScalingRegs": {
+     "params": [
+      "panSizeX",
+      "dispSizeX",
+      "threeD"
+     ],
+     "locals": [
+      "scale"
+     ]
+    },
+    "calcFbbs": {
+     "params": [
+      "bufAddr",
+      "panPosX",
+      "panPosY",
+      "wordPerLine",
+      "xfbMode",
+      "dispPosY",
+      "tfbb",
+      "bfbb"
+     ],
+     "locals": [
+      "bytesPerLine",
+      "tmp",
+      "xoffInWords"
+     ]
+    },
+    "setFbbRegs": {
+     "params": [
+      "HorVer",
+      "tfbb",
+      "bfbb",
+      "rtfbb",
+      "rbfbb"
+     ],
+     "locals": [
+      "shifted"
+     ]
+    },
+    "setHorizontalRegs": {
+     "params": [
+      "tm",
+      "dispPosX",
+      "dispSizeX"
+     ],
+     "locals": [
+      "hbe",
+      "hbeHi",
+      "hbeLo",
+      "hbs"
+     ]
+    },
+    "setVerticalRegs": {
+     "params": [
+      "dispPosY",
+      "dispSizeY",
+      "equ",
+      "acv",
+      "prbOdd",
+      "prbEven",
+      "psbOdd",
+      "psbEven",
+      "black"
+     ],
+     "locals": [
+      "actualAcv",
+      "actualPrbEven",
+      "actualPrbOdd",
+      "actualPsbEven",
+      "actualPsbOdd",
+      "c",
+      "d"
+     ]
+    },
+    "PrintDebugPalCaution": {
+     "params": [],
+     "locals": []
+    },
+    "VIConfigure": {
+     "params": [
+      "rm"
+     ],
+     "locals": [
+      "enabled",
+      "newNonInter",
+      "reg",
+      "tm",
+      "tvInBootrom",
+      "tvInGame"
+     ]
+    },
+    "VIFlush": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "regIndex"
+     ]
+    },
+    "VISetNextFrameBuffer": {
+     "params": [
+      "fb"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "VISetBlack": {
+     "params": [
+      "black"
+     ],
+     "locals": [
+      "enabled",
+      "tm"
+     ]
+    },
+    "GetCurrentDisplayPosition": {
+     "params": [
+      "hct",
+      "vct"
+     ],
+     "locals": [
+      "hcount",
+      "vcount",
+      "vcount0"
+     ]
+    },
+    "getCurrentHalfLine": {
+     "params": [],
+     "locals": [
+      "hcount",
+      "vcount"
+     ]
+    },
+    "getCurrentFieldEvenOdd": {
+     "params": [],
+     "locals": []
+    },
+    "VIGetNextField": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "nextField"
+     ]
+    },
+    "VIGetCurrentLine": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "halfLine",
+      "tm"
+     ]
+    },
+    "VIGetTvFormat": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "format"
+     ]
+    },
+    "__VIDisplayPositionToXY": {
+     "params": [
+      "hct",
+      "vct",
+      "x",
+      "y"
+     ],
+     "locals": [
+      "halfLine"
+     ]
+    },
+    "__VIGetCurrentPosition": {
+     "params": [
+      "x",
+      "y"
+     ],
+     "locals": [
+      "hcount",
+      "vcount"
+     ]
+    }
+   }
+  },
+  "i2c.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\vi\\src\\i2c.c",
+   "functions": {
+    "wait4ClkHigh": {
+     "params": [],
+     "locals": [
+      "n"
+     ]
+    },
+    "sendSlaveAddr": {
+     "params": [
+      "slaveAddr"
+     ],
+     "locals": [
+      "i"
+     ]
+    },
+    "__VISendI2CData": {
+     "params": [
+      "slaveAddr",
+      "pData",
+      "nBytes"
+     ],
+     "locals": [
+      "data",
+      "i"
+     ]
+    }
+   }
+  },
+  "initphilips.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\vi\\src\\initphilips.c",
+   "functions": {
+    "send7120Data": {
+     "params": [
+      "range0",
+      "range1"
+     ],
+     "locals": [
+      "buffer",
+      "i"
+     ]
+    },
+    "__VIInitPhilips": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "gpioexi.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\vi\\src\\gpioexi.c",
+   "functions": {
+    "__VIInitI2C": {
+     "params": [],
+     "locals": [
+      "time"
+     ]
+    },
+    "initGpioExi": {
+     "params": [],
+     "locals": []
+    },
+    "__VISetSCL": {
+     "params": [
+      "value"
+     ],
+     "locals": []
+    },
+    "__VIGetSCL": {
+     "params": [],
+     "locals": [
+      "value"
+     ]
+    },
+    "__VISetSDA": {
+     "params": [
+      "value"
+     ],
+     "locals": []
+    },
+    "__VIGetSDA": {
+     "params": [],
+     "locals": [
+      "value"
+     ]
+    },
+    "setVideoReset": {
+     "params": [
+      "value"
+     ],
+     "locals": []
+    },
+    "setI2CEnable": {
+     "params": [
+      "value"
+     ],
+     "locals": []
+    },
+    "gpioOutput": {
+     "params": [
+      "value"
+     ],
+     "locals": []
+    },
+    "gpioOE": {
+     "params": [
+      "value"
+     ],
+     "locals": []
+    },
+    "gpioOut": {
+     "params": [
+      "addr",
+      "value"
+     ],
+     "locals": [
+      "cmd"
+     ]
+    },
+    "gpioInput": {
+     "params": [
+      "p"
+     ],
+     "locals": [
+      "cmd"
+     ]
+    }
+   }
+  },
+  "demoputs.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\demo\\src\\DEMOPuts.c",
+   "functions": {
+    "DEMOSetFontType": {
+     "params": [
+      "attr"
+     ],
+     "locals": []
+    },
+    "DEMOLoadFont": {
+     "params": [
+      "texMap",
+      "texMtx",
+      "texFlt"
+     ],
+     "locals": [
+      "fontTMtx",
+      "height",
+      "width"
+     ]
+    },
+    "DEMOSetupScrnSpc": {
+     "params": [
+      "width",
+      "height",
+      "depth"
+     ],
+     "locals": [
+      "mMtx",
+      "pMtx",
+      "top"
+     ]
+    },
+    "DEMOInitCaption": {
+     "params": [
+      "font_type",
+      "width",
+      "height"
+     ],
+     "locals": []
+    },
+    "DEMOPuts": {
+     "params": [
+      "x",
+      "y",
+      "z",
+      "string"
+     ],
+     "locals": [
+      "c",
+      "i",
+      "len",
+      "s",
+      "str",
+      "t",
+      "w"
+     ]
+    },
+    "DEMOPrintf": {
+     "params": [
+      "x",
+      "y",
+      "z",
+      "fmt"
+     ],
+     "locals": [
+      "buf",
+      "vlist"
+     ]
+    },
+    "DEMOInitROMFont": {
+     "params": [],
+     "locals": []
+    },
+    "DEMOSetROMFontSize": {
+     "params": [
+      "size",
+      "space"
+     ],
+     "locals": []
+    },
+    "DrawFontChar": {
+     "params": [
+      "x",
+      "y",
+      "z",
+      "xChar",
+      "yChar"
+     ],
+     "locals": [
+      "posBottom",
+      "posLeft",
+      "posRight",
+      "posTop",
+      "texBottom",
+      "texLeft",
+      "texRight",
+      "texTop"
+     ]
+    },
+    "LoadSheet": {
+     "params": [
+      "image",
+      "texMapID"
+     ],
+     "locals": [
+      "mtx",
+      "texObj"
+     ]
+    },
+    "DEMORFPuts": {
+     "params": [
+      "x",
+      "y",
+      "z",
+      "string"
+     ],
+     "locals": [
+      "cx",
+      "image",
+      "width",
+      "xChar",
+      "yChar"
+     ]
+    },
+    "DEMOGetRFTextWidth": {
+     "params": [
+      "string"
+     ],
+     "locals": [
+      "cx",
+      "maxWidth",
+      "width"
+     ]
+    },
+    "DEMOGetRFTextHeight": {
+     "params": [
+      "string"
+     ],
+     "locals": [
+      "height"
+     ]
+    }
+   }
+  },
+  "demofont.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\demo\\src\\DEMOFont.c",
+   "functions": {}
+  },
+  "demopad.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\demo\\src\\DEMOPad.c",
+   "functions": {
+    "DEMOPadInit": {
+     "params": [],
+     "locals": [
+      "i"
+     ]
+    }
+   }
+  },
+  "pad.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\pad\\src\\Pad.c",
+   "functions": {
+    "PADEnable": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "chanBit",
+      "cmd",
+      "data"
+     ]
+    },
+    "PADDisable": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "chanBit",
+      "enabled"
+     ]
+    },
+    "DoReset": {
+     "params": [],
+     "locals": [
+      "chanBit"
+     ]
+    },
+    "UpdateOrigin": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "chanBit",
+      "origin"
+     ]
+    },
+    "PADOriginCallback": {
+     "params": [
+      "chan",
+      "error"
+     ],
+     "locals": []
+    },
+    "PADOriginUpdateCallback": {
+     "params": [
+      "chan",
+      "error"
+     ],
+     "locals": []
+    },
+    "PADProbeCallback": {
+     "params": [
+      "chan",
+      "error"
+     ],
+     "locals": []
+    },
+    "PADTypeAndStatusCallback": {
+     "params": [
+      "chan",
+      "type"
+     ],
+     "locals": [
+      "chanBit",
+      "error",
+      "rc",
+      "recalibrate"
+     ]
+    },
+    "PADReceiveCheckCallback": {
+     "params": [
+      "chan",
+      "type"
+     ],
+     "locals": [
+      "chanBit",
+      "error"
+     ]
+    },
+    "PADReset": {
+     "params": [
+      "mask"
+     ],
+     "locals": [
+      "disableBits",
+      "enabled"
+     ]
+    },
+    "PADRecalibrate": {
+     "params": [
+      "mask"
+     ],
+     "locals": [
+      "disableBits",
+      "enabled"
+     ]
+    },
+    "PADInit": {
+     "params": [],
+     "locals": [
+      "chan",
+      "time"
+     ]
+    },
+    "PADRead": {
+     "params": [
+      "status"
+     ],
+     "locals": [
+      "chan",
+      "chanBit",
+      "chanShift",
+      "data",
+      "enabled",
+      "motor",
+      "sr"
+     ]
+    },
+    "PADSetSpec": {
+     "params": [
+      "spec"
+     ],
+     "locals": []
+    },
+    "SPEC0_MakeStatus": {
+     "params": [
+      "status",
+      "data"
+     ],
+     "locals": []
+    },
+    "SPEC1_MakeStatus": {
+     "params": [
+      "status",
+      "data"
+     ],
+     "locals": []
+    },
+    "ClampS8": {
+     "params": [
+      "var",
+      "org"
+     ],
+     "locals": [
+      "max",
+      "min"
+     ]
+    },
+    "ClampU8": {
+     "params": [
+      "var",
+      "org"
+     ],
+     "locals": []
+    },
+    "SPEC2_MakeStatus": {
+     "params": [
+      "chan",
+      "status",
+      "data"
+     ],
+     "locals": [
+      "origin"
+     ]
+    },
+    "PADSync": {
+     "params": [],
+     "locals": []
+    },
+    "OnReset": {
+     "params": [
+      "final"
+     ],
+     "locals": [
+      "sync"
+     ]
+    },
+    "SamplingHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext"
+     ]
+    },
+    "PADSetSamplingCallback": {
+     "params": [
+      "callback"
+     ],
+     "locals": [
+      "prev"
+     ]
+    },
+    "__PADDisableRecalibration": {
+     "params": [
+      "disable"
+     ],
+     "locals": [
+      "enabled",
+      "prev"
+     ]
+    }
+   }
+  },
+  "ai.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ai\\src\\ai.c",
+   "functions": {
+    "AIRegisterDMACallback": {
+     "params": [
+      "callback"
+     ],
+     "locals": [
+      "old",
+      "old_callback"
+     ]
+    },
+    "AIInitDMA": {
+     "params": [
+      "start_addr",
+      "length"
+     ],
+     "locals": [
+      "old"
+     ]
+    },
+    "AIStartDMA": {
+     "params": [],
+     "locals": []
+    },
+    "AIResetStreamSampleCount": {
+     "params": [],
+     "locals": []
+    },
+    "AISetStreamTrigger": {
+     "params": [
+      "trigger"
+     ],
+     "locals": []
+    },
+    "AISetStreamPlayState": {
+     "params": [
+      "state"
+     ],
+     "locals": [
+      "old",
+      "vol_left",
+      "vol_right"
+     ]
+    },
+    "AIGetStreamPlayState": {
+     "params": [],
+     "locals": []
+    },
+    "AISetDSPSampleRate": {
+     "params": [
+      "rate"
+     ],
+     "locals": [
+      "afr_state",
+      "old",
+      "play_state",
+      "vol_left",
+      "vol_right"
+     ]
+    },
+    "AIGetDSPSampleRate": {
+     "params": [],
+     "locals": []
+    },
+    "__AI_set_stream_sample_rate": {
+     "params": [
+      "rate"
+     ],
+     "locals": [
+      "dsp_src_state",
+      "old",
+      "play_state",
+      "vol_left",
+      "vol_right"
+     ]
+    },
+    "AIGetStreamSampleRate": {
+     "params": [],
+     "locals": []
+    },
+    "AISetStreamVolLeft": {
+     "params": [
+      "vol"
+     ],
+     "locals": []
+    },
+    "AIGetStreamVolLeft": {
+     "params": [],
+     "locals": []
+    },
+    "AISetStreamVolRight": {
+     "params": [
+      "vol"
+     ],
+     "locals": []
+    },
+    "AIGetStreamVolRight": {
+     "params": [],
+     "locals": []
+    },
+    "AIInit": {
+     "params": [
+      "stack"
+     ],
+     "locals": []
+    },
+    "__AISHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext"
+     ]
+    },
+    "__AIDHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext",
+      "tmp"
+     ]
+    },
+    "__AICallbackStackSwitch": {
+     "params": [
+      "cb"
+     ],
+     "locals": []
+    },
+    "__AI_SRC_INIT": {
+     "params": [],
+     "locals": [
+      "Init_Cnt",
+      "diff",
+      "done",
+      "rising_32khz",
+      "rising_48khz",
+      "t1",
+      "temp",
+      "temp0",
+      "temp1",
+      "volume",
+      "walking"
+     ]
+    }
+   }
+  },
+  "ar.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ar\\src\\ar.c",
+   "functions": {
+    "ARRegisterDMACallback": {
+     "params": [
+      "callback"
+     ],
+     "locals": [
+      "old",
+      "old_callback"
+     ]
+    },
+    "ARGetDMAStatus": {
+     "params": [],
+     "locals": [
+      "old",
+      "val"
+     ]
+    },
+    "ARStartDMA": {
+     "params": [
+      "type",
+      "mainmem_addr",
+      "aram_addr",
+      "length"
+     ],
+     "locals": [
+      "old"
+     ]
+    },
+    "ARAlloc": {
+     "params": [
+      "length"
+     ],
+     "locals": [
+      "old",
+      "tmp"
+     ]
+    },
+    "ARFree": {
+     "params": [
+      "length"
+     ],
+     "locals": [
+      "old"
+     ]
+    },
+    "ARInit": {
+     "params": [
+      "stack_index_addr",
+      "num_entries"
+     ],
+     "locals": [
+      "old",
+      "refresh"
+     ]
+    },
+    "__ARHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext",
+      "tmp"
+     ]
+    },
+    "__ARClearInterrupt": {
+     "params": [],
+     "locals": [
+      "tmp"
+     ]
+    },
+    "__ARGetInterruptStatus": {
+     "params": [],
+     "locals": []
+    },
+    "__ARWaitForDMA": {
+     "params": [],
+     "locals": []
+    },
+    "__ARWriteDMA": {
+     "params": [
+      "mmem_addr",
+      "aram_addr",
+      "length"
+     ],
+     "locals": []
+    },
+    "__ARReadDMA": {
+     "params": [
+      "mmem_addr",
+      "aram_addr",
+      "length"
+     ],
+     "locals": []
+    },
+    "__ARChecksize": {
+     "params": [],
+     "locals": [
+      "ARAM_mode",
+      "ARAM_size",
+      "buffer",
+      "buffer_pad",
+      "dummy_data",
+      "dummy_data_pad",
+      "i",
+      "save1",
+      "save2",
+      "save3",
+      "save4",
+      "save5",
+      "save_pad_1",
+      "save_pad_2",
+      "save_pad_3",
+      "save_pad_4",
+      "save_pad_5",
+      "test_data",
+      "test_data_pad"
+     ]
+    }
+   }
+  },
+  "arq.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ar\\src\\arq.c",
+   "functions": {
+    "__ARQPopTaskQueueHi": {
+     "params": [],
+     "locals": []
+    },
+    "__ARQServiceQueueLo": {
+     "params": [],
+     "locals": []
+    },
+    "__ARQCallbackHack": {
+     "params": [],
+     "locals": []
+    },
+    "__ARQInterruptServiceRoutine": {
+     "params": [],
+     "locals": []
+    },
+    "ARQInit": {
+     "params": [],
+     "locals": []
+    },
+    "ARQPostRequest": {
+     "params": [
+      "request",
+      "owner",
+      "type",
+      "priority",
+      "source",
+      "dest",
+      "length",
+      "callback"
+     ],
+     "locals": [
+      "level"
+     ]
+    }
+   }
+  },
+  "ax.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AX.c",
+   "functions": {
+    "AXInit": {
+     "params": [],
+     "locals": []
+    },
+    "AXInitEx": {
+     "params": [
+      "outputBufferMode"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "axalloc.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AXAlloc.c",
+   "functions": {
+    "__AXCheckStacks": {
+     "params": [],
+     "locals": [
+      "i",
+      "voice",
+      "voices"
+     ]
+    },
+    "__AXGetStackHead": {
+     "params": [
+      "priority"
+     ],
+     "locals": []
+    },
+    "__AXServiceCallbackStack": {
+     "params": [],
+     "locals": [
+      "p"
+     ]
+    },
+    "__AXInitVoiceStacks": {
+     "params": [],
+     "locals": [
+      "i"
+     ]
+    },
+    "__AXAllocInit": {
+     "params": [],
+     "locals": []
+    },
+    "__AXPushFreeStack": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXPopFreeStack": {
+     "params": [],
+     "locals": [
+      "p"
+     ]
+    },
+    "__AXPushCallbackStack": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXPopCallbackStack": {
+     "params": [],
+     "locals": [
+      "p"
+     ]
+    },
+    "__AXRemoveFromStack": {
+     "params": [
+      "p"
+     ],
+     "locals": [
+      "head",
+      "i",
+      "tail"
+     ]
+    },
+    "__AXPushStackHead": {
+     "params": [
+      "p",
+      "priority"
+     ],
+     "locals": []
+    },
+    "__AXPopStackFromBottom": {
+     "params": [
+      "priority"
+     ],
+     "locals": [
+      "p"
+     ]
+    },
+    "AXFreeVoice": {
+     "params": [
+      "p"
+     ],
+     "locals": [
+      "old"
+     ]
+    },
+    "AXAcquireVoice": {
+     "params": [
+      "priority",
+      "callback",
+      "userContext"
+     ],
+     "locals": [
+      "i",
+      "old",
+      "p"
+     ]
+    }
+   }
+  },
+  "axaux.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AXAux.c",
+   "functions": {
+    "__AXAuxInit": {
+     "params": [],
+     "locals": [
+      "i",
+      "pA",
+      "pB"
+     ]
+    },
+    "__AXGetAuxAInput": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxAInputDpl2": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxAOutput": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxAOutputDpl2R": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxAOutputDpl2Ls": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxAOutputDpl2Rs": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxBInput": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxBOutput": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxBForDPL2": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXGetAuxBOutputDPL2": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXProcessAux": {
+     "params": [],
+     "locals": [
+      "auxData"
+     ]
+    }
+   }
+  },
+  "axcl.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AXCL.c",
+   "functions": {
+    "__AXGetCommandListCycles": {
+     "params": [],
+     "locals": []
+    },
+    "__AXGetCommandListAddress": {
+     "params": [],
+     "locals": [
+      "address"
+     ]
+    },
+    "__AXWriteToCommandList": {
+     "params": [
+      "data"
+     ],
+     "locals": []
+    },
+    "__AXNextFrame": {
+     "params": [
+      "sbuffer",
+      "buffer"
+     ],
+     "locals": [
+      "data",
+      "pCommandList"
+     ]
+    },
+    "__AXClInit": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "axout.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AXOut.c",
+   "functions": {
+    "__AXOutNewFrame": {
+     "params": [
+      "lessDspCycles"
+     ],
+     "locals": [
+      "cl",
+      "dest",
+      "i",
+      "profile",
+      "src"
+     ]
+    },
+    "__AXOutAiCallback": {
+     "params": [],
+     "locals": []
+    },
+    "__AXDSPInitCallback": {
+     "params": [],
+     "locals": []
+    },
+    "__AXDSPResumeCallback": {
+     "params": [],
+     "locals": []
+    },
+    "__AXDSPDoneCallback": {
+     "params": [],
+     "locals": []
+    },
+    "__AXOutInitDSP": {
+     "params": [],
+     "locals": []
+    },
+    "__AXOutInit": {
+     "params": [
+      "outputBufferMode"
+     ],
+     "locals": [
+      "i",
+      "p"
+     ]
+    },
+    "AXRegisterCallback": {
+     "params": [
+      "callback"
+     ],
+     "locals": [
+      "enabled",
+      "oldCB"
+     ]
+    }
+   }
+  },
+  "axspb.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AXSPB.c",
+   "functions": {
+    "__AXGetStudio": {
+     "params": [],
+     "locals": []
+    },
+    "__AXDepopFade": {
+     "params": [
+      "hostSum",
+      "dspVolume",
+      "dspDelta"
+     ],
+     "locals": [
+      "delta",
+      "frames"
+     ]
+    },
+    "__AXPrintStudio": {
+     "params": [],
+     "locals": []
+    },
+    "__AXSPBInit": {
+     "params": [],
+     "locals": []
+    },
+    "__AXDepopVoice": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "axvpb.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AXVPB.c",
+   "functions": {
+    "__AXGetNumVoices": {
+     "params": [],
+     "locals": []
+    },
+    "__AXServiceVPB": {
+     "params": [
+      "pvpb"
+     ],
+     "locals": [
+      "count",
+      "dst",
+      "dst_",
+      "ppbDsp",
+      "ppbUser",
+      "src",
+      "src_",
+      "sync"
+     ]
+    },
+    "__AXDumpVPB": {
+     "params": [
+      "pvpb"
+     ],
+     "locals": [
+      "ppbDsp"
+     ]
+    },
+    "__AXSyncPBs": {
+     "params": [
+      "lessDspCycles"
+     ],
+     "locals": [
+      "cycles",
+      "i",
+      "pvpb"
+     ]
+    },
+    "__AXGetPBs": {
+     "params": [],
+     "locals": []
+    },
+    "__AXSetPBDefault": {
+     "params": [
+      "p"
+     ],
+     "locals": []
+    },
+    "__AXVPBInit": {
+     "params": [],
+     "locals": [
+      "i",
+      "p",
+      "ppb",
+      "ppbi",
+      "ppbu",
+      "pvpb"
+     ]
+    },
+    "AXSetVoiceSrcType": {
+     "params": [
+      "p",
+      "type"
+     ],
+     "locals": [
+      "old",
+      "ppb"
+     ]
+    },
+    "AXSetVoiceState": {
+     "params": [
+      "p",
+      "state"
+     ],
+     "locals": [
+      "old"
+     ]
+    },
+    "AXSetVoiceAddr": {
+     "params": [
+      "p",
+      "addr"
+     ],
+     "locals": [
+      "dst",
+      "old",
+      "src"
+     ]
+    },
+    "AXSetVoiceSrc": {
+     "params": [
+      "p",
+      "src_"
+     ],
+     "locals": [
+      "dst",
+      "old",
+      "src"
+     ]
+    }
+   }
+  },
+  "axprof.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AXProf.c",
+   "functions": {
+    "__AXGetCurrentProfile": {
+     "params": [],
+     "locals": [
+      "profile"
+     ]
+    }
+   }
+  },
+  "axcomp.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\AXComp.c",
+   "functions": {}
+  },
+  "dspcode.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\ax\\src\\DSPCode.c",
+   "functions": {}
+  },
+  "mix.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\mix\\src\\mix.c",
+   "functions": {
+    "__MIXGetVolume": {
+     "params": [
+      "db_"
+     ],
+     "locals": [
+      "db"
+     ]
+    },
+    "__MIXSetPan": {
+     "params": [
+      "channel"
+     ],
+     "locals": [
+      "ipan",
+      "ispan",
+      "pan",
+      "span"
+     ]
+    },
+    "__MIXResetChannel": {
+     "params": [
+      "channel"
+     ],
+     "locals": []
+    },
+    "__MIXClampPan": {
+     "params": [
+      "pan"
+     ],
+     "locals": []
+    },
+    "MIXInit": {
+     "params": [],
+     "locals": [
+      "i"
+     ]
+    },
+    "MIXInitChannel": {
+     "params": [
+      "axvpb",
+      "mode",
+      "input",
+      "auxA",
+      "auxB",
+      "pan",
+      "span",
+      "fader"
+     ],
+     "locals": [
+      "c",
+      "mixerCtrl",
+      "old",
+      "p"
+     ]
+    },
+    "MIXReleaseChannel": {
+     "params": [
+      "axvpb"
+     ],
+     "locals": []
+    },
+    "MIXSetInput": {
+     "params": [
+      "p",
+      "dB"
+     ],
+     "locals": [
+      "channel"
+     ]
+    },
+    "MIXSetPan": {
+     "params": [
+      "p",
+      "pan"
+     ],
+     "locals": [
+      "channel"
+     ]
+    },
+    "MIXUpdateSettings": {
+     "params": [],
+     "locals": [
+      "axvpb",
+      "c",
+      "i",
+      "mixerCtrl",
+      "p",
+      "setNewInputLevel",
+      "setNewMixLevel"
+     ]
+    }
+   }
+  },
+  "dsp.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dsp\\src\\dsp.c",
+   "functions": {
+    "DSPCheckMailToDSP": {
+     "params": [],
+     "locals": []
+    },
+    "DSPCheckMailFromDSP": {
+     "params": [],
+     "locals": []
+    },
+    "DSPReadMailFromDSP": {
+     "params": [],
+     "locals": []
+    },
+    "DSPSendMailToDSP": {
+     "params": [
+      "mail"
+     ],
+     "locals": []
+    },
+    "DSPAssertInt": {
+     "params": [],
+     "locals": [
+      "old",
+      "tmp"
+     ]
+    },
+    "DSPInit": {
+     "params": [],
+     "locals": [
+      "old",
+      "tmp"
+     ]
+    },
+    "DSPCheckInit": {
+     "params": [],
+     "locals": []
+    },
+    "DSPAddTask": {
+     "params": [
+      "task"
+     ],
+     "locals": [
+      "old"
+     ]
+    },
+    "DSPAssertTask": {
+     "params": [
+      "task"
+     ],
+     "locals": [
+      "old"
+     ]
+    }
+   }
+  },
+  "dsp_debug.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dsp\\src\\dsp_debug.c",
+   "functions": {
+    "__DSP_debug_printf": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "dsp_task.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dsp\\src\\dsp_task.c",
+   "functions": {
+    "__DSPHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext",
+      "mail",
+      "tmp"
+     ]
+    },
+    "__DSP_exec_task": {
+     "params": [
+      "curr",
+      "next"
+     ],
+     "locals": []
+    },
+    "__DSP_boot_task": {
+     "params": [
+      "task"
+     ],
+     "locals": [
+      "mail"
+     ]
+    },
+    "__DSP_insert_task": {
+     "params": [
+      "task"
+     ],
+     "locals": [
+      "temp"
+     ]
+    },
+    "__DSP_remove_task": {
+     "params": [
+      "task"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "dtk.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\dtk\\src\\dtk.c",
+   "functions": {
+    "__DTKCallbackForFlush": {
+     "params": [],
+     "locals": [
+      "track"
+     ]
+    },
+    "DTKFlushTracks": {
+     "params": [
+      "callback"
+     ],
+     "locals": [
+      "temp"
+     ]
+    },
+    "DTKGetState": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "cardbios.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDBios.c",
+   "functions": {
+    "__CARDDefaultApiCallback": {
+     "params": [],
+     "locals": []
+    },
+    "__CARDSyncCallback": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "card"
+     ]
+    },
+    "__CARDExtHandler": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "callback",
+      "card"
+     ]
+    },
+    "__CARDExiHandler": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "callback",
+      "card",
+      "result",
+      "status"
+     ]
+    },
+    "__CARDTxHandler": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "callback",
+      "card",
+      "err"
+     ]
+    },
+    "__CARDUnlockedHandler": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "callback",
+      "card"
+     ]
+    },
+    "__CARDEnableInterrupt": {
+     "params": [
+      "chan",
+      "enable"
+     ],
+     "locals": [
+      "cmd",
+      "err"
+     ]
+    },
+    "__CARDReadStatus": {
+     "params": [
+      "chan",
+      "status"
+     ],
+     "locals": [
+      "cmd",
+      "err"
+     ]
+    },
+    "__CARDClearStatus": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "cmd",
+      "err"
+     ]
+    },
+    "TimeoutHandler": {
+     "params": [
+      "alarm"
+     ],
+     "locals": [
+      "callback",
+      "card",
+      "chan"
+     ]
+    },
+    "SetupTimeoutAlarm": {
+     "params": [
+      "card"
+     ],
+     "locals": []
+    },
+    "Retry": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "card"
+     ]
+    },
+    "UnlockedCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "callback",
+      "card"
+     ]
+    },
+    "__CARDStart": {
+     "params": [
+      "chan",
+      "txCallback",
+      "exiCallback"
+     ],
+     "locals": [
+      "card",
+      "enabled",
+      "result"
+     ]
+    },
+    "__CARDReadSegment": {
+     "params": [
+      "chan",
+      "callback"
+     ],
+     "locals": [
+      "card",
+      "result"
+     ]
+    },
+    "__CARDWritePage": {
+     "params": [
+      "chan",
+      "callback"
+     ],
+     "locals": [
+      "card",
+      "result"
+     ]
+    },
+    "__CARDEraseSector": {
+     "params": [
+      "chan",
+      "addr",
+      "callback"
+     ],
+     "locals": [
+      "card",
+      "result"
+     ]
+    },
+    "CARDInit": {
+     "params": [],
+     "locals": [
+      "card",
+      "chan"
+     ]
+    },
+    "__CARDGetFontEncode": {
+     "params": [],
+     "locals": []
+    },
+    "__CARDSetDiskID": {
+     "params": [
+      "diskID"
+     ],
+     "locals": []
+    },
+    "__CARDGetControlBlock": {
+     "params": [
+      "chan",
+      "pcard"
+     ],
+     "locals": [
+      "card",
+      "enabled",
+      "result"
+     ]
+    },
+    "__CARDPutControlBlock": {
+     "params": [
+      "card",
+      "result"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "CARDGetResultCode": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "card"
+     ]
+    },
+    "__CARDSync": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "card",
+      "enabled",
+      "result"
+     ]
+    },
+    "OnReset": {
+     "params": [
+      "final"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "cardunlock.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDUnlock.c",
+   "functions": {
+    "CARDRand": {
+     "params": [],
+     "locals": []
+    },
+    "CARDSrand": {
+     "params": [
+      "seed"
+     ],
+     "locals": []
+    },
+    "exnor_1st": {
+     "params": [
+      "data",
+      "rshift"
+     ],
+     "locals": [
+      "i",
+      "wk",
+      "work"
+     ]
+    },
+    "exnor": {
+     "params": [
+      "data",
+      "lshift"
+     ],
+     "locals": [
+      "i",
+      "wk",
+      "work"
+     ]
+    },
+    "bitrev": {
+     "params": [
+      "data"
+     ],
+     "locals": [
+      "i",
+      "j",
+      "k",
+      "wk"
+     ]
+    },
+    "ReadArrayUnlock": {
+     "params": [
+      "chan",
+      "data",
+      "rbuf",
+      "rlen",
+      "mode"
+     ],
+     "locals": [
+      "card",
+      "cmd",
+      "err"
+     ]
+    },
+    "GetInitVal": {
+     "params": [],
+     "locals": [
+      "tick",
+      "tmp"
+     ]
+    },
+    "DummyLen": {
+     "params": [],
+     "locals": [
+      "max",
+      "tick",
+      "tmp",
+      "wk"
+     ]
+    },
+    "__CARDUnlock": {
+     "params": [
+      "chan",
+      "flashID"
+     ],
+     "locals": [
+      "Ans1",
+      "Ans2",
+      "card",
+      "data",
+      "dp",
+      "dummy",
+      "fsts",
+      "init_val",
+      "input",
+      "output",
+      "para1A",
+      "para1B",
+      "para2A",
+      "para2B",
+      "param",
+      "rbuf",
+      "rlen",
+      "rshift",
+      "task",
+      "wk",
+      "wk1"
+     ]
+    },
+    "InitCallback": {
+     "params": [
+      "_task"
+     ],
+     "locals": [
+      "card",
+      "chan",
+      "param",
+      "task"
+     ]
+    },
+    "DoneCallback": {
+     "params": [
+      "_task"
+     ],
+     "locals": [
+      "Ans2",
+      "card",
+      "chan",
+      "data",
+      "dummy",
+      "fsts",
+      "input",
+      "output",
+      "param",
+      "rbuf",
+      "result",
+      "rlen",
+      "rshift",
+      "task",
+      "wk",
+      "wk1"
+     ]
+    }
+   }
+  },
+  "cardrdwr.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDRdwr.c",
+   "functions": {
+    "BlockReadCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "callback",
+      "card"
+     ]
+    },
+    "__CARDRead": {
+     "params": [
+      "chan",
+      "addr",
+      "length",
+      "dst",
+      "callback"
+     ],
+     "locals": [
+      "card"
+     ]
+    },
+    "BlockWriteCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "callback",
+      "card"
+     ]
+    },
+    "__CARDWrite": {
+     "params": [
+      "chan",
+      "addr",
+      "length",
+      "dst",
+      "callback"
+     ],
+     "locals": [
+      "card"
+     ]
+    }
+   }
+  },
+  "cardblock.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDBlock.c",
+   "functions": {
+    "__CARDGetFatBlock": {
+     "params": [
+      "card"
+     ],
+     "locals": []
+    },
+    "WriteCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "callback",
+      "card",
+      "fat0",
+      "fat1"
+     ]
+    },
+    "EraseCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "addr",
+      "callback",
+      "card",
+      "fat"
+     ]
+    },
+    "__CARDFreeBlock": {
+     "params": [
+      "chan",
+      "nBlock",
+      "callback"
+     ],
+     "locals": [
+      "card",
+      "fat",
+      "nextBlock"
+     ]
+    },
+    "__CARDUpdateFatBlock": {
+     "params": [
+      "chan",
+      "fat",
+      "callback"
+     ],
+     "locals": [
+      "addr",
+      "card"
+     ]
+    }
+   }
+  },
+  "carddir.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDDir.c",
+   "functions": {
+    "__CARDGetDirBlock": {
+     "params": [
+      "card"
+     ],
+     "locals": []
+    },
+    "WriteCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "callback",
+      "card",
+      "dir0",
+      "dir1"
+     ]
+    },
+    "EraseCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "addr",
+      "callback",
+      "card",
+      "dir"
+     ]
+    },
+    "__CARDUpdateDir": {
+     "params": [
+      "chan",
+      "callback"
+     ],
+     "locals": [
+      "addr",
+      "card",
+      "check",
+      "dir"
+     ]
+    }
+   }
+  },
+  "cardcheck.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDCheck.c",
+   "functions": {
+    "__CARDCheckSum": {
+     "params": [
+      "ptr",
+      "length",
+      "checkSum",
+      "checkSumInv"
+     ],
+     "locals": [
+      "i",
+      "p"
+     ]
+    },
+    "VerifyID": {
+     "params": [
+      "card"
+     ],
+     "locals": [
+      "checkSum",
+      "checkSumInv",
+      "i",
+      "id",
+      "rand",
+      "sramEx"
+     ]
+    },
+    "VerifyDir": {
+     "params": [
+      "card",
+      "pcurrent"
+     ],
+     "locals": [
+      "check",
+      "checkSum",
+      "checkSumInv",
+      "current",
+      "dir",
+      "errors",
+      "i"
+     ]
+    },
+    "VerifyFAT": {
+     "params": [
+      "card",
+      "pcurrent"
+     ],
+     "locals": [
+      "cFree",
+      "checkSum",
+      "checkSumInv",
+      "current",
+      "errors",
+      "fat",
+      "fatp",
+      "i",
+      "nBlock"
+     ]
+    },
+    "__CARDVerify": {
+     "params": [
+      "card"
+     ],
+     "locals": [
+      "errors",
+      "result"
+     ]
+    },
+    "CARDCheckExAsync": {
+     "params": [
+      "chan",
+      "xferBytes",
+      "callback"
+     ],
+     "locals": [
+      "cBlock",
+      "cFree",
+      "card",
+      "currentDir",
+      "currentFat",
+      "dir",
+      "enabled",
+      "ent",
+      "errors",
+      "fat",
+      "fileNo",
+      "iBlock",
+      "map",
+      "nextBlock",
+      "result",
+      "updateDir",
+      "updateFat",
+      "updateOrphan"
+     ]
+    },
+    "CARDCheckEx": {
+     "params": [
+      "chan",
+      "xferBytes"
+     ],
+     "locals": [
+      "result"
+     ]
+    },
+    "CARDCheck": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "xferBytes"
+     ]
+    }
+   }
+  },
+  "cardmount.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDMount.c",
+   "functions": {
+    "IsCard": {
+     "params": [
+      "id"
+     ],
+     "locals": [
+      "sectorSize",
+      "size"
+     ]
+    },
+    "__CARDDisable": {
+     "params": [
+      "disable"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "CARDProbe": {
+     "params": [
+      "chan"
+     ],
+     "locals": []
+    },
+    "CARDProbeEx": {
+     "params": [
+      "chan",
+      "memSize",
+      "sectorSize"
+     ],
+     "locals": [
+      "card",
+      "enabled",
+      "id",
+      "probe",
+      "result"
+     ]
+    },
+    "DoMount": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "card",
+      "checkSum",
+      "i",
+      "id",
+      "result",
+      "sram",
+      "status",
+      "step",
+      "vendorID"
+     ]
+    },
+    "__CARDMountCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "callback",
+      "card"
+     ]
+    },
+    "CARDMountAsync": {
+     "params": [
+      "chan",
+      "workArea",
+      "detachCallback",
+      "attachCallback"
+     ],
+     "locals": [
+      "card",
+      "enabled"
+     ]
+    },
+    "CARDMount": {
+     "params": [
+      "chan",
+      "workArea",
+      "detachCallback"
+     ],
+     "locals": [
+      "result"
+     ]
+    },
+    "DoUnmount": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "card",
+      "enabled"
+     ]
+    },
+    "CARDUnmount": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "card",
+      "result"
+     ]
+    }
+   }
+  },
+  "cardopen.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDOpen.c",
+   "functions": {
+    "__CARDCompareFileName": {
+     "params": [
+      "ent",
+      "fileName"
+     ],
+     "locals": [
+      "c1",
+      "c2",
+      "entName",
+      "n"
+     ]
+    },
+    "__CARDAccess": {
+     "params": [
+      "card",
+      "ent"
+     ],
+     "locals": [
+      "diskID"
+     ]
+    },
+    "__CARDGetFileNo": {
+     "params": [
+      "card",
+      "fileName",
+      "pfileNo"
+     ],
+     "locals": [
+      "dir",
+      "ent",
+      "fileNo",
+      "result"
+     ]
+    },
+    "CARDOpen": {
+     "params": [
+      "chan",
+      "fileName",
+      "fileInfo"
+     ],
+     "locals": [
+      "card",
+      "dir",
+      "ent",
+      "fileNo",
+      "result"
+     ]
+    },
+    "__CARDIsOpened": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "carddelete.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDDelete.c",
+   "functions": {
+    "DeleteCallback": {
+     "params": [
+      "chan",
+      "result"
+     ],
+     "locals": [
+      "callback",
+      "card"
+     ]
+    },
+    "CARDDeleteAsync": {
+     "params": [
+      "chan",
+      "fileName",
+      "callback"
+     ],
+     "locals": [
+      "card",
+      "dir",
+      "ent",
+      "fileNo",
+      "result"
+     ]
+    },
+    "CARDDelete": {
+     "params": [
+      "chan",
+      "fileName"
+     ],
+     "locals": [
+      "result"
+     ]
+    }
+   }
+  },
+  "cardnet.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\card\\src\\CARDNet.c",
+   "functions": {}
+  },
+  "gxinit.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXInit.c",
+   "functions": {
+    "EnableWriteGatherPipe": {
+     "params": [],
+     "locals": [
+      "hid2"
+     ]
+    },
+    "__GXDefaultTexRegionCallback": {
+     "params": [
+      "t_obj",
+      "id"
+     ],
+     "locals": [
+      "fmt",
+      "mm"
+     ]
+    },
+    "__GXDefaultTlutRegionCallback": {
+     "params": [
+      "idx"
+     ],
+     "locals": []
+    },
+    "__GXDefaultVerifyCallback": {
+     "params": [
+      "level",
+      "id",
+      "msg"
+     ],
+     "locals": []
+    },
+    "__GXShutdown": {
+     "params": [
+      "final"
+     ],
+     "locals": [
+      "peCountNew",
+      "reg",
+      "timeNew"
+     ]
+    },
+    "GXInit": {
+     "params": [
+      "base",
+      "size"
+     ],
+     "locals": [
+      "freqBase",
+      "i",
+      "reg",
+      "reg1",
+      "reg2",
+      "regAddr"
+     ]
+    },
+    "__GXInitGX": {
+     "params": [],
+     "locals": [
+      "black",
+      "clear",
+      "i",
+      "identity_mtx",
+      "rmode",
+      "tex_obj",
+      "white"
+     ]
+    }
+   }
+  },
+  "gxfifo.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXFifo.c",
+   "functions": {
+    "GXOverflowHandler": {
+     "params": [],
+     "locals": []
+    },
+    "GXUnderflowHandler": {
+     "params": [],
+     "locals": []
+    },
+    "GXBreakPointHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext"
+     ]
+    },
+    "GXCPInterruptHandler": {
+     "params": [
+      "interrupt",
+      "context"
+     ],
+     "locals": []
+    },
+    "GXInitFifoBase": {
+     "params": [
+      "fifo",
+      "base",
+      "size"
+     ],
+     "locals": [
+      "realFifo"
+     ]
+    },
+    "GXInitFifoPtrs": {
+     "params": [
+      "fifo",
+      "readPtr",
+      "writePtr"
+     ],
+     "locals": [
+      "enabled",
+      "realFifo"
+     ]
+    },
+    "GXInitFifoLimits": {
+     "params": [
+      "fifo",
+      "hiWatermark",
+      "loWatermark"
+     ],
+     "locals": [
+      "realFifo"
+     ]
+    },
+    "GXSetCPUFifo": {
+     "params": [
+      "fifo"
+     ],
+     "locals": [
+      "enabled",
+      "realFifo",
+      "reg"
+     ]
+    },
+    "GXSetGPFifo": {
+     "params": [
+      "fifo"
+     ],
+     "locals": [
+      "enabled",
+      "realFifo"
+     ]
+    },
+    "GXGetGPStatus": {
+     "params": [
+      "overhi",
+      "underlow",
+      "readIdle",
+      "cmdIdle",
+      "brkpt"
+     ],
+     "locals": []
+    },
+    "GXGetFifoBase": {
+     "params": [
+      "fifo"
+     ],
+     "locals": [
+      "realFifo"
+     ]
+    },
+    "GXGetFifoSize": {
+     "params": [
+      "fifo"
+     ],
+     "locals": [
+      "realFifo"
+     ]
+    },
+    "GXSetBreakPtCallback": {
+     "params": [
+      "cb"
+     ],
+     "locals": [
+      "enabled",
+      "oldcb"
+     ]
+    },
+    "__GXFifoInit": {
+     "params": [],
+     "locals": []
+    },
+    "__GXFifoReadEnable": {
+     "params": [],
+     "locals": []
+    },
+    "__GXFifoReadDisable": {
+     "params": [],
+     "locals": []
+    },
+    "__GXFifoLink": {
+     "params": [
+      "en"
+     ],
+     "locals": []
+    },
+    "__GXWriteFifoIntEnable": {
+     "params": [
+      "hiWatermarkEn",
+      "loWatermarkEn"
+     ],
+     "locals": []
+    },
+    "__GXWriteFifoIntReset": {
+     "params": [
+      "hiWatermarkClr",
+      "loWatermarkClr"
+     ],
+     "locals": []
+    },
+    "__GXCleanGPFifo": {
+     "params": [],
+     "locals": [
+      "base",
+      "cpuFifo",
+      "dummyFifo",
+      "gpFifo"
+     ]
+    },
+    "GXGetCPUFifo": {
+     "params": [],
+     "locals": []
+    },
+    "GXGetGPFifo": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "gxattr.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXAttr.c",
+   "functions": {
+    "__GXXfVtxSpecs": {
+     "params": [],
+     "locals": [
+      "nCols",
+      "nNrm",
+      "nTex",
+      "reg",
+      "regAddr"
+     ]
+    },
+    "GXSetVtxDesc": {
+     "params": [
+      "attr",
+      "type"
+     ],
+     "locals": []
+    },
+    "SETVCDATTR": {
+     "params": [
+      "Attr",
+      "Type"
+     ],
+     "locals": []
+    },
+    "__GXSetVCD": {
+     "params": [],
+     "locals": [
+      "regAddr"
+     ]
+    },
+    "__GXCalculateVLim": {
+     "params": [],
+     "locals": [
+      "b",
+      "nc",
+      "va",
+      "vh",
+      "vl",
+      "vlm"
+     ]
+    },
+    "GXGetVtxDesc": {
+     "params": [
+      "attr",
+      "type"
+     ],
+     "locals": [
+      "cpType"
+     ]
+    },
+    "GXClearVtxDesc": {
+     "params": [],
+     "locals": []
+    },
+    "GXSetVtxAttrFmt": {
+     "params": [
+      "vtxfmt",
+      "attr",
+      "cnt",
+      "type",
+      "frac"
+     ],
+     "locals": [
+      "va",
+      "vb",
+      "vc"
+     ]
+    },
+    "SETVAT": {
+     "params": [
+      "va",
+      "vb",
+      "vc",
+      "attr",
+      "cnt",
+      "type",
+      "shft"
+     ],
+     "locals": []
+    },
+    "GXSetVtxAttrFmtv": {
+     "params": [
+      "vtxfmt",
+      "list"
+     ],
+     "locals": [
+      "va",
+      "vb",
+      "vc"
+     ]
+    },
+    "__GXSetVAT": {
+     "params": [],
+     "locals": [
+      "i",
+      "regAddr"
+     ]
+    },
+    "GXGetVtxAttrFmt": {
+     "params": [
+      "fmt",
+      "attr",
+      "cnt",
+      "type",
+      "frac"
+     ],
+     "locals": [
+      "va",
+      "vb",
+      "vc"
+     ]
+    },
+    "GetFracForNrm": {
+     "params": [
+      "type"
+     ],
+     "locals": [
+      "frac"
+     ]
+    },
+    "GXSetArray": {
+     "params": [
+      "attr",
+      "base_ptr",
+      "stride"
+     ],
+     "locals": [
+      "cpAttr",
+      "phyAddr",
+      "regAddr"
+     ]
+    },
+    "GXInvalidateVtxCache": {
+     "params": [],
+     "locals": []
+    },
+    "GXSetTexCoordGen2": {
+     "params": [
+      "dst_coord",
+      "func",
+      "src_param",
+      "mtx",
+      "normalize",
+      "pt_texmtx"
+     ],
+     "locals": [
+      "bumprow",
+      "form",
+      "mtxIdAttr",
+      "reg",
+      "regAddr",
+      "row"
+     ]
+    },
+    "GXSetNumTexGens": {
+     "params": [
+      "nTexGens"
+     ],
+     "locals": [
+      "regAddr"
+     ]
+    }
+   }
+  },
+  "gxmisc.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXMisc.c",
+   "functions": {
+    "GXSetMisc": {
+     "params": [
+      "token",
+      "val"
+     ],
+     "locals": []
+    },
+    "GXFlush": {
+     "params": [],
+     "locals": []
+    },
+    "__GXAbortWait": {
+     "params": [
+      "clocks"
+     ],
+     "locals": [
+      "time0",
+      "time1"
+     ]
+    },
+    "__GXAbortWaitPECopyDone": {
+     "params": [],
+     "locals": [
+      "peCnt0",
+      "peCnt1"
+     ]
+    },
+    "__GXAbort": {
+     "params": [],
+     "locals": []
+    },
+    "GXAbortFrame": {
+     "params": [],
+     "locals": []
+    },
+    "GXSetDrawSync": {
+     "params": [
+      "token"
+     ],
+     "locals": [
+      "enabled",
+      "reg"
+     ]
+    },
+    "GXReadDrawSync": {
+     "params": [],
+     "locals": [
+      "token"
+     ]
+    },
+    "GXSetDrawDone": {
+     "params": [],
+     "locals": [
+      "enabled",
+      "reg"
+     ]
+    },
+    "GXWaitDrawDone": {
+     "params": [],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "GXDrawDone": {
+     "params": [],
+     "locals": []
+    },
+    "GXPokeAlphaMode": {
+     "params": [
+      "func",
+      "threshold"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXPokeAlphaRead": {
+     "params": [
+      "mode"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXPokeAlphaUpdate": {
+     "params": [
+      "update_enable"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXPokeBlendMode": {
+     "params": [
+      "type",
+      "src_factor",
+      "dst_factor",
+      "op"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXPokeColorUpdate": {
+     "params": [
+      "update_enable"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXPokeDstAlpha": {
+     "params": [
+      "enable",
+      "alpha"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXPokeDither": {
+     "params": [
+      "dither"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXPokeZMode": {
+     "params": [
+      "compare_enable",
+      "func",
+      "update_enable"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetDrawSyncCallback": {
+     "params": [
+      "cb"
+     ],
+     "locals": [
+      "enabled",
+      "oldcb"
+     ]
+    },
+    "GXTokenInterruptHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext",
+      "reg",
+      "token"
+     ]
+    },
+    "GXSetDrawDoneCallback": {
+     "params": [
+      "cb"
+     ],
+     "locals": [
+      "enabled",
+      "oldcb"
+     ]
+    },
+    "GXFinishInterruptHandler": {
+     "params": [
+      "context"
+     ],
+     "locals": [
+      "exceptionContext",
+      "reg"
+     ]
+    },
+    "__GXPEInit": {
+     "params": [],
+     "locals": [
+      "reg"
+     ]
+    }
+   }
+  },
+  "gxgeometry.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXGeometry.c",
+   "functions": {
+    "__GXSetDirtyState": {
+     "params": [],
+     "locals": [
+      "dState"
+     ]
+    },
+    "GXBegin": {
+     "params": [
+      "type",
+      "vtxfmt",
+      "nverts"
+     ],
+     "locals": []
+    },
+    "__GXSendFlushPrim": {
+     "params": [],
+     "locals": [
+      "i",
+      "numD"
+     ]
+    },
+    "GXSetLineWidth": {
+     "params": [
+      "width",
+      "texOffsets"
+     ],
+     "locals": []
+    },
+    "GXSetPointSize": {
+     "params": [
+      "pointSize",
+      "texOffsets"
+     ],
+     "locals": []
+    },
+    "GXEnableTexOffsets": {
+     "params": [
+      "coord",
+      "line_enable",
+      "point_enable"
+     ],
+     "locals": []
+    },
+    "GXSetCullMode": {
+     "params": [
+      "mode"
+     ],
+     "locals": [
+      "hwMode"
+     ]
+    },
+    "GXSetCoPlanar": {
+     "params": [
+      "enable"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "__GXSetGenMode": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "gxframebuf.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXFrameBuf.c",
+   "functions": {
+    "GXAdjustForOverscan": {
+     "params": [
+      "rmin",
+      "rmout",
+      "hor",
+      "ver"
+     ],
+     "locals": [
+      "hor2",
+      "mode",
+      "ver2",
+      "verf"
+     ]
+    },
+    "GXSetDispCopySrc": {
+     "params": [
+      "left",
+      "top",
+      "wd",
+      "ht"
+     ],
+     "locals": []
+    },
+    "GXSetDispCopyDst": {
+     "params": [
+      "wd"
+     ],
+     "locals": [
+      "stride"
+     ]
+    },
+    "GXSetDispCopyFrame2Field": {
+     "params": [
+      "mode"
+     ],
+     "locals": []
+    },
+    "GXSetCopyClamp": {
+     "params": [
+      "clamp"
+     ],
+     "locals": [
+      "clmpB",
+      "clmpT"
+     ]
+    },
+    "__GXGetNumXfbLines": {
+     "params": [
+      "efbHt",
+      "iScale"
+     ],
+     "locals": [
+      "count",
+      "iScaleD",
+      "realHt"
+     ]
+    },
+    "GXGetYScaleFactor": {
+     "params": [
+      "efbHeight",
+      "xfbHeight"
+     ],
+     "locals": [
+      "fScale",
+      "iScale",
+      "realHt",
+      "tgtHt",
+      "yScale"
+     ]
+    },
+    "GXSetDispCopyYScale": {
+     "params": [
+      "vscale"
+     ],
+     "locals": [
+      "enable",
+      "ht",
+      "iScale",
+      "reg"
+     ]
+    },
+    "GXSetCopyClear": {
+     "params": [
+      "clear_clr",
+      "clear_z"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetCopyFilter": {
+     "params": [
+      "aa",
+      "sample_pattern",
+      "vf",
+      "vfilter"
+     ],
+     "locals": [
+      "coeff0",
+      "coeff1",
+      "msLoc"
+     ]
+    },
+    "GXSetDispCopyGamma": {
+     "params": [
+      "gamma"
+     ],
+     "locals": []
+    },
+    "__GXVerifCopy": {
+     "params": [
+      "dest",
+      "clear"
+     ],
+     "locals": [
+      "clmpB",
+      "clmpT",
+      "dx",
+      "dy",
+      "x0",
+      "y0"
+     ]
+    },
+    "GXCopyDisp": {
+     "params": [
+      "dest",
+      "clear"
+     ],
+     "locals": [
+      "changePeCtrl",
+      "phyAddr",
+      "reg",
+      "tempPeCtrl"
+     ]
+    },
+    "GXClearBoundingBox": {
+     "params": [],
+     "locals": [
+      "reg"
+     ]
+    }
+   }
+  },
+  "gxlight.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXLight.c",
+   "functions": {
+    "GXInitLightSpot": {
+     "params": [
+      "lt_obj",
+      "cutoff",
+      "spot_func"
+     ],
+     "locals": [
+      "a0",
+      "a1",
+      "a2",
+      "cr",
+      "d",
+      "obj",
+      "r"
+     ]
+    },
+    "GXInitLightPos": {
+     "params": [
+      "lt_obj",
+      "x",
+      "y",
+      "z"
+     ],
+     "locals": [
+      "obj"
+     ]
+    },
+    "GXInitLightColor": {
+     "params": [
+      "lt_obj",
+      "color"
+     ],
+     "locals": [
+      "obj"
+     ]
+    },
+    "GXLoadLightObjImm": {
+     "params": [
+      "lt_obj",
+      "light"
+     ],
+     "locals": [
+      "addr",
+      "idx",
+      "obj",
+      "xfAddr",
+      "xfData"
+     ]
+    },
+    "ConvLightID2Num": {
+     "params": [
+      "id"
+     ],
+     "locals": []
+    },
+    "GXSetChanAmbColor": {
+     "params": [
+      "chan",
+      "amb_color"
+     ],
+     "locals": [
+      "colIdx",
+      "reg",
+      "regAddr",
+      "rgb"
+     ]
+    },
+    "GXSetChanMatColor": {
+     "params": [
+      "chan",
+      "mat_color"
+     ],
+     "locals": [
+      "colIdx",
+      "reg",
+      "regAddr",
+      "rgb"
+     ]
+    },
+    "GXSetNumChans": {
+     "params": [
+      "nChans"
+     ],
+     "locals": [
+      "regAddr"
+     ]
+    },
+    "GXSetChanCtrl": {
+     "params": [
+      "chan",
+      "enable",
+      "amb_src",
+      "mat_src",
+      "light_mask",
+      "diff_fn",
+      "attn_fn"
+     ],
+     "locals": [
+      "idx",
+      "reg",
+      "regAddr"
+     ]
+    }
+   }
+  },
+  "gxtexture.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXTexture.c",
+   "functions": {
+    "__GXGetTexTileShift": {
+     "params": [
+      "fmt",
+      "rowTileS",
+      "colTileS"
+     ],
+     "locals": []
+    },
+    "GXGetTexBufferSize": {
+     "params": [
+      "width",
+      "height",
+      "format",
+      "mipmap",
+      "max_lod"
+     ],
+     "locals": [
+      "bufferSize",
+      "level",
+      "nx",
+      "ny",
+      "tileBytes",
+      "tileShiftX",
+      "tileShiftY"
+     ]
+    },
+    "GXInitTexObj": {
+     "params": [
+      "obj",
+      "image_ptr",
+      "width",
+      "height",
+      "format",
+      "wrap_s",
+      "wrap_t",
+      "mipmap"
+     ],
+     "locals": [
+      "colC",
+      "colT",
+      "imageBase",
+      "lmax",
+      "mask",
+      "maxLOD",
+      "rowC",
+      "rowT",
+      "t"
+     ]
+    },
+    "GXInitTexObjCI": {
+     "params": [
+      "obj",
+      "image_ptr",
+      "width",
+      "height",
+      "format",
+      "wrap_s",
+      "wrap_t",
+      "mipmap",
+      "tlut_name"
+     ],
+     "locals": [
+      "t"
+     ]
+    },
+    "GXInitTexObjLOD": {
+     "params": [
+      "obj",
+      "min_filt",
+      "mag_filt",
+      "min_lod",
+      "max_lod",
+      "lod_bias",
+      "bias_clamp",
+      "do_edge_lod",
+      "max_aniso"
+     ],
+     "locals": [
+      "lbias",
+      "lmax",
+      "lmin",
+      "t"
+     ]
+    },
+    "GXGetTexObjFmt": {
+     "params": [
+      "to"
+     ],
+     "locals": [
+      "t"
+     ]
+    },
+    "GXGetTexObjMipMap": {
+     "params": [
+      "to"
+     ],
+     "locals": [
+      "t"
+     ]
+    },
+    "GXLoadTexObjPreLoaded": {
+     "params": [
+      "obj",
+      "region",
+      "id"
+     ],
+     "locals": [
+      "img0",
+      "img1",
+      "img2",
+      "img3",
+      "m0",
+      "m1",
+      "r",
+      "t",
+      "tlr"
+     ]
+    },
+    "GXLoadTexObj": {
+     "params": [
+      "obj",
+      "id"
+     ],
+     "locals": [
+      "r"
+     ]
+    },
+    "GXInitTlutObj": {
+     "params": [
+      "tlut_obj",
+      "lut",
+      "fmt",
+      "n_entries"
+     ],
+     "locals": [
+      "t"
+     ]
+    },
+    "GXLoadTlut": {
+     "params": [
+      "tlut_obj",
+      "tlut_name"
+     ],
+     "locals": [
+      "r",
+      "t",
+      "tlut_offset"
+     ]
+    },
+    "GXInitTexCacheRegion": {
+     "params": [
+      "region",
+      "is_32b_mipmap",
+      "tmem_even",
+      "size_even",
+      "tmem_odd",
+      "size_odd"
+     ],
+     "locals": [
+      "WidthExp2",
+      "t"
+     ]
+    },
+    "GXInitTlutRegion": {
+     "params": [
+      "region",
+      "tmem_addr",
+      "tlut_size"
+     ],
+     "locals": [
+      "t"
+     ]
+    },
+    "GXInvalidateTexAll": {
+     "params": [],
+     "locals": [
+      "reg0",
+      "reg1"
+     ]
+    },
+    "GXSetTexRegionCallback": {
+     "params": [
+      "f"
+     ],
+     "locals": [
+      "oldcb"
+     ]
+    },
+    "GXSetTlutRegionCallback": {
+     "params": [
+      "f"
+     ],
+     "locals": [
+      "oldcb"
+     ]
+    },
+    "__SetSURegs": {
+     "params": [
+      "tmap",
+      "tcoord"
+     ],
+     "locals": [
+      "h",
+      "s_bias",
+      "t_bias",
+      "w"
+     ]
+    },
+    "__GXSetSUTexRegs": {
+     "params": [],
+     "locals": [
+      "coord",
+      "i",
+      "map",
+      "nIndStages",
+      "nStages",
+      "ptref",
+      "tmap"
+     ]
+    },
+    "__GXSetTmemConfig": {
+     "params": [
+      "config"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "gxbump.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXBump.c",
+   "functions": {
+    "GXSetTevIndirect": {
+     "params": [
+      "tev_stage",
+      "ind_stage",
+      "format",
+      "bias_sel",
+      "matrix_sel",
+      "wrap_s",
+      "wrap_t",
+      "add_prev",
+      "utc_lod",
+      "alpha_sel"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetIndTexCoordScale": {
+     "params": [
+      "ind_state",
+      "scale_s",
+      "scale_t"
+     ],
+     "locals": []
+    },
+    "GXSetNumIndStages": {
+     "params": [
+      "nIndStages"
+     ],
+     "locals": []
+    },
+    "GXSetTevDirect": {
+     "params": [
+      "tev_stage"
+     ],
+     "locals": []
+    },
+    "__GXUpdateBPMask": {
+     "params": [],
+     "locals": []
+    },
+    "__GXSetIndirectMask": {
+     "params": [
+      "mask"
+     ],
+     "locals": []
+    },
+    "__GXFlushTextureState": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "gxtev.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXTev.c",
+   "functions": {
+    "GXSetTevOp": {
+     "params": [
+      "id",
+      "mode"
+     ],
+     "locals": [
+      "atmp",
+      "ctmp",
+      "tevReg"
+     ]
+    },
+    "GXSetTevColorIn": {
+     "params": [
+      "stage",
+      "a",
+      "b",
+      "c",
+      "d"
+     ],
+     "locals": [
+      "tevReg"
+     ]
+    },
+    "GXSetTevAlphaIn": {
+     "params": [
+      "stage",
+      "a",
+      "b",
+      "c",
+      "d"
+     ],
+     "locals": [
+      "tevReg"
+     ]
+    },
+    "GXSetTevColorOp": {
+     "params": [
+      "stage",
+      "op",
+      "bias",
+      "scale",
+      "clamp",
+      "out_reg"
+     ],
+     "locals": [
+      "tevReg"
+     ]
+    },
+    "GXSetTevAlphaOp": {
+     "params": [
+      "stage",
+      "op",
+      "bias",
+      "scale",
+      "clamp",
+      "out_reg"
+     ],
+     "locals": [
+      "tevReg"
+     ]
+    },
+    "GXSetTevColorS10": {
+     "params": [
+      "id",
+      "color"
+     ],
+     "locals": [
+      "regBG",
+      "regRA"
+     ]
+    },
+    "GXSetTevKColor": {
+     "params": [
+      "id",
+      "color"
+     ],
+     "locals": [
+      "regBG",
+      "regRA"
+     ]
+    },
+    "GXSetTevKColorSel": {
+     "params": [
+      "stage",
+      "sel"
+     ],
+     "locals": [
+      "Kreg"
+     ]
+    },
+    "GXSetTevKAlphaSel": {
+     "params": [
+      "stage",
+      "sel"
+     ],
+     "locals": [
+      "Kreg"
+     ]
+    },
+    "GXSetTevSwapMode": {
+     "params": [
+      "stage",
+      "ras_sel",
+      "tex_sel"
+     ],
+     "locals": [
+      "pTevReg"
+     ]
+    },
+    "GXSetTevSwapModeTable": {
+     "params": [
+      "table",
+      "red",
+      "green",
+      "blue",
+      "alpha"
+     ],
+     "locals": [
+      "Kreg"
+     ]
+    },
+    "GXSetAlphaCompare": {
+     "params": [
+      "comp0",
+      "ref0",
+      "op",
+      "comp1",
+      "ref1"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetZTexture": {
+     "params": [
+      "op",
+      "fmt",
+      "bias"
+     ],
+     "locals": [
+      "type",
+      "zenv0",
+      "zenv1"
+     ]
+    },
+    "GXSetTevOrder": {
+     "params": [
+      "stage",
+      "coord",
+      "map",
+      "color"
+     ],
+     "locals": [
+      "ptref",
+      "tcoord",
+      "tmap"
+     ]
+    },
+    "GXSetNumTevStages": {
+     "params": [
+      "nStages"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "gxpixel.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXPixel.c",
+   "functions": {
+    "GXSetFog": {
+     "params": [
+      "type",
+      "startz",
+      "endz",
+      "nearz",
+      "farz",
+      "color"
+     ],
+     "locals": [
+      "A",
+      "B",
+      "B_expn",
+      "B_mant",
+      "C",
+      "a",
+      "a_hex",
+      "b_m",
+      "b_s",
+      "c",
+      "c_hex",
+      "fog0",
+      "fog1",
+      "fog2",
+      "fog3",
+      "fogclr",
+      "fsel",
+      "proj"
+     ]
+    },
+    "GXSetFogRangeAdj": {
+     "params": [
+      "enable",
+      "center",
+      "table"
+     ],
+     "locals": [
+      "i",
+      "range_adj",
+      "range_c"
+     ]
+    },
+    "GXSetBlendMode": {
+     "params": [
+      "type",
+      "src_factor",
+      "dst_factor",
+      "op"
+     ],
+     "locals": [
+      "blend_en",
+      "reg"
+     ]
+    },
+    "GXSetColorUpdate": {
+     "params": [
+      "update_enable"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetAlphaUpdate": {
+     "params": [
+      "update_enable"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetZMode": {
+     "params": [
+      "compare_enable",
+      "func",
+      "update_enable"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetZCompLoc": {
+     "params": [
+      "before_tex"
+     ],
+     "locals": []
+    },
+    "GXSetPixelFmt": {
+     "params": [
+      "pix_fmt",
+      "z_fmt"
+     ],
+     "locals": [
+      "aa",
+      "oldPeCtrl"
+     ]
+    },
+    "GXSetDither": {
+     "params": [
+      "dither"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetDstAlpha": {
+     "params": [
+      "enable",
+      "alpha"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetFieldMask": {
+     "params": [
+      "odd_mask",
+      "even_mask"
+     ],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetFieldMode": {
+     "params": [
+      "field_mode",
+      "half_aspect_ratio"
+     ],
+     "locals": [
+      "reg"
+     ]
+    }
+   }
+  },
+  "gxvert.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXVert.c",
+   "functions": {
+    "GXPosition3f32": {
+     "params": [
+      "x",
+      "y",
+      "z"
+     ],
+     "locals": []
+    },
+    "GXPosition3s16": {
+     "params": [
+      "x",
+      "y",
+      "z"
+     ],
+     "locals": []
+    },
+    "GXPosition2f32": {
+     "params": [
+      "x",
+      "y"
+     ],
+     "locals": []
+    },
+    "GXNormal3f32": {
+     "params": [
+      "x",
+      "y",
+      "z"
+     ],
+     "locals": []
+    },
+    "GXColor1u32": {
+     "params": [
+      "x"
+     ],
+     "locals": []
+    },
+    "GXTexCoord2f32": {
+     "params": [
+      "x",
+      "y"
+     ],
+     "locals": []
+    },
+    "GXTexCoord2s16": {
+     "params": [
+      "x",
+      "y"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "gxtransform.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXTransform.c",
+   "functions": {
+    "__GXSetProjection": {
+     "params": [],
+     "locals": [
+      "reg",
+      "xfAddr",
+      "xfData"
+     ]
+    },
+    "GXSetProjection": {
+     "params": [
+      "mtx",
+      "type"
+     ],
+     "locals": []
+    },
+    "GXSetProjectionv": {
+     "params": [
+      "ptr"
+     ],
+     "locals": []
+    },
+    "GXGetProjectionv": {
+     "params": [
+      "ptr"
+     ],
+     "locals": []
+    },
+    "GXLoadPosMtxImm": {
+     "params": [
+      "mtx",
+      "id"
+     ],
+     "locals": [
+      "addr",
+      "reg",
+      "xfAddr",
+      "xfData"
+     ]
+    },
+    "GXLoadNrmMtxImm": {
+     "params": [
+      "mtx",
+      "id"
+     ],
+     "locals": [
+      "addr",
+      "reg",
+      "xfAddr",
+      "xfData"
+     ]
+    },
+    "GXSetCurrentMtx": {
+     "params": [
+      "id"
+     ],
+     "locals": []
+    },
+    "GXLoadTexMtxImm": {
+     "params": [
+      "mtx",
+      "id",
+      "type"
+     ],
+     "locals": [
+      "addr",
+      "count",
+      "reg",
+      "xfAddr",
+      "xfData"
+     ]
+    },
+    "__GXSetViewport": {
+     "params": [],
+     "locals": [
+      "ox",
+      "oy",
+      "oz",
+      "reg",
+      "sx",
+      "sy",
+      "sz",
+      "xfAddr",
+      "xfData",
+      "zmax",
+      "zmin"
+     ]
+    },
+    "GXSetViewportJitter": {
+     "params": [
+      "left",
+      "top",
+      "wd",
+      "ht",
+      "nearz",
+      "farz",
+      "field"
+     ],
+     "locals": []
+    },
+    "GXSetViewport": {
+     "params": [
+      "left",
+      "top",
+      "wd",
+      "ht",
+      "nearz",
+      "farz"
+     ],
+     "locals": []
+    },
+    "GXSetScissor": {
+     "params": [
+      "left",
+      "top",
+      "wd",
+      "ht"
+     ],
+     "locals": [
+      "bm",
+      "lf",
+      "rt",
+      "tp"
+     ]
+    },
+    "GXSetScissorBoxOffset": {
+     "params": [
+      "x_off",
+      "y_off"
+     ],
+     "locals": [
+      "hx",
+      "hy",
+      "reg"
+     ]
+    },
+    "GXSetClipMode": {
+     "params": [
+      "mode"
+     ],
+     "locals": [
+      "regAddr"
+     ]
+    },
+    "__GXSetMatrixIndex": {
+     "params": [
+      "matIdxAttr"
+     ],
+     "locals": [
+      "regAddr"
+     ]
+    }
+   }
+  },
+  "gxverify.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXVerify.c",
+   "functions": {
+    "__GXVerifyGlobal": {
+     "params": [],
+     "locals": []
+    },
+    "__GXVerifyCP": {
+     "params": [
+      "fmt"
+     ],
+     "locals": [
+      "nrmCnt"
+     ]
+    },
+    "__GXVerifyState": {
+     "params": [
+      "vtxfmt"
+     ],
+     "locals": []
+    },
+    "__GXVerifyVATImm": {
+     "params": [
+      "attr",
+      "cnt",
+      "type",
+      "frac"
+     ],
+     "locals": []
+    },
+    "GXSetVerifyCallback": {
+     "params": [
+      "cb"
+     ],
+     "locals": [
+      "old_cb"
+     ]
+    }
+   }
+  },
+  "gxverifxf.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXVerifXF.c",
+   "functions": {
+    "CountTextureTypes": {
+     "params": [],
+     "locals": [
+      "i",
+      "texgen_type"
+     ]
+    },
+    "InitializeXFVerifyData": {
+     "params": [],
+     "locals": []
+    },
+    "CheckDirty": {
+     "params": [
+      "index",
+      "name"
+     ],
+     "locals": []
+    },
+    "CheckClean": {
+     "params": [
+      "index",
+      "name"
+     ],
+     "locals": []
+    },
+    "CheckCTGColors": {
+     "params": [],
+     "locals": []
+    },
+    "__GXVertexPacketHas": {
+     "params": [
+      "attr"
+     ],
+     "locals": []
+    },
+    "CheckVertexPacket": {
+     "params": [],
+     "locals": [
+      "i",
+      "numHostTexAbsent",
+      "numHostTextures",
+      "numMatrixIndices"
+     ]
+    },
+    "CheckSourceRows": {
+     "params": [],
+     "locals": [
+      "i"
+     ]
+    },
+    "CheckTextureOrder": {
+     "params": [],
+     "locals": [
+      "count",
+      "done"
+     ]
+    },
+    "CheckRAM": {
+     "params": [
+      "Normal",
+      "StartingAddress",
+      "Count",
+      "WarnID",
+      "Str"
+     ],
+     "locals": [
+      "dirtyBit",
+      "i",
+      "printedPreamble"
+     ]
+    },
+    "CheckBumpmapTextures": {
+     "params": [],
+     "locals": [
+      "BumpMapLight",
+      "BumpMapSource",
+      "Preamble",
+      "i",
+      "lightRAMOffset"
+     ]
+    },
+    "CheckTextureTransformMatrices": {
+     "params": [],
+     "locals": [
+      "MtxIndexInVertexPacket",
+      "Preamble",
+      "Size",
+      "StartingAddress",
+      "Val",
+      "i"
+     ]
+    },
+    "CheckInputForms": {
+     "params": [],
+     "locals": [
+      "i"
+     ]
+    },
+    "CheckLight": {
+     "params": [
+      "lightSource"
+     ],
+     "locals": [
+      "i",
+      "lightRAMOffset",
+      "printedPreamble"
+     ]
+    },
+    "CheckColor0": {
+     "params": [],
+     "locals": [
+      "Preamble",
+      "haveLight",
+      "i",
+      "lightUsed"
+     ]
+    },
+    "CheckColor1": {
+     "params": [],
+     "locals": [
+      "Preamble",
+      "haveLight",
+      "i",
+      "lightUsed",
+      "usingColor1"
+     ]
+    },
+    "CheckViewport": {
+     "params": [],
+     "locals": [
+      "vb",
+      "vl",
+      "vr",
+      "vt"
+     ]
+    },
+    "ComputeSignExponentMantissa": {
+     "params": [
+      "floatVal",
+      "sign",
+      "exponent",
+      "mantissa"
+     ],
+     "locals": [
+      "intVal"
+     ]
+    },
+    "CheckFloatingPointValue": {
+     "params": [
+      "dirtyBit",
+      "value",
+      "label"
+     ],
+     "locals": [
+      "exponent",
+      "mantissa",
+      "sign",
+      "valuef"
+     ]
+    },
+    "CheckMatrixRAMRanges": {
+     "params": [],
+     "locals": [
+      "i",
+      "label"
+     ]
+    },
+    "CheckNormalRAMRanges": {
+     "params": [],
+     "locals": [
+      "i",
+      "label"
+     ]
+    },
+    "CheckDMatrixRAMRanges": {
+     "params": [],
+     "locals": [
+      "i",
+      "label"
+     ]
+    },
+    "CheckLightRAMRanges": {
+     "params": [],
+     "locals": [
+      "i",
+      "label",
+      "lightRAMOffset",
+      "lightSource"
+     ]
+    },
+    "CheckControlRAMRanges": {
+     "params": [],
+     "locals": []
+    },
+    "CheckFloatingPointRanges": {
+     "params": [],
+     "locals": []
+    },
+    "CheckMatrixIndices": {
+     "params": [],
+     "locals": []
+    },
+    "CheckErrors": {
+     "params": [],
+     "locals": [
+      "i",
+      "registerName"
+     ]
+    },
+    "CheckWarnings": {
+     "params": [],
+     "locals": []
+    },
+    "DumpXFRegisters": {
+     "params": [],
+     "locals": []
+    },
+    "__GXVerifyXF": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "gxverifras.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXVerifRAS.c",
+   "functions": {
+    "__GXVerifySU": {
+     "params": [],
+     "locals": [
+      "scis_b",
+      "scis_l",
+      "scis_r",
+      "scis_t"
+     ]
+    },
+    "__GXVerifyBUMP": {
+     "params": [],
+     "locals": [
+      "i",
+      "matrix",
+      "nBmp",
+      "nTev",
+      "nTex"
+     ]
+    },
+    "__GXVerifyTEX": {
+     "params": [],
+     "locals": [
+      "direct",
+      "enabled",
+      "h2",
+      "i",
+      "indirect",
+      "nBmp",
+      "nTev",
+      "nTex",
+      "nlevels",
+      "texId",
+      "w2"
+     ]
+    },
+    "__GXVerifyTEV": {
+     "params": [],
+     "locals": [
+      "Alh",
+      "Awritten",
+      "Clh",
+      "Cwritten",
+      "color",
+      "enabled",
+      "i",
+      "nCol",
+      "nTev"
+     ]
+    },
+    "__GXVerifyPE": {
+     "params": [],
+     "locals": [
+      "i"
+     ]
+    }
+   }
+  },
+  "gxperf.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\gx\\src\\GXPerf.c",
+   "functions": {
+    "GXSetGPMetric": {
+     "params": [
+      "perf0",
+      "perf1"
+     ],
+     "locals": [
+      "reg",
+      "regAddr"
+     ]
+    },
+    "GXReadGPMetric": {
+     "params": [
+      "cnt0",
+      "cnt1"
+     ],
+     "locals": [
+      "cpCtr0",
+      "cpCtr1",
+      "cpCtr2",
+      "cpCtr3"
+     ]
+    },
+    "GXClearGPMetric": {
+     "params": [],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXReadGP0Metric": {
+     "params": [],
+     "locals": [
+      "cnt0",
+      "cnt1"
+     ]
+    },
+    "GXReadGP1Metric": {
+     "params": [],
+     "locals": [
+      "cnt0",
+      "cnt1"
+     ]
+    },
+    "GXReadMemMetric": {
+     "params": [
+      "cp_req",
+      "tc_req",
+      "cpu_rd_req",
+      "cpu_wr_req",
+      "dsp_req",
+      "io_req",
+      "vi_req",
+      "pe_req",
+      "rf_req",
+      "fi_req"
+     ],
+     "locals": []
+    },
+    "GXClearMemMetric": {
+     "params": [],
+     "locals": []
+    },
+    "GXReadPixMetric": {
+     "params": [
+      "top_pixels_in",
+      "top_pixels_out",
+      "bot_pixels_in",
+      "bot_pixels_out",
+      "clr_pixels_in",
+      "copy_clks"
+     ],
+     "locals": []
+    },
+    "GXClearPixMetric": {
+     "params": [],
+     "locals": [
+      "reg"
+     ]
+    },
+    "GXSetVCacheMetric": {
+     "params": [
+      "attr"
+     ],
+     "locals": [
+      "reg",
+      "regAddr"
+     ]
+    },
+    "GXReadVCacheMetric": {
+     "params": [
+      "check",
+      "miss",
+      "stall"
+     ],
+     "locals": []
+    },
+    "GXClearVCacheMetric": {
+     "params": [],
+     "locals": [
+      "regAddr"
+     ]
+    },
+    "GXReadXfRasMetric": {
+     "params": [
+      "xf_wait_in",
+      "xf_wait_out",
+      "ras_busy",
+      "clocks"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "amcexi2stubs.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\amcstubs\\src\\AmcExi2Stubs.c",
+   "functions": {
+    "EXI2_Init": {
+     "params": [],
+     "locals": []
+    },
+    "EXI2_EnableInterrupts": {
+     "params": [],
+     "locals": []
+    },
+    "EXI2_Poll": {
+     "params": [],
+     "locals": []
+    },
+    "EXI2_ReadN": {
+     "params": [],
+     "locals": []
+    },
+    "EXI2_WriteN": {
+     "params": [],
+     "locals": []
+    },
+    "EXI2_Reserve": {
+     "params": [],
+     "locals": []
+    },
+    "EXI2_Unreserve": {
+     "params": [],
+     "locals": []
+    },
+    "AMC_IsStub": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "odenotstub.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\odenotstub\\src\\odenotstub.c",
+   "functions": {
+    "Hu_IsStub": {
+     "params": [],
+     "locals": []
+    }
+   }
+  },
+  "exibios.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\exi\\src\\EXIBios.c",
+   "functions": {
+    "SetExiInterruptMask": {
+     "params": [
+      "chan",
+      "exi"
+     ],
+     "locals": [
+      "exi2"
+     ]
+    },
+    "CompleteTransfer": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "buf",
+      "data",
+      "exi",
+      "i",
+      "len"
+     ]
+    },
+    "EXIImm": {
+     "params": [
+      "chan",
+      "buf",
+      "len",
+      "type",
+      "callback"
+     ],
+     "locals": [
+      "data",
+      "enabled",
+      "exi",
+      "i"
+     ]
+    },
+    "EXIImmEx": {
+     "params": [
+      "chan",
+      "buf",
+      "len",
+      "mode"
+     ],
+     "locals": [
+      "xLen"
+     ]
+    },
+    "EXIDma": {
+     "params": [
+      "chan",
+      "buf",
+      "len",
+      "type",
+      "callback"
+     ],
+     "locals": [
+      "enabled",
+      "exi"
+     ]
+    },
+    "EXISync": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "enabled",
+      "exi",
+      "rc"
+     ]
+    },
+    "EXIClearInterrupts": {
+     "params": [
+      "chan",
+      "exi",
+      "tc",
+      "ext"
+     ],
+     "locals": [
+      "cpr",
+      "prev"
+     ]
+    },
+    "EXISetExiCallback": {
+     "params": [
+      "chan",
+      "exiCallback"
+     ],
+     "locals": [
+      "enabled",
+      "exi",
+      "prev"
+     ]
+    },
+    "EXIProbeReset": {
+     "params": [],
+     "locals": []
+    },
+    "__EXIProbe": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "cpr",
+      "enabled",
+      "exi",
+      "rc",
+      "t"
+     ]
+    },
+    "EXIProbe": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "exi",
+      "id",
+      "rc"
+     ]
+    },
+    "EXIProbeEx": {
+     "params": [
+      "chan"
+     ],
+     "locals": []
+    },
+    "__EXIAttach": {
+     "params": [
+      "chan",
+      "extCallback"
+     ],
+     "locals": [
+      "enabled",
+      "exi"
+     ]
+    },
+    "EXIAttach": {
+     "params": [
+      "chan",
+      "extCallback"
+     ],
+     "locals": [
+      "enabled",
+      "exi",
+      "rc"
+     ]
+    },
+    "EXIDetach": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "enabled",
+      "exi"
+     ]
+    },
+    "EXISelect": {
+     "params": [
+      "chan",
+      "dev",
+      "freq"
+     ],
+     "locals": [
+      "cpr",
+      "enabled",
+      "exi"
+     ]
+    },
+    "EXIDeselect": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "cpr",
+      "enabled",
+      "exi"
+     ]
+    },
+    "EXIIntrruptHandler": {
+     "params": [
+      "interrupt",
+      "context"
+     ],
+     "locals": [
+      "callback",
+      "chan",
+      "exceptionContext",
+      "exi"
+     ]
+    },
+    "TCIntrruptHandler": {
+     "params": [
+      "interrupt",
+      "context"
+     ],
+     "locals": [
+      "callback",
+      "chan",
+      "exceptionContext",
+      "exi"
+     ]
+    },
+    "EXTIntrruptHandler": {
+     "params": [
+      "interrupt",
+      "context"
+     ],
+     "locals": [
+      "callback",
+      "chan",
+      "exceptionContext",
+      "exi"
+     ]
+    },
+    "EXIInit": {
+     "params": [],
+     "locals": [
+      "id"
+     ]
+    },
+    "EXILock": {
+     "params": [
+      "chan",
+      "dev",
+      "unlockedCallback"
+     ],
+     "locals": [
+      "enabled",
+      "exi",
+      "i"
+     ]
+    },
+    "EXIUnlock": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "enabled",
+      "exi",
+      "unlockedCallback"
+     ]
+    },
+    "EXIGetState": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "exi"
+     ]
+    },
+    "UnlockedHandler": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "id"
+     ]
+    },
+    "EXIGetID": {
+     "params": [
+      "chan",
+      "dev",
+      "id"
+     ],
+     "locals": [
+      "cmd",
+      "enabled",
+      "err",
+      "exi",
+      "startTime"
+     ]
+    }
+   }
+  },
+  "exiuart.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\exi\\src\\EXIUart.c",
+   "functions": {
+    "ProbeBarnacle": {
+     "params": [
+      "chan",
+      "dev",
+      "revision"
+     ],
+     "locals": [
+      "cmd",
+      "err"
+     ]
+    },
+    "__OSEnableBarnacle": {
+     "params": [
+      "chan",
+      "dev"
+     ],
+     "locals": [
+      "id"
+     ]
+    },
+    "InitializeUART": {
+     "params": [],
+     "locals": []
+    },
+    "QueueLength": {
+     "params": [],
+     "locals": [
+      "cmd"
+     ]
+    },
+    "WriteUARTN": {
+     "params": [
+      "buf",
+      "len"
+     ],
+     "locals": [
+      "cmd",
+      "enabled",
+      "error",
+      "locked",
+      "ptr",
+      "qLen",
+      "xLen"
+     ]
+    }
+   }
+  },
+  "sibios.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\si\\src\\SIBios.c",
+   "functions": {
+    "SIBusy": {
+     "params": [],
+     "locals": []
+    },
+    "SIIsChanBusy": {
+     "params": [
+      "chan"
+     ],
+     "locals": []
+    },
+    "SIClearTCInterrupt": {
+     "params": [],
+     "locals": [
+      "reg"
+     ]
+    },
+    "CompleteTransfer": {
+     "params": [],
+     "locals": [
+      "i",
+      "input",
+      "rLen",
+      "sr",
+      "temp"
+     ]
+    },
+    "SITransferNext": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "i",
+      "packet"
+     ]
+    },
+    "SIInterruptHandler": {
+     "params": [
+      "interrupt",
+      "context"
+     ],
+     "locals": [
+      "callback",
+      "chan",
+      "i",
+      "reg",
+      "sr",
+      "vcount",
+      "x"
+     ]
+    },
+    "SIEnablePollingInterrupt": {
+     "params": [
+      "enable"
+     ],
+     "locals": [
+      "enabled",
+      "i",
+      "rc",
+      "reg"
+     ]
+    },
+    "SIRegisterPollingHandler": {
+     "params": [
+      "handler"
+     ],
+     "locals": [
+      "enabled",
+      "i"
+     ]
+    },
+    "SIUnregisterPollingHandler": {
+     "params": [
+      "handler"
+     ],
+     "locals": [
+      "enabled",
+      "i"
+     ]
+    },
+    "SIInit": {
+     "params": [],
+     "locals": []
+    },
+    "__SITransfer": {
+     "params": [
+      "chan",
+      "output",
+      "outputBytes",
+      "input",
+      "inputBytes",
+      "callback"
+     ],
+     "locals": [
+      "comcsr",
+      "enabled",
+      "i",
+      "rLen",
+      "sr"
+     ]
+    },
+    "SIGetStatus": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "chanShift",
+      "enabled",
+      "sr"
+     ]
+    },
+    "SISetCommand": {
+     "params": [
+      "chan",
+      "command"
+     ],
+     "locals": []
+    },
+    "SITransferCommands": {
+     "params": [],
+     "locals": []
+    },
+    "SISetXY": {
+     "params": [
+      "x",
+      "y"
+     ],
+     "locals": [
+      "enabled",
+      "poll"
+     ]
+    },
+    "SIEnablePolling": {
+     "params": [
+      "poll"
+     ],
+     "locals": [
+      "en",
+      "enabled"
+     ]
+    },
+    "SIDisablePolling": {
+     "params": [
+      "poll"
+     ],
+     "locals": [
+      "enabled"
+     ]
+    },
+    "SIGetResponseRaw": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "sr"
+     ]
+    },
+    "SIGetResponse": {
+     "params": [
+      "chan",
+      "data"
+     ],
+     "locals": [
+      "enabled",
+      "rc"
+     ]
+    },
+    "AlarmHandler": {
+     "params": [
+      "alarm"
+     ],
+     "locals": [
+      "chan",
+      "packet"
+     ]
+    },
+    "SITransfer": {
+     "params": [
+      "chan",
+      "output",
+      "outputBytes",
+      "input",
+      "inputBytes",
+      "callback",
+      "delay"
+     ],
+     "locals": [
+      "enabled",
+      "fire",
+      "now",
+      "packet"
+     ]
+    },
+    "CallTypeAndStatusCallback": {
+     "params": [
+      "chan",
+      "type"
+     ],
+     "locals": [
+      "callback",
+      "i"
+     ]
+    },
+    "GetTypeCallback": {
+     "params": [
+      "chan",
+      "error"
+     ],
+     "locals": [
+      "chanBit",
+      "fix",
+      "id",
+      "type"
+     ]
+    },
+    "SIGetType": {
+     "params": [
+      "chan"
+     ],
+     "locals": [
+      "diff",
+      "enabled",
+      "type"
+     ]
+    },
+    "SIGetTypeAsync": {
+     "params": [
+      "chan",
+      "callback"
+     ],
+     "locals": [
+      "enabled",
+      "i",
+      "type"
+     ]
+    },
+    "SIDecodeType": {
+     "params": [
+      "type"
+     ],
+     "locals": [
+      "error"
+     ]
+    },
+    "SIProbe": {
+     "params": [
+      "chan"
+     ],
+     "locals": []
+    }
+   }
+  },
+  "sisamplingrate.c": {
+   "path": "c:\\SourceTreeTools\\compile\\dolphin\\build\\libraries\\si\\src\\SISamplingRate.c",
+   "functions": {
+    "SISetSamplingRate": {
+     "params": [
+      "msec"
+     ],
+     "locals": [
+      "enabled",
+      "progressive",
+      "xy"
+     ]
+    },
+    "SIRefreshSamplingRate": {
+     "params": [],
+     "locals": []
+    }
+   }
+  }
+ },
+ "structs": {
+  "DVDDiskID": [
+   "gameName",
+   "company",
+   "diskNumber",
+   "gameVersion",
+   "streaming",
+   "streamingBufSize",
+   "padding"
+  ],
+  "DVDCommandBlock": [
+   "next",
+   "prev",
+   "command",
+   "state",
+   "offset",
+   "length",
+   "addr",
+   "currTransferSize",
+   "transferredSize",
+   "id",
+   "callback",
+   "userData"
+  ],
+  "DVDFileInfo": [
+   "cb",
+   "startAddr",
+   "length",
+   "callback"
+  ],
+  "TEXHeader": [
+   "height",
+   "width",
+   "format",
+   "data",
+   "wrapS",
+   "wrapT",
+   "minFilter",
+   "magFilter",
+   "LODBias",
+   "edgeLODEnable",
+   "minLOD",
+   "maxLOD",
+   "unpacked"
+  ],
+  "CLUTHeader": [
+   "numEntries",
+   "unpacked",
+   "pad8",
+   "format",
+   "data"
+  ],
+  "TEXDescriptor": [
+   "textureHeader",
+   "CLUTHeader"
+  ],
+  "TEXPalette": [
+   "versionNumber",
+   "numDescriptors",
+   "descriptorArray"
+  ],
+  "DVDBanner": [
+   "id",
+   "padding",
+   "image",
+   "shortTitle",
+   "shortMaker",
+   "longTitle",
+   "longMaker",
+   "comment"
+  ],
+  "TplSet": [
+   "tplPtr",
+   "ready",
+   "dvdInfo"
+  ],
+  "DemoContents": [
+   "type",
+   "folder",
+   "texturePath",
+   "tgcPath",
+   "tgcArg",
+   "comment",
+   "headline",
+   "timeLimitMsg",
+   "notification",
+   "violence_flag",
+   "logoPos",
+   "title_pos",
+   "comment_pos",
+   "screenshot_pos",
+   "maker_pos",
+   "timelimit_pos",
+   "manualPos",
+   "pressA_Msg1Pos",
+   "pressA_Msg2Pos",
+   "pressB_MsgPos",
+   "buttonA1_Pos",
+   "buttonA2_Pos",
+   "buttonB_Pos",
+   "headlinePos",
+   "ratingInsertionPos",
+   "headlineFontColor",
+   "screenshotWidth",
+   "screenshotHeight",
+   "logoWidth",
+   "logoHeight",
+   "manualWidth",
+   "manualHeight",
+   "ratingInsertionWidth",
+   "ratingInsertionHeight",
+   "titleFontScale",
+   "commentFontScale",
+   "timelimitFontScale",
+   "timelimitFontColor",
+   "pressA_Msg1FontScale",
+   "pressA_Msg2FontScale",
+   "pressB_MsgFontScale",
+   "texpalette_ptr",
+   "texobj",
+   "texLoading_flag",
+   "texReady_flag",
+   "texInfo",
+   "manTexPalette_ptr",
+   "manTexObj",
+   "logoTexPalette_ptr",
+   "logoTexObj",
+   "banner",
+   "bannerDVDFileInfo",
+   "bannerReady_flag",
+   "bannerOpened_flag",
+   "tgcFileInfo",
+   "tgcOpened_flag",
+   "timelimit",
+   "memCardEnable",
+   "forceReset",
+   "rating",
+   "ratingPos",
+   "ratingWidth",
+   "ratingHeight",
+   "germanRatingPos",
+   "germanRatingWidth",
+   "germanRatingHeight",
+   "germanRatingInsertionPos",
+   "germanRatingInsertionWidth",
+   "germanRatingInsertionHeight",
+   "animationFrames",
+   "animationInterval",
+   "animationSwitchingInterval",
+   "animationType",
+   "currentFrame",
+   "probability",
+   "ratingInsertionTime",
+   "localConf_ptr",
+   "readMe_ptr",
+   "notification_ptr",
+   "pkgImageTpl_ptr",
+   "pkgImageTexobj",
+   "pkgImageLoading_flag",
+   "pkgImageReady_flag",
+   "pkgImageFileInfo",
+   "pkgImagePos",
+   "pkgImageWidth",
+   "pkgImageHeight",
+   "useRatingBitmap_flag",
+   "useGermanRatingBitmap_flag",
+   "userRatingBitmap",
+   "manualTplSet"
+  ],
+  "TGCFileInfo": [
+   "fileInfo",
+   "headerStart",
+   "headerLength",
+   "fstStart",
+   "fstLength",
+   "fstMaxLength",
+   "dolStart",
+   "dolLength",
+   "userStart",
+   "userLength",
+   "bannerStart",
+   "bannerLength",
+   "gcmUserStart",
+   "callback"
+  ],
+  "Vec": [
+   "x",
+   "y",
+   "z"
+  ],
+  "_GXTexObj": [
+   "dummy"
+  ],
+  "DTKTrack": [
+   "prev",
+   "next",
+   "fileName",
+   "eventMask",
+   "callback",
+   "dvdFileInfo"
+  ],
+  "OSFontHeader": [
+   "fontType",
+   "firstChar",
+   "lastChar",
+   "invalChar",
+   "ascent",
+   "descent",
+   "width",
+   "leading",
+   "cellWidth",
+   "cellHeight",
+   "sheetSize",
+   "sheetFormat",
+   "sheetColumn",
+   "sheetRow",
+   "sheetWidth",
+   "sheetHeight",
+   "widthTable",
+   "sheetImage",
+   "sheetFullSize",
+   "c0",
+   "c1",
+   "c2",
+   "c3"
+  ],
+  "_GXColor": [
+   "r",
+   "g",
+   "b",
+   "a"
+  ],
+  "_GXRenderModeObj": [
+   "viTVmode",
+   "fbWidth",
+   "efbHeight",
+   "xfbHeight",
+   "viXOrigin",
+   "viYOrigin",
+   "viWidth",
+   "viHeight",
+   "xFBmode",
+   "field_rendering",
+   "aa",
+   "sample_pattern",
+   "vfilter"
+  ],
+  "_GXTlutObj": [
+   "dummy"
+  ],
+  "MwsfdInitPrm": [
+   "vhz",
+   "disp_cycle",
+   "disp_latency",
+   "dec_svr",
+   "rsv"
+  ],
+  "MwsfdCrePrm": [
+   "ftype",
+   "max_bps",
+   "max_width",
+   "max_height",
+   "nfrm_pool_wk",
+   "max_stm",
+   "work",
+   "wksize",
+   "compo_mode",
+   "buffmt",
+   "rsv"
+  ],
+  "_UUID": [
+   "Data1",
+   "Data2",
+   "Data3",
+   "Data4"
+  ],
+  "SJCK": [
+   "data",
+   "len"
+  ],
+  "_sj_vtbl": [
+   "QueryInterface",
+   "AddRef",
+   "Release",
+   "Destroy",
+   "GetUuid",
+   "Reset",
+   "GetChunk",
+   "UngetChunk",
+   "PutChunk",
+   "GetNumData",
+   "IsGetChunk",
+   "EntryErrFunc"
+  ],
+  "SJ_OBJ": [
+   "vtbl"
+  ],
+  "MwsfdIf": [
+   "QueryInterface",
+   "AddRef",
+   "Release",
+   "VsyncHndl",
+   "ExecSvrHndl",
+   "Destroy",
+   "StartFname",
+   "Stop",
+   "GetStat",
+   "GetTime",
+   "Pause",
+   "SetOutVol",
+   "GetOutVol",
+   "SetOutPan",
+   "GetOutPan",
+   "StartSj",
+   "StartMem"
+  ],
+  "MW_PLY_OBJ": [
+   "vtbl"
+  ],
+  "MwsfdFrmObj": [
+   "bufadr",
+   "buffmt",
+   "width",
+   "height",
+   "x_mb",
+   "y_mb",
+   "ptype",
+   "fps",
+   "fno",
+   "time",
+   "tunit",
+   "concat_cnt",
+   "fno_per_file",
+   "time_per_file",
+   "errcnt",
+   "rcvcnt",
+   "usrdatptr",
+   "usrdatsize",
+   "frmtype"
+  ],
+  "__movie_params_tag": [
+   "iprm",
+   "cprm",
+   "ply",
+   "frm"
+  ],
+  "PADStatus": [
+   "button",
+   "stickX",
+   "stickY",
+   "substickX",
+   "substickY",
+   "triggerLeft",
+   "triggerRight",
+   "analogA",
+   "analogB",
+   "err"
+  ],
+  "DSList": [
+   "Offset",
+   "Head",
+   "Tail"
+  ],
+  "DSCache": [
+   "PurgeFlag",
+   "CacheNodeList"
+  ],
+  "_AXPBMIX": [
+   "vL",
+   "vDeltaL",
+   "vR",
+   "vDeltaR",
+   "vAuxAL",
+   "vDeltaAuxAL",
+   "vAuxAR",
+   "vDeltaAuxAR",
+   "vAuxBL",
+   "vDeltaAuxBL",
+   "vAuxBR",
+   "vDeltaAuxBR",
+   "vAuxBS",
+   "vDeltaAuxBS",
+   "vS",
+   "vDeltaS",
+   "vAuxAS",
+   "vDeltaAuxAS"
+  ],
+  "_AXPBITD": [
+   "flag",
+   "bufferHi",
+   "bufferLo",
+   "shiftL",
+   "shiftR",
+   "targetShiftL",
+   "targetShiftR"
+  ],
+  "_AXPBUPDATE": [
+   "updNum",
+   "dataHi",
+   "dataLo"
+  ],
+  "_AXPBDPOP": [
+   "aL",
+   "aAuxAL",
+   "aAuxBL",
+   "aR",
+   "aAuxAR",
+   "aAuxBR",
+   "aS",
+   "aAuxAS",
+   "aAuxBS"
+  ],
+  "_AXPBVE": [
+   "currentVolume",
+   "currentDelta"
+  ],
+  "_AXPBFIR": [
+   "numCoefs",
+   "coefsHi",
+   "coefsLo"
+  ],
+  "_AXPBADDR": [
+   "loopFlag",
+   "format",
+   "loopAddressHi",
+   "loopAddressLo",
+   "endAddressHi",
+   "endAddressLo",
+   "currentAddressHi",
+   "currentAddressLo"
+  ],
+  "_AXPBADPCM": [
+   "a",
+   "gain",
+   "pred_scale",
+   "yn1",
+   "yn2"
+  ],
+  "_AXPBSRC": [
+   "ratioHi",
+   "ratioLo",
+   "currentAddressFrac",
+   "last_samples"
+  ],
+  "_AXPBADPCMLOOP": [
+   "loop_pred_scale",
+   "loop_yn1",
+   "loop_yn2"
+  ],
+  "_AXPBLPF": [
+   "on",
+   "yn1",
+   "a0",
+   "b0"
+  ],
+  "_AXPB": [
+   "nextHi",
+   "nextLo",
+   "currHi",
+   "currLo",
+   "srcSelect",
+   "coefSelect",
+   "mixerCtrl",
+   "state",
+   "type",
+   "mix",
+   "itd",
+   "update",
+   "dpop",
+   "ve",
+   "fir",
+   "addr",
+   "adpcm",
+   "src",
+   "adpcmLoop",
+   "lpf",
+   "pad"
+  ],
+  "_AXVPB": [
+   "next",
+   "prev",
+   "next1",
+   "priority",
+   "callback",
+   "userContext",
+   "index",
+   "sync",
+   "depop",
+   "updateMS",
+   "updateCounter",
+   "updateTotal",
+   "updateWrite",
+   "updateData",
+   "itdBuffer",
+   "pb"
+  ],
+  "SPAdpcmEntry": [
+   "adpcm",
+   "adpcmloop"
+  ],
+  "SPSoundEntry": [
+   "type",
+   "sampleRate",
+   "loopAddr",
+   "loopEndAddr",
+   "endAddr",
+   "currentAddr",
+   "adpcm"
+  ],
+  "SE_VOICE": [
+   "ax_voice",
+   "sp_entry"
+  ],
+  "SPSoundTable": [
+   "entries",
+   "sound"
+  ],
+  "SEStatus": [
+   "bgmVolume_r",
+   "bgmVolume_l",
+   "okaiVolume",
+   "cancelVolume",
+   "selectVolume",
+   "startVolume"
+  ],
+  "SF3dVector": [
+   "x",
+   "y",
+   "z"
+  ],
+  "SF2dVector": [
+   "x",
+   "y"
+  ],
+  "SVertex": [
+   "pos",
+   "normal",
+   "TexCoords"
+  ],
+  "CARDFileInfo": [
+   "chan",
+   "fileNo",
+   "offset",
+   "length",
+   "iBlock",
+   "__padding"
+  ],
+  "CARDStat": [
+   "fileName",
+   "length",
+   "time",
+   "gameName",
+   "company",
+   "bannerFormat",
+   "__padding",
+   "iconAddr",
+   "iconFormat",
+   "iconSpeed",
+   "commentAddr",
+   "offsetBanner",
+   "offsetBannerTlut",
+   "offsetIcon",
+   "offsetIconTlut",
+   "offsetData"
+  ],
+  "CARDHeaderC8": [
+   "Title",
+   "Description",
+   "Icon",
+   "CLUT"
+  ],
+  "_EmptyMemberOpt": [
+   "m_"
+  ],
+  "_adx_talk": [
+   "used",
+   "stat",
+   "pmode",
+   "maxnch",
+   "sjd",
+   "stm",
+   "rna",
+   "sjf",
+   "sji",
+   "sjo",
+   "ibuf",
+   "ibuflen",
+   "ibufxlen",
+   "obuf",
+   "obufsize",
+   "obufdist",
+   "svrfreq",
+   "maxsct",
+   "minsct",
+   "outvol",
+   "outpan",
+   "outbalance",
+   "maxdecsmpl",
+   "lpcnt",
+   "lp_skiplen",
+   "trp",
+   "wpos",
+   "mofst",
+   "ercode",
+   "edecpos",
+   "edeccnt",
+   "eshrtcnt",
+   "lpflg",
+   "autorcvr",
+   "fltmode",
+   "execflag",
+   "pstwait_flag",
+   "pstready_flag",
+   "pause_flag",
+   "amp",
+   "ampsji",
+   "ampsjo",
+   "time_ofst",
+   "lesct",
+   "trpnsmpl",
+   "lsc",
+   "lnkflg",
+   "rsv",
+   "rsv2",
+   "tvofst",
+   "svcnt",
+   "decofst",
+   "stm_start_flg",
+   "rsv3",
+   "rsv4",
+   "fname_wk",
+   "fname",
+   "dir",
+   "ofst",
+   "nsct"
+  ],
+  "AP_OBJ": [
+   "disp_flag",
+   "pause_flag",
+   "adxptr",
+   "acxptr",
+   "adxdat",
+   "acxdat",
+   "adxfname",
+   "acxfname",
+   "adxt",
+   "work"
+  ],
+  "_adx_fs": [
+   "used",
+   "stat",
+   "sjflag",
+   "stopnw_flg",
+   "stm",
+   "sj",
+   "fnsct",
+   "fsize",
+   "skpos",
+   "rdstpos",
+   "rqsct",
+   "rdsct",
+   "buf",
+   "bsize",
+   "rqrdsct",
+   "ofst",
+   "dir",
+   "stm_fname",
+   "stm_ofsct",
+   "stm_nsct"
+  ],
+  "USR_PERIPHERAL": [
+   "on",
+   "press",
+   "x1",
+   "y1"
+  ],
+  "USR_DATA": [
+   "aram_buf"
+  ],
+  "__va_list_struct": [
+   "gpr",
+   "fpr",
+   "reserved",
+   "input_arg_area",
+   "reg_save_area"
+  ],
+  "UTPAD_PERIPHERAL": [
+   "on",
+   "press",
+   "x",
+   "y",
+   "last_on"
+  ],
+  "OSContext": [
+   "gpr",
+   "cr",
+   "lr",
+   "ctr",
+   "xer",
+   "fpr",
+   "fpscr_pad",
+   "fpscr",
+   "srr0",
+   "srr1",
+   "mode",
+   "state",
+   "gqr",
+   "psf_pad",
+   "psf"
+  ],
+  "OSAlarm": [
+   "handler",
+   "tag",
+   "fire",
+   "prev",
+   "next",
+   "period",
+   "start"
+  ],
+  "_GXLightObj": [
+   "dummy"
+  ],
+  "GXFifoObj": [
+   "pad"
+  ],
+  "DEMOStatObj": [
+   "text",
+   "stat_type",
+   "stat",
+   "count"
+  ],
+  "OSStopwatch": [
+   "name",
+   "hits",
+   "total",
+   "min",
+   "max",
+   "last",
+   "running",
+   "_padding"
+  ],
+  "AffenStatus": [
+   "action",
+   "frame",
+   "backwards",
+   "event",
+   "eventStage"
+  ],
+  "FpscrUnion": [
+   "f",
+   "u"
+  ],
+  "OSBootInfo_s": [
+   "DVDDiskID",
+   "magic",
+   "version",
+   "memorySize",
+   "consoleType",
+   "arenaLo",
+   "arenaHi",
+   "FSTLocation",
+   "FSTMaxLength"
+  ],
+  "DVDDriveInfo": [
+   "revisionLevel",
+   "deviceCode",
+   "releaseDate",
+   "padding"
+  ],
+  "OSAlarmQueue": [
+   "head",
+   "tail"
+  ],
+  "OSResetFunctionInfo": [
+   "func",
+   "priority",
+   "next",
+   "prev"
+  ],
+  "Cell": [
+   "prev",
+   "next",
+   "size",
+   "hd",
+   "requested"
+  ],
+  "HeapDesc": [
+   "size",
+   "free",
+   "allocated",
+   "paddingBytes",
+   "headerBytes",
+   "payloadBytes"
+  ],
+  "OSThreadQueue": [
+   "head",
+   "tail"
+  ],
+  "OSThreadLink": [
+   "next",
+   "prev"
+  ],
+  "OSMutexLink": [
+   "next",
+   "prev"
+  ],
+  "OSMutex": [
+   "queue",
+   "thread",
+   "count",
+   "link"
+  ],
+  "OSMutexQueue": [
+   "head",
+   "tail"
+  ],
+  "OSThread": [
+   "context",
+   "state",
+   "attr",
+   "suspend",
+   "priority",
+   "base",
+   "val",
+   "queue",
+   "link",
+   "queueJoin",
+   "mutex",
+   "queueMutex",
+   "linkActive",
+   "stackBase",
+   "stackEnd",
+   "error",
+   "specific"
+  ],
+  "OSModuleLink": [
+   "next",
+   "prev"
+  ],
+  "OSModuleInfo": [
+   "id",
+   "link",
+   "numSections",
+   "sectionInfoOffset",
+   "nameOffset",
+   "nameSize",
+   "version"
+  ],
+  "OSModuleHeader": [
+   "info",
+   "bssSize",
+   "relOffset",
+   "impOffset",
+   "impSize",
+   "prologSection",
+   "epilogSection",
+   "unresolvedSection",
+   "bssSection",
+   "prolog",
+   "epilog",
+   "unresolved",
+   "align",
+   "bssAlign",
+   "fixSize"
+  ],
+  "OSImportInfo": [
+   "id",
+   "offset"
+  ],
+  "OSRel": [
+   "offset",
+   "type",
+   "section",
+   "addend"
+  ],
+  "OSSectionInfo": [
+   "offset",
+   "size"
+  ],
+  "OSCond": [
+   "queue"
+  ],
+  "OSResetFunctionQueue": [
+   "head",
+   "tail"
+  ],
+  "OSSram": [
+   "checkSum",
+   "checkSumInv",
+   "ead0",
+   "ead1",
+   "counterBias",
+   "displayOffsetH",
+   "ntd",
+   "language",
+   "flags"
+  ],
+  "SramControl": [
+   "sram",
+   "offset",
+   "enabled",
+   "locked",
+   "sync",
+   "callback"
+  ],
+  "OSSramEx": [
+   "flashID",
+   "wirelessKeyboardID",
+   "wirelessPadID",
+   "dvdErrorCode",
+   "_padding0",
+   "flashIDCheckSum",
+   "gbs",
+   "_padding1"
+  ],
+  "OSCalendarTime": [
+   "sec",
+   "min",
+   "hour",
+   "mday",
+   "mon",
+   "year",
+   "wday",
+   "yday",
+   "msec",
+   "usec"
+  ],
+  "__rom_copy_info": [
+   "rom",
+   "addr",
+   "size"
+  ],
+  "__bss_init_info": [
+   "addr",
+   "size"
+  ],
+  "DBInterface": [
+   "bPresent",
+   "exceptionMask",
+   "ExceptionDestination",
+   "exceptionReturn"
+  ],
+  "FSTEntry": [
+   "isDirAndStringOff",
+   "parentOrPosition",
+   "nextEntryOrLength"
+  ],
+  "DVDBB2": [
+   "bootFilePosition",
+   "FSTPosition",
+   "FSTLength",
+   "FSTMaxLength",
+   "FSTAddress",
+   "userPosition",
+   "userLength",
+   "padding0"
+  ],
+  "ARQRequest": [
+   "next",
+   "owner",
+   "type",
+   "priority",
+   "source",
+   "dest",
+   "length",
+   "callback"
+  ],
+  "STRUCT_TIMELOG": [
+   "t_start",
+   "t1",
+   "t2",
+   "t3",
+   "t4",
+   "t_end"
+  ],
+  "AX_AUX_DATA_DPL2": [
+   "l",
+   "r",
+   "ls",
+   "rs"
+  ],
+  "AX_AUX_DATA": [
+   "l",
+   "r",
+   "s"
+  ],
+  "STRUCT_DSP_TASK": [
+   "state",
+   "priority",
+   "flags",
+   "iram_mmem_addr",
+   "iram_length",
+   "iram_addr",
+   "dram_mmem_addr",
+   "dram_length",
+   "dram_addr",
+   "dsp_init_vector",
+   "dsp_resume_vector",
+   "init_cb",
+   "res_cb",
+   "done_cb",
+   "req_cb",
+   "next",
+   "prev",
+   "t_context",
+   "t_task"
+  ],
+  "_AXPROFILE": [
+   "axFrameStart",
+   "auxProcessingStart",
+   "auxProcessingEnd",
+   "userCallbackStart",
+   "userCallbackEnd",
+   "axFrameEnd",
+   "axNumVoices",
+   "__padding"
+  ],
+  "_AXSPB": [
+   "dpopLHi",
+   "dpopLLo",
+   "dpopLDelta",
+   "dpopRHi",
+   "dpopRLo",
+   "dpopRDelta",
+   "dpopSHi",
+   "dpopSLo",
+   "dpopSDelta",
+   "dpopALHi",
+   "dpopALLo",
+   "dpopALDelta",
+   "dpopARHi",
+   "dpopARLo",
+   "dpopARDelta",
+   "dpopASHi",
+   "dpopASLo",
+   "dpopASDelta",
+   "dpopBLHi",
+   "dpopBLLo",
+   "dpopBLDelta",
+   "dpopBRHi",
+   "dpopBRLo",
+   "dpopBRDelta",
+   "dpopBSHi",
+   "dpopBSLo",
+   "dpopBSDelta"
+  ],
+  "_AXPBITDBUFFER": [
+   "data"
+  ],
+  "_AXPBU": [
+   "data"
+  ],
+  "MIXChannel": [
+   "axvpb",
+   "mode",
+   "input",
+   "auxA",
+   "auxB",
+   "pan",
+   "span",
+   "fader",
+   "l",
+   "r",
+   "f",
+   "b",
+   "l1",
+   "r1",
+   "v",
+   "v1",
+   "vL",
+   "vL1",
+   "vR",
+   "vR1",
+   "vS",
+   "vS1",
+   "vAL",
+   "vAL1",
+   "vAR",
+   "vAR1",
+   "vAS",
+   "vAS1",
+   "vBL",
+   "vBL1",
+   "vBR",
+   "vBR1",
+   "vBS",
+   "vBS1"
+  ],
+  "CARDDir": [
+   "gameName",
+   "company",
+   "_padding0",
+   "bannerFormat",
+   "fileName",
+   "time",
+   "iconAddr",
+   "iconFormat",
+   "iconSpeed",
+   "permission",
+   "copyTimes",
+   "startBlock",
+   "length",
+   "_padding1",
+   "commentAddr"
+  ],
+  "CARDControl": [
+   "attached",
+   "result",
+   "size",
+   "sectorSize",
+   "cBlock",
+   "latency",
+   "id",
+   "mountStep",
+   "formatStep",
+   "scramble",
+   "task",
+   "workArea",
+   "currentDir",
+   "currentFat",
+   "threadQueue",
+   "cmd",
+   "cmdlen",
+   "mode",
+   "retry",
+   "repeat",
+   "addr",
+   "buffer",
+   "xferred",
+   "freeNo",
+   "startBlock",
+   "fileInfo",
+   "extCallback",
+   "txCallback",
+   "exiCallback",
+   "apiCallback",
+   "xferCallback",
+   "eraseCallback",
+   "unlockCallback",
+   "alarm",
+   "cid",
+   "diskID"
+  ],
+  "CARDID": [
+   "serial",
+   "deviceID",
+   "size",
+   "encode",
+   "padding",
+   "checkSum",
+   "checkSumInv"
+  ],
+  "CARDDecParam": [
+   "inputAddr",
+   "inputLength",
+   "aramAddr",
+   "outputAddr"
+  ],
+  "CARDDirCheck": [
+   "padding0",
+   "padding1",
+   "checkCode",
+   "checkSum",
+   "checkSumInv"
+  ],
+  "_GXTexRegion": [
+   "dummy"
+  ],
+  "_GXTlutRegion": [
+   "dummy"
+  ],
+  "__GXData_struct": [
+   "vNumNot",
+   "bpSentNot",
+   "vNum",
+   "vLim",
+   "cpEnable",
+   "cpStatus",
+   "cpClr",
+   "vcdLo",
+   "vcdHi",
+   "vatA",
+   "vatB",
+   "vatC",
+   "lpSize",
+   "matIdxA",
+   "matIdxB",
+   "indexBase",
+   "indexStride",
+   "ambColor",
+   "matColor",
+   "suTs0",
+   "suTs1",
+   "suScis0",
+   "suScis1",
+   "tref",
+   "iref",
+   "bpMask",
+   "IndTexScale0",
+   "IndTexScale1",
+   "tevc",
+   "teva",
+   "tevKsel",
+   "cmode0",
+   "cmode1",
+   "zmode",
+   "peCtrl",
+   "cpDispSrc",
+   "cpDispSize",
+   "cpDispStride",
+   "cpDisp",
+   "cpTexSrc",
+   "cpTexSize",
+   "cpTexStride",
+   "cpTex",
+   "cpTexZ",
+   "genMode",
+   "TexRegions0",
+   "TexRegions1",
+   "TexRegions2",
+   "TlutRegions",
+   "texRegionCallback",
+   "tlutRegionCallback",
+   "nrmType",
+   "hasNrms",
+   "hasBiNrms",
+   "projType",
+   "projMtx",
+   "vpLeft",
+   "vpTop",
+   "vpWd",
+   "vpHt",
+   "vpNearz",
+   "vpFarz",
+   "zOffset",
+   "zScale",
+   "tImage0",
+   "tMode0",
+   "texmapId",
+   "tcsManEnab",
+   "tevTcEnab",
+   "perf0",
+   "perf1",
+   "perfSel",
+   "inDispList",
+   "dlSaveContext",
+   "abtWaitPECopy",
+   "dirtyVAT",
+   "dirtyState"
+  ],
+  "_GXVtxAttrFmtList": [
+   "attr",
+   "cnt",
+   "type",
+   "frac"
+  ],
+  "__GXVerifyData": [
+   "cb",
+   "verifyLevel",
+   "xfRegs",
+   "xfMtx",
+   "xfNrm",
+   "xfDMtx",
+   "xfLight",
+   "rasRegs",
+   "xfRegsDirty",
+   "xfMtxDirty",
+   "xfNrmDirty",
+   "xfDMtxDirty",
+   "xfLightDirty"
+  ],
+  "__GXFifoObj": [
+   "base",
+   "top",
+   "size",
+   "hiWatermark",
+   "loWatermark",
+   "rdPtr",
+   "wrPtr",
+   "count",
+   "bind_cpu",
+   "bind_gp"
+  ],
+  "_GXVtxDescList": [
+   "attr",
+   "type"
+  ],
+  "__GXLightObjInt_struct": [
+   "reserved",
+   "Color",
+   "a",
+   "k",
+   "lpos",
+   "ldir"
+  ],
+  "__GXTexObjInt_struct": [
+   "mode0",
+   "mode1",
+   "image0",
+   "image3",
+   "userData",
+   "fmt",
+   "tlutName",
+   "loadCnt",
+   "loadFmt",
+   "flags"
+  ],
+  "__GXTlutObjInt_struct": [
+   "tlut",
+   "loadTlut0",
+   "numEntries"
+  ],
+  "__GXTlutRegionInt_struct": [
+   "loadTlut1",
+   "tlutObj"
+  ],
+  "__GXTexRegionInt_struct": [
+   "image1",
+   "image2",
+   "sizeEven",
+   "sizeOdd",
+   "is32bMipmap",
+   "isCached"
+  ],
+  "_GXColorS10": [
+   "r",
+   "g",
+   "b",
+   "a"
+  ],
+  "_GXFogAdjTable": [
+   "r"
+  ],
+  "EXIControl": [
+   "exiCallback",
+   "tcCallback",
+   "extCallback",
+   "state",
+   "immLen",
+   "immBuf",
+   "dev",
+   "id",
+   "idTime",
+   "items",
+   "queue"
+  ],
+  "SIControl": [
+   "chan",
+   "poll",
+   "inputBytes",
+   "input",
+   "callback"
+  ],
+  "SIPacket": [
+   "chan",
+   "output",
+   "outputBytes",
+   "input",
+   "inputBytes",
+   "callback",
+   "fire"
+  ],
+  "XY": [
+   "line",
+   "count"
+  ]
+ }
+}
