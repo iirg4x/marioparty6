@@ -262,6 +262,9 @@ CODE_RULES = {
 # code text, so "C" reads as " ".
 EXTERN_C_DEFINITION = re.compile(r'\bextern\s+"\s"\s+(?!\{)[^;{}()"]*?\b([A-Za-z_]\w*)\s*\([^;{}]*\)\s*(?:const\s*)?\{')
 ENTRY_POINTS = {"_prolog", "_epilog", "_unresolved", "ModuleProlog", "ModuleEpilog", "ObjectSetup"}
+# `extern "C" { ... }` around definitions (27 Oct: every copied fragment of the C++ minigames is written this way, and
+# the one-definition form above never saw them); strings are blanked in the scanned code, so "C" reads as " "
+EXTERN_C_BLOCK = re.compile(r'\bextern\s+"\s"\s*\{')
 COMMENT_RULES = {
     "probe-comments": [
         # "steer" and "force" are only process notes next to compiler words: "slot 0 steers around obstacles" and
@@ -465,6 +468,12 @@ def scan_text(text, display, suffix, with_address_names=False):
             if match.group(1) not in ENTRY_POINTS:
                 add("linkage", "C linkage on C++ code", match.start(),
                     detail=f"{match.group(1)}: extern \"C\" definition in a C++ file")
+        for block in EXTERN_C_BLOCK.finditer(code):
+            end = _closing_brace(code, block.end() - 1)
+            for name, start, _body_end in _bodies(code[:end]):
+                if start > block.end() and name not in ENTRY_POINTS:
+                    add("linkage", "C linkage on C++ code", start,
+                        detail=f"{name}: defined inside an extern \"C\" block in a C++ file")
     if with_address_names:
         for offset, detail in address_names(code):
             add("address-names", "address-derived name", offset, detail=detail)
@@ -609,19 +618,24 @@ IDENTIFIER = re.compile(r"\b[A-Za-z_]\w*\b")
 C_WORDS = {"NULL", "TRUE", "FALSE", "true", "false", "sizeof", "this", "nullptr"}
 
 
+def _closing_brace(code, at):
+    """The offset of the brace closing the one at `at` (strings and comments blanked in `code`)."""
+    depth = 0
+    while at < len(code):
+        if code[at] == "{":
+            depth += 1
+        elif code[at] == "}":
+            depth -= 1
+            if depth == 0:
+                return at
+        at += 1
+    return len(code)
+
+
 def _bodies(code):
     """(name, body start, body end) of every function definition; strings and comments are blanked in `code`."""
     for match in FUNCTION_START.finditer(code):
-        depth, at = 0, match.end() - 1
-        while at < len(code):
-            if code[at] == "{":
-                depth += 1
-            elif code[at] == "}":
-                depth -= 1
-                if depth == 0:
-                    break
-            at += 1
-        yield match.group(1), match.end(), at
+        yield match.group(1), match.end(), _closing_brace(code, match.end() - 1)
 
 
 def retail_string_findings(text, code, display=""):
