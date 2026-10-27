@@ -1,95 +1,485 @@
 {
- "about": "Original names MP6's code does not use yet, each shown by an original artifact. 'names': address names whose original name Nintendo's link map on the Mario Kart: Double Dash!! (USA) debug disc gives (the file's symbol sizes run in the same order). 'files': source file names each retail REL's assert texts carry. 'counters': function statics whose compiler number differs from the link map's.",
+ "about": "Original names MP6's code does not use yet, each shown by an original artifact. 'names': address names whose original name an unstripped build gives: Hudson's own engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003) by matching code or symbol order, and Nintendo's link map on the Mario Kart: Double Dash!! (USA) debug disc. 'files': source file names each retail REL's assert texts carry. 'counters': function statics whose compiler number differs from the link map's.",
  "names": [
+  {
+   "address_name": "fn_800F0A64",
+   "name": "SubBlock_merge_next",
+   "where": "MP6 DOL .text",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800F0B20",
+   "name": "Block_link",
+   "where": "MP6 DOL .text",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800F3DB8",
+   "name": "round_decimal",
+   "where": "MP6 DOL .text",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
   {
    "address_name": "lbl_802B1950",
    "name": "protopool",
    "where": "MSL_C.PPCEABI.bare.H/alloc.c (.bss)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_80216810",
    "name": "fix_pool_sizes",
    "where": "MSL_C.PPCEABI.bare.H/alloc.c (.rodata)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_802B1988",
    "name": "stderr_buff",
    "where": "MSL_C.PPCEABI.bare.H/ansi_files.c (.bss)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_802B1A88",
    "name": "stdout_buff",
    "where": "MSL_C.PPCEABI.bare.H/ansi_files.c (.bss)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_802B1B88",
    "name": "stdin_buff",
    "where": "MSL_C.PPCEABI.bare.H/ansi_files.c (.bss)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "address_name": "fn_800F1124",
+   "name": "__num2dec_internal",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_fp.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800F1360",
+   "name": "__two_exp",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_fp.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800F16A0",
+   "name": "__str2dec",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_fp.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800F178C",
+   "name": "__timesdec",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_fp.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800F1A18",
+   "name": "__ull2dec",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_fp.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800F1B28",
+   "name": "__count_trailing_zerol",
+   "where": "MSL_C.PPCEABI.bare.H/ansi_fp.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
   },
   {
    "address_name": "lbl_802169D0",
    "name": "two_over_pi",
    "where": "MSL_C.PPCEABI.bare.H/e_rem_pio2.c (.rodata)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_80216AD8",
    "name": "npio2_hw",
    "where": "MSL_C.PPCEABI.bare.H/e_rem_pio2.c (.rodata)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_80216B58",
    "name": "init_jk",
    "where": "MSL_C.PPCEABI.bare.H/k_rem_pio2.c (.rodata)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_80216B68",
    "name": "PIo2",
    "where": "MSL_C.PPCEABI.bare.H/k_rem_pio2.c (.rodata)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_80216BA8",
    "name": "T",
    "where": "MSL_C.PPCEABI.bare.H/k_tan.c (.rodata)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_802B1C88",
    "name": "signal_funcs",
    "where": "MSL_C.PPCEABI.bare.H/signal.c (.bss)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "address_name": "lbl_80245458",
+   "name": "__vt__Q23std13bad_exception",
+   "where": "Runtime.PPCEABI.H/Gecko_ExceptionPPC.cpp (.data)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
   },
   {
    "address_name": "lbl_802B1CD0",
    "name": "gTRKMsgBufs",
    "where": "TRK_MINNOW_DOLPHIN/msgbuf.c (.bss)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
   },
   {
    "address_name": "lbl_802B1CA0",
    "name": "gTRKEventQueue",
    "where": "TRK_MINNOW_DOLPHIN/nubevent.c (.bss)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "address_name": "lbl_802B3684",
+   "name": "gTRKFramingState",
+   "where": "TRK_MINNOW_DOLPHIN/serpoll.c (.bss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
   },
   {
    "address_name": "lbl_80245BDC",
    "name": "gTRKStepStatus",
    "where": "TRK_MINNOW_DOLPHIN/targimpl.c (.data)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "address_name": "lbl_80216CE8",
+   "name": "gTRKMemMap",
+   "where": "TRK_MINNOW_DOLPHIN/targimpl.c (.rodata)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
   },
   {
    "address_name": "lbl_802BF9F0",
    "name": "Unit01",
    "where": "dolphin/mtx/mtx.c (.sdata)",
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc, debugInfoM.MAP; the file's symbol sizes run in the same order"
+   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+  },
+  {
+   "address_name": "lbl_802C22C0",
+   "name": "value0_3",
+   "where": "musyx/runtime/CheapReverb/creverb.c (.sdata2)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C22C4",
+   "name": "value0_6",
+   "where": "musyx/runtime/CheapReverb/creverb.c (.sdata2)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C22C8",
+   "name": "i2fMagic",
+   "where": "musyx/runtime/CheapReverb/creverb.c (.sdata2)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "fn_800EB9A8",
+   "name": "HandleReverb",
+   "where": "musyx/runtime/CheapReverb/creverb.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "lbl_802C2300",
+   "name": "i2fMagic",
+   "where": "musyx/runtime/StdReverb/reverb.c (.sdata2)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C2308",
+   "name": "value0_3",
+   "where": "musyx/runtime/StdReverb/reverb.c (.sdata2)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C230C",
+   "name": "value0_6",
+   "where": "musyx/runtime/StdReverb/reverb.c (.sdata2)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "fn_800EC408",
+   "name": "DoCrossTalk",
+   "where": "musyx/runtime/StdReverb/reverb.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800EC58C",
+   "name": "HandleReverb",
+   "where": "musyx/runtime/StdReverb/reverb.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "lbl_802C0C28",
+   "name": "oldState",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C2C",
+   "name": "hwIrqLevel",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C30",
+   "name": "salDspInitIsDone",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C34",
+   "name": "salLastTick",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C38",
+   "name": "salLogicActive",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C3C",
+   "name": "salLogicIsWaiting",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C40",
+   "name": "salDspIsDone",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C44",
+   "name": "salAIBufferBase",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C48",
+   "name": "salAIBufferIndex",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0C4C",
+   "name": "userCallback",
+   "where": "musyx/runtime/hw_dolphin.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802A6D78",
+   "name": "voices",
+   "where": "musyx/runtime/hw_dspctrl.c (.bss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B98",
+   "name": "dspARAMZeroBuffer",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B9C",
+   "name": "dspCmdLastLoad",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0BA0",
+   "name": "dspCmdLastBase",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0BA4",
+   "name": "dspCmdLastSize",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0BA8",
+   "name": "dspCmdCurBase",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0BAC",
+   "name": "dspCmdMaxPtr",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0BB0",
+   "name": "dspCmdPtr",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0BC4",
+   "name": "dspHrtfHistoryBuffer",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0BC8",
+   "name": "dspSurround",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0BCC",
+   "name": "dspITDBuffer",
+   "where": "musyx/runtime/hw_dspctrl.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "fn_800E0E34",
+   "name": "salCheckVolErrorAndResetDelta",
+   "where": "musyx/runtime/hw_dspctrl.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800E0F28",
+   "name": "sal_setup_dspvol",
+   "where": "musyx/runtime/hw_dspctrl.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800E0F70",
+   "name": "sal_update_hostplayinfo",
+   "where": "musyx/runtime/hw_dspctrl.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800E0FE4",
+   "name": "DoDepopFade",
+   "where": "musyx/runtime/hw_dspctrl.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800E1090",
+   "name": "HandleDepopVoice",
+   "where": "musyx/runtime/hw_dspctrl.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "fn_800E139C",
+   "name": "SortVoices",
+   "where": "musyx/runtime/hw_dspctrl.c (.text)",
+   "evidence": "the function's code matches Hudson's unstripped engine (huos.elf) exactly"
+  },
+  {
+   "address_name": "lbl_802A6E78",
+   "name": "tmp_em",
+   "where": "musyx/runtime/snd3d.c (.bss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802A6EC8",
+   "name": "startGroup",
+   "where": "musyx/runtime/snd3d.c (.bss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802A72C8",
+   "name": "runList",
+   "where": "musyx/runtime/snd3d.c (.bss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802A78C8",
+   "name": "startListNum",
+   "where": "musyx/runtime/snd3d.c (.bss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802423C0",
+   "name": "dirtyMask",
+   "where": "musyx/runtime/snd_midictrl.c (.data)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802423D0",
+   "name": "dirtyMask",
+   "where": "musyx/runtime/snd_midictrl.c (.data)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B08",
+   "name": "result",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B0C",
+   "name": "result",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B10",
+   "name": "key",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B18",
+   "name": "result",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B1C",
+   "name": "key",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B24",
+   "name": "sheader",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B28",
+   "name": "result",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B2C",
+   "name": "result",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B30",
+   "name": "key",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B38",
+   "name": "main",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
+  },
+  {
+   "address_name": "lbl_802C0B3C",
+   "name": "base",
+   "where": "musyx/runtime/synthdata.c (.sbss)",
+   "evidence": "Hudson's unstripped engine (huos.elf/huos.MAP, Hudson Selection Vol. 4, 2003)"
   }
  ],
  "files": [
@@ -754,7 +1144,7 @@
    "static": "block",
    "ours": 16,
    "original": 18,
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+   "evidence": "Nintendo's link map on the Mario Kart: Double Dash!! debug disc and Hudson's huos.MAP (2003) give the same number, so it is not an SDK version difference"
   },
   {
    "source": "src/dolphin/gx/GXAttr.c",
@@ -796,7 +1186,7 @@
    "static": "resetFuncRegistered",
    "ours": 153,
    "original": 70,
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+   "evidence": "Nintendo's link map on the Mario Kart: Double Dash!! debug disc and Hudson's huos.MAP (2003) give the same number, so it is not an SDK version difference"
   },
   {
    "source": "src/dolphin/gx/GXInit.c",
@@ -838,7 +1228,7 @@
    "static": "cmdTypeAndStatus",
    "ours": 350,
    "original": 372,
-   "evidence": "Nintendo link map on the Mario Kart: Double Dash!! (USA) debug disc"
+   "evidence": "Nintendo's link map on the Mario Kart: Double Dash!! debug disc and Hudson's huos.MAP (2003) give the same number, so it is not an SDK version difference"
   },
   {
    "source": "src/dolphin/vi/vi.c",
