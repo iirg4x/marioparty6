@@ -1222,7 +1222,19 @@ config.libs = [
     Rel(
         "actmanDLL",
         objects={
-            Object(Matching, "REL/actmanDLL/actman.c", mw_version="GC/1.3.2"),
+            Object(
+                Matching,
+                "REL/actmanDLL/actman.c",
+                mw_version="GC/1.3.2",
+                cflags=[
+                    *cflags_rel[:cflags_rel.index("-i include")],
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+                    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+                    *cflags_rel[cflags_rel.index("-i include"):],
+                ],
+                shift_jis=False,
+            ),
         },
     ),
     Rel(
