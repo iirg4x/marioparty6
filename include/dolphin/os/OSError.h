@@ -31,7 +31,7 @@ extern "C" {
 typedef u16 OSError;
 typedef void (*OSErrorHandler)( OSError error, OSContext* context, ... );
 
-OSErrorHandler OSSetErrorHandler(OSError code, OSErrorHandler handler);
+OSErrorHandler OSSetErrorHandler(OSError error, OSErrorHandler handler);
 void __OSUnhandledException(__OSException exception, OSContext* context, u32 dsisr, u32 dar);
 
 extern OSErrorHandler __OSErrorTable[OS_ERROR_MAX];

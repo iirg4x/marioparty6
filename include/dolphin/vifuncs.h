@@ -10,25 +10,11 @@
 extern "C" {
 #endif
 
-void VIInit(void);
-void VIConfigure(const GXRenderModeObj* rm);
-void VIConfigurePan(u16 xOrg, u16 yOrg, u16 width, u16 height);
-void VIFlush(void);
-void VIWaitForRetrace(void);
-void VISetNextFrameBuffer(void* fb);
 void* VIGetNextFrameBuffer(void);
 void* VIGetCurrentFrameBuffer(void);
 void VISetNextRightFrameBuffer(void* fb);
-void VISetBlack(BOOL black);
 void VISet3D(BOOL threeD);
-u32 VIGetRetraceCount(void);
-u32 VIGetNextField(void);
-u32 VIGetCurrentLine(void);
-u32 VIGetTvFormat(void);
 u32 VIGetScanMode(void);
-u32 VIGetDTVStatus(void);
-VIRetraceCallback VISetPreRetraceCallback(VIRetraceCallback callback);
-VIRetraceCallback VISetPostRetraceCallback(VIRetraceCallback callback);
 
 void __VIInit(VITVMode mode);
 void __VISetAdjustingValues(s16 x, s16 y);

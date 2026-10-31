@@ -51,6 +51,10 @@ void OSSetProgressiveMode(u32 on);
 u16 OSGetWirelessID(s32 chan);
 void OSSetWirelessID(s32 chan, u16 id);
 
+void __OSInitSram(void);
+BOOL __OSSyncSram(void);
+BOOL __OSUnlockSram(BOOL commit);
+BOOL __OSUnlockSramEx(BOOL commit);
 #ifdef __cplusplus
 }
 #endif

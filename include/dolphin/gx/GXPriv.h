@@ -10,12 +10,11 @@
 #define ASSERTMSGLINE(line, cond, msg) \
     ((cond) || (OSPanic(__FILE__, line, msg), 0))
 
-// This is dumb but we dont have a Metrowerks way to do variadic macros in the macro to make this done in a not scrubby way.
-#define ASSERTMSG1LINE(line, cond, msg, arg1) \
-    ((cond) || (OSPanic(__FILE__, line, msg, arg1), 0))
+#define ASSERTMSG1LINE(line, cond, msg, firstValue) \
+    ((cond) || (OSPanic(__FILE__, line, msg, firstValue), 0))
     
-#define ASSERTMSG2LINE(line, cond, msg, arg1, arg2) \
-    ((cond) || (OSPanic(__FILE__, line, msg, arg1, arg2), 0))
+#define ASSERTMSG2LINE(line, cond, msg, firstValue, secondValue) \
+    ((cond) || (OSPanic(__FILE__, line, msg, firstValue, secondValue), 0))
 
 #define ASSERTMSGLINEV(line, cond, ...) \
     ((cond) || (OSPanic(__FILE__, line, __VA_ARGS__), 0))
@@ -23,8 +22,8 @@
 #else
 #define ASSERTLINE(line, cond) (void)0
 #define ASSERTMSGLINE(line, cond, msg) (void)0
-#define ASSERTMSG1LINE(line, cond, msg, arg1) (void)0
-#define ASSERTMSG2LINE(line, cond, msg, arg1, arg2) (void)0
+#define ASSERTMSG1LINE(line, cond, msg, firstValue) (void)0
+#define ASSERTMSG2LINE(line, cond, msg, firstValue, secondValue) (void)0
 #define ASSERTMSGLINEV(line, cond, ...) (void)0
 #endif
 
@@ -190,24 +189,25 @@ do { \
 
 #define SET_REG_FIELD(line, reg, size, shift, val) \
 do { \
-    ASSERTMSGLINE(line, ((u32)(val) & ~((1 << (size)) - 1)) == 0, "GX Internal: Register field out of range"); \
+    ASSERTMSGLINE(line, ((u32)(val) & ~((1 << (size)) - 1)) == 0, \
+        "GX Internal: Register field out of range"); \
     (reg) = __rlwimi((int)(reg), (int)(val), (shift), 32 - (shift) - (size), 31 - (shift)); \
 } while (0)
 
 #define GX_REG_ASSERT(c) ASSERTMSG(c, "GX Internal: Register field out of range")
 
-#define GX_FLAG_SET(regOrg, newFlag, regName)                                                      \
-  do {                                                                                             \
-    GX_REG_ASSERT(!((newFlag) & ~((1 << (regName##_SIZE)) - 1)));                                  \
-    (regOrg) = (((u32)(regOrg) & ~(regName##_MASK)) |                                              \
-                (((u32)(newFlag) << (regName##_SHIFT)) & (regName##_MASK)));                       \
+#define GX_FLAG_SET(regOrg, newFlag, regName) \
+  do { \
+    GX_REG_ASSERT(!((newFlag) & ~((1 << (regName##_SIZE)) - 1))); \
+    (regOrg) = (((u32)(regOrg) & ~(regName##_MASK)) | \
+                (((u32)(newFlag) << (regName##_SHIFT)) & (regName##_MASK))); \
   } while (0)
 
 #define GX_GENMODE_ID 0
 #define GX_GENMODE_REG_ID_SIZE 8
 #define GX_GENMODE_REG_ID_SHIFT 24
 #define GX_GENMODE_REG_ID_MASK 0xff000000
-#define GX_GENMODE_GET_REG_ID(genMode)                                                               \
+#define GX_GENMODE_GET_REG_ID(genMode) \
   ((((u32)(genMode)) & GX_GENMODE_REG_ID_MASK) >> GX_GENMODE_REG_ID_SHIFT)
 
 #define GX_BPMASK_ID 15
@@ -354,21 +354,21 @@ do { \
 
 #define GX_OPCODE_CMD_SHIFT 3
 
-#define GX_OPCODE(index, cmd)                                                                      \
+#define GX_OPCODE(index, cmd) \
   ((((u32)(index)) << GX_OPCODE_INDEX_SHIFT) | (((u32)(cmd)) << GX_OPCODE_CMD_SHIFT))
 
 #ifdef _DEBUG
-#define GX_WRITE_RA_REG(reg)                                                                       \
-  {                                                                                                \
-    GX_WRITE_U8(GX_OPCODE(1, 12));                                                                 \
-    GX_WRITE_U32((reg));                                                                           \
-    __gxVerif->rasRegs[GX_GENMODE_GET_REG_ID(reg)] = reg;                                             \
+#define GX_WRITE_RA_REG(reg) \
+  { \
+    GX_WRITE_U8(GX_OPCODE(1, 12)); \
+    GX_WRITE_U32((reg)); \
+    __gxVerif->rasRegs[GX_GENMODE_GET_REG_ID(reg)] = reg; \
   }
 #else
-#define GX_WRITE_RA_REG(reg)                                                                       \
-  {                                                                                                \
-    GX_WRITE_U8(GX_OPCODE(1, 12));                                                                 \
-    GX_WRITE_U32((reg));                                                                           \
+#define GX_WRITE_RA_REG(reg) \
+  { \
+    GX_WRITE_U8(GX_OPCODE(1, 12)); \
+    GX_WRITE_U32((reg)); \
   }
 #endif
 
@@ -380,32 +380,32 @@ do { \
 #define CP_STREAM_REG_ADDR_SHIFT    4
 #define CP_STREAM_REG_ADDR_MASK 0x000000f0
 
-#define CP_STREAM_REG(index, addr)                                                                 \
-  ((((unsigned long)(index)) << CP_STREAM_REG_INDEX_SHIFT) |                                       \
+#define CP_STREAM_REG(index, addr) \
+  ((((unsigned long)(index)) << CP_STREAM_REG_INDEX_SHIFT) | \
    (((unsigned long)(addr)) << CP_STREAM_REG_ADDR_SHIFT))
 
 #ifdef _DEBUG
-#define GX_WRITE_CP_STRM_REG(addr, vtxfmt, data)                                                   \
-  {                                                                                                \
-    s32 regAddr;                                                                                   \
-    GX_WRITE_U8(GX_OPCODE(0, 1));                                                                  \
-    GX_WRITE_U8(CP_STREAM_REG((vtxfmt), (addr)));                                                  \
-    GX_WRITE_U32((data));                                                                          \
-    regAddr = (vtxfmt)-GX_POS_MTX_ARRAY + GX_VA_POS;                                               \
-    if ((addr) == 10) {                                                                            \
-      if (regAddr >= 0 && regAddr < 4)                                                             \
-        gx->indexBase[regAddr] = (data);                                                           \
-    } else if ((addr) == 11) {                                                                     \
-      if (regAddr >= 0 && regAddr < 4)                                                             \
-        gx->indexStride[regAddr] = (data);                                                         \
-    }                                                                                              \
+#define GX_WRITE_CP_STRM_REG(addr, vtxfmt, data) \
+  { \
+    s32 regAddr; \
+    GX_WRITE_U8(GX_OPCODE(0, 1)); \
+    GX_WRITE_U8(CP_STREAM_REG((vtxfmt), (addr))); \
+    GX_WRITE_U32((data)); \
+    regAddr = (vtxfmt)-GX_POS_MTX_ARRAY + GX_VA_POS; \
+    if ((addr) == 10) { \
+      if (regAddr >= 0 && regAddr < 4) \
+        gx->indexBase[regAddr] = (data); \
+    } else if ((addr) == 11) { \
+      if (regAddr >= 0 && regAddr < 4) \
+        gx->indexStride[regAddr] = (data); \
+    } \
   }
 #else
-#define GX_WRITE_CP_STRM_REG(addr, vtxfmt, data)                                                   \
-  {                                                                                                \
-    GX_WRITE_U8(GX_OPCODE(0, 1));                                                                  \
-    GX_WRITE_U8(CP_STREAM_REG((vtxfmt), (addr)));                                                  \
-    GX_WRITE_U32((data));                                                                          \
+#define GX_WRITE_CP_STRM_REG(addr, vtxfmt, data) \
+  { \
+    GX_WRITE_U8(GX_OPCODE(0, 1)); \
+    GX_WRITE_U8(CP_STREAM_REG((vtxfmt), (addr))); \
+    GX_WRITE_U32((data)); \
   }
 #endif
 
@@ -416,8 +416,8 @@ do { \
 #define PE_REFRESH_INTERVAL_SHIFT 0
 #define PE_REFRESH_ENABLE_SHIFT 9
 #define PE_REFRESH_TOTAL_SIZE 32
-#define PE_REFRESH(interval, enable, rid)                                                          \
-  ((((u32)(interval)) << PE_REFRESH_INTERVAL_SHIFT) |                                              \
+#define PE_REFRESH(interval, enable, rid) \
+  ((((u32)(interval)) << PE_REFRESH_INTERVAL_SHIFT) | \
    (((u32)(enable)) << PE_REFRESH_ENABLE_SHIFT) | (((u32)(rid)) << PE_REFRESH_REG_ID_SHIFT))
 
 #define TX_REFRESH_REG_ID_SIZE 8
@@ -427,8 +427,8 @@ do { \
 #define TX_REFRESH_INTERVAL_SHIFT 0
 #define TX_REFRESH_ENABLE_SHIFT 10
 #define TX_REFRESH_TOTAL_SIZE 32
-#define TX_REFRESH(interval, enable, rid)                                                          \
-  ((((u32)(interval)) << TX_REFRESH_INTERVAL_SHIFT) |                                              \
+#define TX_REFRESH(interval, enable, rid) \
+  ((((u32)(interval)) << TX_REFRESH_INTERVAL_SHIFT) | \
    (((u32)(enable)) << TX_REFRESH_ENABLE_SHIFT) | (((u32)(rid)) << TX_REFRESH_REG_ID_SHIFT))
 
 #define GX_VAT_REG_A_UNK_SIZE 1
@@ -449,7 +449,8 @@ do { \
 #define GX_SET_PE_REG(offset, val)  (*(volatile u16*)((volatile u16*)(__peReg) + (offset)) = val)
 #define GX_SET_PI_REG(offset, val)  (*(volatile u32*)((volatile u32*)(__piReg) + (offset)) = val)
 
-#define CHECK_GXBEGIN(line, name) ASSERTMSGLINE(line, !__GXinBegin, "'" name "' is not allowed between GXBegin/GXEnd")
+#define CHECK_GXBEGIN(line, name) \
+    ASSERTMSGLINE(line, !__GXinBegin, "'" name "' is not allowed between GXBegin/GXEnd")
 
 /* GXAttr.c */
 
@@ -457,9 +458,6 @@ void __GXSetVCD(void);
 void __GXSetVAT(void);
 
 /* GXBump.c */
-
-void __GXUpdateBPMask(void);
-void __GXFlushTextureState(void);
 
 /* GXFifo.c */
 
@@ -477,15 +475,10 @@ struct __GXFifoObj {
     u8 bind_gp;
 };
 
-void __GXSaveCPUFifoAux(struct __GXFifoObj *realFifo);
-void __GXFifoInit(void);
 void __GXInsaneWatermark(void);
-void __GXCleanGPFifo(void);
 
 /* GXGeometry.c */
 
-void __GXSetDirtyState(void);
-void __GXSendFlushPrim(void);
 void __GXSetGenMode(void);
 
 /* GXInit.c */
@@ -542,7 +535,7 @@ typedef struct __GXData_struct {
   GXTexRegion TexRegions1[8];
   GXTexRegion TexRegions2[8];
   GXTlutRegion TlutRegions[20];
-  GXTexRegion* (*texRegionCallback)(GXTexObj*, GXTexMapID);
+  GXTexRegion* (*texRegionCallback)(const GXTexObj*, GXTexMapID);
   GXTlutRegion* (*tlutRegionCallback)(u32);
   GXAttrType nrmType;
   GXBool hasNrms;
@@ -646,13 +639,8 @@ void __GXPrintShadowState(void);
 
 /* GXTexture.c */
 
-void __GetImageTileCount(GXTexFmt fmt, u16 wd, u16 ht, u32 *rowTiles, u32 *colTiles, u32 *cmpTiles);
-void __GXSetSUTexRegs(void);
 void __GXGetSUTexSize(GXTexCoordID coord, u16 *width, u16 *height);
-void __GXSetTmemConfig(u32 config);
 
 /* GXTransform.c */
-
-void __GXSetMatrixIndex(GXAttr matIdxAttr);
 
 #endif // _DOLPHIN_GXPRIV

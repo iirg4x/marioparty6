@@ -16,11 +16,7 @@ extern "C" {
 #define OS_BASE_CACHED (OS_CACHED_REGION_PREFIX << 16)
 #define OS_BASE_UNCACHED (OS_UNCACHED_REGION_PREFIX << 16)
 
-#ifdef __MWERKS__
 #define AT_ADDRESS(xyz) : (xyz)
-#else
-#define AT_ADDRESS
-#endif
 typedef s64 OSTime;
 typedef u32 OSTick;
 u32 __OSBusClock AT_ADDRESS(OS_BASE_CACHED | 0x00F8);  // sync with OSLoMem.h
@@ -69,12 +65,12 @@ u32 OSUncachedToCached(void* ucaddr);
 
 void* OSGetArenaHi(void);
 void* OSGetArenaLo(void);
-void OSSetArenaHi(void* newHi);
-void OSSetArenaLo(void* newLo);
 
 void* OSAllocFromArenaLo(u32 size, u32 align);
 void* OSAllocFromArenaHi(u32 size, u32 align);
 
+void __OSPSInit(void);
+void __OSFPRInit(void);
 void OSInit();
 u32 __OSGetDIConfig(void);
 
@@ -106,6 +102,7 @@ typedef struct OSStopwatch {
 	OSTime max;
 	OSTime last;
 	BOOL running;
+	u32 _padding;
 } OSStopwatch;
 
 void OSInitStopwatch(OSStopwatch* sw, char* name);
@@ -142,9 +139,6 @@ u32 OSGetConsoleType();
 #define OS_SOUND_MODE_MONO 0u
 #define OS_SOUND_MODE_STEREO 1u
 
-u32 OSGetSoundMode(void);
-void OSSetSoundMode(u32 mode);
-
 #define OS_PROGRESSIVE_MODE_OFF 0u
 #define OS_PROGRESSIVE_MODE_ON 1u
 
@@ -169,10 +163,6 @@ void OSSetEuRgb60Mode(u32 on);
 
 void OSRegisterVersion(const char* id);
 
-BOOL OSDisableInterrupts(void);
-BOOL OSEnableInterrupts(void);
-BOOL OSRestoreInterrupts(BOOL level);
-
 #define OSHalt(msg) OSPanic(__FILE__, __LINE__, msg)
 
 #ifdef _DEBUG
@@ -185,10 +175,10 @@ BOOL OSRestoreInterrupts(BOOL level);
 #ifndef ASSERTMSGLINE
 #define ASSERTMSGLINE(line, cond, msg) \
   ((cond) || (OSPanic(__FILE__, line, msg), 0))
-#define ASSERTMSG1LINE(line, cond, msg, arg1) \
-  ((cond) || (OSPanic(__FILE__, line, msg, arg1), 0))
-#define ASSERTMSG2LINE(line, cond, msg, arg1, arg2) \
-  ((cond) || (OSPanic(__FILE__, line, msg, arg1, arg2), 0))
+#define ASSERTMSG1LINE(line, cond, msg, firstValue) \
+  ((cond) || (OSPanic(__FILE__, line, msg, firstValue), 0))
+#define ASSERTMSG2LINE(line, cond, msg, firstValue, secondValue) \
+  ((cond) || (OSPanic(__FILE__, line, msg, firstValue, secondValue), 0))
 #define ASSERTMSGLINEV(line, cond, ...) \
   ((cond) || (OSPanic(__FILE__, line, __VA_ARGS__), 0))
 #endif
@@ -198,32 +188,29 @@ BOOL OSRestoreInterrupts(BOOL level);
 #endif
 
 #ifndef ASSERTMSG
-#if defined(__STDC_VERSION__) && (199901L <= __STDC_VERSION__) || defined(__MWERKS__) ||           \
-    defined(__SN__)
 #define ASSERTMSG(exp, ...) (void)((exp) || (OSPanic(__FILE__, __LINE__, __VA_ARGS__), 0))
-#else
-#define ASSERTMSG(exp, msg) (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg)), 0))
-#endif
 #endif
 
 #ifndef ASSERTMSG1
-#define ASSERTMSG1(exp, msg, param1)                                                               \
-  (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg), (param1)), 0))
+#define ASSERTMSG1(exp, msg, firstValue) \
+  (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg), (firstValue)), 0))
 #endif
 
 #ifndef ASSERTMSG2
-#define ASSERTMSG2(exp, msg, param1, param2)                                                       \
-  (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg), (param1), (param2)), 0))
+#define ASSERTMSG2(exp, msg, firstValue, secondValue) \
+  (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg), (firstValue), (secondValue)), 0))
 #endif
 
 #ifndef ASSERTMSG3
-#define ASSERTMSG3(exp, msg, param1, param2, param3)                                               \
-  (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg), (param1), (param2), (param3)), 0))
+#define ASSERTMSG3(exp, msg, firstValue, secondValue, thirdValue) \
+  (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg), (firstValue), (secondValue), \
+    (thirdValue)), 0))
 #endif
 
 #ifndef ASSERTMSG4
-#define ASSERTMSG4(exp, msg, param1, param2, param3, param4)                                       \
-  (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg), (param1), (param2), (param3), (param4)), 0))
+#define ASSERTMSG4(exp, msg, firstValue, secondValue, thirdValue, fourthValue) \
+  (void)((exp) || (OSPanic(__FILE__, __LINE__, (msg), (firstValue), (secondValue), \
+    (thirdValue), (fourthValue)), 0))
 #endif
 
 #else // _DEBUG
@@ -234,8 +221,8 @@ BOOL OSRestoreInterrupts(BOOL level);
 
 #ifndef ASSERTMSGLINE
 #define ASSERTMSGLINE(line, cond, msg) (void)0
-#define ASSERTMSG1LINE(line, cond, msg, arg1) (void)0
-#define ASSERTMSG2LINE(line, cond, msg, arg1, arg2) (void)0
+#define ASSERTMSG1LINE(line, cond, msg, firstValue) (void)0
+#define ASSERTMSG2LINE(line, cond, msg, firstValue, secondValue) (void)0
 #define ASSERTMSGLINEV(line, cond, ...) (void)0
 #endif
 
@@ -244,25 +231,20 @@ BOOL OSRestoreInterrupts(BOOL level);
 #endif
 
 #ifndef ASSERTMSG
-#if defined(__STDC_VERSION__) && (199901L <= __STDC_VERSION__) || defined(__MWERKS__) ||           \
-    defined(__SN__)
 #define ASSERTMSG(exp, ...) ((void)0)
-#else
-#define ASSERTMSG(exp, msg) ((void)0)
-#endif
 #endif
 
 #ifndef ASSERTMSG1
-#define ASSERTMSG1(exp, msg, param1) ((void)0)
+#define ASSERTMSG1(exp, msg, firstValue) ((void)0)
 #endif
 #ifndef ASSERTMSG2
-#define ASSERTMSG2(exp, msg, param1, param2) ((void)0)
+#define ASSERTMSG2(exp, msg, firstValue, secondValue) ((void)0)
 #endif
 #ifndef ASSERTMSG3
-#define ASSERTMSG3(exp, msg, param1, param2, param3) ((void)0)
+#define ASSERTMSG3(exp, msg, firstValue, secondValue, thirdValue) ((void)0)
 #endif
 #ifndef ASSERTMSG4
-#define ASSERTMSG4(exp, msg, param1, param2, param3, param4) ((void)0)
+#define ASSERTMSG4(exp, msg, firstValue, secondValue, thirdValue, fourthValue) ((void)0)
 #endif
 
 #endif // _DEBUG
@@ -270,9 +252,6 @@ BOOL OSRestoreInterrupts(BOOL level);
 void OSReport(const char* msg, ...);
 void OSPanic(const char* file, int line, const char* msg, ...);
 void OSFatal(GXColor fg, GXColor bg, const char* msg);
-
-u32 OSGetPhysicalMemSize(void);
-u32 OSGetConsoleSimulatedMemSize(void);
 
 extern BOOL __OSIsGcam;
 extern int __OSInIPL;
@@ -304,4 +283,13 @@ extern int __OSInIPL;
 #include <dolphin/os/OSSemaphore.h>
 #include <dolphin/os/OSSerial.h>
 #include <dolphin/os/OSThread.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+__OSExceptionHandler __OSGetExceptionHandler(__OSException exception);
+__OSExceptionHandler __OSSetExceptionHandler(__OSException exception, __OSExceptionHandler handler);
+#ifdef __cplusplus
+}
+#endif
+
 #endif // _DOLPHIN_OS

@@ -19,6 +19,9 @@ extern "C" {
 
 void OSProtectRange(u32 chan, void* addr, u32 nBytes, u32 control);
 
+u32 OSGetPhysicalMemSize(void);
+u32 OSGetConsoleSimulatedMemSize(void);
+void __OSInitMemoryProtection(void);
 #ifdef __cplusplus
 }
 #endif

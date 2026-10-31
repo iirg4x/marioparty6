@@ -25,11 +25,15 @@ void GXGetFifoStatus(GXFifoObj* fifo, GXBool* overhi, GXBool* underlow, u32* fif
                      GXBool* cpu_write, GXBool* gp_read, GXBool* fifowrap);
 void GXGetGPStatus(GXBool* overhi, GXBool* underlow, GXBool* readIdle, GXBool* cmdIdle,
                    GXBool* brkpt);
-void GXInitFifoLimits(GXFifoObj* fifo, u32 hiWaterMark, u32 loWaterMark);
+void GXInitFifoLimits(GXFifoObj* fifo, u32 hiWatermark, u32 loWatermark);
 GXBreakPtCallback GXSetBreakPtCallback(GXBreakPtCallback cb);
 void GXEnableBreakPt(void* breakPt);
 void GXDisableBreakPt(void);
 
+void __GXCleanGPFifo(void);
+void __GXFifoInit(void);
+struct __GXFifoObj;
+void __GXSaveCPUFifoAux(struct __GXFifoObj *realFifo);
 #ifdef __cplusplus
 }
 #endif

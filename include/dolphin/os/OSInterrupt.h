@@ -92,6 +92,9 @@ typedef s16 __OSInterrupt;
 typedef void (*__OSInterruptHandler)(__OSInterrupt interrupt, OSContext* context);
 
 typedef u32 OSInterruptMask;
+BOOL OSDisableInterrupts(void);
+BOOL OSEnableInterrupts(void);
+BOOL OSRestoreInterrupts(BOOL level);
 
 extern volatile __OSInterrupt __OSLastInterrupt;
 extern volatile u32 __OSLastInterruptSrr0;
@@ -105,9 +108,10 @@ void __OSDispatchInterrupt(__OSException exception, OSContext* context);
 
 OSInterruptMask OSGetInterruptMask(void);
 OSInterruptMask OSSetInterruptMask(OSInterruptMask mask);
-OSInterruptMask __OSMaskInterrupts(OSInterruptMask mask);
-OSInterruptMask __OSUnmaskInterrupts(OSInterruptMask mask);
+OSInterruptMask __OSMaskInterrupts(OSInterruptMask global);
+OSInterruptMask __OSUnmaskInterrupts(OSInterruptMask global);
 
+void __OSInterruptInit(void);
 #ifdef __cplusplus
 }
 #endif

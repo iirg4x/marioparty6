@@ -22,8 +22,13 @@ void VISetWindowFullscreen(bool fullscreen);
 bool VIGetWindowFullscreen();
 #endif
 
-
-
+void VIConfigurePan(u16 xOrg, u16 yOrg, u16 width, u16 height);
+u32 VIGetRetraceCount(void);
+u32 VIGetNextField(void);
+u32 VIGetCurrentLine(void);
+u32 VIGetDTVStatus(void);
+VIRetraceCallback VISetPreRetraceCallback(VIRetraceCallback callback);
+VIRetraceCallback VISetPostRetraceCallback(VIRetraceCallback callback);
 #ifdef __cplusplus
 }
 #endif

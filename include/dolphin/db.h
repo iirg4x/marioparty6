@@ -2,6 +2,7 @@
 #define _DOLPHIN_DB
 
 #include "types.h"
+#include <dolphin/os/OSException.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,6 +25,7 @@ void DBInitComm(int* inputFlagPtr, int* mtrCallback);
 static void __DBExceptionDestination(void);
 void DBPrintf(char* format, ...);
 
+BOOL __DBIsExceptionMarked(__OSException exception);
 #ifdef __cplusplus
 }
 #endif

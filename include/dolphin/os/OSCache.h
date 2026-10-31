@@ -31,6 +31,7 @@ u32 LCQueueLength(void);
 void LCQueueWait(u32 len);
 void LCFlushQueue(void);
 
+void __OSCacheInit(void);
 #ifdef __cplusplus
 }
 #endif
