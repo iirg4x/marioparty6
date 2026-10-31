@@ -5,8 +5,14 @@
 
 void* OSGetArenaHi(void);
 void* OSGetArenaLo(void);
-void OSSetArenaHi(void* addr);
-void OSSetArenaLo(void* addr);
+#ifdef __cplusplus
+extern "C" {
+#endif
+void OSSetArenaHi(void* newHi);
+void OSSetArenaLo(void* newLo);
+#ifdef __cplusplus
+}
+#endif
 void* OSAllocFromArenaLo(u32 size, u32 align);
 void* OSAllocFromArenaLo(u32 size, u32 align);
 

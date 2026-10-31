@@ -62,13 +62,8 @@ struct OSThread {
   void* specific[OS_THREAD_SPECIFIC_MAX];
 };
 
-#ifdef __MWERKS__
 extern OSThread* __OSCurrentThread : (0x800000E4);
 extern OSThreadQueue __OSActiveThreadQueue : (0x800000DC);
-#else
-extern OSThread* __OSCurrentThread;
-extern OSThreadQueue __OSActiveThreadQueue;
-#endif
 
 enum OS_THREAD_STATE {
   OS_THREAD_STATE_READY = 1,
@@ -84,7 +79,6 @@ enum OS_THREAD_STATE {
 #define OS_PRIORITY_MIN 0  // highest
 #define OS_PRIORITY_MAX 31 // lowest
 #define OS_PRIORITY_IDLE OS_PRIORITY_MAX
-
 
 void OSInitThreadQueue(OSThreadQueue* queue);
 OSThread* OSGetCurrentThread(void);
@@ -114,6 +108,8 @@ OSThread* OSGetIdleFunction(void);
 void OSClearStack(u8 val);
 long OSCheckActiveThreads(void);
 
+void __OSReschedule(void);
+void __OSThreadInit(void);
 #ifdef __cplusplus
 }
 #endif

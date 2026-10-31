@@ -28,6 +28,9 @@ void OSInitCond(OSCond* cond);
 void OSWaitCond(OSCond* cond, OSMutex* mutex);
 void OSSignalCond(OSCond* cond);
 
+BOOL __OSCheckDeadLock(OSThread* thread);
+BOOL __OSCheckMutexes(OSThread* thread);
+void __OSUnlockAllMutex(OSThread* thread);
 #ifdef __cplusplus
 }
 #endif

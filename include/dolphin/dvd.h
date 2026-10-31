@@ -11,13 +11,13 @@ extern "C" {
   if (!(cond))                             \
   OSPanic(__FILE__, line, msg)
 
-#define DVD_ASSERTMSG1LINE(line, cond, msg, arg1) \
+#define DVD_ASSERTMSG1LINE(line, cond, msg, firstValue) \
   if (!(cond))                                    \
-  OSPanic(__FILE__, line, msg, arg1)
+  OSPanic(__FILE__, line, msg, firstValue)
 
-#define DVD_ASSERTMSG2LINE(line, cond, msg, arg1, arg2) \
+#define DVD_ASSERTMSG2LINE(line, cond, msg, firstValue, secondValue) \
   if (!(cond))                                          \
-  OSPanic(__FILE__, line, msg, arg1, arg2)
+  OSPanic(__FILE__, line, msg, firstValue, secondValue)
 
 #define DVD_MIN_TRANSFER_SIZE 32
 
@@ -126,15 +126,15 @@ typedef struct {
 void DVDInit();
 int DVDReadAbsAsyncPrio(DVDCommandBlock* block, void* addr, s32 length, s32 offset,
                         DVDCBCallback callback, s32 prio);
-BOOL DVDSetAutoInvalidation(BOOL autoInvalidation);
+BOOL DVDSetAutoInvalidation(BOOL autoInval);
 void DVDResume(void);
 DVDDiskID* DVDGetCurrentDiskID(void);
 BOOL DVDCheckDisk(void);
-BOOL DVDClose(DVDFileInfo* f);
+BOOL DVDClose(DVDFileInfo* fileInfo);
 BOOL DVDSetAutoFatalMessaging(BOOL);
 void DVDReset();
 s32 DVDCancel(volatile DVDCommandBlock* block);
-BOOL DVDOpen(char* fileName, DVDFileInfo* fileInfo);
+BOOL DVDOpen(const char* fileName, DVDFileInfo* fileInfo);
 BOOL DVDFastOpen(s32 entrynum, DVDFileInfo* fileInfo);
 s32 DVDGetCommandBlockStatus(const DVDCommandBlock* block);
 BOOL DVDCancelAsync(DVDCommandBlock* block, DVDCBCallback callback);
@@ -158,14 +158,13 @@ s32 DVDGetStreamPlayAddr(DVDCommandBlock* block);
 
 s32 DVDGetDriveStatus();
 
-s32 DVDConvertPathToEntrynum(char* pathPtr);
+s32 DVDConvertPathToEntrynum(const char* pathPtr);
 
 BOOL DVDReadAsyncPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset,
                       DVDCallback callback, s32 prio);
                
 BOOL DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 prio);
 
-			   
 #define DVDReadAsync(fileInfo, addr, length, offset, callback)                                     \
   DVDReadAsyncPrio((fileInfo), (addr), (length), (offset), (callback), 2)
 #define DVDRead(fileInfo, addr, length, offset)                 \

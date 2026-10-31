@@ -31,6 +31,8 @@ void GXSetViewportJitter(f32 left, f32 top, f32 wd, f32 ht, f32 nearz, f32 farz,
 void GXSetScissorBoxOffset(s32 x_off, s32 y_off);
 void GXSetClipMode(GXClipMode mode);
 
+void GXSetScissor(u32 left, u32 top, u32 wd, u32 ht);
+void __GXSetMatrixIndex(GXAttr matIdxAttr);
 #ifdef __cplusplus
 }
 #endif

@@ -1,3 +1,4 @@
+// DVD file system: finds files through the disc's file string table and reads them by entry.
 
 #include "dolphin/DVDPriv.h"
 #include "dolphin/os.h"
@@ -26,6 +27,8 @@ static void cbForSeekSync(s32 result, DVDCommandBlock* block);
 static void cbForPrepareStreamAsync(s32 result, DVDCommandBlock* block);
 static void cbForPrepareStreamSync(s32 result, DVDCommandBlock* block);
 
+// Finds the file string table through the boot info. Its first entry counts the entries, and the
+// names follow the last entry.
 void __DVDFSInit() {
 	BootInfo = (OSBootInfo*)OSPhysicalToCached(0);
 	FstStart = (FSTEntry*)BootInfo->FSTLocation;
@@ -44,6 +47,8 @@ void __DVDFSInit() {
 #define filePosition(i) (FstStart[i].parentOrPosition)
 #define fileLength(i) (FstStart[i].nextEntryOrLength)
 
+// Whether the next component of path equals string, ignoring case.
+// A component ends at '/' or at the path's end.
 static inline BOOL isSame(const char* path, const char* string) {
 	while (*string != '\0') {
 		if (tolower(*path++) != tolower(*string++)) {
@@ -58,7 +63,9 @@ static inline BOOL isSame(const char* path, const char* string) {
 	return FALSE;
 }
 
-s32 DVDConvertPathToEntrynum(char* pathPtr) {
+// Walks a path from the current directory, or from the root after '/',
+// and returns the entry it names.
+s32 DVDConvertPathToEntrynum(const char* pathPtr) {
 	const char* ptr;
 	char* stringPtr;
 	BOOL isDir;
@@ -119,10 +126,10 @@ s32 DVDConvertPathToEntrynum(char* pathPtr) {
 
 			if (illegal)
 				OSPanic(__FILE__, 387,
-								"DVDConvertEntrynumToPath(possibly DVDOpen or DVDChangeDir or DVDOpenDir): "
-								"specified directory or file (%s) doesn't match standard 8.3 format. This is a "
-								"temporary restriction and will be removed soon\n",
-								origPathPtr);
+					"DVDConvertEntrynumToPath(possibly DVDOpen or DVDChangeDir or DVDOpenDir): "
+					"specified directory or file (%s) doesn't match standard 8.3 format. This is a "
+					"temporary restriction and will be removed soon\n",
+					origPathPtr);
 		} else {
 			for (ptr = pathPtr; (*ptr != '\0') && (*ptr != '/'); ptr++)
 				;
@@ -157,6 +164,7 @@ s32 DVDConvertPathToEntrynum(char* pathPtr) {
 	}
 }
 
+// Fills fileInfo from an entry number. Fails on an entry out of range and on a directory.
 BOOL DVDFastOpen(s32 entrynum, DVDFileInfo* fileInfo) {
 	if ((entrynum < 0) || (entrynum >= MaxEntryNum) || entryIsDir(entrynum)) {
 		return FALSE;
@@ -170,7 +178,8 @@ BOOL DVDFastOpen(s32 entrynum, DVDFileInfo* fileInfo) {
 	return TRUE;
 }
 
-BOOL DVDOpen(char* fileName, DVDFileInfo* fileInfo) {
+// Fills fileInfo from a path. A path with no entry warns and fails. A directory fails.
+BOOL DVDOpen(const char* fileName, DVDFileInfo* fileInfo) {
 	s32 entry;
 	char currentDir[128];
 
@@ -199,6 +208,7 @@ BOOL DVDClose(DVDFileInfo* fileInfo) {
 	return TRUE;
 }
 
+// Copies src up to maxlen characters, with no terminator, and returns the count copied.
 static inline u32 myStrncpy(char* dest, char* src, u32 maxlen) {
 	u32 i = maxlen;
 
@@ -210,6 +220,7 @@ static inline u32 myStrncpy(char* dest, char* src, u32 maxlen) {
 	return (maxlen - i);
 }
 
+// Writes the path of entry, parents first, and returns its length. Stops at maxlen.
 static u32 entryToPath(u32 entry, char* path, u32 maxlen) {
 	char* name;
 	u32 loc;
@@ -233,6 +244,8 @@ static u32 entryToPath(u32 entry, char* path, u32 maxlen) {
 	return loc;
 }
 
+// Writes the terminated path of an entry, with a trailing '/' for a directory.
+// FALSE when it does not fit.
 static inline BOOL DVDConvertEntrynumToPath(s32 entrynum, char* path, u32 maxlen) {
 	u32 loc;
 
@@ -281,6 +294,7 @@ BOOL DVDReadAsyncPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset,
 #define offsetof(type, memb) ((u32) & ((type*)0)->memb)
 #endif
 
+// Command block callback of an asynchronous read: passes the result to the file's own callback.
 static void cbForReadAsync(s32 result, DVDCommandBlock* block) {
 	DVDFileInfo* fileInfo;
 
@@ -290,7 +304,7 @@ static void cbForReadAsync(s32 result, DVDCommandBlock* block) {
 	}
 }
 
-/* This is based on the revolution SDK, these may not match in all cases I have also left the line numbers at 0 */
+// Blocking read at a priority: sleeps until the command block ends.
 BOOL DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 prio) {
 	BOOL result;
 	DVDCommandBlock* block;
@@ -340,5 +354,4 @@ BOOL DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 
 	return retVal;
 }
 
-/* This is based on the revolution SDK, these may not match in all cases */
 static void cbForReadSync(s32 result, DVDCommandBlock* block) { OSWakeupThread(&__DVDThreadQueue); }

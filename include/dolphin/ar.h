@@ -54,9 +54,7 @@ u32 ARGetInternalSize(void);
 void ARClear(u32 flag);
 
 // ARQ
-void ARQInit(void);
 void ARQReset(void);
-void ARQPostRequest(ARQRequest* request, u32 owner, u32 type, u32 priority, u32 source, u32 dest, u32 length, ARQCallback callback);
 void ARQRemoveRequest(ARQRequest* request);
 void ARQRemoveOwnerRequest(u32 owner);
 void ARQFlushQueue(void);

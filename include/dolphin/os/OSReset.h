@@ -47,7 +47,7 @@ struct OSResetFunctionInfo {
 void OSRegisterResetFunction(OSResetFunctionInfo* info);
 BOOL __OSCallResetFunctions(BOOL final);
 void __OSDoHotReset(u32 resetCode);
-void OSResetSystem(s32 reset, u32 resetCode, BOOL forceMenu);
+void OSResetSystem(int reset, u32 resetCode, BOOL forceMenu);
 u32 OSGetResetCode(void);
 
 #ifdef __cplusplus

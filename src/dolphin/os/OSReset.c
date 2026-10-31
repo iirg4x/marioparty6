@@ -1,3 +1,4 @@
+// System reset: the reset function queue, device shutdown, and hot reset or restart.
 #include <dolphin/PPCArch.h>
 #include <dolphin/hw_regs.h>
 #include <dolphin/os.h>
@@ -160,7 +161,7 @@ void __OSShutdownDevices(BOOL doRecalibration)
     KillThreads();
 }
 
-void OSResetSystem(s32 reset, u32 resetCode, BOOL forceMenu)
+void OSResetSystem(int reset, u32 resetCode, BOOL forceMenu)
 {
     OSSram* sram;
 
@@ -175,7 +176,7 @@ void OSResetSystem(s32 reset, u32 resetCode, BOOL forceMenu)
 
     if (reset == OS_RESET_SHUTDOWN ||
         (reset == OS_RESET_RESTART &&
-         (bootThisDol != 0 || resetCode + 0x3FFF0000 == 0))) {
+         (bootThisDol != 0 || resetCode == OS_RESETCODE_NETCONFIG))) {
         __OSShutdownDevices(FALSE);
     } else {
         __OSShutdownDevices(TRUE);
@@ -185,7 +186,8 @@ void OSResetSystem(s32 reset, u32 resetCode, BOOL forceMenu)
         __OSDoHotReset(resetCode);
     } else if (reset == OS_RESET_RESTART) {
         if (forceMenu == TRUE) {
-            OSReport("OSResetSystem(): You can't specify TRUE to forceMenu if you restart. Ignored\n");
+            OSReport("OSResetSystem(): You can't specify TRUE to forceMenu if you restart. "
+                     "Ignored\n");
         }
         OSEnableScheduler();
         __OSReboot(resetCode, bootThisDol);
