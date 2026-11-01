@@ -16,6 +16,8 @@ Byte percentages were generated from a verified full-project retail build with `
 
 `actmanDLL` compiles against the original CodeWarrior MSL math headers; its linked REL still matches retail.
 
+Names with no original evidence behind them are now written as numbers and address names across the shared headers and their consumers; the linked game still matches retail.
+
 Shared C++ framework (`framework:minigame_core.cpp`): **30 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
 
 Mole-it! (`m641Dll`) selects all **92 functions** from **8 complete translation units**; its linked REL matches retail.
