@@ -8,10 +8,10 @@
 HU3D_MOTIONID lbl_1_bss_B0[4];
 HU3D_MODELID lbl_1_bss_A8[4];
 s32 lbl_1_data_0[4] = {
-    DATANUM(DATA_mgmrensho, 22),
-    DATANUM(DATA_mgmrensho, 23),
-    DATANUM(DATA_mgmrensho, 23),
-    DATANUM(DATA_mgmrensho, 24)
+    DATANUM(0xa00000, 22),
+    DATANUM(0xa00000, 23),
+    DATANUM(0xa00000, 23),
+    DATANUM(0xa00000, 24)
 };
 
 /* Called during mode setup to load the four camera views used by Endurance Alley. */
@@ -23,15 +23,15 @@ void fn_1_E9C(void) {
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     cameraIndex = 0;
     while (cameraIndex < 4) {
-        lbl_1_bss_B0[cameraIndex] = Hu3DMotionCreate(
-            HuDataSelHeapReadNum(lbl_1_data_0[cameraIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-        lbl_1_bss_A8[cameraIndex] = Hu3DModelCameraCreate(lbl_1_bss_B0[cameraIndex], 1U);
-        Hu3DCameraMotionOff(lbl_1_bss_A8[cameraIndex]);
+        lbl_1_bss_B0[cameraIndex] = fn_8002C4C0(
+            fn_80008DD0(lbl_1_data_0[cameraIndex], 0x10000000, 2));
+        lbl_1_bss_A8[cameraIndex] = fn_800283F4(lbl_1_bss_B0[cameraIndex], 1U);
+        fn_8002858C(lbl_1_bss_A8[cameraIndex]);
         cameraIndex += 1;
     }
-    Hu3DCameraMotionOn(lbl_1_bss_A8[0], 1U);
-    Hu3DModelAttrSet(lbl_1_bss_A8[0], (HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                                       HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE));
+    fn_80028478(lbl_1_bss_A8[0], 1U);
+    fn_800269E8(lbl_1_bss_A8[0], (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                                       ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10))));
 }
 
 void fn_1_1028(void)
@@ -55,31 +55,31 @@ void fn_1_106C(s16 selectedCamera) {
     }
     cameraIndex = 0;
     while (cameraIndex < 4) {
-        Hu3DCameraMotionOff(lbl_1_bss_A8[cameraIndex]);
+        fn_8002858C(lbl_1_bss_A8[cameraIndex]);
         cameraIndex += 1;
     }
     if (selectedCamera != 2) {
-        Hu3DModelAttrReset(lbl_1_bss_A8[selectedCamera],
-                           (HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                            HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE));
-        Hu3DCameraMotionStart(lbl_1_bss_A8[selectedCamera], 1U);
+        fn_80026A44(lbl_1_bss_A8[selectedCamera],
+                           (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                            ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10))));
+        fn_800284C8(lbl_1_bss_A8[selectedCamera], 1U);
         do {
-            motionEnd = Hu3DMotionMaxTimeGet(lbl_1_bss_A8[selectedCamera]);
-            if (Hu3DMotionTimeGet(lbl_1_bss_A8[selectedCamera]) >= motionEnd) {
+            motionEnd = fn_8002D530(lbl_1_bss_A8[selectedCamera]);
+            if (fn_8002D4E0(lbl_1_bss_A8[selectedCamera]) >= motionEnd) {
                 break;
             }
             HuPrcVSleep();
         } while (1);
-        Hu3DCameraMotionOff(lbl_1_bss_A8[selectedCamera]);
+        fn_8002858C(lbl_1_bss_A8[selectedCamera]);
         return;
     }
-    Hu3DCameraMotionOn(lbl_1_bss_A8[selectedCamera], 1U);
-    Hu3DModelAttrSet(lbl_1_bss_A8[selectedCamera],
-                     (HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE | HU3D_MOTATTR_SHAPE_PAUSE |
-                      HU3D_MOTATTR_OVL_PAUSE));
+    fn_80028478(lbl_1_bss_A8[selectedCamera], 1U);
+    fn_800269E8(lbl_1_bss_A8[selectedCamera],
+                     (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) | ((1 << 30) | (1 << 7)) |
+                      ((1 << 30) | (1 << 10))));
     /* Camera 2 is held at the end of its motion for the next mode step. */
-    Hu3DMotionTimeSet(lbl_1_bss_A8[selectedCamera],
-                      Hu3DMotionMaxTimeGet(lbl_1_bss_A8[selectedCamera]));
+    fn_8002D414(lbl_1_bss_A8[selectedCamera],
+                      fn_8002D530(lbl_1_bss_A8[selectedCamera]));
     HuPrcVSleep();
-    Hu3DCameraMotionOff(lbl_1_bss_A8[selectedCamera]);
+    fn_8002858C(lbl_1_bss_A8[selectedCamera]);
 }

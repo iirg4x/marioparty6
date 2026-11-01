@@ -53,7 +53,7 @@ void fn_1_E9C(void) {
         1, (0.0f), (150.0f), (5000.0f),
         (0.0f), (1.0f), (0.0f),
         (0.0f), (0.0f), (0.0f));
-    lbl_1_bss_A8 = omAddObjEx(
+    lbl_1_bss_A8 = fn_8003AB38(
         lbl_1_bss_B00, 3840, 0, 0, -1, fn_1_10CC);
     lbl_1_bss_A8->work[0] = 1;
     lbl_1_bss_A8->work[1] = 1;

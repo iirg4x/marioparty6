@@ -35,7 +35,7 @@ extern s32 rand8(void);
 #define SM_PLAYER_CONF_COLUMN_MASK (1 << 0)
 #define SM_PLAYER_CONF_COLUMN_CLEAR_MASK ((u16)~SM_PLAYER_CONF_COLUMN_MASK)
 
-#define SM_FLAG_MG_INSTRUCTION_DISPLAY FLAGNUM(FLAG_GROUP_SAVE, 5)
+#define SM_FLAG_MG_INSTRUCTION_DISPLAY 5
 
 enum {
     SM_CHAR_MARIO,
@@ -89,140 +89,140 @@ static char *smCharNameTbl[14] = {
 
 /* Rows shown by the selector; disabled rows remain visible but cannot be selected. */
 static SMEntry smPageData[SM_PAGE_MAX * SM_PAGE_SIZE] = {
-    { TRUE, "601:PIKATTO HIPDROP", DLL_m601dll },
-    { TRUE, "602:HAYAOSI MACHIGAI SAGASI", DLL_m602dll },
-    { TRUE, "603:NICE SHOT!", DLL_m603dll },
-    { TRUE, "604:PATA2 JUMP", DLL_m604dll },
-    { TRUE, "605:NIGERO GORO2", DLL_m605dll },
-    { TRUE, "606:JAMASUNNA RACE", DLL_m606dll },
-    { TRUE, "607:DOTABATA POST", DLL_m607dll },
-    { TRUE, "608:GURU2 SNOW BOARD JUMP", DLL_m608dll },
-    { TRUE, "609:TAKI NI OCHIRUZO", DLL_m609dll },
-    { TRUE, "610:RADICON RACE", DLL_m610dll },
-    { TRUE, "611:DOKI2 SALVAGE", DLL_m611dll },
-    { TRUE, "612:ROUTE WO SAGASE", DLL_m612dll },
-    { TRUE, "613:KARE2 SIBAKARI", DLL_m613dll },
-    { TRUE, "614:HOVERCRAFT BATTLE", DLL_m614dll },
-    { TRUE, "615:TATAKE ONPU BALL", DLL_m615dll },
-    { TRUE, "616:ERANDE UP", DLL_m616dll },
-    { TRUE, "617:TOMOSE ROUSOKU", DLL_m617dll },
-    { TRUE, "618:WATATTE LIFT", DLL_m618dll },
-    { TRUE, "619:GOKUAKU GESSO", DLL_m619dll },
-    { TRUE, "620:KURIBOH HOI2", DLL_m620dll },
-    { TRUE, "621:SANBO ROYAL", DLL_m621dll },
-    { TRUE, "622:SAGSE COIN BAKO", DLL_m622dll },
-    { TRUE, "623:TURUTTO COIN ATUME", DLL_m623dll },
-    { TRUE, "624:HAGURUMA WATARI", DLL_m624dll },
-    { TRUE, "625:SUICHUU SURVIVAL", DLL_m625dll },
-    { TRUE, "626:YUKI GASSEN", DLL_m626dll },
-    { TRUE, "627:KOROGASE GORO2 BALL", DLL_m627dll },
-    { TRUE, "628:4X4 ATTITTI", DLL_m628dll },
-    { TRUE, "629:WATTE FUUSEN", DLL_m629dll },
-    { TRUE, "630:3LINE DE UTE", DLL_m630dll },
-    { TRUE, "631:GORO2 KAMINARI", DLL_m631dll },
-    { TRUE, "632:HAKONIWA PANIC", DLL_m632dll },
-    { TRUE, "633:BIRI2 LASER", DLL_m633dll },
-    { TRUE, "634:MINNA DE OSOUJI", DLL_m634dll },
-    { TRUE, "635:DAICON NUKI", DLL_m635dll },
-    { TRUE, "636:DOT DE OEKAKI", DLL_m636dll },
-    { TRUE, "637:REEL WO MAWASE", DLL_m637dll },
-    { TRUE, "638:GONDOLA RACE", DLL_m638dll },
-    { TRUE, "639:FUURYOKU HATUDEN", DLL_m639dll },
-    { TRUE, "640:ROBOT FACTORY", DLL_m640dll },
-    { TRUE, "641:TATAKE MOGURA", DLL_m641dll },
-    { TRUE, "642:SEESAW GAME", DLL_m642dll },
-    { TRUE, "643:KILLER NOBORI", DLL_m643dll },
-    { TRUE, "644:DOURO KOUJI", DLL_m644dll },
-    { TRUE, "645:MADO FUKI", DLL_m645dll },
-    { TRUE, "646:MATOATE SCROLL", DLL_m646dll },
-    { TRUE, "647:MUSI2 RACE", DLL_m647dll },
-    { TRUE, "648:HASTLE SHOT", DLL_m648dll },
-    { TRUE, "649:PITTARI STAMP", DLL_m649dll },
-    { TRUE, "650:WAN2 RACE", DLL_m650dll },
-    { TRUE, "651:BLACK HOLE", DLL_m651dll },
-    { TRUE, "652:KUNE2 TSURU2 race", DLL_m652dll },
-    { TRUE, "653:RADICON SUMOU", DLL_m653dll },
-    { TRUE, "654:ATARI WO MITSUKERO", DLL_m654dll },
-    { TRUE, "655:ERANDE TARZAN", DLL_m655dll },
-    { TRUE, "656:SUBMARINE DERBY", DLL_m656dll },
-    { TRUE, "657:GETSUMEN CHAKURIKU", DLL_m657dll },
-    { TRUE, "658:PIKATTO WARP", DLL_m658dll },
-    { TRUE, "659:GRID INSEKI YOKE", DLL_m659dll },
-    { TRUE, "660:YUUREI GARDEN", DLL_m660dll },
-    { TRUE, "661:OIKOME NIGASE", DLL_m661dll },
-    { TRUE, "662:NOPPO NO KI", DLL_m662dll },
-    { TRUE, "663:AOKI MORI", DLL_m663dll },
-    { TRUE, "664:TAIGA BATTLE", DLL_m664dll },
-    { TRUE, "665:BOSS BATTLE", DLL_m665dll },
-    { TRUE, "666:3HIKI NO HEIHOH", DLL_m666dll },
-    { TRUE, "667:MIC DE KAWASITE", DLL_m667dll },
-    { TRUE, "668:PYON2 FIGHT", DLL_m668dll },
-    { TRUE, "669:KURIBOH WO SUKUE", DLL_m669dll },
-    { TRUE, "670:FRUITS VOICE", DLL_m670dll },
-    { TRUE, "671:KOOPA NO TEKKYUU", DLL_m671dll },
-    { TRUE, "672:KOOPA NO MEMAWASI", DLL_m672dll },
-    { TRUE, "673:CRAYAMI DE GAHAHA", DLL_m673dll },
-    { TRUE, "674:DONKEY NO TARUJUMP", DLL_m674dll },
-    { TRUE, "675:YUSUTTE BANANA", DLL_m675dll },
-    { TRUE, "676:KOROGATTE UHOHO", DLL_m676dll },
-    { TRUE, "677:KOOPA NO DAIYOGEN", DLL_m677dll },
-    { TRUE, "678TUNAGETE BLOCK", DLL_m678dll },
-    { TRUE, "679:MEIRO DOUJOH", DLL_m679dll },
-    { TRUE, "680:SHUFFLE FRUITS", DLL_m680dll },
-    { TRUE, "681:YAJIRUSI TAISO", DLL_m681dll },
-    { TRUE, "699:BASKET", DLL_m699dll },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { TRUE, "***:BOARD W01", DLL_w01dll },
-    { TRUE, "***:BOARD W02", DLL_w02dll },
-    { TRUE, "***:BOARD W03", DLL_w03dll },
-    { TRUE, "***:BOARD W04", DLL_w04dll },
-    { TRUE, "***:BOARD W05", DLL_w05dll },
-    { TRUE, "***:BOARD W06", DLL_w06dll },
-    { TRUE, "***:BOARD W10", DLL_w10dll },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { TRUE, "***:S01", DLL_s01dll },
-    { TRUE, "***:S02", DLL_s02dll },
-    { TRUE, "***:S03", DLL_s03dll },
-    { TRUE, "***:BOARD W11", DLL_w11dll },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { FALSE, "***:", DLL_selmenuDLL },
-    { TRUE, "***:MODE SEL", DLL_mdseldll },
-    { TRUE, "***:PARTY MODE", DLL_mdpartydll },
-    { TRUE, "***:SINGLE MODE", DLL_mdsingdll },
-    { TRUE, "***:OPTION", DLL_optiondll },
-    { TRUE, "***:MINIGAME MODE", DLL_mdminidll },
-    { TRUE, "***:MG DECATHRON", DLL_mgmdecathlondll },
-    { TRUE, "***:MG FREE PLAY", DLL_mgmfreedll },
-    { TRUE, "***:MG BATTLE", DLL_mgmbattledll },
-    { TRUE, "***:MG TOURNAMENT", DLL_mgmtournamentdll },
-    { TRUE, "***:MIC QUIZE", DLL_micquizdll },
-    { TRUE, "***:MG RENSHO", DLL_mgmrenshodll },
-    { TRUE, "***:MG BINGO", DLL_mgmbingodll },
-    { TRUE, "***:MIRACLE BOOK", DLL_miraclebookdll },
-    { TRUE, "***:ENDING", DLL_endingdll },
-    { TRUE, "***:filesel", DLL_fileseldll },
-    { TRUE, "***:MIC SEL", DLL_micquizseldll },
-    { TRUE, "***:BOOT", DLL_bootdll },
-    { TRUE, "***:OPTION", DLL_optiondll },
-    { TRUE, "***:MIKEACT", DLL_mikeactdll },
-    { TRUE, "***:MESS CHECK", DLL_meschkdll },
+    { TRUE, "601:PIKATTO HIPDROP", 6 },
+    { TRUE, "602:HAYAOSI MACHIGAI SAGASI", 7 },
+    { TRUE, "603:NICE SHOT!", 8 },
+    { TRUE, "604:PATA2 JUMP", 9 },
+    { TRUE, "605:NIGERO GORO2", 10 },
+    { TRUE, "606:JAMASUNNA RACE", 11 },
+    { TRUE, "607:DOTABATA POST", 12 },
+    { TRUE, "608:GURU2 SNOW BOARD JUMP", 13 },
+    { TRUE, "609:TAKI NI OCHIRUZO", 14 },
+    { TRUE, "610:RADICON RACE", 15 },
+    { TRUE, "611:DOKI2 SALVAGE", 16 },
+    { TRUE, "612:ROUTE WO SAGASE", 17 },
+    { TRUE, "613:KARE2 SIBAKARI", 18 },
+    { TRUE, "614:HOVERCRAFT BATTLE", 19 },
+    { TRUE, "615:TATAKE ONPU BALL", 20 },
+    { TRUE, "616:ERANDE UP", 21 },
+    { TRUE, "617:TOMOSE ROUSOKU", 22 },
+    { TRUE, "618:WATATTE LIFT", 23 },
+    { TRUE, "619:GOKUAKU GESSO", 24 },
+    { TRUE, "620:KURIBOH HOI2", 25 },
+    { TRUE, "621:SANBO ROYAL", 26 },
+    { TRUE, "622:SAGSE COIN BAKO", 27 },
+    { TRUE, "623:TURUTTO COIN ATUME", 28 },
+    { TRUE, "624:HAGURUMA WATARI", 29 },
+    { TRUE, "625:SUICHUU SURVIVAL", 30 },
+    { TRUE, "626:YUKI GASSEN", 31 },
+    { TRUE, "627:KOROGASE GORO2 BALL", 32 },
+    { TRUE, "628:4X4 ATTITTI", 33 },
+    { TRUE, "629:WATTE FUUSEN", 34 },
+    { TRUE, "630:3LINE DE UTE", 35 },
+    { TRUE, "631:GORO2 KAMINARI", 36 },
+    { TRUE, "632:HAKONIWA PANIC", 37 },
+    { TRUE, "633:BIRI2 LASER", 38 },
+    { TRUE, "634:MINNA DE OSOUJI", 39 },
+    { TRUE, "635:DAICON NUKI", 40 },
+    { TRUE, "636:DOT DE OEKAKI", 41 },
+    { TRUE, "637:REEL WO MAWASE", 42 },
+    { TRUE, "638:GONDOLA RACE", 43 },
+    { TRUE, "639:FUURYOKU HATUDEN", 44 },
+    { TRUE, "640:ROBOT FACTORY", 45 },
+    { TRUE, "641:TATAKE MOGURA", 46 },
+    { TRUE, "642:SEESAW GAME", 47 },
+    { TRUE, "643:KILLER NOBORI", 48 },
+    { TRUE, "644:DOURO KOUJI", 49 },
+    { TRUE, "645:MADO FUKI", 50 },
+    { TRUE, "646:MATOATE SCROLL", 51 },
+    { TRUE, "647:MUSI2 RACE", 52 },
+    { TRUE, "648:HASTLE SHOT", 53 },
+    { TRUE, "649:PITTARI STAMP", 54 },
+    { TRUE, "650:WAN2 RACE", 55 },
+    { TRUE, "651:BLACK HOLE", 56 },
+    { TRUE, "652:KUNE2 TSURU2 race", 57 },
+    { TRUE, "653:RADICON SUMOU", 58 },
+    { TRUE, "654:ATARI WO MITSUKERO", 59 },
+    { TRUE, "655:ERANDE TARZAN", 60 },
+    { TRUE, "656:SUBMARINE DERBY", 61 },
+    { TRUE, "657:GETSUMEN CHAKURIKU", 62 },
+    { TRUE, "658:PIKATTO WARP", 63 },
+    { TRUE, "659:GRID INSEKI YOKE", 64 },
+    { TRUE, "660:YUUREI GARDEN", 65 },
+    { TRUE, "661:OIKOME NIGASE", 66 },
+    { TRUE, "662:NOPPO NO KI", 67 },
+    { TRUE, "663:AOKI MORI", 68 },
+    { TRUE, "664:TAIGA BATTLE", 69 },
+    { TRUE, "665:BOSS BATTLE", 70 },
+    { TRUE, "666:3HIKI NO HEIHOH", 71 },
+    { TRUE, "667:MIC DE KAWASITE", 72 },
+    { TRUE, "668:PYON2 FIGHT", 73 },
+    { TRUE, "669:KURIBOH WO SUKUE", 74 },
+    { TRUE, "670:FRUITS VOICE", 75 },
+    { TRUE, "671:KOOPA NO TEKKYUU", 76 },
+    { TRUE, "672:KOOPA NO MEMAWASI", 77 },
+    { TRUE, "673:CRAYAMI DE GAHAHA", 78 },
+    { TRUE, "674:DONKEY NO TARUJUMP", 79 },
+    { TRUE, "675:YUSUTTE BANANA", 80 },
+    { TRUE, "676:KOROGATTE UHOHO", 81 },
+    { TRUE, "677:KOOPA NO DAIYOGEN", 82 },
+    { TRUE, "678TUNAGETE BLOCK", 83 },
+    { TRUE, "679:MEIRO DOUJOH", 84 },
+    { TRUE, "680:SHUFFLE FRUITS", 85 },
+    { TRUE, "681:YAJIRUSI TAISO", 86 },
+    { TRUE, "699:BASKET", 87 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { TRUE, "***:BOARD W01", 123 },
+    { TRUE, "***:BOARD W02", 124 },
+    { TRUE, "***:BOARD W03", 125 },
+    { TRUE, "***:BOARD W04", 126 },
+    { TRUE, "***:BOARD W05", 127 },
+    { TRUE, "***:BOARD W06", 128 },
+    { TRUE, "***:BOARD W10", 129 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { TRUE, "***:S01", 114 },
+    { TRUE, "***:S02", 115 },
+    { TRUE, "***:S03", 116 },
+    { TRUE, "***:BOARD W11", 130 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { FALSE, "***:", 118 },
+    { TRUE, "***:MODE SEL", 93 },
+    { TRUE, "***:PARTY MODE", 91 },
+    { TRUE, "***:SINGLE MODE", 94 },
+    { TRUE, "***:OPTION", 111 },
+    { TRUE, "***:MINIGAME MODE", 90 },
+    { TRUE, "***:MG DECATHRON", 98 },
+    { TRUE, "***:MG FREE PLAY", 99 },
+    { TRUE, "***:MG BATTLE", 96 },
+    { TRUE, "***:MG TOURNAMENT", 101 },
+    { TRUE, "***:MIC QUIZE", 102 },
+    { TRUE, "***:MG RENSHO", 100 },
+    { TRUE, "***:MG BINGO", 97 },
+    { TRUE, "***:MIRACLE BOOK", 108 },
+    { TRUE, "***:ENDING", 2 },
+    { TRUE, "***:filesel", 3 },
+    { TRUE, "***:MIC SEL", 106 },
+    { TRUE, "***:BOOT", 1 },
+    { TRUE, "***:OPTION", 111 },
+    { TRUE, "***:MIKEACT", 107 },
+    { TRUE, "***:MESS CHECK", 95 },
 };
 
 /* One character-selection camera is assigned to each player viewport. */
-static u32 smCharSelCamBitTbl[] = { HU3D_CAM0, HU3D_CAM1, HU3D_CAM2, HU3D_CAM3 };
+static u32 smCharSelCamBitTbl[] = { (1 << 0), (1 << 1), (1 << 2), (1 << 3) };
 
 static u32 lbl_1_data_844[] = { 0, 1, 2, 3, 4, 5 };
 
@@ -312,29 +312,29 @@ void ObjectSetup(void)
     OSReport("ObjectSetup:%08x\n", ObjectSetup);
     OSReport("\n\n\n******* SMObjectSetup *********\n");
     OSReport(funcId);
-    objman = omInitObjMan(50, 8192);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (GwPlayerConf[i].charNo >= SM_CHAR_MAX) {
+    objman = fn_8003A8BC(50, 8192);
+    for (i = 0; i < 4; i++) {
+        if (lbl_80265728[i].charNo >= SM_CHAR_MAX) {
             break;
         }
     }
-    if (i != GW_PLAYER_MAX) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            GwPlayerConf[i].charNo = i;
+    if (i != 4) {
+        for (i = 0; i < 4; i++) {
+            lbl_80265728[i].charNo = i;
         }
     }
-    smMainObj = omAddObjEx(objman, 100, 0, 0, -1, SMInit);
-    smOutViewObj = omAddObjEx(objman, 32730, 0, 0, -1, omOutViewMulti);
-    omAddObjEx(objman, 100, 0, 0, -1, SMRandMain);
-    smOutViewObj->work[0] = GW_PLAYER_MAX;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        CRotM[i].x = -20.0f;
-        CRotM[i].y = 0.0f;
-        CRotM[i].z = 0.0f;
-        CenterM[i].x = 0.0f;
-        CenterM[i].y = 50.0f;
-        CenterM[i].z = 0.0f;
-        CZoomM[i] = 500.0f;
+    smMainObj = fn_8003AB38(objman, 100, 0, 0, -1, SMInit);
+    smOutViewObj = fn_8003AB38(objman, 32730, 0, 0, -1, fn_8003DAA4);
+    fn_8003AB38(objman, 100, 0, 0, -1, SMRandMain);
+    smOutViewObj->work[0] = 4;
+    for (i = 0; i < 4; i++) {
+        lbl_80266A58[i].x = -20.0f;
+        lbl_80266A58[i].y = 0.0f;
+        lbl_80266A58[i].z = 0.0f;
+        lbl_80266B18[i].x = 0.0f;
+        lbl_80266B18[i].y = 50.0f;
+        lbl_80266B18[i].z = 0.0f;
+        lbl_80266BD8[i] = 500.0f;
         Hu3DCameraCreate(smCharSelCamBitTbl[i]);
         Hu3DCameraPerspectiveSet(smCharSelCamBitTbl[i], 45.0f, 20.0f, 25000.0f, 4.0f / 3.0f);
         Hu3DCameraViewportSet(smCharSelCamBitTbl[i], (i % 2) * 320.0f, (i / 2) * 240.0f, 320.0f,
@@ -348,11 +348,11 @@ void ObjectSetup(void)
     dir.z = -1.0f;
     SetDefLight(&pos, &dir, 255, 255, 255, 64, 64, 64, 255, 255, 255);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 5);
-    GwSystem.subGameNo = -1;
-    _ClearFlag(FLAG_BOARD_SAVEINIT);
-    GwSystem.turnNo = 1;
-    GwSystem.turnMax = 20;
-    HuMemHeapDump(HuMemHeapPtrGet(HEAP_MODEL), -1);
+    lbl_80265B70.subGameNo = -1;
+    fn_8006A268(65536);
+    lbl_80265B70.turnNo = 1;
+    lbl_80265B70.turnMax = 20;
+    fn_8000BFB4(fn_8000B7A8(2), -1);
 }
 
 /* Copies the four player records when entering or leaving character selection. */
@@ -372,19 +372,19 @@ static void SMBtnRead(void)
     smPadDStk = smPadDStkDown = smPadBtnDown = 0;
     for (i = 0; i < 4; i++) {
         smPadDStkAll[i] = smPadDStkDownAll[i] = smPadBtnDownAll[i] = 0;
-        if ((HuPadDStkRep[i] | HuPadBtn[i]) & PAD_BUTTON_LEFT) {
+        if ((lbl_802BFFE0[i] | lbl_802C0010[i]) & PAD_BUTTON_LEFT) {
             smPadDStkAll[i] |= SM_KEY_LEFT;
         }
-        if ((HuPadDStkRep[i] | HuPadBtn[i]) & PAD_BUTTON_RIGHT) {
+        if ((lbl_802BFFE0[i] | lbl_802C0010[i]) & PAD_BUTTON_RIGHT) {
             smPadDStkAll[i] |= SM_KEY_RIGHT;
         }
-        if ((HuPadDStkRep[i] | HuPadBtn[i]) & PAD_BUTTON_UP) {
+        if ((lbl_802BFFE0[i] | lbl_802C0010[i]) & PAD_BUTTON_UP) {
             smPadDStkAll[i] |= SM_KEY_UP;
         }
-        if ((HuPadDStkRep[i] | HuPadBtn[i]) & PAD_BUTTON_DOWN) {
+        if ((lbl_802BFFE0[i] | lbl_802C0010[i]) & PAD_BUTTON_DOWN) {
             smPadDStkAll[i] |= SM_KEY_DOWN;
         }
-        smPadBtnDownAll[i] |= HuPadBtnDown[i];
+        smPadBtnDownAll[i] |= lbl_802C0008[i];
         smPadDStkDownAll[i] = (smPadDStkAll[i] ^ smPadDStkAllPrev[i]) & smPadDStkAll[i];
         smPadDStkAllPrev[i] = smPadDStkAll[i];
         smPadDStk |= smPadDStkAll[i];
@@ -481,9 +481,9 @@ static void SMInit(OMOBJ *obj)
     OSReport("SMinit:%08x\n", SMInit);
     omDLLDBGOut();
     Hu3DBGColorSet(0, 0, 0);
-    SMCopyConfig(smPlayerConf, GwPlayerConf);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        for (j = i + 1; j < GW_PLAYER_MAX; j++) {
+    SMCopyConfig(smPlayerConf, lbl_80265728);
+    for (i = 0; i < 4; i++) {
+        for (j = i + 1; j < 4; j++) {
             if (smPlayerConf[i].charNo == smPlayerConf[j].charNo) {
                 smPlayerConf[j].charNo = SMCharNoAdd(j, -1);
             }
@@ -504,7 +504,7 @@ static void SMInit(OMOBJ *obj)
         }
     }
     SMPageNoAdd(1);
-    if (GameMesOvlPrev != DLL_NONE) {
+    if (GameMesOvlPrev != -1) {
         for (i = 0; i < SM_PAGE_MAX * SM_PAGE_SIZE; i++) {
             if (GameMesOvlPrev == smPageData[i].ovl && smPageData[i].on == 1) {
                 smPage = i / SM_PAGE_SIZE;
@@ -556,7 +556,7 @@ static void SMMain(OMOBJ *obj)
         return;
     }
     if (smPadBtnDown & PAD_BUTTON_X) {
-        omOvlReturnEx(0, 1);
+        fn_8003A5E4(0, 1);
     }
 }
 
@@ -572,8 +572,8 @@ static void SMGroupSet(int pos)
         if (MgDataTbl[i].ovl == ovl) {
             break;
         }
-        if (MgDataTbl[i].ovl == (u16)DLL_NONE) {
-            for (i = 0; i < GW_PLAYER_MAX; i++) {
+        if (MgDataTbl[i].ovl == (u16)-1) {
+            for (i = 0; i < 4; i++) {
                 smPlayerConf[i].grpNo = i;
             }
             return;
@@ -585,27 +585,27 @@ static void SMGroupSet(int pos)
         case MG_TYPE_KUPA:
         case MG_TYPE_LAST:
         case MG_TYPE_KETTOU:
-            for (i = 0; i < GW_PLAYER_MAX; i++) {
+            for (i = 0; i < 4; i++) {
                 smPlayerConf[i].grpNo = i;
             }
             break;
 
         case MG_TYPE_1VS3:
             smPlayerConf[0].grpNo = 0;
-            for (i = 1; i < GW_PLAYER_MAX; i++) {
+            for (i = 1; i < 4; i++) {
                 smPlayerConf[i].grpNo = 1;
             }
             break;
 
         case MG_TYPE_2VS2:
-            for (j = 0; j < GW_PLAYER_MAX / 2; j++) {
+            for (j = 0; j < 4 / 2; j++) {
                 smPlayerConf[j].grpNo = 0;
             }
-            for (j = GW_PLAYER_MAX / 2; j < GW_PLAYER_MAX; j++) {
+            for (j = 4 / 2; j < 4; j++) {
                 smPlayerConf[j].grpNo = 1;
             }
             if (MgDataTbl[i].flag & MG_FLAG_GRPORDER) {
-                for (i = 0; i < GW_PLAYER_MAX; i++) {
+                for (i = 0; i < 4; i++) {
                     smPlayerConf[i].grpNo = i;
                 }
             }
@@ -625,7 +625,7 @@ static s16 smCharOnF[SM_CHAR_MAX];
 #define SM_CHAR_MODEL_FILE_OFFSET 0
 #define SM_CHAR_MOTION_FILE_OFFSET 1
 #define SM_CHAR_FILE(charNo, offset)                                                               \
-    DATANUM(DATA_selmenu, ((charNo) * SM_CHAR_FILE_STRIDE) + (offset))
+    DATANUM(0xcc0000, ((charNo) * SM_CHAR_FILE_STRIDE) + (offset))
 #define SM_CHAR_MODEL_FILE(charNo) SM_CHAR_FILE(charNo, SM_CHAR_MODEL_FILE_OFFSET)
 #define SM_CHAR_MOTION_FILE(charNo) SM_CHAR_FILE(charNo, SM_CHAR_MOTION_FILE_OFFSET)
 
@@ -699,7 +699,7 @@ static void SMCharMdlKill(void)
 {
     int i;
     for (i = 0; i < SM_CHAR_MAX; i++) {
-        Hu3DModelKill(smCharMdlId[i]);
+        fn_800262D0(smCharMdlId[i]);
     }
 }
 
@@ -733,13 +733,14 @@ static void SMCharSelInit(OMOBJ *obj)
 {
     int i;
     for (i = 0; i < SM_CHAR_MAX; i++) {
-        void *data = HuDataSelHeapReadNum(smCharFileTbl[i], HU_MEMNUM_OVL, HEAP_MODEL);
-        smCharMdlId[i] = Hu3DModelCreate(data);
-        Hu3DModelPosSet(smCharMdlId[i], 0.0f, 0.0f, 0.0f);
-        Hu3DModelAttrSet(smCharMdlId[i], HU3D_MOTATTR_LOOP);
-        Hu3DMotionSet(smCharMdlId[i], Hu3DJointMotionData(smCharMdlId[i], smCharMotFileTbl[i]));
+        void *data = fn_80008DD0(smCharFileTbl[i], 0x10000000, 2);
+        smCharMdlId[i] = fn_80025A04(data);
+        fn_80026760(smCharMdlId[i], 0.0f, 0.0f, 0.0f);
+        fn_800269E8(smCharMdlId[i], ((1 << 30) | (1 << 0)));
+        fn_8002C95C(smCharMdlId[i], fn_80030458(smCharMdlId[i], fn_80008DD0(smCharMotFileTbl[i],
+            0x10000000, 2)));
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         smCharSelEndF[i] = FALSE;
     }
     SMCharNoAdd(0, 0);
@@ -761,15 +762,15 @@ static void SMCharSelMain(OMOBJ *obj)
     s16 manNum;
 
     for (i = 0; i < SM_CHAR_MAX; i++) {
-        Hu3DModelAttrSet(smCharMdlId[i], HU3D_ATTR_DISPOFF);
+        fn_800269E8(smCharMdlId[i], (1 << 0));
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (smPlayerConf[i].type == GW_TYPE_MAN) {
-            Hu3DModelAttrReset(smCharMdlId[smPlayerConf[i].charNo], HU3D_ATTR_DISPOFF);
-            Hu3DModelCameraSet(smCharMdlId[smPlayerConf[i].charNo], smCharSelCamBitTbl[i]);
+            fn_80026A44(smCharMdlId[smPlayerConf[i].charNo], (1 << 0));
+            fn_80026B64(smCharMdlId[smPlayerConf[i].charNo], smCharSelCamBitTbl[i]);
         }
     }
-    for (i = 0, manDoneNum = 0, manNum = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0, manDoneNum = 0, manNum = 0; i < 4; i++) {
         if (smCharSelEndF[i] == TRUE) {
             manDoneNum++;
         }
@@ -787,27 +788,27 @@ static void SMCharSelMain(OMOBJ *obj)
         smPlayerConf[1].charNo = SM_CHAR_MINIKOOPAR;
         smPlayerConf[2].charNo = SM_CHAR_MINIKOOPAG;
         smPlayerConf[3].charNo = SM_CHAR_MINIKOOPAB;
-        SMCopyConfig(GwPlayerConf, smPlayerConf);
-        CharDataClose(-1);
-        OSReport("%d,%d,%d,%d\n", GwPlayerConf[0].charNo, GwPlayerConf[1].charNo,
-                 GwPlayerConf[2].charNo, GwPlayerConf[3].charNo);
-        if (!CharMotionAMemPGet(GwPlayerConf[0].charNo)) {
-            CharMotionInit(GwPlayerConf[0].charNo);
+        SMCopyConfig(lbl_80265728, smPlayerConf);
+        fn_800567D8(-1);
+        OSReport("%d,%d,%d,%d\n", lbl_80265728[0].charNo, lbl_80265728[1].charNo,
+                 lbl_80265728[2].charNo, lbl_80265728[3].charNo);
+        if (!fn_80056598(lbl_80265728[0].charNo)) {
+            fn_800565B4(lbl_80265728[0].charNo);
         }
-        if (!CharMotionAMemPGet(GwPlayerConf[1].charNo)) {
-            CharMotionInit(GwPlayerConf[1].charNo);
+        if (!fn_80056598(lbl_80265728[1].charNo)) {
+            fn_800565B4(lbl_80265728[1].charNo);
         }
-        if (!CharMotionAMemPGet(GwPlayerConf[2].charNo)) {
-            CharMotionInit(GwPlayerConf[2].charNo);
+        if (!fn_80056598(lbl_80265728[2].charNo)) {
+            fn_800565B4(lbl_80265728[2].charNo);
         }
-        if (!CharMotionAMemPGet(GwPlayerConf[3].charNo)) {
-            CharMotionInit(GwPlayerConf[3].charNo);
+        if (!fn_80056598(lbl_80265728[3].charNo)) {
+            fn_800565B4(lbl_80265728[3].charNo);
         }
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 20);
         obj->objFunc = SMExit;
     }
     SMBtnRead();
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         port = smPlayerConf[i].padNo;
         if (!smCharSelEndF[i]) {
             /* Input uses this slot's configured pad, but the changed character is stored at the
@@ -822,7 +823,7 @@ static void SMCharSelMain(OMOBJ *obj)
                 smCharSelEndF[i] = TRUE;
             }
         }
-        if (HuPadBtnDown[port] & PAD_BUTTON_B) {
+        if (lbl_802C0008[port] & PAD_BUTTON_B) {
             if (manDoneNum != 0) {
                 smCharSelEndF[i] = 0;
             }
@@ -833,7 +834,7 @@ static void SMCharSelMain(OMOBJ *obj)
             }
         }
         if (smPadBtnDownAll[port] & PAD_BUTTON_START) {
-            for (j = 0; j < GW_PLAYER_MAX; j++) {
+            for (j = 0; j < 4; j++) {
                 if (!smPlayerConf[j].type) {
                     smCharSelEndF[j] = TRUE;
                 }
@@ -880,25 +881,25 @@ static void SMExit(OMOBJ *obj)
     if (WipeCheck()) {
         return;
     }
-    while (HuARDMACheck())
+    while (fn_80055FB4())
         ;
     mg = MgNoGet(smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl);
-    GwSystem.mgNo = mg;
+    lbl_80265B70.mgNo = mg;
     OSReport("mgNo=%d\n", mg);
-    _ClearFlag(FLAG_BOARD_TUTORIAL);
-    _ClearFlag(FLAG_INST_DECA);
-    _SetFlag(SM_FLAG_MG_INSTRUCTION_DISPLAY);
-    if (HuPadBtn[0] & PAD_BUTTON_A) {
-        GwMgNightF = 1;
+    fn_8006A268(65550);
+    fn_8006A268(196610);
+    fn_8006A1C4(SM_FLAG_MG_INSTRUCTION_DISPLAY);
+    if (lbl_802C0010[0] & PAD_BUTTON_A) {
+        lbl_802C0278 = 1;
     }
     else {
-        GwMgNightF = 0;
+        lbl_802C0278 = 0;
     }
     if (mg == -1) {
         omOvlCallEx(smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl, 1, 0, 0);
     }
     else {
-        omOvlCallEx(DLL_instdll, 1, 0, 0);
+        omOvlCallEx(4, 1, 0, 0);
     }
     GameMesOvlPrev = smPageData[(smPage * SM_PAGE_SIZE) + smCursorNo].ovl;
     smChar1Prev = smCursorNo;
@@ -936,7 +937,7 @@ static void SMPlayerConfPrint(void)
     char *typeStr[] = { "HUMAN", "COM" };
     char *diffStr[] = { "EASY", "NORMAL", "HARD", "VERYHARD" };
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         w = 128;
         x = ((320 - w) / 2) + ((i % 2) * 320);
         y = ((i / 2) * 240) + 48;
@@ -1038,8 +1039,8 @@ static void SMPlayerConfMain(OMOBJ *obj)
         if (smPadBtnDown & PAD_BUTTON_START) {
             int i;
             for (i = 0; i < 100; i++) {
-                int order1 = frandmod(GW_PLAYER_MAX);
-                int order2 = frandmod(GW_PLAYER_MAX);
+                int order1 = frandmod(4);
+                int order2 = frandmod(4);
                 int temp = smPlayerConf[order1].grpNo;
                 smPlayerConf[order1].grpNo = smPlayerConf[order2].grpNo;
                 smPlayerConf[order2].grpNo = temp;
@@ -1170,7 +1171,7 @@ static void SMSound3DExec(OMOBJ *obj)
         else {
             speed = -10;
         }
-        if (HuPadBtn[0] & PAD_TRIGGER_Z) {
+        if (lbl_802C0010[0] & PAD_TRIGGER_Z) {
             speed *= 10.0f;
         }
         switch (smSound3DNo) {

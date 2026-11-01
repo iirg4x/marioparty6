@@ -71,7 +71,7 @@ typedef struct EndingMotionWork {
     float unk_3C;
 } EndingMotionWork;
 
-#define sind(x) sin((M_PI * (x)) / 180.0)
+#define sind(x) sin((3.141592653589793 * (x)) / 180.0)
 
 extern const VoidFunc _ctors[];
 extern const VoidFunc _dtors[];
@@ -125,8 +125,8 @@ extern u32 lbl_1_data_0;
 extern s32 lbl_1_data_7C;
 extern char lbl_1_data_80[];
 u32 lbl_1_data_128[3] = {
-    DATANUM(DATA_ending, 129), DATANUM(DATA_ending, 130),
-    DATANUM(DATA_ending, 131)
+    DATANUM(0x220000, 129), DATANUM(0x220000, 130),
+    DATANUM(0x220000, 131)
 };
 extern char lbl_1_data_25[];
 extern char lbl_1_data_DD[];
@@ -251,7 +251,7 @@ static inline void tail20_fn_1_6C90_inlined(s16 modelNo, HuVecF *pos, GXColor *c
     s16 i;
     HU3D_PARTICLE_DATA *entry;
 
-    model = &Hu3DData[lbl_1_bss_1E22[modelNo]];
+    model = &lbl_802C01C8[lbl_1_bss_1E22[modelNo]];
     particle = model->hookData;
     for (i = 0, entry = particle->data; i < particle->maxCnt; i++, entry++) {
         entry->time = 1;
@@ -262,9 +262,9 @@ static inline void tail20_fn_1_6C90_inlined(s16 modelNo, HuVecF *pos, GXColor *c
         }
     }
     if (pos != NULL) {
-        Hu3DModelPosSetV(lbl_1_bss_1E22[modelNo], pos);
+        fn_80026790(lbl_1_bss_1E22[modelNo], pos);
     }
-    Hu3DModelAttrReset(lbl_1_bss_1E22[modelNo], HU3D_ATTR_DISPOFF);
+    fn_80026A44(lbl_1_bss_1E22[modelNo], (1 << 0));
 }
 /* Enable one staff burst emitter and save its color and particle spawn center. */
 static inline void tail20_staff_spawn_effect_inlined(s16 modelNo, HuVecF *pos, GXColor *color)
@@ -272,7 +272,7 @@ static inline void tail20_staff_spawn_effect_inlined(s16 modelNo, HuVecF *pos, G
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
 
-    model = &Hu3DData[lbl_1_bss_1E1E[modelNo]];
+    model = &lbl_802C01C8[lbl_1_bss_1E1E[modelNo]];
     particle = model->hookData;
     particle->dataCnt = 1;
     if (color != NULL) {
@@ -285,7 +285,7 @@ static inline void tail20_staff_spawn_effect_inlined(s16 modelNo, HuVecF *pos, G
         particle->spawnCenter.y = pos->y;
         particle->spawnCenter.z = pos->z;
     }
-    Hu3DModelAttrReset(lbl_1_bss_1E1E[modelNo], HU3D_ATTR_DISPOFF);
+    fn_80026A44(lbl_1_bss_1E1E[modelNo], (1 << 0));
 }
 /* Mark every selected staff sparkle particle for its fade-out hook state. */
 static inline void tail20_fn_1_6D94_inlined(s16 modelNo)
@@ -295,7 +295,7 @@ static inline void tail20_fn_1_6D94_inlined(s16 modelNo)
     s16 i;
     HU3D_PARTICLE_DATA *entry;
 
-    model = &Hu3DData[lbl_1_bss_1E22[modelNo]];
+    model = &lbl_802C01C8[lbl_1_bss_1E22[modelNo]];
     particle = model->hookData;
     for (i = 0, entry = particle->data; i < particle->maxCnt; i++, entry++) {
         entry->time = 2;
@@ -307,7 +307,7 @@ static inline void tail20_staff_stop_effect_inlined(s16 modelNo)
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
 
-    model = &Hu3DData[lbl_1_bss_1E1E[modelNo]];
+    model = &lbl_802C01C8[lbl_1_bss_1E1E[modelNo]];
     particle = model->hookData;
     particle->dataCnt = 0;
 }
@@ -319,7 +319,7 @@ static inline void tail22_fn_1_ED60_inlined(s16 groupNo, HuVecF *spawnPosition, 
     HU3D_PARTICLE *emitter;
 
     for (i = 0; i < 5; i++) {
-        model = &Hu3DData[lbl_1_bss_1DE0[groupNo][i]];
+        model = &lbl_802C01C8[lbl_1_bss_1DE0[groupNo][i]];
         emitter = model->hookData;
         emitter->dataCnt = 1;
         if (color != NULL) {
@@ -333,7 +333,7 @@ static inline void tail22_fn_1_ED60_inlined(s16 groupNo, HuVecF *spawnPosition, 
             emitter->spawnCenter.y = spawnPosition->y;
             emitter->spawnCenter.z = spawnPosition->z;
         }
-        Hu3DModelAttrReset(lbl_1_bss_1DE0[groupNo][i], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
     }
 }
 /* Stop new particles in all five emitters when fn_1_12988 selects mode 0. */
@@ -344,7 +344,7 @@ static inline void tail22_fn_1_EEC8_inlined(s16 groupNo)
     s16 *work;
 
     for (i = 0; i < 5; i++) {
-        model = &Hu3DData[lbl_1_bss_1DE0[groupNo][i]];
+        model = &lbl_802C01C8[lbl_1_bss_1DE0[groupNo][i]];
         work = model->hookData;
         *work = 0;
     }
@@ -356,9 +356,9 @@ static inline void tail22_fn_1_ECAC_inlined(s16 groupNo, s16 show)
 
     for (i = 0; i < 5; i++) {
         if (show) {
-            Hu3DModelAttrReset(lbl_1_bss_1DE0[groupNo][i], HU3D_ATTR_DISPOFF);
+            fn_80026A44(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
         } else {
-            Hu3DModelAttrSet(lbl_1_bss_1DE0[groupNo][i], HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
         }
     }
 }
@@ -373,14 +373,14 @@ static inline float tail23_ending_lerp(float start, float end, float time)
 /* Create the four-particle pale sparkle model during ending effect setup. */
 static inline void ending_inline_EF58(void)
 {
-    lbl_1_bss_1E2A = Hu3DParticleCreate(lbl_1_bss_1E30[1], 4);
-    Hu3DModelPosSet(lbl_1_bss_1E2A, (0.0f),
+    lbl_1_bss_1E2A = fn_8003216C(lbl_1_bss_1E30[1], 4);
+    fn_80026760(lbl_1_bss_1E2A, (0.0f),
         (100.0f), (200.0f));
-    Hu3DModelScaleSet(lbl_1_bss_1E2A, (1.0f),
+    fn_800268B0(lbl_1_bss_1E2A, (1.0f),
         (1.0f), (1.0f));
-    Hu3DModelLayerSet(lbl_1_bss_1E2A, 6);
-    Hu3DParticleHookSet(lbl_1_bss_1E2A, fn_1_EBCC);
-    Hu3DParticleBlendModeSet(lbl_1_bss_1E2A, 1);
+    fn_80026B8C(lbl_1_bss_1E2A, 6);
+    fn_800326D0(lbl_1_bss_1E2A, fn_1_EBCC);
+    fn_8003269C(lbl_1_bss_1E2A, 1);
 }
 
 /* Create two hidden staff sparkle models during ending effect setup. */
@@ -389,15 +389,15 @@ static inline void ending_inline_1025C(void)
     s16 i;
 
     for (i = 0; i < 2; i++) {
-        lbl_1_bss_1E22[i] = Hu3DParticleCreate(lbl_1_bss_1E30[1], 10);
-        Hu3DModelPosSet(lbl_1_bss_1E22[i], (0.0f),
+        lbl_1_bss_1E22[i] = fn_8003216C(lbl_1_bss_1E30[1], 10);
+        fn_80026760(lbl_1_bss_1E22[i], (0.0f),
             (0.0f), (0.0f));
-        Hu3DModelScaleSet(lbl_1_bss_1E22[i], (1.0f),
+        fn_800268B0(lbl_1_bss_1E22[i], (1.0f),
             (1.0f), (1.0f));
-        Hu3DModelAttrSet(lbl_1_bss_1E22[i], HU3D_ATTR_DISPOFF);
-        Hu3DModelLayerSet(lbl_1_bss_1E22[i], 2);
-        Hu3DParticleHookSet(lbl_1_bss_1E22[i], fn_1_FDD4);
-        Hu3DParticleBlendModeSet(lbl_1_bss_1E22[i], 1);
+        fn_800269E8(lbl_1_bss_1E22[i], (1 << 0));
+        fn_80026B8C(lbl_1_bss_1E22[i], 2);
+        fn_800326D0(lbl_1_bss_1E22[i], fn_1_FDD4);
+        fn_8003269C(lbl_1_bss_1E22[i], 1);
     }
 }
 
@@ -407,15 +407,15 @@ static inline void ending_inline_10C28(void)
     s16 i;
 
     for (i = 0; i < 2; i++) {
-        lbl_1_bss_1E1E[i] = Hu3DParticleCreate(lbl_1_bss_1E30[0], 128);
-        Hu3DModelPosSet(lbl_1_bss_1E1E[i], (0.0f),
+        lbl_1_bss_1E1E[i] = fn_8003216C(lbl_1_bss_1E30[0], 128);
+        fn_80026760(lbl_1_bss_1E1E[i], (0.0f),
             (0.0f), (0.0f));
-        Hu3DModelScaleSet(lbl_1_bss_1E1E[i], (1.0f),
+        fn_800268B0(lbl_1_bss_1E1E[i], (1.0f),
             (1.0f), (1.0f));
-        Hu3DModelAttrSet(lbl_1_bss_1E1E[i], HU3D_ATTR_DISPOFF);
-        Hu3DModelLayerSet(lbl_1_bss_1E1E[i], 2);
-        Hu3DParticleHookSet(lbl_1_bss_1E1E[i], fn_1_10628);
-        Hu3DParticleBlendModeSet(lbl_1_bss_1E1E[i], 1);
+        fn_800269E8(lbl_1_bss_1E1E[i], (1 << 0));
+        fn_80026B8C(lbl_1_bss_1E1E[i], 2);
+        fn_800326D0(lbl_1_bss_1E1E[i], fn_1_10628);
+        fn_8003269C(lbl_1_bss_1E1E[i], 1);
     }
 }
 
@@ -486,12 +486,12 @@ void fn_1_E16C(HUSPR_GROUPID groupId, s32 attr)
 void fn_1_E1EC(s16 display, HuVecF *pos)
 {
     if (pos != NULL) {
-        Hu3DModelPosSetV(lbl_1_bss_1E2C, pos);
+        fn_80026790(lbl_1_bss_1E2C, pos);
     }
     if (display == 0) {
-        Hu3DModelAttrSet(lbl_1_bss_1E2C, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_1E2C, (1 << 0));
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_1E2C, HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_1E2C, (1 << 0));
     }
 }
 
@@ -572,39 +572,39 @@ void fn_1_E270(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx mtx)
 /* Create the main 16-particle burst model during ending effect setup. */
 void fn_1_E9A8(void)
 {
-    lbl_1_bss_1E2C = Hu3DParticleCreate(lbl_1_bss_1E30[0], 16);
-    Hu3DModelPosSet(lbl_1_bss_1E2C, (0.0f),
+    lbl_1_bss_1E2C = fn_8003216C(lbl_1_bss_1E30[0], 16);
+    fn_80026760(lbl_1_bss_1E2C, (0.0f),
         (0.0f), (0.0f));
-    Hu3DModelScaleSet(lbl_1_bss_1E2C, (1.0f),
+    fn_800268B0(lbl_1_bss_1E2C, (1.0f),
         (1.0f), (1.0f));
-    Hu3DModelLayerSet(lbl_1_bss_1E2C, 6);
-    Hu3DParticleHookSet(lbl_1_bss_1E2C, fn_1_E270);
-    Hu3DParticleBlendModeSet(lbl_1_bss_1E2C, 1);
+    fn_80026B8C(lbl_1_bss_1E2C, 6);
+    fn_800326D0(lbl_1_bss_1E2C, fn_1_E270);
+    fn_8003269C(lbl_1_bss_1E2C, 1);
 }
 
 void fn_1_EA8C(void)
 {
-    Hu3DModelKill(lbl_1_bss_1E2C);
+    fn_800262D0(lbl_1_bss_1E2C);
 }
 
 /* Move and show or hide the pale sparkle model when the ending scene requests it. */
 void fn_1_EAB8(s16 display, HuVecF *pos)
 {
     if (pos != NULL) {
-        Hu3DModelPosSet(lbl_1_bss_1E2A, pos->x, pos->y,
+        fn_80026760(lbl_1_bss_1E2A, pos->x, pos->y,
             (100.0f) + pos->z);
     }
     if (display == 0) {
-        Hu3DModelAttrSet(lbl_1_bss_1E2A, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_1E2A, (1 << 0));
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_1E2A, HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_1E2A, (1 << 0));
     }
 }
 
 /* Set every pale sparkle particle to the requested age before an effect change. */
 void fn_1_EB54(s16 time)
 {
-    HU3D_MODEL *model = &Hu3DData[lbl_1_bss_1E2A];
+    HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_1E2A];
     HU3D_PARTICLE *particle = model->hookData;
     s16 i;
     HU3D_PARTICLE_DATA *data;
@@ -682,38 +682,38 @@ void fn_1_EBCC(HU3D_MODEL *model, HU3D_PARTICLE *work, Mtx mtx)
 /* Create the four-particle pale sparkle model during ending effect setup. */
 void fn_1_EF58(void)
 {
-    lbl_1_bss_1E2A = Hu3DParticleCreate(lbl_1_bss_1E30[1], 4);
-    Hu3DModelPosSet(lbl_1_bss_1E2A, 0.0f,
+    lbl_1_bss_1E2A = fn_8003216C(lbl_1_bss_1E30[1], 4);
+    fn_80026760(lbl_1_bss_1E2A, 0.0f,
         100.0f, 200.0f);
-    Hu3DModelScaleSet(lbl_1_bss_1E2A, 1.0f,
+    fn_800268B0(lbl_1_bss_1E2A, 1.0f,
         1.0f, 1.0f);
-    Hu3DModelLayerSet(lbl_1_bss_1E2A, 6);
-    Hu3DParticleHookSet(lbl_1_bss_1E2A, fn_1_EBCC);
-    Hu3DParticleBlendModeSet(lbl_1_bss_1E2A, 1);
+    fn_80026B8C(lbl_1_bss_1E2A, 6);
+    fn_800326D0(lbl_1_bss_1E2A, fn_1_EBCC);
+    fn_8003269C(lbl_1_bss_1E2A, 1);
 }
 
 void fn_1_F03C(void)
 {
-    Hu3DModelKill(lbl_1_bss_1E2A);
+    fn_800262D0(lbl_1_bss_1E2A);
 }
 
 /* Move and show or hide one of the two ending burst models when its scene effect changes. */
 void fn_1_F068(s16 index, s16 display, HuVecF *pos)
 {
     if (pos != NULL) {
-        Hu3DModelPosSetV(lbl_1_bss_1E26[index], pos);
+        fn_80026790(lbl_1_bss_1E26[index], pos);
     }
     if (display == 0) {
-        Hu3DModelAttrSet(lbl_1_bss_1E26[index], HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_1E26[index], (1 << 0));
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_1E26[index], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_1E26[index], (1 << 0));
     }
 }
 
 /* Select a burst mode and clear one particle model before the ending effect starts. */
 void fn_1_F11C(s16 index, s16 count)
 {
-    HU3D_MODEL *model = &Hu3DData[lbl_1_bss_1E26[index]];
+    HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_1E26[index]];
     HU3D_PARTICLE *particle = model->hookData;
     HU3D_PARTICLE_DATA *data;
     s16 i;
@@ -733,19 +733,19 @@ void fn_1_F11C(s16 index, s16 count)
 void fn_1_F1B8(s16 display, HuVecF *pos)
 {
     if (pos != NULL) {
-        Hu3DModelPosSetV(lbl_1_bss_1E26[0], pos);
+        fn_80026790(lbl_1_bss_1E26[0], pos);
     }
     if (display == 0) {
-        Hu3DModelAttrSet(lbl_1_bss_1E26[0], HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_1E26[0], (1 << 0));
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_1E26[0], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_1E26[0], (1 << 0));
     }
 }
 
 /* Select a burst mode and clear the first particle model before the ending effect starts. */
 void fn_1_F23C(s16 count)
 {
-    HU3D_MODEL *model = &Hu3DData[lbl_1_bss_1E26[0]];
+    HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_1E26[0]];
     HU3D_PARTICLE_DATA *data;
     HU3D_PARTICLE *particle = model->hookData;
     s16 i;
@@ -848,14 +848,14 @@ void fn_1_F9B8(void)
     s16 i;
 
     for (i = 0; i < 2; i++) {
-        lbl_1_bss_1E26[i] = Hu3DParticleCreate(lbl_1_bss_1E30[0], 360);
-        Hu3DModelPosSet(lbl_1_bss_1E26[i], (0.0f),
+        lbl_1_bss_1E26[i] = fn_8003216C(lbl_1_bss_1E30[0], 360);
+        fn_80026760(lbl_1_bss_1E26[i], (0.0f),
             (0.0f), (0.0f));
-        Hu3DModelScaleSet(lbl_1_bss_1E26[i], (1.0f),
+        fn_800268B0(lbl_1_bss_1E26[i], (1.0f),
             (1.0f), (1.0f));
-        Hu3DModelLayerSet(lbl_1_bss_1E26[i], 6);
-        Hu3DParticleHookSet(lbl_1_bss_1E26[i], fn_1_F2CC);
-        Hu3DParticleBlendModeSet(lbl_1_bss_1E26[i], 1);
+        fn_80026B8C(lbl_1_bss_1E26[i], 6);
+        fn_800326D0(lbl_1_bss_1E26[i], fn_1_F2CC);
+        fn_8003269C(lbl_1_bss_1E26[i], 1);
     }
     fn_1_F068(0, 0, NULL);
     fn_1_F068(1, 0, NULL);
@@ -868,7 +868,7 @@ void fn_1_FB74(void)
 
     i = 0;
     while (i < 2) {
-        Hu3DModelKill(lbl_1_bss_1E26[i]);
+        fn_800262D0(lbl_1_bss_1E26[i]);
         i += 1;
     }
 }
@@ -877,9 +877,9 @@ void fn_1_FB74(void)
 void fn_1_FBCC(s16 index, s16 visible)
 {
     if (visible != 0) {
-        Hu3DModelAttrReset(lbl_1_bss_1E22[index], 1U);
+        fn_80026A44(lbl_1_bss_1E22[index], 1U);
     } else {
-        Hu3DModelAttrSet(lbl_1_bss_1E22[index], 1U);
+        fn_800269E8(lbl_1_bss_1E22[index], 1U);
     }
 }
 
@@ -891,7 +891,7 @@ void fn_1_FC48(s16 effectIndex, HuVecF *position, GXColor *color)
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
 
-    model = &Hu3DData[lbl_1_bss_1E22[effectIndex]];
+    model = &lbl_802C01C8[lbl_1_bss_1E22[effectIndex]];
     particle = model->hookData;
     for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
         data->time = 1;
@@ -902,9 +902,9 @@ void fn_1_FC48(s16 effectIndex, HuVecF *position, GXColor *color)
         }
     }
     if (position != NULL) {
-        Hu3DModelPosSetV(lbl_1_bss_1E22[effectIndex], position);
+        fn_80026790(lbl_1_bss_1E22[effectIndex], position);
     }
-    Hu3DModelAttrReset(lbl_1_bss_1E22[effectIndex], HU3D_ATTR_DISPOFF);
+    fn_80026A44(lbl_1_bss_1E22[effectIndex], (1 << 0));
 }
 
 /* Advance the selected staff sparkle particles to their fade-out state. */
@@ -915,7 +915,7 @@ void fn_1_FD4C(s16 effectIndex)
     HU3D_PARTICLE *particle;
     HU3D_PARTICLE_DATA *data;
 
-    model = &Hu3DData[lbl_1_bss_1E22[effectIndex]];
+    model = &lbl_802C01C8[lbl_1_bss_1E22[effectIndex]];
     particle = model->hookData;
     for (i = 0, data = particle->data; i < particle->maxCnt; i++, data++) {
         data->time = 2;
@@ -972,15 +972,15 @@ void fn_1_1025C(void)
     s16 i;
 
     for (i = 0; i < 2; i++) {
-        lbl_1_bss_1E22[i] = Hu3DParticleCreate(lbl_1_bss_1E30[1], 10);
-        Hu3DModelPosSet(lbl_1_bss_1E22[i], 0.0f,
+        lbl_1_bss_1E22[i] = fn_8003216C(lbl_1_bss_1E30[1], 10);
+        fn_80026760(lbl_1_bss_1E22[i], 0.0f,
             0.0f, 0.0f);
-        Hu3DModelScaleSet(lbl_1_bss_1E22[i], 1.0f,
+        fn_800268B0(lbl_1_bss_1E22[i], 1.0f,
             1.0f, 1.0f);
-        Hu3DModelAttrSet(lbl_1_bss_1E22[i], HU3D_ATTR_DISPOFF);
-        Hu3DModelLayerSet(lbl_1_bss_1E22[i], 2);
-        Hu3DParticleHookSet(lbl_1_bss_1E22[i], fn_1_FDD4);
-        Hu3DParticleBlendModeSet(lbl_1_bss_1E22[i], 1);
+        fn_800269E8(lbl_1_bss_1E22[i], (1 << 0));
+        fn_80026B8C(lbl_1_bss_1E22[i], 2);
+        fn_800326D0(lbl_1_bss_1E22[i], fn_1_FDD4);
+        fn_8003269C(lbl_1_bss_1E22[i], 1);
     }
 }
 
@@ -991,7 +991,7 @@ void fn_1_103C8(void)
 
     i = 0;
     while (i < 2) {
-        Hu3DModelKill(lbl_1_bss_1E22[i]);
+        fn_800262D0(lbl_1_bss_1E22[i]);
         i += 1;
     }
 }
@@ -1000,9 +1000,9 @@ void fn_1_103C8(void)
 void fn_1_10420(s16 index, s16 visible)
 {
     if (visible != 0) {
-        Hu3DModelAttrReset(lbl_1_bss_1E1E[index], 1U);
+        fn_80026A44(lbl_1_bss_1E1E[index], 1U);
     } else {
-        Hu3DModelAttrSet(lbl_1_bss_1E1E[index], 1U);
+        fn_800269E8(lbl_1_bss_1E1E[index], 1U);
     }
 }
 
@@ -1012,7 +1012,7 @@ void fn_1_1049C(s16 effectNo, HuVecF *position, GXColor *color)
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
 
-    model = &Hu3DData[lbl_1_bss_1E1E[effectNo]];
+    model = &lbl_802C01C8[lbl_1_bss_1E1E[effectNo]];
     particle = model->hookData;
     particle->dataCnt = 1;
     if (color != NULL) {
@@ -1025,7 +1025,7 @@ void fn_1_1049C(s16 effectNo, HuVecF *position, GXColor *color)
         particle->spawnCenter.y = position->y;
         particle->spawnCenter.z = position->z;
     }
-    Hu3DModelAttrReset(lbl_1_bss_1E1E[effectNo], HU3D_ATTR_DISPOFF);
+    fn_80026A44(lbl_1_bss_1E1E[effectNo], (1 << 0));
 }
 
 /* Stop spawning from one staff burst emitter. */
@@ -1034,7 +1034,7 @@ void fn_1_105D4(s16 effectIndex)
     HU3D_MODEL *model;
     HU3D_PARTICLE *particle;
 
-    model = &Hu3DData[lbl_1_bss_1E1E[effectIndex]];
+    model = &lbl_802C01C8[lbl_1_bss_1E1E[effectIndex]];
     particle = model->hookData;
     particle->dataCnt = 0;
 }
@@ -1118,15 +1118,15 @@ void fn_1_10C28(void)
     s16 i;
 
     for (i = 0; i < 2; i++) {
-        lbl_1_bss_1E1E[i] = Hu3DParticleCreate(lbl_1_bss_1E30[0], 128);
-        Hu3DModelPosSet(lbl_1_bss_1E1E[i], 0.0f,
+        lbl_1_bss_1E1E[i] = fn_8003216C(lbl_1_bss_1E30[0], 128);
+        fn_80026760(lbl_1_bss_1E1E[i], 0.0f,
             0.0f, 0.0f);
-        Hu3DModelScaleSet(lbl_1_bss_1E1E[i], 1.0f,
+        fn_800268B0(lbl_1_bss_1E1E[i], 1.0f,
             1.0f, 1.0f);
-        Hu3DModelAttrSet(lbl_1_bss_1E1E[i], HU3D_ATTR_DISPOFF);
-        Hu3DModelLayerSet(lbl_1_bss_1E1E[i], 2);
-        Hu3DParticleHookSet(lbl_1_bss_1E1E[i], fn_1_10628);
-        Hu3DParticleBlendModeSet(lbl_1_bss_1E1E[i], 1);
+        fn_800269E8(lbl_1_bss_1E1E[i], (1 << 0));
+        fn_80026B8C(lbl_1_bss_1E1E[i], 2);
+        fn_800326D0(lbl_1_bss_1E1E[i], fn_1_10628);
+        fn_8003269C(lbl_1_bss_1E1E[i], 1);
     }
 }
 
@@ -1137,7 +1137,7 @@ void fn_1_10D94(void)
 
     i = 0;
     while (i < 2) {
-        Hu3DModelKill(lbl_1_bss_1E1E[i]);
+        fn_800262D0(lbl_1_bss_1E1E[i]);
         i += 1;
     }
 }
@@ -1158,8 +1158,8 @@ void fn_1_10DEC(s16 modelNo, HuVecF *pos, s16 display)
 
         tail20_staff_stop_effect_inlined(modelNo);
     } else if (display == 2) {
-        Hu3DModelAttrSet(lbl_1_bss_1E22[modelNo], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_1E1E[modelNo], HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_1E22[modelNo], (1 << 0));
+        fn_800269E8(lbl_1_bss_1E1E[modelNo], (1 << 0));
     }
 }
 
@@ -1167,16 +1167,16 @@ void fn_1_10DEC(s16 modelNo, HuVecF *pos, s16 display)
 void fn_1_111B0(s16 display)
 {
     if (display != 0) {
-        Hu3DModelAttrReset(lbl_1_bss_1E1C, HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_1E1C, (1 << 0));
     } else {
-        Hu3DModelAttrSet(lbl_1_bss_1E1C, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_1E1C, (1 << 0));
     }
 }
 
 /* Start or clear one central particle when the ending scene updates that effect slot. */
 void fn_1_11208(s16 index, HuVecF *pos, s16 mode)
 {
-    HU3D_MODEL *model = &Hu3DData[lbl_1_bss_1E1C];
+    HU3D_MODEL *model = &lbl_802C01C8[lbl_1_bss_1E1C];
     HU3D_PARTICLE *particle = model->hookData;
     HU3D_PARTICLE_DATA *data = &particle->data[index];
 
@@ -1218,19 +1218,19 @@ void fn_1_112E0(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 /* Create the 100-particle central effect model during ending effect setup. */
 void fn_1_11368(void)
 {
-    lbl_1_bss_1E1C = Hu3DParticleCreate(lbl_1_bss_1E30[1], 100);
-    Hu3DModelPosSet(lbl_1_bss_1E1C, (0.0f),
+    lbl_1_bss_1E1C = fn_8003216C(lbl_1_bss_1E30[1], 100);
+    fn_80026760(lbl_1_bss_1E1C, (0.0f),
         (0.0f), (0.0f));
-    Hu3DModelScaleSet(lbl_1_bss_1E1C, (1.0f),
+    fn_800268B0(lbl_1_bss_1E1C, (1.0f),
         (1.0f), (1.0f));
-    Hu3DModelLayerSet(lbl_1_bss_1E1C, 6);
-    Hu3DParticleHookSet(lbl_1_bss_1E1C, fn_1_112E0);
-    Hu3DParticleBlendModeSet(lbl_1_bss_1E1C, 1);
+    fn_80026B8C(lbl_1_bss_1E1C, 6);
+    fn_800326D0(lbl_1_bss_1E1C, fn_1_112E0);
+    fn_8003269C(lbl_1_bss_1E1C, 1);
 }
 
 void fn_1_1144C(void)
 {
-    Hu3DModelKill(lbl_1_bss_1E1C);
+    fn_800262D0(lbl_1_bss_1E1C);
 }
 
 /* Show or hide all five particle emitters in a winner's ending effect group. */
@@ -1240,9 +1240,9 @@ void fn_1_11478(s16 groupNo, s16 show)
 
     for (i = 0; i < 5; i++) {
         if (show) {
-            Hu3DModelAttrReset(lbl_1_bss_1DE0[groupNo][i], HU3D_ATTR_DISPOFF);
+            fn_80026A44(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
         } else {
-            Hu3DModelAttrSet(lbl_1_bss_1DE0[groupNo][i], HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
         }
     }
 }
@@ -1255,7 +1255,7 @@ void fn_1_1152C(s16 groupNo, HuVecF *spawnPosition, GXColor *color)
     HU3D_PARTICLE *emitter;
 
     for (i = 0; i < 5; i++) {
-        model = &Hu3DData[lbl_1_bss_1DE0[groupNo][i]];
+        model = &lbl_802C01C8[lbl_1_bss_1DE0[groupNo][i]];
         emitter = model->hookData;
         emitter->dataCnt = 1;
         if (color != NULL) {
@@ -1269,7 +1269,7 @@ void fn_1_1152C(s16 groupNo, HuVecF *spawnPosition, GXColor *color)
             emitter->spawnCenter.y = spawnPosition->y;
             emitter->spawnCenter.z = spawnPosition->z;
         }
-        Hu3DModelAttrReset(lbl_1_bss_1DE0[groupNo][i], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_1DE0[groupNo][i], (1 << 0));
     }
 }
 
@@ -1281,7 +1281,7 @@ void fn_1_11694(s16 groupNo)
     s16 *work;
 
     for (i = 0; i < 5; i++) {
-        model = &Hu3DData[lbl_1_bss_1DE0[groupNo][i]];
+        model = &lbl_802C01C8[lbl_1_bss_1DE0[groupNo][i]];
         work = model->hookData;
         *work = 0;
     }
@@ -1367,17 +1367,17 @@ void fn_1_11C94(void)
 
     for (group = 0; group < 6; group++) {
         for (model = 0; model < 5; model++) {
-            lbl_1_bss_1DE0[group][model] = Hu3DParticleCreate(
+            lbl_1_bss_1DE0[group][model] = fn_8003216C(
                 lbl_1_bss_1E30[2], counts.count[model]);
-            Hu3DModelPosSet(lbl_1_bss_1DE0[group][model],
+            fn_80026760(lbl_1_bss_1DE0[group][model],
                 0.0f, 0.0f, 0.0f);
-            Hu3DModelScaleSet(lbl_1_bss_1DE0[group][model],
+            fn_800268B0(lbl_1_bss_1DE0[group][model],
                 1.0f, 1.0f, 1.0f);
-            Hu3DModelAttrSet(lbl_1_bss_1DE0[group][model],
-                HU3D_ATTR_DISPOFF);
-            Hu3DModelLayerSet(lbl_1_bss_1DE0[group][model], 2);
-            Hu3DParticleHookSet(lbl_1_bss_1DE0[group][model], fn_1_11714);
-            Hu3DParticleBlendModeSet(lbl_1_bss_1DE0[group][model], 1);
+            fn_800269E8(lbl_1_bss_1DE0[group][model],
+                (1 << 0));
+            fn_80026B8C(lbl_1_bss_1DE0[group][model], 2);
+            fn_800326D0(lbl_1_bss_1DE0[group][model], fn_1_11714);
+            fn_8003269C(lbl_1_bss_1DE0[group][model], 1);
         }
     }
 }
@@ -1392,7 +1392,7 @@ void fn_1_11EB0(void)
     for (row = 0; row < 6; row++) {
         column = 0;
         while (column < 5) {
-            Hu3DModelKill(lbl_1_bss_1DE0[row][column]);
+            fn_800262D0(lbl_1_bss_1DE0[row][column]);
             column += 1;
         }
     }
@@ -1404,8 +1404,8 @@ void fn_1_11F34(void)
     s16 index;
 
     for (index = 0; index < 3; index++) {
-        lbl_1_bss_1E30[index] = HuSprAnimRead(HuDataSelHeapReadNum(
-            lbl_1_data_128[index], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_1E30[index] = HuSprAnimRead(fn_80008DD0(
+            lbl_1_data_128[index], 0x10000000, 2));
     }
     fn_1_E9A8();
     ending_inline_EF58();
@@ -1425,21 +1425,21 @@ void fn_1_12838(void)
     s16 model;
     s16 group;
 
-    Hu3DModelKill(lbl_1_bss_1E2C);
-    Hu3DModelKill(lbl_1_bss_1E2A);
+    fn_800262D0(lbl_1_bss_1E2C);
+    fn_800262D0(lbl_1_bss_1E2A);
     for (firstIndex = 0; firstIndex < 2; firstIndex++) {
-        Hu3DModelKill(lbl_1_bss_1E26[firstIndex]);
+        fn_800262D0(lbl_1_bss_1E26[firstIndex]);
     }
-    Hu3DModelKill(lbl_1_bss_1E1C);
+    fn_800262D0(lbl_1_bss_1E1C);
     for (secondIndex = 0; secondIndex < 2; secondIndex++) {
-        Hu3DModelKill(lbl_1_bss_1E22[secondIndex]);
+        fn_800262D0(lbl_1_bss_1E22[secondIndex]);
     }
     for (thirdIndex = 0; thirdIndex < 2; thirdIndex++) {
-        Hu3DModelKill(lbl_1_bss_1E1E[thirdIndex]);
+        fn_800262D0(lbl_1_bss_1E1E[thirdIndex]);
     }
     for (group = 0; group < 6; group++) {
         for (model = 0; model < 5; model++) {
-            Hu3DModelKill(lbl_1_bss_1DE0[group][model]);
+            fn_800262D0(lbl_1_bss_1DE0[group][model]);
         }
     }
 }

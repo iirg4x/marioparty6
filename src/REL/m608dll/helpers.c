@@ -81,21 +81,21 @@ void fn_1_5E6C(s32 cameraIndex)
 
     cameraMotionId = lbl_1_bss_3E80.cameraMotions[cameraIndex];
     cameraModelId = lbl_1_bss_3E80.cameraModels[cameraIndex];
-    Hu3DCameraMotionStart(cameraModelId, 1U);
+    fn_800284C8(cameraModelId, 1U);
     lbl_1_bss_3E80.cameraTime = 0.0f;
-    lbl_1_bss_3E80.cameraMaxTime = Hu3DMotionMaxTimeGet(cameraModelId);
+    lbl_1_bss_3E80.cameraMaxTime = fn_8002D530(cameraModelId);
     if (lbl_1_bss_3E80.activeCameraMotion != -1) {
-        Hu3DCameraMotionOff(lbl_1_bss_3E80.activeCameraMotion);
+        fn_8002858C(lbl_1_bss_3E80.activeCameraMotion);
     }
     lbl_1_bss_3E80.activeCameraMotion = cameraModelId;
-    Hu3DCameraMotionOn(lbl_1_bss_3E80.activeCameraMotion, 1U);
+    fn_80028478(lbl_1_bss_3E80.activeCameraMotion, 1U);
     OSReport(lbl_1_data_2F8, cameraIndex, lbl_1_bss_3E80.cameraMaxTime);
 }
 
 /* Polled by the intro and rider-state callbacks in sequence.c to detect camera-motion end. */
 BOOL fn_1_5F64(void)
 {
-    return Hu3DMotionEndCheck(lbl_1_bss_3E80.activeCameraMotion);
+    return fn_8002D75C(lbl_1_bss_3E80.activeCameraMotion);
 }
 
 /* Called during rider setup in sequence.c to hide the indexed course prop. */
@@ -104,7 +104,7 @@ void fn_1_5F90(s16 coursePropIndex)
     s16 modelId;
 
     modelId = (&lbl_1_bss_3E80.courseModels[1])[coursePropIndex];
-    Hu3DModelAttrSet(modelId, HU3D_ATTR_DISPOFF);
+    fn_800269E8(modelId, (1 << 0));
 }
 
 /* Called during intro and rider setup in sequence.c to start and reveal a course prop. */
@@ -113,9 +113,9 @@ void fn_1_5FDC(s16 coursePropIndex, s16 courseMotionIndex)
     s16 coursePropModelId;
 
     coursePropModelId = (&lbl_1_bss_3E80.courseModels[1])[coursePropIndex];
-    Hu3DMotionSet(coursePropModelId, lbl_1_bss_3E80.courseMotions[courseMotionIndex]);
-    Hu3DModelAttrReset(coursePropModelId, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(coursePropModelId, HU3D_MOTATTR_LOOP);
+    fn_8002C95C(coursePropModelId, lbl_1_bss_3E80.courseMotions[courseMotionIndex]);
+    fn_80026A44(coursePropModelId, (1 << 0));
+    fn_800269E8(coursePropModelId, ((1 << 30) | (1 << 0)));
 }
 
 /* Called during rider setup in sequence.c to restart and reveal the indexed prop. */
@@ -124,9 +124,9 @@ void fn_1_605C(s16 coursePropIndex)
     s16 coursePropModelId;
 
     coursePropModelId = (&lbl_1_bss_3E80.courseModels[1])[coursePropIndex];
-    Hu3DMotionTimeSet(coursePropModelId, 0.0f);
-    Hu3DModelAttrReset(coursePropModelId, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(coursePropModelId, HU3D_MOTATTR_LOOP);
+    fn_8002D414(coursePropModelId, 0.0f);
+    fn_80026A44(coursePropModelId, (1 << 0));
+    fn_800269E8(coursePropModelId, ((1 << 30) | (1 << 0)));
 }
 
 /* Replaces the three preset height fields with random values for camera setup. */

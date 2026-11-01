@@ -4,14 +4,6 @@
 #include <dolphin.h>
 #include "game/hu3d.h"
 
-#define COLBODY_MAX 256
-#define COLBODY_ATTR_ACTIVE (1 << 0)
-#define COLBODY_ATTR_MESHCOL_OFF (1 << 1)
-#define COLBODY_ATTR_BODYCOL_OFF (1 << 2)
-#define COLBODY_ATTR_COL_OFF (1 << 4)
-
-#define COLBODY_ATTR_RESET (1 << 24)
-
 typedef struct ColNarrowParam_s {
     int paramA;
     int paramB;
@@ -26,7 +18,6 @@ typedef struct ColBody_s COLBODY;
 typedef int (*COL_NARROW_HOOK)(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b);
 typedef void (*COL_CORRECT_HOOK)(COLBODY *body, void *user);
 
-
 typedef struct ColAttrParam_s {
     int type;
     float speed;
@@ -34,7 +25,6 @@ typedef struct ColAttrParam_s {
     float maxDot;
     u32 attr;
 } COL_ATTRPARAM;
-
 
 typedef struct ColBodyParam_s {
     float height;
@@ -72,26 +62,27 @@ struct ColBody_s {
     u32 paramAttr;
     float colT;
     float oldColT;
-    s32 colBit[(COLBODY_MAX+31)/32];
+    s32 colBit[(256+31)/32];
 };
 
-COLBODY *ColBodyGet(int no);
-void ColMapClear(void);
+COLBODY *fn_8007BAB8(int no);
+void fn_8007BAD0(void);
 void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int actorMax);
-void ColMapMaskSet(int mdlNo, u32 mask);
-u32 ColMapMaskGet(int mdlNo);
-BOOL ColCylReset(void);
-BOOL ColCylSet(void);
-void ColMapKill(void);
-BOOL ColMapInitCheck(void);
-void ColDirtyClear(void);
-void ColAttrParamSet(COL_ATTRPARAM *param, u32 polyAttr);
-void ColAttrParamGet(COL_ATTRPARAM *param, u32 polyAttr);
-void ColBodyPosSet(HuVecF *pos, int no);
-void ColBodyPosGet(HuVecF *pos, int no);
-void ColBodyParamSet(COLBODY_PARAM *param, int no);
-COLBODY *ColBodyGetSafe(int no);
-BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *outCode, int *outMdlNo, HSF_OBJECT **outObj, int *outTriNo);
-void ColBodyExec(void);
+void fn_8007D118(int mdlNo, u32 mask);
+u32 fn_8007D18C(int mdlNo);
+BOOL fn_8007D200(void);
+BOOL fn_8007D260(void);
+void fn_8007D2C0(void);
+BOOL fn_8007D52C(void);
+void fn_8007D534(void);
+void fn_8007D550(COL_ATTRPARAM *param, u32 polyAttr);
+void fn_8007D618(COL_ATTRPARAM *param, u32 polyAttr);
+void fn_8007D6E0(HuVecF *pos, int no);
+void fn_8007D7B4(HuVecF *pos, int no);
+void fn_8007D84C(COLBODY_PARAM *param, int no);
+COLBODY *fn_8007D8E0(int no);
+BOOL fn_8007D91C(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *outCode,
+    int *outMdlNo, HSF_OBJECT **outObj, int *outTriNo);
+void fn_8007DDB8(void);
 
 #endif

@@ -32,7 +32,7 @@ static DATADIRSTAT DataDirStat[] = {
 
 #undef DATADIR
 
-u32 DirDataSize; // DVD-reported file length, or a resident slot's dvdFile.length; ARAM uploads
+u32 lbl_802C0028; // DVD-reported file length, or a resident slot's dvdFile.length; ARAM uploads
                  // round it to 32 bytes.
 // Synchronous and ARAM archive loads do not populate the slot's dvdFile.length.
 static u32 DataDirMax; // Number of archives in the path table, excluding its NULL terminator.
@@ -41,7 +41,7 @@ static s32 shortAccessSleep; // Yield flag for direct DVD waits; it stays zero b
 static HUDATASTAT ATTRIBUTE_ALIGN(32) ReadDataStat[DATA_MAX_READSTAT]; // Active archive pool.
 
 // Game startup resolves the archive paths and clears the fixed pool of active archive reads.
-void HuDataInit(void)
+void fn_80007668(void)
 {
     s32 archiveIndex = 0;
     DATADIRSTAT *dirStat = DataDirStat;
@@ -57,7 +57,7 @@ void HuDataInit(void)
     DataDirMax = archiveIndex;
     for (archiveIndex = 0, readStat = ReadDataStat; archiveIndex < DATA_MAX_READSTAT;
          archiveIndex++, readStat++) {
-        readStat->dirId = HU_DATANUM_NONE;
+        readStat->dirId = -1;
         readStat->used = FALSE;
         readStat->status = 0;
     }
@@ -68,18 +68,18 @@ static s32 HuDataReadStatusGet(void)
 {
     s32 statusIndex;
     for(statusIndex=0; statusIndex<DATA_MAX_READSTAT; statusIndex++) {
-        if(ReadDataStat[statusIndex].dirId == HU_DATANUM_NONE) {
+        if(ReadDataStat[statusIndex].dirId == -1) {
             break;
         }
     }
     if(statusIndex >= DATA_MAX_READSTAT) {
-        statusIndex = HU_DATA_STAT_NONE;
+        statusIndex = -1;
     }
     return statusIndex;
 }
 
 // Resource loaders find a resident archive by the upper half of a packed data number.
-s32 HuDataReadChk(int dataNum)
+s32 fn_80007738(int dataNum)
 {
     s32 statusIndex;
     dataNum >>= 16;
@@ -89,13 +89,13 @@ s32 HuDataReadChk(int dataNum)
         }
     }
     if(statusIndex >= DATA_MAX_READSTAT) {
-        statusIndex = HU_DATA_STAT_NONE;
+        statusIndex = -1;
     }
     return statusIndex;
 }
 
 // Character and ARAM loaders use a registered archive pointer to find its status record.
-HUDATASTAT *HuDataGetStatus(void *archivePtr)
+HUDATASTAT *fn_800077AC(void *archivePtr)
 {
     s32 statusIndex;
     for(statusIndex=0; statusIndex<DATA_MAX_READSTAT; statusIndex++) {
@@ -111,9 +111,9 @@ HUDATASTAT *HuDataGetStatus(void *archivePtr)
 }
 
 // Returns the loaded archive pointer for a data number, if its archive is active.
-void *HuDataGetDirPtr(int dirNum)
+void *fn_80007810(int dirNum)
 {
-    s32 statId = HuDataReadChk(dirNum);
+    s32 statId = fn_80007738(dirNum);
     if(statId < 0) {
         return NULL;
     }
@@ -121,7 +121,7 @@ void *HuDataGetDirPtr(int dirNum)
 }
 
 // Entry readers and ARAM loaders obtain the containing archive, waiting for a queued ARAM copy.
-HUDATASTAT *HuDataDirRead(int dataNum)
+HUDATASTAT *fn_800078C8(int dataNum)
 {
     HUDATASTAT *readStat;
     s32 statId;
@@ -132,28 +132,28 @@ HUDATASTAT *HuDataDirRead(int dataNum)
         return NULL;
     }
 
-    if((statId = HuDataReadChk(dataNum)) < 0) {
+    if((statId = fn_80007738(dataNum)) < 0) {
         AMEM_PTR aramArchiveAddress;
         if(aramArchiveAddress = HuARDirCheck(dataNum)) {
-            HuAR_ARAMtoMRAM(aramArchiveAddress);
-            while(HuARDMACheck());
-            statId = HuDataReadChk(dataNum);
+            fn_80055D40(aramArchiveAddress);
+            while(fn_80055FB4());
+            statId = fn_80007738(dataNum);
             readStat = &ReadDataStat[statId];
         } else {
-            if((statId = HuDataReadStatusGet()) == HU_DATA_STAT_NONE) {
+            if((statId = HuDataReadStatusGet()) == -1) {
                 OSReport("data.c: Data Work Max Error\n");
                 return NULL;
             }
             readStat = &ReadDataStat[statId];
             readStat->dirP = HuDvdDataFastRead(DataDirStat[dirId].dvdEntryNumber);
             if(readStat->dirP) {
-                HuMemMemoryFileSet(readStat->dirP, dataNum & DATA_DIR_ID_MASK);
+                fn_8000C164(readStat->dirP, dataNum & DATA_DIR_ID_MASK);
                 readStat->dirId = dirId;
             }
         }
     } else {
         readStat = &ReadDataStat[statId];
-        DirDataSize = readStat->dvdFile.length;
+        lbl_802C0028 = readStat->dvdFile.length;
     }
     return readStat;
 }
@@ -171,26 +171,26 @@ static HUDATASTAT *HuDataDirReadNum(int dataNum, s32 memoryTag)
         return NULL;
     }
 
-    if((statId = HuDataReadChk(dataNum)) < 0) {
+    if((statId = fn_80007738(dataNum)) < 0) {
         AMEM_PTR aramArchiveAddress;
         if((aramArchiveAddress = HuARDirCheck(dataNum))) {
             OSReport("ARAM data num %x\n", dataNum);
-            HuAR_ARAMtoMRAMNum(aramArchiveAddress, memoryTag);
-            while(HuARDMACheck());
-            statId = HuDataReadChk(dataNum);
+            fn_80055D6C(aramArchiveAddress, memoryTag);
+            while(fn_80055FB4());
+            statId = fn_80007738(dataNum);
             readStat = &ReadDataStat[statId];
             readStat->used = TRUE;
             readStat->num = memoryTag;
         } else {
             OSReport("data num %x\n", dataNum);
-            if((statId = HuDataReadStatusGet()) == HU_DATA_STAT_NONE) {
+            if((statId = HuDataReadStatusGet()) == -1) {
                 OSReport("data.c: Data Work Max Error\n");
                 return NULL;
             }
             readStat = &ReadDataStat[statId];
             readStat->dirP = HuDvdDataFastReadNum(DataDirStat[dirId].dvdEntryNumber, memoryTag);
             if(readStat->dirP) {
-                HuMemMemoryFileSet(readStat->dirP, dataNum & DATA_DIR_ID_MASK);
+                fn_8000C164(readStat->dirP, dataNum & DATA_DIR_ID_MASK);
                 readStat->dirId = dirId;
                 readStat->used = TRUE;
                 readStat->num = memoryTag;
@@ -205,14 +205,14 @@ static HUDATASTAT *HuDataDirReadNum(int dataNum, s32 memoryTag)
 // The ARAM completion callback registers its copied archive in the read-status pool.
 // Its close test uses the pointer's existing record's dirId, but the close call uses dataNum;
 // an untracked pointer follows HuDataGetStatus's one-past-pool path before a slot is chosen.
-HUDATASTAT *HuDataDirSet(void *archivePtr, int dataNum)
+HUDATASTAT *fn_80007B00(void *archivePtr, int dataNum)
 {
-    HUDATASTAT *readStat = HuDataGetStatus(archivePtr);
+    HUDATASTAT *readStat = fn_800077AC(archivePtr);
     s32 statId;
-    if((statId = HuDataReadChk(readStat->dirId << 16)) >= 0) {
-        HuDataDirClose(dataNum);
+    if((statId = fn_80007738(readStat->dirId << 16)) >= 0) {
+        fn_800097F4(dataNum);
     }
-    if((statId = HuDataReadStatusGet()) == HU_DATA_STAT_NONE) {
+    if((statId = HuDataReadStatusGet()) == -1) {
         OSReport("data.c: Data Work Max Error\n");
         return NULL;
     } else {
@@ -224,7 +224,7 @@ HUDATASTAT *HuDataDirSet(void *archivePtr, int dataNum)
 }
 
 // DVD completion advances an archive read in blocks until completion or cancellation.
-void HuDataDirReadAsyncCallBack(s32 dvdResult, DVDFileInfo* dvdFileInfo)
+void fn_80007C88(s32 dvdResult, DVDFileInfo* dvdFileInfo)
 {
     HUDATASTAT *readStat;
     s32 statusIndex;
@@ -252,7 +252,7 @@ void HuDataDirReadAsyncCallBack(s32 dvdResult, DVDFileInfo* dvdFileInfo)
         }
         // Continue writing at the next byte in the archive buffer.
         DVDReadAsyncPrio(dvdFileInfo, ((u8 *) readStat->dirP) + readStat->readOfs,
-                         OSRoundUp32B(readSize), readStat->readOfs, HuDataDirReadAsyncCallBack, 3);
+                         OSRoundUp32B(readSize), readStat->readOfs, fn_80007C88, 3);
     } else {
         readStat->status = 0;
         DVDClose(&readStat->dvdFile);
@@ -260,33 +260,33 @@ void HuDataDirReadAsyncCallBack(s32 dvdResult, DVDFileInfo* dvdFileInfo)
 }
 
 // Cancels an archive read, waits for its callback to finish, then closes its archive.
-void HuDataDirCancel(s16 statId)
+void fn_80007DE4(s16 statId)
 {
     s32 cancelResult = DVDCancel(&ReadDataStat[statId].dvdFile.cb);
     // The cancel result is unused; the callback's status determines when the wait ends.
     while(ReadDataStat[statId].status);
-    HuDataDirClose(ReadDataStat[statId].dirId << 16);
+    fn_800097F4(ReadDataStat[statId].dirId << 16);
 }
 
 // Requests cancellation of an archive read without waiting for completion.
-void HuDataDirCancelAsync(s16 statId)
+void fn_80007E6C(s16 statId)
 {
     DVDCancelAsync(&ReadDataStat[statId].dvdFile.cb, NULL);
 }
 
 // Closes the archive for a completed async read; returns FALSE while it is still active.
-BOOL HuDataDirCloseAsync(s16 statId)
+BOOL fn_80007EAC(s16 statId)
 {
     if(ReadDataStat[statId].status) {
         return FALSE;
     }
-    HuDataDirClose(ReadDataStat[statId].dirId << 16);
+    fn_800097F4(ReadDataStat[statId].dirId << 16);
     return TRUE;
 }
 
 // Character motion and board loaders request an archive asynchronously; ARAM copies return a shared
 // sentinel, while resident archives return no slot.
-s32 HuDataDirReadAsync(int dataNum)
+s32 fn_80007F20(int dataNum)
 {
     HUDATASTAT *readStat;
     s32 statId;
@@ -294,19 +294,19 @@ s32 HuDataDirReadAsync(int dataNum)
     dirId  = dataNum >> 16;
     if(DataDirMax <= dirId) {
         OSReport("data.c: Data Number Error(%d)\n", dataNum);
-        return HU_DATA_STAT_NONE;
+        return -1;
     }
-    if((statId = HuDataReadChk(dataNum)) < 0) {
+    if((statId = fn_80007738(dataNum)) < 0) {
         AMEM_PTR aramArchiveAddress;
         if(aramArchiveAddress = HuARDirCheck(dataNum)) {
             OSReport("ARAM data num %x\n", dataNum);
-            HuAR_ARAMtoMRAM(aramArchiveAddress);
+            fn_80055D40(aramArchiveAddress);
             statId = STAT_ID_ARAM;
         } else {
             statId = HuDataReadStatusGet();
-            if(statId == HU_DATA_STAT_NONE) {
+            if(statId == -1) {
                 OSReport("data.c: Data Work Max Error\n");
-                return HU_DATA_STAT_NONE;
+                return -1;
             }
             readStat = &ReadDataStat[statId];
             readStat->status = 1;
@@ -314,14 +314,14 @@ s32 HuDataDirReadAsync(int dataNum)
             readStat->dirP = HuDvdDataFastReadAsync(DataDirStat[dirId].dvdEntryNumber, readStat);
         }
     } else {
-        statId = HU_DATA_STAT_NONE;
+        statId = -1;
     }
     return statId;
 }
 
 // Numbered asynchronous readers track archive closure under the requested tag while starting an
 // unnumbered DVD read.
-s32 HuDataDirReadNumAsync(int dataNum, s32 memoryTag)
+s32 fn_800080C8(int dataNum, s32 memoryTag)
 {
     HUDATASTAT *readStat;
     s32 statId;
@@ -329,12 +329,12 @@ s32 HuDataDirReadNumAsync(int dataNum, s32 memoryTag)
     dirId  = dataNum >> 16;
     if(DataDirMax <= dirId) {
         OSReport("data.c: Data Number Error(%d)\n", dataNum);
-        return HU_DATA_STAT_NONE;
+        return -1;
     }
-    if((statId = HuDataReadChk(dataNum)) < 0) {
-        if((statId = HuDataReadStatusGet()) == HU_DATA_STAT_NONE) {
+    if((statId = fn_80007738(dataNum)) < 0) {
+        if((statId = HuDataReadStatusGet()) == -1) {
             OSReport("data.c: Data Work Max Error\n");
-            return HU_DATA_STAT_NONE;
+            return -1;
         }
         ReadDataStat[statId].status = TRUE;
         ReadDataStat[statId].dirId = dirId;
@@ -344,17 +344,17 @@ s32 HuDataDirReadNumAsync(int dataNum, s32 memoryTag)
         // The tag tracks archive closure; the asynchronous DVD buffer itself is unnumbered.
         readStat->dirP = HuDvdDataFastReadAsync(DataDirStat[dirId].dvdEntryNumber, readStat);
     } else {
-        statId = HU_DATA_STAT_NONE;
+        statId = -1;
     }
     return statId;
 }
 
 // Asynchronous loaders poll a DVD slot or the shared ARAM sentinel for completion.
-BOOL HuDataGetAsyncStat(s32 statId)
+BOOL fn_80008270(s32 statId)
 {
     if(statId == STAT_ID_ARAM) {
         // The ARAM sentinel waits for all queued DMA, rather than just this archive.
-        return HuARDMACheck() == 0;
+        return fn_80055FB4() == 0;
     } else {
         return ReadDataStat[statId].status == 0;
     }
@@ -373,29 +373,29 @@ static void GetFileInfo(HUDATASTAT *readStat, s32 fileNum)
 }
 
 // Called by game systems that need decoded data; loads one entry into the default heap.
-void *HuDataRead(int dataNum)
+void *fn_800082D0(int dataNum)
 {
     HUDATASTAT *readStat;
     s32 statusIndex;
     void *decodedData;
-    if(!HuDataDirRead(dataNum)) {
+    if(!fn_800078C8(dataNum)) {
         return NULL;
     }
-    if((statusIndex = HuDataReadChk(dataNum)) == HU_DATA_STAT_NONE) {
+    if((statusIndex = fn_80007738(dataNum)) == -1) {
         return NULL;
     }
     readStat = &ReadDataStat[statusIndex];
     GetFileInfo(readStat, dataNum & 0xFFFF);
     decodedData = HuMemDirectMalloc(HEAP_HEAP, DATA_EFF_SIZE(readStat->rawLen));
     if(decodedData) {
-        HuDecodeData(readStat->fileDataP, decodedData, readStat->rawLen, readStat->decodeType);
-        HuMemMemoryFileSet(decodedData, dataNum);
+        fn_8000A384(readStat->fileDataP, decodedData, readStat->rawLen, readStat->decodeType);
+        fn_8000C164(decodedData, dataNum);
     }
     return decodedData;
 }
 
 // Called by resource loaders that track allocations by group; decodes one entry into that group.
-void *HuDataReadNum(int dataNum, s32 memoryTag)
+void *fn_80008634(int dataNum, s32 memoryTag)
 {
     HUDATASTAT *readStat;
     s32 statId;
@@ -403,44 +403,44 @@ void *HuDataReadNum(int dataNum, s32 memoryTag)
     if(!HuDataDirReadNum(dataNum, memoryTag)) {
         return NULL;
     }
-    if((statId = HuDataReadChk(dataNum)) == HU_DATA_STAT_NONE) {
+    if((statId = fn_80007738(dataNum)) == -1) {
         return NULL;
     }
     readStat = &ReadDataStat[statId];
     GetFileInfo(readStat, dataNum & 0xFFFF);
     decodedData = HuMemDirectMallocNum(HEAP_HEAP, DATA_EFF_SIZE(readStat->rawLen), memoryTag);
     if(decodedData) {
-        HuDecodeData(readStat->fileDataP, decodedData, readStat->rawLen, readStat->decodeType);
-        HuMemMemoryFileSet(decodedData, dataNum);
+        fn_8000A384(readStat->fileDataP, decodedData, readStat->rawLen, readStat->decodeType);
+        fn_8000C164(decodedData, dataNum);
     }
     return decodedData;
 }
 
 // Decodes one entry into HEAP_SOUND, HEAP_MODEL, or HEAP_DVD; other heap IDs use HEAP_HEAP.
-void *HuDataSelHeapRead(int dataNum, HEAPID heap)
+void *fn_800089EC(int dataNum, HEAPID heap)
 {
     HUDATASTAT *readStat;
     s32 statId;
     void *decodedData;
-    if(!HuDataDirRead(dataNum)) {
+    if(!fn_800078C8(dataNum)) {
         return NULL;
     }
-    if((statId = HuDataReadChk(dataNum)) == HU_DATA_STAT_NONE) {
+    if((statId = fn_80007738(dataNum)) == -1) {
         return NULL;
     }
     readStat = &ReadDataStat[statId];
     GetFileInfo(readStat, dataNum & 0xFFFF);
     switch(heap) {
-        case HEAP_SOUND:
-            decodedData = HuMemDirectMalloc(HEAP_SOUND, DATA_EFF_SIZE(readStat->rawLen));
+        case 1:
+            decodedData = HuMemDirectMalloc(1, DATA_EFF_SIZE(readStat->rawLen));
             break;
 
-        case HEAP_MODEL:
-            decodedData = HuMemDirectMalloc(HEAP_MODEL, DATA_EFF_SIZE(readStat->rawLen));
+        case 2:
+            decodedData = HuMemDirectMalloc(2, DATA_EFF_SIZE(readStat->rawLen));
             break;
 
-        case HEAP_DVD:
-            decodedData = HuMemDirectMalloc(HEAP_DVD, DATA_EFF_SIZE(readStat->rawLen));
+        case 3:
+            decodedData = HuMemDirectMalloc(3, DATA_EFF_SIZE(readStat->rawLen));
             break;
 
         default:
@@ -448,15 +448,15 @@ void *HuDataSelHeapRead(int dataNum, HEAPID heap)
             break;
     }
     if(decodedData) {
-        HuDecodeData(readStat->fileDataP, decodedData, readStat->rawLen, readStat->decodeType);
-        HuMemMemoryFileSet(decodedData, dataNum);
+        fn_8000A384(readStat->fileDataP, decodedData, readStat->rawLen, readStat->decodeType);
+        fn_8000C164(decodedData, dataNum);
     }
     return decodedData;
 }
 
 // Decodes into HEAP_SOUND, HEAP_MODEL, or HEAP_DVD; other heap IDs use HEAP_HEAP, and only
 // non-sound allocations use the tag.
-void *HuDataSelHeapReadNum(int dataNum, s32 memoryTag, HEAPID heap)
+void *fn_80008DD0(int dataNum, s32 memoryTag, HEAPID heap)
 {
     HUDATASTAT *readStat;
     s32 statId;
@@ -464,25 +464,25 @@ void *HuDataSelHeapReadNum(int dataNum, s32 memoryTag, HEAPID heap)
     if(!HuDataDirReadNum(dataNum, memoryTag)) {
         return NULL;
     }
-    if((statId = HuDataReadChk(dataNum)) == HU_DATA_STAT_NONE) {
+    if((statId = fn_80007738(dataNum)) == -1) {
         return NULL;
     }
     readStat = &ReadDataStat[statId];
     GetFileInfo(readStat, dataNum & 0xFFFF);
     switch(heap) {
-        case HEAP_SOUND:
+        case 1:
             // Sound-heap buffers are unnumbered even when a memory tag was requested.
-            decodedData = HuMemDirectMalloc(HEAP_SOUND, DATA_EFF_SIZE(readStat->rawLen));
+            decodedData = HuMemDirectMalloc(1, DATA_EFF_SIZE(readStat->rawLen));
             break;
 
-        case HEAP_MODEL:
+        case 2:
             decodedData =
-                HuMemDirectMallocNum(HEAP_MODEL, DATA_EFF_SIZE(readStat->rawLen), memoryTag);
+                HuMemDirectMallocNum(2, DATA_EFF_SIZE(readStat->rawLen), memoryTag);
             break;
 
-        case HEAP_DVD:
+        case 3:
             decodedData =
-                HuMemDirectMallocNum(HEAP_DVD, DATA_EFF_SIZE(readStat->rawLen), memoryTag);
+                HuMemDirectMallocNum(3, DATA_EFF_SIZE(readStat->rawLen), memoryTag);
             break;
 
         default:
@@ -491,8 +491,8 @@ void *HuDataSelHeapReadNum(int dataNum, s32 memoryTag, HEAPID heap)
             break;
     }
     if(decodedData) {
-        HuDecodeData(readStat->fileDataP, decodedData, readStat->rawLen, readStat->decodeType);
-        HuMemMemoryFileSet(decodedData, dataNum);
+        fn_8000A384(readStat->fileDataP, decodedData, readStat->rawLen, readStat->decodeType);
+        fn_8000C164(decodedData, dataNum);
     }
     return decodedData;
 }
@@ -512,35 +512,35 @@ static void **HuDataReadMultiSub(int *dataNumbers, BOOL useMemoryTag, s32 memory
     s32 fileIndex, missingArchiveCount, numFiles;
     void **decodedFiles;
     u32 archiveId;
-    for (fileIndex = 0, missingArchiveCount = 0; dataNumbers[fileIndex] != HU_DATANUM_NONE;
+    for (fileIndex = 0, missingArchiveCount = 0; dataNumbers[fileIndex] != -1;
          fileIndex++) {
         archiveId = dataNumbers[fileIndex] >> 16;
         if(DataDirMax <= archiveId) {
             OSReport("data.c: Data Number Error(%d)\n", dataNumbers[fileIndex]);
             return NULL;
         }
-        if(HuDataReadChk(dataNumbers[fileIndex]) < 0) {
+        if(fn_80007738(dataNumbers[fileIndex]) < 0) {
             missingArchiveCount++;
         }
     }
     numFiles = fileIndex;
     archiveIds = HuMemDirectMalloc(HEAP_HEAP, (missingArchiveCount+1)*sizeof(s32));
     for(fileIndex=0; fileIndex<missingArchiveCount+1; fileIndex++) {
-        archiveIds[fileIndex] = HU_DATANUM_NONE;
+        archiveIds[fileIndex] = -1;
     }
     archivePaths = HuMemDirectMalloc(HEAP_HEAP, (missingArchiveCount+1)*sizeof(char *));
-    for (fileIndex = 0, missingArchiveCount = 0; dataNumbers[fileIndex] != HU_DATANUM_NONE;
+    for (fileIndex = 0, missingArchiveCount = 0; dataNumbers[fileIndex] != -1;
          fileIndex++) {
         archiveId = dataNumbers[fileIndex] >> 16;
-        if(HuDataReadChk(dataNumbers[fileIndex]) < 0) {
+        if(fn_80007738(dataNumbers[fileIndex]) < 0) {
             s32 archiveSearchIndex;
-            for (archiveSearchIndex = 0; archiveIds[archiveSearchIndex] != HU_DATANUM_NONE;
+            for (archiveSearchIndex = 0; archiveIds[archiveSearchIndex] != -1;
                  archiveSearchIndex++) {
                 if(archiveIds[archiveSearchIndex] == archiveId){
                     break;
                 }
             }
-            if(archiveIds[archiveSearchIndex] == HU_DATANUM_NONE) {
+            if(archiveIds[archiveSearchIndex] == -1) {
                 archiveIds[archiveSearchIndex] = archiveId;
                 archivePaths[missingArchiveCount++] = DataDirStat[archiveId].archivePath;
             }
@@ -548,9 +548,9 @@ static void **HuDataReadMultiSub(int *dataNumbers, BOOL useMemoryTag, s32 memory
     }
     // The DVD helper scans paths until NULL, but this list's terminator is not written here.
     loadedArchives = HuDvdDataReadMulti(archivePaths);
-    for(fileIndex=0; archiveIds[fileIndex] != HU_DATANUM_NONE; fileIndex++) {
+    for(fileIndex=0; archiveIds[fileIndex] != -1; fileIndex++) {
         s32 statId;
-        if((statId = HuDataReadStatusGet()) == HU_DATA_STAT_NONE) {
+        if((statId = HuDataReadStatusGet()) == -1) {
             OSReport("data.c: Data Work Max Error\n");
             HuMemDirectFree(archiveIds);
             HuMemDirectFree(archivePaths);
@@ -568,11 +568,11 @@ static void **HuDataReadMultiSub(int *dataNumbers, BOOL useMemoryTag, s32 memory
     } else {
         decodedFiles = HuMemDirectMalloc(HEAP_HEAP, (numFiles+1)*sizeof(void *));
     }
-    for(fileIndex=0; dataNumbers[fileIndex] != HU_DATANUM_NONE; fileIndex++) {
+    for(fileIndex=0; dataNumbers[fileIndex] != -1; fileIndex++) {
         if(useMemoryTag) {
-            decodedFiles[fileIndex] = HuDataReadNum(dataNumbers[fileIndex], memoryTag);
+            decodedFiles[fileIndex] = fn_80008634(dataNumbers[fileIndex], memoryTag);
         } else {
-            decodedFiles[fileIndex] = HuDataRead(dataNumbers[fileIndex]);
+            decodedFiles[fileIndex] = fn_800082D0(dataNumbers[fileIndex]);
         }
     }
     decodedFiles[fileIndex] = NULL;
@@ -580,11 +580,11 @@ static void **HuDataReadMultiSub(int *dataNumbers, BOOL useMemoryTag, s32 memory
 }
 
 // Returns the decoded size of a loaded archive entry, rounded to an even byte count.
-s32 HuDataGetSize(int dataNum)
+s32 fn_8000963C(int dataNum)
 {
     HUDATASTAT *readStat;
     s32 statId;
-    if((statId = HuDataReadChk(dataNum)) == HU_DATA_STAT_NONE) {
+    if((statId = fn_80007738(dataNum)) == -1) {
         return -1;
     }
     readStat = &ReadDataStat[statId];
@@ -593,7 +593,7 @@ s32 HuDataGetSize(int dataNum)
 }
 
 // Frees one decoded data buffer.
-void HuDataClose(void *ptr)
+void fn_80009740(void *ptr)
 {
     if(ptr) {
         HuMemDirectFree(ptr);
@@ -616,7 +616,7 @@ void HuDataCloseMulti(void **ptrs)
 }
 
 // Cancels any active read and releases the loaded archive for a data number.
-void HuDataDirClose(int dataNum)
+void fn_800097F4(int dataNum)
 {
     HUDATASTAT *readStat;
     s32 statusIndex;
@@ -634,7 +634,7 @@ void HuDataDirClose(int dataNum)
         DVDCancel(&ReadDataStat[statusIndex].dvdFile.cb);
         while(ReadDataStat[statusIndex].status);
     }
-    readStat->dirId = HU_DATANUM_NONE;
+    readStat->dirId = -1;
     HuDvdDataClose(readStat->dirP);
     readStat->dirP = NULL;
     readStat->used = FALSE;
@@ -642,18 +642,18 @@ void HuDataDirClose(int dataNum)
 }
 
 // Called when a memory tag is released; closes every archive tracked under that tag.
-void HuDataDirCloseNum(s32 memoryTag)
+void fn_800098E4(s32 memoryTag)
 {
     s32 statusIndex;
     for(statusIndex=0; statusIndex<DATA_MAX_READSTAT; statusIndex++) {
         if(ReadDataStat[statusIndex].used == TRUE && ReadDataStat[statusIndex].num == memoryTag) {
-            HuDataDirClose(ReadDataStat[statusIndex].dirId << 16);
+            fn_800097F4(ReadDataStat[statusIndex].dirId << 16);
         }
     }
 }
 
 // Cancels outstanding DVD reads and releases every tracked archive.
-void HuDataDirCloseAll(void)
+void fn_80009A30(void)
 {
     HUDATASTAT *readStat;
     s32 statusIndex;
@@ -664,7 +664,7 @@ void HuDataDirCloseAll(void)
                 DVDCancel(&ReadDataStat[statusIndex].dvdFile.cb);
                 while(ReadDataStat[statusIndex].status);
             }
-            readStat->dirId = HU_DATANUM_NONE;
+            readStat->dirId = -1;
             HuDvdDataClose(readStat->dirP);
             readStat->dirP = NULL;
             readStat->used = FALSE;
@@ -737,17 +737,17 @@ static void *HuDataDecodeIt(u8 *alignedReadBuffer, s32 entryHeaderOffset, s32 me
         encodedData = headerWord;
     }
     switch(targetHeap) {
-        case HEAP_SOUND:
+        case 1:
             // Sound buffers are unnumbered here, as in the selected-heap entry reader.
-            decodedData = HuMemDirectMalloc(HEAP_SOUND, DATA_EFF_SIZE(decodedSize));
+            decodedData = HuMemDirectMalloc(1, DATA_EFF_SIZE(decodedSize));
             break;
 
-        case HEAP_MODEL:
-            decodedData = HuMemDirectMallocNum(HEAP_MODEL, DATA_EFF_SIZE(decodedSize), memoryTag);
+        case 2:
+            decodedData = HuMemDirectMallocNum(2, DATA_EFF_SIZE(decodedSize), memoryTag);
             break;
 
-        case HEAP_DVD:
-            decodedData = HuMemDirectMallocNum(HEAP_DVD, DATA_EFF_SIZE(decodedSize), memoryTag);
+        case 3:
+            decodedData = HuMemDirectMallocNum(3, DATA_EFF_SIZE(decodedSize), memoryTag);
             break;
 
         default:
@@ -755,14 +755,14 @@ static void *HuDataDecodeIt(u8 *alignedReadBuffer, s32 entryHeaderOffset, s32 me
             break;
     }
     if(decodedData) {
-        HuDecodeData(encodedData, decodedData, decodedSize, decodeType);
+        fn_8000A384(encodedData, decodedData, decodedSize, decodeType);
     }
     return decodedData;
 }
 
 // Character motion loading reads an aligned DVD span containing the selected entry, then decodes
 // into HEAP_SOUND, HEAP_MODEL, or HEAP_DVD; other heap IDs use HEAP_HEAP.
-void *HuDataReadNumHeapShortForce(u32 dataNum, s32 memoryTag, HEAPID targetHeap)
+void *fn_80009B04(u32 dataNum, s32 memoryTag, HEAPID targetHeap)
 {
 	DVDFileInfo fileInfo;
 	s32 *entryOffset;
@@ -834,7 +834,7 @@ void *HuDataReadNumHeapShortForce(u32 dataNum, s32 memoryTag, HEAPID targetHeap)
 	// Reuse the span variable for the entry header's byte offset inside the aligned buffer.
 	entrySpanOrOffsetBytes = entryOffsetBytes-dvdReadOffsetBytes;
 	decodedData = HuDataDecodeIt(encodedReadBuffer, entrySpanOrOffsetBytes, memoryTag, targetHeap);
-    HuMemMemoryFileSet(decodedData, dataNum);
+    fn_8000C164(decodedData, dataNum);
 	HuMemDirectFree(encodedReadBuffer);
     return decodedData;
 }

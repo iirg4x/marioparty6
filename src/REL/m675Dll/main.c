@@ -73,7 +73,7 @@ typedef struct M675AudioConfig_s {
 
 /* Audio distance and panning ranges; a zero camera mask ends the list. */
 M675AudioConfig lbl_1_data_68[] = {
-    {HU3D_CAM_ALL, 32, 96, 32, 64, 110, 2400.0f, 1900.0f, 1400.0f},
+    {((1 << 16) - 1), 32, 96, 32, 64, 110, 2400.0f, 1900.0f, 1400.0f},
     {0, 0, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f}
 };
 
@@ -87,7 +87,7 @@ void fn_1_6F4(s16, s16);
 void fn_1_80C(short, short);
 void fn_1_890(s16, s16);
 MGSEQ_PARAM lbl_1_data_B0 = {
-    15, MGSEQ_TIMER_BOTTOM,
+    15, 1,
     fn_1_2D4, fn_1_310, fn_1_4AC, fn_1_520, fn_1_57C,
     fn_1_610, fn_1_6F4, fn_1_80C, fn_1_890
 };
@@ -173,13 +173,13 @@ void fn_1_A0(void) {
 
     }
 
-    lbl_1_bss_40 = omInitObjMan(120, 8192);
+    lbl_1_bss_40 = fn_8003A8BC(120, 8192);
 
-    omGameSysInit(lbl_1_bss_40);
+    fn_80069F1C(lbl_1_bss_40);
 
-    MgSeqCreate(&lbl_1_data_B0);
+    fn_80070788(&lbl_1_data_B0);
 
-    MgSeqModeHookAdd(MGSEQ_MODE_PREMAIN, fn_1_4E4);
+    fn_80071D20(4, fn_1_4E4);
 
     fn_1_BBC(lbl_1_bss_40);
 
@@ -193,7 +193,7 @@ void fn_1_A0(void) {
 
     resource = fn_1_A38(0);
 
-    fn_1_2414(1, HuDataSelHeapReadNum(resource, HU_MEMNUM_OVL, HEAP_MODEL));
+    fn_1_2414(1, fn_80008DD0(resource, 0x10000000, 2));
 
     fn_1_1FC8(fn_1_95C);
 
@@ -219,7 +219,7 @@ void fn_1_A0(void) {
 
 /* The initialization callback immediately requests the fade-in phase. */
 void fn_1_2D4(short mode,short frame) {
-    if(!fn_1_8BC(mode,frame)) MgSeqModeNext();
+    if(!fn_1_8BC(mode,frame)) fn_80071A9C();
 }
 
 /* The fade-in callback starts audio and waits for the opening prop sequence to finish. */
@@ -255,7 +255,7 @@ void fn_1_310(s16 mode, s16 frame)
 
         lbl_1_bss_38 = 0;
 
-        MgSeqModeChangeOff();
+        fn_80071B08();
 
         break;
 
@@ -279,7 +279,7 @@ void fn_1_310(s16 mode, s16 frame)
 
         if (++lbl_1_bss_38 >= 60) {
 
-            MgSeqModeNext();
+            fn_80071A9C();
 
         }
 
@@ -340,7 +340,7 @@ void fn_1_610(s16 mode, s16 frame)
             }
         }
         if (lbl_1_bss_28 == 0 && frame >= 120) {
-            MgSeqModeNext();
+            fn_80071A9C();
             return;
         }
     }
@@ -361,11 +361,11 @@ void fn_1_6F4(s16 mode, s16 frame) {
             s16 coinBonus;
             s32 previousCoinBonus;
 
-            previousCoinBonus = GwPlayer[playerIndex].mgCoinBonus;
+            previousCoinBonus = lbl_80265750[playerIndex].mgCoinBonus;
             coinBonus = previousCoinBonus + fn_1_F058(playerIndex);
 
-            if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                GwPlayer[playerIndex].mgCoinBonus = coinBonus;
+            if (fn_8006A124(65551) == 0) {
+                lbl_80265750[playerIndex].mgCoinBonus = coinBonus;
             }
         }
         playerIndex++;
@@ -450,7 +450,7 @@ void fn_1_95C(OMOBJ *object, void *callbackData, s32 entryIndex)
         work->initializationCount++;
         fn_1_1DD8(work->cameraMask, &lbl_1_data_E4, &lbl_1_data_D8,
             work->shadowFov, 1000.0f);
-        Hu3DShadowColSet(work->shadowColor[0], work->shadowColor[1],
+        fn_8002AAB4(work->shadowColor[0], work->shadowColor[1],
             work->shadowColor[2]);
     }
     switch (entry->setupState) {
@@ -462,7 +462,7 @@ void fn_1_95C(OMOBJ *object, void *callbackData, s32 entryIndex)
     }
 }
 
-s32 fn_1_A38(s32 resource) { return resource + DATA_m675; }
+s32 fn_1_A38(s32 resource) { return resource + 0x860000; }
 
 s32 fn_1_A40(void) {
     return lbl_1_bss_2C;
@@ -473,7 +473,7 @@ s32 fn_1_A50(void) {
 }
 
 void fn_1_A60(void) {
-    MgSeqTimerValueGet();
+    fn_80071B58();
 }
 
 /* Result users receive the player's character ID, or -1 when that player scored nothing. */

@@ -101,10 +101,10 @@ static u32 InitDCTLift(TosBaseBlock *baseBlock)
 
     coefficient = block->coefficients;
     for (i = 0; i < outputCount; i++) {
-        lift = 1.0f + 6.0f * sinf(M_PI * (f32)i / (f32)liftPeriod);
+        lift = 1.0f + 6.0f * sinf(3.141592653589793 * (f32)i / (f32)liftPeriod);
         for (j = 0; j < inputSpan; j++) {
             *coefficient++ =
-                lift * cosf(M_PI * ((f32)j + 0.5) * (f32)i / (f32)inputSpan);
+                lift * cosf(3.141592653589793 * ((f32)j + 0.5) * (f32)i / (f32)inputSpan);
         }
     }
     return 0;

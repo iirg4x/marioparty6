@@ -72,14 +72,14 @@ s32 fn_1_A4B0(void)
                 lbl_1_bss_3F4[playerIndex].shiftStartFrame = 0.0f;
                 lbl_1_bss_3F4[playerIndex].blendDuration = 5.0f;
                 lbl_1_bss_3F4[playerIndex].shiftAttributes = 0;
-                lbl_1_bss_3F4[playerIndex].resetAttributes = HU3D_MOTATTR_LOOP;
+                lbl_1_bss_3F4[playerIndex].resetAttributes = ((1 << 30) | (1 << 0));
             } else {
                 lbl_1_bss_3F4[playerIndex].shiftState = 1;
                 lbl_1_bss_3F4[playerIndex].shiftMotion = 5;
                 lbl_1_bss_3F4[playerIndex].shiftStartFrame = 0.0f;
                 lbl_1_bss_3F4[playerIndex].blendDuration = 5.0f;
                 lbl_1_bss_3F4[playerIndex].shiftAttributes = 0;
-                lbl_1_bss_3F4[playerIndex].resetAttributes = HU3D_MOTATTR_LOOP;
+                lbl_1_bss_3F4[playerIndex].resetAttributes = ((1 << 30) | (1 << 0));
             }
             fn_1_48E8(&lbl_1_bss_2F4[playerIndex], 5);
             playerIndex++;
@@ -87,9 +87,9 @@ s32 fn_1_A4B0(void)
         lbl_1_bss_210.endingState++;
         break;
     case 1:
-        if (Hu3DMotionEndCheck(lbl_1_bss_4B4[16].modelId) != 0) {
-            Hu3DMotionTimeSet(lbl_1_bss_4B4[16].modelId, 0.0f);
-            Hu3DMotionSpeedSet(lbl_1_bss_4B4[16].modelId, 1.0f);
+        if (fn_8002D75C(lbl_1_bss_4B4[16].modelId) != 0) {
+            fn_8002D414(lbl_1_bss_4B4[16].modelId, 0.0f);
+            fn_8002D86C(lbl_1_bss_4B4[16].modelId, 1.0f);
             lbl_1_bss_210.endingState++;
         }
         break;
@@ -132,40 +132,40 @@ s32 fn_1_A7A4(void)
     case 0: {
         if (lbl_1_bss_210.timer++ > 120) {
             lbl_1_bss_210.timer = 0;
-            lbl_1_bss_210.centerY = Center.y;
+            lbl_1_bss_210.centerY = lbl_80266A4C.y;
             lbl_1_bss_210.sceneState++;
         }
         break;
     }
     case 1:
         durationFrames = 60.0f;
-        unfinishedMoves = fn_1_2DA0(&Center.x, durationFrames,
+        unfinishedMoves = fn_1_2DA0(&lbl_80266A4C.x, durationFrames,
                               0.0f,
                               lbl_1_bss_2F4[lbl_1_bss_210.winnerIndex]
                                   .position.x);
         unfinishedMoves += fn_1_2DA0(
-            &Center.y, durationFrames, lbl_1_bss_210.centerY,
+            &lbl_80266A4C.y, durationFrames, lbl_1_bss_210.centerY,
             200.0f +
                 lbl_1_bss_2F4[lbl_1_bss_210.winnerIndex].position.y);
-        unfinishedMoves += fn_1_2DA0(&Center.z, durationFrames,
+        unfinishedMoves += fn_1_2DA0(&lbl_80266A4C.z, durationFrames,
                                -446.0f, -326.0f);
-        unfinishedMoves += fn_1_2DA0(&CRot.x, durationFrames,
+        unfinishedMoves += fn_1_2DA0(&lbl_80266A40.x, durationFrames,
                                -15.2f, -15.2f);
-        unfinishedMoves += fn_1_2DA0(&CRot.y, durationFrames,
+        unfinishedMoves += fn_1_2DA0(&lbl_80266A40.y, durationFrames,
                                0.0f, 0.0f);
-        unfinishedMoves += fn_1_2DA0(&CRot.z, durationFrames,
+        unfinishedMoves += fn_1_2DA0(&lbl_80266A40.z, durationFrames,
                                0.0f, 0.0f);
-        unfinishedMoves += fn_1_2DA0(&CZoom, durationFrames,
+        unfinishedMoves += fn_1_2DA0(&lbl_802C028C, durationFrames,
                                3317.7f, 2200.0f);
         if ((s16)unfinishedMoves == 0) {
             lbl_1_bss_210.sceneState++;
         }
         break;
     case 2:
-        Hu3DModelAttrReset(lbl_1_bss_4B4[16].modelId, HU3D_ATTR_DISPOFF);
-        Hu3DMotionTimeSet(lbl_1_bss_4B4[16].modelId,
+        fn_80026A44(lbl_1_bss_4B4[16].modelId, (1 << 0));
+        fn_8002D414(lbl_1_bss_4B4[16].modelId,
                           0.0f);
-        Hu3DMotionSpeedSet(lbl_1_bss_4B4[16].modelId,
+        fn_8002D86C(lbl_1_bss_4B4[16].modelId,
                            1.0f);
         lbl_1_bss_4B4[16].position.x =
             lbl_1_bss_2F4[lbl_1_bss_210.winnerIndex].position.x;
@@ -178,7 +178,7 @@ s32 fn_1_A7A4(void)
         break;
     case 3:
         /* This motion-time sample is unused; the sound cues follow the sequence timer below. */
-        modelMotionFrame[0] = Hu3DMotionTimeGet(lbl_1_bss_4B4[16].modelId);
+        modelMotionFrame[0] = fn_8002D4E0(lbl_1_bss_4B4[16].modelId);
         if (lbl_1_bss_210.timer ==
             cueFrames[lbl_1_bss_210.cueIndex].frameNo) {
             lbl_1_bss_210.panCenter =

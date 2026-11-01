@@ -35,39 +35,39 @@ extern void HuSprTexLoad(ANIMDATA *anim, s16 bitmapNo, s16 texMapId,
                          GXTexWrapMode wrapS, GXTexWrapMode wrapT,
                          GXTexFilter filter);
 
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 
 /* Loads water assets and capture buffers during model setup in fn_1_D1CC. */
 void fn_1_1661C(void) {
     s16 nightMode;
 
-    lbl_1_bss_6E68.modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
-        DATANUM(DATA_m609, 45), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(lbl_1_bss_6E68.modelId, 4);
-    Hu3DModelAttrSet(lbl_1_bss_6E68.modelId, HU3D_MOTATTR_SHAPE_LOOP);
-    Hu3DModelMatHookSet(lbl_1_bss_6E68.modelId, fn_1_16C0C);
+    lbl_1_bss_6E68.modelId = fn_80025A04(fn_80008DD0(
+        DATANUM(0x440000, 45), 0x10000000, 2));
+    fn_80026B8C(lbl_1_bss_6E68.modelId, 4);
+    fn_800269E8(lbl_1_bss_6E68.modelId, ((1 << 30) | (1 << 6)));
+    fn_80027884(lbl_1_bss_6E68.modelId, fn_1_16C0C);
     lbl_1_bss_6E68.frameBufferA = HuMemDirectMallocNum(
-        HEAP_MODEL, GXGetTexBufferSize(640, 480, GX_TF_RGB565, 1, 1),
-        HU_MEMNUM_OVL);
+        2, GXGetTexBufferSize(640, 480, GX_TF_RGB565, 1, 1),
+        0x10000000);
     lbl_1_bss_6E68.frameBufferB = HuMemDirectMallocNum(
-        HEAP_MODEL, GXGetTexBufferSize(640, 480, GX_TF_RGBA8, 0, 0),
-        HU_MEMNUM_OVL);
+        2, GXGetTexBufferSize(640, 480, GX_TF_RGBA8, 0, 0),
+        0x10000000);
     lbl_1_bss_6E68.frameBufferC = HuMemDirectMallocNum(
-        HEAP_MODEL, GXGetTexBufferSize(640, 480, GX_TF_RGB565, 1, 1),
-        HU_MEMNUM_OVL);
-    lbl_1_bss_6E68.animationA = HuSprAnimRead(HuDataSelHeapReadNum(
-        DATANUM(DATA_effect, 10), HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_6E68.animationB = HuSprAnimRead(HuDataSelHeapReadNum(
-        DATANUM(DATA_m609, 47), HU_MEMNUM_OVL, HEAP_MODEL));
-    nightMode = GwMgNightF;
+        2, GXGetTexBufferSize(640, 480, GX_TF_RGB565, 1, 1),
+        0x10000000);
+    lbl_1_bss_6E68.animationA = HuSprAnimRead(fn_80008DD0(
+        DATANUM(0x210000, 10), 0x10000000, 2));
+    lbl_1_bss_6E68.animationB = HuSprAnimRead(fn_80008DD0(
+        DATANUM(0x440000, 47), 0x10000000, 2));
+    nightMode = lbl_802C0278;
     if (nightMode == 0) {
-        lbl_1_bss_6E68.animationC = HuSprAnimRead(HuDataSelHeapReadNum(
-            DATANUM(DATA_m609, 48), HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_6E68.animationC = HuSprAnimRead(fn_80008DD0(
+            DATANUM(0x440000, 48), 0x10000000, 2));
     } else {
-        lbl_1_bss_6E68.animationC = HuSprAnimRead(HuDataSelHeapReadNum(
-            DATANUM(DATA_m609, 49), HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_6E68.animationC = HuSprAnimRead(fn_80008DD0(
+            DATANUM(0x440000, 49), 0x10000000, 2));
     }
-    Hu3DFbCopyLayerSet(2, 0, 0, 640, 480, GX_TF_RGBA8, 0,
+    fn_8002BDB4(2, 0, 0, 640, 480, GX_TF_RGBA8, 0,
                        lbl_1_bss_6E68.frameBufferB);
 }
 
@@ -80,15 +80,15 @@ void fn_1_1681C(M609TextureInput *textureInput) {
     Mtx inverseCameraMatrix;
     HU3D_CAMERA *camera;
 
-    camera = &Hu3DCamera[Hu3DCameraNo];
-    Hu3DTexLoad(lbl_1_bss_6E68.frameBufferA, 320, 240,
+    camera = &Hu3DCamera[lbl_802C01A6];
+    fn_800360D8(lbl_1_bss_6E68.frameBufferA, 320, 240,
                 GX_TF_RGB565, GX_CLAMP, GX_CLAMP, 1, GX_TEXMAP0);
     C_MTXLightPerspective(perspectiveMatrix, camera->fov, camera->aspect,
                           (0.5f), (-0.5f),
                           (0.5f), (0.5f));
-    PSMTXInverse(Hu3DCameraMtx, inverseCameraMatrix);
+    PSMTXInverse(lbl_802613F4, inverseCameraMatrix);
     PSMTXConcat(inverseCameraMatrix, textureInput->matrix, compositeMatrix);
-    PSMTXConcat(perspectiveMatrix, Hu3DCameraMtx, textureMatrix);
+    PSMTXConcat(perspectiveMatrix, lbl_802613F4, textureMatrix);
     PSMTXConcat(textureMatrix, compositeMatrix, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, GX_TEXMTX0, GX_MTX3x4);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS,
@@ -122,15 +122,15 @@ void fn_1_16A38(M609TextureInput *textureInput) {
     Mtx inverseCameraMatrix;
     HU3D_CAMERA *camera;
 
-    camera = &Hu3DCamera[Hu3DCameraNo];
-    Hu3DTexLoad(lbl_1_bss_6E68.frameBufferB, 640, 480,
+    camera = &Hu3DCamera[lbl_802C01A6];
+    fn_800360D8(lbl_1_bss_6E68.frameBufferB, 640, 480,
                 GX_TF_RGBA8, GX_CLAMP, GX_CLAMP, 1, GX_TEXMAP0);
     C_MTXLightPerspective(perspectiveMatrix, camera->fov, camera->aspect,
                           (0.5f), (-0.5f),
                           (0.5f), (0.5f));
-    PSMTXInverse(Hu3DCameraMtx, inverseCameraMatrix);
+    PSMTXInverse(lbl_802613F4, inverseCameraMatrix);
     PSMTXConcat(inverseCameraMatrix, textureInput->matrix, compositeMatrix);
-    PSMTXConcat(perspectiveMatrix, Hu3DCameraMtx, textureMatrix);
+    PSMTXConcat(perspectiveMatrix, lbl_802613F4, textureMatrix);
     PSMTXConcat(textureMatrix, compositeMatrix, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, GX_TEXMTX0, GX_MTX3x4);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS,
@@ -168,7 +168,7 @@ void fn_1_16C0C(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
     s32 specialObject;
     s16 lightMask;
 
-    camera = &Hu3DCamera[Hu3DCameraNo];
+    camera = &Hu3DCamera[lbl_802C01A6];
     waterColor = lbl_1_rodata_10D0;
     captureTint = lbl_1_rodata_10D4;
     specialObject = 0;
@@ -176,7 +176,7 @@ void fn_1_16C0C(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
         specialObject = 1;
     }
 
-    Hu3DTexLoad(lbl_1_bss_6E68.frameBufferB, 640, 480,
+    fn_800360D8(lbl_1_bss_6E68.frameBufferB, 640, 480,
                 GX_TF_RGBA8, GX_CLAMP, GX_CLAMP, GX_TRUE, GX_TEXMAP2);
     HuSprTexLoad(lbl_1_bss_6E68.animationA, 0, GX_TEXMAP3,
                  GX_REPEAT, GX_REPEAT, GX_LINEAR);
@@ -192,9 +192,9 @@ void fn_1_16C0C(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
     C_MTXLightPerspective(perspectiveMatrix, camera->fov, camera->aspect,
                           (0.5f), (-0.5f),
                           (0.5f), (0.5f));
-    PSMTXInverse(Hu3DCameraMtx, inverseCameraMatrix);
+    PSMTXInverse(lbl_802613F4, inverseCameraMatrix);
     PSMTXConcat(inverseCameraMatrix, drawObj->matrix, transformMatrix);
-    PSMTXConcat(perspectiveMatrix, Hu3DCameraMtx, textureMatrix);
+    PSMTXConcat(perspectiveMatrix, lbl_802613F4, textureMatrix);
     PSMTXConcat(textureMatrix, transformMatrix, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, GX_TEXMTX0, GX_MTX3x4);
 
@@ -278,8 +278,8 @@ void fn_1_16C0C(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
     }
 
     GXSetNumChans(1);
-    lightMask = Hu3DLightSet(drawObj->model, Hu3DCameraMtx,
-                          Hu3DCameraMtxXPose, (0.0f));
+    lightMask = fn_80029E8C(drawObj->model, lbl_802613F4,
+                          lbl_80261424, (0.0f));
     GXSetChanCtrl(GX_COLOR0, GX_FALSE, GX_SRC_REG, GX_SRC_REG,
                   GX_LIGHT_NULL, GX_DF_CLAMP, GX_AF_NONE);
     GXSetChanCtrl(GX_ALPHA0, GX_TRUE, GX_SRC_REG, GX_SRC_VTX,

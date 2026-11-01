@@ -176,16 +176,16 @@ s32 FileBoxInit(s16 sourceWindowId)
                     SLSaveEmptySet(curSlotNo, i);
                 }
                 SLCommonLoad();
-                if (strncmp((char *)&GwCommon, "SAVE", 4) == 0) {
+                if (strncmp((char *)&lbl_80265E30, "SAVE", 4) == 0) {
                     lbl_1_bss_D8[i].hasSave = 1;
-                    OSTicksToCalendarTime(GwCommon.time, &lbl_1_bss_D8[i].saveTime);
-                    memcpy(lbl_1_bss_D8[i].fileName, GwCommon.name, FILESEL_FILENAME_LENGTH);
-                    lbl_1_bss_D8[i].displayNumber = GWBankStarGet();
-                    lbl_1_bss_D8[i].patternVariant = GwCommon.lastBoard;
+                    OSTicksToCalendarTime(lbl_80265E30.time, &lbl_1_bss_D8[i].saveTime);
+                    memcpy(lbl_1_bss_D8[i].fileName, lbl_80265E30.name, FILESEL_FILENAME_LENGTH);
+                    lbl_1_bss_D8[i].displayNumber = fn_8003D248();
+                    lbl_1_bss_D8[i].patternVariant = lbl_80265E30.lastBoard;
                 } else {
                     lbl_1_bss_D8[i].hasSave = 0;
                 }
-                GwCommon.languageNo = GwLanguage;
+                lbl_80265E30.languageNo = lbl_802BF788;
             }
             if (brokenFlag == 0 && boxStatus[0] == 0 && boxStatus[1] == 0 && boxStatus[2] == 0) {
                 break;
@@ -444,10 +444,10 @@ s32 FileCardErrorExec(s32 err, s16 winId)
             HuWinInsertMesSet(winId, curSlotNo + FILE_SELECT_CARD_SLOT_A, 0);
             HuWinMesSet(winId, FILE_SELECT_CARD_INSERT);
             HuWinMesWait(winId);
-            while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0) {
+            while ((lbl_802C0008[0] & PAD_BUTTON_A) == 0) {
                 HuPrcVSleep();
             }
-            HuAudFXPlay(MSM_SE_CMN_02);
+            HuAudFXPlay(1);
             HuWinWarningClose(winId);
             UnMountCnt = 0;
             return -5;
@@ -490,10 +490,10 @@ s32 FileCardErrorExec(s32 err, s16 winId)
             HuWinInsertMesSet(winId, curSlotNo + FILE_SELECT_CARD_SLOT_A, 0);
             HuWinMesSet(winId, FILE_SELECT_CARD_INSERT);
             HuWinMesWait(winId);
-            while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0) {
+            while ((lbl_802C0008[0] & PAD_BUTTON_A) == 0) {
                 HuPrcVSleep();
             }
-            HuAudFXPlay(MSM_SE_CMN_02);
+            HuAudFXPlay(1);
             HuWinWarningClose(winId);
             UnMountCnt = 0;
             return -5;
@@ -514,10 +514,10 @@ s32 FileCardErrorExec(s32 err, s16 winId)
     HuWinInsertMesSet(winId, curSlotNo + FILE_SELECT_CARD_SLOT_A, 0);
     HuWinMesSet(winId, FILE_SELECT_CARD_INSERT);
     HuWinMesWait(winId);
-    while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0) {
+    while ((lbl_802C0008[0] & PAD_BUTTON_A) == 0) {
         HuPrcVSleep();
     }
-    HuAudFXPlay(MSM_SE_CMN_02);
+    HuAudFXPlay(1);
     HuWinWarningClose(winId);
     UnMountCnt = 0;
     return -5;
@@ -1280,10 +1280,10 @@ s16 FileMessOut(s16 mode)
         }
     }
     if (mode == FILE_MESS_REINSERT) {
-    while ((HuPadBtnDown[0] & PAD_BUTTON_A) == 0) {
+    while ((lbl_802C0008[0] & PAD_BUTTON_A) == 0) {
             HuPrcVSleep();
         }
-        HuAudFXPlay(MSM_SE_CMN_02);
+        HuAudFXPlay(1);
     }
     if (SLWinId == -1) {
         HuWinWarningClose(warnId);

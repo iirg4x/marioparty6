@@ -20,7 +20,7 @@ void applyMotionCleanup(MotionRecord *, MotionRecord *, MotionCleanup);
 MotionOwner::MotionOwner(unsigned int characterNo)
     : charNo(characterNo), currentDataNum(-1)
 {
-    CharMotionDataClose((s16)charNo);
+    fn_8005B4BC((s16)charNo);
 }
 
 // Character destruction requests cleanup for every handle, then closes motion and effect data.
@@ -29,17 +29,17 @@ MotionOwner::MotionOwner(unsigned int characterNo)
 MotionOwner::~MotionOwner()
 {
     applyMotionCleanup(motions.begin(), motions.end(),
-                       bindMotionCleanup(makeMotionFunction(CharMotionKill), charNo));
-    CharMotionDataClose((s16)charNo);
+                       bindMotionCleanup(makeMotionFunction(fn_8005B420), charNo));
+    fn_8005B4BC((s16)charNo);
 }
 
 // Character setup and lazy lookup load one motion and remember its returned engine handle.
 // The motion and shared effect directories are closed after each load.
 void createCharacterMotion(CharacterMotion *character, unsigned int dataNum)
 {
-    s16 motionId = CharMotionCreate((s16)character->charNo, dataNum);
+    s16 motionId = fn_8005B0B8((s16)character->charNo, dataNum);
     appendMotionRecord(character->motions, makeMotionRecord(dataNum, s16(motionId)));
-    CharMotionDataClose((s16)character->charNo);
+    fn_8005B4BC((s16)character->charNo);
 }
 
 // Motion preload requests load every resource in the supplied array into this character's list.
@@ -48,9 +48,9 @@ void createCharacterMotions(CharacterMotion *character, unsigned int *dataNums, 
     unsigned int *last = dataNums + count;
     for (unsigned int *cursor = dataNums; cursor != last; ++cursor) {
         unsigned int dataNum = *cursor;
-        s16 motionId = CharMotionCreate((s16)character->charNo, dataNum);
+        s16 motionId = fn_8005B0B8((s16)character->charNo, dataNum);
         appendMotionRecord(character->motions, makeMotionRecord(dataNum, s16(motionId)));
-        CharMotionDataClose((s16)character->charNo);
+        fn_8005B4BC((s16)character->charNo);
     }
 }
 
@@ -58,8 +58,8 @@ void createCharacterMotions(CharacterMotion *character, unsigned int *dataNums, 
 // During a blend, the endpoint test still uses the main motion, not the incoming motion.
 void selectCharacterMotion(CharacterMotion *character, unsigned int dataNum)
 {
-    if (dataNum != character->currentDataNum || CharMotionEndCheck(character->charNo)) {
-        CharMotionSet(character->charNo, getCharacterMotion(character, dataNum));
+    if (dataNum != character->currentDataNum || fn_8005C240(character->charNo)) {
+        fn_8005BE80(character->charNo, getCharacterMotion(character, dataNum));
         character->currentDataNum = dataNum;
     }
 }
@@ -67,41 +67,41 @@ void selectCharacterMotion(CharacterMotion *character, unsigned int dataNum)
 // Motion setup adds engine motion-slot attributes, loading the requested resource if absent.
 void setCharacterMotionAttributes(CharacterMotion *character, unsigned int dataNum, u16 attributes)
 {
-    Hu3DMotionAttrSet(getCharacterMotion(character, dataNum), attributes);
+    fn_8002DC74(getCharacterMotion(character, dataNum), attributes);
 }
 
 // setCharacterMotionTime seeks the main motion in frames; the engine clamps it to its duration.
 void setMotionOwnerTime(CharacterMotion *character, float timeFrames)
 {
-    CharMotionTimeSet((s16)character->charNo, timeFrames);
+    fn_8005C16C((s16)character->charNo, timeFrames);
 }
 
 // Animation timing queries use the incoming motion during a blend, otherwise the main motion.
 float getMotionOwnerTransitionTime(s32 *characterNo)
 {
-    if (CharMotionShiftIDGet((s16)*characterNo) >= 0) {
+    if (fn_8005C284((s16)*characterNo) >= 0) {
         // Incoming playback is reported one frame behind its engine clock.
-        return CharMotionShiftTimeGet((s16)*characterNo) - 1.0f;
+        return fn_8005C34C((s16)*characterNo) - 1.0f;
     }
-    return CharMotionTimeGet((s16)*characterNo);
+    return fn_8005C1B8((s16)*characterNo);
 }
 
 // Animation timing queries return the main motion's duration in frames, or zero with no motion.
 float getMotionOwnerMaximumTime(s32 *characterNo)
 {
-    return CharMotionMaxTimeGet((s16)*characterNo);
+    return fn_8005C1FC((s16)*characterNo);
 }
 
 // Animation completion queries test the main motion's endpoint, including reverse playback.
 u8 characterMotionEnded(s32 *characterNo)
 {
-    return (u8)(CharMotionEndCheck((s16)*characterNo) != 0);
+    return (u8)(fn_8005C240((s16)*characterNo) != 0);
 }
 
 // Animation transition queries return one when the engine has no incoming motion handle.
 u32 characterMotionShiftInactive(s32 *characterNo)
 {
-    return (u32)CharMotionShiftIDGet((s16)*characterNo) >> 31U;
+    return (u32)fn_8005C284((s16)*characterNo) >> 31U;
 }
 
 // Blend when the requested resource changes or the main motion reaches its endpoint.
@@ -110,11 +110,11 @@ u32 characterMotionShiftInactive(s32 *characterNo)
 void shiftCharacterMotion(CharacterMotion *character, unsigned int dataNum,
                           float blendFrames, float startFrame, u32 attributes)
 {
-    if (dataNum != character->currentDataNum || CharMotionEndCheck(character->charNo)) {
+    if (dataNum != character->currentDataNum || fn_8005C240(character->charNo)) {
         // Request a main-motion pause; replacing an active blend rebuilds main flags from
         // attributes.
-        CharModelAttrSet(character->charNo, HU3D_MOTATTR_PAUSE);
-        CharMotionShiftSet(character->charNo, getCharacterMotion(character, dataNum),
+        fn_8005C430(character->charNo, ((1 << 30) | (1 << 1)));
+        fn_8005C2C8(character->charNo, getCharacterMotion(character, dataNum),
                            startFrame, blendFrames, attributes);
         character->currentDataNum = dataNum;
     }
@@ -124,7 +124,7 @@ void shiftCharacterMotion(CharacterMotion *character, unsigned int dataNum,
 void setCharacterMotionOverlay(CharacterMotion *character, HU3D_MODELID modelId,
                                unsigned int dataNum)
 {
-    Hu3DMotionOverlaySet(modelId, getCharacterMotion(character, dataNum));
+    fn_8002CAA8(modelId, getCharacterMotion(character, dataNum));
 }
 
 // getCharacterMotion uses this predicate to find a record by its requested resource number.

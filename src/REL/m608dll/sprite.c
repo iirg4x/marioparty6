@@ -3,8 +3,8 @@
 #include "dolphin/math.h"
 #include "REL/m608dll.h"
 
-s32 lbl_1_data_4B0[6] = { DATANUM(DATA_m608, 101), DATANUM(DATA_m608, 97), DATANUM(DATA_m608, 98),
-                          DATANUM(DATA_m608, 100), DATANUM(DATA_m608, 99), 0 };
+s32 lbl_1_data_4B0[6] = { DATANUM(0x430000, 101), DATANUM(0x430000, 97), DATANUM(0x430000, 98),
+                          DATANUM(0x430000, 100), DATANUM(0x430000, 99), 0 };
 
 M608SpriteGroupWork lbl_1_bss_3E68;
 
@@ -18,7 +18,7 @@ void fn_1_6828(void)
     lbl_1_bss_3E68.group = HuSprGrpCreate(5);
     spriteIndex = 0;
     while (spriteIndex < 5) {
-        spriteData = HuDataSelHeapReadNum(lbl_1_data_4B0[spriteIndex], HU_MEMNUM_OVL, HEAP_MODEL);
+        spriteData = fn_80008DD0(lbl_1_data_4B0[spriteIndex], 0x10000000, 2);
         if (spriteData == NULL) {
             /* Keep this member index; the null resource still reaches HuSprAnimRead below. */
             spriteIndex += 1;

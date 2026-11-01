@@ -15,10 +15,10 @@ extern void fn_1_F184(void);
 
 /* Overlay startup creates the object manager and starts the Decathlon state process. */
 void fn_1_EC20(void) {
-    lbl_1_bss_C0 = omInitObjMan(100, 8192);
+    lbl_1_bss_C0 = fn_8003A8BC(100, 8192);
     *(s16 *)&MgModeSubMode = 0;
     fn_1_0();
-    HuPrcChildCreate(fn_1_F184, 100U, 12288U, 0, lbl_1_bss_C0);
+    fn_8000DAC0(fn_1_F184, 100U, 12288U, 0, lbl_1_bss_C0);
 }
 
 typedef void (*VoidFunc)(void);
@@ -33,10 +33,10 @@ s32 _prolog(void) {
         (*constructor)();
         constructor++;
     }
-    lbl_1_bss_C0 = omInitObjMan(100, 8192);
+    lbl_1_bss_C0 = fn_8003A8BC(100, 8192);
     *(s16 *)&MgModeSubMode = 0;
     fn_1_0();
-    HuPrcChildCreate(fn_1_F184, 100U, 12288U, 0, lbl_1_bss_C0);
+    fn_8000DAC0(fn_1_F184, 100U, 12288U, 0, lbl_1_bss_C0);
     return 0;
 }
 
@@ -105,13 +105,13 @@ void fn_1_ED78(void) {
         MgModeWorkInt[6] = DECATHLON_INITIAL_TIME_RECORD;
         MgModeWorkInt[11] = DECATHLON_INITIAL_TIME_RECORD;
         memset(MgModeWorkFloat, 0, 64);
-        memset(GwMgDecaScore, 0, 96);
+        memset(lbl_802669DC, 0, 96);
     } else {
         /* The overlay history preserves the results state to resume after a minigame. */
         *(s16 *)&MgModeSubMode = (s16)overlayHistory->evtno;
     }
-    _SetFlag(FLAG_INST_MG_MODE);
-    _SetFlag(FLAG_INST_DECA);
+    fn_8006A1C4(196609);
+    fn_8006A1C4(196610);
     playerNo = Hu3DGLightCreate(0.0f, 1000.0f,
                                 1000.0f, 0.0f,
                                 -1.0f, -0.5f,
@@ -167,17 +167,17 @@ void fn_1_F0D8(void) {
     }
     fn_1_21DC();
     fn_1_184();
-    _ClearFlag(FLAG_INST_MG_MODE);
-    _ClearFlag(FLAG_INST_DECA);
+    fn_8006A268(196609);
+    fn_8006A268(196610);
     SLSaveModeExec(0);
-    omOvlReturnEx(1, 1);
+    fn_8003A5E4(1, 1);
     HuPrcEnd();
     for (;;) {
         HuPrcVSleep();
     }
 }
 
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 
 extern void fn_1_ED78(void);
 extern s32 fn_1_184(void);
@@ -309,12 +309,12 @@ void fn_1_F184(void) {
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        GwSystem.mgInstDispF = 0;
+        lbl_80265B70.mgInstDispF = 0;
         unlockMode = lbl_1_data_CD0[MgModePlayNum].modeId + MINIGAME_PUBLIC_NUMBER_BASE;
-        GWMgUnlockSet(unlockMode);
-        GwSystem.mgNo = unlockMode - MINIGAME_PUBLIC_NUMBER_BASE;
-        GwMgNightF = 0;
-        omOvlCallEx(DLL_instdll, 1, 0, 0);
+        fn_8003CCAC(unlockMode);
+        lbl_80265B70.mgNo = unlockMode - MINIGAME_PUBLIC_NUMBER_BASE;
+        lbl_802C0278 = 0;
+        omOvlCallEx(4, 1, 0, 0);
         for (;;) {
             HuPrcVSleep();
         }
@@ -331,12 +331,12 @@ void fn_1_F184(void) {
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        GwSystem.mgInstDispF = 1;
+        lbl_80265B70.mgInstDispF = 1;
         instructionGameNumber = lbl_1_data_CD0[MgModePlayNum].modeId + MINIGAME_PUBLIC_NUMBER_BASE;
-        GWMgUnlockSet(instructionGameNumber);
-        GwSystem.mgNo = instructionGameNumber - MINIGAME_PUBLIC_NUMBER_BASE;
-        GwMgNightF = 0;
-        omOvlCallEx(DLL_instdll, 1, 0, 0);
+        fn_8003CCAC(instructionGameNumber);
+        lbl_80265B70.mgNo = instructionGameNumber - MINIGAME_PUBLIC_NUMBER_BASE;
+        lbl_802C0278 = 0;
+        omOvlCallEx(4, 1, 0, 0);
         for (;;) {
             HuPrcVSleep();
         }
@@ -450,11 +450,11 @@ void fn_1_F184(void) {
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        _ClearFlag(FLAG_INST_MG_MODE);
-        _ClearFlag(FLAG_INST_DECA);
+        fn_8006A268(196609);
+        fn_8006A268(196610);
         SLSaveModeExec(0);
         omOvlHisChg(0, history->ovl, 0, 0);
-        omOvlReturnEx(0, 1);
+        fn_8003A5E4(0, 1);
         while (1) {
             HuPrcVSleep();
         }

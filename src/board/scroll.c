@@ -50,30 +50,30 @@ enum {
     SCROLL_MESS_HELP_NO_STAR = MESSNUM(MESS_BOARD_OPE, 5),
     SCROLL_MESS_HELP_SINGLE = MESSNUM(MESS_BOARD_OPE, 15),
     SCROLL_MESS_HELP_MAP = MESSNUM(MESS_BOARD_OPE, 6),
-    SCROLL_DATA_MAP_CHAR_MARIO = DATANUM(DATA_board, 54),
-    SCROLL_DATA_MAP_CHAR_LUIGI = DATANUM(DATA_board, 55),
-    SCROLL_DATA_MAP_CHAR_PEACH = DATANUM(DATA_board, 56),
-    SCROLL_DATA_MAP_CHAR_YOSHI = DATANUM(DATA_board, 57),
-    SCROLL_DATA_MAP_CHAR_WARIO = DATANUM(DATA_board, 58),
-    SCROLL_DATA_MAP_CHAR_DAISY = DATANUM(DATA_board, 59),
-    SCROLL_DATA_MAP_CHAR_WALUIGI = DATANUM(DATA_board, 60),
-    SCROLL_DATA_MAP_CHAR_KINOPIO = DATANUM(DATA_board, 61),
-    SCROLL_DATA_MAP_CHAR_TERESA = DATANUM(DATA_board, 62),
-    SCROLL_DATA_MAP_CHAR_MINIKOOPA = DATANUM(DATA_board, 63),
-    SCROLL_DATA_MAP_CHAR_KINOPIKO = DATANUM(DATA_board, 64),
-    SCROLL_DATA_MAP_CHAR_MINIKOOPAR = DATANUM(DATA_board, 65),
-    SCROLL_DATA_MAP_CHAR_MINIKOOPAG = DATANUM(DATA_board, 66),
-    SCROLL_DATA_MAP_CHAR_MINIKOOPAB = DATANUM(DATA_board, 67),
-    SCROLL_DATA_MAP_CHAR_SLOT14 = DATANUM(DATA_board, 169),
-    SCROLL_DATA_MAP_CHAR_SLOT15 = DATANUM(DATA_board, 168),
-    SCROLL_DATA_MAP_DONKEY_ICON = DATANUM(DATA_board, 166),
-    SCROLL_DATA_MAP_KOOPA_ICON = DATANUM(DATA_board, 167),
-    SCROLL_DATA_MAP_TYPE16 = DATANUM(DATA_board, 170),
-    SCROLL_DATA_MAP_TYPE17 = DATANUM(DATA_board, 171),
-    SCROLL_DATA_MAP_TYPE18 = DATANUM(DATA_board, 172),
-    SCROLL_DATA_MAP_TYPE19 = DATANUM(DATA_board, 173),
-    SCROLL_DATA_MAP_TYPE20 = DATANUM(DATA_board, 174),
-    SCROLL_DATA_MAP_ARROW = DATANUM(DATA_board, 175),
+    SCROLL_DATA_MAP_CHAR_MARIO = DATANUM(0x50000, 54),
+    SCROLL_DATA_MAP_CHAR_LUIGI = DATANUM(0x50000, 55),
+    SCROLL_DATA_MAP_CHAR_PEACH = DATANUM(0x50000, 56),
+    SCROLL_DATA_MAP_CHAR_YOSHI = DATANUM(0x50000, 57),
+    SCROLL_DATA_MAP_CHAR_WARIO = DATANUM(0x50000, 58),
+    SCROLL_DATA_MAP_CHAR_DAISY = DATANUM(0x50000, 59),
+    SCROLL_DATA_MAP_CHAR_WALUIGI = DATANUM(0x50000, 60),
+    SCROLL_DATA_MAP_CHAR_KINOPIO = DATANUM(0x50000, 61),
+    SCROLL_DATA_MAP_CHAR_TERESA = DATANUM(0x50000, 62),
+    SCROLL_DATA_MAP_CHAR_MINIKOOPA = DATANUM(0x50000, 63),
+    SCROLL_DATA_MAP_CHAR_KINOPIKO = DATANUM(0x50000, 64),
+    SCROLL_DATA_MAP_CHAR_MINIKOOPAR = DATANUM(0x50000, 65),
+    SCROLL_DATA_MAP_CHAR_MINIKOOPAG = DATANUM(0x50000, 66),
+    SCROLL_DATA_MAP_CHAR_MINIKOOPAB = DATANUM(0x50000, 67),
+    SCROLL_DATA_MAP_CHAR_SLOT14 = DATANUM(0x50000, 169),
+    SCROLL_DATA_MAP_CHAR_SLOT15 = DATANUM(0x50000, 168),
+    SCROLL_DATA_MAP_DONKEY_ICON = DATANUM(0x50000, 166),
+    SCROLL_DATA_MAP_KOOPA_ICON = DATANUM(0x50000, 167),
+    SCROLL_DATA_MAP_TYPE16 = DATANUM(0x50000, 170),
+    SCROLL_DATA_MAP_TYPE17 = DATANUM(0x50000, 171),
+    SCROLL_DATA_MAP_TYPE18 = DATANUM(0x50000, 172),
+    SCROLL_DATA_MAP_TYPE19 = DATANUM(0x50000, 173),
+    SCROLL_DATA_MAP_TYPE20 = DATANUM(0x50000, 174),
+    SCROLL_DATA_MAP_ARROW = DATANUM(0x50000, 175),
     SCROLL_MASU_ATTR_PATH_IGNORED = 1 << 4,
 };
 
@@ -154,7 +154,7 @@ extern void mbWipeDissolveFadeOut(void);
 extern void mbWipeDissolveFadeIn(void);
 extern BOOL mbWipeSpecialStatGet(void);
 extern void mbWipeSpecialFadeInCreate(int type, BOOL pauseF);
-extern void *mbMalloc(s32 size);
+extern void *fn_802137C0(s32 size);
 extern float mbSinDeg(float angle);
 extern s8 mbPadStkXGet(int padNo);
 extern s8 mbPadStkYGet(int padNo);
@@ -165,7 +165,7 @@ extern const float lbl_802C3558;
 // Selects the daytime board-space icon variant from the current game time.
 static inline BOOL MBTimeDayGet(void)
 {
-    return GwSystem.curTime == 0;
+    return lbl_80265B70.curTime == 0;
 }
 
 // Called when the board scroll feature opens; prepares collision and map assets.
@@ -225,13 +225,13 @@ void mbev_Scroll(int playerNo, BOOL mapF)
 static void ScrollCreate(u32 dataNum)
 {
     if (dataNum == 0) {
-        scrollColModel = HU3D_MODELID_NONE;
+        scrollColModel = -1;
         scrollColTriNum = 0;
         scrollColTriData = NULL;
     } else {
-        scrollColModel = Hu3DModelCreate(HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL));
+        scrollColModel = fn_80025A04(fn_80008DD0(dataNum, 0x10000000, 2));
         InitScrollCol();
-        Hu3DModelDispOff(scrollColModel);
+        fn_800269E8(scrollColModel, (1 << 0));
     }
     scrollStarFindFunc = StarMasuGet;
     scrollHook = NULL;
@@ -243,8 +243,8 @@ static void ScrollKill(void)
     HSF_FACE *triData;
 
     if (scrollColModel >= 0) {
-        Hu3DModelKill(scrollColModel);
-        scrollColModel = HU3D_MODELID_NONE;
+        fn_800262D0(scrollColModel);
+        scrollColModel = -1;
     }
     if (scrollColTriData) {
         triData = scrollColTriData;
@@ -313,16 +313,16 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
     HuVecF dir;
 
     result = FALSE;
-    padNo = GwPlayer[playerNo].padNo;
+    padNo = lbl_80265750[playerNo].padNo;
     mode = 0;
     rot.x = -45.0f;
     rot.y = 0.0f;
     rot.z = 0.0f;
     mbPlayerPosGet(playerNo, &scrollPos);
     RotateScrollView(&rot, &scrollPos, &scrollPos);
-    dir.x = HuSin(rot.y) * HuCos(rot.x);
-    dir.y = -HuSin(rot.x);
-    dir.z = HuCos(rot.y) * HuCos(rot.x);
+    dir.x = sin(3.141592653589793*rot.y/180.0) * cos(3.141592653589793*rot.x/180.0);
+    dir.y = -sin(3.141592653589793*rot.x/180.0);
+    dir.z = cos(3.141592653589793*rot.y/180.0) * cos(3.141592653589793*rot.x/180.0);
     PSVECScale(&dir, &dir, 100.0f);
     if (!CheckScrollCol(&scrollPos, &dir, &cameraPos)) {
         ResolveScrollCol(&dir, &scrollPos, &scrollPos, &cameraPos);
@@ -335,13 +335,13 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
     mbCameraMoveWait();
     mbWipeDissolveFadeIn();
     while (TRUE) {
-        u16 btn = HuPadBtnDown[padNo];
+        u16 btn = lbl_802C0008[padNo];
 
         if (btn & PAD_BUTTON_B) {
             break;
         }
         if (btn & PAD_BUTTON_Y) {
-            partyF = GwSystem.partyF;
+            partyF = lbl_80265B70.partyF;
             if (partyF) {
                 result = TRUE;
                 break;
@@ -350,25 +350,25 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
         switch (mode) {
         case 0:
             maxSpeed = 30.000002f;
-            if (HuPadBtn[padNo] & PAD_BUTTON_A) {
+            if (lbl_802C0010[padNo] & PAD_BUTTON_A) {
                 maxSpeed *= 2.0f;
             }
             stkX = mbPadStkXGet(padNo);
             stkY = -(float)mbPadStkYGet(padNo);
-            speed = HuMagPoint2D(stkX, stkY);
+            speed = sqrtf((stkX*stkX)+(stkY*stkY));
             if (speed > 0.0f) {
                 stkX /= speed;
                 stkY /= speed;
                 scrollPos.x += stkX * maxSpeed;
                 scrollPos.z += stkY * maxSpeed;
             }
-            if ((HuPadBtn[padNo] & PAD_TRIGGER_R) && starMasuId > 0) {
+            if ((lbl_802C0010[padNo] & PAD_TRIGGER_R) && starMasuId > 0) {
                 mode = 1;
                 savedPos = scrollPos;
             }
             break;
         case 1:
-            if (HuPadBtn[padNo] & PAD_TRIGGER_R) {
+            if (lbl_802C0010[padNo] & PAD_TRIGGER_R) {
                 PSVECSubtract(&starPos, &scrollPos, &scrollDir);
                 if (PSVECMag(&scrollDir) < 50.0f) {
                     cameraPos = starPos;
@@ -402,8 +402,12 @@ static BOOL ScrollExec(int playerNo, s16 starMasuId)
 // Projects a world point onto the board plane along the current view direction.
 static void RotateScrollView(HuVecF *rot, HuVecF *pos, HuVecF *posOut)
 {
-    posOut->x = pos->x + (HuSin(rot->y) * (pos->y / (HuSin(rot->x) / HuCos(rot->x))));
-    posOut->z = pos->z + (HuCos(rot->y) * (pos->y / (HuSin(rot->x) / HuCos(rot->x))));
+    posOut->x = pos->x
+        + (sin(3.141592653589793*rot->y/180.0)
+        * (pos->y / (sin(3.141592653589793*rot->x/180.0) / cos(3.141592653589793*rot->x/180.0))));
+    posOut->z = pos->z
+        + (cos(3.141592653589793*rot->y/180.0)
+        * (pos->y / (sin(3.141592653589793*rot->x/180.0) / cos(3.141592653589793*rot->x/180.0))));
     posOut->y = 0.0f;
 }
 
@@ -430,16 +434,16 @@ static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos)
     if (scrollColModel < 0) {
         return FALSE;
     }
-    modelP = &Hu3DData[scrollColModel];
+    modelP = &lbl_802C01C8[scrollColModel];
     objP = modelP->hsf->root;
-    if (objP->type != HSF_OBJ_MESH) {
+    if (objP->type != 2) {
         return FALSE;
     }
     faceBufP = objP->mesh.face;
     vtxBufP = objP->mesh.vertex;
     normBufP = objP->mesh.normal;
     for (faceP = faceBufP->data, i = 0; i < faceBufP->count; i++, faceP++) {
-        if (faceP->type == HSF_FACE_TRI) {
+        if (faceP->type == 2) {
             vtxP[0] = ((HuVecF *)vtxBufP->data) + faceP->index[0].vertex;
             planeDot = (faceP->nbt[0] * vtxP[0]->x) + (faceP->nbt[1] * vtxP[0]->y)
                 + (faceP->nbt[2] * vtxP[0]->z);
@@ -456,7 +460,7 @@ static BOOL CheckScrollCol(HuVecF *target, HuVecF *dir, HuVecF *endPos)
             out.x = target->x + (rayT * dir->x);
             out.y = target->y + (rayT * dir->y);
             out.z = target->z + (rayT * dir->z);
-            if (faceP->type == HSF_FACE_TRI) {
+            if (faceP->type == 2) {
                 vtxP[1] = ((HuVecF *)vtxBufP->data) + faceP->index[1].vertex;
                 vtxP[2] = ((HuVecF *)vtxBufP->data) + faceP->index[2].vertex;
                 PSVECSubtract(vtxP[1], vtxP[0], &edge);
@@ -510,15 +514,15 @@ static void InitScrollCol(void)
     if (scrollColModel < 0) {
         return;
     }
-    modelP = &Hu3DData[scrollColModel];
+    modelP = &lbl_802C01C8[scrollColModel];
     objP = modelP->hsf->root;
-    if (objP->type != HSF_OBJ_MESH) {
+    if (objP->type != 2) {
         return;
     }
     faceBufP = objP->mesh.face;
     vtxBufP = objP->mesh.vertex;
     scrollColTriNum = 0;
-    scrollColTriData = mbMalloc(faceBufP->count * sizeof(HSF_FACE));
+    scrollColTriData = fn_802137C0(faceBufP->count * sizeof(HSF_FACE));
     for (faceP = faceBufP->data, i = 0; i < faceBufP->count; i++, faceP++) {
         for (j = 0; j < 3; j++) {
             linkF = FALSE;
@@ -573,9 +577,9 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *startPos, HuVecF *closestFaceP
     if (scrollColModel < 0) {
         return;
     }
-    modelP = &Hu3DData[scrollColModel];
+    modelP = &lbl_802C01C8[scrollColModel];
     objP = modelP->hsf->root;
-    if (objP->type != HSF_OBJ_MESH) {
+    if (objP->type != 2) {
         return;
     }
     vtxBufP = objP->mesh.vertex;
@@ -584,7 +588,7 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *startPos, HuVecF *closestFaceP
             continue;
         }
         for (i = 0; i < 3; i++) {
-            xzMag = HuMagXZVecF(dir);
+            xzMag = sqrtf((dir->x*dir->x)+(dir->z*dir->z));
             scaleY = (((HuVecF *)vtxBufP->data) + faceP->index[i].vertex)->y / (dir->y / xzMag);
             inVtx[i].x = (((HuVecF *)vtxBufP->data) + faceP->index[i].vertex)->x
                 - (scaleY * (dir->x / xzMag));
@@ -646,7 +650,7 @@ static void ResolveScrollCol(HuVecF *dir, HuVecF *startPos, HuVecF *closestFaceP
 // Supplies the current player's next star space as the scroll hint target.
 static s16 StarMasuGet(int playerNo)
 {
-    return mbMasuFind_TypeIdGet(GwPlayer[playerNo].masuId, 7, TRUE, TRUE);
+    return mbMasuFind_TypeIdGet(lbl_80265750[playerNo].masuId, 7, TRUE, TRUE);
 }
 
 // Moves the board camera focus between two points while keeping it clear of collision geometry.
@@ -662,15 +666,25 @@ void mbev_StarScroll(HuVecF *startPos, HuVecF *endPos, s16 time)
     int i;
 
     mbCameraRotGet(&rot);
-    startCameraPos.x = startPos->x + (HuSin(rot.y) * (startPos->y / (HuSin(rot.x) / HuCos(rot.x))));
-    startCameraPos.z = startPos->z + (HuCos(rot.y) * (startPos->y / (HuSin(rot.x) / HuCos(rot.x))));
+    startCameraPos.x = startPos->x
+        + (sin(3.141592653589793*rot.y/180.0)
+        * (startPos->y / (sin(3.141592653589793*rot.x/180.0)
+        / cos(3.141592653589793*rot.x/180.0))));
+    startCameraPos.z = startPos->z
+        + (cos(3.141592653589793*rot.y/180.0)
+        * (startPos->y / (sin(3.141592653589793*rot.x/180.0)
+        / cos(3.141592653589793*rot.x/180.0))));
     startCameraPos.y = 0.0f;
-    endCameraPos.x = endPos->x + (HuSin(rot.y) * (endPos->y / (HuSin(rot.x) / HuCos(rot.x))));
-    endCameraPos.z = endPos->z + (HuCos(rot.y) * (endPos->y / (HuSin(rot.x) / HuCos(rot.x))));
+    endCameraPos.x = endPos->x
+        + (sin(3.141592653589793*rot.y/180.0)
+        * (endPos->y / (sin(3.141592653589793*rot.x/180.0) / cos(3.141592653589793*rot.x/180.0))));
+    endCameraPos.z = endPos->z
+        + (cos(3.141592653589793*rot.y/180.0)
+        * (endPos->y / (sin(3.141592653589793*rot.x/180.0) / cos(3.141592653589793*rot.x/180.0))));
     endCameraPos.y = 0.0f;
-    dir.x = HuSin(rot.y) * HuCos(rot.x);
-    dir.y = -HuSin(rot.x);
-    dir.z = HuCos(rot.y) * HuCos(rot.x);
+    dir.x = sin(3.141592653589793*rot.y/180.0) * cos(3.141592653589793*rot.x/180.0);
+    dir.y = -sin(3.141592653589793*rot.x/180.0);
+    dir.z = cos(3.141592653589793*rot.y/180.0) * cos(3.141592653589793*rot.x/180.0);
     PSVECScale(&dir, &dir, 100.0f);
     if (!CheckScrollCol(&startCameraPos, &dir, &cameraPos)) {
         ResolveScrollCol(&dir, &startCameraPos, NULL, &cameraPos);
@@ -704,11 +718,11 @@ static void MapViewCreate(void)
     mapViewRot.z = 0.0f;
     mapHook = NULL;
 
-    masuMapAnim = HuSprAnimDataRead(DATANUM(DATA_bmasu, 2));
+    masuMapAnim = HuSprAnimDataRead(DATANUM(0x40000, 2));
     HuSprAnimLock(masuMapAnim);
-    pathAnim = HuSprAnimDataRead(DATANUM(DATA_bmasu, 6));
+    pathAnim = HuSprAnimDataRead(DATANUM(0x40000, 6));
     HuSprAnimLock(pathAnim);
-    HuDataDirClose(DATA_bmasu);
+    fn_800097F4(0x40000);
 }
 
 // Releases the map tile and path animations when board scroll closes.
@@ -729,7 +743,7 @@ static BOOL MapViewExec(int playerNo)
 {
     float near;
     float far;
-    BOOL playerDisp[GW_PLAYER_MAX];
+    BOOL playerDisp[4];
     HU3D_MODELID mapMdlId;
     BOOL result;
     s16 winNo;
@@ -753,10 +767,10 @@ static BOOL MapViewExec(int playerNo)
     }
     MapSprPlayerPosCalc(scrollWorkP->playerPosNo);
     mbMasuModelDispSet(FALSE);
-    mapMdlId = Hu3DHookFuncCreate(MapDraw);
-    Hu3DModelCameraSet(mapMdlId, 4);
-    Hu3DModelLayerSet(mapMdlId, 2);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    mapMdlId = fn_800260F4(MapDraw);
+    fn_80026B64(mapMdlId, 4);
+    fn_80026B8C(mapMdlId, 2);
+    for (i = 0; i < 4; i++) {
         playerDisp[i] = mbPlayerDispGet(i);
         mbPlayerDispSet(i, FALSE);
     }
@@ -765,13 +779,13 @@ static BOOL MapViewExec(int playerNo)
     winNo = mbWinCreateHelp(SCROLL_MESS_HELP_MAP);
     mbWinPosSet(winNo, 120, 408);
     mbWipeSpecialFadeOutCreate(4, 30);
-    padNo = GwPlayer[playerNo].padNo;
+    padNo = lbl_80265750[playerNo].padNo;
     while (TRUE) {
-        u16 btn = HuPadBtnDown[padNo];
+        u16 btn = lbl_802C0008[padNo];
 
         if (btn & PAD_BUTTON_A) {
             scrollWorkP->playerPosNo = (scrollWorkP->playerPosNo + 1) % 3;
-            partyF = GwSystem.partyF;
+            partyF = lbl_80265B70.partyF;
             if (!partyF && scrollWorkP->playerPosNo == 1) {
                 // In solo play, skip the multiplayer-only mode and advance to the next choice.
                 scrollWorkP->playerPosNo = (scrollWorkP->playerPosNo + 1) % 3;
@@ -792,10 +806,10 @@ static BOOL MapViewExec(int playerNo)
     mbWinKill(winNo);
     mbMasuModelDispSet(TRUE);
     if (mapMdlId >= 0) {
-        Hu3DModelKill(mapMdlId);
+        fn_800262D0(mapMdlId);
     }
     MapSprKill();
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerDispSet(i, playerDisp[i]);
     }
     mbEffFadeOutSet(1);
@@ -906,16 +920,16 @@ static void MapBaseSprCreate(void)
     int playerNo;
 
     if (GWPartyGet() != FALSE) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
-            if (i == GwSystem.turnPlayerNo) {
-                MapSprCreate(GwPlayer[i].charNo, GwPlayer[i].masuId, 5);
+        for (i = 0; i < 4; i++) {
+            if (i == lbl_80265B70.turnPlayerNo) {
+                MapSprCreate(lbl_80265750[i].charNo, lbl_80265750[i].masuId, 5);
             } else {
-                MapSprCreate(GwPlayer[i].charNo, GwPlayer[i].masuId, 4);
+                MapSprCreate(lbl_80265750[i].charNo, lbl_80265750[i].masuId, 4);
             }
         }
     } else {
-        playerNo = GwSystem.turnPlayerNo;
-        MapSprCreate(GwPlayer[playerNo].charNo, GwPlayer[playerNo].masuId, 1);
+        playerNo = lbl_80265B70.turnPlayerNo;
+        MapSprCreate(lbl_80265750[playerNo].charNo, lbl_80265750[playerNo].masuId, 1);
     }
     masuNum = mbMasuTypeListGet(7, masuIdTbl);
     for (i = 0; i < masuNum; i++) {
@@ -1062,7 +1076,7 @@ static void MapSprPlayerPosCalc(int playerPosNo)
             arrowPos.x = work->pos2D.x + (0.5f * dir.x);
             arrowPos.y = work->pos2D.y + (0.5f * dir.y);
             espPosSet(work->arrowSprId[0], arrowPos.x, arrowPos.y);
-            rot = (atan2(dir.x, -dir.y) / M_PI) * 180.0;
+            rot = (atan2(dir.x, -dir.y) / 3.141592653589793) * 180.0;
             espZRotSet(work->arrowSprId[0], rot);
             scale = mag / 64.0f;
             espScaleSet(work->arrowSprId[0], 1.0f, scale);
@@ -1211,8 +1225,12 @@ static void MapPathDraw(s16 masuId, Mtx *mtx)
     mbMasuPosGet(masuId, &pos);
     camera = &Hu3DCamera[0];
     PSMTXMultVec(*mtx, &pos, &posCamera);
-    x = posCamera.z * (HuSin(camera->fov / 2.0f) / HuCos(camera->fov / 2.0f)) * 1.2f;
-    y = posCamera.z * (HuSin(camera->fov / 2.0f) / HuCos(camera->fov / 2.0f));
+    x = posCamera.z
+        * (sin(3.141592653589793*(camera->fov / 2.0f)/180.0) / cos(3.141592653589793*(camera->fov
+        / 2.0f)/180.0)) * 1.2f;
+    y = posCamera.z
+        * (sin(3.141592653589793*(camera->fov / 2.0f)/180.0) / cos(3.141592653589793*(camera->fov
+        / 2.0f)/180.0));
     pos2D.x = 288.0f + (posCamera.x * (288.0f / -x));
     pos2D.y = 240.0f + (posCamera.y * (240.0f / y));
     pos2D.z = 0.0f;
@@ -1230,10 +1248,10 @@ static void MapPathDraw(s16 masuId, Mtx *mtx)
             mbMasuPosGet(linkMasuId, &pos);
             camera2 = &Hu3DCamera[0];
             PSMTXMultVec(*mtx, &pos, &endPosCamera);
-            endX = endPosCamera.z * (HuSin(camera2->fov / 2.0f)
-                / HuCos(camera2->fov / 2.0f)) * 1.2f;
-            endY = endPosCamera.z * (HuSin(camera2->fov / 2.0f)
-                / HuCos(camera2->fov / 2.0f));
+            endX = endPosCamera.z * (sin(3.141592653589793*(camera2->fov / 2.0f)/180.0)
+                / cos(3.141592653589793*(camera2->fov / 2.0f)/180.0)) * 1.2f;
+            endY = endPosCamera.z * (sin(3.141592653589793*(camera2->fov / 2.0f)/180.0)
+                / cos(3.141592653589793*(camera2->fov / 2.0f)/180.0));
             endPos.x = 288.0f + (endPosCamera.x * (288.0f / -endX));
             endPos.y = 240.0f + (endPosCamera.y * (240.0f / endY));
             endPos.z = 0.0f;
@@ -1243,7 +1261,7 @@ static void MapPathDraw(s16 masuId, Mtx *mtx)
             pathScale = mag / 16.0f;
             pos.x = pos2D.x + (0.5f * dir.x);
             pos.y = pos2D.y + (0.5f * dir.y);
-            mtxRot(pathMtx, 0.0f, 0.0f, (atan2(dir.x, -dir.y) / M_PI) * 180.0f);
+            fn_80022E38(pathMtx, 0.0f, 0.0f, (atan2(dir.x, -dir.y) / 3.141592653589793) * 180.0f);
             mtxScaleCat(pathMtx, 1.0f, pathScale, 0.0f);
             mtxTransCat(pathMtx, pos.x, pos.y, 0.0f);
             GXLoadPosMtxImm(pathMtx, GX_PNMTX0);
@@ -1356,10 +1374,10 @@ static void MapDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 mbMasuPosGet(i, &pos);
                 camera = &Hu3DCamera[0];
                 PSMTXMultVec(cameraMtx, &pos, &posCamera);
-                x = posCamera.z * (HuSin(camera->fov / 2.0f)
-                    / HuCos(camera->fov / 2.0f)) * 1.2f;
-                y = posCamera.z * (HuSin(camera->fov / 2.0f)
-                    / HuCos(camera->fov / 2.0f));
+                x = posCamera.z * (sin(3.141592653589793*(camera->fov / 2.0f)/180.0)
+                    / cos(3.141592653589793*(camera->fov / 2.0f)/180.0)) * 1.2f;
+                y = posCamera.z * (sin(3.141592653589793*(camera->fov / 2.0f)/180.0)
+                    / cos(3.141592653589793*(camera->fov / 2.0f)/180.0));
                 pos.x = 288.0f + (posCamera.x * (288.0f / -x));
                 pos.y = 240.0f + (posCamera.y * (240.0f / y));
                 pos.z = 0.0f;

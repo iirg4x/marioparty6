@@ -85,7 +85,7 @@ void ShapeProc(HSF_DATA *hsf) {
 
     obj = hsf->object;
     for (objectIndex = 0; objectIndex < hsf->objectNum; objectIndex++, obj++) {
-        if (obj->type == HSF_OBJ_MESH && obj->mesh.shapeNum != 0) {
+        if (obj->type == 2 && obj->mesh.shapeNum != 0) {
             Vertextop = obj->mesh.vertex->data;
             SetShapeMain(obj);
             // For each mesh with shape data, it updates and writes back the vertex range with

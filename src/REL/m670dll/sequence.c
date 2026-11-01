@@ -54,28 +54,28 @@ void fn_1_A0(u16 *micResponse)
 /* The init hook advances to the next sequence mode. */
 void fn_1_1F8(s16 mode, s16 frameNo)
 {
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 /* The fade-in hook starts the opening camera and pillar animation before play. */
 void fn_1_218(s16 mode, s16 frameNo)
 {
     if (frameNo == 0) {
         lbl_1_bss_8 = 0;
-        Hu3DCameraMotionStart(lbl_1_bss_10.cameraMotion[0], 1);
+        fn_800284C8(lbl_1_bss_10.cameraMotion[0], 1);
         HuMCSelWinItemSet(MESSNUM(MESS_MIC_MIN_665, 23), 6, lbl_1_bss_10.soloPad);
         fn_1_2A24(1);
     }
     if (frameNo == 50) {
         HuAudFXPlay(M670_SE_ROUND_CYCLE_CUE);
     }
-    MgActorExec();
+    fn_800856A8();
 }
 /* The start hook starts the round BGM when the start-message effect is active and no stream handle
  * has been set. */
 int fn_1_2AC(int music, int id)
 {
     int result = music;
-    if (result == -1 && GameMesFXPlayCheck(MgSeqGameMesIdGet())) {
+    if (result == -1 && GameMesFXPlayCheck(fn_80071DF4())) {
         result = HuAudBGMPlay(id);
     }
     return result;
@@ -102,7 +102,7 @@ void fn_1_34C(void)
         } else if (pan > 96) {
             pan = 96;
         }
-        CharModelVoicePanSet(lbl_1_bss_10.characterNo[i], pan);
+        fn_80060F14(lbl_1_bss_10.characterNo[i], pan);
     }
 }
 /* The start hook resets the word choice, raises the pillars, and updates the scene each frame. */
@@ -117,7 +117,7 @@ void fn_1_42C(s16 mode, s16 frameNo)
         }
     }
     lbl_1_bss_10.music = fn_1_2AC(lbl_1_bss_10.music, M670_BGM_MICROPHONE_ROUND);
-    MgActorExec();
+    fn_800856A8();
     fn_1_34C();
 }
 /* The main hook updates each frame; on timeout it kills the listener for a human solo player and
@@ -131,7 +131,7 @@ void fn_1_5AC(s16 mode, s16 frameNo)
         MgTimerParamSet(lbl_1_bss_10.timer, 3600, 0, 0);
         MgTimerModeOnSet(lbl_1_bss_10.timer, 1);
         MgTimerRecordDispOn(lbl_1_bss_10.timer);
-        if (GwPlayerConf[lbl_1_bss_10.soloPlayer].type != 1) {
+        if (lbl_80265728[lbl_1_bss_10.soloPlayer].type != 1) {
             HuMCListenerCreate(lbl_1_bss_10.micContext, fn_1_A0, lbl_1_bss_10.soloPad);
         }
         lbl_1_bss_10.remainingPlayers = 0;
@@ -143,7 +143,7 @@ void fn_1_5AC(s16 mode, s16 frameNo)
                 lbl_1_bss_10.remainingPlayers |= 1 << i;
                 OSReport("away\n");
             }
-            MgPlayerAttrReset(lbl_1_bss_10.players[i], MGPLAYER_ATTR_COMSTK);
+            fn_80087168(lbl_1_bss_10.players[i], (1 << 0));
         }
         lbl_1_bss_4 = 0;
         lbl_1_bss_0 = 0;
@@ -160,11 +160,11 @@ void fn_1_5AC(s16 mode, s16 frameNo)
                 player = lbl_1_bss_10.players[i];
                 below = pos = lbl_1_bss_10.players[i]->actor->pos;
                 below.y -= 350.0f;
-                if ((state == 0 || state == 2 || MgActorColMapPolyGet(&pos, &below, 255, &poly))
+                if ((state == 0 || state == 2 || fn_80086910(&pos, &below, 255, &poly))
                     && pos.z >= -400.0f) {
-                    Hu3DModelShadowSet(player->actor->mdlId);
+                    fn_80026E44(player->actor->mdlId);
                 } else {
-                    Hu3DModelShadowReset(player->actor->mdlId);
+                    fn_80026EF0(player->actor->mdlId);
                 }
             }
         }
@@ -173,12 +173,12 @@ void fn_1_5AC(s16 mode, s16 frameNo)
         lbl_1_bss_8++;
     }
     if (lbl_1_bss_4 == 0 && MgTimerDoneCheck(lbl_1_bss_10.timer)) {
-        if (GwPlayerConf[lbl_1_bss_10.soloPlayer].type != 1) {
+        if (lbl_80265728[lbl_1_bss_10.soloPlayer].type != 1) {
             HuMCListenerKill();
         }
         for (i = 0; i < 4; i++) {
             if (lbl_1_bss_10.group[i] == 0) {
-                MgPlayerAttrSet(lbl_1_bss_10.players[i], MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_10.players[i], (1 << 0));
             }
         }
         if (lbl_1_bss_10.selectedWord == -1) {
@@ -188,7 +188,7 @@ void fn_1_5AC(s16 mode, s16 frameNo)
     }
     if (lbl_1_bss_8 >= 60) {
         for (i = 0; i < 4; i++) {
-            MgPlayerAttrSet(lbl_1_bss_10.players[i], MGPLAYER_ATTR_COMSTK);
+            fn_80087158(lbl_1_bss_10.players[i], (1 << 0));
         }
     }
     if (lbl_1_bss_8 >= 60 || lbl_1_bss_10.remainingPlayers == 0) {
@@ -197,15 +197,15 @@ void fn_1_5AC(s16 mode, s16 frameNo)
                 MgTimerRecordDispOff(lbl_1_bss_10.timer);
             }
             for (i = 0; i < 4; i++) {
-                MgPlayerAttrSet(lbl_1_bss_10.players[i], MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_10.players[i], (1 << 0));
             }
-            if (lbl_1_bss_4 == 0 && GwPlayerConf[lbl_1_bss_10.soloPlayer].type != 1) {
+            if (lbl_1_bss_4 == 0 && lbl_80265728[lbl_1_bss_10.soloPlayer].type != 1) {
                 HuMCListenerKill();
             }
         }
-        MgSeqModeNext();
+        fn_80071A9C();
     }
-    MgActorExec();
+    fn_800856A8();
     fn_1_34C();
 }
 /* The finish hook fades the music once, then continues actor and voice-pan updates. */
@@ -214,7 +214,7 @@ void fn_1_B4C(s16 mode, s16 frameNo)
     if (frameNo == 0) {
         fn_1_310(lbl_1_bss_10.music);
     }
-    MgActorExec();
+    fn_800856A8();
     fn_1_34C();
 }
 /* The results sequence calls this on entry to award the winning side, position surviving opponents
@@ -243,25 +243,25 @@ void fn_1_C68(s16 mode, s16 frameNo)
                     }
                 }
             }
-            MgSeqWinnerSet(winners[0], winners[1], winners[2], winners[3]);
+            fn_80071C18(winners[0], winners[1], winners[2], winners[3]);
             WipeCreate(2, 0, 60);
             for (i = 0; i < 60; i++) {
-                MgActorExec();
+                fn_800856A8();
                 fn_1_34C();
                 HuPrcVSleep();
             }
             fn_1_2A24(0);
             for (i = 0; i < 24; i++) {
-                Hu3DMotionSet(lbl_1_bss_10.pillarModel[i], lbl_1_bss_10.pillarMotion[i][1]);
+                fn_8002C95C(lbl_1_bss_10.pillarModel[i], lbl_1_bss_10.pillarMotion[i][1]);
                 fn_1_22F0(i, 100.0f);
             }
             for (i = 0; i < 4; i++) {
-                MgPlayerDespawn(lbl_1_bss_10.players[i]);
+                fn_80086E3C(lbl_1_bss_10.players[i]);
             }
             for (i = 0; i < 4; i++) {
                 if (i != lbl_1_bss_10.soloPlayer) {
                     shadowPlayer = lbl_1_bss_10.players[i];
-                    Hu3DModelShadowSet(shadowPlayer->actor->mdlId);
+                    fn_80026E44(shadowPlayer->actor->mdlId);
                 }
             }
             if (lbl_1_bss_10.remainingPlayers != 0) {
@@ -280,34 +280,34 @@ void fn_1_C68(s16 mode, s16 frameNo)
                         player = lbl_1_bss_10.players[i];
                         Hu3DModelObjPosGet(lbl_1_bss_10.winnerModel, names[slot], &resultPos);
                         OSReport("pos ... %f, %f, %f\n", resultPos.x, resultPos.y, resultPos.z);
-                        Hu3DModelAttrSet(player->actor->mdlId,
-                                         HU3D_MOTATTR_LOOP | HU3D_ATTR_DISPOFF);
-                        CharMotionSet(player->charNo, player->omObj->mtnId[0]);
-                        Hu3DModelPosSetV(player->actor->mdlId, &resultPos);
-                        Hu3DModelRotSet(player->actor->mdlId, 0.0f, 0.0f, 0.0f);
+                        fn_800269E8(player->actor->mdlId,
+                                         ((1 << 30) | (1 << 0)) | (1 << 0));
+                        fn_8005BE80(player->charNo, player->omObj->mtnId[0]);
+                        fn_80026790(player->actor->mdlId, &resultPos);
+                        fn_80026808(player->actor->mdlId, 0.0f, 0.0f, 0.0f);
                         slot++;
                     }
                 }
             }
             for (i = 0; i < 4; i++) {
                 MGPLAYER *motionPlayer = lbl_1_bss_10.players[i];
-                CharMotionSet(lbl_1_bss_10.characterNo[i], motionPlayer->omObj->mtnId[0]);
+                fn_8005BE80(lbl_1_bss_10.characterNo[i], motionPlayer->omObj->mtnId[0]);
             }
             if (lbl_1_bss_10.remainingPlayers == 0) {
-                Hu3DCameraMotionStart(lbl_1_bss_10.cameraMotion[1], 1);
+                fn_800284C8(lbl_1_bss_10.cameraMotion[1], 1);
             } else {
-                Hu3DCameraMotionStart(lbl_1_bss_10.cameraMotion[2], 1);
+                fn_800284C8(lbl_1_bss_10.cameraMotion[2], 1);
             }
             WipeCreate(1, 5, 60);
             for (i = 0; i < 60; i++) {
-                MgActorExec();
+                fn_800856A8();
                 fn_1_34C();
                 HuPrcVSleep();
             }
             if (lbl_1_bss_10.remainingPlayers != 0) {
                 fn_1_2460(lbl_1_bss_10.soloPlayer, 4);
             }
-            MgSeqModeNext();
+            fn_80071A9C();
         }
     }
 }
@@ -322,7 +322,7 @@ void fn_1_12C4(s16 mode, s16 frameNo)
             player = lbl_1_bss_10.players[i];
             if (lbl_1_bss_10.group[i] == 0) {
                 if (lbl_1_bss_10.remainingPlayers == 0) {
-                    CharMotionShiftSet(lbl_1_bss_10.characterNo[i], player->omObj->mtnId[5], 0.0f,
+                    fn_8005C2C8(lbl_1_bss_10.characterNo[i], player->omObj->mtnId[5], 0.0f,
                                        6.0f, 0);
                 }
             } else if (lbl_1_bss_10.remainingPlayers & (1 << i)) {
@@ -331,7 +331,7 @@ void fn_1_12C4(s16 mode, s16 frameNo)
                 } else {
                     motion = 5;
                 }
-                CharMotionShiftSet(lbl_1_bss_10.characterNo[i], player->omObj->mtnId[motion], 0.0f,
+                fn_8005C2C8(lbl_1_bss_10.characterNo[i], player->omObj->mtnId[motion], 0.0f,
                                    6.0f, 0);
             }
         }

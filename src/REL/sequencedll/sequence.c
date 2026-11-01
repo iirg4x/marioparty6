@@ -1,5 +1,6 @@
 /* Sequence manager example: player zero presses A to trigger ten jumps with the configured
  * character. */
+#include <math.h>
 #include "dolphin.h"
 #include "game/object.h"
 #include "game/hu3d.h"
@@ -44,7 +45,7 @@ static s16 jumpTimer = -1;
  * stages. */
 static MGSEQ_PARAM seqParam = {
     10,
-    MGSEQ_TIMER_BOTTOM,
+    1,
     SeqModeInit,
     SeqModeFadeIn,
     NULL,
@@ -89,23 +90,23 @@ void ObjectSetup(void)
 {
     HU3D_LIGHTID lightId;
     OSReport("******* Sequence Manager Example ObjectSetup *********\n");
-    objman = omInitObjMan(50, SEQUENCE_OBJMAN_PRIORITY);
-    omGameSysInit(objman);
-    CRot.x = -20;
-    CRot.y = 0;
-    CRot.z = 0;
-    Center.x = 0;
-    Center.y = 150;
-    Center.z = 0;
-    CZoom = 500;
-    Hu3DCameraCreate(HU3D_CAM0);
-    Hu3DCameraPerspectiveSet(HU3D_CAM0, 45, 20, 10000, 1.2f);
-    Hu3DCameraViewportSet(HU3D_CAM0, 0, 0, 640, 480, 0, 1);
-    omAddObj(objman, OM_OUTVIEW_PRIO, 0, 0, omOutView);
+    objman = fn_8003A8BC(50, SEQUENCE_OBJMAN_PRIORITY);
+    fn_80069F1C(objman);
+    lbl_80266A40.x = -20;
+    lbl_80266A40.y = 0;
+    lbl_80266A40.z = 0;
+    lbl_80266A4C.x = 0;
+    lbl_80266A4C.y = 150;
+    lbl_80266A4C.z = 0;
+    lbl_802C028C = 500;
+    Hu3DCameraCreate((1 << 0));
+    Hu3DCameraPerspectiveSet((1 << 0), 45, 20, 10000, 1.2f);
+    Hu3DCameraViewportSet((1 << 0), 0, 0, 640, 480, 0, 1);
+    fn_8003AB38(objman, 32730, 0, 0, -1, fn_8003D4FC);
     lightId = Hu3DGLightCreate(0, 1000, 1000, 0, -1, -1, 255, 255, 255);
     Hu3DGLightInfinitytSet(lightId);
-    omAddObj(objman, 32730, 0, 0, PlayerObjExec);
-    MgSeqCreate(&seqParam);
+    fn_8003AB38(objman, 32730, 0, 0, -1, PlayerObjExec);
+    fn_80070788(&seqParam);
 }
 
 /* Sequence-manager init hook: loads the configured player's character and five motions, then enters
@@ -122,22 +123,22 @@ static void SeqModeInit(s16 mode, s16 frameNo)
         0
     };
 
-    padNo = GwPlayerConf[0].padNo;
-    charNo = GwPlayerConf[0].charNo;
-    charMdlId = CharModelMotListCreate(charNo, CHAR_MODEL0, motFileTbl, charMotId);
-    Hu3DModelPosSet(charMdlId, 0, 0, 0);
-    CharMotionSet(charNo, charMotId[0]);
-    Hu3DModelAttrSet(charMdlId, HU3D_MOTATTR_LOOP);
-    MgSeqModeNext();
+    padNo = lbl_80265728[0].padNo;
+    charNo = lbl_80265728[0].charNo;
+    charMdlId = fn_8005C4E4(charNo, (1 << 0), motFileTbl, charMotId);
+    fn_80026760(charMdlId, 0, 0, 0);
+    fn_8005BE80(charNo, charMotId[0]);
+    fn_800269E8(charMdlId, ((1 << 30) | (1 << 0)));
+    fn_80071A9C();
 }
 
 /* Fade-in hook: lowers CZoom from 5500 to 500 over 60 frames; the manager shows its start message
  * before main mode. */
 static void SeqModeFadeIn(s16 mode, s16 frameNo)
 {
-    CZoom = ((1-HuSin((frameNo/60.0)*90))*5000)+500;
+    lbl_802C028C = ((1-sin(3.141592653589793*((frameNo/60.0)*90)/180.0))*5000)+500;
     if(frameNo >= 60) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -146,10 +147,10 @@ static void SeqModeMain(s16 mode, s16 frameNo)
 {
     if(jumpNum >= SEQUENCE_JUMP_TARGET) {
         /* The result is fixed to Mario even if player zero is configured with another character. */
-        MgSeqWinnerSet1(CHARNO_MARIO);
+        fn_80071C18(0, -1, -1, -1);
         /* The sequence manager suppresses this record request in practice mode. */
-        MgSeqRecordSet(SEQUENCE_JUMP_TARGET);
-        MgSeqModeNext();
+        fn_80071BAC(SEQUENCE_JUMP_TARGET);
+        fn_80071A9C();
     }
 }
 
@@ -159,13 +160,13 @@ static void SeqModePreWin(s16 mode, s16 frameNo)
 {
     if(frameNo > 60) {
         if(jumpNum < SEQUENCE_JUMP_TARGET) {
-            MgSeqModeNext();
+            fn_80071A9C();
         }
         return;
     }
-    CRot.x = -20*HuCos((frameNo/60.0)*90);
-    Center.y = 150-(50*HuSin((frameNo/60.0)*90));
-    CZoom = 500-(HuSin((frameNo/60.0)*90)*200);
+    lbl_80266A40.x = -20*cos(3.141592653589793*((frameNo/60.0)*90)/180.0);
+    lbl_80266A4C.y = 150-(50*sin(3.141592653589793*((frameNo/60.0)*90)/180.0));
+    lbl_802C028C = 500-(sin(3.141592653589793*((frameNo/60.0)*90)/180.0)*200);
 }
 
 /* Winner-stage hook: at frame 0, plays victory after ten jumps or draw otherwise, without setting
@@ -174,10 +175,10 @@ static void SeqModeWin(s16 mode, s16 frameNo)
 {
     if(frameNo == 0) {
         if(jumpNum >= SEQUENCE_JUMP_TARGET) {
-            CharMotionShiftSet(charNo, charMotId[3], 0, 8, HU3D_MOTATTR_NONE);
+            fn_8005C2C8(charNo, charMotId[3], 0, 8, 0);
             HuAudJinglePlay(SEQUENCE_JINGLE_WIN);
         } else {
-            CharMotionShiftSet(charNo, charMotId[4], 0, 8, HU3D_MOTATTR_NONE);
+            fn_8005C2C8(charNo, charMotId[4], 0, 8, 0);
             HuAudJinglePlay(SEQUENCE_JINGLE_DRAW);
         }
     }
@@ -189,19 +190,19 @@ static void SeqModeWin(s16 mode, s16 frameNo)
 static void PlayerObjExec(OMOBJ *playerObj)
 {
     print8(8, 24, 2.0f, "%d", jumpNum);
-    if (jumpTimer == -1 && MgSeqModeGet() == MGSEQ_MODE_MAIN &&
-        (HuPadBtnDown[padNo] & PAD_BUTTON_A)) {
+    if (jumpTimer == -1 && fn_80071A8C() == 5 &&
+        (lbl_802C0008[padNo] & PAD_BUTTON_A)) {
         jumpNum++;
         jumpTimer = 0;
-        CharMotionShiftSet(charNo, charMotId[1], 0, 8, HU3D_MOTATTR_NONE);
+        fn_8005C2C8(charNo, charMotId[1], 0, 8, 0);
     }
     if(jumpTimer >= 0) {
-        Hu3DModelPosSet(charMdlId, 0, 150*HuSin((jumpTimer/30.0)*180.0), 0);
+        fn_80026760(charMdlId, 0, 150*sin(3.141592653589793*((jumpTimer/30.0)*180.0)/180.0), 0);
         jumpTimer++;
         if(jumpTimer == 28) {
-            CharMotionShiftSet(charNo, charMotId[2], 0, 8, HU3D_MOTATTR_NONE);
+            fn_8005C2C8(charNo, charMotId[2], 0, 8, 0);
         } else if(jumpTimer > 30) {
-            CharMotionShiftSet(charNo, charMotId[0], 0, 8, HU3D_MOTATTR_NONE);
+            fn_8005C2C8(charNo, charMotId[0], 0, 8, 0);
             jumpTimer = -1;
         }
     }

@@ -16,15 +16,15 @@
 #include "humath.h"
 #include "math.h"
 
-#define ROULETTE_SE_SPIN MSM_SE_BRD00_09
-#define ROULETTE_SE_RESULT MSM_SE_BRD00_11
+#define ROULETTE_SE_SPIN 1013
+#define ROULETTE_SE_RESULT 1015
 
 static s8 rouletteAngleNo = -1;
 static HUSPR_GROUPID rouletteSprGrpId = HUSPR_GRP_NONE;
 static int rouletteSeNo = MSM_SENO_NONE;
 static float rouletteDecel = 0.92f;
 
-static s8 rouletteChoiceTbl[GW_PLAYER_MAX];
+static s8 rouletteChoiceTbl[4];
 static s16 rouletteComDelay; // CPU target pointer angle in degrees.
 static s16 rouletteCounter;
 static float rouletteMaxSpeed;
@@ -84,11 +84,11 @@ static BOOL RouletteCreate(int playerNo, int maxPlayer, BOOL capsuleF)
     }
     // The requested maximum is overwritten; the candidate list always starts from three seats.
     maxPlayer = 3;
-    for(playerIndex=0; playerIndex<GW_PLAYER_MAX; playerIndex++) {
+    for(playerIndex=0; playerIndex<4; playerIndex++) {
         rouletteChoiceTbl[playerIndex] = -1;
     }
     if(!rouletteCapsuleF) {
-        for(playerIndex=0, choiceCount=0; playerIndex<GW_PLAYER_MAX; playerIndex++) {
+        for(playerIndex=0, choiceCount=0; playerIndex<4; playerIndex++) {
             if(maxPlayer != 3 || playerIndex != playerNo) {
                 rouletteChoiceTbl[choiceCount++] = playerIndex;
             }
@@ -106,8 +106,8 @@ static BOOL RouletteCreate(int playerNo, int maxPlayer, BOOL capsuleF)
         rouletteAngleNo = 0;
         return FALSE;
     }
-    rouletteOMObj = omAddObj(mbObjMan, 259, 0, 0, RouletteOMExec);
-    rouletteWork = omObjGetWork(rouletteOMObj, ROULETTE_WORK);
+    rouletteOMObj = fn_8003AB38(mbObjMan, 259, 0, 0, -1, RouletteOMExec);
+    rouletteWork = ((ROULETTE_WORK *)(&(rouletteOMObj->work[0])));
     rouletteWork->killF = FALSE;
     rouletteWork->stopF = FALSE;
     rouletteWork->maxPlayer = maxPlayer;
@@ -117,7 +117,7 @@ static BOOL RouletteCreate(int playerNo, int maxPlayer, BOOL capsuleF)
     rouletteWork->angleNo = 0;
     rouletteWork->angle = 0;
     rouletteMaxSpeed = 18;
-    if(GwPlayer[rouletteWork->playerNo].comF) {
+    if(lbl_80265750[rouletteWork->playerNo].comF) {
         rouletteWork->maxCounter = 180;
     } else {
         rouletteWork->maxCounter = 3600;
@@ -167,11 +167,11 @@ void mbRouletteMaxSpeedSet(float speed)
 // Object-manager callback that advances the roulette states and deletes the object on exit.
 static void RouletteOMExec(OMOBJ *obj)
 {
-    ROULETTE_WORK *work = omObjGetWork(obj, ROULETTE_WORK);
+    ROULETTE_WORK *work = ((ROULETTE_WORK *)(&(obj->work[0])));
     if(work->killF || mbExitCheck()) {
         RouletteKill();
         rouletteOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     if(rouletteCounter < work->maxCounter) {
@@ -201,33 +201,33 @@ static void RouletteOMExec(OMOBJ *obj)
 }
 
 static int rouletteFileTbl[6] = {
-    DATANUM(DATA_board, 117),
-    DATANUM(DATA_board, 120),
-    DATANUM(DATA_board, 119),
-    DATANUM(DATA_board, 120),
-    DATANUM(DATA_board, 118),
-    DATANUM(DATA_board, 118),
+    DATANUM(0x50000, 117),
+    DATANUM(0x50000, 120),
+    DATANUM(0x50000, 119),
+    DATANUM(0x50000, 120),
+    DATANUM(0x50000, 118),
+    DATANUM(0x50000, 118),
 };
 
-static s8 roulettePrioTbl[8+GW_PLAYER_MAX] = {
+static s8 roulettePrioTbl[8+4] = {
     60, 80, 80, 80, 20, 30, 70, 70, 70, 70,
 };
 
-static int charFileTbl[GW_CHARA_MAX] = {
-    DATANUM(DATA_board, 121), DATANUM(DATA_board, 122),
-    DATANUM(DATA_board, 123), DATANUM(DATA_board, 124),
-    DATANUM(DATA_board, 125), DATANUM(DATA_board, 126),
-    DATANUM(DATA_board, 127), DATANUM(DATA_board, 128),
-    DATANUM(DATA_board, 129), DATANUM(DATA_board, 130),
-    DATANUM(DATA_board, 131), DATANUM(DATA_board, 130),
-    DATANUM(DATA_board, 130), DATANUM(DATA_board, 130),
+static int charFileTbl[14] = {
+    DATANUM(0x50000, 121), DATANUM(0x50000, 122),
+    DATANUM(0x50000, 123), DATANUM(0x50000, 124),
+    DATANUM(0x50000, 125), DATANUM(0x50000, 126),
+    DATANUM(0x50000, 127), DATANUM(0x50000, 128),
+    DATANUM(0x50000, 129), DATANUM(0x50000, 130),
+    DATANUM(0x50000, 131), DATANUM(0x50000, 130),
+    DATANUM(0x50000, 130), DATANUM(0x50000, 130),
 };
 
 static int rouletteCapsuleFileTbl[4] = {
-    DATANUM(DATA_board, 121),
-    DATANUM(DATA_board, 122),
-    DATANUM(DATA_board, 123),
-    DATANUM(DATA_board, 124),
+    DATANUM(0x50000, 121),
+    DATANUM(0x50000, 122),
+    DATANUM(0x50000, 123),
+    DATANUM(0x50000, 124),
 };
 
 // Called by RouletteOMExec in state 0; creates the roulette sprites and computes the CPU
@@ -275,24 +275,24 @@ static void RouletteInit(ROULETTE_WORK *work)
     }
     rouletteSprGrpId = HuSprGrpCreate(choiceCount+9);
     RouletteChoiceTblGet(work->maxPlayer, work->playerNo, rouletteChoiceTbl);
-    if(GwPlayer[work->playerNo].comF) {
+    if(lbl_80265750[work->playerNo].comF) {
         rouletteComDelay = RouletteComDelayGet(work->playerNo, work->maxPlayer);
         // CPU difficulty sets the positive angle-offset range; a random 0–19 degrees is then
         // subtracted before the result is wrapped.
-        switch(GwPlayer[work->playerNo].comDif) {
-            case GW_PLAYER_COM_DIF_EASY:
+        switch(lbl_80265750[work->playerNo].comDif) {
+            case 0:
                 cpuDelayOffset = mbRandMod(90);
                 break;
 
-            case GW_PLAYER_COM_DIF_NORMAL:
+            case 1:
                 cpuDelayOffset = mbRandMod(60);
                 break;
 
-            case GW_PLAYER_COM_DIF_HARD:
+            case 2:
                 cpuDelayOffset = mbRandMod(30);
                 break;
 
-            case GW_PLAYER_COM_DIF_VERYHARD:
+            case 3:
                 cpuDelayOffset = mbRandMod(10);
                 break;
         }
@@ -332,7 +332,7 @@ static void RouletteInit(ROULETTE_WORK *work)
     }
     for(spriteIndex=0; spriteIndex<choiceCount; spriteIndex++) {
         if(!rouletteCapsuleF) {
-            s16 characterNo = GwPlayer[rouletteChoiceTbl[spriteIndex]].charNo;
+            s16 characterNo = lbl_80265750[rouletteChoiceTbl[spriteIndex]].charNo;
             mbSprCreate(mbBoardDataNumGet(charFileTbl[characterNo]),
                         roulettePrioTbl[spriteIndex + 5], NULL, &spriteId);
         } else {
@@ -493,13 +493,14 @@ static void RouletteDispOn(ROULETTE_WORK *work)
     if(work->time < 90) {
         work->time += 3;
     } else {
-        _CheckFlag(FLAG_BOARD_TUTORIAL); // The check result is intentionally unused here.
+        fn_8006A124(65550); // The check result is intentionally unused here.
         work->time = 90;
         work->mode = 2;
         rouletteSeNo = mbAudFXPlay(ROULETTE_SE_SPIN);
     }
     OSs8tof32(&work->time, &angle);
-    HuSprGrpScaleSet(rouletteSprGrpId, HuSin(angle), HuSin(angle));
+    HuSprGrpScaleSet(rouletteSprGrpId, sin(3.141592653589793*angle/180.0),
+        sin(3.141592653589793*angle/180.0));
 }
 
 // Called by RouletteOMExec in state 4; shrinks the roulette and requests object cleanup.
@@ -516,7 +517,8 @@ static void RouletteDispOff(ROULETTE_WORK *work)
         rouletteComValueF = FALSE;
     }
     OSs8tof32(&work->time, &angle);
-    HuSprGrpScaleSet(rouletteSprGrpId, HuSin(angle), HuSin(angle));
+    HuSprGrpScaleSet(rouletteSprGrpId, sin(3.141592653589793*angle/180.0),
+        sin(3.141592653589793*angle/180.0));
 }
 
 // Called by RouletteOMExec during deletion; removes the pause hook and destroys the sprite group.
@@ -557,13 +559,13 @@ static int RoulettePadGet(ROULETTE_WORK *work)
     if(rouletteCounter >= work->maxCounter) {
         return PAD_BUTTON_A;
     }
-    if(!GwPlayer[work->playerNo].comF) {
-        pressedButtons = HuPadBtnDown[GwPlayer[work->playerNo].padNo];
+    if(!lbl_80265750[work->playerNo].comF) {
+        pressedButtons = lbl_802C0008[lbl_80265750[work->playerNo].padNo];
         return pressedButtons;
     } else {
         pressedButtons = RouletteComPadGet(work);
         if(rouletteComValueF) {
-            ROULETTE_WORK *rouletteWork = omObjGetWork(rouletteOMObj, ROULETTE_WORK);
+            ROULETTE_WORK *rouletteWork = ((ROULETTE_WORK *)(&(rouletteOMObj->work[0])));
             float angleStart;
             float angleEnd;
             float angle;
@@ -616,7 +618,7 @@ static s16 RouletteComDelayGet(int playerNo, int maxPlayer)
     // Outside party mode this local is read without an assignment in this function.
     if(bestPathPlayerNo == -1 || bestPathPlayerNo == playerNo) {
         do {
-            bestPathPlayerNo = mbRandMod(GW_PLAYER_MAX);
+            bestPathPlayerNo = mbRandMod(4);
         } while(bestPathPlayerNo == playerNo);
 
     }

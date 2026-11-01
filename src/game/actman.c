@@ -12,8 +12,8 @@
 #include "math.h"
 #include "string.h"
 
-#define ACTOR_MAX COLBODY_MAX
-#define PLAYER_MAX GW_PLAYER_MAX
+#define ACTOR_MAX 256
+#define PLAYER_MAX 4
 #define MGACTOR_ATTR_COL_OFF (1 << 0)
 #define MGACTOR_COLMESH_NONE 65535
 #define COLBODY_ATTR_COL_RESULT_MASK 0x34000000
@@ -48,9 +48,9 @@ static void PlayerModeSquishHard(MGPLAYER *playerP);
 static void PlayerModeDefault(MGPLAYER *playerP);
 static void PlayerModeJumpAlt(MGPLAYER *playerP);
 
-s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag);
+s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
 
-static MGPLAYER_MODE_FUNC playerModeFunc[MGPLAYER_MODE_MAX] = {
+static MGPLAYER_MODE_FUNC playerModeFunc[18] = {
     PlayerModeWalk, PlayerModeJump, PlayerModeFall, PlayerModePunch,
     PlayerModeKick, PlayerModeHipDrop, PlayerModeHit, PlayerModeKnockback,
     PlayerModeSquish, PlayerModeSquishHard, PlayerModeDefault, PlayerModeDefault,
@@ -79,59 +79,59 @@ static void SafeNormalize(HuVecF *inputDirection, HuVecF *normalizedDirection)
 static void ExecVibrate(OMOBJ *obj)
 {
     MGPLAYER *player = (MGPLAYER *)obj->work[0];
-    if(MgPlayerVibAttrCheck(player, MGPLAYER_VIBATTR_SQUISH_FAST)) {
-        omVibrate(player->playerNo, 20, 7, 3);
-    } else if(MgPlayerVibAttrCheck(player, MGPLAYER_VIBATTR_SQUISH)) {
-        omVibrate(player->playerNo, 20, 7, 3);
-    } else if(MgPlayerVibAttrCheck(player, MGPLAYER_VIBATTR_HEADJUMP)) {
-        omVibrate(player->playerNo, 20, 7, 3);
-    } else if(MgPlayerVibAttrCheck(player, MGPLAYER_VIBATTR_HIT_SRC)) {
-        omVibrate(player->playerNo, 20, 7, 3);
-    } else if(MgPlayerVibAttrCheck(player, MGPLAYER_VIBATTR_KNOCKBACK_SRC)) {
-        omVibrate(player->playerNo, 20, 7, 3);
-    } else if(MgPlayerVibAttrCheck(player, MGPLAYER_VIBATTR_HIPDROP_LAND)) {
-        omVibrate(player->playerNo, 20, 7, 3);
+    if(fn_80087114(player, (1 << 2))) {
+        fn_8006A030(player->playerNo, 20, 7, 3);
+    } else if(fn_80087114(player, (1 << 0))) {
+        fn_8006A030(player->playerNo, 20, 7, 3);
+    } else if(fn_80087114(player, (1 << 1))) {
+        fn_8006A030(player->playerNo, 20, 7, 3);
+    } else if(fn_80087114(player, (1 << 3))) {
+        fn_8006A030(player->playerNo, 20, 7, 3);
+    } else if(fn_80087114(player, (1 << 4))) {
+        fn_8006A030(player->playerNo, 20, 7, 3);
+    } else if(fn_80087114(player, MGPLAYER_VIBATTR_HIPDROP_LAND)) {
+        fn_8006A030(player->playerNo, 20, 7, 3);
     }
     switch(player->stunType) {
-        case MGPLAYER_STUN_HIT:
-            omVibrate(player->playerNo, 20, 7, 3);
+        case 1:
+            fn_8006A030(player->playerNo, 20, 7, 3);
             break;
 
-        case MGPLAYER_STUN_KNOCKBACK:
-            omVibrate(player->playerNo, 20, 7, 3);
+        case 2:
+            fn_8006A030(player->playerNo, 20, 7, 3);
             break;
 
-        case MGPLAYER_STUN_SQUISH_HARD:
-            omVibrate(player->playerNo, 20, 7, 3);
+        case 4:
+            fn_8006A030(player->playerNo, 20, 7, 3);
             break;
     }
-    if(MgPlayerAttrCheck(player, MGPLAYER_ATTR_VIBKILL)) {
-        MgPlayerAttrReset(player, MGPLAYER_ATTR_VIBKILL);
+    if(fn_8008717C(player, (1 << 11))) {
+        fn_80087168(player, (1 << 11));
         obj->objFunc = NULL;
-        omDelObj(actmanWork.objman, obj);
+        omDelObjEx(actmanWork.objman, obj);
     }
 }
 
 /* Reports whether the COM stick override was already enabled, then enables it. */
-BOOL MgPlayerComStkOn(MGPLAYER *playerP)
+BOOL fn_8007E818(MGPLAYER *playerP)
 {
-    BOOL wasEnabled = MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK) ? TRUE : FALSE;
-    MgPlayerAttrSet(playerP, MGPLAYER_ATTR_COMSTK);
+    BOOL wasEnabled = fn_8008717C(playerP, (1 << 0)) ? TRUE : FALSE;
+    fn_80087158(playerP, (1 << 0));
     return wasEnabled;
 }
 
-void MgPlayerComStkOff(MGPLAYER *playerP)
+void fn_8007E888(MGPLAYER *playerP)
 {
-    MgPlayerAttrReset(playerP, MGPLAYER_ATTR_COMSTK);
+    fn_80087168(playerP, (1 << 0));
 }
 
 /* Steers a player unless movement is disabled and reports arrival by horizontal distance. */
-BOOL MgPlayerVecChase(MGPLAYER *playerP, HuVecF *targetPos, float forwardSpeed, float arrivalRadius)
+BOOL fn_8007E8B4(MGPLAYER *playerP, HuVecF *targetPos, float forwardSpeed, float arrivalRadius)
 {
     float radiusSquared = 0.001+(arrivalRadius*arrivalRadius);
     float angle;
     HuVecF dir;
-    if(MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_MOVEOFF)) {
+    if(fn_8008717C(playerP, (1 << 9))) {
         return FALSE;
     }
     VECSubtract(targetPos, &playerP->actor->pos, &dir);
@@ -149,14 +149,14 @@ BOOL MgPlayerVecChase(MGPLAYER *playerP, HuVecF *targetPos, float forwardSpeed, 
     if(dir.x < 0) {
         angle = -angle;
     }
-    playerP->actor->rotY = (180*angle)/M_PI;
+    playerP->actor->rotY = (180*angle)/3.141592653589793;
     playerP->actor->push.x = playerP->actor->push.y = 0;
     playerP->actor->push.z = forwardSpeed;
     return FALSE;
 }
 
 /* Turns a free actor toward a target and reports when it reaches the radius. */
-BOOL MgActorVecChase(MGACTOR *actorP, HuVecF *targetPos, float forwardSpeed, float arrivalRadius)
+BOOL fn_8007EB24(MGACTOR *actorP, HuVecF *targetPos, float forwardSpeed, float arrivalRadius)
 {
     float radiusSquared = 0.001+(arrivalRadius*arrivalRadius);
     float angle;
@@ -176,49 +176,49 @@ BOOL MgActorVecChase(MGACTOR *actorP, HuVecF *targetPos, float forwardSpeed, flo
     if(dir.x < 0) {
         angle = -angle;
     }
-    actorP->rotY = (180*angle)/M_PI;
+    actorP->rotY = (180*angle)/3.141592653589793;
     actorP->push.x = actorP->push.y = 0;
     actorP->push.z = forwardSpeed;
     return FALSE;
 }
 
 /* Adds a persistent callback that requests rumble for vibration flags and selected stuns. */
-void MgPlayerVibrateCreate(MGPLAYER *playerP)
+void fn_8007ED60(MGPLAYER *playerP)
 {
-    OMOBJ *obj = omAddObj(actmanWork.objman, 3000, 0, 0, ExecVibrate);
+    OMOBJ *obj = fn_8003AB38(actmanWork.objman, 3000, 0, 0, -1, ExecVibrate);
     obj->work[0] = (u32)playerP;
 }
 
 /* Marks the callback for removal after its next update's vibration checks. */
-void MgPlayerVibrateKill(MGPLAYER *playerP)
+void fn_8007EDBC(MGPLAYER *playerP)
 {
-    MgPlayerAttrSet(playerP, MGPLAYER_ATTR_VIBKILL);
+    fn_80087158(playerP, (1 << 11));
 }
 
 static void KillEffectPlayer(int playerNo);
 
 /* Changes mode unless unchanged or frozen: kick/hip drop require jump/fall,
  * jump/fall/punch require walking, and other target modes have no source-mode restriction. */
-BOOL MgPlayerModeLandSet(MGPLAYER *playerP, int mode)
+BOOL fn_8007EDE8(MGPLAYER *playerP, int mode)
 {
     if(playerP->mode == mode) {
         return FALSE;
     }
-    if(playerP->stunType == MGPLAYER_STUN_FREEZE) {
+    if(playerP->stunType == 6) {
         return FALSE;
     }
     switch(mode) {
-        case MGPLAYER_MODE_KICK:
-        case MGPLAYER_MODE_HIPDROP:
-            if(playerP->mode != MGPLAYER_MODE_JUMP && playerP->mode != MGPLAYER_MODE_FALL) {
+        case 4:
+        case 5:
+            if(playerP->mode != 1 && playerP->mode != 2) {
                 return FALSE;
             }
             break;
 
-        case MGPLAYER_MODE_JUMP:
-        case MGPLAYER_MODE_FALL:
-        case MGPLAYER_MODE_PUNCH:
-            if(playerP->mode != MGPLAYER_MODE_WALK) {
+        case 1:
+        case 2:
+        case 3:
+            if(playerP->mode != 0) {
                 return FALSE;
             }
             break;
@@ -230,12 +230,12 @@ BOOL MgPlayerModeLandSet(MGPLAYER *playerP, int mode)
 }
 
 /* Changes the player's mode unless it is unchanged or frozen by a stun. */
-BOOL MgPlayerModeSet(MGPLAYER *playerP, int mode)
+BOOL fn_8007EEBC(MGPLAYER *playerP, int mode)
 {
     if(playerP->mode == mode) {
         return FALSE;
     }
-    if(playerP->stunType == MGPLAYER_STUN_FREEZE) {
+    if(playerP->stunType == 6) {
         return FALSE;
     }
     KillEffectPlayer(playerP->actor->no);
@@ -294,7 +294,7 @@ static void GetStickMtx(Mtx stickMatrix, int cameraBit)
     HuVecF originalLook;
     HuVecF lookDirection;
     HuVecF cameraWorldPos, cameraWorldTarget, cameraWorldUp;
-    Hu3DCameraPosGet(cameraBit, &cameraWorldPos, &cameraWorldUp, &cameraWorldTarget);
+    fn_80027CD0(cameraBit, &cameraWorldPos, &cameraWorldUp, &cameraWorldTarget);
     cameraPosition.x = cameraWorldPos.x;
     cameraPosition.y = cameraWorldPos.y;
     cameraPosition.z = cameraWorldPos.z;
@@ -350,10 +350,10 @@ static inline int AllocPlayer(void)
 {
     int bodyIndex;
     for(bodyIndex=0; bodyIndex<PLAYER_MAX; bodyIndex++) {
-        COLBODY *body = ColBodyGet(bodyIndex);
-        if(!(body->param.attr & COLBODY_ATTR_ACTIVE)) {
-            body->param.attr |= COLBODY_ATTR_ACTIVE;
-            body->param.attr |= COLBODY_ATTR_RESET;
+        COLBODY *body = fn_8007BAB8(bodyIndex);
+        if(!(body->param.attr & (1 << 0))) {
+            body->param.attr |= (1 << 0);
+            body->param.attr |= (1 << 24);
             break;
         }
     }
@@ -371,7 +371,7 @@ static MGPLAYER *CreatePlayer(s16 playerNo, s16 model, u16 camBit, u32 actionFla
 {
     int mdlId;
     int actorNo;
-    if(!ColMapInitCheck()) {
+    if(!fn_8007D52C()) {
         return NULL;
     }
     actorNo = AllocPlayer();
@@ -382,16 +382,16 @@ static MGPLAYER *CreatePlayer(s16 playerNo, s16 model, u16 camBit, u32 actionFla
         OMOBJ *obj;
         playerP = &actmanWork.player[actorNo];
         memset(playerP, 0, sizeof(MGPLAYER));
-        obj = omAddObj(actmanWork.objman, playerNo, 1, 32, NULL);
+        obj = fn_8003AB38(actmanWork.objman, playerNo, 1, 32, -1, NULL);
         playerP->actor = &actmanWork.actor[actorNo];
         playerP->playerNo = playerNo;
-        playerP->charNo = GwPlayerConf[playerNo].charNo;
-        playerP->padNo = GwPlayerConf[playerNo].padNo;
+        playerP->charNo = lbl_80265728[playerNo].charNo;
+        playerP->padNo = lbl_80265728[playerNo].padNo;
         playerP->camBit = camBit;
         playerP->omObj = obj;
         playerP->actionFlag = actionFlag;
         playerP->motNo = 0;
-        playerP->stunType = MGPLAYER_STUN_NONE;
+        playerP->stunType = 0;
         playerP->stunAngle = 0;
         playerP->stunTime = 0;
         playerP->squishTime = 0;
@@ -406,13 +406,13 @@ static MGPLAYER *CreatePlayer(s16 playerNo, s16 model, u16 camBit, u32 actionFla
         playerP->work[1] = 0;
         playerP->work[2] = 0;
         memcpy(&playerP->modeFunc[0], &playerModeFunc[0], sizeof(playerModeFunc));
-        mdlId = CharModelMotListCreate(playerP->charNo, model, motDataNum, obj->mtnId);
+        mdlId = fn_8005C4E4(playerP->charNo, model, motDataNum, obj->mtnId);
         playerP->actor->mdlId = mdlId;
         obj->work[0] = obj->work[1] = obj->work[2] = obj->work[3] = 0;
-        Hu3DModelAttrSet(mdlId, HU3D_MOTATTR_LOOP);
-        CharMotionSet(playerP->charNo, playerP->omObj->mtnId[0]);
+        fn_800269E8(mdlId, ((1 << 30) | (1 << 0)));
+        fn_8005BE80(playerP->charNo, playerP->omObj->mtnId[0]);
         playerP->motNo = 0;
-        Hu3DModelCameraSet(mdlId, camBit);
+        fn_80026B64(mdlId, camBit);
         return playerP;
     }
 }
@@ -422,14 +422,14 @@ static inline MGACTOR *CreateActor(int mdlId)
 {
     MGACTOR *actor;
     int bodyIndex;
-    if(!ColMapInitCheck()) {
+    if(!fn_8007D52C()) {
         return NULL;
     }
     for(bodyIndex=PLAYER_MAX; bodyIndex<ACTOR_MAX; bodyIndex++) {
-        COLBODY *body = ColBodyGet(bodyIndex);
-        if(!(body->param.attr & COLBODY_ATTR_ACTIVE)) {
-            body->param.attr |= COLBODY_ATTR_ACTIVE;
-            body->param.attr |= COLBODY_ATTR_RESET;
+        COLBODY *body = fn_8007BAB8(bodyIndex);
+        if(!(body->param.attr & (1 << 0))) {
+            body->param.attr |= (1 << 0);
+            body->param.attr |= (1 << 24);
             break;
         }
     }
@@ -445,7 +445,7 @@ static inline MGACTOR *CreateActor(int mdlId)
 static void KillEffectPlayer(int playerNo)
 {
     if(actmanWork.effPlayer[playerNo]) {
-        MgActorKill(actmanWork.effPlayer[playerNo]);
+        fn_80080F38(actmanWork.effPlayer[playerNo]);
         actmanWork.effPlayer[playerNo] = NULL;
     }
 }
@@ -484,21 +484,21 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             up.y = 1;
             up.z = 0;
             dot = VECDotProduct(&up, &dir);
-            if(dot > cos(M_PI/3)) {
-                if(MgPlayerModeAttrCheck(playerP2, MGPLAYER_MODEATTR_AIR)) {
+            if(dot > cos(3.141592653589793/3)) {
+                if(fn_80087148(playerP2, (1 << 4))) {
                     if(fabsf(playerP1->actor->velY) <= 1000.0f) {
                         if (playerP2->actor->velY < 0 ||
-                            MgPlayerVibAttrCheck(playerP2, MGPLAYER_VIBATTR_HEADJUMP)) {
-                            if(MgPlayerStunSet(playerP1, MGPLAYER_STUN_SQUISH, 0, -1)) {
-                                MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_SQUISH);
+                            fn_80087114(playerP2, (1 << 1))) {
+                            if(fn_8008718C(playerP1, 3, 0, -1)) {
+                                fn_80087104(playerP1, (1 << 0));
                             }
                         }
                     } else {
-                        MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_SQUISH_FAST);
+                        fn_80087104(playerP1, (1 << 2));
                     }
                 }
-            } else if(dot < -cos(M_PI/3)) {
-                if(!MgPlayerAttrCheck(playerP1, MGPLAYER_ATTR_HEADJUMP_OFF)) {
+            } else if(dot < -cos(3.141592653589793/3)) {
+                if(!fn_8008717C(playerP1, (1 << 1))) {
                     HuVecF norm = a->normPos;
                     float velY;
                     Mtx rotMtx;
@@ -506,13 +506,13 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
                     if(playerP1->actor->velY > 0) {
                         break;
                     }
-                    if(!MgPlayerModeAttrCheck(playerP1, MGPLAYER_MODEATTR_AIR)) {
+                    if(!fn_80087148(playerP1, (1 << 4))) {
                         break;
                     }
                     norm.y = 0;
                     playerP1->actor->velY = GET_ACTOR_VELY(playerP1->actor, 15000);
                     playerP1->actor->rotY += (u32)frandmod(90)-45.0f;
-                    if(!MgPlayerModeAttrCheck(playerP1, MGPLAYER_MODEATTR_HEADJUMP)) {
+                    if(!fn_80087148(playerP1, ((1 << 2)|(1 << 3)))) {
                         forceZ = VECMag(&norm)/2;
                     } else {
                         forceZ = VECMag(&playerP1->actor->forceB);
@@ -524,9 +524,9 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
                     playerP1->actor->forceB.z = forceZ;
                     MTXRotRad(rotMtx, 'Y', 0.017453292f*playerP1->actor->rotY);
                     MTXMultVec(rotMtx, &playerP1->actor->forceB, &playerP1->actor->forceB);
-                    MgPlayerAttrSet(playerP1, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
-                    MgPlayerModeAttrSet(playerP1, MGPLAYER_MODEATTR_HEADJUMP);
-                    MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_HEADJUMP);
+                    fn_80087158(playerP1, (1 << 8)|(1 << 9));
+                    fn_80087124(playerP1, ((1 << 2)|(1 << 3)));
+                    fn_80087104(playerP1, (1 << 1));
 
                 } else {
                     HuVecF norm = dir;
@@ -544,8 +544,8 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             if(!result) {
                 break;
             }
-            if (MgPlayerVibAttrCheck(playerP1, MGPLAYER_VIBATTR_SQUISH | MGPLAYER_VIBATTR_HEADJUMP |
-                                                   MGPLAYER_VIBATTR_SQUISH_FAST)) {
+            if (fn_80087114(playerP1, (1 << 0) | (1 << 1) |
+                                                   (1 << 2))) {
                 break;
             }
             {
@@ -579,12 +579,12 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             if(dir.x < 0) {
                 angle = -angle;
             }
-            angle = (180*angle)/M_PI;
-            if(!MgPlayerStunSet(playerP1, MGPLAYER_STUN_HIT, angle, -1)) {
+            angle = (180*angle)/3.141592653589793;
+            if(!fn_8008718C(playerP1, 1, angle, -1)) {
                 return FALSE;
             }
-            MgPlayerVibAttrSet(playerP2, MGPLAYER_VIBATTR_HIT_SRC);
-            MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_HIT);
+            fn_80087104(playerP2, (1 << 3));
+            fn_80087104(playerP1, (1 << 6));
             return FALSE;
         }
         break;
@@ -596,12 +596,12 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             if(a->paramA == (b->paramB & 0xFF)) {
                return FALSE;
             }
-            if (!MgPlayerStunSet(playerP1, MGPLAYER_STUN_KNOCKBACK,
+            if (!fn_8008718C(playerP1, 2,
                                  actmanWork.actor[b->paramA].rotY, -1)) {
                 return FALSE;
             }
-            MgPlayerVibAttrSet(playerP2, MGPLAYER_VIBATTR_KNOCKBACK_SRC);
-            MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_KNOCKBACK);
+            fn_80087104(playerP2, (1 << 4));
+            fn_80087104(playerP1, (1 << 7));
             return FALSE;
         }
         break;
@@ -628,13 +628,13 @@ static int PlayerColHook(COL_NARROW_PARAM *a, COL_NARROW_PARAM *b)
             if(dir.x < 0) {
                 angle = -angle;
             }
-            angle = (180*angle)/M_PI;
-            if(!MgPlayerStunSet(playerP1, MGPLAYER_STUN_SQUISH_HARD, angle, -1)) {
+            angle = (180*angle)/3.141592653589793;
+            if(!fn_8008718C(playerP1, 4, angle, -1)) {
                 return FALSE;
             }
-            MgPlayerVibAttrSet(playerP2, MGPLAYER_VIBATTR_SQUISH_HARD_SRC);
-            MgPlayerVibAttrSet(playerP1, MGPLAYER_VIBATTR_SQUISH_HARD);
-            _CharFXPlay(playerP1->charNo, CHARVOICEID(15), 0);
+            fn_80087104(playerP2, (1 << 5));
+            fn_80087104(playerP1, (1 << 8));
+            fn_800591C8(playerP1->charNo, (573+15), 0);
             return FALSE;
         }
         break;
@@ -667,7 +667,7 @@ static void ActorColCorrectHook(COLBODY *body, void *user)
 }
 
 /* Clears actor-manager pointers and resets the shared collision map. */
-void MgActorInit(void)
+void fn_800802A8(void)
 {
     int effectSlot;
     actmanWork.objman = NULL;
@@ -677,11 +677,11 @@ void MgActorInit(void)
     for(effectSlot=4; effectSlot--; ) {
         actmanWork.effPlayer[effectSlot] = NULL;
     }
-    ColMapClear();
+    fn_8007BAD0();
 }
 
 /* Frees actor and player arrays and shuts down the shared collision map. */
-void MgActorClose(void)
+void fn_8008033C(void)
 {
     int effectSlot;
     if(actmanWork.player) {
@@ -697,17 +697,17 @@ void MgActorClose(void)
     for(effectSlot=4; effectSlot--; ) {
         actmanWork.effPlayer[effectSlot] = NULL;
     }
-    ColMapKill();
+    fn_8007D2C0();
 }
 
 /* Creates the object manager and allocates zeroed player and actor state arrays. */
-OMOBJMAN *MgActorObjectSetup(void)
+OMOBJMAN *fn_80080418(void)
 {
-    actmanWork.objman = omInitObjMan(256, 1000);
-    omGameSysInit(actmanWork.objman);
+    actmanWork.objman = fn_8003A8BC(256, 1000);
+    fn_80069F1C(actmanWork.objman);
     actmanWork.player =
-        HuMemDirectMallocNum(HEAP_MODEL, PLAYER_MAX * sizeof(MGPLAYER), HU_MEMNUM_OVL);
-    actmanWork.actor = HuMemDirectMallocNum(HEAP_MODEL, ACTOR_MAX*sizeof(MGACTOR), HU_MEMNUM_OVL);
+        HuMemDirectMallocNum(2, PLAYER_MAX * sizeof(MGPLAYER), 0x10000000);
+    actmanWork.actor = HuMemDirectMallocNum(2, ACTOR_MAX*sizeof(MGACTOR), 0x10000000);
     memset(actmanWork.player, 0, PLAYER_MAX*sizeof(MGPLAYER));
     memset(actmanWork.actor, 0, ACTOR_MAX*sizeof(MGACTOR));
     actmanWork.colCylF = FALSE;
@@ -715,55 +715,55 @@ OMOBJMAN *MgActorObjectSetup(void)
 }
 
 /* Supplies the collision map models and body limit during minigame setup. */
-void MgActorColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyMax)
+void fn_800804E8(HU3D_MODELID *mdlId, s16 mdlNum, int bodyMax)
 {
     ColMapInit(mdlId, mdlNum, bodyMax);
 }
 
 /* Replaces this player's stick and button input while preserving Start and Z bits. */
-void MgPlayerPadSet(MGPLAYER *playerP, int stkX, int stkY, int btnDown, int btn)
+void fn_80080520(MGPLAYER *playerP, int stkX, int stkY, int btnDown, int btn)
 {
-    HuPadStkX[playerP->padNo] = stkX;
-    HuPadStkY[playerP->padNo] = stkY;
-    HuPadBtnDown[playerP->padNo] &= (PAD_BUTTON_START|PAD_TRIGGER_Z);
-    HuPadBtn[playerP->padNo] &= (PAD_BUTTON_START|PAD_TRIGGER_Z);
-    HuPadBtnDown[playerP->padNo] |= btnDown;
-    HuPadBtn[playerP->padNo] |= btn;
+    lbl_802BFFFC[playerP->padNo] = stkX;
+    lbl_802BFFF8[playerP->padNo] = stkY;
+    lbl_802C0008[playerP->padNo] &= (PAD_BUTTON_START|PAD_TRIGGER_Z);
+    lbl_802C0010[playerP->padNo] &= (PAD_BUTTON_START|PAD_TRIGGER_Z);
+    lbl_802C0008[playerP->padNo] |= btnDown;
+    lbl_802C0010[playerP->padNo] |= btn;
 }
 
 /* Adds collision-body attributes, preserving the manager's active and reset rules. */
-void MgActorColAttrSet(MGACTOR *actorP, u32 mask)
+void fn_800805CC(MGACTOR *actorP, u32 mask)
 {
-    COLBODY *body = ColBodyGet(actorP->no);
-    body->param.attr |= mask&(COLBODY_ATTR_RESET|0xFFFE);
+    COLBODY *body = fn_8007BAB8(actorP->no);
+    body->param.attr |= mask&((1 << 24)|0xFFFE);
 }
 
 /* Clears selected collision-body attributes while retaining protected manager bits. */
-void MgActorColAttrReset(MGACTOR *actorP, u32 mask)
+void fn_8008062C(MGACTOR *actorP, u32 mask)
 {
-    COLBODY *body = ColBodyGet(actorP->no);
-    body->param.attr &= (~mask|COLBODY_ATTR_PRESERVED_MASK|COLBODY_ATTR_ACTIVE);
+    COLBODY *body = fn_8007BAB8(actorP->no);
+    body->param.attr &= (~mask|COLBODY_ATTR_PRESERVED_MASK|(1 << 0));
 }
 
 /* Returns the selected attributes from this actor's collision body. */
-u32 MgActorColAttrGet(MGACTOR *actorP, u32 mask)
+u32 fn_8008068C(MGACTOR *actorP, u32 mask)
 {
-    COLBODY *body = ColBodyGet(actorP->no);
+    COLBODY *body = fn_8007BAB8(actorP->no);
     return body->param.attr & mask;
 }
 
 /* Installs only the non-null mode callbacks supplied by a minigame. */
-void MgPlayerModeFuncSet(MGPLAYER *playerP, MGPLAYER_MODE_FUNC *funcTbl)
+void fn_800806DC(MGPLAYER *playerP, MGPLAYER_MODE_FUNC *funcTbl)
 {
     int modeIndex;
-    for(modeIndex=MGPLAYER_MODE_MAX; modeIndex--;) {
+    for(modeIndex=18; modeIndex--;) {
         if(funcTbl[modeIndex]) {
             playerP->modeFunc[modeIndex] = funcTbl[modeIndex];
         }
     }
 }
 
-static unsigned int defMotDataNum[MGPLAYER_MOT_NUM+1] = {
+static unsigned int defMotDataNum[16+1] = {
     CHARMOT_HSF_c000m1_300, CHARMOT_HSF_c000m1_301, CHARMOT_HSF_c000m1_302, CHARMOT_HSF_c000m1_303,
     CHARMOT_HSF_c000m1_464, CHARMOT_HSF_c000m1_305, CHARMOT_HSF_c000m1_367, CHARMOT_HSF_c000m1_308,
     CHARMOT_HSF_c000m1_310, CHARMOT_HSF_c000m1_309, CHARMOT_HSF_c000m1_315, CHARMOT_HSF_c000m1_316,
@@ -772,7 +772,7 @@ static unsigned int defMotDataNum[MGPLAYER_MOT_NUM+1] = {
 };
 
 /* Builds a player and collision body; a supplied motion list is adjusted in place. */
-MGPLAYER *MgPlayerCreate(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit, u32 actionFlag,
+MGPLAYER *fn_80080728(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit, u32 actionFlag,
                          unsigned int *motDataNum)
 {
     MGPLAYER *player;
@@ -802,8 +802,8 @@ MGPLAYER *MgPlayerCreate(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camB
     colParam.narrowHook2 = param->narrowHook;
     colParam.colCorrectHook = ActorColCorrectHook;
     colParam.user = player->actor;
-    colParam.attr = param->attr|COLBODY_ATTR_ACTIVE|COLBODY_ATTR_RESET;
-    ColBodyParamSet(&colParam, player->actor->no);
+    colParam.attr = param->attr|(1 << 0)|(1 << 24);
+    fn_8007D84C(&colParam, player->actor->no);
     player->actor->param = param->param;
     player->actor->type = param->type;
     player->actor->correctHookParam = param->correctHookParam;
@@ -811,34 +811,34 @@ MGPLAYER *MgPlayerCreate(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camB
     return player;
 }
 
-inline MGPLAYER *MgPlayerCreate(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit,
+inline MGPLAYER *fn_80080728(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit,
                                 u32 actionFlag, unsigned int *motDataNum);
 
 /* Creates a player, optionally routing jump mode through the alternate handler. */
-MGPLAYER *MgPlayerCreateJumpAlt(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit,
+MGPLAYER *fn_800808C0(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit,
                                 u32 actionFlag, unsigned int *motDataNum, unsigned int jumpAltFlags)
 {
-    MGPLAYER *player = MgPlayerCreate(playerNo, param, model, camBit, actionFlag, motDataNum);
+    MGPLAYER *player = fn_80080728(playerNo, param, model, camBit, actionFlag, motDataNum);
 
     if(!player) {
         return NULL;
     }
     if(jumpAltFlags & 0x1) {
-        MGPLAYER_MODE_FUNC modeFunc[MGPLAYER_MODE_MAX];
+        MGPLAYER_MODE_FUNC modeFunc[18];
         int modeIndex;
-        for(modeIndex=MGPLAYER_MODE_MAX; modeIndex--;) {
+        for(modeIndex=18; modeIndex--;) {
             modeFunc[modeIndex] = NULL;
-            if(modeIndex == MGPLAYER_MODE_JUMP) {
+            if(modeIndex == 1) {
                 modeFunc[modeIndex] = PlayerModeJumpAlt;
             }
         }
-        MgPlayerModeFuncSet(player, modeFunc);
+        fn_800806DC(player, modeFunc);
     }
     return player;
 }
 
 /* Creates a non-player actor and registers its collision parameters and callback. */
-MGACTOR *MgActorCreate(MGACTOR_PARAM *param, int mdlId)
+MGACTOR *fn_80080B04(MGACTOR_PARAM *param, int mdlId)
 {
     MGACTOR *actor = CreateActor(mdlId);
     COLBODY_PARAM colParam;
@@ -856,8 +856,8 @@ MGACTOR *MgActorCreate(MGACTOR_PARAM *param, int mdlId)
     colParam.narrowHook2 = param->narrowHook;
     colParam.colCorrectHook = ActorColCorrectHook;
     colParam.user = actor;
-    colParam.attr = param->attr|COLBODY_ATTR_ACTIVE|COLBODY_ATTR_RESET;
-    ColBodyParamSet(&colParam, actor->no);
+    colParam.attr = param->attr|(1 << 0)|(1 << 24);
+    fn_8007D84C(&colParam, actor->no);
     actor->param = param->param;
     actor->type = param->type;
     actor->correctHookParam = param->correctHookParam;
@@ -865,35 +865,35 @@ MGACTOR *MgActorCreate(MGACTOR_PARAM *param, int mdlId)
     return actor;
 }
 
-inline MGACTOR *MgActorCreate(MGACTOR_PARAM *param, int mdlId);
+inline MGACTOR *fn_80080B04(MGACTOR_PARAM *param, int mdlId);
 
 /* Sets the polygon mask used when the collision map tests this model. */
-void MgActorColMapMaskSet(int mdlNo, u32 mask)
+void fn_80080D7C(int mdlNo, u32 mask)
 {
-    ColMapMaskSet(mdlNo, mask);
+    fn_8007D118(mdlNo, mask);
 }
 
 /* Returns the collision-map model mask; the result is undefined if the map is uninitialized. */
-u32 MgActorColMapMaskGet(int mdlNo)
+u32 fn_80080DAC(int mdlNo)
 {
-    return ColMapMaskGet(mdlNo);
+    return fn_8007D18C(mdlNo);
 }
 
 /* Updates the body's collision mask and reapplies its parameters when its index is in range. */
-void MgActorColMaskSet(MGACTOR *actorP, u32 mask)
+void fn_80080DD4(MGACTOR *actorP, u32 mask)
 {
-    COLBODY *body = ColBodyGetSafe(actorP->no);
+    COLBODY *body = fn_8007D8E0(actorP->no);
     if(!body) {
         return;
     }
     body->param.mask = mask;
-    ColBodyParamSet(&body->param, actorP->no);
+    fn_8007D84C(&body->param, actorP->no);
 }
 
 /* Returns the body's collision mask, or zero when its index is outside the reserved range. */
-u32 MgActorColMaskGet(MGACTOR *actorP)
+u32 fn_80080E38(MGACTOR *actorP)
 {
-    COLBODY *body = ColBodyGetSafe(actorP->no);
+    COLBODY *body = fn_8007D8E0(actorP->no);
     if(!body) {
         return 0;
     }
@@ -901,38 +901,38 @@ u32 MgActorColMaskGet(MGACTOR *actorP)
 }
 
 /* Restores spherical body positioning for subsequent actor position operations. */
-void MgActorColCylReset(void)
+void fn_80080E8C(void)
 {
     actmanWork.colCylF = FALSE;
-    ColCylReset();
+    fn_8007D200();
 }
 
 /* Selects cylindrical body positioning for subsequent actor position operations. */
-void MgActorColCylSet(void)
+void fn_80080EBC(void)
 {
     actmanWork.colCylF = TRUE;
-    ColCylSet();
+    fn_8007D260();
 }
 
 /* Sets the collision body's bounce coefficient. */
-void MgActorColBounceSet(MGACTOR *actorP, float bounce)
+void fn_80080EEC(MGACTOR *actorP, float bounce)
 {
-    COLBODY *body = ColBodyGet(actorP->no);
+    COLBODY *body = fn_8007BAB8(actorP->no);
     body->param.bounce = bounce;
 }
 
 /* Marks the actor's collision body inactive so actor updates skip it. */
-void MgActorKill(MGACTOR *actorP)
+void fn_80080F38(MGACTOR *actorP)
 {
-    COLBODY *body = ColBodyGet(actorP->no);
-    body->param.attr &= ~COLBODY_ATTR_ACTIVE;
+    COLBODY *body = fn_8007BAB8(actorP->no);
+    body->param.attr &= ~(1 << 0);
 }
 
 #define GET_STICK_SPEED(playerP, out) do { \
     HuVecF dir; \
-    dir.x = HuPadStkX[playerP->padNo]/5.6f; \
+    dir.x = lbl_802BFFFC[playerP->padNo]/5.6f; \
     dir.y = 0; \
-    dir.z = HuPadStkY[playerP->padNo]/5.6f; \
+    dir.z = lbl_802BFFF8[playerP->padNo]/5.6f; \
     out = dir.z*dir.z+(dir.x*dir.x+dir.y*dir.y); \
 } while(0)
 
@@ -940,7 +940,7 @@ void MgActorKill(MGACTOR *actorP)
 static inline void PlayerSetMotion(MGPLAYER *playerP, u16 motNo, float start, float end, u32 attr)
 {
     if(playerP->motNo != motNo) {
-        CharMotionShiftSet(playerP->charNo, playerP->omObj->mtnId[motNo], start, end, attr);
+        fn_8005C2C8(playerP->charNo, playerP->omObj->mtnId[motNo], start, end, attr);
         playerP->motNo = motNo;
     }
 }
@@ -948,40 +948,40 @@ static inline void PlayerSetMotion(MGPLAYER *playerP, u16 motNo, float start, fl
 /* Update handler for unassigned modes: requests walking mode and the idle animation. */
 static void PlayerModeDefault(MGPLAYER *playerP)
 {
-    MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-    PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+    fn_8007EEBC(playerP, 0);
+    PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
 }
 
 /* Handles ground movement and starts jumps or attacks from the minigame update. */
 static void PlayerModeWalk(MGPLAYER *playerP)
 {
     if(playerP->actor->colGroundAttr & 0x407F) {
-        if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-            && (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_A)) {
-            if(playerP->actionFlag & MGPLAYER_ACTFLAG_JUMP) {
-                MgPlayerModeSet(playerP, MGPLAYER_MODE_JUMP);
+        if(!fn_8008717C(playerP, (1 << 0))
+            && (lbl_802C0008[playerP->padNo] & PAD_BUTTON_A)) {
+            if(playerP->actionFlag & (1 << 1)) {
+                fn_8007EEBC(playerP, 1);
             }
-        } else if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-            && (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_B)) {
-            if(playerP->actionFlag & MGPLAYER_ACTFLAG_PUNCH) {
-                MgPlayerModeSet(playerP, MGPLAYER_MODE_PUNCH);
+        } else if(!fn_8008717C(playerP, (1 << 0))
+            && (lbl_802C0008[playerP->padNo] & PAD_BUTTON_B)) {
+            if(playerP->actionFlag & (1 << 2)) {
+                fn_8007EEBC(playerP, 3);
             }
         } else {
-            if(playerP->actionFlag & MGPLAYER_ACTFLAG_WALK) {
+            if(playerP->actionFlag & (1 << 0)) {
                 float speed2 = playerP->actor->push.x * playerP->actor->push.x +
                                playerP->actor->push.z * playerP->actor->push.z;
                 if(speed2 > 25) {
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_RUN, 0, 5, HU3D_MOTATTR_LOOP);
+                    PlayerSetMotion(playerP, 2, 0, 5, ((1 << 30) | (1 << 0)));
                 } else if(speed2 > 0.001) {
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_WALK, 0, 5, HU3D_MOTATTR_LOOP);
+                    PlayerSetMotion(playerP, 1, 0, 5, ((1 << 30) | (1 << 0)));
                 } else {
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+                    PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
                 }
             }
         }
     } else {
         if(fabsf(playerP->actor->velY) > 2000) {
-            MgPlayerModeSet(playerP, MGPLAYER_MODE_FALL);
+            fn_8007EEBC(playerP, 2);
         }
     }
 }
@@ -991,9 +991,9 @@ static void PlayerModeJump(MGPLAYER *playerP)
 {
     switch(playerP->subMode) {
         case 0:
-            PlayerSetMotion(playerP, MGPLAYER_MOT_JUMP, 0, 1, HU3D_MOTATTR_NONE);
+            PlayerSetMotion(playerP, 3, 0, 1, 0);
             playerP->actor->velY = GET_ACTOR_VELY(playerP->actor, 25000);
-            MgPlayerModeAttrSet(playerP, MGPLAYER_MODEATTR_AIR);
+            fn_80087124(playerP, (1 << 4));
             playerP->timer = 1;
             playerP->subMode = 1;
             break;
@@ -1014,17 +1014,17 @@ static void PlayerModeJump(MGPLAYER *playerP)
                     float speed;
                     GET_STICK_SPEED(playerP, speed);
                     if(speed < 25.0f) {
-                        PlayerSetMotion(playerP, MGPLAYER_MOT_LAND, 0, 5, HU3D_MOTATTR_NONE);
-                        MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                        PlayerSetMotion(playerP, 4, 0, 5, 0);
+                        fn_80087158(playerP, (1 << 8)|(1 << 9));
                         playerP->timer = 10;
                         playerP->subMode = 3;
                     } else {
-                        MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                        PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+                        fn_8007EEBC(playerP, 0);
+                        PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
                     }
                 } else {
-                    if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-                        && !(HuPadBtn[playerP->padNo] & PAD_BUTTON_A)) {
+                    if(!fn_8008717C(playerP, (1 << 0))
+                        && !(lbl_802C0010[playerP->padNo] & PAD_BUTTON_A)) {
                         playerP->actor->velY = GET_ACTOR_VELY(playerP->actor, 4000);
                         playerP->timer = 0;
                         playerP->subMode = 2;
@@ -1035,7 +1035,7 @@ static void PlayerModeJump(MGPLAYER *playerP)
             break;
 
         case 2:
-            PlayerSetMotion(playerP, MGPLAYER_MOT_JUMP, 0, 1, HU3D_MOTATTR_NONE);
+            PlayerSetMotion(playerP, 3, 0, 1, 0);
             if(((playerP->actor->colGroundAttr & 0x7F)
                 && playerP->actor->colNorm.y > 0
                 || (playerP->actor->colGroundAttr & 0x4000))
@@ -1043,33 +1043,33 @@ static void PlayerModeJump(MGPLAYER *playerP)
                 float speed;
                 GET_STICK_SPEED(playerP, speed);
                 if(speed < 25.0f) {
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_LAND, 0, 5, HU3D_MOTATTR_NONE);
-                    MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                    PlayerSetMotion(playerP, 4, 0, 5, 0);
+                    fn_80087158(playerP, (1 << 8)|(1 << 9));
                     playerP->timer = 10;
                     playerP->subMode = 3;
                 } else {
-                    MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
-                    if(!(CharAttrGet(playerP->charNo) & 0x10)) {
+                    fn_8007EEBC(playerP, 0);
+                    PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
+                    if(!(fn_80062094(playerP->charNo) & 0x10)) {
                         HuVecF pos;
-                        MgActorPosGet(playerP->actor, &pos);
-                        Hu3DModelPosSet(playerP->actor->mdlId, pos.x, pos.y, pos.z);
-                        CharModelLandDustCreateStep(playerP->charNo, &pos);
+                        fn_80086BC8(playerP->actor, &pos);
+                        fn_80026760(playerP->actor->mdlId, pos.x, pos.y, pos.z);
+                        fn_8005FC84(playerP->charNo, &pos);
                     }
                 }
             } else {
-                if(playerP->motNo == MGPLAYER_MOT_JUMP) {
-                    if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-                        && !MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_HEADJUMP)
-                        && ((HuPadBtnDown[playerP->padNo] & PAD_BUTTON_A)
-                        || (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_TRIGGER_L))) {
-                        if(playerP->actionFlag & MGPLAYER_ACTFLAG_HIPDROP) {
-                            MgPlayerModeSet(playerP, MGPLAYER_MODE_HIPDROP);
+                if(playerP->motNo == 3) {
+                    if(!fn_8008717C(playerP, (1 << 0))
+                        && !fn_80087148(playerP, ((1 << 2)|(1 << 3)))
+                        && ((lbl_802C0008[playerP->padNo] & PAD_BUTTON_A)
+                        || (lbl_802C0008[playerP->padNo] & 0x4000))) {
+                        if(playerP->actionFlag & (1 << 4)) {
+                            fn_8007EEBC(playerP, 5);
                         }
-                    } else if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-                        && (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_B)) {
-                        if(playerP->actionFlag & MGPLAYER_ACTFLAG_KICK) {
-                            MgPlayerModeSet(playerP, MGPLAYER_MODE_KICK);
+                    } else if(!fn_8008717C(playerP, (1 << 0))
+                        && (lbl_802C0008[playerP->padNo] & PAD_BUTTON_B)) {
+                        if(playerP->actionFlag & (1 << 3)) {
+                            fn_8007EEBC(playerP, 4);
                         }
                     }
                 }
@@ -1078,29 +1078,29 @@ static void PlayerModeJump(MGPLAYER *playerP)
 
         case 3:
             if (playerP->timer <= 9 &&
-                !MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD)) {
-                MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                !fn_80087148(playerP, (1 << 1))) {
+                fn_80087168(playerP, (1 << 8)|(1 << 9));
             }
             if(playerP->timer > 0) {
-                if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-                    && (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_A)) {
+                if(!fn_8008717C(playerP, (1 << 0))
+                    && (lbl_802C0008[playerP->padNo] & PAD_BUTTON_A)) {
                     playerP->subMode = 0;
-                    if(!MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD)) {
-                        MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                    if(!fn_80087148(playerP, (1 << 1))) {
+                        fn_80087168(playerP, (1 << 8)|(1 << 9));
                     }
                     if(playerP->timer >= 6.0f) {
-                        if(!(CharAttrGet(playerP->charNo) & 0x10)) {
+                        if(!(fn_80062094(playerP->charNo) & 0x10)) {
                             HuVecF pos;
-                            MgActorPosGet(playerP->actor, &pos);
-                            Hu3DModelPosSet(playerP->actor->mdlId, pos.x, pos.y, pos.z);
-                            CharModelLandDustCreateStep(playerP->charNo, &pos);
+                            fn_80086BC8(playerP->actor, &pos);
+                            fn_80026760(playerP->actor->mdlId, pos.x, pos.y, pos.z);
+                            fn_8005FC84(playerP->charNo, &pos);
                         }
                     }
                 }
                 playerP->timer--;
             } else {
-                MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+                fn_8007EEBC(playerP, 0);
+                PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             }
             break;
     }
@@ -1111,38 +1111,38 @@ static void PlayerModeFall(MGPLAYER *playerP)
 {
     switch(playerP->subMode) {
         case 0:
-            PlayerSetMotion(playerP, MGPLAYER_MOT_JUMP, 0, 1, HU3D_MOTATTR_NONE);
-            MgPlayerModeAttrSet(playerP, MGPLAYER_MODEATTR_AIR);
+            PlayerSetMotion(playerP, 3, 0, 1, 0);
+            fn_80087124(playerP, (1 << 4));
             if(playerP->actor->colGroundAttr & 0x407F) {
                 float speed;
                 GET_STICK_SPEED(playerP, speed);
                 if(speed < 25.0f) {
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_LAND, 0, 5, HU3D_MOTATTR_NONE);
-                    MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                    PlayerSetMotion(playerP, 4, 0, 5, 0);
+                    fn_80087158(playerP, (1 << 8)|(1 << 9));
                     playerP->timer = 10;
                     playerP->subMode = 1;
                 } else {
-                    MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
-                    if(!(CharAttrGet(playerP->charNo) & 0x10)) {
+                    fn_8007EEBC(playerP, 0);
+                    PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
+                    if(!(fn_80062094(playerP->charNo) & 0x10)) {
                         HuVecF pos;
-                        MgActorPosGet(playerP->actor, &pos);
-                        Hu3DModelPosSet(playerP->actor->mdlId, pos.x, pos.y, pos.z);
-                        CharModelLandDustCreateStep(playerP->charNo, &pos);
+                        fn_80086BC8(playerP->actor, &pos);
+                        fn_80026760(playerP->actor->mdlId, pos.x, pos.y, pos.z);
+                        fn_8005FC84(playerP->charNo, &pos);
                     }
                 }
             } else {
-                if(playerP->motNo == MGPLAYER_MOT_JUMP) {
-                    if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-                        && ((HuPadBtnDown[playerP->padNo] & PAD_BUTTON_A)
-                        || (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_TRIGGER_L))) {
-                        if(playerP->actionFlag & MGPLAYER_ACTFLAG_HIPDROP) {
-                            MgPlayerModeSet(playerP, MGPLAYER_MODE_HIPDROP);
+                if(playerP->motNo == 3) {
+                    if(!fn_8008717C(playerP, (1 << 0))
+                        && ((lbl_802C0008[playerP->padNo] & PAD_BUTTON_A)
+                        || (lbl_802C0008[playerP->padNo] & 0x4000))) {
+                        if(playerP->actionFlag & (1 << 4)) {
+                            fn_8007EEBC(playerP, 5);
                         }
-                    } else if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-                        && (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_B)) {
-                        if(playerP->actionFlag & MGPLAYER_ACTFLAG_KICK) {
-                            MgPlayerModeSet(playerP, MGPLAYER_MODE_KICK);
+                    } else if(!fn_8008717C(playerP, (1 << 0))
+                        && (lbl_802C0008[playerP->padNo] & PAD_BUTTON_B)) {
+                        if(playerP->actionFlag & (1 << 3)) {
+                            fn_8007EEBC(playerP, 4);
                         }
                     }
                 }
@@ -1151,29 +1151,29 @@ static void PlayerModeFall(MGPLAYER *playerP)
 
         case 1:
             if (playerP->timer <= 9 &&
-                !MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD)) {
-                MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                !fn_80087148(playerP, (1 << 1))) {
+                fn_80087168(playerP, (1 << 8)|(1 << 9));
             }
             if(playerP->timer > 0) {
-                if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-                    && (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_A)) {
-                    if(!MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD)) {
-                        MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                if(!fn_8008717C(playerP, (1 << 0))
+                    && (lbl_802C0008[playerP->padNo] & PAD_BUTTON_A)) {
+                    if(!fn_80087148(playerP, (1 << 1))) {
+                        fn_80087168(playerP, (1 << 8)|(1 << 9));
                     }
                     if(playerP->timer >= 6.0f) {
-                        if(!(CharAttrGet(playerP->charNo) & 0x10)) {
+                        if(!(fn_80062094(playerP->charNo) & 0x10)) {
                             HuVecF pos;
-                            MgActorPosGet(playerP->actor, &pos);
-                            Hu3DModelPosSet(playerP->actor->mdlId, pos.x, pos.y, pos.z);
-                            CharModelLandDustCreateStep(playerP->charNo, &pos);
+                            fn_80086BC8(playerP->actor, &pos);
+                            fn_80026760(playerP->actor->mdlId, pos.x, pos.y, pos.z);
+                            fn_8005FC84(playerP->charNo, &pos);
                         }
                     }
-                    MgPlayerModeSet(playerP, MGPLAYER_MODE_JUMP);
+                    fn_8007EEBC(playerP, 1);
                 }
                 playerP->timer--;
             } else {
-                MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+                fn_8007EEBC(playerP, 0);
+                PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             }
             break;
     }
@@ -1188,20 +1188,20 @@ static void PlayerModePunch(MGPLAYER *playerP)
         {
             int no;
             COLBODY *body;
-            PlayerSetMotion(playerP, MGPLAYER_MOT_PUNCH, 0, 5, HU3D_MOTATTR_NONE);
+            PlayerSetMotion(playerP, 5, 0, 5, 0);
             playerP->timer = 20;
-            MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+            fn_80087158(playerP, (1 << 8)|(1 << 9));
             no = playerP->actor->no;
-            body = ColBodyGetSafe(no);
-            param.param = body->param.paramA+COLBODY_MAX;
+            body = fn_8007D8E0(no);
+            param.param = body->param.paramA+256;
             param.type = 2;
             param.height = 120;
             param.radius = 60;
-            param.attr = COLBODY_ATTR_ACTIVE|COLBODY_ATTR_RESET|0xA;
+            param.attr = (1 << 0)|(1 << 24)|0xA;
             param.narrowHook = NULL;
             param.correctHook = NULL;
-            actmanWork.effPlayer[no] = MgActorCreate(&param, HU3D_MODELID_NONE);
-            MgActorColMaskSet(actmanWork.effPlayer[no], MgActorColMaskGet(playerP->actor));
+            actmanWork.effPlayer[no] = fn_80080B04(&param, -1);
+            fn_80080DD4(actmanWork.effPlayer[no], fn_80080E38(playerP->actor));
             actmanWork.effPlayer[no]->rotY = playerP->actor->rotY;
             actmanWork.effPlayer[no]->pos = playerP->actor->pos;
             actmanWork.effPlayer[no]->push.x = 0;
@@ -1230,15 +1230,15 @@ static void PlayerModePunch(MGPLAYER *playerP)
                 }
             } else {
                 KillEffectPlayer(no);
-                MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                fn_80087168(playerP, (1 << 8)|(1 << 9));
                 playerP->subMode = 2;
             }
         }
             break;
 
         case 2:
-            MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-            PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+            fn_8007EEBC(playerP, 0);
+            PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             break;
     }
 }
@@ -1252,19 +1252,19 @@ static void PlayerModeKick(MGPLAYER *playerP)
             int no;
             COLBODY *body;
             MGACTOR_PARAM param;
-            PlayerSetMotion(playerP, MGPLAYER_MOT_KICK, 0, 5, HU3D_MOTATTR_NONE);
+            PlayerSetMotion(playerP, 6, 0, 5, 0);
             playerP->timer = 20;
             no = playerP->actor->no;
-            body = ColBodyGetSafe(no);
-            param.param = body->param.paramA+COLBODY_MAX;
+            body = fn_8007D8E0(no);
+            param.param = body->param.paramA+256;
             param.type = 3;
             param.height = 120;
             param.radius = 60;
-            param.attr = COLBODY_ATTR_ACTIVE|COLBODY_ATTR_RESET|0xA;
+            param.attr = (1 << 0)|(1 << 24)|0xA;
             param.narrowHook = NULL;
             param.correctHook = NULL;
-            actmanWork.effPlayer[no] = MgActorCreate(&param, HU3D_MODELID_NONE);
-            MgActorColMaskSet(actmanWork.effPlayer[no], MgActorColMaskGet(playerP->actor));
+            actmanWork.effPlayer[no] = fn_80080B04(&param, -1);
+            fn_80080DD4(actmanWork.effPlayer[no], fn_80080E38(playerP->actor));
             actmanWork.effPlayer[no]->rotY = playerP->actor->rotY;
             actmanWork.effPlayer[no]->pos = playerP->actor->pos;
             actmanWork.effPlayer[no]->push.x = 0;
@@ -1282,7 +1282,7 @@ static void PlayerModeKick(MGPLAYER *playerP)
             int no;
             no = playerP->actor->no;
             if(playerP->actor->colGroundAttr & 0x407F) {
-                PlayerSetMotion(playerP, MGPLAYER_MOT_LAND, 0, 5, HU3D_MOTATTR_NONE);
+                PlayerSetMotion(playerP, 4, 0, 5, 0);
                 KillEffectPlayer(no);
                 playerP->timer = 10;
                 playerP->subMode = 2;
@@ -1302,8 +1302,8 @@ static void PlayerModeKick(MGPLAYER *playerP)
                  * the following update returns the player to walking. */
                 playerP->timer = -1;
             } else {
-                PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
-                MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
+                PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
+                fn_8007EEBC(playerP, 0);
             }
 
             break;
@@ -1315,9 +1315,9 @@ static void PlayerModeHipDrop(MGPLAYER *playerP)
 {
     switch(playerP->subMode) {
         case 0:
-            PlayerSetMotion(playerP, MGPLAYER_MOT_HIPDROP, 0, 5, HU3D_MOTATTR_NONE);
+            PlayerSetMotion(playerP, 7, 0, 5, 0);
             playerP->timer = 20;
-            MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+            fn_80087158(playerP, (1 << 8)|(1 << 9));
             playerP->subMode = 1;
             break;
 
@@ -1332,16 +1332,16 @@ static void PlayerModeHipDrop(MGPLAYER *playerP)
                 COLBODY *body;
                 MGACTOR_PARAM param;
                 no = playerP->actor->no;
-                body = ColBodyGetSafe(no);
-                param.param = body->param.paramA+COLBODY_MAX;
+                body = fn_8007D8E0(no);
+                param.param = body->param.paramA+256;
                 param.type = 4;
                 param.height = 10;
                 param.radius = 80;
-                param.attr = COLBODY_ATTR_ACTIVE|COLBODY_ATTR_RESET|0xA;
+                param.attr = (1 << 0)|(1 << 24)|0xA;
                 param.narrowHook = NULL;
                 param.correctHook = NULL;
-                actmanWork.effPlayer[no] = MgActorCreate(&param, HU3D_MODELID_NONE);
-                MgActorColMaskSet(actmanWork.effPlayer[no], MgActorColMaskGet(playerP->actor));
+                actmanWork.effPlayer[no] = fn_80080B04(&param, -1);
+                fn_80080DD4(actmanWork.effPlayer[no], fn_80080E38(playerP->actor));
                 actmanWork.effPlayer[no]->rotY = playerP->actor->rotY;
                 actmanWork.effPlayer[no]->pos = playerP->actor->pos;
                 actmanWork.effPlayer[no]->pos.y -= 10;
@@ -1363,8 +1363,8 @@ static void PlayerModeHipDrop(MGPLAYER *playerP)
             if(playerP->actor->colGroundAttr & 0x407F) {
                 playerP->timer = 20;
                 playerP->subMode = 3;
-                MgPlayerVibAttrSet(playerP, MGPLAYER_VIBATTR_HIPDROP_LAND);
-                PlayerSetMotion(playerP, MGPLAYER_MOT_HIPDROP_LAND, 0, 5, HU3D_MOTATTR_NONE);
+                fn_80087104(playerP, MGPLAYER_VIBATTR_HIPDROP_LAND);
+                PlayerSetMotion(playerP, 8, 0, 5, 0);
                 KillEffectPlayer(playerP->actor->no);
             }
         }
@@ -1376,7 +1376,7 @@ static void PlayerModeHipDrop(MGPLAYER *playerP)
             } else {
                 playerP->timer = 20;
                 playerP->subMode = 4;
-                PlayerSetMotion(playerP, MGPLAYER_MOT_HIPDROP_END, 0, 5, HU3D_MOTATTR_NONE);
+                PlayerSetMotion(playerP, 9, 0, 5, 0);
             }
             break;
 
@@ -1384,11 +1384,11 @@ static void PlayerModeHipDrop(MGPLAYER *playerP)
             if(playerP->timer > 0) {
                 playerP->timer--;
             } else {
-                if(!MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD)) {
-                    MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                if(!fn_80087148(playerP, (1 << 1))) {
+                    fn_80087168(playerP, (1 << 8)|(1 << 9));
                 }
-                MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+                fn_8007EEBC(playerP, 0);
+                PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             }
             break;
     }
@@ -1415,15 +1415,15 @@ static void PlayerModeHit(MGPLAYER *playerP)
             MTXRotRad(rotMtx, 'Y', 0.017453292f*playerP->stunAngle);
             MTXMultVec(rotMtx, &forwardBasis, &stunDir);
             if(VECDotProduct(&rotDir, &stunDir) < 0) {
-                PlayerSetMotion(playerP, MGPLAYER_MOT_HIT_BACK, 0, 5, HU3D_MOTATTR_NONE);
+                PlayerSetMotion(playerP, 10, 0, 5, 0);
                 playerP->actor->rotY = WrapAngle(180+playerP->stunAngle);
             } else {
-                PlayerSetMotion(playerP, MGPLAYER_MOT_HIT_FRONT, 0, 5, HU3D_MOTATTR_NONE);
+                PlayerSetMotion(playerP, 11, 0, 5, 0);
                 playerP->actor->rotY = playerP->stunAngle;
             }
             playerP->timer = 45;
-            MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
-            playerP->stunType = MGPLAYER_STUN_FREEZE;
+            fn_80087158(playerP, (1 << 8)|(1 << 9));
+            playerP->stunType = 6;
             playerP->subMode = 1;
         }
 
@@ -1433,11 +1433,11 @@ static void PlayerModeHit(MGPLAYER *playerP)
             if(playerP->timer > 0) {
                 playerP->actor->push.x = 0;
                 playerP->actor->push.y = 0;
-                if(playerP->motNo == MGPLAYER_MOT_HIT_BACK) {
+                if(playerP->motNo == 10) {
                     if(playerP->timer > 25) {
                         playerP->actor->push.z = -(playerP->timer/1.7f)*((playerP->timer-25)/20);
                     }
-                } else if(playerP->motNo == MGPLAYER_MOT_HIT_FRONT) {
+                } else if(playerP->motNo == 11) {
                     if(playerP->timer > 0) {
                         playerP->actor->push.z = (playerP->timer/3.0f)*(playerP->timer/45);
                     }
@@ -1449,10 +1449,10 @@ static void PlayerModeHit(MGPLAYER *playerP)
             break;
 
         case 2:
-            playerP->stunType = MGPLAYER_STUN_BLINK;
-            MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
-            MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-            PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+            playerP->stunType = 5;
+            fn_80087168(playerP, (1 << 8)|(1 << 9));
+            fn_8007EEBC(playerP, 0);
+            PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             break;
 
     }
@@ -1478,15 +1478,15 @@ static void PlayerModeKnockback(MGPLAYER *playerP)
             MTXRotRad(rotMtx, 'Y', 0.017453292f*playerP->stunAngle);
             MTXMultVec(rotMtx, &forwardBasis, &stunDir);
             if(VECDotProduct(&rotDir, &stunDir) < 0) {
-                PlayerSetMotion(playerP, MGPLAYER_MOT_KNOCKBACK_BACK, 0, 5, HU3D_MOTATTR_NONE);
+                PlayerSetMotion(playerP, 12, 0, 5, 0);
                 playerP->actor->rotY = WrapAngle(180+playerP->stunAngle);
             } else {
-                PlayerSetMotion(playerP, MGPLAYER_MOT_KNOCKBACK_FRONT, 0, 5, HU3D_MOTATTR_NONE);
+                PlayerSetMotion(playerP, 13, 0, 5, 0);
                 playerP->actor->rotY = playerP->stunAngle;
             }
             playerP->timer = 45;
-            MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
-            playerP->stunType = MGPLAYER_STUN_FREEZE;
+            fn_80087158(playerP, (1 << 8)|(1 << 9));
+            playerP->stunType = 6;
             playerP->subMode = 1;
         }
             break;
@@ -1496,20 +1496,20 @@ static void PlayerModeKnockback(MGPLAYER *playerP)
                 playerP->actor->push.x = 0;
                 playerP->actor->push.y = 0;
                 if(playerP->timer > 25) {
-                    if(playerP->motNo == MGPLAYER_MOT_KNOCKBACK_BACK) {
+                    if(playerP->motNo == 12) {
                         playerP->actor->push.z = -(playerP->timer/1.4f)*((playerP->timer-25)/20);
-                    } else if(playerP->motNo == MGPLAYER_MOT_KNOCKBACK_FRONT) {
+                    } else if(playerP->motNo == 13) {
                         playerP->actor->push.z = (playerP->timer/1.4f)*((playerP->timer-25)/20);
                     }
                 }
                 playerP->timer--;
             } else {
-                if(playerP->motNo == MGPLAYER_MOT_KNOCKBACK_BACK) {
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_KNOCKBACK_BACK_END, 0, 5,
-                                    HU3D_MOTATTR_NONE);
-                } else if(playerP->motNo == MGPLAYER_MOT_KNOCKBACK_FRONT) {
-                    PlayerSetMotion(playerP, MGPLAYER_MOT_KNOCKBACK_FRONT_END, 0, 5,
-                                    HU3D_MOTATTR_NONE);
+                if(playerP->motNo == 12) {
+                    PlayerSetMotion(playerP, 14, 0, 5,
+                                    0);
+                } else if(playerP->motNo == 13) {
+                    PlayerSetMotion(playerP, 15, 0, 5,
+                                    0);
                 }
                 playerP->timer = 30;
                 playerP->subMode = 2;
@@ -1520,10 +1520,10 @@ static void PlayerModeKnockback(MGPLAYER *playerP)
             if(playerP->timer > 0) {
                 playerP->timer--;
             } else {
-                playerP->stunType = MGPLAYER_STUN_BLINK;
-                MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
-                MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+                playerP->stunType = 5;
+                fn_80087168(playerP, (1 << 8)|(1 << 9));
+                fn_8007EEBC(playerP, 0);
+                PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             }
 
             break;
@@ -1538,15 +1538,15 @@ static void PlayerModeSquish(MGPLAYER *playerP)
 
     switch(playerP->subMode) {
         case 0:
-            body = ColBodyGet(playerP->actor->no);
-            MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+            body = fn_8007BAB8(playerP->actor->no);
+            fn_80087158(playerP, (1 << 8)|(1 << 9));
             playerP->timer = 8;
-            if(!MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH)) {
-                MgPlayerModeAttrSet(playerP, MGPLAYER_MODEATTR_SQUISH);
+            if(!fn_80087148(playerP, (1 << 0))) {
+                fn_80087124(playerP, (1 << 0));
                 playerP->squishOldHeight = body->param.height;
                 body->param.height = playerP->squishOldHeight*0.5f;
             }
-            playerP->stunType = MGPLAYER_STUN_FREEZE;
+            playerP->stunType = 6;
             playerP->subMode = 1;
             break;
 
@@ -1556,19 +1556,19 @@ static void PlayerModeSquish(MGPLAYER *playerP)
             scaleY = 0.5f+(0.5f*t);
             if(playerP->timer > 0) {
                 playerP->timer--;
-                Hu3DModelScaleSet(playerP->actor->mdlId, scaleXZ, scaleY, scaleXZ);
+                fn_800268B0(playerP->actor->mdlId, scaleXZ, scaleY, scaleXZ);
             } else {
-                Hu3DModelScaleSet(playerP->actor->mdlId, 1.25f, 0.5f, 1.25f);
+                fn_800268B0(playerP->actor->mdlId, 1.25f, 0.5f, 1.25f);
                 playerP->subMode = 2;
             }
             break;
 
         case 2:
-            MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
-            playerP->stunType = MGPLAYER_STUN_BLINK;
+            fn_80087168(playerP, (1 << 8)|(1 << 9));
+            playerP->stunType = 5;
             playerP->squishTime = 90;
-            MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-            PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+            fn_8007EEBC(playerP, 0);
+            PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             break;
     }
 }
@@ -1580,17 +1580,17 @@ static void PlayerModeSquishHard(MGPLAYER *playerP)
 
     switch(playerP->subMode) {
         case 0:
-            MgActorColAttrSet(playerP->actor, COLBODY_ATTR_BODYCOL_OFF);
-            MgPlayerModeAttrSet(playerP, MGPLAYER_MODEATTR_SQUISH_HARD);
-            MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
-            if(MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH)) {
-                body = ColBodyGet(playerP->actor->no);
-                MgPlayerModeAttrReset(playerP, MGPLAYER_MODEATTR_SQUISH);
+            fn_800805CC(playerP->actor, (1 << 2));
+            fn_80087124(playerP, (1 << 1));
+            fn_80087158(playerP, (1 << 8)|(1 << 9));
+            if(fn_80087148(playerP, (1 << 0))) {
+                body = fn_8007BAB8(playerP->actor->no);
+                fn_80087134(playerP, (1 << 0));
                 body->param.height = playerP->squishOldHeight;
             }
             playerP->timer = 5;
-            PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
-            playerP->stunType = MGPLAYER_STUN_FREEZE;
+            PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
+            playerP->stunType = 6;
             playerP->subMode = 1;
             break;
 
@@ -1599,7 +1599,7 @@ static void PlayerModeSquishHard(MGPLAYER *playerP)
                 float scale;
                 playerP->timer--;
                 scale = 1+((10*(5-playerP->timer))/100);
-                Hu3DModelScaleSet(playerP->actor->mdlId, scale,
+                fn_800268B0(playerP->actor->mdlId, scale,
                                   0.05f + ((20 * playerP->timer) / 100), scale);
             } else {
                 playerP->timer = 120;
@@ -1613,7 +1613,7 @@ static void PlayerModeSquishHard(MGPLAYER *playerP)
             } else {
                 /* Restore body collision before the blinking reshape; movement and turning
                  * stay locked until that phase finishes. */
-                MgActorColAttrReset(playerP->actor, COLBODY_ATTR_BODYCOL_OFF);
+                fn_8008062C(playerP->actor, (1 << 2));
                 playerP->timer = 100;
                 playerP->subMode = 3;
             }
@@ -1624,38 +1624,38 @@ static void PlayerModeSquishHard(MGPLAYER *playerP)
             float t = playerP->timer/100;
             float angle = 270+((playerP->timer*2880)/100);
             float scale;
-            t = (1+(0.5*(t*HuSin(angle))))-(t*0.45f);
+            t = (1+(0.5*(t*sin(3.141592653589793*angle/180.0))))-(t*0.45f);
             scale = 1+(0.08f*(playerP->timer-93));
-            if(Hu3DModelAttrGet(playerP->actor->mdlId) & HU3D_ATTR_DISPOFF) {
-                Hu3DModelDispOn(playerP->actor->mdlId);
+            if(fn_80026A90(playerP->actor->mdlId) & (1 << 0)) {
+                fn_80026A44(playerP->actor->mdlId, (1 << 0));
             } else {
-                Hu3DModelDispOff(playerP->actor->mdlId);
+                fn_800269E8(playerP->actor->mdlId, (1 << 0));
             }
             if(playerP->timer > 0) {
                 if(playerP->timer > 93) {
-                    Hu3DModelScaleSet(playerP->actor->mdlId, scale, t, scale);
+                    fn_800268B0(playerP->actor->mdlId, scale, t, scale);
                 } else {
-                    Hu3DModelScaleSet(playerP->actor->mdlId, 1, t, 1);
+                    fn_800268B0(playerP->actor->mdlId, 1, t, 1);
                 }
                 playerP->timer--;
             } else {
-                Hu3DModelScaleSet(playerP->actor->mdlId, 1, 1, 1);
+                fn_800268B0(playerP->actor->mdlId, 1, 1, 1);
                 playerP->subMode = 4;
             }
         }
             break;
 
         case 4:
-            if(Hu3DModelAttrGet(playerP->actor->mdlId) & HU3D_ATTR_DISPOFF) {
-                Hu3DModelDispOn(playerP->actor->mdlId);
+            if(fn_80026A90(playerP->actor->mdlId) & (1 << 0)) {
+                fn_80026A44(playerP->actor->mdlId, (1 << 0));
             } else {
-                Hu3DModelDispOff(playerP->actor->mdlId);
+                fn_800269E8(playerP->actor->mdlId, (1 << 0));
             }
-            MgPlayerModeAttrReset(playerP, MGPLAYER_MODEATTR_SQUISH_HARD);
-            MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
-            playerP->stunType = MGPLAYER_STUN_BLINK;
-            MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-            PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+            fn_80087134(playerP, (1 << 1));
+            fn_80087168(playerP, (1 << 8)|(1 << 9));
+            playerP->stunType = 5;
+            fn_8007EEBC(playerP, 0);
+            PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             break;
     }
 }
@@ -1665,54 +1665,54 @@ static void PlayerModeJumpAlt(MGPLAYER *playerP)
 {
     switch(playerP->subMode) {
         case 0:
-            MgPlayerModeAttrSet(playerP, MGPLAYER_MODEATTR_AIR);
-            PlayerSetMotion(playerP, MGPLAYER_MOT_JUMP, 0, 1, HU3D_MOTATTR_NONE);
+            fn_80087124(playerP, (1 << 4));
+            PlayerSetMotion(playerP, 3, 0, 1, 0);
             playerP->actor->velY = GET_ACTOR_VELY(playerP->actor, 25000);
             playerP->subMode = 1;
             break;
 
         case 1:
         case 2:
-            PlayerSetMotion(playerP, MGPLAYER_MOT_JUMP, 0, 1, HU3D_MOTATTR_NONE);
+            PlayerSetMotion(playerP, 3, 0, 1, 0);
             if(((playerP->actor->colGroundAttr & 0x7F)
                     && playerP->actor->colNorm.y > 0
                     || (playerP->actor->colGroundAttr & 0x4000))
                     && playerP->actor->velY < 0.001) {
                         float speed = VECSquareMag(&playerP->actor->push);
                         if(speed < 25.0f) {
-                            PlayerSetMotion(playerP, MGPLAYER_MOT_LAND, 0, 5, HU3D_MOTATTR_NONE);
-                            MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                            PlayerSetMotion(playerP, 4, 0, 5, 0);
+                            fn_80087158(playerP, (1 << 8)|(1 << 9));
                             playerP->timer = 10;
                             playerP->subMode = 3;
                         } else {
-                            MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                            PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+                            fn_8007EEBC(playerP, 0);
+                            PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
                         }
                     } else {
                         /* This comparison's result is discarded; it does not change motion
                          * or start an attack. */
-                        playerP->motNo == MGPLAYER_MOT_JUMP;
+                        playerP->motNo == 3;
                     }
             break;
 
         case 3:
             if (playerP->timer <= 9 &&
-                !MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD)) {
-                MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                !fn_80087148(playerP, (1 << 1))) {
+                fn_80087168(playerP, (1 << 8)|(1 << 9));
             }
             if(playerP->timer > 0) {
-                if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)
-                    && (HuPadBtnDown[playerP->padNo] & PAD_BUTTON_A)) {
+                if(!fn_8008717C(playerP, (1 << 0))
+                    && (lbl_802C0008[playerP->padNo] & PAD_BUTTON_A)) {
                         playerP->subMode = 0;
-                        if(!MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD)) {
-                            MgPlayerAttrReset(playerP,
-                                              MGPLAYER_ATTR_ANGLELOCK | MGPLAYER_ATTR_MOVEOFF);
+                        if(!fn_80087148(playerP, (1 << 1))) {
+                            fn_80087168(playerP,
+                                              (1 << 8) | (1 << 9));
                         }
                     }
                     playerP->timer--;
             } else {
-                MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-                PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
+                fn_8007EEBC(playerP, 0);
+                PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
             }
             break;
     }
@@ -1741,7 +1741,7 @@ static inline void InitColPoint(MGACTOR *actorP, COLBODY *colBody)
 }
 
 /* Updates active minigame players and actors once per minigame frame. */
-void MgActorExec(void)
+void fn_800856A8(void)
 {
     MGPLAYER *playerP;
     MGACTOR *actorP;
@@ -1764,30 +1764,30 @@ void MgActorExec(void)
     HuVecF gravityForce;
     HuVecF normForce;
 
-    if(!ColMapInitCheck()) {
+    if(!fn_8007D52C()) {
         return;
     }
     for(i=0; i<PLAYER_MAX; i++) {
-        colBody = ColBodyGet(i);
-        if(colBody->param.attr & COLBODY_ATTR_ACTIVE) {
+        colBody = fn_8007BAB8(i);
+        if(colBody->param.attr & (1 << 0)) {
             playerP = &actmanWork.player[i];
-            if(MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_PAUSE)) {
+            if(fn_8008717C(playerP, (1 << 10))) {
                 continue;
             }
-            if ((playerP->actionFlag & MGPLAYER_ACTFLAG_WALK) &&
-                !MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_COMSTK)) {
+            if ((playerP->actionFlag & (1 << 0)) &&
+                !fn_8008717C(playerP, (1 << 0))) {
                 /* With MOVEOFF, stickVec is not refreshed; speed and optional facing below
                  * reuse a previous loop iteration's vector, or an uninitialized value if none
                  * filled it. */
-                if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_MOVEOFF)) {
-                    stickVec.x = HuPadStkX[playerP->padNo]/5.6f;
+                if(!fn_8008717C(playerP, (1 << 9))) {
+                    stickVec.x = lbl_802BFFFC[playerP->padNo]/5.6f;
                     stickVec.y = 0;
-                    stickVec.z = HuPadStkY[playerP->padNo]/5.6f;
+                    stickVec.z = lbl_802BFFF8[playerP->padNo]/5.6f;
                     GetStickMtx(stickMtx, playerP->camBit);
                     MTXMultVec(stickMtx, &stickVec, &stickVec);
                 }
                 stickSpeed = stickVec.z*stickVec.z+(stickVec.x*stickVec.x+stickVec.y*stickVec.y);
-                if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_ANGLELOCK)) {
+                if(!fn_8008717C(playerP, (1 << 8))) {
                     if(stickSpeed >= 0.001) {
                         SafeNormalize(&stickVec, &stickDir);
                         if(stickDir.z > 1) {
@@ -1799,29 +1799,29 @@ void MgActorExec(void)
                         if(stickDir.x < 0) {
                             angle = -angle;
                         }
-                        playerP->actor->rotY = (180*angle)/M_PI;
+                        playerP->actor->rotY = (180*angle)/3.141592653589793;
                     }
                 }
-                if(!MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_MOVEOFF)) {
+                if(!fn_8008717C(playerP, (1 << 9))) {
                     playerP->actor->push.x = 0;
                     playerP->actor->push.y = 0;
                     playerP->actor->push.z = sqrtf(stickSpeed);
                 }
-            } else if (MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_MOVEOFF)) {
+            } else if (fn_8008717C(playerP, (1 << 9))) {
                 playerP->actor->push.x = playerP->actor->push.y = playerP->actor->push.z = 0;
             }
             /* Clear vibration flags before this update's mode and collision reactions
              * generate requests. */
             playerP->vibAttr = 0;
-            if(MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH)) {
-                if (playerP->stunType == MGPLAYER_STUN_BLINK ||
-                    playerP->stunType == MGPLAYER_STUN_NONE) {
+            if(fn_80087148(playerP, (1 << 0))) {
+                if (playerP->stunType == 5 ||
+                    playerP->stunType == 0) {
                     playerP->squishTime--;
                     if(playerP->squishTime < 0) {
                         if(playerP->squishTime < -20) {
-                            colBody = ColBodyGet(playerP->actor->no);
-                            MgPlayerModeAttrReset(playerP, MGPLAYER_MODEATTR_SQUISH);
-                            Hu3DModelScaleSet(playerP->actor->mdlId, 1, 1, 1);
+                            colBody = fn_8007BAB8(playerP->actor->no);
+                            fn_80087134(playerP, (1 << 0));
+                            fn_800268B0(playerP->actor->mdlId, 1, 1, 1);
                             colBody->param.height = playerP->squishOldHeight;
                             playerP->squishTime = 0;
                         } else {
@@ -1838,93 +1838,93 @@ void MgActorExec(void)
                                 scaleXZ = 1;
                                 scaleY = 0.7f+(0.3f*t);
                             }
-                            Hu3DModelScaleSet(playerP->actor->mdlId, scaleXZ, scaleY, scaleXZ);
+                            fn_800268B0(playerP->actor->mdlId, scaleXZ, scaleY, scaleXZ);
                         }
                     }
                 }
             }
-            if(MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH)) {
+            if(fn_80087148(playerP, (1 << 0))) {
                 VECScale(&playerP->actor->push, &playerP->actor->push, 0.5f);
             }
-            if(MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_HEADJUMP)) {
-                if(MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_STKLOCK)) {
+            if(fn_80087148(playerP, ((1 << 2)|(1 << 3)))) {
+                if(fn_80087148(playerP, (1 << 3))) {
                     if(playerP->actor->velY <= 0) {
-                        if(!MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD)
-                            && playerP->stunType == MGPLAYER_STUN_NONE
-                            && playerP->mode != MGPLAYER_MODE_HIPDROP) {
-                            MgPlayerModeAttrReset(playerP, MGPLAYER_MODEATTR_STKLOCK);
-                            MgPlayerAttrReset(playerP,
-                                              MGPLAYER_ATTR_ANGLELOCK | MGPLAYER_ATTR_MOVEOFF);
+                        if(!fn_80087148(playerP, (1 << 1))
+                            && playerP->stunType == 0
+                            && playerP->mode != 5) {
+                            fn_80087134(playerP, (1 << 3));
+                            fn_80087168(playerP,
+                                              (1 << 8) | (1 << 9));
                         }
                     } else {
-                        MgPlayerAttrSet(playerP, MGPLAYER_ATTR_ANGLELOCK|MGPLAYER_ATTR_MOVEOFF);
+                        fn_80087158(playerP, (1 << 8)|(1 << 9));
                     }
                 }
                 if(playerP->actor->colGroundAttr & 0x407F) {
-                    MgPlayerModeAttrReset(playerP, MGPLAYER_MODEATTR_HEADJUMP);
-                    if (!MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH_HARD) &&
-                        playerP->mode != MGPLAYER_MODE_HIPDROP &&
-                        (playerP->stunType == MGPLAYER_STUN_NONE ||
-                         playerP->stunType == MGPLAYER_STUN_BLINK)) {
-                        MgPlayerAttrReset(playerP, MGPLAYER_ATTR_ANGLELOCK | MGPLAYER_ATTR_MOVEOFF);
+                    fn_80087134(playerP, ((1 << 2)|(1 << 3)));
+                    if (!fn_80087148(playerP, (1 << 1)) &&
+                        playerP->mode != 5 &&
+                        (playerP->stunType == 0 ||
+                         playerP->stunType == 5)) {
+                        fn_80087168(playerP, (1 << 8) | (1 << 9));
                     }
                     memset(&playerP->actor->forceB, 0, sizeof(HuVecF));
                 }
             }
             if(playerP->actor->colGroundAttr & 0x407F) {
-                MgPlayerModeAttrReset(playerP, MGPLAYER_MODEATTR_AIR);
+                fn_80087134(playerP, (1 << 4));
             } else if (playerP->actor->velY <
                        -((5 * playerP->actor->gravity) + (5 * playerP->actor->gravity))) {
-                MgPlayerModeAttrSet(playerP, MGPLAYER_MODEATTR_AIR);
+                fn_80087124(playerP, (1 << 4));
             }
-            if(playerP->actionFlag & MGPLAYER_ACTFLAG_STUN) {
+            if(playerP->actionFlag & (1 << 5)) {
                 switch(playerP->stunType) {
-                    case MGPLAYER_STUN_NONE:
+                    case 0:
                         break;
 
-                    case MGPLAYER_STUN_HIT:
+                    case 1:
                         if(playerP->actor->velY > 0) {
                             playerP->actor->velY = 0;
                         }
                         KillEffectPlayer(playerP->actor->no);
-                        MgPlayerModeSet(playerP, MGPLAYER_MODE_HIT);
+                        fn_8007EEBC(playerP, 6);
                         break;
 
-                    case MGPLAYER_STUN_KNOCKBACK:
+                    case 2:
                         if(playerP->actor->velY > 0) {
                             playerP->actor->velY = 0;
                         }
                         KillEffectPlayer(playerP->actor->no);
-                        MgPlayerModeSet(playerP, MGPLAYER_MODE_KNOCKBACK);
+                        fn_8007EEBC(playerP, 7);
                         break;
 
-                    case MGPLAYER_STUN_SQUISH:
+                    case 3:
                         if(playerP->actor->velY > 0) {
                             playerP->actor->velY = 0;
                         }
                         KillEffectPlayer(playerP->actor->no);
-                        MgPlayerModeSet(playerP, MGPLAYER_MODE_SQUISH);
+                        fn_8007EEBC(playerP, 8);
                         break;
 
-                    case MGPLAYER_STUN_SQUISH_HARD:
+                    case 4:
                         if(playerP->actor->velY > 0) {
                             playerP->actor->velY = 0;
                         }
                         KillEffectPlayer(playerP->actor->no);
-                        MgPlayerModeSet(playerP, MGPLAYER_MODE_SQUISH_HARD);
+                        fn_8007EEBC(playerP, 9);
                         break;
 
-                    case MGPLAYER_STUN_BLINK:
-                        if(Hu3DModelAttrGet(playerP->actor->mdlId) & HU3D_ATTR_DISPOFF) {
-                            Hu3DModelDispOn(playerP->actor->mdlId);
+                    case 5:
+                        if(fn_80026A90(playerP->actor->mdlId) & (1 << 0)) {
+                            fn_80026A44(playerP->actor->mdlId, (1 << 0));
                         } else {
-                            Hu3DModelDispOff(playerP->actor->mdlId);
+                            fn_800269E8(playerP->actor->mdlId, (1 << 0));
                         }
                         if(playerP->stunTime > 0) {
                             playerP->stunTime--;
                         } else {
-                            Hu3DModelDispOn(playerP->actor->mdlId);
-                            playerP->stunType = MGPLAYER_STUN_NONE;
+                            fn_80026A44(playerP->actor->mdlId, (1 << 0));
+                            playerP->stunType = 0;
                         }
                         break;
                 }
@@ -1932,16 +1932,16 @@ void MgActorExec(void)
             playerP->modeFunc[playerP->mode](playerP);
         }
     }
-    ColDirtyClear();
+    fn_8007D534();
     for(i=0; i<ACTOR_MAX; i++) {
-        colBody = ColBodyGet(i);
-        if(colBody->param.attr & COLBODY_ATTR_ACTIVE) {
+        colBody = fn_8007BAB8(i);
+        if(colBody->param.attr & (1 << 0)) {
             actorP = &actmanWork.actor[i];
             if(actorP->attr & MGACTOR_ATTR_COL_OFF) {
                 continue;
             }
             if(actorP->mdlId >= 0) {
-                Hu3DModelRotSet(actorP->mdlId, 0, actorP->rotY, 0);
+                fn_80026808(actorP->mdlId, 0, actorP->rotY, 0);
             }
             if(actorP->colGroundAttr & 0x407F) {
                 if(actorP->velY < 0.001 && actorP->terminalVelY > -(5*actorP->gravity)) {
@@ -1962,14 +1962,14 @@ void MgActorExec(void)
             VECAdd(&vel, &actorP->forceA, &vel);
             VECAdd(&actorP->pos, &vel, &actorP->pos);
             actorP->push.x = actorP->push.y =  actorP->push.z = 0;
-            ColBodyPosSet(&actorP->pos, i);
+            fn_8007D6E0(&actorP->pos, i);
             actorP->oldPos = actorP->pos;
         }
     }
-    ColBodyExec();
+    fn_8007DDB8();
     for(i=0; i<ACTOR_MAX; i++) {
-        colBody = ColBodyGet(i);
-        if(colBody->param.attr & COLBODY_ATTR_ACTIVE) {
+        colBody = fn_8007BAB8(i);
+        if(colBody->param.attr & (1 << 0)) {
             actorP = &actmanWork.actor[i];
             if(actorP->attr & MGACTOR_ATTR_COL_OFF) {
                 continue;
@@ -1979,13 +1979,13 @@ void MgActorExec(void)
              * check mdlId. */
             if (actorP->oldPos.x != actorP->pos.x || actorP->oldPos.y != actorP->pos.y ||
                 actorP->oldPos.z != actorP->pos.z) {
-                Hu3DModelPosSet(actorP->mdlId, actorP->pos.x,
+                fn_80026760(actorP->mdlId, actorP->pos.x,
                                 actorP->pos.y - (colBody->param.height / 2), actorP->pos.z);
             } else {
-                ColBodyPosGet(&actorP->pos, i);
+                fn_8007D7B4(&actorP->pos, i);
                 if(actorP->mdlId >= 0) {
-                    MgActorPosGet(actorP, &pos);
-                    Hu3DModelPosSet(actorP->mdlId, pos.x, pos.y, pos.z);
+                    fn_80086BC8(actorP, &pos);
+                    fn_80026760(actorP->mdlId, pos.x, pos.y, pos.z);
                 }
                 actorP->colGroundAttr = colBody->groundAttr;
                 InitColPoint(actorP, colBody);
@@ -2020,43 +2020,43 @@ void MgActorExec(void)
 
 /* Queries a map segment when collision data is ready. A hit up to 0.001 later in segment
 * fraction than the current best can replace it, including beyond the segment endpoint. */
-BOOL MgActorColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, MGACTOR_COLMAP_POLY *outPoly)
+BOOL fn_80086910(HuVecF *pos1, HuVecF *pos2, u32 mask, MGACTOR_COLMAP_POLY *outPoly)
 {
-    if(!ColMapInitCheck()) {
+    if(!fn_8007D52C()) {
         return FALSE;
     }
-    return ColMapPolyGet(pos1, pos2, mask, &outPoly->pos, &outPoly->code, &outPoly->mdlNo,
+    return fn_8007D91C(pos1, pos2, mask, &outPoly->pos, &outPoly->code, &outPoly->mdlNo,
                          &outPoly->obj, &outPoly->triNo);
 }
 
 /* Attempts stun/shape and walking resets, ignoring failures, then requests idle motion
  * and moves the actor even if stun or mode remains unchanged. */
-void MgPlayerPosSet(MGPLAYER *playerP, HuVecF *pos)
+void fn_8008697C(MGPLAYER *playerP, HuVecF *pos)
 {
-    MgPlayerModeIdleSet(playerP);
-    MgPlayerModeSet(playerP, MGPLAYER_MODE_WALK);
-    PlayerSetMotion(playerP, MGPLAYER_MOT_IDLE, 0, 5, HU3D_MOTATTR_LOOP);
-    MgActorPosSet(playerP->actor, pos);
+    fn_80087218(playerP);
+    fn_8007EEBC(playerP, 0);
+    PlayerSetMotion(playerP, 0, 0, 5, ((1 << 30) | (1 << 0)));
+    fn_80086AA8(playerP->actor, pos);
 }
 
 /* Moves an actor and marks its collision body for position synchronization. */
-void MgActorPosSet(MGACTOR *actorP, HuVecF *pos)
+void fn_80086AA8(MGACTOR *actorP, HuVecF *pos)
 {
-    COLBODY *colBody = ColBodyGet(actorP->no);
-    colBody->param.attr |= COLBODY_ATTR_RESET;
-    MgActorPosSetRaw(actorP, pos);
+    COLBODY *colBody = fn_8007BAB8(actorP->no);
+    colBody->param.attr |= (1 << 24);
+    fn_80086B04(actorP, pos);
 }
 
 /* Stores the actor's center from its base position; the collision buffers update during
  * MgActorExec. */
-void MgActorPosSetRaw(MGACTOR *actorP, HuVecF *pos)
+void fn_80086B04(MGACTOR *actorP, HuVecF *pos)
 {
     COLBODY *colBody;
     if(actorP->no < 0) {
         return;
     }
-    colBody = ColBodyGet(actorP->no);
-    if(colBody->param.attr & COLBODY_ATTR_ACTIVE) {
+    colBody = fn_8007BAB8(actorP->no);
+    if(colBody->param.attr & (1 << 0)) {
         actorP->pos = *pos;
         if(actmanWork.colCylF) {
             actorP->pos.y += colBody->param.height/2;
@@ -2067,14 +2067,14 @@ void MgActorPosSetRaw(MGACTOR *actorP, HuVecF *pos)
 }
 
 /* Gets the actor's base position from its stored center using the collision body's shape. */
-void MgActorPosGet(MGACTOR *actorP, HuVecF *pos)
+void fn_80086BC8(MGACTOR *actorP, HuVecF *pos)
 {
     COLBODY *colBody;
     if(actorP->no < 0) {
         return;
     }
-    colBody = ColBodyGet(actorP->no);
-    if(colBody->param.attr & COLBODY_ATTR_ACTIVE) {
+    colBody = fn_8007BAB8(actorP->no);
+    if(colBody->param.attr & (1 << 0)) {
         *pos = actorP->pos;
         if(actmanWork.colCylF) {
             pos->y -= colBody->param.height/2;
@@ -2084,40 +2084,40 @@ void MgActorPosGet(MGACTOR *actorP, HuVecF *pos)
     }
 }
 
-void MgActorPushSet(MGACTOR *actorP, HuVecF *push)
+void fn_80086C8C(MGACTOR *actorP, HuVecF *push)
 {
     actorP->push = *push;
 }
 
-void MgActorRotYSet(MGACTOR *actorP, float rotY)
+void fn_80086CA8(MGACTOR *actorP, float rotY)
 {
     actorP->rotY = rotY;
 }
 
-void MgActorRotYGet(MGACTOR *actorP, float *rotY)
+void fn_80086CB0(MGACTOR *actorP, float *rotY)
 {
     *rotY = actorP->rotY;
 }
 
-void MgActorGravitySet(MGACTOR *actorP, float gravity)
+void fn_80086CBC(MGACTOR *actorP, float gravity)
 {
     actorP->gravity = gravity;
 }
 
-void MgActorVelYSet(MGACTOR *actorP, float velY)
+void fn_80086CC4(MGACTOR *actorP, float velY)
 {
     actorP->velY = velY;
 }
 
-void MgActorVelSet(MGACTOR *actorP, HuVecF *vel)
+void fn_80086CCC(MGACTOR *actorP, HuVecF *vel)
 {
     actorP->vel = *vel;
 }
 
 /* Returns the last contacted mesh when the body has a recorded collision result. */
-BOOL MgActorColMeshGet(MGACTOR *actorP, int *mesh)
+BOOL fn_80086CE8(MGACTOR *actorP, int *mesh)
 {
-    COLBODY *body = ColBodyGet(actorP->no);
+    COLBODY *body = fn_8007BAB8(actorP->no);
     u32 attr = body->param.attr & COLBODY_ATTR_COL_RESULT_MASK;
     u32 result = attr;
     if(!result) {
@@ -2128,9 +2128,9 @@ BOOL MgActorColMeshGet(MGACTOR *actorP, int *mesh)
 }
 
 /* Returns the last contact normal when the body has a recorded collision result. */
-BOOL MgActorColNormalGet(MGACTOR *actorP, HuVecF *normal)
+BOOL fn_80086D54(MGACTOR *actorP, HuVecF *normal)
 {
-    COLBODY *body = ColBodyGet(actorP->no);
+    COLBODY *body = fn_8007BAB8(actorP->no);
     u32 attr = body->param.attr & COLBODY_ATTR_COL_RESULT_MASK;
     u32 result = attr;
     if(!result) {
@@ -2141,9 +2141,9 @@ BOOL MgActorColNormalGet(MGACTOR *actorP, HuVecF *normal)
 }
 
 /* Returns the last ground collision code when the body has a recorded result. */
-BOOL MgActorColCodeGet(MGACTOR *actorP, u32 *code)
+BOOL fn_80086DD0(MGACTOR *actorP, u32 *code)
 {
-    COLBODY *body = ColBodyGet(actorP->no);
+    COLBODY *body = fn_8007BAB8(actorP->no);
     u32 attr = body->param.attr & COLBODY_ATTR_COL_RESULT_MASK;
     u32 result = attr;
     if(!result) {
@@ -2154,96 +2154,96 @@ BOOL MgActorColCodeGet(MGACTOR *actorP, u32 *code)
 }
 
 /* Pauses a minigame player and disables its collision when it leaves play. */
-void MgPlayerDespawn(MGPLAYER *playerP)
+void fn_80086E3C(MGPLAYER *playerP)
 {
     KillEffectPlayer(playerP->actor->no);
-    MgPlayerAttrSet(playerP, MGPLAYER_ATTR_PAUSE);
-    MgPlayerColDisable(playerP->actor);
+    fn_80087158(playerP, (1 << 10));
+    fn_80086F44(playerP->actor);
 }
 
-void MgPlayerSpawn(MGPLAYER *playerP, HuVecF *pos)
+void fn_80086F00(MGPLAYER *playerP, HuVecF *pos)
 {
-    MgPlayerAttrReset(playerP, MGPLAYER_ATTR_PAUSE);
-    MgPlayerColEnable(playerP->actor, pos);
+    fn_80087168(playerP, (1 << 10));
+    fn_80086FA0(playerP->actor, pos);
 }
 
 /* Disables a player's collision body while its actor is out of play. */
-void MgPlayerColDisable(MGACTOR *actorP)
+void fn_80086F44(MGACTOR *actorP)
 {
     COLBODY *colBody;
     actorP->attr |= MGACTOR_ATTR_COL_OFF;
-    colBody = ColBodyGet(actorP->no);
-    colBody->param.attr |= COLBODY_ATTR_COL_OFF;
+    colBody = fn_8007BAB8(actorP->no);
+    colBody->param.attr |= (1 << 4);
 }
 
 /* Re-enables a player's collision body and places it at the spawn position. */
-void MgPlayerColEnable(MGACTOR *actorP, HuVecF *pos)
+void fn_80086FA0(MGACTOR *actorP, HuVecF *pos)
 {
     COLBODY *colBody;
     actorP->attr &= ~MGACTOR_ATTR_COL_OFF;
-    colBody = ColBodyGet(actorP->no);
-    colBody->param.attr &= ~COLBODY_ATTR_COL_OFF;
-    MgActorPosSet(actorP, pos);
+    colBody = fn_8007BAB8(actorP->no);
+    colBody->param.attr &= ~(1 << 4);
+    fn_80086AA8(actorP, pos);
 }
 
-void MgActorColAttrParamSet(COL_ATTRPARAM *param, u32 polyAttr)
+void fn_800870A4(COL_ATTRPARAM *param, u32 polyAttr)
 {
-    ColAttrParamSet(param, polyAttr);
+    fn_8007D550(param, polyAttr);
 }
 
-void MgActorColAttrParamGet(COL_ATTRPARAM *param, u32 polyAttr)
+void fn_800870D4(COL_ATTRPARAM *param, u32 polyAttr)
 {
-    ColAttrParamGet(param, polyAttr);
+    fn_8007D618(param, polyAttr);
 }
 
-void MgPlayerVibAttrSet(MGPLAYER *playerP, u16 attr)
+void fn_80087104(MGPLAYER *playerP, u16 attr)
 {
     playerP->vibAttr |= attr;
 }
 
-u16 MgPlayerVibAttrCheck(MGPLAYER *playerP, u16 attr)
+u16 fn_80087114(MGPLAYER *playerP, u16 attr)
 {
     return playerP->vibAttr & attr;
 }
 
-void MgPlayerModeAttrSet(MGPLAYER *playerP, u16 attr)
+void fn_80087124(MGPLAYER *playerP, u16 attr)
 {
     playerP->modeAttr |= attr;
 }
 
-void MgPlayerModeAttrReset(MGPLAYER *playerP, u16 attr)
+void fn_80087134(MGPLAYER *playerP, u16 attr)
 {
     playerP->modeAttr &= ~attr;
 }
 
-u16 MgPlayerModeAttrCheck(MGPLAYER *playerP, u16 attr)
+u16 fn_80087148(MGPLAYER *playerP, u16 attr)
 {
     return playerP->modeAttr & attr;
 }
 
-void MgPlayerAttrSet(MGPLAYER *playerP, u16 attr)
+void fn_80087158(MGPLAYER *playerP, u16 attr)
 {
     playerP->attr |= attr;
 }
 
-void MgPlayerAttrReset(MGPLAYER *playerP, u16 attr)
+void fn_80087168(MGPLAYER *playerP, u16 attr)
 {
     playerP->attr &= ~attr;
 }
 
-u16 MgPlayerAttrCheck(MGPLAYER *playerP, u16 attr)
+u16 fn_8008717C(MGPLAYER *playerP, u16 attr)
 {
     return playerP->attr & attr;
 }
 
 /* Starts an allowed stun unless another stun is active; negative time uses 90 frames. */
-BOOL MgPlayerStunSet(MGPLAYER *playerP, int stunType, float angle, int maxTime)
+BOOL fn_8008718C(MGPLAYER *playerP, int stunType, float angle, int maxTime)
 {
-    if (!(playerP->actionFlag & MGPLAYER_ACTFLAG_STUN) ||
-        MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_STUNOFF)) {
+    if (!(playerP->actionFlag & (1 << 5)) ||
+        fn_8008717C(playerP, (1 << 2))) {
         return FALSE;
     }
-    if(playerP->stunType != MGPLAYER_STUN_NONE) {
+    if(playerP->stunType != 0) {
         return FALSE;
     }
     if(maxTime < 0) {
@@ -2257,20 +2257,20 @@ BOOL MgPlayerStunSet(MGPLAYER *playerP, int stunType, float angle, int maxTime)
 
 /* Clears stun state and light-squish presentation unless stun actions are disabled.
 * Clearing the squish flag restores model scale but leaves collision-body height unchanged. */
-BOOL MgPlayerModeIdleSet(MGPLAYER *playerP)
+BOOL fn_80087218(MGPLAYER *playerP)
 {
-    if (!(playerP->actionFlag & MGPLAYER_ACTFLAG_STUN) ||
-        MgPlayerAttrCheck(playerP, MGPLAYER_ATTR_STUNOFF)) {
+    if (!(playerP->actionFlag & (1 << 5)) ||
+        fn_8008717C(playerP, (1 << 2))) {
         return FALSE;
     }
-    if(playerP->stunType != MGPLAYER_STUN_NONE) {
-        Hu3DModelDispOn(playerP->actor->mdlId);
-        playerP->stunType = MGPLAYER_STUN_NONE;
+    if(playerP->stunType != 0) {
+        fn_80026A44(playerP->actor->mdlId, (1 << 0));
+        playerP->stunType = 0;
         playerP->stunTime = 0;
     }
-    if(MgPlayerModeAttrCheck(playerP, MGPLAYER_MODEATTR_SQUISH)) {
-        Hu3DModelScaleSet(playerP->actor->mdlId, 1, 1, 1);
-        MgPlayerModeAttrReset(playerP, MGPLAYER_MODEATTR_SQUISH);
+    if(fn_80087148(playerP, (1 << 0))) {
+        fn_800268B0(playerP->actor->mdlId, 1, 1, 1);
+        fn_80087134(playerP, (1 << 0));
     }
     return TRUE;
 }

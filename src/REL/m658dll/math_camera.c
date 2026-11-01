@@ -124,14 +124,14 @@ f32 fn_1_69B8(f32 startValue, f32 endValue, f32 interpolation);
  * practice mode suppresses the write. */
 void fn_1_571C(s32 player, s16 amount)
 {
-    if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-        GwPlayer[player].mgCoinBonus = amount;
+    if (fn_8006A124(65551) == 0) {
+        lbl_80265750[player].mgCoinBonus = amount;
     }
 }
 
 s16 fn_1_5770(void)
 {
-    return GwMgNightF;
+    return lbl_802C0278;
 }
 
 /* Particle callback updates motion, sampled RGB, alpha and scale for each live particle. */
@@ -207,7 +207,7 @@ s16 fn_1_5BFC(M658ParticleOwner *owner, s16 cameraBit, f32 positionX, f32 positi
     if (modelId == -1) {
         return -1;
     }
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     particle = model->hookData;
     configs = particle->work;
     data = &particle->data[particle->emitCnt];
@@ -247,7 +247,7 @@ s16 fn_1_5BFC(M658ParticleOwner *owner, s16 cameraBit, f32 positionX, f32 positi
         result = -1;
     }
     /* Every valid emitter is moved to layer 1, even when emission found no free slot. */
-    Hu3DModelLayerSet(modelId, 1);
+    fn_80026B8C(modelId, 1);
     return result;
 }
 /* Counts model and motion slots before fn_1_6384 creates a resource object. */
@@ -297,19 +297,19 @@ void fn_1_5E48(M658ResourceEntry *entries, s32 *modelCountOut, s32 *motionCountO
     *motionCountOut = motionCount;
 }
 
-extern s16 Hu3DModelCreate(void *);
-extern s16 Hu3DModelLink(s16);
-extern s16 Hu3DMotionCreate(void *);
-extern void Hu3DCameraMotionOff(s16);
-extern s16 Hu3DJointMotion(s16, void *);
-extern s16 Hu3DMotionShapeIDGet(s16);
-extern void Hu3DMotionSet(s16, s16);
-extern void Hu3DMotionShapeSet(s16, s16);
-extern void Hu3DModelAttrSet(s16, u32);
+extern s16 fn_80025A04(void *);
+extern s16 fn_80025D4C(s16);
+extern s16 fn_8002C4C0(void *);
+extern void fn_8002858C(s16);
+extern s16 fn_80030458(s16, void *);
+extern s16 fn_8002CF58(s16);
+extern void fn_8002C95C(s16, s16);
+extern void fn_8002CEB0(s16, s16);
+extern void fn_800269E8(s16, u32);
 extern void Hu3DModelAttrFlagSet(s16, u32);
 extern void Hu3DModelAttrFlagReset(s16, u32);
 extern void Hu3DModelAttrFlagGet(s16);
-extern void Hu3DModelAttrReset(s16, u32);
+extern void fn_80026A44(s16, u32);
 /* fn_1_6384 calls this after reserving model and motion slots to load a resource object's
  * assets. */
 void fn_1_5EFC(OMOBJ *work, M658ResourceEntry *entries)
@@ -332,59 +332,59 @@ void fn_1_5EFC(OMOBJ *work, M658ResourceEntry *entries)
             break;
         }
         if (entry->resourceId >= 0) {
-            resource = HuDataSelHeapReadNum(entry->resourceId, HU_MEMNUM_OVL, 2);
+            resource = fn_80008DD0(entry->resourceId, 0x10000000, 2);
         }
 
         switch (entry->type) {
         case 0:
         case 2:
-            rootModelId = Hu3DModelCreate(resource);
+            rootModelId = fn_80025A04(resource);
             modelId = rootModelId;
             work->mdlId[resourceCount++] = modelId;
             if (entry->type == 2) {
-                Hu3DModelAttrSet(modelId, HU3D_ATTR_DISPOFF);
+                fn_800269E8(modelId, (1 << 0));
             }
             for (linkIndex = 0; linkIndex < entry->linkedModelCount; linkIndex++) {
-                modelId = Hu3DModelLink(rootModelId);
+                modelId = fn_80025D4C(rootModelId);
                 work->mdlId[resourceCount++] = modelId;
                 if (entry->type == 2) {
-                    Hu3DModelAttrSet(modelId, HU3D_ATTR_DISPOFF);
+                    fn_800269E8(modelId, (1 << 0));
                 }
             }
             if (entry->linkedModelCount > 0) {
                 /* When linked instances exist, hide their source model even for type 0
                  * resources. */
-                Hu3DModelAttrSet(rootModelId, HU3D_ATTR_DISPOFF);
+                fn_800269E8(rootModelId, (1 << 0));
                 work->work[0] |= M658_RESOURCE_HAS_LINKED_MODELS_FLAG;
             }
             break;
         case 3:
-            motionId = Hu3DMotionCreate(resource);
+            motionId = fn_8002C4C0(resource);
             work->mtnId[motionCount++] = motionId;
-            modelId = Hu3DModelCameraCreate(motionId, 1);
+            modelId = fn_800283F4(motionId, 1);
             work->mdlId[resourceCount++] = modelId;
-            Hu3DCameraMotionOff(modelId);
+            fn_8002858C(modelId);
             break;
         case 1:
         case 8:
             if (entry->targetModelIndex >= 0) {
                 modelId = work->mdlId[entry->targetModelIndex];
-                motionId = Hu3DJointMotion(modelId, resource);
+                motionId = fn_80030458(modelId, resource);
                 switch (entry->type) {
                 case 1:
-                    if (Hu3DData[modelId].motId < 0) {
-                        Hu3DMotionSet(modelId, motionId);
+                    if (lbl_802C01C8[modelId].motId < 0) {
+                        fn_8002C95C(modelId, motionId);
                     }
                     break;
                 case 8:
-                    if (Hu3DMotionShapeIDGet(modelId) < 0) {
-                        Hu3DMotionSet(modelId, motionId);
-                        Hu3DMotionShapeSet(modelId, motionId);
+                    if (fn_8002CF58(modelId) < 0) {
+                        fn_8002C95C(modelId, motionId);
+                        fn_8002CEB0(modelId, motionId);
                     }
                     break;
                 }
                 if (entry->modelAttributes != 0) {
-                    Hu3DModelAttrSet(modelId, entry->modelAttributes);
+                    fn_800269E8(modelId, entry->modelAttributes);
                 }
                 work->mtnId[motionCount++] = motionId;
             }
@@ -431,19 +431,19 @@ void fn_1_6180(M658ParticleOwner *owners)
             break;
         }
         if (!(owner->flags & M658_PARTICLE_OWNER_REUSE_RESOURCE_FLAG)) {
-            file = HuDataSelHeapReadNum(owner->resource, HU_MEMNUM_OVL, 2);
+            file = fn_80008DD0(owner->resource, 0x10000000, 2);
             anim = owner->anim = HuSprAnimRead(file);
             count = owner->count;
             blendMode = owner->blendMode;
         }
         if (!(owner->flags & M658_PARTICLE_OWNER_REUSE_CONFIG_FLAG)) {
-            configs = HuMemDirectMallocNum(0, count * sizeof(M658ParticleConfig), HU_MEMNUM_OVL);
+            configs = HuMemDirectMallocNum(0, count * sizeof(M658ParticleConfig), 0x10000000);
             memset(configs, 0, count * sizeof(M658ParticleConfig));
         }
-        owner->model = Hu3DParticleCreate(anim, count);
-        Hu3DParticleBlendModeSet(owner->model, blendMode);
-        Hu3DParticleHookSet(owner->model, fn_1_5780);
-        particle = Hu3DData[owner->model].hookData;
+        owner->model = fn_8003216C(anim, count);
+        fn_8003269C(owner->model, blendMode);
+        fn_800326D0(owner->model, fn_1_5780);
+        particle = lbl_802C01C8[owner->model].hookData;
         particle->emitCnt = 0;
         particle->work = configs;
         particle->count = 1;
@@ -472,7 +472,7 @@ void fn_1_62EC(M658ParticleAnimEntry *entries)
         if (entry->resourceId < 0) {
             break;
         }
-        resourceData = HuDataSelHeapReadNum(entry->resourceId, HU_MEMNUM_OVL, HEAP_MODEL);
+        resourceData = fn_80008DD0(entry->resourceId, 0x10000000, 2);
         anim = entry->anim = HuSprAnimRead(resourceData);
         entry->anim = anim;
         index += 1;
@@ -489,8 +489,8 @@ OMOBJ *fn_1_6384(void *description)
     OMOBJ *object;
 
     fn_1_5E48(description, &modelCount, &motionCount);
-    object = omAddObjEx(lbl_1_bss_0, 32730, modelCount, motionCount, -1, NULL);
-    object->stat |= OM_STAT_MODELPAUSE;
+    object = fn_8003AB38(lbl_1_bss_0, 32730, modelCount, motionCount, -1, NULL);
+    object->stat |= (1 << 8);
     fn_1_5EFC(object, description);
     return object;
 }
@@ -506,13 +506,13 @@ void fn_1_6414(OMOBJ *object) {
         resourceIndex = object->mdlcnt - 1;
         while (resourceIndex >= 0)
         {
-            Hu3DModelKill(object->mdlId[resourceIndex]);
+            fn_800262D0(object->mdlId[resourceIndex]);
             resourceIndex -= 1;
         }
         resourceIndex = object->mtncnt - 1;
         while (resourceIndex >= 0)
         {
-            Hu3DMotionKill(object->mtnId[resourceIndex]);
+            fn_8002C624(object->mtnId[resourceIndex]);
             resourceIndex -= 1;
         }
         omDelObjEx(lbl_1_bss_0, object);
@@ -542,9 +542,9 @@ void fn_1_651C(OMOBJ *object, s32 visible)
     index = 0;
     while (index < object->mdlcnt) {
         if (visible == 0) {
-            Hu3DModelAttrSet(object->mdlId[index], HU3D_ATTR_DISPOFF);
+            fn_800269E8(object->mdlId[index], (1 << 0));
         } else {
-            Hu3DModelAttrReset(object->mdlId[index], HU3D_ATTR_DISPOFF);
+            fn_80026A44(object->mdlId[index], (1 << 0));
         }
         index++;
     }
@@ -816,7 +816,7 @@ void fn_1_6CB0(Mtx matrix, s32 cameraMask)
     HuVecF cameraTarget;
     HuVecF cameraUp;
 
-    Hu3DCameraPosGet(cameraMask, &cameraPos, &cameraUp, &cameraTarget);
+    fn_80027CD0(cameraMask, &cameraPos, &cameraUp, &cameraTarget);
     pos.x = cameraPos.x;
     pos.y = cameraPos.y;
     pos.z = cameraPos.z;
@@ -879,8 +879,8 @@ s8 *fn_1_6F70(s32 model)
     s16 i;
     HSF_MATERIAL *material;
 
-    modelData = &Hu3DData[model];
-    result = HuMemDirectMallocNum(HEAP_HEAP, modelData->hsf->materialNum * 3, HU_MEMNUM_OVL);
+    modelData = &lbl_802C01C8[model];
+    result = HuMemDirectMallocNum(HEAP_HEAP, modelData->hsf->materialNum * 3, 0x10000000);
     out = result;
     DebugValue((u32)(i = 0, material = modelData->hsf->material));
     while (i < modelData->hsf->materialNum) {
@@ -904,7 +904,7 @@ void fn_1_7048(s32 model, u8 *colors)
     s16 i;
     HSF_MATERIAL *material;
 
-    modelData = &Hu3DData[model];
+    modelData = &lbl_802C01C8[model];
     input = colors;
     DebugValue((u32)(i = 0, material = modelData->hsf->material));
     while (i < modelData->hsf->materialNum) {
@@ -927,7 +927,7 @@ void fn_1_70F8(s32 model, const s8 *colors, f32 scale)
     s16 i;
     HSF_MATERIAL *material;
 
-    modelData = &Hu3DData[model];
+    modelData = &lbl_802C01C8[model];
     input = colors;
     DebugValue((u32)(i = 0, material = modelData->hsf->material));
     for (; i < modelData->hsf->materialNum; DebugValue((u32)(i++, material++))) {
@@ -947,13 +947,13 @@ void fn_1_7244(s32 modelId, char *objectName, s32 targetModelId)
     HuVecF rotation;
     HuVecF scale;
 
-    Hu3DModelObjMtxGet(modelId, objectName, objectMtx);
+    fn_80023398(modelId, objectName, objectMtx);
     Hu3DMtxTransGet(objectMtx, &translation);
     Hu3DMtxRotGet(objectMtx, &rotation);
     Hu3DMtxScaleGet(objectMtx, &scale);
-    Hu3DModelPosSetV(targetModelId, &translation);
-    Hu3DModelRotSetV(targetModelId, &rotation);
-    Hu3DModelScaleSetV(targetModelId, &scale);
+    fn_80026790(targetModelId, &translation);
+    fn_80026838(targetModelId, &rotation);
+    fn_800268E0(targetModelId, &scale);
 }
 /* Computer input timing uses summed random draws and cumulative weights to select
  * a timing variant; a zero sum selects slot zero. */
@@ -1012,111 +1012,111 @@ s32 fn_1_7498(s16 charNo, s32 seId)
     if (omSysExitReq) {
         return 0;
     }
-    if (seId < MSM_SE_CHARVOICE_MARIO) {
-        seId -= MSM_SE_CHAR_MARIO;
+    if (seId < 573) {
+        seId -= 177;
         seId += CharSeTable[charNo];
     } else {
-        seId -= MSM_SE_CHARVOICE_MARIO;
+        seId -= 573;
         seId += CharVoiceSeTable[charNo];
     }
     return HuAudFXPlay(seId);
 }
 
 M658ResourceEntry lbl_1_data_5E8[] = {
-    { DATANUM(DATA_m658, 35), 3, 0, 0, -1 },
-    { DATANUM(DATA_m658, 36), 3, 0, 0, -1 },
-    { DATANUM(DATA_m658, 37), 3, 0, 0, -1 },
+    { DATANUM(0x750000, 35), 3, 0, 0, -1 },
+    { DATANUM(0x750000, 36), 3, 0, 0, -1 },
+    { DATANUM(0x750000, 37), 3, 0, 0, -1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_628[] = {
-    { DATANUM(DATA_m658, 20), 0, 0, 0, -1 },
-    { DATANUM(DATA_m658, 21), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 20), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 21), 0, 0, 0, -1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_658[] = {
-    { DATANUM(DATA_m658, 0), 2, 0, 0, -1 },
-    { DATANUM(DATA_m658, 1), 2, 0, 0, -1 },
-    { DATANUM(DATA_m658, 2), 2, 0, 0, -1 },
+    { DATANUM(0x750000, 0), 2, 0, 0, -1 },
+    { DATANUM(0x750000, 1), 2, 0, 0, -1 },
+    { DATANUM(0x750000, 2), 2, 0, 0, -1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_698[] = {
-    { DATANUM(DATA_m658, 3), 0, 0, 0, -1 },
-    { DATANUM(DATA_m658, 4), 0, 0, 0, -1 },
-    { DATANUM(DATA_m658, 5), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 6), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 7), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 3), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 4), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 5), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 6), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 7), 1, 0, 0, 0 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_6F8[] = {
-    { DATANUM(DATA_m658, 10), 0, 0, 10, -1 },
-    { DATANUM(DATA_m658, 11), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 12), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 13), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 14), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 10), 0, 0, 10, -1 },
+    { DATANUM(0x750000, 11), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 12), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 13), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 14), 1, 0, 0, 0 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_758[] = {
-    { DATANUM(DATA_m658, 15), 0, 0, 1, -1 },
-    { DATANUM(DATA_m658, 16), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 17), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 18), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 19), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 15), 0, 0, 1, -1 },
+    { DATANUM(0x750000, 16), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 17), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 18), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 19), 1, 0, 0, 0 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_7B8[] = {
-    { DATANUM(DATA_m658, 8), 0, 0, 0, -1 },
-    { DATANUM(DATA_m658, 9), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 8), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 9), 0, 0, 0, -1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_7E8[] = {
-    { DATANUM(DATA_m658, 22), 0, 0, 0, -1 },
-    { DATANUM(DATA_m658, 23), 0, 0, 0, -1 },
-    { DATANUM(DATA_m658, 24), 1, 0, 0, 0 },
-    { DATANUM(DATA_m658, 25), 1, 0, 0, 1 },
+    { DATANUM(0x750000, 22), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 23), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 24), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 25), 1, 0, 0, 1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_838[] = {
-    { DATANUM(DATA_m658, 26), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 26), 0, 0, 0, -1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_858[] = {
-    { DATANUM(DATA_m658, 27), 0, 0, 2, -1 },
+    { DATANUM(0x750000, 27), 0, 0, 2, -1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_878[] = {
-    { DATANUM(DATA_m658, 28), 0, 0, 2, -1 },
+    { DATANUM(0x750000, 28), 0, 0, 2, -1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_898[] = {
-    { DATANUM(DATA_m658, 30), 0, 0, 0, -1 },
-    { DATANUM(DATA_m658, 31), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 30), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 31), 1, 0, 0, 0 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_8C8[] = {
-    { DATANUM(DATA_m658, 32), 0, 0, 0, -1 },
-    { DATANUM(DATA_m658, 33), 1, 0, 0, 0 },
+    { DATANUM(0x750000, 32), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 33), 1, 0, 0, 0 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_8F8[] = {
-    { DATANUM(DATA_m658, 29), 0, 0, 2, -1 },
+    { DATANUM(0x750000, 29), 0, 0, 2, -1 },
     { 0, 9, 0, -1, -1 },
 };
 
 M658ResourceEntry lbl_1_data_918[] = {
-    { DATANUM(DATA_m658, 34), 0, 0, 0, -1 },
+    { DATANUM(0x750000, 34), 0, 0, 0, -1 },
     { 0, 9, 0, -1, -1 },
 };
 

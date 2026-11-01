@@ -6,11 +6,11 @@ static const char rcsid[] = "$Id: particle.cpp,v 1.22 2004/09/09 12:24:38 saf Ex
 // Effect setup creates a fixed-capacity particle model with normal blending and an update callback.
 Particle::Particle(HU3D_PARTICLE_HOOK hook, ANIMDATA *animation, int capacity)
 {
-    short createdModel = Hu3DParticleCreate(animation, capacity);
+    short createdModel = fn_8003216C(animation, capacity);
     modelId = createdModel;
     updateHook = hook;
-    Hu3DParticleHookSet(*this, Update);
-    Hu3DParticleBlendModeSet(*this, HU3D_PARTICLE_BLEND_NORMAL);
+    fn_800326D0(*this, Update);
+    fn_8003269C(*this, 0);
     HU3D_PARTICLE *particle = GetParticle();
     particle->work = this;
 }
@@ -19,13 +19,13 @@ Particle::Particle(HU3D_PARTICLE_HOOK hook, ANIMDATA *animation, int capacity)
 // stored.
 Particle::~Particle()
 {
-    Hu3DModelKill(*this);
+    fn_800262D0(*this);
 }
 
 // Effect callbacks and accessors use the engine's particle state attached to this model.
 HU3D_PARTICLE *Particle::GetParticle()
 {
-    return static_cast<HU3D_PARTICLE *>(Hu3DData[*this].hookData);
+    return static_cast<HU3D_PARTICLE *>(lbl_802C01C8[*this].hookData);
 }
 
 // Effect updates use this to start iterating over the model's fixed-capacity particle array.
@@ -56,11 +56,11 @@ void Particle::Update(HU3D_MODEL *model, HU3D_PARTICLE *particle, Mtx matrix)
 // Effect setup or updates set every particle's display scale; zero hides the particles.
 void Particle::SetScale(float scale)
 {
-    Hu3DParticleScaleSet(ParticleModelId(this), scale);
+    fn_800324E0(ParticleModelId(this), scale);
 }
 
 // Effect setup or fades set every particle's alpha: levels 0.0 and 1.0 produce alpha 0 and 255.
 void Particle::SetTransparency(float level)
 {
-    Hu3DParticleTPLvlSet(ParticleModelId(this), level);
+    fn_80032620(ParticleModelId(this), level);
 }

@@ -43,10 +43,10 @@ void fn_1_ECB4(OMOBJMAN *manager)
     OMOBJ *obj;
     M620ScoreBoardStorage *scoreBoardStorage;
 
-    obj = omAddObjEx(manager, 20, 0, 0, -1, fn_1_ED40);
+    obj = fn_8003AB38(manager, 20, 0, 0, -1, fn_1_ED40);
     lbl_1_bss_658[0] = obj;
     scoreBoardStorage =
-        HuMemDirectMallocNum(HEAP_HEAP, sizeof(M620ScoreBoardStorage), HU_MEMNUM_OVL);
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(M620ScoreBoardStorage), 0x10000000);
     obj->data = scoreBoardStorage;
     memset(scoreBoardStorage, 0, sizeof(M620ScoreBoardStorage));
 }
@@ -113,7 +113,7 @@ void fn_1_EDA4(OMOBJ *object)
     for (index = 0; index < 4; index++) {
         M620ScoreEntry *entry = &work->entries[index];
         HUSPR_GROUPID characterBoxId = MgScoreBoxCreateChar(
-            96, 48, GwPlayerConf[index].charNo);
+            96, 48, lbl_80265728[index].charNo);
         MGSCORE *score;
 
         entry->characterBoxId = characterBoxId;
@@ -122,7 +122,7 @@ void fn_1_EDA4(OMOBJ *object)
         MgScoreBoxDispSet(characterBoxId, 0);
         MgScoreBoxTPLvlSet(characterBoxId, 0.0f);
 
-        score = MgScoreCreate(DATANUM(DATA_mgconst, 49), -1, 1);
+        score = MgScoreCreate(DATANUM(0x9b0000, 49), -1, 1);
         entry->score = score;
         MgScoreMaxDigitSet(score, 2);
         MgScoreDispOff(score);
@@ -212,10 +212,10 @@ extern void fn_1_F180(OMOBJ *obj);
 /* Create and clear the collision-registration object's pointer tables during setup. */
 void fn_1_F0F4(OMOBJMAN *objectManager)
 {
-    OMOBJ *object = omAddObjEx(objectManager, 18, 0, 0, OM_GRP_NONE, fn_1_F180);
+    OMOBJ *object = fn_8003AB38(objectManager, 18, 0, 0, -1, fn_1_F180);
     void *data;
     lbl_1_bss_660 = object;
-    data = HuMemDirectMallocNum(HEAP_HEAP, 196, HU_MEMNUM_OVL);
+    data = HuMemDirectMallocNum(HEAP_HEAP, 196, 0x10000000);
     object->data = data;
     memset(data, 0, 196);
 }

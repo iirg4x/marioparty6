@@ -369,13 +369,13 @@ void fn_1_214C0(HUPROCESS *parentProcess) {
     s32 cameraIndex;
     s32 activeCameraBit;
 
-    lbl_1_bss_3A4 = HuPrcChildCreate(fn_1_215A4, -536, 8192, 0, HuPrcCurrentGet());
-    HuPrcSetStat(lbl_1_bss_3A4, HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+    lbl_1_bss_3A4 = fn_8000DAC0(fn_1_215A4, -536, 8192, 0, fn_8000DD9C());
+    HuPrcSetStat(lbl_1_bss_3A4, 0x4 | 0x8);
     fn_1_31910(0);
     cameraIndex = 0;
     /* When several cameras are active, the last one receives the pause background. */
     while (cameraIndex < 16) {
-        Hu3DCameraPerspectiveGet(1 << cameraIndex, &fieldOfView, &nearPlane, &farPlane);
+        fn_80027D8C(1 << cameraIndex, &fieldOfView, &nearPlane, &farPlane);
         if ((-1.0f) != fieldOfView) {
             activeCameraBit = 1 << cameraIndex;
         }
@@ -400,15 +400,15 @@ void fn_1_215A4(void)
         for (;;) {
             HuPrcVSleep();
             if (WipeCheck() != 0) continue;
-            if (omCurrentOvlGet() == DLL_NONE) continue;
+            if (fn_8003B774() == -1) continue;
             if (GameMesStatGet(-1) != 0) continue;
             if ((s16)HuMCSelModeGet() == 1) continue;
-            if (omUPauseFlag + omPauseChk() != 0) continue;
+            if (lbl_802C0234 + fn_8003B748() != 0) continue;
             if (lbl_1_bss_4D8->pauseAllowed == 0) continue;
 
             for (playerIndex = 0; playerIndex < 4U; playerIndex++) {
                 if (omPadErrChk(playerIndex) == 0 &&
-                    (HuPadBtnDown[playerIndex] & PAD_BUTTON_START) != 0) {
+                    (lbl_802C0008[playerIndex] & PAD_BUTTON_START) != 0) {
                     selectedPlayer = playerIndex;
                     lbl_1_bss_4D8->pauseDisplayActive = 1;
                     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 10);
@@ -429,8 +429,8 @@ void fn_1_215A4(void)
 
         for (;;) {
             HuPrcVSleep();
-            if ((HuPadBtnDown[selectedPlayer] & PAD_BUTTON_START) != 0) {
-                HuAudFXPlay(MSM_SE_CMN_06);
+            if ((lbl_802C0008[selectedPlayer] & PAD_BUTTON_START) != 0) {
+                HuAudFXPlay(5);
                 WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 10);
                 while (WipeCheck() != 0) HuPrcVSleep();
                 fn_1_21B80();
@@ -441,9 +441,9 @@ void fn_1_215A4(void)
                 while (WipeCheck() != 0) HuPrcVSleep();
                 break;
             }
-            if ((HuPadBtnDown[selectedPlayer] & PAD_BUTTON_X) == 0) continue;
+            if ((lbl_802C0008[selectedPlayer] & PAD_BUTTON_X) == 0) continue;
 
-            HuAudFXPlay(MSM_SE_CMN_04);
+            HuAudFXPlay(3);
             HuWinPosSet(lbl_1_bss_37C, 16.0f, 312.0f);
             disabledPlayers = 0;
             for (playerIndex = 0; playerIndex < 4U; playerIndex++) {
@@ -462,7 +462,7 @@ void fn_1_215A4(void)
             HuWinMesSpeedSet(windowNo, 1);
             HuWinMesWait(windowNo);
             if (HuWinChoiceGet(windowNo, -1) == 0) {
-                HuAudFXPlay(MSM_SE_CMN_06);
+                HuAudFXPlay(5);
                 WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 10);
                 while (WipeCheck() != 0) HuPrcVSleep();
                 HuWinExClose(windowNo);
@@ -483,8 +483,8 @@ void fn_1_215A4(void)
             HuMCClose();
             HuMCSessionClose();
             HuWinDisablePlayerReset(windowNo, 15);
-            if (lbl_1_bss_4D8->compactPauseDisplay != 0) omOvlReturnEx(1, 1);
-            else omOvlReturnEx(2, 1);
+            if (lbl_1_bss_4D8->compactPauseDisplay != 0) fn_8003A5E4(1, 1);
+            else fn_8003A5E4(2, 1);
         }
     }
 }
@@ -492,10 +492,10 @@ void fn_1_215A4(void)
 /* Save pause state, show the pause display, and suspend quiz animation and audio. */
 void fn_1_21A98(void) {
     lbl_1_bss_39C = (s32) omSysPauseEnableFlag;
-    lbl_1_bss_3A0 = (s32) omPauseChk();
-    omUPauseFlag = 1;
+    lbl_1_bss_3A0 = (s32) fn_8003B748();
+    lbl_802C0234 = 1;
     omSysPauseEnable(0U);
-    Hu3DCameraLayerHookSet((s16) lbl_1_bss_43C, 15, fn_1_20FBC);
+    fn_8002583C((s16) lbl_1_bss_43C, 15, fn_1_20FBC);
     if (lbl_1_bss_4D8->compactPauseDisplay != 0) {
         fn_1_265E4();
         fn_1_25B34();
@@ -503,22 +503,22 @@ void fn_1_21A98(void) {
         fn_1_26224();
     }
     fn_1_25C88();
-    omObjManPause(1);
+    fn_8003B674(1);
     HuPrcAllPause(1);
     Hu3DPauseSet(1);
     HuSprPauseSet(1);
-    HuPadRumbleAllStop();
+    fn_80006F3C();
     HuAudFXPauseAll(1);
     HuAudSStreamPauseAll(1);
-    HuAudFXPlay(MSM_SE_CMN_06);
+    HuAudFXPlay(5);
 }
 
 /* Restore the quiz display and the pause state saved when the menu opened. */
 void fn_1_21B80(void) {
-    omUPauseFlag = 0;
+    lbl_802C0234 = 0;
     omSysPauseEnable((u8) lbl_1_bss_39C);
-    omObjManPause(0);
-    Hu3DCameraLayerHookReset((s16) lbl_1_bss_43C, 15);
+    fn_8003B674(0);
+    fn_800258A8((s16) lbl_1_bss_43C, 15);
     if (lbl_1_bss_4D8->compactPauseDisplay != 0) {
         fn_1_26528();
     } else {
@@ -558,15 +558,15 @@ playerIndex = 0;
     while (playerIndex < 4) {
         if (fn_1_27FEC(playerIndex) == 0) {
             lbl_1_bss_450[playerIndex] = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_mgconst, 0), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0x9b0000, 0), 0x10000000, 2));
             HuSprGrpMemberSet(lbl_1_bss_5CC, (s16) (playerIndex + 4),
                               HuSprCreate(lbl_1_bss_450[playerIndex], 48, 0));
             HuSprPosSet(lbl_1_bss_5CC, (s16) (playerIndex + 4), -23.0f, -25.0f);
             HuSprAttrSet(lbl_1_bss_5CC, (s16) (playerIndex + 4), HUSPR_ATTR_DISPOFF);
         } else {
-            character = GwPlayerConf[playerIndex].charNo;
+            character = lbl_80265728[playerIndex].charNo;
             lbl_1_bss_450[playerIndex] = HuSprAnimRead(
-                HuDataSelHeapReadNum(lbl_1_data_1C[character], HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(lbl_1_data_1C[character], 0x10000000, 2));
             HuSprGrpMemberSet(lbl_1_bss_5CC, (s16) (playerIndex + 4),
                               HuSprCreate(lbl_1_bss_450[playerIndex], 48, 0));
             HuSprPosSet(lbl_1_bss_5CC, (s16) (playerIndex + 4), -23.0f, -25.0f);
@@ -575,47 +575,47 @@ playerIndex = 0;
         playerIndex += 1;
     }
     lbl_1_bss_44C =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 28), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 28), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 0, HuSprCreate(lbl_1_bss_44C, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 0, 0.0f, 0.0f);
     lbl_1_bss_448 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 29), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 29), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 1, HuSprCreate(lbl_1_bss_448, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 1, 8.0f, 12.0f);
     lbl_1_bss_444 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 30), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 30), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 2, HuSprCreate(lbl_1_bss_444, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 2, 13.0f, 9.0f);
     lbl_1_bss_440 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 32), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 32), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 3, HuSprCreate(lbl_1_bss_440, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 3, -23.0f, -25.0f);
     lbl_1_bss_490 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 36), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 36), 0x10000000, 2));
     lbl_1_bss_46A = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_46A, 0, HuSprCreate(lbl_1_bss_490, 50, 0));
     HuSprPosSet(lbl_1_bss_46A, 0, 288.0f, 68.0f);
     HuSprAttrSet(lbl_1_bss_46A, 0, HUSPR_ATTR_DISPOFF);
     lbl_1_bss_48C =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 37), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 37), 0x10000000, 2));
     lbl_1_bss_468 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_468, 0, HuSprCreate(lbl_1_bss_48C, 50, 0));
     HuSprPosSet(lbl_1_bss_468, 0, 288.0f, 68.0f);
     HuSprBankSet(lbl_1_bss_468, 0, 1);
     lbl_1_bss_488 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 38), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 38), 0x10000000, 2));
     lbl_1_bss_466 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_466, 0, HuSprCreate(lbl_1_bss_488, 50, 0));
     HuSprPosSet(lbl_1_bss_466, 0, 288.0f, 68.0f);
     HuSprTPLvlSet(lbl_1_bss_466, 0, 0.0f);
     lbl_1_bss_460[0] = HuSprGrpCreate(2);
     lbl_1_bss_480[0] =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 86), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 86), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_460[0], 0, HuSprCreate(lbl_1_bss_480[0], 50, 0));
     HuSprPosSet(lbl_1_bss_460[0], 0, -16.0f, 0.0f);
     HuSprBankSet(lbl_1_bss_460[0], 0, 0);
     lbl_1_bss_480[1] =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 86), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 86), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_460[0], 1, HuSprCreate(lbl_1_bss_480[1], 50, 0));
     HuSprPosSet(lbl_1_bss_460[0], 1, 16.0f, 0.0f);
     HuSprBankSet(lbl_1_bss_460[0], 1, 0);
@@ -624,45 +624,45 @@ playerIndex = 0;
     eventType = fn_1_281D4();
     if (eventType != 8) {
         lbl_1_bss_4D4 = HuSprAnimRead(
-            HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 21), HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(DATANUM(0xa20000, 21), 0x10000000, 2));
         lbl_1_bss_47E = HuSprGrpCreate(1);
         HuSprGrpMemberSet(lbl_1_bss_47E, 0, HuSprCreate(lbl_1_bss_4D4, 50, 0));
         HuSprPosSet(lbl_1_bss_47E, 0, 401.0f, 62.0f);
         HuSprBankSet(lbl_1_bss_47E, 0, (s16) (eventType + 1));
         if (eventType == 3) {
             lbl_1_bss_4CC[0] = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 54), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 54), 0x10000000, 2));
             lbl_1_bss_4CC[1] = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 55), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 55), 0x10000000, 2));
             lbl_1_bss_4AC = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 56), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 56), 0x10000000, 2));
             lbl_1_bss_4A8 = HuSprGrpCreate(1);
             HuSprGrpMemberSet(lbl_1_bss_4A8, 0, HuSprCreate(lbl_1_bss_4AC, 49, 0));
             HuSprPosSet(lbl_1_bss_4A8, 0, 401.0f, 62.0f);
             HuSprAttrSet(lbl_1_bss_4A8, 0, HUSPR_ATTR_DISPOFF);
         } else if (eventType == 2) {
             lbl_1_bss_4C8 = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 57), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 57), 0x10000000, 2));
             lbl_1_data_20A = HuSprGrpCreate(1);
             HuSprGrpMemberSet(lbl_1_data_20A, 0, HuSprCreate(lbl_1_bss_4C8, 51, 0));
             HuSprPosSet(lbl_1_data_20A, 0, 401.0f, 62.0f);
-            lbl_1_bss_340[0] = HuPrcChildCreate(fn_1_244A4, 100U, 6144U, 0, HuPrcCurrentGet());
+            lbl_1_bss_340[0] = fn_8000DAC0(fn_1_244A4, 100U, 6144U, 0, fn_8000DD9C());
             lbl_1_bss_340[0]->property = (void *) lbl_1_data_20A;
         } else if (eventType == 4) {
             lbl_1_bss_4C4 = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 58), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 58), 0x10000000, 2));
             lbl_1_data_20C = HuSprGrpCreate(1);
             HuSprGrpMemberSet(lbl_1_data_20C, 0, HuSprCreate(lbl_1_bss_4C4, 51, 0));
             HuSprPosSet(lbl_1_data_20C, 0, 401.0f, 62.0f);
-            lbl_1_bss_340[0] = HuPrcChildCreate(fn_1_244A4, 100U, 6144U, 0, HuPrcCurrentGet());
+            lbl_1_bss_340[0] = fn_8000DAC0(fn_1_244A4, 100U, 6144U, 0, fn_8000DD9C());
             lbl_1_bss_340[0]->property = (void *) lbl_1_data_20C;
             lbl_1_bss_4C0 = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 59), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 59), 0x10000000, 2));
             lbl_1_data_20E = HuSprGrpCreate(1);
             HuSprGrpMemberSet(lbl_1_data_20E, 0, HuSprCreate(lbl_1_bss_4C0, 51, 0));
             HuSprPosSet(lbl_1_data_20E, 0, 288.0f, 68.0f);
             lbl_1_bss_4BC = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 60), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 60), 0x10000000, 2));
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 lbl_1_data_210[playerIndex] = HuSprGrpCreate(1);
                 HuSprGrpMemberSet(lbl_1_data_210[playerIndex], 0,
@@ -671,79 +671,79 @@ playerIndex = 0;
                             lbl_1_data_21C[playerIndex].positionY);
                 HuSprAttrSet(lbl_1_data_210[playerIndex], 0, HUSPR_ATTR_NOANIM);
                 lbl_1_bss_340[playerIndex + 2] =
-                    HuPrcChildCreate(fn_1_24138, 100U, 6144U, 0, HuPrcCurrentGet());
+                    fn_8000DAC0(fn_1_24138, 100U, 6144U, 0, fn_8000DD9C());
                 lbl_1_bss_340[playerIndex + 2]->property = (void *) lbl_1_data_210[playerIndex];
             }
             lbl_1_bss_4B8 = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 61), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 61), 0x10000000, 2));
             lbl_1_data_218 = HuSprGrpCreate(1);
             HuSprGrpMemberSet(lbl_1_data_218, 0, HuSprCreate(lbl_1_bss_4B8, 53, 0));
             HuSprPosSet(lbl_1_data_218, 0, 248.0f, 52.0f);
-            HuPrcChildCreate(fn_1_244A4, 100U, 6144U, 0, HuPrcCurrentGet());
-            lbl_1_bss_340[0] = HuPrcChildCreate(fn_1_23F20, 100U, 6144U, 0, HuPrcCurrentGet());
+            fn_8000DAC0(fn_1_244A4, 100U, 6144U, 0, fn_8000DD9C());
+            lbl_1_bss_340[0] = fn_8000DAC0(fn_1_23F20, 100U, 6144U, 0, fn_8000DD9C());
             lbl_1_bss_340[0]->property = (void *) lbl_1_data_218;
             lbl_1_bss_4B4 = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 62), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 62), 0x10000000, 2));
             lbl_1_data_21A = HuSprGrpCreate(1);
             HuSprGrpMemberSet(lbl_1_data_21A, 0, HuSprCreate(lbl_1_bss_4B4, 54, 0));
             HuSprPosSet(lbl_1_data_21A, 0, 328.0f, 84.0f);
-            lbl_1_bss_340[1] = HuPrcChildCreate(fn_1_23F20, 100U, 6144U, 0, HuPrcCurrentGet());
+            lbl_1_bss_340[1] = fn_8000DAC0(fn_1_23F20, 100U, 6144U, 0, fn_8000DD9C());
             lbl_1_bss_340[1]->property = (void *) lbl_1_data_21A;
         } else if (eventType == 5 || eventType == 7) {
             lbl_1_bss_4C4 = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 58), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 58), 0x10000000, 2));
             lbl_1_data_20C = HuSprGrpCreate(1);
             HuSprGrpMemberSet(lbl_1_data_20C, 0, HuSprCreate(lbl_1_bss_4C4, 51, 0));
             HuSprPosSet(lbl_1_data_20C, 0, 401.0f, 62.0f);
-            lbl_1_bss_340[0] = HuPrcChildCreate(fn_1_244A4, 100U, 6144U, 0, HuPrcCurrentGet());
+            lbl_1_bss_340[0] = fn_8000DAC0(fn_1_244A4, 100U, 6144U, 0, fn_8000DD9C());
             lbl_1_bss_340[0]->property = (void *) lbl_1_data_20C;
         } else if (eventType == 0 || eventType == 1) {
             lbl_1_bss_4B0 = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 53), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 53), 0x10000000, 2));
         } else if (eventType == 6) {
             lbl_1_bss_4B0 = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 63), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0xa20000, 63), 0x10000000, 2));
         }
     }
     lbl_1_bss_4A4 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 33), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 33), 0x10000000, 2));
     lbl_1_bss_474 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_474, 0, HuSprCreate(lbl_1_bss_4A4, 50, 0));
     HuSprPosSet(lbl_1_bss_474, 0, 506.0f, 65.0f);
     HuSprBankSet(lbl_1_bss_474, 0, 0);
     lbl_1_bss_4A0 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 45), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 45), 0x10000000, 2));
     lbl_1_bss_472 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_472, 0, HuSprCreate(lbl_1_bss_4A0, 50, 0));
     HuSprPosSet(lbl_1_bss_472, 0, 504.0f, 99.0f);
     HuSprBankSet(lbl_1_bss_472, 0, 0);
     lbl_1_bss_49C =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 46), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 46), 0x10000000, 2));
     lbl_1_bss_470 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_470, 0, HuSprCreate(lbl_1_bss_49C, 50, 0));
     HuSprPosSet(lbl_1_bss_470, 0, 504.0f, 99.0f);
     HuSprBankSet(lbl_1_bss_470, 0, 0);
     HuSprGrpAttrSet(lbl_1_bss_470, HUSPR_ATTR_DISPOFF);
     lbl_1_bss_498 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 44), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 44), 0x10000000, 2));
     lbl_1_bss_46E = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_46E, 0, HuSprCreate(lbl_1_bss_498, 50, 0));
     HuSprPosSet(lbl_1_bss_46E, 0, 102.0f, 67.0f);
     HuSprBankSet(lbl_1_bss_46E, 0, (s16) lbl_1_bss_4D8->questionColumn);
     lbl_1_bss_398 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 42), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 42), 0x10000000, 2));
     lbl_1_bss_390 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_390, 0, HuSprCreate(lbl_1_bss_398, 50, 0));
     HuSprPosSet(lbl_1_bss_390, 0, 292.0f, 208.0f);
     HuSprAttrSet(lbl_1_bss_390, 0, HUSPR_ATTR_DISPOFF);
     lbl_1_bss_394 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 43), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 43), 0x10000000, 2));
     lbl_1_bss_38E = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_38E, 0, HuSprCreate(lbl_1_bss_394, 50, 0));
     HuSprPosSet(lbl_1_bss_38E, 0, 292.0f, 208.0f);
     HuSprAttrSet(lbl_1_bss_38E, 0, HUSPR_ATTR_DISPOFF);
     lbl_1_bss_494 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 103), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 103), 0x10000000, 2));
     lbl_1_bss_46C = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_46C, 0, HuSprCreate(lbl_1_bss_494, 1500, 0));
     lbl_1_bss_4E4 = 285.0f;
@@ -768,15 +768,15 @@ void fn_1_23748(void) {
     for (playerNo = 0; playerNo < 4; playerNo++) {
         if (fn_1_27FEC(playerNo) == 0) {
             lbl_1_bss_450[playerNo] = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_mgconst, 0), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0x9b0000, 0), 0x10000000, 2));
             HuSprGrpMemberSet(lbl_1_bss_5CC, (s16) (playerNo + 4),
                               HuSprCreate(lbl_1_bss_450[playerNo], 48, 0));
             HuSprPosSet(lbl_1_bss_5CC, (s16) (playerNo + 4), -23.0f, -25.0f);
             HuSprAttrSet(lbl_1_bss_5CC, (s16) (playerNo + 4), HUSPR_ATTR_DISPOFF);
         } else {
-        characterNo = GwPlayerConf[playerNo].charNo;
+        characterNo = lbl_80265728[playerNo].charNo;
         lbl_1_bss_450[playerNo] = HuSprAnimRead(
-            HuDataSelHeapReadNum(lbl_1_data_1C[characterNo], HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(lbl_1_data_1C[characterNo], 0x10000000, 2));
         HuSprGrpMemberSet(lbl_1_bss_5CC, (s16) (playerNo + 4),
                           HuSprCreate(lbl_1_bss_450[playerNo], 48, 0));
         HuSprPosSet(lbl_1_bss_5CC, (s16) (playerNo + 4), -23.0f, -25.0f);
@@ -784,15 +784,15 @@ void fn_1_23748(void) {
         }
     }
     lbl_1_bss_44C =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 28), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 28), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 0, HuSprCreate(lbl_1_bss_44C, 49, 1));
     HuSprPosSet(lbl_1_bss_5CC, 0, 0.0f, 0.0f);
     lbl_1_bss_448 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 29), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 29), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 1, HuSprCreate(lbl_1_bss_448, 49, 1));
     HuSprPosSet(lbl_1_bss_5CC, 1, 8.0f, 12.0f);
     lbl_1_bss_444 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 30), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 30), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 2, HuSprCreate(lbl_1_bss_444, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 2, 13.0f, 9.0f);
     fn_1_2029C();
@@ -808,7 +808,7 @@ void fn_1_23F20(void) {
     f32 scale;
     f32 transparency;
 
-    process = HuPrcCurrentGet();
+    process = fn_8000DD9C();
     sprite = (s16)process->property;
     angle = (f32)(u32)frandmod(360);
     /* Advance the random stream again; this second phase is unused. */
@@ -846,7 +846,7 @@ void fn_1_24138(void) {
     HUPROCESS *currentProcess;
     s16 groupId;
 
-    currentProcess = HuPrcCurrentGet();
+    currentProcess = fn_8000DD9C();
     groupId = (s16) currentProcess->property;
     HuSprAttrSet(groupId, 0, HUSPR_ATTR_DISPOFF);
     HuSprScaleSet(groupId, 0, (0.0f), (0.0f));
@@ -926,7 +926,7 @@ void fn_1_244A4(void) {
     s16 spriteGroup;
 
     /* angle is not initialized on entry. */
-    process = HuPrcCurrentGet();
+    process = fn_8000DD9C();
     spriteGroup = (s16) process->property;
 animateFrame:
     HuPrcVSleep();
@@ -948,7 +948,7 @@ void fn_1_245C0(void) {
     s32 characterNo;
     s32 playerIndex;
 
-    lbl_1_bss_548 = HuPrcCurrentGet();
+    lbl_1_bss_548 = fn_8000DD9C();
     lbl_1_bss_4D8 = (MicquizModeWorkView *)MgModeWork;
     lbl_1_bss_5CC = HuSprGrpCreate(8);
     HuSprGrpPosSet(lbl_1_bss_5CC, 493.0f, 386.0f);
@@ -956,15 +956,15 @@ void fn_1_245C0(void) {
     while (playerIndex < 4) {
         if (fn_1_27FEC(playerIndex) == 0) {
             lbl_1_bss_450[playerIndex] = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_mgconst, 0), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0x9b0000, 0), 0x10000000, 2));
             HuSprGrpMemberSet(lbl_1_bss_5CC, (s16) (playerIndex + 4),
                               HuSprCreate(lbl_1_bss_450[playerIndex], 48, 0));
             HuSprPosSet(lbl_1_bss_5CC, (s16) (playerIndex + 4), -23.0f, -25.0f);
             HuSprAttrSet(lbl_1_bss_5CC, (s16) (playerIndex + 4), HUSPR_ATTR_DISPOFF);
         } else {
-            characterNo = GwPlayerConf[playerIndex].charNo;
+            characterNo = lbl_80265728[playerIndex].charNo;
             lbl_1_bss_450[playerIndex] = HuSprAnimRead(
-                HuDataSelHeapReadNum(lbl_1_data_1C[characterNo], HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(lbl_1_data_1C[characterNo], 0x10000000, 2));
             HuSprGrpMemberSet(lbl_1_bss_5CC, (s16) (playerIndex + 4),
                               HuSprCreate(lbl_1_bss_450[playerIndex], 48, 0));
             HuSprPosSet(lbl_1_bss_5CC, (s16) (playerIndex + 4), -23.0f, -25.0f);
@@ -973,19 +973,19 @@ void fn_1_245C0(void) {
         playerIndex += 1;
     }
     lbl_1_bss_44C =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 28), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 28), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 0, HuSprCreate(lbl_1_bss_44C, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 0, 0.0f, 0.0f);
     lbl_1_bss_448 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 29), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 29), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 1, HuSprCreate(lbl_1_bss_448, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 1, 8.0f, 12.0f);
     lbl_1_bss_444 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 30), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 30), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 2, HuSprCreate(lbl_1_bss_444, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 2, 13.0f, 9.0f);
     lbl_1_bss_440 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 32), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 32), 0x10000000, 2));
     HuSprGrpMemberSet(lbl_1_bss_5CC, 3, HuSprCreate(lbl_1_bss_440, 49, 0));
     HuSprPosSet(lbl_1_bss_5CC, 3, -23.0f, -23.0f);
     HuSprAttrSet(lbl_1_bss_5CC, 2, HUSPR_ATTR_DISPOFF);
@@ -1075,7 +1075,7 @@ void fn_1_24EC8(void) {
         if (fn_1_27FEC(playerIndex) != 0) {
             for (digitIndex = 0; digitIndex < 3; digitIndex++) {
                 lbl_1_bss_3EC[playerIndex][digitIndex] = HuSprAnimRead(
-                    HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 86), HU_MEMNUM_OVL, HEAP_MODEL));
+                    fn_80008DD0(DATANUM(0xa20000, 86), 0x10000000, 2));
                 lbl_1_bss_3D4[playerIndex][digitIndex] = HuSprGrpCreate(1);
                 HuSprGrpMemberSet(lbl_1_bss_3D4[playerIndex][digitIndex], 0,
                                   HuSprCreate(lbl_1_bss_3EC[playerIndex][digitIndex], 1500, 0));
@@ -1128,17 +1128,17 @@ void fn_1_25230(void) {
     s32 characterIndex;
 
     lbl_1_bss_14 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 101), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 101), 0x10000000, 2));
     lbl_1_bss_438 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 102), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 102), 0x10000000, 2));
     lbl_1_bss_434 = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_434, 0, HuSprCreate(lbl_1_bss_438, 1500, 0));
     HuSprPosSet(lbl_1_bss_434, 0, 288.0f, 64.0f);
     HuSprAttrSet(lbl_1_bss_434, 0, HUSPR_ATTR_DISPOFF);
     animationIndex = 0;
     while (animationIndex < 4) {
-        lbl_1_bss_424[animationIndex] = HuSprAnimRead(HuDataSelHeapReadNum(
-            animationIndex + DATANUM(DATA_micquiz, 104), HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_424[animationIndex] = HuSprAnimRead(fn_80008DD0(
+            animationIndex + DATANUM(0xa20000, 104), 0x10000000, 2));
         lbl_1_bss_41C[animationIndex] = HuSprGrpCreate(1);
         HuSprGrpMemberSet(lbl_1_bss_41C[animationIndex], 0,
                           HuSprCreate(lbl_1_bss_424[animationIndex], 1500, 0));
@@ -1147,21 +1147,21 @@ void fn_1_25230(void) {
         animationIndex++;
     }
     fn_1_24EC8();
-    lbl_1_bss_3AC[0] = MgScoreInit(DATANUM(DATA_micquiz, 120));
-    HuPrcSetStat(lbl_1_bss_3AC[0]->proc, HU_PRC_STAT_PAUSE_ON);
+    lbl_1_bss_3AC[0] = MgScoreInit(DATANUM(0xa20000, 120));
+    HuPrcSetStat(lbl_1_bss_3AC[0]->proc, 0x4);
     MgScoreMaxDigitSet(lbl_1_bss_3AC[0], 2);
     MgScoreValueSet(lbl_1_bss_3AC[0], lbl_1_bss_4D8->questionCount);
     MgScorePosSet(lbl_1_bss_3AC[0], 186.0f, 135.0f);
     MgScoreDispOff(lbl_1_bss_3AC[0]);
     MgScorePriSet(lbl_1_bss_3AC[0], 50);
     lbl_1_bss_3D0 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 108), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 108), 0x10000000, 2));
     lbl_1_bss_3CC = HuSprGrpCreate(1);
     HuSprGrpMemberSet(lbl_1_bss_3CC, 0, HuSprCreate(lbl_1_bss_3D0, 1500, 0));
     HuSprPosSet(lbl_1_bss_3CC, 0, 288.0f, 140.0f);
     HuSprAttrSet(lbl_1_bss_3CC, 0, HUSPR_ATTR_DISPOFF);
-    lbl_1_bss_3AC[1] = MgScoreInit(DATANUM(DATA_micquiz, 120));
-    HuPrcSetStat(lbl_1_bss_3AC[1]->proc, HU_PRC_STAT_PAUSE_ON);
+    lbl_1_bss_3AC[1] = MgScoreInit(DATANUM(0xa20000, 120));
+    HuPrcSetStat(lbl_1_bss_3AC[1]->proc, 0x4);
     MgScoreMaxDigitSet(lbl_1_bss_3AC[1], 2);
     MgScoreValueSet(lbl_1_bss_3AC[1], lbl_1_bss_4D8->playerCount * 5);
     MgScorePosSet(lbl_1_bss_3AC[1], 338.0f, 145.0f);
@@ -1171,8 +1171,8 @@ void fn_1_25230(void) {
     while (animationIndex < 4) {
         if (fn_1_27FEC(animationIndex) != 0) {
             characterIndex = lbl_1_bss_4D8->playerCharacter[animationIndex];
-            lbl_1_bss_3BC[animationIndex] = HuSprAnimRead(HuDataSelHeapReadNum(
-                characterIndex + DATANUM(DATA_micquiz, 109), HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_3BC[animationIndex] = HuSprAnimRead(fn_80008DD0(
+                characterIndex + DATANUM(0xa20000, 109), 0x10000000, 2));
             lbl_1_bss_3B4[animationIndex] = HuSprGrpCreate(1);
             HuSprGrpMemberSet(lbl_1_bss_3B4[animationIndex], 0,
                               HuSprCreate(lbl_1_bss_3BC[animationIndex], 1500, 0));
@@ -1405,7 +1405,7 @@ void fn_1_266A0(s32 action) {
         HuSprAttrReset(lbl_1_bss_474, 0, HUSPR_ATTR_DISPOFF);
         HuSprAttrReset(lbl_1_bss_472, 0, HUSPR_ATTR_DISPOFF);
         if ((u32)lbl_1_bss_C == 0) {
-            lbl_1_bss_C = HuPrcChildCreate(fn_1_2D22C, 100, 6144, 0, lbl_1_bss_548);
+            lbl_1_bss_C = fn_8000DAC0(fn_1_2D22C, 100, 6144, 0, lbl_1_bss_548);
         }
     } else if (action == 3) {
         fn_1_269C0();
@@ -1429,7 +1429,7 @@ void fn_1_266A0(s32 action) {
             HuPrcKill(lbl_1_bss_C);
             lbl_1_bss_C = NULL;
         }
-        HuAudFXPlay(MSM_SE_BRD00_45);
+        HuAudFXPlay(1049);
         fn_1_269C0();
         fn_1_26A1C();
         HuPrcSleep(30);
@@ -1446,7 +1446,7 @@ void fn_1_269C0(void) {
 
     emissionIndex = 0;
     while (emissionIndex < 20) {
-        HuPrcChildCreate(fn_1_26ACC, 100U, 6144U, 0, lbl_1_bss_548);
+        fn_8000DAC0(fn_1_26ACC, 100U, 6144U, 0, lbl_1_bss_548);
         emissionIndex += 1;
     }
 }
@@ -1457,7 +1457,7 @@ void fn_1_26A1C(void) {
 
     emissionIndex = 0;
     while (emissionIndex < 10) {
-        HuPrcChildCreate(fn_1_26DD8, 100U, 6144U, 0, HuPrcCurrentGet());
+        fn_8000DAC0(fn_1_26DD8, 100U, 6144U, 0, fn_8000DD9C());
         emissionIndex += 1;
     }
 }
@@ -1468,7 +1468,7 @@ void fn_1_26A74(void) {
 
     emissionIndex = 0;
     while (emissionIndex < 10) {
-        HuPrcChildCreate(fn_1_27070, 100U, 6144U, 0, HuPrcCurrentGet());
+        fn_8000DAC0(fn_1_27070, 100U, 6144U, 0, fn_8000DD9C());
         emissionIndex += 1;
     }
 }
@@ -1484,7 +1484,7 @@ void fn_1_26ACC(void) {
     f32 scale;
     f32 position[2];
 
-    animation = HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 34), HU_MEMNUM_OVL, 2));
+    animation = HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 34), 0x10000000, 2));
     group = HuSprGrpCreate(1);
     HuSprGrpMemberSet(group, 0, HuSprCreate(animation, 50, 0));
     step = (3.0f);
@@ -1535,7 +1535,7 @@ void fn_1_26DD8(void) {
     f32 transparency;
 
     animation =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 35), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 35), 0x10000000, 2));
     spriteGroup = HuSprGrpCreate(1);
     HuSprGrpMemberSet(spriteGroup, 0, HuSprCreate(animation, 50, 0));
     step = (3.0f);
@@ -1587,7 +1587,7 @@ void fn_1_27070(void) {
     f32 transparency;
 
     animation =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 35), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 35), 0x10000000, 2));
     spriteGroup = HuSprGrpCreate(1);
     HuSprGrpMemberSet(spriteGroup, 0, HuSprCreate(animation, 50, 0));
     step = (3.0f);
@@ -1630,7 +1630,7 @@ void fn_1_27070(void) {
 /* Emit a microphone activity ring every twenty frames while this process runs. */
 void fn_1_27308(void) {
     for (;;) {
-        HuPrcChildCreate(fn_1_27344, 100U, 6144U, 0, lbl_1_bss_548);
+        fn_8000DAC0(fn_1_27344, 100U, 6144U, 0, lbl_1_bss_548);
         HuPrcSleep(20);
     }
 }
@@ -1646,7 +1646,7 @@ void fn_1_27344(void) {
     f32 transparency;
 
     animation =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 31), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0xa20000, 31), 0x10000000, 2));
     spriteGroup = HuSprGrpCreate(1);
     HuSprGrpMemberSet(spriteGroup, 0, HuSprCreate(animation, 47, 0));
     HuSprPosSet(spriteGroup, 0, (516.0f), (362.0f));
@@ -1683,16 +1683,16 @@ void fn_1_27530(s32 accepted) {
     s32 unused;
     if (accepted)
     {
-        HuAudFXPlay(MSM_SE_CMN_11);
+        HuAudFXPlay(10);
         lbl_1_bss_378 = lbl_1_bss_390;
         fn_1_2E6C4(3);
     }
     else
     {
-        HuAudFXPlay(MSM_SE_CMN_12);
+        HuAudFXPlay(11);
         lbl_1_bss_378 = lbl_1_bss_38E;
     }
-    HuPrcChildCreate(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
+    fn_8000DAC0(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
 }
 
 /* Flash the selected answer feedback icon twice before ending this process. */
@@ -1736,7 +1736,7 @@ void fn_1_27730(s32 accepted, s32 questionType) {
     if (questionType == 0 || questionType == 1) {
         if (accepted != 0) {
             for (index = 0; index < 15; index++) {
-                HuPrcChildCreate(fn_1_24294, 100U, 6144U, 0, lbl_1_bss_548);
+                fn_8000DAC0(fn_1_24294, 100U, 6144U, 0, lbl_1_bss_548);
             }
             fn_1_27CC0();
             return;
@@ -1755,7 +1755,7 @@ void fn_1_27730(s32 accepted, s32 questionType) {
     if (questionType == 6) {
         if (accepted != 0) {
             for (index = 0; index < 15; index++) {
-                HuPrcChildCreate(fn_1_24294, 100U, 6144U, 0, lbl_1_bss_548);
+                fn_8000DAC0(fn_1_24294, 100U, 6144U, 0, lbl_1_bss_548);
             }
             fn_1_27CC0();
             return;
@@ -1770,9 +1770,9 @@ void fn_1_27840(void) {
     f32 transparency;
     s32 index;
 
-    HuAudFXPlay(MSM_SE_MICQUIZ_EVENT_FRAGMENT);
+    HuAudFXPlay(1301);
     for (index = 0; index < 15; index++) {
-        HuPrcChildCreate(fn_1_27A50, 100U, 6144U, 0, lbl_1_bss_548);
+        fn_8000DAC0(fn_1_27A50, 100U, 6144U, 0, lbl_1_bss_548);
     }
     HuPrcSleep(45);
     HuSprTPLvlSet(lbl_1_bss_4A8, 0, (0.0f));
@@ -2226,12 +2226,12 @@ void fn_1_2A344(s32 questionType) {
 
 /* Remember the current process as the parent of quiz response effects. */
 void fn_1_2A4B0(void) {
-    lbl_1_bss_548 = HuPrcCurrentGet();
+    lbl_1_bss_548 = fn_8000DD9C();
 }
 
 /* Remember the current process as the parent of quiz response effects. */
 void fn_1_2A4DC(void) {
-    lbl_1_bss_548 = HuPrcCurrentGet();
+    lbl_1_bss_548 = fn_8000DD9C();
 }
 
 /* Run question responses, retries, and participant changes until the round result is ready. */
@@ -2302,8 +2302,8 @@ void fn_1_2A508(s32 quizMode) {
     fn_1_266A0(1);
     fn_1_31C1C();
     fn_1_2D748(1);
-    motionProcess = HuPrcChildCreate(fn_1_2DCEC, 100U, 6144U, 0, lbl_1_bss_548);
-    inputProcess = HuPrcChildCreate(fn_1_2D34C, 100U, 6144U, 0, lbl_1_bss_548);
+    motionProcess = fn_8000DAC0(fn_1_2DCEC, 100U, 6144U, 0, lbl_1_bss_548);
+    inputProcess = fn_8000DAC0(fn_1_2D34C, 100U, 6144U, 0, lbl_1_bss_548);
     fn_1_31910(1);
 readInitialResponse:
     HuPrcVSleep();
@@ -2360,10 +2360,10 @@ waitForResponseReady:
         if ((s32) lbl_1_bss_540 == 0) {
     fn_1_266A0(4);
         }
-        HuAudFXPlay(MSM_SE_CMN_11);
+        HuAudFXPlay(10);
         lbl_1_bss_378 = lbl_1_bss_390;
         fn_1_2E6C4(3);
-        HuPrcChildCreate(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
+        fn_8000DAC0(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
         lbl_1_bss_52C = 1;
         fn_1_27730(1, fn_1_281D4());
         lbl_1_bss_4D8->responseRecord[0] = 0;
@@ -2381,9 +2381,9 @@ waitForResponseReady:
         if (hasSelection == 0) {
             lbl_1_bss_524 = 1;
             lbl_1_bss_534 = 0;
-            HuAudFXPlay(MSM_SE_CMN_12);
+            HuAudFXPlay(11);
             lbl_1_bss_378 = lbl_1_bss_38E;
-            HuPrcChildCreate(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
+            fn_8000DAC0(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
             fn_1_2EF84(quizMode, 0);
             HuPrcSleep(120);
             lbl_1_bss_52C = 0;
@@ -2394,9 +2394,9 @@ waitForResponseReady:
         } else {
             lbl_1_bss_524 = 1;
             lbl_1_bss_534 = 0;
-            HuAudFXPlay(MSM_SE_CMN_12);
+            HuAudFXPlay(11);
             lbl_1_bss_378 = lbl_1_bss_38E;
-            HuPrcChildCreate(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
+            fn_8000DAC0(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
             fn_1_2EF84(quizMode, 1);
             HuPrcSleep(60);
             lbl_1_bss_52C = 0;
@@ -2451,8 +2451,8 @@ waitForNextParticipant:
                 for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                     if (lbl_1_bss_4D8->playerActive[playerIndex] != 0 &&
                         playerIndex != fn_1_27FD8() &&
-                        (HuPadBtnDown[playerIndex] & PAD_BUTTON_A) != 0) {
-                    HuAudFXPlay(MSM_SE_MICQUIZ_PLAYER_BUZZ_IN);
+                        (lbl_802C0008[playerIndex] & PAD_BUTTON_A) != 0) {
+                    HuAudFXPlay(1271);
                     lbl_1_bss_4D8->responseRecord[3] = (s8)(lbl_1_bss_53C = playerIndex);
                     lbl_1_bss_524 = 1;
                     fn_1_31C1C();
@@ -2492,18 +2492,18 @@ readRetryResponse:
                     else if (lbl_1_bss_530 == 1) {
                         lbl_1_bss_524 = 1;
                         lbl_1_bss_52C = 1;
-                        HuAudFXPlay(MSM_SE_CMN_11);
+                        HuAudFXPlay(10);
                         lbl_1_bss_378 = lbl_1_bss_390;
         fn_1_2E6C4(3);
-                        HuPrcChildCreate(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
+                        fn_8000DAC0(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
                         lbl_1_bss_4D8->responseRecord[1] = 0;
                         fn_1_27730(1, fn_1_281D4());
                         goto finishRound;
                     } else if (lbl_1_bss_530 == 2) {
                         lbl_1_bss_524 = 1;
-                        HuAudFXPlay(MSM_SE_CMN_12);
+                        HuAudFXPlay(11);
                         lbl_1_bss_378 = lbl_1_bss_38E;
-                        HuPrcChildCreate(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
+                        fn_8000DAC0(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
                         fn_1_2EF84(quizMode, 1);
                         HuPrcSleep(60);
                         lbl_1_bss_52C = 0;
@@ -2601,7 +2601,7 @@ void fn_1_2BBF4(s32 questionType) {
     fn_1_31C1C();
     fn_1_2D748(0);
     fn_1_31910(0);
-    lbl_1_bss_548 = HuPrcCurrentGet();
+    lbl_1_bss_548 = fn_8000DD9C();
     do {
         HuPrcVSleep();
     } while ((s32) lbl_1_bss_4FC == 0);
@@ -2614,9 +2614,9 @@ void fn_1_2BBF4(s32 questionType) {
     fn_1_266A0(1);
     fn_1_31C1C();
     fn_1_2D748(1);
-    HuPrcChildCreate(fn_1_315C8, 100U, 6144U, 0, lbl_1_bss_548);
-    buttonProcess = HuPrcChildCreate(fn_1_2E2B0, 100U, 6144U, 0, lbl_1_bss_548);
-    selectionProcess = HuPrcChildCreate(fn_1_2D34C, 100U, 6144U, 0, lbl_1_bss_548);
+    fn_8000DAC0(fn_1_315C8, 100U, 6144U, 0, lbl_1_bss_548);
+    buttonProcess = fn_8000DAC0(fn_1_2E2B0, 100U, 6144U, 0, lbl_1_bss_548);
+    selectionProcess = fn_8000DAC0(fn_1_2D34C, 100U, 6144U, 0, lbl_1_bss_548);
     fn_1_31910(1);
 readInitialResponse:
     HuPrcVSleep();
@@ -2711,7 +2711,7 @@ waitForResponseReady:
     }
     goto readInitialResponse;
 beginNextParticipant:
-    fn_1_3186C(0, 8.0f, HU3D_MOTATTR_LOOP);
+    fn_1_3186C(0, 8.0f, ((1 << 30) | (1 << 0)));
     lbl_1_bss_534 = 0;
     if (HuMCSelWinCheck() != 0) {
         fn_1_20E64(3);
@@ -2721,7 +2721,7 @@ beginNextParticipant:
     fn_1_2D748(2);
     fn_1_31924(lbl_1_bss_53C);
     fn_1_208E4();
-    fn_1_3186C(1, 16.0f, HU3D_MOTATTR_LOOP);
+    fn_1_3186C(1, 16.0f, ((1 << 30) | (1 << 0)));
     fn_1_2E6C4(2);
     lbl_1_bss_524 = 0;
     HuPrcKill(buttonProcess);
@@ -2737,8 +2737,8 @@ waitForNextParticipant:
         for (playerIndex = 0; playerIndex < 4; playerIndex += 1) {
             if (lbl_1_bss_4D8->playerActive[playerIndex] != 0 &&
                 playerIndex != fn_1_27FD8() &&
-                (HuPadBtnDown[playerIndex] & PAD_BUTTON_A) != 0) {
-            HuAudFXPlay(MSM_SE_MICQUIZ_PLAYER_BUZZ_IN);
+                (lbl_802C0008[playerIndex] & PAD_BUTTON_A) != 0) {
+            HuAudFXPlay(1271);
             lbl_1_bss_4D8->responseRecord[3] = (s8)(lbl_1_bss_53C = playerIndex);
             lbl_1_bss_524 = 1;
             fn_1_31C1C();
@@ -3051,7 +3051,7 @@ void fn_1_2D748(s32 displayState) {
 /* Start the microphone pulse process if it is not already running. */
 void fn_1_2D95C(void) {
     if(lbl_1_bss_10==0) {
-        lbl_1_bss_10=HuPrcChildCreate(fn_1_2765C,100,8192,0,lbl_1_bss_548);
+        lbl_1_bss_10=fn_8000DAC0(fn_1_2765C,100,8192,0,lbl_1_bss_548);
     }
 }
 
@@ -3066,7 +3066,7 @@ void fn_1_2D9BC(void) {
 /* Start the repeating microphone activity rings if they are not already running. */
 void fn_1_2DA0C(void) {
     if(lbl_1_bss_0==0) {
-        lbl_1_bss_0=HuPrcChildCreate(fn_1_27308,100,8192,0,lbl_1_bss_548);
+        lbl_1_bss_0=fn_8000DAC0(fn_1_27308,100,8192,0,lbl_1_bss_548);
     }
 }
 
@@ -3218,7 +3218,7 @@ void fn_1_2E2B0(void) {
     fn_1_266A0(0);
     HuMCSelWinContextKill();
     fn_1_208E4();
-    fn_1_3186C(1, (16.0f), HU3D_MOTATTR_LOOP);
+    fn_1_3186C(1, (16.0f), ((1 << 30) | (1 << 0)));
     if (lbl_1_bss_4D8->presenterLayout == 0) {
         fn_1_20B74(1);
         fn_1_20A50(MESSNUM(MESS_MICQUIZ, 17), 1, 1);
@@ -3250,21 +3250,21 @@ void fn_1_2E6C4(s32 motionState) {
     if (motionState == 0) {
         if (lbl_1_data_1FC[0] != motionState) {
             lbl_1_data_1FC[0] = motionState;
-            HuPrcChildCreate(fn_1_2E828, 100U, 6144U, 0, lbl_1_bss_548);
+            fn_8000DAC0(fn_1_2E828, 100U, 6144U, 0, lbl_1_bss_548);
         }
     } else if (motionState == 1) {
         if (lbl_1_data_1FC[0] != motionState) {
             lbl_1_data_1FC[0] = motionState;
-            HuPrcChildCreate(fn_1_2EAA0, 100U, 6144U, 0, lbl_1_bss_548);
+            fn_8000DAC0(fn_1_2EAA0, 100U, 6144U, 0, lbl_1_bss_548);
         }
     } else if (motionState == 2) {
         if (lbl_1_data_1FC[0] != motionState) {
             lbl_1_data_1FC[0] = motionState;
-            HuPrcChildCreate(fn_1_2EBB0, 100U, 6144U, 0, lbl_1_bss_548);
+            fn_8000DAC0(fn_1_2EBB0, 100U, 6144U, 0, lbl_1_bss_548);
         }
     } else if (motionState == 3 && lbl_1_data_1FC[0] != motionState) {
         lbl_1_data_1FC[0] = motionState;
-        HuPrcChildCreate(fn_1_2ECA8, 100U, 6144U, 0, lbl_1_bss_548);
+        fn_8000DAC0(fn_1_2ECA8, 100U, 6144U, 0, lbl_1_bss_548);
     }
 }
 
@@ -3568,13 +3568,13 @@ void fn_1_2FC5C(void)
 
 /* Start the temporary quiz message beneath the active quiz process. */
 void fn_1_2FC60(void) {
-    HuPrcChildCreate(fn_1_2FD28, 100U, 6144U, 0, lbl_1_bss_548);
+    fn_8000DAC0(fn_1_2FD28, 100U, 6144U, 0, lbl_1_bss_548);
 }
 
 /* Schedule removal of the temporary quiz message if its window exists. */
 void fn_1_2FCA0(HUPROCESS* parent) {
     if(lbl_1_data_208!=-1)
-        HuPrcChildCreate(fn_1_2FCF0,100,6144,0,parent);
+        fn_8000DAC0(fn_1_2FCF0,100,6144,0,parent);
 }
 
 /* Remove the temporary quiz message window and clear its active handle. */
@@ -3663,7 +3663,7 @@ s32 fn_1_3003C(void) {
     if ((s32) lbl_1_bss_524 == 0) {
         lbl_1_bss_518 += 1;
         if ((s32) lbl_1_bss_518 >= (s32) lbl_1_bss_51C) {
-            HuAudFXPlay(MSM_SE_MICQUIZ_COUNTDOWN_TICK);
+            HuAudFXPlay(1269);
             lbl_1_bss_520 -= 1;
             lbl_1_bss_518 = 0;
             fn_1_3011C(lbl_1_bss_520);
@@ -3725,7 +3725,7 @@ void fn_1_30248(s32 primaryMessageIndex, s32 secondaryMessageIndex) {
     HuPrcSleep(60);
 
     fn_1_20B74(3);
-    fn_1_3186C(1, (16.0f), HU3D_MOTATTR_LOOP);
+    fn_1_3186C(1, (16.0f), ((1 << 30) | (1 << 0)));
 
     if (randomChoice == 0) {
         fn_1_20D08(3, lbl_1_data_1D4[secondaryMessageIndex], 0);
@@ -3768,7 +3768,7 @@ void fn_1_306A0(s32 primaryMessageIndex, s32 secondaryMessageIndex)
     }
 
     fn_1_20B74(3);
-    fn_1_3186C(1, (16.0f), HU3D_MOTATTR_LOOP);
+    fn_1_3186C(1, (16.0f), ((1 << 30) | (1 << 0)));
 
     if (randomChoice == 0) {
         fn_1_20D08(3, lbl_1_data_1D4[secondaryMessageIndex], 0);
@@ -3812,7 +3812,7 @@ void fn_1_30B0C(s32 primaryMessageIndex, s32 secondaryMessageIndex)
     }
 
     fn_1_20B74(3);
-    fn_1_3186C(1, (16.0f), HU3D_MOTATTR_LOOP);
+    fn_1_3186C(1, (16.0f), ((1 << 30) | (1 << 0)));
 
     if (randomChoice == 0) {
         fn_1_20D08(3, lbl_1_data_1D4[secondaryMessageIndex], 0);
@@ -3835,7 +3835,7 @@ void fn_1_30B0C(s32 primaryMessageIndex, s32 secondaryMessageIndex)
 void fn_1_30E54(s32 messageIndex) {
 
     fn_1_20B74(3);
-    fn_1_3186C(1, (16.0f), HU3D_MOTATTR_LOOP);
+    fn_1_3186C(1, (16.0f), ((1 << 30) | (1 << 0)));
     fn_1_20D08(3, lbl_1_data_1D4[messageIndex], 0);
     fn_1_20A50(MESSNUM(MESS_MICQUIZ_Q, 79), 1, 3);
     fn_1_20C94();
@@ -3864,15 +3864,15 @@ void fn_1_310F0(s32 success, s32 choice) {
 
     if (success != 0) {
         fn_1_30248(lbl_1_bss_4D8->playerCharacter[choice], lbl_1_bss_510 - 1);
-        HuAudFXPlay(MSM_SE_CMN_11);
+        HuAudFXPlay(10);
         lbl_1_bss_378 = lbl_1_bss_390;
         if (lbl_1_data_1FC[0] != 3) {
             lbl_1_data_1FC[0] = 3;
-            HuPrcChildCreate(fn_1_2ECA8, 100U, 6144U, 0, lbl_1_bss_548);
+            fn_8000DAC0(fn_1_2ECA8, 100U, 6144U, 0, lbl_1_bss_548);
         }
-        HuPrcChildCreate(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
-        HuAudFXPlay(MSM_SE_GUIDE_47);
-        fn_1_3186C(3, 8.0f, HU3D_MOTATTR_LOOP);
+        fn_8000DAC0(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
+        HuAudFXPlay(971);
+        fn_1_3186C(3, 8.0f, ((1 << 30) | (1 << 0)));
         HuPrcSleep(120);
         return;
     }
@@ -3888,10 +3888,10 @@ void fn_1_310F0(s32 success, s32 choice) {
         fn_1_30E54(lbl_1_bss_510 - 1);
     }
 
-    HuAudFXPlay(MSM_SE_CMN_12);
+    HuAudFXPlay(11);
     lbl_1_bss_378 = lbl_1_bss_38E;
-    HuPrcChildCreate(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
-    fn_1_3186C(6, 8.0f, HU3D_MOTATTR_LOOP);
+    fn_8000DAC0(fn_1_275CC, 100U, 6144U, 0, lbl_1_bss_548);
+    fn_1_3186C(6, 8.0f, ((1 << 30) | (1 << 0)));
     HuPrcSleep(120);
 }
 
@@ -3902,11 +3902,11 @@ void fn_1_315C8(void) {
 
     for (;;) {
         HuPrcVSleep();
-        motionTime = Hu3DMotionTimeGet(lbl_1_bss_376);
-        motionId = Hu3DMotionIDGet(lbl_1_bss_376);
+        motionTime = fn_8002D4E0(lbl_1_bss_376);
+        motionId = fn_8002D3C4(lbl_1_bss_376);
         if (motionId == lbl_1_bss_368[6]) {
             if (((20.0f) == motionTime) || ((55.0f) == motionTime)) {
-                HuAudFXPlay(MSM_SE_GUIDE_45);
+                HuAudFXPlay(969);
             }
             continue;
         }
@@ -3916,7 +3916,7 @@ void fn_1_315C8(void) {
         if (((10.0f) != motionTime) && ((60.0f) != motionTime)) {
             continue;
         }
-        HuAudFXPlay(MSM_SE_GUIDE_45);
+        HuAudFXPlay(969);
     }
 }
 
@@ -3945,26 +3945,26 @@ int fn_1_316F4(int key) {
 void fn_1_31760(void) {
     s32 index;
 
-    lbl_1_bss_376 = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_micquizishi, 121), HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_376 = fn_80025A04(
+        fn_80008DD0(DATANUM(0xa40000, 121), 0x10000000, 2));
     for (index = 0; index < 7; index++) {
-        lbl_1_bss_368[index] = Hu3DJointMotion(
+        lbl_1_bss_368[index] = fn_80030458(
             lbl_1_bss_376,
-            HuDataSelHeapReadNum(lbl_1_data_0[index], HU_MEMNUM_OVL, HEAP_MODEL)
+            fn_80008DD0(lbl_1_data_0[index], 0x10000000, 2)
         );
     }
-    Hu3DModelAttrSet(lbl_1_bss_376, HU3D_MOTATTR_LOOP);
-    fn_1_3186C(0, (0.0f), HU3D_MOTATTR_LOOP);
-    Hu3DModelPosSet(lbl_1_bss_376, (0.0f), (0.0f), -410.0f);
+    fn_800269E8(lbl_1_bss_376, ((1 << 30) | (1 << 0)));
+    fn_1_3186C(0, (0.0f), ((1 << 30) | (1 << 0)));
+    fn_80026760(lbl_1_bss_376, (0.0f), (0.0f), -410.0f);
 }
 
 /* Change the presenter motion only when the requested motion is not already active. */
 void fn_1_3186C(s32 motionNo, f32 blendFrames, u32 attr) {
     HU3D_MOTIONID currentMotion;
 
-    currentMotion = Hu3DMotionIDGet(lbl_1_bss_376);
+    currentMotion = fn_8002D3C4(lbl_1_bss_376);
     if (currentMotion != lbl_1_bss_368[motionNo]) {
-        Hu3DMotionShiftSet(lbl_1_bss_376, lbl_1_bss_368[motionNo],
+        fn_8002CCC0(lbl_1_bss_376, lbl_1_bss_368[motionNo],
                            (0.0f), blendFrames, attr);
     }
 }
@@ -4053,11 +4053,11 @@ void fn_1_31CEC(HUWINID windowId, u32 answerId, s16 soundIndex) {
           MESSNUM(MESS_MICQUIZ_TUTORIAL, 44), MESSNUM(MESS_MICQUIZ_TUTORIAL, 45),
           MESSNUM(MESS_MICQUIZ_INTRO, 0),     -1 }
     };
-    QuizSoundIds sounds = { { MSM_SE_GUIDE_26, MSM_SE_GUIDE_27, MSM_SE_GUIDE_28, MSM_SE_GUIDE_18,
-                              MSM_SE_GUIDE_19, MSM_SE_GUIDE_20, MSM_SE_GUIDE_47, MSM_SE_GUIDE_48,
-                              MSM_SE_GUIDE_49, MSM_SE_GUIDE_50, MSM_SE_GUIDE_51, MSM_SE_GUIDE_52,
-                              MSM_SE_GUIDE_53, MSM_SE_GUIDE_54, MSM_SE_GUIDE_30, MSM_SE_GUIDE_22,
-                              -MSM_SE_CMN_02 } };
+    QuizSoundIds sounds = { { 950, 951, 952, 942,
+                              943, 944, 971, 972,
+                              973, 974, 975, 976,
+                              977, 978, 954, 946,
+                              -1 } };
     s16 answerIndex;
 
     soundIndex--;

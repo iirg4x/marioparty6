@@ -1,4 +1,5 @@
 /* Strawberry Shortfuse: character setup, movement and timed animations. */
+#include <math.h>
 #include "REL/m680Dll/character.h"
 #include "datadir_enum.h"
 #include "REL/m680Dll/scheduler.h"
@@ -82,32 +83,32 @@ void fn_1_AD38(OMOBJ *object)
     data = object->data;
     data->object = object;
     data->playerIndex = (s16)object->work[0];
-    data->character = GwPlayerConf[data->playerIndex].charNo;
-    data->group = GwPlayerConf[data->playerIndex].grpNo;
-    data->padNo = GwPlayerConf[data->playerIndex].padNo;
-    data->playerType = GwPlayerConf[data->playerIndex].type;
-    data->difficulty = GwPlayerConf[data->playerIndex].comDif;
+    data->character = lbl_80265728[data->playerIndex].charNo;
+    data->group = lbl_80265728[data->playerIndex].grpNo;
+    data->padNo = lbl_80265728[data->playerIndex].padNo;
+    data->playerType = lbl_80265728[data->playerIndex].type;
+    data->difficulty = lbl_80265728[data->playerIndex].comDif;
     data->playerSlot = (s16)object->work[1];
 
-    *object->mdlId = CharModelCreate(data->character, 4);
+    *object->mdlId = fn_80057068(data->character, 4);
     data->modelId = *object->mdlId;
     for (motion = 0; motion < 10; motion++) {
-        motionId = CharMotionCreate(data->character, lbl_1_data_6C0[motion]);
+        motionId = fn_8005B0B8(data->character, lbl_1_data_6C0[motion]);
         data->motionIds[motion] = motionId;
         object->mtnId[motion] = motionId;
     }
-    CharMotionSet(data->character, *object->mtnId);
-    CharModelAttrReset(data->character, HU3D_MOTATTR_PAUSE);
-    CharModelAttrSet(data->character, HU3D_MOTATTR_LOOP);
-    CharModelAttrReset(data->character, 1);
-    CharMotionDataClose(data->character);
-    CharModelVoiceFlagSet(data->character, 1);
-    CharEffectLayerSet(6);
-    CharModelStepSet(data->character, 0);
+    fn_8005BE80(data->character, *object->mtnId);
+    fn_8005C47C(data->character, ((1 << 30) | (1 << 1)));
+    fn_8005C430(data->character, ((1 << 30) | (1 << 0)));
+    fn_8005C47C(data->character, 1);
+    fn_8005B4BC(data->character);
+    fn_8005DFC0(data->character, 1);
+    fn_8005DDEC(6);
+    fn_8005F77C(data->character, 0);
     /* This character motion is loaded without its voice cue. */
-    CharMotionVoiceOnSet(data->character, M680_VOICE_OFF_MOTION, 0);
-    Hu3DModelLayerSet(data->modelId, 3);
-    Hu3DModelShadowSet(data->modelId);
+    fn_8005DEB0(data->character, M680_VOICE_OFF_MOTION, 0);
+    fn_80026B8C(data->modelId, 3);
+    fn_80026E44(data->modelId);
 
     data->position.x = 0.0f;
     data->position.y = 0.0f;
@@ -118,9 +119,9 @@ void fn_1_AD38(OMOBJ *object)
     data->targetAngle = 180.0f;
     data->clearedValue = 0.0f;
     data->eliminated = 0;
-    Hu3DModelPosSetV(data->modelId, &data->position);
+    fn_80026790(data->modelId, &data->position);
     omSetTra(data->object, data->position.x, data->position.y, data->position.z);
-    Hu3DModelRotSetV(data->modelId, &data->rotation);
+    fn_80026838(data->modelId, &data->rotation);
     omSetRot(data->object, data->rotation.x, data->rotation.y, data->rotation.z);
     fn_1_6538(data, data->playerSlot);
     object->objFunc = fn_1_AFF8;
@@ -139,9 +140,9 @@ void fn_1_AFF8(OMOBJ *root)
         fn_1_B0A4(sequence);
     }
     fn_1_B0AC(sequence);
-    Hu3DModelPosSetV(sequence->modelId, &sequence->position);
+    fn_80026790(sequence->modelId, &sequence->position);
     omSetTra(sequence->object, sequence->position.x, sequence->position.y, sequence->position.z);
-    Hu3DModelRotSetV(sequence->modelId, &sequence->rotation);
+    fn_80026838(sequence->modelId, &sequence->rotation);
     omSetRot(sequence->object, sequence->rotation.x, sequence->rotation.y, sequence->rotation.z);
 }
 
@@ -251,9 +252,9 @@ s32 fn_1_B26C(void *argument)
             currentAngle = currentAngleResult;
         }
         work->targetAngle = (f32)((f64)(180.0f * currentAngle) / 3.141592653589793);
-        if (work->motionIds[2] != Hu3DMotionIDGet(work->modelId) &&
-            work->motionIds[2] != Hu3DMotionShiftIDGet(work->modelId)) {
-            CharMotionShiftSet(work->character, work->motionIds[2], 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
+        if (work->motionIds[2] != fn_8002D3C4(work->modelId) &&
+            work->motionIds[2] != fn_8002D3EC(work->modelId)) {
+            fn_8005C2C8(work->character, work->motionIds[2], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
         }
         if (work->frame >= work->travelFrames) {
             work->state++;
@@ -261,7 +262,7 @@ s32 fn_1_B26C(void *argument)
         break;
     case 2:
         work->targetAngle = work->endAngle;
-        CharMotionShiftSet(work->character, work->motionIds[0], 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
+        fn_8005C2C8(work->character, work->motionIds[0], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
         done = 1;
         break;
     }
@@ -279,9 +280,9 @@ s32 fn_1_B6CC(void *argument)
     done = 0;
     switch (work->state) {
     case 0:
-        CharMotionShiftSet(work->character, work->motionIds[8], 0.0f,
+        fn_8005C2C8(work->character, work->motionIds[8], 0.0f,
                            5.0f, 0);
-        Hu3DMotionShiftSpeedSet(work->modelId, 2.0f);
+        fn_8002D894(work->modelId, 2.0f);
         work->frame = 0;
         (work->state)++;
         /* Fall through to update the new motion. */
@@ -291,9 +292,9 @@ s32 fn_1_B6CC(void *argument)
         work->targetAngle = 180.0f - 90.0f * progress;
         work->rotation.y = work->targetAngle;
         if (work->frame >= 29) {
-            CharMotionShiftSet(work->character, work->motionIds[0], 0.0f,
-                               5.0f, HU3D_MOTATTR_LOOP);
-            CharMotionSpeedSet(work->character, 1.0f);
+            fn_8005C2C8(work->character, work->motionIds[0], 0.0f,
+                               5.0f, ((1 << 30) | (1 << 0)));
+            fn_8005C390(work->character, 1.0f);
             done = 1;
         }
         break;
@@ -343,8 +344,8 @@ s32 fn_1_BB38(void *argument)
     work = argument;
     switch (work->state) {
     case 0:
-        CharMotionShiftSet(work->character, work->motionIds[8], 0.0f,
-                           5.0f, HU3D_MOTATTR_LOOP);
+        fn_8005C2C8(work->character, work->motionIds[8], 0.0f,
+                           5.0f, ((1 << 30) | (1 << 0)));
         work->frame = 0;
         (work->state)++;
         /* Fall through to update the new motion. */
@@ -354,13 +355,13 @@ s32 fn_1_BB38(void *argument)
         work->targetAngle = 90.0f * (1.0f - progress);
         work->rotation.y = work->targetAngle;
         if (work->frame >= 60) {
-            CharMotionShiftSet(work->character, work->motionIds[0], 0.0f,
-                               5.0f, HU3D_MOTATTR_LOOP);
+            fn_8005C2C8(work->character, work->motionIds[0], 0.0f,
+                               5.0f, ((1 << 30) | (1 << 0)));
             (work->state)++;
         }
         break;
     case 2:
-        if (work->motionIds[0] == Hu3DMotionIDGet(work->modelId)) {
+        if (work->motionIds[0] == fn_8002D3C4(work->modelId)) {
             fn_1_9600();
             return 1;
         }
@@ -371,7 +372,7 @@ s32 fn_1_BB38(void *argument)
 
 /* Starts the character's extra motion and schedules a callback to wait for its end. */
 void fn_1_BCBC(M680CharacterState *motion) {
-    CharMotionShiftSet(motion->character, motion->motionIds[9], 0.0f, 5.0f, 0);
+    fn_8005C2C8(motion->character, motion->motionIds[9], 0.0f, 5.0f, 0);
     fn_1_BE08(fn_1_BD1C, motion);
 }
 
@@ -379,16 +380,16 @@ void fn_1_BCBC(M680CharacterState *motion) {
 s32 fn_1_BD1C(void *argument) {
     M680CharacterState *state = argument;
 
-    if (Hu3DMotionEndCheck(state->modelId) != 0) {
+    if (fn_8002D75C(state->modelId) != 0) {
         return 1;
     }
     return 0;
 }
 
 u32 lbl_1_data_6C0[10] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mario, 167),
-    DATANUM(DATA_mariomot, 24), DATANUM(DATA_mariomot, 34),
-    DATANUM(DATA_mariomot, 36), DATANUM(DATA_mariomot, 6),
-    DATANUM(DATA_mariomot, 13), DATANUM(DATA_mariomot, 77)
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x8e0000, 167),
+    DATANUM(0x930000, 24), DATANUM(0x930000, 34),
+    DATANUM(0x930000, 36), DATANUM(0x930000, 6),
+    DATANUM(0x930000, 13), DATANUM(0x930000, 77)
 };

@@ -20,7 +20,7 @@
         "game/board/main.h",
         "game/data.h"
       ],
-      "allowed_includes": [
+      "allowed_includes": ["math.h", 
         "string.h",
         "datadir_enum.h",
         "messdir_enum.h",
@@ -108,9 +108,9 @@
   ],
   "owned_functions": [
     {
-      "symbol": "HuDataDirCloseAll",
+      "symbol": "fn_80009A30",
       "header": "include/game/data.h",
-      "declaration": "void HuDataDirCloseAll(void);"
+      "declaration": "void fn_80009A30(void);"
     },
     {
       "symbol": "mbSaveInit",

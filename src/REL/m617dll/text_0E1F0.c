@@ -55,7 +55,7 @@ typedef struct M617D6HeaderConstants {
 
 extern const M617D6HeaderConstants lbl_1_rodata_C88;
 
-extern f32 CZoom;
+extern f32 lbl_802C028C;
 
 extern void fn_1_307C(MGTIMER *timer);
 
@@ -1603,12 +1603,12 @@ s16 fn_1_16990(M617PlayerStateData *participant, s16 advanceAfterChase)
     targetReached = 0;
     switch (participant->chasePhase) {
     case 0:
-        MgPlayerComStkOn(MOTION_PLAYER(participant->participantIndex));
+        fn_8007E818(MOTION_PLAYER(participant->participantIndex));
         participant->chasePhase++;
         break;
     case 1:
         targetPosition = participant->targetPosition;
-        targetReached = MgPlayerVecChase(
+        targetReached = fn_8007E8B4(
             MOTION_PLAYER(participant->participantIndex),
             &targetPosition,
             participant->chaseSpeed,
@@ -1622,7 +1622,7 @@ s16 fn_1_16990(M617PlayerStateData *participant, s16 advanceAfterChase)
         }
         break;
     case 2:
-        MgPlayerComStkOff(MOTION_PLAYER(participant->participantIndex));
+        fn_8007E888(MOTION_PLAYER(participant->participantIndex));
         participant->chasePhase = 0;
         chaseComplete = 1;
         break;

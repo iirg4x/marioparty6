@@ -194,7 +194,7 @@ void fn_1_4738(void)
     for (item = 0; item < 11; item++) {
         HuSprAttrReset(lbl_1_bss_5D4, item + 8, HUSPR_ATTR_DISPOFF);
         HuSprScaleSet(lbl_1_bss_5D4, item + 8, 1.0f, 1.0f);
-        if (item == 10 && GWBankFlagGet(OPTION_LAST_CHARACTER_BANK_FLAG) == FALSE)
+        if (item == 10 && fn_8003D2F0(OPTION_LAST_CHARACTER_BANK_FLAG) == FALSE)
             HuSprBankSet(lbl_1_bss_5D4, item + 8, 11);
         else HuSprBankSet(lbl_1_bss_5D4, item + 8, item);
         if (item < 6) {
@@ -232,7 +232,7 @@ void fn_1_4738(void)
     sprintf(countText, lbl_1_data_481, lbl_1_bss_8.boardRecord[board]);
     HuWinInsertMesSet(countWindow, (u32)countText, 0);
     HuWinMesSet(countWindow, MESSNUM(MESS_SAF_TEST, 22));
-    HuAudFXPlay(MSM_SE_MENU_38);
+    HuAudFXPlay(1205);
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
         HuWinPosSet(titleWindow, 288.0f - 200.0f * progress, 200.0f - 147.0f * progress);
@@ -246,20 +246,20 @@ void fn_1_4738(void)
     HuWinDispOn(lbl_1_bss_6A0);
     for (;;) {
         delta = 0;
-        if (HuPadBtnDown[0] & 0x4000) delta = -1;
-        if (HuPadBtnDown[0] & 0x2000) delta = 1;
+        if (lbl_802C0008[0] & 0x4000) delta = -1;
+        if (lbl_802C0008[0] & 0x2000) delta = 1;
         if (delta != 0) {
             board += delta;
-            if (board == 5 && GWBankFlagGet(OPTION_LAST_BOARD_BANK_FLAG) == FALSE) board += delta;
+            if (board == 5 && fn_8003D2F0(OPTION_LAST_BOARD_BANK_FLAG) == FALSE) board += delta;
             if (board < 0) {
                 board = 6;
                 /* The totals page is 6, so the board-5 branch below is never taken. */
-                if (board == 5 && GWBankFlagGet(OPTION_LAST_BOARD_BANK_FLAG) == FALSE) board = 4;
+                if (board == 5 && fn_8003D2F0(OPTION_LAST_BOARD_BANK_FLAG) == FALSE) board = 4;
             }
             if (board >= 7) board = 0;
             if (delta < 0) HuSprBankSet(lbl_1_bss_5D4, 5, 1);
             else HuSprBankSet(lbl_1_bss_5D4, 6, 1);
-            HuAudFXPlay(MSM_SE_MENU_40);
+            HuAudFXPlay(1207);
             HuPrcSleep(3);
             if (board < 6) {
                 for (item = 19; item < 69; item++) {
@@ -334,11 +334,11 @@ void fn_1_4738(void)
             HuSprBankSet(lbl_1_bss_5D4, 5, 0);
             HuSprBankSet(lbl_1_bss_5D4, 6, 0);
         }
-        if (HuPadBtnDown[0] & 0x200) { HuAudFXPlay(MSM_SE_CMN_04); break; }
+        if (lbl_802C0008[0] & 0x200) { HuAudFXPlay(3); break; }
         HuPrcVSleep();
     }
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(MSM_SE_MENU_39);
+    HuAudFXPlay(1206);
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
         scale = 1.0 - progress;
@@ -416,7 +416,7 @@ void fn_1_5620(void)
             1.0f);
     }
     HuSprScaleSet(lbl_1_bss_5D4, 2, 0.0f, 0.0f);
-    HuAudFXPlay(MSM_SE_MENU_38);
+    HuAudFXPlay(1205);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -450,21 +450,21 @@ void fn_1_5620(void)
     fn_1_19B8(1);
     for (;;) {
         delta = 0;
-        if (HuPadDStkRep[0] & 8) {
+        if (lbl_802BFFE0[0] & 8) {
             if (pageStart + selected > 0) {
                 delta = -1;
             }
         }
-        if (HuPadDStkRep[0] & 4) {
+        if (lbl_802BFFE0[0] & 4) {
             if (pageStart + selected < count - 1) {
                 delta = 1;
             }
         }
-        if ((HuPadDStk[0] & 0xC) == 0) {
+        if ((lbl_802BFFE4[0] & 0xC) == 0) {
             repeatCount = 0;
         }
         if (delta != 0) {
-            HuAudFXPlay(MSM_SE_CMN_01);
+            HuAudFXPlay(0);
             selected += delta;
             if (selected < 0 || selected >= 7) {
                 if (selected < 0) {
@@ -534,8 +534,8 @@ void fn_1_5620(void)
             fn_1_6504(selected + pageStart);
             fn_1_19B8(1);
         }
-        if (HuPadBtnDown[0] & 0x200) {
-            HuAudFXPlay(MSM_SE_CMN_04);
+        if (lbl_802C0008[0] & 0x200) {
+            HuAudFXPlay(3);
             break;
         }
         HuPrcVSleep();
@@ -543,7 +543,7 @@ void fn_1_5620(void)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(MSM_SE_MENU_39);
+    HuAudFXPlay(1206);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,
@@ -686,7 +686,7 @@ void fn_1_6898(void)
             1.0f);
     }
     HuSprScaleSet(lbl_1_bss_5D4, 2, 0.0f, 0.0f);
-    HuAudFXPlay(MSM_SE_MENU_38);
+    HuAudFXPlay(1205);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -718,18 +718,18 @@ void fn_1_6898(void)
         1.0f);
     for (;;) {
         delta = 0;
-        if (HuPadDStkRep[0] & 8) {
+        if (lbl_802BFFE0[0] & 8) {
             if (pageStart + selected > 0) {
                 delta = -1;
             }
         }
-        if (HuPadDStkRep[0] & 4) {
+        if (lbl_802BFFE0[0] & 4) {
             if (pageStart + selected < count - 1) {
                 delta = 1;
             }
         }
         if (delta != 0) {
-            HuAudFXPlay(MSM_SE_CMN_01);
+            HuAudFXPlay(0);
             selected += delta;
             if (selected < 0 || selected >= 7) {
                 if (selected < 0) {
@@ -790,8 +790,8 @@ void fn_1_6898(void)
                 fn_1_C3FC(selected);
             }
         }
-        if (HuPadBtnDown[0] & 0x200) {
-            HuAudFXPlay(MSM_SE_CMN_04);
+        if (lbl_802C0008[0] & 0x200) {
+            HuAudFXPlay(3);
             break;
         }
         HuPrcVSleep();
@@ -799,7 +799,7 @@ void fn_1_6898(void)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(MSM_SE_MENU_39);
+    HuAudFXPlay(1206);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,
@@ -849,7 +849,7 @@ void fn_1_7728(s16 firstEntry)
         } else {
             HuWinMesSet(lbl_1_bss_9EC[row][0],
                 MgDataTbl[entry->minigameId - 601].nameMes);
-            recordValue = GWRecordGet(entry->recordId);
+            recordValue = fn_8003C860(entry->recordId);
             switch (entry->displayType) {
             case 0:
                 /* Format 60 Hz frame counts as minutes, seconds, and truncated hundredths. */
@@ -907,7 +907,7 @@ void fn_1_7A74(void)
     HuWinAttrSet(window, HUWIN_ATTR_ALIGN_CENTER);
     HuWinMesSpeedSet(window, 0);
     HuWinMesSet(window, MESSNUM(MESS_OPTION_MESS, 44));
-    HuAudFXPlay(MSM_SE_MENU_38);
+    HuAudFXPlay(1205);
 
     for (frame = 1; frame <= 10; frame++) {
         progress = frame / 10.0f;
@@ -928,8 +928,8 @@ void fn_1_7A74(void)
             screenPos.y = 240.0f + y * progress - 40.0f;
             screenPos.z = 1200.0f;
             Hu3D2Dto3D(&screenPos, 2, &worldPos);
-            Hu3DModelPosSetV(lbl_1_bss_66E[item + 14], &worldPos);
-            Hu3DModelScaleSet(lbl_1_bss_66E[item + 14], progress, progress,
+            fn_80026790(lbl_1_bss_66E[item + 14], &worldPos);
+            fn_800268B0(lbl_1_bss_66E[item + 14], progress, progress,
                 0.5 * progress);
         }
         fn_1_85E4(0, progress);
@@ -945,13 +945,13 @@ void fn_1_7A74(void)
     rotation = rotationStep = 0.0f;
     for (;;) {
         horizontalDelta = verticalDelta = 0;
-        if (HuPadDStkRep[0] & 2) {
+        if (lbl_802BFFE0[0] & 2) {
             horizontalDelta = 1;
-        } else if (HuPadDStkRep[0] & 1) {
+        } else if (lbl_802BFFE0[0] & 1) {
             horizontalDelta = -1;
-        } else if (HuPadDStkRep[0] & 8) {
+        } else if (lbl_802BFFE0[0] & 8) {
             verticalDelta = -5;
-        } else if (HuPadDStkRep[0] & 4) {
+        } else if (lbl_802BFFE0[0] & 4) {
             verticalDelta = 5;
         }
         if (selectedRecord + horizontalDelta + verticalDelta < 0 ||
@@ -959,9 +959,9 @@ void fn_1_7A74(void)
             horizontalDelta = verticalDelta = 0;
         }
         if (horizontalDelta != 0 || verticalDelta != 0) {
-            HuAudFXPlay(MSM_SE_CMN_01);
+            HuAudFXPlay(0);
             rotation = 0.0f;
-            Hu3DModelRotSet(lbl_1_bss_66E[selectedRecord + 14],
+            fn_80026808(lbl_1_bss_66E[selectedRecord + 14],
                 0.0f, 0.0f, 0.0f);
             HuSprScaleSet(lbl_1_bss_5D4, selectedRecord + 8,
                 1.0f, 1.0f);
@@ -971,12 +971,12 @@ void fn_1_7A74(void)
             fn_1_85E4(selectedRecord, 1.0f);
         }
 
-        if (HuPadBtnDown[0] & 0x100) {
+        if (lbl_802C0008[0] & 0x100) {
             record = &lbl_1_bss_8.decaRecord[selectedRecord];
             if (record->character != -1) {
-                HuAudFXPlay(MSM_SE_CMN_02);
+                HuAudFXPlay(1);
                 rotation = 0.0f;
-                Hu3DModelRotSet(lbl_1_bss_66E[selectedRecord + 14],
+                fn_80026808(lbl_1_bss_66E[selectedRecord + 14],
                     0.0f, 0.0f, 0.0f);
                 for (frame = 0; frame < 10; frame++) {
                     HuSprAttrSet(lbl_1_bss_5D4, frame + 8, HUSPR_ATTR_DISPOFF);
@@ -987,11 +987,11 @@ void fn_1_7A74(void)
                     }
                 }
                 for (item = 0; item < 10; item++) {
-                    Hu3DModelScaleSet(lbl_1_bss_66E[item + 14],
+                    fn_800268B0(lbl_1_bss_66E[item + 14],
                         0.0f, 0.0f,
                         0.0f);
                 }
-                Hu3DModelScaleSet(lbl_1_bss_66E[24], 0.0f,
+                fn_800268B0(lbl_1_bss_66E[24], 0.0f,
                     0.0f, 0.0f);
                 fn_1_8CA4(selectedRecord);
                 fn_1_879C();
@@ -1001,11 +1001,11 @@ void fn_1_7A74(void)
     HuWinMesSet(lbl_1_bss_6A2[0], MESSNUM(MESS_OPTION_MESS, 48));
                 HuWinDispOn(lbl_1_bss_6A0);
             } else {
-                HuAudFXPlay(MSM_SE_CMN_05);
+                HuAudFXPlay(4);
             }
         }
-        if (HuPadBtnDown[0] & 0x200) {
-            HuAudFXPlay(MSM_SE_CMN_04);
+        if (lbl_802C0008[0] & 0x200) {
+            HuAudFXPlay(3);
             break;
         }
         rotation += rotationStep;
@@ -1016,13 +1016,13 @@ void fn_1_7A74(void)
         if (rotationStep > 3.0f) {
             rotationStep = 3.0f;
         }
-        Hu3DModelRotSet(lbl_1_bss_66E[selectedRecord + 14],
+        fn_80026808(lbl_1_bss_66E[selectedRecord + 14],
             0.0f, rotation, 0.0f);
         HuPrcVSleep();
     }
 
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(MSM_SE_MENU_39);
+    HuAudFXPlay(1206);
     for (frame = 1; frame <= 10; frame++) {
         progress = 1.0f - frame / 10.0f;
         HuWinPosSet(window,
@@ -1042,8 +1042,8 @@ void fn_1_7A74(void)
             screenPos.y = 240.0f + y * progress - 40.0f;
             screenPos.z = 1200.0f;
             Hu3D2Dto3D(&screenPos, 2, &worldPos);
-            Hu3DModelPosSetV(lbl_1_bss_66E[item + 14], &worldPos);
-            Hu3DModelScaleSet(lbl_1_bss_66E[item + 14], progress, progress,
+            fn_80026790(lbl_1_bss_66E[item + 14], &worldPos);
+            fn_800268B0(lbl_1_bss_66E[item + 14], progress, progress,
                 0.5 * progress);
         }
         fn_1_85E4(selectedRecord, progress);
@@ -1077,9 +1077,9 @@ void fn_1_85E4(s16 item, float progress)
         40.0f - 40.0f * progress;
     screenPos.z = 1100.0f;
     Hu3D2Dto3D(&screenPos, 2, &worldPos);
-    Hu3DModelPosSetV(lbl_1_bss_66E[24], &worldPos);
+    fn_80026790(lbl_1_bss_66E[24], &worldPos);
     scale = 0.3f * progress;
-    Hu3DModelScaleSet(lbl_1_bss_66E[24], scale, scale, scale);
+    fn_800268B0(lbl_1_bss_66E[24], scale, scale, scale);
 }
 
 /* Called by the Decathlon screen to place saved player models and scores. */
@@ -1111,10 +1111,10 @@ void fn_1_879C(void)
         screenPos.y = 240.0f + y - 40.0f;
         screenPos.z = 1200.0f;
         Hu3D2Dto3D(&screenPos, 2, &worldPos);
-        Hu3DModelPosSetV(lbl_1_bss_66E[item + 14], &worldPos);
-        Hu3DModelScaleSet(lbl_1_bss_66E[item + 14], 1.0f, 1.0f,
+        fn_80026790(lbl_1_bss_66E[item + 14], &worldPos);
+        fn_800268B0(lbl_1_bss_66E[item + 14], 1.0f, 1.0f,
             1.0f);
-        Hu3DModelRotSet(lbl_1_bss_66E[item + 14], 0.0f, 0.0f,
+        fn_80026808(lbl_1_bss_66E[item + 14], 0.0f, 0.0f,
             0.0f);
         if (record->character != -1) {
             fn_1_F410(lbl_1_bss_66E[item + 14], record->character + 25,
@@ -1154,8 +1154,8 @@ void fn_1_879C(void)
     screenPos.y = 130.0f;
     screenPos.z = 1100.0f;
     Hu3D2Dto3D(&screenPos, 2, &worldPos);
-    Hu3DModelPosSetV(lbl_1_bss_66E[24], &worldPos);
-    Hu3DModelScaleSet(lbl_1_bss_66E[24], 0.3f,
+    fn_80026790(lbl_1_bss_66E[24], &worldPos);
+    fn_800268B0(lbl_1_bss_66E[24], 0.3f,
         0.3f, 0.3f);
 }
 
@@ -1243,10 +1243,10 @@ void fn_1_8CA4(s16 recordIndex)
     HuWinDispOn(lbl_1_bss_6A0);
     HuWinMesSet(lbl_1_bss_6A2[0], MESSNUM(MESS_OPTION_MESS, 48));
     HuPrcVSleep();
-    while ((HuPadBtnDown[0] & 0x200) == 0) {
+    while ((lbl_802C0008[0] & 0x200) == 0) {
         HuPrcVSleep();
     }
-    HuAudFXPlay(MSM_SE_CMN_04);
+    HuAudFXPlay(3);
     HuWinDispOff(lbl_1_bss_6A0);
     HuSprAttrSet(lbl_1_bss_5D4, selectedCharacter + 94, HUSPR_ATTR_DISPOFF);
     for (i = 0; i < 5; i++) {
@@ -1307,7 +1307,7 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
         HuSprScaleSet(lbl_1_bss_5D4, 3, 0.0f,
             0.0f);
     }
-    HuAudFXPlay(MSM_SE_MENU_38);
+    HuAudFXPlay(1205);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -1334,12 +1334,12 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
         1.0f);
     for (;;) {
         delta = 0;
-        if (HuPadDStkRep[0] & 8) {
+        if (lbl_802BFFE0[0] & 8) {
             if (pageStart + selected > 0) {
                 delta = -1;
             }
         }
-        if (HuPadDStkRep[0] & 4) {
+        if (lbl_802BFFE0[0] & 4) {
             if (pageStart + selected < entryCount - 1) {
                 delta = 1;
             }
@@ -1408,8 +1408,8 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
                 fn_1_C3FC(selected);
             }
         }
-        if (HuPadBtnDown[0] & 0x200) {
-            HuAudFXPlay(MSM_SE_CMN_04);
+        if (lbl_802C0008[0] & 0x200) {
+            HuAudFXPlay(3);
             break;
         }
         HuPrcVSleep();
@@ -1417,7 +1417,7 @@ void fn_1_930C(u32 *messages, s16 entryCount, u32 titleMessage)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(MSM_SE_MENU_39);
+    HuAudFXPlay(1206);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,
@@ -1516,7 +1516,7 @@ void fn_1_9F74(void)
             1.0f);
     }
     HuSprScaleSet(lbl_1_bss_5D4, 2, 0.0f, 0.0f);
-    HuAudFXPlay(MSM_SE_MENU_38);
+    HuAudFXPlay(1205);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -1547,10 +1547,10 @@ void fn_1_9F74(void)
     HuWinMesSet(lbl_1_bss_6A0, MESSNUM(MESS_SYS_GUIDE, 18));
     HuWinDispOn(lbl_1_bss_6A0);
     if (count == 0) {
-        while (!(HuPadBtnDown[0] & 0x200)) {
+        while (!(lbl_802C0008[0] & 0x200)) {
             HuPrcVSleep();
         }
-        HuAudFXPlay(MSM_SE_CMN_04);
+        HuAudFXPlay(3);
     } else {
         selected = 0;
         fn_1_C3FC(selected + 2);
@@ -1558,21 +1558,21 @@ void fn_1_9F74(void)
             1.0f);
         for (;;) {
             delta = 0;
-            if (HuPadDStkRep[0] & 8) {
+            if (lbl_802BFFE0[0] & 8) {
                 if (pageStart + selected > 0) {
                     delta = -1;
                 }
             }
-            if (HuPadDStkRep[0] & 4) {
+            if (lbl_802BFFE0[0] & 4) {
                 if (pageStart + selected < count - 1) {
                     delta = 1;
                 }
             }
-            if ((HuPadDStk[0] & 0xC) == 0) {
+            if ((lbl_802BFFE4[0] & 0xC) == 0) {
                 repeatCount = 0;
             }
             if (delta != 0) {
-                HuAudFXPlay(MSM_SE_CMN_01);
+                HuAudFXPlay(0);
                 selected += delta;
                 if (selected < 0 || selected >= 5) {
                     if (selected < 0) {
@@ -1641,8 +1641,8 @@ void fn_1_9F74(void)
                     repeatCount = 0;
                 }
             }
-            if (HuPadBtnDown[0] & 0x200) {
-                HuAudFXPlay(MSM_SE_CMN_04);
+            if (lbl_802C0008[0] & 0x200) {
+                HuAudFXPlay(3);
                 break;
             }
             HuPrcVSleep();
@@ -1652,7 +1652,7 @@ void fn_1_9F74(void)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(MSM_SE_MENU_39);
+    HuAudFXPlay(1206);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,
@@ -1783,7 +1783,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
         HuSprScaleSet(lbl_1_bss_5D4, 3, 0.0f,
             0.0f);
     }
-    HuAudFXPlay(MSM_SE_MENU_38);
+    HuAudFXPlay(1205);
 
     for (item = 1; item <= 10; item++) {
         progress = item / 10.0f;
@@ -1810,10 +1810,10 @@ void fn_1_B1A0(s16 mode, s16 argument)
         1.0f);
     for (;;) {
         delta = 0;
-        if (HuPadBtnDown[0] & 0x4000) {
+        if (lbl_802C0008[0] & 0x4000) {
             delta = -1;
         }
-        if (HuPadBtnDown[0] & 0x2000) {
+        if (lbl_802C0008[0] & 0x2000) {
             delta = 1;
         }
         if (delta != 0) {
@@ -1824,7 +1824,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
             if (typeIndex >= typeCount) {
                 typeIndex = 0;
             }
-            HuAudFXPlay(MSM_SE_MENU_40);
+            HuAudFXPlay(1207);
             if (delta < 0) {
                 HuSprBankSet(lbl_1_bss_5D4, 5, 1);
             } else {
@@ -1866,21 +1866,21 @@ void fn_1_B1A0(s16 mode, s16 argument)
             HuSprBankSet(lbl_1_bss_5D4, 6, 0);
         }
         delta = 0;
-        if (HuPadDStkRep[0] & 8) {
+        if (lbl_802BFFE0[0] & 8) {
             if (pageStart + selected > 0) {
                 delta = -1;
             }
         }
-        if (HuPadDStkRep[0] & 4) {
+        if (lbl_802BFFE0[0] & 4) {
             if (pageStart + selected < minigameCount - 1) {
                 delta = 1;
             }
         }
-        if ((HuPadDStk[0] & 0xC) == 0) {
+        if ((lbl_802BFFE4[0] & 0xC) == 0) {
             repeatCount = 0;
         }
         if (delta != 0) {
-            HuAudFXPlay(MSM_SE_CMN_01);
+            HuAudFXPlay(0);
             selected += delta;
             repeatCount++;
             if (repeatCount < 5) {
@@ -1952,8 +1952,8 @@ void fn_1_B1A0(s16 mode, s16 argument)
                 repeatCount = 0;
             }
         }
-        if (HuPadBtnDown[0] & 0x200) {
-            HuAudFXPlay(MSM_SE_CMN_04);
+        if (lbl_802C0008[0] & 0x200) {
+            HuAudFXPlay(3);
             break;
         }
         HuPrcVSleep();
@@ -1961,7 +1961,7 @@ void fn_1_B1A0(s16 mode, s16 argument)
 
     HuSprAttrSet(lbl_1_bss_5D4, 7, HUSPR_ATTR_DISPOFF);
     HuWinDispOff(lbl_1_bss_6A0);
-    HuAudFXPlay(MSM_SE_MENU_39);
+    HuAudFXPlay(1206);
     for (item = 1; item <= 10; item++) {
         progress = 1.0f - item / 10.0f;
         HuWinPosSet(window,

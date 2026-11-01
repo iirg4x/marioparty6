@@ -1,4 +1,5 @@
 /* Initializes and updates computer-controlled players during the microphone pillar round. */
+#include <math.h>
 #include "REL/m670dll.h"
 #include "game/frand.h"
 #include "game/gamework.h"
@@ -10,7 +11,7 @@ void fn_1_3B30(void)
     int i;
     M670CPU *cpu;
     for (i = 0; i < 4; i++) {
-        if (GwPlayerConf[i].type == 1) {
+        if (lbl_80265728[i].type == 1) {
             cpu = &lbl_1_bss_10.cpu[i];
             if (lbl_1_bss_10.group[i] == 0) {
                 cpu->state = 1;
@@ -31,7 +32,7 @@ void fn_1_3BDC(void)
     s8 *pattern;
 
     for (i = 0; i < 4; i++) {
-        if (GwPlayerConf[i].type == 1) {
+        if (lbl_80265728[i].type == 1) {
             cpu = &lbl_1_bss_10.cpu[i];
             switch (cpu->state) {
             case 0:
@@ -41,7 +42,7 @@ void fn_1_3BDC(void)
             case 1:
                 if ((lbl_1_bss_10.state == 0 || lbl_1_bss_10.state == 2)
                     && lbl_1_bss_10.playerState[lbl_1_bss_10.soloPlayer] == 1) {
-                    switch (GwPlayerConf[cpu->playerNo].comDif) {
+                    switch (lbl_80265728[cpu->playerNo].comDif) {
                     case 0: cpu->timer = frandmod(180) + 60; break;
                     case 1: cpu->timer = frandmod(120) + 60; break;
                     case 2: cpu->timer = frandmod(60) + 60; break;
@@ -82,7 +83,7 @@ void fn_1_3BDC(void)
                     pos = cpu->player->actor->pos;
                     pos.y = 0.0f;
                     if (lbl_1_bss_10.state != 0 && lbl_1_bss_10.state != 2) {
-                        switch (GwPlayerConf[cpu->playerNo].comDif) {
+                        switch (lbl_80265728[cpu->playerNo].comDif) {
                         case 0: choice = randomValue < 80 ? 0 : 2; break;
                         case 1: choice = randomValue < 70 ? 0 : 2; break;
                         case 2: choice = randomValue < 60 ? 0 : 2; break;
@@ -92,7 +93,7 @@ void fn_1_3BDC(void)
                             choice = 1;
                         }
                     } else {
-                        switch (GwPlayerConf[cpu->playerNo].comDif) {
+                        switch (lbl_80265728[cpu->playerNo].comDif) {
                         case 0: choice = randomValue < 90 ? 1 : 0; break;
                         case 1: choice = randomValue < 90 ? 1 : 0; break;
                         case 2: choice = randomValue < 90 ? 1 : 0; break;
@@ -164,7 +165,7 @@ void fn_1_3BDC(void)
                     cpu->state = 4;
                 } else {
                     fn_1_1460(&dir, &dir);
-                    MgPlayerPadSet(cpu->player, (int)(56.0f * dir.x),
+                    fn_80080520(cpu->player, (int)(56.0f * dir.x),
                         (int)(-56.0f * dir.z),
                         cpu->buttonPressFlag == 30 ? PAD_BUTTON_A : 0,
                         cpu->buttonPressFlag != 0 ? PAD_BUTTON_A : 0);

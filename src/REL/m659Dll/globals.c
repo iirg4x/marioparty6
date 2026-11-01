@@ -1,4 +1,5 @@
 /* Shared object, model, player, light, and minigame state for Asteroad Rage. */
+#include <math.h>
 #include "REL/m659/player.h"
 #include "REL/m659/typed-context.h"
 

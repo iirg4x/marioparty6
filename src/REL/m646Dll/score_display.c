@@ -3,8 +3,8 @@
 #include "REL/m646Dll/module_types.h"
 #include "game/esprite.h"
 
-#define M646_SCORE_NUMBER_DATA DATANUM(DATA_mgconst, 49)
-#define M646_RECORD_ICON_DATA DATANUM(DATA_mgconst, 69)
+#define M646_SCORE_NUMBER_DATA DATANUM(0x9b0000, 49)
+#define M646_RECORD_ICON_DATA DATANUM(0x9b0000, 69)
 #define M646_SCORE_WORK_BYTES 144
 #define M646_SCORE_OBJECT_PRIORITY 70
 #define M646_PLAYER_WINNER_BIT 0x1
@@ -72,16 +72,19 @@ M646ScorePositionTable lbl_1_data_1D68 = {
         {500.0f, 60.0f},
         {290.0f, 422.0f},
     },
-    {DATANUM(DATA_mgconst, 32), DATANUM(DATA_mgconst, 33), DATANUM(DATA_mgconst, 34), DATANUM(DATA_mgconst, 35), DATANUM(DATA_mgconst, 36), DATANUM(DATA_mgconst, 37), DATANUM(DATA_mgconst, 38), DATANUM(DATA_mgconst, 40), DATANUM(DATA_mgconst, 39), DATANUM(DATA_mgconst, 41), DATANUM(DATA_mgconst, 42), DATANUM(DATA_mgconst, 43), DATANUM(DATA_mgconst, 44), DATANUM(DATA_mgconst, 45)}
+    {DATANUM(0x9b0000, 32), DATANUM(0x9b0000, 33), DATANUM(0x9b0000, 34), DATANUM(0x9b0000, 35),
+        DATANUM(0x9b0000, 36), DATANUM(0x9b0000, 37), DATANUM(0x9b0000, 38), DATANUM(0x9b0000, 40),
+        DATANUM(0x9b0000, 39), DATANUM(0x9b0000, 41), DATANUM(0x9b0000, 42), DATANUM(0x9b0000, 43),
+        DATANUM(0x9b0000, 44), DATANUM(0x9b0000, 45)}
 };
 
 /* Creates the score object that owns the four player totals and result display. */
 void fn_1_8E78(OMOBJMAN *objman)
 {
-    OMOBJ *obj = omAddObjEx(objman, M646_SCORE_OBJECT_PRIORITY, 0, 0, OM_GRP_NONE, fn_1_93E0);
+    OMOBJ *obj = fn_8003AB38(objman, M646_SCORE_OBJECT_PRIORITY, 0, 0, -1, fn_1_93E0);
     void *data;
     lbl_1_bss_B8 = obj;
-    data = HuMemDirectMallocNum(HEAP_HEAP, M646_SCORE_WORK_BYTES, HU_MEMNUM_OVL);
+    data = HuMemDirectMallocNum(HEAP_HEAP, M646_SCORE_WORK_BYTES, 0x10000000);
     obj->data = data;
     memset(data, 0, M646_SCORE_WORK_BYTES);
 }
@@ -207,7 +210,7 @@ void fn_1_9118(void)
     for (rankingIndex = 0; rankingIndex < 4; rankingIndex++) {
         /* This result value is the rank, even though its destination is the coin-bonus field. */
         GWMgCoinBonusSet(ranking[rankingIndex].player, ranking[rankingIndex].rank);
-        if (_CheckFlag(FLAG_INST_DECA)) {
+        if (fn_8006A124(196610)) {
             GWMgScoreSet(ranking[rankingIndex].player, ranking[rankingIndex].score);
         }
     }
@@ -240,7 +243,7 @@ void fn_1_93E0(OMOBJ *obj)
     for (entryIndex = 0; entryIndex < 5; entryIndex++) {
         entry = &work->players[entryIndex];
         if (entryIndex < 4) {
-            entry->character = GwPlayerConf[entryIndex].charNo;
+            entry->character = lbl_80265728[entryIndex].charNo;
             box = MgScoreBoxCreateChar(108, 40, entry->character);
             entry->box = box;
             MgScoreBoxPosSet(box, lbl_1_data_1D68.positions[entryIndex].x,
@@ -295,7 +298,7 @@ void fn_1_9764(OMOBJ *obj)
     s32 playerIndex;
     switch (work->state) {
         case 0:
-            if (MgSeqModeGet() != MGSEQ_MODE_MAIN) {
+            if (fn_80071A8C() != 5) {
                 break;
             }
             work->state++;

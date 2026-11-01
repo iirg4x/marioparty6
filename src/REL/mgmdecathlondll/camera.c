@@ -25,10 +25,10 @@
 #include "datadir_enum.h"
 
 s32 lbl_1_data_0[4] = {
-    DATANUM(DATA_mgmdecathlon, 31),
-    DATANUM(DATA_mgmdecathlon, 33),
-    DATANUM(DATA_mgmdecathlon, 32),
-    DATANUM(DATA_mgmdecathlon, 34),
+    DATANUM(0x9e0000, 31),
+    DATANUM(0x9e0000, 33),
+    DATANUM(0x9e0000, 32),
+    DATANUM(0x9e0000, 34),
 };
 
 /* Overlay setup creates the shared camera and loads the four mode-view motions. */
@@ -40,22 +40,22 @@ void fn_1_0(void) {
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     motionIndex = 0;
     while (motionIndex < 4) {
-        lbl_1_bss_A[motionIndex] = Hu3DMotionCreate(HuDataSelHeapReadNum(
-            lbl_1_data_0[motionIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_A[motionIndex] = fn_8002C4C0(fn_80008DD0(
+            lbl_1_data_0[motionIndex], 0x10000000, 2));
         lbl_1_bss_2[motionIndex] =
-            Hu3DModelCameraCreate(lbl_1_bss_A[motionIndex], 1U);
-        Hu3DCameraMotionOff(lbl_1_bss_2[motionIndex]);
+            fn_800283F4(lbl_1_bss_A[motionIndex], 1U);
+        fn_8002858C(lbl_1_bss_2[motionIndex]);
         motionIndex += 1;
     }
     lbl_1_bss_0 = 0;
-    Hu3DCameraMotionOn(lbl_1_bss_2[0], 1U);
+    fn_80028478(lbl_1_bss_2[0], 1U);
 }
 
 void fn_1_184(void)
 {
 }
 
-void Hu3DCameraMotionOff(s16 cameraId);
+void fn_8002858C(s16 cameraId);
 void HuPrcVSleep();
 void fn_1_264(s16 modelId, s16 cameraMask, f32 durationFrames, s16 easingMode);
 void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
@@ -72,7 +72,7 @@ void fn_1_188(s16 presetNo) {
     if (lbl_1_bss_0 != presetNo) {
         cameraNo = 0;
         while (cameraNo < 4) {
-            Hu3DCameraMotionOff(lbl_1_bss_2[cameraNo]);
+            fn_8002858C(lbl_1_bss_2[cameraNo]);
             cameraNo++;
         }
         fn_1_264(lbl_1_bss_2[presetNo], 1, 30.0f, 0);
@@ -150,8 +150,8 @@ static inline void DecathlonCameraFiniteValue(f32 *value, const f32 *fallback)
 void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
               Vec *initialTarget, f32 durationFrames, s16 easingMode)
 {
-    HU3D_MODEL *model = &Hu3DData[modelId];
-    HU3D_MOTION *motion = &Hu3DMotion[model->motId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
+    HU3D_MOTION *motion = &lbl_802624B8[model->motId];
     HSF_DATA *modelData = model->hsf;
     HSF_DATA  *motionData = motion->hsf;
     HSF_MOTION *motionTracks = motionData->motion;
@@ -174,7 +174,7 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
     CAM_MOTION_WORK *samples;
     CAM_MOTION_WORK *sample;
     HSF_OBJECT *cameraObject;
-    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+    for(cameraIndex=0; cameraIndex<16; cameraIndex++) {
         if(cameraMask & (1 << cameraIndex)) {
             break;
         }
@@ -184,7 +184,7 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
     sampleCapacity = 1+(motionEndFrame/6.0)+1;
 
     sample = samples = HuMemDirectMallocNum(
-        HEAP_HEAP, (sampleCapacity + 1) * sizeof(CAM_MOTION_WORK), HU_MEMNUM_OVL);
+        HEAP_HEAP, (sampleCapacity + 1) * sizeof(CAM_MOTION_WORK), 0x10000000);
     sample->time = 0;
     sample->pos = *initialPosition;
     sample->target = *initialTarget;
@@ -194,19 +194,19 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
         sample->time = frame;
         track = motionTracks->track;
         tracksEnd = &track[motionTracks->numTracks];
-        if(!(model->attr & HU3D_ATTR_CAMERA)) {
+        if(!(model->attr & (1 << 16))) {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
+                if(track->type == 2) {
                     cameraObject = &modelData->object[track->target];
-                    if(cameraObject->type == HSF_OBJ_CAMERA) {
+                    if(cameraObject->type == 7) {
                         fn_1_1AC8(modelId, (const u16 *)track, GetCurve(track, frame), sample);
                     }
                 }
             }
         } else {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
-                   if(track->index ==  HSF_OBJ_CAMERA) {
+                if(track->type == 2) {
+                   if(track->index ==  7) {
                        fn_1_1AC8(modelId, (const u16 *)track, GetCurve(track, frame), sample);
                    }
                 }
@@ -219,11 +219,11 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
         sample->time = motionEndFrame;
         track = motionTracks->track;
         tracksEnd = &track[motionTracks->numTracks];
-        if(!(model->attr & HU3D_ATTR_CAMERA)) {
+        if(!(model->attr & (1 << 16))) {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
+                if(track->type == 2) {
                     cameraObject = &modelData->object[track->target];
-                    if(cameraObject->type == HSF_OBJ_CAMERA) {
+                    if(cameraObject->type == 7) {
                         fn_1_1AC8(modelId, (const u16 *) track, GetCurve(track, motionEndFrame),
                                   sample);
                     }
@@ -231,8 +231,8 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
             }
         } else {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
-                   if(track->index ==  HSF_OBJ_CAMERA) {
+                if(track->type == 2) {
+                   if(track->index ==  7) {
                        fn_1_1AC8(modelId, (const u16 *) track, GetCurve(track, motionEndFrame),
                                  sample);
                    }
@@ -263,11 +263,13 @@ void fn_1_310(s16 modelId, s16 cameraMask, Vec *initialPosition, Vec *initialUp,
                 break;
 
             case CAM_PATH_EASE_OUT:
-                easedFrame = durationFrames*HuSin((frame/durationFrames)*90);
+                easedFrame =
+                    durationFrames*sin(3.141592653589793*((frame/durationFrames)*90)/180.0);
                 break;
 
             case CAM_PATH_EASE_IN:
-                easedFrame = durationFrames*(1-HuCos((frame/durationFrames)*90));
+                easedFrame =
+                    durationFrames*(1-cos(3.141592653589793*((frame/durationFrames)*90)/180.0));
                 break;
         }
         for(sample=samples, intervalIndex=0; intervalIndex<sampleCount; intervalIndex++, sample++) {
@@ -490,31 +492,31 @@ void fn_1_1AC8(s16 modelId, const u16 *trackWords, f32 channelValue,
     HuVecF viewDirection;
     HU3D_MODEL *modelData;
 
-    modelData = &Hu3DData[modelId];
+    modelData = &lbl_802C01C8[modelId];
     switch (trackWords[3]) {
-    case HSF_CHANNEL_POSX:
+    case 8:
         /* Position and target channels scale both the sampled value and the model's offset. */
         output->pos.x = modelData->scale.x * (channelValue + modelData->pos.x);
         break;
-    case HSF_CHANNEL_POSY:
+    case 9:
         output->pos.y = modelData->scale.y * (channelValue + modelData->pos.y);
         break;
-    case HSF_CHANNEL_POSZ:
+    case 10:
         output->pos.z = modelData->scale.z * (channelValue + modelData->pos.z);
         break;
-    case HSF_CHANNEL_TARGETX:
+    case 11:
         output->target.x = modelData->scale.x * (channelValue + modelData->pos.x);
         break;
-    case HSF_CHANNEL_TARGETY:
+    case 12:
         output->target.y = modelData->scale.y * (channelValue + modelData->pos.y);
         break;
-    case HSF_CHANNEL_TARGETZ:
+    case 13:
         output->target.z = modelData->scale.z * (channelValue + modelData->pos.z);
         break;
-    case HSF_CHANNEL_FOV:
+    case 15:
         output->fov = channelValue;
         break;
-    case HSF_CHANNEL_UPROT:
+    case 14:
         PSVECSubtract(&output->pos, &output->target, &viewDirection);
         PSVECNormalize(&viewDirection, &viewDirection);
         rolledUp.x = (viewDirection.x * viewDirection.y) *

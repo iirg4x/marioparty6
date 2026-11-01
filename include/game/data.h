@@ -5,20 +5,8 @@
 
 #include "datadir_enum.h"
 
-#define HU_DECODE_TYPE_NONE 0
-#define HU_DECODE_TYPE_LZ 1
-#define HU_DECODE_TYPE_SLIDE 2
-#define HU_DECODE_TYPE_FSLIDE_ALT 3
-#define HU_DECODE_TYPE_FSLIDE 4
-#define HU_DECODE_TYPE_RLE 5
-#define HU_DECODE_TYPE_ZLIB 7
-
-#define HU_DATANUM_NONE -1
-#define HU_DATA_STAT_NONE -1
-
 #include "dolphin/types.h"
 #include "dolphin/dvd.h"
-
 
 typedef struct HuDataStat_s {
     s32 dirId;
@@ -34,35 +22,34 @@ typedef struct HuDataStat_s {
     DVDFileInfo dvdFile;
 } HUDATASTAT;
 
-void HuDataInit(void);
-s32 HuDataReadChk(int dataNum);
-HUDATASTAT *HuDataGetStatus(void *dirP);
-void *HuDataGetDirPtr(int dirNum);
-HUDATASTAT *HuDataDirRead(int dirNum);
-HUDATASTAT *HuDataDirReadNum(int dirNum, s32 num);
-HUDATASTAT *HuDataDirSet(void *dirP, int dataNum);
-void HuDataDirReadAsyncCallBack(s32 result, DVDFileInfo* fileInfo);
-s32 HuDataDirReadAsync(int dataNum);
-s32 HuDataDirReadNumAsync(int dataNum, s32 num);
-void HuDataDirCancel(s16 statId);
-void HuDataDirCancelAsync(s16 statId);
-BOOL HuDataGetAsyncStat(s32 statId);
-void *HuDataRead(int dataNum);
-void *HuDataReadNum(int dataNum, s32 num);
-void *HuDataSelHeapRead(int dataNum, HEAPID heap);
-void *HuDataSelHeapReadNum(int dataNum, s32 num, HEAPID heap);
+void fn_80007668(void);
+s32 fn_80007738(int dataNum);
+HUDATASTAT *fn_800077AC(void *dirP);
+void *fn_80007810(int dirNum);
+HUDATASTAT *fn_800078C8(int dirNum);
+HUDATASTAT *fn_80007B00(void *dirP, int dataNum);
+void fn_80007C88(s32 result, DVDFileInfo* fileInfo);
+s32 fn_80007F20(int dataNum);
+s32 fn_800080C8(int dataNum, s32 num);
+void fn_80007DE4(s16 statId);
+void fn_80007E6C(s16 statId);
+BOOL fn_80008270(s32 statId);
+void *fn_800082D0(int dataNum);
+void *fn_80008634(int dataNum, s32 num);
+void *fn_800089EC(int dataNum, HEAPID heap);
+void *fn_80008DD0(int dataNum, s32 num, HEAPID heap);
 void **HuDataReadMulti(int *dataNum);
-s32 HuDataGetSize(int dataNum);
-void HuDataClose(void *ptr);
+s32 fn_8000963C(int dataNum);
+void fn_80009740(void *ptr);
 void HuDataCloseMulti(void **ptrTbl);
-void HuDataDirClose(int dataNum);
-void HuDataDirCloseNum(s32 num);
-void HuDataDirCloseAll(void);
-BOOL HuDataDirCloseAsync(s16 statId);
-void *HuDataReadNumHeapShortForce(u32 dataNum, s32 num, HEAPID heap);
+void fn_800097F4(int dataNum);
+void fn_800098E4(s32 num);
+void fn_80009A30(void);
+BOOL fn_80007EAC(s16 statId);
+void *fn_80009B04(u32 dataNum, s32 num, HEAPID heap);
 
-void HuDecodeData(void *src, void *dst, u32 size, s32 decode_type);
+void fn_8000A384(void *src, void *dst, u32 size, s32 decode_type);
 
-extern u32 DirDataSize;
+extern u32 lbl_802C0028;
 
 #endif

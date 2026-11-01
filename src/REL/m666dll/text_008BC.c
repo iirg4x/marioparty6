@@ -63,7 +63,7 @@
 
 #include "REL/m666dll/tables.h"
 
-#define M666_CLUSTER_MOTION_CLEAR_MASK HU3D_CLUSTER_ATTR_LOOP
+#define M666_CLUSTER_MOTION_CLEAR_MASK ((s32)((3U << 30) | (1U << 0)))
 #define M666_TRANSFORM_TRAILING_DATA_TWO (2 << 16)
 #define M666_TRANSFORM_TRAILING_DATA_THREE (3 << 16)
 #define M666_TRANSFORM_TRAILING_DATA_FIVE (5 << 16)
@@ -206,7 +206,7 @@ void fn_1_8BC(void) {
     s16 nightMode;
 
     memset(&lbl_1_bss_DF0, 0, 36);
-    nightMode = GwMgNightF;
+    nightMode = lbl_802C0278;
     lbl_1_bss_DF0.night = nightMode;
     fn_1_9D4();
     fn_1_B54();
@@ -305,22 +305,22 @@ GXColor lbl_1_data_88[2] = {
     {192, 192, 192, 192}, {144, 144, 144, 144}
 };
 
-u32 lbl_1_data_90[2] = {DATANUM(DATA_m666, 0), DATANUM(DATA_m666, 12)};
+u32 lbl_1_data_90[2] = {DATANUM(0x7d0000, 0), DATANUM(0x7d0000, 12)};
 
-u32 lbl_1_data_98[2] = {DATANUM(DATA_m666, 1), DATANUM(DATA_m666, 13)};
+u32 lbl_1_data_98[2] = {DATANUM(0x7d0000, 1), DATANUM(0x7d0000, 13)};
 
-u32 lbl_1_data_A0[2] = {DATANUM(DATA_m666, 2), DATANUM(DATA_m666, 14)};
+u32 lbl_1_data_A0[2] = {DATANUM(0x7d0000, 2), DATANUM(0x7d0000, 14)};
 
 u32 lbl_1_data_A8[9][2] = {
-    {DATANUM(DATA_m666, 3), DATANUM(DATA_m666, 15)},
-    {DATANUM(DATA_m666, 4), DATANUM(DATA_m666, 16)},
-    {DATANUM(DATA_m666, 5), DATANUM(DATA_m666, 17)},
-    {DATANUM(DATA_m666, 6), DATANUM(DATA_m666, 18)},
-    {DATANUM(DATA_m666, 7), DATANUM(DATA_m666, 19)},
-    {DATANUM(DATA_m666, 8), DATANUM(DATA_m666, 20)},
-    {DATANUM(DATA_m666, 9), DATANUM(DATA_m666, 21)},
-    {DATANUM(DATA_m666, 10), DATANUM(DATA_m666, 22)},
-    {DATANUM(DATA_m666, 11), DATANUM(DATA_m666, 23)}
+    {DATANUM(0x7d0000, 3), DATANUM(0x7d0000, 15)},
+    {DATANUM(0x7d0000, 4), DATANUM(0x7d0000, 16)},
+    {DATANUM(0x7d0000, 5), DATANUM(0x7d0000, 17)},
+    {DATANUM(0x7d0000, 6), DATANUM(0x7d0000, 18)},
+    {DATANUM(0x7d0000, 7), DATANUM(0x7d0000, 19)},
+    {DATANUM(0x7d0000, 8), DATANUM(0x7d0000, 20)},
+    {DATANUM(0x7d0000, 9), DATANUM(0x7d0000, 21)},
+    {DATANUM(0x7d0000, 10), DATANUM(0x7d0000, 22)},
+    {DATANUM(0x7d0000, 11), DATANUM(0x7d0000, 23)}
 };
 
 Vec lbl_1_data_F0[9] = {
@@ -343,11 +343,11 @@ Point3d lbl_1_data_1A8[3] = {
 };
 f32 lbl_1_data_1CC[3] = {45.0f, -45.0f, 135.0f};
 M666JointMotionFile lbl_1_data_1D8[7] = {
-    {DATANUM(DATA_m666, 27), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_m666, 28), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_m666, 29), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_m666, 30), 0}, {DATANUM(DATA_m666, 31), 0},
-    {DATANUM(DATA_m666, 32), 0}, {DATANUM(DATA_m666, 33), 0}
+    {DATANUM(0x7d0000, 27), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x7d0000, 28), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x7d0000, 29), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x7d0000, 30), 0}, {DATANUM(0x7d0000, 31), 0},
+    {DATANUM(0x7d0000, 32), 0}, {DATANUM(0x7d0000, 33), 0}
 };
 M666SequencePosition lbl_1_data_210[9] = {
     {{1500.0f, 200.0f, 0.0f}}, {{2080.0f, 200.0f, 0.0f}},
@@ -411,35 +411,35 @@ M666DataTransform lbl_1_data_2A0[48] = {
     {{-300.0f, 60.0f, 3360.0f}, 180.0f, M666_TRANSFORM_TRAILING_DATA_SEVEN}
 };
 M666JointMotionResource lbl_1_data_660[4] = {
-    {DATANUM(DATA_m666, 35), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_m666, 36), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_m666, 37), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_m666, 38), HU3D_MOTATTR_LOOP}
+    {DATANUM(0x7d0000, 35), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x7d0000, 36), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x7d0000, 37), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x7d0000, 38), ((1 << 30) | (1 << 0))}
 };
 M666MotionData lbl_1_data_680[6] = {
-    {DATANUM(DATA_mariomot, 0), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_mariomot, 1), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_mariomot, 94), 0}, {DATANUM(DATA_mariomot, 64), 0},
-    {DATANUM(DATA_mariomot, 6), 0}, {DATANUM(DATA_mariomot, 7), 0}
+    {DATANUM(0x930000, 0), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x930000, 1), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x930000, 94), 0}, {DATANUM(0x930000, 64), 0},
+    {DATANUM(0x930000, 6), 0}, {DATANUM(0x930000, 7), 0}
 };
 unsigned int lbl_1_data_6B0[16] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 6),
-    DATANUM(DATA_mariomot, 40), DATANUM(DATA_mariomot, 8),
-    DATANUM(DATA_mariomot, 10), DATANUM(DATA_mariomot, 9),
-    DATANUM(DATA_mariomot, 24), DATANUM(DATA_mariomot, 23),
-    DATANUM(DATA_mariomot, 17), DATANUM(DATA_mariomot, 18),
-    DATANUM(DATA_mariomot, 34), 0
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x930000, 3),
+    DATANUM(0x930000, 4), DATANUM(0x930000, 6),
+    DATANUM(0x930000, 40), DATANUM(0x930000, 8),
+    DATANUM(0x930000, 10), DATANUM(0x930000, 9),
+    DATANUM(0x930000, 24), DATANUM(0x930000, 23),
+    DATANUM(0x930000, 17), DATANUM(0x930000, 18),
+    DATANUM(0x930000, 34), 0
 };
 u32 lbl_1_data_6F0[14] = {
-    DATANUM(DATA_m666, 46), DATANUM(DATA_m666, 47),
-    DATANUM(DATA_m666, 48), DATANUM(DATA_m666, 49),
-    DATANUM(DATA_m666, 50), DATANUM(DATA_m666, 51),
-    DATANUM(DATA_m666, 52), DATANUM(DATA_m666, 53),
-    DATANUM(DATA_m666, 54), DATANUM(DATA_m666, 55),
-    DATANUM(DATA_m666, 56), DATANUM(DATA_m666, 57),
-    DATANUM(DATA_m666, 58), DATANUM(DATA_m666, 59)
+    DATANUM(0x7d0000, 46), DATANUM(0x7d0000, 47),
+    DATANUM(0x7d0000, 48), DATANUM(0x7d0000, 49),
+    DATANUM(0x7d0000, 50), DATANUM(0x7d0000, 51),
+    DATANUM(0x7d0000, 52), DATANUM(0x7d0000, 53),
+    DATANUM(0x7d0000, 54), DATANUM(0x7d0000, 55),
+    DATANUM(0x7d0000, 56), DATANUM(0x7d0000, 57),
+    DATANUM(0x7d0000, 58), DATANUM(0x7d0000, 59)
 };
 
 M666DataPoint lbl_1_data_728[9] = {
@@ -456,7 +456,7 @@ M666DataPoint lbl_1_data_728[9] = {
 
 extern s32 HuMCProbe(s32 channel);
 
-extern void omVibrate(s16 playerNo, s16 duration, s16 off, s16 on);
+extern void fn_8006A030(s16 playerNo, s16 duration, s16 off, s16 on);
 
 typedef struct {
     s16 playerNumber;
@@ -507,14 +507,14 @@ void fn_1_9D4(void) {
     Hu3DCameraCreate(1);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(1, 10.0f, 60.0f, 25000.0f, 1.2f);
-    cameraObject = omAddObjEx(lbl_1_bss_4, 32730, 0U, 0U, -1, omOutView);
-    Center.x = 350.0f;
-    Center.y = 250.0f;
-    Center.z = 350.0f;
-    CRot.x = -36.0f;
-    CRot.y = 45.0f;
-    CRot.z = 0.0f;
-    CZoom = 9100.0f;
+    cameraObject = fn_8003AB38(lbl_1_bss_4, 32730, 0U, 0U, -1, fn_8003D4FC);
+    lbl_80266A4C.x = 350.0f;
+    lbl_80266A4C.y = 250.0f;
+    lbl_80266A4C.z = 350.0f;
+    lbl_80266A40.x = -36.0f;
+    lbl_80266A40.y = 45.0f;
+    lbl_80266A40.z = 0.0f;
+    lbl_802C028C = 9100.0f;
 }
 
 /* Creates the lighting, shadows, models and initial positions for fn_1_8BC. */
@@ -535,40 +535,40 @@ void fn_1_B54(void) {
     s32 playerIndex;
     s32 modelIndex;
 
-    lightId = Hu3DGLightCreateV(&lbl_1_data_70, &lbl_1_data_7C,
+    lightId = fn_800286D0(&lbl_1_data_70, &lbl_1_data_7C,
                                 &lbl_1_data_88[lbl_1_bss_DF0.night]);
     Hu3DGLightStaticSet(lightId, 1);
     Hu3DGLightInfinitytSet(lightId);
     Hu3DShadowCreate(30.0f, 20.0f, 20000.0f);
     Hu3DShadowPosSet(&shadowPosition, &shadowUpVector, &shadowTargetPosition);
 
-    modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
-        lbl_1_data_90[lbl_1_bss_DF0.night], HU_MEMNUM_OVL, HEAP_MODEL));
+    modelId = fn_80025A04(fn_80008DD0(
+        lbl_1_data_90[lbl_1_bss_DF0.night], 0x10000000, 2));
     lbl_1_bss_DF0.shadowModelId = modelId;
-    Hu3DModelShadowMapSet(modelId);
-    modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
-        lbl_1_data_98[lbl_1_bss_DF0.night], HU_MEMNUM_OVL, HEAP_MODEL));
+    fn_80026FFC(modelId);
+    modelId = fn_80025A04(fn_80008DD0(
+        lbl_1_data_98[lbl_1_bss_DF0.night], 0x10000000, 2));
     lbl_1_bss_DF0.modelId = modelId;
 
     for (modelIndex = 0; modelIndex < 6; modelIndex++) {
-        modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
-            lbl_1_data_A0[lbl_1_bss_DF0.night], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelPosSetV(modelId, &shadowPositions.positions[modelIndex]);
+        modelId = fn_80025A04(fn_80008DD0(
+            lbl_1_data_A0[lbl_1_bss_DF0.night], 0x10000000, 2));
+        fn_80026790(modelId, &shadowPositions.positions[modelIndex]);
         if (modelIndex >= 3) {
-            Hu3DModelRotSet(modelId, 0.0f, 180.0f,
+            fn_80026808(modelId, 0.0f, 180.0f,
                             0.0f);
         }
         lbl_1_bss_580[modelIndex].modelId = modelId;
             lbl_1_bss_580[modelIndex].data.obstacleQueue.obstacleCount = 8;
-        Hu3DMotionSpeedSet(modelId, 0.0f);
+        fn_8002D86C(modelId, 0.0f);
     }
 
     for (modelIndex = 0; modelIndex < 9; modelIndex++) {
-        modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
+        modelId = fn_80025A04(fn_80008DD0(
             lbl_1_data_A8[modelIndex][lbl_1_bss_DF0.night],
-            HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelPosSetV(modelId, &lbl_1_data_F0[modelIndex]);
-        Hu3DModelAttrSet(modelId, HU3D_MOTATTR_LOOP);
+            0x10000000, 2));
+        fn_80026790(modelId, &lbl_1_data_F0[modelIndex]);
+        fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
         lbl_1_bss_DC[modelIndex].modelId = modelId;
         lbl_1_bss_DC[modelIndex].state = 0;
         lbl_1_bss_DC[modelIndex].perimeterIndex = -1;
@@ -581,10 +581,10 @@ void fn_1_B54(void) {
                    (f64)lbl_1_data_728[modelIndex].x) / 3.141592653589793);
     }
 
-    modelId = collisionModelId = Hu3DModelCreate(HuDataSelHeapReadNum(
-        DATANUM(DATA_m666, 25), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(modelId, 1);
-    MgActorColMapInit(&collisionModelId, 1, 40);
+    modelId = collisionModelId = fn_80025A04(fn_80008DD0(
+        DATANUM(0x7d0000, 25), 0x10000000, 2));
+    fn_800269E8(modelId, 1);
+    fn_800804E8(&collisionModelId, 1, 40);
 }
 
 typedef void (*VoidFunc)(void);
@@ -655,17 +655,17 @@ typedef struct {
 void fn_1_F8C(void) {
     s32 playerIndex;
 
-    MgSeqWinnerSet(lbl_1_bss_98.charNo, -1, -1, -1);
+    fn_80071C18(lbl_1_bss_98.charNo, -1, -1, -1);
     playerIndex = lbl_1_bss_98.playerIndex;
-    if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-        GwPlayer[playerIndex].mgCoinBonus = 10;
+    if (fn_8006A124(65551) == 0) {
+        lbl_80265750[playerIndex].mgCoinBonus = 10;
     }
 }
 
 /* Applies the opening-character motion selected by motionIndex with the caller's blend
  * and table flags. */
 void fn_1_1004(s16 motionIndex, f32 blend) {
-    CharMotionShiftSet(
+    fn_8005C2C8(
         lbl_1_bss_98.charNo,
         lbl_1_bss_98.motionIds[motionIndex],
         0.0f, blend,
@@ -677,15 +677,15 @@ void fn_1_1004(s16 motionIndex, f32 blend) {
 s16 fn_1_1080(void) {
     Point3d modelRotation;
 
-    Hu3DModelRotGet(lbl_1_bss_98.modelId, &modelRotation);
+    fn_80026874(lbl_1_bss_98.modelId, &modelRotation);
     if (-135.0f == modelRotation.y) {
-        CharMotionShiftSet(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[1], 0.0f, 8.0f,
+        fn_8005C2C8(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[1], 0.0f, 8.0f,
                            lbl_1_data_680[1].flags);
     }
     modelRotation.y += 5.0f;
-    Hu3DModelRotSetV(lbl_1_bss_98.modelId, &modelRotation);
+    fn_80026838(lbl_1_bss_98.modelId, &modelRotation);
     if (45.0f == modelRotation.y) {
-        CharMotionShiftSet(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f, 8.0f,
+        fn_8005C2C8(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f, 8.0f,
                            lbl_1_data_680[0].flags);
         return 1;
     }
@@ -697,13 +697,13 @@ void fn_1_1198(s16 vibrationMode) {
     if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
         switch (vibrationMode) {
         case 0:
-            omVibrate(lbl_1_bss_98.playerIndex, 20, 4, 4);
+            fn_8006A030(lbl_1_bss_98.playerIndex, 20, 4, 4);
             break;
         case 1:
-            omVibrate(lbl_1_bss_98.playerIndex, 20, 7, 3);
+            fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
             break;
         case 2:
-            omVibrate(lbl_1_bss_98.playerIndex, 20, 20, 0);
+            fn_8006A030(lbl_1_bss_98.playerIndex, 20, 20, 0);
             break;
         }
     }
@@ -717,25 +717,25 @@ void fn_1_125C(s16 playerIndex) {
     s32 motionIndex;
 
     lbl_1_bss_98.playerIndex = playerIndex;
-    lbl_1_bss_98.padNo = GwPlayerConf[playerIndex].padNo;
-    charNo = GwPlayerConf[playerIndex].charNo;
+    lbl_1_bss_98.padNo = lbl_80265728[playerIndex].padNo;
+    charNo = lbl_80265728[playerIndex].charNo;
     lbl_1_bss_98.charNo = charNo;
-    if (GwPlayerConf[playerIndex].type == 0) {
+    if (lbl_80265728[playerIndex].type == 0) {
         lbl_1_bss_98.difficulty = -1;
     } else {
-        lbl_1_bss_98.difficulty = GwPlayerConf[playerIndex].comDif;
+        lbl_1_bss_98.difficulty = lbl_80265728[playerIndex].comDif;
     }
 
-    modelId = CharModelCreate(charNo, 4);
-    Hu3DModelPosSet(modelId, 960.0f, 0.0f, 460.0f);
-    Hu3DModelRotSet(modelId, 0.0f, -135.0f, 0.0f);
-    Hu3DModelShadowSet(modelId);
+    modelId = fn_80057068(charNo, 4);
+    fn_80026760(modelId, 960.0f, 0.0f, 460.0f);
+    fn_80026808(modelId, 0.0f, -135.0f, 0.0f);
+    fn_80026E44(modelId);
     lbl_1_bss_98.modelId = modelId;
     for (motionIndex = 0; motionIndex < 6; motionIndex++) {
-        motionId = CharMotionCreate(charNo, lbl_1_data_680[motionIndex].fileId);
+        motionId = fn_8005B0B8(charNo, lbl_1_data_680[motionIndex].fileId);
         lbl_1_bss_98.motionIds[motionIndex] = motionId;
     }
-    CharMotionShiftSet(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f,
+    fn_8005C2C8(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f,
                         0.0f, lbl_1_data_680[0].flags);
 }
 
@@ -750,7 +750,7 @@ void fn_1_143C(void) {
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
             player = lbl_1_bss_8[playerIndex].player;
             actor = player->actor;
-            MgActorRotYGet(actor, &rotation);
+            fn_80086CB0(actor, &rotation);
             while (rotation > 180.0f) {
                 rotation -= 360.0f;
             }
@@ -769,7 +769,7 @@ void fn_1_143C(void) {
                     rotation = 45.0f;
                 }
             }
-            MgActorRotYSet(actor, rotation);
+            fn_80086CA8(actor, rotation);
         }
     }
 }
@@ -782,8 +782,8 @@ void fn_1_15F0(void) {
     playerIndex = 0;
     while (playerIndex < 3) {
     player = lbl_1_bss_8[playerIndex].player;
-        MgPlayerAttrSet(player, 1U);
-        CharMotionShiftSet(player->charNo, *player->omObj->mtnId, 0.0f, 8.0f, 0U);
+        fn_80087158(player, 1U);
+        fn_8005C2C8(player->charNo, *player->omObj->mtnId, 0.0f, 8.0f, 0U);
         playerIndex += 1;
     }
 }
@@ -795,20 +795,20 @@ void fn_1_1680(void) {
     s32 playerNumber;
     MGPLAYER *player;
 
-    MgSeqWinnerSet(lbl_1_bss_8[0].charNo, lbl_1_bss_8[1].charNo,
+    fn_80071C18(lbl_1_bss_8[0].charNo, lbl_1_bss_8[1].charNo,
                    lbl_1_bss_8[2].charNo, -1);
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         player = lbl_1_bss_8[playerIndex].player;
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-            CharMotionShiftSet(player->charNo, player->omObj->mtnId[5],
+            fn_8005C2C8(player->charNo, player->omObj->mtnId[5],
                                0.0f, 8.0f, 0);
         } else {
-            CharMotionShiftSet(player->charNo, player->omObj->mtnId[0],
+            fn_8005C2C8(player->charNo, player->omObj->mtnId[0],
                                0.0f, 8.0f, 0);
         }
         playerNumber = lbl_1_bss_8[playerIndex].playerNumber;
-        if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-            GwPlayer[playerNumber].mgCoinBonus = 10;
+        if (fn_8006A124(65551) == 0) {
+            lbl_80265750[playerNumber].mgCoinBonus = 10;
         }
     }
 }
@@ -820,7 +820,7 @@ void fn_1_17C8(s16 motionIndex, f32 blend, u32 flags) {
 
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         player = lbl_1_bss_8[playerIndex].player;
-        CharMotionShiftSet(player->charNo, player->omObj->mtnId[motionIndex],
+        fn_8005C2C8(player->charNo, player->omObj->mtnId[motionIndex],
                            0.0f, blend, flags);
     }
 }
@@ -837,15 +837,15 @@ void fn_1_1858(s16 vibrationMode) {
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
             switch (vibrationMode) {
             case 0:
-                omVibrate(lbl_1_bss_8[playerIndex].playerNumber,
+                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
                           20, 4, 4);
                 break;
             case 1:
-                omVibrate(lbl_1_bss_8[playerIndex].playerNumber,
+                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
                           20, 7, 3);
                 break;
             case 2:
-                omVibrate(lbl_1_bss_8[playerIndex].playerNumber,
+                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
                           20, 20, 0);
                 break;
             }
@@ -879,27 +879,27 @@ void fn_1_194C(s16 excludedPlayer) {
         lbl_1_bss_8[playerCount].unknownFlag08 = 0;
         lbl_1_bss_8[playerCount].playerNumber = playerIndex;
         actorParam.param = playerCount;
-        charNo = GwPlayerConf[playerIndex].charNo;
+        charNo = lbl_80265728[playerIndex].charNo;
         lbl_1_bss_8[playerCount].charNo = charNo;
-        lbl_1_bss_8[playerCount].padNumber = GwPlayerConf[playerIndex].padNo;
-        if (GwPlayerConf[playerIndex].type == 1) {
-            lbl_1_bss_8[playerCount].comDifficulty = GwPlayerConf[playerIndex].comDif;
+        lbl_1_bss_8[playerCount].padNumber = lbl_80265728[playerIndex].padNo;
+        if (lbl_80265728[playerIndex].type == 1) {
+            lbl_1_bss_8[playerCount].comDifficulty = lbl_80265728[playerIndex].comDif;
         } else {
             lbl_1_bss_8[playerCount].comDifficulty = -1;
         }
 
-        lbl_1_bss_8[playerCount].player = MgPlayerCreate(
+        lbl_1_bss_8[playerCount].player = fn_80080728(
             playerIndex, &actorParam, 4, 1, 1, lbl_1_data_6B0);
         lbl_1_bss_8[playerCount].player->actor->pos.x = lbl_1_data_15C[playerCount].x;
         lbl_1_bss_8[playerCount].player->actor->pos.y = lbl_1_data_15C[playerCount].y;
         lbl_1_bss_8[playerCount].player->actor->pos.z = lbl_1_data_15C[playerCount].z;
         lbl_1_bss_8[playerCount].player->actor->rotY = lbl_1_data_180[playerCount];
-        Hu3DModelShadowSet((s16)lbl_1_bss_8[playerCount].player->actor->mdlId);
+        fn_80026E44((s16)lbl_1_bss_8[playerCount].player->actor->mdlId);
 
-        modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
-            lbl_1_data_6F0[charNo], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelAttrSet(modelId, 1);
-        Hu3DModelScaleSet(modelId, 1.0f, 0.0f,
+        modelId = fn_80025A04(fn_80008DD0(
+            lbl_1_data_6F0[charNo], 0x10000000, 2));
+        fn_800269E8(modelId, 1);
+        fn_800268B0(modelId, 1.0f, 0.0f,
                           1.0f);
         lbl_1_bss_8[playerCount].modelId = modelId;
         lbl_1_bss_8[playerCount].targetAngle = -500.0f;
@@ -929,10 +929,10 @@ void fn_1_1CBC(s16 playerIndex) {
     s32 groupIndex;
     s32 itemIndex;
 
-    if (MgSeqModeGet() == 5) {
+    if (fn_80071A8C() == 5) {
         player = lbl_1_bss_8[playerIndex].player;
         playerActor = player->actor;
-        MgActorPosGet(playerActor, &playerPosition);
+        fn_80086BC8(playerActor, &playerPosition);
         if (playerPosition.x <= -150.0f) {
             xZone = 0;
         } else if (playerPosition.x >= 150.0f) {
@@ -954,7 +954,7 @@ void fn_1_1CBC(s16 playerIndex) {
             for (itemIndex = 0; itemIndex < 3; itemIndex++) {
                 if (lbl_1_bss_148[groupIndex].items[itemIndex].state == 4) {
                     obstacleSequence = &lbl_1_bss_148[groupIndex].items[itemIndex];
-                    Hu3DModelPosGet(obstacleSequence->rootModelId, &objectPosition);
+                    fn_800267CC(obstacleSequence->rootModelId, &objectPosition);
                     objectPosition.y = 0.0f;
                     if (groupIndex == 0) {
                         objectPosition.x += 100.0f;
@@ -973,7 +973,7 @@ void fn_1_1CBC(s16 playerIndex) {
                         } else {
                             heading = 0.0f;
                         }
-                        MgActorRotYSet(playerActor, heading);
+                        fn_80086CA8(playerActor, heading);
                     }
                 }
             }
@@ -981,7 +981,7 @@ void fn_1_1CBC(s16 playerIndex) {
 
         for (groupIndex = 0; groupIndex < 3; groupIndex++) {
             movingPlatform = &lbl_1_bss_E3C[groupIndex];
-            Hu3DModelPosGet(movingPlatform->modelIds[0], &objectPosition);
+            fn_800267CC(movingPlatform->modelIds[0], &objectPosition);
             if (objectPosition.y >= 150.0f) {
                 continue;
             }
@@ -1001,7 +1001,7 @@ void fn_1_1CBC(s16 playerIndex) {
         for (groupIndex = 0; groupIndex < 6; groupIndex++) {
             for (itemIndex = 0; itemIndex < 8; itemIndex++) {
                 if (lbl_1_bss_604[groupIndex][itemIndex].state == 6) {
-                    Hu3DModelPosGet(lbl_1_bss_604[groupIndex][itemIndex].secondaryModelId,
+                    fn_800267CC(lbl_1_bss_604[groupIndex][itemIndex].secondaryModelId,
                                     &objectPosition);
                     objectPosition.y = 0.0f;
                     if (sqrtf(PSVECSquareDistance(&objectPosition,
@@ -1015,7 +1015,7 @@ void fn_1_1CBC(s16 playerIndex) {
                                   (atan2((f64) separation.z,
                                          (f64) separation.x) /
                                    3.141592653589793));
-                        MgActorRotYSet(
+                        fn_80086CA8(
                             lbl_1_bss_8[playerIndex].player->actor,
                             360.0f - heading);
                         lbl_1_bss_8[playerIndex].pushAngle =
@@ -1139,7 +1139,7 @@ void fn_1_2458(s16 playerIndex) {
         occupiedCell = 1;
     }
 
-    MgActorPosGet(player->player->actor, &playerPosition);
+    fn_80086BC8(player->player->actor, &playerPosition);
     if (sqrtf((playerPosition.x * playerPosition.x) +
               (playerPosition.z * playerPosition.z)) > 510.0f) {
         outsideSteeringRadius = 1;
@@ -1153,17 +1153,17 @@ void fn_1_2458(s16 playerIndex) {
     for (groupIndex = 0; groupIndex < 6; groupIndex++) {
         for (obstacleIndex = 0; obstacleIndex < 8; obstacleIndex++) {
             if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 6) {
-                Hu3DModelPosGet(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId,
+                fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId,
                                 &objectPosition);
                 goto check_object_distance;
             }
             if (lbl_1_bss_604[groupIndex][obstacleIndex].actor) {
-                MgActorPosGet(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
+                fn_80086BC8(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
                               &objectPosition);
                 goto check_object_distance;
             }
             if (lbl_1_bss_604[groupIndex][obstacleIndex].state == 3) {
-                Hu3DModelPosGet(lbl_1_bss_604[groupIndex][obstacleIndex].modelId,
+                fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].modelId,
                                 &objectPosition);
                 goto check_object_distance;
             }
@@ -1375,13 +1375,13 @@ check_object_distance:
         if (player->addSteeringOffset != 0) {
             currentAngle += 60.0f;
         }
-        MgPlayerPadSet(player->player,
+        fn_80080520(player->player,
             (s32)((f64)lbl_1_data_198[player->comDifficulty] *
                   sin((3.141592653589793 * (f64)currentAngle) / 180.0)),
             (s32)((f64)lbl_1_data_198[player->comDifficulty] *
                   cos((3.141592653589793 * (f64)currentAngle) / 180.0)), 0, 0);
     } else if (player->wanderFrames != 0) {
-        MgPlayerPadSet(player->player,
+        fn_80080520(player->player,
             (s32)((f64)lbl_1_data_198[player->comDifficulty] *
                   sin((3.141592653589793 * (f64)player->wanderAngle) / 180.0)),
             (s32)((f64)lbl_1_data_198[player->comDifficulty] *
@@ -1419,11 +1419,11 @@ void fn_1_3C9C(void) {
         case 1:
             position.x = position.z = 2000.0f;
             position.y = 0.0f;
-            MgActorPosSetRaw(actor, &position);
-            Hu3DModelPosSetV((s16)actor->mdlId, &position);
+            fn_80086B04(actor, &position);
+            fn_80026790((s16)actor->mdlId, &position);
             break;
         case 2:
-            Hu3DModelPosGet(lbl_1_bss_8[playerIndex].modelId, &position);
+            fn_800267CC(lbl_1_bss_8[playerIndex].modelId, &position);
             direction.x = position.x;
             direction.y = 0.0f;
             direction.z = position.z;
@@ -1437,12 +1437,12 @@ void fn_1_3C9C(void) {
                   sin(((f64)(lbl_1_bss_8[playerIndex].displacementPhase++ * 8) *
                       3.141592653589793) / 180.0)) + position.y;
             position.z += direction.z;
-            Hu3DModelPosSetV(lbl_1_bss_8[playerIndex].modelId, &position);
-            Hu3DModelScaleGet(lbl_1_bss_8[playerIndex].modelId, &scale);
+            fn_80026790(lbl_1_bss_8[playerIndex].modelId, &position);
+            fn_8002691C(lbl_1_bss_8[playerIndex].modelId, &scale);
             if (scale.y < 1.0f) {
                 scale.y += 0.1f;
             }
-            Hu3DModelScaleSetV(lbl_1_bss_8[playerIndex].modelId, &scale);
+            fn_800268E0(lbl_1_bss_8[playerIndex].modelId, &scale);
             break;
         case 3:
         case 4:
@@ -1450,8 +1450,8 @@ void fn_1_3C9C(void) {
             direction.x = 40.0f;
              direction.y = 60.0f - lbl_1_bss_8[playerIndex].verticalPushDecay;
             direction.z = 0.0f;
-            MgActorPushSet(actor, &direction);
-            Hu3DModelPosGet((s16)actor->mdlId, &position);
+            fn_80086C8C(actor, &direction);
+            fn_800267CC((s16)actor->mdlId, &position);
             direction.x = (f32)(40.0 *
                 cos((lbl_1_bss_8[playerIndex].pushAngle * 3.141592653589793) /
                     180.0));
@@ -1461,8 +1461,8 @@ void fn_1_3C9C(void) {
             position.x += direction.x;
             position.y += direction.y;
             position.z += direction.z;
-            Hu3DModelPosSetV((s16)actor->mdlId, &position);
-            Hu3DModelRotSet((s16)actor->mdlId, 0.0f,
+            fn_80026790((s16)actor->mdlId, &position);
+            fn_80026808((s16)actor->mdlId, 0.0f,
                             lbl_1_bss_8[playerIndex].pushAngle,
                             0.0f);
              lbl_1_bss_8[playerIndex].verticalPushDecay += 2.0f;
@@ -1481,29 +1481,29 @@ static inline void setPlayerMotionState(s16 playerIndex, s16 motionState) {
 
     activePlayer = lbl_1_bss_8[playerIndex].player;
     playerActor = activePlayer->actor;
-    if ((lbl_1_bss_8[playerIndex].motionSelection == 0) && (MgSeqModeGet() == 5)) {
-        omVibrate(lbl_1_bss_8[playerIndex].playerNumber, 20, 20, 0);
-        MgPlayerAttrSet(activePlayer, 1U);
+    if ((lbl_1_bss_8[playerIndex].motionSelection == 0) && (fn_80071A8C() == 5)) {
+        fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 20, 0);
+        fn_80087158(activePlayer, 1U);
         lbl_1_bss_8[playerIndex].motionSelection = motionState;
-        MgPlayerDespawn(activePlayer);
-        MgActorColAttrSet(playerActor, 2U);
-        MgActorGravitySet(playerActor, 0.0f);
-        CharMotionShiftSet(activePlayer->charNo, activePlayer->omObj->mtnId[14],
-                           0.0f, 0.0f, HU3D_MOTATTR_LOOP);
+        fn_80086E3C(activePlayer);
+        fn_800805CC(playerActor, 2U);
+        fn_80086CBC(playerActor, 0.0f);
+        fn_8005C2C8(activePlayer->charNo, activePlayer->omObj->mtnId[14],
+                           0.0f, 0.0f, ((1 << 30) | (1 << 0)));
         if (motionState == 1) {
-            Hu3DModelAttrReset(lbl_1_bss_8[playerIndex].modelId, 1U);
-            MgActorPosGet(playerActor, &position);
-            Hu3DModelPosSetV(lbl_1_bss_8[playerIndex].modelId, &position);
-            Hu3DMotionClusterSpeedSet(lbl_1_bss_8[playerIndex].modelId, 0, 2.0f);
-            Hu3DModelClusterAttrSet(lbl_1_bss_8[playerIndex].modelId, 0,
+            fn_80026A44(lbl_1_bss_8[playerIndex].modelId, 1U);
+            fn_80086BC8(playerActor, &position);
+            fn_80026790(lbl_1_bss_8[playerIndex].modelId, &position);
+            fn_8002D30C(lbl_1_bss_8[playerIndex].modelId, 0, 2.0f);
+            fn_80026AE4(lbl_1_bss_8[playerIndex].modelId, 0,
                                     M666_CLUSTER_MOTION_CLEAR_MASK);
-            Hu3DModelRotSet(lbl_1_bss_8[playerIndex].modelId, 0.0f,
+            fn_80026808(lbl_1_bss_8[playerIndex].modelId, 0.0f,
                             (f32) (180.0 * (atan2((f64) position.x, (f64) position.z) /
                                           3.141592653589793)), 0.0f);
             position.x = 2000.0f;
             position.z = 2000.0f;
-            MgActorPosSetRaw(playerActor, &position);
-            Hu3DModelPosSetV((s16) playerActor->mdlId, &position);
+            fn_80086B04(playerActor, &position);
+            fn_80026790((s16) playerActor->mdlId, &position);
         }
     }
 }
@@ -1517,29 +1517,29 @@ void fn_1_40F8(s16 playerIndex, s16 action) {
 
         player = lbl_1_bss_8[playerIndex].player;
     playerActor = player->actor;
-    if ((lbl_1_bss_8[playerIndex].motionSelection == 0) && (MgSeqModeGet() == 5)) {
-        omVibrate(lbl_1_bss_8[playerIndex].playerNumber, 20, 20, 0);
-        MgPlayerAttrSet(player, 1U);
+    if ((lbl_1_bss_8[playerIndex].motionSelection == 0) && (fn_80071A8C() == 5)) {
+        fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 20, 0);
+        fn_80087158(player, 1U);
         lbl_1_bss_8[playerIndex].motionSelection = action;
-        MgPlayerDespawn(player);
-        MgActorColAttrSet(playerActor, 2U);
-        MgActorGravitySet(playerActor, 0.0f);
-        CharMotionShiftSet(player->charNo, player->omObj->mtnId[14], 0.0f, 0.0f, HU3D_MOTATTR_LOOP);
+        fn_80086E3C(player);
+        fn_800805CC(playerActor, 2U);
+        fn_80086CBC(playerActor, 0.0f);
+        fn_8005C2C8(player->charNo, player->omObj->mtnId[14], 0.0f, 0.0f, ((1 << 30) | (1 << 0)));
         if (action == 1) {
-            Hu3DModelAttrReset(lbl_1_bss_8[playerIndex].modelId, 1U);
-            MgActorPosGet(playerActor, &actorPosition);
-            Hu3DModelPosSetV(lbl_1_bss_8[playerIndex].modelId, &actorPosition);
-            Hu3DMotionClusterSpeedSet(lbl_1_bss_8[playerIndex].modelId, 0, 2.0f);
-            Hu3DModelClusterAttrSet(lbl_1_bss_8[playerIndex].modelId, 0,
+            fn_80026A44(lbl_1_bss_8[playerIndex].modelId, 1U);
+            fn_80086BC8(playerActor, &actorPosition);
+            fn_80026790(lbl_1_bss_8[playerIndex].modelId, &actorPosition);
+            fn_8002D30C(lbl_1_bss_8[playerIndex].modelId, 0, 2.0f);
+            fn_80026AE4(lbl_1_bss_8[playerIndex].modelId, 0,
                                     M666_CLUSTER_MOTION_CLEAR_MASK);
-            Hu3DModelRotSet(lbl_1_bss_8[playerIndex].modelId, 0.0f,
+            fn_80026808(lbl_1_bss_8[playerIndex].modelId, 0.0f,
                             (f32) (180.0 * (atan2((f64) actorPosition.x, (f64) actorPosition.z) /
                                             3.141592653589793)),
                             0.0f);
             actorPosition.x = 2000.0f;
             actorPosition.z = 2000.0f;
-            MgActorPosSetRaw(playerActor, &actorPosition);
-            Hu3DModelPosSetV((s16) playerActor->mdlId, &actorPosition);
+            fn_80086B04(playerActor, &actorPosition);
+            fn_80026790((s16) playerActor->mdlId, &actorPosition);
         }
     }
 }
@@ -1565,10 +1565,10 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
     if (playerEvent->paramB < 4) {
         if ((targetEvent->paramB >= 52) && (targetEvent->paramB < 100)) {
             if (lbl_1_bss_8[(s16) playerIndex].motionSelection == 0) {
-                MgActorPosGet(lbl_1_bss_8[(s16) playerIndex].player->actor,
+                fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor,
                               &playerPosition);
                 actorIndex = targetEvent->paramB - 52;
-                MgActorPosGet(
+                fn_80086BC8(
                     lbl_1_bss_604[actorIndex / 8][actorIndex % 8].secondaryActor,
                     &targetPosition);
                 setPlayerMotionState((s16) playerIndex, 3);
@@ -1578,7 +1578,7 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
                 heading = (f32) (180.0 *
                           (atan2((f64) separation.z, (f64) separation.x) /
                            3.141592653589793));
-                MgActorRotYSet(lbl_1_bss_8[(s16) playerIndex].player->actor,
+                fn_80086CA8(lbl_1_bss_8[(s16) playerIndex].player->actor,
                                360.0f - heading);
                 lbl_1_bss_8[(s16) playerIndex].pushAngle = heading;
                 goto clearFlags;
@@ -1587,9 +1587,9 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
             if (targetEvent->paramB < 4) {
                 targetPlayerIndex = (s16) targetEvent->paramB;
                 if (lbl_1_bss_8[(s16) playerIndex].targetAngle != -500.0f) {
-                MgActorPosGet(lbl_1_bss_8[(s16) playerIndex].player->actor,
+                fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor,
                               &playerPosition);
-                MgActorPosGet(lbl_1_bss_8[targetPlayerIndex].player->actor,
+                fn_80086BC8(lbl_1_bss_8[targetPlayerIndex].player->actor,
                               &targetPosition);
                 separation.x = targetPosition.x - playerPosition.x;
                 separation.y = 0.0f;
@@ -1612,10 +1612,10 @@ void fn_1_4378(M666CollisionEvent *playerEvent,
                 }
             } else if ((targetEvent->paramB >= 4) &&
                        (targetEvent->paramB < 52)) {
-                MgActorPosGet(lbl_1_bss_8[(s16) playerIndex].player->actor,
+                fn_80086BC8(lbl_1_bss_8[(s16) playerIndex].player->actor,
                               &playerPosition);
                 actorIndex = targetEvent->paramB - 4;
-                MgActorPosGet(
+                fn_80086BC8(
                     lbl_1_bss_604[actorIndex / 8][actorIndex % 8].actor,
                     &targetPosition);
                 separation.x = targetPosition.x - playerPosition.x;
@@ -1657,32 +1657,32 @@ void fn_1_4A40(void) {
 
     playerIndex = 0;
     for (candidateIndex = 0; candidateIndex < 4; candidateIndex++) {
-        if (GwPlayerConf[candidateIndex].grpNo == 0) {
+        if (lbl_80265728[candidateIndex].grpNo == 0) {
             playerIndex = candidateIndex;
             break;
         }
     }
 
     lbl_1_bss_98.playerIndex = playerIndex;
-    lbl_1_bss_98.padNo = GwPlayerConf[playerIndex].padNo;
-    charNo = GwPlayerConf[playerIndex].charNo;
+    lbl_1_bss_98.padNo = lbl_80265728[playerIndex].padNo;
+    charNo = lbl_80265728[playerIndex].charNo;
     lbl_1_bss_98.charNo = charNo;
-    if (GwPlayerConf[playerIndex].type == 0) {
+    if (lbl_80265728[playerIndex].type == 0) {
         lbl_1_bss_98.difficulty = -1;
     } else {
-        lbl_1_bss_98.difficulty = GwPlayerConf[playerIndex].comDif;
+        lbl_1_bss_98.difficulty = lbl_80265728[playerIndex].comDif;
     }
 
-    modelId = CharModelCreate(charNo, 4);
-    Hu3DModelPosSet(modelId, 960.0f, 0.0f, 460.0f);
-    Hu3DModelRotSet(modelId, 0.0f, -135.0f, 0.0f);
-    Hu3DModelShadowSet(modelId);
+    modelId = fn_80057068(charNo, 4);
+    fn_80026760(modelId, 960.0f, 0.0f, 460.0f);
+    fn_80026808(modelId, 0.0f, -135.0f, 0.0f);
+    fn_80026E44(modelId);
     lbl_1_bss_98.modelId = modelId;
     for (motionIndex = 0; motionIndex < 6; motionIndex++) {
-        motionId = CharMotionCreate(charNo, lbl_1_data_680[motionIndex].fileId);
+        motionId = fn_8005B0B8(charNo, lbl_1_data_680[motionIndex].fileId);
         lbl_1_bss_98.motionIds[motionIndex] = motionId;
     }
-    CharMotionShiftSet(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f,
+    fn_8005C2C8(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f,
                        0.0f, lbl_1_data_680[0].flags);
     fn_1_194C(playerIndex);
 }
@@ -1747,10 +1747,10 @@ void fn_1_4D20(void) {
             }
         }
     } else {
-        maximumMotionTime = CharMotionMaxTimeGet(work->charNo);
-        if (CharMotionTimeGet(work->charNo) >= maximumMotionTime) {
+        maximumMotionTime = fn_8005C1FC(work->charNo);
+        if (fn_8005C1B8(work->charNo) >= maximumMotionTime) {
             work->motionState = 0;
-            CharMotionShiftSet(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f,
+            fn_8005C2C8(lbl_1_bss_98.charNo, lbl_1_bss_98.motionIds[0], 0.0f,
                                8.0f, lbl_1_data_680[0].flags);
             fn_1_5654(work->eventStatus);
         }
@@ -1792,11 +1792,11 @@ typedef struct {
     s32 fileIds[10];
 } M666SpriteFileTable;
 
-const M666SpriteFileTable lbl_1_rodata_1DC = { { DATANUM(DATA_m666, 60), DATANUM(DATA_m666, 61),
-                                                 DATANUM(DATA_m666, 62), DATANUM(DATA_m666, 63),
-                                                 DATANUM(DATA_m666, 64), DATANUM(DATA_m666, 65),
-                                                 DATANUM(DATA_m666, 66), DATANUM(DATA_m666, 67),
-                                                 DATANUM(DATA_m666, 68), DATANUM(DATA_m666, 69) } };
+const M666SpriteFileTable lbl_1_rodata_1DC = { { DATANUM(0x7d0000, 60), DATANUM(0x7d0000, 61),
+                                                 DATANUM(0x7d0000, 62), DATANUM(0x7d0000, 63),
+                                                 DATANUM(0x7d0000, 64), DATANUM(0x7d0000, 65),
+                                                 DATANUM(0x7d0000, 66), DATANUM(0x7d0000, 67),
+                                                 DATANUM(0x7d0000, 68), DATANUM(0x7d0000, 69) } };
 
 /* Loads ten sprite animations and creates three perimeter models, each with seven joint motions
  * and a sprite group. */
@@ -1815,25 +1815,25 @@ void fn_1_4F24(void) {
 
     for (modelIndex = 0; modelIndex < 10; modelIndex++) {
         spriteAnimations[modelIndex] = HuSprAnimRead(
-            HuDataSelHeapReadNum(spriteFileIds.fileIds[modelIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(spriteFileIds.fileIds[modelIndex], 0x10000000, 2));
     }
 
     for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-        modelId = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m666, 26), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelPosSetV(modelId, &lbl_1_data_1A8[modelIndex]);
-        Hu3DModelShadowSet(modelId);
-        Hu3DModelRotSet(modelId, 0.0f, lbl_1_data_1CC[modelIndex],
+        modelId = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7d0000, 26), 0x10000000, 2));
+        fn_80026790(modelId, &lbl_1_data_1A8[modelIndex]);
+        fn_80026E44(modelId);
+        fn_80026808(modelId, 0.0f, lbl_1_data_1CC[modelIndex],
                         0.0f);
 
         for (loopIndex = 0; loopIndex < 7; loopIndex++) {
-            jointMotionId = Hu3DJointMotion(modelId, HuDataSelHeapReadNum(
-                lbl_1_data_1D8[loopIndex].fileId, HU_MEMNUM_OVL, HEAP_MODEL));
+            jointMotionId = fn_80030458(modelId, fn_80008DD0(
+                lbl_1_data_1D8[loopIndex].fileId, 0x10000000, 2));
             lbl_1_bss_D84[modelIndex].jointMotionIds[loopIndex] = jointMotionId;
         }
 
-        Hu3DMotionSet(modelId, lbl_1_bss_D84[modelIndex].jointMotionIds[0]);
-        Hu3DModelAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        fn_8002C95C(modelId, lbl_1_bss_D84[modelIndex].jointMotionIds[0]);
+        fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
         lbl_1_bss_D84[modelIndex].modelId = modelId;
         lbl_1_bss_D84[modelIndex].direction = workTypes.values[modelIndex];
         lbl_1_bss_D84[modelIndex].rotation = lbl_1_data_1CC[modelIndex];
@@ -1854,8 +1854,8 @@ void fn_1_51F4(s16 perimeterIndex) {
     M666MotionWork *motionEntry;
 
     motionEntry = &lbl_1_bss_D84[perimeterIndex];
-    Hu3DMotionShiftSet(motionEntry->modelId, motionEntry->jointMotionIds[0],
-                       0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    fn_8002CCC0(motionEntry->modelId, motionEntry->jointMotionIds[0],
+                       0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     motionEntry->motionState = 0;
 }
 
@@ -1864,7 +1864,7 @@ void fn_1_5264(s16 perimeterIndex) {
     M666MotionWork *perimeterWork;
 
     perimeterWork = &lbl_1_bss_D84[perimeterIndex];
-    Hu3DMotionShiftSet(perimeterWork->modelId,
+    fn_8002CCC0(perimeterWork->modelId,
                        perimeterWork->jointMotionIds[4], 0.0f,
                        8.0f, 0);
     perimeterWork->motionState = 3;
@@ -1876,8 +1876,8 @@ void fn_1_52EC(s16 perimeterIndex) {
     M666MotionWork *motionEntry;
 
     motionEntry = &lbl_1_bss_D84[perimeterIndex];
-    Hu3DMotionShiftSet(motionEntry->modelId, motionEntry->jointMotionIds[1],
-                       0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    fn_8002CCC0(motionEntry->modelId, motionEntry->jointMotionIds[1],
+                       0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     motionEntry->motionState = 2;
 }
 
@@ -1907,7 +1907,7 @@ s16 fn_1_535C(s16 eventCode) {
             continue;
         }
 
-        Hu3DModelPosGet(((M666PerimeterTurnWork *) &lbl_1_bss_D84)[candidateModelIndex].modelId,
+        fn_800267CC(((M666PerimeterTurnWork *) &lbl_1_bss_D84)[candidateModelIndex].modelId,
                         &modelPosition);
         relativeAngle = 180.0 *
             (atan2((f64)modelPosition.z, (f64)modelPosition.x) / 3.141592653589793);
@@ -1946,12 +1946,12 @@ s16 fn_1_CB8C(s16 slotIndex, s16 perimeterIndex);
  * fallback. */
 void fn_1_5580(s16 eventCode) {
     if (eventCode <= 9) {
-        CharMotionShiftSet(lbl_1_bss_98.charNo,
+        fn_8005C2C8(lbl_1_bss_98.charNo,
                            lbl_1_bss_98.motionIds[2],
                            0.0f, 8.0f,
                            lbl_1_data_680[2].flags);
     } else {
-        CharMotionShiftSet(lbl_1_bss_98.charNo,
+        fn_8005C2C8(lbl_1_bss_98.charNo,
                            lbl_1_bss_98.motionIds[3],
                            0.0f, 8.0f,
                            lbl_1_data_680[3].flags);
@@ -1971,7 +1971,7 @@ void fn_1_5654(s16 eventCode) {
         if (selectedPerimeterIndex != -1) {
             OSReport(lbl_1_data_7FF, selectedPerimeterIndex);
             if (fn_1_CB8C(eventCode - 1, selectedPerimeterIndex) == 0) {
-                HuAudFXPlayPan(MSM_SE_M666_TARGET_ASSIGNMENT, (s16)(64.0 -
+                HuAudFXPlayPan(2173, (s16)(64.0 -
                     (32.0 * sin((3.141592653589793 *
                      (f64)lbl_1_bss_D84[selectedPerimeterIndex].facingAngle) /
                      180.0))));
@@ -1980,14 +1980,14 @@ void fn_1_5654(s16 eventCode) {
                 lbl_1_bss_DC[lbl_1_bss_D84[selectedPerimeterIndex].targetIndex].state = 0;
                 lbl_1_bss_DC[lbl_1_bss_D84[selectedPerimeterIndex].targetIndex].perimeterIndex = -1;
                 lbl_1_bss_D84[selectedPerimeterIndex].targetIndex = eventCode - 1;
-                Hu3DMotionShiftSet(lbl_1_bss_D84[selectedPerimeterIndex].modelId,
+                fn_8002CCC0(lbl_1_bss_D84[selectedPerimeterIndex].modelId,
                                    lbl_1_bss_D84[selectedPerimeterIndex].jointMotionIds[2],
                                    0.0f, 8.0f,
-                                   HU3D_MOTATTR_LOOP);
+                                   ((1 << 30) | (1 << 0)));
                 HuSprAttrReset(lbl_1_bss_D84[selectedPerimeterIndex].spriteGroupId,
                                eventCode - 1, 4);
                 lbl_1_bss_DC[eventCode - 1].state = 1;
-                lbl_1_bss_DC[eventCode - 1].soundHandle = HuAudFXPlay(MSM_SE_M666_MARKER_ROTATION);
+                lbl_1_bss_DC[eventCode - 1].soundHandle = HuAudFXPlay(2177);
                 lbl_1_bss_DC[eventCode - 1].perimeterIndex = selectedPerimeterIndex;
                 return;
             }
@@ -1996,11 +1996,11 @@ void fn_1_5654(s16 eventCode) {
                     lbl_1_bss_D84[perimeterIndex].motionState = 6;
             lbl_1_bss_D84[perimeterIndex].countdown = 60;
                     HuSprAttrReset(lbl_1_bss_D84[perimeterIndex].spriteGroupId, 9, 4);
-                    Hu3DMotionShiftSet(lbl_1_bss_D84[perimeterIndex].modelId,
+                    fn_8002CCC0(lbl_1_bss_D84[perimeterIndex].modelId,
                                        lbl_1_bss_D84[perimeterIndex].jointMotionIds[6],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
-                    HuAudFXPlay(MSM_SE_M666_EVENT_FALLBACK);
+                                       ((1 << 30) | (1 << 0)));
+                    HuAudFXPlay(2181);
                 }
             }
         }
@@ -2010,11 +2010,11 @@ void fn_1_5654(s16 eventCode) {
                 lbl_1_bss_D84[perimeterIndex].motionState = 6;
                 lbl_1_bss_D84[perimeterIndex].countdown = 60;
                 HuSprAttrReset(lbl_1_bss_D84[perimeterIndex].spriteGroupId, 9, 4);
-                Hu3DMotionShiftSet(lbl_1_bss_D84[perimeterIndex].modelId,
+                fn_8002CCC0(lbl_1_bss_D84[perimeterIndex].modelId,
                                    lbl_1_bss_D84[perimeterIndex].jointMotionIds[6],
                                    0.0f, 8.0f,
-                                   HU3D_MOTATTR_LOOP);
-                HuAudFXPlay(MSM_SE_M666_EVENT_FALLBACK);
+                                   ((1 << 30) | (1 << 0)));
+                HuAudFXPlay(2181);
             }
         }
     }
@@ -2029,10 +2029,10 @@ void fn_1_5A78(void) {
     s16 workType;
 
     for (perimeterIndex = 0; perimeterIndex < 3; perimeterIndex++) {
-        Hu3DModelPosGet(lbl_1_bss_D84[perimeterIndex].modelId, &perimeterPosition);
+        fn_800267CC(lbl_1_bss_D84[perimeterIndex].modelId, &perimeterPosition);
         for (otherPerimeterIndex = 0; otherPerimeterIndex < 3; otherPerimeterIndex++) {
             if (perimeterIndex != otherPerimeterIndex) {
-                Hu3DModelPosGet(lbl_1_bss_D84[otherPerimeterIndex].modelId,
+                fn_800267CC(lbl_1_bss_D84[otherPerimeterIndex].modelId,
                                 &otherPerimeterPosition);
                 if (!(sqrtf(PSVECSquareDistance(&perimeterPosition,
                                                &otherPerimeterPosition)) > 100.0f) &&
@@ -2103,12 +2103,12 @@ void fn_1_5A78(void) {
                         }
                         break;
                     }
-                    Hu3DModelPosSetV(lbl_1_bss_D84[otherPerimeterIndex].modelId,
+                    fn_80026790(lbl_1_bss_D84[otherPerimeterIndex].modelId,
                                      &otherPerimeterPosition);
                 }
             }
         }
-        Hu3DModelPosSetV(lbl_1_bss_D84[perimeterIndex].modelId, &perimeterPosition);
+        fn_80026790(lbl_1_bss_D84[perimeterIndex].modelId, &perimeterPosition);
     }
 }
 
@@ -2130,7 +2130,7 @@ void fn_1_6030(s32 perimeterIndex) {
 
     perimeter = &((M666PerimeterMotionState *)lbl_1_bss_D84)[perimeterIndex];
     targetDirection = lbl_1_data_728[perimeter->targetIndex].direction;
-    Hu3DModelPosGet(perimeter->modelId, &position);
+    fn_800267CC(perimeter->modelId, &position);
 
     if (perimeter->turnDirection == 0) {
         switch (perimeter->direction) {
@@ -2148,10 +2148,10 @@ void fn_1_6030(s32 perimeterIndex) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
                     positiveXArrival =
                         &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
-                    Hu3DMotionShiftSet(positiveXArrival->modelId,
+                    fn_8002CCC0(positiveXArrival->modelId,
                                        positiveXArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     positiveXArrival->motionState = 2;
                 }
             } else if (position.x >= 600.0f) {
@@ -2173,10 +2173,10 @@ void fn_1_6030(s32 perimeterIndex) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
                     positiveZArrival =
                         &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
-                    Hu3DMotionShiftSet(positiveZArrival->modelId,
+                    fn_8002CCC0(positiveZArrival->modelId,
                                        positiveZArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     positiveZArrival->motionState = 2;
                 }
             } else if (position.z >= 600.0f) {
@@ -2198,10 +2198,10 @@ void fn_1_6030(s32 perimeterIndex) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
                     negativeXArrival =
                         &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
-                    Hu3DMotionShiftSet(negativeXArrival->modelId,
+                    fn_8002CCC0(negativeXArrival->modelId,
                                        negativeXArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     negativeXArrival->motionState = 2;
                 }
             } else if (position.x <= -600.0f) {
@@ -2223,10 +2223,10 @@ void fn_1_6030(s32 perimeterIndex) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
                     negativeZArrival =
                         &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
-                    Hu3DMotionShiftSet(negativeZArrival->modelId,
+                    fn_8002CCC0(negativeZArrival->modelId,
                                        negativeZArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     negativeZArrival->motionState = 2;
                 }
             } else if (position.z <= -600.0f) {
@@ -2251,10 +2251,10 @@ void fn_1_6030(s32 perimeterIndex) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
                     reverseNegativeXArrival =
                         &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
-                    Hu3DMotionShiftSet(reverseNegativeXArrival->modelId,
+                    fn_8002CCC0(reverseNegativeXArrival->modelId,
                                        reverseNegativeXArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     reverseNegativeXArrival->motionState = 2;
                 }
             } else if (position.x <= -600.0f) {
@@ -2276,10 +2276,10 @@ void fn_1_6030(s32 perimeterIndex) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
                     reverseNegativeZArrival =
                         &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
-                    Hu3DMotionShiftSet(reverseNegativeZArrival->modelId,
+                    fn_8002CCC0(reverseNegativeZArrival->modelId,
                                        reverseNegativeZArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     reverseNegativeZArrival->motionState = 2;
                 }
             } else if (position.z <= -600.0f) {
@@ -2301,10 +2301,10 @@ void fn_1_6030(s32 perimeterIndex) {
                     position.x = lbl_1_data_728[perimeter->targetIndex].position.x;
                     reversePositiveXArrival =
                         &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
-                    Hu3DMotionShiftSet(reversePositiveXArrival->modelId,
+                    fn_8002CCC0(reversePositiveXArrival->modelId,
                                        reversePositiveXArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     reversePositiveXArrival->motionState = 2;
                 }
             } else if (position.x >= 600.0f) {
@@ -2326,10 +2326,10 @@ void fn_1_6030(s32 perimeterIndex) {
                     position.z = lbl_1_data_728[perimeter->targetIndex].position.z;
                     reversePositiveZArrival =
                         &((M666PerimeterMotionState *) lbl_1_bss_D84)[(s16) perimeterIndex];
-                    Hu3DMotionShiftSet(reversePositiveZArrival->modelId,
+                    fn_8002CCC0(reversePositiveZArrival->modelId,
                                        reversePositiveZArrival->jointMotionIds[1],
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     reversePositiveZArrival->motionState = 2;
                 }
             } else if (position.z >= 600.0f) {
@@ -2347,8 +2347,8 @@ void fn_1_6030(s32 perimeterIndex) {
         perimeter->rotation += 360.0f;
     }
 
-    Hu3DModelPosSetV(perimeter->modelId, &position);
-    Hu3DModelRotSet(perimeter->modelId, 0.0f, perimeter->rotation,
+    fn_80026790(perimeter->modelId, &position);
+    fn_80026808(perimeter->modelId, 0.0f, perimeter->rotation,
                     0.0f);
 }
 
@@ -2362,7 +2362,7 @@ void fn_1_6D70(s16 perimeterIndex) {
     M666PerimeterMotionWork *westboundPerimeter;
 
     perimeter = &lbl_1_bss_D84[perimeterIndex];
-    Hu3DModelPosGet(perimeter->modelId, &position);
+    fn_800267CC(perimeter->modelId, &position);
     switch (perimeter->targetIndex) {
     case 0:
     case 1:
@@ -2372,7 +2372,7 @@ void fn_1_6D70(s16 perimeterIndex) {
             if (position.z <= lbl_1_data_728[0].z) {
                 position.z = lbl_1_data_728[0].z;
                 northboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
-                Hu3DMotionShiftSet(northboundPerimeter->modelId,
+                fn_8002CCC0(northboundPerimeter->modelId,
                                    northboundPerimeter->jointMotionIds[4],
                                    0.0f, 8.0f, 0U);
                 northboundPerimeter->motionState = 3;
@@ -2391,7 +2391,7 @@ void fn_1_6D70(s16 perimeterIndex) {
             if (position.x >= lbl_1_data_728[3].x) {
                 position.x = lbl_1_data_728[3].x;
                 eastboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
-                Hu3DMotionShiftSet(eastboundPerimeter->modelId,
+                fn_8002CCC0(eastboundPerimeter->modelId,
                                    eastboundPerimeter->jointMotionIds[4],
                                    0.0f, 8.0f, 0U);
                 eastboundPerimeter->motionState = 3;
@@ -2412,7 +2412,7 @@ void fn_1_6D70(s16 perimeterIndex) {
             if (position.z >= lbl_1_data_728[4].z) {
                 position.z = lbl_1_data_728[4].z;
                 southboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
-                Hu3DMotionShiftSet(southboundPerimeter->modelId,
+                fn_8002CCC0(southboundPerimeter->modelId,
                                    southboundPerimeter->jointMotionIds[4],
                                    0.0f, 8.0f, 0U);
                 southboundPerimeter->motionState = 3;
@@ -2432,7 +2432,7 @@ void fn_1_6D70(s16 perimeterIndex) {
             if (position.x <= lbl_1_data_728[7].x) {
                 position.x = lbl_1_data_728[7].x;
                 westboundPerimeter = &lbl_1_bss_D84[perimeterIndex];
-                Hu3DMotionShiftSet(westboundPerimeter->modelId,
+                fn_8002CCC0(westboundPerimeter->modelId,
                                    westboundPerimeter->jointMotionIds[4],
                                    0.0f, 8.0f, 0U);
                 westboundPerimeter->motionState = 3;
@@ -2453,8 +2453,8 @@ void fn_1_6D70(s16 perimeterIndex) {
     while (perimeter->rotation <= -180.0f) {
         perimeter->rotation += 360.0f;
     }
-    Hu3DModelPosSetV(perimeter->modelId, &position);
-    Hu3DModelRotSet(perimeter->modelId, 0.0f, perimeter->rotation, 0.0f);
+    fn_80026790(perimeter->modelId, &position);
+    fn_80026808(perimeter->modelId, 0.0f, perimeter->rotation, 0.0f);
 }
 
 /* Turns a perimeter model away from its target and restores its base motion at the final angle;
@@ -2468,16 +2468,16 @@ void fn_1_7348(s16 perimeterIndex) {
     M666PerimeterMotionWork *quarterTurnPerimeter;
 
     perimeter = &lbl_1_bss_D84[perimeterIndex];
-    Hu3DModelPosGet(perimeter->modelId, &position);
+    fn_800267CC(perimeter->modelId, &position);
     switch (perimeter->targetIndex) {
     case 0:
     case 1:
     case 2:
         if (perimeter->rotation == 0.0f) {
             zeroRotationPerimeter = &lbl_1_bss_D84[perimeterIndex];
-            Hu3DMotionShiftSet(zeroRotationPerimeter->modelId,
+            fn_8002CCC0(zeroRotationPerimeter->modelId,
                                zeroRotationPerimeter->jointMotionIds[0],
-                               0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             zeroRotationPerimeter->motionState = 0;
         } else if ((perimeter->rotation >= 0.0f) &&
                    (perimeter->rotation <= 180.0f)) {
@@ -2489,9 +2489,9 @@ void fn_1_7348(s16 perimeterIndex) {
     case 3:
         if (perimeter->rotation == -90.0f) {
             negativeQuarterTurnPerimeter = &lbl_1_bss_D84[perimeterIndex];
-            Hu3DMotionShiftSet(negativeQuarterTurnPerimeter->modelId,
+            fn_8002CCC0(negativeQuarterTurnPerimeter->modelId,
                                negativeQuarterTurnPerimeter->jointMotionIds[0],
-                               0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             negativeQuarterTurnPerimeter->motionState = 0;
         } else if ((perimeter->rotation <= 90.0f) &&
                    (perimeter->rotation >= -90.0f)) {
@@ -2505,9 +2505,9 @@ void fn_1_7348(s16 perimeterIndex) {
     case 6:
         if (perimeter->rotation == 180.0f) {
             halfTurnPerimeter = &lbl_1_bss_D84[perimeterIndex];
-            Hu3DMotionShiftSet(halfTurnPerimeter->modelId,
+            fn_8002CCC0(halfTurnPerimeter->modelId,
                                halfTurnPerimeter->jointMotionIds[0],
-                               0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             halfTurnPerimeter->motionState = 0;
         } else if ((perimeter->rotation >= 0.0f) &&
                    (perimeter->rotation <= 180.0f)) {
@@ -2520,9 +2520,9 @@ void fn_1_7348(s16 perimeterIndex) {
     case 8:
         if (perimeter->rotation == 90.0f) {
             quarterTurnPerimeter = &lbl_1_bss_D84[perimeterIndex];
-            Hu3DMotionShiftSet(quarterTurnPerimeter->modelId,
+            fn_8002CCC0(quarterTurnPerimeter->modelId,
                                quarterTurnPerimeter->jointMotionIds[0],
-                               0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             quarterTurnPerimeter->motionState = 0;
         } else if ((perimeter->rotation <= 90.0f) &&
                    (perimeter->rotation >= -90.0f)) {
@@ -2540,8 +2540,8 @@ void fn_1_7348(s16 perimeterIndex) {
         perimeter->rotation += 360.0f;
     }
 
-    Hu3DModelPosSetV(perimeter->modelId, &position);
-    Hu3DModelRotSet(perimeter->modelId, 0.0f,
+    fn_80026790(perimeter->modelId, &position);
+    fn_80026808(perimeter->modelId, 0.0f,
                     perimeter->rotation, 0.0f);
 }
 
@@ -2576,18 +2576,18 @@ void fn_1_77B0(void) {
             fn_1_6D70((s16)perimeterIndex);
             break;
         case 3:
-            maximumMotionTime = Hu3DMotionMaxTimeGet(perimeterMotion->modelId);
-            if (Hu3DMotionTimeGet(perimeterMotion->modelId) >= maximumMotionTime) {
+            maximumMotionTime = fn_8002D530(perimeterMotion->modelId);
+            if (fn_8002D4E0(perimeterMotion->modelId) >= maximumMotionTime) {
                 fn_1_CBE8(perimeterMotion->targetIndex);
                 perimeterMotion->motionState = 4;
-                Hu3DMotionShiftSet(perimeterMotion->modelId, perimeterMotion->jointMotionIds[1],
-                                    0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                fn_8002CCC0(perimeterMotion->modelId, perimeterMotion->jointMotionIds[1],
+                                    0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 for (spriteIndex = 0; spriteIndex < 10; spriteIndex++) {
                     HuSprAttrSet(perimeterMotion->spriteGroupId, (s16)spriteIndex, 4);
                 }
             }
-            if (18.0f == Hu3DMotionTimeGet(perimeterMotion->modelId)) {
-                HuAudFXPlay(MSM_SE_M666_EVENT_ANIMATION_FRAME);
+            if (18.0f == fn_8002D4E0(perimeterMotion->modelId)) {
+                HuAudFXPlay(2178);
             }
             break;
         case 4:
@@ -2597,13 +2597,13 @@ void fn_1_77B0(void) {
             if (perimeterMotion->countdown-- == 0) {
                 perimeterMotion->motionState = 0;
                 HuSprAttrSet(perimeterMotion->spriteGroupId, 9, 4);
-                Hu3DMotionShiftSet(perimeterMotion->modelId, perimeterMotion->jointMotionIds[0],
-                                    0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                fn_8002CCC0(perimeterMotion->modelId, perimeterMotion->jointMotionIds[0],
+                                    0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             }
             break;
         }
 
-        Hu3DModelPosGet(perimeterMotion->modelId, &modelPosition);
+        fn_800267CC(perimeterMotion->modelId, &modelPosition);
         Hu3D3Dto2D(&modelPosition, 1, &screenPosition);
         HuSprGrpPosSet(perimeterMotion->spriteGroupId, screenPosition.x,
                        screenPosition.y - 50.0f);
@@ -2620,9 +2620,9 @@ void fn_1_79B4(void) {
     for (perimeterIndex = 0; perimeterIndex < 3; perimeterIndex++) {
         perimeterMotion = &lbl_1_bss_D84[perimeterIndex];
         perimeterMotion->motionState = 5;
-        Hu3DMotionShiftSet(perimeterMotion->modelId,
+        fn_8002CCC0(perimeterMotion->modelId,
                            perimeterMotion->jointMotionIds[5],
-                           0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                           0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         for (spriteIndex = 0; spriteIndex < 10; spriteIndex++) {
             HuSprAttrSet(perimeterMotion->spriteGroupId, (s16)spriteIndex, 4);
         }
@@ -2639,10 +2639,10 @@ void fn_1_7A64(void) {
     for (perimeterIndex = 0; perimeterIndex < 3; perimeterIndex++) {
         perimeterMotion = &lbl_1_bss_D84[perimeterIndex];
         if (perimeterMotion->motionState == 5) {
-            Hu3DMotionShiftSet(perimeterMotion->modelId, perimeterMotion->jointMotionIds[0],
-                                0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            fn_8002CCC0(perimeterMotion->modelId, perimeterMotion->jointMotionIds[0],
+                                0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             perimeterMotion->motionState = 0;
-            Hu3DModelPosGet(perimeterMotion->modelId, &modelPosition);
+            fn_800267CC(perimeterMotion->modelId, &modelPosition);
 
             for (pointIndex = 0; pointIndex < 9; pointIndex++) {
                 if (perimeterMotion->targetIndex == pointIndex) {
@@ -2667,9 +2667,9 @@ void fn_1_7CA0(void) {
 
     perimeterIndex = 0;
     while (perimeterIndex < 3) {
-        Hu3DMotionShiftSet(lbl_1_bss_D84[perimeterIndex].modelId,
+        fn_8002CCC0(lbl_1_bss_D84[perimeterIndex].modelId,
                            lbl_1_bss_D84[perimeterIndex].jointMotionIds[3], 0.0f,
-                           8.0f, HU3D_MOTATTR_LOOP);
+                           8.0f, ((1 << 30) | (1 << 0)));
         perimeterIndex += 1;
     }
 }
@@ -2681,9 +2681,9 @@ void fn_1_7D24(void) {
 
     perimeterIndex = 0;
     while (perimeterIndex < 3) {
-        Hu3DMotionShiftSet(lbl_1_bss_D84[perimeterIndex].modelId,
+        fn_8002CCC0(lbl_1_bss_D84[perimeterIndex].modelId,
                            lbl_1_bss_D84[perimeterIndex].jointMotionIds[0], 0.0f,
-                           8.0f, HU3D_MOTATTR_LOOP);
+                           8.0f, ((1 << 30) | (1 << 0)));
         perimeterIndex += 1;
     }
 }
@@ -2697,9 +2697,9 @@ void fn_1_7DA8(void) {
     while (perimeterIndex < 3) {
         if (lbl_1_bss_D84[perimeterIndex].motionState == 1) {
             lbl_1_bss_D84[perimeterIndex].motionState = 0;
-            Hu3DMotionShiftSet(lbl_1_bss_D84[perimeterIndex].modelId,
+            fn_8002CCC0(lbl_1_bss_D84[perimeterIndex].modelId,
                                lbl_1_bss_D84[perimeterIndex].jointMotionIds[0], 0.0f,
-                               8.0f, HU3D_MOTATTR_LOOP);
+                               8.0f, ((1 << 30) | (1 << 0)));
             spriteIndex = 0;
             while (spriteIndex < 10) {
                 HuSprAttrSet(lbl_1_bss_D84[perimeterIndex].spriteGroupId, (s16)spriteIndex, 4);
@@ -2720,27 +2720,27 @@ void fn_1_7E9C(void) {
         perimeterWork = &lbl_1_bss_D84[perimeterIndex];
         if (perimeterWork->motionState != 7) {
             perimeterWork->motionState = 7;
-            Hu3DMotionShiftSet(perimeterWork->modelId,
+            fn_8002CCC0(perimeterWork->modelId,
                                perimeterWork->jointMotionIds[1], 0.0f, 8.0f,
-                               HU3D_MOTATTR_LOOP);
+                               ((1 << 30) | (1 << 0)));
         }
         if ((perimeterWork->rotation < 45.0f) &&
             (perimeterWork->rotation > -135.0f)) {
             perimeterWork->rotation += 5.0f;
             if (perimeterWork->rotation > 45.0f) {
                 perimeterWork->rotation = (f32)45.0f;
-                Hu3DMotionShiftSet(perimeterWork->modelId,
+                fn_8002CCC0(perimeterWork->modelId,
                                    perimeterWork->jointMotionIds[0], 0.0f, 8.0f,
-                                   HU3D_MOTATTR_LOOP);
+                                   ((1 << 30) | (1 << 0)));
             }
         } else if (45.0f != perimeterWork->rotation) {
             /* Rotations at or below -135 jump directly to 45 after this decrement. */
             perimeterWork->rotation -= 5.0f;
             if (perimeterWork->rotation < 45.0f) {
                 perimeterWork->rotation = (f32)45.0f;
-                Hu3DMotionShiftSet(perimeterWork->modelId,
+                fn_8002CCC0(perimeterWork->modelId,
                                    perimeterWork->jointMotionIds[0], 0.0f, 8.0f,
-                                   HU3D_MOTATTR_LOOP);
+                                   ((1 << 30) | (1 << 0)));
             }
         }
         while (perimeterWork->rotation > 180.0f) {
@@ -2749,7 +2749,7 @@ void fn_1_7E9C(void) {
         while (perimeterWork->rotation <= -180.0f) {
             perimeterWork->rotation += 360.0f;
         }
-        Hu3DModelRotSet(perimeterWork->modelId, 0.0f,
+        fn_80026808(perimeterWork->modelId, 0.0f,
                         perimeterWork->rotation, 0.0f);
         perimeterIndex += 1;
     }
@@ -2761,10 +2761,10 @@ void fn_1_80E0(void) {
 
     perimeterIndex = 0;
     while (perimeterIndex < 3) {
-        Hu3DMotionShiftSet(
+        fn_8002CCC0(
             lbl_1_bss_D84[perimeterIndex].modelId,
             lbl_1_bss_D84[perimeterIndex].jointMotionIds[3],
-            0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         perimeterIndex += 1;
     }
 }
@@ -2775,7 +2775,7 @@ void fn_1_8164(void) {
 
     perimeterIndex = 0;
     while (perimeterIndex < 3) {
-        Hu3DMotionShiftSet(
+        fn_8002CCC0(
             lbl_1_bss_D84[perimeterIndex].modelId,
             lbl_1_bss_D84[perimeterIndex].jointMotionIds[6],
             0.0f, 8.0f, 0U);
@@ -2795,48 +2795,48 @@ void fn_1_81E4(void) {
     for (groupIndex = 0; groupIndex < 6; groupIndex++) {
         for (entryIndex = 0; entryIndex < 8; entryIndex++) {
             if (groupIndex == 0 && entryIndex == 0) {
-                baseModelId = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m666, 34), HU_MEMNUM_OVL, HEAP_MODEL));
+                baseModelId = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7d0000, 34), 0x10000000, 2));
                 modelId = baseModelId;
             } else {
-                modelId = Hu3DModelLink(baseModelId);
+                modelId = fn_80025D4C(baseModelId);
             }
 
-            Hu3DModelPosSetV(
+            fn_80026790(
                 modelId, &lbl_1_data_2A0[entryIndex + groupIndex * 8].position);
-            Hu3DModelRotSet(modelId, 0.0f,
+            fn_80026808(modelId, 0.0f,
                             lbl_1_data_2A0[entryIndex + groupIndex * 8].rotation,
                             0.0f);
             lbl_1_bss_604[groupIndex][entryIndex].modelId = modelId;
-            Hu3DModelShadowSet(modelId);
+            fn_80026E44(modelId);
 
             for (motionIndex = 0; motionIndex < 4; motionIndex++) {
-                jointMotionId = Hu3DJointMotion(
-                    modelId, HuDataSelHeapReadNum(
+                jointMotionId = fn_80030458(
+                    modelId, fn_80008DD0(
                                  lbl_1_data_660[motionIndex].fileId,
-                                  HU_MEMNUM_OVL, HEAP_MODEL));
+                                  0x10000000, 2));
                 lbl_1_bss_604[groupIndex][entryIndex]
                     .motion.jointMotionIds[motionIndex] = jointMotionId;
             }
 
-            Hu3DMotionSet(
+            fn_8002C95C(
                 modelId, lbl_1_bss_604[groupIndex][entryIndex].motion.jointMotionIds[1]);
-            Hu3DModelAttrSet(modelId, HU3D_MOTATTR_LOOP);
+            fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
             lbl_1_bss_604[groupIndex][entryIndex].slotIndex = entryIndex;
             lbl_1_bss_604[groupIndex][entryIndex].state = 0;
             lbl_1_bss_580[groupIndex].data.entryRow.entryValues[entryIndex] = entryIndex;
 
-            modelId = Hu3DModelCreate(
-         HuDataSelHeapReadNum(DATANUM(DATA_m666, 45), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DMotionSpeedSet(modelId, 0.0f);
-            Hu3DModelAttrSet(modelId, 1);
+            modelId = fn_80025A04(
+         fn_80008DD0(DATANUM(0x7d0000, 45), 0x10000000, 2));
+            fn_8002D86C(modelId, 0.0f);
+            fn_800269E8(modelId, 1);
             lbl_1_bss_604[groupIndex][entryIndex].secondaryModelId = modelId;
             lbl_1_bss_604[groupIndex][entryIndex].actor =
                 (lbl_1_bss_604[groupIndex][entryIndex].secondaryActor = NULL);
 
-            modelId = Hu3DModelLink(baseModelId);
-            Hu3DModelShadowSet(modelId);
-            Hu3DModelAttrSet(modelId, 1);
+            modelId = fn_80025D4C(baseModelId);
+            fn_80026E44(modelId);
+            fn_800269E8(modelId, 1);
             lbl_1_bss_604[groupIndex][entryIndex].alternateModelId = modelId;
         }
     }
@@ -2877,7 +2877,7 @@ void fn_1_854C(s16 groupIndex, s16 entryIndex) {
     Point3d modelPosition;
 
     if ((u32) lbl_1_bss_604[groupIndex][entryIndex].actor == 0U) {
-        Hu3DModelPosGet(lbl_1_bss_604[groupIndex][entryIndex].modelId, &modelPosition);
+        fn_800267CC(lbl_1_bss_604[groupIndex][entryIndex].modelId, &modelPosition);
         actorParam.height = 100.0f;
         actorParam.radius = 50.0f;
         actorParam.param = entryIndex + ((groupIndex << 3) + 4);
@@ -2886,10 +2886,10 @@ void fn_1_854C(s16 groupIndex, s16 entryIndex) {
         actorParam.narrowHook = (COL_NARROW_HOOK)fn_1_4378;
         actorParam.correctHook = NULL;
         lbl_1_bss_604[groupIndex][entryIndex].actor =
-            MgActorCreate(&actorParam, lbl_1_bss_604[groupIndex][entryIndex].modelId);
-        MgActorPosSet(lbl_1_bss_604[groupIndex][entryIndex].actor, &modelPosition);
+            fn_80080B04(&actorParam, lbl_1_bss_604[groupIndex][entryIndex].modelId);
+        fn_80086AA8(lbl_1_bss_604[groupIndex][entryIndex].actor, &modelPosition);
         if (groupIndex >= 3) {
-            MgActorRotYSet(lbl_1_bss_604[groupIndex][entryIndex].actor, 180.0f);
+            fn_80086CA8(lbl_1_bss_604[groupIndex][entryIndex].actor, 180.0f);
             lbl_1_bss_604[groupIndex][entryIndex].actorRotation = 180.0f;
         }
     }
@@ -2902,7 +2902,7 @@ void fn_1_8720(s16 groupIndex, s16 obstacleIndex) {
     Point3d modelPosition;
 
     if ((u32)lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor == 0U) {
-        Hu3DModelPosGet(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId,
+        fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId,
                         &modelPosition);
         actorParam.height = 200.0f;
         actorParam.radius = 100.0f;
@@ -2913,11 +2913,11 @@ void fn_1_8720(s16 groupIndex, s16 obstacleIndex) {
         actorParam.correctHook = NULL;
 
         lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor =
-            MgActorCreate(&actorParam,
+            fn_80080B04(&actorParam,
                           lbl_1_bss_604[groupIndex][obstacleIndex].secondaryModelId);
-        MgActorPosSet(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor,
+        fn_80086AA8(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor,
                       &modelPosition);
-        MgActorGravitySet(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor,
+        fn_80086CBC(lbl_1_bss_604[groupIndex][obstacleIndex].secondaryActor,
                           0.0f);
     }
 }
@@ -2925,7 +2925,7 @@ void fn_1_8720(s16 groupIndex, s16 obstacleIndex) {
 /* Kills and clears an obstacle's primary collision actor when it exists. */
 void fn_1_88B4(s16 groupIndex, s16 entryIndex) {
     if (lbl_1_bss_604[groupIndex][entryIndex].actor) {
-        MgActorKill(lbl_1_bss_604[groupIndex][entryIndex].actor);
+        fn_80080F38(lbl_1_bss_604[groupIndex][entryIndex].actor);
         lbl_1_bss_604[groupIndex][entryIndex].actor = NULL;
     }
 }
@@ -2933,7 +2933,7 @@ void fn_1_88B4(s16 groupIndex, s16 entryIndex) {
 /* Kills and clears an obstacle's secondary collision actor when it exists. */
 void fn_1_8964(s16 groupIndex, s16 entryIndex) {
     if (lbl_1_bss_604[groupIndex][entryIndex].secondaryActor) {
-        MgActorKill(lbl_1_bss_604[groupIndex][entryIndex].secondaryActor);
+        fn_80080F38(lbl_1_bss_604[groupIndex][entryIndex].secondaryActor);
         lbl_1_bss_604[groupIndex][entryIndex].secondaryActor = NULL;
     }
 }
@@ -2951,17 +2951,17 @@ void fn_1_8A14(s16 groupIndex, s16 obstacleIndex) {
     lbl_1_bss_604[groupIndex][obstacleIndex].slotIndex =
         group->data.obstacleQueue.obstacleCount;
     group->data.obstacleQueue.obstacleCount++;
-    Hu3DModelPosSetV(obstacle->modelId,
+    fn_80026790(obstacle->modelId,
                      &lbl_1_data_2A0[groupIndex * 8 + 7].position);
-    Hu3DModelRotSet(obstacle->modelId, 0.0f,
+    fn_80026808(obstacle->modelId, 0.0f,
                     lbl_1_data_2A0[groupIndex * 8 + 7].rotationY,
                     0.0f);
-    Hu3DModelAttrReset(obstacle->modelId, 1);
+    fn_80026A44(obstacle->modelId, 1);
     obstacle->state = 1;
-    Hu3DMotionShiftSet(obstacle->modelId,
+    fn_8002CCC0(obstacle->modelId,
                        obstacle->motion.obstacleMotions.loopMotionId,
-                        0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-    Hu3DMotionSpeedSet(obstacle->modelId, 1.0f);
+                        0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+    fn_8002D86C(obstacle->modelId, 1.0f);
 }
 
 void fn_1_8B88(s32 groupIndex, s32 entryIndex);
@@ -2979,7 +2979,7 @@ static inline void m666CreateObstacleActor(s16 groupIndex, s16 obstacleIndex) {
     Point3d modelPosition;
 
     if ((u32)lbl_1_bss_604[groupIndex][obstacleIndex].actor == 0U) {
-        Hu3DModelPosGet(lbl_1_bss_604[groupIndex][obstacleIndex].modelId,
+        fn_800267CC(lbl_1_bss_604[groupIndex][obstacleIndex].modelId,
                         &modelPosition);
         actorParam.height = 100.0f;
         actorParam.radius = 50.0f;
@@ -2989,12 +2989,12 @@ static inline void m666CreateObstacleActor(s16 groupIndex, s16 obstacleIndex) {
         actorParam.narrowHook = (COL_NARROW_HOOK)fn_1_4378;
         actorParam.correctHook = NULL;
         lbl_1_bss_604[groupIndex][obstacleIndex].actor =
-            MgActorCreate(&actorParam,
+            fn_80080B04(&actorParam,
                           lbl_1_bss_604[groupIndex][obstacleIndex].modelId);
-        MgActorPosSet(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
+        fn_80086AA8(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
                       &modelPosition);
         if (groupIndex >= 3) {
-            MgActorRotYSet(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
+            fn_80086CA8(lbl_1_bss_604[groupIndex][obstacleIndex].actor,
                            180.0f);
             lbl_1_bss_604[groupIndex][obstacleIndex].actorRotation =
                 180.0f;
@@ -3010,32 +3010,32 @@ static inline void m666ResetObstacle(s32 groupIndex, s32 obstacleIndex) {
     s32 playerIndex;
 
     entry = &lbl_1_bss_604[groupIndex][obstacleIndex];
-    Hu3DModelAttrSet(entry->alternateModelId, 1);
-    Hu3DModelAttrReset(entry->modelId, 1);
-    Hu3DModelPosGet(entry->modelId, &modelPosition);
+    fn_800269E8(entry->alternateModelId, 1);
+    fn_80026A44(entry->modelId, 1);
+    fn_800267CC(entry->modelId, &modelPosition);
     entry->state = 6;
     entry->timer = 0;
-    Hu3DModelPosSetV(entry->secondaryModelId, &modelPosition);
-    Hu3DModelAttrReset(entry->secondaryModelId, 1);
-    Hu3DModelAttrSet(entry->modelId, 1);
-    Hu3DMotionSpeedSet(entry->secondaryModelId, 1.0f);
-    Hu3DMotionTimeSet(entry->secondaryModelId, 0.0f);
+    fn_80026790(entry->secondaryModelId, &modelPosition);
+    fn_80026A44(entry->secondaryModelId, 1);
+    fn_800269E8(entry->modelId, 1);
+    fn_8002D86C(entry->secondaryModelId, 1.0f);
+    fn_8002D414(entry->secondaryModelId, 0.0f);
     if (lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].actor) {
-        MgActorKill(lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].actor);
+        fn_80080F38(lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].actor);
         lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].actor = NULL;
     }
 
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-            omVibrate(lbl_1_bss_8[playerIndex].playerNumber,
+            fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber,
                       20, 4, 4);
         }
     }
 
     if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-        omVibrate(lbl_1_bss_98.playerIndex, 20, 4, 4);
+        fn_8006A030(lbl_1_bss_98.playerIndex, 20, 4, 4);
     }
-    HuAudFXPlayPan(MSM_SE_M666_OBSTACLE_RESET, 64.0 -
+    HuAudFXPlayPan(2179, 64.0 -
         32.0 * sin((3.141592653589793 * (f64)modelPosition.x) /
                                180.0));
 }
@@ -3054,25 +3054,25 @@ static inline void m666ActivateLaneModel(s16 groupIndex, s16 itemIndex) {
             continue;
         }
 
-        Hu3DModelPosGet(lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId,
+        fn_800267CC(lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId,
                         &position);
         position.x += groupIndex == 0 ? 200.0f : -200.0f;
         position.x += -30.0f + (f32)frandmod(60);
         position.y += -30.0f + (f32)frandmod(60);
         position.z += -30.0f + (f32)frandmod(60);
-        Hu3DModelPosSetV(
+        fn_80026790(
             lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex]
                 .modelId,
             &position);
-        Hu3DModelAttrReset(
+        fn_80026A44(
             lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex]
                 .modelId,
             1);
-        Hu3DModelTPLvlSet(
+        fn_80026CBC(
             lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex]
                 .modelId,
             1.0f);
-        Hu3DModelScaleSet(
+        fn_800268B0(
             lbl_1_bss_148[groupIndex].items[itemIndex].particles[modelIndex]
                 .modelId,
             1.0f, 1.0f, 1.0f);
@@ -3116,12 +3116,12 @@ void fn_1_8B88(s32 groupIndex, s32 entryIndex) {
     if (entry->timer == 5) {
         nearestDistance = 10000.0f;
         nearestPlayer = -1;
-        MgActorPosGet(entry->actor, &actorPosition);
+        fn_80086BC8(entry->actor, &actorPosition);
         for (playerIndex = 0; playerIndex < 3; playerIndex++) {
             if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
                 playerHolder = lbl_1_bss_8[playerIndex].player;
                 playerActor = playerHolder->actor;
-                MgActorPosGet(playerActor, &targetPosition);
+                fn_80086BC8(playerActor, &targetPosition);
                 distanceSquared = PSVECSquareDistance(&actorPosition,
                                                        &targetPosition);
                 candidateDistance = sqrtf(distanceSquared);
@@ -3137,8 +3137,8 @@ void fn_1_8B88(s32 groupIndex, s32 entryIndex) {
     if (entry->targetPlayerIndex != -1) {
         playerHolder = lbl_1_bss_8[entry->targetPlayerIndex].player;
         playerActor = playerHolder->actor;
-        MgActorPosGet(playerActor, &targetPosition);
-        MgActorPosGet(entry->actor, &actorPosition);
+        fn_80086BC8(playerActor, &targetPosition);
+        fn_80086BC8(entry->actor, &actorPosition);
         direction.x = targetPosition.x - actorPosition.x;
         direction.y = 0.0f;
         direction.z = targetPosition.z - actorPosition.z;
@@ -3162,12 +3162,12 @@ void fn_1_8B88(s32 groupIndex, s32 entryIndex) {
         }
     }
 
-    MgActorRotYSet(entry->actor, entry->actorRotation);
+    fn_80086CA8(entry->actor, entry->actorRotation);
     direction.x = 0.0f;
     direction.y = 0.0f;
     direction.z = 5.0f;
-    MgActorPushSet(actor, &direction);
-    MgActorPosGet(entry->actor, &currentPosition);
+    fn_80086C8C(actor, &direction);
+    fn_80086BC8(entry->actor, &currentPosition);
     if (currentPosition.x <= -150.0f) {
         gridX = 0;
     } else if (currentPosition.x >= 150.0f) {
@@ -3193,31 +3193,31 @@ void fn_1_901C(s32 groupIndex, s32 entryIndex) {
     s32 playerIndex;
 
     entry = &lbl_1_bss_604[groupIndex][entryIndex];
-    Hu3DModelAttrSet(entry->alternateModelId, 1);
-    Hu3DModelAttrReset(entry->modelId, 1);
-    Hu3DModelPosGet(entry->modelId, &modelPosition);
+    fn_800269E8(entry->alternateModelId, 1);
+    fn_80026A44(entry->modelId, 1);
+    fn_800267CC(entry->modelId, &modelPosition);
     entry->state = 6;
     entry->timer = 0;
-    Hu3DModelPosSetV(entry->secondaryModelId, &modelPosition);
-    Hu3DModelAttrReset(entry->secondaryModelId, 1);
-    Hu3DModelAttrSet(entry->modelId, 1);
-    Hu3DMotionSpeedSet(entry->secondaryModelId, 1.0f);
-    Hu3DMotionTimeSet(entry->secondaryModelId, 0.0f);
+    fn_80026790(entry->secondaryModelId, &modelPosition);
+    fn_80026A44(entry->secondaryModelId, 1);
+    fn_800269E8(entry->modelId, 1);
+    fn_8002D86C(entry->secondaryModelId, 1.0f);
+    fn_8002D414(entry->secondaryModelId, 0.0f);
     if (lbl_1_bss_604[(s16)groupIndex][(s16)entryIndex].actor) {
-        MgActorKill(lbl_1_bss_604[(s16)groupIndex][(s16)entryIndex].actor);
+        fn_80080F38(lbl_1_bss_604[(s16)groupIndex][(s16)entryIndex].actor);
         lbl_1_bss_604[(s16)groupIndex][(s16)entryIndex].actor = NULL;
     }
 
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-            omVibrate(lbl_1_bss_8[playerIndex].playerNumber, 20, 4, 4);
+            fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 4, 4);
         }
     }
 
     if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-        omVibrate(lbl_1_bss_98.playerIndex, 20, 4, 4);
+        fn_8006A030(lbl_1_bss_98.playerIndex, 20, 4, 4);
     }
-    HuAudFXPlayPan(MSM_SE_M666_OBSTACLE_RESET, (s16)(64.0 -
+    HuAudFXPlayPan(2179, (s16)(64.0 -
         32.0 * sin((3.141592653589793 * (f64)modelPosition.x) / 180.0)));
 }
 
@@ -3236,7 +3236,7 @@ void fn_1_9260(void) {
     for (groupIndex = 0; groupIndex < 6; groupIndex++) {
         for (obstacleIndex = 0; obstacleIndex < 8; obstacleIndex++) {
             obstacle = (M666MovingObstacle *)&lbl_1_bss_604[groupIndex][obstacleIndex];
-            Hu3DModelPosGet(obstacle->modelId, &position);
+            fn_800267CC(obstacle->modelId, &position);
             switch (obstacle->state) {
             case 2:
                 break;
@@ -3245,50 +3245,50 @@ void fn_1_9260(void) {
                     position.z += groupIndex < 3 ?
                                   5.0f : -5.0f;
                 } else {
-                    Hu3DMotionShiftSet(obstacle->modelId,
+                    fn_8002CCC0(obstacle->modelId,
                                         obstacle->motion.obstacleMotions.startMotionId,
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     obstacle->state = 0;
                 }
                 break;
             case 3:
-                Hu3DModelPosGet(obstacle->modelId, &position);
+                fn_800267CC(obstacle->modelId, &position);
                 position.y += obstacle->verticalStep;
                 position.z += groupIndex < 3 ?
                               5.0f : -5.0f;
                 obstacle->verticalStep -= 1.0f;
                 if (position.y <= 0.0f) {
-                    Hu3DMotionShiftSet(obstacle->modelId,
+                    fn_8002CCC0(obstacle->modelId,
                                         obstacle->motion.obstacleMotions.fallMotionId,
                                        0.0f, 8.0f,
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     m666CreateObstacleActor(groupIndex, obstacleIndex);
                     position.y = 0.0f;
                     obstacle->state = 4;
-                    if (MgSeqModeGet() == 5) {
+                    if (fn_80071A8C() == 5) {
                         obstacle->timer = 0;
                     } else {
                         obstacle->timer = 180;
                     }
                     obstacle->targetPlayerIndex = -1;
                 }
-                Hu3DModelPosSetV(obstacle->modelId, &position);
+                fn_80026790(obstacle->modelId, &position);
                 break;
             case 4:
                 fn_1_8B88(groupIndex, obstacleIndex);
                 if (obstacle->timer++ >= 180) {
                     obstacle->state = 5;
-                    MgActorPosGet(obstacle->actor, &position);
-                    Hu3DModelPosSetV(obstacle->alternateModelId, &position);
-                    Hu3DModelAttrSet(obstacle->modelId, 1U);
-                    Hu3DModelAttrReset(obstacle->alternateModelId, 1U);
-                    Hu3DMotionSet(obstacle->alternateModelId,
+                    fn_80086BC8(obstacle->actor, &position);
+                    fn_80026790(obstacle->alternateModelId, &position);
+                    fn_800269E8(obstacle->modelId, 1U);
+                    fn_80026A44(obstacle->alternateModelId, 1U);
+                    fn_8002C95C(obstacle->alternateModelId,
                                    obstacle->motion.obstacleMotions.alternateMotionId);
-                    MgActorRotYGet(obstacle->actor, &angle);
-                    Hu3DModelRotSet(obstacle->alternateModelId,
+                    fn_80086CB0(obstacle->actor, &angle);
+                    fn_80026808(obstacle->alternateModelId,
                                     0.0f, angle, 0.0f);
-                    HuAudFXPlayPan(MSM_SE_GUIDE_05,
+                    HuAudFXPlayPan(929,
                                    64.0 - 32.0 *
                                    sin((3.141592653589793 * (f64)position.x) /
                                        180.0));
@@ -3302,8 +3302,8 @@ void fn_1_9260(void) {
                 break;
             case 6:
 
-                if (Hu3DMotionTimeGet(obstacle->secondaryModelId) >=
-                    Hu3DMotionMaxTimeGet(obstacle->secondaryModelId)) {
+                if (fn_8002D4E0(obstacle->secondaryModelId) >=
+                    fn_8002D530(obstacle->secondaryModelId)) {
 
                     M666Bss580Entry *group =
                         &lbl_1_bss_580[(s16)groupIndex];
@@ -3316,40 +3316,40 @@ void fn_1_9260(void) {
                         [(s16)obstacleIndex])->slotIndex =
                         group->data.obstacleGroup.activeCount;
                     group->data.obstacleGroup.activeCount += 1;
-                    Hu3DModelPosSetV(slotObstacle->modelId,
+                    fn_80026790(slotObstacle->modelId,
                                      &lbl_1_data_2A0[(s16)groupIndex * 8 + 7].position);
-                    Hu3DModelRotSet(slotObstacle->modelId, 0.0f,
+                    fn_80026808(slotObstacle->modelId, 0.0f,
                                     lbl_1_data_2A0[(s16)groupIndex * 8 + 7].rotation,
                                     0.0f);
-                    Hu3DModelAttrReset(slotObstacle->modelId, 1U);
+                    fn_80026A44(slotObstacle->modelId, 1U);
                     slotObstacle->state = 1;
-                    Hu3DMotionShiftSet(slotObstacle->modelId,
+                    fn_8002CCC0(slotObstacle->modelId,
                                         slotObstacle->motion.obstacleMotions.loopMotionId, 0.0f,
                                        8.0f,
-                                       HU3D_MOTATTR_LOOP);
-                    Hu3DMotionSpeedSet(slotObstacle->modelId, 1.0f);
+                                       ((1 << 30) | (1 << 0)));
+                    fn_8002D86C(slotObstacle->modelId, 1.0f);
                     /* Stop this entire update after recycling one obstacle; later entries and the
                      * final average are skipped this frame. */
                     return;
                 }
                 break;
             }
-            Hu3DModelPosSetV(obstacle->modelId, &position);
+            fn_80026790(obstacle->modelId, &position);
 
-            if (Hu3DMotionTimeGet(obstacle->secondaryModelId) >=
-                Hu3DMotionMaxTimeGet(obstacle->secondaryModelId)) {
+            if (fn_8002D4E0(obstacle->secondaryModelId) >=
+                fn_8002D530(obstacle->secondaryModelId)) {
 
-                Hu3DModelAttrSet(obstacle->secondaryModelId, 1U);
+                fn_800269E8(obstacle->secondaryModelId, 1U);
                 if (lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].secondaryActor) {
-                    MgActorKill(lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].secondaryActor);
+                    fn_80080F38(lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].secondaryActor);
                     lbl_1_bss_604[(s16)groupIndex][(s16)obstacleIndex].secondaryActor = NULL;
                 }
             }
             if (obstacle->state >= 3) {
                 if (obstacle->state <= 5) {
-                    Hu3DModelPosGet(obstacle->modelId, &position);
+                    fn_800267CC(obstacle->modelId, &position);
                 } else {
-                    Hu3DModelPosGet(obstacle->secondaryModelId, &position);
+                    fn_800267CC(obstacle->secondaryModelId, &position);
                 }
                 lbl_1_bss_E94.x += position.x;
                 lbl_1_bss_E94.z += position.z;
@@ -3372,14 +3372,14 @@ void fn_1_9D3C(s16 groupIndex) {
         lbl_1_bss_580[groupIndex].data.motionEvent.state = 1;
         obstacleEntry = &lbl_1_bss_604[groupIndex]
             [lbl_1_bss_580[groupIndex].data.motionEvent.obstacleIndices[0]];
-        Hu3DModelHookSet(lbl_1_bss_580[groupIndex].modelId, lbl_1_data_7F2,
+        fn_8002741C(lbl_1_bss_580[groupIndex].modelId, lbl_1_data_7F2,
                          obstacleEntry->modelId);
-        Hu3DModelPosSet(obstacleEntry->modelId, 0.0f, 0.0f, 0.0f);
-        Hu3DModelRotSet(obstacleEntry->modelId, 0.0f, 0.0f, 0.0f);
-        Hu3DMotionSpeedSet(lbl_1_bss_580[groupIndex].modelId, 1.0f);
-        Hu3DMotionTimeSet(lbl_1_bss_580[groupIndex].modelId, 0.0f);
-        Hu3DModelAttrReset(lbl_1_bss_580[groupIndex].modelId, HU3D_MOTATTR_REV);
-        HuAudFXPlay(MSM_SE_M666_BOMB_HOOK);
+        fn_80026760(obstacleEntry->modelId, 0.0f, 0.0f, 0.0f);
+        fn_80026808(obstacleEntry->modelId, 0.0f, 0.0f, 0.0f);
+        fn_8002D86C(lbl_1_bss_580[groupIndex].modelId, 1.0f);
+        fn_8002D414(lbl_1_bss_580[groupIndex].modelId, 0.0f);
+        fn_80026A44(lbl_1_bss_580[groupIndex].modelId, ((1 << 30) | (1 << 2)));
+        HuAudFXPlay(2174);
     }
 }
 
@@ -3414,25 +3414,25 @@ void fn_1_9F3C(void) {
         motionEvent = &lbl_1_bss_580[eventIndex];
         switch (motionEvent->data.motionEvent.state) {
         case 1:
-            maximumMotionTime = Hu3DMotionMaxTimeGet(motionEvent->modelId);
-            if (Hu3DMotionTimeGet(motionEvent->modelId) >= maximumMotionTime) {
+            maximumMotionTime = fn_8002D530(motionEvent->modelId);
+            if (fn_8002D4E0(motionEvent->modelId) >= maximumMotionTime) {
                 obstacle =
                     &lbl_1_bss_604[eventIndex][motionEvent->data.motionEvent.obstacleIndices[0]];
                 Hu3DModelObjPosGet(motionEvent->modelId, lbl_1_data_7F2, &modelPosition);
-                Hu3DModelHookReset(motionEvent->modelId);
-                Hu3DModelPosSetV(obstacle->modelId, &modelPosition);
+                fn_80027508(motionEvent->modelId);
+                fn_80026790(obstacle->modelId, &modelPosition);
                 if (eventIndex >= 3) {
-                    Hu3DModelRotSet(obstacle->modelId, 0.0f,
+                    fn_80026808(obstacle->modelId, 0.0f,
                                     180.0f, 0.0f);
                 }
-                 Hu3DModelAttrSet(motionEvent->modelId, HU3D_MOTATTR_REV);
+                 fn_800269E8(motionEvent->modelId, ((1 << 30) | (1 << 2)));
                 obstacle->state = 3;
                 obstacle->verticalStep = 8.0f;
                 motionEvent->data.motionEvent.state = 2;
             }
             break;
         case 2:
-            if (Hu3DMotionTimeGet(motionEvent->modelId) < 10.0f) {
+            if (fn_8002D4E0(motionEvent->modelId) < 10.0f) {
                 motionEvent->data.motionEvent.state = 3;
                 if (motionEvent->data.motionEvent.obstacleCount > 1) {
                     for (queueIndex = 0;
@@ -3444,9 +3444,9 @@ void fn_1_9F3C(void) {
                             [motionEvent->data.motionEvent.obstacleIndices[queueIndex]];
                         obstacle->state = 1;
                         obstacle->slotIndex -= 1;
-                        Hu3DMotionShiftSet(obstacle->modelId,
+                        fn_8002CCC0(obstacle->modelId,
                                            obstacle->motion.obstacleMotions.loopMotionId, 0.0f,
-                                           8.0f, HU3D_MOTATTR_LOOP);
+                                           8.0f, ((1 << 30) | (1 << 0)));
                     }
                     motionEvent->data.motionEvent.obstacleCount -= 1;
                 } else {
@@ -3478,27 +3478,27 @@ void fn_1_A1CC(void) {
     for (groupIndex = 0; groupIndex < 3; groupIndex++) {
         for (itemIndex = 0; itemIndex < 3; itemIndex++) {
             if (groupIndex == 0 && itemIndex == 0) {
-                baseModelId = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m666, 43), HU_MEMNUM_OVL, HEAP_MODEL));
+                baseModelId = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7d0000, 43), 0x10000000, 2));
                 modelId = baseModelId;
             } else {
-                modelId = Hu3DModelLink(baseModelId);
+                modelId = fn_80025D4C(baseModelId);
             }
 
-            Hu3DModelPosSetV(modelId, &lbl_1_data_210[itemIndex + groupIndex * 3].position);
-            Hu3DModelRotSet(modelId, 0.0f,
+            fn_80026790(modelId, &lbl_1_data_210[itemIndex + groupIndex * 3].position);
+            fn_80026808(modelId, 0.0f,
                             lbl_1_data_27C[itemIndex + groupIndex * 3], 0.0f);
-            Hu3DModelScaleSet(modelId, 0.5f,
+            fn_800268B0(modelId, 0.5f,
                               0.5f, 0.5f);
-            Hu3DModelShadowSet(modelId);
+            fn_80026E44(modelId);
             lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId = modelId;
             lbl_1_bss_148[groupIndex].items[itemIndex].status = itemIndex;
             lbl_1_bss_148[groupIndex].items[itemIndex].initialAlpha = 1.0f;
 
             for (modelIndex = 0; modelIndex < 8; modelIndex++) {
-                modelId = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m666, 44), HU_MEMNUM_OVL, HEAP_MODEL));
-                Hu3DModelAttrSet(modelId, 1);
+                modelId = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7d0000, 44), 0x10000000, 2));
+                fn_800269E8(modelId, 1);
                 ((M666SequenceModelView *)
                     (lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage +
                      modelIndex * 12))->modelId = modelId;
@@ -3529,7 +3529,7 @@ void fn_1_A430(s16 groupIndex, s16 itemIndex) {
             continue;
         }
 
-        Hu3DModelPosGet(lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId,
+        fn_800267CC(lbl_1_bss_148[groupIndex].items[itemIndex].rootModelId,
                         &position);
         if (groupIndex == 0) {
             groupOffset = 200.0f;
@@ -3540,22 +3540,22 @@ void fn_1_A430(s16 groupIndex, s16 itemIndex) {
         position.x += -30.0f + (f32)frandmod(60);
         position.y += -30.0f + (f32)frandmod(60);
         position.z += -30.0f + (f32)frandmod(60);
-        Hu3DModelPosSetV(
+        fn_80026790(
             ((M666SequenceModelView *)
                   lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
                 .modelId,
             &position);
-        Hu3DModelAttrReset(
+        fn_80026A44(
             ((M666SequenceModelView *)
                   lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
                 .modelId,
             1);
-        Hu3DModelTPLvlSet(
+        fn_80026CBC(
             ((M666SequenceModelView *)
                   lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
                 .modelId,
             1.0f);
-        Hu3DModelScaleSet(
+        fn_800268B0(
             ((M666SequenceModelView *)
                   lbl_1_bss_148[groupIndex].items[itemIndex].particleStorage)[modelIndex]
                 .modelId,
@@ -3588,7 +3588,7 @@ void fn_1_A798(void) {
     for (groupIndex = 0; groupIndex < 3; groupIndex++) {
         for (laneIndex = 0; laneIndex < 3; laneIndex++) {
             lane = &lbl_1_bss_148[groupIndex].items[laneIndex];
-            Hu3DModelPosGet(lane->rootModelId, &position);
+            fn_800267CC(lane->rootModelId, &position);
             switch (lane->state) {
             case 1:
                 if (fabs(position.x) != lbl_1_data_830[lane->laneIndex]) {
@@ -3596,7 +3596,7 @@ void fn_1_A798(void) {
                 }
                 break;
             case 2:
-                Hu3DModelTPLvlSet(lane->rootModelId, 1.0f);
+                fn_80026CBC(lane->rootModelId, 1.0f);
                 if (fabs(position.x) > lbl_1_data_830[lane->laneIndex]) {
                     position.x += groupIndex == 0 ? -5.0f : 5.0f;
                 } else {
@@ -3621,7 +3621,7 @@ void fn_1_A798(void) {
                             lbl_1_bss_148[groupIndex].items[loopIndex].laneIndex--;
                         }
                     }
-                    HuAudFXPlay(MSM_SE_M666_LANE_CENTER_CROSSING);
+                    HuAudFXPlay(2175);
                     lane->state = 4;
                 }
                 break;
@@ -3643,16 +3643,16 @@ void fn_1_A798(void) {
                 break;
             }
 
-            Hu3DModelPosSetV(
+            fn_80026790(
                 lbl_1_bss_148[groupIndex].items[laneIndex].rootModelId,
                 &position);
             if (lane->state == 3 || lane->state == 4) {
-                if (MgSeqModeGet() >= 6U) {
+                if (fn_80071A8C() >= 6U) {
                     lane->alpha -= 0.02f;
                     if (lane->alpha < 0.0f) {
                         lane->alpha = 0.0f;
                     }
-                    Hu3DModelTPLvlSet(lane->rootModelId, lane->alpha);
+                    fn_80026CBC(lane->rootModelId, lane->alpha);
                 } else {
                     if (lane->timer++ > 12) {
                         lane->timer = 0;
@@ -3708,10 +3708,10 @@ void fn_1_A798(void) {
                     if (particle->alpha <= 0.0f) {
                         particle->alpha = 0.0f;
                         particle->active = 0;
-                        Hu3DModelAttrSet(particle->modelId, 1U);
+                        fn_800269E8(particle->modelId, 1U);
                     }
-                    Hu3DModelTPLvlSet(particle->modelId, particle->alpha);
-                    Hu3DModelScaleSet(particle->modelId, particle->scale,
+                    fn_80026CBC(particle->modelId, particle->alpha);
+                    fn_800268B0(particle->modelId, particle->scale,
                                       particle->scale, particle->scale);
                 }
             }
@@ -3752,13 +3752,13 @@ void fn_1_B370(s16 groupIndex) {
         lbl_1_bss_148[groupIndex].items[markerIndex].state = 3;
         for (playerIndex = 0; playerIndex < 3; playerIndex++) {
             if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-                omVibrate(lbl_1_bss_8[playerIndex].playerNumber, 20, 7, 3);
+                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 7, 3);
             }
         }
         if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-            omVibrate(lbl_1_bss_98.playerIndex, 20, 7, 3);
+            fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
         }
-        HuAudFXPlay(MSM_SE_M666_LANE_ACTIVATION);
+        HuAudFXPlay(2176);
     }
 }
 
@@ -3792,20 +3792,20 @@ void fn_1_B55C(void) {
 
     for (fallingModelIndex = 0; fallingModelIndex < 3; fallingModelIndex++) {
         if (fallingModelIndex == 0) {
-            baseModel = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m666, 41), HU_MEMNUM_OVL, HEAP_MODEL));
+            baseModel = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7d0000, 41), 0x10000000, 2));
             model = baseModel;
         } else {
-            model = Hu3DModelLink(baseModel);
+            model = fn_80025D4C(baseModel);
         }
-        Hu3DModelShadowSet(model);
-        Hu3DModelAttrSet(model, 1);
+        fn_80026E44(model);
+        fn_800269E8(model, 1);
         lbl_1_bss_E3C[fallingModelIndex].modelIds[0] = model;
 
-        model = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m666, 42), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelAttrSet(model, 1);
-        Hu3DMotionSpeedSet(model, 0.0f);
+        model = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7d0000, 42), 0x10000000, 2));
+        fn_800269E8(model, 1);
+        fn_8002D86C(model, 0.0f);
         lbl_1_bss_E3C[fallingModelIndex].modelIds[1] = model;
     }
 }
@@ -3818,11 +3818,11 @@ void fn_1_B654(s16 fallingModelIndex) {
     if (lbl_1_bss_E3C[fallingModelIndex].actor) {
         return;
     }
-    if (MgSeqModeGet() != 5) {
+    if (fn_80071A8C() != 5) {
         return;
     }
 
-    Hu3DModelPosGet(lbl_1_bss_E3C[fallingModelIndex].modelIds[0], &modelPosition);
+    fn_800267CC(lbl_1_bss_E3C[fallingModelIndex].modelIds[0], &modelPosition);
     actorParam.height = 100.0f;
     actorParam.radius = 120.0f;
     actorParam.param = fallingModelIndex + 109;
@@ -3831,9 +3831,9 @@ void fn_1_B654(s16 fallingModelIndex) {
     actorParam.narrowHook = NULL;
     actorParam.correctHook = NULL;
     lbl_1_bss_E3C[fallingModelIndex].actor =
-        MgActorCreate(&actorParam, lbl_1_bss_E3C[fallingModelIndex].modelIds[0]);
-    MgActorPosSet(lbl_1_bss_E3C[fallingModelIndex].actor, &modelPosition);
-    MgActorGravitySet(lbl_1_bss_E3C[fallingModelIndex].actor, 0.0f);
+        fn_80080B04(&actorParam, lbl_1_bss_E3C[fallingModelIndex].modelIds[0]);
+    fn_80086AA8(lbl_1_bss_E3C[fallingModelIndex].actor, &modelPosition);
+    fn_80086CBC(lbl_1_bss_E3C[fallingModelIndex].actor, 0.0f);
 }
 
 /* Saves the collision actor's position, kills and clears the actor, then copies the saved position
@@ -3842,10 +3842,10 @@ void fn_1_B794(s16 fallingModelIndex) {
     Point3d actorPosition;
 
     if (lbl_1_bss_E3C[fallingModelIndex].actor != 0) {
-        MgActorPosGet(lbl_1_bss_E3C[fallingModelIndex].actor, &actorPosition);
-        MgActorKill(lbl_1_bss_E3C[fallingModelIndex].actor);
+        fn_80086BC8(lbl_1_bss_E3C[fallingModelIndex].actor, &actorPosition);
+        fn_80080F38(lbl_1_bss_E3C[fallingModelIndex].actor);
         lbl_1_bss_E3C[fallingModelIndex].actor = 0;
-        Hu3DModelPosSetV(lbl_1_bss_E3C[fallingModelIndex].modelIds[0], &actorPosition);
+        fn_80026790(lbl_1_bss_E3C[fallingModelIndex].modelIds[0], &actorPosition);
     }
 }
 
@@ -3871,13 +3871,13 @@ void fn_1_B854(void) {
     M666ActorWork *actorWork;
     M666PerimeterMotion *perimeterMotion;
 
-    mode = MgSeqModeGet();
+    mode = fn_80071A8C();
     for (fallingModelIndex = 0; fallingModelIndex < 3; fallingModelIndex++) {
         actorWork = &lbl_1_bss_E3C[fallingModelIndex];
         if (actorWork->state == 0) {
             continue;
         }
-        Hu3DModelPosGet(actorWork->modelIds[0], &modelPosition);
+        fn_800267CC(actorWork->modelIds[0], &modelPosition);
         switch (actorWork->state) {
         case 1:
             if (actorWork->countdown > 0) {
@@ -3892,29 +3892,29 @@ void fn_1_B854(void) {
                 if (actorWork->opacity < 0.0f) {
                     actorWork->opacity = 0.0f;
                 }
-                Hu3DModelTPLvlSet(actorWork->modelIds[1], actorWork->opacity);
+                fn_80026CBC(actorWork->modelIds[1], actorWork->opacity);
             }
-            Hu3DModelAttrReset(actorWork->modelIds[0], 1);
-            Hu3DModelTPLvlSet(actorWork->modelIds[0], actorWork->opacity);
+            fn_80026A44(actorWork->modelIds[0], 1);
+            fn_80026CBC(actorWork->modelIds[0], actorWork->opacity);
                 actorWork->verticalStep += 2.5f;
                 modelPosition.y -= actorWork->verticalStep;
             if (modelPosition.y <= 0.0f) {
                 if (actorWork->impactState == 0) {
-                    HuAudFXPlayPan(MSM_SE_GUIDE_15, (s16)(64.0 - 32.0 *
+                    HuAudFXPlayPan(939, (s16)(64.0 - 32.0 *
                         sin(3.141592653589793 * (f64)modelPosition.x / 180.0)));
-                    HuAudFXPlayPan(MSM_SE_GUIDE_14, (s16)(64.0 - 32.0 *
+                    HuAudFXPlayPan(938, (s16)(64.0 - 32.0 *
                         sin(3.141592653589793 * (f64)modelPosition.x / 180.0)));
-                    Hu3DModelAttrReset(actorWork->modelIds[1], 1);
-                    Hu3DMotionTimeSet(actorWork->modelIds[1], 0.0f);
-                    Hu3DMotionSpeedSet(actorWork->modelIds[1], 1.0f);
+                    fn_80026A44(actorWork->modelIds[1], 1);
+                    fn_8002D414(actorWork->modelIds[1], 0.0f);
+                    fn_8002D86C(actorWork->modelIds[1], 1.0f);
                     for (vibrationIndex = 0; vibrationIndex < 3; vibrationIndex++) {
                         if (lbl_1_bss_8[vibrationIndex].motionSelection == 0) {
-                            omVibrate(lbl_1_bss_8[vibrationIndex].playerNumber,
+                            fn_8006A030(lbl_1_bss_8[vibrationIndex].playerNumber,
                                       20, 7, 3);
                         }
                     }
                     if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-                        omVibrate(lbl_1_bss_98.playerIndex, 20, 7, 3);
+                        fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
                     }
                     actorWork->impactState = 1;
                 }
@@ -3933,7 +3933,7 @@ void fn_1_B854(void) {
                     } else {
                         for (otherGroup = 0; otherGroup < 3; otherGroup++) {
                             lbl_1_bss_E3C[otherGroup].state = 3;
-                            if (MgSeqModeGet() == 5) {
+                            if (fn_80071A8C() == 5) {
                                 lbl_1_bss_E3C[otherGroup].countdown = 60;
                             }
                         }
@@ -3946,7 +3946,7 @@ void fn_1_B854(void) {
                 if ((lbl_1_bss_604[otherGroup][entryIndex].state == 4 ||
                      lbl_1_bss_604[otherGroup][entryIndex].state == 5) &&
                             lbl_1_bss_604[otherGroup][entryIndex].actor) {
-                            MgActorPosGet(
+                            fn_80086BC8(
                                 lbl_1_bss_604[otherGroup][entryIndex].actor,
                                 &otherPosition);
                             if ((50.0f + otherPosition.x > modelPosition.x - 100.0f) &&
@@ -3971,7 +3971,7 @@ void fn_1_B854(void) {
                 continue;
             }
             if (lbl_1_bss_E3C[fallingModelIndex].actor) {
-                MgActorPosGet(lbl_1_bss_E3C[fallingModelIndex].actor, &modelPosition);
+                fn_80086BC8(lbl_1_bss_E3C[fallingModelIndex].actor, &modelPosition);
             }
             modelPosition.y += 33.333332f;
             if (actorWork->opacity >= 1.0f - modelPosition.y / 1000.0f) {
@@ -3982,11 +3982,11 @@ void fn_1_B854(void) {
             if (actorWork->opacity < 0.0f) {
                 actorWork->opacity = 0.0f;
             }
-            Hu3DModelTPLvlSet(actorWork->modelIds[0], actorWork->opacity);
+            fn_80026CBC(actorWork->modelIds[0], actorWork->opacity);
             if (modelPosition.y > 1000.0f) {
                 fn_1_B794((s16)fallingModelIndex);
-                Hu3DModelAttrSet(actorWork->modelIds[1], 1);
-                Hu3DModelAttrSet(actorWork->modelIds[0], 1);
+                fn_800269E8(actorWork->modelIds[1], 1);
+                fn_800269E8(actorWork->modelIds[0], 1);
                 actorWork->state = 0;
                     fn_1_7A64();
                 lbl_1_bss_E38 = 0;
@@ -3999,19 +3999,19 @@ void fn_1_B854(void) {
                         /* Restarts the sine-displacement phase used by fn_1_3C9C in motion state
                          * 2. */
                         lbl_1_bss_8[otherGroup].displacementPhase = 0;
-                        HuAudFXPlay(MSM_SE_M666_PLAYER_RELEASE);
+                        HuAudFXPlay(2180);
                     }
                 }
             }
             if (lbl_1_bss_E3C[fallingModelIndex].actor) {
-                MgActorPosSetRaw(lbl_1_bss_E3C[fallingModelIndex].actor,
+                fn_80086B04(lbl_1_bss_E3C[fallingModelIndex].actor,
                                  &modelPosition);
             }
             break;
         default:
             break;
         }
-        Hu3DModelPosSetV(actorWork->modelIds[0], &modelPosition);
+        fn_80026790(actorWork->modelIds[0], &modelPosition);
     }
 }
 
@@ -4049,9 +4049,9 @@ void fn_1_C630(void) {
     for (perimeterIndex = 0; perimeterIndex < 3; perimeterIndex++) {
         perimeterMotion = &lbl_1_bss_D84[perimeterIndex];
         perimeterMotion->motionState = 5;
-        Hu3DMotionShiftSet(perimeterMotion->modelId,
+        fn_8002CCC0(perimeterMotion->modelId,
                            perimeterMotion->jointMotionIds[5],
-                           0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                           0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         for (spriteIndex = 0; spriteIndex < 10; spriteIndex++) {
             HuSprAttrSet(perimeterMotion->spriteGroupId, (s16)spriteIndex, 4);
         }
@@ -4097,8 +4097,8 @@ void fn_1_C630(void) {
             modelPosition.z = 300.0f;
         }
 
-        Hu3DModelPosSetV(lbl_1_bss_E3C[spawnIndex].modelIds[0], &modelPosition);
-        Hu3DModelPosSet(lbl_1_bss_E3C[spawnIndex].modelIds[1], modelPosition.x,
+        fn_80026790(lbl_1_bss_E3C[spawnIndex].modelIds[0], &modelPosition);
+        fn_80026760(lbl_1_bss_E3C[spawnIndex].modelIds[1], modelPosition.x,
                         0.0f, modelPosition.z);
         lbl_1_bss_E3C[spawnIndex].opacity = 1.0f;
         lbl_1_bss_E3C[spawnIndex].motionState = 0;
@@ -4130,13 +4130,13 @@ static inline void activateSequenceMarker(s16 groupIndex) {
         lbl_1_bss_148[groupIndex].items[markerIndex].state = 3;
         for (playerIndex = 0; playerIndex < 3; playerIndex++) {
             if (lbl_1_bss_8[playerIndex].motionSelection == 0) {
-                omVibrate(lbl_1_bss_8[playerIndex].playerNumber, 20, 7, 3);
+                fn_8006A030(lbl_1_bss_8[playerIndex].playerNumber, 20, 7, 3);
             }
         }
         if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
-            omVibrate(lbl_1_bss_98.playerIndex, 20, 7, 3);
+            fn_8006A030(lbl_1_bss_98.playerIndex, 20, 7, 3);
         }
-        HuAudFXPlay(MSM_SE_M666_LANE_ACTIVATION);
+        HuAudFXPlay(2176);
     }
 }
 
@@ -4149,16 +4149,16 @@ static inline void hookBombModel(s16 groupIndex) {
         lbl_1_bss_580[groupIndex].data.motionEvent.state = 1;
         model = &lbl_1_bss_604[groupIndex]
                               [lbl_1_bss_580[groupIndex].data.motionEvent.obstacleIndices[0]];
-        Hu3DModelHookSet(lbl_1_bss_580[groupIndex].modelId, lbl_1_data_7F2,
+        fn_8002741C(lbl_1_bss_580[groupIndex].modelId, lbl_1_data_7F2,
                         ((M666MovingObstacle *)model)->modelId);
-        Hu3DModelPosSet(((M666MovingObstacle *)model)->modelId,
+        fn_80026760(((M666MovingObstacle *)model)->modelId,
                         0.0f, 0.0f, 0.0f);
-        Hu3DModelRotSet(((M666MovingObstacle *)model)->modelId,
+        fn_80026808(((M666MovingObstacle *)model)->modelId,
                         0.0f, 0.0f, 0.0f);
-        Hu3DMotionSpeedSet(lbl_1_bss_580[groupIndex].modelId, 1.0f);
-        Hu3DMotionTimeSet(lbl_1_bss_580[groupIndex].modelId, 0.0f);
-        Hu3DModelAttrReset(lbl_1_bss_580[groupIndex].modelId, HU3D_MOTATTR_REV);
-        HuAudFXPlay(MSM_SE_M666_BOMB_HOOK);
+        fn_8002D86C(lbl_1_bss_580[groupIndex].modelId, 1.0f);
+        fn_8002D414(lbl_1_bss_580[groupIndex].modelId, 0.0f);
+        fn_80026A44(lbl_1_bss_580[groupIndex].modelId, ((1 << 30) | (1 << 2)));
+        HuAudFXPlay(2174);
     }
 }
 
@@ -4169,7 +4169,7 @@ void fn_1_CA2C(void) {
 
     eventIndex = 0;
     while (eventIndex < 9) {
-        Hu3DModelRotGet(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
+        fn_80026874(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
         if (lbl_1_bss_DC[eventIndex].state == 1) {
             modelRotation.y += 5.0f;
         } else if (0.0f != modelRotation.y) {
@@ -4181,7 +4181,7 @@ void fn_1_CA2C(void) {
         while (modelRotation.y >= 360.0f) {
             modelRotation.y -= 360.0f;
         }
-        Hu3DModelRotSetV(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
+        fn_80026838(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
         eventIndex += 1;
     }
 }
@@ -4249,7 +4249,7 @@ void fn_1_D620(OMOBJ *obj) {
     fn_1_B854();
     eventIndex = 0;
     while (eventIndex < 9) {
-        Hu3DModelRotGet(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
+        fn_80026874(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
         if (lbl_1_bss_DC[eventIndex].state == 1) {
             modelRotation.y += 5.0f;
         } else if (0.0f != modelRotation.y) {
@@ -4261,7 +4261,7 @@ void fn_1_D620(OMOBJ *obj) {
         while (modelRotation.y >= 360.0f) {
             modelRotation.y -= 360.0f;
         }
-        Hu3DModelRotSetV(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
+        fn_80026838(lbl_1_bss_DC[eventIndex].modelId, &modelRotation);
         eventIndex += 1;
     }
 }
@@ -4270,7 +4270,7 @@ void fn_1_D620(OMOBJ *obj) {
 void fn_1_D794(void) {
     OMOBJ *openingUpdateObj;
 
-    openingUpdateObj = omAddObjEx(lbl_1_bss_4, 80, 0U, 0U, -1, fn_1_D620);
+    openingUpdateObj = fn_8003AB38(lbl_1_bss_4, 80, 0U, 0U, -1, fn_1_D620);
 }
 
 /* Returns whether all three players have left active play; on success selects the microphone-
@@ -4291,44 +4291,44 @@ s32 fn_1_D7DC(void) {
 
 /* Applies controller 0's debug-camera inputs while the camera-control chord is held. */
 void fn_1_D83C(void) {
-    if ((HuPadBtn[0] & 0x4000) != 0) {
-        if ((HuPadBtn[0] & 0x400) != 0) {
-            CZoom += 5.0f;
+    if ((lbl_802C0010[0] & 0x4000) != 0) {
+        if ((lbl_802C0010[0] & 0x400) != 0) {
+            lbl_802C028C += 5.0f;
         }
-        if ((HuPadBtn[0] & 0x800) != 0) {
-            CZoom -= 5.0f;
+        if ((lbl_802C0010[0] & 0x800) != 0) {
+            lbl_802C028C -= 5.0f;
         }
-        if (HuPadSubStkY[0] > 32) {
-            CRot.x += 1.0f;
+        if (lbl_802BFFF0[0] > 32) {
+            lbl_80266A40.x += 1.0f;
         }
-        if (HuPadSubStkY[0] < -32) {
-            CRot.x -= 1.0f;
+        if (lbl_802BFFF0[0] < -32) {
+            lbl_80266A40.x -= 1.0f;
         }
-        if (HuPadSubStkX[0] > 32) {
-            CRot.y += 1.0f;
+        if (lbl_802BFFF4[0] > 32) {
+            lbl_80266A40.y += 1.0f;
         }
-        if (HuPadSubStkX[0] < -32) {
-            CRot.y -= 1.0f;
+        if (lbl_802BFFF4[0] < -32) {
+            lbl_80266A40.y -= 1.0f;
         }
-        if ((HuPadStkX[0] > 5) || (HuPadStkX[0] < -5)) {
-            Center.x += HuPadStkX[0];
+        if ((lbl_802BFFFC[0] > 5) || (lbl_802BFFFC[0] < -5)) {
+            lbl_80266A4C.x += lbl_802BFFFC[0];
         }
-        if ((HuPadStkY[0] > 5) || (HuPadStkY[0] < -5)) {
-            Center.z -= HuPadStkY[0];
+        if ((lbl_802BFFF8[0] > 5) || (lbl_802BFFF8[0] < -5)) {
+            lbl_80266A4C.z -= lbl_802BFFF8[0];
         }
-        if ((HuPadBtn[0] & 8) != 0) {
-            Center.y += 5.0f;
+        if ((lbl_802C0010[0] & 8) != 0) {
+            lbl_80266A4C.y += 5.0f;
         }
-        if ((HuPadBtn[0] & 4) != 0) {
-            Center.y -= 5.0f;
+        if ((lbl_802C0010[0] & 4) != 0) {
+            lbl_80266A4C.y -= 5.0f;
         }
-        print8(100, 300, 1.8f, "CnrX:%f", Center.x);
-        print8(100, 316, 1.8f, "CnrY:%f", Center.y);
-        print8(100, 332, 1.8f, "CnrZ:%f", Center.z);
+        print8(100, 300, 1.8f, "CnrX:%f", lbl_80266A4C.x);
+        print8(100, 316, 1.8f, "CnrY:%f", lbl_80266A4C.y);
+        print8(100, 332, 1.8f, "CnrZ:%f", lbl_80266A4C.z);
         /* The first RotZ label displays the X rotation. */
-        print8(100, 348, 1.8f, "RotZ:%f", CRot.x);
-        print8(100, 364, 1.8f, "RotY:%f", CRot.y);
-        print8(100, 380, 1.8f, "RotZ:%f", CRot.z);
-        print8(100, 396, 1.8f, "Zoom:%f", CZoom);
+        print8(100, 348, 1.8f, "RotZ:%f", lbl_80266A40.x);
+        print8(100, 364, 1.8f, "RotY:%f", lbl_80266A40.y);
+        print8(100, 380, 1.8f, "RotZ:%f", lbl_80266A40.z);
+        print8(100, 396, 1.8f, "Zoom:%f", lbl_802C028C);
     }
 }

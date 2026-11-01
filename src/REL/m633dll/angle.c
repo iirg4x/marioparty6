@@ -1,4 +1,5 @@
 /* Creates and advances the moving line hazards that cross the arena. */
+#include <math.h>
 #include "REL/m633dll.h"
 
 /* The launch helper and player callbacks call this twice to create paired hazards; a segment
@@ -13,7 +14,7 @@ int fn_1_5ED0(Point3d *startPosition, Point3d *segmentDirection)
     segmentDirection->y = 0.0f;
     segmentYawDegrees =
         (180.0 * (atan2(segmentDirection->x, segmentDirection->z) / 3.141592653589793)) - 90.0;
-    segmentObject = omAddObjEx(lbl_1_bss_0.workProcess, 10000, 1, 0, 0, fn_1_60F4);
+    segmentObject = fn_8003AB38(lbl_1_bss_0.workProcess, 10000, 1, 0, 0, fn_1_60F4);
     /* Override the group-0 request with ungrouped tags, so deletion skips group-member removal. */
     segmentObject->grpNo = -1;
     segmentObject->memberNo = 0;
@@ -22,12 +23,12 @@ int fn_1_5ED0(Point3d *startPosition, Point3d *segmentDirection)
     segment->endPosition = *startPosition;
     segment->direction = *segmentDirection;
     segmentObject->work[0] = (u32)segment;
-    segmentObject->mdlId[0] = Hu3DModelLink(lbl_1_bss_0.segmentBaseModelId);
-    Hu3DModelLayerSet(segmentObject->mdlId[0], 6);
+    segmentObject->mdlId[0] = fn_80025D4C(lbl_1_bss_0.segmentBaseModelId);
+    fn_80026B8C(segmentObject->mdlId[0], 6);
     omSetRot(segmentObject, 0.0f, segmentYawDegrees, 0.0f);
     omSetTra(segmentObject, startPosition->x, startPosition->y, startPosition->z);
     omSetSca(segmentObject, 1.0f, 0.0f, 0.0f);
-    Hu3DModelScaleSet(segmentObject->mdlId[0], 1.0f, 0.0f, 0.0f);
+    fn_800268B0(segmentObject->mdlId[0], 1.0f, 0.0f, 0.0f);
     segment->reflected = 0;
     lbl_1_bss_0.segmentCount += 1;
 }
@@ -77,7 +78,7 @@ void fn_1_60F4(OMOBJ *segmentObject)
         proposedSegmentEnd.x = segment->endPosition.x + segmentMotionVector.x;
         proposedSegmentEnd.y = segment->endPosition.y + segmentMotionVector.y;
         proposedSegmentEnd.z = segment->endPosition.z + segmentMotionVector.z;
-        if ((MgActorColMapPolyGet(&segment->endPosition, &proposedSegmentEnd, 1U, &wallCollision) ==
+        if ((fn_80086910(&segment->endPosition, &proposedSegmentEnd, 1U, &wallCollision) ==
              1) &&
             (wallNormal =
                  *(Point3d *) ((HSF_FACE *) wallCollision.obj->mesh.face->data)[wallCollision.triNo]
@@ -91,8 +92,8 @@ void fn_1_60F4(OMOBJ *segmentObject)
             fn_1_5ED0(&reflectedPos, &segmentMotionVector);
             segment->reflected = 1;
             segment->endPosition = wallCollision.pos;
-            Hu3DModelAttrSet(lbl_1_bss_0.segmentEndpointModelIds[segment->endpointModelIndex],
-                             HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_0.segmentEndpointModelIds[segment->endpointModelIndex],
+                             (1 << 0));
             lbl_1_bss_0.segmentReflectionSoundPending = 1;
         } else {
             segment->endPosition = proposedSegmentEnd;
@@ -110,12 +111,12 @@ void fn_1_60F4(OMOBJ *segmentObject)
         }
         modelPos = segment->endPosition;
         endpointModelId = lbl_1_bss_0.segmentEndpointModelIds[segment->endpointModelIndex];
-        Hu3DModelPosSet(endpointModelId, modelPos.x,
+        fn_80026760(endpointModelId, modelPos.x,
                         (70.0f + modelPos.y) - (70.0f * (1.0f - segmentAppearanceScale)),
                         modelPos.z);
-        Hu3DModelScaleSet(endpointModelId, segmentAppearanceScale, segmentAppearanceScale,
+        fn_800268B0(endpointModelId, segmentAppearanceScale, segmentAppearanceScale,
                           segmentAppearanceScale);
-        Hu3DModelAttrReset(endpointModelId, HU3D_ATTR_DISPOFF);
+        fn_80026A44(endpointModelId, (1 << 0));
     }
     if (lbl_1_bss_0.segmentUpdateCountdown <= 0) {
         if (lbl_1_bss_0.segmentUpdateCountdown < -6) {
@@ -123,9 +124,9 @@ void fn_1_60F4(OMOBJ *segmentObject)
             if ((lbl_1_bss_0.segmentCount == 0) && (lbl_1_bss_0.preventArenaRestart == 0)) {
                 fn_1_70A8(0);
             }
-            Hu3DModelAttrSet(lbl_1_bss_0.segmentEndpointModelIds[segment->endpointModelIndex],
-                             HU3D_ATTR_DISPOFF);
-            Hu3DModelKill(*segmentObject->mdlId);
+            fn_800269E8(lbl_1_bss_0.segmentEndpointModelIds[segment->endpointModelIndex],
+                             (1 << 0));
+            fn_800262D0(*segmentObject->mdlId);
             *segmentObject->mdlId = -1;
             omDelObjEx(lbl_1_bss_0.workProcess, segmentObject);
             return;
@@ -135,7 +136,7 @@ void fn_1_60F4(OMOBJ *segmentObject)
         segmentLength = PSVECMag(&segmentMotionVector);
         omSetSca(segmentObject, segmentLength / 100.0f, segmentRetractionScale,
                  segmentRetractionScale);
-        Hu3DModelScaleSet(*segmentObject->mdlId, segmentLength / 100.0f, segmentRetractionScale,
+        fn_800268B0(*segmentObject->mdlId, segmentLength / 100.0f, segmentRetractionScale,
                           segmentRetractionScale);
         playerNo = 0;
         while (playerNo < 4) {
@@ -164,8 +165,8 @@ void fn_1_60F4(OMOBJ *segmentObject)
                     if (vectorMagnitude < hitRadius) {
                         if ((s32) lbl_1_bss_0.playerRemoved[playerNo] == 0) {
                             OSReport(lbl_1_data_1A0, vectorMagnitude);
-                            MgPlayerAttrSet(lbl_1_bss_0.players[playerNo], MGPLAYER_ATTR_COMSTK);
-                            MgPlayerDespawn(lbl_1_bss_0.players[playerNo]);
+                            fn_80087158(lbl_1_bss_0.players[playerNo], (1 << 0));
+                            fn_80086E3C(lbl_1_bss_0.players[playerNo]);
                             lbl_1_bss_0.playerRemoved[playerNo] = 1;
                             lbl_1_bss_0.activePlayerCount -= 1;
                             (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_34B0;
@@ -186,7 +187,7 @@ void fn_1_60F4(OMOBJ *segmentObject)
         PSVECSubtract(&segment->endPosition, &segment->startPosition, &segmentMotionVector);
         segmentLength = PSVECMag(&segmentMotionVector);
         omSetSca(segmentObject, segmentLength / 100.0f, unitScale, unitScale);
-        Hu3DModelScaleSet(*segmentObject->mdlId, segmentLength / 100.0f, unitScale, unitScale);
+        fn_800268B0(*segmentObject->mdlId, segmentLength / 100.0f, unitScale, unitScale);
         playerNo = 0;
         while (playerNo < 4) {
             laterPlayerPosition = lbl_1_bss_0.players[playerNo]->actor->pos;
@@ -221,9 +222,9 @@ void fn_1_60F4(OMOBJ *segmentObject)
                     if ((measuredDistance < hitRadius) &&
                         ((s32) lbl_1_bss_0.playerRemoved[playerNo] == 0)) {
                         OSReport(lbl_1_data_1A0, measuredDistance);
-                        MgPlayerAttrSet(lbl_1_bss_0.players[playerNo], MGPLAYER_ATTR_COMSTK);
-                        MgPlayerDespawn(lbl_1_bss_0.players[playerNo]);
-                        CharMotionShiftSet((lbl_1_bss_0.players[playerNo])->charNo,
+                        fn_80087158(lbl_1_bss_0.players[playerNo], (1 << 0));
+                        fn_80086E3C(lbl_1_bss_0.players[playerNo]);
+                        fn_8005C2C8((lbl_1_bss_0.players[playerNo])->charNo,
                                            (((lbl_1_bss_0.players[playerNo])->omObj)->mtnId)[11],
                                            0.0f, 5.0f, 0U);
                         lbl_1_bss_0.playerRemoved[playerNo] = 1;
@@ -256,21 +257,21 @@ void fn_1_6DE8(void)
     case 0:
         finished = 0;
         for (modelOrPlayerIndex = 0; modelOrPlayerIndex < 2; modelOrPlayerIndex++) {
-            if (Hu3DMotionEndCheck(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]) == 1) {
+            if (fn_8002D75C(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]) == 1) {
                 fn_1_70A8(2);
                 finished = 1;
             } else if (modelOrPlayerIndex == 0) {
                 float time, maxTime;
                 maxTime =
                     Hu3DMotionMotionMaxTimeGet(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]);
-                time = Hu3DMotionTimeGet(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]);
+                time = fn_8002D4E0(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]);
                 lbl_1_bss_0.nozzleCollisionRadius = (90.0f * time) / maxTime;
             }
         }
         if (finished && lbl_1_bss_0.preventArenaRestart == 0) {
             for (modelOrPlayerIndex = 0; modelOrPlayerIndex < 4; modelOrPlayerIndex++) {
                 if (lbl_1_bss_0.outsideGroupZero[modelOrPlayerIndex] == 0) {
-                    omVibrate((s16)modelOrPlayerIndex, 20, 7, 3);
+                    fn_8006A030((s16)modelOrPlayerIndex, 20, 7, 3);
                     break;
                 }
             }
@@ -278,13 +279,13 @@ void fn_1_6DE8(void)
         break;
     case 1:
         for (modelOrPlayerIndex = 0; modelOrPlayerIndex < 2; modelOrPlayerIndex++) {
-            if (Hu3DMotionEndCheck(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]) == 1) {
+            if (fn_8002D75C(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]) == 1) {
                 fn_1_70A8(3);
             } else if (modelOrPlayerIndex == 0) {
                 float time, maxTime;
                 maxTime =
                     Hu3DMotionMotionMaxTimeGet(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]);
-                time = Hu3DMotionTimeGet(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]);
+                time = fn_8002D4E0(lbl_1_bss_0.nozzleModelIds[modelOrPlayerIndex]);
                 lbl_1_bss_0.nozzleCollisionRadius = (90.0f * time) / maxTime;
             }
         }
@@ -336,26 +337,26 @@ void fn_1_70A8(s32 phase)
         visibleModelIndex = 3;
         break;
     }
-    Hu3DMotionSet(lbl_1_bss_0.nozzleModelIds[0], leftMotion);
-    Hu3DMotionSet(lbl_1_bss_0.nozzleModelIds[1], rightMotion);
-    Hu3DMotionSet(*lbl_1_bss_0.object->mdlId, stageMotion);
+    fn_8002C95C(lbl_1_bss_0.nozzleModelIds[0], leftMotion);
+    fn_8002C95C(lbl_1_bss_0.nozzleModelIds[1], rightMotion);
+    fn_8002C95C(*lbl_1_bss_0.object->mdlId, stageMotion);
     modelIndex = 0;
     while (modelIndex < 4) {
-        Hu3DModelAttrSet(lbl_1_bss_0.arenaPhaseModelIds[modelIndex], HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_0.arenaPhaseModelIds[modelIndex], (1 << 0));
         modelIndex += 1;
     }
-    Hu3DModelAttrReset(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], HU3D_ATTR_DISPOFF);
-    Hu3DMotionTimeSet(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], 0.0f);
+    fn_80026A44(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], (1 << 0));
+    fn_8002D414(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], 0.0f);
     if (loopsMotion != 0) {
-        Hu3DModelAttrSet(lbl_1_bss_0.nozzleModelIds[0], HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrSet(lbl_1_bss_0.nozzleModelIds[1], HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrSet(*lbl_1_bss_0.object->mdlId, HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrSet(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], HU3D_MOTATTR_LOOP);
+        fn_800269E8(lbl_1_bss_0.nozzleModelIds[0], ((1 << 30) | (1 << 0)));
+        fn_800269E8(lbl_1_bss_0.nozzleModelIds[1], ((1 << 30) | (1 << 0)));
+        fn_800269E8(*lbl_1_bss_0.object->mdlId, ((1 << 30) | (1 << 0)));
+        fn_800269E8(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], ((1 << 30) | (1 << 0)));
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_0.nozzleModelIds[0], HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrReset(lbl_1_bss_0.nozzleModelIds[1], HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrReset(*lbl_1_bss_0.object->mdlId, HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrReset(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], HU3D_MOTATTR_LOOP);
+        fn_80026A44(lbl_1_bss_0.nozzleModelIds[0], ((1 << 30) | (1 << 0)));
+        fn_80026A44(lbl_1_bss_0.nozzleModelIds[1], ((1 << 30) | (1 << 0)));
+        fn_80026A44(*lbl_1_bss_0.object->mdlId, ((1 << 30) | (1 << 0)));
+        fn_80026A44(lbl_1_bss_0.arenaPhaseModelIds[visibleModelIndex], ((1 << 30) | (1 << 0)));
     }
     lbl_1_bss_0.arenaPhase = phase;
 }

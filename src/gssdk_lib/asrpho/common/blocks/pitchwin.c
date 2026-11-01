@@ -107,7 +107,7 @@ static void CreateWindow(f32 *windowCoefficients, u16 sampleRate, u16 windowLeng
     u16 coefficientCount = windowLength;
     u16 midpointIndex;
     u16 samplesPerSecond = sampleRate;
-    f32 angularFrequency = (2.0 * M_PI) / ((f32)coefficientCount / samplesPerSecond);
+    f32 angularFrequency = (2.0 * 3.141592653589793) / ((f32)coefficientCount / samplesPerSecond);
     f32 samplePeriod = 1.0f / samplesPerSecond;
     f32 sampleTime;
 

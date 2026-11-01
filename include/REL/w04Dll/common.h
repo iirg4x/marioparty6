@@ -201,7 +201,7 @@ void fn_1_EF3C(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC,
 void fn_1_F2EC(HuVecF *points, int count, HuVecF *position, float t)
 {
     HuVecF *workPoints = HuMemDirectMallocNum(
-        HEAP_HEAP, count * sizeof(HuVecF), HU_MEMNUM_OVL);
+        HEAP_HEAP, count * sizeof(HuVecF), 0x10000000);
     HuVecF *interpolationPoints = workPoints;
     int level;
     int pointIndex;
@@ -276,7 +276,7 @@ void fn_1_F9D0(HuVecF *points, int count, HuVecF *outPosition, float t)
         return;
     }
     allocatedKnots = HuMemDirectMallocNum(HEAP_HEAP,
-        (count + degree + 1) * sizeof(float), HU_MEMNUM_OVL);
+        (count + degree + 1) * sizeof(float), 0x10000000);
     lbl_1_bss_7310 = allocatedKnots;
     knotIndex = 0;
     for (pointIndex = 0; pointIndex <= degree; pointIndex++) {
@@ -389,7 +389,7 @@ void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
     float progress;
     float rotationProgress;
 
-    mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+    mbPlayerMotionShiftSet(playerNo, 4, 0.0f, 8.0f, 0);
     mbPlayerPosGet(playerNo, &startPos);
     startRotY = mbPlayerRotYGet(playerNo);
     VECSubtract(dstPos, &startPos, &delta);
@@ -397,11 +397,11 @@ void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
         progress = frame / (float)maxTime;
         if ((u32)frame == maxTime - 6) {
             mbPlayerMotionShiftSet(
-                playerNo, 5, 0.0f, 2.0f, HU3D_MOTATTR_NONE);
+                playerNo, 5, 0.0f, 2.0f, 0);
         }
         playerPos.x = startPos.x + (progress * delta.x);
         playerPos.y = startPos.y + (progress * delta.y)
-            + (jumpHeight * HuSin(180.0f * progress));
+            + (jumpHeight * sin(3.141592653589793*(180.0f * progress)/180.0));
         playerPos.z = startPos.z + (progress * delta.z);
         mbPlayerPosSetV(playerNo, &playerPos);
         rotationProgress = frame / 6.0f;
@@ -413,7 +413,7 @@ void fn_1_1001C(int playerNo, HuVecF *dstPos, float dstRotY,
         mbPlayerWorkGet(playerNo)->_unk08 = maxTime - frame;
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 2.0f, ((1 << 30) | (1 << 0)));
 }
 
 void fn_1_102BC(void)

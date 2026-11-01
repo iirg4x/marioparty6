@@ -19,7 +19,7 @@ typedef struct HuSprLayer_s {
 } HUSPR_LAYER;
 
 static void *bmpNoCC[8];
-static HUSPR_LAYER HuSprLayer[HU3D_LAYER_HOOK_MAX];
+static HUSPR_LAYER HuSprLayer[16];
 
 static s16 bmpCCIdx;
 
@@ -179,14 +179,14 @@ void HuSprDisp(HUSPRITE *sp)
                 pos[2].y = layer->vtx[5]-pat->centerY;
                 pos[3].x = layer->vtx[6]-pat->centerX;
                 pos[3].y = layer->vtx[7]-pat->centerY;
-                if(layer->flip & ANIM_LAYER_FLIPX) {
+                if(layer->flip & 0x1) {
                     uvX1 = layer->startX/(float)bmp->sizeX;
                     uvX0 = (layer->startX+layer->sizeX)/(float)bmp->sizeX;
                 } else {
                     uvX0 = layer->startX/(float)bmp->sizeX;
                     uvX1 = (layer->startX+layer->sizeX)/(float)bmp->sizeX;
                 }
-                if(layer->flip & ANIM_LAYER_FLIPY) {
+                if(layer->flip & 0x2) {
                     uvY1 = layer->startY/(float)bmp->sizeY;
                     uvY0 = (layer->startY+layer->sizeY)/(float)bmp->sizeY;
                 } else {
@@ -268,17 +268,17 @@ void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, 
     ANIMBMP *bmp = &anim->bmp[bmpNo];
     s16 sizeX = bmp->sizeX;
     s16 sizeY = bmp->sizeY;
-    switch(bmp->dataFmt & ANIM_BMP_FMTMASK) {
-        case ANIM_BMP_RGBA8:
+    switch(bmp->dataFmt & 0xF) {
+        case 0:
             GXInitTexObj(&texObj, bmp->data, sizeX, sizeY, GX_TF_RGBA8, wrapS, wrapT, GX_FALSE);
             break;
             
-        case ANIM_BMP_RGB565:
-        case ANIM_BMP_RGB5A3:
+        case 1:
+        case 2:
             GXInitTexObj(&texObj, bmp->data, sizeX, sizeY, GX_TF_RGB5A3, wrapS, wrapT, GX_FALSE);
             break;
             
-        case ANIM_BMP_C8:
+        case 3:
             /* Indexed bitmaps bind their palette before the texture object. */
             GXInitTlutObj(&tlutObj, bmp->palData, GX_TL_RGB5A3, bmp->palNum);
             GXLoadTlut(&tlutObj, texMapId);
@@ -286,34 +286,34 @@ void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, 
                            texMapId);
             break;
             
-        case ANIM_BMP_C4:
+        case 4:
             GXInitTlutObj(&tlutObj, bmp->palData, GX_TL_RGB5A3, bmp->palNum);
             GXLoadTlut(&tlutObj, texMapId);
             GXInitTexObjCI(&texObj, bmp->data, sizeX, sizeY, GX_TF_C4, wrapS, wrapT, GX_FALSE,
                            texMapId);
             break;
             
-        case ANIM_BMP_IA8:
+        case 5:
             GXInitTexObj(&texObj, bmp->data, sizeX, sizeY, GX_TF_IA8, wrapS, wrapT, GX_FALSE);
             break;
             
-        case ANIM_BMP_IA4:
+        case 6:
             GXInitTexObj(&texObj, bmp->data, sizeX, sizeY, GX_TF_IA4, wrapS, wrapT, GX_FALSE);
             break;
             
-        case ANIM_BMP_I8:
+        case 7:
             GXInitTexObj(&texObj, bmp->data, sizeX, sizeY, GX_TF_I8, wrapS, wrapT, GX_FALSE);
             break;
         
-        case ANIM_BMP_I4:
+        case 8:
             GXInitTexObj(&texObj, bmp->data, sizeX, sizeY, GX_TF_I4, wrapS, wrapT, GX_FALSE);
             break;
             
-        case ANIM_BMP_A8:
+        case 9:
             GXInitTexObj(&texObj, bmp->data, sizeX, sizeY, GX_CTF_A8, wrapS, wrapT, GX_FALSE);
             break;
             
-        case ANIM_BMP_CMPR:
+        case 10:
             GXInitTexObj(&texObj, bmp->data, sizeX, sizeY, GX_TF_CMPR, wrapS, wrapT, GX_FALSE);
             break;
             
@@ -328,7 +328,7 @@ void HuSprTexLoad(ANIMDATA *anim, s16 bmpNo, s16 texMapId, GXTexWrapMode wrapS, 
 void HuSprExecLayerInit(void)
 {
     s16 slotIndex;
-    for(slotIndex=0; slotIndex<HU3D_LAYER_HOOK_MAX; slotIndex++) {
+    for(slotIndex=0; slotIndex<16; slotIndex++) {
         HuSprLayer[slotIndex].layer = -1;
     }
 }
@@ -338,18 +338,18 @@ void HuSprExecLayerCameraSet(s16 drawNo, s16 camera, s16 layer)
 {
     s16 slotIndex;
     
-    for(slotIndex=0; slotIndex<HU3D_LAYER_HOOK_MAX; slotIndex++) {
+    for(slotIndex=0; slotIndex<16; slotIndex++) {
         if(-1 == HuSprLayer[slotIndex].layer) {
             break;
         }
     }
-    if(slotIndex == HU3D_LAYER_HOOK_MAX) {
+    if(slotIndex == 16) {
         return;
     }
     HuSprLayer[slotIndex].layer = layer;
     HuSprLayer[slotIndex].camera = camera;
     HuSprLayer[slotIndex].drawNo = drawNo;
-    Hu3DLayerHookSet(layer, HuSprLayerHook);
+    fn_80025918(layer, HuSprLayerHook);
 }
 
 /* Clients register a sprite queue for a layer without a camera restriction. */
@@ -357,18 +357,18 @@ void HuSprExecLayerSet(s16 drawNo, s16 layer)
 {
     s16 slotIndex;
     
-    for(slotIndex=0; slotIndex<HU3D_LAYER_HOOK_MAX; slotIndex++) {
+    for(slotIndex=0; slotIndex<16; slotIndex++) {
         if(-1 == HuSprLayer[slotIndex].layer) {
             break;
         }
     }
-    if(slotIndex == HU3D_LAYER_HOOK_MAX) {
+    if(slotIndex == 16) {
         return;
     }
     HuSprLayer[slotIndex].layer = layer;
     HuSprLayer[slotIndex].camera = -1;
     HuSprLayer[slotIndex].drawNo = drawNo;
-    Hu3DLayerHookSet(layer, HuSprLayerHook);
+    fn_80025918(layer, HuSprLayerHook);
 }
 
 /* Hu3D invokes this during the registered layer pass to draw its sprite queue for the active
@@ -376,15 +376,15 @@ void HuSprExecLayerSet(s16 drawNo, s16 layer)
 static void HuSprLayerHook(short layerNo)
 {
     s16 slotIndex;
-    for(slotIndex=0; slotIndex<HU3D_LAYER_HOOK_MAX; slotIndex++) {
+    for(slotIndex=0; slotIndex<16; slotIndex++) {
         if(layerNo == HuSprLayer[slotIndex].layer) {
             break;
         }
     }
-    if(slotIndex == HU3D_LAYER_HOOK_MAX) {
+    if(slotIndex == 16) {
         return;
     }
-    if((Hu3DCameraBit & HuSprLayer[slotIndex].camera) == 0) {
+    if((lbl_802C01A4 & HuSprLayer[slotIndex].camera) == 0) {
         return;
     }
     HuSprDispInit();
@@ -471,7 +471,7 @@ void HuSpr3DDisp(HUSPRITE *sp, Mtx *spriteModelView, s16 spriteLayerIndex, HUSPR
     }
     DCFlushRangeNoSync(meshData->st, sizeof(HuVec2f)*(columnCount+1)*(rowCount+1));
     /* Rotate the grid, then project each vertex using its configured depth. */
-    mtxRot(rotationMatrix, meshData->rot.x, meshData->rot.y, meshData->rot.z);
+    fn_80022E38(rotationMatrix, meshData->rot.x, meshData->rot.y, meshData->rot.z);
     MTXMultVecArray(rotationMatrix, meshData->vtx, meshData->vtx, (columnCount+1)*(rowCount+1));
     for(rowIndex=0; rowIndex<=rowCount; rowIndex++) {
         for(columnIndex=0; columnIndex<=columnCount; columnIndex++) {

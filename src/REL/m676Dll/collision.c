@@ -70,9 +70,9 @@ void fn_1_126A4(HUPROCESS *process)
     OMOBJ *object;
     void *data;
 
-    object = omAddObjEx(process, M676_COLLISION_MANAGER_PRIORITY, 0, 0, -1, fn_1_12730);
+    object = fn_8003AB38(process, M676_COLLISION_MANAGER_PRIORITY, 0, 0, -1, fn_1_12730);
     lbl_1_bss_10B8 = object;
-    data = HuMemDirectMallocNum(HEAP_HEAP, M676_COLLISION_WORK_SIZE, HU_MEMNUM_OVL);
+    data = HuMemDirectMallocNum(HEAP_HEAP, M676_COLLISION_WORK_SIZE, 0x10000000);
     object->data = data;
     memset(data, 0, M676_COLLISION_WORK_SIZE);
 }

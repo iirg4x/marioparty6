@@ -155,78 +155,78 @@ static OMOBJ *tutorialGuideObj;
 #define MES_BOARD_GUIDE_005C MESSNUM(MESS_BOARD_TUTORIAL, 92)
 
 static TUTORIALGUIDEDATA tutorialGuideTbl[] = {
-    { MES_BOARD_GUIDE_0000, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0001, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0007, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0008, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_000A, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_000B, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_000C, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_000D, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_000E, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_000F, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0010, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0011, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0014, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0015, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0016, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0017, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0018, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0019, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_001B, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_001C, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_001D, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_001E, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_001F, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0020, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0021, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0023, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0024, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0025, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0026, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0027, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0028, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0029, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_002A, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_002D, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_002E, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_002F, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0031, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0032, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0033, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0034, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0035, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0036, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0038, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0039, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_003A, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_003C, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_003E, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_003F, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0040, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0041, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0042, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0043, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0044, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0045, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0046, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0047, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0049, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_004A, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_004C, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_004D, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_004E, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_004F, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0050, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0051, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0052, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0054, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0055, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0057, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_0058, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_0059, MSM_SE_GUIDE_26 },
-    { MES_BOARD_GUIDE_005B, MSM_SE_GUIDE_28 },
-    { MES_BOARD_GUIDE_005C, MSM_SE_GUIDE_26 },
+    { MES_BOARD_GUIDE_0000, 950 },
+    { MES_BOARD_GUIDE_0001, 952 },
+    { MES_BOARD_GUIDE_0007, 952 },
+    { MES_BOARD_GUIDE_0008, 952 },
+    { MES_BOARD_GUIDE_000A, 950 },
+    { MES_BOARD_GUIDE_000B, 952 },
+    { MES_BOARD_GUIDE_000C, 952 },
+    { MES_BOARD_GUIDE_000D, 952 },
+    { MES_BOARD_GUIDE_000E, 952 },
+    { MES_BOARD_GUIDE_000F, 952 },
+    { MES_BOARD_GUIDE_0010, 952 },
+    { MES_BOARD_GUIDE_0011, 952 },
+    { MES_BOARD_GUIDE_0014, 950 },
+    { MES_BOARD_GUIDE_0015, 952 },
+    { MES_BOARD_GUIDE_0016, 950 },
+    { MES_BOARD_GUIDE_0017, 952 },
+    { MES_BOARD_GUIDE_0018, 950 },
+    { MES_BOARD_GUIDE_0019, 950 },
+    { MES_BOARD_GUIDE_001B, 952 },
+    { MES_BOARD_GUIDE_001C, 952 },
+    { MES_BOARD_GUIDE_001D, 952 },
+    { MES_BOARD_GUIDE_001E, 952 },
+    { MES_BOARD_GUIDE_001F, 950 },
+    { MES_BOARD_GUIDE_0020, 952 },
+    { MES_BOARD_GUIDE_0021, 952 },
+    { MES_BOARD_GUIDE_0023, 950 },
+    { MES_BOARD_GUIDE_0024, 952 },
+    { MES_BOARD_GUIDE_0025, 952 },
+    { MES_BOARD_GUIDE_0026, 952 },
+    { MES_BOARD_GUIDE_0027, 950 },
+    { MES_BOARD_GUIDE_0028, 952 },
+    { MES_BOARD_GUIDE_0029, 950 },
+    { MES_BOARD_GUIDE_002A, 952 },
+    { MES_BOARD_GUIDE_002D, 950 },
+    { MES_BOARD_GUIDE_002E, 952 },
+    { MES_BOARD_GUIDE_002F, 952 },
+    { MES_BOARD_GUIDE_0031, 952 },
+    { MES_BOARD_GUIDE_0032, 950 },
+    { MES_BOARD_GUIDE_0033, 952 },
+    { MES_BOARD_GUIDE_0034, 952 },
+    { MES_BOARD_GUIDE_0035, 950 },
+    { MES_BOARD_GUIDE_0036, 952 },
+    { MES_BOARD_GUIDE_0038, 952 },
+    { MES_BOARD_GUIDE_0039, 952 },
+    { MES_BOARD_GUIDE_003A, 950 },
+    { MES_BOARD_GUIDE_003C, 952 },
+    { MES_BOARD_GUIDE_003E, 952 },
+    { MES_BOARD_GUIDE_003F, 950 },
+    { MES_BOARD_GUIDE_0040, 952 },
+    { MES_BOARD_GUIDE_0041, 952 },
+    { MES_BOARD_GUIDE_0042, 952 },
+    { MES_BOARD_GUIDE_0043, 952 },
+    { MES_BOARD_GUIDE_0044, 952 },
+    { MES_BOARD_GUIDE_0045, 952 },
+    { MES_BOARD_GUIDE_0046, 952 },
+    { MES_BOARD_GUIDE_0047, 952 },
+    { MES_BOARD_GUIDE_0049, 950 },
+    { MES_BOARD_GUIDE_004A, 952 },
+    { MES_BOARD_GUIDE_004C, 950 },
+    { MES_BOARD_GUIDE_004D, 950 },
+    { MES_BOARD_GUIDE_004E, 952 },
+    { MES_BOARD_GUIDE_004F, 950 },
+    { MES_BOARD_GUIDE_0050, 950 },
+    { MES_BOARD_GUIDE_0051, 950 },
+    { MES_BOARD_GUIDE_0052, 952 },
+    { MES_BOARD_GUIDE_0054, 950 },
+    { MES_BOARD_GUIDE_0055, 950 },
+    { MES_BOARD_GUIDE_0057, 950 },
+    { MES_BOARD_GUIDE_0058, 952 },
+    { MES_BOARD_GUIDE_0059, 950 },
+    { MES_BOARD_GUIDE_005B, 952 },
+    { MES_BOARD_GUIDE_005C, 950 },
     { -1, -1 },
 };
 
@@ -288,14 +288,14 @@ void mbTutorialCreate(void)
     if (mbSaveNewF) {
         tutorialCallWork.mode = 0;
     }
-    _ClearFlag(FLAG_BOARD_DEBUG);
-    _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 3));
-    _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 7));
-    _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 8));
-    _ClearFlag(FLAG_BOARD_NOMG);
+    fn_8006A268(131073);
+    fn_8006A268(131075);
+    fn_8006A268(131079);
+    fn_8006A268(131080);
+    fn_8006A268(131072);
     /* TutorialWatch is the child-process callback for this board tutorial session. */
-    tutorialWatchProc = HuPrcChildCreate(TutorialWatch, 0x2011, 0x2000, 0, mbMainProc);
-    tutorialMainProc = HuPrcChildCreate(tutorialMain, 0x2011, 0x2000, 0, mbMainProc);
+    tutorialWatchProc = fn_8000DAC0(TutorialWatch, 0x2011, 0x2000, 0, mbMainProc);
+    tutorialMainProc = fn_8000DAC0(tutorialMain, 0x2011, 0x2000, 0, mbMainProc);
     HuPrcVSleep();
 }
 
@@ -313,7 +313,7 @@ static void TutorialWatch(void)
     mbWinPosSet(winNo, 288.0f - ((s16)size.x / 2), 400);
     tutorialExitOnF = TRUE;
     while (!tutorialExitReqF) {
-        u16 btn = HuPadBtnDown[0];
+        u16 btn = lbl_802C0008[0];
 
         TutorialWinUpdate();
         mbWinDispSet(winNo, tutorialExitOnF);
@@ -325,12 +325,12 @@ static void TutorialWatch(void)
         HuPrcVSleep();
     }
     mbPauseEnableSet();
-    while (HuARDMACheck()) {
+    while (fn_80055FB4()) {
         HuPrcVSleep();
     }
     mbMusFadeOutSpeed(MB_MUS_CHAN_BG, 1000);
     if (tutorialExitOnF) {
-        BOOL partyF = GwSystem.partyF;
+        BOOL partyF = lbl_80265B70.partyF;
 
         if (partyF) {
             WipeColorSet(0, 0, 0);
@@ -361,7 +361,7 @@ static void TutorialWatch(void)
 /* Serves a board event's request for tutorial guidance and returns its result. */
 int mbTutorialCall(int scene)
 {
-    if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (!fn_8006A124(65550)) {
         return -1;
     }
     if (tutorialMainProc == NULL) {
@@ -500,7 +500,7 @@ void mbTutorialCapsuleUseCall(int capsuleNo)
     while (tutorialCallWork.stat != 0) {
         mbTutorialVSleep();
     }
-    capsuleIndex = mbPlayerCapsuleFind(GwSystem.turnPlayerNo, capsuleNo);
+    capsuleIndex = mbPlayerCapsuleFind(lbl_80265B70.turnPlayerNo, capsuleNo);
     mbTutorialResultSet(capsuleIndex);
 }
 
@@ -971,14 +971,14 @@ void mbTutorialMgCallExec(int type)
     listNum = 4;
     TutorialMgCallListGet(type, listNum, list);
 
-    data->espId[0] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x87)), 100, 0);
+    data->espId[0] = espEntry(mbBoardDataNumGet(DATANUM(0x50000, 0x87)), 100, 0);
     espPosSet(data->espId[0], 288.0f, 230.4f);
     espDrawNoSet(data->espId[0], 32);
-    data->espId[1] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x88)), 102, 0);
+    data->espId[1] = espEntry(mbBoardDataNumGet(DATANUM(0x50000, 0x88)), 102, 0);
     espPosSet(data->espId[1], 288.0f, 238.4f);
     espDrawNoSet(data->espId[1], 32);
     espTPLvlSet(data->espId[1], 0.5f);
-    data->espId[2] = espEntry(mbBoardDataNumGet(DATANUM(DATA_board, 0x89)), 101, 0);
+    data->espId[2] = espEntry(mbBoardDataNumGet(DATANUM(0x50000, 0x89)), 101, 0);
     espPosSet(data->espId[2], 288.0f, 246.4f);
     espDrawNoSet(data->espId[2], 32);
     espTPLvlSet(data->espId[2], 0.5f);
@@ -995,8 +995,8 @@ void mbTutorialMgCallExec(int type)
         if (list[i] >= 0) {
             mgData = &MgDataTbl[list[i]];
         }
-        data->obj[i] = omAddObjEx(mbObjMan, 257, 0, 0, -1, TutorialMgCallOMExec);
-        work = omObjGetWork(data->obj[i], TUTORIALMGCALLWORK);
+        data->obj[i] = fn_8003AB38(mbObjMan, 257, 0, 0, -1, TutorialMgCallOMExec);
+        work = ((TUTORIALMGCALLWORK *)(&(data->obj[i]->work[0])));
         work->dispF = TRUE;
         work->cursorNo = i;
         data->obj[i]->trans.y = mgCallWinYOfsTbl[listNum][i];
@@ -1035,14 +1035,14 @@ void mbTutorialMgCallExec(int type)
             }
             espPosSet(data->espId[2], 288.0f, data->obj[tutorialMgCallCursorPos]->trans.y);
             espDispOn(data->espId[2]);
-            mbAudFXPlay(MSM_SE_BRD00_05);
+            mbAudFXPlay(1009);
         }
         mbTutorialVSleep();
     }
     tutorialMgCallCursorPos = result;
     espPosSet(data->espId[2], 288.0f, data->obj[tutorialMgCallCursorPos]->trans.y);
     TutorialMgCallGrowSet(data->obj[tutorialMgCallCursorPos]);
-    mbAudFXPlay(MSM_SE_BRD00_130);
+    mbAudFXPlay(1134);
     HuPrcSleep(120);
 }
 
@@ -1073,14 +1073,14 @@ static void TutorialMgCallListGet(int type, int num, s16 *list)
  * frame. */
 static void TutorialMgCallOMExec(OMOBJ *obj)
 {
-    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+    TUTORIALMGCALLWORK *work = ((TUTORIALMGCALLWORK *)(&(obj->work[0])));
     HuVec2f size;
     float weight;
     float sinValue;
 
     if (work->killF || mbExitCheck()) {
         mbWinKill(work->winNo);
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     if (work->dispF) {
@@ -1095,7 +1095,7 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
                 work->state = 1;
             } else {
                 weight = (float)work->time++ / work->maxTime;
-                sinValue = sin((M_PI * (90.0f * weight)) / 180.0);
+                sinValue = sin((3.141592653589793 * (90.0f * weight)) / 180.0);
                 if ((work->cursorNo & 1) == 0) {
                     obj->trans.x = -160.0f + (448.0f * sinValue);
                 } else {
@@ -1126,7 +1126,7 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
             if (work->time <= work->maxTime) {
                 weight = (float)work->time++ / work->maxTime;
                 obj->scale.x = obj->scale.y =
-                    1.0f + (0.2f * sin((M_PI * (720.0f * (1.0f - weight))) / 180.0));
+                    1.0f + (0.2f * sin((3.141592653589793 * (720.0f * (1.0f - weight))) / 180.0));
             }
             break;
         case 5:
@@ -1134,7 +1134,7 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
                 weight = (float)work->time++ / work->maxTime;
                 obj->trans.y = obj->rot.y + (weight * (96.0f - obj->rot.y));
                 obj->scale.x = obj->scale.y =
-                    0.5f + (0.5f * cos((M_PI * (90.0f * weight)) / 180.0));
+                    0.5f + (0.5f * cos((3.141592653589793 * (90.0f * weight)) / 180.0));
             }
             break;
     }
@@ -1148,7 +1148,7 @@ static void TutorialMgCallOMExec(OMOBJ *obj)
 /* Starts a choice's 30-frame slide-in animation. */
 static void TutorialMgCallSlideInSet(OMOBJ *obj)
 {
-    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+    TUTORIALMGCALLWORK *work = ((TUTORIALMGCALLWORK *)(&(obj->work[0])));
 
     work->slideInF = TRUE;
     work->state = 0;
@@ -1159,7 +1159,7 @@ static void TutorialMgCallSlideInSet(OMOBJ *obj)
 /* Reports whether a roulette choice has completed its slide-in. */
 static BOOL TutorialMgCallSlideInCheck(OMOBJ *obj)
 {
-    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+    TUTORIALMGCALLWORK *work = ((TUTORIALMGCALLWORK *)(&(obj->work[0])));
 
     if (work->slideInF) {
         return FALSE;
@@ -1171,7 +1171,7 @@ static BOOL TutorialMgCallSlideInCheck(OMOBJ *obj)
  * available. */
 static void TutorialMgCallGrowSet(OMOBJ *obj)
 {
-    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+    TUTORIALMGCALLWORK *work = ((TUTORIALMGCALLWORK *)(&(obj->work[0])));
 
     work->state = 4;
     work->time = 0;
@@ -1185,7 +1185,7 @@ static void TutorialMgCallGrowSet(OMOBJ *obj)
 /* Marks a roulette choice for removal by its object callback. */
 static void TutorialMgCallKill(OMOBJ *obj)
 {
-    TUTORIALMGCALLWORK *work = omObjGetWork(obj, TUTORIALMGCALLWORK);
+    TUTORIALMGCALLWORK *work = ((TUTORIALMGCALLWORK *)(&(obj->work[0])));
 
     work->killF = TRUE;
 }

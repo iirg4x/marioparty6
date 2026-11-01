@@ -24,11 +24,11 @@ void fn_1_15C0(OMOBJMAN *objman)
     OMOBJ *obj;
     M657ArenaWork *arenaWork;
 
-    obj = omAddObjEx(objman, 30, 6, 3, -1, fn_1_1B84);
+    obj = fn_8003AB38(objman, 30, 6, 3, -1, fn_1_1B84);
     lbl_1_bss_28 = obj;
-    obj->stat |= OM_STAT_MODELPAUSE;
+    obj->stat |= (1 << 8);
     arenaWork = obj->data = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(M657ArenaWork), HU_MEMNUM_OVL);
+        sizeof(M657ArenaWork), 0x10000000);
     memset(arenaWork, 0, sizeof(M657ArenaWork));
 }
 
@@ -43,12 +43,12 @@ void fn_1_165C(OMOBJ *obj)
     HU3D_MODELID model = 0;
     HU3D_MOTIONID motion = 0;
 
-    model = obj->mdlId[0] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 6), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(model, 1);
-    Hu3DModelPosSet(model, 0.0f, 0.0f, 0.0f);
-    Hu3DModelCameraSet(model, 3);
-    Hu3DZClearLayerSet(1);
+    model = obj->mdlId[0] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 6), 0x10000000, 2));
+    fn_80026B8C(model, 1);
+    fn_80026760(model, 0.0f, 0.0f, 0.0f);
+    fn_80026B64(model, 3);
+    fn_8002C2AC(1);
     Hu3DBGColorSet(0, 0, 50);
 }
 
@@ -66,20 +66,20 @@ void fn_1_1720(void)
     item->pos.y = 2573.0f;
     item->pos.z = 0.0f;
     item->unknownValue = 0;
-    model = obj->mdlId[1] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 0), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, item->pos.x, item->pos.y, item->pos.z);
-    Hu3DModelLayerSet(model, 1);
-    Hu3DModelCameraSet(model, 3);
-    model = obj->mdlId[2] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 2), HU_MEMNUM_OVL, HEAP_MODEL));
-    motion = obj->mtnId[0] = Hu3DJointMotion(model,
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 3), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, 0.0f);
-    Hu3DModelLayerSet(model, 1);
-    Hu3DModelCameraSet(model, 3);
-    Hu3DModelHookSet(obj->mdlId[1], "spaceship00-door_target", model);
+    model = obj->mdlId[1] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 0), 0x10000000, 2));
+    fn_80026760(model, item->pos.x, item->pos.y, item->pos.z);
+    fn_80026B8C(model, 1);
+    fn_80026B64(model, 3);
+    model = obj->mdlId[2] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 2), 0x10000000, 2));
+    motion = obj->mtnId[0] = fn_80030458(model,
+        fn_80008DD0(DATANUM(0x740000, 3), 0x10000000, 2));
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, 0.0f);
+    fn_80026B8C(model, 1);
+    fn_80026B64(model, 3);
+    fn_8002741C(obj->mdlId[1], "spaceship00-door_target", model);
 }
 
 /* Creates the looping arena decoration and places it above the playfield. */
@@ -88,17 +88,17 @@ void fn_1_1884(OMOBJ *obj)
     HU3D_MODELID model = 0;
     HU3D_MOTIONID motion = 0;
 
-    model = obj->mdlId[4] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 7), HU_MEMNUM_OVL, HEAP_MODEL));
-    motion = obj->mtnId[1] = Hu3DJointMotion(model,
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 8), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, 1.0f);
-    Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
-    Hu3DModelPosSet(model, 0.0f, 500.0f, 0.0f);
-    Hu3DModelScaleSet(model, 1.0f, 1.0f, 1.0f);
-    Hu3DModelLayerSet(model, 1);
-    Hu3DModelCameraSet(model, 3);
+    model = obj->mdlId[4] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 7), 0x10000000, 2));
+    motion = obj->mtnId[1] = fn_80030458(model,
+        fn_80008DD0(DATANUM(0x740000, 8), 0x10000000, 2));
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, 1.0f);
+    fn_800269E8(model, ((1 << 30) | (1 << 0)));
+    fn_80026760(model, 0.0f, 500.0f, 0.0f);
+    fn_800268B0(model, 1.0f, 1.0f, 1.0f);
+    fn_80026B8C(model, 1);
+    fn_80026B64(model, 3);
 }
 
 /* Creates the result-scene model used when the sequence changes camera views. */
@@ -107,23 +107,23 @@ void fn_1_19B4(OMOBJ *obj)
     HU3D_MODELID model = 0;
     HU3D_MOTIONID motion = 0;
 
-    model = obj->mdlId[5] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 20), HU_MEMNUM_OVL, HEAP_MODEL));
-    motion = obj->mtnId[2] = Hu3DJointMotion(model,
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 21), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, 1.0f);
-    Hu3DModelPosSet(model, 0.0f, 0.0f, 0.0f);
-    Hu3DModelRotSet(model, 0.0f, 0.0f, 0.0f);
-    Hu3DModelLayerSet(model, 1);
-    Hu3DModelCameraSet(model, 3);
+    model = obj->mdlId[5] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 20), 0x10000000, 2));
+    motion = obj->mtnId[2] = fn_80030458(model,
+        fn_80008DD0(DATANUM(0x740000, 21), 0x10000000, 2));
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, 1.0f);
+    fn_80026760(model, 0.0f, 0.0f, 0.0f);
+    fn_80026808(model, 0.0f, 0.0f, 0.0f);
+    fn_80026B8C(model, 1);
+    fn_80026B64(model, 3);
 }
 
 /* Starts the spaceship door motion by restoring its playback speed to 1.0. */
 void fn_1_1AD4(void)
 {
     HU3D_MODELID model = lbl_1_bss_28->mdlId[2];
-    Hu3DMotionSpeedSet(model, 1.0f);
+    fn_8002D86C(model, 1.0f);
 }
 
 /* Reports whether the spaceship door motion has ended. */
@@ -133,7 +133,7 @@ s32 fn_1_1B20(void)
     M657ArenaWork *arenaWork = obj->data;
     HU3D_MODELID model = obj->mdlId[2];
 
-    if (Hu3DMotionEndCheck(model)) {
+    if (fn_8002D75C(model)) {
         return TRUE;
     }
     return FALSE;
@@ -162,7 +162,7 @@ void fn_1_1F6C(OMOBJ *obj)
             arenaWork->state++;
             break;
         case 2:
-            if (MgSeqModeGet() == MGSEQ_MODE_START) {
+            if (fn_80071A8C() == 3) {
                 arenaWork->state++;
                 HuAudFXPlayPan(M657_SFX_START_CUE_A, 48);
                 HuAudFXPlayPan(M657_SFX_START_CUE_B, 80);

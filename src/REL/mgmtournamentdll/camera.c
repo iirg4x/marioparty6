@@ -30,7 +30,7 @@ HU3D_MODELID lbl_1_bss_C4; /* Model driving the opening camera animation. */
 TournamentCameraPair lbl_1_bss_AC; /* View saved at the start of a preset transition. */
 OMOBJ *lbl_1_bss_A8; /* work[] holds preset index, duration, and elapsed frames. */
 
-u32 lbl_1_data_0 = DATANUM(DATA_mgmtournament, 9);
+u32 lbl_1_data_0 = DATANUM(0xa10000, 9);
 TournamentCameraPair lbl_1_data_4[13] = {
     { {0.0f, -1120.0f, 3960.0f}, {0.0f, -1500.0f, 230.0f} },
     { {0.0f, 100.0f, 3960.0f}, {0.0f, -300.0f, 230.0f} },
@@ -52,22 +52,22 @@ void fn_1_E9C(void) {
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, 20.0f, 20.0f, 10000.0f, 1.2f);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
-    lbl_1_bss_C6 = Hu3DMotionCreate(HuDataSelHeapReadNum(lbl_1_data_0, HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_C4 = Hu3DModelCameraCreate(lbl_1_bss_C6, 1U);
-    Hu3DCameraMotionOn(lbl_1_bss_C4, 1U);
-    Hu3DModelAttrSet(lbl_1_bss_C4, HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                     HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
-    Hu3DMotionTimeSet(lbl_1_bss_C4, 0.0f);
+    lbl_1_bss_C6 = fn_8002C4C0(fn_80008DD0(lbl_1_data_0, 0x10000000, 2));
+    lbl_1_bss_C4 = fn_800283F4(lbl_1_bss_C6, 1U);
+    fn_80028478(lbl_1_bss_C4, 1U);
+    fn_800269E8(lbl_1_bss_C4, ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                     ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
+    fn_8002D414(lbl_1_bss_C4, 0.0f);
     lbl_1_bss_A8 = 0;
 }
 
 /* Return from a minigame installs a camera object using the last saved tournament view. */
 void fn_1_FE8(void)
 {
-    Hu3DCameraMotionOff(lbl_1_bss_C4);
-    Hu3DModelKill(lbl_1_bss_C4);
+    fn_8002858C(lbl_1_bss_C4);
+    fn_800262D0(lbl_1_bss_C4);
     lbl_1_bss_C4 = 0;
-    lbl_1_bss_A8 = omAddObjEx(lbl_1_bss_12C, 3840, 0, 0, -1, fn_1_14C8);
+    lbl_1_bss_A8 = fn_8003AB38(lbl_1_bss_12C, 3840, 0, 0, -1, fn_1_14C8);
     lbl_1_bss_A8->work[0] = MgGameNo;
     lbl_1_bss_A8->work[1] = 1;
     lbl_1_bss_A8->work[2] = 1;
@@ -87,25 +87,25 @@ void fn_1_1138(void)
     f32 maxTime;
     HU3D_CAMERA camera;
 
-    Hu3DCameraMotionStart(lbl_1_bss_C4, 1);
-    Hu3DModelAttrReset(lbl_1_bss_C4, HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                       HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
-    Hu3DMotionTimeSet(lbl_1_bss_C4, 0.0f);
+    fn_800284C8(lbl_1_bss_C4, 1);
+    fn_80026A44(lbl_1_bss_C4, ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                       ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
+    fn_8002D414(lbl_1_bss_C4, 0.0f);
     motionTime = 0.0f;
     maxTime = 1.0f;
     while (motionTime < maxTime) {
         HuPrcVSleep();
-        motionTime = 1.0f + Hu3DMotionTimeGet(lbl_1_bss_C4);
-        maxTime = Hu3DMotionMaxTimeGet(lbl_1_bss_C4);
+        motionTime = 1.0f + fn_8002D4E0(lbl_1_bss_C4);
+        maxTime = fn_8002D530(lbl_1_bss_C4);
     }
-    Hu3DModelAttrSet(lbl_1_bss_C4, HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                     HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
-    Hu3DCameraMotionOff(lbl_1_bss_C4);
-    Hu3DModelKill(lbl_1_bss_C4);
+    fn_800269E8(lbl_1_bss_C4, ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                     ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
+    fn_8002858C(lbl_1_bss_C4);
+    fn_800262D0(lbl_1_bss_C4);
     lbl_1_bss_C4 = 0;
 
     camera = Hu3DCamera[0];
-    lbl_1_bss_A8 = omAddObjEx(lbl_1_bss_12C, 3840, 0, 0, -1,
+    lbl_1_bss_A8 = fn_8003AB38(lbl_1_bss_12C, 3840, 0, 0, -1,
                               fn_1_14C8);
     lbl_1_bss_A8->work[0] = 0;
     lbl_1_bss_A8->work[1] = 1;

@@ -4,8 +4,8 @@
 #include "datadir_enum.h"
 
 enum {
-    MGCONST_ANM_scoreSmall = DATANUM(DATA_mgconst, 48),
-    MGCONST_ANM_crown = DATANUM(DATA_mgconst, 69)
+    MGCONST_ANM_scoreSmall = DATANUM(0x9b0000, 48),
+    MGCONST_ANM_crown = DATANUM(0x9b0000, 69)
 };
 
 #endif

@@ -77,7 +77,7 @@ static TIMERFUNC modeTbl[MGTIMER_MODE_MAX] = { TimerExecOff, TimerExecOn };
 MGTIMER* MgTimerCreate(int type) {
     MGTIMER* timer;
     int spriteIndex;
-    timer = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MGTIMER), HU_MEMNUM_OVL);
+    timer = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MGTIMER), 0x10000000);
     if (timer == NULL) {
         return NULL;
     }
@@ -122,8 +122,8 @@ MGTIMER* MgTimerCreate(int type) {
     }
     MgTimerColorSet(timer, 255, 255, 255);
     UpdateSprite(timer);
-    timer->proc = HuPrcChildCreate(TimerExec, MGTIMER_PROCESS_PRIORITY, MGTIMER_PROCESS_STACK_SIZE,
-                                   0, HuPrcCurrentGet());
+    timer->proc = fn_8000DAC0(TimerExec, MGTIMER_PROCESS_PRIORITY, MGTIMER_PROCESS_STACK_SIZE,
+                                   0, fn_8000DD9C());
     timer->proc->property = timer;
     return timer;
 }
@@ -228,7 +228,7 @@ void MgTimerBackColorSet(MGTIMER* timer, u8 red, u8 green, u8 blue) {
 static void TimerExec(void) {
     MGTIMER* timer;
 
-    timer = HuPrcCurrentGet()->property;
+    timer = fn_8000DD9C()->property;
     while (1) {
         modeTbl[timer->mode](timer);
     }
@@ -245,9 +245,9 @@ static void TimerExecOff(MGTIMER* timer) {
         UpdateSprite(timer);
         for(pollCount=1, pollIndex=0; pollIndex<pollCount; pollIndex++) {
             HuPrcVSleep();
-            currentMode = ((MGTIMER *)HuPrcCurrentGet()->property)->mode;
-            previousMode = ((MGTIMER *)HuPrcCurrentGet()->property)->prevMode;
-            ((MGTIMER *)HuPrcCurrentGet()->property)->prevMode = currentMode;
+            currentMode = ((MGTIMER *)fn_8000DD9C()->property)->mode;
+            previousMode = ((MGTIMER *)fn_8000DD9C()->property)->prevMode;
+            ((MGTIMER *)fn_8000DD9C()->property)->prevMode = currentMode;
             if (currentMode != previousMode) {
                 return;
             }
@@ -271,9 +271,9 @@ static void TimerExecOn(MGTIMER* timer) {
         UpdateSprite(timer);
         for(pollCount=1, pollIndex=0; pollIndex<pollCount; pollIndex++) {
             HuPrcVSleep();
-            currentMode = ((MGTIMER*)HuPrcCurrentGet()->property)->mode;
-            previousMode = ((MGTIMER*)HuPrcCurrentGet()->property)->prevMode;
-            ((MGTIMER*)HuPrcCurrentGet()->property)->prevMode = currentMode;
+            currentMode = ((MGTIMER*)fn_8000DD9C()->property)->mode;
+            previousMode = ((MGTIMER*)fn_8000DD9C()->property)->prevMode;
+            ((MGTIMER*)fn_8000DD9C()->property)->prevMode = currentMode;
             if (currentMode != previousMode) {
                 return;
             }

@@ -86,9 +86,9 @@ M650Scene lbl_1_bss_0;
 /* Called by the REL startup hook to create the object manager and start the minigame sequence. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_1C = omInitObjMan(256, 8192);
-    omGameSysInit(lbl_1_bss_1C);
-    MgSeqCreate(&lbl_1_data_0);
+    lbl_1_bss_1C = fn_8003A8BC(256, 8192);
+    fn_80069F1C(lbl_1_bss_1C);
+    fn_80070788(&lbl_1_data_0);
 }
 
 /* First-stage callback in lbl_1_data_0 resets round state, creates the scene, and advances
@@ -98,7 +98,7 @@ void fn_1_F0(s16 sequenceMode, s16 sequenceFrame)
     s16 isNightCourse;
 
     memset(&lbl_1_bss_0, 0, sizeof(lbl_1_bss_0));
-    isNightCourse = GwMgNightF;
+    isNightCourse = lbl_802C0278;
     lbl_1_bss_0.night = isNightCourse;
     lbl_1_bss_0.winner = -1;
     fn_1_14FC();
@@ -106,7 +106,7 @@ void fn_1_F0(s16 sequenceMode, s16 sequenceFrame)
     fn_1_1AE4();
     fn_1_62E0();
     fn_1_5258();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Opening-stage callback in lbl_1_data_0 advances the minigame's intro each frame. */
@@ -141,14 +141,14 @@ void fn_1_200(s16 sequenceMode, s16 sequenceFrame)
     if (sequenceFrame == 0) {
         HuAudSStreamFadeOut(lbl_1_bss_0.audio, 100);
         fn_1_25B0();
-        if (_CheckFlag(FLAG_INST_DECA) == 0) {
+        if (fn_8006A124(196610) == 0) {
             if (lbl_1_bss_0.winner == -1) {
-                MgSeqDrawSet();
+                fn_80071C70();
             } else {
-                MgSeqWinnerSet(lbl_1_bss_28[lbl_1_bss_0.winner].charNo, -1, -1, -1);
+                fn_80071C18(lbl_1_bss_28[lbl_1_bss_0.winner].charNo, -1, -1, -1);
                 winnerPlayer = lbl_1_bss_0.winner;
-                if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                    GwPlayer[winnerPlayer].mgCoinBonus = 10;
+                if (fn_8006A124(65551) == 0) {
+                    lbl_80265750[winnerPlayer].mgCoinBonus = 10;
                 }
             }
             lbl_1_bss_0.state = 0;
@@ -164,14 +164,14 @@ void fn_1_304(s16 sequenceMode, s16 sequenceFrame)
     int playerNo;
     int timerScore;
 
-    if (_CheckFlag(FLAG_INST_DECA) != 0) {
-        MgSeqModeSet(9);
+    if (fn_8006A124(196610) != 0) {
+        fn_80071AC4(9);
         for (playerNo = 0; playerNo < 4; playerNo++) {
             timerScore = lbl_1_bss_28[playerNo].timerValue;
-            GwPlayer[playerNo].mgScore = timerScore;
+            lbl_80265750[playerNo].mgScore = timerScore;
         }
     } else if (lbl_1_bss_0.winner == -1) {
-        MgSeqModeNext();
+        fn_80071A9C();
     } else {
         fn_1_8EC();
     }
@@ -197,7 +197,7 @@ void fn_1_3B8(void)
     cameraView.rot.z = 0.0f;
     cameraView.zoom = 1000.0f;
     for (cameraIndex = 0; cameraIndex < 4; cameraIndex++) {
-        omCameraViewMoveMulti(lbl_1_data_150[cameraIndex], &cameraView, 120, 2);
+        fn_8003E62C(lbl_1_data_150[cameraIndex], &cameraView, 120, 2);
     }
 }
 
@@ -215,7 +215,7 @@ void fn_1_484(void)
     cameraView.rot.z = 0.0f;
     cameraView.zoom = 1300.0f;
     for (cameraIndex = 0; cameraIndex < 4; cameraIndex++) {
-        omCameraViewMoveMulti(lbl_1_data_150[cameraIndex], &cameraView, 60, 0);
+        fn_8003E62C(lbl_1_data_150[cameraIndex], &cameraView, 60, 0);
     }
 }
 
@@ -229,7 +229,7 @@ void fn_1_550(void)
 
     switch (lbl_1_bss_0.state) {
     case 0:
-        MgSeqModeChangeOff();
+        fn_80071B08();
         lbl_1_bss_0.state++;
         break;
     case 1:
@@ -260,14 +260,14 @@ void fn_1_550(void)
             shadowUp.z = 0.0f;
             shadowTarget.x = shadowTarget.y = 0.0f;
             shadowTarget.z = 2500.0f;
-            Hu3DShadowMultiPosSet(&shadowPosition, &shadowUp, &shadowTarget, 15);
+            fn_8002A674(&shadowPosition, &shadowUp, &shadowTarget, 15);
         }
         break;
     case 4:
         if (lbl_1_bss_0.frame++ >= 60) {
             fn_1_5394();
             lbl_1_bss_0.frame = 0;
-            MgSeqModeNext();
+            fn_80071A9C();
         }
         break;
     }
@@ -285,7 +285,7 @@ void fn_1_8EC(void)
 
     switch (lbl_1_bss_0.state) {
     case 0:
-        MgSeqModeChangeOff();
+        fn_80071B08();
         WipeCreate(2, 0, 60);
         lbl_1_bss_0.frame = 0;
         lbl_1_bss_0.state += 1;
@@ -308,37 +308,37 @@ void fn_1_8EC(void)
             shadowUp.z = 0.0f;
             shadowTarget.x = shadowTarget.y = 0.0f;
             shadowTarget.z = 2500.0f;
-            Hu3DShadowMultiPosSet(&shadowPos, &shadowUp, &shadowTarget, 15);
+            fn_8002A674(&shadowPos, &shadowUp, &shadowTarget, 15);
             for (playerNo = 0; playerNo < 4; playerNo++) {
                 playerWork = &lbl_1_bss_28[playerNo];
                 if (playerNo == lbl_1_bss_0.winner) {
-                    CharModelKill(playerWork->charNo);
-                    playerWork->model = CharModelCreate(playerWork->charNo, 2);
+                    fn_8005BB8C(playerWork->charNo);
+                    playerWork->model = fn_80057068(playerWork->charNo, 2);
                     motionIndex = 0;
                     while (motionIndex < 5) {
-                        playerWork->motionIDs[motionIndex] = CharMotionCreate(
+                        playerWork->motionIDs[motionIndex] = fn_8005B0B8(
                             playerWork->charNo, (u32) lbl_1_data_58[motionIndex].file);
                         motionIndex += 1;
                     }
                 }
-                Hu3DModelShadowSet(playerWork->model);
+                fn_80026E44(playerWork->model);
                 if (lbl_1_bss_0.recordChanged == 0) {
-                    Hu3DModelPosSet(playerWork->model20, -200.0f, 0.0f, 1200.0f);
-                    Hu3DModelRotSet(playerWork->model20, 0.0f, 170.0f, 0.0f);
-                    Hu3DModelAttrReset(playerWork->model52, HU3D_ATTR_DISPOFF);
-                    Hu3DModelPosSet(playerWork->model52, -180.0f, 5.0f, 1100.0f);
-                    Hu3DModelAttrReset(playerWork->model54, HU3D_ATTR_DISPOFF);
-                    Hu3DModelPosSet(playerWork->model54, -180.0f, 0.2f, 1100.0f);
-                    Hu3DMotionSet(playerWork->model20, playerWork->jointMotionIDs[3]);
+                    fn_80026760(playerWork->model20, -200.0f, 0.0f, 1200.0f);
+                    fn_80026808(playerWork->model20, 0.0f, 170.0f, 0.0f);
+                    fn_80026A44(playerWork->model52, (1 << 0));
+                    fn_80026760(playerWork->model52, -180.0f, 5.0f, 1100.0f);
+                    fn_80026A44(playerWork->model54, (1 << 0));
+                    fn_80026760(playerWork->model54, -180.0f, 0.2f, 1100.0f);
+                    fn_8002C95C(playerWork->model20, playerWork->jointMotionIDs[3]);
                 }
                 fn_1_23C4((s16) playerNo, 3, 1.0f);
-                CenterM[playerNo].x = 0.0f;
-                CenterM[playerNo].y = 150.0f;
-                CenterM[playerNo].z = 900.0f;
-                CRotM[playerNo].x = -5.0f;
-                CRotM[playerNo].y = 180.0f;
-                CRotM[playerNo].z = 0.0f;
-                CZoomM[playerNo] = 800.0f;
+                lbl_80266B18[playerNo].x = 0.0f;
+                lbl_80266B18[playerNo].y = 150.0f;
+                lbl_80266B18[playerNo].z = 900.0f;
+                lbl_80266A58[playerNo].x = -5.0f;
+                lbl_80266A58[playerNo].y = 180.0f;
+                lbl_80266A58[playerNo].z = 0.0f;
+                lbl_80266BD8[playerNo] = 800.0f;
                 if (lbl_1_bss_0.winner == playerNo) {
                     Hu3DCameraScissorSet((s32) lbl_1_data_150[playerNo], 0U, 0U, 640U, 480U);
                     Hu3DCameraViewportSet((s32) lbl_1_data_150[playerNo], 0.0f, 0.0f, 640.0f,
@@ -359,7 +359,7 @@ void fn_1_8EC(void)
         if (WipeCheck() == 0) {
             if (lbl_1_bss_0.recordChanged == 0) {
                 fn_1_2320(lbl_1_bss_0.winner, 4);
-                MgSeqModeNext();
+                fn_80071A9C();
                 return;
             }
             MgTimerRecordSet(lbl_1_bss_0.timer, -1);
@@ -370,7 +370,7 @@ void fn_1_8EC(void)
     case 4:
         if ((f32) lbl_1_bss_0.frame++ > 150.0f) {
             fn_1_2320(lbl_1_bss_0.winner, 4);
-            MgSeqModeNext();
+            fn_80071A9C();
             lbl_1_bss_0.frame = 0;
             lbl_1_bss_0.state = 11;
         }
@@ -398,7 +398,7 @@ void fn_1_F90(OMOBJ *object)
     winnerWork = &lbl_1_bss_28[winner];
     switch (lbl_1_bss_0.winnerAnimationState) {
     case 1:
-        Hu3DModelPosGet(winnerWork->model52, &modelPosition);
+        fn_800267CC(winnerWork->model52, &modelPosition);
         modelPosition.x += winnerWork->boneVelocity.x;
         modelPosition.y += winnerWork->boneVelocity.y;
         modelPosition.z += winnerWork->boneVelocity.z;
@@ -419,16 +419,16 @@ void fn_1_F90(OMOBJ *object)
             }
         }
         winnerWork->boneVelocity.y -= 1.6333333f;
-        Hu3DModelPosSetV(winnerWork->model52, (Point3d *) &modelPosition);
-        Hu3DModelPosSet(winnerWork->model54, modelPosition.x, 0.2f, modelPosition.z);
+        fn_80026790(winnerWork->model52, (Point3d *) &modelPosition);
+        fn_80026760(winnerWork->model54, modelPosition.x, 0.2f, modelPosition.z);
         break;
     case 2:
-        Hu3DModelPosGet(winnerWork->model20, (Point3d *) &modelPosition);
+        fn_800267CC(winnerWork->model20, (Point3d *) &modelPosition);
         if (winnerWork->movementSpeed < 10.0f) {
             winnerWork->movementSpeed += 0.2f;
         }
         modelPosition.x += winnerWork->movementSpeed * (f32) (1 - (lbl_1_bss_0.night * 2));
-        Hu3DModelPosSetV(winnerWork->model20, (Point3d *) &modelPosition);
+        fn_80026790(winnerWork->model20, (Point3d *) &modelPosition);
         break;
     }
 }
@@ -444,15 +444,15 @@ void fn_1_1228(void)
     winner = lbl_1_bss_0.winner;
     winnerWork = &lbl_1_bss_28[winner];
     /* The returned object-manager handle is ignored after registering the callback. */
-    bounceObject = omAddObjEx(lbl_1_bss_1C, 100, 0U, 0U, -1, fn_1_F90);
-    Hu3DModelPosSet(winnerWork->model20, -700.0f + (f32) (lbl_1_bss_0.night * 1400), 0.0f, 1300.0f);
-    Hu3DModelRotSet(winnerWork->model20, 0.0f, 90.0f + (180.0f * (f32) lbl_1_bss_0.night), 0.0f);
-    Hu3DMotionSet(winnerWork->model20, winnerWork->jointMotionIDs[1]);
-            Hu3DModelAttrReset(winnerWork->model52, HU3D_ATTR_DISPOFF);
-    Hu3DModelPosSet(winnerWork->model52, -550.0f + (1100.0f * (f32) lbl_1_bss_0.night), 200.0f,
+    bounceObject = fn_8003AB38(lbl_1_bss_1C, 100, 0U, 0U, -1, fn_1_F90);
+    fn_80026760(winnerWork->model20, -700.0f + (f32) (lbl_1_bss_0.night * 1400), 0.0f, 1300.0f);
+    fn_80026808(winnerWork->model20, 0.0f, 90.0f + (180.0f * (f32) lbl_1_bss_0.night), 0.0f);
+    fn_8002C95C(winnerWork->model20, winnerWork->jointMotionIDs[1]);
+            fn_80026A44(winnerWork->model52, (1 << 0));
+    fn_80026760(winnerWork->model52, -550.0f + (1100.0f * (f32) lbl_1_bss_0.night), 200.0f,
                     1300.0f);
-            Hu3DModelAttrReset(winnerWork->model54, HU3D_ATTR_DISPOFF);
-    Hu3DModelPosSet(winnerWork->model54, -550.0f + (1100.0f * (f32) lbl_1_bss_0.night), 0.2f,
+            fn_80026A44(winnerWork->model54, (1 << 0));
+    fn_80026760(winnerWork->model54, -550.0f + (1100.0f * (f32) lbl_1_bss_0.night), 0.2f,
                     1300.0f);
     winnerWork->boneVelocity.x = 30.0f - (60.0f * (f32) lbl_1_bss_0.night);
     winnerWork->boneVelocity.y = 15.0f;

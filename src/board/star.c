@@ -113,16 +113,16 @@ static void (*starMasuFunc)(void);
 static HuVecF starGuidePos = { -0.73f, -0.77f, -750.0f };
 
 static int numberFileTbl[] = {
-    DATANUM(DATA_board, 11),
-    DATANUM(DATA_board, 12),
-    DATANUM(DATA_board, 13),
-    DATANUM(DATA_board, 14),
-    DATANUM(DATA_board, 15),
-    DATANUM(DATA_board, 16),
-    DATANUM(DATA_board, 17),
-    DATANUM(DATA_board, 18),
-    DATANUM(DATA_board, 19),
-    DATANUM(DATA_board, 20),
+    DATANUM(0x50000, 11),
+    DATANUM(0x50000, 12),
+    DATANUM(0x50000, 13),
+    DATANUM(0x50000, 14),
+    DATANUM(0x50000, 15),
+    DATANUM(0x50000, 16),
+    DATANUM(0x50000, 17),
+    DATANUM(0x50000, 18),
+    DATANUM(0x50000, 19),
+    DATANUM(0x50000, 20),
 };
 
 static HuVecF starMasuGuidePos = { -0.73f, -0.77f, -750.0f };
@@ -202,9 +202,9 @@ void mbStarInit(void)
     if (starMin < 1) {
         starMin = 1;
     }
-    starEffAnim1 = HuSprAnimRead(HuDataReadNum(EFFECT_ANM_glow, HU_MEMNUM_OVL));
+    starEffAnim1 = HuSprAnimRead(fn_80008634(EFFECT_ANM_glow, 0x10000000));
     HuSprAnimLock(starEffAnim1);
-    starEffAnim2 = HuSprAnimRead(HuDataReadNum(EFFECT_ANM_glow, HU_MEMNUM_OVL));
+    starEffAnim2 = HuSprAnimRead(fn_80008634(EFFECT_ANM_glow, 0x10000000));
     HuSprAnimLock(starEffAnim2);
     starMasuProc = NULL;
     starFreeProc = NULL;
@@ -389,24 +389,24 @@ static int StarObjCreate(HuVecF *pos)
             MBPARTICLE *particleP;
             int j;
 
-            obj = omAddObjEx(mbObjMan, 257, 1, 0, OM_GRP_NONE,
+            obj = fn_8003AB38(mbObjMan, 257, 1, 0, -1,
                 StarObjOMExec);
             starOMObj[i] = obj;
             work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(STARWORK),
-                HU_MEMNUM_OVL);
+                0x10000000);
             obj->data = work;
             memset(work, 0, sizeof(STARWORK));
             work->obj = obj;
             obj->mdlId[0] = mbObjCreate(
-                mbBoardDataNumGet(DATANUM(DATA_board, 5)), NULL, TRUE);
+                mbBoardDataNumGet(DATANUM(0x50000, 5)), NULL, TRUE);
             modelId = mbObjModelIDGet(obj->mdlId[0]);
-            modelP = &Hu3DData[modelId];
+            modelP = &lbl_802C01C8[modelId];
             hsf = modelP->hsf;
             material = hsf->material;
             modelP->hiliteIdx = 0;
-            Hu3DModelMatHookSet(modelId, StarMatHook);
+            fn_80027884(modelId, StarMatHook);
             for (j = 0; j < hsf->materialNum; j++, material++) {
-                material->flags |= HSF_MATERIAL_MATHOOK;
+                material->flags |= (1 << 13);
             }
             mbObjRotSet(obj->mdlId[0], -90.0f, 0.0f, 0.0f);
             mbObjZWriteOffSet(obj->mdlId[0], FALSE);
@@ -419,7 +419,7 @@ static int StarObjCreate(HuVecF *pos)
                 MBPARTICLE *modelParticleP;
 
                 effectModelId = work->effectModelId;
-                hookData = Hu3DData[effectModelId].hookData;
+                hookData = lbl_802C01C8[effectModelId].hookData;
                 modelParticleP = hookData;
                 particleP = modelParticleP;
                 particleP->hookData = work;
@@ -431,7 +431,7 @@ static int StarObjCreate(HuVecF *pos)
             work->offset.x = work->offset.y = work->offset.z = 0.0f;
             work->rot.x = work->rot.y = work->rot.z = 0.0f;
             work->scale.x = work->scale.y = work->scale.z = 1.0f;
-            omSetStatBit(obj, OM_STAT_MODELPAUSE);
+            omSetStatBit(obj, (1 << 8));
             return i;
         }
     }
@@ -506,7 +506,7 @@ void mbStarMasuFuncSet(void (*func)(void))
 /* Keeps the Star-space sign animation looping while its model is active. */
 static inline void StarSignLoopStart(MBMODELID modelId)
 {
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 }
 
 /* Creates a Star object and sign at a board space. */
@@ -523,7 +523,7 @@ static inline int StarMasuCreate(int masuId, HuVecF *pos)
     work->playerNo = -1;
     work->signF = TRUE;
     work->signModelId = mbObjCreate(
-        mbBoardDataNumGet(DATANUM(DATA_board, 6)), NULL, FALSE);
+        mbBoardDataNumGet(DATANUM(0x50000, 6)), NULL, FALSE);
     mbObjMotionTimeSet(work->signModelId, 0.0f);
     mbObjMotionSpeedSet(work->signModelId, 1.0f);
     StarSignLoopStart(work->signModelId);
@@ -581,8 +581,8 @@ void mbStarGetExec(int playerNo)
     objNo = StarPlayerCreate(playerNo, &pos);
     obj = starOMObj[objNo];
     work = obj->data;
-    seNo = mbAudFXPlay(MSM_SE_BRD00_91);
-    mbAudFXPlay(MSM_SE_BRD00_92);
+    seNo = mbAudFXPlay(1095);
+    mbAudFXPlay(1096);
     StarObjGrowSet(obj);
     StarObjGrowWait(obj);
     mbAudFXStop(seNo);
@@ -603,7 +603,7 @@ void mbStarStub(void)
 void mbev_StarMasu(int playerNo)
 {
     mbMoveNumDispSet(playerNo, FALSE);
-    starMasuProc = HuPrcChildCreate(ev_StarMasu, STAR_EVENT_PROC_PRIORITY,
+    starMasuProc = fn_8000DAC0(ev_StarMasu, STAR_EVENT_PROC_PRIORITY,
         STAR_EVENT_PROC_STACK_SIZE, 0, mbMainProc);
     HuPrcDestructorSet2(starMasuProc, ev_StarMasuKill);
     while (starMasuProc != NULL) {
@@ -616,7 +616,7 @@ void mbev_StarMasu(int playerNo)
 void mbev_StarFreeMasu(int playerNo)
 {
     mbMoveNumDispSet(playerNo, FALSE);
-    starFreeProc = HuPrcChildCreate(ev_StarFreeMasu, STAR_EVENT_PROC_PRIORITY,
+    starFreeProc = fn_8000DAC0(ev_StarFreeMasu, STAR_EVENT_PROC_PRIORITY,
         STAR_EVENT_PROC_STACK_SIZE, 0, mbMainProc);
     HuPrcDestructorSet2(starFreeProc, ev_StarFreeMasuKill);
     while (starFreeProc != NULL) {
@@ -699,7 +699,7 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
     int i;
     HuVecF playerPos;
 
-    masuId = GwPlayer[playerNo].masuId;
+    masuId = lbl_80265750[playerNo].masuId;
     seNo = -1;
     if (pos == NULL) {
         obj = StarMasuObjGet(masuId);
@@ -723,21 +723,21 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
         mbPlayerPosGet(playerNo, &playerPos);
         work->baseY = playerPos.y;
         no = -1;
-        seNo = mbAudFXPlay(MSM_SE_BRD00_91);
-        mbAudFXPlay(MSM_SE_BRD00_92);
+        seNo = mbAudFXPlay(1095);
+        mbAudFXPlay(1096);
         HuPrcVSleep();
     }
     if (work->signF == TRUE && work->effectDispF == FALSE) {
         mbObjDispSet(obj->mdlId[0], TRUE);
         work->modelDispF = TRUE;
         work->effectDispF = TRUE;
-        streamNo = mbAudFXPlay(MSM_SE_BRD00_91);
-        mbAudFXPlay(MSM_SE_BRD00_92);
+        streamNo = mbAudFXPlay(1095);
+        mbAudFXPlay(1096);
         StarObjGrowSet(obj);
         StarObjGrowWait(obj);
         mbAudFXStop(streamNo);
     }
-    _SetFlag(FLAG_BOARD_STAR_RESET);
+    fn_8006A1C4(65570);
     mbMusFadeOutSpeed(0, 1000);
     HuPrcSleep(60);
     StarObjShrinkIdleSet(obj);
@@ -752,7 +752,7 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
             if (seNo >= 0) {
                 mbAudFXStop(seNo);
             }
-            mbAudFXPlay(MSM_SE_BRD00_93);
+            mbAudFXPlay(1097);
             mbStarObjDispFlagSet(work->objNo, FALSE);
         }
         HuPrcVSleep();
@@ -761,7 +761,7 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
         }
     }
     mbPlayerMotIdleSet(playerNo);
-    omVibrate((s16)playerNo, 20, 7, 3);
+    fn_8006A030((s16)playerNo, 20, 7, 3);
     streamNo = mbMusJinglePlay(39);
     mbPlayerWinLoseVoicePlay(playerNo, 7, 573);
     mbPlayerMotionShiftSet(playerNo, 7, 0.0f, 8.0f, 0);
@@ -784,14 +784,14 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
         mbCameraFocusObjSet(MB_MODEL_NONE);
         for (time = 0; time < 30u; time++) {
             weight = time / 30.0f;
-            deltaZoom = (1 + HuSin(weight * 720.0f)) * 0.5;
+            deltaZoom = (1 + sin(3.141592653589793*(weight * 720.0f)/180.0)) * 0.5;
             zoom = zoomBase + (-500.0f * deltaZoom);
             mbCameraZoomSet(zoom);
             HuPrcVSleep();
         }
     }
     mbPlayerStarAdd(playerNo, num);
-    GwSystem.starTotal = GwSystem.starTotal + num;
+    lbl_80265B70.starTotal = lbl_80265B70.starTotal + num;
     if (no >= 0) {
         mbStarNextNoSet(no);
         mbStarFlagReset(no);
@@ -802,11 +802,11 @@ void mbStarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
         mbCameraMoveWait();
     }
     HuPrcSleep(30);
-    _ClearFlag(FLAG_BOARD_STAR_RESET);
+    fn_8006A268(65570);
     if (work->signF == FALSE) {
         StarPlayerKill(playerNo);
     } else if (work->signF == TRUE) {
-        StarMasuKill(GwPlayer[playerNo].masuId);
+        StarMasuKill(lbl_80265750[playerNo].masuId);
     }
     HuPrcSleep(12);
     starAddNum = 1;
@@ -829,19 +829,19 @@ static void StarObjOMExec(OMOBJ *obj)
             mbObjKill(work->signModelId);
         }
         StarObjEffKill(work->effectModelId);
-        work->effectModelId = HU3D_MODELID_NONE;
+        work->effectModelId = -1;
         work->signF = -1;
         mbObjKill(obj->mdlId[0]);
         obj->mdlId[0] = MB_MODEL_NONE;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         starOMObj[work->objNo] = NULL;
         return;
     }
 
-    if (!_CheckFlag(FLAG_BOARD_TUTORIAL) && work->signF == TRUE
+    if (!fn_8006A124(65550) && work->signF == TRUE
         && work->effectDispF == FALSE) {
         BOOL dispF = TRUE;
-        int masuId = GwPlayer[GwSystem.turnPlayerNo].masuId;
+        int masuId = lbl_80265750[lbl_80265B70.turnPlayerNo].masuId;
 
         if (work->masuId == masuId) {
             dispF = FALSE;
@@ -885,7 +885,7 @@ static void StarObjOMExec(OMOBJ *obj)
                 work->pos.z = pos.z;
             }
             work->offset.y = 100.0f
-                * (0.2f * HuSin(4.0f * work->time));
+                * (0.2f * sin(3.141592653589793*(4.0f * work->time)/180.0));
             work->time++;
             break;
 
@@ -903,7 +903,7 @@ static void StarObjOMExec(OMOBJ *obj)
                     }
                 }
                 rotY = work->rotY;
-                work->scale.x = HuSin(rotY + 90.0f);
+                work->scale.x = sin(3.141592653589793*(rotY + 90.0f)/180.0);
                 if (work->scale.x <= 0.0f) {
                     work->scale.x = 0.001f;
                 }
@@ -1036,7 +1036,7 @@ static HU3D_MODELID StarObjEffCreate(ANIMDATA *anim)
 
     modelId = mbParticleCreate(anim, 64);
     mbParticleHookSet(modelId, StarObjEffHook);
-    Hu3DModelLayerSet(modelId, 5);
+    fn_80026B8C(modelId, 5);
     return modelId;
 }
 
@@ -1139,7 +1139,7 @@ void mbStarMapViewProcExec(void)
     mbMusPauseFadeOut(0, TRUE, 1000);
     HuPrcSleep(120);
     for (i = 0; i < 4; i++) {
-        mbPlayerMotionShiftSet(i, 1, 0.0f, 1.0f, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionShiftSet(i, 1, 0.0f, 1.0f, ((1 << 30) | (1 << 0)));
     }
     mbCameraZoomSet(2400.0f);
     mbCameraRotSet(325.0f, 0.0f, 0.0f);
@@ -1195,32 +1195,32 @@ int mbStarNumGet(void)
 
 void mbStarFlagInit(void)
 {
-    GwSystem.starFlag = 0;
+    lbl_80265B70.starFlag = 0;
 }
 
 void mbStarFlagSet(int no)
 {
-    GwSystem.starFlag |= (1 << no);
+    lbl_80265B70.starFlag |= (1 << no);
 }
 
 void mbStarFlagReset(int no)
 {
-    GwSystem.starFlag &= ~(1 << no);
+    lbl_80265B70.starFlag &= ~(1 << no);
 }
 
 u8 mbStarFlagGet(void)
 {
-    return GwSystem.starFlag;
+    return lbl_80265B70.starFlag;
 }
 
 void mbStarNextNoSet(s8 nextNo)
 {
-    GwSystem.starPos = nextNo;
+    lbl_80265B70.starPos = nextNo;
 }
 
 u8 mbStarNextNoGet(void)
 {
-    return GwSystem.starPos;
+    return lbl_80265B70.starPos;
 }
 
 void mbStarNoSet(int no)
@@ -1556,8 +1556,8 @@ int mbStarDispPlayerCreate(int playerNo, int num)
 int mbStarDispCreate(int playerNo, HuVecF *pos, int num)
 {
     static const int SignMdlTbl[] = {
-        DATANUM(DATA_board, 21),
-        DATANUM(DATA_board, 22),
+        DATANUM(0x50000, 21),
+        DATANUM(0x50000, 22),
     };
     OMOBJ *obj;
     STARDISPWORK *work;
@@ -1593,10 +1593,10 @@ int mbStarDispCreate(int playerNo, HuVecF *pos, int num)
     } else {
         motTime = 1.5f;
     }
-    obj = starDispObj[playerNo] = omAddObjEx(mbObjMan, -32768, 0, 0, OM_GRP_NONE,
+    obj = starDispObj[playerNo] = fn_8003AB38(mbObjMan, -32768, 0, 0, -1,
         StarDispUpdate);
     workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(STARDISPWORK),
-        HU_MEMNUM_OVL);
+        0x10000000);
     work = obj->data = workData;
     memset(work, 0, sizeof(STARDISPWORK));
     work->modelId[0] = mbObjCreate(
@@ -1606,15 +1606,15 @@ int mbStarDispCreate(int playerNo, HuVecF *pos, int num)
     work->modelId[2] = mbObjCreate(
         mbBoardDataNumGet(numberFileTbl[digit10]), NULL, FALSE);
     work->modelId[3] = mbObjCreate(
-        mbBoardDataNumGet(DATANUM(DATA_board, 5)), NULL, FALSE);
+        mbBoardDataNumGet(DATANUM(0x50000, 5)), NULL, FALSE);
     modelId = mbObjModelIDGet(work->modelId[3]);
-    modelP = &Hu3DData[modelId];
+    modelP = &lbl_802C01C8[modelId];
     hsf = modelP->hsf;
     material = hsf->material;
     modelP->hiliteIdx = 0;
-    Hu3DModelMatHookSet(modelId, StarMatHook);
+    fn_80027884(modelId, StarMatHook);
     for (i = 0; i < hsf->materialNum; i++, material++) {
-        material->flags |= HSF_MATERIAL_MATHOOK;
+        material->flags |= (1 << 13);
     }
     for (i = 0; i < 3; i++) {
         mbObjPosSetV(work->modelId[i], &dispPos);
@@ -1695,7 +1695,7 @@ static void StarDispUpdate(OMOBJ *obj)
     switch (work->mode) {
         case STAR_DISP_MODE_ON:
             OSu16tof32(&work->time, &time);
-            time = HuSin(time);
+            time = sin(3.141592653589793*time/180.0);
             scale = time;
             obj->rot.y = 405.0f * time;
             StarDispObjUpdate(work, 3, obj->trans.x, obj->trans.y,
@@ -1720,8 +1720,8 @@ static void StarDispUpdate(OMOBJ *obj)
             } else {
                 spacing = 105.0f;
             }
-            y = 200.0 * HuSin(2.0f * time);
-            time = HuSin(time);
+            y = 200.0 * sin(3.141592653589793*(2.0f * time)/180.0);
+            time = sin(3.141592653589793*time/180.0);
             obj->rot.y = 45.0f + (315.0f * time);
             if (work->num >= 10) {
                 starX = obj->trans.x + (time * -spacing);
@@ -1757,7 +1757,7 @@ static void StarDispUpdate(OMOBJ *obj)
 
         case STAR_DISP_MODE_NONE:
             OSu16tof32(&work->time, &time);
-            time = HuSin(time);
+            time = sin(3.141592653589793*time/180.0);
             if (work->num >= 10) {
                 y = (-50.0f * time) + obj->trans.y;
             } else {
@@ -1782,7 +1782,7 @@ static void StarDispUpdate(OMOBJ *obj)
 
         case STAR_DISP_MODE_OFF:
             progress = (float)work->time / 24.0f;
-            obj->rot.y = 90.0 + (270.0 * HuSin(90.0f * progress));
+            obj->rot.y = 90.0 + (270.0 * sin(3.141592653589793*(90.0f * progress)/180.0));
             angleBase = 180.0f * progress;
             for (i = 0; i < 4; i++) {
                 angle = angleBase - (30.0f * (float)i);
@@ -1794,9 +1794,9 @@ static void StarDispUpdate(OMOBJ *obj)
                 if (i != 3) {
                     scale = 1.0f;
                 } else {
-                    scale = HuCos(angle);
+                    scale = cos(3.141592653589793*angle/180.0);
                 }
-                time = HuSin(angle);
+                time = sin(3.141592653589793*angle/180.0);
                 if (work->num >= 0) {
                     StarDispObjUpdate(work, i, work->modelPos[i].x,
                         obj->trans.y + (100.0f * time),
@@ -1807,7 +1807,7 @@ static void StarDispUpdate(OMOBJ *obj)
                         work->modelPos[i].z, scale);
                 }
                 if (i != 3) {
-                    mbObjAlphaSet(work->modelId[i], 255.0 * HuCos(angle));
+                    mbObjAlphaSet(work->modelId[i], 255.0 * cos(3.141592653589793*angle/180.0));
                 }
                 mbObjRotYSet(work->modelId[i], obj->rot.y);
             }
@@ -1855,7 +1855,7 @@ static void StarDispObjUpdate(STARDISPWORK *work, int modelNo,
     pos = work->modelPos[modelNo];
     posInput = pos;
     posInputP = &posInput;
-    Hu3D3Dto2D(posInputP, HU3D_CAM0, &pos2D);
+    Hu3D3Dto2D(posInputP, (1 << 0), &pos2D);
     Hu3DCameraSet(0, cameraMtx);
     PSMTXIdentity(modelMtx);
     modelMtx[0][3] = pos.x;
@@ -1871,7 +1871,7 @@ static void StarDispObjUpdate(STARDISPWORK *work, int modelNo,
     pos2D.z = depth;
     pos2DInput = pos2D;
     pos2DInputP = &pos2DInput;
-    Hu3D2Dto3D(pos2DInputP, HU3D_CAM0, &pos);
+    Hu3D2Dto3D(pos2DInputP, (1 << 0), &pos);
     mbObjScaleSet(work->modelId[modelNo], scale * scaleFix,
         scale * scaleFix, scale * scaleFix);
     mbObjPosSet(work->modelId[modelNo], pos.x, pos.y, pos.z);
@@ -1894,15 +1894,15 @@ static void ev_StarMasuRun(BOOL freeF)
     int seNo;
 
     starGuideObj = NULL;
-    if (GwSystem.curTime == 0) {
-        speakerNo = HUWIN_SPEAKER_SUN;
+    if (lbl_80265B70.curTime == 0) {
+        speakerNo = 6;
         messNo = 0;
     } else {
-        speakerNo = HUWIN_SPEAKER_MOON;
+        speakerNo = 7;
         messNo = 1;
     }
-    playerNo = GwSystem.turnPlayerNo;
-    mbAudFXPlay(MSM_SE_BRD00_94);
+    playerNo = lbl_80265B70.turnPlayerNo;
+    mbAudFXPlay(1098);
     mbPlayerMotIdleSet(playerNo);
     mbPlayerRotateStart(playerNo, 0, 15);
     while (!mbPlayerRotateCheck(playerNo)) {
@@ -1938,7 +1938,7 @@ static void ev_StarMasuRun(BOOL freeF)
     if (!freeF) {
         mbAudGuidePlay(952);
         mbWinCreateChoice(1, MESSNUM(MESS_BOARD_STAR, 2) + messNo, speakerNo, 0);
-        if (GwPlayer[playerNo].comF) {
+        if (lbl_80265750[playerNo].comF) {
             if (mbPlayerCoinGet(playerNo) >= 20) {
                 mbComChoiceUpSet();
             } else {
@@ -2000,12 +2000,12 @@ starBuy:
             MESSNUM(MESS_BOARD_STAR, 6) + messNo, speakerNo);
         mbWinTopWait();
     }
-    masuId = GwPlayer[playerNo].masuId;
+    masuId = lbl_80265750[playerNo].masuId;
     mbMasuPosGet(masuId, &startPos);
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 28));
+    fn_8006A1C4(65564);
     mbStarGetMain(playerNo, NULL, 1, TRUE);
     mbWipeFadeOut();
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, ((1 << 30) | (1 << 0)));
     mbCameraPlayerViewSetFast(playerNo, 2);
     if (starMoveHook != NULL) {
         starMoveHook();
@@ -2017,7 +2017,7 @@ starBuy:
     mbObjDispSet(obj->mdlId[0], FALSE);
     work->modelDispF = FALSE;
     mbObjDispSet(work->signModelId, FALSE);
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 1.0f, ((1 << 30) | (1 << 0)));
     mbPauseHookPush(StarPauseHook);
     mbNormPosto3D(&starMasuGuidePos, 4, &guidePos);
     starGuideObj = mbGuideCreateFlag(&guidePos, starMasuGuideMotTbl,
@@ -2029,20 +2029,20 @@ starBuy:
     mbAudGuidePlay(952);
     mbGuideMotionShiftSet(starGuideObj, 12, TRUE);
     winNo = mbWinCreateTime(4,
-        MESSNUM(MESS_BOARD_STAR, 12) + messNo, HUWIN_SPEAKER_NULL);
+        MESSNUM(MESS_BOARD_STAR, 12) + messNo, -1);
     mbWinPause((s16)winNo);
     mbev_StarScroll(&startPos, &endPos, 120);
     mbWinKill((s16)winNo);
     mbObjDispSet(obj->mdlId[0], TRUE);
-    seNo = mbAudFXPlay(MSM_SE_BRD00_91);
-    mbAudFXPlay(MSM_SE_BRD00_92);
+    seNo = mbAudFXPlay(1095);
+    mbAudFXPlay(1096);
     StarObjGrowSet(obj);
     StarObjGrowWait(obj);
     mbAudFXStop(seNo);
     mbAudGuidePlay(952);
     mbGuideMotionShiftSet(starGuideObj, 12, TRUE);
     mbWinCreateTime(4,
-        MESSNUM(MESS_BOARD_STAR, 14) + messNo, HUWIN_SPEAKER_NULL);
+        MESSNUM(MESS_BOARD_STAR, 14) + messNo, -1);
     mbWinTopWait();
     mbMusFadeOutSpeed(1, 1000);
     mbWipeFadeOut();
@@ -2059,8 +2059,8 @@ starBuy:
     mbWipeFadeIn();
 
 end:
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 28));
-    mbCameraFocusPlayerSet(GwSystem.turnPlayerNo);
+    fn_8006A268(65564);
+    mbCameraFocusPlayerSet(lbl_80265B70.turnPlayerNo);
     mbCameraMoveWait();
 }
 
@@ -2091,7 +2091,7 @@ static void StarMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     HuVecF dir;
 
     lightDir = lbl_8021AB24;
-    Hu3DGLightParamGet(0, &pos, &dir, &color);
+    fn_800297D4(0, &pos, &dir, &color);
     Hu3DGlobalLight[0].color = colorNew;
     Hu3DGlobalLight[0].dir = lightDir;
     mbObjStarTevStageSet(
@@ -2120,7 +2120,7 @@ void mbZtarObjClose(void)
 
 static inline MBPARTICLE *StarObjEffDataGet(HU3D_MODELID modelId)
 {
-    return Hu3DData[modelId].hookData;
+    return lbl_802C01C8[modelId].hookData;
 }
 
 /* Allocates a Ztar model and particle system in the first free object-table slot. */
@@ -2140,24 +2140,24 @@ static int ZtarObjCreate(HuVecF *pos)
             MBPARTICLE *particleP;
             int j;
 
-            obj = omAddObjEx(mbObjMan, 257, 1, 0, OM_GRP_NONE,
+            obj = fn_8003AB38(mbObjMan, 257, 1, 0, -1,
                 ZtarObjOMExec);
             ztarOMObj[i] = obj;
             work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(STARWORK),
-                HU_MEMNUM_OVL);
+                0x10000000);
             obj->data = work;
             memset(work, 0, sizeof(STARWORK));
             work->obj = obj;
             obj->mdlId[0] = mbObjCreate(
-                DATANUM(DATA_capsulechar1, STAR_ZTAR_CAPSULE_FILE), NULL, TRUE);
+                DATANUM(0xe0000, STAR_ZTAR_CAPSULE_FILE), NULL, TRUE);
             modelId = mbObjModelIDGet(obj->mdlId[0]);
-            modelP = &Hu3DData[modelId];
+            modelP = &lbl_802C01C8[modelId];
             hsf = modelP->hsf;
             material = hsf->material;
             modelP->hiliteIdx = 0;
-            Hu3DModelMatHookSet(modelId, StarMatHook);
+            fn_80027884(modelId, StarMatHook);
             for (j = 0; j < hsf->materialNum; j++, material++) {
-                material->flags |= HSF_MATERIAL_MATHOOK;
+                material->flags |= (1 << 13);
             }
             mbObjRotSet(obj->mdlId[0], -90.0f, 0.0f, 0.0f);
             mbObjZWriteOffSet(obj->mdlId[0], FALSE);
@@ -2175,7 +2175,7 @@ static int ZtarObjCreate(HuVecF *pos)
             work->offset.x = work->offset.y = work->offset.z = 0.0f;
             work->rot.x = work->rot.y = work->rot.z = 0.0f;
             work->scale.x = work->scale.y = work->scale.z = 1.0f;
-            omSetStatBit(obj, OM_STAT_MODELPAUSE);
+            omSetStatBit(obj, (1 << 8));
             return i;
         }
     }
@@ -2356,9 +2356,9 @@ void mbZtarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
     int i;
     HuVecF playerPos;
 
-    masuId = GwPlayer[playerNo].masuId;
+    masuId = lbl_80265750[playerNo].masuId;
     seNo = -1;
-    _SetFlag(FLAG_BOARD_STAR_RESET);
+    fn_8006A1C4(65570);
     mbMusFadeOutSpeed(0, 1000);
     if (pos == NULL) {
         obj = ZtarMasuObjGet(masuId);
@@ -2393,12 +2393,12 @@ void mbZtarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
     } while (time < 60);
     mbAudFXStop(shrinkSeNo);
     mbPlayerMotIdleSet(playerNo);
-    omVibrate((s16)playerNo, 20, 7, 3);
+    fn_8006A030((s16)playerNo, 20, 7, 3);
     mbPlayerMotionShiftSet(playerNo, 8, 0.0f, 8.0f, 0);
     mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
     if (mbPlayerStarGet(playerNo) >= 1) {
         mbStarAddDispExec(playerNo, num, TRUE, TRUE);
-        GwSystem.starTotal = GwSystem.starTotal + num;
+        lbl_80265B70.starTotal = lbl_80265B70.starTotal + num;
     } else {
         int coin = mbPlayerCoinGet(playerNo);
 
@@ -2409,11 +2409,11 @@ void mbZtarGetMain(int playerNo, HuVecF *pos, int num, BOOL focusF)
         }
     }
     mbPlayerMotionEndWait(playerNo);
-    _ClearFlag(FLAG_BOARD_STAR_RESET);
+    fn_8006A268(65570);
     if (work->signF == FALSE) {
         ZtarPlayerKill(playerNo);
     } else if (work->signF == TRUE) {
-        ZtarMasuKill(GwPlayer[playerNo].masuId);
+        ZtarMasuKill(lbl_80265750[playerNo].masuId);
     }
     HuPrcSleep(18);
 }
@@ -2426,11 +2426,11 @@ static void ZtarObjOMExec(OMOBJ *obj)
 
     if (work->killF || mbExitCheck()) {
         StarObjEffKill(work->effectModelId);
-        work->effectModelId = HU3D_MODELID_NONE;
+        work->effectModelId = -1;
         work->signF = -1;
         mbObjKill(obj->mdlId[0]);
         obj->mdlId[0] = MB_MODEL_NONE;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         ztarOMObj[work->objNo] = NULL;
         return;
     }
@@ -2461,7 +2461,7 @@ static void ZtarObjOMExec(OMOBJ *obj)
                 work->pos.z = pos.z;
             }
             work->offset.y = 100.0f
-                * (0.2f * HuSin(4.0f * work->time));
+                * (0.2f * sin(3.141592653589793*(4.0f * work->time)/180.0));
             work->time++;
             break;
 
@@ -2479,7 +2479,7 @@ static void ZtarObjOMExec(OMOBJ *obj)
                     }
                 }
                 rotY = work->rotY;
-                work->scale.x = HuSin(rotY + 90.0f);
+                work->scale.x = sin(3.141592653589793*(rotY + 90.0f)/180.0);
                 if (work->scale.x <= 0.0f) {
                     work->scale.x = 0.001f;
                 }

@@ -18,7 +18,6 @@ extern "C" {
 #endif
 #endif
 
-
 #define MTX_PTR_OFFSET 3
 
 #define MTX44_PTR_OFFSET 4
@@ -202,7 +201,6 @@ f32 PSVECSquareDistance(const Vec* a, const Vec* b);
 f32 PSVECDistance(const Vec* a, const Vec* b);
 #endif
 
-// TODO
 #if defined( MTX_USE_PS)
 #define VECAdd PSVECAdd
 #define VECSubtract PSVECSubtract

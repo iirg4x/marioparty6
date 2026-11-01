@@ -71,34 +71,34 @@ typedef struct statusDisp_s {
     int no; // Saved panel slot for one player.
 } STATUSDISP;
 
-static STATUSWORK statusWork[GW_PLAYER_MAX];
+static STATUSWORK statusWork[4];
 static STATUSMASUWORK statusMasuWork;
-static STATUSDISP statusDispBackup[GW_PLAYER_MAX];
+static STATUSDISP statusDispBackup[4];
 
 static HUPROCESS *statusProc;
 static u8 statusForceFlag; // One bit per player whose panel had target visibility enabled at pause
                           // entry.
 
-static HuVec2f statusPosOn[GW_PLAYER_MAX] = {
+static HuVec2f statusPosOn[4] = {
     { 114, 80 },
     { HU_DISP_WIDTH-114, 80 },
     { 114, HU_DISP_HEIGHT-80 },
     { HU_DISP_WIDTH-114, HU_DISP_HEIGHT-80 },
 };
 
-static HuVec2f statusPosOff[GW_PLAYER_MAX] = {
+static HuVec2f statusPosOff[4] = {
     { -98, 80 },
     { HU_DISP_WIDTH+98, 80 },
     { -98, HU_DISP_HEIGHT-80 },
     { HU_DISP_WIDTH+98, HU_DISP_HEIGHT-80 },
 };
 
-static HuVec2f statusPosOnTeam[GW_PLAYER_MAX/2] = {
+static HuVec2f statusPosOnTeam[4/2] = {
     { 140, 80 },
     { HU_DISP_WIDTH-140, 80 },
 };
 
-static HuVec2f statusPosOffTeam[GW_PLAYER_MAX/2] = {
+static HuVec2f statusPosOffTeam[4/2] = {
     { -124, 80 },
     { HU_DISP_WIDTH+124, 80 },
 };
@@ -119,7 +119,7 @@ static GXColor statusBorderColTbl[STATUS_COLOR_MAX] = {
     { 255, 0, 255, 0 },
 };
 
-static GXColor statusDefaultColTbl[GW_PLAYER_MAX] = {
+static GXColor statusDefaultColTbl[4] = {
     { 192, 65, 76, 0 },
     { 244, 113, 123, 0 },
     { 95, 100, 16, 0 },
@@ -211,7 +211,7 @@ void mbStatusInit(void)
     memset(&statusWork[0], 0, sizeof(statusWork));
     memset(&statusMasuWork, 0, sizeof(statusMasuWork));
     if(!GWTeamFGet()) {
-        for(i=0; i<GW_PLAYER_MAX; i++) {
+        for(i=0; i<4; i++) {
             StatusSprCreate(i, &statusWork[i]);
             statusWork[i].offF = TRUE;
             statusWork[i].moveF = FALSE;
@@ -221,17 +221,17 @@ void mbStatusInit(void)
             statusWork[i].capsuleFocus = -1;
             statusWork[i].capsuleTime = 0;
             statusWork[i].ownerIndex = i;
-            if(i < GW_PLAYER_MAX/2) {
+            if(i < 4/2) {
                 statusWork[i].layoutNo = 0;
             } else {
                 statusWork[i].layoutNo = 1;
             }
             statusWork[i].layoutBackup = statusWork[i].layoutNo;
-            mbStatusColorSet(i, GwPlayer[i].statusColor);
+            mbStatusColorSet(i, lbl_80265750[i].statusColor);
             HuSprGrpDrawNoSet(statusWork[i].gid, 32);
         }
     } else {
-        for(i=0; i<GW_PLAYER_MAX/2; i++) {
+        for(i=0; i<4/2; i++) {
             GXColor *colorP;
             StatusTeamSprCreate(i, &statusWork[i]);
             statusWork[i].offF = TRUE;
@@ -260,7 +260,7 @@ void mbStatusInit(void)
         HuSprGrpPosSet(statusMasuWork.gid, 472.0f, 72.0f);
         HuSprGrpDrawNoSet(statusMasuWork.gid, 32);
     }
-    statusProc = HuPrcChildCreate(StatusMain, 8193, 16384, 0, mbMainProc);
+    statusProc = fn_8000DAC0(StatusMain, 8193, 16384, 0, mbMainProc);
     HuPrcDestructorSet2(statusProc, StatusKill);
     mbStatusDispForceSetAll(FALSE);
     mbStatusMasuDispSet(FALSE);
@@ -271,7 +271,7 @@ void mbStatusClose(void)
 {
     STATUSWORK *status;
     int i;
-    for(status=&statusWork[0], i=0; i<GW_PLAYER_MAX; i++, status++) {
+    for(status=&statusWork[0], i=0; i<4; i++, status++) {
         if(status->offF && status->gid != HUSPR_GRP_NONE) {
             HuSprGrpKill(status->gid);
             status->gid = HUSPR_GRP_NONE;
@@ -324,7 +324,7 @@ static BOOL StatusUpdate(void)
 {
     int i, j;
     float scale;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         STATUSWORK *status = &statusWork[i];
         int capsuleNo;
         if(GWPartyGet() == FALSE && i > 0) {
@@ -334,8 +334,8 @@ static BOOL StatusUpdate(void)
             statusWork[i].moveF = FALSE;
             continue;
         }
-        GwPlayer[i].rank = mbPlayerRankGet(i);
-        HuSprBankSet(status->gid, STATUS_SPRNO_RANK, GwPlayer[i].rank);
+        lbl_80265750[i].rank = mbPlayerRankGet(i);
+        HuSprBankSet(status->gid, STATUS_SPRNO_RANK, lbl_80265750[i].rank);
         mbSprNumSet(status->gid, STATUS_SPRNO_COIN_NUM, mbPlayerCoinGet(i));
         if(GWPartyGet() != FALSE) {
             mbSprNumSet(status->gid, STATUS_SPRNO_STAR_NUM, mbPlayerStarGet(i));
@@ -351,7 +351,7 @@ static BOOL StatusUpdate(void)
                             statusCapsuleOfsTbl[status->layoutNo].y);
                 HuSprDispOn(status->gid, STATUS_SPRNO_CAPSULE+j);
                 if(status->capsuleFocus == j) {
-                    scale = 1+fabs(HuCos(status->capsuleTime++ * 8.0f));
+                    scale = 1+fabs(cos(3.141592653589793*(status->capsuleTime++ * 8.0f)/180.0));
                     HuSprScaleSet(status->gid, STATUS_SPRNO_CAPSULE+j, scale, scale);
                 } else {
                     // Each visible unfocused slot resets the pulse frame shared by this panel.
@@ -362,7 +362,7 @@ static BOOL StatusUpdate(void)
                 HuSprDispOff(status->gid, STATUS_SPRNO_CAPSULE+j);
             }
         }
-        if(GwPlayer[i].comF) {
+        if(lbl_80265750[i].comF) {
             HuSprDispOn(status->gid, STATUS_SPRNO_COM);
             HuSprPosSet(status->gid, STATUS_SPRNO_COM, statusComOfsTbl[status->layoutNo].x,
                         statusComOfsTbl[status->layoutNo].y);
@@ -429,7 +429,7 @@ static BOOL StatusUpdate(void)
 static BOOL StatusTeamUpdate(void)
 {
     int i, j;
-    for(i=0; i<GW_PLAYER_MAX/2; i++) {
+    for(i=0; i<4/2; i++) {
         STATUSWORK *status = &statusWork[i];
         int teamTotal;
         int capsuleNo;
@@ -451,7 +451,7 @@ static BOOL StatusTeamUpdate(void)
             }
         }
         for(j=0; j<2; j++) {
-            if(GwPlayer[mbPlayerTeamFindPlayer(i, j)].comF) {
+            if(lbl_80265750[mbPlayerTeamFindPlayer(i, j)].comF) {
                 HuSprDispOn(status->gid, STATUS_SPRNO_COM+j);
                 HuSprPosSet(status->gid, STATUS_SPRNO_COM + j,
                             statusTeamComOfsTbl[status->layoutNo].x + (j * 64),
@@ -483,11 +483,11 @@ static void StatusPosUpdate(STATUSWORK *status)
             break;
 
         case STATUS_MOVE_SIN:
-            weight = HuSin(time*90.0f);
+            weight = sin(3.141592653589793*(time*90.0f)/180.0);
             break;
 
         case STATUS_MOVE_REVCOS:
-            weight = 1-HuCos(time*90.0f);
+            weight = 1-cos(3.141592653589793*(time*90.0f)/180.0);
             break;
     }
     pos.x = status->posBegin.x+(weight*(status->posEnd.x-status->posBegin.x));
@@ -578,7 +578,7 @@ BOOL mbStatusMoveCheck(int playerNo)
 BOOL mbStatusOffCheckAll(void)
 {
     int i;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         if(statusWork[i].offF && statusWork[i].moveF) {
             return FALSE;
         }
@@ -653,7 +653,7 @@ void mbStatusDispFocusSet(int playerNo, BOOL dispF)
 void mbStatusDispBackup(void)
 {
     int i;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         statusDispBackup[i].dispF = mbStatusDispGet(i);
         statusDispBackup[i].no = mbStatusNoGet(i);
     }
@@ -665,7 +665,7 @@ void mbStatusDispRestoreForce(void)
 {
     int i;
     STATUSWORK *status;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         status = StatusPlayerGet(i);
         status->dispF = statusDispBackup[i].dispF;
         status->no = statusDispBackup[i].no;
@@ -684,7 +684,7 @@ void mbStatusDispRestoreForce(void)
 void mbStatusDispRestore(void)
 {
     int i;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         StatusDispSet(i, statusDispBackup[i].no, statusDispBackup[i].dispF);
     }
 }
@@ -707,7 +707,7 @@ int mbStatusNoGet(int playerNo)
 void mbStatusDispSetAll(BOOL dispF)
 {
     int i;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         mbStatusDispSet(i, dispF);
     }
 }
@@ -749,7 +749,7 @@ void mbStatusDispForceSet(int playerNo, BOOL dispF)
 void mbStatusDispForceSetAll(BOOL dispF)
 {
     int i;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         mbStatusDispForceSet(i, dispF);
     }
 }
@@ -835,40 +835,40 @@ void mbStatusKaoNoSet(int statusNo, int kaoNo)
 
 #define STATUS_SPR_INITNUM 11
 
-static int statusKaoFileTbl[GW_CHARA_MAX] = {
-    DATANUM(DATA_board, 54), DATANUM(DATA_board, 55),
-    DATANUM(DATA_board, 56), DATANUM(DATA_board, 57),
-    DATANUM(DATA_board, 58), DATANUM(DATA_board, 59),
-    DATANUM(DATA_board, 60), DATANUM(DATA_board, 61),
-    DATANUM(DATA_board, 62), DATANUM(DATA_board, 63),
-    DATANUM(DATA_board, 64), DATANUM(DATA_board, 65),
-    DATANUM(DATA_board, 66), DATANUM(DATA_board, 67),
+static int statusKaoFileTbl[14] = {
+    DATANUM(0x50000, 54), DATANUM(0x50000, 55),
+    DATANUM(0x50000, 56), DATANUM(0x50000, 57),
+    DATANUM(0x50000, 58), DATANUM(0x50000, 59),
+    DATANUM(0x50000, 60), DATANUM(0x50000, 61),
+    DATANUM(0x50000, 62), DATANUM(0x50000, 63),
+    DATANUM(0x50000, 64), DATANUM(0x50000, 65),
+    DATANUM(0x50000, 66), DATANUM(0x50000, 67),
 };
 
 // mbStatusInit calls this in individual mode to build a panel with its face, totals, and icons.
 static void StatusSprCreate(int statusNo, STATUSWORK *status)
 {
     static int fileTbl[STATUS_SPR_INITNUM] = {
-        DATANUM(DATA_board, 40), DATANUM(DATA_board, 41),
-        DATANUM(DATA_board, 39), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 35), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 38), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 35), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 37),
+        DATANUM(0x50000, 40), DATANUM(0x50000, 41),
+        DATANUM(0x50000, 39), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 35), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 38), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 35), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 37),
     };
     static int fileTblSingle[STATUS_SPR_INITNUM] = {
-        DATANUM(DATA_board, 40), DATANUM(DATA_board, 41),
-        DATANUM(DATA_board, 39), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 35), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 38), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 35), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 48),
+        DATANUM(0x50000, 40), DATANUM(0x50000, 41),
+        DATANUM(0x50000, 39), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 35), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 38), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 35), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 48),
     };
     static s16 prioTbl[STATUS_SPR_INITNUM] = {
         1520, 1510, 1500, 1500, 1500, 1500,
         1500, 1500, 1500, 1500, 1500,
     };
-    int characterNo = GwPlayerConf[statusNo].charNo;
+    int characterNo = lbl_80265728[statusNo].charNo;
     int i;
     HUSPRID sprId;
     float posX, posY;
@@ -894,17 +894,17 @@ static void StatusSprCreate(int statusNo, STATUSWORK *status)
     posX = statusSprPosTbl[STATUS_SPRNO_KAO].x;
     posY = statusSprPosTbl[STATUS_SPRNO_KAO].y;
     HuSprPosSet(status->gid, STATUS_SPRNO_KAO, posX, posY);
-    mbSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 53)), 1490, NULL, &sprId);
+    mbSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 53)), 1490, NULL, &sprId);
     HuSprGrpMemberSet(status->gid, 13, sprId);
     HuSprAttrSet(status->gid, 13, HUSPR_ATTR_LINEAR);
     posX = statusSprPosTbl[STATUS_SPRNO_KAO].x;
     posY = statusSprPosTbl[STATUS_SPRNO_KAO].y;
     HuSprPosSet(status->gid, 13, posX, posY);
-    mbSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 36)), 1490, NULL, &sprId);
+    mbSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 36)), 1490, NULL, &sprId);
     HuSprGrpMemberSet(status->gid, STATUS_SPRNO_COM, sprId);
     HuSprAttrSet(status->gid, STATUS_SPRNO_COM, HUSPR_ATTR_LINEAR);
     for(i=0; i<3; i++) {
-        mbSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 46)), 1500, NULL, &sprId);
+        mbSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 46)), 1500, NULL, &sprId);
         HuSprGrpMemberSet(status->gid, STATUS_SPRNO_CAPSULE+i, sprId);
         HuSprAttrSet(status->gid, STATUS_SPRNO_CAPSULE+i, HUSPR_ATTR_NOANIM);
         HuSprAttrSet(status->gid, STATUS_SPRNO_CAPSULE+i, HUSPR_ATTR_LINEAR);
@@ -929,12 +929,12 @@ static void StatusSprCreate(int statusNo, STATUSWORK *status)
 static void StatusTeamSprCreate(int statusNo, STATUSWORK *status)
 {
     static int fileTbl[STATUS_SPR_INITNUM] = {
-        DATANUM(DATA_board, 42), DATANUM(DATA_board, 43),
-        DATANUM(DATA_board, 45), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 35), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 38), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 35), DATANUM(DATA_board, 35),
-        DATANUM(DATA_board, 37),
+        DATANUM(0x50000, 42), DATANUM(0x50000, 43),
+        DATANUM(0x50000, 45), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 35), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 38), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 35), DATANUM(0x50000, 35),
+        DATANUM(0x50000, 37),
     };
     static s16 prioTbl[STATUS_SPR_INITNUM] = {
         1520, 1510, 1500, 1500, 1500, 1500,
@@ -954,23 +954,23 @@ static void StatusTeamSprCreate(int statusNo, STATUSWORK *status)
         HuSprAttrSet(status->gid, i, HUSPR_ATTR_LINEAR);
         HuSprPosSet(status->gid, i, statusTeamSprPosTbl[i].x, statusTeamSprPosTbl[i].y);
     }
-    mbSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 44)), 1510, NULL, &sprId);
+    mbSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 44)), 1510, NULL, &sprId);
     HuSprGrpMemberSet(status->gid, 17, sprId);
     HuSprAttrSet(status->gid, 17, HUSPR_ATTR_NOANIM);
     HuSprAttrSet(status->gid, 17, HUSPR_ATTR_LINEAR);
     HuSprPosSet(status->gid, 17, statusTeamSprPosTbl[2].x, statusTeamSprPosTbl[2].y);
     HuSprBankSet(status->gid, 17, statusNo);
     faceSlot = 0;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         if(statusNo == mbPlayerGrpGet(i)) {
-            mbSprCreate(mbBoardDataNumGet(statusKaoFileTbl[GwPlayerConf[i].charNo]), 1500, NULL,
+            mbSprCreate(mbBoardDataNumGet(statusKaoFileTbl[lbl_80265728[i].charNo]), 1500, NULL,
                         &sprId);
             HuSprGrpMemberSet(status->gid, STATUS_SPRNO_KAO+faceSlot, sprId);
             HuSprAttrSet(status->gid, STATUS_SPRNO_KAO+faceSlot, HUSPR_ATTR_LINEAR);
             posX = statusTeamSprPosTbl[STATUS_SPRNO_KAO+faceSlot].x;
             posY = statusTeamSprPosTbl[STATUS_SPRNO_KAO+faceSlot].y;
             HuSprPosSet(status->gid, STATUS_SPRNO_KAO+faceSlot, posX, posY);
-            mbSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 53)), 1490, NULL, &sprId);
+            mbSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 53)), 1490, NULL, &sprId);
             HuSprGrpMemberSet(status->gid, 13+faceSlot, sprId);
             HuSprAttrSet(status->gid, 13+faceSlot, HUSPR_ATTR_LINEAR);
             HuSprPosSet(status->gid, 13+faceSlot, posX, posY);
@@ -978,12 +978,12 @@ static void StatusTeamSprCreate(int statusNo, STATUSWORK *status)
         }
     }
     for(i=0; i<2; i++) {
-        mbSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 36)), 1490, NULL, &sprId);
+        mbSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 36)), 1490, NULL, &sprId);
         HuSprGrpMemberSet(status->gid, STATUS_SPRNO_COM+i, sprId);
         HuSprAttrSet(status->gid, STATUS_SPRNO_COM+i, HUSPR_ATTR_LINEAR);
     }
     for(i=0; i<5; i++) {
-        mbSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 46)), 1500, NULL, &sprId);
+        mbSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 46)), 1500, NULL, &sprId);
         HuSprGrpMemberSet(status->gid, STATUS_SPRNO_CAPSULE+i, sprId);
         HuSprAttrSet(status->gid, STATUS_SPRNO_CAPSULE+i, HUSPR_ATTR_NOANIM);
         HuSprAttrSet(status->gid, STATUS_SPRNO_CAPSULE+i, HUSPR_ATTR_LINEAR);
@@ -995,10 +995,10 @@ static void StatusTeamSprCreate(int statusNo, STATUSWORK *status)
 static void StatusMasuSprCreate(STATUSMASUWORK *status)
 {
     static int fileTbl[7] = {
-        DATANUM(DATA_board, 49), DATANUM(DATA_board, 50),
-        DATANUM(DATA_board, 50), DATANUM(DATA_board, 52),
-        DATANUM(DATA_board, 52), DATANUM(DATA_board, 51),
-        DATANUM(DATA_board, 51),
+        DATANUM(0x50000, 49), DATANUM(0x50000, 50),
+        DATANUM(0x50000, 50), DATANUM(0x50000, 52),
+        DATANUM(0x50000, 52), DATANUM(0x50000, 51),
+        DATANUM(0x50000, 51),
     };
     static HuVec2f ofsTbl[7] = {
         { 0, 0 }, { -48, 0 }, { 48, 0 }, { -48, 0 },
@@ -1040,7 +1040,7 @@ void mbSprCreate(int dataNum, int prio, ANIMDATA **animationOut, HUSPRID *sprite
     HUSPRID sprId;
     void *animationData;
     ANIMDATA *animation;
-    animationData = HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+    animationData = fn_80008DD0(dataNum, 0x10000000, 2);
     animation = HuSprAnimRead(animationData);
     sprId = HuSprCreate(animation, prio, 0);
     if(animationOut) {
@@ -1083,7 +1083,7 @@ static void StatusPauseHook(BOOL dispF)
     STATUSWORK *status;
     if(!dispF) {
         statusForceFlag = 0;
-        for(i=0; i<GW_PLAYER_MAX; i++) {
+        for(i=0; i<4; i++) {
             if(mbStatusDispGet(i)) {
                 status = StatusPlayerGet(i);
                 HuSprGrpPosSet(status->gid, status->posBegin.x, status->posBegin.y);
@@ -1094,7 +1094,7 @@ static void StatusPauseHook(BOOL dispF)
             HuSprGrpPosSet(statusMasuWork.gid, 700.0f, 72.0f);
         }
     } else {
-        for(i=0; i<GW_PLAYER_MAX; i++) {
+        for(i=0; i<4; i++) {
             if(statusForceFlag & (1 << i)) {
                 status = StatusPlayerGet(i);
                 HuSprGrpPosSet(status->gid, status->posEnd.x, status->posEnd.y);
@@ -1177,20 +1177,20 @@ void mbStatusColorSet(int playerNo, int color)
         HuSprColorSet(status->gid, 13, statusBorderColTbl[color].r, statusBorderColTbl[color].g,
                       statusBorderColTbl[color].b);
     }
-    GwPlayer[playerNo].statusColor = color;
+    lbl_80265750[playerNo].statusColor = color;
 }
 
 // Returns the status color stored for a player.
 int mbStatusColorGet(int playerNo)
 {
-    return GwPlayer[playerNo].statusColor;
+    return lbl_80265750[playerNo].statusColor;
 }
 
 // Applies the same status color to every player.
 void mbStatusColorAllSet(int color)
 {
     int i;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         mbStatusColorSet(i, color);
     }
 }

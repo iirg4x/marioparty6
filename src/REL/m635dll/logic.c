@@ -32,7 +32,7 @@ void fn_1_408(s16 frameNo)
     }
     switch (lbl_1_bss_4.state) {
         case 0:
-            MgSeqModeChangeOff();
+            fn_80071B08();
             lbl_1_bss_4.state++;
             break;
         case 1:
@@ -43,12 +43,12 @@ void fn_1_408(s16 frameNo)
                 cameraView.rot.x = -25.0f;
                 cameraView.rot.y = cameraView.rot.z = 0.0f;
                 cameraView.zoom = 2500.0f;
-                omCameraViewMoveSimple(&cameraView, 120);
+                fn_8003EA54(&cameraView, 120);
                 lbl_1_bss_4.state++;
             }
             break;
         case 2:
-            if (omCameraViewCheck(1)) {
+            if (fn_8003EB94(1)) {
                 for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                     characterId = lbl_1_bss_BC[playerIndex].charNo;
                     fn_1_30C8(playerIndex, characterId);
@@ -63,7 +63,7 @@ void fn_1_408(s16 frameNo)
             }
             break;
         case 3:
-            MgSeqModeNext();
+            fn_80071A9C();
             lbl_1_bss_4.state = 0;
             break;
     }
@@ -80,25 +80,25 @@ void fn_1_638(void)
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         fn_1_3218(playerIndex, 1, 0.0f);
     }
-    Center.x = lbl_1_data_24[lbl_1_bss_4.winner + 1].center.x;
-    Center.y = lbl_1_data_24[lbl_1_bss_4.winner + 1].center.y;
-    Center.z = lbl_1_data_24[lbl_1_bss_4.winner + 1].center.z;
-    CRot.x = lbl_1_data_24[lbl_1_bss_4.winner + 1].rot.x;
-    CRot.y = lbl_1_data_24[lbl_1_bss_4.winner + 1].rot.y;
-    CRot.z = lbl_1_data_24[lbl_1_bss_4.winner + 1].rot.z;
-    CZoom = lbl_1_data_24[lbl_1_bss_4.winner + 1].zoom;
+    lbl_80266A4C.x = lbl_1_data_24[lbl_1_bss_4.winner + 1].center.x;
+    lbl_80266A4C.y = lbl_1_data_24[lbl_1_bss_4.winner + 1].center.y;
+    lbl_80266A4C.z = lbl_1_data_24[lbl_1_bss_4.winner + 1].center.z;
+    lbl_80266A40.x = lbl_1_data_24[lbl_1_bss_4.winner + 1].rot.x;
+    lbl_80266A40.y = lbl_1_data_24[lbl_1_bss_4.winner + 1].rot.y;
+    lbl_80266A40.z = lbl_1_data_24[lbl_1_bss_4.winner + 1].rot.z;
+    lbl_802C028C = lbl_1_data_24[lbl_1_bss_4.winner + 1].zoom;
     if (lbl_1_bss_4.winner == -1) {
         teamState = lbl_1_bss_4.team;
         fn_1_3340();
         for (playerIndex = 0; playerIndex < 2; playerIndex++) {
-            Hu3DModelAttrSet(teamState[playerIndex].teamScoreModel.model, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(teamState[playerIndex].memberOneScoreModel.model, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(teamState[playerIndex].memberZeroScoreModel.model, HU3D_ATTR_DISPOFF);
+            fn_800269E8(teamState[playerIndex].teamScoreModel.model, (1 << 0));
+            fn_800269E8(teamState[playerIndex].memberOneScoreModel.model, (1 << 0));
+            fn_800269E8(teamState[playerIndex].memberZeroScoreModel.model, (1 << 0));
         }
     } else {
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if (lbl_1_bss_4.winner != lbl_1_bss_BC[playerIndex].teamNo) {
-                Hu3DModelAttrSet(lbl_1_bss_BC[playerIndex].model, HU3D_ATTR_DISPOFF);
+                fn_800269E8(lbl_1_bss_BC[playerIndex].model, (1 << 0));
             }
         }
     }
@@ -155,7 +155,7 @@ void fn_1_9B8(s16 team)
         controllerSlots[memberIndex] = lbl_1_bss_BC[playerIndex].padNo;
         characterIds[memberIndex] = lbl_1_bss_BC[playerIndex].charNo;
         if (lbl_1_bss_BC[lbl_1_bss_B4[team][memberIndex]].comF == 0) {
-            buttonPresses[memberIndex] = HuPadBtnDown[controllerSlots[memberIndex]];
+            buttonPresses[memberIndex] = lbl_802C0008[controllerSlots[memberIndex]];
             buttonPresses[memberIndex] &= (u16)~(PAD_TRIGGER_L | PAD_TRIGGER_R);
         } else {
             buttonPresses[memberIndex] = fn_1_1168(team, memberIndex);
@@ -277,19 +277,19 @@ void fn_1_F44(s16 team)
         winningCharacters[memberIndex] = lbl_1_bss_BC[lbl_1_bss_B4[team][memberIndex]].charNo;
     }
     if (team == -1) {
-        MgSeqDrawSet();
+        fn_80071C70();
     } else {
-        MgSeqWinnerSet(winningCharacters[0], winningCharacters[1], -1, -1);
+        fn_80071C18(winningCharacters[0], winningCharacters[1], -1, -1);
         firstWinningPlayer = lbl_1_bss_B4[team][0];
-        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[firstWinningPlayer].mgCoinBonus = 10;
+        if (!fn_8006A124(65551)) {
+            lbl_80265750[firstWinningPlayer].mgCoinBonus = 10;
         }
         secondWinningPlayer = lbl_1_bss_B4[team][1];
-        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[secondWinningPlayer].mgCoinBonus = 10;
+        if (!fn_8006A124(65551)) {
+            lbl_80265750[secondWinningPlayer].mgCoinBonus = 10;
         }
     }
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Called by setup callback fn_1_F0 to reset round state and choose each team's initial
@@ -302,7 +302,7 @@ void fn_1_10A0(void)
     memset(&lbl_1_bss_4, 0, sizeof(M635Work));
     memset(lbl_1_bss_BC, 0, sizeof(lbl_1_bss_BC));
     lbl_1_bss_4.winner = -1;
-    nightScene = GwMgNightF;
+    nightScene = lbl_802C0278;
     lbl_1_bss_4.nightF = nightScene;
     for (teamIndex = 0; teamIndex < 2; teamIndex++) {
         lbl_1_bss_4.team[teamIndex].nextMember = 1;
@@ -363,28 +363,28 @@ s16 fn_1_13F8(s16 difficulty)
  * center. */
 void fn_1_14E8(void)
 {
-    if (HuPadBtn[0] & PAD_BUTTON_UP) {
-        CZoom -= 10.0f;
+    if (lbl_802C0010[0] & PAD_BUTTON_UP) {
+        lbl_802C028C -= 10.0f;
     }
-    if (HuPadBtn[0] & PAD_BUTTON_DOWN) {
-        CZoom += 10.0f;
+    if (lbl_802C0010[0] & PAD_BUTTON_DOWN) {
+        lbl_802C028C += 10.0f;
     }
-    if (HuPadSubStkX[0] > 20) {
-        CRot.y += 1.0f;
+    if (lbl_802BFFF4[0] > 20) {
+        lbl_80266A40.y += 1.0f;
     }
-    if (HuPadSubStkX[0] < -20) {
-        CRot.y -= 1.0f;
+    if (lbl_802BFFF4[0] < -20) {
+        lbl_80266A40.y -= 1.0f;
     }
-    if (HuPadSubStkY[0] > 20) {
-        CRot.x += 1.0f;
+    if (lbl_802BFFF0[0] > 20) {
+        lbl_80266A40.x += 1.0f;
     }
-    if (HuPadSubStkY[0] < -20) {
-        CRot.x -= 1.0f;
+    if (lbl_802BFFF0[0] < -20) {
+        lbl_80266A40.x -= 1.0f;
     }
-    if (HuPadStkX[0] > 5 || HuPadStkX[0] < -5) {
-        Center.x += HuPadStkX[0] / 2;
+    if (lbl_802BFFFC[0] > 5 || lbl_802BFFFC[0] < -5) {
+        lbl_80266A4C.x += lbl_802BFFFC[0] / 2;
     }
-    if (HuPadStkY[0] > 5 || HuPadStkY[0] < -5) {
-        Center.z -= HuPadStkY[0] / 2;
+    if (lbl_802BFFF8[0] > 5 || lbl_802BFFF8[0] < -5) {
+        lbl_80266A4C.z -= lbl_802BFFF8[0] / 2;
     }
 }

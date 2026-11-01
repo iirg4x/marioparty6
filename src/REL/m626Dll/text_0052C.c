@@ -1,4 +1,5 @@
 /* Resolves round winners, awards the round bonus, and tracks player sides. */
+#include <math.h>
 #include "dolphin/types.h"
 #include "game/flag.h"
 #include "game/gamework.h"
@@ -45,11 +46,11 @@ void fn_1_52C(s16 mode, s16 frameNo)
                     lbl_1_bss_10[index] = lbl_1_bss_0[index];
                 }
             }
-            winner = MgSeqWinnerSet(lbl_1_bss_10[0], lbl_1_bss_10[1],
+            winner = fn_80071C18(lbl_1_bss_10[0], lbl_1_bss_10[1],
                                     lbl_1_bss_10[2], lbl_1_bss_10[3]);
         }
         if (lbl_1_bss_24[0] == 0 && frameNo >= 120) {
-            (void)MgSeqModeNext();
+            (void)fn_80071A9C();
             return;
         }
     }
@@ -63,12 +64,12 @@ void fn_1_6EC(s16 mode, s16 frameNo)
     s32 playerIndex;
 
     if (fn_1_824(mode, frameNo) == 0 && frameNo == 0) {
-        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if (lbl_1_bss_10[playerIndex] >= 0) {
-                oldBonus = GwPlayer[playerIndex].mgCoinBonus;
+                oldBonus = lbl_80265750[playerIndex].mgCoinBonus;
                 newBonus = oldBonus + 10;
-                if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                    GwPlayer[playerIndex].mgCoinBonus = newBonus;
+                if (fn_8006A124(65551) == 0) {
+                    lbl_80265750[playerIndex].mgCoinBonus = newBonus;
                 }
             }
         }
@@ -104,17 +105,17 @@ void fn_1_82C(void)
 s32 fn_1_830(s32 fileIndex)
 {
     if (fileIndex >= 8) {
-        s16 nightMode = GwMgNightF;
+        s16 nightMode = lbl_802C0278;
         if (nightMode == 1) {
             fileIndex += 16;
         }
     }
-    return fileIndex + DATA_m626;
+    return fileIndex + 0x550000;
 }
 
 void fn_1_86C(void)
 {
-    MgSeqTimerValueGet();
+    fn_80071B58();
 }
 
 /* Returns the winning player ID stored for one player slot. */

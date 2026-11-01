@@ -211,10 +211,10 @@ extern MGSEQ_PARAM lbl_1_data_448;
 
 /* Called by the REL prolog to create the minigame object manager and sequence. */
 void fn_1_13B88(void) {
-    lbl_1_bss_810 = omInitObjMan(M625_OBJECT_SLOT_COUNT, M625_PROCESS_STACK_SIZE);
-    omGameSysInit(lbl_1_bss_810);
-    MgSeqCreatePrio(&lbl_1_data_448, M625_SEQUENCE_PRIORITY);
-    MgSeqModeHookAdd(4, fn_1_13E14);
-    MgSeqModeDelaySet(2, -1);
-    MgSeqModeDelaySet(7, -1);
+    lbl_1_bss_810 = fn_8003A8BC(M625_OBJECT_SLOT_COUNT, M625_PROCESS_STACK_SIZE);
+    fn_80069F1C(lbl_1_bss_810);
+    fn_800707B4(&lbl_1_data_448, M625_SEQUENCE_PRIORITY);
+    fn_80071D20(4, fn_1_13E14);
+    fn_80071CE8(2, -1);
+    fn_80071CE8(7, -1);
 }

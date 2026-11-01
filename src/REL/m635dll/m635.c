@@ -6,7 +6,7 @@
 
 u16 lbl_1_data_0[6] = {
     PAD_BUTTON_A, PAD_BUTTON_B, PAD_BUTTON_X, PAD_BUTTON_Y,
-    PAD_BUTTON_TRIGGER_L, PAD_BUTTON_TRIGGER_R
+    0x4000, 0x2000
 };
 char lbl_1_data_C[6] = { 'A', 'B', 'X', 'Y', 'L', 'R' };
 s16 lbl_1_data_12[4][2] = { { 60, 30 }, { 55, 25 }, { 40, 15 }, { 32, 6 } };
@@ -24,9 +24,9 @@ MGSEQ_PARAM lbl_1_data_78 = {
 /* MGSEQ initialization callback: create the object manager and start the sequence. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_64 = omInitObjMan(256, 8192);
-    omGameSysInit(lbl_1_bss_64);
-    MgSeqCreate(&lbl_1_data_78);
+    lbl_1_bss_64 = fn_8003A8BC(256, 8192);
+    fn_80069F1C(lbl_1_bss_64);
+    fn_80070788(&lbl_1_data_78);
 }
 
 /* MGSEQ setup callback registered in lbl_1_data_78: initialize gameplay and create scene/player
@@ -39,7 +39,7 @@ void fn_1_F0(s16 mode, s16 frameNo)
     fn_1_2954();
     fn_1_4114();
     fn_1_2018();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* MGSEQ fade-in callback registered in lbl_1_data_78: advance the intro and update player/team
@@ -94,7 +94,7 @@ void fn_1_224(s16 mode, s16 frameNo)
             }
         }
         if (lbl_1_bss_4.winner == -1) {
-            MgSeqDrawSet();
+            fn_80071C70();
         }
         HuAudSStreamFadeOut(lbl_1_bss_4.music, 100);
     }
@@ -109,7 +109,7 @@ void fn_1_2D0(s16 mode, s16 frameNo)
 {
     switch (lbl_1_bss_4.state) {
         case 0:
-            MgSeqModeChangeOff();
+            fn_80071B08();
             WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 60);
             lbl_1_bss_4.state++;
             break;
@@ -128,7 +128,7 @@ void fn_1_2D0(s16 mode, s16 frameNo)
             if (!WipeCheck()) {
                 lbl_1_bss_4.state = 0;
                 fn_1_8B0();
-                MgSeqModeNext();
+                fn_80071A9C();
             }
             break;
     }

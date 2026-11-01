@@ -23,12 +23,12 @@ void fn_1_1FF4(s32 cameraIndex)
     HU3D_MOTIONID cameraMotion;
 
     cameraMotion = lbl_1_bss_10.cameraMotions[cameraIndex];
-    cameraModel = Hu3DModelCameraCreate(cameraMotion, HU3D_CAM0);
-    Hu3DCameraMotionStart(cameraModel, HU3D_CAM0);
+    cameraModel = fn_800283F4(cameraMotion, (1 << 0));
+    fn_800284C8(cameraModel, (1 << 0));
     lbl_1_bss_10.cameraTime = 0.0f;
-    lbl_1_bss_10.cameraMaxTime = Hu3DMotionMaxTimeGet(cameraModel);
-    if (lbl_1_bss_10.activeCameraModel != HU3D_MODELID_NONE) {
-        Hu3DModelKill(lbl_1_bss_10.activeCameraModel);
+    lbl_1_bss_10.cameraMaxTime = fn_8002D530(cameraModel);
+    if (lbl_1_bss_10.activeCameraModel != -1) {
+        fn_800262D0(lbl_1_bss_10.activeCameraModel);
     }
     lbl_1_bss_10.activeCameraModel = cameraModel;
     OSReport("start camera motion ... idx:%d time:%f\n", cameraIndex, lbl_1_bss_10.cameraMaxTime);
@@ -37,13 +37,13 @@ void fn_1_1FF4(s32 cameraIndex)
 /* Used by the opening callback to test whether the active camera motion has ended. */
 BOOL fn_1_20D8(void)
 {
-    return Hu3DMotionEndCheck(lbl_1_bss_10.activeCameraModel);
+    return fn_8002D75C(lbl_1_bss_10.activeCameraModel);
 }
 
 /* Called by initialization and result callbacks to set a seat's shared player display motion. */
 void fn_1_2104(s32 playerNo, s32 motionNo)
 {
-    Hu3DMotionSet(lbl_1_bss_10.playerModels[playerNo], lbl_1_bss_10.playerMotions[motionNo]);
+    fn_8002C95C(lbl_1_bss_10.playerModels[playerNo], lbl_1_bss_10.playerMotions[motionNo]);
 }
 
 /* Called by sequence callbacks to change a player's base pose; motion 12 is always restarted.
@@ -51,20 +51,20 @@ void fn_1_2104(s32 playerNo, s32 motionNo)
 void fn_1_215C(s32 playerNo, s32 motionNo)
 {
     if (motionNo == 12 || lbl_1_bss_10.playerBaseMotions[playerNo][motionNo]
-        != Hu3DMotionIDGet(lbl_1_bss_10.playerBaseModels[playerNo])) {
-        Hu3DMotionSet(lbl_1_bss_10.playerBaseModels[playerNo],
+        != fn_8002D3C4(lbl_1_bss_10.playerBaseModels[playerNo])) {
+        fn_8002C95C(lbl_1_bss_10.playerBaseModels[playerNo],
             lbl_1_bss_10.playerBaseMotions[playerNo][motionNo]);
-        Hu3DModelAttrSet(lbl_1_bss_10.playerBaseModels[playerNo], HU3D_MOTATTR_LOOP);
+        fn_800269E8(lbl_1_bss_10.playerBaseModels[playerNo], ((1 << 30) | (1 << 0)));
         OSReport("base motion time ... %f\n",
-            Hu3DMotionMaxTimeGet(lbl_1_bss_10.playerBaseModels[playerNo]));
+            fn_8002D530(lbl_1_bss_10.playerBaseModels[playerNo]));
     }
 }
 
 /* Called when a round or final result is presented to set the center gear motion. */
 void fn_1_2254(s32 motionNo)
 {
-    Hu3DMotionSet(lbl_1_bss_10.centerModel, lbl_1_bss_10.centerMotions[motionNo]);
-    OSReport("gear motion time ... %f\n", Hu3DMotionMaxTimeGet(lbl_1_bss_10.centerModel));
+    fn_8002C95C(lbl_1_bss_10.centerModel, lbl_1_bss_10.centerMotions[motionNo]);
+    OSReport("gear motion time ... %f\n", fn_8002D530(lbl_1_bss_10.centerModel));
 }
 
 /* Called by round callbacks to shift a character when its action changes; motion 10 always starts a
@@ -74,9 +74,9 @@ void fn_1_22BC(s32 playerNo, s32 motionNo, u32 motionAttributes)
     HU3D_MOTIONID currentMotion;
     float shiftStartFrame = 0.0f;
 
-    currentMotion = Hu3DMotionIDGet(lbl_1_bss_10.characterModels[playerNo]);
+    currentMotion = fn_8002D3C4(lbl_1_bss_10.characterModels[playerNo]);
     if (motionNo == 10 || currentMotion != lbl_1_bss_10.characterMotions[playerNo][motionNo]) {
-        CharMotionShiftSet(lbl_1_bss_10.characterNos[playerNo],
+        fn_8005C2C8(lbl_1_bss_10.characterNos[playerNo],
                            lbl_1_bss_10.characterMotions[playerNo][motionNo], shiftStartFrame, 8.0f,
                            motionAttributes);
     }

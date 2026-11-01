@@ -27,10 +27,10 @@ typedef struct M631ActorChanceTable {
 
 /* Character motion resources, shared through the Mario motion archive. */
 u32 lbl_1_data_100[8] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 55),
-    DATANUM(DATA_mariomot, 20), DATANUM(DATA_mariomot, 24),
-    DATANUM(DATA_mariomot, 39), DATANUM(DATA_mariomot, 40)
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x930000, 55),
+    DATANUM(0x930000, 20), DATANUM(0x930000, 24),
+    DATANUM(0x930000, 39), DATANUM(0x930000, 40)
 };
 
 extern s32 frandmod(s32 max);
@@ -128,30 +128,30 @@ void fn_1_5284(OMOBJ *object)
 
     work->object = object;
     work->playerNo = (s16)object->work[0];
-    work->charNo = GwPlayerConf[work->playerNo].charNo;
-    work->groupSelector = GwPlayerConf[work->playerNo].grpNo;
-    work->padNo = GwPlayerConf[work->playerNo].padNo;
-    work->isComputer = GwPlayerConf[work->playerNo].type;
-    work->difficulty = GwPlayerConf[work->playerNo].comDif;
+    work->charNo = lbl_80265728[work->playerNo].charNo;
+    work->groupSelector = lbl_80265728[work->playerNo].grpNo;
+    work->padNo = lbl_80265728[work->playerNo].padNo;
+    work->isComputer = lbl_80265728[work->playerNo].type;
+    work->difficulty = lbl_80265728[work->playerNo].comDif;
 
-    *object->mdlId = CharModelCreate(work->charNo, 2);
+    *object->mdlId = fn_80057068(work->charNo, 2);
     work->characterModelId = *object->mdlId;
     for (motionIndex = 0; motionIndex < 8; motionIndex++) {
         HU3D_MOTIONID motion =
-            CharMotionCreate(work->charNo, lbl_1_data_100[motionIndex]);
+            fn_8005B0B8(work->charNo, lbl_1_data_100[motionIndex]);
 
         (&work->idleMotionId)[motionIndex] = motion;
         object->mtnId[motionIndex] = motion;
     }
-    CharMotionSet(work->charNo, object->mtnId[0]);
-    CharModelAttrReset(work->charNo, HU3D_MOTATTR_PAUSE);
-    CharModelAttrSet(work->charNo, HU3D_MOTATTR_LOOP);
-    CharModelAttrReset(work->charNo, HU3D_ATTR_DISPOFF);
-    CharMotionDataClose(work->charNo);
-    CharModelVoiceFlagSet(work->charNo, 1);
-    CharEffectLayerSet(6);
-    CharModelStepSet(work->charNo, 0);
-    Hu3DModelLayerSet(work->characterModelId, 3);
+    fn_8005BE80(work->charNo, object->mtnId[0]);
+    fn_8005C47C(work->charNo, ((1 << 30) | (1 << 1)));
+    fn_8005C430(work->charNo, ((1 << 30) | (1 << 0)));
+    fn_8005C47C(work->charNo, (1 << 0));
+    fn_8005B4BC(work->charNo);
+    fn_8005DFC0(work->charNo, 1);
+    fn_8005DDEC(6);
+    fn_8005F77C(work->charNo, 0);
+    fn_80026B8C(work->characterModelId, 3);
 
     work->dispatchEnabled = 0;
     work->hit = 0;
@@ -174,10 +174,10 @@ void fn_1_5284(OMOBJ *object)
     work->randomOffset =
         360.0f *
         ((f32)frandmod(10001) / 10000.0f);
-    Hu3DModelPosSetV(work->characterModelId, &work->position);
+    fn_80026790(work->characterModelId, &work->position);
     omSetTra(work->object, work->position.x, work->position.y,
              work->position.z);
-    Hu3DModelRotSetV(work->characterModelId, &work->rotation);
+    fn_80026838(work->characterModelId, &work->rotation);
     omSetRot(work->object, work->rotation.x, work->rotation.y,
              work->rotation.z);
     fn_1_3B44((M631ActorWork *)work);
@@ -304,14 +304,14 @@ void fn_1_5AAC(M631ActorWork *actor, s32 teamIndex, s32 isGroundPlayer)
         fn_1_AFF8(&actor->callbackWork, 50.0f, 2);
         fn_1_AF2C(&actor->callbackWork, (u32)actor, (u32)fn_1_6C2C,
                   (u32)fn_1_6C3C, (u32)fn_1_6D80, &actor->position);
-        Hu3DModelShadowSet(actor->characterModelId);
+        fn_80026E44(actor->characterModelId);
         fn_1_3BF4(&actor->hitEffect);
     } else {
         fn_1_AFF8(&actor->callbackWork, fn_1_2528(), 0);
         fn_1_AF2C(&actor->callbackWork, (u32)actor, (u32)fn_1_6724,
                   (u32)fn_1_674C, (u32)fn_1_6A14, &actor->position);
         fn_1_228C(&actor->setupWork.modelId);
-        CharMotionSet(actor->charNo, actor->airborneMotionId);
+        fn_8005BE80(actor->charNo, actor->airborneMotionId);
         actor->setupWork.animationQueue = fn_1_2E9C();
     }
     if (actor->isComputer != 0) {
@@ -351,10 +351,10 @@ void fn_1_5BBC(M631ActorWork *work)
         } else {
             work->releaseFrames += 1;
             if (work->releaseFrames >= 10) {
-                Hu3DModelAttrSet(work->setupWork.releaseModelId, HU3D_ATTR_DISPOFF);
+                fn_800269E8(work->setupWork.releaseModelId, (1 << 0));
                 node = fn_1_31D8(work->setupWork.animationQueue);
                 if (node != 0) {
-                    omVibrate(work->playerNo, 20, 4, 4);
+                    fn_8006A030(work->playerNo, 20, 4, 4);
                     node->position.x = work->position.x;
                     node->position.y = work->position.y;
                     node->position.z = work->position.z;
@@ -372,9 +372,9 @@ void fn_1_5BBC(M631ActorWork *work)
                     work->releaseFrames = 0;
                 }
             } else {
-                Hu3DModelPosSetV(work->setupWork.releaseModelId, &work->position);
-                Hu3DModelRotSetV(work->setupWork.releaseModelId, &work->rotation);
-                Hu3DModelAttrReset(work->setupWork.releaseModelId, HU3D_ATTR_DISPOFF);
+                fn_80026790(work->setupWork.releaseModelId, &work->position);
+                fn_80026838(work->setupWork.releaseModelId, &work->rotation);
+                fn_80026A44(work->setupWork.releaseModelId, (1 << 0));
             }
         }
     } else {
@@ -402,23 +402,23 @@ void fn_1_5F20(M631ActorWork *work)
 {
     if (work->movementRequested != 0) {
         if (work->movementStrength < 0.25f) {
-            if (work->slowMoveMotionId != Hu3DMotionIDGet(work->characterModelId) &&
-                work->slowMoveMotionId != Hu3DMotionShiftIDGet(work->characterModelId)) {
-                CharMotionShiftSet(work->charNo, work->slowMoveMotionId,
+            if (work->slowMoveMotionId != fn_8002D3C4(work->characterModelId) &&
+                work->slowMoveMotionId != fn_8002D3EC(work->characterModelId)) {
+                fn_8005C2C8(work->charNo, work->slowMoveMotionId,
                                    0.0f, 5.0f,
-                                   HU3D_MOTATTR_LOOP);
+                                   ((1 << 30) | (1 << 0)));
             }
-        } else if (work->fastMoveMotionId != Hu3DMotionIDGet(work->characterModelId) &&
-                   work->fastMoveMotionId != Hu3DMotionShiftIDGet(work->characterModelId)) {
-            CharMotionShiftSet(work->charNo, work->fastMoveMotionId,
+        } else if (work->fastMoveMotionId != fn_8002D3C4(work->characterModelId) &&
+                   work->fastMoveMotionId != fn_8002D3EC(work->characterModelId)) {
+            fn_8005C2C8(work->charNo, work->fastMoveMotionId,
                                0.0f, 5.0f,
-                               HU3D_MOTATTR_LOOP);
+                               ((1 << 30) | (1 << 0)));
         }
-    } else if (work->idleMotionId != Hu3DMotionIDGet(work->characterModelId) &&
-               work->idleMotionId != Hu3DMotionShiftIDGet(work->characterModelId)) {
-        CharMotionShiftSet(work->charNo, work->idleMotionId,
+    } else if (work->idleMotionId != fn_8002D3C4(work->characterModelId) &&
+               work->idleMotionId != fn_8002D3EC(work->characterModelId)) {
+        fn_8005C2C8(work->charNo, work->idleMotionId,
                            0.0f, 5.0f,
-                           HU3D_MOTATTR_LOOP);
+                           ((1 << 30) | (1 << 0)));
     }
     work->movementRequested = 0;
 }
@@ -427,8 +427,8 @@ void fn_1_5F20(M631ActorWork *work)
  * the A button. */
 void fn_1_6090(M631ActorWork *work)
 {
-    f32 stickX = HuPadStkX[work->padNo];
-    f32 stickY = -HuPadStkY[work->padNo];
+    f32 stickX = lbl_802BFFFC[work->padNo];
+    f32 stickY = -lbl_802BFFF8[work->padNo];
     f32 stickMagnitude = (stickX * stickX) + (stickY * stickY);
     f32 angle;
     f32 atanAngle;
@@ -464,7 +464,7 @@ void fn_1_6090(M631ActorWork *work)
         work->accelerationFrames = 0;
     }
     work->releaseRequested = 0;
-    if ((HuPadBtnDown[work->padNo] & PAD_BUTTON_A) != 0) {
+    if ((lbl_802C0008[work->padNo] & PAD_BUTTON_A) != 0) {
         work->releaseRequested = 1;
     }
 }
@@ -473,8 +473,8 @@ void fn_1_6090(M631ActorWork *work)
  * stick strength. */
 void fn_1_636C(M631ActorWork *work)
 {
-    f32 stickX = HuPadStkX[work->padNo];
-    f32 stickY = -HuPadStkY[work->padNo];
+    f32 stickX = lbl_802BFFFC[work->padNo];
+    f32 stickY = -lbl_802BFFF8[work->padNo];
     f32 stickMagnitude = (stickX * stickX) + (stickY * stickY);
     f32 adjustedAngle;
     f32 angle;
@@ -572,8 +572,8 @@ s32 fn_1_674C(M631ActorWork *callbackActor) {
     if (actor->position.z > 450.0f) {
         actor->position.z = (f32) 450.0f;
     }
-    Hu3DModelPosSetV(actor->setupWork.modelId, &actor->position);
-    Hu3DModelRotSetV(actor->setupWork.modelId, &actor->rotation);
+    fn_80026790(actor->setupWork.modelId, &actor->position);
+    fn_80026838(actor->setupWork.modelId, &actor->rotation);
     return 0;
 }
 
@@ -646,12 +646,12 @@ s32 fn_1_6C3C(void *callbackData) {
     if (actor->position.x > 625.0f) actor->position.x = 625.0f;
     if (actor->position.z < (-450.0f)) actor->position.z = (-450.0f);
     if (actor->position.z > 450.0f) actor->position.z = 450.0f;
-    Hu3DModelPosSetV(actor->characterModelId, &actor->position);
+    fn_80026790(actor->characterModelId, &actor->position);
     omSetTra(actor->object, actor->position.x, actor->position.y, actor->position.z);
-    Hu3DModelRotSetV(actor->characterModelId, &actor->rotation);
+    fn_80026838(actor->characterModelId, &actor->rotation);
     omSetRot(actor->object, actor->rotation.x, actor->rotation.y, actor->rotation.z);
     if (actor->hit != 0) {
-        CharFXPlayPan(actor->charNo, CHARVOICEID(3), (s16) fn_1_51D0(actor->position.x));
+        CharFXPlayPan(actor->charNo, (573+3), (s16) fn_1_51D0(actor->position.x));
         fn_1_738C(actor);
         return 1;
     }
@@ -695,7 +695,7 @@ void fn_1_6D80(M631MotionPairNode *motion, M631MotionPairNode *target,
         return;
     }
     case 3:
-        CharModelVoiceFlagSet(owner->charNo, 0);
+        fn_8005DFC0(owner->charNo, 0);
         {
             f32 deltaX;
             f32 deltaZ;
@@ -754,7 +754,7 @@ void fn_1_6D80(M631MotionPairNode *motion, M631MotionPairNode *target,
             owner->direction.y = 30.0f;
             owner->direction.z = (f32)(-distance * cos((f64)angleForTrig));
             if (owner->hit == 0) {
-                HuAudFXPlayPan(MSM_SE_M631_07,
+                HuAudFXPlayPan(1845,
                                (s16)fn_1_51D0(owner->position.x));
             }
             owner->hit = 1;
@@ -790,7 +790,7 @@ void fn_1_6D80(M631MotionPairNode *motion, M631MotionPairNode *target,
             owner->direction.z = (f32)(-distance * cos((f64)angleForTrig));
         }
         if (owner->hit == 0) {
-            HuAudFXPlayPan(MSM_SE_M631_07, (s16)fn_1_51D0(owner->position.x));
+            HuAudFXPlayPan(1845, (s16)fn_1_51D0(owner->position.x));
         }
         owner->hit = 1;
         break;
@@ -801,21 +801,21 @@ void fn_1_6D80(M631MotionPairNode *motion, M631MotionPairNode *target,
  * jobs. */
 void fn_1_738C(M631ActorWork *actor) {
     fn_1_3BC4();
-    omVibrate(actor->playerNo, 20, 20, 0);
+    fn_8006A030(actor->playerNo, 20, 20, 0);
     fn_1_B0B8(fn_1_749C, actor);
-    CharMotionShiftSet(actor->charNo, actor->eliminatedMotionId, 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
+    fn_8005C2C8(actor->charNo, actor->eliminatedMotionId, 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
     if (fn_1_B0B8(fn_1_7448, &actor->hitEffect)) {
-        Hu3DModelAttrReset(actor->hitEffect.modelId, HU3D_MOTATTR_PAUSE);
-        Hu3DModelAttrReset(actor->hitEffect.modelId, HU3D_ATTR_DISPOFF);
-        Hu3DModelPosSetV(actor->hitEffect.modelId, &actor->hitEffect.position);
+        fn_80026A44(actor->hitEffect.modelId, ((1 << 30) | (1 << 1)));
+        fn_80026A44(actor->hitEffect.modelId, (1 << 0));
+        fn_80026790(actor->hitEffect.modelId, &actor->hitEffect.position);
     }
 }
 
 /* The elimination effect job hides its model and finishes after the animation ends. */
 s32 fn_1_7448(void *callbackData) {
     M631ActorMotionState *state = (M631ActorMotionState *) callbackData;
-    if (Hu3DMotionEndCheck(state->modelId) != 0) {
-        Hu3DModelAttrSet(state->modelId, HU3D_ATTR_DISPOFF);
+    if (fn_8002D75C(state->modelId) != 0) {
+        fn_800269E8(state->modelId, (1 << 0));
         return 1;
     }
     return 0;
@@ -834,15 +834,15 @@ s32 fn_1_749C(void *callbackData) {
     while (actor->rotation.y < (-180.0f)) {
         actor->rotation.y += 360.0f;
     }
-    Hu3DModelPosSetV(actor->characterModelId, &actor->position);
+    fn_80026790(actor->characterModelId, &actor->position);
     omSetTra(actor->object, actor->position.x, actor->position.y, actor->position.z);
-    Hu3DModelRotSetV(actor->characterModelId, &actor->rotation);
+    fn_80026838(actor->characterModelId, &actor->rotation);
     omSetRot(actor->object, actor->rotation.x, actor->rotation.y, actor->rotation.z);
     /* The character keeps its upward velocity until this height cutoff. */
     if (actor->position.y > 1000.0f) {
-        CharMotionSet(actor->charNo, actor->idleMotionId);
-        CharModelAttrSet(actor->charNo, HU3D_ATTR_DISPOFF);
-        CharModelAttrSet(actor->charNo, HU3D_MOTATTR_PAUSE);
+        fn_8005BE80(actor->charNo, actor->idleMotionId);
+        fn_8005C430(actor->charNo, (1 << 0));
+        fn_8005C430(actor->charNo, ((1 << 30) | (1 << 1)));
         return 1;
     }
     return 0;
@@ -1960,10 +1960,10 @@ s32 fn_1_A920(void *callbackData)
 
     actor->releaseFrames++;
     if (actor->releaseFrames >= 10) {
-        Hu3DModelAttrSet(actor->setupWork.releaseModelId, HU3D_ATTR_DISPOFF);
+        fn_800269E8(actor->setupWork.releaseModelId, (1 << 0));
         node = fn_1_31D8(actor->setupWork.animationQueue);
         if (node) {
-            omVibrate(actor->playerNo, 20, 4, 4);
+            fn_8006A030(actor->playerNo, 20, 4, 4);
             node->position.x = actor->position.x;
             node->position.y = actor->position.y;
             node->position.z = actor->position.z;
@@ -1982,9 +1982,9 @@ s32 fn_1_A920(void *callbackData)
             return 1;
         }
     } else {
-        Hu3DModelPosSetV(actor->setupWork.releaseModelId, &actor->position);
-        Hu3DModelRotSetV(actor->setupWork.releaseModelId, &actor->rotation);
-        Hu3DModelAttrReset(actor->setupWork.releaseModelId, HU3D_ATTR_DISPOFF);
+        fn_80026790(actor->setupWork.releaseModelId, &actor->position);
+        fn_80026838(actor->setupWork.releaseModelId, &actor->rotation);
+        fn_80026A44(actor->setupWork.releaseModelId, (1 << 0));
     }
     return 0;
 }
@@ -1992,6 +1992,6 @@ s32 fn_1_A920(void *callbackData)
 /* The opening sequence starts a ground player's entrance animation and schedules the job that
  * restores idle when it ends. */
 void fn_1_AA78(M631ActorWork *actor) {
-    CharMotionShiftSet(actor->charNo, actor->entranceMotionId, 0.0f, 5.0f, HU3D_MOTATTR_NONE);
+    fn_8005C2C8(actor->charNo, actor->entranceMotionId, 0.0f, 5.0f, 0);
     fn_1_B0B8(fn_1_AAD8, actor);
 }

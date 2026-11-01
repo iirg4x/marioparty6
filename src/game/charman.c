@@ -41,11 +41,11 @@ typedef struct CharWork_s {
     s16 motNoShiftCurr; // Current motion number on the blending track.
     s16 motNoPrev; // Previous motion number on the main track.
     s16 motNoShiftPrev; // Previous motion number on the blending track.
-    HU3D_MOTIONID motId[CHAR_MOT_MAX]; // Loaded engine motion IDs indexed by character motion slot.
-    s16 motNoTbl[CHAR_MOT_MAX]; // Character motion number for each loaded motion slot.
+    HU3D_MOTIONID motId[32]; // Loaded engine motion IDs indexed by character motion slot.
+    s16 motNoTbl[32]; // Character motion number for each loaded motion slot.
     s16 vol; // Character voice volume passed to the audio system.
     s16 pan; // Character voice pan passed to the audio system.
-    u8 voiceFlag[CHAR_MOT_MAX]; // Voice and update flags for each loaded motion.
+    u8 voiceFlag[32]; // Voice and update flags for each loaded motion.
     u32 attr; // Character behavior flags defined by CHAR_ATTR_*.
     s8 stepFx; // Footstep sound variation selected for this character.
     HuVecF pos; // Last sampled model position in world coordinates.
@@ -78,15 +78,17 @@ typedef struct EffectParam_s {
 } EFFECTPARAM;
 
 static EFFECTDATA effectDataTbl[] = {
-    { EFFECT_ANM_danger, 10, HU3D_PARTICLE_BLEND_NORMAL, 2, { CHARMOT_HSF_c000m1_324, CHARMOT_HSF_c000m1_325 } },
-    { EFFECT_ANM_dust, 150, HU3D_PARTICLE_BLEND_ADDCOL, 0, { CHARMOT_HSF_c000m1_301, CHARMOT_HSF_c000m1_302, CHARMOT_HSF_c000m1_345, CHARMOT_HSF_c000m1_324, CHARMOT_HSF_c000m1_332 } },
-    { EFFECT_ANM_smoke, 70, HU3D_PARTICLE_BLEND_NORMAL, 0, { CHARMOT_HSF_c000m1_320 } },
-    { EFFECT_ANM_star, 300, HU3D_PARTICLE_BLEND_NORMAL, 0, { CHARMOT_HSF_c000m1_310 } },
-    { EFFECT_ANM_glow, 300, HU3D_PARTICLE_BLEND_ADDCOL, 0, {} },
-    { EFFECT_ANM_circle, 200, HU3D_PARTICLE_BLEND_ADDCOL, 0, { CHARMOT_HSF_c000m1_305 } },
-    { EFFECT_ANM_bird, 12, HU3D_PARTICLE_BLEND_NORMAL, 2, { CHARMOT_HSF_c000m1_321, CHARMOT_HSF_c000m1_322, CHARMOT_HSF_c000m1_465 } },
-    { EFFECT_ANM_cry, 100, HU3D_PARTICLE_BLEND_ADDCOL, 0, { CHARMOT_HSF_c000m1_344, CHARMOT_HSF_c000m1_345 } },
-    { EFFECT_ANM_land_dust, 100, HU3D_PARTICLE_BLEND_NORMAL, 0, { CHARMOT_HSF_c000m1_310, CHARMOT_HSF_c000m1_304 } },
+    { EFFECT_ANM_danger, 10, 0, 2, { CHARMOT_HSF_c000m1_324, CHARMOT_HSF_c000m1_325 } },
+    { EFFECT_ANM_dust, 150, 1, 0, { CHARMOT_HSF_c000m1_301, CHARMOT_HSF_c000m1_302,
+        CHARMOT_HSF_c000m1_345, CHARMOT_HSF_c000m1_324, CHARMOT_HSF_c000m1_332 } },
+    { EFFECT_ANM_smoke, 70, 0, 0, { CHARMOT_HSF_c000m1_320 } },
+    { EFFECT_ANM_star, 300, 0, 0, { CHARMOT_HSF_c000m1_310 } },
+    { EFFECT_ANM_glow, 300, 1, 0, {} },
+    { EFFECT_ANM_circle, 200, 1, 0, { CHARMOT_HSF_c000m1_305 } },
+    { EFFECT_ANM_bird, 12, 0, 2, { CHARMOT_HSF_c000m1_321, CHARMOT_HSF_c000m1_322,
+        CHARMOT_HSF_c000m1_465 } },
+    { EFFECT_ANM_cry, 100, 1, 0, { CHARMOT_HSF_c000m1_344, CHARMOT_HSF_c000m1_345 } },
+    { EFFECT_ANM_land_dust, 100, 0, 0, { CHARMOT_HSF_c000m1_310, CHARMOT_HSF_c000m1_304 } },
 };
 
 char *CharHeadObjNameTbl[15] = {
@@ -95,29 +97,29 @@ char *CharHeadObjNameTbl[15] = {
     "root_head", "root_head", "root_head",  "root_head", "root_head",
 };
 
-unsigned int CharDataDirTbl[CHARNO_MAX][6] = {
-    { DATA_mariomdl0, DATA_mariomdl1, DATA_mariomdl2, DATA_mariomdl3, DATA_mariomot, DATA_mario },
-    { DATA_luigimdl0, DATA_luigimdl1, DATA_luigimdl2, DATA_luigimdl3, DATA_luigimot, DATA_luigi },
-    { DATA_peachmdl0, DATA_peachmdl1, DATA_peachmdl2, DATA_peachmdl3, DATA_peachmot, DATA_peach },
-    { DATA_yoshimdl0, DATA_yoshimdl1, DATA_yoshimdl2, DATA_yoshimdl3, DATA_yoshimot, DATA_yoshi },
-    { DATA_wariomdl0, DATA_wariomdl1, DATA_wariomdl2, DATA_wariomdl3, DATA_wariomot, DATA_wario },
-    { DATA_daisymdl0, DATA_daisymdl1, DATA_daisymdl2, DATA_daisymdl3, DATA_daisymot, DATA_daisy },
-    { DATA_waluigimdl0, DATA_waluigimdl1, DATA_waluigimdl2, DATA_waluigimdl3, DATA_waluigimot, DATA_waluigi },
-    { DATA_kinopiomdl0, DATA_kinopiomdl1, DATA_kinopiomdl2, DATA_kinopiomdl3, DATA_kinopiomot, DATA_kinopio },
-    { DATA_teresamdl0, DATA_teresamdl1, DATA_teresamdl2, DATA_teresamdl3, DATA_teresamot, DATA_teresa },
-    { DATA_minikoopamdl0, DATA_minikoopamdl1, DATA_minikoopamdl2, DATA_minikoopamdl3, DATA_minikoopamot, DATA_minikoopa },
-    { DATA_kinopikomdl0, DATA_kinopikomdl1, DATA_kinopikomdl2, DATA_kinopikomdl3, DATA_kinopikomot, DATA_kinopiko },
-    { DATA_minikoopaRmdl0, DATA_minikoopaRmdl1, DATA_minikoopaRmdl2, DATA_minikoopaRmdl3, DATA_minikoopamot, DATA_minikoopa },
-    { DATA_minikoopaGmdl0, DATA_minikoopaGmdl1, DATA_minikoopaGmdl2, DATA_minikoopaGmdl3, DATA_minikoopamot, DATA_minikoopa },
-    { DATA_minikoopaBmdl0, DATA_minikoopaBmdl1, DATA_minikoopaBmdl2, DATA_minikoopaBmdl3, DATA_minikoopamot, DATA_minikoopa },
+unsigned int lbl_8022E718[14][6] = {
+    { 0x8f0000, 0x900000, 0x910000, 0x920000, 0x930000, 0x8e0000 },
+    { 0x370000, 0x380000, 0x390000, 0x3a0000, 0x3b0000, 0x360000 },
+    { 0xc10000, 0xc20000, 0xc30000, 0xc40000, 0xc50000, 0xc00000 },
+    { 0xf40000, 0xf50000, 0xf60000, 0xf70000, 0xf80000, 0xf30000 },
+    { 0xed0000, 0xee0000, 0xef0000, 0xf00000, 0xf10000, 0xec0000 },
+    { 0x150000, 0x160000, 0x170000, 0x180000, 0x190000, 0x140000 },
+    { 0xe70000, 0xe80000, 0xe90000, 0xea0000, 0xeb0000, 0xe60000 },
+    { 0x310000, 0x320000, 0x330000, 0x340000, 0x350000, 0x300000 },
+    { 0xd00000, 0xd10000, 0xd20000, 0xd30000, 0xd40000, 0xcf0000 },
+    { 0xb80000, 0xb90000, 0xba0000, 0xbb0000, 0xbc0000, 0xa80000 },
+    { 0x2b0000, 0x2c0000, 0x2d0000, 0x2e0000, 0x2f0000, 0x2a0000 },
+    { 0xb40000, 0xb50000, 0xb60000, 0xb70000, 0xbc0000, 0xa80000 },
+    { 0xaf0000, 0xb00000, 0xb10000, 0xb20000, 0xbc0000, 0xa80000 },
+    { 0xaa0000, 0xab0000, 0xac0000, 0xad0000, 0xbc0000, 0xa80000 },
 };
 
 static u8 lbl_8026F7B0[232];
-static u16 dustFlags[CHAR_NPC_MAX];
-static HUPROCESS *hookDustProc[CHAR_MOT_MAX];
+static u16 dustFlags[14];
+static HUPROCESS *hookDustProc[32];
 static EFFECTPARAM *effParamAll[EFFECT_MAX];
-static HU3D_MODELID effModelId[EFFECT_MAX][HU3D_CAM_MAX];
-static CHARWORK CharWork[CHARNO_MAX];
+static HU3D_MODELID effModelId[EFFECT_MAX][16];
+static CHARWORK CharWork[14];
 
 static s16 effectLayer;
 static BOOL motShiftF;
@@ -125,84 +127,84 @@ static AMEM_PTR effectAMemP;
 
 // Initializes character work records and the shared particle resources before characters are
 // created.
-void CharInit(void)
+void fn_80056428(void)
 {
     s16 i;
     s16 j;
-    for(i=0; i<CHARNO_MAX; i++) {
+    for(i=0; i<14; i++) {
         CHARWORK *workP = &CharWork[i];
         workP->motAMemP = 0;
-        for(j=0; j<CHAR_MOT_MAX; j++) {
-            workP->motId[j] = HU3D_MOTIONID_NONE;
+        for(j=0; j<32; j++) {
+            workP->motId[j] = -1;
         }
-        workP->modelId = HU3D_MODELID_NONE;
+        workP->modelId = -1;
         workP->process = NULL;
         workP->vol = MSM_VOL_MAX;
         workP->pan = MSM_PAN_CENTER;
     }
     if(!effectAMemP) {
-        effectAMemP = HuAR_DVDtoARAM(DATA_effect);
+        effectAMemP = HuAR_DVDtoARAM(0x210000);
     }
     for(i=0; i<EFFECT_MAX; i++) {
-        for(j=0; j<HU3D_CAM_MAX; j++) {
-            effModelId[i][j] = HU3D_MODELID_NONE;
+        for(j=0; j<16; j++) {
+            effModelId[i][j] = -1;
         }
         effParamAll[i] = NULL;
     }
-    for(i=0; i<CHAR_MOT_MAX; i++) {
+    for(i=0; i<32; i++) {
         hookDustProc[i] = NULL;
     }
     effectLayer = 0;
 }
 
 // Returns this character's current motion archive handle in audio RAM.
-AMEM_PTR CharMotionAMemPGet(s16 charNo)
+AMEM_PTR fn_80056598(s16 charNo)
 {
     return CharWork[charNo].motAMemP;
 }
 
 // Loads the selected character's motion archive into ARAM on first use.
-void CharMotionInit(s16 charNo)
+void fn_800565B4(s16 charNo)
 {
-    if(charNo >= CHARNO_MAX || charNo < 0 || charNo == (u8)CHARNO_NONE) {
+    if(charNo >= 14 || charNo < 0 || charNo == (u8)-1) {
         return;
     } else {
         CHARWORK *workP = &CharWork[charNo];
         if(!workP->motAMemP) {
-            workP->motAMemP = HuAR_DVDtoARAM(CharDataDirTbl[charNo][4]);
+            workP->motAMemP = HuAR_DVDtoARAM(lbl_8022E718[charNo][4]);
         }
     }
 }
 
 // Reads the motion archive asynchronously, waits for the read and DMA, then closes its MRAM
 // directory.
-void CharMotionInitAsync(s16 charNo)
+void fn_8005664C(s16 charNo)
 {
-    if(charNo >= CHARNO_MAX || charNo < 0 || charNo == (u8)CHARNO_NONE) {
+    if(charNo >= 14 || charNo < 0 || charNo == (u8)-1) {
         return;
     } else {
         CHARWORK *workP = &CharWork[charNo];
         if(!workP->motAMemP) {
-            s16 statId = HuDataDirReadAsync(CharDataDirTbl[charNo][4]);
-            while(!HuDataGetAsyncStat(statId)) {
+            s16 statId = fn_80007F20(lbl_8022E718[charNo][4]);
+            while(!fn_80008270(statId)) {
                 HuPrcVSleep();
             }
-            workP->motAMemP = HuAR_MRAMtoARAM(CharDataDirTbl[charNo][4]);
-            while(HuARDMACheck()) {
+            workP->motAMemP = HuAR_MRAMtoARAM(lbl_8022E718[charNo][4]);
+            while(fn_80055FB4()) {
                 HuPrcVSleep();
             }
-            HuDataDirClose(CharDataDirTbl[charNo][4]);
+            fn_800097F4(lbl_8022E718[charNo][4]);
         }
     }
 }
 
 // Frees the ARAM motion archive only if its source directory is present, then clears the stored
 // handle either way.
-void CharMotionClose(s16 charNo)
+void fn_80056754(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
     if(workP->motAMemP) {
-        if(HuARDirCheck(CharDataDirTbl[charNo][4])) {
+        if(HuARDirCheck(lbl_8022E718[charNo][4])) {
             HuARFree(workP->motAMemP);
         }
         workP->motAMemP = 0;
@@ -211,23 +213,23 @@ void CharMotionClose(s16 charNo)
 
 // Closes all model directories and motion storage for one character, or all characters for
 // CHARNO_NONE.
-void CharDataClose(s16 charNo)
+void fn_800567D8(s16 charNo)
 {
     s16 i;
-    if(charNo == CHARNO_NONE) {
-        for(i=0; i<CHARNO_MAX; i++) {
-            CharDataClose(i);
+    if(charNo == -1) {
+        for(i=0; i<14; i++) {
+            fn_800567D8(i);
         }
     } else {
         for(i=0; i<5; i++) {
-            HuDataDirClose(CharDataDirTbl[charNo][i]);
+            fn_800097F4(lbl_8022E718[charNo][i]);
         }
-        CharMotionClose(charNo);
+        fn_80056754(charNo);
     }
 }
 
 // Orders cached character motion archives according to the requested character sequence.
-void CharMotionLoad(s16 *statList)
+void fn_80056B7C(s16 *statList)
 {
     CHARWORK *workP;
     CHARWORK *workList[4];
@@ -241,7 +243,7 @@ void CharMotionLoad(s16 *statList)
     void *data2;
     HUDATASTAT *statusP;
     OSTime start = OSGetTick();
-    for(workP=CharWork, cnt=0, i=cnt; i<CHARNO_MAX; i++, workP++) {
+    for(workP=CharWork, cnt=0, i=cnt; i<14; i++, workP++) {
         if(workP->motAMemP) {
             noList[cnt] = i;
             workList[cnt++] = workP;
@@ -273,20 +275,20 @@ void CharMotionLoad(s16 *statList)
     for(i=cnt-1; i>=0; i--) {
         for(j=0; j<i; j++) {
             if(sortList[j] > sortList[j+1]) {
-                data1 = HuAR_ARAMtoMRAM(workList[j]->motAMemP);
-                while(HuARDMACheck()) {}
-                data2 = HuAR_ARAMtoMRAM(workList[j+1]->motAMemP);
-                while(HuARDMACheck()) {}
+                data1 = fn_80055D40(workList[j]->motAMemP);
+                while(fn_80055FB4()) {}
+                data2 = fn_80055D40(workList[j+1]->motAMemP);
+                while(fn_80055FB4()) {}
                 HuARFree(workList[j]->motAMemP);
                 HuARFree(workList[j+1]->motAMemP);
                 workList[j+1]->motAMemP = HuAR_MRAMtoARAM2(data2);
-                while(HuARDMACheck()) {}
+                while(fn_80055FB4()) {}
                 workList[j]->motAMemP = HuAR_MRAMtoARAM2(data1);
-                while(HuARDMACheck()) {}
-                statusP = HuDataGetStatus(data1);
-                HuDataDirClose(statusP->dirId << 16);
-                statusP = HuDataGetStatus(data2);
-                HuDataDirClose(statusP->dirId << 16);
+                while(fn_80055FB4()) {}
+                statusP = fn_800077AC(data1);
+                fn_800097F4(statusP->dirId << 16);
+                statusP = fn_800077AC(data2);
+                fn_800097F4(statusP->dirId << 16);
                 tmp = sortList[j]; sortList[j] = sortList[j+1]; sortList[j+1] = tmp;
                 tmp = noList[j]; noList[j] = noList[j+1]; noList[j+1] = tmp;
                 workP = workList[j]; workList[j] = workList[j+1]; workList[j+1] = workP;
@@ -385,23 +387,23 @@ static s8 jumpVoiceTimeTbl[28] = {
     1, 3,
 };
 
-static u8 boardWinAnimLen[CHARNO_MAX] = { 14, 0, 46, 72, 20, 34, 41, 0, 0, 17, 0, 17, 17, 17 };
-static u8 winAnimLen[CHARNO_MAX] = { 18, 0, 30, 106, 0, 0, 24, 24, 90, 60, 60, 60, 60, 60 };
-static u8 handUpAnimLen[CHARNO_MAX] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-static u8 okAnimLen[CHARNO_MAX] = { 0, 0, 24, 90, 30, 0, 18, 42, 96, 30, 42, 30, 30, 30 };
-static u8 winAnimLen2[CHARNO_MAX] = { 18, 0, 30, 106, 0, 0, 24, 24, 90, 60, 24, 60, 60, 60 };
-static u8 holdUpAnimLen[CHARNO_MAX] = { 0, 6, 0, 78, 0, 16, 50, 0, 54, 38, 0, 38, 38, 38 };
-static u8 winJumpUpAnimLen[CHARNO_MAX] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-static u8 loseAnimLen[CHARNO_MAX] = { 18, 0, 36, 106, 0, 0, 24, 24, 90, 60, 24, 60, 60, 60 };
+static u8 boardWinAnimLen[14] = { 14, 0, 46, 72, 20, 34, 41, 0, 0, 17, 0, 17, 17, 17 };
+static u8 winAnimLen[14] = { 18, 0, 30, 106, 0, 0, 24, 24, 90, 60, 60, 60, 60, 60 };
+static u8 handUpAnimLen[14] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static u8 okAnimLen[14] = { 0, 0, 24, 90, 30, 0, 18, 42, 96, 30, 42, 30, 30, 30 };
+static u8 winAnimLen2[14] = { 18, 0, 30, 106, 0, 0, 24, 24, 90, 60, 24, 60, 60, 60 };
+static u8 holdUpAnimLen[14] = { 0, 6, 0, 78, 0, 16, 50, 0, 54, 38, 0, 38, 38, 38 };
+static u8 winJumpUpAnimLen[14] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static u8 loseAnimLen[14] = { 18, 0, 36, 106, 0, 0, 24, 24, 90, 60, 24, 60, 60, 60 };
 
-static s8 jumpAnimLen[CHARNO_MAX] = { 42, 42, 43, 52, 42, 42, -1, 42, 42, 42, 42, 42, 42, 42 };
+static s8 jumpAnimLen[14] = { 42, 42, 43, 52, 42, 42, -1, 42, 42, 42, 42, 42, 42, 42 };
 
 // Ignores charNo: releases all character models and data for shutdown, then frees the shared effect
 // archive.
-void CharClose(s16 charNo)
+void fn_8005702C(s16 charNo)
 {
-    CharModelKill(CHARNO_NONE);
-    CharDataClose(CHARNO_NONE);
+    fn_8005BB8C(-1);
+    fn_800567D8(-1);
     HuARFree(effectAMemP);
     effectAMemP = 0;
 }
@@ -412,7 +414,7 @@ static s16 GetStepType(void);
 
 // Creates a character model and its animation process, selecting the model archive from the variant
 // flags.
-HU3D_MODELID CharModelCreate(s16 charNo, s16 model)
+HU3D_MODELID fn_80057068(s16 charNo, s16 model)
 {
     s16 unused = 0; // This initialized local is not read during model setup.
     CHARWORK *workP = &CharWork[charNo];
@@ -421,27 +423,27 @@ HU3D_MODELID CharModelCreate(s16 charNo, s16 model)
     s16 *characterNoPtr;
     void *modelData;
 
-    if(workP->modelId != HU3D_MODELID_NONE) {
-        Hu3DModelKill(workP->modelId);
+    if(workP->modelId != -1) {
+        fn_800262D0(workP->modelId);
     }
-    if(model & CHAR_MODEL0) {
-        dataNum = CharDataDirTbl[charNo][0];
-    } else if(model & CHAR_MODEL1) {
-        dataNum = CharDataDirTbl[charNo][1];
-    } else if(model & CHAR_MODEL2) {
-        dataNum = CharDataDirTbl[charNo][2];
+    if(model & (1 << 0)) {
+        dataNum = lbl_8022E718[charNo][0];
+    } else if(model & (1 << 1)) {
+        dataNum = lbl_8022E718[charNo][1];
+    } else if(model & (1 << 2)) {
+        dataNum = lbl_8022E718[charNo][2];
     } else {
-        dataNum = CharDataDirTbl[charNo][3];
+        dataNum = lbl_8022E718[charNo][3];
     }
-    modelData = HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
-    workP->modelId = modelId = Hu3DModelCreate(modelData);
-    workP->process = HuPrcCreate(UpdateChar, 99, 16384, 0);
+    modelData = fn_80008DD0(dataNum, 0x10000000, 2);
+    workP->modelId = modelId = fn_80025A04(modelData);
+    workP->process = fn_8000D818(UpdateChar, 99, 16384, 0);
     workP->process->property = characterNoPtr = HuMemDirectMalloc(HEAP_HEAP, sizeof(s16));
     workP->model = model;
     workP->attr = 0;
     *characterNoPtr = charNo;
     workP->stepFx = GetStepType();
-    Hu3DMotionTimingHookSet(modelId, CharTimingHook);
+    fn_8002DB98(modelId, CharTimingHook);
     workP->timingHookNo = 0;
     workP->motNoPlay[0] = workP->motNoPlay[1] = 32767;
     return modelId;
@@ -452,7 +454,7 @@ static void CharTimingHook(HU3D_MODELID modelId, HU3D_MOTIONID motId, BOOL lagF)
 {
     CHARWORK *workP = &CharWork[0];
     s16 i;
-    for(i=0; i<CHARNO_MAX; i++, workP++) {
+    for(i=0; i<14; i++, workP++) {
         if(workP->modelId == modelId) {
             workP->timingHookNo++;
             break;
@@ -470,9 +472,9 @@ static void EyeBmpUpdate(s16 charNo);
 // effects each frame.
 static void UpdateChar(void)
 {
-    s16 *characterNoPtr = HuPrcCurrentGet()->property;
+    s16 *characterNoPtr = fn_8000DD9C()->property;
     CHARWORK *workP = &CharWork[*characterNoPtr];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     s16 updateBmpF = FALSE;
     HuVecF pos;
     s16 timingHookNo;
@@ -486,8 +488,8 @@ static void UpdateChar(void)
         s16 motIdShift;
         s16 i;
         motNo = motNoShift = -1;
-        if(modelP->motId != HU3D_MOTIONID_NONE) {
-            for(i=0; i<CHAR_MOT_MAX; i++) {
+        if(modelP->motId != -1) {
+            for(i=0; i<32; i++) {
                 if(workP->motId[i] == modelP->motId) {
                     motNo = workP->motNoTbl[i];
                     motId = i;
@@ -495,8 +497,8 @@ static void UpdateChar(void)
                 }
             }
         }
-        if(modelP->motIdShift != HU3D_MOTIONID_NONE) {
-            for(i=0; i<CHAR_MOT_MAX; i++) {
+        if(modelP->motIdShift != -1) {
+            for(i=0; i<32; i++) {
                 if(workP->motId[i] == modelP->motIdShift) {
                     motNoShift = workP->motNoTbl[i];
                     motIdShift = i;
@@ -515,7 +517,7 @@ static void UpdateChar(void)
         } else {
             workP->motNoCurr = -1;
         }
-        if(modelP->motIdShift != HU3D_MOTIONID_NONE) {
+        if(modelP->motIdShift != -1) {
             motShiftF = TRUE;
             updateBmpF = TRUE;
             if(motNoShift != -1) {
@@ -604,7 +606,7 @@ static inline s32 GetMotNoPlayTime(CHARWORK *workP, s16 motNo)
     return -1;
 }
 
-s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag);
+s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
 static s16 CharWinVoicePlay(s16 charNo, u8 voiceFlag);
 static s16 EffectDustCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
                             EFFECTPARAM *param);
@@ -623,7 +625,7 @@ static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag);
 static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voiceFlag, s16 frameNo,
                            HuVecF *ofs)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     CHARWORK *workP = &CharWork[charNo];
     u32 attrOld = 0;
     s16 i;
@@ -632,25 +634,25 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
     HuVecF pos;
     HuVecF hitPos;
     float warnSize;
-    if(!motShiftF && (modelP->motAttr & HU3D_MOTATTR_PAUSE)) {
+    if(!motShiftF && (modelP->motAttr & ((1 << 30) | (1 << 1)))) {
         return;
     }
     if(voiceFlag & CHAR_MOTION_UPDATE_OFF) {
         return;
     }
     switch(motNo) {
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_315):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_317):
+        case FILENUM(CHARMOT_HSF_c000m1_315):
+        case FILENUM(CHARMOT_HSF_c000m1_317):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARVOICEID(9), voiceFlag);
+                fn_800591C8(charNo, (573+9), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_301):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_332):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_433):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_442):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_448):
+        case FILENUM(CHARMOT_HSF_c000m1_301):
+        case FILENUM(CHARMOT_HSF_c000m1_332):
+        case FILENUM(CHARMOT_HSF_c000m1_433):
+        case FILENUM(CHARMOT_HSF_c000m1_442):
+        case FILENUM(CHARMOT_HSF_c000m1_448):
             if(!motShiftF && modelP->motWork.speed <= 0.5) {
                 break;
             }
@@ -658,31 +660,31 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 break;
             }
             if((frameNo & (16 - 1)) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                dustEffParam.vel.x = -HuSin(modelP->rot.y)*2.0;
+                dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2.0;
                 dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                dustEffParam.vel.z = -HuCos(modelP->rot.y)*2.0;
+                dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2.0;
                 pos.x = modelP->pos.x+(modelP->scale.x*(frandmod(50)-25));
                 pos.y = modelP->pos.y;
                 pos.z = modelP->pos.z+(modelP->scale.x*(frandmod(50)-25));
-                if(charNo == CHARNO_MINIKOOPA) {
-                    pos.x += -HuSin(modelP->rot.y)*40.0;
-                    pos.z += -HuCos(modelP->rot.y)*40.0;
+                if(charNo == 9) {
+                    pos.x += -sin(3.141592653589793*modelP->rot.y/180.0)*40.0;
+                    pos.z += -cos(3.141592653589793*modelP->rot.y/180.0)*40.0;
                 }
                 EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
             }
             for(i=0; i<4; i++) {
                 if(frameNo == walkVoiceTimeTbl[(charNo*4)+i]) {
-                    PlayStepVoice(charNo, CHARSEID(0), voiceFlag);
+                    PlayStepVoice(charNo, (177+0), voiceFlag);
                     break;
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_302):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_345):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_434):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_443):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_458):
+        case FILENUM(CHARMOT_HSF_c000m1_302):
+        case FILENUM(CHARMOT_HSF_c000m1_345):
+        case FILENUM(CHARMOT_HSF_c000m1_434):
+        case FILENUM(CHARMOT_HSF_c000m1_443):
+        case FILENUM(CHARMOT_HSF_c000m1_458):
             if(!motShiftF && modelP->motWork.speed <= 0.5) {
                 break;
             }
@@ -690,52 +692,52 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                 break;
             }
             if((frameNo & (8 - 1)) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                dustEffParam.vel.x = -HuSin(modelP->rot.y)*4.0;
+                dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*4.0;
                 dustEffParam.vel.y = 2+(0.1*frandmod(10));
-                dustEffParam.vel.z = -HuCos(modelP->rot.y)*4.0;
+                dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*4.0;
                 pos.x = modelP->pos.x+(modelP->scale.x*(frandmod(50)-25));
                 pos.y = modelP->pos.y;
                 pos.z = modelP->pos.z+(modelP->scale.x*(frandmod(50)-25));
-                if(charNo == CHARNO_MINIKOOPA) {
-                    pos.x += -HuSin(modelP->rot.y)*40.0;
-                    pos.z += -HuCos(modelP->rot.y)*40.0;
+                if(charNo == 9) {
+                    pos.x += -sin(3.141592653589793*modelP->rot.y/180.0)*40.0;
+                    pos.z += -cos(3.141592653589793*modelP->rot.y/180.0)*40.0;
                 }
                 EffectDustCreate(modelId, pos.x, pos.y, pos.z, frandmod(10)+30, &dustEffParam);
             }
-            if(motNo == CHAR_MOTNO(CHARMOT_HSF_c000m1_345) && (frameNo & 1)) {
-                CharModelCryCreate(charNo, 30, 0.8f);
+            if(motNo == FILENUM(CHARMOT_HSF_c000m1_345) && (frameNo & 1)) {
+                fn_80060B10(charNo, 30, 0.8f);
             }
             for(i=0; i<4; i++) {
                 if(frameNo == runVoiceTimeTbl[(charNo*4)+i]) {
-                    PlayStepVoice(charNo, CHARSEID(4), voiceFlag);
+                    PlayStepVoice(charNo, (177+4), voiceFlag);
                     break;
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_304):
+        case FILENUM(CHARMOT_HSF_c000m1_304):
             if(frameNo == 5 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                CharModelLandDustCreate(charNo, &modelP->pos);
+                fn_8005F968(charNo, &modelP->pos);
             }
             for(i=0; i<2; i++) {
                 if(frameNo == jumpVoiceTimeTbl[(charNo*2)+i]) {
-                    PlayStepVoice(charNo, CHARSEID(8), voiceFlag);
+                    PlayStepVoice(charNo, (177+8), voiceFlag);
                     break;
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_464):
+        case FILENUM(CHARMOT_HSF_c000m1_464):
             if(frameNo == 1 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                CharModelLandDustCreate(charNo, &modelP->pos);
-                PlayStepVoice(charNo, CHARSEID(8), voiceFlag);
+                fn_8005F968(charNo, &modelP->pos);
+                PlayStepVoice(charNo, (177+8), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_305):
-            Hu3DModelObjMtxGet(modelId, CharModelItemHookGet(charNo, workP->model, 0), hitMtx);
+        case FILENUM(CHARMOT_HSF_c000m1_305):
+            fn_80023398(modelId, fn_8005C0F0(charNo, workP->model, 0), hitMtx);
             if(frameNo == 0) {
-                _CharFXPlay(charNo, CHARSEID(22), voiceFlag);
+                fn_800591C8(charNo, (177+22), voiceFlag);
             }
             dotMax = 10;
             if(frameNo <= dotMax && !(workP->attr & CHAR_ATTR_FX_OFF)) {
@@ -770,12 +772,12 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_367):
+        case FILENUM(CHARMOT_HSF_c000m1_367):
             if(frameNo == 0) {
-                _CharFXPlay(charNo, CHARSEID(23), voiceFlag);
+                fn_800591C8(charNo, (177+23), voiceFlag);
             }
             if(frameNo < 10) {
-                Hu3DModelObjMtxGet(modelId, CharModelItemHookGet(charNo, workP->model, 2), hitMtx);
+                fn_80023398(modelId, fn_8005C0F0(charNo, workP->model, 2), hitMtx);
                 hitEffParam.vel.x = 0.0f;
                 hitEffParam.vel.y = 0.0f;
                 hitEffParam.vel.z = 0.0f;
@@ -806,25 +808,25 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_310):
+        case FILENUM(CHARMOT_HSF_c000m1_310):
             if(frameNo == 0) {
                 if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                     CharEffectHipDropCreate(charNo, &modelP->pos);
                 }
-                _CharFXPlay(charNo, CHARSEID(18), voiceFlag);
+                fn_800591C8(charNo, (177+18), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_324):
+        case FILENUM(CHARMOT_HSF_c000m1_324):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARVOICEID(8), voiceFlag);
+                fn_800591C8(charNo, (573+8), voiceFlag);
             }
-            if(modelP->motIdShift == HU3D_MOTIONID_NONE || motShiftF) {
+            if(modelP->motIdShift == -1 || motShiftF) {
                 if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                     if(frameNo == 10) {
-                        if(charNo == CHARNO_WALUIGI) {
+                        if(charNo == 6) {
                             warnSize = 190;
-                        } else if(charNo == CHARNO_PEACH || charNo == CHARNO_DAISY) {
+                        } else if(charNo == 2 || charNo == 5) {
                             warnSize = 140;
                         } else {
                             warnSize = 120;
@@ -833,20 +835,20 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                                          modelP->pos.z, 20, warnSize, &warnEffParam);
                     }
                     if(frameNo == 30) {
-                        CharModelLandDustCreate(charNo, &modelP->pos);
-                        PlayStepVoice(charNo, CHARSEID(8), voiceFlag);
+                        fn_8005F968(charNo, &modelP->pos);
+                        PlayStepVoice(charNo, (177+8), voiceFlag);
                     }
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_325):
-            if(modelP->motIdShift == HU3D_MOTIONID_NONE || motShiftF) {
+        case FILENUM(CHARMOT_HSF_c000m1_325):
+            if(modelP->motIdShift == -1 || motShiftF) {
                 if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                     if(frameNo == 0) {
-                        if(charNo == CHARNO_WALUIGI) {
+                        if(charNo == 6) {
                             warnSize = 150;
-                        } else if(charNo == CHARNO_PEACH || charNo == CHARNO_DAISY) {
+                        } else if(charNo == 2 || charNo == 5) {
                             warnSize = 120;
                         } else {
                             warnSize = 100;
@@ -855,17 +857,17 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                                          modelP->pos.z, 20, warnSize, &warnEffParam);
                     }
                     if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                        _CharFXPlay(charNo, CHARVOICEID(9), voiceFlag);
+                        fn_800591C8(charNo, (573+9), voiceFlag);
                     }
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_321):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_322):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_465):
+        case FILENUM(CHARMOT_HSF_c000m1_321):
+        case FILENUM(CHARMOT_HSF_c000m1_322):
+        case FILENUM(CHARMOT_HSF_c000m1_465):
             if(!(workP->attr & CHAR_ATTR_BIRD_ACTIVE) && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARSEID(19), voiceFlag);
+                fn_800591C8(charNo, (177+19), voiceFlag);
                 for(i=0; i<3; i++) {
                     EffectBirdCreate(modelId, modelP->pos.x,
                                      modelP->pos.y + (100.0f * modelP->scale.x), modelP->pos.z,
@@ -875,10 +877,10 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_320):
+        case FILENUM(CHARMOT_HSF_c000m1_320):
             if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                 if(frameNo & 1) {
-                    Hu3DModelObjMtxGet(modelId, CharModelItemHookGet(charNo, workP->model, 4),
+                    fn_80023398(modelId, fn_8005C0F0(charNo, workP->model, 4),
                                        hitMtx);
                     pos.x = hitMtx[0][3];
                     pos.y = hitMtx[1][3];
@@ -886,27 +888,27 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
                     EffectSmokeCreate(modelId, pos.x, pos.y, pos.z, 20, &smokeEffParam);
                 }
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
-                    _CharFXPlay(charNo, CHARVOICEID(3), voiceFlag);
+                    fn_800591C8(charNo, (573+3), voiceFlag);
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_303):
+        case FILENUM(CHARMOT_HSF_c000m1_303):
             if(frameNo == 0) {
-                _CharFXPlay(charNo, CHARSEID(16), voiceFlag);
+                fn_800591C8(charNo, (177+16), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_308):
+        case FILENUM(CHARMOT_HSF_c000m1_308):
             if(frameNo == 0) {
-                _CharFXPlay(charNo, CHARSEID(17), voiceFlag);
+                fn_800591C8(charNo, (177+17), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_306):
+        case FILENUM(CHARMOT_HSF_c000m1_306):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
-                if ((omcurovl < DLL_w01dll || omcurovl > DLL_w11dll) &&
-                    (omcurovl < DLL_s01dll || omcurovl > DLL_s03dll)) {
+                if ((omcurovl < 123 || omcurovl > 130) &&
+                    (omcurovl < 114 || omcurovl > 116)) {
                     if(frameNo == winAnimLen[charNo]) {
                         CharWinVoicePlay(charNo, voiceFlag);
                         workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
@@ -916,17 +918,17 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_346):
+        case FILENUM(CHARMOT_HSF_c000m1_346):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == handUpAnimLen[charNo]) {
-                    _CharFXPlay(charNo, CHARVOICEID(6), voiceFlag);
+                    fn_800591C8(charNo, (573+6), voiceFlag);
                     workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
                     attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_349):
+        case FILENUM(CHARMOT_HSF_c000m1_349):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == okAnimLen[charNo]) {
                     CharWinVoicePlay(charNo, voiceFlag);
@@ -936,7 +938,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_350):
+        case FILENUM(CHARMOT_HSF_c000m1_350):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == winAnimLen2[charNo]) {
                     CharWinVoicePlay(charNo, voiceFlag);
@@ -946,7 +948,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_363):
+        case FILENUM(CHARMOT_HSF_c000m1_363):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == holdUpAnimLen[charNo]) {
                     CharWinVoicePlay(charNo, voiceFlag);
@@ -956,17 +958,17 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_364):
+        case FILENUM(CHARMOT_HSF_c000m1_364):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == winJumpUpAnimLen[charNo]) {
-                    _CharFXPlay(charNo, CHARVOICEID(2), voiceFlag);
+                    fn_800591C8(charNo, (573+2), voiceFlag);
                     workP->attr |= CHAR_ATTR_WIN_VOICE_PLAYED;
                     attrOld |= CHAR_ATTR_WIN_VOICE_PLAYED;
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_352):
+        case FILENUM(CHARMOT_HSF_c000m1_352):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(frameNo == loseAnimLen[charNo]) {
                     CharWinVoicePlay(charNo, voiceFlag);
@@ -976,7 +978,7 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_327):
+        case FILENUM(CHARMOT_HSF_c000m1_327):
             if(!(workP->attr & (CHAR_ATTR_WIN_VOICE_PLAYED | CHAR_ATTR_FX_OFF))) {
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
                     CharWinVoicePlay(charNo, voiceFlag);
@@ -986,49 +988,49 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_307):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_348):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_351):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_353):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_354):
+        case FILENUM(CHARMOT_HSF_c000m1_307):
+        case FILENUM(CHARMOT_HSF_c000m1_348):
+        case FILENUM(CHARMOT_HSF_c000m1_351):
+        case FILENUM(CHARMOT_HSF_c000m1_353):
+        case FILENUM(CHARMOT_HSF_c000m1_354):
             if(frameNo == 0 && !(workP->attr & (CHAR_ATTR_MOTION_FLAG | CHAR_ATTR_FX_OFF))) {
                 workP->attr |= CHAR_ATTR_MOTION_FLAG;
                 attrOld |= CHAR_ATTR_MOTION_FLAG;
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_344):
+        case FILENUM(CHARMOT_HSF_c000m1_344):
             if(!(workP->attr & CHAR_ATTR_FX_OFF)) {
                 if(frameNo & 1) {
-                    CharModelCryCreate(charNo, 0, 0);
+                    fn_80060B10(charNo, 0, 0);
                 }
                 if(GetMotNoPlayTime(workP, motNo) == 0) {
-                    _CharFXPlay(charNo, CHARVOICEID(3), voiceFlag);
+                    fn_800591C8(charNo, (573+3), voiceFlag);
                 }
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_370):
+        case FILENUM(CHARMOT_HSF_c000m1_370):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARVOICEID(3), voiceFlag);
+                fn_800591C8(charNo, (573+3), voiceFlag);
             }
             if(workP->timingHookNo != 0) {
-                CharModelCryCreate(charNo, 30, 0.8f);
+                fn_80060B10(charNo, 30, 0.8f);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_333):
+        case FILENUM(CHARMOT_HSF_c000m1_333):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARVOICEID(11), voiceFlag);
+                fn_800591C8(charNo, (573+11), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_311):
+        case FILENUM(CHARMOT_HSF_c000m1_311):
             if(frameNo == jumpAnimLen[charNo] && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                CharModelLandDustCreate(charNo, &modelP->pos);
+                fn_8005F968(charNo, &modelP->pos);
                 for(i=0; i<2; i++) {
                     if(frameNo == jumpVoiceTimeTbl[(charNo*2)+i]) {
-                        PlayStepVoice(charNo, CHARSEID(8), voiceFlag);
+                        PlayStepVoice(charNo, (177+8), voiceFlag);
                         break;
                     }
                 }
@@ -1036,30 +1038,30 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_316):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_318):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_382):
+        case FILENUM(CHARMOT_HSF_c000m1_316):
+        case FILENUM(CHARMOT_HSF_c000m1_318):
+        case FILENUM(CHARMOT_HSF_c000m1_382):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARVOICEID(9), voiceFlag);
+                fn_800591C8(charNo, (573+9), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_357):
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_381):
+        case FILENUM(CHARMOT_HSF_c000m1_357):
+        case FILENUM(CHARMOT_HSF_c000m1_381):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARVOICEID(15), voiceFlag);
+                fn_800591C8(charNo, (573+15), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_361):
+        case FILENUM(CHARMOT_HSF_c000m1_361):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARVOICEID(3), voiceFlag);
+                fn_800591C8(charNo, (573+3), voiceFlag);
             }
             break;
 
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_377):
+        case FILENUM(CHARMOT_HSF_c000m1_377):
             if(GetMotNoPlayTime(workP, motNo) == 0 && !(workP->attr & CHAR_ATTR_FX_OFF)) {
-                _CharFXPlay(charNo, CHARVOICEID(8), voiceFlag);
+                fn_800591C8(charNo, (573+8), voiceFlag);
             }
             break;
     }
@@ -1074,147 +1076,147 @@ static void UpdateCharAnim(s16 charNo, HU3D_MODELID modelId, s16 motNo, u8 voice
 }
 
 static s16 winVoiceTbl[][2] = {
-    { DLL_m622dll, CHARVOICEID(6) },
-    { DLL_m623dll, CHARVOICEID(6) },
-    { DLL_m642dll, CHARVOICEID(6) },
-    { DLL_m671dll, CHARVOICEID(6) },
-    { DLL_m672dll, CHARVOICEID(6) },
-    { DLL_m673dll, CHARVOICEID(6) },
-    { DLL_m674dll, CHARVOICEID(6) },
-    { DLL_m675dll, CHARVOICEID(6) },
-    { DLL_m676dll, CHARVOICEID(6) },
+    { 27, (573+6) },
+    { 28, (573+6) },
+    { 47, (573+6) },
+    { 76, (573+6) },
+    { 77, (573+6) },
+    { 78, (573+6) },
+    { 79, (573+6) },
+    { 80, (573+6) },
+    { 81, (573+6) },
     { -1, 0 },
 };
 
-static float CharYOfsTbl1[CHARNO_MAX] = { 110.0f, 160.0f, 110.0f, 160.0f, 150.0f, 180.0f, 130.0f,
+static float CharYOfsTbl1[14] = { 110.0f, 160.0f, 110.0f, 160.0f, 150.0f, 180.0f, 130.0f,
                                           160.0f, 130.0f, 160.0f, 150.0f, 180.0f, 120.0f, 210.0f };
-static float CharYOfsTbl2[CHARNO_MAX] = { 110.0f, 160.0f, 110.0f, 160.0f, 130.0f, 160.0f, 110.0f,
+static float CharYOfsTbl2[14] = { 110.0f, 160.0f, 110.0f, 160.0f, 130.0f, 160.0f, 110.0f,
                                           160.0f, 130.0f, 160.0f, 130.0f, 160.0f, 130.0f, 160.0f };
-static float birdYOfsTbl[CHARNO_MAX] = { 80.0f, 80.0f, 60.0f, 75.0f, 40.0f, 60.0f, 45.0f,
+static float birdYOfsTbl[14] = { 80.0f, 80.0f, 60.0f, 75.0f, 40.0f, 60.0f, 45.0f,
                                          90.0f, 70.0f, 75.0f, 90.0f, 75.0f, 75.0f, 75.0f };
 
 static s16 stepVoiceTbl[] = {
-    DLL_w01dll, 0,
-    DLL_w02dll, 0,
-    DLL_w03dll, 0,
-    DLL_w04dll, 0,
-    DLL_w05dll, 0,
-    DLL_w06dll, 0,
-    DLL_w10dll, 0,
-    DLL_w11dll, 0,
-    DLL_s01dll, 0,
-    DLL_s02dll, 0,
-    DLL_s03dll, 0,
-    DLL_mdseldll, 1,
-    DLL_mdminidll, 1,
-    DLL_mdmicdll, 1,
-    DLL_mdpartydll, 1,
-    DLL_mdsingdll, 1,
-    DLL_mdbankdll, 1,
-    DLL_miraclebookdll, 1,
-    DLL_mdpresultdll, 1,
-    DLL_mgmfreedll, 0,
-    DLL_mgmdecathlondll, 0,
-    DLL_mgmbattledll, 0,
-    DLL_mgmtournamentdll, 0,
-    DLL_mgmbingodll, 2,
-    DLL_mgmrenshodll, 0,
-    DLL_micquizdll, 0,
-    DLL_micquizishidll, 0,
-    DLL_micquizmyokodll, 0,
-    DLL_micquizohdedll, 0,
-    DLL_mikeactdll, 0,
-    DLL_m601dll, 0,
-    DLL_m602dll, 0,
-    DLL_m603dll, 0,
-    DLL_m604dll, 1,
-    DLL_m605dll, 0,
-    DLL_m606dll, 0,
-    DLL_m607dll, 0,
-    DLL_m608dll, 2,
-    DLL_m609dll, 1,
-    DLL_m610dll, 0,
-    DLL_m611dll, 0,
-    DLL_m612dll, 0,
-    DLL_m613dll, 2,
-    DLL_m614dll, 0,
-    DLL_m615dll, 0,
-    DLL_m616dll, 0,
-    DLL_m617dll, 1,
-    DLL_m618dll, 1,
-    DLL_m619dll, 0,
-    DLL_m620dll, 1,
-    DLL_m621dll, 2,
-    DLL_m622dll, 0,
-    DLL_m623dll, 0,
-    DLL_m624dll, 0,
-    DLL_m625dll, 1,
-    DLL_m626dll, 2,
-    DLL_m627dll, 1,
-    DLL_m628dll, 0,
-    DLL_m629dll, 1,
-    DLL_m630dll, 1,
-    DLL_m631dll, 1,
-    DLL_m632dll, 1,
-    DLL_m633dll, 0,
-    DLL_m634dll, 0,
-    DLL_m635dll, 2,
-    DLL_m636dll, 1,
-    DLL_m637dll, 1,
-    DLL_m638dll, 0,
-    DLL_m639dll, 0,
-    DLL_m640dll, 0,
-    DLL_m641dll, 0,
-    DLL_m642dll, 0,
-    DLL_m643dll, 0,
-    DLL_m644dll, 0,
-    DLL_m645dll, 0,
-    DLL_m646dll, 1,
-    DLL_m647dll, 1,
-    DLL_m648dll, 2,
-    DLL_m649dll, 1,
-    DLL_m650dll, 0,
-    DLL_m651dll, 0,
-    DLL_m652dll, 0,
-    DLL_m653dll, 0,
-    DLL_m654dll, 2,
-    DLL_m655dll, 0,
-    DLL_m656dll, 0,
-    DLL_m657dll, 1,
-    DLL_m658dll, 0,
-    DLL_m659dll, 0,
-    DLL_m660dll, 0,
-    DLL_m661dll, 0,
-    DLL_m662dll, 1,
-    DLL_m663dll, 2,
-    DLL_m664dll, 1,
-    DLL_m665dll, 0,
-    DLL_m666dll, 0,
-    DLL_m667dll, 0,
-    DLL_m668dll, 0,
-    DLL_m669dll, 0,
-    DLL_m670dll, 0,
-    DLL_m671dll, 0,
-    DLL_m672dll, 0,
-    DLL_m673dll, 0,
-    DLL_m674dll, 1,
-    DLL_m675dll, 0,
-    DLL_m676dll, 1,
-    DLL_m677dll, 0,
-    DLL_m678dll, 0,
-    DLL_m679dll, 0,
-    DLL_m680dll, 0,
-    DLL_m681dll, 1,
-    DLL_m699dll, 0,
+    123, 0,
+    124, 0,
+    125, 0,
+    126, 0,
+    127, 0,
+    128, 0,
+    129, 0,
+    130, 0,
+    114, 0,
+    115, 0,
+    116, 0,
+    93, 1,
+    90, 1,
+    89, 1,
+    91, 1,
+    94, 1,
+    88, 1,
+    108, 1,
+    92, 1,
+    99, 0,
+    98, 0,
+    96, 0,
+    101, 0,
+    97, 2,
+    100, 0,
+    102, 0,
+    103, 0,
+    104, 0,
+    105, 0,
+    107, 0,
+    6, 0,
+    7, 0,
+    8, 0,
+    9, 1,
+    10, 0,
+    11, 0,
+    12, 0,
+    13, 2,
+    14, 1,
+    15, 0,
+    16, 0,
+    17, 0,
+    18, 2,
+    19, 0,
+    20, 0,
+    21, 0,
+    22, 1,
+    23, 1,
+    24, 0,
+    25, 1,
+    26, 2,
+    27, 0,
+    28, 0,
+    29, 0,
+    30, 1,
+    31, 2,
+    32, 1,
+    33, 0,
+    34, 1,
+    35, 1,
+    36, 1,
+    37, 1,
+    38, 0,
+    39, 0,
+    40, 2,
+    41, 1,
+    42, 1,
+    43, 0,
+    44, 0,
+    45, 0,
+    46, 0,
+    47, 0,
+    48, 0,
+    49, 0,
+    50, 0,
+    51, 1,
+    52, 1,
+    53, 2,
+    54, 1,
+    55, 0,
+    56, 0,
+    57, 0,
+    58, 0,
+    59, 2,
+    60, 0,
+    61, 0,
+    62, 1,
+    63, 0,
+    64, 0,
+    65, 0,
+    66, 0,
+    67, 1,
+    68, 2,
+    69, 1,
+    70, 0,
+    71, 0,
+    72, 0,
+    73, 0,
+    74, 0,
+    75, 0,
+    76, 0,
+    77, 0,
+    78, 0,
+    79, 1,
+    80, 0,
+    81, 1,
+    82, 0,
+    83, 0,
+    84, 0,
+    85, 0,
+    86, 1,
+    87, 0,
     -1, -1,
 };
 
 // Plays a character sound at the model position or with its configured volume and pan; no value is
 // assigned to this function's declared s16 return.
-s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag)
+s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     if(!(voiceFlag & CHAR_VOICE_OFF)) {
         if(workP->attr & CHAR_ATTR_VOICE_PAN_AUTO) {
             CharFXPlayPos(charNo, seNo, &modelP->pos);
@@ -1231,17 +1233,17 @@ static s16 CharWinVoicePlay(s16 charNo, u8 voiceFlag)
     s16 seNo;
     s16 i;
     s16 ret;
-    for(i=0; winVoiceTbl[i][0] != DLL_NONE; i++) {
+    for(i=0; winVoiceTbl[i][0] != -1; i++) {
         if(omcurovl == winVoiceTbl[i][0]) {
             break;
         }
     }
-    if(winVoiceTbl[i][0] != DLL_NONE) {
+    if(winVoiceTbl[i][0] != -1) {
         seNo = winVoiceTbl[i][1];
     } else {
-        seNo = CHARVOICEID(4);
+        seNo = (573+4);
     }
-    _CharFXPlay(charNo, seNo, voiceFlag);
+    fn_800591C8(charNo, seNo, voiceFlag);
     return ret;
 }
 
@@ -1258,32 +1260,32 @@ static void EffectInit(void)
     for(i=0; i<EFFECT_MAX; i++) {
         anim[i] = NULL;
     }
-    for(cameraNo=0; cameraNo<HU3D_CAM_MAX; cameraNo++) {
+    for(cameraNo=0; cameraNo<16; cameraNo++) {
         if(-1.0f == Hu3DCamera[cameraNo].fov) {
             continue;
         }
         for(i=0; i<EFFECT_MAX; i++) {
-            if(effModelId[i][cameraNo] != HU3D_MODELID_NONE) {
+            if(effModelId[i][cameraNo] != -1) {
                 continue;
             }
             if(!anim[i]) {
                 void *data =
-                    HuDataSelHeapReadNum(effectDataTbl[i].dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+                    fn_80008DD0(effectDataTbl[i].dataNum, 0x10000000, 2);
                 anim[i] = HuSprAnimRead(data);
             }
-            effModelId[i][cameraNo] = Hu3DParticleCreate(anim[i], effectDataTbl[i].maxCnt);
+            effModelId[i][cameraNo] = fn_8003216C(anim[i], effectDataTbl[i].maxCnt);
             if(i == EFFECT_BIRD) {
-                Hu3DParticleAnimModeSet(effModelId[i][cameraNo], 0);
+                fn_800327B8(effModelId[i][cameraNo], 0);
             }
-            Hu3DParticleHookSet(effModelId[i][cameraNo], EffectParticleHook);
-            Hu3DModelCameraSet(effModelId[i][cameraNo], (1 << cameraNo));
+            fn_800326D0(effModelId[i][cameraNo], EffectParticleHook);
+            fn_80026B64(effModelId[i][cameraNo], (1 << cameraNo));
             if(!effParamAll[i]) {
                 effParamAll[i] =
                     HuMemDirectMalloc(HEAP_HEAP, effectDataTbl[i].maxCnt * sizeof(EFFECTPARAM));
             }
-            Hu3DParticleBlendModeSet(effModelId[i][cameraNo], effectDataTbl[i].blendMode);
+            fn_8003269C(effModelId[i][cameraNo], effectDataTbl[i].blendMode);
             {
-                HU3D_PARTICLE *particleP = Hu3DData[effModelId[i][cameraNo]].hookData;
+                HU3D_PARTICLE *particleP = lbl_802C01C8[effModelId[i][cameraNo]].hookData;
                 HU3D_PARTICLE_DATA *particleDataP;
                 s16 j;
                 particleP->emitCnt = 0;
@@ -1298,7 +1300,7 @@ static void EffectInit(void)
         }
     }
     if(effInitF) {
-        HuDataDirClose(DATA_effect);
+        fn_800097F4(0x210000);
     }
 }
 
@@ -1309,12 +1311,12 @@ static void EffectParticleCreate(u8 type)
     s16 cameraNo;
     HU3D_PARTICLE *particleP;
     
-    for(cameraNo=0; cameraNo<HU3D_CAM_MAX; cameraNo++) {
+    for(cameraNo=0; cameraNo<16; cameraNo++) {
         if(-1.0f == Hu3DCamera[cameraNo].fov) {
             continue;
         }
-        if(effModelId[type][cameraNo] != HU3D_MODELID_NONE) {
-            particleP = Hu3DData[effModelId[type][cameraNo]].hookData;
+        if(effModelId[type][cameraNo] != -1) {
+            particleP = lbl_802C01C8[effModelId[type][cameraNo]].hookData;
             if(particleP->anim) {
                 anim = particleP->anim;
                 continue;
@@ -1322,25 +1324,25 @@ static void EffectParticleCreate(u8 type)
         } else {
             if(!anim) {
                 void *data =
-                    HuDataSelHeapReadNum(effectDataTbl[type].dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+                    fn_80008DD0(effectDataTbl[type].dataNum, 0x10000000, 2);
                 anim = HuSprAnimRead(data);
             }
-            effModelId[type][cameraNo] = Hu3DParticleCreate(anim, effectDataTbl[type].maxCnt);
-            Hu3DModelLayerSet(effModelId[type][cameraNo], effectLayer);
+            effModelId[type][cameraNo] = fn_8003216C(anim, effectDataTbl[type].maxCnt);
+            fn_80026B8C(effModelId[type][cameraNo], effectLayer);
             if(type == EFFECT_BIRD) {
-                Hu3DParticleAnimModeSet(effModelId[type][cameraNo], 0);
+                fn_800327B8(effModelId[type][cameraNo], 0);
             }
-            Hu3DParticleHookSet(effModelId[type][cameraNo], EffectParticleHook);
-            Hu3DModelCameraSet(effModelId[type][cameraNo], (1 << cameraNo));
+            fn_800326D0(effModelId[type][cameraNo], EffectParticleHook);
+            fn_80026B64(effModelId[type][cameraNo], (1 << cameraNo));
             if(!effParamAll[type]) {
                 effParamAll[type] =
                     HuMemDirectMalloc(HEAP_HEAP, effectDataTbl[type].maxCnt * sizeof(EFFECTPARAM));
             }
-            Hu3DParticleBlendModeSet(effModelId[type][cameraNo], effectDataTbl[type].blendMode);
+            fn_8003269C(effModelId[type][cameraNo], effectDataTbl[type].blendMode);
             {
                 HU3D_PARTICLE_DATA *particleDataP;
                 s16 j;
-                particleP = Hu3DData[effModelId[type][cameraNo]].hookData;
+                particleP = lbl_802C01C8[effModelId[type][cameraNo]].hookData;
                 particleP->emitCnt = 0;
                 particleP->work = effParamAll[type];
                 particleP->count = 1;
@@ -1361,7 +1363,7 @@ static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float p
 static s16 EffectDustCreate(s16 modelId, float posX, float posY, float posZ, float scale,
                             EFFECTPARAM *param)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     if(modelP->scale.x != 1.0) {
         EFFECTPARAM paramNew = *param;
         paramNew.vel.x *= modelP->scale.x;
@@ -1379,7 +1381,7 @@ static s16 EffectDustCreate(s16 modelId, float posX, float posY, float posZ, flo
 static s16 EffectSmokeCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
                              EFFECTPARAM *param)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     if(modelP->scale.x != 1.0) {
         EFFECTPARAM paramNew = *param;
         paramNew.vel.x *= modelP->scale.x;
@@ -1397,7 +1399,7 @@ static s16 EffectSmokeCreate(HU3D_MODELID modelId, float posX, float posY, float
 static s16 EffectHitCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
                            EFFECTPARAM *param)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     if(modelP->scale.x != 1.0) {
         EFFECTPARAM paramNew = *param;
         paramNew.vel.x *= modelP->scale.x;
@@ -1415,7 +1417,7 @@ static s16 EffectHitCreate(HU3D_MODELID modelId, float posX, float posY, float p
 static inline s16 EffectStarCreate(HU3D_MODELID modelId, float posX, float posY, float posZ,
                                    float scale, EFFECTPARAM *param)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     if(modelP->scale.x != 1.0) {
         EFFECTPARAM paramNew = *param;
         paramNew.vel.x *= modelP->scale.x;
@@ -1433,7 +1435,7 @@ static inline s16 EffectStarCreate(HU3D_MODELID modelId, float posX, float posY,
 static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY, float posZ,
                                    float scale, float ofsY, EFFECTPARAM *param)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     EFFECTPARAM paramNew = *param;
     s16 cameraNo, cameraBit;
     paramNew.vel.x *= modelP->scale.x;
@@ -1441,7 +1443,7 @@ static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY,
     paramNew.vel.z *= modelP->scale.x;
     paramNew.scaleVel *= modelP->scale.x;
     scale *= modelP->scale.x;
-    for(cameraNo=0, cameraBit=HU3D_CAM0; cameraNo<HU3D_CAM_MAX; cameraNo++, cameraBit <<= 1) {
+    for(cameraNo=0, cameraBit=(1 << 0); cameraNo<16; cameraNo++, cameraBit <<= 1) {
         HU3D_MODEL *effModelP;
         HU3D_PARTICLE *particleP;
         HU3D_PARTICLE_DATA *particleDataP;
@@ -1456,7 +1458,7 @@ static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY,
         if(particleId == -1) {
             return;
         } else {
-            effModelP = &Hu3DData[effModelId[EFFECT_WARN][cameraNo]];
+            effModelP = &lbl_802C01C8[effModelId[EFFECT_WARN][cameraNo]];
             particleP = effModelP->hookData;
             particleDataP = &particleP->data[particleId];
             particleDataP->parManId = 0;
@@ -1472,7 +1474,7 @@ static inline s16 EffectWarnCreate(HU3D_MODELID modelId, float posX, float posY,
 static s16 EffectBirdCreate(HU3D_MODELID modelId, float posX, float posY, float posZ, float scale,
                             s16 charNo, float ofsY, EFFECTPARAM *param)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     EFFECTPARAM paramNew = *param;
     s16 cameraNo, cameraBit;
     paramNew.vel.x *= modelP->scale.x;
@@ -1480,7 +1482,7 @@ static s16 EffectBirdCreate(HU3D_MODELID modelId, float posX, float posY, float 
     paramNew.vel.z *= modelP->scale.x;
     paramNew.scaleVel *= modelP->scale.x;
     scale *= modelP->scale.x;
-    for(cameraNo=0, cameraBit=HU3D_CAM0; cameraNo<HU3D_CAM_MAX; cameraNo++, cameraBit <<= 1) {
+    for(cameraNo=0, cameraBit=(1 << 0); cameraNo<16; cameraNo++, cameraBit <<= 1) {
         HU3D_MODEL *effModelP;
         HU3D_PARTICLE *particleP;
         HU3D_PARTICLE_DATA *particleDataP;
@@ -1495,7 +1497,7 @@ static s16 EffectBirdCreate(HU3D_MODELID modelId, float posX, float posY, float 
         if(particleId == -1) {
             return;
         } else {
-            effModelP = &Hu3DData[effModelId[EFFECT_BIRD][cameraNo]];
+            effModelP = &lbl_802C01C8[effModelId[EFFECT_BIRD][cameraNo]];
             particleP = effModelP->hookData;
             particleDataP = &particleP->data[particleId];
             particleDataP->parManId = 1;
@@ -1513,7 +1515,7 @@ static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float p
     s16 id;
     EffectParticleCreate(type);
     id = -1;
-    for(cameraNo=0, bit=HU3D_CAM0; cameraNo<HU3D_CAM_MAX; cameraNo++, bit <<= 1) {
+    for(cameraNo=0, bit=(1 << 0); cameraNo<16; cameraNo++, bit <<= 1) {
         HU3D_PARTICLE_DATA *particleDataP;
         HU3D_PARTICLE *particleP;
         s16 nextId;
@@ -1527,10 +1529,10 @@ static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float p
             continue;
         }
         modelId = effModelId[type][cameraNo];
-        if(modelId == HU3D_MODELID_NONE) {
+        if(modelId == -1) {
             return -1;
         }
-        modelP = &Hu3DData[modelId];
+        modelP = &lbl_802C01C8[modelId];
         particleP = modelP->hookData;
         effParam = particleP->work;
         for (particleDataP = &particleP->data[particleP->emitCnt], nextId = particleP->emitCnt;
@@ -1558,7 +1560,7 @@ static s16 EffectCreate(s16 type, s16 cameraBit, float posX, float posY, float p
             particleDataP->scaleBase = scale;
             particleDataP->scale = scale;
             particleDataP->time = 0;
-            particleDataP->parManId = HU3D_PARMANID_NONE;
+            particleDataP->parManId = -1;
             particleP->emitCnt = nextId;
             id = nextId;
         } else {
@@ -1588,7 +1590,7 @@ static void EffectParticleHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx
         if(!particleDataP->scale) {
             continue;
         }
-        if(particleDataP->parManId == HU3D_PARMANID_NONE) {
+        if(particleDataP->parManId == -1) {
             particleDataP->vel.x *= param[i].velDecay.x;
             particleDataP->vel.y *= param[i].velDecay.y;
             particleDataP->vel.z *= param[i].velDecay.z;
@@ -1659,15 +1661,15 @@ static void EffectParticleHook(HU3D_MODEL *modelP, HU3D_PARTICLE *particleP, Mtx
 // Animates the warning ring around its source model and fades it after its hold period.
 static void UpdateEffect(HU3D_PARTICLE_DATA *particleDataP)
 {
-    HU3D_MODEL *modelP = &Hu3DData[(int)particleDataP->vel.x];
+    HU3D_MODEL *modelP = &lbl_802C01C8[(int)particleDataP->vel.x];
     float radius;
     if(particleDataP->time < 8) {
-        radius = 0.3+HuSin(40.0f+(10.0f*(particleDataP->time+1)));
+        radius = 0.3+sin(3.141592653589793*(40.0f+(10.0f*(particleDataP->time+1)))/180.0);
         particleDataP->scale = (50.0f*radius)*modelP->scale.x;
         particleDataP->color.a = 255;
-        radius = 0.3+HuSin(15.0f*(particleDataP->time+1));
+        radius = 0.3+sin(3.141592653589793*(15.0f*(particleDataP->time+1))/180.0);
     } else {
-        radius = 0.3+HuSin(135.0f);
+        radius = 0.3+sin(3.141592653589793*135.0f/180.0);
     }
     radius *= modelP->scale.x;
     particleDataP->pos.x = modelP->pos.x+(particleDataP->accel.x*radius);
@@ -1696,10 +1698,10 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
     
     birdMotPlayF = TRUE;
     workP = &CharWork[charNo];
-    modelP = &Hu3DData[workP->modelId];
+    modelP = &lbl_802C01C8[workP->modelId];
     
     for(effectNo=0; effectDataTbl[EFFECT_BIRD].motDataNum[effectNo]; effectNo++) {
-        if(workP->motNoCurr == CHAR_MOTNO(effectDataTbl[EFFECT_BIRD].motDataNum[effectNo])) {
+        if(workP->motNoCurr == FILENUM(effectDataTbl[EFFECT_BIRD].motDataNum[effectNo])) {
             break;
         }
     }
@@ -1713,10 +1715,14 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
     angle = (particleDataP->time*5)%360;
     Hu3DModelObjPosGet(workP->modelId, CharHeadObjNameTbl[charNo], &particleDataP->pos);
     particleDataP->pos.x =
-        particleDataP->pos.x + (modelP->scale.x * (40.0 * HuSin(particleDataP->vel.y + angle)));
+        particleDataP->pos.x
+            + (modelP->scale.x * (40.0 * sin(3.141592653589793*(particleDataP->vel.y
+            + angle)/180.0)));
     particleDataP->pos.y = particleDataP->pos.y+(modelP->scale.y*birdYOfsTbl[charNo]);
     particleDataP->pos.z =
-        particleDataP->pos.z + (modelP->scale.z * (40.0 * HuCos(particleDataP->vel.y + angle)));
+        particleDataP->pos.z
+            + (modelP->scale.z * (40.0 * cos(3.141592653589793*(particleDataP->vel.y
+            + angle)/180.0)));
     particleDataP->time++;
     if(particleDataP->time >= 143) {
         particleDataP->time = 72;
@@ -1727,7 +1733,7 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
             particleDataP->scale = 0.0f;
             workP->attr &= ~CHAR_ATTR_BIRD_ACTIVE;
             if(particleDataP->vel.y == 0.0) {
-                _CharFXPlay(charNo, CHARSEID(24), workP->attr);
+                fn_800591C8(charNo, (177+24), workP->attr);
 
             }
         }
@@ -1738,7 +1744,7 @@ static void UpdateBirdEffect(HU3D_PARTICLE_DATA *particleDataP)
 static s16 GetStepType(void)
 {
     s16 i;
-    for(i=0; stepVoiceTbl[i] != DLL_NONE; i++) {
+    for(i=0; stepVoiceTbl[i] != -1; i++) {
         if(omcurovl == stepVoiceTbl[(i*2)+0]) {
             return stepVoiceTbl[(i*2)+1];
         }
@@ -1754,7 +1760,7 @@ static inline void MotionParticleInit(unsigned int dataNum)
     dataNum = FILENUM(dataNum);
     for(i=0; i<EFFECT_MAX; i++) {
         for(j=0; effectDataTbl[i].motDataNum[j]; j++) {
-            if(dataNum == CHAR_MOTNO(effectDataTbl[i].motDataNum[j])) {
+            if(dataNum == FILENUM(effectDataTbl[i].motDataNum[j])) {
                 EffectParticleCreate(i);
                 break;
             }
@@ -1763,159 +1769,159 @@ static inline void MotionParticleInit(unsigned int dataNum)
 }
 
 // Loads a character motion resource, creates its joint motion, and tracks its motion number.
-HU3D_MOTIONID CharMotionCreate(s16 charNo, unsigned int dataNum)
+HU3D_MOTIONID fn_8005B0B8(s16 charNo, unsigned int dataNum)
 {
     CHARWORK *workP = &CharWork[charNo];
     s16 i;
     s16 motNo;
     void *data;
     unsigned int dir;
-    if(workP->modelId == HU3D_MODELID_NONE) {
-        return HU3D_MOTIONID_NONE;
+    if(workP->modelId == -1) {
+        return -1;
     }
-    for(motNo=0; motNo<CHAR_MOT_MAX; motNo++) {
-        if(workP->motId[motNo] == HU3D_MOTIONID_NONE) {
+    for(motNo=0; motNo<32; motNo++) {
+        if(workP->motId[motNo] == -1) {
             break;
         }
     }
-    if(motNo == CHAR_MOT_MAX) {
-        return HU3D_MOTIONID_NONE;
+    if(motNo == 32) {
+        return -1;
     }
     dir = DIRNUM(dataNum);
-    for(i=0; i<CHARNO_MAX; i++) {
-        if(dir == CharDataDirTbl[i][4]) {
+    for(i=0; i<14; i++) {
+        if(dir == lbl_8022E718[i][4]) {
             break;
         }
     }
-    if(i != CHARNO_MAX || dir == 0) {
+    if(i != 14 || dir == 0) {
         dataNum = FILENUM(dataNum);
-        data = HuAR_ARAMtoMRAMFileRead(DATANUM(CharDataDirTbl[charNo][4], dataNum), HU_MEMNUM_OVL,
-                                       HEAP_MODEL);
+        data = fn_8005607C(DATANUM(lbl_8022E718[charNo][4], dataNum), 0x10000000,
+                                       2);
         if(!data) {
-            data = HuDataSelHeapReadNum(DATANUM(CharDataDirTbl[charNo][4], dataNum), HU_MEMNUM_OVL,
-                                        HEAP_MODEL);
+            data = fn_80008DD0(DATANUM(lbl_8022E718[charNo][4], dataNum), 0x10000000,
+                                        2);
         }
         workP->motNoTbl[motNo] = dataNum;
     } else {
-        for(i=0; i<CHARNO_MAX; i++) {
-            if(dir == CharDataDirTbl[i][5]) {
+        for(i=0; i<14; i++) {
+            if(dir == lbl_8022E718[i][5]) {
                 break;
             }
         }
-        if(i != CHARNO_MAX) {
-            dataNum = DATANUM(CharDataDirTbl[charNo][5], FILENUM(dataNum));
-            data = HuDataReadNumHeapShortForce(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+        if(i != 14) {
+            dataNum = DATANUM(lbl_8022E718[charNo][5], FILENUM(dataNum));
+            data = fn_80009B04(dataNum, 0x10000000, 2);
         } else {
-            data = HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+            data = fn_80008DD0(dataNum, 0x10000000, 2);
         }
-        workP->motNoTbl[motNo] = HU3D_MOTIONID_NONE;
+        workP->motNoTbl[motNo] = -1;
     }
-    workP->motId[motNo] = Hu3DJointMotion(workP->modelId, data);
+    workP->motId[motNo] = fn_80030458(workP->modelId, data);
     workP->voiceFlag[motNo] = 0;
     MotionParticleInit(dataNum);
     return workP->motId[motNo];
 }
 
 // Associates a loaded motion ID with its character motion number for motion tracking.
-void CharMotionNoSet(s16 charNo, HU3D_MOTIONID motId, unsigned int motNo)
+void fn_8005B398(s16 charNo, HU3D_MOTIONID motId, unsigned int motNo)
 {
     CHARWORK *workP = &CharWork[charNo];
     s16 i;
-    for(i=0; i<CHAR_MOT_MAX; i++) {
+    for(i=0; i<32; i++) {
         if(workP->motId[i] == motId) {
             break;
         }
     }
-    if(i != CHAR_MOT_MAX) {
+    if(i != 32) {
         workP->motNoTbl[i] = motNo;
     }
 }
 
 // Stops a character motion and removes its ID from the character's loaded-motion table.
-void CharMotionKill(s16 charNo, unsigned int motId)
+void fn_8005B420(s16 charNo, unsigned int motId)
 {
     CHARWORK *workP = &CharWork[charNo];
     s16 i;
-    for(i=0; i<CHAR_MOT_MAX; i++) {
+    for(i=0; i<32; i++) {
         if(workP->motId[i] == motId) {
             break;
         }
     }
-    workP->motId[i] = HU3D_MOTIONID_NONE;
-    Hu3DMotionKill(motId);
+    workP->motId[i] = -1;
+    fn_8002C624(motId);
     
 }
 
 // Closes the character motion and shared effect data directories for one character, or all
 // characters.
-void CharMotionDataClose(s16 charNo)
+void fn_8005B4BC(s16 charNo)
 {
     s16 i;
-    if(charNo == CHARNO_NONE) {
-        for(i=0; i<CHARNO_MAX; i++) {
-            CharMotionDataClose(i);
+    if(charNo == -1) {
+        for(i=0; i<14; i++) {
+            fn_8005B4BC(i);
         }
     } else {
-        HuDataDirClose(CharDataDirTbl[charNo][4]);
-        HuDataDirClose(DATA_effect);
+        fn_800097F4(lbl_8022E718[charNo][4]);
+        fn_800097F4(0x210000);
     }
 }
 
 // Closes the character model and motion directories plus shared effect data.
-void CharModelDataClose(s16 charNo)
+void fn_8005B7BC(s16 charNo)
 {
     s16 i;
-    if(charNo == CHARNO_NONE) {
-        for(i=0; i<CHARNO_MAX; i++) {
-            CharModelDataClose(i);
+    if(charNo == -1) {
+        for(i=0; i<14; i++) {
+            fn_8005B7BC(i);
         }
     } else {
         for(i=0; i<5; i++) {
-            HuDataDirClose(CharDataDirTbl[charNo][i]);
+            fn_800097F4(lbl_8022E718[charNo][i]);
         }
-        HuDataDirClose(DATA_effect);
+        fn_800097F4(0x210000);
     }
 }
 
 // Stops a character's motions and removes its model; CHARNO_NONE applies cleanup to all characters.
-void CharModelKill(s16 charNo)
+void fn_8005BB8C(s16 charNo)
 {
     s16 i;
     s16 cameraNo;
-    if(charNo == CHARNO_NONE) {
-        for(i=0; i<CHARNO_MAX; i++) {
-            CharModelKill(i);
+    if(charNo == -1) {
+        for(i=0; i<14; i++) {
+            fn_8005BB8C(i);
         }
-        for(i=0; i<CHAR_NPC_NO_BASE; i++) {
+        for(i=0; i<15; i++) {
             dustFlags[i] = 0;
         }
     } else {
         CHARWORK *workP;
-        CharMotionDataClose(charNo);
+        fn_8005B4BC(charNo);
         workP = &CharWork[charNo];
-        for(i=0; i<CHAR_MOT_MAX; i++) {
-            if(workP->motId[i] != HU3D_MOTIONID_NONE) {
-                Hu3DMotionKill(workP->motId[i]);
+        for(i=0; i<32; i++) {
+            if(workP->motId[i] != -1) {
+                fn_8002C624(workP->motId[i]);
             }
-            workP->motId[i] = HU3D_MOTIONID_NONE;
-            workP->motNoTbl[i] = HU3D_MOTIONID_NONE;
+            workP->motId[i] = -1;
+            workP->motNoTbl[i] = -1;
         }
-        if(workP->modelId != HU3D_MODELID_NONE) {
-            Hu3DModelKill(workP->modelId);
+        if(workP->modelId != -1) {
+            fn_800262D0(workP->modelId);
         }
-        workP->modelId = HU3D_MODELID_NONE;
-        for(i=0; i<CHARNO_MAX; i++) {
-            if(CharWork[i].modelId != HU3D_MODELID_NONE) {
+        workP->modelId = -1;
+        for(i=0; i<14; i++) {
+            if(CharWork[i].modelId != -1) {
                 break;
             }                
         }
-        if(i == CHARNO_MAX) {
+        if(i == 14) {
             for(i=0; i<EFFECT_MAX; i++) {
-                for(cameraNo=0; cameraNo<HU3D_CAM_MAX; cameraNo++) {
-                    if(effModelId[i][cameraNo] != HU3D_MODELID_NONE) {
-                        Hu3DModelKill(effModelId[i][cameraNo]);
+                for(cameraNo=0; cameraNo<16; cameraNo++) {
+                    if(effModelId[i][cameraNo] != -1) {
+                        fn_800262D0(effModelId[i][cameraNo]);
                     }
-                    effModelId[i][cameraNo] = HU3D_MODELID_NONE;
+                    effModelId[i][cameraNo] = -1;
                 }
             }
             effectLayer = 0;
@@ -1929,7 +1935,7 @@ void CharModelKill(s16 charNo)
         if(workP->process) {
             HuMemDirectFree(workP->process->property);
             HuPrcKill(workP->process);
-            for(i=0; i<CHAR_MOT_MAX; i++) {
+            for(i=0; i<32; i++) {
                 if(hookDustProc[i]) {
                     HuPrcKill(hookDustProc[i]);
                 }
@@ -1943,12 +1949,12 @@ void CharModelKill(s16 charNo)
 }
 
 // Gameplay and menu animation controllers call this to switch a character model's motion.
-void CharMotionSet(s16 charNo, HU3D_MOTIONID motId)
+void fn_8005BE80(s16 charNo, HU3D_MOTIONID motId)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MOTION *motP = &Hu3DMotion[motId];
+    HU3D_MOTION *motP = &lbl_802624B8[motId];
     EyeBmpUpdate(charNo);
-    Hu3DMotionSet(workP->modelId, motId);
+    fn_8002C95C(workP->modelId, motId);
 }
 
 // Called before a motion switch to clear translation and rotation animation transforms on the
@@ -1956,20 +1962,20 @@ void CharMotionSet(s16 charNo, HU3D_MOTIONID motId)
 static void EyeBmpUpdate(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     HSF_ATTRIBUTE *attrP = modelP->hsf->attribute;
     s16 i;
     s16 modelBit;
     char **eyeBmp;
-    for(i=0, modelBit=1; i<CHAR_MODEL_MAX; i++, modelBit <<= 1) {
+    for(i=0, modelBit=1; i<4; i++, modelBit <<= 1) {
         if(modelBit & workP->model) {
             break;
         }
     }
-    if(i >= CHAR_MODEL_MAX) {
+    if(i >= 4) {
         return;
     }
-    eyeBmp = CharModelEyeBmpGet(charNo, workP->model);
+    eyeBmp = fn_8005C074(charNo, workP->model);
     for(i=0; i<modelP->hsf->attributeNum; i++, attrP++) {
         if(attrP->bitmap->name[0] != eyeBmp[0][0] || strcmp(attrP->bitmap->name, eyeBmp[0])) {
             if(attrP->bitmap->name[0] != eyeBmp[1][0] || strcmp(attrP->bitmap->name, eyeBmp[1])) {
@@ -1984,7 +1990,7 @@ static void EyeBmpUpdate(s16 charNo)
     }
 }
 
-char *CharEyeBmpNameTbl[CHARNO_MAX * CHAR_MODEL_MAX * 2] = {
+char *CharEyeBmpNameTbl[14 * 4 * 2] = {
     "s3c000m1_eyes", "s3c000m1_eyes", "s3c000m1_eyes", "s3c000m1_eyes",
     "s3c000m2_eyes", "s3c000m2_eyes", "mario_eyes", "mario_eyes",
     "S3c001m0_eye", "S3c001m0_eye", "S3c001m1_eye", "S3c001m1_eye",
@@ -2016,19 +2022,19 @@ char *CharEyeBmpNameTbl[CHARNO_MAX * CHAR_MODEL_MAX * 2] = {
 };
 
 // Returns the two eye-bitmap names assigned to this character model variant.
-char **CharModelEyeBmpGet(s16 charNo, s16 model)
+char **fn_8005C074(s16 charNo, s16 model)
 {
     s16 i;
     s16 bit;
-    for(i=0, bit=CHAR_MODEL0; i<CHAR_MODEL_MAX-1; i++, bit <<= 1) {
+    for(i=0, bit=(1 << 0); i<4-1; i++, bit <<= 1) {
         if(bit & model) {
             break;
         }
     }
-    return &CharEyeBmpNameTbl[(charNo*(CHAR_MODEL_MAX*2))+(i*2)];
+    return &CharEyeBmpNameTbl[(charNo*(4*2))+(i*2)];
 }
 
-static char *CharHookNameTbl[CHARNO_MAX*5] = {
+static char *CharHookNameTbl[14*5] = {
     "a-itemhook-r", "a-itemhook-l", "a-itemhook-fr", "a-itemhook-fl", "a-itemhook-body",
     "a-itemhook-r", "a-itemhook-l", "a-itemhook-fr", "a-itemhook-fl", "a-itemhook-body",
     "a-itemhook-r", "a-itemhook-l", "a-itemhook-fr", "a-itemhook-fl", "a-itemhook-body",
@@ -2046,11 +2052,11 @@ static char *CharHookNameTbl[CHARNO_MAX*5] = {
 };
 
 // Returns the named attachment point used for an item on a character model.
-char *CharModelItemHookGet(s16 charNo, s16 model, s16 hookNo)
+char *fn_8005C0F0(s16 charNo, s16 model, s16 hookNo)
 {
     s16 i;
     s16 bit;
-    for(i=0, bit=CHAR_MODEL0; i<CHAR_MODEL_MAX-1; i++, bit <<= 1) {
+    for(i=0, bit=(1 << 0); i<4-1; i++, bit <<= 1) {
         if(bit & model) {
             break;
         }
@@ -2058,102 +2064,102 @@ char *CharModelItemHookGet(s16 charNo, s16 model, s16 hookNo)
     return CharHookNameTbl[(charNo*5)+hookNo];
 }
 
-void CharMotionTimeSet(s16 charNo, float time)
+void fn_8005C16C(s16 charNo, float time)
 {
     CHARWORK *workP = &CharWork[charNo];
-    Hu3DMotionTimeSet(workP->modelId, time);
+    fn_8002D414(workP->modelId, time);
 }
 
-float CharMotionTimeGet(s16 charNo)
+float fn_8005C1B8(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
-    return Hu3DMotionTimeGet(workP->modelId);
+    return fn_8002D4E0(workP->modelId);
 }
 
-float CharMotionMaxTimeGet(s16 charNo)
+float fn_8005C1FC(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
-    return Hu3DMotionMaxTimeGet(workP->modelId);
+    return fn_8002D530(workP->modelId);
 }
 
-BOOL CharMotionEndCheck(s16 charNo)
+BOOL fn_8005C240(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
-    return Hu3DMotionEndCheck(workP->modelId);
+    return fn_8002D75C(workP->modelId);
 }
 
-HU3D_MOTIONID CharMotionShiftIDGet(s16 charNo)
+HU3D_MOTIONID fn_8005C284(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
-    return Hu3DMotionShiftIDGet(workP->modelId);
+    return fn_8002D3EC(workP->modelId);
 }
 
 // Animation controllers call this to blend the character into another motion over a time range.
-void CharMotionShiftSet(s16 charNo, HU3D_MOTIONID motId, float start, float end, u32 attr)
+void fn_8005C2C8(s16 charNo, HU3D_MOTIONID motId, float start, float end, u32 attr)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MOTION *motP = &Hu3DMotion[motId];
-    Hu3DMotionShiftSet(workP->modelId, motId, start, end, attr);
+    HU3D_MOTION *motP = &lbl_802624B8[motId];
+    fn_8002CCC0(workP->modelId, motId, start, end, attr);
 }
 
-float CharMotionShiftTimeGet(s16 charNo)
+float fn_8005C34C(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
-    return Hu3DMotionShiftTimeGet(workP->modelId);
+    return fn_8002D508(workP->modelId);
 }
 
-void CharMotionSpeedSet(s16 charNo, float speed)
+void fn_8005C390(s16 charNo, float speed)
 {
     CHARWORK *workP = &CharWork[charNo];
-    Hu3DMotionSpeedSet(workP->modelId, speed);
+    fn_8002D86C(workP->modelId, speed);
 }
 
-void CharMotionStartEndSet(s16 charNo, float start, float end)
+void fn_8005C3DC(s16 charNo, float start, float end)
 {
     CHARWORK *workP = &CharWork[charNo];
-    Hu3DMotionStartEndSet(workP->modelId, start, end);
+    fn_8002D730(workP->modelId, start, end);
 }
 
-void CharModelAttrSet(s16 charNo, u32 attr)
+void fn_8005C430(s16 charNo, u32 attr)
 {
     CHARWORK *workP = &CharWork[charNo];
-    Hu3DModelAttrSet(workP->modelId, attr);
+    fn_800269E8(workP->modelId, attr);
 }
 
-void CharModelAttrReset(s16 charNo, u32 attr)
+void fn_8005C47C(s16 charNo, u32 attr)
 {
     CHARWORK *workP = &CharWork[charNo];
-    Hu3DModelAttrReset(workP->modelId, attr);
+    fn_80026A44(workP->modelId, attr);
 }
 
-static float modelHeightTbl[CHARNO_MAX] = {
+static float modelHeightTbl[14] = {
     150.0f, 170.0f, 188.0f, 169.0f, 164.0f, 180.0f, 210.0f,
     120.0f, 150.0f, 150.0f, 120.0f, 150.0f, 150.0f, 150.0f
 };
 
-float CharModelHeightGet(s16 charNo)
+float fn_8005C4C8(s16 charNo)
 {
     return modelHeightTbl[charNo];
 }
 
-HU3D_MODELID CharModelMotListCreate(s16 charNo, s16 model, unsigned int *motDataNum,
+HU3D_MODELID fn_8005C4E4(s16 charNo, s16 model, unsigned int *motDataNum,
                                     HU3D_MOTIONID *motId)
 {
-    HU3D_MODELID modelId = CharModelCreate(charNo, model);
+    HU3D_MODELID modelId = fn_80057068(charNo, model);
     s16 no = 0;
     do {
         if(motDataNum[no] == 0) {
             break;
         }
-        motId[no] = CharMotionCreate(charNo, motDataNum[no]);
+        motId[no] = fn_8005B0B8(charNo, motDataNum[no]);
         no++;
     } while(1);
-    CharMotionDataClose(charNo);
+    fn_8005B4BC(charNo);
     return modelId;
 }
 
 // Returns one of the character model's three timing-hook slots for animation callbacks.
-s32 CharModelTimingHookNoGet(s16 charNo)
+s32 fn_8005C750(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
     if(workP->timingHookNo == 0) {
@@ -2176,15 +2182,15 @@ static void CreateHookDust(void);
 static inline HUPROCESS *CreateHookDustProc(void)
 {
     s16 i;
-    for(i=0; i<CHAR_MOT_MAX; i++) {
+    for(i=0; i<32; i++) {
         if(!hookDustProc[i]) {
             break;
         }
     }
-    if(i == CHAR_MOT_MAX) {
+    if(i == 32) {
         return NULL;
     }
-    hookDustProc[i] = HuPrcCreate(CreateHookDust, 100, 8192, 0);
+    hookDustProc[i] = fn_8000D818(CreateHookDust, 100, 8192, 0);
     return hookDustProc[i];
 }
 
@@ -2192,7 +2198,7 @@ static inline HUPROCESS *CreateHookDustProc(void)
 static inline void KillHookDustProc(HUPROCESS *process)
 {
     s16 i;
-    for(i=0; i<CHAR_MOT_MAX; i++) {
+    for(i=0; i<32; i++) {
         if(hookDustProc[i] == process) {
             HuPrcKill(process);
             hookDustProc[i] = NULL;
@@ -2201,11 +2207,11 @@ static inline void KillHookDustProc(HUPROCESS *process)
 }
 
 // Called when an attached object is removed to animate its model upward and burst it into dust.
-void CharModelHookDustCreate(s16 charNo, char *objName)
+void fn_8005C7A4(s16 charNo, char *objName)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
-    HSF_OBJECT *objPtr = Hu3DModelObjPtrGet(workP->modelId, objName);
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
+    HSF_OBJECT *objPtr = fn_80026BF4(workP->modelId, objName);
     HSF_CONSTDATA *constData;
     HOOKDUSTWORK *hookDustWork;
     HU3D_MODELID hookMdlId;
@@ -2213,27 +2219,27 @@ void CharModelHookDustCreate(s16 charNo, char *objName)
     Mtx hookMtx;
     HuVecF temp;
     
-    Hu3DModelObjMtxGet(workP->modelId, objName, hookMtx);
+    fn_80023398(workP->modelId, objName, hookMtx);
     constData = objPtr->constData;
     hookMdlId = constData->hookMdlId;
-    if(hookMdlId == HU3D_MODELID_NONE) {
+    if(hookMdlId == -1) {
         return;
     }
-    Hu3DModelHookObjReset(workP->modelId, objName);
+    fn_800275B4(workP->modelId, objName);
     process = CreateHookDustProc();
     if(!process) {
-        Hu3DModelDispOff(hookMdlId);
+        fn_800269E8(hookMdlId, (1 << 0));
         return;
     }
     process->property = hookDustWork =
-        HuMemDirectMallocNum(HEAP_HEAP, sizeof(HOOKDUSTWORK), HU_MEMNUM_OVL);
-    modelP = &Hu3DData[hookMdlId];
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(HOOKDUSTWORK), 0x10000000);
+    modelP = &lbl_802C01C8[hookMdlId];
     Hu3DMtxTransGet(hookMtx, &temp);
-    Hu3DModelPosSetV(hookMdlId, &temp);
+    fn_80026790(hookMdlId, &temp);
     Hu3DMtxRotGet(hookMtx, &temp);
-    mtxRot(modelP->mtx, temp.x, temp.y, temp.z);
+    fn_80022E38(modelP->mtx, temp.x, temp.y, temp.z);
     Hu3DMtxScaleGet(hookMtx, &temp);
-    Hu3DModelScaleSetV(hookMdlId, &temp);
+    fn_800268E0(hookMdlId, &temp);
     hookDustWork->modelId = hookMdlId;
     hookDustWork->cameraBit = modelP->cameraBit;
 }
@@ -2241,15 +2247,15 @@ void CharModelHookDustCreate(s16 charNo, char *objName)
 // The hook-dust process shrinks and lifts the detached model, then emits dust particles.
 static void CreateHookDust(void)
 {
-    HOOKDUSTWORK *hookDustWork = HuPrcCurrentGet()->property;
-    HU3D_MODEL *modelP = &Hu3DData[hookDustWork->modelId];
+    HOOKDUSTWORK *hookDustWork = fn_8000DD9C()->property;
+    HU3D_MODEL *modelP = &lbl_802C01C8[hookDustWork->modelId];
     Mtx rootMtx;
     HuVecF pos;
     s16 i;
-    Hu3DModelObjMtxGet(hookDustWork->modelId, "", rootMtx);
-    pos.x = PGMinPos.x+((PGMaxPos.x-PGMinPos.x)/2);
-    pos.y = PGMinPos.y+((PGMaxPos.y-PGMinPos.y)/2);
-    pos.z = PGMinPos.z+((PGMaxPos.z-PGMinPos.z)/2);
+    fn_80023398(hookDustWork->modelId, "", rootMtx);
+    pos.x = lbl_8025FE04.x+((lbl_8025FDF8.x-lbl_8025FE04.x)/2);
+    pos.y = lbl_8025FE04.y+((lbl_8025FDF8.y-lbl_8025FE04.y)/2);
+    pos.z = lbl_8025FE04.z+((lbl_8025FDF8.z-lbl_8025FE04.z)/2);
     for(i=0; i<40; i++) {
         modelP->pos.y += 4.0f;
         mtxRotCat(modelP->mtx, 24, 0, 0);
@@ -2258,11 +2264,11 @@ static void CreateHookDust(void)
         modelP->scale.z *= 0.95f;
         HuPrcVSleep();
     }
-    Hu3DModelObjMtxGet(hookDustWork->modelId, "", rootMtx);
-    pos.x = PGMinPos.x+((PGMaxPos.x-PGMinPos.x)/2);
-    pos.y = PGMinPos.y+((PGMaxPos.y-PGMinPos.y)/2);
-    pos.z = PGMinPos.z+((PGMaxPos.z-PGMinPos.z)/2);
-    Hu3DModelDispOff(hookDustWork->modelId);
+    fn_80023398(hookDustWork->modelId, "", rootMtx);
+    pos.x = lbl_8025FE04.x+((lbl_8025FDF8.x-lbl_8025FE04.x)/2);
+    pos.y = lbl_8025FE04.y+((lbl_8025FDF8.y-lbl_8025FE04.y)/2);
+    pos.z = lbl_8025FE04.z+((lbl_8025FDF8.z-lbl_8025FE04.z)/2);
+    fn_800269E8(hookDustWork->modelId, (1 << 0));
     dustEffParam.vel.x = 0;
     dustEffParam.vel.y = 0;
     dustEffParam.vel.z = 0;
@@ -2274,7 +2280,7 @@ static void CreateHookDust(void)
         EffectDustCreate(hookDustWork->modelId, pos.x, pos.y, pos.z, 20.0f, &dustEffParam);
     }
     MTXIdentity(modelP->mtx);
-    KillHookDustProc(HuPrcCurrentGet());
+    KillHookDustProc(fn_8000DD9C());
     while(1) {
         HuPrcVSleep();
     }
@@ -2294,7 +2300,7 @@ static EFFECTPARAM modelSmokeEffParam = {
 };
 
 // Creates the expanding smoke burst used by gameplay effects, scaled around the supplied position.
-void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
+void fn_8005CF90(s16 cameraBit, HuVecF *pos, float scale)
 {
     HU3D_PARTICLE_DATA *particleDataP;
     s16 i;
@@ -2303,7 +2309,7 @@ void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
     HU3D_MODEL *modelP;
     s16 bit;
     s16 cameraNo;
-    for(bit=HU3D_CAM0, cameraNo=0; cameraNo<HU3D_CAM_MAX; cameraNo++, bit <<= 1) {
+    for(bit=(1 << 0), cameraNo=0; cameraNo<16; cameraNo++, bit <<= 1) {
         if(cameraBit & bit) {
             for(i=0; i<8; i++) {
                 effectNo = EffectCreate(EFFECT_SMOKE, bit, pos->x, pos->y, pos->z, 20 * scale,
@@ -2311,12 +2317,12 @@ void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
                 if(effectNo == -1) {
                     break;
                 }
-                modelP = &Hu3DData[effModelId[EFFECT_SMOKE][cameraNo]];
+                modelP = &lbl_802C01C8[effModelId[EFFECT_SMOKE][cameraNo]];
                 particleP = modelP->hookData;
                 particleDataP = &particleP->data[effectNo];
                 particleDataP->parManId = 2;
-                particleDataP->vel.x = scale*(30*HuSin(i*45));
-                particleDataP->vel.y = scale*(30*HuCos(i*45));
+                particleDataP->vel.x = scale*(30*sin(3.141592653589793*(i*45)/180.0));
+                particleDataP->vel.y = scale*(30*cos(3.141592653589793*(i*45)/180.0));
                 particleDataP->vel.z = 0;
                 particleDataP->accel = *pos;
                 particleDataP->speedDecay = 1.15f;
@@ -2329,7 +2335,7 @@ void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
                 if(effectNo == -1) {
                     break;
                 }
-                modelP = &Hu3DData[effModelId[EFFECT_SMOKE][cameraNo]];
+                modelP = &lbl_802C01C8[effModelId[EFFECT_SMOKE][cameraNo]];
                 particleP = modelP->hookData;
                 particleDataP = &particleP->data[effectNo];
                 particleDataP->parManId = 2;
@@ -2346,7 +2352,7 @@ void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
             if(effectNo == -1) {
                 break;
             }
-            modelP = &Hu3DData[effModelId[EFFECT_SMOKE][cameraNo]];
+            modelP = &lbl_802C01C8[effModelId[EFFECT_SMOKE][cameraNo]];
             particleP = modelP->hookData;
             particleDataP = &particleP->data[effectNo];
             particleDataP->parManId = 2;
@@ -2361,9 +2367,9 @@ void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale)
     }
 }
 
-void CharEffectSmokeCreate(s16 cameraBit, HuVecF *pos)
+void fn_8005D404(s16 cameraBit, HuVecF *pos)
 {
-    CharEffectSmokeCreateScale(cameraBit, pos, 1.0f);
+    fn_8005CF90(cameraBit, pos, 1.0f);
 }
 
 // Particle update callback moves a model-attached effect outward, grows it, then fades it away.
@@ -2375,7 +2381,7 @@ static void UpdateModelEffect(HU3D_PARTICLE_DATA *particleDataP)
     if(angle > 90.0f) {
         angle = 90.0f;
     }
-    speed = HuSin(angle);
+    speed = sin(3.141592653589793*angle/180.0);
     particleDataP->pos.x = particleDataP->accel.x+(particleDataP->vel.x*speed);
     particleDataP->pos.y = particleDataP->accel.y+(particleDataP->vel.y*speed);
     particleDataP->pos.z = particleDataP->accel.z+(particleDataP->vel.z*speed);
@@ -2411,15 +2417,15 @@ static EFFECTPARAM coinEffParam = {
 };
 
 // Emits a ring of yellow glow particles when a coin-related character effect is shown.
-void CharEffectCoinGlowCreate(s16 cameraBit, HuVecF *pos)
+void fn_8005D5A0(s16 cameraBit, HuVecF *pos)
 {
     s16 i;
     for(i=0; i<16; i++) {
         s16 angle = i*(360.0f/16.0f);
         s16 effectNo;
-        coinEffParam.vel.x = 5*HuSin(angle);
+        coinEffParam.vel.x = 5*sin(3.141592653589793*angle/180.0);
         coinEffParam.vel.y = 0.1f*(frandmod(100)-50);
-        coinEffParam.vel.z = 5*HuCos(angle);
+        coinEffParam.vel.z = 5*cos(3.141592653589793*angle/180.0);
         effectNo = EffectCreate(EFFECT_GLOW, cameraBit, pos->x, pos->y, pos->z, 30, &coinEffParam);
         if(effectNo == -1) {
             break;
@@ -2454,38 +2460,38 @@ static EFFECTPARAM hitGlowEffParam = {
 };
 
 // Called at the character's hit hook to place the impact burst just in front of the model.
-void CharModelHitCreate(s16 charNo)
+void fn_8005D738(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     s16 motNo;
     Mtx mtx;
     HuVecF pos;
     HuVecF radius;
     
-    for(motNo=0; motNo<CHAR_MOT_MAX; motNo++) {
+    for(motNo=0; motNo<32; motNo++) {
         if(workP->motId[motNo] == modelP->motId) {
             break;
         }
     }
-    if(motNo == CHAR_MOT_MAX) {
+    if(motNo == 32) {
         return;
     }
-    Hu3DModelObjMtxGet(workP->modelId, "test11_tex_we-itemhook-r", mtx);
+    fn_80023398(workP->modelId, "test11_tex_we-itemhook-r", mtx);
     pos.x = mtx[0][3];
     pos.y = mtx[1][3];
     pos.z = mtx[2][3];
-    mtxRot(mtx, modelP->rot.x, modelP->rot.y, modelP->rot.z);
+    fn_80022E38(mtx, modelP->rot.x, modelP->rot.y, modelP->rot.z);
     radius.x = mtx[0][2];
     radius.y = mtx[1][2];
     radius.z = mtx[2][2]; 
     VECScale(&radius, &radius, 20);
     VECAdd(&pos, &radius, &pos);
-    CharEffectHitCreate(modelP->cameraBit, &pos, &modelP->rot);
+    fn_8005D864(modelP->cameraBit, &pos, &modelP->rot);
 }
 
 // Creates the directional star and glow burst used for a character impact.
-void CharEffectHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
+void fn_8005D864(s16 cameraBit, HuVecF *pos, HuVecF *rot)
 {
     Mtx mtx;
     HuVecF radius;
@@ -2494,14 +2500,14 @@ void CharEffectHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
     s16 i;
     s16 effectNo;
     float angle;
-    mtxRot(mtx, rot->x, rot->y, rot->z);
+    fn_80022E38(mtx, rot->x, rot->y, rot->z);
     radius.x = mtx[0][2];
     radius.y = mtx[1][2];
     radius.z = mtx[2][2];
     for(i=0; i<8; i++) {
         angle = i*45;
-        dir.x = HuSin(angle);
-        dir.y = HuCos(angle);
+        dir.x = sin(3.141592653589793*angle/180.0);
+        dir.y = cos(3.141592653589793*angle/180.0);
         dir.z = 0.0f;
         VECNormalize(&dir, &dir);
         MTXMultVec(mtx, &dir, &dir);
@@ -2549,29 +2555,29 @@ static EFFECTPARAM shoeHitGlowEffParam = {
 };
 
 // Called at the right-shoe hook to place the shoe-impact burst in front of the character.
-void CharModelShoeHitCreate(s16 charNo)
+void fn_8005DA5C(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     Mtx mtx;
     HuVecF pos;
     HuVecF radius;
 
-    Hu3DModelObjMtxGet(workP->modelId, "test11_tex_we-ske_R_shoe1", mtx);
+    fn_80023398(workP->modelId, "test11_tex_we-ske_R_shoe1", mtx);
     pos.x = mtx[0][3];
     pos.y = mtx[1][3];
     pos.z = mtx[2][3];
-    mtxRot(mtx, modelP->rot.x, modelP->rot.y, modelP->rot.z);
+    fn_80022E38(mtx, modelP->rot.x, modelP->rot.y, modelP->rot.z);
     radius.x = mtx[0][2];
     radius.y = mtx[1][2];
     radius.z = mtx[2][2]; 
     VECScale(&radius, &radius, 30);
     VECAdd(&pos, &radius, &pos);
-    CharEffectShoeHitCreate(modelP->cameraBit, &pos, &modelP->rot);
+    fn_8005DB3C(modelP->cameraBit, &pos, &modelP->rot);
 }
 
 // Creates the star and glow particles for a shoe impact, aimed around the shoe's forward axis.
-void CharEffectShoeHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
+void fn_8005DB3C(s16 cameraBit, HuVecF *pos, HuVecF *rot)
 {
     Mtx mtx;
     HuVecF radius;
@@ -2579,16 +2585,20 @@ void CharEffectShoeHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
     HuVecF vel;
     s16 i;
     s16 effectNo;
-    mtxRot(mtx, rot->x, rot->y, rot->z);
+    fn_80022E38(mtx, rot->x, rot->y, rot->z);
     radius.x = mtx[0][2];
     radius.y = mtx[1][2];
     radius.z = mtx[2][2]; 
     for(i=0; i<8; i++) {
         float angle = i*45;
         VECNormalize(&radius, &radius);
-        dir.x = ((radius.x*radius.y)*(1-HuCos(angle)))-(radius.z*HuSin(angle));
-        dir.y = (radius.y*radius.y)+((1-(radius.y*radius.y))*HuCos(angle));
-        dir.z = ((radius.y*radius.z)*(1-HuCos(angle)))+(radius.x*HuSin(angle));
+        dir.x =
+            ((radius.x*radius.y)*(1-cos(3.141592653589793*angle/180.0)))
+            -(radius.z*sin(3.141592653589793*angle/180.0));
+        dir.y = (radius.y*radius.y)+((1-(radius.y*radius.y))*cos(3.141592653589793*angle/180.0));
+        dir.z =
+            ((radius.y*radius.z)*(1-cos(3.141592653589793*angle/180.0)))
+            +(radius.x*sin(3.141592653589793*angle/180.0));
         VECNormalize(&dir, &dir);
         VECScale(&dir, &shoeHitEffParam.vel, 10);
         effectNo =
@@ -2608,13 +2618,13 @@ void CharEffectShoeHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot)
 }
 
 // Moves every active character-effect model to the requested render layer.
-void CharEffectLayerSet(s16 layerNo)
+void fn_8005DDEC(s16 layerNo)
 {
     s16 i, j;
     for(i=0; i<EFFECT_MAX; i++) {
-        for(j=0; j<HU3D_CAM_MAX; j++) {
-            if(effModelId[i][j] != HU3D_MODELID_NONE) {
-                Hu3DModelLayerSet(effModelId[i][j], layerNo);
+        for(j=0; j<16; j++) {
+            if(effModelId[i][j] != -1) {
+                fn_80026B8C(effModelId[i][j], layerNo);
             }
         }
     }
@@ -2622,20 +2632,20 @@ void CharEffectLayerSet(s16 layerNo)
 }
 
 // Character setup and event scripts use this to enable or suppress voice playback for one motion.
-void CharMotionVoiceOnSet(s16 charNo, s16 motNo, BOOL voiceOn)
+void fn_8005DEB0(s16 charNo, s16 motNo, BOOL voiceOn)
 {
     CHARWORK *workP = &CharWork[charNo];
     s16 i;
-    if(workP->modelId == HU3D_MODELID_NONE) {
+    if(workP->modelId == -1) {
         return;
     }
-    motNo = CHAR_MOTNO(motNo);
-    for(i=0; i<CHAR_MOT_MAX; i++) {
+    motNo = FILENUM(motNo);
+    for(i=0; i<32; i++) {
         if(workP->motNoTbl[i] == motNo) {
             break;
         }
     }
-    if(i == CHAR_MOT_MAX) {
+    if(i == 32) {
         return;
     }
     if(!voiceOn) {
@@ -2646,7 +2656,7 @@ void CharMotionVoiceOnSet(s16 charNo, s16 motNo, BOOL voiceOn)
 }
 
 // Enables or disables automatic stereo panning for voice lines emitted by this character.
-void CharModelVoicePanAutoSet(s16 charNo, BOOL voicePanAuto)
+void fn_8005DF74(s16 charNo, BOOL voicePanAuto)
 {
     CHARWORK *workP = &CharWork[charNo];
     if(voicePanAuto) {
@@ -2657,10 +2667,10 @@ void CharModelVoicePanAutoSet(s16 charNo, BOOL voicePanAuto)
 }
 
 // Character and NPC controllers use this flag to suppress or restore their sound and effect cues.
-void CharModelVoiceFlagSet(s16 charNo, BOOL fxFlag)
+void fn_8005DFC0(s16 charNo, BOOL fxFlag)
 {
     CHARWORK *workP = &CharWork[charNo];
-    if(charNo >= CHARNO_MAX) {
+    if(charNo >= 14) {
         if(!fxFlag) {
             dustFlags[charNo] |= CHAR_ATTR_FX_OFF;
         } else {
@@ -2677,20 +2687,20 @@ void CharModelVoiceFlagSet(s16 charNo, BOOL fxFlag)
 }
 
 // Sets whether the selected character motion updates its voice and motion events while playing.
-void CharMotionUpdateSet(s16 charNo, unsigned int dataNum, BOOL updateF)
+void fn_8005E070(s16 charNo, unsigned int dataNum, BOOL updateF)
 {
     CHARWORK *workP = &CharWork[charNo];
     s16 i;
-    if(charNo >= CHARNO_MAX) {
+    if(charNo >= 14) {
         return;
     }
     dataNum = FILENUM(dataNum);
-    for(i=0; i<CHAR_MOT_MAX; i++) {
+    for(i=0; i<32; i++) {
         if(workP->motNoTbl[i] == dataNum) {
             break;
         }
     }
-    if(i == CHAR_MOT_MAX) {
+    if(i == 32) {
         return;
     }
     if(updateF) {
@@ -2710,14 +2720,14 @@ typedef struct NpcDustWork_s {
 static void UpdateNpcDust(void);
 
 // Starts motion-timed dust and sound effects for an NPC or character.
-s32 CharNpcDustSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type, s16 npcNo)
+s32 fn_8005E128(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type, s16 npcNo)
 {
-    HUPROCESS *parent = HuPrcCurrentGet();
-    HUPROCESS *process = HuPrcChildCreate(UpdateNpcDust, 100, 8192, 0, parent);
+    HUPROCESS *parent = fn_8000DD9C();
+    HUPROCESS *process = fn_8000DAC0(UpdateNpcDust, 100, 8192, 0, parent);
     if(!process) {
         return;
     } else {
-        NPCDUSTWORK *work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(NPCDUSTWORK), HU_MEMNUM_OVL);
+        NPCDUSTWORK *work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(NPCDUSTWORK), 0x10000000);
         process->property = work;
         work->modelId = modelId;
         work->motId = motId;
@@ -2728,10 +2738,10 @@ s32 CharNpcDustSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type, s16 npcN
 }
 
 // Starts the same motion-timed dust effect without associating an NPC footstep sound.
-s32 CharNpcDustVoiceOffSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type)
+s32 fn_8005E1D8(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type)
 {
     s32 ret;
-    CharNpcDustSet(modelId, motId, type, CHAR_NPC_NONE);
+    fn_8005E128(modelId, motId, type, -1);
     return ret;
 }
 
@@ -2756,29 +2766,29 @@ static u16 npcSeTbl5[4] = { 177, 177, 177, 177 };
 // Updates dust and NPC footstep sounds each frame while the selected motion is active.
 static void UpdateNpcDust(void)
 {
-    NPCDUSTWORK *work = HuPrcCurrentGet()->property;
+    NPCDUSTWORK *work = fn_8000DD9C()->property;
     HU3D_MODELID modelId = work->modelId;
     s16 time = 0;
-    HU3D_MODEL *modelP = &Hu3DData[work->modelId];
-    s16 npcNo = work->npcNo-CHAR_NPC_NO_BASE;
+    HU3D_MODEL *modelP = &lbl_802C01C8[work->modelId];
+    s16 npcNo = work->npcNo-15;
     Vec pos;
     s16 i;
     while(1) {
         HuPrcVSleep();
-        if(Hu3DMotionIDGet(modelId) != work->motId) {
+        if(fn_8002D3C4(modelId) != work->motId) {
             continue;
         }
-        if(modelP->attr & HU3D_ATTR_DISPOFF) {
+        if(modelP->attr & (1 << 0)) {
             continue;
         }
-        time = Hu3DMotionTimeGet(modelId);
+        time = fn_8002D4E0(modelId);
         switch(work->type) {
             case 0:
                 if((time & (16 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -HuSin(modelP->rot.y)*2;
+                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -HuCos(modelP->rot.y)*2;
+                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2786,7 +2796,7 @@ static void UpdateNpcDust(void)
                                          &dustEffParam);
                     }
                 }
-                if(work->npcNo != CHAR_NPC_NONE) {
+                if(work->npcNo != -1) {
                     for(i=0; i<2; i++) {
                         if(npcSeTimeTbl[(npcNo*2)+i] == (time*2)) {
                             HuAudFXPlay(npcSeTbl[npcNo]);
@@ -2799,9 +2809,9 @@ static void UpdateNpcDust(void)
             case 1:
                 if((time & (4 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -HuSin(modelP->rot.y)*4;
+                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*4;
                         dustEffParam.vel.y = 2+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -HuCos(modelP->rot.y)*4;
+                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*4;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2809,7 +2819,7 @@ static void UpdateNpcDust(void)
                                          &dustEffParam);
                     }
                 }
-                if(work->npcNo != CHAR_NPC_NONE) {
+                if(work->npcNo != -1) {
                     for(i=0; i<2; i++) {
                         if(npcSeTimeTbl[(npcNo*2)+i] == (time*2)) {
                             HuAudFXPlay(npcSeTbl2[npcNo]);
@@ -2820,14 +2830,14 @@ static void UpdateNpcDust(void)
                 break;
             
             case 2:
-                if(npcNo == CHAR_NPC_NONE) {
+                if(npcNo == -1) {
                     continue;
                 }
                 if((time & (32 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -HuSin(modelP->rot.y)*2;
+                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -HuCos(modelP->rot.y)*2;
+                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2844,14 +2854,14 @@ static void UpdateNpcDust(void)
                 break;
              
             case 3:
-                if(npcNo == CHAR_NPC_NONE) {
+                if(npcNo == -1) {
                     continue;
                 }
                 if((time & (4 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -HuSin(modelP->rot.y)*2;
+                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -HuCos(modelP->rot.y)*2;
+                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2868,14 +2878,14 @@ static void UpdateNpcDust(void)
                 break;
              
             case 4:
-                if(npcNo == CHAR_NPC_NONE) {
+                if(npcNo == -1) {
                     continue;
                 }
                 if((time & (8 - 1)) == 0) {
                     if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
-                        dustEffParam.vel.x = -HuSin(modelP->rot.y)*2;
+                        dustEffParam.vel.x = -sin(3.141592653589793*modelP->rot.y/180.0)*2;
                         dustEffParam.vel.y = 1+(0.1*frandmod(10));
-                        dustEffParam.vel.z = -HuCos(modelP->rot.y)*2;
+                        dustEffParam.vel.z = -cos(3.141592653589793*modelP->rot.y/180.0)*2;
                         pos.x = modelP->pos.x+(frandmod(50)-25);
                         pos.y = modelP->pos.y;
                         pos.z = modelP->pos.z+(frandmod(50)-25);
@@ -2897,23 +2907,27 @@ static void UpdateNpcDust(void)
                 }
                 if(!(dustFlags[npcNo] & CHAR_ATTR_FX_OFF)) {
                     for(i=0; i<8; i++){ 
-                        npcHitEffParam.vel.x = 10*HuSin(45.0f*i)*modelP->scale.x;
+                        npcHitEffParam.vel.x =
+                            10*sin(3.141592653589793*(45.0f*i)/180.0)*modelP->scale.x;
                         npcHitEffParam.vel.y = 0;
-                        npcHitEffParam.vel.z = 10*HuCos(45.0f*i)*modelP->scale.x;
+                        npcHitEffParam.vel.z =
+                            10*cos(3.141592653589793*(45.0f*i)/180.0)*modelP->scale.x;
                         EffectStarCreate(modelId, modelP->pos.x,
                                          modelP->pos.y + (10 * modelP->scale.x), modelP->pos.z, 40,
                                          &npcHitEffParam);
                     }
                     for(i=0; i<8; i++){ 
-                        dustEffParam.vel.x = 4*HuSin((45.0f*i)+22.5)*modelP->scale.x;
+                        dustEffParam.vel.x =
+                            4*sin(3.141592653589793*((45.0f*i)+22.5)/180.0)*modelP->scale.x;
                         dustEffParam.vel.y = 0;
-                        dustEffParam.vel.z = 4*HuCos((45.0f*i)+22.5)*modelP->scale.x;
+                        dustEffParam.vel.z =
+                            4*cos(3.141592653589793*((45.0f*i)+22.5)/180.0)*modelP->scale.x;
                         EffectDustCreate(modelId, modelP->pos.x,
                                          modelP->pos.y + (10 * modelP->scale.x), modelP->pos.z, 20,
                                          &dustEffParam);
                     }
-                    if(npcNo != CHAR_NPC_NONE) {
-                        HuAudFXPlay(CHARSEID(18));
+                    if(npcNo != -1) {
+                        HuAudFXPlay((177+18));
                     }
                 }
                 break;
@@ -2921,7 +2935,7 @@ static void UpdateNpcDust(void)
     }
 }
 
-void CharModelStepSet(s16 charNo, s16 stepFx)
+void fn_8005F77C(s16 charNo, s16 stepFx)
 {
     CHARWORK *workP = &CharWork[charNo];
     workP->stepFx = stepFx;
@@ -2932,7 +2946,7 @@ void CharModelStepSet(s16 charNo, s16 stepFx)
 static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     s16 ret;
     if(voiceFlag & CHAR_VOICE_OFF) {
         return;
@@ -2942,7 +2956,7 @@ static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag)
     } else if(workP->stepFx == 5) {
         seId = (CHAR_STEP_GLOBAL_SE | CHAR_STEP_TYPE5_SE);
     } else if(workP->stepFx == 6) {
-        seId = CHARSEID(25);
+        seId = (177+25);
     } else {
         seId += workP->stepFx;
     }
@@ -2950,7 +2964,7 @@ static s16 PlayStepVoice(s16 charNo, s16 seId, u8 voiceFlag)
         if(workP->attr & CHAR_ATTR_VOICE_PAN_AUTO) {
             return CharFXPlayPos(charNo, seId, &modelP->pos);
         } else {
-            _CharFXPlay(charNo, seId, voiceFlag);
+            fn_800591C8(charNo, seId, voiceFlag);
             return ret;
         }
     } else {
@@ -3006,22 +3020,22 @@ static EFFECTPARAM hipDropStarEffParam = {
 };
 
 // Spreads a ring of landing dust around the character when UpdateCharAnim detects an impact.
-void CharModelLandDustCreate(s16 charNo, HuVecF *pos)
+void fn_8005F968(s16 charNo, HuVecF *pos)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     s16 i;
     for(i=0; i<12; i++) {
         float speed = (6.0+frandmod(6))*modelP->scale.x;
         Vec effectPos;
-        landEffParam.vel.x = speed*HuSin(30.0f*i);
+        landEffParam.vel.x = speed*sin(3.141592653589793*(30.0f*i)/180.0);
         landEffParam.vel.y = 0;
-        landEffParam.vel.z = speed*HuCos(30.0f*i);
+        landEffParam.vel.z = speed*cos(3.141592653589793*(30.0f*i)/180.0);
         landEffParam.alphaBase = -(frandmod(4)+8);
         speed = (20.0+frandmod(20))*modelP->scale.x;
-        effectPos.x = pos->x+(20*HuSin(30.0f*i)*modelP->scale.x);
+        effectPos.x = pos->x+(20*sin(3.141592653589793*(30.0f*i)/180.0)*modelP->scale.x);
         effectPos.y = pos->y+(10*modelP->scale.x);
-        effectPos.z = pos->z+(20*HuCos(30.0f*i)*modelP->scale.x);
+        effectPos.z = pos->z+(20*cos(3.141592653589793*(30.0f*i)/180.0)*modelP->scale.x);
         landEffParam.gravity = frandmod(20)*0.01;
         EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
                      speed, &landEffParam);
@@ -3029,73 +3043,73 @@ void CharModelLandDustCreate(s16 charNo, HuVecF *pos)
 }
 
 // Creates landing dust and a footstep sound for step-triggered animation events.
-void CharModelLandDustCreateStep(s16 charNo, HuVecF *pos)
+void fn_8005FC84(s16 charNo, HuVecF *pos)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     s16 i;
     for(i=0; i<12; i++) {
         float speed = modelP->scale.x*(6.0+frandmod(6));
         Vec effectPos;
-        landEffParam.vel.x = speed*HuSin(30.0f*i);
+        landEffParam.vel.x = speed*sin(3.141592653589793*(30.0f*i)/180.0);
         landEffParam.vel.y = 0;
-        landEffParam.vel.z = speed*HuCos(30.0f*i);
+        landEffParam.vel.z = speed*cos(3.141592653589793*(30.0f*i)/180.0);
         landEffParam.alphaBase = -(frandmod(4)+8);
         speed = modelP->scale.x*(20.0+frandmod(20));
-        effectPos.x = pos->x+(modelP->scale.x*(20.0*HuSin(30.0f*i)));
+        effectPos.x = pos->x+(modelP->scale.x*(20.0*sin(3.141592653589793*(30.0f*i)/180.0)));
         effectPos.y = pos->y+(10*modelP->scale.x);
-        effectPos.z = pos->z+(modelP->scale.x*(20.0*HuCos(30.0f*i)));
+        effectPos.z = pos->z+(modelP->scale.x*(20.0*cos(3.141592653589793*(30.0f*i)/180.0)));
         landEffParam.gravity = 0.01*frandmod(20);
         EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
                      speed, &landEffParam);
     }
-    PlayStepVoice(charNo, CHARSEID(8), 0);
+    PlayStepVoice(charNo, (177+8), 0);
 }
 
 // Creates a dust ring and outward stars when UpdateCharAnim detects a hip-drop landing.
 void CharEffectHipDropCreate(s16 charNo, HuVecF *pos)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     s16 i;
     for(i=0; i<12; i++) {
         float speed = (6.0+frandmod(6))*modelP->scale.x;
         Vec effectPos;
-        hipDropLandEffParam.vel.x = speed*HuSin(30.0f*i);
+        hipDropLandEffParam.vel.x = speed*sin(3.141592653589793*(30.0f*i)/180.0);
         hipDropLandEffParam.vel.y = 0;
-        hipDropLandEffParam.vel.z = speed*HuCos(30.0f*i);
+        hipDropLandEffParam.vel.z = speed*cos(3.141592653589793*(30.0f*i)/180.0);
         hipDropLandEffParam.alphaBase = -(frandmod(4)+8);
         speed = (30.0+frandmod(20))*modelP->scale.x;
-        effectPos.x = pos->x+(20*HuSin(30.0f*i)*modelP->scale.x);
+        effectPos.x = pos->x+(20*sin(3.141592653589793*(30.0f*i)/180.0)*modelP->scale.x);
         effectPos.y = pos->y+(15*modelP->scale.x);
-        effectPos.z = pos->z+(20*HuCos(30.0f*i)*modelP->scale.x);
+        effectPos.z = pos->z+(20*cos(3.141592653589793*(30.0f*i)/180.0)*modelP->scale.x);
         hipDropLandEffParam.gravity = frandmod(20)*0.01;
         EffectCreate(EFFECT_LANDDUST, modelP->cameraBit, effectPos.x, effectPos.y, effectPos.z,
                      speed, &hipDropLandEffParam);
     }
     for(i=0; i<8; i++) {
-        hipDropStarEffParam.vel.x = (20*HuSin(45.0f*i)*modelP->scale.x);
+        hipDropStarEffParam.vel.x = (20*sin(3.141592653589793*(45.0f*i)/180.0)*modelP->scale.x);
         hipDropStarEffParam.vel.y = 5;
-        hipDropStarEffParam.vel.z = (20*HuCos(45.0f*i)*modelP->scale.x);
+        hipDropStarEffParam.vel.z = (20*cos(3.141592653589793*(45.0f*i)/180.0)*modelP->scale.x);
         EffectStarCreate(workP->modelId, modelP->pos.x, modelP->pos.y + (10 * modelP->scale.x),
                          modelP->pos.z, 40, &hipDropStarEffParam);
     }
 }
 
 // Emits two rings of dust particles at the supplied position and scale.
-void CharEffectDustCreate(s16 cameraBit, float scale, HuVecF *pos)
+void fn_8006065C(s16 cameraBit, float scale, HuVecF *pos)
 {
     s16 i;
     for(i=0; i<8; i++) {
-        dustEffParam.vel.x = scale*(4*HuSin(i*45.0f));
+        dustEffParam.vel.x = scale*(4*sin(3.141592653589793*(i*45.0f)/180.0));
         dustEffParam.vel.y = 0;
-        dustEffParam.vel.z = scale*(4*HuCos(i*45.0f));
+        dustEffParam.vel.z = scale*(4*cos(3.141592653589793*(i*45.0f)/180.0));
         EffectCreate(EFFECT_DUST, cameraBit, pos->x, pos->y*scale, pos->z, 20*scale, &dustEffParam);
     }
     for(i=0; i<8; i++) {
-        dustEffParam.vel.x = scale*(2*HuSin((i*45.0f)+22.5));
+        dustEffParam.vel.x = scale*(2*sin(3.141592653589793*((i*45.0f)+22.5)/180.0));
         dustEffParam.vel.y = 0;
-        dustEffParam.vel.z = scale*(2*HuCos((i*45.0f)+22.5));
+        dustEffParam.vel.z = scale*(2*cos(3.141592653589793*((i*45.0f)+22.5)/180.0));
         EffectCreate(EFFECT_DUST, cameraBit, pos->x, pos->y*scale, pos->z, 20*scale, &dustEffParam);
     }
 }
@@ -3114,7 +3128,7 @@ static EFFECTPARAM cryEffParam = {
 };
 
 // Emits a drifting cry particle around a character's head during a cry animation.
-void CharEffectCryCreate(s16 cameraBit, HuVecF *pos, HuVecF *offset, float scale)
+void fn_800608C4(s16 cameraBit, HuVecF *pos, HuVecF *offset, float scale)
 {
     float randZ;
     float randX;
@@ -3124,7 +3138,7 @@ void CharEffectCryCreate(s16 cameraBit, HuVecF *pos, HuVecF *offset, float scale
     randX = frandmod(180)-90;
     randZ = frandmod(180)-90;
     VECNormalize(offset, &dir);
-    mtxRot(rotMtx, frandmod(90)-45, frandmod(90)-45, 0);
+    fn_80022E38(rotMtx, frandmod(90)-45, frandmod(90)-45, 0);
     MTXMultVec(rotMtx, &dir, &dir);
     VECNormalize(&dir, &dir);
     cryEffParam.vel.x = 15*dir.x;
@@ -3138,49 +3152,49 @@ void CharEffectCryCreate(s16 cameraBit, HuVecF *pos, HuVecF *offset, float scale
 }
 
 // Gets the character's head position and emits a cry particle during UpdateCharAnim.
-void CharModelCryCreate(s16 charNo, float yOfs, float ofsY)
+void fn_80060B10(s16 charNo, float yOfs, float ofsY)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     Vec pos;
     Vec offset;
     Hu3DModelObjPosGet(workP->modelId, CharHeadObjNameTbl[charNo], &pos);
-    if(charNo == CHARNO_WARIO) {
+    if(charNo == 4) {
         pos.y = pos.y-(40.0f*modelP->scale.x);
     }
     pos.y += yOfs;
-    offset.x = HuSin(modelP->rot.y+180.0f);
+    offset.x = sin(3.141592653589793*(modelP->rot.y+180.0f)/180.0);
     offset.y = ofsY;
-    offset.z = HuCos(modelP->rot.y+180.0f);
-    CharEffectCryCreate(modelP->cameraBit, &pos, &offset, modelP->scale.x);
+    offset.z = cos(3.141592653589793*(modelP->rot.y+180.0f)/180.0);
+    fn_800608C4(modelP->cameraBit, &pos, &offset, modelP->scale.x);
 }
 
 // Returns the selected character model archive number for the requested model variant.
-unsigned int CharModelFileNumGet(s16 charNo, s16 model)
+unsigned int fn_80060E50(s16 charNo, s16 model)
 {
-    if(model & CHAR_MODEL0) {
-        return CharDataDirTbl[charNo][0];
-    } else if(model & CHAR_MODEL1) {
-        return CharDataDirTbl[charNo][1];
-    } else if(model & CHAR_MODEL2) {
-        return CharDataDirTbl[charNo][2];
+    if(model & (1 << 0)) {
+        return lbl_8022E718[charNo][0];
+    } else if(model & (1 << 1)) {
+        return lbl_8022E718[charNo][1];
+    } else if(model & (1 << 2)) {
+        return lbl_8022E718[charNo][2];
     } else {
-        return CharDataDirTbl[charNo][3];
+        return lbl_8022E718[charNo][3];
     }
 }
 
-unsigned int CharMotionFileNumGet(s16 charNo, u16 motId)
+unsigned int fn_80060EF0(s16 charNo, u16 motId)
 {
-    return CharDataDirTbl[charNo][4]|motId;
+    return lbl_8022E718[charNo][4]|motId;
 }
 
-void CharModelVoicePanSet(s16 charNo, s16 pan)
+void fn_80060F14(s16 charNo, s16 pan)
 {
     CHARWORK *workP = &CharWork[charNo];
     workP->pan = pan;
 }
 
-void CharModelVoiceVolSet(s16 charNo, s16 vol)
+void fn_80060F40(s16 charNo, s16 vol)
 {
     CHARWORK *workP = &CharWork[charNo];
     workP->vol = vol;
@@ -3197,14 +3211,14 @@ static void PlayWinLoseVoice(void);
 // Schedules a result voice after the character's selected win animation has played.
 void CharWinLoseVoicePlay(s16 charNo, unsigned int motId, s16 seId)
 {
-    HUPROCESS *parent = HuPrcCurrentGet();
-    HUPROCESS *process = HuPrcChildCreate(PlayWinLoseVoice, 100, 6144, 0, parent);
+    HUPROCESS *parent = fn_8000DD9C();
+    HUPROCESS *process = fn_8000DAC0(PlayWinLoseVoice, 100, 6144, 0, parent);
     if(!process) {
         OSReport("Error: CharWinLoseVoicePlay Failure.\n");
         return;
     } else {
         WINLOSEVOICEPLAY *winLose =
-            HuMemDirectMallocNum(HEAP_HEAP, sizeof(WINLOSEVOICEPLAY), HU_MEMNUM_OVL);
+            HuMemDirectMallocNum(HEAP_HEAP, sizeof(WINLOSEVOICEPLAY), 0x10000000);
         process->property = winLose;
         winLose->charNo = charNo;
         winLose->seId = seId;
@@ -3215,44 +3229,44 @@ void CharWinLoseVoicePlay(s16 charNo, unsigned int motId, s16 seId)
 // Waits for the selected result animation, then plays its voice and exits the child task.
 static void PlayWinLoseVoice(void)
 {
-    HUPROCESS *process = HuPrcCurrentGet();
+    HUPROCESS *process = fn_8000DD9C();
     WINLOSEVOICEPLAY *winLose = process->property;
     CHARWORK *workP = &CharWork[winLose->charNo];
     s16 i;
     s16 motNo;
     
-    if(workP->modelId == HU3D_MODELID_NONE) {
+    if(workP->modelId == -1) {
         HuMemDirectFree(winLose);
         HuPrcEnd();
     }
-    for(i=0; i<CHAR_MOT_MAX; i++) {
+    for(i=0; i<32; i++) {
         if(workP->motId[i] == winLose->motId) {
             motNo = workP->motNoTbl[i];
             break;
         }
     }
     switch(motNo) {
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_306):
-            if(omcurovl >= DLL_w01dll && omcurovl <= DLL_w01dll) {
+        case FILENUM(CHARMOT_HSF_c000m1_306):
+            if(omcurovl >= 123 && omcurovl <= 123) {
                 HuPrcSleep(boardWinAnimLen[winLose->charNo]);
             } else {
                 HuPrcSleep(winAnimLen[winLose->charNo]);
             }
             break;
        
-       case CHAR_MOTNO(CHARMOT_HSF_c000m1_346):
+       case FILENUM(CHARMOT_HSF_c000m1_346):
             HuPrcSleep(handUpAnimLen[winLose->charNo]);
             break;
        
-       case CHAR_MOTNO(CHARMOT_HSF_c000m1_349):
+       case FILENUM(CHARMOT_HSF_c000m1_349):
             HuPrcSleep(okAnimLen[winLose->charNo]);
             break;
        
-       case CHAR_MOTNO(CHARMOT_HSF_c000m1_350):
+       case FILENUM(CHARMOT_HSF_c000m1_350):
             HuPrcSleep(winAnimLen2[winLose->charNo]);
             break;
     }
-    _CharFXPlay(winLose->charNo, winLose->seId, 0);
+    fn_800591C8(winLose->charNo, winLose->seId, 0);
     HuMemDirectFree(process->property);
     HuPrcEnd();
     while(1) {
@@ -3261,45 +3275,45 @@ static void PlayWinLoseVoice(void)
 }
 
 // Plays the losing voice for each supplied character after the result sequence calls this helper.
-void CharLoseVoicePlay(s16 charNo1, s16 charNo2, s16 charNo3, s16 charNo4)
+void fn_800611E4(s16 charNo1, s16 charNo2, s16 charNo3, s16 charNo4)
 {
-    if(charNo1 != CHARNO_NONE) {
-        _CharFXPlay(charNo1, CHARVOICEID(12), 0);
+    if(charNo1 != -1) {
+        fn_800591C8(charNo1, (573+12), 0);
     }
-    if(charNo2 != CHARNO_NONE) {
-        _CharFXPlay(charNo2, CHARVOICEID(12), 0);
+    if(charNo2 != -1) {
+        fn_800591C8(charNo2, (573+12), 0);
     }
-    if(charNo3 != CHARNO_NONE) {
-        _CharFXPlay(charNo3, CHARVOICEID(12), 0);
+    if(charNo3 != -1) {
+        fn_800591C8(charNo3, (573+12), 0);
     }
-    if(charNo4 != CHARNO_NONE) {
-        _CharFXPlay(charNo4, CHARVOICEID(12), 0);
+    if(charNo4 != -1) {
+        fn_800591C8(charNo4, (573+12), 0);
     }
 }
 
 // Returns the known result-animation duration for a character, or zero for other motions.
-s16 CharMotionTotalTimeGet(s16 charNo, int motNo)
+s16 fn_800613C0(s16 charNo, int motNo)
 {
     switch(motNo) {
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_306):
+        case FILENUM(CHARMOT_HSF_c000m1_306):
             return winAnimLen[charNo];
         
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_346):
+        case FILENUM(CHARMOT_HSF_c000m1_346):
             return handUpAnimLen[charNo];
         
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_349):
+        case FILENUM(CHARMOT_HSF_c000m1_349):
             return okAnimLen[charNo];
         
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_350):
+        case FILENUM(CHARMOT_HSF_c000m1_350):
             return winAnimLen2[charNo];
         
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_363):
+        case FILENUM(CHARMOT_HSF_c000m1_363):
             return holdUpAnimLen[charNo];
         
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_364):
+        case FILENUM(CHARMOT_HSF_c000m1_364):
             return winJumpUpAnimLen[charNo];
         
-        case CHAR_MOTNO(CHARMOT_HSF_c000m1_352):
+        case FILENUM(CHARMOT_HSF_c000m1_352):
             return loseAnimLen[charNo];
         
         default:
@@ -3307,34 +3321,34 @@ s16 CharMotionTotalTimeGet(s16 charNo, int motNo)
     }
 }
 
-s16 CharMotionExtraTimeGet(s16 charNo, int motNo)
+s16 fn_800614A4(s16 charNo, int motNo)
 {
     return 0;
 }
 
 // Creates one shared light and attaches its ID to each loaded character model that has a free
 // local-light slot.
-HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color)
+HU3D_LIGHTID fn_800614AC(HuVecF *pos, HuVecF *dir, GXColor *color)
 {
     CHARWORK *workP = CharWork;
     s16 i;
     s16 j;
-    HU3D_LIGHTID lightId = HU3D_LIGHTID_NONE;
-    for(i=0; i<CHARNO_MAX; i++, workP++) {
-        if(workP->modelId == HU3D_MODELID_NONE) {
+    HU3D_LIGHTID lightId = -1;
+    for(i=0; i<14; i++, workP++) {
+        if(workP->modelId == -1) {
             continue;
         }
-        if(lightId == HU3D_LIGHTID_NONE) {
-            lightId = Hu3DLLightCreateV(workP->modelId, pos, dir, color);
-            if(lightId == HU3D_LIGHTID_NONE) {
+        if(lightId == -1) {
+            lightId = fn_800288B4(workP->modelId, pos, dir, color);
+            if(lightId == -1) {
                 return -1;
             }
         } else {
-            HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
-            for(j=0; j<HU3D_MODEL_LLIGHT_MAX; j++) {
-                if(modelP->LLightId[j] == HU3D_LIGHTID_NONE) {
+            HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
+            for(j=0; j<8; j++) {
+                if(modelP->LLightId[j] == -1) {
                     modelP->LLightId[j] = lightId;
-                    modelP->attr |= HU3D_ATTR_LLIGHT;
+                    modelP->attr |= (1 << 12);
                     break;
                 }
             }
@@ -3343,11 +3357,11 @@ HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color)
     return lightId;
 }
 
-inline HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color);
+inline HU3D_LIGHTID fn_800614AC(HuVecF *pos, HuVecF *dir, GXColor *color);
 
 // Builds a character light from position, direction, and RGB values, then attaches it to loaded
 // character models.
-HU3D_LIGHTID CharLightCreate(float posX, float posY, float posZ, float dirX, float dirY, float dirZ,
+HU3D_LIGHTID fn_800615B4(float posX, float posY, float posZ, float dirX, float dirY, float dirZ,
                              u8 r, u8 g, u8 b)
 {
     HuVecF pos;
@@ -3356,7 +3370,7 @@ HU3D_LIGHTID CharLightCreate(float posX, float posY, float posZ, float dirX, flo
     pos.x = posX; pos.y = posY; pos.z = posZ;
     dir.x = dirX; dir.y = dirY; dir.z = dirZ;
     color.r = r; color.g = g; color.b = b; color.a = 255;
-    return CharLightCreateV(&pos, &dir, &color);
+    return fn_800614AC(&pos, &dir, &color);
 }
 
 // Finds the first local light attached to a loaded character model.
@@ -3365,15 +3379,15 @@ static inline HU3D_LIGHT *GetCharLight(void)
     CHARWORK *workP = CharWork;
     s16 i;
     s16 j;
-    for(i=0; i<CHARNO_MAX; i++, workP++) {
-        if(workP->modelId == HU3D_MODELID_NONE) {
+    for(i=0; i<14; i++, workP++) {
+        if(workP->modelId == -1) {
             continue;
         }
         {
-            HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
-            for(j=0; j<HU3D_MODEL_LLIGHT_MAX; j++) {
-                if(modelP->LLightId[j] != HU3D_LIGHTID_NONE) {
-                    return &Hu3DLocalLight[modelP->LLightId[j]];
+            HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
+            for(j=0; j<8; j++) {
+                if(modelP->LLightId[j] != -1) {
+                    return &lbl_80261674[modelP->LLightId[j]];
                 }
             }
         }
@@ -3382,7 +3396,7 @@ static inline HU3D_LIGHT *GetCharLight(void)
 }
 
 // Configures the shared character light as a spot light with the requested cutoff.
-void CharLightSpotSet(s32 func, float cutoff)
+void fn_80061728(s32 func, float cutoff)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
@@ -3393,22 +3407,22 @@ void CharLightSpotSet(s32 func, float cutoff)
 }
 
 // Changes the shared character light to directional (infinite-distance) mode.
-void CharLightInfinitytSet(void)
+void fn_80061814(void)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
         lightP->type &= CHAR_LIGHT_FLAGS_MASK;
-        lightP->type |= HU3D_LIGHT_TYPE_INFINITYT;
+        lightP->type |= 1;
     }
 }
 
 // Configures the shared character light as a point light with its attenuation settings.
-void CharLightPointSet(s32 func, float cutoff, float brightness)
+void fn_80061904(s32 func, float cutoff, float brightness)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
         lightP->type &= CHAR_LIGHT_FLAGS_MASK;
-        lightP->type |= HU3D_LIGHT_TYPE_POINT;
+        lightP->type |= 2;
         lightP->cutoff = cutoff;
         lightP->brightness = brightness;
         lightP->func = func;
@@ -3416,7 +3430,7 @@ void CharLightPointSet(s32 func, float cutoff, float brightness)
 }
 
 // Sets the color and alpha used by the shared character light.
-void CharLightColorSet(u8 r, u8 g, u8 b, u8 a)
+void fn_80061A04(u8 r, u8 g, u8 b, u8 a)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
@@ -3428,7 +3442,7 @@ void CharLightColorSet(u8 r, u8 g, u8 b, u8 a)
 }
 
 // Sets the shared light's position and normalizes its aim vector into the light direction.
-void CharLightPosAimSetV(HuVecF *pos, HuVecF *aim)
+void fn_80061AE4(HuVecF *pos, HuVecF *aim)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
@@ -3438,7 +3452,7 @@ void CharLightPosAimSetV(HuVecF *pos, HuVecF *aim)
 }
 
 // Sets the shared light position and normalizes the supplied aim direction.
-void CharLightPosAimSet(float posX, float posY, float posZ, float aimX, float aimY, float aimZ)
+void fn_80061BE0(float posX, float posY, float posZ, float aimX, float aimY, float aimZ)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
@@ -3453,28 +3467,28 @@ void CharLightPosAimSet(float posX, float posY, float posZ, float aimX, float ai
 }
 
 // Enables or clears the static-light flag on the shared character light.
-void CharLightStaticSet(BOOL staticF)
+void fn_80061D04(BOOL staticF)
 {
     HU3D_LIGHT *lightP = GetCharLight();
     if(lightP) {
         if(staticF) {
-            lightP->type |= HU3D_LIGHT_TYPE_STATIC;
+            lightP->type |= (1 << 15);
         } else {
-            lightP->type &= ~HU3D_LIGHT_TYPE_STATIC;
+            lightP->type &= ~(1 << 15);
         }
     }
 }
 
 // Places the warning marker above a character when a caller requests the danger effect.
-void CharEffectWarnCreate(s16 charNo, float scale)
+void fn_80061E00(s16 charNo, float scale)
 {
     CHARWORK *workP = &CharWork[charNo];
-    HU3D_MODEL *modelP = &Hu3DData[workP->modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[workP->modelId];
     EffectWarnCreate(workP->modelId, modelP->pos.x, 100.0f + modelP->pos.y, modelP->pos.z, 20,
                      scale, &warnEffParam);
 }
 
-u32 CharAttrGet(s16 charNo)
+u32 fn_80062094(s16 charNo)
 {
     CHARWORK *workP = &CharWork[charNo];
     return workP->attr;

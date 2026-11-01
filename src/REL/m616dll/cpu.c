@@ -24,8 +24,8 @@ void fn_1_23B0(void)
     M616CpuParam *cpuSettings;
 
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        if (GwPlayerConf[playerNo].type == 1) {
-            cpuSettings = &lbl_1_data_2B0[GwPlayerConf[playerNo].comDif];
+        if (lbl_80265728[playerNo].type == 1) {
+            cpuSettings = &lbl_1_data_2B0[lbl_80265728[playerNo].comDif];
             if (lbl_1_bss_10.roundNo == 0) {
                 do {
                     choiceId = frand() % 5;
@@ -53,35 +53,35 @@ s32 fn_1_2580(s32 playerNo)
 
 /* Data IDs for the 17 camera motions, indexed by cameraIndex. */
 s32 lbl_1_data_1F0[17] = {
-    DATANUM(DATA_m616, 0), DATANUM(DATA_m616, 1), DATANUM(DATA_m616, 2),
-    DATANUM(DATA_m616, 3), DATANUM(DATA_m616, 6), DATANUM(DATA_m616, 4),
-    DATANUM(DATA_m616, 7), DATANUM(DATA_m616, 8), DATANUM(DATA_m616, 7),
-    DATANUM(DATA_m616, 5), DATANUM(DATA_m616, 11), DATANUM(DATA_m616, 9),
-    DATANUM(DATA_m616, 11), DATANUM(DATA_m616, 10), DATANUM(DATA_m616, 11),
-    DATANUM(DATA_m616, 9), DATANUM(DATA_m616, 11)
+    DATANUM(0x4b0000, 0), DATANUM(0x4b0000, 1), DATANUM(0x4b0000, 2),
+    DATANUM(0x4b0000, 3), DATANUM(0x4b0000, 6), DATANUM(0x4b0000, 4),
+    DATANUM(0x4b0000, 7), DATANUM(0x4b0000, 8), DATANUM(0x4b0000, 7),
+    DATANUM(0x4b0000, 5), DATANUM(0x4b0000, 11), DATANUM(0x4b0000, 9),
+    DATANUM(0x4b0000, 11), DATANUM(0x4b0000, 10), DATANUM(0x4b0000, 11),
+    DATANUM(0x4b0000, 9), DATANUM(0x4b0000, 11)
 };
 
 /* Data IDs for the six motions loaded onto the linked per-seat display models. */
 s32 lbl_1_data_234[6] = {
-    DATANUM(DATA_m616, 22), DATANUM(DATA_m616, 23), DATANUM(DATA_m616, 24),
-    DATANUM(DATA_m616, 25), DATANUM(DATA_m616, 26), DATANUM(DATA_m616, 27)
+    DATANUM(0x4b0000, 22), DATANUM(0x4b0000, 23), DATANUM(0x4b0000, 24),
+    DATANUM(0x4b0000, 25), DATANUM(0x4b0000, 26), DATANUM(0x4b0000, 27)
 };
 
 /* Data IDs for the 13 motions loaded onto each player's base model. */
 s32 lbl_1_data_24C[13] = {
-    DATANUM(DATA_m616, 28), DATANUM(DATA_m616, 29), DATANUM(DATA_m616, 30),
-    DATANUM(DATA_m616, 31), DATANUM(DATA_m616, 33), DATANUM(DATA_m616, 32),
-    DATANUM(DATA_m616, 34), DATANUM(DATA_m616, 35), DATANUM(DATA_m616, 36),
-    DATANUM(DATA_m616, 37), DATANUM(DATA_m616, 38), DATANUM(DATA_m616, 39),
-    DATANUM(DATA_m616, 40)
+    DATANUM(0x4b0000, 28), DATANUM(0x4b0000, 29), DATANUM(0x4b0000, 30),
+    DATANUM(0x4b0000, 31), DATANUM(0x4b0000, 33), DATANUM(0x4b0000, 32),
+    DATANUM(0x4b0000, 34), DATANUM(0x4b0000, 35), DATANUM(0x4b0000, 36),
+    DATANUM(0x4b0000, 37), DATANUM(0x4b0000, 38), DATANUM(0x4b0000, 39),
+    DATANUM(0x4b0000, 40)
 };
 
 /* Character motion data IDs passed to CharModelMotListCreate for each seat. */
 unsigned int lbl_1_data_280[12] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 3), DATANUM(DATA_mariomot, 6),
-    DATANUM(DATA_mariomot, 40), DATANUM(DATA_mariomot, 111), DATANUM(DATA_mariomot, 112),
-    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 36), DATANUM(DATA_mariomot, 37),
-    DATANUM(DATA_mario, 154), DATANUM(DATA_mario, 155), 0
+    DATANUM(0x930000, 0), DATANUM(0x930000, 3), DATANUM(0x930000, 6),
+    DATANUM(0x930000, 40), DATANUM(0x930000, 111), DATANUM(0x930000, 112),
+    DATANUM(0x930000, 4), DATANUM(0x930000, 36), DATANUM(0x930000, 37),
+    DATANUM(0x8e0000, 154), DATANUM(0x8e0000, 155), 0
 };
 
 /* Rows are indexed by CPU difficulty; repeatPercent is the chance of reusing the previous round's
@@ -92,5 +92,5 @@ M616CpuParam lbl_1_data_2B0[4] = {
 
 /* Data IDs for the center gear's three motions. */
 s32 lbl_1_data_2D0[3] = {
-    DATANUM(DATA_m616, 16), DATANUM(DATA_m616, 17), DATANUM(DATA_m616, 18)
+    DATANUM(0x4b0000, 16), DATANUM(0x4b0000, 17), DATANUM(0x4b0000, 18)
 };

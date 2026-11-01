@@ -168,7 +168,7 @@ typedef M620PropWork M620WaterWork;
 typedef M620PropWork M620PlayerLaunchWork;
 typedef M620PropWork M620EffectMotionWork;
 
-extern u32 MgSeqModeGet(void);
+extern u32 fn_80071A8C(void);
 
 void fn_1_65C4(OMOBJ *obj);
 void fn_1_65FC(HUPROCESS *, M620PropParam *);
@@ -188,37 +188,37 @@ void fn_1_8D4C(OMOBJ *object);
 Vec lbl_1_data_1F0 = {0.0f, 0.0f, 0.0f};
 
 M620PropMotionParam lbl_1_data_1FC[5] = {
-    {8, 0.2f, HU3D_MOTATTR_LOOP},
-    {11, 0.2f, HU3D_MOTATTR_NONE},
-    {9, 0.2f, HU3D_MOTATTR_LOOP},
-    {10, 0.2f, HU3D_MOTATTR_LOOP},
-    {-2, 0.0f, HU3D_MOTATTR_NONE}
+    {8, 0.2f, ((1 << 30) | (1 << 0))},
+    {11, 0.2f, 0},
+    {9, 0.2f, ((1 << 30) | (1 << 0))},
+    {10, 0.2f, ((1 << 30) | (1 << 0))},
+    {-2, 0.0f, 0}
 };
 
 M620PropMotionParam lbl_1_data_238[6] = {
-    {13, 0.2f, HU3D_MOTATTR_LOOP},
-    {16, 0.2f, HU3D_MOTATTR_NONE},
-    {14, 0.2f, HU3D_MOTATTR_LOOP},
-    {15, 0.2f, HU3D_MOTATTR_LOOP},
-    {-2, 0.0f, HU3D_MOTATTR_NONE},
-    {0, 0.0f, HU3D_MOTATTR_NONE}
+    {13, 0.2f, ((1 << 30) | (1 << 0))},
+    {16, 0.2f, 0},
+    {14, 0.2f, ((1 << 30) | (1 << 0))},
+    {15, 0.2f, ((1 << 30) | (1 << 0))},
+    {-2, 0.0f, 0},
+    {0, 0.0f, 0}
 };
 
 M620PropParam lbl_1_data_280[14] = {
-    {1, 0, 0, 0, 3, HU3D_MOTATTR_LOOP, 0, 24, NULL, NULL, 0.0f, fn_1_6DD0},
-    {1, 0, 0, 1, 1, HU3D_MOTATTR_NONE, 0, 25, NULL, NULL, 0.0f, fn_1_6EB4},
-    {1, 0, 0, 2, 3, HU3D_MOTATTR_PAUSE, 0, 26, NULL, NULL, 0.0f, fn_1_7008},
-    {1, 0, 1, 0, 5, HU3D_MOTATTR_PAUSE, 0, 1, NULL, NULL, 0.0f, fn_1_7130},
-    {1, 0, 1, 1, 5, HU3D_MOTATTR_PAUSE, 0, 2, NULL, NULL, 0.0f, fn_1_7130},
-    {1, 0, 1, 2, 5, HU3D_MOTATTR_PAUSE, 0, 3, NULL, NULL, 0.0f, fn_1_7130},
-    {1, 0, 1, 3, 5, HU3D_MOTATTR_PAUSE, 0, 4, NULL, NULL, 0.0f, fn_1_7130},
-    {1, 0, 2, 0, 5, HU3D_MOTATTR_PAUSE, 1, 5, NULL, NULL, 0.0f, fn_1_7868},
-    {1, 0, 2, 1, 5, HU3D_MOTATTR_PAUSE, 1, 6, NULL, NULL, 0.0f, fn_1_7868},
-    {1, 0, 2, 2, 5, HU3D_MOTATTR_PAUSE, 1, 5, NULL, NULL, 0.0f, fn_1_7868},
-    {1, 0, 2, 3, 5, HU3D_MOTATTR_PAUSE, 1, 6, NULL, NULL, 0.0f, fn_1_7868},
-    {33, 1, 3, 0, 4, HU3D_MOTATTR_NONE, 0, 7, lbl_1_data_1FC, NULL, 0.0f, fn_1_8B00},
-    {2, 1, 3, 33, 4, HU3D_MOTATTR_NONE, 0, 12, lbl_1_data_238, NULL, 0.0f, fn_1_8D4C},
-    {-1, 0, 0, 0, 0, HU3D_MOTATTR_NONE, 0, 0, NULL, NULL, 0.0f, NULL}
+    {1, 0, 0, 0, 3, ((1 << 30) | (1 << 0)), 0, 24, NULL, NULL, 0.0f, fn_1_6DD0},
+    {1, 0, 0, 1, 1, 0, 0, 25, NULL, NULL, 0.0f, fn_1_6EB4},
+    {1, 0, 0, 2, 3, ((1 << 30) | (1 << 1)), 0, 26, NULL, NULL, 0.0f, fn_1_7008},
+    {1, 0, 1, 0, 5, ((1 << 30) | (1 << 1)), 0, 1, NULL, NULL, 0.0f, fn_1_7130},
+    {1, 0, 1, 1, 5, ((1 << 30) | (1 << 1)), 0, 2, NULL, NULL, 0.0f, fn_1_7130},
+    {1, 0, 1, 2, 5, ((1 << 30) | (1 << 1)), 0, 3, NULL, NULL, 0.0f, fn_1_7130},
+    {1, 0, 1, 3, 5, ((1 << 30) | (1 << 1)), 0, 4, NULL, NULL, 0.0f, fn_1_7130},
+    {1, 0, 2, 0, 5, ((1 << 30) | (1 << 1)), 1, 5, NULL, NULL, 0.0f, fn_1_7868},
+    {1, 0, 2, 1, 5, ((1 << 30) | (1 << 1)), 1, 6, NULL, NULL, 0.0f, fn_1_7868},
+    {1, 0, 2, 2, 5, ((1 << 30) | (1 << 1)), 1, 5, NULL, NULL, 0.0f, fn_1_7868},
+    {1, 0, 2, 3, 5, ((1 << 30) | (1 << 1)), 1, 6, NULL, NULL, 0.0f, fn_1_7868},
+    {33, 1, 3, 0, 4, 0, 0, 7, lbl_1_data_1FC, NULL, 0.0f, fn_1_8B00},
+    {2, 1, 3, 33, 4, 0, 0, 12, lbl_1_data_238, NULL, 0.0f, fn_1_8D4C},
+    {-1, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, 0.0f, NULL}
 };
 
 Vec lbl_1_data_4E8[2] = {
@@ -306,10 +306,10 @@ void fn_1_64A8(HUPROCESS *process)
         registryIndex += 1;
         registeredObject += 1;
     }
-    managerObject = omAddObjEx(process, 12, 0U, 0U, -1, fn_1_65C4);
+    managerObject = fn_8003AB38(process, 12, 0U, 0U, -1, fn_1_65C4);
     lbl_1_bss_648 = managerObject;
     managerObject->stat |= 0x100;
-    managerWork = HuMemDirectMallocNum(HEAP_HEAP, 8, HU_MEMNUM_OVL);
+    managerWork = HuMemDirectMallocNum(HEAP_HEAP, 8, 0x10000000);
     managerObject->data = managerWork;
     memset(managerWork, 0, 8);
     lbl_1_bss_3A8 = 0;
@@ -360,9 +360,9 @@ void fn_1_65FC(HUPROCESS *process, M620PropParam *param)
     s32 resourceIndex;
 
     for (group = 0; group < param->count; group++) {
-        object = omAddObjEx(process, 12, 1, 4, 0, param->update);
+        object = fn_8003AB38(process, 12, 1, 4, 0, param->update);
         fn_1_68A0(object);
-        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M620PropWork), HU_MEMNUM_OVL);
+        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M620PropWork), 0x10000000);
         object->data = work;
         memset(work, 0, sizeof(M620PropWork));
         object->stat |= 0x100;
@@ -379,8 +379,8 @@ void fn_1_65FC(HUPROCESS *process, M620PropParam *param)
         if (param->linkModel != 0) {
             model = fn_1_4408(fn_1_FB8(param->modelResourceIndex));
         } else {
-            model = (s16)Hu3DModelCreate(HuDataSelHeapReadNum(fn_1_FB8(param->modelResourceIndex),
-                                                             HU_MEMNUM_OVL, HEAP_MODEL));
+            model = (s16)fn_80025A04(fn_80008DD0(fn_1_FB8(param->modelResourceIndex),
+                                                             0x10000000, 2));
         }
         object->mdlId[0] = model;
         motion = param->motions;
@@ -400,16 +400,16 @@ void fn_1_65FC(HUPROCESS *process, M620PropParam *param)
         }
         work->startPosition = state->position;
         state->rotation.y = param->rotationY;
-        Hu3DModelPosSet(model, 0.0f, 0.0f, 0.0f);
-        Hu3DModelRotSet(model, 0.0f, 0.0f, 0.0f);
-        Hu3DModelLayerSet(model, param->layer);
-        Hu3DModelAttrSet(model, param->attr);
+        fn_80026760(model, 0.0f, 0.0f, 0.0f);
+        fn_80026808(model, 0.0f, 0.0f, 0.0f);
+        fn_80026B8C(model, param->layer);
+        fn_800269E8(model, param->attr);
         switch (param->shadow) {
         case 1:
-            Hu3DModelShadowSet(model);
+            fn_80026E44(model);
             break;
         case 2:
-            Hu3DModelShadowMapSet(model);
+            fn_80026FFC(model);
             break;
         }
     }
@@ -472,10 +472,10 @@ void fn_1_697C(OMOBJ *object, s32 index)
         param = &work->param->motions[index];
         model = object->mdlId[0];
         if (state->motionState.motion < 0 || 0.0 == param->blend) {
-            Hu3DMotionSet(model, motion);
-            Hu3DModelAttrSet(model, param->attr);
+            fn_8002C95C(model, motion);
+            fn_800269E8(model, param->attr);
         } else {
-            Hu3DMotionShiftSet(model, motion, 0.0f, 60.0f * param->blend, param->attr);
+            fn_8002CCC0(model, motion, 0.0f, 60.0f * param->blend, param->attr);
         }
         state->motionState.motion = index;
     }
@@ -486,8 +486,8 @@ BOOL fn_1_6A88(OMOBJ *actor)
     s32 model_id;
 
     model_id = actor->mdlId[0];
-    if (Hu3DMotionEndCheck((HU3D_MODELID) model_id) != 0 &&
-        Hu3DMotionShiftIDGet((HU3D_MODELID) model_id) < 0) {
+    if (fn_8002D75C((HU3D_MODELID) model_id) != 0 &&
+        fn_8002D3EC((HU3D_MODELID) model_id) < 0) {
         return TRUE;
     }
     return FALSE;
@@ -508,7 +508,7 @@ BOOL fn_1_6AF0(s32 type, s32 id, char *name, Vec *position, Vec *rotation)
     }
     work = object->data;
     model = object->mdlId[0];
-    part = Hu3DModelObjPtrGet(model, name);
+    part = fn_80026BF4(model, name);
     if (part != NULL) {
         position->x = part->mesh.curr.pos.x;
         position->y = part->mesh.curr.pos.y;
@@ -517,7 +517,7 @@ BOOL fn_1_6AF0(s32 type, s32 id, char *name, Vec *position, Vec *rotation)
         rotation->y = 90.0 + part->mesh.curr.rot.y;
         rotation->z = part->mesh.curr.rot.z;
     }
-    return !Hu3DMotionEndCheck(model);
+    return !fn_8002D75C(model);
 }
 
 extern void fn_1_6C64(OMOBJ *object);
@@ -540,8 +540,8 @@ void fn_1_6C64(OMOBJ *object)
     s32 modelId = object->mdlId[0];
 
     state->rotation.y = fmodf(state->rotation.y, 360.0f);
-    Hu3DModelPosSetV((s16)modelId, &state->position);
-    Hu3DModelRotSetV((s16)modelId, &state->rotation);
+    fn_80026790((s16)modelId, &state->position);
+    fn_80026838((s16)modelId, &state->rotation);
 }
 
 /* Tracks motion completion for an active prop animation and advances its timer. */
@@ -609,15 +609,15 @@ void fn_1_6EB4(OMOBJ *object)
     M620WaterWork *work = object->data;
     ANIMDATA *animation;
 
-    animation = HuSprAnimRead(HuDataSelHeapReadNum(
-        fn_1_FB8(M620_WATER_ANIMATION_INDEX), HU_MEMNUM_OVL, HEAP_MODEL));
+    animation = HuSprAnimRead(fn_80008DD0(
+        fn_1_FB8(M620_WATER_ANIMATION_INDEX), 0x10000000, 2));
     work->appearance.water.textureOffsetX = work->appearance.water.textureOffsetY = 0.0f;
-    Hu3DWaterCreate(2, animation, 0, 0, FALSE,
+    fn_80034F8C(2, animation, 0, 0, FALSE,
                     lbl_1_data_4E8,
                     lbl_1_data_4E8 + 1);
-    Hu3DWaterPadYSet((-15.0f));
-    Hu3DWaterGlowSet(8, &lbl_1_data_500);
-    Hu3DWaterIndTexMtxSet(lbl_1_data_504);
+    fn_8003530C((-15.0f));
+    fn_8003532C(8, &lbl_1_data_500);
+    fn_8003536C(lbl_1_data_504);
     object->objFunc = fn_1_6F84;
 }
 
@@ -628,7 +628,7 @@ void fn_1_6F84(OMOBJ *object)
 
     work->appearance.water.textureOffsetX += 0.001;
     work->appearance.water.textureOffsetY += 0.0003;
-    Hu3DWaterTexPosSet(work->appearance.water.textureOffsetX, work->appearance.water.textureOffsetY,
+    fn_800352BC(work->appearance.water.textureOffsetX, work->appearance.water.textureOffsetY,
                        0.0f);
 }
 
@@ -645,9 +645,9 @@ void fn_1_7018(OMOBJ *object)
     M620PropWork *work = object->data;
     s32 modelId;
 
-    if (work->phase == 0 && MgSeqModeGet() == 7) {
+    if (work->phase == 0 && fn_80071A8C() == 7) {
         modelId = object->mdlId[0];
-        Hu3DModelAttrReset(modelId, HU3D_MOTATTR_PAUSE);
+        fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
         work->phase++;
     }
 }
@@ -771,7 +771,7 @@ void fn_1_73A0(OMOBJ *object)
         work->target.y += 50.0;
         fn_1_EB28(work->firstEffect, 100.0f);
     case 2:
-        if (MgSeqModeGet() == 2) {
+        if (fn_80071A8C() == 2) {
             work->target.y += 30.0;
             if (++work->launchTimer < 21) {
                 break;
@@ -807,7 +807,7 @@ void fn_1_73A0(OMOBJ *object)
         work->selection.selectionReady = 1;
         if (lbl_1_bss_3A8 != 0) {
             modelId = object->mdlId[0];
-            Hu3DModelAttrReset(modelId, HU3D_MOTATTR_PAUSE);
+            fn_80026A44(modelId, ((1 << 30) | (1 << 1)));
             work->phase++;
             work->launchTimer = 0;
             if (!playerIndex) {
@@ -843,7 +843,7 @@ void fn_1_7868(OMOBJ *object)
     void *work = object->data;
     s32 modelId = object->mdlId[0];
 
-    Hu3DModelAttrSet(modelId, HU3D_ATTR_MOTION_OFF);
+    fn_800269E8(modelId, (1 << 3));
     object->objFunc = fn_1_78C0;
 }
 
@@ -918,8 +918,8 @@ typedef M620PropParam M620EffectObjectParam;
 extern s32 fn_1_B534(s32 playerIndex);
 
 extern M620PlayerLaunchSetup *fn_1_10118(s32 type, s32 playerIndex);
-void Hu3DModelShadowMapSet(s16 modelId);
-void Hu3DModelShadowMapReset(s16 modelId);
+void fn_80026FFC(s16 modelId);
+void fn_8002736C(s16 modelId);
 
 extern float fn_1_488C(Vec *first, Vec *second);
 
@@ -990,11 +990,11 @@ void fn_1_7BC4(void)
 
             if (playerFound != 0) {
                 if (work->shadowActive == 0) {
-                    Hu3DModelShadowMapSet(modelId);
+                    fn_80026FFC(modelId);
                     work->shadowActive = 1;
                 }
             } else if (work->shadowActive != 0) {
-                Hu3DModelShadowMapReset(modelId);
+                fn_8002736C(modelId);
                 work->shadowActive = 0;
             }
         }
@@ -1330,7 +1330,7 @@ void fn_1_89BC(M620ModelTransform *object)
 {
     if (lbl_1_bss_384 == 0) {
         lbl_1_bss_384 = 12;
-        fn_1_35E0(MSM_SE_GUIDE_55, &object->position);
+        fn_1_35E0(979, &object->position);
     }
 }
 
@@ -1339,7 +1339,7 @@ void fn_1_8A10(M620ModelTransform *object)
 {
     if (lbl_1_bss_380 == 0) {
         lbl_1_bss_380 = 6;
-        fn_1_35E0(MSM_SE_GUIDE_56, &object->position);
+        fn_1_35E0(980, &object->position);
     }
 }
 
@@ -1351,7 +1351,7 @@ void fn_1_8A64(OMOBJ *object)
     if (work->pointValue == 1) {
         if (lbl_1_bss_37C == 0) {
             lbl_1_bss_37C = 45;
-            HuAudFXPlay(MSM_SE_GUIDE_57);
+            HuAudFXPlay(981);
         }
     } else if (lbl_1_bss_378 == 0) {
         lbl_1_bss_378 = 45;
@@ -1417,10 +1417,10 @@ void fn_1_8B00(OMOBJ *object)
             s32 modelId = object->mdlId[0];
 
             if (motionState->motionState.motion < 0 || param->blend == 0.0) {
-                Hu3DMotionSet(modelId, motion);
-                Hu3DModelAttrSet(modelId, param->attr);
+                fn_8002C95C(modelId, motion);
+                fn_800269E8(modelId, param->attr);
             } else {
-                Hu3DMotionShiftSet(modelId, motion, 0.0f,
+                fn_8002CCC0(modelId, motion, 0.0f,
                                    60.0f * param->blend,
                                    param->attr);
             }
@@ -1493,10 +1493,10 @@ void fn_1_8D4C(OMOBJ *object)
             modelId = object->mdlId[0];
 
             if (motionState->motionState.motion < 0 || param->blend == 0.0) {
-                Hu3DMotionSet(modelId, motion);
-                Hu3DModelAttrSet(modelId, param->attr);
+                fn_8002C95C(modelId, motion);
+                fn_800269E8(modelId, param->attr);
             } else {
-                Hu3DMotionShiftSet(modelId, motion, 0.0f,
+                fn_8002CCC0(modelId, motion, 0.0f,
                                    60.0f * param->blend,
                                    param->attr);
             }
@@ -1612,7 +1612,7 @@ void fn_1_8FC8(OMOBJ *object)
                 state->motionState.movementSoundDistance -= 30.0;
                 if (lbl_1_bss_384 == 0) {
                     lbl_1_bss_384 = 12;
-                    fn_1_35E0(MSM_SE_GUIDE_55, &state->position);
+                    fn_1_35E0(979, &state->position);
                 }
             }
         }
@@ -1622,7 +1622,7 @@ void fn_1_8FC8(OMOBJ *object)
                 state->motionState.movementSoundDistance -= 100.0;
                 if (lbl_1_bss_380 == 0) {
                     lbl_1_bss_380 = 6;
-                    fn_1_35E0(MSM_SE_GUIDE_56, &state->position);
+                    fn_1_35E0(980, &state->position);
                 }
             }
         }
@@ -1631,7 +1631,7 @@ void fn_1_8FC8(OMOBJ *object)
     if (work->pointValue != 1) {
         if ((work->burstEmissionAccumulator += 0.7) >= 1.0) {
             work->burstEmissionAccumulator -= 1.0;
-            if ((Hu3DModelAttrGet(model) & 1) == 0) {
+            if ((fn_80026A90(model) & 1) == 0) {
                 Vec particlePosition = state->position;
                 particlePosition.y += 50.0;
                 particlePosition.y = (f32)((f64)particlePosition.y +
@@ -1667,10 +1667,10 @@ static inline void m620_nineab4_set_motion(OMOBJ *object, s32 index)
         param = &work->param->motions[index];
         model = object->mdlId[0];
         if (state->motionState.motion < 0 || 0.0 == param->blend) {
-            Hu3DMotionSet(model, motion);
-            Hu3DModelAttrSet(model, param->attr);
+            fn_8002C95C(model, motion);
+            fn_800269E8(model, param->attr);
         } else {
-            Hu3DMotionShiftSet(model, motion, 0.0f,
+            fn_8002CCC0(model, motion, 0.0f,
                                60.0f * param->blend, param->attr);
         }
         state->motionState.motion = index;
@@ -1696,7 +1696,7 @@ s32 fn_1_9AB4(OMOBJ *object)
     case 0:
         if (propId >= 3 && propId < 34) {
             motionWork->ringActive = 0;
-            Hu3DModelAttrSet((s16)modelId, 1);
+            fn_800269E8((s16)modelId, 1);
             done = 1;
             break;
         }
@@ -1801,7 +1801,7 @@ s32 fn_1_9F88(OMOBJ *object)
                   (f32)((u16)frand() - 32768)));
             work->collision.effect.flags |= 1;
             effect->ringActive = 1;
-            Hu3DModelAttrReset((s16)modelId, HU3D_ATTR_DISPOFF);
+            fn_80026A44((s16)modelId, (1 << 0));
         }
         break;
     case 2:
@@ -1870,7 +1870,7 @@ s32 fn_1_9F88(OMOBJ *object)
             work->velocity.z = (f32)((f64)work->velocity.z +
                 0.05 * (f64)(targetZ - work->velocity.z));
         }
-        if (MgSeqModeGet() != 6U) {
+        if (fn_80071A8C() != 6U) {
             break;
         }
         work->motionState.phase++;
@@ -2117,15 +2117,15 @@ void fn_1_B254(OMOBJ *object)
     reducedAngle = (f32)fmod((f64)angle, 360.0);
     storedAngle = reducedAngle;
     transformState->rotation.y = storedAngle;
-    Hu3DModelPosSetV(transformModelId, &transformState->position);
-    Hu3DModelRotSetV(transformModelId, &transformState->rotation);
+    fn_80026790(transformModelId, &transformState->position);
+    fn_80026838(transformModelId, &transformState->rotation);
 
     motionWork = object->data;
     motionState = motionWork;
     if (motionState->motionState.motionActive != 0) {
         motionModelId = object->mdlId[0];
-        if (Hu3DMotionEndCheck(motionModelId) &&
-            Hu3DMotionShiftIDGet(motionModelId) < 0) {
+        if (fn_8002D75C(motionModelId) &&
+            fn_8002D3EC(motionModelId) < 0) {
             motionComplete = 1;
         } else {
             motionComplete = 0;
@@ -2148,7 +2148,7 @@ s32 fn_1_B3A0(M620B3A0Controller *controller,
     M620EffectMotionWork *modeWork = object->data;
     M620EffectMotionWork *motionWork = modeWork;
 
-    if (MgSeqModeGet() == 5 &&
+    if (fn_80071A8C() == 5 &&
         (otherCollision->state != 0 || modeWork->pointValue == 1)) {
         if ((modeWork->id & 1) == 0) {
             modeWork->steeringAngle += 5.0;

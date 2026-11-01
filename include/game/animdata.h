@@ -3,25 +3,6 @@
 
 #include "dolphin.h"
 
-#define ANIM_BMP_RGBA8 0
-#define ANIM_BMP_RGB565 1
-#define ANIM_BMP_RGB5A3 2
-#define ANIM_BMP_C8 3
-#define ANIM_BMP_C4 4
-#define ANIM_BMP_IA8 5
-#define ANIM_BMP_IA4 6
-#define ANIM_BMP_I8 7
-#define ANIM_BMP_I4 8
-#define ANIM_BMP_A8 9
-#define ANIM_BMP_CMPR 10
-
-#define ANIM_BMP_FMTMASK 0xF
-#define ANIM_BMP_ALLOC 0x8000
-#define ANIM_BMP_NUM_MASK 0x7FFF
-
-#define ANIM_LAYER_FLIPX 0x1
-#define ANIM_LAYER_FLIPY 0x2
-
 typedef struct AnimTime_s {
     s16 pat;
     s16 time;

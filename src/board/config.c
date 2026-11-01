@@ -21,15 +21,15 @@
 #include "dolphin/gx.h"
 #include "dolphin/mtx.h"
 
-extern void *mbMalloc(s32 size);
-extern void *mbMallocFlush(s32 size);
-extern void *mbMallocFlushModel(s32 size);
+extern void *fn_802137C0(s32 size);
+extern void *fn_80213874(s32 size);
+extern void *fn_802138C8(s32 size);
 extern void mbNormPosto2D(HuVecF *src, HuVecF *dst);
 extern void mbNormPosto3D(HuVecF *src, s16 cameraMask, HuVecF *dst);
 extern void mbPos3DtoNorm(HuVecF *src, s16 cameraMask, HuVecF *dst);
 extern float mbSinDeg(float angle);
 extern float mbCosDeg(float angle);
-extern void HuPadRumbleAllStop(void);
+extern void fn_80006F3C(void);
 extern s32 HuMCProbe(s32 chan);
 extern s32 HuMCMicGet(void);
 extern void HuMCMicSet(s32 value);
@@ -152,12 +152,12 @@ typedef struct PauseWork_s {
     CONFIG_MENU_WORK menu[8]; /* The eight pause-menu settings and their panels. */
     CONFIG_PAD_WORK configPad[4]; /* Controller-assignment rows for the four players. */
     PAUSE_CURSOR_WORK cursor; /* Cursor sprites and movement state for either menu. */
-    PAUSE_PAD_WORK padWork[GW_PLAYER_MAX]; /* Current controller-to-player assignments. */
+    PAUSE_PAD_WORK padWork[4]; /* Current controller-to-player assignments. */
 } PAUSE_WORK;
 
 static HuVecF playerPos;
 static PAUSE_WORK pauseWork;
-static BOOL playerDispF[GW_PLAYER_MAX];
+static BOOL playerDispF[4];
 
 static HUPROCESS *configProc = NULL;
 static s32 configPadEnabled = 0;
@@ -172,10 +172,10 @@ static s32 configResult = 0;
 static BOOL configDoneF = FALSE;
 
 static s32 mesSpeedAnmNo[4] = {
-    GW_MESS_SPEED_SLOW,
-    GW_MESS_SPEED_NORMAL,
-    GW_MESS_SPEED_FAST,
-    GW_MESS_SPEED_FAST
+    2,
+    1,
+    0,
+    0
 };
 static HuVecF pauseGuidePos = { -0.7f, -0.75f, -750.0f };
 static HuVecF pauseGuideQuitPos = { 0.0f, -0.75f, -500.0f };
@@ -185,16 +185,16 @@ static s16 pauseGridPosTbl[][2] = {
     0, 1, 1, 1, 2, 1, 3, 1
 };
 static s32 pausePanelFileTbl[8] = {
-    DATANUM(DATA_bpause6, 3), DATANUM(DATA_bpause6, 4),
-    DATANUM(DATA_bpause6, 5), DATANUM(DATA_bpause6, 6),
-    DATANUM(DATA_bpause6, 7), DATANUM(DATA_bpause6, 8),
-    DATANUM(DATA_bpause6, 9), DATANUM(DATA_bpause6, 10)
+    DATANUM(0x80000, 3), DATANUM(0x80000, 4),
+    DATANUM(0x80000, 5), DATANUM(0x80000, 6),
+    DATANUM(0x80000, 7), DATANUM(0x80000, 8),
+    DATANUM(0x80000, 9), DATANUM(0x80000, 10)
 };
 static s32 pausePanelLabelFileTbl[8] = {
-    DATANUM(DATA_bpause6, 11), DATANUM(DATA_bpause6, 12),
-    DATANUM(DATA_bpause6, 13), DATANUM(DATA_bpause6, 14),
-    DATANUM(DATA_bpause6, 15), DATANUM(DATA_bpause6, 16),
-    DATANUM(DATA_bpause6, 17), DATANUM(DATA_bpause6, 18)
+    DATANUM(0x80000, 11), DATANUM(0x80000, 12),
+    DATANUM(0x80000, 13), DATANUM(0x80000, 14),
+    DATANUM(0x80000, 15), DATANUM(0x80000, 16),
+    DATANUM(0x80000, 17), DATANUM(0x80000, 18)
 };
 static s16 pauseValueNumTbl[8] = { 1, 2, 2, 5, 2, 3, 3, 1 };
 static s16 pauseBatsuValueTbl[8] = { -1, 1, 1, -1, 1, -1, 1, -1 };
@@ -242,17 +242,17 @@ static float pausePadWinPosTbl[4][2] = {
     { 0.0f, 212.0f }
 };
 static s32 pauseCharPanelFileTbl[14] = {
-    DATANUM(DATA_bpause6, 20), DATANUM(DATA_bpause6, 21),
-    DATANUM(DATA_bpause6, 22), DATANUM(DATA_bpause6, 23),
-    DATANUM(DATA_bpause6, 24), DATANUM(DATA_bpause6, 25),
-    DATANUM(DATA_bpause6, 26), DATANUM(DATA_bpause6, 27),
-    DATANUM(DATA_bpause6, 28), DATANUM(DATA_bpause6, 29),
-    DATANUM(DATA_bpause6, 30), DATANUM(DATA_bpause6, 29),
-    DATANUM(DATA_bpause6, 29), DATANUM(DATA_bpause6, 29)
+    DATANUM(0x80000, 20), DATANUM(0x80000, 21),
+    DATANUM(0x80000, 22), DATANUM(0x80000, 23),
+    DATANUM(0x80000, 24), DATANUM(0x80000, 25),
+    DATANUM(0x80000, 26), DATANUM(0x80000, 27),
+    DATANUM(0x80000, 28), DATANUM(0x80000, 29),
+    DATANUM(0x80000, 30), DATANUM(0x80000, 29),
+    DATANUM(0x80000, 29), DATANUM(0x80000, 29)
 };
 static s32 pausePadSpriteFileTbl[3] = {
-    DATANUM(DATA_bpause6, 19), DATANUM(DATA_bpause6, 31),
-    DATANUM(DATA_bpause6, 31)
+    DATANUM(0x80000, 19), DATANUM(0x80000, 31),
+    DATANUM(0x80000, 31)
 };
 static s16 configPadSprOfsTbl[3][2] = {
     { 0, 0 },
@@ -326,8 +326,8 @@ BOOL mbConfigExec(int playerNo, MBMODELID modelId)
     pauseWork.cursorPos = -1;
     pauseWork.talkTime = pauseWork.prevTalkTime = 0;
     ConfigSettingRead();
-    configProc = HuPrcChildCreate(ConfigMain, 8210, 14336, 0, mbMainProc);
-    HuPrcSetStat(configProc, HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+    configProc = fn_8000DAC0(ConfigMain, 8210, 14336, 0, mbMainProc);
+    HuPrcSetStat(configProc, 0x4 | 0x8);
     HuPrcDestructorSet2(configProc, ConfigKill);
     while (!configDoneF) {
         HuPrcVSleep();
@@ -524,11 +524,11 @@ static void ConfigExec(void)
     while (pauseWork.menuExitRequested == 0) {
         HuPrcVSleep();
         mbPauseGuideTalkSet(pausePlayer);
-        playerController = GwPlayer[pauseWork.playerNo].padNo;
+        playerController = lbl_80265750[pauseWork.playerNo].padNo;
         inputState.controllerError = HuPadStatGet((s16)playerController) != 0;
         cursorMove = PauseCursorMove();
         if (cursorMove != 0 && previousCursorPos >= 0) {
-            if ((HuPadBtnDown[playerController] & PAD_BUTTON_A)
+            if ((lbl_802C0008[playerController] & PAD_BUTTON_A)
                 && !inputState.controllerError && cursorMove < 10) {
                 pauseWork.activeF = 1;
             }
@@ -541,30 +541,30 @@ static void ConfigExec(void)
             cursorPos = 0;
         }
         if (pauseWork.activeF == 0) {
-            pressedDirections = HuPadDStk[playerController]
+            pressedDirections = lbl_802BFFE4[playerController]
                 & stickDirectionMaskByCursor[cursorPos];
             if (inputState.controllerError) {
                 pressedDirections = 0;
             }
             if (previousCursorPos >= 0) {
                 if (pressedDirections & PAD_BUTTON_UP) {
-                    mbAudFXPlay(MSM_SE_CMN_01);
+                    mbAudFXPlay(0);
                     cursorPos = (cursorPos + 4) & 7;
                 } else if (pressedDirections & PAD_BUTTON_DOWN) {
-                    mbAudFXPlay(MSM_SE_CMN_01);
+                    mbAudFXPlay(0);
                     cursorPos = (cursorPos - 4) & 7;
                 }
                 if (pressedDirections & PAD_BUTTON_RIGHT) {
-                    mbAudFXPlay(MSM_SE_CMN_01);
+                    mbAudFXPlay(0);
                     cursorPos = (cursorPos + 1) & 7;
                 } else if (pressedDirections & PAD_BUTTON_LEFT) {
-                    mbAudFXPlay(MSM_SE_CMN_01);
+                    mbAudFXPlay(0);
                     cursorPos = (cursorPos - 1) & 7;
                 }
             }
             pauseWork.cursorPos = cursorPos;
             PauseCursorHiliteSet(
-                0, stickDirectionMaskByCursor[cursorPos], HuPadDStk[playerController]);
+                0, stickDirectionMaskByCursor[cursorPos], lbl_802BFFE4[playerController]);
             if (previousCursorPos != cursorPos) {
                 pos.x = 0.4f * ((float)pauseGridPosTbl[cursorPos][0] - 1.5f);
                 pos.y = 0.3f
@@ -585,7 +585,7 @@ static void ConfigExec(void)
         }
 
         inputState.confirmPressed = FALSE;
-        if ((HuPadBtnDown[playerController] & PAD_BUTTON_A)
+        if ((lbl_802C0008[playerController] & PAD_BUTTON_A)
             && !inputState.controllerError) {
             pauseWork.activeF = TRUE;
         }
@@ -596,14 +596,14 @@ static void ConfigExec(void)
             }
             pauseWork.activeF = 0;
             if (pauseWork.menu[cursorPos].available == 0) {
-                mbAudFXPlay(MSM_SE_CMN_05);
+                mbAudFXPlay(4);
                 goto config_exec_bottom;
             }
             if (cursorPos == 0) {
                 HuVecF shrinkPos;
                 HuVecF growPos;
 
-                mbAudFXPlay(MSM_SE_CMN_03);
+                mbAudFXPlay(2);
                 pos.x = lbl_802C4CD4;
                 pos.y = lbl_802C4CC8;
                 pos.z = 0.0f;
@@ -667,7 +667,7 @@ static void ConfigExec(void)
                     HuPrcVSleep();
                     mbPauseGuideTalkSet(pausePlayer);
                 }
-                mbAudFXPlay(MSM_SE_CMN_04);
+                mbAudFXPlay(3);
                 PauseCursorHiliteSet(-1, 0, 0);
                 ConfigPadClose();
                 pauseWork.activeF = 0;
@@ -733,10 +733,10 @@ static void ConfigExec(void)
             if (cursorPos == 7) {
                 HuVecF quitPos;
 
-                mbAudFXPlay(MSM_SE_CMN_02);
+                mbAudFXPlay(1);
                 if (ConfigQuitExec()) {
                     mbWipeFadeOut();
-                    _SetFlag(FLAG_BOARD_TURN_NOSTART);
+                    fn_8006A1C4(65569);
                     pauseWork.menuExitRequested = 1;
                     goto config_exec_bottom;
                 }
@@ -801,7 +801,7 @@ static void ConfigExec(void)
                 goto config_exec_bottom;
             }
 
-            mbAudFXPlay(MSM_SE_CMN_02);
+            mbAudFXPlay(1);
             if (pauseWork.menu[cursorPos].optionCount > 1) {
                 previousOptionIndex = pauseWork.menu[cursorPos].optionIndex;
                 pauseWork.menu[cursorPos].optionIndex++;
@@ -831,28 +831,28 @@ static void ConfigExec(void)
             }
             if (cursorPos == 5) {
                 messageSpeed = mesSpeedAnmNo[pauseWork.menu[5].optionIndex];
-                GwSystem.messSpeed = messageSpeed;
+                lbl_80265B70.messSpeed = messageSpeed;
                 switch (messageSpeed) {
-                    case GW_MESS_SPEED_FAST:
-                        GwSystem.comKeyDelay = 16;
+                    case 0:
+                        lbl_80265B70.comKeyDelay = 16;
                         break;
 
-                    case GW_MESS_SPEED_SLOW:
-                        GwSystem.comKeyDelay = 48;
+                    case 2:
+                        lbl_80265B70.comKeyDelay = 48;
                         break;
 
                     default:
-                        GwSystem.comKeyDelay = 32;
+                        lbl_80265B70.comKeyDelay = 32;
                         break;
                 }
             } else if (cursorPos == 4) {
                 vibrationEnabled = pauseWork.menu[4].optionIndex == 0;
 
-                GwCommon.vibrateF = vibrationEnabled;
+                lbl_80265E30.vibrateF = vibrationEnabled;
                 if (!vibrationEnabled) {
-                    HuPadRumbleAllStop();
+                    fn_80006F3C();
                 }
-                omVibrate((s16)pauseWork.playerNo, 20, 7, 3);
+                fn_8006A030((s16)pauseWork.playerNo, 20, 7, 3);
             } else if (cursorPos == 6) {
                 HuMCMicSet(
                     pauseMicValueTbl[pauseWork.menu[6].optionIndex]);
@@ -861,14 +861,14 @@ static void ConfigExec(void)
         }
 
 config_exec_bottom:
-        if ((HuPadBtnDown[playerController] & PAD_BUTTON_B)
+        if ((lbl_802C0008[playerController] & PAD_BUTTON_B)
             && !inputState.controllerError
             && pauseWork.menuExitRequested == 0) {
             pauseWork.talkTime = 0;
             pauseWork.prevTalkTime = 1;
             mbPauseGuideTalkSet(pausePlayer);
             pauseWork.menuExitRequested = 1;
-            mbAudFXPlay(MSM_SE_CMN_04);
+            mbAudFXPlay(3);
             OSReport(configExitMessage);
         }
     }
@@ -953,13 +953,13 @@ static BOOL ConfigQuitExec(void)
         }
     }
 
-    mbObjMotionShiftSet(pausePlayer, 11, lbl_802C4CB4, lbl_802C4CDC, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet(pausePlayer, 11, lbl_802C4CB4, lbl_802C4CDC, ((1 << 30) | (1 << 0)));
     /* Temporarily force human input for the quit prompt; restore both type fields from comF. */
-    comF = GwPlayer[pauseWork.playerNo].comF;
-    GwPlayer[pauseWork.playerNo].comF = FALSE;
-    GwPlayerConf[pauseWork.playerNo].type = FALSE;
-    padStat = HuPadStatGet((s16)GwPlayer[pauseWork.playerNo].padNo);
-    partyF = GwSystem.partyF;
+    comF = lbl_80265750[pauseWork.playerNo].comF;
+    lbl_80265750[pauseWork.playerNo].comF = FALSE;
+    lbl_80265728[pauseWork.playerNo].type = FALSE;
+    padStat = HuPadStatGet((s16)lbl_80265750[pauseWork.playerNo].padNo);
+    partyF = lbl_80265B70.partyF;
     if (partyF) {
         if (SLSaveFlagGet() && saveExecF) {
             confirmWindowNo = mbWinCreate(3, MESSNUM(MESS_BOARD_PAUSE, 25), -1);
@@ -987,7 +987,7 @@ static BOOL ConfigQuitExec(void)
     mbWinCenterGet((s16)confirmWindowNo, (HuVec2f *)&pos);
     mbWinPosSet((s16)confirmWindowNo, (s16)pos.x, 100);
 
-    partyF2 = GwSystem.partyF;
+    partyF2 = lbl_80265B70.partyF;
     if (partyF2) {
         ConfigPadWinSet(2);
     } else {
@@ -1002,18 +1002,18 @@ static BOOL ConfigQuitExec(void)
             BOOL exitPartyF;
 
             mbObjMotionShiftSet(
-                pausePlayer, 7, lbl_802C4CB4, lbl_802C4CE4, HU3D_MOTATTR_LOOP);
+                pausePlayer, 7, lbl_802C4CB4, lbl_802C4CE4, ((1 << 30) | (1 << 0)));
             for (i = 0; i < 30; i++) {
                 HuPrcVSleep();
             }
-            exitPartyF = GwSystem.partyF;
+            exitPartyF = lbl_80265B70.partyF;
             /* This negated party-mode value is discarded and has no effect. */
             !exitPartyF;
         } else if (choice == 0) {
             mbObjPosGet(pausePlayer, &pos);
             mbObjMotionShiftSet(
-                pausePlayer, 23, lbl_802C4CB4, lbl_802C4CDC, HU3D_MOTATTR_NONE);
-            mbAudGuidePlay(MSM_SE_GUIDE_26);
+                pausePlayer, 23, lbl_802C4CB4, lbl_802C4CDC, 0);
+            mbAudGuidePlay(950);
             for (i = 0; i < 10; i++) {
                 HuPrcVSleep();
             }
@@ -1033,14 +1033,14 @@ static BOOL ConfigQuitExec(void)
         ConfigPadWinSet(-1);
     }
 
-    GwPlayer[pauseWork.playerNo].comF = comF;
-    GwPlayerConf[pauseWork.playerNo].type = comF;
+    lbl_80265750[pauseWork.playerNo].comF = comF;
+    lbl_80265728[pauseWork.playerNo].type = comF;
     configResult = FALSE;
     if (choice > 0) {
         BOOL savePartyF;
 
         configResult = TRUE;
-        savePartyF = GwSystem.partyF;
+        savePartyF = lbl_80265B70.partyF;
         if (!savePartyF) {
             if (choice > 1) {
                 saveValue = -1;
@@ -1067,7 +1067,7 @@ static inline void ConfigWinUpdate(s32 menuIndex)
         pauseWork.helpWinNo = -1;
     }
     if (menuIndex >= 0) {
-        partyF = GwSystem.partyF;
+        partyF = lbl_80265B70.partyF;
         if (partyF) {
             winMesTbl = pauseWinMesTbl[menuIndex];
         } else {
@@ -1075,8 +1075,8 @@ static inline void ConfigWinUpdate(s32 menuIndex)
         }
         if (menuIndex == 0) {
             pauseWork.helpWinNo = mbWinCreateTime(8, winMesTbl[0], -1);
-            for (i = 0; i < GW_PLAYER_MAX; i++) {
-                if (GwPlayer[pauseWork.padWork[i].port].comF) {
+            for (i = 0; i < 4; i++) {
+                if (lbl_80265750[pauseWork.padWork[i].port].comF) {
                     mesNo = 2;
                 } else {
                     mesNo = 1;
@@ -1132,36 +1132,36 @@ static void ConfigSettingRead(void)
     s32 vibrateValue;
 
     pauseWork.menu[0].optionIndex = 0;
-    instDispF = GwSystem.mgInstDispF;
+    instDispF = lbl_80265B70.mgInstDispF;
     if (instDispF) {
         instValue = 0;
     } else {
         instValue = 1;
     }
     pauseWork.menu[1].optionIndex = instValue;
-    comDispF = GwSystem.mgComDispF;
+    comDispF = lbl_80265B70.mgComDispF;
     if (comDispF) {
         comValue = 0;
     } else {
         comValue = 1;
     }
     pauseWork.menu[2].optionIndex = comValue;
-    if (GwSystem.mgPack >= GW_MINIGAME_PACK_MAX) {
-        GwSystem.mgPack = GW_MINIGAME_PACK_ALL;
+    if (lbl_80265B70.mgPack >= 5) {
+        lbl_80265B70.mgPack = 0;
     }
-    packValue = GwSystem.mgPack;
+    packValue = lbl_80265B70.mgPack;
     pauseWork.menu[3].optionIndex = packValue;
-    vibrateF = GwCommon.vibrateF;
+    vibrateF = lbl_80265E30.vibrateF;
     if (vibrateF) {
         vibrateValue = 0;
     } else {
         vibrateValue = 1;
     }
     pauseWork.menu[4].optionIndex = vibrateValue;
-    if (GwSystem.messSpeed == GW_MESS_SPEED_MAX) {
-        GwSystem.messSpeed = GW_MESS_SPEED_NORMAL;
+    if (lbl_80265B70.messSpeed == 3) {
+        lbl_80265B70.messSpeed = 1;
     }
-    messSpeedIndex = GwSystem.messSpeed;
+    messSpeedIndex = lbl_80265B70.messSpeed;
     pauseWork.menu[5].optionIndex = mesSpeedAnmNo[messSpeedIndex];
     microphoneMode = HuMCMicGet();
     for (i = 0; i < 3; i++) {
@@ -1179,7 +1179,7 @@ static void ConfigSettingRead(void)
     for (i = 0; i < 8; i++) {
         pauseWork.menu[i].available = TRUE;
     }
-    partyF = GwSystem.partyF;
+    partyF = lbl_80265B70.partyF;
     if (!partyF) {
         pauseWork.menu[0].available = FALSE;
         pauseWork.menu[2].optionIndex = 1;
@@ -1202,30 +1202,30 @@ static void ConfigSettingWrite(void)
     BOOL partyF;
 
     instDispF = !pauseWork.menu[1].optionIndex;
-    GwSystem.mgInstDispF = instDispF;
-    partyF = GwSystem.partyF;
+    lbl_80265B70.mgInstDispF = instDispF;
+    partyF = lbl_80265B70.partyF;
     if (partyF) {
         comDispF = !pauseWork.menu[2].optionIndex;
-        GwSystem.mgComDispF = comDispF;
+        lbl_80265B70.mgComDispF = comDispF;
     }
     packValue = pauseWork.menu[3].optionIndex;
-    GwSystem.mgPack = packValue;
+    lbl_80265B70.mgPack = packValue;
     vibrateF = !pauseWork.menu[4].optionIndex;
-    GwCommon.vibrateF = vibrateF;
+    lbl_80265E30.vibrateF = vibrateF;
     if (!vibrateF) {
-        HuPadRumbleAllStop();
+        fn_80006F3C();
     }
     messageSpeed = mesSpeedAnmNo[pauseWork.menu[5].optionIndex];
-    GwSystem.messSpeed = messageSpeed;
+    lbl_80265B70.messSpeed = messageSpeed;
     switch (messageSpeed) {
-        case GW_MESS_SPEED_FAST:
-            GwSystem.comKeyDelay = 16;
+        case 0:
+            lbl_80265B70.comKeyDelay = 16;
             break;
-        case GW_MESS_SPEED_SLOW:
-            GwSystem.comKeyDelay = 48;
+        case 2:
+            lbl_80265B70.comKeyDelay = 48;
             break;
         default:
-            GwSystem.comKeyDelay = 32;
+            lbl_80265B70.comKeyDelay = 32;
             break;
     }
     if (pauseWork.menu[6].optionIndex == 0 && HuMCProbe(1)) {
@@ -1239,7 +1239,7 @@ static void ConfigPadOpen(void)
 {
     CONFIG_PAD_WORK *padWork;
     HuVecF iconPos;
-    int iconGrowFrames[GW_PLAYER_MAX];
+    int iconGrowFrames[4];
     int settledPadCount;
     int playerIndex;
     int iconIndex;
@@ -1264,7 +1264,7 @@ static void ConfigPadOpen(void)
     pauseWork.activeF = FALSE;
     PausePlayerComRead(FALSE);
     padWork = pauseWork.configPad;
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++, padWork++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++, padWork++) {
         for (iconIndex = 0; iconIndex < 3; iconIndex++) {
             padWork->sprId[iconIndex] = -1;
         }
@@ -1280,15 +1280,15 @@ static void ConfigPadOpen(void)
     iconPos.y = lbl_802C4CC8;
     iconPos.z = 0.0f;
     posStep = lbl_802C4CF8 * (iconPos.x - weight);
-    for (padWork = pauseWork.configPad, animId = HU3D_ANIMID_NONE, playerIndex = 0;
-         playerIndex < GW_PLAYER_MAX; playerIndex++, padWork++) {
-        padWork->comDif = GwPlayer[padWork->playerNo].comDif;
+    for (padWork = pauseWork.configPad, animId = -1, playerIndex = 0;
+         playerIndex < 4; playerIndex++, padWork++) {
+        padWork->comDif = lbl_80265750[padWork->playerNo].comDif;
         padWork->activeF = PausePadCheck(padWork->padNo);
-        if (!GwPlayer[padWork->playerNo].comF) {
-            padWork->comDif = GW_PLAYER_COM_DIF_MAX;
+        if (!lbl_80265750[padWork->playerNo].comF) {
+            padWork->comDif = 4;
         }
         padWork->panelId = mbPausePanelCreate(
-            pauseCharPanelFileTbl[GwPlayer[padWork->playerNo].charNo], 0);
+            pauseCharPanelFileTbl[lbl_80265750[padWork->playerNo].charNo], 0);
         iconPos.x = (lbl_802C4CC0 * (float)playerIndex) - lbl_802C4CC4;
         iconPos.y = lbl_802C4CC8;
         iconPos.z = 0.0f;
@@ -1312,14 +1312,14 @@ static void ConfigPadOpen(void)
         ConfigPadTimeSet(padWork, 0.0f);
     }
 
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         iconGrowFrames[playerIndex] = 0;
     }
     settledPadCount = 0;
-    while (settledPadCount < GW_PLAYER_MAX) {
+    while (settledPadCount < 4) {
         settledPadCount = 0;
         padWork = pauseWork.configPad;
-        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++, padWork++) {
+        for (playerIndex = 0; playerIndex < 4; playerIndex++, padWork++) {
             if (mbPausePanelFreezeGet((s16)padWork->panelId)) {
                 iconGrowFrames[playerIndex]++;
                 weight = lbl_802C4D08 * (float)iconGrowFrames[playerIndex];
@@ -1341,18 +1341,18 @@ static void ConfigPadSprSet(CONFIG_PAD_WORK *workP)
     s32 sprId = workP->sprId[0];
     s32 bank = 0;
 
-    if (workP->comDif < GW_PLAYER_COM_DIF_MAX) {
+    if (workP->comDif < 4) {
         bank = 1;
     }
     espBankSet(sprId, bank);
     sprId = workP->sprId[1];
     bank = workP->padNo;
-    if (workP->comDif < GW_PLAYER_COM_DIF_MAX) {
+    if (workP->comDif < 4) {
         bank = 4;
     }
     espBankSet(sprId, bank);
     sprId = workP->sprId[2];
-    if (workP->comDif < GW_PLAYER_COM_DIF_MAX) {
+    if (workP->comDif < 4) {
         espDispOn(sprId);
         espBankSet(sprId, workP->comDif + 5);
     } else {
@@ -1430,7 +1430,7 @@ static void ConfigPadClose(void)
     pos.z = lbl_802C4CB4;
     posStep = lbl_802C4CF8 * (pos.x - weight);
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPausePanelShrinkSet(
             (s16)pauseWork.configPad[i].panelId, 20, 0);
     }
@@ -1444,13 +1444,13 @@ static void ConfigPadClose(void)
         }
         weight = mbCosDeg(lbl_802C4D0C * weight);
         workP = pauseWork.configPad;
-        for (j = 0; j < GW_PLAYER_MAX; j++, workP++) {
+        for (j = 0; j < 4; j++, workP++) {
             ConfigPadTimeSet(workP, weight);
         }
     }
 
     workP = pauseWork.configPad;
-    for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
+    for (i = 0; i < 4; i++, workP++) {
         if (workP->panelId != 0) {
             mbPausePanelKill((s16)workP->panelId);
             workP->panelId = 0;
@@ -1485,11 +1485,11 @@ static BOOL ConfigPadMain(void)
     extern float lbl_802C4CC4;
     extern float lbl_802C4CC8;
 
-    controllerNo = GwPlayer[pauseWork.playerNo].padNo;
+    controllerNo = lbl_80265750[pauseWork.playerNo].padNo;
     playerSetupChanged = PausePlayerComRead(FALSE);
     controllerDisconnected = !PausePadCheck(controllerNo);
     if (PauseCursorMove()) {
-        if (HuPadBtnDown[controllerNo] & PAD_BUTTON_A) {
+        if (lbl_802C0008[controllerNo] & PAD_BUTTON_A) {
             pauseWork.activeF = 12;
         }
         if (controllerDisconnected) {
@@ -1507,19 +1507,19 @@ static BOOL ConfigPadMain(void)
     if (cursorPos < 0) {
         cursorPos = pauseWork.configPadPlayerIndex = 0;
     }
-    stickDirections = HuPadDStk[controllerNo] & stickDirectionMaskBySlot[cursorPos];
+    stickDirections = lbl_802BFFE4[controllerNo] & stickDirectionMaskBySlot[cursorPos];
     if (controllerDisconnected) {
         stickDirections = 0;
     }
     if (stickDirections & PAD_BUTTON_RIGHT) {
-        mbAudFXPlay(MSM_SE_CMN_01);
+        mbAudFXPlay(0);
         cursorPos = (cursorPos + 1) & 3;
     } else if (stickDirections & PAD_BUTTON_LEFT) {
-        mbAudFXPlay(MSM_SE_CMN_01);
+        mbAudFXPlay(0);
         cursorPos = (cursorPos - 1) & 3;
     }
     pauseWork.configPadPlayerIndex = cursorPos;
-    PauseCursorHiliteSet(1, stickDirectionMaskBySlot[cursorPos], HuPadDStk[controllerNo]);
+    PauseCursorHiliteSet(1, stickDirectionMaskBySlot[cursorPos], lbl_802BFFE4[controllerNo]);
 
     workP = &pauseWork.configPad[pauseWork.configPadPlayerIndex];
     if (cursorPos != previousPlayerSlot) {
@@ -1534,21 +1534,21 @@ static BOOL ConfigPadMain(void)
         workP = &pauseWork.configPad[previousPlayerSlot];
     }
 
-    if (HuPadBtnDown[controllerNo] & PAD_BUTTON_A) {
+    if (lbl_802C0008[controllerNo] & PAD_BUTTON_A) {
         pauseWork.activeF = 8;
     }
     if (controllerDisconnected) {
         pauseWork.activeF = 0;
     }
     if (pauseWork.configPadChangeCooldown == 0 && pauseWork.activeF != 0) {
-        humanOptionIndex = GW_PLAYER_COM_DIF_MAX;
+        humanOptionIndex = 4;
         workP->comDif++;
         pauseWork.configPadChangeCooldown = 16;
         pauseWork.activeF = 0;
-        mbAudFXPlay(MSM_SE_CMN_02);
+        mbAudFXPlay(1);
         /* Skip Very Hard without bank flag 3; an unavailable controller makes the human choice fall
          * back to Easy. */
-        if (!GWBankFlagGet(3) && workP->comDif == humanOptionIndex - 1) {
+        if (!fn_8003D2F0(3) && workP->comDif == humanOptionIndex - 1) {
             workP->comDif++;
         }
         if (workP->comDif > humanOptionIndex) {
@@ -1556,17 +1556,17 @@ static BOOL ConfigPadMain(void)
         }
         if (workP->comDif == humanOptionIndex) {
             if (PausePadCheck(workP->padNo)) {
-                GwPlayer[workP->playerNo].comF = FALSE;
-                GwPlayerConf[workP->playerNo].type = FALSE;
+                lbl_80265750[workP->playerNo].comF = FALSE;
+                lbl_80265728[workP->playerNo].type = FALSE;
             } else {
                 workP->comDif = 0;
             }
         }
         if (workP->comDif < humanOptionIndex) {
-            GwPlayer[workP->playerNo].comF = TRUE;
-            GwPlayerConf[workP->playerNo].type = TRUE;
-            GwPlayer[workP->playerNo].comDif = workP->comDif;
-                GwPlayerConf[workP->playerNo].comDif = workP->comDif;
+            lbl_80265750[workP->playerNo].comF = TRUE;
+            lbl_80265728[workP->playerNo].type = TRUE;
+            lbl_80265750[workP->playerNo].comDif = workP->comDif;
+                lbl_80265728[workP->playerNo].comDif = workP->comDif;
         }
         playerSetupChanged = TRUE;
         ConfigPadSprSet(workP);
@@ -1575,17 +1575,17 @@ static BOOL ConfigPadMain(void)
 
     /* A lost controller forces CPU control; a newly available controller forces human control. */
     workP = pauseWork.configPad;
-    for (i = 0; i < GW_PLAYER_MAX; i++, workP++) {
+    for (i = 0; i < 4; i++, workP++) {
         controllerConnected = PausePadCheck(workP->padNo);
         if (!controllerConnected && workP->activeF) {
-            GwPlayer[workP->playerNo].comF = TRUE;
-            GwPlayerConf[workP->playerNo].type = TRUE;
-            workP->comDif = GwPlayer[workP->playerNo].comDif;
+            lbl_80265750[workP->playerNo].comF = TRUE;
+            lbl_80265728[workP->playerNo].type = TRUE;
+            workP->comDif = lbl_80265750[workP->playerNo].comDif;
             ConfigPadSprSet(workP);
         } else if (controllerConnected && !workP->activeF) {
-            workP->comDif = GW_PLAYER_COM_DIF_MAX;
-            GwPlayer[workP->playerNo].comF = FALSE;
-            GwPlayerConf[workP->playerNo].type = FALSE;
+            workP->comDif = 4;
+            lbl_80265750[workP->playerNo].comF = FALSE;
+            lbl_80265728[workP->playerNo].type = FALSE;
             ConfigPadSprSet(workP);
         }
         workP->activeF = controllerConnected;
@@ -1594,7 +1594,7 @@ static BOOL ConfigPadMain(void)
     if (playerSetupChanged) {
         ConfigWinUpdate(pauseWork.cursorPos);
     }
-    if ((HuPadBtnDown[controllerNo] & PAD_BUTTON_B) && !controllerDisconnected) {
+    if ((lbl_802C0008[controllerNo] & PAD_BUTTON_B) && !controllerDisconnected) {
         result = TRUE;
     }
     if (pauseWork.configPadChangeCooldown != 0) {
@@ -1627,13 +1627,13 @@ static void PauseCursorCreate(void)
         for (i = 0; i < 4; i++) {
             cursorP->alpha[i] = lbl_802C4CB4;
             cursorP->sprId[i] = sprId = espEntry(
-                mbBoardDataNumGet(DATANUM(DATA_bpause6, 32)), 90,
+                mbBoardDataNumGet(DATANUM(0x80000, 32)), 90,
                 (s16)(pauseCursorBankTbl[i] + 4));
             espAttrSet(sprId, HUSPR_ATTR_LINEAR);
             espPosSet(sprId, cursorP->pos.x, cursorP->pos.y);
             espDispOff(sprId);
             cursorP->hiliteSprId[i] = sprId = espEntry(
-                mbBoardDataNumGet(DATANUM(DATA_bpause6, 32)), 89,
+                mbBoardDataNumGet(DATANUM(0x80000, 32)), 89,
                 (s16)pauseCursorBankTbl[i]);
             espAttrSet(sprId, HUSPR_ATTR_LINEAR);
             espPosSet(sprId, cursorP->pos.x, cursorP->pos.y);
@@ -1798,14 +1798,14 @@ static BOOL PausePlayerComRead(s32 initializeAssignments)
     work = pauseWork.padWork;
     changeF = FALSE;
     if (initializeAssignments) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        for (i = 0; i < 4; i++) {
             work[i].port = i;
-            work[i].padNo = GwPlayer[i].padNo;
+            work[i].padNo = lbl_80265750[i].padNo;
             work[i].padStatus = 0;
             work[i].statusChangeFrames = FALSE;
         }
-        for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
-            for (j = i + 1; j < GW_PLAYER_MAX; j++) {
+        for (i = 0; i < 4 - 1; i++) {
+            for (j = i + 1; j < 4; j++) {
                 if (work[i].padNo > work[j].padNo
                     || (work[i].padNo == work[j].padNo
                         && work[i].port > work[j].port)) {
@@ -1821,15 +1821,15 @@ static BOOL PausePlayerComRead(s32 initializeAssignments)
         {
             BOOL partyF;
 
-            partyF = GwSystem.partyF;
+            partyF = lbl_80265B70.partyF;
             if (partyF) {
-                for (i = 0; i < GW_PLAYER_MAX; i++) {
+                for (i = 0; i < 4; i++) {
                     /* On entry, any controller error forces its human player to CPU control. */
                     work[i].padStatus = HuPadStatGet((s16)work[i].padNo);
                     if (work[i].padStatus != 0
-                        && !GwPlayer[work[i].port].comF) {
-                        GwPlayer[work[i].port].comF = TRUE;
-                        GwPlayerConf[work[i].port].type = TRUE;
+                        && !lbl_80265750[work[i].port].comF) {
+                        lbl_80265750[work[i].port].comF = TRUE;
+                        lbl_80265728[work[i].port].type = TRUE;
                     }
                 }
             }
@@ -1838,12 +1838,12 @@ static BOOL PausePlayerComRead(s32 initializeAssignments)
     {
         BOOL partyF;
 
-        partyF = GwSystem.partyF;
+        partyF = lbl_80265B70.partyF;
         if (!partyF) {
             return FALSE;
         }
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         padValue = HuPadStatGet((s16)work[i].padNo);
         if (padValue != work[i].padStatus) {
             work[i].statusChangeFrames++;
@@ -1856,13 +1856,13 @@ static BOOL PausePlayerComRead(s32 initializeAssignments)
         /* After four consecutive reads differing from the cached status, force human control for 0
         * or CPU control for -1; leave other error statuses uncached. */
         if (padValue == 0) {
-            GwPlayer[work[i].port].comF = FALSE;
-            GwPlayerConf[work[i].port].type = FALSE;
+            lbl_80265750[work[i].port].comF = FALSE;
+            lbl_80265728[work[i].port].type = FALSE;
             changeF = TRUE;
             work[i].padStatus = padValue;
         } else if (padValue == -1) {
-            GwPlayer[work[i].port].comF = TRUE;
-            GwPlayerConf[work[i].port].type = TRUE;
+            lbl_80265750[work[i].port].comF = TRUE;
+            lbl_80265728[work[i].port].type = TRUE;
             changeF = TRUE;
             work[i].padStatus = padValue;
         }
@@ -1891,15 +1891,15 @@ void mbPauseDispCopyCreate(void)
     /* GWStorySingleCheck is referenced without a call, so this nonnull function pointer makes the
      * branch unreachable. */
     if (!GWStorySingleCheck) {
-        pauseDispCopyFb = mbMallocFlush(fbSize);
+        pauseDispCopyFb = fn_80213874(fbSize);
     } else {
-        pauseDispCopyFb = mbMallocFlushModel(fbSize);
+        pauseDispCopyFb = fn_802138C8(fbSize);
     }
-    pauseDispCopyModelId = Hu3DHookFuncCreate(PauseDispCopyDraw);
-    Hu3DModelCameraSet(pauseDispCopyModelId, 4);
-    Hu3DModelLayerSet(pauseDispCopyModelId, 2);
+    pauseDispCopyModelId = fn_800260F4(PauseDispCopyDraw);
+    fn_80026B64(pauseDispCopyModelId, 4);
+    fn_80026B8C(pauseDispCopyModelId, 2);
     HuPrcVSleep();
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         playerDispF[i] = mbObjDispGet(mbPlayerObjIDGet(i));
         mbObjDispSet(mbPlayerObjIDGet(i), FALSE);
     }
@@ -1913,8 +1913,8 @@ void mbPauseDispCopyKill(void)
     pauseDispCopyCounter = 0;
     HuMemDirectFree(pauseDispCopyFb);
     pauseDispCopyFb = NULL;
-    Hu3DModelKill(pauseDispCopyModelId);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    fn_800262D0(pauseDispCopyModelId);
+    for (i = 0; i < 4; i++) {
         if (playerDispF[i]) {
             mbObjDispSet(mbPlayerObjIDGet(i), TRUE);
         }
@@ -1988,13 +1988,13 @@ static void PauseDispCopyDraw(HU3D_MODEL *modelP, Mtx *mtx)
 /* The board pause process allocates panel state and starts its per-frame animator on entry. */
 void mbPauseGuideCreate(void)
 {
-    pausePanelWork = mbMalloc(sizeof(PAUSE_PANEL_WORK) * 20);
+    pausePanelWork = fn_802137C0(sizeof(PAUSE_PANEL_WORK) * 20);
     pauseGuideKillF = FALSE;
-    pauseGuideProc = HuPrcChildCreate(PauseGuideMain, 8209, 8192, 0,
+    pauseGuideProc = fn_8000DAC0(PauseGuideMain, 8209, 8192, 0,
         mbMainProc);
     HuPrcDestructorSet2(pauseGuideProc, PauseGuideDestroy);
     HuPrcSetStat(pauseGuideProc,
-        HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+        0x4 | 0x8);
 }
 
 /* The board pause process requests that the panel animator stop on its next update when closing. */
@@ -2033,8 +2033,8 @@ static void PauseGuideMain(void)
     extern float lbl_802C4D2C;
     extern float lbl_802C4D30;
 
-    for (slotIndex = 0; slotIndex < HU3D_CAM_MAX; slotIndex++) {
-        if ((1 << slotIndex) & HU3D_CAM2) {
+    for (slotIndex = 0; slotIndex < 16; slotIndex++) {
+        if ((1 << slotIndex) & (1 << 2)) {
             break;
         }
     }
@@ -2052,9 +2052,9 @@ static void PauseGuideMain(void)
                 if (panelWork->time >= panelWork->delay) {
                     panelWork->delay = panelWork->time = 0;
                     if (panelWork->motion == 4) {
-                        mbAudFXPlay(MSM_SE_CMN_53);
+                        mbAudFXPlay(52);
                     } else if (panelWork->motion == 5) {
-                        mbAudFXPlay(MSM_SE_CMN_54);
+                        mbAudFXPlay(53);
                     }
                 }
             } else {
@@ -2144,7 +2144,7 @@ static void PauseGuideMain(void)
             if (panelWork->scaleTarget >= lbl_802C4CD0) {
                 isForegroundPanel = TRUE;
             }
-            mbNormPosto3D(&panelWork->pos, HU3D_CAM2, &transformVector);
+            mbNormPosto3D(&panelWork->pos, (1 << 2), &transformVector);
             mbObjPosSetV(panelWork->modelId, &transformVector);
             if (panelWork->batsuModelId != 0) {
                 mbObjPosSetV(panelWork->batsuModelId, &transformVector);
@@ -2152,7 +2152,7 @@ static void PauseGuideMain(void)
             if (panelWork->sprId >= 0) {
                 transformVector.y -= lbl_802C4CEC
                     * (lbl_802C4CA8 * (panelWork->scale * panelWork->scaleBase));
-                mbPos3DtoNorm(&transformVector, HU3D_CAM2, &transformVector);
+                mbPos3DtoNorm(&transformVector, (1 << 2), &transformVector);
                 mbNormPosto2D(&transformVector, &transformVector);
                 espPosSet(panelWork->sprId, transformVector.x, transformVector.y);
                 if (isForegroundPanel) {
@@ -2190,7 +2190,7 @@ static void PauseGuideMain(void)
             }
             /* Face the panel toward the pause camera while retaining its animated rotation. */
             mbObjRotGet(panelWork->modelId, &panelRotation);
-            mtxRot(rotationMatrix, panelRotation.x, panelRotation.y, panelRotation.z);
+            fn_80022E38(rotationMatrix, panelRotation.x, panelRotation.y, panelRotation.z);
             PSMTXInverse(rotationMatrix, inverseRotationMatrix);
             mbObjPosGet(panelWork->modelId, &transformVector);
             C_MTXLookAt(facingMatrix, &pauseCamera->pos, &pauseCamera->up, &transformVector);
@@ -2242,41 +2242,41 @@ s16 mbPausePanelCreate(int dataNum, unsigned int espDataNum)
     memset(work, 0, sizeof(PAUSE_PANEL_WORK));
     work->scale = work->scaleStart = work->scaleTarget = work->scaleBase = lbl_802C4CCC;
     work->pos.z = work->posStart.z = work->posTarget.z = lbl_802C4D1C;
-    work->modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_bpause6, 37)),
+    work->modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(0x80000, 37)),
         NULL, FALSE);
     mbObjCameraSet(work->modelId, 4);
     mbObjLayerSet(work->modelId, 4);
     {
         MBMODELID modelId = work->modelId;
 
-        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     }
     {
         MBMODELID modelId = work->modelId;
 
-        mbObjAttrSet(modelId, HU3D_ATTR_NOPAUSE);
+        mbObjAttrSet(modelId, (1 << 21));
     }
     mbObjDispSet(work->modelId, FALSE);
-    work->anim = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(dataNum), HU_MEMNUM_OVL, HEAP_MODEL));
+    work->anim = HuSprAnimRead(fn_80008DD0(
+        mbBoardDataNumGet(dataNum), 0x10000000, 2));
     for (i = 0; i < 2; i++) {
         if (i == 0) {
-            work->animId[0] = Hu3DAnimCreate(work->anim,
+            work->animId[0] = fn_80030B2C(work->anim,
                 mbObjModelIDGet(work->modelId), "S3TCys77120");
         } else {
-            work->animId[i] = Hu3DAnimLink(work->animId[0],
+            work->animId[i] = fn_80030DF0(work->animId[0],
                 mbObjModelIDGet(work->modelId), "S3TCys77121");
         }
         Hu3DAnmNoSet(work->animId[i], 0);
     }
     work->batsuModelId = mbObjCreate(
-        mbBoardDataNumGet(DATANUM(DATA_bpause6, 36)), NULL, TRUE);
+        mbBoardDataNumGet(DATANUM(0x80000, 36)), NULL, TRUE);
     mbObjCameraSet(work->batsuModelId, 4);
     mbObjLayerSet(work->batsuModelId, 4);
     {
         MBMODELID modelId = work->batsuModelId;
 
-        mbObjAttrSet(modelId, HU3D_ATTR_NOPAUSE);
+        mbObjAttrSet(modelId, (1 << 21));
     }
     mbObjDispSet(work->batsuModelId, FALSE);
     work->sprId = -1;
@@ -2296,7 +2296,7 @@ void mbPausePanelKill(s16 panelId)
 
     for (i = 0; i < 2; i++) {
         if (work->animId[i] >= 0) {
-            Hu3DAnimKill(work->animId[i]);
+            fn_80031010(work->animId[i]);
         }
         work->animId[i] = -1;
     }
@@ -2507,7 +2507,7 @@ void mbPauseGuideMoveSet(MBMODELID modelId, s32 time, HuVecF *posP,
     extern float lbl_802C4D4C;
 
     if (posP == NULL) {
-        mbNormPosto3D(posNormP, HU3D_CAM2, &targetPos);
+        mbNormPosto3D(posNormP, (1 << 2), &targetPos);
     } else {
         ConfigVecCopy(posP, &targetPos);
     }
@@ -2532,7 +2532,7 @@ void mbPauseGuideMoveSet(MBMODELID modelId, s32 time, HuVecF *posP,
         rotY = lbl_802C4D48;
     }
     mbObjMotionShiftSet(modelId, 3, lbl_802C4CB4, lbl_802C4CDC,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, lbl_802C4CD0);
     for (i = 0; i <= time; i++) {
         weight = (float)i / (float)time;
@@ -2549,7 +2549,7 @@ void mbPauseGuideMoveSet(MBMODELID modelId, s32 time, HuVecF *posP,
         HuPrcVSleep();
     }
     mbObjMotionShiftSet(modelId, 1, lbl_802C4CB4, lbl_802C4CE4,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
     for (i = 0; i <= 12; i++) {
         weight = (float)i / lbl_802C4CE4;
         if (weight > lbl_802C4CCC) {
@@ -2577,14 +2577,14 @@ void mbPauseGuideTalkSet(MBMODELID modelId)
     }
     if (pauseWork.prevTalkTime == 0 && pauseWork.talkTime > 0) {
         mbObjMotionShiftSet(modelId, 12, lbl_802C4CB4, lbl_802C4CDC,
-            HU3D_MOTATTR_LOOP);
+            ((1 << 30) | (1 << 0)));
         mbObjMotionSpeedSet(modelId, lbl_802C4D50);
     }
     if (pauseWork.talkTime != 0) {
         pauseWork.talkTime--;
         if (pauseWork.talkTime == 0) {
             mbObjMotionShiftSet(modelId, 1, lbl_802C4CB4, lbl_802C4D54,
-                HU3D_MOTATTR_LOOP);
+                ((1 << 30) | (1 << 0)));
         }
     }
     pauseWork.prevTalkTime = pauseWork.talkTime;

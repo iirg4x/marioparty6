@@ -28,15 +28,15 @@
 #include "REL/safdll/saf.h"
 
 /* Resources and message used by the motion-check scene. */
-#define SAF_TEST_HSF_ID DATANUM(DATA_saf, 0)
-#define SAF_CAR_HSF_ID DATANUM(DATA_saf, 1)
-#define SAF_SURFACE_HSF_ID DATANUM(DATA_saf, 3)
-#define SAF_REFLECTION_ANIM_ID DATANUM(DATA_saf, 4)
-#define SAF_WATER_BUMP_ANIM_ID DATANUM(DATA_effect, 10)
+#define SAF_TEST_HSF_ID DATANUM(0xca0000, 0)
+#define SAF_CAR_HSF_ID DATANUM(0xca0000, 1)
+#define SAF_SURFACE_HSF_ID DATANUM(0xca0000, 3)
+#define SAF_REFLECTION_ANIM_ID DATANUM(0xca0000, 4)
+#define SAF_WATER_BUMP_ANIM_ID DATANUM(0x210000, 10)
 #define SAF_MICQUIZ_MESSAGE_BANK 28
 #define SAF_TEST_MESSAGE_INDEX 66
 #define SAF_TEST_MESSAGE_ID ((u32)((SAF_MICQUIZ_MESSAGE_BANK << 16) | SAF_TEST_MESSAGE_INDEX))
-#define SAF_MARIO_DATA_DIR_ID DATA_mario
+#define SAF_MARIO_DATA_DIR_ID 0x8e0000
 #define SAF_INSET_BASE_INTENSITY 24
 #define SAF_INSET_MIN_ALPHA 224U
 #define SAF_DEPTH_RAMP_FIRST 240
@@ -85,20 +85,20 @@ void fn_1_A0(void) {
     f64 sum;
 
     OSReport(&lbl_1_data_4);
-    lbl_1_bss_1B8 = omInitObjMan(50, 8192);
-    CRot.x = (-20.0f);
-    CRot.y = (0.0f);
-    CRot.z = (0.0f);
-    Center.x = (0.0f);
-    Center.y = (100.0f);
-    Center.z = (0.0f);
-    CZoom = (400.0f);
+    lbl_1_bss_1B8 = fn_8003A8BC(50, 8192);
+    lbl_80266A40.x = (-20.0f);
+    lbl_80266A40.y = (0.0f);
+    lbl_80266A40.z = (0.0f);
+    lbl_80266A4C.x = (0.0f);
+    lbl_80266A4C.y = (100.0f);
+    lbl_80266A4C.z = (0.0f);
+    lbl_802C028C = (400.0f);
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, (45.0f), (20.0f), (1500.0f), (1.2f));
     Hu3DCameraViewportSet(1, (0.0f), (0.0f), (640.0f), (480.0f), (0.0f), (1.0f));
-    lbl_1_bss_4BC = omAddObjEx(lbl_1_bss_1B8, OM_OUTVIEW_PRIO, 0U, 0U, -1, omOutView);
-    lbl_1_bss_4C0 = omAddObjEx(lbl_1_bss_1B8, 0, 64U, 0U, -1, fn_1_B30);
-    HuPrcChildCreate(fn_1_3AC, 100U, 12288U, 0, lbl_1_bss_1B8);
+    lbl_1_bss_4BC = fn_8003AB38(lbl_1_bss_1B8, 32730, 0U, 0U, -1, fn_8003D4FC);
+    lbl_1_bss_4C0 = fn_8003AB38(lbl_1_bss_1B8, 0, 64U, 0U, -1, fn_1_B30);
+    fn_8000DAC0(fn_1_3AC, 100U, 12288U, 0, lbl_1_bss_1B8);
     lbl_1_bss_1B4 = Hu3DGLightCreate((200.0f), (1000.0f), (1000.0f), (-0.2f), (-1.0f), (-1.0f),
                                      255U, 255U, 255U);
     Hu3DAmbColorSet((1.5f), (1.5f), (1.5f));
@@ -135,19 +135,19 @@ void fn_1_3AC(void) {
     }
     HuWinMesSet(window, SAF_TEST_MESSAGE_ID);
     HuWinMesWait(window);
-    while ((HuPadBtnDown[0] & PAD_BUTTON_START) == 0) {
-        if ((HuPadBtnDown[0] & PAD_BUTTON_LEFT) != 0) {
+    while ((lbl_802C0008[0] & PAD_BUTTON_START) == 0) {
+        if ((lbl_802C0008[0] & PAD_BUTTON_LEFT) != 0) {
             WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_DISSOLVE_IN_BLUR, 60); WipeWait();
             HuPrcSleep(30); WipeCreate(WIPE_MODE_IN, WIPE_TYPE_DISSOLVE_IN_BLUR, 60); WipeWait();
-        } else if ((HuPadBtnDown[0] & PAD_BUTTON_RIGHT) != 0) {
+        } else if ((lbl_802C0008[0] & PAD_BUTTON_RIGHT) != 0) {
             WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_DISSOLVE_OUT_BLUR, 60); WipeWait();
             HuPrcSleep(30); WipeCreate(WIPE_MODE_IN, WIPE_TYPE_DISSOLVE_OUT_BLUR, 60); WipeWait();
-        } else if ((HuPadBtnDown[0] & PAD_BUTTON_UP) != 0) {
+        } else if ((lbl_802C0008[0] & PAD_BUTTON_UP) != 0) {
             WipeCreate(WIPE_MODE_OUT, (WIPE_TYPE_VIEW_SHIFT | WIPE_TYPE_FBKEEP), 60); WipeWait();
             HuPrcSleep(30);
             WipeCreate(WIPE_MODE_IN, (WIPE_TYPE_VIEW_SHIFT | WIPE_TYPE_FBKEEP), 60);
             WipeWait();
-        } else if ((HuPadBtnDown[0] & PAD_BUTTON_DOWN) != 0) {
+        } else if ((lbl_802C0008[0] & PAD_BUTTON_DOWN) != 0) {
             WipeCreate(WIPE_MODE_OUT, (WIPE_TYPE_WAVE | WIPE_TYPE_FBKEEP), 60); WipeWait();
             HuPrcSleep(30);
             WipeCreate(WIPE_MODE_IN, (WIPE_TYPE_WAVE | WIPE_TYPE_FBKEEP), 60);
@@ -156,7 +156,7 @@ void fn_1_3AC(void) {
         HuPrcVSleep();
     }
     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 20); WipeWait();
-    omOvlReturnEx(1, 1); HuPrcEnd(); while (1) HuPrcVSleep();
+    fn_8003A5E4(1, 1); HuPrcEnd(); while (1) HuPrcVSleep();
 }
 
 extern void *lbl_1_bss_1AC;
@@ -182,32 +182,32 @@ void fn_1_6E0(void) {
     shadowTarget.x = shadowTarget.y = shadowTarget.z = (0.0f);
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
     Hu3DShadowTPLvlSet((0.6f));
-    model = Hu3DModelCreate(HuDataSelHeapReadNum(SAF_TEST_HSF_ID, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (0.0f));
-    Hu3DModelShadowMapSet(model);
-    model = Hu3DModelCreate(HuDataSelHeapReadNum(SAF_CAR_HSF_ID, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (0.0f));
-    Hu3DModelScaleSet(model, (0.2f), (0.2f), (0.2f));
-    Hu3DModelShadowSet(model);
-    model = Hu3DModelCreate(HuDataSelHeapReadNum(SAF_CAR_HSF_ID, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (-150.0f));
-    Hu3DModelScaleSet(model, (0.2f), (0.2f), (0.2f));
-    Hu3DModelShadowSet(model);
-    model = Hu3DModelCreate(HuDataSelHeapReadNum(SAF_CAR_HSF_ID, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (150.0f));
-    Hu3DModelScaleSet(model, (0.2f), (0.2f), (0.2f));
-    Hu3DModelShadowSet(model);
+    model = fn_80025A04(fn_80008DD0(SAF_TEST_HSF_ID, 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (0.0f));
+    fn_80026FFC(model);
+    model = fn_80025A04(fn_80008DD0(SAF_CAR_HSF_ID, 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (0.0f));
+    fn_800268B0(model, (0.2f), (0.2f), (0.2f));
+    fn_80026E44(model);
+    model = fn_80025A04(fn_80008DD0(SAF_CAR_HSF_ID, 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (-150.0f));
+    fn_800268B0(model, (0.2f), (0.2f), (0.2f));
+    fn_80026E44(model);
+    model = fn_80025A04(fn_80008DD0(SAF_CAR_HSF_ID, 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (150.0f));
+    fn_800268B0(model, (0.2f), (0.2f), (0.2f));
+    fn_80026E44(model);
     fn_1_3A24();
-    HuMemHeapDump(HuMemHeapPtrGet(HEAP_DVD), -1);
-    HuDataDirCloseAll();
-    HuMemHeapDump(HuMemHeapPtrGet(HEAP_DVD), -1);
-    HuDataDirRead(SAF_MARIO_DATA_DIR_ID);
+    fn_8000BFB4(fn_8000B7A8(3), -1);
+    fn_80009A30();
+    fn_8000BFB4(fn_8000B7A8(3), -1);
+    fn_800078C8(SAF_MARIO_DATA_DIR_ID);
     lbl_1_bss_1AC = HuMemDirectMallocNum(
-        HEAP_MODEL, GXGetTexBufferSize(640U, 480U, GX_TF_Z24X8, 0U, 0U), HU_MEMNUM_OVL);
+        2, GXGetTexBufferSize(640U, 480U, GX_TF_Z24X8, 0U, 0U), 0x10000000);
     fn_1_1754();
     fn_1_22C4();
     fn_1_33FC();
-    Hu3DModelDebug();
+    fn_8002C31C();
 }
 
 extern f32 lbl_1_bss_0;
@@ -244,8 +244,8 @@ extern u32 lbl_1_bss_49C[8];
 #define M_PI (3.141592653589793)
 #undef HuSin
 #undef HuCos
-#define HuSin(x) sin(M_PI * (x) / (180.0))
-#define HuCos(x) cos(M_PI * (x) / (180.0))
+#define HuSin(x) sin(3.141592653589793 * (x) / (180.0))
+#define HuCos(x) cos(3.141592653589793 * (x) / (180.0))
 
 /* Updates the motion-check camera from controller input on each object-manager tick. */
 void fn_1_B30(OMOBJ *cameraObject)
@@ -258,27 +258,27 @@ void fn_1_B30(OMOBJ *cameraObject)
     s8 stickPos;
 
     /* The exit path treats the eight-word storage block itself as a process pointer. */
-    if(HuPadBtnDown[0] & PAD_BUTTON_START) {
+    if(lbl_802C0008[0] & PAD_BUTTON_START) {
         if(lbl_1_bss_49C) {
             HuPrcKill((HUPROCESS *)lbl_1_bss_49C);
         }
-        omOvlReturn(1);
+        fn_8003A5E4(1, TRUE);
         return;
     }
-    CRot.x += HuPadStkY[0]/20;
-    CRot.y += HuPadStkX[0]/20;
-    CZoom += HuPadTrigL[0]/2;
-    CZoom -= HuPadTrigR[0]/2;
-    pos.x = Center.x + (CZoom * (HuSin(CRot.y) * HuCos(CRot.x)));
-    pos.y = (Center.y + (CZoom * -HuSin(CRot.x)));
-    pos.z = (Center.z + (CZoom * (HuCos(CRot.y) * HuCos(CRot.x))));
-    offset.x = Center.x - pos.x;
-    offset.y = Center.y - pos.y;
-    offset.z = Center.z - pos.z;
-    dir.x = (HuSin(CRot.y) * HuSin(CRot.x));
-    dir.y = HuCos(CRot.x);
-    dir.z = (HuCos(CRot.y) * HuSin(CRot.x));
-    rotZ = CRot.z;
+    lbl_80266A40.x += lbl_802BFFF8[0]/20;
+    lbl_80266A40.y += lbl_802BFFFC[0]/20;
+    lbl_802C028C += lbl_802BFFEC[0]/2;
+    lbl_802C028C -= lbl_802BFFE8[0]/2;
+    pos.x = lbl_80266A4C.x + (lbl_802C028C * (HuSin(lbl_80266A40.y) * HuCos(lbl_80266A40.x)));
+    pos.y = (lbl_80266A4C.y + (lbl_802C028C * -HuSin(lbl_80266A40.x)));
+    pos.z = (lbl_80266A4C.z + (lbl_802C028C * (HuCos(lbl_80266A40.y) * HuCos(lbl_80266A40.x))));
+    offset.x = lbl_80266A4C.x - pos.x;
+    offset.y = lbl_80266A4C.y - pos.y;
+    offset.z = lbl_80266A4C.z - pos.z;
+    dir.x = (HuSin(lbl_80266A40.y) * HuSin(lbl_80266A40.x));
+    dir.y = HuCos(lbl_80266A40.x);
+    dir.z = (HuCos(lbl_80266A40.y) * HuSin(lbl_80266A40.x));
+    rotZ = lbl_80266A40.z;
     /* Compute the camera-relative vertical pan direction, including CRot.z roll. */
     yOfs.x = dir.x * (offset.x * offset.x + ((1.0f) - offset.x * offset.x) * HuCos(rotZ))
         + dir.y * (offset.x * offset.y * ((1.0) - HuCos(rotZ)) - offset.z * HuSin(rotZ))
@@ -293,18 +293,18 @@ void fn_1_B30(OMOBJ *cameraObject)
         + dir.y * (offset.y * offset.z * ((1.0) - HuCos(rotZ)) + offset.x * HuSin(rotZ)));
     VECCrossProduct(&dir, &offset, &offset);
     VECNormalize(&offset, &offset);
-    stickPos = (HuPadSubStkX[0] & MOTCHK_SUBSTICK_AXIS_MASK);
+    stickPos = (lbl_802BFFF4[0] & MOTCHK_SUBSTICK_AXIS_MASK);
     if (stickPos != 0) {
-        Center.x += (0.05f) * (offset.x * stickPos);
-        Center.y += (0.05f) * (offset.y * stickPos);
-        Center.z += (0.05f) * (offset.z * stickPos);
+        lbl_80266A4C.x += (0.05f) * (offset.x * stickPos);
+        lbl_80266A4C.y += (0.05f) * (offset.y * stickPos);
+        lbl_80266A4C.z += (0.05f) * (offset.z * stickPos);
     }
     VECNormalize(&yOfs, &offset);
-    stickPos = -(HuPadSubStkY[0] & MOTCHK_SUBSTICK_AXIS_MASK);
+    stickPos = -(lbl_802BFFF0[0] & MOTCHK_SUBSTICK_AXIS_MASK);
     if (stickPos != 0) {
-        Center.x += (0.05f) * (offset.x * stickPos);
-        Center.y += (0.05f) * (offset.y * stickPos);
-        Center.z += (0.05f) * (offset.z * stickPos);
+        lbl_80266A4C.x += (0.05f) * (offset.x * stickPos);
+        lbl_80266A4C.y += (0.05f) * (offset.y * stickPos);
+        lbl_80266A4C.z += (0.05f) * (offset.z * stickPos);
     }
 }
 
@@ -315,12 +315,12 @@ extern void fn_1_301C(void);
 /* When invoked for feedback rendering, draws three planes unless B is held.
  * Holding A also enables the softened inset and full-screen intensity passes. */
 void fn_1_16C0(void) {
-    if ((HuPadBtn[0] & PAD_BUTTON_B) == 0) {
-        if ((HuPadBtn[0] & PAD_BUTTON_A) != 0) {
+    if ((lbl_802C0010[0] & PAD_BUTTON_B) == 0) {
+        if ((lbl_802C0010[0] & PAD_BUTTON_A) != 0) {
             fn_1_2380();
         }
         fn_1_17C4((200.0f), (300.0f), (400.0f));
-        if ((HuPadBtn[0] & PAD_BUTTON_A) != 0) {
+        if ((lbl_802C0010[0] & PAD_BUTTON_A) != 0) {
             fn_1_301C();
         }
     }
@@ -336,7 +336,7 @@ void fn_1_1754(void) {
     s32 textureBufferSizeBytes;
 
     textureBufferSizeBytes = GXGetTexBufferSize(640U, 480U, GX_TF_RGB565, 1U, 1U);
-    lbl_1_bss_1A4 = HuMemDirectMallocNum(HEAP_MODEL, textureBufferSizeBytes, HU_MEMNUM_OVL);
+    lbl_1_bss_1A4 = HuMemDirectMallocNum(2, textureBufferSizeBytes, 0x10000000);
     DCInvalidateRange(lbl_1_bss_1A4, (u32) textureBufferSizeBytes);
 }
 
@@ -352,7 +352,7 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
     Vec eye, target, up;
     HU3D_CAMERA *camera;
     float distance;
-    camera = &Hu3DCamera[Hu3DCameraNo];
+    camera = &Hu3DCamera[lbl_802C01A6];
     C_MTXPerspective(projection, camera->fov, camera->aspect, camera->near, camera->far);
     GXSetProjection(projection, GX_PERSPECTIVE);
     GXSetViewport(camera->viewportX, camera->viewportY, camera->viewportW, camera->viewportH,
@@ -384,7 +384,7 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
     GXSetZMode(1U, GX_LEQUAL, 1U);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
     if ((-1.0f) != farDepth) {
-        Hu3DFbCopyExec(0, 0, 640, 480, GX_TF_RGB565, 1, lbl_1_bss_1A4);
+        fn_8002BCDC(0, 0, 640, 480, GX_TF_RGB565, 1, lbl_1_bss_1A4);
         GXInitTexObj(&texture, lbl_1_bss_1A4, 320, 240, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, GX_FALSE);
         GXInitTexObjLOD(&texture, GX_LINEAR, GX_LINEAR, (0.0f), (0.0f), (0.0f), GX_FALSE, GX_FALSE,
                         GX_ANISO_1);
@@ -408,7 +408,7 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
         GXWGFifo.f32 = (1.0f);
     }
     if ((-1.0f) != middleDepth) {
-        Hu3DFbCopyExec(0, 0, 640, 480, GX_TF_RGB565, 1, lbl_1_bss_1A4);
+        fn_8002BCDC(0, 0, 640, 480, GX_TF_RGB565, 1, lbl_1_bss_1A4);
         GXInitTexObj(&texture, lbl_1_bss_1A4, 320, 240, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, GX_FALSE);
         GXInitTexObjLOD(&texture, GX_LINEAR, GX_LINEAR, (0.0f), (0.0f), (0.0f), GX_FALSE, GX_FALSE,
                         GX_ANISO_1);
@@ -432,7 +432,7 @@ void fn_1_17C4(float nearDepth, float middleDepth, float farDepth)
         GXWGFifo.f32 = (1.0f);
     }
     if ((-1.0f) != nearDepth) {
-        Hu3DFbCopyExec(0, 0, 640, 480, GX_TF_RGB565, 1, lbl_1_bss_1A4);
+        fn_8002BCDC(0, 0, 640, 480, GX_TF_RGB565, 1, lbl_1_bss_1A4);
         GXInitTexObj(&texture, lbl_1_bss_1A4, 320, 240, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, GX_FALSE);
         GXInitTexObjLOD(&texture, GX_LINEAR, GX_LINEAR, (0.0f), (0.0f), (0.0f), GX_FALSE, GX_FALSE,
                         GX_ANISO_1);
@@ -467,10 +467,10 @@ void fn_1_22C4(void) {
     s32 bufferSizeBytes;
 
     bufferSizeBytes = GXGetTexBufferSize(640U, 480U, GX_TF_I8, 1U, 1U);
-    lbl_1_bss_1A0 = HuMemDirectMallocNum(HEAP_MODEL, bufferSizeBytes, HU_MEMNUM_OVL);
+    lbl_1_bss_1A0 = HuMemDirectMallocNum(2, bufferSizeBytes, 0x10000000);
     DCInvalidateRange(lbl_1_bss_1A4, (u32) bufferSizeBytes);
     bufferSizeBytes = GXGetTexBufferSize(640U, 480U, GX_TF_RGB565, 0U, 0U);
-    lbl_1_bss_1B0 = HuMemDirectMallocNum(HEAP_MODEL, bufferSizeBytes, HU_MEMNUM_OVL);
+    lbl_1_bss_1B0 = HuMemDirectMallocNum(2, bufferSizeBytes, 0x10000000);
     DCInvalidateRange(lbl_1_bss_1A4, (u32) bufferSizeBytes);
 }
 
@@ -488,9 +488,9 @@ void fn_1_2380(void) {
     s32 offsetMagnitude;
     s16 loopOffset;
 
-    camera = &Hu3DCamera[Hu3DCameraNo];
-    Hu3DFbCopyExec(0, 0, 640, 480, GX_TF_I8, 1, lbl_1_bss_1A0);
-    Hu3DFbCopyExec(0, 0, 200, 150, GX_TF_RGB565, 0, lbl_1_bss_1B0);
+    camera = &Hu3DCamera[lbl_802C01A6];
+    fn_8002BCDC(0, 0, 640, 480, GX_TF_I8, 1, lbl_1_bss_1A0);
+    fn_8002BCDC(0, 0, 200, 150, GX_TF_RGB565, 0, lbl_1_bss_1B0);
     C_MTXOrtho(projectionMatrix, (0.0f), (480.0f), (0.0f), (640.0f), (0.0f), (8000.0f));
     GXSetProjection(projectionMatrix, GX_ORTHOGRAPHIC);
     PSMTXIdentity(modelViewMatrix);
@@ -603,7 +603,7 @@ void fn_1_2380(void) {
         GXWGFifo.f32 = (0.0f);
         GXWGFifo.f32 = (1.0f);
     }
-    Hu3DFbCopyExec(0, 0, 200, 150, GX_TF_I8, 0, lbl_1_bss_1A0);
+    fn_8002BCDC(0, 0, 200, 150, GX_TF_I8, 0, lbl_1_bss_1A0);
     GXSetTevSwapModeTable(GX_TEV_SWAP0, GX_CH_RED, GX_CH_GREEN, GX_CH_BLUE, GX_CH_ALPHA);
     GXSetTevSwapMode(GX_TEVSTAGE0, GX_TEV_SWAP0, GX_TEV_SWAP0);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
@@ -654,7 +654,7 @@ void fn_1_301C(void) {
     HU3D_CAMERA *camera;
     Saf301CWork work;
 
-    camera = &Hu3DCamera[Hu3DCameraNo];
+    camera = &Hu3DCamera[lbl_802C01A6];
     C_MTXOrtho(work.ortho, (0.0f), (480.0f), (0.0f),
                (640.0f), (0.0f), (8000.0f));
     GXSetProjection(work.ortho, GX_ORTHOGRAPHIC);
@@ -717,10 +717,10 @@ void fn_1_33FC(void) {
     s32 alphaLevel;
 
     bufferSizeBytes = GXGetTexBufferSize(640U, 480U, GX_TF_Z8, 0U, 0U);
-    lbl_1_bss_19C = HuMemDirectMallocNum(HEAP_MODEL, bufferSizeBytes, HU_MEMNUM_OVL);
+    lbl_1_bss_19C = HuMemDirectMallocNum(2, bufferSizeBytes, 0x10000000);
     DCInvalidateRange(lbl_1_bss_19C, (u32)bufferSizeBytes);
     bufferSizeBytes = 512;
-    lbl_1_bss_198 = HuMemDirectMallocNum(HEAP_MODEL, bufferSizeBytes, HU_MEMNUM_OVL);
+    lbl_1_bss_198 = HuMemDirectMallocNum(2, bufferSizeBytes, 0x10000000);
     /* The first 240 entries stay transparent; the last 16 fade into the depth ramp. */
     for (paletteEntry = 0; paletteEntry < SAF_DEPTH_RAMP_FIRST; ++paletteEntry) {
         ((u16 *)lbl_1_bss_198)[paletteEntry] = 0;
@@ -747,7 +747,7 @@ void fn_1_35CC(void) {
     GXTexObj texObj;
     GXTlutObj tlutObj;
 
-    Hu3DFbCopyExec(0, 0, 640, 480, GX_TF_Z8, 0, lbl_1_bss_19C);
+    fn_8002BCDC(0, 0, 640, 480, GX_TF_Z8, 0, lbl_1_bss_19C);
     C_MTXOrtho(ortho, (0.0f), (480.0f), (0.0f),
                (640.0f), (0.0f), (8000.0f));
     GXSetProjection(ortho, GX_ORTHOGRAPHIC);
@@ -810,19 +810,19 @@ void fn_1_4114(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material);
  * updates. */
 void fn_1_3A24(void) {
     lbl_1_bss_4.model =
-        Hu3DModelCreate(HuDataSelHeapReadNum(SAF_SURFACE_HSF_ID, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(lbl_1_bss_4.model, 1);
-    Hu3DModelPosSet(lbl_1_bss_4.model, (0.0f), (130.0f), (0.0f));
-    Hu3DModelScaleSet(lbl_1_bss_4.model, (0.2f), (0.2f), (0.2f));
-    Hu3DModelMatHookSet(lbl_1_bss_4.model, fn_1_4114);
+        fn_80025A04(fn_80008DD0(SAF_SURFACE_HSF_ID, 0x10000000, 2));
+    fn_80026B8C(lbl_1_bss_4.model, 1);
+    fn_80026760(lbl_1_bss_4.model, (0.0f), (130.0f), (0.0f));
+    fn_800268B0(lbl_1_bss_4.model, (0.2f), (0.2f), (0.2f));
+    fn_80027884(lbl_1_bss_4.model, fn_1_4114);
     lbl_1_bss_4.textureBuffer = HuMemDirectMallocNum(
-        HEAP_MODEL, GXGetTexBufferSize(640U, 480U, GX_TF_RGB565, 0U, 0U), HU_MEMNUM_OVL);
+        2, GXGetTexBufferSize(640U, 480U, GX_TF_RGB565, 0U, 0U), 0x10000000);
     lbl_1_bss_4.bumpAnimation =
-        HuSprAnimRead(HuDataSelHeapReadNum(SAF_WATER_BUMP_ANIM_ID, HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(SAF_WATER_BUMP_ANIM_ID, 0x10000000, 2));
     lbl_1_bss_4.reflectionAnimation =
-        HuSprAnimRead(HuDataSelHeapReadNum(SAF_REFLECTION_ANIM_ID, HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(SAF_REFLECTION_ANIM_ID, 0x10000000, 2));
     lbl_1_bss_4.textureScrollOffset = (0.0f);
-    HuPrcChildCreate(fn_1_3BB0, 100U, 12288U, 0, lbl_1_bss_1B8);
+    fn_8000DAC0(fn_1_3BB0, 100U, 12288U, 0, lbl_1_bss_1B8);
 }
 
 extern char lbl_1_data_54;
@@ -845,7 +845,7 @@ void fn_1_3BB0(void) {
     Vec **topEdgeVertices;
     Vec *vertices;
 
-    object = Hu3DModelObjPtrGet(lbl_1_bss_4.model, &lbl_1_data_54);
+    object = fn_80026BF4(lbl_1_bss_4.model, &lbl_1_data_54);
     Hu3DModelObjPosGet(lbl_1_bss_4.model, &lbl_1_data_54, &surfacePosition);
     /* -100000 marks each empty ripple slot until the A button starts a wave. */
     for (vertexIndex = 0; vertexIndex < 32; vertexIndex += 1) {
@@ -868,7 +868,7 @@ void fn_1_3BB0(void) {
         }
     }
     topEdgeVertices =
-        (Vec **) HuMemDirectMallocNum(HEAP_HEAP, topEdgeVertexCount * 4, HU_MEMNUM_OVL);
+        (Vec **) HuMemDirectMallocNum(HEAP_HEAP, topEdgeVertexCount * 4, 0x10000000);
     vertices = (Vec *)object->mesh.vertex->data;
     for (vertexIndex = peakVertexIndex = 0; vertexIndex < object->mesh.vertex->count;
          vertexIndex += 1, vertices += 1) {
@@ -880,7 +880,7 @@ void fn_1_3BB0(void) {
     wavePhaseDegrees = (0.0f);
     for (;;) {
         HuPrcVSleep();
-        if ((HuPadBtnDown[0] & PAD_BUTTON_A) != 0) {
+        if ((lbl_802C0008[0] & PAD_BUTTON_A) != 0) {
             /* Reuse the first free slot; the wave starts at a random point on model X. */
             for (rippleIndex = 0; rippleIndex < 32; rippleIndex += 1) {
                 if ((-100000.0f) == lbl_1_bss_4.rippleX[rippleIndex]) {
@@ -946,21 +946,21 @@ void fn_1_4114(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material) {
     Mtx projectionTextureMatrix;
     Mtx inverseCameraMatrix;
     GXColor color;
-    HU3D_CAMERA *camera = &Hu3DCamera[Hu3DCameraNo];
+    HU3D_CAMERA *camera = &Hu3DCamera[lbl_802C01A6];
 
     color = lbl_1_rodata_140;
-    Hu3DFbCopyExec(0, 0, 640, 480, GX_TF_RGB565, 0, lbl_1_bss_4.textureBuffer);
+    fn_8002BCDC(0, 0, 640, 480, GX_TF_RGB565, 0, lbl_1_bss_4.textureBuffer);
     GXPixModeSync();
-    Hu3DTexLoad(lbl_1_bss_4.textureBuffer, 640, 480, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, 1,
+    fn_800360D8(lbl_1_bss_4.textureBuffer, 640, 480, GX_TF_RGB565, GX_CLAMP, GX_CLAMP, 1,
                 GX_TEXMAP0);
     HuSprTexLoad(lbl_1_bss_4.bumpAnimation, 0, GX_TEXMAP1, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     HuSprTexLoad(lbl_1_bss_4.reflectionAnimation, 0, GX_TEXMAP2, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     C_MTXLightPerspective(projectionTextureMatrix, camera->fov, camera->aspect,
                           (0.5f), (-0.5f),
                           (0.5f), (0.5f));
-    PSMTXInverse(Hu3DCameraMtx, inverseCameraMatrix);
+    PSMTXInverse(lbl_802613F4, inverseCameraMatrix);
     PSMTXConcat(inverseCameraMatrix, drawObj->matrix, modelMatrix);
-    PSMTXConcat(projectionTextureMatrix, Hu3DCameraMtx, textureMatrix);
+    PSMTXConcat(projectionTextureMatrix, lbl_802613F4, textureMatrix);
     PSMTXConcat(textureMatrix, modelMatrix, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, GX_TEXMTX0, GX_MTX3x4);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);

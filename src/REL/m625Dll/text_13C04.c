@@ -26,7 +26,7 @@ s32 lbl_1_bss_818;
 s16 lbl_1_bss_816;
 s16 lbl_1_bss_814;
 HUPROCESS *lbl_1_bss_810;
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 extern void fn_1_1B0(void);
 extern void fn_1_15C8(void);
 extern void fn_1_2D48(void);
@@ -66,13 +66,13 @@ void fn_1_13C04(s16 mode, s16 frameNo)
     fn_1_15C8();
     fn_1_2D48();
     fn_1_1284C();
-    nightFlag = GwMgNightF;
+    nightFlag = lbl_802C0278;
     if (nightFlag == 0) {
         Hu3DBGColorSet(128, 255, 128);
     } else {
         Hu3DBGColorSet(64, 128, 64);
     }
-    MgSeqModeNext();
+    fn_80071A9C();
     }
 }
 
@@ -86,7 +86,7 @@ void fn_1_13D30(s32 mode, s32 frameNo)
     cameraReady = fn_1_41C(frameNo);
     playersReady = fn_1_3E8C(frameNo);
     if ((u8)cameraReady != 0 && (u8)playersReady != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -128,7 +128,7 @@ void fn_1_13E58(void) {
     fn_1_12EA8();
     if (fn_1_C19C() == 0) {
         lbl_1_bss_814 = 0;
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -156,7 +156,7 @@ void fn_1_13F64(s16 mode, s16 frameNo)
     sequenceReady = fn_1_C438();
     fn_1_12EA8();
     if ((sequenceReady != 0 && callbackReady != 0) || frameNo > 240) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 

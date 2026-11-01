@@ -213,7 +213,7 @@ void fn_1_2290(HuVecF *pointA, HuVecF *pointB, HuVecF *pointC, HuVecF *pointD, H
 void fn_1_2640(HuVecF *controlPoints, int pointCount, HuVecF *result, float parameterT)
 {
     HuVecF *controlPointBuffer = HuMemDirectMallocNum(
-        HEAP_HEAP, pointCount * sizeof(HuVecF), HU_MEMNUM_OVL);
+        HEAP_HEAP, pointCount * sizeof(HuVecF), 0x10000000);
     HuVecF *workingPoints = controlPointBuffer;
     int sampleIndex;
     int intervalIndex;
@@ -277,7 +277,7 @@ void fn_1_2D24(HuVecF *controlPoints, int pointCount, HuVecF *result, float para
     if (parameterT < 0.0f) { *result = controlPoints[0]; return; }
     if (parameterT >= 1.0f) { *result = controlPoints[pointCount - 1]; return; }
     knotBuffer = HuMemDirectMallocNum(HEAP_HEAP,
-        (pointCount + splineDegree + 1) * sizeof(float), HU_MEMNUM_OVL);
+        (pointCount + splineDegree + 1) * sizeof(float), 0x10000000);
     lbl_1_bss_48 = knotBuffer;
     knotIndex = 0;
     for (sampleIndex = 0; sampleIndex <= splineDegree; sampleIndex++)
@@ -367,17 +367,17 @@ void fn_1_3370(int playerIndex, HuVecF *destination, float destinationHeadingDeg
     HuVecF startPosition, playerPosition, travelDelta;
     int elapsedFrame;
     float startHeadingDegrees, parameterT, headingBlend;
-    mbPlayerMotionShiftSet(playerIndex, 4, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+    mbPlayerMotionShiftSet(playerIndex, 4, 0.0f, 8.0f, 0);
     mbPlayerPosGet(playerIndex, &startPosition);
     startHeadingDegrees = mbPlayerRotYGet(playerIndex);
     VECSubtract(destination, &startPosition, &travelDelta);
     for (elapsedFrame = 0; elapsedFrame <= durationFrames; elapsedFrame++) {
         parameterT = elapsedFrame / (float)durationFrames;
         if ((u32)elapsedFrame == durationFrames - 6)
-            mbPlayerMotionShiftSet(playerIndex, 5, 0.0f, 2.0f, HU3D_MOTATTR_NONE);
+            mbPlayerMotionShiftSet(playerIndex, 5, 0.0f, 2.0f, 0);
         playerPosition.x = startPosition.x + (parameterT * travelDelta.x);
         playerPosition.y = startPosition.y + (parameterT * travelDelta.y) +
-                           (jumpArcHeight * HuSin(180.0f * parameterT));
+                           (jumpArcHeight * sin(3.141592653589793*(180.0f * parameterT)/180.0));
         playerPosition.z = startPosition.z + (parameterT * travelDelta.z);
         mbPlayerPosSetV(playerIndex, &playerPosition);
         headingBlend = elapsedFrame / 6.0f;
@@ -387,7 +387,7 @@ void fn_1_3370(int playerIndex, HuVecF *destination, float destinationHeadingDeg
         mbPlayerWorkGet(playerIndex)->_unk08 = durationFrames - elapsedFrame;
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerIndex, 1, 0.0f, 2.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerIndex, 1, 0.0f, 2.0f, ((1 << 30) | (1 << 0)));
 }
 
 // Records the starting system tick for the elapsed-time helper.

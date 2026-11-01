@@ -1,4 +1,5 @@
 /* Schedules computer-controlled players' action-button timing. */
+#include <math.h>
 #include "REL/m657Dll.h"
 #include "game/memory.h"
 #include "game/frand.h"
@@ -27,10 +28,10 @@ void fn_1_4570(OMOBJMAN *objman)
     OMOBJ *obj;
     M657ComWork *controllerWork;
 
-    obj = lbl_1_bss_40 = omAddObjEx(objman, 70, 0, 0, -1, fn_1_4608);
-    obj->stat |= OM_STAT_MODELPAUSE;
+    obj = lbl_1_bss_40 = fn_8003AB38(objman, 70, 0, 0, -1, fn_1_4608);
+    obj->stat |= (1 << 8);
     controllerWork = obj->data = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(M657ComWork), HU_MEMNUM_OVL);
+        sizeof(M657ComWork), 0x10000000);
     memset(controllerWork, 0, sizeof(M657ComWork));
 }
 
@@ -51,7 +52,7 @@ void fn_1_463C(OMOBJ *obj)
     M657ComPlayer **computerPlayer = NULL;
     int teamIndex = 0;
 
-    if (MgSeqModeGet() > MGSEQ_MODE_MAIN) {
+    if (fn_80071A8C() > 5) {
         controllerWork->state = 0;
         controllerWork->timer = 0;
         obj->objFunc = fn_1_47A8;
@@ -60,7 +61,7 @@ void fn_1_463C(OMOBJ *obj)
      * callback. */
     switch (controllerWork->state) {
         case 0:
-            if (MgSeqModeGet() == MGSEQ_MODE_MAIN) {
+            if (fn_80071A8C() == 5) {
                 controllerWork->state++;
             }
             break;
@@ -120,7 +121,7 @@ void fn_1_47EC(OMOBJ *obj)
         }
         /* A duplicate registration logs an error, then makes the new record active for this
          * team. */
-        *computerPlayer = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657ComPlayer), HU_MEMNUM_OVL);
+        *computerPlayer = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657ComPlayer), 0x10000000);
         if (*computerPlayer) {
             (*computerPlayer)->obj = obj;
             (*computerPlayer)->enabled = playerWork->computer;

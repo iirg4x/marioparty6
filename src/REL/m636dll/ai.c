@@ -256,7 +256,7 @@ void fn_1_40E0(s32 playerIndex)
         (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
         break;
     }
-    MgPlayerPadSet(player, stickX, stickY, pressedButtons, heldButtons);
+    fn_80080520(player, stickX, stickY, pressedButtons, heldButtons);
 }
 
 /* The CPU difficulty dispatcher runs this each active play frame for normal CPUs, mixing nearby
@@ -409,7 +409,7 @@ void fn_1_48FC(s32 playerIndex)
         (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
         break;
     }
-    MgPlayerPadSet(player, stickX, stickY, pressedButtons, heldButtons);
+    fn_80080520(player, stickX, stickY, pressedButtons, heldButtons);
 }
 
 /* The CPU difficulty dispatcher runs this each active play frame for hard CPUs; it targets
@@ -550,7 +550,7 @@ void fn_1_50A8(s32 playerIndex)
         (*(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET))++;
         break;
     }
-    MgPlayerPadSet(player, stickX, stickY, pressedButtons, heldButtons);
+    fn_80080520(player, stickX, stickY, pressedButtons, heldButtons);
 }
 
 /* The difficulty dispatcher updates very hard CPUs each active play frame; a zero mode timer
@@ -679,7 +679,7 @@ void fn_1_582C(s32 playerIndex)
         break;
     }
     }
-    MgPlayerPadSet(player, stickX, stickY, pressedButtons, heldButtons);
+    fn_80080520(player, stickX, stickY, pressedButtons, heldButtons);
 }
 
 /* CPU updates and the result lineup call this to build stick direction; it bends movement around
@@ -716,7 +716,7 @@ void fn_1_5F54(s32 playerIndex, Point3d *start, Point3d *target, Point3d *stickD
         if (playerIndex != teammateIndex &&
             *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET) ==
                 *(s32 *)((u8 *)&lbl_1_bss_0 + teammateIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET) &&
-            MgPlayerModeAttrCheck(teammate, MGPLAYER_MODEATTR_AIR) != MGPLAYER_MODEATTR_AIR) {
+            fn_80087148(teammate, (1 << 4)) != (1 << 4)) {
             teammatePosition = teammate->actor->pos;
             if (gridCoordinates != 0) {
                 teammatePosition.x += lbl_1_data_270[*(

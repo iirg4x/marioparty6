@@ -119,13 +119,13 @@ void fn_1_A0(void)
     for (index = 0; index < 4; index++) {
         lbl_1_bss_18[index] = 0;
     }
-    lbl_1_bss_34 = omInitObjMan(80, 8192);
-    omGameSysInit(lbl_1_bss_34);
-    MgSeqCreate(&lbl_1_data_110);
-    MgSeqModeHookAdd(4, fn_1_3AC);
+    lbl_1_bss_34 = fn_8003A8BC(80, 8192);
+    fn_80069F1C(lbl_1_bss_34);
+    fn_80070788(&lbl_1_data_110);
+    fn_80071D20(4, fn_1_3AC);
     fn_1_A08(lbl_1_bss_34);
     fn_1_AD0(lbl_1_bss_34, &lbl_1_data_1C, &lbl_1_data_28, &lbl_1_data_34);
-    nightMode = GwMgNightF;
+    nightMode = lbl_802C0278;
     if (nightMode != 1) {
         fn_1_EEC(lbl_1_bss_34, &lbl_1_data_38);
     } else {
@@ -134,7 +134,7 @@ void fn_1_A0(void)
     fn_1_11B8(lbl_1_bss_34, 1, 45.0f, 20.0f, 13000.0f,
               1200.0f, &lbl_1_data_0);
     fn_1_1F4C(0, 0, 128);
-    fn_1_1F84(1, HuDataSelHeapReadNum(fn_1_830(0), HU_MEMNUM_OVL, HEAP_MODEL));
+    fn_1_1F84(1, fn_80008DD0(fn_1_830(0), 0x10000000, 2));
     fn_1_2608(lbl_1_bss_34, &lbl_1_data_C8);
     fn_1_E268(lbl_1_bss_34);
     fn_1_42DC(lbl_1_bss_34);
@@ -147,7 +147,7 @@ s32 fn_1_824(s16, s16);
 void fn_1_2C4(short mode, short frameNo)
 {
     if (!fn_1_824(mode, frameNo)) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -206,7 +206,7 @@ void fn_1_3E4(s16 mode, s16 frameNo)
         if (categoryCounts.values[0] != 0 && categoryCounts.values[1] != 0) {
             return;
         }
-        (void)MgSeqModeNext();
+        (void)fn_80071A9C();
         return;
     }
 }

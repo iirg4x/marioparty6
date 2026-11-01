@@ -25,7 +25,7 @@ typedef struct MBWinSizeData_s {
 } MBWINSIZEDATA;
 
 extern HUPROCESS *mbMainProc;
-extern void *mbMalloc(s32 size);
+extern void *fn_802137C0(s32 size);
 extern void mbConfigPadDisableSet(BOOL disableF);
 extern BOOL mbPlayerAllComCheck(void);
 
@@ -65,7 +65,7 @@ void mbWinInit(void)
     int windowIndex;
 
     HuWinInit(1);
-    mbWinData = mbMalloc(sizeof(MBWIN) * MBWIN_MAX);
+    mbWinData = fn_802137C0(sizeof(MBWIN) * MBWIN_MAX);
     for (windowIndex = 0; windowIndex < MBWIN_MAX; windowIndex++) {
         mbWinData[windowIndex].winId = HUWIN_NONE;
     }
@@ -92,7 +92,7 @@ void mbWinClose(void)
 // A paused window keeps this process asleep after display completion until the manager kills it.
 static void mbWinProc(void)
 {
-    HUPROCESS *process = HuPrcCurrentGet();
+    HUPROCESS *process = fn_8000DD9C();
     MBWIN *window = process->property;
     HuVec2f pos;
     HUWIN *windowData;
@@ -125,20 +125,20 @@ static void mbWinProc(void)
             break;
 
         default:
-            if (window->speakerNo == HUWIN_SPEAKER_NULL) {
+            if (window->speakerNo == -1) {
                 window->winId = HuWinExCreateFrame(pos.x, pos.y, window->size.x, window->size.y,
-                                                  HUWIN_SPEAKER_NULL, window->frame);
-            } else if (window->speakerNo == HUWIN_SPEAKER_SUN) {
+                                                  -1, window->frame);
+            } else if (window->speakerNo == 6) {
                 window->winId = HuWinExCreateFrame(pos.x, pos.y, window->size.x, window->size.y,
                                                   window->speakerNo, 4);
-            } else if (window->speakerNo == HUWIN_SPEAKER_MOON) {
+            } else if (window->speakerNo == 7) {
                 window->winId = HuWinExCreateFrame(pos.x, pos.y, window->size.x, window->size.y,
                                                   window->speakerNo, 3);
             } else {
                 window->winId = HuWinExCreateFrame(pos.x, pos.y, window->size.x, window->size.y,
                                                   window->speakerNo, window->frame);
             }
-            if (window->speakerNo == HUWIN_SPEAKER_NULL) {
+            if (window->speakerNo == -1) {
                 HuWinExOpen(window->winId);
             } else {
                 HuWinExOpen(window->winId);
@@ -165,7 +165,7 @@ static void mbWinProc(void)
         }
     }
     mbWinPlayerDisable(window->no, window->playerNo);
-    if (window->playerNo < 0 || GwPlayer[window->playerNo].comF) {
+    if (window->playerNo < 0 || lbl_80265750[window->playerNo].comF) {
         KeyWaitInit(window);
         if (window->choiceF && window->comKeyHook) {
             window->comKeyHook();
@@ -188,7 +188,7 @@ static void mbWinProc(void)
     if (window->choiceNo != HUWIN_CHOICE_NONE) {
         mbWinChoice[window->no] = mbWinLastChoice = HuWinChoiceGet(window->winId, window->choiceNo);
     }
-    if (window->speakerNo != HUWIN_SPEAKER_NULL) {
+    if (window->speakerNo != -1) {
         HuWinExClose(window->winId);
     }
     HuPrcEnd();
@@ -198,16 +198,16 @@ static void mbWinProc(void)
 // destructor callback.
 static void mbWinDestroy(void)
 {
-    HUPROCESS *process = HuPrcCurrentGet();
+    HUPROCESS *process = fn_8000DD9C();
     MBWIN *window = process->property;
     int stackIndex;
 
     if (window->winId >= 0) {
-        if (window->speakerNo == HUWIN_SPEAKER_NULL) {
+        if (window->speakerNo == -1) {
             HuWinExKill(window->winId);
         } else {
             HuWinExKill(window->winId);
-            window->speakerNo = HUWIN_SPEAKER_NULL;
+            window->speakerNo = -1;
         }
         window->winId = HUWIN_NONE;
     }
@@ -277,7 +277,7 @@ int mbWinCreate(int type, u32 mess, int speakerNo)
         return MBWIN_NONE;
     }
     memset(window, 0, sizeof(MBWIN));
-    window->proc = HuPrcChildCreate(mbWinProc, MBWIN_PROCESS_PRIORITY,
+    window->proc = fn_8000DAC0(mbWinProc, MBWIN_PROCESS_PRIORITY,
                                     MBWIN_PROCESS_STACK_SIZE, 0, mbMainProc);
     HuPrcDestructorSet2(window->proc, mbWinDestroy);
     window->proc->property = window;
@@ -295,7 +295,7 @@ int mbWinCreate(int type, u32 mess, int speakerNo)
     window->comKeyHook = NULL;
     window->attr |= HUWIN_ATTR_NOCANCEL;
     window->frame = 0;
-    window->playerNo = (_CheckFlag(FLAG_BOARD_TUTORIAL) == FALSE) ? GwSystem.turnPlayerNo : -1;
+    window->playerNo = (fn_8006A124(65550) == FALSE) ? lbl_80265B70.turnPlayerNo : -1;
     for (slotIndex = 0; slotIndex < HUWIN_CHOICE_MAX; slotIndex++) {
         window->choiceDisable[slotIndex] = FALSE;
     }
@@ -341,7 +341,7 @@ int mbWinCreateChoice(int type, u32 mess, int speakerNo, int choiceNo)
 // Creates a help message window that pauses the board until the player dismisses it.
 int mbWinCreateHelp(u32 mess)
 {
-    int windowNumber = mbWinCreate(MBWIN_TYPE_HELP, mess, HUWIN_SPEAKER_NULL);
+    int windowNumber = mbWinCreate(MBWIN_TYPE_HELP, mess, -1);
     MBWIN *window = &mbWinData[windowNumber];
 
     window->pauseF = TRUE;
@@ -365,7 +365,7 @@ int mbWinCreateFrame(int type, u32 mess, int speakerNo, int frame)
 // caller-selected frame.
 int mbWinCreateTime(int type, u32 mess, int speakerNo)
 {
-    if (!GwSystem.curTime) {
+    if (!lbl_80265B70.curTime) {
         return mbWinCreateFrame(type, mess, speakerNo, 4);
     } else {
         return mbWinCreateFrame(type, mess, speakerNo, 3);
@@ -375,7 +375,7 @@ int mbWinCreateTime(int type, u32 mess, int speakerNo)
 // Creates an empty board window that pauses the board while it is active.
 int mbWinCreateBlank(void)
 {
-    int windowNumber = mbWinCreate(MBWIN_TYPE_BLANK, 0, HUWIN_SPEAKER_NULL);
+    int windowNumber = mbWinCreate(MBWIN_TYPE_BLANK, 0, -1);
     MBWIN *window = &mbWinData[windowNumber];
 
     window->pauseF = TRUE;
@@ -385,7 +385,7 @@ int mbWinCreateBlank(void)
 // Creates an empty pausing window with an explicitly selected frame variant.
 int mbWinCreateBlankFrame(int frame)
 {
-    int windowNumber = mbWinCreateFrame(MBWIN_TYPE_BLANK, 0, HUWIN_SPEAKER_NULL, frame);
+    int windowNumber = mbWinCreateFrame(MBWIN_TYPE_BLANK, 0, -1, frame);
     MBWIN *window = &mbWinData[windowNumber];
 
     window->pauseF = TRUE;
@@ -779,22 +779,22 @@ void mbWinPlayerDisable(s16 winNo, int playerNo)
     u8 disabledPlayers;
     int playerIndex;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         window->playerNo = 0;
         disabledPlayers = ~HUWIN_PLAYER_1;
     } else {
         window->playerNo = playerNo;
         if (window->playerNo == -1) {
             disabledPlayers = HUWIN_PLAYER_ALL;
-            for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
-                if (GwPlayer[playerIndex].comF == FALSE) {
-                    disabledPlayers &= ~(1 << GwPlayer[playerIndex].padNo);
+            for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+                if (lbl_80265750[playerIndex].comF == FALSE) {
+                    disabledPlayers &= ~(1 << lbl_80265750[playerIndex].padNo);
                 }
             }
-        } else if (GwPlayer[window->playerNo].comF) {
+        } else if (lbl_80265750[window->playerNo].comF) {
             disabledPlayers = HUWIN_PLAYER_ALL;
         } else {
-            disabledPlayers = ~(1 << GwPlayer[window->playerNo].padNo);
+            disabledPlayers = ~(1 << lbl_80265750[window->playerNo].padNo);
         }
     }
     if (window->winId >= 0) {
@@ -814,7 +814,7 @@ static void KeyWaitInit(MBWIN *window)
 {
     int keyWaitCount;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         return;
     }
     keyWaitCount = HuWinKeyWaitNumGet(window->mess);
@@ -828,7 +828,7 @@ static void KeyWaitInit(MBWIN *window)
 // without queuing if the count is zero or no eligible computer player is selected.
 static void KeyWaitSet(MBWIN *window, int keyWaitCount)
 {
-    s32 key[GW_PLAYER_MAX] = {};
+    s32 key[4] = {};
     int playerIndex;
     int delayFrames;
 
@@ -841,17 +841,17 @@ static void KeyWaitSet(MBWIN *window, int keyWaitCount)
         if (window->playerNo == -1) {
             return;
         }
-        if (!GwPlayer[window->playerNo].comF) {
+        if (!lbl_80265750[window->playerNo].comF) {
             return;
         }
-        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
-            int padNumber = GwPlayer[playerIndex].padNo;
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+            int padNumber = lbl_80265750[playerIndex].padNo;
             if (window->playerNo == playerIndex) {
                 key[padNumber] |= PAD_BUTTON_A;
             }
         }
     }
-    delayFrames = GWComKeyDelayGet() * 1.5f;
+    delayFrames = fn_8003C7C0() * 1.5f;
     for (playerIndex = 0; playerIndex < keyWaitCount; playerIndex++) {
         HuWinComKeyWait(key[0], key[1], key[2], key[3], delayFrames);
     }

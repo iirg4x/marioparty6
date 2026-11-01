@@ -54,6 +54,6 @@ float fn_1_5E00(s32 direction);
 void fn_1_5E90(s32 direction, HuVecF *position, float distance);
 void fn_1_5EF0(s32 direction, s32 *column, s32 *row);
 void fn_1_5F58(s32 player);
-u32 MgSeqModeNext(void);
+u32 fn_80071A9C(void);
 
 #endif

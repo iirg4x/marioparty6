@@ -39,9 +39,9 @@ static inline float SNpcAbsFloat(register float value)
 #define MBOBJ_METAL_WORK_MAGIC 'TV01'
 #define MBOBJ_BIRIQ_WORK_MAGIC 'TV02'
 
-#define SNPC_DATA_FADE_TEXTURE DATANUM(DATA_board, 103)
-#define SNPC_DATA_METAL_TEXMAP4 DATANUM(DATA_board, 105)
-#define SNPC_DATA_METAL_TEXMAP5 DATANUM(DATA_board, 104)
+#define SNPC_DATA_FADE_TEXTURE DATANUM(0x50000, 103)
+#define SNPC_DATA_METAL_TEXMAP4 DATANUM(0x50000, 105)
+#define SNPC_DATA_METAL_TEXMAP5 DATANUM(0x50000, 104)
 #define SNPC_MIN_SCORE_SENTINEL 10000000
 #define SNPC_CANDIDATE_SCORE_MAX 1000000
 
@@ -327,20 +327,20 @@ static u32 snpcMagic;
 #define SNPC_CHANCE_ID_BYTES (SNPC_CHANCE_TBL_SIZE + sizeof(float) - 2)
 #define SNPC_CHANCE_DISTANCE_BYTES ((SNPC_CHANCE_TBL_SIZE + sizeof(float) - 2) * sizeof(u32))
 
-#define SNPC_DONKEY_DATA_MODEL DATANUM(DATA_capsulechar1, 31)
-#define SNPC_KOOPA_DATA_MODEL DATANUM(DATA_capsulechar1, 0)
-#define SNPC_DONKEY_EFFECT_DATA_MODEL DATANUM(DATA_capsulechar1, 30)
-#define SNPC_EFFECT_DATA_MODEL DATANUM(DATA_board, 92)
-#define SNPC_KOOPA_FIRE_DATA_ANIM DATANUM(DATA_board, 102)
+#define SNPC_DONKEY_DATA_MODEL DATANUM(0xe0000, 31)
+#define SNPC_KOOPA_DATA_MODEL DATANUM(0xe0000, 0)
+#define SNPC_DONKEY_EFFECT_DATA_MODEL DATANUM(0xe0000, 30)
+#define SNPC_EFFECT_DATA_MODEL DATANUM(0x50000, 92)
+#define SNPC_KOOPA_FIRE_DATA_ANIM DATANUM(0x50000, 102)
 
 static int snpcMesSpeakerTbl[2] = { 6, 13 };
 static int playerStarMotNoTbl[2] = { 7, 8 };
 static int snpcStarStrmTbl[2] = { 30, 28 };
-static int playerStarSeTbl[2] = { MSM_SE_CHARVOICE_MARIO, 585 };
+static int playerStarSeTbl[2] = { 573, 585 };
 static int snpcStarMesSpeakerTbl[2] = { 6, 13 };
 static int snpcMoveStrmTbl[2] = { 30, 28 };
 static int playerStarChgMotNoTbl[2] = { 7, 8 };
-static int playerStarChgSeTbl[2] = { MSM_SE_CHARVOICE_MARIO, 585 };
+static int playerStarChgSeTbl[2] = { 573, 585 };
 static float snpcRotSpeedTbl[2] = { 1.3f, 1.8f };
 static float snpcPosFixSpeedTbl[2] = { 1.3f, 1.8f };
 static int snpcMoveNumColor[2] = { 1, 2 };
@@ -427,14 +427,14 @@ static OMOBJ *SNpcDiceExec(int diceValue, int diceNum);
 static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
     u32 mAttr, s16 *pathTbl, float chance);
 
-extern void *mbMallocNum(s32 size, u32 num);
-extern void *mbMalloc(s32 size);
+extern void *fn_80213818(s32 size, u32 num);
+extern void *fn_802137C0(s32 size);
 extern void mbMtxRot(Mtx mtx, float x, float y, float z);
 extern float mbAngleLerp(float from, float to, float weight);
 extern BOOL mbBranchAttrCheck(int masuId);
 extern s16 mbCapMasuDispTypeGet(s16 masuId);
-extern float Hu3DMotionShiftMaxTimeGet(HU3D_MODELID modelId);
-extern void Hu3DMotionShiftStartEndSet(HU3D_MODELID modelId, float start,
+extern float fn_8002D5D4(HU3D_MODELID modelId);
+extern void fn_8002D678(HU3D_MODELID modelId, float start,
     float end);
 extern void HuPrcVSleep(void);
 extern float mbCameraZoomGet(void);
@@ -516,13 +516,13 @@ extern void mbStarMasuFuncSet(void (*func)(void));
 
 static int snpcSeTbl[8][2] = {
     { 0, 0 },
-    { MSM_SE_GUIDE_11, MSM_SE_GUIDE_47 },
-    { MSM_SE_GUIDE_13, MSM_SE_GUIDE_48 },
-    { MSM_SE_BRD00_131, MSM_SE_GUIDE_50 },
-    { MSM_SE_GUIDE_09, MSM_SE_GUIDE_45 },
-    { MSM_SE_GUIDE_10, MSM_SE_GUIDE_46 },
-    { MSM_SE_GUIDE_69, MSM_SE_GUIDE_69 },
-    { MSM_SE_GUIDE_71, MSM_SE_BRD00_115 },
+    { 935, 971 },
+    { 937, 972 },
+    { 1135, 974 },
+    { 933, 969 },
+    { 934, 970 },
+    { 993, 993 },
+    { 995, 1119 },
 };
 
 static SNPCMOTNEXTDATA snpcDonkeyNextMotTbl[11] = {
@@ -554,31 +554,31 @@ static SNPCMOTNEXTDATA snpcKoopaNextMotTbl[11] = {
 };
 
 static SNPCMOTDATA snpcDonkeyMotTbl[11] = {
-    { DATANUM(DATA_capsulechar1, 15), 1.0f, 1, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 16), 1.0f, 1, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 16), 1.0f, 1, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 17), 1.0f, 0, 0, 5 },
-    { DATANUM(DATA_capsulechar1, 17), 1.0f, 0, 6, 0 },
-    { DATANUM(DATA_capsulechar1, 18), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 23), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 26), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 19), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 25), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 28), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 15), 1.0f, 1, 0, 0 },
+    { DATANUM(0xe0000, 16), 1.0f, 1, 0, 0 },
+    { DATANUM(0xe0000, 16), 1.0f, 1, 0, 0 },
+    { DATANUM(0xe0000, 17), 1.0f, 0, 0, 5 },
+    { DATANUM(0xe0000, 17), 1.0f, 0, 6, 0 },
+    { DATANUM(0xe0000, 18), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 23), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 26), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 19), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 25), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 28), 1.0f, 0, 0, 0 },
 };
 
 static SNPCMOTDATA snpcKoopaMotTbl[11] = {
-    { DATANUM(DATA_capsulechar1, 1), 1.0f, 1, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 6), 1.2f, 1, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 6), 1.2f, 1, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 5), 1.0f, 0, 0, 20 },
-    { DATANUM(DATA_capsulechar1, 5), 1.0f, 0, 21, 40 },
-    { DATANUM(DATA_capsulechar1, 5), 1.0f, 0, 50, 0 },
-    { DATANUM(DATA_capsulechar1, 7), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 4), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 3), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 10), 1.0f, 0, 0, 0 },
-    { DATANUM(DATA_capsulechar1, 11), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 1), 1.0f, 1, 0, 0 },
+    { DATANUM(0xe0000, 6), 1.2f, 1, 0, 0 },
+    { DATANUM(0xe0000, 6), 1.2f, 1, 0, 0 },
+    { DATANUM(0xe0000, 5), 1.0f, 0, 0, 20 },
+    { DATANUM(0xe0000, 5), 1.0f, 0, 21, 40 },
+    { DATANUM(0xe0000, 5), 1.0f, 0, 50, 0 },
+    { DATANUM(0xe0000, 7), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 4), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 3), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 10), 1.0f, 0, 0, 0 },
+    { DATANUM(0xe0000, 11), 1.0f, 0, 0, 0 },
 };
 
 static HU3D_PARMAN_PARAM snpcStarEffParam[2] = {
@@ -684,8 +684,8 @@ static const SNPCMOTDATA *snpcMotTbl[2] = {
 };
 
 static int starMdlTbl[2] = {
-    DATANUM(DATA_board, 5),
-    DATANUM(DATA_capsulechar1, 32),
+    DATANUM(0x50000, 5),
+    DATANUM(0xe0000, 32),
 };
 
 // Clears the runtime pointers before board setup creates the roaming NPC.
@@ -702,7 +702,7 @@ void mbSNpcCreate(MBSNPCSAVEWORK *saveWork, u32 excludedMasuAttr)
     int isDay;
 
     snpcSaveWork = saveWork;
-    snpcWork = mbMalloc(sizeof(MBSNPCWORK));
+    snpcWork = fn_802137C0(sizeof(MBSNPCWORK));
     snpcWork->excludedMasuAttr = excludedMasuAttr;
     if (mbSaveNewF) {
         snpcSaveWork->masuId = (u8)mbMasuFind_AttrIdGet(MASU_NULL,
@@ -710,7 +710,7 @@ void mbSNpcCreate(MBSNPCSAVEWORK *saveWork, u32 excludedMasuAttr)
         snpcSaveWork->masuId = (u8)SNpcMasuStarNextGet(TRUE);
         snpcSaveWork->effectMissCount = 0;
     }
-    isDay = (GwSystem.curTime == 0);
+    isDay = (lbl_80265B70.curTime == 0);
     snpcSaveWork->isKoopa = isDay ? 0 : 1;
     SNpcMasuSet(snpcSaveWork->masuId, FALSE);
     SNpcObjCreate();
@@ -728,7 +728,7 @@ void mbSNpcKill(void)
     MBSNPCWORK *work;
 
     if (snpcMagic == SNPC_MAGIC) {
-        mbPlayerEndTurnHookSet(GW_PLAYER_MAX - 1, NULL);
+        mbPlayerEndTurnHookSet(4 - 1, NULL);
         SNpcObjKill();
         work = snpcWork;
         HuMemDirectFree(work);
@@ -831,7 +831,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
         if (mbPlayerCoinGet(playerNo) >= 20) {
             winNo = mbWinCreateChoice(2, snpcMesTbl[0][isKoopa],
                 snpcMesSpeakerTbl[isKoopa], 0);
-            if (GwPlayer[playerNo].comF) {
+            if (lbl_80265750[playerNo].comF) {
                 mbComChoiceUpSet();
             }
             state = 1;
@@ -863,7 +863,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
     mbPlayerRotGet(playerNo, &playerRot);
     playerRot.z = mbAngleWrap2((float)(180.0
         * (atan2(-npcPos.x, -npcPos.z) / 3.141592653589793)), playerRot.y);
-    mbPlayerMotionSet(playerNo, 9, HU3D_MOTATTR_NONE);
+    mbPlayerMotionSet(playerNo, 9, 0);
     for (i = 0; i < loopMax; i++) {
         angle = (float)sin((3.141592653589793
             * (90.0f * (float)(i + 1) / (float)loopMax))
@@ -891,7 +891,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
         mbWinWait((s16)winNo);
         mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
         mbPlayerMotionShiftSet(playerNo, 13, 0.0f,
-            8.0f, HU3D_MOTATTR_NONE);
+            8.0f, 0);
         mbPlayerMotionEndWait(playerNo);
         moveStarF = FALSE;
         break;
@@ -907,17 +907,17 @@ void mbSNpcStarExec(int playerNo, int masuId)
             HuPrcSleep(150);
             SNpcTargetAngleSet(0.0f);
             mbPlayerMotionShiftSet(playerNo, 11, 0.0f,
-                8.0f, HU3D_MOTATTR_NONE);
+                8.0f, 0);
             mbMusPauseFadeOut(0, TRUE, 1000);
             mbPlayerMotionEndWait(playerNo);
             mbPlayerMotIdleSet(playerNo);
             SNpcStarWait();
-            omVibrate((s16)playerNo, 20, 7, 3);
+            fn_8006A030((s16)playerNo, 20, 7, 3);
             mbPlayerStarAdd(playerNo, 1);
             mbPlayerWinLoseVoicePlay(playerNo, playerStarMotNoTbl[isKoopa],
                 playerStarSeTbl[isKoopa]);
             mbPlayerMotionShiftSet(playerNo, playerStarMotNoTbl[isKoopa],
-                0.0f, 8.0f, HU3D_MOTATTR_NONE);
+                0.0f, 8.0f, 0);
             SNpcSePlay(1, 0);
             SNpcObjMotShiftSet(8);
             jingleNo = mbMusJinglePlay(39);
@@ -947,7 +947,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
         SNpcStarCreate(isKoopa, TRUE, &playerPos);
         SNpcObjMotShiftSet(7);
         SNpcStarWait();
-        omVibrate((s16)playerNo, 20, 7, 3);
+        fn_8006A030((s16)playerNo, 20, 7, 3);
         SNpcTargetAngleSet(0.0f);
         if (state == 2) {
             mbStarAddProcExec(playerNo, -1, -1, TRUE);
@@ -957,7 +957,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
         mbPlayerWinLoseVoicePlay(playerNo, playerStarMotNoTbl[isKoopa],
             playerStarSeTbl[isKoopa]);
         mbPlayerMotionShiftSet(playerNo, playerStarMotNoTbl[isKoopa],
-            0.0f, 8.0f, HU3D_MOTATTR_NONE);
+            0.0f, 8.0f, 0);
         SNpcSePlay(1, 0);
         SNpcObjMotShiftSet(8);
         SNpcObjMotEndWait();
@@ -1055,7 +1055,7 @@ void mbSNpcStarExec(int playerNo, int masuId)
         SNpcObjRotSet(0.0f, playerRot.y, 0.0f);
     }
     SNpcObjMotSet(0);
-    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionSet(playerNo, 1, ((1 << 30) | (1 << 0)));
     SNpcMasuEffDispSet();
     mbMusBoardFadeOut(0, 0, 1000, 1000, -1, FALSE);
     mbWipeDissolveFadeIn();
@@ -1069,10 +1069,10 @@ void mbSNpcStarExec(int playerNo, int masuId)
 static BOOL SNpcMoveExec(void)
 {
     int typeTbl[3] = { 1, 2, -1 };
-    s8 prizePlayerTbl[GW_PLAYER_MAX + 1];
-    s8 otherPlayerTbl[GW_PLAYER_MAX + 1];
-    s16 coinTbl[GW_PLAYER_MAX];
-    s16 starTbl[GW_PLAYER_MAX];
+    s8 prizePlayerTbl[4 + 1];
+    s8 otherPlayerTbl[4 + 1];
+    s16 coinTbl[4];
+    s16 starTbl[4];
     HuVecF pos;
     float roll;
     int isKoopa;
@@ -1087,7 +1087,7 @@ static BOOL SNpcMoveExec(void)
     int eligibleCount;
     int humanCount;
     int disablePlayer;
-    s8 hitTbl[GW_PLAYER_MAX];
+    s8 hitTbl[4];
     int first;
     int second;
     int streamNo;
@@ -1097,7 +1097,7 @@ static BOOL SNpcMoveExec(void)
 
     jingleNo = -1;
     // Earlier players return without a Boolean result; the turn handler still tests it.
-    if (GwSystem.turnPlayerNo < 3) {
+    if (lbl_80265B70.turnPlayerNo < 3) {
         return;
     }
     isKoopa = snpcSaveWork->isKoopa;
@@ -1129,7 +1129,7 @@ static BOOL SNpcMoveExec(void)
         }
     }
     // Early turns force one die after updating the extra-die roll history.
-    if (GwSystem.turnNo < 2) {
+    if (lbl_80265B70.turnNo < 2) {
         diceNum = 1;
     }
     if (diceNum > 1) {
@@ -1159,11 +1159,11 @@ static BOOL SNpcMoveExec(void)
         nextMasu = snpcWork->pathTbl[linkNo];
         mbev_PlayerColCircleAdd(-1, nextMasu, FALSE,
             175.0f);
-        for (i = 0, j = 0; i < GW_PLAYER_MAX; i++) {
+        for (i = 0, j = 0; i < 4; i++) {
             coinTbl[i] = mbPlayerCoinGet(i);
             starTbl[i] = mbPlayerStarGet(i);
             hitTbl[i] = 0;
-            if (GwPlayer[i].masuId == nextMasu) {
+            if (lbl_80265750[i].masuId == nextMasu) {
                 hitTbl[i] = 1;
             }
         }
@@ -1189,11 +1189,11 @@ static BOOL SNpcMoveExec(void)
         }
         prizeCount = humanCount = otherCount = eligibleCount = 0;
         disablePlayer = 0;
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        for (i = 0; i < 4; i++) {
             if (!hitTbl[i]) {
                 continue;
             }
-            if (GwPlayer[i].comF) {
+            if (lbl_80265750[i].comF) {
                 disablePlayer = i;
             } else {
                 humanCount++;
@@ -1216,9 +1216,9 @@ static BOOL SNpcMoveExec(void)
         }
         prizePlayerTbl[prizeCount] = -1;
         otherPlayerTbl[otherCount] = -1;
-        snpcWork->rotateObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0, 0,
-            OM_GRP_NONE, SNpcMoveOMExec);
-        omObjGetWork(snpcWork->rotateObj, SNPCMOVEOMWORK)->masuId =
+        snpcWork->rotateObj = fn_8003AB38(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0, 0,
+            -1, SNpcMoveOMExec);
+        ((SNPCMOVEOMWORK *)(&(snpcWork->rotateObj->work[0])))->masuId =
             (s16)nextMasu;
         while (snpcWork->rotateObj) {
             HuPrcVSleep();
@@ -1337,7 +1337,7 @@ static BOOL SNpcMoveExec(void)
                     motionAttr = 0;
                     seNo = -1;
 
-                    motionAttr = HU3D_MOTATTR_LOOP;
+                    motionAttr = ((1 << 30) | (1 << 0));
                     for (i = 0; otherPlayerTbl[i] >= 0; i++) {
                         if (seNo >= 0) {
                             mbPlayerWinLoseVoicePlay(otherPlayerTbl[i], 1,
@@ -1355,7 +1355,7 @@ static BOOL SNpcMoveExec(void)
                     motionAttr = 0;
                     seNo = -1;
 
-                    motionAttr = HU3D_MOTATTR_LOOP;
+                    motionAttr = ((1 << 30) | (1 << 0));
                     for (i = 0; prizePlayerTbl[i] >= 0; i++) {
                         if (seNo >= 0) {
                             mbPlayerWinLoseVoicePlay(prizePlayerTbl[i], 1,
@@ -1448,7 +1448,7 @@ static BOOL SNpcMoveExec(void)
                             motionAttr = 0;
                             seNo = -1;
 
-                            motionAttr = HU3D_MOTATTR_LOOP;
+                            motionAttr = ((1 << 30) | (1 << 0));
                             for (i = 0; prizePlayerTbl[i] >= 0; i++) {
                                 if (seNo >= 0) {
                                     mbPlayerWinLoseVoicePlay(prizePlayerTbl[i], 1,
@@ -1548,7 +1548,7 @@ static BOOL SNpcMoveExec(void)
         SNpcObjMotEndWait();
         SNpcZoomWait();
     }
-    if (GwSystem.turnPlayerNo < 3 || _CheckFlag(FLAG_BOARD_NOMG)) {
+    if (lbl_80265B70.turnPlayerNo < 3 || fn_8006A124(131072)) {
         mbCapMasuDispSet(TRUE);
         mbMasuPlayerDispSet(TRUE);
     }
@@ -1560,8 +1560,8 @@ static BOOL SNpcMoveExec(void)
 // Applies a star or coin change for players selected by SNpcMoveExec.
 static void StarChangeExec(s8 *playerNoTbl, int coinF, int amount)
 {
-    int addNum[GW_PLAYER_MAX] ATTRIBUTE_ALIGN(8);
-    BOOL dispF[GW_PLAYER_MAX];
+    int addNum[4] ATTRIBUTE_ALIGN(8);
+    BOOL dispF[4];
     int voiceNo;
     int playerNo;
     int i;
@@ -1577,10 +1577,10 @@ static void StarChangeExec(s8 *playerNoTbl, int coinF, int amount)
         mbPlayerMotionShiftSet(playerNoTbl[i],
             playerStarChgMotNoTbl[voiceNo], 0.0f,
             8.0f, 0);
-        omVibrate((s16)playerNoTbl[i], 20, 7, 3);
+        fn_8006A030((s16)playerNoTbl[i], 20, 7, 3);
     }
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         addNum[i] = 0;
         dispF[i] = FALSE;
     }
@@ -1643,10 +1643,10 @@ static void SNpcMoveOMExec(OMOBJ *obj)
     float weight;
     BOOL endF;
 
-    work = omObjGetWork(obj, SNPCMOVEOMWORK);
+    work = ((SNPCMOVEOMWORK *)(&(obj->work[0])));
     endF = FALSE;
     if (mbExitCheck() || work->killF) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->rotateObj = NULL;
         return;
     }
@@ -1735,7 +1735,7 @@ static void SNpcMoveOMExec(OMOBJ *obj)
     }
     SNpcMotSetNext();
     if (endF) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->rotateObj = NULL;
         return;
     }
@@ -1744,9 +1744,9 @@ static void SNpcMoveOMExec(OMOBJ *obj)
 // Starts a per-frame turn update for the NPC's movement and event sequences.
 static void SNpcTargetAngleSet(float angle)
 {
-    snpcWork->rotateObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
-        0, OM_GRP_NONE, SNpcRotateUpdate);
-    omObjGetWork(snpcWork->rotateObj, SNPCROTATEWORK)->targetAngle = angle;
+    snpcWork->rotateObj = fn_8003AB38(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
+        0, -1, SNpcRotateUpdate);
+    ((SNPCROTATEWORK *)(&(snpcWork->rotateObj->work[0])))->targetAngle = angle;
 }
 
 // Waits for the turn update and model-motion blend after a movement or event turn.
@@ -1781,10 +1781,10 @@ static void SNpcRotateUpdate(OMOBJ *obj)
     float angle;
     float magnitudeResult;
 
-    work = omObjGetWork(obj, SNPCROTATEWORK);
+    work = ((SNPCROTATEWORK *)(&(obj->work[0])));
     endF = FALSE;
     if (mbExitCheck() || work->killF) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->rotateObj = NULL;
         return;
     }
@@ -1819,7 +1819,7 @@ static void SNpcRotateUpdate(OMOBJ *obj)
     }
     SNpcMotSetNext();
     if (endF) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->rotateObj = NULL;
         return;
     }
@@ -1828,8 +1828,8 @@ static void SNpcRotateUpdate(OMOBJ *obj)
 // After an encounter leaves the NPC displaced, starts its per-frame return beside its space.
 static void SNpcPosFixCreate(void)
 {
-    snpcWork->rotateObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0, 0,
-        OM_GRP_NONE, SNpcPosFixUpdate);
+    snpcWork->rotateObj = fn_8003AB38(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0, 0,
+        -1, SNpcPosFixUpdate);
 }
 
 // Each frame, moves the NPC to its offset beside the current space, then eases its heading to zero
@@ -1845,10 +1845,10 @@ static void SNpcPosFixUpdate(OMOBJ *obj)
     float time;
     float angle;
 
-    work = omObjGetWork(obj, SNPCROTATEWORK);
+    work = ((SNPCROTATEWORK *)(&(obj->work[0])));
     endF = FALSE;
     if (mbExitCheck() || work->killF) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->rotateObj = NULL;
         goto done;
     }
@@ -1921,12 +1921,12 @@ done:
 static void SNpcZoomSet(float zoom)
 {
     if (!SNpcZoomCheck()) {
-        snpcWork->zoomObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
-            0, OM_GRP_NONE, SNpcZoomUpdate);
+        snpcWork->zoomObj = fn_8003AB38(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
+            0, -1, SNpcZoomUpdate);
     }
-    omObjGetWork(snpcWork->zoomObj, SNPCZOOMWORK)->initF = FALSE;
-    omObjGetWork(snpcWork->zoomObj, SNPCZOOMWORK)->killF = FALSE;
-    omObjGetWork(snpcWork->zoomObj, SNPCZOOMWORK)->targetZoom = zoom;
+    ((SNPCZOOMWORK *)(&(snpcWork->zoomObj->work[0])))->initF = FALSE;
+    ((SNPCZOOMWORK *)(&(snpcWork->zoomObj->work[0])))->killF = FALSE;
+    ((SNPCZOOMWORK *)(&(snpcWork->zoomObj->work[0])))->targetZoom = zoom;
 }
 
 static BOOL SNpcZoomCheck(void)
@@ -1949,10 +1949,10 @@ static void SNpcZoomUpdate(OMOBJ *obj)
     BOOL endF;
     float time;
 
-    work = omObjGetWork(obj, SNPCZOOMWORK);
+    work = ((SNPCZOOMWORK *)(&(obj->work[0])));
     endF = FALSE;
     if (mbExitCheck() || work->killF) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->zoomObj = NULL;
         return;
     }
@@ -2159,7 +2159,7 @@ static inline void SNpcVecCopy(register const HuVecF *src, register HuVecF *dst)
 
 static inline MBPARTICLE *SNpcParticleGet(HU3D_MODELID modelId)
 {
-    return Hu3DData[modelId].hookData;
+    return lbl_802C01C8[modelId].hookData;
 }
 
 // Runs Bowser's fire-breath sequence, updating its particle streams from the character's item-hook
@@ -2180,27 +2180,27 @@ static void SNpcKoopaFireExec(void)
     int i;
 
     SNpcObjMotShiftSet(10);
-    mbAudFXPlay(MSM_SE_GUIDE_49);
-    fire3Id = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
-        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), HU_MEMNUM_OVL)), 88);
-    fire3CopyId = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
-        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), HU_MEMNUM_OVL)), 88);
+    mbAudFXPlay(973);
+    fire3Id = mbParticleCreate(HuSprAnimRead(fn_80008634(
+        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), 0x10000000)), 88);
+    fire3CopyId = mbParticleCreate(HuSprAnimRead(fn_80008634(
+        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), 0x10000000)), 88);
     mbParticleHookSet(fire3Id, SNpcKoopaFire3Hook);
     mbParticleHookSet(fire3CopyId, SNpcKoopaFire2Hook);
-    Hu3DModelLayerSet(fire3Id, 5);
-    Hu3DModelLayerSet(fire3CopyId, 5);
+    fn_80026B8C(fire3Id, 5);
+    fn_80026B8C(fire3CopyId, 5);
     fire3P = SNpcParticleGet(fire3Id);
     copyP = SNpcParticleGet(fire3CopyId);
     copyP->hookData = fire3P;
     copyP->mode = 0;
-    fireId = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
-        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), HU_MEMNUM_OVL)), 500);
-    fireCopyId = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
-        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), HU_MEMNUM_OVL)), 500);
+    fireId = mbParticleCreate(HuSprAnimRead(fn_80008634(
+        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), 0x10000000)), 500);
+    fireCopyId = mbParticleCreate(HuSprAnimRead(fn_80008634(
+        mbBoardDataNumGet(SNPC_KOOPA_FIRE_DATA_ANIM), 0x10000000)), 500);
     mbParticleHookSet(fireId, SNpcKoopaFireHook);
     mbParticleHookSet(fireCopyId, SNpcKoopaFire2Hook);
-    Hu3DModelLayerSet(fireId, 5);
-    Hu3DModelLayerSet(fireCopyId, 5);
+    fn_80026B8C(fireId, 5);
+    fn_80026B8C(fireCopyId, 5);
     fireP = SNpcParticleGet(fireId);
     copyP = SNpcParticleGet(fireCopyId);
     copyP->hookData = fireP;
@@ -2222,7 +2222,7 @@ static void SNpcKoopaFireExec(void)
                 fire3P->mode = (s16)mode;
             }
         }
-        Hu3DModelObjMtxGet(mbObjModelIDGet(snpcWork->objId[0]),
+        fn_80023398(mbObjModelIDGet(snpcWork->objId[0]),
             lbl_80247724, mtx);
         fireP->vel.x = mtx[0][3];
         fireP->vel.y = mtx[1][3];
@@ -2585,12 +2585,12 @@ static void SNpcPlayerMoveFunc(int playerNo)
 
     motSpeed = 1.0f;
     setAngle = FALSE;
-    obj = snpcWork->moveObj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
-        0, OM_GRP_NONE,
+    obj = snpcWork->moveObj = fn_8003AB38(mbObjMan, SNPC_MOVE_OBJ_PRIORITY, 0,
+        0, -1,
         SNpcPlayerMoveObjExec);
-    work = omObjGetWork(obj, SNPCMOVEWORK);
-    masuIdNext = GwPlayer[playerNo].masuIdNext;
-    masuIdPrev = GwPlayer[playerNo].masuIdPrev;
+    work = ((SNPCMOVEWORK *)(&(obj->work[0])));
+    masuIdNext = lbl_80265750[playerNo].masuIdNext;
+    masuIdPrev = lbl_80265750[playerNo].masuIdPrev;
     mbPlayerPosGet(playerNo, &obj->trans);
     if (snpcMagic == SNPC_MAGIC) {
         masuId = snpcSaveWork->masuId;
@@ -2628,7 +2628,7 @@ static void SNpcPlayerMoveFunc(int playerNo)
     case 0:
         mbPlayerWorkGet(playerNo)->_unk0C = 1;
         mbPlayerMotionShiftSet(playerNo, 3, 0.0f,
-            4.0f, HU3D_MOTATTR_LOOP);
+            4.0f, ((1 << 30) | (1 << 0)));
         break;
     case 1:
         mbPlayerWorkGet(playerNo)->_unk0C = 2;
@@ -2639,7 +2639,7 @@ static void SNpcPlayerMoveFunc(int playerNo)
     case 2:
         mbPlayerWorkGet(playerNo)->_unk0C = 3;
         mbPlayerMotionShiftSet(playerNo, 14, 0.0f,
-            4.0f, HU3D_MOTATTR_LOOP);
+            4.0f, ((1 << 30) | (1 << 0)));
         maxTime = 100;
         motSpeed = lbl_802C332C[0];
         PSVECSubtract(&obj->rot, &obj->trans, &moveDir);
@@ -2673,8 +2673,8 @@ static void SNpcPlayerMoveFunc(int playerNo)
     moveTime = work->maxTime;
     movePlayerNo = work->playerNo;
     mbPlayerWorkGet(movePlayerNo)->_unk08 = moveTime;
-    GwPlayer[playerNo].moveF = TRUE;
-    while (GwPlayer[playerNo].moveF) {
+    lbl_80265750[playerNo].moveF = TRUE;
+    while (lbl_80265750[playerNo].moveF) {
         HuPrcVSleep();
     }
     mbPlayerWorkGet(playerNo)->_unk0C = 0;
@@ -2687,10 +2687,10 @@ static void SNpcPlayerMoveObjExec(OMOBJ *obj)
     SNPCMOVEWORK *work;
     float time;
 
-    work = omObjGetWork(obj, SNPCMOVEWORK);
+    work = ((SNPCMOVEWORK *)(&(obj->work[0])));
     if (mbExitCheck() || work->killF) {
-        GwPlayer[work->playerNo].moveF = FALSE;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        lbl_80265750[work->playerNo].moveF = FALSE;
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->moveObj = NULL;
         return;
     }
@@ -2709,10 +2709,10 @@ static void SNpcPlayerMoveObjExec(OMOBJ *obj)
         mbPlayerWorkGet(movePlayerNo)->_unk08 = moveTime;
     }
     if (work->time >= work->maxTime) {
-        GwPlayer[work->playerNo].moveF = FALSE;
+        lbl_80265750[work->playerNo].moveF = FALSE;
         mbPlayerPosSet(work->playerNo, obj->rot.x, obj->rot.y,
             obj->rot.z);
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->moveObj = NULL;
         return;
     }
@@ -2769,7 +2769,7 @@ static void SNpcMotSetNext(void)
         return;
     }
     if (mbObjMotionShiftIDGet(snpcWork->objId[0]) != -1) {
-        frame = (int)Hu3DMotionShiftTimeGet(
+        frame = (int)fn_8002D508(
             mbObjModelIDGet(snpcWork->objId[0]));
     } else {
         frame = (int)mbObjMotionTimeGet(snpcWork->objId[0]);
@@ -2887,7 +2887,7 @@ static void SNpcObjMotSet(int motNo)
 
     motData = &snpcMotTbl[snpcSaveWork->isKoopa][motNo];
     mbObjMotionSet(snpcWork->objId[0], snpcWork->motionId[motNo],
-        motData->loopF ? HU3D_MOTATTR_LOOP : HU3D_MOTATTR_NONE);
+        motData->loopF ? ((1 << 30) | (1 << 0)) : 0);
     mbObjMotionSpeedSet(snpcWork->objId[0], motData->speed);
     if (motData->startFrame != 0 || motData->endFrame != 0) {
         start = end = -1;
@@ -2920,15 +2920,15 @@ static void SNpcObjMotShiftSet(int motNo)
     }
     mbObjMotionShiftSet(snpcWork->objId[0], snpcWork->motionId[motNo],
         (float)motData->startFrame, 8.0f,
-        motData->loopF ? HU3D_MOTATTR_LOOP : HU3D_MOTATTR_NONE);
+        motData->loopF ? ((1 << 30) | (1 << 0)) : 0);
     mbObjMotionSpeedSet(snpcWork->objId[0], motData->speed);
     if (motData->startFrame != 0 || motData->endFrame != 0) {
-        end = (int)Hu3DMotionShiftMaxTimeGet(
+        end = (int)fn_8002D5D4(
             mbObjModelIDGet(snpcWork->objId[0]));
         if (motData->endFrame != 0) {
             end = motData->endFrame;
         }
-        Hu3DMotionShiftStartEndSet(mbObjModelIDGet(snpcWork->objId[0]),
+        fn_8002D678(mbObjModelIDGet(snpcWork->objId[0]),
             (float)start, (float)end);
     }
     snpcWork->lastSoundFrame = -1;
@@ -2988,7 +2988,7 @@ static inline u8 *SNpcChanceLinkAlloc(int linkTblNum)
 {
     return HuMemDirectMallocNum(0,
         (linkTblNum + SNPC_CHANCE_BRANCH_PADDING) * sizeof(u32),
-        HU_MEMNUM_OVL);
+        0x10000000);
 }
 
 // Builds the board-wide table of reachable spaces and their remaining movement chances.
@@ -3017,10 +3017,10 @@ u8 *mbMasuChanceCreate(int masuId, int chance, int branchChance)
     SNPCCHANCEPATH *pathCursor;
 
     maxPaths = SNPC_CHANCE_TBL_SIZE;
-    chanceTbl = mbMalloc(SNPC_CHANCE_TBL_SIZE);
-    masuState = mbMalloc(SNPC_CHANCE_TBL_SIZE);
+    chanceTbl = fn_802137C0(SNPC_CHANCE_TBL_SIZE);
+    masuState = fn_802137C0(SNPC_CHANCE_TBL_SIZE);
     pathMem = HuMemDirectMallocNum(0,
-        maxPaths * sizeof(*pathTbl), HU_MEMNUM_OVL);
+        maxPaths * sizeof(*pathTbl), 0x10000000);
     pathTbl = (SNPCCHANCEPATH *)pathMem;
     masuNum = mbMasuNumGet();
     for (i = 1; i < masuNum; i++) {
@@ -3078,7 +3078,7 @@ u8 *mbMasuChanceCreate(int masuId, int chance, int branchChance)
         }
     }
     if (branchChance != 0) {
-        linkIndex = mbMalloc(SNPC_CHANCE_TBL_SIZE * sizeof(*linkIndex));
+        linkIndex = fn_802137C0(SNPC_CHANCE_TBL_SIZE * sizeof(*linkIndex));
         for (i = 1; i < masuNum; i++) {
             masu = mbMasuGet((s16)i);
             linkNum = masu->linkNum;
@@ -3222,8 +3222,8 @@ void mbMasuChancePlayerSet(u8 *chanceTbl, int value)
 {
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        chanceTbl[GwPlayer[i].masuId] = value;
+    for (i = 0; i < 4; i++) {
+        chanceTbl[lbl_80265750[i].masuId] = value;
     }
 }
 
@@ -3258,10 +3258,10 @@ int mbMasuChanceSet(u8 *chanceTbl, int masuId)
         }
     }
     masuTbl = HuMemDirectMallocNum(0, SNPC_CHANCE_ID_BYTES,
-        HU_MEMNUM_OVL);
+        0x10000000);
     masuTblBase = masuTbl;
     distanceTbl = HuMemDirectMallocNum(0, SNPC_CHANCE_DISTANCE_BYTES,
-        HU_MEMNUM_OVL);
+        0x10000000);
     distanceTblBase = distanceTbl;
     masuNum = mbMasuNumGet();
     for (i = 1, validNum = 0; i < masuNum; i++) {
@@ -3360,9 +3360,9 @@ static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
 
     pathCapacity = maxSteps + 10;
     allocationCapacity = pathCapacity + 2;
-    masuState = mbMalloc(256);
-    pathStack = mbMalloc(allocationCapacity * (int)sizeof(*pathStack));
-    branchCount = mbMalloc(allocationCapacity);
+    masuState = fn_802137C0(256);
+    pathStack = fn_802137C0(allocationCapacity * (int)sizeof(*pathStack));
+    branchCount = fn_802137C0(allocationCapacity);
     candidateNum = 0;
     for (i = 0; i < 64; i++) {
         candidateTbl[i] = NULL;
@@ -3382,8 +3382,8 @@ static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
         }
         masuState[i] = (s8)(displayState | branchState);
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        current = GwPlayer[i].masuId;
+    for (i = 0; i < 4; i++) {
+        current = lbl_80265750[i].masuId;
         masuState[current] = masuState[current] | 2;
     }
     if (maxSteps != 0) {
@@ -3441,7 +3441,7 @@ static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
 
                         newCandidate = HuMemDirectMallocNum(0,
                             (pathCount + 1) * (int)sizeof(*candidate),
-                            HU_MEMNUM_OVL);
+                            0x10000000);
                         candidate = newCandidate;
                         candidateTbl[candidateNum++] = candidate;
                         for (i = 1; i < pathCount; i++, candidate++) {
@@ -3475,12 +3475,12 @@ static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
     chanceCount = 0;
     if (candidateNum != 0) {
         int score[64];
-        int playerDistance[GW_PLAYER_MAX];
-        int playerFixed[GW_PLAYER_MAX];
+        int playerDistance[4];
+        int playerFixed[4];
         int minScore;
         maxStars = 0;
 
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
+        for (j = 0; j < 4; j++) {
             searchValue = mbPlayerStarGet(j);
 
             if (maxStars < searchValue) {
@@ -3495,21 +3495,21 @@ static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
                 if ((masuState[candidate->masuId] & 14) == 0) {
                     continue;
                 }
-                for (j = 0; j < GW_PLAYER_MAX; j++) {
-                    if (GwPlayer[j].masuId == candidate->masuId) {
+                for (j = 0; j < 4; j++) {
+                    if (lbl_80265750[j].masuId == candidate->masuId) {
                         playerFixed[j] = 1;
                     }
                 }
             }
             for (i = 0; i < candidateNum; i++) {
-                for (j = 0; j < GW_PLAYER_MAX; j++) {
+                for (j = 0; j < 4; j++) {
                     playerDistance[j] = 0;
                 }
                 candidate = candidateTbl[i] + minBranch;
                 while (candidate->chance >= 0) {
                     if ((masuState[candidate->masuId] & 14) != 0) {
-                        for (j = 0; j < GW_PLAYER_MAX; j++) {
-                            if (GwPlayer[j].masuId
+                        for (j = 0; j < 4; j++) {
+                            if (lbl_80265750[j].masuId
                                 != candidate->masuId) {
                                 continue;
                             }
@@ -3531,7 +3531,7 @@ static int SNpcDiceValueGet(int masuId, int maxSteps, const int *typeTbl,
                     candidate++;
                 }
                 minScore = SNPC_CANDIDATE_SCORE_MAX;
-                for (j = 0; j < GW_PLAYER_MAX; j++) {
+                for (j = 0; j < 4; j++) {
                     if (playerDistance[j] != 0) {
                         if (!snpcSaveWork->isKoopa) {
                             searchValue = playerDistance[j]
@@ -3643,20 +3643,20 @@ static void SNpcStarCreate(int type, BOOL lowerStarF, HuVecF *pos)
     OMOBJ *obj;
 
     if (type == 0) {
-        obj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY,
-            SNPC_STAR_MODEL_SLOT_COUNT, 0, OM_GRP_NONE, SNpcStarObjExec);
+        obj = fn_8003AB38(mbObjMan, SNPC_MOVE_OBJ_PRIORITY,
+            SNPC_STAR_MODEL_SLOT_COUNT, 0, -1, SNpcStarObjExec);
         snpcWork->starObj = obj;
-        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->isKoopa = FALSE;
+        ((SNPCSTAREFFWORK *)(&(snpcWork->starObj->work[0])))->isKoopa = FALSE;
     } else {
-        obj = omAddObjEx(mbObjMan, SNPC_MOVE_OBJ_PRIORITY,
-            SNPC_STAR_MODEL_SLOT_COUNT, 0, OM_GRP_NONE, SNpcStarObjExec);
+        obj = fn_8003AB38(mbObjMan, SNPC_MOVE_OBJ_PRIORITY,
+            SNPC_STAR_MODEL_SLOT_COUNT, 0, -1, SNpcStarObjExec);
         snpcWork->starObj = obj;
-        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->isKoopa = TRUE;
+        ((SNPCSTAREFFWORK *)(&(snpcWork->starObj->work[0])))->isKoopa = TRUE;
     }
 
-    omSetStatBit(obj, OM_STAT_MODELPAUSE);
+    omSetStatBit(obj, (1 << 8));
     if (lowerStarF) {
-        omObjGetWork(snpcWork->starObj, SNPCSTAREFFWORK)->lowerStarF = TRUE;
+        ((SNPCSTAREFFWORK *)(&(snpcWork->starObj->work[0])))->lowerStarF = TRUE;
     }
     SNpcVecCopy(pos, &obj->trans);
 
@@ -3664,8 +3664,8 @@ static void SNpcStarCreate(int type, BOOL lowerStarF, HuVecF *pos)
         NULL, TRUE);
     mbObjDispSet(obj->mdlId[0], FALSE);
     obj->mdlId[1] = SNpcStarEffCreate(
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_effect, 1),
-            HU_MEMNUM_OVL, HEAP_MODEL)), type);
+        HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 1),
+            0x10000000, 2)), type);
 }
 
 // NPC event sequences wait here until the star object's per-frame callback removes it.
@@ -3683,13 +3683,13 @@ static void SNpcStarObjExec(OMOBJ *obj)
     SNPCSTAREFFWORK *work;
     float phase;
 
-    work = omObjGetWork(obj, SNPCSTAREFFWORK);
+    work = ((SNPCSTAREFFWORK *)(&(obj->work[0])));
     if (mbExitCheck() || work->killF) {
         mbObjKill(obj->mdlId[0]);
         SNpcStarEffKill(obj->mdlId[1]);
         obj->mdlId[0] = 0;
         obj->mdlId[1] = 0;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         snpcWork->starObj = NULL;
         return;
     }
@@ -3705,9 +3705,9 @@ static void SNpcStarObjExec(OMOBJ *obj)
         obj->rot.z = 0.0f;
         mbObjDispSet(obj->mdlId[0], TRUE);
         if (!work->isKoopa) {
-            work->soundId = mbAudFXPlay(MSM_SE_BRD00_91);
+            work->soundId = mbAudFXPlay(1095);
         } else {
-            work->soundId = mbAudFXPlay(MSM_SE_BRD00_114);
+            work->soundId = mbAudFXPlay(1118);
         }
     }
     work->time++;
@@ -3742,9 +3742,9 @@ static void SNpcStarObjExec(OMOBJ *obj)
                 work->soundId = -1;
             }
             if (!work->isKoopa) {
-                mbAudFXPlay(MSM_SE_BRD00_93);
+                mbAudFXPlay(1097);
             } else {
-                mbAudFXPlay(MSM_SE_BRD00_93);
+                mbAudFXPlay(1097);
             }
         }
         break;
@@ -3791,8 +3791,8 @@ static HU3D_MODELID SNpcStarEffCreate(ANIMDATA *anim, int type)
     mbParManRotSet((int)modelId, 90.0f, 0.0f,
         0.0f);
     mbParticleBlendModeSet((int)modelId, 1);
-    Hu3DModelLayerSet(modelId, 5);
-    Hu3DModelCameraSet(modelId, 1);
+    fn_80026B8C(modelId, 5);
+    fn_80026B64(modelId, 1);
     return modelId;
 }
 
@@ -3833,20 +3833,20 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
         texCol[i].a = 0;
         if (attribute->animWorkP) {
             animWork = attribute->animWorkP;
-            if ((animWork->attr & HU3D_ATTRANIM_ATTR_ANIM2D)
-                && !(Hu3DTexAnimData[animWork->animId].attr & HU3D_ANIM_ATTR_NOUSE)) {
+            if ((animWork->attr & (1 << 0))
+                && !(Hu3DTexAnimData[animWork->animId].attr & (1 << 2))) {
                 continue;
             }
-            if (animWork->attr & HU3D_ATTRANIM_ATTR_BMPANIM) {
+            if (animWork->attr & (1 << 3)) {
                 bitmap = animWork->bitMapPtr;
                 switch (bitmap->dataFmt) {
-                    case HSF_BMPFMT_I4:
-                    case HSF_BMPFMT_I8:
-                    case HSF_BMPFMT_IA4:
-                    case HSF_BMPFMT_IA8:
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
                         texCol[i].a = 1;
                         break;
-                    case HSF_BMPFMT_CI_IA8:
+                    case 11:
                         texCol[i].a = 2;
                         break;
                 }
@@ -3856,13 +3856,13 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
             continue;
         }
         switch (bitmap->dataFmt) {
-            case HSF_BMPFMT_I4:
-            case HSF_BMPFMT_I8:
-            case HSF_BMPFMT_IA4:
-            case HSF_BMPFMT_IA8:
+            case 0:
+            case 1:
+            case 2:
+            case 3:
                 texCol[i].a = 1;
                 break;
-            case HSF_BMPFMT_CI_IA8:
+            case 11:
                 texCol[i].a = 2;
                 break;
         }
@@ -3879,7 +3879,7 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
         }
     }
     // Highlight vertex modes leave lightOnF unset; enabling shine still tests it.
-    if (Hu3DShineF && lightOnF) {
+    if (lbl_802C0184 && lightOnF) {
         shineF = TRUE;
     } else {
         shineF = FALSE;
@@ -3890,9 +3890,9 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
         // HSF texture-matrix animation enables this material's animated texture path.
         if (1.0f == attribute->textureEnable) {
             // TEV color mode zero uses an additional stage to combine the material color.
-            if (attribute->unk8[2] == 0) {
+            if (attribute->colorCombineMode == 0) {
                 tevStage++;
-            } else if (!(model->attr & HU3D_ATTR_TOON_MAP)) {
+            } else if (!(model->attr & (1 << 9))) {
                 if (texCol[0].a == 1) {
                     tevStage++;
                 } else if (texCol[0].a == 2) {
@@ -3900,7 +3900,7 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
                 }
             }
         }
-        if (model->attr & HU3D_ATTR_TOON_MAP) {
+        if (model->attr & (1 << 9)) {
             texGen++;
             tevStage++;
         }
@@ -3912,20 +3912,20 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
             tevStage++;
         }
         shadowData = drawObj->object->constData;
-        if (Hu3DShadowF && shadowNum
-            && (shadowData->attr & HU3D_CONST_SHADOW_MAP)) {
+        if (lbl_802C01B4 && lbl_802C01BA
+            && (shadowData->attr & (1 << 3))) {
             HSF_CONSTDATA *shadowTpData;
 
             shadowTpData = object->constData;
-            if (shadowTpData->attr & HU3D_CONST_SHADOW_MAP_TPLVL) {
+            if (shadowTpData->attr & (1 << 19)) {
                 tevStage++;
             }
             tevStage++;
             texGen++;
         }
         if (matHiliteF) {
-            if ((model->attr & HU3D_ATTR_HILITE)
-                || (flags & HSF_MATERIAL_HILITE)) {
+            if ((model->attr & (1 << 17))
+                || (flags & (1 << 8))) {
                 tevStage++;
                 texGen++;
                 matHiliteF = FALSE;
@@ -3974,7 +3974,7 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
                 } else if (texBlendF) {
                     texBlendF = FALSE;
                 // TEV color mode zero needs a stage for its default texture-color combine path.
-                } else if (attribute->unk8[2] == 0) {
+                } else if (attribute->colorCombineMode == 0) {
                     tevStage++;
                 } else if (texCol[i].a == 1 || texCol[i].a == 2) {
                     tevStage++;
@@ -3982,7 +3982,7 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
             }
             tevStage++;
         }
-        if (model->attr & HU3D_ATTR_TOON_MAP) {
+        if (model->attr & (1 << 9)) {
             texGen++;
             tevStage++;
         }
@@ -3998,20 +3998,20 @@ static void GetStarTexTevStage(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
             tevStage++;
         }
         shadowData = drawObj->object->constData;
-        if (Hu3DShadowF && shadowNum
-            && (shadowData->attr & HU3D_CONST_SHADOW_MAP)) {
+        if (lbl_802C01B4 && lbl_802C01BA
+            && (shadowData->attr & (1 << 3))) {
             HSF_CONSTDATA *shadowTpData;
 
             shadowTpData = object->constData;
-            if (shadowTpData->attr & HU3D_CONST_SHADOW_MAP_TPLVL) {
+            if (shadowTpData->attr & (1 << 19)) {
                 tevStage++;
             }
             tevStage++;
             texGen++;
         }
         if (matHiliteF) {
-            if ((model->attr & HU3D_ATTR_HILITE)
-                || (flags & HSF_MATERIAL_HILITE)) {
+            if ((model->attr & (1 << 17))
+                || (flags & (1 << 8))) {
                 if (specialAttrNo != -1) {
                     tevStage++;
                     texGen++;
@@ -4070,7 +4070,7 @@ static void GetStarNoTexTevStage(HU3D_DRAW_OBJ *drawObj,
     } else {
         matHiliteF = FALSE;
     }
-    if (model->attr & HU3D_ATTR_TOON_MAP) {
+    if (model->attr & (1 << 9)) {
         texGen++;
     }
     if (0.0f != material->refAlpha) {
@@ -4078,18 +4078,18 @@ static void GetStarNoTexTevStage(HU3D_DRAW_OBJ *drawObj,
         texGen++;
     }
     shadowData = drawObj->object->constData;
-    if (Hu3DShadowF && shadowNum
-        && (shadowData->attr & HU3D_CONST_SHADOW_MAP)) {
+    if (lbl_802C01B4 && lbl_802C01BA
+        && (shadowData->attr & (1 << 3))) {
         shadowTpData = object->constData;
-        if (shadowTpData->attr & HU3D_CONST_SHADOW_MAP_TPLVL) {
+        if (shadowTpData->attr & (1 << 19)) {
             tevStage++;
         }
         tevStage++;
         texGen++;
     }
     if (matHiliteF) {
-        if ((model->attr & HU3D_ATTR_HILITE)
-            || (flags & HSF_MATERIAL_HILITE)) {
+        if ((model->attr & (1 << 17))
+            || (flags & (1 << 8))) {
             texGen++;
         }
         tevStage++;
@@ -4113,10 +4113,10 @@ void mbObjStarTevStageSet(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material,
     int *tevStageNum, int *texGenNum)
 {
     if (material->attrNum == 0) {
-        Hu3DTevStageNoTexSet(drawObj, material);
+        fn_80019EA8(drawObj, material);
         GetStarNoTexTevStage(drawObj, material, tevStageNum, texGenNum);
     } else {
-        Hu3DTevStageTexSet(drawObj, material);
+        fn_8001A7CC(drawObj, material);
         GetStarTexTevStage(drawObj, material, tevStageNum, texGenNum);
     }
 }
@@ -4133,25 +4133,25 @@ void mbObjFadeCreate(MBMODELID modelId, HuVecF *pos)
     int i;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
-    if (model->attr & HU3D_ATTR_LINK) {
-        work = mbMallocNum(sizeof(*work), model->mallocNoLink);
+    model = &lbl_802C01C8[hu3DModelId];
+    if (model->attr & (1 << 20)) {
+        work = fn_80213818(sizeof(*work), model->mallocNoLink);
         model->hookData = work;
     } else {
-        work = mbMallocNum(sizeof(*work), model->mallocNo);
+        work = fn_80213818(sizeof(*work), model->mallocNo);
         model->hookData = work;
     }
     work->magic = MBOBJ_FADE_WORK_MAGIC;
     SNpcVecCopy(pos, &work->pos);
     work->alpha = 1.0f;
     work->color.r = work->color.g = work->color.b = 255;
-    Hu3DModelMatHookSet(hu3DModelId, FadeMatHook);
+    fn_80027884(hu3DModelId, FadeMatHook);
     hsf = model->hsf;
     for (i = 0; i < hsf->materialNum; i++) {
-        hsf->material[i].flags |= HSF_MATERIAL_MATHOOK;
+        hsf->material[i].flags |= (1 << 13);
     }
-    work->anim = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(SNPC_DATA_FADE_TEXTURE), HU_MEMNUM_OVL, HEAP_MODEL));
+    work->anim = HuSprAnimRead(fn_80008DD0(
+        mbBoardDataNumGet(SNPC_DATA_FADE_TEXTURE), 0x10000000, 2));
 }
 
 // Guide animations call this when removing a fade effect from a model.
@@ -4164,12 +4164,12 @@ void mbObjFadeKill(MBMODELID modelId)
     int i;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
+    model = &lbl_802C01C8[hu3DModelId];
     work = model->hookData;
-    Hu3DModelMatHookSet(hu3DModelId, NULL);
+    fn_80027884(hu3DModelId, NULL);
     hsf = model->hsf;
     for (i = 0; i < hsf->materialNum; i++) {
-        hsf->material[i].flags &= ~HSF_MATERIAL_MATHOOK;
+        hsf->material[i].flags &= ~(1 << 13);
     }
     HuSprAnimKill(work->anim);
     HuMemDirectFree(work);
@@ -4189,14 +4189,14 @@ static void FadeMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 
     work = drawObj->model->hookData;
     if (material->attrNum == 0) {
-        Hu3DTevStageNoTexSet(drawObj, material);
+        fn_80019EA8(drawObj, material);
         GetStarNoTexTevStage(drawObj, material, &tevStage, &texGen);
     } else {
-        Hu3DTevStageTexSet(drawObj, material);
+        fn_8001A7CC(drawObj, material);
         GetStarTexTevStage(drawObj, material, &tevStage, &texGen);
     }
     HuSprTexLoad(work->anim, 0, GX_TEXMAP4, GX_CLAMP, GX_CLAMP, GX_LINEAR);
-    PSMTXInverse(Hu3DCameraMtx, texMtx);
+    PSMTXInverse(lbl_802613F4, texMtx);
     PSMTXConcat(texMtx, drawObj->matrix, texMtx);
     PSMTXTrans(workMtx, -work->pos.x, -work->pos.y, -work->pos.z);
     PSMTXConcat(workMtx, texMtx, texMtx);
@@ -4229,7 +4229,7 @@ static void FadeMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXSetTevAlphaOp(tevStage, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
         GX_TRUE, GX_TEVPREV);
     if ((drawObj->object->flags | material->flags)
-        & (HSF_MATERIAL_NEAR | HSF_MATERIAL_DISABLE_ZWRITE)) {
+        & ((1 << 12) | (1 << 9))) {
         GXSetAlphaCompare(GX_GEQUAL, 128, GX_AOP_OR, GX_GEQUAL, 128);
     } else {
         GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
@@ -4244,7 +4244,7 @@ void mbObjFadeTexRotSet(MBMODELID modelId, HuVecF *pos, HuVecF *rot)
     HU3D_MODEL *model;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
+    model = &lbl_802C01C8[hu3DModelId];
     work = model->hookData;
     SNpcVecCopy(pos, &work->pos);
     SNpcVecCopy(rot, &work->rot);
@@ -4258,7 +4258,7 @@ void mbObjFadeTexColorSet(MBMODELID modelId, u8 r, u8 g, u8 b, float alpha)
     HU3D_MODEL *model;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
+    model = &lbl_802C01C8[hu3DModelId];
     work = model->hookData;
     work->color.r = (int)r;
     work->color.g = (int)g;
@@ -4277,12 +4277,12 @@ void mbObjMetalCreate(MBMODELID modelId)
     int i;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
-    if (model->attr & HU3D_ATTR_LINK) {
-        work = mbMallocNum(sizeof(*work), model->mallocNoLink);
+    model = &lbl_802C01C8[hu3DModelId];
+    if (model->attr & (1 << 20)) {
+        work = fn_80213818(sizeof(*work), model->mallocNoLink);
         model->hookData = work;
     } else {
-        work = mbMallocNum(sizeof(*work), model->mallocNo);
+        work = fn_80213818(sizeof(*work), model->mallocNo);
         model->hookData = work;
     }
     work->magic = MBOBJ_METAL_WORK_MAGIC;
@@ -4295,15 +4295,15 @@ void mbObjMetalCreate(MBMODELID modelId)
     work->hiliteColor.r = 202;
     work->hiliteColor.g = 87;
     work->hiliteColor.b = 255;
-    Hu3DModelMatHookSet(hu3DModelId, MetalMatHook);
+    fn_80027884(hu3DModelId, MetalMatHook);
     hsf = model->hsf;
     for (i = 0; i < hsf->materialNum; i++) {
-        hsf->material[i].flags |= HSF_MATERIAL_MATHOOK;
+        hsf->material[i].flags |= (1 << 13);
     }
-    work->anim[0] = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(SNPC_DATA_METAL_TEXMAP4), HU_MEMNUM_OVL, HEAP_MODEL));
-    work->anim[1] = HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(SNPC_DATA_METAL_TEXMAP5), HU_MEMNUM_OVL, HEAP_MODEL));
+    work->anim[0] = HuSprAnimRead(fn_80008DD0(
+        mbBoardDataNumGet(SNPC_DATA_METAL_TEXMAP4), 0x10000000, 2));
+    work->anim[1] = HuSprAnimRead(fn_80008DD0(
+        mbBoardDataNumGet(SNPC_DATA_METAL_TEXMAP5), 0x10000000, 2));
 }
 
 // Player effect cleanup calls this to remove the metal hook and its textures when installed.
@@ -4316,7 +4316,7 @@ BOOL mbObjMetalKill(MBMODELID modelId)
     int i;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
+    model = &lbl_802C01C8[hu3DModelId];
     if (model->hookData == NULL) {
         return FALSE;
     }
@@ -4324,10 +4324,10 @@ BOOL mbObjMetalKill(MBMODELID modelId)
     if (work->magic != MBOBJ_METAL_WORK_MAGIC) {
         return FALSE;
     }
-    Hu3DModelMatHookSet(hu3DModelId, NULL);
+    fn_80027884(hu3DModelId, NULL);
     hsf = model->hsf;
     for (i = 0; i < hsf->materialNum; i++) {
-        hsf->material[i].flags &= ~HSF_MATERIAL_MATHOOK;
+        hsf->material[i].flags &= ~(1 << 13);
     }
     HuSprAnimKill(work->anim[0]);
     HuSprAnimKill(work->anim[1]);
@@ -4345,7 +4345,7 @@ void mbObjMetalTPLvlSet(MBMODELID modelId, float tpLvl)
     HU3D_MODEL *model;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
+    model = &lbl_802C01C8[hu3DModelId];
     work = model->hookData;
     work->tpLvl = tpLvl;
 }
@@ -4359,7 +4359,7 @@ void mbObjMetalColorSet(MBMODELID modelId, GXColor shadowColor,
     HU3D_MODEL *model;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
+    model = &lbl_802C01C8[hu3DModelId];
     work = model->hookData;
     work->shadowColor = shadowColor;
     work->hiliteColor = hiliteColor;
@@ -4388,10 +4388,10 @@ static void MetalMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 
     work = drawObj->model->hookData;
     if (material->attrNum == 0) {
-        Hu3DTevStageNoTexSet(drawObj, material);
+        fn_80019EA8(drawObj, material);
         GetStarNoTexTevStage(drawObj, material, &tevStage, &texGen);
     } else {
-        Hu3DTevStageTexSet(drawObj, material);
+        fn_8001A7CC(drawObj, material);
         GetStarTexTevStage(drawObj, material, &tevStage, &texGen);
     }
     if (work->tpLvl <= 0.05f) {
@@ -4410,7 +4410,7 @@ static void MetalMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXLoadTexMtxImm(texMtx, GX_TEXMTX4, GX_MTX2x4);
     PSMTXCopy(drawObj->matrix, texMtx);
     viewDir = lbl_8021AA64;
-    PSMTXMultVecSR(Hu3DCameraMtx, &Hu3DGlobalLight[0].dir, &lightDir);
+    PSMTXMultVecSR(lbl_802613F4, &Hu3DGlobalLight[0].dir, &lightDir);
     C_VECHalfAngle(&viewDir, &lightDir, &lightDir);
     absInput = lightDir.z;
     absInput = __fabsf(absInput);
@@ -4492,21 +4492,21 @@ void mbObjBiriQCreate(MBMODELID modelId)
     int i;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
-    if (model->attr & HU3D_ATTR_LINK) {
-        work = mbMallocNum(sizeof(*work), model->mallocNoLink);
+    model = &lbl_802C01C8[hu3DModelId];
+    if (model->attr & (1 << 20)) {
+        work = fn_80213818(sizeof(*work), model->mallocNoLink);
         model->hookData = work;
     } else {
-        work = mbMallocNum(sizeof(*work), model->mallocNo);
+        work = fn_80213818(sizeof(*work), model->mallocNo);
         model->hookData = work;
     }
     work->magic = MBOBJ_BIRIQ_WORK_MAGIC;
     work->level = 0.0f;
     work->color.r = work->color.g = work->color.b = work->color.a = 255;
-    Hu3DModelMatHookSet(hu3DModelId, BiriQMatHook);
+    fn_80027884(hu3DModelId, BiriQMatHook);
     hsf = model->hsf;
     for (i = 0; i < hsf->materialNum; i++) {
-        hsf->material[i].flags |= HSF_MATERIAL_MATHOOK;
+        hsf->material[i].flags |= (1 << 13);
     }
 }
 
@@ -4520,7 +4520,7 @@ BOOL mbObjBiriQKill(MBMODELID modelId)
     int i;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
+    model = &lbl_802C01C8[hu3DModelId];
     if (model->hookData == NULL) {
         return FALSE;
     }
@@ -4528,10 +4528,10 @@ BOOL mbObjBiriQKill(MBMODELID modelId)
     if (work->magic != MBOBJ_BIRIQ_WORK_MAGIC) {
         return FALSE;
     }
-    Hu3DModelMatHookSet(hu3DModelId, NULL);
+    fn_80027884(hu3DModelId, NULL);
     hsf = model->hsf;
     for (i = 0; i < hsf->materialNum; i++) {
-        hsf->material[i].flags &= ~HSF_MATERIAL_MATHOOK;
+        hsf->material[i].flags &= ~(1 << 13);
     }
     HuMemDirectFree(work);
     model->hookData = NULL;
@@ -4548,7 +4548,7 @@ void mbObjBiriQColorSet(MBMODELID modelId, BOOL mode, float level,
     HU3D_MODEL *model;
 
     hu3DModelId = mbObjModelIDGet((int)modelId);
-    model = &Hu3DData[hu3DModelId];
+    model = &lbl_802C01C8[hu3DModelId];
     if (model->hookData == NULL) {
         return;
     }
@@ -4573,10 +4573,10 @@ static void BiriQMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 
     work = drawObj->model->hookData;
     if (material->attrNum == 0) {
-        Hu3DTevStageNoTexSet(drawObj, material);
+        fn_80019EA8(drawObj, material);
         GetStarNoTexTevStage(drawObj, material, &tevStage, &texGen);
     } else {
-        Hu3DTevStageTexSet(drawObj, material);
+        fn_8001A7CC(drawObj, material);
         GetStarTexTevStage(drawObj, material, &tevStage, &texGen);
     }
     if (work->level <= 0.01f) {

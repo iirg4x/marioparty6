@@ -71,7 +71,7 @@ void printWin(void);
 void print8(void);
 void HuSysVWaitSet(void);
 void GameMesGet(void);
-void omObjManPause(void);
+void fn_8003B674(void);
 void GameMesInit(void);
 void GameMesCreate(void);
 void omDelObjEx(void);
@@ -80,14 +80,14 @@ void atan2(void);
 void atan2f(void);
 void cos(void);
 void GameMesStatGet(void);
-void Center(void);
-void CRotM(void);
-void CenterM(void);
-void CZoomM(void);
-void omOutViewMulti(void);
-void omOutView(void);
-void omAddObjEx(void);
-void omInitObjMan(void);
+void lbl_80266A4C(void);
+void lbl_80266A58(void);
+void lbl_80266B18(void);
+void lbl_80266BD8(void);
+void fn_8003DAA4(void);
+void fn_8003D4FC(void);
+void fn_8003AB38(void);
+void fn_8003A8BC(void);
 void rand8(void);
 void frandmod(void);
 void frandom(void);
@@ -106,86 +106,86 @@ void MgScoreBoxTPLvlSet(void);
 void MgScoreBoxPosSet(void);
 void MgScoreBoxDispSet(void);
 void GameMesStrWinCreate(void);
-void Hu3DCameraLayerHookSet(void);
-void Hu3DCameraLayerHookReset(void);
-void Hu3DLayerHookSet(void);
-void Hu3DLayerHookReset(void);
+void fn_8002583C(void);
+void fn_800258A8(void);
+void fn_80025918(void);
+void fn_80025980(void);
 void Hu3DNoSyncSet(void);
-void Hu3DModelCreate(void);
-void Hu3DModelLink(void);
-void Hu3DHookFuncCreate(void);
-void Hu3DModelPosSet(void);
-void Hu3DModelPosSetV(void);
-void Hu3DModelRotSet(void);
-void Hu3DModelRotSetV(void);
-void Hu3DModelScaleSet(void);
-void Hu3DModelScaleSetV(void);
-void Hu3DModelPosGet(void);
-void Hu3DModelRotGet(void);
-void Hu3DModelScaleGet(void);
-void Hu3DModelKill(void);
-void Hu3DModelAllKill(void);
-void Hu3DModelAttrSet(void);
-void Hu3DModelAttrReset(void);
-void Hu3DModelAttrGet(void);
-void Hu3DModelMotionAttrGet(void);
+void fn_80025A04(void);
+void fn_80025D4C(void);
+void fn_800260F4(void);
+void fn_80026760(void);
+void fn_80026790(void);
+void fn_80026808(void);
+void fn_80026838(void);
+void fn_800268B0(void);
+void fn_800268E0(void);
+void fn_800267CC(void);
+void fn_80026874(void);
+void fn_8002691C(void);
+void fn_800262D0(void);
+void fn_80026648(void);
+void fn_800269E8(void);
+void fn_80026A44(void);
+void fn_80026A90(void);
+void fn_80026AB8(void);
 void Hu3DBGColorSet(void);
-void Hu3DModelCameraSet(void);
-void Hu3DModelLayerSet(void);
-void Hu3DModelTPLvlSet(void);
-void Hu3DModelHookSet(void);
-void Hu3DModelHookReset(void);
-void Hu3DModelHookObjReset(void);
-void Hu3DModelAmbSet(void);
-void Hu3DModelShadowDispOn(void);
-void Hu3DModelShadowDispOff(void);
-void Hu3DModelProjectionSet(void);
-void Hu3DModelProjectionReset(void);
+void fn_80026B64(void);
+void fn_80026B8C(void);
+void fn_80026CBC(void);
+void fn_8002741C(void);
+void fn_80027508(void);
+void fn_800275B4(void);
+void fn_800273EC(void);
+void fn_80026F9C(void);
+void fn_80026FCC(void);
+void fn_8002769C(void);
+void fn_800276DC(void);
 void Hu3DModelObjPosGet(void);
-void Hu3DModelObjMtxGet(void);
-void Hu3DModelHiliteTypeSet(void);
-void Hu3DModelReflectTypeSet(void);
-void Hu3DModelHiliteMapSet(void);
-void Hu3DReflectModelSet(void);
-void Hu3DModelMatHookSet(void);
-void Hu3DModelDebug(void);
-void Hu3DModelMtxSet(void);
-void Hu3DModelMtxGet(void);
-void Hu3DModelShadowMapTPLvlSet(void);
-void Hu3DModelShadowMapObjTPLvlSet(void);
-void Hu3DModelDieCreate(void);
-void Hu3DModelLinkDieCreate(void);
-void HuPadInit(void);
-void HuPadRead(void);
-void HuPadRumbleSet(void);
-void HuPadRumbleStop(void);
-void HuPadRumbleAllStop(void);
+void fn_80023398(void);
+void fn_8002771C(void);
+void fn_800277D0(void);
+void fn_80026DB0(void);
+void fn_800277FC(void);
+void fn_80027884(void);
+void fn_8002C31C(void);
+void fn_80026958(void);
+void fn_800269A0(void);
+void fn_800271F0(void);
+void fn_80027290(void);
+void fn_80036DF8(void);
+void fn_80036EBC(void);
+void fn_80005C98(void);
+void fn_80005D90(void);
+void fn_80006E70(void);
+void fn_80006ECC(void);
+void fn_80006F3C(void);
 void HuPadStatGet(void);
-void HuPadRumbleGet(void);
-void HuPadStkDirGet(void);
-void HuPadSubStkDirGet(void);
+void fn_80006FC0(void);
+void fn_80006B90(void);
+void fn_80006D00(void);
 void Hu3DCameraCreate(void);
 void Hu3DCameraPerspectiveSet(void);
 void Hu3DCameraViewportSet(void);
 void Hu3DCameraScissorSet(void);
 void Hu3DCameraPosSet(void);
 void Hu3DCameraKill(void);
-void Hu3DCameraPosGet(void);
+void fn_80027CD0(void);
 void Hu3DCameraPosSetV(void);
 void Hu3DCameraAllKill(void);
 void Hu3DCameraSet(void);
-void Hu3DCameraMotionOn(void);
-void Hu3DCameraMotionStart(void);
-void Hu3DCameraMotionOff(void);
-void Hu3DModelCameraCreate(void);
-void Hu3DModelCameraInfoSet(void);
-void Hu3DCameraPerspectiveGet(void);
-void Hu3DLighInit(void);
+void fn_80028478(void);
+void fn_800284C8(void);
+void fn_8002858C(void);
+void fn_800283F4(void);
+void fn_8002803C(void);
+void fn_80027D8C(void);
+void fn_800285BC(void);
 void Hu3DGLightCreate(void);
-void Hu3DGLightCreateV(void);
+void fn_800286D0(void);
 void Hu3DGLightKill(void);
-void Hu3DLightAllKill(void);
-void Hu3DLightSet(void);
+void fn_80028D70(void);
+void fn_80029E8C(void);
 void Hu3DGLightSpotSet(void);
 void Hu3DGLightInfinitytSet(void);
 void Hu3DGLightPointSet(void);
@@ -195,58 +195,58 @@ void Hu3DGLightPosSet(void);
 void Hu3DGLightPosAimSetV(void);
 void Hu3DGLightPosAimSet(void);
 void Hu3DGLightStaticSet(void);
-void Hu3DLLightParamGet(void);
-void Hu3DGLightParamGet(void);
-void Hu3DGLightPosAngleSet(void);
-void Hu3DModelLightBitSet(void);
-void Hu3DModelLightBitReset(void);
-void Hu3DModelLightInfoSet(void);
-void Hu3DModelLightIdGet(void);
+void fn_80029758(void);
+void fn_800297D4(void);
+void fn_800290F4(void);
+void fn_80029E00(void);
+void fn_80029E44(void);
+void fn_80029850(void);
+void fn_80029D24(void);
 void Hu3DReflectMapSet(void);
-void Hu3DReflectNoSet(void);
+void fn_8002A2A4(void);
 void Hu3DFogSet(void);
 void Hu3DFogClear(void);
-void Hu3DModelObjPtrGet(void);
-void Hu3DModelShadowSet(void);
-void Hu3DModelShadowReset(void);
+void fn_80026BF4(void);
+void fn_80026E44(void);
+void fn_80026EF0(void);
 void Hu3DShadowCreate(void);
 void Hu3DShadowPosSet(void);
 void Hu3DShadowTPLvlSet(void);
-void Hu3DShadowColSet(void);
-void Hu3DShadowMultiCreate(void);
-void Hu3DShadowMultiPosSet(void);
-void Hu3DShadowMultiSizeSet(void);
-void Hu3DShadowMultiColSet(void);
-void Hu3DShadowMultiTPLvlSet(void);
-void Hu3DModelShadowMapSet(void);
-void Hu3DModelShadowMapObjSet(void);
-void Hu3DModelShadowMapObjReset(void);
-void Hu3DModelShadowMapReset(void);
+void fn_8002AAB4(void);
+void fn_8002A3B0(void);
+void fn_8002A674(void);
+void fn_8002A8CC(void);
+void fn_8002AA3C(void);
+void fn_8002A7D8(void);
+void fn_80026FFC(void);
+void fn_80027080(void);
+void fn_80027138(void);
+void fn_8002736C(void);
 void Hu3DShadowSizeSet(void);
-void Hu3DMipMapSet(void);
-void Hu3DModelClusterAttrSet(void);
-void Hu3DModelClusterAttrReset(void);
+void fn_8002BAF8(void);
+void fn_80026AE4(void);
+void fn_80026B24(void);
 void Hu3DLLightCreate(void);
-void Hu3DLLightCreateV(void);
-void Hu3DLLightSpotSet(void);
-void Hu3DLLightInfinitytSet(void);
-void Hu3DLLightPointSet(void);
-void Hu3DLLightKill(void);
-void Hu3DLLightColorSet(void);
-void Hu3DLLightPosSetV(void);
-void Hu3DLLightPosSet(void);
-void Hu3DLLightPosAimSetV(void);
-void Hu3DLLightPosAimSet(void);
-void Hu3DLLightStaticSet(void);
-void Hu3DLLightPosAngleSet(void);
-void Hu3DShineSet(void);
-void Hu3DObjHookSet(void);
+void fn_800288B4(void);
+void fn_80028AA8(void);
+void fn_80028B58(void);
+void fn_80028C1C(void);
+void fn_80028CB8(void);
+void fn_80028E48(void);
+void fn_80028F14(void);
+void fn_8002903C(void);
+void fn_80029434(void);
+void fn_800295A0(void);
+void fn_800296E0(void);
+void fn_80029240(void);
+void fn_8002A390(void);
+void fn_800248C4(void);
 void Hu3DAnimInit(void);
-void Hu3DAnimCreate(void);
-void Hu3DAnimAnimSet(void);
-void Hu3DAnimLink(void);
-void Hu3DAnimKill(void);
-void Hu3DAnimAllKill(void);
+void fn_80030B2C(void);
+void fn_80030D50(void);
+void fn_80030DF0(void);
+void fn_80031010(void);
+void fn_80031260(void);
 void Hu3DAnimSet(void);
 void Hu3DAnimExec(void);
 void Hu3DAnimAttrSet(void);
@@ -254,29 +254,29 @@ void Hu3DAnimAttrReset(void);
 void Hu3DAnimSpeedSet(void);
 void Hu3DAnimBankSet(void);
 void Hu3DAnmNoSet(void);
-void Hu3DTexScrollCreate(void);
+void fn_80031C10(void);
 void Hu3DTexScrollPosSet(void);
 void Hu3DTexScrollPosMoveSet(void);
 void Hu3DTexScrollRotSet(void);
 void Hu3DTexScrollRotMoveSet(void);
-void Hu3DTexScrollKill(void);
-void Hu3DTexScrollAllKill(void);
+void fn_80031DB4(void);
+void fn_80031E90(void);
 void Hu3DTexScrollPauseDisableSet(void);
-void Hu3DParticleCreate(void);
-void Hu3DParticleScaleSet(void);
-void Hu3DParticleZRotSet(void);
-void Hu3DParticleColSet(void);
-void Hu3DParticleTPLvlSet(void);
-void Hu3DParticleBlendModeSet(void);
-void Hu3DParticleHookSet(void);
-void Hu3DParticleCntSet(void);
-void Hu3DParticleAttrSet(void);
-void Hu3DParticleAttrReset(void);
-void Hu3DParticleAnimModeSet(void);
+void fn_8003216C(void);
+void fn_800324E0(void);
+void fn_80032548(void);
+void fn_800325B0(void);
+void fn_80032620(void);
+void fn_8003269C(void);
+void fn_800326D0(void);
+void fn_80032780(void);
+void fn_80032704(void);
+void fn_80032740(void);
+void fn_800327B8(void);
 void Hu3DParManInit(void);
-void Hu3DParManCreate(void);
-void Hu3DParManKill(void);
-void Hu3DParManAllKill(void);
+void fn_800334F4(void);
+void fn_8003383C(void);
+void fn_800339C8(void);
 void Hu3DParManPtrGet(void);
 void Hu3DParManAttrSet(void);
 void Hu3DParManAttrReset(void);
@@ -287,82 +287,82 @@ void Hu3DParManModelIDGet(void);
 void Hu3DParManLink(void);
 void Hu3DParManTimeLimitSet(void);
 void Hu3DParManColorSet(void);
-void Hu3DParManLayerSet(void);
-void Hu3DWaterCreate(void);
-void Hu3DWaterTexPosSet(void);
-void Hu3DWaterTexScaleSet(void);
-void Hu3DWaterPadYSet(void);
-void Hu3DWaterGlowSet(void);
-void Hu3DWaterIndTexMtxSet(void);
-void Hu3DWaterHiliteSet(void);
-void Hu3DWaterHiliteTPLvlSet(void);
-void Hu3DWaterCameraSet(void);
-void Hu3DWaterWaveCreate(void);
-void Hu3DMotionCreate(void);
-void Hu3DMotionInit(void);
-void Hu3DMotionModelCreate(void);
-void Hu3DMotionKill(void);
-void Hu3DMotionAllKill(void);
-void Hu3DMotionSet(void);
-void Hu3DMotionExec(void);
-void Hu3DSubMotionExec(void);
-void Hu3DMotionNext(void);
-void Hu3DMotionTimeSet(void);
-void Hu3DMotionTimeGet(void);
-void Hu3DMotionMaxTimeGet(void);
-void Hu3DMotionStartEndSet(void);
+void fn_80033E64(void);
+void fn_80034F8C(void);
+void fn_800352BC(void);
+void fn_800352E4(void);
+void fn_8003530C(void);
+void fn_8003532C(void);
+void fn_8003536C(void);
+void fn_800353FC(void);
+void fn_80035438(void);
+void fn_8003546C(void);
+void fn_8003548C(void);
+void fn_8002C4C0(void);
+void fn_8002C47C(void);
+void fn_8002C564(void);
+void fn_8002C624(void);
+void fn_8002C7BC(void);
+void fn_8002C95C(void);
+void fn_8002E4C4(void);
+void fn_8002ECDC(void);
+void fn_8002DCE0(void);
+void fn_8002D414(void);
+void fn_8002D4E0(void);
+void fn_8002D530(void);
+void fn_8002D730(void);
 void Hu3DMotionMotionMaxTimeGet(void);
-void Hu3DMotionEndCheck(void);
-void Hu3DMotionShiftSet(void);
-void Hu3DMotionIDGet(void);
-void Hu3DMotionShiftIDGet(void);
-void Hu3DMotionShiftTimeGet(void);
-void Hu3DMotionShiftMaxTimeGet(void);
-void Hu3DMotionShiftStartEndSet(void);
-void Hu3DMotionShiftSpeedSet(void);
-void Hu3DMotionSpeedSet(void);
-void Hu3DMotionShapeSpeedSet(void);
-void Hu3DMotionShapeTimeSet(void);
-void Hu3DMotionShapeTimeGet(void);
-void Hu3DMotionNoMotSet(void);
+void fn_8002D75C(void);
+void fn_8002CCC0(void);
+void fn_8002D3C4(void);
+void fn_8002D3EC(void);
+void fn_8002D508(void);
+void fn_8002D5D4(void);
+void fn_8002D678(void);
+void fn_8002D894(void);
+void fn_8002D86C(void);
+void fn_8002CF70(void);
+void fn_8002CF98(void);
+void fn_8002CFCC(void);
+void fn_8002D8BC(void);
 void Hu3DMotionNoMotReset(void);
-void Hu3DMotionForceSet(void);
-void Hu3DMotionShapeSet(void);
-void Hu3DMotionShapeIDGet(void);
-void Hu3DMotionShapeMaxTimeGet(void);
-void Hu3DMotionClusterSet(void);
-void Hu3DMotionClusterNoSet(void);
-void Hu3DMotionShapeReset(void);
-void Hu3DMotionClusterReset(void);
-void Hu3DJointMotion(void);
-void Hu3DMotionOverlaySet(void);
-void Hu3DMotionOverlayReset(void);
-void Hu3DMotionOverlayTimeGet(void);
-void Hu3DMotionOverlayTimeSet(void);
-void Hu3DMotionOverlaySpeedSet(void);
-void Hu3DMotionOverlayMaxTimeGet(void);
-void Hu3DMotionOverlayEndCheck(void);
-void Hu3DModelObjDrawInit(void);
-void Hu3DModelObjDraw(void);
-void Hu3DModelObjPtrDraw(void);
-void Hu3DMotionCalc(void);
-void Hu3DMotionShapeStartEndSet(void);
-void Hu3DSubMotionSet(void);
-void Hu3DSubMotionReset(void);
-void Hu3DSubMotionTimeSet(void);
-void Hu3DMotionShiftTimeSet(void);
-void Hu3DMotionClusterSpeedSet(void);
-void Hu3DMotionClusterTimeSet(void);
-void Hu3DMotionClusterMaxTimeGet(void);
-void Hu3DMotionAttrSet(void);
-void Hu3DMotionAttrReset(void);
-void Hu3DMotionTimingHookSet(void);
+void fn_8002DA64(void);
+void fn_8002CEB0(void);
+void fn_8002CF58(void);
+void fn_8002CFE4(void);
+void fn_8002D050(void);
+void fn_8002D160(void);
+void fn_8002D22C(void);
+void fn_8002D248(void);
+void fn_80030458(void);
+void fn_8002CAA8(void);
+void fn_8002CAF0(void);
+void fn_8002CB0C(void);
+void fn_8002CB64(void);
+void fn_8002CB98(void);
+void fn_8002CB24(void);
+void fn_8002CBB0(void);
+void fn_8002472C(void);
+void fn_800247C4(void);
+void fn_80024850(void);
+void fn_80030644(void);
+void fn_8002D024(void);
+void fn_800308F0(void);
+void fn_800309F4(void);
+void fn_80030A4C(void);
+void fn_80030A88(void);
+void fn_8002D30C(void);
+void fn_8002D340(void);
+void fn_8002D374(void);
+void fn_8002DC74(void);
+void fn_8002DCA8(void);
+void fn_8002DB98(void);
 void Hu3DMotionTimingHookReset(void);
-void Hu3DMatLightSet(void);
-void Hu3DFbCopyLayerSet(void);
-void Hu3DFbCopyExec(void);
-void Hu3DZClear(void);
-void Hu3DZClearLayerSet(void);
+void fn_8001CDF0(void);
+void fn_8002BDB4(void);
+void fn_8002BCDC(void);
+void fn_8002BF48(void);
+void fn_8002C2AC(void);
 void CamMotionEx(void);
 void CamMotionEx2(void);
 void CamMotionExPathGet(void);
@@ -456,40 +456,40 @@ void espBankSet(void);
 void espDrawNoSet(void);
 void espPriSet(void);
 void HuPrcInit(void);
-void HuPrcCall(void);
-void HuPrcCreate(void);
+void fn_8000E37C(void);
+void fn_8000D818(void);
 void HuPrcKill(void);
 void HuPrcEnd(void);
 void HuPrcWakeup(void);
 void HuPrcSleep(void);
 void HuPrcVSleep(void);
-void HuPrcCurrentGet(void);
+void fn_8000DD9C(void);
 void HuPrcDestructorSet(void);
 void HuPrcDestructorSet2(void);
-void HuPrcChildCreate(void);
+void fn_8000DAC0(void);
 void HuPrcChildLink(void);
 void HuPrcChildUnlink(void);
 void HuPrcChildKill(void);
 void HuPrcMemAlloc(void);
 void HuPrcMemFree(void);
 void Hu3DParManVacumeSet(void);
-void HuDataInit(void);
-void HuDataDirRead(void);
-void HuDataRead(void);
-void HuDataReadNum(void);
+void fn_80007668(void);
+void fn_800078C8(void);
+void fn_800082D0(void);
+void fn_80008634(void);
 void HuDataReadMulti(void);
-void HuDataDirReadAsync(void);
-void HuDataDirReadNumAsync(void);
-void HuDataSelHeapRead(void);
-void HuDataSelHeapReadNum(void);
-void HuDataGetSize(void);
-void HuDataDirClose(void);
-void HuDataDirCloseNum(void);
-void HuDataDirCloseAll(void);
-void HuDataClose(void);
+void fn_80007F20(void);
+void fn_800080C8(void);
+void fn_800089EC(void);
+void fn_80008DD0(void);
+void fn_8000963C(void);
+void fn_800097F4(void);
+void fn_800098E4(void);
+void fn_80009A30(void);
+void fn_80009740(void);
 void HuDataCloseMulti(void);
-void HuDataReadNumHeapShortForce(void);
-void HuDataDirCancel(void);
+void fn_80009B04(void);
+void fn_80007DE4(void);
 void ARRegisterDMACallback(void);
 void ARGetDMAStatus(void);
 void ARStartDMA(void);
@@ -546,18 +546,18 @@ void HuSpr3DRotSet(void);
 void HuSpr3DFovSet(void);
 void HuSprVtxColorSet(void);
 void HuSprVtxColorReset(void);
-void HuMemMemoryNumSet(void);
+void fn_8000C200(void);
 void HuARMalloc(void);
 void HuARFree(void);
 void HuAR_DVDtoARAM(void);
 void HuAR_MRAMtoARAM(void);
 void HuAR_MRAMtoARAM2(void);
-void HuAR_ARAMtoMRAM(void);
-void HuAR_ARAMtoMRAMNum(void);
-void HuARDMACheck(void);
+void fn_80055D40(void);
+void fn_80055D6C(void);
+void fn_80055FB4(void);
 void HuARDirCheck(void);
 void HuARDirFree(void);
-void HuAR_ARAMtoMRAMFileRead(void);
+void fn_8005607C(void);
 void HuAudFXListnerSetEX(void);
 void HuWindowInit(void);
 void HuWinInit(void);
@@ -627,84 +627,84 @@ void HuWinFrameSet(void);
 void HuWinCallbackStub(void);
 void HuWinCallbackSet(void);
 void HuWinPadMaskSet(void);
-void CharInit(void);
-void CharMotionInit(void);
-void CharMotionInitAsync(void);
-void CharDataClose(void);
-void CharModelKill(void);
-void CharClose(void);
-void CharModelCreate(void);
-void CharMotionCreate(void);
-void CharMotionNoSet(void);
-void CharMotionKill(void);
-void CharMotionDataClose(void);
-void CharModelDataClose(void);
-void CharMotionAMemPGet(void);
-void CharMotionSet(void);
-void CharMotionTimeSet(void);
-void CharMotionTimeGet(void);
-void CharMotionMaxTimeGet(void);
-void CharMotionEndCheck(void);
-void CharMotionShiftIDGet(void);
-void CharMotionShiftSet(void);
-void CharMotionShiftTimeGet(void);
-void CharMotionSpeedSet(void);
-void CharModelHookDustCreate(void);
-void CharEffectSmokeCreate(void);
-void CharEffectSmokeCreateScale(void);
-void CharEffectCoinGlowCreate(void);
-void CharModelHitCreate(void);
-void CharEffectHitCreate(void);
-void CharEffectShoeHitCreate(void);
-void CharModelShoeHitCreate(void);
-void GWCharColorGet(void);
-void CharEffectLayerSet(void);
+void fn_80056428(void);
+void fn_800565B4(void);
+void fn_8005664C(void);
+void fn_800567D8(void);
+void fn_8005BB8C(void);
+void fn_8005702C(void);
+void fn_80057068(void);
+void fn_8005B0B8(void);
+void fn_8005B398(void);
+void fn_8005B420(void);
+void fn_8005B4BC(void);
+void fn_8005B7BC(void);
+void fn_80056598(void);
+void fn_8005BE80(void);
+void fn_8005C16C(void);
+void fn_8005C1B8(void);
+void fn_8005C1FC(void);
+void fn_8005C240(void);
+void fn_8005C284(void);
+void fn_8005C2C8(void);
+void fn_8005C34C(void);
+void fn_8005C390(void);
+void fn_8005C7A4(void);
+void fn_8005D404(void);
+void fn_8005CF90(void);
+void fn_8005D5A0(void);
+void fn_8005D738(void);
+void fn_8005D864(void);
+void fn_8005DB3C(void);
+void fn_8005DA5C(void);
+void fn_8003C878(void);
+void fn_8005DDEC(void);
 void CharEyeBmpNameTbl(void);
-void CharModelEyeBmpGet(void);
-void CharMotionVoiceOnSet(void);
-void CharNpcDustVoiceOffSet(void);
-void CharModelStepSet(void);
-void CharModelVoicePanAutoSet(void);
-void CharModelVoiceFlagSet(void);
-void CharModelLandDustCreate(void);
-void CharModelAttrSet(void);
-void CharModelAttrReset(void);
-void CharMotionStartEndSet(void);
-void CharModelHeightGet(void);
-void CharModelMotListCreate(void);
-void CharEffectDustCreate(void);
-void CharEffectCryCreate(void);
-void CharModelCryCreate(void);
-void CharModelTimingHookNoGet(void);
-void CharMotionUpdateSet(void);
-void CharModelVoicePanSet(void);
-void CharModelVoiceVolSet(void);
+void fn_8005C074(void);
+void fn_8005DEB0(void);
+void fn_8005E1D8(void);
+void fn_8005F77C(void);
+void fn_8005DF74(void);
+void fn_8005DFC0(void);
+void fn_8005F968(void);
+void fn_8005C430(void);
+void fn_8005C47C(void);
+void fn_8005C3DC(void);
+void fn_8005C4C8(void);
+void fn_8005C4E4(void);
+void fn_8006065C(void);
+void fn_800608C4(void);
+void fn_80060B10(void);
+void fn_8005C750(void);
+void fn_8005E070(void);
+void fn_80060F14(void);
+void fn_80060F40(void);
 void CharWinLoseVoicePlay(void);
-void CharLoseVoicePlay(void);
-void CharMotionTotalTimeGet(void);
-void CharMotionExtraTimeGet(void);
-void CharLightCreate(void);
-void CharLightCreateV(void);
-void CharLightSpotSet(void);
-void CharLightInfinitytSet(void);
-void CharLightPointSet(void);
-void CharLightColorSet(void);
-void CharLightPosAimSetV(void);
-void CharLightPosAimSet(void);
-void CharLightStaticSet(void);
-void CharEffectWarnCreate(void);
-void CharMotionLoad(void);
-void CharNpcDustSet(void);
+void fn_800611E4(void);
+void fn_800613C0(void);
+void fn_800614A4(void);
+void fn_800615B4(void);
+void fn_800614AC(void);
+void fn_80061728(void);
+void fn_80061814(void);
+void fn_80061904(void);
+void fn_80061A04(void);
+void fn_80061AE4(void);
+void fn_80061BE0(void);
+void fn_80061D04(void);
+void fn_80061E00(void);
+void fn_80056B7C(void);
+void fn_8005E128(void);
 void HuPrcSetStat(void);
 void HuPrcResetStat(void);
-void omGameSysInit(void);
+void fn_80069F1C(void);
 void omResetStatBit(void);
-void omCurrentOvlGet(void);
-void omPauseChk(void);
+void fn_8003B774(void);
+void fn_8003B748(void);
 void omOvlHisChg(void);
 void omOvlHisGet(void);
-void omovlevtno(void);
-void omovlstat(void);
+void lbl_802C0248(void);
+void lbl_802C0240(void);
 void AddX(void);
 void AddZ(void);
 void MapObject(void);
@@ -716,26 +716,26 @@ void MapPos(void);
 void HitFaceVec(void);
 void HitFace(void);
 void HitFaceCount(void);
-void GwPlayer(void);
-void GwSystem(void);
-void GWSinglePrizeFlagSet(void);
-void GWSinglePrizeFlagGet(void);
-void GWSingleDataInit(void);
-void GWSinglePrizeSaveFlagSet(void);
-void GWSinglePrizeSaveFlagGet(void);
-void GWBankStarAdd(void);
-void GWBankStarSub(void);
-void GWBankStarGet(void);
-void GWBankStarAwardGet(void);
-void GWBankStarAwardReset(void);
-void GWBankFlagSet(void);
-void GWBankFlagReset(void);
-void GWBankFlagGet(void);
-void GWSingleMgFlagGet(void);
-void GWSingleMgWinNumGet(void);
-void GWSingleMgWinNumSet(void);
-void GWSingleMgRecordNumGet(void);
-void GWSingleMgRecordNumSet(void);
+void lbl_80265750(void);
+void lbl_80265B70(void);
+void fn_8003CFC4(void);
+void fn_8003CFF4(void);
+void fn_8003D028(void);
+void fn_8003D070(void);
+void fn_8003D0A8(void);
+void fn_8003D174(void);
+void fn_8003D200(void);
+void fn_8003D248(void);
+void fn_8003D258(void);
+void fn_8003D268(void);
+void fn_8003D27C(void);
+void fn_8003D2B4(void);
+void fn_8003D2F0(void);
+void fn_8003D12C(void);
+void fn_8003D43C(void);
+void fn_8003D444(void);
+void fn_8003D44C(void);
+void fn_8003D454(void);
 void HuTHPSprCreateVol(void);
 void HuTHPSprCreate(void);
 void HuTHP3DCreateVol(void);
@@ -804,9 +804,9 @@ void curSlotNo(void);
 void UnMountCnt(void);
 void SLCommonSaveCopy(void);
 void SLCommonLoadCopy(void);
-void _CheckFlag(void);
-void _SetFlag(void);
-void _ClearFlag(void);
+void fn_8006A124(void);
+void fn_8006A1C4(void);
+void fn_8006A268(void);
 void MgDataTbl(void);
 void MgModeSubMode(void);
 void MgModeScore(void);
@@ -824,40 +824,40 @@ void MgSubModeGet(void);
 void MgBattleOrder(void);
 void MgDecaScoreCalc(void);
 void MgInstExitF(void);
-void GWRecordSet(void);
-void GWRecordGet(void);
-void GWBoardPlayNumAdd(void);
-void GWBoardPlayNumSet(void);
-void GWBoardPlayNumGet(void);
-void GWCharPlayNumInc(void);
-void GWCharPlayNumGet(void);
-void GWCharPlayNumSet(void);
-void GWBoardMaxStarSet(void);
-void GWBoardMaxStarGet(void);
-void GWBoardMaxCoinSet(void);
-void GWBoardMaxCoinGet(void);
-void GWPlayerStarAdd(void);
+void fn_8003C80C(void);
+void fn_8003C860(void);
+void fn_8003CAA4(void);
+void fn_8003CA78(void);
+void fn_8003CAE8(void);
+void fn_8003CB98(void);
+void fn_8003CBFC(void);
+void fn_8003CC1C(void);
+void fn_8003CB00(void);
+void fn_8003CB28(void);
+void fn_8003CB4C(void);
+void fn_8003CB74(void);
+void fn_8003CF18(void);
 void GWPlayerStarGet(void);
-void GWPlayerStarSet(void);
-void GWPlayerCoinAdd(void);
-void GWPlayerCoinSet(void);
-void GWPlayerCoinGet(void);
+void fn_8003CEAC(void);
+void fn_8003CDDC(void);
+void fn_8003CD2C(void);
+void fn_8003CD14(void);
 void GWMgCustomReset(void);
 void GWMgCustomSet(void);
 void GWMgCustomGet(void);
-void GWMgUnlockGet(void);
-void GWMgPlayNumSet(void);
-void GWMgPlayNumGet(void);
-void GWMgPlayNumAdd(void);
-void GWMiracleBookFlagSet(void);
-void GWMiracleBookFlagGet(void);
-void GWMikeActRecordSet(void);
-void GWMikeActRecordGet(void);
-void GWSaveDebugSet(void);
+void fn_8003CC40(void);
+void fn_8003D3A0(void);
+void fn_8003D3A8(void);
+void fn_8003D3B0(void);
+void fn_8003D32C(void);
+void fn_8003D364(void);
+void fn_8003D404(void);
+void fn_8003D420(void);
+void fn_8003D45C(void);
 void MgModeWorkInt(void);
 void MgModeWorkFloat(void);
-void GwMgDecaScore(void);
-void GwLanguage(void);
+void lbl_802669DC(void);
+void lbl_802BF788(void);
 void fmod(void);
 void _savegpr_15(void);
 void _restgpr_15(void);
@@ -866,7 +866,7 @@ void _restgpr_16(void);
 void _savegpr_14(void);
 void _restgpr_14(void);
 void omDBGMenuButton(void);
-void omDBGSystemKeyCheckSetup(void);
+void fn_8003E12C(void);
 void msmSeSetListener(void);
 void msmSeUpdataListener(void);
 void msmSeGetIndexPtr(void);
@@ -875,9 +875,9 @@ void msmSysGetOutputMode(void);
 void msmSysSetGroupLoadMode(void);
 void WipeCreate(void);
 void WipeColorSet(void);
-void omOvlReturnEx(void);
-void HuDataGetAsyncStat(void);
-void omVibrate(void);
+void fn_8003A5E4(void);
+void fn_80008270(void);
+void fn_8006A030(void);
 void GameMesOvlPrev(void);
 void MgTimerCreate(void);
 void MgTimerKill(void);
@@ -919,95 +919,95 @@ void MgScoreColorSet(void);
 void MgScoreDigitScaleSet(void);
 void MgScorePriSet(void);
 void MgScoreUnitBankSet(void);
-void MgSeqCreate(void);
-void MgSeqCreatePrio(void);
-void MgSeqKill(void);
-void MgSeqModeGet(void);
-void MgSeqModeNext(void);
-void MgSeqModeSet(void);
-void MgSeqRecordSet(void);
-void MgSeqModeChangeOff(void);
-void MgSeqModeChangeOn(void);
-void MgSeqStatGet(void);
-void MgSeqWinnerSet(void);
-void MgSeqDrawSet(void);
+void fn_80070788(void);
+void fn_800707B4(void);
+void fn_80070994(void);
+void fn_80071A8C(void);
+void fn_80071A9C(void);
+void fn_80071AC4(void);
+void fn_80071BAC(void);
+void fn_80071B08(void);
+void fn_80071B30(void);
+void fn_80071C08(void);
+void fn_80071C18(void);
+void fn_80071C70(void);
 void fn_80071CCC(void);
-void MgSeqModeDelaySet(void);
-void MgSeqModeHookAdd(void);
-void MgSeqModeHookReset(void);
-void MgSeqTimerValueGet(void);
-void MgSeqFrameNoGet(void);
-void MgSeqFrameNoSet(void);
-void MgSeqGameMesIdGet(void);
-void MgSeqTimerKill(void);
-void MgSeqStatBitSet(void);
-void MgSeqStatBitReset(void);
-void omCameraViewInit(void);
-void omCameraViewSetMulti(void);
-void omCameraViewSet(void);
-void omCameraViewMoveSimpleMulti(void);
-void omCameraViewMoveSimple(void);
-void omCameraViewMoveMulti(void);
-void omCameraViewMove(void);
-void omCameraViewCheck(void);
-void MgActorObjectSetup(void);
-void MgActorColMapInit(void);
-void MgPlayerPadSet(void);
-void MgPlayerModeFuncSet(void);
-void MgPlayerCreate(void);
-void MgPlayerCreateJumpAlt(void);
-void MgActorCreate(void);
-void MgActorKill(void);
-void MgActorExec(void);
-void MgPlayerModeLandSet(void);
-void MgPlayerModeSet(void);
-void MgPlayerComStkOn(void);
-void MgPlayerComStkOff(void);
-void MgPlayerVecChase(void);
-void MgActorVecChase(void);
-void MgActorColAttrSet(void);
-void MgActorColAttrReset(void);
-void MgActorColAttrGet(void);
-void MgActorColMapPolyGet(void);
-void MgActorPosSet(void);
-void MgActorPosSetRaw(void);
-void MgActorPosGet(void);
-void MgPlayerDespawn(void);
-void MgPlayerSpawn(void);
-void MgPlayerColDisable(void);
-void MgPlayerColEnable(void);
-void MgPlayerVibrateCreate(void);
-void MgPlayerVibrateKill(void);
-void MgActorColAttrParamSet(void);
-void MgActorColAttrParamGet(void);
-void MgActorColMapMaskSet(void);
-void MgActorColMapMaskGet(void);
-void MgActorColMaskSet(void);
-void MgActorColMaskGet(void);
-void MgPlayerAttrCheck(void);
-void MgPlayerAttrSet(void);
-void MgPlayerAttrReset(void);
-void MgPlayerModeAttrCheck(void);
-void MgPlayerModeAttrReset(void);
-void MgPlayerModeAttrSet(void);
-void MgPlayerVibAttrCheck(void);
-void MgPlayerVibAttrSet(void);
-void MgPlayerStunSet(void);
-void MgActorColCylReset(void);
-void MgActorColCylSet(void);
-void MgActorColCodeGet(void);
-void MgActorColNormalGet(void);
-void MgActorRotYSet(void);
-void MgActorRotYGet(void);
-void MgActorPushSet(void);
-void MgPlayerPosSet(void);
-void MgActorGravitySet(void);
-void MgActorVelYSet(void);
-void MgActorColMeshGet(void);
-void MgActorVelSet(void);
-void MgActorColBounceSet(void);
-void CharModelFileNumGet(void);
-void CharMotionFileNumGet(void);
+void fn_80071CE8(void);
+void fn_80071D20(void);
+void fn_80071DC0(void);
+void fn_80071B58(void);
+void fn_80071DE4(void);
+void fn_80071DEC(void);
+void fn_80071DF4(void);
+void fn_80071DFC(void);
+void fn_80071E60(void);
+void fn_80071E78(void);
+void fn_8003E440(void);
+void fn_8003E488(void);
+void fn_8003E5A4(void);
+void fn_8003E8E4(void);
+void fn_8003EA54(void);
+void fn_8003E62C(void);
+void fn_8003E7A0(void);
+void fn_8003EB94(void);
+void fn_80080418(void);
+void fn_800804E8(void);
+void fn_80080520(void);
+void fn_800806DC(void);
+void fn_80080728(void);
+void fn_800808C0(void);
+void fn_80080B04(void);
+void fn_80080F38(void);
+void fn_800856A8(void);
+void fn_8007EDE8(void);
+void fn_8007EEBC(void);
+void fn_8007E818(void);
+void fn_8007E888(void);
+void fn_8007E8B4(void);
+void fn_8007EB24(void);
+void fn_800805CC(void);
+void fn_8008062C(void);
+void fn_8008068C(void);
+void fn_80086910(void);
+void fn_80086AA8(void);
+void fn_80086B04(void);
+void fn_80086BC8(void);
+void fn_80086E3C(void);
+void fn_80086F00(void);
+void fn_80086F44(void);
+void fn_80086FA0(void);
+void fn_8007ED60(void);
+void fn_8007EDBC(void);
+void fn_800870A4(void);
+void fn_800870D4(void);
+void fn_80080D7C(void);
+void fn_80080DAC(void);
+void fn_80080DD4(void);
+void fn_80080E38(void);
+void fn_8008717C(void);
+void fn_80087158(void);
+void fn_80087168(void);
+void fn_80087148(void);
+void fn_80087134(void);
+void fn_80087124(void);
+void fn_80087114(void);
+void fn_80087104(void);
+void fn_8008718C(void);
+void fn_80080E8C(void);
+void fn_80080EBC(void);
+void fn_80086DD0(void);
+void fn_80086D54(void);
+void fn_80086CA8(void);
+void fn_80086CB0(void);
+void fn_80086C8C(void);
+void fn_8008697C(void);
+void fn_80086CBC(void);
+void fn_80086CC4(void);
+void fn_80086CE8(void);
+void fn_80086CCC(void);
+void fn_80080EEC(void);
+void fn_80060E50(void);
+void fn_80060EF0(void);
 void lbl_802BF860(void);
 void lbl_802BF864(void);
 void lbl_802BF868(void);
@@ -1029,8 +1029,8 @@ void __ptmf_scall(void);
 void __dla__FPv(void);
 void __ptmf_null(void);
 void __ptmf_cmpr(void);
-void HuDataDirCancelAsync(void);
-void HuDataDirCloseAsync(void);
+void fn_80007E6C(void);
+void fn_80007EAC(void);
 void HuTHPProcCheck(void);
 void mbSaveInit(void);
 void mbSavePartyInit(void);
@@ -1038,7 +1038,7 @@ void mbSaveStoryInit(void);
 void fn_80146BA0(void);
 void fn_80146C88(void);
 void HuLoadProcStart(void);
-void GwMgNightF(void);
+void lbl_802C0278(void);
 void HuMCSysInit(void);
 void HuMCInit(void);
 void HuMCClose(void);
@@ -1606,7 +1606,7 @@ void mbPausePanelAnmNoSet(void);
 void mbPausePanelGrowSet(void);
 void mbPausePanelShrinkSet(void);
 void mbPauseGuideMoveSet(void);
-void mbPadDStkRepGetAll(void);
+void fn_80184DD4(void);
 void mbPadBtnDownGetAll(void);
 void mbev_Last5(void);
 void mbDiceInit(void);
@@ -5092,7 +5092,7 @@ asm void _kerent(void) {
     entry _kerjmp_GameMesGet
     b GameMesGet
     entry _kerjmp_omObjManPause
-    b omObjManPause
+    b fn_8003B674
     entry _kerjmp_GameMesInit
     b GameMesInit
     entry _kerjmp_GameMesCreate
@@ -5110,21 +5110,21 @@ asm void _kerent(void) {
     entry _kerjmp_GameMesStatGet
     b GameMesStatGet
     entry _kerjmp_Center
-    b Center
+    b lbl_80266A4C
     entry _kerjmp_CRotM
-    b CRotM
+    b lbl_80266A58
     entry _kerjmp_CenterM
-    b CenterM
+    b lbl_80266B18
     entry _kerjmp_CZoomM
-    b CZoomM
+    b lbl_80266BD8
     entry _kerjmp_omOutViewMulti
-    b omOutViewMulti
+    b fn_8003DAA4
     entry _kerjmp_omOutView
-    b omOutView
+    b fn_8003D4FC
     entry _kerjmp_omAddObjEx
-    b omAddObjEx
+    b fn_8003AB38
     entry _kerjmp_omInitObjMan
-    b omInitObjMan
+    b fn_8003A8BC
     entry _kerjmp_rand8
     b rand8
     entry _kerjmp_frandmod
@@ -5162,121 +5162,121 @@ asm void _kerent(void) {
     entry _kerjmp_GameMesStrWinCreate
     b GameMesStrWinCreate
     entry _kerjmp_Hu3DCameraLayerHookSet
-    b Hu3DCameraLayerHookSet
+    b fn_8002583C
     entry _kerjmp_Hu3DCameraLayerHookReset
-    b Hu3DCameraLayerHookReset
+    b fn_800258A8
     entry _kerjmp_Hu3DLayerHookSet
-    b Hu3DLayerHookSet
+    b fn_80025918
     entry _kerjmp_Hu3DLayerHookReset
-    b Hu3DLayerHookReset
+    b fn_80025980
     entry _kerjmp_Hu3DNoSyncSet
     b Hu3DNoSyncSet
     entry _kerjmp_Hu3DModelCreate
-    b Hu3DModelCreate
+    b fn_80025A04
     entry _kerjmp_Hu3DModelLink
-    b Hu3DModelLink
+    b fn_80025D4C
     entry _kerjmp_Hu3DHookFuncCreate
-    b Hu3DHookFuncCreate
+    b fn_800260F4
     entry _kerjmp_Hu3DModelPosSet
-    b Hu3DModelPosSet
+    b fn_80026760
     entry _kerjmp_Hu3DModelPosSetV
-    b Hu3DModelPosSetV
+    b fn_80026790
     entry _kerjmp_Hu3DModelRotSet
-    b Hu3DModelRotSet
+    b fn_80026808
     entry _kerjmp_Hu3DModelRotSetV
-    b Hu3DModelRotSetV
+    b fn_80026838
     entry _kerjmp_Hu3DModelScaleSet
-    b Hu3DModelScaleSet
+    b fn_800268B0
     entry _kerjmp_Hu3DModelScaleSetV
-    b Hu3DModelScaleSetV
+    b fn_800268E0
     entry _kerjmp_Hu3DModelPosGet
-    b Hu3DModelPosGet
+    b fn_800267CC
     entry _kerjmp_Hu3DModelRotGet
-    b Hu3DModelRotGet
+    b fn_80026874
     entry _kerjmp_Hu3DModelScaleGet
-    b Hu3DModelScaleGet
+    b fn_8002691C
     entry _kerjmp_Hu3DModelKill
-    b Hu3DModelKill
+    b fn_800262D0
     entry _kerjmp_Hu3DModelAllKill
-    b Hu3DModelAllKill
+    b fn_80026648
     entry _kerjmp_Hu3DModelAttrSet
-    b Hu3DModelAttrSet
+    b fn_800269E8
     entry _kerjmp_Hu3DModelAttrReset
-    b Hu3DModelAttrReset
+    b fn_80026A44
     entry _kerjmp_Hu3DModelAttrGet
-    b Hu3DModelAttrGet
+    b fn_80026A90
     entry _kerjmp_Hu3DModelMotionAttrGet
-    b Hu3DModelMotionAttrGet
+    b fn_80026AB8
     entry _kerjmp_Hu3DBGColorSet
     b Hu3DBGColorSet
     entry _kerjmp_Hu3DModelCameraSet
-    b Hu3DModelCameraSet
+    b fn_80026B64
     entry _kerjmp_Hu3DModelLayerSet
-    b Hu3DModelLayerSet
+    b fn_80026B8C
     entry _kerjmp_Hu3DModelTPLvlSet
-    b Hu3DModelTPLvlSet
+    b fn_80026CBC
     entry _kerjmp_Hu3DModelHookSet
-    b Hu3DModelHookSet
+    b fn_8002741C
     entry _kerjmp_Hu3DModelHookReset
-    b Hu3DModelHookReset
+    b fn_80027508
     entry _kerjmp_Hu3DModelHookObjReset
-    b Hu3DModelHookObjReset
+    b fn_800275B4
     entry _kerjmp_Hu3DModelAmbSet
-    b Hu3DModelAmbSet
+    b fn_800273EC
     entry _kerjmp_Hu3DModelShadowDispOn
-    b Hu3DModelShadowDispOn
+    b fn_80026F9C
     entry _kerjmp_Hu3DModelShadowDispOff
-    b Hu3DModelShadowDispOff
+    b fn_80026FCC
     entry _kerjmp_Hu3DModelProjectionSet
-    b Hu3DModelProjectionSet
+    b fn_8002769C
     entry _kerjmp_Hu3DModelProjectionReset
-    b Hu3DModelProjectionReset
+    b fn_800276DC
     entry _kerjmp_Hu3DModelObjPosGet
     b Hu3DModelObjPosGet
     entry _kerjmp_Hu3DModelObjMtxGet
-    b Hu3DModelObjMtxGet
+    b fn_80023398
     entry _kerjmp_Hu3DModelHiliteTypeSet
-    b Hu3DModelHiliteTypeSet
+    b fn_8002771C
     entry _kerjmp_Hu3DModelReflectTypeSet
-    b Hu3DModelReflectTypeSet
+    b fn_800277D0
     entry _kerjmp_Hu3DModelHiliteMapSet
-    b Hu3DModelHiliteMapSet
+    b fn_80026DB0
     entry _kerjmp_Hu3DReflectModelSet
-    b Hu3DReflectModelSet
+    b fn_800277FC
     entry _kerjmp_Hu3DModelMatHookSet
-    b Hu3DModelMatHookSet
+    b fn_80027884
     entry _kerjmp_Hu3DModelDebug
-    b Hu3DModelDebug
+    b fn_8002C31C
     entry _kerjmp_Hu3DModelMtxSet
-    b Hu3DModelMtxSet
+    b fn_80026958
     entry _kerjmp_Hu3DModelMtxGet
-    b Hu3DModelMtxGet
+    b fn_800269A0
     entry _kerjmp_Hu3DModelShadowMapTPLvlSet
-    b Hu3DModelShadowMapTPLvlSet
+    b fn_800271F0
     entry _kerjmp_Hu3DModelShadowMapObjTPLvlSet
-    b Hu3DModelShadowMapObjTPLvlSet
+    b fn_80027290
     entry _kerjmp_Hu3DModelDieCreate
-    b Hu3DModelDieCreate
+    b fn_80036DF8
     entry _kerjmp_Hu3DModelLinkDieCreate
-    b Hu3DModelLinkDieCreate
+    b fn_80036EBC
     entry _kerjmp_HuPadInit
-    b HuPadInit
+    b fn_80005C98
     entry _kerjmp_HuPadRead
-    b HuPadRead
+    b fn_80005D90
     entry _kerjmp_HuPadRumbleSet
-    b HuPadRumbleSet
+    b fn_80006E70
     entry _kerjmp_HuPadRumbleStop
-    b HuPadRumbleStop
+    b fn_80006ECC
     entry _kerjmp_HuPadRumbleAllStop
-    b HuPadRumbleAllStop
+    b fn_80006F3C
     entry _kerjmp_HuPadStatGet
     b HuPadStatGet
     entry _kerjmp_HuPadRumbleGet
-    b HuPadRumbleGet
+    b fn_80006FC0
     entry _kerjmp_HuPadStkDirGet
-    b HuPadStkDirGet
+    b fn_80006B90
     entry _kerjmp_HuPadSubStkDirGet
-    b HuPadSubStkDirGet
+    b fn_80006D00
     entry _kerjmp_Hu3DCameraCreate
     b Hu3DCameraCreate
     entry _kerjmp_Hu3DCameraPerspectiveSet
@@ -5290,7 +5290,7 @@ asm void _kerent(void) {
     entry _kerjmp_Hu3DCameraKill
     b Hu3DCameraKill
     entry _kerjmp_Hu3DCameraPosGet
-    b Hu3DCameraPosGet
+    b fn_80027CD0
     entry _kerjmp_Hu3DCameraPosSetV
     b Hu3DCameraPosSetV
     entry _kerjmp_Hu3DCameraAllKill
@@ -5298,29 +5298,29 @@ asm void _kerent(void) {
     entry _kerjmp_Hu3DCameraSet
     b Hu3DCameraSet
     entry _kerjmp_Hu3DCameraMotionOn
-    b Hu3DCameraMotionOn
+    b fn_80028478
     entry _kerjmp_Hu3DCameraMotionStart
-    b Hu3DCameraMotionStart
+    b fn_800284C8
     entry _kerjmp_Hu3DCameraMotionOff
-    b Hu3DCameraMotionOff
+    b fn_8002858C
     entry _kerjmp_Hu3DModelCameraCreate
-    b Hu3DModelCameraCreate
+    b fn_800283F4
     entry _kerjmp_Hu3DModelCameraInfoSet
-    b Hu3DModelCameraInfoSet
+    b fn_8002803C
     entry _kerjmp_Hu3DCameraPerspectiveGet
-    b Hu3DCameraPerspectiveGet
+    b fn_80027D8C
     entry _kerjmp_Hu3DLighInit
-    b Hu3DLighInit
+    b fn_800285BC
     entry _kerjmp_Hu3DGLightCreate
     b Hu3DGLightCreate
     entry _kerjmp_Hu3DGLightCreateV
-    b Hu3DGLightCreateV
+    b fn_800286D0
     entry _kerjmp_Hu3DGLightKill
     b Hu3DGLightKill
     entry _kerjmp_Hu3DLightAllKill
-    b Hu3DLightAllKill
+    b fn_80028D70
     entry _kerjmp_Hu3DLightSet
-    b Hu3DLightSet
+    b fn_80029E8C
     entry _kerjmp_Hu3DGLightSpotSet
     b Hu3DGLightSpotSet
     entry _kerjmp_Hu3DGLightInfinitytSet
@@ -5340,33 +5340,33 @@ asm void _kerent(void) {
     entry _kerjmp_Hu3DGLightStaticSet
     b Hu3DGLightStaticSet
     entry _kerjmp_Hu3DLLightParamGet
-    b Hu3DLLightParamGet
+    b fn_80029758
     entry _kerjmp_Hu3DGLightParamGet
-    b Hu3DGLightParamGet
+    b fn_800297D4
     entry _kerjmp_Hu3DGLightPosAngleSet
-    b Hu3DGLightPosAngleSet
+    b fn_800290F4
     entry _kerjmp_Hu3DModelLightBitSet
-    b Hu3DModelLightBitSet
+    b fn_80029E00
     entry _kerjmp_Hu3DModelLightBitReset
-    b Hu3DModelLightBitReset
+    b fn_80029E44
     entry _kerjmp_Hu3DModelLightInfoSet
-    b Hu3DModelLightInfoSet
+    b fn_80029850
     entry _kerjmp_Hu3DModelLightIdGet
-    b Hu3DModelLightIdGet
+    b fn_80029D24
     entry _kerjmp_Hu3DReflectMapSet
     b Hu3DReflectMapSet
     entry _kerjmp_Hu3DReflectNoSet
-    b Hu3DReflectNoSet
+    b fn_8002A2A4
     entry _kerjmp_Hu3DFogSet
     b Hu3DFogSet
     entry _kerjmp_Hu3DFogClear
     b Hu3DFogClear
     entry _kerjmp_Hu3DModelObjPtrGet
-    b Hu3DModelObjPtrGet
+    b fn_80026BF4
     entry _kerjmp_Hu3DModelShadowSet
-    b Hu3DModelShadowSet
+    b fn_80026E44
     entry _kerjmp_Hu3DModelShadowReset
-    b Hu3DModelShadowReset
+    b fn_80026EF0
     entry _kerjmp_Hu3DShadowCreate
     b Hu3DShadowCreate
     entry _kerjmp_Hu3DShadowPosSet
@@ -5374,75 +5374,75 @@ asm void _kerent(void) {
     entry _kerjmp_Hu3DShadowTPLvlSet
     b Hu3DShadowTPLvlSet
     entry _kerjmp_Hu3DShadowColSet
-    b Hu3DShadowColSet
+    b fn_8002AAB4
     entry _kerjmp_Hu3DShadowMultiCreate
-    b Hu3DShadowMultiCreate
+    b fn_8002A3B0
     entry _kerjmp_Hu3DShadowMultiPosSet
-    b Hu3DShadowMultiPosSet
+    b fn_8002A674
     entry _kerjmp_Hu3DShadowMultiSizeSet
-    b Hu3DShadowMultiSizeSet
+    b fn_8002A8CC
     entry _kerjmp_Hu3DShadowMultiColSet
-    b Hu3DShadowMultiColSet
+    b fn_8002AA3C
     entry _kerjmp_Hu3DShadowMultiTPLvlSet
-    b Hu3DShadowMultiTPLvlSet
+    b fn_8002A7D8
     entry _kerjmp_Hu3DModelShadowMapSet
-    b Hu3DModelShadowMapSet
+    b fn_80026FFC
     entry _kerjmp_Hu3DModelShadowMapObjSet
-    b Hu3DModelShadowMapObjSet
+    b fn_80027080
     entry _kerjmp_Hu3DModelShadowMapObjReset
-    b Hu3DModelShadowMapObjReset
+    b fn_80027138
     entry _kerjmp_Hu3DModelShadowMapReset
-    b Hu3DModelShadowMapReset
+    b fn_8002736C
     entry _kerjmp_Hu3DShadowSizeSet
     b Hu3DShadowSizeSet
     entry _kerjmp_Hu3DMipMapSet
-    b Hu3DMipMapSet
+    b fn_8002BAF8
     entry _kerjmp_Hu3DModelClusterAttrSet
-    b Hu3DModelClusterAttrSet
+    b fn_80026AE4
     entry _kerjmp_Hu3DModelClusterAttrReset
-    b Hu3DModelClusterAttrReset
+    b fn_80026B24
     entry _kerjmp_Hu3DLLightCreate
     b Hu3DLLightCreate
     entry _kerjmp_Hu3DLLightCreateV
-    b Hu3DLLightCreateV
+    b fn_800288B4
     entry _kerjmp_Hu3DLLightSpotSet
-    b Hu3DLLightSpotSet
+    b fn_80028AA8
     entry _kerjmp_Hu3DLLightInfinitytSet
-    b Hu3DLLightInfinitytSet
+    b fn_80028B58
     entry _kerjmp_Hu3DLLightPointSet
-    b Hu3DLLightPointSet
+    b fn_80028C1C
     entry _kerjmp_Hu3DLLightKill
-    b Hu3DLLightKill
+    b fn_80028CB8
     entry _kerjmp_Hu3DLLightColorSet
-    b Hu3DLLightColorSet
+    b fn_80028E48
     entry _kerjmp_Hu3DLLightPosSetV
-    b Hu3DLLightPosSetV
+    b fn_80028F14
     entry _kerjmp_Hu3DLLightPosSet
-    b Hu3DLLightPosSet
+    b fn_8002903C
     entry _kerjmp_Hu3DLLightPosAimSetV
-    b Hu3DLLightPosAimSetV
+    b fn_80029434
     entry _kerjmp_Hu3DLLightPosAimSet
-    b Hu3DLLightPosAimSet
+    b fn_800295A0
     entry _kerjmp_Hu3DLLightStaticSet
-    b Hu3DLLightStaticSet
+    b fn_800296E0
     entry _kerjmp_Hu3DLLightPosAngleSet
-    b Hu3DLLightPosAngleSet
+    b fn_80029240
     entry _kerjmp_Hu3DShineSet
-    b Hu3DShineSet
+    b fn_8002A390
     entry _kerjmp_Hu3DObjHookSet
-    b Hu3DObjHookSet
+    b fn_800248C4
     entry _kerjmp_Hu3DAnimInit
     b Hu3DAnimInit
     entry _kerjmp_Hu3DAnimCreate
-    b Hu3DAnimCreate
+    b fn_80030B2C
     entry _kerjmp_Hu3DAnimAnimSet
-    b Hu3DAnimAnimSet
+    b fn_80030D50
     entry _kerjmp_Hu3DAnimLink
-    b Hu3DAnimLink
+    b fn_80030DF0
     entry _kerjmp_Hu3DAnimKill
-    b Hu3DAnimKill
+    b fn_80031010
     entry _kerjmp_Hu3DAnimAllKill
-    b Hu3DAnimAllKill
+    b fn_80031260
     entry _kerjmp_Hu3DAnimSet
     b Hu3DAnimSet
     entry _kerjmp_Hu3DAnimExec
@@ -5458,7 +5458,7 @@ asm void _kerent(void) {
     entry _kerjmp_Hu3DAnmNoSet
     b Hu3DAnmNoSet
     entry _kerjmp_Hu3DTexScrollCreate
-    b Hu3DTexScrollCreate
+    b fn_80031C10
     entry _kerjmp_Hu3DTexScrollPosSet
     b Hu3DTexScrollPosSet
     entry _kerjmp_Hu3DTexScrollPosMoveSet
@@ -5468,41 +5468,41 @@ asm void _kerent(void) {
     entry _kerjmp_Hu3DTexScrollRotMoveSet
     b Hu3DTexScrollRotMoveSet
     entry _kerjmp_Hu3DTexScrollKill
-    b Hu3DTexScrollKill
+    b fn_80031DB4
     entry _kerjmp_Hu3DTexScrollAllKill
-    b Hu3DTexScrollAllKill
+    b fn_80031E90
     entry _kerjmp_Hu3DTexScrollPauseDisableSet
     b Hu3DTexScrollPauseDisableSet
     entry _kerjmp_Hu3DParticleCreate
-    b Hu3DParticleCreate
+    b fn_8003216C
     entry _kerjmp_Hu3DParticleScaleSet
-    b Hu3DParticleScaleSet
+    b fn_800324E0
     entry _kerjmp_Hu3DParticleZRotSet
-    b Hu3DParticleZRotSet
+    b fn_80032548
     entry _kerjmp_Hu3DParticleColSet
-    b Hu3DParticleColSet
+    b fn_800325B0
     entry _kerjmp_Hu3DParticleTPLvlSet
-    b Hu3DParticleTPLvlSet
+    b fn_80032620
     entry _kerjmp_Hu3DParticleBlendModeSet
-    b Hu3DParticleBlendModeSet
+    b fn_8003269C
     entry _kerjmp_Hu3DParticleHookSet
-    b Hu3DParticleHookSet
+    b fn_800326D0
     entry _kerjmp_Hu3DParticleCntSet
-    b Hu3DParticleCntSet
+    b fn_80032780
     entry _kerjmp_Hu3DParticleAttrSet
-    b Hu3DParticleAttrSet
+    b fn_80032704
     entry _kerjmp_Hu3DParticleAttrReset
-    b Hu3DParticleAttrReset
+    b fn_80032740
     entry _kerjmp_Hu3DParticleAnimModeSet
-    b Hu3DParticleAnimModeSet
+    b fn_800327B8
     entry _kerjmp_Hu3DParManInit
     b Hu3DParManInit
     entry _kerjmp_Hu3DParManCreate
-    b Hu3DParManCreate
+    b fn_800334F4
     entry _kerjmp_Hu3DParManKill
-    b Hu3DParManKill
+    b fn_8003383C
     entry _kerjmp_Hu3DParManAllKill
-    b Hu3DParManAllKill
+    b fn_800339C8
     entry _kerjmp_Hu3DParManPtrGet
     b Hu3DParManPtrGet
     entry _kerjmp_Hu3DParManAttrSet
@@ -5524,157 +5524,157 @@ asm void _kerent(void) {
     entry _kerjmp_Hu3DParManColorSet
     b Hu3DParManColorSet
     entry _kerjmp_Hu3DParManLayerSet
-    b Hu3DParManLayerSet
+    b fn_80033E64
     entry _kerjmp_Hu3DWaterCreate
-    b Hu3DWaterCreate
+    b fn_80034F8C
     entry _kerjmp_Hu3DWaterTexPosSet
-    b Hu3DWaterTexPosSet
+    b fn_800352BC
     entry _kerjmp_Hu3DWaterTexScaleSet
-    b Hu3DWaterTexScaleSet
+    b fn_800352E4
     entry _kerjmp_Hu3DWaterPadYSet
-    b Hu3DWaterPadYSet
+    b fn_8003530C
     entry _kerjmp_Hu3DWaterGlowSet
-    b Hu3DWaterGlowSet
+    b fn_8003532C
     entry _kerjmp_Hu3DWaterIndTexMtxSet
-    b Hu3DWaterIndTexMtxSet
+    b fn_8003536C
     entry _kerjmp_Hu3DWaterHiliteSet
-    b Hu3DWaterHiliteSet
+    b fn_800353FC
     entry _kerjmp_Hu3DWaterHiliteTPLvlSet
-    b Hu3DWaterHiliteTPLvlSet
+    b fn_80035438
     entry _kerjmp_Hu3DWaterCameraSet
-    b Hu3DWaterCameraSet
+    b fn_8003546C
     entry _kerjmp_Hu3DWaterWaveCreate
-    b Hu3DWaterWaveCreate
+    b fn_8003548C
     entry _kerjmp_Hu3DMotionCreate
-    b Hu3DMotionCreate
+    b fn_8002C4C0
     entry _kerjmp_Hu3DMotionInit
-    b Hu3DMotionInit
+    b fn_8002C47C
     entry _kerjmp_Hu3DMotionModelCreate
-    b Hu3DMotionModelCreate
+    b fn_8002C564
     entry _kerjmp_Hu3DMotionKill
-    b Hu3DMotionKill
+    b fn_8002C624
     entry _kerjmp_Hu3DMotionAllKill
-    b Hu3DMotionAllKill
+    b fn_8002C7BC
     entry _kerjmp_Hu3DMotionSet
-    b Hu3DMotionSet
+    b fn_8002C95C
     entry _kerjmp_Hu3DMotionExec
-    b Hu3DMotionExec
+    b fn_8002E4C4
     entry _kerjmp_Hu3DSubMotionExec
-    b Hu3DSubMotionExec
+    b fn_8002ECDC
     entry _kerjmp_Hu3DMotionNext
-    b Hu3DMotionNext
+    b fn_8002DCE0
     entry _kerjmp_Hu3DMotionTimeSet
-    b Hu3DMotionTimeSet
+    b fn_8002D414
     entry _kerjmp_Hu3DMotionTimeGet
-    b Hu3DMotionTimeGet
+    b fn_8002D4E0
     entry _kerjmp_Hu3DMotionMaxTimeGet
-    b Hu3DMotionMaxTimeGet
+    b fn_8002D530
     entry _kerjmp_Hu3DMotionStartEndSet
-    b Hu3DMotionStartEndSet
+    b fn_8002D730
     entry _kerjmp_Hu3DMotionMotionMaxTimeGet
     b Hu3DMotionMotionMaxTimeGet
     entry _kerjmp_Hu3DMotionEndCheck
-    b Hu3DMotionEndCheck
+    b fn_8002D75C
     entry _kerjmp_Hu3DMotionShiftSet
-    b Hu3DMotionShiftSet
+    b fn_8002CCC0
     entry _kerjmp_Hu3DMotionIDGet
-    b Hu3DMotionIDGet
+    b fn_8002D3C4
     entry _kerjmp_Hu3DMotionShiftIDGet
-    b Hu3DMotionShiftIDGet
+    b fn_8002D3EC
     entry _kerjmp_Hu3DMotionShiftTimeGet
-    b Hu3DMotionShiftTimeGet
+    b fn_8002D508
     entry _kerjmp_Hu3DMotionShiftMaxTimeGet
-    b Hu3DMotionShiftMaxTimeGet
+    b fn_8002D5D4
     entry _kerjmp_Hu3DMotionShiftStartEndSet
-    b Hu3DMotionShiftStartEndSet
+    b fn_8002D678
     entry _kerjmp_Hu3DMotionShiftSpeedSet
-    b Hu3DMotionShiftSpeedSet
+    b fn_8002D894
     entry _kerjmp_Hu3DMotionSpeedSet
-    b Hu3DMotionSpeedSet
+    b fn_8002D86C
     entry _kerjmp_Hu3DMotionShapeSpeedSet
-    b Hu3DMotionShapeSpeedSet
+    b fn_8002CF70
     entry _kerjmp_Hu3DMotionShapeTimeSet
-    b Hu3DMotionShapeTimeSet
+    b fn_8002CF98
     entry _kerjmp_Hu3DMotionShapeTimeGet
-    b Hu3DMotionShapeTimeGet
+    b fn_8002CFCC
     entry _kerjmp_Hu3DMotionNoMotSet
-    b Hu3DMotionNoMotSet
+    b fn_8002D8BC
     entry _kerjmp_Hu3DMotionNoMotReset
     b Hu3DMotionNoMotReset
     entry _kerjmp_Hu3DMotionForceSet
-    b Hu3DMotionForceSet
+    b fn_8002DA64
     entry _kerjmp_Hu3DMotionShapeSet
-    b Hu3DMotionShapeSet
+    b fn_8002CEB0
     entry _kerjmp_Hu3DMotionShapeIDGet
-    b Hu3DMotionShapeIDGet
+    b fn_8002CF58
     entry _kerjmp_Hu3DMotionShapeMaxTimeGet
-    b Hu3DMotionShapeMaxTimeGet
+    b fn_8002CFE4
     entry _kerjmp_Hu3DMotionClusterSet
-    b Hu3DMotionClusterSet
+    b fn_8002D050
     entry _kerjmp_Hu3DMotionClusterNoSet
-    b Hu3DMotionClusterNoSet
+    b fn_8002D160
     entry _kerjmp_Hu3DMotionShapeReset
-    b Hu3DMotionShapeReset
+    b fn_8002D22C
     entry _kerjmp_Hu3DMotionClusterReset
-    b Hu3DMotionClusterReset
+    b fn_8002D248
     entry _kerjmp_Hu3DJointMotion
-    b Hu3DJointMotion
+    b fn_80030458
     entry _kerjmp_Hu3DMotionOverlaySet
-    b Hu3DMotionOverlaySet
+    b fn_8002CAA8
     entry _kerjmp_Hu3DMotionOverlayReset
-    b Hu3DMotionOverlayReset
+    b fn_8002CAF0
     entry _kerjmp_Hu3DMotionOverlayTimeGet
-    b Hu3DMotionOverlayTimeGet
+    b fn_8002CB0C
     entry _kerjmp_Hu3DMotionOverlayTimeSet
-    b Hu3DMotionOverlayTimeSet
+    b fn_8002CB64
     entry _kerjmp_Hu3DMotionOverlaySpeedSet
-    b Hu3DMotionOverlaySpeedSet
+    b fn_8002CB98
     entry _kerjmp_Hu3DMotionOverlayMaxTimeGet
-    b Hu3DMotionOverlayMaxTimeGet
+    b fn_8002CB24
     entry _kerjmp_Hu3DMotionOverlayEndCheck
-    b Hu3DMotionOverlayEndCheck
+    b fn_8002CBB0
     entry _kerjmp_Hu3DModelObjDrawInit
-    b Hu3DModelObjDrawInit
+    b fn_8002472C
     entry _kerjmp_Hu3DModelObjDraw
-    b Hu3DModelObjDraw
+    b fn_800247C4
     entry _kerjmp_Hu3DModelObjPtrDraw
-    b Hu3DModelObjPtrDraw
+    b fn_80024850
     entry _kerjmp_Hu3DMotionCalc
-    b Hu3DMotionCalc
+    b fn_80030644
     entry _kerjmp_Hu3DMotionShapeStartEndSet
-    b Hu3DMotionShapeStartEndSet
+    b fn_8002D024
     entry _kerjmp_Hu3DSubMotionSet
-    b Hu3DSubMotionSet
+    b fn_800308F0
     entry _kerjmp_Hu3DSubMotionReset
-    b Hu3DSubMotionReset
+    b fn_800309F4
     entry _kerjmp_Hu3DSubMotionTimeSet
-    b Hu3DSubMotionTimeSet
+    b fn_80030A4C
     entry _kerjmp_Hu3DMotionShiftTimeSet
-    b Hu3DMotionShiftTimeSet
+    b fn_80030A88
     entry _kerjmp_Hu3DMotionClusterSpeedSet
-    b Hu3DMotionClusterSpeedSet
+    b fn_8002D30C
     entry _kerjmp_Hu3DMotionClusterTimeSet
-    b Hu3DMotionClusterTimeSet
+    b fn_8002D340
     entry _kerjmp_Hu3DMotionClusterMaxTimeGet
-    b Hu3DMotionClusterMaxTimeGet
+    b fn_8002D374
     entry _kerjmp_Hu3DMotionAttrSet
-    b Hu3DMotionAttrSet
+    b fn_8002DC74
     entry _kerjmp_Hu3DMotionAttrReset
-    b Hu3DMotionAttrReset
+    b fn_8002DCA8
     entry _kerjmp_Hu3DMotionTimingHookSet
-    b Hu3DMotionTimingHookSet
+    b fn_8002DB98
     entry _kerjmp_Hu3DMotionTimingHookReset
     b Hu3DMotionTimingHookReset
     entry _kerjmp_Hu3DMatLightSet
-    b Hu3DMatLightSet
+    b fn_8001CDF0
     entry _kerjmp_Hu3DFbCopyLayerSet
-    b Hu3DFbCopyLayerSet
+    b fn_8002BDB4
     entry _kerjmp_Hu3DFbCopyExec
-    b Hu3DFbCopyExec
+    b fn_8002BCDC
     entry _kerjmp_Hu3DZClear
-    b Hu3DZClear
+    b fn_8002BF48
     entry _kerjmp_Hu3DZClearLayerSet
-    b Hu3DZClearLayerSet
+    b fn_8002C2AC
     entry _kerjmp_CamMotionEx
     b CamMotionEx
     entry _kerjmp_CamMotionEx2
@@ -5862,9 +5862,9 @@ asm void _kerent(void) {
     entry _kerjmp_HuPrcInit
     b HuPrcInit
     entry _kerjmp_HuPrcCall
-    b HuPrcCall
+    b fn_8000E37C
     entry _kerjmp_HuPrcCreate
-    b HuPrcCreate
+    b fn_8000D818
     entry _kerjmp_HuPrcKill
     b HuPrcKill
     entry _kerjmp_HuPrcEnd
@@ -5876,13 +5876,13 @@ asm void _kerent(void) {
     entry _kerjmp_HuPrcVSleep
     b HuPrcVSleep
     entry _kerjmp_HuPrcCurrentGet
-    b HuPrcCurrentGet
+    b fn_8000DD9C
     entry _kerjmp_HuPrcDestructorSet
     b HuPrcDestructorSet
     entry _kerjmp_HuPrcDestructorSet2
     b HuPrcDestructorSet2
     entry _kerjmp_HuPrcChildCreate
-    b HuPrcChildCreate
+    b fn_8000DAC0
     entry _kerjmp_HuPrcChildLink
     b HuPrcChildLink
     entry _kerjmp_HuPrcChildUnlink
@@ -5896,39 +5896,39 @@ asm void _kerent(void) {
     entry _kerjmp_Hu3DParManVacumeSet
     b Hu3DParManVacumeSet
     entry _kerjmp_HuDataInit
-    b HuDataInit
+    b fn_80007668
     entry _kerjmp_HuDataDirRead
-    b HuDataDirRead
+    b fn_800078C8
     entry _kerjmp_HuDataRead
-    b HuDataRead
+    b fn_800082D0
     entry _kerjmp_HuDataReadNum
-    b HuDataReadNum
+    b fn_80008634
     entry _kerjmp_HuDataReadMulti
     b HuDataReadMulti
     entry _kerjmp_HuDataDirReadAsync
-    b HuDataDirReadAsync
+    b fn_80007F20
     entry _kerjmp_HuDataDirReadNumAsync
-    b HuDataDirReadNumAsync
+    b fn_800080C8
     entry _kerjmp_HuDataSelHeapRead
-    b HuDataSelHeapRead
+    b fn_800089EC
     entry _kerjmp_HuDataSelHeapReadNum
-    b HuDataSelHeapReadNum
+    b fn_80008DD0
     entry _kerjmp_HuDataGetSize
-    b HuDataGetSize
+    b fn_8000963C
     entry _kerjmp_HuDataDirClose
-    b HuDataDirClose
+    b fn_800097F4
     entry _kerjmp_HuDataDirCloseNum
-    b HuDataDirCloseNum
+    b fn_800098E4
     entry _kerjmp_HuDataDirCloseAll
-    b HuDataDirCloseAll
+    b fn_80009A30
     entry _kerjmp_HuDataClose
-    b HuDataClose
+    b fn_80009740
     entry _kerjmp_HuDataCloseMulti
     b HuDataCloseMulti
     entry _kerjmp_HuDataReadNumHeapShortForce
-    b HuDataReadNumHeapShortForce
+    b fn_80009B04
     entry _kerjmp_HuDataDirCancel
-    b HuDataDirCancel
+    b fn_80007DE4
     entry _kerjmp_ARRegisterDMACallback
     b ARRegisterDMACallback
     entry _kerjmp_ARGetDMAStatus
@@ -6042,7 +6042,7 @@ asm void _kerent(void) {
     entry _kerjmp_HuSprVtxColorReset
     b HuSprVtxColorReset
     entry _kerjmp_HuMemMemoryNumSet
-    b HuMemMemoryNumSet
+    b fn_8000C200
     entry _kerjmp_HuARMalloc
     b HuARMalloc
     entry _kerjmp_HuARFree
@@ -6054,17 +6054,17 @@ asm void _kerent(void) {
     entry _kerjmp_HuAR_MRAMtoARAM2
     b HuAR_MRAMtoARAM2
     entry _kerjmp_HuAR_ARAMtoMRAM
-    b HuAR_ARAMtoMRAM
+    b fn_80055D40
     entry _kerjmp_HuAR_ARAMtoMRAMNum
-    b HuAR_ARAMtoMRAMNum
+    b fn_80055D6C
     entry _kerjmp_HuARDMACheck
-    b HuARDMACheck
+    b fn_80055FB4
     entry _kerjmp_HuARDirCheck
     b HuARDirCheck
     entry _kerjmp_HuARDirFree
     b HuARDirFree
     entry _kerjmp_HuAR_ARAMtoMRAMFileRead
-    b HuAR_ARAMtoMRAMFileRead
+    b fn_8005607C
     entry _kerjmp_HuAudFXListnerSetEX
     b HuAudFXListnerSetEX
     entry _kerjmp_HuWindowInit
@@ -6204,161 +6204,161 @@ asm void _kerent(void) {
     entry _kerjmp_HuWinPadMaskSet
     b HuWinPadMaskSet
     entry _kerjmp_CharInit
-    b CharInit
+    b fn_80056428
     entry _kerjmp_CharMotionInit
-    b CharMotionInit
+    b fn_800565B4
     entry _kerjmp_CharMotionInitAsync
-    b CharMotionInitAsync
+    b fn_8005664C
     entry _kerjmp_CharDataClose
-    b CharDataClose
+    b fn_800567D8
     entry _kerjmp_CharModelKill
-    b CharModelKill
+    b fn_8005BB8C
     entry _kerjmp_CharClose
-    b CharClose
+    b fn_8005702C
     entry _kerjmp_CharModelCreate
-    b CharModelCreate
+    b fn_80057068
     entry _kerjmp_CharMotionCreate
-    b CharMotionCreate
+    b fn_8005B0B8
     entry _kerjmp_CharMotionNoSet
-    b CharMotionNoSet
+    b fn_8005B398
     entry _kerjmp_CharMotionKill
-    b CharMotionKill
+    b fn_8005B420
     entry _kerjmp_CharMotionDataClose
-    b CharMotionDataClose
+    b fn_8005B4BC
     entry _kerjmp_CharModelDataClose
-    b CharModelDataClose
+    b fn_8005B7BC
     entry _kerjmp_CharMotionAMemPGet
-    b CharMotionAMemPGet
+    b fn_80056598
     entry _kerjmp_CharMotionSet
-    b CharMotionSet
+    b fn_8005BE80
     entry _kerjmp_CharMotionTimeSet
-    b CharMotionTimeSet
+    b fn_8005C16C
     entry _kerjmp_CharMotionTimeGet
-    b CharMotionTimeGet
+    b fn_8005C1B8
     entry _kerjmp_CharMotionMaxTimeGet
-    b CharMotionMaxTimeGet
+    b fn_8005C1FC
     entry _kerjmp_CharMotionEndCheck
-    b CharMotionEndCheck
+    b fn_8005C240
     entry _kerjmp_CharMotionShiftIDGet
-    b CharMotionShiftIDGet
+    b fn_8005C284
     entry _kerjmp_CharMotionShiftSet
-    b CharMotionShiftSet
+    b fn_8005C2C8
     entry _kerjmp_CharMotionShiftTimeGet
-    b CharMotionShiftTimeGet
+    b fn_8005C34C
     entry _kerjmp_CharMotionSpeedSet
-    b CharMotionSpeedSet
+    b fn_8005C390
     entry _kerjmp_CharModelHookDustCreate
-    b CharModelHookDustCreate
+    b fn_8005C7A4
     entry _kerjmp_CharEffectSmokeCreate
-    b CharEffectSmokeCreate
+    b fn_8005D404
     entry _kerjmp_CharEffectSmokeCreateScale
-    b CharEffectSmokeCreateScale
+    b fn_8005CF90
     entry _kerjmp_CharEffectCoinGlowCreate
-    b CharEffectCoinGlowCreate
+    b fn_8005D5A0
     entry _kerjmp_CharModelHitCreate
-    b CharModelHitCreate
+    b fn_8005D738
     entry _kerjmp_CharEffectHitCreate
-    b CharEffectHitCreate
+    b fn_8005D864
     entry _kerjmp_CharEffectShoeHitCreate
-    b CharEffectShoeHitCreate
+    b fn_8005DB3C
     entry _kerjmp_CharModelShoeHitCreate
-    b CharModelShoeHitCreate
+    b fn_8005DA5C
     entry _kerjmp_GWCharColorGet
-    b GWCharColorGet
+    b fn_8003C878
     entry _kerjmp_CharEffectLayerSet
-    b CharEffectLayerSet
+    b fn_8005DDEC
     entry _kerjmp_CharEyeBmpNameTbl
     b CharEyeBmpNameTbl
     entry _kerjmp_CharModelEyeBmpGet
-    b CharModelEyeBmpGet
+    b fn_8005C074
     entry _kerjmp_CharMotionVoiceOnSet
-    b CharMotionVoiceOnSet
+    b fn_8005DEB0
     entry _kerjmp_CharNpcDustVoiceOffSet
-    b CharNpcDustVoiceOffSet
+    b fn_8005E1D8
     entry _kerjmp_CharModelStepSet
-    b CharModelStepSet
+    b fn_8005F77C
     entry _kerjmp_CharModelVoicePanAutoSet
-    b CharModelVoicePanAutoSet
+    b fn_8005DF74
     entry _kerjmp_CharModelVoiceFlagSet
-    b CharModelVoiceFlagSet
+    b fn_8005DFC0
     entry _kerjmp_CharModelLandDustCreate
-    b CharModelLandDustCreate
+    b fn_8005F968
     entry _kerjmp_CharModelAttrSet
-    b CharModelAttrSet
+    b fn_8005C430
     entry _kerjmp_CharModelAttrReset
-    b CharModelAttrReset
+    b fn_8005C47C
     entry _kerjmp_CharMotionStartEndSet
-    b CharMotionStartEndSet
+    b fn_8005C3DC
     entry _kerjmp_CharModelHeightGet
-    b CharModelHeightGet
+    b fn_8005C4C8
     entry _kerjmp_CharModelMotListCreate
-    b CharModelMotListCreate
+    b fn_8005C4E4
     entry _kerjmp_CharEffectDustCreate
-    b CharEffectDustCreate
+    b fn_8006065C
     entry _kerjmp_CharEffectCryCreate
-    b CharEffectCryCreate
+    b fn_800608C4
     entry _kerjmp_CharModelCryCreate
-    b CharModelCryCreate
+    b fn_80060B10
     entry _kerjmp_CharModelTimingHookNoGet
-    b CharModelTimingHookNoGet
+    b fn_8005C750
     entry _kerjmp_CharMotionUpdateSet
-    b CharMotionUpdateSet
+    b fn_8005E070
     entry _kerjmp_CharModelVoicePanSet
-    b CharModelVoicePanSet
+    b fn_80060F14
     entry _kerjmp_CharModelVoiceVolSet
-    b CharModelVoiceVolSet
+    b fn_80060F40
     entry _kerjmp_CharWinLoseVoicePlay
     b CharWinLoseVoicePlay
     entry _kerjmp_CharLoseVoicePlay
-    b CharLoseVoicePlay
+    b fn_800611E4
     entry _kerjmp_CharMotionTotalTimeGet
-    b CharMotionTotalTimeGet
+    b fn_800613C0
     entry _kerjmp_CharMotionExtraTimeGet
-    b CharMotionExtraTimeGet
+    b fn_800614A4
     entry _kerjmp_CharLightCreate
-    b CharLightCreate
+    b fn_800615B4
     entry _kerjmp_CharLightCreateV
-    b CharLightCreateV
+    b fn_800614AC
     entry _kerjmp_CharLightSpotSet
-    b CharLightSpotSet
+    b fn_80061728
     entry _kerjmp_CharLightInfinitytSet
-    b CharLightInfinitytSet
+    b fn_80061814
     entry _kerjmp_CharLightPointSet
-    b CharLightPointSet
+    b fn_80061904
     entry _kerjmp_CharLightColorSet
-    b CharLightColorSet
+    b fn_80061A04
     entry _kerjmp_CharLightPosAimSetV
-    b CharLightPosAimSetV
+    b fn_80061AE4
     entry _kerjmp_CharLightPosAimSet
-    b CharLightPosAimSet
+    b fn_80061BE0
     entry _kerjmp_CharLightStaticSet
-    b CharLightStaticSet
+    b fn_80061D04
     entry _kerjmp_CharEffectWarnCreate
-    b CharEffectWarnCreate
+    b fn_80061E00
     entry _kerjmp_CharMotionLoad
-    b CharMotionLoad
+    b fn_80056B7C
     entry _kerjmp_CharNpcDustSet
-    b CharNpcDustSet
+    b fn_8005E128
     entry _kerjmp_HuPrcSetStat
     b HuPrcSetStat
     entry _kerjmp_HuPrcResetStat
     b HuPrcResetStat
     entry _kerjmp_omGameSysInit
-    b omGameSysInit
+    b fn_80069F1C
     entry _kerjmp_omResetStatBit
     b omResetStatBit
     entry _kerjmp_omCurrentOvlGet
-    b omCurrentOvlGet
+    b fn_8003B774
     entry _kerjmp_omPauseChk
-    b omPauseChk
+    b fn_8003B748
     entry _kerjmp_omOvlHisChg
     b omOvlHisChg
     entry _kerjmp_omOvlHisGet
     b omOvlHisGet
     entry _kerjmp_omovlevtno
-    b omovlevtno
+    b lbl_802C0248
     entry _kerjmp_omovlstat
-    b omovlstat
+    b lbl_802C0240
     entry _kerjmp_AddX
     b AddX
     entry _kerjmp_AddZ
@@ -6382,45 +6382,45 @@ asm void _kerent(void) {
     entry _kerjmp_HitFaceCount
     b HitFaceCount
     entry _kerjmp_GwPlayer
-    b GwPlayer
+    b lbl_80265750
     entry _kerjmp_GwSystem
-    b GwSystem
+    b lbl_80265B70
     entry _kerjmp_GWSinglePrizeFlagSet
-    b GWSinglePrizeFlagSet
+    b fn_8003CFC4
     entry _kerjmp_GWSinglePrizeFlagGet
-    b GWSinglePrizeFlagGet
+    b fn_8003CFF4
     entry _kerjmp_GWSingleDataInit
-    b GWSingleDataInit
+    b fn_8003D028
     entry _kerjmp_GWSinglePrizeSaveFlagSet
-    b GWSinglePrizeSaveFlagSet
+    b fn_8003D070
     entry _kerjmp_GWSinglePrizeSaveFlagGet
-    b GWSinglePrizeSaveFlagGet
+    b fn_8003D0A8
     entry _kerjmp_GWBankStarAdd
-    b GWBankStarAdd
+    b fn_8003D174
     entry _kerjmp_GWBankStarSub
-    b GWBankStarSub
+    b fn_8003D200
     entry _kerjmp_GWBankStarGet
-    b GWBankStarGet
+    b fn_8003D248
     entry _kerjmp_GWBankStarAwardGet
-    b GWBankStarAwardGet
+    b fn_8003D258
     entry _kerjmp_GWBankStarAwardReset
-    b GWBankStarAwardReset
+    b fn_8003D268
     entry _kerjmp_GWBankFlagSet
-    b GWBankFlagSet
+    b fn_8003D27C
     entry _kerjmp_GWBankFlagReset
-    b GWBankFlagReset
+    b fn_8003D2B4
     entry _kerjmp_GWBankFlagGet
-    b GWBankFlagGet
+    b fn_8003D2F0
     entry _kerjmp_GWSingleMgFlagGet
-    b GWSingleMgFlagGet
+    b fn_8003D12C
     entry _kerjmp_GWSingleMgWinNumGet
-    b GWSingleMgWinNumGet
+    b fn_8003D43C
     entry _kerjmp_GWSingleMgWinNumSet
-    b GWSingleMgWinNumSet
+    b fn_8003D444
     entry _kerjmp_GWSingleMgRecordNumGet
-    b GWSingleMgRecordNumGet
+    b fn_8003D44C
     entry _kerjmp_GWSingleMgRecordNumSet
-    b GWSingleMgRecordNumSet
+    b fn_8003D454
     entry _kerjmp_HuTHPSprCreateVol
     b HuTHPSprCreateVol
     entry _kerjmp_HuTHPSprCreate
@@ -6558,11 +6558,11 @@ asm void _kerent(void) {
     entry _kerjmp_SLCommonLoadCopy
     b SLCommonLoadCopy
     entry _kerjmp__CheckFlag
-    b _CheckFlag
+    b fn_8006A124
     entry _kerjmp__SetFlag
-    b _SetFlag
+    b fn_8006A1C4
     entry _kerjmp__ClearFlag
-    b _ClearFlag
+    b fn_8006A268
     entry _kerjmp_MgDataTbl
     b MgDataTbl
     entry _kerjmp_MgModeSubMode
@@ -6600,41 +6600,41 @@ asm void _kerent(void) {
     entry _kerjmp_MgInstExitF
     b MgInstExitF
     entry _kerjmp_GWRecordSet
-    b GWRecordSet
+    b fn_8003C80C
     entry _kerjmp_GWRecordGet
-    b GWRecordGet
+    b fn_8003C860
     entry _kerjmp_GWBoardPlayNumAdd
-    b GWBoardPlayNumAdd
+    b fn_8003CAA4
     entry _kerjmp_GWBoardPlayNumSet
-    b GWBoardPlayNumSet
+    b fn_8003CA78
     entry _kerjmp_GWBoardPlayNumGet
-    b GWBoardPlayNumGet
+    b fn_8003CAE8
     entry _kerjmp_GWCharPlayNumInc
-    b GWCharPlayNumInc
+    b fn_8003CB98
     entry _kerjmp_GWCharPlayNumGet
-    b GWCharPlayNumGet
+    b fn_8003CBFC
     entry _kerjmp_GWCharPlayNumSet
-    b GWCharPlayNumSet
+    b fn_8003CC1C
     entry _kerjmp_GWBoardMaxStarSet
-    b GWBoardMaxStarSet
+    b fn_8003CB00
     entry _kerjmp_GWBoardMaxStarGet
-    b GWBoardMaxStarGet
+    b fn_8003CB28
     entry _kerjmp_GWBoardMaxCoinSet
-    b GWBoardMaxCoinSet
+    b fn_8003CB4C
     entry _kerjmp_GWBoardMaxCoinGet
-    b GWBoardMaxCoinGet
+    b fn_8003CB74
     entry _kerjmp_GWPlayerStarAdd
-    b GWPlayerStarAdd
+    b fn_8003CF18
     entry _kerjmp_GWPlayerStarGet
     b GWPlayerStarGet
     entry _kerjmp_GWPlayerStarSet
-    b GWPlayerStarSet
+    b fn_8003CEAC
     entry _kerjmp_GWPlayerCoinAdd
-    b GWPlayerCoinAdd
+    b fn_8003CDDC
     entry _kerjmp_GWPlayerCoinSet
-    b GWPlayerCoinSet
+    b fn_8003CD2C
     entry _kerjmp_GWPlayerCoinGet
-    b GWPlayerCoinGet
+    b fn_8003CD14
     entry _kerjmp_GWMgCustomReset
     b GWMgCustomReset
     entry _kerjmp_GWMgCustomSet
@@ -6642,31 +6642,31 @@ asm void _kerent(void) {
     entry _kerjmp_GWMgCustomGet
     b GWMgCustomGet
     entry _kerjmp_GWMgUnlockGet
-    b GWMgUnlockGet
+    b fn_8003CC40
     entry _kerjmp_GWMgPlayNumSet
-    b GWMgPlayNumSet
+    b fn_8003D3A0
     entry _kerjmp_GWMgPlayNumGet
-    b GWMgPlayNumGet
+    b fn_8003D3A8
     entry _kerjmp_GWMgPlayNumAdd
-    b GWMgPlayNumAdd
+    b fn_8003D3B0
     entry _kerjmp_GWMiracleBookFlagSet
-    b GWMiracleBookFlagSet
+    b fn_8003D32C
     entry _kerjmp_GWMiracleBookFlagGet
-    b GWMiracleBookFlagGet
+    b fn_8003D364
     entry _kerjmp_GWMikeActRecordSet
-    b GWMikeActRecordSet
+    b fn_8003D404
     entry _kerjmp_GWMikeActRecordGet
-    b GWMikeActRecordGet
+    b fn_8003D420
     entry _kerjmp_GWSaveDebugSet
-    b GWSaveDebugSet
+    b fn_8003D45C
     entry _kerjmp_MgModeWorkInt
     b MgModeWorkInt
     entry _kerjmp_MgModeWorkFloat
     b MgModeWorkFloat
     entry _kerjmp_GwMgDecaScore
-    b GwMgDecaScore
+    b lbl_802669DC
     entry _kerjmp_GwLanguage
-    b GwLanguage
+    b lbl_802BF788
     entry _kerjmp_fmod
     b fmod
     entry _kerjmp__savegpr_15
@@ -6684,7 +6684,7 @@ asm void _kerent(void) {
     entry _kerjmp_omDBGMenuButton
     b omDBGMenuButton
     entry _kerjmp_omDBGSystemKeyCheckSetup
-    b omDBGSystemKeyCheckSetup
+    b fn_8003E12C
     entry _kerjmp_msmSeSetListener
     b msmSeSetListener
     entry _kerjmp_msmSeUpdataListener
@@ -6702,11 +6702,11 @@ asm void _kerent(void) {
     entry _kerjmp_WipeColorSet
     b WipeColorSet
     entry _kerjmp_omOvlReturnEx
-    b omOvlReturnEx
+    b fn_8003A5E4
     entry _kerjmp_HuDataGetAsyncStat
-    b HuDataGetAsyncStat
+    b fn_80008270
     entry _kerjmp_omVibrate
-    b omVibrate
+    b fn_8006A030
     entry _kerjmp_GameMesOvlPrev
     b GameMesOvlPrev
     entry _kerjmp_MgTimerCreate
@@ -6790,183 +6790,183 @@ asm void _kerent(void) {
     entry _kerjmp_MgScoreUnitBankSet
     b MgScoreUnitBankSet
     entry _kerjmp_MgSeqCreate
-    b MgSeqCreate
+    b fn_80070788
     entry _kerjmp_MgSeqCreatePrio
-    b MgSeqCreatePrio
+    b fn_800707B4
     entry _kerjmp_MgSeqKill
-    b MgSeqKill
+    b fn_80070994
     entry _kerjmp_MgSeqModeGet
-    b MgSeqModeGet
+    b fn_80071A8C
     entry _kerjmp_MgSeqModeNext
-    b MgSeqModeNext
+    b fn_80071A9C
     entry _kerjmp_MgSeqModeSet
-    b MgSeqModeSet
+    b fn_80071AC4
     entry _kerjmp_MgSeqRecordSet
-    b MgSeqRecordSet
+    b fn_80071BAC
     entry _kerjmp_MgSeqModeChangeOff
-    b MgSeqModeChangeOff
+    b fn_80071B08
     entry _kerjmp_MgSeqModeChangeOn
-    b MgSeqModeChangeOn
+    b fn_80071B30
     entry _kerjmp_MgSeqStatGet
-    b MgSeqStatGet
+    b fn_80071C08
     entry _kerjmp_MgSeqWinnerSet
-    b MgSeqWinnerSet
+    b fn_80071C18
     entry _kerjmp_MgSeqDrawSet
-    b MgSeqDrawSet
+    b fn_80071C70
     entry _kerjmp_fn_80071CCC
     b fn_80071CCC
     entry _kerjmp_MgSeqModeDelaySet
-    b MgSeqModeDelaySet
+    b fn_80071CE8
     entry _kerjmp_MgSeqModeHookAdd
-    b MgSeqModeHookAdd
+    b fn_80071D20
     entry _kerjmp_MgSeqModeHookReset
-    b MgSeqModeHookReset
+    b fn_80071DC0
     entry _kerjmp_MgSeqTimerValueGet
-    b MgSeqTimerValueGet
+    b fn_80071B58
     entry _kerjmp_MgSeqFrameNoGet
-    b MgSeqFrameNoGet
+    b fn_80071DE4
     entry _kerjmp_MgSeqFrameNoSet
-    b MgSeqFrameNoSet
+    b fn_80071DEC
     entry _kerjmp_MgSeqGameMesIdGet
-    b MgSeqGameMesIdGet
+    b fn_80071DF4
     entry _kerjmp_MgSeqTimerKill
-    b MgSeqTimerKill
+    b fn_80071DFC
     entry _kerjmp_MgSeqStatBitSet
-    b MgSeqStatBitSet
+    b fn_80071E60
     entry _kerjmp_MgSeqStatBitReset
-    b MgSeqStatBitReset
+    b fn_80071E78
     entry _kerjmp_omCameraViewInit
-    b omCameraViewInit
+    b fn_8003E440
     entry _kerjmp_omCameraViewSetMulti
-    b omCameraViewSetMulti
+    b fn_8003E488
     entry _kerjmp_omCameraViewSet
-    b omCameraViewSet
+    b fn_8003E5A4
     entry _kerjmp_omCameraViewMoveSimpleMulti
-    b omCameraViewMoveSimpleMulti
+    b fn_8003E8E4
     entry _kerjmp_omCameraViewMoveSimple
-    b omCameraViewMoveSimple
+    b fn_8003EA54
     entry _kerjmp_omCameraViewMoveMulti
-    b omCameraViewMoveMulti
+    b fn_8003E62C
     entry _kerjmp_omCameraViewMove
-    b omCameraViewMove
+    b fn_8003E7A0
     entry _kerjmp_omCameraViewCheck
-    b omCameraViewCheck
+    b fn_8003EB94
     entry _kerjmp_MgActorObjectSetup
-    b MgActorObjectSetup
+    b fn_80080418
     entry _kerjmp_MgActorColMapInit
-    b MgActorColMapInit
+    b fn_800804E8
     entry _kerjmp_MgPlayerPadSet
-    b MgPlayerPadSet
+    b fn_80080520
     entry _kerjmp_MgPlayerModeFuncSet
-    b MgPlayerModeFuncSet
+    b fn_800806DC
     entry _kerjmp_MgPlayerCreate
-    b MgPlayerCreate
+    b fn_80080728
     entry _kerjmp_MgPlayerCreateJumpAlt
-    b MgPlayerCreateJumpAlt
+    b fn_800808C0
     entry _kerjmp_MgActorCreate
-    b MgActorCreate
+    b fn_80080B04
     entry _kerjmp_MgActorKill
-    b MgActorKill
+    b fn_80080F38
     entry _kerjmp_MgActorExec
-    b MgActorExec
+    b fn_800856A8
     entry _kerjmp_MgPlayerModeLandSet
-    b MgPlayerModeLandSet
+    b fn_8007EDE8
     entry _kerjmp_MgPlayerModeSet
-    b MgPlayerModeSet
+    b fn_8007EEBC
     entry _kerjmp_MgPlayerComStkOn
-    b MgPlayerComStkOn
+    b fn_8007E818
     entry _kerjmp_MgPlayerComStkOff
-    b MgPlayerComStkOff
+    b fn_8007E888
     entry _kerjmp_MgPlayerVecChase
-    b MgPlayerVecChase
+    b fn_8007E8B4
     entry _kerjmp_MgActorVecChase
-    b MgActorVecChase
+    b fn_8007EB24
     entry _kerjmp_MgActorColAttrSet
-    b MgActorColAttrSet
+    b fn_800805CC
     entry _kerjmp_MgActorColAttrReset
-    b MgActorColAttrReset
+    b fn_8008062C
     entry _kerjmp_MgActorColAttrGet
-    b MgActorColAttrGet
+    b fn_8008068C
     entry _kerjmp_MgActorColMapPolyGet
-    b MgActorColMapPolyGet
+    b fn_80086910
     entry _kerjmp_MgActorPosSet
-    b MgActorPosSet
+    b fn_80086AA8
     entry _kerjmp_MgActorPosSetRaw
-    b MgActorPosSetRaw
+    b fn_80086B04
     entry _kerjmp_MgActorPosGet
-    b MgActorPosGet
+    b fn_80086BC8
     entry _kerjmp_MgPlayerDespawn
-    b MgPlayerDespawn
+    b fn_80086E3C
     entry _kerjmp_MgPlayerSpawn
-    b MgPlayerSpawn
+    b fn_80086F00
     entry _kerjmp_MgPlayerColDisable
-    b MgPlayerColDisable
+    b fn_80086F44
     entry _kerjmp_MgPlayerColEnable
-    b MgPlayerColEnable
+    b fn_80086FA0
     entry _kerjmp_MgPlayerVibrateCreate
-    b MgPlayerVibrateCreate
+    b fn_8007ED60
     entry _kerjmp_MgPlayerVibrateKill
-    b MgPlayerVibrateKill
+    b fn_8007EDBC
     entry _kerjmp_MgActorColAttrParamSet
-    b MgActorColAttrParamSet
+    b fn_800870A4
     entry _kerjmp_MgActorColAttrParamGet
-    b MgActorColAttrParamGet
+    b fn_800870D4
     entry _kerjmp_MgActorColMapMaskSet
-    b MgActorColMapMaskSet
+    b fn_80080D7C
     entry _kerjmp_MgActorColMapMaskGet
-    b MgActorColMapMaskGet
+    b fn_80080DAC
     entry _kerjmp_MgActorColMaskSet
-    b MgActorColMaskSet
+    b fn_80080DD4
     entry _kerjmp_MgActorColMaskGet
-    b MgActorColMaskGet
+    b fn_80080E38
     entry _kerjmp_MgPlayerAttrCheck
-    b MgPlayerAttrCheck
+    b fn_8008717C
     entry _kerjmp_MgPlayerAttrSet
-    b MgPlayerAttrSet
+    b fn_80087158
     entry _kerjmp_MgPlayerAttrReset
-    b MgPlayerAttrReset
+    b fn_80087168
     entry _kerjmp_MgPlayerModeAttrCheck
-    b MgPlayerModeAttrCheck
+    b fn_80087148
     entry _kerjmp_MgPlayerModeAttrReset
-    b MgPlayerModeAttrReset
+    b fn_80087134
     entry _kerjmp_MgPlayerModeAttrSet
-    b MgPlayerModeAttrSet
+    b fn_80087124
     entry _kerjmp_MgPlayerVibAttrCheck
-    b MgPlayerVibAttrCheck
+    b fn_80087114
     entry _kerjmp_MgPlayerVibAttrSet
-    b MgPlayerVibAttrSet
+    b fn_80087104
     entry _kerjmp_MgPlayerStunSet
-    b MgPlayerStunSet
+    b fn_8008718C
     entry _kerjmp_MgActorColCylReset
-    b MgActorColCylReset
+    b fn_80080E8C
     entry _kerjmp_MgActorColCylSet
-    b MgActorColCylSet
+    b fn_80080EBC
     entry _kerjmp_MgActorColCodeGet
-    b MgActorColCodeGet
+    b fn_80086DD0
     entry _kerjmp_MgActorColNormalGet
-    b MgActorColNormalGet
+    b fn_80086D54
     entry _kerjmp_MgActorRotYSet
-    b MgActorRotYSet
+    b fn_80086CA8
     entry _kerjmp_MgActorRotYGet
-    b MgActorRotYGet
+    b fn_80086CB0
     entry _kerjmp_MgActorPushSet
-    b MgActorPushSet
+    b fn_80086C8C
     entry _kerjmp_MgPlayerPosSet
-    b MgPlayerPosSet
+    b fn_8008697C
     entry _kerjmp_MgActorGravitySet
-    b MgActorGravitySet
+    b fn_80086CBC
     entry _kerjmp_MgActorVelYSet
-    b MgActorVelYSet
+    b fn_80086CC4
     entry _kerjmp_MgActorColMeshGet
-    b MgActorColMeshGet
+    b fn_80086CE8
     entry _kerjmp_MgActorVelSet
-    b MgActorVelSet
+    b fn_80086CCC
     entry _kerjmp_MgActorColBounceSet
-    b MgActorColBounceSet
+    b fn_80080EEC
     entry _kerjmp_CharModelFileNumGet
-    b CharModelFileNumGet
+    b fn_80060E50
     entry _kerjmp_CharMotionFileNumGet
-    b CharMotionFileNumGet
+    b fn_80060EF0
     entry _kerjmp_lbl_802BF860
     b lbl_802BF860
     entry _kerjmp_lbl_802BF864
@@ -7010,9 +7010,9 @@ asm void _kerent(void) {
     entry _kerjmp___ptmf_cmpr
     b __ptmf_cmpr
     entry _kerjmp_HuDataDirCancelAsync
-    b HuDataDirCancelAsync
+    b fn_80007E6C
     entry _kerjmp_HuDataDirCloseAsync
-    b HuDataDirCloseAsync
+    b fn_80007EAC
     entry _kerjmp_HuTHPProcCheck
     b HuTHPProcCheck
     entry _kerjmp_mbSaveInit
@@ -7028,7 +7028,7 @@ asm void _kerent(void) {
     entry _kerjmp_HuLoadProcStart
     b HuLoadProcStart
     entry _kerjmp_GwMgNightF
-    b GwMgNightF
+    b lbl_802C0278
     entry _kerjmp_HuMCSysInit
     b HuMCSysInit
     entry _kerjmp_HuMCInit
@@ -8164,7 +8164,7 @@ asm void _kerent(void) {
     entry _kerjmp_mbPauseGuideMoveSet
     b mbPauseGuideMoveSet
     entry _kerjmp_mbPadDStkRepGetAll
-    b mbPadDStkRepGetAll
+    b fn_80184DD4
     entry _kerjmp_mbPadBtnDownGetAll
     b mbPadBtnDownGetAll
     entry _kerjmp_mbev_Last5

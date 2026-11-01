@@ -25,8 +25,8 @@ void fn_1_187C8(void)
     M617SpriteGroup *group;
     M617PlayerStateData *player;
 
-    progressAnimations[1] = HuSprAnimDataRead(DATANUM(DATA_mgconst, 31));
-    progressAnimations[2] = HuSprAnimDataRead(DATANUM(DATA_mgconst, 30));
+    progressAnimations[1] = HuSprAnimDataRead(DATANUM(0x9b0000, 31));
+    progressAnimations[2] = HuSprAnimDataRead(DATANUM(0x9b0000, 30));
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
         player = &lbl_1_bss_AB0[playerIndex];
         entry = &lbl_1_bss_0[playerIndex + 20];

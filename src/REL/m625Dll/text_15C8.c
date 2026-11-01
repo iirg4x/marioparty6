@@ -4,7 +4,7 @@
 #include "datadir_enum.h"
 #include "game/memory.h"
 
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 extern HUPROCESS *lbl_1_bss_810;
 void fn_1_1398(Point3d *, const Point3d *, f32);
 void fn_1_1FEC(const f32 *);
@@ -19,17 +19,17 @@ void fn_1_15C8(void)
     s16 lightMode;
     s16 index;
 
-    effectMode = GwMgNightF;
+    effectMode = lbl_802C0278;
     lightMode = effectMode;
     if (lightMode == 0) {
-        lbl_1_data_180[0].light = Hu3DGLightCreateV(
+        lbl_1_data_180[0].light = fn_800286D0(
             &lbl_1_data_180[0].position, &lbl_1_data_180[0].direction,
             &lbl_1_data_180[0].color);
         Hu3DGLightStaticSet(lbl_1_data_180[0].light, 1);
         Hu3DGLightInfinitytSet(lbl_1_data_180[0].light);
         lbl_1_data_180[1].light = lbl_1_data_180[0].light;
     } else {
-        lbl_1_data_180[1].light = Hu3DGLightCreateV(
+        lbl_1_data_180[1].light = fn_800286D0(
             &lbl_1_data_180[1].position, &lbl_1_data_180[1].direction,
             &lbl_1_data_180[1].color);
         Hu3DGLightStaticSet(lbl_1_data_180[1].light, 1);
@@ -41,53 +41,53 @@ void fn_1_15C8(void)
         lbl_1_data_1C0.a = 0;
     }
     if (lightMode == 0) {
-        lbl_1_bss_194.baseModel = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m625, 0), HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_194.baseModel = fn_80025A04(
+            fn_80008DD0(DATANUM(0x540000, 0), 0x10000000, 2));
         for (index = 0; index < 5; index++) {
-            lbl_1_bss_194.effects[index] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(lbl_1_data_108[index].resourceNumber,
-                                     HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_194.effects[index] = fn_80025A04(
+                fn_80008DD0(lbl_1_data_108[index].resourceNumber,
+                                     0x10000000, 2));
             lbl_1_bss_194.positionsY[index] = lbl_1_data_108[index].positionY;
-            Hu3DModelPosSet(lbl_1_bss_194.effects[index],
+            fn_80026760(lbl_1_bss_194.effects[index],
                             lbl_1_bss_194.positionsY[index],
                             0.0f, 0.0f);
             lbl_1_bss_194.motionValues[index] = lbl_1_data_108[index].motionValue;
-            Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
+            fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
             if (index == 2) {
                 /* This middle effect is sampled at frame 16, then held paused. */
-                Hu3DModelAttrReset(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
-                Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_LOOP);
-                Hu3DMotionTimeSet(lbl_1_bss_194.effects[index], 16.0f);
-                Hu3DModelAttrReset(lbl_1_bss_194.effects[index], HU3D_MOTATTR_LOOP);
-                Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
+                fn_80026A44(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
+                fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 0)));
+                fn_8002D414(lbl_1_bss_194.effects[index], 16.0f);
+                fn_80026A44(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 0)));
+                fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
             }
         }
     } else {
-        lbl_1_bss_194.baseModel = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m625, 4), HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_194.baseModel = fn_80025A04(
+            fn_80008DD0(DATANUM(0x540000, 4), 0x10000000, 2));
         for (index = 0; index < 5; index++) {
-            lbl_1_bss_194.effects[index] = Hu3DModelCreate(
-                HuDataSelHeapReadNum((&lbl_1_data_108[5])[index].resourceNumber,
-                                     HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_194.effects[index] = fn_80025A04(
+                fn_80008DD0((&lbl_1_data_108[5])[index].resourceNumber,
+                                     0x10000000, 2));
             lbl_1_bss_194.positionsY[index] = (&lbl_1_data_108[5])[index].positionY;
-            Hu3DModelPosSet(lbl_1_bss_194.effects[index],
+            fn_80026760(lbl_1_bss_194.effects[index],
                             lbl_1_bss_194.positionsY[index],
                             0.0f, 0.0f);
             lbl_1_bss_194.motionValues[index] = (&lbl_1_data_108[5])[index].motionValue;
-            Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
+            fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
             if (index == 2) {
                 /* This middle effect is sampled at frame 16, then held paused. */
-                Hu3DModelAttrReset(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
-                Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_LOOP);
-                Hu3DMotionTimeSet(lbl_1_bss_194.effects[index], 16.0f);
-                Hu3DModelAttrReset(lbl_1_bss_194.effects[index], HU3D_MOTATTR_LOOP);
-                Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
+                fn_80026A44(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
+                fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 0)));
+                fn_8002D414(lbl_1_bss_194.effects[index], 16.0f);
+                fn_80026A44(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 0)));
+                fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
             }
         }
     }
-    Hu3DModelAttrSet(lbl_1_bss_194.baseModel, HU3D_MOTATTR_LOOP);
-    Hu3DModelCameraSet(lbl_1_bss_194.baseModel, 1);
-    Hu3DModelLayerSet(lbl_1_bss_194.baseModel, 0);
+    fn_800269E8(lbl_1_bss_194.baseModel, ((1 << 30) | (1 << 0)));
+    fn_80026B64(lbl_1_bss_194.baseModel, 1);
+    fn_80026B8C(lbl_1_bss_194.baseModel, 0);
     fn_1_1E80();
 }
 
@@ -128,17 +128,17 @@ f32 fn_1_1C58(f32 position, f32 direction)
             difference *= -1.0f;
         }
 
-        motionTime = Hu3DMotionTimeGet(lbl_1_bss_194.effects[index]);
+        motionTime = fn_8002D4E0(lbl_1_bss_194.effects[index]);
         if (difference < lbl_1_bss_194.motionValues[index] &&
             0.0f != direction) {
-            Hu3DModelAttrReset(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
-            Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_LOOP);
+            fn_80026A44(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
+            fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 0)));
         } else if (motionTime <= 1.0f) {
-            Hu3DModelAttrReset(lbl_1_bss_194.effects[index], HU3D_MOTATTR_LOOP);
-            Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
+            fn_80026A44(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 0)));
+            fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
         } else {
-            Hu3DModelAttrReset(lbl_1_bss_194.effects[index], HU3D_MOTATTR_PAUSE);
-            Hu3DModelAttrSet(lbl_1_bss_194.effects[index], HU3D_MOTATTR_LOOP);
+            fn_80026A44(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 1)));
+            fn_800269E8(lbl_1_bss_194.effects[index], ((1 << 30) | (1 << 0)));
         }
     }
     return result;
@@ -149,23 +149,23 @@ void fn_1_1E80(void)
 {
     s16 night;
     lbl_1_bss_0.model =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m625, 8), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(lbl_1_bss_0.model, 6);
-    Hu3DModelMatHookSet(lbl_1_bss_0.model, fn_1_2528);
+        fn_80025A04(fn_80008DD0(DATANUM(0x540000, 8), 0x10000000, 2));
+    fn_80026B8C(lbl_1_bss_0.model, 6);
+    fn_80027884(lbl_1_bss_0.model, fn_1_2528);
     lbl_1_bss_0.textureBuffer = HuMemDirectMallocNum(
-        HEAP_MODEL, GXGetTexBufferSize(640U, 480U, 4U, 0U, 0U), HU_MEMNUM_OVL);
+        2, GXGetTexBufferSize(640U, 480U, 4U, 0U, 0U), 0x10000000);
     lbl_1_bss_0.anim0 =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_effect, 10), HU_MEMNUM_OVL, HEAP_MODEL));
-    night = GwMgNightF;
+        HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 10), 0x10000000, 2));
+    night = lbl_802C0278;
     if (night == 0) {
         lbl_1_bss_0.anim1 =
-            HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_m625, 14), HU_MEMNUM_OVL, HEAP_MODEL));
+            HuSprAnimRead(fn_80008DD0(DATANUM(0x540000, 14), 0x10000000, 2));
     } else {
         lbl_1_bss_0.anim1 =
-            HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_m625, 15), HU_MEMNUM_OVL, HEAP_MODEL));
+            HuSprAnimRead(fn_80008DD0(DATANUM(0x540000, 15), 0x10000000, 2));
     }
     lbl_1_bss_0.value = 0.0f;
-    HuPrcChildCreate(fn_1_20AC, 100U, 12288U, 0, lbl_1_bss_810);
+    fn_8000DAC0(fn_1_20AC, 100U, 12288U, 0, lbl_1_bss_810);
 }
 
 /* Called by splash handling to add the next ripple to one of the 32 free slots. */
@@ -186,11 +186,11 @@ void fn_1_1FEC(const f32 *wavePositionX)
 }
 
 M625LightAsset lbl_1_data_108[10] = {
-    { DATANUM(DATA_m625, 2), -460.0f, 150.0f }, { DATANUM(DATA_m625, 3), -270.0f, 50.0f },
-    { DATANUM(DATA_m625, 1), 0.0f, 200.0f }, { DATANUM(DATA_m625, 3), 270.0f, 50.0f },
-    { DATANUM(DATA_m625, 2), 460.0f, 150.0f }, { DATANUM(DATA_m625, 6), -460.0f, 150.0f },
-    { DATANUM(DATA_m625, 7), -270.0f, 50.0f }, { DATANUM(DATA_m625, 5), 0.0f, 200.0f },
-    { DATANUM(DATA_m625, 7), 270.0f, 50.0f }, { DATANUM(DATA_m625, 6), 460.0f, 150.0f }
+    { DATANUM(0x540000, 2), -460.0f, 150.0f }, { DATANUM(0x540000, 3), -270.0f, 50.0f },
+    { DATANUM(0x540000, 1), 0.0f, 200.0f }, { DATANUM(0x540000, 3), 270.0f, 50.0f },
+    { DATANUM(0x540000, 2), 460.0f, 150.0f }, { DATANUM(0x540000, 6), -460.0f, 150.0f },
+    { DATANUM(0x540000, 7), -270.0f, 50.0f }, { DATANUM(0x540000, 5), 0.0f, 200.0f },
+    { DATANUM(0x540000, 7), 270.0f, 50.0f }, { DATANUM(0x540000, 6), 460.0f, 150.0f }
 };
 
 M625LightPreset lbl_1_data_180[2] = {
@@ -219,7 +219,7 @@ void fn_1_20AC(void)
     Vec **peakVertices;
     Vec *vertices;
 
-    object = Hu3DModelObjPtrGet(lbl_1_bss_0.model, "wave2");
+    object = fn_80026BF4(lbl_1_bss_0.model, "wave2");
     Hu3DModelObjPosGet(lbl_1_bss_0.model, "wave2", &objectPosition);
     for (index = 0; index < 32; index += 1) {
         lbl_1_bss_0.rippleX[index] = -100000.0f;
@@ -238,7 +238,7 @@ void fn_1_20AC(void)
             peakCount += 1;
         }
     }
-    peakVertices = (Vec **)HuMemDirectMallocNum(HEAP_HEAP, peakCount * 4, HU_MEMNUM_OVL);
+    peakVertices = (Vec **)HuMemDirectMallocNum(HEAP_HEAP, peakCount * 4, 0x10000000);
     vertices = (Vec *)object->mesh.vertex->data;
     for (index = peakListIndex = 0; index < object->mesh.vertex->count; index += 1, vertices += 1) {
         if (peakY == vertices->y) {
@@ -297,20 +297,20 @@ void fn_1_2528(HU3D_DRAW_OBJ *waterDrawObject, HSF_MATERIAL *material) {
     Mtx lightProjectionMatrix;
     Mtx cameraInverseMatrix;
     GXColor color;
-    HU3D_CAMERA *camera = &Hu3DCamera[Hu3DCameraNo];
+    HU3D_CAMERA *camera = &Hu3DCamera[lbl_802C01A6];
 
     color = lbl_1_data_1C0;
-    Hu3DFbCopyExec(0, 0, 640, 480, GX_TF_RGB565, 0, lbl_1_bss_0.textureBuffer);
+    fn_8002BCDC(0, 0, 640, 480, GX_TF_RGB565, 0, lbl_1_bss_0.textureBuffer);
     GXPixModeSync();
-    Hu3DTexLoad(lbl_1_bss_0.textureBuffer, 640, 480, 4, GX_CLAMP, GX_CLAMP, 1, GX_TEXMAP0);
+    fn_800360D8(lbl_1_bss_0.textureBuffer, 640, 480, 4, GX_CLAMP, GX_CLAMP, 1, GX_TEXMAP0);
     HuSprTexLoad(lbl_1_bss_0.anim0, 0, 1, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     HuSprTexLoad(lbl_1_bss_0.anim1, 0, 2, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     C_MTXLightPerspective(lightProjectionMatrix, camera->fov, camera->aspect,
                           0.5f, -0.5f,
                           0.5f, 0.5f);
-    PSMTXInverse(Hu3DCameraMtx, cameraInverseMatrix);
+    PSMTXInverse(lbl_802613F4, cameraInverseMatrix);
     PSMTXConcat(cameraInverseMatrix, waterDrawObject->matrix, objectCameraMatrix);
-    PSMTXConcat(lightProjectionMatrix, Hu3DCameraMtx, textureMatrix);
+    PSMTXConcat(lightProjectionMatrix, lbl_802613F4, textureMatrix);
     PSMTXConcat(textureMatrix, objectCameraMatrix, textureMatrix);
     GXLoadTexMtxImm(textureMatrix, GX_TEXMTX0, GX_MTX3x4);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0, GX_FALSE, GX_PTIDENTITY);

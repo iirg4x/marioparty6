@@ -19,7 +19,7 @@ s16 lbl_1_bss_125E;
 s16 lbl_1_bss_125C;
 HUPROCESS *lbl_1_bss_1258;
 
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 extern void fn_1_F048(void);
 extern void fn_1_11F8(void);
 extern void fn_1_4208(void);
@@ -89,12 +89,12 @@ void _epilog(void)
 
 /* Called by the module prolog to start the object manager and configure sequence phases. */
 void fn_1_10814(void) {
-    lbl_1_bss_1258 = omInitObjMan(300, 4096);
-    omGameSysInit(lbl_1_bss_1258);
-    MgSeqCreatePrio(&lbl_1_data_270, 2000);
-    MgSeqModeHookAdd(4, fn_1_10AB0);
-    MgSeqModeDelaySet(2, -1);
-    MgSeqModeDelaySet(7, -1);
+    lbl_1_bss_1258 = fn_8003A8BC(300, 4096);
+    fn_80069F1C(lbl_1_bss_1258);
+    fn_800707B4(&lbl_1_data_270, 2000);
+    fn_80071D20(4, fn_1_10AB0);
+    fn_80071CE8(2, -1);
+    fn_80071CE8(7, -1);
 }
 
 /* Initialization callback: set up the shadow and board, use a black background in both day and
@@ -117,13 +117,13 @@ void fn_1_10890(s16 mode, s16 frameNo)
     fn_1_11F8();
     fn_1_4208();
     fn_1_F3C4();
-    nightFlag = GwMgNightF;
+    nightFlag = lbl_802C0278;
     if (nightFlag == 0) {
         Hu3DBGColorSet(0, 0, 0);
     } else {
         Hu3DBGColorSet(0, 0, 0);
     }
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Fade-in callback: update the opening scene and advance when frame 230 is reached and every
@@ -138,7 +138,7 @@ void fn_1_109BC(s16 unusedMode, s16 value) {
     fn_1_18FC();
     fn_1_F850();
     if (passedRange && playersReady) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -191,7 +191,7 @@ void fn_1_10B88(s16 unusedMode, s16 value) {
     lbl_1_bss_125E = 5;
     result = fn_1_C850(value);
     if ((u8)result != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
     fn_1_F850();
 }

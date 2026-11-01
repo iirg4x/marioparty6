@@ -98,7 +98,7 @@ unsigned char TimerOwner::isDone() { return MgTimerDoneCheck(timer) != 0; }
 // Outside practice mode, sets a supplied record; -1 updates the record only when the live time
 // beats it.
 void TimerOwner::setRecordTime(int recordTime) {
-    if (!_CheckFlag(FLAG_MG_PRACTICE)) MgTimerRecordSet(timer, recordTime);
+    if (!fn_8006A124(65551)) MgTimerRecordSet(timer, recordTime);
 }
 
 // Minigame UI control changes an existing score box's background using 8-bit RGB values.

@@ -7,7 +7,7 @@ static const char rcsid[] = "$Id: hu_archive.cpp,v 1.22 2004/09/09 12:24:38 saf 
 HuArchive::HuArchive(int dataNumber)
 {
     fillArchiveRange((signed char *)&header, (signed char *)&allocation, 0);
-    allocation = HuDataSelHeapReadNum(dataNumber, HU_MEMNUM_OVL, HEAP_MODEL);
+    allocation = fn_80008DD0(dataNumber, 0x10000000, 2);
     relocated = false;
     Load((ArchiveHeader *)allocation, 0);
 }

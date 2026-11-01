@@ -32,31 +32,31 @@ u32 lbl_1_data_30[10] = {
 u8 lbl_1_data_58[3] = {0, 0, 0};
 u32 lbl_1_data_5C[14] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 MGRenshoSoundCue lbl_1_data_94[25] = {
-    {MESSNUM(MESS_MGM_RENSHOU, 0), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 0), 2, MSM_SE_GUIDE_20},
+    {MESSNUM(MESS_MGM_RENSHOU, 0), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 0), 2, 944},
     {MESSNUM(MESS_MGM_RENSHOU, 0), 3, -1},
-    {MESSNUM(MESS_MGM_RENSHOU, 1), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 2), 1, MSM_SE_GUIDE_20},
-    {MESSNUM(MESS_MGM_RENSHOU, 3), 1, MSM_SE_GUIDE_20},
+    {MESSNUM(MESS_MGM_RENSHOU, 1), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 2), 1, 944},
+    {MESSNUM(MESS_MGM_RENSHOU, 3), 1, 944},
     {MESSNUM(MESS_MGM_RENSHOU, 4), 1, -1},
-    {MESSNUM(MESS_MGM_RENSHOU, 5), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 6), 1, MSM_SE_GUIDE_20},
-    {MESSNUM(MESS_MGM_RENSHOU, 7), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 8), 1, MSM_SE_GUIDE_20},
+    {MESSNUM(MESS_MGM_RENSHOU, 5), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 6), 1, 944},
+    {MESSNUM(MESS_MGM_RENSHOU, 7), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 8), 1, 944},
     {MESSNUM(MESS_MGM_RENSHOU, 8), 2, -1},
-    {MESSNUM(MESS_MGM_RENSHOU, 9), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 9), 2, MSM_SE_GUIDE_20},
-    {MESSNUM(MESS_MGM_RENSHOU, 10), 1, MSM_SE_GUIDE_18},
+    {MESSNUM(MESS_MGM_RENSHOU, 9), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 9), 2, 944},
+    {MESSNUM(MESS_MGM_RENSHOU, 10), 1, 942},
     {MESSNUM(MESS_MGM_RENSHOU, 10), 2, -1},
-    {MESSNUM(MESS_MGM_RENSHOU, 11), 1, MSM_SE_GUIDE_19},
-    {MESSNUM(MESS_MGM_RENSHOU, 12), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 13), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 14), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 15), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 17), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 18), 1, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 18), 2, MSM_SE_GUIDE_18},
-    {MESSNUM(MESS_MGM_RENSHOU, 19), 1, MSM_SE_GUIDE_20},
+    {MESSNUM(MESS_MGM_RENSHOU, 11), 1, 943},
+    {MESSNUM(MESS_MGM_RENSHOU, 12), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 13), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 14), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 15), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 17), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 18), 1, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 18), 2, 942},
+    {MESSNUM(MESS_MGM_RENSHOU, 19), 1, 944},
 };
 s16 lbl_1_data_1C0 = 64;
 
@@ -367,13 +367,13 @@ void fn_1_221C(void)
             HuWinMesSet(lbl_1_bss_B8.windowId, MESSNUM(MESS_MGM_RENSHOU, 16));
             HuWinMesWait(lbl_1_bss_B8.windowId);
         } else {
-            if (GwCommon.renshoMgRecordNum == 0) {
+            if (lbl_80265E30.renshoMgRecordNum == 0) {
 
                 HuWinInsertMesSet(lbl_1_bss_B8.windowId, (u32) fn_1_1340(MgModePlayNum - 1),
                                   (s16) lbl_1_data_10[0]);
                 HuWinMesSet(lbl_1_bss_B8.windowId, MESSNUM(MESS_MGM_RENSHOU, 15));
                 HuWinMesWait(lbl_1_bss_B8.windowId);
-            } else if ((s32)GwCommon.renshoMgRecordNum < (s32)(MgModePlayNum - 1)) {
+            } else if ((s32)lbl_80265E30.renshoMgRecordNum < (s32)(MgModePlayNum - 1)) {
 
                 HuWinInsertMesSet(lbl_1_bss_B8.windowId, (u32) fn_1_1340(MgModePlayNum - 1),
                                   (s16) lbl_1_data_10[0]);

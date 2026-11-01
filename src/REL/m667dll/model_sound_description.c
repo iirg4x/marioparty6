@@ -21,7 +21,7 @@ void *fn_1_8F58(s32 descriptionIndex)
 s32 fn_1_8FBC(void) { return 0; }
 
 /* Report whether the current minigame uses its night-mode descriptions. */
-s16 fn_1_8FC4(void) { return GwMgNightF; }
+s16 fn_1_8FC4(void) { return lbl_802C0278; }
 /* Night and daytime model and motion descriptor records selected by fn_1_8F58. */
 #include "dolphin/types.h"
 

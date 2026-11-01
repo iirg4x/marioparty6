@@ -78,9 +78,9 @@ void _epilog(void)
 /* Creates the object manager and registers the minigame sequence callbacks. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_4 = omInitObjMan(256, 8192);
-    omGameSysInit(lbl_1_bss_4);
-    MgSeqCreate(&lbl_1_data_0);
+    lbl_1_bss_4 = fn_8003A8BC(256, 8192);
+    fn_80069F1C(lbl_1_bss_4);
+    fn_80070788(&lbl_1_data_0);
 }
 
 /* Initializes the scene and its objects during the sequence setup phase. */
@@ -93,8 +93,8 @@ void fn_1_F0(s16 mode, s16 frame) {
     fn_1_6A2C();
     fn_1_66BC();
     fn_1_B234();
-    lbl_1_bss_0 = omAddObjEx(lbl_1_bss_4, 100, 0, 0, -1, fn_1_A74);
-    MgSeqModeNext();
+    lbl_1_bss_0 = fn_8003AB38(lbl_1_bss_4, 100, 0, 0, -1, fn_1_A74);
+    fn_80071A9C();
 }
 
 /* Advances the introductory camera sequence during fade-in. */
@@ -155,11 +155,11 @@ void fn_1_2EC(s16 mode, s16 frameNo) {
         return;
     }
     if (frameNo == 0) {
-        MgSeqModeChangeOff();
+        fn_80071B08();
         HuAudJinglePlay(MSM_STREAM_FILESEL);
     }
     if (((s16)fn_1_A740() != 0) && (frameNo > 200)) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -174,12 +174,12 @@ void fn_1_368(s16 mode, s16 frameNo) {
     }
     playerIndex = 0;
     while (playerIndex < 4) {
-        if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-            GwPlayer[playerIndex].mgCoinBonus = 3;
+        if (fn_8006A124(65551) == 0) {
+            lbl_80265750[playerIndex].mgCoinBonus = 3;
         }
         playerIndex += 1;
     }
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Updates the results camera during fade-out when at least one player has finished. */
@@ -201,7 +201,7 @@ void fn_1_440(s16 frame) {
 
     switch (lbl_1_bss_174.sequencePhase) {
         case 0:
-            MgSeqModeChangeOff();
+            fn_80071B08();
             lbl_1_bss_174.musicHandle = HuAudBGMPlay(MSM_STREAM_MGMUS_LAST_KOOPA);
             lbl_1_bss_174.soundEffectId = HuAudFXPlay(INSECTIRIDE_INTRO_SOUND);
             lbl_1_bss_174.sequencePhase++;
@@ -214,19 +214,19 @@ void fn_1_440(s16 frame) {
                 view.rot.x = -28.0f;
                 view.rot.y = view.rot.z = 0.0f;
                 view.zoom = 6400.0f;
-                omCameraViewMoveSimpleMulti(2, &view, 180);
-                Hu3DMotionSpeedSet(lbl_1_bss_174.modelId, 1.0f);
+                fn_8003E8E4(2, &view, 180);
+                fn_8002D86C(lbl_1_bss_174.modelId, 1.0f);
                 fn_1_AF18(1);
                 lbl_1_bss_174.sequencePhase++;
             }
             break;
         case 2:
-            if (omCameraViewCheck(2) != 0) {
+            if (fn_8003EB94(2) != 0) {
                 lbl_1_bss_174.sequencePhase++;
             }
             /* The animation cue is independent of the camera completing this frame. */
-            if (Hu3DMotionTimeGet(lbl_1_bss_174.modelId) == 32.0f) {
-                Hu3DModelAttrSet(lbl_1_bss_174.modelId, HU3D_MOTATTR_LOOP);
+            if (fn_8002D4E0(lbl_1_bss_174.modelId) == 32.0f) {
+                fn_800269E8(lbl_1_bss_174.modelId, ((1 << 30) | (1 << 0)));
                 fn_1_1908();
                 fn_1_15F4();
             }
@@ -244,11 +244,11 @@ void fn_1_440(s16 frame) {
             view.rot.x = -16.0f;
             view.rot.y = view.rot.z = 0.0f;
             view.zoom = 5230.0f;
-            omCameraViewMoveSimpleMulti(2, &view, 45);
+            fn_8003E8E4(2, &view, 45);
             lbl_1_bss_174.sequencePhase++;
             break;
         case 5:
-            if (omCameraViewCheck(2) != 0) {
+            if (fn_8003EB94(2) != 0) {
                 lbl_1_bss_174.sequencePhase++;
             }
             break;
@@ -256,7 +256,7 @@ void fn_1_440(s16 frame) {
             if (lbl_1_bss_174.phaseFrame++ >= 30) {
                 lbl_1_bss_174.sequencePhase = 0;
                 lbl_1_bss_174.phaseFrame = 0;
-                MgSeqModeNext();
+                fn_80071A9C();
             }
             break;
         default:
@@ -270,7 +270,7 @@ void fn_1_73C(void) {
     s32 recordIndex;
     switch (lbl_1_bss_174.sequencePhase) {
         case 0:
-            MgSeqModeChangeOff();
+            fn_80071B08();
             for (recordIndex = 0; recordIndex < 4; recordIndex++) {
                 fn_1_341C(recordIndex);
             }
@@ -290,14 +290,14 @@ void fn_1_73C(void) {
             break;
         case 3:
             if (WipeCheck() == 0) {
-                CenterM[1].x = (0.0f);
-                CenterM[1].y = (300.0f);
-                CenterM[1].z = (-750.0f);
-                CRotM[1].x = (-12.0f);
-                CRotM[1].y = CRotM[1].z = (0.0f);
-                CZoomM[1] = (3000.0f);
-                Hu3DModelAttrSet(lbl_1_bss_174.openingModelId, HU3D_ATTR_DISPOFF);
-                Hu3DModelAttrReset(lbl_1_bss_174.gameplayModelId, HU3D_ATTR_DISPOFF);
+                lbl_80266B18[1].x = (0.0f);
+                lbl_80266B18[1].y = (300.0f);
+                lbl_80266B18[1].z = (-750.0f);
+                lbl_80266A58[1].x = (-12.0f);
+                lbl_80266A58[1].y = lbl_80266A58[1].z = (0.0f);
+                lbl_80266BD8[1] = (3000.0f);
+                fn_800269E8(lbl_1_bss_174.openingModelId, (1 << 0));
+                fn_80026A44(lbl_1_bss_174.gameplayModelId, (1 << 0));
                 fn_1_381C();
                 fn_1_A534();
                 HuAudFXStop(lbl_1_bss_174.soundEffectId);
@@ -318,7 +318,7 @@ void fn_1_73C(void) {
             break;
         case 6:
             if (lbl_1_bss_174.phaseFrame++ > 45) {
-                MgSeqModeNext();
+                fn_80071A9C();
             }
             if (lbl_1_bss_174.phaseFrame == 30) {
                 HuAudJinglePlay(MSM_STREAM_MGMUS_17);

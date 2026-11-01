@@ -12,9 +12,9 @@
 #include "string.h"
 
 #define M674_SCORE_WORK_SIZE 116
-#define M674_SCORE_DATA_GROUP HU_MEMNUM_OVL
+#define M674_SCORE_DATA_GROUP 0x10000000
 #define M674_SCORE_BOX_DATA_INDEX 13
-#define M674_SCORE_DATA_HEAP HEAP_MODEL
+#define M674_SCORE_DATA_HEAP 2
 #define M674_SCORE_BOX_X 120
 #define M674_SCORE_BOX_Y 48
 #define M674_SCORE_STYLE 10158129
@@ -47,9 +47,9 @@ void fn_1_FA48(HUPROCESS *process)
     OMOBJ *object;
     void *scoreWork;
 
-    object = omAddObjEx(process, 20, 0, 0, -1, fn_1_FAD4);
+    object = fn_8003AB38(process, 20, 0, 0, -1, fn_1_FAD4);
     lbl_1_bss_6C8 = object;
-    scoreWork = HuMemDirectMallocNum(HEAP_HEAP, M674_SCORE_WORK_SIZE, HU_MEMNUM_OVL);
+    scoreWork = HuMemDirectMallocNum(HEAP_HEAP, M674_SCORE_WORK_SIZE, 0x10000000);
     object->data = scoreWork;
     memset(scoreWork, 0, M674_SCORE_WORK_SIZE);
 }
@@ -78,15 +78,15 @@ void fn_1_FB38(OMOBJ *object)
     s32 playerIndex;
     s32 spriteIndex;
 
-    scoreBoxAnimation = HuSprAnimRead(HuDataSelHeapReadNum(fn_1_E18(M674_SCORE_BOX_DATA_INDEX),
+    scoreBoxAnimation = HuSprAnimRead(fn_80008DD0(fn_1_E18(M674_SCORE_BOX_DATA_INDEX),
         M674_SCORE_DATA_GROUP, M674_SCORE_DATA_HEAP));
     scoreAnimation =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_mgconst, 48), M674_SCORE_DATA_GROUP,
+        HuSprAnimRead(fn_80008DD0(DATANUM(0x9b0000, 48), M674_SCORE_DATA_GROUP,
             M674_SCORE_DATA_HEAP));
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         M674ScoreEntry *entry = &work->entries[playerIndex];
         s16 scoreBox = MgScoreBoxCreateChar(M674_SCORE_BOX_X, M674_SCORE_BOX_Y,
-            GwPlayerConf[playerIndex].charNo);
+            lbl_80265728[playerIndex].charNo);
         s16 spriteGroup;
         MGSCORE *score;
 

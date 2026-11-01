@@ -4,7 +4,7 @@
 #include "datadir_enum.h"
 
 enum {
-    WIN_ANM_font = DATANUM(DATA_win, 0),
+    WIN_ANM_font = DATANUM(0xf20000, 0),
     WIN_ANM_warning, //1
     WIN_ANM_cursor, //2
     WIN_ANM_icon, //3

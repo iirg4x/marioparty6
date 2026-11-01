@@ -264,7 +264,7 @@ static void ToeDispCheck(void)
 			return;
 	}
 	HuDvdErrWait = TRUE;
-	HuPadRumbleAllStop();
+	fn_80006F3C();
 	VISetBlack(FALSE);
 	VIFlush();
 
@@ -483,7 +483,7 @@ void HuRestartSystem(void)
 BOOL HuSoftResetCheck(void)
 {
 	int padIndex;
-	if(VCounter == 0) {
+	if(lbl_802BFF84 == 0) {
 		return FALSE;
 	}
 	if(SR_ExecReset) {
@@ -492,12 +492,12 @@ BOOL HuSoftResetCheck(void)
 	/* Once selected, any stored button set differing from the exact chord requests reset,
 	 * including an extra held button. */
 	if(SR_ResetPad != -1) {
-		if(_PadBtn[SR_ResetPad] != PAD_BTN_SRESET) {
+		if(lbl_802BFFD0[SR_ResetPad] != PAD_BTN_SRESET) {
 			return TRUE;
 		}
 	} else {
 		for(padIndex=0; padIndex<4; padIndex++) {
-			if(SR_PreRstChk[padIndex] && _PadBtn[padIndex] != PAD_BTN_SRESET) {
+			if(SR_PreRstChk[padIndex] && lbl_802BFFD0[padIndex] != PAD_BTN_SRESET) {
 				SR_PreRstChk[padIndex] = FALSE;
 			}
 		}
@@ -516,11 +516,11 @@ BOOL HuSoftResetCountCheck(void)
 {
 	int padIndex;
 	for(padIndex=0; padIndex<4; padIndex++) {
-		if(_PadBtn[padIndex] != PAD_BTN_SRESET) {
+		if(lbl_802BFFD0[padIndex] != PAD_BTN_SRESET) {
 			SR_PushTime[padIndex] = 0;
 		} else {
 			if(!SR_PreRstChk[padIndex]) {
-				if(_PadBtn[padIndex] & PAD_BUTTON_START) {
+				if(lbl_802BFFD0[padIndex] & PAD_BUTTON_START) {
 					if(SR_PushTime[padIndex]++ >= 30) {
 						SR_ResetPad = padIndex;
 						return TRUE;
@@ -551,7 +551,7 @@ static void HuSoftResetPostProc(void)
 			msmSeSetMasterVolume(0);
 			msmMusSetMasterVolume(0);
 		}
-		HuPadRumbleAllStop();
+		fn_80006F3C();
 		SR_ExecReset = TRUE;
 	}
 }

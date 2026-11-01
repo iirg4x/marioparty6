@@ -32,8 +32,8 @@ void fn_1_2A24(unsigned int state)
             for (i = 0; i < 24; pattern++, i++) {
                 if (*pattern == type) {
                     model = lbl_1_bss_10.pillarModel[i];
-                    Hu3DMotionSet(model, lbl_1_bss_10.pillarMotion[i][1]);
-                    Hu3DModelAttrReset(model, HU3D_MOTATTR_LOOP | HU3D_ATTR_DISPOFF);
+                    fn_8002C95C(model, lbl_1_bss_10.pillarMotion[i][1]);
+                    fn_80026A44(model, ((1 << 30) | (1 << 0)) | (1 << 0));
                 }
             }
         }
@@ -44,7 +44,7 @@ void fn_1_2A24(unsigned int state)
             OSReport("shout ... %d\n", lbl_1_bss_10.selectedWord);
             for (i = 0; i < 24; pattern++, i++) {
                 if (*pattern != lbl_1_bss_10.selectedWord) {
-                    Hu3DMotionSet(lbl_1_bss_10.pillarModel[i], lbl_1_bss_10.pillarMotion[i][1]);
+                    fn_8002C95C(lbl_1_bss_10.pillarModel[i], lbl_1_bss_10.pillarMotion[i][1]);
                 }
             }
             lbl_1_bss_10.selectedWord = -1;
@@ -56,7 +56,7 @@ void fn_1_2A24(unsigned int state)
             OSReport("PILLARF_LAMP\n");
             for (i = 0; i < 24; pattern++, i++) {
                 if (*pattern != lbl_1_bss_10.selectedWord) {
-                    Hu3DMotionSet(lbl_1_bss_10.pillarModel[i], lbl_1_bss_10.pillarMotion[i][3]);
+                    fn_8002C95C(lbl_1_bss_10.pillarModel[i], lbl_1_bss_10.pillarMotion[i][3]);
                 }
             }
             HuAudFXPlay(M670_SE_PILLAR_LAMP_CUE);
@@ -116,7 +116,7 @@ float fn_1_2EF4(int pillarNo)
 {
     HU3D_MODELID model = lbl_1_bss_10.pillarModel[pillarNo];
     HuVecF pos;
-    Hu3DModelPosGet(model, &pos);
+    fn_800267CC(model, &pos);
     return pos.y;
 }
 /* CPU decisions use this to check whether the nearest pillar is at its standing height. */
@@ -127,7 +127,7 @@ int fn_1_2F44(HuVecF *pos)
     HuVecF pillarPos;
     pillarNo = fn_1_2DE8(pos);
     model = lbl_1_bss_10.pillarModel[pillarNo];
-    Hu3DModelPosGet(model, &pillarPos);
+    fn_800267CC(model, &pillarPos);
     return 100.0f - pillarPos.y < 1.0f;
 }
 /* The pillar object's per-frame callback raises, drops, and resets pillars as the round state
@@ -135,7 +135,7 @@ int fn_1_2F44(HuVecF *pos)
 void fn_1_3098(OMOBJ *obj)
 {
     int i;
-    if (MgSeqModeGet() >= 5 && MgTimerDoneCheck(lbl_1_bss_10.timer)) {
+    if (fn_80071A8C() >= 5 && MgTimerDoneCheck(lbl_1_bss_10.timer)) {
         return;
     }
     switch (lbl_1_bss_10.state) {
@@ -156,7 +156,7 @@ void fn_1_3098(OMOBJ *obj)
             lbl_1_bss_480 = 100.0f;
             if (lbl_1_bss_47C != 0.0f) {
                 for (i = 0; i < 4; i++) {
-                    omVibrate(i, 20, 4, 4);
+                    fn_8006A030(i, 20, 4, 4);
                 }
                 HuAudFXPlay(M670_SE_PILLAR_RISE_COMPLETE);
             }
@@ -173,7 +173,7 @@ void fn_1_3098(OMOBJ *obj)
             for (i = 0; i < 24; pattern++, i++) {
                 if (*pattern == type) {
                     model = lbl_1_bss_10.pillarModel[i];
-                    if (!Hu3DMotionEndCheck(model)) {
+                    if (!fn_8002D75C(model)) {
                         done = 0;
                     }
                 }
@@ -183,7 +183,7 @@ void fn_1_3098(OMOBJ *obj)
                 for (i = 0; i < 24; pattern++, i++) {
                     if (*pattern == type) {
                         model = lbl_1_bss_10.pillarModel[i];
-                        Hu3DMotionSet(model, lbl_1_bss_10.pillarMotion[i][3]);
+                        fn_8002C95C(model, lbl_1_bss_10.pillarMotion[i][3]);
                     }
                 }
                 if (type > 2) {
@@ -197,7 +197,7 @@ void fn_1_3098(OMOBJ *obj)
             for (i = 0; i < 24; pattern++, i++) {
                 if (*pattern == type) {
                     model = lbl_1_bss_10.pillarModel[i];
-                    if (!Hu3DMotionEndCheck(model)) {
+                    if (!fn_8002D75C(model)) {
                         done = 0;
                     }
                 }
@@ -208,7 +208,7 @@ void fn_1_3098(OMOBJ *obj)
                 for (i = 0; i < 24; pattern++, i++) {
                     if (*pattern == type) {
                         model = lbl_1_bss_10.pillarModel[i];
-                        Hu3DMotionSet(model, lbl_1_bss_10.pillarMotion[i][1]);
+                        fn_8002C95C(model, lbl_1_bss_10.pillarMotion[i][1]);
                     }
                 }
                 obj->work[0] = type;
@@ -224,7 +224,7 @@ void fn_1_3098(OMOBJ *obj)
         int done = 1;
         for (i = 0; i < 24; pattern++, i++) {
             if (*pattern != lbl_1_bss_10.selectedWord &&
-                !Hu3DMotionEndCheck(lbl_1_bss_10.pillarModel[i])) {
+                !fn_8002D75C(lbl_1_bss_10.pillarModel[i])) {
                 done = 0;
             }
         }

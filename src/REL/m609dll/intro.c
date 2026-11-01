@@ -102,14 +102,14 @@ s32 fn_1_111A8(void) {
                 if (lbl_1_bss_24C[playerNo].mode >= 0) {
                     winners[playerNo] = lbl_1_bss_24C[playerNo].characterNo;
                     playerId = lbl_1_bss_24C[playerNo].playerNo;
-                    if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                        GwPlayer[playerId].mgCoinBonus = 10;
+                    if (fn_8006A124(65551) == 0) {
+                        lbl_80265750[playerId].mgCoinBonus = 10;
                     }
                 } else {
                     winners[playerNo] = -1;
                 }
             }
-            MgSeqWinnerSet(winners[0], winners[1], winners[2], winners[3]);
+            fn_80071C18(winners[0], winners[1], winners[2], winners[3]);
             lbl_1_bss_30.modeStep++;
         }
         break;
@@ -118,7 +118,7 @@ s32 fn_1_111A8(void) {
         if (lbl_1_bss_30.waitTimer++ > 120) {
             if (lbl_1_bss_30.setupFlag == 0 &&
                 lbl_1_bss_30.night == 0) {
-                Hu3DMotionSpeedSet(lbl_1_bss_8BC[7].model,
+                fn_8002D86C(lbl_1_bss_8BC[7].model,
                                    (1.0f));
             }
             lbl_1_bss_30.waitTimer = 0;
@@ -129,19 +129,19 @@ s32 fn_1_111A8(void) {
         fn_1_118BC();
         if (lbl_1_bss_30.setupFlag == 0) {
             motionStep = (60.0f);
-            motionFrames += fn_1_30D8(&Center.x, motionStep,
+            motionFrames += fn_1_30D8(&lbl_80266A4C.x, motionStep,
                                       (257.0f), (0.0f));
-            motionFrames += fn_1_30D8(&Center.y, motionStep,
+            motionFrames += fn_1_30D8(&lbl_80266A4C.y, motionStep,
                                       (350.0f), (251.0f));
-            motionFrames += fn_1_30D8(&Center.z, motionStep,
+            motionFrames += fn_1_30D8(&lbl_80266A4C.z, motionStep,
                                       (274.0f), (274.0f));
-            motionFrames += fn_1_30D8(&CRot.x, motionStep,
+            motionFrames += fn_1_30D8(&lbl_80266A40.x, motionStep,
                                       (-42.0f), (-26.0f));
-            motionFrames += fn_1_30D8(&CRot.y, motionStep,
+            motionFrames += fn_1_30D8(&lbl_80266A40.y, motionStep,
                                       (30.0f), (0.0f));
-            motionFrames += fn_1_30D8(&CRot.z, motionStep,
+            motionFrames += fn_1_30D8(&lbl_80266A40.z, motionStep,
                                       (0.0f), (0.0f));
-            motionFrames += fn_1_30D8(&CZoom, motionStep,
+            motionFrames += fn_1_30D8(&lbl_802C028C, motionStep,
                                       (1587.0f), (960.0f));
         } else if (lbl_1_bss_30.setupFlag == 1) {
             motionFrames = 1;
@@ -163,8 +163,8 @@ s32 fn_1_111A8(void) {
     }
 
     if (lbl_1_bss_30.night == 0 &&
-        Hu3DMotionTimeGet(lbl_1_bss_8BC[7].model) >= (118.9f)) {
-        Hu3DModelAttrSet(lbl_1_bss_8BC[7].model, 1);
+        fn_8002D4E0(lbl_1_bss_8BC[7].model) >= (118.9f)) {
+        fn_800269E8(lbl_1_bss_8BC[7].model, 1);
     }
     fn_1_670();
     fn_1_4F98();
@@ -189,7 +189,7 @@ s32 fn_1_11658(void) {
                     lbl_1_bss_70C[playerNo].shiftStart = (0.0f);
                     lbl_1_bss_70C[playerNo].blendDuration = (5.0f);
                     lbl_1_bss_70C[playerNo].shiftFlags = 0;
-                    lbl_1_bss_70C[playerNo].attributesToReset = HU3D_MOTATTR_LOOP;
+                    lbl_1_bss_70C[playerNo].attributesToReset = ((1 << 30) | (1 << 0));
                 }
             }
         }
@@ -200,8 +200,8 @@ s32 fn_1_11658(void) {
     }
 
     if (lbl_1_bss_30.night == 0 &&
-        Hu3DMotionTimeGet(lbl_1_bss_8BC[7].model) >= (118.9f)) {
-        Hu3DModelAttrSet(lbl_1_bss_8BC[7].model, 1);
+        fn_8002D4E0(lbl_1_bss_8BC[7].model) >= (118.9f)) {
+        fn_800269E8(lbl_1_bss_8BC[7].model, 1);
     }
 
     fn_1_11B80();
@@ -322,10 +322,10 @@ void fn_1_11B80(void) {
             lbl_1_bss_6B6C.target.z = lbl_1_bss_8BC[50].position.z;
             for (modelNo = 11; modelNo <= 16; modelNo++) {
                 if (lbl_1_bss_8BC[modelNo].stateOrTimer-- == 0) {
-                    Hu3DModelAttrReset(lbl_1_bss_8BC[modelNo].model, 1);
-                    Hu3DModelAttrSet(lbl_1_bss_8BC[modelNo].model, HU3D_MOTATTR_LOOP);
-                    Hu3DMotionTimeSet(lbl_1_bss_8BC[modelNo].model, (0.0f));
-                    Hu3DMotionSpeedSet(lbl_1_bss_8BC[modelNo].model, (1.0f));
+                    fn_80026A44(lbl_1_bss_8BC[modelNo].model, 1);
+                    fn_800269E8(lbl_1_bss_8BC[modelNo].model, ((1 << 30) | (1 << 0)));
+                    fn_8002D414(lbl_1_bss_8BC[modelNo].model, (0.0f));
+                    fn_8002D86C(lbl_1_bss_8BC[modelNo].model, (1.0f));
                 }
                 lbl_1_bss_8BC[modelNo].position = lbl_1_bss_8BC[50].position;
             }

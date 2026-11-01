@@ -1,4 +1,5 @@
 /* Computer-player decisions and the paths made by moving arena segments. */
+#include <math.h>
 #include "REL/m633dll.h"
 
 void fn_1_3828(OMOBJ *obj)
@@ -15,7 +16,7 @@ void fn_1_382C(void)
  * the group-zero or outside-group decision routine. */
 void fn_1_3830(s32 playerNo)
 {
-    if ((GwPlayerConf[playerNo].type != 0) && ((s32) lbl_1_bss_0.playerRemoved[playerNo] == 0)) {
+    if ((lbl_80265728[playerNo].type != 0) && ((s32) lbl_1_bss_0.playerRemoved[playerNo] == 0)) {
         if ((s32) lbl_1_bss_0.outsideGroupZero[playerNo] == 0) {
             fn_1_38C0(playerNo);
             return;
@@ -50,7 +51,7 @@ void fn_1_38C0(s32 playerNo)
     lbl_1_bss_0.aiPressedButtons = 0;
     if (lbl_1_bss_0.activePlayerCount != 0) {
         if ((f32) aiState->decisionCounter < 0.0f) {
-            if (frandmod(100) < (u32) lbl_1_data_260[GwPlayerConf[playerNo].comDif]) {
+            if (frandmod(100) < (u32) lbl_1_data_260[lbl_80265728[playerNo].comDif]) {
                 useRandomHeading = 1;
             } else {
                 useRandomHeading = 0;
@@ -73,11 +74,15 @@ retry_target_selection:
                 targetOffsetComponent = 250.0f;
                 directionCalculation = (f32) (u32) frandmod(360);
                 aiState->targetHeadingDegrees = directionCalculation;
-                aiState->destination.x = targetOffsetComponent * HuCos(directionCalculation) -
-                                         targetOffsetComponent * HuSin(directionCalculation);
+                aiState->destination.x = targetOffsetComponent
+                    * cos(3.141592653589793*directionCalculation/180.0) -
+                                         targetOffsetComponent
+                                             * sin(3.141592653589793*directionCalculation/180.0);
                 aiState->destination.y = 0.0f;
-                aiState->destination.z = targetOffsetComponent * HuSin(directionCalculation) +
-                                         targetOffsetComponent * HuCos(directionCalculation);
+                aiState->destination.z = targetOffsetComponent
+                    * sin(3.141592653589793*directionCalculation/180.0) +
+                                         targetOffsetComponent
+                                             * cos(3.141592653589793*directionCalculation/180.0);
                 aiState->decisionCounter = frandmod(180) + 180;
                 break;
             }
@@ -97,7 +102,7 @@ retry_target_selection:
             break;
         }
         aiState->decisionCounter -= 1;
-        Hu3DModelRotGet(lbl_1_bss_0.rotatingStageModelId, &stageRotation);
+        fn_80026874(lbl_1_bss_0.rotatingStageModelId, &stageRotation);
         targetHeadingDegrees =
             (f32) (180.0 *
                    (atan2((f64) targetPosition.x, (f64) targetPosition.z) / 3.141592653589793));
@@ -127,12 +132,12 @@ retry_target_selection:
             directionCalculation = (stageObjectPosition.x * targetPosition.z) -
                                    (stageObjectPosition.z * targetPosition.x);
             if (directionCalculation >= 0.0f) {
-                lbl_1_bss_0.aiButtons = PAD_BUTTON_TRIGGER_R;
+                lbl_1_bss_0.aiButtons = 0x2000;
             } else {
-                lbl_1_bss_0.aiButtons = PAD_BUTTON_TRIGGER_L;
+                lbl_1_bss_0.aiButtons = 0x4000;
             }
         }
-        Hu3DModelRotGet(lbl_1_bss_0.rotatingStageModelId, &movementRotation);
+        fn_80026874(lbl_1_bss_0.rotatingStageModelId, &movementRotation);
         movementYawDegrees = movementRotation.y;
         movementHeadingDegrees =
             (f32) (180.0 *
@@ -179,14 +184,14 @@ void fn_1_3FFC(s32 playerNo)
         }
         aiState->decisionMode = 0;
     } else if (aiState->decisionMode == 0) {
-        if (frandmod(100) < (u32)lbl_1_data_270[GwPlayerConf[playerNo].comDif]) {
+        if (frandmod(100) < (u32)lbl_1_data_270[lbl_80265728[playerNo].comDif]) {
             aiState->decisionMode = 2;
         } else {
             aiState->decisionMode = 1;
         }
     }
     if (aiState->decisionMode == 1 && lbl_1_bss_0.segmentReflectionSoundPending != 0
-        && frandmod(100) < (u32)lbl_1_data_280[GwPlayerConf[playerNo].comDif]) {
+        && frandmod(100) < (u32)lbl_1_data_280[lbl_80265728[playerNo].comDif]) {
         aiState->decisionMode = 2;
     }
     switch (aiState->decisionMode) {
@@ -285,7 +290,7 @@ void fn_1_45EC(MGPLAYER *player, M633AI *ai, M633Segment *segment)
         if (distance < 100.0f) {
             PSVECSubtract(&playerPosition, &nearestPoint, &movementDelta);
             PSVECNormalize(&movementDelta, &movementDelta);
-            MgPlayerPadSet(player, (s32) (56.0f * movementDelta.x),
+            fn_80080520(player, (s32) (56.0f * movementDelta.x),
                            (s32) (-56.0f * movementDelta.z), 0, 0);
             return;
         }
@@ -484,16 +489,16 @@ void fn_1_55D0(MGPLAYER *player, M633AI *ai)
             targetReached = 1;
         }
         fn_1_5B20(player, &playerPosition, &destinationPosition, &movementDirection);
-        MgPlayerPadSet(player, (s32) (56.0f * movementDirection.x),
+        fn_80080520(player, (s32) (56.0f * movementDirection.x),
                        (s32) (-56.0f * movementDirection.z), 0, 0);
     }
     directionChoice = frandmod(100);
     /* These original boolean-indexed checks read difficulty slots 0 and 1 rather than the current
      * player's slot. */
-    if ((GwPlayerConf[player->playerNo == 3].comDif != 0) ||
-        (GwPlayerConf[player->playerNo == 2].comDif != 0)) {
+    if ((lbl_80265728[player->playerNo == 3].comDif != 0) ||
+        (lbl_80265728[player->playerNo == 2].comDif != 0)) {
         playerPositionForBearing = player->actor->pos;
-        Hu3DModelRotGet(lbl_1_bss_0.rotatingStageModelId, &arenaRotation);
+        fn_80026874(lbl_1_bss_0.rotatingStageModelId, &arenaRotation);
         playerBearingDegrees = (f32) (180.0 * (atan2((f64) playerPositionForBearing.x,
                                                      (f64) playerPositionForBearing.z) /
                                                3.141592653589793));
@@ -530,8 +535,10 @@ void fn_1_55D0(MGPLAYER *player, M633AI *ai)
         targetHeading = ai->targetHeadingDegrees;
         /* Rotate a 310-by-310 offset by the selected heading to set the next destination. */
         movementAmount = 310.0f;
-        targetX = movementAmount * HuCos(targetHeading) - movementAmount * HuSin(targetHeading);
-        targetZ = movementAmount * HuSin(targetHeading) + movementAmount * HuCos(targetHeading);
+        targetX = movementAmount * cos(3.141592653589793*targetHeading/180.0)
+            - movementAmount * sin(3.141592653589793*targetHeading/180.0);
+        targetZ = movementAmount * sin(3.141592653589793*targetHeading/180.0)
+            + movementAmount * cos(3.141592653589793*targetHeading/180.0);
         ai->destination.x = targetX;
         ai->destination.y = 0.0f;
         ai->destination.z = targetZ;
@@ -581,8 +588,10 @@ void fn_1_5B20(MGPLAYER *player, Point3d *startPosition, Point3d *destinationPos
                 vectorMagnitude = PSVECMag(&avoidanceDelta);
                 if (vectorMagnitude < 140.0f) {
                     sideOffset =
-                        (nearbyPlayerPosition.x - destinationPosition->x) * HuSin(travelHeading) +
-                        (destinationPosition->z - nearbyPlayerPosition.z) * HuCos(travelHeading);
+                        (nearbyPlayerPosition.x
+                            - destinationPosition->x) * sin(3.141592653589793*travelHeading/180.0) +
+                        (destinationPosition->z
+                            - nearbyPlayerPosition.z) * cos(3.141592653589793*travelHeading/180.0);
                     sideOffset /= 90.0f;
                     if (sideOffset >= 0.0f) {
                         avoidanceHeadingOffset += 80.0f / (1.0f + sideOffset);

@@ -13,13 +13,13 @@
 
 /* Five card-image resources followed by unused words. */
 s32 lbl_1_data_E8[13] = {
-    DATANUM(DATA_m602, 15), DATANUM(DATA_m602, 16), DATANUM(DATA_m602, 17), DATANUM(DATA_m602, 18),
-    DATANUM(DATA_m602, 19), 0, 0, 0,
+    DATANUM(0x3d0000, 15), DATANUM(0x3d0000, 16), DATANUM(0x3d0000, 17), DATANUM(0x3d0000, 18),
+    DATANUM(0x3d0000, 19), 0, 0, 0,
     M602_POSITIVE_1000_BITS, 0, 0, M602_NEGATIVE_1000_BITS,
     -1,
 };
 
-s32 lbl_1_data_11C[2] = { DATANUM(DATA_m602, 6), DATANUM(DATA_m602, 7) };
+s32 lbl_1_data_11C[2] = { DATANUM(0x3d0000, 6), DATANUM(0x3d0000, 7) };
 
 M602CameraParams lbl_1_data_124[3] = {
     {
@@ -223,7 +223,7 @@ void fn_1_179C(void)
     stageIndex = 0;
     while (stageIndex < 5) {
         lbl_1_bss_8C[stageIndex] = HuSprAnimRead(
-            HuDataSelHeapReadNum(lbl_1_data_E8[stageIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(lbl_1_data_E8[stageIndex], 0x10000000, 2));
         stageIndex += 1;
     }
     for (stageIndex = 0; stageIndex < 3; stageIndex++) {
@@ -235,8 +235,8 @@ void fn_1_179C(void)
         lbl_1_bss_A0[stageIndex].pendingBank = -1;
         cardImageIndex = 0;
         while (cardImageIndex < 5) {
-            lbl_1_bss_A0[stageIndex].model[cardImageIndex] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m602, 0), HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_A0[stageIndex].model[cardImageIndex] = fn_80025A04(
+                fn_80008DD0(DATANUM(0x3d0000, 0), 0x10000000, 2));
             if (stageIndex == 0) {
                 cameraMask = 1;
             }
@@ -247,86 +247,86 @@ void fn_1_179C(void)
                 cameraMask = 4;
             }
             cardLayer = 5;
-            Hu3DModelCameraSet(lbl_1_bss_A0[stageIndex].model[cardImageIndex], cameraMask);
-            Hu3DModelLayerSet(lbl_1_bss_A0[stageIndex].model[cardImageIndex], cardLayer);
+            fn_80026B64(lbl_1_bss_A0[stageIndex].model[cardImageIndex], cameraMask);
+            fn_80026B8C(lbl_1_bss_A0[stageIndex].model[cardImageIndex], cardLayer);
             lbl_1_bss_A0[stageIndex].pos.x = lbl_1_bss_A0[stageIndex].pos.y =
                 lbl_1_bss_A0[stageIndex].pos.z = 0.0f;
             lbl_1_bss_A0[stageIndex].rot.x = lbl_1_bss_A0[stageIndex].rot.z = 0.0f;
             lbl_1_bss_A0[stageIndex].rot.y = 180.0f;
             lbl_1_bss_A0[stageIndex].scale.x = lbl_1_bss_A0[stageIndex].scale.y =
                 lbl_1_bss_A0[stageIndex].scale.z = 1.0f;
-            Hu3DModelPosSetV(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
+            fn_80026790(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
                              &lbl_1_bss_A0[stageIndex].pos);
-            Hu3DModelRotSetV(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
+            fn_80026838(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
                              &lbl_1_bss_A0[stageIndex].rot);
-            Hu3DModelScaleSetV(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
+            fn_800268E0(lbl_1_bss_A0[stageIndex].model[cardImageIndex],
                                &lbl_1_bss_A0[stageIndex].scale);
             lbl_1_bss_A0[stageIndex].anim[cardImageIndex] =
-                Hu3DAnimCreate(lbl_1_bss_8C[cardImageIndex],
+                fn_80030B2C(lbl_1_bss_8C[cardImageIndex],
                                lbl_1_bss_A0[stageIndex].model[cardImageIndex], lbl_1_data_264);
             Hu3DAnimBankSet(lbl_1_bss_A0[stageIndex].anim[cardImageIndex],
                             (u16) lbl_1_bss_A0[stageIndex].animationBank);
             if (cardImageIndex != lbl_1_bss_A0[stageIndex].cardImage) {
-                Hu3DModelAttrSet(lbl_1_bss_A0[stageIndex].model[cardImageIndex], HU3D_ATTR_DISPOFF);
+                fn_800269E8(lbl_1_bss_A0[stageIndex].model[cardImageIndex], (1 << 0));
             }
             cardImageIndex += 1;
         }
     }
-    Hu3DCameraLayerHookSet(8, 0, fn_1_2250);
+    fn_8002583C(8, 0, fn_1_2250);
     lbl_1_bss_3A =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m602, 4), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_3A, 8U);
-    Hu3DModelLayerSet(lbl_1_bss_3A, 0);
+        fn_80025A04(fn_80008DD0(DATANUM(0x3d0000, 4), 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_3A, 8U);
+    fn_80026B8C(lbl_1_bss_3A, 0);
     lbl_1_bss_24 = HuSprAnimMake(576, 288, 0);
     lbl_1_bss_24->bmp->palData = NULL;
     lbl_1_bss_24->bmp->palNum = 0;
     bufferSize = GXGetTexBufferSize(576U, 288U, GX_TF_RGBA8, 0U, 0U);
-    lbl_1_bss_24->bmp->data = HuMemDirectMallocNum(HEAP_MODEL, bufferSize, HU_MEMNUM_OVL);
-    lbl_1_bss_38 = Hu3DAnimCreate(lbl_1_bss_24, lbl_1_bss_3A, lbl_1_data_26D);
+    lbl_1_bss_24->bmp->data = HuMemDirectMallocNum(2, bufferSize, 0x10000000);
+    lbl_1_bss_38 = fn_80030B2C(lbl_1_bss_24, lbl_1_bss_3A, lbl_1_data_26D);
     lbl_1_bss_32 = 0;
     stageIndex = 0;
     while (stageIndex < 2) {
-        lbl_1_bss_34[stageIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(lbl_1_data_11C[stageIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelAmbSet(lbl_1_bss_34[stageIndex], 1.0f, 1.0f, 1.0f);
+        lbl_1_bss_34[stageIndex] = fn_80025A04(
+            fn_80008DD0(lbl_1_data_11C[stageIndex], 0x10000000, 2));
+        fn_800273EC(lbl_1_bss_34[stageIndex], 1.0f, 1.0f, 1.0f);
         if (stageIndex != 0) {
-            Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_34[stageIndex], (1 << 0));
         } else {
-            Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_MOTATTR_LOOP);
+            fn_800269E8(lbl_1_bss_34[stageIndex], ((1 << 30) | (1 << 0)));
         }
-        Hu3DModelPosSet(lbl_1_bss_34[stageIndex], lbl_1_rodata_60.x, lbl_1_rodata_60.y,
+        fn_80026760(lbl_1_bss_34[stageIndex], lbl_1_rodata_60.x, lbl_1_rodata_60.y,
                         lbl_1_rodata_60.z);
-        Hu3DModelScaleSet(lbl_1_bss_34[stageIndex], lbl_1_rodata_6C.x, lbl_1_rodata_6C.y,
+        fn_800268B0(lbl_1_bss_34[stageIndex], lbl_1_rodata_6C.x, lbl_1_rodata_6C.y,
                           lbl_1_rodata_6C.z);
-        Hu3DModelCameraSet(lbl_1_bss_34[stageIndex], 7U);
-        Hu3DModelLayerSet(lbl_1_bss_34[stageIndex], 4);
+        fn_80026B64(lbl_1_bss_34[stageIndex], 7U);
+        fn_80026B8C(lbl_1_bss_34[stageIndex], 4);
         stageIndex += 1;
     }
     lbl_1_bss_30 =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m602, 8), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_30, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(lbl_1_bss_30, HU3D_MOTATTR_LOOP);
-    Hu3DModelPosSet(lbl_1_bss_30, lbl_1_rodata_78.x, lbl_1_rodata_78.y, lbl_1_rodata_78.z);
-    Hu3DModelScaleSet(lbl_1_bss_30, lbl_1_rodata_90.x, lbl_1_rodata_90.y, lbl_1_rodata_90.z);
-    Hu3DModelCameraSet(lbl_1_bss_30, 7U);
-    Hu3DModelLayerSet(lbl_1_bss_30, 6);
-    Hu3DMotionSpeedSet(lbl_1_bss_30, 4.0f);
+        fn_80025A04(fn_80008DD0(DATANUM(0x3d0000, 8), 0x10000000, 2));
+    fn_800269E8(lbl_1_bss_30, (1 << 0));
+    fn_800269E8(lbl_1_bss_30, ((1 << 30) | (1 << 0)));
+    fn_80026760(lbl_1_bss_30, lbl_1_rodata_78.x, lbl_1_rodata_78.y, lbl_1_rodata_78.z);
+    fn_800268B0(lbl_1_bss_30, lbl_1_rodata_90.x, lbl_1_rodata_90.y, lbl_1_rodata_90.z);
+    fn_80026B64(lbl_1_bss_30, 7U);
+    fn_80026B8C(lbl_1_bss_30, 6);
+    fn_8002D86C(lbl_1_bss_30, 4.0f);
     fn_1_39D0();
     lbl_1_bss_20 = 0;
     Hu3DBGColorSet(0U, 178U, 235U);
     lbl_1_bss_2E =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m602, 9), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_2E, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(lbl_1_bss_2E, HU3D_MOTATTR_LOOP);
-    Hu3DModelCameraSet(lbl_1_bss_2E, 4U);
-    Hu3DModelLayerSet(lbl_1_bss_2E, 5);
+        fn_80025A04(fn_80008DD0(DATANUM(0x3d0000, 9), 0x10000000, 2));
+    fn_800269E8(lbl_1_bss_2E, (1 << 0));
+    fn_800269E8(lbl_1_bss_2E, ((1 << 30) | (1 << 0)));
+    fn_80026B64(lbl_1_bss_2E, 4U);
+    fn_80026B8C(lbl_1_bss_2E, 5);
 }
 
 /* Card-display layer hook: capture the three card views, then clear depth for the stage draw. */
 void fn_1_2250(s16 layerNo)
 {
-    Hu3DFbCopyExec(0, 0, 576, 288, GX_TF_RGBA8, 0, lbl_1_bss_24->bmp->data);
-    Hu3DZClear();
+    fn_8002BCDC(0, 0, 576, 288, GX_TF_RGBA8, 0, lbl_1_bss_24->bmp->data);
+    fn_8002BF48();
 }
 
 /* Called by the exit sequence to release the card-view texture animation. */
@@ -394,7 +394,7 @@ void fn_1_22DC(void)
             }
             cardImageIndex = 0;
             while (cardImageIndex < 5) {
-                Hu3DModelRotSetV(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
+                fn_80026838(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
                                  &lbl_1_bss_A0[columnIndex].rot);
                 cardImageIndex += 1;
             }
@@ -402,22 +402,22 @@ void fn_1_22DC(void)
         }
     }
     if (turningColumnCount < 3) {
-        Hu3DModelPosSet(lbl_1_bss_30, lbl_1_rodata_84.x, lbl_1_rodata_84.y, lbl_1_rodata_84.z);
-        Hu3DModelScaleSet(lbl_1_bss_30, lbl_1_rodata_9C.x, lbl_1_rodata_9C.y, lbl_1_rodata_9C.z);
-        Hu3DModelAttrReset(lbl_1_bss_30, HU3D_ATTR_DISPOFF);
-        Hu3DMotionSpeedSet(lbl_1_bss_30, 2.0f);
+        fn_80026760(lbl_1_bss_30, lbl_1_rodata_84.x, lbl_1_rodata_84.y, lbl_1_rodata_84.z);
+        fn_800268B0(lbl_1_bss_30, lbl_1_rodata_9C.x, lbl_1_rodata_9C.y, lbl_1_rodata_9C.z);
+        fn_80026A44(lbl_1_bss_30, (1 << 0));
+        fn_8002D86C(lbl_1_bss_30, 2.0f);
     } else {
-        Hu3DModelPosSet(lbl_1_bss_30, lbl_1_rodata_78.x, lbl_1_rodata_78.y, lbl_1_rodata_78.z);
-        Hu3DModelScaleSet(lbl_1_bss_30, lbl_1_rodata_90.x, lbl_1_rodata_90.y, lbl_1_rodata_90.z);
-        Hu3DModelAttrReset(lbl_1_bss_30, HU3D_ATTR_DISPOFF);
-        Hu3DMotionSpeedSet(lbl_1_bss_30, 4.0f);
+        fn_80026760(lbl_1_bss_30, lbl_1_rodata_78.x, lbl_1_rodata_78.y, lbl_1_rodata_78.z);
+        fn_800268B0(lbl_1_bss_30, lbl_1_rodata_90.x, lbl_1_rodata_90.y, lbl_1_rodata_90.z);
+        fn_80026A44(lbl_1_bss_30, (1 << 0));
+        fn_8002D86C(lbl_1_bss_30, 4.0f);
     }
     if (lbl_1_bss_32 != 0) {
-        Hu3DModelAttrSet(lbl_1_bss_34[0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_34[1], HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_34[0], (1 << 0));
+        fn_80026A44(lbl_1_bss_34[1], (1 << 0));
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_34[0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_34[1], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_34[0], (1 << 0));
+        fn_800269E8(lbl_1_bss_34[1], (1 << 0));
     }
     lbl_1_bss_32 -= 1;
     if (lbl_1_bss_32 < 0) {
@@ -590,21 +590,21 @@ s32 fn_1_3000(s32 startTurn)
                 }
                 cardImageIndex = 0;
                 while (cardImageIndex < 5) {
-                    Hu3DModelAttrSet(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
-                                     HU3D_ATTR_DISPOFF);
+                    fn_800269E8(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
+                                     (1 << 0));
                     cardImageIndex += 1;
                 }
                 finishedColumnCount += 1;
             }
             cardImageIndex = 0;
             while (cardImageIndex < 5) {
-                Hu3DModelRotSetV(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
+                fn_80026838(lbl_1_bss_A0[columnIndex].model[cardImageIndex],
                                  &lbl_1_bss_A0[columnIndex].rot);
                 cardImageIndex += 1;
             }
         }
     }
-    Hu3DModelAttrSet(lbl_1_bss_30, HU3D_ATTR_DISPOFF);
+    fn_800269E8(lbl_1_bss_30, (1 << 0));
     if (finishedColumnCount >= 3) {
         lbl_1_bss_2A = 1;
     }
@@ -633,7 +633,7 @@ s16 fn_1_34A4(s16 frameNo)
             if (lbl_1_bss_2C == -1) {
                 stageIndex = 0;
                 while (stageIndex < 2) {
-                    Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_ATTR_DISPOFF);
+                    fn_800269E8(lbl_1_bss_34[stageIndex], (1 << 0));
                     stageIndex += 1;
                 }
                 Hu3DCameraViewportSet(lbl_1_data_214.cameraBit, lbl_1_data_214.viewportX,
@@ -648,18 +648,18 @@ s16 fn_1_34A4(s16 frameNo)
                                      (u32) lbl_1_data_214.viewportH);
                 Hu3DCameraPosSetV(lbl_1_data_214.cameraBit, &lbl_1_data_214.pos, &lbl_1_data_214.up,
                                   &lbl_1_data_214.target);
-                Hu3DModelAttrReset(lbl_1_bss_2E, HU3D_ATTR_DISPOFF);
-                Hu3DMotionTimeSet(lbl_1_bss_2E, 0.0f);
-                Hu3DModelAttrSet(lbl_1_bss_2E, HU3D_MOTATTR_LOOP);
+                fn_80026A44(lbl_1_bss_2E, (1 << 0));
+                fn_8002D414(lbl_1_bss_2E, 0.0f);
+                fn_800269E8(lbl_1_bss_2E, ((1 << 30) | (1 << 0)));
                 HuAudFXPlay(MSM_SE_M602_WINNER_STAGE);
                 fn_1_4C84();
                 lbl_1_bss_2C -= 1;
             }
             if (lbl_1_bss_2C < -1) {
-                motionEnd = Hu3DMotionMaxTimeGet(lbl_1_bss_2E);
-                if ((1.0f + Hu3DMotionTimeGet(lbl_1_bss_2E)) >= motionEnd) {
+                motionEnd = fn_8002D530(lbl_1_bss_2E);
+                if ((1.0f + fn_8002D4E0(lbl_1_bss_2E)) >= motionEnd) {
                     lbl_1_bss_2C = -512;
-                    Hu3DModelAttrSet(lbl_1_bss_2E, HU3D_MOTATTR_PAUSE);
+                    fn_800269E8(lbl_1_bss_2E, ((1 << 30) | (1 << 1)));
                 } else {
                     lbl_1_bss_2C = -20;
                 }
@@ -669,9 +669,9 @@ s16 fn_1_34A4(s16 frameNo)
             stageReady = 0;
             stageIndex = 0;
             while (stageIndex < 2) {
-                if ((Hu3DMotionTimeGet(lbl_1_bss_34[stageIndex]) <= 50.0f) ||
-                    (280.0f <= Hu3DMotionTimeGet(lbl_1_bss_34[stageIndex]))) {
-                    Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_MOTATTR_PAUSE);
+                if ((fn_8002D4E0(lbl_1_bss_34[stageIndex]) <= 50.0f) ||
+                    (280.0f <= fn_8002D4E0(lbl_1_bss_34[stageIndex]))) {
+                    fn_800269E8(lbl_1_bss_34[stageIndex], ((1 << 30) | (1 << 1)));
                 } else {
                     stageReady += 1;
                 }
@@ -700,9 +700,9 @@ void fn_1_3908(void)
 
     stageIndex = 0;
     while (stageIndex < 2) {
-        if ((Hu3DMotionTimeGet(lbl_1_bss_34[stageIndex]) <= 50.0f) ||
-            (280.0f <= Hu3DMotionTimeGet(lbl_1_bss_34[stageIndex]))) {
-            Hu3DModelAttrSet(lbl_1_bss_34[stageIndex], HU3D_MOTATTR_PAUSE);
+        if ((fn_8002D4E0(lbl_1_bss_34[stageIndex]) <= 50.0f) ||
+            (280.0f <= fn_8002D4E0(lbl_1_bss_34[stageIndex]))) {
+            fn_800269E8(lbl_1_bss_34[stageIndex], ((1 << 30) | (1 << 1)));
         }
         stageIndex += 1;
     }
@@ -802,10 +802,10 @@ void fn_1_3FD0(s16 columnIndex, s16 cardImageIndex, s16 animationBank)
     modelIndex = 0;
     while (modelIndex < 5) {
         if (modelIndex != cardImageIndex) {
-            Hu3DModelAttrSet(lbl_1_bss_A0[columnIndex].model[modelIndex], HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_A0[columnIndex].model[modelIndex], (1 << 0));
         }
         if (modelIndex == cardImageIndex) {
-            Hu3DModelAttrReset(lbl_1_bss_A0[columnIndex].model[modelIndex], HU3D_ATTR_DISPOFF);
+            fn_80026A44(lbl_1_bss_A0[columnIndex].model[modelIndex], (1 << 0));
         }
         /* The texture-animation IDs follow the five model IDs in each column. */
         Hu3DAnimBankSet((&lbl_1_bss_A0[columnIndex].model[modelIndex])[5],

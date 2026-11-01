@@ -81,7 +81,7 @@ void fn_1_13D10(void) {
             lbl_1_data_488.positions[index].y);
         MgScoreBoxDispSet(
             lbl_1_bss_7C8[index].boxHandle, 0);
-        lbl_1_bss_7C8[index].score = MgScoreCreate(DATANUM(DATA_mgconst, 49), -1, 1);
+        lbl_1_bss_7C8[index].score = MgScoreCreate(DATANUM(0x9b0000, 49), -1, 1);
         MgScoreMaxDigitSet(lbl_1_bss_7C8[index].score, 2);
         MgScoreDispOff(lbl_1_bss_7C8[index].score);
         MgScorePosSet(

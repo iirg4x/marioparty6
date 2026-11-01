@@ -38,14 +38,14 @@ typedef struct spcFontTbl_s {
 typedef struct winComKey_s {
     s16 remainingPolls; // Scripted-input polls remaining; each unpaused HuWinComKeyGet call
                         // consumes one.
-    u32 controllerKey[GW_PLAYER_MAX]; // Input mask supplied for each controller port during this
+    u32 controllerKey[4]; // Input mask supplied for each controller port during this
                                       // entry.
 } WINCOMKEY;
 
 static u16 mesHInsert[HUWIN_INSERTMES_MAX];
 static u16 mesWInsert[HUWIN_INSERTMES_MAX];
 static WINCOMKEY winComKeyBuf[WIN_COMKEY_MAX];
-static u32 winKey[GW_PLAYER_MAX];
+static u32 winKey[4];
 HUWIN winData[HUWIN_MAX];
 
 static ANIMDATA *iconAnim;
@@ -189,7 +189,7 @@ static u8 ATTRIBUTE_ALIGN(32) charColPal[2][3][HUWIN_MESCOL_MAX] = {
     144, 144, 144
 };
 
-static unsigned int frameFileTbl[HUWIN_FRAME_MAX*2] = {
+static unsigned int frameFileTbl[6*2] = {
     //HUWIN_FRAME_DEFAULT
     WIN_ANM_frame_fill,
     WIN_ANM_frame,
@@ -238,7 +238,7 @@ static u32 HuWinActiveKeyGetX(HUWIN *winP);
 void HuWindowInit(void)
 {
     s16 windowIndex;
-    winAMemP = HuAR_DVDtoARAM(DATA_win);
+    winAMemP = HuAR_DVDtoARAM(0xf20000);
     for(windowIndex=0; windowIndex<HUWIN_MAX; windowIndex++) {
         winData[windowIndex].grpId = HUSPR_GROUP_NONE;
     }
@@ -255,9 +255,9 @@ void HuWinInit(s32 messageDataNo)
     if(winProc) {
         return;
     }
-    HuAR_ARAMtoMRAM(winAMemP);
-    winProc = HuPrcCreate(HuWinProc, 100, 4096, 0);
-    HuPrcSetStat(winProc, HU_PRC_STAT_PAUSE_ON|HU_PRC_STAT_UPAUSE_ON);
+    fn_80055D40(winAMemP);
+    winProc = fn_8000D818(HuWinProc, 100, 4096, 0);
+    HuPrcSetStat(winProc, 0x4|0x8);
     LanguageNo = GWLanguageGet();
     messDataNo = messageDataNo;
     fontWidthP = (LanguageNo == HUWIN_LANG_JAPAN) ? charWJTbl : charWETbl;
@@ -266,30 +266,30 @@ void HuWinInit(s32 messageDataNo)
         winData[windowIndex].grpId = HUSPR_GROUP_NONE;
     }
     if(!fontAnim) {
-        assetData = HuDataReadNum(WIN_ANM_font, HU_MEMNUM_OVL);
+        assetData = fn_80008634(WIN_ANM_font, 0x10000000);
         fontAnim = HuSprAnimRead(assetData);
     }
     if(!iconAnim) {
-        assetData = HuDataReadNum(WIN_ANM_icon, HU_MEMNUM_OVL);
+        assetData = fn_80008634(WIN_ANM_icon, 0x10000000);
         iconAnim = HuSprAnimRead(assetData);
         HuSprAnimLock(iconAnim);
     }
     if(!cursorAnim) {
-        assetData = HuDataReadNum(WIN_ANM_cursor, HU_MEMNUM_OVL);
+        assetData = fn_80008634(WIN_ANM_cursor, 0x10000000);
         cursorAnim = HuSprAnimRead(assetData);
         HuSprAnimLock(cursorAnim);
     }
     if(!cardAnimA) {
-        assetData = HuDataReadNum(WIN_ANM_cardA, HU_MEMNUM_OVL);
+        assetData = fn_80008634(WIN_ANM_cardA, 0x10000000);
         cardAnimA = HuSprAnimRead(assetData);
         HuSprAnimLock(cardAnimA);
     }
     if(!cardAnimB) {
-        assetData = HuDataReadNum(WIN_ANM_cardB, HU_MEMNUM_OVL);
+        assetData = fn_80008634(WIN_ANM_cardB, 0x10000000);
         cardAnimB = HuSprAnimRead(assetData);
         HuSprAnimLock(cardAnimB);
     }
-    HuDataDirClose(DATA_win);
+    fn_800097F4(0xf20000);
     HuWinComKeyReset();
     winPrio = 1000;
     winTabSize = 24;
@@ -315,8 +315,8 @@ HUWINID HuWinCreate(float posX, float posY, s16 winW, s16 winH, s16 frame)
     }
     winP = &winData[winId];
     winP->grpId = spriteGroupId = HuSprGrpCreate(HUWIN_SPR_MAX);
-    if(frame < 0 || frame >= HUWIN_FRAME_MAX) {
-        frame = HUWIN_FRAME_DEFAULT;
+    if(frame < 0 || frame >= 6) {
+        frame = 0;
     }
     winW = (winW+15)&WIN_TILE_DIMENSION_MASK; // Round dimensions up to whole 16-pixel tiles.
     winH = (winH+15)&WIN_TILE_DIMENSION_MASK;
@@ -372,10 +372,10 @@ HUWINID HuWinCreate(float posX, float posY, s16 winW, s16 winH, s16 frame)
     winP->scissorH = HU_FB_HEIGHT;
     winP->tabW = 24;
     winP->pushKey = PAD_BUTTON_A|PAD_BUTTON_B;
-    winP->choiceEndSe = MSM_SE_CMN_03;
+    winP->choiceEndSe = 2;
     winP->drawNo = 0;
     winP->callback = NULL;
-    if(frame != HUWIN_FRAME_DARK) {
+    if(frame != 1) {
         // The dark frame uses a separate palette; other frames keep the standard text colors.
         memcpy(&winP->mesPal[0][0], &charColPal[1][0][0], HUWIN_MESCOL_MAX*3);
     } else {
@@ -404,7 +404,7 @@ HUWINID HuWinCreate(float posX, float posY, s16 winW, s16 winH, s16 frame)
 // Builds the selected window frame sprites and the tiled fill behind the message text.
 void HuWinFrameCreate(HUWIN *winP, s16 frame, s16 prio)
 {
-    GXColor color[HUWIN_FRAME_MAX][2] = {
+    GXColor color[6][2] = {
         {
             { 155, 129, 193, 255 },
             { 94, 59, 135, 255 },
@@ -436,23 +436,23 @@ void HuWinFrameCreate(HUWIN *winP, s16 frame, s16 prio)
     void *frameFile;
     HUSPRID spriteId;
     ANIMDATA *backgroundAnim;
-    frameFile = HuAR_ARAMtoMRAMFileRead(frameFileTbl[frame*2], HU_MEMNUM_OVL, HEAP_MODEL);
+    frameFile = fn_8005607C(frameFileTbl[frame*2], 0x10000000, 2);
     winP->animFrame[0] = HuSprAnimRead(frameFile);
     spriteId = winP->sprId[0] = HuSprCreate(winP->animFrame[0], prio, 0);
     HuSprGrpMemberSet(winP->grpId, 0, spriteId);
     HuSprTPLvlSet(winP->grpId, 0, 0.9f);
-    backgroundAnim = HuSprAnimMake(winP->winW/16, winP->winH/16, ANIM_BMP_IA4);
+    backgroundAnim = HuSprAnimMake(winP->winW/16, winP->winH/16, 6);
     HuSprBGSet(winP->grpId, 0, backgroundAnim, 0);
     winP->bgPalNum = winBGMake(backgroundAnim);
-    if(frameFileTbl[(frame*2)+1] != HU_DATANUM_NONE) {
-        frameFile = HuAR_ARAMtoMRAMFileRead(frameFileTbl[(frame*2)+1], HU_MEMNUM_OVL, HEAP_MODEL);
+    if(frameFileTbl[(frame*2)+1] != -1) {
+        frameFile = fn_8005607C(frameFileTbl[(frame*2)+1], 0x10000000, 2);
         winP->animFrame[1] = HuSprAnimRead(frameFile);
         spriteId = winP->sprId[1] = HuSprCreate(winP->animFrame[1], prio, 0);
         HuSprGrpMemberSet(winP->grpId, 1, spriteId);
         HuSprBGSet(winP->grpId, 1, backgroundAnim, 0);
         vtxColor[0] = vtxColor[1] = color[frame][0];
         vtxColor[2] = vtxColor[3] = color[frame][1];
-        if(frame != HUWIN_FRAME_DARK) {
+        if(frame != 1) {
             for(colorIndex=0; colorIndex<4; colorIndex++) {
                 vtxColor[colorIndex].r *= 0.8;
                 vtxColor[colorIndex].g *= 0.8;
@@ -539,7 +539,7 @@ void HuWinAllKill(void)
         HuMemDirectFree(messDataPtr);
         messDataPtr = NULL;
     }
-    HuDataDirClose(DATA_win);
+    fn_800097F4(0xf20000);
 }
 
 // Returns the requested message string from the loaded message archive.
@@ -707,7 +707,7 @@ static u8 winBGMake(ANIMDATA *bgAnim)
     h = bgAnim->bmp->sizeY;
     blockW = (w+7) & 248;
     blockH = (h+3) & 252;
-    bmpData = bgAnim->bmp->data = HuMemDirectMallocNum(HEAP_HEAP, blockW*blockH, HU_MEMNUM_OVL);
+    bmpData = bgAnim->bmp->data = HuMemDirectMallocNum(HEAP_HEAP, blockW*blockH, 0x10000000);
     for(i=0; i<h; i++) {
         if(i == 0) {
             for(j=0; j<w; j++) {
@@ -756,7 +756,7 @@ static void HuWinProc(void)
         winP = winData;
         for(winId=0; winId<HUWIN_MAX; winId++, winP++) {
             if(winP->grpId != HUSPR_GROUP_NONE && !(winP->attr & HUWIN_ATTR_DISPOFF)) {
-                if(omUPauseFlag+omPauseChk() == 0 || !(winP->attr & HUWIN_ATTR_UPAUSE)) {
+                if(lbl_802C0234+fn_8003B748() == 0 || !(winP->attr & HUWIN_ATTR_UPAUSE)) {
                     switch(winP->stat) {
                         case HUWIN_STAT_NONE:
                             break;
@@ -772,7 +772,8 @@ static void HuWinProc(void)
 
                         case HUWIN_STAT_CHOICE:
                             if (!(winP->attr & HUWIN_ATTR_CHOICEON) ||
-                                (HuWinActiveKeyGetX(winP) & PAD_BUTTON_DPAD) == 0) {
+                                (HuWinActiveKeyGetX(winP) & (PAD_BUTTON_LEFT | PAD_BUTTON_RIGHT
+                                    | PAD_BUTTON_UP | PAD_BUTTON_DOWN)) == 0) {
                                 winP->attr &= ~HUWIN_ATTR_CHOICEON;
                                 HuWinComKeyGet(winId, winKey);
                                 HuWinChoice(winP);
@@ -1122,7 +1123,7 @@ static void HuWinKeyWait(HUWINID winId)
     if(winP->pushKey & HuWinActivePadGet(winP)) {
         winP->activePadKey = HuWinActivePadGet(winP);
         winP->stat = HUWIN_STAT_DRAWMES;
-        HuAudFXPlay(MSM_SE_CMN_25);
+        HuAudFXPlay(24);
         HuWinSprKill(winId, winP->keyWaitSprNo);
         if(winP->attr & HUWIN_ATTR_KEYWAIT_CLEAR) {
             _HuWinHomeClear(winP);
@@ -1361,7 +1362,7 @@ static void HuWinChoice(HUWIN *winP) {
     }
     if(winP->choice != choice) {
         winP->choice = choice;
-        HuAudFXPlay(MSM_SE_CMN_01);
+        HuAudFXPlay(0);
     } else if(key & PAD_BUTTON_A) {
         if(winP->choiceEndSe >= 0) {
             HuAudFXPlay(winP->choiceEndSe);
@@ -1369,7 +1370,7 @@ static void HuWinChoice(HUWIN *winP) {
         winP->activePadKey = key;
         winP->stat = 0;
     } else if((key & PAD_BUTTON_B) && !(winP->attr & HUWIN_ATTR_NOCANCEL)) {
-        HuAudFXPlay(MSM_SE_CMN_04);
+        HuAudFXPlay(3);
         // Canceling keeps the previously stored activePadKey.
         (void)key;
         winP->choice = -1;
@@ -1394,7 +1395,7 @@ static u32 HuWinActivePadGet(HUWIN *winP)
     u32 i;
 
     key = 0;
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         if(winP->padMask & (1 << i)) {
             key |= winKey[i];
         }
@@ -1413,15 +1414,15 @@ static u32 HuWinActiveKeyGetX(HUWIN *winP)
 
     btn = 0;
     padMask = (winP->padMask & ~winP->disablePlayer);
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         if(padMask & (1 << i)) {
-            for(j=0; j<GW_PLAYER_MAX; j++) {
-                if(i == GwPlayerConf[j].padNo) {
+            for(j=0; j<4; j++) {
+                if(i == lbl_80265728[j].padNo) {
                     break;
                 }
             }
-            if(j != GW_PLAYER_MAX && GwPlayerConf[j].type == GW_PLAYER_TYPE_MAN) {
-                btn |= HuPadBtn[GwPlayerConf[j].padNo]|HuPadDStk[GwPlayerConf[j].padNo];
+            if(j != 4 && lbl_80265728[j].type == 0) {
+                btn |= lbl_802C0010[lbl_80265728[j].padNo]|lbl_802BFFE4[lbl_80265728[j].padNo];
             }
         }
     }
@@ -1590,8 +1591,8 @@ void HuWinMesRead(void)
     }
     path = mesDataTbl[LanguageNo];
     buf = HuDvdDataRead(path);
-    messDataPtr = HuMemDirectMalloc(HEAP_HEAP, DirDataSize);
-    memcpy(messDataPtr, buf, DirDataSize);
+    messDataPtr = HuMemDirectMalloc(HEAP_HEAP, lbl_802C0028);
+    memcpy(messDataPtr, buf, lbl_802C0028);
     HuMemDirectFree(buf);
 }
 
@@ -2019,20 +2020,20 @@ void HuWinComKeyGet(HUWINID winId, u32 *key)
 {
     HUWIN *winP = &winData[winId];
     s16 i;
-    if(comKeyIdx == comKeyIdxNow || omUPauseFlag+omPauseChk() != 0 || Hu3DPauseF) {
-        for(i=0; i<GW_PLAYER_MAX; i++) {
+    if(comKeyIdx == comKeyIdxNow || lbl_802C0234+fn_8003B748() != 0 || lbl_802C019E) {
+        for(i=0; i<4; i++) {
             if(!(winP->disablePlayer & (1 << i))) {
-                key[i] = HuPadDStkRep[i]|HuPadBtnDown[i];
+                key[i] = lbl_802BFFE0[i]|lbl_802C0008[i];
             } else {
                 key[i] = 0;
             }
         }
     } else {
-        for(i=0; i<GW_PLAYER_MAX; i++) {
+        for(i=0; i<4; i++) {
             key[i] = winComKeyBuf[comKeyIdxNow].controllerKey[i];
             if(key[i] == HUWIN_COMKEY_NONE) {
                 if(!(winP->disablePlayer & (1 << i))) {
-                    key[i] = HuPadDStkRep[i]|HuPadBtnDown[i];
+                    key[i] = lbl_802BFFE0[i]|lbl_802C0008[i];
                 } else {
                     key[i] = 0;
                 }
@@ -2374,7 +2375,7 @@ void HuWinCallbackSet(HUWINID winId, HUWIN_CALLBACK cb)
     winData[winId].callback = cb;
 }
 
-static unsigned int speakerFileTbl[HUWIN_SPEAKER_MAX] = {
+static unsigned int speakerFileTbl[24] = {
     WIN_ANM_face_hanachan, WIN_ANM_face_hanachan_star,
     WIN_ANM_face_kuribo, WIN_ANM_face_nokonoko_start,
     WIN_ANM_face_kokamekku, WIN_ANM_face_kamekku,
@@ -2393,14 +2394,14 @@ static unsigned int speakerFileTbl[HUWIN_SPEAKER_MAX] = {
 HUWINID HuWinExCreate(float x, float y, s16 w, s16 h, s16 speakerNo)
 {
     s16 frame;
-    if(speakerNo == HUWIN_SPEAKER_SUN) {
-        frame = HUWIN_FRAME_DAY;
-    } else if(speakerNo == HUWIN_SPEAKER_MOON) {
-        frame = HUWIN_FRAME_NIGHT;
-    } else if(speakerNo == HUWIN_SPEAKER_SUNMOON) {
-        frame = HUWIN_FRAME_DAYNIGHT;
+    if(speakerNo == 6) {
+        frame = 4;
+    } else if(speakerNo == 7) {
+        frame = 3;
+    } else if(speakerNo == 23) {
+        frame = 5;
     } else {
-        frame = HUWIN_FRAME_DEFAULT;
+        frame = 0;
     }
     return HuWinExCreateFrame(x, y, w, h, speakerNo, frame);
 }
@@ -2422,7 +2423,7 @@ HUWINID HuWinExCreateFrame(float x, float y, s16 w, s16 h, s16 speakerNo, s16 fr
         HuSpr3DSet(winP->sprId[1]);
     }
     if(speakerNo >= 0) {
-        void *data = HuAR_ARAMtoMRAMFileRead(speakerFileTbl[speakerNo], HU_MEMNUM_OVL, HEAP_MODEL);
+        void *data = fn_8005607C(speakerFileTbl[speakerNo], 0x10000000, 2);
         ANIMDATA *anim = HuSprAnimRead(data);
         HuWinAnimSet(winId, anim, 0, 48, 48);
         HuSpr3DSet(winP->sprId[HUWIN_SPR_BEGIN]);
@@ -2476,7 +2477,7 @@ void HuWinExOpen(HUWINID winId)
         for(i=1; i<=10; i++) {
             t = 90.0-(9.0*i);
             HuSpr3DRotSet(winP->sprId[HUWIN_SPR_BEGIN], -t*3, 0, 0);
-            t = ((1-HuSin(t))*0.5)+0.5;
+            t = ((1-sin(3.141592653589793*t/180.0))*0.5)+0.5;
             HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, t, t);
             HuPrcVSleep();
         }
@@ -2509,7 +2510,7 @@ void HuWinExClose(HUWINID winId)
     } else {
         for(i=1; i<=5; i++) {
             t = 18.0*i;
-            t = 1-HuSin(t);
+            t = 1-sin(3.141592653589793*t/180.0);
             HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, t, t);
             HuPrcVSleep();
         }
@@ -2541,17 +2542,17 @@ void HuWinExSpeakerSet(HUWINID winId, s16 speakerNo)
     s16 i;
 
     for(i=0; i<=10; i++) {
-        HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, HuCos(9.0f*i));
+        HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, cos(3.141592653589793*(9.0f*i)/180.0));
         HuPrcVSleep();
     }
     HuWinSprKill(winId, HUWIN_SPR_BEGIN);
     {
-        void *data = HuAR_ARAMtoMRAMFileRead(speakerFileTbl[speakerNo], HU_MEMNUM_OVL, HEAP_MODEL);
+        void *data = fn_8005607C(speakerFileTbl[speakerNo], 0x10000000, 2);
         ANIMDATA *anim = HuSprAnimRead(data);
         HuWinAnimSet(winId, anim, 0, 48, 48);
     }
     for(i=0; i<=10; i++) {
-        HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, HuSin(9.0f*i));
+        HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, sin(3.141592653589793*(9.0f*i)/180.0));
         HuPrcVSleep();
     }
     HuSprScaleSet(winP->grpId, HUWIN_SPR_BEGIN, 1.0f, 1.0f);
@@ -2573,7 +2574,7 @@ HUWINID HuWinWarningCreate(float posX, float posY, s16 winW, s16 winH)
     ANIMDATA *anim;
 
     winH += 44;
-    winId = HuWinCreate(posX, posY, winW, winH, HUWIN_FRAME_WARN);
+    winId = HuWinCreate(posX, posY, winW, winH, 2);
     HuWinMesSpeedSet(winId, 0);
 
     winP = &winData[winId];
@@ -2582,15 +2583,15 @@ HUWINID HuWinWarningCreate(float posX, float posY, s16 winW, s16 winH)
     winH = winP->winH;
     winP->warning = warning = HuMemDirectMalloc(HEAP_HEAP, sizeof(HUWIN_WARNING));
     warning->winId = winId;
-    data = HuAR_ARAMtoMRAMFileRead(WIN_ANM_warning, HU_MEMNUM_OVL, HEAP_MODEL);
+    data = fn_8005607C(WIN_ANM_warning, 0x10000000, 2);
     anim = HuSprAnimRead(data);
     sprId = winP->sprId[HUWIN_SPR_BEGIN] = HuSprCreate(anim, winP->prio, 0);
     HuSprGrpMemberSet(winP->grpId, HUWIN_SPR_BEGIN, sprId);
     HuSprPosSet(winP->grpId, HUWIN_SPR_BEGIN, 0, (-winP->winH/2)+28);
-    data = HuAR_ARAMtoMRAMFileRead(WIN_ANM_frame_glow, HU_MEMNUM_OVL, HEAP_MODEL);
+    data = fn_8005607C(WIN_ANM_frame_glow, 0x10000000, 2);
     warning->glowAnim = HuSprAnimRead(data);
     for(i=0; i<2; i++) {
-        warning->bgAnim[i] = HuSprAnimMake(winW/16, winH/16, ANIM_BMP_IA4);
+        warning->bgAnim[i] = HuSprAnimMake(winW/16, winH/16, 6);
         sprId = winP->sprId[HUWIN_SPR_BEGIN+1+i] = HuSprCreate(warning->glowAnim, winP->prio+2, 0);
         HuSprGrpMemberSet(winP->grpId, HUWIN_SPR_BEGIN+1+i, sprId);
         HuSprBGSet(winP->grpId, HUWIN_SPR_BEGIN+1+i, warning->bgAnim[i], 0);
@@ -2601,9 +2602,9 @@ HUWINID HuWinWarningCreate(float posX, float posY, s16 winW, s16 winH)
     winP->mesRectY = 52;
     winP->mesRectX += 4;
     winP->mesRectW -= 4;
-    warning->process = HuPrcCreate(WarningGlowProc, 100, 4096, 0);
+    warning->process = fn_8000D818(WarningGlowProc, 100, 4096, 0);
     warning->process->property = warning;
-    HuPrcSetStat(warning->process, HU_PRC_STAT_PAUSE_ON|HU_PRC_STAT_UPAUSE_ON);
+    HuPrcSetStat(warning->process, 0x4|0x8);
     HuWinCenterPosSet(winId, winW/2, winH/2);
     HuWinPosSet(winId, winP->pos.x+(winW/2), winP->pos.y+(winH/2));
     HuWinDispOff(winId);
@@ -2629,7 +2630,7 @@ void HuWinWarningOpen(HUWINID winId)
         HuWinDispOn(warning->winId);
         for(i=1; i<=8; i++) {
             scale = i/8.0f;
-            scale = HuSin(scale*120)*(1.0/HuSin(120));
+            scale = sin(3.141592653589793*(scale*120)/180.0)*(1.0/sin(3.141592653589793*120/180.0));
             HuWinScaleSet(winId, scale, scale);
             HuPrcVSleep();
         }
@@ -2658,7 +2659,7 @@ void HuWinWarningClose(HUWINID winId)
         }
         for(i=1; i<=8; i++) {
             scale = 1.0-(i/8.0f);
-            scale = HuSin(scale*120)*(1.0/HuSin(120));
+            scale = sin(3.141592653589793*(scale*120)/180.0)*(1.0/sin(3.141592653589793*120/180.0));
             HuWinScaleSet(winId, scale, scale);
             HuPrcVSleep();
         }
@@ -2672,7 +2673,7 @@ void HuWinWarningClose(HUWINID winId)
 // hidden.
 static void WarningGlowProc(void)
 {
-    HUPROCESS *process = HuPrcCurrentGet();
+    HUPROCESS *process = fn_8000DD9C();
     HUWIN_WARNING *warning = process->property;
     HUWIN *winP = &winData[warning->winId];
     s16 i;

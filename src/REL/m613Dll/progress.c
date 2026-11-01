@@ -82,21 +82,21 @@ void fn_1_F3C4(void) {
     s16 nightMode;
     s16 player;
 
-    nightMode = GwMgNightF;
+    nightMode = lbl_802C0278;
     night = nightMode;
     player = 0;
     while (player < 4) {
         if (night == 0) {
-            lbl_1_bss_1218[player].model = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m613, 13), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
+            lbl_1_bss_1218[player].model = fn_80025A04(fn_80008DD0(
+                DATANUM(0x480000, 13), M613_MODEL_DATA_GROUP_FLAG, 2));
         } else {
-            lbl_1_bss_1218[player].model = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m613, 14), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
+            lbl_1_bss_1218[player].model = fn_80025A04(fn_80008DD0(
+                DATANUM(0x480000, 14), M613_MODEL_DATA_GROUP_FLAG, 2));
         }
-        Hu3DModelCameraSet(lbl_1_bss_1218[player].model, 1);
-        Hu3DModelLayerSet(lbl_1_bss_1218[player].model, 5);
-        Hu3DModelAttrSet(lbl_1_bss_1218[player].model, HU3D_MOTATTR_LOOP);
-        Hu3DModelPosSetV(lbl_1_bss_1218[player].model, &lbl_1_data_210[player]);
+        fn_80026B64(lbl_1_bss_1218[player].model, 1);
+        fn_80026B8C(lbl_1_bss_1218[player].model, 5);
+        fn_800269E8(lbl_1_bss_1218[player].model, ((1 << 30) | (1 << 0)));
+        fn_80026790(lbl_1_bss_1218[player].model, &lbl_1_data_210[player]);
         lbl_1_bss_1218[player].verticalScale = 500.0f;
         lbl_1_bss_1218[player].progress = 0;
         player++;
@@ -178,11 +178,11 @@ void fn_1_F850(void) {
             clipStart = 20;
         }
         clipStart *= 60;
-        motionFrame = (s32)Hu3DMotionTimeGet(lbl_1_bss_1218[player].model);
+        motionFrame = (s32)fn_8002D4E0(lbl_1_bss_1218[player].model);
 
         if (motionFrame < clipStart + 59) {
-            Hu3DModelAttrReset(lbl_1_bss_1218[player].model, HU3D_MOTATTR_PAUSE);
-            Hu3DModelAttrSet(lbl_1_bss_1218[player].model, HU3D_MOTATTR_LOOP);
+            fn_80026A44(lbl_1_bss_1218[player].model, ((1 << 30) | (1 << 1)));
+            fn_800269E8(lbl_1_bss_1218[player].model, ((1 << 30) | (1 << 0)));
             if ((motionFrame + 1 == clipStart) && (lbl_1_bss_125E == 3)) {
                 if ((player == 0) || (player == 2)) {
                     HuAudFXPanning(HuAudFXPlay(MSM_SE_M613_PROGRESS), 32);
@@ -191,8 +191,8 @@ void fn_1_F850(void) {
                 }
             }
         } else {
-            Hu3DModelAttrReset(lbl_1_bss_1218[player].model, HU3D_MOTATTR_LOOP);
-            Hu3DModelAttrSet(lbl_1_bss_1218[player].model, HU3D_MOTATTR_PAUSE);
+            fn_80026A44(lbl_1_bss_1218[player].model, ((1 << 30) | (1 << 0)));
+            fn_800269E8(lbl_1_bss_1218[player].model, ((1 << 30) | (1 << 1)));
         }
         player++;
     }
@@ -248,25 +248,25 @@ void fn_1_FC40(void) {
     s16 nightMode;
     s16 player;
 
-    nightMode = GwMgNightF;
+    nightMode = lbl_802C0278;
     night = nightMode;
     player = 0;
     while (player < 4) {
         if (night == 0) {
-            lbl_1_bss_1218[player].effectModel = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m613, 15), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
+            lbl_1_bss_1218[player].effectModel = fn_80025A04(fn_80008DD0(
+                DATANUM(0x480000, 15), M613_MODEL_DATA_GROUP_FLAG, 2));
         } else {
-            lbl_1_bss_1218[player].effectModel = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m613, 16), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
+            lbl_1_bss_1218[player].effectModel = fn_80025A04(fn_80008DD0(
+                DATANUM(0x480000, 16), M613_MODEL_DATA_GROUP_FLAG, 2));
         }
-        Hu3DModelCameraSet(lbl_1_bss_1218[player].effectModel, 1);
-        Hu3DModelLayerSet(lbl_1_bss_1218[player].effectModel, 5);
+        fn_80026B64(lbl_1_bss_1218[player].effectModel, 1);
+        fn_80026B8C(lbl_1_bss_1218[player].effectModel, 5);
 
         lbl_1_data_240[player].y = (f32)lbl_1_bss_1218[player].progress / 32768.0f;
         lbl_1_data_240[player].y *= 500.0f;
         lbl_1_data_240[player].y -= 500.0f;
-        Hu3DModelPosSetV(lbl_1_bss_1218[player].effectModel, &lbl_1_data_240[player]);
-        Hu3DModelAttrSet(lbl_1_bss_1218[player].model, 1);
+        fn_80026790(lbl_1_bss_1218[player].effectModel, &lbl_1_data_240[player]);
+        fn_800269E8(lbl_1_bss_1218[player].model, 1);
         player++;
     }
 }
@@ -280,35 +280,35 @@ void fn_1_FE58(void) {
     HU3D_PARTICLE *pool;
     HU3D_PARTICLE_DATA *record;
 
-    nightMode = GwMgNightF;
+    nightMode = lbl_802C0278;
     night = nightMode;
 
     animation = HuSprAnimRead(
-        HuDataSelHeapReadNum(DATANUM(DATA_m613, 17), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-    lbl_1_bss_1210[0] = Hu3DParticleCreate(animation, 200);
+        fn_80008DD0(DATANUM(0x480000, 17), M613_MODEL_DATA_GROUP_FLAG, 2));
+    lbl_1_bss_1210[0] = fn_8003216C(animation, 200);
     animation = HuSprAnimRead(
-        HuDataSelHeapReadNum(DATANUM(DATA_m613, 18), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-    lbl_1_bss_1210[1] = Hu3DParticleCreate(animation, 200);
+        fn_80008DD0(DATANUM(0x480000, 18), M613_MODEL_DATA_GROUP_FLAG, 2));
+    lbl_1_bss_1210[1] = fn_8003216C(animation, 200);
     animation = HuSprAnimRead(
-        HuDataSelHeapReadNum(DATANUM(DATA_m613, 19), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-    lbl_1_bss_1210[2] = Hu3DParticleCreate(animation, 200);
+        fn_80008DD0(DATANUM(0x480000, 19), M613_MODEL_DATA_GROUP_FLAG, 2));
+    lbl_1_bss_1210[2] = fn_8003216C(animation, 200);
 
     particleIndex = 0;
     while (particleIndex < 3) {
-        Hu3DModelPosSet(lbl_1_bss_1210[particleIndex], 0.0f,
+        fn_80026760(lbl_1_bss_1210[particleIndex], 0.0f,
                         0.0f, 0.0f);
-        Hu3DModelScaleSet(lbl_1_bss_1210[particleIndex], 1.0f,
+        fn_800268B0(lbl_1_bss_1210[particleIndex], 1.0f,
                           1.0f, 1.0f);
-        Hu3DModelLayerSet(lbl_1_bss_1210[particleIndex], 6);
+        fn_80026B8C(lbl_1_bss_1210[particleIndex], 6);
         if (night == 0) {
-            Hu3DParticleColSet(lbl_1_bss_1210[particleIndex], 255, 255, 255);
+            fn_800325B0(lbl_1_bss_1210[particleIndex], 255, 255, 255);
         } else {
-            Hu3DParticleColSet(lbl_1_bss_1210[particleIndex], 128, 128, 128);
+            fn_800325B0(lbl_1_bss_1210[particleIndex], 128, 128, 128);
         }
-        Hu3DParticleScaleSet(lbl_1_bss_1210[particleIndex], 1.0f);
-        Hu3DParticleHookSet(lbl_1_bss_1210[particleIndex], fn_1_10104);
+        fn_800324E0(lbl_1_bss_1210[particleIndex], 1.0f);
+        fn_800326D0(lbl_1_bss_1210[particleIndex], fn_1_10104);
 
-        pool = (HU3D_PARTICLE *)Hu3DData[lbl_1_bss_1210[particleIndex]].hookData;
+        pool = (HU3D_PARTICLE *)lbl_802C01C8[lbl_1_bss_1210[particleIndex]].hookData;
         record = pool->data;
         {
             s16 recordIndex = 0;
@@ -391,7 +391,7 @@ void fn_1_1054C(const Point3d *sourcePosition, const Point3d *targetPosition,
     HU3D_PARTICLE_DATA *record;
 
     recordIndex = (s16) frandmod(3);
-    hook = (HU3D_PARTICLE *) Hu3DData[lbl_1_bss_1210[recordIndex]].hookData;
+    hook = (HU3D_PARTICLE *) lbl_802C01C8[lbl_1_bss_1210[recordIndex]].hookData;
     record = hook->data;
     recordIndex = 0;
 
@@ -426,7 +426,7 @@ void fn_1_106C0(void)
     HU3D_PARTICLE_DATA *data;
 
     for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-        particle = Hu3DData[lbl_1_bss_1210[modelIndex]].hookData;
+        particle = lbl_802C01C8[lbl_1_bss_1210[modelIndex]].hookData;
         data = particle->data;
         for (dataIndex = 0;
              dataIndex < particle->maxCnt; dataIndex++, data++) {

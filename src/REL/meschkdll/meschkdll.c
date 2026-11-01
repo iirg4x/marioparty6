@@ -1,4 +1,5 @@
 /* Message Checker REL browser for message directories and entries. */
+#include <math.h>
 #include "dolphin.h"
 #include "game/gamework.h"
 #include "game/object.h"
@@ -53,9 +54,9 @@ void _epilog(void)
 void ObjectSetup(void)
 {
     OSReport("******* Message Checker *********\n");
-    objman = omInitObjMan(50, 8192);
+    objman = fn_8003A8BC(50, 8192);
     HuWinInit(0);
-    HuPrcChildCreate(fn_1_110, 1000, 12288, 0, objman);
+    fn_8000DAC0(fn_1_110, 1000, 12288, 0, objman);
 }
 
 /* Message-directory lookup names in display order; fn_1_188 changes '_' to '=' and truncates at
@@ -108,7 +109,7 @@ static void fn_1_110(void)
         HuPrcVSleep();
     }
 
-    omOvlReturnEx(1, 1);
+    fn_8003A5E4(1, 1);
     HuPrcEnd();
     while (TRUE) {
         HuPrcVSleep();
@@ -150,20 +151,20 @@ static void fn_1_188(void)
         }
     }
 
-    entryNumberWin = HuWinCreate(478.0f, 32.0f, 82, 42, HUWIN_FRAME_DEFAULT);
+    entryNumberWin = HuWinCreate(478.0f, 32.0f, 82, 42, 0);
     HuWinAttrSet(entryNumberWin, HUWIN_ATTR_ALIGN_CENTER);
     HuWinMesSpeedSet(entryNumberWin, 0);
     HuWinScaleSet(entryNumberWin, 0.8f, 0.8f);
 
-    directoryWin = HuWinCreate(24.0f, 32.0f, 522, 42, HUWIN_FRAME_DEFAULT);
+    directoryWin = HuWinCreate(24.0f, 32.0f, 522, 42, 0);
     HuWinMesSpeedSet(directoryWin, 0);
     HuWinScaleSet(directoryWin, 0.8f, 0.8f);
 
-    languageWin = HuWinCreate(350.0f, 32.0f, 346, 42, HUWIN_FRAME_DEFAULT);
+    languageWin = HuWinCreate(350.0f, 32.0f, 346, 42, 0);
     HuWinMesSpeedSet(languageWin, 0);
     HuWinScaleSet(languageWin, 0.8f, 0.8f);
     HuWinBGTPLvlSet(languageWin, 0.0f);
-    HuWinMesSet(languageWin, lbl_1_data_5C4[GwLanguage]);
+    HuWinMesSet(languageWin, lbl_1_data_5C4[lbl_802BF788]);
 
     directoryIndex = firstMessageIndex = 0;
     revisitPreviousDirectory = FALSE;
@@ -201,7 +202,7 @@ static void fn_1_188(void)
             }
 
             messageWin = HuWinCreate(HUWIN_POS_CENTER, 200.0f, messageWindowSize.x,
-                                     messageWindowSize.y, HUWIN_FRAME_DEFAULT);
+                                     messageWindowSize.y, 0);
             HuWinMesSpeedSet(messageWin, 0);
 
             messageHasKeyWait = FALSE;
@@ -221,19 +222,19 @@ static void fn_1_188(void)
             while (messageWinData->stat != HUWIN_STAT_NONE) {
                 /* Convert held-button repeat state into a fresh press while the message is being
                  * drawn. */
-                HuPadBtnDown[0] = HuPadBtnRep[0];
+                lbl_802C0008[0] = lbl_802C0000[0];
                 HuPrcVSleep();
             }
 
             /* Only messages containing the key-wait marker use the key stored by the message
              * window; other entries wait below for browser input. */
             if (!messageHasKeyWait) {
-                while (!(HuPadBtnRep[0] &
+                while (!(lbl_802C0000[0] &
                     (PAD_BUTTON_START | PAD_BUTTON_X | PAD_BUTTON_Y | PAD_BUTTON_A |
                         PAD_BUTTON_B | PAD_TRIGGER_L | PAD_TRIGGER_R))) {
                     HuPrcVSleep();
                 }
-                messageWinData->activePadKey = HuPadBtnRep[0];
+                messageWinData->activePadKey = lbl_802C0000[0];
             }
 
             pressedButtons = messageWinData->activePadKey;
@@ -258,23 +259,23 @@ static void fn_1_188(void)
                  * backward through that cycle. From Japanese, X selects English and Y selects
                  * Spanish. */
                 if (pressedButtons & PAD_BUTTON_X) {
-                    GwLanguage++;
-                    if (GwLanguage > HUWIN_LANG_SPAIN) {
-                        GwLanguage = HUWIN_LANG_ENGLISH;
+                    lbl_802BF788++;
+                    if (lbl_802BF788 > HUWIN_LANG_SPAIN) {
+                        lbl_802BF788 = HUWIN_LANG_ENGLISH;
                     }
                 } else {
-                    GwLanguage--;
-                    if (GwLanguage <= HUWIN_LANG_JAPAN) {
-                        GwLanguage = HUWIN_LANG_SPAIN;
+                    lbl_802BF788--;
+                    if (lbl_802BF788 <= HUWIN_LANG_JAPAN) {
+                        lbl_802BF788 = HUWIN_LANG_SPAIN;
                     }
                 }
-                GWLanguageSet(GwLanguage);
-                GwCommonOrig.languageNo = GwLanguage;
+                GWLanguageSet(lbl_802BF788);
+                lbl_80266400.languageNo = lbl_802BF788;
                 /* Apply the new language to game settings and message lookup, reload its text, and
                  * update the label. */
-                HuWinMesLanguageSet(GwLanguage);
+                HuWinMesLanguageSet(lbl_802BF788);
                 HuWinMesRead();
-                HuWinMesSet(languageWin, lbl_1_data_5C4[GwLanguage]);
+                HuWinMesSet(languageWin, lbl_1_data_5C4[lbl_802BF788]);
                 /* Revisit this entry after the for-loop increment so it appears in the new
                  * language. */
                 messageIndex--;

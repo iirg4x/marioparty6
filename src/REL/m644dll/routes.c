@@ -20,8 +20,8 @@ M644RouteVectors lbl_1_bss_3D8[9];
 
 /* Rock damage-pose motion resources. */
 s32 lbl_1_data_2C0[8] = {
-    DATANUM(DATA_m644, 44), DATANUM(DATA_m644, 45), DATANUM(DATA_m644, 46), DATANUM(DATA_m644, 47),
-    DATANUM(DATA_m644, 48), DATANUM(DATA_m644, 49), DATANUM(DATA_m644, 50), DATANUM(DATA_m644, 51)
+    DATANUM(0x670000, 44), DATANUM(0x670000, 45), DATANUM(0x670000, 46), DATANUM(0x670000, 47),
+    DATANUM(0x670000, 48), DATANUM(0x670000, 49), DATANUM(0x670000, 50), DATANUM(0x670000, 51)
 };
 /* Motion IDs loaded once and shared by all rocks. */
 s16 lbl_1_data_2E0[8] = {-1};
@@ -31,11 +31,11 @@ s16 lbl_1_data_2F2 = -1;
 s16 lbl_1_data_2F4 = -1;
 /* Per-player hit-effect model resources. */
 s32 lbl_1_data_2F8[4] = {
-    DATANUM(DATA_m644, 62), DATANUM(DATA_m644, 63), DATANUM(DATA_m644, 64), DATANUM(DATA_m644, 65)
+    DATANUM(0x670000, 62), DATANUM(0x670000, 63), DATANUM(0x670000, 64), DATANUM(0x670000, 65)
 };
 /* Motions for the four player hit-effect models. */
 s32 lbl_1_data_308[4] = {
-    DATANUM(DATA_m644, 66), DATANUM(DATA_m644, 67), DATANUM(DATA_m644, 68), DATANUM(DATA_m644, 69)
+    DATANUM(0x670000, 66), DATANUM(0x670000, 67), DATANUM(0x670000, 68), DATANUM(0x670000, 69)
 };
 /* Loaded hit-effect model IDs, selected by player slot. */
 s16 lbl_1_data_318[4] = {-1, 0, 0, 0};
@@ -224,7 +224,7 @@ s32 fn_1_6838(void)
     }
 
     for (index = 0; index < 18; index++) {
-        object = omAddObjEx(fn_1_A0(), 384, 0, 0, 0, fn_1_7548);
+        object = fn_8003AB38(fn_1_A0(), 384, 0, 0, 0, fn_1_7548);
         object->data = &lbl_1_bss_5AC.entry[index];
         memset(object->data, 0, sizeof(M644RouteModelEntry));
         entry = object->data;
@@ -238,18 +238,18 @@ s32 fn_1_6838(void)
     for (index = 0; index < 4; index++) {
         M644CameraIds camera_ids = {{1, 2}};
         lbl_1_data_318[index] =
-            Hu3DModelCreate(HuDataSelHeapReadNum(
-                lbl_1_data_2F8[index], HU_MEMNUM_OVL, HEAP_MODEL));
-        motion_id = Hu3DJointMotion(
+            fn_80025A04(fn_80008DD0(
+                lbl_1_data_2F8[index], 0x10000000, 2));
+        motion_id = fn_80030458(
             lbl_1_data_318[index],
-            HuDataSelHeapReadNum(
-                lbl_1_data_308[index], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelLayerSet(lbl_1_data_318[index], 6);
-        Hu3DModelAttrSet(lbl_1_data_318[index], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_data_318[index], HU3D_MOTATTR_LOOP);
-        Hu3DMotionSet(lbl_1_data_318[index], motion_id);
+            fn_80008DD0(
+                lbl_1_data_308[index], 0x10000000, 2));
+        fn_80026B8C(lbl_1_data_318[index], 6);
+        fn_800269E8(lbl_1_data_318[index], (1 << 0));
+        fn_80026A44(lbl_1_data_318[index], ((1 << 30) | (1 << 0)));
+        fn_8002C95C(lbl_1_data_318[index], motion_id);
         camera_index = fn_1_519C(index);
-        Hu3DModelCameraSet(lbl_1_data_318[index], camera_ids.masks[camera_index]);
+        fn_80026B64(lbl_1_data_318[index], camera_ids.masks[camera_index]);
     }
 }
 
@@ -273,7 +273,7 @@ typedef struct M644RouteCameraIds_s {
     s32 masks[2];
 } M644RouteCameraIds;
 
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 extern void fn_1_1EA8(s32 route, Point3d *position, Mtx matrix);
 
 s32 fn_1_6C90(s32 model_index, s32 contact_type);
@@ -297,12 +297,12 @@ s32 fn_1_6C90(s32 model_index, s32 contact_type)
     lbl_1_bss_5AC.entry[model_index].life -= damage;
     if (lbl_1_bss_5AC.entry[model_index].life < 0.0f) {
         OSReport("life = %f\n", lbl_1_bss_5AC.entry[model_index].life);
-        Hu3DModelAttrSet(lbl_1_bss_5AC.entry[model_index].model, HU3D_ATTR_DISPOFF);
-        MgActorColAttrSet(lbl_1_bss_5AC.entry[model_index].actor, M644_BROKEN_ROCK_COLLISION_MASK);
-        Hu3DModelAttrReset(lbl_1_bss_5AC.entry[model_index].motion_model, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_5AC.entry[model_index].motion_model, HU3D_MOTATTR_PAUSE);
-        Hu3DMotionTimeSet(lbl_1_bss_5AC.entry[model_index].motion_model, 0.0f);
-        Hu3DMotionSpeedSet(lbl_1_bss_5AC.entry[model_index].motion_model, 1.0f);
+        fn_800269E8(lbl_1_bss_5AC.entry[model_index].model, (1 << 0));
+        fn_800805CC(lbl_1_bss_5AC.entry[model_index].actor, M644_BROKEN_ROCK_COLLISION_MASK);
+        fn_80026A44(lbl_1_bss_5AC.entry[model_index].motion_model, (1 << 0));
+        fn_80026A44(lbl_1_bss_5AC.entry[model_index].motion_model, ((1 << 30) | (1 << 1)));
+        fn_8002D414(lbl_1_bss_5AC.entry[model_index].motion_model, 0.0f);
+        fn_8002D86C(lbl_1_bss_5AC.entry[model_index].motion_model, 1.0f);
         return 1;
     }
 
@@ -317,7 +317,7 @@ s32 fn_1_6C90(s32 model_index, s32 contact_type)
                                       [(s16)frame_index];
     model_id = lbl_1_bss_5AC.entry[model_index].model;
     /* Damage-pose sounds play only when the remaining life selects a different motion. */
-    if (Hu3DMotionIDGet(model_id) != lbl_1_data_2E0[motion_number]) {
+    if (fn_8002D3C4(model_id) != lbl_1_data_2E0[motion_number]) {
         if (lbl_1_bss_5AC.entry[model_index].rock_type == 2) {
             HuAudFXPlayPan(MSM_SE_M644_LARGE_ROCK_DAMAGE,
                            (s16) ((lbl_1_bss_5AC.entry[model_index].side << 5) + 48));
@@ -326,9 +326,9 @@ s32 fn_1_6C90(s32 model_index, s32 contact_type)
                            (s16) ((lbl_1_bss_5AC.entry[model_index].side << 5) + 48));
         }
     }
-    Hu3DMotionSet(model_id, lbl_1_data_2E0[motion_number]);
-    Hu3DModelAttrReset(model_id, (HU3D_MOTATTR_LOOP | HU3D_MOTATTR_PAUSE));
-    Hu3DMotionTimeSet(model_id, 0.0f);
+    fn_8002C95C(model_id, lbl_1_data_2E0[motion_number]);
+    fn_80026A44(model_id, (((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1))));
+    fn_8002D414(model_id, 0.0f);
     return 0;
     }
 }
@@ -381,7 +381,7 @@ int fn_1_6FBC(COL_NARROW_PARAM *rock_contact, COL_NARROW_PARAM *other_contact)
 
             HuAudFXPlay(group_sound_ids.ids[lbl_1_bss_5AC.entry[model_index].side]);
     }
-        omVibrate(player_slot, 20, 4, 4);
+        fn_8006A030(player_slot, 20, 4, 4);
         }
 
     fn_1_5180(player_slot);
@@ -390,9 +390,9 @@ int fn_1_6FBC(COL_NARROW_PARAM *rock_contact, COL_NARROW_PARAM *other_contact)
     target_position = other_contact->point;
     source_position = rock_contact->point;
     target_position.y += 70.0f;
-    Hu3DModelPosSetV(lbl_1_data_318[effect_index], &target_position);
-    Hu3DModelAttrReset(lbl_1_data_318[effect_index], HU3D_ATTR_DISPOFF);
-    Hu3DMotionTimeSet(lbl_1_data_318[effect_index], 0.0f);
+    fn_80026790(lbl_1_data_318[effect_index], &target_position);
+    fn_80026A44(lbl_1_data_318[effect_index], (1 << 0));
+    fn_8002D414(lbl_1_data_318[effect_index], 0.0f);
     return 0;
     }
     return 0;
@@ -429,59 +429,59 @@ void fn_1_7548(OMOBJ *object)
     f32 motion_model_scale;
 
     if (lbl_1_data_2F0 == -1) {
-        night_mode = GwMgNightF;
+        night_mode = lbl_802C0278;
         if (night_mode == 0) {
-            model_id = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m644, 42), HU_MEMNUM_OVL, HEAP_MODEL));
-            motion_model_id = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m644, 53), HU_MEMNUM_OVL, HEAP_MODEL));
+            model_id = fn_80025A04(fn_80008DD0(
+                DATANUM(0x670000, 42), 0x10000000, 2));
+            motion_model_id = fn_80025A04(fn_80008DD0(
+                DATANUM(0x670000, 53), 0x10000000, 2));
         } else {
-            model_id = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m644, 43), HU_MEMNUM_OVL, HEAP_MODEL));
-            motion_model_id = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m644, 52), HU_MEMNUM_OVL, HEAP_MODEL));
+            model_id = fn_80025A04(fn_80008DD0(
+                DATANUM(0x670000, 43), 0x10000000, 2));
+            motion_model_id = fn_80025A04(fn_80008DD0(
+                DATANUM(0x670000, 52), 0x10000000, 2));
         }
         for (route_index = 0; route_index < 8; route_index++) {
-            lbl_1_data_2E0[route_index] = Hu3DJointMotion(
-                model_id, HuDataSelHeapReadNum(
-                    lbl_1_data_2C0[route_index], HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_data_2E0[route_index] = fn_80030458(
+                model_id, fn_80008DD0(
+                    lbl_1_data_2C0[route_index], 0x10000000, 2));
         }
-        lbl_1_data_2F4 = Hu3DJointMotion(
+        lbl_1_data_2F4 = fn_80030458(
             motion_model_id,
-            HuDataSelHeapReadNum(DATANUM(DATA_m644, 54), HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(DATANUM(0x670000, 54), 0x10000000, 2));
         lbl_1_data_2F0 = model_id;
         lbl_1_data_2F2 = motion_model_id;
     } else {
-        model_id = Hu3DModelLink(lbl_1_data_2F0);
-        motion_model_id = Hu3DModelLink(lbl_1_data_2F2);
+        model_id = fn_80025D4C(lbl_1_data_2F0);
+        motion_model_id = fn_80025D4C(lbl_1_data_2F2);
     }
 
     data->model = model_id;
     data->motion_model = motion_model_id;
-    Hu3DModelCameraSet(model_id, camera_ids.masks[pan_index]);
+    fn_80026B64(model_id, camera_ids.masks[pan_index]);
     /* Group nine is also accepted here, although the section table assigns only zero through
      * four. */
     if (data->route_group == 0 || data->route_group == 9) {
-        Hu3DModelAttrReset(model_id, HU3D_ATTR_DISPOFF);
+        fn_80026A44(model_id, (1 << 0));
     } else {
-        Hu3DModelAttrSet(model_id, HU3D_ATTR_DISPOFF);
+        fn_800269E8(model_id, (1 << 0));
     }
-    Hu3DMotionSet(model_id, lbl_1_data_2E0[0]);
-    Hu3DMotionTimeSet(model_id, 0.0f);
+    fn_8002C95C(model_id, lbl_1_data_2E0[0]);
+    fn_8002D414(model_id, 0.0f);
     model_scale_data_index = data->rock_type;
     model_scale = lbl_1_data_320[model_scale_data_index].model_scale;
     actor_scale = model_scale;
     motion_model_scale = actor_scale;
-    Hu3DModelScaleSet(model_id, motion_model_scale,
+    fn_800268B0(model_id, motion_model_scale,
                       motion_model_scale, motion_model_scale);
-    Hu3DModelLayerSet(model_id, 3);
-    Hu3DModelCameraSet(motion_model_id, camera_ids.masks[pan_index]);
-    Hu3DModelAttrSet(motion_model_id, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(motion_model_id, HU3D_MOTATTR_PAUSE);
-    Hu3DMotionSet(motion_model_id, lbl_1_data_2F4);
-    Hu3DModelScaleSet(motion_model_id, motion_model_scale,
+    fn_80026B8C(model_id, 3);
+    fn_80026B64(motion_model_id, camera_ids.masks[pan_index]);
+    fn_800269E8(motion_model_id, (1 << 0));
+    fn_800269E8(motion_model_id, ((1 << 30) | (1 << 1)));
+    fn_8002C95C(motion_model_id, lbl_1_data_2F4);
+    fn_800268B0(motion_model_id, motion_model_scale,
                       motion_model_scale, motion_model_scale);
-    Hu3DModelLayerSet(motion_model_id, 3);
+    fn_80026B8C(motion_model_id, 3);
 
     /* Collision dimensions are truncated to signed whole world units before actor creation. */
     actor_height_data_index = data->rock_type;
@@ -498,7 +498,7 @@ void fn_1_7548(OMOBJ *object)
     actor_params.correctHookParam = 0;
     actor_params.narrowHook = fn_1_6FBC;
     actor_params.correctHook = NULL;
-    data->actor = MgActorCreate(&actor_params, -1);
+    data->actor = fn_80080B04(&actor_params, -1);
 
     fn_1_1EA8(data->route_group, &model_position, matrix);
     Hu3DMtxRotGet(matrix, &rotation);
@@ -525,15 +525,15 @@ void fn_1_7548(OMOBJ *object)
     }
     OSReport("after: index = %d, pos.x = %f, pos.y = %f, pos.z = %f\n", data->slot,
              actor_position.x, actor_position.y, actor_position.z);
-    MgActorPosSet(data->actor, &actor_position);
-    Hu3DModelPosSetV(data->model, &model_position);
-    Hu3DModelPosSetV(motion_model_id, &model_position);
-    Hu3DModelRotSetV(data->model, &rotation);
+    fn_80086AA8(data->actor, &actor_position);
+    fn_80026790(data->model, &model_position);
+    fn_80026790(motion_model_id, &model_position);
+    fn_80026838(data->model, &rotation);
     rotation.y += 180.0f;
-    Hu3DModelRotSetV(motion_model_id, &rotation);
-    Hu3DModelShadowSet(data->model);
-    Hu3DModelShadowSet(motion_model_id);
-    MgActorColMaskSet(data->actor, data->side + M644_ROCK_TEAM_COLLISION_MASK);
+    fn_80026838(motion_model_id, &rotation);
+    fn_80026E44(data->model);
+    fn_80026E44(motion_model_id);
+    fn_80080DD4(data->actor, data->side + M644_ROCK_TEAM_COLLISION_MASK);
     object->objFunc = fn_1_7BCC;
 }
 
@@ -542,8 +542,8 @@ void fn_1_7BCC(OMOBJ *object) {
     M644RouteModelEntry *data;
 
     data = object->data;
-    if (Hu3DMotionEndCheck(data->motion_model) != 0) {
-        Hu3DModelAttrSet(data->motion_model, HU3D_ATTR_DISPOFF);
+    if (fn_8002D75C(data->motion_model) != 0) {
+        fn_800269E8(data->motion_model, (1 << 0));
         object->objFunc = NULL;
     }
 }
@@ -554,8 +554,8 @@ void fn_1_7C24(s32 team_index, s32 section_index) {
     s32 rock_index = 0;
     while (rock_index < 9) {
         if (section_index == lbl_1_bss_5AC.entry[team_base + rock_index].route_group) {
-            Hu3DModelAttrReset(lbl_1_bss_5AC.entry[team_base + rock_index].model,
-                               HU3D_ATTR_DISPOFF);
+            fn_80026A44(lbl_1_bss_5AC.entry[team_base + rock_index].model,
+                               (1 << 0));
         }
         rock_index++;
     }

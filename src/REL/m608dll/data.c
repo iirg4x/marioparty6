@@ -5,26 +5,26 @@
 
 /* Camera motion resources loaded in setup, in camera-index order. */
 s32 lbl_1_data_4F0[10] = {
-    DATANUM(DATA_m608, 7), DATANUM(DATA_m608, 8), DATANUM(DATA_m608, 9), DATANUM(DATA_m608, 10),
-    DATANUM(DATA_m608, 11), DATANUM(DATA_m608, 12), DATANUM(DATA_m608, 13), DATANUM(DATA_m608, 14),
-    DATANUM(DATA_m608, 15), DATANUM(DATA_m608, 16),
+    DATANUM(0x430000, 7), DATANUM(0x430000, 8), DATANUM(0x430000, 9), DATANUM(0x430000, 10),
+    DATANUM(0x430000, 11), DATANUM(0x430000, 12), DATANUM(0x430000, 13), DATANUM(0x430000, 14),
+    DATANUM(0x430000, 15), DATANUM(0x430000, 16),
 };
 
 /* Model resources for the three rider model variants, ordered by player slot. */
-s32 lbl_1_data_518[4] = { DATANUM(DATA_m608, 46), DATANUM(DATA_m608, 47), DATANUM(DATA_m608, 48),
-                          DATANUM(DATA_m608, 49) };
+s32 lbl_1_data_518[4] = { DATANUM(0x430000, 46), DATANUM(0x430000, 47), DATANUM(0x430000, 48),
+                          DATANUM(0x430000, 49) };
 
-s32 lbl_1_data_528[4] = { DATANUM(DATA_m608, 50), DATANUM(DATA_m608, 51), DATANUM(DATA_m608, 52),
-                          DATANUM(DATA_m608, 53) };
+s32 lbl_1_data_528[4] = { DATANUM(0x430000, 50), DATANUM(0x430000, 51), DATANUM(0x430000, 52),
+                          DATANUM(0x430000, 53) };
 
-s32 lbl_1_data_538[4] = { DATANUM(DATA_m608, 54), DATANUM(DATA_m608, 55), DATANUM(DATA_m608, 56),
-                          DATANUM(DATA_m608, 57) };
+s32 lbl_1_data_538[4] = { DATANUM(0x430000, 54), DATANUM(0x430000, 55), DATANUM(0x430000, 56),
+                          DATANUM(0x430000, 57) };
 
 /* Character animation resources attached to each rider model. */
 unsigned int lbl_1_data_548[9] = {
-    DATANUM(DATA_mario, 137),  DATANUM(DATA_mario, 138),   DATANUM(DATA_mario, 139),
-    DATANUM(DATA_mario, 140),  DATANUM(DATA_mario, 141),   DATANUM(DATA_mariomot, 0),
-    DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 40), 0
+    DATANUM(0x8e0000, 137),  DATANUM(0x8e0000, 138),   DATANUM(0x8e0000, 139),
+    DATANUM(0x8e0000, 140),  DATANUM(0x8e0000, 141),   DATANUM(0x930000, 0),
+    DATANUM(0x930000, 6), DATANUM(0x930000, 40), 0
 };
 
 /* CPU roll timing: base interval divisor and random spread for each difficulty. */
@@ -73,13 +73,13 @@ char *lbl_1_data_684[4] = { lbl_1_data_65C, lbl_1_data_666, lbl_1_data_670, lbl_
 
 /* Model and motion resources used by the 27 moving course pieces. */
 s32 lbl_1_data_694[27] = {
-    DATANUM(DATA_m608, 17), DATANUM(DATA_m608, 18), DATANUM(DATA_m608, 19), DATANUM(DATA_m608, 20),
-    DATANUM(DATA_m608, 21), DATANUM(DATA_m608, 22), DATANUM(DATA_m608, 23), DATANUM(DATA_m608, 24),
-    DATANUM(DATA_m608, 25), DATANUM(DATA_m608, 26), DATANUM(DATA_m608, 27), DATANUM(DATA_m608, 28),
-    DATANUM(DATA_m608, 29), DATANUM(DATA_m608, 30), DATANUM(DATA_m608, 31), DATANUM(DATA_m608, 32),
-    DATANUM(DATA_m608, 33), DATANUM(DATA_m608, 34), DATANUM(DATA_m608, 35), DATANUM(DATA_m608, 36),
-    DATANUM(DATA_m608, 37), DATANUM(DATA_m608, 38), DATANUM(DATA_m608, 39), DATANUM(DATA_m608, 40),
-    DATANUM(DATA_m608, 41), DATANUM(DATA_m608, 42), DATANUM(DATA_m608, 43),
+    DATANUM(0x430000, 17), DATANUM(0x430000, 18), DATANUM(0x430000, 19), DATANUM(0x430000, 20),
+    DATANUM(0x430000, 21), DATANUM(0x430000, 22), DATANUM(0x430000, 23), DATANUM(0x430000, 24),
+    DATANUM(0x430000, 25), DATANUM(0x430000, 26), DATANUM(0x430000, 27), DATANUM(0x430000, 28),
+    DATANUM(0x430000, 29), DATANUM(0x430000, 30), DATANUM(0x430000, 31), DATANUM(0x430000, 32),
+    DATANUM(0x430000, 33), DATANUM(0x430000, 34), DATANUM(0x430000, 35), DATANUM(0x430000, 36),
+    DATANUM(0x430000, 37), DATANUM(0x430000, 38), DATANUM(0x430000, 39), DATANUM(0x430000, 40),
+    DATANUM(0x430000, 41), DATANUM(0x430000, 42), DATANUM(0x430000, 43),
 };
 
 M608SceneConsumedContext lbl_1_bss_3E80;

@@ -22,9 +22,9 @@ void *fn_1_A0(s32 priority, u32 dataSize, OMOBJ_FUNC callback)
 {
     OMOBJ *obj;
 
-    obj = omAddObjEx(lbl_1_bss_0, priority, 0, 0, 0, callback);
+    obj = fn_8003AB38(lbl_1_bss_0, priority, 0, 0, 0, callback);
     if (dataSize != 0) {
-        obj->data = HuMemDirectMallocNum(HEAP_HEAP, dataSize, HU_MEMNUM_OVL);
+        obj->data = HuMemDirectMallocNum(HEAP_HEAP, dataSize, 0x10000000);
         memset(obj->data, 0, dataSize);
     } else {
         obj->data = NULL;
@@ -43,7 +43,7 @@ void fn_1_148(void)
 {
     HU3D_LIGHTID light;
 
-    lbl_1_bss_0 = MgActorObjectSetup();
+    lbl_1_bss_0 = fn_80080418();
     light = Hu3DGLightCreate(0.0f, 1000.0f, 1000.0f,
         1.0f, -1.0f, -1.0f, 255, 255, 255);
     Hu3DGLightInfinitytSet(light);
@@ -53,19 +53,19 @@ void fn_1_148(void)
         HuVecF shadowTarget = { 0, 0, 0 };
 
         Hu3DShadowCreate(15.0f, 10.0f, 10000.0f);
-        Hu3DShadowColSet(16, 16, 16);
+        fn_8002AAB4(16, 16, 16);
         Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
         Hu3DShadowTPLvlSet(0.3f);
     }
-    HuPrcChildCreate(fn_1_2BC, 100, 12288, 0, lbl_1_bss_0);
+    fn_8000DAC0(fn_1_2BC, 100, 12288, 0, lbl_1_bss_0);
 }
 
 /* Create the minigame sequence and run actor updates once per process wakeup. */
 void fn_1_2BC(void)
 {
-    MgSeqCreate(&lbl_1_data_0);
+    fn_80070788(&lbl_1_data_0);
     while (TRUE) {
-        MgActorExec();
+        fn_800856A8();
         HuPrcVSleep();
     }
 }
@@ -74,7 +74,7 @@ void fn_1_2BC(void)
 void fn_1_2E0(s16 mode, s16 frameNo)
 {
     fn_1_A0(100, 8, fn_1_5F0);
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Sequence fade-in hook: this overlay has no additional fade-in work. */
@@ -86,7 +86,7 @@ void fn_1_358(s16 mode, s16 frameNo)
  * effect-play flag. */
 void fn_1_35C(s16 mode, s16 frameNo)
 {
-    if (lbl_1_data_28 == -1 && (GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY)) {
+    if (lbl_1_data_28 == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY)) {
         lbl_1_data_28 = HuAudSStreamPlay(M621_START_STREAM_ID);
     }
 }

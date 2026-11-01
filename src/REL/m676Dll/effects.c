@@ -76,9 +76,9 @@ void fn_1_1033C(HUPROCESS *process) {
     OMOBJ *effectObject;
     void *effectWork;
     lbl_1_bss_10AC = process;
-    effectObject = omAddObjEx(lbl_1_bss_10AC, 16, 4U, 0U, - 1, fn_1_103F8);
+    effectObject = fn_8003AB38(lbl_1_bss_10AC, 16, 4U, 0U, - 1, fn_1_103F8);
     lbl_1_bss_10A8 = effectObject;
-    effectWork = HuMemDirectMallocNum(HEAP_HEAP, 248, HU_MEMNUM_OVL);
+    effectWork = HuMemDirectMallocNum(HEAP_HEAP, 248, 0x10000000);
     effectObject->data = effectWork;
     memset(effectWork, 0, 248);
     fn_1_10430(effectObject);
@@ -109,16 +109,16 @@ void fn_1_10430(OMOBJ *object)
     HU3D_PARTICLE *particle;
     s32 index;
 
-    animation = HuSprAnimRead(HuDataSelHeapReadNum((s32)fn_1_1480(13), HU_MEMNUM_OVL,
-                                                    HEAP_MODEL));
-    modelId = Hu3DParticleCreate(animation, 128);
+    animation = HuSprAnimRead(fn_80008DD0((s32)fn_1_1480(13), 0x10000000,
+                                                    2));
+    modelId = fn_8003216C(animation, 128);
     object->mdlId[0] = modelId;
-    particle = (HU3D_PARTICLE *)Hu3DData[(s16)modelId].hookData;
-    Hu3DParticleColSet(modelId, 255, 255, 255);
-    Hu3DParticleBlendModeSet(modelId, 0);
-    Hu3DParticleHookSet(modelId, fn_1_10550);
-    Hu3DModelLayerSet(modelId, 6);
-    Hu3DModelPosSet(modelId, 0.0f, 0.0f, 0.0f);
+    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    fn_800325B0(modelId, 255, 255, 255);
+    fn_8003269C(modelId, 0);
+    fn_800326D0(modelId, fn_1_10550);
+    fn_80026B8C(modelId, 6);
+    fn_80026760(modelId, 0.0f, 0.0f, 0.0f);
     entry = particle->data;
     for (index = 0; index < particle->maxCnt; index++, entry++) {
         entry->time = -1;
@@ -172,11 +172,11 @@ void fn_1_10764(OMOBJ *owner)
     f32 angle;
     s32 i;
 
-    modelId = Hu3DHookFuncCreate(fn_1_108A0);
+    modelId = fn_800260F4(fn_1_108A0);
     owner->mdlId[1] = modelId;
-    Hu3DModelLayerSet(modelId, 4);
-    modelData = &Hu3DData[modelId];
-    hookData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*hookData), HU_MEMNUM_OVL);
+    fn_80026B8C(modelId, 4);
+    modelData = &lbl_802C01C8[modelId];
+    hookData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*hookData), 0x10000000);
     modelData->hookData = hookData;
     memset(hookData, 0, sizeof(*hookData));
     i = 0;
@@ -251,9 +251,9 @@ void fn_1_10B7C(OMOBJ *object)
 
     work = (M676EffectWork *)object->data;
     childWork = &work->texture;
-    hook = Hu3DHookFuncCreate((HU3D_MODEL_HOOK)fn_1_10C5C);
+    hook = fn_800260F4((HU3D_MODEL_HOOK)fn_1_10C5C);
     object->mdlId[2] = hook;
-    hook = Hu3DHookFuncCreate((HU3D_MODEL_HOOK)fn_1_10CB4);
+    hook = fn_800260F4((HU3D_MODEL_HOOK)fn_1_10CB4);
     object->mdlId[3] = hook;
     fn_1_10D0C(object, childWork);
     work->enabled = 1;
@@ -309,18 +309,18 @@ void fn_1_10D0C(OMOBJ *object, M676TextureWork *work)
     u32 textureSize;
 
     modelId = object->mdlId[2];
-    Hu3DModelLayerSet(modelId, 2);
+    fn_80026B8C(modelId, 2);
     modelId = object->mdlId[3];
-    Hu3DModelLayerSet(modelId, 5);
+    fn_80026B8C(modelId, 5);
     if (work->textureBuffer != NULL) {
         return;
     }
     textureSize = GXGetTexBufferSize(320, 240, 4, 0, 0);
-    work->textureBuffer = HuMemDirectMallocNum(HEAP_HEAP, textureSize, HU_MEMNUM_OVL);
+    work->textureBuffer = HuMemDirectMallocNum(HEAP_HEAP, textureSize, 0x10000000);
     work->textureData = HuSprAnimRead(
-        HuDataSelHeapReadNum(fn_1_1480(14), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80008DD0(fn_1_1480(14), 0x10000000, 2));
     work->animationData = HuSprAnimRead(
-        HuDataSelHeapReadNum(fn_1_1480(15), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80008DD0(fn_1_1480(15), 0x10000000, 2));
     work->scrollOffsetX = 0.0f;
     work->scrollOffsetZ = 0.0f;
     PSMTXIdentity(work->textureMatrices[0]);
@@ -337,8 +337,8 @@ void fn_1_10E54(Vec *position, f32 *farPlane)
     Vec scratchPosition;
     f32 scratchPerspective;
 
-    Hu3DCameraPosGet(1, position, &scratchPosition, &scratchPosition);
-    Hu3DCameraPerspectiveGet(1, &scratchPerspective, &scratchPerspective, farPlane);
+    fn_80027CD0(1, position, &scratchPosition, &scratchPosition);
+    fn_80027D8C(1, &scratchPerspective, &scratchPerspective, farPlane);
     *farPlane *= 1.8;
 }
 
@@ -351,8 +351,8 @@ void fn_1_10EC4(M676TextureWork *work) {
     f32 textureScale;
 
     /* Up and target share scratch storage because neither direction is used here. */
-    Hu3DCameraPosGet(1, &cameraPosition, &ignoredCameraVector, &ignoredCameraVector);
-    Hu3DCameraPerspectiveGet(1, &ignoredPerspective, &ignoredPerspective, &farPlane);
+    fn_80027CD0(1, &cameraPosition, &ignoredCameraVector, &ignoredCameraVector);
+    fn_80027D8C(1, &ignoredPerspective, &ignoredPerspective, &farPlane);
     farPlane *= 1.8;
     PSMTXScale(work->textureMatrices[0], farPlane, 1.0f, farPlane);
     PSMTXTransApply(work->textureMatrices[0], work->textureMatrices[0], cameraPosition.x, 0.0f,
@@ -391,7 +391,7 @@ void fn_1_11184(GXTexObj *texture, GXTexMapID map, u32 matrixId, Mtx inputMatrix
     f32 nearFar;
 
     GXLoadTexObj(texture, map);
-    Hu3DCameraPerspectiveGet(1, &fov, &nearFar, &nearFar);
+    fn_80027D8C(1, &fov, &nearFar, &nearFar);
     C_MTXLightPerspective(perspectiveMatrix, fov, 1.2f,
         0.5f, -0.5f, 0.5f, 0.5f);
     PSMTXConcat(perspectiveMatrix, inputMatrix, perspectiveMatrix);
@@ -590,7 +590,7 @@ void fn_1_119B0(Vec *position, Vec *velocity)
 
     object = lbl_1_bss_10A8;
     modelId = object->mdlId[0];
-    work = Hu3DData[modelId].hookData;
+    work = lbl_802C01C8[modelId].hookData;
     record = work->data;
     for (index = 0; index < work->maxCnt; index++, record++) {
         if (record->time < 0) {
@@ -648,7 +648,7 @@ void fn_1_11A74(Vec *position, f32 radius, s32 count)
 
         manager = lbl_1_bss_10A8;
         modelId = manager->mdlId[0];
-        hookWork = Hu3DData[modelId].hookData;
+        hookWork = lbl_802C01C8[modelId].hookData;
         particle = hookWork->data;
         for (slot = 0; slot < hookWork->maxCnt; slot++, particle++) {
             if (particle->time < 0) {
@@ -673,7 +673,7 @@ void fn_1_11EA4(M676ShadowRecord *effect)
 
     object = lbl_1_bss_10A8;
     modelId = object->mdlId[1];
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     work = model->hookData;
     entry = work->records;
     for (i = 0; i < 10; i++, entry++) {

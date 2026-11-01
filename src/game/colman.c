@@ -397,13 +397,13 @@ static void ColBoundsGet(HuVecF *center, float *boundRadius, HuVecF *vertices, i
 static void MakeIndexBuf(int *out, HSF_FACE *hsfFaceP, int idx)
 {
     switch(hsfFaceP->type) {
-        case HSF_FACE_TRI:
+        case 2:
             out[0] = hsfFaceP->index[0].vertex;
             out[1] = hsfFaceP->index[1].vertex;
             out[2] = hsfFaceP->index[2].vertex;
             break;
 
-        case HSF_FACE_QUAD:
+        case 3:
             if(idx & 0x1) {
                 out[0] = hsfFaceP->index[0].vertex;
                 out[1] = hsfFaceP->index[1].vertex;
@@ -416,7 +416,7 @@ static void MakeIndexBuf(int *out, HSF_FACE *hsfFaceP, int idx)
 
             break;
 
-        case HSF_FACE_TRISTRIP:
+        case 4:
             switch(idx) {
                 case 0:
                     out[0] = hsfFaceP->index[0].vertex;
@@ -558,19 +558,19 @@ static void ColMtxCalcHsfObject(HSF_OBJECT *obj, Mtx mtx)
     Mtx rot;
     Mtx final;
     switch(obj->type) {
-        case HSF_OBJ_NULL1:
-        case HSF_OBJ_MESH:
-        case HSF_OBJ_ROOT:
-        case HSF_OBJ_JOINT:
-        case HSF_OBJ_NULL2:
-        case HSF_OBJ_NULL3:
-        case HSF_OBJ_MAP:
+        case 0:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 9:
             processF = TRUE;
             break;
 
-        case HSF_OBJ_REPLICA:
-        case HSF_OBJ_CAMERA:
-        case HSF_OBJ_LIGHT:
+        case 1:
+        case 7:
+        case 8:
             break;
     }
     if(!processF) {
@@ -604,13 +604,13 @@ static void ColMtxCalcModelAll(void)
     Mtx rot;
     int no;
     for(no=colWork.mdlNum; no--;) {
-        modelP = &Hu3DData[colWork.mdlId[no]];
+        modelP = &lbl_802C01C8[colWork.mdlId[no]];
         ColMtxRot(rot, modelP->rot.x, modelP->rot.y, modelP->rot.z);
         MTXScale(final, modelP->scale.x, modelP->scale.y, modelP->scale.z);
         MTXConcat(modelP->mtx, rot, rot);
         MTXConcat(rot, final, final);
         ColMtxTransApply(final, modelP->pos.x, modelP->pos.y, modelP->pos.z);
-        CancelTRXF = modelP->motId != HU3D_MOTIONID_NONE;
+        CancelTRXF = modelP->motId != -1;
         ColMtxCalcHsfObject(modelP->hsf->root, final);
     }
 }
@@ -2009,7 +2009,7 @@ static inline BOOL ColSphereLineCheck(HuVecF *start, HuVecF *end, HuVecF *center
     return TRUE;
 }
 
-#define MESHCOL_ATTR (COLBODY_ATTR_NO_CONTACT_FLAG|COLBODY_ATTR_MESHCOL_OFF|COLBODY_ATTR_COL_OFF)
+#define MESHCOL_ATTR (COLBODY_ATTR_NO_CONTACT_FLAG|(1 << 1)|(1 << 4))
 
 // Resolves active bodies against triangle meshes using their configured shapes.
 // Called by ColBodyExec when cylinder mode is clear.
@@ -2059,7 +2059,7 @@ static void _BodyMeshCol(void)
         RemoveMtxTrans(invNoTrans, meshP->mtxInv);
         for(bodyP=colWork.body, i=0; i<colWork.bodyNum; i++, bodyP++) {
             body2 = bodyP;
-            if ((bodyP->param.attr & COLBODY_ATTR_ACTIVE) &&
+            if ((bodyP->param.attr & (1 << 0)) &&
                 (bodyP->param.attr & MESHCOL_ATTR) == 0) {
                 if(!(body2->param.mask & meshP->mask)) {
                     continue;
@@ -2089,15 +2089,15 @@ static void _BodyMeshCol(void)
                                 break;
                             }
                             switch(hsfFaceP->type) {
-                                case HSF_FACE_QUAD:
+                                case 3:
                                     triNum = 2;
                                     break;
 
-                                case HSF_FACE_TRI:
+                                case 2:
                                     triNum = 1;
                                     break;
 
-                                case HSF_FACE_TRISTRIP:
+                                case 4:
                                     triNum = hsfFaceP->strip.count+1;
                                     break;
                             }
@@ -2351,7 +2351,7 @@ static void _BodyMeshCylCol(void)
     for(no=colMeshCount; no--; meshP++) {
         for(bodyP=colWork.body, i=0; i<colWork.bodyNum; i++, bodyP++) {
             body2 = bodyP;
-            if ((bodyP->param.attr & COLBODY_ATTR_ACTIVE) &&
+            if ((bodyP->param.attr & (1 << 0)) &&
                 (bodyP->param.attr & MESHCOL_ATTR) == 0) {
                 if(!(body2->param.mask & meshP->mask)) {
                     continue;
@@ -2381,15 +2381,15 @@ static void _BodyMeshCylCol(void)
                                 break;
                             }
                             switch(hsfFaceP->type) {
-                                case HSF_FACE_QUAD:
+                                case 3:
                                     triNum = 2;
                                     break;
 
-                                case HSF_FACE_TRI:
+                                case 2:
                                     triNum = 1;
                                     break;
 
-                                case HSF_FACE_TRISTRIP:
+                                case 4:
                                     triNum = hsfFaceP->strip.count+1;
                                     break;
                             }
@@ -2531,7 +2531,7 @@ static void _BodyMeshCylCol(void)
 
 #undef MESHCOL_ATTR
 
-#define BODYCOL_ATTR (COLBODY_ATTR_BODYCOL_OFF|COLBODY_ATTR_COL_OFF)
+#define BODYCOL_ATTR ((1 << 2)|(1 << 4))
 
 // Builds broad-phase candidate pairs for active vertical cylinder bodies.
 // Called by ColBodyExec in cylinder mode; may discard a later mesh contact for another pass.
@@ -2560,14 +2560,14 @@ static int _BodyColCylBroad(void)
     posIdx = (colWork.attr & 0x4) ? 1 : 0;
 
     for(bodyP=colWork.body, i=0; i<colWork.bodyNum; i++, bodyP++) {
-        if((bodyP->param.attr & COLBODY_ATTR_ACTIVE) && (bodyP->param.attr & BODYCOL_ATTR) == 0) {
+        if((bodyP->param.attr & (1 << 0)) && (bodyP->param.attr & BODYCOL_ATTR) == 0) {
             cylA.startPos = bodyP->oldPos;
             cylA.vel = bodyP->moveDir;
             cylA.t = bodyP->colT;
             cylA.radius = bodyP->param.radius;
             cylA.height = bodyP->param.height;
             for(body2=bodyP+1, j=i+1; j<colWork.bodyNum; j++, body2++) {
-                if ((body2->param.attr & COLBODY_ATTR_ACTIVE) &&
+                if ((body2->param.attr & (1 << 0)) &&
                     (body2->param.attr & BODYCOL_ATTR) == 0 &&
                     (bodyP->param.mask & body2->param.mask)) {
                     if (!(bodyP->colBit[j >> 5] & (1 << (j & 0x1F))) ||
@@ -2663,14 +2663,14 @@ static int _BodyColBroad(void)
     posIdx = (colWork.attr & 0x4) ? 1 : 0;
 
     for(bodyP=colWork.body, i=0; i<colWork.bodyNum; i++, bodyP++) {
-        if((bodyP->param.attr & COLBODY_ATTR_ACTIVE) && (bodyP->param.attr & BODYCOL_ATTR) == 0) {
+        if((bodyP->param.attr & (1 << 0)) && (bodyP->param.attr & BODYCOL_ATTR) == 0) {
             cylA.startPos = bodyP->oldPos;
             cylA.vel = bodyP->moveDir;
             cylA.t = bodyP->colT;
             cylA.radius = bodyP->param.radius;
             cylA.height = bodyP->param.height;
             for(body2=bodyP+1, j=i+1; j<colWork.bodyNum; j++, body2++) {
-                if ((body2->param.attr & COLBODY_ATTR_ACTIVE) &&
+                if ((body2->param.attr & (1 << 0)) &&
                     (body2->param.attr & BODYCOL_ATTR) == 0 &&
                     (bodyP->param.mask & body2->param.mask)) {
                     if (!(bodyP->colBit[j >> 5] & (1 << (j & 0x1F))) ||
@@ -3172,8 +3172,8 @@ static BOOL _BodyApplyColAttr(COLBODY *bodyP, COL_ATTRPARAM *attrParam, int code
         switch(attrParam->type) {
             case 0:
                 normal = point->normal;
-                c = cos((float)M_PI);
-                s = sin((float)M_PI);
+                c = cos((float)3.141592653589793);
+                s = sin((float)3.141592653589793);
                 normMtx[0][0] = ((1-c)*(normal.x*normal.x))+c;
                 normMtx[0][1] = ((1-c)*(normal.x*normal.y))-(normal.z*s);
                 normMtx[0][2] = ((1-c)*(normal.x*normal.z))+(normal.y*s);
@@ -3224,7 +3224,7 @@ static inline int _BodyColResponse(void)
     posNo = (colWork.attr & 0x4) ? 1 : 0;
     result = 0;
     for(i=0; i<colWork.bodyNum; i++, bodyP++) {
-        if(!(bodyP->param.attr & COLBODY_ATTR_ACTIVE)) {
+        if(!(bodyP->param.attr & (1 << 0))) {
             continue;
         }
                 if(!(bodyP->param.attr & COLBODY_ATTR_BODY_PAIR_CONTACT_FLAG)) {
@@ -3255,7 +3255,7 @@ do { \
     int no; \
     bodyP = colWork.body; \
     for(no=colWork.bodyNum; no--; bodyP++) { \
-        if(bodyP->param.attr & COLBODY_ATTR_ACTIVE) { \
+        if(bodyP->param.attr & (1 << 0)) { \
             if((bodyP->param.attr & COLBODY_ATTR_COLLISION_MASK) == 0) { \
                 bodyP->param.attr |= COLBODY_ATTR_NO_CONTACT_FLAG; \
             } else { \
@@ -3350,14 +3350,14 @@ static inline void ColMakeTri(COLTRI *tri, Vec *vtxBuf, int *idx)
 
 }
 
-COLBODY *ColBodyGet(int no)
+COLBODY *fn_8007BAB8(int no)
 {
     return &colWork.body[no];
 }
 
 // Clears collision-map bookkeeping and drops its model, body, and mesh registrations.
 // Does not free allocated storage; use ColMapKill for teardown that releases it.
-void ColMapClear(void)
+void fn_8007BAD0(void)
 {
     CancelTRXF = FALSE;
     colMapInitF = FALSE;
@@ -3401,21 +3401,21 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
 
     int index[3];
 
-    if(ColMapInitCheck()) {
+    if(fn_8007D52C()) {
         return;
     }
     colWork.mdlNum = mdlNum;
-    colWork.mdlId = HuMemDirectMallocNum(HEAP_MODEL, mdlNum*sizeof(HU3D_MODELID), HU_MEMNUM_OVL);
+    colWork.mdlId = HuMemDirectMallocNum(2, mdlNum*sizeof(HU3D_MODELID), 0x10000000);
     colWork.attr = 1;
     colWork.bodyNum = bodyNum;
     if(!colWork.body) {
-        colWork.body = HuMemDirectMallocNum(HEAP_MODEL, COLBODY_MAX*sizeof(COLBODY), HU_MEMNUM_OVL);
-        memset(colWork.body, 0, COLBODY_MAX*sizeof(COLBODY));
+        colWork.body = HuMemDirectMallocNum(2, 256*sizeof(COLBODY), 0x10000000);
+        memset(colWork.body, 0, 256*sizeof(COLBODY));
     }
     if(!colWork.narrowCol) {
         colWork.narrowCol =
-            HuMemDirectMallocNum(HEAP_MODEL, COLBODY_MAX * 4 * sizeof(COLNARROW), HU_MEMNUM_OVL);
-        memset(colWork.narrowCol, 0, COLBODY_MAX*4*sizeof(COLNARROW));
+            HuMemDirectMallocNum(2, 256 * 4 * sizeof(COLNARROW), 0x10000000);
+        memset(colWork.narrowCol, 0, 256*4*sizeof(COLNARROW));
     }
     memcpy(colWork.mdlId, mdlId, mdlNum*sizeof(HU3D_MODELID));
     for(no=7; no--;) {
@@ -3431,10 +3431,10 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
         colWork.attrParamHi[no].attr = 0;
     }
     colWork.broadCol = HuMemDirectMallocNum(
-        HEAP_MODEL, ((colWork.bodyNum * (colWork.bodyNum + 1)) / 2.0f) * sizeof(COLBROAD),
-        HU_MEMNUM_OVL);
-    colWork.colOrder1 = HuMemDirectMallocNum(HEAP_MODEL, COLBODY_MAX*4*sizeof(s16), HU_MEMNUM_OVL);
-    colWork.colOrder2 = HuMemDirectMallocNum(HEAP_MODEL, COLBODY_MAX*4*sizeof(s16), HU_MEMNUM_OVL);
+        2, ((colWork.bodyNum * (colWork.bodyNum + 1)) / 2.0f) * sizeof(COLBROAD),
+        0x10000000);
+    colWork.colOrder1 = HuMemDirectMallocNum(2, 256*4*sizeof(s16), 0x10000000);
+    colWork.colOrder2 = HuMemDirectMallocNum(2, 256*4*sizeof(s16), 0x10000000);
     for(no=bodyNum; no--;) {
         bodyP = &colWork.body[no];
         bodyP->param.paramB = 0;
@@ -3452,44 +3452,44 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
         bodyP->colPointNum = 0;
     }
     for(meshNum=0, no=colWork.mdlNum; no--;) {
-        HSF_DATA *hsfP = Hu3DData[colWork.mdlId[no]].hsf;
+        HSF_DATA *hsfP = lbl_802C01C8[colWork.mdlId[no]].hsf;
         objP = hsfP->object;
         for(objNum=hsfP->objectNum; objNum--; objP++) {
-            if(objP->type == HSF_OBJ_MESH) {
+            if(objP->type == 2) {
                 meshNum++;
             }
         }
     }
-    colMesh = HuMemDirectMallocNum(HEAP_MODEL, sizeof(COLMESH)*meshNum, HU_MEMNUM_OVL);
+    colMesh = HuMemDirectMallocNum(2, sizeof(COLMESH)*meshNum, 0x10000000);
     colMeshCount = meshNum;
     for(meshNum=0, no=colWork.mdlNum; no--;) {
-        HSF_DATA *hsfP = Hu3DData[colWork.mdlId[no]].hsf;
+        HSF_DATA *hsfP = lbl_802C01C8[colWork.mdlId[no]].hsf;
         objP = hsfP->object;
         for(objNum=hsfP->objectNum; objNum--; objP++) {
-            if(objP->type == HSF_OBJ_MESH) {
+            if(objP->type == 2) {
                 for (triNum = 0, hsfFaceP = objP->mesh.face->data, faceNo = objP->mesh.face->count;
                      faceNo--; hsfFaceP++) {
                     switch(hsfFaceP->type) {
-                        case HSF_FACE_QUAD:
+                        case 3:
                             triNum += 2;
                             break;
 
-                        case HSF_FACE_TRI:
+                        case 2:
                             triNum += 1;
                             break;
 
-                        case HSF_FACE_TRISTRIP:
+                        case 4:
                             triNum += hsfFaceP->strip.count+1;
                             break;
                     }
                 }
                 vtxBuf = objP->mesh.vertex->data;
-                triP = HuMemDirectMallocNum(HEAP_MODEL, sizeof(COLTRI)*triNum, HU_MEMNUM_OVL);
+                triP = HuMemDirectMallocNum(2, sizeof(COLTRI)*triNum, 0x10000000);
                 memset(triP, 0, sizeof(COLTRI)*triNum);
                 for (triNum = 0, hsfFaceP = objP->mesh.face->data, faceNo = objP->mesh.face->count;
                      faceNo--; hsfFaceP++) {
                     switch(hsfFaceP->type) {
-                        case HSF_FACE_QUAD:
+                        case 3:
                             MakeIndexBuf(index, hsfFaceP, 0);
                             ColMakeTri(&triP[triNum], vtxBuf, index);
                             triNum++;
@@ -3498,13 +3498,13 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
                             triNum++;
                             break;
 
-                        case HSF_FACE_TRI:
+                        case 2:
                             MakeIndexBuf(index, hsfFaceP, 0);
                             ColMakeTri(&triP[triNum], vtxBuf, index);
                             triNum++;
                             break;
 
-                        case HSF_FACE_TRISTRIP:
+                        case 4:
                             for(i=0; i<hsfFaceP->strip.count+1; i++) {
                                 MakeIndexBuf(index, hsfFaceP, i);
                                 triOther = &triP[triNum];
@@ -3522,7 +3522,7 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
                 colMesh[meshNum].tri = triP;
                 colMesh[meshNum].obj = objP;
                 colMesh[meshNum].bodyPos = HuMemDirectMallocNum(
-                    HEAP_MODEL, sizeof(HuVecF) * colWork.bodyNum * 2, HU_MEMNUM_OVL);
+                    2, sizeof(HuVecF) * colWork.bodyNum * 2, 0x10000000);
                 colMesh[meshNum].bodyMove = colMesh[meshNum].bodyPos+colWork.bodyNum;
                 colMesh[meshNum].mask = -1;
                 colMesh[meshNum].mdlNo = no;
@@ -3551,11 +3551,11 @@ void ColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyNum)
 }
 
 // Sets the mesh mask used to include a registered model in collision queries.
-void ColMapMaskSet(int mdlNo, u32 mask)
+void fn_8007D118(int mdlNo, u32 mask)
 {
     COLMESH *meshP;
     int no;
-    if(!ColMapInitCheck()) {
+    if(!fn_8007D52C()) {
         return;
     }
     for(meshP=colMesh, no=colMeshCount; no--; meshP++) {
@@ -3567,11 +3567,11 @@ void ColMapMaskSet(int mdlNo, u32 mask)
 
 // Returns the collision mask assigned to a registered model.
 // An uninitialized map returns without a value; initialized maps return zero for an absent model.
-u32 ColMapMaskGet(int mdlNo)
+u32 fn_8007D18C(int mdlNo)
 {
     COLMESH *meshP;
     int no;
-    if(!ColMapInitCheck()) {
+    if(!fn_8007D52C()) {
         return;
     }
     for(meshP=colMesh, no=colMeshCount; no--; meshP++) {
@@ -3583,7 +3583,7 @@ u32 ColMapMaskGet(int mdlNo)
 }
 
 // Disables cylinder collision mode and returns whether that mode was previously set.
-BOOL ColCylReset(void)
+BOOL fn_8007D200(void)
 {
     BOOL ret = (colWork.attr & 0x20) ? TRUE : FALSE;
     colWork.attr &= ~0x20;
@@ -3591,7 +3591,7 @@ BOOL ColCylReset(void)
 }
 
 // Enables cylinder collision mode and returns whether that mode was previously clear.
-BOOL ColCylSet(void)
+BOOL fn_8007D260(void)
 {
     BOOL ret = (colWork.attr & 0x20) ? FALSE : TRUE;
     colWork.attr |= 0x20;
@@ -3599,7 +3599,7 @@ BOOL ColCylSet(void)
 }
 
 // Frees collision-map model, body, pair, and triangle storage during teardown.
-void ColMapKill(void)
+void fn_8007D2C0(void)
 {
     int no;
     CancelTRXF = FALSE;
@@ -3649,19 +3649,19 @@ void ColMapKill(void)
     colMeshCount = 0;
 }
 
-BOOL ColMapInitCheck(void)
+BOOL fn_8007D52C(void)
 {
     return colMapInitF;
 }
 
 // Clears the dirty and per-frame collision state bits.
-void ColDirtyClear(void)
+void fn_8007D534(void)
 {
     colWork.attr &= ~0x18;
 }
 
 // Stores response parameters for the material code selected by a polygon flag.
-void ColAttrParamSet(COL_ATTRPARAM *param, u32 polyAttr)
+void fn_8007D550(COL_ATTRPARAM *param, u32 polyAttr)
 {
     int code = ColCodeGet(polyAttr);
     COL_ATTRPARAM *dst;
@@ -3673,7 +3673,7 @@ void ColAttrParamSet(COL_ATTRPARAM *param, u32 polyAttr)
 }
 
 // Retrieves response parameters for the material code selected by a polygon flag.
-void ColAttrParamGet(COL_ATTRPARAM *param, u32 polyAttr)
+void fn_8007D618(COL_ATTRPARAM *param, u32 polyAttr)
 {
     int code = ColCodeGet(polyAttr);
     COL_ATTRPARAM *dst;
@@ -3686,19 +3686,19 @@ void ColAttrParamGet(COL_ATTRPARAM *param, u32 polyAttr)
 
 // Sets an actor body's position in the current buffer; COLBODY_ATTR_RESET also copies it to the
 // other slot.
-void ColBodyPosSet(HuVecF *pos, int no)
+void fn_8007D6E0(HuVecF *pos, int no)
 {
     COLBODY *bodyP = &colWork.body[no];
     int idx = (colWork.attr & 0x4) ? 1 : 0;
     HuVecF temp = *pos;
     bodyP->pos[idx] = temp;
-    if(bodyP->param.attr & COLBODY_ATTR_RESET) {
+    if(bodyP->param.attr & (1 << 24)) {
         bodyP->pos[idx^1] = temp;
     }
 }
 
 // Reads the submitted position buffer, or the completed buffer after ColBodyExec swaps slots.
-void ColBodyPosGet(HuVecF *pos, int no)
+void fn_8007D7B4(HuVecF *pos, int no)
 {
     int idx = (colWork.attr & 0x4) ? 1 : 0;
     if(colWork.attr & 0x8) {
@@ -3709,7 +3709,7 @@ void ColBodyPosGet(HuVecF *pos, int no)
 
 // Replaces the body's entire parameter block, including shape, mask, hooks, response, user data,
 // and flags.
-void ColBodyParamSet(COLBODY_PARAM *param, int no)
+void fn_8007D84C(COLBODY_PARAM *param, int no)
 {
     if(no >= 0 && no < colWork.bodyNum) {
         colWork.body[no].param = *param;
@@ -3717,7 +3717,7 @@ void ColBodyParamSet(COLBODY_PARAM *param, int no)
 }
 
 // Returns a body only when its index is within this map's reserved body range.
-COLBODY *ColBodyGetSafe(int no)
+COLBODY *fn_8007D8E0(int no)
 {
     if(no >= 0 && no < colWork.bodyNum) {
         return &colWork.body[no];
@@ -3728,7 +3728,7 @@ COLBODY *ColBodyGetSafe(int no)
 
 // Casts a segment through masked collision meshes, selecting hits with the plane-test tolerance.
 // A hit up to 0.001 later than the current best can replace it, including beyond the segment end.
-BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *outCode,
+BOOL fn_8007D91C(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *outCode,
                    int *outMdlNo, HSF_OBJECT **outObj, int *outFaceNo)
 {
     HSF_FACE *hsfFaceP;
@@ -3777,15 +3777,15 @@ BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *ou
             triP = meshP->tri;
             for(i=0; i<meshP->obj->mesh.face->count; i++, hsfFaceP++) {
                 switch(hsfFaceP->type) {
-                    case HSF_FACE_QUAD:
+                    case 3:
                         triNum = 2;
                         break;
 
-                    case HSF_FACE_TRI:
+                    case 2:
                         triNum = 1;
                         break;
 
-                    case HSF_FACE_TRISTRIP:
+                    case 4:
                         triNum = hsfFaceP->strip.count+1;
                         break;
                 }
@@ -3841,7 +3841,7 @@ BOOL ColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, HuVecF *outPos, u32 *ou
 // Runs mesh and body collision passes after actor positions are submitted each frame.
 // Called by the actor update after position submission; another call is skipped until
 // ColDirtyClear.
-void ColBodyExec(void)
+void fn_8007DDB8(void)
 {
     COLBODY *bodyP;
     COLMESH *meshP;
@@ -3861,7 +3861,7 @@ void ColBodyExec(void)
     }
     UpdateMeshMtx();
     for(bodyP=colWork.body, no=colWork.bodyNum; no--; bodyP++) {
-        if(bodyP->param.attr & COLBODY_ATTR_ACTIVE) {
+        if(bodyP->param.attr & (1 << 0)) {
             bodyP->groundAttr = 0;
             bodyP->hitAttr = 0;
             bodyP->oldPos = bodyP->pos[otherPosNo];
@@ -3877,8 +3877,8 @@ void ColBodyExec(void)
     }
     for(meshP=colMesh, no=colMeshCount; no--; meshP++) {
         for(bodyP=colWork.body, i=0; i<colWork.bodyNum; i++, bodyP++) {
-            if(bodyP->param.attr & COLBODY_ATTR_ACTIVE) {
-                if(bodyP->param.attr & COLBODY_ATTR_RESET) {
+            if(bodyP->param.attr & (1 << 0)) {
+                if(bodyP->param.attr & (1 << 24)) {
                     if(bodyP->param.attr & 0x8000) {
                         MTXMultVec(meshP->mtxInvOld, &bodyP->pos[otherPosNo], &temp);
                         MTXMultVec(meshP->mtx, &temp, &temp);
@@ -3921,7 +3921,7 @@ void ColBodyExec(void)
         colNum += _BodyColResponse();
         bodyP = colWork.body;
         for(no=colWork.bodyNum; no--; bodyP++) {
-            if(bodyP->param.attr & COLBODY_ATTR_ACTIVE) {
+            if(bodyP->param.attr & (1 << 0)) {
                 if((bodyP->param.attr & COLBODY_ATTR_COLLISION_MASK) == 0) {
                     bodyP->param.attr |= COLBODY_ATTR_NO_CONTACT_FLAG;
                 } else {

@@ -17,18 +17,18 @@ void fn_1_AFB0(HU3D_MODEL *hookModel, Mtx *parentMatrix) {
     HSF_MATERIAL *material;
     s32 materialIndex;
 
-    Hu3DModelObjDrawInit();
-    model = &Hu3DData[lbl_1_bss_358.model0];
+    fn_8002472C();
+    model = &lbl_802C01C8[lbl_1_bss_358.model0];
     modelData = model->hsf;
-    object = Hu3DModelObjPtrGet(lbl_1_bss_358.model0, "m569_ef2");
+    object = fn_80026BF4(lbl_1_bss_358.model0, "m569_ef2");
     for (recordIndex = 0; recordIndex < 50; recordIndex += 1) {
         record = &lbl_1_bss_364[recordIndex];
         if (record->active != 0) {
-            mtxRot(matrix, record->rotation.x, record->rotation.y, record->rotation.z);
+            fn_80022E38(matrix, record->rotation.x, record->rotation.y, record->rotation.z);
             mtxTransCat(matrix, record->position.x, record->position.y, record->position.z);
             mtxScaleCat(matrix, 1.5f, 1.5f, 1.5f);
             PSMTXConcat(*parentMatrix, matrix, matrix);
-            Hu3DModelObjPtrDraw(lbl_1_bss_358.model0, object, matrix);
+            fn_80024850(lbl_1_bss_358.model0, object, matrix);
             /* These colors affect subsequent draws; the current particle has already been drawn. */
             materialIndex = 0;
             material = modelData->material;
@@ -83,12 +83,12 @@ void fn_1_B234(void) {
     s32 index;
 
     lbl_1_bss_358.model0 =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m647, 15), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_358.model0, 2U);
-    Hu3DModelAttrSet(lbl_1_bss_358.model0, HU3D_ATTR_DISPOFF);
-    lbl_1_bss_358.model1 = Hu3DHookFuncCreate(fn_1_AFB0);
-    Hu3DModelCameraSet(lbl_1_bss_358.model1, 2U);
-    Hu3DModelLayerSet(lbl_1_bss_358.model1, 1);
+        fn_80025A04(fn_80008DD0(DATANUM(0x6a0000, 15), 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_358.model0, 2U);
+    fn_800269E8(lbl_1_bss_358.model0, (1 << 0));
+    lbl_1_bss_358.model1 = fn_800260F4(fn_1_AFB0);
+    fn_80026B64(lbl_1_bss_358.model1, 2U);
+    fn_80026B8C(lbl_1_bss_358.model1, 1);
     lbl_1_bss_358.floorHeight = (f32) 200.0f;
     lbl_1_bss_358.particleCount = 0;
     index = 0;
@@ -101,8 +101,8 @@ void fn_1_B234(void) {
 
 /* Releases both models used by the celebration effect. */
 void fn_1_B350(void) {
-    Hu3DModelKill(lbl_1_bss_358.model0);
-    Hu3DModelKill(lbl_1_bss_358.model1);
+    fn_800262D0(lbl_1_bss_358.model0);
+    fn_800262D0(lbl_1_bss_358.model1);
 }
 
 /* Spawns up to count particles for the winner sequence, stopping when no slots remain. */

@@ -87,9 +87,9 @@ void fn_1_A220(OMOBJMAN *manager)
     OMOBJ *object;
     void *scoreWork;
 
-    object = omAddObjEx(manager, 20, 0, 0, -1, fn_1_A2AC);
+    object = fn_8003AB38(manager, 20, 0, 0, -1, fn_1_A2AC);
     lbl_1_bss_5A8 = object;
-    scoreWork = HuMemDirectMallocNum(HEAP_HEAP, 84, HU_MEMNUM_OVL);
+    scoreWork = HuMemDirectMallocNum(HEAP_HEAP, 84, 0x10000000);
     object->data = scoreWork;
     memset(scoreWork, 0, 84);
 }
@@ -121,11 +121,11 @@ void fn_1_A310(OMOBJ *object)
     HUSPR_GROUPID box;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         entry = &work->entries[playerIndex];
-        box = MgScoreBoxCreateChar(96, 48, GwPlayerConf[playerIndex].charNo);
+        box = MgScoreBoxCreateChar(96, 48, lbl_80265728[playerIndex].charNo);
         entry->box = box;
         MgScoreBoxDispSet(box, 0);
         MgScoreBoxTPLvlSet(box, 0.0f);
-        score = MgScoreCreate(DATANUM(DATA_mgconst, 49), -1, 1);
+        score = MgScoreCreate(DATANUM(0x9b0000, 49), -1, 1);
         entry->score = score;
         MgScoreMaxDigitSet(score, 2);
         MgScoreDispOff(score);

@@ -15,10 +15,10 @@
 #define MGDATA_COLOR_WHITE 4294967295u
 
 s16 MgModeSubMode;
-s16 MgModeScore[GW_PLAYER_MAX];
+s16 MgModeScore[4];
 s16 MgGameNo;
 u8 MgModePlayNum;
-u8 MgBattleOrder[GW_PLAYER_MAX];
+u8 MgBattleOrder[4];
 int lbl_802C0438;
 int MgSubMode;
 int MiracleBookEvtNo;
@@ -39,7 +39,7 @@ s32 MgNoGet(s16 overlayNo)
 {
     MGDATA *minigameData;
     s16 minigameIndex;
-    for (minigameData = &MgDataTbl[0], minigameIndex = 0; minigameData->ovl != (u16) DLL_NONE;
+    for (minigameData = &MgDataTbl[0], minigameIndex = 0; minigameData->ovl != (u16) -1;
          minigameData++, minigameIndex++) {
         if(minigameData->ovl == overlayNo) {
             return minigameIndex;

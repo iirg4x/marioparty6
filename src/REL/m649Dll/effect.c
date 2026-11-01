@@ -154,9 +154,9 @@ void fn_1_8F58(HUPROCESS *process) {
     OMOBJ *effectObject;
     void *ownerData;
     lbl_1_bss_5A4 = process;
-    effectObject = omAddObjEx(lbl_1_bss_5A4, 16, 24U, 0U, - 1, fn_1_9014);
+    effectObject = fn_8003AB38(lbl_1_bss_5A4, 16, 24U, 0U, - 1, fn_1_9014);
     lbl_1_bss_5A0 = effectObject;
-    ownerData = HuMemDirectMallocNum(HEAP_HEAP, 8, HU_MEMNUM_OVL);
+    ownerData = HuMemDirectMallocNum(HEAP_HEAP, 8, 0x10000000);
     effectObject->data = ownerData;
     memset(ownerData, 0, 8);
     fn_1_904C(effectObject);
@@ -187,12 +187,12 @@ void fn_1_904C(OMOBJ *object)
     HU3D_MODEL *model;
     M649EffectSlotsView *work;
     for (i = 0; i < 4; i++) {
-        modelId = Hu3DHookFuncCreate(fn_1_910C);
+        modelId = fn_800260F4(fn_1_910C);
         object->mdlId[i] = modelId;
-        Hu3DModelCameraSet(modelId, fn_1_1218(i));
-        Hu3DModelLayerSet(modelId, 3);
-        model = &Hu3DData[modelId];
-        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
+        fn_80026B64(modelId, fn_1_1218(i));
+        fn_80026B8C(modelId, 3);
+        model = &lbl_802C01C8[modelId];
+        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*work), 0x10000000);
         model->hookData = work;
         memset(work, 0, sizeof(*work));
     }
@@ -254,14 +254,14 @@ void fn_1_941C(OMOBJ *object)
     M649EffectOwnerWorkView *work = lbl_1_bss_5A0->data;
     HU3D_MODEL *model;
     for (i = 0; i < 2; i++) {
-        work->animations[i] = HuSprAnimRead(HuDataSelHeapReadNum(
-            fn_1_1210(lbl_1_data_538[i]), HU_MEMNUM_OVL, HEAP_MODEL));
+        work->animations[i] = HuSprAnimRead(fn_80008DD0(
+            fn_1_1210(lbl_1_data_538[i]), 0x10000000, 2));
     }
     for (j = 0; j < 16; j++) {
-        modelId = Hu3DHookFuncCreate(fn_1_9500);
+        modelId = fn_800260F4(fn_1_9500);
         object->mdlId[j + 4] = modelId;
-        Hu3DModelLayerSet(modelId, 5);
-        model = &Hu3DData[modelId];
+        fn_80026B8C(modelId, 5);
+        model = &lbl_802C01C8[modelId];
         model->hookData = NULL;
     }
 }
@@ -336,14 +336,14 @@ void fn_1_9934(OMOBJ *object)
     M649EffectRecordView *records;
     s32 size;
     for (i = 0; i < 4; i++) {
-        modelId = Hu3DHookFuncCreate(fn_1_9C14);
+        modelId = fn_800260F4(fn_1_9C14);
         object->mdlId[i + 20] = modelId;
-        Hu3DModelCameraSet(modelId, fn_1_1218(i));
-        Hu3DModelLayerSet(modelId, 6);
+        fn_80026B64(modelId, fn_1_1218(i));
+        fn_80026B8C(modelId, 6);
         size = sizeof(*records) * 24;
-        records = HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+        records = HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
         memset(records, 0, size);
-        model = &Hu3DData[modelId];
+        model = &lbl_802C01C8[modelId];
         model->hookData = records;
     }
 }
@@ -362,7 +362,7 @@ void fn_1_99FC(OMOBJ *object)
     s32 i, j;
     for (i = 0; i < 4; i++) {
         modelId = object->mdlId[i + 20];
-        model = &Hu3DData[modelId];
+        model = &lbl_802C01C8[modelId];
         record = model->hookData;
         for (j = 0; j < 24; j++, record++) {
             switch (record->phase) {
@@ -483,7 +483,7 @@ void fn_1_A018(void *effect)
     if (((M649ShadowRecord *)effect) != NULL) {
         object = lbl_1_bss_5A0;
         modelId = object->mdlId[((M649ShadowRecord *)effect)->camera];
-        model = &Hu3DData[modelId];
+        model = &lbl_802C01C8[modelId];
         work = model->hookData;
         entry = work->entries;
         for (i = 0; i < 1; i++, entry++) {
@@ -504,10 +504,10 @@ void fn_1_A0BC(M649Motion *motion)
     if (motion != NULL) {
         object = lbl_1_bss_5A0;
         modelId = object->mdlId[motion->id + 4];
-        model = &Hu3DData[modelId];
+        model = &lbl_802C01C8[modelId];
         if (model->hookData == NULL) {
             model->hookData = motion;
-            Hu3DModelCameraSet(modelId, fn_1_1218(motion->group));
+            fn_80026B64(modelId, fn_1_1218(motion->group));
         }
     }
 }
@@ -521,7 +521,7 @@ void fn_1_A168(s32 cameraIndex, Vec *position, float *speed, s32 effectType)
     HU3D_MODEL *model;
     s16 modelId;
     modelId = object->mdlId[cameraIndex + 20];
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     record = model->hookData;
     for (i = 0; i < 24; i++, record++) {
         if (record->phase == 0) {

@@ -12,79 +12,6 @@ typedef struct MgActor_s MGACTOR;
 typedef void (*MGPLAYER_MODE_FUNC)(MGPLAYER *playerP);
 typedef void (*MGACTOR_CORRECT_HOOK)(MGACTOR *actorP, int param);
 
-#define MGPLAYER_ATTR_COMSTK (1 << 0)
-#define MGPLAYER_ATTR_HEADJUMP_OFF (1 << 1)
-#define MGPLAYER_ATTR_STUNOFF (1 << 2)
-
-#define MGPLAYER_ATTR_ANGLELOCK (1 << 8)
-#define MGPLAYER_ATTR_MOVEOFF (1 << 9)
-#define MGPLAYER_ATTR_PAUSE (1 << 10)
-#define MGPLAYER_ATTR_VIBKILL (1 << 11)
-
-#define MGPLAYER_VIBATTR_SQUISH (1 << 0)
-#define MGPLAYER_VIBATTR_HEADJUMP (1 << 1)
-#define MGPLAYER_VIBATTR_SQUISH_FAST (1 << 2)
-#define MGPLAYER_VIBATTR_HIT_SRC (1 << 3)
-#define MGPLAYER_VIBATTR_KNOCKBACK_SRC (1 << 4)
-#define MGPLAYER_VIBATTR_SQUISH_HARD_SRC (1 << 5)
-#define MGPLAYER_VIBATTR_HIT (1 << 6)
-#define MGPLAYER_VIBATTR_KNOCKBACK (1 << 7)
-#define MGPLAYER_VIBATTR_SQUISH_HARD (1 << 8)
-
-#define MGPLAYER_MODEATTR_SQUISH (1 << 0)
-#define MGPLAYER_MODEATTR_SQUISH_HARD (1 << 1)
-#define MGPLAYER_MODEATTR_HIPDROP_OFF (1 << 2)
-#define MGPLAYER_MODEATTR_STKLOCK (1 << 3)
-#define MGPLAYER_MODEATTR_HEADJUMP (MGPLAYER_MODEATTR_HIPDROP_OFF|MGPLAYER_MODEATTR_STKLOCK)
-#define MGPLAYER_MODEATTR_AIR (1 << 4)
-
-#define MGPLAYER_ACTFLAG_WALK (1 << 0)
-#define MGPLAYER_ACTFLAG_JUMP (1 << 1)
-#define MGPLAYER_ACTFLAG_PUNCH (1 << 2)
-#define MGPLAYER_ACTFLAG_KICK (1 << 3)
-#define MGPLAYER_ACTFLAG_HIPDROP (1 << 4)
-#define MGPLAYER_ACTFLAG_STUN (1 << 5)
-
-#define MGPLAYER_MODE_WALK 0
-#define MGPLAYER_MODE_JUMP 1
-#define MGPLAYER_MODE_FALL 2
-#define MGPLAYER_MODE_PUNCH 3
-#define MGPLAYER_MODE_KICK 4
-#define MGPLAYER_MODE_HIPDROP 5
-#define MGPLAYER_MODE_HIT 6
-#define MGPLAYER_MODE_KNOCKBACK 7
-#define MGPLAYER_MODE_SQUISH 8
-#define MGPLAYER_MODE_SQUISH_HARD 9
-
-#define MGPLAYER_MODE_MAX 18
-
-#define MGPLAYER_STUN_NONE 0
-#define MGPLAYER_STUN_HIT 1
-#define MGPLAYER_STUN_KNOCKBACK 2
-#define MGPLAYER_STUN_SQUISH 3
-#define MGPLAYER_STUN_SQUISH_HARD 4
-
-#define MGPLAYER_STUN_BLINK 5
-#define MGPLAYER_STUN_FREEZE 6
-
-#define MGPLAYER_MOT_IDLE 0
-#define MGPLAYER_MOT_WALK 1
-#define MGPLAYER_MOT_RUN 2
-#define MGPLAYER_MOT_JUMP 3
-#define MGPLAYER_MOT_LAND 4
-#define MGPLAYER_MOT_PUNCH 5
-#define MGPLAYER_MOT_KICK 6
-#define MGPLAYER_MOT_HIPDROP 7
-#define MGPLAYER_MOT_HIPDROP_LAND 8
-#define MGPLAYER_MOT_HIPDROP_END 9
-#define MGPLAYER_MOT_HIT_BACK 10
-#define MGPLAYER_MOT_HIT_FRONT 11
-#define MGPLAYER_MOT_KNOCKBACK_BACK 12
-#define MGPLAYER_MOT_KNOCKBACK_FRONT 13
-#define MGPLAYER_MOT_KNOCKBACK_BACK_END 14
-#define MGPLAYER_MOT_KNOCKBACK_FRONT_END 15
-#define MGPLAYER_MOT_NUM 16
-
 struct MgActor_s {
     s8 no;
     int mdlId;
@@ -132,7 +59,7 @@ struct MgPlayer_s {
     float squishOldHeight;
     s16 work[4];
     MGACTOR *actor;
-    MGPLAYER_MODE_FUNC modeFunc[MGPLAYER_MODE_MAX];
+    MGPLAYER_MODE_FUNC modeFunc[18];
 };
 
 typedef struct MgActorParam_s {
@@ -154,73 +81,75 @@ typedef struct MgActorColMapPoly_s {
     int triNo;
 } MGACTOR_COLMAP_POLY;
 
-BOOL MgPlayerComStkOn(MGPLAYER *playerP);
-void MgPlayerComStkOff(MGPLAYER *playerP);
-BOOL MgPlayerVecChase(MGPLAYER *playerP, HuVecF *pos, float velZ, float radius);
-BOOL MgActorVecChase(MGACTOR *actorP, HuVecF *pos, float velZ, float radius);
-void MgPlayerVibrateCreate(MGPLAYER *playerP);
-void MgPlayerVibrateKill(MGPLAYER *playerP);
-BOOL MgPlayerModeLandSet(MGPLAYER *playerP, int mode);
-BOOL MgPlayerModeSet(MGPLAYER *playerP, int mode);
+BOOL fn_8007E818(MGPLAYER *playerP);
+void fn_8007E888(MGPLAYER *playerP);
+BOOL fn_8007E8B4(MGPLAYER *playerP, HuVecF *pos, float velZ, float radius);
+BOOL fn_8007EB24(MGACTOR *actorP, HuVecF *pos, float velZ, float radius);
+void fn_8007ED60(MGPLAYER *playerP);
+void fn_8007EDBC(MGPLAYER *playerP);
+BOOL fn_8007EDE8(MGPLAYER *playerP, int mode);
+BOOL fn_8007EEBC(MGPLAYER *playerP, int mode);
 
-void MgActorInit(void);
-void MgActorClose(void);
-OMOBJMAN *MgActorObjectSetup(void);
-void MgPlayerPadSet(MGPLAYER *playerP, int stkX, int stkY, int btnDown, int btn);
-void MgActorColMapInit(HU3D_MODELID *mdlId, s16 mdlNum, int bodyMax);
-void MgActorColAttrSet(MGACTOR *actorP, u32 mask);
-void MgActorColAttrReset(MGACTOR *actorP, u32 mask);
-u32 MgActorColAttrGet(MGACTOR *actorP, u32 mask);
-void MgPlayerModeFuncSet(MGPLAYER *playerP, MGPLAYER_MODE_FUNC *funcTbl);
-MGPLAYER *MgPlayerCreate(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit, u32 actionFlag, unsigned int *motDataNum);
-MGPLAYER *MgPlayerCreateJumpAlt(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit, u32 actionFlag, unsigned int *motDataNum, unsigned int flag);
-MGACTOR *MgActorCreate(MGACTOR_PARAM *param, int mdlId);
-void MgActorColMapMaskSet(int mdlNo, u32 mask);
-u32 MgActorColMapMaskGet(int mdlNo);
-void MgActorColMaskSet(MGACTOR *actorP, u32 mask);
-u32 MgActorColMaskGet(MGACTOR *actorP);
-void MgActorColCylReset(void);
-void MgActorColCylSet(void);
-void MgActorColBounceSet(MGACTOR *actorP, float bounce);
+void fn_800802A8(void);
+void fn_8008033C(void);
+OMOBJMAN *fn_80080418(void);
+void fn_80080520(MGPLAYER *playerP, int stkX, int stkY, int btnDown, int btn);
+void fn_800804E8(HU3D_MODELID *mdlId, s16 mdlNum, int bodyMax);
+void fn_800805CC(MGACTOR *actorP, u32 mask);
+void fn_8008062C(MGACTOR *actorP, u32 mask);
+u32 fn_8008068C(MGACTOR *actorP, u32 mask);
+void fn_800806DC(MGPLAYER *playerP, MGPLAYER_MODE_FUNC *funcTbl);
+MGPLAYER *fn_80080728(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit,
+    u32 actionFlag, unsigned int *motDataNum);
+MGPLAYER *fn_800808C0(s16 playerNo, MGACTOR_PARAM *param, s16 model, u16 camBit,
+    u32 actionFlag, unsigned int *motDataNum, unsigned int flag);
+MGACTOR *fn_80080B04(MGACTOR_PARAM *param, int mdlId);
+void fn_80080D7C(int mdlNo, u32 mask);
+u32 fn_80080DAC(int mdlNo);
+void fn_80080DD4(MGACTOR *actorP, u32 mask);
+u32 fn_80080E38(MGACTOR *actorP);
+void fn_80080E8C(void);
+void fn_80080EBC(void);
+void fn_80080EEC(MGACTOR *actorP, float bounce);
 
-void MgActorKill(MGACTOR *actorP);
+void fn_80080F38(MGACTOR *actorP);
 
-void MgActorExec(void);
+void fn_800856A8(void);
 
-BOOL MgActorColMapPolyGet(HuVecF *pos1, HuVecF *pos2, u32 mask, MGACTOR_COLMAP_POLY *outPoly);
-void MgPlayerPosSet(MGPLAYER *playerP, HuVecF *pos);
-void MgActorPosSet(MGACTOR *actorP, HuVecF *pos);
-void MgActorPosSetRaw(MGACTOR *actorP, HuVecF *pos);
-void MgActorPosGet(MGACTOR *actorP, HuVecF *pos);
-void MgActorPushSet(MGACTOR *actorP, HuVecF *push);
-void MgActorRotYSet(MGACTOR *actorP, float rotY);
-void MgActorRotYGet(MGACTOR *actorP, float *rotY);
-void MgActorGravitySet(MGACTOR *actorP, float gravity);
-void MgActorVelYSet(MGACTOR *actorP, float velY);
-void MgActorVelSet(MGACTOR *actorP, HuVecF *vel);
-BOOL MgActorColMeshGet(MGACTOR *actorP, int *mesh);
-BOOL MgActorColNormalGet(MGACTOR *actorP, HuVecF *normal);
-BOOL MgActorColCodeGet(MGACTOR *actorP, u32 *code);
-void MgPlayerDespawn(MGPLAYER *playerP);
-void MgPlayerSpawn(MGPLAYER *playerP, HuVecF *pos);
-void MgPlayerColDisable(MGACTOR *actorP);
-void MgPlayerColEnable(MGACTOR *actorP, HuVecF *pos);
+BOOL fn_80086910(HuVecF *pos1, HuVecF *pos2, u32 mask, MGACTOR_COLMAP_POLY *outPoly);
+void fn_8008697C(MGPLAYER *playerP, HuVecF *pos);
+void fn_80086AA8(MGACTOR *actorP, HuVecF *pos);
+void fn_80086B04(MGACTOR *actorP, HuVecF *pos);
+void fn_80086BC8(MGACTOR *actorP, HuVecF *pos);
+void fn_80086C8C(MGACTOR *actorP, HuVecF *push);
+void fn_80086CA8(MGACTOR *actorP, float rotY);
+void fn_80086CB0(MGACTOR *actorP, float *rotY);
+void fn_80086CBC(MGACTOR *actorP, float gravity);
+void fn_80086CC4(MGACTOR *actorP, float velY);
+void fn_80086CCC(MGACTOR *actorP, HuVecF *vel);
+BOOL fn_80086CE8(MGACTOR *actorP, int *mesh);
+BOOL fn_80086D54(MGACTOR *actorP, HuVecF *normal);
+BOOL fn_80086DD0(MGACTOR *actorP, u32 *code);
+void fn_80086E3C(MGPLAYER *playerP);
+void fn_80086F00(MGPLAYER *playerP, HuVecF *pos);
+void fn_80086F44(MGACTOR *actorP);
+void fn_80086FA0(MGACTOR *actorP, HuVecF *pos);
 
-void MgActorColAttrParamSet(COL_ATTRPARAM *param, u32 polyAttr);
-void MgActorColAttrParamGet(COL_ATTRPARAM *param, u32 polyAttr);
+void fn_800870A4(COL_ATTRPARAM *param, u32 polyAttr);
+void fn_800870D4(COL_ATTRPARAM *param, u32 polyAttr);
 
-u16 MgPlayerAttrCheck(MGPLAYER *playerP, u16 attr);
-void MgPlayerAttrReset(MGPLAYER *playerP, u16 attr);
-void MgPlayerAttrSet(MGPLAYER *playerP, u16 attr);
+u16 fn_8008717C(MGPLAYER *playerP, u16 attr);
+void fn_80087168(MGPLAYER *playerP, u16 attr);
+void fn_80087158(MGPLAYER *playerP, u16 attr);
 
-u16 MgPlayerVibAttrCheck(MGPLAYER *playerP, u16 attr);
-void MgPlayerVibAttrSet(MGPLAYER *playerP, u16 attr);
+u16 fn_80087114(MGPLAYER *playerP, u16 attr);
+void fn_80087104(MGPLAYER *playerP, u16 attr);
 
-u16 MgPlayerModeAttrCheck(MGPLAYER *playerP, u16 attr);
-void MgPlayerModeAttrReset(MGPLAYER *playerP, u16 attr);
-void MgPlayerModeAttrSet(MGPLAYER *playerP, u16 attr);
+u16 fn_80087148(MGPLAYER *playerP, u16 attr);
+void fn_80087134(MGPLAYER *playerP, u16 attr);
+void fn_80087124(MGPLAYER *playerP, u16 attr);
 
-BOOL MgPlayerStunSet(MGPLAYER *playerP, int stunType, float angle, int maxTime);
-BOOL MgPlayerModeIdleSet(MGPLAYER *playerP);
+BOOL fn_8008718C(MGPLAYER *playerP, int stunType, float angle, int maxTime);
+BOOL fn_80087218(MGPLAYER *playerP);
 
 #endif

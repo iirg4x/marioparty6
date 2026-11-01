@@ -1,3 +1,4 @@
+#include <math.h>
 #include "game/board/comchoice.h"
 #include "game/board/window.h"
 #include "game/gamework.h"
@@ -10,7 +11,7 @@ static void ComChoiceListKeySet(s32 playerNo, s32 rightNum, s32 downNum);
 
 static void ComChoiceLeft(void)
 {
-    ComChoiceKeySet(GwSystem.turnPlayerNo, 0, 1);
+    ComChoiceKeySet(lbl_80265B70.turnPlayerNo, 0, 1);
 }
 
 void mbComChoiceLeftSet(void)
@@ -20,7 +21,7 @@ void mbComChoiceLeftSet(void)
 
 static void ComChoiceRight(void)
 {
-    ComChoiceKeySet(GwSystem.turnPlayerNo, 1, 1);
+    ComChoiceKeySet(lbl_80265B70.turnPlayerNo, 1, 1);
 }
 
 void mbComChoiceRightSet(void)
@@ -30,7 +31,7 @@ void mbComChoiceRightSet(void)
 
 static void ComChoiceUp(void)
 {
-    ComChoiceKeySet(GwSystem.turnPlayerNo, 0, 0);
+    ComChoiceKeySet(lbl_80265B70.turnPlayerNo, 0, 0);
 }
 
 void mbComChoiceUpSet(void)
@@ -40,7 +41,7 @@ void mbComChoiceUpSet(void)
 
 static void ComChoiceDown(void)
 {
-    ComChoiceKeySet(GwSystem.turnPlayerNo, 1, 0);
+    ComChoiceKeySet(lbl_80265B70.turnPlayerNo, 1, 0);
 }
 
 void mbComChoiceDownSet(void)
@@ -56,8 +57,8 @@ static void ComChoiceKeySet(s32 playerNo, s32 leftRight, s32 upDown)
     s32 keyValue;
 
     key[0] = key[1] = key[2] = key[3] = 0;
-    padNo = GwPlayer[playerNo].padNo;
-    time = GWComKeyDelayGet();
+    padNo = lbl_80265750[playerNo].padNo;
+    time = fn_8003C7C0();
     if (upDown == 0) {
         keyValue = 4;
     } else {
@@ -73,7 +74,7 @@ static void ComChoiceKeySet(s32 playerNo, s32 leftRight, s32 upDown)
 
 static void ComChoiceList(void)
 {
-    ComChoiceListKeySet(GwSystem.turnPlayerNo, listRightNum, listDownNum);
+    ComChoiceListKeySet(lbl_80265B70.turnPlayerNo, listRightNum, listDownNum);
 }
 
 static void ComChoiceListKeySet(s32 playerNo, s32 rightNum, s32 downNum)
@@ -84,8 +85,8 @@ static void ComChoiceListKeySet(s32 playerNo, s32 rightNum, s32 downNum)
     s32 i;
 
     key[0] = key[1] = key[2] = key[3] = 0;
-    padNo = GwPlayer[playerNo].padNo;
-    time = GWComKeyDelayGet();
+    padNo = lbl_80265750[playerNo].padNo;
+    time = fn_8003C7C0();
     for (i = 0; i < downNum; i++) {
         key[padNo] = 4;
         HuWinComKeyWait(key[0], key[1], key[2], key[3], time);

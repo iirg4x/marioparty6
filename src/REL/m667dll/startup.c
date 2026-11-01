@@ -46,9 +46,9 @@ void *fn_1_A0(s32 priority, u32 bytes, void (*update)(OMOBJ *))
 {
     OMOBJ *object;
 
-    object = omAddObjEx(lbl_1_bss_0, priority, 0, 0, 0, update);
+    object = fn_8003AB38(lbl_1_bss_0, priority, 0, 0, 0, update);
     if (bytes != 0) {
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, HU_MEMNUM_OVL);
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, 0x10000000);
         memset(object->data, 0, bytes);
     } else {
         object->data = NULL;
@@ -66,17 +66,17 @@ void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback)
  * starts its sequence process. */
 void fn_1_148(void)
 {
-    lbl_1_bss_0 = MgActorObjectSetup();
-    MgActorColCylReset();
-    HuPrcChildCreate(fn_1_19C, 100, 12288, 0, lbl_1_bss_0);
+    lbl_1_bss_0 = fn_80080418();
+    fn_80080E8C();
+    fn_8000DAC0(fn_1_19C, 100, 12288, 0, lbl_1_bss_0);
 }
 
 /* The child creates the sequence process, then advances actor simulation once per frame. */
 void fn_1_19C(void)
 {
-    MgSeqCreate(&lbl_1_data_0);
+    fn_80070788(&lbl_1_data_0);
     while (1) {
-        MgActorExec();
+        fn_800856A8();
         HuPrcVSleep();
     }
 }
@@ -86,7 +86,7 @@ void fn_1_1C0(s16 mode, s16 frameNo)
 {
     lbl_1_data_28 = -1;
     fn_1_768();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 void fn_1_1F4(s16 mode, s16 frameNo) {}
@@ -95,7 +95,7 @@ void fn_1_1F4(s16 mode, s16 frameNo) {}
 void fn_1_1F8(s16 mode, s16 frameNo)
 {
     if (lbl_1_data_28 == -1 &&
-        (GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0) {
+        (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
         lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_M667_TALKIE_WALKIE);
     }
 }
@@ -103,23 +103,23 @@ void fn_1_1F8(s16 mode, s16 frameNo)
 /* The main sequence advances after the scene determines the outcome and enters result mode 3. */
 void fn_1_254(s16 mode, s16 frameNo)
 {
-    if (fn_1_B90() != 0) MgSeqModeNext();
+    if (fn_1_B90() != 0) fn_80071A9C();
 }
 
 /* The finish sequence fades the minigame stream at frame zero, then waits for scene mode 4. */
 void fn_1_280(s16 mode, s16 frameNo)
 {
-    if (MgSeqFrameNoGet() == 0 && lbl_1_data_28 != -1) {
+    if (fn_80071DE4() == 0 && lbl_1_data_28 != -1) {
         HuAudSStreamFadeOut(lbl_1_data_28, 100);
         lbl_1_data_28 = -1;
     }
-    if (fn_1_BDC() != 0) MgSeqModeNext();
+    if (fn_1_BDC() != 0) fn_80071A9C();
 }
 
 /* The pre-winner sequence advances after the ending scene reaches mode 5. */
 void fn_1_2F0(s16 mode, s16 frameNo)
 {
-    if (fn_1_C28() != 0) MgSeqModeNext();
+    if (fn_1_C28() != 0) fn_80071A9C();
 }
 
 void fn_1_31C(s16 mode, s16 frameNo) {}

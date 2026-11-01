@@ -33,7 +33,7 @@ extern MBMODELID lbl_1_bss_10;
 /* Returns whether the current board time uses W10's day assets. */
 static inline BOOL MBTimeDayGet(void)
 {
-    return GwSystem.curTime == 0;
+    return lbl_80265B70.curTime == 0;
 }
 
 #include "REL/w10Dll/module_context.h"
@@ -201,15 +201,15 @@ extern HuVecF lbl_1_data_AC;
 void fn_1_A0(void)
 {
     GWPartySet(TRUE);
-    _SetFlag(FLAG_BOARD_TUTORIAL);
-    GwSystem.turnMax = 20;
-    GwSystem.tagF = FALSE;
+    fn_8006A1C4(65550);
+    lbl_80265B70.turnMax = 20;
+    lbl_80265B70.tagF = FALSE;
     GWBonusStarSet(FALSE);
     GWMgInstDispSet(TRUE);
     GWMgComDispSet(TRUE);
-    GwSystem.mgPack = 0;
-    GWVibrateSet(GwCommon.vibrateF);
-    GWMessSpeedSet(GW_MESS_SPEED_NORMAL);
+    lbl_80265B70.mgPack = 0;
+    GWVibrateSet(lbl_80265E30.vibrateF);
+    GWMessSpeedSet(1);
     mbObjectSetup(9, fn_1_1F4, fn_1_418);
 }
 
@@ -218,10 +218,10 @@ void fn_1_1F4(void)
 {
     int boardNo = MBBoardNoGet();
     HuAudSndGrpSetSet(MSM_GRP_BRDTT);
-    mbObjDirSet(DATA_w10, DATA_w10n);
-    mbMasuInit(MBTimeDayGet() ? DATA_w10 : DATA_w10n);
-    lbl_1_bss_10 = mbObjCreate((MBTimeDayGet() ? DATA_w10 : DATA_w10n) | 1, NULL, FALSE);
-    mbObjAttrSet(lbl_1_bss_10, HU3D_MOTATTR_LOOP);
+    mbObjDirSet(0xe30000, 0xe40000);
+    mbMasuInit(MBTimeDayGet() ? 0xe30000 : 0xe40000);
+    lbl_1_bss_10 = mbObjCreate((MBTimeDayGet() ? 0xe30000 : 0xe40000) | 1, NULL, FALSE);
+    mbObjAttrSet(lbl_1_bss_10, ((1 << 30) | (1 << 0)));
     mbObjPosSet(lbl_1_bss_10, 0.0f, 0.0f, 0.0f);
     mbObjCullRadiusSet(lbl_1_bss_10, -1.0f);
     mbScrollInit(0);
@@ -229,9 +229,9 @@ void fn_1_1F4(void)
     mbLightFuncSet(fn_1_45C, fn_1_490);
     mbOpeningInstHookSet(NULL);
     mbOpeningStarInstHookSet(NULL);
-    mbev_ShopInit((MBTimeDayGet() ? DATA_w10 : DATA_w10n) | 2);
-    HuDataDirClose(MBTimeDayGet() ? DATA_w10 : DATA_w10n);
-    omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_458);
+    mbev_ShopInit((MBTimeDayGet() ? 0xe30000 : 0xe40000) | 2);
+    fn_800097F4(MBTimeDayGet() ? 0xe30000 : 0xe40000);
+    fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_458);
     mbStarMasuNextSet(mbMasuFind_TypeSearch(-1, 7));
     fn_1_494();
 }
@@ -250,7 +250,7 @@ void fn_1_458(OMOBJ *obj) {
 
 /* Imports W10's HSF lights as static global lights during the board lighting pass. */
 void fn_1_45C(void) {
-    Hu3DModelLightInfoSet(mbObjModelIDGet(lbl_1_bss_10), 1);
+    fn_80029850(mbObjModelIDGet(lbl_1_bss_10), 1);
 }
 
 /* Reset hook for W10's board lighting pass; no reset adjustment is needed. */
@@ -302,22 +302,22 @@ void fn_1_554(void) {
     mbTutorialWinKeyWait(winNo);
     mbTutorialCallWait(10);
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 10));
-    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 11), DATANUM(DATA_btutorial, 0));
+    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 11), DATANUM(0xb0000, 0));
     mbTutorialTurnCall(2);
-    mbTutorialMesMasuCall(10, MESSNUM(MESS_BOARD_TUTORIAL, 12), DATANUM(DATA_btutorial, 1));
+    mbTutorialMesMasuCall(10, MESSNUM(MESS_BOARD_TUTORIAL, 12), DATANUM(0xb0000, 1));
     mbTutorialTurnCall(3);
-    mbTutorialMesMasuCall(4, MESSNUM(MESS_BOARD_TUTORIAL, 13), DATANUM(DATA_btutorial, 2));
+    mbTutorialMesMasuCall(4, MESSNUM(MESS_BOARD_TUTORIAL, 13), DATANUM(0xb0000, 2));
     mbTutorialTurnCall(4);
-    mbTutorialMesMasuCall(4, MESSNUM(MESS_BOARD_TUTORIAL, 14), DATANUM(DATA_btutorial, 3));
+    mbTutorialMesMasuCall(4, MESSNUM(MESS_BOARD_TUTORIAL, 14), DATANUM(0xb0000, 3));
     mbTutorialCallWait(2);
     fn_1_30EC();
     mbWipeDissolveFadeIn();
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 15));
     mbWipeDissolveFadeOut();
     mbTutorialTurnCall(5);
-    mbTutorialMesMasuCall(4, MESSNUM(MESS_BOARD_TUTORIAL, 16), DATANUM(DATA_btutorial, 4));
+    mbTutorialMesMasuCall(4, MESSNUM(MESS_BOARD_TUTORIAL, 16), DATANUM(0xb0000, 4));
     mbTutorialTurnCall(5);
-    mbTutorialMesMasuCall(4, MESSNUM(MESS_BOARD_TUTORIAL, 17), DATANUM(DATA_btutorial, 5));
+    mbTutorialMesMasuCall(4, MESSNUM(MESS_BOARD_TUTORIAL, 17), DATANUM(0xb0000, 5));
     mbTutorialCallWait(3);
     mbCapMasuPlayerTypeSet(mbMasuFind_MAttrIdGet(-1, 1), 10, 3);
     mbCapMasuPlayerTypeSet(mbMasuFind_MAttrIdGet(-1, 2), 20, 0);
@@ -327,7 +327,7 @@ void fn_1_554(void) {
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 20));
     mbTutorialTurnCall(8);
     mbTutorialCallResult(21, 11);
-    mbTutorialMesMasuCall(22, MESSNUM(MESS_BOARD_TUTORIAL, 21), DATANUM(DATA_btutorial, 8));
+    mbTutorialMesMasuCall(22, MESSNUM(MESS_BOARD_TUTORIAL, 21), DATANUM(0xb0000, 8));
     mbTutorialCallResult(19, 1);
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 22));
     mbTutorialCallResult(20, 23);
@@ -346,7 +346,7 @@ void fn_1_554(void) {
     mbTutorialTurnCall(3);
     mbTutorialCallWait(4);
     mbWipeDissolveFadeOut();
-    mbCameraPlayerViewSetFast(GwSystem.turnPlayerNo, 0);
+    mbCameraPlayerViewSetFast(lbl_80265B70.turnPlayerNo, 0);
     mbWipeDissolveFadeIn();
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 28));
     mbTutorialCapsuleUseCall(11);
@@ -360,7 +360,7 @@ void fn_1_554(void) {
     mbTutorialMesCall(18, MESSNUM(MESS_BOARD_TUTORIAL, 32));
     mbTutorialTurnCall(5);
     mbTutorialMultiCall(9, 1);
-    mbPlayerMotIdleSet(GwSystem.turnPlayerNo);
+    mbPlayerMotIdleSet(lbl_80265B70.turnPlayerNo);
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 33));
     mbTutorialGuideCall(4);
     mbCameraStackPush();
@@ -371,9 +371,9 @@ void fn_1_554(void) {
     mbCameraStackPop(40);
     mbCameraMoveWait();
     mbTutorialMultiCall(9, 3);
-    mbPlayerMotIdleSet(GwSystem.turnPlayerNo);
+    mbPlayerMotIdleSet(lbl_80265B70.turnPlayerNo);
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 34));
-    mbMoveNumDispSet(GwSystem.turnPlayerNo, 0);
+    mbMoveNumDispSet(lbl_80265B70.turnPlayerNo, 0);
     mbCameraStackPush();
     mbCameraMoveMasu(mbMasuFind_MAttrIdGet(-1, 2), NULL, NULL,
         -1.0f, -1.0f, 30);
@@ -381,7 +381,7 @@ void fn_1_554(void) {
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 38));
     mbCameraStackPop(20);
     mbCameraMoveWait();
-    mbMoveNumDispSet(GwSystem.turnPlayerNo, 1);
+    mbMoveNumDispSet(lbl_80265B70.turnPlayerNo, 1);
     mbTutorialCapsuleUseCall(31);
     mbTutorialMesCall(16, MESSNUM(MESS_BOARD_TUTORIAL, 35));
     mbTutorialTurnCall(1);
@@ -450,8 +450,8 @@ void fn_1_C3C(void)
     mbWipeDissolveFadeOut();
     mbTutorialViewMasuSet(mbMasuFind_TypeSearch(-1, 6));
     mbWipeDissolveFadeIn();
-    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 42), DATANUM(DATA_btutorial, 5));
-    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 43), DATANUM(DATA_btutorial, 6));
+    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 42), DATANUM(0xb0000, 5));
+    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 43), DATANUM(0xb0000, 6));
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 44));
     mbWipeDissolveFadeOut();
     mbTutorialViewMasuSet(mbMasuFind_TypeSearch(-1, 7));
@@ -518,16 +518,16 @@ void fn_1_E3C(int message, u8 *layout, int bannerNo, s16 *sprites)
     }
     window = mbTutorialWinCreate(message);
     if (bannerNo >= 0) {
-    banner = mbTutorialSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 138)));
+    banner = mbTutorialSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 138)));
         espPriSet(banner, 90);
         espPosSet(banner, 288.0f, 0.7f * 288.0f);
         espScaleSet(banner, 0.5f, 0.5f);
-    label = mbTutorialSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 132)));
+    label = mbTutorialSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 132)));
         espPriSet(label, 100);
         espBankSet(label, lbl_1_data_58[bannerNo]);
         espPosSet(label, 288.0f, -0.7f * 288.0f);
         espScaleSet(label, 0.75f, 0.75f);
-        mbAudFXPlay(MSM_SE_BRD00_108);
+        mbAudFXPlay(1112);
         for (player = 1; player <= 30; player++) {
             progress = (float)player / 30.0f;
             xScale = 0.5f * mbSinDeg(90.0f * progress) +
@@ -580,7 +580,7 @@ void fn_1_135C(s16 *sprites)
     if (sprites != NULL) {
         for (frame = 1; frame <= 12U; frame++) {
             progress = (float)frame / 12.0f;
-            scale = 0.1f + 0.4f * HuCos(90.0f * progress);
+            scale = 0.1f + 0.4f * cos(3.141592653589793*(90.0f * progress)/180.0);
             espScaleSet(sprites[0], scale, scale);
             mbTutorialVSleep();
         }
@@ -598,7 +598,7 @@ void fn_1_135C(s16 *sprites)
             }
             mbStatusMoveSet(frame, NULL, (HuVecF *)&position, 1, 15);
         }
-        mbAudFXPlay(MSM_SE_BRD00_109);
+        mbAudFXPlay(1113);
         mbMgCallVsEffCreate();
         for (frame = 1; frame <= 30U; frame++) {
             progress = (float)frame / 30.0f;
@@ -632,7 +632,7 @@ void fn_1_1710(int bannerNo, W10SPRPAIR *sprites)
     int frame;
     float progress;
 
-    sprite = mbTutorialSprCreate(mbBoardDataNumGet(DATANUM(DATA_board, 132)));
+    sprite = mbTutorialSprCreate(mbBoardDataNumGet(DATANUM(0x50000, 132)));
     espPriSet(sprite, 100);
     espBankSet(sprite, lbl_1_data_61[bannerNo]);
     espPosSet(sprite, 288.0f, -0.7f * 288.0f);
@@ -741,9 +741,9 @@ void fn_1_2484(void)
     mbWipeDissolveFadeIn();
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 65));
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 66));
-    fn_1_2234(MESSNUM(MESS_BOARD_TUTORIAL, 67), DATANUM(DATA_btutorial, 14));
-    fn_1_2234(MESSNUM(MESS_BOARD_TUTORIAL, 68), DATANUM(DATA_btutorial, 15));
-    fn_1_2234(MESSNUM(MESS_BOARD_TUTORIAL, 69), DATANUM(DATA_btutorial, 16));
+    fn_1_2234(MESSNUM(MESS_BOARD_TUTORIAL, 67), DATANUM(0xb0000, 14));
+    fn_1_2234(MESSNUM(MESS_BOARD_TUTORIAL, 68), DATANUM(0xb0000, 15));
+    fn_1_2234(MESSNUM(MESS_BOARD_TUTORIAL, 69), DATANUM(0xb0000, 16));
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 70));
     mbWipeDissolveFadeOut();
 }

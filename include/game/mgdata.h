@@ -81,10 +81,10 @@ extern GW_COMMON GwCommonBackup;
 extern u8 MgModeWork[256];
 
 extern s16 MgModeSubMode;
-extern s16 MgModeScore[GW_PLAYER_MAX];
+extern s16 MgModeScore[4];
 extern s16 MgGameNo;
 extern u8 MgModePlayNum;
-extern u8 MgBattleOrder[GW_PLAYER_MAX];
+extern u8 MgBattleOrder[4];
 extern int lbl_802C0438;
 extern int MgSubMode;
 extern int MiracleBookEvtNo;

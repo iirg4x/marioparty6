@@ -50,13 +50,13 @@ void *HuMemHeapInit(void *heapHead, s32 heapSize)
 }
 
 /* HuMemDirectMallocNum calls this to allocate a block carrying its caller's group tag. */
-void *HuMemMemoryAllocNum(void *heapHead, s32 payloadBytes, u32 allocationTag, u32 callerAddress)
+void *fn_8000B80C(void *heapHead, s32 payloadBytes, u32 allocationTag, u32 callerAddress)
 {
     return HuMemMemoryAlloc2(heapHead, payloadBytes, allocationTag, callerAddress);
 }
 
 /* HuMemDirectMalloc calls this to allocate a block without a caller-supplied group tag. */
-void *HuMemMemoryAlloc(void *heapHead, s32 payloadBytes, u32 callerAddress)
+void *fn_8000B84C(void *heapHead, s32 payloadBytes, u32 callerAddress)
 {
     return HuMemMemoryAlloc2(heapHead, payloadBytes, MEMORY_UNNUMBERED_ALLOCATION_TAG,
                              callerAddress);
@@ -100,19 +100,19 @@ static void *HuMemMemoryAlloc2(void *heapHead, s32 payloadBytes, u32 allocationT
     } while(block != heapHead);
     OSReport("HuMem>memory alloc error %08x(%08X): Call %08x\n", payloadBytes, allocationTag,
              callerAddress);
-    HuMemHeapDump(heapHead, -1);
+    fn_8000BFB4(heapHead, -1);
     return NULL;
 }
 
 /* HuMemDirectTailMallocNum calls this to allocate from the tail with its caller's group tag. */
-void *HuMemTailMemoryAllocNum(void *heapHead, s32 payloadBytes, u32 allocationTag,
+void *fn_8000B9BC(void *heapHead, s32 payloadBytes, u32 allocationTag,
                               u32 callerAddress)
 {
     return HuMemTailMemoryAlloc2(heapHead, payloadBytes, allocationTag, callerAddress);
 }
 
 /* HuMemDirectTailMalloc calls this to allocate from the tail without a caller group tag. */
-void *HuMemTailMemoryAlloc(void *heapHead, s32 payloadBytes, u32 callerAddress)
+void *fn_8000B9FC(void *heapHead, s32 payloadBytes, u32 callerAddress)
 {
     return HuMemTailMemoryAlloc2(heapHead, payloadBytes, MEMORY_UNNUMBERED_ALLOCATION_TAG,
                                  callerAddress);
@@ -156,7 +156,7 @@ static void *HuMemTailMemoryAlloc2(void *heapHead, s32 payloadBytes, u32 allocat
 
 /* HuMemDirectRealloc resizes in place or moves a resource; a shrink creates a free tail only when
  * the remainder exceeds 32 bytes, and does not merge that tail here. */
-void *HuMemMemoryRealloc(void *heapHead, void *payload, s32 payloadBytes, u32 callerAddress)
+void *fn_8000BB44(void *heapHead, void *payload, s32 payloadBytes, u32 callerAddress)
 {
     s32 alignedSpanBytes = MEM_ALLOC_SIZE(payloadBytes);
     MEMORY_BLOCK *block = DATA_GET_BLOCK(payload);
@@ -177,7 +177,7 @@ void *HuMemMemoryRealloc(void *heapHead, void *payload, s32 payloadBytes, u32 ca
         return BLOCK_GET_DATA(block);
     } else {
         void *resizedPayload =
-            HuMemMemoryAllocNum(heapHead, payloadBytes, block->allocationTag, callerAddress);
+            fn_8000B80C(heapHead, payloadBytes, block->allocationTag, callerAddress);
         if(resizedPayload) {
             /* Preserve the old block's full payload capacity, not only the new requested size. */
             memcpy(resizedPayload, payload, block->spanBytes-32);
@@ -261,7 +261,7 @@ s32 HuMemUsedMemoryBlockGet(void *heapHead)
 }
 
 /* Audio loading checks this before choosing a heap for a sample buffer. */
-s32 HuMemMaxMemorySizeGet(void *heapHead)
+s32 fn_8000BF58(void *heapHead)
 {
     MEMORY_BLOCK *block = heapHead;
     s32 largestFreeSpanBytes = 0;
@@ -281,7 +281,7 @@ s32 HuMemMemoryAllocSizeGet(s32 payloadBytes)
 
 /* Heap reports print blocks: 0 selects free, positive selects used, and negative selects both;
  * failed requests and board diagnostics call this to inspect the heap. */
-void HuMemHeapDump(void *heapHead, s16 status)
+void fn_8000BFB4(void *heapHead, s16 status)
 {
     MEMORY_BLOCK *block = heapHead;
     s32 allocatedSpanBytes = 0;
@@ -341,7 +341,7 @@ s32 HuMemMemorySizeGet(void *payload)
 
 /* Data and ARAM loaders store the supplied data number, including any directory bits, in the
  * block header. */
-BOOL HuMemMemoryFileSet(void *payload, u32 dataFileId)
+BOOL fn_8000C164(void *payload, u32 dataFileId)
 {
     MEMORY_BLOCK *block;
     if(!payload) {
@@ -357,7 +357,7 @@ BOOL HuMemMemoryFileSet(void *payload, u32 dataFileId)
 }
 
 /* Model setup and diagnostics read this resource ID; an invalid pointer returns zero. */
-u32 HuMemMemoryFileGet(void *payload)
+u32 fn_8000C1B4(void *payload)
 {
     MEMORY_BLOCK *block;
     if(!payload) {
@@ -373,7 +373,7 @@ u32 HuMemMemoryFileGet(void *payload)
 
 /* The external numbered-memory API uses this to change which HuMemDirectFreeNum releases a
  * block. */
-BOOL HuMemMemoryNumSet(void *payload, u32 allocationTag)
+BOOL fn_8000C200(void *payload, u32 allocationTag)
 {
     MEMORY_BLOCK *block;
     if(!payload) {

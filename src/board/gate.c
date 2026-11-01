@@ -16,9 +16,9 @@
 
 #define GATE_MAX 8
 
-#define BOARD_HSF_battan DATANUM(DATA_board, 8)
-#define BOARD_HSF_battanIdle DATANUM(DATA_board, 9)
-#define BOARD_HSF_battanMove DATANUM(DATA_board, 10)
+#define BOARD_HSF_battan DATANUM(0x50000, 8)
+#define BOARD_HSF_battanIdle DATANUM(0x50000, 9)
+#define BOARD_HSF_battanMove DATANUM(0x50000, 10)
 
 typedef struct GateBattanWork_s {
     unsigned doneF : 1;
@@ -80,11 +80,11 @@ void mbGateBattanCreate(int masuId)
     int motTbl[] = {
         BOARD_HSF_battanIdle,
         BOARD_HSF_battanMove,
-        HU_DATANUM_NONE,
+        -1,
     };
     s16 path[MASU_LINK_MAX];
 
-    temp = HuMemDirectMallocNum(HEAP_HEAP, sizeof(GATEBATTAN_WORK), HU_MEMNUM_OVL);
+    temp = HuMemDirectMallocNum(HEAP_HEAP, sizeof(GATEBATTAN_WORK), 0x10000000);
     work = temp;
     gateBattanDataP[gateBattanNum] = work;
     memset(work, 0, sizeof(GATEBATTAN_WORK));
@@ -92,19 +92,19 @@ void mbGateBattanCreate(int masuId)
         motTbl[i] = mbBoardDataNumGet(motTbl[i]);
     }
     work->modelId = mbObjCreate(mbBoardDataNumGet(BOARD_HSF_battan), motTbl, FALSE);
-    mbObjMotionSet(work->modelId, 1, HU3D_MOTATTR_LOOP);
+    mbObjMotionSet(work->modelId, 1, ((1 << 30) | (1 << 0)));
     work->no = gateBattanNum;
     work->masuId = masuId;
     mbMasuPosGet(masuId, &startPos);
     mbMasuLinkTblGet(masuId, path);
     mbMasuPosGet(path[0], &endPos);
     VECSubtract(&endPos, &startPos, &dir);
-    work->rotY = work->masuAngle = HuAtan(-dir.x, -dir.z);
+    work->rotY = work->masuAngle = (180.0*(atan2((-dir.x), (-dir.z)) / 3.141592653589793));
     VECScale(&dir, &dir, 0.5f);
     VECAdd(&startPos, &dir, &pos);
     mbObjPosSetV(work->modelId, &pos);
     mbObjRotSet(work->modelId, 0, work->rotY, 0);
-    work->obj = omAddObj(mbObjMan, 260, 0, 0, GateBattanOMExec);
+    work->obj = fn_8003AB38(mbObjMan, 260, 0, 0, -1, GateBattanOMExec);
     work->obj->work[0] = (u32)work;
     gateBattanNum++;
 }
@@ -166,13 +166,13 @@ int mbev_GateBattan(int playerNo, int masuId)
     float angle;
 
     mbMoveNumDispSet(playerNo, FALSE);
-    masuId = GwPlayer[playerNo].masuId;
+    masuId = lbl_80265750[playerNo].masuId;
     no = mbev_GateBattanMasuFind(masuId);
     work = gateBattanDataP[no];
     mbObjPosGet(work->modelId, &modelPos);
     mbPlayerPosGet(playerNo, &playerPos);
     VECSubtract(&modelPos, &playerPos, &dir);
-    angle = 90-HuAtan(dir.z, dir.x);
+    angle = 90-(180.0*(atan2(dir.z, dir.x) / 3.141592653589793));
     mbPlayerRotateStart(playerNo, angle, 15);
     while(!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
@@ -183,26 +183,26 @@ int mbev_GateBattan(int playerNo, int masuId)
     mbCameraFocusObjSet(MB_MODEL_NONE);
     if(mbPlayerCoinGet(playerNo) < 10) {
         mbAudFXPlay(0x3A0);
-        mbWinCreate(MBWIN_TYPE_RESULT, MESS_BOARD_GATE_BATTAN_COIN, HUWIN_SPEAKER_BATTAN);
+        mbWinCreate(MBWIN_TYPE_RESULT, MESS_BOARD_GATE_BATTAN_COIN, 11);
         mbWinTopWait();
         result = 0;
     } else {
         mbAudFXPlay(0x3A0);
-        mbWinCreateChoice(MBWIN_TYPE_EVENT, MESS_BOARD_GATE_BATTAN_CHOICE, HUWIN_SPEAKER_BATTAN, 0);
+        mbWinCreateChoice(MBWIN_TYPE_EVENT, MESS_BOARD_GATE_BATTAN_CHOICE, 11, 0);
         mbWinTopAttrReset(HUWIN_ATTR_NOCANCEL);
-        if(GwPlayer[playerNo].comF) {
+        if(lbl_80265750[playerNo].comF) {
             mbComChoiceLeftSet();
         }
         mbWinTopWait();
         if(mbWinTopChoiceGet() == 1 || mbWinTopChoiceGet() == -1) {
             mbAudFXPlay(0x3A0);
-            mbWinCreate(MBWIN_TYPE_RESULT, MESS_BOARD_GATE_BATTAN_NO, HUWIN_SPEAKER_BATTAN);
+            mbWinCreate(MBWIN_TYPE_RESULT, MESS_BOARD_GATE_BATTAN_NO, 11);
             mbWinTopWait();
             result = 0;
         } else {
             mbCoinAddDispExec(playerNo, -10, TRUE, TRUE);
             mbAudFXPlay(0x3A0);
-            mbWinCreate(MBWIN_TYPE_RESULT, MESS_BOARD_GATE_BATTAN_YES, HUWIN_SPEAKER_BATTAN);
+            mbWinCreate(MBWIN_TYPE_RESULT, MESS_BOARD_GATE_BATTAN_YES, 11);
             mbWinTopWait();
             GateBattanMoveStart(work, playerNo);
             while(!GateBattanMoveCheck(work)) {
@@ -222,7 +222,7 @@ static void GateBattanOMExec(OMOBJ *obj)
     float weight;
     float motTime;
     if(mbExitCheck()) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     switch(work->mode) {
@@ -233,7 +233,7 @@ static void GateBattanOMExec(OMOBJ *obj)
             if(work->time > work->maxTime) {
                 work->doneF = TRUE;
                 work->mode = 2;
-                mbObjMotionShiftSet(work->modelId, 1, 0, 10, HU3D_MOTATTR_LOOP);
+                mbObjMotionShiftSet(work->modelId, 1, 0, 10, ((1 << 30) | (1 << 0)));
                 return;
             } else {
                 weight = ((float)work->time++)/work->maxTime;
@@ -247,12 +247,12 @@ static void GateBattanOMExec(OMOBJ *obj)
             break;
 
         case 2:
-            if(work->masuId != GwPlayer[work->playerNo].masuId) {
+            if(work->masuId != lbl_80265750[work->playerNo].masuId) {
                 work->mode = 3;
                 work->time = 0;
                 work->maxTime = 120;
                 work->targetAngle = 180+work->targetAngle;
-                mbObjMotionShiftSet(work->modelId, 2, 0, 5, HU3D_MOTATTR_LOOP);
+                mbObjMotionShiftSet(work->modelId, 2, 0, 5, ((1 << 30) | (1 << 0)));
             }
             break;
 
@@ -260,7 +260,7 @@ static void GateBattanOMExec(OMOBJ *obj)
             if(work->time > work->maxTime) {
                 if(mbAngleMoveTo(&work->rotY, work->masuAngle, 0.2f)) {
                     work->mode = 0;
-                    mbObjMotionShiftSet(work->modelId, 1, 0, 5, HU3D_MOTATTR_LOOP);
+                    mbObjMotionShiftSet(work->modelId, 1, 0, 5, ((1 << 30) | (1 << 0)));
                     mbAudFXPlay(0x39F);
                 }
                 mbObjRotSet(work->modelId, 0, work->rotY, 0);
@@ -298,7 +298,7 @@ static void GateBattanMoveStart(GATEBATTAN_WORK *work, int playerNo)
     work->time = 0;
     work->maxTime = 120;
     work->playerNo = playerNo;
-    mbObjMotionShiftSet(work->modelId, 2, 0, 5, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet(work->modelId, 2, 0, 5, ((1 << 30) | (1 << 0)));
     mbObjPosGet(work->modelId, &work->obj->rot);
     mbMasuPosGet(work->masuId, &masuPos);
     masuId = work->masuId;
@@ -313,7 +313,7 @@ static void GateBattanMoveStart(GATEBATTAN_WORK *work, int playerNo)
     work->obj->scale.y = masuPos.y+startPos.y+endPos.y;
     work->obj->scale.z = masuPos.z+startPos.z+endPos.z;
     VECSubtract(&work->obj->scale, &work->obj->rot, &dir);
-    work->targetAngle = HuAtan(dir.x, dir.z);
+    work->targetAngle = (180.0*(atan2(dir.x, dir.z) / 3.141592653589793));
     mbAudFXPlay(0);
 }
 

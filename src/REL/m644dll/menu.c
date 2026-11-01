@@ -81,8 +81,8 @@ void fn_1_B0(s16 group)
     s32 player_index = 0;
     s32 excluded_team;
     for (player_index = 0; player_index < 4; player_index++) {
-        if (group == GwPlayerConf[player_index].grpNo)
-            lbl_1_data_2[player_index] = GwPlayerConf[player_index].charNo;
+        if (group == lbl_80265728[player_index].grpNo)
+            lbl_1_data_2[player_index] = lbl_80265728[player_index].charNo;
     }
     lbl_1_data_0 = 0;
     lbl_1_data_A = group;
@@ -91,7 +91,7 @@ void fn_1_B0(s16 group)
         /* If both teams were recorded, randomly exclude one before showing the result. */
         excluded_team = rand8() % 2;
         for (player_index = 0; player_index < 4; player_index++) {
-            if (excluded_team == GwPlayerConf[player_index].grpNo) lbl_1_data_2[player_index] = -1;
+            if (excluded_team == lbl_80265728[player_index].grpNo) lbl_1_data_2[player_index] = -1;
         }
         lbl_1_data_A = 1 - excluded_team;
     }
@@ -105,26 +105,26 @@ s32 fn_1_224(void) {
 /* Advances immediately from sequence initialization to the opening phase. */
 void fn_1_234(s16 mode, s16 frameNo)
 {
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Plays and fades the opening sound during fade-in, then advances the sequence at frame 200. */
 void fn_1_254(s16 mode, s16 frameNo) {
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         lbl_1_data_10 = HuAudFXPlay(MSM_SE_M644_OPENING);
     }
-    if ((MgSeqFrameNoGet() == 170) && (lbl_1_data_10 != -1)) {
+    if ((fn_80071DE4() == 170) && (lbl_1_data_10 != -1)) {
         HuAudFXFadeOut(lbl_1_data_10, 500);
     }
-    if (MgSeqFrameNoGet() == 200) {
-        MgSeqModeNext();
+    if (fn_80071DE4() == 200) {
+        fn_80071A9C();
     }
 }
 
 /* Starts the minigame music once the start announcement reaches its sound cue. */
 void fn_1_2D4(s16 mode, s16 frameNo) {
     if ((lbl_1_data_C == -1) &&
-        ((GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0)) {
+        ((GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0)) {
         lbl_1_data_C = HuAudSStreamPlay(MSM_STREAM_MGMUS_22);
     }
 }
@@ -139,13 +139,13 @@ void fn_1_330(s16 mode, s16 frameNo)
 void fn_1_334(s16 mode, s16 frameNo) {
     s32 player_index;
 
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         if ((s32) lbl_1_data_C != -1) {
             HuAudSStreamFadeOut(lbl_1_data_C, 100);
             lbl_1_data_C = -1;
         }
         if (lbl_1_data_0 != 0) {
-            MgSeqDrawSet();
+            fn_80071C70();
             fn_1_913C(0);
             fn_1_913C(1);
             fn_1_1124(0);
@@ -156,19 +156,19 @@ void fn_1_334(s16 mode, s16 frameNo) {
         fn_1_1124(1 - lbl_1_data_A);
         player_index = 0;
         while (player_index < 4) {
-            if ((lbl_1_data_2[player_index] != -1) && (_CheckFlag(FLAG_MG_PRACTICE) == 0)) {
-                GwPlayer[player_index].mgCoinBonus = 10;
+            if ((lbl_1_data_2[player_index] != -1) && (fn_8006A124(65551) == 0)) {
+                lbl_80265750[player_index].mgCoinBonus = 10;
             }
             player_index += 1;
         }
-        MgSeqWinnerSet(lbl_1_data_2[0], lbl_1_data_2[1], lbl_1_data_2[2], lbl_1_data_2[3]);
+        fn_80071C18(lbl_1_data_2[0], lbl_1_data_2[1], lbl_1_data_2[2], lbl_1_data_2[3]);
     }
 }
 
 /* Ends the pre-winner pause after frame 120. */
 void fn_1_490(s16 mode, s16 frameNo) {
-    if (MgSeqFrameNoGet() > 120U) {
-        MgSeqModeNext();
+    if (fn_80071DE4() > 120U) {
+        fn_80071A9C();
     }
 }
 
@@ -178,7 +178,7 @@ void fn_1_4BC(s16 mode, s16 frameNo) {
     s32 status;
 
     status = 0;
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         if (lbl_1_data_0 != 0) {
             fn_1_56D4(1 - lbl_1_data_A);
             return;
@@ -199,16 +199,16 @@ void fn_1_52C(s16 mode, s16 frameNo)
 
 /* Creates Rocky Road's actor manager, sequence and scene objects when the module starts. */
 void fn_1_530(void) {
-    lbl_1_bss_0[0] = MgActorObjectSetup();
-    MgSeqCreate(&lbl_1_data_14);
+    lbl_1_bss_0[0] = fn_80080418();
+    fn_80070788(&lbl_1_data_14);
     fn_1_1690();
-    HuPrcChildCreate(fn_1_590, 544U, 8192U, 0, lbl_1_bss_0[0]);
+    fn_8000DAC0(fn_1_590, 544U, 8192U, 0, lbl_1_bss_0[0]);
 }
 
 /* Runs actor updates once per scheduler pass throughout the minigame. */
 void fn_1_590(void) {
     for (;;) {
-        MgActorExec();
+        fn_800856A8();
         HuPrcVSleep();
     }
 }

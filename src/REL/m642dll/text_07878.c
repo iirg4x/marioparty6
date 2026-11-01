@@ -9,10 +9,10 @@ extern s16 fn_1_92D4(void);
 
 void fn_1_7878(s32 playerIndex, s16 minigameCoins)
 {
-    GwPlayer[playerIndex].mgCoin = minigameCoins;
+    lbl_80265750[playerIndex].mgCoin = minigameCoins;
 }
 
-s16 fn_1_7890(void) { return GwMgNightF; }
+s16 fn_1_7890(void) { return lbl_802C0278; }
 
 typedef struct M642ParticleConfig_s {
     u32 flags; /* Particle behavior flags, including alternating-size animation. */
@@ -134,7 +134,7 @@ s16 fn_1_7D1C(M642ParticleOwner *owner, s16 camera, float x, float y, float z, f
     if (modelId == -1) {
         return -1;
     }
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     particle = model->hookData;
     configs = particle->work;
     data = &particle->data[particle->emitCnt];
@@ -171,7 +171,7 @@ s16 fn_1_7D1C(M642ParticleOwner *owner, s16 camera, float x, float y, float z, f
     } else {
         result = -1;
     }
-    Hu3DModelLayerSet(modelId, 1);
+    fn_80026B8C(modelId, 1);
     return result;
 }
 
@@ -189,7 +189,7 @@ s32 fn_1_7F68(M642ParticleOwner *owner)
     if (modelId == -1) {
         return -1;
     }
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     particle = model->hookData;
 
     particleWork = particle->work;
@@ -219,53 +219,53 @@ void fn_1_8024(OMOBJ *owner, M642ResourceTableView *resources)
             break;
         }
         if (row->dataNumber >= 0) {
-            data = HuDataSelHeapReadNum(row->dataNumber, HU_MEMNUM_OVL, HEAP_MODEL);
+            data = fn_80008DD0(row->dataNumber, 0x10000000, 2);
         }
         switch (row->type) {
         case 0:
-            model = Hu3DModelCreate(data);
+            model = fn_80025A04(data);
             owner->mdlId[modelCount++] = model;
             if (row->count != 0) {
                 for (linkIndex = 0; linkIndex < row->count; linkIndex++) {
-                    owner->mdlId[modelCount++] = Hu3DModelLink(model);
+                    owner->mdlId[modelCount++] = fn_80025D4C(model);
                 }
             }
             break;
         case 2:
-            model = Hu3DModelCreate(data);
+            model = fn_80025A04(data);
             owner->mdlId[modelCount++] = model;
-            Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+            fn_800269E8(model, (1 << 0));
             break;
         case 3:
-            motion = Hu3DMotionCreate(data);
+            motion = fn_8002C4C0(data);
             owner->mtnId[motionCount++] = motion;
-            model = Hu3DModelCameraCreate(motion, 1);
+            model = fn_800283F4(motion, 1);
             owner->mdlId[modelCount++] = model;
             break;
         case 1:
             if (row->modelIndex >= 0) {
                 model = owner->mdlId[row->modelIndex];
-                motion = Hu3DJointMotion(model, data);
-                if (Hu3DData[model].motId < 0) {
-                    Hu3DMotionSet(model, motion);
+                motion = fn_80030458(model, data);
+                if (lbl_802C01C8[model].motId < 0) {
+                    fn_8002C95C(model, motion);
                 }
                 if (row->flags != 0) {
-                    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF | HU3D_MOTATTR_LOOP);
+                    fn_800269E8(model, (1 << 0) | ((1 << 30) | (1 << 0)));
                 }
                 owner->mtnId[motionCount++] = motion;
             }
             break;
         case 6:
             particleAnimation = HuSprAnimRead(data);
-            model = Hu3DParticleCreate(particleAnimation, row->count);
-            Hu3DParticleBlendModeSet(model, row->flags & 0xFF);
+            model = fn_8003216C(particleAnimation, row->count);
+            fn_8003269C(model, row->flags & 0xFF);
             owner->mdlId[modelCount++] = model;
             break;
         case 7:
             if (particleAnimation) {
                 model = owner->mdlId[row->modelIndex];
-                model = Hu3DParticleCreate(particleAnimation, row->count);
-                Hu3DParticleBlendModeSet(model, row->flags & 0xFF);
+                model = fn_8003216C(particleAnimation, row->count);
+                fn_8003269C(model, row->flags & 0xFF);
                 owner->mdlId[modelCount++] = model;
             }
             break;
@@ -297,19 +297,19 @@ void fn_1_82D4(M642ParticleOwner *owners)
             break;
         }
         if (!(owner->flags & 1)) {
-            file = HuDataSelHeapReadNum(owner->resource, HU_MEMNUM_OVL, HEAP_MODEL);
+            file = fn_80008DD0(owner->resource, 0x10000000, 2);
             anim = owner->animation = HuSprAnimRead(file);
             count = owner->count;
             blendMode = owner->blendMode;
         }
         if (!(owner->flags & 2)) {
-            configs = HuMemDirectMallocNum(0, count * sizeof(M642ParticleConfig), HU_MEMNUM_OVL);
+            configs = HuMemDirectMallocNum(0, count * sizeof(M642ParticleConfig), 0x10000000);
             memset(configs, 0, count * sizeof(M642ParticleConfig));
         }
-        owner->model = Hu3DParticleCreate(anim, count);
-        Hu3DParticleBlendModeSet(owner->model, blendMode);
-        Hu3DParticleHookSet(owner->model, fn_1_78A0);
-        particle = Hu3DData[owner->model].hookData;
+        owner->model = fn_8003216C(anim, count);
+        fn_8003269C(owner->model, blendMode);
+        fn_800326D0(owner->model, fn_1_78A0);
+        particle = lbl_802C01C8[owner->model].hookData;
         particle->emitCnt = 0;
         particle->work = configs;
         particle->count = 1;
@@ -337,7 +337,7 @@ void fn_1_8440(M642ParticleAnimEntry *entries)
         if (entry->resourceId < 0) {
             break;
         }
-        resourceData = HuDataSelHeapReadNum(entry->resourceId, HU_MEMNUM_OVL, HEAP_MODEL);
+        resourceData = fn_80008DD0(entry->resourceId, 0x10000000, 2);
         anim = entry->anim = HuSprAnimRead(resourceData);
         entry->anim = anim;
         index += 1;
@@ -352,7 +352,7 @@ OMOBJ *fn_1_84D8(M642ResourceTableView *capacity)
     s32 initialObjectMarker = 1;
     s32 models = capacity->modelCount + capacity->linkedModelCount;
     s32 motions = capacity->motionCount;
-    object = omAddObjEx(lbl_1_bss_0.manager, 32730, models, motions, -1, 0);
+    object = fn_8003AB38(lbl_1_bss_0.manager, 32730, models, motions, -1, 0);
     fn_1_8024(object, capacity);
     return object;
 }
@@ -595,7 +595,7 @@ void fn_1_8BA8(Mtx output, s32 cameraId)
     HuVecF cameraTarget;
     HuVecF cameraUp;
 
-    Hu3DCameraPosGet(cameraId, &cameraPosition, &cameraUp, &cameraTarget);
+    fn_80027CD0(cameraId, &cameraPosition, &cameraUp, &cameraTarget);
     position.x = cameraPosition.x;
     position.y = cameraPosition.y;
     position.z = cameraPosition.z;
@@ -740,153 +740,153 @@ s32 fn_1_9150(s32 modulus, s32 count, s32 *weights)
 
 M642ResourceTableView lbl_1_data_4F0 = {
     1, 0, 1, {
-        {DATANUM(DATA_m642, 45), 3, 0, 0, -1},
+        {DATANUM(0x650000, 45), 3, 0, 0, -1},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_5F8 = {
     3, 1, 1, {
-        {DATANUM(DATA_m642, 1), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 0), 2, 0, 0, -1},
-        {DATANUM(DATA_m642, 2), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 3), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 19), 1, 0, 0, 0},
+        {DATANUM(0x650000, 1), 0, 0, 0, -1},
+        {DATANUM(0x650000, 0), 2, 0, 0, -1},
+        {DATANUM(0x650000, 2), 0, 0, 0, -1},
+        {DATANUM(0x650000, 3), 0, 0, 0, -1},
+        {DATANUM(0x650000, 19), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_700 = {
     3, 1, 1, {
-        {DATANUM(DATA_m642, 11), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 0), 2, 0, 0, -1},
-        {DATANUM(DATA_m642, 12), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 13), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 20), 1, 0, 0, 0},
+        {DATANUM(0x650000, 11), 0, 0, 0, -1},
+        {DATANUM(0x650000, 0), 2, 0, 0, -1},
+        {DATANUM(0x650000, 12), 0, 0, 0, -1},
+        {DATANUM(0x650000, 13), 0, 0, 0, -1},
+        {DATANUM(0x650000, 20), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_808 = {
     1, 0, 5, {
-        {DATANUM(DATA_m642, 5), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 26), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 27), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 28), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 29), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 30), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 31), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 32), 1, 0, 0, 0},
+        {DATANUM(0x650000, 5), 0, 0, 0, -1},
+        {DATANUM(0x650000, 26), 1, 0, 0, 0},
+        {DATANUM(0x650000, 27), 1, 0, 0, 0},
+        {DATANUM(0x650000, 28), 1, 0, 0, 0},
+        {DATANUM(0x650000, 29), 1, 0, 0, 0},
+        {DATANUM(0x650000, 30), 1, 0, 0, 0},
+        {DATANUM(0x650000, 31), 1, 0, 0, 0},
+        {DATANUM(0x650000, 32), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_910 = {
     1, 0, 5, {
-        {DATANUM(DATA_m642, 15), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 26), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 27), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 28), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 29), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 30), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 31), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 32), 1, 0, 0, 0},
+        {DATANUM(0x650000, 15), 0, 0, 0, -1},
+        {DATANUM(0x650000, 26), 1, 0, 0, 0},
+        {DATANUM(0x650000, 27), 1, 0, 0, 0},
+        {DATANUM(0x650000, 28), 1, 0, 0, 0},
+        {DATANUM(0x650000, 29), 1, 0, 0, 0},
+        {DATANUM(0x650000, 30), 1, 0, 0, 0},
+        {DATANUM(0x650000, 31), 1, 0, 0, 0},
+        {DATANUM(0x650000, 32), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_A18 = {
     1, 0, 5, {
-        {DATANUM(DATA_m642, 4), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 21), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 22), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 23), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 24), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 25), 1, 0, 0, 0},
+        {DATANUM(0x650000, 4), 0, 0, 0, -1},
+        {DATANUM(0x650000, 21), 1, 0, 0, 0},
+        {DATANUM(0x650000, 22), 1, 0, 0, 0},
+        {DATANUM(0x650000, 23), 1, 0, 0, 0},
+        {DATANUM(0x650000, 24), 1, 0, 0, 0},
+        {DATANUM(0x650000, 25), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_B20 = {
     1, 0, 5, {
-        {DATANUM(DATA_m642, 14), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 21), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 22), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 23), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 24), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 25), 1, 0, 0, 0},
+        {DATANUM(0x650000, 14), 0, 0, 0, -1},
+        {DATANUM(0x650000, 21), 1, 0, 0, 0},
+        {DATANUM(0x650000, 22), 1, 0, 0, 0},
+        {DATANUM(0x650000, 23), 1, 0, 0, 0},
+        {DATANUM(0x650000, 24), 1, 0, 0, 0},
+        {DATANUM(0x650000, 25), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_C28 = {
     1, 0, 6, {
-        {DATANUM(DATA_m642, 6), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 33), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 34), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 35), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 36), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 37), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 38), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 39), 1, 0, 0, 0},
-        {DATANUM(DATA_m642, 40), 1, 0, 0, 0},
+        {DATANUM(0x650000, 6), 0, 0, 0, -1},
+        {DATANUM(0x650000, 33), 1, 0, 0, 0},
+        {DATANUM(0x650000, 34), 1, 0, 0, 0},
+        {DATANUM(0x650000, 35), 1, 0, 0, 0},
+        {DATANUM(0x650000, 36), 1, 0, 0, 0},
+        {DATANUM(0x650000, 37), 1, 0, 0, 0},
+        {DATANUM(0x650000, 38), 1, 0, 0, 0},
+        {DATANUM(0x650000, 39), 1, 0, 0, 0},
+        {DATANUM(0x650000, 40), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_D30 = {
     1, 0, 2, {
-        {DATANUM(DATA_m642, 7), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 41), 1, HU3D_ATTR_DISPOFF | HU3D_MOTATTR_LOOP, 0, 0},
-        {DATANUM(DATA_m642, 42), 1, 0, 0, 0},
+        {DATANUM(0x650000, 7), 0, 0, 0, -1},
+        {DATANUM(0x650000, 41), 1, (1 << 0) | ((1 << 30) | (1 << 0)), 0, 0},
+        {DATANUM(0x650000, 42), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_E38 = {
     1, 0, 2, {
-        {DATANUM(DATA_m642, 17), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 41), 1, HU3D_ATTR_DISPOFF | HU3D_MOTATTR_LOOP, 0, 0},
-        {DATANUM(DATA_m642, 42), 1, 0, 0, 0},
+        {DATANUM(0x650000, 17), 0, 0, 0, -1},
+        {DATANUM(0x650000, 41), 1, (1 << 0) | ((1 << 30) | (1 << 0)), 0, 0},
+        {DATANUM(0x650000, 42), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_F40 = {
     1, 0, 2, {
-        {DATANUM(DATA_m642, 8), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 43), 1, HU3D_ATTR_DISPOFF | HU3D_MOTATTR_LOOP, 0, 0},
-        {DATANUM(DATA_m642, 44), 1, 0, 0, 0},
+        {DATANUM(0x650000, 8), 0, 0, 0, -1},
+        {DATANUM(0x650000, 43), 1, (1 << 0) | ((1 << 30) | (1 << 0)), 0, 0},
+        {DATANUM(0x650000, 44), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_1048 = {
     1, 0, 2, {
-        {DATANUM(DATA_m642, 16), 0, 0, 0, -1},
-        {DATANUM(DATA_m642, 43), 1, HU3D_ATTR_DISPOFF | HU3D_MOTATTR_LOOP, 0, 0},
-        {DATANUM(DATA_m642, 44), 1, 0, 0, 0},
+        {DATANUM(0x650000, 16), 0, 0, 0, -1},
+        {DATANUM(0x650000, 43), 1, (1 << 0) | ((1 << 30) | (1 << 0)), 0, 0},
+        {DATANUM(0x650000, 44), 1, 0, 0, 0},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_1150 = {
     41, 0, 0, {
-        {DATANUM(DATA_m642, 10), 0, 0, 40, -1},
+        {DATANUM(0x650000, 10), 0, 0, 40, -1},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_1258 = {
     41, 0, 0, {
-        {DATANUM(DATA_m642, 9), 0, 0, 40, -1},
+        {DATANUM(0x650000, 9), 0, 0, 40, -1},
         {0, 8, 0, -1, -1},
     }
 };
 
 M642ResourceTableView lbl_1_data_1360 = {
     41, 0, 0, {
-        {DATANUM(DATA_m642, 18), 0, 0, 40, -1},
+        {DATANUM(0x650000, 18), 0, 0, 40, -1},
         {0, 8, 0, -1, -1},
     }
 };
@@ -904,13 +904,13 @@ void *lbl_1_data_148C[9] = {
 };
 
 M642ParticleOwner lbl_1_data_14B0[3] = {
-    {0, DATANUM(DATA_m642, 46), 40, 0, 0, NULL, {0}},
+    {0, DATANUM(0x650000, 46), 40, 0, 0, NULL, {0}},
     {1, 0, 0, 0, -1, NULL, {0}},
     {0, -1, 0, 0, -1, NULL, {0}},
 };
 
 M642ParticleOwner lbl_1_data_1504[3] = {
-    {0, DATANUM(DATA_m642, 47), 40, 0, 0, NULL, {0}},
+    {0, DATANUM(0x650000, 47), 40, 0, 0, NULL, {0}},
     {1, 0, 0, 0, -1, NULL, {0}},
     {0, -1, 0, 0, -1, NULL, {0}},
 };
@@ -943,8 +943,8 @@ void *fn_1_9250(s32 index)
 }
 
 M642ParticleAnimEntry lbl_1_data_1560[3] = {
-    {DATANUM(DATA_mgconst, 28), NULL},
-    {DATANUM(DATA_mgconst, 70), NULL},
+    {DATANUM(0x9b0000, 28), NULL},
+    {DATANUM(0x9b0000, 70), NULL},
     {-1, NULL},
 };
 
@@ -1018,4 +1018,4 @@ void *fn_1_92C0(s32 index)
     return lbl_1_data_1578[index];
 }
 
-s16 fn_1_92D4(void) { return GwMgNightF; }
+s16 fn_1_92D4(void) { return lbl_802C0278; }

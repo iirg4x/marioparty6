@@ -15,9 +15,9 @@ s16 lbl_1_bss_760;
 
 /* Alternating travel and boarding motions, followed by the final travel and finish motions. */
 s32 lbl_1_data_3D8[12] = {
-    DATANUM(DATA_m644, 7), DATANUM(DATA_m644, 12), DATANUM(DATA_m644, 8), DATANUM(DATA_m644, 13),
-    DATANUM(DATA_m644, 9), DATANUM(DATA_m644, 14), DATANUM(DATA_m644, 10), DATANUM(DATA_m644, 15),
-    DATANUM(DATA_m644, 11), DATANUM(DATA_m644, 16), DATANUM(DATA_m644, 17), DATANUM(DATA_m644, 18)
+    DATANUM(0x670000, 7), DATANUM(0x670000, 12), DATANUM(0x670000, 8), DATANUM(0x670000, 13),
+    DATANUM(0x670000, 9), DATANUM(0x670000, 14), DATANUM(0x670000, 10), DATANUM(0x670000, 15),
+    DATANUM(0x670000, 11), DATANUM(0x670000, 16), DATANUM(0x670000, 17), DATANUM(0x670000, 18)
 };
 /* Loaded route motions, shared by both team route models. */
 s16 lbl_1_data_408[12] = {-1};
@@ -49,7 +49,7 @@ void fn_1_7C24(s32 player, s32 difficulty);
 void fn_1_51B4(s32 player, s32 state);
 void fn_1_205C(s32 player);
 
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 
 extern s32 fn_1_6588(s32 route);
 
@@ -123,7 +123,7 @@ void fn_1_7CB8(s32 *route_state)
     target = position;
     position.y += 3000.0f;
     position.x -= 200.0f;
-    Hu3DShadowMultiPosSet(&position, &up, &target,
+    fn_8002A674(&position, &up, &target,
                           (s16)camera_masks.masks[route_state[0]]);
 }
 
@@ -135,7 +135,7 @@ s32 fn_1_7D98(void)
     M644StageModelEntry *entry;
 
     for (entry_index = 0; entry_index < 2; entry_index++) {
-        object = omAddObjEx(fn_1_A0(), 352, 0, 0, 0, fn_1_836C);
+        object = fn_8003AB38(fn_1_A0(), 352, 0, 0, 0, fn_1_836C);
         object->data = &lbl_1_bss_764.entry[entry_index];
         memset(object->data, 0, sizeof(M644StageModelEntry));
         entry = object->data;
@@ -154,16 +154,16 @@ void fn_1_7E5C(s16 model, s32 entry_index, s32 slot)
     HookNamePair hook_names = {{"no644douro-P1", "no644douro-P2"}};
 
     lbl_1_bss_764.entry[entry_index].player_models[slot] = model;
-    Hu3DModelPosSet(model, 0.0f, 0.0f, 0.0f);
-    Hu3DModelRotSet(model, 0.0f, 0.0f, 0.0f);
-    Hu3DModelHookSet(lbl_1_bss_764.entry[entry_index].route_model,
+    fn_80026760(model, 0.0f, 0.0f, 0.0f);
+    fn_80026808(model, 0.0f, 0.0f, 0.0f);
+    fn_8002741C(lbl_1_bss_764.entry[entry_index].route_model,
                      hook_names.name[slot], model);
 }
 
 /* Clears all attachments from the selected team's route model on request. */
 void fn_1_7F50(s16 team_index)
 {
-    Hu3DModelHookReset(lbl_1_bss_764.entry[team_index].route_model);
+    fn_80027508(lbl_1_bss_764.entry[team_index].route_model);
 }
 
 /* Detaches a character's boarding hook when that player enters the course. */
@@ -171,7 +171,7 @@ void fn_1_7F8C(s32 unused_context, s32 entry_index, s32 slot)
 {
     HookNamePair hook_names = {{"no644douro-P1", "no644douro-P2"}};
 
-    Hu3DModelHookObjReset(lbl_1_bss_764.entry[entry_index].route_model, hook_names.name[slot]);
+    fn_800275B4(lbl_1_bss_764.entry[entry_index].route_model, hook_names.name[slot]);
 }
 
 /* Returns a boarding hook's world position for player spawn and return movement. */
@@ -188,12 +188,12 @@ void fn_1_8064(s32 entry_index, s32 slot, Mtx matrix)
 {
     HookNamePair hook_names = {{"no644douro-P1", "no644douro-P2"}};
 
-    Hu3DModelObjMtxGet(lbl_1_bss_764.entry[entry_index].route_model, hook_names.name[slot], matrix);
+    fn_80023398(lbl_1_bss_764.entry[entry_index].route_model, hook_names.name[slot], matrix);
 }
 
 /* Returns the NPC01 hook matrix for the selected team's route model. */
 void fn_1_80D4(s32 team_index, Mtx matrix) {
-    Hu3DModelObjMtxGet(lbl_1_bss_764.entry[team_index].route_model, "no644douro-NPC01", matrix);
+    fn_80023398(lbl_1_bss_764.entry[team_index].route_model, "no644douro-NPC01", matrix);
 }
 
 /* Looks up one of the two boarding hooks on request; its returned object pointer is discarded. */
@@ -203,7 +203,7 @@ void fn_1_8120(s32 entry_index, s32 slot)
     s32 name_index;
 
     name_index = slot & 1;
-    Hu3DModelObjPtrGet(lbl_1_bss_764.entry[entry_index].route_model, hook_names.name[name_index]);
+    fn_80026BF4(lbl_1_bss_764.entry[entry_index].route_model, hook_names.name[name_index]);
 }
 
 /* Decrements the selected route controller's remaining-rock count on request. */
@@ -288,58 +288,58 @@ void fn_1_836C(OMOBJ *object)
     team_index = data->team_index;
     camera_masks = lbl_1_rodata_4A4;
     if (team_index == 0) {
-        npc01_model = Hu3DModelCreate(HuDataSelHeapReadNum(
-            DATANUM(DATA_m644, 76), HU_MEMNUM_OVL, HEAP_MODEL));
-        npc02_model = Hu3DModelCreate(HuDataSelHeapReadNum(
-            DATANUM(DATA_m644, 75), HU_MEMNUM_OVL, HEAP_MODEL));
+        npc01_model = fn_80025A04(fn_80008DD0(
+            DATANUM(0x670000, 76), 0x10000000, 2));
+        npc02_model = fn_80025A04(fn_80008DD0(
+            DATANUM(0x670000, 75), 0x10000000, 2));
         {
-            s16 night_mode = GwMgNightF;
+            s16 night_mode = lbl_802C0278;
             if (night_mode == 0) {
-            model_id = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m644, 19), HU_MEMNUM_OVL, HEAP_MODEL));
+            model_id = fn_80025A04(fn_80008DD0(
+                DATANUM(0x670000, 19), 0x10000000, 2));
             } else {
-                model_id = Hu3DModelCreate(HuDataSelHeapReadNum(
-                    DATANUM(DATA_m644, 21), HU_MEMNUM_OVL, HEAP_MODEL));
+                model_id = fn_80025A04(fn_80008DD0(
+                    DATANUM(0x670000, 21), 0x10000000, 2));
             }
         }
         for (model_index = 0; model_index < 12; model_index++) {
-            lbl_1_data_408[model_index] = Hu3DJointMotion(
-                model_id, HuDataSelHeapReadNum(lbl_1_data_3D8[model_index],
-                                               HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_data_408[model_index] = fn_80030458(
+                model_id, fn_80008DD0(lbl_1_data_3D8[model_index],
+                                               0x10000000, 2));
         }
     } else {
         {
-            s16 night_mode = GwMgNightF;
+            s16 night_mode = lbl_802C0278;
             if (night_mode == 0) {
-            model_id = Hu3DModelCreate(HuDataSelHeapReadNum(
-                DATANUM(DATA_m644, 20), HU_MEMNUM_OVL, HEAP_MODEL));
+            model_id = fn_80025A04(fn_80008DD0(
+                DATANUM(0x670000, 20), 0x10000000, 2));
             } else {
-                model_id = Hu3DModelCreate(HuDataSelHeapReadNum(
-                    DATANUM(DATA_m644, 22), HU_MEMNUM_OVL, HEAP_MODEL));
+                model_id = fn_80025A04(fn_80008DD0(
+                    DATANUM(0x670000, 22), 0x10000000, 2));
             }
         }
-        npc01_model = Hu3DModelLink(lbl_1_bss_764.entry[0].npc01_model);
-        npc02_model = Hu3DModelLink(lbl_1_bss_764.entry[0].npc02_model);
+        npc01_model = fn_80025D4C(lbl_1_bss_764.entry[0].npc01_model);
+        npc02_model = fn_80025D4C(lbl_1_bss_764.entry[0].npc02_model);
     }
     data->route_model = model_id;
     data->npc01_model = npc01_model;
     data->npc02_model = npc02_model;
-    Hu3DMotionSet(model_id, lbl_1_data_408[0]);
-    Hu3DMotionSpeedSet(model_id, 1.0f);
-    Hu3DModelCameraSet(npc01_model, camera_masks.masks[team_index]);
-    Hu3DModelCameraSet(npc02_model, camera_masks.masks[team_index]);
-    Hu3DModelCameraSet(model_id, camera_masks.masks[team_index]);
-    Hu3DModelLayerSet(model_id, 4);
-    Hu3DModelAttrReset(model_id, HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(npc01_model, HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(npc02_model, HU3D_MOTATTR_LOOP);
-    Hu3DModelPosSet(npc02_model, 420.0f, -1645.0f,
+    fn_8002C95C(model_id, lbl_1_data_408[0]);
+    fn_8002D86C(model_id, 1.0f);
+    fn_80026B64(npc01_model, camera_masks.masks[team_index]);
+    fn_80026B64(npc02_model, camera_masks.masks[team_index]);
+    fn_80026B64(model_id, camera_masks.masks[team_index]);
+    fn_80026B8C(model_id, 4);
+    fn_80026A44(model_id, ((1 << 30) | (1 << 0)));
+    fn_800269E8(npc01_model, ((1 << 30) | (1 << 0)));
+    fn_800269E8(npc02_model, ((1 << 30) | (1 << 0)));
+    fn_80026760(npc02_model, 420.0f, -1645.0f,
                     -52500.0f);
-    Hu3DModelShadowSet(npc02_model);
+    fn_80026E44(npc02_model);
     /* The two timing cues animate the boarding players independently of the route model. */
     data->timing_phase = 0;
-    Hu3DMotionTimingHookSet(model_id, fn_1_81B4);
-    Hu3DModelHookSet(data->route_model, "no644douro-NPC01", npc01_model);
+    fn_8002DB98(model_id, fn_1_81B4);
+    fn_8002741C(data->route_model, "no644douro-NPC01", npc01_model);
     data->remaining_rocks = fn_1_6588(data->route_motion);
     camera_offset = lbl_1_rodata_458;
     shadow_camera_masks = lbl_1_rodata_464;
@@ -347,14 +347,14 @@ void fn_1_836C(OMOBJ *object)
     target = position;
     position.y += 3000.0f;
     position.x -= 200.0f;
-    Hu3DShadowMultiPosSet(&position, &camera_offset, &target,
+    fn_8002A674(&position, &camera_offset, &target,
                           shadow_camera_masks.masks[data->team_index]);
     data->sound_pitch = 0;
     if (data->team_index == 0) {
-        data->travel_sound = HuAudFXPlay(MSM_SE_M644_TEAM0_TRAVEL);
+        data->travel_sound = HuAudFXPlay(1962);
         HuAudFXPitchSet(data->travel_sound, data->sound_pitch);
     } else {
-        data->travel_sound = HuAudFXPlay(MSM_SE_M644_TEAM1_TRAVEL);
+        data->travel_sound = HuAudFXPlay(1964);
         HuAudFXPitchSet(data->travel_sound, data->sound_pitch);
     }
     object->objFunc = fn_1_8760;
@@ -376,13 +376,13 @@ void fn_1_8760(OMOBJ *object)
     team_index = data->team_index;
     /* The second section's rocks appear only as travel passes frame 130. */
     if (data->route_motion == 2) {
-        opening_motion_time = Hu3DMotionTimeGet(data->route_model);
+        opening_motion_time = fn_8002D4E0(data->route_model);
         if (129.0f < opening_motion_time &&
             opening_motion_time < 131.0f) {
             fn_1_7C24(data->team_index, data->route_motion >> 1);
         }
     }
-    current_motion_time = Hu3DMotionTimeGet(data->route_model);
+    current_motion_time = fn_8002D4E0(data->route_model);
     pitch = 8191 - abs((s16)(((8191.0f *
                                   (current_motion_time - 130.0f)) /
                                  130.0f)));
@@ -393,21 +393,21 @@ void fn_1_8760(OMOBJ *object)
         pitch = 8191;
     }
     HuAudFXPitchSet(data->travel_sound, pitch);
-    if (Hu3DMotionTimeGet(data->route_model) == 260.0f) {
+    if (fn_8002D4E0(data->route_model) == 260.0f) {
         if (data->team_index == 0) {
-            HuAudFXPlay(MSM_SE_M644_TEAM0_ARRIVE);
+            HuAudFXPlay(1963);
         } else {
-            HuAudFXPlay(MSM_SE_M644_TEAM1_ARRIVE);
+            HuAudFXPlay(1965);
         }
     }
-    if (Hu3DMotionEndCheck(data->route_model) != 0) {
+    if (fn_8002D75C(data->route_model) != 0) {
         fn_1_51B4(data->team_index, 2);
         object->objFunc = fn_1_8A70;
     }
     /* Result handling gradually reduces both travel speed and its looping sound volume. */
     if (data->slowdown_requested == 1) {
-        fade_motion_time = Hu3DMotionTimeGet(data->route_model);
-        motion_id = Hu3DMotionIDGet(data->route_model);
+        fade_motion_time = fn_8002D4E0(data->route_model);
+        motion_id = fn_8002D3C4(data->route_model);
         if (motion_id == lbl_1_data_408[0] ||
             motion_id == lbl_1_data_408[2] ||
             motion_id == lbl_1_data_408[4] ||
@@ -415,7 +415,7 @@ void fn_1_8760(OMOBJ *object)
             motion_id == lbl_1_data_408[8] ||
             motion_id == lbl_1_data_408[10]) {
             if (fade_motion_time < 249.0f) {
-                Hu3DMotionSpeedSet(data->route_model, data->travel_speed);
+                fn_8002D86C(data->route_model, data->travel_speed);
                 data->travel_speed -= 0.02f;
                 /* The volume request precedes the negative-speed clamp and sound stop. */
                 if (data->travel_sound != -1) {
@@ -453,9 +453,9 @@ void fn_1_8B40(OMOBJ *object) {
 
     data = object->data;
     if (fn_1_5210(data->team_index) == 0) {
-        Hu3DMotionSet(data->route_model, lbl_1_data_408[data->route_motion]);
+        fn_8002C95C(data->route_model, lbl_1_data_408[data->route_motion]);
         data->timing_phase = 0;
-        Hu3DMotionTimingHookSet(data->route_model, fn_1_8290);
+        fn_8002DB98(data->route_model, fn_1_8290);
         fn_1_51B4(data->team_index, 4);
         data->timing_phase = 0;
         object->objFunc = fn_1_8BDC;
@@ -469,24 +469,24 @@ void fn_1_8BDC(OMOBJ *object)
     M644StageModelEntry *sequence;
 
     sequence = object->data;
-    if (Hu3DMotionEndCheck(sequence->route_model) == 0) {
+    if (fn_8002D75C(sequence->route_model) == 0) {
         return;
     }
 
     sequence->route_motion++;
     sequence->remaining_rocks = fn_1_6588(sequence->route_motion);
-    Hu3DMotionSet(sequence->route_model,
+    fn_8002C95C(sequence->route_model,
                   lbl_1_data_408[sequence->route_motion]);
-    Hu3DMotionTimeSet(sequence->route_model, 0.0f);
+    fn_8002D414(sequence->route_model, 0.0f);
     fn_1_690(sequence->team_index, fn_1_7C8(sequence->route_motion));
     if (sequence->route_motion == 10) {
         fn_1_51B4(sequence->team_index, 5);
         sequence->sound_pitch = 0;
         if (sequence->team_index == 0) {
-            sequence->travel_sound = HuAudFXPlay(MSM_SE_M644_TEAM0_TRAVEL);
+            sequence->travel_sound = HuAudFXPlay(1962);
             HuAudFXPitchSet(sequence->travel_sound, (s16)sequence->sound_pitch);
         } else {
-            sequence->travel_sound = HuAudFXPlay(MSM_SE_M644_TEAM1_TRAVEL);
+            sequence->travel_sound = HuAudFXPlay(1964);
             HuAudFXPitchSet(sequence->travel_sound, (s16)sequence->sound_pitch);
         }
         object->objFunc = fn_1_8E5C;
@@ -495,15 +495,15 @@ void fn_1_8BDC(OMOBJ *object)
 
     fn_1_1FB4(sequence->team_index, sequence->route_motion);
     fn_1_51B4(sequence->team_index, 1);
-    Hu3DMotionTimingHookSet(sequence->route_model, fn_1_81B4);
+    fn_8002DB98(sequence->route_model, fn_1_81B4);
     sequence->timing_phase = 0;
     fn_1_7CB8(&sequence->team_index);
     sequence->sound_pitch = 0;
     if (sequence->team_index == 0) {
-        sequence->travel_sound = HuAudFXPlay(MSM_SE_M644_TEAM0_TRAVEL);
+        sequence->travel_sound = HuAudFXPlay(1962);
         HuAudFXPitchSet(sequence->travel_sound, (s16)sequence->sound_pitch);
     } else {
-        sequence->travel_sound = HuAudFXPlay(MSM_SE_M644_TEAM1_TRAVEL);
+        sequence->travel_sound = HuAudFXPlay(1964);
         HuAudFXPitchSet(sequence->travel_sound, (s16)sequence->sound_pitch);
     }
     if (sequence->route_motion != 2) {
@@ -520,9 +520,9 @@ void fn_1_8E5C(OMOBJ *object)
     float motion_time;
     state = object->data;
     if (state->slowdown_requested == 1) {
-        motion_time = Hu3DMotionTimeGet(state->route_model);
+        motion_time = fn_8002D4E0(state->route_model);
         if (motion_time < 249.0f) {
-            Hu3DMotionSpeedSet(state->route_model, state->travel_speed);
+            fn_8002D86C(state->route_model, state->travel_speed);
             state->travel_speed -= 0.02f;
             /* The volume request precedes the negative-speed clamp and sound stop. */
             if (state->travel_sound != -1)
@@ -535,16 +535,16 @@ void fn_1_8E5C(OMOBJ *object)
         }
         fn_1_205C(state->team_index);
     } else {
-        if (160.0f == Hu3DMotionTimeGet(state->route_model)) {
-            if (state->team_index == 0) HuAudFXPlay(MSM_SE_M644_TEAM0_ARRIVE);
-            else HuAudFXPlay(MSM_SE_M644_TEAM1_ARRIVE);
+        if (160.0f == fn_8002D4E0(state->route_model)) {
+            if (state->team_index == 0) HuAudFXPlay(1963);
+            else HuAudFXPlay(1965);
         }
     }
-    if (MgSeqModeGet() == MGSEQ_MODE_MAIN && Hu3DMotionTimeGet(state->route_model) >= 180.0f) {
+    if (fn_80071A8C() == 5 && fn_8002D4E0(state->route_model) >= 180.0f) {
         lbl_1_bss_760 = 1;
         fn_1_B0(state->team_index);
         object->objFunc = fn_1_8FFC;
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -553,25 +553,25 @@ void fn_1_8FFC(OMOBJ *object)
 {
     M644StageModelEntry *data = object->data;
 
-    if (MgSeqModeGet() != MGSEQ_MODE_PREWIN) {
+    if (fn_80071A8C() != 7) {
         return;
     }
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         HuAudFXAllStop();
         WipeCreate(2, 0, 60);
     }
-    if (MgSeqFrameNoGet() != 60) {
+    if (fn_80071DE4() != 60) {
         return;
     }
 
     fn_1_1510();
     WipeCreate(1, 5, 60);
     OSReport("Set.\n");
-    Hu3DModelPosSet(data->npc02_model, 0.0f,
+    fn_80026760(data->npc02_model, 0.0f,
                     0.0f, 0.0f);
-    Hu3DModelHookSet(data->route_model, "no644douro-NPC02B", data->npc02_model);
-    Hu3DMotionSet(data->route_model, lbl_1_data_408[11]);
-    Hu3DMotionTimeSet(data->route_model, 0.0f);
+    fn_8002741C(data->route_model, "no644douro-NPC02B", data->npc02_model);
+    fn_8002C95C(data->route_model, lbl_1_data_408[11]);
+    fn_8002D414(data->route_model, 0.0f);
     fn_1_690(data->team_index, fn_1_7C8(data->route_motion + 1));
     fn_1_20A0(data->team_index);
 }
@@ -602,18 +602,18 @@ f32 fn_1_9178(s32 team_index) {
 void fn_1_9190(void)
 {
     OMOBJ *object;
-    object = omAddObjEx(fn_1_A0(), 528, 0, 0, 0, fn_1_91F4);
+    object = fn_8003AB38(fn_1_A0(), 528, 0, 0, 0, fn_1_91F4);
     object->data = &lbl_1_bss_7C0;
     memset(object->data, 0, sizeof(lbl_1_bss_7C0));
 }
 
 /* Progress-marker, endpoint and route-segment sprite resources. */
 u32 lbl_1_data_468[19] = {
-    DATANUM(DATA_m644, 73), DATANUM(DATA_m644, 74), DATANUM(DATA_m644, 70), DATANUM(DATA_m644, 72),
-    DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71),
-    DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71),
-    DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71),
-    DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71), DATANUM(DATA_m644, 71)
+    DATANUM(0x670000, 73), DATANUM(0x670000, 74), DATANUM(0x670000, 70), DATANUM(0x670000, 72),
+    DATANUM(0x670000, 71), DATANUM(0x670000, 71), DATANUM(0x670000, 71), DATANUM(0x670000, 71),
+    DATANUM(0x670000, 71), DATANUM(0x670000, 71), DATANUM(0x670000, 71), DATANUM(0x670000, 71),
+    DATANUM(0x670000, 71), DATANUM(0x670000, 71), DATANUM(0x670000, 71), DATANUM(0x670000, 71),
+    DATANUM(0x670000, 71), DATANUM(0x670000, 71), DATANUM(0x670000, 71)
 };
 /* Sprite draw priorities: team markers, endpoints, then route segments. */
 u32 lbl_1_data_4B4[19] = {

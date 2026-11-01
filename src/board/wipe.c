@@ -21,7 +21,7 @@ double atan2(double y, double x);
 
 extern BOOL mbTutorialExitReqGet(void);
 extern BOOL mbPauseEnableCheck(void);
-extern void *mbMalloc(s32 size);
+extern void *fn_802137C0(s32 size);
 extern float mbSinDeg(float angle);
 extern float mbCosDeg(float angle);
 void mbWipeSpecialKill(void);
@@ -101,15 +101,15 @@ static void WipeImageDraw(HU3D_MODEL *model, Mtx *mtx,
     WIPE_SPECIAL_DATA *wipeData);
 
 static int wipeMasuFileTbl[3] = {
-    DATANUM(DATA_bmasu, 7),
-    DATANUM(DATA_bmasu, 8),
-    DATANUM(DATA_bmasu, 9),
+    DATANUM(0x40000, 7),
+    DATANUM(0x40000, 8),
+    DATANUM(0x40000, 9),
 };
 
 static int wipeImageFileTbl[3] = {
-    DATANUM(DATA_bmasu, 10),
-    DATANUM(DATA_bmasu, 12),
-    DATANUM(DATA_bmasu, 11),
+    DATANUM(0x40000, 10),
+    DATANUM(0x40000, 12),
+    DATANUM(0x40000, 11),
 };
 
 static void (*fadeFunc[8])(HU3D_MODEL *, Mtx *, WIPE_SPECIAL_DATA *) = {
@@ -144,7 +144,7 @@ static ANIMDATA *wipeImageAnim[3];
 // Board transition code starts a standard wipe unless a tutorial exit is pending.
 void mbWipeCreate(s16 mode, s16 type, s16 durationFrames)
 {
-    if (!_CheckFlag(FLAG_BOARD_TUTORIAL) || !mbTutorialExitReqGet()) {
+    if (!fn_8006A124(65550) || !mbTutorialExitReqGet()) {
         WipeCreate(mode, type, durationFrames);
     }
 }
@@ -162,7 +162,7 @@ void mbWipeFadeOut(void)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 21);
@@ -182,7 +182,7 @@ void mbWipeFadeIn(void)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 21);
@@ -200,7 +200,7 @@ void mbWipeWhiteFadeOut(void)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_WHITE, 21);
@@ -218,7 +218,7 @@ void mbWipeWhiteFadeIn(void)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_WHITE, 21);
@@ -236,7 +236,7 @@ void mbWipeDissolveFadeOut(void)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_CROSS_COPY, 1);
@@ -254,7 +254,7 @@ void mbWipeDissolveFadeIn(void)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_CROSS_COPY, 30);
@@ -272,7 +272,7 @@ void mbWipeFadeOutTime(int durationFrames)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, durationFrames);
@@ -292,7 +292,7 @@ void mbWipeFadeInTime(int durationFrames)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, durationFrames);
@@ -310,7 +310,7 @@ void mbWipeWhiteFadeOutTime(int durationFrames)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_WHITE, durationFrames);
@@ -328,7 +328,7 @@ void mbWipeWhiteFadeInTime(int durationFrames)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_WHITE, durationFrames);
@@ -346,7 +346,7 @@ void mbWipeDissolveFadeOutTime(int durationFrames)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_CROSS_COPY, durationFrames);
@@ -364,7 +364,7 @@ void mbWipeDissolveFadeInTime(int durationFrames)
 {
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_CROSS_COPY, durationFrames);
@@ -388,27 +388,27 @@ void mbWipeSpecialInit(void)
 
     memset(wipeData, 0, sizeof(*wipeData));
     for (assetIndex = 0; assetIndex < 3; assetIndex++) {
-        wipeData->masuModelId[assetIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(wipeMasuFileTbl[assetIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelAttrSet(wipeData->masuModelId[assetIndex], HU3D_ATTR_DISPOFF);
-        Hu3DModelMatHookSet(wipeData->masuModelId[assetIndex], WipeMasuMatHook);
-        Hu3DModelPosSet(wipeData->masuModelId[assetIndex], 0.0f, 0.0f, -100.0f);
-        Hu3DModelCameraSet(wipeData->masuModelId[assetIndex], HU3D_CAM2);
-        Hu3DModelLayerSet(wipeData->masuModelId[assetIndex], 7);
+        wipeData->masuModelId[assetIndex] = fn_80025A04(
+            fn_80008DD0(wipeMasuFileTbl[assetIndex], 0x10000000, 2));
+        fn_800269E8(wipeData->masuModelId[assetIndex], (1 << 0));
+        fn_80027884(wipeData->masuModelId[assetIndex], WipeMasuMatHook);
+        fn_80026760(wipeData->masuModelId[assetIndex], 0.0f, 0.0f, -100.0f);
+        fn_80026B64(wipeData->masuModelId[assetIndex], (1 << 2));
+        fn_80026B8C(wipeData->masuModelId[assetIndex], 7);
     }
     wipeData->textureBytes = GXGetTexBufferSize(320, 240, GX_TF_RGB565,
         GX_FALSE, 0);
     textureBytes = wipeData->textureBytes;
-    allocatedTexture = HuMemDirectMallocNum(HEAP_HEAP, textureBytes, HU_MEMNUM_OVL);
+    allocatedTexture = HuMemDirectMallocNum(HEAP_HEAP, textureBytes, 0x10000000);
     screenTexture = allocatedTexture;
     wipeData->screenTexture = screenTexture;
     DCFlushRange(wipeData->screenTexture, wipeData->textureBytes);
-    wipeData->hookModelId = Hu3DHookFuncCreate(WipeSpecialDraw);
-    Hu3DModelCameraSet(wipeData->hookModelId, HU3D_CAM2);
-    Hu3DModelLayerSet(wipeData->hookModelId, 6);
+    wipeData->hookModelId = fn_800260F4(WipeSpecialDraw);
+    fn_80026B64(wipeData->hookModelId, (1 << 2));
+    fn_80026B8C(wipeData->hookModelId, 6);
     for (assetIndex = 0; assetIndex < 3; assetIndex++) {
         wipeImageAnim[assetIndex] = HuSprAnimRead(
-            HuDataSelHeapReadNum(wipeImageFileTbl[assetIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(wipeImageFileTbl[assetIndex], 0x10000000, 2));
         HuSprAnimLock(wipeImageAnim[assetIndex]);
     }
 }
@@ -458,11 +458,11 @@ static void WipeMasuMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXColor color;
     float tanFov;
 
-    camera = &Hu3DCamera[Hu3DCameraNo];
+    camera = &Hu3DCamera[lbl_802C01A6];
     wipeData = &wipeSpecialData;
     GXSetNumTexGens(1);
-    tanFov = sin(M_PI * (0.5f * camera->fov) / 180.0)
-        / cos(M_PI * (0.5f * camera->fov) / 180.0);
+    tanFov = sin(3.141592653589793 * (0.5f * camera->fov) / 180.0)
+        / cos(3.141592653589793 * (0.5f * camera->fov) / 180.0);
     MTXIdentity(texMtx);
     texMtx[0][0] = (-0.5f * drawObj->matrix[0][0])
         / (camera->aspect * (tanFov * drawObj->matrix[2][3]));
@@ -473,7 +473,7 @@ static void WipeMasuMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
     GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_POS, GX_TEXMTX0,
         GX_FALSE, GX_PTIDENTITY);
-    Hu3DTexLoad(wipeData->screenTexture, 320, 240, GX_TF_RGB565, GX_CLAMP,
+    fn_800360D8(wipeData->screenTexture, 320, 240, GX_TF_RGB565, GX_CLAMP,
         GX_CLAMP, GX_FALSE, GX_TEXMAP0);
     GXSetNumTevStages(1);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0);
@@ -487,7 +487,7 @@ static void WipeMasuMatHook(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
         GX_CA_A0);
     GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
         GX_TRUE, GX_TEVPREV);
-    Hu3DMatLightSet(drawObj->model, 2, material->hiliteScale);
+    fn_8001CDF0(drawObj->model, 2, material->hiliteScale);
 }
 
 // The Hu3D hook advances the active special wipe, then draws its selected effect each frame.
@@ -529,27 +529,27 @@ static void WipeShapeUpdate(HU3D_MODEL *model, Mtx *mtx,
             wipeData->elapsedFrames++;
         }
         // The outgoing shape starts at half scale and contracts toward zero.
-        shapeScale = 0.5 * (1.0 - sin(M_PI * (90.0f * progress) / 180.0));
-        Hu3DModelScaleSet(wipeData->masuModelId[wipeData->updateType - 1],
+        shapeScale = 0.5 * (1.0 - sin(3.141592653589793 * (90.0f * progress) / 180.0));
+        fn_800268B0(wipeData->masuModelId[wipeData->updateType - 1],
             shapeScale, shapeScale, shapeScale);
         if (wipeData->elapsedFrames > wipeData->durationFrames) {
-            Hu3DModelAttrSet(wipeData->masuModelId[wipeData->updateType - 1],
-                HU3D_ATTR_DISPOFF);
+            fn_800269E8(wipeData->masuModelId[wipeData->updateType - 1],
+                (1 << 0));
             wipeData->updateType = 0;
             wipeData->active = FALSE;
             wipeData->drawType = 0;
             wipeData->incomingComplete = 0;
         }
     } else {
-        Hu3DModelAttrReset(wipeData->masuModelId[wipeData->updateType - 1],
-            HU3D_ATTR_DISPOFF);
-        Hu3DModelPosSet(wipeData->masuModelId[wipeData->updateType - 1],
+        fn_80026A44(wipeData->masuModelId[wipeData->updateType - 1],
+            (1 << 0));
+        fn_80026760(wipeData->masuModelId[wipeData->updateType - 1],
             0.0f, 0.0f, -100.0f);
-        Hu3DModelScaleSet(wipeData->masuModelId[wipeData->updateType - 1],
+        fn_800268B0(wipeData->masuModelId[wipeData->updateType - 1],
             1.0f, 1.0f, 1.0f);
         GXSetCopyFilter(GX_TRUE, RenderMode->sample_pattern, GX_TRUE,
             RenderMode->vfilter);
-        Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565,
+        fn_8002BCDC(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565,
             GX_TRUE, wipeData->screenTexture);
         GXPixModeSync();
         GXSetCopyFilter(RenderMode->aa, RenderMode->sample_pattern, GX_TRUE,
@@ -581,7 +581,7 @@ static void WipeGridUpdate(HU3D_MODEL *model, Mtx *mtx,
         if (!mbPauseEnableCheck()) {
             wipeData->elapsedFrames++;
         }
-        cellScale = 1.0 - sin(M_PI * (90.0f * progress) / 180.0);
+        cellScale = 1.0 - sin(3.141592653589793 * (90.0f * progress) / 180.0);
         gridCell = gridWork->entry;
         for (gridIndex = 0; gridIndex < gridWork->count; gridCell++, gridIndex++) {
             MTXScale(gridCell->transform, cellScale, cellScale, 1.0f);
@@ -597,7 +597,7 @@ static void WipeGridUpdate(HU3D_MODEL *model, Mtx *mtx,
             wipeData->incomingComplete = 0;
         }
     } else {
-        gridWork = mbMalloc(sizeof(WIPE_GRID_WORK));
+        gridWork = fn_802137C0(sizeof(WIPE_GRID_WORK));
         wipeData->effectWork = gridWork;
         gridWork->xCount = 11;
         gridWork->yCount = 8;
@@ -615,7 +615,7 @@ static void WipeGridUpdate(HU3D_MODEL *model, Mtx *mtx,
         }
         GXSetCopyFilter(GX_TRUE, RenderMode->sample_pattern, GX_TRUE,
             RenderMode->vfilter);
-        Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565,
+        fn_8002BCDC(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565,
             GX_TRUE, wipeData->screenTexture);
         GXPixModeSync();
         GXSetCopyFilter(RenderMode->aa, RenderMode->sample_pattern, GX_TRUE,
@@ -639,16 +639,16 @@ static void WipePaperVtxUpdate(WIPE_PAPER_WORK *paperWork, float progress)
 
     paperVertex = paperWork->vtx;
     foldRadius = 200.0f * (1.0f - progress);
-    foldTravel = progress * (paperWork->length + ((float)M_PI * foldRadius));
+    foldTravel = progress * (paperWork->length + ((float)3.141592653589793 * foldRadius));
     for (sampleIndex = 0; sampleIndex < 64; sampleIndex++, paperVertex++) {
         profileDistance = paperVertex->distance + foldTravel;
         if (profileDistance < paperWork->length) {
             foldProfile[sampleIndex].x = profileDistance;
             foldProfile[sampleIndex].y = 0.0f;
             paperVertex->bend = 0.0f;
-        } else if (profileDistance < paperWork->length + ((float)M_PI * foldRadius)) {
+        } else if (profileDistance < paperWork->length + ((float)3.141592653589793 * foldRadius)) {
             profileDistance -= paperWork->length;
-            foldAngle = 360.0f * (profileDistance / (2.0f * (float)M_PI * foldRadius));
+            foldAngle = 360.0f * (profileDistance / (2.0f * (float)3.141592653589793 * foldRadius));
             foldProfile[sampleIndex].x = paperWork->length + (foldRadius * mbSinDeg(foldAngle));
             foldProfile[sampleIndex].y = foldRadius * (1.0f - mbCosDeg(foldAngle));
             if (foldAngle > 90.0f) {
@@ -656,7 +656,7 @@ static void WipePaperVtxUpdate(WIPE_PAPER_WORK *paperWork, float progress)
             }
             paperVertex->bend = foldAngle;
         } else {
-            profileDistance -= paperWork->length + ((float)M_PI * foldRadius);
+            profileDistance -= paperWork->length + ((float)3.141592653589793 * foldRadius);
             foldProfile[sampleIndex].x = paperWork->length - profileDistance;
             foldProfile[sampleIndex].y = 2.0f * foldRadius;
             paperVertex->bend = 0.0f;
@@ -668,7 +668,8 @@ static void WipePaperVtxUpdate(WIPE_PAPER_WORK *paperWork, float progress)
 
         segmentDirection.x = foldProfile[sampleIndex + 1].x - foldProfile[sampleIndex].x;
         segmentDirection.y = foldProfile[sampleIndex + 1].y - foldProfile[sampleIndex].y;
-        paperVertex->angle = 180.0 * (atan2(segmentDirection.y, segmentDirection.x) / M_PI);
+        paperVertex->angle = 180.0 * (atan2(segmentDirection.y,
+            segmentDirection.x) / 3.141592653589793);
     }
 }
 
@@ -713,9 +714,9 @@ static void WipePaperUpdate(HU3D_MODEL *model, Mtx *mtx,
             wipeData->incomingComplete = 0;
         }
     } else {
-        paperWork = mbMalloc(sizeof(WIPE_PAPER_WORK));
+        paperWork = fn_802137C0(sizeof(WIPE_PAPER_WORK));
         wipeData->effectWork = paperWork;
-        playerNo = GwSystem.turnPlayerNo;
+        playerNo = lbl_80265B70.turnPlayerNo;
         // Invalid player indices still use one of the four fixed paper directions.
         if (playerNo < 0) {
             playerNo = 0;
@@ -791,7 +792,7 @@ static void WipePaperUpdate(HU3D_MODEL *model, Mtx *mtx,
         }
         GXSetCopyFilter(GX_TRUE, RenderMode->sample_pattern, GX_TRUE,
             RenderMode->vfilter);
-        Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565,
+        fn_8002BCDC(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565,
             GX_TRUE, wipeData->screenTexture);
         GXPixModeSync();
         GXSetCopyFilter(RenderMode->aa, RenderMode->sample_pattern, GX_TRUE,
@@ -833,7 +834,7 @@ static void WipeImageUpdate(HU3D_MODEL *model, Mtx *mtx,
         }
     } else {
         if (!wipeData->effectWork) {
-            imageWork = mbMalloc(sizeof(WIPE_IMAGE_WORK));
+            imageWork = fn_802137C0(sizeof(WIPE_IMAGE_WORK));
             wipeData->effectWork = imageWork;
             imageWork->centerX = 288.0f;
             imageWork->centerY = 240.0f;
@@ -893,7 +894,7 @@ static void WipeGridDraw(HU3D_MODEL *model, Mtx *mtx,
     GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA,
         GX_LO_NOOP);
-    Hu3DTexLoad(wipeData->screenTexture, 320, 240, GX_TF_RGB565, GX_CLAMP,
+    fn_800360D8(wipeData->screenTexture, 320, 240, GX_TF_RGB565, GX_CLAMP,
         GX_CLAMP, GX_FALSE, GX_TEXMAP0);
     GXSetNumTevStages(1);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
@@ -990,7 +991,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
     GXInitLightColor(&light, paperLightColor);
     GXLoadLightObjImm(&light, GX_LIGHT0);
 
-    Hu3DTexLoad(wipeData->screenTexture, 320, 240, GX_TF_RGB565, GX_CLAMP,
+    fn_800360D8(wipeData->screenTexture, 320, 240, GX_TF_RGB565, GX_CLAMP,
         GX_CLAMP, GX_FALSE, GX_TEXMAP0);
     GXSetNumTevStages(1);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
@@ -1026,7 +1027,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
         PSVECSubtract(&paperVertex[1].pos[0], &paperVertex->pos[0], &segmentDeltas[0]);
         PSVECSubtract(&paperVertex[1].pos[1], &paperVertex->pos[1], &segmentDeltas[1]);
         PSMTXRotAxisRad(rotationMtx, &paperWork->rotationAxis,
-            ((float)M_PI / 180.0f) * paperVertex->angle);
+            ((float)3.141592653589793 / 180.0f) * paperVertex->angle);
         PSMTXMultVec(rotationMtx, &segmentDeltas[0], &segmentDeltas[0]);
         PSMTXMultVec(rotationMtx, &segmentDeltas[1], &segmentDeltas[1]);
         PSVECAdd(&currentEndpoints[0], &segmentDeltas[0], &nextEndpoints[0]);
@@ -1034,7 +1035,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
 
         GXBegin(GX_QUADS, GX_VTXFMT0, 4);
         PSMTXRotAxisRad(rotationMtx, &paperWork->rotationAxis,
-            ((float)M_PI / 180.0f) * (90.0f + paperVertex->bend));
+            ((float)3.141592653589793 / 180.0f) * (90.0f + paperVertex->bend));
         PSMTXMultVec(rotationMtx, &paperWork->sweepDirection, &lightingNormal);
         GXPosition3f32(currentEndpoints[0].x, currentEndpoints[0].y, currentEndpoints[0].z);
         GXNormal3f32(lightingNormal.x, lightingNormal.y, lightingNormal.z);
@@ -1044,7 +1045,7 @@ static void WipePaperDraw(HU3D_MODEL *model, Mtx *mtx,
         GXTexCoord2f32(paperVertex->texCoord[1].x, paperVertex->texCoord[1].y);
 
         PSMTXRotAxisRad(rotationMtx, &paperWork->rotationAxis,
-            ((float)M_PI / 180.0f) * (90.0f + paperVertex[1].bend));
+            ((float)3.141592653589793 / 180.0f) * (90.0f + paperVertex[1].bend));
         PSMTXMultVec(rotationMtx, &paperWork->sweepDirection, &lightingNormal);
         GXPosition3f32(nextEndpoints[1].x, nextEndpoints[1].y, nextEndpoints[1].z);
         GXNormal3f32(lightingNormal.x, lightingNormal.y, lightingNormal.z);
@@ -1185,7 +1186,7 @@ void mbWipeSpecialCreate(int mode, int type, int durationFrames)
     WIPE_SPECIAL_DATA *wipeData = &wipeSpecialData;
     void *effectData;
 
-    if (!_CheckFlag(FLAG_BOARD_TUTORIAL) || !mbTutorialExitReqGet()) {
+    if (!fn_8006A124(65550) || !mbTutorialExitReqGet()) {
         wipeData->mode = mode;
         wipeData->updateType = type;
         wipeData->elapsedFrames = 0;
@@ -1209,7 +1210,7 @@ static inline BOOL mbWipeSpecialFadeCreate(int mode, int type, int durationFrame
     void *effectData;
     BOOL shouldRunWipe;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL) && mbTutorialExitReqGet()) {
+    if (fn_8006A124(65550) && mbTutorialExitReqGet()) {
         shouldRunWipe = FALSE;
     } else {
         wipeData->mode = mode;

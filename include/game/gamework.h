@@ -61,8 +61,8 @@ typedef struct GwPlayer_s {
     s16 star; //0x30
     s16 starMax; //0x32
     s16 capsuleUseNum; //0x34
-    u16 starGraph[GW_PLAYER_GRAPH_SIZE]; //0x36
-    u16 coinGraph[GW_PLAYER_GRAPH_SIZE]; //0x9E
+    u16 starGraph[52]; //0x36
+    u16 coinGraph[52]; //0x9E
 } GW_PLAYER;
 
 typedef struct GwDecaScore_s {
@@ -99,7 +99,7 @@ typedef struct GwSystem_s {
 	u8 curTime : 1; //0x10 Bit 6
 	u8 timeTurn; //0x11
 	u8 timeTurnMax; //0x12
-	u32 boardWork[GW_BOARD_WORK_SIZE/4]; //0x14
+	u32 boardWork[32/4]; //0x14
 	u8 comKeyDelay; //0x34
     u8 mgEvent : 4; //0x35 Bits 4-7
     s8 playerMode; //0x36
@@ -121,12 +121,12 @@ typedef struct GwCommon_s {
 	OSTime time; //0x08
 	char name[17]; //0x10
 	u32 mgUnlock[4]; //0x24
-	u32 record[GW_RECORD_MAX]; //0x34
-	u16 charPlayNum[GW_BOARD_MAX][GW_CHARA_MAX]; //0x54
-    u16 boardPlayNum[GW_BOARD_MAX]; //0x188
-    u16 boardMaxStar[GW_BOARD_MAX][GW_CHARA_MAX]; //0x19E
-    u16 boardMaxCoin[GW_BOARD_MAX][GW_CHARA_MAX]; //0x2D2
-	u8 singleMgWinNum[GW_PLAYER_COM_DIF_MAX]; //0x406
+	u32 record[8]; //0x34
+	u16 charPlayNum[11][14]; //0x54
+    u16 boardPlayNum[11]; //0x188
+    u16 boardMaxStar[11][14]; //0x19E
+    u16 boardMaxCoin[11][14]; //0x2D2
+	u8 singleMgWinNum[4]; //0x406
 	u8 singleBoardPlayNum[3]; //0x40A
 	u64 singleBoardFlag[3]; //0x410
 	//General Flags
@@ -155,10 +155,10 @@ typedef struct GwCommon_s {
 	u8 confTag : 1; //0x42D Bit 7
 	u8 confSingleDiff : 2; //0x42D Bits 5-6
 	s8 lastBoard; //0x42E
-	GW_DECA_SCORE decaScore[GW_DECA_SCORE_MAX]; //0x430
+	GW_DECA_SCORE decaScore[10]; //0x430
 	u16 decaMgRecord[10]; //0x520
 	u8 renshoMgRecordNum; //0x534
-	u8 renshoMgRecord[GW_RENSHO_MG_MAX]; //0x535
+	u8 renshoMgRecord[100]; //0x535
 	u16 bankStar; //0x59A
 	u16 bankStarAward; //0x59C
 	u32 bankFlag[2]; //0x5A0
@@ -169,216 +169,224 @@ typedef struct GwCommon_s {
     u8 unk5C8[8];
 } GW_COMMON; //size=0x5D0
 
-extern GW_DECA_SCORE GwMgDecaScore[GW_PLAYER_MAX];
-extern u32 GwSingleMgFlag[3];
-extern GW_COMMON GwCommonOrig;
-extern GW_COMMON GwCommon;
-extern GW_SYSTEM GwSystem;
-extern GW_PLAYER GwPlayer[GW_PLAYER_MAX];
-extern GW_PLAYER_CONF GwPlayerConf[GW_PLAYER_MAX];
+extern GW_DECA_SCORE lbl_802669DC[4];
+extern u32 lbl_802669D0[3];
+extern GW_COMMON lbl_80266400;
+extern GW_COMMON lbl_80265E30;
+extern GW_SYSTEM lbl_80265B70;
+extern GW_PLAYER lbl_80265750[4];
+extern GW_PLAYER_CONF lbl_80265728[4];
 
 static inline GW_PLAYER *GWPlayerGet(int playerNo)
 {
-    return &GwPlayer[playerNo];
+    return &lbl_80265750[playerNo];
 }
 
-extern u32 GwSinglePrizeFlag[];
-extern s16 GwMgNightF;
+extern u32 lbl_802C0280[];
+extern s16 lbl_802C0278;
 
-extern s16 GwLanguage;
-extern s16 GwLanguageSave;
+extern s16 lbl_802BF788;
+extern s16 lbl_802BF78A;
 
 static inline void GWLanguageSet(int languageNo)
 {
-    GwCommon.languageNo = languageNo;
+    lbl_80265E30.languageNo = languageNo;
 }
 
 static inline int GWLanguageGet(void)
 {
-    return GwCommon.languageNo;
+    return lbl_80265E30.languageNo;
 }
 
 static inline void GWVibrateSet(BOOL value)
 {
-    //HACK: to prevent prototype errors
-    extern void HuPadRumbleAllStop(void);
-    GwCommon.vibrateF = value;
+    extern void fn_80006F3C(void);
+    lbl_80265E30.vibrateF = value;
 	if(value == FALSE) {
-		HuPadRumbleAllStop();
+		fn_80006F3C();
 	}
 }
 
 static inline BOOL GWVibrateGet()
 {
-    return GwCommon.vibrateF;
+    return lbl_80265E30.vibrateF;
 }
 
 static inline void GWBonusStarSet(BOOL flag)
 {
-    GwSystem.bonusStarF = flag;
+    lbl_80265B70.bonusStarF = flag;
 }
 
 static inline BOOL GWBonusStarGet(void)
 {
-    return GwSystem.bonusStarF;
+    return lbl_80265B70.bonusStarF;
 }
 
 static inline void GWMgInstDispSet(BOOL flag)
 {
-    GwSystem.mgInstDispF = flag;
+    lbl_80265B70.mgInstDispF = flag;
 }
 
 static inline BOOL GWMgInstDispGet(void)
 {
-    return GwSystem.mgInstDispF;
+    return lbl_80265B70.mgInstDispF;
 }
 
 static inline void GWMgComDispSet(BOOL flag)
 {
-    GwSystem.mgComDispF = flag;
+    lbl_80265B70.mgComDispF = flag;
 }
 
 static inline BOOL GWMgComDispGet(void)
 {
-    return GwSystem.mgComDispF;
+    return lbl_80265B70.mgComDispF;
 }
-
 
 static inline GW_MESS_SPEED GWMessSpeedGet(void)
 {
-    if (GwSystem.messSpeed == GW_MESS_SPEED_MAX) {
-        GwSystem.messSpeed = GW_MESS_SPEED_NORMAL;
+    if (lbl_80265B70.messSpeed == 3) {
+        lbl_80265B70.messSpeed = 1;
     }
-    return (GW_MESS_SPEED)GwSystem.messSpeed;
+    return (GW_MESS_SPEED)lbl_80265B70.messSpeed;
 }
 
 static inline void GWMessSpeedSet(GW_MESS_SPEED value)
 {
-	GwSystem.messSpeed = value;
+	lbl_80265B70.messSpeed = value;
 	switch(value) {
-		case GW_MESS_SPEED_FAST:
-			GwSystem.comKeyDelay = 16;
+		case 0:
+			lbl_80265B70.comKeyDelay = 16;
 			break;
 			
-		case GW_MESS_SPEED_SLOW:
-			GwSystem.comKeyDelay = 48;
+		case 2:
+			lbl_80265B70.comKeyDelay = 48;
 			break;
 			
 		default:
-			GwSystem.comKeyDelay = 32;
+			lbl_80265B70.comKeyDelay = 32;
 			break;
 	}
 }
 
 static inline void GWSaveModeSet(GW_SAVE_MODE value)
 {
-    GwSystem.saveMode = value;
+    lbl_80265B70.saveMode = value;
 }
 
 static inline GW_SAVE_MODE GWSaveModeGet(void)
 {
-    if (GwSystem.saveMode == GW_SAVE_MODE_MAX) {
-		GWSaveModeSet(GW_SAVE_MODE_NEVER);
+    if (lbl_80265B70.saveMode == 3) {
+		GWSaveModeSet(1);
     }
-    return (GW_SAVE_MODE)GwSystem.saveMode;
+    return (GW_SAVE_MODE)lbl_80265B70.saveMode;
 }
 
 static inline BOOL GWPartyGet(void)
 {
-    return GwSystem.partyF;
+    return lbl_80265B70.partyF;
 }
 
 static inline void GWPartySet(BOOL flag)
 {
-    GwSystem.partyF = flag;
+    lbl_80265B70.partyF = flag;
 }
 
 static inline BOOL GWTeamFGet(void)
 {
-    return GwSystem.tagF;
+    return lbl_80265B70.tagF;
 }
 
 static inline GW_PLAYER_COM_DIF GWStoryComDifGet(void)
 {
-    return (GW_PLAYER_COM_DIF)GwSystem.storyComDif;
+    return (GW_PLAYER_COM_DIF)lbl_80265B70.storyComDif;
 }
 
 static inline void GWSingleMgWinInc(GW_PLAYER_COM_DIF comDif)
 {
-    if(GwCommon.singleMgWinNum[comDif] < GW_SINGLE_MGWIN_MAX) {
-        GwCommon.singleMgWinNum[comDif]++;
+    if(lbl_80265E30.singleMgWinNum[comDif] < 99) {
+        lbl_80265E30.singleMgWinNum[comDif]++;
     }
 }
 
 static inline void GWMgCoinBonusSet(s32 playerNo, s16 mgCoin)
 {
-    if(_CheckFlag(FLAG_MG_PRACTICE)) {
+    if(fn_8006A124(65551)) {
         return;
     }
-    GwPlayer[playerNo].mgCoinBonus = mgCoin;
+    lbl_80265750[playerNo].mgCoinBonus = mgCoin;
 }
 
 static inline void GWMgCoinSet(s32 playerNo, s16 mgCoin)
 {
-    GwPlayer[playerNo].mgCoin = mgCoin;
+    lbl_80265750[playerNo].mgCoin = mgCoin;
+}
+
+static inline s16 GWMgCoinBonusGet(s32 playerNo)
+{
+    return lbl_80265750[playerNo].mgCoinBonus;
+}
+
+static inline s16 GWMgCoinGet(s32 playerNo)
+{
+    return lbl_80265750[playerNo].mgCoin;
 }
 
 static inline void GWMgScoreSet(s32 playerNo, u32 mgScore)
 {
-    GwPlayer[playerNo].mgScore = mgScore;
+    lbl_80265750[playerNo].mgScore = mgScore;
 }
 
-void GWInit(void);
-void GWCommonInit(void);
-int GWComKeyDelayGet(void);
-void GWRecordSet(GW_RECORD_NO recordNo, u32 recordVal);
-u32 GWRecordGet(GW_RECORD_NO recordNo);
-void GWCharColorGet(GW_CHARA_ID charNo, GXColor *colorP);
-void GWBoardPlayNumSet(GW_BOARD_NO boardNo, u8 num);
-void GWBoardPlayNumAdd(GW_BOARD_NO boardNo, u8 num);
-u16 GWBoardPlayNumGet(GW_BOARD_NO boardNo);
-void GWBoardMaxStarSet(GW_BOARD_NO boardNo, s32 value, u8 charNo);
-u16 GWBoardMaxStarGet(GW_BOARD_NO boardNo, u8 charNo);
-void GWBoardMaxCoinSet(GW_BOARD_NO boardNo, s32 value, u8 charNo);
-u16 GWBoardMaxCoinGet(GW_BOARD_NO boardNo, u8 charNo);
-int GWCharPlayNumInc(GW_CHARA_ID charNo, GW_BOARD_NO boardNo);
-int GWCharPlayNumGet(GW_CHARA_ID charNo, GW_BOARD_NO boardNo);
-void GWCharPlayNumSet(GW_CHARA_ID charNo, GW_BOARD_NO boardNo, int value);
-BOOL GWMgUnlockGet(int mgNo);
-void GWMgUnlockSet(int mgNo);
+void fn_8003C0E8(void);
+void fn_8003C2DC(void);
+int fn_8003C7C0(void);
+void fn_8003C80C(GW_RECORD_NO recordNo, u32 recordVal);
+u32 fn_8003C860(GW_RECORD_NO recordNo);
+void fn_8003C878(GW_CHARA_ID charNo, GXColor *colorP);
+void fn_8003CA78(GW_BOARD_NO boardNo, u8 num);
+void fn_8003CAA4(GW_BOARD_NO boardNo, u8 num);
+u16 fn_8003CAE8(GW_BOARD_NO boardNo);
+void fn_8003CB00(GW_BOARD_NO boardNo, s32 value, u8 charNo);
+u16 fn_8003CB28(GW_BOARD_NO boardNo, u8 charNo);
+void fn_8003CB4C(GW_BOARD_NO boardNo, s32 value, u8 charNo);
+u16 fn_8003CB74(GW_BOARD_NO boardNo, u8 charNo);
+int fn_8003CB98(GW_CHARA_ID charNo, GW_BOARD_NO boardNo);
+int fn_8003CBFC(GW_CHARA_ID charNo, GW_BOARD_NO boardNo);
+void fn_8003CC1C(GW_CHARA_ID charNo, GW_BOARD_NO boardNo, int value);
+BOOL fn_8003CC40(int mgNo);
+void fn_8003CCAC(int mgNo);
 
-s16 GWPlayerCoinGet(GW_PLAYER_ID playerNo);
-void GWPlayerCoinSet(GW_PLAYER_ID playerNo, s16 coin);
-void GWPlayerCoinAdd(GW_PLAYER_ID playerNo, s16 coin);
-void GWPlayerStarSet(GW_PLAYER_ID playerNo, s16 star);
-void GWPlayerStarAdd(GW_PLAYER_ID playerNo, s16 star);
+s16 fn_8003CD14(GW_PLAYER_ID playerNo);
+void fn_8003CD2C(GW_PLAYER_ID playerNo, s16 coin);
+void fn_8003CDDC(GW_PLAYER_ID playerNo, s16 coin);
+void fn_8003CEAC(GW_PLAYER_ID playerNo, s16 star);
+void fn_8003CF18(GW_PLAYER_ID playerNo, s16 star);
 
-void GWSinglePrizeFlagSet(GW_SINGLE_PRIZE_FLAG flag);
-BOOL GWSinglePrizeFlagGet(GW_SINGLE_PRIZE_FLAG flag);
-void GWSingleDataInit(void);
-void GWSinglePrizeSaveFlagSet(void);
-BOOL GWSinglePrizeSaveFlagGet(GW_SINGLE_PRIZE_FLAG flag);
-int GWSingleMgFlagSet(int mgNo);
-BOOL GWSingleMgFlagGet(int mgNo);
-void GWBankStarAdd(u16 num);
-void GWBankStarSub(u16 num);
-u16 GWBankStarGet(void);
-u16 GWBankStarAwardGet(void);
-void GWBankStarAwardReset(void);
-void GWBankFlagSet(GW_BANK_FLAG flag);
-void GWBankFlagReset(GW_BANK_FLAG flag);
-BOOL GWBankFlagGet(GW_BANK_FLAG flag);
-void GWMiracleBookFlagSet(GW_MIRACLE_BOOK_FLAG flag);
-BOOL GWMiracleBookFlagGet(GW_MIRACLE_BOOK_FLAG flag);
-void GWMgPlayNumSet(u16 num);
-u16 GWMgPlayNumGet(void);
-void GWMgPlayNumAdd(s16 num);
-void GWMikeActRecordSet(s16 recordNo, u32 recordVal);
-u32 GWMikeActRecordGet(s16 recordNo);
-u16 GWSingleMgWinNumGet(void);
-void GWSingleMgWinNumSet(u16 val);
-u16 GWSingleMgRecordNumGet(void);
-void GWSingleMgRecordNumSet(u16 val);
-void GWSaveDebugSet(void);
+void fn_8003CFC4(GW_SINGLE_PRIZE_FLAG flag);
+BOOL fn_8003CFF4(GW_SINGLE_PRIZE_FLAG flag);
+void fn_8003D028(void);
+void fn_8003D070(void);
+BOOL fn_8003D0A8(GW_SINGLE_PRIZE_FLAG flag);
+int fn_8003D0E4(int mgNo);
+BOOL fn_8003D12C(int mgNo);
+void fn_8003D174(u16 num);
+void fn_8003D200(u16 num);
+u16 fn_8003D248(void);
+u16 fn_8003D258(void);
+void fn_8003D268(void);
+void fn_8003D27C(GW_BANK_FLAG flag);
+void fn_8003D2B4(GW_BANK_FLAG flag);
+BOOL fn_8003D2F0(GW_BANK_FLAG flag);
+void fn_8003D32C(GW_MIRACLE_BOOK_FLAG flag);
+BOOL fn_8003D364(GW_MIRACLE_BOOK_FLAG flag);
+void fn_8003D3A0(u16 num);
+u16 fn_8003D3A8(void);
+void fn_8003D3B0(s16 num);
+void fn_8003D404(s16 recordNo, u32 recordVal);
+u32 fn_8003D420(s16 recordNo);
+u16 fn_8003D43C(void);
+void fn_8003D444(u16 val);
+u16 fn_8003D44C(void);
+void fn_8003D454(u16 val);
+void fn_8003D45C(void);
 
 #endif

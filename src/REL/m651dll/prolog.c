@@ -1,4 +1,5 @@
 /* Black Hole runs global constructors before module setup and destructors on exit. */
+#include <math.h>
 #include "REL/m651dll.h"
 
 typedef void (*VoidFunc)(void);

@@ -30,23 +30,23 @@ HU3D_MODELID fn_1_0(s16 minigameIndex, s16 stillIndex, Point3d *previewPosition)
     HUSPRID movieSpriteId;
 
     lbl_1_bss_A0 = stillIndex;
-    lbl_1_bss_A4 = Hu3DHookFuncCreate(fn_1_898);
-    Hu3DModelCameraSet(lbl_1_bss_A4, 1);
-    Hu3DModelLayerSet(lbl_1_bss_A4, 5);
-    Hu3DModelPosSetV(lbl_1_bss_A4, previewPosition);
-    Hu3DModelScaleSet(
+    lbl_1_bss_A4 = fn_800260F4(fn_1_898);
+    fn_80026B64(lbl_1_bss_A4, 1);
+    fn_80026B8C(lbl_1_bss_A4, 5);
+    fn_80026790(lbl_1_bss_A4, previewPosition);
+    fn_800268B0(
         lbl_1_bss_A4,
         1.0f,
         1.0f,
         1.0f);
     lbl_1_bss_9C = HuSprAnimRead(
-        HuDataSelHeapReadNum(DATANUM(DATA_mgmrensho, 25), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80008DD0(DATANUM(0xa00000, 25), 0x10000000, 2));
     lbl_1_bss_A2 = HuSprGrpCreate(1);
 
     if (minigameIndex != -1) {
         lbl_1_bss_90 = &MgDataTbl[minigameIndex];
-        stillData = HuDataReadNumHeapShortForce(
-            lbl_1_bss_90->instPic[stillIndex][0], HU_MEMNUM_OVL, HEAP_MODEL);
+        stillData = fn_80009B04(
+            lbl_1_bss_90->instPic[stillIndex][0], 0x10000000, 2);
         lbl_1_bss_98 = HuSprAnimRead(stillData);
         movieSpriteId = HuTHPSprCreateVol(
             lbl_1_bss_90->movie[stillIndex][0], 1, 100, 0.0f);
@@ -55,14 +55,14 @@ HU3D_MODELID fn_1_0(s16 minigameIndex, s16 stillIndex, Point3d *previewPosition)
         HuSprPosSet(lbl_1_bss_A2, 0, 128.0f, 128.0f);
     } else {
         lbl_1_bss_90 = NULL;
-        stillData = HuDataReadNumHeapShortForce(
-            DATANUM(DATA_mgmrensho, 25), HU_MEMNUM_OVL, HEAP_MODEL);
+        stillData = fn_80009B04(
+            DATANUM(0xa00000, 25), 0x10000000, 2);
         lbl_1_bss_98 = HuSprAnimRead(stillData);
     }
 
     lbl_1_bss_94 = HuMemDirectMallocNum(
-        0, GXGetTexBufferSize(284, 256, GX_TF_RGB565, 0, 0), HU_MEMNUM_OVL);
-    Hu3DCameraLayerHookSet(1, 0, fn_1_854);
+        0, GXGetTexBufferSize(284, 256, GX_TF_RGB565, 0, 0), 0x10000000);
+    fn_8002583C(1, 0, fn_1_854);
     return lbl_1_bss_A4;
 }
 
@@ -73,19 +73,19 @@ void fn_1_2A4(s16 minigameCount, u8 *minigameOrder) {
     lbl_1_bss_88 = 0;
     lbl_1_bss_0 = minigameCount;
     lbl_1_bss_8C = HuMemDirectMallocNum(
-        0, minigameCount * sizeof(ANIMDATA *) * 2, HU_MEMNUM_OVL);
+        0, minigameCount * sizeof(ANIMDATA *) * 2, 0x10000000);
     for (minigameOrderIndex = 0; minigameOrderIndex < lbl_1_bss_0; minigameOrderIndex++) {
         lbl_1_bss_2[minigameOrderIndex] = minigameOrder[minigameOrderIndex];
         lbl_1_bss_8C[minigameOrderIndex * 2] = HuSprAnimRead(
-            HuDataReadNumHeapShortForce(
+            fn_80009B04(
                 MgDataTbl[lbl_1_bss_2[minigameOrderIndex]].instPic[0][0],
-                HU_MEMNUM_OVL,
-                HEAP_MODEL));
+                0x10000000,
+                2));
         lbl_1_bss_8C[minigameOrderIndex * 2 + 1] = HuSprAnimRead(
-            HuDataReadNumHeapShortForce(
+            fn_80009B04(
                 MgDataTbl[lbl_1_bss_2[minigameOrderIndex]].instPic[1][0],
-                HU_MEMNUM_OVL,
-                HEAP_MODEL));
+                0x10000000,
+                2));
     }
     lbl_1_bss_2[minigameOrderIndex] = 255;
     lbl_1_bss_84 = lbl_1_bss_98;
@@ -133,12 +133,12 @@ void fn_1_5E0(s16 minigameIndex, s16 stillIndex) {
     if (minigameIndex != -1) {
         lbl_1_bss_A0 = stillIndex;
         lbl_1_bss_90 = &MgDataTbl[minigameIndex];
-        stillData = HuDataReadNumHeapShortForce(lbl_1_bss_90->instPic[stillIndex][0], HU_MEMNUM_OVL,
-                                                HEAP_MODEL);
+        stillData = fn_80009B04(lbl_1_bss_90->instPic[stillIndex][0], 0x10000000,
+                                                2);
     } else {
         lbl_1_bss_90 = NULL;
         stillData =
-            HuDataReadNumHeapShortForce(DATANUM(DATA_mgmrensho, 25), HU_MEMNUM_OVL, HEAP_MODEL);
+            fn_80009B04(DATANUM(0xa00000, 25), 0x10000000, 2);
     }
     lbl_1_bss_98 = HuSprAnimRead(stillData);
     HuSprAnimKill(previousAnimation);
@@ -177,7 +177,7 @@ void fn_1_824(void) {
 
 /* Called by the preview camera hook to capture the movie frame texture. */
 void fn_1_854(s16 previewLayer) {
-    Hu3DFbCopyExec(0, 0, 284, 256, GX_TF_RGB565, 0, lbl_1_bss_94);
+    fn_8002BCDC(0, 0, 284, 256, GX_TF_RGB565, 0, lbl_1_bss_94);
 }
 
 /* Called by the preview model hook to draw the movie or still image with the frame overlay. */
@@ -197,7 +197,7 @@ void fn_1_898(HU3D_MODEL *previewModel, Mtx *modelMatrix)
     GXSetNumChans(0);
     GXLoadPosMtxImm(*modelMatrix, 0);
     if (HuTHPStartCheck() != 0) {
-        Hu3DTexLoad(lbl_1_bss_94, 284, 256, 4, GX_CLAMP, GX_CLAMP, GX_TRUE,
+        fn_800360D8(lbl_1_bss_94, 284, 256, 4, GX_CLAMP, GX_CLAMP, GX_TRUE,
                     GX_TEXMAP0);
     } else {
         HuSprTexLoad(lbl_1_bss_98, 0, 0, 0, 0, 1);

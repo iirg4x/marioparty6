@@ -35,7 +35,7 @@ void fn_1_FE8(void);
 void fn_1_3F8C(void);
 void fn_1_5590(void);
 void fn_1_B57C(void);
-void _SetFlag(u32 flag);
+void fn_8006A1C4(u32 flag);
 extern s16 MgModeSubMode;
 extern u8 MgModePlayNum;
 extern u8 MgModeWork[256];
@@ -107,7 +107,7 @@ void fn_1_D69C(void)
         /* Only unlocked Duel minigames enter the tournament's game list. */
         while (MgDataTbl[index].ovl != TOURNAMENT_GAME_TABLE_END) {
             remainingGameCount = index + TOURNAMENT_UNLOCK_GAME_BASE;
-            if (GWMgUnlockGet(remainingGameCount) != 0 && MgDataTbl[index].type == MG_TYPE_KETTOU) {
+            if (fn_8003CC40(remainingGameCount) != 0 && MgDataTbl[index].type == MG_TYPE_KETTOU) {
                 MgModeWork[candidateIndex] = index;
                 candidateIndex++;
             }
@@ -146,7 +146,7 @@ void fn_1_D69C(void)
     } else {
         MgModeSubMode = history->evtno;
     }
-    _SetFlag(FLAG_INST_MG_MODE);
+    fn_8006A1C4(196609);
     index = Hu3DGLightCreate(
         0.0f, 1000.0f, 1000.0f,
         0.0f, -1.0f, -0.5f,
@@ -171,7 +171,7 @@ void fn_1_D69C(void)
     if (history->evtno != 0) {
         /* Preserve the returned minigame's coin results before advancing its list entry. */
         for (index = 0; index < 4; index++) {
-            coinBonus = GwPlayer[index].mgCoinBonus;
+            coinBonus = lbl_80265750[index].mgCoinBonus;
             MgModeWorkInt[index + 8] = coinBonus;
         }
         MgModePlayNum++;
@@ -205,9 +205,9 @@ void fn_1_DBB0(void) {
     fn_1_4A1C();
     fn_1_1BA0();
     fn_1_1134();
-    _ClearFlag(FLAG_INST_MG_MODE);
+    fn_8006A268(196609);
     SLSaveModeExec(0);
-    omOvlReturnEx(1, 1);
+    fn_8003A5E4(1, 1);
     HuPrcEnd();
 while (1) {
         HuPrcVSleep();
@@ -279,9 +279,9 @@ void fn_1_DC28(void)
             fn_1_4A1C();
             fn_1_1BA0();
             fn_1_1134();
-            _ClearFlag(FLAG_INST_MG_MODE);
+            fn_8006A268(196609);
             SLSaveModeExec(0);
-            omOvlReturnEx(1, 1);
+            fn_8003A5E4(1, 1);
             HuPrcEnd();
             while (1) {
                 HuPrcVSleep();
@@ -300,7 +300,7 @@ void fn_1_DC28(void)
             }
             fn_1_B80C();
             fn_1_824();
-            omOvlReturnEx(0, 1);
+            fn_8003A5E4(0, 1);
             while (1) {
                 HuPrcVSleep();
             }
@@ -324,14 +324,14 @@ void fn_1_DC28(void)
             HuPrcVSleep();
         }
         /* This round choice enters the minigame without its instruction screen. */
-        GwSystem.mgInstDispF = 0;
+        lbl_80265B70.mgInstDispF = 0;
         gameId = MgModeWork[MgModePlayNum] + TOURNAMENT_UNLOCK_GAME_BASE;
-        GWMgUnlockSet(gameId);
-        GwSystem.mgNo = gameId - TOURNAMENT_UNLOCK_GAME_BASE;
+        fn_8003CCAC(gameId);
+        lbl_80265B70.mgNo = gameId - TOURNAMENT_UNLOCK_GAME_BASE;
         if (lbl_1_bss_128 != 0) {
-            GwMgNightF = 1;
+            lbl_802C0278 = 1;
         } else {
-            GwMgNightF = 0;
+            lbl_802C0278 = 0;
         }
         fn_1_B80C();
         fn_1_824();
@@ -353,14 +353,14 @@ void fn_1_DC28(void)
             HuPrcVSleep();
         }
         /* This round choice enters through the minigame's instruction screen. */
-        GwSystem.mgInstDispF = 1;
+        lbl_80265B70.mgInstDispF = 1;
         gameId = MgModeWork[MgModePlayNum] + TOURNAMENT_UNLOCK_GAME_BASE;
-        GWMgUnlockSet(gameId);
-        GwSystem.mgNo = gameId - TOURNAMENT_UNLOCK_GAME_BASE;
+        fn_8003CCAC(gameId);
+        lbl_80265B70.mgNo = gameId - TOURNAMENT_UNLOCK_GAME_BASE;
         if (lbl_1_bss_128 != 0) {
-            GwMgNightF = 1;
+            lbl_802C0278 = 1;
         } else {
-            GwMgNightF = 0;
+            lbl_802C0278 = 0;
         }
         fn_1_B80C();
         fn_1_824();
@@ -418,10 +418,10 @@ void fn_1_DC28(void)
             fn_1_B80C();
             fn_1_824();
             fn_1_4A1C();
-            _ClearFlag(FLAG_INST_MG_MODE);
+            fn_8006A268(196609);
             SLSaveModeExec(0);
             omOvlHisChg(0, history->ovl, 0, 0);
-            omOvlReturnEx(0, 1);
+            fn_8003A5E4(0, 1);
             while (1) {
                 HuPrcVSleep();
             }
@@ -438,9 +438,9 @@ void fn_1_DC28(void)
         fn_1_4A1C();
         fn_1_1BA0();
         fn_1_1134();
-        _ClearFlag(FLAG_INST_MG_MODE);
+        fn_8006A268(196609);
         SLSaveModeExec(0);
-        omOvlReturnEx(1, 1);
+        fn_8003A5E4(1, 1);
         HuPrcEnd();
         while (1) {
             HuPrcVSleep();

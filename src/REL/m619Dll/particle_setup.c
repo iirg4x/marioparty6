@@ -32,13 +32,13 @@ void fn_1_C69C(M619ParticleEffect *work, const HuVecF *position,
     mainState = (M619Scene *)lbl_1_bss_0->data;
     model = fn_1_C7E4(work, mainState->animations[0], 5);
     work->model = model;
-    Hu3DModelLayerSet(model, 6);
-    Hu3DParticleHookSet(model, fn_1_C948);
-    Hu3DParticleBlendModeSet(model, 1U);
-    Hu3DParticleColSet(model, 255U, 255U, 255U);
-    Hu3DModelAttrSet(model, 1U);
-    Hu3DModelPosSet(model, 0.0f, 0.0f, 0.0f);
-    Hu3DModelRotSet(model, 0.0f, 0.0f, 0.0f);
+    fn_80026B8C(model, 6);
+    fn_800326D0(model, fn_1_C948);
+    fn_8003269C(model, 1U);
+    fn_800325B0(model, 255U, 255U, 255U);
+    fn_800269E8(model, 1U);
+    fn_80026760(model, 0.0f, 0.0f, 0.0f);
+    fn_80026808(model, 0.0f, 0.0f, 0.0f);
     work->position = *position;
     work->positionSource = position;
     work->rotation = *rotation;
@@ -54,8 +54,8 @@ inline s16 fn_1_C7E4(void *owner, ANIMDATA *animation, s32 particleCount) {
     HU3D_PARTICLE_DATA *particle;
     s32 particleIndex;
 
-    particleSystemId = Hu3DParticleCreate(animation, (s16)particleCount);
-    particleSystem = (HU3D_PARTICLE *)Hu3DData[particleSystemId].hookData;
+    particleSystemId = fn_8003216C(animation, (s16)particleCount);
+    particleSystem = (HU3D_PARTICLE *)lbl_802C01C8[particleSystemId].hookData;
     particleSystem->work = owner;
     particle = particleSystem->data;
     particleIndex = 0;
@@ -70,7 +70,7 @@ inline s16 fn_1_C7E4(void *owner, ANIMDATA *animation, s32 particleCount) {
 }
 
 void fn_1_C890(M619ParticleEffect *effect) {
-    Hu3DModelAttrReset(effect->model, 1U);
+    fn_80026A44(effect->model, 1U);
     effect->state = 16;
 }
 
@@ -79,11 +79,11 @@ void fn_1_C8CC(M619ParticleEffect *effect) {
 }
 
 void fn_1_C8D8(M619ParticleEffect *flash, HuVecF *position) {
-    Hu3DModelPosSetV(flash->model, position);
+    fn_80026790(flash->model, position);
 }
 
 void fn_1_C910(M619ParticleEffect *flash, HuVecF *rotation) {
-    Hu3DModelRotSetV(flash->model, rotation);
+    fn_80026838(flash->model, rotation);
 }
 
 /* Updates the five-particle burst from its source position on each model hook. */
@@ -172,7 +172,7 @@ void fn_1_C948(HU3D_MODEL *model, HU3D_PARTICLE *task, Mtx matrix) {
         DCStoreRangeNoSync(task->data,
                            task->maxCnt * sizeof(HU3D_PARTICLE_DATA));
         if (completedCount == pointCount) {
-            Hu3DModelAttrReset(state->model, 1U);
+            fn_80026A44(state->model, 1U);
             state->state = 0;
         }
         /* fall through */
@@ -190,14 +190,14 @@ void fn_1_CE20(M619ParticleEffect *work, const HuVecF *position,
     mainState = (M619Scene *)lbl_1_bss_0->data;
     particleModel = fn_1_C7E4(work, mainState->animations[0], 16);
     work->model = particleModel;
-    Hu3DModelLayerSet(particleModel, 6);
-    Hu3DParticleHookSet(particleModel, fn_1_D004);
-    Hu3DParticleBlendModeSet(particleModel, 1U);
-    Hu3DParticleColSet(particleModel, 255U, 255U, 255U);
-    Hu3DModelAttrSet(particleModel, 1U);
-    Hu3DModelPosSet(particleModel, 0.0f, 0.0f,
+    fn_80026B8C(particleModel, 6);
+    fn_800326D0(particleModel, fn_1_D004);
+    fn_8003269C(particleModel, 1U);
+    fn_800325B0(particleModel, 255U, 255U, 255U);
+    fn_800269E8(particleModel, 1U);
+    fn_80026760(particleModel, 0.0f, 0.0f,
                     0.0f);
-    Hu3DModelRotSet(particleModel, 0.0f, 0.0f,
+    fn_80026808(particleModel, 0.0f, 0.0f,
                     0.0f);
     work->position.x = 0.0f;
     work->position.y = 0.0f;
@@ -300,14 +300,14 @@ void fn_1_D420(M619ParticleEffect *work, const HuVecF *position,
     mainState = (M619Scene *)lbl_1_bss_0->data;
     particleModel = fn_1_C7E4(work, mainState->animations[0], 32);
     work->model = particleModel;
-    Hu3DModelLayerSet(particleModel, 6);
-    Hu3DParticleHookSet(particleModel, fn_1_D604);
-    Hu3DParticleBlendModeSet(particleModel, 1U);
-    Hu3DParticleColSet(particleModel, 255U, 255U, 255U);
-    Hu3DModelAttrSet(particleModel, 1U);
-    Hu3DModelPosSet(particleModel, 0.0f, 0.0f,
+    fn_80026B8C(particleModel, 6);
+    fn_800326D0(particleModel, fn_1_D604);
+    fn_8003269C(particleModel, 1U);
+    fn_800325B0(particleModel, 255U, 255U, 255U);
+    fn_800269E8(particleModel, 1U);
+    fn_80026760(particleModel, 0.0f, 0.0f,
                     0.0f);
-    Hu3DModelRotSet(particleModel, 0.0f, 0.0f,
+    fn_80026808(particleModel, 0.0f, 0.0f,
                     0.0f);
     work->position.x = 0.0f;
     work->position.y = 0.0f;
@@ -406,14 +406,14 @@ void fn_1_D9EC(M619ParticleEffect *work, const HuVecF *position,
     mainState = (M619Scene *)lbl_1_bss_0->data;
     particleModel = fn_1_C7E4(work, mainState->animations[0], 6);
     work->model = particleModel;
-    Hu3DModelLayerSet(particleModel, 6);
-    Hu3DParticleHookSet(particleModel, fn_1_DBD0);
-    Hu3DParticleBlendModeSet(particleModel, 1U);
-    Hu3DParticleColSet(particleModel, 255U, 255U, 255U);
-    Hu3DModelAttrSet(particleModel, 1U);
-    Hu3DModelPosSet(particleModel, 0.0f, 0.0f,
+    fn_80026B8C(particleModel, 6);
+    fn_800326D0(particleModel, fn_1_DBD0);
+    fn_8003269C(particleModel, 1U);
+    fn_800325B0(particleModel, 255U, 255U, 255U);
+    fn_800269E8(particleModel, 1U);
+    fn_80026760(particleModel, 0.0f, 0.0f,
                     0.0f);
-    Hu3DModelRotSet(particleModel, 0.0f, 0.0f,
+    fn_80026808(particleModel, 0.0f, 0.0f,
                     0.0f);
     work->position.x = 0.0f;
     work->position.y = 0.0f;

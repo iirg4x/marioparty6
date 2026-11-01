@@ -208,12 +208,12 @@ s16 fn_1_126F0(M609Player *movement, s16 advanceAfterChase) {
 
     switch (movement->movementState) {
     case 0:
-        MgPlayerComStkOn(lbl_1_bss_4.players[movement->playerNo]);
+        fn_8007E818(lbl_1_bss_4.players[movement->playerNo]);
         movement->movementState++;
         break;
     case 1: {
         HuVecF position = movement->routePosition;
-        chased = MgPlayerVecChase(
+        chased = fn_8007E8B4(
             lbl_1_bss_4.players[movement->playerNo],
             &position,
             movement->chaseSpeed,
@@ -228,7 +228,7 @@ s16 fn_1_126F0(M609Player *movement, s16 advanceAfterChase) {
         break;
     }
     case 2:
-        MgPlayerComStkOff(lbl_1_bss_4.players[movement->playerNo]);
+        fn_8007E888(lbl_1_bss_4.players[movement->playerNo]);
         movement->movementState = 0;
         complete = 1;
         break;
@@ -247,7 +247,7 @@ s16 fn_1_12830(M609Player *action) {
         if (lbl_1_bss_4.players[action->playerNo]->mode != 1) {
             action->computerButtonsDown |= 0x100;
         } else {
-            MgPlayerComStkOn(lbl_1_bss_4.players[action->playerNo]);
+            fn_8007E818(lbl_1_bss_4.players[action->playerNo]);
             action->computerButtonsHeld |= 0x100;
             action->chaseUpdateCount++;
             action->routeStep++;
@@ -257,13 +257,13 @@ s16 fn_1_12830(M609Player *action) {
         if (action->collisionMesh < 0) {
             goto chasePlayer;
         }
-        MgPlayerComStkOff(lbl_1_bss_4.players[action->playerNo]);
+        fn_8007E888(lbl_1_bss_4.players[action->playerNo]);
         action->chaseUpdateCount = 0;
         action->routeStep = 0;
         complete = 1;
         break;
     chasePlayer:
-        MgPlayerVecChase(
+        fn_8007E8B4(
             lbl_1_bss_4.players[action->playerNo],
             &action->chasePosition,
             action->routeSpeed,
@@ -286,7 +286,7 @@ s16 fn_1_12990(M609Player *action) {
         if (lbl_1_bss_4.players[action->playerNo]->mode != 1) {
             action->computerButtonsDown |= 0x100;
         } else {
-            MgPlayerComStkOn(lbl_1_bss_4.players[action->playerNo]);
+            fn_8007E818(lbl_1_bss_4.players[action->playerNo]);
             action->computerButtonsHeld |= 0x100;
             action->chaseUpdateCount++;
             action->routeStep++;
@@ -295,12 +295,12 @@ s16 fn_1_12990(M609Player *action) {
     case 1:
         if (action->collisionMesh >= 0 &&
             lbl_1_bss_4.players[action->playerNo]->mode != 1) {
-            MgPlayerComStkOff(lbl_1_bss_4.players[action->playerNo]);
+            fn_8007E888(lbl_1_bss_4.players[action->playerNo]);
             action->chaseUpdateCount = 0;
             action->routeStep = 0;
             complete = 1;
         } else if (action->collisionMesh == -1) {
-            MgPlayerVecChase(
+            fn_8007E8B4(
                 lbl_1_bss_4.players[action->playerNo],
                 &action->chasePosition,
                 action->routeSpeed,
@@ -937,14 +937,14 @@ void fn_1_14B64(M609Player *record) {
         }
 
         if ((s16)(nextState = fn_1_13D58(record, 0)) == 3) {
-            MgPlayerComStkOff(lbl_1_bss_4.players[record->playerNo]);
+            fn_8007E888(lbl_1_bss_4.players[record->playerNo]);
             record->movementState = 0;
             record->timer = 0;
             record->actionState = nextState;
             return;
         }
         if (record->linkCount > 60) {
-            MgPlayerComStkOff(lbl_1_bss_4.players[record->playerNo]);
+            fn_8007E888(lbl_1_bss_4.players[record->playerNo]);
             record->movementState = 0;
             record->timer = 0;
             record->actionState = 0;
@@ -1320,7 +1320,7 @@ void fn_1_15C24(M609Player *record) {
             distance < record->range) {
             record->phaseStep = 0;
             record->secondLegRequired = 0;
-            MgPlayerComStkOff(lbl_1_bss_4.players[record->playerNo]);
+            fn_8007E888(lbl_1_bss_4.players[record->playerNo]);
             record->movementState = 0;
             record->routePhase = 0;
             record->chasePosition =
@@ -1358,7 +1358,7 @@ void fn_1_15C24(M609Player *record) {
             distance < record->range) {
             record->phaseStep = 0;
             record->secondLegRequired = 0;
-            MgPlayerComStkOff(lbl_1_bss_4.players[record->playerNo]);
+            fn_8007E888(lbl_1_bss_4.players[record->playerNo]);
             record->movementState = 0;
             record->routePhase = 0;
             record->chasePosition =
@@ -1437,7 +1437,7 @@ void fn_1_164FC(void) {
 
             switch (record->sequencePhase) {
             case 0:
-                MgPlayerComStkOff(lbl_1_bss_4.players[record->playerNo]);
+                fn_8007E888(lbl_1_bss_4.players[record->playerNo]);
                 record->movementState = 0;
                 record->routeStep = 0;
                 record->routePhase = 0;

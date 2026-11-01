@@ -3,45 +3,41 @@
 
 #include "dolphin.h"
 
-#define PAD_BUTTON_DPAD (PAD_BUTTON_LEFT | PAD_BUTTON_RIGHT | PAD_BUTTON_UP | PAD_BUTTON_DOWN)
+extern u16 lbl_802C0010[4];
+extern u16 lbl_802C0008[4];
+extern u16 lbl_802C0000[4];
+extern s8 lbl_802BFFFC[4];
+extern s8 lbl_802BFFF8[4];
+extern s8 lbl_802BFFF4[4];
+extern s8 lbl_802BFFF0[4];
+extern u8 lbl_802BFFEC[4];
+extern u8 lbl_802BFFE8[4];
+extern u8 lbl_802BFFE4[4];
+extern u8 lbl_802BFFDC[4];
 
-#define PAD_BUTTON_TRIGGER_L 0x4000
-#define PAD_BUTTON_TRIGGER_R 0x2000
+extern u8 lbl_802BFFE0[4];
+extern s8 lbl_802BFFD8[4];
+extern u16 lbl_802BFFD0[4];
+extern u16 lbl_802BFFC8[4];
+extern s32 lbl_802BFF84;
+extern u16 lbl_802BFF80;
 
-extern u16 HuPadBtn[4];
-extern u16 HuPadBtnDown[4];
-extern u16 HuPadBtnRep[4];
-extern s8 HuPadStkX[4];
-extern s8 HuPadStkY[4];
-extern s8 HuPadSubStkX[4];
-extern s8 HuPadSubStkY[4];
-extern u8 HuPadTrigL[4];
-extern u8 HuPadTrigR[4];
-extern u8 HuPadDStk[4];
-extern u8 HuPadDStkDown[4];
+extern float lbl_8024C7D8[4];
+extern float lbl_8024C7E8[4];
+extern float lbl_8024C7F8[4];
+extern float lbl_8024C808[4];
+extern float lbl_8024C818[4];
+extern float lbl_8024C828[4];
 
-extern u8 HuPadDStkRep[4];
-extern s8 HuPadErr[4];
-extern u16 _PadBtn[4];
-extern u16 _PadBtnDown[4];
-extern s32 VCounter;
-extern u16 HuPadBtnMask;
-
-extern float HuPadStkXf[4];
-extern float HuPadStkYf[4];
-extern float HuPadSubStkXf[4];
-extern float HuPadSubStkYf[4];
-extern float HuPadTrigLf[4];
-extern float HuPadTrigRf[4];
-
-void HuPadInit(void);
-void HuPadRead(void);
-void HuPadRumbleSet(s16 pad, s16 duration, s16 off, s16 on);
-void HuPadRumbleStop(s16 pad);
-void HuPadRumbleAllStop(void);
+void fn_80005C98(void);
+void fn_80005D90(void);
+void fn_80006E70(s16 pad, s16 duration, s16 off, s16 on);
+void fn_80006ECC(s16 pad);
+void fn_80006F3C(void);
 s16 HuPadStatGet(s16 pad);
-u32 HuPadRumbleGet(void);
-u16 HuPadStkDirGet(s16 padNo);
-u16 HuPadSubStkDirGet(s16 padNo);
+u32 fn_80006FC0(void);
+u16 fn_80006B90(s16 padNo);
+u16 fn_80006D00(s16 padNo);
+u16 fn_80184DD4(void);
 
 #endif

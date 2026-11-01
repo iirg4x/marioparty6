@@ -52,8 +52,8 @@ void HuARInit(void) {
     for (blockIndex=0; blockIndex<ARMEM_BLOCK_MAX; blockIndex++) {
         ARInfo[blockIndex].aramAddress = 0;
     }
-    availableBytes = ARGetSize() - HU_AMEM_BASE;
-    ARBase = HU_AMEM_BASE;
+    availableBytes = ARGetSize() - 0x808000;
+    ARBase = 0x808000;
     ARInfo[0].aramAddress = ARBase;
     ARInfo[0].size = availableBytes;
     ARInfo[0].inUse = 0;
@@ -223,9 +223,9 @@ AMEM_PTR HuAR_DVDtoARAM(unsigned int dataNum) {
     if(aramAddress) {
         return aramAddress;
     }
-    dataStatus = HuDataDirRead(dataNum);
-    DirDataSize = OSRoundUp32B(DirDataSize);
-    aramAddress = HuARMalloc(DirDataSize);
+    dataStatus = fn_800078C8(dataNum);
+    lbl_802C0028 = OSRoundUp32B(lbl_802C0028);
+    aramAddress = HuARMalloc(lbl_802C0028);
     if(!aramAddress) {
         return 0;
     }
@@ -233,10 +233,10 @@ AMEM_PTR HuAR_DVDtoARAM(unsigned int dataNum) {
     allocatedBlock->dataDirId = (dataNum >> 16);
     arqCnt++;
     ARQPostRequest(&arqReq, ARQ_OWNER_HU, ARQ_TYPE_MRAM_TO_ARAM, ARQ_PRIORITY_LOW,
-        (u32) dataStatus->dirP, aramAddress, DirDataSize, ArqCallBack);
+        (u32) dataStatus->dirP, aramAddress, lbl_802C0028, ArqCallBack);
     OSReport("ARAM Trans %x\n", aramAddress);
-    while(HuARDMACheck());
-    HuDataDirClose(dataNum);
+    while(fn_80055FB4());
+    fn_800097F4(dataNum);
     return aramAddress;
 }
 
@@ -248,7 +248,7 @@ static void ArqCallBack(u32 requestAddress) {
 
 /* Character and module loaders use this wrapper to copy an already loaded resource into ARAM. */
 AMEM_PTR HuAR_MRAMtoARAM(int dataNum) {
-    return HuAR_MRAMtoARAM2(HuDataGetDirPtr(dataNum));
+    return HuAR_MRAMtoARAM2(fn_80007810(dataNum));
 }
 
 /* Loaders pass a resident data pointer here to queue its archive copy to ARAM and record the
@@ -259,7 +259,7 @@ AMEM_PTR HuAR_MRAMtoARAM2(void *sourceData) {
     u32 alignedSize;
     AMEM_PTR aramAddress;
 
-    dataStatus = HuDataGetStatus(sourceData);
+    dataStatus = fn_800077AC(sourceData);
     aramAddress = HuARDirCheck(dataStatus->dirId << 16);
     if(aramAddress) {
         return aramAddress;
@@ -281,28 +281,28 @@ AMEM_PTR HuAR_MRAMtoARAM2(void *sourceData) {
 /* HuDataDirRead and HuDataDirReadAsync call this to queue an ARAM-to-main-memory copy; the
  * synchronous caller waits and then looks up its data record. */
 /* HuDataDirRead paths call this wrapper; it starts the transfer without returning its result. */
-void *HuAR_ARAMtoMRAM(AMEM_PTR aramAddress) {
-    HuAR_ARAMtoMRAMNum(aramAddress, 0);
+void *fn_80055D40(AMEM_PTR aramAddress) {
+    fn_80055D6C(aramAddress, 0);
 }
 
 /* HuDataDirReadNum uses this to start copying an ARAM-resident archive; its callback registers the
  * destination when DMA completes. */
-void *HuAR_ARAMtoMRAMNum(AMEM_PTR aramAddress, s32 allocationNumber) {
+void *fn_80055D6C(AMEM_PTR aramAddress, s32 allocationNumber) {
     void *destination;
     ARMEM_BLOCK *allocatedBlock;
     s32 transferSize;
     
     allocatedBlock = HuARInfoGet(aramAddress);
-    if(HuDataReadChk(allocatedBlock->dataDirId << 16) >= 0) {
+    if(fn_80007738(allocatedBlock->dataDirId << 16) >= 0) {
         /* The resource is already present; this path returns no buffer pointer. */
         return;
     }
     transferSize = HuARSizeGet(aramAddress);
-    destination = HuMemDirectMallocNum(HEAP_DVD, transferSize, allocationNumber);
+    destination = HuMemDirectMallocNum(3, transferSize, allocationNumber);
     if(!destination) {
         return 0;
     }
-    HuMemMemoryFileSet(destination, (allocatedBlock->dataDirId << 16) & ARMEM_DIRECTORY_ID_MASK);
+    fn_8000C164(destination, (allocatedBlock->dataDirId << 16) & ARMEM_DIRECTORY_ID_MASK);
     /* The destination cache range is flushed before ARAM DMA writes into it. */
     DCFlushRangeNoSync(destination, transferSize);
     ARQueBuf[arqIdx].dataNum = (allocatedBlock->dataDirId << 16);
@@ -321,11 +321,11 @@ static void ArqCallBackAM(u32 requestAddress) {
     ARQUEREQ *request = (ARQUEREQ *) requestAddress;
 
     arqCnt--;
-    HuDataDirSet(request->destination, request->dataNum);
+    fn_80007B00(request->destination, request->dataNum);
 }
 
 /* Data loading paths poll this until all queued ARAM DMA callbacks have completed. */
-s32 HuARDMACheck(void) {
+s32 fn_80055FB4(void) {
     return arqCnt;
 }
 
@@ -360,7 +360,7 @@ void HuARDirFree(unsigned int dataNum) {
 }
 
 /* Character and message loaders call this to copy and decode one file from a resident archive. */
-void *HuAR_ARAMtoMRAMFileRead(unsigned int dataNum, u32 allocationNumber, HEAPID heap) {
+void *fn_8005607C(unsigned int dataNum, u32 allocationNumber, HEAPID heap) {
     s32 *directoryEntry;
     void *decodedData;
     void *transferBuffer;
@@ -385,7 +385,7 @@ void *HuAR_ARAMtoMRAMFileRead(unsigned int dataNum, u32 allocationNumber, HEAPID
         ArqCallBackAMFileRead);
     arqIdx++;
     arqIdx &= 0xF;
-    while(HuARDMACheck());
+    while(fn_80055FB4());
     directoryEntry = &preLoadBuf[(dataNum + 1) & 0x7];
     fileOffset = directoryEntry[0];
     /* Compute the span to the next file offset, or to the allocated archive range end for the last
@@ -399,7 +399,7 @@ void *HuAR_ARAMtoMRAMFileRead(unsigned int dataNum, u32 allocationNumber, HEAPID
         transferSize = (directoryEntry[1] - fileOffset + ARMEM_FILE_TRANSFER_ROUNDUP_BIAS) &
                        ARMEM_ARCHIVE_ALIGN_DOWN_MASK;
     }
-    transferBuffer = HuMemDirectMalloc(HEAP_DVD, transferSize);
+    transferBuffer = HuMemDirectMalloc(3, transferSize);
     if(!transferBuffer) {
         return 0;
     }
@@ -411,7 +411,7 @@ void *HuAR_ARAMtoMRAMFileRead(unsigned int dataNum, u32 allocationNumber, HEAPID
         ArqCallBackAMFileRead);
     arqIdx++;
     arqIdx &= 0xF;
-    while(HuARDMACheck());
+    while(fn_80055FB4());
     directoryEntry = (s32*) ((u8*) transferBuffer + (fileOffset & 0x1F));
     decodedData = HuMemDirectMallocNum(
         heap, (directoryEntry[0] + 1) & ARMEM_FILE_SIZE_ALIGN_DOWN_MASK, allocationNumber);
@@ -419,8 +419,8 @@ void *HuAR_ARAMtoMRAMFileRead(unsigned int dataNum, u32 allocationNumber, HEAPID
         /* The temporary transfer buffer is left allocated on this failure path. */
         return 0;
     }
-    HuDecodeData(&directoryEntry[2], decodedData, directoryEntry[0], directoryEntry[1]);
-    HuMemMemoryFileSet(decodedData, dataNum);
+    fn_8000A384(&directoryEntry[2], decodedData, directoryEntry[0], directoryEntry[1]);
+    fn_8000C164(decodedData, dataNum);
     HuMemDirectFree(transferBuffer);
     return decodedData;
 }

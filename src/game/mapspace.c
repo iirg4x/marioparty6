@@ -94,7 +94,7 @@ void MapWall(float radius, float worldX, float worldY, float worldZ)
         CharRotInv(MapMT, MapMTR, (HuVecF *)localSphere, mapObject);
         ColisionCount = 0;
         HitFaceCount = 0;
-        mapModel = &Hu3DData[modelId];
+        mapModel = &lbl_802C01C8[modelId];
         mapData = mapModel->hsf;
         AttrHsf = mapData;
         firstMapAttribute = AttrHsf->mapAttr;
@@ -165,7 +165,7 @@ float MapPos(float worldX, float worldY, float worldZ, float heightAllowance, Hu
     ColisionCount = 0;
     for (objectIndex = 0; objectIndex < nMap; objectIndex++) {
         mapObject = MapObject[objectIndex];
-        mapModel = &Hu3DData[mapObject->mdlId[0]];
+        mapModel = &lbl_802C01C8[mapObject->mdlId[0]];
         mapData = mapModel->hsf;
         queryPoint.x = worldX;
         queryPoint.y = worldY;

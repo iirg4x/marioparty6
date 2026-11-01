@@ -20,9 +20,9 @@ void fn_1_101B8(OMOBJMAN *objMan)
     OMOBJ *obj;
     void *work;
 
-    obj = omAddObjEx(objMan, 18, 0, 0, -1, fn_1_10244);
+    obj = fn_8003AB38(objMan, 18, 0, 0, -1, fn_1_10244);
     lbl_1_bss_6D0 = obj;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M674EntryWork), HU_MEMNUM_OVL);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M674EntryWork), 0x10000000);
     obj->data = work;
     memset(work, 0, sizeof(M674EntryWork));
 }

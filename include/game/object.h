@@ -6,24 +6,9 @@
 #include "game/hu3d.h"
 #include "game/omovl.h"
 
-#define OM_STAT_DELETED (1 << 0)
-#define OM_STAT_DISABLED (1 << 1)
-#define OM_STAT_ACTIVE (1 << 2)
-#define OM_STAT_PAUSED (1 << 4)
-#define OM_STAT_NOPAUSE (1 << 5)
-#define OM_STAT_40 (1 << 6)
-
-#define OM_STAT_SPRPAUSE (1 << 7)
-#define OM_STAT_MODELPAUSE (1 << 8)
-
-#define OM_GRP_NONE -1
-
 typedef HUPROCESS OMOBJMAN;
 typedef struct omObj_s OMOBJ;
 typedef void (*OMOBJ_FUNC)(OMOBJ *obj);
-
-#define OM_GRP_MAX 10
-#define OM_OBJ_NONE -1
 
 typedef struct omObjGrp_s {
     u16 memberNo;
@@ -82,35 +67,17 @@ typedef struct omCameraView_s {
     float zoom;
 } OM_CAMERA_VIEW;
 
-#define OM_OUTVIEW_PRIO 32730
-
 #define omOvlCall(ovl, evtno, stat) omOvlCallEx(ovl, TRUE, evtno, stat)
-#define omOvlGoto(ovl, evtno, stat) omOvlGotoEx(ovl, TRUE, evtno, stat)
-#define omOvlReturn(hisOfs) omOvlReturnEx(hisOfs, TRUE)
-#define omAddObj(objman, prio, mdlcnt, mtncnt, objFunc) omAddObjEx(objman, prio, mdlcnt, mtncnt, OM_GRP_NONE, objFunc)
-#define omAddOutViewObj(objman) omAddObj(objman, OM_OUTVIEW_PRIO, 0, 0, omOutView)
-#define omDelObj omDelObjEx
-#define omMakeGroup omMakeGroupEx
-#define omGetGroupMemberList omGetGroupMemberListEx
-
-#define omObjGetWork(obj, type) ((type *)(&((obj)->work[0])))
-#define omObjGetDataAs(obj, type) ((type *)((obj)->data))
-
-#define OM_CAMERA_SINGLE 0x10000
-
-#define OM_CAMERAMOVE_SIMPLE 0
-#define OM_CAMERAMOVE_COS 1
-#define OM_CAMERAMOVE_LINEAR 2
-#define OM_CAMERAMOVE_COSSIN 2
 
 void omOvlCallEx(OMOVL ovl, s16 unlinkF, s32 evtno, s32 stat);
 void omOvlGotoEx(OMOVL ovl, s16 unlinkF, s32 evtno, s32 stat);
-void omOvlReturnEx(s16 hisOfs, s16 unlinkF);
-void omOvlKill(s16 unlinkF);
+void fn_8003A5E4(s16 hisOfs, s16 unlinkF);
+void fn_8003A6E4(s16 unlinkF);
 void omOvlHisChg(s32 hisOfs, OMOVL ovl, s32 evtno, s32 stat);
 OMOVLHIS *omOvlHisGet(s32 hisOfs);
-OMOBJMAN *omInitObjMan(s16 objMax, s32 objManPrio);
-OMOBJ *omAddObjEx(OMOBJMAN *objMan, s16 prio, u16 mdlcnt, u16 mtncnt, s16 grpNo, OMOBJ_FUNC objFunc);
+OMOBJMAN *fn_8003A8BC(s16 objMax, s32 objManPrio);
+OMOBJ *fn_8003AB38(OMOBJMAN *objMan, s16 prio, u16 mdlcnt, u16 mtncnt, s16 grpNo,
+    OMOBJ_FUNC objFunc);
 void omAddMember(OMOBJMAN *objMan, u16 grpNo, OMOBJ *obj);
 void omDelObjEx(OMOBJMAN *objMan, OMOBJ *obj);
 void omDelMember(OMOBJMAN *objMan, OMOBJ *obj);
@@ -124,48 +91,48 @@ void omSetRot(OMOBJ *obj, float x, float y, float z);
 void omSetSca(OMOBJ *obj, float x, float y, float z);
 
 void omAllPause(BOOL pauseF);
-char omPauseChk(void);
-OMOVL omCurrentOvlGet(void);
+char fn_8003B748(void);
+OMOVL fn_8003B774(void);
 
-void omOutView(OMOBJ *obj);
-void omOutViewMulti(OMOBJ *obj);
-void omDBGSystemKeyCheckSetup(OMOBJMAN *objman);
+void fn_8003D4FC(OMOBJ *obj);
+void fn_8003DAA4(OMOBJ *obj);
+void fn_8003E12C(OMOBJMAN *objman);
 void omSystemKeyCheckSetup(OMOBJMAN *objman);
-void omSystemKeyCheck(OMOBJ *obj);
+void fn_8003E1A4(OMOBJ *obj);
 void omSysPauseEnable(u8 flag);
-void omSysPauseCtrl(s16 flag);
-void omCameraViewInit(void);
-void omCameraViewSetMulti(s16 cameraBit, OM_CAMERA_VIEW *cameraView);
-void omCameraViewSet(OM_CAMERA_VIEW *cameraView);
-s16 omCameraViewMoveMulti(u32 camera, OM_CAMERA_VIEW *cameraView, s32 time, s16 moveType);
-s16 omCameraViewMove(OM_CAMERA_VIEW *cameraView, s32 time, s16 moveType);
-s16 omCameraViewMoveSimpleMulti(u32 camera, OM_CAMERA_VIEW *cameraView, s32 time);
-s16 omCameraViewMoveSimple(OM_CAMERA_VIEW *cameraView, s32 time);
-BOOL omCameraViewCheck(u32 cameraBit);
+void fn_8003E3F0(s16 flag);
+void fn_8003E440(void);
+void fn_8003E488(s16 cameraBit, OM_CAMERA_VIEW *cameraView);
+void fn_8003E5A4(OM_CAMERA_VIEW *cameraView);
+s16 fn_8003E62C(u32 camera, OM_CAMERA_VIEW *cameraView, s32 time, s16 moveType);
+s16 fn_8003E7A0(OM_CAMERA_VIEW *cameraView, s32 time, s16 moveType);
+s16 fn_8003E8E4(u32 camera, OM_CAMERA_VIEW *cameraView, s32 time);
+s16 fn_8003EA54(OM_CAMERA_VIEW *cameraView, s32 time);
+BOOL fn_8003EB94(u32 cameraBit);
 
-void omObjManPause(BOOL pauseF);
+void fn_8003B674(BOOL pauseF);
 
-void omGameSysInit(OMOBJMAN *objman);
-void omVibrate(s16 playerNo, s16 duration, s16 off, s16 on);
+void fn_80069F1C(OMOBJMAN *objman);
+void fn_8006A030(s16 playerNo, s16 duration, s16 off, s16 on);
 
 extern s16 omSysExitReq;
-extern OMOBJ *omDBGSysKeyObj;
+extern OMOBJ *lbl_802C0260;
 extern u8 omSysPauseEnableFlag;
 extern OMOVL omprevovl;
 extern OMOVL omcurovl;
-extern s32 omcurdll;
-extern s32 omovlhisidx;
-extern s32 omovlevtno;
-extern s32 omovlstat;
-extern u8 omUPauseFlag;
-extern s16 omdispinfo;
-extern float CZoomM[HU3D_CAM_MAX];
-extern HuVecF CenterM[HU3D_CAM_MAX];
-extern HuVecF CRotM[HU3D_CAM_MAX];
-extern float CZoom;
-extern HuVecF Center;
-extern HuVecF CRot;
+extern s32 lbl_802C0250;
+extern s32 lbl_802C024C;
+extern s32 lbl_802C0248;
+extern s32 lbl_802C0240;
+extern u8 lbl_802C0234;
+extern s16 lbl_802C0230;
+extern float lbl_80266BD8[16];
+extern HuVecF lbl_80266B18[16];
+extern HuVecF lbl_80266A58[16];
+extern float lbl_802C028C;
+extern HuVecF lbl_80266A4C;
+extern HuVecF lbl_80266A40;
 
-void omMasterInit(s32 watchPrio, OVLTBL *ovlTbl, OMOVL ovlMax, OMOVL ovlInit);
+void fn_8003A2A4(s32 watchPrio, OVLTBL *ovlTbl, OMOVL ovlMax, OMOVL ovlInit);
 
 #endif

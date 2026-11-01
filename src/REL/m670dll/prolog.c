@@ -1,4 +1,5 @@
 /* Starts Fruit Talktail when its overlay loads and runs its teardown when the overlay unloads. */
+#include <math.h>
 #include "REL/m670dll.h"
 typedef void (*VoidFunc)(void);
 extern const VoidFunc _ctors[];

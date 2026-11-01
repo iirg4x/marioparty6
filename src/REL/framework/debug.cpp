@@ -33,13 +33,13 @@ void copyDebugCameraPose(const CameraFrame *frame)
 }
 
 // Debug controls read the main stick's horizontal deflection, scaled by 56 raw units.
-float getDebugStickX(int padIndex) { return (1.0f / 56.0f) * HuPadStkX[padIndex]; }
+float getDebugStickX(int padIndex) { return (1.0f / 56.0f) * lbl_802BFFFC[padIndex]; }
 // Debug controls read the main stick's vertical deflection, scaled by 56 raw units.
-float getDebugStickY(int padIndex) { return (1.0f / 56.0f) * HuPadStkY[padIndex]; }
+float getDebugStickY(int padIndex) { return (1.0f / 56.0f) * lbl_802BFFF8[padIndex]; }
 // Debug controls read the sub-stick's horizontal deflection, scaled by 44 raw units.
-float getDebugSubStickX(int padIndex) { return (1.0f / 44.0f) * HuPadSubStkX[padIndex]; }
+float getDebugSubStickX(int padIndex) { return (1.0f / 44.0f) * lbl_802BFFF4[padIndex]; }
 // Debug controls read the sub-stick's vertical deflection, scaled by 44 raw units.
-float getDebugSubStickY(int padIndex) { return (1.0f / 44.0f) * HuPadSubStkY[padIndex]; }
+float getDebugSubStickY(int padIndex) { return (1.0f / 44.0f) * lbl_802BFFF0[padIndex]; }
 
 // Debug event processing can call this hook; it performs no work.
 void debugEventHook() {}

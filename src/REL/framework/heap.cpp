@@ -28,7 +28,7 @@ inline void fillHeapBuffer(Value *destination, Value *destinationEnd, const Valu
 /* initializeMemoryManager reserves and fills its model-heap backing storage here. */
 void *allocateHeapMemory(s32 byteCount)
 {
-    u32 *bufferWords = (u32 *)HuMemDirectMallocNum(HEAP_MODEL, byteCount, HU_MEMNUM_OVL);
+    u32 *bufferWords = (u32 *)HuMemDirectMallocNum(2, byteCount, 0x10000000);
     /* Exhaustion reports the assertion and aborts before the fill can run. */
     bufferWords != 0 ? (void)0 : __msl_assertion_failed("buf != NULL", "heap.cpp", 41);
     /* Trailing partial words and the allocator's alignment padding are left untouched. */

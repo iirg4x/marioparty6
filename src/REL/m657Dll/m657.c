@@ -46,8 +46,8 @@ void fn_1_6C(void)
 /* Creates the object manager and initializes its shared game-system callbacks. */
 void fn_1_70(void)
 {
-    lbl_1_data_0->objman = omInitObjMan(M657_OBJECT_CAPACITY, M657_OBJECT_MANAGER_PRIORITY);
-    omGameSysInit(lbl_1_data_0->objman);
+    lbl_1_data_0->objman = fn_8003A8BC(M657_OBJECT_CAPACITY, M657_OBJECT_MANAGER_PRIORITY);
+    fn_80069F1C(lbl_1_data_0->objman);
 }
 
 /* Creates a split-screen camera for each configured team during setup. */
@@ -63,12 +63,12 @@ void fn_1_BC(OMOBJMAN *objman)
     obj = NULL;
     i = 0;
     for (i = 0; i < 4; i++) {
-        team = GwPlayerConf[i].grpNo;
+        team = lbl_80265728[i].grpNo;
         if (team == 0 || team == 1) {
             viewport = &lbl_1_data_4[team];
             obj = lbl_1_data_0->cameraObj[team] =
-                omAddObjEx(objman, 32730, 0, 0, -1, fn_1_428);
-            camera = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657Camera), HU_MEMNUM_OVL);
+                fn_8003AB38(objman, 32730, 0, 0, -1, fn_1_428);
+            camera = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657Camera), 0x10000000);
             obj->data = camera;
             memset(camera, 0, sizeof(M657Camera));
             camera->cameraMask = lbl_1_data_24[team];
@@ -162,7 +162,7 @@ void fn_1_5C8(void)
     HuVecF lightParam = { 20, 45, 1000 };
 
     /* The vector supplies the initial color bytes; the light is set to white below. */
-    light = lbl_1_data_0->light = Hu3DGLightCreateV(&pos, &dir, (GXColor *)&lightParam);
+    light = lbl_1_data_0->light = fn_800286D0(&pos, &dir, (GXColor *)&lightParam);
     Hu3DGLightPointSet(light, 1000.0f, 1.0f, GX_DA_MEDIUM);
     Hu3DGLightStaticSet(light, TRUE);
     Hu3DGLightColorSet(light, color.r, color.g, color.b, color.a);
@@ -210,7 +210,7 @@ void fn_1_784(void)
     fn_1_15C0(lbl_1_data_0->objman);
     fn_1_3E1C(lbl_1_data_0->objman);
     fn_1_4570(lbl_1_data_0->objman);
-    MgSeqCreate(&lbl_1_data_2C);
+    fn_80070788(&lbl_1_data_2C);
 }
 
 /* MGSEQ_PARAM callback that binds cameras to players and clears winner flags. */
@@ -220,13 +220,13 @@ void fn_1_B10(s16 mode, s16 frameNo)
     s16 i;
 
     for (i = 0; i < 4; i++) {
-        team = GwPlayerConf[i].grpNo;
+        team = lbl_80265728[i].grpNo;
         if (team == 0 || team == 1) {
             fn_1_3F0(team, lbl_1_bss_30[team]);
             fn_1_2BE4(team, 0);
         }
     }
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* MGSEQ_PARAM entrance callback that starts music and waits for both players to arrive. */
@@ -235,7 +235,7 @@ void fn_1_BD4(s16 mode, s16 frameNo)
     s16 i;
     s16 count = 0;
 
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         lbl_1_data_0->music = HuAudBGMPlay(M657_BGM_LUNAR_TICS);
     }
     fn_1_4EE4(0);
@@ -246,7 +246,7 @@ void fn_1_BD4(s16 mode, s16 frameNo)
         }
     }
     if (count >= 2) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -272,7 +272,7 @@ void fn_1_CA0(s16 mode, s16 frameNo)
         }
     }
     if (count == 2 || fn_1_3F2C() == -600) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -287,7 +287,7 @@ void fn_1_D28(s16 mode, s16 frameNo)
     u16 status;
     s32 teamTime[2];
 
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         s16 charNo[2] = { -1, -1 };
         s16 playerNo[2] = { -1, -1 };
 
@@ -311,16 +311,16 @@ void fn_1_D28(s16 mode, s16 frameNo)
         /* The result setter's return value is ignored; shared winner fields drive later
          * presentation. */
         if (teamTime[0] + teamTime[1] == 0) {
-            status = MgSeqWinnerSet2(charNo[0], charNo[1]);
+            status = fn_80071C18(charNo[0], charNo[1], -1, -1);
             fn_1_2BE4(0, 1);
             fn_1_2BE4(1, 1);
             lbl_1_data_0->winners[0] = 0;
             lbl_1_data_0->winners[1] = 1;
             lbl_1_data_0->winnerCount = 2;
         } else if (teamTime[0] == teamTime[1]) {
-            status = MgSeqWinnerSet(-1, -1, -1, -1);
+            status = fn_80071C18(-1, -1, -1, -1);
         } else if (abs(teamTime[0]) < abs(teamTime[1])) {
-            status = MgSeqWinnerSet1(charNo[0]);
+            status = fn_80071C18(charNo[0], -1, -1, -1);
             fn_1_2BE4(0, 1);
             lbl_1_data_0->winners[0] = 0;
             lbl_1_data_0->winnerCount = 1;
@@ -328,7 +328,7 @@ void fn_1_D28(s16 mode, s16 frameNo)
             GWMgCoinBonusSet(playerNo[0], 10);
             OSReport("winnner : %d\n", playerNo[0]);
         } else {
-            status = MgSeqWinnerSet1(charNo[1]);
+            status = fn_80071C18(charNo[1], -1, -1, -1);
             fn_1_2BE4(1, 1);
             lbl_1_data_0->winners[0] = 1;
             lbl_1_data_0->winnerCount = 1;
@@ -409,7 +409,7 @@ void fn_1_1090(s16 mode, s16 frameNo)
             lbl_1_data_0->timer++;
             break;
         case 6:
-            MgSeqModeNext();
+            fn_80071A9C();
             break;
     }
 }
@@ -417,7 +417,7 @@ void fn_1_1090(s16 mode, s16 frameNo)
 /* MGSEQ_PARAM callback that chooses character poses on the first result frame. */
 void fn_1_1564(s16 mode, s16 frameNo)
 {
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         if (lbl_1_data_0->winnerCount == 0) {
             fn_1_2C20(0);
         } else {

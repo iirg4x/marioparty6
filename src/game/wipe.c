@@ -248,7 +248,7 @@ static BOOL WipeCrossFade(void)
             DCFlushRange(wipeData.image[0], GXGetTexBufferSize(HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2,
                                                                GX_TF_RGB565, GX_FALSE, 0));
         }
-        Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
+        fn_8002BCDC(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
         wipeData.time = wipeData.maxTime;
         return FALSE;
     }
@@ -278,7 +278,7 @@ static BOOL WipeCrossFade(void)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
     GXSetNumTexGens(1);
     GXSetNumTevStages(1);
-    Hu3DTexLoad(wipeData.image[0], HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2, GX_TF_RGB565, GX_CLAMP,
+    fn_800360D8(wipeData.image[0], HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2, GX_TF_RGB565, GX_CLAMP,
                 GX_CLAMP, GX_FALSE, GX_TEXMAP0);
     GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
@@ -326,7 +326,7 @@ static BOOL WipeDissolve(void)
         }
         /* Capture the outgoing frame when the transition reaches its first frame. */
         if(wipeData.time == 1.0) {
-            Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
+            fn_8002BCDC(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
         }
         
         overlayColor.r = overlayColor.g = overlayColor.b = 255*(wipeData.time/wipeData.maxTime);
@@ -339,7 +339,7 @@ static BOOL WipeDissolve(void)
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
         GXSetNumTexGens(1);
         GXSetNumTevStages(1);
-        Hu3DTexLoad(wipeData.image[0], HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2, GX_TF_RGB565, GX_CLAMP,
+        fn_800360D8(wipeData.image[0], HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2, GX_TF_RGB565, GX_CLAMP,
                     GX_CLAMP, GX_FALSE, GX_TEXMAP0);
         GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
         GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
@@ -373,7 +373,7 @@ static BOOL WipeDissolve(void)
             GXPosition2s16(10, HU_FB_HEIGHT-10);
             GXTexCoord2f32(0, 1);
         }
-        Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
+        fn_8002BCDC(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
         WipeNormalFade();
         if(wipeData.maxTime <= wipeData.time) {
             wipeData.time = wipeData.maxTime;
@@ -397,7 +397,7 @@ static BOOL WipeViewShift(void)
                 HuMemDirectMalloc(HEAP_HEAP, GXGetTexBufferSize(HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2,
                                                                 GX_TF_RGB565, GX_FALSE, 0));
         }
-        Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
+        fn_8002BCDC(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
         wipeData.time = wipeData.maxTime;
         return FALSE;
     }
@@ -457,7 +457,7 @@ static BOOL WipeViewShift(void)
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
         GXSetNumTexGens(1);
         GXSetNumTevStages(1);
-        Hu3DTexLoad(wipeData.image[0], HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2, GX_TF_RGB565, GX_CLAMP,
+        fn_800360D8(wipeData.image[0], HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2, GX_TF_RGB565, GX_CLAMP,
                     GX_CLAMP, GX_FALSE, GX_TEXMAP0);
         GXSetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
         GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
@@ -489,15 +489,19 @@ static BOOL WipeViewShift(void)
                               HU_FB_WIDTH / 6.0, HU_FB_HEIGHT / 6.0, 0, 1);
                 panelNearPoint.x =
                     halfPanelWidth +
-                    ((halfPanelWidth * HuCos(270.0f * rotationProgress)) + topLeftViewPoint.x);
+                    ((halfPanelWidth * cos(3.141592653589793*(270.0f * rotationProgress)/180.0))
+                        + topLeftViewPoint.x);
                 panelNearPoint.y = topLeftViewPoint.y;
                 panelNearPoint.z =
-                    (halfPanelWidth * HuSin(270.0f * rotationProgress)) + topLeftViewPoint.z;
+                    (halfPanelWidth * sin(3.141592653589793*(270.0f * rotationProgress)/180.0))
+                        + topLeftViewPoint.z;
                 panelFarPoint.x = halfPanelWidth +
-                                  ((halfPanelWidth * HuCos((270.0f * rotationProgress) + 180.0f)) +
+                                  ((halfPanelWidth * cos(3.141592653589793*((270.0f
+                                      * rotationProgress) + 180.0f)/180.0)) +
                                    topLeftViewPoint.x);
                 panelFarPoint.y = bottomRightViewPoint.y;
-                panelFarPoint.z = (halfPanelWidth * HuSin((270.0f * rotationProgress) + 180.0f)) +
+                panelFarPoint.z = (halfPanelWidth * sin(3.141592653589793*((270.0f
+                    * rotationProgress) + 180.0f)/180.0)) +
                                   topLeftViewPoint.z;
                 GXBegin(GX_QUADS, GX_VTXFMT0, 4);
                 GXPosition3f32(panelNearPoint.x, panelNearPoint.y, panelNearPoint.z);
@@ -560,9 +564,9 @@ static BOOL WipeImage(int animationDataNumber)
     if(wipeData.mode == WIPE_MODE_OUT) {
         if(!wipeData.image[0]) {
             wipeData.image[0] =
-                HuSprAnimRead(HuAR_ARAMtoMRAMFileRead(animationDataNumber, -256, HEAP_MODEL));
+                HuSprAnimRead(fn_8005607C(animationDataNumber, -256, 2));
         }
-        imageScale = HuSin(90.0*(wipeData.time/wipeData.maxTime));
+        imageScale = sin(3.141592653589793*(90.0*(wipeData.time/wipeData.maxTime))/180.0);
     }
     if(wipeData.mode == WIPE_MODE_IN) {
         if(wipeData.time == 1.0) {
@@ -571,11 +575,11 @@ static BOOL WipeImage(int animationDataNumber)
                 HuMemDirectFree(wipeData.image[0]);
             }
             wipeData.image[0] =
-                HuSprAnimRead(HuAR_ARAMtoMRAMFileRead(animationDataNumber, -256, HEAP_MODEL));
+                HuSprAnimRead(fn_8005607C(animationDataNumber, -256, 2));
         }
         if(!wipeData.image[0]) {
             wipeData.image[0] =
-                HuSprAnimRead(HuAR_ARAMtoMRAMFileRead(animationDataNumber, -256, HEAP_MODEL));
+                HuSprAnimRead(fn_8005607C(animationDataNumber, -256, 2));
         }
         if(wipeData.maxTime <= wipeData.time) {
             wipeData.time = wipeData.maxTime;
@@ -588,7 +592,7 @@ static BOOL WipeImage(int animationDataNumber)
             /* Keep the effect image full-size on its first incoming frame. */
             imageScale = 1;
         } else {
-            imageScale = HuCos(90.0*(wipeData.time/wipeData.maxTime));
+            imageScale = cos(3.141592653589793*(90.0*(wipeData.time/wipeData.maxTime))/180.0);
         }
     }
     wipeColor = wipeData.color;
@@ -688,7 +692,7 @@ static BOOL WipeWave(void)
                                                                 GX_TF_RGB565, GX_FALSE, 0));
             DCFlushRange(wipeData.image[0], GXGetTexBufferSize(HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2,
                                                                GX_TF_RGB565, GX_FALSE, 0));
-            wipeData.image[1] = HuSprAnimRead(HuDataRead(WIN_ANM_wipe_wave+waveSprIdx));
+            wipeData.image[1] = HuSprAnimRead(fn_800082D0(WIN_ANM_wipe_wave+waveSprIdx));
             waveSprIdx++;
             if(waveSprIdx >= 1) {
                 /* The wave wipe cycles through one texture entry. */
@@ -717,7 +721,7 @@ static BOOL WipeWave(void)
             }
         }
     }
-    Hu3DFbCopyExec(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
+    fn_8002BCDC(0, 0, HU_FB_WIDTH, HU_FB_HEIGHT, GX_TF_RGB565, TRUE, wipeData.image[0]);
     waveColor.a = 255*waveProgress;
     waveTexMtx[0][0] = 1.0-waveProgress;
     waveTexMtx[1][1] = 1.0-waveProgress;
@@ -727,7 +731,7 @@ static BOOL WipeWave(void)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_U16, 0);
     GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-    Hu3DTexLoad(wipeData.image[0], HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2, GX_TF_RGB565, GX_CLAMP,
+    fn_800360D8(wipeData.image[0], HU_FB_WIDTH / 2, HU_FB_HEIGHT / 2, GX_TF_RGB565, GX_CLAMP,
                 GX_CLAMP, GX_FALSE, GX_TEXMAP0);
     HuSprTexLoad(wipeData.image[1], 0, GX_TEXMAP1, GX_REPEAT, GX_REPEAT, GX_LINEAR);
     GXSetNumTexGens(2);
@@ -799,7 +803,8 @@ static void WipeGXInit(void)
 static void TransformPoint(float fieldOfView, float viewportWidth, float viewportHeight,
                            Mtx modelView, Vec *point, Vec *transformedPoint)
 {
-    float halfFovTangent = HuSin(fieldOfView/2)/HuCos(fieldOfView/2);
+    float halfFovTangent =
+        sin(3.141592653589793*(fieldOfView/2)/180.0)/cos(3.141592653589793*(fieldOfView/2)/180.0);
     float frustumHeight = 2.0f*(halfFovTangent*point->z);
     float frustumWidth = frustumHeight*(viewportWidth/viewportHeight);
     float normalizedX = point->x/viewportWidth;
@@ -862,8 +867,8 @@ static void WipeLoadDraw(void)
     bannerBitmap = &wipeLoadAnim->bmp[0];
     bannerWidth = bannerBitmap->sizeX*2;
     bannerHeight = bannerBitmap->sizeY*2;
-    pulseOffsetX = (bannerWidth/20.0)*HuSin(wipeLoadTime);
-    pulseOffsetY = (bannerHeight/20.0)*HuSin(wipeLoadTime);
+    pulseOffsetX = (bannerWidth/20.0)*sin(3.141592653589793*wipeLoadTime/180.0);
+    pulseOffsetY = (bannerHeight/20.0)*sin(3.141592653589793*wipeLoadTime/180.0);
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     
     GXPosition2f32(400-pulseOffsetX, 350-pulseOffsetY);

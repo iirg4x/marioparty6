@@ -42,7 +42,7 @@ extern GXRenderModeObj GXEurgb60Hz480IntAa;
 #define GX_MAX_Z24 0x00FFFFFF
 
 void GXSetCopyClear(GXColor clear_clr, u32 clear_z);
-void GXAdjustForOverscan(GXRenderModeObj* rmin, GXRenderModeObj* rmout, u16 hor, u16 ver);
+void GXAdjustForOverscan(const GXRenderModeObj* rmin, GXRenderModeObj* rmout, u16 hor, u16 ver);
 void GXCopyDisp(void* dest, GXBool clear);
 void GXSetDispCopyGamma(GXGamma gamma);
 void GXSetDispCopySrc(u16 left, u16 top, u16 wd, u16 ht);

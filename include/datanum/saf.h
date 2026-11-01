@@ -4,7 +4,7 @@
 #include "datadir_enum.h"
 
 enum {
-    SAF_HSF_test = DATANUM(DATA_saf, 0),
+    SAF_HSF_test = DATANUM(0xca0000, 0),
     SAF_HSF_car, //1
     SAF_HSF_cube, //2
     SAF_HSF_m602bow, //3

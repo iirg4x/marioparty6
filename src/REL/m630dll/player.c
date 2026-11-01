@@ -24,9 +24,9 @@ void fn_1_78A4(M630Player *player)
     HuVecF move;
     HuVecF direction;
 
-    move.x = HuPadStkX[player->padNo] / 5.6f;
+    move.x = lbl_802BFFFC[player->padNo] / 5.6f;
     move.y = 0.0f;
-    move.z = HuPadStkY[player->padNo] / 5.6f;
+    move.z = lbl_802BFFF8[player->padNo] / 5.6f;
     fn_1_7C34(matrix, 1);
     PSMTXMultVec(matrix, &move, &move);
     player->pos.x += move.x;
@@ -49,16 +49,16 @@ void fn_1_78A4(M630Player *player)
     magnitude = move.x * move.x + move.z * move.z;
     if (magnitude > 25.0f) {
         if (player->currentMotion != 2) {
-            CharMotionShiftSet(player->charNo, player->motionId[2], 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
+            fn_8005C2C8(player->charNo, player->motionId[2], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
             player->currentMotion = 2;
         }
     } else if (magnitude > 0.001) {
         if (player->currentMotion != 1) {
-            CharMotionShiftSet(player->charNo, player->motionId[1], 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
+            fn_8005C2C8(player->charNo, player->motionId[1], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
             player->currentMotion = 1;
         }
     } else if (player->currentMotion != 0) {
-        CharMotionShiftSet(player->charNo, player->motionId[0], 0.0f, 5.0f, HU3D_MOTATTR_LOOP);
+        fn_8005C2C8(player->charNo, player->motionId[0], 0.0f, 5.0f, ((1 << 30) | (1 << 0)));
         player->currentMotion = 0;
     }
 }
@@ -79,7 +79,7 @@ void fn_1_7C34(Mtx matrix, int cameraId)
     HuVecF cameraTarget;
     HuVecF cameraUp;
 
-    Hu3DCameraPosGet(cameraId, &cameraPos, &cameraUp, &cameraTarget);
+    fn_80027CD0(cameraId, &cameraPos, &cameraUp, &cameraTarget);
     pos.x = cameraPos.x;
     pos.y = cameraPos.y;
     pos.z = cameraPos.z;

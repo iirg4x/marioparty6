@@ -16,14 +16,14 @@ static inline void DebugValue(s32 value)
 f32 lbl_1_data_178[4] = {10.0f, 10.0f, 11.0f, 14.0f};
 /* Character motion resources in the engine player-motion slot order. */
 unsigned int lbl_1_data_188[17] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 5),
-    DATANUM(DATA_mariomot, 56), DATANUM(DATA_mario, 203),
-    DATANUM(DATA_mariomot, 7), DATANUM(DATA_mario, 202),
-    DATANUM(DATA_mariomot, 15), DATANUM(DATA_mariomot, 16),
-    DATANUM(DATA_mariomot, 17), DATANUM(DATA_mariomot, 18),
-    DATANUM(DATA_mariomot, 22), DATANUM(DATA_mariomot, 22),
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x930000, 3),
+    DATANUM(0x930000, 4), DATANUM(0x930000, 5),
+    DATANUM(0x930000, 56), DATANUM(0x8e0000, 203),
+    DATANUM(0x930000, 7), DATANUM(0x8e0000, 202),
+    DATANUM(0x930000, 15), DATANUM(0x930000, 16),
+    DATANUM(0x930000, 17), DATANUM(0x930000, 18),
+    DATANUM(0x930000, 22), DATANUM(0x930000, 22),
     0
 };
 /* The first team activated for the current course section; -1 before either team starts. */
@@ -165,7 +165,7 @@ void fn_1_2288(M644PlayerRecord *player)
     rock_type = fn_1_67CC(route, 0);
     depth_offsets = lbl_1_rodata_168;
     side_offsets = lbl_1_rodata_174;
-    MgActorPosGet(player->teammate->player->actor, &teammate_position);
+    fn_80086BC8(player->teammate->player->actor, &teammate_position);
     approach_position.z += player->reference_radius * ((f32 *)&depth_offsets)[rock_type];
     PSMTXMultVec(player->section_matrix, &approach_position, &approach_position);
     turn_side = (s32)((approach_position.x * (teammate_position.z - rock_reference.z)) +
@@ -234,8 +234,8 @@ void fn_1_24D4(M644PlayerRecord *player)
 
     player->selected_lane = selected_lane;
     fn_1_2288(player);
-    MgPlayerComStkOn(player->player);
-    MgPlayerVecChase(player->player, (Vec *)player->approach_point,
+    fn_8007E818(player->player);
+    fn_8007E8B4(player->player, (Vec *)player->approach_point,
                      player->chase_speed, 0.0f);
 }
 
@@ -269,8 +269,8 @@ void fn_1_28CC(M644PlayerRecord *player)
     } else {
         player->approach_point[2] += (f32)(u32)frandmod(200) - 100.0f;
     }
-    MgPlayerComStkOn(player->player);
-    MgPlayerVecChase(player->player, (Vec *)player->approach_point, player->chase_speed, 0.0f);
+    fn_8007E818(player->player);
+    fn_8007E8B4(player->player, (Vec *)player->approach_point, player->chase_speed, 0.0f);
     OSReport("target %d : %f, %f, %f\n", player->slot, player->approach_point[0],
              player->approach_point[1], player->approach_point[2]);
 }
@@ -302,14 +302,14 @@ s32 fn_1_2B44(M644PlayerRecord *player)
         player->reference_radius = fn_1_6768(route, 0);
         fn_1_24D4(player);
     }
-    if (MgPlayerVecChase(player->player, (Vec *)player->approach_point,
+    if (fn_8007E8B4(player->player, (Vec *)player->approach_point,
                          player->chase_speed, 40.0f)) {
         point_index = player->selected_lane;
         chase_position = *(Vec *)player->local_collision_points[point_index];
         PSMTXMultVec(player->section_matrix, &chase_position, &chase_position);
-        MgPlayerComStkOff(player->player);
+        fn_8007E888(player->player);
         player->cpu_state = 3;
-        MgActorVecChase(player->player->actor, &chase_position,
+        fn_8007EB24(player->player->actor, &chase_position,
                         0.0f, 0.0f);
         return 1;
     }
@@ -317,17 +317,17 @@ s32 fn_1_2B44(M644PlayerRecord *player)
         (player->com_difficulty == 0 || player->com_difficulty == 1)) {
         partner_distance_limit = 112.0f;
         partner_distance_limit *= partner_distance_limit;
-        MgActorPosGet(player->player->actor, &player_position);
-        MgActorPosGet(player->teammate->player->actor, &linked_position);
+        fn_80086BC8(player->player->actor, &player_position);
+        fn_80086BC8(player->teammate->player->actor, &linked_position);
         PSVECSubtract(&player_position, &linked_position, &difference);
         difference.y = 0.0f;
         /* The OR between mode tests accepts every teammate mode; proximity still triggers the jump
          * request. */
         if (PSVECSquareMag(&difference) < partner_distance_limit &&
             player->teammate->cpu_state != 7 &&
-            (player->teammate->player->mode != MGPLAYER_MODE_JUMP ||
-             player->teammate->player->mode != MGPLAYER_MODE_KICK)) {
-            MgPlayerModeLandSet(player->player, MGPLAYER_MODE_JUMP);
+            (player->teammate->player->mode != 1 ||
+             player->teammate->player->mode != 4)) {
+            fn_8007EDE8(player->player, 1);
             player->cpu_state = 7;
         }
     }
@@ -342,19 +342,19 @@ s32 fn_1_2FE0(M644PlayerRecord *player)
 {
     s32 chance;
 
-    if (player->player->mode == MGPLAYER_MODE_PUNCH) {
+    if (player->player->mode == 3) {
         return;
     }
-    if (player->player->mode == MGPLAYER_MODE_KICK) {
+    if (player->player->mode == 4) {
         return;
     }
-    if (player->player->mode == MGPLAYER_MODE_JUMP) {
+    if (player->player->mode == 1) {
         player->cpu_timer--;
         if (player->cpu_timer == 0) {
-            MgPlayerPadSet(player->player, 0, 0, PAD_BUTTON_B, 0);
+            fn_80080520(player->player, 0, 0, PAD_BUTTON_B, 0);
             player->cpu_state = 6;
         } else if (player->cpu_timer != 1) {
-            MgPlayerPadSet(player->player, 0, 0, 0, PAD_BUTTON_A);
+            fn_80080520(player->player, 0, 0, 0, PAD_BUTTON_A);
         }
     } else {
         chance = 0;
@@ -377,11 +377,11 @@ s32 fn_1_2FE0(M644PlayerRecord *player)
         }
 
         if (rand8() % 100 > chance) {
-            MgPlayerModeLandSet(player->player, MGPLAYER_MODE_PUNCH);
+            fn_8007EDE8(player->player, 3);
             player->cpu_state = 6;
             player->cpu_timer = 0;
         } else {
-            MgPlayerPadSet(player->player, 0, 0, PAD_BUTTON_A, 0);
+            fn_80080520(player->player, 0, 0, PAD_BUTTON_A, 0);
             switch (player->com_difficulty) {
             case 0:
                 player->cpu_timer = (rand8() % 4) + 12;
@@ -413,8 +413,8 @@ s32 fn_1_2FE0(M644PlayerRecord *player)
 /* Lets hard CPUs plan again once an attack ends and the player is back on the ground. */
 s32 fn_1_32D0(M644PlayerRecord *player)
 {
-    if (player->player->mode != MGPLAYER_MODE_PUNCH && player->player->mode != MGPLAYER_MODE_KICK &&
-        MgPlayerModeAttrCheck(player->player, MGPLAYER_MODEATTR_AIR) == 0) {
+    if (player->player->mode != 3 && player->player->mode != 4 &&
+        fn_80087148(player->player, (1 << 4)) == 0) {
         player->cpu_state = 0;
     }
 }
@@ -425,7 +425,7 @@ void fn_1_3338(OMOBJ *object)
     M644PlayerRecord *data = object->data;
     MGPLAYER *player = data->player;
 
-    if (MgPlayerVibAttrCheck(data->player, (MGPLAYER_VIBATTR_HIT | MGPLAYER_VIBATTR_KNOCKBACK)) !=
+    if (fn_80087114(data->player, ((1 << 6) | (1 << 7))) !=
         0) {
         fn_1_215C(data);
     }
@@ -466,8 +466,8 @@ void fn_1_3338(OMOBJ *object)
         fn_1_2FE0(data);
         return;
     case 6:
-        if (data->player->mode != MGPLAYER_MODE_PUNCH && data->player->mode != MGPLAYER_MODE_KICK &&
-            MgPlayerModeAttrCheck(data->player, MGPLAYER_MODEATTR_AIR) == 0) {
+        if (data->player->mode != 3 && data->player->mode != 4 &&
+            fn_80087148(data->player, (1 << 4)) == 0) {
             data->cpu_state = 0;
             return;
         }
@@ -494,7 +494,7 @@ void fn_1_3BBC(OMOBJ *object)
     M644PlayerRecord *data = object->data;
     MGPLAYER *player = data->player;
 
-    if (MgPlayerVibAttrCheck(data->player, (MGPLAYER_VIBATTR_HIT | MGPLAYER_VIBATTR_KNOCKBACK)) !=
+    if (fn_80087114(data->player, ((1 << 6) | (1 << 7))) !=
         0) {
         fn_1_215C(data);
     }
@@ -535,8 +535,8 @@ void fn_1_3BBC(OMOBJ *object)
         fn_1_2FE0(data);
         return;
     case 6:
-        if (data->player->mode != MGPLAYER_MODE_PUNCH && data->player->mode != MGPLAYER_MODE_KICK &&
-            MgPlayerModeAttrCheck(data->player, MGPLAYER_MODEATTR_AIR) == 0) {
+        if (data->player->mode != 3 && data->player->mode != 4 &&
+            fn_80087148(data->player, (1 << 4)) == 0) {
             data->cpu_state = 0;
             return;
         }
@@ -565,7 +565,7 @@ void fn_1_4440(OMOBJ *object)
 
     player = object->data;
     mg_player = player->player;
-    if (MgPlayerVibAttrCheck(player->player, (MGPLAYER_VIBATTR_HIT | MGPLAYER_VIBATTR_KNOCKBACK)) !=
+    if (fn_80087114(player->player, ((1 << 6) | (1 << 7))) !=
         0) {
         fn_1_215C(player);
     }
@@ -609,7 +609,7 @@ void fn_1_46C0(OMOBJ *object)
 
     player = object->data;
     mg_player = player->player;
-    if (MgPlayerVibAttrCheck(player->player, (MGPLAYER_VIBATTR_HIT | MGPLAYER_VIBATTR_KNOCKBACK)) !=
+    if (fn_80087114(player->player, ((1 << 6) | (1 << 7))) !=
         0) {
         fn_1_215C(player);
     }
@@ -680,20 +680,20 @@ s32 fn_1_4E84(void)
         group_start_slots.next_slot[0] = rand8() % 2;
         group_start_slots.next_slot[1] = rand8() % 2;
     for (player_index = 0; player_index < 4; player_index++) {
-        object = omAddObjEx(fn_1_A0(), 512, 0, 0, 0, fn_1_58A8);
+        object = fn_8003AB38(fn_1_A0(), 512, 0, 0, 0, fn_1_58A8);
         object->data = &lbl_1_bss_78[player_index];
         memset(object->data, 0, sizeof(M644PlayerRecord));
         player = object->data;
         player->slot = player_index;
-        player->group = GwPlayerConf[player_index].grpNo;
+        player->group = lbl_80265728[player_index].grpNo;
         player->boarding_slot = group_start_slots.next_slot[player->group];
         group_start_slots.next_slot[player->group] =
             1 - group_start_slots.next_slot[player->group];
-        player->player_type = GwPlayerConf[player_index].type;
-        player->com_difficulty = GwPlayerConf[player_index].comDif;
+        player->player_type = lbl_80265728[player_index].type;
+        player->com_difficulty = lbl_80265728[player_index].comDif;
         player->attack_contact = 0;
         player->boarding_phase = 1;
-        player->controller_index = GwPlayerConf[player_index].padNo;
+        player->controller_index = lbl_80265728[player_index].padNo;
         player->cpu_state = 0;
         player->cpu_timer = 0;
         player->selected_lane = -1;
@@ -781,13 +781,13 @@ void fn_1_5284(s32 group) {
     for (player_index = 0; player_index < 4; player_index++) {
         if (group == lbl_1_bss_78[player_index].group) {
             player = lbl_1_bss_78[player_index].player;
-            CharMotionShiftSet(
+            fn_8005C2C8(
                 player->charNo,
-                player->omObj->mtnId[MGPLAYER_MOT_HIPDROP_END],
-                0.0f, 15.0f, HU3D_MOTATTR_LOOP);
+                player->omObj->mtnId[9],
+                0.0f, 15.0f, ((1 << 30) | (1 << 0)));
             /* The mode reset selects slot group * 2 rather than the loop's current teammate. */
             group_player = lbl_1_bss_78[group * 2].player;
-            MgPlayerModeSet(group_player, MGPLAYER_MODE_WALK);
+            fn_8007EEBC(group_player, 0);
         }
     }
 }
@@ -802,13 +802,13 @@ void fn_1_5364(s32 group) {
     for (player_index = 0; player_index < 4; player_index++) {
         if (group == lbl_1_bss_78[player_index].group) {
             player = lbl_1_bss_78[player_index].player;
-            CharMotionShiftSet(
+            fn_8005C2C8(
                 player->charNo,
-                player->omObj->mtnId[MGPLAYER_MOT_IDLE],
-                0.0f, 15.0f, HU3D_MOTATTR_LOOP);
+                player->omObj->mtnId[0],
+                0.0f, 15.0f, ((1 << 30) | (1 << 0)));
             /* As above, the mode reset selects slot group * 2 for each teammate. */
             group_player = lbl_1_bss_78[group * 2].player;
-            MgPlayerModeSet(group_player, MGPLAYER_MODE_WALK);
+            fn_8007EEBC(group_player, 0);
         }
     }
 }
@@ -821,9 +821,9 @@ void fn_1_5444(s32 group) {
     for (player_index = 0; player_index < 4; player_index += 1) {
         if (group == lbl_1_bss_78[player_index].group) {
             player = lbl_1_bss_78[player_index].player;
-            CharMotionShiftSet(
+            fn_8005C2C8(
                 player->charNo,
-                player->omObj->mtnId[MGPLAYER_MOT_JUMP],
+                player->omObj->mtnId[3],
                 0.0f,
                 15.0f,
                 0);
@@ -839,9 +839,9 @@ void fn_1_54F0(s32 group) {
     for (player_index = 0; player_index < 4; player_index += 1) {
         if (group == lbl_1_bss_78[player_index].group) {
             player = lbl_1_bss_78[player_index].player;
-            CharMotionShiftSet(
+            fn_8005C2C8(
                 player->charNo,
-                player->omObj->mtnId[MGPLAYER_MOT_LAND],
+                player->omObj->mtnId[4],
                 0.0f,
                 15.0f,
                 0);
@@ -857,15 +857,15 @@ void fn_1_559C(s32 group) {
     for (player_index = 0; player_index < 4; player_index += 1) {
         if (group == lbl_1_bss_78[player_index].group) {
             player = lbl_1_bss_78[player_index].player;
-            CharMotionShiftSet(
+            fn_8005C2C8(
                 player->charNo,
-                player->omObj->mtnId[MGPLAYER_MOT_HIPDROP],
+                player->omObj->mtnId[7],
                 0.0f,
                 15.0f,
-                HU3D_MOTATTR_LOOP);
+                ((1 << 30) | (1 << 0)));
             /* Enables the low attribute bit on the hip-drop motion. */
-            Hu3DMotionAttrSet(
-                player->omObj->mtnId[MGPLAYER_MOT_HIPDROP],
+            fn_8002DC74(
+                player->omObj->mtnId[7],
                 1);
         }
     }
@@ -877,7 +877,7 @@ void fn_1_5660(s32 group)
     s32 player_index = 0;
     for (player_index = 0; player_index < 4; player_index++) {
         if (group == lbl_1_bss_78[player_index].group) {
-            omVibrate(player_index, 20, 20, 0);
+            fn_8006A030(player_index, 20, 20, 0);
         }
     }
 }
@@ -890,9 +890,9 @@ void fn_1_56D4(s32 group) {
     for (player_index = 0; player_index < 4; player_index += 1) {
         if (group == lbl_1_bss_78[player_index].group) {
             player = lbl_1_bss_78[player_index].player;
-            CharMotionShiftSet(
+            fn_8005C2C8(
                 player->charNo,
-                player->omObj->mtnId[MGPLAYER_MOT_HIPDROP_LAND],
+                player->omObj->mtnId[8],
                 0.0f,
                 15.0f,
                 0);
@@ -915,10 +915,10 @@ void fn_1_5780(OMOBJ *object, HuVecF *position_out)
     fn_1_8064(data->group, data->boarding_slot, matrix);
     /* The hook translation replaces the position preset above. */
     Hu3DMtxTransGet(matrix, &position);
-    MgActorPosSetRaw(data->player->actor, &position);
-    Hu3DModelPosSetV(data->player->actor->mdlId, &position);
+    fn_80086B04(data->player->actor, &position);
+    fn_80026790(data->player->actor->mdlId, &position);
     Hu3DMtxRotGet(matrix, &rotation);
-    Hu3DModelRotSetV(data->player->actor->mdlId, &rotation);
+    fn_80026838(data->player->actor->mdlId, &rotation);
     if (position_out != NULL) {
         *position_out = position;
     }
@@ -942,7 +942,7 @@ void fn_1_58A8(OMOBJ *object)
     actor_params.narrowHook = fn_1_213C;
     actor_params.correctHook = 0;
 
-    data->player = MgPlayerCreate(
+    data->player = fn_80080728(
         data->slot, &actor_params, 4, camera_masks.camera_bit[data->group],
         M644_PLAYER_ACTION_MASK, lbl_1_data_188);
 
@@ -952,24 +952,24 @@ void fn_1_58A8(OMOBJ *object)
     }
     /* The hook query replaces the preceding start-position preset. */
     fn_1_7FF4(data->group, data->boarding_slot, &spawn_position);
-    MgActorPosSet(data->player->actor, &spawn_position);
-    Hu3DModelLayerSet(data->player->actor->mdlId, 4);
-    CharEffectLayerSet(5);
-    CharModelVoiceFlagSet(data->player->charNo, 1);
-    MgPlayerVibrateCreate(data->player);
-    MgActorColMaskSet(data->player->actor,
+    fn_80086AA8(data->player->actor, &spawn_position);
+    fn_80026B8C(data->player->actor->mdlId, 4);
+    fn_8005DDEC(5);
+    fn_8005DFC0(data->player->charNo, 1);
+    fn_8007ED60(data->player);
+    fn_80080DD4(data->player->actor,
                       M644_PLAYER_COLLISION_MASK + data->group * M644_PLAYER_COLLISION_MASK);
-    Hu3DModelCameraSet(
+    fn_80026B64(
         data->player->actor->mdlId, camera_masks.camera_bit[data->group]);
-    Hu3DModelAttrReset(data->player->actor->mdlId, HU3D_ATTR_DISPOFF);
-    Hu3DModelShadowSet(data->player->actor->mdlId);
-    MgPlayerComStkOn(data->player);
-    MgActorColAttrSet(data->player->actor, (COLBODY_ATTR_MESHCOL_OFF | COLBODY_ATTR_BODYCOL_OFF));
-    MgActorGravitySet(data->player->actor, 0.0f);
+    fn_80026A44(data->player->actor->mdlId, (1 << 0));
+    fn_80026E44(data->player->actor->mdlId);
+    fn_8007E818(data->player);
+    fn_800805CC(data->player->actor, ((1 << 1) | (1 << 2)));
+    fn_80086CBC(data->player->actor, 0.0f);
     fn_1_7E5C(data->player->actor->mdlId, data->group, data->boarding_slot);
-    Hu3DMotionSet(
-        data->player->actor->mdlId, data->player->omObj->mtnId[MGPLAYER_MOT_HIPDROP_END]);
-    MgPlayerDespawn(data->player);
+    fn_8002C95C(
+        data->player->actor->mdlId, data->player->omObj->mtnId[9]);
+    fn_80086E3C(data->player);
     object->objFunc = fn_1_5AE4;
 }
 
@@ -984,7 +984,7 @@ void fn_1_5AE4(OMOBJ *object)
     s32 lane_index;
 
     data = object->data;
-    if (MgSeqModeGet() == MGSEQ_MODE_MAIN) {
+    if (fn_80071A8C() == 5) {
         if (data->player_type != 0) {
             data->cpu_state = 0;
             data->cpu_timer = 0;
@@ -1024,24 +1024,24 @@ void fn_1_5C04(OMOBJ *object)
 
         fn_1_5780(object, &spawn_position);
         player = data->player;
-        MgPlayerAttrReset(player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerSpawn(data->player, &spawn_position);
+        fn_80087168(player, (1 << 0));
+        fn_80086F00(data->player, &spawn_position);
         fn_1_7F8C(data->player->actor->mdlId, data->group,
                   data->boarding_slot);
-        MgPlayerComStkOff(data->player);
-        MgActorColAttrReset(data->player->actor,
-                            (COLBODY_ATTR_MESHCOL_OFF | COLBODY_ATTR_BODYCOL_OFF));
-        MgActorGravitySet(data->player->actor, 150.0f);
-        MgPlayerModeSet(data->player, MGPLAYER_MODE_WALK);
-        CharMotionShiftSet(data->player->charNo,
+        fn_8007E888(data->player);
+        fn_8008062C(data->player->actor,
+                            ((1 << 1) | (1 << 2)));
+        fn_80086CBC(data->player->actor, 150.0f);
+        fn_8007EEBC(data->player, 0);
+        fn_8005C2C8(data->player->charNo,
                            *data->player->omObj->mtnId,
                            0.0f, 15.0f,
-                           HU3D_MOTATTR_LOOP);
-        CharModelVoiceFlagSet(data->player->charNo, 1);
-        CharModelLandDustCreate(data->player->charNo, &spawn_position);
+                           ((1 << 30) | (1 << 0)));
+        fn_8005DFC0(data->player->charNo, 1);
+        fn_8005F968(data->player->charNo, &spawn_position);
         chase_route = fn_1_9124(data->group);
         fn_1_1EA8(chase_route >> 1, &chase_position, data->section_matrix);
-        MgActorVecChase(data->player->actor, &chase_position,
+        fn_8007EB24(data->player->actor, &chase_position,
                         0.0f, 0.0f);
         if (data->player_type == 1) {
             fn_1_215C(data);
@@ -1060,10 +1060,10 @@ void fn_1_5F50(OMOBJ *object)
     Vec position;
     state = object->data;
     player = state->player;
-    if (player->mode == MGPLAYER_MODE_PUNCH || player->mode == MGPLAYER_MODE_KICK) {
+    if (player->mode == 3 || player->mode == 4) {
         switch (player->mode) {
-        case MGPLAYER_MODE_PUNCH: attack_motion = 0; contact_frame = 10; break;
-        case MGPLAYER_MODE_KICK: attack_motion = 1; contact_frame = 10; break;
+        case 3: attack_motion = 0; contact_frame = 10; break;
+        case 4: attack_motion = 1; contact_frame = 10; break;
         }
         state->attack_class = attack_motion;
         if (state->attack_frames == contact_frame) state->attack_contact = 1;
@@ -1073,19 +1073,19 @@ void fn_1_5F50(OMOBJ *object)
         state->attack_class = 4;
         state->attack_frames = 0;
     }
-    if (MgPlayerVibAttrCheck(state->player, MGPLAYER_VIBATTR_SQUISH) != 0)
-        CharFXPlay(state->player->charNo, CHARVOICEID(15));
+    if (fn_80087114(state->player, (1 << 0)) != 0)
+        CharFXPlay(state->player->charNo, (573+15));
     if (state->player_type == 1) fn_1_4940(object);
     if (state->boarding_phase == 3) {
-        MgPlayerComStkOn(state->player);
+        fn_8007E818(state->player);
         fn_1_7FF4(state->group, state->boarding_slot, &position);
         state->return_target = position;
-        MgActorColAttrSet(state->player->actor, COLBODY_ATTR_BODYCOL_OFF);
+        fn_800805CC(state->player->actor, (1 << 2));
         object->objFunc = fn_1_60E0;
     }
-    if (MgSeqModeGet() == MGSEQ_MODE_FINISH || MgSeqModeGet() == MGSEQ_MODE_PREWIN ||
-        MgSeqModeGet() == MGSEQ_MODE_WINNER) {
-        MgPlayerComStkOn(state->player);
+    if (fn_80071A8C() == 6 || fn_80071A8C() == 7 ||
+        fn_80071A8C() == 8) {
+        fn_8007E818(state->player);
         object->objFunc = NULL;
     }
 }
@@ -1098,22 +1098,22 @@ void fn_1_60E0(OMOBJ *object)
     MGPLAYER *player;
 
     state = object->data;
-    if (MgSeqModeGet() == MGSEQ_MODE_FINISH ||
-        MgSeqModeGet() == MGSEQ_MODE_PREWIN ||
-        MgSeqModeGet() == MGSEQ_MODE_WINNER) {
-        MgPlayerComStkOn(state->player);
+    if (fn_80071A8C() == 6 ||
+        fn_80071A8C() == 7 ||
+        fn_80071A8C() == 8) {
+        fn_8007E818(state->player);
         object->objFunc = NULL;
         return;
     }
     if (state->active != 0) {
         player = state->player;
-        MgPlayerAttrSet(player, MGPLAYER_ATTR_COMSTK);
+        fn_80087158(player, (1 << 0));
         if (state->player->stunType != 0 ||
-            MgPlayerModeAttrCheck(state->player, MGPLAYER_MODEATTR_AIR) != 0 ||
-            state->player->mode != MGPLAYER_MODE_WALK) {
+            fn_80087148(state->player, (1 << 4)) != 0 ||
+            state->player->mode != 0) {
             return;
         }
-        if (MgPlayerVecChase(state->player, (HuVecF *)&state->return_target,
+        if (fn_8007E8B4(state->player, (HuVecF *)&state->return_target,
                              12.0f, 60.0f) != 0) {
             state->player->actor->gravity = 0.0f;
             state->active = 0;
@@ -1121,8 +1121,8 @@ void fn_1_60E0(OMOBJ *object)
     }
     if (state->boarding_phase == 4) {
         state->attack_class = 4;
-        CharModelVoiceFlagSet(state->player->charNo, 0);
-        MgPlayerDespawn(state->player);
+        fn_8005DFC0(state->player->charNo, 0);
+        fn_80086E3C(state->player);
         fn_1_7E5C(state->player->actor->mdlId, state->group,
                   state->boarding_slot);
         object->objFunc = fn_1_6250;
@@ -1135,25 +1135,25 @@ void fn_1_6250(OMOBJ *object) {
     M644PlayerRecord *data;
 
     data = object->data;
-    if ((MgSeqModeGet() == MGSEQ_MODE_FINISH) || (MgSeqModeGet() == MGSEQ_MODE_PREWIN) ||
-        (MgSeqModeGet() == MGSEQ_MODE_WINNER)) {
-        MgPlayerComStkOn(data->player);
+    if ((fn_80071A8C() == 6) || (fn_80071A8C() == 7) ||
+        (fn_80071A8C() == 8)) {
+        fn_8007E818(data->player);
         object->objFunc = NULL;
         return;
     }
     if (data->boarding_phase == 1) {
-        CharMotionShiftSet(data->player->charNo,
-                           data->player->omObj->mtnId[MGPLAYER_MOT_HIPDROP_END], 0.0f, 15.0f,
-                           HU3D_MOTATTR_LOOP);
-        CharModelVoiceFlagSet(data->player->charNo, 1);
+        fn_8005C2C8(data->player->charNo,
+                           data->player->omObj->mtnId[9], 0.0f, 15.0f,
+                           ((1 << 30) | (1 << 0)));
+        fn_8005DFC0(data->player->charNo, 1);
         lbl_1_data_1CC = -1;
         object->objFunc = fn_1_5C04;
     }
     if (data->boarding_phase == 5) {
-        CharMotionShiftSet(data->player->charNo,
-                           data->player->omObj->mtnId[MGPLAYER_MOT_HIPDROP_END], 0.0f, 15.0f,
-                           HU3D_MOTATTR_LOOP);
-        CharModelVoiceFlagSet(data->player->charNo, 1);
+        fn_8005C2C8(data->player->charNo,
+                           data->player->omObj->mtnId[9], 0.0f, 15.0f,
+                           ((1 << 30) | (1 << 0)));
+        fn_8005DFC0(data->player->charNo, 1);
         object->objFunc = fn_1_6394;
     }
 }

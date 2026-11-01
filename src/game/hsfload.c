@@ -351,7 +351,10 @@ static void VertexLoad(void)
             for(positionIndex=0; positionIndex<loadedVertex->count; positionIndex++) {
                 vertexPosition = (HuVecF *) (((u32) vertexData) + vertexDataOffset +
                                              (positionIndex * sizeof(HuVecF)));
-                HuCopyVecF(&((HuVecF *)loadedVertex->data)[positionIndex], vertexPosition);
+                (&((HuVecF *)loadedVertex->data)[positionIndex])->x =
+                    vertexPosition->x;  (&((HuVecF *)loadedVertex->data)[positionIndex])->y =
+                    vertexPosition->y;  (&((HuVecF *)loadedVertex->data)[positionIndex])->z =
+                    vertexPosition->z;
             }
         }
     }
@@ -426,7 +429,9 @@ static void STLoad(void)
             for(coordinateIndex=0; coordinateIndex<loadedCoordinate->count; coordinateIndex++) {
                 coordinate = (HuVec2f *) (((u32) coordinateData) + coordinateDataOffset +
                                           (coordinateIndex * sizeof(HuVec2f)));
-                HuCopyVec2F(&((HuVec2f *)loadedCoordinate->data)[coordinateIndex], coordinate);
+                (&((HuVec2f *)loadedCoordinate->data)[coordinateIndex])->x =
+                    coordinate->x;  (&((HuVec2f *)loadedCoordinate->data)[coordinateIndex])->y =
+                    coordinate->y;
             }
         }
     }
@@ -468,7 +473,7 @@ static void FaceLoad(void)
             sourceFace = loadedFacePart = loadedFace->data;
             for (partIndex = 0; partIndex < loadedFace->count;
                  partIndex++, loadedFacePart++, sourceFace++) {
-                if(sourceFace->typeSrc == HSF_FACE_TRISTRIP) {
+                if(sourceFace->typeSrc == 4) {
                     loadedFacePart->strip.data =
                         (HSF_FACE_INDEX *) (stripIndexData + (u32) sourceFace->strip.data *
                                                                  (sizeof(HSF_FACE_INDEX)));
@@ -493,7 +498,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
     resolvedReference.parent = parent;
     object->type = object->type;
     switch(object->type) {
-        case HSF_OBJ_MESH:
+        case 2:
         {
             HSF_MESH *meshData;
             HSF_OBJECT *resolvedObject;
@@ -510,7 +515,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
             if(Model.root == NULL) {
                 Model.root = rootCandidate;
             }
-            resolvedObject->type = HSF_OBJ_MESH;
+            resolvedObject->type = 2;
             resolvedObject->mesh.vertex = SearchVertexPtr((s32)meshData->vertex);
             resolvedObject->mesh.normal = SearchNormalPtr((s32)meshData->normal);
             resolvedObject->mesh.st = SearchStPtr((s32)meshData->st);
@@ -556,7 +561,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
         }
         break;
 
-        case HSF_OBJ_NULL1:
+        case 0:
         {
             HSF_MESH *meshData;
             HSF_OBJECT *resolvedObject;
@@ -578,7 +583,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
         }
         break;
 
-        case HSF_OBJ_REPLICA:
+        case 1:
         {
             HSF_MESH *meshData;
             HSF_OBJECT *resolvedObject;
@@ -601,7 +606,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
         }
         break;
 
-        case HSF_OBJ_ROOT:
+        case 3:
         {
             HSF_MESH *meshData;
             HSF_OBJECT *resolvedObject;
@@ -623,7 +628,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
         }
         break;
 
-        case HSF_OBJ_JOINT:
+        case 4:
         {
             HSF_MESH *meshData;
             HSF_OBJECT *resolvedObject;
@@ -645,7 +650,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
         }
         break;
 
-        case HSF_OBJ_NULL2:
+        case 5:
         {
             HSF_MESH *meshData;
             HSF_OBJECT *resolvedObject;
@@ -667,7 +672,7 @@ static void DispObject(HSF_OBJECT *parent, HSF_OBJECT *object)
         }
         break;
 
-        case HSF_OBJ_MAP:
+        case 9:
         {
             HSF_MESH *meshData;
             HSF_OBJECT *resolvedObject;
@@ -702,17 +707,17 @@ static inline void FixupObject(HSF_OBJECT *object)
 
     s32 type = object->type;
     switch(type) {
-        case HSF_OBJ_LIGHT:
+        case 8:
         {
             light = &object->light;
-            object->type = HSF_OBJ_LIGHT;
+            object->type = 8;
         }
         break;
 
-        case HSF_OBJ_CAMERA:
+        case 7:
         {
             camera = &object->camera;
-            object->type = HSF_OBJ_CAMERA;
+            object->type = 7;
         }
         break;
 
@@ -1197,28 +1202,28 @@ static inline void MotionLoadTransform(HSF_TRACK *track, void *data)
     }
     dataNum = track->dataNum;
     switch(track->curveType) {
-        case HSF_CURVE_STEP:
+        case 0:
         {
             stepData = (float *)((u32)data+(u32)track->data);
             outTrack->data = stepData;
         }
         break;
 
-        case HSF_CURVE_LINEAR:
+        case 1:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
 
-        case HSF_CURVE_BEZIER:
+        case 2:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
 
-        case HSF_CURVE_CONST:
+        case 4:
             break;
     }
 }
@@ -1243,28 +1248,28 @@ static inline void MotionLoadCluster(HSF_TRACK *track, void *data)
     dataNum = track->dataNum;
     (void)outTrack;
     switch(track->curveType) {
-        case HSF_CURVE_STEP:
+        case 0:
         {
             stepData = (float *)((u32)data+(u32)track->data);
             outTrack->data = stepData;
         }
         break;
 
-        case HSF_CURVE_LINEAR:
+        case 1:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
 
-        case HSF_CURVE_BEZIER:
+        case 2:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
 
-        case HSF_CURVE_CONST:
+        case 4:
             break;
     }
 }
@@ -1289,28 +1294,28 @@ static inline void MotionLoadClusterWeight(HSF_TRACK *track, void *data)
     dataNum = track->dataNum;
     (void)outTrack;
     switch(track->curveType) {
-        case HSF_CURVE_STEP:
+        case 0:
         {
             stepData = (float *)((u32)data+(u32)track->data);
             outTrack->data = stepData;
         }
         break;
 
-        case HSF_CURVE_LINEAR:
+        case 1:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
 
-        case HSF_CURVE_BEZIER:
+        case 2:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
 
-        case HSF_CURVE_CONST:
+        case 4:
             break;
     }
 }
@@ -1326,28 +1331,28 @@ static inline void MotionLoadMaterial(HSF_TRACK *track, void *data)
     outTrack = track;
     dataNum = track->dataNum;
     switch(track->curveType) {
-        case HSF_CURVE_STEP:
+        case 0:
         {
             stepData = (float *)((u32)data+(u32)track->data);
             outTrack->data = stepData;
         }
         break;
 
-        case HSF_CURVE_LINEAR:
+        case 1:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
 
-        case HSF_CURVE_BEZIER:
+        case 2:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
 
-        case HSF_CURVE_CONST:
+        case 4:
             break;
     }
 }
@@ -1375,28 +1380,28 @@ static inline void MotionLoadAttribute(HSF_TRACK *track, void *data)
     }
 
     switch(track->curveType) {
-        case HSF_CURVE_STEP:
+        case 0:
         {
             stepData = (float *)((u32)data+(u32)track->data);
             outTrack->data = stepData;
         }
         break;
 
-        case HSF_CURVE_LINEAR:
+        case 1:
         {
             linearData = (float *)((u32)data+(u32)track->data);
             outTrack->data = linearData;
         }
         break;
 
-        case HSF_CURVE_BEZIER:
+        case 2:
         {
             bezierData = (float *)((u32)data+(u32)track->data);
             outTrack->data = bezierData;
         }
         break;
 
-        case HSF_CURVE_BITMAP:
+        case 3:
         {
             newBitmap = fileBitmap = (HSF_BITMAP_KEY *)((u32)data+(u32)track->data);
             outTrack->data = fileBitmap;
@@ -1405,7 +1410,7 @@ static inline void MotionLoadAttribute(HSF_TRACK *track, void *data)
             }
         }
         break;
-        case HSF_CURVE_CONST:
+        case 4:
             break;
     }
 }
@@ -1432,24 +1437,24 @@ static void MotionLoad(void)
         newMotion->track = trackStart;
         for(i=0; i<(s32)fileMotion->numTracks; i++) {
             switch(trackStart[i].type) {
-                case HSF_TRACK_TRANSFORM:
-                case HSF_TRACK_MORPH:
+                case 2:
+                case 3:
                     MotionLoadTransform(&trackStart[i], trackData);
                     break;
 
-                case HSF_TRACK_CLUSTER:
+                case 5:
                     MotionLoadCluster(&trackStart[i], trackData);
                     break;
 
-                case HSF_TRACK_CLUSTER_WEIGHT:
+                case 6:
                     MotionLoadClusterWeight(&trackStart[i], trackData);
                     break;
 
-                case HSF_TRACK_MATERIAL:
+                case 9:
                     MotionLoadMaterial(&trackStart[i], trackData);
                     break;
 
-                case HSF_TRACK_ATTRIBUTE:
+                case 10:
                     MotionLoadAttribute(&trackStart[i], trackData);
                     break;
 

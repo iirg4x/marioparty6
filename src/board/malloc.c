@@ -2,38 +2,38 @@
 #include "dolphin/os/OSCache.h"
 #include "string.h"
 
-void *mbMalloc(s32 size)
+void *fn_802137C0(s32 size)
 {
     void *ptr;
 
-    ptr = HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+    ptr = HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
     memset(ptr, 0, size);
     return ptr;
 }
 
-void *mbMallocNum(s32 size, u32 num)
+void *fn_80213818(s32 size, u32 num)
 {
     void *ptr;
 
-    ptr = HuMemDirectMallocNum(HEAP_MODEL, size, num);
+    ptr = HuMemDirectMallocNum(2, size, num);
     memset(ptr, 0, size);
     return ptr;
 }
 
-void *mbMallocFlush(s32 size)
+void *fn_80213874(s32 size)
 {
     void *ptr;
 
-    ptr = HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+    ptr = HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
     DCFlushRange(ptr, size);
     return ptr;
 }
 
-void *mbMallocFlushModel(s32 size)
+void *fn_802138C8(s32 size)
 {
     void *ptr;
 
-    ptr = HuMemDirectMallocNum(HEAP_MODEL, size, HU_MEMNUM_OVL);
+    ptr = HuMemDirectMallocNum(2, size, 0x10000000);
     DCFlushRange(ptr, size);
     return ptr;
 }
@@ -42,7 +42,7 @@ void *mbMallocFlushModelNum(s32 size, u32 num)
 {
     void *ptr;
 
-    ptr = HuMemDirectMallocNum(HEAP_MODEL, size, num);
+    ptr = HuMemDirectMallocNum(2, size, num);
     DCFlushRange(ptr, size);
     return ptr;
 }

@@ -49,14 +49,14 @@ enum {
     PLAYER_MOVE_NUM_OBJ_PRIORITY = 32258,
     PLAYER_MOVE_PROCESS_PRIORITY = 8205,
     PLAYER_MOVE_PROCESS_STACK_SIZE = 24576,
-    PLAYER_MOVE_COUNT_SFX = MSM_SE_BRD00_02,
-    PLAYER_COIN_GAIN_SFX = MSM_SE_BRD00_97,
-    PLAYER_COIN_LOSS_SFX = MSM_SE_BRD00_98
+    PLAYER_MOVE_COUNT_SFX = 1006,
+    PLAYER_COIN_GAIN_SFX = 1101,
+    PLAYER_COIN_LOSS_SFX = 1102
 };
 
-#define FLAG_BOARD_WALKDONE FLAGNUM(FLAG_GROUP_COMMON, 16)
+#define FLAG_BOARD_WALKDONE 65552
 
-static MBPLAYERWORK playerWork[GW_PLAYER_MAX];
+static MBPLAYERWORK playerWork[4];
 static BOOL turnIntrF;
 static BOOL blackoutF;
 static void (*turnInitHook)(int playerNo);
@@ -101,46 +101,44 @@ static GXColor metalDefaultColor[2] = {
     { 100, 50, 130, 255 }
 };
 
-#define CHAR_MDLFILE(name) DATA_##name##mdl1
-#define CHAR_MOTDIR(name) DATA_##name##mot
 
-static const int charMdlFileTbl[CHARNO_MAX] = {
-    CHAR_MDLFILE(mario), CHAR_MDLFILE(luigi), CHAR_MDLFILE(peach), CHAR_MDLFILE(yoshi),
-    CHAR_MDLFILE(wario), CHAR_MDLFILE(daisy), CHAR_MDLFILE(waluigi), CHAR_MDLFILE(kinopio),
-    CHAR_MDLFILE(teresa), CHAR_MDLFILE(minikoopa), CHAR_MDLFILE(kinopiko), CHAR_MDLFILE(minikoopaR),
-    CHAR_MDLFILE(minikoopaG), CHAR_MDLFILE(minikoopaB)
+static const int charMdlFileTbl[14] = {
+    0x900000, 0x380000, 0xc20000, 0xf50000,
+    0xee0000, 0x160000, 0xe80000, 0x320000,
+    0xd10000, 0xb90000, 0x2c0000, 0xb50000,
+    0xb00000, 0xab0000
 };
 
-static const int charMotDirTbl[CHARNO_MAX] = {
-    CHAR_MOTDIR(mario), CHAR_MOTDIR(luigi), CHAR_MOTDIR(peach), CHAR_MOTDIR(yoshi),
-    CHAR_MOTDIR(wario), CHAR_MOTDIR(daisy), CHAR_MOTDIR(waluigi), CHAR_MOTDIR(kinopio),
-    CHAR_MOTDIR(teresa), CHAR_MOTDIR(minikoopa), CHAR_MOTDIR(kinopiko), CHAR_MOTDIR(minikoopa),
-    CHAR_MOTDIR(minikoopa), CHAR_MOTDIR(minikoopa)
+static const int charMotDirTbl[14] = {
+    0x930000, 0x3b0000, 0xc50000, 0xf80000,
+    0xf10000, 0x190000, 0xeb0000, 0x350000,
+    0xd40000, 0xbc0000, 0x2f0000, 0xbc0000,
+    0xbc0000, 0xbc0000
 };
 
 static const u16 charMotNoTbl[15] = {
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_300), CHAR_MOTNO(CHARMOT_HSF_c000m1_301),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_302), CHAR_MOTNO(CHARMOT_HSF_c000m1_303),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_304), CHAR_MOTNO(CHARMOT_HSF_c000m1_322),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_306), CHAR_MOTNO(CHARMOT_HSF_c000m1_307),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_324), CHAR_MOTNO(CHARMOT_HSF_c000m1_357),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_311), CHAR_MOTNO(CHARMOT_HSF_c000m1_346),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_348), CHAR_MOTNO(CHARMOT_HSF_c000m1_386),
-    CHAR_MOTNO(CHARMOT_HSF_c000m1_320)
+    FILENUM(CHARMOT_HSF_c000m1_300), FILENUM(CHARMOT_HSF_c000m1_301),
+    FILENUM(CHARMOT_HSF_c000m1_302), FILENUM(CHARMOT_HSF_c000m1_303),
+    FILENUM(CHARMOT_HSF_c000m1_304), FILENUM(CHARMOT_HSF_c000m1_322),
+    FILENUM(CHARMOT_HSF_c000m1_306), FILENUM(CHARMOT_HSF_c000m1_307),
+    FILENUM(CHARMOT_HSF_c000m1_324), FILENUM(CHARMOT_HSF_c000m1_357),
+    FILENUM(CHARMOT_HSF_c000m1_311), FILENUM(CHARMOT_HSF_c000m1_346),
+    FILENUM(CHARMOT_HSF_c000m1_348), FILENUM(CHARMOT_HSF_c000m1_386),
+    FILENUM(CHARMOT_HSF_c000m1_320)
 };
 
-static const int tutorialCharNoTbl[GW_PLAYER_MAX] = {
-    CHARNO_YOSHI,
-    CHARNO_MARIO,
-    CHARNO_PEACH,
-    CHARNO_WARIO
+static const int tutorialCharNoTbl[4] = {
+    3,
+    0,
+    2,
+    4
 };
 
-static const int singleCharNoTbl[GW_PLAYER_MAX] = {
-    CHARNO_MARIO,
-    CHARNO_MINIKOOPAR,
-    CHARNO_MINIKOOPAG,
-    CHARNO_MINIKOOPAB
+static const int singleCharNoTbl[4] = {
+    0,
+    11,
+    12,
+    13
 };
 
 #undef CHAR_MDLFILE
@@ -265,80 +263,80 @@ void mbPlayerInit(BOOL noEventF)
 
     memset(playerWork, 0, sizeof(playerWork));
     ResetMetalColor();
-    if (_CheckFlag(FLAG_BOARD_MG)) {
-        GwSystem.turnPlayerNo = 0;
+    if (fn_8006A124(65538)) {
+        lbl_80265B70.turnPlayerNo = 0;
     }
     if (noEventF) {
         int startSpaceId = mbMasuFind_AttrIdGet(-1, MASU_FLAG_START);
         int teamNo;
         int characterId;
 
-        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
-            if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-                GwPlayer[playerIndex].comF = TRUE;
-                GwPlayerConf[playerIndex].type = TRUE;
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+            if (fn_8006A124(65550)) {
+                lbl_80265750[playerIndex].comF = TRUE;
+                lbl_80265728[playerIndex].type = TRUE;
             }
             if (GWPartyGet() != FALSE) {
                 // The flag query's result is ignored in the party-board branch.
-                _CheckFlag(FLAG_BOARD_TUTORIAL);
+                fn_8006A124(65550);
             } else if (playerIndex > 0) {
-                GwPlayerConf[playerIndex].charNo = singleCharNoTbl[playerIndex];
-                GwPlayer[playerIndex].comF = TRUE;
-                GwPlayerConf[playerIndex].type = TRUE;
+                lbl_80265728[playerIndex].charNo = singleCharNoTbl[playerIndex];
+                lbl_80265750[playerIndex].comF = TRUE;
+                lbl_80265728[playerIndex].type = TRUE;
             }
-            GwPlayer[playerIndex].charNo = GwPlayerConf[playerIndex].charNo;
+            lbl_80265750[playerIndex].charNo = lbl_80265728[playerIndex].charNo;
             // The remaining configuration self-assignments leave the selected values unchanged.
-            GwPlayerConf[playerIndex].charNo = GwPlayerConf[playerIndex].charNo;
-            GwPlayer[playerIndex].padNo = GwPlayerConf[playerIndex].padNo;
-            GwPlayerConf[playerIndex].padNo = GwPlayerConf[playerIndex].padNo;
-            GwPlayer[playerIndex].comF = GwPlayerConf[playerIndex].type;
-            GwPlayerConf[playerIndex].type = GwPlayerConf[playerIndex].type;
-            GwPlayer[playerIndex].comDif = GwPlayerConf[playerIndex].comDif;
-            GwPlayerConf[playerIndex].comDif = GwPlayerConf[playerIndex].comDif;
-            GwPlayer[playerIndex].masuId = startSpaceId;
-            GwPlayer[playerIndex].masuIdNext = startSpaceId;
-            GwPlayer[playerIndex].statusColor = 0;
-            GwPlayer[playerIndex].diceMode = 0;
+            lbl_80265728[playerIndex].charNo = lbl_80265728[playerIndex].charNo;
+            lbl_80265750[playerIndex].padNo = lbl_80265728[playerIndex].padNo;
+            lbl_80265728[playerIndex].padNo = lbl_80265728[playerIndex].padNo;
+            lbl_80265750[playerIndex].comF = lbl_80265728[playerIndex].type;
+            lbl_80265728[playerIndex].type = lbl_80265728[playerIndex].type;
+            lbl_80265750[playerIndex].comDif = lbl_80265728[playerIndex].comDif;
+            lbl_80265728[playerIndex].comDif = lbl_80265728[playerIndex].comDif;
+            lbl_80265750[playerIndex].masuId = startSpaceId;
+            lbl_80265750[playerIndex].masuIdNext = startSpaceId;
+            lbl_80265750[playerIndex].statusColor = 0;
+            lbl_80265750[playerIndex].diceMode = 0;
             for (entryIndex = 0; entryIndex < 3; entryIndex++) {
-                GwPlayer[playerIndex].capsule[entryIndex] = -1;
+                lbl_80265750[playerIndex].capsule[entryIndex] = -1;
             }
-            GwPlayer[playerIndex].team = teamNo = GwPlayerConf[playerIndex].grpNo;
-            GwPlayerConf[playerIndex].grpNo = teamNo;
-            GwPlayer[playerIndex].orderNo = playerIndex;
+            lbl_80265750[playerIndex].team = teamNo = lbl_80265728[playerIndex].grpNo;
+            lbl_80265728[playerIndex].grpNo = teamNo;
+            lbl_80265750[playerIndex].orderNo = playerIndex;
             mbPlayerMetalSet(playerIndex, FALSE);
             mbPlayerBiriQSet(playerIndex, FALSE);
         }
-        for (characterId = 0; characterId < CHARNO_MAX; characterId++) {
-            if (CharMotionAMemPGet(characterId)) {
+        for (characterId = 0; characterId < 14; characterId++) {
+            if (fn_80056598(characterId)) {
                 if (GWPartyGet() == FALSE &&
                     characterId == mbSingleTeamCharGet()) {
                     continue;
                 }
-                for (entryIndex = 0; entryIndex < GW_PLAYER_MAX; entryIndex++) {
-                    if (characterId == GwPlayer[entryIndex].charNo) {
+                for (entryIndex = 0; entryIndex < 4; entryIndex++) {
+                    if (characterId == lbl_80265750[entryIndex].charNo) {
                         break;
                     }
                 }
-                if (entryIndex >= GW_PLAYER_MAX) {
-                    CharDataClose(characterId);
+                if (entryIndex >= 4) {
+                    fn_800567D8(characterId);
                 }
             }
         }
-        for (characterId = 0; characterId < GW_PLAYER_MAX; characterId++) {
-            if (!CharMotionAMemPGet(GwPlayer[characterId].charNo)) {
-                CharMotionInit(GwPlayer[characterId].charNo);
+        for (characterId = 0; characterId < 4; characterId++) {
+            if (!fn_80056598(lbl_80265750[characterId].charNo)) {
+                fn_800565B4(lbl_80265750[characterId].charNo);
             }
         }
         if (GWPartyGet() == FALSE) {
             characterId = mbSingleTeamCharGet();
 
-            if (!CharMotionAMemPGet(characterId)) {
-                CharMotionInit(characterId);
+            if (!fn_80056598(characterId)) {
+                fn_800565B4(characterId);
             }
         }
-        GwSystem.playerMode = 0;
+        lbl_80265B70.playerMode = 0;
     }
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++, playerWorkP++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++, playerWorkP++) {
         MBMODELID modelId;
         GW_PLAYER *playerData;
         int characterId;
@@ -347,16 +345,16 @@ void mbPlayerInit(BOOL noEventF)
         playerWorkP->rotateObj = playerWorkP->moveObj = playerWorkP->posFixObj = NULL;
         playerData = GWPlayerGet(playerIndex);
         playerData->playerNo = playerWorkP->playerNo = playerIndex;
-        GwPlayerConf[playerIndex].type = GwPlayer[playerIndex].comF;
-        GwPlayerConf[playerIndex].padNo = GwPlayer[playerIndex].padNo;
-        GwPlayerConf[playerIndex].grpNo = mbPlayerGrpGet(playerIndex);
-        GwPlayerConf[playerIndex].comDif = GwPlayer[playerIndex].comDif;
-        characterId = GwPlayer[playerIndex].charNo;
-        GwPlayerConf[playerIndex].charNo = characterId;
+        lbl_80265728[playerIndex].type = lbl_80265750[playerIndex].comF;
+        lbl_80265728[playerIndex].padNo = lbl_80265750[playerIndex].padNo;
+        lbl_80265728[playerIndex].grpNo = mbPlayerGrpGet(playerIndex);
+        lbl_80265728[playerIndex].comDif = lbl_80265750[playerIndex].comDif;
+        characterId = lbl_80265750[playerIndex].charNo;
+        lbl_80265728[playerIndex].charNo = characterId;
         for (entryIndex = 0; entryIndex < 15; entryIndex++) {
             characterMotionData[entryIndex] = charMotDirTbl[characterId] | charMotNoTbl[entryIndex];
         }
-        characterMotionData[entryIndex] = HU_DATANUM_NONE;
+        characterMotionData[entryIndex] = -1;
         modelId = playerWorkP->objId =
             mbObjCharCreate(characterId, charMdlFileTbl[characterId], characterMotionData, FALSE);
         mbPlayerMotionVoiceOnSet(playerIndex, 7, FALSE);
@@ -364,36 +362,36 @@ void mbPlayerInit(BOOL noEventF)
         mbPlayerMotionVoiceOnSet(playerIndex, 8, FALSE);
         mbPlayerMotionVoiceOnSet(playerIndex, 13, FALSE);
         playerWorkP->colObj =
-            omAddObjEx(mbObjMan, PLAYER_OBJ_PRIORITY, 0, 0, -1,
+            fn_8003AB38(mbObjMan, PLAYER_OBJ_PRIORITY, 0, 0, -1,
                 PlayerColOMExec);
-        omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK)->playerNo = playerIndex;
-        omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK)->resyncF = TRUE;
-        omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK)->masuIdNext =
-            GwPlayer[playerIndex].masuId;
+        ((PLAYERCOLWORK *)(&(playerWorkP->colObj->work[0])))->playerNo = playerIndex;
+        ((PLAYERCOLWORK *)(&(playerWorkP->colObj->work[0])))->resyncF = TRUE;
+        ((PLAYERCOLWORK *)(&(playerWorkP->colObj->work[0])))->masuIdNext =
+            lbl_80265750[playerIndex].masuId;
         mbPlayerMatClone(playerIndex);
         playerWorkP->motNo = 1;
-        mbObjMotionSet(modelId, playerWorkP->motNo, HU3D_MOTATTR_LOOP);
-        GwPlayer[playerIndex].dispLightF = TRUE;
-        GwPlayer[playerIndex].masuIdPrev = -1;
+        mbObjMotionSet(modelId, playerWorkP->motNo, ((1 << 30) | (1 << 0)));
+        lbl_80265750[playerIndex].dispLightF = TRUE;
+        lbl_80265750[playerIndex].masuIdPrev = -1;
         mbPlayerWorkGet(playerIndex)->moveEndF = TRUE;
-        CharModelDataClose(characterId);
+        fn_8005B7BC(characterId);
     }
     mbPlayerColSnapSet(FALSE);
     if (GWPartyGet() != FALSE) {
         mbPlayerPosResetAll();
     } else {
-        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if (playerIndex > 0) {
-                GwPlayer[playerIndex].masuId = 0;
-                GwPlayer[playerIndex].masuIdNext = 0;
-                GwPlayer[playerIndex].masuIdPrev = 0;
+                lbl_80265750[playerIndex].masuId = 0;
+                lbl_80265750[playerIndex].masuIdNext = 0;
+                lbl_80265750[playerIndex].masuIdPrev = 0;
                 mbPlayerDispSet(playerIndex, FALSE);
             } else {
                 mbPlayerPosReset(playerIndex);
             }
         }
     }
-    CharEffectLayerSet(5);
+    fn_8005DDEC(5);
 }
 
 // Releases each player's model, cloned material, effects and dice display on board shutdown.
@@ -403,7 +401,7 @@ void mbPlayerClose(void)
     int playerIndex;
 
     playerWorkP = &playerWork[0];
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++, playerWorkP++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++, playerWorkP++) {
         GW_PLAYER *playerData;
 
         playerData = GWPlayerGet(playerIndex);
@@ -467,20 +465,20 @@ void mbTurnExec(BOOL intrF)
 
     turnIntrF = intrF;
     blackoutF = FALSE;
-    playerNo = GwSystem.turnPlayerNo;
-    for (; playerNo < GW_PLAYER_MAX; playerNo++) {
+    playerNo = lbl_80265B70.turnPlayerNo;
+    for (; playerNo < 4; playerNo++) {
         int orderNo;
         int otherPlayerNo;
 
-        GwSystem.turnPlayerNo = playerNo;
+        lbl_80265B70.turnPlayerNo = playerNo;
         orderNo = 1;
-        GwPlayer[playerNo].orderNo = 0;
-        for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+        lbl_80265750[playerNo].orderNo = 0;
+        for (otherPlayerNo = 0; otherPlayerNo < 4; otherPlayerNo++) {
             if (playerNo != otherPlayerNo) {
-                GwPlayer[otherPlayerNo].orderNo = orderNo++;
+                lbl_80265750[otherPlayerNo].orderNo = orderNo++;
             }
-            mbPlayerMotionSet(otherPlayerNo, 1, HU3D_MOTATTR_LOOP);
-            GwPlayer[otherPlayerNo].masuIdNext = GwPlayer[otherPlayerNo].masuId;
+            mbPlayerMotionSet(otherPlayerNo, 1, ((1 << 30) | (1 << 0)));
+            lbl_80265750[otherPlayerNo].masuIdNext = lbl_80265750[otherPlayerNo].masuId;
         }
         PlayerTurn(playerNo);
         turnIntrF = FALSE;
@@ -492,9 +490,9 @@ void mbSingleTurnExec(BOOL intrF)
 {
     turnIntrF = intrF;
     blackoutF = FALSE;
-    GwSystem.turnPlayerNo = 0;
-    GwPlayer[0].orderNo = 0;
-    mbPlayerMotionSet(0, 1, HU3D_MOTATTR_LOOP);
+    lbl_80265B70.turnPlayerNo = 0;
+    lbl_80265750[0].orderNo = 0;
+    mbPlayerMotionSet(0, 1, ((1 << 30) | (1 << 0)));
     PlayerTurn(0);
     turnIntrF = FALSE;
 }
@@ -511,27 +509,27 @@ static void PlayerTurn(int playerNo)
     BOOL partyAtEndF;
     int telopFrame;
 
-    GwSystem.turnPlayerNo = playerNo;
+    lbl_80265B70.turnPlayerNo = playerNo;
     mbPlayerPosReset(playerNo);
     mbPlayerColSnapSet(TRUE);
-    mbev_PlayerColMasuSet(playerNo, GwPlayer[playerNo].masuId, TRUE);
+    mbev_PlayerColMasuSet(playerNo, lbl_80265750[playerNo].masuId, TRUE);
     mbStarDispSetAll(TRUE);
-    mbStarMasuDispSet(GwPlayer[playerNo].masuId, FALSE);
+    mbStarMasuDispSet(lbl_80265750[playerNo].masuId, FALSE);
     if (!turnIntrF) {
         MBPLAYERWORK *workP;
 
         mbCameraPlayerViewSetFast(playerNo, MB_CAMERA_VIEW_ZOOMIN);
         mbCameraMoveOnSet(FALSE);
         mbCameraMoveWait();
-        mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionSet(playerNo, 1, ((1 << 30) | (1 << 0)));
         mbPlayerRotYSet(playerNo, 0.0f);
         if (turnInitHook) {
             turnInitHook(playerNo);
         }
         mbStatusDispForceSetAll(TRUE);
-        partyAtStartF = GwSystem.partyF;
+        partyAtStartF = lbl_80265B70.partyF;
         if (partyAtStartF && playerNo == 0) {
-            timeTurn = GwSystem.timeTurn;
+            timeTurn = lbl_80265B70.timeTurn;
             if (timeTurn > 0) {
                 mbTelopTimeCreate();
                 telopF = TRUE;
@@ -544,7 +542,7 @@ static void PlayerTurn(int playerNo)
                 mbWipeSpecialFadeOutCreate(5, 42);
             }
         }
-        GwPlayer[playerNo].capsuleUse = -1;
+        lbl_80265750[playerNo].capsuleUse = -1;
         workP = &playerWork[playerNo];
         workP->masuNext = 0;
         if (telopF) {
@@ -553,69 +551,69 @@ static void PlayerTurn(int playerNo)
             }
         }
         ev_PlayerStartTurn(playerNo);
-        omVibrate(playerNo, 20, 20, 0);
+        fn_8006A030(playerNo, 20, 20, 0);
         mbPauseDisableSet(FALSE);
         mbTutorialCall(3);
-        partyAfterStartHookF = GwSystem.partyF;
-        if (partyAfterStartHookF || GwSystem.turnNo == 1) {
+        partyAfterStartHookF = lbl_80265B70.partyF;
+        if (partyAfterStartHookF || lbl_80265B70.turnNo == 1) {
             mbTelopPlayerCreate(playerNo);
         }
-        GwPlayer[playerNo].moveNum = -1;
-        GwPlayer[playerNo].skipEventF = FALSE;
-        GwSystem.playerMode = 0;
+        lbl_80265750[playerNo].moveNum = -1;
+        lbl_80265750[playerNo].skipEventF = FALSE;
+        lbl_80265B70.playerMode = 0;
     }
 repeat:
     // Completed stages fall through; playerMode records the stage to resume after an interruption.
-    switch (GwSystem.playerMode) {
+    switch (lbl_80265B70.playerMode) {
         case 0:
         case 2:
-            _ClearFlag(FLAG_BOARD_WALKDONE);
+            fn_8006A268(FLAG_BOARD_WALKDONE);
             killerF = DiceRun(playerNo);
-            if (GwPlayer[playerNo].moveNum != 0) {
-                GwSystem.playerMode = 3;
+            if (lbl_80265750[playerNo].moveNum != 0) {
+                lbl_80265B70.playerMode = 3;
             }
             if (killerF) {
                 mbev_CapKillerMoveCall(playerNo);
-                GwSystem.playerMode = 4;
+                lbl_80265B70.playerMode = 4;
                 goto repeat;
             }
         case 3:
             mbPlayerColSnapSet(TRUE);
-            if (GwPlayer[playerNo].moveNum != 0) {
-                _ClearFlag(FLAG_BOARD_WALKDONE);
+            if (lbl_80265750[playerNo].moveNum != 0) {
+                fn_8006A268(FLAG_BOARD_WALKDONE);
                 turnIntrF = PlayerViewSet(playerNo, TRUE, TRUE, TRUE);
                 mbCameraMoveOnSet(TRUE);
-                if (GwPlayer[playerNo].moveNum != 0) {
+                if (lbl_80265750[playerNo].moveNum != 0) {
                     PlayerMoveCall(playerNo);
                 }
             }
             mbPlayerMetalSet(playerNo, FALSE);
             mbPlayerBiriQSet(playerNo, FALSE);
-            GwSystem.playerMode = 4;
+            lbl_80265B70.playerMode = 4;
         case 4:
-            GwSystem.playerMode = 5;
-            if (_CheckFlag(FLAG_BOARD_LAST5) &&
-                mbPlayerKettouCheck(playerNo, GwPlayer[playerNo].masuId)) {
+            lbl_80265B70.playerMode = 5;
+            if (fn_8006A124(3) &&
+                mbPlayerKettouCheck(playerNo, lbl_80265750[playerNo].masuId)) {
                 mbev_CapCallKettou(
-                    playerNo, GwPlayer[playerNo].masuId, FALSE);
+                    playerNo, lbl_80265750[playerNo].masuId, FALSE);
             }
         case 5:
             turnIntrF =
                 PlayerViewSet(playerNo, turnIntrF, TRUE, FALSE);
-            GwSystem.playerMode = 6;
+            lbl_80265B70.playerMode = 6;
             mbMasuPlayerColorSet(playerNo);
             eventResult =
-                mbev_MasuCapStop(playerNo, GwPlayer[playerNo].masuId);
+                mbev_MasuCapStop(playerNo, lbl_80265750[playerNo].masuId);
             if (!eventResult) {
-                GwSystem.playerMode = 7;
+                lbl_80265B70.playerMode = 7;
                 goto repeat;
             }
         case 6:
             turnIntrF =
                 PlayerViewSet(playerNo, turnIntrF, FALSE, FALSE);
-            GwSystem.playerMode = 7;
+            lbl_80265B70.playerMode = 7;
             mbCameraMoveWait();
-            if (!mbev_MasuStop(playerNo, GwPlayer[playerNo].masuId)) {
+            if (!mbev_MasuStop(playerNo, lbl_80265750[playerNo].masuId)) {
                 break;
             }
         case 7:
@@ -631,9 +629,9 @@ repeat:
     }
     ev_PlayerEndTurn(playerNo);
     mbTutorialCall(4);
-    partyAtEndF = GwSystem.partyF;
+    partyAtEndF = lbl_80265B70.partyF;
     if (partyAtEndF) {
-        if (playerNo != GW_PLAYER_MAX - 1) {
+        if (playerNo != 4 - 1) {
             mbWipeSpecialFadeInCreate(5, 1);
         } else {
             mbWipeFadeOut();
@@ -662,7 +660,7 @@ static BOOL PlayerViewSet(
         if (waitF) {
             mbCameraMoveWait();
         }
-        if (carF && GwPlayer[playerNo].moveNum != 0) {
+        if (carF && lbl_80265750[playerNo].moveNum != 0) {
             mbMoveNumCreate(playerNo, TRUE);
         }
         if (wipeF) {
@@ -704,36 +702,36 @@ static BOOL DiceRun(int playerNo)
     int diceResult;
     int presetDiceValue;
 
-    GwPlayer[playerNo].diceNum = 1;
+    lbl_80265750[playerNo].diceNum = 1;
 repeat:
     capsuleCount = mbPlayerCapsuleNumGet(playerNo);
     if (GWPartyGet() == FALSE) {
         // Solo mode offers capsule selection regardless of inventory, except on the first turn.
         capsuleCount = 1;
-        if (GwSystem.turnNo <= 1) {
+        if (lbl_80265B70.turnNo <= 1) {
             capsuleCount = 0;
         }
     }
-    if (GwPlayer[playerNo].capsuleUse == -1 && !skipCapsuleSelectF &&
+    if (lbl_80265750[playerNo].capsuleUse == -1 && !skipCapsuleSelectF &&
         capsuleCount != 0) {
-        GwSystem.playerMode = 0;
+        lbl_80265B70.playerMode = 0;
         diceResult = mbCapSelect();
-        if (GwPlayer[playerNo].capsuleUse != -1) {
-            GwPlayer[playerNo].capsuleUseNum++;
+        if (lbl_80265750[playerNo].capsuleUse != -1) {
+            lbl_80265750[playerNo].capsuleUseNum++;
         }
     } else {
         mbStatusDispSetAll(TRUE);
         while (!mbStatusOffCheckAll()) {
             HuPrcVSleep();
         }
-        GwSystem.playerMode = 2;
-        if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        lbl_80265B70.playerMode = 2;
+        if (fn_8006A124(65550)) {
             int tutorialDiceValues[4];
             int dieIndex;
             int diceType;
             int diceCount;
 
-            diceType = mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode);
+            diceType = mbPlayerDiceTypeGet(lbl_80265750[playerNo].diceMode);
             diceCount = mbDiceMaxGet(diceType);
             for (dieIndex = 0; dieIndex < diceCount; dieIndex++) {
                 presetDiceValue = mbTutorialCall(5);
@@ -755,38 +753,38 @@ repeat:
 
             if (GWPartyGet() == FALSE) {
                 presetDiceValue = mbSingleCall(0, -1);
-            } else if (GwPlayer[playerNo].comF &&
-                mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode) == 14) {
+            } else if (lbl_80265750[playerNo].comF &&
+                mbPlayerDiceTypeGet(lbl_80265750[playerNo].diceMode) == 14) {
                 presetDiceValue = mbMasuPKinokoValueGet(
-                    playerNo, GwPlayer[playerNo].masuId);
+                    playerNo, lbl_80265750[playerNo].masuId);
             }
             diceResult = mbDiceExec(playerNo,
-                mbPlayerDiceTypeGet(GwPlayer[playerNo].diceMode), NULL,
+                mbPlayerDiceTypeGet(lbl_80265750[playerNo].diceMode), NULL,
                 presetDiceValue, TRUE, TRUE, NULL, 0);
         }
     }
     switch (diceResult) {
         case -3:
-            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !fn_8006A124(65550)) {
                 mbSingleCall(1, -1);
             }
             mbDiceKill(playerNo);
             mbev_Scroll(playerNo, FALSE);
             break;
         case -4:
-            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !fn_8006A124(65550)) {
                 mbSingleCall(1, -1);
             }
             mbDiceKill(playerNo);
             mbev_Scroll(playerNo, TRUE);
             break;
         case -6:
-            if (GWPartyGet() == FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            if (GWPartyGet() == FALSE && !fn_8006A124(65550)) {
                 mbSingleCall(1, -1);
             }
             skipCapsuleSelectF = FALSE;
             mbDiceKill(playerNo);
-            mbAudFXPlay(MSM_SE_CMN_04);
+            mbAudFXPlay(3);
             break;
         case -7:
             skipCapsuleSelectF = TRUE;
@@ -799,11 +797,11 @@ repeat:
     if (diceResult <= 0) {
         goto repeat;
     }
-    if (GwPlayer[playerNo].diceMode == 5) {
+    if (lbl_80265750[playerNo].diceMode == 5) {
         killerF = TRUE;
     }
-    GwPlayer[playerNo].diceMode = 0;
-    GwPlayer[playerNo].moveNum = diceResult;
+    lbl_80265750[playerNo].diceMode = 0;
+    lbl_80265750[playerNo].moveNum = diceResult;
     mbMoveNumCreate(playerNo, TRUE);
     mbDiceNumKill(playerNo);
     if (GWPartyGet() == FALSE) {
@@ -819,20 +817,20 @@ static void PlayerMoveCall(int playerNo)
 
     mbPlayerColSnapSet(TRUE);
     workP->moveProc =
-        HuPrcChildCreate(PlayerMove, PLAYER_MOVE_PROCESS_PRIORITY,
+        fn_8000DAC0(PlayerMove, PLAYER_MOVE_PROCESS_PRIORITY,
             PLAYER_MOVE_PROCESS_STACK_SIZE, 0, mbMainProc);
     workP->moveProc->property = workP;
     HuPrcDestructorSet2(workP->moveProc, PlayerMoveDestroy);
     while (workP->moveProc) {
         HuPrcVSleep();
     }
-    _SetFlag(FLAG_BOARD_WALKDONE);
+    fn_8006A1C4(FLAG_BOARD_WALKDONE);
 }
 
 // Movement process created by PlayerMoveCall; advances one board space per pass.
 static void PlayerMove(void)
 {
-    MBPLAYERWORK *playerWorkP = HuPrcCurrentGet()->property;
+    MBPLAYERWORK *playerWorkP = fn_8000DD9C()->property;
     int playerNo = playerWorkP->playerNo;
     s16 nextSpaceId;
     BOOL spaceHiddenF;
@@ -841,9 +839,9 @@ static void PlayerMove(void)
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
     playerWorkP->moveHook = NULL;
 repeat:
-    GwPlayer[playerNo].masuIdPrev = GwPlayer[playerNo].masuId;
-    if (!_CheckFlag(FLAG_BOARD_DEBUG) ||
-        _CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    lbl_80265750[playerNo].masuIdPrev = lbl_80265750[playerNo].masuId;
+    if (!fn_8006A124(131073) ||
+        fn_8006A124(65550)) {
         if (mbev_Branch(playerNo, &nextSpaceId)) {
             goto end;
         }
@@ -853,8 +851,8 @@ repeat:
         }
     }
     nextSpaceId = mbev_GateMasu(
-        playerNo, GwPlayer[playerNo].masuId, nextSpaceId);
-    GwPlayer[playerNo].masuIdNext = nextSpaceId;
+        playerNo, lbl_80265750[playerNo].masuId, nextSpaceId);
+    lbl_80265750[playerNo].masuIdNext = nextSpaceId;
     mbPlayerWorkGet(playerNo)->_unk08 = -1;
     playerWorkP->_unk06 = nextSpaceId;
     if (playerWorkP->moveF) {
@@ -862,7 +860,7 @@ repeat:
     }
     PlayerColKill(playerNo);
     mbev_CapCallTrap(
-        playerNo, GwPlayer[playerNo].masuId, nextSpaceId);
+        playerNo, lbl_80265750[playerNo].masuId, nextSpaceId);
     mbev_MasuMasuEnd(nextSpaceId);
     if (playerWorkP->moveHook) {
         mbPlayerWorkGet(playerNo)->_unk0C = 4;
@@ -874,24 +872,24 @@ repeat:
     mbPlayerWorkGet(playerNo)->_unk0C = 0;
     mbPlayerWorkGet(playerNo)->moveEndF = TRUE;
     mbPlayerWorkGet(playerNo)->masuMoveF = FALSE;
-    GwPlayer[playerNo].masuId = nextSpaceId;
+    lbl_80265750[playerNo].masuId = nextSpaceId;
     mbTutorialCall(8);
     spaceHiddenF = !mbMasuDispCheck(nextSpaceId);
-    if (!spaceHiddenF && GwPlayer[playerNo].biriQF) {
+    if (!spaceHiddenF && lbl_80265750[playerNo].biriQF) {
         PlayerBiriQFlashSet(playerNo);
         mbev_CapBiriQShockCreate(playerNo);
     }
     if (!mbev_MasuMasuStart(playerNo)) {
-        nextSpaceId = GwPlayer[playerNo].masuId;
+        nextSpaceId = lbl_80265750[playerNo].masuId;
         if (!mbev_MasuMove(playerNo, nextSpaceId)) {
             spaceHiddenF = !mbMasuDispCheck(nextSpaceId);
             if (!spaceHiddenF) {
                 mbAudFXPlay(PLAYER_MOVE_COUNT_SFX);
-                GwPlayer[playerNo].moveNum--;
-                if (GwPlayer[playerNo].moveNum < 0) {
-                    GwPlayer[playerNo].moveNum = 0;
+                lbl_80265750[playerNo].moveNum--;
+                if (lbl_80265750[playerNo].moveNum < 0) {
+                    lbl_80265750[playerNo].moveNum = 0;
                 }
-                if (GwPlayer[playerNo].moveNum == 0) {
+                if (lbl_80265750[playerNo].moveNum == 0) {
                     mbMoveNumKill(playerNo);
                 }
             }
@@ -902,7 +900,7 @@ repeat:
         HuPrcSleep(-1);
     }
     mbTutorialCall(9);
-    if (GwPlayer[playerNo].moveNum != 0) {
+    if (lbl_80265750[playerNo].moveNum != 0) {
         goto repeat;
     }
 end:
@@ -926,7 +924,7 @@ end:
 // Process destructor that clears the player's movement-process handle.
 static void PlayerMoveDestroy(void)
 {
-    MBPLAYERWORK *playerWorkP = HuPrcCurrentGet()->property;
+    MBPLAYERWORK *playerWorkP = fn_8000DD9C()->property;
 
     playerWorkP->moveProc = NULL;
 }
@@ -954,7 +952,7 @@ static void ev_PlayerEndTurn(int playerNo)
 // Sets the destination space, then moves the player there.
 void mbPlayerMasuMoveTo(int playerNo, int masuId, BOOL waitF)
 {
-    GwPlayer[playerNo].masuIdNext = masuId;
+    lbl_80265750[playerNo].masuIdNext = masuId;
     mbPlayerMasuMove(playerNo, waitF);
 }
 
@@ -999,7 +997,7 @@ void mbPlayerMasuMoveSpeed(
 void mbPlayerMoveExec(int playerNo, HuVecF *srcPos, HuVecF *dstPos,
     s16 maxTime, HuVecF *rot, BOOL waitF)
 {
-    mbPlayerMoveMain(playerNo, srcPos, dstPos, 0, 1.0f, HU3D_MOTATTR_LOOP,
+    mbPlayerMoveMain(playerNo, srcPos, dstPos, 0, 1.0f, ((1 << 30) | (1 << 0)),
         maxTime, rot, waitF);
 }
 
@@ -1029,9 +1027,9 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
     float motSpeed, u32 motAttr, s16 maxTime, HuVecF *rot, BOOL waitF)
 {
     BOOL setAngle = FALSE;
-    OMOBJ *objP = playerWork[playerNo].moveObj = omAddObjEx(mbObjMan,
+    OMOBJ *objP = playerWork[playerNo].moveObj = fn_8003AB38(mbObjMan,
         PLAYER_OBJ_PRIORITY, 0, 0, -1, PlayerMoveOMExec);
-    PLAYERMOVEWORK *workP = omObjGetWork(objP, PLAYERMOVEWORK);
+    PLAYERMOVEWORK *workP = ((PLAYERMOVEWORK *)(&(objP->work[0])));
     int mode;
     HuVecF moveDir;
     HuVecF playerRot;
@@ -1054,9 +1052,9 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
         s16 masuIdPrev;
         int masuIdNext;
 
-        masuIdNext = GwPlayer[playerNo].masuIdNext;
+        masuIdNext = lbl_80265750[playerNo].masuIdNext;
         masuNext = mbMasuGet(masuIdNext);
-        masuIdPrev = GwPlayer[playerNo].masuIdPrev;
+        masuIdPrev = lbl_80265750[playerNo].masuIdPrev;
         if (masuIdPrev < 0) {
             mode = PLAYER_MOVE_MODE_RUN;
         } else {
@@ -1072,25 +1070,25 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
             }
         }
         workP->movementMode = mode;
-        mbMasuPosGet(GwPlayer[playerNo].masuIdNext, &objP->rot);
+        mbMasuPosGet(lbl_80265750[playerNo].masuIdNext, &objP->rot);
     }
     if (motNo == 0) {
         switch (workP->movementMode) {
             case PLAYER_MOVE_MODE_RUN:
                 mbPlayerWorkGet(playerNo)->_unk0C = 1;
                 mbPlayerMotionShiftSet(playerNo, 3, 0.0f, 4.0f,
-                    HU3D_MOTATTR_LOOP);
+                    ((1 << 30) | (1 << 0)));
                 break;
             case PLAYER_MOVE_MODE_JUMP:
                 mbPlayerWorkGet(playerNo)->_unk0C = 2;
                 mbPlayerMotionShiftSet(playerNo, 4, 6.0f, 2.0f,
-                    HU3D_MOTATTR_NONE);
+                    0);
                 maxTime = 24;
                 break;
             case PLAYER_MOVE_MODE_CLIMB:
                 mbPlayerWorkGet(playerNo)->_unk0C = 3;
                 mbPlayerMotionShiftSet(playerNo, 14, 0.0f, 4.0f,
-                    HU3D_MOTATTR_LOOP);
+                    ((1 << 30) | (1 << 0)));
                 maxTime = 100;
                 motSpeed = 2.0f;
                 VECSubtract(&objP->rot, &objP->trans, &moveDir);
@@ -1103,7 +1101,7 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
                     motSpeed = -motSpeed;
                 }
                 playerRot.x = playerRot.z = 0.0f;
-                playerRot.y = HuAtan(moveDir.x, moveDir.z);
+                playerRot.y = (180.0*(atan2(moveDir.x, moveDir.z) / 3.141592653589793));
                 mbPlayerRotSetV(playerNo, &playerRot);
                 setAngle = TRUE;
                 break;
@@ -1118,7 +1116,7 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
             float rotY;
 
             VECSubtract(&objP->rot, &objP->trans, &playerRot);
-            rotY = 90.0f - HuAtan(playerRot.z, playerRot.x);
+            rotY = 90.0f - (180.0*(atan2(playerRot.z, playerRot.x) / 3.141592653589793));
             mbPlayerRotYSet(playerNo, rotY);
         } else {
             mbPlayerRotSetV(playerNo, rot);
@@ -1145,9 +1143,9 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
             mbPlayerWorkGet(movePlayerNo2)->_unk08 = moveMaxTime;
         }
     }
-    GwPlayer[playerNo].moveF = TRUE;
+    lbl_80265750[playerNo].moveF = TRUE;
     if (waitF) {
-        while (GwPlayer[playerNo].moveF) {
+        while (lbl_80265750[playerNo].moveF) {
             HuPrcVSleep();
         }
     }
@@ -1159,12 +1157,12 @@ void mbPlayerMoveMain(int playerNo, HuVecF *srcPos, HuVecF *dstPos, u32 motNo,
 // Object update callback that interpolates movement and raises the jump arc when needed.
 static void PlayerMoveOMExec(OMOBJ *objP)
 {
-    PLAYERMOVEWORK *workP = omObjGetWork(objP, PLAYERMOVEWORK);
+    PLAYERMOVEWORK *workP = ((PLAYERMOVEWORK *)(&(objP->work[0])));
     float weight;
 
     if (mbExitCheck() || workP->stopUpdateF) {
-        GwPlayer[workP->playerNo].moveF = FALSE;
-        omDelObjEx(HuPrcCurrentGet(), objP);
+        lbl_80265750[workP->playerNo].moveF = FALSE;
+        omDelObjEx(fn_8000DD9C(), objP);
         playerWork[workP->playerNo].moveObj = NULL;
         return;
     }
@@ -1192,10 +1190,10 @@ static void PlayerMoveOMExec(OMOBJ *objP)
         }
     }
     if (workP->elapsedFrames >= workP->totalFrames) {
-        GwPlayer[workP->playerNo].moveF = FALSE;
+        lbl_80265750[workP->playerNo].moveF = FALSE;
         mbPlayerPosSet(workP->playerNo, objP->rot.x, objP->rot.y,
             objP->rot.z);
-        omDelObjEx(HuPrcCurrentGet(), objP);
+        omDelObjEx(fn_8000DD9C(), objP);
         playerWork[workP->playerNo].moveObj = NULL;
     } else if (workP->movementMode != PLAYER_MOVE_MODE_JUMP) {
         mbPlayerPosSet(workP->playerNo, objP->trans.x, objP->trans.y,
@@ -1226,11 +1224,11 @@ static void PlayerMoveOMExec(OMOBJ *objP)
             weight = (float)workP->elapsedFrames / (workP->totalFrames - 2);
         }
         mbPlayerPosSet(workP->playerNo, objP->trans.x,
-            objP->trans.y + (100.0f * (2.0f * HuSin(weight * 180.0f))),
+            objP->trans.y + (100.0f * (2.0f * sin(3.141592653589793*(weight * 180.0f)/180.0))),
             objP->trans.z);
         if (workP->elapsedFrames == workP->totalFrames - 5) {
             mbPlayerMotionShiftSet(workP->playerNo, 5, 2.0f, 2.0f,
-                HU3D_MOTATTR_NONE);
+                0);
         }
     }
 }
@@ -1263,10 +1261,10 @@ void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime)
     if (playerWork[playerNo].rotateObj) {
         objP = playerWork[playerNo].rotateObj;
     } else {
-        playerWork[playerNo].rotateObj = objP = omAddObjEx(mbObjMan,
+        playerWork[playerNo].rotateObj = objP = fn_8003AB38(mbObjMan,
             PLAYER_OBJ_PRIORITY, 0, 0, -1, PlayerRotateOMExec);
     }
-    workP = omObjGetWork(objP, PLAYERROTATEWORK);
+    workP = ((PLAYERROTATEWORK *)(&(objP->work[0])));
     workP->stopUpdateF = FALSE;
     workP->totalFrames = maxTime;
     workP->playerNo = playerNo;
@@ -1276,7 +1274,7 @@ void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime)
     angle = fmod(endAngle - objP->rot.y, 360.0f);
     if ((s16)angle == 0) {
         mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 5.0f,
-            HU3D_MOTATTR_LOOP);
+            ((1 << 30) | (1 << 0)));
         workP->stopUpdateF = TRUE;
     } else {
         if (angle < 0.0f) {
@@ -1288,10 +1286,10 @@ void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime)
         objP->scale.y = angle;
         if (fabs(angle) > 5.0f) {
             mbPlayerMotionShiftSet(playerNo, 2, 0.0f, 5.0f,
-                HU3D_MOTATTR_LOOP);
+                ((1 << 30) | (1 << 0)));
         } else {
             mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 5.0f,
-                HU3D_MOTATTR_LOOP);
+                ((1 << 30) | (1 << 0)));
         }
     }
 }
@@ -1299,7 +1297,7 @@ void mbPlayerRotateStart(int playerNo, s16 endAngle, s16 maxTime)
 // Rotation-object update callback that eases the player's yaw to its requested angle.
 static void PlayerRotateOMExec(OMOBJ *objP)
 {
-    PLAYERROTATEWORK *workP = omObjGetWork(objP, PLAYERROTATEWORK);
+    PLAYERROTATEWORK *workP = ((PLAYERROTATEWORK *)(&(objP->work[0])));
     float rotY;
     float angle;
     float weight;
@@ -1307,16 +1305,16 @@ static void PlayerRotateOMExec(OMOBJ *objP)
     if (workP->stopUpdateF || mbExitCheck()) {
         mbPlayerRotYSet(workP->playerNo, objP->scale.z);
         playerWork[workP->playerNo].rotateObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), objP);
+        omDelObjEx(fn_8000DD9C(), objP);
         return;
     }
     angle = (float)(workP->elapsedFrames++) / workP->totalFrames;
-    weight = HuSin(angle * 90.0f);
+    weight = sin(3.141592653589793*(angle * 90.0f)/180.0);
     rotY = objP->rot.y + (weight * objP->scale.y);
     mbPlayerRotYSet(workP->playerNo, rotY);
     if (workP->elapsedFrames >= workP->totalFrames) {
         workP->stopUpdateF = TRUE;
-        mbPlayerMotionSet(workP->playerNo, 1, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionSet(workP->playerNo, 1, ((1 << 30) | (1 << 0)));
         return;
     }
 }
@@ -1332,7 +1330,7 @@ BOOL mbPlayerRotateCheckAll(void)
 {
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (playerWork[i].rotateObj != NULL) {
             return FALSE;
         }
@@ -1345,7 +1343,7 @@ void mbPlayerDiceMotExec(int playerNo)
 {
     int time;
 
-    mbPlayerMotionSet(playerNo, 11, HU3D_MOTATTR_NONE);
+    mbPlayerMotionSet(playerNo, 11, 0);
     time = 0;
     do {
         if (time++ == 27) {
@@ -1385,10 +1383,10 @@ void mbMoveNumCreateColor(int playerNo, BOOL carF, int color)
     if (playerWork[playerNo].moveNumObj) {
         return;
     }
-    playerWork[playerNo].moveNumObj = objP = omAddObjEx(mbObjMan,
+    playerWork[playerNo].moveNumObj = objP = fn_8003AB38(mbObjMan,
         PLAYER_MOVE_NUM_OBJ_PRIORITY, 20, 0, -1, MoveNumOMExec);
-    omSetStatBit(objP, OM_STAT_MODELPAUSE);
-    workP = omObjGetWork(objP, MOVENUMWORK);
+    omSetStatBit(objP, (1 << 8));
+    workP = ((MOVENUMWORK *)(&(objP->work[0])));
     workP->dispF = TRUE;
     workP->killF = FALSE;
     workP->playerNo = playerNo;
@@ -1414,8 +1412,8 @@ void mbMoveNumCreateColor(int playerNo, BOOL carF, int color)
         pos.y += 300.0f;
         MTXLookAt(lookAt, &cameraP->pos, &cameraP->up, &cameraP->target);
         MTXMultVec(lookAt, &pos, &posNorm);
-        tanFov = HuSin(cameraP->fov * 0.5f)
-            / HuCos(cameraP->fov * 0.5f);
+        tanFov = sin(3.141592653589793*(cameraP->fov * 0.5f)/180.0)
+            / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
         objP->rot.y = posNorm.y / (tanFov * posNorm.z);
         objP->rot.z = -posNorm.z;
     }
@@ -1431,7 +1429,7 @@ void mbMoveNumCreate(int playerNo, BOOL carF)
 static void MoveNumOMExec(OMOBJ *objP)
 {
     int digitNum = 0;
-    MOVENUMWORK *workP = omObjGetWork(objP, MOVENUMWORK);
+    MOVENUMWORK *workP = ((MOVENUMWORK *)(&(objP->work[0])));
     HU3D_CAMERA *cameraP = &Hu3DCamera[0];
     HU3D_CAMERA *camera2P = &Hu3DCamera[2];
     int i;
@@ -1450,7 +1448,7 @@ static void MoveNumOMExec(OMOBJ *objP)
                 objP->mdlId[i] = -1;
             }
         }
-        omDelObjEx(HuPrcCurrentGet(), objP);
+        omDelObjEx(fn_8000DD9C(), objP);
         playerWork[workP->playerNo].moveNumObj = NULL;
         return;
     }
@@ -1461,8 +1459,8 @@ static void MoveNumOMExec(OMOBJ *objP)
     mbPos3DtoNorm(&pos, 1, &posNorm);
     posNorm.y += objP->trans.y;
     posNorm.z = objP->trans.z;
-    tanFov = HuSin(camera2P->fov * 0.5f)
-        / HuCos(camera2P->fov * 0.5f);
+    tanFov = sin(3.141592653589793*(camera2P->fov * 0.5f)/180.0)
+        / cos(3.141592653589793*(camera2P->fov * 0.5f)/180.0);
     scaleX = 1.2f * (tanFov * -posNorm.z);
     scaleY = tanFov * -posNorm.z;
     posNorm.x *= scaleX;
@@ -1476,10 +1474,10 @@ static void MoveNumOMExec(OMOBJ *objP)
     if (workP->dispF) {
         int modelNo;
 
-        scale = HuSin(cameraP->fov * 0.5f)
-            / HuCos(cameraP->fov * 0.5f);
+        scale = sin(3.141592653589793*(cameraP->fov * 0.5f)/180.0)
+            / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
         scale = tanFov / scale;
-        modelNo = GwPlayer[workP->playerNo].moveNum / 10;
+        modelNo = lbl_80265750[workP->playerNo].moveNum / 10;
         if (modelNo != 0) {
             mbCoinObjDispSet(objP->mdlId[modelNo], TRUE);
             mbCoinObjPosSet(objP->mdlId[modelNo],
@@ -1489,7 +1487,7 @@ static void MoveNumOMExec(OMOBJ *objP)
                 objP->mdlId[modelNo], scale, scale, scale);
             digitNum++;
         }
-        modelNo = (GwPlayer[workP->playerNo].moveNum % 10) + 10;
+        modelNo = (lbl_80265750[workP->playerNo].moveNum % 10) + 10;
         if (modelNo != 0) {
             mbCoinObjDispSet(objP->mdlId[modelNo], TRUE);
             if (digitNum == 0) {
@@ -1511,7 +1509,7 @@ void mbMoveNumKill(int playerNo)
 {
     if (playerWork[playerNo].moveNumObj) {
         MOVENUMWORK *workP =
-            omObjGetWork(playerWork[playerNo].moveNumObj, MOVENUMWORK);
+            ((MOVENUMWORK *)(&(playerWork[playerNo].moveNumObj->work[0])));
 
         workP->killF = TRUE;
     }
@@ -1522,7 +1520,7 @@ void mbMoveNumDispSet(int playerNo, BOOL dispF)
 {
     if (playerWork[playerNo].moveNumObj) {
         MOVENUMWORK *workP =
-            omObjGetWork(playerWork[playerNo].moveNumObj, MOVENUMWORK);
+            ((MOVENUMWORK *)(&(playerWork[playerNo].moveNumObj->work[0])));
 
         workP->dispF = dispF;
     }
@@ -1544,14 +1542,14 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
     int masuId;
     HuVecF pos;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (playerWork[i].colObj) {
-            if (GwPlayer[i].masuId == 0) {
+            if (lbl_80265750[i].masuId == 0) {
                 continue;
             }
-            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
-                GwPlayer[i].masuIdNext;
-            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->notRestF) {
+            ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->masuIdNext =
+                lbl_80265750[i].masuIdNext;
+            if (((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->notRestF) {
                 continue;
             }
         }
@@ -1561,22 +1559,22 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
             continue;
         }
         if (playerWork[i].colObj) {
-            if (!omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
+            if (!((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->snapF) {
                 continue;
             }
         }
-        masuId = GwPlayer[i].masuId;
-        orderNo = GwPlayer[i].orderNo;
+        masuId = lbl_80265750[i].masuId;
+        orderNo = lbl_80265750[i].orderNo;
         cornerNo = 0;
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
+        for (j = 0; j < 4; j++) {
             if (i != j && masuId == masuIdFix[j]) {
                 cornerNo++;
             }
         }
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
+        for (j = 0; j < 4; j++) {
             if (i != j && masuIdFix[j] < 0 &&
-                masuId == GwPlayer[j].masuId &&
-                orderNo > GwPlayer[j].orderNo) {
+                masuId == lbl_80265750[j].masuId &&
+                orderNo > lbl_80265750[j].orderNo) {
                 cornerNo++;
             }
         }
@@ -1586,9 +1584,9 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
             mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
         }
         {
-            circleF = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
+            circleF = ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF;
 
-            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
+            ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF = FALSE;
             if (snapF) {
                 mbPlayerPosSetV(i, &pos);
                 PlayerColCornerSnap(i, masuId, cornerNo);
@@ -1605,24 +1603,24 @@ void mbev_PlayerColMasuAllSet(int *masuIdFix, BOOL snapF)
 void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
 {
     HuVecF pos;
-    int orderNo[GW_PLAYER_MAX];
-    int playerNoTbl[GW_PLAYER_MAX];
+    int orderNo[4];
+    int playerNoTbl[4];
     BOOL circleF;
     int num = 0;
     int i;
     int j;
     int cornerNo;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (playerNo != i) {
-            if (GwPlayer[i].masuId == 0) {
+            if (lbl_80265750[i].masuId == 0) {
                 continue;
             }
-            if (masuId != GwPlayer[i].masuId) {
+            if (masuId != lbl_80265750[i].masuId) {
                 continue;
             }
         }
-        orderNo[num] = GwPlayer[i].orderNo;
+        orderNo[num] = lbl_80265750[i].orderNo;
         if (playerNo == i) {
             // Put the requested player first before assigning the group's corners.
             orderNo[num] = -1;
@@ -1654,8 +1652,8 @@ void mbev_PlayerColMasu(int playerNo, int masuId, BOOL snapF)
             mbMasuPosGet(masuId, &pos);
         }
         circleF =
-            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
-        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
+            ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF;
+        ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF = FALSE;
         if (snapF) {
             mbPlayerPosSetV(i, &pos);
             PlayerColCornerSnap(i, masuId, cornerNo);
@@ -1673,25 +1671,25 @@ void mbev_PlayerColCircleAdd(
 {
     HuVecF posCenter;
     HuVecF pos;
-    int orderNo[GW_PLAYER_MAX];
-    int playerNoTbl[GW_PLAYER_MAX];
+    int orderNo[4];
+    int playerNoTbl[4];
     int num = 0;
     int i;
     int j;
     int cornerNo;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (playerNo != i) {
-            if (GwPlayer[i].masuId == 0) {
+            if (lbl_80265750[i].masuId == 0) {
                 continue;
             }
-            if (masuId != GwPlayer[i].masuId) {
+            if (masuId != lbl_80265750[i].masuId) {
                 continue;
             }
         }
-        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = TRUE;
-        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->radius = radius;
-        orderNo[num] = GwPlayer[i].orderNo;
+        ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF = TRUE;
+        ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->radius = radius;
+        orderNo[num] = lbl_80265750[i].orderNo;
         if (playerNo == i) {
             // Put the requested player first before assigning the group's corners.
             orderNo[num] = -1;
@@ -1750,29 +1748,29 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
     int i;
     int j;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         s8 orderNo;
         int cornerNo;
 
-        if (masuId != GwPlayer[i].masuId || i == playerNo) {
+        if (masuId != lbl_80265750[i].masuId || i == playerNo) {
             continue;
         }
         if (playerWork[i].colObj) {
-            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
-                GwPlayer[i].masuIdNext;
-            if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->notRestF ||
-                !omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
+            ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->masuIdNext =
+                lbl_80265750[i].masuIdNext;
+            if (((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->notRestF ||
+                !((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->snapF) {
                 continue;
             }
         }
-        orderNo = GwPlayer[i].orderNo;
+        orderNo = lbl_80265750[i].orderNo;
         cornerNo = 1;
         if (playerNo < 0) {
             cornerNo = 0;
         }
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
-            if (i != j && masuId == GwPlayer[j].masuId &&
-                orderNo > GwPlayer[j].orderNo) {
+        for (j = 0; j < 4; j++) {
+            if (i != j && masuId == lbl_80265750[j].masuId &&
+                orderNo > lbl_80265750[j].orderNo) {
                 cornerNo++;
             }
         }
@@ -1782,8 +1780,8 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
             mbMasuPosGet(masuId, &pos);
         }
         circleF =
-            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
-        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
+            ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF;
+        ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF = FALSE;
         if (snapF) {
             mbPlayerPosSetV(i, &pos);
             PlayerColCornerSnap(i, masuId, cornerNo);
@@ -1801,29 +1799,29 @@ void mbev_PlayerColMasuAdd(int playerNo, int masuId, BOOL snapF)
 // Called by board events that arrange players for a shared-space scene.
 void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
 {
-    int orderNo[GW_PLAYER_MAX];
-    int playerNoSort[GW_PLAYER_MAX];
-    int useF[GW_PLAYER_MAX] = { 0, 0, 0, 0 };
-    HuVecF posByPlayer[GW_PLAYER_MAX];
+    int orderNo[4];
+    int playerNoSort[4];
+    int useF[4] = { 0, 0, 0, 0 };
+    HuVecF posByPlayer[4];
     int num;
     int i;
     int j;
     int cornerNo;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (playerNoTbl[i] >= 0) {
             useF[playerNoTbl[i]] = TRUE;
         }
     }
     num = 0;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (masuId != GwPlayer[i].masuId && !useF[i]) {
+    for (i = 0; i < 4; i++) {
+        if (masuId != lbl_80265750[i].masuId && !useF[i]) {
             continue;
         }
-        orderNo[num] = GwPlayer[i].orderNo;
+        orderNo[num] = lbl_80265750[i].orderNo;
         if (orderNo[num] != 0 && !mbPlayerColSnapGet(i)) {
             // Sort players with snapping disabled later, except those with order zero.
-            orderNo[num] += GW_PLAYER_MAX;
+            orderNo[num] += 4;
         }
         playerNoSort[num] = i;
         num++;
@@ -1851,7 +1849,7 @@ void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
             mbMasuPosGet(masuId, &posByPlayer[i]);
         }
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (playerNoTbl[i] >= 0) {
             HuVecCopy(&posByPlayer[playerNoTbl[i]], &posTbl[i]);
         }
@@ -1861,10 +1859,10 @@ void mbev_PlayerColBall(int masuId, int *playerNoTbl, HuVecF *posTbl)
 // Refreshes the group's collision positions using the supplied space for one player.
 void mbev_PlayerColMasuSet(int playerNo, int masuId, BOOL snapF)
 {
-    int masuIdTbl[GW_PLAYER_MAX];
+    int masuIdTbl[4];
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         masuIdTbl[i] = -1;
     }
     masuIdTbl[playerNo] = masuId;
@@ -1875,7 +1873,7 @@ void mbev_PlayerColMasuSet(int playerNo, int masuId, BOOL snapF)
 static void PlayerColCornerSet(int playerNo, int masuIdNext)
 {
     BOOL circleF;
-    int masuIdFix[GW_PLAYER_MAX];
+    int masuIdFix[4];
     int i;
     int j;
     int cornerNo;
@@ -1883,38 +1881,38 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext)
     s8 orderNo;
     HuVecF pos;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         masuIdFix[i] = -1;
     }
     masuIdFix[playerNo] = masuIdNext;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (playerWork[i].colObj == NULL) {
             continue;
         }
-        if (GwPlayer[i].masuId == 0) {
+        if (lbl_80265750[i].masuId == 0) {
             continue;
         }
-        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->masuIdNext =
-            GwPlayer[i].masuIdNext;
+        ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->masuIdNext =
+            lbl_80265750[i].masuIdNext;
         if (i == playerNo) {
             continue;
         }
-        if (omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->notRestF ||
-            !omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->snapF) {
+        if (((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->notRestF ||
+            !((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->snapF) {
             continue;
         }
-        masuId = GwPlayer[i].masuId;
-        orderNo = GwPlayer[i].orderNo;
+        masuId = lbl_80265750[i].masuId;
+        orderNo = lbl_80265750[i].orderNo;
         cornerNo = 0;
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
+        for (j = 0; j < 4; j++) {
             if (i != j && masuId == masuIdFix[j]) {
                 cornerNo++;
             }
         }
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
+        for (j = 0; j < 4; j++) {
             if (i != j && masuIdFix[j] < 0 &&
-                masuId == GwPlayer[j].masuId &&
-                orderNo > GwPlayer[j].orderNo) {
+                masuId == lbl_80265750[j].masuId &&
+                orderNo > lbl_80265750[j].orderNo) {
                 cornerNo++;
             }
         }
@@ -1924,8 +1922,8 @@ static void PlayerColCornerSet(int playerNo, int masuIdNext)
             mbMasuCornerRotPosGet(masuId, cornerNo - 1, &pos);
         }
         circleF =
-            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF;
-        omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK)->circleF = FALSE;
+            ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF;
+        ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])))->circleF = FALSE;
         if (cornerNo != mbPlayerMasuCornerGet(i) || circleF) {
             PlayerColInit(i, masuId, cornerNo);
         }
@@ -1939,7 +1937,7 @@ static void PlayerColCornerSnap(int playerNo, int masuId, int cornerNo)
 {
     MBPLAYERWORK *playerWorkP = mbPlayerWorkGet(playerNo);
     PLAYERCOLWORK *workP =
-        omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK);
+        ((PLAYERCOLWORK *)(&(playerWorkP->colObj->work[0])));
     Mtx masuMtx;
     Mtx masuMtxInv;
     HuVecF pos;
@@ -1958,7 +1956,7 @@ static void PlayerColCornerSnap(int playerNo, int masuId, int cornerNo)
             masuMtxInv, &pos, &playerWork[playerNo].colObj->trans);
         mbPlayerRotYSet(playerNo, 0.0f);
         workP->rotYStart = 0.0f;
-        GwPlayer[playerNo].moveF = FALSE;
+        lbl_80265750[playerNo].moveF = FALSE;
     }
 }
 
@@ -1967,7 +1965,7 @@ static void PlayerColInit(int playerNo, int masuId, int cornerNo)
 {
     MBPLAYERWORK *playerWorkP = mbPlayerWorkGet(playerNo);
     PLAYERCOLWORK *workP =
-        omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK);
+        ((PLAYERCOLWORK *)(&(playerWorkP->colObj->work[0])));
     Mtx masuMtx;
     Mtx masuMtxInv;
     HuVecF posPlayer;
@@ -1986,7 +1984,7 @@ static void PlayerColInit(int playerNo, int masuId, int cornerNo)
         mbPlayerPosGet(playerNo, &posPlayer);
         MTXMultVec(
             masuMtxInv, &posPlayer, &playerWork[playerNo].colObj->trans);
-        GwPlayer[playerNo].moveF = TRUE;
+        lbl_80265750[playerNo].moveF = TRUE;
         if (playerWorkP->masuCorner == 0) {
             mbMasuPosGet(workP->masuId, &posMasu);
         } else {
@@ -2003,7 +2001,7 @@ static void PlayerColInit(int playerNo, int masuId, int cornerNo)
             }
         }
         VECSubtract(&posMasu, &posPlayer, &posDiff);
-        rotY = 90.0f - HuAtan(posDiff.z, posDiff.x);
+        rotY = 90.0f - (180.0*(atan2(posDiff.z, posDiff.x) / 3.141592653589793));
         mbPlayerRotYSet(playerNo, rotY);
         workP->rotYStart = rotY;
     }
@@ -2014,9 +2012,9 @@ BOOL mbPlayerColCheck(void)
 {
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         PLAYERCOLWORK *workP =
-            omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
+            ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])));
 
         if (workP->state) {
             return FALSE;
@@ -2032,10 +2030,10 @@ static void PlayerColKill(int playerNo)
 // Reserves a space for one player and updates the positions of its group.
 void mbev_PlayerColReserve(int playerNo, int masuId, BOOL snapF)
 {
-    int masuIdTbl[GW_PLAYER_MAX];
+    int masuIdTbl[4];
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         masuIdTbl[i] = -1;
     }
     masuIdTbl[playerNo] = masuId;
@@ -2046,7 +2044,7 @@ void mbev_PlayerColReserve(int playerNo, int masuId, BOOL snapF)
 // Installed as the callback for the player's collision object.
 static void PlayerColOMExec(OMOBJ *obj)
 {
-    PLAYERCOLWORK *workP = omObjGetWork(obj, PLAYERCOLWORK);
+    PLAYERCOLWORK *workP = ((PLAYERCOLWORK *)(&(obj->work[0])));
     int playerNo = workP->playerNo;
     MBPLAYERWORK *playerWorkP = mbPlayerWorkGet(playerNo);
     Mtx masuMtx;
@@ -2057,15 +2055,15 @@ static void PlayerColOMExec(OMOBJ *obj)
     float rotY;
 
     if (mbExitCheck()) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         playerWorkP->colObj = NULL;
         return;
     }
-    if (GwPlayer[playerNo].masuId == 0) {
+    if (lbl_80265750[playerNo].masuId == 0) {
         return;
     }
-    if (workP->masuIdNext != GwPlayer[playerNo].masuIdNext) {
-        workP->masuIdNext = GwPlayer[playerNo].masuIdNext;
+    if (workP->masuIdNext != lbl_80265750[playerNo].masuIdNext) {
+        workP->masuIdNext = lbl_80265750[playerNo].masuIdNext;
         PlayerColCornerSet(playerNo, workP->masuIdNext);
     }
     if (!workP->snapF || playerWorkP->moveObj || playerWorkP->posFixObj) {
@@ -2075,8 +2073,8 @@ static void PlayerColOMExec(OMOBJ *obj)
     }
     if (workP->resyncF) {
         workP->resyncF = FALSE;
-        workP->masuId = GwPlayer[playerNo].masuId;
-        workP->masuIdNext = GwPlayer[playerNo].masuIdNext;
+        workP->masuId = lbl_80265750[playerNo].masuId;
+        workP->masuIdNext = lbl_80265750[playerNo].masuIdNext;
         mbMasuMtxGet(workP->masuId, masuMtx);
         MTXInverse(masuMtx, masuMtxInv);
         mbPlayerPosGet(playerNo, &pos);
@@ -2093,7 +2091,7 @@ static void PlayerColOMExec(OMOBJ *obj)
 
         case 1:
             if (!workP->motStartF) {
-                mbPlayerMotionSet(playerNo, 3, HU3D_MOTATTR_LOOP);
+                mbPlayerMotionSet(playerNo, 3, ((1 << 30) | (1 << 0)));
                 workP->motStartF = TRUE;
                 workP->time = 0;
                 workP->maxTime = 12;
@@ -2121,7 +2119,7 @@ static void PlayerColOMExec(OMOBJ *obj)
                 obj->trans.y = playerWorkP->_unk3C.y;
                 obj->trans.z = playerWorkP->_unk3C.z;
                 mbPlayerMotionShiftSet(
-                    playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                    playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             } else {
                 weight = (float)(workP->time++) / workP->maxTime;
                 VECSubtract(&playerWorkP->_unk3C, &obj->rot, &posDiff);
@@ -2138,7 +2136,7 @@ static void PlayerColOMExec(OMOBJ *obj)
             // Completion clears movement, but the interpolation below still overwrites yaw zero.
             if (workP->time > workP->maxTime) {
                 mbPlayerRotYSet(playerNo, 0.0f);
-                GwPlayer[playerNo].moveF = FALSE;
+                lbl_80265750[playerNo].moveF = FALSE;
                 workP->state = 0;
             }
             weight = (float)(workP->time++) / workP->maxTime;
@@ -2165,14 +2163,14 @@ void mbev_PlayerColSet(int playerNo, int masuId)
     if (!playerColSnapF) {
         return;
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         MBPLAYERWORK *playerWorkP;
         PLAYERCOLWORK *workP;
 
-        if (GwPlayer[i].moveF) {
+        if (lbl_80265750[i].moveF) {
             continue;
         }
-        if (masuId != GwPlayer[i].masuId) {
+        if (masuId != lbl_80265750[i].masuId) {
             continue;
         }
         cornerNo = mbPlayerMasuCornerGet(i);
@@ -2183,7 +2181,7 @@ void mbev_PlayerColSet(int playerNo, int masuId)
         }
         mbPlayerPosSetV(i, &pos);
         playerWorkP = mbPlayerWorkGet(i);
-        workP = omObjGetWork(playerWorkP->colObj, PLAYERCOLWORK);
+        workP = ((PLAYERCOLWORK *)(&(playerWorkP->colObj->work[0])));
         if (!workP->snapF) {
             continue;
         }
@@ -2200,7 +2198,7 @@ void mbev_PlayerColSet(int playerNo, int masuId)
             masuMtxInv, &posPlayer, &playerWork[i].colObj->trans);
         mbPlayerRotYSet(i, 0.0f);
         workP->rotYStart = 0.0f;
-        GwPlayer[i].moveF = FALSE;
+        lbl_80265750[i].moveF = FALSE;
     }
 }
 
@@ -2210,10 +2208,10 @@ void mbPlayerColSnapSet(BOOL snapF)
     BOOL snap = snapF ? TRUE : FALSE;
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (playerWork[i].colObj) {
             PLAYERCOLWORK *workP =
-                omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
+                ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])));
 
             workP->snapF = snap;
         }
@@ -2228,7 +2226,7 @@ void mbPlayerColSnapPlayerSet(int playerNo, BOOL snapF)
 
     if (playerWork[playerNo].colObj) {
         PLAYERCOLWORK *workP =
-            omObjGetWork(playerWork[playerNo].colObj, PLAYERCOLWORK);
+            ((PLAYERCOLWORK *)(&(playerWork[playerNo].colObj->work[0])));
 
         workP->snapF = snap;
     }
@@ -2238,7 +2236,7 @@ void mbPlayerColSnapPlayerSet(int playerNo, BOOL snapF)
 BOOL mbPlayerColSnapGet(int playerNo)
 {
     PLAYERCOLWORK *workP =
-        omObjGetWork(playerWork[playerNo].colObj, PLAYERCOLWORK);
+        ((PLAYERCOLWORK *)(&(playerWork[playerNo].colObj->work[0])));
 
     return workP->snapF;
 }
@@ -2250,7 +2248,7 @@ void mbPlayerColRestSet(int playerNo, BOOL restF)
 
     if (playerWork[playerNo].colObj) {
         PLAYERCOLWORK *workP =
-            omObjGetWork(playerWork[playerNo].colObj, PLAYERCOLWORK);
+            ((PLAYERCOLWORK *)(&(playerWork[playerNo].colObj->work[0])));
 
         workP->notRestF = rest;
     }
@@ -2262,10 +2260,10 @@ void mbPlayerColFirstSet(int playerNo)
     int orderNo = 1;
     int i;
 
-    GwPlayer[playerNo].orderNo = 0;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    lbl_80265750[playerNo].orderNo = 0;
+    for (i = 0; i < 4; i++) {
         if (playerNo != i) {
-            GwPlayer[i].orderNo = orderNo++;
+            lbl_80265750[i].orderNo = orderNo++;
         }
     }
 }
@@ -2273,9 +2271,9 @@ void mbPlayerColFirstSet(int playerNo)
 // Reassigns collision-placement order within each occupied space according to corner order.
 void mbPlayerColOrderReset(void)
 {
-    s8 playerNo[GW_PLAYER_MAX];
-    s8 orderNo[GW_PLAYER_MAX];
-    s8 fixF[GW_PLAYER_MAX];
+    s8 playerNo[4];
+    s8 orderNo[4];
+    s8 fixF[4];
     int i;
     int j;
     int k;
@@ -2283,30 +2281,30 @@ void mbPlayerColOrderReset(void)
     s16 masuId;
     s8 orderNoSwap;
 
-    memset(fixF, 0, GW_PLAYER_MAX);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    memset(fixF, 0, 4);
+    for (i = 0; i < 4; i++) {
         PLAYERCOLWORK *workP;
         BOOL restF = FALSE;
 
         if (playerWork[i].colObj) {
-            workP = omObjGetWork(playerWork[i].colObj, PLAYERCOLWORK);
+            workP = ((PLAYERCOLWORK *)(&(playerWork[i].colObj->work[0])));
 
             workP->notRestF = restF;
         }
-        if (GwPlayer[i].masuId == 0) {
+        if (lbl_80265750[i].masuId == 0) {
             continue;
         }
         if (fixF[i]) {
             continue;
         }
-        masuId = GwPlayer[i].masuId;
+        masuId = lbl_80265750[i].masuId;
         playerNo[0] = i;
-        orderNo[0] = GwPlayer[i].orderNo;
+        orderNo[0] = lbl_80265750[i].orderNo;
         num = 1;
-        for (j = 0; j < GW_PLAYER_MAX; j++) {
-            if (i != j && masuId == GwPlayer[j].masuId) {
+        for (j = 0; j < 4; j++) {
+            if (i != j && masuId == lbl_80265750[j].masuId) {
                 playerNo[num] = j;
-                orderNo[num] = GwPlayer[j].orderNo;
+                orderNo[num] = lbl_80265750[j].orderNo;
                 num++;
             }
         }
@@ -2322,14 +2320,14 @@ void mbPlayerColOrderReset(void)
             }
         }
         for (j = 0; j < num; j++) {
-            GwPlayer[playerNo[j]].orderNo =
+            lbl_80265750[playerNo[j]].orderNo =
                 orderNo[mbPlayerMasuCornerGet(playerNo[j])];
             fixF[playerNo[j]] = TRUE;
         }
     }
 }
 
-static char *eyeMatNameTbl[CHARNO_MAX][2] = {
+static char *eyeMatNameTbl[14][2] = {
     { "eye1", "eye2" },
     { "eye1", "eye2" },
     { "mat14", "mat16" },
@@ -2347,13 +2345,13 @@ void mbPlayerEyeMatDarkSet(int playerNo, BOOL darkF)
 {
     BOOL validF;
     HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     HSF_DATA *hsf = modelP->hsf;
     HSF_MATERIAL *matP = hsf->material;
     HSF_MATERIAL *matCopy = playerWork[playerNo].matCopy;
 
     if (darkF) {
-        char **name = &eyeMatNameTbl[GwPlayer[playerNo].charNo][0];
+        char **name = &eyeMatNameTbl[lbl_80265750[playerNo].charNo][0];
         int i;
         int j;
 
@@ -2390,11 +2388,11 @@ void mbPlayerEyeMatDarkSet(int playerNo, BOOL darkF)
 void mbPlayerMatClone(int playerNo)
 {
     HU3D_MODELID modelId = mbObjModelIDGet(mbPlayerObjIDGet(playerNo));
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     HSF_DATA *hsf = modelP->hsf;
     int size = hsf->materialNum * sizeof(HSF_MATERIAL);
     void *materialData =
-        HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+        HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
     HSF_MATERIAL *matP = materialData;
     HSF_MATERIAL *material = matP;
 
@@ -2452,7 +2450,7 @@ static void PlayerBiriQEffectSet(int playerNo, BOOL effectF);
 // Installed as the callback for the player's metal-effect object.
 static void PlayerMetalOMExec(OMOBJ *objP)
 {
-    PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
+    PLAYERMETALWORK *workP = ((PLAYERMETALWORK *)(&(objP->work[0])));
     BOOL killF = FALSE;
     float weight;
 
@@ -2463,7 +2461,7 @@ static void PlayerMetalOMExec(OMOBJ *objP)
         workP->killF = TRUE;
     }
     if (!workP->killF) {
-        if (!GwPlayer[workP->playerNo].metalF && !workP->fadeOutF) {
+        if (!lbl_80265750[workP->playerNo].metalF && !workP->fadeOutF) {
             workP->fadeOutF = TRUE;
             workP->time = 0;
             workP->maxTime = 20;
@@ -2493,9 +2491,9 @@ static void PlayerMetalOMExec(OMOBJ *objP)
         if (objP->mdlId[0] >= 0) {
             if (!mbObjGet(mbPlayerObjIDGet(workP->playerNo))->dispF
                 || !workP->effectF) {
-                Hu3DModelAttrSet(objP->mdlId[0], HU3D_ATTR_DISPOFF);
+                fn_800269E8(objP->mdlId[0], (1 << 0));
             } else {
-                Hu3DModelAttrReset(objP->mdlId[0], HU3D_ATTR_DISPOFF);
+                fn_80026A44(objP->mdlId[0], (1 << 0));
             }
         }
     }
@@ -2508,7 +2506,7 @@ static void PlayerMetalOMExec(OMOBJ *objP)
 
             HuMemDirectFree(dataP);
         }
-        omDelObjEx(HuPrcCurrentGet(), objP);
+        omDelObjEx(fn_8000DD9C(), objP);
         return;
     }
 }
@@ -2523,18 +2521,18 @@ void mbPlayerMetalSet(int playerNo, BOOL metalF)
         if (playerWork[playerNo].metalObj != NULL) {
             OSReport("------------already METAL!!----------");
         }
-        GwPlayer[playerNo].metalF = TRUE;
+        lbl_80265750[playerNo].metalF = TRUE;
         objP = playerWork[playerNo].metalObj;
         if (objP == NULL) {
-            objP = playerWork[playerNo].metalObj = omAddObjEx(mbObjMan,
+            objP = playerWork[playerNo].metalObj = fn_8003AB38(mbObjMan,
                 PLAYER_OBJ_PRIORITY, 1, 0, -1, PlayerMetalOMExec);
-            omSetStatBit(objP, OM_STAT_MODELPAUSE);
+            omSetStatBit(objP, (1 << 8));
             mbObjMetalCreate(mbPlayerObjIDGet(playerNo));
             mbObjMetalTPLvlSet(mbPlayerObjIDGet(playerNo), 0.0f);
             mbObjMetalColorSet(mbPlayerObjIDGet(playerNo),
                 metalShadowColor, metalHiliteColor);
         }
-        workP = omObjGetWork(objP, PLAYERMETALWORK);
+        workP = ((PLAYERMETALWORK *)(&(objP->work[0])));
         workP->playerNo = playerNo;
         workP->fadeOutF = FALSE;
         workP->fadeInDoneF = FALSE;
@@ -2544,10 +2542,10 @@ void mbPlayerMetalSet(int playerNo, BOOL metalF)
         if (objP->mdlId[0] <= 0) {
             MetalEffectCreate(objP);
         }
-        CharModelStepSet(GwPlayer[playerNo].charNo, 6);
+        fn_8005F77C(lbl_80265750[playerNo].charNo, 6);
     } else {
-        GwPlayer[playerNo].metalF = FALSE;
-        CharModelStepSet(GwPlayer[playerNo].charNo, 0);
+        lbl_80265750[playerNo].metalF = FALSE;
+        fn_8005F77C(lbl_80265750[playerNo].charNo, 0);
     }
 }
 
@@ -2557,7 +2555,7 @@ static void PlayerMetalKill(int playerNo)
     OMOBJ *objP = playerWork[playerNo].metalObj;
 
     if (objP != NULL) {
-        PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
+        PLAYERMETALWORK *workP = ((PLAYERMETALWORK *)(&(objP->work[0])));
 
         workP->killF = TRUE;
         playerWork[playerNo].metalObj = NULL;
@@ -2573,7 +2571,7 @@ void mbPlayerEffectSet(int playerNo, BOOL effectF)
     OMOBJ *objP = playerWork[playerNo].metalObj;
 
     if (objP) {
-        PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
+        PLAYERMETALWORK *workP = ((PLAYERMETALWORK *)(&(objP->work[0])));
 
         workP->effectF = effectF;
     }
@@ -2626,11 +2624,11 @@ static float GetBiriQEffectRadius(
     // Both assignments initialize the first mesh-index slot; the second entry is unused.
     objectNo[0] = objectNo[0] = -1;
     maxVertexNum = groupNum = 0;
-    hsfP = Hu3DData[mbPlayerModelIDGet(playerNo)].hsf;
+    hsfP = lbl_802C01C8[mbPlayerModelIDGet(playerNo)].hsf;
     objectP = hsfP->object;
     for (i = 0; i < hsfP->objectNum; i++, objectP++) {
         meshP = objectP;
-        if (meshP->type == HSF_OBJ_MESH
+        if (meshP->type == 2
             && meshP->mesh.vertex->count > 0) {
             vertexNum = meshP->mesh.vertex->count;
 
@@ -2643,7 +2641,7 @@ static float GetBiriQEffectRadius(
     vertexNum = maxVertexNum;
     meshGroupInfo[0] = objectNo[0];
     dataP = HuMemDirectMallocNum(HEAP_HEAP,
-        (125 + 125 + (125 * 8)) * sizeof(s16), HU_MEMNUM_OVL);
+        (125 + 125 + (125 * 8)) * sizeof(s16), 0x10000000);
     objP->data = dataP;
     groupP = objP->data;
     countP = groupP + 125;
@@ -2720,7 +2718,7 @@ static float GetBiriQEffectRadius(
 // Creates the metal particles and groups player mesh vertices for their spawn points.
 static void MetalEffectCreate(OMOBJ *objP)
 {
-    PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
+    PLAYERMETALWORK *workP = ((PLAYERMETALWORK *)(&(objP->work[0])));
     HSF_DATA *hsfP;
     HuVecF size;
     HuVecF min;
@@ -2740,11 +2738,11 @@ static void MetalEffectCreate(OMOBJ *objP)
     int y;
     int z;
 
-    objP->mdlId[0] = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
-        mbBoardDataNumGet(DATANUM(DATA_board, 106)), HU_MEMNUM_OVL)),
+    objP->mdlId[0] = mbParticleCreate(HuSprAnimRead(fn_80008634(
+        mbBoardDataNumGet(DATANUM(0x50000, 106)), 0x10000000)),
         (s16)particleNum);
     mbParticleHookSet(objP->mdlId[0], MetalEffectHook);
-    Hu3DModelLayerSet(objP->mdlId[0], 5);
+    fn_80026B8C(objP->mdlId[0], 5);
     {
         MBPARTICLE *particleP;
         int randomNo;
@@ -2759,11 +2757,11 @@ static void MetalEffectCreate(OMOBJ *objP)
     // Both assignments initialize the first mesh-index slot; the second entry is unused.
     objectNo[0] = objectNo[0] = -1;
     maxVertexNum = groupNum = 0;
-    hsfP = Hu3DData[mbPlayerModelIDGet(workP->playerNo)].hsf;
+    hsfP = lbl_802C01C8[mbPlayerModelIDGet(workP->playerNo)].hsf;
     searchObjectP = hsfP->object;
     for (i = 0; i < hsfP->objectNum; i++, searchObjectP++) {
         meshObjectP = searchObjectP;
-        if (meshObjectP->type == HSF_OBJ_MESH
+        if (meshObjectP->type == 2
             && meshObjectP->mesh.vertex->count > 0) {
             vertexNum = meshObjectP->mesh.vertex->count;
             if (maxVertexNum < vertexNum) {
@@ -2776,7 +2774,7 @@ static void MetalEffectCreate(OMOBJ *objP)
     workP->meshObjectIndex = objectNo[0];
     {
         modelId = objP->mdlId[0];
-        hookData = Hu3DData[modelId].hookData;
+        hookData = lbl_802C01C8[modelId].hookData;
         modelParticleP = hookData;
         particleP = modelParticleP;
         particleP->hookData = objP;
@@ -2785,7 +2783,7 @@ static void MetalEffectCreate(OMOBJ *objP)
         particleP->data[i].vertexNo = 0;
     }
     dataP = HuMemDirectMallocNum(HEAP_HEAP,
-        (125 + 125 + (125 * 8)) * sizeof(s16), HU_MEMNUM_OVL);
+        (125 + 125 + (125 * 8)) * sizeof(s16), 0x10000000);
     objP->data = dataP;
     groupP = objP->data;
     countP = groupP + 125;
@@ -2865,7 +2863,7 @@ static void MetalEffectHook(
     HSF_OBJECT *objectP = NULL;
     OMOBJ *objP = particleP->hookData;
     int i;
-    PLAYERMETALWORK *workP = omObjGetWork(objP, PLAYERMETALWORK);
+    PLAYERMETALWORK *workP = ((PLAYERMETALWORK *)(&(objP->work[0])));
     int objectNo = -1;
     HSF_DATA *hsfP;
     MBPARTICLEDATA *dataP;
@@ -2899,13 +2897,13 @@ static void MetalEffectHook(
         particleP->blendMode = MB_PARTICLE_BLEND_ADDCOL;
         firstF = TRUE;
     }
-    MTXInverse(Hu3DCameraMtx, modelMtx);
+    MTXInverse(lbl_802613F4, modelMtx);
     cameraPos.x = modelMtx[0][3];
     cameraPos.y = modelMtx[1][3];
     cameraPos.z = modelMtx[2][3];
-    hsfP = Hu3DData[mbPlayerModelIDGet(workP->playerNo)].hsf;
+    hsfP = lbl_802C01C8[mbPlayerModelIDGet(workP->playerNo)].hsf;
     objectP = &hsfP->object[workP->meshObjectIndex];
-    Hu3DModelObjMtxGet(
+    fn_80023398(
         mbPlayerModelIDGet(workP->playerNo), objectP->name, modelMtx);
     dataP = particleP->data;
     for (i = 0; i < particleP->num; i++, dataP++) {
@@ -2972,7 +2970,7 @@ static void MetalEffectHook(
 // Installed as the callback for the player's electric-effect object.
 static void PlayerBiriQOMExec(OMOBJ *objP)
 {
-    PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+    PLAYERBIRIQWORK *workP = ((PLAYERBIRIQWORK *)(&(objP->work[0])));
     BOOL killF = FALSE;
     BOOL dispF = TRUE;
 
@@ -2983,7 +2981,7 @@ static void PlayerBiriQOMExec(OMOBJ *objP)
         workP->killF = TRUE;
     }
     if (!workP->killF) {
-        if (!GwPlayer[workP->playerNo].biriQF && !workP->statusEndedF) {
+        if (!lbl_80265750[workP->playerNo].biriQF && !workP->statusEndedF) {
             workP->statusEndedF = TRUE;
             workP->time = 0;
             workP->maxTime = 20;
@@ -3032,11 +3030,11 @@ static void PlayerBiriQOMExec(OMOBJ *objP)
         if (objP->mdlId[0] >= 0) {
             if (!mbObjGet(mbPlayerObjIDGet(workP->playerNo))->dispF
                 || !workP->effectF || !dispF) {
-                Hu3DModelAttrSet(objP->mdlId[0], HU3D_ATTR_DISPOFF);
-                Hu3DModelAttrSet(objP->mdlId[1], HU3D_ATTR_DISPOFF);
+                fn_800269E8(objP->mdlId[0], (1 << 0));
+                fn_800269E8(objP->mdlId[1], (1 << 0));
             } else {
-                Hu3DModelAttrReset(objP->mdlId[0], HU3D_ATTR_DISPOFF);
-                Hu3DModelAttrReset(objP->mdlId[1], HU3D_ATTR_DISPOFF);
+                fn_80026A44(objP->mdlId[0], (1 << 0));
+                fn_80026A44(objP->mdlId[1], (1 << 0));
             }
         }
     }
@@ -3049,7 +3047,7 @@ static void PlayerBiriQOMExec(OMOBJ *objP)
 
             HuMemDirectFree(dataP);
         }
-        omDelObjEx(HuPrcCurrentGet(), objP);
+        omDelObjEx(fn_8000DD9C(), objP);
         return;
     }
 }
@@ -3064,20 +3062,20 @@ void mbPlayerBiriQSet(int playerNo, BOOL biriQF)
         if (playerWork[playerNo].biriQObj != NULL) {
             OSReport("------------already BiriQ!!----------");
         }
-        GwPlayer[playerNo].biriQF = TRUE;
+        lbl_80265750[playerNo].biriQF = TRUE;
         objP = playerWork[playerNo].biriQObj;
         if (objP == NULL) {
             GXColor color = { 255, 255, 255, 255 };
 
-            objP = playerWork[playerNo].biriQObj = omAddObjEx(mbObjMan,
+            objP = playerWork[playerNo].biriQObj = fn_8003AB38(mbObjMan,
                 PLAYER_OBJ_PRIORITY, 2, 0, -1, PlayerBiriQOMExec);
-            omSetStatBit(objP, OM_STAT_MODELPAUSE);
+            omSetStatBit(objP, (1 << 8));
             objP->mdlId[0] = objP->mdlId[1] = MB_MODEL_NONE;
             mbObjBiriQCreate(mbPlayerObjIDGet(playerNo));
             mbObjBiriQColorSet(
                 mbPlayerObjIDGet(playerNo), TRUE, 0.0f, color);
         }
-        workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+        workP = ((PLAYERBIRIQWORK *)(&(objP->work[0])));
         workP->playerNo = playerNo;
         workP->statusEndedF = FALSE;
         workP->initialFlashDoneF = FALSE;
@@ -3086,7 +3084,7 @@ void mbPlayerBiriQSet(int playerNo, BOOL biriQF)
         workP->effectF = TRUE;
         PlayerBiriQFlashSet(playerNo);
     } else {
-        GwPlayer[playerNo].biriQF = FALSE;
+        lbl_80265750[playerNo].biriQF = FALSE;
     }
 }
 
@@ -3096,7 +3094,7 @@ static void PlayerBiriQFlashSet(int playerNo)
     OMOBJ *objP = playerWork[playerNo].biriQObj;
 
     if (objP != NULL) {
-        PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+        PLAYERBIRIQWORK *workP = ((PLAYERBIRIQWORK *)(&(objP->work[0])));
 
         workP->flashF = TRUE;
     }
@@ -3109,7 +3107,7 @@ static void PlayerBiriQKill(int playerNo)
     OMOBJ *objP = playerWork[playerNo].biriQObj;
 
     if (objP != NULL) {
-        PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+        PLAYERBIRIQWORK *workP = ((PLAYERBIRIQWORK *)(&(objP->work[0])));
 
         workP->killF = TRUE;
         playerWork[playerNo].biriQObj = NULL;
@@ -3131,7 +3129,7 @@ static void PlayerBiriQEffectSet(int playerNo, BOOL effectF)
     OMOBJ *objP = playerWork[playerNo].biriQObj;
 
     if (objP) {
-        PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+        PLAYERBIRIQWORK *workP = ((PLAYERBIRIQWORK *)(&(objP->work[0])));
 
         workP->effectF = effectF;
     }
@@ -3140,7 +3138,7 @@ static void PlayerBiriQEffectSet(int playerNo, BOOL effectF)
 // Creates the two electric particle layers around the player's mesh.
 static void BiriQEffectCreate(OMOBJ *objP)
 {
-    PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+    PLAYERBIRIQWORK *workP = ((PLAYERBIRIQWORK *)(&(objP->work[0])));
     MBPARTICLE *particleP;
     HU3D_MODELID modelId;
     HU3D_MODELID modelId2;
@@ -3154,22 +3152,22 @@ static void BiriQEffectCreate(OMOBJ *objP)
     workP->meshObjectIndex = meshGroupInfo[0];
     workP->vertexGroupCount = meshGroupInfo[1];
     particleNum = 21.0f * (0.006666667f * meshHeight);
-    objP->mdlId[0] = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
-        mbBoardDataNumGet(DATANUM(DATA_board, 107)), HU_MEMNUM_OVL)),
+    objP->mdlId[0] = mbParticleCreate(HuSprAnimRead(fn_80008634(
+        mbBoardDataNumGet(DATANUM(0x50000, 107)), 0x10000000)),
         (s16)particleNum);
-    objP->mdlId[1] = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
-        mbBoardDataNumGet(DATANUM(DATA_board, 108)), HU_MEMNUM_OVL)),
+    objP->mdlId[1] = mbParticleCreate(HuSprAnimRead(fn_80008634(
+        mbBoardDataNumGet(DATANUM(0x50000, 108)), 0x10000000)),
         (s16)particleNum);
     mbParticleHookSet(objP->mdlId[0], BiriQEffect1Hook);
     mbParticleHookSet(objP->mdlId[1], BiriQEffect2Hook);
-    Hu3DModelLayerSet(objP->mdlId[0], 3);
-    Hu3DModelLayerSet(objP->mdlId[1], 3);
+    fn_80026B8C(objP->mdlId[0], 3);
+    fn_80026B8C(objP->mdlId[1], 3);
     {
         void *hookData;
         MBPARTICLE *modelParticleP;
 
         modelId = objP->mdlId[0];
-        hookData = Hu3DData[modelId].hookData;
+        hookData = lbl_802C01C8[modelId].hookData;
         modelParticleP = hookData;
         particleP = modelParticleP;
         particleP->hookData = objP;
@@ -3180,7 +3178,7 @@ static void BiriQEffectCreate(OMOBJ *objP)
         MBPARTICLE *modelParticleP2;
 
         modelId2 = objP->mdlId[1];
-        hookData2 = Hu3DData[modelId2].hookData;
+        hookData2 = lbl_802C01C8[modelId2].hookData;
         modelParticleP2 = hookData2;
         particleP = modelParticleP2;
         {
@@ -3188,7 +3186,7 @@ static void BiriQEffectCreate(OMOBJ *objP)
             MBPARTICLE *sourceParticleP;
 
             sourceModelId = objP->mdlId[0];
-            sourceHookData = Hu3DData[sourceModelId].hookData;
+            sourceHookData = lbl_802C01C8[sourceModelId].hookData;
             sourceParticleP = sourceHookData;
             particleP->hookData = sourceParticleP;
         }
@@ -3203,7 +3201,7 @@ static void BiriQEffect1Hook(
     HSF_OBJECT *objectP = NULL;
     OMOBJ *objP = particleP->hookData;
     int i;
-    PLAYERBIRIQWORK *workP = omObjGetWork(objP, PLAYERBIRIQWORK);
+    PLAYERBIRIQWORK *workP = ((PLAYERBIRIQWORK *)(&(objP->work[0])));
     int objectNo = -1;
     HSF_DATA *hsfP;
     MBPARTICLEDATA *dataP;
@@ -3230,13 +3228,13 @@ static void BiriQEffect1Hook(
         particleP->mode = 1;
         firstF = TRUE;
     }
-    MTXInverse(Hu3DCameraMtx, modelMtx);
+    MTXInverse(lbl_802613F4, modelMtx);
     cameraPos.x = modelMtx[0][3];
     cameraPos.y = modelMtx[1][3];
     cameraPos.z = modelMtx[2][3];
-    hsfP = Hu3DData[mbPlayerModelIDGet(workP->playerNo)].hsf;
+    hsfP = lbl_802C01C8[mbPlayerModelIDGet(workP->playerNo)].hsf;
     objectP = &hsfP->object[workP->meshObjectIndex];
-    Hu3DModelObjMtxGet(
+    fn_80023398(
         mbPlayerModelIDGet(workP->playerNo), objectP->name, modelMtx);
     dataP = particleP->data;
     for (i = 0; i < particleP->num; i++, dataP++) {
@@ -3347,28 +3345,28 @@ void mbPlayerSwap(int playerNo1, int playerNo2)
 
     colObj1 = mbPlayerWorkGet(playerNo1)->colObj;
     colObj2 = mbPlayerWorkGet(playerNo2)->colObj;
-    playerConfig = GwPlayerConf[playerNo1];
-    GwPlayerConf[playerNo1] = GwPlayerConf[playerNo2];
-    GwPlayerConf[playerNo2] = playerConfig;
-    playerData = GwPlayer[playerNo1];
-    GwPlayer[playerNo1] = GwPlayer[playerNo2];
-    GwPlayer[playerNo2] = playerData;
+    playerConfig = lbl_80265728[playerNo1];
+    lbl_80265728[playerNo1] = lbl_80265728[playerNo2];
+    lbl_80265728[playerNo2] = playerConfig;
+    playerData = lbl_80265750[playerNo1];
+    lbl_80265750[playerNo1] = lbl_80265750[playerNo2];
+    lbl_80265750[playerNo2] = playerData;
     memcpy(&playerWorkCopy, mbPlayerWorkGet(playerNo1), sizeof(MBPLAYERWORK));
     memcpy(mbPlayerWorkGet(playerNo1), mbPlayerWorkGet(playerNo2),
         sizeof(MBPLAYERWORK));
     memcpy(mbPlayerWorkGet(playerNo2), &playerWorkCopy, sizeof(MBPLAYERWORK));
     mbPlayerWorkGet(playerNo1)->colObj = colObj1;
     mbPlayerWorkGet(playerNo2)->colObj = colObj2;
-    GwPlayer[playerNo1].padNo = GwPlayerConf[playerNo1].padNo;
-    GwPlayerConf[playerNo1].padNo = GwPlayerConf[playerNo1].padNo;
-    GwPlayer[playerNo2].padNo = GwPlayerConf[playerNo2].padNo;
-    GwPlayerConf[playerNo2].padNo = GwPlayerConf[playerNo2].padNo;
+    lbl_80265750[playerNo1].padNo = lbl_80265728[playerNo1].padNo;
+    lbl_80265728[playerNo1].padNo = lbl_80265728[playerNo1].padNo;
+    lbl_80265750[playerNo2].padNo = lbl_80265728[playerNo2].padNo;
+    lbl_80265728[playerNo2].padNo = lbl_80265728[playerNo2].padNo;
 }
 
 // Returns the message ID for the character name currently assigned to a player.
 u32 mbPlayerNameMesGet(int playerNo)
 {
-    u32 nameTbl[CHARNO_MAX] = {
+    u32 nameTbl[14] = {
         MESS_CHARANAME_MARIO, MESS_CHARANAME_LUIGI,
         MESS_CHARANAME_PEACH, MESS_CHARANAME_YOSHI,
         MESS_CHARANAME_WARIO, MESS_CHARANAME_DAISY,
@@ -3378,19 +3376,19 @@ u32 mbPlayerNameMesGet(int playerNo)
         MESS_CHARANAME_MINIKOOPAG, MESS_CHARANAME_MINIKOOPAB
     };
 
-    return nameTbl[GwPlayer[playerNo].charNo];
+    return nameTbl[lbl_80265750[playerNo].charNo];
 }
 
 // Returns the display string for the player's character; the three Mini Koopa variants have no
 // entry.
 char *mbPlayerNameGet(int playerNo)
 {
-    char *nameTbl[CHARNO_MAX] = {
+    char *nameTbl[14] = {
         "Mario", "Luigi", "Peach", "Yoshi", "Wario", "Daisy", "Waluigi", "Kinopio",
         "Teresa", "Mini Koopa", "Kinopiko"
     };
 
-    return nameTbl[GwPlayer[playerNo].charNo];
+    return nameTbl[lbl_80265750[playerNo].charNo];
 }
 
 // Maps sorted, distinct character pairs from IDs 0-10 to message offsets; -1 marks no entry.
@@ -3418,8 +3416,8 @@ u32 mbPlayerTagNameMesGet(int teamNo)
     int charNoSwap;
     int tagId;
 
-    firstCharNo = GwPlayer[mbPlayerTeamFindPlayer(teamNo, 0)].charNo;
-    secondCharNo = GwPlayer[mbPlayerTeamFindPlayer(teamNo, 1)].charNo;
+    firstCharNo = lbl_80265750[mbPlayerTeamFindPlayer(teamNo, 0)].charNo;
+    secondCharNo = lbl_80265750[mbPlayerTeamFindPlayer(teamNo, 1)].charNo;
     if (firstCharNo > secondCharNo) {
         charNoSwap = firstCharNo;
         firstCharNo = secondCharNo;
@@ -3456,8 +3454,8 @@ BOOL mbPlayerAllComCheck(void)
 {
     int playerIndex;
 
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
-        if (!GwPlayer[playerIndex].comF) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        if (!lbl_80265750[playerIndex].comF) {
             return FALSE;
         }
     }
@@ -3469,7 +3467,7 @@ int mbPlayerTeamFind(int playerNo)
 {
     int teammateNo;
 
-    for (teammateNo = 0; teammateNo < GW_PLAYER_MAX; teammateNo++) {
+    for (teammateNo = 0; teammateNo < 4; teammateNo++) {
         if (teammateNo == playerNo) {
             continue;
         }
@@ -3485,7 +3483,7 @@ int mbPlayerTeamFindOther(int playerNo)
 {
     int otherPlayerNo;
 
-    for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+    for (otherPlayerNo = 0; otherPlayerNo < 4; otherPlayerNo++) {
         if (otherPlayerNo == playerNo) {
             continue;
         }
@@ -3503,7 +3501,7 @@ int mbPlayerTeamFindPlayer(int teamNo, int memberNo)
     int teamMemberIndex;
 
     teamMemberIndex = 0;
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         if (teamNo != mbPlayerGrpGet(playerIndex)) {
             continue;
         }
@@ -3579,9 +3577,9 @@ void mbPlayerPosReset(int playerNo)
 {
     HuVecF pos;
 
-    mbMasuPosGet(GwPlayer[playerNo].masuId, &pos);
+    mbMasuPosGet(lbl_80265750[playerNo].masuId, &pos);
     mbPlayerPosSetV(playerNo, &pos);
-    PlayerColCornerSnap(playerNo, GwPlayer[playerNo].masuId, 0);
+    PlayerColCornerSnap(playerNo, lbl_80265750[playerNo].masuId, 0);
 }
 
 // Board events call this after moving or revealing players to arrange everyone at their current
@@ -3595,15 +3593,15 @@ void mbPlayerPosResetAll(void)
     s8 orderNo;
     HuVecF pos;
 
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
-        orderNo = GwPlayer[playerIndex].orderNo;
-        masuId = GwPlayer[playerIndex].masuId;
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        orderNo = lbl_80265750[playerIndex].orderNo;
+        masuId = lbl_80265750[playerIndex].masuId;
         cornerNo = 0;
-        for (otherPlayerIndex = 0; otherPlayerIndex < GW_PLAYER_MAX;
+        for (otherPlayerIndex = 0; otherPlayerIndex < 4;
              otherPlayerIndex++) {
             if (playerIndex != otherPlayerIndex
-                && masuId == GwPlayer[otherPlayerIndex].masuId
-                && orderNo > GwPlayer[otherPlayerIndex].orderNo) {
+                && masuId == lbl_80265750[otherPlayerIndex].masuId
+                && orderNo > lbl_80265750[otherPlayerIndex].orderNo) {
                 cornerNo++;
             }
         }
@@ -3805,7 +3803,7 @@ BOOL mbPlayerMotionEndCheckAll(void)
 {
     int playerIndex;
 
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         if (!mbPlayerMotionEndCheck(playerIndex)) {
             return FALSE;
         }
@@ -3823,7 +3821,7 @@ void mbPlayerMotionEndWait(int playerNo)
 
 void mbPlayerMotIdleSet(int playerNo)
 {
-    mbPlayerMotionShiftSet(playerNo, 1, 0, 8, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0, 8, ((1 << 30) | (1 << 0)));
 }
 
 // Board events call this to set a player's coins, using the first teammate's shared balance in team
@@ -3831,9 +3829,9 @@ void mbPlayerMotIdleSet(int playerNo)
 void mbPlayerCoinSet(int playerNo, int coinNum)
 {
     if (!GWTeamFGet()) {
-        GWPlayerCoinSet(playerNo, coinNum);
+        fn_8003CD2C(playerNo, coinNum);
     } else {
-        GWPlayerCoinSet(
+        fn_8003CD2C(
             mbPlayerTeamFindPlayer(mbPlayerGrpGet(playerNo), 0), coinNum);
     }
 }
@@ -3842,9 +3840,9 @@ void mbPlayerCoinSet(int playerNo, int coinNum)
 int mbPlayerCoinGet(int playerNo)
 {
     if (!GWTeamFGet()) {
-        return GWPlayerCoinGet(playerNo);
+        return fn_8003CD14(playerNo);
     } else {
-        return GWPlayerCoinGet(
+        return fn_8003CD14(
             mbPlayerTeamFindPlayer(mbPlayerGrpGet(playerNo), 0));
     }
 }
@@ -3871,12 +3869,12 @@ void mbPlayerCoinAdd(int playerNo, int coinNum)
 
 void mbPlayerTeamCoinSet(int teamNo, int coinNum)
 {
-    GWPlayerCoinSet(mbPlayerTeamFindPlayer(teamNo, 0), coinNum);
+    fn_8003CD2C(mbPlayerTeamFindPlayer(teamNo, 0), coinNum);
 }
 
 s16 mbPlayerTeamCoinGet(int teamNo)
 {
-    return GWPlayerCoinGet(mbPlayerTeamFindPlayer(teamNo, 0));
+    return fn_8003CD14(mbPlayerTeamFindPlayer(teamNo, 0));
 }
 
 // Board event selection uses this to find the largest current coin balance.
@@ -3886,7 +3884,7 @@ int mbPlayerMaxCoinGet(void)
     int playerIndex;
 
     maxCoin = 0;
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         if (mbPlayerCoinGet(playerIndex) >= maxCoin) {
             maxCoin = mbPlayerCoinGet(playerIndex);
         }
@@ -3899,9 +3897,9 @@ int mbPlayerMaxCoinGet(void)
 void mbPlayerStarSet(int playerNo, int starNum)
 {
     if (!GWTeamFGet()) {
-        GWPlayerStarSet(playerNo, starNum);
+        fn_8003CEAC(playerNo, starNum);
     } else {
-        GWPlayerStarSet(
+        fn_8003CEAC(
             mbPlayerTeamFindPlayer(mbPlayerGrpGet(playerNo), 0), starNum);
     }
 }
@@ -3922,7 +3920,7 @@ void mbPlayerStarAdd(int playerNo, int starNum)
 {
     int star;
 
-    mbAudFXPlay(MSM_SE_CMN_09);
+    mbAudFXPlay(8);
     star = mbPlayerStarGet(playerNo) + starNum;
     if (star < 0) {
         star = 0;
@@ -3932,7 +3930,7 @@ void mbPlayerStarAdd(int playerNo, int starNum)
 
 void mbPlayerGrpStarSet(int teamNo, int starNum)
 {
-    GWPlayerStarSet(mbPlayerTeamFindPlayer(teamNo, 0), starNum);
+    fn_8003CEAC(mbPlayerTeamFindPlayer(teamNo, 0), starNum);
 }
 
 s16 mbPlayerGrpStarGet(int teamNo)
@@ -3951,16 +3949,16 @@ int mbPlayerBestPathGet(void)
 
     shortestPathLength = 9999;
     bestPlayerNo = -1;
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         pathLength = mbMasuFind_TypeStepGet2(
-            GwPlayer[playerIndex].masuId, 7, TRUE, TRUE);
+            lbl_80265750[playerIndex].masuId, 7, TRUE, TRUE);
         if (pathLength < shortestPathLength) {
             shortestPathLength = pathLength;
             bestPlayerNo = playerIndex;
         }
     }
     if (bestPlayerNo < 0) {
-        return mbRandMod(GW_PLAYER_MAX);
+        return mbRandMod(4);
     } else {
         return bestPlayerNo;
     }
@@ -3969,16 +3967,16 @@ int mbPlayerBestPathGet(void)
 // Board results and event logic use this to rank players by stars first, then coins.
 int mbPlayerRankGet(int playerNo)
 {
-    int score[GW_PLAYER_MAX];
+    int score[4];
     int otherPlayerNo;
     int rank;
 
-    for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+    for (otherPlayerNo = 0; otherPlayerNo < 4; otherPlayerNo++) {
         score[otherPlayerNo] = mbPlayerCoinGet(otherPlayerNo)
             | (mbPlayerStarGet(otherPlayerNo) * 1024);
     }
     rank = 0;
-    for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
+    for (otherPlayerNo = 0; otherPlayerNo < 4; otherPlayerNo++) {
         if (otherPlayerNo != playerNo
             && score[playerNo] < score[otherPlayerNo]) {
             rank++;
@@ -4010,12 +4008,12 @@ s16 mbPlayerTeamRankGet(int teamNo)
 
 void mbPlayerCapsuleUseSet(int capsuleNo)
 {
-    GwPlayer[GwSystem.turnPlayerNo].capsuleUse = capsuleNo;
+    lbl_80265750[lbl_80265B70.turnPlayerNo].capsuleUse = capsuleNo;
 }
 
 int mbPlayerCapsuleUseGet(void)
 {
-    return GwPlayer[GwSystem.turnPlayerNo].capsuleUse;
+    return lbl_80265750[lbl_80265B70.turnPlayerNo].capsuleUse;
 }
 
 int mbPlayerCapsuleMaxGet(void)
@@ -4028,14 +4026,14 @@ int mbPlayerCapsuleMaxGet(void)
 static inline s8 *PlayerCapsulePtrGet(int playerNo, int index)
 {
     if (!GWTeamFGet()) {
-        return &GwPlayer[playerNo].capsule[index];
+        return &lbl_80265750[playerNo].capsule[index];
     } else {
         int memberNo = (index < 3) ? 0 : 1;
         int teamNo = mbPlayerGrpGet(playerNo);
         int teamMemberIndex = -1;
         int scanPlayerNo;
 
-        for (scanPlayerNo = 0; scanPlayerNo < GW_PLAYER_MAX; scanPlayerNo++) {
+        for (scanPlayerNo = 0; scanPlayerNo < 4; scanPlayerNo++) {
             if (teamNo == mbPlayerGrpGet(scanPlayerNo)) {
                 teamMemberIndex++;
                 if (teamMemberIndex == memberNo) {
@@ -4043,10 +4041,10 @@ static inline s8 *PlayerCapsulePtrGet(int playerNo, int index)
                 }
             }
         }
-        if (scanPlayerNo >= GW_PLAYER_MAX) {
+        if (scanPlayerNo >= 4) {
             return NULL;
         }
-        return &GwPlayer[scanPlayerNo].capsule[index - (memberNo * 3)];
+        return &lbl_80265750[scanPlayerNo].capsule[index - (memberNo * 3)];
     }
 }
 
@@ -4122,7 +4120,7 @@ static inline int PlayerCountCapsules(int playerNo)
     int capsuleCount;
 
     for (capsuleCount = 0; capsuleCount < 3; capsuleCount++) {
-        if (GwPlayer[playerNo].capsule[capsuleCount] == -1) {
+        if (lbl_80265750[playerNo].capsule[capsuleCount] == -1) {
             break;
         }
     }
@@ -4157,8 +4155,8 @@ BOOL mbPlayerKettouCheck(int playerNo, s16 masuId)
 {
     int otherPlayerNo;
 
-    for (otherPlayerNo = 0; otherPlayerNo < GW_PLAYER_MAX; otherPlayerNo++) {
-        if (playerNo != otherPlayerNo && masuId == GwPlayer[otherPlayerNo].masuId) {
+    for (otherPlayerNo = 0; otherPlayerNo < 4; otherPlayerNo++) {
+        if (playerNo != otherPlayerNo && masuId == lbl_80265750[otherPlayerNo].masuId) {
             return TRUE;
         }
     }
@@ -4169,7 +4167,7 @@ BOOL mbPlayerKettouCheck(int playerNo, s16 masuId)
 void mbPlayerWinLoseVoicePlay(int playerNo, int motNo, int seId)
 {
     MBOBJMODEL *objP = mbObjGet(mbPlayerObjIDGet(playerNo));
-    u8 charNo = GwPlayer[playerNo].charNo;
+    u8 charNo = lbl_80265750[playerNo].charNo;
 
     CharWinLoseVoicePlay(charNo, objP->motId[motNo], seId);
 }
@@ -4188,13 +4186,13 @@ int mbPlayerVoicePlay(int playerNo, s16 seId)
     mbPlayerPosGet(playerNo, &pos);
     pan = mbAudFXPosPanGet(&pos);
     return CharFXPlayVolPan(
-        GwPlayer[playerNo].charNo, seId, MSM_VOL_MAX, pan);
+        lbl_80265750[playerNo].charNo, seId, MSM_VOL_MAX, pan);
 }
 
 // Board events request player visibility; players on space zero are always hidden.
 void mbPlayerDispSet(int playerNo, BOOL dispF)
 {
-    if (GwPlayer[playerNo].masuId == 0) {
+    if (lbl_80265750[playerNo].masuId == 0) {
         dispF = FALSE;
     }
     mbObjDispSet(mbPlayerObjIDGet(playerNo), dispF);
@@ -4224,7 +4222,7 @@ GXColor mbPlayerColorGet(int playerNo)
         { 40, 40, 180, 255 }
     };
 
-    return color[GwPlayer[playerNo].charNo];
+    return color[lbl_80265750[playerNo].charNo];
 }
 
 const s8 lbl_8021A9E4[20] = {
@@ -4264,10 +4262,10 @@ static void MasuCoinExec(int playerNo, int coinNum)
     s8 coinDisplayId;
 
     if (coinNum < 0) {
-        omVibrate(playerNo, 20, 4, 4);
+        fn_8006A030(playerNo, 20, 4, 4);
     }
     mbPlayerRotateStart(playerNo, 0, 15);
-    if (GwSystem.last5Effect == 1) {
+    if (lbl_80265B70.last5Effect == 1) {
         coinNum *= 3;
     }
     mbPlayerPosGet(playerNo, &pos);
@@ -4282,13 +4280,13 @@ static void MasuCoinExec(int playerNo, int coinNum)
         HuPrcVSleep();
     }
     if (coinNum >= 0) {
-        mbPlayerWinLoseVoicePlay(playerNo, 12, CHARVOICEID(6));
+        mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
         mbPlayerMotionShiftSet(
-            playerNo, 12, 0.0f, 4.0f, HU3D_ATTR_NONE);
+            playerNo, 12, 0.0f, 4.0f, 0);
     } else {
-        mbPlayerWinLoseVoicePlay(playerNo, 13, CHARVOICEID(12));
+        mbPlayerWinLoseVoicePlay(playerNo, 13, (573+12));
         mbPlayerMotionShiftSet(
-            playerNo, 13, 0.0f, 4.0f, HU3D_ATTR_NONE);
+            playerNo, 13, 0.0f, 4.0f, 0);
     }
     mbCoinAddExec(playerNo, coinNum);
     mbCameraMoveWait();

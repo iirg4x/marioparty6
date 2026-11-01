@@ -117,7 +117,7 @@ void fn_1_5FDC(s16 coursePropIndex, s16 courseMotionIndex);
 void fn_1_6534(s16 scoreIndex, s16 scoreValue);
 void fn_1_6958(s32 spriteMemberIndex);
 void fn_1_69F4(void);
-u32 MgSeqModeNext(void);
+u32 fn_80071A9C(void);
 
 struct _struct_lbl_1_bss_3DF0_0x18 {
     s16 scoreBoxId; /* Score-box resource ID. */
