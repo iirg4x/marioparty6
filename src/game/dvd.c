@@ -25,16 +25,16 @@ static void *HuDvdDataReadWait(DVDFileInfo *dvdFile, int allocationMode, int hea
     fileLength = dvdFile->length;
     // Preserve the full file size for callers, including when an asynchronous read starts in
     // chunks.
-    DirDataSize = fileLength;
+    lbl_802C0028 = fileLength;
     // Modes select the DVD heap, numbered DVD heap, selected heap, or selected heap tail.
     switch(allocationMode) {
         case 0:
-            dataBuffer = HuMemDirectMalloc(HEAP_DVD, OSRoundUp32B(fileLength));
+            dataBuffer = HuMemDirectMalloc(3, OSRoundUp32B(fileLength));
             break;
             
         case 1:
             dataBuffer =
-                HuMemDirectMallocNum(HEAP_DVD, OSRoundUp32B(fileLength), heapOrAllocationNumber);
+                HuMemDirectMallocNum(3, OSRoundUp32B(fileLength), heapOrAllocationNumber);
             break;
             
         case 2:
@@ -42,7 +42,7 @@ static void *HuDvdDataReadWait(DVDFileInfo *dvdFile, int allocationMode, int hea
             break;
          
         case 3:
-            dataBuffer = HuMemDirectTailMalloc(heapOrAllocationNumber, OSRoundUp32B(fileLength));
+            dataBuffer = fn_8000B560(heapOrAllocationNumber, OSRoundUp32B(fileLength));
             break;
         
         default:
@@ -52,18 +52,18 @@ static void *HuDvdDataReadWait(DVDFileInfo *dvdFile, int allocationMode, int hea
     if(!dataBuffer) {
         OSReport("dvd.c: Memory Allocation Error (Length %x) (mode %d)\n", fileLength,
                  allocationMode);
-        OSReport("Rest Memory %x\n", HuRestMemGet(HEAP_DVD));
+        OSReport("Rest Memory %x\n", fn_8000B790(3)-HuMemUsedMallocSizeGet(3));
         OSPanic("dvd.c", 63, "\n");
         return NULL;
     }
-    OSReport("Rest Memory %x\n", HuRestMemGet(HEAP_DVD));
+    OSReport("Rest Memory %x\n", fn_8000B790(3)-HuMemUsedMallocSizeGet(3));
     // Read-submission results are ignored; the synchronous path waits for its callback below.
     if(readAsync) {
         if(fileLength > HU_DVD_BLOCKSIZE) {
             fileLength = HU_DVD_BLOCKSIZE;
         }
         DVDReadAsyncPrio(dvdFile, dataBuffer, OSRoundUp32B(fileLength), 0,
-                         HuDataDirReadAsyncCallBack, 3);
+                         fn_80007C88, 3);
     } else {
         u32 chunkSize;
         u32 readOffset;

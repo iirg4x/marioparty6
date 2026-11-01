@@ -20,12 +20,12 @@ typedef void (*MBHOOK)(void);
 
 static inline s16 GWMgNightFGet(void)
 {
-    return GwMgNightF;
+    return lbl_802C0278;
 }
 
 static inline void GWMgPackSet(s32 mgPack)
 {
-    GwSystem.mgPack = mgPack;
+    lbl_80265B70.mgPack = mgPack;
 }
 
 static void mbOMDestroy(void);
@@ -42,7 +42,7 @@ void mbLightSet(void);
 static Vec lightPos = {-500.0f, 500.0f, 2000.0f};
 static Vec lightDir = {0.5f, -0.5f, -2.0f};
 /* Overlay selected for mbOMDestroy to enter after closing board resources. */
-static OMOVL nextOvl = DLL_NONE;
+static OMOVL nextOvl = -1;
 static s32 lbl_802BFBAC = 20;
 static s32 lbl_802BFBB0 = 20;
 /* White RGBA color paired with the board light position and direction. */
@@ -162,77 +162,77 @@ void mbObjectSetup(s32 boardNo, MBHOOK boardInit, MBHOOK boardClose)
 {
     omSysPauseEnable(FALSE);
     mbPauseDisableSet(TRUE);
-    mbSaveNewF = !_CheckFlag(FLAG_BOARD_SAVEINIT);
+    mbSaveNewF = !fn_8006A124(65536);
     mbBoardDataDirRead();
     mbMathInit();
     if (mbSaveNewF) {
-        if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        if (!fn_8006A124(65550)) {
             if (GWPartyGet() != FALSE) {
-                GWMgInstDispSet(GwCommon.partyMgInstDispF);
-                GWMgComDispSet(GwCommon.partyMgComDispF);
-                GWMgPackSet(GwCommon.partyMgPack);
-                GWMessSpeedSet(GwCommon.partyMessSpeed);
-                GWSaveModeSet(GwCommon.partySaveMode);
+                GWMgInstDispSet(lbl_80265E30.partyMgInstDispF);
+                GWMgComDispSet(lbl_80265E30.partyMgComDispF);
+                GWMgPackSet(lbl_80265E30.partyMgPack);
+                GWMessSpeedSet(lbl_80265E30.partyMessSpeed);
+                GWSaveModeSet(lbl_80265E30.partySaveMode);
             } else {
-                GWMgInstDispSet(GwCommon.storyMgInstDispF);
-                GWMgComDispSet(GwCommon.storyMgComDispF);
-                GWMgPackSet(GwCommon.storyMgPack);
-                GWMessSpeedSet(GwCommon.storyMessSpeed);
-                GWSaveModeSet(GwCommon.storySaveMode);
+                GWMgInstDispSet(lbl_80265E30.storyMgInstDispF);
+                GWMgComDispSet(lbl_80265E30.storyMgComDispF);
+                GWMgPackSet(lbl_80265E30.storyMgPack);
+                GWMessSpeedSet(lbl_80265E30.storyMessSpeed);
+                GWSaveModeSet(lbl_80265E30.storySaveMode);
             }
         } else {
-            GwSystem.curTime = 0;
-            GwMgNightF = 0;
+            lbl_80265B70.curTime = 0;
+            lbl_802C0278 = 0;
         }
-        _SetFlag(FLAG_BOARD_SAVEINIT);
-        _ClearFlag(FLAG_BOARD_OPENING);
-        _ClearFlag(FLAG_BOARD_MG);
-        _ClearFlag(FLAG_BOARD_MG_KETTOU);
-        _ClearFlag(FLAG_BOARD_MG_DONKEY);
-        _ClearFlag(FLAG_BOARD_MG_KOOPA);
-        _ClearFlag(FLAG_BOARD_MG_VS);
-        GwSystem.turnNo = 1;
+        fn_8006A1C4(65536);
+        fn_8006A268(65537);
+        fn_8006A268(65538);
+        fn_8006A268(65541);
+        fn_8006A268(65542);
+        fn_8006A268(65539);
+        fn_8006A268(65540);
+        lbl_80265B70.turnNo = 1;
         mbStarFlagInit();
         mbStarNextNoSet(0);
-        GwSystem.starTotal = 0;
-        GwSystem.last5Effect = 0;
-        GwSystem.curTime = GwSystem.nextTime = 0;
+        lbl_80265B70.starTotal = 0;
+        lbl_80265B70.last5Effect = 0;
+        lbl_80265B70.curTime = lbl_80265B70.nextTime = 0;
         if (GWMgNightFGet() == 1) {
-            GwSystem.curTime = GwSystem.nextTime = 1;
+            lbl_80265B70.curTime = lbl_80265B70.nextTime = 1;
         }
-        GwSystem.timeTurn = 0;
-        GwSystem.timeTurnMax = 3;
-        _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 1));
-        _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 3));
-        _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 7));
-        _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 8));
-        _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 0));
-        _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 2));
-        _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 4));
-        _ClearFlag(FLAGNUM(FLAG_GROUP_BOARD, 6));
-        _ClearFlag(3);
+        lbl_80265B70.timeTurn = 0;
+        lbl_80265B70.timeTurnMax = 3;
+        fn_8006A268(131073);
+        fn_8006A268(131075);
+        fn_8006A268(131079);
+        fn_8006A268(131080);
+        fn_8006A268(131072);
+        fn_8006A268(131074);
+        fn_8006A268(131076);
+        fn_8006A268(131078);
+        fn_8006A268(3);
         mbMgCallInit();
         mbStarReset();
         mbMasuCapsuleReset();
         mbev_CapBankCoinInit();
         saveExecF = FALSE;
     }
-    if (_CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 35))) {
+    if (fn_8006A124(65571)) {
         mbMgCallInit();
         mbStarReset();
-        _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 35));
+        fn_8006A268(65571);
         saveExecF = TRUE;
     }
-    nextOvl = DLL_NONE;
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 34));
-    _SetFlag(FLAG_MG_CIRCUIT);
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 21));
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 22));
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 23));
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 26));
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 28));
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 29));
-    _ClearFlag(FLAG_BOARD_TURN_NOSTART);
+    nextOvl = -1;
+    fn_8006A1C4(65570);
+    fn_8006A1C4(65552);
+    fn_8006A268(65557);
+    fn_8006A268(65558);
+    fn_8006A268(65559);
+    fn_8006A268(65562);
+    fn_8006A268(65564);
+    fn_8006A268(65565);
+    fn_8006A268(65569);
     mbConfigPadDisableSet(TRUE);
     initHook = boardInit;
     closeHook = boardClose;
@@ -244,12 +244,12 @@ void mbObjectSetup(s32 boardNo, MBHOOK boardInit, MBHOOK boardClose)
     ev_LoadTime = ev_NextTime = NULL;
     mbev_NextTimeSet((MBHOOK)evdef_ChangeTime);
     mbExitWatchCreate();
-    mbObjMan = omInitObjMan(64, 8194);
+    mbObjMan = fn_8003A8BC(64, 8194);
     HuPrcDestructorSet2(mbObjMan, mbOMDestroy);
     omSystemKeyCheckSetup(mbObjMan);
-    mbMainProc = HuPrcChildCreate(mbMain, 8208, 0x8000, 0, mbObjMan);
+    mbMainProc = fn_8000DAC0(mbMain, 8208, 0x8000, 0, mbObjMan);
     HuPrcDestructorSet2(mbMainProc, mbMainKill);
-    GwSystem.boardNo = boardNo;
+    lbl_80265B70.boardNo = boardNo;
 }
 
 /* Closes board resources, then follows the requested overlay or returns. */
@@ -257,24 +257,24 @@ static void mbOMDestroy(void)
 {
     s32 currentOvl;
     mbClose();
-    if (nextOvl != DLL_NONE) {
+    if (nextOvl != -1) {
         omOvlCallEx(nextOvl, TRUE, 0, 0);
         return;
     }
-    if (_CheckFlag(FLAG_BOARD_MOVE_DONE)) {
-        currentOvl = omCurrentOvlGet();
-        _ClearFlag(FLAG_BOARD_MOVE_DONE);
+    if (fn_8006A124(65554)) {
+        currentOvl = fn_8003B774();
+        fn_8006A268(65554);
         omOvlGotoEx(currentOvl, TRUE, 0, 0);
         return;
     }
-    _ClearFlag(FLAG_BOARD_SAVEINIT);
-    if (_CheckFlag(FLAG_BOARD_TURN_NOSTART)) {
-        omOvlReturnEx(1, TRUE);
+    fn_8006A268(65536);
+    if (fn_8006A124(65569)) {
+        fn_8003A5E4(1, TRUE);
     } else {
-        if (GWPartyGet() != FALSE && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        if (GWPartyGet() != FALSE && !fn_8006A124(65550)) {
             omOvlGotoEx(92, TRUE, 0, 0);
         } else {
-            omOvlReturnEx(1, TRUE);
+            fn_8003A5E4(1, TRUE);
         }
     }
 }
@@ -289,15 +289,15 @@ static void mbMain(void)
     s32 nightF;
 
     mbWipeWait();
-    if (GwSystem.turnNo > GwSystem.turnMax && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        _ClearFlag(FLAG_BOARD_MOVE_DONE);
+    if (lbl_80265B70.turnNo > lbl_80265B70.turnMax && !fn_8006A124(65550)) {
+        fn_8006A268(65554);
         mbExitReq();
         HuPrcSleep(-1);
     }
     mbInit();
-    if (!_CheckFlag(FLAG_BOARD_OPENING)) {
-        if (_CheckFlag(FLAG_BOARD_DEBUG) && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            BOOL partyModeF = GwSystem.partyF;
+    if (!fn_8006A124(65537)) {
+        if (fn_8006A124(131073) && !fn_8006A124(65550)) {
+            BOOL partyModeF = lbl_80265B70.partyF;
 
             if (partyModeF != FALSE) {
                 s32 starNo = mbStarNoRandGet();
@@ -306,17 +306,17 @@ static void mbMain(void)
                 }
             }
         } else {
-            GwSystem.turnPlayerNo = -1;
-            if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            lbl_80265B70.turnPlayerNo = -1;
+            if (!fn_8006A124(65550)) {
                 mbev_Opening();
             } else {
                 mbMusBoardPlay();
-                _ClearFlag(FLAG_BOARD_STAR_RESET);
+                fn_8006A268(65570);
                 mbTutorialCall(0);
             }
         }
         {
-            BOOL partyModeF = GwSystem.partyF;
+            BOOL partyModeF = lbl_80265B70.partyF;
 
             if (partyModeF != FALSE) {
                 if (!GWTeamFGet()) {
@@ -334,78 +334,79 @@ static void mbMain(void)
                 }
             }
         }
-        GwSystem.turnPlayerNo = 0;
-        _SetFlag(FLAG_BOARD_OPENING);
+        lbl_80265B70.turnPlayerNo = 0;
+        fn_8006A1C4(65537);
     }
-    if (GwSystem.curTime != GwSystem.nextTime) {
-        GwSystem.timeTurn = 0;
-        currentTime = GwSystem.curTime;
-        GwMgNightF = currentTime;
+    if (lbl_80265B70.curTime != lbl_80265B70.nextTime) {
+        lbl_80265B70.timeTurn = 0;
+        currentTime = lbl_80265B70.curTime;
+        lbl_802C0278 = currentTime;
         if (ev_NextTime != NULL) {
             mbMusBoardPlay();
-            _ClearFlag(FLAG_BOARD_STAR_RESET);
+            fn_8006A268(65570);
             ev_NextTime();
             mbTelopTimeChangeKill();
             mbCameraMoveStop();
         }
-        GwSystem.nextTime = GwSystem.curTime;
+        lbl_80265B70.nextTime = lbl_80265B70.curTime;
     }
     {
         BOOL isDayF;
 
-        isDayF = (GwSystem.curTime == 0);
+        isDayF = (lbl_80265B70.curTime == 0);
         nightF = isDayF ? FALSE : TRUE;
-        GwMgNightF = nightF;
+        lbl_802C0278 = nightF;
     }
     if (mbReturnMgCheck()) {
         if (GWPartyGet() == FALSE) {
             turnInterruptF = mbev_SingleMgEnd(0);
         } else {
-            if (_CheckFlag(FLAG_BOARD_MG)) {
-                _ClearFlag(FLAG_BOARD_MG);
-            } else if (_CheckFlag(FLAG_BOARD_MG_KETTOU)) {
-                mbev_CapKettouEndCall(GwSystem.turnPlayerNo);
-                _ClearFlag(FLAG_BOARD_MG_KETTOU);
+            if (fn_8006A124(65538)) {
+                fn_8006A268(65538);
+            } else if (fn_8006A124(65541)) {
+                mbev_CapKettouEndCall(lbl_80265B70.turnPlayerNo);
+                fn_8006A268(65541);
                 turnInterruptF = TRUE;
-            } else if (_CheckFlag(FLAG_BOARD_MG_DONKEY)) {
-                mbev_CapDonkeyEndCall(GwSystem.turnPlayerNo);
-                _ClearFlag(FLAG_BOARD_MG_DONKEY);
+            } else if (fn_8006A124(65542)) {
+                mbev_CapDonkeyEndCall(lbl_80265B70.turnPlayerNo);
+                fn_8006A268(65542);
                 turnInterruptF = TRUE;
-            } else if (_CheckFlag(FLAG_BOARD_MG_KOOPA)) {
-                mbev_CapKoopaEndCall(GwSystem.turnPlayerNo);
-                _ClearFlag(FLAG_BOARD_MG_KOOPA);
+            } else if (fn_8006A124(65539)) {
+                mbev_CapKoopaEndCall(lbl_80265B70.turnPlayerNo);
+                fn_8006A268(65539);
                 turnInterruptF = TRUE;
-            } else if (_CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 19))) {
+            } else if (fn_8006A124(65555)) {
                 if (ev_LoadTime != NULL) {
                     ev_LoadTime();
                 }
-                _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 19));
+                fn_8006A268(65555);
                 turnInterruptF = TRUE;
             }
-            _ClearFlag(FLAG_BOARD_MOVE_DONE);
+            fn_8006A268(65554);
         }
     }
     while (1) {
     if (ev_TurnStart && !turnInterruptF) {
         ev_TurnStart();
     }
-    if (GwSystem.turnPlayerNo == 0 && !turnInterruptF && GwSystem.turnMax - GwSystem.turnNo < 5) {
-        if (!_CheckFlag(FLAG_BOARD_LAST5) && GWPartyGet() != FALSE) {
+    if (lbl_80265B70.turnPlayerNo == 0 && !turnInterruptF
+        && lbl_80265B70.turnMax - lbl_80265B70.turnNo < 5) {
+        if (!fn_8006A124(3) && GWPartyGet() != FALSE) {
             mbev_Last5();
-            _SetFlag(FLAG_BOARD_LAST5);
+            fn_8006A1C4(3);
         } else {
             mbTelopLastTurnCreate();
-            if (!_CheckFlag(FLAG_BOARD_LAST5)) {
+            if (!fn_8006A124(3)) {
                 if (GWPartyGet() == FALSE) {
                     mbSingleCall(12, 0);
-                    _SetFlag(FLAG_BOARD_LAST5);
+                    fn_8006A1C4(3);
                 }
             }
         }
     }
     mbMusBoardPlay();
-    _ClearFlag(FLAG_BOARD_STAR_RESET);
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    fn_8006A268(65570);
+    if (fn_8006A124(65550)) {
         mbTutorialCall(1);
         if (mbTutorialExitReqGet()) {
             HuPrcSleep(-1);
@@ -417,28 +418,28 @@ static void mbMain(void)
         if (ev_TurnEnd) {
             ev_TurnEnd();
         }
-        GwSystem.turnNo++;
-        GwSystem.timeTurn++;
-        GwSystem.turnPlayerNo = 0;
-        if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        lbl_80265B70.turnNo++;
+        lbl_80265B70.timeTurn++;
+        lbl_80265B70.turnPlayerNo = 0;
+        if (fn_8006A124(65550)) {
             mbTutorialCall(2);
             mbStatusColorAllSet(0);
             mbNextTime();
             continue;
-        } else if (_CheckFlag(FLAG_BOARD_NOMG)) {
+        } else if (fn_8006A124(131072)) {
             turnInterruptF = FALSE;
             mbStatusColorAllSet(0);
             mbNextTime();
             continue;
         } else {
-            GwSystem.turnPlayerNo = -1;
+            lbl_80265B70.turnPlayerNo = -1;
             minigameCalledF = mbev_MgCall();
             mbStatusColorAllSet(0);
             if (!minigameCalledF) {
                 mbNextTimeSet();
                 HuPrcSleep(-1);
             } else {
-                GwSystem.turnPlayerNo = 0;
+                lbl_80265B70.turnPlayerNo = 0;
                 mbNextTime();
             }
         }
@@ -449,24 +450,24 @@ static void mbMain(void)
         if (ev_TurnEnd) {
             ev_TurnEnd();
         }
-        GwSystem.turnNo++;
-        if (GwSystem.turnNo > GwSystem.turnMax) {
+        lbl_80265B70.turnNo++;
+        if (lbl_80265B70.turnNo > lbl_80265B70.turnMax) {
             mbSingleGameEnd();
             HuPrcSleep(-1);
         }
-        GwSystem.turnPlayerNo = 0;
-        if (_CheckFlag(FLAG_BOARD_NOMG)) {
+        lbl_80265B70.turnPlayerNo = 0;
+        if (fn_8006A124(131072)) {
             turnInterruptF = FALSE;
             mbStatusColorAllSet(0);
             continue;
         }
-        if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        if (fn_8006A124(65550)) {
             mbStatusColorAllSet(0);
             continue;
         }
-        GwSystem.turnPlayerNo = -1;
+        lbl_80265B70.turnPlayerNo = -1;
         mbStatusColorAllSet(0);
-        GwSystem.turnPlayerNo = 0;
+        lbl_80265B70.turnPlayerNo = 0;
     }
     turnInterruptF = FALSE;
     }
@@ -482,15 +483,15 @@ static void mbMainKill(void)
 void mbChangeTimeSet(void)
 {
     /* mbMain compares these fields before running the time-change event. */
-    GwSystem.nextTime = GwSystem.curTime;
-    GwSystem.curTime ^= 1;
+    lbl_80265B70.nextTime = lbl_80265B70.curTime;
+    lbl_80265B70.curTime ^= 1;
 }
 
 /* Advances day/night only after the configured number of turns; reports whether it changed. */
 BOOL mbNextTimeSet(void)
 {
-    s32 turnsPerTime = GwSystem.timeTurnMax;
-    s32 turnsInTime = GwSystem.timeTurn;
+    s32 turnsPerTime = lbl_80265B70.timeTurnMax;
+    s32 turnsInTime = lbl_80265B70.timeTurn;
 
     if (turnsInTime >= turnsPerTime) {
         mbChangeTimeSet();
@@ -502,9 +503,9 @@ BOOL mbNextTimeSet(void)
 /* Handles a board-requested time change by marking a return event and exiting the process. */
 void mbChangeTime(void)
 {
-    nextOvl = DLL_NONE;
-    _SetFlag(FLAG_BOARD_MOVE_DONE);
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 19));
+    nextOvl = -1;
+    fn_8006A1C4(65554);
+    fn_8006A1C4(65555);
     mbChangeTimeSet();
     mbExitReq();
     HuPrcSleep(-1);
@@ -514,8 +515,8 @@ void mbChangeTime(void)
 void mbNextTime(void)
 {
     BOOL advancesTimeF;
-    s32 turnsPerTime = GwSystem.timeTurnMax;
-    s32 turnsInTime = GwSystem.timeTurn;
+    s32 turnsPerTime = lbl_80265B70.timeTurnMax;
+    s32 turnsInTime = lbl_80265B70.timeTurn;
 
     if (turnsInTime >= turnsPerTime) {
         mbChangeTimeSet();
@@ -524,9 +525,9 @@ void mbNextTime(void)
         advancesTimeF = FALSE;
     }
     if (advancesTimeF) {
-        nextOvl = DLL_NONE;
-        _SetFlag(FLAG_BOARD_MOVE_DONE);
-        _SetFlag(FLAG_BOARD_MG);
+        nextOvl = -1;
+        fn_8006A1C4(65554);
+        fn_8006A1C4(65538);
         mbExitReq();
         HuPrcSleep(-1);
     }
@@ -557,12 +558,12 @@ void mbOvlCall(OMOVL nextOverlay)
 /* Reports whether mbMain must process a minigame return or board-move event. */
 BOOL mbReturnMgCheck(void)
 {
-    if (_CheckFlag(FLAG_BOARD_MG)
-        || _CheckFlag(FLAG_BOARD_MG_KETTOU)
-        || _CheckFlag(FLAG_BOARD_MG_KOOPA)
-        || _CheckFlag(FLAG_BOARD_MG_DONKEY)
-        || _CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 19))
-        || _CheckFlag(FLAG_BOARD_MOVE_DONE)) {
+    if (fn_8006A124(65538)
+        || fn_8006A124(65541)
+        || fn_8006A124(65539)
+        || fn_8006A124(65542)
+        || fn_8006A124(65555)
+        || fn_8006A124(65554)) {
         return TRUE;
     }
     return FALSE;
@@ -572,21 +573,21 @@ BOOL mbReturnMgCheck(void)
 void mbInit(void)
 {
     if (!SLSaveFlagGet()) {
-        GWSaveModeSet(GW_SAVE_MODE_NEVER);
+        GWSaveModeSet(1);
     }
     if (GWMgInstDispGet()) {
-        _SetFlag(5);
+        fn_8006A1C4(5);
     } else {
-        _ClearFlag(5);
+        fn_8006A268(5);
     }
     if (!mbReturnMgCheck()) {
-        _ClearFlag(FLAG_BOARD_MG);
-        _ClearFlag(FLAG_BOARD_MG_KETTOU);
-        _ClearFlag(FLAG_BOARD_MG_KOOPA);
-        _ClearFlag(FLAG_BOARD_MG_DONKEY);
-        _ClearFlag(FLAG_BOARD_MG_VS);
-        _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 19));
-        _ClearFlag(FLAG_BOARD_MOVE_DONE);
+        fn_8006A268(65538);
+        fn_8006A268(65541);
+        fn_8006A268(65539);
+        fn_8006A268(65542);
+        fn_8006A268(65540);
+        fn_8006A268(65555);
+        fn_8006A268(65554);
     }
     if (mbReturnMgCheck()) {
         mbMgCallDataClose();
@@ -612,25 +613,25 @@ void mbInit(void)
     mbStatusInit();
     mbDiceInit();
     mbLightSet();
-    CharModelDataClose(-1);
+    fn_8005B7BC(-1);
     mbTauntInit();
-    Hu3DReflectNoSet(0);
+    fn_8002A2A4(0);
     mbCapMasuObjInit();
     if (GWPartyGet() == FALSE) {
         mbSingleInit();
     }
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         mbTutorialCreate();
     }
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 21));
+    fn_8006A1C4(65557);
 }
 
 /* Releases board subsystems when mbOMDestroy tears down the board object manager; a clear init flag
  * takes the short data/math cleanup path. */
 void mbClose(void)
 {
-    HuMemHeapDump(HuMemHeapPtrGet(3), -1);
-    if (!_CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 21))) {
+    fn_8000BFB4(fn_8000B7A8(3), -1);
+    if (!fn_8006A124(65557)) {
         mbDirClose();
         mbMathClose();
         return;
@@ -662,15 +663,15 @@ void mbClose(void)
     ev_TurnEnd = NULL;
     ev_LoadTime = NULL;
     ev_NextTime = NULL;
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 34));
-    _SetFlag(FLAG_MG_CIRCUIT);
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 22));
+    fn_8006A1C4(65570);
+    fn_8006A1C4(65552);
+    fn_8006A1C4(65558);
     mbMathClose();
 }
 
 void mbDirClose(void)
 {
-    HuDataDirCloseAll();
+    fn_80009A30();
 }
 
 /* Installs optional board-specific callbacks run by mbLightSet and mbLightReset. */
@@ -689,7 +690,7 @@ void mbLightSet(void)
     if (lightSetFunc) {
         lightSetFunc();
     }
-    lightId = (s16)Hu3DGLightCreateV(&lightPos, &lightDir, &lightColor);
+    lightId = (s16)fn_800286D0(&lightPos, &lightDir, &lightColor);
     /* Hu3DGLightCreateV can return HU3D_LIGHTID_NONE; this code passes the ID to both setters
      * without checking it. */
     Hu3DGLightStaticSet(lightId, FALSE);
@@ -705,36 +706,36 @@ void mbLightReset(void)
     }
     Hu3DBGColorSet(0, 0, 0);
     Hu3DFogClear();
-    Hu3DReflectNoSet(0);
+    fn_8002A2A4(0);
 }
 
 void mbPauseEnableSet(void)
 {
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 23));
+    fn_8006A1C4(65559);
 }
 
 void mbPauseEnableReset(void)
 {
-    _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 23));
+    fn_8006A268(65559);
 }
 
 BOOL mbPauseEnableCheck(void)
 {
-    return _CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 23)) ? TRUE : FALSE;
+    return fn_8006A124(65559) ? TRUE : FALSE;
 }
 
 s32 mbBGRead(s32 boardDataNum)
 {
-    return HuDataDirReadAsync(boardDataNum);
+    return fn_80007F20(boardDataNum);
 }
 
 /* Waits until the data-read status is complete, or returns when there is no status to wait on. */
 void mbBGReadWait(s32 dataReadStat)
 {
-    if (dataReadStat == HU_DATA_STAT_NONE) {
+    if (dataReadStat == -1) {
         return;
     }
-    while (HuDataGetAsyncStat(dataReadStat) == FALSE) {
+    while (fn_80008270(dataReadStat) == FALSE) {
         HuPrcVSleep();
     }
 }
@@ -785,33 +786,33 @@ void mbSaveInit(s32 boardNo)
 {
     s32 playerNo;
     s32 capsuleNo;
-    GwSystem.boardNo = boardNo;
-    _ClearFlag(FLAG_BOARD_SAVEINIT);
-    _ClearFlag(FLAG_MG_PRACTICE);
-    GwSystem.mgNo = 0;
-    GwSystem.subGameNo = 0;
-    GwSystem.hiddenBlockMasuId = 0;
-    memset(&GwSystem.boardWork[0], 0, sizeof(GwSystem.boardWork));
-    GwSystem.turnNo = 1;
-    for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
-        GwPlayer[playerNo].coin = 0;
-        if (GWPartyGet() == FALSE || _CheckFlag(FLAG_BOARD_TUTORIAL)) {
-            GwPlayer[playerNo].star = 0;
-            GwSystem.tagF = FALSE;
+    lbl_80265B70.boardNo = boardNo;
+    fn_8006A268(65536);
+    fn_8006A268(65551);
+    lbl_80265B70.mgNo = 0;
+    lbl_80265B70.subGameNo = 0;
+    lbl_80265B70.hiddenBlockMasuId = 0;
+    memset(&lbl_80265B70.boardWork[0], 0, sizeof(lbl_80265B70.boardWork));
+    lbl_80265B70.turnNo = 1;
+    for (playerNo = 0; playerNo < 4; playerNo++) {
+        lbl_80265750[playerNo].coin = 0;
+        if (GWPartyGet() == FALSE || fn_8006A124(65550)) {
+            lbl_80265750[playerNo].star = 0;
+            lbl_80265B70.tagF = FALSE;
         } else {
-            GwPlayer[playerNo].star = mbPlayerHandicapGet(playerNo);
+            lbl_80265750[playerNo].star = mbPlayerHandicapGet(playerNo);
         }
         mbMasuPlayerPrizeReset(playerNo);
-        GwPlayer[playerNo].coinTotalMg = 0;
-        GwPlayer[playerNo].coinTotal = 0;
-        GwPlayer[playerNo].coinMax = 0;
-        GwPlayer[playerNo].starMax = 0;
-        GwPlayer[playerNo].coinBattle = 0;
-        GwPlayer[playerNo].mgCoin = 0;
-        GwPlayer[playerNo].mgCoinBonus = 0;
-        GwPlayer[playerNo].capsuleUseNum = 0;
+        lbl_80265750[playerNo].coinTotalMg = 0;
+        lbl_80265750[playerNo].coinTotal = 0;
+        lbl_80265750[playerNo].coinMax = 0;
+        lbl_80265750[playerNo].starMax = 0;
+        lbl_80265750[playerNo].coinBattle = 0;
+        lbl_80265750[playerNo].mgCoin = 0;
+        lbl_80265750[playerNo].mgCoinBonus = 0;
+        lbl_80265750[playerNo].capsuleUseNum = 0;
         for (capsuleNo = 0; capsuleNo < 3; capsuleNo++) {
-            GwPlayer[playerNo].capsule[capsuleNo] = -1;
+            lbl_80265750[playerNo].capsule[capsuleNo] = -1;
         }
     }
 }
@@ -820,7 +821,7 @@ void mbSaveInit(s32 boardNo)
 void mbSaveStoryInit(s32 teamChar, s32 mgPack, s32 storyComDif)
 {
     mbSingleSaveInit(teamChar, mgPack, storyComDif);
-    GwMgNightF = 0;
+    lbl_802C0278 = 0;
 }
 
 /* Forces party mode on, stores party settings and handicaps, then clears tutorial/init state. */
@@ -828,23 +829,23 @@ void mbSavePartyInit(BOOL teamsF, BOOL bonusStarsF, s32 mgPack, s32 turnMax,
                      s32 player1Handicap, s32 player2Handicap,
                      s32 player3Handicap, s32 player4Handicap)
 {
-    GwSystem.partyF = TRUE;
-    GwSystem.tagF = teamsF;
-    GwSystem.storyComDif = 0;
-    GwSystem.bonusStarF = bonusStarsF;
-    GwSystem.mgPack = mgPack;
-    GwSystem.turnMax = turnMax;
-    GwPlayer[0].handicap = player1Handicap;
-    GwPlayer[1].handicap = player2Handicap;
-    GwPlayer[2].handicap = player3Handicap;
-    GwPlayer[3].handicap = player4Handicap;
-    _ClearFlag(FLAG_BOARD_TUTORIAL);
-    _SetFlag(5);
-    _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 13));
-    _ClearFlag(FLAG_BOARD_INIT);
-    _ClearFlag(FLAGNUM(FLAG_GROUP_SYSTEM, 2));
-    GwSystem.curTime = 0;
-    GwMgNightF = 0;
+    lbl_80265B70.partyF = TRUE;
+    lbl_80265B70.tagF = teamsF;
+    lbl_80265B70.storyComDif = 0;
+    lbl_80265B70.bonusStarF = bonusStarsF;
+    lbl_80265B70.mgPack = mgPack;
+    lbl_80265B70.turnMax = turnMax;
+    lbl_80265750[0].handicap = player1Handicap;
+    lbl_80265750[1].handicap = player2Handicap;
+    lbl_80265750[2].handicap = player3Handicap;
+    lbl_80265750[3].handicap = player4Handicap;
+    fn_8006A268(65550);
+    fn_8006A1C4(5);
+    fn_8006A1C4(65549);
+    fn_8006A268(65556);
+    fn_8006A268(196610);
+    lbl_80265B70.curTime = 0;
+    lbl_802C0278 = 0;
 }
 
 void fn_8014C818(void)

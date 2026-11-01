@@ -73,10 +73,10 @@ typedef struct MgSeqParam_s {
     MGSEQ_FUNC closeHook;
 } MGSEQ_PARAM;
 
-void MgSeqCreate(MGSEQ_PARAM *param);
-u32 MgSeqModeNext(void);
-u16 MgSeqDrawSet(void);
-void MgSeqModeChangeOff(void);
+void fn_80070788(MGSEQ_PARAM *param);
+u32 fn_80071A9C(void);
+u16 fn_80071C70(void);
+void fn_80071B08(void);
 
 /* ---- from text_00000.c ---- */
 
@@ -259,16 +259,16 @@ extern u32 lbl_1_data_68[][2];
 /* Runs during module loading to initialize its global object manager and sequence. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_8 = omInitObjMan(256, 8192);
-    omGameSysInit(lbl_1_bss_8);
-    MgSeqCreate(&lbl_1_data_0);
+    lbl_1_bss_8 = fn_8003A8BC(256, 8192);
+    fn_80069F1C(lbl_1_bss_8);
+    fn_80070788(&lbl_1_data_0);
 }
 
 void fn_1_170C(s16 player, s16 motion, f32 frame);
 
 /* ---- from text_000F0.c ---- */
 
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 
 void fn_1_E3C(void);
 
@@ -280,7 +280,7 @@ void fn_1_F0(void) {
     HuMCInit(0);
     HuMCThresholdSet(100);
     HuMCSelWinCreate((-10000.0f), (-10002.0f));
-    nightFlag = GwMgNightF;
+    nightFlag = lbl_802C0278;
     /* Day and night use the same recognition context. */
     if (nightFlag == 0) {
         lbl_1_bss_4 = HuMCContextCreate(lbl_1_data_28);
@@ -288,7 +288,7 @@ void fn_1_F0(void) {
         lbl_1_bss_4 = HuMCContextCreate(lbl_1_data_28);
     }
     fn_1_E3C();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* ---- from fn_1_1A4.c ---- */
@@ -381,7 +381,7 @@ void fn_1_37C(s16 unusedArgument, s16 frameNo)
                             (u8)lbl_1_bss_10[lbl_1_bss_250.mainPlayer].controller);
     }
     if (fn_1_C64() != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -402,7 +402,7 @@ void fn_1_400(s16 unusedArgument, s16 frameNo)
         fn_1_BFD8();
         HuAudSStreamFadeOut(lbl_1_bss_250.audioHandle, 100);
         if (lbl_1_bss_250.winningTeam == -1) {
-            MgSeqDrawSet();
+            fn_80071C70();
         }
     }
 }
@@ -483,7 +483,7 @@ const char lbl_1_data_3C[12] = "Result %d\n";
 void fn_1_4D4(void) {
     switch (lbl_1_bss_250.phase) {
     case 0:
-        MgSeqModeChangeOff();
+        fn_80071B08();
         if (lbl_1_bss_250.phaseFrames++ > 60) {
             lbl_1_bss_250.phaseFrames = 0;
             lbl_1_bss_250.phase++;
@@ -513,7 +513,7 @@ void fn_1_4D4(void) {
         view.rot.y = 0.0f;
         view.rot.z = 0.0f;
         view.zoom = 6000.0f;
-        omCameraViewMove(&view, 120, 0);
+        fn_8003E7A0(&view, 120, 0);
         lbl_1_bss_250.phase++;
         break;
     }
@@ -535,7 +535,7 @@ void fn_1_4D4(void) {
         if (lbl_1_bss_250.phaseFrames++ > 30) {
             lbl_1_bss_250.phaseFrames = 0;
             lbl_1_bss_250.phase = 0;
-            MgSeqModeNext();
+            fn_80071A9C();
         }
         break;
     }
@@ -577,7 +577,7 @@ void fn_1_778(void) {
 
     switch (lbl_1_bss_250.phase) {
     case 0:
-        MgSeqModeChangeOff();
+        fn_80071B08();
         WipeCreate(2, 0, 60);
         if (lbl_1_bss_10[lbl_1_bss_250.mainPlayer].effect.main.soundHandle != -1) {
             HuAudFXFadeOut(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].effect.main.soundHandle,
@@ -598,9 +598,9 @@ void fn_1_778(void) {
         }
         lbl_1_bss_10[lbl_1_bss_250.mainPlayer].status.main.flags.bits.moving = 0;
         fn_1_C778();
-        Hu3DModelAttrReset(lbl_1_bss_250.modelID, 1U);
+        fn_80026A44(lbl_1_bss_250.modelID, 1U);
         for (index = 0; index < 4; index++) {
-            Hu3DModelPosSet(lbl_1_bss_250.backgroundModels[index],
+            fn_80026760(lbl_1_bss_250.backgroundModels[index],
                             0.0f, 0.0f,
                             (-3500.0f) -
                                 (5000.0f * (f32) index));
@@ -608,13 +608,13 @@ void fn_1_778(void) {
         fn_1_C0E0();
         lbl_1_bss_250.finished = 1;
         lbl_1_bss_2E8.fireEnabled = 0;
-        Center.x = 0.0f;
-        Center.y = 340.0f;
-        Center.z = 0.0f;
-        CRot.x = (-4.0f);
-        CRot.y = 0.0f;
-        CRot.z = 0.0f;
-        CZoom = 2900.0f;
+        lbl_80266A4C.x = 0.0f;
+        lbl_80266A4C.y = 340.0f;
+        lbl_80266A4C.z = 0.0f;
+        lbl_80266A40.x = (-4.0f);
+        lbl_80266A40.y = 0.0f;
+        lbl_80266A40.z = 0.0f;
+        lbl_802C028C = 2900.0f;
         lbl_1_bss_250.scrollSpeed = 0.0f;
         lbl_1_bss_10[lbl_1_bss_250.mainPlayer].speed = 0.0f;
         lbl_1_bss_250.phase += 1;
@@ -654,7 +654,7 @@ void fn_1_778(void) {
                     fn_1_11D98(index, 5, 8.0f);
                 }
             }
-            MgSeqModeNext();
+            fn_80071A9C();
         }
         break;
     }

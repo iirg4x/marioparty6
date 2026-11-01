@@ -31,7 +31,7 @@ s32 fn_1_E3EC(s32 playerNo, s32 linkCount, const s16 *spaceIds)
         stepsToNpc[index] = mbMasuFind_IdStepGet2(spaceIds[index], npcSpaceId, FALSE, TRUE);
     }
 
-    if (GwSystem.curTime == FALSE) {
+    if (lbl_80265B70.curTime == FALSE) {
         minimumStep = W06_BRANCH_NEAREST_STEP_INITIAL_VALUE;
         minimumIndex = -1;
         for (index = 0; index < linkCount; index++) {

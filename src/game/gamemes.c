@@ -65,7 +65,7 @@ static BOOL pauseEnableF;
 static HUPROCESS *pauseProc;
 int GameMesLanguageNo;
 
-OMOVL GameMesOvlPrev = DLL_NONE;
+OMOVL GameMesOvlPrev = -1;
 
 GAMEMES_ENTRY GameMesTbl[] = {
     { NULL, NULL, { 292, 240 }, { 1, 1 }, 60 },
@@ -113,18 +113,18 @@ void GameMesInit(void)
     GameMesCloseF = FALSE;
     GameMesDebugF = FALSE;
     GameMesTime = 30;
-    HuAR_DVDtoARAM(DATA_gamemes);
-    HuAR_DVDtoARAM(DATA_mgconst);
-    while(HuARDMACheck());
+    HuAR_DVDtoARAM(0x240000);
+    HuAR_DVDtoARAM(0x9b0000);
+    while(fn_80055FB4());
     CreateFontBuf();
-    GameMesOvlPrev = DLL_NONE;
+    GameMesOvlPrev = -1;
     GameMesLanguageNo = GWLanguageGet();
     MgScoreBoxInit();
 }
 
 void *GameMesDataRead(unsigned int dataNum)
 {
-    return HuAR_ARAMtoMRAMFileRead(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+    return fn_8005607C(dataNum, 0x10000000, 2);
 }
 
 /* Called by the main game loop to update active messages and their shared timeout. */
@@ -137,7 +137,7 @@ void GameMesExec(void)
     int slot;
     BOOL keepMessage;
     GameMesVWait = HuSysVWaitGet(GameMesVWait);
-    if(!Hu3DPauseF) {
+    if(!lbl_802C019E) {
         keepMessage = FALSE;
         combinedStatus = GAMEMES_STAT_NONE;
         message = &GameMesData[0];
@@ -239,10 +239,10 @@ GAMEMESID GameMesCreate(s16 messageTypeId, ...)
     va_start(args, messageTypeId);
     GameMesLanguageNo = GWLanguageGet();
     if(messageTypeId == GAMEMES_MES_MG) {
-        if(GwSystem.mgNo == GAMEMES_MG_UNSELECTED) {
+        if(lbl_80265B70.mgNo == GAMEMES_MG_UNSELECTED) {
             messageTypeId = GAMEMES_MES_MG_4P;
         } else {
-            messageTypeId = startMesTbl[MgDataTbl[GwSystem.mgNo].type];
+            messageTypeId = startMesTbl[MgDataTbl[lbl_80265B70.mgNo].type];
         }
     }
     messageId = CreateGameMes(messageTypeId, args);
@@ -457,7 +457,7 @@ BOOL GameMesTimerExec(GAMEMES *message)
                         if(message->timerVal != message->dispValue) {
                             message->timerVal = message->dispValue;
                             if(message->dispValue <= 5) {
-                                HuAudFXPlay(MSM_SE_CMN_07);
+                                HuAudFXPlay(6);
                                 message->subMode = TIMER_SUBMODE_DIGITUP;
                                 message->angle = 0;
                                 HuSprColorSet(spriteGroup, 0, 255, 112, 160);
@@ -506,7 +506,9 @@ BOOL GameMesTimerExec(GAMEMES *message)
             case TIMER_SUBMODE_SHOW:
             {
                 float scaleX, scaleY;
-                digitScale = fabs(((5*HuSin(message->angle))+1)-(HuSin(130)*5));
+                digitScale =
+                    fabs(((5*sin(3.141592653589793*message->angle/180.0))+1)
+                    -(sin(3.141592653589793*130/180.0)*5));
                 scaleX = message->scale.x*digitScale;
                 scaleY = message->scale.y*digitScale;
                 message->angle += 5.0f*GameMesVWait;
@@ -519,8 +521,8 @@ BOOL GameMesTimerExec(GAMEMES *message)
                 break;
 
             case TIMER_SUBMODE_DIGITUP:
-                digitScale = 1+HuSin(message->angle);
-                transparency = 1-(0.5*HuSin(message->angle));
+                digitScale = 1+sin(3.141592653589793*message->angle/180.0);
+                transparency = 1-(0.5*sin(3.141592653589793*message->angle/180.0));
                 message->angle += 18.0f*GameMesVWait;
                 if(message->angle > 180) {
                     message->subMode = GAMEMES_SUBMODE_NONE;
@@ -706,8 +708,8 @@ void GameMesPauseCreate(void)
 {
     GameMesPauseEnable(FALSE);
     HuWinInit(1);
-    pauseProc = HuPrcCreate(PauseExec, 100, 4096, 0);
-    HuPrcSetStat(pauseProc, HU_PRC_STAT_PAUSE_ON|HU_PRC_STAT_UPAUSE_ON);
+    pauseProc = fn_8000D818(PauseExec, 100, 4096, 0);
+    HuPrcSetStat(pauseProc, 0x4|0x8);
     pauseEnableF = TRUE;
     pauseCancelF = FALSE;
     pauseWaitF = FALSE;
@@ -717,8 +719,8 @@ void GameMesPauseCreate(void)
 static void PauseExec(void)
 {
     GAMEMES mes;
-    s16 charNo[GW_PLAYER_MAX][GW_PLAYER_MAX];
-    s16 charNum[GW_PLAYER_MAX];
+    s16 charNo[4][4];
+    s16 charNum[4];
     HUWINID winId[3] = { HUWIN_NONE, HUWIN_NONE, HUWIN_NONE };
 
     s16 i;
@@ -727,7 +729,7 @@ static void PauseExec(void)
     s16 mgNo;
     float time;
 
-    HuAudFXPlay(MSM_SE_CMN_06);
+    HuAudFXPlay(5);
     for(i=0; i<GAMEMES_SPRMAX; i++) {
         mes.sprId[i] = mes.grpId[i] = HUSPR_NONE;
     }
@@ -735,25 +737,25 @@ static void PauseExec(void)
     for(i=0; i<mes.charNum; i++) {
         HuSprPriSet(mes.grpId[0], i, 0);
     }
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         charNum[i] = 0;
     }
-    for(i=0; i<GW_PLAYER_MAX; i++) {
-        charNo[GwPlayerConf[i].grpNo][charNum[GwPlayerConf[i].grpNo]] = GwPlayerConf[i].charNo;
-        charNum[GwPlayerConf[i].grpNo]++;
+    for(i=0; i<4; i++) {
+        charNo[lbl_80265728[i].grpNo][charNum[lbl_80265728[i].grpNo]] = lbl_80265728[i].charNo;
+        charNum[lbl_80265728[i].grpNo]++;
     }
     mgNo = MgNoGet(omcurovl);
-    if(_CheckFlag(FLAG_INST_DECA)) {
+    if(fn_8006A124(196610)) {
         instMes = MgDataTbl[mgNo].instMes[2];
     } else {
-        s16 night = GwMgNightF;
+        s16 night = lbl_802C0278;
         if(night == 0) {
             instMes = MgDataTbl[mgNo].instMes[0];
         } else {
             instMes = MgDataTbl[mgNo].instMes[1];
         }
-        if(MgDataTbl[mgNo].ovl == DLL_m678dll) {
-            int subGame = GwSystem.subGameNo;
+        if(MgDataTbl[mgNo].ovl == 83) {
+            int subGame = lbl_80265B70.subGameNo;
             if(subGame == 1) {
                 instMes = MgDataTbl[mgNo].instMes[1];
             }
@@ -761,13 +763,13 @@ static void PauseExec(void)
     }
     if(!instMes[1] && !instMes[2]) {
         for(i=1; i<=20; i++) {
-            time = HuSin(i*(90.0f/20.0f));
+            time = sin(3.141592653589793*(i*(90.0f/20.0f))/180.0);
             HuSprGrpPosSet(mes.grpId[0], 288, (290*time)-50);
             HuPrcVSleep();
         }
     } else {
-        if(MgPauseExitF && !_CheckFlag(FLAG_MG_PRACTICE)) {
-            winId[2] = HuWinExCreateFrame(-10000, 400, 412, 42, HUWIN_SPEAKER_NULL, 0);
+        if(MgPauseExitF && !fn_8006A124(65551)) {
+            winId[2] = HuWinExCreateFrame(-10000, 400, 412, 42, -1, 0);
             HuWinPriSet(winId[2], 5);
             HuWinDispOn(winId[2]);
             HuWinMesSpeedSet(winId[2], 0);
@@ -776,17 +778,17 @@ static void PauseExec(void)
         }
         if(instMes[2]) {
             s16 insertMesNo;
-            winId[0] = HuWinExCreateFrame(-10000, 140, 412, 120, HUWIN_SPEAKER_NULL, 0);
+            winId[0] = HuWinExCreateFrame(-10000, 140, 412, 120, -1, 0);
             HuWinPriSet(winId[0], 5);
             HuWinDispOn(winId[0]);
             HuWinMesSpeedSet(winId[0], 0);
             HuWinMesSet(winId[0], instMes[1]);
-            winId[1] = HuWinExCreateFrame(-10000, 276, 412, 120, HUWIN_SPEAKER_NULL, 0);
+            winId[1] = HuWinExCreateFrame(-10000, 276, 412, 120, -1, 0);
             HuWinPriSet(winId[1], 5);
             HuWinDispOn(winId[1]);
             HuWinMesSpeedSet(winId[1], 0);
             HuWinMesSet(winId[1], instMes[2]);
-            for(i=insertMesNo=0; i<GW_PLAYER_MAX; i++) {
+            for(i=insertMesNo=0; i<4; i++) {
                 for(j=0; j<charNum[i]; j++) {
                     HuWinInsertMesSet(winId[0], charNo[i][j], (int)insertMesNo);
                     HuWinInsertMesSet(winId[1], charNo[i][j], (int)insertMesNo);
@@ -794,7 +796,7 @@ static void PauseExec(void)
                 }
             }
             for(i=1; i<=20; i++) {
-                time = HuSin(i*(90.0f/20.0f));
+                time = sin(3.141592653589793*(i*(90.0f/20.0f))/180.0);
                 HuSprGrpPosSet(mes.grpId[0], 288, (150*time)-50);
                 HuWinPosSet(winId[0], (482*time)-400, 140);
                 HuWinPosSet(winId[1], (-318*time)+400, 272);
@@ -804,13 +806,13 @@ static void PauseExec(void)
                 HuPrcVSleep();
             }
         } else {
-            winId[0] = HuWinExCreateFrame(-10000, 170, 412, 120, HUWIN_SPEAKER_NULL, 0);
+            winId[0] = HuWinExCreateFrame(-10000, 170, 412, 120, -1, 0);
             HuWinPriSet(winId[0], 5);
             HuWinDispOn(winId[0]);
             HuWinMesSpeedSet(winId[0], 0);
             HuWinMesSet(winId[0], instMes[1]);
             for(i=1; i<=20; i++) {
-                time = HuSin(i*(90.0f/20.0f));
+                time = sin(3.141592653589793*(i*(90.0f/20.0f))/180.0);
                 HuSprGrpPosSet(mes.grpId[0], 288, (150*time)-50);
                 HuWinPosSet(winId[0], (482*time)-400, 170);
                 if(winId[2] != HUWIN_NONE) {
@@ -828,13 +830,13 @@ static void PauseExec(void)
     pauseWaitF = FALSE;
     if(winId[0] == HUWIN_NONE && winId[1] == HUWIN_NONE) {
         for(i=1; i<=10; i++) {
-            time = HuCos(i*(90.0f/10.0f));
+            time = cos(3.141592653589793*(i*(90.0f/10.0f))/180.0);
             HuSprGrpPosSet(mes.grpId[0], 288, (290*time)-50);
             HuPrcVSleep();
         }
     } else if(winId[1] != HUWIN_NONE) {
         for(i=1; i<=10; i++) {
-            time = HuCos(i*(90.0f/10.0f));
+            time = cos(3.141592653589793*(i*(90.0f/10.0f))/180.0);
             HuSprGrpPosSet(mes.grpId[0], 288, (150*time)-50);
             HuWinPosSet(winId[0], (482*time)-400, 140);
             HuWinPosSet(winId[1], (-318*time)+400, 272);
@@ -845,7 +847,7 @@ static void PauseExec(void)
         }
     } else {
         for(i=1; i<=10; i++) {
-            time = HuCos(i*(90.0f/10.0f));
+            time = cos(3.141592653589793*(i*(90.0f/10.0f))/180.0);
             HuSprGrpPosSet(mes.grpId[0], 288, (150*time)-50);
             HuWinPosSet(winId[0], (482*time)-400, 170);
             if(winId[2] != HUWIN_NONE) {
@@ -854,7 +856,7 @@ static void PauseExec(void)
             HuPrcVSleep();
         }
     }
-    omSysPauseCtrl(FALSE);
+    fn_8003E3F0(FALSE);
     if(winId[0] != HUWIN_NONE) {
         HuWinKill(winId[0]);
     }
@@ -881,7 +883,7 @@ void GameMesPauseCancel(void)
 /* Enables or blocks the system pause controls unless the current mode disables pausing. */
 void GameMesPauseEnable(BOOL enable)
 {
-    if(_CheckFlag(FLAG_MG_PAUSE_OFF) || _CheckFlag(FLAGNUM(FLAG_GROUP_SYSTEM, 5))) {
+    if(fn_8006A124(65547) || fn_8006A124(196613)) {
         return;
     }
     omSysPauseEnable(enable);
@@ -907,7 +909,7 @@ static PRACTICE practiceTbl[] = {
     65, 1, 66, 4, 67, 1, 68, 1, 69, 1, 70, 0, 71, 0, 72, 1, 73, 1, 74, 1,
     75, 1, 76, 0, 77, 0, 78, 1, 79, 1, 80, 0, 81, 1, 82, 0, 83, 0, 84, 4,
     85, 1, 86, 1, 87, 4,
-    DLL_NONE, 0
+    -1, 0
 };
 
 static void PracticeExec(void);
@@ -915,20 +917,20 @@ static void PracticeExec(void);
 /* Called when a practice minigame overlay loads to start its exit-icon child process. */
 void GameMesPracticeCreate(void)
 {
-    HUPROCESS *parent = HuPrcCurrentGet();
+    HUPROCESS *parent = fn_8000DD9C();
     s16 i;
-    if(!_CheckFlag(FLAG_MG_PRACTICE)) {
+    if(!fn_8006A124(65551)) {
         return;
     }
     wipeFadeInF = FALSE;
-    for(i=0; practiceTbl[i].ovl != DLL_NONE; i++) {
+    for(i=0; practiceTbl[i].ovl != -1; i++) {
         if(omcurovl == practiceTbl[i].ovl) {
             break;
         }
     }
-    if(practiceTbl[i].ovl != DLL_NONE) {
-        HuPrcSetStat(HuPrcChildCreate(PracticeExec, 10, 8192, 0, parent),
-                     HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+    if(practiceTbl[i].ovl != -1) {
+        HuPrcSetStat(fn_8000DAC0(PracticeExec, 10, 8192, 0, parent),
+                     0x4 | 0x8);
     }
 }
 
@@ -953,7 +955,7 @@ static void PracticeExec(void)
     };
 
     angle = 0;
-    for(id=0; practiceTbl[id].ovl != DLL_NONE; id++) {
+    for(id=0; practiceTbl[id].ovl != -1; id++) {
         if(omcurovl == practiceTbl[id].ovl) {
             break;
         }
@@ -972,7 +974,7 @@ static void PracticeExec(void)
     HuSprGrpMemberSet(practiceGroup, 0, exitSprite);
     HuSprPosSet(practiceGroup, 0, 288, posTbl[practiceEntry->posNo]);
     do {
-        if(!wipeFadeInF || WipeCheckIn() || omPauseChk()) {
+        if(!wipeFadeInF || WipeCheckIn() || fn_8003B748()) {
             HuSprAttrSet(practiceGroup, 0, 4);
             HuPrcVSleep();
             continue;
@@ -987,25 +989,25 @@ static void PracticeExec(void)
             case MG_TYPE_KUPA:
             case MG_TYPE_LAST:
             case MG_TYPE_DONKEY:
-                for(id=0; id<GW_PLAYER_MAX; id++) {
-                    if ((HuPadBtnDown[GwPlayerConf[id].padNo] & PAD_TRIGGER_Z) &&
-                        GwPlayerConf[id].type == GW_PLAYER_TYPE_MAN) {
+                for(id=0; id<4; id++) {
+                    if ((lbl_802C0008[lbl_80265728[id].padNo] & PAD_TRIGGER_Z) &&
+                        lbl_80265728[id].type == 0) {
                         break;
                     }
                 }
-                if(id != GW_PLAYER_MAX) {
+                if(id != 4) {
                     exitRequested = TRUE;
                 }
                 break;
 
             case MG_TYPE_KETTOU:
-                for(id=0; id<GW_PLAYER_MAX; id++) {
-                    if ((HuPadBtnDown[GwPlayerConf[id].padNo] & PAD_TRIGGER_Z) &&
-                        GwPlayerConf[id].type == GW_PLAYER_TYPE_MAN && GwPlayerConf[id].grpNo < 2) {
+                for(id=0; id<4; id++) {
+                    if ((lbl_802C0008[lbl_80265728[id].padNo] & PAD_TRIGGER_Z) &&
+                        lbl_80265728[id].type == 0 && lbl_80265728[id].grpNo < 2) {
                         break;
                     }
                 }
-                if(id != GW_PLAYER_MAX) {
+                if(id != 4) {
                     exitRequested = TRUE;
                 }
                 break;
@@ -1038,22 +1040,22 @@ void GameMesExitCheck(OMOBJ *exitCheckObject)
     MgExitReq = FALSE;
     if(exitCheckObject->work[0] == 0) {
         if(MgNoGet(omcurovl) == -1) {
-            omDelObjEx(HuPrcCurrentGet(), exitCheckObject);
+            omDelObjEx(fn_8000DD9C(), exitCheckObject);
             return;
         } else {
             exitCheckObject->work[0]++;
         }
     }
-    if(!omPauseChk() || _CheckFlag(FLAG_MG_PRACTICE) || !pauseWaitF) {
+    if(!fn_8003B748() || fn_8006A124(65551) || !pauseWaitF) {
         return;
     }
-    if(HuPadBtnDown[omDBGSysKeyObj->work[1]] & PAD_TRIGGER_Z) {
-        HuAudFXPlay(MSM_SE_CMN_04);
+    if(lbl_802C0008[lbl_802C0260->work[1]] & PAD_TRIGGER_Z) {
+        HuAudFXPlay(3);
         GameMesPauseCancel();
-        omSysPauseCtrl(FALSE);
+        fn_8003E3F0(FALSE);
         omSysExitReq = TRUE;
         MgExitReq = TRUE;
-        omDelObjEx(HuPrcCurrentGet(), exitCheckObject);
+        omDelObjEx(fn_8000DD9C(), exitCheckObject);
     }
 }
 
@@ -1155,7 +1157,7 @@ static void ScoreBoxBGMake(ANIMDATA *animation, s16 characterCount)
     h = animation->bmp->sizeY;
     blockW = (w+7) & 0xF8;
     blockH = (h+3) & 0xFC;
-    bmpData = animation->bmp->data = HuMemDirectMallocNum(HEAP_HEAP, blockW*blockH, HU_MEMNUM_OVL);
+    bmpData = animation->bmp->data = HuMemDirectMallocNum(HEAP_HEAP, blockW*blockH, 0x10000000);
     for(row=0; row<h; row++) {
         if(row < 3) {
             for(column=0; column<w; column++) {
@@ -1278,20 +1280,20 @@ static HUSPR_GROUPID ScoreBoxCreate(s16 sizeX, s16 sizeY, s16 characterCount, u8
     }
     gid = HuSprGrpCreate(characterCount+1);
     if(!ScoreBoxMaskAnim) {
-        ScoreBoxMaskAnim = HuSprAnimDataRead(DATANUM(DATA_mgconst, 47));
+        ScoreBoxMaskAnim = HuSprAnimDataRead(DATANUM(0x9b0000, 47));
     }
     if(!ScoreBoxAnim) {
-        ScoreBoxAnim = HuSprAnimDataRead(DATANUM(DATA_mgconst, 46));
+        ScoreBoxAnim = HuSprAnimDataRead(DATANUM(0x9b0000, 46));
     }
     sprid = HuSprFuncCreate(ScoreBoxDraw, 100);
     HuSprGrpMemberSet(gid, 0, sprid);
-    HuSprData[sprid].bg = anim = HuSprAnimMake(sizeX/8, sizeY/8, ANIM_BMP_IA4);
+    HuSprData[sprid].bg = anim = HuSprAnimMake(sizeX/8, sizeY/8, 6);
     ScoreBoxBGMake(anim, characterCount);
     HuSprColorSet(gid, 0, 64, 64, 64);
     HuSprTPLvlSet(gid, 0, 1.0f);
     for(i=0; i<characterCount; i++) {
         anim = HuSprAnimRead(
-            HuDataSelHeapReadNum(DATA_mgconst + characterTiles[i], HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(0x9b0000 + characterTiles[i], 0x10000000, 2));
         sprid = HuSprCreate(anim, 100, 0);
         HuSprGrpMemberSet(gid, i+1, sprid);
         HuSprPosSet(gid, i+1, -(sizeX/2)+24+(i*40), 0);

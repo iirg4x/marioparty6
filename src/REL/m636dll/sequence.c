@@ -9,7 +9,7 @@
 /* Disable body-contact movement correction while players enter the result lineup. */
 #define PIXEL_RESULT_PUSH_CORRECTION_OFF_FLAG 0x8
 #define PIXEL_RESULT_COLLISION_ATTRS \
-    (COLBODY_ATTR_RESET | COLBODY_ATTR_BODYCOL_OFF | PIXEL_RESULT_PUSH_CORRECTION_OFF_FLAG)
+    ((1 << 24) | (1 << 2) | PIXEL_RESULT_PUSH_CORRECTION_OFF_FLAG)
 
 /* Byte positions of the scene state read by the sequence hooks. */
 #define PIXEL_CHARACTER_IDS_OFFSET 72
@@ -62,7 +62,7 @@ s32 fn_1_A0(s32 musicHandle, s32 musicId)
     s32 playbackHandle;
 
     playbackHandle = musicHandle;
-    if (playbackHandle == -1 && (GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0) {
+    if (playbackHandle == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
         playbackHandle = HuAudBGMPlay((s16) musicId);
     }
     return playbackHandle;
@@ -115,7 +115,7 @@ void fn_1_1EC(void)
         } else if (voicePan > PIXEL_VOICE_PAN_MAX) {
             voicePan = PIXEL_VOICE_PAN_MAX;
         }
-        CharModelVoicePanSet((s16) * (s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * sizeof(s32) +
+        fn_80060F14((s16) * (s32 *) ((u8 *) &lbl_1_bss_0 + playerIndex * sizeof(s32) +
                                               PIXEL_CHARACTER_IDS_OFFSET),
                              (s16) voicePan);
     }
@@ -124,8 +124,8 @@ void fn_1_1EC(void)
 /* The initialization hook updates players once and immediately requests the opening phase. */
 void fn_1_2D0(s16 mode, s16 frameNo)
 {
-    MgActorExec();
-    MgSeqModeNext();
+    fn_800856A8();
+    fn_80071A9C();
 }
 
 /* The fade-in hook plays the chosen picture introduction and switches cameras when its motion
@@ -144,18 +144,18 @@ void fn_1_2F4(s16 mode, s16 frameNo) {
         introModel =
             *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_INTRO_MODELS_OFFSET +
                       (*(s32 *) ((s8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2));
-        Hu3DMotionTimeSet(introModel, (0.0f));
-        Hu3DModelAttrReset(introModel, HU3D_ATTR_DISPOFF);
+        fn_8002D414(introModel, (0.0f));
+        fn_80026A44(introModel, (1 << 0));
         HuAudFXPlay(PIXEL_INTRO_START_SOUND);
         fn_1_6398(0);
     } else {
         introModel =
             *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_INTRO_MODELS_OFFSET +
                       (*(s32 *) ((s8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2));
-        if (Hu3DMotionEndCheck(introModel) == 1) {
+        if (fn_8002D75C(introModel) == 1) {
             fn_1_6398(1);
             HuAudFXPlay(PIXEL_INTRO_END_SOUND);
-            MgSeqModeNext();
+            fn_80071A9C();
         }
     }
     playerIndex = 0;
@@ -174,7 +174,7 @@ void fn_1_2F4(s16 mode, s16 frameNo) {
         } else if (voicePan > PIXEL_VOICE_PAN_MAX) {
             voicePan = PIXEL_VOICE_PAN_MAX;
         }
-        CharModelVoicePanSet(
+        fn_80060F14(
             (s16) * (s32 *) ((s8 *) &lbl_1_bss_0 + PIXEL_CHARACTER_IDS_OFFSET + playerIndex * 4),
             (s16) voicePan);
         playerIndex += 1;
@@ -203,14 +203,14 @@ void fn_1_494(s16 mode, s16 frameNo)
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             player =
                 *(MGPLAYER **) ((s8 *) &lbl_1_bss_0 + PIXEL_PLAYER_RECORD_OFFSET + playerIndex * 4);
-            MgPlayerAttrSet(player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(player, (1 << 0));
         }
         *(s16 *)((s8 *)&lbl_1_bss_0 + 4) = 0;
         *(s32 *)((s8 *)&lbl_1_bss_0 + 8) = 0;
     }
     previousMusicHandle = *(s32 *)((s8 *)&lbl_1_bss_0 + PIXEL_MUSIC_HANDLE_OFFSET);
     musicHandle = previousMusicHandle;
-    if (musicHandle == -1 && (GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0) {
+    if (musicHandle == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
         musicHandle = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
     }
     storedMusicHandle = musicHandle;
@@ -232,12 +232,12 @@ void fn_1_5F0(s16 mode, s16 frameNo)
     }
     if (BSS32(PIXEL_CPU_ACTIVE_OFFSET) == 1) {
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            if (GwPlayerConf[playerIndex].type != 0) {
+            if (lbl_80265728[playerIndex].type != 0) {
                 fn_1_3C98(playerIndex);
             }
         }
     }
-    MgActorExec();
+    fn_800856A8();
     fn_1_1EC();
     switch (BSS16(4)) {
     case 0:
@@ -247,13 +247,13 @@ void fn_1_5F0(s16 mode, s16 frameNo)
         fn_1_3834(BSS32(PIXEL_SELECTED_PICTURE_OFFSET),
                   (*(s32 *) ((u8 *) &lbl_1_bss_0 + (BSS32(PIXEL_ROUND_INDEX_OFFSET)) * 4 +
                              PIXEL_ROUND_CELL_CHOICES_OFFSET)));
-        Hu3DMotionSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+        fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
                       BSS16(PIXEL_ROUND_RESET_MOTION_OFFSET));
-        Hu3DModelAttrSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET), HU3D_MOTATTR_LOOP);
+        fn_800269E8(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET), ((1 << 30) | (1 << 0)));
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             MGPLAYER *player;
                 player = PLAYER(playerIndex);
-            MgPlayerAttrSet(player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(player, (1 << 0));
             (*(s32 *)((u8 *)&lbl_1_bss_0 + (playerIndex) * 4 + PIXEL_CPU_MODE_OFFSET)) = 1;
             (*(s32 *)((u8 *)&lbl_1_bss_0 + (playerIndex) * 4 + PIXEL_CPU_TARGET_CELL_OFFSET)) = -1;
             (*(s32 *)((u8 *)&lbl_1_bss_0 + (playerIndex) * 4 + PIXEL_CPU_FRAME_COUNTER_OFFSET)) = 0;
@@ -269,7 +269,7 @@ void fn_1_5F0(s16 mode, s16 frameNo)
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 MGPLAYER *player;
                 player = PLAYER(playerIndex);
-                MgPlayerAttrReset(player, MGPLAYER_ATTR_COMSTK);
+                fn_80087168(player, (1 << 0));
             }
             BSS32(PIXEL_CPU_ACTIVE_OFFSET) = 1;
             MgTimerParamSet(TIMER, 1200, 0, 0);
@@ -298,7 +298,7 @@ void fn_1_5F0(s16 mode, s16 frameNo)
                           (*(s32 *) ((u8 *) &lbl_1_bss_0 + (BSS32(PIXEL_ROUND_INDEX_OFFSET)) * 4 +
                                      PIXEL_ROUND_CELL_CHOICES_OFFSET))) != 0) {
                 BSS32(PIXEL_ROUND_INDICATOR_IDLE_OFFSET) = 1;
-                Hu3DMotionSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
                               BSS16(PIXEL_ROUND_IDLE_MOTION_OFFSET));
             }
             leftComplete = fn_1_3984(0);
@@ -341,21 +341,21 @@ void fn_1_5F0(s16 mode, s16 frameNo)
                 if (BSS32(PIXEL_LEFT_POINTS_OFFSET) == 2 || BSS32(PIXEL_RIGHT_POINTS_OFFSET) == 2 ||
                     BSS32(PIXEL_ROUND_INDEX_OFFSET) == 5) {
                     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-                        MgPlayerAttrSet(PLAYER(playerIndex), MGPLAYER_ATTR_COMSTK);
+                        fn_80087158(PLAYER(playerIndex), (1 << 0));
                     }
                     BSS32(PIXEL_CPU_ACTIVE_OFFSET) = 0;
                     if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 1) {
-                        Hu3DMotionSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+                        fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
                                       BSS16(PIXEL_ROUND_LEFT_RESULT_MOTION_OFFSET));
-                        Hu3DMotionSet(BSS16(PIXEL_SCENE_MODEL_OFFSET),
+                        fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
                                       BSS16(PIXEL_SCENE_LEFT_RESULT_MOTION_OFFSET));
                     } else if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 2) {
-                        Hu3DMotionSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+                        fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
                                       BSS16(PIXEL_ROUND_RIGHT_RESULT_MOTION_OFFSET));
-                        Hu3DMotionSet(BSS16(PIXEL_SCENE_MODEL_OFFSET),
+                        fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
                                       BSS16(PIXEL_SCENE_RIGHT_RESULT_MOTION_OFFSET));
                     }
-                    MgSeqModeNext();
+                    fn_80071A9C();
                     break;
                 }
                 if (roundOutcome == 3) {
@@ -376,31 +376,31 @@ void fn_1_5F0(s16 mode, s16 frameNo)
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 /* The player pointer is fetched here without being used afterward. */
                 transitionPlayer = PLAYER(playerIndex);
-                MgPlayerAttrSet(PLAYER(playerIndex), MGPLAYER_ATTR_COMSTK);
+                fn_80087158(PLAYER(playerIndex), (1 << 0));
             }
             BSS32(PIXEL_CPU_ACTIVE_OFFSET) = 0;
             if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 1) {
-                Hu3DMotionSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
                               BSS16(PIXEL_ROUND_LEFT_RESULT_MOTION_OFFSET));
-                Hu3DMotionSet(BSS16(PIXEL_SCENE_MODEL_OFFSET),
+                fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
                               BSS16(PIXEL_SCENE_LEFT_RESULT_MOTION_OFFSET));
             } else if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 2) {
-                Hu3DMotionSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
                               BSS16(PIXEL_ROUND_RIGHT_RESULT_MOTION_OFFSET));
-                Hu3DMotionSet(BSS16(PIXEL_SCENE_MODEL_OFFSET),
+                fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
                               BSS16(PIXEL_SCENE_RIGHT_RESULT_MOTION_OFFSET));
             } else {
-                Hu3DMotionSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
                               BSS16(PIXEL_ROUND_RESET_MOTION_OFFSET));
             }
-            Hu3DModelAttrSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET), HU3D_MOTATTR_LOOP);
+            fn_800269E8(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET), ((1 << 30) | (1 << 0)));
         } else {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 MGPLAYER *player;
                 player = PLAYER(playerIndex);
                 {
                 s16 idleMotion = player->omObj->mtnId[0];
-                if (idleMotion != (s16)Hu3DMotionIDGet((s16)player->actor->mdlId)) {
+                if (idleMotion != (s16)fn_8002D3C4((s16)player->actor->mdlId)) {
                     break;
                 }
                 }
@@ -417,7 +417,7 @@ void fn_1_5F0(s16 mode, s16 frameNo)
                     } else {
                         resultMotion = 6;
                     }
-                    CharMotionShiftSet((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
+                    fn_8005C2C8((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
                                                         PIXEL_CHARACTER_IDS_OFFSET)),
                                        player->omObj->mtnId[resultMotion], (0.0f), (0.80000001f),
                                        0);
@@ -428,7 +428,7 @@ void fn_1_5F0(s16 mode, s16 frameNo)
                     } else {
                         resultMotion = 6;
                     }
-                    CharMotionShiftSet((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
+                    fn_8005C2C8((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
                                                         PIXEL_CHARACTER_IDS_OFFSET)),
                                        player->omObj->mtnId[resultMotion], (0.0f), (0.80000001f),
                                        0);
@@ -445,7 +445,7 @@ void fn_1_5F0(s16 mode, s16 frameNo)
     case 4:
         if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) != 3) {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-                if (Hu3DMotionEndCheck((s16)PLAYER(playerIndex)->actor->mdlId) == 0) {
+                if (fn_8002D75C((s16)PLAYER(playerIndex)->actor->mdlId) == 0) {
                     break;
                 }
             }
@@ -453,13 +453,13 @@ void fn_1_5F0(s16 mode, s16 frameNo)
                 OSReport("**** all charracter motion end.\n");
                 for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 player = PLAYER(playerIndex);
-                CharMotionShiftSet((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
+                fn_8005C2C8((s16) (*(s32 *) ((u8 *) &lbl_1_bss_0 + (playerIndex) * 4 +
                                                     PIXEL_CHARACTER_IDS_OFFSET)),
                                    player->omObj->mtnId[0], (0.0f), (10.0f), 0);
                 }
-                Hu3DMotionSet(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+                fn_8002C95C(BSS16(PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
                               BSS16(PIXEL_ROUND_IDLE_MOTION_OFFSET));
-                Hu3DMotionSet(BSS16(PIXEL_SCENE_MODEL_OFFSET),
+                fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET),
                               BSS16(PIXEL_SCENE_IDLE_MOTION_OFFSET));
                 /* The next-round transition is unconditional after the reactions end. */
                 if (BSS32(PIXEL_ROUND_OUTCOME_OFFSET) == 1 ||
@@ -490,12 +490,12 @@ void fn_1_5F0(s16 mode, s16 frameNo)
         break;
     case 6:
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            if ((s16)Hu3DMotionShiftIDGet((s16)PLAYER(playerIndex)->actor->mdlId) != -1) {
+            if ((s16)fn_8002D3EC((s16)PLAYER(playerIndex)->actor->mdlId) != -1) {
                 break;
             }
         }
         if (playerIndex == 4) {
-            Hu3DMotionSet(BSS16(PIXEL_SCENE_MODEL_OFFSET), BSS16(PIXEL_SCENE_IDLE_MOTION_OFFSET));
+            fn_8002C95C(BSS16(PIXEL_SCENE_MODEL_OFFSET), BSS16(PIXEL_SCENE_IDLE_MOTION_OFFSET));
             BSS16(4) = 0;
             TICK = 0;
         }
@@ -509,27 +509,27 @@ void fn_1_5F0(s16 mode, s16 frameNo)
 void fn_1_12E0(s16 mode, s16 frameNo)
 {
     s32 musicHandle;
-    MgActorExec();
+    fn_800856A8();
     fn_1_1EC();
     if (frameNo == 0) {
         fn_1_364C(*(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET),
                   *(s32 *) ((u8 *) &lbl_1_bss_0 +
                             (*(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_ROUND_INDEX_OFFSET) - 1) * 4 +
                             PIXEL_ROUND_CELL_CHOICES_OFFSET));
-        Hu3DMotionSet(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+        fn_8002C95C(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
             *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_ROUND_RESET_MOTION_OFFSET));
-        Hu3DModelAttrSet(*(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
-                         HU3D_MOTATTR_LOOP);
-        Hu3DMotionSet(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FINISH_MODEL_OFFSET),
+        fn_800269E8(*(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_ROUND_INDICATOR_MODEL_OFFSET),
+                         ((1 << 30) | (1 << 0)));
+        fn_8002C95C(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FINISH_MODEL_OFFSET),
             *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_GAME_FINISH_MOTION_OFFSET));
-        Hu3DModelAttrReset(*(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_FINISH_MODEL_OFFSET),
-                           HU3D_MOTATTR_LOOP);
-        Hu3DModelAttrReset(
+        fn_80026A44(*(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_FINISH_MODEL_OFFSET),
+                           ((1 << 30) | (1 << 0)));
+        fn_80026A44(
             *(s16 *) ((u8 *) &lbl_1_bss_0 +
                       *(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2 +
                       PIXEL_PICTURE_FINISH_MODELS_OFFSET),
-            HU3D_ATTR_DISPOFF);
-        Hu3DMotionTimeSet(
+            (1 << 0));
+        fn_8002D414(
             *(s16 *) ((u8 *) &lbl_1_bss_0 +
                       *(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2 +
                       PIXEL_PICTURE_FINISH_MODELS_OFFSET),
@@ -554,7 +554,7 @@ void fn_1_151C(s16 mode, s16 frameNo)
     s32 arrivedCount;
 
     isDraw = 0;
-    MgActorExec();
+    fn_800856A8();
     fn_1_1EC();
     if (frameNo == 0) {
         s32 winnerCount;
@@ -564,8 +564,8 @@ void fn_1_151C(s16 mode, s16 frameNo)
             for (index = 0; index < 4; index++) {
                 winnerCharacters[index] =
                     (s16) * (s32 *) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_CHARACTER_IDS_OFFSET);
-                if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                    GwPlayer[index].mgCoinBonus = 10;
+                if (fn_8006A124(65551) == 0) {
+                    lbl_80265750[index].mgCoinBonus = 10;
                 }
             }
         } else if (*(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_LEFT_POINTS_OFFSET) == 2 &&
@@ -576,8 +576,8 @@ void fn_1_151C(s16 mode, s16 frameNo)
                     winnerCharacters[winnerCount++] =
                         (s16) *
                         (s32 *) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_CHARACTER_IDS_OFFSET);
-                    if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                        GwPlayer[index].mgCoinBonus = 10;
+                    if (fn_8006A124(65551) == 0) {
+                        lbl_80265750[index].mgCoinBonus = 10;
                     }
                 }
             }
@@ -589,8 +589,8 @@ void fn_1_151C(s16 mode, s16 frameNo)
                     winnerCharacters[winnerCount++] =
                         (s16) *
                         (s32 *) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_CHARACTER_IDS_OFFSET);
-                    if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                        GwPlayer[index].mgCoinBonus = 10;
+                    if (fn_8006A124(65551) == 0) {
+                        lbl_80265750[index].mgCoinBonus = 10;
                     }
                 }
             }
@@ -598,10 +598,10 @@ void fn_1_151C(s16 mode, s16 frameNo)
             isDraw = 1;
         }
         if (isDraw != 0) {
-            MgSeqDrawSet();
+            fn_80071C70();
             *(s32 *)((u8 *)&lbl_1_bss_0 + PIXEL_ROUND_OUTCOME_OFFSET) = 3;
         } else {
-            MgSeqWinnerSet(winnerCharacters[0], winnerCharacters[1], winnerCharacters[2],
+            fn_80071C18(winnerCharacters[0], winnerCharacters[1], winnerCharacters[2],
                            winnerCharacters[3]);
         }
     }
@@ -613,15 +613,15 @@ void fn_1_151C(s16 mode, s16 frameNo)
             *(s16 *) ((u8 *) &lbl_1_bss_0 +
                       *(s32 *) ((u8 *) &lbl_1_bss_0 + PIXEL_SELECTED_PICTURE_OFFSET) * 2 +
                       PIXEL_PICTURE_RESULT_MODELS_OFFSET);
-        Hu3DMotionTimeSet(resultModel, (0.0f));
-        Hu3DModelAttrReset(resultModel, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(resultModel, HU3D_MOTATTR_LOOP);
+        fn_8002D414(resultModel, (0.0f));
+        fn_80026A44(resultModel, (1 << 0));
+        fn_80026A44(resultModel, ((1 << 30) | (1 << 0)));
     }
     for (index = 0; index < 4; index++) {
-        MgPlayerAttrReset(
+        fn_80087168(
             *(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_RECORD_OFFSET),
-            MGPLAYER_ATTR_COMSTK);
-        MgActorColAttrSet(
+            (1 << 0));
+        fn_800805CC(
             (*(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_RECORD_OFFSET))->actor,
             PIXEL_RESULT_COLLISION_ATTRS);
     }
@@ -645,7 +645,7 @@ void fn_1_151C(s16 mode, s16 frameNo)
             playerPosition = player->actor->pos;
             teamSide = *(s32 *)((u8 *)&lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_SIDE_OFFSET);
             lineupTarget = &lineupPositions[teamSide * 2 + sidePlayerCounts[teamSide]];
-            MgActorColAttrSet(
+            fn_800805CC(
                 (*(MGPLAYER **) ((u8 *) &lbl_1_bss_0 + index * 4 + PIXEL_PLAYER_RECORD_OFFSET))
                     ->actor,
                 PIXEL_RESULT_COLLISION_ATTRS);
@@ -655,43 +655,43 @@ void fn_1_151C(s16 mode, s16 frameNo)
             targetDistance = PSVECMag(&moveDirection);
             if (targetDistance >= (10.0f)) {
                 fn_1_5F54(index, &playerPosition, lineupTarget, &moveDirection, 0);
-                MgPlayerPadSet(player, (s32)((56.0f) * moveDirection.x),
+                fn_80080520(player, (s32)((56.0f) * moveDirection.x),
                     (s32)((56.0f) * moveDirection.z), 0, 0);
             } else {
-                MgPlayerPadSet(player, 0, 0, 0, 0);
-                MgPlayerAttrSet(player, MGPLAYER_ATTR_COMSTK);
-                MgActorRotYSet(player->actor, (0.0f));
+                fn_80080520(player, 0, 0, 0, 0);
+                fn_80087158(player, (1 << 0));
+                fn_80086CA8(player->actor, (0.0f));
                 arrivedCount++;
             }
             sidePlayerCounts[teamSide]++;
         }
-        MgActorExec();
+        fn_800856A8();
         fn_1_1EC();
         HuPrcVSleep();
     } while (arrivedCount != 4);
     /* Hold the lineup for two seconds before allowing the winner display. */
     for (index = 0; index < 120; index++) {
         HuPrcVSleep();
-        MgActorExec();
+        fn_800856A8();
     }
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* The winner hook starts each team member's win or lose motion when the result display begins. */
 void fn_1_1C74(s16 mode, s16 frameNo)
 {
     s32 playerIndex;
-    MgActorExec();
+    fn_800856A8();
     if (frameNo == 0) {
-        Hu3DMotionSet(lbl_1_bss_0.model, lbl_1_bss_0.motion[0]);
+        fn_8002C95C(lbl_1_bss_0.model, lbl_1_bss_0.motion[0]);
         if (lbl_1_bss_0.mode == 1) {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 MGPLAYER *player = lbl_1_bss_0.players[playerIndex];
                 if (lbl_1_bss_0.teamSide[playerIndex] == 0) {
-                    CharMotionShiftSet(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[5],
+                    fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[5],
                                        (0.0f), (0.80000001f), 0);
                 } else {
-                    CharMotionShiftSet(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6],
+                    fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6],
                                        (0.0f), (0.80000001f), 0);
                 }
             }
@@ -699,11 +699,11 @@ void fn_1_1C74(s16 mode, s16 frameNo)
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 MGPLAYER *player = lbl_1_bss_0.players[playerIndex];
                 if (lbl_1_bss_0.teamSide[playerIndex] == 0) {
-                    CharMotionShiftSet(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6],
+                    fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6],
                                        (0.0f), (0.80000001f), 0);
                     OSReport("### lose ... %d\n", playerIndex);
                 } else {
-                    CharMotionShiftSet(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[5],
+                    fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[5],
                                        (0.0f), (0.80000001f), 0);
                     OSReport("### win ... %d\n", playerIndex);
                 }
@@ -711,7 +711,7 @@ void fn_1_1C74(s16 mode, s16 frameNo)
         } else {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 MGPLAYER *player = lbl_1_bss_0.players[playerIndex];
-                CharMotionShiftSet(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6], (0.0f),
+                fn_8005C2C8(lbl_1_bss_0.charNo[playerIndex], player->omObj->mtnId[6], (0.0f),
                                    (0.80000001f), 0);
                 OSReport("### timeover ... ", playerIndex);
             }
@@ -722,12 +722,12 @@ void fn_1_1C74(s16 mode, s16 frameNo)
 /* The fade-out hook keeps the actor manager running while the scene fades away. */
 void fn_1_1F58(s16 mode, s16 frameNo)
 {
-    MgActorExec();
+    fn_800856A8();
 }
 
 /* The close hook updates actors once before overlay return, both after fade-out and on system
  * exit. */
 void fn_1_1F78(s16 mode, s16 frameNo)
 {
-    MgActorExec();
+    fn_800856A8();
 }

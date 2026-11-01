@@ -16,7 +16,7 @@ void mbev_NextTimeSet(W01_MBHOOK hook);
 
 int mbCapThrowColCreate(int dataNum);
 
-void *mbMalloc(s32 size);
+void *fn_802137C0(s32 size);
 
 /* Curve derivatives use normalized progress from the start to the end value. */
 float mbBezierCalcSlope(float start, float control, float end, float progress);

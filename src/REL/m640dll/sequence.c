@@ -67,16 +67,16 @@ s32 lbl_1_bss_0;
 /* Called by the module prolog to create the object manager and register the M640 sequence. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_4 = omInitObjMan(256, 8192);
-    omGameSysInit(lbl_1_bss_4);
-    MgSeqCreate(&lbl_1_data_0);
+    lbl_1_bss_4 = fn_8003A8BC(256, 8192);
+    fn_80069F1C(lbl_1_bss_4);
+    fn_80070788(&lbl_1_data_0);
 }
 
 /* Entry callback in lbl_1_data_0; initializes the scene before moving to the next sequence mode. */
 void fn_1_F0(s16 mode, s16 frame)
 {
     fn_1_86C();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Frame callback in lbl_1_data_0; dispatches the intro state machine once per sequence frame. */
@@ -153,7 +153,7 @@ void fn_1_270(s16 frame)
     }
     switch (lbl_1_bss_4E8.state) {
     case 0:
-        MgSeqModeChangeOff();
+        fn_80071B08();
         lbl_1_bss_4E8.state++;
         break;
     case 1:
@@ -172,7 +172,7 @@ void fn_1_270(s16 frame)
                     cameraView.rot.y = 0.0f;
                     cameraView.rot.z = 0.0f;
                     cameraView.zoom = 1400.0f;
-                    omCameraViewMoveSimpleMulti(cameraBySide[side], &cameraView, 40);
+                    fn_8003E8E4(cameraBySide[side], &cameraView, 40);
                 }
             }
         }
@@ -195,7 +195,7 @@ void fn_1_270(s16 frame)
         }
         break;
     case 5:
-        MgSeqModeNext();
+        fn_80071A9C();
         break;
     }
 }
@@ -208,27 +208,27 @@ void fn_1_60C(void)
     int firstSidePlayerNo, secondSidePlayerNo;
     switch (lbl_1_bss_4E8.state) {
     case 0:
-        MgSeqModeChangeOff();
+        fn_80071B08();
         lbl_1_bss_4E8.state++;
         break;
     case 1:
         if (lbl_1_bss_4E8.finishCount == 0 || lbl_1_bss_4E8.finishCount == 2) {
-            MgSeqWinnerSet(-1, -1, -1, -1);
+            fn_80071C18(-1, -1, -1, -1);
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 fn_1_26B8(playerIndex, 3);
             }
-            MgSeqModeNext();
+            fn_80071A9C();
             return;
         }
-        MgSeqWinnerSet(lbl_1_bss_4FC[lbl_1_bss_4E8.winnerSide].players[0]->charNo,
+        fn_80071C18(lbl_1_bss_4FC[lbl_1_bss_4E8.winnerSide].players[0]->charNo,
                       lbl_1_bss_4FC[lbl_1_bss_4E8.winnerSide].players[1]->charNo, -1, -1);
         firstSidePlayerNo = lbl_1_bss_4FC[lbl_1_bss_4E8.winnerSide].players[0]->playerNo;
-        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[firstSidePlayerNo].mgCoinBonus = 10;
+        if (!fn_8006A124(65551)) {
+            lbl_80265750[firstSidePlayerNo].mgCoinBonus = 10;
         }
         secondSidePlayerNo = lbl_1_bss_4FC[lbl_1_bss_4E8.winnerSide].players[1]->playerNo;
-        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[secondSidePlayerNo].mgCoinBonus = 10;
+        if (!fn_8006A124(65551)) {
+            lbl_80265750[secondSidePlayerNo].mgCoinBonus = 10;
         }
         lbl_1_bss_4E8.frame = 0;
         lbl_1_bss_4E8.state++;
@@ -239,7 +239,7 @@ void fn_1_60C(void)
         }
         break;
     case 3:
-        MgSeqModeNext();
+        fn_80071A9C();
         break;
     }
 }

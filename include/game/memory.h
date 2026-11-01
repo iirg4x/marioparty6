@@ -3,53 +3,54 @@
 
 #include "dolphin/types.h"
 
-#define HuRestMemGet(heap) (HuMemHeapSizeGet((heap))-HuMemUsedMallocSizeGet((heap)))
-
-#define HU_MEMNUM_OVL 0x10000000
-
-typedef enum HeapID_s {
+enum {
     HEAP_HEAP,
-    HEAP_SOUND,
-    HEAP_MODEL,
-    HEAP_DVD,
-    HEAP_SPACE,
-    HEAP_MAX
-} HEAPID;
+};
+typedef int HEAPID;
 
-
-void HuMemInitAll(void);
-void *HuMemInit(void *ptr, s32 size);
+void fn_8000B2A8(void);
+void *fn_8000B3E0(void *ptr, s32 size);
 void HuMemDCFlushAll();
 void HuMemDCFlush(HEAPID heap);
 void *HuMemDirectMalloc(HEAPID heap, s32 size);
 void *HuMemDirectMallocNum(HEAPID heap, s32 size, u32 num);
-void *HuMemDirectTailMalloc(HEAPID heap, s32 size);
-void *HuMemDirectTailMallocNum(HEAPID heap, s32 size, u32 num);
+void *fn_802137C0(s32 size);
+void *fn_80213818(s32 size, u32 num);
+void *fn_80213874(s32 size);
+void *fn_802138C8(s32 size);
+void *fn_8000B630(HEAPID heap, void *allocation, s32 allocationSize);
+void *fn_8000B560(HEAPID heap, s32 size);
+void *fn_8000B5C4(HEAPID heap, s32 size, u32 num);
 
 void HuMemDirectFree(void *ptr);
 void HuMemDirectFreeNum(HEAPID heap, u32 num);
 s32 HuMemUsedMallocSizeGet(HEAPID heap);
 s32 HuMemUsedMallocBlockGet(HEAPID heap);
-u32 HuMemHeapSizeGet(HEAPID heap);
-void *HuMemHeapPtrGet(HEAPID heap);
+u32 fn_8000B790(HEAPID heap);
+void *fn_8000B7A8(HEAPID heap);
 
 void *HuMemHeapInit(void *heap, s32 size);
-void *HuMemMemoryAlloc(void *heap, s32 size, u32 retAddr);
-void *HuMemMemoryAllocNum(void *heap, s32 size, u32 num, u32 retAddr);
-void *HuMemTailMemoryAlloc(void *heap, s32 size, u32 retAddr);
-void *HuMemTailMemoryAllocNum(void *heap, s32 size, u32 num, u32 retAddr);
-BOOL HuMemMemoryFileSet(void *ptr, u32 file);
-u32 HuMemMemoryFileGet(void *ptr);
-BOOL HuMemMemoryNumSet(void *ptr, u32 num);
+void *fn_8000B84C(void *heap, s32 size, u32 retAddr);
+void *fn_8000B80C(void *heap, s32 size, u32 num, u32 retAddr);
+void *fn_8000B9FC(void *heap, s32 size, u32 retAddr);
+void *fn_8000B9BC(void *heap, s32 size, u32 num, u32 retAddr);
+BOOL fn_8000C164(void *ptr, u32 file);
+u32 fn_8000C1B4(void *ptr);
+BOOL fn_8000C200(void *ptr, u32 num);
 
 void HuMemMemoryFree(void *heap, u32 retAddr);
 void HuMemMemoryFreeNum(void *heap, u32 num, u32 retAddr);
-void *HuMemMemoryRealloc(void *heap, void *ptr, s32 size, u32 retAddr);
-s32 HuMemMaxMemorySizeGet(void *heap);
+void *fn_8000BB44(void *heap, void *ptr, s32 size, u32 retAddr);
+s32 fn_8000BF58(void *heap);
 s32 HuMemUsedMemorySizeGet(void *heap);
 s32 HuMemUsedMemoryBlockGet(void *heap);
 s32 HuMemMemorySizeGet(void *heap);
 s32 HuMemMemoryAllocSizeGet(s32 size);
-void HuMemHeapDump(void *heap, s16 status);
+void fn_8000BFB4(void *heap, s16 status);
+
+static inline void *ModelHeapMallocNum(s32 size, u32 allocationNo)
+{
+    return HuMemDirectMallocNum(2, size, allocationNo);
+}
 
 #endif

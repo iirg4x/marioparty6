@@ -45,31 +45,31 @@ void fn_1_B0(s16 playerNo)
  * selected player slot. */
 void fn_1_10C(s16 playerNo)
 {
-    OSReport("player no : ( %d ) char no : ( %d )\n", playerNo, GwPlayerConf[playerNo].charNo);
-    lbl_1_data_0[playerNo] = GwPlayerConf[playerNo].charNo;
+    OSReport("player no : ( %d ) char no : ( %d )\n", playerNo, lbl_80265728[playerNo].charNo);
+    lbl_1_data_0[playerNo] = lbl_80265728[playerNo].charNo;
 }
 
 /* Called by the scene update after its result animation; advances to the next sequence mode. */
 void fn_1_190(void)
 {
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Immediate-transition callback in lbl_1_data_14; advances to the next sequence mode. */
 void fn_1_1B0(s16 sequenceMode, s16 sequenceFrame)
 {
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Opening-phase callback in lbl_1_data_14; starts audio at frame 0 and fades the opening sound at
  * frame 180. */
 void fn_1_1D0(s16 sequenceMode, s16 sequenceFrame)
 {
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         lbl_1_data_10 = HuAudFXPlay(M651_OPENING_START_EFFECT_ID);
         lbl_1_data_C = HuAudSStreamPlay(M651_OPENING_STREAM_ID);
     }
-    if (MgSeqFrameNoGet() == 180) {
+    if (fn_80071DE4() == 180) {
         HuAudFXFadeOut(lbl_1_data_10, 1000);
     }
 }
@@ -94,39 +94,39 @@ void fn_1_268(s16 sequenceMode, s16 sequenceFrame)
 {
     int playerIndex;
 
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         if (lbl_1_data_C != -1) {
             HuAudSStreamFadeOut(lbl_1_data_C, 100);
             lbl_1_data_C = -1;
         }
         fn_1_62C();
         if (lbl_1_bss_4[0] == 2) {
-            MgSeqDrawSet();
+            fn_80071C70();
         } else {
-            MgSeqWinnerSet(lbl_1_data_0[0], lbl_1_data_0[1], lbl_1_data_0[2], lbl_1_data_0[3]);
+            fn_80071C18(lbl_1_data_0[0], lbl_1_data_0[1], lbl_1_data_0[2], lbl_1_data_0[3]);
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 if (lbl_1_data_0[playerIndex] != -1) {
                     OSReport("player no : ( %d ) char no : ( %d )\n", playerIndex,
-                             GwPlayerConf[playerIndex].charNo);
-                    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-                        GwPlayer[playerIndex].mgCoinBonus = 10;
+                             lbl_80265728[playerIndex].charNo);
+                    if (!fn_8006A124(65551)) {
+                        lbl_80265750[playerIndex].mgCoinBonus = 10;
                     }
                 }
             }
         }
     }
-    OSReport("cnt : ( %d )\n", MgSeqFrameNoGet());
-    if (MgSeqFrameNoGet() == 90) {
+    OSReport("cnt : ( %d )\n", fn_80071DE4());
+    if (fn_80071DE4() == 90) {
         fn_1_36F8();
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
 /* Result-transition callback in lbl_1_data_14; advances when this phase reaches frame 1. */
 void fn_1_3D4(s16 sequenceMode, s16 sequenceFrame)
 {
-    if (MgSeqFrameNoGet() == 1) {
-        MgSeqModeNext();
+    if (fn_80071DE4() == 1) {
+        fn_80071A9C();
     }
 }
 
@@ -149,9 +149,9 @@ void fn_1_408(s16 sequenceMode, s16 sequenceFrame)
  * scene. */
 void fn_1_40C(void)
 {
-    lbl_1_bss_0 = omInitObjMan(30, 8192);
-    omGameSysInit(lbl_1_bss_0);
-    MgSeqCreate(&lbl_1_data_14);
+    lbl_1_bss_0 = fn_8003A8BC(30, 8192);
+    fn_80069F1C(lbl_1_bss_0);
+    fn_80070788(&lbl_1_data_14);
     lbl_1_data_0[0] = -1;
     lbl_1_data_0[1] = -1;
     lbl_1_data_0[2] = -1;

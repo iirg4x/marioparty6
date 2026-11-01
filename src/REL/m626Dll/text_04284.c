@@ -1,4 +1,5 @@
 /* Sets up player groups and interpolates points for Snow Brawl objects. */
+#include <math.h>
 #include "REL/m626Dll/objects.h"
 #include "dolphin/mtx.h"
 #include "dolphin/types.h"
@@ -46,12 +47,12 @@ void fn_1_42DC(HUPROCESS *process)
     groupCounts = lbl_1_rodata_C8;
     playerSlots = lbl_1_rodata_D0;
     anyLargeGroup = 0;
-    lbl_1_bss_304 = omAddObjEx(process, 14, 0, 0, -1, fn_1_4548);
+    lbl_1_bss_304 = fn_8003AB38(process, 14, 0, 0, -1, fn_1_4548);
     fn_1_44F8(lbl_1_bss_304);
 
     for (player = 0; player < 4; player++) {
         if ((playerGroups[player] =
-                (group = GwPlayerConf[player].grpNo)) >= 2) {
+                (group = lbl_80265728[player].grpNo)) >= 2) {
             anyLargeGroup = 1;
         } else {
             groupCounts.playersPerGroup[group]++;
@@ -75,11 +76,11 @@ void fn_1_42DC(HUPROCESS *process)
     omMakeGroupEx(process, 0, 4);
     for (player = 0; player < 4; player++) {
         object = (lbl_1_bss_2F4[player] =
-            omAddObjEx(process, 10, 1, 10, 0, fn_1_4EA8));
+            fn_8003AB38(process, 10, 1, 10, 0, fn_1_4EA8));
         object->work[0] = player;
         group = playerGroups[player];
         object->work[1] = group;
         object->work[2] = playerSlots.nextSlotPerGroup[group]++;
-        fn_1_960(player, group, GwPlayerConf[player].charNo);
+        fn_1_960(player, group, lbl_80265728[player].charNo);
     }
 }

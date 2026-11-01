@@ -23,8 +23,8 @@ double cos(double);
 #define GAMEMES_RECORD_VALUE_MAX 999999
 #define GAMEMES_RECORD_HUNDRED_THOUSANDS 100000
 
-#define sind(x) sin((M_PI * (x)) / 180.0)
-#define cosd(x) cos((M_PI * (x)) / 180.0)
+#define sind(x) sin((3.141592653589793 * (x)) / 180.0)
+#define cosd(x) cos((3.141592653589793 * (x)) / 180.0)
 
 static float WinnerMesNameY[4];
 static float WinnerMesNameX[4];
@@ -222,7 +222,7 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -246,9 +246,9 @@ BOOL GameMesMg4PExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -426,7 +426,7 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -450,9 +450,9 @@ BOOL GameMesMg1Vs3Exec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -653,7 +653,7 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -677,9 +677,9 @@ BOOL GameMesMg2Vs2Exec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -875,7 +875,7 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -899,9 +899,9 @@ BOOL GameMesMgBattleExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1068,7 +1068,7 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -1092,9 +1092,9 @@ BOOL GameMesMgKoopaExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1232,7 +1232,7 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -1256,9 +1256,9 @@ BOOL GameMesMgRareExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1414,7 +1414,7 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -1438,9 +1438,9 @@ BOOL GameMesMgKettouExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1623,7 +1623,7 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == 60) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == 80) {
@@ -1647,9 +1647,9 @@ BOOL GameMesMgDonkeyExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -1910,7 +1910,7 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                     }
                 }
                 if(mes->time == timeStart) {
-                    HuAudFXPlay(MSM_SE_CMN_26);
+                    HuAudFXPlay(0x19);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time == timeEnd) {
@@ -1936,9 +1936,9 @@ BOOL GameMesMgSdExec(GAMEMES *mes)
                 }
                 if(mes->time == 20) {
                     if(mes->subMode == GAMEMES_MG_TYPE_FINISH) {
-                        HuAudFXPlay(MSM_SE_CMN_27);
+                        HuAudFXPlay(0x1A);
                     } else {
-                        HuAudFXPlay(MSM_SE_CMN_29);
+                        HuAudFXPlay(0x1C);
                     }
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
@@ -2106,7 +2106,7 @@ BOOL GameMesMgDrawExec(GAMEMES *mes)
                 }
             }
             if(mes->time == 20) {
-                HuAudFXPlay(MSM_SE_CMN_29);
+                HuAudFXPlay(0x1C);
                 mes->stat |= GAMEMES_STAT_FXPLAY;
             }
             if(mes->time >= 140) {
@@ -2185,8 +2185,8 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
             break;
 
         case 0x6B:
-            recordNo = GwSystem.subGameNo;
-            RecordMesValue = GWMikeActRecordGet((s16)(int)recordNo);
+            recordNo = lbl_80265B70.subGameNo;
+            RecordMesValue = fn_8003D420((s16)(int)recordNo);
             RecordMesFormatType = 2;
             num = 0;
             break;
@@ -2197,23 +2197,23 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
             break;
     }
     mes->grpId[0] = HuSprGrpCreate(num+10);
-    num = (GameMesLanguageNo == 0) ? DATANUM(DATA_gamemes, 9)
-        : (GameMesLanguageNo == 1) ? DATANUM(DATA_gamemes, 10)
-        : (GameMesLanguageNo == 2) ? DATANUM(DATA_gamemes, 11)
-        : (GameMesLanguageNo == 3) ? DATANUM(DATA_gamemes, 12)
-        : (GameMesLanguageNo == 4) ? DATANUM(DATA_gamemes, 13)
-        : (GameMesLanguageNo == 5) ? DATANUM(DATA_gamemes, 14)
-        : DATANUM(DATA_gamemes, 10);
+    num = (GameMesLanguageNo == 0) ? DATANUM(0x240000, 9)
+        : (GameMesLanguageNo == 1) ? DATANUM(0x240000, 10)
+        : (GameMesLanguageNo == 2) ? DATANUM(0x240000, 11)
+        : (GameMesLanguageNo == 3) ? DATANUM(0x240000, 12)
+        : (GameMesLanguageNo == 4) ? DATANUM(0x240000, 13)
+        : (GameMesLanguageNo == 5) ? DATANUM(0x240000, 14)
+        : DATANUM(0x240000, 10);
     animP = HuSprAnimRead(GameMesDataRead(num));
     sprId = HuSprCreate(animP, 0, 0);
     HuSprGrpMemberSet(mes->grpId[0], 0, sprId);
     HuSprPosSet(mes->grpId[0], 0, 0, -32);
     HuSprPriSet(mes->grpId[0], 0, 2);
-    animP = HuSprAnimRead(GameMesDataRead(DATANUM(DATA_gamemes, 8)));
+    animP = HuSprAnimRead(GameMesDataRead(DATANUM(0x240000, 8)));
     sprId = HuSprCreate(animP, 0, 0);
     HuSprGrpMemberSet(mes->grpId[0], 1, sprId);
     HuSprPriSet(mes->grpId[0], 1, 2);
-    animP = HuSprAnimRead(GameMesDataRead(DATANUM(DATA_gamemes, 7)));
+    animP = HuSprAnimRead(GameMesDataRead(DATANUM(0x240000, 7)));
 
     for(i=0; i<8; i++) {
         sprId = HuSprCreate(animP, 0, 0);
@@ -2221,7 +2221,7 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
         HuSprPriSet(mes->grpId[0], i+2, 2);
     }
     if(RecordMesFormatType == 1) {
-        animP = HuSprAnimRead(GameMesDataRead(DATANUM(DATA_gamemes, 15)));
+        animP = HuSprAnimRead(GameMesDataRead(DATANUM(0x240000, 15)));
         sprId = HuSprCreate(animP, 0, 0);
         HuSprGrpMemberSet(mes->grpId[0], 10, sprId);
         HuSprPriSet(mes->grpId[0], 10, 2);
@@ -2346,7 +2346,7 @@ BOOL GameMesMgRecordInit(GAMEMES *mes, va_list args)
  * and removes its sprites immediately. */
 BOOL GameMesMgRecordExec(GAMEMES *mes)
 {
-    if(!_CheckFlag(FLAG_MG_PRACTICE)) {
+    if(!fn_8006A124(65551)) {
         mes->time += GameMesVWait;
         if(mes->time >= mes->timeMax && mes->mesMode == 0) {
             mes->stat |= GAMEMES_STAT_TIMEEND;
@@ -2363,7 +2363,7 @@ BOOL GameMesMgRecordExec(GAMEMES *mes)
                                      mes->scale.y * GameMesScale);
                 }
                 if(mes->time == 20) {
-                    HuAudFXPlay(MSM_SE_CMN_28);
+                    HuAudFXPlay(0x1B);
                     mes->stat |= GAMEMES_STAT_FXPLAY;
                 }
                 if(mes->time >= 100) {
@@ -2613,7 +2613,7 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
                     break;
 
                 case 0x09: {
-                    s16 night = GwMgNightF;
+                    s16 night = lbl_802C0278;
                     if(night == 0) {
                         WinnerMesNameY[i] = 357.0f;
                     } else {
@@ -2652,7 +2652,7 @@ BOOL GameMesMgWinInit(GAMEMES *mes, va_list args)
                     break;
 
                 case 0x09: {
-                    s16 night = GwMgNightF;
+                    s16 night = lbl_802C0278;
                     if(night == 0) {
                         WinnerMesNameY[i] = 407.0f;
                         if(i != 0) {

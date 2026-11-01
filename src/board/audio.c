@@ -108,7 +108,7 @@ extern void Hu3D3Dto2D(Vec *src, s16 cameraBit, Vec *dst);
 
 static inline int BoardNoGet(void)
 {
-    return GwSystem.boardNo;
+    return lbl_80265B70.boardNo;
 }
 
 static void MusPlay(void);
@@ -186,9 +186,9 @@ void mbAudInit(void)
         audFx->seNo = MSM_SENO_NONE;
     }
 
-    audFXProc = HuPrcChildCreate(AudFXMain, 0x2001, 0x4000, 0, mbMainProc);
+    audFXProc = fn_8000DAC0(AudFXMain, 0x2001, 0x4000, 0, mbMainProc);
     HuPrcDestructorSet2(audFXProc, AudFXMainDestroy);
-    if (_CheckFlag(FLAG_BOARD_STAR_RESET)) {
+    if (fn_8006A124(65570)) {
         audFXObjOnF = TRUE;
         audFXObjOnTimer = 1;
     } else {
@@ -201,7 +201,7 @@ void mbAudInit(void)
     for (i = 0; i < MB_AUD_FX_DELAY_MAX; i++, delayFx++) {
         delayFx->seId = MSM_SE_NONE;
     }
-    mbAudFXPlay(MSM_SE_BRD00_102);
+    mbAudFXPlay(1106);
 }
 
 // Selects the current board's day/night stream and starts it on the background channel.
@@ -213,7 +213,7 @@ void mbMusBoardPlay(void)
     for (i = 0; boardMusData[i].boardNo != 0xFFFFFFFF; i++) {
         if (boardMusData[i].boardNo == BoardNoGet()) {
             if (boardMusData[i].timeF) {
-                if (GwSystem.curTime == FALSE) {
+                if (lbl_80265B70.curTime == FALSE) {
                     musId = boardMusData[i].dayMusId;
                 } else {
                     musId = boardMusData[i].nightMusId;
@@ -280,8 +280,8 @@ void mbMusPlay(int chan, int musicId, s8 volume, u16 fadeSpeed)
         musP->closeTime = 3;
         musP->stopTime = 60;
         musP->stopF = FALSE;
-        musP->proc = HuPrcChildCreate(MusPlay, 0x2001, 0x2000, 0, mbMainProc);
-        HuPrcSetStat(musP->proc, HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+        musP->proc = fn_8000DAC0(MusPlay, 0x2001, 0x2000, 0, mbMainProc);
+        HuPrcSetStat(musP->proc, 0x4 | 0x8);
         musP->proc->property = chanP = &musChanId[chan];
         *chanP = chan;
         HuPrcDestructorSet2(musP->proc, MusPlayKill);
@@ -501,7 +501,7 @@ static void MusPlay(void)
     MBMUSDATA *musP;
 
     do {
-        HUPROCESS *proc = HuPrcCurrentGet();
+        HUPROCESS *proc = fn_8000DD9C();
         int *chanP = proc->property;
 
         musP = &musData[*chanP];
@@ -570,7 +570,7 @@ static void MusPlay(void)
 // Clears the music monitor process property when its destructor runs.
 static void MusPlayKill(void)
 {
-    HUPROCESS *proc = HuPrcCurrentGet();
+    HUPROCESS *proc = fn_8000DD9C();
 
     if (proc->property) {
         proc->property = NULL;
@@ -579,7 +579,7 @@ static void MusPlayKill(void)
 
 static inline void *MusBoardFadeWorkAlloc(void)
 {
-    return HuMemDirectMallocNum(HEAP_HEAP, sizeof(MUSBOARDFADEDATA), HU_MEMNUM_OVL);
+    return HuMemDirectMallocNum(HEAP_HEAP, sizeof(MUSBOARDFADEDATA), 0x10000000);
 }
 
 // Starts a board music transition requested by board events; only one fade process can run at a
@@ -591,7 +591,7 @@ BOOL mbMusBoardFadeOut(int chan, int nextChan, int speed, int fadeSpeed, int mus
     if (musBoardFadeProc) {
         return FALSE;
     }
-    musBoardFadeProc = HuPrcChildCreate(MusBoardFade, 0x2001, 0x2000, 0, mbMainProc);
+    musBoardFadeProc = fn_8000DAC0(MusBoardFade, 0x2001, 0x2000, 0, mbMainProc);
     work = MusBoardFadeWorkAlloc();
     musBoardFadeProc->property = work;
     memset(work, 0, sizeof(MUSBOARDFADEDATA));
@@ -623,7 +623,7 @@ BOOL mbMusBoardFadeCheck(void)
 // state.
 static void MusBoardFade(void)
 {
-    MUSBOARDFADEDATA *work = HuPrcCurrentGet()->property;
+    MUSBOARDFADEDATA *work = fn_8000DD9C()->property;
     int waitTime;
     int time;
 
@@ -640,7 +640,7 @@ static void MusBoardFade(void)
         for (i = 0; boardMusData[i].boardNo != 0xFFFFFFFF; i++) {
             if (boardMusData[i].boardNo == BoardNoGet()) {
                 if (boardMusData[i].timeF) {
-                    if (GwSystem.curTime == FALSE) {
+                    if (lbl_80265B70.curTime == FALSE) {
                         musId = boardMusData[i].dayMusId;
                     } else {
                         musId = boardMusData[i].nightMusId;
@@ -948,7 +948,7 @@ static void AudFXMain(void)
             }
         }
 
-        if (_CheckFlag(FLAG_BOARD_STAR_RESET) == FALSE) {
+        if (fn_8006A124(65570) == FALSE) {
             if (audFXObjOnF) {
                 if (--audFXObjOnTimer <= 0) {
                     for (i = 0, audFx = &audFXObjData[0]; i < MB_AUD_FX_OBJ_MAX; i++, audFx++) {
@@ -992,13 +992,13 @@ static void AudFXMain(void)
             audFXObjOnTimer = 1;
         }
 
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        for (i = 0; i < 4; i++) {
             Vec pos;
             int pan;
 
             mbPlayerPosGet(i, &pos);
             pan = mbAudFXPosPanGet(&pos);
-            CharModelVoicePanSet(GwPlayer[i].charNo, pan);
+            fn_80060F14(lbl_80265750[i].charNo, pan);
         }
         HuPrcVSleep();
     } while (mbExitCheck() == FALSE);
@@ -1113,7 +1113,7 @@ u8 mbAudFXPosPanGet(Vec *pos)
     Vec pos2D;
     int pan;
 
-    Hu3D3Dto2D(pos, HU3D_CAM0, &pos2D);
+    Hu3D3Dto2D(pos, (1 << 0), &pos2D);
     pan = (int)((pos2D.x * (1.0f / HU_DISP_WIDTH)) * MSM_PAN_WIDTH) + MSM_PAN_LEFT;
     if (pan < MSM_PAN_LEFT) {
         pan = MSM_PAN_LEFT;
@@ -1186,8 +1186,8 @@ int mbAudGuidePlay(s16 seId)
     int timeNo;
     int i;
 
-    if (GwSystem.curTime) {
-        partyF = GwSystem.partyF;
+    if (lbl_80265B70.curTime) {
+        partyF = lbl_80265B70.partyF;
 
         if (partyF != FALSE) {
             goto time_one;

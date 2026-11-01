@@ -29,9 +29,9 @@ M668SequenceDataRecord lbl_1_data_0 = {
 
 /* Character motion resource IDs loaded by the stage and player callbacks. */
 unsigned int lbl_1_data_3C[10] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1), DATANUM(DATA_mariomot, 2),
-    DATANUM(DATA_mariomot, 3), DATANUM(DATA_mariomot, 4), DATANUM(DATA_mario, 23),
-    DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 7), DATANUM(DATA_mariomot, 20), 0,
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1), DATANUM(0x930000, 2),
+    DATANUM(0x930000, 3), DATANUM(0x930000, 4), DATANUM(0x8e0000, 23),
+    DATANUM(0x930000, 6), DATANUM(0x930000, 7), DATANUM(0x930000, 20), 0,
 };
 
 /* World-space starting positions for the four player formations. */

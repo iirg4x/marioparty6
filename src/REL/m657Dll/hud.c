@@ -1,4 +1,5 @@
 /* Creates and updates the arena gauge and the two team position markers. */
+#include <math.h>
 #include "REL/m657Dll.h"
 #include "game/gamework.h"
 #include "game/memory.h"
@@ -9,20 +10,20 @@ OMOBJ *lbl_1_bss_48;
 
 /* Sprite data IDs for the gauge: one entry 17 sprite and eight entry 16 sprites. */
 s32 lbl_1_data_280[9] = {
-    DATANUM(DATA_m657, 17), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16),
-    DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16),
-    DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16), DATANUM(DATA_m657, 16)
+    DATANUM(0x740000, 17), DATANUM(0x740000, 16), DATANUM(0x740000, 16),
+    DATANUM(0x740000, 16), DATANUM(0x740000, 16), DATANUM(0x740000, 16),
+    DATANUM(0x740000, 16), DATANUM(0x740000, 16), DATANUM(0x740000, 16)
 };
 /* Sprite priorities paired with the gauge cap and segment data above. */
 s16 lbl_1_data_2A4[9] = { 60, 70, 70, 70, 70, 70, 70, 70, 70 };
 s32 lbl_1_data_2B8[14] = {
-    DATANUM(DATA_mgconst, 32), DATANUM(DATA_mgconst, 33),
-    DATANUM(DATA_mgconst, 34), DATANUM(DATA_mgconst, 35),
-    DATANUM(DATA_mgconst, 36), DATANUM(DATA_mgconst, 37),
-    DATANUM(DATA_mgconst, 38), DATANUM(DATA_mgconst, 39),
-    DATANUM(DATA_mgconst, 40), DATANUM(DATA_mgconst, 41),
-    DATANUM(DATA_mgconst, 42), DATANUM(DATA_mgconst, 43),
-    DATANUM(DATA_mgconst, 44), DATANUM(DATA_mgconst, 45)
+    DATANUM(0x9b0000, 32), DATANUM(0x9b0000, 33),
+    DATANUM(0x9b0000, 34), DATANUM(0x9b0000, 35),
+    DATANUM(0x9b0000, 36), DATANUM(0x9b0000, 37),
+    DATANUM(0x9b0000, 38), DATANUM(0x9b0000, 39),
+    DATANUM(0x9b0000, 40), DATANUM(0x9b0000, 41),
+    DATANUM(0x9b0000, 42), DATANUM(0x9b0000, 43),
+    DATANUM(0x9b0000, 44), DATANUM(0x9b0000, 45)
 };
 /* Screen positions for the gauge cap and its eight vertical segments. */
 HuVec2f lbl_1_data_2F0[9] = {
@@ -38,9 +39,9 @@ void fn_1_4E58(OMOBJMAN *objman)
     OMOBJ *obj;
     M657SpriteWork *spriteWork;
 
-    obj = omAddObjEx(objman, 70, 0, 0, -1, fn_1_5248);
+    obj = fn_8003AB38(objman, 70, 0, 0, -1, fn_1_5248);
     lbl_1_bss_48 = obj;
-    spriteWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657SpriteWork), HU_MEMNUM_OVL);
+    spriteWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657SpriteWork), 0x10000000);
     obj->data = spriteWork;
     memset(spriteWork, 0, sizeof(M657SpriteWork));
 }
@@ -102,10 +103,10 @@ void fn_1_5094(void)
                   lbl_1_data_2F0[spriteIndex].y);
     }
     for (spriteIndex = 0; spriteIndex < 4; spriteIndex++) {
-        teamIndex = GwPlayerConf[spriteIndex].grpNo;
+        teamIndex = lbl_80265728[spriteIndex].grpNo;
         if (teamIndex == 0 || teamIndex == 1) {
             spriteWork->playerSprites[teamIndex] =
-                espEntry(lbl_1_data_2B8[GwPlayerConf[spriteIndex].charNo], 50, 0);
+                espEntry(lbl_1_data_2B8[lbl_80265728[spriteIndex].charNo], 50, 0);
             espPosSet(spriteWork->playerSprites[teamIndex], lbl_1_data_338[teamIndex].x,
                       lbl_1_data_338[teamIndex].y);
         }

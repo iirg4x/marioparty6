@@ -91,49 +91,49 @@ M626PlayerConfig lbl_1_data_470[2] = {
 };
 
 M626SceneryMotion lbl_1_data_528[14] = {
-{12, 0.200000003f, HU3D_MOTATTR_LOOP},
-{-1, 0.00000000f, HU3D_ATTR_NONE},
-{13, 0.200000003f, HU3D_MOTATTR_LOOP},
-{14, 0.200000003f, HU3D_MOTATTR_LOOP},
-{15, 0.200000003f, HU3D_ATTR_NONE},
-{16, 0.200000003f, HU3D_ATTR_NONE},
-{17, 0.200000003f, HU3D_ATTR_NONE},
-{18, 0.200000003f, HU3D_ATTR_NONE},
-{19, 0.200000003f, HU3D_ATTR_NONE},
-{20, 0.200000003f, HU3D_ATTR_NONE},
-{21, 0.200000003f, HU3D_MOTATTR_LOOP},
-{22, 0.200000003f, HU3D_MOTATTR_LOOP},
-{23, 0.200000003f, HU3D_MOTATTR_LOOP},
-{-2, 0.00000000f, HU3D_ATTR_NONE}
+{12, 0.200000003f, ((1 << 30) | (1 << 0))},
+{-1, 0.00000000f, 0},
+{13, 0.200000003f, ((1 << 30) | (1 << 0))},
+{14, 0.200000003f, ((1 << 30) | (1 << 0))},
+{15, 0.200000003f, 0},
+{16, 0.200000003f, 0},
+{17, 0.200000003f, 0},
+{18, 0.200000003f, 0},
+{19, 0.200000003f, 0},
+{20, 0.200000003f, 0},
+{21, 0.200000003f, ((1 << 30) | (1 << 0))},
+{22, 0.200000003f, ((1 << 30) | (1 << 0))},
+{23, 0.200000003f, ((1 << 30) | (1 << 0))},
+{-2, 0.00000000f, 0}
 };
 
 M626SceneryMotion lbl_1_data_5D0[15] = {
-{-1, 0.00000000f, HU3D_ATTR_NONE},
-{5, 0.200000003f, HU3D_MOTATTR_LOOP},
-{-2, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE},
-{0, 0.00000000f, HU3D_ATTR_NONE}
+{-1, 0.00000000f, 0},
+{5, 0.200000003f, ((1 << 30) | (1 << 0))},
+{-2, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0},
+{0, 0.00000000f, 0}
 };
 
 M626SceneryParameters lbl_1_data_684[8] = {
-{5, 1, 1, 0, 2, HU3D_MOTATTR_LOOP, 0, 10, NULL, NULL, 0.00000000f, fn_1_9974},
-{1, 0, 2, 0, 2, HU3D_ATTR_NONE, 0, 1, NULL, NULL, 0.00000000f, fn_1_A2AC},
-{1, 0, 0, 0, 2, HU3D_MOTATTR_LOOP, 0, 8, NULL, NULL, 0.00000000f, fn_1_9564},
-{1, 0, 0, 1, 2, HU3D_ATTR_DISPOFF, 0, 3, NULL, NULL, 0.00000000f, fn_1_97A8},
-{30, 1, 3, 0, 5, HU3D_ATTR_NONE, 0, 9, NULL, NULL, 0.00000000f, fn_1_9E18},
-{4, 0, 4, 0, 1, HU3D_ATTR_NONE, 1, 11, lbl_1_data_528, NULL, 0.00000000f, fn_1_A398},
-{5, 1, 5, 0, 0, HU3D_ATTR_NONE, 0, 4, lbl_1_data_5D0, NULL, 0.00000000f, fn_1_9A84},
-{-1, 0, 0, 0, 0, HU3D_ATTR_NONE, 0, 0, NULL, NULL, 0.00000000f, NULL}
+{5, 1, 1, 0, 2, ((1 << 30) | (1 << 0)), 0, 10, NULL, NULL, 0.00000000f, fn_1_9974},
+{1, 0, 2, 0, 2, 0, 0, 1, NULL, NULL, 0.00000000f, fn_1_A2AC},
+{1, 0, 0, 0, 2, ((1 << 30) | (1 << 0)), 0, 8, NULL, NULL, 0.00000000f, fn_1_9564},
+{1, 0, 0, 1, 2, (1 << 0), 0, 3, NULL, NULL, 0.00000000f, fn_1_97A8},
+{30, 1, 3, 0, 5, 0, 0, 9, NULL, NULL, 0.00000000f, fn_1_9E18},
+{4, 0, 4, 0, 1, 0, 1, 11, lbl_1_data_528, NULL, 0.00000000f, fn_1_A398},
+{5, 1, 5, 0, 0, 0, 0, 4, lbl_1_data_5D0, NULL, 0.00000000f, fn_1_9A84},
+{-1, 0, 0, 0, 0, 0, 0, 0, NULL, NULL, 0.00000000f, NULL}
 };
 
 Vec lbl_1_data_7E4 = {0.00000000f, -1.00000000f, 0.00000000f};
@@ -160,10 +160,10 @@ void fn_1_8C50(HUPROCESS *process) {
         slotIndex += 1;
         objectSlot += 1;
     }
-    managerObject = omAddObjEx(process, 12, 0U, 0U, -1, fn_1_8D44);
+    managerObject = fn_8003AB38(process, 12, 0U, 0U, -1, fn_1_8D44);
     lbl_1_bss_6C0 = managerObject;
-    managerObject->stat |= OM_STAT_MODELPAUSE;
-    managerState = HuMemDirectMallocNum(HEAP_HEAP, 4, HU_MEMNUM_OVL);
+    managerObject->stat |= (1 << 8);
+    managerState = HuMemDirectMallocNum(HEAP_HEAP, 4, 0x10000000);
     managerObject->data = managerState;
     memset(managerState, 0, 4);
     fn_1_9CD4(managerObject);
@@ -201,12 +201,12 @@ void fn_1_8D7C(HUPROCESS *process, M626SceneryParameters *param)
     s32 resource;
 
     for (group = 0; group < param->count; group++) {
-        object = omAddObjEx(process, 12, 1, 13, 0, param->update);
+        object = fn_8003AB38(process, 12, 1, 13, 0, param->update);
         fn_1_9020(object);
-        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M626SceneryWork), HU_MEMNUM_OVL);
+        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M626SceneryWork), 0x10000000);
         object->data = work;
         memset(work, 0, sizeof(M626SceneryWork));
-        object->stat |= OM_STAT_MODELPAUSE;
+        object->stat |= (1 << 8);
         state = work;
         work->common.actor.parameters = param;
         work->common.identity.sceneryId = param->firstId + group;
@@ -220,8 +220,8 @@ void fn_1_8D7C(HUPROCESS *process, M626SceneryParameters *param)
         if (param->linkModel != 0) {
             model = fn_1_3C94(fn_1_830(param->modelResource));
         } else {
-            model = (s16)Hu3DModelCreate(HuDataSelHeapReadNum(fn_1_830(param->modelResource),
-                                                             HU_MEMNUM_OVL, HEAP_MODEL));
+            model = (s16)fn_80025A04(fn_80008DD0(fn_1_830(param->modelResource),
+                                                             0x10000000, 2));
         }
         object->mdlId[0] = model;
         motion = param->motions;
@@ -241,16 +241,16 @@ void fn_1_8D7C(HUPROCESS *process, M626SceneryParameters *param)
         }
         work->common.detail.startPosition = state->common.position;
         state->common.rotation.y = param->rotationY;
-        Hu3DModelPosSet(model, 0.0f, 0.0f, 0.0f);
-        Hu3DModelRotSet(model, 0.0f, 0.0f, 0.0f);
-        Hu3DModelLayerSet(model, param->layer);
-        Hu3DModelAttrSet(model, param->attr);
+        fn_80026760(model, 0.0f, 0.0f, 0.0f);
+        fn_80026808(model, 0.0f, 0.0f, 0.0f);
+        fn_80026B8C(model, param->layer);
+        fn_800269E8(model, param->attr);
         switch (param->shadow) {
         case 1:
-            Hu3DModelShadowSet(model);
+            fn_80026E44(model);
             break;
         case 2:
-            Hu3DModelShadowMapSet(model);
+            fn_80026FFC(model);
             break;
         }
     }
@@ -311,10 +311,10 @@ void fn_1_90FC(OMOBJ *object, s32 index)
         param = &work->common.actor.parameters->motions[index];
         model = object->mdlId[0];
         if (state->common.motionIndex < 0 || (0.0) == param->blend) {
-            Hu3DMotionSet(model, motion);
-            Hu3DModelAttrSet(model, param->attr);
+            fn_8002C95C(model, motion);
+            fn_800269E8(model, param->attr);
         } else {
-            Hu3DMotionShiftSet(model, motion, (0.0f), (60.0f) * param->blend,
+            fn_8002CCC0(model, motion, (0.0f), (60.0f) * param->blend,
                                param->attr);
         }
         state->common.motionIndex = index;
@@ -326,8 +326,8 @@ BOOL fn_1_9208(OMOBJ *object)
 {
     s32 model_id;
     model_id = *object->mdlId;
-    if (Hu3DMotionEndCheck((HU3D_MODELID)model_id) != 0 &&
-        Hu3DMotionShiftIDGet((HU3D_MODELID)model_id) < 0) {
+    if (fn_8002D75C((HU3D_MODELID)model_id) != 0 &&
+        fn_8002D3EC((HU3D_MODELID)model_id) < 0) {
         return TRUE;
     }
     return FALSE;
@@ -348,7 +348,7 @@ BOOL fn_1_9270(s32 type, s32 id, char *name, Vec *position, Vec *rotation)
     }
     work = object->data;
     model = object->mdlId[0];
-    part = Hu3DModelObjPtrGet(model, name);
+    part = fn_80026BF4(model, name);
     if (part != NULL) {
         position->x = part->mesh.curr.pos.x;
         position->y = part->mesh.curr.pos.y;
@@ -357,7 +357,7 @@ BOOL fn_1_9270(s32 type, s32 id, char *name, Vec *position, Vec *rotation)
         rotation->y = 90.0 + part->mesh.curr.rot.y;
         rotation->z = part->mesh.curr.rot.z;
     }
-    return !Hu3DMotionEndCheck(model);
+    return !fn_8002D75C(model);
 }
 
 /* Updates a collision-enabled scenery actor from its object callback. */
@@ -380,8 +380,8 @@ void fn_1_93E4(OMOBJ *object)
 
     state->common.rotation.y = normalizedAngle;
     state->common.rotation.x = state->common.rotation.z = 0.00000000f;
-    Hu3DModelPosSetV((s16)modelId, &state->common.position);
-    Hu3DModelRotSetV((s16)modelId, &state->common.rotation);
+    fn_80026790((s16)modelId, &state->common.position);
+    fn_80026838((s16)modelId, &state->common.rotation);
 }
 
 /* Advances collision work and the actor's motion timer on each update. */
@@ -410,7 +410,7 @@ void fn_1_9564(OMOBJ *object)
 {
     void *work = object->data;
     s32 model = object->mdlId[0];
-    s16 nightMode = GwMgNightF;
+    s16 nightMode = lbl_802C0278;
 
     if (nightMode == 1) {
         fn_1_C94(model, "inf_light2_1_1", 1);
@@ -513,13 +513,13 @@ void fn_1_9974(OMOBJ *object)
     M626SceneryWork *work = object->data;
     s32 model = object->mdlId[0];
 
-    Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
-    Hu3DMotionTimeSet(model,
+    fn_800269E8(model, ((1 << 30) | (1 << 0)));
+    fn_8002D414(model,
                       (f32)(20.000000000000000 * (f64)work->common.identity.sceneryId +
                             5.0000000000000000 *
                                 (0.000030517578125000000 *
                                   (f64)(f32)((u16)frand() - 32768))));
-    Hu3DMotionSpeedSet(model, 0.300000000f);
+    fn_8002D86C(model, 0.300000000f);
     object->objFunc = fn_1_9A80;
 }
 
@@ -567,12 +567,12 @@ void fn_1_9D24(OMOBJ *object)
 
     switch (*state) {
     case 0:
-        if (MgSeqModeGet() == 5) {
+        if (fn_80071A8C() == 5) {
             *state += 1;
         }
         break;
     case 1:
-        if (MgSeqModeGet() != 5) {
+        if (fn_80071A8C() != 5) {
             *state += 1;
             lbl_1_bss_30C = 1;
         }
@@ -643,8 +643,8 @@ void fn_1_9E18(OMOBJ *object)
             break;
         }
     }
-    Hu3DModelScaleSet(modelId, 1.5f, 1.5f, 1.5f);
-    Hu3DModelAttrSet(modelId, HU3D_ATTR_DISPOFF);
+    fn_800268B0(modelId, 1.5f, 1.5f, 1.5f);
+    fn_800269E8(modelId, (1 << 0));
     object->objFunc = fn_1_9FF8;
 }
 
@@ -670,7 +670,7 @@ void fn_1_9FF8(OMOBJ *object)
         }
         state->common.collisionMask = targetHeight;
         work->effect.active = 1;
-        Hu3DModelAttrReset(model, HU3D_ATTR_DISPOFF);
+        fn_80026A44(model, (1 << 0));
         /* A new throw begins moving in the frame it is launched. */
     case 2:
         if (lbl_1_bss_30C != 0) {
@@ -702,7 +702,7 @@ void fn_1_A17C(OMOBJ *object, s32 particleCount)
     state->state = 0;
     work->common.collisionFlags &= ~(1 << 0);
     state->effect.active = 0;
-    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+    fn_800269E8(model, (1 << 0));
     fn_1_DD48(20, 30.0000000f, &work->common.position);
     fn_1_3340(M626_SNOWBALL_IMPACT_SOUND_ID, &work->common.position);
 }
@@ -721,7 +721,7 @@ void fn_1_A2AC(OMOBJ *object)
     s32 model = object->mdlId[0];
 
     lbl_1_bss_308 = 0;
-    Hu3DModelAttrSet(model, HU3D_MOTATTR_PAUSE);
+    fn_800269E8(model, ((1 << 30) | (1 << 1)));
     object->objFunc = fn_1_A318;
 }
 
@@ -732,8 +732,8 @@ void fn_1_A318(OMOBJ *object)
     s32 model = object->mdlId[0];
 
     if (work->timer == 90) {
-        Hu3DModelAttrReset(model, HU3D_MOTATTR_PAUSE);
-        Hu3DMotionSpeedSet(model, 2.00000000f);
+        fn_80026A44(model, ((1 << 30) | (1 << 1)));
+        fn_8002D86C(model, 2.00000000f);
     }
     work->timer++;
 }
@@ -761,12 +761,12 @@ void fn_1_A398(OMOBJ *object)
     work->common.computerDifficulty = 4;
     work->common.controlPhase = 0;
     work->common.modelId = fn_1_3C94(fn_1_830(9));
-    Hu3DModelLayerSet((s16)work->common.modelId, 5);
-    Hu3DModelHookSet(model, "itemhook_R",
+    fn_80026B8C((s16)work->common.modelId, 5);
+    fn_8002741C(model, "itemhook_R",
                      (s16)work->common.modelId);
     work->common.motionState = 0;
 
-    nightMode = GwMgNightF;
+    nightMode = lbl_802C0278;
     if (nightMode == 1) {
         *configuration = lbl_1_data_470[1];
         work->common.computerDifficulty++;
@@ -839,14 +839,14 @@ void fn_1_A680(OMOBJ *object)
             work->common.travelDistance += PSVECMag(&work->common.velocity);
             if (work->common.travelDistance > 80.0) {
                 work->common.travelDistance = (f32)((f64)work->common.travelDistance - 80.0);
-                fn_1_3340(MSM_SE_GUIDE_34, &work->common.position);
+                fn_1_3340(958, &work->common.position);
             }
         }
         if (work->common.motionIndex == 3) {
             work->common.travelDistance += PSVECMag(&work->common.velocity);
             if (work->common.travelDistance > 180.0) {
                 work->common.travelDistance = (f32)((f64)work->common.travelDistance - 180.0);
-                fn_1_3340(MSM_SE_GUIDE_35, &work->common.position);
+                fn_1_3340(959, &work->common.position);
             }
         }
     }
@@ -904,7 +904,7 @@ s32 fn_1_A87C(OMOBJ *object) {
             work->common.active = 1;
             work->common.velocity.y = 33.333332f;
             fn_1_90FC(object, 7);
-            fn_1_3340(MSM_SE_GUIDE_69, &work->common.position);
+            fn_1_3340(993, &work->common.position);
         }
         break;
     case 4:
@@ -938,7 +938,7 @@ s32 fn_1_A87C(OMOBJ *object) {
                 Vec dustPosition = work->common.position;
 
                 dustPosition.y += 10.0;
-                CharEffectDustCreate(-1, 1.0f, &dustPosition);
+                fn_8006065C(-1, 1.0f, &dustPosition);
             }
             work->common.collisionFlags |= 1;
             lbl_1_bss_308++;
@@ -948,7 +948,7 @@ s32 fn_1_A87C(OMOBJ *object) {
         }
         /* After landing, the intro completes when the live-play phase begins. */
     case 6:
-        if (MgSeqModeGet() != 5) {
+        if (fn_80071A8C() != 5) {
             break;
         }
         work->common.statePhase++;
@@ -973,7 +973,7 @@ void fn_1_B288(OMOBJ *object)
 
     if (work->common.requestedMotion != -1) {
         fn_1_90FC(object, work->common.requestedMotion);
-        Hu3DMotionSpeedSet(*object->mdlId, work->common.motionSpeed);
+        fn_8002D86C(*object->mdlId, work->common.motionSpeed);
     }
 }
 

@@ -10,11 +10,11 @@ float GetClusterCurve(HSF_TRACK *clusterTrack, float motionTime) {
     float *constantValue;
 
     switch (clusterTrack->curveType) {
-        case HSF_CURVE_LINEAR:
+        case 1:
             return GetLinear(clusterTrack->numKeyframes, clusterTrack->data, motionTime);
-        case HSF_CURVE_BEZIER:
+        case 2:
             return GetBezier(clusterTrack->numKeyframes, clusterTrack, motionTime);
-        case HSF_CURVE_CONST:
+        case 4:
             constantValue = &clusterTrack->value;
             return *constantValue;
     }
@@ -26,11 +26,11 @@ float GetClusterWeightCurve(HSF_TRACK *clusterTrack, float motionTime) {
     float *constantValue;
 
     switch (clusterTrack->curveType) {
-        case HSF_CURVE_LINEAR:
+        case 1:
             return GetLinear(clusterTrack->numKeyframes, clusterTrack->data, motionTime);
-        case HSF_CURVE_BEZIER:
+        case 2:
             return GetBezier(clusterTrack->numKeyframes, clusterTrack, motionTime);
-        case HSF_CURVE_CONST:
+        case 4:
             constantValue = &clusterTrack->value;
             return *constantValue;
     }
@@ -134,10 +134,10 @@ void ClusterProc(HU3D_MODEL *modelP) {
     HSF_CLUSTER *cluster;
     HSF_OBJECT *obj;
 
-    for (clusterSlotIndex = 0; clusterSlotIndex < HU3D_CLUSTER_MAX; clusterSlotIndex++) {
+    for (clusterSlotIndex = 0; clusterSlotIndex < 4; clusterSlotIndex++) {
         clusterMotionId = modelP->motIdCluster[clusterSlotIndex];
-        if (clusterMotionId != HU3D_MOTIONID_NONE) {
-            motionP = &Hu3DMotion[clusterMotionId];
+        if (clusterMotionId != -1) {
+            motionP = &lbl_802624B8[clusterMotionId];
             hsfMotion = motionP->hsf;
             hsf = modelP->hsf;
             cluster = hsfMotion->cluster;
@@ -184,21 +184,21 @@ void ClusterMotionExec(HU3D_MODEL *modelP) {
     hsf = modelP->hsf;
     hsfMotion = hsf->motion;
     track = hsfMotion->track;
-    for (clusterSlotIndex = 0; clusterSlotIndex < HU3D_CLUSTER_MAX; clusterSlotIndex++) {
-        if (modelP->motIdCluster[clusterSlotIndex] != HU3D_MOTIONID_NONE) {
+    for (clusterSlotIndex = 0; clusterSlotIndex < 4; clusterSlotIndex++) {
+        if (modelP->motIdCluster[clusterSlotIndex] != -1) {
             clusterMotionId = modelP->motIdCluster[clusterSlotIndex];
-            motionP = &Hu3DMotion[clusterMotionId];
+            motionP = &lbl_802624B8[clusterMotionId];
             hsf = motionP->hsf;
             hsfMotion = hsf->motion;
             track = hsfMotion->track;
             motionTime = modelP->clusterTime[clusterSlotIndex];
             for (trackIndex = 0; trackIndex < hsfMotion->numTracks; trackIndex++, track++) {
                 switch (track->type) {
-                    case HSF_TRACK_CLUSTER:
+                    case 5:
                         cluster = &hsf->cluster[track->cluster];
                         cluster->index = GetClusterCurve(track, motionTime);
                         break;
-                    case HSF_TRACK_CLUSTER_WEIGHT:
+                    case 6:
                         weightTrack = track;
                         cluster = &hsf->cluster[weightTrack->cluster];
                         cluster->weight[weightTrack->clusterWeight] =

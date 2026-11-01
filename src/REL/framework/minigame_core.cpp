@@ -33,12 +33,12 @@ MinigameCore::MinigameCore() : messageFrames(0)
 // At game deletion, set each registered winner's bonus to ten coins outside battle and practice.
 MinigameCore::~MinigameCore()
 {
-    if (MgDataTbl[GwSystem.mgNo].type != MG_TYPE_BATTLE) {
+    if (MgDataTbl[lbl_80265B70.mgNo].type != MG_TYPE_BATTLE) {
         MinigameCore &game = static_cast<MinigameCore &>(getChecked());
         for (int index = 0; index < 4; ++index) {
             int playerNo = game.winners[index];
-            if (playerNo >= 0 && !_CheckFlag(FLAG_MG_PRACTICE))
-                GwPlayer[playerNo].mgCoinBonus = 10;
+            if (playerNo >= 0 && !fn_8006A124(65551))
+                lbl_80265750[playerNo].mgCoinBonus = 10;
         }
     }
 }
@@ -47,19 +47,19 @@ MinigameCore::~MinigameCore()
 // A model-free object then polls exit requests and runs the shared frame update.
 void MinigameCore::setup(int objectLimit, int managerPriority)
 {
-    OMOBJMAN *manager = omInitObjMan(objectLimit, managerPriority);
-    omGameSysInit(manager);
+    OMOBJMAN *manager = fn_8003A8BC(objectLimit, managerPriority);
+    fn_80069F1C(manager);
     setupObjects(manager);
-    omAddObjEx(manager, 0, 0, 0, OM_GRP_NONE, updateCallback);
+    fn_8003AB38(manager, 0, 0, 0, -1, updateCallback);
 }
 
 // Game setup uses this path when it needs the actor manager's player and actor arrays.
 // Register the game's objects before installing the shared frame callback.
 void MinigameCore::setupActorManager()
 {
-    OMOBJMAN *manager = MgActorObjectSetup();
+    OMOBJMAN *manager = fn_80080418();
     setupObjects(manager);
-    omAddObjEx(manager, 0, 0, 0, OM_GRP_NONE, updateCallback);
+    fn_8003AB38(manager, 0, 0, 0, -1, updateCallback);
 }
 
 // Called by the object manager each frame; start exit only when no wipe is active.
@@ -99,8 +99,8 @@ void MinigameCore::exitCallback(OMOBJ *)
     }
     game->finishGame();
     delete game;
-    CharModelKill(CHARNO_NONE);
-    omOvlReturnEx(1, 1);
+    fn_8005BB8C(-1);
+    fn_8003A5E4(1, 1);
 }
 
 // Game result code registers a player in the first free winner slot.
@@ -194,7 +194,7 @@ void MinigameCore::showWinners()
     }
     int characterNos[4];
     for (int index = 0; index < 4; ++index)
-        characterNos[index] = entries[index] < 0 ? -1 : GwPlayerConf[entries[index]].charNo;
+        characterNos[index] = entries[index] < 0 ? -1 : lbl_80265728[entries[index]].charNo;
     GameMesCreate(GAMEMES_MES_MG_WINNER, GAMEMES_MG_TYPE_WIN, characterNos[0], characterNos[1],
                   characterNos[2], characterNos[3]);
 }
@@ -203,7 +203,7 @@ void MinigameCore::showWinners()
 // jingle.
 void MinigameCore::showRecord(int recordValue)
 {
-    if (_CheckFlag(FLAG_MG_PRACTICE))
+    if (fn_8006A124(65551))
         return;
     MinigameCore &game = static_cast<MinigameCore &>(getChecked());
     game.messageId = GameMesCreate(GAMEMES_MES_MG_RECORD, recordValue);

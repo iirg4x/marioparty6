@@ -1,4 +1,5 @@
 /* Runs the minigame module's constructors at load and destructors at unload. */
+#include <math.h>
 #include "REL/m635dll.h"
 
 typedef void (*VoidFunc)(void);

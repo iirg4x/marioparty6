@@ -44,17 +44,17 @@ MGSCORE *MgScoreCreate(int digitFile, int unitFile, BOOL showLeadingZeros) {
         case -1:
             break;
 
-        case DATANUM(DATA_mgconst, 0x35):
-        case DATANUM(DATA_mgconst, 0x36):
+        case DATANUM(0x9b0000, 0x35):
+        case DATANUM(0x9b0000, 0x36):
             // These two unit files share the first offset layout.
             unitStyle = 0;
             break;
 
-        case DATANUM(DATA_mgconst, 0x37):
+        case DATANUM(0x9b0000, 0x37):
             unitStyle = 1;
             break;
 
-        case DATANUM(DATA_mgconst, 0x38):
+        case DATANUM(0x9b0000, 0x38):
             unitStyle = 2;
             break;
 
@@ -81,7 +81,7 @@ MGSCORE *MgScoreInit(int digitFile) {
     MGSCORE *score;
     int digitIndex;
 
-    score = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MGSCORE), HU_MEMNUM_OVL);
+    score = HuMemDirectMallocNum(HEAP_HEAP, sizeof(MGSCORE), 0x10000000);
     if (score == NULL) {
         return NULL;
     }
@@ -105,7 +105,7 @@ MGSCORE *MgScoreInit(int digitFile) {
     score->unitOfs.x = 0.0f;
     score->unitOfs.y = 0.0f;
     score->grpId = HuSprGrpCreate(SCORE_SPRMAX);
-    score->sprId = HuMemDirectMallocNum(HEAP_HEAP, SCORE_SPRMAX*sizeof(HUSPRID), HU_MEMNUM_OVL);
+    score->sprId = HuMemDirectMallocNum(HEAP_HEAP, SCORE_SPRMAX*sizeof(HUSPRID), 0x10000000);
     score->digitAnim = HuSprAnimDataRead(digitFile);
 
     for (digitIndex = 0; digitIndex < MGSCORE_DIGIT_MAX; digitIndex++) {
@@ -116,7 +116,7 @@ MGSCORE *MgScoreInit(int digitFile) {
     score->digitW = HuSprData[score->sprId[0]].data->pat->sizeX;
     MgScorePriSet(score, 90);
     ScoreDispUpdate(score);
-    score->proc = HuPrcChildCreate(ScoreMain, 0x1000, 0x1000, 0, HuPrcCurrentGet());
+    score->proc = fn_8000DAC0(ScoreMain, 0x1000, 0x1000, 0, fn_8000DD9C());
     score->proc->property = score;
     return score;
 }
@@ -258,7 +258,7 @@ static void ScoreMain(void)
 {
     MGSCORE *score;
 
-    score = HuPrcCurrentGet()->property;
+    score = fn_8000DD9C()->property;
     while (TRUE) {
         modeTbl[score->mode](score);
     }
@@ -280,12 +280,12 @@ static void ScoreExec(MGSCORE *score)
     while (1) {
         // The mode-table callback refreshes once per frame; it reads the active process property.
         for(passLimit=1, framePass=0; framePass<passLimit; framePass++) {
-            ScoreDispUpdate(HuPrcCurrentGet()->property);
+            ScoreDispUpdate(fn_8000DD9C()->property);
             HuPrcVSleep();
 
-            mode = ((MGSCORE *)HuPrcCurrentGet()->property)->mode;
-            prevMode = ((MGSCORE *)HuPrcCurrentGet()->property)->prevMode;
-            ((MGSCORE *)HuPrcCurrentGet()->property)->prevMode = mode;
+            mode = ((MGSCORE *)fn_8000DD9C()->property)->mode;
+            prevMode = ((MGSCORE *)fn_8000DD9C()->property)->prevMode;
+            ((MGSCORE *)fn_8000DD9C()->property)->prevMode = mode;
 
             if (mode != prevMode) {
                 return;

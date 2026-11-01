@@ -1,4 +1,5 @@
 /* Collision checks, obstacle reactions, and obstacle drawing for Throw Me a Bone. */
+#include <math.h>
 #include "REL/m650/m650.h"
 
 void fn_1_A0(void);
@@ -114,8 +115,8 @@ M650Point lbl_1_data_248[32] = {
     { { 0.0f, 0.0f, 4750.0f }, 1 },
     { { 700.0f, 0.0f, 4750.0f }, 1 },
 };
-s32 lbl_1_data_448[2] = { DATANUM(DATA_m650, 2), DATANUM(DATA_m650, 8) };
-s32 lbl_1_data_450[2] = { DATANUM(DATA_m650, 3), DATANUM(DATA_m650, 9) };
+s32 lbl_1_data_448[2] = { DATANUM(0x6d0000, 2), DATANUM(0x6d0000, 8) };
+s32 lbl_1_data_450[2] = { DATANUM(0x6d0000, 3), DATANUM(0x6d0000, 9) };
 
 s16 lbl_1_bss_4B6;
 s16 lbl_1_bss_4B4;
@@ -131,18 +132,18 @@ void fn_1_62E0(void)
 
     lbl_1_bss_2A8 = 0;
     memset(lbl_1_bss_2AC, 0, 512U);
-    lbl_1_bss_4B6 = Hu3DModelCreate(
-        HuDataSelHeapReadNum(lbl_1_data_448[lbl_1_bss_0.night], 1 << 28, HEAP_MODEL));
-    lbl_1_bss_4B4 = Hu3DModelCreate(
-        HuDataSelHeapReadNum(lbl_1_data_450[lbl_1_bss_0.night], 1 << 28, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_4B6, HU3D_CAM_ALL);
-    Hu3DModelCameraSet(lbl_1_bss_4B4, HU3D_CAM_ALL);
-    Hu3DModelAttrSet(lbl_1_bss_4B6, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(lbl_1_bss_4B4, HU3D_ATTR_DISPOFF);
+    lbl_1_bss_4B6 = fn_80025A04(
+        fn_80008DD0(lbl_1_data_448[lbl_1_bss_0.night], 1 << 28, 2));
+    lbl_1_bss_4B4 = fn_80025A04(
+        fn_80008DD0(lbl_1_data_450[lbl_1_bss_0.night], 1 << 28, 2));
+    fn_80026B64(lbl_1_bss_4B6, ((1 << 16) - 1));
+    fn_80026B64(lbl_1_bss_4B4, ((1 << 16) - 1));
+    fn_800269E8(lbl_1_bss_4B6, (1 << 0));
+    fn_800269E8(lbl_1_bss_4B4, (1 << 0));
     cameraIndex = 0;
     while (cameraIndex < 4) {
-        lbl_1_bss_4AC[cameraIndex] = Hu3DHookFuncCreate(fn_1_6478);
-        Hu3DModelCameraSet(lbl_1_bss_4AC[cameraIndex], cameraMasks[cameraIndex]);
+        lbl_1_bss_4AC[cameraIndex] = fn_800260F4(fn_1_6478);
+        fn_80026B64(lbl_1_bss_4AC[cameraIndex], cameraMasks[cameraIndex]);
         cameraIndex += 1;
     }
 }
@@ -167,13 +168,13 @@ void fn_1_6478(HU3D_MODEL *ignoredModel, Mtx *parentTransform)
     HSF_OBJECT *rockObject;
     HSF_OBJECT *shadowObject;
 
-    Hu3DModelObjDrawInit();
-    modelData = &Hu3DData[lbl_1_bss_4B6];
+    fn_8002472C();
+    modelData = &lbl_802C01C8[lbl_1_bss_4B6];
     /* This scene pointer is fetched here but the draw decisions use named HSF objects. */
     sceneData = modelData->hsf;
-    treeObject = Hu3DModelObjPtrGet(lbl_1_bss_4B6, "m650_03N");
-    rockObject = Hu3DModelObjPtrGet(lbl_1_bss_4B4, "m650_04N");
-    shadowObject = Hu3DModelObjPtrGet(lbl_1_bss_4B6, "shadow");
+    treeObject = fn_80026BF4(lbl_1_bss_4B6, "m650_03N");
+    rockObject = fn_80026BF4(lbl_1_bss_4B4, "m650_04N");
+    shadowObject = fn_80026BF4(lbl_1_bss_4B6, "shadow");
     pointIndex = 0;
     while (pointIndex < 32) {
         cell = &lbl_1_bss_2AC[pointIndex][lbl_1_bss_2A8];
@@ -207,11 +208,11 @@ void fn_1_6478(HU3D_MODEL *ignoredModel, Mtx *parentTransform)
                                 recordZOffset + lbl_1_data_1F8[pointIndex].pos.z);
                     PSMTXConcat(*parentTransform, transform, transform);
                     if (lbl_1_data_1F8[pointIndex].isRock == 0) {
-                        Hu3DModelObjPtrDraw(lbl_1_bss_4B6, treeObject, transform);
+                        fn_80024850(lbl_1_bss_4B6, treeObject, transform);
                     } else {
-                        Hu3DModelObjPtrDraw(lbl_1_bss_4B4, rockObject, transform);
+                        fn_80024850(lbl_1_bss_4B4, rockObject, transform);
                     }
-                    Hu3DModelObjPtrDraw(lbl_1_bss_4B6, shadowObject, transform);
+                    fn_80024850(lbl_1_bss_4B6, shadowObject, transform);
                     break;
                 default:
                     break;
@@ -235,11 +236,11 @@ void fn_1_6478(HU3D_MODEL *ignoredModel, Mtx *parentTransform)
                                 lbl_1_data_248[pointIndex].pos.z);
                     PSMTXConcat(*parentTransform, transform, transform);
                     if (lbl_1_data_248[pointIndex].isRock == 0) {
-                        Hu3DModelObjPtrDraw(lbl_1_bss_4B6, treeObject, transform);
+                        fn_80024850(lbl_1_bss_4B6, treeObject, transform);
                     } else {
-                        Hu3DModelObjPtrDraw(lbl_1_bss_4B4, rockObject, transform);
+                        fn_80024850(lbl_1_bss_4B4, rockObject, transform);
                     }
-                    Hu3DModelObjPtrDraw(lbl_1_bss_4B6, shadowObject, transform);
+                    fn_80024850(lbl_1_bss_4B6, shadowObject, transform);
                     break;
                 case 1:
                     currentPlayer = &lbl_1_bss_28[lbl_1_bss_2A8];
@@ -248,19 +249,19 @@ void fn_1_6478(HU3D_MODEL *ignoredModel, Mtx *parentTransform)
                     } else {
                         motionModel = currentPlayer->model7C;
                     }
-                    motionFrame = Hu3DMotionTimeGet(motionModel);
-                    motionEndFrame = Hu3DMotionMaxTimeGet(motionModel);
+                    motionFrame = fn_8002D4E0(motionModel);
+                    motionEndFrame = fn_8002D530(motionModel);
                     if (motionFrame >= motionEndFrame) {
                         if ((cell->timer % 4) == 0) {
-                            Hu3DModelAttrSet(motionModel, HU3D_ATTR_DISPOFF);
+                            fn_800269E8(motionModel, (1 << 0));
                         } else if ((cell->timer % 4) == 2) {
-                            Hu3DModelAttrReset(motionModel, HU3D_ATTR_DISPOFF);
+                            fn_80026A44(motionModel, (1 << 0));
                             /* The same model flag is reset a second time here. */
-                            Hu3DModelAttrReset(motionModel, HU3D_ATTR_DISPOFF);
+                            fn_80026A44(motionModel, (1 << 0));
                         }
                         cell->timer += 1;
                         if (cell->timer >= 30) {
-                            Hu3DModelAttrSet(motionModel, HU3D_ATTR_DISPOFF);
+                            fn_800269E8(motionModel, (1 << 0));
                             cell->state = 2;
                         }
                     }
@@ -288,7 +289,7 @@ s16 fn_1_69B0(s16 playerNo)
     int obstacleIndex;
     s16 obstacleEffectModel;
 
-    Hu3DModelPosGet(playerData->model20, &playerPosition);
+    fn_800267CC(playerData->model20, &playerPosition);
     for (obstacleIndex = 0; obstacleIndex < 32; obstacleIndex++) {
         if (lbl_1_bss_2AC[obstacleIndex][playerNo].state == 0 &&
             fn_1_6EE4(&playerPosition, &lbl_1_data_248[obstacleIndex].pos, 150.0f)) {
@@ -297,14 +298,14 @@ s16 fn_1_69B0(s16 playerNo)
             } else {
                 obstacleEffectModel = playerData->model7C;
             }
-            Hu3DModelPosSetV(obstacleEffectModel, &lbl_1_data_248[obstacleIndex].pos);
-            Hu3DMotionTimeSet(obstacleEffectModel, 0.0f);
-            Hu3DMotionSpeedSet(obstacleEffectModel, 1.0f);
-            Hu3DModelAttrReset(obstacleEffectModel, HU3D_ATTR_DISPOFF);
-            Hu3DModelPosSetV(playerData->model78, &lbl_1_data_248[obstacleIndex].pos);
-            Hu3DMotionTimeSet(playerData->model78, 0.0f);
-            Hu3DMotionSpeedSet(playerData->model78, 1.0f);
-            Hu3DModelAttrReset(playerData->model78, HU3D_ATTR_DISPOFF);
+            fn_80026790(obstacleEffectModel, &lbl_1_data_248[obstacleIndex].pos);
+            fn_8002D414(obstacleEffectModel, 0.0f);
+            fn_8002D86C(obstacleEffectModel, 1.0f);
+            fn_80026A44(obstacleEffectModel, (1 << 0));
+            fn_80026790(playerData->model78, &lbl_1_data_248[obstacleIndex].pos);
+            fn_8002D414(playerData->model78, 0.0f);
+            fn_8002D86C(playerData->model78, 1.0f);
+            fn_80026A44(playerData->model78, (1 << 0));
             lbl_1_bss_2AC[obstacleIndex][playerNo].state = 1;
             collisionNormal.x = playerPosition.x - lbl_1_data_248[obstacleIndex].pos.x;
             collisionNormal.y = 0.0f;
@@ -409,9 +410,9 @@ s16 fn_1_7000(s16 playerNo, HuVecF *throwStart, float angleDegrees, s16 obstacle
     if (obstacleIndex >= 32) {
         return 0;
     }
-    throwDirection.x = 800.0 * sin((M_PI * angleDegrees) / 180.0);
+    throwDirection.x = 800.0 * sin((3.141592653589793 * angleDegrees) / 180.0);
     throwDirection.y = 0.0f;
-    throwDirection.z = 800.0 * cos((M_PI * angleDegrees) / 180.0);
+    throwDirection.z = 800.0 * cos((3.141592653589793 * angleDegrees) / 180.0);
     obstacleDelta.x = lbl_1_data_248[obstacleIndex].pos.x - throwStart->x;
     obstacleDelta.y = 0.0f;
     obstacleDelta.z = lbl_1_data_248[obstacleIndex].pos.z - throwStart->z;

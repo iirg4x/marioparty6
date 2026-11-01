@@ -93,7 +93,7 @@
 #define MSM_ENTRY_SENO_MAX 32
 
 typedef BOOL (*MSM_OPEN)(s32 entrynum, DVDFileInfo *fileInfo);
-typedef BOOL (*MSM_READ)(DVDFileInfo *fileInfo, void *addr, s32 length, s32 offset, s32 prio);
+typedef s32 (*MSM_READ)(DVDFileInfo *fileInfo, void *addr, s32 length, s32 offset, s32 prio);
 typedef BOOL (*MSM_CLOSE)(DVDFileInfo *fileInfo);
 
 

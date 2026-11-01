@@ -162,17 +162,7 @@ void fn_1_3488(s32 player, s32 value);
 /* Returns the minigame presentation mode selected by the board. */
 static inline s16 ResultNightModeGet(void)
 {
-    return GwMgNightF;
-}
-
-static inline s16 GWMgCoinBonusGet(s32 playerNo)
-{
-    return GwPlayer[playerNo].mgCoinBonus;
-}
-
-static inline s16 GWMgCoinGet(s32 playerNo)
-{
-    return GwPlayer[playerNo].mgCoin;
+    return lbl_802C0278;
 }
 
 /* Creates the current and projected rank panels before the result sequence starts. */
@@ -181,7 +171,7 @@ static inline s16 GWMgCoinGet(s32 playerNo)
 #include "math.h"
 #include "game/hu3d.h"
 
-extern void CharModelKill(s16 charNo);
+extern void fn_8005BB8C(s16 charNo);
 
 /* Runs when the result display closes and releases all of its per-player resources. */
 
@@ -261,25 +251,25 @@ void fn_1_A0(void)
     GXColor color = {20, 0, 0, 0};
 
     OSReport("******* RESULT ObjectSetup *********\n");
-    lbl_1_bss_62C = omInitObjMan(50, 8192);
+    lbl_1_bss_62C = fn_8003A8BC(50, 8192);
     omSystemKeyCheckSetup(lbl_1_bss_62C);
     omSysPauseEnable(0);
     HuWinInit(0);
-    lbl_1_bss_628 = GwSystem.mgNo;
+    lbl_1_bss_628 = lbl_80265B70.mgNo;
     for (player = 0; player < 4; player++) {
-        GwPlayerConf[player].grpNo = GwPlayer[player].team;
+        lbl_80265728[player].grpNo = lbl_80265750[player].team;
     }
-    HuDataDirClose(MgDataTbl[lbl_1_bss_628].dataDir);
-    partyMode = GwSystem.partyF;
+    fn_800097F4(MgDataTbl[lbl_1_bss_628].dataDir);
+    partyMode = lbl_80265B70.partyF;
     if (partyMode == 0) {
-        omOvlReturnEx(1, 1);
+        fn_8003A5E4(1, 1);
         return;
     }
-    switch (MgDataTbl[GwSystem.mgNo].type) {
+    switch (MgDataTbl[lbl_80265B70.mgNo].type) {
     case MG_TYPE_KUPA:
     case MG_TYPE_KETTOU:
     case MG_TYPE_DONKEY:
-        omOvlReturnEx(1, 1);
+        fn_8003A5E4(1, 1);
         return;
     }
     if (lbl_1_bss_628 <= -1) {
@@ -292,21 +282,21 @@ void fn_1_A0(void)
     Hu3DCameraPerspectiveSet(2, 5.0f, 10000.0f, 30000.0f, 1.2f);
     Hu3DCameraViewportSet(2, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     Hu3DCameraScissorSet(2, 0, 0, 640, 480);
-    omCameraViewSetMulti(1, &lbl_1_data_0);
-    omCameraViewSetMulti(2, &lbl_1_data_1C);
-    lbl_1_bss_630 = omAddObjEx(lbl_1_bss_62C, OM_OUTVIEW_PRIO, 100, 50, -1, omOutViewMulti);
+    fn_8003E488(1, &lbl_1_data_0);
+    fn_8003E488(2, &lbl_1_data_1C);
+    lbl_1_bss_630 = fn_8003AB38(lbl_1_bss_62C, 32730, 100, 50, -1, fn_8003DAA4);
     lbl_1_bss_630->work[0] = 2;
     lightId = Hu3DGLightCreate(0.0f, 100.0f, 1000.0f, 0.0f, -0.5f, -1.0f, 255, 255, 255);
     Hu3DGLightInfinitytSet(lightId);
     lbl_1_bss_624 = 0;
-    if (MgDataTbl[GwSystem.mgNo].type != MG_TYPE_BATTLE) {
-        if ((s32)GwSystem.tagF != 0) {
-            HuPrcChildCreate(fn_1_49C4, 100, 12288, 0, lbl_1_bss_62C);
+    if (MgDataTbl[lbl_80265B70.mgNo].type != MG_TYPE_BATTLE) {
+        if ((s32)lbl_80265B70.tagF != 0) {
+            fn_8000DAC0(fn_1_49C4, 100, 12288, 0, lbl_1_bss_62C);
         } else {
-            HuPrcChildCreate(fn_1_560, 100, 12288, 0, lbl_1_bss_62C);
+            fn_8000DAC0(fn_1_560, 100, 12288, 0, lbl_1_bss_62C);
         }
     } else {
-        HuPrcChildCreate(fn_1_7A18, 100, 12288, 0, lbl_1_bss_62C);
+        fn_8000DAC0(fn_1_7A18, 100, 12288, 0, lbl_1_bss_62C);
     }
     /* The earlier window initialization makes this second initialization call return
      * immediately. */
@@ -349,43 +339,43 @@ void fn_1_560(void)
     HUWINID window;
     s16 player;
 
-    currentProcess = HuPrcCurrentGet();
+    currentProcess = fn_8000DD9C();
     fn_1_47A8();
     comCount = 0;
-    for (player = comCount; player < GW_PLAYER_MAX; player++) {
-        if (GwPlayerConf[player].type != 0) {
+    for (player = comCount; player < 4; player++) {
+        if (lbl_80265728[player].type != 0) {
             comCount++;
         }
     }
-    if (comCount == GW_PLAYER_MAX) {
+    if (comCount == 4) {
         lbl_1_bss_0 = 1;
     } else {
         lbl_1_bss_0 = 0;
     }
     lbl_1_bss_620 = 1;
     lbl_1_bss_8 = 0;
-    for (player = 0; player < GW_PLAYER_MAX; player++) {
+    for (player = 0; player < 4; player++) {
         lbl_1_bss_60C[player] = 1.0f;
         lbl_1_bss_5FC[player] = 1.0f;
     }
     fn_1_1074();
-    HuPrcChildCreate(fn_1_940, 100, 8192, 0, lbl_1_bss_62C);
+    fn_8000DAC0(fn_1_940, 100, 8192, 0, lbl_1_bss_62C);
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 20);
     HuAudSStreamPlay(MSM_STREAM_PARTYRESULT_WAIT);
     while (WipeCheck() != 0) {
         HuPrcVSleep();
     }
-    HuDataDirClose(fn_1_C45C(DATANUM(DATA_result, 0)));
+    fn_800097F4(fn_1_C45C(DATANUM(0xc60000, 0)));
     HuPrcSleep(10);
     if (lbl_1_bss_624 == 0) {
         HuPrcSleep(20);
     }
     fn_1_2068();
-    for (player = 0; player < GW_PLAYER_MAX; player++) {
+    for (player = 0; player < 4; player++) {
         lbl_1_bss_5F4[player] = fn_1_45D0(player);
     }
     fn_1_3698();
-    for (player = 0; player < GW_PLAYER_MAX; player++) {
+    for (player = 0; player < 4; player++) {
         lbl_1_bss_5EC[player] = fn_1_45D0(player);
     }
     fn_1_2878();
@@ -404,9 +394,9 @@ void fn_1_560(void)
         if (lbl_1_bss_0 != 0) {
             confirmed = 1;
         } else {
-            for (player = 0; player < GW_PLAYER_MAX; player++) {
-                if (HuPadStatGet(player) == 0 && (HuPadBtnDown[player] & PAD_BUTTON_A) != 0) {
-                    HuAudFXPlay(MSM_SE_CMN_03);
+            for (player = 0; player < 4; player++) {
+                if (HuPadStatGet(player) == 0 && (lbl_802C0008[player] & PAD_BUTTON_A) != 0) {
+                    HuAudFXPlay(2);
                     confirmed = 1;
                     break;
                 }
@@ -427,10 +417,10 @@ void fn_1_560(void)
     lbl_1_bss_620 = 0;
     lbl_1_bss_8 = 0;
     fn_1_1E8C();
-    HuDataDirClose(fn_1_C45C(DATANUM(DATA_result, 0)));
+    fn_800097F4(fn_1_C45C(DATANUM(0xc60000, 0)));
     fn_1_4694();
     omSysPauseEnable(1);
-    omOvlReturnEx(1, 1);
+    fn_8003A5E4(1, 1);
     for (;;) {
         HuPrcVSleep();
     }
@@ -457,7 +447,7 @@ void fn_1_940(void)
         } else {
             lbl_1_bss_624 = 0;
             for (player = 0; player < 4; player++) {
-                if (HuPadStatGet(player) == 0 && (HuPadBtn[player] & PAD_BUTTON_A) != 0) {
+                if (HuPadStatGet(player) == 0 && (lbl_802C0010[player] & PAD_BUTTON_A) != 0) {
                     lbl_1_bss_624 = 1;
                 }
             }
@@ -467,13 +457,13 @@ void fn_1_940(void)
             if (starRotation[player] >= 360.0f) {
                 starRotation[player] -= 360.0f;
             }
-            Hu3DModelRotSet((s16)lbl_1_bss_488[player].resultModels[1],
+            fn_80026808((s16)lbl_1_bss_488[player].resultModels[1],
                 0.0f, starRotation[player], 0.0f);
             coinRotation[player] += lbl_1_bss_60C[player];
             if (coinRotation[player] >= 360.0f) {
                 coinRotation[player] -= 360.0f;
             }
-            Hu3DModelRotSet((s16)lbl_1_bss_488[player].resultModels[2],
+            fn_80026808((s16)lbl_1_bss_488[player].resultModels[2],
                 0.0f, coinRotation[player], 0.0f);
         }
         for (player = 0; player < 9; player++) {
@@ -491,12 +481,12 @@ void fn_1_940(void)
             }
         }
         if (lbl_1_bss_8 != 0) {
-            lbl_1_bss_10 = sin((M_PI * lbl_1_bss_4) / 180.0);
+            lbl_1_bss_10 = sin((3.141592653589793 * lbl_1_bss_4) / 180.0);
             lbl_1_bss_4 += 5.0f;
             if (lbl_1_bss_4 > 180.0f) {
                 lbl_1_bss_4 -= 180.0f;
             }
-            lbl_1_bss_C = sin((M_PI * lbl_1_bss_4) / 180.0);
+            lbl_1_bss_C = sin((3.141592653589793 * lbl_1_bss_4) / 180.0);
             lbl_1_data_23C += 0.1f * (lbl_1_bss_C - lbl_1_bss_10);
             for (player = 0; player < 4; player++) {
                 if (lbl_1_bss_5EC[player] == 0) {
@@ -532,11 +522,11 @@ void fn_1_1074(void)
 
     language = GWLanguageGet();
     if (language == 1) {
-        lbl_1_bss_5E8 = displayId = espEntry(fn_1_C45C(DATANUM(DATA_result, 5)), 180, 0);
+        lbl_1_bss_5E8 = displayId = espEntry(fn_1_C45C(DATANUM(0xc60000, 5)), 180, 0);
         espPosSet(displayId, 288.0, 64.0);
         espDrawNoSet(displayId, 64);
     } else {
-        lbl_1_bss_5E8 = displayId = espEntry(fn_1_C45C(DATANUM(DATA_result, 7)), 180, 0);
+        lbl_1_bss_5E8 = displayId = espEntry(fn_1_C45C(DATANUM(0xc60000, 7)), 180, 0);
         espPosSet(displayId, 288.0, 64.0);
         espDrawNoSet(displayId, 64);
     }
@@ -545,20 +535,20 @@ void fn_1_1074(void)
         positionIndex = player * 2;
         rank = fn_1_45D0(player);
         lbl_1_bss_488[player].rankSprite[0] = displayId =
-            espEntry(fn_1_C45C(DATANUM(DATA_result, 9) + rank), 200, 0);
+            espEntry(fn_1_C45C(DATANUM(0xc60000, 9) + rank), 200, 0);
         espPosSet(displayId, lbl_1_data_54[positionIndex], lbl_1_data_54[positionIndex + 1]);
         espDrawNoSet(displayId, 64);
         espScaleSet(displayId, 0.95f, 0.95f);
 
         lbl_1_bss_488[player].placeSprite = displayId =
-            espEntry(fn_1_C45C(DATANUM(DATA_result, 2)), 150, rank);
+            espEntry(fn_1_C45C(DATANUM(0xc60000, 2)), 150, rank);
         espPosSet(displayId, lbl_1_data_74[positionIndex], lbl_1_data_74[positionIndex + 1]);
         espBankSet(displayId, rank);
         espDrawNoSet(displayId, 64);
         espScaleSet(displayId, lbl_1_data_204[rank], lbl_1_data_204[rank]);
 
         lbl_1_bss_488[player].bonusSprite = displayId =
-            espEntry(fn_1_C45C(DATANUM(DATA_result, 4)), 130, 0);
+            espEntry(fn_1_C45C(DATANUM(0xc60000, 4)), 130, 0);
         espPosSet(displayId, lbl_1_data_D4[positionIndex], lbl_1_data_D4[positionIndex + 1]);
         espBankSet(displayId, 0);
         espDrawNoSet(displayId, 64);
@@ -568,10 +558,10 @@ void fn_1_1074(void)
         for (digit = 0; digit < 3; digit++) {
             if (digit == 0) {
                 lbl_1_bss_488[player].bonusDigits[digit] = displayId =
-                    espEntry(fn_1_C45C(DATANUM(DATA_result, 0)), 120, 10);
+                    espEntry(fn_1_C45C(DATANUM(0xc60000, 0)), 120, 10);
             } else {
                 lbl_1_bss_488[player].bonusDigits[digit] = displayId =
-                    espEntry(fn_1_C45C(DATANUM(DATA_result, 0)), 120, 0);
+                    espEntry(fn_1_C45C(DATANUM(0xc60000, 0)), 120, 0);
             }
             espPosSet(displayId, lbl_1_data_F4[positionIndex] + (f32)(digit * 17),
                 lbl_1_data_F4[positionIndex + 1]);
@@ -582,10 +572,10 @@ void fn_1_1074(void)
         for (digit = 0; digit < 4; digit++) {
             if (digit == 0) {
                 lbl_1_bss_488[player].starDigits[digit] = displayId =
-                    espEntry(fn_1_C45C(DATANUM(DATA_result, 1)), 120, 10);
+                    espEntry(fn_1_C45C(DATANUM(0xc60000, 1)), 120, 10);
             } else {
                 lbl_1_bss_488[player].starDigits[digit] = displayId =
-                    espEntry(fn_1_C45C(DATANUM(DATA_result, 1)), 120, 0);
+                    espEntry(fn_1_C45C(DATANUM(0xc60000, 1)), 120, 0);
             }
             espPosSet(displayId, lbl_1_data_94[positionIndex] + (f32)(digit * 17),
                 lbl_1_data_94[positionIndex + 1]);
@@ -594,78 +584,78 @@ void fn_1_1074(void)
         for (digit = 0; digit < 4; digit++) {
             if (digit == 0) {
                 lbl_1_bss_488[player].coinDigits[digit] = displayId =
-                    espEntry(fn_1_C45C(DATANUM(DATA_result, 1)), 120, 10);
+                    espEntry(fn_1_C45C(DATANUM(0xc60000, 1)), 120, 10);
             } else {
                 lbl_1_bss_488[player].coinDigits[digit] = displayId =
-                    espEntry(fn_1_C45C(DATANUM(DATA_result, 1)), 120, 0);
+                    espEntry(fn_1_C45C(DATANUM(0xc60000, 1)), 120, 0);
             }
             espPosSet(displayId, lbl_1_data_B4[positionIndex] + (f32)(digit * 17),
                 lbl_1_data_B4[positionIndex + 1]);
             espDrawNoSet(displayId, 64);
         }
 
-        lbl_1_bss_40[player] = GWPlayerCoinGet(player);
+        lbl_1_bss_40[player] = fn_8003CD14(player);
         lbl_1_bss_30[player] = GWPlayerStarGet(player);
         fn_1_31F0(player, lbl_1_bss_40[player]);
         fn_1_333C(player, lbl_1_bss_30[player]);
         fn_1_3488(player, 0);
 
-        characters[player] = GwPlayerConf[player].charNo;
+        characters[player] = lbl_80265728[player].charNo;
         characterOffset = characters[player] * 4;
-        lbl_1_bss_488[player].characterModel = displayId = CharModelCreate(characters[player], 2);
+        lbl_1_bss_488[player].characterModel = displayId = fn_80057068(characters[player], 2);
         lbl_1_bss_488[player].characterMotions[0] =
-            CharMotionCreate(characters[player], CHARMOT_DATANUM(0, mario));
+            fn_8005B0B8(characters[player], DATANUM(0x930000, FILENUM(0)));
         lbl_1_bss_488[player].characterMotions[1] =
-            CharMotionCreate(characters[player], CHARMOT_DATANUM(36, mario));
+            fn_8005B0B8(characters[player], DATANUM(0x930000, FILENUM(36)));
         lbl_1_bss_488[player].characterMotions[2] =
-            CharMotionCreate(characters[player], CHARMOT_DATANUM(37, mario));
-        CharMotionDataClose(characters[player]);
-        Hu3DMotionSet(displayId, lbl_1_bss_488[player].characterMotions[0]);
-        Hu3DModelAttrSet(displayId, HU3D_MOTATTR_LOOP);
-        Hu3DModelCameraSet(displayId, 1);
+            fn_8005B0B8(characters[player], DATANUM(0x930000, FILENUM(37)));
+        fn_8005B4BC(characters[player]);
+        fn_8002C95C(displayId, lbl_1_bss_488[player].characterMotions[0]);
+        fn_800269E8(displayId, ((1 << 30) | (1 << 0)));
+        fn_80026B64(displayId, 1);
         Hu3D2Dto3D(&lbl_1_data_114[player], 1, &characterPosition);
-        Hu3DModelPosSetV(displayId, &characterPosition);
-        Hu3DModelScaleSetV(displayId, &lbl_1_data_1D4[rank]);
-        Hu3DModelLayerSet(displayId, 1);
+        fn_80026790(displayId, &characterPosition);
+        fn_800268E0(displayId, &lbl_1_data_1D4[rank]);
+        fn_80026B8C(displayId, 1);
 
         lbl_1_bss_488[player].resultModels[0] = displayId =
-            Hu3DModelCreate(HuDataSelHeapReadNum(fn_1_C45C(DATANUM(DATA_result, 22)),
-                HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(displayId, 1);
+            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 22)),
+                0x10000000, 2));
+        fn_80026B64(displayId, 1);
         Hu3D2Dto3D(&lbl_1_data_144[player], 1, &characterPosition);
-        Hu3DModelPosSetV(displayId, &characterPosition);
-        Hu3DModelLayerSet(displayId, 1);
-        Hu3DModelScaleSet(displayId, 0.0f, 0.0f, 0.0f);
-        Hu3DModelAttrSet(displayId, 1);
-        Hu3DModelAttrSet(displayId, HU3D_MOTATTR_LOOP);
+        fn_80026790(displayId, &characterPosition);
+        fn_80026B8C(displayId, 1);
+        fn_800268B0(displayId, 0.0f, 0.0f, 0.0f);
+        fn_800269E8(displayId, 1);
+        fn_800269E8(displayId, ((1 << 30) | (1 << 0)));
 
         lbl_1_bss_488[player].resultModels[1] = displayId =
-            Hu3DModelCreate(HuDataSelHeapReadNum(fn_1_C45C(DATANUM(DATA_result, 25)),
-                HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(displayId, 1);
+            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 25)),
+                0x10000000, 2));
+        fn_80026B64(displayId, 1);
         Hu3D2Dto3D(&lbl_1_data_174[player], 1, &characterPosition);
-        Hu3DModelScaleSet(displayId, 0.6f, 0.6f, 0.6f);
-        Hu3DModelPosSetV(displayId, &characterPosition);
-        Hu3DModelLayerSet(displayId, 1);
+        fn_800268B0(displayId, 0.6f, 0.6f, 0.6f);
+        fn_80026790(displayId, &characterPosition);
+        fn_80026B8C(displayId, 1);
 
         lbl_1_bss_488[player].resultModels[2] = displayId =
-            Hu3DModelCreate(HuDataSelHeapReadNum(fn_1_C45C(DATANUM(DATA_result, 26)),
-                HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(displayId, 1);
+            fn_80025A04(fn_80008DD0(fn_1_C45C(DATANUM(0xc60000, 26)),
+                0x10000000, 2));
+        fn_80026B64(displayId, 1);
         Hu3D2Dto3D(&lbl_1_data_1A4[player], 1, &characterPosition);
-        Hu3DModelScaleSet(displayId, 0.5f, 0.5f, 0.5f);
-        Hu3DModelPosSetV(displayId, &characterPosition);
-        Hu3DModelLayerSet(displayId, 1);
+        fn_800268B0(displayId, 0.5f, 0.5f, 0.5f);
+        fn_80026790(displayId, &characterPosition);
+        fn_80026B8C(displayId, 1);
     }
 
     for (player = 0; player < 9; player++) {
         for (digit = 0; digit < 10; digit++) {
             if (ResultNightModeGet() == 0) {
                 lbl_1_bss_320[player][digit] = displayId =
-                    espEntry(fn_1_C45C(DATANUM(DATA_result, 19)), 256, 0);
+                    espEntry(fn_1_C45C(DATANUM(0xc60000, 19)), 256, 0);
             } else {
                 lbl_1_bss_320[player][digit] = displayId =
-                    espEntry(fn_1_C45C(DATANUM(DATA_result, 20)), 256, 0);
+                    espEntry(fn_1_C45C(DATANUM(0xc60000, 20)), 256, 0);
             }
             lbl_1_bss_1B8[player][digit] = lbl_1_data_240[0] + (9 - digit) * 80;
             lbl_1_bss_50[player][digit] = lbl_1_data_240[1] + player * 80;
@@ -676,7 +666,7 @@ void fn_1_1074(void)
     HuSprExecLayerCameraSet(64, 1, 1);
 
     for (player = 0; player < 4; player++) {
-        scores[player] = GWPlayerCoinGet(player) | (GWPlayerStarGet(player) << 10);
+        scores[player] = fn_8003CD14(player) | (GWPlayerStarGet(player) << 10);
         scores[player] += GWMgCoinBonusGet(player) + GWMgCoinGet(player);
     }
     for (player = 0; player < 4; player++) {
@@ -691,7 +681,7 @@ void fn_1_1074(void)
     for (player = 0; player < 4; player++) {
         positionIndex = player * 2;
         lbl_1_bss_488[player].rankSprite[1] = displayId =
-            espEntry(fn_1_C45C(DATANUM(DATA_result, 9) + ranks[player]), 200, 0);
+            espEntry(fn_1_C45C(DATANUM(0xc60000, 9) + ranks[player]), 200, 0);
         espPosSet(displayId, lbl_1_data_54[positionIndex], lbl_1_data_54[positionIndex + 1]);
         espDrawNoSet(displayId, 64);
         espAttrSet(displayId, 4);
@@ -718,16 +708,16 @@ void fn_1_1E8C(void)
             espKill(lbl_1_bss_488[player].starDigits[handle]);
             espKill(lbl_1_bss_488[player].coinDigits[handle]);
         }
-        Hu3DModelKill((s16)lbl_1_bss_488[player].resultModels[0]);
-        Hu3DModelKill((s16)lbl_1_bss_488[player].resultModels[1]);
-        Hu3DModelKill((s16)lbl_1_bss_488[player].resultModels[2]);
+        fn_800262D0((s16)lbl_1_bss_488[player].resultModels[0]);
+        fn_800262D0((s16)lbl_1_bss_488[player].resultModels[1]);
+        fn_800262D0((s16)lbl_1_bss_488[player].resultModels[2]);
     }
     for (player = 0; player < 9; player++) {
         for (handle = 0; handle < 10; handle++) {
             espKill(lbl_1_bss_320[player][handle]);
         }
     }
-    CharModelKill(-1);
+    fn_8005BB8C(-1);
 }
 
 /* Animates awarded coins into each balance; called before the rank update. */
@@ -764,7 +754,7 @@ void fn_1_2068(void)
     }
     phaseCount = appearDuration;
     for (frame = 0; frame <= phaseCount; frame++) {
-        scale = sin((M_PI * ((90.0 / phaseCount) * frame)) / 180.0);
+        scale = sin((3.141592653589793 * ((90.0 / phaseCount) * frame)) / 180.0);
         for (player = 0; player < 4; player++) {
             espScaleSet(lbl_1_bss_488[player].bonusSprite, scale, scale);
             for (digit = 0; digit < 3; digit++) {
@@ -779,11 +769,11 @@ void fn_1_2068(void)
     for (bounceFrame = 0; bounceFrame <= 14;) {
         for (player = 0; player < 4; player++) {
             if (awards[player] >= 10) {
-                Hu3DModelAttrReset((s16)lbl_1_bss_488[player].resultModels[0], HU3D_ATTR_DISPOFF);
+                fn_80026A44((s16)lbl_1_bss_488[player].resultModels[0], (1 << 0));
             }
-            scale = 0.1f + sin((M_PI * ((120.0f / 14.0f) * bounceFrame)) / 180.0) *
-                (0.8 * (1.0 / sin((M_PI * 120.0) / 180.0)));
-            Hu3DModelScaleSet((s16)lbl_1_bss_488[player].resultModels[0], scale, scale, scale);
+            scale = 0.1f + sin((3.141592653589793 * ((120.0f / 14.0f) * bounceFrame)) / 180.0) *
+                (0.8 * (1.0 / sin((3.141592653589793 * 120.0) / 180.0)));
+            fn_800268B0((s16)lbl_1_bss_488[player].resultModels[0], scale, scale, scale);
         }
         if (lbl_1_bss_624 != 0) {
             bounceStep = 2;
@@ -798,7 +788,7 @@ void fn_1_2068(void)
     }
     elapsed = phaseCount = 0;
     for (player = 0; player < 4; player++) {
-        coins[player] = GWPlayerCoinGet((s16)player);
+        coins[player] = fn_8003CD14((s16)player);
     }
     for (;;) {
         if (lbl_1_bss_624 != 0) {
@@ -817,7 +807,7 @@ void fn_1_2068(void)
                 } else {
                     coins[player]++;
                     awards[player]--;
-                    HuAudFXPlay(MSM_SE_CMN_08);
+                    HuAudFXPlay(7);
                     lbl_1_bss_60C[player] = 3.0f;
                 }
                 fn_1_3488((s16)player, awards[player]);
@@ -838,10 +828,10 @@ void fn_1_2068(void)
     }
     phaseCount = disappearDuration;
     for (frame = 0; frame <= phaseCount; frame++) {
-        scale = cos((M_PI * ((90.0 / phaseCount) * frame)) / 180.0);
+        scale = cos((3.141592653589793 * ((90.0 / phaseCount) * frame)) / 180.0);
         for (player = 0; player < 4; player++) {
             espScaleSet(lbl_1_bss_488[player].bonusSprite, scale, scale);
-            Hu3DModelScaleSet((s16)lbl_1_bss_488[player].resultModels[0], scale, scale, scale);
+            fn_800268B0((s16)lbl_1_bss_488[player].resultModels[0], scale, scale, scale);
             for (digit = 0; digit < 3; digit++) {
                 espScaleSet(lbl_1_bss_488[player].bonusDigits[digit], scale, scale);
             }
@@ -850,7 +840,7 @@ void fn_1_2068(void)
     }
     for (player = 0; player < 4; player++) {
         espAttrSet(lbl_1_bss_488[player].bonusSprite, HUSPR_ATTR_DISPOFF);
-        Hu3DModelAttrSet((s16)lbl_1_bss_488[player].resultModels[0], HU3D_ATTR_DISPOFF);
+        fn_800269E8((s16)lbl_1_bss_488[player].resultModels[0], (1 << 0));
         for (digit = 0; digit < 3; digit++) {
             espAttrSet(lbl_1_bss_488[player].bonusDigits[digit], HUSPR_ATTR_DISPOFF);
         }
@@ -876,15 +866,15 @@ void fn_1_2878(void)
     for (player = 0; player < 4; player++) {
         if ((s16)lbl_1_bss_5F4[player] > lbl_1_bss_5EC[player]) {
             changed[player] = 1;
-            Hu3DMotionShiftSet((s16)lbl_1_bss_488[player].characterModel,
+            fn_8002CCC0((s16)lbl_1_bss_488[player].characterModel,
                 (s16)lbl_1_bss_488[player].characterMotions[1], 0.0f, 8.0f, 0);
             if (lbl_1_bss_5EC[player] != 0) {
-                CharFXStop(GwPlayerConf[player].charNo, CHARVOICEID(2));
-                CharFXPlay(GwPlayerConf[player].charNo, CHARVOICEID(6));
+                CharFXStop(lbl_80265728[player].charNo, (573+2));
+                CharFXPlay(lbl_80265728[player].charNo, (573+6));
             }
         } else if ((s16)lbl_1_bss_5F4[player] < lbl_1_bss_5EC[player]) {
             changed[player] = 1;
-            Hu3DMotionShiftSet((s16)lbl_1_bss_488[player].characterModel,
+            fn_8002CCC0((s16)lbl_1_bss_488[player].characterModel,
                 (s16)lbl_1_bss_488[player].characterMotions[2], 0.0f, 8.0f, 0);
         } else {
             changed[player] = 0;
@@ -917,7 +907,7 @@ void fn_1_2878(void)
             for (player = 0; player < 4; player++) {
                 if (changed[player] != 0) {
                     scale[player] += scaleStep[player];
-                    Hu3DModelScaleSet((s16)lbl_1_bss_488[player].characterModel,
+                    fn_800268B0((s16)lbl_1_bss_488[player].characterModel,
                         scale[player], scale[player], scale[player]);
                 }
             }
@@ -928,7 +918,7 @@ void fn_1_2878(void)
             for (player = 0; player < 4; player++) {
                 if (changed[player] != 0) {
                     scale[player] -= scaleStep[player];
-                    Hu3DModelScaleSet((s16)lbl_1_bss_488[player].characterModel,
+                    fn_800268B0((s16)lbl_1_bss_488[player].characterModel,
                         scale[player], scale[player], scale[player]);
                 }
             }
@@ -939,9 +929,9 @@ void fn_1_2878(void)
     for (player = 0; player < 4; player++) {
         espScaleSet(lbl_1_bss_488[player].placeSprite,
             lbl_1_data_204[lbl_1_bss_5EC[player]], lbl_1_data_204[lbl_1_bss_5EC[player]]);
-        Hu3DMotionShiftSet((s16)lbl_1_bss_488[player].characterModel,
+        fn_8002CCC0((s16)lbl_1_bss_488[player].characterModel,
             (s16)lbl_1_bss_488[player].characterMotions[0], 0.0f, 8.0f,
-            HU3D_MOTATTR_LOOP);
+            ((1 << 30) | (1 << 0)));
     }
     lbl_1_bss_8 = 1;
 }
@@ -1080,16 +1070,16 @@ s32 fn_1_356C(void)
     s32 timeMode;
 
     result = -1;
-    if (GwSystem.curTime == 0) {
+    if (lbl_80265B70.curTime == 0) {
         timeMode = 0;
     } else {
         timeMode = 1;
     }
-    if (_CheckFlag(FLAG_BOARD_SAVEINIT) == 0) {
+    if (fn_8006A124(65536) == 0) {
         return -1;
     }
-    if (GwSystem.boardNo <= 5) {
-        result = HuDataDirReadAsync(lbl_1_data_248[GwSystem.boardNo][timeMode]);
+    if (lbl_80265B70.boardNo <= 5) {
+        result = fn_80007F20(lbl_1_data_248[lbl_80265B70.boardNo][timeMode]);
         OSReport("/----------------Result_BGRead----------------/\n");
     }
     return result;
@@ -1100,7 +1090,7 @@ s32 fn_1_356C(void)
 void fn_1_3640(s32 backgroundReadHandle) {
     OSReport("/----------------Result_BGReadWait----------------/\n");
     if (backgroundReadHandle != -1) {
-        while (HuDataGetAsyncStat(backgroundReadHandle) == 0) {
+        while (fn_80008270(backgroundReadHandle) == 0) {
             HuPrcVSleep();
         }
     }
@@ -1129,12 +1119,12 @@ void fn_1_3698(void)
     for (player = 0; player < 5; player++) {
         coinAwards[player] = 0;
     }
-    if (MgDataTbl[GwSystem.mgNo].type == MG_TYPE_BATTLE) {
+    if (MgDataTbl[lbl_80265B70.mgNo].type == MG_TYPE_BATTLE) {
         for (player = 0; player < 4; player++) {
             for (opponent = rank = 0; opponent < 4; opponent++) {
                 if (player != opponent) {
-                    opponentBonus = GwPlayer[opponent].mgCoinBonus;
-                    playerBonus = GwPlayer[player].mgCoinBonus;
+                    opponentBonus = lbl_80265750[opponent].mgCoinBonus;
+                    playerBonus = lbl_80265750[player].mgCoinBonus;
                     if (playerBonus > opponentBonus) {
                         rank++;
                     }
@@ -1161,18 +1151,18 @@ void fn_1_3698(void)
             }
         }
         fn_1_3FB0(coinAwards);
-        if ((s32)GwSystem.tagF != 0) {
+        if ((s32)lbl_80265B70.tagF != 0) {
             for (player = 0; player < 4; player++) {
                 award = coinAwards[ranks[player]];
                 if (remainderPlayer == player) {
                     award += coinAwards[4];
                 }
-                teamAwards[GwPlayer[player].team] += award;
+                teamAwards[lbl_80265750[player].team] += award;
             }
             for (player = 0; player < 2; player++) {
                 if (teamPlayers[player] == -1) {
                     for (opponent = 0; opponent < 4; opponent++) {
-                        if (player == GwPlayer[opponent].team) {
+                        if (player == lbl_80265750[opponent].team) {
                             teamPlayers[player] = opponent;
                             break;
                         }
@@ -1180,10 +1170,10 @@ void fn_1_3698(void)
                 }
             }
             for (player = 0; player < 2; player++) {
-                GWPlayerCoinAdd(teamPlayers[player], teamAwards[player]);
-                GwPlayer[teamPlayers[player]].coinTotalMg += teamAwards[player];
-                if (GwPlayer[teamPlayers[player]].coinTotalMg > 9999) {
-                    GwPlayer[teamPlayers[player]].coinTotalMg = 9999;
+                fn_8003CDDC(teamPlayers[player], teamAwards[player]);
+                lbl_80265750[teamPlayers[player]].coinTotalMg += teamAwards[player];
+                if (lbl_80265750[teamPlayers[player]].coinTotalMg > 9999) {
+                    lbl_80265750[teamPlayers[player]].coinTotalMg = 9999;
                 }
             }
             for (player = 0; player < 4; player++) {
@@ -1197,25 +1187,25 @@ void fn_1_3698(void)
             if (remainderPlayer == player) {
                 award += coinAwards[4];
             }
-            GWPlayerCoinAdd(player, award);
+            fn_8003CDDC(player, award);
             GWMgCoinBonusSet(player, 0);
             GWMgCoinSet(player, 0);
-            GwPlayer[player].coinTotalMg += award;
-            if (GwPlayer[player].coinTotalMg > 9999) {
-                GwPlayer[player].coinTotalMg = 9999;
+            lbl_80265750[player].coinTotalMg += award;
+            if (lbl_80265750[player].coinTotalMg > 9999) {
+                lbl_80265750[player].coinTotalMg = 9999;
             }
         }
         return;
     }
     fn_1_3FB0(coinAwards);
-    if ((s32)GwSystem.tagF != 0) {
+    if ((s32)lbl_80265B70.tagF != 0) {
         for (player = 0; player < 4; player++) {
-            teamAwards[GwPlayer[player].team] += coinAwards[player];
+            teamAwards[lbl_80265750[player].team] += coinAwards[player];
         }
         for (player = 0; player < 2; player++) {
             if (teamPlayers[player] == -1) {
                 for (opponent = 0; opponent < 4; opponent++) {
-                    if (player == GwPlayer[opponent].team) {
+                    if (player == lbl_80265750[opponent].team) {
                         teamPlayers[player] = opponent;
                         break;
                     }
@@ -1223,10 +1213,10 @@ void fn_1_3698(void)
             }
         }
         for (player = 0; player < 2; player++) {
-            GWPlayerCoinAdd(teamPlayers[player], teamAwards[player]);
-            GwPlayer[teamPlayers[player]].coinTotalMg += teamAwards[player];
-            if (GwPlayer[teamPlayers[player]].coinTotalMg > 9999) {
-                GwPlayer[teamPlayers[player]].coinTotalMg = 9999;
+            fn_8003CDDC(teamPlayers[player], teamAwards[player]);
+            lbl_80265750[teamPlayers[player]].coinTotalMg += teamAwards[player];
+            if (lbl_80265750[teamPlayers[player]].coinTotalMg > 9999) {
+                lbl_80265750[teamPlayers[player]].coinTotalMg = 9999;
             }
         }
         for (player = 0; player < 4; player++) {
@@ -1236,12 +1226,12 @@ void fn_1_3698(void)
         return;
     }
     for (player = 0; player < 4; player++) {
-        GWPlayerCoinAdd(player, coinAwards[player]);
+        fn_8003CDDC(player, coinAwards[player]);
         GWMgCoinBonusSet(player, 0);
         GWMgCoinSet(player, 0);
-        GwPlayer[player].coinTotalMg += coinAwards[player];
-        if (GwPlayer[player].coinTotalMg > 9999) {
-            GwPlayer[player].coinTotalMg = 9999;
+        lbl_80265750[player].coinTotalMg += coinAwards[player];
+        if (lbl_80265750[player].coinTotalMg > 9999) {
+            lbl_80265750[player].coinTotalMg = 9999;
         }
     }
 }
@@ -1262,17 +1252,17 @@ void fn_1_3FB0(s16 *coinAwards)
     s16 contribution;
     s16 rank;
 
-    minigameType = MgDataTbl[GwSystem.mgNo].type;
+    minigameType = MgDataTbl[lbl_80265B70.mgNo].type;
     switch (minigameType) {
     case MG_TYPE_BATTLE:
         for (player = total = 0; player < 4; player++) {
-            contribution = GwPlayer[player].coinBattle;
+            contribution = lbl_80265750[player].coinBattle;
             total += contribution;
         }
         ranks[0] = ranks[1] = ranks[2] = ranks[3] = 0;
         groups[0] = groups[1] = groups[2] = groups[3] = 0;
         for (player = 0; player < 4; player++) {
-            rank = GwPlayer[player].mgCoinBonus;
+            rank = lbl_80265750[player].mgCoinBonus;
             ranks[player] = rank;
         }
         for (player = 0; player < 4; player++) {
@@ -1340,8 +1330,8 @@ void fn_1_3FB0(s16 *coinAwards)
         s16 bonusCoins;
 
         for (player = 0; player < 4; player++) {
-            minigameCoins = GwPlayer[player].mgCoin;
-            bonusCoins = GwPlayer[player].mgCoinBonus;
+            minigameCoins = lbl_80265750[player].mgCoin;
+            bonusCoins = lbl_80265750[player].mgCoinBonus;
             coinAwards[player] = allocated = bonusCoins + minigameCoins;
         }
         break;
@@ -1352,15 +1342,15 @@ void fn_1_3FB0(s16 *coinAwards)
 /* Returns how many players have a higher combined star-and-coin score. */
 s32 fn_1_45D0(s32 playerId)
 {
-    s32 playerScore[GW_PLAYER_MAX];
+    s32 playerScore[4];
     s32 player;
     s32 rank;
 
-    for (player = 0; player < GW_PLAYER_MAX; player++) {
-        playerScore[player] = GWPlayerCoinGet(player) | (GWPlayerStarGet(player) << 10);
+    for (player = 0; player < 4; player++) {
+        playerScore[player] = fn_8003CD14(player) | (GWPlayerStarGet(player) << 10);
     }
     rank = 0;
-    for (player = 0; player < GW_PLAYER_MAX; player++) {
+    for (player = 0; player < 4; player++) {
         if (player != playerId && playerScore[playerId] < playerScore[player]) {
             rank++;
         }
@@ -1374,15 +1364,15 @@ void fn_1_4694(void)
 {
     s16 player;
 
-    if (GwSystem.turnNo < 52) {
-        s16 turnNo = GwSystem.turnNo;
+    if (lbl_80265B70.turnNo < 52) {
+        s16 turnNo = lbl_80265B70.turnNo;
 
-        for (player = 0; player < GW_PLAYER_MAX; player++) {
-            GwPlayer[player].starGraph[turnNo - 1] = GwPlayer[player].star;
-            GwPlayer[player].coinGraph[turnNo - 1] = GwPlayer[player].coin;
+        for (player = 0; player < 4; player++) {
+            lbl_80265750[player].starGraph[turnNo - 1] = lbl_80265750[player].star;
+            lbl_80265750[player].coinGraph[turnNo - 1] = lbl_80265750[player].coin;
         }
         if (SLSaveFlagGet() == 0) {
-            GwSystem.saveMode = 1;
+            lbl_80265B70.saveMode = 1;
         }
     }
     SLSaveBoardTurnExec();
@@ -1392,16 +1382,16 @@ void fn_1_4694(void)
 void fn_1_47A8(void)
 {
     s16 coinAwards[5];
-    s16 playerRanks[GW_PLAYER_MAX];
+    s16 playerRanks[4];
     s32 player;
     s16 totalCoins;
 
-    if (MgDataTbl[GwSystem.mgNo].type != MG_TYPE_BATTLE) {
+    if (MgDataTbl[lbl_80265B70.mgNo].type != MG_TYPE_BATTLE) {
         OSReport("\n");
         OSReport("--------------Result BonusCoin-------------- \n");
-        for (player = 0; player < GW_PLAYER_MAX; player++) {
-            s16 minigameCoins = GwPlayer[player].mgCoin;
-            s16 bonusCoins = GwPlayer[player].mgCoinBonus;
+        for (player = 0; player < 4; player++) {
+            s16 minigameCoins = lbl_80265750[player].mgCoin;
+            s16 bonusCoins = lbl_80265750[player].mgCoinBonus;
 
             coinAwards[player] = bonusCoins + minigameCoins;
             OSReport("Player=%d  BonusCoin=%d \n", player, coinAwards[player]);
@@ -1417,8 +1407,8 @@ void fn_1_47A8(void)
             totalCoins += coinAwards[player];
         }
         OSReport("TotalCoin=%d \n", totalCoins);
-        for (player = 0; player < GW_PLAYER_MAX; player++) {
-            s16 rank = GwPlayer[player].mgCoinBonus;
+        for (player = 0; player < 4; player++) {
+            s16 rank = lbl_80265750[player].mgCoinBonus;
 
             playerRanks[player] = rank;
             OSReport("Player=%d  Rank=%d  GetCoin=%d \n", player, playerRanks[player],

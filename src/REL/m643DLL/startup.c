@@ -13,20 +13,20 @@ void *fn_1_16C(s32 priority, u32 bytes, OMOBJ_FUNC callback);
 /* Creates the actor manager and starts the minigame's actor update process. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_0 = MgActorObjectSetup();
-    HuPrcChildCreate(fn_1_F4, 100, 36864, 0, lbl_1_bss_0);
+    lbl_1_bss_0 = fn_80080418();
+    fn_8000DAC0(fn_1_F4, 100, 36864, 0, lbl_1_bss_0);
 }
 /* Creates the phase sequence, then updates actors once per frame until shutdown. */
 void fn_1_F4(void)
 {
-    MgSeqCreate(&lbl_1_data_0);
-    for (;;) { MgActorExec(); HuPrcVSleep(); }
+    fn_80070788(&lbl_1_data_0);
+    for (;;) { fn_800856A8(); HuPrcVSleep(); }
 }
 /* Creates the scene object during sequence init and requests the next phase. */
 void fn_1_118(s16 phase, s16 frame)
 {
     fn_1_16C(100, 12U, fn_1_17A0);
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 void fn_1_14C(s16 phase, s16 frame) {}
 void fn_1_150(s16 phase, s16 frame) {}
@@ -44,9 +44,9 @@ MGSEQ_PARAM lbl_1_data_0 = {
 void *fn_1_16C(s32 priority, u32 bytes, OMOBJ_FUNC callback)
 {
     OMOBJ *object;
-    object = omAddObjEx(lbl_1_bss_0, priority, 0, 0, 0, callback);
+    object = fn_8003AB38(lbl_1_bss_0, priority, 0, 0, 0, callback);
     if (bytes != 0) {
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, HU_MEMNUM_OVL);
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, 0x10000000);
         memset(object->data, 0, bytes);
     } else object->data = NULL;
     return object->data;

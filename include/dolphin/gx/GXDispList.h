@@ -1,6 +1,7 @@
 #ifndef _DOLPHIN_GXDISPLIST
 #define _DOLPHIN_GXDISPLIST
 
+#include <dolphin/gx/GXVert.h>
 #include <dolphin/types.h>
 
 #ifdef __cplusplus
@@ -11,12 +12,11 @@ void GXBeginDisplayList(void* list, u32 size);
 u32 GXEndDisplayList(void);
 void GXCallDisplayList(const void* list, u32 nbytes);
 
-
 static inline void GXFastCallDisplayList(void* list, u32 size)
 {
-    (*(volatile u8 *)0xCC008000) = 0x40;
-    (*(volatile void **)0xCC008000) = list;
-    (*(volatile u32 *)0xCC008000)= size;
+    GXWGFifo.u8 = 0x40;
+    GXWGFifo.u32 = (u32)list;
+    GXWGFifo.u32 = size;
 }
 
 #ifdef __cplusplus

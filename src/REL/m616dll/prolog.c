@@ -1,4 +1,5 @@
 /* REL entry points that initialize and tear down M616's timed game sequence. */
+#include <math.h>
 #include "REL/m616dll.h"
 
 typedef void (*VoidFunc)(void);

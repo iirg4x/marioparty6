@@ -219,14 +219,14 @@ void fn_1_71F0(void)
             fn_1_67D4(3, 5, 0);
             player->setupState = 1;
             lbl_1_bss_1F4.selectedSlot = player->actionSlot;
-            MgPlayerDespawn(lbl_1_bss_1E8.players[playerIndex]);
+            fn_80086E3C(lbl_1_bss_1E8.players[playerIndex]);
             player->state = 0;
             player->collisionActive = 0;
             lbl_1_bss_544[playerIndex].shiftState = 1;
             lbl_1_bss_544[playerIndex].shiftMotion = 6;
             lbl_1_bss_544[playerIndex].shiftStart = 0.0f;
             lbl_1_bss_544[playerIndex].shiftEnd = 5.0f;
-            lbl_1_bss_544[playerIndex].shiftFlags = HU3D_MOTATTR_LOOP;
+            lbl_1_bss_544[playerIndex].shiftFlags = ((1 << 30) | (1 << 0));
             lbl_1_bss_544[playerIndex].attributesToReset = 0;
 
             target = &lbl_1_bss_60C[lbl_1_bss_1F4.selectedSlot + 45];
@@ -260,7 +260,7 @@ void fn_1_71F0(void)
             fn_1_4F64(directionPointer, boundPlayer->effectIndex);
             fn_1_55DC((s16)(lbl_1_bss_1F4.selectedSlot + 45),
                       boundPlayer->effectIndex);
-            omVibrate(player->selectedPlayer, 24, 20, 0);
+            fn_8006A030(player->selectedPlayer, 24, 20, 0);
             player->actionState++;
             break;
         }
@@ -315,7 +315,7 @@ s32 fn_1_7940(s16 effectIndex)
     }
 
     for (playerIndex = 14; playerIndex <= 17; playerIndex++) {
-        Hu3DModelLayerSet(lbl_1_bss_60C[playerIndex].modelId,
+        fn_80026B8C(lbl_1_bss_60C[playerIndex].modelId,
                           (s16)layers.values[effectIndex]);
     }
 
@@ -378,15 +378,15 @@ s32 fn_1_7940(s16 effectIndex)
             object->position = lbl_1_data_100[choice].points[side];
             object->position.y = level;
             object->rotation.y = extraAngle;
-            Hu3DModelAttrReset(lbl_1_bss_60C[playerIndex + 45].modelId, 1U);
+            fn_80026A44(lbl_1_bss_60C[playerIndex + 45].modelId, 1U);
 
             lbl_1_bss_60C[slot->modelA].position = object->position;
             lbl_1_bss_60C[slot->modelA].rotation = object->rotation;
-            Hu3DModelAttrReset(lbl_1_bss_60C[slot->modelA].modelId, 1U);
+            fn_80026A44(lbl_1_bss_60C[slot->modelA].modelId, 1U);
 
             lbl_1_bss_60C[slot->modelB].position = object->position;
             lbl_1_bss_60C[slot->modelB].rotation = object->rotation;
-            Hu3DModelAttrReset(lbl_1_bss_60C[slot->modelB].modelId, 1U);
+            fn_80026A44(lbl_1_bss_60C[slot->modelB].modelId, 1U);
         }
         playerIndex++;
         level += 1.0f;
@@ -472,16 +472,16 @@ void fn_1_818C(void)
         if (slot->active != 0) {
             if (slot->delay-- < 0) {
                 if (lbl_1_bss_1F4.resultStarted != 0 && lbl_1_bss_1F4.selectedSlot != index &&
-                    Hu3DMotionTimeGet(object->modelId) <= 0.0f) {
-                    Hu3DModelAttrReset(object->modelId, HU3D_MOTATTR_LOOP);
-                    Hu3DMotionTimeSet(object->modelId, 1.0f);
-                    Hu3DMotionSpeedSet(object->modelId, 2.0f);
-                    Hu3DModelAttrReset(lbl_1_bss_60C[slot->modelA].modelId, HU3D_MOTATTR_LOOP);
-                    Hu3DMotionTimeSet(lbl_1_bss_60C[slot->modelA].modelId, 1.0f);
-                    Hu3DMotionSpeedSet(lbl_1_bss_60C[slot->modelA].modelId, 2.0f);
-                    Hu3DModelAttrReset(lbl_1_bss_60C[slot->modelB].modelId, HU3D_MOTATTR_LOOP);
-                    Hu3DMotionTimeSet(lbl_1_bss_60C[slot->modelB].modelId, 1.0f);
-                    Hu3DMotionSpeedSet(lbl_1_bss_60C[slot->modelB].modelId, 2.0f);
+                    fn_8002D4E0(object->modelId) <= 0.0f) {
+                    fn_80026A44(object->modelId, ((1 << 30) | (1 << 0)));
+                    fn_8002D414(object->modelId, 1.0f);
+                    fn_8002D86C(object->modelId, 2.0f);
+                    fn_80026A44(lbl_1_bss_60C[slot->modelA].modelId, ((1 << 30) | (1 << 0)));
+                    fn_8002D414(lbl_1_bss_60C[slot->modelA].modelId, 1.0f);
+                    fn_8002D86C(lbl_1_bss_60C[slot->modelA].modelId, 2.0f);
+                    fn_80026A44(lbl_1_bss_60C[slot->modelB].modelId, ((1 << 30) | (1 << 0)));
+                    fn_8002D414(lbl_1_bss_60C[slot->modelB].modelId, 1.0f);
+                    fn_8002D86C(lbl_1_bss_60C[slot->modelB].modelId, 2.0f);
                 }
                 if (lbl_1_bss_1F4.selectedSlot != index) {
                     object->position.x += slot->velocity.x;
@@ -520,9 +520,9 @@ void fn_1_818C(void)
                     object->position.z > limits[slot->effectIndex].z ||
                     object->position.z < -limits[slot->effectIndex].z) {
                     slot->active = 0;
-                    Hu3DModelAttrSet(object->modelId, 1);
-                    Hu3DModelAttrSet(lbl_1_bss_60C[slot->modelA].modelId, 1);
-                    Hu3DModelAttrSet(lbl_1_bss_60C[slot->modelB].modelId, 1);
+                    fn_800269E8(object->modelId, 1);
+                    fn_800269E8(lbl_1_bss_60C[slot->modelA].modelId, 1);
+                    fn_800269E8(lbl_1_bss_60C[slot->modelB].modelId, 1);
                 }
             }
             if (slot->active != 0) anyActive = 1;
@@ -572,7 +572,7 @@ void fn_1_818C(void)
     index = 0;
     phaseFrame = 0.0f;
     while (index < 5) {
-        Hu3DModelLayerSet(lbl_1_bss_60C[order[index] + 45].modelId, layers[index]);
+        fn_80026B8C(lbl_1_bss_60C[order[index] + 45].modelId, layers[index]);
         lbl_1_bss_60C[order[index] + 45].position.y += phaseFrame;
         index++;
         phaseFrame += 0.1f;
@@ -594,7 +594,7 @@ void fn_1_818C(void)
     index = 0;
     phaseFrame = 0.0f;
     while (index < 3) {
-        Hu3DModelLayerSet(lbl_1_bss_60C[order[index] + 50].modelId, layers[index]);
+        fn_80026B8C(lbl_1_bss_60C[order[index] + 50].modelId, layers[index]);
         lbl_1_bss_60C[order[index] + 50].position.y += phaseFrame;
         index++;
         phaseFrame += 0.1f;
@@ -605,8 +605,8 @@ void fn_1_818C(void)
 void fn_1_9050(void)
 {
     M660SceneLight *light = &lbl_1_bss_38;
-    Hu3DLLightPosSetV(light->modelId, light->lightSlot, &light->position, &light->direction);
-    Hu3DLLightPointSet(light->modelId, light->lightSlot, light->referenceDistance,
+    fn_80028F14(light->modelId, light->lightSlot, &light->position, &light->direction);
+    fn_80028C1C(light->modelId, light->lightSlot, light->referenceDistance,
         light->referenceBrightness, GX_DA_STEEP);
 }
 

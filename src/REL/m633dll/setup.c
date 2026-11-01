@@ -115,15 +115,15 @@ void fn_1_28A4(OMOBJ *playerObject)
     s32 soundHandle;
 
     playerNo = playerObject->work[0];
-    if (GwPlayerConf[playerNo].type != 0) {
+    if (lbl_80265728[playerNo].type != 0) {
         heldButtons = lbl_1_bss_0.aiButtons;
         newlyPressedButtons = lbl_1_bss_0.aiPressedButtons;
     } else {
-        heldButtons = HuPadBtn[lbl_1_bss_0.padNumbers[playerNo]];
-        newlyPressedButtons = HuPadBtnDown[lbl_1_bss_0.padNumbers[playerNo]];
+        heldButtons = lbl_802C0010[lbl_1_bss_0.padNumbers[playerNo]];
+        newlyPressedButtons = lbl_802C0008[lbl_1_bss_0.padNumbers[playerNo]];
     }
     if (lbl_1_bss_0.segmentCount == 0) {
-        rotationButtonMask = PAD_BUTTON_TRIGGER_L | PAD_BUTTON_TRIGGER_R;
+        rotationButtonMask = 0x4000 | 0x2000;
         buttonMask = heldButtons & rotationButtonMask;
         rotationDirectionChanged = 0;
         /* Holding both rotation buttons cancels the turn. */
@@ -134,27 +134,28 @@ void fn_1_28A4(OMOBJ *playerObject)
             rotationDirectionChanged = 1;
         }
         lbl_1_bss_0.previousRotationButtonMask = buttonMask;
-        if (buttonMask == PAD_BUTTON_TRIGGER_R) {
+        if (buttonMask == 0x2000) {
             /* Adding 358 degrees turns the arena backward by 2 degrees after wrapping. */
             lbl_1_bss_0.arenaYawDegrees += 358.0f;
             if (rotationDirectionChanged != 0) {
-                CharMotionShiftSet((s16) lbl_1_bss_0.characterNumbers[playerNo],
+                fn_8005C2C8((s16) lbl_1_bss_0.characterNumbers[playerNo],
                                    lbl_1_bss_0.players[playerNo]->omObj->mtnId[12], 6.0f, 6.0f,
-                                   HU3D_MOTATTR_REV);
-                Hu3DMotionShiftSet(lbl_1_bss_0.rotatingStageModelId,
-                                   lbl_1_bss_0.stageAuxiliaryIds[0], 6.0f, 6.0f, HU3D_MOTATTR_REV);
+                                   ((1 << 30) | (1 << 2)));
+                fn_8002CCC0(lbl_1_bss_0.rotatingStageModelId,
+                                   lbl_1_bss_0.stageAuxiliaryIds[0], 6.0f, 6.0f,
+                                       ((1 << 30) | (1 << 2)));
             }
             if (lbl_1_bss_0.rotationSoundHandle == -1) {
                 lbl_1_bss_0.rotationSoundHandle = HuAudFXPlay(M633_ROTATION_CONTROL_SE_ID);
             }
-        } else if (buttonMask == PAD_BUTTON_TRIGGER_L) {
+        } else if (buttonMask == 0x4000) {
             lbl_1_bss_0.arenaYawDegrees += 2.0f;
             if (rotationDirectionChanged != 0) {
-                Hu3DModelAttrReset((s16) lbl_1_bss_0.players[playerNo]->actor->mdlId,
-                                   HU3D_MOTATTR_REV);
-                CharMotionShiftSet((s16) lbl_1_bss_0.characterNumbers[playerNo],
+                fn_80026A44((s16) lbl_1_bss_0.players[playerNo]->actor->mdlId,
+                                   ((1 << 30) | (1 << 2)));
+                fn_8005C2C8((s16) lbl_1_bss_0.characterNumbers[playerNo],
                                    lbl_1_bss_0.players[playerNo]->omObj->mtnId[12], 6.0f, 6.0f, 0U);
-                Hu3DMotionShiftSet(lbl_1_bss_0.rotatingStageModelId,
+                fn_8002CCC0(lbl_1_bss_0.rotatingStageModelId,
                                    lbl_1_bss_0.stageAuxiliaryIds[0], 6.0f, 6.0f, 0U);
             }
             if (lbl_1_bss_0.rotationSoundHandle == -1) {
@@ -163,10 +164,10 @@ void fn_1_28A4(OMOBJ *playerObject)
         } else {
             player = lbl_1_bss_0.players[playerNo];
             modelId = player->actor->mdlId;
-            if ((Hu3DMotionShiftIDGet(modelId) < 0) &&
-                (player->omObj->mtnId[13] != Hu3DMotionIDGet(modelId))) {
-                CharMotionShiftSet(player->charNo, player->omObj->mtnId[13], 0.0f, 6.0f, 0U);
-                Hu3DMotionShiftSet(lbl_1_bss_0.rotatingStageModelId, lbl_1_bss_0.stageIdleMotionId,
+            if ((fn_8002D3EC(modelId) < 0) &&
+                (player->omObj->mtnId[13] != fn_8002D3C4(modelId))) {
+                fn_8005C2C8(player->charNo, player->omObj->mtnId[13], 0.0f, 6.0f, 0U);
+                fn_8002CCC0(lbl_1_bss_0.rotatingStageModelId, lbl_1_bss_0.stageIdleMotionId,
                                    0.0f, 6.0f, 0U);
             }
             if (lbl_1_bss_0.rotationSoundHandle != -1) {
@@ -177,8 +178,8 @@ void fn_1_28A4(OMOBJ *playerObject)
         while (lbl_1_bss_0.arenaYawDegrees >= 360.0f) {
             lbl_1_bss_0.arenaYawDegrees -= 360.0f;
         }
-        Hu3DModelRotSet(lbl_1_bss_0.rotatingStageModelId, 0.0f, lbl_1_bss_0.arenaYawDegrees, 0.0f);
-        Hu3DModelRotSet(lbl_1_bss_0.secondRotatingModelId, 0.0f, lbl_1_bss_0.arenaYawDegrees, 0.0f);
+        fn_80026808(lbl_1_bss_0.rotatingStageModelId, 0.0f, lbl_1_bss_0.arenaYawDegrees, 0.0f);
+        fn_80026808(lbl_1_bss_0.secondRotatingModelId, 0.0f, lbl_1_bss_0.arenaYawDegrees, 0.0f);
         /* Rotation reads held buttons; the launch action triggers only on a new A press. */
         buttonMask = newlyPressedButtons;
         if ((lbl_1_bss_0.arenaPhase == 2) && ((s32) (buttonMask & PAD_BUTTON_A) != 0)) {
@@ -196,7 +197,7 @@ void fn_1_28A4(OMOBJ *playerObject)
             fn_1_5ED0(&nozzlePosition, &nozzleDirection);
             HuAudFXPlay(M633_SEGMENT_SPAWN_SE_ID);
             fn_1_70A8(1);
-            omVibrate((s16) playerNo, 20, 4, 4);
+            fn_8006A030((s16) playerNo, 20, 4, 4);
             if (lbl_1_bss_0.rotationSoundHandle != -1) {
                 HuAudFXStop(lbl_1_bss_0.rotationSoundHandle);
                 lbl_1_bss_0.rotationSoundHandle = -1;
@@ -209,7 +210,7 @@ void fn_1_28A4(OMOBJ *playerObject)
         oppositeNozzleDistance = PSVECMag(&oppositeNozzlePosition);
         oppositeNozzlePosition.x += oppositeNozzleDirection.x * -(2.0f * oppositeNozzleDistance);
         oppositeNozzlePosition.z += oppositeNozzleDirection.z * -(2.0f * oppositeNozzleDistance);
-        Hu3DModelPosSetV(lbl_1_bss_0.nozzleModelIds[1], &oppositeNozzlePosition);
+        fn_80026790(lbl_1_bss_0.nozzleModelIds[1], &oppositeNozzlePosition);
         Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &firstNozzlePosition);
         Hu3DModelObjPosGet(lbl_1_bss_0.rotatingStageModelId, lbl_1_data_160, &firstNozzleDirection);
         PSVECNormalize(&firstNozzleDirection, &firstNozzleDirection);
@@ -240,8 +241,8 @@ void fn_1_28A4(OMOBJ *playerObject)
                     /* The log reports the second nozzle distance even if only the first point
                      * caused the hit. */
                     OSReport(lbl_1_data_177, playerToNozzleDistance);
-                    MgPlayerAttrSet(lbl_1_bss_0.players[checkedPlayerNo], MGPLAYER_ATTR_COMSTK);
-                    MgPlayerDespawn(lbl_1_bss_0.players[checkedPlayerNo]);
+                    fn_80087158(lbl_1_bss_0.players[checkedPlayerNo], (1 << 0));
+                    fn_80086E3C(lbl_1_bss_0.players[checkedPlayerNo]);
                     lbl_1_bss_0.playerRemoved[checkedPlayerNo] = 1;
                     lbl_1_bss_0.activePlayerCount -= 1;
                     lbl_1_bss_0.playerObjects[checkedPlayerNo]->objFunc = fn_1_34B0;
@@ -280,7 +281,7 @@ void fn_1_32C0(OMOBJ *playerObject)
     switch (playerObject->work[1]) {
     case 0:
         playerPosition = player->actor->pos;
-        Hu3DModelPosSetV(model, &playerPosition);
+        fn_80026790(model, &playerPosition);
         playerObject->work[1] = 1;
         playerObject->work[2] = 0;
         break;
@@ -290,15 +291,15 @@ void fn_1_32C0(OMOBJ *playerObject)
             if ((u32) playerObject->work[2] >= 30U) {
                 playerObject->work[1] = 3;
                 playerObject->work[2] = 0;
-                CharMotionShiftSet(lbl_1_bss_0.players[playerNo]->charNo,
+                fn_8005C2C8(lbl_1_bss_0.players[playerNo]->charNo,
                                    lbl_1_bss_0.players[playerNo]->omObj->mtnId[14], 0.0f, 6.0f, 0U);
             }
         }
     case 2:
         break;
     case 3:
-        if ((Hu3DMotionShiftIDGet(model) == -1) && (Hu3DMotionEndCheck(model) != 0)) {
-            CharMotionShiftSet(lbl_1_bss_0.players[playerNo]->charNo,
+        if ((fn_8002D3EC(model) == -1) && (fn_8002D75C(model) != 0)) {
+            fn_8005C2C8(lbl_1_bss_0.players[playerNo]->charNo,
                                lbl_1_bss_0.players[playerNo]->omObj->mtnId[0], 0.0f, 6.0f, 0U);
             playerObject->work[1] = 4;
         }
@@ -329,14 +330,14 @@ void fn_1_34B0(OMOBJ *playerObject)
     u32 playerNo;
 
     playerNo = playerObject->work[0];
-    omVibrate((s16) playerNo, 60, 20, 0);
+    fn_8006A030((s16) playerNo, 60, 20, 0);
     playerObject->objFunc = fn_1_36BC;
     knockbackDirection = lbl_1_bss_0.players[playerNo]->actor->pos;
     PSVECNormalize(&knockbackDirection, &knockbackDirection);
     lbl_1_bss_0.hitDirections[playerNo] = knockbackDirection;
     lbl_1_bss_0.hitUpdateCounts[playerNo] = 0;
     lbl_1_bss_0.hitVerticalOffsets[playerNo] = 40.0f;
-    CharMotionShiftSet(lbl_1_bss_0.players[playerNo]->charNo,
+    fn_8005C2C8(lbl_1_bss_0.players[playerNo]->charNo,
                        lbl_1_bss_0.players[playerNo]->omObj->mtnId[11],
                        0.0f, 5.0f, 0U);
     playerPosition = lbl_1_bss_0.players[playerNo]->actor->pos;

@@ -26,9 +26,9 @@ OSExecParams* __OSExecParams AT_ADDRESS(0x800030F0);
 s32 __OSAppLoaderOffset AT_ADDRESS(0x800030F4);
 
 void __OSGetExecParams(OSExecParams* params);
-void __OSBootDolSimple(u32 dolOffset, u32 restartCode, void* regionStart, void* regionEnd,
+void __OSBootDolSimple(u32 doloffset, u32 restartCode, void* regionStart, void* regionEnd,
                        BOOL argsUseDefault, s32 argc, char** argv);
-void __OSBootDol(u32 dolOffset, u32 restartCode, const char** argv);
+void __OSBootDol(u32 doloffset, u32 restartCode, const char** argv);
 
 #ifdef __cplusplus
 }

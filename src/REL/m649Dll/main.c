@@ -170,19 +170,19 @@ void fn_1_A0(void)
     for (i = 0; i < 4; i++) {
         lbl_1_bss_3C[i] = 0;
     }
-    lbl_1_bss_74 = omInitObjMan(120, 8192);
-    omGameSysInit(lbl_1_bss_74);
-    MgSeqCreate(&lbl_1_data_80);
-    MgSeqModeHookAdd(MGSEQ_MODE_PREMAIN, fn_1_680);
+    lbl_1_bss_74 = fn_8003A8BC(120, 8192);
+    fn_80069F1C(lbl_1_bss_74);
+    fn_80070788(&lbl_1_data_80);
+    fn_80071D20(4, fn_1_680);
     fn_1_13D8(lbl_1_bss_74);
     fn_1_14A0(lbl_1_bss_74, &lbl_1_data_1C, &lbl_1_data_28, &lbl_1_data_34);
     Hu3DBGColorSet(0, 0, 0);
     fn_1_1B88(lbl_1_bss_74, 15, 45.0f, 20.0f, 2000.0f, 0.0f, &lbl_1_data_0);
     resource = fn_1_1210(0);
-    fn_1_2BCC(1, HuDataSelHeapReadNum(resource, HU_MEMNUM_OVL, HEAP_MODEL));
-    fn_1_2BCC(2, HuDataSelHeapReadNum(resource, HU_MEMNUM_OVL, HEAP_MODEL));
-    fn_1_2BCC(4, HuDataSelHeapReadNum(resource, HU_MEMNUM_OVL, HEAP_MODEL));
-    fn_1_2BCC(8, HuDataSelHeapReadNum(resource, HU_MEMNUM_OVL, HEAP_MODEL));
+    fn_1_2BCC(1, fn_80008DD0(resource, 0x10000000, 2));
+    fn_1_2BCC(2, fn_80008DD0(resource, 0x10000000, 2));
+    fn_1_2BCC(4, fn_80008DD0(resource, 0x10000000, 2));
+    fn_1_2BCC(8, fn_80008DD0(resource, 0x10000000, 2));
     fn_1_2780(fn_1_C78);
     fn_1_3250(lbl_1_bss_74, lbl_1_data_38);
     fn_1_A220(lbl_1_bss_74);
@@ -193,7 +193,7 @@ void fn_1_A0(void)
 
 /* Advances to the next minigame sequence mode when this mode's callback runs. */
 void fn_1_330(short mode, short frame) {
-    if (!fn_1_BD8(mode, frame)) MgSeqModeNext();
+    if (!fn_1_BD8(mode, frame)) fn_80071A9C();
 }
 
 /* Animates the opening camera split during fade-in, then requests the START sequence. */
@@ -208,7 +208,7 @@ void fn_1_36C(s16 mode, s16 frame)
         case 0:
             lbl_1_bss_6C++;
             lbl_1_bss_68 = 0;
-            MgSeqModeChangeOff();
+            fn_80071B08();
             /* Begin counting the opening wait on this same sequence tick. */
         case 1:
             if (++lbl_1_bss_68 < 150) {
@@ -233,7 +233,7 @@ void fn_1_36C(s16 mode, s16 frame)
             /* The final sequence delay starts on the frame the split settles. */
         case 3:
             if (++lbl_1_bss_68 >= 30) {
-                MgSeqModeNext();
+                fn_80071A9C();
             }
             break;
         }
@@ -281,11 +281,11 @@ void fn_1_7AC(s16 mode, s16 frame)
     s32 i, value, j, rank, maximum = 0, next;
     s32 scores[4], players[4];
     if (fn_1_BD8(mode, frame) == 0) {
-        if (_CheckFlag(FLAG_INST_DECA)) {
+        if (fn_8006A124(196610)) {
             for (i = 0; i < 4; i++) {
                 GWMgScoreSet(i, fn_1_A644(i));
             }
-            MgSeqModeSet(MGSEQ_MODE_FADEOUT);
+            fn_80071AC4(9);
             return;
         }
         if (frame == 0) {
@@ -340,7 +340,7 @@ void fn_1_7AC(s16 mode, s16 frame)
             }
         }
         if (lbl_1_bss_60 == 0 && frame >= 120) {
-            MgSeqModeNext();
+            fn_80071A9C();
             return;
         }
     }
@@ -416,7 +416,7 @@ void fn_1_C78(OMOBJ *object, u32 camera, u32 index)
         fn_1_2590(work->cameras, &work->shadowDirection, &entry->target, work->shadowFov, 500.0f);
         /* This color setter changes only camera 0; the other selected shadows keep their default
          * RGB. */
-        Hu3DShadowColSet(work->shadowColor.r, work->shadowColor.g, work->shadowColor.b);
+        fn_8002AAB4(work->shadowColor.r, work->shadowColor.g, work->shadowColor.b);
     }
     switch (entry->phase) {
     case 0:
@@ -477,7 +477,7 @@ void fn_1_C78(OMOBJ *object, u32 camera, u32 index)
 
 s32 fn_1_1210(s32 resource)
 {
-    return resource + DATA_m649;
+    return resource + 0x6c0000;
 }
 
 s32 fn_1_1218(s32 cameraIndex) {
@@ -492,7 +492,7 @@ extern s32 fn_1_1234(void) {
 /* Computer-player timing calls this to read the sequence timer; the void wrapper discards its
  * return value. */
 void fn_1_1244(void) {
-    MgSeqTimerValueGet();
+    fn_80071B58();
 }
 
 s32 fn_1_1264(s32 index) { return lbl_1_bss_2C[index]; }
@@ -619,16 +619,16 @@ s32 lbl_1_data_A8[4] = {1, 2, 4, 8};
 Vec lbl_1_data_B8 = {0.0f, -1.0f, 0.0f};
 GXColor lbl_1_data_C4 = {0, 0, 0, 0};
 s32 lbl_1_data_C8[6] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1), DATANUM(DATA_mario, 90),
-    DATANUM(DATA_mario, 185), DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 40)
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1), DATANUM(0x8e0000, 90),
+    DATANUM(0x8e0000, 185), DATANUM(0x930000, 6), DATANUM(0x930000, 40)
 };
 M649PlayerMotionParam lbl_1_data_E0[6] = {
-    {0, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, HU3D_MOTATTR_LOOP},
-    {1, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, HU3D_MOTATTR_LOOP},
-    {2, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, HU3D_MOTATTR_LOOP},
-    {3, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, HU3D_MOTATTR_NONE},
-    {4, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, HU3D_MOTATTR_NONE},
-    {5, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, HU3D_MOTATTR_NONE}
+    {0, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, ((1 << 30) | (1 << 0))},
+    {1, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, ((1 << 30) | (1 << 0))},
+    {2, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, ((1 << 30) | (1 << 0))},
+    {3, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, 0},
+    {4, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, 0},
+    {5, M649_MOTION_OVERLAY_NONE, M649_MOTION_BLEND, 0}
 };
 Vec lbl_1_data_128[4] = {
     { 0.0f, 105.0f, 0.0f }, { 0.0f, 105.0f, 0.0f }, { 0.0f, 105.0f, 0.0f }, { 0.0f, 105.0f, 0.0f }
@@ -652,18 +652,18 @@ u8 lbl_1_data_1C4[96] = {
     0, 0, 63, 0, 0, 0, 0, 0, 0, 23
 };
 M649PropMotionParam lbl_1_data_224[3] = { { M649_MOTION_RESOURCE_NONE, M649_MOTION_BLEND,
-                                            HU3D_MOTATTR_LOOP },
-                                          { 2, M649_MOTION_BLEND, HU3D_MOTATTR_LOOP },
-                                          { M649_MOTION_RESOURCE_END, 0.0f, HU3D_MOTATTR_NONE } };
+                                            ((1 << 30) | (1 << 0)) },
+                                          { 2, M649_MOTION_BLEND, ((1 << 30) | (1 << 0)) },
+                                          { M649_MOTION_RESOURCE_END, 0.0f, 0 } };
 M649PropParam lbl_1_data_248[12] = {
-    {1, 0, 0, 0, 2, HU3D_MOTATTR_LOOP, 0, 4, 0, 0, 0.0f, fn_1_728C},
-    {1, 0, 0, 1, 1, HU3D_MOTATTR_LOOP, 2, 5, 0, 0, 0.0f, fn_1_7288},
+    {1, 0, 0, 0, 2, ((1 << 30) | (1 << 0)), 0, 4, 0, 0, 0.0f, fn_1_728C},
+    {1, 0, 0, 1, 1, ((1 << 30) | (1 << 0)), 2, 5, 0, 0, 0.0f, fn_1_7288},
     {16, 0, 1, 0, 2, 0, 0, -1, 0, 0, 0.0f, fn_1_7300},
-    {1, 0, 2, 0, 2, HU3D_MOTATTR_LOOP, 0, 6, 0, 0, 0.0f, fn_1_7C94},
-    {1, 0, 2, 1, 2, HU3D_MOTATTR_LOOP, 0, 7, 0, 0, 0.0f, fn_1_7C94},
+    {1, 0, 2, 0, 2, ((1 << 30) | (1 << 0)), 0, 6, 0, 0, 0.0f, fn_1_7C94},
+    {1, 0, 2, 1, 2, ((1 << 30) | (1 << 0)), 0, 7, 0, 0, 0.0f, fn_1_7C94},
     {2, 0, 3, 0, 2, 0, 0, -1, 0, 0, 0.0f, fn_1_7DD8},
-    {12, 1, 4, 0, 2, HU3D_MOTATTR_LOOP, 0, 8, 0, 0, 0.0f, fn_1_7FD4},
-    {12, 1, 5, 0, 2, HU3D_MOTATTR_LOOP, 0, 9, 0, 0, 0.0f, fn_1_7FD4},
+    {12, 1, 4, 0, 2, ((1 << 30) | (1 << 0)), 0, 8, 0, 0, 0.0f, fn_1_7FD4},
+    {12, 1, 5, 0, 2, ((1 << 30) | (1 << 0)), 0, 9, 0, 0, 0.0f, fn_1_7FD4},
     {8, 1, 6, 0, 5, 0, 0, 15, 0, 0, 0.0f, fn_1_80B4},
     {8, 1, 7, 0, 5, 0, 0, 16, 0, 0, 0.0f, fn_1_80B4},
     {4, 0, 8, 0, 4, 0, 0, 1, &lbl_1_data_224[0], 0, 0.0f, fn_1_8278},

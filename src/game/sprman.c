@@ -437,7 +437,7 @@ void HuSprKill(HUSPRID sprId)
 void HuSprAnimKill(ANIMDATA *anim)
 {
     if(--anim->useNum <= 0) {
-        if(anim->bmpNum & ANIM_BMP_ALLOC) {
+        if(anim->bmpNum & 0x8000) {
             if(anim->bmp->data) {
                 HuMemDirectFree(anim->bmp->data);
             }
@@ -736,7 +736,7 @@ ANIMDATA *HuSprAnimMake(s16 sizeX, s16 sizeY, s16 dataFmt)
     ANIMDATA *newAnim;
 
     anim = newAnim =
-        HuMemDirectMalloc(HEAP_MODEL, sizeof(ANIMDATA) + sizeof(ANIMBANK) + sizeof(ANIMFRAME) +
+        HuMemDirectMalloc(2, sizeof(ANIMDATA) + sizeof(ANIMBANK) + sizeof(ANIMFRAME) +
                                           sizeof(ANIMPAT) + sizeof(ANIMLAYER) + sizeof(ANIMBMP));
 
     /* The animation records share one block, laid out in type order. */
@@ -753,7 +753,7 @@ ANIMDATA *HuSprAnimMake(s16 sizeX, s16 sizeY, s16 dataFmt)
     anim->useNum = 0;
     anim->bankNum = 1;
     anim->patNum = 1;
-    anim->bmpNum = (1|ANIM_BMP_ALLOC);
+    anim->bmpNum = (1|0x8000);
     bank->timeNum = 1;
     bank->unk = 10;
     frame->pat = 0;
@@ -868,7 +868,7 @@ void HuSpr3DSet(HUSPRID sprId)
     data3D->rot.x = data3D->rot.y = data3D->rot.z = 0;
     data3D->col = columnCount;
     data3D->row = rowCount;
-    data3D->depthScale = 2*HuSin(30);
+    data3D->depthScale = 2*sin(3.141592653589793*30/180.0);
 }
 
 /* Sprite clients set custom mesh rotation here when per-sprite 3D data is present. */
@@ -889,7 +889,7 @@ void HuSpr3DFovSet(HUSPRID sprId, float fov)
     HUSPRITE *sprite = &HuSprData[sprId];
     HUSPR_3DDATA *data3D = sprite->data3D;
     if(data3D) {
-        data3D->depthScale = 2*HuSin(fov/2);
+        data3D->depthScale = 2*sin(3.141592653589793*(fov/2)/180.0);
     }
 }
 
@@ -925,7 +925,7 @@ void AnimDebug(ANIMDATA *anim)
     ANIMBMP *bmp;
 
     OSReport("patNum %d,bankNum %d,bmpNum %d\n", anim->patNum, anim->bankNum,
-             anim->bmpNum & ANIM_BMP_NUM_MASK);
+             anim->bmpNum & 0x7FFF);
     pat = anim->pat;
     for(patternIndex=0; patternIndex<anim->patNum; patternIndex++) {
         OSReport("PATTERN%d:\n", patternIndex);
@@ -956,7 +956,7 @@ void AnimDebug(ANIMDATA *anim)
         bank++;
     }
     bmp = anim->bmp;
-    for(patternIndex=0; patternIndex<anim->bmpNum & ANIM_BMP_NUM_MASK; patternIndex++) {
+    for(patternIndex=0; patternIndex<anim->bmpNum & 0x7FFF; patternIndex++) {
         OSReport("BMP%d:\n", patternIndex);
         OSReport("\tpixSize %d,palNum %d,size (%d,%d)\n", bmp->pixSize, bmp->palNum, bmp->sizeX,
                  bmp->sizeY);

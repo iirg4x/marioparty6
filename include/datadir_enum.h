@@ -9,14 +9,6 @@ enum {
 
 #undef DATADIR
 
-#define DATADIR(name) DATA_##name = (_##name) << 16,
-
-enum {
-    #include "datadir_table.h"
-};
-
-#undef DATADIR
-
 #define DATANUM(dir, file) ((dir)|(file))
 
 #define FILENUM(dataNum) ((dataNum) & 0xFFFF)

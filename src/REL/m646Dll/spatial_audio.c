@@ -10,7 +10,7 @@ s32 fn_1_B3C0(HuVecF *worldPosition, s32 soundId)
 {
     s16 pan;
     s16 volume;
-    s32 cameraMask = HU3D_CAM0;
+    s32 cameraMask = (1 << 0);
     f32 horizontalFraction;
     HuVecF screenPosition;
 

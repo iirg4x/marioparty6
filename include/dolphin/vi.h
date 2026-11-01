@@ -16,12 +16,6 @@ void VISetNextFrameBuffer(void* fb);
 void VIWaitForRetrace(void);
 void VISetBlack(BOOL black);
 
-#ifdef TARGET_PC
-void VISetWindowTitle(const char* title);
-void VISetWindowFullscreen(bool fullscreen);
-bool VIGetWindowFullscreen();
-#endif
-
 void VIConfigurePan(u16 xOrg, u16 yOrg, u16 width, u16 height);
 u32 VIGetRetraceCount(void);
 u32 VIGetNextField(void);

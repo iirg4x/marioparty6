@@ -16,44 +16,44 @@
 
 #include "msm.h"
 
-#define FLAG_BOARD_WALKDONE FLAGNUM(FLAG_GROUP_COMMON, 16)
+#define FLAG_BOARD_WALKDONE 65552
 
 enum {
-    BOARD_ANM_telopMario = DATANUM(DATA_board, 77),
-    BOARD_ANM_telopLuigi = DATANUM(DATA_board, 78),
-    BOARD_ANM_telopPeach = DATANUM(DATA_board, 79),
-    BOARD_ANM_telopYoshi = DATANUM(DATA_board, 80),
-    BOARD_ANM_telopWario = DATANUM(DATA_board, 81),
-    BOARD_ANM_telopDaisy = DATANUM(DATA_board, 82),
-    BOARD_ANM_telopWaluigi = DATANUM(DATA_board, 83),
-    BOARD_ANM_telopKinopio = DATANUM(DATA_board, 84),
-    BOARD_ANM_telopTeresa = DATANUM(DATA_board, 85),
-    BOARD_ANM_telopMinikoopa = DATANUM(DATA_board, 86),
-    BOARD_ANM_telopMinikoopaR = DATANUM(DATA_board, 87),
-    BOARD_ANM_telopMinikoopaG = DATANUM(DATA_board, 87),
-    BOARD_ANM_telopMinikoopaB = DATANUM(DATA_board, 87),
-    BOARD_ANM_telopKinopiko = DATANUM(DATA_board, 88),
-    BOARD_ANM_telopStarHost1 = DATANUM(DATA_board, 89),
-    BOARD_ANM_telopStarHost0 = DATANUM(DATA_board, 90),
-    BOARD_ANM_telopBoardW01 = DATANUM(DATA_board, 68),
-    BOARD_ANM_telopBoardW02 = DATANUM(DATA_board, 69),
-    BOARD_ANM_telopBoardW03 = DATANUM(DATA_board, 70),
-    BOARD_ANM_telopBoardW04 = DATANUM(DATA_board, 71),
-    BOARD_ANM_telopBoardW05 = DATANUM(DATA_board, 72),
-    BOARD_ANM_telopBoardW06 = DATANUM(DATA_board, 73),
-    BOARD_ANM_telopBoardS03 = DATANUM(DATA_board, 74),
-    BOARD_ANM_telopBoardS02 = DATANUM(DATA_board, 75),
-    BOARD_ANM_telopBoardS01 = DATANUM(DATA_board, 76),
+    BOARD_ANM_telopMario = DATANUM(0x50000, 77),
+    BOARD_ANM_telopLuigi = DATANUM(0x50000, 78),
+    BOARD_ANM_telopPeach = DATANUM(0x50000, 79),
+    BOARD_ANM_telopYoshi = DATANUM(0x50000, 80),
+    BOARD_ANM_telopWario = DATANUM(0x50000, 81),
+    BOARD_ANM_telopDaisy = DATANUM(0x50000, 82),
+    BOARD_ANM_telopWaluigi = DATANUM(0x50000, 83),
+    BOARD_ANM_telopKinopio = DATANUM(0x50000, 84),
+    BOARD_ANM_telopTeresa = DATANUM(0x50000, 85),
+    BOARD_ANM_telopMinikoopa = DATANUM(0x50000, 86),
+    BOARD_ANM_telopMinikoopaR = DATANUM(0x50000, 87),
+    BOARD_ANM_telopMinikoopaG = DATANUM(0x50000, 87),
+    BOARD_ANM_telopMinikoopaB = DATANUM(0x50000, 87),
+    BOARD_ANM_telopKinopiko = DATANUM(0x50000, 88),
+    BOARD_ANM_telopStarHost1 = DATANUM(0x50000, 89),
+    BOARD_ANM_telopStarHost0 = DATANUM(0x50000, 90),
+    BOARD_ANM_telopBoardW01 = DATANUM(0x50000, 68),
+    BOARD_ANM_telopBoardW02 = DATANUM(0x50000, 69),
+    BOARD_ANM_telopBoardW03 = DATANUM(0x50000, 70),
+    BOARD_ANM_telopBoardW04 = DATANUM(0x50000, 71),
+    BOARD_ANM_telopBoardW05 = DATANUM(0x50000, 72),
+    BOARD_ANM_telopBoardW06 = DATANUM(0x50000, 73),
+    BOARD_ANM_telopBoardS03 = DATANUM(0x50000, 74),
+    BOARD_ANM_telopBoardS02 = DATANUM(0x50000, 75),
+    BOARD_ANM_telopBoardS01 = DATANUM(0x50000, 76),
     BOARD_ANM_telopBoardW10 = BOARD_ANM_telopBoardW01,
     BOARD_ANM_telopBoardW11 = BOARD_ANM_telopBoardW01,
-    BOARD_ANM_telopTimeBackDay = DATANUM(DATA_board, 109),
-    BOARD_ANM_telopTimeBackNight = DATANUM(DATA_board, 110),
-    BOARD_ANM_telopTimeDay = DATANUM(DATA_board, 111),
-    BOARD_ANM_telopTimeNight = DATANUM(DATA_board, 112),
-    BOARD_ANM_telopTimeStar = DATANUM(DATA_board, 113),
-    BOARD_ANM_telopLast = DATANUM(DATA_board, 114),
-    BOARD_ANM_telopTurn = DATANUM(DATA_board, 115),
-    BOARD_ANM_telopTurnMulti = DATANUM(DATA_board, 116),
+    BOARD_ANM_telopTimeBackDay = DATANUM(0x50000, 109),
+    BOARD_ANM_telopTimeBackNight = DATANUM(0x50000, 110),
+    BOARD_ANM_telopTimeDay = DATANUM(0x50000, 111),
+    BOARD_ANM_telopTimeNight = DATANUM(0x50000, 112),
+    BOARD_ANM_telopTimeStar = DATANUM(0x50000, 113),
+    BOARD_ANM_telopLast = DATANUM(0x50000, 114),
+    BOARD_ANM_telopTurn = DATANUM(0x50000, 115),
+    BOARD_ANM_telopTurnMulti = DATANUM(0x50000, 116),
 };
 
 enum {
@@ -140,20 +140,20 @@ static const u32 telopFileTbl[27] = {
 };
 
 static const s32 tauntSeTbl[14] = {
-    MSM_SE_CHARVOICE_MARIO + 16,
-    MSM_SE_CHARVOICE_LUIGI + 16,
-    MSM_SE_CHARVOICE_PEACH + 16,
-    MSM_SE_CHARVOICE_YOSHI + 16,
-    MSM_SE_CHARVOICE_WARIO + 16,
-    MSM_SE_CHARVOICE_DAISY + 16,
-    MSM_SE_CHARVOICE_WALUIGI + 16,
-    MSM_SE_CHARVOICE_KINOPIO + 16,
-    MSM_SE_CHARVOICE_TERESA + 16,
-    MSM_SE_CHARVOICE_MINIKOOPA + 16,
-    MSM_SE_CHARVOICE_KINOPIKO + 16,
-    MSM_SE_CHARVOICE_MINIKOOPA + 16,
-    MSM_SE_CHARVOICE_MINIKOOPA + 16,
-    MSM_SE_CHARVOICE_MINIKOOPA + 16,
+    573 + 16,
+    549 + 16,
+    693 + 16,
+    789 + 16,
+    741 + 16,
+    477 + 16,
+    765 + 16,
+    501 + 16,
+    717 + 16,
+    645 + 16,
+    525 + 16,
+    645 + 16,
+    645 + 16,
+    645 + 16,
 };
 
 static u32 telopTurnFileTbl[3] = {
@@ -233,7 +233,7 @@ static float telopTimeBaseTPLvlTbl[8] = {
     0.0f,
 };
 
-static s32 tauntSeNo[GW_PLAYER_MAX] = {
+static s32 tauntSeNo[4] = {
     MSM_SENO_NONE,
     MSM_SENO_NONE,
     MSM_SENO_NONE,
@@ -305,15 +305,15 @@ void mbTelopCreate(int playerNo, int telopNo, BOOL waitF)
 {
     TELOP_WORK *telopWork;
 
-    telopOMObj = omAddObj(mbObjMan, 262, 1, 0, TelopInitOMExec);
-    omSetStatBit(telopOMObj, OM_STAT_MODELPAUSE);
-    telopWork = omObjGetWork(telopOMObj, TELOP_WORK);
+    telopOMObj = fn_8003AB38(mbObjMan, 262, 1, 0, -1, TelopInitOMExec);
+    omSetStatBit(telopOMObj, (1 << 8));
+    telopWork = ((TELOP_WORK *)(&(telopOMObj->work[0])));
     telopWork->killF = FALSE;
     telopWork->playerNo = playerNo;
     telopWork->mode = 0;
     telopWork->telopNo = telopNo;
     /* Computer and automatic notices get a short fixed delay before dismissal. */
-    if ((playerNo >= 0 && GwPlayer[playerNo].comF) || playerNo < 0) {
+    if ((playerNo >= 0 && lbl_80265750[playerNo].comF) || playerNo < 0) {
         telopWork->dismissDelay = 30;
     } else {
         telopWork->dismissDelay = 0;
@@ -333,7 +333,7 @@ void mbTelopCreate(int playerNo, int telopNo, BOOL waitF)
 /* Shows the character bubble for a player during the board turn sequence. */
 void mbTelopPlayerCreate(int playerNo)
 {
-    mbTelopCreate(playerNo, GwPlayer[playerNo].charNo, TRUE);
+    mbTelopCreate(playerNo, lbl_80265750[playerNo].charNo, TRUE);
 }
 
 /* Creates a nonblocking automatic notice using the board notice index derived from its argument. */
@@ -347,7 +347,7 @@ static void TelopInitOMExec(OMOBJ *obj)
 {
     TELOP_WORK *telopWork;
 
-    telopWork = omObjGetWork(obj, TELOP_WORK);
+    telopWork = ((TELOP_WORK *)(&(obj->work[0])));
     telopWork->mode = 0;
     telopWork->time = 0;
     telopWork->maxTime = telopWork->telopNo >= 16 ? 60 : 15;
@@ -364,11 +364,11 @@ static void TelopOMExec(OMOBJ *obj)
     TELOP_WORK *telopWork;
     float animationProgress;
 
-    telopWork = omObjGetWork(obj, TELOP_WORK);
+    telopWork = ((TELOP_WORK *)(&(obj->work[0])));
     if (telopWork->killF || mbExitCheck()) {
         espKill(obj->mdlId[0]);
         telopOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     switch (telopWork->mode) {
@@ -394,10 +394,10 @@ static void TelopOMExec(OMOBJ *obj)
                     mbAudFXPlay(TELOP_SE_CHARACTER_DISMISS);
                 }
             } else {
-                int playerPadNo = GwPlayer[telopWork->playerNo].padNo;
+                int playerPadNo = lbl_80265750[telopWork->playerNo].padNo;
 
-                if ((HuPadBtnDown[playerPadNo] & PAD_BUTTON_A)
-                    || GwPlayer[telopWork->playerNo].comF) {
+                if ((lbl_802C0008[playerPadNo] & PAD_BUTTON_A)
+                    || lbl_80265750[telopWork->playerNo].comF) {
                     telopWork->mode = 2;
                     telopWork->time = 0;
                     telopWork->maxTime = telopWork->telopNo >= 16 ? 30 : 15;
@@ -434,10 +434,9 @@ void mbTelopLastTurnCreate(void)
     s32 languageIndex;
     s32 useLastTurnAssets;
 
-    turnsRemaining = GwSystem.turnMax - GwSystem.turnNo;
-    telopLastTurnOMObj = turnNoticeObj = omAddObj(
-        mbObjMan, 0, 0, 0, TelopLastTurnOMExec);
-    turnNoticeWork = omObjGetWork(turnNoticeObj, TELOP_LAST_TURN_WORK);
+    turnsRemaining = lbl_80265B70.turnMax - lbl_80265B70.turnNo;
+    telopLastTurnOMObj = turnNoticeObj = fn_8003AB38(mbObjMan, 0, 0, 0, -1, TelopLastTurnOMExec);
+    turnNoticeWork = ((TELOP_LAST_TURN_WORK *)(&(turnNoticeObj->work[0])));
     turnNoticeWork->killF = FALSE;
     turnNoticeWork->delay = 0;
     turnNoticeWork->angle = 0;
@@ -495,12 +494,12 @@ static void TelopLastTurnOMExec(OMOBJ *obj)
     float sineValue;
     float animationProgress;
 
-    turnNoticeWork = omObjGetWork(obj, TELOP_LAST_TURN_WORK);
+    turnNoticeWork = ((TELOP_LAST_TURN_WORK *)(&(obj->work[0])));
     if (turnNoticeWork->killF || mbExitCheck()) {
         HuSprGrpKill(turnNoticeWork->grpId);
         mbPauseHookPop(TelopLastTurnPauseHook);
         telopLastTurnOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     if (turnNoticeWork->delay != 0) {
@@ -551,7 +550,7 @@ static void TelopLastTurnPauseHook(BOOL dispF)
     TELOP_LAST_TURN_WORK *turnNoticeWork;
     s32 spriteIndex;
 
-    turnNoticeWork = omObjGetWork(telopLastTurnOMObj, TELOP_LAST_TURN_WORK);
+    turnNoticeWork = ((TELOP_LAST_TURN_WORK *)(&(telopLastTurnOMObj->work[0])));
     for (spriteIndex = 0; spriteIndex < 3; spriteIndex++) {
         if (dispF) {
             HuSprAttrReset(turnNoticeWork->grpId, spriteIndex, HUSPR_ATTR_DISPOFF);
@@ -570,9 +569,9 @@ void mbTelopTimeCreate(void)
     OMOBJ *timerObj;
     TELOP_TIME_WORK *timerWork;
 
-    telopTimeOMObj = timerObj = omAddObj(mbObjMan, 0, 1, 0, TelopTimeOMExec);
-    omSetStatBit(timerObj, OM_STAT_MODELPAUSE);
-    timerWork = omObjGetWork(timerObj, TELOP_TIME_WORK);
+    telopTimeOMObj = timerObj = fn_8003AB38(mbObjMan, 0, 1, 0, -1, TelopTimeOMExec);
+    omSetStatBit(timerObj, (1 << 8));
+    timerWork = ((TELOP_TIME_WORK *)(&(timerObj->work[0])));
     timerWork->killF = FALSE;
     timerWork->time = timerWork->maxTime = 0;
     timerWork->mode = 0;
@@ -590,12 +589,12 @@ static void TelopTimeOMExec(OMOBJ *obj)
     float rotation;
     float fadeProgress;
 
-    timerWork = omObjGetWork(obj, TELOP_TIME_WORK);
+    timerWork = ((TELOP_TIME_WORK *)(&(obj->work[0])));
     if (timerWork->killF || mbExitCheck()) {
         mbTelopTimeSprKill(obj->mdlId[0]);
         obj->mdlId[0] = -1;
         telopTimeOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         mbPauseHookPop(TelopTimePauseHook);
         return;
     }
@@ -644,19 +643,19 @@ s16 mbTelopTimeSprCreate(void)
     s16 spriteGroupId;
     s16 spriteId;
 
-    maxTimedTurns = GwSystem.timeTurnMax;
+    maxTimedTurns = lbl_80265B70.timeTurnMax;
     /* The star row is limited by both the configured timer and turns still available. */
     starCount = maxTimedTurns;
-    completedTimedTurns = GwSystem.timeTurn;
+    completedTimedTurns = lbl_80265B70.timeTurn;
     starsRemaining = starCount - completedTimedTurns;
-    turnsRemaining = GwSystem.turnMax - GwSystem.turnNo + 1;
+    turnsRemaining = lbl_80265B70.turnMax - lbl_80265B70.turnNo + 1;
     if (turnsRemaining < starsRemaining) {
         starsRemaining = turnsRemaining;
     }
     languageIndex = mbLanguageGet();
     spriteGroupId = HuSprGrpCreate(8);
     spriteIndex = 0;
-    if (GwSystem.curTime) {
+    if (lbl_80265B70.curTime) {
         spriteIndex++;
     }
     mbSprCreate(mbBoardDataNumGet(telopTimeBackFileTbl[spriteIndex]), 100, NULL, &spriteId);
@@ -776,7 +775,7 @@ void mbTelopTimeStarSet(s16 grpId, s32 starNum)
     for (starIndex = 0; starIndex < 3; starIndex++) {
         s32 spriteBank = 0;
 
-        if (GwSystem.curTime) {
+        if (lbl_80265B70.curTime) {
             spriteBank += 2;
         }
         if (starIndex < emptyStarCount) {
@@ -816,8 +815,8 @@ void mbTelopTimeDispSet(s16 grpId, BOOL dispF)
  * or C-stick value, or 0 when its magnitude is below 8. */
 s8 mbPadStkXGet(s32 padNo)
 {
-    s8 mainStickX = HuPadStkX[padNo];
-    s8 cStickX = HuPadSubStkX[padNo];
+    s8 mainStickX = lbl_802BFFFC[padNo];
+    s8 cStickX = lbl_802BFFF4[padNo];
 
     if (abs(mainStickX) > abs(cStickX)) {
         if (abs(mainStickX) < 8) {
@@ -838,8 +837,8 @@ s8 mbPadStkXGet(s32 padNo)
  * or C-stick value, or 0 when its magnitude is below 8. */
 s8 mbPadStkYGet(s32 padNo)
 {
-    s8 mainStickY = HuPadStkY[padNo];
-    s8 cStickY = HuPadSubStkY[padNo];
+    s8 mainStickY = lbl_802BFFF8[padNo];
+    s8 cStickY = lbl_802BFFF0[padNo];
 
     if (abs(mainStickY) > abs(cStickY)) {
         if (abs(mainStickY) < 8) {
@@ -862,11 +861,11 @@ void mbTauntInit(void)
 {
     s32 playerIndex;
 
-    tauntOMObj = omAddObj(mbObjMan, 32256, 0, 0, TauntOMExec);
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+    tauntOMObj = fn_8003AB38(mbObjMan, 32256, 0, 0, -1, TauntOMExec);
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         tauntSeNo[playerIndex] = MSM_SENO_NONE;
     }
-    _SetFlag(FLAG_BOARD_WALKDONE);
+    fn_8006A1C4(FLAG_BOARD_WALKDONE);
 }
 
 /* Board teardown requests watcher shutdown; its next callback stops active taunt sounds and deletes
@@ -874,9 +873,9 @@ void mbTauntInit(void)
 void mbTauntClose(void)
 {
     if (tauntOMObj) {
-        TAUNT_WORK *tauntWork = omObjGetWork(tauntOMObj, TAUNT_WORK);
+        TAUNT_WORK *tauntWork = ((TAUNT_WORK *)(&(tauntOMObj->work[0])));
         tauntWork->killF = TRUE;
-        _SetFlag(FLAG_BOARD_WALKDONE);
+        fn_8006A1C4(FLAG_BOARD_WALKDONE);
     }
 }
 
@@ -890,47 +889,47 @@ static void TauntOMExec(OMOBJ *obj)
     BOOL characterEnabled;
     int playerIndex;
 
-    tauntWork = omObjGetWork(obj, TAUNT_WORK);
+    tauntWork = ((TAUNT_WORK *)(&(obj->work[0])));
     if (tauntWork->killF || mbExitCheck()) {
-        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if (tauntSeNo[playerIndex] >= 0) {
                 mbAudFXStop(tauntSeNo[playerIndex]);
                 tauntSeNo[playerIndex] = MSM_SENO_NONE;
             }
         }
         tauntOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         if (tauntSeNo[playerIndex] >= 0
             && HuAudFXStatusGet(tauntSeNo[playerIndex]) == MSM_SE_DONE) {
             tauntSeNo[playerIndex] = MSM_SENO_NONE;
         }
     }
-    if (mbPauseProcCheck() || _CheckFlag(FLAG_BOARD_WALKDONE) || WipeCheck()
-        || GwSystem.turnPlayerNo == -1 || GWPartyGet() == FALSE
-        || _CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (mbPauseProcCheck() || fn_8006A124(FLAG_BOARD_WALKDONE) || WipeCheck()
+        || lbl_80265B70.turnPlayerNo == -1 || GWPartyGet() == FALSE
+        || fn_8006A124(65550)) {
         return;
     }
-    for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
-        if (playerIndex == GwSystem.turnPlayerNo) {
+    for (playerIndex = 0; playerIndex < 4; playerIndex++) {
+        if (playerIndex == lbl_80265B70.turnPlayerNo) {
             continue;
         }
-        if (GwPlayer[playerIndex].comF) {
+        if (lbl_80265750[playerIndex].comF) {
             continue;
         }
-        playerPadNo = GwPlayer[playerIndex].padNo;
-        characterNo = GwPlayer[playerIndex].charNo;
+        playerPadNo = lbl_80265750[playerIndex].padNo;
+        characterNo = lbl_80265750[playerIndex].charNo;
         /* Character slot 10 is always available and has no unlock flag. */
         characterEnabled = characterNo == BOARD_TAUNT_ALWAYS_ENABLED_CHAR
             ? TRUE
-            : GWBankFlagGet(characterNo + GW_BANK_FLAG_CHARACTER_BASE);
+            : fn_8003D2F0(characterNo + GW_BANK_FLAG_CHARACTER_BASE);
         if (characterEnabled == FALSE) {
             continue;
         }
         if (tauntSeNo[playerPadNo] < 0
-            && (HuPadBtnDown[playerPadNo] & PAD_TRIGGER_L)) {
+            && (lbl_802C0008[playerPadNo] & PAD_TRIGGER_L)) {
             tauntSeNo[playerPadNo] = mbAudFXPlay((s16)tauntSeTbl[characterNo]);
         }
     }
@@ -980,12 +979,12 @@ void mbLanguageSet(s32 languageNo)
 }
 
 static u32 boardDataDirTbl[6] = {
-    DATA_board,
-    DATA_board_us,
-    DATA_board,
-    DATA_board,
-    DATA_board,
-    DATA_board,
+    0x50000,
+    0x60000,
+    0x50000,
+    0x50000,
+    0x50000,
+    0x50000,
 };
 
 static HuVec2f telopTimeChangeSprOfsTbl[8] = {
@@ -1013,7 +1012,7 @@ int mbBoardDataNumGet(int dataNum)
 {
     s32 languageNo = mbLanguageGet();
 
-    if (DIRNUM(dataNum) != DATA_board) {
+    if (DIRNUM(dataNum) != 0x50000) {
         return mbPauseDataNumGet(dataNum);
     }
     if (languageNo < 0) {
@@ -1038,13 +1037,13 @@ void mbBoardDataDirRead(void)
         if ((void *)HuARDirCheck(BoardDataDirGet(archiveIndex)) != NULL) {
             HuARDirFree(BoardDataDirGet(archiveIndex));
         }
-        if (HuDataReadChk(BoardDataDirGet(archiveIndex)) >= 0) {
-            HuDataDirClose(BoardDataDirGet(archiveIndex));
+        if (fn_80007738(BoardDataDirGet(archiveIndex)) >= 0) {
+            fn_800097F4(BoardDataDirGet(archiveIndex));
         }
     }
     if ((void *)HuARDirCheck(BoardDataDirGet(languageIndex)) == NULL) {
         HuAR_DVDtoARAM(BoardDataDirGet(languageIndex));
-        while (HuARDMACheck()) {
+        while (fn_80055FB4()) {
         }
     }
 }
@@ -1052,13 +1051,13 @@ void mbBoardDataDirRead(void)
 /* The time-change notice uses this to read the number of timed turns in the board game. */
 static inline s32 TelopTimeTurnMaxGet(void)
 {
-    return GwSystem.timeTurnMax;
+    return lbl_80265B70.timeTurnMax;
 }
 
 /* The time-change notice uses this to read the number of timed turns already completed. */
 static inline s32 TelopTimeTurnGet(void)
 {
-    return GwSystem.timeTurn;
+    return lbl_80265B70.timeTurn;
 }
 
 /* board.c calls this when the board transitions between day and night. */
@@ -1072,10 +1071,10 @@ void mbTelopTimeChangeCreate(void)
     OMOBJ *timeChangeObj;
     TELOP_TIME_CHANGE_WORK *timeChangeWork;
 
-    telopTimeChangeOMObj = timeChangeObj = omAddObj(
-        mbObjMan, 0, 8, 0, TelopTimeChangeOMExec);
-    omSetStatBit(timeChangeObj, OM_STAT_MODELPAUSE);
-    timeChangeWork = omObjGetWork(timeChangeObj, TELOP_TIME_CHANGE_WORK);
+    telopTimeChangeOMObj = timeChangeObj = fn_8003AB38(mbObjMan, 0, 8, 0, -1,
+        TelopTimeChangeOMExec);
+    omSetStatBit(timeChangeObj, (1 << 8));
+    timeChangeWork = ((TELOP_TIME_CHANGE_WORK *)(&(timeChangeObj->work[0])));
     timeChangeWork->killF = FALSE;
     timeChangeWork->mode = 0;
     timeChangeWork->time = 0;
@@ -1086,22 +1085,22 @@ void mbTelopTimeChangeCreate(void)
     starCount = TelopTimeTurnMaxGet();
     starsRemaining = starCount - TelopTimeTurnGet();
 
-    spriteIndex = GwSystem.turnMax - GwSystem.turnNo + 1;
+    spriteIndex = lbl_80265B70.turnMax - lbl_80265B70.turnNo + 1;
     if (spriteIndex < starsRemaining) {
         starsRemaining = spriteIndex;
     }
     timeChangeObj->trans.x = 0.0f;
 
     timeChangeObj->mdlId[0] = espEntry(
-        mbBoardDataNumGet(telopTimeChangeBackFileTbl[GwSystem.nextTime]), 101, 0);
+        mbBoardDataNumGet(telopTimeChangeBackFileTbl[lbl_80265B70.nextTime]), 101, 0);
     timeChangeObj->mdlId[1] = espEntry(
-        mbBoardDataNumGet(telopTimeChangeBackFileTbl[GwSystem.curTime]), 99, 0);
+        mbBoardDataNumGet(telopTimeChangeBackFileTbl[lbl_80265B70.curTime]), 99, 0);
     timeChangeObj->mdlId[2] = espEntry(
-        mbBoardDataNumGet(telopTimeChangeBackFileTbl[GwSystem.curTime]), 97, 0);
+        mbBoardDataNumGet(telopTimeChangeBackFileTbl[lbl_80265B70.curTime]), 97, 0);
     timeChangeObj->mdlId[3] = espEntry(
-        mbBoardDataNumGet(telopTimeChangeFileTbl[GwSystem.nextTime]), 100, 0);
+        mbBoardDataNumGet(telopTimeChangeFileTbl[lbl_80265B70.nextTime]), 100, 0);
     timeChangeObj->mdlId[4] = espEntry(
-        mbBoardDataNumGet(telopTimeChangeFileTbl[GwSystem.curTime]), 96, 0);
+        mbBoardDataNumGet(telopTimeChangeFileTbl[lbl_80265B70.curTime]), 96, 0);
     for (spriteIndex = 0; spriteIndex < 5; spriteIndex++) {
         espAttrSet(timeChangeObj->mdlId[spriteIndex], HUSPR_ATTR_LINEAR);
         espPosSet(timeChangeObj->mdlId[spriteIndex],
@@ -1117,7 +1116,7 @@ void mbTelopTimeChangeCreate(void)
     starsRemaining = 3 - starsRemaining;
     for (starIndex = 0; starIndex < 3; starIndex++) {
         spriteIndex = 0;
-        if (GwSystem.curTime) {
+        if (lbl_80265B70.curTime) {
             spriteIndex += 2;
         }
         if (starIndex < starsRemaining) {
@@ -1145,7 +1144,7 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
     float spritePosY;
     s32 languageIndex;
 
-    timeChangeWork = omObjGetWork(obj, TELOP_TIME_CHANGE_WORK);
+    timeChangeWork = ((TELOP_TIME_CHANGE_WORK *)(&(obj->work[0])));
     if (timeChangeWork->killF || mbExitCheck()) {
         s32 spriteIndex;
 
@@ -1154,7 +1153,7 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
             obj->mdlId[spriteIndex] = 0;
         }
         telopTimeChangeOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     languageIndex = mbLanguageGet();
@@ -1280,8 +1279,8 @@ static void TelopTimeChangeOMExec(OMOBJ *obj)
 void mbTelopTimeChangeKill(void)
 {
     if (telopTimeChangeOMObj) {
-        TELOP_TIME_CHANGE_WORK *timeChangeWork = omObjGetWork(
-            telopTimeChangeOMObj, TELOP_TIME_CHANGE_WORK);
+        TELOP_TIME_CHANGE_WORK *timeChangeWork =
+            ((TELOP_TIME_CHANGE_WORK *)(&(telopTimeChangeOMObj->work[0])));
         timeChangeWork->killF = TRUE;
     }
 }
@@ -1294,6 +1293,6 @@ BOOL mbTelopTimeChangeCheck(void)
     if (telopTimeChangeOMObj == NULL) {
         return FALSE;
     }
-    timeChangeWork = omObjGetWork(telopTimeChangeOMObj, TELOP_TIME_CHANGE_WORK);
+    timeChangeWork = ((TELOP_TIME_CHANGE_WORK *)(&(telopTimeChangeOMObj->work[0])));
     return timeChangeWork->completeF == FALSE;
 }

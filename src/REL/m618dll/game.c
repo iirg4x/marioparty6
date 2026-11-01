@@ -1,4 +1,5 @@
 /* Lift Leapers course setup, movement, CPU decisions, and results. */
+#include <math.h>
 #include "REL/m618dll.h"
 #include "game/audio.h"
 #include "game/charman.h"
@@ -20,8 +21,8 @@
 #define M618_CHAR_EFFECT_FALL 576 /* Character effect played when a player falls. */
 
 int lbl_1_data_28[4] = { 1, 2, 4, 8 };
-unsigned int lbl_1_data_38[4] = { DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 34),
-                                  DATANUM(DATA_mariomot, 40), DATANUM(DATA_mariomot, 63) };
+unsigned int lbl_1_data_38[4] = { DATANUM(0x930000, 6), DATANUM(0x930000, 34),
+                                  DATANUM(0x930000, 40), DATANUM(0x930000, 63) };
 HuVec2f lbl_1_data_48[4] = {
     { 0.0f, 0.0f },
     { 3208.01099f, 0.0f },
@@ -65,7 +66,7 @@ void fn_1_378(void)
     lbl_1_bss_548 = 0;
     lbl_1_bss_4C8 = 0.0f;
     fn_1_1B40(0);
-    lbl_1_bss_53C = GWRecordGet(GW_RECORD_M618);
+    lbl_1_bss_53C = fn_8003C860(2);
     if (lbl_1_bss_53C == 0) {
         lbl_1_bss_53C = 7200;
     }
@@ -92,7 +93,7 @@ int fn_1_570(void)
         lbl_1_bss_550 = 99;
     }
     fn_1_214C();
-    MgActorExec();
+    fn_800856A8();
     fn_1_4BE0();
     if (lbl_1_bss_54C != -1) {
         lbl_1_bss_4C8 = 0.0f;
@@ -113,20 +114,20 @@ void fn_1_644(void)
     for (player = 0; player < 4; player++) {
         destX = 160.0f + lbl_1_data_48[lbl_1_bss_114[player].stageSection].x;
         if (lbl_1_bss_114[player].player->actor->pos.x < destX) {
-            MgPlayerPadSet(lbl_1_bss_114[player].player, 10, 0, 0, 0);
+            fn_80080520(lbl_1_bss_114[player].player, 10, 0, 0, 0);
             /* This clamp follows the pos.x < destX branch, so its >= check is unreachable. */
             if (lbl_1_bss_114[player].player->actor->pos.x >= destX) {
                 lbl_1_bss_114[player].player->actor->pos.x = destX;
             }
         } else {
-            MgPlayerAttrSet(lbl_1_bss_114[player].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(lbl_1_bss_114[player].player, (1 << 0));
             lbl_1_bss_114[player].recoveryPositionValid = 0;
             lbl_1_bss_114[player].recoveryPosition = lbl_1_bss_114[player].player->actor->pos;
             lbl_1_bss_114[player].recoveryPosition.y += 300.0f;
             lbl_1_bss_114[player].recoveryPosition.z -= 160.0f;
         }
     }
-    MgActorExec();
+    fn_800856A8();
     fn_1_4BE0();
 }
 
@@ -135,12 +136,12 @@ void fn_1_644(void)
 void fn_1_84C(void)
 {
     if (++lbl_1_bss_558 >= 120) {
-        MgPlayerAttrReset(lbl_1_bss_114[0].player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrReset(lbl_1_bss_114[1].player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrReset(lbl_1_bss_114[2].player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrReset(lbl_1_bss_114[3].player, MGPLAYER_ATTR_COMSTK);
+        fn_80087168(lbl_1_bss_114[0].player, (1 << 0));
+        fn_80087168(lbl_1_bss_114[1].player, (1 << 0));
+        fn_80087168(lbl_1_bss_114[2].player, (1 << 0));
+        fn_80087168(lbl_1_bss_114[3].player, (1 << 0));
         fn_1_214C();
-        MgActorExec();
+        fn_800856A8();
         fn_1_4BE0();
     }
     if (lbl_1_bss_40 == -1) {
@@ -156,24 +157,24 @@ void fn_1_910(void)
     if (lbl_1_bss_554 == 0) {
         MgTimerModeOffSet(lbl_1_bss_544);
         if (lbl_1_bss_54C == -1) {
-            MgSeqWinnerSet(-1, -1, -1, -1);
+            fn_80071C18(-1, -1, -1, -1);
             lbl_1_bss_558 = 0;
         } else {
-            MgSeqWinnerSet(GwPlayerConf[lbl_1_bss_54C].charNo, -1, -1, -1);
+            fn_80071C18(lbl_80265728[lbl_1_bss_54C].charNo, -1, -1, -1);
             GWMgCoinBonusSet(lbl_1_bss_54C, 10);
             lbl_1_bss_558 = 120;
             recordTime = MgTimerValueGet(lbl_1_bss_544);
-            if ((_CheckFlag(FLAG_MG_PRACTICE) == 0) && (GwPlayerConf[lbl_1_bss_54C].type == 0) &&
+            if ((fn_8006A124(65551) == 0) && (lbl_80265728[lbl_1_bss_54C].type == 0) &&
                 (recordTime < lbl_1_bss_53C)) {
-                MgSeqRecordSet(recordTime);
+                fn_80071BAC(recordTime);
                 lbl_1_bss_558 += 150;
-                GWRecordSet(GW_RECORD_M618, (u32) recordTime);
+                fn_8003C80C(2, (u32) recordTime);
             }
         }
-        MgPlayerAttrSet(lbl_1_bss_114->player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrSet(lbl_1_bss_114[1].player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrSet(lbl_1_bss_114[2].player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrSet(lbl_1_bss_114[3].player, MGPLAYER_ATTR_COMSTK);
+        fn_80087158(lbl_1_bss_114->player, (1 << 0));
+        fn_80087158(lbl_1_bss_114[1].player, (1 << 0));
+        fn_80087158(lbl_1_bss_114[2].player, (1 << 0));
+        fn_80087158(lbl_1_bss_114[3].player, (1 << 0));
         lbl_1_bss_554 = 1;
         fn_1_6298();
         HuAudSStreamFadeOut(lbl_1_bss_40, 100);
@@ -187,35 +188,35 @@ void fn_1_910(void)
         (lbl_1_bss_114[3].fallState != 0) ||
         ((u32) (lbl_1_bss_114[3].player->actor->colGroundAttr & 0x407F) == 0)) {
         if (lbl_1_bss_114->fallState == 3) {
-            MgPlayerAttrReset(lbl_1_bss_114->player, MGPLAYER_ATTR_COMSTK);
+            fn_80087168(lbl_1_bss_114->player, (1 << 0));
         }
         if (lbl_1_bss_114[1].fallState == 3) {
-            MgPlayerAttrReset(lbl_1_bss_114[1].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087168(lbl_1_bss_114[1].player, (1 << 0));
         }
         if (lbl_1_bss_114[2].fallState == 3) {
-            MgPlayerAttrReset(lbl_1_bss_114[2].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087168(lbl_1_bss_114[2].player, (1 << 0));
         }
         if (lbl_1_bss_114[3].fallState == 3) {
-            MgPlayerAttrReset(lbl_1_bss_114[3].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087168(lbl_1_bss_114[3].player, (1 << 0));
         }
         fn_1_214C();
         if (lbl_1_bss_114->fallState != 3) {
-            MgPlayerAttrSet(lbl_1_bss_114->player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(lbl_1_bss_114->player, (1 << 0));
         }
         if (lbl_1_bss_114[1].fallState != 3) {
-            MgPlayerAttrSet(lbl_1_bss_114[1].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(lbl_1_bss_114[1].player, (1 << 0));
         }
         if (lbl_1_bss_114[2].fallState != 3) {
-            MgPlayerAttrSet(lbl_1_bss_114[2].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(lbl_1_bss_114[2].player, (1 << 0));
         }
         if (lbl_1_bss_114[3].fallState != 3) {
-            MgPlayerAttrSet(lbl_1_bss_114[3].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(lbl_1_bss_114[3].player, (1 << 0));
         }
     }
     if (lbl_1_bss_54C != -1) {
         lbl_1_bss_114[lbl_1_bss_54C].player->actor->pos = lbl_1_bss_8[lbl_1_bss_54C];
     }
-    MgActorExec();
+    fn_800856A8();
     fn_1_4BE0();
 }
 
@@ -229,13 +230,13 @@ int fn_1_DA8(void)
         fn_1_796C(lbl_1_bss_54C);
         if (++lbl_1_bss_554 >= 30) {
             if ((s32) lbl_1_bss_554 == 30) {
-                MgPlayerAttrReset(lbl_1_bss_114[lbl_1_bss_54C].player, MGPLAYER_ATTR_COMSTK);
-                MgPlayerPadSet(lbl_1_bss_114[lbl_1_bss_54C].player, 0, 0, PAD_BUTTON_A, 0);
+                fn_80087168(lbl_1_bss_114[lbl_1_bss_54C].player, (1 << 0));
+                fn_80080520(lbl_1_bss_114[lbl_1_bss_54C].player, 0, 0, PAD_BUTTON_A, 0);
             } else if ((u32) (lbl_1_bss_114[lbl_1_bss_54C].player->actor->colGroundAttr & 0x407F) ==
                        0) {
-                MgPlayerPadSet(lbl_1_bss_114[lbl_1_bss_54C].player, 0, 0, 0, PAD_BUTTON_A);
+                fn_80080520(lbl_1_bss_114[lbl_1_bss_54C].player, 0, 0, 0, PAD_BUTTON_A);
             } else {
-                MgPlayerAttrSet(lbl_1_bss_114[lbl_1_bss_54C].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_114[lbl_1_bss_54C].player, (1 << 0));
             }
             if (lbl_1_bss_114[lbl_1_bss_54C].player->actor->rotY > 0.0f) {
                 lbl_1_bss_114[lbl_1_bss_54C].player->actor->rotY -= 5.0f;
@@ -250,35 +251,35 @@ int fn_1_DA8(void)
             }
         }
         if ((s32) lbl_1_bss_554 == 60) {
-            Hu3DModelCameraSet(lbl_1_bss_30C[28].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_30C[29].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_30C[30].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_30C[31].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_30C[32].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_30C[33].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_30C[34].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_30C[35].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_30C[36].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2F4[3][0], (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2F4[3][1], (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2F4[3][2], (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2CC[3][0], (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2CC[3][1], (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2CC[3][2], (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2BC[3][0], (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2B4[1][0], (u16) lbl_1_data_28[lbl_1_bss_54C]);
-            Hu3DModelCameraSet(lbl_1_bss_2B4[1][1], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[28].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[29].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[30].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[31].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[32].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[33].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[34].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[35].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_30C[36].model, (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2F4[3][0], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2F4[3][1], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2F4[3][2], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2CC[3][0], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2CC[3][1], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2CC[3][2], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2BC[3][0], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2B4[1][0], (u16) lbl_1_data_28[lbl_1_bss_54C]);
+            fn_80026B64(lbl_1_bss_2B4[1][1], (u16) lbl_1_data_28[lbl_1_bss_54C]);
         }
         if ((s32) lbl_1_bss_554 == 80) {
-            Hu3DModelAttrReset(lbl_1_bss_540[0], HU3D_ATTR_DISPOFF);
-            Hu3DMotionSpeedSet(lbl_1_bss_540[0], 1.0f);
+            fn_80026A44(lbl_1_bss_540[0], (1 << 0));
+            fn_8002D86C(lbl_1_bss_540[0], 1.0f);
         }
         if ((s32) lbl_1_bss_554 == 120) {
-            Hu3DModelAttrReset(lbl_1_bss_540[1], HU3D_ATTR_DISPOFF);
-            Hu3DMotionSpeedSet(lbl_1_bss_540[1], 1.0f);
+            fn_80026A44(lbl_1_bss_540[1], (1 << 0));
+            fn_8002D86C(lbl_1_bss_540[1], 1.0f);
         }
-        if (((s32) lbl_1_bss_554 == 90) && (_CheckFlag(FLAG_MG_PRACTICE) == 0) &&
-            (GwPlayerConf[lbl_1_bss_54C].type == 0) &&
+        if (((s32) lbl_1_bss_554 == 90) && (fn_8006A124(65551) == 0) &&
+            (lbl_80265728[lbl_1_bss_54C].type == 0) &&
             (MgTimerValueGet(lbl_1_bss_544) < (s32) lbl_1_bss_53C)) {
             MgTimerRecordSet(lbl_1_bss_544, -1);
         }
@@ -287,7 +288,7 @@ int fn_1_DA8(void)
             lbl_1_bss_558 = -1;
         }
         if ((s32) lbl_1_bss_558 == 0) {
-            CharMotionShiftSet(GwPlayerConf[lbl_1_bss_54C].charNo,
+            fn_8005C2C8(lbl_80265728[lbl_1_bss_54C].charNo,
                                lbl_1_bss_114[lbl_1_bss_54C].motion[0], 0.0f, 8.0f, 0U);
             winner = -1;
         }
@@ -304,10 +305,10 @@ int fn_1_DA8(void)
             lbl_1_bss_114[3].player->actor->velY = 0.0f;
         }
     } else {
-        MgPlayerAttrSet(lbl_1_bss_114->player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrSet(lbl_1_bss_114[1].player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrSet(lbl_1_bss_114[2].player, MGPLAYER_ATTR_COMSTK);
-        MgPlayerAttrSet(lbl_1_bss_114[3].player, MGPLAYER_ATTR_COMSTK);
+        fn_80087158(lbl_1_bss_114->player, (1 << 0));
+        fn_80087158(lbl_1_bss_114[1].player, (1 << 0));
+        fn_80087158(lbl_1_bss_114[2].player, (1 << 0));
+        fn_80087158(lbl_1_bss_114[3].player, (1 << 0));
         if ((lbl_1_bss_114->fallState == 0) &&
             ((u32) (lbl_1_bss_114->player->actor->colGroundAttr & 0x407F) != 0) &&
             (lbl_1_bss_114[1].fallState == 0) &&
@@ -318,48 +319,48 @@ int fn_1_DA8(void)
             ((u32) (lbl_1_bss_114[3].player->actor->colGroundAttr & 0x407F) != 0)) {
             if (++lbl_1_bss_558 < 15) {
                 winner = -2;
-                MgSeqModeChangeOff();
+                fn_80071B08();
             } else {
-                CharMotionShiftSet(GwPlayerConf->charNo, lbl_1_bss_114->motion[2], 0.0f, 8.0f, 0U);
-                CharMotionShiftSet(GwPlayerConf[1].charNo, lbl_1_bss_114[1].motion[2], 0.0f, 8.0f,
+                fn_8005C2C8(lbl_80265728->charNo, lbl_1_bss_114->motion[2], 0.0f, 8.0f, 0U);
+                fn_8005C2C8(lbl_80265728[1].charNo, lbl_1_bss_114[1].motion[2], 0.0f, 8.0f,
                                    0U);
-                CharMotionShiftSet(GwPlayerConf[2].charNo, lbl_1_bss_114[2].motion[2], 0.0f, 8.0f,
+                fn_8005C2C8(lbl_80265728[2].charNo, lbl_1_bss_114[2].motion[2], 0.0f, 8.0f,
                                    0U);
-                CharMotionShiftSet(GwPlayerConf[3].charNo, lbl_1_bss_114[3].motion[2], 0.0f, 8.0f,
+                fn_8005C2C8(lbl_80265728[3].charNo, lbl_1_bss_114[3].motion[2], 0.0f, 8.0f,
                                    0U);
-                MgSeqModeChangeOn();
+                fn_80071B30();
             }
         } else {
             winner = -2;
-            MgSeqModeChangeOff();
+            fn_80071B08();
             if (lbl_1_bss_114->fallState == 3) {
-                MgPlayerAttrReset(lbl_1_bss_114->player, MGPLAYER_ATTR_COMSTK);
+                fn_80087168(lbl_1_bss_114->player, (1 << 0));
             }
             if (lbl_1_bss_114[1].fallState == 3) {
-                MgPlayerAttrReset(lbl_1_bss_114[1].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087168(lbl_1_bss_114[1].player, (1 << 0));
             }
             if (lbl_1_bss_114[2].fallState == 3) {
-                MgPlayerAttrReset(lbl_1_bss_114[2].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087168(lbl_1_bss_114[2].player, (1 << 0));
             }
             if (lbl_1_bss_114[3].fallState == 3) {
-                MgPlayerAttrReset(lbl_1_bss_114[3].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087168(lbl_1_bss_114[3].player, (1 << 0));
             }
             fn_1_214C();
             if (lbl_1_bss_114->fallState != 3) {
-                MgPlayerAttrSet(lbl_1_bss_114->player, MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_114->player, (1 << 0));
             }
             if (lbl_1_bss_114[1].fallState != 3) {
-                MgPlayerAttrSet(lbl_1_bss_114[1].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_114[1].player, (1 << 0));
             }
             if (lbl_1_bss_114[2].fallState != 3) {
-                MgPlayerAttrSet(lbl_1_bss_114[2].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_114[2].player, (1 << 0));
             }
             if (lbl_1_bss_114[3].fallState != 3) {
-                MgPlayerAttrSet(lbl_1_bss_114[3].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_114[3].player, (1 << 0));
             }
         }
     }
-    MgActorExec();
+    fn_800856A8();
     fn_1_4BE0();
     return winner;
 }
@@ -377,7 +378,7 @@ void fn_1_1B40(int cameraMode)
             lbl_1_bss_4CC[player].center.y += 75.0f;
             lbl_1_bss_4CC[player].rot = (HuVecF){ -5.0f, 0.0f, 0.0f };
             lbl_1_bss_4CC[player].zoom = 7000.0f;
-            omCameraViewSetMulti(lbl_1_data_28[player], &lbl_1_bss_4CC[player]);
+            fn_8003E488(lbl_1_data_28[player], &lbl_1_bss_4CC[player]);
         }
         lbl_1_bss_4C8 = 0.0f;
     }
@@ -410,32 +411,33 @@ void fn_1_1CE0(void)
     actorParams.correctHook = NULL;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         lbl_1_bss_114[playerIndex].player =
-            MgPlayerCreate(playerIndex, &actorParams, 4, lbl_1_data_28[playerIndex], 3, NULL);
+            fn_80080728(playerIndex, &actorParams, 4, lbl_1_data_28[playerIndex], 3, NULL);
         lbl_1_bss_114[playerIndex].player->actor->pos.x = lbl_1_data_48[0].x;
         lbl_1_bss_114[playerIndex].player->actor->pos.y = lbl_1_data_48[0].y;
         lbl_1_bss_114[playerIndex].player->actor->pos.z = 0.0f;
         lbl_1_bss_114[playerIndex].player->actor->rotY = 90.0f;
         lbl_1_bss_114[playerIndex].moveDirection = 1;
         lbl_1_bss_114[playerIndex].stageSection = 0;
-        Hu3DModelCameraSet(lbl_1_bss_114[playerIndex].player->actor->mdlId,
+        fn_80026B64(lbl_1_bss_114[playerIndex].player->actor->mdlId,
                            lbl_1_data_28[playerIndex]);
         lbl_1_bss_114[playerIndex].fallState = 0;
         lbl_1_bss_114[playerIndex].fallFrames = 0;
-        characterNo = GwPlayerConf[playerIndex].charNo;
+        characterNo = lbl_80265728[playerIndex].charNo;
         for (motionIndex = 0; motionIndex < 4; motionIndex++) {
             lbl_1_bss_114[playerIndex].motion[motionIndex] =
-                CharMotionCreate(characterNo, lbl_1_data_38[motionIndex]);
+                fn_8005B0B8(characterNo, lbl_1_data_38[motionIndex]);
         }
-        CharMotionDataClose(characterNo);
-        lbl_1_bss_114[playerIndex].model = Hu3DModelCreateData(DATANUM(DATA_m618, 0));
-        Hu3DModelCameraSet(lbl_1_bss_114[playerIndex].model, lbl_1_data_28[playerIndex]);
-        Hu3DModelPosGet(lbl_1_bss_114[playerIndex].player->actor->mdlId, &playerModelPosition);
-        Hu3DModelPosSetV(lbl_1_bss_114[playerIndex].model, &playerModelPosition);
-        Hu3DModelRotSet(lbl_1_bss_114[playerIndex].model, 0.0f, 0.0f, 0.0f);
-        Hu3DModelAttrSet(lbl_1_bss_114[playerIndex].model, HU3D_MOTATTR_LOOP);
-        Hu3DModelLayerSet(lbl_1_bss_114[playerIndex].model, 2);
-        Hu3DModelAttrSet(lbl_1_bss_114[playerIndex].model, HU3D_ATTR_DISPOFF);
-        lbl_1_bss_84[playerIndex].cpuDifficulty = GwPlayerConf[playerIndex].comDif;
+        fn_8005B4BC(characterNo);
+        lbl_1_bss_114[playerIndex].model = fn_80025A04(fn_80008DD0((DATANUM(0x4d0000, 0)),
+            0x10000000, 2));
+        fn_80026B64(lbl_1_bss_114[playerIndex].model, lbl_1_data_28[playerIndex]);
+        fn_800267CC(lbl_1_bss_114[playerIndex].player->actor->mdlId, &playerModelPosition);
+        fn_80026790(lbl_1_bss_114[playerIndex].model, &playerModelPosition);
+        fn_80026808(lbl_1_bss_114[playerIndex].model, 0.0f, 0.0f, 0.0f);
+        fn_800269E8(lbl_1_bss_114[playerIndex].model, ((1 << 30) | (1 << 0)));
+        fn_80026B8C(lbl_1_bss_114[playerIndex].model, 2);
+        fn_800269E8(lbl_1_bss_114[playerIndex].model, (1 << 0));
+        lbl_1_bss_84[playerIndex].cpuDifficulty = lbl_80265728[playerIndex].comDif;
         lbl_1_bss_84[playerIndex].aiSpeed = frandmod(3) == 0U ? 46 : (frandmod(3) == 1U ? 41 : 56);
         if (lbl_1_bss_84[playerIndex].aiSpeed == 56) {
             playersWithFastAiSpeed++;
@@ -446,7 +448,7 @@ void fn_1_1CE0(void)
          * player. */
         lbl_1_bss_84[frandmod(4)].aiSpeed = 56;
     }
-    MgActorExec();
+    fn_800856A8();
 }
 
 /* Called by the play, start, and winner callbacks to update falls, returns, CPU decisions, and goal
@@ -472,7 +474,7 @@ void fn_1_214C(void)
             fn_1_44CC(playerIndex);
             lbl_1_bss_44[playerIndex][3] = -1;
         } else {
-            if (GwPlayerConf[playerIndex].type != 0) {
+            if (lbl_80265728[playerIndex].type != 0) {
                 fn_1_8180(playerIndex);
             }
             playerPosition = lbl_1_bss_114[playerIndex].player->actor->pos;
@@ -489,9 +491,9 @@ void fn_1_214C(void)
                         : (playerIndex == 1 ? M618_SOUND_PLAYER_FALL_2
                                             : (playerIndex == 2 ? M618_SOUND_PLAYER_FALL_3
                                                                 : M618_SOUND_PLAYER_FALL_4)));
-                MgPlayerAttrSet(lbl_1_bss_114[playerIndex].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_114[playerIndex].player, (1 << 0));
                 if (lbl_1_bss_114[playerIndex].fallState != 2) {
-                    CharFXPlay(GwPlayerConf[playerIndex].charNo, M618_CHAR_EFFECT_FALL);
+                    CharFXPlay(lbl_80265728[playerIndex].charNo, M618_CHAR_EFFECT_FALL);
                 }
             }
             if (((u32) (lbl_1_bss_114[playerIndex].player->actor->colGroundAttr & 0x407F) == 0) ||
@@ -499,14 +501,14 @@ void fn_1_214C(void)
                 if (lbl_1_bss_114[playerIndex].fallState != 1) {
                     if (++lbl_1_bss_114[playerIndex].fallFrames == 100) {
                         if (lbl_1_bss_114[playerIndex].fallState == 2) {
-                            MgPlayerSpawn(lbl_1_bss_114[playerIndex].player,
+                            fn_80086F00(lbl_1_bss_114[playerIndex].player,
                                           &lbl_1_bss_114[playerIndex].player->actor->pos);
                         }
                         lbl_1_bss_114[playerIndex].fallState = 1;
                         lbl_1_bss_114[playerIndex].fallFrames = 0;
                         lbl_1_bss_114[playerIndex].routeState = 0;
                         lbl_1_bss_114[playerIndex].recoveryAngle = 0.0f;
-                        MgPlayerAttrSet(lbl_1_bss_114[playerIndex].player, MGPLAYER_ATTR_COMSTK);
+                        fn_80087158(lbl_1_bss_114[playerIndex].player, (1 << 0));
                         if ((lbl_1_bss_114[playerIndex].stageSection == 2) &&
                             (lbl_1_bss_114[playerIndex].player->actor->pos.x < 4850.0f)) {
                             lbl_1_bss_114[playerIndex].player->actor->rotY = -90.0f;
@@ -517,7 +519,7 @@ void fn_1_214C(void)
             } else {
                 lbl_1_bss_114[playerIndex].fallState = 0;
                 lbl_1_bss_114[playerIndex].fallFrames = 0;
-                MgPlayerAttrReset(lbl_1_bss_114[playerIndex].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087168(lbl_1_bss_114[playerIndex].player, (1 << 0));
                 if (((u32) (lbl_1_bss_114[playerIndex].player->actor->colGroundAttr & 0x407F) !=
                      0) &&
                     (((lbl_1_bss_114[playerIndex].stageSection == 0) &&
@@ -530,7 +532,7 @@ void fn_1_214C(void)
                     lbl_1_bss_114[playerIndex].fallState = 3;
                     lbl_1_bss_114[playerIndex].routeState = 0;
                     lbl_1_bss_114[playerIndex].actionFrames = 0;
-                    omVibrate((s16) playerIndex, 20, 4, 4);
+                    fn_8006A030((s16) playerIndex, 20, 4, 4);
                 }
                 if (((s32) lbl_1_bss_548 == 0) && (lbl_1_bss_114[playerIndex].stageSection == 3) &&
                     ((u32) (lbl_1_bss_114[playerIndex].player->actor->colGroundAttr & 0x407F) !=
@@ -578,7 +580,7 @@ void fn_1_214C(void)
                      (0.5f * (f32) lbl_1_bss_114[playerIndex].jumpFrames *
                       (f32) lbl_1_bss_114[playerIndex].jumpFrames));
                 lbl_1_bss_114[playerIndex].jumpFrames += 1;
-                Hu3DModelPosSetV((s16) lbl_1_bss_114[playerIndex].player->actor->mdlId,
+                fn_80026790((s16) lbl_1_bss_114[playerIndex].player->actor->mdlId,
                                  &lbl_1_bss_114[playerIndex].player->actor->pos);
             }
             if ((lbl_1_bss_114[playerIndex].player->actor->rotY >= 0.0f) &&
@@ -621,16 +623,16 @@ void fn_1_214C(void)
             if (((u32) (lbl_1_bss_114[playerIndex].player->actor->colGroundAttr & 0x1000) != 0) &&
                 (lbl_1_bss_114[playerIndex].fallState == 0)) {
                 lbl_1_bss_114[playerIndex].fallState = 2;
-                MgPlayerAttrSet(lbl_1_bss_114[playerIndex].player, MGPLAYER_ATTR_COMSTK);
-                CharMotionShiftSet(GwPlayerConf[playerIndex].charNo,
+                fn_80087158(lbl_1_bss_114[playerIndex].player, (1 << 0));
+                fn_8005C2C8(lbl_80265728[playerIndex].charNo,
                                    lbl_1_bss_114[playerIndex].motion[1], 0.0f, 8.0f, 0U);
                 lbl_1_bss_114[playerIndex].player->actor->pos.y += 50.0f;
                 lbl_1_bss_114[playerIndex].player->actor->pos.z += 500.0f;
-                omVibrate((s16) playerIndex, 20, 7, 3);
+                fn_8006A030((s16) playerIndex, 20, 7, 3);
                 lbl_1_bss_114[playerIndex].jumpFrames = 0;
                 lbl_1_bss_114[playerIndex].jumpStartHeight =
                     lbl_1_bss_114[playerIndex].player->actor->pos.y;
-                MgPlayerDespawn(lbl_1_bss_114[playerIndex].player);
+                fn_80086E3C(lbl_1_bss_114[playerIndex].player);
             }
         }
         playerIndex += 1;
@@ -639,7 +641,7 @@ void fn_1_214C(void)
         /* A simultaneous goal crossing selects one of the qualifying players at random. */
         lbl_1_bss_54C = goalPlayers[frandmod(goalPlayerCount)];
         lbl_1_bss_548 = 1;
-        MgPlayerAttrSet(lbl_1_bss_114[lbl_1_bss_54C].player, MGPLAYER_ATTR_COMSTK);
+        fn_80087158(lbl_1_bss_114[lbl_1_bss_54C].player, (1 << 0));
         lbl_1_bss_8[lbl_1_bss_54C] = lbl_1_bss_114[lbl_1_bss_54C].player->actor->pos;
     }
 }
@@ -663,7 +665,7 @@ void fn_1_3294(int playerNo)
                                              : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
                                                               : M618_SOUND_PLAYER_SECTION_4)));
                 }
-                MgPlayerPadSet(lbl_1_bss_114[playerNo].player, 30, 0, 0, 0);
+                fn_80080520(lbl_1_bss_114[playerNo].player, 30, 0, 0, 0);
                 if (lbl_1_bss_114[playerNo].player->actor->pos.x >=
                     (2600.0f + lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].x)) {
                     lbl_1_bss_114[playerNo].player->actor->pos.x =
@@ -673,7 +675,7 @@ void fn_1_3294(int playerNo)
                 lbl_1_bss_114[playerNo].moveDirection = 1;
                 return;
             }
-            MgPlayerAttrSet(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(lbl_1_bss_114[playerNo].player, (1 << 0));
             lbl_1_bss_114[playerNo].stageSection += 1;
             lbl_1_bss_114[playerNo].player->actor->pos.x =
                 lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].x;
@@ -685,7 +687,7 @@ void fn_1_3294(int playerNo)
             if (lbl_1_bss_114[playerNo].actionFrames == 0) {
                 if (lbl_1_bss_114[playerNo].player->actor->pos.x <
                     (3100.0f + lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].x)) {
-                    MgPlayerPadSet(lbl_1_bss_114[playerNo].player, 30, 0, 0, 0);
+                    fn_80080520(lbl_1_bss_114[playerNo].player, 30, 0, 0, 0);
                     if (lbl_1_bss_114[playerNo].player->actor->pos.x >=
                         (3100.0f + lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].x)) {
                         lbl_1_bss_114[playerNo].player->actor->pos.x =
@@ -695,7 +697,7 @@ void fn_1_3294(int playerNo)
                     lbl_1_bss_114[playerNo].moveDirection = 1;
                     return;
                 }
-                MgPlayerPadSet(lbl_1_bss_114[playerNo].player, 0, 0, PAD_BUTTON_A, 0);
+                fn_80080520(lbl_1_bss_114[playerNo].player, 0, 0, PAD_BUTTON_A, 0);
                 lbl_1_bss_114[playerNo].actionFrames = 1;
                 return;
             }
@@ -708,7 +710,7 @@ void fn_1_3294(int playerNo)
                                          : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
                                                           : M618_SOUND_PLAYER_SECTION_4)));
             }
-            MgPlayerPadSet(lbl_1_bss_114[playerNo].player, 0, 0, 0, PAD_BUTTON_A);
+            fn_80080520(lbl_1_bss_114[playerNo].player, 0, 0, 0, PAD_BUTTON_A);
             if (++lbl_1_bss_114[playerNo].actionFrames == 15) {
                 lbl_1_bss_114[playerNo].player->actor->pos.y =
                     lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection + 1].y;
@@ -730,7 +732,7 @@ void fn_1_3294(int playerNo)
                                              : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
                                                               : M618_SOUND_PLAYER_SECTION_4)));
                 }
-                MgPlayerPadSet(lbl_1_bss_114[playerNo].player, -30, 0, 0, 0);
+                fn_80080520(lbl_1_bss_114[playerNo].player, -30, 0, 0, 0);
                 if (lbl_1_bss_114[playerNo].player->actor->pos.x <=
                     (230.0f + lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].x)) {
                     lbl_1_bss_114[playerNo].player->actor->pos.x =
@@ -740,7 +742,7 @@ void fn_1_3294(int playerNo)
                 lbl_1_bss_114[playerNo].moveDirection = -1;
                 return;
             }
-            MgPlayerAttrSet(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087158(lbl_1_bss_114[playerNo].player, (1 << 0));
             lbl_1_bss_114[playerNo].stageSection += 1;
             lbl_1_bss_114[playerNo].player->actor->pos.x =
                 3200.0f + lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].x;
@@ -750,7 +752,7 @@ void fn_1_3294(int playerNo)
         }
     } else if (lbl_1_bss_114[playerNo].stageSection == 1) {
         endX = 160.0f + lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].x;
-        MgPlayerAttrReset(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+        fn_80087168(lbl_1_bss_114[playerNo].player, (1 << 0));
         if (lbl_1_bss_114[playerNo].player->actor->pos.x < endX) {
             if ((lbl_1_bss_114[playerNo].player->actor->pos.x >= 3240.0f) &&
                 ((s32) lbl_1_bss_44[playerNo][0] == -1)) {
@@ -761,13 +763,13 @@ void fn_1_3294(int playerNo)
                                          : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
                                                           : M618_SOUND_PLAYER_SECTION_4)));
             }
-            MgPlayerPadSet(lbl_1_bss_114[playerNo].player, 30, 0, 0, 0);
+            fn_80080520(lbl_1_bss_114[playerNo].player, 30, 0, 0, 0);
             if (lbl_1_bss_114[playerNo].player->actor->pos.x >= endX) {
                 lbl_1_bss_114[playerNo].player->actor->pos.x = endX;
                 return;
             }
         } else {
-            MgPlayerAttrReset(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087168(lbl_1_bss_114[playerNo].player, (1 << 0));
             lbl_1_bss_114[playerNo].fallState = 0;
             lbl_1_bss_114[playerNo].recoveryPositionValid = 0;
             lbl_1_bss_114[playerNo].recoveryPosition = lbl_1_bss_114[playerNo].player->actor->pos;
@@ -779,12 +781,12 @@ void fn_1_3294(int playerNo)
     } else {
         if (lbl_1_bss_114[playerNo].stageSection == 2) {
             if (lbl_1_bss_114[playerNo].actionFrames < 30) {
-                MgPlayerAttrSet(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087158(lbl_1_bss_114[playerNo].player, (1 << 0));
                 lbl_1_bss_114[playerNo].player->actor->rotY = -90.0f;
                 lbl_1_bss_114[playerNo].moveDirection = -1;
             } else if (lbl_1_bss_114[playerNo].actionFrames == 30) {
-                MgPlayerAttrReset(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
-                MgPlayerPadSet(lbl_1_bss_114[playerNo].player, 0, 0, PAD_BUTTON_A, 0);
+                fn_80087168(lbl_1_bss_114[playerNo].player, (1 << 0));
+                fn_80080520(lbl_1_bss_114[playerNo].player, 0, 0, PAD_BUTTON_A, 0);
             } else {
                 if ((lbl_1_bss_114[playerNo].actionFrames == 35) &&
                     ((s32) lbl_1_bss_44[playerNo][1] == -1)) {
@@ -795,9 +797,9 @@ void fn_1_3294(int playerNo)
                                              : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
                                                               : M618_SOUND_PLAYER_SECTION_4)));
                 }
-                MgPlayerPadSet(lbl_1_bss_114[playerNo].player, 0, 0, 0, PAD_BUTTON_A);
+                fn_80080520(lbl_1_bss_114[playerNo].player, 0, 0, 0, PAD_BUTTON_A);
                 if (lbl_1_bss_114[playerNo].actionFrames == 60) {
-                    MgPlayerAttrReset(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+                    fn_80087168(lbl_1_bss_114[playerNo].player, (1 << 0));
                     lbl_1_bss_114[playerNo].fallState = 0;
                     lbl_1_bss_114[playerNo].recoveryPositionValid = 0;
                     lbl_1_bss_114[playerNo].recoveryPosition =
@@ -812,7 +814,7 @@ void fn_1_3294(int playerNo)
         }
         if (lbl_1_bss_114[playerNo].stageSection == 3) {
             endX = (3200.0f + lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].x) - 350.0f;
-            MgPlayerAttrReset(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+            fn_80087168(lbl_1_bss_114[playerNo].player, (1 << 0));
             if (lbl_1_bss_114[playerNo].player->actor->pos.x > endX) {
                 if ((lbl_1_bss_114[playerNo].player->actor->pos.x <= 4000.0f) &&
                     ((s32) lbl_1_bss_44[playerNo][2] == -1)) {
@@ -823,13 +825,13 @@ void fn_1_3294(int playerNo)
                                              : (playerNo == 2 ? M618_SOUND_PLAYER_SECTION_3
                                                               : M618_SOUND_PLAYER_SECTION_4)));
                 }
-                MgPlayerPadSet(lbl_1_bss_114[playerNo].player, -30, 0, 0, 0);
+                fn_80080520(lbl_1_bss_114[playerNo].player, -30, 0, 0, 0);
                 if (lbl_1_bss_114[playerNo].player->actor->pos.x <= endX) {
                     lbl_1_bss_114[playerNo].player->actor->pos.x = endX;
                     return;
                 }
             } else {
-                MgPlayerAttrReset(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+                fn_80087168(lbl_1_bss_114[playerNo].player, (1 << 0));
                 lbl_1_bss_114[playerNo].fallState = 0;
                 lbl_1_bss_114[playerNo].recoveryPositionValid = 0;
                 lbl_1_bss_114[playerNo].recoveryPosition =
@@ -851,22 +853,22 @@ void fn_1_44CC(int playerNo)
     f32 distanceToRecoveryPosition;
 
     if (lbl_1_bss_114[playerNo].routeState == 0) {
-        Hu3DModelAttrReset(lbl_1_bss_114[playerNo].model, HU3D_ATTR_DISPOFF);
-        Hu3DModelPosGet((s16) lbl_1_bss_114[playerNo].player->actor->mdlId, &playerModelPosition);
+        fn_80026A44(lbl_1_bss_114[playerNo].model, (1 << 0));
+        fn_800267CC((s16) lbl_1_bss_114[playerNo].player->actor->mdlId, &playerModelPosition);
         lbl_1_bss_114[playerNo].liftModelPosition = playerModelPosition;
         lbl_1_bss_114[playerNo].liftModelPosition.y =
             (f32) ((f64) (2000.0f + playerModelPosition.y) -
                    (1200.0 *
                     sin((3.1415926535897931 * (f64) lbl_1_bss_114[playerNo].recoveryAngle) /
                         180.0)));
-        Hu3DModelPosSet(lbl_1_bss_114[playerNo].model, playerModelPosition.x,
+        fn_80026760(lbl_1_bss_114[playerNo].model, playerModelPosition.x,
                         lbl_1_bss_114[playerNo].liftModelPosition.y, playerModelPosition.z);
         lbl_1_bss_114[playerNo].recoveryAngle += 1.0f;
         if (lbl_1_bss_114[playerNo].recoveryAngle >= 90.0f) {
             lbl_1_bss_114[playerNo].recoveryAngle = 90.0f;
             lbl_1_bss_114[playerNo].routeState += 1;
-            CharMotionShiftSet(GwPlayerConf[playerNo].charNo, lbl_1_bss_114[playerNo].motion[3],
-                               0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            fn_8005C2C8(lbl_80265728[playerNo].charNo, lbl_1_bss_114[playerNo].motion[3],
+                               0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             lbl_1_bss_114[playerNo].player->actor->rotY = 0.0f;
             return;
         }
@@ -879,7 +881,7 @@ void fn_1_44CC(int playerNo)
         PSVECScale(&recoveryDirection, &recoveryDirection, distanceToRecoveryPosition / 20.0f);
         PSVECAdd(&recoveryDirection, &lbl_1_bss_114[playerNo].liftModelPosition,
                  &lbl_1_bss_114[playerNo].liftModelPosition);
-        Hu3DModelPosSetV(lbl_1_bss_114[playerNo].model, &lbl_1_bss_114[playerNo].liftModelPosition);
+        fn_80026790(lbl_1_bss_114[playerNo].model, &lbl_1_bss_114[playerNo].liftModelPosition);
         Hu3DModelObjPosGet(lbl_1_bss_114[playerNo].model, "itemhook_I", &playerModelPosition);
         lbl_1_bss_114[playerNo].player->actor->pos = playerModelPosition;
         lbl_1_bss_114[playerNo].player->actor->velY = 0.0f;
@@ -908,13 +910,13 @@ void fn_1_44CC(int playerNo)
         }
     } else {
         lbl_1_bss_114[playerNo].liftModelPosition.y += 24.0f;
-        Hu3DModelPosSet(lbl_1_bss_114[playerNo].model, lbl_1_bss_114[playerNo].liftModelPosition.x,
+        fn_80026760(lbl_1_bss_114[playerNo].model, lbl_1_bss_114[playerNo].liftModelPosition.x,
                         lbl_1_bss_114[playerNo].liftModelPosition.y,
                         lbl_1_bss_114[playerNo].liftModelPosition.z);
         if (lbl_1_bss_114[playerNo].liftModelPosition.y >
             (800.0f + lbl_1_data_48[lbl_1_bss_114[playerNo].stageSection].y)) {
-            Hu3DModelAttrSet(lbl_1_bss_114[playerNo].model, HU3D_ATTR_DISPOFF);
-            MgPlayerAttrReset(lbl_1_bss_114[playerNo].player, MGPLAYER_ATTR_COMSTK);
+            fn_800269E8(lbl_1_bss_114[playerNo].model, (1 << 0));
+            fn_80087168(lbl_1_bss_114[playerNo].player, (1 << 0));
             lbl_1_bss_114[playerNo].fallState = 0;
         }
     }
@@ -996,7 +998,7 @@ void fn_1_4BE0(void)
         } else if (cameraY > (75.0f + actorY)) {
             lbl_1_bss_4CC[player].center.y -= (cameraY - (75.0f + actorY)) / 20.0f;
         }
-        omCameraViewSetMulti((s16) lbl_1_data_28[player], &lbl_1_bss_4CC[player]);
+        fn_8003E488((s16) lbl_1_data_28[player], &lbl_1_bss_4CC[player]);
         if (lbl_1_bss_114[player].player->actor->pos.y < (minY - 1000.0f)) {
             /* A deep fall is held below the view and behind the course while the return state
              * advances. */
@@ -1021,9 +1023,9 @@ void fn_1_52D0(void)
     collisionCount = 0;
     i = 0;
     while (i < 37) {
-        lbl_1_bss_30C[i].model = Hu3DModelCreate(
-            HuDataSelHeapReadNum(i + DATANUM(DATA_m618, 1), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(lbl_1_bss_30C[i].model, 15U);
+        lbl_1_bss_30C[i].model = fn_80025A04(
+            fn_80008DD0(i + DATANUM(0x4d0000, 1), 0x10000000, 2));
+        fn_80026B64(lbl_1_bss_30C[i].model, 15U);
         if (i <= 4) {
             pos.x = lbl_1_data_48->x;
             pos.y = lbl_1_data_48->y;
@@ -1040,123 +1042,123 @@ void fn_1_52D0(void)
         if ((i == 8) || (i == 31)) {
             pos.y -= 100.0f;
         }
-        Hu3DModelPosSet(lbl_1_bss_30C[i].model, pos.x, pos.y, 0.0f);
-        Hu3DModelRotSet(lbl_1_bss_30C[i].model, 0.0f, 0.0f, 0.0f);
-        Hu3DModelLayerSet(lbl_1_bss_30C[i].model, 1);
-        Hu3DModelAttrSet(lbl_1_bss_30C[i].model, HU3D_MOTATTR_LOOP);
-        lbl_1_bss_30C[i].colModel = Hu3DModelCreate(
-            HuDataSelHeapReadNum(i + DATANUM(DATA_m618, 38), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(lbl_1_bss_30C[i].colModel, 15U);
+        fn_80026760(lbl_1_bss_30C[i].model, pos.x, pos.y, 0.0f);
+        fn_80026808(lbl_1_bss_30C[i].model, 0.0f, 0.0f, 0.0f);
+        fn_80026B8C(lbl_1_bss_30C[i].model, 1);
+        fn_800269E8(lbl_1_bss_30C[i].model, ((1 << 30) | (1 << 0)));
+        lbl_1_bss_30C[i].colModel = fn_80025A04(
+            fn_80008DD0(i + DATANUM(0x4d0000, 38), 0x10000000, 2));
+        fn_80026B64(lbl_1_bss_30C[i].colModel, 15U);
         fn_1_6704(i);
-        Hu3DModelLayerSet(lbl_1_bss_30C[i].colModel, 1);
-        Hu3DModelAttrSet(lbl_1_bss_30C[i].colModel, HU3D_ATTR_DISPOFF);
+        fn_80026B8C(lbl_1_bss_30C[i].colModel, 1);
+        fn_800269E8(lbl_1_bss_30C[i].colModel, (1 << 0));
         collisionModels[collisionCount++] = lbl_1_bss_30C[i].colModel;
         i += 1;
     }
     i = 0;
     while (i < 4) {
-        lbl_1_bss_2F4[i][0] = Hu3DModelCreate(HuDataSelHeapReadNum(
-            modelFiles[i][0] + DATANUM(DATA_m618, 0), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelPosSet(lbl_1_bss_2F4[i][0], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-        Hu3DModelCameraSet(lbl_1_bss_2F4[i][0], 15U);
-        Hu3DModelAttrSet(lbl_1_bss_2F4[i][0], HU3D_MOTATTR_LOOP);
+        lbl_1_bss_2F4[i][0] = fn_80025A04(fn_80008DD0(
+            modelFiles[i][0] + DATANUM(0x4d0000, 0), 0x10000000, 2));
+        fn_80026760(lbl_1_bss_2F4[i][0], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+        fn_80026B64(lbl_1_bss_2F4[i][0], 15U);
+        fn_800269E8(lbl_1_bss_2F4[i][0], ((1 << 30) | (1 << 0)));
         if ((i == 2) || (i == 3)) {
-            lbl_1_bss_2F4[i][1] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                modelFiles[i][0] + DATANUM(DATA_m618, 1), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSet(lbl_1_bss_2F4[i][1], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-            Hu3DModelCameraSet(lbl_1_bss_2F4[i][1], 15U);
-            Hu3DModelAttrSet(lbl_1_bss_2F4[i][1], HU3D_MOTATTR_LOOP);
+            lbl_1_bss_2F4[i][1] = fn_80025A04(fn_80008DD0(
+                modelFiles[i][0] + DATANUM(0x4d0000, 1), 0x10000000, 2));
+            fn_80026760(lbl_1_bss_2F4[i][1], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+            fn_80026B64(lbl_1_bss_2F4[i][1], 15U);
+            fn_800269E8(lbl_1_bss_2F4[i][1], ((1 << 30) | (1 << 0)));
         }
         if (i == 3) {
-            lbl_1_bss_2F4[i][2] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                modelFiles[i][0] + DATANUM(DATA_m618, 2), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSet(lbl_1_bss_2F4[i][2], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-            Hu3DModelCameraSet(lbl_1_bss_2F4[i][2], 15U);
-            Hu3DModelAttrSet(lbl_1_bss_2F4[i][2], HU3D_MOTATTR_LOOP);
+            lbl_1_bss_2F4[i][2] = fn_80025A04(fn_80008DD0(
+                modelFiles[i][0] + DATANUM(0x4d0000, 2), 0x10000000, 2));
+            fn_80026760(lbl_1_bss_2F4[i][2], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+            fn_80026B64(lbl_1_bss_2F4[i][2], 15U);
+            fn_800269E8(lbl_1_bss_2F4[i][2], ((1 << 30) | (1 << 0)));
         }
         if ((i == 1) || (i == 3)) {
-            lbl_1_bss_2B4[(i == 1 ? 0 : 1)][0] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                (i == 1 ? 9 : 32) + DATANUM(DATA_m618, 0), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSet(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][0], lbl_1_data_48[i].x,
+            lbl_1_bss_2B4[(i == 1 ? 0 : 1)][0] = fn_80025A04(fn_80008DD0(
+                (i == 1 ? 9 : 32) + DATANUM(0x4d0000, 0), 0x10000000, 2));
+            fn_80026760(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][0], lbl_1_data_48[i].x,
                             (lbl_1_data_48[i].y - 150.0f) - 100.0f, 0.0f);
-            Hu3DModelCameraSet(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][0], 15U);
-            Hu3DModelAttrSet(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][0], HU3D_MOTATTR_LOOP);
-            lbl_1_bss_2B4[(i == 1 ? 0 : 1)][1] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                (i == 1 ? 9 : 32) + DATANUM(DATA_m618, 0), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSet(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][1], lbl_1_data_48[i].x,
+            fn_80026B64(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][0], 15U);
+            fn_800269E8(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][0], ((1 << 30) | (1 << 0)));
+            lbl_1_bss_2B4[(i == 1 ? 0 : 1)][1] = fn_80025A04(fn_80008DD0(
+                (i == 1 ? 9 : 32) + DATANUM(0x4d0000, 0), 0x10000000, 2));
+            fn_80026760(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][1], lbl_1_data_48[i].x,
                             (lbl_1_data_48[i].y - 300.0f) - 100.0f, 0.0f);
-            Hu3DModelCameraSet(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][1], 15U);
-            Hu3DModelAttrSet(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][1], HU3D_MOTATTR_LOOP);
+            fn_80026B64(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][1], 15U);
+            fn_800269E8(lbl_1_bss_2B4[(i == 1 ? 0 : 1)][1], ((1 << 30) | (1 << 0)));
         }
-        lbl_1_bss_2CC[i][0] = Hu3DModelCreate(HuDataSelHeapReadNum(
-            modelFiles[i][1] + DATANUM(DATA_m618, 0), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelPosSet(lbl_1_bss_2CC[i][0], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-        Hu3DModelCameraSet(lbl_1_bss_2CC[i][0], 15U);
-        Hu3DModelAttrSet(lbl_1_bss_2CC[i][0], HU3D_MOTATTR_LOOP);
+        lbl_1_bss_2CC[i][0] = fn_80025A04(fn_80008DD0(
+            modelFiles[i][1] + DATANUM(0x4d0000, 0), 0x10000000, 2));
+        fn_80026760(lbl_1_bss_2CC[i][0], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+        fn_80026B64(lbl_1_bss_2CC[i][0], 15U);
+        fn_800269E8(lbl_1_bss_2CC[i][0], ((1 << 30) | (1 << 0)));
         if (i > 0) {
-            lbl_1_bss_2CC[i][1] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                modelFiles[i][1] + DATANUM(DATA_m618, 1), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSet(lbl_1_bss_2CC[i][1], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-            Hu3DModelCameraSet(lbl_1_bss_2CC[i][1], 15U);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[i][1], HU3D_MOTATTR_LOOP);
-            lbl_1_bss_2CC[i][2] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                modelFiles[i][1] + DATANUM(DATA_m618, 2), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSet(lbl_1_bss_2CC[i][2], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-            Hu3DModelCameraSet(lbl_1_bss_2CC[i][2], 15U);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[i][2], HU3D_MOTATTR_LOOP);
+            lbl_1_bss_2CC[i][1] = fn_80025A04(fn_80008DD0(
+                modelFiles[i][1] + DATANUM(0x4d0000, 1), 0x10000000, 2));
+            fn_80026760(lbl_1_bss_2CC[i][1], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+            fn_80026B64(lbl_1_bss_2CC[i][1], 15U);
+            fn_800269E8(lbl_1_bss_2CC[i][1], ((1 << 30) | (1 << 0)));
+            lbl_1_bss_2CC[i][2] = fn_80025A04(fn_80008DD0(
+                modelFiles[i][1] + DATANUM(0x4d0000, 2), 0x10000000, 2));
+            fn_80026760(lbl_1_bss_2CC[i][2], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+            fn_80026B64(lbl_1_bss_2CC[i][2], 15U);
+            fn_800269E8(lbl_1_bss_2CC[i][2], ((1 << 30) | (1 << 0)));
             if (i != 3) {
-                lbl_1_bss_2CC[i][3] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                    modelFiles[i][1] + DATANUM(DATA_m618, 3), HU_MEMNUM_OVL, HEAP_MODEL));
-                Hu3DModelPosSet(lbl_1_bss_2CC[i][3], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-                Hu3DModelCameraSet(lbl_1_bss_2CC[i][3], 15U);
-                Hu3DModelAttrSet(lbl_1_bss_2CC[i][3], HU3D_MOTATTR_LOOP);
+                lbl_1_bss_2CC[i][3] = fn_80025A04(fn_80008DD0(
+                    modelFiles[i][1] + DATANUM(0x4d0000, 3), 0x10000000, 2));
+                fn_80026760(lbl_1_bss_2CC[i][3], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+                fn_80026B64(lbl_1_bss_2CC[i][3], 15U);
+                fn_800269E8(lbl_1_bss_2CC[i][3], ((1 << 30) | (1 << 0)));
             }
         }
         if (i == 2) {
-            lbl_1_bss_2CC[i][4] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                modelFiles[i][1] + DATANUM(DATA_m618, 4), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSet(lbl_1_bss_2CC[i][4], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-            Hu3DModelCameraSet(lbl_1_bss_2CC[i][4], 15U);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[i][4], HU3D_MOTATTR_LOOP);
+            lbl_1_bss_2CC[i][4] = fn_80025A04(fn_80008DD0(
+                modelFiles[i][1] + DATANUM(0x4d0000, 4), 0x10000000, 2));
+            fn_80026760(lbl_1_bss_2CC[i][4], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+            fn_80026B64(lbl_1_bss_2CC[i][4], 15U);
+            fn_800269E8(lbl_1_bss_2CC[i][4], ((1 << 30) | (1 << 0)));
         }
-        lbl_1_bss_2BC[i][0] = Hu3DModelCreate(HuDataSelHeapReadNum(
-            modelFiles[i][2] + DATANUM(DATA_m618, 0), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelPosSet(lbl_1_bss_2BC[i][0], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-        Hu3DModelCameraSet(lbl_1_bss_2BC[i][0], 15U);
+        lbl_1_bss_2BC[i][0] = fn_80025A04(fn_80008DD0(
+            modelFiles[i][2] + DATANUM(0x4d0000, 0), 0x10000000, 2));
+        fn_80026760(lbl_1_bss_2BC[i][0], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+        fn_80026B64(lbl_1_bss_2BC[i][0], 15U);
         if (i < 3) {
-            lbl_1_bss_2BC[i][1] = Hu3DModelCreate(HuDataSelHeapReadNum(
-                modelFiles[i][2] + DATANUM(DATA_m618, 1), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSet(lbl_1_bss_2BC[i][1], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
-            Hu3DModelCameraSet(lbl_1_bss_2BC[i][1], 15U);
+            lbl_1_bss_2BC[i][1] = fn_80025A04(fn_80008DD0(
+                modelFiles[i][2] + DATANUM(0x4d0000, 1), 0x10000000, 2));
+            fn_80026760(lbl_1_bss_2BC[i][1], lbl_1_data_48[i].x, lbl_1_data_48[i].y, 0.0f);
+            fn_80026B64(lbl_1_bss_2BC[i][1], 15U);
             if (i == 2) {
-                extraModel = Hu3DModelCreate(
-                    HuDataSelHeapReadNum(DATANUM(DATA_m618, 104), HU_MEMNUM_OVL, HEAP_MODEL));
-                Hu3DModelPosGet(lbl_1_bss_2BC[2][1], &pos);
+                extraModel = fn_80025A04(
+                    fn_80008DD0(DATANUM(0x4d0000, 104), 0x10000000, 2));
+                fn_800267CC(lbl_1_bss_2BC[2][1], &pos);
                 pos.x -= 15.0f;
-                Hu3DModelPosSetV(extraModel, &pos);
-                Hu3DModelCameraSet(extraModel, 15U);
-                Hu3DModelLayerSet(extraModel, 1);
-                Hu3DModelAttrSet(extraModel, HU3D_ATTR_DISPOFF);
+                fn_80026790(extraModel, &pos);
+                fn_80026B64(extraModel, 15U);
+                fn_80026B8C(extraModel, 1);
+                fn_800269E8(extraModel, (1 << 0));
                 collisionModels[collisionCount++] = extraModel;
             }
         }
         i += 1;
     }
     lbl_1_bss_540[0] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m618, 102), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(lbl_1_bss_540[0], lbl_1_data_48[3].x, lbl_1_data_48[3].y, 0.0f);
-    Hu3DModelCameraSet(lbl_1_bss_540[0], 15U);
-    Hu3DModelAttrSet(lbl_1_bss_540[0], HU3D_ATTR_DISPOFF);
-    Hu3DMotionSpeedSet(lbl_1_bss_540[0], 0.0f);
+        fn_80025A04(fn_80008DD0(DATANUM(0x4d0000, 102), 0x10000000, 2));
+    fn_80026760(lbl_1_bss_540[0], lbl_1_data_48[3].x, lbl_1_data_48[3].y, 0.0f);
+    fn_80026B64(lbl_1_bss_540[0], 15U);
+    fn_800269E8(lbl_1_bss_540[0], (1 << 0));
+    fn_8002D86C(lbl_1_bss_540[0], 0.0f);
     lbl_1_bss_540[1] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m618, 103), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(lbl_1_bss_540[1], lbl_1_data_48[3].x, lbl_1_data_48[3].y, 0.0f);
-    Hu3DModelCameraSet(lbl_1_bss_540[1], 15U);
-    Hu3DModelAttrSet(lbl_1_bss_540[1], HU3D_ATTR_DISPOFF);
-    Hu3DMotionSpeedSet(lbl_1_bss_540[1], 0.0f);
-    MgActorColMapInit(collisionModels, (s16) collisionCount, 8);
+        fn_80025A04(fn_80008DD0(DATANUM(0x4d0000, 103), 0x10000000, 2));
+    fn_80026760(lbl_1_bss_540[1], lbl_1_data_48[3].x, lbl_1_data_48[3].y, 0.0f);
+    fn_80026B64(lbl_1_bss_540[1], 15U);
+    fn_800269E8(lbl_1_bss_540[1], (1 << 0));
+    fn_8002D86C(lbl_1_bss_540[1], 0.0f);
+    fn_800804E8(collisionModels, (s16) collisionCount, 8);
     Hu3DBGColorSet(0U, 0U, 0U);
-    HuPrcChildCreate(fn_1_6C0C, 4096U, 8192U, 0, HuPrcCurrentGet());
+    fn_8000DAC0(fn_1_6C0C, 4096U, 8192U, 0, fn_8000DD9C());
 }
 
 /* Called by fn_1_910 to stop course and lift motion during the results. */
@@ -1164,48 +1166,48 @@ void fn_1_6298(void)
 {
     int group;
 
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[3].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[4].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[8].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[9].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[10].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[11].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[12].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[15].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[16].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[17].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[18].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[19].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[20].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[21].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[22].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[23].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[24].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[25].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[26].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[27].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[31].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[32].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[33].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[34].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[35].model, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_30C[36].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[3].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[4].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[8].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[9].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[10].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[11].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[12].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[15].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[16].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[17].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[18].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[19].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[20].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[21].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[22].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[23].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[24].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[25].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[26].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[27].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[31].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[32].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[33].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[34].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[35].model, 0.0f);
+    fn_8002D86C(lbl_1_bss_30C[36].model, 0.0f);
     group = 0;
     while (group < 4) {
         if ((group == 1) || (group == 3)) {
-            Hu3DMotionSpeedSet(lbl_1_bss_2B4[group == 1 ? 0 : 1][0], 0.0f);
-            Hu3DMotionSpeedSet(lbl_1_bss_2B4[group == 1 ? 0 : 1][1], 0.0f);
+            fn_8002D86C(lbl_1_bss_2B4[group == 1 ? 0 : 1][0], 0.0f);
+            fn_8002D86C(lbl_1_bss_2B4[group == 1 ? 0 : 1][1], 0.0f);
         }
-        Hu3DMotionSpeedSet(lbl_1_bss_2CC[group][0], 0.0f);
+        fn_8002D86C(lbl_1_bss_2CC[group][0], 0.0f);
         if (group > 0) {
-            Hu3DMotionSpeedSet(lbl_1_bss_2CC[group][1], 0.0f);
+            fn_8002D86C(lbl_1_bss_2CC[group][1], 0.0f);
             if (group != 3) {
-                Hu3DMotionSpeedSet(lbl_1_bss_2CC[group][2], 0.0f);
-                Hu3DMotionSpeedSet(lbl_1_bss_2CC[group][3], 0.0f);
+                fn_8002D86C(lbl_1_bss_2CC[group][2], 0.0f);
+                fn_8002D86C(lbl_1_bss_2CC[group][3], 0.0f);
             }
         }
         if (group == 2) {
-            Hu3DMotionSpeedSet(lbl_1_bss_2CC[group][4], 0.0f);
+            fn_8002D86C(lbl_1_bss_2CC[group][4], 0.0f);
         }
         group += 1;
     }
@@ -1218,12 +1220,12 @@ void fn_1_6704(int modelIndex)
     Point3d modelPosition;
     Point3d modelRotation;
 
-    Hu3DMotionCalc(lbl_1_bss_30C[modelIndex].model);
+    fn_80030644(lbl_1_bss_30C[modelIndex].model);
     switch (modelIndex) {
     case 0:
     case 1:
     case 2:
-        Hu3DModelPosGet(lbl_1_bss_30C[modelIndex].model, &modelPosition);
+        fn_800267CC(lbl_1_bss_30C[modelIndex].model, &modelPosition);
         break;
     case 3:
         Hu3DModelObjPosGet(lbl_1_bss_30C[modelIndex].model, "1st_lift01", &modelPosition);
@@ -1235,7 +1237,7 @@ void fn_1_6704(int modelIndex)
     case 6:
     case 7:
     case 8:
-        Hu3DModelPosGet(lbl_1_bss_30C[modelIndex].model, &modelPosition);
+        fn_800267CC(lbl_1_bss_30C[modelIndex].model, &modelPosition);
         break;
     case 9:
         Hu3DModelObjPosGet(lbl_1_bss_30C[modelIndex].model, "2st_lift01", &modelPosition);
@@ -1251,7 +1253,7 @@ void fn_1_6704(int modelIndex)
         break;
     case 13:
     case 14:
-        Hu3DModelPosGet(lbl_1_bss_30C[modelIndex].model, &modelPosition);
+        fn_800267CC(lbl_1_bss_30C[modelIndex].model, &modelPosition);
         break;
     case 15:
         Hu3DModelObjPosGet(lbl_1_bss_30C[modelIndex].model, "3st_lift_a00", &modelPosition);
@@ -1296,7 +1298,7 @@ void fn_1_6704(int modelIndex)
     case 29:
     case 30:
     case 31:
-        Hu3DModelPosGet(lbl_1_bss_30C[modelIndex].model, &modelPosition);
+        fn_800267CC(lbl_1_bss_30C[modelIndex].model, &modelPosition);
         break;
     case 32:
         Hu3DModelObjPosGet(lbl_1_bss_30C[modelIndex].model, "4st_lift00", &modelPosition);
@@ -1314,10 +1316,10 @@ void fn_1_6704(int modelIndex)
         Hu3DModelObjPosGet(lbl_1_bss_30C[modelIndex].model, "4st_lift04", &modelPosition);
         break;
     }
-    Hu3DModelPosSetV(lbl_1_bss_30C[modelIndex].colModel, &modelPosition);
+    fn_80026790(lbl_1_bss_30C[modelIndex].colModel, &modelPosition);
     lbl_1_bss_30C[modelIndex].collisionHeight = modelPosition.y;
-    Hu3DModelRotGet(lbl_1_bss_30C[modelIndex].model, &modelRotation);
-    Hu3DModelRotSetV(lbl_1_bss_30C[modelIndex].colModel, &modelRotation);
+    fn_80026874(lbl_1_bss_30C[modelIndex].model, &modelRotation);
+    fn_80026838(lbl_1_bss_30C[modelIndex].colModel, &modelRotation);
 }
 
 /* Child process created by fn_1_52D0; updates course visibility and synchronizes lift collision
@@ -1335,10 +1337,10 @@ void fn_1_6C0C(void)
                     ((lbl_1_bss_114[1].stageSection != 1) || (lbl_1_bss_114[1].fallState != 3)) &&
                     ((lbl_1_bss_114[2].stageSection != 1) || (lbl_1_bss_114[2].fallState != 3)) &&
                     ((lbl_1_bss_114[3].stageSection != 1) || (lbl_1_bss_114[3].fallState != 3))) {
-                    Hu3DModelAttrSet(lbl_1_bss_30C[modelIndex].model, HU3D_ATTR_DISPOFF);
+                    fn_800269E8(lbl_1_bss_30C[modelIndex].model, (1 << 0));
                 }
             } else {
-                Hu3DModelAttrReset(lbl_1_bss_30C[modelIndex].model, HU3D_ATTR_DISPOFF);
+                fn_80026A44(lbl_1_bss_30C[modelIndex].model, (1 << 0));
             }
         } else if ((modelIndex >= 5) && (modelIndex <= 12)) {
             if ((lbl_1_bss_114->stageSection != 1) && (lbl_1_bss_114[1].stageSection != 1) &&
@@ -1347,10 +1349,10 @@ void fn_1_6C0C(void)
                     ((lbl_1_bss_114[1].stageSection != 2) || (lbl_1_bss_114[1].fallState != 3)) &&
                     ((lbl_1_bss_114[2].stageSection != 2) || (lbl_1_bss_114[2].fallState != 3)) &&
                     ((lbl_1_bss_114[3].stageSection != 2) || (lbl_1_bss_114[3].fallState != 3))) {
-                    Hu3DModelAttrSet(lbl_1_bss_30C[modelIndex].model, HU3D_ATTR_DISPOFF);
+                    fn_800269E8(lbl_1_bss_30C[modelIndex].model, (1 << 0));
                 }
             } else {
-                Hu3DModelAttrReset(lbl_1_bss_30C[modelIndex].model, HU3D_ATTR_DISPOFF);
+                fn_80026A44(lbl_1_bss_30C[modelIndex].model, (1 << 0));
             }
         } else if ((modelIndex >= 13) && (modelIndex <= 27)) {
             if ((lbl_1_bss_114->stageSection != 2) && (lbl_1_bss_114[1].stageSection != 2) &&
@@ -1359,17 +1361,17 @@ void fn_1_6C0C(void)
                     ((lbl_1_bss_114[1].stageSection != 3) || (lbl_1_bss_114[1].fallState != 3)) &&
                     ((lbl_1_bss_114[2].stageSection != 3) || (lbl_1_bss_114[2].fallState != 3)) &&
                     ((lbl_1_bss_114[3].stageSection != 3) || (lbl_1_bss_114[3].fallState != 3))) {
-                    Hu3DModelAttrSet(lbl_1_bss_30C[modelIndex].model, HU3D_ATTR_DISPOFF);
+                    fn_800269E8(lbl_1_bss_30C[modelIndex].model, (1 << 0));
                 }
             } else {
-                Hu3DModelAttrReset(lbl_1_bss_30C[modelIndex].model, HU3D_ATTR_DISPOFF);
+                fn_80026A44(lbl_1_bss_30C[modelIndex].model, (1 << 0));
             }
         } else if ((modelIndex >= 28) && (modelIndex <= 36)) {
             if ((lbl_1_bss_114->stageSection != 3) && (lbl_1_bss_114[1].stageSection != 3) &&
                 (lbl_1_bss_114[2].stageSection != 3) && (lbl_1_bss_114[3].stageSection != 3)) {
-                Hu3DModelAttrSet(lbl_1_bss_30C[modelIndex].model, HU3D_ATTR_DISPOFF);
+                fn_800269E8(lbl_1_bss_30C[modelIndex].model, (1 << 0));
             } else {
-                Hu3DModelAttrReset(lbl_1_bss_30C[modelIndex].model, HU3D_ATTR_DISPOFF);
+                fn_80026A44(lbl_1_bss_30C[modelIndex].model, (1 << 0));
             }
         }
         modelIndex += 1;
@@ -1380,16 +1382,16 @@ void fn_1_6C0C(void)
             ((lbl_1_bss_114[1].stageSection != 1) || (lbl_1_bss_114[1].fallState != 3)) &&
             ((lbl_1_bss_114[2].stageSection != 1) || (lbl_1_bss_114[2].fallState != 3)) &&
             ((lbl_1_bss_114[3].stageSection != 1) || (lbl_1_bss_114[3].fallState != 3))) {
-            Hu3DModelAttrSet(lbl_1_bss_2F4[0][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[0][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2BC[0][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2BC[0][1], HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_2F4[0][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[0][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2BC[0][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2BC[0][1], (1 << 0));
         }
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_2F4[0][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[0][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2BC[0][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2BC[0][1], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_2F4[0][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[0][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2BC[0][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2BC[0][1], (1 << 0));
         fn_1_6704(3);
         fn_1_6704(4);
     }
@@ -1399,26 +1401,26 @@ void fn_1_6C0C(void)
             ((lbl_1_bss_114[1].stageSection != 2) || (lbl_1_bss_114[1].fallState != 3)) &&
             ((lbl_1_bss_114[2].stageSection != 2) || (lbl_1_bss_114[2].fallState != 3)) &&
             ((lbl_1_bss_114[3].stageSection != 2) || (lbl_1_bss_114[3].fallState != 3))) {
-            Hu3DModelAttrSet(lbl_1_bss_2F4[1][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[1][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[1][1], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[1][2], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[1][3], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2BC[1][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2BC[1][1], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2B4[0][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2B4[0][1], HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_2F4[1][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[1][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[1][1], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[1][2], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[1][3], (1 << 0));
+            fn_800269E8(lbl_1_bss_2BC[1][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2BC[1][1], (1 << 0));
+            fn_800269E8(lbl_1_bss_2B4[0][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2B4[0][1], (1 << 0));
         }
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_2F4[1][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[1][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[1][1], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[1][2], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[1][3], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2BC[1][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2BC[1][1], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2B4[0][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2B4[0][1], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_2F4[1][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[1][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[1][1], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[1][2], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[1][3], (1 << 0));
+        fn_80026A44(lbl_1_bss_2BC[1][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2BC[1][1], (1 << 0));
+        fn_80026A44(lbl_1_bss_2B4[0][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2B4[0][1], (1 << 0));
         fn_1_6704(9);
         fn_1_6704(10);
         fn_1_6704(11);
@@ -1430,26 +1432,26 @@ void fn_1_6C0C(void)
             ((lbl_1_bss_114[1].stageSection != 3) || (lbl_1_bss_114[1].fallState != 3)) &&
             ((lbl_1_bss_114[2].stageSection != 3) || (lbl_1_bss_114[2].fallState != 3)) &&
             ((lbl_1_bss_114[3].stageSection != 3) || (lbl_1_bss_114[3].fallState != 3))) {
-            Hu3DModelAttrSet(lbl_1_bss_2F4[2][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2F4[2][1], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[2][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[2][1], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[2][2], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[2][3], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2CC[2][4], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2BC[2][0], HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(lbl_1_bss_2BC[2][1], HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_2F4[2][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2F4[2][1], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[2][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[2][1], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[2][2], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[2][3], (1 << 0));
+            fn_800269E8(lbl_1_bss_2CC[2][4], (1 << 0));
+            fn_800269E8(lbl_1_bss_2BC[2][0], (1 << 0));
+            fn_800269E8(lbl_1_bss_2BC[2][1], (1 << 0));
         }
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_2F4[2][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2F4[2][1], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[2][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[2][1], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[2][2], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[2][3], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[2][4], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2BC[2][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2BC[2][1], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_2F4[2][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2F4[2][1], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[2][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[2][1], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[2][2], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[2][3], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[2][4], (1 << 0));
+        fn_80026A44(lbl_1_bss_2BC[2][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2BC[2][1], (1 << 0));
         fn_1_6704(15);
         fn_1_6704(16);
         fn_1_6704(17);
@@ -1466,25 +1468,25 @@ void fn_1_6C0C(void)
     }
     if ((lbl_1_bss_114->stageSection != 3) && (lbl_1_bss_114[1].stageSection != 3) &&
         (lbl_1_bss_114[2].stageSection != 3) && (lbl_1_bss_114[3].stageSection != 3)) {
-        Hu3DModelAttrSet(lbl_1_bss_2F4[3][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2F4[3][1], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2F4[3][2], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2CC[3][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2CC[3][1], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2CC[3][2], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2BC[3][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2B4[1][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2B4[1][1], HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_2F4[3][0], (1 << 0));
+        fn_800269E8(lbl_1_bss_2F4[3][1], (1 << 0));
+        fn_800269E8(lbl_1_bss_2F4[3][2], (1 << 0));
+        fn_800269E8(lbl_1_bss_2CC[3][0], (1 << 0));
+        fn_800269E8(lbl_1_bss_2CC[3][1], (1 << 0));
+        fn_800269E8(lbl_1_bss_2CC[3][2], (1 << 0));
+        fn_800269E8(lbl_1_bss_2BC[3][0], (1 << 0));
+        fn_800269E8(lbl_1_bss_2B4[1][0], (1 << 0));
+        fn_800269E8(lbl_1_bss_2B4[1][1], (1 << 0));
     } else {
-        Hu3DModelAttrReset(lbl_1_bss_2F4[3][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2F4[3][1], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2F4[3][2], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[3][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[3][1], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2CC[3][2], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2BC[3][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2B4[1][0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_2B4[1][1], HU3D_ATTR_DISPOFF);
+        fn_80026A44(lbl_1_bss_2F4[3][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2F4[3][1], (1 << 0));
+        fn_80026A44(lbl_1_bss_2F4[3][2], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[3][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[3][1], (1 << 0));
+        fn_80026A44(lbl_1_bss_2CC[3][2], (1 << 0));
+        fn_80026A44(lbl_1_bss_2BC[3][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2B4[1][0], (1 << 0));
+        fn_80026A44(lbl_1_bss_2B4[1][1], (1 << 0));
         fn_1_6704(32);
         fn_1_6704(33);
         fn_1_6704(34);
@@ -2290,7 +2292,7 @@ void fn_1_8180(int playerNo)
             }
         }
     }
-    MgPlayerPadSet(lbl_1_bss_114[playerNo].player, lbl_1_bss_84[playerNo].stickX,
+    fn_80080520(lbl_1_bss_114[playerNo].player, lbl_1_bss_84[playerNo].stickX,
                    lbl_1_bss_84[playerNo].stickY, lbl_1_bss_84[playerNo].buttonDown,
                    lbl_1_bss_84[playerNo].buttonHeld);
 }

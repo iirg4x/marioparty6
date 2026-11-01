@@ -63,13 +63,13 @@ void main(void)
     NintendoDispF = 0;
     HuSysInit(&GXNtsc480IntDf);
     HuPrcInit();
-    HuPadInit();
-    GWInit();
+    fn_80005C98();
+    fn_8003C0E8();
     pfInit();
     GlobalCounter = 0;
-    HuDataInit();
+    fn_80007668();
     HuSprInit();
-    Hu3DInit();
+    fn_800249F8();
     SLSaveFlagSet(FALSE);
     HuPerfInit();
     HuPerfCreate("USR0", 0xFF, 0xFF, 0xFF, 0xFF);
@@ -77,11 +77,11 @@ void main(void)
     WipeInit(RenderMode);
     HuMCSysInit();
 
-    for(playerIndex=0; playerIndex<GW_PLAYER_MAX; playerIndex++) {
-        GwPlayerConf[playerIndex].charNo = CHARNO_NONE;
+    for(playerIndex=0; playerIndex<4; playerIndex++) {
+        lbl_80265728[playerIndex].charNo = -1;
     }
 
-    omMasterInit(0, _ovltbl, DLL_MAX, DLL_bootdll);
+    fn_8003A2A4(0, _ovltbl, 131, 1);
     VIWaitForRetrace();
 
     if(VIGetNextField() == 0) {
@@ -101,15 +101,16 @@ void main(void)
         HuPerfBegin(2);
         HuSysBeforeRender();
         HuPerfBegin(0);
-        Hu3DPreProc();
-        HuPadRead();
+        fn_80024CAC();
+        fn_80005D90();
         pfClsScr();
         if(LoadProcMode == 0) {
-            HuPrcCall(1); /* Run the game-process scheduler for one tick, advancing sleep timers and
+            fn_8000E37C(1); /* Run the game-process scheduler for one tick,
+                advancing sleep timers and
                            * resuming runnable processes. */
             GameMesExec();
             HuPerfBegin(1);
-            Hu3DExec();
+            fn_80024E08();
         } else {
             HuPerfBegin(1);
             LoadProcWatch();

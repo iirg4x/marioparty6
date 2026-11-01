@@ -216,53 +216,53 @@ Vec lbl_1_data_38 = {0.0f, 0.0f, 0.0f};
 Vec lbl_1_data_44 = {0.0f, 0.0f, 0.0f};
 
 s32 lbl_1_data_50[4] = {
-    DATANUM(DATA_m646, M646_BOUNDARY_IMPACT_MODEL_FILE),
-    DATANUM(DATA_m646, M646_BOUNDARY_IMPACT_MODEL_FILE),
-    DATANUM(DATA_m646, M646_BOUNDARY_IMPACT_MODEL_FILE),
-    DATANUM(DATA_m646, M646_BOUNDARY_IMPACT_MODEL_FILE)
+    DATANUM(0x690000, M646_BOUNDARY_IMPACT_MODEL_FILE),
+    DATANUM(0x690000, M646_BOUNDARY_IMPACT_MODEL_FILE),
+    DATANUM(0x690000, M646_BOUNDARY_IMPACT_MODEL_FILE),
+    DATANUM(0x690000, M646_BOUNDARY_IMPACT_MODEL_FILE)
 };
 
 s32 lbl_1_data_60[4] = {
-    DATANUM(DATA_m646, M646_BOUNDARY_IMPACT_MOTION_FILE),
-    DATANUM(DATA_m646, M646_BOUNDARY_IMPACT_MOTION_FILE),
-    DATANUM(DATA_m646, M646_BOUNDARY_IMPACT_MOTION_FILE),
-    DATANUM(DATA_m646, M646_BOUNDARY_IMPACT_MOTION_FILE)
+    DATANUM(0x690000, M646_BOUNDARY_IMPACT_MOTION_FILE),
+    DATANUM(0x690000, M646_BOUNDARY_IMPACT_MOTION_FILE),
+    DATANUM(0x690000, M646_BOUNDARY_IMPACT_MOTION_FILE),
+    DATANUM(0x690000, M646_BOUNDARY_IMPACT_MOTION_FILE)
 };
 
 s32 lbl_1_data_70[4] = {
-    DATANUM(DATA_m646, M646_CONTACT_MODEL_P1_FILE), DATANUM(DATA_m646, M646_CONTACT_MODEL_P2_FILE),
-    DATANUM(DATA_m646, M646_CONTACT_MODEL_P3_FILE), DATANUM(DATA_m646, M646_CONTACT_MODEL_P4_FILE)
+    DATANUM(0x690000, M646_CONTACT_MODEL_P1_FILE), DATANUM(0x690000, M646_CONTACT_MODEL_P2_FILE),
+    DATANUM(0x690000, M646_CONTACT_MODEL_P3_FILE), DATANUM(0x690000, M646_CONTACT_MODEL_P4_FILE)
 };
 
 s32 lbl_1_data_80[4] = {
-    DATANUM(DATA_m646, M646_CONTACT_MOTION_P1_FILE),
-    DATANUM(DATA_m646, M646_CONTACT_MOTION_P2_FILE),
-    DATANUM(DATA_m646, M646_CONTACT_MOTION_P3_FILE),
-    DATANUM(DATA_m646, M646_CONTACT_MOTION_P4_FILE)
+    DATANUM(0x690000, M646_CONTACT_MOTION_P1_FILE),
+    DATANUM(0x690000, M646_CONTACT_MOTION_P2_FILE),
+    DATANUM(0x690000, M646_CONTACT_MOTION_P3_FILE),
+    DATANUM(0x690000, M646_CONTACT_MOTION_P4_FILE)
 };
 
 s32 lbl_1_data_90[4] = {
-    DATANUM(DATA_m646, M646_EXTRA_CONTACT_MODEL_P1_FILE),
-    DATANUM(DATA_m646, M646_EXTRA_CONTACT_MODEL_P2_FILE),
-    DATANUM(DATA_m646, M646_EXTRA_CONTACT_MODEL_P3_FILE),
-    DATANUM(DATA_m646, M646_EXTRA_CONTACT_MODEL_P4_FILE)
+    DATANUM(0x690000, M646_EXTRA_CONTACT_MODEL_P1_FILE),
+    DATANUM(0x690000, M646_EXTRA_CONTACT_MODEL_P2_FILE),
+    DATANUM(0x690000, M646_EXTRA_CONTACT_MODEL_P3_FILE),
+    DATANUM(0x690000, M646_EXTRA_CONTACT_MODEL_P4_FILE)
 };
 
 s32 lbl_1_data_A0[4] = {
-    DATANUM(DATA_m646, M646_EXTRA_CONTACT_MOTION_P1_FILE),
-    DATANUM(DATA_m646, M646_EXTRA_CONTACT_MOTION_P2_FILE),
-    DATANUM(DATA_m646, M646_EXTRA_CONTACT_MOTION_P3_FILE),
-    DATANUM(DATA_m646, M646_EXTRA_CONTACT_MOTION_P4_FILE)
+    DATANUM(0x690000, M646_EXTRA_CONTACT_MOTION_P1_FILE),
+    DATANUM(0x690000, M646_EXTRA_CONTACT_MOTION_P2_FILE),
+    DATANUM(0x690000, M646_EXTRA_CONTACT_MOTION_P3_FILE),
+    DATANUM(0x690000, M646_EXTRA_CONTACT_MOTION_P4_FILE)
 };
 
 s32 lbl_1_data_B0[4] = {
-    DATANUM(DATA_m646, M646_FINAL_CONTACT_P1_FILE), DATANUM(DATA_m646, M646_FINAL_CONTACT_P2_FILE),
-    DATANUM(DATA_m646, M646_FINAL_CONTACT_P3_FILE), DATANUM(DATA_m646, M646_FINAL_CONTACT_P4_FILE)
+    DATANUM(0x690000, M646_FINAL_CONTACT_P1_FILE), DATANUM(0x690000, M646_FINAL_CONTACT_P2_FILE),
+    DATANUM(0x690000, M646_FINAL_CONTACT_P3_FILE), DATANUM(0x690000, M646_FINAL_CONTACT_P4_FILE)
 };
 
 s32 lbl_1_data_C0[4] = {
-    DATANUM(DATA_m646, M646_PROJECTILE_P1_FILE), DATANUM(DATA_m646, M646_PROJECTILE_P2_FILE),
-    DATANUM(DATA_m646, M646_PROJECTILE_P3_FILE), DATANUM(DATA_m646, M646_PROJECTILE_P4_FILE)
+    DATANUM(0x690000, M646_PROJECTILE_P1_FILE), DATANUM(0x690000, M646_PROJECTILE_P2_FILE),
+    DATANUM(0x690000, M646_PROJECTILE_P3_FILE), DATANUM(0x690000, M646_PROJECTILE_P4_FILE)
 };
 
 /* Three reusable projectile objects per player and each player's next pool slot. */
@@ -286,10 +286,10 @@ void fn_1_AFC(OMOBJMAN *objman, s16 player)
     M646ActorState *work;
     s32 actorIndex = 0;
     for (actorIndex = 0; actorIndex < 3; actorIndex++) {
-        obj = omAddObjEx(objman, 40, 6, 4, OM_GRP_NONE, fn_1_1630);
+        obj = fn_8003AB38(objman, 40, 6, 4, -1, fn_1_1630);
         lbl_1_bss_30[player][actorIndex] = obj;
-        obj->stat |= OM_STAT_MODELPAUSE;
-        work = HuMemDirectMallocNum(HEAP_HEAP, M646_PROJECTILE_WORK_BYTES, HU_MEMNUM_OVL);
+        obj->stat |= (1 << 8);
+        work = HuMemDirectMallocNum(HEAP_HEAP, M646_PROJECTILE_WORK_BYTES, 0x10000000);
         obj->data = work;
         memset(work, 0, M646_PROJECTILE_WORK_BYTES);
         work->playerIndex = player;
@@ -309,11 +309,11 @@ void fn_1_BF8(OMOBJ *obj)
     HU3D_MODELID model;
     work->position = lbl_1_data_38;
     work->direction = lbl_1_data_44;
-    model = obj->mdlId[0] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(lbl_1_data_C0[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (-10000.0f));
-    Hu3DModelLayerSet(model, 5);
-    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+    model = obj->mdlId[0] = fn_80025A04(
+        fn_80008DD0(lbl_1_data_C0[work->playerIndex], 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (-10000.0f));
+    fn_80026B8C(model, 5);
+    fn_800269E8(model, (1 << 0));
     anchor = &work->anchor;
     anchor->kind = 0;
     anchor->group = M646_PROJECTILE_COLLISION_GROUP_MASK;
@@ -337,14 +337,14 @@ void fn_1_D8C(OMOBJ *obj)
     M646ActorState *work = obj->data;
     HU3D_MODELID model;
     HU3D_MOTIONID motion;
-    model = obj->mdlId[2] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(lbl_1_data_50[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (0.0f));
-    Hu3DModelLayerSet(model, 7);
-    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
-    motion = obj->mtnId[0] = Hu3DJointMotion(
-        model, HuDataSelHeapReadNum(lbl_1_data_60[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSpeedSet(model, (0.0f));
+    model = obj->mdlId[2] = fn_80025A04(
+        fn_80008DD0(lbl_1_data_50[work->playerIndex], 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (0.0f));
+    fn_80026B8C(model, 7);
+    fn_800269E8(model, (1 << 0));
+    motion = obj->mtnId[0] = fn_80030458(
+        model, fn_80008DD0(lbl_1_data_60[work->playerIndex], 0x10000000, 2));
+    fn_8002D86C(model, (0.0f));
     work->boundaryEffectActive = 0;
 }
 
@@ -355,10 +355,10 @@ void fn_1_E98(OMOBJ *obj)
     f32 modelDepth = (-40.0f) + work->position.z;
     HU3D_MODELID model = obj->mdlId[2];
     HU3D_MOTIONID motion = obj->mtnId[0];
-    Hu3DModelAttrReset(model, HU3D_ATTR_DISPOFF);
-    Hu3DModelPosSet(model, work->position.x, (-20.0f) + work->position.y, modelDepth);
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, (1.0f));
+    fn_80026A44(model, (1 << 0));
+    fn_80026760(model, work->position.x, (-20.0f) + work->position.y, modelDepth);
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, (1.0f));
     work->boundaryEffectActive = 1;
 }
 
@@ -369,8 +369,8 @@ void fn_1_F68(OMOBJ *obj)
     HU3D_MODELID model;
     if (work->boundaryEffectActive != 0) {
         model = obj->mdlId[2];
-        if (Hu3DMotionEndCheck(model) != 0) {
-            Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+        if (fn_8002D75C(model) != 0) {
+            fn_800269E8(model, (1 << 0));
             work->boundaryEffectActive = 0;
         }
     }
@@ -382,33 +382,33 @@ void fn_1_FDC(OMOBJ *obj)
     M646ActorState *work = obj->data;
     HU3D_MODELID model;
     HU3D_MOTIONID motion;
-    model = obj->mdlId[3] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(lbl_1_data_70[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (0.0f));
-    Hu3DModelLayerSet(model, 7);
-    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
-    motion = obj->mtnId[1] = Hu3DJointMotion(
-        model, HuDataSelHeapReadNum(lbl_1_data_80[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSpeedSet(model, (0.0f));
+    model = obj->mdlId[3] = fn_80025A04(
+        fn_80008DD0(lbl_1_data_70[work->playerIndex], 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (0.0f));
+    fn_80026B8C(model, 7);
+    fn_800269E8(model, (1 << 0));
+    motion = obj->mtnId[1] = fn_80030458(
+        model, fn_80008DD0(lbl_1_data_80[work->playerIndex], 0x10000000, 2));
+    fn_8002D86C(model, (0.0f));
     work->effectActive[0] = 0;
-    model = obj->mdlId[4] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(lbl_1_data_90[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (0.0f));
-    Hu3DModelLayerSet(model, 7);
-    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
-    motion = obj->mtnId[2] = Hu3DJointMotion(
-        model, HuDataSelHeapReadNum(lbl_1_data_A0[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSpeedSet(model, (0.0f));
+    model = obj->mdlId[4] = fn_80025A04(
+        fn_80008DD0(lbl_1_data_90[work->playerIndex], 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (0.0f));
+    fn_80026B8C(model, 7);
+    fn_800269E8(model, (1 << 0));
+    motion = obj->mtnId[2] = fn_80030458(
+        model, fn_80008DD0(lbl_1_data_A0[work->playerIndex], 0x10000000, 2));
+    fn_8002D86C(model, (0.0f));
     work->effectActive[1] = 0;
     /* The final contact resource supplies both its model and its motion. */
-    model = obj->mdlId[5] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(lbl_1_data_B0[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelPosSet(model, (0.0f), (0.0f), (0.0f));
-    Hu3DModelLayerSet(model, 7);
-    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
-    motion = obj->mtnId[3] = Hu3DJointMotion(
-        model, HuDataSelHeapReadNum(lbl_1_data_B0[work->playerIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSpeedSet(model, (0.0f));
+    model = obj->mdlId[5] = fn_80025A04(
+        fn_80008DD0(lbl_1_data_B0[work->playerIndex], 0x10000000, 2));
+    fn_80026760(model, (0.0f), (0.0f), (0.0f));
+    fn_80026B8C(model, 7);
+    fn_800269E8(model, (1 << 0));
+    motion = obj->mtnId[3] = fn_80030458(
+        model, fn_80008DD0(lbl_1_data_B0[work->playerIndex], 0x10000000, 2));
+    fn_8002D86C(model, (0.0f));
     work->effectActive[2] = 0;
 }
 
@@ -419,22 +419,22 @@ void fn_1_1290(OMOBJ *obj)
     f32 modelDepth = (-40.0f) + work->position.z;
     HU3D_MODELID model = obj->mdlId[3];
     HU3D_MOTIONID motion = obj->mtnId[1];
-    Hu3DModelAttrReset(model, HU3D_ATTR_DISPOFF);
-    Hu3DModelPosSet(model, work->position.x, (-20.0f) + work->position.y, modelDepth);
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, (1.0f));
+    fn_80026A44(model, (1 << 0));
+    fn_80026760(model, work->position.x, (-20.0f) + work->position.y, modelDepth);
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, (1.0f));
     model = obj->mdlId[4];
     motion = obj->mtnId[2];
-    Hu3DModelAttrReset(model, HU3D_ATTR_DISPOFF);
-    Hu3DModelPosSet(model, work->position.x, (-20.0f) + work->position.y, modelDepth);
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, (1.0f));
+    fn_80026A44(model, (1 << 0));
+    fn_80026760(model, work->position.x, (-20.0f) + work->position.y, modelDepth);
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, (1.0f));
     model = obj->mdlId[5];
     motion = obj->mtnId[3];
-    Hu3DModelAttrReset(model, HU3D_ATTR_DISPOFF);
-    Hu3DModelPosSet(model, work->position.x, (-20.0f) + work->position.y, modelDepth);
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, (1.0f));
+    fn_80026A44(model, (1 << 0));
+    fn_80026760(model, work->position.x, (-20.0f) + work->position.y, modelDepth);
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, (1.0f));
     work->effectActive[0] = 1;
     work->effectActive[1] = 1;
     work->effectActive[2] = 1;
@@ -447,22 +447,22 @@ void fn_1_1430(OMOBJ *obj)
     HU3D_MODELID model;
     if (work->effectActive[0] != 0) {
         model = obj->mdlId[3];
-        if (Hu3DMotionEndCheck(model) != 0) {
-            Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+        if (fn_8002D75C(model) != 0) {
+            fn_800269E8(model, (1 << 0));
             work->effectActive[0] = 0;
         }
     }
     if (work->effectActive[1] != 0) {
         model = obj->mdlId[4];
-        if (Hu3DMotionEndCheck(model) != 0) {
-            Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+        if (fn_8002D75C(model) != 0) {
+            fn_800269E8(model, (1 << 0));
             work->effectActive[1] = 0;
         }
     }
     if (work->effectActive[2] != 0) {
         model = obj->mdlId[5];
-        if (Hu3DMotionEndCheck(model) != 0) {
-            Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+        if (fn_8002D75C(model) != 0) {
+            fn_800269E8(model, (1 << 0));
             work->effectActive[2] = 0;
         }
     }
@@ -473,7 +473,7 @@ void fn_1_1514(OMOBJ *obj)
 {
     M646ActorState *work = obj->data;
     HU3D_MODELID primaryModel = obj->mdlId[0];
-    Hu3DModelAttrReset(primaryModel, HU3D_ATTR_DISPOFF);
+    fn_80026A44(primaryModel, (1 << 0));
     work->anchor.kind |= M646_COLLISION_ACTIVE_FLAG;
 }
 
@@ -535,8 +535,8 @@ void fn_1_1B08(OMOBJ *obj)
                     fn_1_15A4(obj, M646_STAGE_FALL_SE_ID);
                     fn_1_1570(obj, 0);
                     if (work->activeAttachmentContact == 0) {
-                        Hu3DModelLayerSet(obj->mdlId[0], 7);
-                        Hu3DModelAttrSet(obj->mdlId[0], HU3D_ATTR_ZCMP_OFF);
+                        fn_80026B8C(obj->mdlId[0], 7);
+                        fn_800269E8(obj->mdlId[0], (1 << 22));
                     }
                     break;
                 }
@@ -558,8 +558,8 @@ void fn_1_1B08(OMOBJ *obj)
         if (work->position.y < (-115.0f)) {
             HU3D_MODELID model = obj->mdlId[0];
             work->direction.x = work->direction.y = work->direction.z = (0.0f);
-            Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
-            Hu3DModelPosSet(model, (0.0f), (-1000.0f), (0.0f));
+            fn_800269E8(model, (1 << 0));
+            fn_80026760(model, (0.0f), (-1000.0f), (0.0f));
         }
     }
     fn_1_F68(obj);
@@ -571,7 +571,7 @@ void fn_1_1B08(OMOBJ *obj)
 void fn_1_1F24(OMOBJ *obj)
 {
     M646ActorState *work = obj->data;
-    Hu3DModelPosSetV(obj->mdlId[0], &work->position);
+    fn_80026790(obj->mdlId[0], &work->position);
     work->anchor.savedPosition = work->position;
 }
 
@@ -640,8 +640,8 @@ s32 fn_1_1F80(M646ActorAnchor *actor, M646ModelCollider *target)
                 fn_1_15A4(obj, M646_TARGET_SCORE_CLEAR_SE_ID);
                 break;
         }
-        Hu3DModelLayerSet(obj->mdlId[0], 7);
-        Hu3DModelAttrSet(obj->mdlId[0], HU3D_ATTR_ZCMP_OFF);
+        fn_80026B8C(obj->mdlId[0], 7);
+        fn_800269E8(obj->mdlId[0], (1 << 22));
         fn_1_1290(obj);
         fn_1_1570(obj, 1);
     } else {
@@ -666,7 +666,7 @@ OMOBJ *fn_1_23D0(Vec *position, f64 phase, Vec *direction, OMOBJ *player)
     HU3D_MODELID model = actor->mdlId[0];
 
     work->position = *position;
-    Hu3DModelPosSetV(model, &work->position);
+    fn_80026790(model, &work->position);
     if (direction != NULL) {
         work->direction = *direction;
         work->direction.z *= (-1.0f);
@@ -682,9 +682,9 @@ OMOBJ *fn_1_23D0(Vec *position, f64 phase, Vec *direction, OMOBJ *player)
     work->callbackType2Seen = 0;
     work->contactHandled = 0;
     work->activeAttachmentContact = 0;
-    Hu3DModelLayerSet(model, 5);
-    Hu3DModelAttrReset(model, HU3D_ATTR_ZCMP_OFF);
-    omVibrate(playerWork->motion.playerIndex, 20, 4, 4);
+    fn_80026B8C(model, 5);
+    fn_80026A44(model, (1 << 22));
+    fn_8006A030(playerWork->motion.playerIndex, 20, 4, 4);
     /* The launch callback receives the player object back, rather than the projectile. */
     return work->linkedObject;
 }

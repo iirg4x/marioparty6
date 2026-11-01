@@ -42,11 +42,11 @@ typedef struct {
 OMOBJ *lbl_1_bss_30[2];
 static s32 lbl_1_data_D8[10] = { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static int lbl_1_data_100[10] = {
-    DATANUM(DATA_mario, 161), DATANUM(DATA_mario, 10), DATANUM(DATA_mario, 11),
+    DATANUM(0x8e0000, 161), DATANUM(0x8e0000, 10), DATANUM(0x8e0000, 11),
     0, 0, 0, 0, 0, 0, 0
 };
 static int lbl_1_data_128[3] = {
-    DATANUM(DATA_m657, 12), DATANUM(DATA_m657, 11), DATANUM(DATA_m657, 10)
+    DATANUM(0x740000, 12), DATANUM(0x740000, 11), DATANUM(0x740000, 10)
 };
 static M657Shadow lbl_1_data_134 = {
     30.0f, 1.0f, 13000.0f,
@@ -69,25 +69,25 @@ void fn_1_2018(OMOBJMAN *objman)
     int team = 0;
     M657Shadow *shadow = &lbl_1_data_134;
 
-    Hu3DShadowMultiCreate(shadow->fov, shadow->near, shadow->far, 3);
-    Hu3DShadowMultiPosSet(&shadow->pos, &shadow->up, &shadow->target, 3);
-    Hu3DShadowMultiTPLvlSet(shadow->opacity, 3);
-    Hu3DShadowMultiSizeSet(shadow->size, 3);
-    Hu3DShadowMultiColSet(shadow->r, shadow->g, shadow->b, 3);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        team = GwPlayerConf[i].grpNo;
+    fn_8002A3B0(shadow->fov, shadow->near, shadow->far, 3);
+    fn_8002A674(&shadow->pos, &shadow->up, &shadow->target, 3);
+    fn_8002A7D8(shadow->opacity, 3);
+    fn_8002A8CC(shadow->size, 3);
+    fn_8002AA3C(shadow->r, shadow->g, shadow->b, 3);
+    for (i = 0; i < 4; i++) {
+        team = lbl_80265728[i].grpNo;
         if (team == 0 || team == 1) {
-            obj = lbl_1_bss_30[team] = omAddObjEx(objman, 110, 6, 10, -1, fn_1_31CC);
-            work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657Player), HU_MEMNUM_OVL);
+            obj = lbl_1_bss_30[team] = fn_8003AB38(objman, 110, 6, 10, -1, fn_1_31CC);
+            work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657Player), 0x10000000);
             obj->data = work;
             memset(work, 0, sizeof(M657Player));
             work->player.playerNo = i;
             work->player.team = team;
             work->sound = -1;
-            work->computer = GwPlayerConf[i].type;
+            work->computer = lbl_80265728[i].type;
             work->difficulty = -1;
             if (work->computer) {
-                work->difficulty = GwPlayerConf[i].comDif;
+                work->difficulty = lbl_80265728[i].comDif;
             }
         }
     }
@@ -95,7 +95,7 @@ void fn_1_2018(OMOBJMAN *objman)
 
 void fn_1_21A8(void)
 {
-    CharModelKill(-1);
+    fn_8005BB8C(-1);
 }
 
 /* Called from the player object's create callback to load its character and start pose. */
@@ -105,28 +105,28 @@ void fn_1_21CC(OMOBJ *obj)
     M657PlayerView *player = &work->player;
     M657Shadow *shadow = &lbl_1_data_134;
     u16 cameraMasks[2] = { 1, 2 };
-    int team = GwPlayerConf[player->playerNo].grpNo;
+    int team = lbl_80265728[player->playerNo].grpNo;
     HU3D_MODELID model;
     s16 i;
     s16 charNo;
 
     player->cameraMask = cameraMasks[player->team];
     OSReport("grp : %d ( %d )\n", player->playerNo, player->cameraMask);
-    charNo = GwPlayerConf[player->playerNo].charNo;
+    charNo = lbl_80265728[player->playerNo].charNo;
     player->charNo = charNo;
     player->falling = FALSE;
     player->winner = FALSE;
-    model = obj->mdlId[0] = CharModelCreate(charNo, 2);
+    model = obj->mdlId[0] = fn_80057068(charNo, 2);
     for (i = 0; i < 10; i++) {
-        obj->mtnId[i] = CharMotionCreate(charNo, lbl_1_data_100[i]);
+        obj->mtnId[i] = fn_8005B0B8(charNo, lbl_1_data_100[i]);
     }
-    Hu3DModelCameraSet(model, player->cameraMask);
-    Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
-    Hu3DModelLayerSet(model, 4);
-    Hu3DModelShadowSet(model);
-    CharMotionDataClose(charNo);
+    fn_80026B64(model, player->cameraMask);
+    fn_800269E8(model, ((1 << 30) | (1 << 0)));
+    fn_80026B8C(model, 4);
+    fn_80026E44(model);
+    fn_8005B4BC(charNo);
     fn_1_2840(obj, 0);
-    work->padNo = GwPlayerConf[player->playerNo].padNo;
+    work->padNo = lbl_80265728[player->playerNo].padNo;
     work->stickX = work->stickY = 0.0f;
     player->pos.x = player->pos.y = player->pos.z = 0.0f;
     player->rot.x = player->rot.y = player->rot.z = 0.0f;
@@ -152,41 +152,41 @@ void fn_1_23F4(OMOBJ *obj)
 
     hook = NULL;
     i = 0;
-    body = obj->mdlId[1] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 9), HU_MEMNUM_OVL, HEAP_MODEL));
+    body = obj->mdlId[1] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 9), 0x10000000, 2));
     for (i = 0; i < 3; i++) {
-        motion = obj->mtnId[i+3] = Hu3DJointMotion(body,
-            HuDataSelHeapReadNum(lbl_1_data_128[i], HU_MEMNUM_OVL, HEAP_MODEL));
+        motion = obj->mtnId[i+3] = fn_80030458(body,
+            fn_80008DD0(lbl_1_data_128[i], 0x10000000, 2));
         lbl_1_data_172[i] = motion;
     }
-    Hu3DModelShadowSet(body);
-    Hu3DMotionSet(body, motion);
-    Hu3DMotionSpeedSet(body, 1.0f);
-    Hu3DModelAttrSet(body, HU3D_MOTATTR_LOOP);
-    Hu3DModelLayerSet(body, 7);
-    hook = CharModelItemHookGet(work->player.charNo, 2, 4);
-    Hu3DModelHookSet(obj->mdlId[0], hook, body);
-    left = obj->mdlId[2] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 13), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSpeedSet(left, 1.0f);
-    Hu3DModelAttrSet(left, HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(left, HU3D_ATTR_DISPOFF);
-    Hu3DModelLayerSet(left, 7);
-    Hu3DModelHookSet(body, "rocket00-L_itemhook", left);
-    right = obj->mdlId[3] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 13), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSpeedSet(right, 1.0f);
-    Hu3DModelAttrSet(right, HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(right, HU3D_ATTR_DISPOFF);
-    Hu3DModelLayerSet(right, 7);
-    Hu3DModelHookSet(body, "rocket00-R_itemhook", right);
-    center = obj->mdlId[4] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 14), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSpeedSet(center, 1.0f);
-    Hu3DModelAttrSet(center, HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(center, HU3D_ATTR_DISPOFF);
-    Hu3DModelLayerSet(center, 7);
-    Hu3DModelHookSet(body, "rocket-Cs_itemhook", center);
+    fn_80026E44(body);
+    fn_8002C95C(body, motion);
+    fn_8002D86C(body, 1.0f);
+    fn_800269E8(body, ((1 << 30) | (1 << 0)));
+    fn_80026B8C(body, 7);
+    hook = fn_8005C0F0(work->player.charNo, 2, 4);
+    fn_8002741C(obj->mdlId[0], hook, body);
+    left = obj->mdlId[2] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 13), 0x10000000, 2));
+    fn_8002D86C(left, 1.0f);
+    fn_800269E8(left, ((1 << 30) | (1 << 0)));
+    fn_800269E8(left, (1 << 0));
+    fn_80026B8C(left, 7);
+    fn_8002741C(body, "rocket00-L_itemhook", left);
+    right = obj->mdlId[3] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 13), 0x10000000, 2));
+    fn_8002D86C(right, 1.0f);
+    fn_800269E8(right, ((1 << 30) | (1 << 0)));
+    fn_800269E8(right, (1 << 0));
+    fn_80026B8C(right, 7);
+    fn_8002741C(body, "rocket00-R_itemhook", right);
+    center = obj->mdlId[4] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 14), 0x10000000, 2));
+    fn_8002D86C(center, 1.0f);
+    fn_800269E8(center, ((1 << 30) | (1 << 0)));
+    fn_800269E8(center, (1 << 0));
+    fn_80026B8C(center, 7);
+    fn_8002741C(body, "rocket-Cs_itemhook", center);
 }
 
 /* Called by the player state updates to show the center part or hide every rocket part. */
@@ -197,13 +197,13 @@ void fn_1_2694(OMOBJ *obj, BOOL visible)
     HU3D_MODELID center = obj->mdlId[4];
 
     if (visible) {
-        Hu3DModelAttrSet(left, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(right, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(center, HU3D_ATTR_DISPOFF);
+        fn_800269E8(left, (1 << 0));
+        fn_800269E8(right, (1 << 0));
+        fn_80026A44(center, (1 << 0));
     } else {
-        Hu3DModelAttrSet(left, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(right, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(center, HU3D_ATTR_DISPOFF);
+        fn_800269E8(left, (1 << 0));
+        fn_800269E8(right, (1 << 0));
+        fn_800269E8(center, (1 << 0));
     }
 }
 
@@ -215,16 +215,16 @@ void fn_1_2748(OMOBJ *obj)
     HU3D_MODELID model;
     HU3D_MOTIONID motion;
 
-    model = obj->mdlId[5] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 4), HU_MEMNUM_OVL, HEAP_MODEL));
-    motion = obj->mtnId[9] = Hu3DJointMotion(model,
-        HuDataSelHeapReadNum(DATANUM(DATA_m657, 5), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, 0.0f);
-    Hu3DModelLayerSet(model, 1);
-    Hu3DModelPosSet(model, 0.0f, 0.0f, 0.0f);
-    Hu3DModelShadowMapSet(model);
-    Hu3DModelCameraSet(model, player->cameraMask);
+    model = obj->mdlId[5] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x740000, 4), 0x10000000, 2));
+    motion = obj->mtnId[9] = fn_80030458(model,
+        fn_80008DD0(DATANUM(0x740000, 5), 0x10000000, 2));
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, 0.0f);
+    fn_80026B8C(model, 1);
+    fn_80026760(model, 0.0f, 0.0f, 0.0f);
+    fn_80026FFC(model);
+    fn_80026B64(model, player->cameraMask);
 }
 
 /* Selects the requested character motion-table entry and records its index. */
@@ -236,19 +236,19 @@ void fn_1_2840(OMOBJ *obj, s16 motionIndex)
     u32 attr = 0;
 
     if (lbl_1_data_D8[motionIndex]) {
-        attr = HU3D_MOTATTR_LOOP;
+        attr = ((1 << 30) | (1 << 0));
     }
     if (work->player.motionIndex != motionIndex) {
-        CharMotionShiftSet(charNo, obj->mtnId[motionIndex], 15.0f, 16.0f, attr);
+        fn_8005C2C8(charNo, obj->mtnId[motionIndex], 15.0f, 16.0f, attr);
     } else {
-        CharMotionSet(charNo, obj->mtnId[motionIndex]);
+        fn_8005BE80(charNo, obj->mtnId[motionIndex]);
     }
     switch (motionIndex) {
     case 0:
-        Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
+        fn_800269E8(model, ((1 << 30) | (1 << 0)));
         break;
     default:
-        Hu3DModelAttrReset(model, HU3D_MOTATTR_LOOP);
+        fn_80026A44(model, ((1 << 30) | (1 << 0)));
         break;
     }
     work->player.motionIndex = motionIndex;
@@ -261,7 +261,7 @@ void fn_1_294C(OMOBJ *obj)
     M657Player *work = obj->data;
     HU3D_MODELID model = obj->mdlId[1];
     HU3D_MOTIONID motion = 0;
-    u32 attr = HU3D_MOTATTR_LOOP;
+    u32 attr = ((1 << 30) | (1 << 0));
     HU3D_MODELID left = obj->mdlId[2];
     HU3D_MODELID right = obj->mdlId[3];
     HU3D_MODELID center = obj->mdlId[4];
@@ -269,16 +269,16 @@ void fn_1_294C(OMOBJ *obj)
     if (work->buttons != work->prevButtons) {
         if (work->buttons & PAD_BUTTON_A) {
             motion = obj->mtnId[4];
-            Hu3DModelAttrReset(left, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrReset(right, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(center, HU3D_ATTR_DISPOFF);
+            fn_80026A44(left, (1 << 0));
+            fn_80026A44(right, (1 << 0));
+            fn_800269E8(center, (1 << 0));
         } else {
             motion = obj->mtnId[5];
-            Hu3DModelAttrSet(left, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(right, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrReset(center, HU3D_ATTR_DISPOFF);
+            fn_800269E8(left, (1 << 0));
+            fn_800269E8(right, (1 << 0));
+            fn_80026A44(center, (1 << 0));
         }
-        Hu3DMotionShiftSet(model, motion, 0.0f, 8.0f, attr);
+        fn_8002CCC0(model, motion, 0.0f, 8.0f, attr);
     }
 }
 
@@ -288,10 +288,10 @@ void fn_1_2A50(OMOBJ *obj)
     HU3D_MODELID model = obj->mdlId[1];
     HU3D_MOTIONID motion = obj->mtnId[3];
 
-    Hu3DMotionShiftSet(model, motion, 0.0f, 8.0f, 0);
-    Hu3DModelAttrSet(obj->mdlId[2], HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(obj->mdlId[3], HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(obj->mdlId[4], HU3D_ATTR_DISPOFF);
+    fn_8002CCC0(model, motion, 0.0f, 8.0f, 0);
+    fn_800269E8(obj->mdlId[2], (1 << 0));
+    fn_800269E8(obj->mdlId[3], (1 << 0));
+    fn_800269E8(obj->mdlId[4], (1 << 0));
 }
 
 /* Polled by the player update until the exit motion ends, then marks it complete. */
@@ -300,8 +300,8 @@ s32 fn_1_2AF0(OMOBJ *obj)
     M657Player *work = obj->data;
     HU3D_MODELID model = obj->mdlId[1];
 
-    if (Hu3DMotionEndCheck(model)) {
-        Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+    if (fn_8002D75C(model)) {
+        fn_800269E8(model, (1 << 0));
         work->exitFinished = TRUE;
         return TRUE;
     }
@@ -321,7 +321,7 @@ void fn_1_2B98(OMOBJ *obj)
 {
     HU3D_MODELID model = obj->mdlId[5];
 
-    Hu3DMotionSpeedSet(model, 1.0f);
+    fn_8002D86C(model, 1.0f);
 }
 
 /* Sets the team's winner flag for the result sequence. */
@@ -365,7 +365,7 @@ s32 fn_1_2E78(s16 team)
     M657Player *work = obj->data;
     HU3D_MODELID model = obj->mdlId[0];
 
-    if (Hu3DMotionEndCheck(model)) {
+    if (fn_8002D75C(model)) {
         return TRUE;
     }
     return FALSE;
@@ -405,14 +405,14 @@ void fn_1_2F90(s16 team, u16 cameraMask)
     M657Shadow *shadow;
 
     player->cameraMask = cameraMask;
-    Hu3DModelCameraSet(model, player->cameraMask);
-    Hu3DModelShadowSet(model);
+    fn_80026B64(model, player->cameraMask);
+    fn_80026E44(model);
     shadow = &lbl_1_data_134;
-    Hu3DShadowMultiCreate(shadow->fov, shadow->near, shadow->far, player->cameraMask);
-    Hu3DShadowMultiPosSet(&shadow->pos, &shadow->up, &shadow->target, player->cameraMask);
-    Hu3DShadowMultiTPLvlSet(shadow->opacity, player->cameraMask);
-    Hu3DShadowMultiSizeSet(shadow->size, player->cameraMask);
-    Hu3DShadowMultiColSet(shadow->r, shadow->g, shadow->b, player->cameraMask);
+    fn_8002A3B0(shadow->fov, shadow->near, shadow->far, player->cameraMask);
+    fn_8002A674(&shadow->pos, &shadow->up, &shadow->target, player->cameraMask);
+    fn_8002A7D8(shadow->opacity, player->cameraMask);
+    fn_8002A8CC(shadow->size, player->cameraMask);
+    fn_8002AA3C(shadow->r, shadow->g, shadow->b, player->cameraMask);
 }
 
 /* Places the team's character at a world-space position. */
@@ -483,7 +483,7 @@ void fn_1_32F4(OMOBJ *obj)
 
     switch (player->state) {
     case 0:
-        if (MgSeqModeGet() >= MGSEQ_MODE_FADEIN) {
+        if (fn_80071A8C() >= 2) {
             fn_1_1AD4();
             fn_1_2694(obj, TRUE);
             player->state++;
@@ -518,10 +518,10 @@ void fn_1_3468(OMOBJ *obj)
 
     shadow = &lbl_1_data_134;
     shadowPos.y = 2500.0f + 3.8f*shadowPos.y;
-    Hu3DShadowMultiPosSet(&shadowPos, &shadow->up, &shadow->target, player->cameraMask);
+    fn_8002A674(&shadowPos, &shadow->up, &shadow->target, player->cameraMask);
     switch (player->state) {
     case 0:
-        if (MgSeqModeGet() < MGSEQ_MODE_MAIN) {
+        if (fn_80071A8C() < 5) {
             player->pos.y -= speed;
             omSetTra(obj, player->pos.x, player->pos.y, player->pos.z);
         } else {
@@ -531,7 +531,7 @@ void fn_1_3468(OMOBJ *obj)
         }
         break;
     case 1:
-        if (MgSeqModeGet() > MGSEQ_MODE_MAIN) {
+        if (fn_80071A8C() > 5) {
             player->state = 4;
         } else {
             work->prevButtons = work->buttons;
@@ -541,7 +541,7 @@ void fn_1_3468(OMOBJ *obj)
                     work->buttons |= PAD_BUTTON_A;
                 }
             } else {
-                work->buttons = HuPadBtn[work->padNo] & PAD_BUTTON_A;
+                work->buttons = lbl_802C0010[work->padNo] & PAD_BUTTON_A;
             }
             fn_1_294C(obj);
             if (work->buttons & PAD_BUTTON_A) {
@@ -565,7 +565,7 @@ void fn_1_3468(OMOBJ *obj)
         player->state++;
         break;
     case 3:
-        if (MgSeqModeGet() > MGSEQ_MODE_MAIN) {
+        if (fn_80071A8C() > 5) {
             player->state = 4;
         }
         break;
@@ -579,7 +579,7 @@ void fn_1_3468(OMOBJ *obj)
         }
         break;
     case 6:
-        if (MgSeqModeGet() == MGSEQ_MODE_WINNER) {
+        if (fn_80071A8C() == 8) {
             work->player.state++;
         }
         break;
@@ -595,7 +595,7 @@ void fn_1_3468(OMOBJ *obj)
                 work->sound = -1;
             }
             player->pos.y = 0.0f;
-            omVibrate(player->playerNo, 20, 7, 3);
+            fn_8006A030(player->playerNo, 20, 7, 3);
             player->falling = FALSE;
             fn_1_3EA8(player->team);
             fn_1_2B98(obj);
@@ -638,11 +638,11 @@ void fn_1_3B50(OMOBJ *obj)
         }
         PSVECSubtract(&target, &work->player.pos, &player->vel);
         PSVECNormalize(&player->vel, &player->vel);
-        player->rot.z = 180.0*(atan2(player->vel.y, player->vel.x)/M_PI)-90.0;
+        player->rot.z = 180.0*(atan2(player->vel.y, player->vel.x)/3.141592653589793)-90.0;
         player->state++;
         /* fallthrough */
     case 1:
-        if (MgSeqModeGet() == MGSEQ_MODE_WINNER) {
+        if (fn_80071A8C() == 8) {
             player->state++;
         }
         break;

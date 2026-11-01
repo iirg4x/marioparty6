@@ -246,7 +246,7 @@ f32 fn_1_B2BC(M646PlayerTicket *ticket);
 OMOBJ *lbl_1_bss_C0;
 
 /* Per-difficulty delay and arrival tolerance, followed by unused profile entries. */
-M646AIProfile lbl_1_data_1DC8[GW_PLAYER_COM_DIF_MAX] = {
+M646AIProfile lbl_1_data_1DC8[4] = {
     {50, 40, 0, 560, 0, 0},
     {60, 30, 0, 720, 0, 0},
     {60, 10, 0, 1661, 0, 0},
@@ -258,9 +258,9 @@ void fn_1_98E0(OMOBJMAN *objman)
 {
     OMOBJ *obj;
     void *work;
-    obj = lbl_1_bss_C0 = omAddObjEx(objman, 70, 0, 0, OM_GRP_NONE, fn_1_9978);
-    obj->stat |= OM_STAT_MODELPAUSE;
-    work = obj->data = HuMemDirectMallocNum(HEAP_HEAP, M646_COORDINATOR_WORK_BYTES, HU_MEMNUM_OVL);
+    obj = lbl_1_bss_C0 = fn_8003AB38(objman, 70, 0, 0, -1, fn_1_9978);
+    obj->stat |= (1 << 8);
+    work = obj->data = HuMemDirectMallocNum(HEAP_HEAP, M646_COORDINATOR_WORK_BYTES, 0x10000000);
     memset(work, 0, M646_COORDINATOR_WORK_BYTES);
 }
 
@@ -281,7 +281,7 @@ void fn_1_99A4(OMOBJ *obj)
     Vec position;
     switch (work->phase) {
         case 0:
-            if (MgSeqModeGet() == MGSEQ_MODE_FADEIN) {
+            if (fn_80071A8C() == 2) {
                 work->introComplete = 0;
                 work->phase++;
             }
@@ -386,7 +386,7 @@ void fn_1_99A4(OMOBJ *obj)
             work->phase++;
             break;
         case 20:
-            if (MgSeqModeGet() == MGSEQ_MODE_START) {
+            if (fn_80071A8C() == 3) {
                 work->phase = 0;
                 obj->objFunc = fn_1_9CD8;
             }
@@ -401,13 +401,13 @@ void fn_1_9CD8(OMOBJ *obj)
     M646CoordinatorWork *work = obj->data;
     M646PlayerTicket **slot = NULL;
     s32 playerIndex = 0;
-    if (MgSeqModeGet() > MGSEQ_MODE_MAIN) {
+    if (fn_80071A8C() > 5) {
         work->phase = 0;
         obj->objFunc = fn_1_9E3C;
     }
     switch (work->phase) {
         case 0:
-            if (MgSeqModeGet() == MGSEQ_MODE_MAIN) {
+            if (fn_80071A8C() == 5) {
                 work->phase++;
             }
             break;
@@ -447,7 +447,7 @@ void fn_1_9E3C(OMOBJ *obj)
     switch (work->phase) {
         case 0:
             work->resultTurnComplete = 0;
-            if (MgSeqModeGet() == MGSEQ_MODE_PREWIN) {
+            if (fn_80071A8C() == 7) {
                 for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                     slot = &work->players[playerIndex];
                     fn_1_5634((*slot)->playerObject);
@@ -488,8 +488,8 @@ void fn_1_9F80(OMOBJ *obj)
 
     switch (work->phase) {
     case 0:
-        if (MgSeqModeGet() == MGSEQ_MODE_WINNER) {
-            if (_CheckFlag(FLAG_INST_DECA) == 0) {
+        if (fn_80071A8C() == 8) {
+            if (fn_8006A124(196610) == 0) {
                 fn_1_55A0();
                 if (fn_1_9380() == 0) {
         HuAudJinglePlay(MSM_STREAM_MGMUS_17);
@@ -521,7 +521,7 @@ void fn_1_A028(OMOBJ *obj)
     if (coordinator->phase == 0) {
         /* The null comparison is discarded; a fresh ticket replaces any existing ticket. */
         (*ticket != NULL);
-        *ticket = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M646PlayerTicket), HU_MEMNUM_OVL);
+        *ticket = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M646PlayerTicket), 0x10000000);
         if (*ticket) {
             (*ticket)->playerObject = obj;
             (*ticket)->playerKind = *playerKind;
@@ -723,7 +723,8 @@ M646TargetCandidate *fn_1_A8E0(M646PlayerTicket *ticket)
     if (player->targetDelayTicks > 0) {
         return NULL;
     }
-    HuCopyVecF(&playerPosition, &player->modelPosition);
+    (&playerPosition)->x = (&player->modelPosition)->x;  (&playerPosition)->y =
+        (&player->modelPosition)->y;  (&playerPosition)->z = (&player->modelPosition)->z;
     for (category = 0; category < 4; category++) {
         selected = NULL;
         for (joint = 0; joint < work->categoryCount[category]; joint++) {
@@ -734,7 +735,8 @@ M646TargetCandidate *fn_1_A8E0(M646PlayerTicket *ticket)
         }
         for (index = 0; index < filteredCount; index++) {
             collider = &filtered[index]->attachment->collider;
-            HuCopyVecF(&targetPosition, &collider->pose.pos);
+            (&targetPosition)->x = (&collider->pose.pos)->x;  (&targetPosition)->y =
+                (&collider->pose.pos)->y;  (&targetPosition)->z = (&collider->pose.pos)->z;
             distance = fn_1_2968(targetPosition, playerPosition);
             if (distance < bestDistance) {
                 bestDistance = distance;
@@ -771,7 +773,8 @@ M646TargetCandidate *fn_1_ABB0(M646PlayerTicket *ticket)
     if (player->targetDelayTicks > 0) {
         return NULL;
     }
-    HuCopyVecF(&playerPosition, &player->modelPosition);
+    (&playerPosition)->x = (&player->modelPosition)->x;  (&playerPosition)->y =
+        (&player->modelPosition)->y;  (&playerPosition)->z = (&player->modelPosition)->z;
     for (category = 0; category < 4; category++) {
         selected = NULL;
         for (joint = 0; joint < work->categoryCount[category]; joint++) {
@@ -782,7 +785,8 @@ M646TargetCandidate *fn_1_ABB0(M646PlayerTicket *ticket)
         }
         for (index = 0; index < filteredCount; index++) {
             collider = &filtered[index]->attachment->collider;
-            HuCopyVecF(&targetPosition, &collider->pose.pos);
+            (&targetPosition)->x = (&collider->pose.pos)->x;  (&targetPosition)->y =
+                (&collider->pose.pos)->y;  (&targetPosition)->z = (&collider->pose.pos)->z;
             distance = fn_1_2968(targetPosition, playerPosition);
             if (distance < bestDistance) {
                 bestDistance = distance;
@@ -826,7 +830,8 @@ M646TargetCandidate *fn_1_AE64(M646PlayerTicket *ticket)
             candidate = work->categories[category][joint];
             if (candidate->attachment->collider.assigned == 0) {
                 collider = &candidate->attachment->collider;
-                HuCopyVecF(&targetPosition, &collider->pose.pos);
+                (&targetPosition)->x = (&collider->pose.pos)->x;  (&targetPosition)->y =
+                    (&collider->pose.pos)->y;  (&targetPosition)->z = (&collider->pose.pos)->z;
                 distance = fn_1_2968(targetPosition, origin);
                 if (distance < bestDistance) {
                     bestDistance = distance;
@@ -862,7 +867,8 @@ M646TargetCandidate *fn_1_B07C(M646PlayerTicket *ticket)
     Vec targetPosition;
     M646TargetCandidate *filtered[12];
     f64 distance;
-    HuCopyVecF(&playerPosition, &player->modelPosition);
+    (&playerPosition)->x = (&player->modelPosition)->x;  (&playerPosition)->y =
+        (&player->modelPosition)->y;  (&playerPosition)->z = (&player->modelPosition)->z;
     for (category = 3; category >= 0; category--) {
         selected = NULL;
         for (joint = 0; joint < work->categoryCount[category]; joint++) {
@@ -873,7 +879,8 @@ M646TargetCandidate *fn_1_B07C(M646PlayerTicket *ticket)
         }
         for (index = 0; index < filteredCount; index++) {
             collider = &filtered[index]->attachment->collider;
-            HuCopyVecF(&targetPosition, &collider->pose.pos);
+            (&targetPosition)->x = (&collider->pose.pos)->x;  (&targetPosition)->y =
+                (&collider->pose.pos)->y;  (&targetPosition)->z = (&collider->pose.pos)->z;
             distance = fn_1_2968(targetPosition, playerPosition);
             if (distance < bestDistance) {
                 bestDistance = distance;

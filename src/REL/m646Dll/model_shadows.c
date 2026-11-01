@@ -45,8 +45,8 @@ void fn_1_52F0(OMOBJ *obj);
 OMOBJ *lbl_1_bss_68;
 
 s32 lbl_1_data_140[2] = {
-    DATANUM(DATA_m646, M646_INTRO_MOTION_FILE),
-    DATANUM(DATA_m646, M646_MAIN_STAGE_MOTION_FILE)
+    DATANUM(0x690000, M646_INTRO_MOTION_FILE),
+    DATANUM(0x690000, M646_MAIN_STAGE_MOTION_FILE)
 };
 /* Joint labels and numeric values used by the stage model data. */
 char lbl_1_data_148[72] =
@@ -66,11 +66,11 @@ char lbl_1_data_148[72] =
 /* Stage setup: creates the scene object and allocates state for its shadow and motions. */
 void fn_1_4E28(OMOBJMAN *objman)
 {
-    OMOBJ *obj = omAddObjEx(objman, 30, 6, 2, OM_GRP_NONE, fn_1_52B4);
+    OMOBJ *obj = fn_8003AB38(objman, 30, 6, 2, -1, fn_1_52B4);
     void *work;
     lbl_1_bss_68 = obj;
-    obj->stat |= OM_STAT_MODELPAUSE;
-    work = obj->data = HuMemDirectMallocNum(HEAP_HEAP, M646_STAGE_WORK_BYTES, HU_MEMNUM_OVL);
+    obj->stat |= (1 << 8);
+    work = obj->data = HuMemDirectMallocNum(HEAP_HEAP, M646_STAGE_WORK_BYTES, 0x10000000);
     memset(work, 0, M646_STAGE_WORK_BYTES);
     fn_1_8158(objman);
 }
@@ -86,15 +86,15 @@ void fn_1_4ED4(OMOBJ *obj)
     HU3D_MODELID model;
     HU3D_MOTIONID motion;
 
-    model = obj->mdlId[0] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m646, M646_STAGE_MODEL_FILE), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(model, 1);
-    model = obj->mdlId[5] = Hu3DModelCreate(HuDataSelHeapReadNum(
-        DATANUM(DATA_m646, M646_SECONDARY_STAGE_MODEL_FILE), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(model, 6);
-    model = obj->mdlId[1] = Hu3DModelCreate(HuDataSelHeapReadNum(
-        DATANUM(DATA_m646, M646_SHADOW_RECEIVER_MODEL_FILE), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(model, 6);
+    model = obj->mdlId[0] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x690000, M646_STAGE_MODEL_FILE), 0x10000000, 2));
+    fn_80026B8C(model, 1);
+    model = obj->mdlId[5] = fn_80025A04(fn_80008DD0(
+        DATANUM(0x690000, M646_SECONDARY_STAGE_MODEL_FILE), 0x10000000, 2));
+    fn_80026B8C(model, 6);
+    model = obj->mdlId[1] = fn_80025A04(fn_80008DD0(
+        DATANUM(0x690000, M646_SHADOW_RECEIVER_MODEL_FILE), 0x10000000, 2));
+    fn_80026B8C(model, 6);
 
     work->shadowCameraPosition.x = (0.0f);
     work->shadowCameraPosition.y = (10000.0f);
@@ -107,29 +107,29 @@ void fn_1_4ED4(OMOBJ *obj)
     work->shadowCameraTarget.z = (0.0f);
     Hu3DShadowCreate((30.0f), (1.0f), (13000.0f));
     Hu3DShadowPosSet(&work->shadowCameraPosition, &work->shadowCameraUp, &work->shadowCameraTarget);
-    Hu3DShadowColSet(50, 50, 50);
+    fn_8002AAB4(50, 50, 50);
     Hu3DShadowSizeSet(192);
     Hu3DShadowTPLvlSet(0.699999988f);
     /* The map is resized again to 240 pixels, replacing the earlier 192-pixel buffer. */
-    Hu3DShadowColSet(50, 50, 50);
+    fn_8002AAB4(50, 50, 50);
     Hu3DShadowSizeSet(240);
-    Hu3DModelShadowMapSet(model);
+    fn_80026FFC(model);
 
-    model = obj->mdlId[2] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m646, M646_INTRO_MODEL_FILE), HU_MEMNUM_OVL, HEAP_MODEL));
+    model = obj->mdlId[2] = fn_80025A04(
+        fn_80008DD0(DATANUM(0x690000, M646_INTRO_MODEL_FILE), 0x10000000, 2));
     motion = obj->mtnId[0] =
-        Hu3DJointMotion(model, HuDataSelHeapReadNum(lbl_1_data_140[0], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, (0.0f));
-    Hu3DModelLayerSet(model, 1);
-    model = obj->mdlId[3] = Hu3DModelCreate(HuDataSelHeapReadNum(
-        DATANUM(DATA_m646, M646_MAIN_STAGE_MODEL_FILE), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80030458(model, fn_80008DD0(lbl_1_data_140[0], 0x10000000, 2));
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, (0.0f));
+    fn_80026B8C(model, 1);
+    model = obj->mdlId[3] = fn_80025A04(fn_80008DD0(
+        DATANUM(0x690000, M646_MAIN_STAGE_MODEL_FILE), 0x10000000, 2));
     motion = obj->mtnId[1] =
-        Hu3DJointMotion(model, HuDataSelHeapReadNum(lbl_1_data_140[1], HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(model, motion);
-    Hu3DMotionSpeedSet(model, (0.0f));
-    Hu3DModelLayerSet(model, 1);
-    Hu3DZClearLayerSet(1);
+        fn_80030458(model, fn_80008DD0(lbl_1_data_140[1], 0x10000000, 2));
+    fn_8002C95C(model, motion);
+    fn_8002D86C(model, (0.0f));
+    fn_80026B8C(model, 1);
+    fn_8002C2AC(1);
     Hu3DBGColorSet(178, 178, 178);
 }
 
@@ -137,21 +137,21 @@ void fn_1_4ED4(OMOBJ *obj)
 void fn_1_51D0(void)
 {
     HU3D_MODELID stageModel = lbl_1_bss_68->mdlId[2];
-    Hu3DMotionSpeedSet(stageModel, (1.0f));
+    fn_8002D86C(stageModel, (1.0f));
 }
 
 /* The scene updater starts the second stage motion when the start phase begins. */
 void fn_1_521C(void)
 {
     HU3D_MODELID stageModel = lbl_1_bss_68->mdlId[3];
-    Hu3DMotionSpeedSet(stageModel, (1.0f));
+    fn_8002D86C(stageModel, (1.0f));
 }
 
 /* Pauses the main-stage motion when this stage-control helper is invoked. */
 void fn_1_5268(void)
 {
     HU3D_MODELID stageModel = lbl_1_bss_68->mdlId[3];
-    Hu3DMotionSpeedSet(stageModel, (0.0f));
+    fn_8002D86C(stageModel, (0.0f));
 }
 
 /* The scene startup callback loads its models and installs the animation updater. */
@@ -172,23 +172,23 @@ void fn_1_52F0(OMOBJ *obj)
             break;
         case 1: {
             HU3D_MODELID model = obj->mdlId[2];
-            if ((30.0f) == Hu3DMotionTimeGet(model)) {
+            if ((30.0f) == fn_8002D4E0(model)) {
                 fn_1_B4BC(M646_STAGE_INTRO_SE_ID);
             }
-            if (Hu3DMotionEndCheck(model)) {
+            if (fn_8002D75C(model)) {
                 work->sequenceState++;
             }
             break;
         }
         case 2:
-            if (MgSeqModeGet() == MGSEQ_MODE_START) {
+            if (fn_80071A8C() == 3) {
                 fn_1_8980();
                 fn_1_521C();
                 work->sequenceState++;
             }
             break;
         case 3:
-            if (MgSeqModeGet() == MGSEQ_MODE_FINISH) {
+            if (fn_80071A8C() == 6) {
                 fn_1_B4BC(M646_STAGE_FINISH_SE_ID);
                 work->sequenceState++;
             }

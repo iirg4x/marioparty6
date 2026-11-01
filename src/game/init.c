@@ -72,7 +72,7 @@ void HuSysInit(GXRenderModeObj *renderMode)
     HuDvdErrDispInit(RenderMode, DemoFrameBuffer1, DemoFrameBuffer2);
     // Advance the random sequence during startup; this returned value is not used.
     ignoredRandomValue = frand();
-    HuMemInitAll();
+    fn_8000B2A8();
     HuAudInit();
     HuARInit();
     minimumVcount = minimumVcountf = 1.0f;

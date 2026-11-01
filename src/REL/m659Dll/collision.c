@@ -40,9 +40,9 @@ void fn_1_41F4(OMOBJMAN *manager)
     OMOBJ *obj;
     M659CollisionTable *collisionTable;
 
-    obj = omAddObjEx(manager, 70, 0, 0, -1, fn_1_4280);
+    obj = fn_8003AB38(manager, 70, 0, 0, -1, fn_1_4280);
     lbl_1_bss_54 = obj;
-    collisionTable = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659CollisionTable), HU_MEMNUM_OVL);
+    collisionTable = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659CollisionTable), 0x10000000);
     obj->data = collisionTable;
     memset(collisionTable, 0, sizeof(M659CollisionTable));
 }

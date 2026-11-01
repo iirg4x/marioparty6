@@ -15,9 +15,7 @@ extern "C" {
 #define OS_FASTCAST_U16 3
 #define OS_FASTCAST_S8 4
 #define OS_FASTCAST_S16 5
-// clang-format off
 static inline void OSInitFastCast(void) {
-#ifdef __MWERKS__
   asm
   {
         li      r3, OS_GQR_U8
@@ -36,23 +34,17 @@ static inline void OSInitFastCast(void) {
         oris    r3, r3, OS_GQR_S16
         mtspr   GQR5, r3
   }
-#else
-
-#endif
 }
-// clang-format off
 
 static inline s16 __OSf32tos16(register f32 inF)
 {
 	u32 tmp;
 	register u32* tmpPtr = &tmp;
 	register s16 out;
-	// clang-format off
     asm {
         psq_st inF, 0(tmpPtr), 0x1, OS_FASTCAST_S16
         lha out, 0(tmpPtr)
     }
-  // clang-format on
 
   return out;
 }
@@ -64,12 +56,10 @@ static inline u8 __OSf32tou8(register f32 inF)
   u32 tmp;
   register u32 *tmpPtr = &tmp;
   register u8 out;
-  // clang-format off
     asm {
         psq_st inF, 0(tmpPtr), 0x1, OS_FASTCAST_U8
         lbz out, 0(tmpPtr)
     }
-  // clang-format on
 
   return out;
 }
@@ -81,13 +71,11 @@ static inline s8 __OSf32tos8(register f32 inF)
   u32 tmp;
   register u32 *tmpPtr = &tmp;
   register s8 out;
-  // clang-format off
     asm {
         psq_st inF, 0(tmpPtr), 0x1, OS_FASTCAST_S8
         lbz out, 0(tmpPtr)
-		extsb out, out //HACK to match fast cast inlines
+		extsb out, out
     }
-  // clang-format on
 
   return out;
 }
@@ -99,12 +87,10 @@ static inline u16 __OSf32tou16(register f32 inF)
   u32 tmp;
   register u32 *tmpPtr = &tmp;
   register u16 out;
-  // clang-format off
     asm {
         psq_st inF, 0(tmpPtr), 0x1, OS_FASTCAST_U16
-        lbz out, 0(tmpPtr)
+        lhz out, 0(tmpPtr)
     }
-  // clang-format on
 
   return out;
 }

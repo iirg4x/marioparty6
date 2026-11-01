@@ -1,5 +1,6 @@
 /* Arena grid generation and CPU movement helpers. */
 #define _MATH_H
+#include <math.h>
 #include "REL/m632dll.h"
 
 /* Model-hook callback registered by fn_1_4C90; it leaves the supplied model transform unchanged. */
@@ -15,8 +16,8 @@ void fn_1_4C90(void)
     s32 index;
     s16 model;
 
-    model = Hu3DHookFuncCreate(fn_1_4C8C);
-    Hu3DModelCameraSet(model, 2U);
+    model = fn_800260F4(fn_1_4C8C);
+    fn_80026B64(model, 2U);
     index = 0;
     while (index < 4) {
         lbl_1_bss_0.playerTimer[index] = 0;
@@ -198,7 +199,7 @@ void fn_1_535C(void)
     fn_1_4D48();
     value9 = 0;
     while (value9 < 4) {
-        if ((GwPlayerConf[value9].type != 0) && ((s32) lbl_1_bss_0.playerState[value9] == 0)) {
+        if ((lbl_80265728[value9].type != 0) && ((s32) lbl_1_bss_0.playerState[value9] == 0)) {
             if ((s32) lbl_1_bss_0.group[value9] == 0) {
                 fn_1_5400(value9);
             } else {
@@ -224,7 +225,7 @@ void fn_1_5400(s32 playerIndex)
     MGACTOR *collisionActor;
 
     player = lbl_1_bss_0.players[playerIndex];
-    switch (GwPlayerConf[playerIndex].comDif) {
+    switch (lbl_80265728[playerIndex].comDif) {
     case 0:
         chancePercent = 30U;
         break;
@@ -244,7 +245,7 @@ void fn_1_5400(s32 playerIndex)
             lbl_1_bss_0.playerTimer[playerIndex] = (s32) (frandmod(60) + 30);
         } else {
             lbl_1_bss_0.playerAIState[playerIndex] = 1;
-            switch (GwPlayerConf[playerIndex].comDif) {
+            switch (lbl_80265728[playerIndex].comDif) {
             case 0:
                 chancePercent = 20U;
                 break;
@@ -341,7 +342,7 @@ void fn_1_597C(s32 playerIndex)
     switch (lbl_1_bss_0.playerAIState[playerIndex]) {
     case 0:
         if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >=
-            (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
+            (s32) lbl_1_data_198[lbl_80265728[playerIndex].comDif]) {
             lbl_1_bss_0.playerAIState[playerIndex] = 2;
             fn_1_5D34(playerIndex);
         }
@@ -350,7 +351,7 @@ void fn_1_597C(s32 playerIndex)
         buttonDownMask = 0;
         buttonMask = 0;
         if ((s32) lbl_1_bss_0.gridA[gridX + (gridZ * 8)] >=
-            (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
+            (s32) lbl_1_data_198[lbl_80265728[playerIndex].comDif]) {
             fn_1_5D34(playerIndex);
         } else {
             neighborHeat = 0;
@@ -366,7 +367,7 @@ void fn_1_597C(s32 playerIndex)
             if ((s32) (gridZ + 1) < 8) {
                 neighborHeat += lbl_1_bss_0.gridA[gridX + ((gridZ + 1) * 8)];
             }
-            if (neighborHeat < (s32) lbl_1_data_198[GwPlayerConf[playerIndex].comDif]) {
+            if (neighborHeat < (s32) lbl_1_data_198[lbl_80265728[playerIndex].comDif]) {
                 lbl_1_bss_0.playerAIState[playerIndex] = 0;
                 return;
             }
@@ -376,7 +377,7 @@ void fn_1_597C(s32 playerIndex)
             buttonDownMask = PAD_BUTTON_A;
             buttonMask = PAD_BUTTON_A;
         }
-        MgPlayerPadSet(player, (s32) (56.0f * direction.x), (s32) (56.0f * -direction.z),
+        fn_80080520(player, (s32) (56.0f * direction.x), (s32) (56.0f * -direction.z),
                        buttonDownMask, buttonMask);
         break;
     case 1:
@@ -412,7 +413,7 @@ void fn_1_5D34(s32 playerIndex)
     if (currentGridZ >= 8) {
         currentGridZ = 7;
     }
-    switch (GwPlayerConf[playerIndex].comDif) {
+    switch (lbl_80265728[playerIndex].comDif) {
     case 0:
         riskThreshold = 128.0f;
         break;

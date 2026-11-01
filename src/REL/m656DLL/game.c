@@ -1,4 +1,5 @@
 /* Holds Mass Meteor stage data and its gameplay and presentation callbacks. */
+#include <math.h>
 #include "REL/m656/m656.h"
 
 #define M656_STAGE_STREAM 87
@@ -187,7 +188,7 @@ void fn_1_4FA4(s16 *playerByGroup)
     for (groupIndex = 0; groupIndex < 2; groupIndex++) {
         groupHasNoPlayer = 1;
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            if (groupIndex == GwPlayerConf[playerIndex].grpNo) {
+            if (groupIndex == lbl_80265728[playerIndex].grpNo) {
                 playerByGroup[groupIndex] = playerIndex;
                 groupHasNoPlayer = 0;
                 break;
@@ -243,11 +244,11 @@ void fn_1_5338(OMOBJ *obj)
     M656SceneWork *scene;
 
     scene = obj->data;
-    if ((scene->stream == -1) && (MgSeqModeGet() == 2)) {
+    if ((scene->stream == -1) && (fn_80071A8C() == 2)) {
         scene->stream = HuAudSStreamPlay(M656_STAGE_STREAM);
         scene->fx = HuAudFXPlayPan(M656_STAGE_START_SFX, 64);
     }
-    if (MgSeqModeGet() == 5) {
+    if (fn_80071A8C() == 5) {
         fn_1_20C(obj, fn_1_53C4);
         return;
     }
@@ -260,7 +261,7 @@ void fn_1_53C4(OMOBJ *obj)
 
     scene = obj->data;
     if (((s32) lbl_1_bss_10[0] != 0) || ((s32) lbl_1_bss_10[1] != 0)) {
-        MgSeqModeNext();
+        fn_80071A9C();
         fn_1_20C(obj, fn_1_5434);
         return;
     }
@@ -288,7 +289,7 @@ void fn_1_5434(OMOBJ *obj)
             winnerCount++;
         }
     }
-    MgSeqWinnerSet(winners[0], winners[1], -1, -1);
+    fn_80071C18(winners[0], winners[1], -1, -1);
     if (work->stream != -1) {
         HuAudSStreamFadeOut(work->stream, 100);
     }
@@ -304,7 +305,7 @@ void fn_1_5624(OMOBJ *obj)
     M656SceneWork *scene;
 
     scene = obj->data;
-    if (MgSeqModeGet() == 7) {
+    if (fn_80071A8C() == 7) {
         WipeCreate(2, 0, 60);
         scene->frame = 0;
         lbl_1_bss_8 = 1;
@@ -333,7 +334,7 @@ void fn_1_5724(OMOBJ *obj)
     M656SceneWork *work;
     work = obj->data;
     if (work->frame++ >= 60) {
-        MgSeqModeNext();
+        fn_80071A9C();
         fn_1_20C(obj, NULL);
         return;
     }
@@ -385,7 +386,7 @@ void fn_1_5D20(OMOBJ *obj)
     M656CameraWork *cameraWork;
 
     cameraWork = obj->data;
-    if (MgSeqModeGet() == 7) {
+    if (fn_80071A8C() == 7) {
         fn_1_20C(obj, fn_1_5D70);
         return;
     }
@@ -403,11 +404,11 @@ void fn_1_5D70(OMOBJ *obj)
         Hu3DCameraPerspectiveSet(3, 45.0f, 20.0f, 15000.0f, 1.3333334f);
         Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
         Hu3DCameraScissorSet(1, 0, 0, 640, 480);
-        motion = Hu3DMotionCreate(HuDataSelHeapReadNum(M656_DATA_RESULTS_CAMERA_MOTION,
-                                                       M656_DATA_READ_FLAGS, HEAP_MODEL));
-        model = Hu3DModelCameraCreate(motion, 1);
-        Hu3DMotionSpeedSet(model, 1.0f);
-        Hu3DCameraMotionStart(model, 1);
+        motion = fn_8002C4C0(fn_80008DD0(M656_DATA_RESULTS_CAMERA_MOTION,
+                                                       M656_DATA_READ_FLAGS, 2));
+        model = fn_800283F4(motion, 1);
+        fn_8002D86C(model, 1.0f);
+        fn_800284C8(model, 1);
         Hu3DCameraViewportSet(2, 0.0f, 480.0f, 640.0f, 480.0f, 0.0f, 1.0f);
         Hu3DCameraScissorSet(2, 0, 480, 640, 480);
         fn_1_20C(obj, fn_1_5F38);
@@ -428,10 +429,10 @@ s16 fn_1_5F4C(s32 modelKind)
 {
     HU3D_MODELID modelId;
     if (lbl_1_data_65C[modelKind] == -1) {
-        modelId = lbl_1_data_65C[modelKind] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(lbl_1_data_3C[modelKind], M656_DATA_READ_FLAGS, HEAP_MODEL));
+        modelId = lbl_1_data_65C[modelKind] = fn_80025A04(
+            fn_80008DD0(lbl_1_data_3C[modelKind], M656_DATA_READ_FLAGS, 2));
     } else {
-        modelId = Hu3DModelLink(lbl_1_data_65C[modelKind]);
+        modelId = fn_80025D4C(lbl_1_data_65C[modelKind]);
     }
     return modelId;
 }
@@ -451,7 +452,7 @@ void fn_1_5FF8(OMOBJ *obj)
 
     work = obj->data;
     anim = HuSprAnimRead(
-        HuDataSelHeapReadNum(M656_DATA_PROGRESS_BAR_FULL, M656_DATA_READ_FLAGS, HEAP_MODEL));
+        fn_80008DD0(M656_DATA_PROGRESS_BAR_FULL, M656_DATA_READ_FLAGS, 2));
     work->sprGroup = HuSprGrpCreate(11);
     HuSprGrpPosSet(work->sprGroup, 0.0f, 240.0f);
     for (index = 0; index < 10; index++) {
@@ -460,50 +461,50 @@ void fn_1_5FF8(OMOBJ *obj)
         HuSprPosSet(work->sprGroup, index, index * 64 + (index >= 8 ? 32 : 0), 0.0f);
     }
     anim = HuSprAnimRead(
-        HuDataSelHeapReadNum(M656_DATA_PROGRESS_BAR_EMPTY, M656_DATA_READ_FLAGS, HEAP_MODEL));
+        fn_80008DD0(M656_DATA_PROGRESS_BAR_EMPTY, M656_DATA_READ_FLAGS, 2));
     HuSprGrpMemberSet(work->sprGroup, index, HuSprCreate(anim, 50, 0));
     HuSprPosSet(work->sprGroup, 10, 496.0f, 0.0f);
-    work->model2 = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M656_DATA_STAGE_BACKDROP, M656_DATA_READ_FLAGS, HEAP_MODEL));
-    work->model4 = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M656_DATA_STAGE_ANIMATION_MODEL, M656_DATA_READ_FLAGS, HEAP_MODEL));
+    work->model2 = fn_80025A04(
+        fn_80008DD0(M656_DATA_STAGE_BACKDROP, M656_DATA_READ_FLAGS, 2));
+    work->model4 = fn_80025A04(
+        fn_80008DD0(M656_DATA_STAGE_ANIMATION_MODEL, M656_DATA_READ_FLAGS, 2));
     {
         s16 motion =
-            Hu3DJointMotion(work->model4, HuDataSelHeapReadNum(M656_DATA_STAGE_ANIMATION_MOTION,
-                                                               M656_DATA_READ_FLAGS, HEAP_MODEL));
-        Hu3DMotionSet(work->model4, motion);
+            fn_80030458(work->model4, fn_80008DD0(M656_DATA_STAGE_ANIMATION_MOTION,
+                                                               M656_DATA_READ_FLAGS, 2));
+        fn_8002C95C(work->model4, motion);
     }
-    Hu3DModelAttrSet(work->model4, HU3D_MOTATTR_LOOP);
-    Hu3DModelLayerSet(work->model4, 0);
-    Hu3DModelAttrSet(work->model2, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(work->model4, HU3D_ATTR_DISPOFF);
-    Hu3DMotionSpeedSet(work->model4, 0.0f);
+    fn_800269E8(work->model4, ((1 << 30) | (1 << 0)));
+    fn_80026B8C(work->model4, 0);
+    fn_800269E8(work->model2, (1 << 0));
+    fn_800269E8(work->model4, (1 << 0));
+    fn_8002D86C(work->model4, 0.0f);
     shadowPos = lbl_1_rodata_F0;
     shadowUp = lbl_1_rodata_FC;
     shadowTarget = lbl_1_rodata_108;
     Hu3DShadowCreate(10.0f, 10.0f, 10000.0f);
-    Hu3DShadowColSet(16, 16, 16);
+    fn_8002AAB4(16, 16, 16);
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
     Hu3DShadowTPLvlSet(0.3f);
-    Hu3DModelShadowMapSet(work->model2);
-    work->model2E = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M656_DATA_STAGE_DECORATION_PARENT, M656_DATA_READ_FLAGS, HEAP_MODEL));
+    fn_80026FFC(work->model2);
+    work->model2E = fn_80025A04(
+        fn_80008DD0(M656_DATA_STAGE_DECORATION_PARENT, M656_DATA_READ_FLAGS, 2));
     {
         s16 motion =
-            Hu3DJointMotion(work->model2E, HuDataSelHeapReadNum(M656_DATA_STAGE_DECORATION_MOTION,
-                                                                M656_DATA_READ_FLAGS, HEAP_MODEL));
-        Hu3DMotionSet(work->model2E, motion);
+            fn_80030458(work->model2E, fn_80008DD0(M656_DATA_STAGE_DECORATION_MOTION,
+                                                                M656_DATA_READ_FLAGS, 2));
+        fn_8002C95C(work->model2E, motion);
     }
-    Hu3DMotionSpeedSet(work->model2E, 0.0f);
+    fn_8002D86C(work->model2E, 0.0f);
     for (index = 0; index < 20; index++) {
         if (index == 0) {
             work->models[index] = fn_1_5F4C((s32)(rand8() % 100) > 50 ? 1 : 4);
         } else {
             work->models[index] = fn_1_5F4C((s32)rand8() % 8);
         }
-        Hu3DModelCameraSet(work->models[index], 1);
-        Hu3DModelAttrSet(work->models[index], HU3D_ATTR_DISPOFF);
-        Hu3DModelHookSet(work->model2E, lbl_1_data_60C[index], work->models[index]);
+        fn_80026B64(work->models[index], 1);
+        fn_800269E8(work->models[index], (1 << 0));
+        fn_8002741C(work->model2E, lbl_1_data_60C[index], work->models[index]);
         work->steps[index].x = 0.008726646259971648 * (double)(4.0f * frandf() - 2.0f);
         work->steps[index].y = 0.008726646259971648 * (double)(4.0f * frandf() - 2.0f);
         work->steps[index].z = 0.008726646259971648 * (double)(4.0f * frandf() - 2.0f);
@@ -521,13 +522,13 @@ void fn_1_65E0(OMOBJ *obj)
         for (index = 0; index < 11; index++) {
             HuSprAttrSet(work->sprGroup, index, 4);
         }
-        Hu3DModelAttrReset(work->model2, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(work->model4, HU3D_ATTR_DISPOFF);
-        Hu3DMotionSpeedSet(work->model4, 1.0f);
+        fn_80026A44(work->model2, (1 << 0));
+        fn_80026A44(work->model4, (1 << 0));
+        fn_8002D86C(work->model4, 1.0f);
         for (index = 0; index < 20; index++) {
-            Hu3DModelAttrReset(work->models[index], HU3D_ATTR_DISPOFF);
+            fn_80026A44(work->models[index], (1 << 0));
         }
-        Hu3DMotionSpeedSet(work->model2E, 1.0f);
+        fn_8002D86C(work->model2E, 1.0f);
         fn_1_20C(obj, fn_1_66D0);
         return;
     }
@@ -544,7 +545,7 @@ void fn_1_66D0(OMOBJ *obj)
     while (modelIndex < 20) {
         fn_1_4A8(&environment->angles[modelIndex], &environment->angles[modelIndex],
                  &environment->steps[modelIndex]);
-        Hu3DModelRotSet(
+        fn_80026808(
             environment->models[modelIndex],
             (f32) ((f64) (180.0f * environment->angles[modelIndex].x) / 3.141592653589793),
             (f32) ((f64) (180.0f * environment->angles[modelIndex].y) / 3.141592653589793),
@@ -583,7 +584,7 @@ void fn_1_690C(M656Work60 *work, s16 motion, float blend, u32 attr)
 {
     if (work->motion != motion) {
         work->motion = motion;
-        CharMotionShiftSet(work->charNo, work->childObj->mtnId[work->motion], 0.0f, blend, attr);
+        fn_8005C2C8(work->charNo, work->childObj->mtnId[work->motion], 0.0f, blend, attr);
     }
 }
 
@@ -596,56 +597,56 @@ void fn_1_6990(OMOBJ *obj)
     ANIMDATA *anim;
 
     work = obj->data;
-    work->charNo = GwPlayerConf[work->playerNo].charNo;
+    work->charNo = lbl_80265728[work->playerNo].charNo;
     work->motion = -1;
     work->state = 0;
     work->fraction = 0.0f;
     fn_1_2E0(&work->target, 0.0f, 0.0f, 0.0f);
-    work->childObj = omAddObjEx(lbl_1_bss_0, 101, 1U, 5U, 0, NULL);
-    omSetStatBit(work->childObj, OM_STAT_MODELPAUSE);
-    model = work->childObj->mdlId[0] = CharModelCreate(work->charNo, 4);
-    Hu3DModelCameraSet(model, (u16)lbl_1_rodata_88[work->group]);
-    Hu3DModelLayerSet(model, 7);
+    work->childObj = fn_8003AB38(lbl_1_bss_0, 101, 1U, 5U, 0, NULL);
+    omSetStatBit(work->childObj, (1 << 8));
+    model = work->childObj->mdlId[0] = fn_80057068(work->charNo, 4);
+    fn_80026B64(model, (u16)lbl_1_rodata_88[work->group]);
+    fn_80026B8C(model, 7);
     for (index = 0; index < 5; index++) {
-        work->childObj->mtnId[index] = CharMotionCreate(work->charNo, lbl_1_data_28[index]);
+        work->childObj->mtnId[index] = fn_8005B0B8(work->charNo, lbl_1_data_28[index]);
     }
-    CharMotionDataClose(work->charNo);
-    fn_1_690C(work, 2, 0.0f, HU3D_MOTATTR_LOOP);
-    Hu3DModelPosSet(model, -1000.0f, 0.0f, 0.0f);
-    Hu3DModelRotSet(model, 0.0f, 90.0f, 0.0f);
-    Hu3DModelCameraSet(model, (u16)lbl_1_rodata_88[work->group]);
+    fn_8005B4BC(work->charNo);
+    fn_1_690C(work, 2, 0.0f, ((1 << 30) | (1 << 0)));
+    fn_80026760(model, -1000.0f, 0.0f, 0.0f);
+    fn_80026808(model, 0.0f, 90.0f, 0.0f);
+    fn_80026B64(model, (u16)lbl_1_rodata_88[work->group]);
     fn_1_2E0(&work->velocity, 0.0f, 0.0f, 0.0f);
     if (work->group == 0) {
-        work->model50 = Hu3DModelCreate(
-            HuDataSelHeapReadNum(M656_DATA_METEOR_HIT_EFFECT, M656_DATA_READ_FLAGS, HEAP_MODEL));
+        work->model50 = fn_80025A04(
+            fn_80008DD0(M656_DATA_METEOR_HIT_EFFECT, M656_DATA_READ_FLAGS, 2));
     } else {
-        work->model50 = Hu3DModelLink(fn_1_4F4C(0)->model50);
+        work->model50 = fn_80025D4C(fn_1_4F4C(0)->model50);
     }
-    Hu3DModelAttrSet(work->model50, HU3D_ATTR_DISPOFF);
-    Hu3DModelCameraSet(work->model50, (u16)lbl_1_rodata_88[work->group]);
-    Hu3DModelLayerSet(work->model50, 7);
+    fn_800269E8(work->model50, (1 << 0));
+    fn_80026B64(work->model50, (u16)lbl_1_rodata_88[work->group]);
+    fn_80026B8C(work->model50, 7);
     if (work->group == 0) {
-        work->model38 = Hu3DModelCreate(
-            HuDataSelHeapReadNum(M656_DATA_PLAYER_TRAIL, M656_DATA_READ_FLAGS, HEAP_MODEL));
+        work->model38 = fn_80025A04(
+            fn_80008DD0(M656_DATA_PLAYER_TRAIL, M656_DATA_READ_FLAGS, 2));
     } else {
-        work->model38 = Hu3DModelLink(fn_1_4F4C(0)->model38);
+        work->model38 = fn_80025D4C(fn_1_4F4C(0)->model38);
     }
-    Hu3DModelLayerSet(work->model38, 4);
-    Hu3DModelCameraSet(work->model38, (u16)lbl_1_rodata_88[work->group]);
-    Hu3DModelPosSet(work->model38, 0.0f, 0.0f, -600.0f);
-    work->texScroll = Hu3DTexScrollCreate(work->model38, lbl_1_data_66C);
-    anim = HuSprAnimRead(HuDataSelHeapReadNum(work->charNo + M656_DATA_CHARACTER_MOTION_BASE,
-                                              M656_DATA_READ_FLAGS, HEAP_MODEL));
+    fn_80026B8C(work->model38, 4);
+    fn_80026B64(work->model38, (u16)lbl_1_rodata_88[work->group]);
+    fn_80026760(work->model38, 0.0f, 0.0f, -600.0f);
+    work->texScroll = fn_80031C10(work->model38, lbl_1_data_66C);
+    anim = HuSprAnimRead(fn_80008DD0(work->charNo + M656_DATA_CHARACTER_MOTION_BASE,
+                                              M656_DATA_READ_FLAGS, 2));
     work->sprGroup = HuSprGrpCreate(1);
     HuSprGrpPosSet(work->sprGroup, 0.0f, 240.0f);
     HuSprGrpMemberSet(work->sprGroup, 0, HuSprCreate(anim, 50, 0));
     HuSprPosSet(work->sprGroup, 0, 76.0f, (float)(work->group == 0 ? -16 : 16));
-    work->model48 = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M656_DATA_RESULT_MODEL_A, M656_DATA_READ_FLAGS, HEAP_MODEL));
-    Hu3DMotionSpeedSet(work->model48, 0.0f);
-    work->model4A = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M656_DATA_RESULT_MODEL_B, M656_DATA_READ_FLAGS, HEAP_MODEL));
-    Hu3DMotionSpeedSet(work->model4A, 0.0f);
+    work->model48 = fn_80025A04(
+        fn_80008DD0(M656_DATA_RESULT_MODEL_A, M656_DATA_READ_FLAGS, 2));
+    fn_8002D86C(work->model48, 0.0f);
+    work->model4A = fn_80025A04(
+        fn_80008DD0(M656_DATA_RESULT_MODEL_B, M656_DATA_READ_FLAGS, 2));
+    fn_8002D86C(work->model4A, 0.0f);
     fn_1_20C(obj, fn_1_6E4C);
 }
 
@@ -655,7 +656,7 @@ void fn_1_6E4C(OMOBJ *obj)
     M656Work60 *work;
 
     work = obj->data;
-    if (MgSeqModeGet() == 2) {
+    if (fn_80071A8C() == 2) {
         work->timer = 0;
         fn_1_20C(obj, fn_1_6EA8);
         return;
@@ -671,14 +672,14 @@ void fn_1_6EA8(OMOBJ *obj)
     position = (float)work->timer / 240.0f;
     work->timer++;
     if (work->timer >= 240) {
-        Hu3DModelPosSet(work->childObj->mdlId[0], 0.0f, 0.0f, 0.0f);
-        fn_1_690C(work, 1, 10.0f, HU3D_MOTATTR_LOOP);
+        fn_80026760(work->childObj->mdlId[0], 0.0f, 0.0f, 0.0f);
+        fn_1_690C(work, 1, 10.0f, ((1 << 30) | (1 << 0)));
         fn_1_20C(obj, fn_1_7024);
         return;
     }
     position *= 1000.0f;
     position = -(1000.0f - position);
-    Hu3DModelPosSet(work->childObj->mdlId[0], position, 0.0f, 0.0f);
+    fn_80026760(work->childObj->mdlId[0], position, 0.0f, 0.0f);
 }
 
 /* Switches to play motion and hands control to human or computer movement. */
@@ -687,15 +688,15 @@ void fn_1_7024(OMOBJ *obj)
     M656Work60 *work;
 
     work = obj->data;
-    if (MgSeqModeGet() == 5) {
+    if (fn_80071A8C() == 5) {
         if (work->motion != 2) {
             work->motion = 2;
-            CharMotionShiftSet(work->charNo, work->childObj->mtnId[work->motion], 0.0f, 10.0f,
-                               HU3D_MOTATTR_LOOP);
+            fn_8005C2C8(work->charNo, work->childObj->mtnId[work->motion], 0.0f, 10.0f,
+                               ((1 << 30) | (1 << 0)));
         }
         Hu3DTexScrollPosMoveSet(work->texScroll, -0.001f, 0.0f, 0.0f);
         work->state = 1;
-        if (GwPlayerConf[work->playerNo].type != 0) {
+        if (lbl_80265728[work->playerNo].type != 0) {
             fn_1_20C(obj, fn_1_78C8);
             return;
         }
@@ -716,9 +717,9 @@ void fn_1_7130(OMOBJ *obj)
         fn_1_20C(obj, fn_1_8680);
         return;
     }
-    stick.x = HuPadStkX[GwPlayerConf[work->playerNo].padNo];
+    stick.x = lbl_802BFFFC[lbl_80265728[work->playerNo].padNo];
     if (stick.x < 30.0f && stick.x > -30.0f) stick.x = 0.0f;
-    stick.y = HuPadStkY[GwPlayerConf[work->playerNo].padNo];
+    stick.y = lbl_802BFFF8[lbl_80265728[work->playerNo].padNo];
     if (stick.y < 30.0f && stick.y > -30.0f) stick.y = 0.0f;
     if (stick.x || stick.y) {
         fn_1_518(&stick, &stick);
@@ -737,12 +738,12 @@ void fn_1_7130(OMOBJ *obj)
     /* These copied components are not read again in this callback. */
     delta.x = velocity.x;
     delta.y = velocity.y;
-    Hu3DModelPosGet(work->childObj->mdlId[0], &work->pos);
+    fn_800267CC(work->childObj->mdlId[0], &work->pos);
     work->pos.x += work->velocity.x;
     work->pos.y += work->velocity.y;
     if (work->pos.x > 940.0f || work->pos.x < -940.0f) work->pos.x -= work->velocity.x;
     if (work->pos.y > 240.0f || work->pos.y < -240.0f) work->pos.y -= work->velocity.y;
-    Hu3DModelPosSetV(work->childObj->mdlId[0], &work->pos);
+    fn_80026790(work->childObj->mdlId[0], &work->pos);
     work->progress += 1.0f;
     work->fraction = work->progress / 2350.0f;
     if (work->fraction >= 1.0f) work->fraction = 1.0f;
@@ -763,10 +764,10 @@ void fn_1_7130(OMOBJ *obj)
         work->state = 2;
         work->timer = 0;
         Hu3DTexScrollPosMoveSet(work->texScroll, 0.0f, 0.0f, 0.0f);
-        Hu3DMotionTimeSet(work->model50, 0.0f);
-        Hu3DModelAttrReset(work->model50, HU3D_ATTR_DISPOFF);
-        Hu3DModelPosSetV(work->model50, &work->pos);
-        omVibrate(work->playerNo, 20, 7, 3);
+        fn_8002D414(work->model50, 0.0f);
+        fn_80026A44(work->model50, (1 << 0));
+        fn_80026790(work->model50, &work->pos);
+        fn_8006A030(work->playerNo, 20, 7, 3);
         Hu3D3Dto2D(&work->pos, (s16)lbl_1_rodata_88[work->group], &screen);
         pan = 64.0f * (screen.x / 576.0f);
         pan = pan < 0.0f ? 0.0f : pan > 64.0f ? 64.0f : pan;
@@ -812,7 +813,7 @@ void fn_1_78C8(OMOBJ *obj)
         }
     }
     if (fn_1_4F88(work->group)->active == 1) {
-        stick.x = difficultySpeed[GwPlayerConf[work->playerNo].comDif];
+        stick.x = difficultySpeed[lbl_80265728[work->playerNo].comDif];
     } else if (nearest) {
         M656Sphere item;
         float radii[4] = { 200.0f, 250.0f, 300.0f, 320.0f };
@@ -820,7 +821,7 @@ void fn_1_78C8(OMOBJ *obj)
             static const Point3d lbl_1_rodata_1D8 = { 0.0f, -1.0f, 0.0f };
         M656Work50 *entry = nearest;
         HuVecF up, down, direction;
-        player.radius = radii[GwPlayerConf[work->playerNo].comDif];
+        player.radius = radii[lbl_80265728[work->playerNo].comDif];
         item = entry->sphere;
         item.radius *= 1.5f;
         if (!(fn_1_2C8C(&player, &item) <= 1.0f)) goto wander;
@@ -834,8 +835,8 @@ void fn_1_78C8(OMOBJ *obj)
             fn_1_4A8(&direction, &direction, &up);
         }
         fn_1_518(&direction, &direction);
-        stick.x = direction.x * difficultySpeed[GwPlayerConf[work->playerNo].comDif];
-        stick.y = direction.y * difficultySpeed[GwPlayerConf[work->playerNo].comDif];
+        stick.x = direction.x * difficultySpeed[lbl_80265728[work->playerNo].comDif];
+        stick.y = direction.y * difficultySpeed[lbl_80265728[work->playerNo].comDif];
     } else {
         HuVecF target, direction;
         float distance;
@@ -847,8 +848,8 @@ wander:
             work->target.x = 2.0f * (940.0f * frandf()) - 940.0f;
             work->target.y = 2.0f * (240.0f * frandf()) - 240.0f;
         }
-        stick.x = direction.x * (1.0f - difficultySpeed[GwPlayerConf[work->playerNo].comDif]);
-        stick.y = direction.y * (1.0f - difficultySpeed[GwPlayerConf[work->playerNo].comDif]);
+        stick.x = direction.x * (1.0f - difficultySpeed[lbl_80265728[work->playerNo].comDif]);
+        stick.y = direction.y * (1.0f - difficultySpeed[lbl_80265728[work->playerNo].comDif]);
     }
     if (stick.x || stick.y) lbl_1_bss_C = 0;
     fn_1_6F8(&delta, &stick, 0.5f);
@@ -864,12 +865,12 @@ wander:
     /* These copied components are not read again in this callback. */
     delta.x = velocity.x;
     delta.y = velocity.y;
-    Hu3DModelPosGet(work->childObj->mdlId[0], &work->pos);
+    fn_800267CC(work->childObj->mdlId[0], &work->pos);
     work->pos.x += work->velocity.x;
     work->pos.y += work->velocity.y;
     if (work->pos.x > 940.0f || work->pos.x < -940.0f) work->pos.x -= work->velocity.x;
     if (work->pos.y > 240.0f || work->pos.y < -240.0f) work->pos.y -= work->velocity.y;
-    Hu3DModelPosSetV(work->childObj->mdlId[0], &work->pos);
+    fn_80026790(work->childObj->mdlId[0], &work->pos);
     work->progress += 1.0f;
     work->fraction = work->progress / 2350.0f;
     if (work->fraction >= 1.0f) work->fraction = 1.0f;
@@ -891,10 +892,10 @@ wander:
         work->state = 2;
         work->timer = 0;
         Hu3DTexScrollPosMoveSet(work->texScroll, 0.0f, 0.0f, 0.0f);
-        Hu3DMotionTimeSet(work->model50, 0.0f);
-        Hu3DModelAttrReset(work->model50, 1);
-        Hu3DModelPosSetV(work->model50, &work->pos);
-        omVibrate(work->playerNo, 20, 7, 3);
+        fn_8002D414(work->model50, 0.0f);
+        fn_80026A44(work->model50, 1);
+        fn_80026790(work->model50, &work->pos);
+        fn_8006A030(work->playerNo, 20, 7, 3);
         Hu3D3Dto2D(&work->pos, (s16)lbl_1_rodata_88[work->group], &screen);
         pan = 64.0f * (screen.x / 576.0f);
         pan = pan < 0.0f ? 0.0f : pan > 64.0f ? 64.0f : pan;
@@ -918,13 +919,13 @@ void fn_1_8424(OMOBJ *obj)
     }
     angle = (1.0f / 120.0f) * (120 - work->timer);
     angle *= 1080.0f;
-    Hu3DModelRotSet(work->childObj->mdlId[0], 0.0f, 90.0f, angle);
+    fn_80026808(work->childObj->mdlId[0], 0.0f, 90.0f, angle);
     if (work->timer++ >= 120) {
-        Hu3DModelRotSet(work->childObj->mdlId[0], 0.0f, 90.0f, 0.0f);
+        fn_80026808(work->childObj->mdlId[0], 0.0f, 90.0f, 0.0f);
         work->state = 1;
         Hu3DTexScrollPosMoveSet(work->texScroll, -0.001f, 0.0f, 0.0f);
         fn_1_2E0(&work->velocity, 0.0f, 0.0f, 0.0f);
-        if (GwPlayerConf[work->playerNo].type != 0) {
+        if (lbl_80265728[work->playerNo].type != 0) {
             fn_1_20C(obj, fn_1_78C8);
             return;
         }
@@ -944,7 +945,7 @@ void fn_1_85F8(OMOBJ *obj)
         return;
     }
     work->pos.x += 10.0f;
-    Hu3DModelPosSetV(*work->childObj->mdlId, &work->pos);
+    fn_80026790(*work->childObj->mdlId, &work->pos);
 }
 
 /* Hides the group's gameplay effects and transitions to the result animation. */
@@ -953,33 +954,33 @@ void fn_1_8680(OMOBJ *obj)
     M656Work60 *work;
     work = obj->data;
     HuSprAttrSet(work->sprGroup, 0, 4);
-    Hu3DModelAttrSet(work->model38, HU3D_ATTR_DISPOFF);
-    Hu3DModelPosSet(work->childObj->mdlId[0], 0.0f, 0.0f, 0.0f);
-    Hu3DModelRotSet(work->childObj->mdlId[0], 0.0f, 0.0f, 0.0f);
-    Hu3DModelCameraSet(work->childObj->mdlId[0], 1);
-    Hu3DModelCameraSet(work->model50, 1);
-    Hu3DModelAttrSet(work->model50, HU3D_ATTR_DISPOFF);
+    fn_800269E8(work->model38, (1 << 0));
+    fn_80026760(work->childObj->mdlId[0], 0.0f, 0.0f, 0.0f);
+    fn_80026808(work->childObj->mdlId[0], 0.0f, 0.0f, 0.0f);
+    fn_80026B64(work->childObj->mdlId[0], 1);
+    fn_80026B64(work->model50, 1);
+    fn_800269E8(work->model50, (1 << 0));
     if (lbl_1_bss_18 == -1) {
         fn_1_690C(work, 2, 0.0f, 0);
         work->timer = 0;
-        Hu3DMotionSpeedSet(work->model4A, 1.0f);
+        fn_8002D86C(work->model4A, 1.0f);
         if (work->group == 0) {
-            Hu3DModelHookSet(work->model4A, lbl_1_data_67A, work->childObj->mdlId[0]);
+            fn_8002741C(work->model4A, lbl_1_data_67A, work->childObj->mdlId[0]);
             fn_1_20C(obj, fn_1_8A94);
             return;
         }
-        Hu3DModelHookSet(work->model4A, lbl_1_data_690, work->childObj->mdlId[0]);
+        fn_8002741C(work->model4A, lbl_1_data_690, work->childObj->mdlId[0]);
         fn_1_20C(obj, NULL);
         return;
     }
     if (lbl_1_bss_18 == work->group) {
-        fn_1_690C(work, 0, 0.0f, HU3D_MOTATTR_LOOP);
-        Hu3DModelShadowSet(work->childObj->mdlId[0]);
+        fn_1_690C(work, 0, 0.0f, ((1 << 30) | (1 << 0)));
+        fn_80026E44(work->childObj->mdlId[0]);
         fn_1_20C(obj, fn_1_8920);
         return;
     }
-    Hu3DMotionSpeedSet(work->model48, 1.0f);
-    Hu3DModelHookSet(work->model48, lbl_1_data_6A6, work->childObj->mdlId[0]);
+    fn_8002D86C(work->model48, 1.0f);
+    fn_8002741C(work->model48, lbl_1_data_6A6, work->childObj->mdlId[0]);
     work->timer = 0;
     fn_1_20C(obj, fn_1_89F0);
 }
@@ -990,10 +991,10 @@ void fn_1_8920(OMOBJ *obj)
     M656Work60 *work;
 
     work = obj->data;
-    if (MgSeqModeGet() == 8) {
+    if (fn_80071A8C() == 8) {
         if (((s16) lbl_1_bss_18 == work->group) && (work->motion != 3)) {
             work->motion = 3;
-            CharMotionShiftSet(work->charNo, work->childObj->mtnId[work->motion], 0.0f, 4.0f, 0U);
+            fn_8005C2C8(work->charNo, work->childObj->mtnId[work->motion], 0.0f, 4.0f, 0U);
         }
         fn_1_20C(obj, fn_1_89DC);
         return;
@@ -1018,9 +1019,9 @@ void fn_1_89F0(OMOBJ *obj)
     work = obj->data;
     if (work->timer++ == 120) {
         pos = lbl_1_rodata_1F4;
-        Hu3DMotionTimeSet(work->model50, 0.0f);
-        Hu3DModelAttrReset(work->model50, HU3D_ATTR_DISPOFF);
-        Hu3DModelPosSetV(work->model50, &pos);
+        fn_8002D414(work->model50, 0.0f);
+        fn_80026A44(work->model50, (1 << 0));
+        fn_80026790(work->model50, &pos);
         fn_1_20C(obj, NULL);
         return;
     }
@@ -1036,9 +1037,9 @@ void fn_1_8A94(OMOBJ *obj)
     work = obj->data;
     if (work->timer++ == 120) {
         pos = lbl_1_rodata_200;
-        Hu3DMotionTimeSet(work->model50, 0.0f);
-        Hu3DModelAttrReset(work->model50, HU3D_ATTR_DISPOFF);
-        Hu3DModelPosSetV(work->model50, &pos);
+        fn_8002D414(work->model50, 0.0f);
+        fn_80026A44(work->model50, (1 << 0));
+        fn_80026790(work->model50, &pos);
         fn_1_20C(obj, NULL);
         return;
     }
@@ -1094,10 +1095,10 @@ s16 fn_1_8D78(s32 meteorKind)
 {
     HU3D_MODELID modelId;
     if (lbl_1_data_6BA[meteorKind] == -1) {
-        modelId = lbl_1_data_6BA[meteorKind] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(lbl_1_data_3C[meteorKind], M656_DATA_READ_FLAGS, HEAP_MODEL));
+        modelId = lbl_1_data_6BA[meteorKind] = fn_80025A04(
+            fn_80008DD0(lbl_1_data_3C[meteorKind], M656_DATA_READ_FLAGS, 2));
     } else {
-        modelId = Hu3DModelLink(lbl_1_data_6BA[meteorKind]);
+        modelId = fn_80025D4C(lbl_1_data_6BA[meteorKind]);
     }
     return modelId;
 }
@@ -1109,11 +1110,11 @@ void fn_1_8E24(OMOBJ *obj)
     work = obj->data;
     work->state = 0;
     work->model = fn_1_8D78(work->entry->kind);
-    Hu3DModelCameraSet(work->model, (u16)lbl_1_rodata_88[work->group]);
+    fn_80026B64(work->model, (u16)lbl_1_rodata_88[work->group]);
     work->pos.x = work->entry->x;
     work->pos.y = work->entry->y;
     work->pos.z = 0.0f;
-    Hu3DModelPosSetV(work->model, &work->pos);
+    fn_80026790(work->model, &work->pos);
     work->sphere.center = work->pos;
     work->sphere.radius = lbl_1_data_5C[work->entry->kind];
     if (work->group == 0) {
@@ -1135,7 +1136,7 @@ void fn_1_90B0(OMOBJ *obj)
     M656Work50 *meteor;
 
     meteor = obj->data;
-    if (MgSeqModeGet() == 5) {
+    if (fn_80071A8C() == 5) {
         fn_1_20C(obj, fn_1_9100);
         return;
     }
@@ -1151,7 +1152,7 @@ void fn_1_9100(OMOBJ *obj)
 
     work = obj->data;
     if (lbl_1_bss_8 == 2) {
-        Hu3DModelAttrSet(work->model, HU3D_ATTR_DISPOFF);
+        fn_800269E8(work->model, (1 << 0));
         fn_1_20C(obj, NULL);
         return;
     }
@@ -1163,13 +1164,13 @@ void fn_1_9100(OMOBJ *obj)
         C_QUATRotAxisRad(&rotation, &work->axis, work->angle);
         PSMTXQuat(matrix, &rotation);
         Hu3DMtxRotGet(matrix, &angles);
-        Hu3DModelRotSet(work->model, angles.x, angles.y, angles.z);
+        fn_80026808(work->model, angles.x, angles.y, angles.z);
         if (fn_1_4F4C(work->group)->state == 1) {
             work->pos.y += work->entry->deltaY;
         }
     }
     work->sphere.center = work->pos;
-    Hu3DModelPosSetV(work->model, &work->pos);
+    fn_80026790(work->model, &work->pos);
     if (work->state == 1) {
         fn_1_4E0(&work->velocity, &work->pos, &fn_1_4F4C(work->group)->pos);
         fn_1_518(&work->velocity, &work->velocity);
@@ -1186,14 +1187,14 @@ void fn_1_92E4(OMOBJ *obj)
     M656Work50 *work;
     work = obj->data;
     if (lbl_1_bss_8 == 2U) {
-        Hu3DModelAttrSet(work->model, HU3D_ATTR_DISPOFF);
+        fn_800269E8(work->model, (1 << 0));
         fn_1_20C(obj, NULL);
         return;
     }
     fn_1_4A8(&work->pos, &work->pos, &work->velocity);
-    Hu3DModelPosSetV(work->model, &work->pos);
+    fn_80026790(work->model, &work->pos);
     if (work->timer++ >= 120) {
-        Hu3DModelAttrSet(work->model, HU3D_ATTR_DISPOFF);
+        fn_800269E8(work->model, (1 << 0));
         fn_1_20C(obj, NULL);
         return;
     }
@@ -1208,13 +1209,13 @@ void fn_1_9398(OMOBJ *obj)
     finish->angle = 0.0f;
     finish->active = 0;
     fn_1_2E0(&finish->pos, 1500.0f, 0.0f, 0.0f);
-    finish->model = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M656_DATA_FINISH_MARKER, M656_DATA_READ_FLAGS, HEAP_MODEL));
-    Hu3DModelCameraSet(finish->model, (u16) lbl_1_rodata_88[finish->group]);
-    Hu3DModelRotSet(finish->model, finish->angle, 0.0f, 0.0f);
-    Hu3DModelAttrSet(finish->model, HU3D_ATTR_DISPOFF);
-    Hu3DModelScaleSet(finish->model, 1.3f, 1.3f, 1.3f);
-    Hu3DModelPosSetV(finish->model, &finish->pos);
+    finish->model = fn_80025A04(
+        fn_80008DD0(M656_DATA_FINISH_MARKER, M656_DATA_READ_FLAGS, 2));
+    fn_80026B64(finish->model, (u16) lbl_1_rodata_88[finish->group]);
+    fn_80026808(finish->model, finish->angle, 0.0f, 0.0f);
+    fn_800269E8(finish->model, (1 << 0));
+    fn_800268B0(finish->model, 1.3f, 1.3f, 1.3f);
+    fn_80026790(finish->model, &finish->pos);
     fn_1_20C(obj, fn_1_94C8);
 }
 
@@ -1225,12 +1226,12 @@ void fn_1_94C8(OMOBJ *obj)
 
     finish = obj->data;
     if ((u32) lbl_1_bss_8 == 2U) {
-        Hu3DModelAttrSet(finish->model, HU3D_ATTR_DISPOFF);
+        fn_800269E8(finish->model, (1 << 0));
         fn_1_20C(obj, NULL);
         return;
     }
     if (finish->active != 0) {
-        Hu3DModelAttrReset(finish->model, HU3D_ATTR_DISPOFF);
+        fn_80026A44(finish->model, (1 << 0));
         fn_1_20C(obj, fn_1_9558);
         return;
     }
@@ -1243,12 +1244,12 @@ void fn_1_9558(OMOBJ *obj)
 
     finish = obj->data;
     if ((u32) lbl_1_bss_8 == 2U) {
-        Hu3DModelAttrSet(finish->model, HU3D_ATTR_DISPOFF);
+        fn_800269E8(finish->model, (1 << 0));
         fn_1_20C(obj, NULL);
         return;
     }
     finish->pos.x -= 5.0f;
-    Hu3DModelPosSetV(finish->model, &finish->pos);
+    fn_80026790(finish->model, &finish->pos);
     finish->angle += 1.0f;
-    Hu3DModelRotSet(finish->model, finish->angle, 0.0f, 0.0f);
+    fn_80026808(finish->model, finish->angle, 0.0f, 0.0f);
 }

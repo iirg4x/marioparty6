@@ -329,10 +329,10 @@ void fn_1_52B8(void)
     f32 distance;
     Vec modelScale;
 
-    Hu3DModelTPLvlSet(lbl_1_bss_8BC[46].model, 1.0f);
+    fn_80026CBC(lbl_1_bss_8BC[46].model, 1.0f);
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         player = &lbl_1_bss_24C[playerIndex];
-        Hu3DModelScaleGet(lbl_1_bss_8BC[player->playerNo].model, &modelScale);
+        fn_8002691C(lbl_1_bss_8BC[player->playerNo].model, &modelScale);
         if (modelScale.y < 0.98f) {
             player->scaledDown = 1;
         } else {
@@ -344,23 +344,23 @@ void fn_1_52B8(void)
             switch (player->state) {
             case 0:
                 fn_1_46F8(3, 0, &player->position);
-                MgActorKill(lbl_1_bss_4.players[playerIndex]->actor);
+                fn_80080F38(lbl_1_bss_4.players[playerIndex]->actor);
                 player->movementFlag = 0;
-                Hu3DModelLayerSet(lbl_1_bss_8BC[playerIndex].model, 1);
-                Hu3DModelShadowDispOff(lbl_1_bss_8BC[playerIndex].model);
-                Hu3DModelScaleSet(lbl_1_bss_8BC[player->playerNo].model,
+                fn_80026B8C(lbl_1_bss_8BC[playerIndex].model, 1);
+                fn_80026FCC(lbl_1_bss_8BC[playerIndex].model);
+                fn_800268B0(lbl_1_bss_8BC[player->playerNo].model,
                                   1.0f, 1.0f, 1.0f);
-                Hu3DModelAttrReset(lbl_1_bss_8BC[player->playerNo].model, HU3D_ATTR_DISPOFF);
+                fn_80026A44(lbl_1_bss_8BC[player->playerNo].model, (1 << 0));
                 lbl_1_bss_8BC[player->playerNo + 28].stateOrTimer = 1;
                 if (player->position.z < 0.0f) {
                     lbl_1_bss_70C[playerIndex].shiftState = 1;
                     lbl_1_bss_70C[playerIndex].shiftMotion = 7;
                     lbl_1_bss_70C[playerIndex].shiftStart = 0.0f;
                     lbl_1_bss_70C[playerIndex].blendDuration = 10.0f;
-                    lbl_1_bss_70C[playerIndex].shiftFlags = HU3D_MOTATTR_LOOP;
+                    lbl_1_bss_70C[playerIndex].shiftFlags = ((1 << 30) | (1 << 0));
                     lbl_1_bss_70C[playerIndex].attributesToReset = 0;
                 }
-                omVibrate(player->playerNo, 30, 20, 0);
+                fn_8006A030(player->playerNo, 30, 20, 0);
                 player->savedPosition.z = player->position.z;
                 player->velocity.z = 7.0f;
                 player->velocity.y = -10.0f;
@@ -383,7 +383,7 @@ void fn_1_52B8(void)
                     lbl_1_bss_70C[playerIndex].shiftMotion = 8;
                     lbl_1_bss_70C[playerIndex].shiftStart = 0.0f;
                     lbl_1_bss_70C[playerIndex].blendDuration = 10.0f;
-                    lbl_1_bss_70C[playerIndex].shiftFlags = HU3D_MOTATTR_LOOP;
+                    lbl_1_bss_70C[playerIndex].shiftFlags = ((1 << 30) | (1 << 0));
                     lbl_1_bss_70C[playerIndex].attributesToReset = 0;
                     player->velocity.y = -10.0f;
                     player->velocity.z = 7.0f;
@@ -410,9 +410,9 @@ void fn_1_52B8(void)
                 fn_1_30D8(&player->rotation.x, interpolationFrames, 0.0f, 50.0f);
                 player->velocity.y -= 1.0f;
                 if ((player->position.y += player->velocity.y) < -1000.0f) {
-                    Hu3DModelAttrSet(lbl_1_bss_8BC[playerIndex].model, HU3D_ATTR_DISPOFF);
-                    Hu3DMotionTimeSet(lbl_1_bss_8BC[playerIndex].model, 0.0f);
-                    Hu3DMotionSpeedSet(lbl_1_bss_8BC[playerIndex].model, 0.0f);
+                    fn_800269E8(lbl_1_bss_8BC[playerIndex].model, (1 << 0));
+                    fn_8002D414(lbl_1_bss_8BC[playerIndex].model, 0.0f);
+                    fn_8002D86C(lbl_1_bss_8BC[playerIndex].model, 0.0f);
                     player->state++;
                 }
                 break;
@@ -423,27 +423,27 @@ void fn_1_52B8(void)
         } else if (player->phase == 2) {
             switch (player->state) {
             case 0:
-                MgActorKill(lbl_1_bss_4.players[playerIndex]->actor);
+                fn_80080F38(lbl_1_bss_4.players[playerIndex]->actor);
                 player->movementFlag = 0;
-                Hu3DModelScaleSet(lbl_1_bss_8BC[player->playerNo].model,
+                fn_800268B0(lbl_1_bss_8BC[player->playerNo].model,
                                   1.0f, 1.0f, 1.0f);
-                Hu3DModelAttrReset(lbl_1_bss_8BC[player->playerNo].model, HU3D_ATTR_DISPOFF);
+                fn_80026A44(lbl_1_bss_8BC[player->playerNo].model, (1 << 0));
                 if (lbl_1_bss_30.night == 0) {
                     lbl_1_bss_70C[playerIndex].shiftState = 1;
                     lbl_1_bss_70C[playerIndex].shiftMotion = 9;
                     lbl_1_bss_70C[playerIndex].shiftStart = 0.0f;
                     lbl_1_bss_70C[playerIndex].blendDuration = 5.0f;
-                    lbl_1_bss_70C[playerIndex].shiftFlags = HU3D_MOTATTR_LOOP;
+                    lbl_1_bss_70C[playerIndex].shiftFlags = ((1 << 30) | (1 << 0));
                     lbl_1_bss_70C[playerIndex].attributesToReset = 0;
                 } else {
                     lbl_1_bss_70C[playerIndex].shiftState = 1;
                     lbl_1_bss_70C[playerIndex].shiftMotion = 3;
                     lbl_1_bss_70C[playerIndex].shiftStart = 0.0f;
                     lbl_1_bss_70C[playerIndex].blendDuration = 5.0f;
-                    lbl_1_bss_70C[playerIndex].shiftFlags = HU3D_MOTATTR_LOOP;
+                    lbl_1_bss_70C[playerIndex].shiftFlags = ((1 << 30) | (1 << 0));
                     lbl_1_bss_70C[playerIndex].attributesToReset = 0;
                 }
-                omVibrate(player->playerNo, 30, 20, 0);
+                fn_8006A030(player->playerNo, 30, 20, 0);
                 player->motionFlag = 0;
                 player->state++;
                 break;
@@ -460,9 +460,9 @@ void fn_1_52B8(void)
                      player->position.z > 1200.0f ||
                      player->position.z < -1200.0f) &&
                     player->position.y >= 1000.0f) {
-                    Hu3DModelAttrSet(lbl_1_bss_8BC[playerIndex].model, HU3D_ATTR_DISPOFF);
-                    Hu3DMotionTimeSet(lbl_1_bss_8BC[playerIndex].model, 0.0f);
-                    Hu3DMotionSpeedSet(lbl_1_bss_8BC[playerIndex].model, 0.0f);
+                    fn_800269E8(lbl_1_bss_8BC[playerIndex].model, (1 << 0));
+                    fn_8002D414(lbl_1_bss_8BC[playerIndex].model, 0.0f);
+                    fn_8002D86C(lbl_1_bss_8BC[playerIndex].model, 0.0f);
                     player->state++;
                 }
                 break;
@@ -470,19 +470,19 @@ void fn_1_52B8(void)
         } else if (player->phase == 4) {
             switch (player->state) {
             case 0:
-                MgPlayerModeFuncSet(lbl_1_bss_4.players[playerIndex], lbl_1_data_290);
+                fn_800806DC(lbl_1_bss_4.players[playerIndex], lbl_1_data_290);
                 player->movementFlag = 2;
-                Hu3DModelLayerSet(lbl_1_bss_8BC[playerIndex].model, 1);
-                Hu3DModelScaleSet(lbl_1_bss_8BC[player->playerNo].model,
+                fn_80026B8C(lbl_1_bss_8BC[playerIndex].model, 1);
+                fn_800268B0(lbl_1_bss_8BC[player->playerNo].model,
                                   1.0f, 1.0f, 1.0f);
-                Hu3DModelAttrReset(lbl_1_bss_8BC[player->playerNo].model, HU3D_ATTR_DISPOFF);
+                fn_80026A44(lbl_1_bss_8BC[player->playerNo].model, (1 << 0));
                 lbl_1_bss_70C[playerIndex].shiftState = 1;
                 lbl_1_bss_70C[playerIndex].shiftMotion = 8;
                 lbl_1_bss_70C[playerIndex].shiftStart = 0.0f;
                 lbl_1_bss_70C[playerIndex].blendDuration = 20.0f;
-                lbl_1_bss_70C[playerIndex].shiftFlags = HU3D_MOTATTR_LOOP;
+                lbl_1_bss_70C[playerIndex].shiftFlags = ((1 << 30) | (1 << 0));
                 lbl_1_bss_70C[playerIndex].attributesToReset = 0;
-                omVibrate(player->playerNo, 30, 20, 0);
+                fn_8006A030(player->playerNo, 30, 20, 0);
                 player->velocity.z = 12.0f;
                 player->motionFlag = 0;
                 player->disableInput = 1;
@@ -490,11 +490,11 @@ void fn_1_52B8(void)
                 break;
             case 1:
                 if (player->position.y < -800.0f) {
-                    MgActorKill(lbl_1_bss_4.players[playerIndex]->actor);
+                    fn_80080F38(lbl_1_bss_4.players[playerIndex]->actor);
                     player->movementFlag = 0;
-                    Hu3DModelAttrSet(lbl_1_bss_8BC[playerIndex].model, HU3D_ATTR_DISPOFF);
-                    Hu3DMotionTimeSet(lbl_1_bss_8BC[playerIndex].model, 0.0f);
-                    Hu3DMotionSpeedSet(lbl_1_bss_8BC[playerIndex].model, 0.0f);
+                    fn_800269E8(lbl_1_bss_8BC[playerIndex].model, (1 << 0));
+                    fn_8002D414(lbl_1_bss_8BC[playerIndex].model, 0.0f);
+                    fn_8002D86C(lbl_1_bss_8BC[playerIndex].model, 0.0f);
                     player->state++;
                 }
                 break;
@@ -522,9 +522,9 @@ void fn_1_52B8(void)
                     player->routePosition.z = lbl_1_bss_8BC[50].position.z - 160.0f;
                     player->chaseRadius = 8.0f;
                     player->chaseSpeed = 7.0f;
-                    Hu3DModelScaleSet(lbl_1_bss_8BC[player->playerNo].model,
+                    fn_800268B0(lbl_1_bss_8BC[player->playerNo].model,
                                       1.0f, 1.0f, 1.0f);
-                    Hu3DModelAttrReset(lbl_1_bss_8BC[player->playerNo].model, HU3D_ATTR_DISPOFF);
+                    fn_80026A44(lbl_1_bss_8BC[player->playerNo].model, (1 << 0));
                     player->state++;
                     break;
                 case 1:
@@ -534,7 +534,7 @@ void fn_1_52B8(void)
                         lbl_1_bss_70C[playerIndex].mode = 1;
                         lbl_1_bss_70C[playerIndex].previousMode = -1;
                         lbl_1_bss_70C[playerIndex].time =
-                            Hu3DMotionTimeGet(lbl_1_bss_8BC[player->playerNo].model);
+                            fn_8002D4E0(lbl_1_bss_8BC[player->playerNo].model);
                         lbl_1_bss_70C[playerIndex].previousTime = -1.0f;
                         player->turnYaw = lbl_1_bss_4.players[playerIndex]->actor->rotY;
                         player->state++;
@@ -542,7 +542,7 @@ void fn_1_52B8(void)
                         /* Reset all four players' chase and reaction states and clear their
                          * recorded slots, including players outside the lineup. */
                         for (slotOrPlayerIndex = 0; slotOrPlayerIndex < 4; slotOrPlayerIndex++) {
-                            MgPlayerComStkOff(lbl_1_bss_4.players[
+                            fn_8007E888(lbl_1_bss_4.players[
                                 lbl_1_bss_24C[slotOrPlayerIndex].playerNo]);
                             lbl_1_bss_24C[slotOrPlayerIndex].movementState = 0;
                             lbl_1_bss_24C[slotOrPlayerIndex].linkCount = 0;
@@ -560,11 +560,11 @@ void fn_1_52B8(void)
                         lbl_1_bss_70C[playerIndex].shiftStart = 0.0f;
                         lbl_1_bss_70C[playerIndex].blendDuration = 10.0f;
                         lbl_1_bss_70C[playerIndex].shiftFlags = 0;
-                        lbl_1_bss_70C[playerIndex].attributesToReset = HU3D_MOTATTR_LOOP;
-                        Hu3DModelScaleSet(lbl_1_bss_8BC[player->playerNo].model,
+                        lbl_1_bss_70C[playerIndex].attributesToReset = ((1 << 30) | (1 << 0));
+                        fn_800268B0(lbl_1_bss_8BC[player->playerNo].model,
                                           1.0f, 1.0f, 1.0f);
-                        Hu3DModelAttrReset(lbl_1_bss_8BC[player->playerNo].model,
-                                           HU3D_ATTR_DISPOFF);
+                        fn_80026A44(lbl_1_bss_8BC[player->playerNo].model,
+                                           (1 << 0));
                         player->state++;
                     }
                     break;
@@ -575,7 +575,7 @@ void fn_1_52B8(void)
                         lbl_1_bss_70C[playerIndex].mode = 1;
                         lbl_1_bss_70C[playerIndex].previousMode = -1;
                         lbl_1_bss_70C[playerIndex].time =
-                            Hu3DMotionTimeGet(lbl_1_bss_8BC[player->playerNo].model);
+                            fn_8002D4E0(lbl_1_bss_8BC[player->playerNo].model);
                         lbl_1_bss_70C[playerIndex].previousTime = -1.0f;
                         player->position.x = player->routePosition.x;
                         player->position.z = player->routePosition.z;
@@ -592,7 +592,7 @@ void fn_1_52B8(void)
                         lbl_1_bss_70C[playerIndex].shiftStart = 0.0f;
                         lbl_1_bss_70C[playerIndex].blendDuration = 10.0f;
                         lbl_1_bss_70C[playerIndex].shiftFlags = 0;
-                        lbl_1_bss_70C[playerIndex].attributesToReset = HU3D_MOTATTR_LOOP;
+                        lbl_1_bss_70C[playerIndex].attributesToReset = ((1 << 30) | (1 << 0));
                         player->state++;
                     }
                     break;
@@ -618,11 +618,11 @@ void fn_1_6974(void) {
         }
     }
     for (modelIndex = 46; modelIndex <= 79; modelIndex++) {
-        Hu3DModelPosSet(lbl_1_bss_8BC[modelIndex].model,
+        fn_80026760(lbl_1_bss_8BC[modelIndex].model,
                         lbl_1_bss_8BC[modelIndex].position.x,
                         lbl_1_bss_8BC[modelIndex].position.y,
                         lbl_1_bss_8BC[modelIndex].position.z);
-        Hu3DModelRotSet(
+        fn_80026808(
             lbl_1_bss_8BC[modelIndex].model,
             lbl_1_bss_8BC[modelIndex].rotation.x,
             lbl_1_bss_8BC[modelIndex].rotation.y,
@@ -654,7 +654,7 @@ void fn_1_6974(void) {
             }
 
             {
-                motionFrameOrSampleIndex = (s16)Hu3DMotionTimeGet(
+                motionFrameOrSampleIndex = (s16)fn_8002D4E0(
                     lbl_1_bss_8BC[
                         lbl_1_bss_8BC[modelIndex].linkedRecord].model);
                 if (motionFrameOrSampleIndex < 120 && motionFrameOrSampleIndex != 0 &&
@@ -700,12 +700,12 @@ void fn_1_6974(void) {
     }
 
     for (modelIndex = 32; modelIndex <= 45; modelIndex++) {
-        Hu3DModelPosSet(
+        fn_80026760(
             lbl_1_bss_8BC[modelIndex].model,
             lbl_1_bss_8BC[modelIndex].position.x,
             lbl_1_bss_8BC[modelIndex].position.y,
             lbl_1_bss_8BC[modelIndex].position.z);
-        Hu3DModelRotSet(
+        fn_80026808(
             lbl_1_bss_8BC[modelIndex].model,
             lbl_1_bss_8BC[modelIndex].rotation.x,
             lbl_1_bss_8BC[modelIndex].rotation.y,
@@ -821,7 +821,7 @@ void fn_1_7150(M609Model *segment) {
                     segment->spawnDecisionMade = 1;
                 }
 
-                    Hu3DModelAttrReset(segment->model, HU3D_ATTR_DISPOFF);
+                    fn_80026A44(segment->model, (1 << 0));
                     if (segment->recordIndex >= 60 &&
                         segment->recordIndex <= 67) {
                         segment->rotation.x =
@@ -870,10 +870,10 @@ void fn_1_7150(M609Model *segment) {
                             attachmentEnd = 20;
                             break;
                         case 50:
-                            Hu3DModelAttrReset(
-                                lbl_1_bss_8BC[6].model, HU3D_ATTR_DISPOFF);
-                            Hu3DModelAttrReset(
-                                lbl_1_bss_8BC[9].model, HU3D_ATTR_DISPOFF);
+                            fn_80026A44(
+                                lbl_1_bss_8BC[6].model, (1 << 0));
+                            fn_80026A44(
+                                lbl_1_bss_8BC[9].model, (1 << 0));
                             attachmentIndex = 20;
                             attachmentEnd = 21;
                             break;
@@ -883,9 +883,9 @@ void fn_1_7150(M609Model *segment) {
                     if (attachmentEnd != 0) {
                         for (linkSlot = 0; attachmentIndex < attachmentEnd;
                              attachmentIndex++, linkSlot++) {
-                            Hu3DModelAttrReset(
+                            fn_80026A44(
                                 lbl_1_bss_8BC[lbl_1_data_140[attachmentIndex].modelIndex].model,
-                                HU3D_ATTR_DISPOFF);
+                                (1 << 0));
                             lbl_1_bss_8BC[lbl_1_data_140[attachmentIndex].modelIndex]
                                 .movementValues = lbl_1_data_140[attachmentIndex].position;
                             lbl_1_bss_8BC[lbl_1_data_140[attachmentIndex].modelIndex].linkedRecord =
@@ -932,7 +932,7 @@ void fn_1_7150(M609Model *segment) {
             segment->rotation.x -= 6.0f;
         }
         if (segment->position.z >= 100.0f) {
-            Hu3DMotionSpeedSet(segment->model, 1.0f);
+            fn_8002D86C(segment->model, 1.0f);
             segment->rotation.x = 0.0f;
             segment->stateOrTimer += 1;
         }
@@ -943,14 +943,14 @@ void fn_1_7150(M609Model *segment) {
         break;
     }
     case 2: {
-        if (Hu3DMotionTimeGet(segment->model) > 119.0f) {
-            Hu3DModelAttrSet(segment->model, HU3D_ATTR_DISPOFF);
+        if (fn_8002D4E0(segment->model) > 119.0f) {
+            fn_800269E8(segment->model, (1 << 0));
             segment->status = -1;
         }
         if (!lbl_1_bss_30.scroll) {
-            Hu3DMotionSpeedSet(segment->model, 0.0f);
+            fn_8002D86C(segment->model, 0.0f);
         } else {
-            Hu3DMotionSpeedSet(segment->model, 1.0f);
+            fn_8002D86C(segment->model, 1.0f);
         }
         break;
     }
@@ -1133,7 +1133,7 @@ void fn_1_7E10(void) {
             case 2:
                 attachment->position.y -= (20.0f);
                 if (attachment->position.y < (-1000.0f)) {
-                    Hu3DModelAttrSet(attachment->model, HU3D_ATTR_DISPOFF);
+                    fn_800269E8(attachment->model, (1 << 0));
                 }
                 break;
             }
@@ -1160,9 +1160,9 @@ void fn_1_7E10(void) {
     /* Attachment 153 uses model 50's nokotachi joint instead of its stored local offsets.
      * Keep model 50's main motion looping at speed 1 and force the attachment's yaw to 180. */
     if (lbl_1_bss_8BC[153].linkedRecord != -1) {
-        Hu3DModelAttrSet(lbl_1_bss_8BC[50].model,
-                         HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(lbl_1_bss_8BC[50].model,
+        fn_800269E8(lbl_1_bss_8BC[50].model,
+                         ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_8BC[50].model,
                            (1.0f));
         Hu3DModelObjPosGet(lbl_1_bss_8BC[50].model,
                            "nokotachi", &sourcePosition);
@@ -1183,10 +1183,10 @@ void fn_1_8670(void) {
     while (effectModelIndex <= 143) {
         if (lbl_1_bss_8BC[effectModelIndex].linkedRecord != -1 &&
             lbl_1_bss_8BC[effectModelIndex].stateOrTimer == 1) {
-            if (Hu3DMotionTimeGet(lbl_1_bss_8BC[effectModelIndex].model) >=
+            if (fn_8002D4E0(lbl_1_bss_8BC[effectModelIndex].model) >=
                 (22.9f)) {
-                Hu3DModelAttrSet(lbl_1_bss_8BC[effectModelIndex].model, HU3D_ATTR_DISPOFF);
-                Hu3DMotionSpeedSet(lbl_1_bss_8BC[effectModelIndex].model,
+                fn_800269E8(lbl_1_bss_8BC[effectModelIndex].model, (1 << 0));
+                fn_8002D86C(lbl_1_bss_8BC[effectModelIndex].model,
                                    (0.0f));
                 lbl_1_bss_8BC[effectModelIndex].stateOrTimer = 0;
                 lbl_1_bss_8BC[effectModelIndex].linkedRecord = -1;
@@ -1206,8 +1206,8 @@ void fn_1_8670(void) {
         case 0:
             break;
         case 1:
-            Hu3DModelAttrReset(lbl_1_bss_8BC[effectModelIndex].model, HU3D_ATTR_DISPOFF);
-            Hu3DMotionSpeedSet(lbl_1_bss_8BC[effectModelIndex].model,
+            fn_80026A44(lbl_1_bss_8BC[effectModelIndex].model, (1 << 0));
+            fn_8002D86C(lbl_1_bss_8BC[effectModelIndex].model,
                                (1.0f));
             lbl_1_bss_8BC[effectModelIndex].position.x =
                 lbl_1_bss_24C[playerNo].position.x;
@@ -1217,10 +1217,10 @@ void fn_1_8670(void) {
             lbl_1_bss_8BC[effectModelIndex].stateOrTimer++;
             break;
         case 2:
-            if (Hu3DMotionTimeGet(lbl_1_bss_8BC[effectModelIndex].model) >=
+            if (fn_8002D4E0(lbl_1_bss_8BC[effectModelIndex].model) >=
                 (38.9f)) {
-                Hu3DModelAttrSet(lbl_1_bss_8BC[effectModelIndex].model, HU3D_ATTR_DISPOFF);
-                Hu3DMotionSpeedSet(lbl_1_bss_8BC[effectModelIndex].model,
+                fn_800269E8(lbl_1_bss_8BC[effectModelIndex].model, (1 << 0));
+                fn_8002D86C(lbl_1_bss_8BC[effectModelIndex].model,
                                    (0.0f));
                 lbl_1_bss_8BC[effectModelIndex].stateOrTimer = 0;
             }
@@ -1274,8 +1274,8 @@ s32 fn_1_89E0(f32 spawnZOrScrollSteps) {
             lbl_1_bss_8BC[obstacleIndex].rotation.y =
                 spawnZOrScrollSteps *
                 lbl_1_bss_8BC[obstacleIndex].movementValues.y;
-            Hu3DModelAttrReset(lbl_1_bss_8BC[obstacleIndex].model,
-                               HU3D_ATTR_DISPOFF);
+            fn_80026A44(lbl_1_bss_8BC[obstacleIndex].model,
+                               (1 << 0));
             spawned = 1;
             break;
         }
@@ -1300,9 +1300,9 @@ void fn_1_8C54(void) {
                     lbl_1_bss_8BC[obstacleIndex].movementValues.y;
                 if (lbl_1_bss_8BC[obstacleIndex].position.z >=
                     (100.0f)) {
-                    Hu3DMotionSpeedSet(lbl_1_bss_8BC[obstacleIndex].model,
+                    fn_8002D86C(lbl_1_bss_8BC[obstacleIndex].model,
                                        (1.0f));
-                    Hu3DMotionTimeSet(lbl_1_bss_8BC[obstacleIndex].model,
+                    fn_8002D414(lbl_1_bss_8BC[obstacleIndex].model,
                                       (0.0f));
                     lbl_1_bss_8BC[obstacleIndex].rotation.y =
                         (0.0f);
@@ -1310,13 +1310,13 @@ void fn_1_8C54(void) {
                 }
                 break;
             case 1:
-                if (Hu3DMotionTimeGet(lbl_1_bss_8BC[obstacleIndex].model) >
+                if (fn_8002D4E0(lbl_1_bss_8BC[obstacleIndex].model) >
                     (118.9f)) {
-                    Hu3DModelAttrSet(lbl_1_bss_8BC[obstacleIndex].model,
-                                     HU3D_ATTR_DISPOFF);
-                    Hu3DMotionSpeedSet(lbl_1_bss_8BC[obstacleIndex].model,
+                    fn_800269E8(lbl_1_bss_8BC[obstacleIndex].model,
+                                     (1 << 0));
+                    fn_8002D86C(lbl_1_bss_8BC[obstacleIndex].model,
                                        (0.0f));
-                    Hu3DMotionTimeSet(lbl_1_bss_8BC[obstacleIndex].model,
+                    fn_8002D414(lbl_1_bss_8BC[obstacleIndex].model,
                                       (0.0f));
                     lbl_1_bss_8BC[obstacleIndex].status = 0;
                     lbl_1_bss_8BC[obstacleIndex].stateOrTimer = 0;
@@ -1364,7 +1364,7 @@ void fn_1_8EE4(void)
     if (lbl_1_bss_6D84 <= 1) {
         for (playerOrSegmentIndex = 0; playerOrSegmentIndex < 4; playerOrSegmentIndex++) {
             lbl_1_bss_24C[playerOrSegmentIndex].position.z += lbl_1_bss_30.scroll;
-            Hu3DModelPosSet(lbl_1_bss_8BC[playerOrSegmentIndex].model,
+            fn_80026760(lbl_1_bss_8BC[playerOrSegmentIndex].model,
                 lbl_1_bss_24C[playerOrSegmentIndex].position.x,
                 lbl_1_bss_24C[playerOrSegmentIndex].position.y,
                 lbl_1_bss_24C[playerOrSegmentIndex].position.z);
@@ -1410,7 +1410,7 @@ void fn_1_8EE4(void)
                         } else {
                             fn_1_46F8(5, 0, &player->position);
                         }
-                        Hu3DCameraPosGet(1, &cameraPosition, &cameraUpOrBoundaryVector,
+                        fn_80027CD0(1, &cameraPosition, &cameraUpOrBoundaryVector,
                                          &cameraTargetOrContactVector);
                         cameraDeltaOrBoundaryPoint.x = cameraPosition.x - player->position.x;
                         cameraDeltaOrBoundaryPoint.y = cameraPosition.y - player->position.y;
@@ -1578,12 +1578,12 @@ void fn_1_8EE4(void)
                              * when player Z is at least model 78/79's joint/contact Z plus 200,
                              * respectively. */
                             if (modelIndex == 78) {
-                                if (Hu3DMotionTimeGet(lbl_1_bss_8BC[76].model) > 0.0f &&
+                                if (fn_8002D4E0(lbl_1_bss_8BC[76].model) > 0.0f &&
                                     delta.z >= 0.0f) {
                                     edgeIndexOrContactGate = 0;
                                 }
                             } else if (modelIndex == 79 &&
-                                       Hu3DMotionTimeGet(lbl_1_bss_8BC[77].model) > 0.0f &&
+                                       fn_8002D4E0(lbl_1_bss_8BC[77].model) > 0.0f &&
                                        delta.z >= 0.0f) {
                                 edgeIndexOrContactGate = 0;
                             }
@@ -1831,7 +1831,7 @@ void fn_1_8EE4(void)
             } else if (player->phase == 3) {
                 switch (player->fallState) {
                 case 0:
-                    MgPlayerDespawn(lbl_1_bss_4.players[player->playerNo]);
+                    fn_80086E3C(lbl_1_bss_4.players[player->playerNo]);
                     player->movementFlag = 0;
                     player->fallState++;
                     break;
@@ -1847,7 +1847,7 @@ void fn_1_8EE4(void)
                         player->phase = 4;
                     }
                     if (player->phase != 3) {
-                        MgPlayerSpawn(lbl_1_bss_4.players[player->playerNo], &player->position);
+                        fn_80086F00(lbl_1_bss_4.players[player->playerNo], &player->position);
                     }
                     break;
                 }
@@ -1904,7 +1904,7 @@ void fn_1_8EE4(void)
     /* Both moving-rim loops below test every player regardless of motionFlag or phase;
      * correction still requires proximity to the animated rim. */
     for (modelIndex = 46; modelIndex <= 59; modelIndex++) {
-        if (Hu3DMotionTimeGet(lbl_1_bss_8BC[modelIndex].model) > 0.0f) {
+        if (fn_8002D4E0(lbl_1_bss_8BC[modelIndex].model) > 0.0f) {
             cameraDeltaOrBoundaryPoint.x = lbl_1_bss_8BC[modelIndex].jointPositionOrDriftOffset.x;
             cameraDeltaOrBoundaryPoint.y =
                 lbl_1_bss_8BC[modelIndex].jointPositionOrDriftOffset.y +
@@ -1941,7 +1941,7 @@ void fn_1_8EE4(void)
     /* Models 76/77 force the contact gate negative and can correct players on a mesh;
      * models 78/79 require the player's collisionMesh to be negative. */
     for (modelIndex = 76; modelIndex <= 79; modelIndex++) {
-        if (Hu3DMotionTimeGet(lbl_1_bss_8BC[modelIndex].model) > 0.0f) {
+        if (fn_8002D4E0(lbl_1_bss_8BC[modelIndex].model) > 0.0f) {
             if (modelIndex == 76 || modelIndex == 77) {
                 xOffsetOrAngle = 400.0f;
                 zOffsetOrAngle = 200.0f;
@@ -2117,9 +2117,9 @@ void fn_1_CA6C(MGACTOR *actor, int hookParameter)
             lbl_1_bss_8BC[contactSegment].motionVerticalSpeed = -1.0f;
             if (lbl_1_bss_8BC[contactEffectIndex].stateOrTimer == 0 &&
                 lbl_1_bss_8BC[collisionModelIndex].rotation.x <= 0.2f) {
-                Hu3DModelAttrReset(lbl_1_bss_8BC[contactEffectIndex].model, HU3D_ATTR_DISPOFF);
-                Hu3DMotionTimeSet(lbl_1_bss_8BC[contactEffectIndex].model, 0.0f);
-                Hu3DMotionSpeedSet(lbl_1_bss_8BC[contactEffectIndex].model, 1.0f);
+                fn_80026A44(lbl_1_bss_8BC[contactEffectIndex].model, (1 << 0));
+                fn_8002D414(lbl_1_bss_8BC[contactEffectIndex].model, 0.0f);
+                fn_8002D86C(lbl_1_bss_8BC[contactEffectIndex].model, 1.0f);
                 lbl_1_bss_8BC[contactEffectIndex].stateOrTimer = 1;
                 lbl_1_bss_8BC[contactEffectIndex].linkedRecord = contactSegment;
                 lbl_1_bss_8BC[contactEffectIndex].position =
@@ -2129,10 +2129,10 @@ void fn_1_CA6C(MGACTOR *actor, int hookParameter)
             contactEffectIndex = lbl_1_bss_30.models[routeVariant][playerNo];
             lbl_1_bss_8BC[nextSegment].motionVerticalSpeed = -1.0f;
             if (lbl_1_bss_8BC[contactEffectIndex].stateOrTimer == 0 &&
-                Hu3DMotionTimeGet(lbl_1_bss_8BC[nextSegment].model) == 0.0f) {
-                Hu3DModelAttrReset(lbl_1_bss_8BC[contactEffectIndex].model, HU3D_ATTR_DISPOFF);
-                Hu3DMotionTimeSet(lbl_1_bss_8BC[contactEffectIndex].model, 0.0f);
-                Hu3DMotionSpeedSet(lbl_1_bss_8BC[contactEffectIndex].model, 1.0f);
+                fn_8002D4E0(lbl_1_bss_8BC[nextSegment].model) == 0.0f) {
+                fn_80026A44(lbl_1_bss_8BC[contactEffectIndex].model, (1 << 0));
+                fn_8002D414(lbl_1_bss_8BC[contactEffectIndex].model, 0.0f);
+                fn_8002D86C(lbl_1_bss_8BC[contactEffectIndex].model, 1.0f);
                 lbl_1_bss_8BC[contactEffectIndex].stateOrTimer = 1;
                 lbl_1_bss_8BC[contactEffectIndex].linkedRecord = nextSegment;
                 lbl_1_bss_8BC[contactEffectIndex].position = lbl_1_bss_8BC[nextSegment].position;

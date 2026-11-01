@@ -33,9 +33,9 @@ void fn_1_F118(HUPROCESS *process)
     OMOBJ *object;
     void *managerData;
 
-    object = omAddObjEx(process, 18, 0, 0, -1, fn_1_F1A4);
+    object = fn_8003AB38(process, 18, 0, 0, -1, fn_1_F1A4);
     lbl_1_bss_548 = object;
-    managerData = HuMemDirectMallocNum(HEAP_HEAP, 384, HU_MEMNUM_OVL);
+    managerData = HuMemDirectMallocNum(HEAP_HEAP, 384, 0x10000000);
     object->data = managerData;
     memset(managerData, 0, 384);
 }

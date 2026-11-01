@@ -70,7 +70,7 @@ extern void fn_1_2064(OMOBJ *obj);
 extern void fn_1_216C(OMOBJ *obj);
 extern void fn_1_22D4(OMOBJ *obj);
 extern void fn_1_2340(OMOBJ *obj);
-extern u32 MgSeqModeNext(void);
+extern u32 fn_80071A9C(void);
 extern s32 lbl_1_bss_18[2];
 extern s32 lbl_1_bss_24;
 extern M668PlayerWork *lbl_1_bss_2C[4];
@@ -253,7 +253,7 @@ void fn_1_218(OMOBJ *, OMOBJ_FUNC);
 void fn_1_7014(OMOBJ *);
 void fn_1_70A0(OMOBJ *);
 void fn_1_7240(OMOBJ *);
-u32 MgSeqModeGet(void);
+u32 fn_80071A8C(void);
 
 #include "REL/m668DLL/rotor.h"
 #include "game/audio.h"
@@ -387,8 +387,8 @@ void fn_1_18E4(s32 out[4])
     playerByTeam = lbl_1_rodata_68;
     playersPerTeam = lbl_1_rodata_78;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        playerByTeam.group[GwPlayerConf[playerIndex].grpNo] = playerIndex;
-        playersPerTeam.group[GwPlayerConf[playerIndex].grpNo]++;
+        playerByTeam.group[lbl_80265728[playerIndex].grpNo] = playerIndex;
+        playersPerTeam.group[lbl_80265728[playerIndex].grpNo]++;
     }
 
     if ((playerByTeam.group[0] == -1) || (playerByTeam.group[1] == -1) ||
@@ -401,7 +401,7 @@ void fn_1_18E4(s32 out[4])
     }
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        out[playerIndex] = GwPlayerConf[playerIndex].grpNo;
+        out[playerIndex] = lbl_80265728[playerIndex].grpNo;
     }
 }
 
@@ -425,13 +425,13 @@ void fn_1_1A48(OMOBJ *obj)
     lbl_1_bss_20 = stageWork;
     stageWork->streamHandle = -1;
     lbl_1_bss_644 =
-        HuMemDirectMallocNum(HEAP_MODEL, GXGetTexBufferSize(640U, 480U, 4U, 0U, 0U), HU_MEMNUM_OVL);
+        HuMemDirectMallocNum(2, GXGetTexBufferSize(640U, 480U, 4U, 0U, 0U), 0x10000000);
     memset(lbl_1_bss_644, 0, GXGetTexBufferSize(640U, 480U, 4U, 0U, 0U));
     lbl_1_bss_640 =
-        HuMemDirectMallocNum(HEAP_MODEL, GXGetTexBufferSize(40U, 32U, 4U, 0U, 0U), HU_MEMNUM_OVL);
+        HuMemDirectMallocNum(2, GXGetTexBufferSize(40U, 32U, 4U, 0U, 0U), 0x10000000);
     memset(lbl_1_bss_640, 0, GXGetTexBufferSize(40U, 32U, 4U, 0U, 0U));
     lbl_1_bss_3C =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_m668, 15), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0x7f0000, 15), 0x10000000, 2));
     lbl_1_bss_24 = -1;
     lbl_1_bss_18[0] = lbl_1_bss_18[1] = 0;
     fn_1_18E4(teamOrder);
@@ -440,7 +440,7 @@ void fn_1_1A48(OMOBJ *obj)
     shadowDirection = lbl_1_rodata_94;
     shadowTarget = lbl_1_rodata_A0;
     Hu3DShadowCreate((20.0f), (10.0f), (10000.0f));
-    Hu3DShadowColSet(64U, 0U, 0U);
+    fn_8002AAB4(64U, 0U, 0U);
     Hu3DShadowPosSet(&shadowPosition, &shadowDirection, &shadowTarget);
     Hu3DShadowTPLvlSet((0.5f));
     fn_1_178(10, 8U, fn_1_6EC8);
@@ -465,7 +465,7 @@ void fn_1_1A48(OMOBJ *obj)
         *lbl_1_bss_28[objIndex] = objIndex;
         objIndex++;
     }
-    CharEffectLayerSet(7);
+    fn_8005DDEC(7);
     HuAudFXPlay(M668_SE_STAGE_START);
     fn_1_218(obj, fn_1_1FC4);
 }
@@ -480,10 +480,10 @@ void fn_1_1FC4(OMOBJ *obj)
 
     if (lbl_1_bss_20->state == 0) {
         if ((work->streamHandle == -1) &&
-            ((s32)(GameMesStatGet(MgSeqGameMesIdGet()) & 0x10) != 0)) {
+            ((s32)(GameMesStatGet(fn_80071DF4()) & 0x10) != 0)) {
             work->streamHandle = HuAudSStreamPlay(M668_STREAM_STAGE_MUSIC);
         }
-        if (MgSeqModeGet() == 5) {
+        if (fn_80071A8C() == 5) {
             fn_1_218(obj, fn_1_2064);
             return;
         }
@@ -510,7 +510,7 @@ void fn_1_2064(OMOBJ *obj)
             }
             lbl_1_bss_24 = resultTeam;
         }
-        MgSeqModeNext();
+        fn_80071A9C();
         fn_1_218(obj, fn_1_216C);
         return;
     }
@@ -536,14 +536,14 @@ void fn_1_216C(OMOBJ *obj)
         while (playerIndex < 4) {
             if (lbl_1_bss_24 == lbl_1_bss_2C[playerIndex]->teamNo) {
                 winner.group[winnerCount] = (s32) lbl_1_bss_2C[playerIndex]->charNo;
-                if (_CheckFlag(65551U) == 0) {
-                    GwPlayer[playerIndex].mgCoinBonus = 10;
+                if (fn_8006A124(65551U) == 0) {
+                    lbl_80265750[playerIndex].mgCoinBonus = 10;
                 }
                 winnerCount += 1;
             }
             playerIndex += 1;
         }
-        MgSeqWinnerSet((s16) winner.group[0], (s16) winner.group[1],
+        fn_80071C18((s16) winner.group[0], (s16) winner.group[1],
             (s16) winner.group[2], (s16) winner.group[3]);
         if (stageWork->streamHandle != -1) {
             HuAudSStreamFadeOut((s32) stageWork->streamHandle, 100);
@@ -560,8 +560,8 @@ void fn_1_22D4(OMOBJ *obj)
     /* Called after result setup; waits for pre-winner mode before holding the sequence for the
      * camera transition. */
     stageWork = obj->data;
-    if ((lbl_1_bss_20->state == 0) && (MgSeqModeGet() == 7)) {
-        MgSeqModeChangeOff();
+    if ((lbl_1_bss_20->state == 0) && (fn_80071A8C() == 7)) {
+        fn_80071B08();
         fn_1_218(obj, fn_1_2340);
         return;
     }
@@ -576,8 +576,8 @@ void fn_1_2340(OMOBJ *obj)
      * callback chain. */
     stageWork = obj->data;
     if ((lbl_1_bss_20->state == 0) && (lbl_1_bss_8 == 1)) {
-        MgSeqModeChangeOn();
-        MgSeqModeNext();
+        fn_80071B30();
+        fn_80071A9C();
         fn_1_218(obj, NULL);
         return;
     }
@@ -715,7 +715,7 @@ void fn_1_27D0(s16 layerNo)
     GXColor4u8(white, white, white, white);
     GXPosition3f32((0.0f), (0.06666667014360428f), (0.0f));
     GXColor4u8(white, white, white, white);
-    Hu3DFbCopyExec(0, 0, 40, 32, GX_TF_RGB565, 0, lbl_1_bss_640);
+    fn_8002BCDC(0, 0, 40, 32, GX_TF_RGB565, 0, lbl_1_bss_640);
 }
 
 /* Registered on render layers 5 and 6 during scene setup; draws the animated
@@ -765,7 +765,7 @@ void fn_1_2FA0(s16 layerNo)
         GXSetNumTevStages(1U);
         GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_NOOP);
         memset(waveOffsetY, 0, sizeof(waveOffsetY));
-        if (omPauseChk() == 0) {
+        if (fn_8003B748() == 0) {
             lbl_1_bss_10 += 1;
         }
         segmentIndex = 0;
@@ -814,73 +814,73 @@ void fn_1_3858(OMOBJ *obj)
     HU3D_LIGHTID light;
 
     work->collisionModel[0] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 3), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 3), 0x10000000, 2));
     work->collisionModel[1] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 5), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 5), 0x10000000, 2));
     work->collisionModel[2] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 1), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(work->collisionModel[0], 1U);
-    Hu3DModelAttrSet(work->collisionModel[1], 1U);
-    Hu3DModelAttrSet(work->collisionModel[2], 1U);
-    MgActorColMapInit(work->collisionModel, 3, 128);
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 1), 0x10000000, 2));
+    fn_800269E8(work->collisionModel[0], 1U);
+    fn_800269E8(work->collisionModel[1], 1U);
+    fn_800269E8(work->collisionModel[2], 1U);
+    fn_800804E8(work->collisionModel, 3, 128);
 
     work->sceneModel[0] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 0), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(work->sceneModel[0], 0);
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 0), 0x10000000, 2));
+    fn_80026B8C(work->sceneModel[0], 0);
     work->sceneModel[1] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 2), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(work->sceneModel[1], 0);
-    Hu3DLayerHookSet(8, fn_1_23B4);
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 2), 0x10000000, 2));
+    fn_80026B8C(work->sceneModel[1], 0);
+    fn_80025918(8, fn_1_23B4);
 
     work->actorModel[0] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 4), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(work->actorModel[0], 1);
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 4), 0x10000000, 2));
+    fn_80026B8C(work->actorModel[0], 1);
     work->actorMotion[0] =
-        Hu3DJointMotion(work->actorModel[0],
-                        HuDataSelHeapReadNum(DATANUM(DATA_m668, 6), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(work->actorModel[0], work->actorMotion[0]);
-    Hu3DModelAttrSet(work->actorModel[0], HU3D_MOTATTR_LOOP);
+        fn_80030458(work->actorModel[0],
+                        fn_80008DD0(DATANUM(0x7f0000, 6), 0x10000000, 2));
+    fn_8002C95C(work->actorModel[0], work->actorMotion[0]);
+    fn_800269E8(work->actorModel[0], ((1 << 30) | (1 << 0)));
     work->actorModel[1] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 7), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(work->actorModel[1], 1);
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 7), 0x10000000, 2));
+    fn_80026B8C(work->actorModel[1], 1);
     work->actorMotion[1] =
-        Hu3DJointMotion(work->actorModel[1],
-                        HuDataSelHeapReadNum(DATANUM(DATA_m668, 8), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(work->actorModel[1], work->actorMotion[1]);
-    Hu3DModelAttrSet(work->actorModel[1], HU3D_MOTATTR_LOOP);
-    Hu3DLayerHookSet(9, fn_1_27D0);
+        fn_80030458(work->actorModel[1],
+                        fn_80008DD0(DATANUM(0x7f0000, 8), 0x10000000, 2));
+    fn_8002C95C(work->actorModel[1], work->actorMotion[1]);
+    fn_800269E8(work->actorModel[1], ((1 << 30) | (1 << 0)));
+    fn_80025918(9, fn_1_27D0);
 
-    work->sceneLink[0] = Hu3DModelLink(work->sceneModel[0]);
-    Hu3DModelLayerSet(work->sceneLink[0], 2);
-    work->sceneLink[1] = Hu3DModelLink(work->sceneModel[1]);
-    Hu3DModelLayerSet(work->sceneLink[1], 2);
-    work->actorLink[0] = Hu3DModelLink(work->actorModel[0]);
-    Hu3DMotionSet(work->actorLink[0], work->actorMotion[0]);
-    Hu3DModelLayerSet(work->actorLink[0], 5);
-    Hu3DModelAttrSet(work->actorLink[0], HU3D_MOTATTR_LOOP);
-    work->actorLink[1] = Hu3DModelLink(work->actorModel[1]);
-    Hu3DMotionSet(work->actorLink[1], work->actorMotion[1]);
-    Hu3DModelLayerSet(work->actorLink[1], 5);
-    Hu3DModelAttrSet(work->actorLink[1], HU3D_MOTATTR_LOOP);
+    work->sceneLink[0] = fn_80025D4C(work->sceneModel[0]);
+    fn_80026B8C(work->sceneLink[0], 2);
+    work->sceneLink[1] = fn_80025D4C(work->sceneModel[1]);
+    fn_80026B8C(work->sceneLink[1], 2);
+    work->actorLink[0] = fn_80025D4C(work->actorModel[0]);
+    fn_8002C95C(work->actorLink[0], work->actorMotion[0]);
+    fn_80026B8C(work->actorLink[0], 5);
+    fn_800269E8(work->actorLink[0], ((1 << 30) | (1 << 0)));
+    work->actorLink[1] = fn_80025D4C(work->actorModel[1]);
+    fn_8002C95C(work->actorLink[1], work->actorMotion[1]);
+    fn_80026B8C(work->actorLink[1], 5);
+    fn_800269E8(work->actorLink[1], ((1 << 30) | (1 << 0)));
 
     work->effect[0].model =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 11), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(work->effect[0].model, 2);
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 11), 0x10000000, 2));
+    fn_80026B8C(work->effect[0].model, 2);
     work->effect[0].motion =
-        Hu3DJointMotion(work->effect[0].model,
-                        HuDataSelHeapReadNum(DATANUM(DATA_m668, 12), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(work->effect[0].model, work->effect[0].motion);
-    Hu3DModelAttrSet(work->effect[0].model, HU3D_MOTATTR_LOOP);
+        fn_80030458(work->effect[0].model,
+                        fn_80008DD0(DATANUM(0x7f0000, 12), 0x10000000, 2));
+    fn_8002C95C(work->effect[0].model, work->effect[0].motion);
+    fn_800269E8(work->effect[0].model, ((1 << 30) | (1 << 0)));
     work->effect[1].model =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 13), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(work->effect[1].model, 6);
+        fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 13), 0x10000000, 2));
+    fn_80026B8C(work->effect[1].model, 6);
     work->effect[1].motion =
-        Hu3DJointMotion(work->effect[1].model,
-                        HuDataSelHeapReadNum(DATANUM(DATA_m668, 14), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(work->effect[1].model, work->effect[1].motion);
-    Hu3DModelAttrSet(work->effect[1].model, HU3D_MOTATTR_LOOP);
-    Hu3DLayerHookSet(5, fn_1_2FA0);
-    Hu3DLayerHookSet(6, fn_1_2FA0);
+        fn_80030458(work->effect[1].model,
+                        fn_80008DD0(DATANUM(0x7f0000, 14), 0x10000000, 2));
+    fn_8002C95C(work->effect[1].model, work->effect[1].motion);
+    fn_800269E8(work->effect[1].model, ((1 << 30) | (1 << 0)));
+    fn_80025918(5, fn_1_2FA0);
+    fn_80025918(6, fn_1_2FA0);
 
     fn_1_2A4(&lightDirection, (0.0f), (-1000.0f), (-1000.0f));
     fn_1_4DC(&lightDirection, &lightDirection);
@@ -890,8 +890,8 @@ void fn_1_3858(OMOBJ *obj)
     Hu3DGLightStaticSet(light, 1);
     Hu3DGLightInfinitytSet(light);
     Hu3DAmbColorSet((0.75f), (0.75f), (0.75f));
-    Hu3DModelShadowMapSet(work->sceneLink[1]);
-    Hu3DModelShadowMapSet(work->actorLink[0]);
+    fn_80026FFC(work->sceneLink[1]);
+    fn_80026FFC(work->actorLink[0]);
     fn_1_218(obj, fn_1_3CB8);
 }
 
@@ -972,7 +972,7 @@ void fn_1_3CE4(s16 layerNo)
     GXSetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1U, GX_TEVPREV);
     GXSetTevAlphaOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, 1U, GX_TEVPREV);
     GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
-    if (omPauseChk() == 0) {
+    if (fn_8003B748() == 0) {
         lbl_1_bss_14 += 1;
     }
     GXBegin(GX_QUADS, GX_VTXFMT0, 256U);
@@ -984,7 +984,7 @@ void fn_1_3CE4(s16 layerNo)
                           sin((0.017453292519943295) * (f64)(lbl_1_bss_14 + (i * 5)))));
         particleY = lbl_1_bss_340[i].y; /* Draw this position before advancing it. */
 
-        if (omPauseChk() == 0) {
+        if (fn_8003B748() == 0) {
             lbl_1_bss_340[i].y -= (0.004000000189989805f);
         }
         if (lbl_1_bss_340[i].y < -particleSize) {
@@ -1027,7 +1027,7 @@ void fn_1_4508(OMOBJ *obj)
             lbl_1_bss_40[index].y = fn_1_16B4((-0.004999999888241291f), (0.004999999888241291f));
             lbl_1_bss_40[index].z = (0.0f);
         }
-        Hu3DCameraLayerHookSet(1, 15, fn_1_3CE4);
+        fn_8002583C(1, 15, fn_1_3CE4);
         fn_1_218(obj, NULL);
     }
 }
@@ -1080,7 +1080,7 @@ void fn_1_494C(OMOBJ *obj)
     M668PlayerWork *peer;
     f32 sign;
 
-    work->charNo = GwPlayerConf[work->playerNo].charNo;
+    work->charNo = lbl_80265728[work->playerNo].charNo;
     work->state = 0;
     work->transitionFlag = 0;
     for (player = 0; player < 4; player++) {
@@ -1103,15 +1103,15 @@ void fn_1_494C(OMOBJ *obj)
     param.correctHook = NULL;
     /* Player creation replaces DATANUM(DATA_mariomot, 4) with DATANUM(DATA_mariomot, 117) in the
      * shared list. */
-    work->player = MgPlayerCreate(work->playerNo, &param, 2, 1U, 35U, lbl_1_data_3C);
-    MgPlayerComStkOn(work->player);
-    MgPlayerVibrateCreate(work->player);
-    Hu3DModelLayerSet((s16)work->player->actor->mdlId, 7);
-    MgActorColMaskSet(work->player->actor, 7U);
-    Hu3DModelShadowSet((s16)work->player->actor->mdlId);
+    work->player = fn_80080728(work->playerNo, &param, 2, 1U, 35U, lbl_1_data_3C);
+    fn_8007E818(work->player);
+    fn_8007ED60(work->player);
+    fn_80026B8C((s16)work->player->actor->mdlId, 7);
+    fn_80080DD4(work->player->actor, 7U);
+    fn_80026E44((s16)work->player->actor->mdlId);
     work->position[1] = lbl_1_data_64[work->formationNo];
     work->position[0] = work->position[1];
-    MgActorPosSet(work->player->actor, &work->position[0]);
+    fn_80086AA8(work->player->actor, &work->position[0]);
     if (rand8() % 2) {
         sign = (-1.0f);
     } else {
@@ -1125,7 +1125,7 @@ void fn_1_494C(OMOBJ *obj)
 void fn_1_4BFC(OMOBJ *obj)
 {
     void *work = obj->data;
-    if (lbl_1_bss_20->state == 0 && MgSeqModeGet() == 2) {
+    if (lbl_1_bss_20->state == 0 && fn_80071A8C() == 2) {
         fn_1_218(obj, fn_1_4C64);
         return;
     }
@@ -1140,7 +1140,7 @@ void fn_1_4C64(OMOBJ *obj)
 
     if (lbl_1_bss_20->state == 0) {
         if (work->transitionFlag != 0 &&
-            MgPlayerModeAttrCheck(work->player, MGPLAYER_MODEATTR_AIR) == 0) {
+            fn_80087148(work->player, (1 << 4)) == 0) {
             if (work->player->actor->gravity) {
                 velocity =
                     work->player->actor->gravity +
@@ -1152,15 +1152,15 @@ void fn_1_4C64(OMOBJ *obj)
             } else {
                 velocity = (0.0f);
             }
-            MgActorVelYSet(work->player->actor, velocity);
+            fn_80086CC4(work->player->actor, velocity);
         }
-        if (MgSeqModeGet() == 5) {
+        if (fn_80071A8C() == 5) {
             work->state = 1;
-            if (GwPlayerConf[work->playerNo].type != 0) {
+            if (lbl_80265728[work->playerNo].type != 0) {
                 fn_1_218(obj, fn_1_54CC);
                 return;
             }
-            MgPlayerComStkOff(work->player);
+            fn_8007E888(work->player);
             fn_1_218(obj, fn_1_4EE8);
             return;
         }
@@ -1189,18 +1189,18 @@ void fn_1_4EE8(OMOBJ *obj)
     playerWork = obj->data;
     if (lbl_1_bss_20->state == 0) {
         if ((s32) lbl_1_bss_24 != -1) {
-            MgPlayerComStkOn(playerWork->player);
+            fn_8007E818(playerWork->player);
         }
         if ((s32) lbl_1_bss_C != 0) {
             fn_1_218(obj, fn_1_6C24);
             return;
         }
         playerWork->position[1] = playerWork->position[0];
-        MgActorPosGet(playerWork->player->actor, playerWork->position);
-        if ((MgActorColMeshGet(playerWork->player->actor, &collisionMesh) != 0) &&
+        fn_80086BC8(playerWork->player->actor, playerWork->position);
+        if ((fn_80086CE8(playerWork->player->actor, &collisionMesh) != 0) &&
             (collisionMesh == 1)) {
             playerWork->state = 3;
-            MgPlayerDespawn(playerWork->player);
+            fn_80086E3C(playerWork->player);
             if ((fn_1_18B4(playerWork->partnerNo)->state != 1) && ((s32) lbl_1_bss_24 == -1)) {
                 lbl_1_bss_18[playerWork->teamNo] = 1;
             }
@@ -1211,7 +1211,7 @@ void fn_1_4EE8(OMOBJ *obj)
             downwardAxis = lbl_1_rodata_1E0;
             upwardAxis = lbl_1_rodata_1EC;
             fn_1_2A4(&originPosition, (0.0f), (0.0f), (0.0f));
-            MgActorPosGet(playerWork->player->actor, &playerPosition);
+            fn_80086BC8(playerWork->player->actor, &playerPosition);
             fn_1_4A4(&playerDirection, &playerPosition, &originPosition);
             fn_1_4DC(&playerDirection, &playerDirection);
             fn_1_434(&playerWork->position[2], &playerDirection, &downwardAxis);
@@ -1232,10 +1232,10 @@ void fn_1_4EE8(OMOBJ *obj)
             if (playerWork->position[2].z > (0.0f)) {
                 playerWork->position[2].z = -playerWork->position[2].z;
             }
-            MgPlayerDespawn(playerWork->player);
-            CharMotionShiftSet(playerWork->charNo, playerWork->player->omObj->mtnId[5], (0.0f),
+            fn_80086E3C(playerWork->player);
+            fn_8005C2C8(playerWork->charNo, playerWork->player->omObj->mtnId[5], (0.0f),
                                (4.0f), 0U);
-            Hu3DModelRotSet((s16) playerWork->player->actor->mdlId, (0.0f),
+            fn_80026808((s16) playerWork->player->actor->mdlId, (0.0f),
                             (f32) ((f64) ((180.0f) * M668Atan2f(playerWork->position[2].x,
                                                                 playerWork->position[2].z)) /
                                    (3.141592653589793)),
@@ -1243,7 +1243,7 @@ void fn_1_4EE8(OMOBJ *obj)
             if ((fn_1_18B4(playerWork->partnerNo)->state != 1) && ((s32) lbl_1_bss_24 == -1)) {
                 lbl_1_bss_18[playerWork->teamNo] = 1;
             }
-            omVibrate(playerWork->playerNo, 20, 30, 0);
+            fn_8006A030(playerWork->playerNo, 20, 30, 0);
             Hu3D3Dto2D(&playerPosition, 1, &screenPosition);
             soundPan = (64.0f) * (screenPosition.x / (576.0f));
             soundPan = soundPan < (0.0f) ? (0.0f) : (soundPan > (64.0f) ? (64.0f) : soundPan);
@@ -1302,7 +1302,7 @@ void fn_1_54CC(OMOBJ *obj)
     s32 rotorIndex;
 
     playerWork = obj->data;
-    difficulty = GwPlayerConf[playerWork->playerNo].comDif;
+    difficulty = lbl_80265728[playerWork->playerNo].comDif;
     /* This difficulty table is copied here, but its values are unused by this callback. */
     floatTableCopy = lbl_1_rodata_208;
     if (lbl_1_bss_20->state == 0) {
@@ -1311,13 +1311,13 @@ void fn_1_54CC(OMOBJ *obj)
             return;
         }
         playerWork->position[1] = playerWork->position[0];
-        MgActorPosGet(playerWork->player->actor, playerWork->position);
+        fn_80086BC8(playerWork->player->actor, playerWork->position);
         if (((100.0f) * frandf()) < (1.0f)) {
             playerWork->sign = -playerWork->sign;
         }
         if ((s32) lbl_1_bss_24 != -1) {
-            MgPlayerComStkOn(playerWork->player);
-        } else if (MgPlayerModeAttrCheck(playerWork->player, 16U) == 0) {
+            fn_8007E818(playerWork->player);
+        } else if (fn_80087148(playerWork->player, 16U) == 0) {
             fn_1_4A4(&partnerDirection, playerWork->position,
                      fn_1_18B4(playerWork->partnerNo)->position);
             partnerDistance = fn_1_4DC(&partnerDirection, &partnerDirection);
@@ -1342,7 +1342,7 @@ void fn_1_54CC(OMOBJ *obj)
                           (0.10000000149011612f), (7.0f));
             }
         }
-        if (MgPlayerModeAttrCheck(playerWork->player, 16U) == 0) {
+        if (fn_80087148(playerWork->player, 16U) == 0) {
             playerWork->transitionFlag = 0;
             rotorIndex = 0;
             while (rotorIndex < 1) {
@@ -1356,7 +1356,7 @@ void fn_1_54CC(OMOBJ *obj)
                          (f32) cos(rotorWork->angle));
                 fn_1_2A4(&nextRotorDirection, (f32) sin(rotorWork->angle + angularStep), (0.0f),
                          (f32) cos(rotorWork->angle + angularStep));
-                MgActorPosGet(playerWork->player->actor, &actorPosition);
+                fn_80086BC8(playerWork->player->actor, &actorPosition);
                 /* Compare the radial direction with this rotor now and after one difficulty-scaled
                  * step. */
                 if (!(actorPosition.y > (150.0f)) &&
@@ -1383,7 +1383,7 @@ void fn_1_54CC(OMOBJ *obj)
                 /* Difficulty sets the random threshold for jumping before predicted rotor
                  * contact. */
                 if (((100.0f) * frandf()) >= jumpRollThresholdByDifficulty.value[difficulty]) {
-                    MgActorVelYSet(
+                    fn_80086CC4(
                         playerWork->player->actor,
                         playerWork->player->actor->gravity
                             ? playerWork->player->actor->gravity +
@@ -1399,10 +1399,10 @@ void fn_1_54CC(OMOBJ *obj)
                 }
             }
         }
-        if ((MgActorColMeshGet(playerWork->player->actor, &collisionMesh) != 0) &&
+        if ((fn_80086CE8(playerWork->player->actor, &collisionMesh) != 0) &&
             (collisionMesh == 1)) {
             playerWork->state = 3;
-            MgPlayerDespawn(playerWork->player);
+            fn_80086E3C(playerWork->player);
             if ((fn_1_18B4(playerWork->partnerNo)->state != 1) &&
                 ((s32) lbl_1_bss_24 == -1)) {
                 lbl_1_bss_18[playerWork->teamNo] = 1;
@@ -1414,7 +1414,7 @@ void fn_1_54CC(OMOBJ *obj)
             downwardAxis = lbl_1_rodata_254;
             upwardAxis = lbl_1_rodata_260;
             fn_1_2A4(&originVector, (0.0f), (0.0f), (0.0f));
-            MgActorPosGet(playerWork->player->actor, &modelPosition);
+            fn_80086BC8(playerWork->player->actor, &modelPosition);
             fn_1_4A4(&centerDirection, &modelPosition, &originVector);
             fn_1_4DC(&centerDirection, &centerDirection);
             fn_1_434(&playerWork->position[2], &centerDirection, &downwardAxis);
@@ -1432,10 +1432,10 @@ void fn_1_54CC(OMOBJ *obj)
             if (playerWork->position[2].z > (0.0f)) {
                 playerWork->position[2].z = -playerWork->position[2].z;
             }
-            MgPlayerDespawn(playerWork->player);
-            CharMotionShiftSet(playerWork->charNo, playerWork->player->omObj->mtnId[5], (0.0f),
+            fn_80086E3C(playerWork->player);
+            fn_8005C2C8(playerWork->charNo, playerWork->player->omObj->mtnId[5], (0.0f),
                                (4.0f), 0U);
-            Hu3DModelRotSet((s16) playerWork->player->actor->mdlId, (0.0f),
+            fn_80026808((s16) playerWork->player->actor->mdlId, (0.0f),
                             (f32) ((f64) ((180.0f) * M668Atan2f(playerWork->position[2].x,
                                                                 playerWork->position[2].z)) /
                                    (3.141592653589793)),
@@ -1469,17 +1469,17 @@ void fn_1_664C(OMOBJ *obj)
             fn_1_218(obj, fn_1_6C24);
             return;
         }
-        Hu3DModelAttrReset(work->player->actor->mdlId, 1U);
-        Hu3DModelPosGet(work->player->actor->mdlId, &position);
+        fn_80026A44(work->player->actor->mdlId, 1U);
+        fn_800267CC(work->player->actor->mdlId, &position);
         if (position.y <= (-200.0f)) {
             position.y = (-200.0f);
-            Hu3DModelPosSetV(work->player->actor->mdlId, &position);
+            fn_80026790(work->player->actor->mdlId, &position);
             work->state = 3;
             fn_1_218(obj, fn_1_6778);
             return;
         }
         fn_1_46C(&position, &position, &work->position[2]);
-        Hu3DModelPosSetV(work->player->actor->mdlId, &position);
+        fn_80026790(work->player->actor->mdlId, &position);
     }
 }
 
@@ -1493,17 +1493,17 @@ void fn_1_6778(OMOBJ *obj)
     HuVecF direction;
 
     if (lbl_1_bss_20->state == 0) {
-        Hu3DModelAttrReset(work->player->actor->mdlId, 1U);
+        fn_80026A44(work->player->actor->mdlId, 1U);
         if (lbl_1_bss_C != 0) {
             fn_1_218(obj, fn_1_6C24);
             return;
         }
         fn_1_2A4(&zeroVector, (0.0f), (0.0f), (0.0f));
-        Hu3DModelPosGet(work->player->actor->mdlId, &modelPosition);
+        fn_800267CC(work->player->actor->mdlId, &modelPosition);
         fn_1_4A4(&direction, &modelPosition, &zeroVector);
         fn_1_4DC(&direction, &direction);
-        CharMotionShiftSet(work->charNo, work->player->omObj->mtnId[8], (0.0f), (0.0f),
-                           HU3D_MOTATTR_LOOP);
+        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[8], (0.0f), (0.0f),
+                           ((1 << 30) | (1 << 0)));
         work->position[2].x = (7.0f) * direction.x;
         work->position[2].y = (30.0f);
         work->position[2].z = (7.0f) * direction.z;
@@ -1511,7 +1511,7 @@ void fn_1_6778(OMOBJ *obj)
         if (work->position[2].z > (0.0f)) {
             work->position[2].z = -work->position[2].z;
         }
-        omVibrate(work->playerNo, 30, 30, 0);
+        fn_8006A030(work->playerNo, 30, 30, 0);
         fn_1_218(obj, fn_1_6924);
     }
 }
@@ -1532,12 +1532,12 @@ void fn_1_6924(OMOBJ *obj)
 
     work = obj->data;
     if (lbl_1_bss_20->state == 0) {
-        Hu3DModelAttrReset(work->player->actor->mdlId, 1U);
+        fn_80026A44(work->player->actor->mdlId, 1U);
         if (lbl_1_bss_C != 0) {
             fn_1_218(obj, fn_1_6C24);
             return;
         }
-        Hu3DModelPosGet(work->player->actor->mdlId, &modelPosition);
+        fn_800267CC(work->player->actor->mdlId, &modelPosition);
         fn_1_46C(&modelPosition, &modelPosition, &work->position[2]);
         i = 0;
         while (i < 2) {
@@ -1563,7 +1563,7 @@ void fn_1_6924(OMOBJ *obj)
             }
             break;
         }
-        Hu3DModelPosSetV(work->player->actor->mdlId, &modelPosition);
+        fn_80026790(work->player->actor->mdlId, &modelPosition);
         if ((modelPosition.y < (-180.0f)) && (work->position[2].y < (0.0f))) {
             work->position[2].y = (0.800000011920929f) * -work->position[2].y;
         }
@@ -1578,20 +1578,20 @@ void fn_1_6C24(OMOBJ *obj)
 
     if (lbl_1_bss_20->state == 0) {
         work->timer60 = 0;
-        MgPlayerDespawn(work->player);
-        Hu3DModelPosSetV(work->player->actor->mdlId, &lbl_1_data_64[work->formationNo]);
-        Hu3DModelRotSet(work->player->actor->mdlId, (0.0f), (0.0f), (0.0f));
-        Hu3DModelAttrReset(work->player->actor->mdlId, 1U);
-        Hu3DModelScaleSet(work->player->actor->mdlId, (1.0f), (1.0f), (1.0f));
-        CharMotionShiftSet(work->charNo, *work->player->omObj->mtnId, (0.0f), (0.0f),
-                           HU3D_MOTATTR_LOOP);
-        Hu3DModelScaleSet(work->player->actor->mdlId, (1.0f), (1.0f), (1.0f));
+        fn_80086E3C(work->player);
+        fn_80026790(work->player->actor->mdlId, &lbl_1_data_64[work->formationNo]);
+        fn_80026808(work->player->actor->mdlId, (0.0f), (0.0f), (0.0f));
+        fn_80026A44(work->player->actor->mdlId, 1U);
+        fn_800268B0(work->player->actor->mdlId, (1.0f), (1.0f), (1.0f));
+        fn_8005C2C8(work->charNo, *work->player->omObj->mtnId, (0.0f), (0.0f),
+                           ((1 << 30) | (1 << 0)));
+        fn_800268B0(work->player->actor->mdlId, (1.0f), (1.0f), (1.0f));
         work->timer60 = 0;
         if (lbl_1_bss_24 == work->teamNo) {
             fn_1_218(obj, fn_1_6DF8);
             return;
         }
-        Hu3DModelAttrSet(work->player->actor->mdlId, 1U);
+        fn_800269E8(work->player->actor->mdlId, 1U);
         fn_1_218(obj, NULL);
     }
 }
@@ -1602,7 +1602,7 @@ void fn_1_6DF8(OMOBJ *obj)
     M668PlayerFinishWork *work = obj->data;
 
     if (lbl_1_bss_20->state == 0 && work->timer60++ >= 60) {
-        CharMotionShiftSet(work->charNo, work->player->omObj->mtnId[6], (0.0f), (4.0f), 0);
+        fn_8005C2C8(work->charNo, work->player->omObj->mtnId[6], (0.0f), (4.0f), 0);
         fn_1_218(obj, NULL);
         return;
     }
@@ -1629,15 +1629,15 @@ void fn_1_6EC8(OMOBJ *obj)
     Hu3DCameraPerspectiveSet(1, (40.0f), (20.0f), (15000.0f), (1.2000000476837158f));
     Hu3DCameraViewportSet(1, (0.0f), (0.0f), (640.0f), (480.0f), (0.0f), (1.0f));
     work->motion =
-        Hu3DMotionCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 10), HU_MEMNUM_OVL, HEAP_MODEL));
-    work->model = Hu3DModelCameraCreate(work->motion, 1);
+        fn_8002C4C0(fn_80008DD0(DATANUM(0x7f0000, 10), 0x10000000, 2));
+    work->model = fn_800283F4(work->motion, 1);
     /* Save the camera pose, discard the first controller, restore the pose, then recreate the
      * controller. */
-    Hu3DCameraPosGet(1, &position, &up, &target);
-    Hu3DModelKill(work->model);
+    fn_80027CD0(1, &position, &up, &target);
+    fn_800262D0(work->model);
     Hu3DCameraPosSetV(1, &position, &up, &target);
-    work->model = Hu3DModelCameraCreate(work->motion, 1);
-    Hu3DCameraMotionStart(work->model, 1);
+    work->model = fn_800283F4(work->motion, 1);
+    fn_800284C8(work->model, 1);
     fn_1_218(obj, fn_1_7014);
 }
 
@@ -1645,8 +1645,8 @@ void fn_1_6EC8(OMOBJ *obj)
 void fn_1_7014(OMOBJ *obj)
 {
     M668CameraWork *work = obj->data;
-    if (lbl_1_bss_20->state == 0 && MgSeqModeGet() == 7) {
-        Hu3DModelKill(work->model);
+    if (lbl_1_bss_20->state == 0 && fn_80071A8C() == 7) {
+        fn_800262D0(work->model);
         WipeCreate(2, 0, 60);
         work->timer = 0;
         fn_1_218(obj, fn_1_70A0);
@@ -1706,26 +1706,26 @@ void fn_1_72CC(OMOBJ *obj)
         }
 
         work->model =
-            Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m668, 9), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelLayerSet(work->model, 0);
-        Hu3DModelPosSet(work->model, (0.0f), (0.0f), (0.0f));
-        work->shadowModel = Hu3DModelLink(work->model);
-        Hu3DModelLayerSet(work->shadowModel, 2);
+            fn_80025A04(fn_80008DD0(DATANUM(0x7f0000, 9), 0x10000000, 2));
+        fn_80026B8C(work->model, 0);
+        fn_80026760(work->model, (0.0f), (0.0f), (0.0f));
+        work->shadowModel = fn_80025D4C(work->model);
+        fn_80026B8C(work->shadowModel, 2);
         /* The shadow link ends up on layer 6, replacing the preceding layer 2 assignment. */
-        Hu3DModelLayerSet(work->shadowModel, 6);
+        fn_80026B8C(work->shadowModel, 6);
 
         work->angle = (f32)((0.017453292519943295) * (f64)((10.0f) * (f32)work->index));
         for (index = 0; index < 16; index++) {
             work->history[index] = work->angle;
         }
 
-        Hu3DModelRotSet(work->model, (0.0f),
+        fn_80026808(work->model, (0.0f),
                         (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
                         (0.0f));
-        Hu3DModelRotSet(work->shadowModel, (0.0f),
+        fn_80026808(work->shadowModel, (0.0f),
                         (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
                         (0.0f));
-        Hu3DModelShadowSet(work->shadowModel);
+        fn_80026E44(work->shadowModel);
         fn_1_218(obj, fn_1_7508);
     }
 }
@@ -1734,7 +1734,7 @@ void fn_1_72CC(OMOBJ *obj)
 void fn_1_7508(OMOBJ *obj)
 {
     M668RotorWork *work = obj->data;
-    if (lbl_1_bss_20->state == 0 && MgSeqModeGet() == 2) {
+    if (lbl_1_bss_20->state == 0 && fn_80071A8C() == 2) {
         work->sound = HuAudFXPlay(M668_SE_ROTOR_LOOP);
         HuAudFXPitchSet(work->sound, 2000);
         fn_1_218(obj, fn_1_758C);
@@ -1776,10 +1776,10 @@ void fn_1_758C(OMOBJ *obj)
     }
     work->history[0] = work->angle;
     work->angle += delta;
-    Hu3DModelRotSet(work->model, (0.0f),
+    fn_80026808(work->model, (0.0f),
                     (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
                     (0.0f));
-    Hu3DModelRotSet(work->shadowModel, (0.0f),
+    fn_80026808(work->shadowModel, (0.0f),
                     (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
                     (0.0f));
 
@@ -1829,10 +1829,10 @@ void fn_1_758C(OMOBJ *obj)
         }
         work->history[0] = work->angle;
         work->angle = (0.0f);
-        Hu3DModelRotSet(work->model, (0.0f),
+        fn_80026808(work->model, (0.0f),
                         (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
                         (0.0f));
-        Hu3DModelRotSet(work->shadowModel, (0.0f),
+        fn_80026808(work->shadowModel, (0.0f),
                         (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
                         (0.0f));
         HuAudFXStop(work->sound);
@@ -1851,7 +1851,7 @@ void fn_1_7B30(OMOBJ *obj)
             work->history[index] = work->history[index - 1];
         }
         work->history[0] = work->angle;
-        if (MgSeqModeGet() == 5) {
+        if (fn_80071A8C() == 5) {
             work->sound = HuAudFXPlay(M668_SE_ROTOR_LOOP);
             fn_1_218(obj, fn_1_7BE8);
             return;
@@ -1915,10 +1915,10 @@ void fn_1_7BE8(OMOBJ *obj)
         }
         work->history[0] = work->angle;
         work->angle = (f32)(work->angle + delta);
-        Hu3DModelRotSet(work->model, (0.0f),
+        fn_80026808(work->model, (0.0f),
                         (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
                         (0.0f));
-        Hu3DModelRotSet(work->shadowModel, (0.0f),
+        fn_80026808(work->shadowModel, (0.0f),
                         (f32)((f64)((180.0f) * work->angle) / (3.141592653589793)),
                         (0.0f));
 
@@ -1968,8 +1968,8 @@ void fn_1_7BE8(OMOBJ *obj)
         }
 
         if (lbl_1_bss_C != 0) {
-            Hu3DModelAttrSet(work->model, 1U);
-            Hu3DModelAttrSet(work->shadowModel, 1U);
+            fn_800269E8(work->model, 1U);
+            fn_800269E8(work->shadowModel, 1U);
             fn_1_218(obj, NULL);
             return;
         }

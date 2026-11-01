@@ -83,8 +83,8 @@ MGSEQ_PARAM lbl_1_data_0 = {
 };
 
 void fn_1_A0(void) {
-    lbl_1_bss_4 = MgActorObjectSetup();
-    MgSeqCreate(&lbl_1_data_0);
+    lbl_1_bss_4 = fn_80080418();
+    fn_80070788(&lbl_1_data_0);
 }
 
 #include "game/mic.h"
@@ -101,8 +101,8 @@ void fn_1_D8(void) {
     HuMCSelWinCreate(-10001.0f, -10002.0f);
     lbl_1_bss_0 = HuMCContextCreate(lbl_1_data_28);
     fn_1_8BC();
-    MgSeqModeNext();
-    MgActorExec();
+    fn_80071A9C();
+    fn_800856A8();
 }
 
 void fn_1_4AC(void);
@@ -140,9 +140,9 @@ void fn_1_1D0(void *sequenceMode, s16 frameNo) {
     }
     fn_1_4D20();
     fn_1_3C9C();
-    MgActorExec();
+    fn_800856A8();
     if (fn_1_D7DC() != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -159,7 +159,7 @@ void fn_1_244(void *sequenceMode, short frameNo) {
         fn_1_92C();
     }
     fn_1_3C9C();
-    MgActorExec();
+    fn_800856A8();
 }
 
 void fn_1_78C(void);
@@ -168,7 +168,7 @@ void fn_1_78C(void);
 void fn_1_2B4(void) {
     fn_1_78C();
     fn_1_3C9C();
-    MgActorExec();
+    fn_800856A8();
 }
 
 void fn_1_2DC(s16 mode, s16 frameNo) {
@@ -251,11 +251,11 @@ void fn_1_4AC(void) {
 
     switch (lbl_1_bss_DF0.sequenceState) {
     case 0:
-        MgSeqModeChangeOff();
+        fn_80071B08();
         lbl_1_bss_DF0.sequenceState++;
         return;
     case 1:
-        fn_1_17C8(11, 8.0f, HU3D_MOTATTR_LOOP);
+        fn_1_17C8(11, 8.0f, ((1 << 30) | (1 << 0)));
         lbl_1_bss_DF0.sequenceState++;
         return;
     case 2:
@@ -290,7 +290,7 @@ void fn_1_4AC(void) {
             lbl_1_bss_DF0.timer = 0;
         }
         if (lbl_1_bss_DF0.timer == 45) {
-            fn_1_17C8(0, 8.0f, HU3D_MOTATTR_LOOP);
+            fn_1_17C8(0, 8.0f, ((1 << 30) | (1 << 0)));
             return;
         }
         break;
@@ -298,7 +298,7 @@ void fn_1_4AC(void) {
         fn_1_7D24();
         lbl_1_bss_DF0.sequenceState = 0;
         lbl_1_bss_DF0.timer = 0;
-        MgSeqModeNext();
+        fn_80071A9C();
         break;
     }
 }
@@ -307,9 +307,9 @@ void fn_1_4AC(void) {
 void fn_1_78C(void) {
     switch (lbl_1_bss_DF0.sequenceState) {
     case 0:
-        MgSeqModeChangeOff();
+        fn_80071B08();
         if (lbl_1_bss_DF0.microphonePlayerWon == 0) {
-            fn_1_17C8(1, 8.0f, HU3D_MOTATTR_LOOP);
+            fn_1_17C8(1, 8.0f, ((1 << 30) | (1 << 0)));
         }
         lbl_1_bss_DF0.sequenceState++;
         break;
@@ -332,7 +332,7 @@ void fn_1_78C(void) {
             fn_1_F8C();
             fn_1_80E0();
         }
-        MgSeqModeNext();
+        fn_80071A9C();
         break;
     }
 }

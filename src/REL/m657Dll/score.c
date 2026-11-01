@@ -1,4 +1,5 @@
 /* Builds and updates the two team score displays used to decide the winner. */
+#include <math.h>
 #include "REL/m657Dll.h"
 #include "game/gamework.h"
 #include "game/memory.h"
@@ -19,9 +20,9 @@ void fn_1_3E1C(OMOBJMAN *objman)
     OMOBJ *obj;
     M657ScoreWork *scoreWork;
 
-    obj = omAddObjEx(objman, 70, 0, 0, -1, fn_1_4004);
+    obj = fn_8003AB38(objman, 70, 0, 0, -1, fn_1_4004);
     lbl_1_bss_38 = obj;
-    scoreWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657ScoreWork), HU_MEMNUM_OVL);
+    scoreWork = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M657ScoreWork), 0x10000000);
     obj->data = scoreWork;
     memset(scoreWork, 0, sizeof(M657ScoreWork));
 }
@@ -95,21 +96,21 @@ void fn_1_4004(OMOBJ *obj)
     teamScore = NULL;
     digitAnimation = NULL;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        team = GwPlayerConf[playerIndex].grpNo;
+        team = lbl_80265728[playerIndex].grpNo;
         if (team == 0 || team == 1) {
             teamScore = &scoreWork->teams[team];
             teamScore->box = MgScoreBoxCreate(104, 32);
             MgScoreBoxPosSet(teamScore->box, lbl_1_data_1E8[team].x, lbl_1_data_1E8[team].y);
             MgScoreBoxDispSet(teamScore->box, FALSE);
             MgScoreBoxColorSet(teamScore->box, 64, 64, 64);
-            teamScore->seconds = MgScoreCreate(DATANUM(DATA_mgconst, 48), -1, TRUE);
+            teamScore->seconds = MgScoreCreate(DATANUM(0x9b0000, 48), -1, TRUE);
             MgScoreMaxDigitSet(teamScore->seconds, 2);
             MgScoreDispOff(teamScore->seconds);
             MgScorePosSet(teamScore->seconds, lbl_1_data_1E8[team].x - 32.0f,
                 lbl_1_data_1E8[team].y);
             MgScoreColorSet(teamScore->seconds, 255, 216, 21);
             MgScorePriSet(teamScore->seconds, 10);
-            teamScore->hundredths = MgScoreCreate(DATANUM(DATA_mgconst, 48), -1, TRUE);
+            teamScore->hundredths = MgScoreCreate(DATANUM(0x9b0000, 48), -1, TRUE);
             MgScoreMaxDigitSet(teamScore->hundredths, 2);
             MgScoreDispOff(teamScore->hundredths);
             MgScorePosSet(teamScore->hundredths, 16.0f + lbl_1_data_1E8[team].x,
@@ -146,7 +147,7 @@ void fn_1_42F4(OMOBJ *obj)
     teamScore = NULL;
     switch (scoreWork->state) {
         case 0:
-            if (MgSeqModeGet() != MGSEQ_MODE_MAIN) {
+            if (fn_80071A8C() != 5) {
                 break;
             }
             scoreWork->state++;

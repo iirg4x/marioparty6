@@ -126,7 +126,7 @@ void fn_1_DAC(int playerIndex, s16 masuId);
 
 void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(OMOBJ *));
 void HuAudSndGrpSetSet(s16 grpSet);
-void HuDataDirClose(int dataNum);
+void fn_800097F4(int dataNum);
 void mbLightFuncSet(VoidFunc setHook, VoidFunc resetHook);
 void mbMapCameraSet(const HuVecF *rot, const HuVecF *position, float zoom);
 void mbMapHookSet(void (*hook)(BOOL enterF));
@@ -169,7 +169,7 @@ void mbWipeSpecialWait(void);
 // Selects single-player mode and registers the Thirsty Gulch board hooks.
 void fn_1_A0(void)
 {
-    GwSystem.partyF = FALSE;
+    lbl_80265B70.partyF = FALSE;
     mbObjectSetup(6, fn_1_F4, fn_1_270);
 }
 
@@ -183,11 +183,11 @@ void fn_1_F4(void)
     boardNo = MBBoardNoGet();
 
     HuAudSndGrpSetSet(MSM_GRP_SBRD);
-    lbl_1_bss_40 = GwSystem.boardWork;
-    mbMasuInit(DATANUM(DATA_s01, 0));
-    *boardModelId = mbObjCreate(DATANUM(DATA_s01, 2), NULL, FALSE);
-    mbObjAttrSet(*boardModelId, HU3D_MOTATTR_LOOP);
-    mbScrollInit(DATANUM(DATA_s01, 1));
+    lbl_1_bss_40 = lbl_80265B70.boardWork;
+    mbMasuInit(DATANUM(0xc70000, 0));
+    *boardModelId = mbObjCreate(DATANUM(0xc70000, 2), NULL, FALSE);
+    mbObjAttrSet(*boardModelId, ((1 << 30) | (1 << 0)));
+    mbScrollInit(DATANUM(0xc70000, 1));
     mbLightFuncSet(fn_1_404, fn_1_468);
     mbPlayerTurnInitHookSet(fn_1_3E0);
     mbPlayerTurnCloseHookSet(fn_1_3E4);
@@ -197,12 +197,12 @@ void fn_1_F4(void)
     mbev_MasuHatenaSet(fn_1_374);
     mbMapCameraSet(NULL, &lbl_1_data_0, lbl_1_rodata_7C);
     mbMapHookSet(fn_1_46C);
-    omAddObjEx(mbObjMan, S01_OBJECT_PRIORITY, 0, 0, -1, fn_1_274);
+    fn_8003AB38(mbObjMan, S01_OBJECT_PRIORITY, 0, 0, -1, fn_1_274);
     fn_1_4C8();
     fn_1_8F0();
     fn_1_AFC();
     fn_1_C38();
-    HuDataDirClose(DATANUM(DATA_s01, 0));
+    fn_800097F4(DATANUM(0xc70000, 0));
 }
 
 // No close-time returnWork is needed for the board object manager.
@@ -214,7 +214,7 @@ void fn_1_270(OMOBJ *boardObject)
 void fn_1_274(OMOBJ *boardObject)
 {
     if (mbExitCheck()) {
-        omDelObjEx((OMOBJMAN *)HuPrcCurrentGet(), boardObject);
+        omDelObjEx((OMOBJMAN *)fn_8000DD9C(), boardObject);
     } else {
         fn_1_A50();
         fn_1_CEC();
@@ -271,7 +271,7 @@ void fn_1_404(void)
 {
     s16 *boardModelId = &lbl_1_bss_3C;
 
-    Hu3DModelLightInfoSet(mbObjModelIDGet(boardModelId[0]), TRUE);
+    fn_80029850(mbObjModelIDGet(boardModelId[0]), TRUE);
     Hu3DFogSet(lbl_1_rodata_80, lbl_1_rodata_84, 200, 200, 100);
 }
 
@@ -320,13 +320,13 @@ void fn_1_590(int playerIndex, int eventId)
     mbPlayerRotateStart(playerIndex, 0, 15);
     mbCameraPlayerViewSetFast(playerIndex, 2);
     mbCameraShakeSet(48, lbl_1_rodata_88);
-    soundHandle = mbAudFXPlay(MSM_SE_SBRD_08);
+    soundHandle = mbAudFXPlay(1549);
     HuPrcSleep(48);
     mbPlayerMotionShiftSet(playerIndex, 9, 0.0f,
         lbl_1_rodata_8C, 0);
-    mbMasuPosGet(GwPlayer[playerIndex].masuId, &routeMove.origin);
+    mbMasuPosGet(lbl_80265750[playerIndex].masuId, &routeMove.origin);
     mbMasuPosGet(marker->markerMasuId, &routeMove.destination);
-    GwPlayer[playerIndex].masuIdNext = marker->markerMasuId;
+    lbl_80265750[playerIndex].masuIdNext = marker->markerMasuId;
     mbMasuNextSet(marker->markerMasuId);
     mbPlayerColSnapPlayerSet(playerIndex, FALSE);
 
@@ -335,7 +335,7 @@ void fn_1_590(int playerIndex, int eventId)
         progress = elapsedFrame / lbl_1_rodata_90;
         if ((u32)elapsedFrame == 0) {
             mbObjMotionSpeedSet(marker->markerModelId, 1.0f);
-            mbAudFXPlay(MSM_SE_SBRD_09);
+            mbAudFXPlay(1550);
             mbAudFXStop(soundHandle);
         } else if ((u32)elapsedFrame == 24) {
             mbPlayerMotionShiftSet(playerIndex, routeMove.playerMotionId,
@@ -353,12 +353,12 @@ void fn_1_590(int playerIndex, int eventId)
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerIndex, 6, 0.0f,
-        lbl_1_rodata_8C, HU3D_MOTATTR_LOOP);
+        lbl_1_rodata_8C, ((1 << 30) | (1 << 0)));
     HuPrcSleep(60);
     mbWipeFadeOut();
     mbPlayerColSnapPlayerSet(playerIndex, TRUE);
     mbPlayerMotionKill(playerIndex, routeMove.playerMotionId);
-    GwPlayer[playerIndex].masuId = marker->markerMasuId;
+    lbl_80265750[playerIndex].masuId = marker->markerMasuId;
 }
 
 // Stops each route marker after a player's turn closes.
@@ -380,10 +380,10 @@ void fn_1_8F0(void)
     s32 npcIndex;
 
     for (npcIndex = 0; npcIndex < 5; npcIndex++, npc++) {
-        npc->npcModelId = mbObjCreate(DATANUM(DATA_s01, 6), lbl_1_data_A4, FALSE);
+        npc->npcModelId = mbObjCreate(DATANUM(0xc70000, 6), lbl_1_data_A4, FALSE);
         mbObjPosSetV(npc->npcModelId, &lbl_1_data_54[npcIndex].position);
         mbObjRotYSet(npc->npcModelId, lbl_1_data_54[npcIndex].headingDegrees);
-        mbObjMotionSet(npc->npcModelId, 1, HU3D_MOTATTR_LOOP);
+        mbObjMotionSet(npc->npcModelId, 1, ((1 << 30) | (1 << 0)));
         npc->eventId = lbl_1_data_B0[npcIndex];
     }
 }
@@ -413,8 +413,8 @@ void fn_1_A50(void)
         if (mbObjMotionGet(npc->npcModelId) != 1
             && mbObjMotionEndCheck(npc->npcModelId)) {
             mbObjMotionShiftSet(npc->npcModelId, 1, 0.0f,
-                lbl_1_rodata_8C, HU3D_MOTATTR_LOOP);
-            mbObjMotionShapeSet(npc->npcModelId, 1, HU3D_MOTATTR_SHAPE_LOOP);
+                lbl_1_rodata_8C, ((1 << 30) | (1 << 0)));
+            mbObjMotionShapeSet(npc->npcModelId, 1, ((1 << 30) | (1 << 6)));
         }
     }
 }
@@ -441,10 +441,10 @@ void fn_1_AFC(void)
         motionIds[secondRandomIndex] = displacedMotion;
     }
     for (motionIndex = 0; motionIndex < 3; motionIndex++, routeModelId++) {
-        *routeModelId = mbObjCreate(DATANUM(DATA_s01, 9), lbl_1_data_F4, FALSE);
+        *routeModelId = mbObjCreate(DATANUM(0xc70000, 9), lbl_1_data_F4, FALSE);
         mbObjPosSetV(*routeModelId, &lbl_1_data_C4[motionIndex].position);
         mbObjRotYSet(*routeModelId, lbl_1_data_C4[motionIndex].headingDegrees);
-        mbObjMotionSet(*routeModelId, motionIds[motionIndex], HU3D_MOTATTR_LOOP);
+        mbObjMotionSet(*routeModelId, motionIds[motionIndex], ((1 << 30) | (1 << 0)));
     }
 }
 
@@ -454,8 +454,8 @@ void fn_1_C38(void)
     s16 *signModelId = &lbl_1_bss_0;
     HuVecF position;
 
-    signModelId[0] = mbObjCreate(DATANUM(DATA_s01, 16), lbl_1_data_10C, TRUE);
-    mbObjMotionSet(signModelId[0], 1, HU3D_MOTATTR_LOOP);
+    signModelId[0] = mbObjCreate(DATANUM(0xc70000, 16), lbl_1_data_10C, TRUE);
+    mbObjMotionSet(signModelId[0], 1, ((1 << 30) | (1 << 0)));
     mbObjScaleSet(signModelId[0], 0.5f, 0.5f, 0.5f);
     Hu3DModelObjPosGet(mbObjModelIDGet(lbl_1_bss_3C), lbl_1_data_114, &position);
     mbObjPosSetV(signModelId[0], &position);
@@ -499,7 +499,7 @@ void fn_1_DAC(int playerIndex, s16 masuId)
     mbMoveNumDispSet(playerIndex, FALSE);
     mbCameraMovePlayer((s16)playerIndex, &lbl_1_data_11C, NULL,
         lbl_1_rodata_9C, lbl_1_rodata_A0, 120);
-    currentMasuId = GwPlayer[playerIndex].masuId;
+    currentMasuId = lbl_80265750[playerIndex].masuId;
     mbMasuPosGet(currentMasuId, &returnWork.playerOrigin);
     mbMasuPosGet(masuId, &returnWork.destination);
     PSVECSubtract(&returnWork.destination, &returnWork.playerOrigin, &returnWork.movementVector);
@@ -507,7 +507,7 @@ void fn_1_DAC(int playerIndex, s16 masuId)
         * (atan2(returnWork.movementVector.x, returnWork.movementVector.z) / 3.141592653589793));
     mbPlayerRotYSet(playerIndex, headingDegrees);
     mbPlayerMotionShiftSet(playerIndex, 2, 0.0f,
-        lbl_1_rodata_8C, HU3D_MOTATTR_LOOP);
+        lbl_1_rodata_8C, ((1 << 30) | (1 << 0)));
 
     for (elapsedFrame = 0; (u32)elapsedFrame <= 120; elapsedFrame++) {
         progress = elapsedFrame / lbl_1_rodata_A4;
@@ -519,19 +519,19 @@ void fn_1_DAC(int playerIndex, s16 masuId)
             returnWork.playerOrigin.z + progress * returnWork.movementVector.z;
         mbPlayerPosSetV(playerIndex, &returnWork.currentPosition);
         if (elapsedFrame % 30 == 0) {
-            omVibrate((s16)playerIndex, 20, 7, 3);
+            fn_8006A030((s16)playerIndex, 20, 7, 3);
         }
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerIndex, playerMotions.travelMotionId, 0.0f,
-        lbl_1_rodata_8C, HU3D_MOTATTR_LOOP);
+        lbl_1_rodata_8C, ((1 << 30) | (1 << 0)));
     HuPrcSleep(30);
     mbCameraShakeSet(60, lbl_1_rodata_88);
-    soundHandle = mbAudFXPlay(MSM_SE_SBRD_08);
+    soundHandle = mbAudFXPlay(1549);
     HuPrcSleep(60);
     mbObjMotionSpeedSet(marker->markerModelId, 1.0f);
-    omVibrate((s16)playerIndex, 20, 20, 0);
-    mbAudFXPlay(MSM_SE_SBRD_09);
+    fn_8006A030((s16)playerIndex, 20, 20, 0);
+    mbAudFXPlay(1550);
     mbAudFXStop(soundHandle);
     HuPrcSleep(12);
     mbPlayerMotionShiftSet(playerIndex, 9, 0.0f,
@@ -547,7 +547,7 @@ void fn_1_DAC(int playerIndex, s16 masuId)
         mbPlayerPosSetV(playerIndex, &returnWork.fallPosition);
         if ((u32)elapsedFrame == 18) {
             mbPlayerMotionShiftSet(playerIndex, playerMotions.jumpMotionId,
-                0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         }
         HuPrcVSleep();
     }
@@ -562,7 +562,7 @@ void fn_1_DAC(int playerIndex, s16 masuId)
     mbWipeCreate(1, WIPE_TYPE_CROSS_COPY, 30);
     mbMusFadeOutSpeed(0, 1000);
     mbWipeSpecialCreate(1, 6, 90);
-    mbAudFXPlay(MSM_SE_SBRD_10);
+    mbAudFXPlay(1551);
 
     // The following loop computes progress but does not use it.
     for (elapsedFrame = 0; (u32)elapsedFrame <= 90; elapsedFrame++) {
@@ -592,7 +592,7 @@ s16 lbl_1_bss_0;
 HuVecF lbl_1_data_0 = {0.0f, 0.0f, 300.0f};
 HuVecF lbl_1_data_C = {-28.0f, 0.0f, 0.0f};
 HuVecF lbl_1_data_18 = {0.0f, 0.0f, 0.0f};
-s32 lbl_1_data_24[3] = {DATANUM(DATA_s01, 3), DATANUM(DATA_s01, 4), DATANUM(DATA_s01, 5)};
+s32 lbl_1_data_24[3] = {DATANUM(0xc70000, 3), DATANUM(0xc70000, 4), DATANUM(0xc70000, 5)};
 HuVecF lbl_1_data_30[3] = {
     {-150.0f, 566.0f, -375.0f},
     {191.0f, 828.0f, -1272.0f},
@@ -605,7 +605,7 @@ S01PosRot lbl_1_data_54[5] = {
     {{-1123.0f, 338.0f, -548.0f}, 22.0f},
     {{1480.0f, 661.0f, -1111.0f}, -40.0f}
 };
-int lbl_1_data_A4[3] = {DATANUM(DATA_s01, 7), DATANUM(DATA_s01, 8), -1};
+int lbl_1_data_A4[3] = {DATANUM(0xc70000, 7), DATANUM(0xc70000, 8), -1};
 s32 lbl_1_data_B0[5] = {1, 2, 3, 3, 4};
 S01PosRot lbl_1_data_C4[3] = {
     {{-203.0f, -11.0f, 857.0f}, 50.0f},
@@ -613,10 +613,10 @@ S01PosRot lbl_1_data_C4[3] = {
     {{-801.0f, 653.0f, -870.0f}, 45.0f}
 };
 int lbl_1_data_F4[6] = {
-    DATANUM(DATA_s01, 10), DATANUM(DATA_s01, 11), DATANUM(DATA_s01, 12), DATANUM(DATA_s01, 13),
-    DATANUM(DATA_s01, 14), -1
+    DATANUM(0xc70000, 10), DATANUM(0xc70000, 11), DATANUM(0xc70000, 12), DATANUM(0xc70000, 13),
+    DATANUM(0xc70000, 14), -1
 };
-int lbl_1_data_10C[2] = {DATANUM(DATA_s01, 17), -1};
+int lbl_1_data_10C[2] = {DATANUM(0xc70000, 17), -1};
 char lbl_1_data_114[8] = "jyango";
 HuVecF lbl_1_data_11C = {-15.0f, 0.0f, 0.0f};
 HuVecF lbl_1_data_128 = {-90.0f, 0.0f, 0.0f};

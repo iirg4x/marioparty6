@@ -324,11 +324,11 @@ static inline s32 m649_local_4858_049E4(s32 handle)
 /* Creates the utility owner at startup, clears shared object pointers, and resets resource
  * caches. */
 void fn_1_13D8(OMOBJMAN *manager) {
-    OMOBJ *object=omAddObjEx(manager,22,0,0,OM_GRP_NONE,fn_1_149C);
+    OMOBJ *object=fn_8003AB38(manager,22,0,0,-1,fn_1_149C);
     void *state;
     lbl_1_bss_308=object;
     lbl_1_bss_304=lbl_1_bss_300=lbl_1_bss_2FC=lbl_1_bss_2F8=NULL;
-    state=HuMemDirectMallocNum(HEAP_HEAP,4,HU_MEMNUM_OVL);
+    state=HuMemDirectMallocNum(HEAP_HEAP,4,0x10000000);
     object->data=state;
     memset(state,0,4);
     fn_1_4800();
@@ -349,9 +349,9 @@ void fn_1_14A0(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 {
     M649LightWork *work;
     OMOBJ *object;
-    object = omAddObjEx(manager, 24, 0, 0, OM_GRP_NONE, fn_1_15A8);
+    object = fn_8003AB38(manager, 24, 0, 0, -1, fn_1_15A8);
     lbl_1_bss_304 = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649LightWork), HU_MEMNUM_OVL);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649LightWork), 0x10000000);
     object->data = work;
     memset(work, 0, sizeof(M649LightWork));
     work->position = *position;
@@ -365,7 +365,7 @@ void fn_1_14A0(OMOBJMAN *manager, Vec *position, Vec *target, GXColor *color)
 /* Runs from the light object's update callback and forwards the frame to its client callback. */
 void fn_1_15A8(OMOBJ *obj)
 {
-    M620LightData *light = omObjGetDataAs(lbl_1_bss_304, M620LightData);
+    M620LightData *light = ((M620LightData *)(lbl_1_bss_304->data));
     if (light->callback != (OMOBJ_FUNC)(void *)0) {
         light->callback(obj);
     }
@@ -374,9 +374,9 @@ void fn_1_15A8(OMOBJ *obj)
 /* Creates a directional renderer light and shares its saved direction.
 * Successful creation replaces a zero saved direction with +Z. */
 void fn_1_1600(void) {
-    M620LightData *light = omObjGetDataAs(lbl_1_bss_304, M620LightData);
+    M620LightData *light = ((M620LightData *)(lbl_1_bss_304->data));
 
-    light->lightId = Hu3DGLightCreateV(&light->position, &light->direction, &light->color);
+    light->lightId = fn_800286D0(&light->position, &light->direction, &light->color);
     Hu3DGLightInfinitytSet(light->lightId);
     Hu3DGLightStaticSet(light->lightId, 1);
     fn_1_2B14(&light->direction);
@@ -390,15 +390,15 @@ void fn_1_1664(s32 modelId, char *lightName) {
 
     light = lbl_1_bss_304->data;
     globalLightTable = Hu3DGlobalLight;
-    Hu3DModelLightInfoSet((s16) modelId, 1);
+    fn_80029850((s16) modelId, 1);
     if (lightName != NULL) {
-        light->light = Hu3DModelLightIdGet((s16) modelId, lightName);
+        light->light = fn_80029D24((s16) modelId, lightName);
     } else {
         /* With no name, use global light slot 0 rather than a model-local light index. */
         light->light = 0;
     }
     if (light->light >= 0) {
-        Hu3DGLightParamGet(light->light, &light->position,
+        fn_800297D4(light->light, &light->position,
                            &light->direction,
                            &light->color);
         fn_1_2B14(&light->direction);
@@ -407,33 +407,33 @@ void fn_1_1664(s32 modelId, char *lightName) {
 
 /* Stores the optional light-object callback invoked by fn_1_15A8 on each update. */
 void fn_1_1718(OMOBJ_FUNC callback) {
-    M620LightData *light=omObjGetDataAs(lbl_1_bss_304,M620LightData);
+    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
     light->callback=callback;
 }
 
 /* Moves the active directional light when its owner changes the world position. */
 void fn_1_1740(HuVecF *position) {
-    M620LightData *light=omObjGetDataAs(lbl_1_bss_304,M620LightData);
+    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
     light->position=*position;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Changes the active directional light direction when its owner updates the lighting. */
 void fn_1_17A8(HuVecF *direction) {
-    M620LightData *light=omObjGetDataAs(lbl_1_bss_304,M620LightData);
+    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
     light->direction=*direction;
     Hu3DGLightPosSetV(light->lightId,&light->position,&light->direction);
 }
 
 /* Returns a pointer to the stored light direction. */
 HuVecF *fn_1_1810() {
-    M620LightData *light=omObjGetDataAs(lbl_1_bss_304,M620LightData);
+    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
     return &light->direction;
 }
 
 /* Updates the active minigame light color when a caller changes its lighting. */
 void fn_1_1838(int red,int green,int blue,int alpha) {
-    M620LightData *light=omObjGetDataAs(lbl_1_bss_304,M620LightData);
+    M620LightData *light=((M620LightData *)(lbl_1_bss_304->data));
     light->color.r=red;
     light->color.g=green;
     light->color.b=blue;
@@ -448,9 +448,9 @@ void fn_1_18BC(OMOBJMAN *manager, void *parameters)
     M649FogWork *work;
     s32 layerIndex;
     OMOBJ *object;
-    object = omAddObjEx(manager, 26, 0, 0, OM_GRP_NONE, fn_1_19BC);
+    object = fn_8003AB38(manager, 26, 0, 0, -1, fn_1_19BC);
     lbl_1_bss_300 = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649FogWork), HU_MEMNUM_OVL);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649FogWork), 0x10000000);
     object->data = work;
     memset(work, 0, sizeof(M649FogWork));
     work->parameters = ((M649FogParam *)parameters);
@@ -462,14 +462,14 @@ void fn_1_18BC(OMOBJMAN *manager, void *parameters)
                        ((M649FogParam *) parameters)->color.r,
                        ((M649FogParam *) parameters)->color.g,
                        ((M649FogParam *) parameters)->color.b);
-        Hu3DLayerHookSet(((M649FogParam *)parameters)->layer, fn_1_1A14);
+        fn_80025918(((M649FogParam *)parameters)->layer, fn_1_1A14);
     }
 }
 
 /* Runs from the fog object's update callback and forwards the frame to its client callback. */
 void fn_1_19BC(OMOBJ *obj)
 {
-    M620LightData *fogState = omObjGetDataAs(lbl_1_bss_300, M620LightData);
+    M620LightData *fogState = ((M620LightData *)(lbl_1_bss_300->data));
     if (fogState->callback != (OMOBJ_FUNC)(void *)0) {
         fogState->callback(obj);
     }
@@ -486,7 +486,7 @@ void fn_1_1A14(s16 layer)
     work = lbl_1_bss_300->data;
     for (parameters = work->parameters; parameters->layer != -1; parameters++) {
         if (parameters->layer == layer) {
-            Hu3DCameraPerspectiveGet(parameters->cameras, &fov, &nearPlane, &farPlane);
+            fn_80027D8C(parameters->cameras, &fov, &nearPlane, &farPlane);
             end = parameters->start + work->factor * (parameters->end - parameters->start);
             GXSetFog(parameters->type, parameters->start, end, nearPlane, farPlane,
                      parameters->color);
@@ -510,7 +510,7 @@ void fn_1_1B48(f32 factor) {
     M649FogWork *work;
 
     if (lbl_1_bss_300 != NULL) {
-        work = omObjGetDataAs(lbl_1_bss_300, M649FogWork);
+        work = ((M649FogWork *)(lbl_1_bss_300->data));
         work->factor = factor;
     }
 }
@@ -525,9 +525,9 @@ void fn_1_1B88(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float
     s32 i;
     u32 bit;
     s32 count = 0;
-    object = omAddObjEx(manager, 28, 0, 0, OM_GRP_NONE, fn_1_1EF4);
+    object = fn_8003AB38(manager, 28, 0, 0, -1, fn_1_1EF4);
     lbl_1_bss_2FC = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649CameraWork), HU_MEMNUM_OVL);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649CameraWork), 0x10000000);
     object->data = work;
     memset(work, 0, sizeof(M649CameraWork));
     work->cameras = cameras;
@@ -564,10 +564,10 @@ void fn_1_1B88(OMOBJMAN *manager, u32 cameras, float fov, float nearPlane, float
     }
     Hu3DCameraCreate(cameras);
     Hu3DCameraPerspectiveSet(cameras, fov, nearPlane, farPlane, 1.2f);
-    omCameraViewSetMulti(cameras, view);
-    object = omAddObjEx(manager, 29, 0, 0, OM_GRP_NONE, omOutViewMulti);
+    fn_8003E488(cameras, view);
+    object = fn_8003AB38(manager, 29, 0, 0, -1, fn_8003DAA4);
     object->work[0] = count;
-    omOutViewMulti(object);
+    fn_8003DAA4(object);
 }
 
 /* Updates active cameras once per object-manager frame and refreshes their render viewports. */
@@ -580,15 +580,15 @@ void fn_1_1EF4(OMOBJ *object)
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
         if (work->cameras & bit) {
             entry = &work->entries[i];
-            Hu3DCameraPosGet(bit, &entry->position, &entry->up, &entry->target);
-            Hu3DCameraPerspectiveGet(bit, &entry->fov, &entry->nearPlane, &entry->farPlane);
+            fn_80027CD0(bit, &entry->position, &entry->up, &entry->target);
+            fn_80027D8C(bit, &entry->fov, &entry->nearPlane, &entry->farPlane);
             if (shadowDone == 0) {
                 if (work->shadowRadius > 0.0) {
                     fn_1_2590(work->cameras, &work->shadowDirection, &entry->target,
                               work->shadowFov, work->shadowRadius);
                     /* This color setter changes only camera 0, regardless of the selected camera
                      * mask. */
-                    Hu3DShadowColSet(work->shadowColor.r, work->shadowColor.g, work->shadowColor.b);
+                    fn_8002AAB4(work->shadowColor.r, work->shadowColor.g, work->shadowColor.b);
                 }
                 shadowDone = 1;
             }
@@ -596,9 +596,9 @@ void fn_1_1EF4(OMOBJ *object)
                 fn_1_211C(object, bit, i);
             } else {
                 if (work->callback != NULL) { work->callback(object, bit, i); }
-                CenterM[i] = entry->view.center;
-                CRotM[i] = entry->view.rot;
-                CZoomM[i] = entry->view.zoom;
+                lbl_80266B18[i] = entry->view.center;
+                lbl_80266A58[i] = entry->view.rot;
+                lbl_80266BD8[i] = entry->view.zoom;
             }
             Hu3DCameraPerspectiveSet(bit, entry->fov, entry->nearPlane, entry->farPlane,
                                      entry->aspect);
@@ -617,24 +617,25 @@ void fn_1_211C(OMOBJ *object, u32 camera, s32 index)
     M649CameraWork *work = object->data;
     Vec cameraOffset;
     entry = &work->entries[index];
-    CenterM[index] = entry->target;
+    lbl_80266B18[index] = entry->target;
     cameraOffset.x = entry->position.x - entry->target.x;
     cameraOffset.y = entry->position.y - entry->target.y;
     cameraOffset.z = entry->position.z - entry->target.z;
-    CRotM[index].x = 180.0 * (atan2(-cameraOffset.y,
-        sqrtf(cameraOffset.x * cameraOffset.x + cameraOffset.z * cameraOffset.z)) / M_PI);
-    CRotM[index].y = 180.0 * (atan2(cameraOffset.x, cameraOffset.z) / M_PI);
-    CRotM[index].z = 0.0f;
-    CZoomM[index] = sqrtf(cameraOffset.z * cameraOffset.z +
+    lbl_80266A58[index].x = 180.0 * (atan2(-cameraOffset.y,
+        sqrtf(cameraOffset.x * cameraOffset.x
+            + cameraOffset.z * cameraOffset.z)) / 3.141592653589793);
+    lbl_80266A58[index].y = 180.0 * (atan2(cameraOffset.x, cameraOffset.z) / 3.141592653589793);
+    lbl_80266A58[index].z = 0.0f;
+    lbl_80266BD8[index] = sqrtf(cameraOffset.z * cameraOffset.z +
                           (cameraOffset.x * cameraOffset.x + cameraOffset.y * cameraOffset.y));
-    entry->view.center = CenterM[index];
-    entry->view.rot = CRotM[index];
-    entry->view.zoom = CZoomM[index];
-    if (Hu3DMotionEndCheck(entry->model)) {
-        Hu3DModelKill(entry->model);
-        entry->previousView.center = CenterM[index];
-        entry->previousView.rot = CRotM[index];
-        entry->previousView.zoom = CZoomM[index];
+    entry->view.center = lbl_80266B18[index];
+    entry->view.rot = lbl_80266A58[index];
+    entry->view.zoom = lbl_80266BD8[index];
+    if (fn_8002D75C(entry->model)) {
+        fn_800262D0(entry->model);
+        entry->previousView.center = lbl_80266B18[index];
+        entry->previousView.rot = lbl_80266A58[index];
+        entry->previousView.zoom = lbl_80266BD8[index];
         entry->active = 0;
     }
 }
@@ -648,7 +649,7 @@ void fn_1_2590(s32 camera, Vec *direction, Vec *target, float fov, float radius)
     const Vec *up = lbl_1_rodata_E0;
     float distance;
     float radians;
-    radians = M_PI * (fov / 2.0f) / 180.0;
+    radians = 3.141592653589793 * (fov / 2.0f) / 180.0;
     distance = radius / tanf(radians);
     PSVECNormalize(direction, &normalizedDirection);
     PSVECScale(&normalizedDirection, &shadowCameraPosition, distance);
@@ -656,10 +657,10 @@ void fn_1_2590(s32 camera, Vec *direction, Vec *target, float fov, float radius)
     if (fabs(normalizedDirection.y) > 0.5) {
         up++;
     }
-    Hu3DShadowMultiCreate(fov, distance - radius, distance + radius, camera);
-    Hu3DShadowMultiPosSet(&shadowCameraPosition, (Vec *)up, target, camera);
-    Hu3DShadowMultiSizeSet(480, camera);
-    Hu3DShadowMultiTPLvlSet(0.4f, camera);
+    fn_8002A3B0(fov, distance - radius, distance + radius, camera);
+    fn_8002A674(&shadowCameraPosition, (Vec *)up, target, camera);
+    fn_8002A8CC(480, camera);
+    fn_8002A7D8(0.4f, camera);
 }
 
 /* Returns the camera index represented by the first set bit, or zero for an empty mask. */
@@ -679,7 +680,7 @@ int fn_1_273C(unsigned int mask)
 
 /* Stores the callback that updates camera view data during the camera object's frame update. */
 extern void fn_1_2780(CameraCallback callback) {
-    M649CameraWork *state=omObjGetDataAs(lbl_1_bss_2FC,M649CameraWork);
+    M649CameraWork *state=((M649CameraWork *)(lbl_1_bss_2FC->data));
     state->callback=callback;
 }
 
@@ -766,7 +767,7 @@ extern void fn_1_2AE4(f32 shadowFov) {
 void fn_1_2B14(HuVecF *direction) {
     OMOBJ *object=lbl_1_bss_2FC;
     if(object != NULL) {
-        M649CameraWork *state=omObjGetDataAs(object,M649CameraWork);
+        M649CameraWork *state=((M649CameraWork *)(object->data));
         state->shadowDirection=*direction;
     }
 }
@@ -796,13 +797,13 @@ void fn_1_2BCC(u32 cameras, void *data)
     u32 bit;
     OMOBJ *object = lbl_1_bss_2FC;
     M649CameraWork *work = object->data;
-    s32 motion = Hu3DMotionCreate(data);
+    s32 motion = fn_8002C4C0(data);
     for (i = 0, bit = 1; i < 16; i++, bit <<= 1) {
         if (cameras & bit) {
             entry = &work->entries[i];
             entry->motion = motion;
-            entry->model = Hu3DModelCameraCreate(motion, bit);
-            Hu3DCameraMotionStart(entry->model, bit);
+            entry->model = fn_800283F4(motion, bit);
+            fn_800284C8(entry->model, bit);
             entry->active = 1;
         }
     }
@@ -905,9 +906,9 @@ void fn_1_3250(HUPROCESS *objectManager, u32 audioConfig) {
     OMOBJ *object;
     u32 *objectState;
 
-    object = omAddObjEx(objectManager, 30, 0, 0, -1, fn_1_32EC);
+    object = fn_8003AB38(objectManager, 30, 0, 0, -1, fn_1_32EC);
     lbl_1_bss_2F8 = object;
-    objectState = (u32 *)HuMemDirectMallocNum(HEAP_HEAP, 1544, HU_MEMNUM_OVL);
+    objectState = (u32 *)HuMemDirectMallocNum(HEAP_HEAP, 1544, 0x10000000);
     object->data = objectState;
     memset(objectState, 0, 1544);
     *objectState = audioConfig;
@@ -916,7 +917,7 @@ void fn_1_3250(HUPROCESS *objectManager, u32 audioConfig) {
 
 /* Runs each frame for the shared audio object, updating sounds before its optional callback. */
 void fn_1_32EC(OMOBJ *obj) {
-    M620ObjectState *state = omObjGetDataAs(lbl_1_bss_2F8, M620ObjectState);
+    M620ObjectState *state = ((M620ObjectState *)(lbl_1_bss_2F8->data));
 
     fn_1_33AC(obj);
     if (state->callback != NULL) {
@@ -927,7 +928,7 @@ void fn_1_32EC(OMOBJ *obj) {
 /* Initializes the sound tracking table when the audio object is created. */
 void fn_1_3354(OMOBJ *object)
 {
-    M649AudioWork *state = omObjGetDataAs(lbl_1_bss_2F8, M649AudioWork);
+    M649AudioWork *state = ((M649AudioWork *)(lbl_1_bss_2F8->data));
     M649AudioEntry *record = state->entries;
     int index;
 
@@ -1139,7 +1140,7 @@ extern void fn_1_473C(int effect, int handle, Vec *position, int panEnabled, int
 void fn_1_4788(unsigned int cameraMask, int effect, int handle, HuVecF *position, int panEnabled,
                int volumeEnabled)
 {
-    M649AudioWork *state=omObjGetDataAs(lbl_1_bss_2F8,M649AudioWork);
+    M649AudioWork *state=((M649AudioWork *)(lbl_1_bss_2F8->data));
     M649AudioEntry *record=state->entries;
     int index;
     for(index=0;index<64;index++,record++) {
@@ -1191,11 +1192,11 @@ int fn_1_48DC(int dataNum) {
     if(slot>=0) {
         model=lbl_1_bss_78[slot];
         if(model==-1) {
-            model=Hu3DModelCreateData(dataNum);
+            model=fn_80025A04(fn_80008DD0(dataNum, 0x10000000, 2));
             lbl_1_bss_78[slot]=model;
             return model;
         }
-        return Hu3DModelLink(model);
+        return fn_80025D4C(model);
     }
     return -1;
 }
@@ -1209,7 +1210,7 @@ s32 fn_1_49E4(s32 model, s32 dataNum)
     if (slot >= 0) {
         motion = lbl_1_bss_78[slot];
         if (motion == -1) {
-            motion = Hu3DJointMotionData(model, dataNum);
+            motion = fn_80030458(model, fn_80008DD0(dataNum, 0x10000000, 2));
             lbl_1_bss_78[slot] = motion;
             return motion;
         }

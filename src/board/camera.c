@@ -13,7 +13,7 @@
 
 #include "humath.h"
 
-#define FLAG_BOARD_CAMERAMOT FLAGNUM(FLAG_GROUP_COMMON, 26)
+#define FLAG_BOARD_CAMERAMOT 65562
 
 #define MB_CAMERA_STACK_MAX 16
 
@@ -43,7 +43,7 @@ float mbAngleLerp(float a, float b, float t);
 
 static inline int BoardNoGet(void)
 {
-    return GwSystem.boardNo;
+    return lbl_80265B70.boardNo;
 }
 
 static void CameraOMExec(OMOBJ *obj);
@@ -116,7 +116,7 @@ void mbCameraInit(void)
     cameraP->zoom = viewData[2].zoom;
     cameraP->rot.x = viewData[2].rotX;
     cameraP->rot.y = cameraP->rot.z = 0;
-    cameraP->bit = HU3D_CAM0 | HU3D_CAM1;
+    cameraP->bit = (1 << 0) | (1 << 1);
     cameraP->speed = 0.15f;
     cameraP->focusNum = 0;
     memset(&cameraP->focus[0], 0, MB_CAMERA_FOCUS_MAX * sizeof(MBCAMERAFOCUS));
@@ -124,7 +124,7 @@ void mbCameraInit(void)
     cameraP->time = 0;
     cameraP->maxTime = -1;
     Hu3DNoSyncSet(0);
-    Hu3DCameraCreate(cameraP->bit | HU3D_CAM2);
+    Hu3DCameraCreate(cameraP->bit | (1 << 2));
     cam = &Hu3DCamera[2];
     cam->pos.x = cam->pos.y = cam->pos.z = 0;
     cam->target.z = -100;
@@ -149,11 +149,11 @@ void mbCameraInit(void)
     HuAudFXListnerSetEX(&pos, &dir, listenerParam->sndDist, listenerParam->sndSpeed,
                         listenerParam->startDis, listenerParam->frontSurDis,
                         listenerParam->backSurDis);
-    cameraOMObj = omAddObjEx(mbObjMan, 32256, 0, 0, OM_GRP_NONE, CameraOMExec);
-    Hu3DCameraLayerHookSet(HU3D_CAM0, 0, Camera0LayerHook);
-    Hu3DCameraLayerHookSet(HU3D_CAM1, 0, Camera1LayerHook);
-    Hu3DCameraLayerHookSet(HU3D_CAM2, 0, Camera2LayerHook);
-    omSetStatBit(cameraOMObj, OM_STAT_NOPAUSE);
+    cameraOMObj = fn_8003AB38(mbObjMan, 32256, 0, 0, -1, CameraOMExec);
+    fn_8002583C((1 << 0), 0, Camera0LayerHook);
+    fn_8002583C((1 << 1), 0, Camera1LayerHook);
+    fn_8002583C((1 << 2), 0, Camera2LayerHook);
+    omSetStatBit(cameraOMObj, (1 << 5));
     lightTypeBackup[0] = lightTypeBackup[1] = -1;
 }
 
@@ -183,13 +183,13 @@ static void Camera1LayerHook(s16 layerNo)
     if(lightTypeBackup[1] != -1) {
         light->type = lightTypeBackup[1];
     }
-    Hu3DZClear();
+    fn_8002BF48();
 }
 
 // Clears the depth buffer before camera 2 draws its layer.
 static void Camera2LayerHook(s16 layerNo)
 {
-    Hu3DZClear();
+    fn_8002BF48();
 }
 
 // Updates the board camera and audio listener each object-manager frame; registered by
@@ -199,7 +199,7 @@ static void CameraOMExec(OMOBJ *obj)
     MBCAMERA *cameraP = mbCameraGet();
     HuVecF dir;
     if(mbExitCheck()) {
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     if(mbPauseEnableCheck()) {
@@ -225,7 +225,7 @@ static void CameraMotionMain(MBCAMERA *cameraP)
     HuVecF pos;
     float zoom;
     float time;
-    if(_CheckFlag(FLAG_BOARD_CAMERAMOT)) {
+    if(fn_8006A124(FLAG_BOARD_CAMERAMOT)) {
         CameraMotionSet(cameraP);
         return;
     }
@@ -332,12 +332,12 @@ static float CameraCanterCalc(HuVecF *rot, float fov, HuVecF *center)
     if(cameraP->focusNum < 2) {
         return -1;
     }
-    rot2.x = HuSin(rot->y)*HuSin(rot->x);
-    rot2.y = HuCos(rot->x);
-    rot2.z = HuCos(rot->y)*HuSin(rot->x);
-    rot1.x = -HuSin(rot->y)*HuCos(rot->x);
-    rot1.y = HuSin(rot->x);
-    rot1.z = -HuCos(rot->y)*HuCos(rot->x);
+    rot2.x = sin(3.141592653589793*rot->y/180.0)*sin(3.141592653589793*rot->x/180.0);
+    rot2.y = cos(3.141592653589793*rot->x/180.0);
+    rot2.z = cos(3.141592653589793*rot->y/180.0)*sin(3.141592653589793*rot->x/180.0);
+    rot1.x = -sin(3.141592653589793*rot->y/180.0)*cos(3.141592653589793*rot->x/180.0);
+    rot1.y = sin(3.141592653589793*rot->x/180.0);
+    rot1.z = -cos(3.141592653589793*rot->y/180.0)*cos(3.141592653589793*rot->x/180.0);
     VECCrossProduct(&rot2, &rot1, &dir[0]);
     VECNormalize(&dir[0], &dir[0]);
     VECCrossProduct(&dir[0], &rot1, &dir[1]);
@@ -366,7 +366,9 @@ static float CameraCanterCalc(HuVecF *rot, float fov, HuVecF *center)
             if(j != 0) {
                 len /= cameraP->aspect;
             }
-            zoom = len/(HuSin(fov*0.5f)/HuCos(fov*0.5f));
+            zoom =
+                len/(sin(3.141592653589793*(fov*0.5f)/180.0)/cos(3.141592653589793*(fov*0.5f)
+                /180.0));
             zoom += -weight;
             if(zoom > zoomMax) {
                 zoomMax = zoom;
@@ -389,7 +391,7 @@ static void CameraMotionSet(MBCAMERA *cameraP)
     float t;
     HuVecF pos;
     if(++cameraP->time >= cameraP->maxTime) {
-        _ClearFlag(FLAG_BOARD_CAMERAMOT);
+        fn_8006A268(FLAG_BOARD_CAMERAMOT);
     }
     t = (float)cameraP->time / (float)cameraP->maxTime;
     switch(cameraP->curveType) {
@@ -397,17 +399,17 @@ static void CameraMotionSet(MBCAMERA *cameraP)
             weight = t;
             break;
         case MB_CAMERA_CURVE_SIN:
-            weight = HuSin(90.0f * t);
+            weight = sin(3.141592653589793*(90.0f * t)/180.0);
             break;
         case MB_CAMERA_CURVE_SIN2:
-            weight = HuSin(90.0f * t);
+            weight = sin(3.141592653589793*(90.0f * t)/180.0);
             weight = weight * weight;
             break;
         case MB_CAMERA_CURVE_COS:
-            weight = 1.0 - HuCos(90.0f * t);
+            weight = 1.0 - cos(3.141592653589793*(90.0f * t)/180.0);
             break;
         case MB_CAMERA_CURVE_COS2:
-            weight = 1.0 - HuCos(90.0f * t);
+            weight = 1.0 - cos(3.141592653589793*(90.0f * t)/180.0);
             weight = weight * weight;
             break;
     }
@@ -431,12 +433,18 @@ static void CameraMotionSet(MBCAMERA *cameraP)
 // Derives eye and up vectors from the board camera state and applies any active shake.
 static void CameraLookAt(MBCAMERA *cameraP)
 {
-    cameraP->eye.x = (HuSin(cameraP->rot.y)*HuCos(cameraP->rot.x)*cameraP->zoom)+cameraP->center.x;
-    cameraP->eye.y = (-HuSin(cameraP->rot.x)*cameraP->zoom)+cameraP->center.y;
-    cameraP->eye.z = (HuCos(cameraP->rot.y)*HuCos(cameraP->rot.x)*cameraP->zoom)+cameraP->center.z;
-    cameraP->up.x = HuSin(cameraP->rot.y)*HuSin(cameraP->rot.x);
-    cameraP->up.y = HuCos(cameraP->rot.x);
-    cameraP->up.z = HuCos(cameraP->rot.y)*HuSin(cameraP->rot.x);
+    cameraP->eye.x =
+        (sin(3.141592653589793*cameraP->rot.y/180.0)*cos(3.141592653589793*cameraP->rot.x/180.0)
+        *cameraP->zoom)+cameraP->center.x;
+    cameraP->eye.y = (-sin(3.141592653589793*cameraP->rot.x/180.0)*cameraP->zoom)+cameraP->center.y;
+    cameraP->eye.z =
+        (cos(3.141592653589793*cameraP->rot.y/180.0)*cos(3.141592653589793*cameraP->rot.x/180.0)
+        *cameraP->zoom)+cameraP->center.z;
+    cameraP->up.x =
+        sin(3.141592653589793*cameraP->rot.y/180.0)*sin(3.141592653589793*cameraP->rot.x/180.0);
+    cameraP->up.y = cos(3.141592653589793*cameraP->rot.x/180.0);
+    cameraP->up.z =
+        cos(3.141592653589793*cameraP->rot.y/180.0)*sin(3.141592653589793*cameraP->rot.x/180.0);
     if(cameraP->quake) {
         cameraP->eye.x += (frandf()-0.5f)*cameraP->quakePower;
         cameraP->eye.y += (frandf()-0.5f)*cameraP->quakePower;
@@ -742,10 +750,12 @@ BOOL mbCameraCullCheck(HuVecF *pos, float radius)
     }
     MTXLookAt(lookAt, &cameraP->eye, &cameraP->up, &cameraP->center);
     PSMTXMultVec(lookAt, pos, &viewPos);
-    tanHalfFov = HuSin(cameraP->fov*0.5f)/HuCos(cameraP->fov*0.5f);
+    tanHalfFov =
+        sin(3.141592653589793*(cameraP->fov*0.5f)/180.0)/cos(3.141592653589793*(cameraP->fov*0.5f)
+        /180.0);
     boundX = 1.2f*(tanHalfFov*-viewPos.z);
     boundY = tanHalfFov*-viewPos.z;
-    r = radius/HuCos(cameraP->fov*0.5f);
+    r = radius/cos(3.141592653589793*(cameraP->fov*0.5f)/180.0);
     if(fabs(viewPos.x)-r < boundX) {
         if(fabs(viewPos.y)-r < boundY) {
             if((viewPos.z-radius) <= 0.0f) {
@@ -797,7 +807,7 @@ void mbCameraFocusPosAdd(HuVecF *pos)
     cameraP->focus[cameraP->focusNum].type = MB_CAMERA_FOCUS_POS;
     cameraP->focus[cameraP->focusNum].pos = *pos;
     cameraP->focusNum++;
-    if(!_CheckFlag(FLAG_BOARD_CAMERAMOT)) {
+    if(!fn_8006A124(FLAG_BOARD_CAMERAMOT)) {
         mbCameraOffsetSet(0, 0, 0);
     }
     mbCameraMoveOnSet(TRUE);
@@ -820,7 +830,7 @@ void mbCameraFocusPlayerSet(int playerNo)
 void mbCameraFocusPlayerAdd(int playerNo)
 {
     mbCameraFocusObjAdd(mbPlayerObjIDGet(playerNo));
-    if(!_CheckFlag(FLAG_BOARD_CAMERAMOT)) {
+    if(!fn_8006A124(FLAG_BOARD_CAMERAMOT)) {
         mbCameraOffsetSet(0, 100, 0);
     }
     mbCameraMoveOnSet(TRUE);
@@ -844,7 +854,7 @@ void mbCameraFocusObjAdd(MBMODELID modelId)
     cameraP->focus[cameraP->focusNum].type = MB_CAMERA_FOCUS_OBJ;
     cameraP->focus[cameraP->focusNum].targetId = modelId;
     cameraP->focusNum++;
-    if(!_CheckFlag(FLAG_BOARD_CAMERAMOT)) {
+    if(!fn_8006A124(FLAG_BOARD_CAMERAMOT)) {
         mbCameraOffsetSet(0, 0, 0);
     }
     mbCameraMoveOnSet(TRUE);
@@ -868,7 +878,7 @@ void mbCameraFocusMasuAdd(int masuId)
     cameraP->focus[cameraP->focusNum].type = MB_CAMERA_FOCUS_MASU;
     cameraP->focus[cameraP->focusNum].targetId = masuId;
     cameraP->focusNum++;
-    if(!_CheckFlag(FLAG_BOARD_CAMERAMOT)) {
+    if(!fn_8006A124(FLAG_BOARD_CAMERAMOT)) {
         mbCameraOffsetSet(0, 0, 0);
     }
     mbCameraMoveOnSet(TRUE);
@@ -912,7 +922,7 @@ static void CameraMoveApply(HuVecF *pos, HuVecF *rot, HuVecF *offset, float zoom
         ofsTmp = *offset;
     }
     key2->ofs = ofsTmp;
-    _SetFlag(FLAG_BOARD_CAMERAMOT);
+    fn_8006A1C4(FLAG_BOARD_CAMERAMOT);
     cameraP->time = 0;
     if(maxTime < 1) {
         maxTime = 1;
@@ -957,7 +967,7 @@ static inline void CameraMoveApplyI(HuVecF *pos, HuVecF *rot, HuVecF *offset, fl
         ofsTmp = *offset;
     }
     key2->ofs = ofsTmp;
-    _SetFlag(FLAG_BOARD_CAMERAMOT);
+    fn_8006A1C4(FLAG_BOARD_CAMERAMOT);
     cameraP->time = 0;
     if(maxTime < 1) {
         maxTime = 1;
@@ -1045,7 +1055,7 @@ void mbCameraMoveMasu(s16 masuId, HuVecF *rot, HuVecF *offset, float zoom, float
 
 BOOL mbCameraMoveCheck(void)
 {
-    return _CheckFlag(FLAG_BOARD_CAMERAMOT) ? FALSE : TRUE;
+    return fn_8006A124(FLAG_BOARD_CAMERAMOT) ? FALSE : TRUE;
 }
 
 // Yields the calling process until a scripted camera move ends, then yields one extra frame.
@@ -1061,8 +1071,8 @@ void mbCameraMoveWait(void)
 void mbCameraMoveStop(void)
 {
     MBCAMERA *cameraP = mbCameraGet();
-    if(_CheckFlag(FLAG_BOARD_CAMERAMOT)) {
-        _ClearFlag(FLAG_BOARD_CAMERAMOT);
+    if(fn_8006A124(FLAG_BOARD_CAMERAMOT)) {
+        fn_8006A268(FLAG_BOARD_CAMERAMOT);
         cameraP->fov = cameraP->viewKey[1].fov;
         cameraP->zoom = cameraP->viewKey[1].zoom;
         cameraP->rot = cameraP->viewKey[1].rot;

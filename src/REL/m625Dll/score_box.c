@@ -67,14 +67,14 @@ void fn_1_1284C(void)
     boxIndex = 0;
     activePlayer = 0;
     while (activePlayer < 4) {
-        if (GwPlayerConf[activePlayer].grpNo != 0 && boxIndex < 3) {
+        if (lbl_80265728[activePlayer].grpNo != 0 && boxIndex < 3) {
             lbl_1_bss_7C8[boxIndex].frames = 0;
             lbl_1_bss_7C8[boxIndex].active = 0;
             lbl_1_bss_7C8[boxIndex].opacity = 0.8f;
             lbl_1_bss_7C8[boxIndex].beforeRemainingFrames = lbl_1_data_410;
             lbl_1_bss_7C8[boxIndex].remainingFrames = 600;
             lbl_1_bss_7C8[boxIndex].secondaryBox = MgScoreBoxCreateChar(
-                84, 36, GwPlayerConf[activePlayer].charNo);
+                84, 36, lbl_80265728[activePlayer].charNo);
             MgScoreBoxTPLvlSet(lbl_1_bss_7C8[boxIndex].secondaryBox,
                                lbl_1_bss_7C8[boxIndex].opacity);
             MgScoreBoxPosSet(lbl_1_bss_7C8[boxIndex].secondaryBox,
@@ -83,14 +83,14 @@ void fn_1_1284C(void)
             MgScoreBoxDispSet(lbl_1_bss_7C8[boxIndex].secondaryBox, 0);
             lbl_1_bss_7C8[boxIndex].scoreBox = HuSprGrpCreate(3);
             animations[1] = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_m625, 12), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0x540000, 12), 0x10000000, 2));
             sprite = HuSprCreate(animations[1], 1, 0);
             HuSprGrpMemberSet(lbl_1_bss_7C8[boxIndex].scoreBox, 1, sprite);
             HuSprPosSet(lbl_1_bss_7C8[boxIndex].scoreBox, 1,
                         lbl_1_data_438[0], lbl_1_data_438[1]);
             HuSprBankSet(lbl_1_bss_7C8[boxIndex].scoreBox, 1, 0);
             animations[2] = HuSprAnimRead(
-                HuDataSelHeapReadNum(DATANUM(DATA_m625, 13), HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(DATANUM(0x540000, 13), 0x10000000, 2));
             sprite = HuSprCreate(animations[2], 2, 0);
             HuSprGrpMemberSet(lbl_1_bss_7C8[boxIndex].scoreBox, 2, sprite);
             HuSprPosSet(lbl_1_bss_7C8[boxIndex].scoreBox, 2,
@@ -135,7 +135,7 @@ void fn_1_12D7C(s16 player)
     boxIndex = 0;
     playerIndex = 0;
     while (playerIndex < 4) {
-        if (GwPlayerConf[playerIndex].grpNo != 0) {
+        if (lbl_80265728[playerIndex].grpNo != 0) {
             if (boxIndex < 3) {
                 if (playerIndex == player) {
                     MgScoreBoxDispSet(lbl_1_bss_7C8[boxIndex].scoreBox, 1);
@@ -185,7 +185,7 @@ void fn_1_12F98(s16 player, s16 frames)
 
     scoreBoxIndex = 0;
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        if (GwPlayerConf[playerIndex].grpNo != 0 && scoreBoxIndex < 3) {
+        if (lbl_80265728[playerIndex].grpNo != 0 && scoreBoxIndex < 3) {
             if (playerIndex == player) {
                 lbl_1_bss_7C8[scoreBoxIndex].remainingFrames = frames;
                 if (lbl_1_bss_7C8[scoreBoxIndex].remainingFrames < 0) {

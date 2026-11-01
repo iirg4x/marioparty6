@@ -4,12 +4,12 @@
 
 MGDATA MgDataTbl[] = {
 	{
-        DLL_m601dll,
+        6,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M601,
-		DATA_m601,
+		0x3c0000,
 		{
 			{ INSTPIC_ANM_m601 },
 			{ INSTPIC_ANM_m601n }
@@ -43,12 +43,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m602dll,
+        7,
         MG_TYPE_4P,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M602,
-		DATA_m602,
+		0x3d0000,
 		{
 			{ INSTPIC_ANM_m602 },
 			{ INSTPIC_ANM_m602 }
@@ -82,12 +82,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m603dll,
+        8,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M603,
-		DATA_m603,
+		0x3e0000,
 		{
 			{ INSTPIC_ANM_m603 },
 			{ INSTPIC_ANM_m603n }
@@ -121,12 +121,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m604dll,
+        9,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M604,
-		DATA_m604,
+		0x3f0000,
 		{
 			{ INSTPIC_ANM_m604e },
 			{ INSTPIC_ANM_m604en }
@@ -161,12 +161,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m605dll,
+        10,
         MG_TYPE_4P,
 		MG_FLAG_4P|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M605,
-		DATA_m605,
+		0x400000,
 		{
 			{ INSTPIC_ANM_m605 },
 			{ INSTPIC_ANM_m605 }
@@ -200,12 +200,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m606dll,
+        11,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M606,
-		DATA_m606,
+		0x410000,
 		{
 			{ INSTPIC_ANM_m606 },
 			{ INSTPIC_ANM_m606n }
@@ -239,12 +239,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m607dll,
+        12,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M607,
-		DATA_m607,
+		0x420000,
 		{
 			{ INSTPIC_ANM_m607 },
 			{ INSTPIC_ANM_m607n }
@@ -278,12 +278,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m608dll,
+        13,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M608,
-		DATA_m608,
+		0x430000,
 		{
 			{ INSTPIC_ANM_m608 },
 			{ INSTPIC_ANM_m608n }
@@ -317,12 +317,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m609dll,
+        14,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M609,
-		DATA_m609,
+		0x440000,
 		{
 			{ INSTPIC_ANM_m609 },
 			{ INSTPIC_ANM_m609n }
@@ -356,12 +356,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m610dll,
+        15,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M610,
-		DATA_m610,
+		0x450000,
 		{
 			{ INSTPIC_ANM_m610 },
 			{ INSTPIC_ANM_m610n }
@@ -395,12 +395,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m611dll,
+        16,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M611,
-		DATA_m611,
+		0x460000,
 		{
 			{ INSTPIC_ANM_m611 },
 			{ INSTPIC_ANM_m611n }
@@ -434,12 +434,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m612dll,
+        17,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M612,
-		DATA_m612,
+		0x470000,
 		{
 			{ INSTPIC_ANM_m612 },
 			{ INSTPIC_ANM_m612n }
@@ -473,12 +473,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m613dll,
+        18,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M613,
-		DATA_m613,
+		0x480000,
 		{
 			{ INSTPIC_ANM_m613 },
 			{ INSTPIC_ANM_m613n }
@@ -512,12 +512,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m614dll,
+        19,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_ACTION|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M614,
-		DATA_m614,
+		0x490000,
 		{
 			{ INSTPIC_ANM_m614 },
 			{ INSTPIC_ANM_m614n }
@@ -551,12 +551,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m615dll,
+        20,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_ACTION|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M615,
-		DATA_m615,
+		0x4a0000,
 		{
 			{ INSTPIC_ANM_m615 },
 			{ INSTPIC_ANM_m615n }
@@ -590,12 +590,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m616dll,
+        21,
         MG_TYPE_4P,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M616,
-		DATA_m616,
+		0x4b0000,
 		{
 			{ INSTPIC_ANM_m616 },
 			{ INSTPIC_ANM_m616 }
@@ -629,12 +629,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m617dll,
+        22,
         MG_TYPE_KETTOU,
 		MG_FLAG_DISABLE_DAY|MG_FLAG_4P|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M617,
-		DATA_m617,
+		0x4c0000,
 		{
 			{ INSTPIC_ANM_m617 },
 			{ INSTPIC_ANM_m617 }
@@ -668,12 +668,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m618dll,
+        23,
         MG_TYPE_4P,
 		MG_FLAG_4P|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M618,
-		DATA_m618,
+		0x4d0000,
 		{
 			{ INSTPIC_ANM_m618 },
 			{ INSTPIC_ANM_m618 }
@@ -707,12 +707,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m619dll,
+        24,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_SKILL|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M619,
-		DATA_m619,
+		0x4e0000,
 		{
 			{ INSTPIC_ANM_m619 },
 			{ INSTPIC_ANM_m619n }
@@ -746,12 +746,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m620dll,
+        25,
         MG_TYPE_4P,
 		MG_FLAG_DISABLE_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M620,
-		DATA_m620,
+		0x4f0000,
 		{
 			{ INSTPIC_ANM_m620 },
 			{ INSTPIC_ANM_m620 }
@@ -785,12 +785,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m621dll,
+        26,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_ACTION|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M621,
-		DATA_m621,
+		0x500000,
 		{
 			{ INSTPIC_ANM_m621 },
 			{ INSTPIC_ANM_m621n }
@@ -824,12 +824,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m622dll,
+        27,
         MG_TYPE_4P,
 		MG_FLAG_COIN|MG_FLAG_4P|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M622,
-		DATA_m622,
+		0x510000,
 		{
 			{ INSTPIC_ANM_m622 },
 			{ INSTPIC_ANM_m622 }
@@ -863,12 +863,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m623dll,
+        28,
         MG_TYPE_1VS3,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_COIN|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M623,
-		DATA_m623,
+		0x520000,
 		{
 			{ INSTPIC_ANM_m623 },
 			{ INSTPIC_ANM_m623n }
@@ -902,12 +902,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m624dll,
+        29,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M624,
-		DATA_m624,
+		0x530000,
 		{
 			{ INSTPIC_ANM_m624 },
 			{ INSTPIC_ANM_m624 }
@@ -941,12 +941,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m625dll,
+        30,
         MG_TYPE_1VS3,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M625,
-		DATA_m625,
+		0x540000,
 		{
 			{ INSTPIC_ANM_m625 },
 			{ INSTPIC_ANM_m625n }
@@ -980,12 +980,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m626dll,
+        31,
         MG_TYPE_1VS3,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_EASY|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M626,
-		DATA_m626,
+		0x550000,
 		{
 			{ INSTPIC_ANM_m626 },
 			{ INSTPIC_ANM_m626n }
@@ -1019,12 +1019,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m627dll,
+        32,
         MG_TYPE_1VS3,
 		MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M627,
-		DATA_m627,
+		0x560000,
 		{
 			{ INSTPIC_ANM_m627 },
 			{ INSTPIC_ANM_m627 }
@@ -1058,12 +1058,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m628dll,
+        33,
         MG_TYPE_1VS3,
 		MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M628,
-		DATA_m628,
+		0x570000,
 		{
 			{ INSTPIC_ANM_m628 },
 			{ INSTPIC_ANM_m628 }
@@ -1097,12 +1097,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m629dll,
+        34,
         MG_TYPE_1VS3,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M629,
-		DATA_m629,
+		0x580000,
 		{
 			{ INSTPIC_ANM_m629 },
 			{ INSTPIC_ANM_m629n }
@@ -1136,12 +1136,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m630dll,
+        35,
         MG_TYPE_1VS3,
 		MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M630,
-		DATA_m630,
+		0x590000,
 		{
 			{ INSTPIC_ANM_m630 },
 			{ INSTPIC_ANM_m630 }
@@ -1175,12 +1175,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m631dll,
+        36,
         MG_TYPE_1VS3,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_EASY|MG_FLAG_PACK_ACTION|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M631,
-		DATA_m631,
+		0x5a0000,
 		{
 			{ INSTPIC_ANM_m631 },
 			{ INSTPIC_ANM_m631n }
@@ -1214,12 +1214,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m632dll,
+        37,
         MG_TYPE_1VS3,
 		MG_FLAG_PACK_EASY|MG_FLAG_PACK_ACTION|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M632,
-		DATA_m632,
+		0x5b0000,
 		{
 			{ INSTPIC_ANM_m632 },
 			{ INSTPIC_ANM_m632 }
@@ -1253,12 +1253,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m633dll,
+        38,
         MG_TYPE_1VS3,
 		MG_FLAG_PACK_ACTION|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M633,
-		DATA_m633,
+		0x5c0000,
 		{
 			{ INSTPIC_ANM_m633 },
 			{ INSTPIC_ANM_m633 }
@@ -1292,12 +1292,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m634dll,
+        39,
         MG_TYPE_1VS3,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M634,
-		DATA_m634,
+		0x5d0000,
 		{
 			{ INSTPIC_ANM_m634 },
 			{ INSTPIC_ANM_m634n }
@@ -1331,12 +1331,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m635dll,
+        40,
         MG_TYPE_2VS2,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M635,
-		DATA_m635,
+		0x5e0000,
 		{
 			{ INSTPIC_ANM_m635e },
 			{ INSTPIC_ANM_m635en }
@@ -1370,12 +1370,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m636dll,
+        41,
         MG_TYPE_2VS2,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M636,
-		DATA_m636,
+		0x5f0000,
 		{
 			{ INSTPIC_ANM_m636 },
 			{ INSTPIC_ANM_m636 }
@@ -1409,12 +1409,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m637dll,
+        42,
         MG_TYPE_2VS2,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M637,
-		DATA_m637,
+		0x600000,
 		{
 			{ INSTPIC_ANM_m637 },
 			{ INSTPIC_ANM_m637 }
@@ -1448,12 +1448,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m638dll,
+        43,
         MG_TYPE_2VS2,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M638,
-		DATA_m638,
+		0x610000,
 		{
 			{ INSTPIC_ANM_m638 },
 			{ INSTPIC_ANM_m638n }
@@ -1487,12 +1487,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m639dll,
+        44,
         MG_TYPE_2VS2,
 		MG_FLAG_DISABLE_DAY|MG_FLAG_4P|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M639,
-		DATA_m639,
+		0x620000,
 		{
 			{ INSTPIC_ANM_m639 },
 			{ INSTPIC_ANM_m639 }
@@ -1526,12 +1526,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m640dll,
+        45,
         MG_TYPE_2VS2,
 		MG_FLAG_4P|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M640,
-		DATA_m640,
+		0x630000,
 		{
 			{ INSTPIC_ANM_m640 },
 			{ INSTPIC_ANM_m640 }
@@ -1565,12 +1565,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m641dll,
+        46,
         MG_TYPE_2VS2,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M641,
-		DATA_m641,
+		0x640000,
 		{
 			{ INSTPIC_ANM_m641 },
 			{ INSTPIC_ANM_m641n }
@@ -1604,12 +1604,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m642dll,
+        47,
         MG_TYPE_2VS2,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_COIN|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M642,
-		DATA_m642,
+		0x650000,
 		{
 			{ INSTPIC_ANM_m642 },
 			{ INSTPIC_ANM_m642n }
@@ -1643,12 +1643,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m643dll,
+        48,
         MG_TYPE_2VS2,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_GRPORDER|MG_FLAG_PACK_ACTION|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M643,
-		DATA_m643,
+		0x660000,
 		{
 			{ INSTPIC_ANM_m643 },
 			{ INSTPIC_ANM_m643n }
@@ -1682,12 +1682,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m644dll,
+        49,
         MG_TYPE_2VS2,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_ACTION|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M644,
-		DATA_m644,
+		0x670000,
 		{
 			{ INSTPIC_ANM_m644 },
 			{ INSTPIC_ANM_m644n }
@@ -1721,12 +1721,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m645dll,
+        50,
         MG_TYPE_2VS2,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_GRPORDER|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M645,
-		DATA_m645,
+		0x680000,
 		{
 			{ INSTPIC_ANM_m645 },
 			{ INSTPIC_ANM_m645n }
@@ -1760,12 +1760,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m646dll,
+        51,
         MG_TYPE_BATTLE,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M646,
-		DATA_m646,
+		0x690000,
 		{
 			{ INSTPIC_ANM_m646 },
 			{ INSTPIC_ANM_m646 }
@@ -1799,12 +1799,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m647dll,
+        52,
         MG_TYPE_BATTLE,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M647,
-		DATA_m647,
+		0x6a0000,
 		{
 			{ INSTPIC_ANM_m647 },
 			{ INSTPIC_ANM_m647n }
@@ -1838,12 +1838,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m648dll,
+        53,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M648,
-		DATA_m648,
+		0x6b0000,
 		{
 			{ INSTPIC_ANM_m648 },
 			{ INSTPIC_ANM_m648n }
@@ -1877,12 +1877,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m649dll,
+        54,
         MG_TYPE_BATTLE,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M649,
-		DATA_m649,
+		0x6c0000,
 		{
 			{ INSTPIC_ANM_m649 },
 			{ INSTPIC_ANM_m649 }
@@ -1916,12 +1916,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m650dll,
+        55,
         MG_TYPE_4P,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M650,
-		DATA_m650,
+		0x6d0000,
 		{
 			{ INSTPIC_ANM_m650 },
 			{ INSTPIC_ANM_m650n }
@@ -1955,12 +1955,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m651dll,
+        56,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M651,
-		DATA_m651,
+		0x6e0000,
 		{
 			{ INSTPIC_ANM_m651 },
 			{ INSTPIC_ANM_m651 }
@@ -1994,12 +1994,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m652dll,
+        57,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M652,
-		DATA_m652,
+		0x6f0000,
 		{
 			{ INSTPIC_ANM_m652 },
 			{ INSTPIC_ANM_m652 }
@@ -2033,12 +2033,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m653dll,
+        58,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M653,
-		DATA_m653,
+		0x700000,
 		{
 			{ INSTPIC_ANM_m653 },
 			{ INSTPIC_ANM_m653 }
@@ -2072,12 +2072,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m654dll,
+        59,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M654,
-		DATA_m654,
+		0x710000,
 		{
 			{ INSTPIC_ANM_m654 },
 			{ INSTPIC_ANM_m654 }
@@ -2111,12 +2111,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m655dll,
+        60,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_SKILL|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M655,
-		DATA_m655,
+		0x720000,
 		{
 			{ INSTPIC_ANM_m655 },
 			{ INSTPIC_ANM_m655 }
@@ -2150,12 +2150,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m656dll,
+        61,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M656,
-		DATA_m656,
+		0x730000,
 		{
 			{ INSTPIC_ANM_m656 },
 			{ INSTPIC_ANM_m656 }
@@ -2189,12 +2189,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m657dll,
+        62,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_EASY,
 		MG_RECORD_NONE,
 		MG_NAME_M657,
-		DATA_m657,
+		0x740000,
 		{
 			{ INSTPIC_ANM_m657 },
 			{ INSTPIC_ANM_m657 }
@@ -2228,12 +2228,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m658dll,
+        63,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M658,
-		DATA_m658,
+		0x750000,
 		{
 			{ INSTPIC_ANM_m658 },
 			{ INSTPIC_ANM_m658 }
@@ -2267,12 +2267,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m659dll,
+        64,
         MG_TYPE_KETTOU,
 		MG_FLAG_4P|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M659,
-		DATA_m659,
+		0x760000,
 		{
 			{ INSTPIC_ANM_m659 },
 			{ INSTPIC_ANM_m659 }
@@ -2306,12 +2306,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m660dll,
+        65,
         MG_TYPE_KETTOU,
 		MG_FLAG_DISABLE_DAY|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M660,
-		DATA_m660,
+		0x770000,
 		{
 			{ INSTPIC_ANM_m660 },
 			{ INSTPIC_ANM_m660 }
@@ -2345,12 +2345,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m661dll,
+        66,
         MG_TYPE_KETTOU,
 		MG_FLAG_DISABLE_DAY|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M661,
-		DATA_m661,
+		0x780000,
 		{
 			{ INSTPIC_ANM_m661 },
 			{ INSTPIC_ANM_m661 }
@@ -2384,12 +2384,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m662dll,
+        67,
         MG_TYPE_KETTOU,
 		MG_FLAG_DISABLE_DAY|MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M662,
-		DATA_m662,
+		0x790000,
 		{
 			{ INSTPIC_ANM_m662 },
 			{ INSTPIC_ANM_m662 }
@@ -2423,12 +2423,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m663dll,
+        68,
         MG_TYPE_KETTOU,
 		MG_FLAG_DISABLE_DAY|MG_FLAG_4P|MG_FLAG_PACK_WEIRD,
 		MG_RECORD_NONE,
 		MG_NAME_M663,
-		DATA_m663,
+		0x7a0000,
 		{
 			{ INSTPIC_ANM_m663 },
 			{ INSTPIC_ANM_m663 }
@@ -2462,12 +2462,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m664dll,
+        69,
         MG_TYPE_BATTLE,
 		MG_FLAG_HAS_NIGHT|MG_FLAG_4P|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M664,
-		DATA_m664,
+		0x7b0000,
 		{
 			{ INSTPIC_ANM_m664 },
 			{ INSTPIC_ANM_m664n }
@@ -2501,12 +2501,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m665dll,
+        70,
         MG_TYPE_1VS3,
 		MG_FLAG_MIC|MG_FLAG_4P|MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M665,
-		DATA_m665,
+		0x7c0000,
 		{
 			{ INSTPIC_ANM_m665 },
 			{ INSTPIC_ANM_m665n }
@@ -2540,12 +2540,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m666dll,
+        71,
         MG_TYPE_1VS3,
 		MG_FLAG_MIC|MG_FLAG_4P|MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M666,
-		DATA_m666,
+		0x7d0000,
 		{
 			{ INSTPIC_ANM_m666 },
 			{ INSTPIC_ANM_m666n }
@@ -2579,12 +2579,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m667dll,
+        72,
         MG_TYPE_1VS3,
 		MG_FLAG_MIC|MG_FLAG_4P|MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M667,
-		DATA_m667,
+		0x7e0000,
 		{
 			{ INSTPIC_ANM_m667 },
 			{ INSTPIC_ANM_m667n }
@@ -2618,12 +2618,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m668dll,
+        73,
         MG_TYPE_2VS2,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M668,
-		DATA_m668,
+		0x7f0000,
 		{
 			{ INSTPIC_ANM_m668 },
 			{ INSTPIC_ANM_m668 }
@@ -2657,12 +2657,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m669dll,
+        74,
         MG_TYPE_1VS3,
 		MG_FLAG_MIC|MG_FLAG_4P|MG_FLAG_HAS_NIGHT|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M669,
-		DATA_m669,
+		0x800000,
 		{
 			{ INSTPIC_ANM_m669 },
 			{ INSTPIC_ANM_m669n }
@@ -2696,12 +2696,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m670dll,
+        75,
         MG_TYPE_1VS3,
 		MG_FLAG_MIC|MG_FLAG_4P|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M670,
-		DATA_m670,
+		0x810000,
 		{
 			{ INSTPIC_ANM_m670 },
 			{ INSTPIC_ANM_m670 }
@@ -2735,12 +2735,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m671dll,
+        76,
         MG_TYPE_KUPA,
 		MG_FLAG_4P|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M671,
-		DATA_m671,
+		0x820000,
 		{
 			{ INSTPIC_ANM_m671 },
 			{ INSTPIC_ANM_m671 }
@@ -2774,12 +2774,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m672dll,
+        77,
         MG_TYPE_KUPA,
 		MG_FLAG_4P|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M672,
-		DATA_m672,
+		0x830000,
 		{
 			{ INSTPIC_ANM_m672 },
 			{ INSTPIC_ANM_m672 }
@@ -2813,12 +2813,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m673dll,
+        78,
         MG_TYPE_KUPA,
 		MG_FLAG_4P|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M673,
-		DATA_m673,
+		0x840000,
 		{
 			{ INSTPIC_ANM_m673 },
 			{ INSTPIC_ANM_m673 }
@@ -2852,12 +2852,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m674dll,
+        79,
         MG_TYPE_DONKEY,
 		MG_FLAG_4P|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M674,
-		DATA_m674,
+		0x850000,
 		{
 			{ INSTPIC_ANM_m674 },
 			{ INSTPIC_ANM_m674 }
@@ -2891,12 +2891,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m675dll,
+        80,
         MG_TYPE_DONKEY,
 		MG_FLAG_4P|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M675,
-		DATA_m675,
+		0x860000,
 		{
 			{ INSTPIC_ANM_m675 },
 			{ INSTPIC_ANM_m675 }
@@ -2930,12 +2930,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m676dll,
+        81,
         MG_TYPE_DONKEY,
 		MG_FLAG_4P|MG_FLAG_PACK_ALL,
 		MG_RECORD_NONE,
 		MG_NAME_M676,
-		DATA_m676,
+		0x870000,
 		{
 			{ INSTPIC_ANM_m676 },
 			{ INSTPIC_ANM_m676 }
@@ -2969,12 +2969,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m677dll,
+        82,
         MG_TYPE_LAST,
 		MG_FLAG_RARE,
 		MG_RECORD_NONE,
 		MG_NAME_M677,
-		DATA_m677,
+		0x880000,
 		{
 			{ INSTPIC_ANM_m677e },
 			{ INSTPIC_ANM_m677e }
@@ -3008,12 +3008,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m678dll,
+        83,
         MG_TYPE_678,
 		MG_FLAG_RARE,
 		MG_RECORD_NONE,
 		MG_NAME_M678,
-		DATA_m678,
+		0x890000,
 		{
 			{ INSTPIC_ANM_m678e_1, INSTPIC_ANM_m678 },
 			{ INSTPIC_ANM_m678e_1, INSTPIC_ANM_m678 }
@@ -3047,12 +3047,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m679dll,
+        84,
         MG_TYPE_LAST,
 		MG_FLAG_RARE,
 		MG_RECORD_NONE,
 		MG_NAME_M679,
-		DATA_m679,
+		0x8a0000,
 		{
 			{ INSTPIC_ANM_m679 },
 			{ INSTPIC_ANM_m679 }
@@ -3086,12 +3086,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m680dll,
+        85,
         MG_TYPE_BATTLE,
 		MG_FLAG_4P|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_SKILL,
 		MG_RECORD_NONE,
 		MG_NAME_M680,
-		DATA_m680,
+		0x8b0000,
 		{
 			{ INSTPIC_ANM_m680 },
 			{ INSTPIC_ANM_m680 }
@@ -3125,12 +3125,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m681dll,
+        86,
         MG_TYPE_BATTLE,
 		MG_FLAG_4P|MG_FLAG_PACK_EASY|MG_FLAG_PACK_WEIRD|MG_FLAG_PACK_ACTION,
 		MG_RECORD_NONE,
 		MG_NAME_M681,
-		DATA_m681,
+		0x8c0000,
 		{
 			{ INSTPIC_ANM_m681 },
 			{ INSTPIC_ANM_m681 }
@@ -3164,12 +3164,12 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_m699dll,
+        87,
         MG_TYPE_LAST,
 		MG_FLAG_RARE,
 		MG_RECORD_NONE,
 		MG_NAME_M699,
-		DATA_m699,
+		0x8d0000,
 		{
 			{ INSTPIC_ANM_m699 },
 			{ INSTPIC_ANM_m699 }
@@ -3203,7 +3203,7 @@ MGDATA MgDataTbl[] = {
 		}
     },
 	{
-        DLL_NONE,
+        -1,
         MG_TYPE_4P,
 		0,
 		MG_RECORD_NONE,

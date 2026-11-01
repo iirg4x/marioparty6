@@ -20,8 +20,8 @@ typedef struct RouteModeList_131C8 {
     s16 values[3];
 } RouteModeList_131C8;
 #include "REL/m660dll/routes.h"
-extern HuVecF Center, CRot;
-extern f32 CZoom;
+extern HuVecF lbl_80266A4C, lbl_80266A40;
+extern f32 lbl_802C028C;
 extern int printf();
 f32 fn_1_3C54(f32 range);
 s16 fn_1_2E80(f32 *value, f32 step, f32 start, f32 end);
@@ -680,7 +680,7 @@ s16 fn_1_12030(M660Player *player, s16 advanceState)
             f32 adjustment;
             f32 speedOffset;
             f32 distanceSquared;
-            MgPlayerComStkOn(lbl_1_bss_1E8.players[player->playerIndex]);
+            fn_8007E818(lbl_1_bss_1E8.players[player->playerIndex]);
             player->previousChasePosition = player->currentPosition;
             delta.x = player->currentPosition.x - player->position.x;
             delta.z = player->currentPosition.z - player->position.z;
@@ -728,7 +728,7 @@ s16 fn_1_12030(M660Player *player, s16 advanceState)
                            ((f64) player->distance *
                             cos((3.141592653589793 * (f64) (player->angle + player->steeringX)) /
                                 180.0)));
-                MgPlayerVecChase(lbl_1_bss_1E8.players[player->playerIndex], (HuVecF *) &target,
+                fn_8007E8B4(lbl_1_bss_1E8.players[player->playerIndex], (HuVecF *) &target,
                                  player->forwardSpeed, player->arrivalRadius);
                 if (chaseResult == 0)
                 {
@@ -746,7 +746,7 @@ s16 fn_1_12030(M660Player *player, s16 advanceState)
             player->previousChasePosition = player->currentPosition;
             target = player->previousChasePosition;
             chaseResult =
-                MgPlayerVecChase(lbl_1_bss_1E8.players[player->playerIndex], (HuVecF *) &target,
+                fn_8007E8B4(lbl_1_bss_1E8.players[player->playerIndex], (HuVecF *) &target,
                                  player->forwardSpeed, player->arrivalRadius);
             if (0 != chaseResult)
             {
@@ -763,7 +763,7 @@ s16 fn_1_12030(M660Player *player, s16 advanceState)
         }
     case 3 :
         {
-            MgPlayerComStkOff(lbl_1_bss_1E8.players[player->playerIndex]);
+            fn_8007E888(lbl_1_bss_1E8.players[player->playerIndex]);
             player->chaseState = 0;
             result = 1;
             break;

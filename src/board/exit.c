@@ -1,3 +1,4 @@
+#include <math.h>
 #include "game/board/main.h"
 #include "game/board/pause.h"
 #include "game/armem.h"
@@ -16,8 +17,8 @@ static void ExitWatchDestroy(void);
 
 void mbExitWatchCreate(void)
 {
-    exitWatchProc = HuPrcCreate(ExitWatch, 0x2013, 0x2000, 0);
-    HuPrcSetStat(exitWatchProc, HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+    exitWatchProc = fn_8000D818(ExitWatch, 0x2013, 0x2000, 0);
+    HuPrcSetStat(exitWatchProc, 0x4 | 0x8);
     HuPrcDestructorSet2(exitWatchProc, ExitWatchDestroy);
     exitFlag[0] = 0;
     exitReq = 0;
@@ -40,19 +41,19 @@ static void ExitWatch(void)
     while (WipeCheck()) {
         HuPrcVSleep();
     }
-    while (HuARDMACheck()) {
+    while (fn_80055FB4()) {
         HuPrcVSleep();
     }
-    HuPrcResetStat(mbObjMan, HU_PRC_STAT_UPAUSE);
+    HuPrcResetStat(mbObjMan, 0x2);
     objWork = mbObjMan->property;
     for (i = 0; i < objWork->objMax; i++) {
-        if ((objWork->objData[i].stat & (OM_STAT_DELETED | OM_STAT_NOPAUSE)) == 0) {
-            omResetStatBit(&objWork->objData[i], OM_STAT_PAUSED);
+        if ((objWork->objData[i].stat & ((1 << 0) | (1 << 5))) == 0) {
+            omResetStatBit(&objWork->objData[i], (1 << 4));
         }
     }
     mbPauseEnableReset();
     HuPrcVSleep();
-    omSysPauseCtrl(0);
+    fn_8003E3F0(0);
     HuPrcAllPause(0);
     Hu3DPauseSet(0);
     HuSprPauseSet(0);

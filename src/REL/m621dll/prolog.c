@@ -1,4 +1,5 @@
 /* Overlay constructor and destructor entry points. */
+#include <math.h>
 #include "REL/m621dll.h"
 
 typedef void (*VoidFunc)(void);

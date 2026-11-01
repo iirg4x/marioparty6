@@ -71,7 +71,7 @@ s16 espEntry(unsigned int dataNumber, s16 priority, s16 bank)
         if (unusedAnimation == NULL) {
             return HUSPR_NONE;
         }
-        animationResource = HuDataSelHeapReadNum(dataNumber, HU_MEMNUM_OVL, HEAP_MODEL);
+        animationResource = fn_80008DD0(dataNumber, 0x10000000, 2);
         if (animationResource == NULL) {
             return HUSPR_NONE;
         }

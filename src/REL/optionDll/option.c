@@ -96,65 +96,92 @@ typedef struct OptionWork {
 } OptionWork;
 
 OptionModelEntry lbl_1_data_1AB0[26] = {
-    {DATANUM(DATA_option, 0), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, HU3D_MOTATTR_LOOP, 2, 0},
-    {DATANUM(DATA_option, 1), -1, 0, {0.00000000f, 0.00000000f, -1000.00000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 3), -1, 0, {0.00000000f, 0.00000000f, 50.0000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.29999995f, 1.29999995f, 1.29999995f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 4), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 5), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 6), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 7), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
-    {DATANUM(DATA_option, 8), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, HU3D_MOTATTR_LOOP, 2, 0},
+    {DATANUM(0xbe0000, 0), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U,
+        ((1 << 30) | (1 << 0)), 2, 0},
+    {DATANUM(0xbe0000, 1), -1, 0, {0.00000000f, 0.00000000f, -1000.00000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 3), -1, 0, {0.00000000f, 0.00000000f, 50.0000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.29999995f, 1.29999995f, 1.29999995f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 4), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f,
+        0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 5), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f,
+        0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 6), 2, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f,
+        0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 7), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {1.00000000f, 1.00000000f, 1.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 2), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0},
+    {DATANUM(0xbe0000, 8), -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f,
+        0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U,
+        ((1 << 30) | (1 << 0)), 2, 0},
     {OPTION_MODEL_END, -1, 0, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, {0.00000000f, 0.00000000f, 0.00000000f}, 0U, 0U, 2, 0}
 };
 
 s32 lbl_1_data_2060[60] = {
-    DATANUM(DATA_option, 9), DATANUM(DATA_option, 10),
-    DATANUM(DATA_option, 11), DATANUM(DATA_option, 12),
-    DATANUM(DATA_option, 13), DATANUM(DATA_option, 14),
-    DATANUM(DATA_option, 15), DATANUM(DATA_option, 16),
-    DATANUM(DATA_option, 17), DATANUM(DATA_option, 18),
-    DATANUM(DATA_option, 19), DATANUM(DATA_option, 20),
-    DATANUM(DATA_option, 21), DATANUM(DATA_option, 22),
-    DATANUM(DATA_option, 23), DATANUM(DATA_option, 24),
-    DATANUM(DATA_option, 25), DATANUM(DATA_option, 26),
-    DATANUM(DATA_option, 27), DATANUM(DATA_option, 28),
-    DATANUM(DATA_option, 29), DATANUM(DATA_option, 30),
-    DATANUM(DATA_option, 31), DATANUM(DATA_option, 33),
-    DATANUM(DATA_option, 32), DATANUM(DATA_option, 36),
-    DATANUM(DATA_option, 37), DATANUM(DATA_option, 38),
-    DATANUM(DATA_option, 39), DATANUM(DATA_option, 40),
-    DATANUM(DATA_option, 41), DATANUM(DATA_option, 42),
-    DATANUM(DATA_option, 43), DATANUM(DATA_option, 44),
-    DATANUM(DATA_option, 45), DATANUM(DATA_option, 46),
-    DATANUM(DATA_option, 47), DATANUM(DATA_option, 48),
-    DATANUM(DATA_option, 49), DATANUM(DATA_option, 50),
-    DATANUM(DATA_option, 51), DATANUM(DATA_option, 52),
-    DATANUM(DATA_option, 53), DATANUM(DATA_option, 54),
-    DATANUM(DATA_option, 55), DATANUM(DATA_option, 56),
-    DATANUM(DATA_option, 57), DATANUM(DATA_option, 58),
-    DATANUM(DATA_option, 60), DATANUM(DATA_option, 61),
-    DATANUM(DATA_option, 62), DATANUM(DATA_option, 63),
-    DATANUM(DATA_option, 64), DATANUM(DATA_option, 65),
-    DATANUM(DATA_option, 66), DATANUM(DATA_option, 67),
-    DATANUM(DATA_option, 68), DATANUM(DATA_option, 69),
-    DATANUM(DATA_option, 70), DATANUM(DATA_option, 71)
+    DATANUM(0xbe0000, 9), DATANUM(0xbe0000, 10),
+    DATANUM(0xbe0000, 11), DATANUM(0xbe0000, 12),
+    DATANUM(0xbe0000, 13), DATANUM(0xbe0000, 14),
+    DATANUM(0xbe0000, 15), DATANUM(0xbe0000, 16),
+    DATANUM(0xbe0000, 17), DATANUM(0xbe0000, 18),
+    DATANUM(0xbe0000, 19), DATANUM(0xbe0000, 20),
+    DATANUM(0xbe0000, 21), DATANUM(0xbe0000, 22),
+    DATANUM(0xbe0000, 23), DATANUM(0xbe0000, 24),
+    DATANUM(0xbe0000, 25), DATANUM(0xbe0000, 26),
+    DATANUM(0xbe0000, 27), DATANUM(0xbe0000, 28),
+    DATANUM(0xbe0000, 29), DATANUM(0xbe0000, 30),
+    DATANUM(0xbe0000, 31), DATANUM(0xbe0000, 33),
+    DATANUM(0xbe0000, 32), DATANUM(0xbe0000, 36),
+    DATANUM(0xbe0000, 37), DATANUM(0xbe0000, 38),
+    DATANUM(0xbe0000, 39), DATANUM(0xbe0000, 40),
+    DATANUM(0xbe0000, 41), DATANUM(0xbe0000, 42),
+    DATANUM(0xbe0000, 43), DATANUM(0xbe0000, 44),
+    DATANUM(0xbe0000, 45), DATANUM(0xbe0000, 46),
+    DATANUM(0xbe0000, 47), DATANUM(0xbe0000, 48),
+    DATANUM(0xbe0000, 49), DATANUM(0xbe0000, 50),
+    DATANUM(0xbe0000, 51), DATANUM(0xbe0000, 52),
+    DATANUM(0xbe0000, 53), DATANUM(0xbe0000, 54),
+    DATANUM(0xbe0000, 55), DATANUM(0xbe0000, 56),
+    DATANUM(0xbe0000, 57), DATANUM(0xbe0000, 58),
+    DATANUM(0xbe0000, 60), DATANUM(0xbe0000, 61),
+    DATANUM(0xbe0000, 62), DATANUM(0xbe0000, 63),
+    DATANUM(0xbe0000, 64), DATANUM(0xbe0000, 65),
+    DATANUM(0xbe0000, 66), DATANUM(0xbe0000, 67),
+    DATANUM(0xbe0000, 68), DATANUM(0xbe0000, 69),
+    DATANUM(0xbe0000, 70), DATANUM(0xbe0000, 71)
 };
 
 extern const VoidFunc _ctors[];
@@ -309,7 +336,7 @@ void fn_1_EA6C(void)
         HuWinAttrSet(window, 2048);
         HuWinMesSpeedSet(window, 0);
         HuWinMesSet(window, MESSNUM(MESS_OPTION_MESS, 65));
-        HuAudFXPlay(MSM_SE_MENU_38);
+        HuAudFXPlay(1205);
         for (index = 1; index <= 10; index++) {
             progress = (float)index / 10.0f;
             HuWinPosSet(window,
@@ -327,7 +354,7 @@ void fn_1_EA6C(void)
         inputCount = 0;
         for (;;) {
             HuPrcVSleep();
-            if ((HuPadBtnDown[0] & 0x200) != 0) {
+            if ((lbl_802C0008[0] & 0x200) != 0) {
                 break;
             }
             for (index = 0; index < 8; index++) {
@@ -335,8 +362,8 @@ void fn_1_EA6C(void)
             }
             if (HuMCButtonGet() != 0) {
                 if ((inputCount++ & 15) == 0) {
-                    child = HuPrcChildCreate(fn_1_F0B0, 1000, 8192, 0,
-                        HuPrcCurrentGet());
+                    child = fn_8000DAC0(fn_1_F0B0, 1000, 8192, 0,
+                        fn_8000DD9C());
                     child->property = (void *)(mode++ & 3);
                 }
                 micVolume = HuMCVolGet(-50, 8);
@@ -348,7 +375,7 @@ void fn_1_EA6C(void)
         for (index = 0; index < 8; index++) {
             HuSprAttrSet(lbl_1_bss_BF0[0], index + 21, 4);
         }
-        HuAudFXPlay(MSM_SE_MENU_39);
+        HuAudFXPlay(1206);
         HuWinDispOff(lbl_1_bss_6A0);
         for (index = 1; index <= 10; index++) {
             progress = 1.0f -
@@ -387,7 +414,7 @@ void fn_1_F0B0(void)
     float progress;
     float scale;
 
-    process = HuPrcCurrentGet();
+    process = fn_8000DD9C();
     memberNo = (s32)process->property;
     memberNo++;
     HuSprScaleSet(lbl_1_bss_BF0[0], memberNo, 0.0f,
@@ -414,17 +441,17 @@ void fn_1_F1D8(void)
 
     for (i = 0; entry->dataNum != OPTION_MODEL_END; entry++, i++) {
         if (entry->jointModel == -1) {
-            lbl_1_bss_66E[i] = Hu3DModelCreateData(entry->dataNum);
-            Hu3DModelPosSetV(lbl_1_bss_66E[i], &entry->pos);
-            Hu3DModelRotSetV(lbl_1_bss_66E[i], &entry->rot);
-            Hu3DModelScaleSetV(lbl_1_bss_66E[i], &entry->scale);
-            Hu3DModelAttrSet(lbl_1_bss_66E[i], entry->attr1);
-            Hu3DModelAttrSet(lbl_1_bss_66E[i], entry->attr2);
-            Hu3DModelCameraSet(lbl_1_bss_66E[i], entry->cameraBit);
-            Hu3DModelLayerSet(lbl_1_bss_66E[i], 1);
+            lbl_1_bss_66E[i] = fn_80025A04(fn_80008DD0(entry->dataNum, 0x10000000, 2));
+            fn_80026790(lbl_1_bss_66E[i], &entry->pos);
+            fn_80026838(lbl_1_bss_66E[i], &entry->rot);
+            fn_800268E0(lbl_1_bss_66E[i], &entry->scale);
+            fn_800269E8(lbl_1_bss_66E[i], entry->attr1);
+            fn_800269E8(lbl_1_bss_66E[i], entry->attr2);
+            fn_80026B64(lbl_1_bss_66E[i], entry->cameraBit);
+            fn_80026B8C(lbl_1_bss_66E[i], 1);
         } else {
-            lbl_1_bss_63C[i] = Hu3DJointMotionData(
-                lbl_1_bss_66E[entry->jointModel], entry->dataNum);
+            lbl_1_bss_63C[i] = fn_80030458((lbl_1_bss_66E[entry->jointModel]),
+                fn_80008DD0(entry->dataNum, 0x10000000, 2));
         }
     }
 }
@@ -450,9 +477,9 @@ void fn_1_F410(s16 modelId, s16 animNo1, s16 bank1, s16 animNo2, s16 bank2)
         }
     }
     if (i != 17) {
-        Hu3DAnimAnimSet(lbl_1_bss_5D6[i].animId1, lbl_1_bss_BF8[animNo1]);
+        fn_80030D50(lbl_1_bss_5D6[i].animId1, lbl_1_bss_BF8[animNo1]);
         Hu3DAnimBankSet(lbl_1_bss_5D6[i].animId1, bank1);
-        Hu3DAnimAnimSet(lbl_1_bss_5D6[i].animId2, lbl_1_bss_BF8[animNo2]);
+        fn_80030D50(lbl_1_bss_5D6[i].animId2, lbl_1_bss_BF8[animNo2]);
         Hu3DAnimBankSet(lbl_1_bss_5D6[i].animId2, bank2);
     }
 }

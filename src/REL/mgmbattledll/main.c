@@ -78,19 +78,19 @@ void fn_1_3B78(Point3d *position);
 
 /* Initializes the Battle Bridge object manager, camera and round-flow process. */
 void fn_1_1A088(void) {
-    lbl_1_bss_674 = omInitObjMan(50, 8192);
-    CRot.x = -16.0f;
-    CRot.y = 0.0f;
-    CRot.z = 0.0f;
-    Center.x = 775.0f;
-    Center.y = 130.0f;
-    Center.z = 230.0f;
-    CZoom = 2600.0f;
+    lbl_1_bss_674 = fn_8003A8BC(50, 8192);
+    lbl_80266A40.x = -16.0f;
+    lbl_80266A40.y = 0.0f;
+    lbl_80266A40.z = 0.0f;
+    lbl_80266A4C.x = 775.0f;
+    lbl_80266A4C.y = 130.0f;
+    lbl_80266A4C.z = 230.0f;
+    lbl_802C028C = 2600.0f;
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, 20.0f, 1.0f, 9500.0f, 1.2f);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
-    lbl_1_bss_678 = omAddObjEx(lbl_1_bss_674, 32730, 0U, 0U, -1, fn_1_1B3A4);
-    HuPrcChildCreate(fn_1_1A738, 100U, 12288U, 0, lbl_1_bss_674);
+    lbl_1_bss_678 = fn_8003AB38(lbl_1_bss_674, 32730, 0U, 0U, -1, fn_1_1B3A4);
+    fn_8000DAC0(fn_1_1A738, 100U, 12288U, 0, lbl_1_bss_674);
     fn_1_409C();
 }
 
@@ -139,10 +139,10 @@ void fn_1_1A498(void) {
     } else {
         lbl_1_bss_672 = (s16)history->evtno;
         lbl_1_bss_670 = 0;
-        Center.x = 975.0f;
+        lbl_80266A4C.x = 975.0f;
     }
 
-    _SetFlag(FLAG_INST_MG_MODE);
+    fn_8006A1C4(196609);
     lightId = Hu3DGLightCreate(
         0.0f,
         1000.0f,
@@ -258,20 +258,20 @@ void fn_1_1A738(void) {
                         HuPrcVSleep();
                     }
                     fn_1_824();
-                    GwSystem.mgInstDispF = 0;
+                    lbl_80265B70.mgInstDispF = 0;
                     mgNo = MgModeWork[MgModePlayNum] + 601;
-                    GWMgUnlockSet(mgNo);
-                    GwSystem.mgNo = mgNo - 601;
+                    fn_8003CCAC(mgNo);
+                    lbl_80265B70.mgNo = mgNo - 601;
                     MgModePlayNum++;
                     if (MgModeWork[MgModePlayNum] == 255) {
                         MgModePlayNum = 0;
                     }
                     if (MgModeWorkInt[0] != 0) {
-                        GwMgNightF = 1;
+                        lbl_802C0278 = 1;
                     } else {
-                        GwMgNightF = 0;
+                        lbl_802C0278 = 0;
                     }
-                    omOvlCallEx(DLL_instdll, 1, 0, 0);
+                    omOvlCallEx(4, 1, 0, 0);
                     stateActive = 0;
                     for (;;) {
                         HuPrcVSleep();
@@ -289,20 +289,20 @@ void fn_1_1A738(void) {
                         HuPrcVSleep();
                     }
                     fn_1_824();
-                    GwSystem.mgInstDispF = 1;
+                    lbl_80265B70.mgInstDispF = 1;
                     mgNo = MgModeWork[MgModePlayNum] + 601;
-                    GWMgUnlockSet(mgNo);
-                    GwSystem.mgNo = mgNo - 601;
+                    fn_8003CCAC(mgNo);
+                    lbl_80265B70.mgNo = mgNo - 601;
                     MgModePlayNum++;
                     if (MgModeWork[MgModePlayNum] == 255) {
                         MgModePlayNum = 0;
                     }
                     if (MgModeWorkInt[0] != 0) {
-                        GwMgNightF = 1;
+                        lbl_802C0278 = 1;
                     } else {
-                        GwMgNightF = 0;
+                        lbl_802C0278 = 0;
                     }
-                    omOvlCallEx(DLL_instdll, 1, 0, 0);
+                    omOvlCallEx(4, 1, 0, 0);
                     stateActive = 0;
                     for (;;) {
                         HuPrcVSleep();
@@ -354,10 +354,10 @@ void fn_1_1A738(void) {
                     }
                     fn_1_7F0();
                     fn_1_824();
-                    _ClearFlag(FLAG_INST_MG_MODE);
+                    fn_8006A268(196609);
                     SLSaveModeExec(0);
                     omOvlHisChg(0, history->ovl, 0, 0);
-                    omOvlReturnEx(0, 1);
+                    fn_8003A5E4(0, 1);
                     stateActive = 0;
                     lbl_1_bss_672 = -1;
                 } else if ((s16)result == 1) {
@@ -387,12 +387,12 @@ void fn_1_1A738(void) {
     while (WipeCheck()) {
         HuPrcVSleep();
     }
-    _ClearFlag(FLAG_INST_MG_MODE);
+    fn_8006A268(196609);
     fn_1_12A8();
     fn_1_7F0();
     fn_1_824();
     SLSaveModeExec(0);
-    omOvlReturnEx(1, 1);
+    fn_8003A5E4(1, 1);
     HuPrcEnd();
     for (;;) {
         HuPrcVSleep();
@@ -510,13 +510,13 @@ void fn_1_1B3A4(OMOBJ *obj) {
 
 /* Sets the fixed camera used by the three-player Battle Bridge minigame. */
 void fn_1_1B470(void) {
-    CRot.x = -29.0f;
-    CRot.y = 0.0f;
-    CRot.z = 0.0f;
-    Center.x = 975.0f;
-    Center.y = 230.0f;
-    Center.z = 230.0f;
-    CZoom = 2730.293f;
+    lbl_80266A40.x = -29.0f;
+    lbl_80266A40.y = 0.0f;
+    lbl_80266A40.z = 0.0f;
+    lbl_80266A4C.x = 975.0f;
+    lbl_80266A4C.y = 230.0f;
+    lbl_80266A4C.z = 230.0f;
+    lbl_802C028C = 2730.293f;
 }
 
 /* Smoothly tracks player positions and adjusts framing for the active four-player game. */
@@ -529,11 +529,11 @@ void fn_1_1B51C(void) {
 
     leftPosition = fn_1_B85C();
     rightPosition = fn_1_B8E0();
-    CRot.x += 0.03f * (-29.0f - CRot.x);
-    CRot.y += 0.03f * -CRot.y;
-    CRot.z += 0.03f * -CRot.z;
-    Center.y += 0.03f * (230.0f - Center.y);
-    Center.z += 0.03f * (230.0f - Center.z);
+    lbl_80266A40.x += 0.03f * (-29.0f - lbl_80266A40.x);
+    lbl_80266A40.y += 0.03f * -lbl_80266A40.y;
+    lbl_80266A40.z += 0.03f * -lbl_80266A40.z;
+    lbl_80266A4C.y += 0.03f * (230.0f - lbl_80266A4C.y);
+    lbl_80266A4C.z += 0.03f * (230.0f - lbl_80266A4C.z);
     desiredCenterX = leftPosition + rightPosition;
     desiredCenterX *= 0.5f;
     if (desiredCenterX < 975.0f) desiredCenterX = 975.0f;
@@ -543,22 +543,23 @@ void fn_1_1B51C(void) {
         if ((s16)playerCount <= 3) desiredCenterX = 1325.0f;
         else desiredCenterX = 1225.0f;
     }
-    centerDelta = desiredCenterX - Center.x;
+    centerDelta = desiredCenterX - lbl_80266A4C.x;
     if (centerDelta > 0.0f) {
-        if (centerDelta >= 5.0f) Center.x += 5.0f;
-        else Center.x += centerDelta;
+        if (centerDelta >= 5.0f) lbl_80266A4C.x += 5.0f;
+        else lbl_80266A4C.x += centerDelta;
     } else if (centerDelta < 0.0f) {
-        if (centerDelta <= -5.0f) Center.x += -5.0f;
-        else Center.x += centerDelta;
+        if (centerDelta <= -5.0f) lbl_80266A4C.x += -5.0f;
+        else lbl_80266A4C.x += centerDelta;
     }
-    if (lbl_1_bss_66A != 0) { Center.x = desiredCenterX; CRot.x = -29.0f; Center.y = 230.0f; }
+    if (lbl_1_bss_66A != 0) { lbl_80266A4C.x = desiredCenterX; lbl_80266A40.x =
+        -29.0f; lbl_80266A4C.y = 230.0f; }
     playerCount = fn_1_B9E8();
     if (fn_1_B964() == 4) playerCount++;
     if ((s16)playerCount <= 3) desiredCenterX = 2730.293f;
     else if ((s16)playerCount <= 4) desiredCenterX = 2910.0f;
     else desiredCenterX = 3650.0f;
-    CZoom += 0.03f * (desiredCenterX - CZoom);
-    if (lbl_1_bss_66A != 0) CZoom = desiredCenterX;
+    lbl_802C028C += 0.03f * (desiredCenterX - lbl_802C028C);
+    if (lbl_1_bss_66A != 0) lbl_802C028C = desiredCenterX;
 }
 
 /* Updates the six-player camera framing from the current player positions. */
@@ -571,11 +572,11 @@ static inline void fn_1_1B95C_update(void) {
 
     leftPosition = fn_1_B85C();
     rightPosition = fn_1_B8E0();
-    CRot.x += 0.03f * (-29.0f - CRot.x);
-    CRot.y += 0.03f * -CRot.y;
-    CRot.z += 0.03f * -CRot.z;
-    Center.y += 0.03f * (230.0f - Center.y);
-    Center.z += 0.03f * (230.0f - Center.z);
+    lbl_80266A40.x += 0.03f * (-29.0f - lbl_80266A40.x);
+    lbl_80266A40.y += 0.03f * -lbl_80266A40.y;
+    lbl_80266A40.z += 0.03f * -lbl_80266A40.z;
+    lbl_80266A4C.y += 0.03f * (230.0f - lbl_80266A4C.y);
+    lbl_80266A4C.z += 0.03f * (230.0f - lbl_80266A4C.z);
     desiredCenterX = leftPosition + rightPosition;
     desiredCenterX *= 0.5f;
     if (desiredCenterX < 975.0f) desiredCenterX = 975.0f;
@@ -587,15 +588,16 @@ static inline void fn_1_1B95C_update(void) {
         else if ((s16)playerCount <= 5) desiredCenterX = 1625.0f;
         else desiredCenterX = 1475.0f;
     }
-    centerDelta = desiredCenterX - Center.x;
+    centerDelta = desiredCenterX - lbl_80266A4C.x;
     if (centerDelta > 0.0f) {
-        if (centerDelta >= 5.0f) Center.x += 5.0f;
-        else Center.x += centerDelta;
+        if (centerDelta >= 5.0f) lbl_80266A4C.x += 5.0f;
+        else lbl_80266A4C.x += centerDelta;
     } else if (centerDelta < 0.0f) {
-        if (centerDelta <= -5.0f) Center.x += -5.0f;
-        else Center.x += centerDelta;
+        if (centerDelta <= -5.0f) lbl_80266A4C.x += -5.0f;
+        else lbl_80266A4C.x += centerDelta;
     }
-    if (lbl_1_bss_66A != 0) { Center.x = desiredCenterX; CRot.x = -29.0f; Center.y = 230.0f; }
+    if (lbl_1_bss_66A != 0) { lbl_80266A4C.x = desiredCenterX; lbl_80266A40.x =
+        -29.0f; lbl_80266A4C.y = 230.0f; }
     playerCount = fn_1_B9E8();
     if (fn_1_B964() == 6) playerCount++;
     if ((s16)playerCount <= 2) desiredCenterX = 2730.293f;
@@ -604,8 +606,8 @@ static inline void fn_1_1B95C_update(void) {
     else if ((s16)playerCount <= 5) desiredCenterX = 4200.0f;
     else if ((s16)playerCount <= 6) desiredCenterX = 4500.0f;
     else desiredCenterX = 4810.0f;
-    CZoom += 0.03f * (desiredCenterX - CZoom);
-    if (lbl_1_bss_66A != 0) CZoom = desiredCenterX;
+    lbl_802C028C += 0.03f * (desiredCenterX - lbl_802C028C);
+    if (lbl_1_bss_66A != 0) lbl_802C028C = desiredCenterX;
 }
 
 /* Smoothly tracks players and zooms out for the six-player Battle Bridge game. */
@@ -621,40 +623,40 @@ void fn_1_1BE28(void) {
 
     frame = lbl_1_bss_668 - 60;
     if (frame == 0) {
-        lbl_1_data_938 = CRot;
-        lbl_1_data_944 = Center;
-        lbl_1_bss_66C = CZoom;
+        lbl_1_data_938 = lbl_80266A40;
+        lbl_1_data_944 = lbl_80266A4C;
+        lbl_1_bss_66C = lbl_802C028C;
     }
 
     if (frame > 1 && frame < 91) {
         rotation.x = -19.0f;
         rotation.y = rotation.z = 0.0f;
-        CRot.x = lbl_1_data_938.x +
+        lbl_80266A40.x = lbl_1_data_938.x +
             (f32)frame *
                 ((rotation.x - lbl_1_data_938.x) / 90.0f);
-        CRot.y = lbl_1_data_938.y +
+        lbl_80266A40.y = lbl_1_data_938.y +
             (f32)frame *
                 ((rotation.y - lbl_1_data_938.y) / 90.0f);
-        CRot.z = lbl_1_data_938.z +
+        lbl_80266A40.z = lbl_1_data_938.z +
             (f32)frame *
                 ((rotation.z - lbl_1_data_938.z) / 90.0f);
 
         fn_1_3B78(&rotation);
         rotation.y += 203.0f;
         rotation.z += 243.0f;
-        Center.x = lbl_1_data_944.x +
+        lbl_80266A4C.x = lbl_1_data_944.x +
             (f32)frame *
                 ((rotation.x - lbl_1_data_944.x) / 90.0f);
-        Center.y = lbl_1_data_944.y +
+        lbl_80266A4C.y = lbl_1_data_944.y +
             (f32)frame *
                 ((rotation.y - lbl_1_data_944.y) / 90.0f);
-        Center.z = lbl_1_data_944.z +
+        lbl_80266A4C.z = lbl_1_data_944.z +
             (f32)frame *
                 ((rotation.z - lbl_1_data_944.z) / 90.0f);
 
         zoomOffset = 2446.0f - lbl_1_bss_66C;
         if (zoomOffset < -0.000001 || 0.000001 < zoomOffset) {
-            CZoom = zoomOffset / 90.0f * (f32)frame + lbl_1_bss_66C;
+            lbl_802C028C = zoomOffset / 90.0f * (f32)frame + lbl_1_bss_66C;
         }
     }
 
@@ -675,20 +677,20 @@ void fn_1_1C2B8(OMOBJ *obj) {
     f32 yaw;
     f32 roll;
 
-    pitch = CRot.x;
-    yaw = CRot.y;
-    roll = CRot.z;
-    cameraPosition.x = (f32)((f64)Center.x +
-        ((f64)CZoom * (sin((3.141592653589793 * (f64)yaw) / 180.0) *
+    pitch = lbl_80266A40.x;
+    yaw = lbl_80266A40.y;
+    roll = lbl_80266A40.z;
+    cameraPosition.x = (f32)((f64)lbl_80266A4C.x +
+        ((f64)lbl_802C028C * (sin((3.141592653589793 * (f64)yaw) / 180.0) *
             cos((3.141592653589793 * (f64)pitch) / 180.0))));
-    cameraPosition.y = (f32)((f64)Center.y +
-        ((f64)CZoom * -sin((3.141592653589793 * (f64)pitch) / 180.0)));
-    cameraPosition.z = (f32)((f64)Center.z +
-        ((f64)CZoom * (cos((3.141592653589793 * (f64)yaw) / 180.0) *
+    cameraPosition.y = (f32)((f64)lbl_80266A4C.y +
+        ((f64)lbl_802C028C * -sin((3.141592653589793 * (f64)pitch) / 180.0)));
+    cameraPosition.z = (f32)((f64)lbl_80266A4C.z +
+        ((f64)lbl_802C028C * (cos((3.141592653589793 * (f64)yaw) / 180.0) *
             cos((3.141592653589793 * (f64)pitch) / 180.0))));
-    center.x = Center.x;
-    center.y = Center.y;
-    center.z = Center.z;
+    center.x = lbl_80266A4C.x;
+    center.y = lbl_80266A4C.y;
+    center.z = lbl_80266A4C.z;
     cameraUpBasis.x = (f32)(sin((3.141592653589793 * (f64)yaw) / 180.0) *
         sin((3.141592653589793 * (f64)pitch) / 180.0));
     cameraUpBasis.y = (f32)cos((3.141592653589793 * (f64)pitch) / 180.0);

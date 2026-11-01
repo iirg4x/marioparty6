@@ -32,7 +32,7 @@ void fn_1_3FC(s16 mode, s16 frameNo);
 void fn_1_400(s16 mode, s16 frameNo);
 
 MGSEQ_PARAM lbl_1_data_0 = {
-    300, MGSEQ_TIMER_BOTTOM,
+    300, 1,
     fn_1_288, fn_1_2BC, fn_1_31C, fn_1_320, fn_1_34C, fn_1_3C4, fn_1_3F8, fn_1_3FC, fn_1_400
 };
 s32 lbl_1_data_28 = -1;
@@ -65,9 +65,9 @@ void *fn_1_A0(s32 priority, u32 bytes, void (*update)(OMOBJ *))
 {
     OMOBJ *object;
 
-    object = omAddObjEx(lbl_1_bss_0, priority, 0, 0, 0, update);
+    object = fn_8003AB38(lbl_1_bss_0, priority, 0, 0, 0, update);
     if (bytes != 0) {
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, HU_MEMNUM_OVL);
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, 0x10000000);
         memset(object->data, 0, bytes);
     } else {
         object->data = NULL;
@@ -83,27 +83,27 @@ void fn_1_140(OMOBJ *object, OMOBJ_FUNC callback)
 /* Starts the minigame actor manager, shared shadows and sequence process at load. */
 void fn_1_148(void)
 {
-    lbl_1_bss_0 = MgActorObjectSetup();
-    MgActorColCylReset();
+    lbl_1_bss_0 = fn_80080418();
+    fn_80080E8C();
     {
     HuVecF cameraPosition = {-100.0f, 8000.0f, 0.0f};
     HuVecF cameraUp = {0.0f, 1.0f, 0.0f};
     HuVecF cameraTarget = {0.0f, 0.0f, 0.0f};
 
-    Hu3DShadowMultiCreate(15.0f, 10.0f, 10000.0f, 3);
-    Hu3DShadowMultiColSet(16, 16, 16, 3);
-    Hu3DShadowMultiPosSet(&cameraPosition, &cameraUp, &cameraTarget, 3);
-    Hu3DShadowMultiTPLvlSet(0.3f, 3);
-    HuPrcChildCreate(fn_1_264, 100, 12288, 0, lbl_1_bss_0);
+    fn_8002A3B0(15.0f, 10.0f, 10000.0f, 3);
+    fn_8002AA3C(16, 16, 16, 3);
+    fn_8002A674(&cameraPosition, &cameraUp, &cameraTarget, 3);
+    fn_8002A7D8(0.3f, 3);
+    fn_8000DAC0(fn_1_264, 100, 12288, 0, lbl_1_bss_0);
     }
 }
 
 /* Runs as the child sequence process, advancing actors and yielding each frame. */
 void fn_1_264(void)
 {
-    MgSeqCreate(&lbl_1_data_0);
+    fn_80070788(&lbl_1_data_0);
     for (;;) {
-        MgActorExec();
+        fn_800856A8();
         HuPrcVSleep();
     }
 }
@@ -113,7 +113,7 @@ void fn_1_288(s16 mode, s16 frameNo)
 {
     lbl_1_data_28 = -1;
     fn_1_768();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Starts the sequence music once it is ready and no wipe is running. */
@@ -129,27 +129,27 @@ void fn_1_31C(s16 mode, s16 frameNo)
 
 void fn_1_320(s16 mode, s16 frameNo)
 {
-    if (fn_1_C84() != 0) MgSeqModeNext();
+    if (fn_1_C84() != 0) fn_80071A9C();
 }
 
 /* Holds this sequence phase until the result transition is ready, then advances. */
 void fn_1_34C(s16 mode, s16 frameNo) {
-    if ((MgSeqFrameNoGet() == 0) && ((s32) lbl_1_data_28 != -1)) {
+    if ((fn_80071DE4() == 0) && ((s32) lbl_1_data_28 != -1)) {
         HuAudSStreamFadeOut(lbl_1_data_28, 100);
         lbl_1_data_28 = -1;
     }
-    MgSeqModeChangeOff();
+    fn_80071B08();
     if (fn_1_CD0() != 0) {
-        MgSeqModeChangeOn();
-        MgSeqModeNext();
+        fn_80071B30();
+        fn_80071A9C();
     }
 }
 /* Holds this sequence phase until the minigame's result transition is ready. */
 void fn_1_3C4(s16 mode, s16 frameNo) {
-    MgSeqModeChangeOff();
+    fn_80071B08();
     if (fn_1_D40() != 0) {
-        MgSeqModeChangeOn();
-        MgSeqModeNext();
+        fn_80071B30();
+        fn_80071A9C();
     }
 }
 

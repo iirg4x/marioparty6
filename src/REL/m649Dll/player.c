@@ -245,22 +245,22 @@ void fn_1_4F24(HUPROCESS *manager)
 {
     s32 i;
     OMOBJ *object;
-    lbl_1_bss_334 = omAddObjEx(manager, 14, 0, 0, -1, fn_1_5094);
+    lbl_1_bss_334 = fn_8003AB38(manager, 14, 0, 0, -1, fn_1_5094);
     fn_1_5044(lbl_1_bss_334);
     omMakeGroupEx(manager, 0, 4);
     for (i = 0; i < 4; i++) {
-        object = lbl_1_bss_324[i] = omAddObjEx(manager, 10, 2, 6, 0, fn_1_51FC);
+        object = lbl_1_bss_324[i] = fn_8003AB38(manager, 10, 2, 6, 0, fn_1_51FC);
         object->work[0] = i;
         object->work[1] = i;
         object->work[2] = i;
-        fn_1_1338(i, i, GwPlayerConf[i].charNo);
+        fn_1_1338(i, i, lbl_80265728[i].charNo);
     }
 }
 
 /* fn_1_BB0 calls this during the sequence callback to release every character model. */
 void fn_1_5020(void)
 {
-    CharModelKill(-1);
+    fn_8005BB8C(-1);
 }
 
 /* fn_1_4F24 calls this when it creates the player manager, clearing its four state slots. */
@@ -332,43 +332,43 @@ void fn_1_51FC(OMOBJ *object)
     s32 player, camera, index;
     char *hook;
     s32 motion;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649PlayerWork), HU_MEMNUM_OVL);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649PlayerWork), 0x10000000);
     object->data = work;
     memset(work, 0, sizeof(M649PlayerWork));
-    object->stat |= OM_STAT_MODELPAUSE;
+    object->stat |= (1 << 8);
     state = &work->state;
     player = work->player = object->work[0];
-    character = work->character = GwPlayerConf[player].charNo;
+    character = work->character = lbl_80265728[player].charNo;
     camera = object->work[1];
     state->camera = camera;
     index = object->work[2];
     state->previousPlayer = state->player = index;
     state->controlEnabled = 1;
-    state->computer = GwPlayerConf[player].type;
-    state->difficulty = GwPlayerConf[player].comDif & 3;
+    state->computer = lbl_80265728[player].type;
+    state->difficulty = lbl_80265728[player].comDif & 3;
     state->computerPhase = 0;
-    model = CharModelCreate(character, 8);
+    model = fn_80057068(character, 8);
     object->mdlId[0] = model;
-    Hu3DModelCameraSet(model, fn_1_1218(camera));
-    Hu3DModelLayerSet(model, 4);
-    Hu3DModelShadowSet(model);
-    CharEffectLayerSet(4);
+    fn_80026B64(model, fn_1_1218(camera));
+    fn_80026B8C(model, 4);
+    fn_80026E44(model);
+    fn_8005DDEC(4);
     state->itemModel = fn_1_48DC(fn_1_1210(lbl_1_data_1B4[player]));
-    Hu3DModelCameraSet(state->itemModel, fn_1_1218(camera));
-    Hu3DModelLayerSet(state->itemModel, 4);
-    Hu3DModelShadowSet(state->itemModel);
-    hook = CharModelItemHookGet(character, 8, 0);
-    Hu3DModelHookSet(model, hook, state->itemModel);
+    fn_80026B64(state->itemModel, fn_1_1218(camera));
+    fn_80026B8C(state->itemModel, 4);
+    fn_80026E44(state->itemModel);
+    hook = fn_8005C0F0(character, 8, 0);
+    fn_8002741C(model, hook, state->itemModel);
     for (i = 0; i < 6; i++) {
-        motion = CharMotionCreate(character, lbl_1_data_C8[i]);
+        motion = fn_8005B0B8(character, lbl_1_data_C8[i]);
         object->mtnId[i] = motion;
     }
-    CharMotionDataClose(character);
+    fn_8005B4BC(character);
     state->currentMotion = -1;
     fn_1_6068(object, 2);
     config = &state->config;
     *config = lbl_1_data_174;
-    config->height = CharModelHeightGet(character);
+    config->height = fn_8005C4C8(character);
     m649_local_5130_051FC(state);
     work->phase = 0;
     work->volumeEnabled = 1;
@@ -427,7 +427,7 @@ s32 fn_1_56A4(void *state)
         ((M649PlayerState *)state)->timer = 0;
         ((M649PlayerState *)state)->buttonsDown |= (1 << 8);
     case 2:
-        if (MgSeqModeGet() != 5) {
+        if (fn_80071A8C() != 5) {
             break;
         }
         ((M649PlayerState *)state)->phase++;
@@ -456,7 +456,7 @@ s32 fn_1_57AC(void *state)
         ((M649PlayerState *)state)->phase++;
         ((M649PlayerState *)state)->timer = 0;
     case 1:
-        if (MgSeqModeGet() == MGSEQ_MODE_FINISH) {
+        if (fn_80071A8C() == 6) {
             ((M649PlayerState *)state)->phase++;
             ((M649PlayerState *)state)->timer = 0;
             break;
@@ -467,21 +467,21 @@ s32 fn_1_57AC(void *state)
         }
         if (((M649PlayerState *)state)->controlEnabled) {
             input = (M649PlayerWork *)((M649PlayerState *)state);
-            controllerIndex = GwPlayerConf[input->player].padNo;
-            x = HuPadStkXf[controllerIndex];
-            y = -HuPadStkYf[controllerIndex];
-            ((M649PlayerState *)state)->buttons = HuPadBtn[controllerIndex];
-            ((M649PlayerState *)state)->buttonsDown = HuPadBtnDown[controllerIndex];
-            ((M649PlayerState *)state)->stickAngle = 180.0 * (atan2(x, y) / M_PI);
+            controllerIndex = lbl_80265728[input->player].padNo;
+            x = lbl_8024C7D8[controllerIndex];
+            y = -lbl_8024C7E8[controllerIndex];
+            ((M649PlayerState *)state)->buttons = lbl_802C0010[controllerIndex];
+            ((M649PlayerState *)state)->buttonsDown = lbl_802C0008[controllerIndex];
+            ((M649PlayerState *)state)->stickAngle = 180.0 * (atan2(x, y) / 3.141592653589793);
             ((M649PlayerState *)state)->stickMagnitude = sqrtf(x * x + y * y);
         }
         break;
     case 2:
-        if (MgSeqModeGet() == MGSEQ_MODE_MAIN) { break; }
+        if (fn_80071A8C() == 5) { break; }
         if (((M649PlayerState *)state)->controlEnabled) {
             work = (M649PlayerWork *)((M649PlayerState *)state);
-            hook = CharModelItemHookGet(work->character, 8, 0);
-            CharModelHookDustCreate(work->character, hook);
+            hook = fn_8005C0F0(work->character, 8, 0);
+            fn_8005C7A4(work->character, hook);
         }
         ((M649PlayerState *)state)->phase++;
         ((M649PlayerState *)state)->timer = 0;
@@ -525,7 +525,7 @@ s32 fn_1_5B04(void *state)
             break;
         }
         fn_1_5FF4(((M649PlayerState *)state), config->finishIdleMotion, 1.0f);
-        if (MgSeqModeGet() != 8) { break; }
+        if (fn_80071A8C() != 8) { break; }
         ((M649PlayerState *)state)->phase++;
         ((M649PlayerState *)state)->timer = 0;
         if (((M649PlayerState *)state)->controlEnabled) {
@@ -552,7 +552,7 @@ s32 fn_1_5CEC(void *state)
         if (((M649PlayerState *)state)->controlEnabled) {
             work = (M649PlayerWork *)((M649PlayerState *)state);
             work->volumeEnabled = 0;
-            CharModelVoiceVolSet(work->character, 127);
+            fn_80060F40(work->character, 127);
         }
         if (fn_1_127C(((M649PlayerState *)state)->camera) > 0) {
             fn_1_5FF4(((M649PlayerState *)state), config->winMotion, 1.0f);
@@ -592,9 +592,9 @@ void fn_1_5E04(OMOBJ *object)
     } else {
         state->motionTimer = 0;
     }
-    CharModelVoicePanSet(work->character, fn_1_3630(camera, &state->position));
+    fn_80060F14(work->character, fn_1_3630(camera, &state->position));
     if (work->volumeEnabled) {
-        CharModelVoiceVolSet(work->character, fn_1_3850(camera, &state->position));
+        fn_80060F40(work->character, fn_1_3850(camera, &state->position));
     }
 }
 
@@ -643,7 +643,7 @@ void fn_1_6000(OMOBJ *object)
     M649PlayerState *state = &work->state;
     if (state->requestedMotion != -1) {
         fn_1_6068(object, state->requestedMotion);
-        Hu3DMotionSpeedSet(object->mdlId[0], state->motionSpeed);
+        fn_8002D86C(object->mdlId[0], state->motionSpeed);
     }
 }
 
@@ -673,20 +673,20 @@ void fn_1_6068(OMOBJ *object, s32 index)
         attr = lbl_1_data_E0[index].attr;
         /* HU3D_MOTATTR makes this entire mask clear motion flags, including the bits named as model
          * attributes here. */
-        Hu3DModelAttrReset(model, HU3D_MOTATTR | HU3D_ATTR_DISPOFF | HU3D_ATTR_SHADOW |
-                                   HU3D_ATTR_TOON_MAP | HU3D_ATTR_MOT_EXEC);
+        fn_80026A44(model, (1 << 30) | (1 << 0) | (1 << 2) |
+                                   (1 << 9) | (1 << 11));
         overlay = lbl_1_data_E0[index].overlay;
         if (overlay >= 0) {
-            CharMotionShiftSet(work->character, motion, 0.0f, blend, attr);
-            Hu3DMotionOverlaySet(model, object->mtnId[overlay]);
-            if (attr & HU3D_MOTATTR_LOOP) { overlayAttr |= HU3D_MOTATTR_OVL_LOOP; }
-            if (attr & HU3D_MOTATTR_REV) { overlayAttr |= HU3D_MOTATTR_OVL_REV; }
-            Hu3DModelAttrSet(model, overlayAttr);
+            fn_8005C2C8(work->character, motion, 0.0f, blend, attr);
+            fn_8002CAA8(model, object->mtnId[overlay]);
+            if (attr & ((1 << 30) | (1 << 0))) { overlayAttr |= ((1 << 30) | (1 << 9)); }
+            if (attr & ((1 << 30) | (1 << 2))) { overlayAttr |= ((1 << 30) | (1 << 11)); }
+            fn_800269E8(model, overlayAttr);
         } else {
-            Hu3DMotionOverlayReset(model);
-            CharMotionShiftSet(work->character, motion, 0.0f, blend, attr);
+            fn_8002CAF0(model);
+            fn_8005C2C8(work->character, motion, 0.0f, blend, attr);
         }
-        CharMotionSpeedSet(work->character, 1.0f);
+        fn_8005C390(work->character, 1.0f);
     }
 }
 
@@ -694,8 +694,8 @@ void fn_1_6068(OMOBJ *object, s32 index)
 s32 fn_1_6244(OMOBJ *object)
 {
     M649PlayerWork *work = object->data;
-    if (CharMotionEndCheck(work->character) != 0 &&
-        CharMotionShiftIDGet(work->character) < 0) {
+    if (fn_8005C240(work->character) != 0 &&
+        fn_8005C284(work->character) < 0) {
         return 1;
     }
     return 0;
@@ -706,7 +706,7 @@ s32 fn_1_62B0(OMOBJ *object)
 {
     M649PlayerWork *work = object->data;
     s32 done = 0;
-    if (CharMotionShiftIDGet(work->character) < 0) {
+    if (fn_8005C284(work->character) < 0) {
         done = 1;
     }
     return done;
@@ -817,8 +817,8 @@ void fn_1_6858(void *state) {
 
 /* fn_1_5F7C calls this each frame to apply a player's position and rotation to its model. */
 void fn_1_688C(void *state, s32 modelId) {
-    Hu3DModelPosSetV((s16) modelId, &((M649PlayerState *)state)->position);
-    Hu3DModelRotSetV((s16) modelId, &((M649PlayerState *)state)->rotation);
+    fn_80026790((s16) modelId, &((M649PlayerState *)state)->position);
+    fn_80026838((s16) modelId, &((M649PlayerState *)state)->rotation);
     ((M649PlayerState *)state)->motionTime++;
 }
 
@@ -827,12 +827,12 @@ void fn_1_688C(void *state, s32 modelId) {
 * fade-in, fade-out, and the completed fade-out screen suppress the request. */
 void fn_1_68E4(s32 player)
 {
-    if (MgSeqModeGet() == 2) {
+    if (fn_80071A8C() == 2) {
         for (player = 0; player < 4; player++) {
-            omVibrate(player, 10, 20, 0);
+            fn_8006A030(player, 10, 20, 0);
         }
     } else {
-        omVibrate(player, 10, 20, 0);
+        fn_8006A030(player, 10, 20, 0);
     }
 }
 

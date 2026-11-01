@@ -14,8 +14,8 @@ void fn_1_69F4(void)
 
     playerIndex = 0;
     while (playerIndex < 4) {
-        if (GwPlayerConf[playerIndex].type == 1) {
-            lbl_1_bss_3E80.difficulty[playerIndex] = GwPlayerConf[playerIndex].comDif;
+        if (lbl_80265728[playerIndex].type == 1) {
+            lbl_1_bss_3E80.difficulty[playerIndex] = lbl_80265728[playerIndex].comDif;
             randomDivisor = lbl_1_data_56C[(lbl_1_bss_3E80.difficulty[playerIndex] * 2) + 1];
             randomOffset = frand() % randomDivisor;
             lbl_1_bss_3E80.base[playerIndex] =

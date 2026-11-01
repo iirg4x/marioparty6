@@ -34,9 +34,9 @@ HUPROCESS *lbl_1_bss_0;
 
 void fn_1_A0(void)
 {
-    lbl_1_bss_0 = omInitObjMan(200, 8192);
-    omGameSysInit(lbl_1_bss_0);
-    MgSeqCreate(&lbl_1_data_0);
+    lbl_1_bss_0 = fn_8003A8BC(200, 8192);
+    fn_80069F1C(lbl_1_bss_0);
+    fn_80070788(&lbl_1_data_0);
 }
 
 /* Opening callback: creates camera 1, sets the course view and lighting, then initializes play. */
@@ -55,20 +55,20 @@ void fn_1_F0(s16 mode, s16 frameNo)
     Hu3DCameraCreate(1);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(1, 10.0f, 20.0f, 30000.0f, 1.2f);
-    omAddObjEx(lbl_1_bss_0, OM_OUTVIEW_PRIO, 0, 0, -1, omOutView);
+    fn_8003AB38(lbl_1_bss_0, 32730, 0, 0, -1, fn_8003D4FC);
     view.center = (HuVecF){ 0.0f, 349.7182f, -451.8600f };
     view.rot = (HuVecF){ -22.5770f, 0.0f, 0.0f };
     view.zoom = 8000.0f;
-    omCameraViewSet(&view);
-    light = Hu3DGLightCreateV(&lightPos, &lightDir, &color);
+    fn_8003E5A4(&view);
+    light = fn_800286D0(&lightPos, &lightDir, &color);
     Hu3DGLightStaticSet(light, 1);
     Hu3DGLightInfinitytSet(light);
     Hu3DShadowCreate(-60.0f, 20.0f, 10000.0f);
-    Hu3DShadowColSet(0, 0, 0);
+    fn_8002AAB4(0, 0, 0);
     Hu3DShadowTPLvlSet(0.5f);
     Hu3DShadowPosSet(&shadowPos, &shadowUp, &shadowTarget);
     fn_1_4E8();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Fade-in callback: updates player and moving-row state. */
@@ -90,7 +90,7 @@ void fn_1_3DC(s16 mode, s16 frameNo)
 void fn_1_3FC(s16 mode, s16 frameNo)
 {
     if (fn_1_594() != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -108,7 +108,7 @@ void fn_1_428(s16 mode, s16 frameNo)
 void fn_1_448(s16 mode, s16 frameNo)
 {
     if (fn_1_1670() != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -131,7 +131,7 @@ void fn_1_494(s16 mode, s16 frameNo)
 void fn_1_4B4(s16 mode, s16 frameNo)
 {
     HuAudAllStop();
-    Hu3DModelAllKill();
-    Hu3DLightAllKill();
-    omOvlReturnEx(1, 1);
+    fn_80026648();
+    fn_80028D70();
+    fn_8003A5E4(1, 1);
 }

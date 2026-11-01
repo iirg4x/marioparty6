@@ -9,7 +9,7 @@
 
 /* static */
 MGSEQ_PARAM lbl_1_data_0 = {
-    0, MGSEQ_TIMER_RIGHT, fn_1_10C, fn_1_210, fn_1_278, fn_1_2AC, fn_1_7B8, fn_1_8F0,
+    0, 2, fn_1_10C, fn_1_210, fn_1_278, fn_1_2AC, fn_1_7B8, fn_1_8F0,
     fn_1_A5C, NULL, fn_1_AB8,
 };
 
@@ -69,11 +69,11 @@ s16 lbl_1_bss_0;
  * choose when their sequence phases finish. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_8 = omInitObjMan(300, 4096);
-    omGameSysInit(lbl_1_bss_8);
-    MgSeqCreatePrio(&lbl_1_data_0, 2000);
-    MgSeqModeDelaySet(MGSEQ_MODE_FADEIN, -1);
-    MgSeqModeDelaySet(MGSEQ_MODE_PREWIN, -1);
+    lbl_1_bss_8 = fn_8003A8BC(300, 4096);
+    fn_80069F1C(lbl_1_bss_8);
+    fn_800707B4(&lbl_1_data_0, 2000);
+    fn_80071CE8(2, -1);
+    fn_80071CE8(7, -1);
 }
 
 /* Intro callback: initialize the shadow and scene, then start the minigame music. */
@@ -97,7 +97,7 @@ void fn_1_10C(s16 mode, s16 frameNo)
     fn_1_9ED8();
     fn_1_A074();
     lbl_1_bss_C = HuAudBGMPlay(MSM_STREAM_MGMUS_25);
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Intro update callback: advance the camera and player animations until the scene is ready. */
@@ -113,7 +113,7 @@ void fn_1_210(s16 mode, s16 frameNo)
     fn_1_4AAC();
     if (introFinished != 0) {
         fn_1_6078();
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -218,7 +218,7 @@ void fn_1_2AC(s16 mode, s16 frameNo)
     } else if (lbl_1_bss_10 == 5) {
         if ((fn_1_178C() >= 10) || (fn_1_5170() != 0)) {
             if (lbl_1_bss_0 >= 30) {
-                MgSeqModeNext();
+                fn_80071A9C();
                 HuAudSStreamFadeOut(lbl_1_bss_C, 100);
                 lbl_1_bss_0 = 0;
             }
@@ -252,8 +252,8 @@ void fn_1_7B8(s16 mode, s16 frameNo)
     winningPlayer = fn_1_51D4();
     if (frameNo == 1) {
         if (winningPlayer >= 0) {
-            if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                GwPlayer[winningPlayer].mgCoinBonus = 10;
+            if (fn_8006A124(65551) == 0) {
+                lbl_80265750[winningPlayer].mgCoinBonus = 10;
             }
             playerIndex = 0;
             while (playerIndex < 4) {
@@ -262,14 +262,14 @@ void fn_1_7B8(s16 mode, s16 frameNo)
             }
             /* Keep all player slots empty except the winner's character slot. */
             (&winners[0])[winningPlayer] = fn_1_5238(winningPlayer);
-            MgSeqWinnerSet(winners[0], winners[1], winners[2], winners[3]);
+            fn_80071C18(winners[0], winners[1], winners[2], winners[3]);
         } else {
             playerIndex = 0;
             while (playerIndex < 4) {
                 winners[playerIndex] = -1;
                 playerIndex += 1;
             }
-            MgSeqWinnerSet(winners[0], winners[1], winners[2], winners[3]);
+            fn_80071C18(winners[0], winners[1], winners[2], winners[3]);
         }
     }
     if (winningPlayer >= 0) {
@@ -310,7 +310,7 @@ void fn_1_8F0(s16 mode, s16 frameNo)
             fn_1_9480(1);
             fn_1_48B4();
             fn_1_90B4();
-            MgSeqModeNext();
+            fn_80071A9C();
         }
     } else if (frameNo == 0) {
         fn_1_2BB0(135, 3);
@@ -321,7 +321,7 @@ void fn_1_8F0(s16 mode, s16 frameNo)
         animationResult = fn_1_8E64((s16) (frameNo - 135));
         if (animationResult != 0) {
             fn_1_90B4();
-            MgSeqModeNext();
+            fn_80071A9C();
         }
     }
     fn_1_4AAC();

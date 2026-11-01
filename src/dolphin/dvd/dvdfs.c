@@ -305,7 +305,7 @@ static void cbForReadAsync(s32 result, DVDCommandBlock* block) {
 }
 
 // Blocking read at a priority: sleeps until the command block ends.
-BOOL DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 prio) {
+s32 DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 prio) {
 	BOOL result;
 	DVDCommandBlock* block;
 	s32 state;

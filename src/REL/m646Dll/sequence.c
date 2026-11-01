@@ -59,8 +59,8 @@ void fn_1_AB4(s16 mode, s16 frame);
 M646MainData *lbl_1_data_0 = &lbl_1_bss_0;
 
 s32 lbl_1_data_4[2] = {
-    DATANUM(DATA_m646, M646_OPENING_CAMERA_MOTION_FILE),
-    DATANUM(DATA_m646, M646_ALTERNATE_CAMERA_MOTION_FILE)
+    DATANUM(0x690000, M646_OPENING_CAMERA_MOTION_FILE),
+    DATANUM(0x690000, M646_ALTERNATE_CAMERA_MOTION_FILE)
 };
 
 void fn_1_AF4(s16 mode, s16 frame);
@@ -78,7 +78,7 @@ void fn_1_0(void)
     s16 nightMode;
     memset(&lbl_1_bss_0, 0, sizeof(M646MainData));
     lbl_1_data_0->streamId = -1;
-    nightMode = GwMgNightF;
+    nightMode = lbl_802C0278;
     lbl_1_data_0->nightFlag = nightMode;
     lbl_1_data_0->resetValue = 0;
     lbl_1_data_0->unknown20 = 0;
@@ -91,8 +91,8 @@ void fn_1_90(void)
 /* Sequence setup creates the object manager and initializes the game system. */
 void fn_1_94(void)
 {
-    lbl_1_data_0->objectManager = omInitObjMan(160, 1000);
-    omGameSysInit(lbl_1_data_0->objectManager);
+    lbl_1_data_0->objectManager = fn_8003A8BC(160, 1000);
+    fn_80069F1C(lbl_1_data_0->objectManager);
 }
 
 /* Creates the minigame camera and its camera-motion object during setup. */
@@ -103,10 +103,10 @@ void fn_1_E0(OMOBJMAN *objman)
     Hu3DCameraPerspectiveSet(1, (90.0f), (20.0f),
                             (10000.0f), (1.2f));
     lbl_1_data_0->camera.object =
-        omAddObjEx(objman, M646_CAMERA_OBJECT_PRIORITY, 0, 0, OM_GRP_NONE, fn_1_310);
+        fn_8003AB38(objman, M646_CAMERA_OBJECT_PRIORITY, 0, 0, -1, fn_1_310);
     for (motionIndex = 0; motionIndex < 2; motionIndex++) {
-        lbl_1_data_0->camera.motions[motionIndex] = Hu3DMotionCreate(
-            HuDataSelHeapReadNum(lbl_1_data_4[motionIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_data_0->camera.motions[motionIndex] = fn_8002C4C0(
+            fn_80008DD0(lbl_1_data_4[motionIndex], 0x10000000, 2));
     }
     lbl_1_data_0->camera.model = -1;
 }
@@ -119,22 +119,22 @@ void fn_1_1E0(void)
 void fn_1_1E4(s32 cameraMotionIndex)
 {
     if (lbl_1_data_0->camera.model != -1) {
-        Hu3DModelKill(lbl_1_data_0->camera.model);
+        fn_800262D0(lbl_1_data_0->camera.model);
     }
     lbl_1_data_0->camera.model =
-        Hu3DModelCameraCreate(lbl_1_data_0->camera.motions[cameraMotionIndex], 1);
-    Hu3DCameraMotionStart(lbl_1_data_0->camera.model, 1);
+        fn_800283F4(lbl_1_data_0->camera.motions[cameraMotionIndex], 1);
+    fn_800284C8(lbl_1_data_0->camera.model, 1);
     if (cameraMotionIndex == 0) {
-        Hu3DMotionSpeedSet(lbl_1_data_0->camera.model, (1.5f));
+        fn_8002D86C(lbl_1_data_0->camera.model, (1.5f));
     } else {
-        Hu3DMotionSpeedSet(lbl_1_data_0->camera.model, (1.0f));
+        fn_8002D86C(lbl_1_data_0->camera.model, (1.0f));
     }
 }
 
 /* Target selection polls this to detect when the active camera motion ends. */
 s32 fn_1_2CC(void)
 {
-    if (Hu3DMotionEndCheck(lbl_1_data_0->camera.model) != 0) {
+    if (fn_8002D75C(lbl_1_data_0->camera.model) != 0) {
         return 1;
     }
     return 0;
@@ -159,7 +159,7 @@ void fn_1_318(void)
 
     /* Creation reads the vector's first four bytes as color; the color is then set to white. */
     light = lbl_1_data_0->lightId =
-        Hu3DGLightCreateV(&position, &direction, (GXColor *) &initialColorSource);
+        fn_800286D0(&position, &direction, (GXColor *) &initialColorSource);
     Hu3DGLightPointSet(light, (1000.0f), (1.0f), GX_DA_MEDIUM);
     Hu3DGLightStaticSet(light, TRUE);
     Hu3DGLightColorSet(light, color.r, color.g, color.b, color.a);
@@ -209,20 +209,20 @@ void fn_1_4D4(void)
     fn_1_AFC(lbl_1_data_0->objectManager, 3);
     fn_1_8E78(lbl_1_data_0->objectManager);
     fn_1_98E0(lbl_1_data_0->objectManager);
-    MgSeqCreate(&lbl_1_data_C);
+    fn_80070788(&lbl_1_data_C);
 }
 
 /* Sequence init hook: lets the manager advance immediately after initialization. */
 void fn_1_858(s16 sequenceMode, s16 phaseFrame)
 {
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Waits for the opening camera and four launch events to complete their staged sequence. */
 void fn_1_878(s16 sequenceMode, s16 phaseFrame)
 {
     if (fn_1_A0D4() != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -230,7 +230,7 @@ void fn_1_878(s16 sequenceMode, s16 phaseFrame)
 void fn_1_8A4(s16 sequenceMode, s16 phaseFrame)
 {
     if ((lbl_1_data_0->streamId == -1) &&
-        ((s32)(GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0)) {
+        ((s32)(GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0)) {
         lbl_1_data_0->streamId = HuAudSStreamPlay(MSM_STREAM_MGMUS_26);
     }
 }
@@ -238,15 +238,15 @@ void fn_1_8A4(s16 sequenceMode, s16 phaseFrame)
 /* Main-play hook: advances the sequence when its countdown reaches zero. */
 void fn_1_908(s16 sequenceMode, s16 phaseFrame)
 {
-    if (MgSeqTimerValueGet() == 0U) {
-        MgSeqModeNext();
+    if (fn_80071B58() == 0U) {
+        fn_80071A9C();
     }
 }
 
 /* Finish hook: fades the minigame stream on the first frame after play ends. */
 void fn_1_934(s16 sequenceMode, s16 phaseFrame)
 {
-    if ((MgSeqFrameNoGet() == 0) && (lbl_1_data_0->streamId != -1)) {
+    if ((fn_80071DE4() == 0) && (lbl_1_data_0->streamId != -1)) {
         HuAudSStreamFadeOut(lbl_1_data_0->streamId, M646_MUSIC_FADE_SPEED);
         lbl_1_data_0->streamId = -1;
     }
@@ -260,7 +260,7 @@ void fn_1_9A0(s16 sequenceMode, s16 phaseFrame)
     s16 winningCharacters[4];
     s16 winnerMask;
 
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         fn_1_9024();
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             winningCharacters[playerIndex] = -1;
@@ -270,7 +270,7 @@ void fn_1_9A0(s16 sequenceMode, s16 phaseFrame)
         winnerMask = fn_1_8FD4();
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if ((winnerMask & (M646_PLAYER_WINNER_BIT << playerIndex)) != 0) {
-                winningCharacters[winnerCount] = GwPlayerConf[playerIndex].charNo;
+                winningCharacters[winnerCount] = lbl_80265728[playerIndex].charNo;
                 fn_1_5564(playerIndex, 1);
                 winnerCount++;
             }
@@ -278,14 +278,14 @@ void fn_1_9A0(s16 sequenceMode, s16 phaseFrame)
         fn_1_9118();
     }
     if (fn_1_A0FC() != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
 /* Winner hook: advances after 90 frames when Decathlon mode is active. */
 void fn_1_AB4(s16 sequenceMode, s16 phaseFrame)
 {
-    if ((_CheckFlag(FLAG_INST_DECA) != 0) && (MgSeqFrameNoGet() == M646_DECA_RESULT_FRAMES)) {
-        MgSeqModeNext();
+    if ((fn_8006A124(196610) != 0) && (fn_80071DE4() == M646_DECA_RESULT_FRAMES)) {
+        fn_80071A9C();
     }
 }

@@ -27,7 +27,7 @@ void fn_1_42C(s16 mode, s16 frameNo);
 void fn_1_798(OMOBJ *object);
 
 MGSEQ_PARAM lbl_1_data_0 = {
-    300, MGSEQ_TIMER_TOP,
+    300, 0,
     fn_1_2F0, fn_1_368, fn_1_36C, fn_1_3C8, fn_1_3CC,
     fn_1_420, fn_1_424, fn_1_428, fn_1_42C
 };
@@ -62,9 +62,9 @@ void *fn_1_A0(s32 priority, u32 bytes, OMOBJ_FUNC update)
 {
     OMOBJ *object;
 
-    object = omAddObjEx(lbl_1_bss_0, priority, 0, 0, 0, update);
+    object = fn_8003AB38(lbl_1_bss_0, priority, 0, 0, 0, update);
     if (bytes != 0) {
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, HU_MEMNUM_OVL);
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, 0x10000000);
         memset(object->data, 0, bytes);
     } else {
         object->data = NULL;
@@ -82,7 +82,7 @@ void fn_1_148(void)
 {
     HU3D_LIGHTID directionalLight;
 
-    lbl_1_bss_0 = MgActorObjectSetup();
+    lbl_1_bss_0 = fn_80080418();
     directionalLight = Hu3DGLightCreate(0.0f, 1000.0f, 1000.0f,
         -1.0f, -1.0f, -1.0f, 255, 255, 255);
     Hu3DGLightInfinitytSet(directionalLight);
@@ -91,21 +91,21 @@ void fn_1_148(void)
         HuVecF shadowUp = { 0, 1, 0 };
         HuVecF shadowCameraTarget = { 0, 0, 0 };
 
-        Hu3DShadowMultiCreate(24.0f, 10.0f, 10000.0f, 3);
-        Hu3DShadowMultiColSet(16, 16, 16, 3);
-        Hu3DShadowMultiPosSet(&shadowCameraPosition, &shadowUp,
+        fn_8002A3B0(24.0f, 10.0f, 10000.0f, 3);
+        fn_8002AA3C(16, 16, 16, 3);
+        fn_8002A674(&shadowCameraPosition, &shadowUp,
                               &shadowCameraTarget, 3);
-        Hu3DShadowMultiTPLvlSet(0.3f, 3);
+        fn_8002A7D8(0.3f, 3);
     }
-    HuPrcChildCreate(fn_1_2CC, 100, 12288, 0, lbl_1_bss_0);
+    fn_8000DAC0(fn_1_2CC, 100, 12288, 0, lbl_1_bss_0);
 }
 
 /* Runs as the child process created during setup, advancing actors once per scheduler pass. */
 void fn_1_2CC(void)
 {
-    MgSeqCreate(&lbl_1_data_0);
+    fn_80070788(&lbl_1_data_0);
     for (;;) {
-        MgActorExec();
+        fn_800856A8();
         HuPrcVSleep();
     }
 }
@@ -114,7 +114,7 @@ void fn_1_2CC(void)
 void fn_1_2F0(s16 mode, s16 frameNo)
 {
     fn_1_A0(100, 8, fn_1_798);
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 void fn_1_368(s16 mode, s16 frameNo)
@@ -126,7 +126,7 @@ void fn_1_368(s16 mode, s16 frameNo)
 void fn_1_36C(s16 mode, s16 frameNo)
 {
     if (lbl_1_data_28 == -1 &&
-        (s32)(GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0) {
+        (s32)(GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
         lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_MGMUS_21);
     }
 }

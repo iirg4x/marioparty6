@@ -50,9 +50,9 @@ void fn_1_2F10(MGACTOR *actor, int playerSlot)
     playerIndex = playerSlot;
     side = *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_SIDE_OFFSET);
     player = *(MGPLAYER **)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_PLAYER_RECORD_OFFSET);
-    if (MgPlayerVibAttrCheck(player, PIXEL_GROUND_POUND_LAND_FLAG) != 0 &&
+    if (fn_80087114(player, PIXEL_GROUND_POUND_LAND_FLAG) != 0 &&
         (actor->colGroundAttr & PIXEL_FLOOR_GROUND_FLAG) != 0) {
-        MgActorPosGet(actor, &pos);
+        fn_80086BC8(actor, &pos);
         *(s32 *)((u8 *)&lbl_1_bss_0 + playerIndex * 4 + PIXEL_LANDING_COUNTER_OFFSET) = 90;
         /* Each floor is translated to a positive 800-by-800 grid of 200-unit pixels. */
         offsetX = (s32)lbl_1_data_270[side][0];
@@ -70,13 +70,13 @@ void fn_1_2F10(MGACTOR *actor, int playerSlot)
              PIXEL_TEAM_PIXELS_OFFSET)[column + row * 4] == 1) {
             ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_COUNT +
              PIXEL_TEAM_PIXELS_OFFSET)[column + row * 4] = 0;
-            Hu3DMotionSet(*(s16 *) ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_MODEL_SET_BYTES +
+            fn_8002C95C(*(s16 *) ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_MODEL_SET_BYTES +
                                     (column + row * 4) * 2 + PIXEL_FLOOR_PANEL_MODELS_OFFSET),
                           *(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_PANEL_TURN_OFF_MOTION_OFFSET));
         } else {
             ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_COUNT +
              PIXEL_TEAM_PIXELS_OFFSET)[column + row * 4] = 1;
-            Hu3DMotionSet(*(s16 *) ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_MODEL_SET_BYTES +
+            fn_8002C95C(*(s16 *) ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_MODEL_SET_BYTES +
                                     (column + row * 4) * 2 + PIXEL_FLOOR_PANEL_MODELS_OFFSET),
                           *(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_PANEL_TURN_ON_MOTION_OFFSET));
         }
@@ -94,8 +94,8 @@ void fn_1_31BC(void)
     s32 isCorner;
     s32 previousWasCorner;
 
-    *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FLOOR_DRAW_HOOK_OFFSET) = Hu3DHookFuncCreate(fn_1_3C94);
-    Hu3DModelLayerSet(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FLOOR_DRAW_HOOK_OFFSET), 0);
+    *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FLOOR_DRAW_HOOK_OFFSET) = fn_800260F4(fn_1_3C94);
+    fn_80026B8C(*(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FLOOR_DRAW_HOOK_OFFSET), 0);
 
     for (cellIndex = 0; cellIndex < 16; cellIndex++) {
         *((u8 *)&lbl_1_bss_0 + PIXEL_TEAM_PIXELS_OFFSET + cellIndex) = lbl_1_data_140[cellIndex];
@@ -104,16 +104,16 @@ void fn_1_31BC(void)
 
         panelModel = *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_FLOOR_PANEL_MODELS_OFFSET + cellIndex * 2);
         if (*((u8 *)&lbl_1_bss_0 + PIXEL_TEAM_PIXELS_OFFSET + cellIndex) == 0) {
-            Hu3DMotionSet(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_OFF_MOTION_OFFSET));
+            fn_8002C95C(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_OFF_MOTION_OFFSET));
         } else {
-            Hu3DMotionSet(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_ON_MOTION_OFFSET));
+            fn_8002C95C(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_ON_MOTION_OFFSET));
         }
 
         panelModel = *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_RIGHT_FLOOR_MODELS_OFFSET + cellIndex * 2);
         if (*((u8 *)&lbl_1_bss_0 + PIXEL_RIGHT_TEAM_PIXELS_OFFSET + cellIndex) == 0) {
-            Hu3DMotionSet(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_OFF_MOTION_OFFSET));
+            fn_8002C95C(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_OFF_MOTION_OFFSET));
         } else {
-            Hu3DMotionSet(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_ON_MOTION_OFFSET));
+            fn_8002C95C(panelModel, *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_ON_MOTION_OFFSET));
         }
     }
 
@@ -177,37 +177,37 @@ void fn_1_3460(s32 pictureIndex, s32 cellIndex)
 
     modelId = *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
                         pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + cellIndex * 2);
-    Hu3DModelAttrSet(
+    fn_800269E8(
         *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_INTRO_MODELS_OFFSET + pictureIndex * 2),
-        HU3D_ATTR_DISPOFF);
+        (1 << 0));
     otherCell = 0;
     while (otherCell < PIXEL_CELL_COUNT) {
-        Hu3DModelAttrSet(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
+        fn_800269E8(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
                                    pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + otherCell * 2),
-                         HU3D_ATTR_DISPOFF);
+                         (1 << 0));
         otherCell++;
     }
-    Hu3DModelAttrReset(modelId, HU3D_ATTR_DISPOFF);
-    Hu3DMotionTimeSet(modelId, (0.0f));
+    fn_80026A44(modelId, (1 << 0));
+    fn_8002D414(modelId, (0.0f));
 
-    Hu3DModelAttrSet(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_MODEL_OFFSET),
-                     HU3D_ATTR_DISPOFF);
+    fn_800269E8(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_MODEL_OFFSET),
+                     (1 << 0));
     otherCell = 0;
     while (otherCell < PIXEL_CELL_COUNT) {
-        Hu3DModelAttrSet(
+        fn_800269E8(
             *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + otherCell * 2),
-            HU3D_ATTR_DISPOFF);
+            (1 << 0));
         otherCell++;
     }
-    Hu3DMotionTimeSet(
+    fn_8002D414(
         *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + cellIndex * 2),
         (0.0f));
-    Hu3DModelAttrReset(
+    fn_80026A44(
         *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + cellIndex * 2),
-        HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrReset(
+        (1 << 0));
+    fn_80026A44(
         *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + cellIndex * 2),
-        HU3D_MOTATTR_REV);
+        ((1 << 30) | (1 << 2)));
     HuAudFXPlay(PIXEL_CELL_TRANSITION_SOUND);
 }
 
@@ -218,7 +218,7 @@ BOOL fn_1_35E0(s32 pictureIndex, s32 cellIndex)
 
     modelId = (*(s16 *) ((s8 *) (&lbl_1_bss_0) + (pictureIndex * PIXEL_CELL_MODEL_SET_BYTES) +
                          (cellIndex * 2) + (PIXEL_PICTURE_CELL_MODELS_OFFSET)));
-    if (Hu3DMotionEndCheck(modelId) == 1) {
+    if (fn_8002D75C(modelId) == 1) {
         return 1;
     }
     return 0;
@@ -234,31 +234,31 @@ void fn_1_364C(s32 pictureIndex, s32 cellIndex)
 
     modelId = *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
                         pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + cellIndex * 2);
-    lastFrame = Hu3DMotionMotionMaxTimeGet(Hu3DMotionIDGet(modelId));
+    lastFrame = Hu3DMotionMotionMaxTimeGet(fn_8002D3C4(modelId));
     otherCell = 0;
     while (otherCell < PIXEL_CELL_COUNT) {
-        Hu3DModelAttrSet(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
+        fn_800269E8(*(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
                                    pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + otherCell * 2),
-                         HU3D_ATTR_DISPOFF);
+                         (1 << 0));
         otherCell++;
     }
-    Hu3DModelAttrReset(modelId, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(modelId, HU3D_MOTATTR_REV);
+    fn_80026A44(modelId, (1 << 0));
+    fn_800269E8(modelId, ((1 << 30) | (1 << 2)));
     /* Reverse playback begins at the last frame rather than restarting at zero. */
-    Hu3DMotionTimeSet(modelId, lastFrame);
+    fn_8002D414(modelId, lastFrame);
 
     otherCell = 0;
     while (otherCell < PIXEL_CELL_COUNT) {
-        Hu3DModelAttrSet(
+        fn_800269E8(
             *(s16 *) ((s8 *) &lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + otherCell * 2),
-            HU3D_ATTR_DISPOFF);
+            (1 << 0));
         otherCell++;
     }
     modelId = *(s16 *)((s8 *)&lbl_1_bss_0 + PIXEL_REFERENCE_CELL_MODELS_OFFSET + cellIndex * 2);
-    lastFrame = Hu3DMotionMotionMaxTimeGet(Hu3DMotionIDGet(modelId));
-    Hu3DMotionTimeSet(modelId, lastFrame);
-    Hu3DModelAttrReset(modelId, HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(modelId, HU3D_MOTATTR_REV);
+    lastFrame = Hu3DMotionMotionMaxTimeGet(fn_8002D3C4(modelId));
+    fn_8002D414(modelId, lastFrame);
+    fn_80026A44(modelId, (1 << 0));
+    fn_800269E8(modelId, ((1 << 30) | (1 << 2)));
     HuAudFXPlay(PIXEL_CELL_TRANSITION_SOUND);
 }
 
@@ -270,8 +270,8 @@ s32 fn_1_37A8(s32 pictureIndex, s32 cellIndex)
 
     modelId = *(HU3D_MODELID *) ((u8 *) &lbl_1_bss_0 + PIXEL_PICTURE_CELL_MODELS_OFFSET +
                                  pictureIndex * PIXEL_CELL_MODEL_SET_BYTES + cellIndex * 2);
-    if (Hu3DMotionEndCheck(modelId) == 1 ||
-        Hu3DMotionTimeGet(modelId) <= (0.0f)) {
+    if (fn_8002D75C(modelId) == 1 ||
+        fn_8002D4E0(modelId) <= (0.0f)) {
         return 1;
     }
     return 0;
@@ -367,7 +367,7 @@ s32 fn_1_3AE0(s32 side, s32 column, s32 row)
 
     panelModel = *(s16 *) ((u8 *) &lbl_1_bss_0 + side * PIXEL_CELL_MODEL_SET_BYTES +
                            PIXEL_FLOOR_PANEL_MODELS_OFFSET + (column + row * 4) * 2);
-    motionId = Hu3DMotionIDGet(panelModel);
+    motionId = fn_8002D3C4(panelModel);
     /* The play update replaces these motions after they end, releasing the pixel for another
      * flip. */
     if (motionId == *(s16*)((u8*)&lbl_1_bss_0 + PIXEL_PANEL_TURN_ON_MOTION_OFFSET)
@@ -392,14 +392,14 @@ void fn_1_3BA0(void)
         while (cellIndex < PIXEL_CELL_COUNT) {
             modelId = *(s16 *)((u8 *)&lbl_1_bss_0 + (side * PIXEL_CELL_MODEL_SET_BYTES)
                      + (cellIndex * 2) + PIXEL_FLOOR_PANEL_MODELS_OFFSET);
-            if (Hu3DMotionEndCheck(modelId) == 1) {
-                if ((s16)Hu3DMotionIDGet(modelId)
+            if (fn_8002D75C(modelId) == 1) {
+                if ((s16)fn_8002D3C4(modelId)
                     == *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_TURN_ON_MOTION_OFFSET)) {
-                    Hu3DMotionSet(modelId,
+                    fn_8002C95C(modelId,
                                   *(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_PANEL_ON_MOTION_OFFSET));
-                } else if ((s16)Hu3DMotionIDGet(modelId)
+                } else if ((s16)fn_8002D3C4(modelId)
                            == *(s16 *)((u8 *)&lbl_1_bss_0 + PIXEL_PANEL_TURN_OFF_MOTION_OFFSET)) {
-                    Hu3DMotionSet(modelId,
+                    fn_8002C95C(modelId,
                                   *(s16 *) ((u8 *) &lbl_1_bss_0 + PIXEL_PANEL_OFF_MOTION_OFFSET));
                 }
             }
@@ -417,7 +417,7 @@ void fn_1_3C94(HU3D_MODEL *model, Mtx *matrix)
 /* The main play hook calls this for each CPU player to dispatch input by configured difficulty. */
 void fn_1_3C98(s32 playerIndex)
 {
-    switch (GwPlayerConf[playerIndex].comDif) {
+    switch (lbl_80265728[playerIndex].comDif) {
     case 0:
         fn_1_40E0(playerIndex);
         break;

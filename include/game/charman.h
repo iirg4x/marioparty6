@@ -8,125 +8,90 @@
 #include "msm_se.h"
 #include "datanum/charmot.h"
 
+void fn_80056428(void);
+AMEM_PTR fn_80056598(s16 charNo);
+void fn_800565B4(s16 charNo);
+void fn_8005664C(s16 charNo);
+void fn_80056754(s16 charNo);
+void fn_800567D8(s16 charNo);
+void fn_8005702C(s16 charNo);
+HU3D_MODELID fn_80057068(s16 charNo, s16 model);
 
-#define CHARVOICEID(no) (MSM_SE_CHARVOICE_MARIO+(no))
-#define CHARSEID(no) (MSM_SE_CHAR_MARIO+(no))
+HU3D_MOTIONID fn_8005B0B8(s16 charNo, unsigned int dataNum);
+void fn_8005B398(s16 charNo, HU3D_MOTIONID motId, unsigned int motNo);
+void fn_8005B420(s16 charNo, unsigned int motId);
+void fn_8005B4BC(s16 charNo);
+void fn_8005B7BC(s16 charNo);
+void fn_8005BB8C(s16 charNo);
+void fn_8005BE80(s16 charNo, HU3D_MOTIONID motId);
 
-#define CHARNO_NONE -1
-#define CHARNO_MARIO 0
-#define CHARNO_LUIGI 1
-#define CHARNO_PEACH 2
-#define CHARNO_YOSHI 3
-#define CHARNO_WARIO 4
-#define CHARNO_DAISY 5
-#define CHARNO_WALUIGI 6
-#define CHARNO_KINOPIO 7
-#define CHARNO_TERESA 8
-#define CHARNO_MINIKOOPA 9
-#define CHARNO_KINOPICO 10
-#define CHARNO_MINIKOOPAR 11
-#define CHARNO_MINIKOOPAG 12
-#define CHARNO_MINIKOOPAB 13
-#define CHARNO_MAX 14
+char **fn_8005C074(s16 charNo, s16 model);
+char *fn_8005C0F0(s16 charNo, s16 model, s16 hookNo);
 
-#define CHAR_MODEL0 (1 << 0)
-#define CHAR_MODEL1 (1 << 1)
-#define CHAR_MODEL2 (1 << 2)
-#define CHAR_MODEL3 (1 << 3)
-#define CHAR_MODEL_MAX 4
+void fn_8005C16C(s16 charNo, float time);
+float fn_8005C1B8(s16 charNo);
+float fn_8005C1FC(s16 charNo);
+BOOL fn_8005C240(s16 charNo);
+HU3D_MOTIONID fn_8005C284(s16 charNo);
+void fn_8005C2C8(s16 charNo, HU3D_MOTIONID motId, float start, float end, u32 attr);
+float fn_8005C34C(s16 charNo);
+void fn_8005C390(s16 charNo, float speed);
+void fn_8005C3DC(s16 charNo, float start, float end);
+void fn_8005C430(s16 charNo, u32 attr);
+void fn_8005C47C(s16 charNo, u32 attr);
+float fn_8005C4C8(s16 charNo);
+HU3D_MODELID fn_8005C4E4(s16 charNo, s16 model, unsigned int *motDataNum,
+    HU3D_MOTIONID *motId);
+s32 fn_8005C750(s16 charNo);
+void fn_8005C7A4(s16 charNo, char *objName);
+void fn_8005D404(s16 cameraBit, HuVecF *pos);
+void fn_8005D5A0(s16 cameraBit, HuVecF *pos);
+void fn_8005D738(s16 charNo);
+void fn_8005D864(s16 cameraBit, HuVecF *pos, HuVecF *rot);
+void fn_8005DA5C(s16 charNo);
+void fn_8005DB3C(s16 cameraBit, HuVecF *pos, HuVecF *rot);
+void fn_8005DDEC(s16 layerNo);
+void fn_8005DEB0(s16 charNo, s16 motNo, BOOL voiceOn);
+void fn_8005DF74(s16 charNo, BOOL voicePanAuto);
+void fn_8005DFC0(s16 charNo, BOOL fxFlag);
+void fn_8005E070(s16 charNo, unsigned int dataNum, BOOL updateF);
+s32 fn_8005E128(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type, s16 npcNo);
+s32 fn_8005E1D8(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type);
+void fn_8005F77C(s16 charNo, s16 stepFx);
 
-#define CHAR_MOT_MAX 32
+void fn_8005F968(s16 charNo, HuVecF *pos);
+void fn_8006065C(s16 cameraBit, float scale, HuVecF *pos);
+void fn_800608C4(s16 cameraBit, HuVecF *pos, HuVecF *offset, float scale);
+void fn_80060B10(s16 charNo, float yOfs, float ofsY);
 
-#define CHAR_NPC_MAX 14
-#define CHAR_NPC_NO_BASE 15
-#define CHAR_NPC_NONE -1
-
-#define CHAR_MOTNO(dataNum) FILENUM(dataNum)
-
-#define CHARMOT_DATANUM(dataNum, charName) (DATANUM(DATA_##charName##mot, FILENUM(dataNum)))
-#define CHAR_DATANUM(dataNum, charName) (DATANUM(DATA_##charName, FILENUM(dataNum)))
-
-void CharInit(void);
-AMEM_PTR CharMotionAMemPGet(s16 charNo);
-void CharMotionInit(s16 charNo);
-void CharMotionInitAsync(s16 charNo);
-void CharMotionClose(s16 charNo);
-void CharDataClose(s16 charNo);
-void CharClose(s16 charNo);
-HU3D_MODELID CharModelCreate(s16 charNo, s16 model);
-
-HU3D_MOTIONID CharMotionCreate(s16 charNo, unsigned int dataNum);
-void CharMotionNoSet(s16 charNo, HU3D_MOTIONID motId, unsigned int motNo);
-void CharMotionKill(s16 charNo, unsigned int motId);
-void CharMotionDataClose(s16 charNo);
-void CharModelDataClose(s16 charNo);
-void CharModelKill(s16 charNo);
-void CharMotionSet(s16 charNo, HU3D_MOTIONID motId);
-
-char **CharModelEyeBmpGet(s16 charNo, s16 model);
-char *CharModelItemHookGet(s16 charNo, s16 model, s16 hookNo);
-
-void CharMotionTimeSet(s16 charNo, float time);
-float CharMotionTimeGet(s16 charNo);
-float CharMotionMaxTimeGet(s16 charNo);
-BOOL CharMotionEndCheck(s16 charNo);
-HU3D_MOTIONID CharMotionShiftIDGet(s16 charNo);
-void CharMotionShiftSet(s16 charNo, HU3D_MOTIONID motId, float start, float end, u32 attr);
-float CharMotionShiftTimeGet(s16 charNo);
-void CharMotionSpeedSet(s16 charNo, float speed);
-void CharMotionStartEndSet(s16 charNo, float start, float end);
-void CharModelAttrSet(s16 charNo, u32 attr);
-void CharModelAttrReset(s16 charNo, u32 attr);
-float CharModelHeightGet(s16 charNo);
-HU3D_MODELID CharModelMotListCreate(s16 charNo, s16 model, unsigned int *motDataNum, HU3D_MOTIONID *motId);
-s32 CharModelTimingHookNoGet(s16 charNo);
-void CharModelHookDustCreate(s16 charNo, char *objName);
-void CharEffectSmokeCreate(s16 cameraBit, HuVecF *pos);
-void CharEffectCoinGlowCreate(s16 cameraBit, HuVecF *pos);
-void CharModelHitCreate(s16 charNo);
-void CharEffectHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot);
-void CharModelShoeHitCreate(s16 charNo);
-void CharEffectShoeHitCreate(s16 cameraBit, HuVecF *pos, HuVecF *rot);
-void CharEffectLayerSet(s16 layerNo);
-void CharMotionVoiceOnSet(s16 charNo, s16 motNo, BOOL voiceOn);
-void CharModelVoicePanAutoSet(s16 charNo, BOOL voicePanAuto);
-void CharModelVoiceFlagSet(s16 charNo, BOOL fxFlag);
-void CharMotionUpdateSet(s16 charNo, unsigned int dataNum, BOOL updateF);
-s32 CharNpcDustSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type, s16 npcNo);
-s32 CharNpcDustVoiceOffSet(HU3D_MODELID modelId, HU3D_MOTIONID motId, s16 type);
-void CharModelStepSet(s16 charNo, s16 stepFx);
-
-void CharModelLandDustCreate(s16 charNo, HuVecF *pos);
-void CharEffectDustCreate(s16 cameraBit, float scale, HuVecF *pos);
-void CharEffectCryCreate(s16 cameraBit, HuVecF *pos, HuVecF *offset, float scale);
-void CharModelCryCreate(s16 charNo, float yOfs, float ofsY);
-
-unsigned int CharModelFileNumGet(s16 charNo, s16 model);
-unsigned int CharMotionFileNumGet(s16 charNo, u16 motId);
-void CharModelVoicePanSet(s16 charNo, s16 pan);
-void CharModelVoiceVolSet(s16 charNo, s16 vol);
+unsigned int fn_80060E50(s16 charNo, s16 model);
+unsigned int fn_80060EF0(s16 charNo, u16 motId);
+void fn_80060F14(s16 charNo, s16 pan);
+s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
+void fn_80060F40(s16 charNo, s16 vol);
 
 void CharWinLoseVoicePlay(s16 charNo, unsigned int motId, s16 seId);
-void CharLoseVoicePlay(s16 charNo1, s16 charNo2, s16 charNo3, s16 charNo4);
+void fn_800611E4(s16 charNo1, s16 charNo2, s16 charNo3, s16 charNo4);
 
-s16 CharMotionTotalTimeGet(s16 charNo, int motNo);
-s16 CharMotionExtraTimeGet(s16 charNo, int motNo);
+s16 fn_800613C0(s16 charNo, int motNo);
+s16 fn_800614A4(s16 charNo, int motNo);
 
-void CharMotionLoad(s16 *statList);
-void CharEffectSmokeCreateScale(s16 cameraBit, HuVecF *pos, float scale);
-void CharModelLandDustCreateStep(s16 charNo, HuVecF *pos);
-void CharEffectWarnCreate(s16 charNo, float scale);
-u32 CharAttrGet(s16 charNo);
-HU3D_LIGHTID CharLightCreateV(HuVecF *pos, HuVecF *dir, GXColor *color);
-HU3D_LIGHTID CharLightCreate(float posX, float posY, float posZ, float dirX, float dirY, float dirZ, u8 r, u8 g, u8 b);
-void CharLightSpotSet(s32 func, float cutoff);
-void CharLightInfinitytSet(void);
-void CharLightPointSet(s32 func, float cutoff, float brightness);
-void CharLightColorSet(u8 r, u8 g, u8 b, u8 a);
-void CharLightPosAimSetV(HuVecF *pos, HuVecF *aim);
-void CharLightPosAimSet(float posX, float posY, float posZ, float aimX, float aimY, float aimZ);
-void CharLightStaticSet(BOOL staticF);
+void fn_80056B7C(s16 *statList);
+void fn_8005CF90(s16 cameraBit, HuVecF *pos, float scale);
+void fn_8005FC84(s16 charNo, HuVecF *pos);
+void fn_80061E00(s16 charNo, float scale);
+u32 fn_80062094(s16 charNo);
+HU3D_LIGHTID fn_800614AC(HuVecF *pos, HuVecF *dir, GXColor *color);
+HU3D_LIGHTID fn_800615B4(float posX, float posY, float posZ, float dirX, float dirY,
+    float dirZ, u8 r, u8 g, u8 b);
+void fn_80061728(s32 func, float cutoff);
+void fn_80061814(void);
+void fn_80061904(s32 func, float cutoff, float brightness);
+void fn_80061A04(u8 r, u8 g, u8 b, u8 a);
+void fn_80061AE4(HuVecF *pos, HuVecF *aim);
+void fn_80061BE0(float posX, float posY, float posZ, float aimX, float aimY, float aimZ);
+void fn_80061D04(BOOL staticF);
 
-extern unsigned int CharDataDirTbl[CHARNO_MAX][6];
+extern unsigned int lbl_8022E718[14][6];
 
 #endif

@@ -31,7 +31,7 @@ void fn_1_C578(void);
 void fn_1_11A60(void);
 void fn_1_90F4(void);
 void fn_1_799C(s32 enabled);
-void _SetFlag(u32 flag);
+void fn_8006A1C4(u32 flag);
 
 void fn_1_1720(void);
 void fn_1_10548(void);
@@ -118,7 +118,7 @@ void fn_1_11410(void)
         selectedCount = 0;
         while (MgDataTbl[index].ovl != BINGO_MINIGAME_TABLE_END) {
             remainingModeCount = index + BINGO_MINIGAME_NUMBER_BASE;
-            if (GWMgUnlockGet(remainingModeCount) != 0 && MgDataTbl[index].type == 0) {
+            if (fn_8003CC40(remainingModeCount) != 0 && MgDataTbl[index].type == 0) {
                 remainingModeCount = 1;
                 if (MgDataTbl[index].flag & MG_FLAG_MIC) {
                     remainingModeCount = 0;
@@ -165,7 +165,7 @@ void fn_1_11410(void)
     } else {
         *(s16 *)&MgModeSubMode = history->evtno;
     }
-        _SetFlag(FLAG_INST_MG_MODE);
+        fn_8006A1C4(196609);
     Hu3DBGColorSet(0, 0, 0);
     index = Hu3DGLightCreate(
         (0.0f), (1000.0f), (1000.0f),
@@ -186,7 +186,7 @@ void fn_1_11410(void)
     Hu3DShadowTPLvlSet((0.6f));
     if (history->evtno != 0) {
         for (index = 0; index < 4; index++) {
-            coinBonus = GwPlayer[index].mgCoinBonus;
+            coinBonus = lbl_80265750[index].mgCoinBonus;
             MgModeScore[index] = coinBonus;
             if (MgModeScore[index] < 10) {
                 MgModeScore[index] = 0;
@@ -246,7 +246,7 @@ void fn_1_11A60(void) {
         previousMinigame = MgModeWork[MgModePlayNum - 1];
     }
     lbl_1_bss_AFA = fn_1_0(0, 0, &initialPosition);
-    Hu3DModelScaleSet(lbl_1_bss_AFA, (0.0f), (0.0f), (0.0f));
+    fn_800268B0(lbl_1_bss_AFA, (0.0f), (0.0f), (0.0f));
     fn_1_11B5C();
 }
 
@@ -310,7 +310,7 @@ void fn_1_11D2C(void) {
     position.y = (18.0f);
     position.z = (-250.0f);
     PSVECAdd(&Hu3DCamera[0].pos, &position, &position);
-    Hu3DModelPosSetV(lbl_1_bss_AFA, &position);
+    fn_80026790(lbl_1_bss_AFA, &position);
 
     PSVECSubtract(&Hu3DCamera[0].pos, &Hu3DCamera[0].target, &position);
     scale = (f32)(atan2(-position.y, position.z) /
@@ -319,24 +319,24 @@ void fn_1_11D2C(void) {
                        (3.141592653589793) * (180.0));
     position.x = scale;
     position.z = (0.0f);
-    Hu3DModelRotSetV(lbl_1_bss_AFA, &position);
+    fn_80026838(lbl_1_bss_AFA, &position);
 
     scale = (0.0f);
-    Hu3DModelScaleSet(lbl_1_bss_AFA, scale, scale, scale);
+    fn_800268B0(lbl_1_bss_AFA, scale, scale, scale);
     HuPrcVSleep();
     fn_1_43C();
     HuPrcVSleep();
     HuAudFXPlay(MGM_BINGO_SOUND_CARD_REVEAL);
 
     while (scale < (0.12f)) {
-        Hu3DModelScaleSet(lbl_1_bss_AFA, scale, scale, scale);
+        fn_800268B0(lbl_1_bss_AFA, scale, scale, scale);
         scale += (0.012f);
         if (scale >= (0.12f)) {
             scale = (0.12f);
         }
         HuPrcVSleep();
     }
-    Hu3DModelScaleSet(lbl_1_bss_AFA, (0.12f),
+    fn_800268B0(lbl_1_bss_AFA, (0.12f),
                       (0.12f), (0.12f));
     HuPrcVSleep();
     lbl_1_data_AD0 = HuAudFXPlay(MGM_BINGO_SOUND_CARD_CYCLE);
@@ -379,9 +379,9 @@ void fn_1_12038(void) {
     fn_1_824();
     fn_1_1970();
     fn_1_1088();
-    _ClearFlag(FLAG_INST_MG_MODE);
+    fn_8006A268(196609);
     SLSaveModeExec(0);
-    omOvlReturnEx(1, 1);
+    fn_8003A5E4(1, 1);
     HuPrcEnd();
     for (;;) {
         HuPrcVSleep();
@@ -400,9 +400,9 @@ void fn_1_120E4(void) {
     fn_1_824();
     fn_1_1970();
     fn_1_1088();
-    _ClearFlag(FLAG_INST_MG_MODE);
+    fn_8006A268(196609);
     SLSaveModeExec(0);
-    omOvlReturnEx(1, 1);
+    fn_8003A5E4(1, 1);
     HuPrcEnd();
     for (;;) {
         HuPrcVSleep();
@@ -478,18 +478,18 @@ void fn_1_1217C(void) {
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        GwSystem.mgInstDispF = 0;
+        lbl_80265B70.mgInstDispF = 0;
         minigameNo = MgModeWork[MgModePlayNum] + BINGO_MINIGAME_NUMBER_BASE;
-        GWMgUnlockSet(minigameNo);
-        GwSystem.mgNo = minigameNo - BINGO_MINIGAME_NUMBER_BASE;
+        fn_8003CCAC(minigameNo);
+        lbl_80265B70.mgNo = minigameNo - BINGO_MINIGAME_NUMBER_BASE;
         if (lbl_1_bss_AFC != 0) {
-            GwMgNightF = 1;
+            lbl_802C0278 = 1;
         } else {
-            GwMgNightF = 0;
+            lbl_802C0278 = 0;
         }
         fn_1_11CE8();
         fn_1_824();
-        omOvlCallEx(DLL_instdll, 1, 0, 0);
+        omOvlCallEx(4, 1, 0, 0);
         for (;;) {
             HuPrcVSleep();
         }
@@ -504,18 +504,18 @@ void fn_1_1217C(void) {
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        GwSystem.mgInstDispF = 1;
+        lbl_80265B70.mgInstDispF = 1;
         minigameNo = MgModeWork[MgModePlayNum] + BINGO_MINIGAME_NUMBER_BASE;
-        GWMgUnlockSet(minigameNo);
-        GwSystem.mgNo = minigameNo - BINGO_MINIGAME_NUMBER_BASE;
+        fn_8003CCAC(minigameNo);
+        lbl_80265B70.mgNo = minigameNo - BINGO_MINIGAME_NUMBER_BASE;
         if (lbl_1_bss_AFC != 0) {
-            GwMgNightF = 1;
+            lbl_802C0278 = 1;
         } else {
-            GwMgNightF = 0;
+            lbl_802C0278 = 0;
         }
         fn_1_11CE8();
         fn_1_824();
-        omOvlCallEx(DLL_instdll, 1, 0, 0);
+        omOvlCallEx(4, 1, 0, 0);
         for (;;) {
             HuPrcVSleep();
         }
@@ -559,10 +559,10 @@ processSubMode:
             while (WipeCheck() != 0) HuPrcVSleep();
             fn_1_11CE8();
             fn_1_824();
-            _ClearFlag(FLAG_INST_MG_MODE);
+            fn_8006A268(196609);
             SLSaveModeExec(0);
             omOvlHisChg(0, history->ovl, 0, 0);
-            omOvlReturnEx(0, 1);
+            fn_8003A5E4(0, 1);
             for (;;) HuPrcVSleep();
         }
         fn_1_120E4();

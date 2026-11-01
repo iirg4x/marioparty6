@@ -20,8 +20,8 @@ MGSEQ_PARAM lbl_1_data_0 = {
 /* Module entry point: creates the minigame actor manager and starts the sequence. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_4 = MgActorObjectSetup();
-    MgSeqCreatePrio(&lbl_1_data_0, 8192);
+    lbl_1_bss_4 = fn_80080418();
+    fn_800707B4(&lbl_1_data_0, 8192);
 }
 
 /* Sequence init hook: creates four camera views and the course light, then prepares play. */
@@ -33,15 +33,15 @@ void fn_1_DC(s16 sequenceMode, s16 frameNo)
     OMOBJ *obj;
     HU3D_LIGHTID light;
 
-    Hu3DCameraCreate(HU3D_CAM0 | HU3D_CAM1 | HU3D_CAM2 | HU3D_CAM3);
-    obj = omAddObjEx(lbl_1_bss_4, OM_OUTVIEW_PRIO, 0, 0, -1, omOutViewMulti);
+    Hu3DCameraCreate((1 << 0) | (1 << 1) | (1 << 2) | (1 << 3));
+    obj = fn_8003AB38(lbl_1_bss_4, 32730, 0, 0, -1, fn_8003DAA4);
     obj->work[0] = 4;
-    light = Hu3DGLightCreateV(&pos, &dir, &color);
+    light = fn_800286D0(&pos, &dir, &color);
     Hu3DGLightStaticSet(light, TRUE);
     Hu3DGLightInfinitytSet(light);
     fn_1_378();
     lbl_1_bss_0 = 0;
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Sequence fade-in hook: starts player movement at callback 30 and begins the four-view split
@@ -68,7 +68,7 @@ void fn_1_2B4(s16 sequenceMode, s16 frameNo)
 {
     if (fn_1_570()) {
         lbl_1_bss_0 = 0;
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -82,7 +82,7 @@ void fn_1_2F0(s16 sequenceMode, s16 frameNo)
 void fn_1_310(s16 sequenceMode, s16 frameNo)
 {
     if (fn_1_DA8() == -1) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -100,7 +100,7 @@ void fn_1_340(s16 sequenceMode, s16 frameNo)
 void fn_1_344(s16 sequenceMode, s16 frameNo)
 {
     HuAudAllStop();
-    Hu3DModelAllKill();
-    Hu3DLightAllKill();
-    omOvlReturnEx(1, 1);
+    fn_80026648();
+    fn_80028D70();
+    fn_8003A5E4(1, 1);
 }

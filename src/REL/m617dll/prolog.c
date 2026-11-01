@@ -35,9 +35,9 @@ void _epilog(void)
 /* Called at startup to create actor management and configure the sequence delays. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_38E4 = MgActorObjectSetup();
-    omAddObjEx(lbl_1_bss_38E4, 32730, 0U, 0U, -1, omOutView);
-    MgSeqCreate(&lbl_1_data_0);
-    MgSeqModeDelaySet(2, 1000);
-    MgSeqModeDelaySet(7, 1000);
+    lbl_1_bss_38E4 = fn_80080418();
+    fn_8003AB38(lbl_1_bss_38E4, 32730, 0U, 0U, -1, fn_8003D4FC);
+    fn_80070788(&lbl_1_data_0);
+    fn_80071CE8(2, 1000);
+    fn_80071CE8(7, 1000);
 }

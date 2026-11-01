@@ -6,10 +6,10 @@
  * animation ends. */
 s32 fn_1_AAD8(void *callbackData) {
     M631ActorWork *actor = (M631ActorWork *) callbackData;
-    if (Hu3DMotionEndCheck(actor->characterModelId) != 0) {
-        CharMotionSet(actor->charNo, actor->idleMotionId);
-        CharModelAttrReset(actor->charNo, HU3D_MOTATTR_PAUSE);
-        CharModelAttrSet(actor->charNo, HU3D_MOTATTR_LOOP);
+    if (fn_8002D75C(actor->characterModelId) != 0) {
+        fn_8005BE80(actor->charNo, actor->idleMotionId);
+        fn_8005C47C(actor->charNo, ((1 << 30) | (1 << 1)));
+        fn_8005C430(actor->charNo, ((1 << 30) | (1 << 0)));
         return 1;
     }
     return 0;

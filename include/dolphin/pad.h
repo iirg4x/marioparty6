@@ -62,8 +62,8 @@ typedef struct PADStatus {
   s8 stickY;
   s8 substickX;
   s8 substickY;
-  u8 triggerL;
-  u8 triggerR;
+  u8 triggerLeft;
+  u8 triggerRight;
   u8 analogA;
   u8 analogB;
   s8 err;
@@ -81,46 +81,6 @@ void PADControlAllMotors(const u32* cmdArr);
 void PADSetAnalogMode(u32 mode);
 PADSamplingCallback PADSetSamplingCallback(PADSamplingCallback);
 BOOL __PADDisableRecalibration(BOOL disable);
-
-#ifdef TARGET_PC
-/* New API to facilitate controller interactions */
-typedef struct PADDeadZones {
-  bool emulateTriggers;
-  bool useDeadzones;
-  u16 stickDeadZone;
-  u16 substickDeadZone;
-  u16 leftTriggerActivationZone;
-  u16 rightTriggerActivationZone;
-} PADDeadZones;
-
-typedef u16 PADButton;
-
-typedef struct PADButtonMapping {
-  u32 nativeButton;
-  PADButton padButton;
-} PADButtonMapping;
-
-/* Returns the total number of controllers */
-u32 PADCount();
-/* Returns the controller name for the given index into the controller map */
-const char* PADGetNameForControllerIndex(u32 idx);
-void PADSetPortForIndex(u32 index, s32 port);
-s32 PADGetIndexForPort(u32 port);
-void PADGetVidPid(u32 port, u32* vid, u32* pid);
-void PADClearPort(u32 port);
-const char* PADGetName(u32 port);
-void PADSetButtonMapping(u32 port, PADButtonMapping mapping);
-void PADSetAllButtonMappings(u32 port, PADButtonMapping buttons[12]);
-PADButtonMapping* PADGetButtonMappings(u32 port, u32* buttonCount);
-void PADSerializeMappings();
-PADDeadZones* PADGetDeadZones(u32 port);
-const char* PADGetButtonName(PADButton);
-const char* PADGetNativeButtonName(u32 button);
-/* Returns any pressed native button */
-s32 PADGetNativeButtonPressed(u32 port);
-void PADRestoreDefaultMapping(u32 port);
-void PADBlockInput(bool block);
-#endif
 
 #ifdef __cplusplus
 }

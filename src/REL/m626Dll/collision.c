@@ -8,10 +8,10 @@
 /* Creates the collision manager and its entry tables during minigame setup. */
 void fn_1_E268(OMOBJMAN *objMan)
 {
-    OMOBJ *obj = omAddObjEx(objMan, 18, 0, 0, OM_GRP_NONE, fn_1_E2F4);
+    OMOBJ *obj = fn_8003AB38(objMan, 18, 0, 0, -1, fn_1_E2F4);
     void *data;
     lbl_1_bss_6D0 = obj;
-    data = HuMemDirectMallocNum(HEAP_HEAP, 192, HU_MEMNUM_OVL);
+    data = HuMemDirectMallocNum(HEAP_HEAP, 192, 0x10000000);
     obj->data = data;
     memset(data, 0, 192);
 }
@@ -640,21 +640,21 @@ void fn_1_1075C(M626SurfaceCollider *record, HSF_OBJECT *objects, s32 count)
     }
 
     length = quadCount * sizeof(M626MeshEdge);
-    edge = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    edge = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     record->original = edge;
     memset(edge, 0, length);
     length = quadCount * sizeof(M626WorldEdge);
-    record->current = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    record->current = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     memset(record->current, 0, length);
-    record->alternate = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    record->alternate = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     memset(record->alternate, 0, length);
     record->transformCount = count;
     length = record->transformCount * sizeof(HSF_TRANSFORM *);
-    transforms = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    transforms = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     record->transforms = transforms;
     memset(transforms, 0, length);
     length = record->transformCount * sizeof(Mtx);
-    matrix = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    matrix = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     record->matrices = matrix;
     memset(matrix, 0, length);
 
@@ -697,7 +697,7 @@ void fn_1_1075C(M626SurfaceCollider *record, HSF_OBJECT *objects, s32 count)
 
 /* Builds surface collision data from every object in a model. */
 void fn_1_10A1C(M626SurfaceCollider *collider, s16 modelNo) {
-    HSF_DATA *hsf = Hu3DData[modelNo].hsf;
+    HSF_DATA *hsf = lbl_802C01C8[modelNo].hsf;
     fn_1_1075C(collider, hsf->object, hsf->objectNum);
 }
 

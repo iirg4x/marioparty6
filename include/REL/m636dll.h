@@ -160,8 +160,8 @@ extern u8 lbl_1_data_378[768];
 #define TIMER (*(MGTIMER **)((u8 *)&lbl_1_bss_0 + PIXEL_TIMER_RECORD_OFFSET))
 #define TICK (*(u32 *)((u8 *)&lbl_1_bss_0 + 8))
 #define READ_MODEL(resource)                                                                       \
-    Hu3DModelCreate(HuDataSelHeapReadNum((resource), HU_MEMNUM_OVL, HEAP_MODEL))
+    fn_80025A04(fn_80008DD0((resource), 0x10000000, 2))
 #define READ_MOTION(model, resource)                                                               \
-    Hu3DJointMotion((model), HuDataSelHeapReadNum((resource), HU_MEMNUM_OVL, HEAP_MODEL))
+    fn_80030458((model), fn_80008DD0((resource), 0x10000000, 2))
 
 #endif

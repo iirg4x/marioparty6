@@ -52,10 +52,10 @@ void _epilog(void)
 #include "game/object.h"
 #include "REL/m620Dll/module_globals.h"
 #include "game/data.h"
-#define MgSeqWinnerSet m620_seqman_MgSeqWinnerSet
+#define fn_80071C18 m620_seqman_MgSeqWinnerSet
 #include "game/mg/seqman.h"
-#undef MgSeqWinnerSet
-s16 MgSeqWinnerSet(s16, s16, s16, s16);
+#undef fn_80071C18
+s16 fn_80071C18(s16, s16, s16, s16);
 #include "game/mg/timer.h"
 #include "game/hu3d.h"
 #include "REL/m620Dll/module_data.h"
@@ -95,16 +95,16 @@ void fn_1_A0(void)
     for (index = 0; index < 4; index++) {
         lbl_1_bss_3C[index] = 0;
     }
-    lbl_1_bss_6C = omInitObjMan(100, 8192);
-    omGameSysInit(lbl_1_bss_6C);
-    MgSeqCreate(&lbl_1_data_80);
-    MgSeqModeHookAdd(4, fn_1_600);
+    lbl_1_bss_6C = fn_8003A8BC(100, 8192);
+    fn_80069F1C(lbl_1_bss_6C);
+    fn_80070788(&lbl_1_data_80);
+    fn_80071D20(4, fn_1_600);
     fn_1_117C(lbl_1_bss_6C);
     fn_1_1244(lbl_1_bss_6C, &lbl_1_data_1C, &lbl_1_data_28, &lbl_1_data_34);
     fn_1_13A4();
     fn_1_192C(lbl_1_bss_6C, 1, 45.0f, 20.0f, 5000.0f,
               0.0f, (OM_CAMERA_VIEW *)&lbl_1_data_0);
-    fn_1_26F8(1, (s32)HuDataSelHeapReadNum(fn_1_FB8(0), HU_MEMNUM_OVL, HEAP_MODEL));
+    fn_1_26F8(1, (s32)fn_80008DD0(fn_1_FB8(0), 0x10000000, 2));
     fn_1_24F4((void (*)(void))fn_1_BF0);
     fn_1_2D7C(lbl_1_bss_6C, lbl_1_data_38);
     fn_1_ECB4(lbl_1_bss_6C);
@@ -120,7 +120,7 @@ extern s32 fn_1_B1C(s16, s16);
 void fn_1_2E8(s16 mode, s16 state)
 {
     if (!fn_1_B1C(mode, state)) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -156,7 +156,7 @@ void fn_1_324(s16 checkValue, s16 frameNo)
         }
         lbl_1_bss_64++;
         lbl_1_bss_60 = 0;
-        MgSeqModeChangeOff();
+        fn_80071B08();
         /* fall through */
     case 1:
         if (++lbl_1_bss_60 < 6) {
@@ -183,7 +183,7 @@ void fn_1_324(s16 checkValue, s16 frameNo)
     case 4:
         if (WipeCheck() == 0) {
             lbl_1_bss_64++;
-            MgSeqModeNext();
+            fn_80071A9C();
         }
         break;
     case 5:
@@ -222,7 +222,7 @@ void fn_1_638(s16 mode, s16 state)
     if (!fn_1_B1C(mode, state)) {
         if (fn_1_B4D8() < 4) {
         } else {
-            MgSeqModeNext();
+            fn_80071A9C();
             return;
         }
     }
@@ -267,7 +267,7 @@ void fn_1_708(s16 checkValue, s16 frameNo)
     case 0:
         lbl_1_bss_64++;
         lbl_1_bss_60 = 0;
-        MgSeqModeChangeOff();
+        fn_80071B08();
     case 1:
         lbl_1_bss_64++;
         lbl_1_bss_60 = 0;
@@ -300,13 +300,13 @@ void fn_1_708(s16 checkValue, s16 frameNo)
             }
         }
         /* The sequence manager stores the winners; its updated status is unused here. */
-        winnerResult = MgSeqWinnerSet(
+        winnerResult = fn_80071C18(
             lbl_1_bss_34[0], lbl_1_bss_34[1], lbl_1_bss_34[2], lbl_1_bss_34[3]);
     case 4:
         if (lbl_1_bss_60 >= 30) {
             lbl_1_bss_64++;
             lbl_1_bss_60 = 0;
-            MgSeqModeChangeOn();
+            fn_80071B30();
         }
         break;
     default:
@@ -324,12 +324,12 @@ void fn_1_9E0(s16 checkValue, s16 frameNo)
     s32 playerIndex;
 
     if (fn_1_B1C(checkValue, frameNo) == 0 && frameNo == 0) {
-        for (playerIndex = 0; playerIndex < GW_PLAYER_MAX; playerIndex++) {
+        for (playerIndex = 0; playerIndex < 4; playerIndex++) {
             if (lbl_1_bss_34[playerIndex] >= 0) {
-                oldBonus = GwPlayer[playerIndex].mgCoinBonus;
+                oldBonus = lbl_80265750[playerIndex].mgCoinBonus;
                 newBonus = oldBonus + 10;
-                if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                    GwPlayer[playerIndex].mgCoinBonus = newBonus;
+                if (fn_8006A124(65551) == 0) {
+                    lbl_80265750[playerIndex].mgCoinBonus = newBonus;
                 }
             }
         }
@@ -463,7 +463,7 @@ void fn_1_BF0(OMOBJ *object, s32 mode, s32 entryIndex)
 
 /* Build a Trap Ease Artist data number from its file index. */
 s32 fn_1_FB8(s32 fileIndex) {
-    return fileIndex + DATA_m620;
+    return fileIndex + 0x4f0000;
 }
 
 s32 fn_1_FC0(void) {
@@ -477,7 +477,7 @@ s32 fn_1_FD0(void) {
 /* Read the sequence timer; the computer-action caller uses the value left by the call
  * despite this void declaration. */
 void fn_1_FE0(void) {
-    MgSeqTimerValueGet();
+    fn_80071B58();
 }
 
 /* Return the winner slot stored for one player. */

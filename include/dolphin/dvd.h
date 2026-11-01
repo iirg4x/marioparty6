@@ -163,7 +163,7 @@ s32 DVDConvertPathToEntrynum(const char* pathPtr);
 BOOL DVDReadAsyncPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset,
                       DVDCallback callback, s32 prio);
                
-BOOL DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 prio);
+s32 DVDReadPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, s32 prio);
 
 #define DVDReadAsync(fileInfo, addr, length, offset, callback)                                     \
   DVDReadAsyncPrio((fileInfo), (addr), (length), (offset), (callback), 2)

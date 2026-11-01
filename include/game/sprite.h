@@ -32,7 +32,7 @@
 #define HuSprDispOff(grpId, memberNo) HuSprAttrSet(grpId, memberNo, HUSPR_ATTR_DISPOFF)
 #define HuSprDispOn(grpId, memberNo) HuSprAttrReset(grpId, memberNo, HUSPR_ATTR_DISPOFF)
 
-#define HuSprAnimDataRead(fileNum) HuSprAnimRead(HuDataSelHeapReadNum(fileNum, HU_MEMNUM_OVL, HEAP_MODEL))
+#define HuSprAnimDataRead(fileNum) HuSprAnimRead(fn_80008DD0(fileNum, 0x10000000, 2))
 
 typedef struct HuSprite_s HUSPRITE;
 typedef struct HuSprRect_s {

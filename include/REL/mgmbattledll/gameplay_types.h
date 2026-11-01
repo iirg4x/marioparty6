@@ -13,7 +13,7 @@ extern s16 MgModeSubMode;
 extern s16 MgModeScore[4];
 extern u8 MgModePlayNum;
 extern u8 MgBattleOrder[4];
-s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag);
+s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
 
 typedef struct MgBattleChoices_s {
     /* Current availability or menu choice for each of the four players. */

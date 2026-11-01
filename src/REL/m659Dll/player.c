@@ -6,19 +6,19 @@
 #define M659_SFX_HIT_SIDE_1 2108
 #define M659_SFX_ENGINE_SIDE_0 2109
 #define M659_SFX_ENGINE_SIDE_1 2110
-#define M659_DATA_SHIP_MODEL DATANUM(DATA_m659, 6)
-#define M659_DATA_SHIP_MOTION_0 DATANUM(DATA_m659, 7)
-#define M659_DATA_SHIP_MOTION_1 DATANUM(DATA_m659, 8)
-#define M659_DATA_SHIP_MOTION_2 DATANUM(DATA_m659, 9)
-#define M659_DATA_BURNER_MODEL DATANUM(DATA_m659, 10)
-#define M659_DATA_BURNER_MOTION_LEFT DATANUM(DATA_m659, 12)
-#define M659_DATA_BURNER_MOTION_RIGHT DATANUM(DATA_m659, 11)
-#define M659_DATA_ENDING_EFFECT_MODEL DATANUM(DATA_m659, 18)
-#define M659_DATA_ENDING_EFFECT_MOTION DATANUM(DATA_m659, 19)
-#define M659_DATA_CHARACTER_MOTION_0 DATANUM(DATA_mario, 32)
-#define M659_DATA_CHARACTER_MOTION_1 DATANUM(DATA_mario, 127)
-#define M659_DATA_CHARACTER_MOTION_2 DATANUM(DATA_mario, 11)
-#define M659_DATA_CHARACTER_MOTION_3 DATANUM(DATA_mario, 4)
+#define M659_DATA_SHIP_MODEL DATANUM(0x760000, 6)
+#define M659_DATA_SHIP_MOTION_0 DATANUM(0x760000, 7)
+#define M659_DATA_SHIP_MOTION_1 DATANUM(0x760000, 8)
+#define M659_DATA_SHIP_MOTION_2 DATANUM(0x760000, 9)
+#define M659_DATA_BURNER_MODEL DATANUM(0x760000, 10)
+#define M659_DATA_BURNER_MOTION_LEFT DATANUM(0x760000, 12)
+#define M659_DATA_BURNER_MOTION_RIGHT DATANUM(0x760000, 11)
+#define M659_DATA_ENDING_EFFECT_MODEL DATANUM(0x760000, 18)
+#define M659_DATA_ENDING_EFFECT_MOTION DATANUM(0x760000, 19)
+#define M659_DATA_CHARACTER_MOTION_0 DATANUM(0x8e0000, 32)
+#define M659_DATA_CHARACTER_MOTION_1 DATANUM(0x8e0000, 127)
+#define M659_DATA_CHARACTER_MOTION_2 DATANUM(0x8e0000, 11)
+#define M659_DATA_CHARACTER_MOTION_3 DATANUM(0x8e0000, 4)
 #include "REL/m659/player.h"
 #include "game/charman.h"
 #include "game/audio.h"
@@ -142,19 +142,19 @@ void fn_1_1888(OMOBJ *obj)
     HU3D_MODELID model;
     s16 charNo;
     info->cameraBit = lbl_1_data_90[info->side];
-    info->charNo = charNo = GwPlayerConf[info->playerNo].charNo;
+    info->charNo = charNo = lbl_80265728[info->playerNo].charNo;
     info->initializationMarker = 1;
-    model = obj->mdlId[0] = CharModelCreate(charNo, 4);
-    Hu3DModelCameraSet(model, (u16)info->cameraBit);
+    model = obj->mdlId[0] = fn_80057068(charNo, 4);
+    fn_80026B64(model, (u16)info->cameraBit);
     for (i = 0; i < 10; i++) {
-        obj->mtnId[i] = CharMotionCreate(charNo, lbl_1_data_D4[i]);
+        obj->mtnId[i] = fn_8005B0B8(charNo, lbl_1_data_D4[i]);
     }
-    Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
-    Hu3DModelLayerSet(model, 7);
-    Hu3DModelShadowSet(model);
-    CharMotionDataClose(charNo);
+    fn_800269E8(model, ((1 << 30) | (1 << 0)));
+    fn_80026B8C(model, 7);
+    fn_80026E44(model);
+    fn_8005B4BC(charNo);
     fn_1_19DC(obj, 0);
-    playerData->padNo = GwPlayerConf[info->playerNo].padNo;
+    playerData->padNo = lbl_80265728[info->playerNo].padNo;
     playerData->stickX = playerData->stickY = 0.0f;
 }
 
@@ -166,20 +166,20 @@ void fn_1_19DC(OMOBJ *obj, s16 motion)
     HU3D_MODELID model = obj->mdlId[0];
     u32 attr = 0;
     if (lbl_1_data_AC[motion]) {
-        attr = HU3D_MOTATTR_LOOP;
+        attr = ((1 << 30) | (1 << 0));
     }
     if (playerData->info.motionId != motion) {
-        CharMotionShiftSet(charNo, obj->mtnId[motion], 0.0f, 8.0f, attr);
+        fn_8005C2C8(charNo, obj->mtnId[motion], 0.0f, 8.0f, attr);
     } else {
-        CharMotionSet(charNo, obj->mtnId[motion]);
+        fn_8005BE80(charNo, obj->mtnId[motion]);
     }
     switch (motion) {
     case 0:
     case 3:
-        Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
+        fn_800269E8(model, ((1 << 30) | (1 << 0)));
         break;
     default:
-        Hu3DModelAttrReset(model, HU3D_MOTATTR_LOOP);
+        fn_80026A44(model, ((1 << 30) | (1 << 0)));
         break;
     }
     playerData->info.motionId = motion;
@@ -200,17 +200,17 @@ void fn_1_1AF4(OMOBJ *obj)
     HU3D_MOTIONID motionId;
     M659Collision *collision;
     model = obj->mdlId[1] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(M659_DATA_SHIP_MODEL, HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80025A04(fn_80008DD0(M659_DATA_SHIP_MODEL, 0x10000000, 2));
     for (i = 4; i < 7; i++) {
-        motionId = obj->mtnId[i] = Hu3DJointMotion(
-            model, HuDataSelHeapReadNum(lbl_1_data_98[i - 4], HU_MEMNUM_OVL, HEAP_MODEL));
+        motionId = obj->mtnId[i] = fn_80030458(
+            model, fn_80008DD0(lbl_1_data_98[i - 4], 0x10000000, 2));
     }
-    Hu3DMotionSet(model, motionId);
-    Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
-    Hu3DMotionSpeedSet(model, 1.0f);
-    Hu3DModelLayerSet(model, 7);
-    Hu3DModelHookSet(model, lbl_1_data_130[lbl_1_data_FC[info->charNo]], charModel);
-    Hu3DModelCameraSet(model, (u16)info->cameraBit);
+    fn_8002C95C(model, motionId);
+    fn_800269E8(model, ((1 << 30) | (1 << 0)));
+    fn_8002D86C(model, 1.0f);
+    fn_80026B8C(model, 7);
+    fn_8002741C(model, lbl_1_data_130[lbl_1_data_FC[info->charNo]], charModel);
+    fn_80026B64(model, (u16)info->cameraBit);
     {
         char *hooks[2] = {"ship-burnerhookL", "ship-burnerhookR"};
         s16 partMotion;
@@ -218,19 +218,19 @@ void fn_1_1AF4(OMOBJ *obj)
         s16 part;
         HU3D_MOTIONID partMotionId;
         for (part = 2; part < 4; part++) {
-            partModel = obj->mdlId[part] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(M659_DATA_BURNER_MODEL, HU_MEMNUM_OVL, HEAP_MODEL));
+            partModel = obj->mdlId[part] = fn_80025A04(
+                fn_80008DD0(M659_DATA_BURNER_MODEL, 0x10000000, 2));
             for (partMotion = 7; partMotion < 9; partMotion++) {
                 partMotionId = obj->mtnId[partMotion] =
-                    Hu3DJointMotion(partModel, HuDataSelHeapReadNum(lbl_1_data_A4[partMotion - 7],
-                                                                    HU_MEMNUM_OVL, HEAP_MODEL));
+                    fn_80030458(partModel, fn_80008DD0(lbl_1_data_A4[partMotion - 7],
+                                                                    0x10000000, 2));
             }
-            Hu3DMotionSet(partModel, partMotionId);
-            Hu3DModelAttrSet(partModel, HU3D_MOTATTR_LOOP);
-            Hu3DMotionSpeedSet(partModel, 1.0f);
-            Hu3DModelLayerSet(partModel, 7);
-            Hu3DModelHookSet(obj->mdlId[1], hooks[part - 2], partModel);
-            Hu3DModelCameraSet(partModel, (u16)info->cameraBit);
+            fn_8002C95C(partModel, partMotionId);
+            fn_800269E8(partModel, ((1 << 30) | (1 << 0)));
+            fn_8002D86C(partModel, 1.0f);
+            fn_80026B8C(partModel, 7);
+            fn_8002741C(obj->mdlId[1], hooks[part - 2], partModel);
+            fn_80026B64(partModel, (u16)info->cameraBit);
         }
     }
     collision = &playerData->collision;
@@ -273,7 +273,7 @@ void fn_1_1E80(OMOBJ *obj)
                 Hu3DModelObjPosGet(model, "ship-Ship", &motion->position);
             } else {
                 Hu3DModelObjPosGet(model, "ship-Ship", &motion->start);
-                Hu3DModelPosSetV(model, &playerData->motion.start);
+                fn_80026790(model, &playerData->motion.start);
                 fn_1_220C(obj, 6);
                 motion->direction = -1;
                 motion->substate = 0;
@@ -283,7 +283,7 @@ void fn_1_1E80(OMOBJ *obj)
         case 1:
             motion->position.x = lbl_1_data_70[motion->column];
             motion->start = motion->position;
-            Hu3DModelPosSetV(model, &playerData->motion.start);
+            fn_80026790(model, &playerData->motion.start);
             fn_1_220C(obj, 6);
             motion->direction = -1;
             motion->substate = 0;
@@ -304,15 +304,15 @@ void fn_1_1E80(OMOBJ *obj)
                 motion->direction = -1;
             }
         } else {
-            u16 buttons = HuPadBtnDown[playerData->padNo] &
-                          (PAD_BUTTON_TRIGGER_L | PAD_BUTTON_TRIGGER_R);
+            u16 buttons = lbl_802C0008[playerData->padNo] &
+                          (0x4000 | 0x2000);
             motion->direction = -1;
             /* Simultaneous presses of both lane buttons are discarded. */
-            if (buttons != (PAD_BUTTON_TRIGGER_L | PAD_BUTTON_TRIGGER_R)) {
-                if (buttons & PAD_BUTTON_TRIGGER_L) {
+            if (buttons != (0x4000 | 0x2000)) {
+                if (buttons & 0x4000) {
                     motion->direction = 0;
                 }
-                if (buttons & PAD_BUTTON_TRIGGER_R) {
+                if (buttons & 0x2000) {
                     motion->direction = 1;
                 }
             }
@@ -364,23 +364,23 @@ void fn_1_220C(OMOBJ *obj, s16 motion)
     HU3D_MODELID right = obj->mdlId[3];
     int zeroValue = 0; /* Initialized to zero but not read by this animation helper. */
     if (motion == 6) {
-        Hu3DMotionSet(model, obj->mtnId[motion]);
-        Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
-        Hu3DMotionSet(left, obj->mtnId[7]);
-        Hu3DModelAttrSet(left, HU3D_MOTATTR_LOOP);
-        Hu3DMotionSet(right, obj->mtnId[7]);
-        Hu3DModelAttrSet(right, HU3D_MOTATTR_LOOP);
+        fn_8002C95C(model, obj->mtnId[motion]);
+        fn_800269E8(model, ((1 << 30) | (1 << 0)));
+        fn_8002C95C(left, obj->mtnId[7]);
+        fn_800269E8(left, ((1 << 30) | (1 << 0)));
+        fn_8002C95C(right, obj->mtnId[7]);
+        fn_800269E8(right, ((1 << 30) | (1 << 0)));
     } else {
-        Hu3DMotionSet(model, obj->mtnId[motion]);
-        Hu3DModelAttrReset(model, HU3D_MOTATTR_LOOP);
-        Hu3DMotionSet(left, obj->mtnId[8]);
-        Hu3DModelAttrSet(left, HU3D_MOTATTR_LOOP);
-        Hu3DMotionSet(right, obj->mtnId[8]);
-        Hu3DModelAttrSet(right, HU3D_MOTATTR_LOOP);
+        fn_8002C95C(model, obj->mtnId[motion]);
+        fn_80026A44(model, ((1 << 30) | (1 << 0)));
+        fn_8002C95C(left, obj->mtnId[8]);
+        fn_800269E8(left, ((1 << 30) | (1 << 0)));
+        fn_8002C95C(right, obj->mtnId[8]);
+        fn_800269E8(right, ((1 << 30) | (1 << 0)));
     }
-    Hu3DMotionSpeedSet(model, 1.5f);
-    Hu3DMotionSpeedSet(left, 1.0f);
-    Hu3DMotionSpeedSet(right, 1.0f);
+    fn_8002D86C(model, 1.5f);
+    fn_8002D86C(left, 1.0f);
+    fn_8002D86C(right, 1.0f);
 }
 
 /* The pre-start movement callback calls this to detect the end of a side's ship animation. */
@@ -388,7 +388,7 @@ int fn_1_2384(s16 side)
 {
     OMOBJ *obj = lbl_1_bss_2C[side];
     HU3D_MODELID model = obj->mdlId[1];
-    if (Hu3DMotionEndCheck(model)) {
+    if (fn_8002D75C(model)) {
         return 1;
     }
     return 0;
@@ -401,31 +401,31 @@ void fn_1_23F0(OMOBJ *obj)
     M659PlayerInfo *info = &playerData->info;
     HU3D_MODELID model;
     HU3D_MOTIONID motion;
-    model = obj->mdlId[4] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M659_DATA_ENDING_EFFECT_MODEL, HU_MEMNUM_OVL, HEAP_MODEL));
-    motion = obj->mtnId[9] = Hu3DJointMotion(
-        model, HuDataSelHeapReadNum(M659_DATA_ENDING_EFFECT_MOTION, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(model, motion);
-    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
-    Hu3DMotionSpeedSet(model, 0.0f);
-    Hu3DModelLayerSet(model, 7);
-    Hu3DModelCameraSet(model, (u16)info->cameraBit);
+    model = obj->mdlId[4] = fn_80025A04(
+        fn_80008DD0(M659_DATA_ENDING_EFFECT_MODEL, 0x10000000, 2));
+    motion = obj->mtnId[9] = fn_80030458(
+        model, fn_80008DD0(M659_DATA_ENDING_EFFECT_MOTION, 0x10000000, 2));
+    fn_8002C95C(model, motion);
+    fn_800269E8(model, (1 << 0));
+    fn_8002D86C(model, 0.0f);
+    fn_80026B8C(model, 7);
+    fn_80026B64(model, (u16)info->cameraBit);
 }
 
 /* The ship collision callback calls this to reveal and start the end effect. */
 void fn_1_24C0(OMOBJ *obj)
 {
     HU3D_MODELID model = obj->mdlId[4];
-    Hu3DModelAttrReset(model, HU3D_ATTR_DISPOFF);
-    Hu3DMotionSpeedSet(model, 1.0f);
+    fn_80026A44(model, (1 << 0));
+    fn_8002D86C(model, 1.0f);
 }
 
 /* The per-frame player callback calls this to hide the end effect when its motion ends. */
 int fn_1_2518(OMOBJ *obj)
 {
     HU3D_MODELID model = obj->mdlId[4];
-    if (Hu3DMotionEndCheck(model)) {
-        Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+    if (fn_8002D75C(model)) {
+        fn_800269E8(model, (1 << 0));
         return 1;
     }
     return 0;
@@ -444,7 +444,7 @@ int fn_1_2578(M659Collision *collision, M659Collision *other)
     motion->done = 1;
     collision->flags = 0;
     fn_1_24C0(obj);
-    omVibrate(playerData->info.playerNo, 20, 20, 0);
+    fn_8006A030(playerData->info.playerNo, 20, 20, 0);
     return 1;
 }
 
@@ -473,18 +473,18 @@ void fn_1_29B0(OMOBJ *obj)
             info->engineSoundHandle = HuAudFXPlayPan(sideSoundIds[playerData->info.side],
                                                      playerData->info.side * 32 + 48);
         }
-        if (MgSeqModeGet() >= 5) {
+        if (fn_80071A8C() >= 5) {
             info->state++;
         }
         break;
     case 1:
-        if (MgSeqModeGet() > 5) {
+        if (fn_80071A8C() > 5) {
             HU3D_MODELID left = obj->mdlId[2];
             HU3D_MODELID right = obj->mdlId[3];
-            Hu3DMotionSet(left, obj->mtnId[7]);
-            Hu3DModelAttrSet(left, HU3D_MOTATTR_LOOP);
-            Hu3DMotionSet(right, obj->mtnId[7]);
-            Hu3DModelAttrSet(right, HU3D_MOTATTR_LOOP);
+            fn_8002C95C(left, obj->mtnId[7]);
+            fn_800269E8(left, ((1 << 30) | (1 << 0)));
+            fn_8002C95C(right, obj->mtnId[7]);
+            fn_800269E8(right, ((1 << 30) | (1 << 0)));
             {
                 M659Player *startWork = obj->data;
                 M659Motion *startMotion = &startWork->motion;
@@ -492,7 +492,7 @@ void fn_1_29B0(OMOBJ *obj)
                 /* Captured here but not used by this block. */
                 HU3D_MODELID endingEffectModel = obj->mdlId[4];
                 Hu3DModelObjPosGet(model, "ship-Ship", &startMotion->start);
-                Hu3DModelPosSetV(model, &startWork->motion.start);
+                fn_80026790(model, &startWork->motion.start);
                 fn_1_220C(obj, 6);
                 startMotion->direction = -1;
                 startMotion->substate = 0;
@@ -512,7 +512,7 @@ void fn_1_29B0(OMOBJ *obj)
         if (motion->state == 0) {
             motion->phase += 0.1f;
         }
-        Hu3DModelPosSetV(model, &playerData->motion.start);
+        fn_80026790(model, &playerData->motion.start);
     }
     if (motion->done) {
         HU3D_MODELID model = obj->mdlId[1];
@@ -521,9 +521,9 @@ void fn_1_29B0(OMOBJ *obj)
         playerData->motion.start.y += 8.0f;
         playerData->motion.start.z -= 8.0f;
         playerData->motion.rotation.x -= 20.0f;
-        Hu3DModelPosSetV(model, &playerData->motion.start);
-        Hu3DModelRotSetV(model, &playerData->motion.rotation);
-        Hu3DModelPosSetV(effect, &playerData->motion.position);
+        fn_80026790(model, &playerData->motion.start);
+        fn_80026838(model, &playerData->motion.rotation);
+        fn_80026790(effect, &playerData->motion.position);
     }
 }
 
@@ -547,10 +547,10 @@ void fn_1_2D0C(OMOBJ *obj)
         motion->rotation.y = 90.0f;
         motion->rotation.z = 0.0f;
         motion->substate++;
-        Hu3DModelPosSet(model, 0.0f, 0.0f, 0.0f);
-        Hu3DModelAttrReset(lbl_1_bss_28, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(model, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrReset(lbl_1_bss_28, HU3D_MOTATTR_PAUSE);
+        fn_80026760(model, 0.0f, 0.0f, 0.0f);
+        fn_80026A44(lbl_1_bss_28, (1 << 0));
+        fn_80026A44(model, (1 << 0));
+        fn_80026A44(lbl_1_bss_28, ((1 << 30) | (1 << 1)));
         info->endingPosition.x = info->endingPosition.y = info->endingPosition.z = 0.0f;
         info->endingRotation.x = info->endingRotation.z = 0.0f;
         info->endingRotation.y = 180.0f;
@@ -560,14 +560,14 @@ void fn_1_2D0C(OMOBJ *obj)
         HuAudFXStop(playerData->info.engineSoundHandle);
         return;
     case 1:
-        if (Hu3DMotionEndCheck(charModel)) {
-            Hu3DMotionTimeSet(charModel, 10.0f);
+        if (fn_8002D75C(charModel)) {
+            fn_8002D414(charModel, 10.0f);
         }
-        Hu3DModelObjMtxGet(lbl_1_bss_28, "ENDmot-grid1", mtx);
+        fn_80023398(lbl_1_bss_28, "ENDmot-grid1", mtx);
         Hu3DMtxTransGet(mtx, &pos);
         Hu3DMtxRotGet(mtx, &rot);
-        Hu3DModelPosSetV(model, &pos);
-        Hu3DModelRotSetV(model, &rot);
+        fn_80026790(model, &pos);
+        fn_80026838(model, &rot);
         break;
     }
 }
@@ -606,6 +606,6 @@ void fn_1_2FE0(OMOBJ *obj)
         motion->rotation.y = 90.0f;
         break;
     }
-    Hu3DModelPosSetV(model, &playerData->motion.start);
-    Hu3DModelRotSetV(model, &playerData->motion.rotation);
+    fn_80026790(model, &playerData->motion.start);
+    fn_80026838(model, &playerData->motion.rotation);
 }

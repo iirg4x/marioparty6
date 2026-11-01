@@ -22,7 +22,7 @@
 #include "string.h"
 #include "messdir_enum.h"
 
-#define DICE_PLAYERNO_NULL GW_PLAYER_MAX
+#define DICE_PLAYERNO_NULL 4
 #define DICE_MAX DICE_PLAYERNO_NULL+1
 #define DICE_VALUENUM_MAX 11
 #define DICE_EFF_PUFF_MAX 50
@@ -121,17 +121,17 @@ typedef struct DiceNumVtx_s {
 } DICE_NUM_VTX;
 
 static const int diceObjFileTbl[] = {
-    DATANUM(DATA_board, 23), DATANUM(DATA_board, 24),
-    DATANUM(DATA_board, 25), DATANUM(DATA_board, 34),
-    DATANUM(DATA_board, 28), DATANUM(DATA_board, 32),
-    DATANUM(DATA_board, 31), DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 31), DATANUM(DATA_board, 23),
-    DATANUM(DATA_blast5, 3), DATANUM(DATA_board, 29),
-    DATANUM(DATA_board, 30), DATANUM(DATA_board, 33),
-    DATANUM(DATA_board, 26), DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 23), DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 24), DATANUM(DATA_board, 23),
-    DATANUM(DATA_board, 23)
+    DATANUM(0x50000, 23), DATANUM(0x50000, 24),
+    DATANUM(0x50000, 25), DATANUM(0x50000, 34),
+    DATANUM(0x50000, 28), DATANUM(0x50000, 32),
+    DATANUM(0x50000, 31), DATANUM(0x50000, 23),
+    DATANUM(0x50000, 31), DATANUM(0x50000, 23),
+    DATANUM(0x30000, 3), DATANUM(0x50000, 29),
+    DATANUM(0x50000, 30), DATANUM(0x50000, 33),
+    DATANUM(0x50000, 26), DATANUM(0x50000, 23),
+    DATANUM(0x50000, 23), DATANUM(0x50000, 23),
+    DATANUM(0x50000, 24), DATANUM(0x50000, 23),
+    DATANUM(0x50000, 23)
 };
 
 static const u8 diceFadeFlagTbl[24] = {
@@ -139,11 +139,11 @@ static const u8 diceFadeFlagTbl[24] = {
 };
 
 static const int numberFileTbl[] = {
-    DATANUM(DATA_board, 11), DATANUM(DATA_board, 12),
-    DATANUM(DATA_board, 13), DATANUM(DATA_board, 14),
-    DATANUM(DATA_board, 15), DATANUM(DATA_board, 16),
-    DATANUM(DATA_board, 17), DATANUM(DATA_board, 18),
-    DATANUM(DATA_board, 19), DATANUM(DATA_board, 20)
+    DATANUM(0x50000, 11), DATANUM(0x50000, 12),
+    DATANUM(0x50000, 13), DATANUM(0x50000, 14),
+    DATANUM(0x50000, 15), DATANUM(0x50000, 16),
+    DATANUM(0x50000, 17), DATANUM(0x50000, 18),
+    DATANUM(0x50000, 19), DATANUM(0x50000, 20)
 };
 
 static HUPROCESS *diceProc[DICE_MAX];
@@ -352,17 +352,17 @@ static void DiceProcExec(int playerNo, int diceType, s8 *valueTbl,
     if (playerNo < 0) {
         playerNo = DICE_PLAYERNO_NULL;
     }
-    diceProc[playerNo] = HuPrcChildCreate(DiceProcMain, 8203, 24576, 0,
+    diceProc[playerNo] = fn_8000DAC0(DiceProcMain, 8203, 24576, 0,
         mbMainProc);
     HuPrcDestructorSet2(diceProc[playerNo], DiceProcDestroy);
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(DICE_WORK), HU_MEMNUM_OVL);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(DICE_WORK), 0x10000000);
     diceProc[playerNo]->property = work;
     memset(work, 0, sizeof(DICE_WORK));
     work->playerNo = playerNo;
     work->no = 0;
     work->diceType = diceType;
     work->max = mbDiceMaxGet(diceType);
-    if (playerNo < GW_PLAYER_MAX) {
+    if (playerNo < 4) {
         dicePadBtnHook[playerNo] = DicePlayerPadBtn;
         diceMotHook[playerNo] = mbPlayerDiceMotExec;
     } else {
@@ -370,7 +370,7 @@ static void DiceProcExec(int playerNo, int diceType, s8 *valueTbl,
         diceMotHook[playerNo] = NULL;
     }
     if (pos == NULL) {
-        if (playerNo < GW_PLAYER_MAX) {
+        if (playerNo < 4) {
             mbPlayerPosGet(work->playerNo, &playerPos);
             work->pos.x = playerPos.x;
             work->pos.y = playerPos.y;
@@ -394,8 +394,8 @@ static void DiceProcExec(int playerNo, int diceType, s8 *valueTbl,
     }
     work->padWinF = padWinF;
     work->color = color;
-    if (playerNo < GW_PLAYER_MAX) {
-        GwPlayer[playerNo].diceNum = work->max;
+    if (playerNo < 4) {
+        lbl_80265750[playerNo].diceNum = work->max;
     }
     if (waitF) {
         while (!mbDiceKillCheck(playerNo)) {
@@ -475,13 +475,13 @@ int mbDiceChanceTradeExec(int playerNo)
 // Rolls among the listed players' characters for the Chance Time event.
 int mbDiceChanceCharExec(int playerNo, int *playerNoTbl)
 {
-    s8 valueTbl[GW_PLAYER_MAX + 1];
+    s8 valueTbl[4 + 1];
     int num;
     int i;
 
-    for (num = 0, i = 0; i < GW_PLAYER_MAX; i++) {
+    for (num = 0, i = 0; i < 4; i++) {
         if (playerNoTbl[i] >= 0) {
-            valueTbl[num++] = GwPlayer[playerNoTbl[i]].charNo;
+            valueTbl[num++] = lbl_80265750[playerNoTbl[i]].charNo;
         }
     }
     valueTbl[num] = -1;
@@ -494,7 +494,7 @@ int mbDiceChanceCharExec(int playerNo, int *playerNoTbl)
 static void DiceProcMain(void)
 {
     int i;
-    DICE_WORK *work = HuPrcCurrentGet()->property;
+    DICE_WORK *work = fn_8000DD9C()->property;
 
     memset(&work->result[0], 0, 3);
     DiceObjEffCreate(work);
@@ -528,7 +528,7 @@ static void DiceProcMain(void)
         HuPrcVSleep();
     }
     if (work->max >= 2 && GWPartyGet() != FALSE
-        && _CheckFlag(FLAG_BOARD_OPENING) && work->diceType <= 14) {
+        && fn_8006A124(65537) && work->diceType <= 14) {
         for (i = 0; i < work->max - 1; i++) {
             if (work->result[i] != work->result[i + 1]) {
                 break;
@@ -555,7 +555,7 @@ static void DiceProcMain(void)
 // Process destructor registered by DiceProcExec; clears hooks, effects, and work.
 static void DiceProcDestroy(void)
 {
-    DICE_WORK *work = HuPrcCurrentGet()->property;
+    DICE_WORK *work = fn_8000DD9C()->property;
 
     mbDiceKill(work->playerNo);
     DiceObjEffKill(work);
@@ -571,7 +571,7 @@ static void DiceHelpWinCreate(DICE_WORK *work)
 {
     u32 mess;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         return;
     }
     if (work->diceType == DICETYPE_PATAPATA_COIN
@@ -588,7 +588,7 @@ static void DiceHelpWinCreate(DICE_WORK *work)
         if (GWPartyGet() == FALSE) {
             // Solo mode uses turn availability instead of the player's capsule inventory.
             capsuleNum = TRUE;
-            if (GwSystem.turnNo <= 1) {
+            if (lbl_80265B70.turnNo <= 1) {
                 capsuleNum = FALSE;
             }
         }
@@ -618,8 +618,8 @@ static void DiceObjCreate(DICE_WORK *work)
     float time;
     HuVecF parManVec;
 
-    obj = work->obj = omAddObj(mbObjMan, 258, 5, 0, DiceObjOMExec);
-    omSetStatBit(obj, OM_STAT_MODELPAUSE);
+    obj = work->obj = fn_8003AB38(mbObjMan, 258, 5, 0, -1, DiceObjOMExec);
+    omSetStatBit(obj, (1 << 8));
     obj->data = work;
     // The block-die and other-die branches create the same model with the same settings.
     if (work->diceType != DICETYPE_BLOCK) {
@@ -630,8 +630,8 @@ static void DiceObjCreate(DICE_WORK *work)
             mbBoardDataNumGet(diceObjFileTbl[work->diceType]), NULL, FALSE);
     }
     mbObjLayerSet(obj->mdlId[0], 4);
-    mbObjCameraSet(obj->mdlId[0], HU3D_CAM1);
-    mbAudFXPlay(MSM_SE_BRD00_03);
+    mbObjCameraSet(obj->mdlId[0], (1 << 1));
+    mbAudFXPlay(1007);
     if (mbObjMotionIDGet(obj->mdlId[0], 0) >= 0) {
         mbObjMotionSet(obj->mdlId[0], 0, 0);
         mbObjMotionSpeedSet(obj->mdlId[0], 0.0f);
@@ -640,7 +640,7 @@ static void DiceObjCreate(DICE_WORK *work)
     time = mbRandMod(work->valueNum) + 0.5f;
     mbObjMotionTimeSet(obj->mdlId[0], time);
     mbObjAlphaSet(obj->mdlId[0], 0);
-    objWork = omObjGetWork(obj, DICE_OBJ_WORK);
+    objWork = ((DICE_OBJ_WORK *)(&(obj->work[0])));
     objWork->killF = FALSE;
     objWork->lockF = FALSE;
     objWork->fadeF = diceFadeFlagTbl[work->diceType];
@@ -656,31 +656,31 @@ static void DiceObjCreate(DICE_WORK *work)
     mbObjPosSet(obj->mdlId[0], obj->trans.x, obj->trans.y, obj->trans.z);
     obj->mdlId[1] = DiceInEffCreate();
     obj->mdlId[2] = DiceInDotEffCreate();
-    Hu3DModelPosSet(obj->mdlId[1], obj->trans.x, obj->trans.y,
+    fn_80026760(obj->mdlId[1], obj->trans.x, obj->trans.y,
         obj->trans.z);
-    Hu3DModelPosSet(obj->mdlId[2], obj->trans.x, obj->trans.y,
+    fn_80026760(obj->mdlId[2], obj->trans.x, obj->trans.y,
         obj->trans.z);
     // The die-to-camera vector is calculated here but is not used by the die effects.
     VECSubtract(&cameraP->eye, &obj->trans, &parManVec);
-    obj->mdlId[3] = Hu3DHookFuncCreate(DiceObjEffPuffDraw);
-    Hu3DModelCameraSet(obj->mdlId[3], HU3D_CAM0);
-    Hu3DModelLayerSet(obj->mdlId[3], 5);
+    obj->mdlId[3] = fn_800260F4(DiceObjEffPuffDraw);
+    fn_80026B64(obj->mdlId[3], (1 << 0));
+    fn_80026B8C(obj->mdlId[3], 5);
     // The puff hook stays hidden; this file never enables it.
-    Hu3DModelDispOff(obj->mdlId[3]);
-    Hu3DData[obj->mdlId[3]].hookData = obj;
+    fn_800269E8(obj->mdlId[3], (1 << 0));
+    lbl_802C01C8[obj->mdlId[3]].hookData = obj;
     work->puffTime = 0;
-    obj->mdlId[4] = Hu3DHookFuncCreate(DiceObjEffTriDraw);
-    Hu3DModelCameraSet(obj->mdlId[4], HU3D_CAM0);
-    Hu3DModelLayerSet(obj->mdlId[4], 5);
-    Hu3DModelDispOff(obj->mdlId[4]);
-    Hu3DData[obj->mdlId[4]].hookData = obj;
+    obj->mdlId[4] = fn_800260F4(DiceObjEffTriDraw);
+    fn_80026B64(obj->mdlId[4], (1 << 0));
+    fn_80026B8C(obj->mdlId[4], 5);
+    fn_800269E8(obj->mdlId[4], (1 << 0));
+    lbl_802C01C8[obj->mdlId[4]].hookData = obj;
     work->triTime = 0;
 }
 
 // Object-manager callback that advances and removes the animated die each frame.
 static void DiceObjOMExec(OMOBJ *obj)
 {
-    DICE_OBJ_WORK *objWork = omObjGetWork(obj, DICE_OBJ_WORK);
+    DICE_OBJ_WORK *objWork = ((DICE_OBJ_WORK *)(&(obj->work[0])));
     DICE_WORK *work = obj->data;
     int i;
     float time;
@@ -699,16 +699,16 @@ static void DiceObjOMExec(OMOBJ *obj)
         }
         mbParticleKill(obj->mdlId[1]);
         mbParticleKill(obj->mdlId[2]);
-        obj->mdlId[1] = HU3D_MODELID_NONE;
-        obj->mdlId[2] = HU3D_MODELID_NONE;
+        obj->mdlId[1] = -1;
+        obj->mdlId[2] = -1;
         for (i = 3; i <= 4; i++) {
             if (obj->mdlId[i] >= 0) {
-                Hu3DModelKill(obj->mdlId[i]);
-                obj->mdlId[i] = HU3D_MODELID_NONE;
+                fn_800262D0(obj->mdlId[i]);
+                obj->mdlId[i] = -1;
             }
         }
         obj->data = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         work->obj = NULL;
         return;
     }
@@ -720,7 +720,7 @@ static void DiceObjOMExec(OMOBJ *obj)
                 objWork->mode = 1;
                 objWork->time = 0;
                 objWork->maxTime = 12;
-                objWork->diceSeNo = mbAudFXPlay(MSM_SE_BRD00_01);
+                objWork->diceSeNo = mbAudFXPlay(1005);
             }
             break;
 
@@ -730,7 +730,7 @@ static void DiceObjOMExec(OMOBJ *obj)
                 time = 1.0f;
             }
             objWork->time++;
-            scale = HuSin(time * 180.0f);
+            scale = sin(3.141592653589793*(time * 180.0f)/180.0);
             mbObjScaleSet(obj->mdlId[0], 1.0f + scale,
                 1.0f - (0.5f * scale), 1.0f + scale);
             modelPos.y = obj->trans.y + (150.0f * scale);
@@ -743,7 +743,7 @@ static void DiceObjOMExec(OMOBJ *obj)
                     && work->diceType != 11 && work->diceType != 12
                     && work->diceType != DICETYPE_EVENT
                     && work->diceType != DICETYPE_BLOCK) {
-                    if (work->playerNo < GW_PLAYER_MAX) {
+                    if (work->playerNo < 4) {
                         mbPlayerPosGet(work->playerNo, &pos);
                     } else {
                         pos.x = work->pos.x;
@@ -780,12 +780,12 @@ static void DiceObjOMExec(OMOBJ *obj)
             }
             if (++objWork->time > objWork->maxTime) {
                 if (objWork->fadeF) {
-                    diceFadeOMObj[work->playerNo] = omAddObj(mbObjMan, 258,
-                        2, 0, DiceFadeOMExec);
+                    diceFadeOMObj[work->playerNo] = fn_8003AB38(mbObjMan, 258, 2, 0, -1,
+                        DiceFadeOMExec);
                     omSetStatBit(diceFadeOMObj[work->playerNo],
-                        OM_STAT_MODELPAUSE);
+                        (1 << 8));
                     diceFadeOMObj[work->playerNo]->mdlId[0] = obj->mdlId[0];
-                    obj->mdlId[0] = HU3D_MODELID_NONE;
+                    obj->mdlId[0] = -1;
                 }
                 DiceObjKillSet(obj);
             }
@@ -825,7 +825,7 @@ static void DiceObjOMExec(OMOBJ *obj)
 
 static void DiceObjKillSet(OMOBJ *obj)
 {
-    omObjGetWork(obj, DICE_OBJ_WORK)->killF = TRUE;
+    ((DICE_OBJ_WORK *)(&(obj->work[0])))->killF = TRUE;
 }
 
 static const float lbl_802C3868 = 0.033333335f;
@@ -835,7 +835,7 @@ static const float lbl_802C3870 = 0.15f;
 // Object-manager callback that scales and optionally fades a die model each frame.
 static void DiceFadeOMExec(OMOBJ *obj)
 {
-    DICE_FADE_WORK *work = omObjGetWork(obj, DICE_FADE_WORK);
+    DICE_FADE_WORK *work = ((DICE_FADE_WORK *)(&(obj->work[0])));
     float time;
     float scale;
 
@@ -844,7 +844,7 @@ static void DiceFadeOMExec(OMOBJ *obj)
             mbObjKill(obj->mdlId[0]);
             obj->mdlId[0] = MB_MODEL_NONE;
         }
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         diceFadeOMObj[work->playerNo] = NULL;
         return;
     }
@@ -879,7 +879,7 @@ void mbDiceFadeSet(int playerNo)
     }
     obj = diceFadeOMObj[playerNo];
     if (obj != NULL) {
-        work = omObjGetWork(obj, DICE_FADE_WORK);
+        work = ((DICE_FADE_WORK *)(&(obj->work[0])));
         work->fadeF = TRUE;
         work->time = 0;
     }
@@ -903,7 +903,7 @@ void mbDiceClose(void)
 {
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbDiceKill(i);
     }
 }
@@ -933,7 +933,7 @@ static void DiceExec(DICE_WORK *work)
         if (btn == PAD_BUTTON_A) {
             break;
         }
-        if (work->no != 0 || !_CheckFlag(FLAG_BOARD_OPENING)
+        if (work->no != 0 || !fn_8006A124(65537)
             || work->diceType == DICETYPE_EVENT || work->diceType == 15
             || work->diceType == 19 || work->diceType == 20
             || work->diceType == 13
@@ -953,12 +953,12 @@ static void DiceExec(DICE_WORK *work)
             mbAudFXPlay(1);
             break;
         }
-        if (btn == PAD_BUTTON_B && work->playerNo < GW_PLAYER_MAX) {
+        if (btn == PAD_BUTTON_B && work->playerNo < 4) {
             capsuleNum = mbPlayerCapsuleNumGet(work->playerNo);
             if (GWPartyGet() == FALSE) {
                 // Solo mode uses turn availability instead of the player's capsule inventory.
                 capsuleNum = TRUE;
-                if (GwSystem.turnNo <= 1) {
+                if (lbl_80265B70.turnNo <= 1) {
                     capsuleNum = FALSE;
                 }
             }
@@ -977,8 +977,8 @@ static u16 DicePlayerPadBtn(int playerNo)
     int valueNo;
     u16 ret;
 
-    if (!GwPlayer[playerNo].comF) {
-        ret = HuPadBtnDown[GwPlayer[playerNo].padNo];
+    if (!lbl_80265750[playerNo].comF) {
+        ret = lbl_802C0008[lbl_80265750[playerNo].padNo];
     } else {
         ret = PAD_BUTTON_A;
         if (mbDiceTypeGet(playerNo) == 14 &&
@@ -1001,7 +1001,7 @@ static u16 DicePlayerPadBtn(int playerNo)
 // Waits until DiceObjOMExec has finished revealing the die and accepts input.
 static void DiceReadyWait(DICE_WORK *work)
 {
-    DICE_OBJ_WORK *objWork = omObjGetWork(work->obj, DICE_OBJ_WORK);
+    DICE_OBJ_WORK *objWork = ((DICE_OBJ_WORK *)(&(work->obj->work[0])));
 
     while (objWork->mode != 1) {
         HuPrcVSleep();
@@ -1012,14 +1012,14 @@ static void DiceReadyWait(DICE_WORK *work)
 static void DiceObjHit(DICE_WORK *work)
 {
     OMOBJ *obj = work->obj;
-    DICE_OBJ_WORK *objWork = omObjGetWork(work->obj, DICE_OBJ_WORK);
+    DICE_OBJ_WORK *objWork = ((DICE_OBJ_WORK *)(&(work->obj->work[0])));
 
     objWork->mode = 2;
     objWork->lockF = TRUE;
     objWork->time = 0;
     objWork->maxTime = 12;
-    if (work->playerNo >= 0 && work->playerNo < GW_PLAYER_MAX) {
-        omVibrate(work->playerNo, 20, 7, 3);
+    if (work->playerNo >= 0 && work->playerNo < 4) {
+        fn_8006A030(work->playerNo, 20, 7, 3);
     }
     if (objWork->diceSeNo >= 0) {
         HuAudFXStop(objWork->diceSeNo);
@@ -1027,12 +1027,12 @@ static void DiceObjHit(DICE_WORK *work)
     }
     DiceHitEffSet(obj->mdlId[1]);
     DiceHitEffSet(obj->mdlId[2]);
-    Hu3DModelDispOn(obj->mdlId[4]);
+    fn_80026A44(obj->mdlId[4], (1 << 0));
     if (work->diceType != DICETYPE_CHANCE_TRADE
         && work->diceType != DICETYPE_CHANCE_CHAR
         && work->diceType != 11 && work->diceType != 12) {
         if (GWPartyGet() == FALSE && work->playerNo == 0
-            && !_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+            && !fn_8006A124(65550)) {
             // Replace any supplied override with solo mode's microphone-based result, including -1.
             work->tutorialVal[work->no] = mbSingleCall(2, -1);
         }
@@ -1055,7 +1055,7 @@ static void DiceObjHit(DICE_WORK *work)
             work->result[work->no] = mbObjMotionTimeGet(obj->mdlId[0]) + 0.5f;
         }
     }
-    mbAudFXPlay(MSM_SE_BRD00_04);
+    mbAudFXPlay(1008);
     if (diceHitHook[work->playerNo] != NULL) {
         diceHitHook[work->playerNo](work->result[work->no]);
     }
@@ -1077,7 +1077,7 @@ BOOL mbDiceKillCheckAll(void)
 {
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         if (!mbDiceKillCheck(i)) {
             return FALSE;
         }
@@ -1176,7 +1176,7 @@ int mbDiceValueNoGet(int playerNo)
         playerNo = DICE_PLAYERNO_NULL;
     }
     work = diceProc[playerNo]->property;
-    objWork = omObjGetWork(work->obj, DICE_OBJ_WORK);
+    objWork = ((DICE_OBJ_WORK *)(&(work->obj->work[0])));
     return objWork->valueNo;
 }
 
@@ -1209,7 +1209,8 @@ static inline void DiceNumPosSet(HuVecF *src, HuVecF *dst)
 
     MTXLookAt(lookAt, &cameraP->pos, &cameraP->up, &cameraP->target);
     MTXMultVec(lookAt, src, &camPos);
-    tanFov = HuSin(cameraP->fov * 0.5f) / HuCos(cameraP->fov * 0.5f);
+    tanFov = sin(3.141592653589793*(cameraP->fov
+        * 0.5f)/180.0) / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
     x = camPos.x / (tanFov * camPos.z);
     y = camPos.y / (tanFov * camPos.z);
     normPos.x = -2000.0f * (x * tanFov);
@@ -1241,12 +1242,12 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
     if (value > 99) {
         value = 99;
     }
-    obj = omAddObjEx(mbObjMan, 258, 3, 0, OM_GRP_NONE, DiceNumObjOMExec);
-    omSetStatBit(obj, OM_STAT_MODELPAUSE);
+    obj = fn_8003AB38(mbObjMan, 258, 3, 0, -1, DiceNumObjOMExec);
+    omSetStatBit(obj, (1 << 8));
     obj->data = vtx = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(DICE_NUM_VTX *) * 2, HU_MEMNUM_OVL);
+        sizeof(DICE_NUM_VTX *) * 2, 0x10000000);
     memset(obj->data, 0, sizeof(DICE_NUM_VTX *) * 2);
-    objWork = omObjGetWork(obj, DICE_NUM_WORK);
+    objWork = ((DICE_NUM_WORK *)(&(obj->work[0])));
     objWork->killF = FALSE;
     objWork->rotF = FALSE;
     objWork->updateF = TRUE;
@@ -1271,8 +1272,8 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
         mbObjScaleSet(modelId, 1.0f, 1.0f, 1.0f);
         mbObjMtxSet(modelId, &rot);
         engineModelId = mbObjModelIDGet(modelId);
-        mbObjCameraSet(modelId, HU3D_CAM1);
-        Hu3DModelLayerSet(engineModelId, 4);
+        mbObjCameraSet(modelId, (1 << 1));
+        fn_80026B8C(engineModelId, 4);
         mbObjBiriQCreate(modelId);
         mbObjBiriQColorSet(modelId, TRUE, 0.0f, biriQColor);
         obj->mdlId[modelNo] = modelId;
@@ -1315,7 +1316,7 @@ OMOBJ *mbDiceNumObjCreate(int playerNo, HuVecF *startPos, HuVecF *targetPos,
 // Object-manager callback that moves, rotates, updates, and removes result numbers.
 static void DiceNumObjOMExec(OMOBJ *obj)
 {
-    DICE_NUM_WORK *objWork = omObjGetWork(obj, DICE_NUM_WORK);
+    DICE_NUM_WORK *objWork = ((DICE_NUM_WORK *)(&(obj->work[0])));
     DICE_NUM_VTX **vtx = obj->data;
     float time;
     HuVecF modelPos;
@@ -1338,9 +1339,9 @@ static void DiceNumObjOMExec(OMOBJ *obj)
     }
     time = (float)objWork->time / objWork->maxTime;
     // This direction vector is calculated but unused; digit positions use time directly below.
-    dir.z = HuCos(time * 90);
-    dir.y = HuSin(time * 90);
-    dir.x = HuSin(time * 180);
+    dir.z = cos(3.141592653589793*(time * 90)/180.0);
+    dir.y = sin(3.141592653589793*(time * 90)/180.0);
+    dir.x = sin(3.141592653589793*(time * 180)/180.0);
     for (i = 0; i < 2; i++) {
         float angle;
 
@@ -1383,7 +1384,7 @@ static void DiceNumObjOMExec(OMOBJ *obj)
         if (!objWork->rotF) {
             modelPos.y = obj->trans.y
                 + (time * (bendPos.y - obj->trans.y))
-                + (100 * (1.1f * HuSin(time * 180)));
+                + (100 * (1.1f * sin(3.141592653589793*(time * 180)/180.0)));
         } else {
             modelPos.y = obj->trans.y
                 + (time * (bendPos.y - obj->trans.y));
@@ -1414,7 +1415,7 @@ static void DiceNumObjOMExec(OMOBJ *obj)
 // sparkles.
 static void DiceNumObjBendOMExec(OMOBJ *obj)
 {
-    DICE_NUM_WORK *objWork = omObjGetWork(obj, DICE_NUM_WORK);
+    DICE_NUM_WORK *objWork = ((DICE_NUM_WORK *)(&(obj->work[0])));
     DICE_NUM_VTX **vtx = obj->data;
     float angle;
     float time;
@@ -1445,7 +1446,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
             }
             maxAngle = rotAngle;
             angle = time * 720;
-            MTXRotDeg(topRot, 'z', maxAngle * HuSin(angle));
+            MTXRotDeg(topRot, 'z', maxAngle * sin(3.141592653589793*angle/180.0));
             MTXIdentity(bottomRot);
             posY = obj->rot.y;
             if (++objWork->time > objWork->maxTime) {
@@ -1472,7 +1473,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
                 angle = 0;
             }
             MTXRotDeg(bottomRot, 'y', angle);
-            posY = obj->rot.y + (100 * (2 * HuSin(time * 180)));
+            posY = obj->rot.y + (100 * (2 * sin(3.141592653589793*(time * 180)/180.0)));
             if (++objWork->time > objWork->maxTime) {
                 if (objWork->bendF) {
                     objWork->bendMode = 0;
@@ -1499,7 +1500,7 @@ static void DiceNumObjBendOMExec(OMOBJ *obj)
         }
     }
     if (obj->mdlId[2] >= 0) {
-        MBPARTICLE *particleP = Hu3DData[obj->mdlId[2]].hookData;
+        MBPARTICLE *particleP = lbl_802C01C8[obj->mdlId[2]].hookData;
 
         // Newly emitted bonus sparkles inherit the result number's current vertical rise.
         particleP->spawnOffsetY = posY - obj->rot.y;
@@ -1516,13 +1517,13 @@ void mbDiceNumObjKill(OMOBJ *obj)
             mbObjKill(obj->mdlId[i]);
         }
     }
-    omDelObj(HuPrcCurrentGet(), obj);
+    omDelObjEx(fn_8000DD9C(), obj);
 }
 
 // Raises result numbers while deforming them, finally collapsing their width before removal.
 static void DiceNumObjShrinkOMExec(OMOBJ *obj)
 {
-    DICE_NUM_WORK *objWork = omObjGetWork(obj, DICE_NUM_WORK);
+    DICE_NUM_WORK *objWork = ((DICE_NUM_WORK *)(&(obj->work[0])));
     HuVecF pos;
     float time;
     float scaleX;
@@ -1538,8 +1539,8 @@ static void DiceNumObjShrinkOMExec(OMOBJ *obj)
         return;
     }
     time = (float)(objWork->time++) / objWork->maxTime;
-    scaleX = HuSin(time * 270);
-    scaleY = HuSin((time * 270) + 180);
+    scaleX = sin(3.141592653589793*(time * 270)/180.0);
+    scaleY = sin(3.141592653589793*((time * 270) + 180)/180.0);
     posY = obj->rot.y + (100 * time);
     for (i = 0; i < 2; i++) {
         if (obj->mdlId[i] >= 0) {
@@ -1560,7 +1561,7 @@ static void DiceNumObjReset(int playerNo)
         OMOBJ *obj = diceNumOMObj[playerNo][i];
 
         if (obj != NULL) {
-            DICE_NUM_WORK *work = omObjGetWork(obj, DICE_NUM_WORK);
+            DICE_NUM_WORK *work = ((DICE_NUM_WORK *)(&(obj->work[0])));
 
             work->rotF = TRUE;
             work->updateF = TRUE;
@@ -1591,8 +1592,7 @@ BOOL mbDiceNumStopCheck(int playerNo)
 
     for (i = 0; i < 3; i++) {
         if (diceNumOMObj[playerNo][i] != NULL) {
-            DICE_NUM_WORK *work = omObjGetWork(diceNumOMObj[playerNo][i],
-                DICE_NUM_WORK);
+            DICE_NUM_WORK *work = ((DICE_NUM_WORK *)(&(diceNumOMObj[playerNo][i]->work[0])));
 
             if (work->updateF) {
                 return FALSE;
@@ -1612,8 +1612,7 @@ void mbDiceNumKill(int playerNo)
     }
     for (i = 0; i < 3; i++) {
         if (diceNumOMObj[playerNo][i] != NULL) {
-            DICE_NUM_WORK *work = omObjGetWork(diceNumOMObj[playerNo][i],
-                DICE_NUM_WORK);
+            DICE_NUM_WORK *work = ((DICE_NUM_WORK *)(&(diceNumOMObj[playerNo][i]->work[0])));
 
             work->killF = TRUE;
             diceNumOMObj[playerNo][i] = NULL;
@@ -1633,7 +1632,7 @@ void mbDiceNumShrinkSet(int playerNo)
         OMOBJ *obj = diceNumOMObj[playerNo][i];
 
         if (obj != NULL) {
-            DICE_NUM_WORK *work = omObjGetWork(obj, DICE_NUM_WORK);
+            DICE_NUM_WORK *work = ((DICE_NUM_WORK *)(&(obj->work[0])));
 
             work->time = 0;
             work->maxTime = 30;
@@ -1665,7 +1664,7 @@ OMOBJ *mbDiceSNpcNumCreate(int playerNo, HuVecF *pos)
         obj = diceNumOMObj[playerNo][i];
 
         if (obj != NULL) {
-            DICE_NUM_WORK *work = omObjGetWork(obj, DICE_NUM_WORK);
+            DICE_NUM_WORK *work = ((DICE_NUM_WORK *)(&(obj->work[0])));
 
             value += (s8)work->value;
             if (!createF) {
@@ -1693,18 +1692,18 @@ static void DiceNumObjBendStart(int playerNo)
         OMOBJ *obj = diceNumOMObj[playerNo][i];
 
         if (obj != NULL) {
-            DICE_NUM_WORK *numWork = omObjGetWork(obj, DICE_NUM_WORK);
+            DICE_NUM_WORK *numWork = ((DICE_NUM_WORK *)(&(obj->work[0])));
 
             numWork->updateF = TRUE;
             numWork->bendF = TRUE;
             numWork->time = 0;
             numWork->maxTime = 120;
             obj->mdlId[2] = mbParticleCreate(HuSprAnimDataRead(
-                mbBoardDataNumGet(DATANUM(DATA_board, 100))), 100);
+                mbBoardDataNumGet(DATANUM(0x50000, 100))), 100);
             mbParticleHookSet(obj->mdlId[2], DiceZoromeEffHook);
-            Hu3DModelCameraSet(obj->mdlId[2], HU3D_CAM1);
-            Hu3DModelLayerSet(obj->mdlId[2], 5);
-            Hu3DModelPosSet(obj->mdlId[2], obj->rot.x,
+            fn_80026B64(obj->mdlId[2], (1 << 1));
+            fn_80026B8C(obj->mdlId[2], 5);
+            fn_80026760(obj->mdlId[2], obj->rot.x,
                 obj->rot.y + 30.000002f, obj->rot.z + 50.0f);
             obj->objFunc = DiceNumObjBendOMExec;
         }
@@ -1721,7 +1720,7 @@ static void DiceNumObjBendStop(int playerNo)
         OMOBJ *obj = diceNumOMObj[playerNo][i];
 
         if (obj != NULL) {
-            DICE_NUM_WORK *numWork = omObjGetWork(obj, DICE_NUM_WORK);
+            DICE_NUM_WORK *numWork = ((DICE_NUM_WORK *)(&(obj->work[0])));
 
             for (j = 0; j < 2; j++) {
                 if (obj->mdlId[j] > 0) {
@@ -1731,7 +1730,7 @@ static void DiceNumObjBendStop(int playerNo)
             }
             if (obj->mdlId[2] >= 0) {
                 mbParticleKill(obj->mdlId[2]);
-                obj->mdlId[2] = HU3D_MODELID_NONE;
+                obj->mdlId[2] = -1;
             }
             numWork->bendF = FALSE;
         }
@@ -1778,7 +1777,7 @@ static void ev_DiceZorome(DICE_WORK *work)
     HuPrcSleep(10);
     mbMusJingleWait(mbMusJinglePlay((s16)streamId));
     mbMusPauseFadeOut(0, FALSE, 1000);
-    mbAudGuidePlay(MSM_SE_GUIDE_26);
+    mbAudGuidePlay(950);
     mbWinCreate(2, MESSNUM(MESS_BOARD_OPE, 10), mbGuideSpeakerNoGet());
     mbWinTopInsertMesSet(MESSNUM_PTR(diceMatchCoinStr), 0);
     mbWinTopWait();
@@ -1904,9 +1903,9 @@ static void DiceZoromeEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
             magnitude = __fabsf(pitch);
 #endif
             pitch = 90.0f * (pitch * magnitude);
-            data->vel.x = HuSin(angle) * HuCos(pitch);
-            data->vel.y = HuSin(pitch);
-            data->vel.z = HuCos(angle) * HuCos(pitch);
+            data->vel.x = sin(3.141592653589793*angle/180.0) * cos(3.141592653589793*pitch/180.0);
+            data->vel.y = sin(3.141592653589793*pitch/180.0);
+            data->vel.z = cos(3.141592653589793*angle/180.0) * cos(3.141592653589793*pitch/180.0);
             speed = 0.016666668f *
                 (100.0f + (100.0f * (2.0f * frandf())));
             VECScale(&data->vel, &data->vel, speed);
@@ -1985,10 +1984,10 @@ static HU3D_MODELID DiceInEffCreate(void)
 {
     int modelId;
 
-    modelId = mbParticleCreate(HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(DATANUM(DATA_board, 100)), HU_MEMNUM_OVL, HEAP_MODEL)), 80);
+    modelId = mbParticleCreate(HuSprAnimRead(fn_80008DD0(
+        mbBoardDataNumGet(DATANUM(0x50000, 100)), 0x10000000, 2)), 80);
     mbParticleHookSet(modelId, DiceInEffHook);
-    Hu3DModelLayerSet(modelId, 5);
+    fn_80026B8C(modelId, 5);
     mbParticleAttrSet(modelId, MB_PARTICLE_ATTR_3D);
     mbParticleColorCreate(modelId);
     return modelId;
@@ -1999,17 +1998,17 @@ static HU3D_MODELID DiceInDotEffCreate(void)
 {
     int modelId;
 
-    modelId = mbParticleCreate(HuSprAnimRead(HuDataSelHeapReadNum(
-        mbBoardDataNumGet(DATANUM(DATA_board, 100)), HU_MEMNUM_OVL, HEAP_MODEL)), 150);
+    modelId = mbParticleCreate(HuSprAnimRead(fn_80008DD0(
+        mbBoardDataNumGet(DATANUM(0x50000, 100)), 0x10000000, 2)), 150);
     mbParticleHookSet(modelId, DiceInDotEffHook);
-    Hu3DModelLayerSet(modelId, 5);
+    fn_80026B8C(modelId, 5);
     return modelId;
 }
 
 // DiceObjHit calls this for each particle system to switch it to impact mode.
 static void DiceHitEffSet(HU3D_MODELID modelId)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARTICLE *particleP = modelP->hookData;
 
     particleP->mode = 1;
@@ -2051,9 +2050,11 @@ static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     ratio = DiceAbsFloat(angles.x);
                     angles.x = angles.x * ratio;
                     angles.x = 90.0f * angles.x;
-                    data->vel.x = HuSin(angles.y) * HuCos(angles.x);
-                    data->vel.y = HuSin(angles.x);
-                    data->vel.z = HuCos(angles.y) * HuCos(angles.x);
+                    data->vel.x = sin(3.141592653589793*angles.y/180.0)
+                        * cos(3.141592653589793*angles.x/180.0);
+                    data->vel.y = sin(3.141592653589793*angles.x/180.0);
+                    data->vel.z = cos(3.141592653589793*angles.y/180.0)
+                        * cos(3.141592653589793*angles.x/180.0);
                     speed = 0.016666668f *
                         (800.0f + (100.0f * (8.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
@@ -2081,9 +2082,11 @@ static void DiceInEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     ratio = DiceAbsFloat(angles.x);
                     angles.x = angles.x * ratio;
                     angles.x = 90.0f * angles.x;
-                    data->vel.x = HuSin(angles.y) * HuCos(angles.x);
-                    data->vel.y = HuSin(angles.x);
-                    data->vel.z = HuCos(angles.y) * HuCos(angles.x);
+                    data->vel.x = sin(3.141592653589793*angles.y/180.0)
+                        * cos(3.141592653589793*angles.x/180.0);
+                    data->vel.y = sin(3.141592653589793*angles.x/180.0);
+                    data->vel.z = cos(3.141592653589793*angles.y/180.0)
+                        * cos(3.141592653589793*angles.x/180.0);
                     speed = 0.016666668f *
                         (300.0f + (100.0f * (3.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
@@ -2154,9 +2157,11 @@ static void DiceInDotEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     ratio = (1.6f * frandf()) - 0.8f;
                     rotX = __fabsf(ratio);
                     rotX = 90.0f * (ratio * rotX);
-                    data->vel.x = HuSin(rotY) * HuCos(rotX);
-                    data->vel.y = HuSin(rotX);
-                    data->vel.z = HuCos(rotY) * HuCos(rotX);
+                    data->vel.x = sin(3.141592653589793*rotY/180.0)
+                        * cos(3.141592653589793*rotX/180.0);
+                    data->vel.y = sin(3.141592653589793*rotX/180.0);
+                    data->vel.z = cos(3.141592653589793*rotY/180.0)
+                        * cos(3.141592653589793*rotX/180.0);
                     speed = 0.016666668f *
                         (500.0f + (100.0f * (9.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
@@ -2184,9 +2189,11 @@ static void DiceInDotEffHook(HU3D_MODEL *modelP, MBPARTICLE *particleP,
                     ratio = 0.7f + (0.3f * frandf());
                     rotX = __fabsf(ratio);
                     rotX = 90.0f * (ratio * rotX);
-                    data->vel.x = HuSin(rotY) * HuCos(rotX);
-                    data->vel.y = HuSin(rotX);
-                    data->vel.z = HuCos(rotY) * HuCos(rotX);
+                    data->vel.x = sin(3.141592653589793*rotY/180.0)
+                        * cos(3.141592653589793*rotX/180.0);
+                    data->vel.y = sin(3.141592653589793*rotX/180.0);
+                    data->vel.z = cos(3.141592653589793*rotY/180.0)
+                        * cos(3.141592653589793*rotX/180.0);
                     speed = 0.016666668f *
                         (300.0f + (100.0f * (3.0f * frandf())));
                     VECScale(&data->vel, &data->vel, speed);
@@ -2261,7 +2268,7 @@ static void DiceObjEffCreate(DICE_WORK *work)
 
     effBuf = HuMemDirectMallocNum(HEAP_HEAP,
         (DICE_EFF_PUFF_MAX + DICE_EFF_TRI_MAX) * sizeof(DICE_EFF),
-        HU_MEMNUM_OVL);
+        0x10000000);
     work->eff = eff = effBuf;
     memset(eff, 0,
         (DICE_EFF_PUFF_MAX + DICE_EFF_TRI_MAX) * sizeof(DICE_EFF));
@@ -2291,7 +2298,7 @@ static void DiceObjEffCreate(DICE_WORK *work)
         eff->scale.z = 1.0f + (2.0f * frandf());
         yawAngle += (360.0f * eff->scale.x) / 12.0f;
     }
-    dlAlloc = HuMemDirectMallocNum(HEAP_HEAP, 4096, HU_MEMNUM_OVL);
+    dlAlloc = HuMemDirectMallocNum(HEAP_HEAP, 4096, 0x10000000);
     dlBuf = dlAlloc;
     DCInvalidateRange(dlBuf, 4096);
     GXBeginDisplayList(dlBuf, 4096);
@@ -2307,14 +2314,14 @@ static void DiceObjEffCreate(DICE_WORK *work)
     GXEnd();
     work->dlSize = GXEndDisplayList();
     work->dlBuf = HuMemDirectMallocNum(HEAP_HEAP, work->dlSize,
-        HU_MEMNUM_OVL);
+        0x10000000);
     memcpy(work->dlBuf, dlBuf, work->dlSize);
     HuMemDirectFree(dlBuf);
     DCFlushRangeNoSync(work->dlBuf, work->dlSize);
     work->animEffPuff = HuSprAnimDataRead(
-        mbBoardDataNumGet(DATANUM(DATA_board, 93)));
+        mbBoardDataNumGet(DATANUM(0x50000, 93)));
     work->animEffTri = HuSprAnimDataRead(
-        mbBoardDataNumGet(DATANUM(DATA_board, 98)));
+        mbBoardDataNumGet(DATANUM(0x50000, 98)));
 }
 
 // DiceProcDestroy calls this to release the roll effects' buffers and animation data.
@@ -2388,9 +2395,9 @@ static void DiceObjEffPuffDraw(HU3D_MODEL *modelP, Mtx *mtx)
         HuVecF pos;
         static HuVecF back = { 0, 0, -1 };
 
-        mtxRot(rot, eff->rot.x, eff->rot.y, eff->rot.z);
+        fn_80022E38(rot, eff->rot.x, eff->rot.y, eff->rot.z);
         MTXMultVec(rot, &back, &pos);
-        VECScale(&pos, &pos, HuSin(time * 90.0f) * eff->radius);
+        VECScale(&pos, &pos, sin(3.141592653589793*(time * 90.0f)/180.0) * eff->radius);
         MTXTrans(trans, obj->trans.x + pos.x, obj->trans.y + pos.y + 50.0f,
             obj->trans.z + pos.z);
         MTXConcat(trans, rot, modelview);
@@ -2400,7 +2407,7 @@ static void DiceObjEffPuffDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
     if (!mbPauseEnableCheck()) {
         if (++work->puffTime >= 45u) {
-            modelP->attr |= HU3D_ATTR_DISPOFF;
+            modelP->attr |= (1 << 0);
         }
     }
 }
@@ -2464,9 +2471,9 @@ static void DiceObjEffTriDraw(HU3D_MODEL *modelP, Mtx *mtx)
 
         MTXScale(scale, (2.0f * eff->scale.x) + time,
             2.0f * eff->scale.y, 2.0f * eff->scale.z);
-        mtxRot(rot, eff->rot.x, eff->rot.y, eff->rot.z);
+        fn_80022E38(rot, eff->rot.x, eff->rot.y, eff->rot.z);
         MTXMultVec(rot, &back, &pos);
-        VECScale(&pos, &pos, HuSin(time * 90.0f) * eff->radius);
+        VECScale(&pos, &pos, sin(3.141592653589793*(time * 90.0f)/180.0) * eff->radius);
         MTXTrans(trans, obj->trans.x + pos.x, obj->trans.y + pos.y - 50.0f,
             obj->trans.z + pos.z);
         MTXConcat(rot, scale, modelview);
@@ -2486,7 +2493,7 @@ static void DiceObjEffTriDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
     if (!mbPauseEnableCheck()) {
         if (++work->triTime >= 16) {
-            modelP->attr |= HU3D_ATTR_DISPOFF;
+            modelP->attr |= (1 << 0);
         }
     }
 }
@@ -2498,7 +2505,7 @@ static float diceCloudRotYRatio2[3] = {
 // mbDiceNumObjCreate calls this to save a digit mesh and its bottom-to-top bend weights.
 static DICE_NUM_VTX *DiceNumObjMdlCopy(int modelId)
 {
-    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
     HSF_DATA *hsf = model->hsf;
     HSF_OBJECT *obj = hsf->object;
     HuVecF *pos;
@@ -2511,7 +2518,7 @@ static DICE_NUM_VTX *DiceNumObjMdlCopy(int modelId)
     float sizeY;
 
     for (i = 0; i < hsf->objectNum; i++, obj++) {
-        if (obj->type == HSF_OBJ_MESH) {
+        if (obj->type == 2) {
             size = obj->mesh.vertex->count * sizeof(DICE_NUM_VTX);
             pos = obj->mesh.vertex->data;
             posMin = posMax = pos->y;
@@ -2525,7 +2532,7 @@ static DICE_NUM_VTX *DiceNumObjMdlCopy(int modelId)
                 }
             }
             sizeY = posMax - posMin;
-            vtxBuf = vtx = HuMemDirectMallocNum(HEAP_MODEL, size,
+            vtxBuf = vtx = HuMemDirectMallocNum(2, size,
                 model->mallocNo);
             pos = obj->mesh.vertex->data;
             for (j = 0; j < obj->mesh.vertex->count; j++, pos++, vtx++) {
@@ -2542,13 +2549,13 @@ static DICE_NUM_VTX *DiceNumObjMdlCopy(int modelId)
 static void DiceNumObjMdlBend(int modelId, DICE_NUM_VTX *vtx, Mtx bottomMtx,
     Mtx topMtx)
 {
-    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
     HSF_DATA *hsf = model->hsf;
     int i, j;
     HSF_OBJECT *obj = hsf->object;
 
     for (i = 0; i < hsf->objectNum; i++, obj++) {
-        if (obj->type == HSF_OBJ_MESH) {
+        if (obj->type == 2) {
             HuVecF *pos;
 
             pos = obj->mesh.vertex->data;
@@ -2581,10 +2588,10 @@ OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
     HuVecF posSum;
     HuVecF posNorm;
 
-    obj = omAddObjEx(mbObjMan, 32258, 20, 0, OM_GRP_NONE,
+    obj = fn_8003AB38(mbObjMan, 32258, 20, 0, -1,
         DiceSNpcNumUpdate);
-    omSetStatBit(obj, OM_STAT_MODELPAUSE);
-    work = omObjGetWork(obj, DICE_SNPC_NUM_WORK);
+    omSetStatBit(obj, (1 << 8));
+    work = ((DICE_SNPC_NUM_WORK *)(&(obj->work[0])));
     work->dispF = TRUE;
     work->killF = FALSE;
     work->unusedFlag = flagF;
@@ -2595,7 +2602,7 @@ OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
         mbCoinObjDispSet(modelId, FALSE);
         obj->mdlId[i] = modelId;
     }
-    HuAddVecF(&posSum, pos, offset);
+    VECAdd(pos, offset, &posSum);
     mbPos3DtoNorm(&posSum, 1, &posNorm);
     obj->rot.z = posNorm.z;
     DiceVecCopy(pos, &obj->trans);
@@ -2607,7 +2614,7 @@ OMOBJ *mbDiceSNpcNumObjCreate(HuVecF *pos, HuVecF *offset, int value,
 static void DiceSNpcNumUpdate(OMOBJ *obj)
 {
     int digitNum = 0;
-    DICE_SNPC_NUM_WORK *work = omObjGetWork(obj, DICE_SNPC_NUM_WORK);
+    DICE_SNPC_NUM_WORK *work = ((DICE_SNPC_NUM_WORK *)(&(obj->work[0])));
     HU3D_CAMERA *cameraP = &Hu3DCamera[0];
     HU3D_CAMERA *camera2P = &Hu3DCamera[2];
     int i;
@@ -2625,18 +2632,18 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
                 mbCoinObjNumDec(obj->mdlId[i]);
             }
         }
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     if (mbPauseEnableCheck()) {
         return;
     }
-    HuAddVecF(&pos, &obj->trans, &obj->scale);
+    VECAdd(&obj->trans, &obj->scale, &pos);
     mbPos3DtoNorm(&pos, 1, &posNorm);
     // Keep the camera-space depth captured when the NPC number was created.
     posNorm.z = obj->rot.z;
-    tanFov = HuSin(camera2P->fov * 0.5f)
-        / HuCos(camera2P->fov * 0.5f);
+    tanFov = sin(3.141592653589793*(camera2P->fov * 0.5f)/180.0)
+        / cos(3.141592653589793*(camera2P->fov * 0.5f)/180.0);
     scaleX = 1.2f * (tanFov * -posNorm.z);
     scaleY = tanFov * -posNorm.z;
     posNorm.x *= scaleX;
@@ -2650,8 +2657,8 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
     if (work->dispF) {
         int modelNo;
 
-        scale = HuSin(cameraP->fov * 0.5f)
-            / HuCos(cameraP->fov * 0.5f);
+        scale = sin(3.141592653589793*(cameraP->fov * 0.5f)/180.0)
+            / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
         scale = tanFov / scale;
         modelNo = work->value / 10;
         if (modelNo != 0) {
@@ -2679,17 +2686,17 @@ static void DiceSNpcNumUpdate(OMOBJ *obj)
 
 void mbDiceSNpcNumKill(OMOBJ *obj)
 {
-    omObjGetWork(obj, DICE_SNPC_NUM_WORK)->killF = TRUE;
+    ((DICE_SNPC_NUM_WORK *)(&(obj->work[0])))->killF = TRUE;
 }
 
 void mbDiceSNpcNumDispSet(OMOBJ *obj, BOOL dispF)
 {
-    omObjGetWork(obj, DICE_SNPC_NUM_WORK)->dispF = dispF;
+    ((DICE_SNPC_NUM_WORK *)(&(obj->work[0])))->dispF = dispF;
 }
 
 void mbDiceSNpcNumSet(OMOBJ *obj, u8 value)
 {
-    omObjGetWork(obj, DICE_SNPC_NUM_WORK)->value = (u8)value;
+    ((DICE_SNPC_NUM_WORK *)(&(obj->work[0])))->value = (u8)value;
 }
 
 void mbDiceSNpcNumPosSet(OMOBJ *obj, HuVecF *pos)

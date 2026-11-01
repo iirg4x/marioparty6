@@ -292,13 +292,13 @@ void fn_1_A0(void)
     GXColor lightColor = {255, 255, 255, 255};
     HU3D_LIGHTID light;
 
-    lbl_1_bss_4 = omInitObjMan(200, 8192);
-    omGameSysInit(lbl_1_bss_4);
-    light = Hu3DGLightCreateV(&lightPos, &lightDir, &lightColor);
+    lbl_1_bss_4 = fn_8003A8BC(200, 8192);
+    fn_80069F1C(lbl_1_bss_4);
+    light = fn_800286D0(&lightPos, &lightDir, &lightColor);
     Hu3DGLightStaticSet(light, TRUE);
     Hu3DGLightInfinitytSet(light);
     fn_1_2AC(lbl_1_bss_4);
-    HuPrcChildCreate(fn_1_1CC, 256, 12288, 0, HuPrcCurrentGet());
+    fn_8000DAC0(fn_1_1CC, 256, 12288, 0, fn_8000DD9C());
     lbl_1_bss_0 = -1;
     WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, 60);
 }
@@ -322,9 +322,9 @@ void fn_1_1CC(void)
         case 2:
             fn_1_434();
             HuAudAllStop();
-            Hu3DModelAllKill();
-            Hu3DLightAllKill();
-            omOvlReturnEx(1, 1);
+            fn_80026648();
+            fn_80028D70();
+            fn_8003A5E4(1, 1);
             break;
     }
     HuPrcVSleep();

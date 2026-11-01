@@ -104,7 +104,7 @@ extern s16 fn_1_A01C(s16 player);
 
 extern int MgModeWorkInt[16];
 
-extern s16 MgModeScore[GW_PLAYER_MAX];
+extern s16 MgModeScore[4];
 
 s16 fn_1_AD78(s16 player);
 
@@ -116,7 +116,7 @@ void fn_1_102C(Vec *);
 
 void fn_1_4F0C(f32);
 
-s16 _CharFXPlay(s16 charNo, s16 seNo, u8 voiceFlag);
+s16 fn_800591C8(s16 charNo, s16 seNo, u8 voiceFlag);
 
 extern u8 MgModePlayNum;
 
@@ -177,27 +177,27 @@ extern s32 lbl_1_data_510;
 extern s32 lbl_1_data_514;
 
 u32 lbl_1_data_338[10] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 6),
-    DATANUM(DATA_mariomot, 40), DATANUM(DATA_mariomot, 36),
-    DATANUM(DATA_mariomot, 37), DATANUM(DATA_mariomot, 21)
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x930000, 3),
+    DATANUM(0x930000, 4), DATANUM(0x930000, 6),
+    DATANUM(0x930000, 40), DATANUM(0x930000, 36),
+    DATANUM(0x930000, 37), DATANUM(0x930000, 21)
 };
 s16 lbl_1_data_360 = -1;
 f32 lbl_1_data_364 = 20.0f;
 Vec lbl_1_data_368[2] = {{30.0f, 0.0f, 760.0f}, {30.0f, 0.0f, 160.0f}};
 MGRenshoMotionSetting lbl_1_data_380[11] = {
-    {0, 0.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {0, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {1, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {2, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {3, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {4, 0.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {5, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {6, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {7, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {8, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {9, 8.0f, HU3D_MOTATTR_LOOP, 1, 0}
+    {0, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {0, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {1, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {2, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {3, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {4, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {5, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {6, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {7, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {8, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {9, 8.0f, ((1 << 30) | (1 << 0)), 1, 0}
 };
 MGRenshoDifficultyRow lbl_1_data_45C[3] = {
     {{0, 1, 1, 1, 2, 2, 2, 3, 3, 3}},
@@ -221,24 +221,24 @@ void fn_1_927C(OMOBJ *object, s16 motionSettingIndex)
         motionIndex = lbl_1_data_380[motionSettingIndex].motion_index;
         if (motionIndex != -1) {
             if (lbl_1_data_380[motionSettingIndex].duration <= 1.0f) {
-                CharMotionSet(motionData->character_no, object->mtnId[motionIndex]);
-                Hu3DModelAttrReset(object->mdlId[0],
-                                   Hu3DModelMotionAttrGet(object->mdlId[0]) | HU3D_MOTATTR);
-                CharModelAttrSet(motionData->character_no,
+                fn_8005BE80(motionData->character_no, object->mtnId[motionIndex]);
+                fn_80026A44(object->mdlId[0],
+                                   fn_80026AB8(object->mdlId[0]) | (1 << 30));
+                fn_8005C430(motionData->character_no,
                                  lbl_1_data_380[motionSettingIndex].model_attributes);
             } else {
-                CharModelAttrSet(motionData->character_no, HU3D_MOTATTR_PAUSE);
-                CharMotionShiftSet(motionData->character_no, object->mtnId[motionIndex],
+                fn_8005C430(motionData->character_no, ((1 << 30) | (1 << 1)));
+                fn_8005C2C8(motionData->character_no, object->mtnId[motionIndex],
                                    0.0f,
                                    lbl_1_data_380[motionSettingIndex].duration,
                                    lbl_1_data_380[motionSettingIndex].model_attributes);
             }
             if (lbl_1_data_380[motionSettingIndex].motion_option != 0) {
-                Hu3DMotionAttrSet(object->mtnId[motionIndex], 1U);
+                fn_8002DC74(object->mtnId[motionIndex], 1U);
             } else {
-                Hu3DMotionAttrSet(object->mtnId[motionIndex], 1U);
+                fn_8002DC74(object->mtnId[motionIndex], 1U);
             }
-            CharModelVoiceFlagSet(motionData->character_no,
+            fn_8005DFC0(motionData->character_no,
                                   lbl_1_data_380[motionSettingIndex].voice_flag);
         }
         motionData->current_motion = motionSettingIndex;
@@ -259,57 +259,57 @@ void fn_1_94A8(void)
     player = 0;
     while (player < 4) {
         object =
-            omAddObjEx(lbl_1_bss_158, MGR_RENSHO_PLAYER_OBJECT_PRIORITY, 1U, 10, -1, fn_1_AE08);
+            fn_8003AB38(lbl_1_bss_158, MGR_RENSHO_PLAYER_OBJECT_PRIORITY, 1U, 10, -1, fn_1_AE08);
         lbl_1_bss_140[player] = object;
-        object->stat |= OM_STAT_MODELPAUSE;
+        object->stat |= (1 << 8);
         object->work[0] = object->work[1] = object->work[2] = object->work[3] = 0;
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, MGR_RENSHO_PLAYER_STATE_SIZE, HU_MEMNUM_OVL);
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, MGR_RENSHO_PLAYER_STATE_SIZE, 0x10000000);
         memset(object->data, 0, MGR_RENSHO_PLAYER_STATE_SIZE);
         playerData = object->data;
         playerData->player_index = player;
-        playerData->character_no = GwPlayerConf[player].charNo;
-        playerData->controller_index = GwPlayerConf[player].padNo;
-        playerData->group_no = GwPlayerConf[player].grpNo;
-        playerData->player_type = GwPlayerConf[player].type;
-        playerData->com_difficulty = GwPlayerConf[player].comDif;
+        playerData->character_no = lbl_80265728[player].charNo;
+        playerData->controller_index = lbl_80265728[player].padNo;
+        playerData->group_no = lbl_80265728[player].grpNo;
+        playerData->player_type = lbl_80265728[player].type;
+        playerData->com_difficulty = lbl_80265728[player].comDif;
         playerData->motion_state = -1;
         /* Setup always selects player slot 0; every other slot is forced to CPU difficulty 1
          * below. */
         lbl_1_data_360 = 0;
         if (lbl_1_data_360 != playerData->player_index) {
-            GwPlayerConf[player].grpNo = player;
-            GwPlayerConf[player].type = 1;
-            GwPlayerConf[player].comDif = 1;
-            playerData->group_no = GwPlayerConf[player].grpNo;
-            playerData->player_type = GwPlayerConf[player].type;
-            playerData->com_difficulty = GwPlayerConf[player].comDif;
+            lbl_80265728[player].grpNo = player;
+            lbl_80265728[player].type = 1;
+            lbl_80265728[player].comDif = 1;
+            playerData->group_no = lbl_80265728[player].grpNo;
+            playerData->player_type = lbl_80265728[player].type;
+            playerData->com_difficulty = lbl_80265728[player].comDif;
         }
         if (lbl_1_data_360 == playerData->player_index) {
-            *object->mdlId = CharModelCreate(playerData->character_no, 2);
+            *object->mdlId = fn_80057068(playerData->character_no, 2);
             motion = 0;
             while (motion < 10) {
                 object->mtnId[motion] =
-                    CharMotionCreate(playerData->character_no, lbl_1_data_338[motion]);
+                    fn_8005B0B8(playerData->character_no, lbl_1_data_338[motion]);
                 motion++;
             }
-            CharMotionDataClose(playerData->character_no);
+            fn_8005B4BC(playerData->character_no);
             playerData->current_motion = -1;
             fn_1_927C(object, 0);
-            Hu3DModelCameraSet(*object->mdlId, 1U);
-            Hu3DModelLayerSet(*object->mdlId, 1);
-            Hu3DModelShadowSet(*object->mdlId);
+            fn_80026B64(*object->mdlId, 1U);
+            fn_80026B8C(*object->mdlId, 1);
+            fn_80026E44(*object->mdlId);
             playerData->position = lbl_1_data_368[0];
-            Hu3DModelPosSetV(*object->mdlId, &playerData->position);
+            fn_80026790(*object->mdlId, &playerData->position);
             playerData->rotation.x = playerData->rotation.y =
                 playerData->rotation.z = 0.0f;
-            Hu3DModelRotSetV(*object->mdlId, &playerData->rotation);
-            CharModelAttrSet(playerData->character_no, 1U);
-            CharMotionVoiceOnSet(playerData->character_no, lbl_1_data_338[7], 0);
-            CharMotionVoiceOnSet(playerData->character_no, lbl_1_data_338[3], 0);
+            fn_80026838(*object->mdlId, &playerData->rotation);
+            fn_8005C430(playerData->character_no, 1U);
+            fn_8005DEB0(playerData->character_no, lbl_1_data_338[7], 0);
+            fn_8005DEB0(playerData->character_no, lbl_1_data_338[3], 0);
         }
         player++;
     }
-    CharEffectLayerSet(3);
+    fn_8005DDEC(3);
 }
 
 /* Called when the selected player enters the course to place them at the start. */
@@ -320,17 +320,17 @@ void fn_1_9978(void) {
     object = lbl_1_bss_140[lbl_1_data_360];
     playerData = (MGRenshoPlayerState *)object->data;
     playerData->motion_state = 0;
-    CharModelAttrReset(playerData->character_no, 1);
+    fn_8005C47C(playerData->character_no, 1);
 
     playerData->position = lbl_1_data_368[1];
-    Hu3DModelPosSetV(*object->mdlId, &playerData->position);
+    fn_80026790(*object->mdlId, &playerData->position);
 
     playerData->rotation.x = playerData->rotation.z = 0.0f;
     playerData->rotation.y = 180.0f;
-    Hu3DModelRotSetV(*object->mdlId, &playerData->rotation);
+    fn_80026838(*object->mdlId, &playerData->rotation);
 
     playerData = (MGRenshoPlayerState *)lbl_1_bss_140[lbl_1_data_360]->data;
-    CharModelAttrReset(playerData->character_no, 1);
+    fn_8005C47C(playerData->character_no, 1);
 }
 
 /* During mode setup, reorders cached character motions, shifts the opponent characters,
@@ -345,26 +345,26 @@ void fn_1_9A70(void) {
     characterOrder[1] = fn_1_A01C(2);
     characterOrder[2] = fn_1_A01C(3);
     characterOrder[3] = fn_1_A01C(1);
-    CharMotionLoad(characterOrder);
-    CharDataClose(fn_1_A01C(1));
-    CharMotionInit(replacementCharacter);
+    fn_80056B7C(characterOrder);
+    fn_800567D8(fn_1_A01C(1));
+    fn_800565B4(replacementCharacter);
 
     playerData = lbl_1_bss_140[2]->data;
-    GwPlayerConf[1].charNo = playerData->character_no;
+    lbl_80265728[1].charNo = playerData->character_no;
     playerData = lbl_1_bss_140[3]->data;
-    GwPlayerConf[2].charNo = playerData->character_no;
-    GwPlayerConf[3].charNo = replacementCharacter;
+    lbl_80265728[2].charNo = playerData->character_no;
+    lbl_80265728[3].charNo = replacementCharacter;
     playerData = lbl_1_bss_140[1]->data;
-    playerData->character_no = GwPlayerConf[1].charNo;
+    playerData->character_no = lbl_80265728[1].charNo;
     playerData = lbl_1_bss_140[2]->data;
-    playerData->character_no = GwPlayerConf[2].charNo;
+    playerData->character_no = lbl_80265728[2].charNo;
     playerData = lbl_1_bss_140[3]->data;
-    playerData->character_no = GwPlayerConf[3].charNo;
+    playerData->character_no = lbl_80265728[3].charNo;
 }
 
 /* Called after asynchronous character data reads to wait for the DMA transfer to finish. */
 void fn_1_9B9C(void) {
-    while (HuARDMACheck() != 0) {
+    while (fn_80055FB4() != 0) {
         HuPrcVSleep();
     }
 }
@@ -382,7 +382,7 @@ s16 fn_1_9BCC(void) {
     available[11] = 0;
     available[12] = 0;
     available[13] = 0;
-    if (GWBankFlagGet(2) == 0) {
+    if (fn_8003D2F0(2) == 0) {
         available[10] = 0;
     }
 
@@ -465,9 +465,9 @@ void fn_1_9E20(void)
                     .computer_difficulty_by_round[MgModePlayNum / 10];
             row++;
         }
-        GwPlayerConf[player].grpNo = playerData->group_no;
-        GwPlayerConf[player].type = (s16)playerData->player_type;
-        GwPlayerConf[player].comDif = playerData->com_difficulty;
+        lbl_80265728[player].grpNo = playerData->group_no;
+        lbl_80265728[player].type = (s16)playerData->player_type;
+        lbl_80265728[player].comDif = playerData->com_difficulty;
         player++;
     }
 }
@@ -513,7 +513,7 @@ void fn_1_A0CC(void)
     s16 keepWaiting;
 
     motionData = lbl_1_bss_140[lbl_1_data_360]->data;
-    CharModelAttrReset(motionData->character_no, 1U);
+    fn_8005C47C(motionData->character_no, 1U);
     motionData->motion_state = 0;
     HuPrcSleep(20);
     motionData->motion_state = -1;
@@ -873,10 +873,10 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 if ((165.0f < playerState->rotation.y) && (playerState->rotation.y < 195.0f)) {
                     playerState->rotation.y = 180.0f;
                     fn_1_927C(playerObject, 1);
-                } else if (((CharMotionShiftIDGet(playerState->character_no) < 0) &&
+                } else if (((fn_8005C284(playerState->character_no) < 0) &&
                             ((playerState->current_motion == 2) ||
                              (playerState->current_motion == 1))) ||
-                           ((CharMotionShiftIDGet(playerState->character_no) >= 0) &&
+                           ((fn_8005C284(playerState->character_no) >= 0) &&
                             (playerState->current_motion == 2))) {
                     /* Both heading branches below add 15 degrees, even when the yaw already exceeds
                      * 180. */
@@ -919,20 +919,20 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 break;
             case 4:
                 fn_1_927C(playerObject, 4);
-                _CharFXPlay(playerState->character_no, MGR_RENSHO_JUMP_EFFECT, 0);
+                fn_800591C8(playerState->character_no, MGR_RENSHO_JUMP_EFFECT, 0);
                 playerState->motion_state = 5;
                 playerState->jump_frame = 0;
                 playerState->jump_frames = (s16) (playerState->remaining_distance / lbl_1_data_364);
                 break;
             case 5:
                 if ((playerState->current_motion == 4) &&
-                    (CharMotionShiftIDGet(playerState->character_no) < 0)) {
-                    if ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                         CharMotionTimeGet(playerState->character_no)) >=
-                        CharMotionMaxTimeGet(playerState->character_no)) {
-                        Hu3DModelAttrSet(playerObject->mdlId[0],
-                                         HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                                             HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
+                    (fn_8005C284(playerState->character_no) < 0)) {
+                    if ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                         fn_8005C1B8(playerState->character_no)) >=
+                        fn_8005C1FC(playerState->character_no)) {
+                        fn_800269E8(playerObject->mdlId[0],
+                                         ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                                             ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
                     }
                 }
                 if (playerState->remaining_distance <= lbl_1_data_364) {
@@ -955,9 +955,9 @@ void fn_1_AE08(OMOBJ *playerObject) {
                     playerState->jump_frame = playerState->jump_frames = 0;
                     playerState->vertical_velocity =
                         playerState->position.y = 0.0f;
-                    Hu3DModelAttrReset(playerObject->mdlId[0],
-                                       HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                                           HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
+                    fn_80026A44(playerObject->mdlId[0],
+                                       ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                                           ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
                     fn_1_927C(playerObject, 5);
                     playerState->motion_state = 6;
                 }
@@ -965,10 +965,10 @@ void fn_1_AE08(OMOBJ *playerObject) {
             case 6:
                 motionReady = 0;
                 if ((playerState->current_motion != 1) &&
-                    (CharMotionShiftIDGet(playerState->character_no) < 0) &&
-                    ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                      CharMotionTimeGet(playerState->character_no)) >=
-                     CharMotionMaxTimeGet(playerState->character_no))) {
+                    (fn_8005C284(playerState->character_no) < 0) &&
+                    ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                      fn_8005C1B8(playerState->character_no)) >=
+                     fn_8005C1FC(playerState->character_no))) {
                     fn_1_927C(playerObject, 1);
                     motionReady = 1;
                 } else if (playerState->current_motion == 1) {
@@ -987,11 +987,11 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 break;
             case 7:
                 fn_1_927C(playerObject, 5);
-                if (CharMotionShiftIDGet(playerState->character_no) < 0) {
+                if (fn_8005C284(playerState->character_no) < 0) {
                     playerState->motion_state = 8;
-                    Hu3DModelAttrSet(playerObject->mdlId[0],
-                                     HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                                         HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
+                    fn_800269E8(playerObject->mdlId[0],
+                                     ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                                         ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
                     playerState->landingStateA =
                         playerState->vertical_velocity =
                             playerState->landingStateB = 0.0f;
@@ -1001,13 +1001,13 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 playerState->vertical_velocity -= 0.4f;
                 playerState->position.y += playerState->vertical_velocity;
                 if (playerState->position.y < 0.0f) {
-                    Hu3DModelAttrReset(playerObject->mdlId[0],
-                                       HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                                           HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
+                    fn_80026A44(playerObject->mdlId[0],
+                                       ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                                           ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
                     if (playerState->current_motion == 5) {
-                        if ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                             CharMotionTimeGet(playerState->character_no)) >=
-                            CharMotionMaxTimeGet(playerState->character_no)) {
+                        if ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                             fn_8005C1B8(playerState->character_no)) >=
+                            fn_8005C1FC(playerState->character_no)) {
                             fn_1_927C(playerObject, 10);
                             playerState->motion_state = 9;
                         }
@@ -1032,11 +1032,11 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 break;
             case 11:
                 fn_1_927C(playerObject, 6);
-                if (CharMotionShiftIDGet(playerState->character_no) < 0) {
-                    if ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                         CharMotionTimeGet(playerState->character_no)) >=
-                        CharMotionMaxTimeGet(playerState->character_no)) {
-                        Hu3DModelAttrSet(playerObject->mdlId[0], HU3D_MOTATTR_PAUSE);
+                if (fn_8005C284(playerState->character_no) < 0) {
+                    if ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                         fn_8005C1B8(playerState->character_no)) >=
+                        fn_8005C1FC(playerState->character_no)) {
+                        fn_800269E8(playerObject->mdlId[0], ((1 << 30) | (1 << 1)));
                         playerState->motion_state = 12;
                     }
                 }
@@ -1047,11 +1047,11 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 CharFXPlay(playerState->character_no, MGR_RENSHO_TRANSITION_EFFECT);
                 break;
             case 14:
-                if (CharMotionShiftIDGet(playerState->character_no) < 0) {
-                    if ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                         CharMotionTimeGet(playerState->character_no)) >=
-                        CharMotionMaxTimeGet(playerState->character_no)) {
-                        Hu3DModelAttrSet(playerObject->mdlId[0], HU3D_MOTATTR_PAUSE);
+                if (fn_8005C284(playerState->character_no) < 0) {
+                    if ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                         fn_8005C1B8(playerState->character_no)) >=
+                        fn_8005C1FC(playerState->character_no)) {
+                        fn_800269E8(playerObject->mdlId[0], ((1 << 30) | (1 << 1)));
                         playerState->motion_state = 15;
                     }
                 }
@@ -1070,14 +1070,14 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 break;
             case 17:
                 if (playerState->current_motion != 8) {
-                    _CharFXPlay(playerState->character_no, MGR_RENSHO_FALL_EFFECT, 0);
+                    fn_800591C8(playerState->character_no, MGR_RENSHO_FALL_EFFECT, 0);
                 }
                 fn_1_927C(playerObject, 8);
-                if (CharMotionShiftIDGet(playerState->character_no) < 0) {
-                    if ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                         CharMotionTimeGet(playerState->character_no)) >=
-                        CharMotionMaxTimeGet(playerState->character_no)) {
-                        Hu3DModelAttrSet(playerObject->mdlId[0], HU3D_MOTATTR_PAUSE);
+                if (fn_8005C284(playerState->character_no) < 0) {
+                    if ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                         fn_8005C1B8(playerState->character_no)) >=
+                        fn_8005C1FC(playerState->character_no)) {
+                        fn_800269E8(playerObject->mdlId[0], ((1 << 30) | (1 << 1)));
                         playerState->motion_state = 18;
                     }
                 }
@@ -1087,11 +1087,11 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 playerState->motion_state = 20;
                 break;
             case 20:
-                if (CharMotionShiftIDGet(playerState->character_no) < 0) {
-                    if ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                         CharMotionTimeGet(playerState->character_no)) >=
-                        CharMotionMaxTimeGet(playerState->character_no)) {
-                        Hu3DModelAttrSet(playerObject->mdlId[0], HU3D_MOTATTR_PAUSE);
+                if (fn_8005C284(playerState->character_no) < 0) {
+                    if ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                         fn_8005C1B8(playerState->character_no)) >=
+                        fn_8005C1FC(playerState->character_no)) {
+                        fn_800269E8(playerObject->mdlId[0], ((1 << 30) | (1 << 1)));
                         playerState->motion_state = 21;
                     }
                 }
@@ -1104,13 +1104,13 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 break;
             case 23:
                 if ((playerState->current_motion == 4) &&
-                    (CharMotionShiftIDGet(playerState->character_no) < 0)) {
-                    if ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                         CharMotionTimeGet(playerState->character_no)) >=
-                        CharMotionMaxTimeGet(playerState->character_no)) {
-                        Hu3DModelAttrSet(playerObject->mdlId[0],
-                                         HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                                             HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
+                    (fn_8005C284(playerState->character_no) < 0)) {
+                    if ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                         fn_8005C1B8(playerState->character_no)) >=
+                        fn_8005C1FC(playerState->character_no)) {
+                        fn_800269E8(playerObject->mdlId[0],
+                                         ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                                             ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
                     }
                 }
                 playerState->position.x -= 3.0f;
@@ -1123,18 +1123,18 @@ void fn_1_AE08(OMOBJ *playerObject) {
                 if ((playerState->position.y < 225.0f) && (playerState->vertical_velocity < 0.0f)) {
                     playerState->vertical_velocity = 0.0f;
                     playerState->position.y = 225.0f;
-                    Hu3DModelAttrReset(playerObject->mdlId[0],
-                                       HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE |
-                                           HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE);
+                    fn_80026A44(playerObject->mdlId[0],
+                                       ((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) |
+                                           ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)));
                     fn_1_927C(playerObject, 5);
                     playerState->motion_state = 24;
                 }
                 break;
             case 24:
-                if (CharMotionShiftIDGet(playerState->character_no) < 0) {
-                    if ((Hu3DData[playerObject->mdlId[0]].motWork.speed +
-                         CharMotionTimeGet(playerState->character_no)) >=
-                        CharMotionMaxTimeGet(playerState->character_no)) {
+                if (fn_8005C284(playerState->character_no) < 0) {
+                    if ((lbl_802C01C8[playerObject->mdlId[0]].motWork.speed +
+                         fn_8005C1B8(playerState->character_no)) >=
+                        fn_8005C1FC(playerState->character_no)) {
                         playerState->motion_state = 0;
                         fn_1_927C(playerObject, 1);
                     }
@@ -1143,8 +1143,8 @@ void fn_1_AE08(OMOBJ *playerObject) {
             default:
                 break;
             }
-        Hu3DModelRotSetV(playerObject->mdlId[0], &playerState->rotation);
-        Hu3DModelPosSetV(playerObject->mdlId[0], &playerState->position);
+        fn_80026838(playerObject->mdlId[0], &playerState->rotation);
+        fn_80026790(playerObject->mdlId[0], &playerState->position);
     }
 }
 

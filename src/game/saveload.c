@@ -330,7 +330,7 @@ s16 SLCurBoxNoGet(void)
 void SLSaveFlagSet(BOOL saveFlag)
 {
     if(saveFlag == FALSE) {
-        GwCommon.saveEnableF = FALSE;
+        lbl_80265E30.saveEnableF = FALSE;
     }
     SaveEnableF = saveFlag;
 }
@@ -425,11 +425,12 @@ void SLCommonSet(void)
     OSTime time = OSGetTime();
     GW_COMMON commonBackup;
     GW_COMMON *commonSnapshot;
-    GwCommon.time = time;
-    memcpy(&GwCommon.magic[0], "SAVE", 4);
-    memcpy(&saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_COMMON_OFS], &GwCommon, sizeof(GW_COMMON));
+    lbl_80265E30.time = time;
+    memcpy(&lbl_80265E30.magic[0], "SAVE", 4);
+    memcpy(&saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_COMMON_OFS], &lbl_80265E30,
+        sizeof(GW_COMMON));
     SLSaveDataInfoSet(curSlotNo, &time);
-    commonBackup = GwCommon;
+    commonBackup = lbl_80265E30;
     commonSnapshot = &commonBackup;
     memcpy(&SLGwCommonBackup, commonSnapshot, sizeof(GW_COMMON));
 }
@@ -446,12 +447,12 @@ void SLBoardSave(void)
 {
     u32 boxDataOffset = boxDataOfs[curBoxNo];
     s16 i;
-    memcpy(&saveBuf[curSlotNo][boxDataOffset + SAVE_BOX_BOARD_SYSTEM_OFS], &GwSystem,
+    memcpy(&saveBuf[curSlotNo][boxDataOffset + SAVE_BOX_BOARD_SYSTEM_OFS], &lbl_80265B70,
            sizeof(GW_SYSTEM));
-    for(i=0; i<GW_PLAYER_MAX; i++) {
+    for(i=0; i<4; i++) {
         memcpy(&saveBuf[curSlotNo]
                        [boxDataOffset + SAVE_BOX_BOARD_PLAYER_OFS + (i * sizeof(GW_PLAYER))],
-               &GwPlayer[i], sizeof(GW_PLAYER));
+               &lbl_80265750[i], sizeof(GW_PLAYER));
     }
 }
 
@@ -577,8 +578,9 @@ void SLCommonLoad(void)
     u32 boxDataOffset = boxDataOfs[curBoxNo];
     GW_COMMON commonBackup;
     GW_COMMON *commonSnapshot;
-    memcpy(&GwCommon, &saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_COMMON_OFS], sizeof(GW_COMMON));
-    commonBackup = GwCommon;
+    memcpy(&lbl_80265E30, &saveBuf[curSlotNo][boxDataOffset+SAVE_BOX_COMMON_OFS],
+        sizeof(GW_COMMON));
+    commonBackup = lbl_80265E30;
     commonSnapshot = &commonBackup;
     memcpy(&SLGwCommonBackup, commonSnapshot, sizeof(GW_COMMON));
 }
@@ -595,18 +597,18 @@ void SLBoardLoad(void)
 {
     u32 boxDataOffset = boxDataOfs[curBoxNo];
     s16 i;
-    memcpy(&GwSystem, &saveBuf[curSlotNo][boxDataOffset + SAVE_BOX_BOARD_SYSTEM_OFS],
+    memcpy(&lbl_80265B70, &saveBuf[curSlotNo][boxDataOffset + SAVE_BOX_BOARD_SYSTEM_OFS],
            sizeof(GW_SYSTEM));
-    for(i=0; i<GW_PLAYER_MAX; i++) {
-        memcpy(&GwPlayer[i],
+    for(i=0; i<4; i++) {
+        memcpy(&lbl_80265750[i],
                &saveBuf[curSlotNo]
                        [boxDataOffset + SAVE_BOX_BOARD_PLAYER_OFS + (i * sizeof(GW_PLAYER))],
                sizeof(GW_PLAYER));
-        GwPlayerConf[i].charNo = GwPlayer[i].charNo;
-        GwPlayerConf[i].padNo = GwPlayer[i].padNo;
-        GwPlayerConf[i].comDif = GwPlayer[i].comDif;
-        GwPlayerConf[i].type = GwPlayer[i].comF;
-        GwPlayerConf[i].grpNo = GwPlayer[i].team;
+        lbl_80265728[i].charNo = lbl_80265750[i].charNo;
+        lbl_80265728[i].padNo = lbl_80265750[i].padNo;
+        lbl_80265728[i].comDif = lbl_80265750[i].comDif;
+        lbl_80265728[i].type = lbl_80265750[i].comF;
+        lbl_80265728[i].grpNo = lbl_80265750[i].team;
     }
 }
 
@@ -1036,10 +1038,10 @@ s16 SLMessOut(s16 messId)
         choiceNo = HuWinChoiceGet(winId, -1);
     }
     if(messId == SL_MESS_CARD_REINSERT) {
-        while(!(HuPadBtnDown[0] & PAD_BUTTON_A)) {
+        while(!(lbl_802C0008[0] & PAD_BUTTON_A)) {
             HuPrcVSleep();
         }
-        HuAudFXPlay(MSM_SE_CMN_02);
+        HuAudFXPlay(1);
     }
     if(SLWinId == HUWIN_NONE) {
         HuWinWarningClose(winId);
@@ -1053,13 +1055,13 @@ s16 SLMessOut(s16 messId)
 // GwCommon.saveEnableF forced true in the saved state.
 void SLSaveBoardTurnExec(void)
 {
-    Hu3DAllKill();
+    fn_80025630();
     HuSprClose();
     HuSprInit();
     espInit();
     HuWinComKeyReset();
     // GWSaveModeGet changes the MAX sentinel to NEVER before testing whether saving is permitted.
-    if(!SaveEnableF || GWSaveModeGet() == GW_SAVE_MODE_NEVER) {
+    if(!SaveEnableF || GWSaveModeGet() == 1) {
         return;
     }
     HuPrcVSleep();
@@ -1067,7 +1069,7 @@ void SLSaveBoardTurnExec(void)
     WipeWait();
     bottomWinPosY = 190.0f;
     topWinPosY = 80.0f;
-    GwCommon.saveEnableF = TRUE;
+    lbl_80265E30.saveEnableF = TRUE;
     SLBoardSave();
     SLCommonSet();
     if(SLSave()) {
@@ -1086,7 +1088,7 @@ void SLSaveBoardEndExec(void)
 {
     s16 backdropSpriteId;
     s16 backgroundSpriteId;
-    Hu3DAllKill();
+    fn_80025630();
     HuSprClose();
     HuSprInit();
     espInit();
@@ -1095,7 +1097,7 @@ void SLSaveBoardEndExec(void)
         return;
     }
     HuPrcVSleep();
-    if(GwCommon.bankStarAward == 0) {
+    if(lbl_80265E30.bankStarAward == 0) {
         backdropSpriteId = espEntry(WIN_ANM_52, 5010, 0);
         espPosSet(backdropSpriteId, 288.0f, 240.0f);
         espScaleSet(backdropSpriteId, 10, 10);
@@ -1104,7 +1106,7 @@ void SLSaveBoardEndExec(void)
         WipeWait();
         bottomWinPosY = 190.0f;
         topWinPosY = 80.0f;
-        GwCommon.saveEnableF = FALSE;
+        lbl_80265E30.saveEnableF = FALSE;
         SLBoardSave();
         SLCommonSet();
         if(SLSave()) {
@@ -1128,9 +1130,9 @@ void SLSaveBoardEndExec(void)
                        SL_BANK_AWARD_TINT_BLUE);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_PREV, 20);
         WipeWait();
-        SLBankAwardExec(GwCommon.bankStarAward);
-        GwCommon.bankStarAward = 0;
-        GwCommon.saveEnableF = FALSE;
+        SLBankAwardExec(lbl_80265E30.bankStarAward);
+        lbl_80265E30.bankStarAward = 0;
+        lbl_80265E30.saveEnableF = FALSE;
         SLBoardSave();
         SLCommonSet();
         if(SLSave()) {
@@ -1183,7 +1185,7 @@ void SLSaveModeExec(s16 unusedModeFlag)
         return;
     }
     HuPrcVSleep();
-    if(GwCommon.bankStarAward == 0) {
+    if(lbl_80265E30.bankStarAward == 0) {
         backdropSpriteId = espEntry(WIN_ANM_52, 5010, 0);
         espPosSet(backdropSpriteId, 288.0f, 240.0f);
         espScaleSet(backdropSpriteId, 10, 10);
@@ -1214,8 +1216,8 @@ void SLSaveModeExec(s16 unusedModeFlag)
                        SL_BANK_AWARD_TINT_BLUE);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_PREV, 20);
         WipeWait();
-        SLBankAwardExec(GwCommon.bankStarAward);
-        GwCommon.bankStarAward = 0;
+        SLBankAwardExec(lbl_80265E30.bankStarAward);
+        lbl_80265E30.bankStarAward = 0;
         SLCommonSet();
         if(SLSave()) {
             saveExecF = TRUE;
@@ -1233,15 +1235,15 @@ void SLSaveModeExec(s16 unusedModeFlag)
 // SLGwCommonBackup.time zero.
 s32 SLSaveCheck(void)
 {
-    OSTime time = GwCommon.time;
+    OSTime time = lbl_80265E30.time;
     s32 result;
     GW_COMMON commonBackup;
     GW_COMMON *commonSnapshot;
-    GwCommon.time = 0;
+    lbl_80265E30.time = 0;
     SLGwCommonBackup.time = 0;
     commonBackup = SLGwCommonBackup;
     commonSnapshot = &commonBackup;
-    result = memcmp(&GwCommon, commonSnapshot, sizeof(GW_COMMON));
-    GwCommon.time = time;
+    result = memcmp(&lbl_80265E30, commonSnapshot, sizeof(GW_COMMON));
+    lbl_80265E30.time = time;
     return result;
 }

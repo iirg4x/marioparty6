@@ -204,7 +204,7 @@ static void HuDecodeRle(DECODE *decode)
 
 // Resource loaders call this with packed source data and a destination buffer sized for the decoded
 // resource.
-void HuDecodeData(void *src, void *dst, u32 size, s32 decodeType)
+void fn_8000A384(void *src, void *dst, u32 size, s32 decodeType)
 {
     DECODE decode;
     DECODE *decodeState = &decode;
@@ -212,31 +212,31 @@ void HuDecodeData(void *src, void *dst, u32 size, s32 decodeType)
     decodeState->dst = dst;
     decodeState->size = size;
     switch(decodeType) {
-        case HU_DECODE_TYPE_NONE:
+        case 0:
             HuDecodeNone(decodeState);
             break;
 
-        case HU_DECODE_TYPE_LZ:
+        case 1:
             HuDecodeLz(decodeState);
             break;
 
-        case HU_DECODE_TYPE_SLIDE:
+        case 2:
             HuDecodeSlide(decodeState);
             break;
 
-        case HU_DECODE_TYPE_FSLIDE_ALT:
+        case 3:
             HuDecodeFslide(decodeState);
             break;
 
-        case HU_DECODE_TYPE_FSLIDE:
+        case 4:
             HuDecodeFslide(decodeState);
             break;
 
-        case HU_DECODE_TYPE_RLE:
+        case 5:
             HuDecodeRle(decodeState);
             break;
 
-        case HU_DECODE_TYPE_ZLIB:
+        case 7:
             // Discard the zlib status, including errors; the requested destination range is still
             // flushed below.
             HuDecodeZlib(decodeState);
@@ -254,7 +254,7 @@ void HuDecodeData(void *src, void *dst, u32 size, s32 decodeType)
 static void *ZlibCalloc(voidpf opaque, uInt items, uInt size)
 {
     s32 allocSize = items*size;
-    void *allocation = HuMemDirectMallocNum(HEAP_MODEL, allocSize, HU_MEMNUM_OVL);
+    void *allocation = HuMemDirectMallocNum(2, allocSize, 0x10000000);
     // The heap result goes straight to memset, including NULL when no block is available.
     memset(allocation, 0, allocSize);
     return allocation;

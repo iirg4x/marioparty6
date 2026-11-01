@@ -12,12 +12,11 @@
 
 #include "string.h"
 
-#define DATA_board (5 << 16)
 #define MB_EFFECT_COLOR_BUFFER_BYTES (16 * 1024)
 #define MB_PARTICLE_DISPLAY_LIST_BYTES (128 * 1024)
 #define MB_PARTICLE_SORT_MAGNITUDE_MASK 2147483647
 
-extern void *mbMallocNum(s32 size, u32 num);
+extern void *fn_80213818(s32 size, u32 num);
 extern void *mbMallocFlushModelNum(s32 size, u32 num);
 extern HU3D_MODELID mbObjModelIDGet(MBMODELID modelId);
 extern void mbObjLayerSet(MBMODELID modelId, s16 layer);
@@ -37,7 +36,7 @@ void mbEffInit(void)
 {
     fadeOMObj = NULL;
     confettiOMObj = NULL;
-    tempColorBuf = HuMemDirectMallocNum(HEAP_HEAP, MB_EFFECT_COLOR_BUFFER_BYTES, HU_MEMNUM_OVL);
+    tempColorBuf = HuMemDirectMallocNum(HEAP_HEAP, MB_EFFECT_COLOR_BUFFER_BYTES, 0x10000000);
     tempColorNum = 0;
 }
 
@@ -75,7 +74,7 @@ void mbEffFadeOutSet(s16 maxTime)
     if(maxTime <= 0) {
         maxTime = 1;
     }
-    work = omObjGetWork(fadeOMObj, FADEEFFWORK);
+    work = ((FADEEFFWORK *)(&(fadeOMObj->work[0])));
     work->maxTime = maxTime;
     OSs16tof32(&maxTime, &maxTimeFloat);
     work->alphaStep = -work->color.a/maxTimeFloat;
@@ -88,18 +87,18 @@ void mbEffFadeCreate(s16 maxTime, u8 targetAlpha)
 {
     FADEEFFWORK *work;
     if(fadeOMObj) {
-        work = omObjGetWork(fadeOMObj, FADEEFFWORK);
+        work = ((FADEEFFWORK *)(&(fadeOMObj->work[0])));
         work->killF = TRUE;
         while(fadeOMObj) {
             HuPrcVSleep();
         }
     }
-    fadeOMObj = omAddObjEx(mbObjMan, 32000, 0, 0, OM_GRP_NONE, FadeOMExec);
-    omSetStatBit(fadeOMObj, OM_STAT_NOPAUSE|OM_STAT_SPRPAUSE);
+    fadeOMObj = fn_8003AB38(mbObjMan, 32000, 0, 0, -1, FadeOMExec);
+    omSetStatBit(fadeOMObj, (1 << 5)|(1 << 7));
     if(maxTime <= 0) {
         maxTime = 1;
     }
-    work = omObjGetWork(fadeOMObj, FADEEFFWORK);
+    work = ((FADEEFFWORK *)(&(fadeOMObj->work[0])));
     work->killF = FALSE;
     work->pauseF = FALSE;
     work->color.r = 0;
@@ -110,9 +109,9 @@ void mbEffFadeCreate(s16 maxTime, u8 targetAlpha)
     work->alphaStep = (float)(targetAlpha-work->color.a)/maxTime;
     work->time = maxTime;
     work->maxTime = maxTime;
-    work->modelId = Hu3DHookFuncCreate(FadeDraw);
-    Hu3DModelCameraSet(work->modelId, HU3D_CAM2);
-    Hu3DModelLayerSet(work->modelId, 1);
+    work->modelId = fn_800260F4(FadeDraw);
+    fn_80026B64(work->modelId, (1 << 2));
+    fn_80026B8C(work->modelId, 1);
 }
 
 // Callers such as the pause flow poll this until the fade-in reaches its target.
@@ -122,7 +121,7 @@ BOOL mbEffFadeDoneCheck(void)
     if(!fadeOMObj) {
         return TRUE;
     }
-    work = omObjGetWork(fadeOMObj, FADEEFFWORK);
+    work = ((FADEEFFWORK *)(&(fadeOMObj->work[0])));
     return (work->pauseF) ? TRUE : FALSE;
 }
 
@@ -130,8 +129,8 @@ BOOL mbEffFadeDoneCheck(void)
 void mbEffFadeCameraSet(u16 cameraBit)
 {
     if(fadeOMObj) {
-        FADEEFFWORK *work = omObjGetWork(fadeOMObj, FADEEFFWORK);
-        Hu3DModelCameraSet(work->modelId, cameraBit);
+        FADEEFFWORK *work = ((FADEEFFWORK *)(&(fadeOMObj->work[0])));
+        fn_80026B64(work->modelId, cameraBit);
     }
 }
 
@@ -144,14 +143,14 @@ BOOL mbEffFadeCheck(void)
 // Object-manager callback: animate overlay alpha and remove completed fade-outs.
 static void FadeOMExec(OMOBJ *obj)
 {
-    FADEEFFWORK *work = omObjGetWork(obj, FADEEFFWORK);
+    FADEEFFWORK *work = ((FADEEFFWORK *)(&(obj->work[0])));
     float overlayAlpha;
     if(work->killF || mbExitCheck()) {
-        if(work->modelId != HU3D_MODELID_NONE) {
-            Hu3DModelKill(work->modelId);
+        if(work->modelId != -1) {
+            fn_800262D0(work->modelId);
         }
         fadeOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     if(work->pauseF) {
@@ -184,7 +183,7 @@ static void FadeDraw(HU3D_MODEL *modelP, Mtx *mtx)
 	if(!fadeOMObj) {
 		return;
 	}
-	work = omObjGetWork(fadeOMObj, FADEEFFWORK);
+	work = ((FADEEFFWORK *)(&(fadeOMObj->work[0])));
 	x1 = 0.0f;
 	x2 = HU_FB_WIDTH;
 	y1 = 0.0f;
@@ -259,23 +258,23 @@ void mbEffConfettiCreate(HuVecF *origin, s16 maxCnt, float radialSpread)
         mbEffConfettiReset();
         HuPrcSleep(17);
     }
-    confettiOMObj = obj = omAddObjEx(mbObjMan, 257, 0, 0, OM_GRP_NONE, EffConfettiOMExec);
-    work = omObjGetWork(obj, CONFETTIEFFWORK);
+    confettiOMObj = obj = fn_8003AB38(mbObjMan, 257, 0, 0, -1, EffConfettiOMExec);
+    work = ((CONFETTIEFFWORK *)(&(obj->work[0])));
     work->killF = FALSE;
     work->pauseF = FALSE;
     work->maxCnt = maxCnt;
     work->addNum = 1;
     work->time = 0;
     work->delay = 10;
-    work->hookMdlId = Hu3DHookFuncCreate(EffConfettiDraw);
-    Hu3DModelCameraSet(work->hookMdlId, HU3D_CAM0);
+    work->hookMdlId = fn_800260F4(EffConfettiDraw);
+    fn_80026B64(work->hookMdlId, (1 << 0));
     work->data =
-        HuMemDirectMallocNum(HEAP_HEAP, work->maxCnt * sizeof(CONFETTIEFFDATA), HU_MEMNUM_OVL);
+        HuMemDirectMallocNum(HEAP_HEAP, work->maxCnt * sizeof(CONFETTIEFFDATA), 0x10000000);
     obj->trans.x = origin->x;
     obj->trans.y = origin->y;
     obj->trans.z = origin->z;
     obj->rot.x = radialSpread;
-    work->modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_board, 2)), NULL, FALSE);
+    work->modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(0x50000, 2)), NULL, FALSE);
     mbObjLayerSet(work->modelId, 5);
     mbObjDispSet(work->modelId, FALSE);
     for(data=work->data, i=0; i<work->maxCnt; i++, data++) {
@@ -287,7 +286,7 @@ void mbEffConfettiCreate(HuVecF *origin, s16 maxCnt, float radialSpread)
 void mbEffConfettiKill(void)
 {
     if(confettiOMObj) {
-        omObjGetWork(confettiOMObj, CONFETTIEFFWORK)->killF = TRUE;
+        ((CONFETTIEFFWORK *)(&(confettiOMObj->work[0])))->killF = TRUE;
     }
 }
 
@@ -300,7 +299,7 @@ void mbEffConfettiReset(void)
     if(!confettiOMObj) {
         return;
     }
-    work = omObjGetWork(confettiOMObj, CONFETTIEFFWORK);
+    work = ((CONFETTIEFFWORK *)(&(confettiOMObj->work[0])));
     work->pauseF = TRUE;
     for(data=work->data, i=0; i<work->maxCnt; i++, data++) {
         if(data->time != -1 && data->time > 16) {
@@ -312,13 +311,13 @@ void mbEffConfettiReset(void)
 // Object-manager callback: run emission and particle updates once per board update.
 static void EffConfettiOMExec(OMOBJ *obj)
 {
-    CONFETTIEFFWORK *work = omObjGetWork(obj, CONFETTIEFFWORK);
+    CONFETTIEFFWORK *work = ((CONFETTIEFFWORK *)(&(obj->work[0])));
     if(work->killF || mbExitCheck()) {
         mbObjKill(work->modelId);
-        Hu3DModelKill(work->hookMdlId);
+        fn_800262D0(work->hookMdlId);
         HuMemDirectFree(work->data);
         confettiOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     EffConfettiAdd(obj);
@@ -328,7 +327,7 @@ static void EffConfettiOMExec(OMOBJ *obj)
 // Emit pieces into free slots, increasing the count during effect startup.
 static void EffConfettiAdd(OMOBJ *obj)
 {
-    CONFETTIEFFWORK *work = omObjGetWork(obj, CONFETTIEFFWORK);
+    CONFETTIEFFWORK *work = ((CONFETTIEFFWORK *)(&(obj->work[0])));
     int j, i;
     CONFETTIEFFDATA *data;
     if(work->pauseF) {
@@ -375,7 +374,7 @@ static void EffConfettiUpdate(OMOBJ *obj)
     int i;
     BOOL noKillF = FALSE;
     CONFETTIEFFDATA *data;
-    CONFETTIEFFWORK *work = omObjGetWork(obj, CONFETTIEFFWORK);
+    CONFETTIEFFWORK *work = ((CONFETTIEFFWORK *)(&(obj->work[0])));
 
     for(data=work->data, i=0; i<work->maxCnt; i++, data++) {
         if(data->time == -1) {
@@ -422,8 +421,8 @@ static void EffConfettiDraw(HU3D_MODEL *modelP, Mtx *mtx)
     if(!confettiOMObj || mbExitCheck()) {
         return;
     } else {
-        CONFETTIEFFWORK *work = omObjGetWork(confettiOMObj, CONFETTIEFFWORK);
-        HU3D_MODEL *modelDataP = &Hu3DData[mbObjModelIDGet(work->modelId)];
+        CONFETTIEFFWORK *work = ((CONFETTIEFFWORK *)(&(confettiOMObj->work[0])));
+        HU3D_MODEL *modelDataP = &lbl_802C01C8[mbObjModelIDGet(work->modelId)];
         int i;
         CONFETTIEFFDATA *data;
         if(!modelDataP->hsf) {
@@ -448,9 +447,9 @@ static void EffConfettiDraw(HU3D_MODEL *modelP, Mtx *mtx)
             ambB = ambTbl[data->ambNo].z;
             OSu8tof32(&data->alpha, &tpLvl);
             tpLvl = (1.0f/255.0f)*tpLvl;
-            Hu3DModelTPLvlSet(mbObjModelIDGet(work->modelId), tpLvl);
-            Hu3DModelAmbSet(mbObjModelIDGet(work->modelId), ambR, ambG, ambB);
-            Hu3DModelObjDraw(mbObjModelIDGet(work->modelId), "grid2", final);
+            fn_80026CBC(mbObjModelIDGet(work->modelId), tpLvl);
+            fn_800273EC(mbObjModelIDGet(work->modelId), ambR, ambG, ambB);
+            fn_800247C4(mbObjModelIDGet(work->modelId), "grid2", final);
         }
     }
 }
@@ -461,7 +460,7 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx);
 // Create a hook model with one animated quad and texture coordinates per particle slot.
 HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
 {
-    HU3D_MODELID modelId = Hu3DHookFuncCreate(ParticleDraw);
+    HU3D_MODELID modelId = fn_800260F4(ParticleDraw);
     MBPARTICLEDATA *particleDataP;
     HU3D_MODEL *modelP;
     MBPARTICLE *particleP;
@@ -473,17 +472,17 @@ HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
     float scaleX, scaleY;
     int vtxNo;
 
-    Hu3DModelCameraSet(modelId, HU3D_CAM0);
-    modelP = &Hu3DData[modelId];
-    modelP->hookData = particleP = mbMallocNum(sizeof(MBPARTICLE), modelP->mallocNo);
+    fn_80026B64(modelId, (1 << 0));
+    modelP = &lbl_802C01C8[modelId];
+    modelP->hookData = particleP = fn_80213818(sizeof(MBPARTICLE), modelP->mallocNo);
     particleP->anim = anim;
     anim->useNum++;
     particleP->num = maxCnt;
     particleP->blendMode = MB_PARTICLE_BLEND_NORMAL;
     particleP->prevCounter = -1;
     particleP->modelId = modelId;
-    dataFmt = particleP->anim->bmp->dataFmt & ANIM_BMP_FMTMASK;
-    if (dataFmt == ANIM_BMP_I8 || dataFmt == ANIM_BMP_I4) {
+    dataFmt = particleP->anim->bmp->dataFmt & 0xF;
+    if (dataFmt == 7 || dataFmt == 8) {
         particleP->colorIn[0] = GX_CC_ZERO;
         particleP->colorIn[1] = GX_CC_ONE;
         particleP->colorIn[2] = GX_CC_RASC;
@@ -499,18 +498,18 @@ HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
     particleP->alphaIn[2] = GX_CA_RASA;
     particleP->alphaIn[3] = GX_CA_ZERO;
     particleP->data = particleDataP =
-        mbMallocNum(maxCnt * sizeof(MBPARTICLEDATA), modelP->mallocNo);
+        fn_80213818(maxCnt * sizeof(MBPARTICLEDATA), modelP->mallocNo);
     for (i = 0; i < maxCnt; i++, particleDataP++) {
-        particleDataP->cameraBit = HU3D_CAM_ALL;
+        particleDataP->cameraBit = ((1 << 16) - 1);
         *(u32 *)&particleDataP->color = -1;
         particleDataP->dispF = TRUE;
     }
     particleP->vertex =
-        HuMemDirectMallocNum(HEAP_MODEL, maxCnt * sizeof(HuVecF) * 4, modelP->mallocNo);
+        HuMemDirectMallocNum(2, maxCnt * sizeof(HuVecF) * 4, modelP->mallocNo);
     particleP->st =
-        HuMemDirectMallocNum(HEAP_MODEL, maxCnt * sizeof(HuVec2f) * 4, modelP->mallocNo);
+        HuMemDirectMallocNum(2, maxCnt * sizeof(HuVec2f) * 4, modelP->mallocNo);
     particleP->animSt =
-        HuMemDirectMallocNum(HEAP_MODEL, anim->patNum * sizeof(HuVec2f) * 4, modelP->mallocNo);
+        HuMemDirectMallocNum(2, anim->patNum * sizeof(HuVec2f) * 4, modelP->mallocNo);
     for (i = 0; i < anim->patNum; i++) {
         layerP = anim->pat[i].layer;
         bmpP = &anim->bmp[layerP->bmpNo];
@@ -555,22 +554,22 @@ HU3D_MODELID mbParticleCreate(ANIMDATA *anim, s16 maxCnt)
 // Release the animation and model-heap allocations owned by a particle model.
 void mbParticleKill(HU3D_MODELID modelId)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARTICLE *particleP = modelP->hookData;
     HuSprAnimKill(particleP->anim);
-    HuMemDirectFreeNum(HEAP_MODEL, modelP->mallocNo);
+    HuMemDirectFreeNum(2, modelP->mallocNo);
     modelP->hsf = NULL;
 }
 
 // Enable per-particle vertex colors and allocate the color array on first use.
 void mbParticleColorCreate(HU3D_MODELID modelId)
 {
-    MBPARTICLE *particleP = Hu3DData[modelId].hookData;
+    MBPARTICLE *particleP = lbl_802C01C8[modelId].hookData;
 
     particleP->colorF = TRUE;
     if (!particleP->color) {
-        particleP->color = HuMemDirectMallocNum(HEAP_MODEL, particleP->num * sizeof(GXColor),
-                                                Hu3DData[modelId].mallocNo);
+        particleP->color = HuMemDirectMallocNum(2, particleP->num * sizeof(GXColor),
+                                                lbl_802C01C8[modelId].mallocNo);
     }
 }
 
@@ -805,7 +804,7 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
         PSMTXIdentity(mtxInv);
     }
     PSMTXReorder(mtxInv, basePosMtx);
-    if (Hu3DPauseF == FALSE || (modelP->attr & HU3D_ATTR_NOPAUSE)) {
+    if (lbl_802C019E == FALSE || (modelP->attr & (1 << 21))) {
         if (particleP->hook && particleP->prevCounter != GlobalCounter) {
             hook = particleP->hook;
             hook(modelP, particleP, *mtx);
@@ -855,7 +854,7 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
             particleP->color[i] = particleDataP->color;
         }
         if (particleDataP->scale
-            && (particleDataP->cameraBit & Hu3DCameraBit)
+            && (particleDataP->cameraBit & lbl_802C01A4)
             && particleDataP->dispF) {
             if (!particle3DF) {
                 if (particleDataP->rot.z == 0.0f) {
@@ -891,7 +890,7 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
         animBankP = &anim->bank[particleDataP->animBank];
         animFrameP = &animBankP->frame[particleDataP->animNo];
         if ((particleP->attr & MB_PARTICLE_ATTR_UPAUSE) && !particleDataP->pauseF) {
-            if (Hu3DPauseF == FALSE || (modelP->attr & HU3D_ATTR_NOPAUSE)) {
+            if (lbl_802C019E == FALSE || (modelP->attr & (1 << 21))) {
                 for (j = 0; j < (s32)particleDataP->animSpeed * minimumVcount; j++) {
                     particleDataP->animTime += 1.0f;
                     if (particleDataP->animTime >= animFrameP->time) {
@@ -969,13 +968,13 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
     GXSetArray(GX_VA_TEX0, particleP->st, sizeof(HuVec2f));
     GXSetCullMode(GX_CULL_NONE);
     GXLoadPosMtxImm(*mtx, GX_PNMTX0);
-    if (shadowModelDrawF) {
+    if (lbl_802C01B0) {
         GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ONE, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
         GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
     } else {
         GXSetTevColorIn(GX_TEVSTAGE0, particleP->colorIn[0], particleP->colorIn[1],
             particleP->colorIn[2], particleP->colorIn[3]);
-        if (modelP->attr & HU3D_ATTR_ZWRITE_OFF) {
+        if (modelP->attr & (1 << 1)) {
             GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
         } else {
             GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
@@ -996,9 +995,9 @@ static void ParticleDraw(HU3D_MODEL *modelP, Mtx *mtx)
     }
     HuSprTexLoad(particleP->anim, 0, GX_TEXMAP0, GX_CLAMP, GX_CLAMP, GX_LINEAR);
     GXCallDisplayList(particleP->dl, particleP->dlSize);
-    totalPolyCnt += particleP->num;
-    if (shadowModelDrawF == FALSE) {
-        if (!(particleP->attr & MB_PARTICLE_ATTR_STOPCNT) && Hu3DPauseF == FALSE) {
+    lbl_802C0128 += particleP->num;
+    if (lbl_802C01B0 == FALSE) {
+        if (!(particleP->attr & MB_PARTICLE_ATTR_STOPCNT) && lbl_802C019E == FALSE) {
             particleP->count++;
         }
         if (particleP->prevCount != 0 && particleP->prevCount <= particleP->count) {
@@ -1019,7 +1018,7 @@ static float baseScale[] = {
 // Install the per-frame callback invoked by ParticleDraw when model updates are enabled.
 void mbParticleHookSet(HU3D_MODELID modelId, MBPARTICLEHOOK hook)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARTICLE *effP = modelP->hookData;
     effP->hook = hook;
 }
@@ -1027,7 +1026,7 @@ void mbParticleHookSet(HU3D_MODELID modelId, MBPARTICLEHOOK hook)
 // Add particle-wide behavior flags, such as looping or pause handling.
 void mbParticleAttrSet(HU3D_MODELID modelId, u8 attr)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARTICLE *effP = modelP->hookData;
     effP->attr |= attr;
 }
@@ -1035,7 +1034,7 @@ void mbParticleAttrSet(HU3D_MODELID modelId, u8 attr)
 // Remove the selected particle-wide behavior flags.
 void mbParticleAttrReset(HU3D_MODELID modelId, u8 attr)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARTICLE *effP = modelP->hookData;
     effP->attr &= ~attr;
 }
@@ -1082,9 +1081,9 @@ HU3D_MODELID mbParManCreate(ANIMDATA *anim, s16 maxCnt, HU3D_PARMAN_PARAM *param
     MBPARTICLEDATA *particleDataP;
 
     modelId = mbParticleCreate(anim, maxCnt);
-    modelP = &Hu3DData[modelId];
+    modelP = &lbl_802C01C8[modelId];
     particleP = modelP->hookData;
-    parManParticleP = mbMallocNum(sizeof(MBPARMAN), modelP->mallocNo);
+    parManParticleP = fn_80213818(sizeof(MBPARMAN), modelP->mallocNo);
     memcpy(parManParticleP, particleP, sizeof(MBPARTICLE));
     HuMemDirectFree(particleP);
     modelP->hookData = parManParticleP;
@@ -1096,7 +1095,7 @@ HU3D_MODELID mbParManCreate(ANIMDATA *anim, s16 maxCnt, HU3D_PARMAN_PARAM *param
     parManP = &parManParticleP->parMan;
     parManP->modelId = modelId;
     parManP->param = param;
-    parManP->attr = HU3D_PARMAN_ATTR_NONE;
+    parManP->attr = 0;
     parManP->pos.x = parManP->pos.y = parManP->pos.z = 0.0f;
     parManP->vec.x = 0.0f;
     parManP->vec.y = 1.0f;
@@ -1119,7 +1118,7 @@ void mbParManKill(HU3D_MODELID modelId)
 // Select the GX blend mode used when this model's particles are drawn.
 void mbParticleBlendModeSet(HU3D_MODELID modelId, int blendMode)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARTICLE *particleP = modelP->hookData;
     particleP->blendMode = blendMode;
 }
@@ -1127,13 +1126,13 @@ void mbParticleBlendModeSet(HU3D_MODELID modelId, int blendMode)
 // Set the emitter model's world position through the Hu3D model interface.
 void mbParManPosSet(int modelId, float x, float y, float z)
 {
-    Hu3DModelPosSet(modelId, x, y, z);
+    fn_80026760(modelId, x, y, z);
 }
 
 // Set the direction vector along which the emitter launches particles.
 void mbParManVecSet(HU3D_MODELID modelId, float x, float y, float z)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARMAN *parManParticleP = modelP->hookData;
     parManParticleP->parMan.vec.x = x;
     parManParticleP->parMan.vec.y = y;
@@ -1143,7 +1142,7 @@ void mbParManVecSet(HU3D_MODELID modelId, float x, float y, float z)
 // Convert the supplied Euler rotation to the emitter's forward direction vector.
 void mbParManRotSet(HU3D_MODELID modelId, float rotX, float rotY, float rotZ)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARMAN *parManParticleP = modelP->hookData;
     Mtx rotMtx;
 
@@ -1156,7 +1155,7 @@ void mbParManRotSet(HU3D_MODELID modelId, float rotX, float rotY, float rotZ)
 // Add behavior flags to the particle emitter.
 void mbParManAttrSet(HU3D_MODELID modelId, s32 attr)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARMAN *parManParticleP = modelP->hookData;
     parManParticleP->parMan.attr |= attr;
 }
@@ -1164,7 +1163,7 @@ void mbParManAttrSet(HU3D_MODELID modelId, s32 attr)
 // Remove behavior flags from the particle emitter.
 void mbParManAttrReset(HU3D_MODELID modelId, s32 attr)
 {
-    HU3D_MODEL *modelP = &Hu3DData[modelId];
+    HU3D_MODEL *modelP = &lbl_802C01C8[modelId];
     MBPARMAN *parManParticleP = modelP->hookData;
     parManParticleP->parMan.attr &= ~attr;
 }
@@ -1212,12 +1211,12 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
     s16 i;
     HU3D_PARMAN_PARAM *param = parManP->param;
 
-    if (Hu3DPauseF == FALSE || (modelP->attr & HU3D_ATTR_NOPAUSE)) {
+    if (lbl_802C019E == FALSE || (modelP->attr & (1 << 21))) {
         particleDataP = particleP->data;
-        if (parManP->attr & HU3D_PARMAN_ATTR_RANDTIME90) {
+        if (parManP->attr & (1 << 10)) {
             accelVal = param->accelRange * 0.9
                 + ParticleRandMod((u32)param->accelRange * 0.1 * 1000.0) / 1000.0f;
-        } else if (parManP->attr & HU3D_PARMAN_ATTR_RANDTIME70) {
+        } else if (parManP->attr & (1 << 11)) {
             accelVal = param->accelRange * 0.7
                 + ParticleRandMod((u32)param->accelRange * 0.3 * 1000.0) / 1000.0f;
         } else {
@@ -1226,19 +1225,19 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
         parManP->accel += accelVal;
         circleIdx = 0;
         particleDataEnd = &particleP->data[particleP->num];
-        if (parManP->attr & HU3D_PARMAN_ATTR_RANDANGLE) {
+        if (parManP->attr & (1 << 8)) {
             angleStart = ParticleRandMod((u32)(360.0f / param->accelRange) * 100) / 100;
         }
-        if (parManP->accel >= 1.0f && !(parManP->attr & HU3D_PARMAN_ATTR_TIMEUP)) {
+        if (parManP->accel >= 1.0f && !(parManP->attr & (1 << 0))) {
             for (; particleDataP < particleDataEnd; particleDataP++) {
                 if (!particleDataP->activeF) {
                     float scale;
                     particleDataP->activeF = TRUE;
                     scale = param->scaleBase;
-                    if (parManP->attr & HU3D_PARMAN_ATTR_RANDSCALE90) {
+                    if (parManP->attr & (1 << 4)) {
                         scale =
                             scale * 0.9 + ParticleRandMod((u32) (scale * 0.1 * 1000.0)) / 1000.0f;
-                    } else if (parManP->attr & HU3D_PARMAN_ATTR_RANDSCALE70) {
+                    } else if (parManP->attr & (1 << 5)) {
                         scale =
                             scale * 0.7 + ParticleRandMod((u32) (scale * 0.3 * 1000.0)) / 1000.0f;
                     }
@@ -1254,7 +1253,7 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
                     PSVECScale(&vel, &vel, param->scaleRange);
                     ParticleVecCopy(&vel, &particleDataP->pos);
                     PSVECNormalize(&parManP->vec, &vecDir);
-                    if (parManP->attr & HU3D_PARMAN_ATTR_RANDANGLE) {
+                    if (parManP->attr & (1 << 8)) {
                         upRot = angleStart + (360.0f / param->accelRange) * circleIdx;
                         rot = param->angleRange;
                     } else {
@@ -1312,17 +1311,17 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
                     }
                     PSVECNormalize(&dir, &dir);
                     s = param->speedBase;
-                    if (parManP->attr & HU3D_PARMAN_ATTR_RANDSPEED90) {
+                    if (parManP->attr & (1 << 1)) {
                         s = s * 0.9 + ParticleRandMod((u32)(s * 0.1 * 1000.0)) / 1000.0f;
-                    } else if (parManP->attr & HU3D_PARMAN_ATTR_RANDSPEED70) {
+                    } else if (parManP->attr & (1 << 2)) {
                         s = s * 0.7 + ParticleRandMod((u32)(s * 0.3 * 1000.0)) / 1000.0f;
-                    } else if (parManP->attr & HU3D_PARMAN_ATTR_RANDSPEED100) {
+                    } else if (parManP->attr & (1 << 3)) {
                         s = ParticleRandMod((u32)(s * 1000.0f)) / 1000.0f;
                     }
                     PSVECScale(&dir, &particleDataP->vel, s);
                     particleDataP->accel = param->gravity;
                     particleDataP->speedDecay = param->speedDecay;
-                    if (parManP->attr & HU3D_PARMAN_ATTR_SETCOLOR) {
+                    if (parManP->attr & (1 << 12)) {
                         particleDataP->colorIdx = colorIdx = parManP->color;
                     } else {
                         particleDataP->colorIdx = colorIdx = ParticleRandMod(param->colorNum);
@@ -1339,27 +1338,27 @@ static void ParManFunc(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
         if (parManP->timeLimit != 0) {
             parManP->timeLimit--;
             if (parManP->timeLimit == 0) {
-                parManP->attr |= HU3D_PARMAN_ATTR_TIMEUP;
+                parManP->attr |= (1 << 0);
             }
         }
-        if (Hu3DPauseF == FALSE || (modelP->attr & HU3D_ATTR_NOPAUSE)) {
+        if (lbl_802C019E == FALSE || (modelP->attr & (1 << 21))) {
             particleDataP = particleP->data;
             for (i = 0; i < particleP->num; i++, particleDataP++) {
                 if (particleDataP->activeF) {
                     param = parManP->param;
-                    if (parManP->attr & HU3D_PARMAN_ATTR_SCALEJITTER) {
+                    if (parManP->attr & (1 << 6)) {
                         particleDataP->scale =
                             particleDataP->scaleBase * baseScale[(parManP->jitterNo + i) & 7];
                     } else {
                         particleDataP->scale = particleDataP->scaleBase;
                     }
-                    if (!(parManP->attr & HU3D_PARMAN_ATTR_PAUSE)) {
+                    if (!(parManP->attr & (1 << 7))) {
                         PSVECAdd(&particleDataP->pos, &particleDataP->vel, &particleDataP->pos);
                         PSVECAdd(&particleDataP->pos, &particleDataP->accel, &particleDataP->pos);
                         PSVECScale(&particleDataP->vel, &particleDataP->vel,
                                    particleDataP->speedDecay);
                         PSVECAdd(&param->gravity, &particleDataP->accel, &particleDataP->accel);
-                        if (parManP->attr & HU3D_PARMAN_ATTR_VACUUM) {
+                        if (parManP->attr & (1 << 9)) {
                             PSVECSubtract(&parManP->vacuum, &particleDataP->pos, &vacuumAccel);
                             if (vacuumAccel.x == 0.0f && vacuumAccel.y == 0.0f &&
                                 vacuumAccel.z == 0.0f) {

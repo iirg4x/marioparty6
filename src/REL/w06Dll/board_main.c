@@ -175,7 +175,7 @@ void _epilog(void) {
 /* Enables party mode and registers Clockwork Castle's board setup and close callbacks. */
 void fn_1_A0(void)
 {
-    GwSystem.partyF = TRUE;
+    lbl_80265B70.partyF = TRUE;
     mbObjectSetup(5, fn_1_F4, fn_1_99C);
 }
 
@@ -254,15 +254,15 @@ void mbMapHookSet(void (*hook)(BOOL enterF));
 /* Selects the board's model resource directory for the current day or night. */
 static inline int W06TimeSideGet(void)
 {
-    return GwSystem.curTime == 0;
+    return lbl_80265B70.curTime == 0;
 }
 
 #define W06DataNumGet(fileNo) \
-    ((W06TimeSideGet() != 0 ? DATA_w06 : DATA_w06n) | (u16)(fileNo))
+    ((W06TimeSideGet() != 0 ? 0xe10000 : 0xe20000) | (u16)(fileNo))
 
 static inline void W06BackgroundLoopSet(s16 modelId)
 {
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 }
 
 /* Sets up Clockwork Castle's models, spaces, camera and callbacks when board setup enters it. */
@@ -273,10 +273,10 @@ void fn_1_F4(void)
     s32 objectIndex;
     s16 drawModelId;
 
-    boardNumbers[0] = GwSystem.boardNo;
+    boardNumbers[0] = lbl_80265B70.boardNo;
     boardNumbers[1] = boardNumbers[0];
     HuAudSndGrpSetSet(27);
-    lbl_1_bss_4B0 = (W06SaveState *)&GwSystem.boardWork[4];
+    lbl_1_bss_4B0 = (W06SaveState *)&lbl_80265B70.boardWork[4];
     if (mbSaveNewF != 0) {
         for (objectIndex = 0; objectIndex < 6; objectIndex++) {
             lbl_1_bss_4B0->objectStates[objectIndex] = 0;
@@ -297,12 +297,12 @@ void fn_1_F4(void)
     mbev_NextTimeSet(fn_1_B584);
     for (objectIndex = 0; objectIndex < 2; objectIndex++) {
         lbl_1_bss_404.cleanupObjectIds[objectIndex] = objectId =
-            mbObjCreate(W06DataNumGet(DATANUM(DATA_w06, 4) + objectIndex), NULL, 0);
+            mbObjCreate(W06DataNumGet(DATANUM(0xe10000, 4) + objectIndex), NULL, 0);
         mbObjMotionTimeSet(objectId, (0.0f));
         mbObjMotionSpeedSet(objectId, (1.0f));
-        mbObjAttrSet(objectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
     }
-    if (GwSystem.curTime == 0) {
+    if (lbl_80265B70.curTime == 0) {
         lbl_1_bss_404.cleanupObjectIds[2] = objectId =
             mbObjCreate(W06DataNumGet(43), lbl_1_data_124, 1);
     } else {
@@ -311,8 +311,8 @@ void fn_1_F4(void)
     }
     mbObjHookSet((s16)lbl_1_bss_404.cleanupObjectIds[0], "hook00",
         (s16)lbl_1_bss_404.cleanupObjectIds[2]);
-    mbObjMotionSet((s16)lbl_1_bss_404.cleanupObjectIds[2], 1, HU3D_MOTATTR_LOOP);
-    if (GwSystem.curTime == 0) {
+    mbObjMotionSet((s16)lbl_1_bss_404.cleanupObjectIds[2], 1, ((1 << 30) | (1 << 0)));
+    if (lbl_80265B70.curTime == 0) {
         lbl_1_bss_404.cleanupObjectIds[3] = objectId =
             mbObjCreate(W06DataNumGet(43), lbl_1_data_124, 1);
     } else {
@@ -321,7 +321,7 @@ void fn_1_F4(void)
     }
     mbObjHookSet((s16)lbl_1_bss_404.cleanupObjectIds[1], "hook01",
         (s16)lbl_1_bss_404.cleanupObjectIds[3]);
-    mbObjMotionSet((s16)lbl_1_bss_404.cleanupObjectIds[3], 1, HU3D_MOTATTR_LOOP);
+    mbObjMotionSet((s16)lbl_1_bss_404.cleanupObjectIds[3], 1, ((1 << 30) | (1 << 0)));
     fn_1_1CDC();
     fn_1_318C();
     fn_1_4A40();
@@ -335,7 +335,7 @@ void fn_1_F4(void)
         mbObjScaleSet(objectId, (0.75f), (0.75f), (0.75f));
         mbObjMotionTimeSet(objectId, (0.0f));
         mbObjMotionSpeedSet(objectId, (1.0f));
-        mbObjAttrSet(objectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
     }
     fn_1_AA48();
     mbBranchMAttrSet(W06_BRANCH_MATTR_BIT_13_MASK);
@@ -344,19 +344,19 @@ void fn_1_F4(void)
     mbScrollInit(W06DataNumGet(45));
     mbLightFuncSet(fn_1_1160, fn_1_1228);
     mbCapThrowColCreate(W06DataNumGet(46));
-    HuDataDirClose(W06DataNumGet(0));
-    HuDataDirClose(DATA_capsulechar4);
+    fn_800097F4(W06DataNumGet(0));
+    fn_800097F4(0x110000);
     mbev_MasuMoveStartSet(fn_1_1364);
     mbev_MasuMoveEndSet(fn_1_1398);
     mbev_MasuHatenaSet((MASUEVENTHOOK)fn_1_1280);
     mbev_MasuLinkTblHookSet((MASUPATHCHECKHOOK)fn_1_1444);
-    lbl_1_bss_0 = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_AD0);
+    lbl_1_bss_0 = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_AD0);
     mbOpeningViewSet(&lbl_1_data_16C, &lbl_1_data_178, lbl_1_data_184);
     mbMapCameraSet(NULL, &lbl_1_data_194, lbl_1_data_1A0);
     mbPlayerTurnInitHookSet((void (*)(int))fn_1_124C);
     mbPlayerTurnCloseHookSet((void (*)(int))fn_1_127C);
     fn_1_C92C();
-    drawModelId = Hu3DHookFuncCreate((HU3D_MODEL_HOOK)fn_1_D2E4);
+    drawModelId = fn_800260F4((HU3D_MODEL_HOOK)fn_1_D2E4);
     mbMapHookSet((void (*)(BOOL))fn_1_E004);
     mbBranchComStarHookSet((MBBRANCHCOMSTARHOOK)fn_1_E3EC);
     mbOpeningInstHookSet(fn_1_E104);
@@ -429,7 +429,7 @@ void fn_1_AD0(OMOBJ *obj)
     fn_1_9C38();
     fn_1_CBE8();
     if (lbl_1_bss_10 != 0) {
-        playerNo = GwSystem.turnPlayerNo;
+        playerNo = lbl_80265B70.turnPlayerNo;
         mbPlayerRotGet(playerNo, &playerRotation);
         if ((playerRotation.y += (3.0f)) >= (360.0f)) {
             playerRotation.y -= (360.0f);
@@ -470,7 +470,7 @@ extern f32 lbl_1_bss_28;
 extern f32 lbl_1_bss_2C;
 extern GXColor lbl_1_data_1B2;
 
-u16 mbPadDStkRepGetAll(void);
+u16 fn_80184DD4(void);
 
 GXColor lbl_1_data_1B2 = {0, 0, 144, 192};
 static const char *lbl_1_data_1C4[3] = {"start", "end", "add"};
@@ -487,8 +487,8 @@ void fn_1_BD4(void)
     int directionRepeat;
     int rowCount;
 
-    directionRepeat = mbPadDStkRepGetAll();
-    buttonRepeat = HuPadBtnRep[0];
+    directionRepeat = fn_80184DD4();
+    buttonRepeat = lbl_802C0000[0];
     if (buttonRepeat & 8) {
         lbl_1_bss_20 ^= 1;
     }
@@ -607,8 +607,8 @@ extern s16 lbl_1_bss_4B4;
 /* Sets board lighting, creates the roaming NPC and initializes fog during light setup. */
 void fn_1_1160(void) {
     Hu3DBGColorSet(255, 255, 255);
-    Hu3DModelLightInfoSet(mbObjModelIDGet(lbl_1_bss_4B4), 1);
-    mbSNpcCreate(GwSystem.boardWork, W06_SNPC_EXCLUDED_MASU_ATTR_MASK);
+    fn_80029850(mbObjModelIDGet(lbl_1_bss_4B4), 1);
+    mbSNpcCreate(lbl_80265B70.boardWork, W06_SNPC_EXCLUDED_MASU_ATTR_MASK);
     lbl_1_bss_2C = (12000.0f);
     lbl_1_bss_28 = (100000.0f);
     lbl_1_bss_24 = (10.0f);
@@ -810,13 +810,13 @@ HSF_OBJECT *fn_1_1494(HU3D_MODEL *model, char *name, HSF_OBJECT *object)
     HSF_OBJECT *result;
 
     switch (object->type) {
-    case HSF_OBJ_NULL1:
-    case HSF_OBJ_MESH:
-    case HSF_OBJ_ROOT:
-    case HSF_OBJ_JOINT:
-    case HSF_OBJ_NULL2:
-    case HSF_OBJ_NULL3:
-    case HSF_OBJ_MAP:
+    case 0:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 9:
         meshObject = object;
         if (!strcmp(name, meshObject->name)) {
             return meshObject;
@@ -828,7 +828,7 @@ HSF_OBJECT *fn_1_1494(HU3D_MODEL *model, char *name, HSF_OBJECT *object)
             }
         }
         break;
-    case HSF_OBJ_REPLICA:
+    case 1:
         replicaObject = object;
         if (!strcmp(name, replicaObject->name)) {
             return replicaObject;
@@ -939,7 +939,7 @@ void fn_1_1CDC(void)
     s32 displayObjectId;
 
     timeIndex = 0;
-    if (GwSystem.curTime == 0) {
+    if (lbl_80265B70.curTime == 0) {
         timeIndex++;
     }
 
@@ -977,11 +977,11 @@ void fn_1_1CDC(void)
     }
 
     for (objectIndex = 0; objectIndex < 6; objectIndex++) {
-        useEarlyDisplay = !GwSystem.curTime;
+        useEarlyDisplay = !lbl_80265B70.curTime;
         if (useEarlyDisplay != 0) {
-modelPrefix = DATA_w06;
+modelPrefix = 0xe10000;
         } else {
-modelPrefix = DATA_w06n;
+modelPrefix = 0xe20000;
         }
         displayObjectId = (s16)mbObjCreate(modelPrefix | 0x1A, NULL, TRUE);
         lbl_1_bss_404.trailingValues[objectIndex] = displayObjectId;
@@ -1041,7 +1041,7 @@ void fn_1_1FCC(int playerNo, s16 spaceId)
     }
     objectType = lbl_1_bss_404.displayObjects[entranceIndex].dataId;
     if (objectType != 4) {
-        if (GwSystem.curTime == 0) {
+        if (lbl_80265B70.curTime == 0) {
             price = 5;
         } else {
             price = 10;
@@ -1056,7 +1056,7 @@ void fn_1_1FCC(int playerNo, s16 spaceId)
         while (mbPlayerRotateCheck(playerNo) == FALSE) {
             HuPrcVSleep();
         }
-mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
         sprintf(priceText, "%d", price);
         do {
 mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W06, 0), -1, 0);
@@ -1064,12 +1064,12 @@ mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W06, 0), -1, 0);
             mbWinTopPosGet(&windowPosition);
             windowPosition.y -= (21.0f);
             mbWinTopPosSet(windowPosition.x, windowPosition.y);
-            if (GwPlayer[playerNo].comF != FALSE) {
+            if (lbl_80265750[playerNo].comF != FALSE) {
                 starSpace = mbSNpcMasuGet();
                 distanceToStar = mbMasuFind_IdStepGet2(spaceId, starSpace, TRUE, TRUE);
                 distanceFromStar = mbMasuFind_IdStepGet2(starSpace, spaceId, TRUE, TRUE);
-                movesLeft = GwPlayer[playerNo].moveNum;
-                if (GwSystem.curTime == 0) {
+                movesLeft = lbl_80265750[playerNo].moveNum;
+                if (lbl_80265B70.curTime == 0) {
                     if (distanceToStar <= movesLeft + 5 || distanceFromStar <= 5) {
                         mbComChoiceDownSet();
                     } else {
@@ -1111,7 +1111,7 @@ mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W06, 0), -1, 0);
         landingSpace = parentLinks[0];
         mbMasuPosGet(entranceSpace, &entrancePosition);
         mbPlayerEffectSet(playerNo, FALSE);
-        mbPlayerWinLoseVoicePlay(playerNo, 12, CHARVOICEID(6));
+        mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
         mbPlayerMotionShiftSet(playerNo, 4, (0.0f), (8.0f), 0);
         mbPlayerPosGet(playerNo, &playerPosition);
         entrancePosition.z -= (50.0f);
@@ -1120,8 +1120,8 @@ mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W06, 0), -1, 0);
         for (index = 0; (f32)index < (25.0f); index++) {
             progress = (f32)index / (25.0f);
             if (index == 10) {
-                mbAudFXPlay(MSM_SE_BRD00_40);
-                omVibrate(playerNo, 20, 7, 3);
+                mbAudFXPlay(1044);
+                fn_8006A030(playerNo, 20, 7, 3);
             }
             playerPosition.x += movement.x;
             playerPosition.z += movement.z;
@@ -1140,7 +1140,7 @@ mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W06, 0), -1, 0);
             HuPrcVSleep();
         }
         heightOffset.y = fabs(entrancePosition.y - playerPosition.y);
-mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
         mbMasuPosGet(exitSpace, &exitPosition);
         exitPosition.y -= heightOffset.y;
         exitPosition.z -= (50.0f);
@@ -1169,7 +1169,7 @@ mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
         } else {
             mbPlayerRotateStart(playerNo, 0, 1);
         }
-mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
+mbPlayerMotionSet(playerNo, 1, ((1 << 30) | (1 << 0)));
         HuPrcSleep(20);
         mbMasuPosGet(landingSpace, &entrancePosition);
         mbPlayerPosGet(playerNo, &playerPosition);
@@ -1180,8 +1180,8 @@ mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
             mbPlayerPosSetV(playerNo, &playerPosition);
             HuPrcVSleep();
         }
-        mbAudFXPlay(MSM_SE_BRD00_40);
-        omVibrate(playerNo, 20, 7, 3);
+        mbAudFXPlay(1044);
+        fn_8006A030(playerNo, 20, 7, 3);
         mbPlayerPosGet(playerNo, &playerPosition);
         movement.x = (entrancePosition.x - playerPosition.x) / (25.0f);
         movement.z = (entrancePosition.z - playerPosition.z) / (25.0f);
@@ -1197,7 +1197,7 @@ mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
             HuPrcVSleep();
         }
         mbPlayerMotionShiftSet(playerNo, 5, (0.0f), (0.0f), 0);
-        GwPlayer[playerNo].masuId = landingSpace;
+        lbl_80265750[playerNo].masuId = landingSpace;
         mbPlayerEffectSet(playerNo, TRUE);
         mbMoveNumDispSet(playerNo, TRUE);
     }
@@ -1235,16 +1235,16 @@ void fn_1_2AB8(s32 playerNo, s16 spaceId)
     work[2] = 0;
     work[1] = 0;
     work[0] = 0;
-HuDataDirRead(DATA_effect);
+fn_800078C8(0x210000);
     for (index = 0; index < 3; index++) {
-animations[index] = HuSprAnimRead(HuDataReadNum(
-    DATANUM(DATA_effect, 1), HU_MEMNUM_OVL));
+animations[index] = HuSprAnimRead(fn_80008634(
+    DATANUM(0x210000, 1), 0x10000000));
     }
     mbPlayerRotateStart(playerNo, 0, 15);
     while (mbPlayerRotateCheck(playerNo) == 0) {
         HuPrcVSleep();
     }
-mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
 mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 1), -1);
     mbWinTopWait();
     mbWipeSpecialFadeInCreate(1, 60);
@@ -1262,7 +1262,7 @@ mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 1), -1);
         mbObjMotionTimeSet((s16)lbl_1_bss_404.trailingValues[index], (0.0f));
         mbObjMotionSpeedSet((s16)lbl_1_bss_404.trailingValues[index], (1.0f));
         displayObjectId = (s16)lbl_1_bss_404.trailingValues[index];
-mbObjAttrSet(displayObjectId, HU3D_MOTATTR_LOOP);
+mbObjAttrSet(displayObjectId, ((1 << 30) | (1 << 0)));
         displayDone[index] = 0;
     }
     mbCameraFocusPlayerSet(-1);
@@ -1285,18 +1285,18 @@ mbObjAttrSet(displayObjectId, HU3D_MOTATTR_LOOP);
                     if (index < 3) {
                         particleIds[index] = mbParticleCreate(animations[index], 256);
                         mbParticleHookSet((s16)particleIds[index], fn_1_DACC);
-                        Hu3DModelLayerSet((s16)particleIds[index], 5);
+                        fn_80026B8C((s16)particleIds[index], 5);
                         mbObjPosGet((s16)lbl_1_bss_404.trailingValues[index], &particlePosition);
                         particlePosition.y += (200.0f);
-                        Hu3DModelPosSetV((s16)particleIds[index], &particlePosition);
+                        fn_80026790((s16)particleIds[index], &particlePosition);
                     }
                 } else if (index >= 3) {
                     particleIds[index - 3] = mbParticleCreate(animations[index - 3], 256);
                     mbParticleHookSet((s16)particleIds[index - 3], fn_1_DACC);
-                    Hu3DModelLayerSet((s16)particleIds[index - 3], 5);
+                    fn_80026B8C((s16)particleIds[index - 3], 5);
                     mbObjPosGet((s16)lbl_1_bss_404.trailingValues[index], &particlePosition);
                     particlePosition.y += (200.0f);
-                    Hu3DModelPosSetV((s16)particleIds[index - 3], &particlePosition);
+                    fn_80026790((s16)particleIds[index - 3], &particlePosition);
                 }
                 mbAudFXPlay(MSM_SE_W06_TILE_REVEAL);
                 mbObjMotionSpeedSet((s16)lbl_1_bss_404.trailingValues[index], (0.0f));
@@ -1305,7 +1305,7 @@ mbObjAttrSet(displayObjectId, HU3D_MOTATTR_LOOP);
                 displayDone[index] = 1;
                 completed++;
                 for (vibrationPlayer = 0; vibrationPlayer < 4; vibrationPlayer++) {
-                    omVibrate((s16)vibrationPlayer, 20, 4, 4);
+                    fn_8006A030((s16)vibrationPlayer, 20, 4, 4);
                 }
             }
         }
@@ -1327,7 +1327,7 @@ mbObjAttrSet(displayObjectId, HU3D_MOTATTR_LOOP);
             mbParticleKill((s16)particleIds[index]);
         }
     }
-HuDataDirClose(DATA_effect);
+fn_800097F4(0x210000);
 }
 
 #include "math.h"
@@ -1384,42 +1384,42 @@ void fn_1_318C(void)
     s32 currentTimeIsClear3;
     s32 currentTimeIsClear4;
 
-    currentTimeIsClear1 = GwSystem.curTime == 0;
+    currentTimeIsClear1 = lbl_80265B70.curTime == 0;
     if (currentTimeIsClear1 != 0) {
-        objectType1 = DATA_w06;
+        objectType1 = 0xe10000;
     } else {
-        objectType1 = DATA_w06n;
+        objectType1 = 0xe20000;
     }
     objectId = mbObjCreate(objectType1 | 0x1B, NULL, 0);
     lbl_1_bss_404.objectIds[1] = objectId;
-    currentTimeIsClear2 = GwSystem.curTime == 0;
+    currentTimeIsClear2 = lbl_80265B70.curTime == 0;
     if (currentTimeIsClear2 != 0) {
-        objectType2 = DATA_w06;
+        objectType2 = 0xe10000;
     } else {
-        objectType2 = DATA_w06n;
+        objectType2 = 0xe20000;
     }
     objectId = mbObjCreate(objectType2 | 0x1C, NULL, 0);
     lbl_1_bss_404.objectIds[2] = objectId;
     mbObjMotionSpeedSet(objectId, (0.0f));
     mbObjMotionTimeSet(objectId, (0.0f));
-mbObjAttrSet(objectId, HU3D_MOTATTR_LOOP);
-    currentTimeIsClear3 = GwSystem.curTime == 0;
+mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
+    currentTimeIsClear3 = lbl_80265B70.curTime == 0;
     if (currentTimeIsClear3 != 0) {
-        objectType3 = DATA_w06;
+        objectType3 = 0xe10000;
     } else {
-        objectType3 = DATA_w06n;
+        objectType3 = 0xe20000;
     }
     objectId = mbObjCreate(objectType3 | 0x1C, NULL, 0);
     lbl_1_bss_404.objectIds[3] = objectId;
     mbObjMotionSpeedSet(objectId, (0.0f));
     mbObjMotionTimeSet(objectId, (0.0f));
-mbObjAttrSet(objectId, HU3D_MOTATTR_LOOP);
+mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
     mbObjDispSet(objectId, 0);
-    currentTimeIsClear4 = GwSystem.curTime == 0;
+    currentTimeIsClear4 = lbl_80265B70.curTime == 0;
     if (currentTimeIsClear4 != 0) {
-        objectType4 = DATA_w06;
+        objectType4 = 0xe10000;
     } else {
-        objectType4 = DATA_w06n;
+        objectType4 = 0xe20000;
     }
     objectId = mbObjCreate(objectType4 | 0x24, NULL, 0);
     lbl_1_bss_404.remainingObjectIds[3] = objectId;
@@ -1502,7 +1502,7 @@ void fn_1_3380(int playerNo, s16 spaceId)
     wheelDone = 0;
     fadeDone = 0;
     forcedStop = 0;
-    if (GwSystem.curTime == 0) {
+    if (lbl_80265B70.curTime == 0) {
         speaker = 6;
         messageOffset = 0;
     } else {
@@ -1511,15 +1511,15 @@ void fn_1_3380(int playerNo, s16 spaceId)
     }
     entranceSpace = mbMasuTypeFindLink(spaceId, 0);
     previousSpace = spaceId;
-    GwPlayer[playerNo].masuIdPrev = previousSpace;
+    lbl_80265750[playerNo].masuIdPrev = previousSpace;
     mbPlayerMasuMoveTo(playerNo, entranceSpace, TRUE);
-    GwPlayer[playerNo].masuId = entranceSpace;
+    lbl_80265750[playerNo].masuId = entranceSpace;
     mbPlayerPosGet(playerNo, &playerPosition);
     mbPlayerRotateStart(playerNo, 180, 15);
     while (mbPlayerRotateCheck(playerNo) == FALSE) {
         HuPrcVSleep();
     }
-mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
     mbCameraCenterGet(&savedCenter);
     mbCameraRotGet(&savedRotation);
     savedZoom = mbCameraZoomGet();
@@ -1535,7 +1535,7 @@ mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
         guidePositions[index].y += (200.0f);
         guidePositions[index].z += (300.0f);
     }
-    if (GwSystem.curTime == 0) {
+    if (lbl_80265B70.curTime == 0) {
         for (index = 0; index < 2; index++) {
             lbl_1_data_0[index] = mbGuideCreate(index, &guidePositions[index], NULL,
                 lbl_1_data_2AC, (1.0f), 2);
@@ -1551,15 +1551,15 @@ mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
         }
     }
     HuPrcSleep(20);
-    mbAudGuidePlay(MSM_SE_GUIDE_25);
+    mbAudGuidePlay(949);
     mbGuideMotionShiftSet(lbl_1_data_0[mbGuideNoGet()], 12, TRUE);
 mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 7), speaker);
     mbWinTopWait();
-    mbAudGuidePlay(MSM_SE_GUIDE_26);
+    mbAudGuidePlay(950);
     mbGuideMotionShiftSet(lbl_1_data_0[mbGuideNoGet()], 12, TRUE);
 mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 9), speaker);
     mbWinTopWait();
-    mbAudGuidePlay(MSM_SE_GUIDE_25);
+    mbAudGuidePlay(949);
     mbGuideMotionShiftSet(lbl_1_data_0[mbGuideNoGet()], 12, TRUE);
 mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 11), speaker);
     mbWinTopWait();
@@ -1567,7 +1567,7 @@ mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 11), speaker);
     while (mbPlayerRotateCheck(playerNo) == FALSE) {
         HuPrcVSleep();
     }
-mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[2], (0.0f));
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[3], (0.0f));
     maximumSpeed = (4.0f) + (f32)mbRandMod(2);
@@ -1586,8 +1586,8 @@ mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
         mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[2], speed);
         HuPrcVSleep();
     }
-animation = HuSprAnimRead(HuDataReadNum(
-    DATANUM(DATA_effect, 3), HU_MEMNUM_OVL));
+animation = HuSprAnimRead(fn_80008634(
+    DATANUM(0x210000, 3), 0x10000000));
     mbPlayerPosGet(playerNo, &playerPosition);
     wheelPosition = playerPosition;
     wheelPosition.y += (240.00001525878906f);
@@ -1596,10 +1596,10 @@ animation = HuSprAnimRead(HuDataReadNum(
     mbObjAlphaSet((s16)lbl_1_bss_404.remainingObjectIds[3], 0);
     particleId = mbParticleCreate(animation, 64);
     mbParticleHookSet(particleId, fn_1_D4C8);
-    Hu3DModelLayerSet(particleId, 5);
+    fn_80026B8C(particleId, 5);
     particlePosition = wheelPosition;
     particlePosition.y += (30.0);
-    Hu3DModelPosSetV(particleId, &particlePosition);
+    fn_80026790(particleId, &particlePosition);
     for (index = 0; (f32)index < (35.0f); index++) {
         fadeProgress = (f32)index / (35.0f);
         alpha = (1.5f) * ((255.0f) * fadeProgress);
@@ -1619,7 +1619,7 @@ animation = HuSprAnimRead(HuDataReadNum(
     timeLeft = 600;
     timerMessage = GameMesCreate(1, 10, -1, -1);
     HuSprGrpDrawNoSet(GameMesGet(timerMessage)->grpId[0], 32);
-    if (GwPlayer[playerNo].comF != FALSE) {
+    if (lbl_80265750[playerNo].comF != FALSE) {
         computerDelay = (s32)((30.0f) + (f32)mbRandMod(90));
     }
     while (wheelDone == 0 || fadeDone == 0) {
@@ -1644,19 +1644,19 @@ animation = HuSprAnimRead(HuDataReadNum(
                 state = 1;
                 helpWindow = mbWinCreateHelp(MESSNUM(MESS_BOARD_W06, 19));
                 mbWinPosSet(helpWindow, 240, 376);
-                if (GwPlayer[playerNo].comF != FALSE) {
+                if (lbl_80265750[playerNo].comF != FALSE) {
                     computerDelay = mbRandMod(60);
                 }
             }
             break;
         case 1:
-            if (GwPlayer[playerNo].comF != FALSE) {
+            if (lbl_80265750[playerNo].comF != FALSE) {
                 computerDelay--;
                 if ((f32)computerDelay <= (0.0f)) {
-                    HuPadBtnDown[GwPlayer[playerNo].padNo] |= 0x100;
+                    lbl_802C0008[lbl_80265750[playerNo].padNo] |= 0x100;
                 }
             }
-            if ((HuPadBtnDown[GwPlayer[playerNo].padNo] & 0x100) != 0) {
+            if ((lbl_802C0008[lbl_80265750[playerNo].padNo] & 0x100) != 0) {
                 mbPlayerMotionShiftSet(playerNo, 11, (10.0f), (5.0f), 0);
                 stopFrames = 0;
                 fadeFrames = 0;
@@ -1687,16 +1687,16 @@ animation = HuSprAnimRead(HuDataReadNum(
         if (state >= 2) {
             if ((f32)stopFrames++ > (14.0f)) {
                 if (particleId == -1) {
-                    omVibrate(playerNo, 20, 7, 3);
-                    mbAudFXPlay(MSM_SE_BRD00_56);
+                    fn_8006A030(playerNo, 20, 7, 3);
+                    mbAudFXPlay(1060);
                     animation =
-                        HuSprAnimRead(HuDataReadNum(DATANUM(DATA_effect, 3), HU_MEMNUM_OVL));
+                        HuSprAnimRead(fn_80008634(DATANUM(0x210000, 3), 0x10000000));
                     particleId = mbParticleCreate(animation, 32);
                     mbParticleHookSet(particleId, fn_1_D4C8);
-                    Hu3DModelLayerSet(particleId, 5);
+                    fn_80026B8C(particleId, 5);
                     particlePosition = wheelPosition;
                     particlePosition.y += (30.0);
-                    Hu3DModelPosSetV(particleId, &particlePosition);
+                    fn_80026790(particleId, &particlePosition);
                 }
                 if ((f32)fadeFrames >= (20.0f)) {
                     fadeDone = 1;
@@ -1746,7 +1746,7 @@ animation = HuSprAnimRead(HuDataReadNum(
     }
     switch (result) {
     case 0:
-        mbAudFXPlay(MSM_SE_GUIDE_25);
+        mbAudFXPlay(949);
         mbGuideMotionShiftSet(lbl_1_data_0[0], 12, TRUE);
         mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 13), 6);
         mbWinTopWait();
@@ -1754,25 +1754,25 @@ animation = HuSprAnimRead(HuDataReadNum(
             mbAudFXPlay(index + MSM_SE_W06_GUIDE_MOTION);
             mbObjMotionShiftSet(guideModels[index], 10, (0.0f), (8.0f), 0);
         }
-        if (GwSystem.curTime == 0) {
+        if (lbl_80265B70.curTime == 0) {
             HuPrcSleep(120);
             for (index = 0; index < 2; index++) {
                 mbGuideMotionNextSet(lbl_1_data_0[index], 1);
             }
-            mbAudFXPlay(MSM_SE_GUIDE_26);
+            mbAudFXPlay(950);
             mbGuideMotionShiftSet(lbl_1_data_0[0], 12, TRUE);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 14), 6);
             mbWinTopWait();
         } else {
             HuPrcSleep(60);
-            for (vibratingPlayer = 0; vibratingPlayer < GW_PLAYER_MAX; vibratingPlayer++) {
-                omVibrate(vibratingPlayer, 20, 7, 3);
+            for (vibratingPlayer = 0; vibratingPlayer < 4; vibratingPlayer++) {
+                fn_8006A030(vibratingPlayer, 20, 7, 3);
             }
             mbAudFXPlay(MSM_SE_W06_TIME_CHANGE);
             WipeCreate(2, 130, 60);
             WipeColorSet(255, 255, 255);
             HuPrcSleep(90);
-            GwPlayer[playerNo].masuId = spaceId;
+            lbl_80265750[playerNo].masuId = spaceId;
             for (index = 0; index < 2; index++) {
                 mbGuideKill(lbl_1_data_0[index]);
             }
@@ -1781,7 +1781,7 @@ animation = HuSprAnimRead(HuDataReadNum(
         }
         break;
     case 1:
-        mbAudFXPlay(MSM_SE_GUIDE_17);
+        mbAudFXPlay(941);
         mbGuideMotionShiftSet(lbl_1_data_0[1], 12, TRUE);
         mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 15), 7);
         mbWinTopWait();
@@ -1789,25 +1789,25 @@ animation = HuSprAnimRead(HuDataReadNum(
             mbAudFXPlay(index + MSM_SE_W06_GUIDE_MOTION);
             mbObjMotionShiftSet(guideModels[index], 10, (0.0f), (8.0f), 0);
         }
-        if (GwSystem.curTime != 0) {
+        if (lbl_80265B70.curTime != 0) {
             HuPrcSleep(120);
             for (index = 0; index < 2; index++) {
                 mbGuideMotionNextSet(lbl_1_data_0[index], 1);
             }
-            mbAudFXPlay(MSM_SE_GUIDE_18);
+            mbAudFXPlay(942);
             mbGuideMotionShiftSet(lbl_1_data_0[1], 12, TRUE);
             mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 16), 7);
             mbWinTopWait();
         } else {
             HuPrcSleep(60);
-            for (vibratingPlayer = 0; vibratingPlayer < GW_PLAYER_MAX; vibratingPlayer++) {
-                omVibrate(vibratingPlayer, 20, 7, 3);
+            for (vibratingPlayer = 0; vibratingPlayer < 4; vibratingPlayer++) {
+                fn_8006A030(vibratingPlayer, 20, 7, 3);
             }
             mbAudFXPlay(MSM_SE_W06_TIME_CHANGE);
             WipeCreate(2, 131, 60);
             WipeColorSet(0, 0, 0);
             HuPrcSleep(90);
-            GwPlayer[playerNo].masuId = spaceId;
+            lbl_80265750[playerNo].masuId = spaceId;
             for (index = 0; index < 2; index++) {
                 mbGuideKill(lbl_1_data_0[index]);
             }
@@ -1816,11 +1816,11 @@ animation = HuSprAnimRead(HuDataReadNum(
         }
         break;
     }
-    mbAudGuidePlay(MSM_SE_GUIDE_26);
+    mbAudGuidePlay(950);
     mbGuideMotionShiftSet(lbl_1_data_0[mbGuideNoGet()], 7, TRUE);
     mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 17), speaker);
     mbWinTopWait();
-    if (GwSystem.curTime == 0) {
+    if (lbl_80265B70.curTime == 0) {
         for (index = 1; index > -1; index--) {
             mbGuideEnd(lbl_1_data_0[index], TRUE);
         }
@@ -1833,15 +1833,15 @@ animation = HuSprAnimRead(HuDataReadNum(
     mbCameraMoveWait();
     mbCameraFocusPlayerSet(playerNo);
     previousSpace = entranceSpace;
-    GwPlayer[playerNo].masuIdPrev = previousSpace;
+    lbl_80265750[playerNo].masuIdPrev = previousSpace;
     mbPlayerMasuMoveTo(playerNo, spaceId, TRUE);
-    GwPlayer[playerNo].masuId = spaceId;
-    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+    lbl_80265750[playerNo].masuId = spaceId;
+    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
     mbPlayerRotateStart(playerNo, 0, 15);
     while (mbPlayerRotateCheck(playerNo) == FALSE) {
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
     mbObjMotionTimeSet((s16)lbl_1_bss_404.objectIds[2], (0.0f));
 }
 
@@ -1893,47 +1893,47 @@ void fn_1_4A40(void)
     s32 currentTimeIsClear3;
     s32 currentTimeIsClear4;
 
-    currentTimeIsClear1 = GwSystem.curTime == 0;
+    currentTimeIsClear1 = lbl_80265B70.curTime == 0;
     if (currentTimeIsClear1 != 0) {
-        objectType1 = DATA_w06;
+        objectType1 = 0xe10000;
     } else {
-        objectType1 = DATA_w06n;
+        objectType1 = 0xe20000;
     }
     objectId = mbObjCreate(objectType1 | 0x1D, NULL, 0);
     lbl_1_bss_404.objectIds[4] = objectId;
     mbObjMotionSpeedSet(objectId, (0.0f));
     mbObjMotionTimeSet(objectId, (0.0f));
     mbObjMotionStartEndSet(objectId, 0, 240);
-    currentTimeIsClear2 = GwSystem.curTime == 0;
+    currentTimeIsClear2 = lbl_80265B70.curTime == 0;
     if (currentTimeIsClear2 != 0) {
-        objectType2 = DATA_w06;
+        objectType2 = 0xe10000;
     } else {
-        objectType2 = DATA_w06n;
+        objectType2 = 0xe20000;
     }
     objectId = mbObjCreate(objectType2 | 0x21, NULL, 0);
     lbl_1_bss_404.objectIds[5] = objectId;
     mbObjDispSet(objectId, 0);
     mbObjMotionTimeSet(objectId, (0.0f));
     mbObjMotionSpeedSet(objectId, (0.0f));
-    mbObjAttrSet(objectId, HU3D_MOTATTR_LOOP);
-    currentTimeIsClear3 = GwSystem.curTime == 0;
+    mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
+    currentTimeIsClear3 = lbl_80265B70.curTime == 0;
     if (currentTimeIsClear3 != 0) {
-        objectType3 = DATA_w06;
+        objectType3 = 0xe10000;
     } else {
-        objectType3 = DATA_w06n;
+        objectType3 = 0xe20000;
     }
     objectId = mbObjCreate(objectType3 | 0x23, NULL, 0);
     lbl_1_bss_404.objectIds[6] = objectId;
     mbObjDispSet(objectId, 0);
     mbObjMotionTimeSet(objectId, (0.0f));
     mbObjMotionSpeedSet(objectId, (0.0f));
-    mbObjAttrSet(objectId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
     mbObjHookSet((s16)lbl_1_bss_404.objectIds[5], "itemhook_c", objectId);
-    currentTimeIsClear4 = GwSystem.curTime == 0;
+    currentTimeIsClear4 = lbl_80265B70.curTime == 0;
     if (currentTimeIsClear4 != 0) {
-        objectType4 = DATA_w06;
+        objectType4 = 0xe10000;
     } else {
-        objectType4 = DATA_w06n;
+        objectType4 = 0xe20000;
     }
     objectId = mbObjCreate(objectType4 | 0x22, NULL, 0);
     lbl_1_bss_404.objectIds[7] = objectId;
@@ -2017,7 +2017,7 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 3), -1);
     mbWinTopWait();
     mbWinCreateChoice(2, MESSNUM(MESS_BOARD_W06, 4), -1, 0);
-    if (GwPlayer[playerNo].comF != FALSE) {
+    if (lbl_80265750[playerNo].comF != FALSE) {
         mbComChoiceUpSet();
     }
     mbWinTopWait();
@@ -2032,7 +2032,7 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
     for (index = 0; index < capsuleCount; index++) {
         capsuleModels[index] = mbCapObjColorCreate(mbPlayerCapsuleGet(playerNo, index), TRUE);
     }
-    playerRank = GwPlayer[playerNo].rank;
+    playerRank = lbl_80265750[playerNo].rank;
     if ((f32)mbRandMod(100) < lbl_1_data_2D8[playerRank]) {
         scatterInventory = FALSE;
     } else {
@@ -2054,17 +2054,17 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
         }
         nextSpace = mbMasuTypeFindLink(currentSpace, 0);
         previousSpace = currentSpace;
-        GwPlayer[playerNo].masuIdPrev = previousSpace;
+        lbl_80265750[playerNo].masuIdPrev = previousSpace;
         mbPlayerMasuMoveTo(playerNo, nextSpace, TRUE);
         currentSpace = nextSpace;
     }
     mbMasuPosGet(nextSpace, &floorPosition);
     floorPosition.y -= (250.0);
-    motionIds[0] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 8));
-    motionIds[1] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 9));
-    motionIds[2] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 25));
-    motionIds[3] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 70));
-    motionIds[4] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 71));
+    motionIds[0] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 8));
+    motionIds[1] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 9));
+    motionIds[2] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 25));
+    motionIds[3] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 70));
+    motionIds[4] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 71));
     mbPlayerRotateStart(playerNo, -135, 15);
     while (mbPlayerRotateCheck(playerNo) == FALSE) {
         HuPrcVSleep();
@@ -2080,12 +2080,12 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
                 mbWinKill(helpWindow);
                 helpWindow = -1;
             }
-            HuPadBtnDown[GwPlayer[playerNo].padNo] |= 0x100;
+            lbl_802C0008[lbl_80265750[playerNo].padNo] |= 0x100;
         }
-        if (GwPlayer[playerNo].comF != FALSE) {
-            HuPadBtnDown[GwPlayer[playerNo].padNo] |= 0x100;
+        if (lbl_80265750[playerNo].comF != FALSE) {
+            lbl_802C0008[lbl_80265750[playerNo].padNo] |= 0x100;
         }
-        if ((HuPadBtnDown[GwPlayer[playerNo].padNo] & 0x100) != 0) {
+        if ((lbl_802C0008[lbl_80265750[playerNo].padNo] & 0x100) != 0) {
             break;
         }
         if (timeLeft >= 0) {
@@ -2124,7 +2124,7 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
     stepHeight = (playerPosition.y - floorPosition.y) / (9.0f);
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[4], (1.5f));
     mbAudFXPlay(MSM_SE_W06_CAPSULE_DROP);
-    omVibrate(playerNo, 20, 7, 3);
+    fn_8006A030(playerNo, 20, 7, 3);
     for (index = 0; index < 9U; index++) {
         playerPosition.y -= stepHeight;
         mbPlayerPosSetV(playerNo, &playerPosition);
@@ -2162,10 +2162,10 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
             mbObjPosSetV((s16)lbl_1_bss_64, &capsulePosition);
             HuPrcVSleep();
         }
-        mbAudFXPlay(MSM_SE_GUIDE_05);
+        mbAudFXPlay(929);
         mbObjPosSet((s16)lbl_1_bss_64, (0.0f), (0.0f), (0.0f));
         mbObjHookSet(mbPlayerObjIDGet(playerNo),
-            CharModelItemHookGet(GwPlayer[playerNo].charNo, 2, 0), (s16)lbl_1_bss_64);
+            fn_8005C0F0(lbl_80265750[playerNo].charNo, 2, 0), (s16)lbl_1_bss_64);
         mbPlayerMotionShiftSet(playerNo, motionIds[4], (0.0f), (8.0f), 0);
         originalZoom = mbCameraZoomGet();
         closeZoom = originalZoom - (800.0f);
@@ -2175,8 +2175,8 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
             HuPrcVSleep();
         }
         mbCameraShakeSet(50, (100.0f));
-        omVibrate(playerNo, 20, 7, 3);
-        mbAudFXPlay(MSM_SE_BRD00_68);
+        fn_8006A030(playerNo, 20, 7, 3);
+        mbAudFXPlay(1072);
         mbObjHookReset(mbPlayerObjIDGet(playerNo));
         mbObjHookReset((s16)lbl_1_bss_64);
         mbObjDispSet((s16)lbl_1_bss_64, FALSE);
@@ -2233,9 +2233,9 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
             }
             if (playerPosition.y <= landingPosition.y) {
                 playerPosition.y = landingPosition.y;
-                if ((u32)mbPlayerMotionGet(playerNo) != HU3D_MOTATTR_LOOP) {
+                if ((u32)mbPlayerMotionGet(playerNo) != ((1 << 30) | (1 << 0))) {
                     mbPlayerMotionShiftSet(playerNo, 6, (0.0f),
-                        (8.0f), HU3D_MOTATTR_LOOP);
+                        (8.0f), ((1 << 30) | (1 << 0)));
                 }
                 break;
             }
@@ -2319,12 +2319,12 @@ void fn_1_4CC0(int playerNo, s16 spaceId)
             mbWinTopWait();
         }
     }
-    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (16.0f), HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (16.0f), ((1 << 30) | (1 << 0)));
     HuPrcSleep(30);
     mbMasuPosGet(spaceId, &returnPosition);
     mbWipeSpecialFadeInCreate(1, 60);
     mbPlayerPosSetV(playerNo, &returnPosition);
-    GwPlayer[playerNo].masuId = spaceId;
+    lbl_80265750[playerNo].masuId = spaceId;
     mbev_PlayerColMasu(playerNo, spaceId, TRUE);
     mbObjMotionTimeSet((s16)lbl_1_bss_404.objectIds[4], (0.0f));
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[4], (0.0f));
@@ -2391,11 +2391,11 @@ void fn_1_63C4(void) {
     s32 firstTime;
     s32 secondTime;
 
-    firstTime = GwSystem.curTime == 0;
+    firstTime = lbl_80265B70.curTime == 0;
     if (firstTime != 0) {
-        firstObjectType = DATA_w06;
+        firstObjectType = 0xe10000;
     } else {
-        firstObjectType = DATA_w06n;
+        firstObjectType = 0xe20000;
     }
     objectId = mbObjCreate(firstObjectType | 0x1E, NULL, 0);
     lbl_1_bss_404.objectIds[8] = objectId;
@@ -2403,11 +2403,11 @@ void fn_1_63C4(void) {
     mbObjMotionTimeSet(objectId, (0.0f));
     mbObjMotionSpeedSet(objectId, (0.0f));
 
-    secondTime = GwSystem.curTime == 0;
+    secondTime = lbl_80265B70.curTime == 0;
     if (secondTime != 0) {
-        secondObjectType = DATA_w06;
+        secondObjectType = 0xe10000;
     } else {
-        secondObjectType = DATA_w06n;
+        secondObjectType = 0xe20000;
     }
     objectId = mbObjCreate(secondObjectType | 0x1F, NULL, 0);
     lbl_1_bss_404.objectIds[9] = objectId;
@@ -2421,7 +2421,7 @@ void fn_1_63C4(void) {
 #include "game/board/window.h"
 
 int lbl_1_data_2F8[3] = {
-    DATANUM(DATA_mario, 28), DATANUM(DATA_mariomot, 23), DATANUM(DATA_mariomot, 34)
+    DATANUM(0x8e0000, 28), DATANUM(0x930000, 23), DATANUM(0x930000, 34)
 };
 
 /* Runs the UFO lift and landing animation when the player uses the board transport. */
@@ -2451,7 +2451,7 @@ void fn_1_64D0(int playerNo, s16 spaceId)
     while (mbPlayerRotateCheck(playerNo) == FALSE) {
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
     HuPrcSleep(10);
     originalZoom = mbCameraZoomGet();
     expandedZoom = (1000.0f) + originalZoom;
@@ -2466,7 +2466,7 @@ void fn_1_64D0(int playerNo, s16 spaceId)
             break;
         }
         mbPlayerMotionShiftSet(playerNo, motionIds[1], (0.0f),
-            (8.0f), HU3D_MOTATTR_LOOP);
+            (8.0f), ((1 << 30) | (1 << 0)));
         HuPrcVSleep();
     }
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[8], (0.0f));
@@ -2475,20 +2475,20 @@ void fn_1_64D0(int playerNo, s16 spaceId)
     while (mbPlayerMotionEndCheck(playerNo) == FALSE) {
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
-    Hu3DModelObjMtxGet(transportModel, "ufo_fook", hookMatrix);
+    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
+    fn_80023398(transportModel, "ufo_fook", hookMatrix);
     mbObjDispSet((s16)lbl_1_bss_404.objectIds[9], TRUE);
     mbObjPosSet((s16)lbl_1_bss_404.objectIds[9], hookMatrix[0][3], hookMatrix[1][3],
         hookMatrix[2][3]);
     mbObjMotionTimeSet((s16)lbl_1_bss_404.objectIds[9], (0.0f));
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[9], (1.0f));
     carriedObject = (s16)lbl_1_bss_404.objectIds[9];
-    mbObjAttrSet(carriedObject, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(carriedObject, ((1 << 30) | (1 << 0)));
     liftSound = mbAudFXPlay(MSM_SE_W06_TRANSPORT_LIFT);
     HuPrcSleep(10);
-    omVibrate(playerNo, 450, 4, 4);
+    fn_8006A030(playerNo, 450, 4, 4);
     mbPlayerMotionShiftSet(playerNo, motionIds[2], (0.0f),
-        (8.0f), HU3D_MOTATTR_LOOP);
+        (8.0f), ((1 << 30) | (1 << 0)));
     lbl_1_bss_10 = 1;
     mbPlayerPosGet(playerNo, &startPosition);
     for (frame = 0; (f32)frame < (75.0f); frame++) {
@@ -2507,7 +2507,7 @@ void fn_1_64D0(int playerNo, s16 spaceId)
         if (motionTime >= (726.0f)) {
             break;
         }
-        Hu3DModelObjMtxGet(transportModel, "ufo_fook", hookMatrix);
+        fn_80023398(transportModel, "ufo_fook", hookMatrix);
         mbPlayerPosSet(playerNo, hookMatrix[0][3], hookMatrix[1][3] - (300.0),
             hookMatrix[2][3]);
         mbObjPosSet((s16)lbl_1_bss_404.objectIds[9], hookMatrix[0][3], hookMatrix[1][3],
@@ -2532,7 +2532,7 @@ void fn_1_64D0(int playerNo, s16 spaceId)
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[9], (1.0f));
     mbObjDispSet((s16)lbl_1_bss_404.objectIds[9], FALSE);
     mbPlayerPosGet(playerNo, &landingPosition);
-    omVibrate(playerNo, 20, 7, 3);
+    fn_8006A030(playerNo, 20, 7, 3);
     for (frame = 0; (f32)frame < (15.000000953674316f); frame++) {
         progress = (f32)frame / (15.000000953674316f);
         mbPlayerPosSet(playerNo, landingPosition.x,
@@ -2551,7 +2551,7 @@ void fn_1_64D0(int playerNo, s16 spaceId)
             landingPosition.z);
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 6, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 6, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
     motionSound = mbAudFXPlay(MSM_SE_W06_TRANSPORT_MOTION);
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[8], (2.0f));
     while (mbObjMotionEndCheck((s16)lbl_1_bss_404.objectIds[8]) == FALSE) {
@@ -2562,7 +2562,7 @@ void fn_1_64D0(int playerNo, s16 spaceId)
     mbAudFXStop(motionSound);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 37), -1);
     mbWinTopWait();
-    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
     mbCameraMovePos(NULL, NULL, NULL, originalZoom, (-1.0f), 30);
     mbCameraMoveWait();
     for (frame = 0; frame < 3; frame++) {
@@ -2572,7 +2572,7 @@ void fn_1_64D0(int playerNo, s16 spaceId)
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[8], (0.0f));
     mbObjMotionTimeSet((s16)lbl_1_bss_404.objectIds[9], (0.0f));
     mbObjMotionSpeedSet((s16)lbl_1_bss_404.objectIds[9], (0.0f));
-    GwPlayer[playerNo].masuId = 3;
+    lbl_80265750[playerNo].masuId = 3;
 }
 
 #include "dolphin/gx.h"
@@ -2619,25 +2619,25 @@ void fn_1_6FA4(void) {
 
     objectIndex = 0;
     while (objectIndex < 2) {
-        loopUsesFirstResources = GwSystem.curTime == 0;
+        loopUsesFirstResources = lbl_80265B70.curTime == 0;
         if (loopUsesFirstResources != 0) {
-            loopObjectType = DATA_w06;
+            loopObjectType = 0xe10000;
         } else {
-            loopObjectType = DATA_w06n;
+            loopObjectType = 0xe20000;
         }
         objectId =
-            mbObjCreate((u16) (objectIndex + DATANUM(DATA_w06, 38)) | loopObjectType, NULL, 0);
+            mbObjCreate((u16) (objectIndex + DATANUM(0xe10000, 38)) | loopObjectType, NULL, 0);
         lbl_1_bss_404.spriteObjectIds[objectIndex] = objectId;
         mbObjDispSet(objectId, 0);
         mbObjMotionTimeSet(objectId, 0.0f);
         mbObjMotionSpeedSet(objectId, 0.0f);
         objectIndex++;
     }
-    finalUsesFirstResources = GwSystem.curTime == 0;
+    finalUsesFirstResources = lbl_80265B70.curTime == 0;
     if (finalUsesFirstResources != 0) {
-        finalObjectType = DATA_w06;
+        finalObjectType = 0xe10000;
     } else {
-        finalObjectType = DATA_w06n;
+        finalObjectType = 0xe20000;
     }
     objectId = mbObjCreate(finalObjectType | 0x25, NULL, 0);
     lbl_1_bss_404.spriteObjectIds[2] = objectId;
@@ -2748,7 +2748,7 @@ void fn_1_7100(int playerNo, s16 spaceId)
     u32 attributes;
 
     attributes = mbMasuMAttrGet(spaceId);
-    if (GwSystem.curTime == 0) {
+    if (lbl_80265B70.curTime == 0) {
         speaker = 6;
         messageOffset = 0;
     } else {
@@ -2760,8 +2760,8 @@ void fn_1_7100(int playerNo, s16 spaceId)
         while (mbPlayerRotateCheck(playerNo) == FALSE) {
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-        if (GwSystem.curTime != 0) {
+        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        if (lbl_80265B70.curTime != 0) {
             mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 20), -1);
             mbWinTopWait();
             mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
@@ -2769,7 +2769,7 @@ void fn_1_7100(int playerNo, s16 spaceId)
             while (mbPlayerMotionEndCheck(playerNo) == FALSE) {
                 HuPrcVSleep();
             }
-            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             HuPrcSleep(10);
         } else {
             goto openChests;
@@ -2779,8 +2779,8 @@ void fn_1_7100(int playerNo, s16 spaceId)
         while (mbPlayerRotateCheck(playerNo) == FALSE) {
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-        if (GwSystem.curTime == 0) {
+        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+        if (lbl_80265B70.curTime == 0) {
             mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 22), -1);
             mbWinTopWait();
             mbPlayerWinLoseVoicePlay(playerNo, 13, 585);
@@ -2788,7 +2788,7 @@ void fn_1_7100(int playerNo, s16 spaceId)
             while (mbPlayerMotionEndCheck(playerNo) == FALSE) {
                 HuPrcVSleep();
             }
-            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             HuPrcSleep(10);
         } else {
 openChests:
@@ -2823,17 +2823,17 @@ openChests:
             mbCameraFocusPlayerSet(-1);
             mbCameraMovePos(&cameraPosition, NULL, NULL, 1600.0f, -1.0f, 30);
             previousSpace = spaceId;
-            GwPlayer[playerNo].masuIdPrev = previousSpace;
+            lbl_80265750[playerNo].masuIdPrev = previousSpace;
             mbPlayerMasuMoveTo(playerNo, chestSpace, TRUE);
-            GwPlayer[playerNo].masuId = chestSpace;
-            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            lbl_80265750[playerNo].masuId = chestSpace;
+            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             HuPrcSleep(30);
             if ((attributes & 0x100) != 0) {
                 guide = mbGuideCreate(0, &guidePosition, &lbl_1_data_35C[0],
                     lbl_1_data_30D, 1.0f, 2);
                 mbGuideMotionNextSet(guide, 1);
                 guideModel = mbGuideModelGet(guide);
-                mbAudGuidePlay(MSM_SE_GUIDE_25);
+                mbAudGuidePlay(949);
                 mbGuideMotionShiftSet(guide, 12, TRUE);
                 mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 21), speaker);
                 mbWinTopWait();
@@ -2842,7 +2842,7 @@ openChests:
                     lbl_1_data_30D, 1.0f, 0);
                 guideModel = mbGuideModelGet(guide);
                 modelId = mbObjModelIDGet(guideModel);
-                guideModelData = &Hu3DData[modelId];
+                guideModelData = &lbl_802C01C8[modelId];
                 guideHsf = guideModelData->hsf;
                 material = guideHsf->material;
                 guideModelData->hiliteIdx = 0;
@@ -2853,12 +2853,12 @@ openChests:
                 }
                 mbGuideFadeIn(guide);
                 mbGuideMotionNextSet(guide, 1);
-                mbAudGuidePlay(MSM_SE_GUIDE_25);
+                mbAudGuidePlay(949);
                 mbGuideMotionShiftSet(guide, 12, TRUE);
                 mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 23), speaker);
                 mbWinTopWait();
             }
-            mbAudGuidePlay(MSM_SE_GUIDE_26);
+            mbAudGuidePlay(950);
             mbGuideMotionShiftSet(guide, 12, TRUE);
             mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 24), speaker);
             mbWinTopWait();
@@ -2867,7 +2867,7 @@ openChests:
             }
             mbObjMotionShiftSet(guideModel, 6, 0.0f, 8.0f, 0);
             HuPrcSleep(60);
-            animation = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_effect, 3), HU_MEMNUM_OVL));
+            animation = HuSprAnimRead(fn_80008634(DATANUM(0x210000, 3), 0x10000000));
             mbPlayerPosGet(playerNo, &playerPosition);
             for (index = 0; index < 2; index++) {
                 if ((attributes & 0x100) != 0) {
@@ -2888,14 +2888,14 @@ openChests:
                 mbObjMotionSpeedSet(lbl_1_bss_404.spriteObjectIds[index], 0.0f);
                 particles[index] = mbParticleCreate(animation, 128);
                 mbParticleHookSet(particles[index], fn_1_D4C8);
-                Hu3DModelLayerSet(particles[index], 5);
+                fn_80026B8C(particles[index], 5);
                 particlePosition = chestPositions[index];
                 particlePosition.y += 30.0;
-                Hu3DModelPosSetV(particles[index], &particlePosition);
-                mbAudFXPlay(MSM_SE_BRD00_45);
+                fn_80026790(particles[index], &particlePosition);
+                mbAudFXPlay(1049);
             }
             HuPrcSleep(30);
-            mbAudGuidePlay(MSM_SE_GUIDE_25);
+            mbAudGuidePlay(949);
             mbGuideMotionShiftSet(guide, 12, TRUE);
             mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 26), speaker);
             mbWinTopWait();
@@ -2922,11 +2922,11 @@ openChests:
                 if (timerMessage == -1) {
                     break;
                 }
-                if (GwPlayer[playerNo].comF == FALSE) {
+                if (lbl_80265750[playerNo].comF == FALSE) {
                     if (repeatDelay <= 0) {
-                        stickX = mbPadStkXGet(GwPlayer[playerNo].padNo);
-                        stickY = mbPadStkYGet(GwPlayer[playerNo].padNo);
-                        buttons = HuPadBtnDown[GwPlayer[playerNo].padNo];
+                        stickX = mbPadStkXGet(lbl_80265750[playerNo].padNo);
+                        stickY = mbPadStkYGet(lbl_80265750[playerNo].padNo);
+                        buttons = lbl_802C0008[lbl_80265750[playerNo].padNo];
                     } else {
                         stickX = stickY = buttons = 0;
                         repeatDelay--;
@@ -3003,13 +3003,13 @@ openChests:
             for (index = 0; index < 2; index++) {
                 if (selectedChest != index) {
                     animation =
-                        HuSprAnimRead(HuDataReadNum(DATANUM(DATA_effect, 3), HU_MEMNUM_OVL));
+                        HuSprAnimRead(fn_80008634(DATANUM(0x210000, 3), 0x10000000));
                     particles[index] = mbParticleCreate(animation, 128);
                     mbParticleHookSet(particles[index], fn_1_D4C8);
-                    Hu3DModelLayerSet(particles[index], 5);
+                    fn_80026B8C(particles[index], 5);
                     particlePosition = chestPositions[index];
                     particlePosition.y += 30.0;
-                    Hu3DModelPosSetV(particles[index], &particlePosition);
+                    fn_80026790(particles[index], &particlePosition);
                 }
             }
             chestVelocity.x = (playerPosition.x - chestPositions[selectedChest].x) /
@@ -3018,7 +3018,7 @@ openChests:
                 chestPositions[selectedChest].y) / 35.0f;
             chestVelocity.z = (playerPosition.z - chestPositions[selectedChest].z) /
                 35.0f;
-            mbAudFXPlay(MSM_SE_BRD00_45);
+            mbAudFXPlay(1049);
             for (index = 0; (f32)index < 35.0f; index++) {
                 progress = (f32)index / 35.0f;
                 alpha = 255.0f - 2.0f * (255.0f * progress);
@@ -3072,14 +3072,14 @@ openChests:
             }
             mbPlayerMotionSet(playerNo, 11, 0);
             HuPrcSleep(24);
-            mbAudFXPlay(MSM_SE_BRD00_12);
-            omVibrate(playerNo, 20, 7, 3);
+            mbAudFXPlay(1016);
+            fn_8006A030(playerNo, 20, 7, 3);
             mbObjMotionTimeSet(lbl_1_bss_404.spriteObjectIds[selectedChest], 0.0f);
             mbObjMotionSpeedSet(lbl_1_bss_404.spriteObjectIds[selectedChest], 3.0f);
             switch (prize) {
             case 0:
-                starSound = mbAudFXPlay(MSM_SE_BRD00_91);
-                mbAudFXPlay(MSM_SE_BRD00_92);
+                starSound = mbAudFXPlay(1095);
+                mbAudFXPlay(1096);
                 for (index = 0; (f32)index <= 50.0f; index++) {
                     progress = (f32)index / 50.0f;
                     scale = 0.5f + 0.5f * progress;
@@ -3105,7 +3105,7 @@ openChests:
                     HuPrcVSleep();
                 }
                 mbAudFXStop(starSound);
-                mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 break;
             case 1:
                 mbPlayerPosGet(playerNo, &coinOrigin);
@@ -3173,16 +3173,16 @@ openChests:
                     mbCoinDispKillCheck(coinDisplay) == FALSE) {
                     HuPrcVSleep();
                 }
-                mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 break;
             }
             mbObjAlphaSet(lbl_1_bss_404.spriteObjectIds[selectedChest], 0);
             HuPrcSleep(10);
-            mbAudGuidePlay(MSM_SE_GUIDE_25);
+            mbAudGuidePlay(949);
             mbGuideMotionShiftSet(guide, 12, TRUE);
             mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 28), speaker);
             mbWinTopWait();
-            mbAudGuidePlay(MSM_SE_GUIDE_26);
+            mbAudGuidePlay(950);
             switch (prize) {
             case 0:
                 mbStarObjPosGet(starObject, &starPosition);
@@ -3207,11 +3207,11 @@ openChests:
                 while (mbPlayerRotateCheck(playerNo) == FALSE) {
                     HuPrcVSleep();
                 }
-                mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 mbCameraMoveWait();
                 mbStarChestCreate(starObject, playerNo);
                 mbWipeFadeOut();
-                mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
+                mbPlayerMotionSet(playerNo, 1, ((1 << 30) | (1 << 0)));
                 if ((attributes & 0x100) != 0) {
                     mbPlayerRotYSet(playerNo, 125.0f);
                 } else {
@@ -3224,8 +3224,8 @@ openChests:
                 mbMusBoardPlay();
                 break;
             }
-            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
-            mbAudGuidePlay(MSM_SE_GUIDE_25);
+            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
+            mbAudGuidePlay(949);
             mbGuideMotionSet(guide, 7, TRUE);
             mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 34), speaker);
             mbWinTopWait();
@@ -3236,9 +3236,9 @@ openChests:
             }
             mbCameraFocusPlayerSet(playerNo);
             previousSpace = chestSpace;
-            GwPlayer[playerNo].masuIdPrev = previousSpace;
+            lbl_80265750[playerNo].masuIdPrev = previousSpace;
             mbPlayerMasuMoveTo(playerNo, spaceId, TRUE);
-            GwPlayer[playerNo].masuId = spaceId;
+            lbl_80265750[playerNo].masuId = spaceId;
             espKill(cursorSprite);
             for (index = 0; index < 2; index++) {
                 if (particles[index] != -1) {
@@ -3256,14 +3256,14 @@ openChests:
                 }
                 break;
             }
-HuDataDirClose(DATA_effect);
+fn_800097F4(0x210000);
         }
     }
     mbPlayerRotateStart(playerNo, 0, 15);
     while (mbPlayerRotateCheck(playerNo) == FALSE) {
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
 }
 
 Point3d lbl_1_data_314[4] = { { 2375.0f, 125.0f, 607.0f },
@@ -3327,7 +3327,7 @@ void fn_1_9360(HU3D_DRAW_OBJ *drawObj, HSF_MATERIAL *material)
 
     configuredLightColor = lbl_1_rodata_190;
     configuredLightDirection = lbl_1_rodata_194;
-    Hu3DGLightParamGet(0, &lightPosition, &lightDirection, &lightColor);
+    fn_800297D4(0, &lightPosition, &lightDirection, &lightColor);
     Hu3DGlobalLight[0].color = configuredLightColor;
     Hu3DGlobalLight[0].dir = configuredLightDirection;
     mbObjStarTevStageSet(drawObj, material, &tevStage, &tevColor);
@@ -3360,7 +3360,7 @@ int lbl_1_data_38C[6] = {W06_BOARD_DATA_W06N_7, -1, W06_BOARD_DATA_W06_9, -1,
 extern BOOL mbSaveNewF;
 
 #define W06ObjectDataGet(fileNo) \
-    ((W06TimeSideGet() != 0 ? DATA_w06 : DATA_w06n) | (fileNo))
+    ((W06TimeSideGet() != 0 ? 0xe10000 : 0xe20000) | (fileNo))
 
 /* Creates the space objects for the current time and hides the saved inactive branch. */
 void fn_1_9474(void)
@@ -3375,7 +3375,7 @@ void fn_1_9474(void)
     spaceIndex = 0;
     for (row = 0; row < 4; row++) {
         for (column = 0; column < 3; column++) {
-            if (GwSystem.curTime == 0) {
+            if (lbl_80265B70.curTime == 0) {
                 if (spaceIndex < 6) {
                     objectId = mbObjCreate(W06ObjectDataGet(8), NULL, 1);
                     lbl_1_bss_2E4[row][column].objectId = objectId;
@@ -3393,7 +3393,7 @@ void fn_1_9474(void)
                     lbl_1_bss_2E4[row][column].reactionObjectId = -1;
                     mbObjMotionTimeSet(objectId, (0.0f));
                     mbObjMotionSpeedSet(objectId, (1.0f));
-                    mbObjAttrSet(objectId, HU3D_MOTATTR_LOOP);
+                    mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
                     lbl_1_bss_2E4[row][column].usesReactionObject = 0;
                 }
             } else if (spaceIndex < 6) {
@@ -3402,7 +3402,7 @@ void fn_1_9474(void)
                 lbl_1_bss_2E4[row][column].reactionObjectId = -1;
                 mbObjMotionTimeSet(objectId, (0.0f));
                 mbObjMotionSpeedSet(objectId, (1.0f));
-                mbObjAttrSet(objectId, HU3D_MOTATTR_LOOP);
+                mbObjAttrSet(objectId, ((1 << 30) | (1 << 0)));
                 lbl_1_bss_2E4[row][column].usesReactionObject = 0;
             } else {
                 objectId = mbObjCreate(W06ObjectDataGet(8), NULL, 1);
@@ -3481,11 +3481,12 @@ void fn_1_9C38(void)
                 lbl_1_bss_2E4[row][column].reactionActive != 0 &&
                 mbObjMotionEndCheck((s16)lbl_1_bss_2E4[row][column].objectId) != 0) {
                 mbObjMotionShiftSet((s16)lbl_1_bss_2E4[row][column].objectId,
-                                    0, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+                                    0, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
                 lbl_1_bss_2E4[row][column].reactionActive = 0;
             }
             if (lbl_1_bss_2E4[row][column].bobDisabled == 0) {
-                bobOffset = 0.4f * sin((M_PI * lbl_1_bss_2E4[row][column].bobAngle) / 180.0);
+                bobOffset = 0.4f * sin((3.141592653589793
+                    * lbl_1_bss_2E4[row][column].bobAngle) / 180.0);
                 lbl_1_bss_2E4[row][column].bobAngle += 2.0f;
                 if (lbl_1_bss_2E4[row][column].bobAngle >= 360.0f) {
                     lbl_1_bss_2E4[row][column].bobAngle -= 360.0f;
@@ -3500,16 +3501,16 @@ void fn_1_9C38(void)
                 }
             }
             modelId = mbObjModelIDGet((s16)lbl_1_bss_2E4[row][column].objectId);
-            Hu3DModelObjMtxGet(modelId, "hook", spaceMatrix);
+            fn_80023398(modelId, "hook", spaceMatrix);
             spaceId = mbMasuFind_MAttrIdGet(-1, lbl_1_data_13C[spaceIndex]);
             mbMasuMtxSet(spaceId, spaceMatrix);
             spaceIndex++;
         }
     }
 
-    playerNo = GwSystem.turnPlayerNo;
+    playerNo = lbl_80265B70.turnPlayerNo;
     if (playerNo >= 0) {
-        currentSpace = GwPlayer[playerNo].masuId;
+        currentSpace = lbl_80265750[playerNo].masuId;
         spaceAttribute = mbMasuMAttrGet(currentSpace);
         if ((spaceAttribute & W06_SPACE_ATTR_SPECIAL_MASK) != 0) {
             spaceIndex = 0;
@@ -3563,18 +3564,18 @@ void fn_1_A204(int playerNo, s16 spaceId)
 
     work[0] = 0;
     mbMoveNumDispSet(playerNo, 0);
-    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
     HuPrcSleep(20);
     mbCameraMovePos(NULL, NULL, NULL, lbl_1_data_3AC, (-1.0f), 30);
     mbCameraMoveWait();
-    currentTimeSide = GwSystem.curTime == 0;
+    currentTimeSide = lbl_80265B70.curTime == 0;
     switch (lbl_1_bss_4B0->branchRows[currentTimeSide]) {
     case 0:
         shownRow = 0;
         hiddenRow = 1;
         mbBranchMAttrReset(W06_BRANCH_MATTR_ROW_0_MASK);
         mbBranchMAttrSet(W06_BRANCH_MATTR_ROW_1_MASK);
-        firstBranchTimeSide = GwSystem.curTime == 0;
+        firstBranchTimeSide = lbl_80265B70.curTime == 0;
         lbl_1_bss_4B0->branchRows[firstBranchTimeSide] = 1;
         break;
     case 1:
@@ -3582,7 +3583,7 @@ void fn_1_A204(int playerNo, s16 spaceId)
         hiddenRow = 0;
         mbBranchMAttrReset(W06_BRANCH_MATTR_ROW_1_MASK);
         mbBranchMAttrSet(W06_BRANCH_MATTR_ROW_0_MASK);
-        secondBranchTimeSide = GwSystem.curTime == 0;
+        secondBranchTimeSide = lbl_80265B70.curTime == 0;
         lbl_1_bss_4B0->branchRows[secondBranchTimeSide] = 0;
         break;
     case 2:
@@ -3590,7 +3591,7 @@ void fn_1_A204(int playerNo, s16 spaceId)
         hiddenRow = 3;
         mbBranchMAttrReset(W06_BRANCH_MATTR_ROW_2_MASK);
         mbBranchMAttrSet(W06_BRANCH_MATTR_ROW_3_MASK);
-        thirdBranchTimeSide = GwSystem.curTime == 0;
+        thirdBranchTimeSide = lbl_80265B70.curTime == 0;
         lbl_1_bss_4B0->branchRows[thirdBranchTimeSide] = 3;
         break;
     case 3:
@@ -3598,7 +3599,7 @@ void fn_1_A204(int playerNo, s16 spaceId)
         hiddenRow = 2;
         mbBranchMAttrReset(W06_BRANCH_MATTR_ROW_3_MASK);
         mbBranchMAttrSet(W06_BRANCH_MATTR_ROW_2_MASK);
-        fourthBranchTimeSide = GwSystem.curTime == 0;
+        fourthBranchTimeSide = lbl_80265B70.curTime == 0;
         lbl_1_bss_4B0->branchRows[fourthBranchTimeSide] = 2;
         break;
     }
@@ -3813,7 +3814,7 @@ W06CameraRotations lbl_1_data_774[2] = { { { -50.0f, 20.0f, 0.0f }, { -30.0f, 0.
 s8 lbl_1_data_7A4[4] = {12, 6, 7, -1};
 
 #define W06ObjectDataGet(fileNo) \
-    ((W06TimeSideGet() != 0 ? DATA_w06 : DATA_w06n) | (fileNo))
+    ((W06TimeSideGet() != 0 ? 0xe10000 : 0xe20000) | (fileNo))
 
 /* Attaches the board decoration models to both roots and sets their initial animation. */
 
@@ -3836,7 +3837,7 @@ void fn_1_AA48(void)
     {
         hookObjectId = mbObjCreate(W06ObjectDataGet(10), NULL, 0);
         lbl_1_bss_2AC.attachedIds[0] = hookObjectId;
-        mbObjAttrSet(hookObjectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, (0.0f));
         mbObjMotionSpeedSet(hookObjectId, (1.0f));
         for (attachment = 0; attachment < 4; attachment++) {
@@ -3847,7 +3848,7 @@ void fn_1_AA48(void)
     {
         hookObjectId = mbObjCreate(W06ObjectDataGet(11), NULL, 0);
         lbl_1_bss_2AC.attachedIds[1] = hookObjectId;
-        mbObjAttrSet(hookObjectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, (0.0f));
         mbObjMotionSpeedSet(hookObjectId, (1.0f));
         for (attachment = 0; attachment < 2; attachment++) {
@@ -3858,7 +3859,7 @@ void fn_1_AA48(void)
     {
         hookObjectId = mbObjCreate(W06ObjectDataGet(12), NULL, 0);
         lbl_1_bss_2AC.attachedIds[2] = hookObjectId;
-        mbObjAttrSet(hookObjectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, (0.0f));
         mbObjMotionSpeedSet(hookObjectId, (1.0f));
         for (attachment = 0; attachment < 4; attachment++) {
@@ -3877,7 +3878,7 @@ void fn_1_AA48(void)
     {
         hookObjectId = mbObjCreate(W06ObjectDataGet(14), NULL, 0);
         lbl_1_bss_2AC.attachedIds[4] = hookObjectId;
-        mbObjAttrSet(hookObjectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, (0.0f));
         mbObjMotionSpeedSet(hookObjectId, (1.0f));
         for (attachment = 0; attachment < 2; attachment++) {
@@ -3896,7 +3897,7 @@ void fn_1_AA48(void)
     {
         hookObjectId = mbObjCreate(W06ObjectDataGet(16), NULL, 0);
         lbl_1_bss_2AC.attachedIds[6] = hookObjectId;
-        mbObjAttrSet(hookObjectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, (0.0f));
         mbObjMotionSpeedSet(hookObjectId, (1.0f));
         for (attachment = 0; attachment < 2; attachment++) {
@@ -3923,7 +3924,7 @@ void fn_1_AA48(void)
     {
         hookObjectId = mbObjCreate(W06ObjectDataGet(19), NULL, 0);
         lbl_1_bss_2AC.attachedIds[9] = hookObjectId;
-        mbObjAttrSet(hookObjectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(hookObjectId, (0.0f));
         mbObjMotionSpeedSet(hookObjectId, (1.0f));
         for (attachment = 0; attachment < 2; attachment++) {
@@ -3934,7 +3935,7 @@ void fn_1_AA48(void)
     {
         hookObjectId = mbObjCreate(W06ObjectDataGet(20), NULL, 0);
         lbl_1_bss_2AC.attachedIds[10] = hookObjectId;
-        mbObjAttrSet(hookObjectId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(hookObjectId, ((1 << 30) | (1 << 0)));
         mbObjMotionShapeSet(hookObjectId, 0, W06_HOOK_SHAPE_ATTR_FLAGS);
         mbObjMotionTimeSet(hookObjectId, (0.0f));
         mbObjMotionSpeedSet(hookObjectId, (1.0f));
@@ -3950,8 +3951,8 @@ void fn_1_AA48(void)
     {
         hookObjectId = mbObjCreate(W06ObjectDataGet(3), NULL, 0);
         lbl_1_bss_404.objectIds[0] = hookObjectId;
-        mbObjAttrReset(hookObjectId, HU3D_MOTATTR_LOOP);
-        if (GwSystem.curTime == 0) {
+        mbObjAttrReset(hookObjectId, ((1 << 30) | (1 << 0)));
+        if (lbl_80265B70.curTime == 0) {
             mbObjMotionTimeSet(hookObjectId, (0.0f));
         } else {
             mbObjMotionTimeSet(hookObjectId, (60.0f));
@@ -3989,11 +3990,11 @@ void fn_1_B584(void)
     s32 playerNo;
 
     workState = lbl_1_bss_74;
-    for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
+    for (playerNo = 0; playerNo < 4; playerNo++) {
         mbPlayerDispSet(playerNo, FALSE);
     }
     memset(workState, 0, 8);
-    promptProcess = HuPrcChildCreate(fn_1_B820, 8199, 32768, 0, mbMainProc);
+    promptProcess = fn_8000DAC0(fn_1_B820, 8199, 32768, 0, mbMainProc);
     helpWindowId = -1;
     do {
         if (workState[0] != 0) {
@@ -4001,9 +4002,9 @@ void fn_1_B584(void)
                 helpWindowId = mbWinCreateHelp(W06_HELP_MESSAGE_ID);
                 mbWinPosSet(helpWindowId, 228, 408);
             }
-            for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
-                if (GwPlayer[playerNo].comF == FALSE &&
-                    (HuPadBtnDown[(s8)GwPlayer[playerNo].padNo] & 0x1000) != 0) {
+            for (playerNo = 0; playerNo < 4; playerNo++) {
+                if (lbl_80265750[playerNo].comF == FALSE &&
+                    (lbl_802C0008[(s8)lbl_80265750[playerNo].padNo] & 0x1000) != 0) {
                     if (lbl_1_bss_60 != -1) {
                         mbWinKill(lbl_1_bss_60);
                         lbl_1_bss_60 = -1;
@@ -4020,7 +4021,7 @@ void fn_1_B584(void)
     if (WipeCheckIn() == FALSE) {
         mbWipeFadeOut();
     }
-    if (GwSystem.curTime != FALSE) {
+    if (lbl_80265B70.curTime != FALSE) {
         mbObjMotionTimeSet((s16)lbl_1_bss_404.objectIds[0], (60.0f));
     } else {
         mbObjMotionTimeSet((s16)lbl_1_bss_404.objectIds[0], (0.0f));
@@ -4031,7 +4032,7 @@ void fn_1_B584(void)
         lbl_1_bss_18 = 0;
     }
     mbWinKill(helpWindowId);
-    for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
+    for (playerNo = 0; playerNo < 4; playerNo++) {
         mbPlayerDispSet(playerNo, TRUE);
     }
 }
@@ -4065,7 +4066,7 @@ void fn_1_B820(void)
     mbGuideMotionNextSet(lbl_1_bss_18, 1);
     guideObjectId = mbGuideModelGet(lbl_1_bss_18);
     mbObjDispSet(guideObjectId, 0);
-    if (GwSystem.curTime == 0)
+    if (lbl_80265B70.curTime == 0)
     {
         mbObjMotionTimeSet((s16) lbl_1_bss_404.objectIds[0], (60.0f));
     }
@@ -4082,7 +4083,7 @@ void fn_1_B820(void)
         HuPrcVSleep();
     }
     mbWipeFadeOut();
-    if (GwSystem.curTime == 0)
+    if (lbl_80265B70.curTime == 0)
     {
         speaker = 6;
         messageOffset = 0;
@@ -4103,7 +4104,7 @@ void fn_1_B820(void)
     mbCameraMoveWait();
     mbObjDispSet(guideObjectId, 1);
     mbGuideFadeIn(lbl_1_bss_18);
-    mbAudGuidePlay(MSM_SE_GUIDE_25);
+    mbAudGuidePlay(949);
     mbGuideMotionShiftSet(lbl_1_bss_18, 12, 1);
     lbl_1_bss_60 = mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 47), speaker);
     mbWinPlayerDisable(lbl_1_bss_60, - 1);
@@ -4116,7 +4117,7 @@ void fn_1_B820(void)
     {
         HuPrcVSleep();
     }
-    if (GwSystem.curTime == 0)
+    if (lbl_80265B70.curTime == 0)
     {
         mbAudFXPlay(MSM_SE_W06_GUIDE_MOTION);
     }
@@ -4126,7 +4127,7 @@ void fn_1_B820(void)
     }
     mbObjMotionShiftSet(guideObjectId, 6, (0.0f), (8.0f), 0);
     HuPrcSleep(60);
-    if (GwSystem.curTime == 0)
+    if (lbl_80265B70.curTime == 0)
     {
         reverseMotionObjectId = (s16) lbl_1_bss_404.objectIds[0];
         mbObjAttrSet(reverseMotionObjectId, W06_REVERSE_MOTION_ATTR_FLAGS);
@@ -4158,7 +4159,7 @@ void fn_1_B820(void)
     mbCameraMovePos(NULL, NULL, NULL, 2400.0f, (-1.0f), 30);
     mbCameraMoveWait();
     mbSNpcMotWinSet();
-    mbAudGuidePlay(MSM_SE_GUIDE_26);
+    mbAudGuidePlay(950);
     lbl_1_bss_60 = mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 49), speaker);
     mbWinPlayerDisable(lbl_1_bss_60, - 1);
     mbWinTopPosGet(& windowPosition);
@@ -4166,7 +4167,7 @@ void fn_1_B820(void)
     mbWinTopPosSet((s16) windowPosition.x, (s16) windowPosition.y);
     mbWinTopWait();
     lbl_1_bss_60 = - 1;
-    mbAudGuidePlay(MSM_SE_GUIDE_26);
+    mbAudGuidePlay(950);
     lbl_1_bss_60 = mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 51), speaker);
     mbWinPlayerDisable(lbl_1_bss_60, - 1);
     mbWinTopPosGet(& windowPosition);
@@ -4176,7 +4177,7 @@ void fn_1_B820(void)
     lbl_1_bss_60 = - 1;
     mbWipeFadeOut();
     mbSNpcMotIdleSet();
-    if (! (! (GwSystem.curTime == 0)))
+    if (! (! (lbl_80265B70.curTime == 0)))
     {
         side = 0;
     }
@@ -4197,7 +4198,7 @@ void fn_1_B820(void)
     mbObjPosSetV(guideObjectId, & lbl_1_data_75C[side]);
     mbObjDispSet(guideObjectId, 1);
     mbGuideFadeIn(lbl_1_bss_18);
-    mbAudGuidePlay(MSM_SE_GUIDE_25);
+    mbAudGuidePlay(949);
     mbGuideMotionShiftSet(lbl_1_bss_18, 12, 1);
     lbl_1_bss_60 = mbWinCreate(2, messageOffset + MESSNUM(MESS_BOARD_W06, 53), speaker);
     mbWinPlayerDisable(lbl_1_bss_60, - 1);
@@ -4254,7 +4255,7 @@ extern f32 lbl_1_bss_28;
 extern f32 lbl_1_bss_2C;
 extern GXColor lbl_1_data_1B2;
 
-u16 mbPadDStkRepGetAll(void);
+u16 fn_80184DD4(void);
 
 /* Shows the guide message after a time change and moves the player to its parent space if on a
  * branch. */
@@ -4272,8 +4273,8 @@ void fn_1_C1CC(void)
     s32 parentSpace;
     s32 playerIndex;
 
-    playerIndex = GwSystem.turnPlayerNo;
-    currentSpace = GwPlayer[playerIndex].masuId;
+    playerIndex = lbl_80265B70.turnPlayerNo;
+    currentSpace = lbl_80265750[playerIndex].masuId;
     spaceAttribute = mbMasuMAttrGet((s16)currentSpace);
     mbPlayerColSnapSet(0);
     mbStatusDispForceSetAll(1);
@@ -4301,7 +4302,7 @@ void fn_1_C1CC(void)
             mbGuideModelGet(lbl_1_data_0[guideIndex]);
     }
 
-    if (GwSystem.curTime == (u32)0) {
+    if (lbl_80265B70.curTime == (u32)0) {
         windowMessage = 6;
         messageId = 0;
         WipeCreate(1, 130, 60);
@@ -4323,14 +4324,14 @@ void fn_1_C1CC(void)
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerIndex, 1, (0.0f), (8.0f),
-                           HU3D_MOTATTR_LOOP);
+                           ((1 << 30) | (1 << 0)));
     if ((spaceAttribute & W06_SPACE_ATTR_BRANCH_MASK) != 0) {
         mbMasuLinkParentGet((s16)currentSpace, &stack.previousSpace);
         parentSpace = stack.previousSpace;
         oldSpace = currentSpace;
-        GwPlayer[playerIndex].masuIdPrev = oldSpace;
+        lbl_80265750[playerIndex].masuIdPrev = oldSpace;
         mbPlayerMasuMoveTo(playerIndex, parentSpace, 1);
-        GwPlayer[playerIndex].masuId = parentSpace;
+        lbl_80265750[playerIndex].masuId = parentSpace;
     }
 }
 
@@ -4410,7 +4411,7 @@ void fn_1_C92C(void)
     s32 vertexIndex;
 
     modelId = mbObjModelIDGet((s16)lbl_1_bss_404.objectIds[4]);
-    Hu3DModelObjMtxGet(modelId, "z_sao_ito", modelMatrix);
+    fn_80023398(modelId, "z_sao_ito", modelMatrix);
     for (vertexIndex = 0; vertexIndex < 20; vertexIndex++) {
         lbl_1_bss_7C[vertexIndex].position.x = modelMatrix[0][3];
         lbl_1_bss_7C[vertexIndex].position.y =
@@ -4436,7 +4437,7 @@ void fn_1_CAF0(void)
     s16 modelId;
 
     modelId = (s16)mbObjModelIDGet((s16)lbl_1_bss_404.objectIds[4]);
-    Hu3DModelObjMtxGet(modelId, "z_sao_ito", modelMatrix);
+    fn_80023398(modelId, "z_sao_ito", modelMatrix);
     lbl_1_bss_7C[0].position.x = modelMatrix[0][3];
     lbl_1_bss_7C[0].position.y = modelMatrix[1][3];
     lbl_1_bss_7C[0].position.z = modelMatrix[2][3];
@@ -4744,7 +4745,7 @@ void fn_1_E004(s32 enable)
     s32 spriteType;
 
     if (enable != 0) {
-        if (GwSystem.curTime == 0) {
+        if (lbl_80265B70.curTime == 0) {
             mbMapSprAdd(14, mbSNpcMasuGet());
         } else {
             mbMapSprAdd(15, mbSNpcMasuGet());
@@ -4782,16 +4783,16 @@ float lbl_1_data_81C = 2400.0f;
 /* Delivers Clockwork Castle's opening board instructions through the opening hook. */
 void fn_1_E104(void)
 {
-    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 38), 6);
     mbWinTopWait();
-    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 39), 6);
     mbWinTopWait();
-    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 40), 6);
     mbWinTopWait();
-    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 41), 6);
     mbWinTopWait();
     mbWipeDissolveFadeOutTime(1);
@@ -4799,10 +4800,10 @@ void fn_1_E104(void)
     mbCameraRotSetV(&lbl_1_data_810);
     mbCameraCenterSetV(&lbl_1_data_804);
     mbWipeDissolveFadeIn();
-    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 42), 6);
     mbWinTopWait();
-    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 43), 6);
     mbWinTopWait();
     mbWipeDissolveFadeOutTime(1);
@@ -4822,7 +4823,7 @@ void fn_1_E224(void)
 
     mbWipeFadeOut();
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (1.0f), HU3D_MOTATTR_LOOP);
+        mbPlayerMotionShiftSet(playerNo, 1, (0.0f), (1.0f), ((1 << 30) | (1 << 0)));
     }
     mbCameraZoomSet((2400.0f));
     mbCameraRotSet((-35.0f), (0.0f), (0.0f));
@@ -4832,7 +4833,7 @@ void fn_1_E224(void)
     mbMasuPosGet(npcMasuId, &npcMasuPos);
     mbWipeFadeIn();
     HuPrcSleep(10);
-    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbAudGuidePlay(952);
     winId = mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 44), 6);
     mbWinPause(winId);
     mbCameraMovePos(&npcMasuPos, NULL, NULL, (3200.0f), (-1.0f), 150);
@@ -4842,7 +4843,7 @@ void fn_1_E224(void)
     mbCameraMovePos(NULL, NULL, NULL, (2400.0f), (-1.0f), 30);
     mbCameraMoveWait();
     mbSNpcMotWinSet();
-    mbAudGuidePlay(MSM_SE_GUIDE_28);
+    mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W06, 45), 6);
     mbWinTopWait();
     mbWipeFadeOut();

@@ -10,16 +10,16 @@ OMOBJMAN *lbl_1_bss_0;
 /* Called by _prolog to create the object manager and start the sequence process. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_0 = MgActorObjectSetup();
-    HuPrcChildCreate(fn_1_F4, 100U, 36864U, 0, lbl_1_bss_0);
+    lbl_1_bss_0 = fn_80080418();
+    fn_8000DAC0(fn_1_F4, 100U, 36864U, 0, lbl_1_bss_0);
 }
 
 /* The child process created by fn_1_A0 advances the object manager once per frame. */
 void fn_1_F4(void)
 {
-    MgSeqCreate(&lbl_1_data_0);
+    fn_80070788(&lbl_1_data_0);
     while (1) {
-        MgActorExec();
+        fn_800856A8();
         HuPrcVSleep();
     }
 }
@@ -28,7 +28,7 @@ void fn_1_F4(void)
 void fn_1_118(s16 sequenceMode, s16 frameNumber)
 {
     fn_1_16C(100, 12U, fn_1_5050);
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Unused callback slot registered with MgSeqCreate; it runs no sequence action. */
@@ -84,9 +84,9 @@ void *fn_1_16C(s32 priority, u32 workSize, void (*objectCallback)(OMOBJ *))
 {
     OMOBJ *object;
 
-    object = omAddObjEx(lbl_1_bss_0, (s16) priority, 0U, 0U, 0, objectCallback);
+    object = fn_8003AB38(lbl_1_bss_0, (s16) priority, 0U, 0U, 0, objectCallback);
     if (workSize != 0) {
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, (s32) workSize, HU_MEMNUM_OVL);
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, (s32) workSize, 0x10000000);
         memset(object->data, 0, workSize);
     } else {
         object->data = NULL;

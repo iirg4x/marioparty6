@@ -27,38 +27,38 @@ extern void fn_1_D788(s16 playerNo);
 extern void fn_1_DAEC(s16 playerNo);
 extern void fn_1_DCF8(void);
 
-s32 lbl_1_data_5D8 = DATANUM(DATA_mgmdecathlon, 5);
+s32 lbl_1_data_5D8 = DATANUM(0x9e0000, 5);
 Vec lbl_1_data_5DC[4] = { { 82.0f, 395.0f, -290.0f },
                           { 82.0f, 335.0f, -290.0f },
                           { 82.0f, 275.0f, -290.0f },
                           { 82.0f, 215.0f, -290.0f } };
 s32 lbl_1_data_60C[4] = {
-    DATANUM(DATA_mgmdecathlon, 16), DATANUM(DATA_mgmdecathlon, 17),
-    DATANUM(DATA_mgmdecathlon, 18), DATANUM(DATA_mgmdecathlon, 19)
+    DATANUM(0x9e0000, 16), DATANUM(0x9e0000, 17),
+    DATANUM(0x9e0000, 18), DATANUM(0x9e0000, 19)
 };
 Vec lbl_1_data_61C[4] = { { -215.0f, 400.0f, -290.0f },
                           { -215.0f, 340.0f, -290.0f },
                           { -215.0f, 280.0f, -290.0f },
                           { -215.0f, 220.0f, -290.0f } };
 s32 lbl_1_data_64C[14] = {
-    DATANUM(DATA_mgmdecathlon, 20), DATANUM(DATA_mgmdecathlon, 21),
-    DATANUM(DATA_mgmdecathlon, 22), DATANUM(DATA_mgmdecathlon, 23),
-    DATANUM(DATA_mgmdecathlon, 24), DATANUM(DATA_mgmdecathlon, 25),
-    DATANUM(DATA_mgmdecathlon, 26), DATANUM(DATA_mgmdecathlon, 27),
-    DATANUM(DATA_mgmdecathlon, 28), DATANUM(DATA_mgmdecathlon, 29),
-    DATANUM(DATA_mgmdecathlon, 30), DATANUM(DATA_mgmdecathlon, 29),
-    DATANUM(DATA_mgmdecathlon, 29), DATANUM(DATA_mgmdecathlon, 29)
+    DATANUM(0x9e0000, 20), DATANUM(0x9e0000, 21),
+    DATANUM(0x9e0000, 22), DATANUM(0x9e0000, 23),
+    DATANUM(0x9e0000, 24), DATANUM(0x9e0000, 25),
+    DATANUM(0x9e0000, 26), DATANUM(0x9e0000, 27),
+    DATANUM(0x9e0000, 28), DATANUM(0x9e0000, 29),
+    DATANUM(0x9e0000, 30), DATANUM(0x9e0000, 29),
+    DATANUM(0x9e0000, 29), DATANUM(0x9e0000, 29)
 };
 DecathlonRankPosition lbl_1_data_684[4] = { { { -135.0f, 400.0f, -290.0f } },
                                             { { -135.0f, 340.0f, -290.0f } },
                                             { { -135.0f, 280.0f, -290.0f } },
                                             { { -135.0f, 220.0f, -290.0f } } };
 s32 lbl_1_data_6B4[10] = {
-    DATANUM(DATA_mgmdecathlon, 6), DATANUM(DATA_mgmdecathlon, 7),
-    DATANUM(DATA_mgmdecathlon, 8), DATANUM(DATA_mgmdecathlon, 9),
-    DATANUM(DATA_mgmdecathlon, 10), DATANUM(DATA_mgmdecathlon, 11),
-    DATANUM(DATA_mgmdecathlon, 12), DATANUM(DATA_mgmdecathlon, 13),
-    DATANUM(DATA_mgmdecathlon, 14), DATANUM(DATA_mgmdecathlon, 15)
+    DATANUM(0x9e0000, 6), DATANUM(0x9e0000, 7),
+    DATANUM(0x9e0000, 8), DATANUM(0x9e0000, 9),
+    DATANUM(0x9e0000, 10), DATANUM(0x9e0000, 11),
+    DATANUM(0x9e0000, 12), DATANUM(0x9e0000, 13),
+    DATANUM(0x9e0000, 14), DATANUM(0x9e0000, 15)
 };
 f32 lbl_1_data_6DC[5] = {-85.0f, -55.0f, -25.0f, 5.0f, 35.0f};
 f32 lbl_1_data_6F0[4] = {395.0f, 335.0f, 275.0f, 215.0f};
@@ -75,95 +75,95 @@ void fn_1_BC00(void) {
     s16 rowIndex;
     s16 modelIndex;
 
-    modelObject = omAddObjEx(lbl_1_bss_C0, 4352, 0, 0, -1, fn_1_C6C8);
+    modelObject = fn_8003AB38(lbl_1_bss_C0, 4352, 0, 0, -1, fn_1_C6C8);
     lbl_1_bss_B8 = modelObject;
-    modelObject->stat |= OM_STAT_MODELPAUSE;
+    modelObject->stat |= (1 << 8);
     modelObject->work[0] = modelObject->work[1] =
         modelObject->work[2] = modelObject->work[3] = 0;
-    modelObject->data = HuMemDirectMallocNum(HEAP_HEAP, 816, HU_MEMNUM_OVL);
+    modelObject->data = HuMemDirectMallocNum(HEAP_HEAP, 816, 0x10000000);
     memset(modelObject->data, 0, 816);
     modelGroups = modelObject->data;
 
     for (groupIndex = 0; groupIndex < 4; groupIndex++) {
         modelGroups[0].playerModels[groupIndex] =
-            Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_60C[groupIndex],
-                                                 HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(modelGroups[0].playerModels[groupIndex], 1);
-        Hu3DModelLayerSet(modelGroups[0].playerModels[groupIndex], 2);
+            fn_80025A04(fn_80008DD0(lbl_1_data_60C[groupIndex],
+                                                 0x10000000, 2));
+        fn_80026B64(modelGroups[0].playerModels[groupIndex], 1);
+        fn_80026B8C(modelGroups[0].playerModels[groupIndex], 2);
     }
 
     modelGroups[0].variantModel =
-        Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_64C[fn_1_9744(0)],
-                                             HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(modelGroups[0].variantModel, 1);
-    Hu3DModelLayerSet(modelGroups[0].variantModel, 2);
+        fn_80025A04(fn_80008DD0(lbl_1_data_64C[fn_1_9744(0)],
+                                             0x10000000, 2));
+    fn_80026B64(modelGroups[0].variantModel, 1);
+    fn_80026B8C(modelGroups[0].variantModel, 2);
 
     for (groupIndex = 0; groupIndex < 10; groupIndex++) {
         modelGroups[0].modeModels[0][groupIndex] =
-            Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_6B4[groupIndex],
-                                                 HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(modelGroups[0].modeModels[0][groupIndex], 1);
-        Hu3DModelLayerSet(modelGroups[0].modeModels[0][groupIndex], 2);
+            fn_80025A04(fn_80008DD0(lbl_1_data_6B4[groupIndex],
+                                                 0x10000000, 2));
+        fn_80026B64(modelGroups[0].modeModels[0][groupIndex], 1);
+        fn_80026B8C(modelGroups[0].modeModels[0][groupIndex], 2);
     }
 
     for (groupIndex = 1; groupIndex < 5; groupIndex++) {
         for (modelIndex = 0; modelIndex < 10; modelIndex++) {
             modelGroups[0].modeModels[groupIndex][modelIndex] =
-                Hu3DModelLink(modelGroups[0].modeModels[0][modelIndex]);
-            Hu3DModelCameraSet(modelGroups[0].modeModels[groupIndex][modelIndex], 1);
-            Hu3DModelLayerSet(modelGroups[0].modeModels[groupIndex][modelIndex], 2);
+                fn_80025D4C(modelGroups[0].modeModels[0][modelIndex]);
+            fn_80026B64(modelGroups[0].modeModels[groupIndex][modelIndex], 1);
+            fn_80026B8C(modelGroups[0].modeModels[groupIndex][modelIndex], 2);
         }
     }
 
     modelGroups[0].spotlightModel =
-        Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_5D8,
-                                             HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(modelGroups[0].spotlightModel, 1);
-    Hu3DModelLayerSet(modelGroups[0].spotlightModel, 2);
+        fn_80025A04(fn_80008DD0(lbl_1_data_5D8,
+                                             0x10000000, 2));
+    fn_80026B64(modelGroups[0].spotlightModel, 1);
+    fn_80026B8C(modelGroups[0].spotlightModel, 2);
 
     for (groupIndex = 0; groupIndex < 4; groupIndex++) {
         for (modelIndex = 0; modelIndex < 10; modelIndex++) {
             modelGroups[0].resultModels[groupIndex][modelIndex] =
-                Hu3DModelLink(modelGroups[0].modeModels[0][modelIndex]);
-            Hu3DModelCameraSet(modelGroups[0].resultModels[groupIndex][modelIndex], 1);
-            Hu3DModelLayerSet(modelGroups[0].resultModels[groupIndex][modelIndex], 2);
+                fn_80025D4C(modelGroups[0].modeModels[0][modelIndex]);
+            fn_80026B64(modelGroups[0].resultModels[groupIndex][modelIndex], 1);
+            fn_80026B8C(modelGroups[0].resultModels[groupIndex][modelIndex], 2);
         }
     }
 
     for (groupIndex = 1; groupIndex < 4; groupIndex++) {
         for (modelIndex = 0; modelIndex < 4; modelIndex++) {
             modelGroups[groupIndex].playerModels[modelIndex] =
-                Hu3DModelLink(modelGroups[0].playerModels[modelIndex]);
-            Hu3DModelCameraSet(modelGroups[groupIndex].playerModels[modelIndex], 1);
-            Hu3DModelLayerSet(modelGroups[groupIndex].playerModels[modelIndex], 2);
+                fn_80025D4C(modelGroups[0].playerModels[modelIndex]);
+            fn_80026B64(modelGroups[groupIndex].playerModels[modelIndex], 1);
+            fn_80026B8C(modelGroups[groupIndex].playerModels[modelIndex], 2);
         }
 
         modelGroups[groupIndex].variantModel =
-            Hu3DModelCreate(HuDataSelHeapReadNum(lbl_1_data_64C[fn_1_9744(groupIndex)],
-                                                 HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(modelGroups[groupIndex].variantModel, 1);
-        Hu3DModelLayerSet(modelGroups[groupIndex].variantModel, 2);
+            fn_80025A04(fn_80008DD0(lbl_1_data_64C[fn_1_9744(groupIndex)],
+                                                 0x10000000, 2));
+        fn_80026B64(modelGroups[groupIndex].variantModel, 1);
+        fn_80026B8C(modelGroups[groupIndex].variantModel, 2);
 
         for (modelIndex = 0; modelIndex < 5; modelIndex++) {
             for (rowIndex = 0; rowIndex < 10; rowIndex++) {
                 modelGroups[groupIndex].modeModels[modelIndex][rowIndex] =
-                    Hu3DModelLink(modelGroups[0].modeModels[0][rowIndex]);
-                Hu3DModelCameraSet(modelGroups[groupIndex].modeModels[modelIndex][rowIndex], 1);
-                Hu3DModelLayerSet(modelGroups[groupIndex].modeModels[modelIndex][rowIndex], 2);
+                    fn_80025D4C(modelGroups[0].modeModels[0][rowIndex]);
+                fn_80026B64(modelGroups[groupIndex].modeModels[modelIndex][rowIndex], 1);
+                fn_80026B8C(modelGroups[groupIndex].modeModels[modelIndex][rowIndex], 2);
             }
         }
 
         modelGroups[groupIndex].spotlightModel =
-            Hu3DModelLink(modelGroups[0].spotlightModel);
-        Hu3DModelCameraSet(modelGroups[groupIndex].spotlightModel, 1);
-        Hu3DModelLayerSet(modelGroups[groupIndex].spotlightModel, 2);
+            fn_80025D4C(modelGroups[0].spotlightModel);
+        fn_80026B64(modelGroups[groupIndex].spotlightModel, 1);
+        fn_80026B8C(modelGroups[groupIndex].spotlightModel, 2);
 
         for (modelIndex = 0; modelIndex < 4; modelIndex++) {
             for (rowIndex = 0; rowIndex < 10; rowIndex++) {
                 modelGroups[groupIndex].resultModels[modelIndex][rowIndex] =
-                    Hu3DModelLink(modelGroups[0].modeModels[0][rowIndex]);
-                Hu3DModelCameraSet(modelGroups[groupIndex].resultModels[modelIndex][rowIndex], 1);
-                Hu3DModelLayerSet(modelGroups[groupIndex].resultModels[modelIndex][rowIndex], 2);
+                    fn_80025D4C(modelGroups[0].modeModels[0][rowIndex]);
+                fn_80026B64(modelGroups[groupIndex].resultModels[modelIndex][rowIndex], 1);
+                fn_80026B8C(modelGroups[groupIndex].resultModels[modelIndex][rowIndex], 2);
             }
         }
     }
@@ -215,9 +215,9 @@ void fn_1_C344(s16 enabled) {
     players = lbl_1_bss_B8->data;
     for (index = 0; index < 4; index++) {
         if (enabled != 0) {
-            Hu3DModelAttrReset(players[index].modelId, HU3D_ATTR_DISPOFF);
+            fn_80026A44(players[index].modelId, (1 << 0));
         } else {
-            Hu3DModelAttrSet(players[index].modelId, HU3D_ATTR_DISPOFF);
+            fn_800269E8(players[index].modelId, (1 << 0));
         }
     }
 }
@@ -297,10 +297,10 @@ void fn_1_C5FC(void) {
 
     for (playerNo = 0; playerNo < 4; playerNo++) {
         if (results[playerNo].currentRank < results[playerNo].previousRank) {
-            omVibrate(playerNo, 20, 7, 3);
+            fn_8006A030(playerNo, 20, 7, 3);
         }
         if (results[playerNo].currentRank > results[playerNo].previousRank) {
-            omVibrate(playerNo, 20, 7, 3);
+            fn_8006A030(playerNo, 20, 7, 3);
         }
     }
 }
@@ -432,7 +432,7 @@ void fn_1_C6C8(OMOBJ *object) {
         for (playerNo = 0; playerNo < 4; playerNo++) {
             if (players[playerNo].targetRank != players[playerNo].currentRank) {
                 rankCount++;
-                Hu3DModelPosGet(players[playerNo].modelId, &position);
+                fn_800267CC(players[playerNo].modelId, &position);
                 if (players[playerNo].targetRank > players[playerNo].currentRank) {
                     if (object->work[playerNo] == 0) {
                         if ((30.0f + lbl_1_data_684[players[playerNo].currentRank].position.x) >
@@ -497,7 +497,7 @@ void fn_1_C6C8(OMOBJ *object) {
                         }
                     }
                 }
-                Hu3DModelPosSetV(players[playerNo].modelId, &position);
+                fn_80026790(players[playerNo].modelId, &position);
             }
         }
         if (rankCount == 0) {
@@ -585,27 +585,27 @@ void fn_1_D518(s16 playerNo, s16 positionNo) {
     playerModels[playerNo].rowOrder[0] = positionNo;
     playerModels[playerNo].rowOrder[1] = positionNo;
     for (group = 0; group < 4; group++) {
-        Hu3DModelPosSetV(playerModels[playerNo].startModels[group],
+        fn_80026790(playerModels[playerNo].startModels[group],
                          (HuVecF *)&lbl_1_data_61C[positionNo]);
     }
-    Hu3DModelPosSetV(playerModels[playerNo].transitionModel,
+    fn_80026790(playerModels[playerNo].transitionModel,
                      &lbl_1_data_684[positionNo].position);
     position.y = lbl_1_data_6F0[positionNo];
     position.z = lbl_1_data_700;
     for (group = 0; group < 5; group++) {
         position.x = lbl_1_data_6DC[group];
         for (model = 0; model < 10; model++) {
-            Hu3DModelPosSetV(playerModels[playerNo].groupedModels[group][model], &position);
+            fn_80026790(playerModels[playerNo].groupedModels[group][model], &position);
         }
     }
-    Hu3DModelPosSetV(playerModels[playerNo].resultModel,
+    fn_80026790(playerModels[playerNo].resultModel,
                      (HuVecF *)&lbl_1_data_5DC[positionNo]);
     position.y = lbl_1_data_714[positionNo];
     position.z = lbl_1_data_724;
     for (group = 0; group < 4; group++) {
         position.x = lbl_1_data_704[group];
         for (model = 0; model < 10; model++) {
-            Hu3DModelPosSetV(playerModels[playerNo].resultGroups[group][model], &position);
+            fn_80026790(playerModels[playerNo].resultGroups[group][model], &position);
         }
     }
 }
@@ -636,11 +636,11 @@ void fn_1_D788(s16 playerNo) {
     for (digitIndex = 0; digitIndex < 5; digitIndex++) {
         for (model = 0; model < 10; model++) {
             if (model == digits[digitIndex]) {
-                Hu3DModelAttrReset(playerModels[playerNo].groupedModels[digitIndex][model],
-                                   HU3D_ATTR_DISPOFF);
+                fn_80026A44(playerModels[playerNo].groupedModels[digitIndex][model],
+                                   (1 << 0));
             } else {
-                Hu3DModelAttrSet(playerModels[playerNo].groupedModels[digitIndex][model],
-                                 HU3D_ATTR_DISPOFF);
+                fn_800269E8(playerModels[playerNo].groupedModels[digitIndex][model],
+                                 (1 << 0));
             }
         }
     }
@@ -660,11 +660,11 @@ void fn_1_D788(s16 playerNo) {
     for (digitIndex = 0; digitIndex < 4; digitIndex++) {
         for (model = 0; model < 10; model++) {
             if (model == digits[digitIndex]) {
-                Hu3DModelAttrReset(playerModels[playerNo].resultGroups[digitIndex][model],
-                                   HU3D_ATTR_DISPOFF);
+                fn_80026A44(playerModels[playerNo].resultGroups[digitIndex][model],
+                                   (1 << 0));
             } else {
-                Hu3DModelAttrSet(playerModels[playerNo].resultGroups[digitIndex][model],
-                                 HU3D_ATTR_DISPOFF);
+                fn_800269E8(playerModels[playerNo].resultGroups[digitIndex][model],
+                                 (1 << 0));
             }
         }
     }
@@ -693,7 +693,7 @@ void fn_1_DAEC(s16 playerIndex) {
     players = lbl_1_bss_B8->data;
     for (row = 0; row < 4; row++) {
         for (column = 0; column < 10; column++) {
-            Hu3DModelAttrSet(players[playerIndex].models[row][column], HU3D_ATTR_DISPOFF);
+            fn_800269E8(players[playerIndex].models[row][column], (1 << 0));
         }
     }
 }
@@ -705,17 +705,17 @@ void fn_1_DB94(s16 playerNo) {
     s16 column;
 
     for (row = 0; row < 4; row++) {
-        Hu3DModelAttrSet(players[playerNo].models[row], HU3D_ATTR_DISPOFF);
+        fn_800269E8(players[playerNo].models[row], (1 << 0));
     }
     for (row = 0; row < 5; row++) {
         for (column = 0; column < 10; column++) {
-            Hu3DModelAttrSet(players[playerNo].bonusModels[row][column], HU3D_ATTR_DISPOFF);
+            fn_800269E8(players[playerNo].bonusModels[row][column], (1 << 0));
         }
     }
-    Hu3DModelAttrSet(players[playerNo].focusModel, HU3D_ATTR_DISPOFF);
+    fn_800269E8(players[playerNo].focusModel, (1 << 0));
     for (row = 0; row < 4; row++) {
         for (column = 0; column < 10; column++) {
-            Hu3DModelAttrSet(players[playerNo].resultsModels[row][column], HU3D_ATTR_DISPOFF);
+            fn_800269E8(players[playerNo].resultsModels[row][column], (1 << 0));
         }
     }
 }
@@ -744,11 +744,11 @@ void fn_1_DCF8(void) {
     fn_1_E058(playerOrder, scoreOrder);
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-            Hu3DModelAttrSet(players[playerOrder[playerIndex]].modelIds[modelIndex],
-                             HU3D_ATTR_DISPOFF);
+            fn_800269E8(players[playerOrder[playerIndex]].modelIds[modelIndex],
+                             (1 << 0));
         }
-        Hu3DModelAttrReset(players[playerOrder[playerIndex]].modelIds[scoreOrder[playerIndex]],
-                           HU3D_ATTR_DISPOFF);
+        fn_80026A44(players[playerOrder[playerIndex]].modelIds[scoreOrder[playerIndex]],
+                           (1 << 0));
         players[playerOrder[playerIndex]].previousRank =
             players[playerOrder[playerIndex]].currentRank;
         players[playerOrder[playerIndex]].currentRank = scoreOrder[playerIndex];
@@ -791,12 +791,12 @@ void fn_1_DE84(s16 playerNo) {
         }
     }
     for (index = 0; index < 4; index++) {
-        Hu3DModelAttrSet(players[playerOrder[selectedOrderIndex]].modelIds[index],
-                         HU3D_ATTR_DISPOFF);
+        fn_800269E8(players[playerOrder[selectedOrderIndex]].modelIds[index],
+                         (1 << 0));
     }
-    Hu3DModelAttrReset(
+    fn_80026A44(
         players[playerOrder[selectedOrderIndex]].modelIds[scoreOrder[selectedOrderIndex]],
-        HU3D_ATTR_DISPOFF);
+        (1 << 0));
     fn_1_D518(playerOrder[selectedOrderIndex], selectedOrderIndex);
 }
 
@@ -886,7 +886,7 @@ s32 fn_1_E23C(s16 eventNo, s16 playerNo) {
     if (eventNo >= 10) {
         return 0;
     }
-    storedScore = GwPlayer[playerNo].mgScore;
+    storedScore = lbl_80265750[playerNo].mgScore;
     playerScore = storedScore;
     band = award = 0;
     for (band = 0; band < 11 && lbl_1_data_744[eventNo][band].active != 0; band++) {
@@ -925,10 +925,10 @@ void fn_1_E64C(s16 eventNo, s16 playerNo) {
     s32 playerScore;
     s32 comparisonScore;
 
-    GwMgDecaScore[playerNo].mgScore[eventNo] = (u16)MgModeWorkInt[playerNo];
-    playerScore = GwPlayer[playerNo].mgScore;
+    lbl_802669DC[playerNo].mgScore[eventNo] = (u16)MgModeWorkInt[playerNo];
+    playerScore = lbl_80265750[playerNo].mgScore;
     comparisonScore = playerScore;
-    if (GwPlayerConf[playerNo].type == 0) {
+    if (lbl_80265728[playerNo].type == 0) {
         /* Events two and seven reward lower positive times; the other events reward higher
          * scores. */
         if (((eventNo == 2) || (eventNo == 7)) &&
@@ -948,9 +948,9 @@ void fn_1_E7A4(void) {
 
     playerNo = 0;
     while (playerNo < 4) {
-        GwMgDecaScore[playerNo].charNo = (s8)GwPlayerConf[playerNo].charNo;
-        GwMgDecaScore[playerNo].finalScore = (u16)MgModeScore[playerNo];
-        if (GwPlayerConf[playerNo].type == 0) {
+        lbl_802669DC[playerNo].charNo = (s8)lbl_80265728[playerNo].charNo;
+        lbl_802669DC[playerNo].finalScore = (u16)MgModeScore[playerNo];
+        if (lbl_80265728[playerNo].type == 0) {
             fn_1_E870(playerNo);
         }
         playerNo += 1;
@@ -963,30 +963,30 @@ void fn_1_E870(s16 playerNo) {
     GW_DECA_SCORE displacedScore;
     s16 index;
 
-    movingScore = GwMgDecaScore[playerNo];
-    for (index = 0; index < GW_DECA_SCORE_MAX; index++) {
+    movingScore = lbl_802669DC[playerNo];
+    for (index = 0; index < 10; index++) {
         if ((s8)movingScore.charNo < 0) {
             break;
         }
         /* New totals are placed before existing ties; an empty slot also accepts the entry. */
-        if ((s8)GwCommon.decaScore[index].charNo < 0 ||
-            GwCommon.decaScore[index].finalScore <= movingScore.finalScore) {
-            displacedScore = GwCommon.decaScore[index];
-            GwCommon.decaScore[index] = movingScore;
+        if ((s8)lbl_80265E30.decaScore[index].charNo < 0 ||
+            lbl_80265E30.decaScore[index].finalScore <= movingScore.finalScore) {
+            displacedScore = lbl_80265E30.decaScore[index];
+            lbl_80265E30.decaScore[index] = movingScore;
             movingScore = displacedScore;
         }
     }
-    for (index = 0; index < GW_DECA_SCORE_MAX; index++) {
+    for (index = 0; index < 10; index++) {
         if (index != 2 && index != 7 &&
-            (s32)GwCommon.decaMgRecord[index] < (s32)MgModeWorkInt[index + 4]) {
-            GwCommon.decaMgRecord[index] = (u16)MgModeWorkInt[index + 4];
+            (s32)lbl_80265E30.decaMgRecord[index] < (s32)MgModeWorkInt[index + 4]) {
+            lbl_80265E30.decaMgRecord[index] = (u16)MgModeWorkInt[index + 4];
         }
     }
-    for (index = 0; index < GW_DECA_SCORE_MAX; index++) {
+    for (index = 0; index < 10; index++) {
         if ((index == 2 || index == 7) &&
-            (s32)GwCommon.decaMgRecord[index] > (s32)MgModeWorkInt[index + 4] &&
+            (s32)lbl_80265E30.decaMgRecord[index] > (s32)MgModeWorkInt[index + 4] &&
             (s32)MgModeWorkInt[index + 4] > 0) {
-            GwCommon.decaMgRecord[index] = (u16)MgModeWorkInt[index + 4];
+            lbl_80265E30.decaMgRecord[index] = (u16)MgModeWorkInt[index + 4];
         }
     }
 }

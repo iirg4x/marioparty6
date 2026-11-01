@@ -2,7 +2,7 @@
 #define RESULT_FLOAT_SIGNLESS_MASK 0x7FFFFFFF
 #define RESULT_DISPLAY_LIST_CAPACITY 131072
 #define RESULT_DATA_ID_MASK 0xFFFF0000
-#define RESULT_DATA_ID_PATTERN DATANUM(DATA_result, 0)
+#define RESULT_DATA_ID_PATTERN DATANUM(0xc60000, 0)
 #define RESULT_PARTICLE_ORIENT_TO_WORLD_FLAG (1 << 4)
 #define RESULT_PARTICLE_ANIMATE_FLAG (1 << 3)
 #define RESULT_PARTICLE_LOOP_ANIMATION_FLAG (1 << 0)
@@ -30,7 +30,7 @@ extern ResultDrawSortEntry *lbl_1_bss_14A8;
 /* Allocates the model's vertex and texture coordinate buffers. */
 static inline void *ResultBufferAlloc(s32 size, u32 allocationNo)
 {
-    return HuMemDirectMallocNum(HEAP_MODEL, size, allocationNo);
+    return HuMemDirectMallocNum(2, size, allocationNo);
 }
 
 /* Makes a model-owned buffer visible to the graphics processor. */
@@ -38,7 +38,7 @@ static inline void *ResultDisplayListAlloc(s32 size, u32 allocationNo)
 {
     void *buffer;
 
-    buffer = HuMemDirectMallocNum(HEAP_MODEL, size, allocationNo);
+    buffer = HuMemDirectMallocNum(2, size, allocationNo);
     DCFlushRange(buffer, size);
     return buffer;
 }
@@ -330,13 +330,13 @@ extern u32 lbl_1_data_968[6];
 
 /* Allocates general-heap storage for result-screen work buffers. */
 void *fn_1_AB3C(s32 size) {
-    return HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+    return HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
 }
 
 /* Returns a model-heap buffer tagged with the supplied memory number. */
 void *fn_1_AB6C(s32 size, u32 allocationNo)
 {
-    return HuMemDirectMallocNum(HEAP_MODEL, size, allocationNo);
+    return HuMemDirectMallocNum(2, size, allocationNo);
 }
 
 /* Clears a model-owned result-effect buffer before it is used. */
@@ -344,7 +344,7 @@ void *fn_1_ABA0(s32 size, u32 allocationNo)
 {
     void *buffer;
 
-    buffer = HuMemDirectMallocNum(HEAP_MODEL, size, allocationNo);
+    buffer = HuMemDirectMallocNum(2, size, allocationNo);
     memset(buffer, 0, size);
     return buffer;
 }
@@ -361,7 +361,7 @@ void *fn_1_ABFC(s32 size, u32 allocationNo) {
 /* Initializes result-effect sorting storage when the results overlay starts. */
 void fn_1_AC54(void)
 {
-    void *buffer = HuMemDirectMallocNum(HEAP_HEAP, 16384, HU_MEMNUM_OVL);
+    void *buffer = HuMemDirectMallocNum(HEAP_HEAP, 16384, 0x10000000);
 
     lbl_1_bss_14A8 = buffer;
     lbl_1_bss_14AC = 0;
@@ -396,9 +396,9 @@ s16 fn_1_AD24(ANIMDATA *anim, s16 particleCount)
     f32 heightScale;
     s32 vertexIndex;
 
-    modelId = Hu3DHookFuncCreate(fn_1_B5D8);
-    Hu3DModelCameraSet(modelId, 1);
-    model = &Hu3DData[modelId];
+    modelId = fn_800260F4(fn_1_B5D8);
+    fn_80026B64(modelId, 1);
+    model = &lbl_802C01C8[modelId];
     model->hookData = renderer = fn_1_ABA0(sizeof(ResultParticleRenderer), model->mallocNo);
     renderer->anim = anim;
     anim->useNum++;
@@ -406,8 +406,8 @@ s16 fn_1_AD24(ANIMDATA *anim, s16 particleCount)
     renderer->blendMode = 0;
     renderer->prevCounter = -1;
     renderer->modelId = modelId;
-    bitmapFormat = renderer->anim->bmp->dataFmt & ANIM_BMP_FMTMASK;
-    if (bitmapFormat == ANIM_BMP_I8 || bitmapFormat == ANIM_BMP_I4) {
+    bitmapFormat = renderer->anim->bmp->dataFmt & 0xF;
+    if (bitmapFormat == 7 || bitmapFormat == 8) {
         renderer->colorInput[0] = GX_CC_ZERO;
         renderer->colorInput[1] = GX_CC_ONE;
         renderer->colorInput[2] = GX_CC_RASC;
@@ -476,11 +476,11 @@ s16 fn_1_AD24(ANIMDATA *anim, s16 particleCount)
 /* Releases a result particle model's animation and model-owned allocations. */
 void fn_1_B39C(s16 modelId)
 {
-    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
     ResultParticleRenderer *hookData = model->hookData;
 
     HuSprAnimKill(hookData->anim);
-    HuMemDirectFreeNum(HEAP_MODEL, model->mallocNo);
+    HuMemDirectFreeNum(2, model->mallocNo);
     model->hsf = NULL;
 }
 
@@ -621,7 +621,7 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
         PSMTXIdentity(inverse);
     }
     PSMTXReorder(inverse, reordered);
-    if (Hu3DPauseF == 0 || (model->attr & HU3D_ATTR_NOPAUSE) != 0) {
+    if (lbl_802C019E == 0 || (model->attr & (1 << 21)) != 0) {
         /* A recorded counter suppresses repeated hook calls; sprite animation below still advances
          * on every eligible draw. */
         if (renderer->hook && renderer->prevCounter != GlobalCounter) {
@@ -665,14 +665,14 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
             particle = &renderer->particles[lbl_1_bss_14A8[index].index];
             renderer->colors[index] = particle->color;
         }
-        if (particle->scale && (particle->cameraBit & Hu3DCameraBit) != 0 &&
+        if (particle->scale && (particle->cameraBit & lbl_802C01A4) != 0 &&
             particle->visible != 0) {
             if (orientToWorld == 0) {
                 if (0.0f == particle->rotationZ) {
                     corners = cameraCorners;
                 } else {
-                    sine = 0.5 * sin((M_PI * particle->rotationZ) / 180.0);
-                    cosine = 0.5 * cos((M_PI * particle->rotationZ) / 180.0);
+                    sine = 0.5 * sin((3.141592653589793 * particle->rotationZ) / 180.0);
+                    cosine = 0.5 * cos((3.141592653589793 * particle->rotationZ) / 180.0);
                     rotatingCorners = lbl_1_data_918;
                     rotatingCorners[0].x = rotatingCorners[3].y = -sine - cosine;
                     rotatingCorners[0].y = rotatingCorners[1].x = -sine + cosine;
@@ -685,7 +685,8 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
                 0.0f == particle->rotationZ) {
                 corners = lbl_1_data_8E8;
             } else {
-                mtxRot(rotation, particle->rotationX, particle->rotationY, particle->rotationZ);
+                fn_80022E38(rotation, particle->rotationX, particle->rotationY,
+                    particle->rotationZ);
                 PSMTXMultVecArray(rotation, lbl_1_data_8E8, rotatedCorners, 4);
                 corners = rotatedCorners;
             }
@@ -697,7 +698,7 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
         bank = &anim->bank[particle->animBank];
         frame = &bank->frame[particle->animNo];
         if ((renderer->attributes & 0x8) != 0 && particle->animStopped == 0 &&
-            (Hu3DPauseF == 0 || (model->attr & HU3D_ATTR_NOPAUSE) != 0)) {
+            (lbl_802C019E == 0 || (model->attr & (1 << 21)) != 0)) {
             for (animationStep = 0; animationStep < (s32)particle->animSpeed * minimumVcount;
                 animationStep++) {
                 particle->animTime += 1.0f;
@@ -777,14 +778,14 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
     GXSetArray(GX_VA_TEX0, renderer->textureCoords, sizeof(HuVec2f));
     GXSetCullMode(GX_CULL_NONE);
     GXLoadPosMtxImm(*matrix, 0);
-    if (shadowModelDrawF != 0) {
+    if (lbl_802C01B0 != 0) {
         GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ONE, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
         GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
     } else {
         GXSetTevColorIn(GX_TEVSTAGE0, renderer->colorInput[0], renderer->colorInput[1],
             renderer->colorInput[2], renderer->colorInput[3]);
         /* This renderer enables depth writes when the ZWRITE_OFF flag is set. */
-        if ((model->attr & HU3D_ATTR_ZWRITE_OFF) != 0) {
+        if ((model->attr & (1 << 1)) != 0) {
             GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
         } else {
             GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
@@ -793,21 +794,21 @@ void fn_1_B5D8(HU3D_MODEL *model, Mtx *matrix)
     GXSetTevColor(GX_TEVREG0, renderer->color0);
     GXSetTevColor(GX_TEVREG1, renderer->color1);
     switch (renderer->blendMode) {
-    case HU3D_PARTICLE_BLEND_NORMAL:
+    case 0:
         GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_NOOP);
         break;
-    case HU3D_PARTICLE_BLEND_ADDCOL:
+    case 1:
         GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE, GX_LO_NOOP);
         break;
-    case HU3D_PARTICLE_BLEND_INVCOL:
+    case 2:
         GXSetBlendMode(GX_BM_BLEND, GX_BL_ZERO, GX_BL_INVDSTCLR, GX_LO_NOOP);
         break;
     }
     HuSprTexLoad(renderer->anim, 0, 0, 0, 0, 1);
     GXCallDisplayList(renderer->displayList, renderer->displayListSize);
-    totalPolyCnt += renderer->particleCount;
-    if (shadowModelDrawF == 0) {
-        if ((renderer->attributes & 0x2) == 0 && Hu3DPauseF == 0) {
+    lbl_802C0128 += renderer->particleCount;
+    if (lbl_802C01B0 == 0) {
+        if ((renderer->attributes & 0x2) == 0 && lbl_802C019E == 0) {
             renderer->count++;
         }
         if (renderer->countLimit != 0 && renderer->countLimit <= renderer->count) {
@@ -827,7 +828,7 @@ void fn_1_C420(s16 modelId, s32 callback)
     HU3D_MODEL *model;
     ResultParticleRenderer *hookData;
 
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     hookData = model->hookData;
     hookData->callback = (void *)callback;
 }
@@ -839,7 +840,7 @@ s32 fn_1_C45C(s32 dataNum)
     s32 language;
     s32 languageIndex;
 
-    language = GwCommon.languageNo;
+    language = lbl_80265E30.languageNo;
     languageIndex = language;
     if (languageIndex < 0) {
         languageIndex = 0;

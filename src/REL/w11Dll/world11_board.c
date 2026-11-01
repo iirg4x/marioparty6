@@ -51,15 +51,15 @@ void mbObjectSetup(s32 boardNo, void (*init)(void), void (*close)(void));
 void fn_1_A0(void)
 {
     GWPartySet(FALSE);
-    _SetFlag(FLAG_BOARD_TUTORIAL);
-    GwSystem.turnMax = 20;
-    GwSystem.tagF = FALSE;
+    fn_8006A1C4(65550);
+    lbl_80265B70.turnMax = 20;
+    lbl_80265B70.tagF = FALSE;
     GWBonusStarSet(FALSE);
     GWMgInstDispSet(TRUE);
     GWMgComDispSet(TRUE);
-    GwSystem.mgPack = 0;
-    GWVibrateSet(GwCommon.vibrateF);
-    GWMessSpeedSet(GW_MESS_SPEED_NORMAL);
+    lbl_80265B70.mgPack = 0;
+    GWVibrateSet(lbl_80265E30.vibrateF);
+    GWMessSpeedSet(1);
     mbObjectSetup(10, fn_1_1F4, fn_1_510);
 }
 
@@ -75,7 +75,7 @@ extern MBMODELID lbl_1_bss_0, lbl_1_bss_2, lbl_1_bss_4;
 /* Asset setup tests whether the board is currently in its daytime state. */
 static inline BOOL MBTimeDayGet(void)
 {
-    return GwSystem.curTime == 0;
+    return lbl_80265B70.curTime == 0;
 }
 
 /* The board initializer loads the tutorial scene and installs its lighting and movement hooks. */
@@ -86,11 +86,11 @@ void fn_1_1F4(void)
     /* The board number is read even though this scene uses fixed tutorial assets. */
     boardNo = MBBoardNoGet();
     HuAudSndGrpSetSet(MSM_GRP_BRDTT);
-    mbObjDirSet(DATA_w11, DATA_w11);
-    mbMasuInit(MBTimeDayGet() ? DATA_w11 : DATA_w11);
+    mbObjDirSet(0xe50000, 0xe50000);
+    mbMasuInit(MBTimeDayGet() ? 0xe50000 : 0xe50000);
     /* Both time-of-day branches deliberately select the same tutorial archive. */
-    lbl_1_bss_4 = mbObjCreate(DATANUM((MBTimeDayGet() ? DATA_w11 : DATA_w11), 1), NULL, FALSE);
-    mbObjAttrSet(lbl_1_bss_4, HU3D_MOTATTR_LOOP);
+    lbl_1_bss_4 = mbObjCreate(DATANUM((MBTimeDayGet() ? 0xe50000 : 0xe50000), 1), NULL, FALSE);
+    mbObjAttrSet(lbl_1_bss_4, ((1 << 30) | (1 << 0)));
     mbObjPosSet(lbl_1_bss_4, 0.0f, 0.0f, 0.0f);
     mbObjCullRadiusSet(lbl_1_bss_4, -1.0f);
     mbScrollInit(0);
@@ -99,17 +99,17 @@ void fn_1_1F4(void)
     mbOpeningInstHookSet(NULL);
     mbOpeningStarInstHookSet(NULL);
     mbev_MasuMoveEndSet(fn_1_58C);
-    lbl_1_bss_2 = mbObjCreate(DATANUM((MBTimeDayGet() ? DATA_w11 : DATA_w11), 2), NULL, FALSE);
-    mbObjAttrSet(lbl_1_bss_2, HU3D_MOTATTR_PAUSE);
-    lbl_1_bss_0 = mbObjCreate(DATANUM((MBTimeDayGet() ? DATA_w11 : DATA_w11), 3), NULL, FALSE);
-    mbObjAttrSet(lbl_1_bss_0, HU3D_MOTATTR_LOOP | HU3D_MOTATTR_SHAPE_LOOP);
+    lbl_1_bss_2 = mbObjCreate(DATANUM((MBTimeDayGet() ? 0xe50000 : 0xe50000), 2), NULL, FALSE);
+    mbObjAttrSet(lbl_1_bss_2, ((1 << 30) | (1 << 1)));
+    lbl_1_bss_0 = mbObjCreate(DATANUM((MBTimeDayGet() ? 0xe50000 : 0xe50000), 3), NULL, FALSE);
+    mbObjAttrSet(lbl_1_bss_0, ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 6)));
     /* Hold the net at frame 20 until the fall scene starts its animation. */
     mbObjMotionTimeSet(lbl_1_bss_0, 20.0f);
     mbObjMotionShapeTimeSet(lbl_1_bss_0, 20.0f);
     mbObjMotionSpeedSet(lbl_1_bss_0, 0.0f);
     mbObjMotionShapeSpeedSet(lbl_1_bss_0, 0.0f);
-    HuDataDirClose(MBTimeDayGet() ? DATA_w11 : DATA_w11);
-    omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_550);
+    fn_800097F4(MBTimeDayGet() ? 0xe50000 : 0xe50000);
+    fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_550);
     fn_1_918();
 }
 
@@ -132,7 +132,7 @@ void fn_1_550(OMOBJ *boardObject)
 /* The board light hook imports the scenery's HSF lights as static global lights. */
 void fn_1_554(void)
 {
-    Hu3DModelLightInfoSet(mbObjModelIDGet(lbl_1_bss_4), TRUE);
+    fn_80029850(mbObjModelIDGet(lbl_1_bss_4), TRUE);
 }
 
 /* The board light reset hook leaves the tutorial's lighting unchanged. */
@@ -168,18 +168,18 @@ void fn_1_5DC(s32 playerNo, s16 spaceId)
     unusedEventState = 0;
 
     mbMoveNumDispSet(playerNo, FALSE);
-    fallMotions[0] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 23));
-    fallMotions[1] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 34));
-    mbPlayerMotionShiftSet(playerNo, fallMotions[0], 0.0f, 4.0f, HU3D_MOTATTR_LOOP);
+    fallMotions[0] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 23));
+    fallMotions[1] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 34));
+    mbPlayerMotionShiftSet(playerNo, fallMotions[0], 0.0f, 4.0f, ((1 << 30) | (1 << 0)));
     HuPrcSleep(120);
-    mbObjAttrReset(lbl_1_bss_2, HU3D_MOTATTR_PAUSE);
-    mbAudFXPlay(MSM_SE_BRDTT_FALL_PREPARE);
+    mbObjAttrReset(lbl_1_bss_2, ((1 << 30) | (1 << 1)));
+    mbAudFXPlay(1540);
     mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 4.0f, 0);
     HuPrcSleep(30);
     mbCameraFocusReset();
-    mbPlayerMotionShiftSet(playerNo, fallMotions[1], 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, fallMotions[1], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbPlayerColSnapPlayerSet(playerNo, FALSE);
-    mbAudFXPlay(MSM_SE_BRDTT_FALL_DROP);
+    mbAudFXPlay(1541);
     /* Disable collision snapping so the scripted downward acceleration can move the player. */
     fallVelocity.x = fallVelocity.z = 0.0f;
     fallVelocity.y = -6.66666698f;
@@ -218,7 +218,7 @@ void fn_1_5DC(s32 playerNo, s16 spaceId)
         currentShapeTime = mbObjMotionShapeTimeGet(lbl_1_bss_0);
         /* Play once each time the looping shape motion passes frame 2. */
         if (currentShapeTime > 2.0f && previousShapeTime <= 2.0f) {
-            mbAudFXPlay(MSM_SE_BRDTT_NET_START);
+            mbAudFXPlay(1539);
         }
         previousShapeTime = currentShapeTime;
         HuPrcVSleep();
@@ -273,30 +273,30 @@ void fn_1_984(void)
     mbWinInsertMesSet(windowId, (u32)"4", 1);
     mbTutorialWinKeyWait(windowId);
     mbTutorialCallWait(8);
-    mbPlayerMotIdleSet(GwSystem.turnPlayerNo);
+    mbPlayerMotIdleSet(lbl_80265B70.turnPlayerNo);
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 76));
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 77), DATANUM(DATA_btutorial, 12),
-             DATANUM(DATA_board, 132), 0);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 78), DATANUM(DATA_btutorial, 13),
-             DATANUM(DATA_board, 132), 1);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 79), DATANUM(DATA_btutorial, 7), DATANUM(DATA_board, 132),
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 77), DATANUM(0xb0000, 12),
+             DATANUM(0x50000, 132), 0);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 78), DATANUM(0xb0000, 13),
+             DATANUM(0x50000, 132), 1);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 79), DATANUM(0xb0000, 7), DATANUM(0x50000, 132),
              2);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 80), DATANUM(DATA_btutorial, 10),
-             DATANUM(DATA_board, 132), 3);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 80), DATANUM(0xb0000, 10),
+             DATANUM(0x50000, 132), 3);
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 86));
-    mbCameraMovePlayer(GwSystem.turnPlayerNo, NULL, NULL, 1600.0f, -1.0f, 12);
+    mbCameraMovePlayer(lbl_80265B70.turnPlayerNo, NULL, NULL, 1600.0f, -1.0f, 12);
     mbCameraMoveWait();
     mbTutorialTurnCall(5);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 87), DATANUM(DATA_btutorial, 11),
-             DATANUM(DATA_board, 132), 4);
-    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 81), DATANUM(DATA_btutorial, 6), DATANUM(DATA_board, 142),
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 87), DATANUM(0xb0000, 11),
+             DATANUM(0x50000, 132), 4);
+    fn_1_C00(MESSNUM(MESS_BOARD_TUTORIAL, 81), DATANUM(0xb0000, 6), DATANUM(0x50000, 142),
              0);
     mbTutorialCallWait(9);
-    mbPlayerMotIdleSet(GwSystem.turnPlayerNo);
-    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 84), DATANUM(DATA_btutorial, 2));
+    mbPlayerMotIdleSet(lbl_80265B70.turnPlayerNo);
+    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 84), DATANUM(0xb0000, 2));
     mbTutorialCallWait(9);
-    mbPlayerMotIdleSet(GwSystem.turnPlayerNo);
-    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 85), DATANUM(DATA_btutorial, 9));
+    mbPlayerMotIdleSet(lbl_80265B70.turnPlayerNo);
+    mbTutorialWinMesMasuExec(MESSNUM(MESS_BOARD_TUTORIAL, 85), DATANUM(0xb0000, 9));
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 88));
     mbTutorialWinMesExec(MESSNUM(MESS_BOARD_TUTORIAL, 89));
 }
@@ -311,7 +311,7 @@ void fn_1_C00(s32 message, s32 illustrationData, s32 iconData, s32 iconBank)
     f32 animationScale;
 
     mbTutorialCallWait(9);
-    mbPlayerMotIdleSet(GwSystem.turnPlayerNo);
+    mbPlayerMotIdleSet(lbl_80265B70.turnPlayerNo);
     windowId = mbTutorialWinCreate(message);
     illustrationSprite = mbTutorialSprDispOn(mbBoardDataNumGet(illustrationData));
     /* This first wait advances the window transition; its return value is unused. */
@@ -496,7 +496,7 @@ void fn_1_127C(float screenX, float screenY, float depth)
     guidePosition.z = depth;
     guideObject = mbTutorialGuideGet();
     guideModelId = mbGuideModelGet(guideObject);
-    mbNormPosto3D(&guidePosition, HU3D_CAM2, &guidePosition);
+    mbNormPosto3D(&guidePosition, (1 << 2), &guidePosition);
     mbObjPosSetV(guideModelId, &guidePosition);
 }
 

@@ -26,19 +26,19 @@ void fn_1_31E74(HU3D_MODEL *hookModel, Mtx *parentMatrix) {
     HSF_MATERIAL *material;
     s32 materialIndex;
 
-    Hu3DModelObjDrawInit();
-    model = &Hu3DData[lbl_1_bss_5D8.bodyModel];
+    fn_8002472C();
+    model = &lbl_802C01C8[lbl_1_bss_5D8.bodyModel];
     modelData = model->hsf;
-    object = Hu3DModelObjPtrGet(lbl_1_bss_5D8.bodyModel, lbl_1_data_E78);
+    object = fn_80026BF4(lbl_1_bss_5D8.bodyModel, lbl_1_data_E78);
     /* Each record supplies another transform for the shared piece geometry. */
     for (recordIndex = 0; recordIndex < 240; recordIndex += 1) {
         record = &lbl_1_bss_5E4[recordIndex];
         if (record->active != 0) {
-            mtxRot(matrix, record->rotation[0], record->rotation[1], record->rotation[2]);
+            fn_80022E38(matrix, record->rotation[0], record->rotation[1], record->rotation[2]);
             mtxTransCat(matrix, record->position[0], record->position[1], record->position[2]);
             mtxScaleCat(matrix, 1.5f, 1.5f, 1.5f);
             PSMTXConcat(*parentMatrix, matrix, matrix);
-            Hu3DModelObjPtrDraw(lbl_1_bss_5D8.bodyModel, object, matrix);
+            fn_80024850(lbl_1_bss_5D8.bodyModel, object, matrix);
             /* Material colors are updated after this piece has been submitted for drawing. */
             materialIndex = 0;
             material = modelData->material;
@@ -92,13 +92,13 @@ void fn_1_31FCC(void) {
 void fn_1_320F8(void) {
     s32 recordIndex;
 
-    lbl_1_bss_5D8.bodyModel = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_micquiz, 99), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_5D8.bodyModel, HU3D_CAM2);
-    Hu3DModelAttrSet(lbl_1_bss_5D8.bodyModel, HU3D_ATTR_DISPOFF);
-    lbl_1_bss_5D8.hookModel = Hu3DHookFuncCreate(fn_1_31E74);
-    Hu3DModelCameraSet(lbl_1_bss_5D8.hookModel, HU3D_CAM2);
-    Hu3DModelLayerSet(lbl_1_bss_5D8.hookModel, 1);
+    lbl_1_bss_5D8.bodyModel = fn_80025A04(
+        fn_80008DD0(DATANUM(0xa20000, 99), 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_5D8.bodyModel, (1 << 2));
+    fn_800269E8(lbl_1_bss_5D8.bodyModel, (1 << 0));
+    lbl_1_bss_5D8.hookModel = fn_800260F4(fn_1_31E74);
+    fn_80026B64(lbl_1_bss_5D8.hookModel, (1 << 2));
+    fn_80026B8C(lbl_1_bss_5D8.hookModel, 1);
     lbl_1_bss_5D8.floorHeight = 0.0f;
     lbl_1_bss_5D8.activeRecordCount = 0;
     recordIndex = 0;
@@ -111,8 +111,8 @@ void fn_1_320F8(void) {
 
 /* Release the piece model and its drawing hook when the scene is closed. */
 void fn_1_32214(void) {
-    Hu3DModelKill(lbl_1_bss_5D8.bodyModel);
-    Hu3DModelKill(lbl_1_bss_5D8.hookModel);
+    fn_800262D0(lbl_1_bss_5D8.bodyModel);
+    fn_800262D0(lbl_1_bss_5D8.hookModel);
 }
 
 /* Emit up to pieceCount falling pieces around a player during the results reaction. */

@@ -4,7 +4,7 @@
 #include "datadir_enum.h"
 
 enum {
-    INSTPIC_ANM_m601n = DATANUM(DATA_instpic, 0),
+    INSTPIC_ANM_m601n = DATANUM(0x280000, 0),
     INSTPIC_ANM_m601, //1
     INSTPIC_ANM_m602, //2
     INSTPIC_ANM_m603n, //3

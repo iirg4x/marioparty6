@@ -91,7 +91,7 @@ void _epilog(void) {
 void fn_1_A0(void) {
     extern void fn_1_4E4(s16 sequenceMode, s16 frameNo);
     extern void Hu3DBGColorSet(u8, u8, u8);
-    extern s32 HuDataSelHeapReadNum(s32, u32, s32);
+    extern s32 fn_80008DD0(s32, u32, s32);
     extern void fn_1_27E4(s32, s32);
     extern void fn_1_FA48(OMOBJMAN *);
     extern void fn_1_101B8(OMOBJMAN *);
@@ -110,17 +110,17 @@ void fn_1_A0(void) {
     for (setupStep = 0; setupStep < 4; setupStep++) {
         lbl_1_bss_1C[setupStep] = 0;
     }
-    lbl_1_bss_40 = omInitObjMan(120, 8192);
-    omGameSysInit(lbl_1_bss_40);
-    MgSeqCreate(&lbl_1_data_80);
-    MgSeqModeHookAdd(4, fn_1_4E4);
+    lbl_1_bss_40 = fn_8003A8BC(120, 8192);
+    fn_80069F1C(lbl_1_bss_40);
+    fn_80070788(&lbl_1_data_80);
+    fn_80071D20(4, fn_1_4E4);
     fn_1_F8C(lbl_1_bss_40);
     fn_1_1054(lbl_1_bss_40, &lbl_1_data_1C, &lbl_1_data_28, &lbl_1_data_34);
     Hu3DBGColorSet(0, 0, 0);
     fn_1_173C(lbl_1_bss_40, 1, 45.0f, 20.0f, 5000.0f,
               0.0f, &lbl_1_data_0);
     resourceNumber = fn_1_E18(0);
-    fn_1_27E4(1, HuDataSelHeapReadNum(resourceNumber, HU_MEMNUM_OVL, HEAP_MODEL));
+    fn_1_27E4(1, fn_80008DD0(resourceNumber, 0x10000000, 2));
     fn_1_2398(fn_1_B08);
     fn_1_3308(lbl_1_bss_40, lbl_1_data_38);
     fn_1_FA48(lbl_1_bss_40);
@@ -135,7 +135,7 @@ void fn_1_A0(void) {
 
 /* Advance the INIT sequence immediately; the shared callback guard always returns zero. */
 void fn_1_2D4(s16 sequenceMode, s16 frameNo) {
-    if (!fn_1_A68(sequenceMode, frameNo)) MgSeqModeNext();
+    if (!fn_1_A68(sequenceMode, frameNo)) fn_80071A9C();
 }
 
 /* Start the play sequence after its opening wait and start the stage audio once. */
@@ -155,7 +155,7 @@ void fn_1_310(s16 sequenceMode, s16 frameNo)
     case 0:
         lbl_1_bss_3C++;
         lbl_1_bss_38 = 0;
-        MgSeqModeChangeOff();
+        fn_80071B08();
         break;
     case 1:
         if (++lbl_1_bss_38 < 30 || fn_1_DB40() != 0) {
@@ -167,7 +167,7 @@ void fn_1_310(s16 sequenceMode, s16 frameNo)
         /* Continue the opening wait after triggering the camera transition. */
     case 2:
         if (++lbl_1_bss_38 >= 60) {
-            MgSeqModeNext();
+            fn_80071A9C();
         }
         break;
     }
@@ -197,7 +197,7 @@ void fn_1_520(s16 sequenceMode, s16 frameNo)
             lbl_1_bss_24 = 1;
         }
         if ((fn_1_8A44() == 0) || (fn_1_DF88() == 0)) {
-            MgSeqModeNext();
+            fn_80071A9C();
         }
     }
 }
@@ -235,7 +235,7 @@ void fn_1_62C(s16 sequenceMode, s16 frameNo)
     case 0:
         lbl_1_bss_3C++;
         lbl_1_bss_38 = 0;
-        MgSeqModeChangeOff();
+        fn_80071B08();
         /* Begin the outgoing results wipe. */
     case 1:
         lbl_1_bss_3C++;
@@ -266,7 +266,7 @@ void fn_1_62C(s16 sequenceMode, s16 frameNo)
     case 5:
         if (++lbl_1_bss_38 >= 6) {
             lbl_1_bss_3C++;
-            MgSeqModeNext();
+            fn_80071A9C();
         }
         break;
     case 6:
@@ -290,11 +290,11 @@ void fn_1_8A0(s16 sequenceMode, s16 frameNo) {
             s16 awardedBonus;
             s32 bonusBeforeAward;
 
-            bonusBeforeAward = GwPlayer[playerIndex].mgCoinBonus;
+            bonusBeforeAward = lbl_80265750[playerIndex].mgCoinBonus;
             awardedBonus = bonusBeforeAward + fn_1_100F8(playerIndex);
 
-            if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                GwPlayer[playerIndex].mgCoinBonus = awardedBonus;
+            if (fn_8006A124(65551) == 0) {
+                lbl_80265750[playerIndex].mgCoinBonus = awardedBonus;
             }
         }
         playerIndex++;
@@ -366,8 +366,8 @@ void fn_1_B08(OMOBJ *object, u32 camera, s32 transitionIndex)
         ++work->shadowInitialized;
         fn_1_21A8(work->cameras, &work->shadowDirection, &entry->target,
                   work->shadowFov, 1200.0f);
-        Hu3DShadowColSet(0, 0, 0);
-        Hu3DShadowMultiTPLvlSet(0.6f, (s16)camera);
+        fn_8002AAB4(0, 0, 0);
+        fn_8002A7D8(0.6f, (s16)camera);
     }
 
     switch (entry->phase) {
@@ -413,14 +413,14 @@ void fn_1_B08(OMOBJ *object, u32 camera, s32 transitionIndex)
 }
 
 /* Add the minigame archive base to a resource-entry index before loading the resource. */
-s32 fn_1_E18(s32 resourceIndex) { return resourceIndex + DATA_m674; }
+s32 fn_1_E18(s32 resourceIndex) { return resourceIndex + 0x850000; }
 
 /* Return whether the results wipe has reached the state used by the camera callback. */
 s32 fn_1_E20(void) { return lbl_1_bss_2C; }
 
 /* Query the active sequence timer and discard its returned value. */
 void fn_1_E30(void) {
-    MgSeqTimerValueGet();
+    fn_80071B58();
 }
 
 /* Return the character ID saved for this player, or -1 when they did not score. */

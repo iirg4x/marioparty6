@@ -254,10 +254,10 @@ static inline void m649_local_6E38_07120(OMOBJ *object, s32 index)
     param = &work->param->motions[index];
     model = object->mdlId[0];
     if (state->motion < 0 || (0.0) == param->blend) {
-        Hu3DMotionSet(model, motion);
-        Hu3DModelAttrSet(model, param->attr);
+        fn_8002C95C(model, motion);
+        fn_800269E8(model, param->attr);
     } else {
-        Hu3DMotionShiftSet(model, motion, (0.0f),
+        fn_8002CCC0(model, motion, (0.0f),
             (60.0f) * param->blend, param->attr);
     }
     state->motion = index;
@@ -273,8 +273,8 @@ static inline void m649_local_7120(OMOBJ *object)
     state = &work->state;
     model = object->mdlId[0];
     state->rotation.y = fmodf(state->rotation.y, 360.0f);
-    Hu3DModelPosSetV(model, &state->position);
-    Hu3DModelRotSetV(model, &state->rotation);
+    fn_80026790(model, &state->position);
+    fn_80026838(model, &state->rotation);
 }
 
 /* Checks whether the model's motion reached its endpoint with no transition pending. */
@@ -282,7 +282,7 @@ static inline BOOL m649_local_6F44_07120(OMOBJ *object)
 {
     s32 model;
     model = object->mdlId[0];
-    if (Hu3DMotionEndCheck(model) != 0 && Hu3DMotionShiftIDGet(model) < 0) {
+    if (fn_8002D75C(model) != 0 && fn_8002D3EC(model) < 0) {
         return TRUE;
     }
     return FALSE;
@@ -364,7 +364,7 @@ static inline OMOBJ *m649_local_6DB0_07DE8(s32 type, s32 id)
 static inline BOOL m649_local_6F44_08154(OMOBJ *object)
 {
     s32 model = object->mdlId[0];
-    if (Hu3DMotionEndCheck(model) && Hu3DMotionShiftIDGet(model) < 0) {
+    if (fn_8002D75C(model) && fn_8002D3EC(model) < 0) {
         return TRUE;
     }
     return FALSE;
@@ -424,10 +424,10 @@ void fn_1_6990(HUPROCESS *manager) {
         objectIndex += 1;
         objectSlot += 1;
     }
-    object = omAddObjEx(manager, 12, 0U, 0U, -1, fn_1_6A88);
+    object = fn_8003AB38(manager, 12, 0U, 0U, -1, fn_1_6A88);
     lbl_1_bss_59C = object;
     object->stat |= 0x100;
-    managerData = HuMemDirectMallocNum(HEAP_HEAP, 12, HU_MEMNUM_OVL);
+    managerData = HuMemDirectMallocNum(HEAP_HEAP, 12, 0x10000000);
     object->data = managerData;
     memset(managerData, 0, 12);
     (*(s32 *)((s8 *)(managerData) + (8))) = (s32)(frand() & 1);
@@ -464,9 +464,9 @@ void fn_1_6A9C(HUPROCESS *process, M649PropParam *param)
     s32 group;
     s32 resource;
     for (group = 0; group < param->count; group++) {
-        object = omAddObjEx(process, 12, 1, 2, 0, param->update);
+        object = fn_8003AB38(process, 12, 1, 2, 0, param->update);
         fn_1_6D5C(object);
-        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649PropWork), HU_MEMNUM_OVL);
+        work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649PropWork), 0x10000000);
         object->data = work;
         memset(work, 0, sizeof(M649PropWork));
         object->stat |= 0x100;
@@ -484,8 +484,8 @@ void fn_1_6A9C(HUPROCESS *process, M649PropParam *param)
             if (param->linkModel != 0) {
                 model = fn_1_48DC(fn_1_1210(param->modelResource));
             } else {
-                model = Hu3DModelCreate(HuDataSelHeapReadNum(fn_1_1210(param->modelResource),
-                                                             HU_MEMNUM_OVL, HEAP_MODEL));
+                model = fn_80025A04(fn_80008DD0(fn_1_1210(param->modelResource),
+                                                             0x10000000, 2));
             }
         } else {
             model = -1;
@@ -509,16 +509,16 @@ void fn_1_6A9C(HUPROCESS *process, M649PropParam *param)
         work->startPosition = state->position;
         state->rotation.y = param->rotationY;
         if (model >= 0) {
-            Hu3DModelPosSet(model, (0.0f), (0.0f), (0.0f));
-            Hu3DModelRotSet(model, (0.0f), (0.0f), (0.0f));
-            Hu3DModelLayerSet(model, param->layer);
-            Hu3DModelAttrSet(model, param->attr);
+            fn_80026760(model, (0.0f), (0.0f), (0.0f));
+            fn_80026808(model, (0.0f), (0.0f), (0.0f));
+            fn_80026B8C(model, param->layer);
+            fn_800269E8(model, param->attr);
             switch (param->shadow) {
             case 1:
-                Hu3DModelShadowSet(model);
+                fn_80026E44(model);
                 break;
             case 2:
-                Hu3DModelShadowMapSet(model);
+                fn_80026FFC(model);
                 break;
             }
         }
@@ -579,10 +579,10 @@ void fn_1_6E38(OMOBJ *object, s32 index)
     param = &work->param->motions[index];
     model = object->mdlId[0];
     if (state->motion < 0 || (0.0) == param->blend) {
-        Hu3DMotionSet(model, motion);
-        Hu3DModelAttrSet(model, param->attr);
+        fn_8002C95C(model, motion);
+        fn_800269E8(model, param->attr);
     } else {
-        Hu3DMotionShiftSet(model, motion, (0.0f),
+        fn_8002CCC0(model, motion, (0.0f),
             (60.0f) * param->blend, param->attr);
     }
     state->motion = index;
@@ -595,8 +595,8 @@ BOOL fn_1_6F44(OMOBJ *actor)
     s32 model_id;
 
     model_id = actor->mdlId[0];
-    if (Hu3DMotionEndCheck((HU3D_MODELID) model_id) != 0 &&
-        Hu3DMotionShiftIDGet((HU3D_MODELID) model_id) < 0) {
+    if (fn_8002D75C((HU3D_MODELID) model_id) != 0 &&
+        fn_8002D3EC((HU3D_MODELID) model_id) < 0) {
         return TRUE;
     }
     return FALSE;
@@ -614,7 +614,7 @@ BOOL fn_1_6FAC(s32 type, s32 id, char *name, Vec *position, Vec *rotation)
     if (object == NULL) { return FALSE; }
     work = object->data;
     model = object->mdlId[0];
-    part = Hu3DModelObjPtrGet(model, name);
+    part = fn_80026BF4(model, name);
     if (part != NULL) {
         position->x = part->mesh.curr.pos.x;
         position->y = part->mesh.curr.pos.y;
@@ -623,7 +623,7 @@ BOOL fn_1_6FAC(s32 type, s32 id, char *name, Vec *position, Vec *rotation)
         rotation->y = (90.0) + part->mesh.curr.rot.y;
         rotation->z = part->mesh.curr.rot.z;
     }
-    return !Hu3DMotionEndCheck(model);
+    return !fn_8002D75C(model);
 }
 
 void fn_1_70E8(OMOBJ *object) {
@@ -640,8 +640,8 @@ void fn_1_7120(OMOBJ *object)
     state = &work->state;
     model = object->mdlId[0];
     state->rotation.y = fmodf(state->rotation.y, 360.0f);
-    Hu3DModelPosSetV(model, &state->position);
-    Hu3DModelRotSetV(model, &state->rotation);
+    fn_80026790(model, &state->position);
+    fn_80026838(model, &state->rotation);
 }
 
 /* Clears completed motion state when no blend remains and advances the prop's update counter. */
@@ -653,7 +653,7 @@ void fn_1_71DC(OMOBJ *object)
     state = &work->state;
     if (state->motionActive) {
         model = object->mdlId[0];
-        if (Hu3DMotionEndCheck(model) && Hu3DMotionShiftIDGet(model) < 0) {
+        if (fn_8002D75C(model) && fn_8002D3EC(model) < 0) {
             done = 1;
         } else {
             done = 0;
@@ -704,7 +704,7 @@ void fn_1_7300(OMOBJ *object)
     work = object->data;
     id = work->id;
     group = (id >> 2) & 3;
-    motion = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649Motion), HU_MEMNUM_OVL);
+    motion = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M649Motion), 0x10000000);
     work->movement.motion = motion;
     memset(motion, 0, sizeof(M649Motion));
     if ((id & 1) == 0) {
@@ -802,11 +802,11 @@ void fn_1_76DC(OMOBJ *object)
         if (motion->timer == 0) {
             if (work->id == 0) {
                 if (scene->direction == 0) {
-                    work->leftSound = HuAudFXPlayPan(MSM_SE_M649_PROP_2026, 48);
-                    work->rightSound = HuAudFXPlayPan(MSM_SE_M649_PROP_2027, 80);
+                    work->leftSound = HuAudFXPlayPan(2026, 48);
+                    work->rightSound = HuAudFXPlayPan(2027, 80);
                 } else {
-                    work->leftSound = HuAudFXPlayPan(MSM_SE_M649_PROP_2027, 48);
-                    work->rightSound = HuAudFXPlayPan(MSM_SE_M649_PROP_2026, 80);
+                    work->leftSound = HuAudFXPlayPan(2027, 48);
+                    work->rightSound = HuAudFXPlayPan(2026, 80);
                 }
             }
             work->phase++;
@@ -819,7 +819,7 @@ void fn_1_76DC(OMOBJ *object)
         motion->speed += (0.05) * (motion->targetSpeed - motion->speed);
         motion->position += motion->speed;
     }
-    if (MgSeqModeGet() == 9 && work->id == 0) {
+    if (fn_80071A8C() == 9 && work->id == 0) {
         if (work->leftSound != -1) {
             HuAudFXFadeOut(work->leftSound, 1000);
             work->leftSound = -1;
@@ -947,11 +947,11 @@ void fn_1_7CA4(OMOBJ *object)
         motion = ownerWork->movement.motion;
         speed = motion->speed / (2.3583333333333334);
         if (speed >= (0.0)) {
-            Hu3DModelAttrReset(model, HU3D_MOTATTR_REV);
-            Hu3DMotionSpeedSet(model, speed);
+            fn_80026A44(model, ((1 << 30) | (1 << 2)));
+            fn_8002D86C(model, speed);
         } else {
-            Hu3DModelAttrSet(model, HU3D_MOTATTR_REV);
-            Hu3DMotionSpeedSet(model, -speed);
+            fn_800269E8(model, ((1 << 30) | (1 << 2)));
+            fn_8002D86C(model, -speed);
         }
     }
 }
@@ -988,8 +988,8 @@ void fn_1_7DE8(OMOBJ *object)
                     if (!(z < (-480.0) || z > (480.0))) {
                         prop = *slot++;
                         model = prop->mdlId[0];
-                        Hu3DModelAttrReset(model, 1);
-                        Hu3DModelPosSet(model, point->position.x, point->position.y, z);
+                        fn_80026A44(model, 1);
+                        fn_80026760(model, point->position.x, point->position.y, z);
                         if (++count >= 3) { break; }
                     }
                 }
@@ -997,7 +997,7 @@ void fn_1_7DE8(OMOBJ *object)
             for (; count < 3; count++) {
                 prop = *slot++;
                 model = prop->mdlId[0];
-                Hu3DModelAttrSet(model, 1);
+                fn_800269E8(model, 1);
             }
         }
     }
@@ -1010,8 +1010,8 @@ void fn_1_7FD4(OMOBJ *object)
     M649PropState *state = &work->state;
     s32 model = object->mdlId[0];
     state->camera = work->id / 3;
-    Hu3DModelCameraSet(model, fn_1_1218(state->camera));
-    Hu3DModelAttrSet(model, 1);
+    fn_80026B64(model, fn_1_1218(state->camera));
+    fn_800269E8(model, 1);
     if (work->param->type == 4) {
         lbl_1_bss_368[work->id] = object;
     } else {
@@ -1034,9 +1034,9 @@ void fn_1_80B4(OMOBJ *object)
     state = &work->state;
     model = object->mdlId[0];
     state->camera = work->id / 2;
-    Hu3DModelCameraSet(model, fn_1_1218(state->camera));
-    Hu3DModelAttrSet(model, 1);
-    Hu3DModelAttrSet(model, HU3D_MOTATTR_PAUSE);
+    fn_80026B64(model, fn_1_1218(state->camera));
+    fn_800269E8(model, 1);
+    fn_800269E8(model, ((1 << 30) | (1 << 1)));
     object->objFunc = fn_1_8154;
 }
 
@@ -1052,16 +1052,16 @@ void fn_1_8154(OMOBJ *object)
     case 0:
         break;
     case 1:
-        Hu3DModelAttrReset(model, 1);
-        Hu3DModelAttrReset(model, HU3D_MOTATTR_PAUSE);
-        Hu3DMotionTimeSet(model, (0.0f));
+        fn_80026A44(model, 1);
+        fn_80026A44(model, ((1 << 30) | (1 << 1)));
+        fn_8002D414(model, (0.0f));
         work->phase++;
     case 2:
         state->position.z -= *work->movement.speed;
-        Hu3DModelPosSetV(model, &state->position);
+        fn_80026790(model, &state->position);
         if (m649_local_6F44_08154(object)) {
-            Hu3DModelAttrSet(model, 1);
-            Hu3DModelAttrSet(model, HU3D_MOTATTR_PAUSE);
+            fn_800269E8(model, 1);
+            fn_800269E8(model, ((1 << 30) | (1 << 1)));
             work->phase = 0;
         }
         break;
@@ -1082,14 +1082,14 @@ void fn_1_8278(OMOBJ *object)
     model = object->mdlId[0];
     state->camera = work->id & 3;
     cameraMask = fn_1_1218(state->camera);
-    Hu3DModelCameraSet(model, cameraMask);
+    fn_80026B64(model, cameraMask);
     work->childModel = fn_1_48DC(fn_1_1210(14));
-    Hu3DModelCameraSet(work->childModel, cameraMask);
-    Hu3DModelLayerSet(work->childModel, 4);
-    Hu3DModelHookSet(model, "itemhook_L", work->childModel);
-    Hu3DModelPosSet(work->childModel, (0.0f), (25.0f), (0.0f));
-    Hu3DModelAttrSet(model, 1);
-    Hu3DModelAttrSet(model, HU3D_MOTATTR_PAUSE);
+    fn_80026B64(work->childModel, cameraMask);
+    fn_80026B8C(work->childModel, 4);
+    fn_8002741C(model, "itemhook_L", work->childModel);
+    fn_80026760(work->childModel, (0.0f), (25.0f), (0.0f));
+    fn_800269E8(model, 1);
+    fn_800269E8(model, ((1 << 30) | (1 << 1)));
     effect->active = 0;
     effect->camera = state->camera;
     effect->radius = (50.0f);
@@ -1152,8 +1152,8 @@ void fn_1_83BC(OMOBJ *object)
         state->rotation.y = (0.0f);
         path++;
         work->movement.path = path;
-        Hu3DModelAttrReset(model, 1);
-        Hu3DModelAttrReset(model, HU3D_MOTATTR_PAUSE);
+        fn_80026A44(model, 1);
+        fn_80026A44(model, ((1 << 30) | (1 << 1)));
         m649_local_6E38_07120(object, 1);
         work->effect.active = 1;
     case 3:
@@ -1177,8 +1177,8 @@ void fn_1_83BC(OMOBJ *object)
             work->movement.path = path;
         } else {
             work->phase = 1;
-            Hu3DModelAttrSet(model, 1);
-            Hu3DModelAttrSet(model, HU3D_MOTATTR_PAUSE);
+            fn_800269E8(model, 1);
+            fn_800269E8(model, ((1 << 30) | (1 << 1)));
             work->effect.active = 0;
         }
         break;
@@ -1191,9 +1191,9 @@ void fn_1_83BC(OMOBJ *object)
 }
 
 static const s32 lbl_1_rodata_2C8[4] = {
-    MSM_SE_M649_PROP_2018, MSM_SE_M649_PROP_2019, MSM_SE_M649_PROP_2020, MSM_SE_M649_PROP_2021};
+    2018, 2019, 2020, 2021};
 static const s32 lbl_1_rodata_2D8[4] = {
-    MSM_SE_M649_PROP_2022, MSM_SE_M649_PROP_2023, MSM_SE_M649_PROP_2024, MSM_SE_M649_PROP_2025};
+    2022, 2023, 2024, 2025};
 
 /* Called by a player stamp to add a marker, check its route lane, and award a hit point.
 * Clears startup delays on the found lanes; group 0 also releases every lane's startup wait. */

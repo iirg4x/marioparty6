@@ -40,16 +40,16 @@ void fn_1_F4(void);
 /* Creates the minigame actor manager and its continuously scheduled update process. */
 void ObjectSetup(void)
 {
-    lbl_1_bss_4 = MgActorObjectSetup();
-    HuPrcChildCreate(fn_1_F4, 100, M668_ACTOR_STACK_SIZE, 0, lbl_1_bss_4);
+    lbl_1_bss_4 = fn_80080418();
+    fn_8000DAC0(fn_1_F4, 100, M668_ACTOR_STACK_SIZE, 0, lbl_1_bss_4);
 }
 
 /* Starts Burnstile's sequence, then updates actors once per scheduler pass. */
 void fn_1_F4(void)
 {
-    MgSeqCreate(&lbl_1_data_0.param);
+    fn_80070788(&lbl_1_data_0.param);
     for (;;) {
-        MgActorExec();
+        fn_800856A8();
         HuPrcVSleep();
     }
 }
@@ -59,12 +59,12 @@ void fn_1_F4(void)
 extern void *lbl_1_bss_0;
 void fn_1_1A48(OMOBJ *obj);
 void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback);
-u32 MgSeqModeNext(void);
+u32 fn_80071A9C(void);
 /* Sequence initialization callback creates the stage object and requests the next phase. */
 void fn_1_118(s16 mode, s16 frameNo)
 {
     lbl_1_bss_0 = fn_1_178(100, 8, fn_1_1A48);
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 #include "dolphin/types.h"
@@ -85,9 +85,9 @@ void fn_1_174(s16 mode, s16 frameNo) {}
 void *fn_1_178(s32 priority, u32 dataSize, OMOBJ_FUNC callback)
 {
     OMOBJ *obj;
-    obj = omAddObjEx(lbl_1_bss_4, (s16)priority, 0, 0, 0, callback);
+    obj = fn_8003AB38(lbl_1_bss_4, (s16)priority, 0, 0, 0, callback);
     if (dataSize != 0) {
-        obj->data = HuMemDirectMallocNum(HEAP_HEAP, dataSize, HU_MEMNUM_OVL);
+        obj->data = HuMemDirectMallocNum(HEAP_HEAP, dataSize, 0x10000000);
         memset(obj->data, 0, dataSize);
     } else {
         obj->data = NULL;

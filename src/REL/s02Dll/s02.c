@@ -1,7 +1,7 @@
 /* S02 board overlay: scenery setup and special-space events. */
 
-#define Hu3DModelLightInfoSet Hu3DModelLightInfoSet_Header
-#define Hu3DModelObjMtxGet Hu3DModelObjMtxGet_Header
+#define fn_80029850 Hu3DModelLightInfoSet_Header
+#define fn_80023398 Hu3DModelObjMtxGet_Header
 
 #include "dolphin.h"
 #include "math.h"
@@ -19,8 +19,8 @@
 #include "game/data.h"
 #include "game/process.h"
 
-#undef Hu3DModelLightInfoSet
-#undef Hu3DModelObjMtxGet
+#undef fn_80029850
+#undef fn_80023398
 
 typedef void (*VoidFunc)(void);
 
@@ -123,8 +123,7 @@ void mbScrollInit(int dataNum);
 s16 mbObjCreate(int dataNum, const int *motDataNum, BOOL linkF);
 void mbObjAttrSet(s16 modelId, u32 attr);
 int mbObjModelIDGet(s16 modelId);
-void Hu3DModelLightInfoSet(int modelId, BOOL lightInfoF);
-void Hu3DModelObjMtxGet(int modelId, char *objName, Mtx mtx);
+void fn_80023398(int modelId, char *objName, Mtx mtx);
 void mbObjPosGet(s16 modelId, HuVecF *pos);
 void mbObjPosSet(s16 modelId, float x, float y, float z);
 void mbObjPosSetV(s16 modelId, const HuVecF *pos);
@@ -176,7 +175,7 @@ void _epilog(void)
 /* Selects the S02 board and registers its setup and close callbacks. */
 void S02OverlayInitialize(void)
 {
-    GwSystem.partyF = FALSE;
+    lbl_80265B70.partyF = FALSE;
     mbObjectSetup(7, fn_1_F4, S02ObjectClose);
 }
 
@@ -188,10 +187,10 @@ void fn_1_F4(void)
 
     boardNo[0] = MBBoardNoGet();
 
-    mbMasuInit(DATANUM(DATA_s02, 0));
-    modelId[0] = mbObjCreate(DATANUM(DATA_s02, 2), NULL, FALSE);
-    mbObjAttrSet(modelId[0], HU3D_MOTATTR_LOOP);
-    mbScrollInit(DATANUM(DATA_s02, 1));
+    mbMasuInit(DATANUM(0xc80000, 0));
+    modelId[0] = mbObjCreate(DATANUM(0xc80000, 2), NULL, FALSE);
+    mbObjAttrSet(modelId[0], ((1 << 30) | (1 << 0)));
+    mbScrollInit(DATANUM(0xc80000, 1));
     mbLightFuncSet(S02PrimaryModelLightInfoEnable, fn_1_4B0);
     mbPlayerTurnInitHookSet(fn_1_450);
     mbPlayerTurnCloseHookSet(S02PairModelsResetEvent);
@@ -200,12 +199,12 @@ void fn_1_F4(void)
     mbev_MasuHatenaSet(S02MasuAttr5Handler);
     mbMapCameraSet(NULL, &lbl_1_data_60, 9800.0f);
     mbMapHookSet(fn_1_4B4);
-    omAddObjEx(mbObjMan, S02_OBJECT_PRIORITY, 0, 0, -1, S02MapObjectScrollUpdate);
+    fn_8003AB38(mbObjMan, S02_OBJECT_PRIORITY, 0, 0, -1, S02MapObjectScrollUpdate);
     S02SceneModelsCreate();
     mbCameraNearFarSet(100.0f, 80000.0f);
     mbOpeningViewSet(&lbl_1_data_6C, &lbl_1_data_78, lbl_1_data_84);
     HuAudSndGrpSet(MSM_GRP_SBRD);
-    HuDataDirClose(DATANUM(DATA_s02, 0));
+    fn_800097F4(DATANUM(0xc80000, 0));
     (void)boardNo;
 }
 
@@ -280,7 +279,7 @@ void S02PrimaryModelLightInfoEnable(void)
 {
     s16 *modelId = &lbl_1_bss_0;
 
-    Hu3DModelLightInfoSet(mbObjModelIDGet(modelId[0]), TRUE);
+    fn_80029850(mbObjModelIDGet(modelId[0]), TRUE);
 }
 
 /* Board light reset callback; no additional reset is performed here. */
@@ -315,7 +314,7 @@ void fn_1_4B8(int playerNo, s16 id)
         motionId[i] = mbPlayerMotionCreate(playerNo, lbl_1_data_AC[i]);
     }
     mbMoveNumDispSet(playerNo, FALSE);
-    omVibrate((s16)playerNo, 20, 7, 3);
+    fn_8006A030((s16)playerNo, 20, 7, 3);
     mbPlayerMasuMove(playerNo, TRUE);
     mbPlayerRotateStart(playerNo, 0, 15);
     while (!mbPlayerRotateCheck(playerNo)) {
@@ -323,21 +322,21 @@ void fn_1_4B8(int playerNo, s16 id)
     }
     HuPrcSleep(30);
     mbPlayerMotionShiftSet(playerNo, motionId[0], 0.0f,
-        8.0f, HU3D_MOTATTR_LOOP);
+        8.0f, ((1 << 30) | (1 << 0)));
     mbCameraMovePlayer((s16)playerNo, &lbl_1_data_A0, NULL,
         2400.0f, -1.0f, 90);
     mbCameraMoveWait();
     mbObjMotionSpeedSet((s16)s02Work.effectModelId, 2.0f);
     HuPrcSleep(10);
     mbObjMotionSpeedSet((s16)s02Work.eventModelId, 1.5f);
-    sound = mbAudFXPlay(MSM_SE_SBRD_12);
-    omVibrate((s16)playerNo, 200, 4, 4);
+    sound = mbAudFXPlay(1553);
+    fn_8006A030((s16)playerNo, 200, 4, 4);
 
     while (mbObjMotionTimeGet((s16)s02Work.eventModelId)
         <= 500.0f) {
         if (mbObjMotionTimeGet((s16)s02Work.eventModelId)
             == 300.0f) {
-            omVibrate((s16)playerNo, 80, 7, 3);
+            fn_8006A030((s16)playerNo, 80, 7, 3);
         }
         if (mbObjMotionTimeGet((s16)s02Work.eventModelId)
             == 381.0f) {
@@ -346,23 +345,23 @@ void fn_1_4B8(int playerNo, s16 id)
                 HuPrcVSleep();
             }
             mbPlayerMotionShiftSet(playerNo, 9, 0.0f,
-                5.0f, HU3D_MOTATTR_NONE);
+                5.0f, 0);
             mbCameraFocusPlayerSet(-1);
         } else if (mbObjMotionTimeGet((s16)s02Work.eventModelId)
             == 420.0f) {
             mbWipeSpecialCreate(1, 6, 108);
             mbPlayerMotionShiftSet(playerNo, motionId[1], 0.0f,
-                8.0f, HU3D_MOTATTR_LOOP);
+                8.0f, ((1 << 30) | (1 << 0)));
             mbPlayerRotSet(playerNo, 45.0f, 180.0f,
                 0.0f);
             mbCameraShakeSet(18, 100.0f);
-            omVibrate((s16)playerNo, 20, 0, 0);
+            fn_8006A030((s16)playerNo, 20, 0, 0);
             mbMusFadeOutSpeed(0, 1000);
         } else if (mbObjMotionTimeGet((s16)s02Work.eventModelId)
             >= 420.0f) {
             objectModelId = mbObjModelIDGet((s16)s02Work.eventModelId);
 
-            Hu3DModelObjMtxGet(objectModelId, lbl_1_data_B4.hook, objectMtx);
+            fn_80023398(objectModelId, lbl_1_data_B4.hook, objectMtx);
             PSMTXTransApply(objectMtx, playerMtx, 0.0f,
                 -60.0f + (float)yOffset, 130.0f);
             mbPlayerPosSet(playerNo, playerMtx[0][3], playerMtx[1][3],
@@ -390,62 +389,62 @@ void S02SceneModelsCreate(void)
     s32 i;
 
     for (i = 0; i < 3; i++) {
-        modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 3) + i, NULL, FALSE);
+        modelId = (s16)mbObjCreate(DATANUM(0xc80000, 3) + i, NULL, FALSE);
         s02Work.modelId[i] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 1.0f);
-        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     }
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 11), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 11), NULL, FALSE);
     s02Work.loopingSceneModelA = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 12), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 12), NULL, FALSE);
     s02Work.eventModelId = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 13), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 13), NULL, FALSE);
     s02Work.loopingSceneModelB = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 14), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 14), NULL, FALSE);
     s02Work.modelId5C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 15), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 15), NULL, FALSE);
     s02Work.effectModelId = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjHookSet((s16)s02Work.modelId5C, lbl_1_data_244,
         (s16)s02Work.effectModelId);
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 16), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 16), NULL, FALSE);
     s02Work.modelId64 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 17), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 17), NULL, FALSE);
     s02Work.modelId18 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjDispSet(modelId, FALSE);
 
     for (i = 0; i < 12; i++) {
-        modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 18), NULL, TRUE);
+        modelId = (s16)mbObjCreate(DATANUM(0xc80000, 18), NULL, TRUE);
         s02Work.mapObjId[i] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 1.0f);
-        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
         pos = s02MapObjectInitialPositions[i];
         pos.x += 1500.0f;
         pos.z += 200.0f;
@@ -460,20 +459,20 @@ void S02SceneModelsCreate(void)
         + ((200.0f + s02MapObjectInitialPositions[0].z) - s02MapObjectInitialPositions[11].z))
         / 6000.0f;
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 19), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 19), NULL, FALSE);
     s02Work.modelId4C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 21), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 21), NULL, FALSE);
     s02Work.modelId58 = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
     for (i = 0; i < 2; i++) {
-        modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 22) + i, NULL, FALSE);
+        modelId = (s16)mbObjCreate(DATANUM(0xc80000, 22) + i, NULL, FALSE);
         s02Work.pair[i].modelId[0] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 0.0f);
@@ -484,9 +483,9 @@ void S02SceneModelsCreate(void)
         s02Work.pair[i].modelId[2] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 1.0f);
-        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 
-        modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 10), NULL, TRUE);
+        modelId = (s16)mbObjCreate(DATANUM(0xc80000, 10), NULL, TRUE);
         s02Work.pair[i].modelId[3] = modelId;
         mbObjMotionTimeSet(modelId, 0.0f);
         mbObjMotionSpeedSet(modelId, 0.0f);
@@ -494,16 +493,16 @@ void S02SceneModelsCreate(void)
             (s16)s02Work.pair[i].modelId[3]);
     }
 
-    modelId = (s16)mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_board, 91)), NULL, FALSE);
+    modelId = (s16)mbObjCreate(mbBoardDataNumGet(DATANUM(0x50000, 91)), NULL, FALSE);
     s02Work.modelId88 = modelId;
     mbObjPosSet(modelId, 0.0f, 0.0f, 0.0f);
     mbObjDispSet(modelId, FALSE);
 
-    modelId = (s16)mbObjCreate(DATANUM(DATA_s02, 6), NULL, FALSE);
+    modelId = (s16)mbObjCreate(DATANUM(0xc80000, 6), NULL, FALSE);
     s02Work.modelId8C = modelId;
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
 }
 
 /* Paired-space event: animate the selected route and move the player to its paired destination. */
@@ -544,18 +543,18 @@ void fn_1_1120(int playerNo, s16 id)
         playerMotion[i] = mbPlayerMotionCreate(playerNo,
             lbl_1_data_254[i]);
     }
-    anim = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_effect, 3), HU_MEMNUM_OVL));
+    anim = HuSprAnimRead(fn_80008634(DATANUM(0x210000, 3), 0x10000000));
     lbl_1_bss_10[0] = 0;
     mbPlayerRotateStart(playerNo, 0, 15);
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
     mbPlayerMotionShiftSet(playerNo, playerMotion[2], 0.0f,
-        8.0f, HU3D_MOTATTR_LOOP);
+        8.0f, ((1 << 30) | (1 << 0)));
     HuPrcSleep(30);
     mbObjMotionSpeedSet((s16)pairObj.modelId[0], 1.0f);
     mbPlayerMotionShiftSet(playerNo, 9, 0.0f,
-        8.0f, HU3D_MOTATTR_NONE);
+        8.0f, 0);
     while (!mbPlayerMotionEndCheck(playerNo)) {
         HuPrcVSleep();
     }
@@ -567,40 +566,40 @@ void fn_1_1120(int playerNo, s16 id)
 
     particleModel0 = mbParticleCreate(anim, 128);
     mbParticleHookSet(particleModel0, fn_1_1DC8);
-    Hu3DModelLayerSet(particleModel0, 5);
+    fn_80026B8C(particleModel0, 5);
     particlePos = lbl_1_data_260[cameraNo];
     particlePos.y += 50.0f;
-    Hu3DModelPosSetV(particleModel0, &particlePos);
+    fn_80026790(particleModel0, &particlePos);
     lbl_1_bss_10[0] = 1;
     mbPlayerMotionShiftSet(playerNo, 1, 0.0f,
-        8.0f, HU3D_MOTATTR_LOOP);
+        8.0f, ((1 << 30) | (1 << 0)));
     mbPlayerDispSet(playerNo, FALSE);
     mbObjMotionSpeedSet((s16)pairObj.modelId[3], 1.0f);
     mbCameraShakeSet(66, 50.0f);
-    omVibrate((s16)playerNo, 90, 4, 4);
-    mbAudFXPlay(MSM_SE_SBRD_11);
+    fn_8006A030((s16)playerNo, 90, 4, 4);
+    mbAudFXPlay(1552);
     HuPrcSleep(6);
 
     particleModel1 = mbParticleCreate(anim, 128);
     mbParticleHookSet(particleModel1, fn_1_1DC8);
-    Hu3DModelLayerSet(particleModel1, 5);
-    Hu3DModelPosSetV(particleModel1, &particlePos);
+    fn_80026B8C(particleModel1, 5);
+    fn_80026790(particleModel1, &particlePos);
     HuPrcSleep(60);
     rise.x = rise.y = rise.z = 0.0f;
     mbObjPosGet((s16)pairObj.modelId[0], &objectPos);
-    omVibrate((s16)playerNo, 90, 7, 3);
+    fn_8006A030((s16)playerNo, 90, 7, 3);
     for (i = 0; (u32)i < 120; i++) {
         if (mbObjMotionEndCheck((s16)pairObj.modelId[3])) {
             mbObjMotionTimeSet((s16)pairObj.modelId[3], 120.0f);
             mbObjMotionStartEndSet((s16)pairObj.modelId[3], 120, 150);
             pairEffect = (s16)pairObj.modelId[3];
-            mbObjAttrSet(pairEffect, HU3D_MOTATTR_LOOP);
+            mbObjAttrSet(pairEffect, ((1 << 30) | (1 << 0)));
         }
         rise.y += -16.333334f;
         objectPos.y -= 0.016666668f * rise.y;
         mbObjPosSetV((s16)pairObj.modelId[0], &objectPos);
-        Hu3DModelPosSetV(particleModel0, &particlePos);
-        Hu3DModelPosSetV(particleModel1, &particlePos);
+        fn_80026790(particleModel0, &particlePos);
+        fn_80026790(particleModel1, &particlePos);
         if ((u32)i == 60) {
             lbl_1_bss_10[0] = 0;
         }
@@ -611,8 +610,8 @@ void fn_1_1120(int playerNo, s16 id)
         -1.0f, 60);
     mbCameraMoveWait();
     mbMasuPosGet(targetMasu, &masuPos);
-    GwPlayer[playerNo].masuIdPrev = id;
-    GwPlayer[playerNo].masuId = targetMasu;
+    lbl_80265750[playerNo].masuIdPrev = id;
+    lbl_80265750[playerNo].masuId = targetMasu;
     mbPlayerPosSetV(playerNo, &masuPos);
     mbPlayerRotYSet(playerNo, 0.0f);
     particlePos = masuPos;
@@ -631,25 +630,25 @@ void fn_1_1120(int playerNo, s16 id)
         float ratio;
 
         if ((u32)i == 27) {
-            omVibrate((s16)playerNo, 30, 20, 0);
+            fn_8006A030((s16)playerNo, 30, 20, 0);
         }
         ratio = (float)i / 42.0f;
         mbObjPosSet((s16)pairObj.modelId[0],
             particlePos.x + delta.x
-                * sin((M_PI * (90.0f * ratio))
+                * sin((3.141592653589793 * (90.0f * ratio))
                     / 180.0),
             particlePos.y + delta.y
-                * sin((M_PI * (90.0f * ratio))
+                * sin((3.141592653589793 * (90.0f * ratio))
                     / 180.0),
             particlePos.z + delta.z
-                * sin((M_PI * (90.0f * ratio))
+                * sin((3.141592653589793 * (90.0f * ratio))
                     / 180.0));
         HuPrcVSleep();
     }
     mbObjDispSet((s16)pairObj.modelId[0], FALSE);
     mbPlayerDispSet(playerNo, TRUE);
     mbPlayerMotionShiftSet(playerNo, 6, 0.0f,
-        1.0f, HU3D_MOTATTR_LOOP);
+        1.0f, ((1 << 30) | (1 << 0)));
 
     pos2D.x = 288.0f;
     pos2D.y = 240.0f;
@@ -663,7 +662,7 @@ void fn_1_1120(int playerNo, s16 id)
     mbObjPosSetV((s16)s02Work.modelId88, &pos3D);
     mbObjAlphaSet((s16)s02Work.modelId88, 255);
     mbObjDispSet((s16)s02Work.modelId88, TRUE);
-    mbAudFXPlay(MSM_SE_BRD00_109);
+    mbAudFXPlay(1113);
     mbCameraShakeSet(30, 30.000002f);
     for (i = 0; i < 30; i++) {
         float ratio;
@@ -671,7 +670,7 @@ void fn_1_1120(int playerNo, s16 id)
         ratio = (float)i / 30.0f;
         scale = 1.0f + 5.0f * ratio
             + 0.5
-                * sin((M_PI
+                * sin((3.141592653589793
                     * (16.0f * (360.0f * ratio)))
                     / 180.0);
         scale *= 0.4f;
@@ -679,7 +678,7 @@ void fn_1_1120(int playerNo, s16 id)
         if (i >= 25) {
             mbObjAlphaSet((s16)s02Work.modelId88,
                 (u8)(255.0
-                    * cos(M_PI
+                    * cos(3.141592653589793
                         * (90.0f * ((float)(i - 25)
                             / 5.0f)) / 180.0)));
         }
@@ -694,7 +693,7 @@ void fn_1_1120(int playerNo, s16 id)
     mbMasuDispMAttrReset(mAttr);
     mbParticleKill(particleModel0);
     mbParticleKill(particleModel1);
-    HuDataDirClose(DATA_effect);
+    fn_800097F4(0x210000);
     mbWipeFadeOut();
 }
 
@@ -744,16 +743,16 @@ void fn_1_1DC8(HU3D_MODEL *modelP, MBPARTICLE *particleP, Mtx mtx)
             angle = 360.0f * frandf();
             radius = 100.0f * frandf();
             data->pos.x = radius * cos(
-                M_PI * (double)angle / 180.0);
+                3.141592653589793 * (double)angle / 180.0);
             data->pos.y = 0.0f;
             data->pos.z = radius * sin(
-                M_PI * (double)angle / 180.0);
+                3.141592653589793 * (double)angle / 180.0);
             data->vel.x = 100.0 * (10.0
-                * cos(M_PI * (double)angle
+                * cos(3.141592653589793 * (double)angle
                     / 180.0));
             data->vel.y = 0.0f;
             data->vel.z = 100.0 * (10.0
-                * sin(M_PI * (double)angle
+                * sin(3.141592653589793 * (double)angle
                     / 180.0));
             data->scale = 100.0f
                 + 20.0f * frandf();
@@ -841,10 +840,10 @@ s32 lbl_1_data_AC[2] = {
 };
 S02DataB4 lbl_1_data_B4 = {
     "itemhook_8",
-    { DATANUM(DATA_s02, 6), DATANUM(DATA_s02, 8) }
+    { DATANUM(0xc80000, 6), DATANUM(0xc80000, 8) }
 };
 S02DataC8 lbl_1_data_C8 = {
-    { DATANUM(DATA_s02, 7), DATANUM(DATA_s02, 9) },
+    { DATANUM(0xc80000, 7), DATANUM(0xc80000, 9) },
     {
         { -230.0f, 100.0f, -800.0f },
         { 990.0f, 100.0f, 2860.0f }

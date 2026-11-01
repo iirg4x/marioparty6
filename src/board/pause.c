@@ -47,10 +47,10 @@ double cos(double);
 /* Keeps the saved minigame pack selection in range before pause settings are stored. */
 static inline s32 GWMgPackGet(void)
 {
-    if(GwSystem.mgPack >= 5) {
-        GwSystem.mgPack = 0;
+    if(lbl_80265B70.mgPack >= 5) {
+        lbl_80265B70.mgPack = 0;
     }
-    return GwSystem.mgPack;
+    return lbl_80265B70.mgPack;
 }
 
 /* board externs not yet in headers */
@@ -151,10 +151,10 @@ void mbPauseInit(void)
 /* Starts the pause process for the player whose Start press opened the menu. */
 void mbPauseCreate(int playerNo)
 {
-    pauseProc = HuPrcChildCreate(PauseMain, 0x2012, 0x3800, 0, mbMainProc);
+    pauseProc = fn_8000DAC0(PauseMain, 0x2012, 0x3800, 0, mbMainProc);
     HuPrcDestructorSet2(pauseProc, PauseDestroy);
     pausePlayer = playerNo;
-    HuPrcSetStat(pauseProc, HU_PRC_STAT_PAUSE_ON|HU_PRC_STAT_UPAUSE_ON);
+    HuPrcSetStat(pauseProc, 0x4|0x8);
     mbPauseSet(TRUE);
 }
 
@@ -162,7 +162,7 @@ void mbPauseCreate(int playerNo)
 int mbPauseStartCheck(void)
 {
     int i;
-    if(omUPauseFlag) {
+    if(lbl_802C0234) {
         return -1;
     }
     if(mbPauseProcCheck()) {
@@ -171,7 +171,7 @@ int mbPauseStartCheck(void)
     if(mbPauseDisableGet()) {
         return -1;
     }
-    if(_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if(fn_8006A124(65550)) {
         return -1;
     }
     if(!mbEffFadeCheck()) {
@@ -183,11 +183,11 @@ int mbPauseStartCheck(void)
     if(mbWipeSpecialStatGet()) {
         return -1;
     }
-    for(i=0; i<GW_PLAYER_MAX; i++) {
-        int padNo = GwPlayer[i].padNo;
+    for(i=0; i<4; i++) {
+        int padNo = lbl_80265750[i].padNo;
         if(HuPadStatGet(padNo) == 0) {
-            if ((GWPartyGet() != FALSE || GwPlayer[i].comF == FALSE) &&
-                (HuPadBtnDown[padNo] & PAD_BUTTON_START)) {
+            if ((GWPartyGet() != FALSE || lbl_80265750[i].comF == FALSE) &&
+                (lbl_802C0008[padNo] & PAD_BUTTON_START)) {
                 return i;
             }
         }
@@ -205,16 +205,16 @@ BOOL mbPauseProcCheck(void)
 void mbPauseDisableSet(BOOL disableF)
 {
     if(disableF) {
-        _SetFlag(FLAGNUM(FLAG_GROUP_COMMON, 31));
+        fn_8006A1C4(65567);
     } else {
-        _ClearFlag(FLAGNUM(FLAG_GROUP_COMMON, 31));
+        fn_8006A268(65567);
     }
 }
 
 /* Returns whether board flow currently forbids opening the pause menu. */
 BOOL mbPauseDisableGet(void)
 {
-    return (_CheckFlag(FLAGNUM(FLAG_GROUP_COMMON, 31))) ? TRUE : FALSE;
+    return (fn_8006A124(65567)) ? TRUE : FALSE;
 }
 
 /* Registers a callback to pause or resume a board subsystem with the menu. */
@@ -254,20 +254,20 @@ static void PauseMain(void)
     int boardNo;
     int partyF;
     static const u32 logoFileTbl[] = {
-        DATANUM(DATA_board, 68), DATANUM(DATA_board, 69),
-        DATANUM(DATA_board, 70), DATANUM(DATA_board, 71),
-        DATANUM(DATA_board, 72), DATANUM(DATA_board, 73),
-        DATANUM(DATA_board, 76), DATANUM(DATA_board, 75),
-        DATANUM(DATA_board, 74), DATANUM(DATA_board, 68),
-        DATANUM(DATA_board, 0x44),
+        DATANUM(0x50000, 68), DATANUM(0x50000, 69),
+        DATANUM(0x50000, 70), DATANUM(0x50000, 71),
+        DATANUM(0x50000, 72), DATANUM(0x50000, 73),
+        DATANUM(0x50000, 76), DATANUM(0x50000, 75),
+        DATANUM(0x50000, 74), DATANUM(0x50000, 68),
+        DATANUM(0x50000, 0x44),
     };
-    HuMemHeapDump(HuMemHeapPtrGet(HEAP_DVD), -1);
+    fn_8000BFB4(fn_8000B7A8(3), -1);
     pauseGuideObj = NULL;
-    boardNo = GwSystem.boardNo;
+    boardNo = lbl_80265B70.boardNo;
     work->sprId[0] = espEntry(mbBoardDataNumGet(logoFileTbl[boardNo]), 100, 0);
     espDispOff(work->sprId[0]);
     work->telopId = -1;
-    partyF = GwSystem.partyF;
+    partyF = lbl_80265B70.partyF;
     if(partyF) {
         work->telopId = mbTelopTimeSprCreate();
         mbTelopTimeSprRotSet(work->telopId, 0.0f);
@@ -275,15 +275,15 @@ static void PauseMain(void)
         HuSprGrpPosSet(work->telopId, 288.0f * 0.35f, 216.0f);
         HuSprGrpScaleSet(work->telopId, 0.65f, 0.65f);
     }
-    HuDataDirClose(mbBoardDataNumGet(DATA_board));
-    bgHandle = mbBGRead(mbBoardDataNumGet(DATA_bpause6));
+    fn_800097F4(mbBoardDataNumGet(0x50000));
+    bgHandle = mbBGRead(mbBoardDataNumGet(0x80000));
     mbEffFadeCreate(30, 160);
     for(i=0; i<pauseHookNum; i++) {
         if(pauseHook[i] != NULL) {
             pauseHook[i](FALSE);
         }
     }
-    HuPadRumbleAllStop();
+    fn_80006F3C();
     HuPrcSleep(1);
     mbAudFXPlay(5);
     while(!mbEffFadeDoneCheck()) {
@@ -311,13 +311,13 @@ static void PauseMain(void)
         work->telopId = -1;
     }
     mbPauseGuideKill();
-    HuDataDirClose(mbBoardDataNumGet(DATA_bpause6));
+    fn_800097F4(mbBoardDataNumGet(0x80000));
     mbPauseDispCopyKill();
     if(cancelF) {
         mbExitReq();
         HuPrcSleep(-1);
     }
-    bgHandle = mbBGRead(mbBoardDataNumGet(DATA_board));
+    bgHandle = mbBGRead(mbBoardDataNumGet(0x50000));
     mbEffFadeOutSet(30);
     HuPrcSleep(30);
     mbBGReadWait(bgHandle);
@@ -338,22 +338,22 @@ static void PauseDestroy(void)
         mbPauseSet(FALSE);
     }
     if(GWMgInstDispGet()) {
-        _SetFlag(FLAGNUM(FLAG_GROUP_SAVE, 5));
+        fn_8006A1C4(5);
     } else {
-        _ClearFlag(FLAGNUM(FLAG_GROUP_SAVE, 5));
+        fn_8006A268(5);
     }
     if(GWPartyGet() == FALSE) {
-        GwCommon.storyMgInstDispF = GWMgInstDispGet();
-        GwCommon.storyMgComDispF = GWMgComDispGet();
-        GwCommon.storyMgPack = GWMgPackGet();
-        GwCommon.storyMessSpeed = GWMessSpeedGet();
-        GwCommon.storySaveMode = GWSaveModeGet();
+        lbl_80265E30.storyMgInstDispF = GWMgInstDispGet();
+        lbl_80265E30.storyMgComDispF = GWMgComDispGet();
+        lbl_80265E30.storyMgPack = GWMgPackGet();
+        lbl_80265E30.storyMessSpeed = GWMessSpeedGet();
+        lbl_80265E30.storySaveMode = GWSaveModeGet();
     } else {
-        GwCommon.partyMgInstDispF = GWMgInstDispGet();
-        GwCommon.partyMgComDispF = GWMgComDispGet();
-        GwCommon.partyMgPack = GWMgPackGet();
-        GwCommon.partyMessSpeed = GWMessSpeedGet();
-        GwCommon.partySaveMode = GWSaveModeGet();
+        lbl_80265E30.partyMgInstDispF = GWMgInstDispGet();
+        lbl_80265E30.partyMgComDispF = GWMgComDispGet();
+        lbl_80265E30.partyMgPack = GWMgPackGet();
+        lbl_80265E30.partyMessSpeed = GWMessSpeedGet();
+        lbl_80265E30.partySaveMode = GWSaveModeGet();
     }
     pausePlayer = -1;
     pauseProc = NULL;
@@ -380,7 +380,7 @@ static void PauseScreenCreate(PAUSEWORK *work)
     static const int anmNoTbl[] = { 2, 0, 1 };
     static HuVecF guidePos = { -0.65f, -0.75f, -750.0f };
 
-    partyF = GwSystem.partyF;
+    partyF = lbl_80265B70.partyF;
     if(!partyF) {
         PauseScreenSingleCreate(work);
         return;
@@ -389,9 +389,9 @@ static void PauseScreenCreate(PAUSEWORK *work)
     espDispOn(work->sprId[0]);
     espAttrSet(work->sprId[0], HUSPR_ATTR_LINEAR);
     espPosSet(work->sprId[0], 288.0f, 128.0f);
-    work->panelId = mbPausePanelCreate(mbBoardDataNumGet(DATA_bpause6), 0);
+    work->panelId = mbPausePanelCreate(mbBoardDataNumGet(0x80000), 0);
     mbPausePanelPosSet((s16)work->panelId, 0.65f, 0.0f);
-    tag = GwSystem.tagF;
+    tag = lbl_80265B70.tagF;
     if(tag) {
         bank = 2;
     } else {
@@ -399,17 +399,17 @@ static void PauseScreenCreate(PAUSEWORK *work)
     }
     mbPausePanelBankSet((s16)work->panelId, anmNoTbl[bank]);
     mbPausePanelGrowSet((s16)work->panelId, 16, 0, 1.5f);
-    work->sprId[1] = espEntry(mbBoardDataNumGet(DATANUM(DATA_bpause6, 1)), 100, 0);
+    work->sprId[1] = espEntry(mbBoardDataNumGet(DATANUM(0x80000, 1)), 100, 0);
     espAttrSet(work->sprId[1], HUSPR_ATTR_LINEAR);
     pos3d.x = 273.6f + turnOfsTbl[lang];
     pos3d.y = 304.0f;
     espPosSet(work->sprId[1], pos3d.x, pos3d.y);
     for(i=0; i<4; i++) {
-        work->sprId[i+2] = espEntry(mbBoardDataNumGet(DATANUM(DATA_bpause6, 2)), 95, 0);
+        work->sprId[i+2] = espEntry(mbBoardDataNumGet(DATANUM(0x80000, 2)), 95, 0);
         espPosSet(work->sprId[i+2], pos3d.x + turnNoPos[i].x, pos3d.y + turnNoPos[i].y);
         espAttrSet(work->sprId[i+2], HUSPR_ATTR_LINEAR);
     }
-    turn = GwSystem.turnNo;
+    turn = lbl_80265B70.turnNo;
     if(turn > 99) {
         /* The two digit sprites display values only through 99. */
         turn = 99;
@@ -420,7 +420,7 @@ static void PauseScreenCreate(PAUSEWORK *work)
         espAttrSet(work->sprId[2], HUSPR_ATTR_DISPOFF);
     }
     espBankSet(work->sprId[3], turn%10);
-    turn = GwSystem.turnMax;
+    turn = lbl_80265B70.turnMax;
     if(turn > 99) {
         turn = 99;
     }
@@ -475,7 +475,7 @@ static void PauseScreenSingleCreate(PAUSEWORK *work)
 static void PauseScreenKill(PAUSEWORK *work)
 {
     int i;
-    int partyF = GwSystem.partyF;
+    int partyF = lbl_80265B70.partyF;
     if(!partyF) {
         PauseScreenSingleKill(work);
         return;
@@ -520,17 +520,17 @@ static int PauseScreenExec(PAUSEWORK *work)
     int i = 0;
     int result;
     int padNo;
-    int partyF = GwSystem.partyF;
+    int partyF = lbl_80265B70.partyF;
     if(!partyF) {
         return PauseSingleExec(work);
     }
     while(1) {
         HuPrcVSleep();
-        padNo = GwPlayer[pausePlayer].padNo;
+        padNo = lbl_80265750[pausePlayer].padNo;
         if(HuPadStatGet(padNo)) {
             continue;
         }
-        if(HuPadBtnDown[padNo] & PAD_BUTTON_A) {
+        if(lbl_802C0008[padNo] & PAD_BUTTON_A) {
             result = 1;
             mbAudFXPlay(2);
             break;
@@ -542,7 +542,7 @@ static int PauseScreenExec(PAUSEWORK *work)
         if(work->telopId >= 0) {
             mbTelopTimeSprRotSet(work->telopId, i * (1.0f/60.0f));
         }
-        if(HuPadBtnDown[padNo] & PAD_BUTTON_START) {
+        if(lbl_802C0008[padNo] & PAD_BUTTON_START) {
             result = 0;
             break;
         }
@@ -557,15 +557,15 @@ void mbPauseSet(BOOL pauseF)
     int i;
     if(pauseF) {
         for(i=0; i<objWork->objMax; i++) {
-            if((objWork->objData[i].stat & (OM_STAT_DELETED|OM_STAT_NOPAUSE)) == 0) {
-                omSetStatBit(&objWork->objData[i], OM_STAT_PAUSED);
+            if((objWork->objData[i].stat & ((1 << 0)|(1 << 5))) == 0) {
+                omSetStatBit(&objWork->objData[i], (1 << 4));
             }
         }
         mbPauseEnableSet();
     } else {
         for(i=0; i<objWork->objMax; i++) {
-            if((objWork->objData[i].stat & (OM_STAT_DELETED|OM_STAT_NOPAUSE)) == 0) {
-                omResetStatBit(&objWork->objData[i], OM_STAT_PAUSED);
+            if((objWork->objData[i].stat & ((1 << 0)|(1 << 5))) == 0) {
+                omResetStatBit(&objWork->objData[i], (1 << 4));
             }
         }
         mbPauseEnableReset();
@@ -579,12 +579,12 @@ void mbPauseSet(BOOL pauseF)
 }
 
 static u32 pauseDataDirTbl[] = {
-    DATA_bpause6,
-    DATA_bpause6_us,
-    DATA_bpause6,
-    DATA_bpause6,
-    DATA_bpause6,
-    DATA_bpause6,
+    0x80000,
+    0x90000,
+    0x80000,
+    0x80000,
+    0x80000,
+    0x80000,
 };
 
 /* Selects the board pause data directory for a language index. */
@@ -600,7 +600,7 @@ int mbPauseDataDirGet(int type)
 int mbPauseDataNumGet(int dataNum)
 {
     int lang = mbLanguageGet();
-    if(DIRNUM(dataNum) != DATA_bpause6) {
+    if(DIRNUM(dataNum) != 0x80000) {
         return dataNum;
     }
     if(lang < 0) {
@@ -645,7 +645,7 @@ static int PauseSingleMGListGet(MGLIST *list)
         }
         category = &list[categoryIndex];
         category->mg[category->entryCount].mgNo = i;
-        if(GWMgUnlockGet(MgNoGet(MgDataTbl[i].ovl) + 0x259)) {
+        if(fn_8003CC40(MgNoGet(MgDataTbl[i].ovl) + 0x259)) {
             category->mg[category->entryCount].flag = 1;
         }
         if(mbSingleMgUnlockGet(MgNoGet(MgDataTbl[i].ovl) + 0x259)) {
@@ -674,13 +674,13 @@ static void PauseSingleSprCreate(MGLIST *list, PAUSESINGLEWORK *work)
     HuVec2f winSize;
     HuVecF winPos;
     static int fileTbl[] = {
-        DATANUM(DATA_bpause6, 44), DATANUM(DATA_bpause6, 40),
-        DATANUM(DATA_bpause6, 41), DATANUM(DATA_bpause6, 41),
-        DATANUM(DATA_bpause6, 43), DATANUM(DATA_bpause6, 43),
-        DATANUM(DATA_bpause6, 42), DATANUM(DATA_bpause6, 42),
-        DATANUM(DATA_bpause6, 39), DATANUM(DATA_bpause6, 38),
-        DATANUM(DATA_bpause6, 38), DATANUM(DATA_bpause6, 38),
-        DATANUM(DATA_bpause6, 32), DATANUM(DATA_bpause6, 32),
+        DATANUM(0x80000, 44), DATANUM(0x80000, 40),
+        DATANUM(0x80000, 41), DATANUM(0x80000, 41),
+        DATANUM(0x80000, 43), DATANUM(0x80000, 43),
+        DATANUM(0x80000, 42), DATANUM(0x80000, 42),
+        DATANUM(0x80000, 39), DATANUM(0x80000, 38),
+        DATANUM(0x80000, 38), DATANUM(0x80000, 38),
+        DATANUM(0x80000, 32), DATANUM(0x80000, 32),
     };
     static HuVec2f posTbl[] = {
         { 288, 136 }, { 472, 72 }, { 424, 72 }, { 520, 72 },
@@ -859,16 +859,16 @@ static int PauseSingleExec(PAUSEWORK *work)
     PauseSingleMGTypeSet(pauseMGList, &pauseSingleWork, 0, 0);
     while(1) {
         HuPrcVSleep();
-        padNo = GwPlayer[pausePlayer].padNo;
+        padNo = lbl_80265750[pausePlayer].padNo;
         if(HuPadStatGet(padNo)) {
             continue;
         }
-        if(HuPadBtnDown[padNo] & PAD_BUTTON_A) {
+        if(lbl_802C0008[padNo] & PAD_BUTTON_A) {
             result = 1;
             mbAudFXPlay(2);
             break;
         }
-        if(HuPadBtnDown[padNo] & PAD_BUTTON_START) {
+        if(lbl_802C0008[padNo] & PAD_BUTTON_START) {
             result = 0;
             break;
         }
@@ -877,26 +877,26 @@ static int PauseSingleExec(PAUSEWORK *work)
         } else {
             newPage = page;
             newTop = top;
-            if(HuPadBtnRep[padNo] & PAD_TRIGGER_L) {
+            if(lbl_802C0000[padNo] & PAD_TRIGGER_L) {
                 newPage--;
                 if(newPage < 0) {
                     newPage += 6;
                 }
                 newTop = 0;
                 inputDelay = 8;
-            } else if(HuPadBtnRep[padNo] & PAD_TRIGGER_R) {
+            } else if(lbl_802C0000[padNo] & PAD_TRIGGER_R) {
                 newPage++;
                 if(newPage >= 6) {
                     newPage -= 6;
                 }
                 newTop = 0;
                 inputDelay = 8;
-            } else if(HuPadDStkRep[padNo] & PAD_BUTTON_DOWN) {
+            } else if(lbl_802BFFE0[padNo] & PAD_BUTTON_DOWN) {
                 if(newTop + 8 < pauseMGList[page].entryCount) {
                     newTop += 2;
                     pauseSingleWork.moveCnt[1] = 8;
                 }
-            } else if(HuPadDStkRep[padNo] & PAD_BUTTON_UP) {
+            } else if(lbl_802BFFE0[padNo] & PAD_BUTTON_UP) {
                 if(newTop > 0) {
                     newTop -= 2;
                     if(newTop < 0) {

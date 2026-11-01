@@ -25,8 +25,8 @@
 
 #include <string.h>
 
-#define M675_LARGE_PARTICLE_RESOURCE FILENUM(DATANUM(DATA_m675, 17))
-#define M675_BURST_PARTICLE_RESOURCE FILENUM(DATANUM(DATA_m675, 18))
+#define M675_LARGE_PARTICLE_RESOURCE FILENUM(DATANUM(0x860000, 17))
+#define M675_BURST_PARTICLE_RESOURCE FILENUM(DATANUM(0x860000, 18))
 
 typedef struct M675EffectRecord {
 
@@ -266,11 +266,11 @@ void fn_1_D638(HUPROCESS *process)
 
     lbl_1_bss_53C = process;
 
-    manager = omAddObjEx(lbl_1_bss_53C, 16, 3U, 0U, -1, fn_1_D6F4);
+    manager = fn_8003AB38(lbl_1_bss_53C, 16, 3U, 0U, -1, fn_1_D6F4);
 
     lbl_1_bss_538 = manager;
 
-    configurationData = HuMemDirectMallocNum(HEAP_HEAP, 4, HU_MEMNUM_OVL);
+    configurationData = HuMemDirectMallocNum(HEAP_HEAP, 4, 0x10000000);
 
     manager->data = configurationData;
 
@@ -325,22 +325,22 @@ void fn_1_D708(OMOBJ *object)
 
     *configuration = *(const M675ParticleConfiguration *)lbl_1_data_858;
 
-    animation = HuSprAnimRead(HuDataSelHeapReadNum((s32) fn_1_A38(M675_LARGE_PARTICLE_RESOURCE),
-                                                   HU_MEMNUM_OVL, HEAP_MODEL));
+    animation = HuSprAnimRead(fn_80008DD0((s32) fn_1_A38(M675_LARGE_PARTICLE_RESOURCE),
+                                                   0x10000000, 2));
 
-    modelId = Hu3DParticleCreate(animation, 128);
+    modelId = fn_8003216C(animation, 128);
 
     object->mdlId[0] = modelId;
 
-    particle = (HU3D_PARTICLE *)Hu3DData[(s16)modelId].hookData;
+    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
 
-    Hu3DParticleBlendModeSet(modelId, 0);
+    fn_8003269C(modelId, 0);
 
-    Hu3DParticleHookSet(modelId, fn_1_D840);
+    fn_800326D0(modelId, fn_1_D840);
 
-    Hu3DModelLayerSet(modelId, 6);
+    fn_80026B8C(modelId, 6);
 
-    Hu3DModelPosSet(modelId, 0.0f, 0.0f, 0.0f);
+    fn_80026760(modelId, 0.0f, 0.0f, 0.0f);
 
     entry = particle->data;
 
@@ -432,24 +432,24 @@ void fn_1_D9A4(OMOBJ *object)
 
     s32 index;
 
-    animation = HuSprAnimRead(HuDataSelHeapReadNum((s32) fn_1_A38(M675_BURST_PARTICLE_RESOURCE),
-                                                   HU_MEMNUM_OVL, HEAP_MODEL));
+    animation = HuSprAnimRead(fn_80008DD0((s32) fn_1_A38(M675_BURST_PARTICLE_RESOURCE),
+                                                   0x10000000, 2));
 
-    modelId = Hu3DParticleCreate(animation, 64);
+    modelId = fn_8003216C(animation, 64);
 
     object->mdlId[1] = modelId;
 
-    particle = (HU3D_PARTICLE *)Hu3DData[(s16)modelId].hookData;
+    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
 
-    Hu3DParticleColSet(modelId, 218, 203, 158);
+    fn_800325B0(modelId, 218, 203, 158);
 
-    Hu3DParticleBlendModeSet(modelId, 0);
+    fn_8003269C(modelId, 0);
 
-    Hu3DParticleHookSet(modelId, fn_1_DAC4);
+    fn_800326D0(modelId, fn_1_DAC4);
 
-    Hu3DModelLayerSet(modelId, 6);
+    fn_80026B8C(modelId, 6);
 
-    Hu3DModelPosSet(modelId, 0.0f, 0.0f, 0.0f);
+    fn_80026760(modelId, 0.0f, 0.0f, 0.0f);
 
     entry = particle->data;
 
@@ -547,15 +547,15 @@ void fn_1_DCD8(OMOBJ *owner)
 
     s32 i;
 
-    modelId = Hu3DHookFuncCreate(fn_1_DE14);
+    modelId = fn_800260F4(fn_1_DE14);
 
     owner->mdlId[2] = modelId;
 
-    Hu3DModelLayerSet(modelId, 4);
+    fn_80026B8C(modelId, 4);
 
-    modelData = &Hu3DData[modelId];
+    modelData = &lbl_802C01C8[modelId];
 
-    hookData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*hookData), HU_MEMNUM_OVL);
+    hookData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*hookData), 0x10000000);
 
     modelData->hookData = hookData;
 
@@ -691,7 +691,7 @@ void fn_1_E0F0(Vec *origin)
 
     HU3D_MODELID modelId = manager->mdlId[0];
 
-    HU3D_PARTICLE *work = Hu3DData[modelId].hookData;
+    HU3D_PARTICLE *work = lbl_802C01C8[modelId].hookData;
 
     HU3D_PARTICLE_DATA *slot = work->data;
 
@@ -753,7 +753,7 @@ void fn_1_E434(Vec *position, Vec *displacement)
 
     HU3D_MODELID modelId = object->mdlId[1];
 
-    HU3D_PARTICLE *work = Hu3DData[modelId].hookData;
+    HU3D_PARTICLE *work = lbl_802C01C8[modelId].hookData;
 
     HU3D_PARTICLE_DATA *record = work->data;
 
@@ -852,7 +852,7 @@ void fn_1_E918(M675EffectRecord *effect)
 
     modelId = object->mdlId[2];
 
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
 
     work = model->hookData;
 

@@ -1,11 +1,12 @@
 /* Obstacle placement, scrolling, and model updates for Asteroad Rage. */
-#define M659_DATA_OBSTACLE_MODEL_0 DATANUM(DATA_m659, 13)
-#define M659_DATA_OBSTACLE_MODEL_1 DATANUM(DATA_m659, 14)
-#define M659_DATA_OBSTACLE_MODEL_2 DATANUM(DATA_m659, 15)
-#define M659_DATA_OBSTACLE_MODEL_3 DATANUM(DATA_m659, 16)
-#define M659_DATA_OBSTACLE_MODEL_4 DATANUM(DATA_m659, 17)
-#define M659_DATA_COURSE_OUTER_MODEL DATANUM(DATA_m659, 21)
-#define M659_DATA_COURSE_INNER_MODEL DATANUM(DATA_m659, 22)
+#define M659_DATA_OBSTACLE_MODEL_0 DATANUM(0x760000, 13)
+#define M659_DATA_OBSTACLE_MODEL_1 DATANUM(0x760000, 14)
+#define M659_DATA_OBSTACLE_MODEL_2 DATANUM(0x760000, 15)
+#define M659_DATA_OBSTACLE_MODEL_3 DATANUM(0x760000, 16)
+#define M659_DATA_OBSTACLE_MODEL_4 DATANUM(0x760000, 17)
+#define M659_DATA_COURSE_OUTER_MODEL DATANUM(0x760000, 21)
+#define M659_DATA_COURSE_INNER_MODEL DATANUM(0x760000, 22)
+#include <math.h>
 #include "REL/m659/objects.h"
 #include "game/memory.h"
 #include "game/data.h"
@@ -22,9 +23,9 @@ void fn_1_329C(OMOBJMAN *manager)
 {
     M659OMData *obstacleData;
     OMOBJ *obj;
-    obj = omAddObjEx(manager, 30, 5, 1, -1, fn_1_39A8);
+    obj = fn_8003AB38(manager, 30, 5, 1, -1, fn_1_39A8);
     lbl_1_bss_4C = obj;
-    obstacleData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659OMData), HU_MEMNUM_OVL);
+    obstacleData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659OMData), 0x10000000);
     obj->data = obstacleData;
     memset(obstacleData, 0, sizeof(M659OMData));
 }
@@ -42,7 +43,7 @@ void fn_1_3328(void)
     for (i = 0; i < obstacleData->recordCount; i++) {
         record = &obstacleData->records[i];
         record->collision.flags = 0;
-        Hu3DModelAttrSet(record->model, HU3D_ATTR_DISPOFF);
+        fn_800269E8(record->model, (1 << 0));
     }
 }
 
@@ -64,13 +65,13 @@ void fn_1_33D8(OMOBJ *obj)
         int obstacleModelDataIds[5] = { M659_DATA_OBSTACLE_MODEL_0, M659_DATA_OBSTACLE_MODEL_1,
                                         M659_DATA_OBSTACLE_MODEL_2, M659_DATA_OBSTACLE_MODEL_3,
                                         M659_DATA_OBSTACLE_MODEL_4 };
-        model = obj->mdlId[i] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(obstacleModelDataIds[i], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelLayerSet(model, 3);
-        Hu3DModelCameraSet(model, 3);
-        Hu3DModelPosSet(model, -1000, 0, 0);
-        Hu3DModelRotSet(model, 0, 0, 0);
-        Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
+        model = obj->mdlId[i] = fn_80025A04(
+            fn_80008DD0(obstacleModelDataIds[i], 0x10000000, 2));
+        fn_80026B8C(model, 3);
+        fn_80026B64(model, 3);
+        fn_80026760(model, -1000, 0, 0);
+        fn_80026808(model, 0, 0, 0);
+        fn_800269E8(model, (1 << 0));
     }
 }
 
@@ -105,7 +106,7 @@ void fn_1_3510(OMOBJ *obj)
                 if (record->transparencyLevel > 1) {
                     record->transparencyLevel = 1;
                 }
-                Hu3DModelTPLvlSet(record->model, record->transparencyLevel);
+                fn_80026CBC(record->model, record->transparencyLevel);
             }
         }
     }
@@ -165,8 +166,8 @@ void fn_1_3898(M659OMRecord *record)
 {
     record->collision.flags = 1 << 0;
     record->active = 1;
-    Hu3DModelAttrReset(record->model, HU3D_ATTR_DISPOFF);
-    Hu3DModelTPLvlSet(record->model, record->transparencyLevel);
+    fn_80026A44(record->model, (1 << 0));
+    fn_80026CBC(record->model, record->transparencyLevel);
 }
 
 /* Course setup and scrolling call this to disable collision and hide an obstacle. */
@@ -174,7 +175,7 @@ void fn_1_38E8(M659OMRecord *record)
 {
     record->collision.flags = 0;
     record->active = 0;
-    Hu3DModelAttrSet(record->model, HU3D_ATTR_DISPOFF);
+    fn_800269E8(record->model, (1 << 0));
 }
 
 /* Course setup calls this for each obstacle to choose a visual model from the weighted table. */
@@ -209,9 +210,9 @@ void fn_1_39A8(OMOBJ *obj)
                 continue;
             }
             record = row->slots[j];
-            record->model = Hu3DModelLink(obj->mdlId[fn_1_392C()]);
-            Hu3DModelAttrReset(record->model, HU3D_ATTR_DISPOFF);
-            Hu3DModelLayerSet(record->model, 6);
+            record->model = fn_80025D4C(obj->mdlId[fn_1_392C()]);
+            fn_80026A44(record->model, (1 << 0));
+            fn_80026B8C(record->model, 6);
             /* Sets this lane's shared player and route X coordinate to the obstacle's X
              * position. */
             record->position.x = lbl_1_data_70[j] = 1200.0f - 400.0f * j;
@@ -219,8 +220,8 @@ void fn_1_39A8(OMOBJ *obj)
             record->position.z = (11000 + 3050.0f * i) - (rand8() % 200 - 100) * 4;
             record->rotationSpeedX = 0.1f * (frand() % 10);
             record->rotationSpeedY = 0.1f * (frand() % 10);
-            Hu3DModelPosSetV(record->model, &record->position);
-            Hu3DModelCameraSet(record->model, 3);
+            fn_80026790(record->model, &record->position);
+            fn_80026B64(record->model, 3);
             if (record->position.z > 11000) {
                 fn_1_38E8(record);
             }
@@ -242,13 +243,13 @@ void fn_1_39A8(OMOBJ *obj)
         }
     }
     obstacleData->mode = 0;
-    lbl_1_bss_3C[0] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M659_DATA_COURSE_OUTER_MODEL, HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_3C[7] = Hu3DModelLink(lbl_1_bss_3C[0]);
-    lbl_1_bss_3C[1] = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M659_DATA_COURSE_INNER_MODEL, HU_MEMNUM_OVL, HEAP_MODEL));
+    lbl_1_bss_3C[0] = fn_80025A04(
+        fn_80008DD0(M659_DATA_COURSE_OUTER_MODEL, 0x10000000, 2));
+    lbl_1_bss_3C[7] = fn_80025D4C(lbl_1_bss_3C[0]);
+    lbl_1_bss_3C[1] = fn_80025A04(
+        fn_80008DD0(M659_DATA_COURSE_INNER_MODEL, 0x10000000, 2));
     for (k = 2; k < 7; k++) {
-        lbl_1_bss_3C[k] = Hu3DModelLink(lbl_1_bss_3C[1]);
+        lbl_1_bss_3C[k] = fn_80025D4C(lbl_1_bss_3C[1]);
     }
     for (k = 0; k < 8; k++) {
         if ((k == 0 || k == 7) != FALSE) {
@@ -256,11 +257,11 @@ void fn_1_39A8(OMOBJ *obj)
         } else {
             z = -3000;
         }
-        Hu3DModelPosSet(lbl_1_bss_3C[k], 1400 - 400.0f * k, 0, z);
-        Hu3DModelAttrReset(lbl_1_bss_3C[k], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_3C[k], HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(lbl_1_bss_3C[k], 2);
-        Hu3DModelLayerSet(lbl_1_bss_3C[k], 4);
+        fn_80026760(lbl_1_bss_3C[k], 1400 - 400.0f * k, 0, z);
+        fn_80026A44(lbl_1_bss_3C[k], (1 << 0));
+        fn_800269E8(lbl_1_bss_3C[k], ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_3C[k], 2);
+        fn_80026B8C(lbl_1_bss_3C[k], 4);
     }
     obj->objFunc = fn_1_4094;
 }
@@ -277,14 +278,14 @@ void fn_1_4094(OMOBJ *obj)
         obstacleData->mode++;
         break;
     case 1:
-        if (MgSeqModeGet() > 6) {
+        if (fn_80071A8C() > 6) {
             obstacleData->mode++;
         } else if (fn_1_1840(0) == 0 && fn_1_1840(1) == 0) {
             fn_1_3510(obj);
         }
         break;
     case 2:
-        if (MgSeqModeGet() == 7) {
+        if (fn_80071A8C() == 7) {
             obstacleData->mode++;
         }
         break;
@@ -296,8 +297,8 @@ void fn_1_4094(OMOBJ *obj)
         record->rotation.x += record->rotationSpeedX;
         record->rotation.y += record->rotationSpeedY;
         if (record->active == 1) {
-            Hu3DModelPosSetV(record->model, &record->position);
-            Hu3DModelRotSetV(record->model, &record->rotation);
+            fn_80026790(record->model, &record->position);
+            fn_80026838(record->model, &record->rotation);
         }
     }
 }

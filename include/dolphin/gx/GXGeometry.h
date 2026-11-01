@@ -14,16 +14,14 @@ void GXSetVtxAttrFmt(GXVtxFmt vtxfmt, GXAttr attr, GXCompCnt cnt, GXCompType typ
 void GXSetVtxAttrFmtv(GXVtxFmt vtxfmt, const GXVtxAttrFmtList* list);
 void GXSetNumTexGens(u8 nTexGens);
 void GXBegin(GXPrimitive type, GXVtxFmt vtxfmt, u16 nverts);
+
+static inline void GXEnd(void) {}
 void GXSetTexCoordGen2(GXTexCoordID dst_coord, GXTexGenType func, GXTexGenSrc src_param, u32 mtx,
                        GXBool normalize, u32 pt_texmtx);
 void GXSetLineWidth(u8 width, GXTexOffset texOffsets);
 void GXSetPointSize(u8 pointSize, GXTexOffset texOffsets);
 void GXEnableTexOffsets(GXTexCoordID coord, GXBool line_enable, GXBool point_enable);
-#ifdef TARGET_PC
-void GXSetArray(GXAttr attr, const void* data, u32 size, u8 stride);
-#else
 void GXSetArray(GXAttr attr, void* base_ptr, u8 stride);
-#endif
 void GXInvalidateVtxCache(void);
 
 static inline void GXSetTexCoordGen(GXTexCoordID dst_coord, GXTexGenType func,

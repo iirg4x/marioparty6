@@ -225,7 +225,6 @@ typedef union
     PPC_GQR_t   f;
 } PPC_GQR_u;
 
-
 #define DMA_U_ADDR_MASK             0xFFFFFFE0  // Start addr in memory
 #define DMA_U_LEN_U_MASK            0x0000001F  // lines to transfer (U)
 
@@ -248,7 +247,6 @@ typedef union
     PPC_DMA_U_t     f;
 } PPC_DMA_U_u;
 
-
 typedef struct
 {
     u32 lcAddr      :27;
@@ -258,13 +256,11 @@ typedef struct
     u32 dmaFlush    :1;
 } PPC_DMA_L_t;
 
-
 typedef union
 {
     u32             val;
     PPC_DMA_L_t     f;
 } PPC_DMA_L_u;
-
 
 #define WPAR_ADDR                   0xFFFFFFE0  // 32byte gather address
 #define WPAR_BNE                    0x00000001  // Buffer not empty (R)
@@ -312,18 +308,23 @@ typedef union
 #define MMCR0_DMS                   0x10000000  // Disables counting while MSR[PM] is set
 #define MMCR0_DMR                   0x08000000  // Disables counting while MSR[PM] is zero
 #define MMCR0_ENINT                 0x04000000  // Enables performance monitor interrupt signaling
-#define MMCR0_DISCOUNT              0x02000000  // Disables counting of PMCn when a performance monitor interrupt is signaled or...
+// Disables counting of PMCn when a performance monitor interrupt is signaled or...
+#define MMCR0_DISCOUNT              0x02000000
 #define MMCR0_RTCSELECT_MASK        0x01800000  // 64-bit time base, bit selection enable
 #define MMCR0_RTCSELECT_63          0x00000000  // Pick bit 63 to count
 #define MMCR0_RTCSELECT_55          0x00800000  // Pick bit 55 to count
 #define MMCR0_RTCSELECT_51          0x01000000  // Pick bit 51 to count
 #define MMCR0_RTCSELECT_47          0x01800000  // Pick bit 47 to count
-#define MMCR0_INTONBITTRANS         0x00400000  // Causes interrupt signaling on bit transition from off to on
+// Causes interrupt signaling on bit transition from off to on
+#define MMCR0_INTONBITTRANS         0x00400000
 #define MMCR0_THRESHOLD_MASK        0x003F0000  // Threshold value
 #define MMCR0_THRESHOLD(n)          ((n) << 16) // Threshold value (0 - 63)
-#define MMCR0_PMC1INTCONTROL        0x00008000  // Enables interrupt signaling due to PMC1 counter overflow
-#define MMCR0_PMC2INTCONTROL        0x00004000  // Enables interrupt signaling due to PMC2-PMC4 counter overflow
-#define MMCR0_PMCTRIGGER            0x00002000  // Can be used to trigger counting of PMC2-PMC4 after PMC1 has overflowed or...
+// Enables interrupt signaling due to PMC1 counter overflow
+#define MMCR0_PMC1INTCONTROL        0x00008000
+// Enables interrupt signaling due to PMC2-PMC4 counter overflow
+#define MMCR0_PMC2INTCONTROL        0x00004000
+// Can be used to trigger counting of PMC2-PMC4 after PMC1 has overflowed or...
+#define MMCR0_PMCTRIGGER            0x00002000
 #define MMCR0_PMC1SELECT_MASK       0x00001FC0  // PMC1 input selector
 #define MMCR0_PMC2SELECT_MASK       0x0000003F  // PMC2 input selector
 
@@ -348,15 +349,20 @@ typedef union
 #define MMCR0_PMC1_TRANSITION       0x000000C0  // # of transitions for 0 to 1
 #define MMCR0_PMC1_DISPATCHED       0x00000100  // # of instructions dispatched
 #define MMCR0_PMC1_EIEIO            0x00000140  // # of eieio instructions completed
-#define MMCR0_PMC1_ITLB_CYCLE       0x00000180  // # of cycles spent performing table search op. for the ITLB
+// # of cycles spent performing table search op. for the ITLB
+#define MMCR0_PMC1_ITLB_CYCLE       0x00000180
 #define MMCR0_PMC1_L2_HIT           0x000001C0  // # of access that hit the L2.
-#define MMCR0_PMC1_EA               0x00000200  // # of valid instruction EAs delivered to the memory subsystem
-#define MMCR0_PMC1_IABR             0x00000240  // # of time the address of an instruction matches the IABR
+// # of valid instruction EAs delivered to the memory subsystem
+#define MMCR0_PMC1_EA               0x00000200
+// # of time the address of an instruction matches the IABR
+#define MMCR0_PMC1_IABR             0x00000240
 #define MMCR0_PMC1_L1_MISS          0x00000280  // # of loads that miss the L1
 #define MMCR0_PMC1_Bx_UNRESOLVED    0x000002C0  // # of branches that are unresolved when processed
-#define MMCR0_PMC1_Bx_STALL_CYCLE   0x00000300  // # of cycles that dispatcher stalls due to a second
+// # of cycles that dispatcher stalls due to a second
+#define MMCR0_PMC1_Bx_STALL_CYCLE   0x00000300
                                                 //      unresolved branch in the instruction stream
-#define MMCR0_PMC1_IC_FETCH_MISS    0x00000340  // # of times an instruction fetch missed the L1 Icache
+// # of times an instruction fetch missed the L1 Icache
+#define MMCR0_PMC1_IC_FETCH_MISS    0x00000340
 #define MMCR0_PMC2_HOLD             0x00000000  // Register holds current value
 #define MMCR0_PMC2_CYCLE            0x00000001  // Processor cycles
 #define MMCR0_PMC2_INSTRUCTION      0x00000002  // # of instructions completed
@@ -387,15 +393,18 @@ typedef union
 #define MMCR1_PMC3_DTLB_MISS        0x30000000  // # of DTLB misses
 #define MMCR1_PMC3_L2_D_MISS        0x38000000  // # of L2 data misses
 #define MMCR1_PMC3_Bx_TAKEN         0x40000000  // # predicted branches that were taken
-#define MMCR1_PMC3_PM_SWITCH        0x48000000  // # of transitions between marked and unmarked processes
+// # of transitions between marked and unmarked processes
+#define MMCR1_PMC3_PM_SWITCH        0x48000000
 #define MMCR1_PMC3_COND_STORE       0x50000000  // # of store conditional instructions completed
 #define MMCR1_PMC3_FPU              0x58000000  // # of instructions completed from the FPU
-#define MMCR1_PMC3_L2_SNOOP_CASTOUT 0x60000000  // # of L2 castout caused by snoops to modified lines
+// # of L2 castout caused by snoops to modified lines
+#define MMCR1_PMC3_L2_SNOOP_CASTOUT 0x60000000
 #define MMCR1_PMC3_L2_HIT           0x68000000  // # of cache operations that hit in the L2 cache
 #define MMCR1_PMC3_L1_MISS_CYCLE    0x78000000  // # of cycles generated by L1 load misses
 #define MMCR1_PMC3_Bx_SECOND        0x80000000  // # of branches in the second speculative branch
                                                 //   resolved correctly
-#define MMCR1_PMC3_BPU_LR_CR        0x88000000  // # of cycles the BPU stalls due to LR or CR unresolved
+// # of cycles the BPU stalls due to LR or CR unresolved
+#define MMCR1_PMC3_BPU_LR_CR        0x88000000
                                                 //   dependencies
 
 #define MMCR1_PMC4_HOLD             0x00000000  // Register holds current value
@@ -404,7 +413,8 @@ typedef union
 #define MMCR1_PMC4_TRANSITION       0x00C00000  // # of time-base (lower) bit transitions
 #define MMCR1_PMC4_DISPATCHED       0x01000000  // # of instructions dispatched
 #define MMCR1_PMC4_L2_CASTOUT       0x01400000  // # of L2 castouts
-#define MMCR1_PMC4_DTLB_CYCLE       0x01800000  // # of cycles spent performing table searches for DTLB accesses
+// # of cycles spent performing table searches for DTLB accesses
+#define MMCR1_PMC4_DTLB_CYCLE       0x01800000
 #define MMCR1_PMC4_Bx_MISSED        0x02000000  // # of mispredicted branches
 #define MMCR1_PMC4_COND_STORE_INT   0x02800000  // # of store conditional instructions completed
                                                 //   with reservation intact

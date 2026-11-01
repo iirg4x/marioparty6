@@ -111,8 +111,8 @@ void fn_1_8E90(void);
 void fn_1_B09C(void);
 
 s32 lbl_1_data_100[7] = {
-    DATANUM(DATA_m665, 14), DATANUM(DATA_m665, 15), DATANUM(DATA_m665, 16), DATANUM(DATA_m665, 17),
-    DATANUM(DATA_m665, 18), DATANUM(DATA_m665, 19), DATANUM(DATA_m665, 20),
+    DATANUM(0x7c0000, 14), DATANUM(0x7c0000, 15), DATANUM(0x7c0000, 16), DATANUM(0x7c0000, 17),
+    DATANUM(0x7c0000, 18), DATANUM(0x7c0000, 19), DATANUM(0x7c0000, 20),
 };
 
 /* Builds the vehicle and attached effects during the sequence initialization hook. */
@@ -129,52 +129,52 @@ void fn_1_1C60(void) {
 
     mainPlayerIndex = lbl_1_bss_250.mainPlayer;
     playerWork = &lbl_1_bss_10[mainPlayerIndex];
-    modelId = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m665, 12), M665_MEMORY_TAG,
-                                                    HEAP_MODEL));
-    Hu3DModelPosSet(modelId, 0.0f, 0.0f,
+    modelId = fn_80025A04(fn_80008DD0(DATANUM(0x7c0000, 12), M665_MEMORY_TAG,
+                                                    2));
+    fn_80026760(modelId, 0.0f, 0.0f,
                     -2000.0f);
-    Hu3DModelShadowSet(modelId);
+    fn_80026E44(modelId);
     playerWork->vehicleModel = modelId;
     for (index = 0; index < 7; index++) {
-        motionId = Hu3DJointMotion(modelId,
-            HuDataSelHeapReadNum(lbl_1_data_100[index], M665_MEMORY_TAG,
-                                 HEAP_MODEL));
+        motionId = fn_80030458(modelId,
+            fn_80008DD0(lbl_1_data_100[index], M665_MEMORY_TAG,
+                                 2));
         playerWork->models.main.motions[index] = motionId;
     }
-    Hu3DMotionSet(modelId, playerWork->models.main.motions[0]);
-    Hu3DMotionSpeedSet(modelId, 0.0f);
-    Hu3DModelHookSet(playerWork->vehicleModel, "itemhook", playerWork->characterModel);
+    fn_8002C95C(modelId, playerWork->models.main.motions[0]);
+    fn_8002D86C(modelId, 0.0f);
+    fn_8002741C(playerWork->vehicleModel, "itemhook", playerWork->characterModel);
     for (index = 0; index < 2; index++) {
-        modelId = Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m665, 13),
+        modelId = fn_80025A04(fn_80008DD0(DATANUM(0x7c0000, 13),
                                                        M665_MEMORY_TAG,
-                                                       HEAP_MODEL));
-        Hu3DModelHookSet(playerWork->vehicleModel, childNames.names[index],
+                                                       2));
+        fn_8002741C(playerWork->vehicleModel, childNames.names[index],
                          modelId);
-        Hu3DModelAttrSet(modelId, HU3D_MOTATTR_LOOP);
-        Hu3DModelShadowSet(modelId);
+        fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
+        fn_80026E44(modelId);
         playerWork->models.main.propellers[index] = modelId;
     }
     for (index = 0; index < 6; index++) {
-        modelId = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 21), M665_MEMORY_TAG, HEAP_MODEL));
-        Hu3DModelHookSet(playerWork->vehicleModel, hookNames.names[index],
+        modelId = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 21), M665_MEMORY_TAG, 2));
+        fn_8002741C(playerWork->vehicleModel, hookNames.names[index],
                          modelId);
-        Hu3DMotionSpeedSet(modelId, 0.0f);
+        fn_8002D86C(modelId, 0.0f);
         playerWork->models.main.hookModels[index] = modelId;
-        modelId = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 22), M665_MEMORY_TAG, HEAP_MODEL));
-        Hu3DModelAttrSet(modelId, HU3D_ATTR_DISPOFF);
-        Hu3DMotionSpeedSet(modelId, 0.0f);
+        modelId = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 22), M665_MEMORY_TAG, 2));
+        fn_800269E8(modelId, (1 << 0));
+        fn_8002D86C(modelId, 0.0f);
         playerWork->models.main.hookEffects[index] = modelId;
     }
     for (index = 0; index < 2; index++) {
-        modelId = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 34), M665_MEMORY_TAG, HEAP_MODEL));
-        Hu3DModelAttrSet(modelId, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(modelId, HU3D_MOTATTR_LOOP);
-        Hu3DModelScaleSet(modelId, 0.7f,
+        modelId = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 34), M665_MEMORY_TAG, 2));
+        fn_800269E8(modelId, (1 << 0));
+        fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
+        fn_800268B0(modelId, 0.7f,
                           0.0f, 0.7f);
-        Hu3DModelTPLvlSet(modelId, 0.5f);
+        fn_80026CBC(modelId, 0.5f);
         playerWork->models.main.damageModels[index] = modelId;
     }
     fn_1_6E8C();
@@ -217,7 +217,7 @@ void fn_1_20A0(s16 state)
 
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
     /* Both sequence-mode branches assign the requested action unchanged. */
-    if (MgSeqModeGet() <= 5U) {
+    if (fn_80071A8C() <= 5U) {
         playerWork->action = state;
     } else {
         playerWork->action = state;
@@ -255,101 +255,101 @@ void fn_1_2158(void) {
     laser = &lbl_1_bss_2E8.laser;
     switch (playerWork->action) {
         case 1:
-            motionMaxTime = CharMotionMaxTimeGet(playerWork->character);
-            if (CharMotionTimeGet(playerWork->character) >= motionMaxTime) {
+            motionMaxTime = fn_8005C1FC(playerWork->character);
+            if (fn_8005C1B8(playerWork->character) >= motionMaxTime) {
                 fn_1_2058(0, 8.0f);
                 HuAudFXPlay(0x86E);
-                Hu3DMotionSet(playerWork->vehicleModel, playerWork->models.main.motions[0]);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 1.0f);
+                fn_8002C95C(playerWork->vehicleModel, playerWork->models.main.motions[0]);
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 1.0f);
                 fn_1_20A0(2);
                 return;
             }
             break;
         case 2:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 40.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 40.0f) {
                 lbl_1_bss_2E8.fireEnabled = 1;
                 lbl_1_bss_2E8.fireSoundHandle = HuAudFXPlay(0x86F);
                 if (frandmod(2) == 0) {
-                    Hu3DMotionTimeSet(playerWork->vehicleModel, 50.0f);
+                    fn_8002D414(playerWork->vehicleModel, 50.0f);
                     fn_1_20A0(4);
                     return;
                 }
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 150.0f);
-                Hu3DModelAttrSet(playerWork->vehicleModel, HU3D_MOTATTR_REV);
+                fn_8002D414(playerWork->vehicleModel, 150.0f);
+                fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
                 fn_1_20A0(3);
                 return;
             }
             break;
         case 3:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) <= 52.0f) {
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 150.0f);
+            if (fn_8002D4E0(playerWork->vehicleModel) <= 52.0f) {
+                fn_8002D414(playerWork->vehicleModel, 150.0f);
                 fn_1_20A0(5);
                 return;
             }
             break;
         case 4:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 148.0f) {
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 50.0f);
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 148.0f) {
+                fn_8002D414(playerWork->vehicleModel, 50.0f);
                 fn_1_20A0(6);
                 return;
             }
             break;
         case 5:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) <= 50.0f) {
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 40.0f);
+            if (fn_8002D4E0(playerWork->vehicleModel) <= 50.0f) {
+                fn_8002D414(playerWork->vehicleModel, 40.0f);
                 fn_1_20A0(7);
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 55.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 55.0f) {
                 lbl_1_bss_2E8.fireEnabled = 0;
                 HuAudFXStop(lbl_1_bss_2E8.fireSoundHandle);
                 return;
             }
             break;
         case 6:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 150.0f) {
-                Hu3DModelAttrSet(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 40.0f);
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 150.0f) {
+                fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 40.0f);
                 fn_1_20A0(7);
                 lbl_1_bss_2E8.fireEnabled = 0;
                 HuAudFXStop(lbl_1_bss_2E8.fireSoundHandle);
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 135.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 135.0f) {
                 lbl_1_bss_2E8.fireEnabled = 0;
                 HuAudFXStop(lbl_1_bss_2E8.fireSoundHandle);
                 return;
             }
             break;
         case 7:
-            if (Hu3DMotionEndCheck(playerWork->vehicleModel) == 1) {
-                Hu3DModelAttrReset(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 0.0f);
+            if (fn_8002D75C(playerWork->vehicleModel) == 1) {
+                fn_80026A44(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 0.0f);
                 fn_1_20A0(0);
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 20.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
                 HuAudFXPlay(0x879);
                 return;
             }
             break;
         case 13:
-            motionMaxTime = CharMotionMaxTimeGet(playerWork->character);
-            if (CharMotionTimeGet(playerWork->character) >= motionMaxTime) {
+            motionMaxTime = fn_8005C1FC(playerWork->character);
+            if (fn_8005C1B8(playerWork->character) >= motionMaxTime) {
                 fn_1_2058(0, 8.0f);
-                Hu3DMotionSet(playerWork->vehicleModel, playerWork->models.main.motions[1]);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 1.0f);
+                fn_8002C95C(playerWork->vehicleModel, playerWork->models.main.motions[1]);
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 1.0f);
                 fn_1_20A0(14);
                 HuAudFXPlay(0x86E);
                 return;
             }
             break;
         case 14:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 49.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 49.0f) {
                 fn_1_20A0(15);
                 for (modelIndex = 0; modelIndex < 6; modelIndex++) {
-                    Hu3DModelAttrReset(lbl_1_bss_2E8.missiles[modelIndex].modelID, 1U);
+                    fn_80026A44(lbl_1_bss_2E8.missiles[modelIndex].modelID, 1U);
                     lbl_1_bss_2E8.missiles[modelIndex].state = 1;
                 }
                 HuAudFXPlay(0x871);
@@ -361,29 +361,29 @@ void fn_1_2158(void) {
             if (playerWork->actionFrames-- <= 0) {
                 playerWork->actionFrames = 0;
                 fn_1_20A0(16);
-                Hu3DModelAttrSet(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 49.0f);
+                fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 49.0f);
                 HuAudFXPlay(0x879);
                 playerWork->status.main.flags.bits.moving = 1;
                 return;
             }
             break;
         case 16:
-            if (Hu3DMotionEndCheck(playerWork->vehicleModel) == 1) {
-                Hu3DModelAttrReset(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 0.0f);
+            if (fn_8002D75C(playerWork->vehicleModel) == 1) {
+                fn_80026A44(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 0.0f);
                 fn_1_20A0(0);
                 return;
             }
             break;
         case 8:
-            motionMaxTime = CharMotionMaxTimeGet(playerWork->character);
-            if (CharMotionTimeGet(playerWork->character) >= motionMaxTime) {
+            motionMaxTime = fn_8005C1FC(playerWork->character);
+            if (fn_8005C1B8(playerWork->character) >= motionMaxTime) {
                 fn_1_2058(0, 8.0f);
-                Hu3DMotionSet(playerWork->vehicleModel, playerWork->models.main.motions[2]);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 1.0f);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
+                fn_8002C95C(playerWork->vehicleModel, playerWork->models.main.motions[2]);
+                fn_8002D86C(playerWork->vehicleModel, 1.0f);
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
                 fn_1_20A0(9);
                 lbl_1_bss_2E8.laser.scale = 0.0f;
                 HuAudFXPlay(0x86E);
@@ -391,7 +391,7 @@ void fn_1_2158(void) {
             }
             break;
         case 9:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 39.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 39.0f) {
                 if (laser->scale == 0.0f) {
                     char *laserHookNames[2] = {
                         "itemhook_laser1", "itemhook_laser2"
@@ -399,19 +399,19 @@ void fn_1_2158(void) {
                     for (modelIndex = 0; modelIndex < 2; modelIndex++) {
                         Hu3DModelObjPosGet(playerWork->vehicleModel,
                                             laserHookNames[modelIndex], &hookPosition);
-                        Hu3DModelPosSetV(laser->modelIDs[modelIndex], &hookPosition);
-                        Hu3DModelAttrReset(laser->modelIDs[modelIndex], 1U);
+                        fn_80026790(laser->modelIDs[modelIndex], &hookPosition);
+                        fn_80026A44(laser->modelIDs[modelIndex], 1U);
                     }
                     HuAudFXPlay(0x870);
                 } else {
                     for (modelIndex = 0; modelIndex < 2; modelIndex++) {
-                        Hu3DModelPosGet(laser->modelIDs[modelIndex], &laserPosition);
+                        fn_800267CC(laser->modelIDs[modelIndex], &laserPosition);
                         laserPosition.x +=
                             -playerWork->speed +
                             (2.0f *
                              (playerWork->speed *
                               (f32) (u8) playerWork->status.main.flags.bits.positiveDirection));
-                        Hu3DModelPosSetV(laser->modelIDs[modelIndex], &laserPosition);
+                        fn_80026790(laser->modelIDs[modelIndex], &laserPosition);
                     }
                 }
                 laser->scale += 0.1f;
@@ -421,7 +421,7 @@ void fn_1_2158(void) {
                     laser->timer = 30;
                 }
                 for (modelIndex = 0; modelIndex < 2; modelIndex++) {
-                    Hu3DModelScaleSet(laser->modelIDs[modelIndex], laser->scale, laser->scale,
+                    fn_800268B0(laser->modelIDs[modelIndex], laser->scale, laser->scale,
                                       laser->scale);
                 }
                 return;
@@ -429,16 +429,16 @@ void fn_1_2158(void) {
             break;
         case 10:
             if ((f32) laser->timer-- <= 0.0f) {
-                Hu3DModelAttrSet(playerWork->vehicleModel, HU3D_MOTATTR_REV);
+                fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
                 fn_1_20A0(11);
             }
             for (modelIndex = 0; modelIndex < 2; modelIndex++) {
-                Hu3DModelPosGet(laser->modelIDs[modelIndex], &laserTravelPosition);
+                fn_800267CC(laser->modelIDs[modelIndex], &laserTravelPosition);
                 laserTravelPosition.x +=
                     -playerWork->speed +
                     (2.0f * (playerWork->speed *
                              (f32) (u8) playerWork->status.main.flags.bits.positiveDirection));
-                Hu3DModelPosSetV(laser->modelIDs[modelIndex], &laserTravelPosition);
+                fn_80026790(laser->modelIDs[modelIndex], &laserTravelPosition);
             }
             return;
         case 11:
@@ -449,33 +449,33 @@ void fn_1_2158(void) {
                 HuAudFXPlay(0x879);
             }
             for (modelIndex = 0; modelIndex < 2; modelIndex++) {
-                Hu3DModelPosGet(laser->modelIDs[modelIndex], &laserTrailPosition);
+                fn_800267CC(laser->modelIDs[modelIndex], &laserTrailPosition);
                 laserTrailPosition.x +=
                     -playerWork->speed +
                     (2.0f * (playerWork->speed *
                              (f32) (u8) playerWork->status.main.flags.bits.positiveDirection));
-                Hu3DModelPosSetV(laser->modelIDs[modelIndex], &laserTrailPosition);
-                Hu3DModelScaleSet(laser->modelIDs[modelIndex], laser->scale, laser->scale,
+                fn_80026790(laser->modelIDs[modelIndex], &laserTrailPosition);
+                fn_800268B0(laser->modelIDs[modelIndex], laser->scale, laser->scale,
                                   2.0f * laser->scale);
             }
             return;
         case 12:
-            if (Hu3DMotionEndCheck(playerWork->vehicleModel) == 1) {
-                Hu3DModelAttrReset(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 0.0f);
+            if (fn_8002D75C(playerWork->vehicleModel) == 1) {
+                fn_80026A44(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 0.0f);
                 fn_1_20A0(0);
                 playerWork->effect.main.effectState = 0;
                 return;
             }
             break;
         case 23:
-            motionMaxTime = CharMotionMaxTimeGet(playerWork->character);
-            if (CharMotionTimeGet(playerWork->character) >= motionMaxTime) {
+            motionMaxTime = fn_8005C1FC(playerWork->character);
+            if (fn_8005C1B8(playerWork->character) >= motionMaxTime) {
                 fn_1_2058(0, 8.0f);
-                Hu3DMotionSet(playerWork->vehicleModel, playerWork->models.main.motions[4]);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 1.0f);
+                fn_8002C95C(playerWork->vehicleModel, playerWork->models.main.motions[4]);
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 1.0f);
                 fn_1_20A0(24);
         selectedKillerIndex = lbl_1_bss_2E8.selectedKiller = fn_1_8D54();
         lbl_1_bss_2E8.killers[selectedKillerIndex].state = 1;
@@ -483,12 +483,12 @@ void fn_1_2158(void) {
             }
             break;
         case 24:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 44.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 44.0f) {
                 fn_1_20A0(25);
                 lbl_1_bss_2E8.killers[lbl_1_bss_2E8.selectedKiller].state = 2;
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 20.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
                 HuAudFXPlay(0x873);
                 return;
             }
@@ -503,71 +503,71 @@ void fn_1_2158(void) {
             break;
         case 26:
             if (playerWork->actionFrames-- <= 0) {
-                Hu3DModelAttrSet(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 44.0f);
+                fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 44.0f);
                 fn_1_20A0(27);
                 return;
             }
             break;
         case 27:
-            if (Hu3DMotionEndCheck(playerWork->vehicleModel) == 1) {
-                Hu3DModelAttrReset(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 0.0f);
+            if (fn_8002D75C(playerWork->vehicleModel) == 1) {
+                fn_80026A44(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 0.0f);
                 fn_1_20A0(0);
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 40.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 40.0f) {
                 HuAudFXPlay(0x879);
                 return;
             }
             break;
         case 17:
-            motionMaxTime = CharMotionMaxTimeGet(playerWork->character);
-            if (CharMotionTimeGet(playerWork->character) >= motionMaxTime) {
+            motionMaxTime = fn_8005C1FC(playerWork->character);
+            if (fn_8005C1B8(playerWork->character) >= motionMaxTime) {
                 fn_1_2058(0, 8.0f);
-                Hu3DMotionSet(playerWork->vehicleModel, playerWork->models.main.motions[3]);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 1.0f);
+                fn_8002C95C(playerWork->vehicleModel, playerWork->models.main.motions[3]);
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 1.0f);
                 fn_1_20A0(18);
                 playerWork->actionFrames = 0;
                 return;
             }
             break;
         case 18:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 50.0f) {
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 60.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 2.0f);
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 50.0f) {
+                fn_8002D414(playerWork->vehicleModel, 60.0f);
+                fn_8002D86C(playerWork->vehicleModel, 2.0f);
                 fn_1_20A0(19);
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 20.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
                 HuAudFXPlay(0x873);
                 return;
             }
             break;
         case 19:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 84.0f) {
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 60.0f);
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 84.0f) {
+                fn_8002D414(playerWork->vehicleModel, 60.0f);
                 playerWork->actionFrames += 1;
                 if (playerWork->actionFrames >= 6) {
                 fn_1_20A0(20);
                     return;
                 }
-            } else if ((Hu3DMotionTimeGet(playerWork->vehicleModel) > 64.0f) &&
-                       (Hu3DMotionTimeGet(playerWork->vehicleModel) <= 66.0f)) {
+            } else if ((fn_8002D4E0(playerWork->vehicleModel) > 64.0f) &&
+                       (fn_8002D4E0(playerWork->vehicleModel) <= 66.0f)) {
                 fn_1_9AE8();
                 return;
             }
             break;
         case 20:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 84.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 84.0f) {
                 playerWork->actionFrames = 30;
                 fn_1_20A0(21);
                 return;
             }
-            if ((Hu3DMotionTimeGet(playerWork->vehicleModel) > 64.0f) &&
-                (Hu3DMotionTimeGet(playerWork->vehicleModel) <= 66.0f)) {
+            if ((fn_8002D4E0(playerWork->vehicleModel) > 64.0f) &&
+                (fn_8002D4E0(playerWork->vehicleModel) <= 66.0f)) {
                 fn_1_9AE8();
                 return;
             }
@@ -576,43 +576,43 @@ void fn_1_2158(void) {
             if (playerWork->actionFrames-- <= 0) {
                 playerWork->actionFrames = 0;
                 fn_1_20A0(22);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 50.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 1.0f);
-                Hu3DModelAttrSet(playerWork->vehicleModel, HU3D_MOTATTR_REV);
+                fn_8002D414(playerWork->vehicleModel, 50.0f);
+                fn_8002D86C(playerWork->vehicleModel, 1.0f);
+                fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
                 return;
             }
             break;
         case 22:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) <= 1.0f) {
-                Hu3DModelAttrReset(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 0.0f);
+            if (fn_8002D4E0(playerWork->vehicleModel) <= 1.0f) {
+                fn_80026A44(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 0.0f);
                 fn_1_20A0(0);
                 playerWork->status.main.flags.bits.moving = 1;
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 40.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 40.0f) {
                 HuAudFXPlay(0x879);
                 return;
             }
             break;
         case 28:
-            motionMaxTime = CharMotionMaxTimeGet(playerWork->character);
-            if (CharMotionTimeGet(playerWork->character) >= motionMaxTime) {
+            motionMaxTime = fn_8005C1FC(playerWork->character);
+            if (fn_8005C1B8(playerWork->character) >= motionMaxTime) {
                 fn_1_2058(0, 8.0f);
-                Hu3DMotionSet(playerWork->vehicleModel, playerWork->models.main.motions[5]);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 1.0f);
+                fn_8002C95C(playerWork->vehicleModel, playerWork->models.main.motions[5]);
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 1.0f);
                 fn_1_20A0(29);
                 return;
             }
             break;
         case 29:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= 39.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) >= 39.0f) {
                 fn_1_20A0(30);
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 20.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
                 HuAudFXPlay(0x873);
                 return;
             }
@@ -634,71 +634,71 @@ void fn_1_2158(void) {
             if (playerWork->actionFrames-- <= 0) {
                 playerWork->actionFrames = 0;
                 fn_1_20A0(32);
-                Hu3DModelAttrSet(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 39.0f);
+                fn_800269E8(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 39.0f);
                 return;
             }
             break;
         case 32:
-            if (Hu3DMotionEndCheck(playerWork->vehicleModel) == 1) {
-                Hu3DModelAttrReset(playerWork->vehicleModel, HU3D_MOTATTR_REV);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 0.0f);
+            if (fn_8002D75C(playerWork->vehicleModel) == 1) {
+                fn_80026A44(playerWork->vehicleModel, ((1 << 30) | (1 << 2)));
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
+                fn_8002D86C(playerWork->vehicleModel, 0.0f);
                 fn_1_20A0(0);
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 20.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 20.0f) {
                 HuAudFXPlay(0x87A);
                 return;
             }
             break;
         case 33:
-            Hu3DMotionSet(playerWork->vehicleModel, playerWork->models.main.motions[6]);
-            Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
-            Hu3DMotionSpeedSet(playerWork->vehicleModel, 1.0f);
+            fn_8002C95C(playerWork->vehicleModel, playerWork->models.main.motions[6]);
+            fn_8002D414(playerWork->vehicleModel, 0.0f);
+            fn_8002D86C(playerWork->vehicleModel, 1.0f);
                 fn_1_20A0(34);
             return;
         case 34:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 15.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 15.0f) {
                 lbl_1_bss_2E8.bouncing[0].state = 1;
                 lbl_1_bss_2E8.bouncing[3].state = 1;
                 HuAudFXPlay(0x872);
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 38.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 38.0f) {
                 lbl_1_bss_2E8.bouncing[4].state = 1;
                 HuAudFXPlay(0x872);
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 62.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 62.0f) {
                 lbl_1_bss_2E8.bouncing[2].state = 1;
                 HuAudFXPlay(0x872);
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 74.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 74.0f) {
                 fn_1_20A0(35);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 28.0f);
+                fn_8002D414(playerWork->vehicleModel, 28.0f);
                 return;
             }
             break;
         case 35:
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 38.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 38.0f) {
                 HuAudFXPlay(0x872);
                 lbl_1_bss_2E8.bouncing[1].state = 1;
                 lbl_1_bss_2E8.bouncing[5].state = 1;
                 return;
             }
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) == 52.0f) {
+            if (fn_8002D4E0(playerWork->vehicleModel) == 52.0f) {
                 fn_1_20A0(36);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 52.0f);
+                fn_8002D414(playerWork->vehicleModel, 52.0f);
                 return;
             }
             break;
         case 36:
-            motionMaxTime = Hu3DMotionMaxTimeGet(playerWork->vehicleModel);
-            if (Hu3DMotionTimeGet(playerWork->vehicleModel) >= motionMaxTime) {
-                Hu3DMotionSpeedSet(playerWork->vehicleModel, 0.0f);
-                Hu3DMotionTimeSet(playerWork->vehicleModel, 0.0f);
+            motionMaxTime = fn_8002D530(playerWork->vehicleModel);
+            if (fn_8002D4E0(playerWork->vehicleModel) >= motionMaxTime) {
+                fn_8002D86C(playerWork->vehicleModel, 0.0f);
+                fn_8002D414(playerWork->vehicleModel, 0.0f);
                 fn_1_2058(0, 8.0f);
                 fn_1_20A0(0);
             }
@@ -752,18 +752,18 @@ void fn_1_4200(void) {
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
     hookNames = lbl_1_rodata_1A8;
     if (playerWork->models.main.damage > 220) {
-        Hu3DModelAttrReset(playerWork->models.main.damageModels[0], HU3D_ATTR_DISPOFF);
-        Hu3DModelScaleGet(playerWork->models.main.damageModels[0], &scale);
+        fn_80026A44(playerWork->models.main.damageModels[0], (1 << 0));
+        fn_8002691C(playerWork->models.main.damageModels[0], &scale);
         if (scale.y < 0.7) {
             scale.y += 0.01;
-            Hu3DModelScaleSetV(playerWork->models.main.damageModels[0], &scale);
+            fn_800268E0(playerWork->models.main.damageModels[0], &scale);
         }
     } else if (playerWork->models.main.damage > 100) {
-        Hu3DModelAttrReset(playerWork->models.main.damageModels[1], HU3D_ATTR_DISPOFF);
-        Hu3DModelScaleGet(playerWork->models.main.damageModels[1], &scale);
+        fn_80026A44(playerWork->models.main.damageModels[1], (1 << 0));
+        fn_8002691C(playerWork->models.main.damageModels[1], &scale);
         if (scale.y < 0.7) {
             scale.y += 0.01;
-            Hu3DModelScaleSetV(playerWork->models.main.damageModels[1], &scale);
+            fn_800268E0(playerWork->models.main.damageModels[1], &scale);
         }
     }
     for (index = 0; index < 6; index++) {
@@ -771,32 +771,32 @@ void fn_1_4200(void) {
             playerWork->models.main.brokenHooks <= index) {
             playerWork->models.main.brokenHooks += 1;
             HuAudFXPlay(0x86D);
-            Hu3DModelAttrSet(playerWork->models.main.hookModels[index], HU3D_ATTR_DISPOFF);
-            Hu3DModelHookObjReset(playerWork->vehicleModel, hookNames.names[index]);
-            Hu3DModelHookSet(playerWork->vehicleModel, hookNames.names[index],
+            fn_800269E8(playerWork->models.main.hookModels[index], (1 << 0));
+            fn_800275B4(playerWork->vehicleModel, hookNames.names[index]);
+            fn_8002741C(playerWork->vehicleModel, hookNames.names[index],
                              playerWork->models.main.hookEffects[index]);
-            Hu3DMotionSpeedSet(playerWork->models.main.hookEffects[index],
+            fn_8002D86C(playerWork->models.main.hookEffects[index],
                                1.0f);
-            Hu3DModelAttrReset(playerWork->models.main.hookEffects[index], HU3D_ATTR_DISPOFF);
+            fn_80026A44(playerWork->models.main.hookEffects[index], (1 << 0));
             if (HuMCProbe(0) != 0 && HuMCProbe(1) != 0) {
                 if (playerWork->models.main.brokenHooks < 6) {
-                    omVibrate(lbl_1_bss_250.mainPlayer, 20, 7, 3);
+                    fn_8006A030(lbl_1_bss_250.mainPlayer, 20, 7, 3);
                 } else {
-                    omVibrate(lbl_1_bss_250.mainPlayer, 60, 20, 0);
+                    fn_8006A030(lbl_1_bss_250.mainPlayer, 60, 20, 0);
                 }
             }
         } else if (playerWork->models.main.damage >= (index + 1) * 50 - 16) {
-            Hu3DMotionTimeSet(playerWork->models.main.hookModels[index],
+            fn_8002D414(playerWork->models.main.hookModels[index],
                               30.0f);
         } else if (playerWork->models.main.damage >= (index + 1) * 50 - 32) {
-            Hu3DMotionTimeSet(playerWork->models.main.hookModels[index],
+            fn_8002D414(playerWork->models.main.hookModels[index],
                               15.0f);
         }
-        maxTime = Hu3DMotionMaxTimeGet(
+        maxTime = fn_8002D530(
             playerWork->models.main.hookEffects[index]);
-        if (Hu3DMotionTimeGet(
+        if (fn_8002D4E0(
                 playerWork->models.main.hookEffects[index]) >= maxTime) {
-            Hu3DModelAttrSet(playerWork->models.main.hookEffects[index], HU3D_ATTR_DISPOFF);
+            fn_800269E8(playerWork->models.main.hookEffects[index], (1 << 0));
         }
     }
 }
@@ -878,8 +878,8 @@ void fn_1_4768(void) {
 
     activePlayer = lbl_1_bss_250.mainPlayer;
     playerWork = &lbl_1_bss_10[activePlayer];
-    sequenceMode = MgSeqModeGet();
-    Hu3DModelPosGet(playerWork->vehicleModel, &position);
+    sequenceMode = fn_80071A8C();
+    fn_800267CC(playerWork->vehicleModel, &position);
     if (playerWork->models.main.damage >= 300 && sequenceMode <= 6) {
         if (playerWork->speed > 0.0f) {
             playerWork->speed -= 0.1f;
@@ -891,7 +891,7 @@ void fn_1_4768(void) {
             HuAudFXFadeOut(playerWork->effect.main.soundHandle, 30);
             playerWork->effect.main.soundHandle = -1;
         }
-        Hu3DModelRotGet(playerWork->vehicleModel, &rotation);
+        fn_80026874(playerWork->vehicleModel, &rotation);
         if (rotation.z < 5.0f) {
             rotation.z += 0.25f;
             if (rotation.z == 5.0f) {
@@ -904,20 +904,20 @@ void fn_1_4768(void) {
         if (position.y > -50.0f) {
             position.y -= 2.5f;
         }
-        Hu3DModelRotSetV(playerWork->vehicleModel, &rotation);
+        fn_80026838(playerWork->vehicleModel, &rotation);
         motionSpeed = (15.0f * playerWork->speed) / 5.0f;
         lbl_1_bss_250.scrollSpeed =
             (15.0f * playerWork->speed) / 5.0f;
-        Hu3DMotionSpeedSet(playerWork->models.main.propellers[0], motionSpeed);
-        Hu3DMotionSpeedSet(playerWork->models.main.propellers[1], motionSpeed);
+        fn_8002D86C(playerWork->models.main.propellers[0], motionSpeed);
+        fn_8002D86C(playerWork->models.main.propellers[1], motionSpeed);
     } else if (sequenceMode == 8 && lbl_1_bss_250.winningTeam == -1) {
-        frameNumber = MgSeqFrameNoGet();
+        frameNumber = fn_80071DE4();
         motionSpeed = (100.0f - frameNumber) / 100.0f;
         if (motionSpeed < 0.0f) {
             motionSpeed = 0.0f;
         }
-        Hu3DMotionSpeedSet(playerWork->models.main.propellers[0], motionSpeed);
-        Hu3DMotionSpeedSet(playerWork->models.main.propellers[1], motionSpeed);
+        fn_8002D86C(playerWork->models.main.propellers[0], motionSpeed);
+        fn_8002D86C(playerWork->models.main.propellers[1], motionSpeed);
         position.y -= 1.0f;
         if (position.y < -55.0f) {
             position.y = -55.0f;
@@ -942,10 +942,10 @@ void fn_1_4768(void) {
             }
         }
     }
-    Hu3DModelPosSetV(playerWork->vehicleModel, &position);
-    Hu3DModelPosSet(playerWork->models.main.damageModels[0], position.x - 250.0f,
+    fn_80026790(playerWork->vehicleModel, &position);
+    fn_80026760(playerWork->models.main.damageModels[0], position.x - 250.0f,
                     position.y + 500.0f, position.z - 350.0f);
-    Hu3DModelPosSet(playerWork->models.main.damageModels[1], position.x + 300.0f,
+    fn_80026760(playerWork->models.main.damageModels[1], position.x + 300.0f,
                     position.y + 400.0f, position.z + 50.0f);
     if (sequenceMode == 5) {
         if (playerWork->difficulty == -1) {
@@ -975,9 +975,9 @@ void fn_1_4768(void) {
     fn_1_8FC8();
     fn_1_B1E8();
     fn_1_4200();
-    if ((f32) playerWork->models.main.damage >= 180.0f && MgSeqModeGet() <= 6U) {
-        Hu3DMotionSpeedSet(playerWork->models.main.propellers[0], playerWork->speed / 5.0f);
-        Hu3DMotionSpeedSet(playerWork->models.main.propellers[1], playerWork->speed / 5.0f);
+    if ((f32) playerWork->models.main.damage >= 180.0f && fn_80071A8C() <= 6U) {
+        fn_8002D86C(playerWork->models.main.propellers[0], playerWork->speed / 5.0f);
+        fn_8002D86C(playerWork->models.main.propellers[1], playerWork->speed / 5.0f);
     }
 }
 
@@ -991,7 +991,7 @@ s32 fn_1_4FA4(HuVecF *point) {
 
     currentPlayer = lbl_1_bss_250.mainPlayer;
     playerWork = &lbl_1_bss_10[currentPlayer];
-    Hu3DModelPosGet(playerWork->vehicleModel, &playerPosition);
+    fn_800267CC(playerWork->vehicleModel, &playerPosition);
     if (((120.0f + point->x) > (playerPosition.x - 350.0f)) &&
         ((point->x - 120.0f) < (350.0f + playerPosition.x)) &&
         ((150.0f + point->z) > (playerPosition.z - 600.0f)) &&
@@ -1009,14 +1009,14 @@ void fn_1_50DC(void) {
     M665PlayerWork *playerWork;
 
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
-    Hu3DModelHookObjReset((playerWork->vehicleModel), "itemhook");
-    Hu3DModelRotSet((playerWork->vehicleModel), 0.0f, 30.0f, 0.0f);
-    Hu3DModelPosSet((playerWork->vehicleModel), 0.0f, 0.0f, (-2000.0f));
-    Hu3DModelPosSet((playerWork->characterModel), (-300.0f), 0.0f, 300.0f);
-    Hu3DModelShadowSet((playerWork->characterModel));
+    fn_800275B4((playerWork->vehicleModel), "itemhook");
+    fn_80026808((playerWork->vehicleModel), 0.0f, 30.0f, 0.0f);
+    fn_80026760((playerWork->vehicleModel), 0.0f, 0.0f, (-2000.0f));
+    fn_80026760((playerWork->characterModel), (-300.0f), 0.0f, 300.0f);
+    fn_80026E44((playerWork->characterModel));
     mainPlayerIndex = lbl_1_bss_250.mainPlayer;
-    if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-        GwPlayer[mainPlayerIndex].mgCoinBonus = 10;
+    if (fn_8006A124(65551) == 0) {
+        lbl_80265750[mainPlayerIndex].mgCoinBonus = 10;
     }
 }
 
@@ -1035,24 +1035,24 @@ void fn_1_51F8(void) {
 
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
     positions = lbl_1_rodata_27C;
-    Hu3DModelHookObjReset(playerWork->vehicleModel, "itemhook");
-    Hu3DMotionSpeedSet(playerWork->models.main.propellers[0], 0.05f);
-    Hu3DMotionSpeedSet(playerWork->models.main.propellers[1], 0.01f);
-    Hu3DMotionTimeSet(playerWork->models.main.propellers[0], 0.0f);
-    Hu3DMotionTimeSet(playerWork->models.main.propellers[1], 0.0f);
-    Hu3DModelRotSet(playerWork->vehicleModel, 5.0f, 30.0f,
+    fn_800275B4(playerWork->vehicleModel, "itemhook");
+    fn_8002D86C(playerWork->models.main.propellers[0], 0.05f);
+    fn_8002D86C(playerWork->models.main.propellers[1], 0.01f);
+    fn_8002D414(playerWork->models.main.propellers[0], 0.0f);
+    fn_8002D414(playerWork->models.main.propellers[1], 0.0f);
+    fn_80026808(playerWork->vehicleModel, 5.0f, 30.0f,
                     15.0f);
-    Hu3DModelPosSet(playerWork->vehicleModel, 0.0f, 0.0f,
+    fn_80026760(playerWork->vehicleModel, 0.0f, 0.0f,
                     (-2000.0f));
-    Hu3DModelPosSet(playerWork->characterModel, (-500.0f), 0.0f,
+    fn_80026760(playerWork->characterModel, (-500.0f), 0.0f,
                     (-500.0f));
-    Hu3DModelShadowSet(playerWork->characterModel);
+    fn_80026E44(playerWork->characterModel);
     i = 0;
     while (i < 2) {
-        modelID = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 34), M665_MEMORY_TAG, HEAP_MODEL));
-        Hu3DModelPosSetV(modelID, &positions.position[i]);
-        Hu3DModelAttrSet(modelID, HU3D_MOTATTR_LOOP);
+        modelID = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 34), M665_MEMORY_TAG, 2));
+        fn_80026790(modelID, &positions.position[i]);
+        fn_800269E8(modelID, ((1 << 30) | (1 << 0)));
         i++;
     }
 }
@@ -1062,10 +1062,10 @@ void fn_1_53C0(void) {
     M665PlayerWork *playerWork;
 
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
-    Hu3DModelHookObjReset((playerWork->vehicleModel), "itemhook");
-    Hu3DModelPosSet((playerWork->vehicleModel), 0.0f, 0.0f, (-2000.0f));
-    Hu3DModelPosSet((playerWork->characterModel), (-300.0f), 0.0f, (-200.0f));
-    Hu3DModelShadowSet((playerWork->characterModel));
+    fn_800275B4((playerWork->vehicleModel), "itemhook");
+    fn_80026760((playerWork->vehicleModel), 0.0f, 0.0f, (-2000.0f));
+    fn_80026760((playerWork->characterModel), (-300.0f), 0.0f, (-200.0f));
+    fn_80026E44((playerWork->characterModel));
 }
 
 /* Loads the fire-effect models during fn_1_1C60's sequence initialization. */
@@ -1078,16 +1078,16 @@ void fn_1_5470(void) {
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
     i = 0;
     while (i < 16) {
-        modelID = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 24), M665_MEMORY_TAG, HEAP_MODEL));
+        modelID = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 24), M665_MEMORY_TAG, 2));
         if (i == 0) {
-            modelData = Hu3DData[modelID].hsf;
+            modelData = lbl_802C01C8[modelID].hsf;
             lbl_1_bss_2E0 = HuMemDirectMallocNum(
                 HEAP_HEAP, modelData->materialNum * 60, M665_MEMORY_TAG);
             memcpy(lbl_1_bss_2E0, modelData->material,
                    modelData->materialNum * 60);
         }
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
+        fn_800269E8(modelID, (1 << 0));
         lbl_1_bss_2E8.fire[i].modelA = modelID;
         lbl_1_bss_2E8.fire[i].active = 0;
         lbl_1_bss_2E8.fire[i].lifetime = 0;
@@ -1096,9 +1096,9 @@ void fn_1_5470(void) {
     }
     i = 0;
     while (i < 16) {
-        modelID = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 24), M665_MEMORY_TAG, HEAP_MODEL));
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
+        modelID = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 24), M665_MEMORY_TAG, 2));
+        fn_800269E8(modelID, (1 << 0));
         lbl_1_bss_2E8.fire[i].modelB = modelID;
         i++;
     }
@@ -1115,7 +1115,7 @@ static inline void m665FireSpawn(void) {
     s32 i;
 
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
-    Hu3DModelPosGet(playerWork->vehicleModel, &modelPosition);
+    fn_800267CC(playerWork->vehicleModel, &modelPosition);
     modelPosition.x += 240.0f;
     modelPosition.z += 200.0f;
     Hu3DModelObjPosGet(playerWork->vehicleModel, "itemhook_fire1", &objectPosition);
@@ -1137,9 +1137,9 @@ static inline void m665FireSpawn(void) {
             lbl_1_bss_2E8.fire[i].active = 1;
             lbl_1_bss_2E8.fire[i].opacity =
                 0.8f;
-            Hu3DModelAttrReset(
+            fn_80026A44(
                 lbl_1_bss_2E8.fire[i].modelA, 1);
-            Hu3DModelAttrReset(
+            fn_80026A44(
                 lbl_1_bss_2E8.fire[i].modelB, 1);
             return;
         }
@@ -1162,7 +1162,7 @@ void fn_1_5614(void) {
     s32 i;
 
     playerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
-    Hu3DModelPosGet(playerWork->vehicleModel, &modelPosition);
+    fn_800267CC(playerWork->vehicleModel, &modelPosition);
     modelPosition.x += 240.0f;
     modelPosition.z += 200.0f;
     Hu3DModelObjPosGet(playerWork->vehicleModel, "itemhook_fire1", &objectPosition);
@@ -1184,9 +1184,9 @@ void fn_1_5614(void) {
             lbl_1_bss_2E8.fire[i].active = 1;
             lbl_1_bss_2E8.fire[i].opacity =
                 0.8f;
-            Hu3DModelAttrReset(
+            fn_80026A44(
                 lbl_1_bss_2E8.fire[i].modelA, 1);
-            Hu3DModelAttrReset(
+            fn_80026A44(
                 lbl_1_bss_2E8.fire[i].modelB, 1);
             return;
         }
@@ -1232,13 +1232,13 @@ void fn_1_5820(void) {
         effect = &lbl_1_bss_2E8.fire[effectIndex];
         effect->offsetX += (effect->velocityX - 6.0f) + (f32) frandmod(12);
         effect->offsetZ += effect->velocityZ;
-        Hu3DModelPosSet(effect->modelA, fireOnePosition.x + effect->offsetX,
+        fn_80026760(effect->modelA, fireOnePosition.x + effect->offsetX,
                         fireOnePosition.y, fireOnePosition.z + effect->offsetZ);
-        Hu3DModelPosSet(effect->modelB, fireTwoPosition.x - effect->offsetX,
+        fn_80026760(effect->modelB, fireTwoPosition.x - effect->offsetX,
                         fireTwoPosition.y, fireTwoPosition.z + effect->offsetZ);
-        Hu3DModelScaleSet(effect->modelA, effect->scale, effect->scale,
+        fn_800268B0(effect->modelA, effect->scale, effect->scale,
                           effect->scale);
-        Hu3DModelScaleSet(effect->modelB, effect->scale, effect->scale,
+        fn_800268B0(effect->modelB, effect->scale, effect->scale,
                           effect->scale);
         if (effect->lifetime < 20) {
             effect->opacity -= 0.04f;
@@ -1246,17 +1246,17 @@ void fn_1_5820(void) {
         if (effect->opacity < 0.0f) {
             effect->opacity = 0.0f;
         }
-        Hu3DModelTPLvlSet(effect->modelA, effect->opacity);
-        Hu3DModelTPLvlSet(effect->modelB, effect->opacity);
+        fn_80026CBC(effect->modelA, effect->opacity);
+        fn_80026CBC(effect->modelB, effect->opacity);
         effect->scale += (f32) frandmod(5) / 15.0f;
         if (effect->lifetime-- <= 0) {
             effect->lifetime = 0;
-            modelData = Hu3DData[effect->modelA].hsf;
+            modelData = lbl_802C01C8[effect->modelA].hsf;
             memcpy(modelData->material, lbl_1_bss_2E0,
                    modelData->materialNum * 60);
-            Hu3DModelAttrSet(effect->modelA, HU3D_ATTR_DISPOFF);
-            Hu3DModelAttrSet(effect->modelB, HU3D_ATTR_DISPOFF);
-            modelData = Hu3DData[effect->modelB].hsf;
+            fn_800269E8(effect->modelA, (1 << 0));
+            fn_800269E8(effect->modelB, (1 << 0));
+            modelData = lbl_802C01C8[effect->modelB].hsf;
             memcpy(modelData->material, lbl_1_bss_2E0,
                    modelData->materialNum * 60);
             effect->active = 0;
@@ -1268,7 +1268,7 @@ void fn_1_5820(void) {
         for (playerIndex = 0; playerIndex < 3; playerIndex++) {
             playerWork = &lbl_1_bss_10[lbl_1_bss_250.otherPlayers[playerIndex]];
             if (playerWork->status.other.state == 1) {
-                Hu3DModelPosGet(playerWork->vehicleModel, &playerPosition);
+                fn_800267CC(playerWork->vehicleModel, &playerPosition);
                 firstCollisionPosition.x = fireOnePosition.x + effect->offsetX;
                 firstCollisionPosition.y = fireOnePosition.y;
                 firstCollisionPosition.z = fireOnePosition.z + effect->offsetZ;
@@ -1328,30 +1328,30 @@ void fn_1_6188(void) {
     i = 0;
     while (i < 6) {
         if (i == 0) {
-            baseModel = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m665, 25), M665_MEMORY_TAG, HEAP_MODEL));
+            baseModel = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7c0000, 25), M665_MEMORY_TAG, 2));
             modelID = baseModel;
         } else {
-            modelID = Hu3DModelLink(baseModel);
+            modelID = fn_80025D4C(baseModel);
         }
-        Hu3DModelAttrSet(modelID, HU3D_MOTATTR_LOOP);
-        Hu3DModelHookSet(playerWork->vehicleModel, hookNames.name[i], modelID);
-        Hu3DModelShadowSet(modelID);
-        Hu3DMotionSpeedSet(modelID, 0.0f);
+        fn_800269E8(modelID, ((1 << 30) | (1 << 0)));
+        fn_8002741C(playerWork->vehicleModel, hookNames.name[i], modelID);
+        fn_80026E44(modelID);
+        fn_8002D86C(modelID, 0.0f);
         lbl_1_bss_2E8.missiles[i].modelID = modelID;
         i++;
     }
     i = 0;
     while (i < 6) {
         if (i == 0) {
-            baseModel = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m665, 32), M665_MEMORY_TAG, HEAP_MODEL));
+            baseModel = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7c0000, 32), M665_MEMORY_TAG, 2));
             modelID = baseModel;
         } else {
-            modelID = Hu3DModelLink(baseModel);
+            modelID = fn_80025D4C(baseModel);
         }
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
-        Hu3DMotionSpeedSet(modelID, 0.0f);
+        fn_800269E8(modelID, (1 << 0));
+        fn_8002D86C(modelID, 0.0f);
         lbl_1_bss_2E8.missiles[i].collisionModelID = modelID;
         i++;
     }
@@ -1362,7 +1362,7 @@ void fn_1_633C(s16 index) {
     M665MissileWork *work;
 
     work = &lbl_1_bss_2E8.missiles[index];
-    Hu3DModelPosGet(work->modelID, &position);
+    fn_800267CC(work->modelID, &position);
     position.x = (f32) ((f64) position.x +
                         (50.0 *
                          sin((3.141592653589793 *
@@ -1373,12 +1373,12 @@ void fn_1_633C(s16 index) {
                          cos((3.141592653589793 *
                               (f64) work->angle) /
                              180.0)));
-    Hu3DModelPosSetV(work->collisionModelID, &position);
-    Hu3DMotionSpeedSet(work->collisionModelID, 1.0f);
-    Hu3DMotionTimeSet(work->collisionModelID, 0.0f);
-    Hu3DModelAttrReset(work->collisionModelID, HU3D_ATTR_DISPOFF);
+    fn_80026790(work->collisionModelID, &position);
+    fn_8002D86C(work->collisionModelID, 1.0f);
+    fn_8002D414(work->collisionModelID, 0.0f);
+    fn_80026A44(work->collisionModelID, (1 << 0));
     work->state = 3;
-    Hu3DModelScaleSet(work->modelID, 1.2f, 1.2f,
+    fn_800268B0(work->modelID, 1.2f, 1.2f,
                       0.8f);
 }
 
@@ -1388,7 +1388,7 @@ static inline void fn_1_633C_for_648C(s16 index) {
     M665MissileWork *work;
 
     work = &lbl_1_bss_2E8.missiles[index];
-    Hu3DModelPosGet(work->modelID, &position);
+    fn_800267CC(work->modelID, &position);
     position.x = (f32) ((f64) position.x +
                         (50.0 *
                          sin((3.141592653589793 *
@@ -1399,12 +1399,12 @@ static inline void fn_1_633C_for_648C(s16 index) {
                          cos((3.141592653589793 *
                               (f64) work->angle) /
                              180.0)));
-    Hu3DModelPosSetV(work->collisionModelID, &position);
-    Hu3DMotionSpeedSet(work->collisionModelID, 1.0f);
-    Hu3DMotionTimeSet(work->collisionModelID, 0.0f);
-    Hu3DModelAttrReset(work->collisionModelID, HU3D_ATTR_DISPOFF);
+    fn_80026790(work->collisionModelID, &position);
+    fn_8002D86C(work->collisionModelID, 1.0f);
+    fn_8002D414(work->collisionModelID, 0.0f);
+    fn_80026A44(work->collisionModelID, (1 << 0));
     work->state = 3;
-    Hu3DModelScaleSet(work->modelID, 1.2f, 1.2f,
+    fn_800268B0(work->modelID, 1.2f, 1.2f,
                       0.8f);
 }
 
@@ -1436,10 +1436,10 @@ void fn_1_648C(void) {
         {
         case 1 :
             Hu3DModelObjPosGet(mainPlayerWork2->vehicleModel, hookNames[effectIndex], &position);
-            Hu3DModelHookObjReset(mainPlayerWork2->vehicleModel, hookNames[effectIndex]);
-            Hu3DModelPosSetV(missileWork->modelID, &position);
-            Hu3DModelRotSet(missileWork->modelID, 0.0f, initialAngles[effectIndex], 0.0f);
-            Hu3DMotionSpeedSet(missileWork->modelID, 1.0f);
+            fn_800275B4(mainPlayerWork2->vehicleModel, hookNames[effectIndex]);
+            fn_80026790(missileWork->modelID, &position);
+            fn_80026808(missileWork->modelID, 0.0f, initialAngles[effectIndex], 0.0f);
+            fn_8002D86C(missileWork->modelID, 1.0f);
             missileWork->state = 2;
             missileWork->angle = initialAngles[effectIndex];
             missileWork->speed = 5.0f;
@@ -1456,7 +1456,7 @@ void fn_1_648C(void) {
             motion.y = 0.0f;
             motion.z = missileWork->speed *
                        cos(3.141592653589793 * missileWork->angle / 180.0);
-            Hu3DModelPosGet(missileWork->modelID, &position);
+            fn_800267CC(missileWork->modelID, &position);
             position.x += motion.x;
             position.z += motion.z;
             if (++missileWork->frames < 18)
@@ -1474,13 +1474,13 @@ void fn_1_648C(void) {
             {
                 DebugValue(missileWork->frames == 15); /* The frame check has no visible effect. */
             }
-            Hu3DModelPosSetV(missileWork->modelID, &position);
+            fn_80026790(missileWork->modelID, &position);
             if (position.z >= 1000.0f)
             {
                 missileWork->state = 0;
-                Hu3DModelAttrSet(missileWork->modelID, HU3D_ATTR_DISPOFF);
-                Hu3DMotionSpeedSet(missileWork->modelID, 0.0f);
-                Hu3DMotionTimeSet(missileWork->modelID, 0.0f);
+                fn_800269E8(missileWork->modelID, (1 << 0));
+                fn_8002D86C(missileWork->modelID, 0.0f);
+                fn_8002D414(missileWork->modelID, 0.0f);
             }
             if (position.x <=
                     (-1000.0) - 100.0 * sin(3.141592653589793 *
@@ -1491,12 +1491,12 @@ void fn_1_648C(void) {
                     100.0 * sin(3.141592653589793 * missileWork->angle / 180.0);
                 position.z +=
                     100.0 * cos(3.141592653589793 * missileWork->angle / 180.0);
-                Hu3DModelPosSetV(missileWork->collisionModelID, &position);
-                Hu3DMotionSpeedSet(missileWork->collisionModelID, 1.0f);
-                Hu3DMotionTimeSet(missileWork->collisionModelID, 0.0f);
-                Hu3DModelAttrReset(missileWork->collisionModelID, HU3D_ATTR_DISPOFF);
+                fn_80026790(missileWork->collisionModelID, &position);
+                fn_8002D86C(missileWork->collisionModelID, 1.0f);
+                fn_8002D414(missileWork->collisionModelID, 0.0f);
+                fn_80026A44(missileWork->collisionModelID, (1 << 0));
                 missileWork->state = 3;
-                Hu3DModelScaleSet(missileWork->modelID, 1.2f, 1.2f, 0.8f);
+                fn_800268B0(missileWork->modelID, 1.2f, 1.2f, 0.8f);
             }
                 /* State changes above and earlier hits do not stop this scan; one missile can hit
                  * several opponents. */
@@ -1505,7 +1505,7 @@ void fn_1_648C(void) {
                     playerWork = &lbl_1_bss_10[lbl_1_bss_250.otherPlayers[playerIndex]];
                     if (playerWork->status.other.state == 1)
                     {
-                        Hu3DModelPosGet(playerWork->vehicleModel, & playerPosition);
+                        fn_800267CC(playerWork->vehicleModel, & playerPosition);
                         playerPosition.y = position.y;
                         collisionDistanceSquared =
                         PSVECSquareDistance(&playerPosition, &position);
@@ -1519,29 +1519,29 @@ void fn_1_648C(void) {
                 }
             break;
         case 3 :
-            motionEndFrame = Hu3DMotionMaxTimeGet(missileWork->collisionModelID);
-            if (Hu3DMotionTimeGet(missileWork->collisionModelID) >= motionEndFrame)
+            motionEndFrame = fn_8002D530(missileWork->collisionModelID);
+            if (fn_8002D4E0(missileWork->collisionModelID) >= motionEndFrame)
             {
-                Hu3DMotionTimeSet(missileWork->modelID, 0.0f);
-                Hu3DMotionSpeedSet(missileWork->modelID, 0.0f);
-                Hu3DModelAttrSet(missileWork->collisionModelID, HU3D_ATTR_DISPOFF);
-                Hu3DMotionSpeedSet(missileWork->collisionModelID, 0.0f);
-                Hu3DMotionTimeSet(missileWork->collisionModelID, 0.0f);
+                fn_8002D414(missileWork->modelID, 0.0f);
+                fn_8002D86C(missileWork->modelID, 0.0f);
+                fn_800269E8(missileWork->collisionModelID, (1 << 0));
+                fn_8002D86C(missileWork->collisionModelID, 0.0f);
+                fn_8002D414(missileWork->collisionModelID, 0.0f);
                 missileWork->state = 0;
-                Hu3DModelScaleSet(missileWork->modelID, 1.0f, 1.0f, 1.0f);
+                fn_800268B0(missileWork->modelID, 1.0f, 1.0f, 1.0f);
             }
             else
             {
-                if (Hu3DMotionTimeGet(missileWork->collisionModelID) == 5.0f)
+                if (fn_8002D4E0(missileWork->collisionModelID) == 5.0f)
                 {
-                    Hu3DModelAttrSet(missileWork->modelID, HU3D_ATTR_DISPOFF);
+                    fn_800269E8(missileWork->modelID, (1 << 0));
                 }
             }
             break;
         }
-        if (Hu3DMotionTimeGet(missileWork->modelID) >= 55.0f)
+        if (fn_8002D4E0(missileWork->modelID) >= 55.0f)
         {
-            Hu3DMotionStartEndSet(missileWork->modelID, 55.0f, 107.0f);
+            fn_8002D730(missileWork->modelID, 55.0f, 107.0f);
         }
     }
     if (mainPlayerWork2->effect.main.effectState == 2 &&
@@ -1584,22 +1584,22 @@ void fn_1_6E8C(void) {
     s16 modelID;
 
     for (killerIndex = 0; killerIndex < 3; killerIndex++) {
-        modelID = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 0), M665_MEMORY_TAG, HEAP_MODEL));
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
+        modelID = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 0), M665_MEMORY_TAG, 2));
+        fn_800269E8(modelID, (1 << 0));
         lbl_1_bss_2E8.killers[killerIndex].state = 0;
         lbl_1_bss_2E8.killers[killerIndex].modelID = modelID;
-        Hu3DModelShadowSet(modelID);
-        modelID = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 32), M665_MEMORY_TAG, HEAP_MODEL));
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
-        Hu3DMotionSpeedSet(modelID, 0.0f);
+        fn_80026E44(modelID);
+        modelID = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 32), M665_MEMORY_TAG, 2));
+        fn_800269E8(modelID, (1 << 0));
+        fn_8002D86C(modelID, 0.0f);
         lbl_1_bss_2E8.killers[killerIndex].collisionModelID = modelID;
         lbl_1_bss_2E8.killers[killerIndex].soundHandle = -1;
         for (modelIndex = 0; modelIndex < 32; modelIndex++) {
-            modelID = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m665, 35), M665_MEMORY_TAG, HEAP_MODEL));
-            Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
+            modelID = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7c0000, 35), M665_MEMORY_TAG, 2));
+            fn_800269E8(modelID, (1 << 0));
             lbl_1_bss_2E8.killers[killerIndex].trail[modelIndex].modelID = modelID;
             lbl_1_bss_2E8.killers[killerIndex].trail[modelIndex].active = 0;
         }
@@ -1621,12 +1621,12 @@ s16 fn_1_700C(s16 killerIndex) {
     work = &lbl_1_bss_2E8.killers[killerIndex];
     nearestPlayer = -1;
     closestDistance = 10000.0f;
-    Hu3DModelPosGet(work->modelID, &modelPosition);
+    fn_800267CC(work->modelID, &modelPosition);
     playerIndex = 0;
     while (playerIndex < 3) {
         playerWork = &lbl_1_bss_10[lbl_1_bss_250.otherPlayers[playerIndex]];
         if (playerWork->status.other.state == 1) {
-            Hu3DModelPosGet(playerWork->vehicleModel, &playerPosition);
+            fn_800267CC(playerWork->vehicleModel, &playerPosition);
             candidateDistance = PSVECSquareDistance(
                 &modelPosition, &playerPosition);
             candidateDistance = sqrtf(candidateDistance);
@@ -1660,7 +1660,7 @@ void fn_1_7214(s16 killerIndex) {
         killerWork->targetPlayer = fn_1_700C(killerIndex);
     }
     if (killerWork->targetPlayer == -1) {
-        Hu3DModelPosGet(killerWork->modelID, &currentPosition);
+        fn_800267CC(killerWork->modelID, &currentPosition);
         currentPosition.x += 8.333333015441895 *
             sin(3.141592653589793 * killerWork->angle /
                 180.0);
@@ -1670,15 +1670,15 @@ void fn_1_7214(s16 killerIndex) {
         if (currentPosition.z > 200.0f) {
             currentPosition.z -= 3.0f;
         }
-        Hu3DModelPosSetV(killerWork->modelID, &currentPosition);
-        Hu3DModelRotSet(killerWork->modelID, 0.0f,
+        fn_80026790(killerWork->modelID, &currentPosition);
+        fn_80026808(killerWork->modelID, 0.0f,
                         killerWork->angle, 0.0f);
         return;
     }
     targetWork = &lbl_1_bss_10[killerWork->targetPlayer];
-    Hu3DModelPosGet(targetWork->vehicleModel, &targetOffset);
+    fn_800267CC(targetWork->vehicleModel, &targetOffset);
     targetOffset.y += 100.0f;
-    Hu3DModelPosGet(killerWork->modelID, &currentPosition);
+    fn_800267CC(killerWork->modelID, &currentPosition);
     targetPosition.x = targetOffset.x - currentPosition.x;
     targetPosition.y = 0.0f;
     targetPosition.z = targetOffset.z - currentPosition.z;
@@ -1717,8 +1717,8 @@ void fn_1_7214(s16 killerIndex) {
     if (currentPosition.y < 200.0f) {
         currentPosition.y = 200.0f;
     }
-    Hu3DModelPosSetV(killerWork->modelID, &currentPosition);
-    Hu3DModelRotSet(killerWork->modelID, 0.0f,
+    fn_80026790(killerWork->modelID, &currentPosition);
+    fn_80026808(killerWork->modelID, 0.0f,
                     killerWork->angle, 0.0f);
     if (currentPosition.z > 100.0f) {
         killerWork->state = 5;
@@ -1732,7 +1732,7 @@ static inline void updateKillerMotionInline(s16 killerIndex) {
     M665KillerWork *killerWork;
 
     killerWork = &lbl_1_bss_2E8.killers[killerIndex];
-    Hu3DModelPosGet(killerWork->modelID, &position);
+    fn_800267CC(killerWork->modelID, &position);
     while (killerWork->angle < 0.0f) {
         killerWork->angle += 360.0f;
     }
@@ -1757,12 +1757,12 @@ static inline void updateKillerMotionInline(s16 killerIndex) {
                      cos(3.141592653589793 *
                           killerWork->angle /
                          180.0);
-    Hu3DModelPosSetV(killerWork->modelID, &position);
-    Hu3DModelRotSet(killerWork->modelID, 0.0f,
+    fn_80026790(killerWork->modelID, &position);
+    fn_80026808(killerWork->modelID, 0.0f,
                     killerWork->angle, 0.0f);
     if (position.z >= 1000.0f) {
         killerWork->state = 0;
-        Hu3DModelAttrSet(killerWork->modelID, HU3D_ATTR_DISPOFF);
+        fn_800269E8(killerWork->modelID, (1 << 0));
         HuAudFXStop(killerWork->soundHandle);
         killerWork->soundHandle = -1;
     }
@@ -1780,11 +1780,11 @@ static inline void resetPlayerEffect(s16 killerIndex) {
 
     HuAudFXStop(effectWork->soundHandle);
     effectWork->soundHandle = -1;
-    Hu3DModelPosGet(effectWork->modelID, &resetPosition);
-    Hu3DModelPosSetV(effectWork->collisionModelID, &resetPosition);
-    Hu3DModelAttrReset(effectWork->collisionModelID, HU3D_ATTR_DISPOFF);
-    Hu3DMotionSpeedSet(effectWork->collisionModelID, 1.0f);
-    Hu3DMotionTimeSet(effectWork->collisionModelID, 0.0f);
+    fn_800267CC(effectWork->modelID, &resetPosition);
+    fn_80026790(effectWork->collisionModelID, &resetPosition);
+    fn_80026A44(effectWork->collisionModelID, (1 << 0));
+    fn_8002D86C(effectWork->collisionModelID, 1.0f);
+    fn_8002D414(effectWork->collisionModelID, 0.0f);
     effectWork->targetFrames = 5;
     effectWork->state = 6;
 }
@@ -1795,11 +1795,11 @@ void fn_1_7AF4(s16 killerIndex) {
     Point3d modelPosition;
     HuAudFXStop(killerWork->soundHandle);
     killerWork->soundHandle = -1;
-    Hu3DModelPosGet(killerWork->modelID, &modelPosition);
-    Hu3DModelPosSetV(killerWork->collisionModelID, &modelPosition);
-    Hu3DModelAttrReset(killerWork->collisionModelID, HU3D_ATTR_DISPOFF);
-    Hu3DMotionSpeedSet(killerWork->collisionModelID, 1.0f);
-    Hu3DMotionTimeSet(killerWork->collisionModelID, 0.0f);
+    fn_800267CC(killerWork->modelID, &modelPosition);
+    fn_80026790(killerWork->collisionModelID, &modelPosition);
+    fn_80026A44(killerWork->collisionModelID, (1 << 0));
+    fn_8002D86C(killerWork->collisionModelID, 1.0f);
+    fn_8002D414(killerWork->collisionModelID, 0.0f);
     killerWork->targetFrames = 5;
     killerWork->state = 6;
 }
@@ -1814,7 +1814,7 @@ void fn_1_7BA0(s16 killerIndex) {
     s32 playerIndex;
 
     killerWork = &lbl_1_bss_2E8.killers[killerIndex];
-    Hu3DModelPosGet(killerWork->modelID, &playerPosition);
+    fn_800267CC(killerWork->modelID, &playerPosition);
     if (killerWork->soundHandle != -1) {
         HuAudFXPanning(killerWork->soundHandle,
                        (s16) ((s32) (playerPosition.x / 40.0f) + 64));
@@ -1834,13 +1834,13 @@ void fn_1_7BA0(s16 killerIndex) {
         return;
     }
     mainPlayerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
-    Hu3DModelPosGet(mainPlayerWork->vehicleModel, &otherPosition);
+    fn_800267CC(mainPlayerWork->vehicleModel, &otherPosition);
     if ((playerPosition.x + collisionRadius.x > otherPosition.x - 350.0f) &&
         (playerPosition.x - collisionRadius.x < 350.0f + otherPosition.x) &&
         (playerPosition.z + collisionRadius.z > otherPosition.z - 600.0f) &&
         (playerPosition.z - collisionRadius.z < 180.0f + otherPosition.z) &&
         (playerPosition.y < 300.0f)) {
-        if (MgSeqModeGet() == 5) {
+        if (fn_80071A8C() == 5) {
             mainPlayerWork->models.main.damage += 10;
         }
         resetPlayerEffect(killerIndex);
@@ -1850,7 +1850,7 @@ void fn_1_7BA0(s16 killerIndex) {
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
         otherPlayerWork = &lbl_1_bss_10[lbl_1_bss_250.otherPlayers[playerIndex]];
         if (otherPlayerWork->status.other.state == 1) {
-            Hu3DModelPosGet(otherPlayerWork->vehicleModel, &otherPosition);
+            fn_800267CC(otherPlayerWork->vehicleModel, &otherPosition);
             if ((playerPosition.x + collisionRadius.x > otherPosition.x - 90.0f) &&
                 (playerPosition.x - collisionRadius.x < 90.0f + otherPosition.x) &&
                 (playerPosition.z + collisionRadius.z > otherPosition.z - 120.0f) &&
@@ -1873,7 +1873,7 @@ static inline void updateKillerEffectsInline(s16 killerIndex) {
         killerWork->trailFrames -= 1;
         return;
     }
-    Hu3DModelPosGet(killerWork->modelID, &position);
+    fn_800267CC(killerWork->modelID, &position);
     position.x -= 100.0 *
                   sin(3.141592653589793 *
                       killerWork->angle / 180.0);
@@ -1884,19 +1884,19 @@ static inline void updateKillerEffectsInline(s16 killerIndex) {
         if (killerWork->trail[effectIndex].active == 0) {
             killerWork->trail[effectIndex].active = 1;
             killerWork->trailFrames = frandmod(5) + 5;
-            Hu3DModelPosSetV(killerWork->trail[effectIndex].modelID, &position);
+            fn_80026790(killerWork->trail[effectIndex].modelID, &position);
             killerWork->trail[effectIndex].scale = 0.4f +
                 ((f32) frandmod(200) / 1000.0f);
-            Hu3DModelScaleSet(killerWork->trail[effectIndex].modelID,
+            fn_800268B0(killerWork->trail[effectIndex].modelID,
                               killerWork->trail[effectIndex].scale,
                               killerWork->trail[effectIndex].scale,
                               killerWork->trail[effectIndex].scale);
             killerWork->trail[effectIndex].opacity = (f32) (
                 0.9 +
                 (f64) ((f32) frandmod(10) / 100.0f));
-            Hu3DModelTPLvlSet(killerWork->trail[effectIndex].modelID,
+            fn_80026CBC(killerWork->trail[effectIndex].modelID,
                               killerWork->trail[effectIndex].opacity);
-            Hu3DModelAttrReset(killerWork->trail[effectIndex].modelID, HU3D_ATTR_DISPOFF);
+            fn_80026A44(killerWork->trail[effectIndex].modelID, (1 << 0));
             return;
         }
     }
@@ -1927,7 +1927,7 @@ void fn_1_8378(void) {
             if (killerWork->trail[index].active != 0) {
                 killerWork->trail[index].scale +=
                     0.01 + (f64) ((f32) frandmod(100) / 10000.0f);
-                Hu3DModelScaleSet(
+                fn_800268B0(
                     killerWork->trail[index].modelID,
                     killerWork->trail[index].scale,
                     killerWork->trail[index].scale,
@@ -1936,10 +1936,10 @@ void fn_1_8378(void) {
                 if (killerWork->trail[index].opacity <= 0.0f) {
                     killerWork->trail[index].opacity = 0.0f;
                     killerWork->trail[index].active = 0;
-                    Hu3DModelAttrSet(
+                    fn_800269E8(
                         killerWork->trail[index].modelID, 1);
                 }
-                Hu3DModelTPLvlSet(
+                fn_80026CBC(
                     killerWork->trail[index].modelID,
                     killerWork->trail[index].opacity);
             }
@@ -1947,26 +1947,26 @@ void fn_1_8378(void) {
 
         switch (killerWork->state) {
         case 1:
-            Hu3DModelAttrReset(killerWork->modelID, HU3D_ATTR_DISPOFF);
-            Hu3DModelHookSet(mainPlayerWork->vehicleModel, "itemhook_killer",
+            fn_80026A44(killerWork->modelID, (1 << 0));
+            fn_8002741C(mainPlayerWork->vehicleModel, "itemhook_killer",
                              killerWork->modelID);
-            Hu3DModelPosSet(killerWork->modelID, 0.0f, 0.0f, 0.0f);
-            Hu3DModelRotSet(killerWork->modelID, 0.0f, 0.0f, 0.0f);
+            fn_80026760(killerWork->modelID, 0.0f, 0.0f, 0.0f);
+            fn_80026808(killerWork->modelID, 0.0f, 0.0f, 0.0f);
             killerWork->angle = 0.0f;
             killerWork->targetPlayer = -1;
             killerWork->elapsed = 0;
             break;
         case 2:
-            Hu3DModelHookObjReset(mainPlayerWork->vehicleModel, "itemhook_killer");
+            fn_800275B4(mainPlayerWork->vehicleModel, "itemhook_killer");
             Hu3DModelObjPosGet(mainPlayerWork->vehicleModel, "itemhook_killer",
                                &position);
-            Hu3DModelPosSetV(killerWork->modelID, &position);
+            fn_80026790(killerWork->modelID, &position);
             HuAudFXPlay(0x876);
             killerWork->soundHandle = HuAudFXPlay(0x87B);
             killerWork->state = 3;
             break;
         case 3:
-            Hu3DModelPosGet(killerWork->modelID, &position);
+            fn_800267CC(killerWork->modelID, &position);
             position.z += 8.333333f;
             if (position.z >= -1850.0f) {
                 killerWork->state = 4;
@@ -1987,7 +1987,7 @@ void fn_1_8378(void) {
             } else {
                 position.x += killerWork->horizontalSpeed;
             }
-            Hu3DModelPosSetV(killerWork->modelID, &position);
+            fn_80026790(killerWork->modelID, &position);
             break;
         case 4:
             fn_1_7214((s16) killerIndex);
@@ -2000,14 +2000,14 @@ void fn_1_8378(void) {
             break;
         case 6:
             if ((killerWork->targetFrames)-- <= 0) {
-                Hu3DModelAttrSet(killerWork->modelID, HU3D_ATTR_DISPOFF);
+                fn_800269E8(killerWork->modelID, (1 << 0));
             }
-            Hu3DModelPosGet(killerWork->collisionModelID, &position);
+            fn_800267CC(killerWork->collisionModelID, &position);
             position.z += lbl_1_bss_250.scrollSpeed;
-            Hu3DModelPosSetV(killerWork->collisionModelID, &position);
-            motionValue = Hu3DMotionMaxTimeGet(killerWork->collisionModelID);
-            if (Hu3DMotionTimeGet(killerWork->collisionModelID) >= motionValue) {
-                Hu3DModelAttrSet(killerWork->collisionModelID, HU3D_ATTR_DISPOFF);
+            fn_80026790(killerWork->collisionModelID, &position);
+            motionValue = fn_8002D530(killerWork->collisionModelID);
+            if (fn_8002D4E0(killerWork->collisionModelID) >= motionValue) {
+                fn_800269E8(killerWork->collisionModelID, (1 << 0));
                 killerWork->state = 0;
             }
             break;
@@ -2084,18 +2084,18 @@ void fn_1_8E90(void) {
     goto checkModels;
 createModel:
     if (modelIndex == 0) {
-        model = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 1), M665_MEMORY_TAG, HEAP_MODEL));
+        model = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 1), M665_MEMORY_TAG, 2));
         baseModel = model;
     } else {
-        model = Hu3DModelLink(baseModel);
+        model = fn_80025D4C(baseModel);
     }
-    Hu3DModelAttrSet(model, HU3D_ATTR_DISPOFF);
-    Hu3DModelScaleSet(model, 1.2f, 1.2f, 1.2f);
+    fn_800269E8(model, (1 << 0));
+    fn_800268B0(model, 1.2f, 1.2f, 1.2f);
     lbl_1_bss_2E8.rolling[modelIndex].modelID = model;
     lbl_1_bss_2E8.rolling[modelIndex].state = 0;
-    Hu3DModelShadowSet(model);
-    Hu3DModelRotSet(model, frandmod(360), 0.0f, 0.0f);
+    fn_80026E44(model);
+    fn_80026808(model, frandmod(360), 0.0f, 0.0f);
     modelIndex++;
 checkModels:
     if (modelIndex < 10) {
@@ -2120,11 +2120,11 @@ void fn_1_8FC8(void) {
         switch (effectWork->state) {
         case 1:
             HuAudFXPlay(0x874);
-            Hu3DModelAttrReset(effectWork->modelID, HU3D_ATTR_DISPOFF);
-            Hu3DModelPosGet(currentPlayerWork->vehicleModel, &position);
+            fn_80026A44(effectWork->modelID, (1 << 0));
+            fn_800267CC(currentPlayerWork->vehicleModel, &position);
             position.z -= 350.0f;
             position.y += 400.0f;
-            Hu3DModelPosSetV(effectWork->modelID, &position);
+            fn_80026790(effectWork->modelID, &position);
             effectWork->horizontalSpeed =
                 (f32) ((10.0 *
                         sin((3.141592653589793 * (f64) (frandmod(90) - 45)) /
@@ -2136,8 +2136,8 @@ void fn_1_8FC8(void) {
             effectWork->state = 2;
             break;
         case 2:
-            Hu3DModelPosGet(effectWork->modelID, &position);
-            Hu3DModelRotGet(effectWork->modelID, &rotation);
+            fn_800267CC(effectWork->modelID, &position);
+            fn_80026874(effectWork->modelID, &rotation);
             position.x += effectWork->horizontalSpeed;
             position.y += effectWork->verticalSpeed;
             position.z += effectWork->depthSpeed;
@@ -2159,28 +2159,28 @@ void fn_1_8FC8(void) {
                 effectWork->state = 3;
                 HuAudFXPlay(0x877);
             }
-            Hu3DModelRotSetV(effectWork->modelID, &rotation);
-            Hu3DModelPosSetV(effectWork->modelID, &position);
+            fn_80026838(effectWork->modelID, &rotation);
+            fn_80026790(effectWork->modelID, &position);
             effectWork->verticalSpeed -= 1.5f;
             break;
         case 3:
-            Hu3DModelPosGet(effectWork->modelID, &position);
-            Hu3DModelRotGet(effectWork->modelID, &rotation);
+            fn_800267CC(effectWork->modelID, &position);
+            fn_80026874(effectWork->modelID, &rotation);
             rotation.x += 10.0f;
             position.z += 8.333333f + lbl_1_bss_250.scrollSpeed;
-            Hu3DModelRotSetV(effectWork->modelID, &rotation);
-            Hu3DModelPosSet(effectWork->modelID, position.x,
+            fn_80026838(effectWork->modelID, &rotation);
+            fn_80026760(effectWork->modelID, position.x,
                 (f32) (50.0 - 50.0 *
                     cos(3.141592653589793 * rotation.x / 180.0)),
                 position.z);
             if (position.z >= 600.0f) {
-                Hu3DModelAttrSet(effectWork->modelID, HU3D_ATTR_DISPOFF);
+                fn_800269E8(effectWork->modelID, (1 << 0));
                 effectWork->state = 0;
             }
             for (playerIndex = 0; playerIndex < 3; playerIndex++) {
                 otherPlayerWork = &lbl_1_bss_10[(&lbl_1_bss_250.otherPlayers[0])[playerIndex]];
                 if (otherPlayerWork->status.other.state == 1) {
-                    Hu3DModelPosGet(otherPlayerWork->vehicleModel, &playerPosition);
+                    fn_800267CC(otherPlayerWork->vehicleModel, &playerPosition);
                     position.y = 0.0f;
                     /* This Z offset accumulates once per active opponent because position is reused
                      * in this loop. */
@@ -2194,8 +2194,8 @@ void fn_1_8FC8(void) {
             }
             break;
         case 4:
-            Hu3DModelPosGet(effectWork->modelID, &position);
-            Hu3DModelRotGet(effectWork->modelID, &rotation);
+            fn_800267CC(effectWork->modelID, &position);
+            fn_80026874(effectWork->modelID, &rotation);
             position.x += effectWork->horizontalSpeed;
             position.y += effectWork->verticalSpeed;
             position.z += effectWork->depthSpeed;
@@ -2203,10 +2203,10 @@ void fn_1_8FC8(void) {
             if (effectWork->verticalSpeed < 0.0f) {
                 effectWork->verticalSpeed = 0.0f;
             }
-            Hu3DModelPosSetV(effectWork->modelID, &position);
-            Hu3DModelRotSetV(effectWork->modelID, &rotation);
+            fn_80026790(effectWork->modelID, &position);
+            fn_80026838(effectWork->modelID, &rotation);
             if (fabs(position.x) > 1300.0) {
-                Hu3DModelAttrSet(effectWork->modelID, HU3D_ATTR_DISPOFF);
+                fn_800269E8(effectWork->modelID, (1 << 0));
                 effectWork->state = 0;
             }
             break;
@@ -2280,14 +2280,14 @@ void fn_1_98AC(void) {
     modelIndex = 0;
     while (modelIndex < 7) {
         if (modelIndex == 0) {
-            modelID = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m665, 27), M665_MEMORY_TAG, 2));
+            modelID = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7c0000, 27), M665_MEMORY_TAG, 2));
             sharedModelID = modelID;
         } else {
-            modelID = Hu3DModelLink(sharedModelID);
+            modelID = fn_80025D4C(sharedModelID);
         }
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
-        Hu3DModelRotSet(modelID, 0.0f, (f32) frandmod(360),
+        fn_800269E8(modelID, (1 << 0));
+        fn_80026808(modelID, 0.0f, (f32) frandmod(360),
                         0.0f);
         lbl_1_bss_2E8.hazards[modelIndex].model = modelID;
         lbl_1_bss_2E8.hazards[modelIndex].state = 0;
@@ -2296,30 +2296,30 @@ void fn_1_98AC(void) {
     modelIndex = 0;
     while (modelIndex < 7) {
         if (modelIndex == 0) {
-            modelID = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m665, 28), M665_MEMORY_TAG, 2));
+            modelID = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7c0000, 28), M665_MEMORY_TAG, 2));
             sharedModelID = modelID;
         } else {
-            modelID = Hu3DModelLink(sharedModelID);
+            modelID = fn_80025D4C(sharedModelID);
         }
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
-        Hu3DMotionSpeedSet(modelID, 0.0f);
+        fn_800269E8(modelID, (1 << 0));
+        fn_8002D86C(modelID, 0.0f);
         lbl_1_bss_2E8.hazards[modelIndex].firstAnimation = modelID;
         modelIndex++;
     }
     modelIndex = 0;
     while (modelIndex < 7) {
         if (modelIndex == 0) {
-            modelID = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m665, 32), M665_MEMORY_TAG, 2));
+            modelID = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7c0000, 32), M665_MEMORY_TAG, 2));
             sharedModelID = modelID;
         } else {
-            modelID = Hu3DModelLink(sharedModelID);
+            modelID = fn_80025D4C(sharedModelID);
         }
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
-        Hu3DMotionSpeedSet(modelID, 0.0f);
+        fn_800269E8(modelID, (1 << 0));
+        fn_8002D86C(modelID, 0.0f);
         lbl_1_bss_2E8.hazards[modelIndex].secondAnimation = modelID;
-        Hu3DModelLayerSet(modelID, 1);
+        fn_80026B8C(modelID, 1);
         lbl_1_bss_2E8.hazards[modelIndex].secondAnimation = modelID;
         modelIndex++;
     }
@@ -2347,12 +2347,12 @@ void fn_1_9AE8(void) {
 void fn_1_9BAC(s16 hazardIndex) {
     Point3d hazardPosition;
 
-    Hu3DModelPosGet(lbl_1_bss_2E8.hazards[hazardIndex].model, &hazardPosition);
-    Hu3DModelPosSetV(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, &hazardPosition);
-    Hu3DModelAttrReset(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 1U);
-    Hu3DModelAttrSet(lbl_1_bss_2E8.hazards[hazardIndex].model, 1U);
-    Hu3DMotionSpeedSet(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 1.0f);
-    Hu3DMotionTimeSet(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 0.0f);
+    fn_800267CC(lbl_1_bss_2E8.hazards[hazardIndex].model, &hazardPosition);
+    fn_80026790(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, &hazardPosition);
+    fn_80026A44(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 1U);
+    fn_800269E8(lbl_1_bss_2E8.hazards[hazardIndex].model, 1U);
+    fn_8002D86C(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 1.0f);
+    fn_8002D414(lbl_1_bss_2E8.hazards[hazardIndex].secondAnimation, 0.0f);
     lbl_1_bss_2E8.hazards[hazardIndex].state = 5;
     HuAudFXPlayPan(0x878, (s16) ((s32) (hazardPosition.x / 40.0f) + 64));
 }
@@ -2409,18 +2409,18 @@ void fn_1_9CF0(void) {
         hazard = &lbl_1_bss_2E8.hazards[hazardIndex];
         switch (hazard->state) {
         case 1:
-            Hu3DModelAttrReset(hazard->model, HU3D_ATTR_DISPOFF);
-            Hu3DModelPosGet(mainPlayerWork->vehicleModel, &position);
-            Hu3DModelScaleSet(hazard->model, 0.5f, 0.5f, 0.5f);
-            Hu3DModelScaleSet(hazard->firstAnimation, 0.5f, 1.0f, 0.5f);
+            fn_80026A44(hazard->model, (1 << 0));
+            fn_800267CC(mainPlayerWork->vehicleModel, &position);
+            fn_800268B0(hazard->model, 0.5f, 0.5f, 0.5f);
+            fn_800268B0(hazard->firstAnimation, 0.5f, 1.0f, 0.5f);
             position.z -= 350.0f;
             position.y += 300.0f;
-            Hu3DModelPosSetV(hazard->model, &position);
+            fn_80026790(hazard->model, &position);
             hazard->state = 2;
             hazard->elapsed = 0;
             break;
         case 2:
-            Hu3DModelPosGet(hazard->model, &position);
+            fn_800267CC(hazard->model, &position);
             position.y += 40.0f;
             if (hazard->elapsed++ < 10) {
                 position.x += -mainPlayerWork->speed +
@@ -2437,18 +2437,18 @@ void fn_1_9CF0(void) {
             position.x += hazard->horizontalSpeed;
             }
             if (position.y >= 1500.0f) {
-                Hu3DModelScaleSet(hazard->model, 0.6f, 0.6f, 0.6f);
+                fn_800268B0(hazard->model, 0.6f, 0.6f, 0.6f);
                 hazard->state = 3;
-                Hu3DModelShadowSet(hazard->model);
+                fn_80026E44(hazard->model);
                 hazard->fallSpeed = 0.0f;
                 position.x = -900.0f + (f32) (hazardIndex * 300) -
                              30.0f + (f32) frandmod(30);
                 position.z = -1500.0f + (f32) frandmod(400);
             }
-            Hu3DModelPosSetV(hazard->model, &position);
+            fn_80026790(hazard->model, &position);
             break;
         case 3:
-            Hu3DModelPosGet(hazard->model, &position);
+            fn_800267CC(hazard->model, &position);
             hazard->fallSpeed -= 2.0f;
             position.y += hazard->fallSpeed;
             if (position.y <= 64.0f) {
@@ -2458,23 +2458,23 @@ void fn_1_9CF0(void) {
                     (s16) ((s32) (position.x / 40.0f) + 64));
                 position.y = 64.0f;
                 hazard->state = 4;
-                Hu3DModelPosSet(hazard->firstAnimation, position.x, 0.0f,
+                fn_80026760(hazard->firstAnimation, position.x, 0.0f,
                                 position.z);
-                Hu3DModelPosSet(hazard->secondAnimation, position.x, 30.0f,
+                fn_80026760(hazard->secondAnimation, position.x, 30.0f,
                                 position.z);
-                Hu3DModelAttrReset(hazard->firstAnimation, HU3D_ATTR_DISPOFF);
-                Hu3DModelAttrReset(hazard->secondAnimation, HU3D_ATTR_DISPOFF);
-                Hu3DModelAttrSet(hazard->model, HU3D_ATTR_DISPOFF);
-                Hu3DModelAttrSet(hazard->firstAnimation, HU3D_MOTATTR_LOOP);
-                Hu3DMotionSpeedSet(hazard->firstAnimation, 1.0f);
-                Hu3DMotionSpeedSet(hazard->secondAnimation, 1.0f);
-                Hu3DMotionTimeSet(hazard->firstAnimation, 0.0f);
-                Hu3DMotionTimeSet(hazard->secondAnimation, 0.0f);
-                Hu3DModelScaleSet(hazard->firstAnimation, 0.6f, 0.0f, 0.6f);
-                Hu3DModelScaleSet(hazard->secondAnimation, 1.0f, 1.0f, 1.0f);
+                fn_80026A44(hazard->firstAnimation, (1 << 0));
+                fn_80026A44(hazard->secondAnimation, (1 << 0));
+                fn_800269E8(hazard->model, (1 << 0));
+                fn_800269E8(hazard->firstAnimation, ((1 << 30) | (1 << 0)));
+                fn_8002D86C(hazard->firstAnimation, 1.0f);
+                fn_8002D86C(hazard->secondAnimation, 1.0f);
+                fn_8002D414(hazard->firstAnimation, 0.0f);
+                fn_8002D414(hazard->secondAnimation, 0.0f);
+                fn_800268B0(hazard->firstAnimation, 0.6f, 0.0f, 0.6f);
+                fn_800268B0(hazard->secondAnimation, 1.0f, 1.0f, 1.0f);
             hazard->landingScaleY = 0.0f;
             }
-            Hu3DModelPosSetV(hazard->model, &position);
+            fn_80026790(hazard->model, &position);
             if (hazardIndex != 0) {
                 lbl_1_bss_280[hazardIndex - 1].gapDistance =
                     sqrtf(PSVECSquareDistance(&previousPosition,
@@ -2494,7 +2494,7 @@ void fn_1_9CF0(void) {
                     objectPosition.x = position.x;
                     objectPosition.y = 0.0f;
                     objectPosition.z = position.z;
-                    Hu3DModelPosGet(otherPlayerWork->vehicleModel, &playerPosition);
+                    fn_800267CC(otherPlayerWork->vehicleModel, &playerPosition);
                     if (sqrtf(PSVECSquareDistance(&objectPosition,
                                                  &playerPosition)) <
                             185.0f && position.y <= 300.0f) {
@@ -2505,26 +2505,26 @@ void fn_1_9CF0(void) {
             }
             break;
         case 4:
-            if (Hu3DMotionTimeGet(hazard->firstAnimation) >= 60.0f) {
-                Hu3DMotionStartEndSet(hazard->firstAnimation, 61.0f, 120.0f);
+            if (fn_8002D4E0(hazard->firstAnimation) >= 60.0f) {
+                fn_8002D730(hazard->firstAnimation, 61.0f, 120.0f);
             }
             hazard->landingScaleY += 0.02;
             if (hazard->landingScaleY > 1.0f) {
                 hazard->landingScaleY = 1.0f;
             }
-            Hu3DModelScaleSet(hazard->firstAnimation, 0.6f,
+            fn_800268B0(hazard->firstAnimation, 0.6f,
                              hazard->landingScaleY, 0.6f);
-            Hu3DModelPosGet(hazard->firstAnimation, &position);
+            fn_800267CC(hazard->firstAnimation, &position);
             position.z += lbl_1_bss_250.scrollSpeed;
             if (position.z >= 1000.0f) {
                 hazard->state = 0;
-                Hu3DMotionSpeedSet(hazard->firstAnimation, 0.0f);
-                Hu3DMotionTimeSet(hazard->firstAnimation, 0.0f);
-                Hu3DModelAttrSet(hazard->firstAnimation, HU3D_ATTR_DISPOFF);
-                Hu3DModelAttrSet(hazard->secondAnimation, HU3D_ATTR_DISPOFF);
+                fn_8002D86C(hazard->firstAnimation, 0.0f);
+                fn_8002D414(hazard->firstAnimation, 0.0f);
+                fn_800269E8(hazard->firstAnimation, (1 << 0));
+                fn_800269E8(hazard->secondAnimation, (1 << 0));
             }
-            Hu3DModelPosSetV(hazard->firstAnimation, &position);
-            Hu3DModelPosSet(hazard->secondAnimation, position.x, 30.0f,
+            fn_80026790(hazard->firstAnimation, &position);
+            fn_80026760(hazard->secondAnimation, position.x, 30.0f,
                             position.z);
             if (hazardIndex != 0) {
                 lbl_1_bss_280[hazardIndex - 1].gapDistance =
@@ -2542,7 +2542,7 @@ void fn_1_9CF0(void) {
             for (playerIndex = 0; playerIndex < 3; playerIndex++) {
                 playerWork = &lbl_1_bss_10[lbl_1_bss_250.otherPlayers[playerIndex]];
                 if (playerWork->status.other.state == 1) {
-                    Hu3DModelPosGet(playerWork->vehicleModel, &playerPosition);
+                    fn_800267CC(playerWork->vehicleModel, &playerPosition);
                     if (sqrtf(PSVECSquareDistance(&position,
                                                  &playerPosition)) <
                         185.0f) {
@@ -2552,10 +2552,10 @@ void fn_1_9CF0(void) {
             }
             break;
         case 5:
-            progressDistance = Hu3DMotionMaxTimeGet(hazard->secondAnimation);
-            if (Hu3DMotionTimeGet(hazard->secondAnimation) >= progressDistance) {
+            progressDistance = fn_8002D530(hazard->secondAnimation);
+            if (fn_8002D4E0(hazard->secondAnimation) >= progressDistance) {
                 hazard->state = 0;
-                Hu3DModelAttrSet(hazard->secondAnimation, HU3D_ATTR_DISPOFF);
+                fn_800269E8(hazard->secondAnimation, (1 << 0));
             }
             break;
         }
@@ -2601,10 +2601,10 @@ void fn_1_AD40(void) {
     currentPlayerWork = &lbl_1_bss_10[lbl_1_bss_250.mainPlayer];
     resourcePointers = lbl_1_rodata_3D0;
     for (modelIndex = 0; modelIndex < 2; modelIndex++) {
-        model = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m665, 26), M665_MEMORY_TAG, HEAP_MODEL));
-        Hu3DModelScaleSet(model, 0.0f, 0.0f, 1.0f);
-        Hu3DModelAttrSet(model, HU3D_MOTATTR_LOOP);
+        model = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7c0000, 26), M665_MEMORY_TAG, 2));
+        fn_800268B0(model, 0.0f, 0.0f, 1.0f);
+        fn_800269E8(model, ((1 << 30) | (1 << 0)));
         lbl_1_bss_2E8.laser.modelIDs[modelIndex] = model;
     }
 }
@@ -2634,13 +2634,13 @@ void fn_1_AE24(void) {
     }
     modelIndex = 0;
     while (modelIndex < 2) {
-        Hu3DModelPosGet(lbl_1_bss_2E8.laser.modelIDs[modelIndex],
+        fn_800267CC(lbl_1_bss_2E8.laser.modelIDs[modelIndex],
                         &targetPosition);
         playerIndex = 0;
         while (playerIndex < 3) {
             playerWork = &lbl_1_bss_10[lbl_1_bss_250.otherPlayers[playerIndex]];
             if (playerWork->status.other.state == 1) {
-                Hu3DModelPosGet(playerWork->vehicleModel, &playerPosition);
+                fn_800267CC(playerWork->vehicleModel, &playerPosition);
                 distanceX = targetPosition.x - playerPosition.x;
                 distance = __fabsf(distanceX);
                 absoluteDistance = distance;
@@ -2682,7 +2682,7 @@ void fn_1_AFF0(u16 flags) {
 /* Creates the bouncing-effect models during the sequence initialization hook. */
 void fn_1_B09C(void) {
     static const ResourceIdList lbl_1_rodata_3DC = {
-        DATANUM(DATA_m665, 29), DATANUM(DATA_m665, 30), DATANUM(DATA_m665, 31)
+        DATANUM(0x7c0000, 29), DATANUM(0x7c0000, 30), DATANUM(0x7c0000, 31)
     };
     M665PlayerWork *currentPlayerWork;
     ResourceIdList resourceIds;
@@ -2694,14 +2694,14 @@ void fn_1_B09C(void) {
     resourceIds = lbl_1_rodata_3DC;
     for (modelIndex = 0; modelIndex < 6; modelIndex++) {
         resourceIndex = (modelIndex + frandmod(3)) % 3;
-        modelID = Hu3DModelCreate(HuDataSelHeapReadNum((&resourceIds.first)[resourceIndex],
-                                                      M665_MEMORY_TAG, HEAP_MODEL));
+        modelID = fn_80025A04(fn_80008DD0((&resourceIds.first)[resourceIndex],
+                                                      M665_MEMORY_TAG, 2));
         lbl_1_bss_2E8.bouncing[modelIndex].modelID = modelID;
-        Hu3DModelAttrSet(modelID, HU3D_ATTR_DISPOFF);
-        Hu3DModelShadowSet(modelID);
+        fn_800269E8(modelID, (1 << 0));
+        fn_80026E44(modelID);
         lbl_1_bss_2E8.bouncing[modelIndex].state = 0;
         if (resourceIndex == 0) {
-            Hu3DModelRotSet(modelID, 0.0f, 0.0f,
+            fn_80026808(modelID, 0.0f, 0.0f,
                             90.0f);
         }
     }
@@ -2733,8 +2733,8 @@ void fn_1_B1E8(void) {
             Hu3DModelObjPosGet(playerWork->vehicleModel,
                                models.name[objectIndex],
                                &position);
-            Hu3DModelAttrReset(objectWork->modelID, HU3D_ATTR_DISPOFF);
-            Hu3DModelPosSetV(objectWork->modelID, &position);
+            fn_80026A44(objectWork->modelID, (1 << 0));
+            fn_80026790(objectWork->modelID, &position);
             objectWork->state = 2;
             objectWork->horizontalSpeed =
                 (f32) (15.0 * sin(
@@ -2745,7 +2745,7 @@ void fn_1_B1E8(void) {
                     3.141592653589793 * angle / 180.0));
             break;
         case 2:
-            Hu3DModelPosGet(objectWork->modelID, &position);
+            fn_800267CC(objectWork->modelID, &position);
             position.x += objectWork->horizontalSpeed;
             position.y += objectWork->verticalSpeed;
             position.z += objectWork->depthSpeed;
@@ -2759,21 +2759,21 @@ void fn_1_B1E8(void) {
                     objectWork->frames = 30;
                 }
             }
-            Hu3DModelPosSetV(objectWork->modelID, &position);
+            fn_80026790(objectWork->modelID, &position);
             objectWork->verticalSpeed -= 2.0f;
             break;
         case 3:
-            Hu3DModelPosGet(objectWork->modelID, &position);
+            fn_800267CC(objectWork->modelID, &position);
             position.z += lbl_1_bss_250.scrollSpeed;
-            Hu3DModelPosSetV(objectWork->modelID, &position);
+            fn_80026790(objectWork->modelID, &position);
             if (objectWork->frames & 1) {
-                Hu3DModelAttrReset(objectWork->modelID, HU3D_ATTR_DISPOFF);
+                fn_80026A44(objectWork->modelID, (1 << 0));
             } else {
-                Hu3DModelAttrSet(objectWork->modelID, HU3D_ATTR_DISPOFF);
+                fn_800269E8(objectWork->modelID, (1 << 0));
             }
             if (objectWork->frames-- <= 0) {
                 objectWork->state = 0;
-                Hu3DModelAttrSet(objectWork->modelID, HU3D_ATTR_DISPOFF);
+                fn_800269E8(objectWork->modelID, (1 << 0));
             }
         }
         objectIndex++;
@@ -2827,10 +2827,10 @@ s32 fn_1_B66C(Point3d *position) {
             default:
                 continue;
             }
-            Hu3DModelPosGet(
+            fn_800267CC(
                 lbl_1_bss_2E8.missiles[index].modelID,
                 &modelPosition);
-            Hu3DModelRotGet(
+            fn_80026874(
                 lbl_1_bss_2E8.missiles[index].modelID,
                 &modelRotation);
             if (position->x <= modelPosition.x + fabs(80.0 * sin(3.141592653589793 *
@@ -2856,7 +2856,7 @@ s32 fn_1_B66C(Point3d *position) {
     }
     case 3:
         for (index = 0; index < 3; index++) {
-            Hu3DModelPosGet(lbl_1_bss_2E8.killers[index].modelID,
+            fn_800267CC(lbl_1_bss_2E8.killers[index].modelID,
                             &modelPosition);
             if (sqrtf(PSVECSquareDistance(&modelPosition, position)) <= 55.0f) {
                 return 1;
@@ -2865,7 +2865,7 @@ s32 fn_1_B66C(Point3d *position) {
         break;
     case 4:
         for (index = 0; index < 2; index++) {
-            Hu3DModelPosGet(
+            fn_800267CC(
                 lbl_1_bss_2E8.laser.modelIDs[index],
                 &modelPosition);
             if (position->x <= modelPosition.x +
@@ -2882,7 +2882,7 @@ s32 fn_1_B66C(Point3d *position) {
         for (index = 0; index < 7; index++) {
             switch (lbl_1_bss_2E8.hazards[index].state) {
             case 3:
-                Hu3DModelPosGet(
+                fn_800267CC(
                     lbl_1_bss_2E8.hazards[index].model,
                     &modelPosition);
                 if (sqrtf(PSVECSquareDistance(&modelPosition, position)) <= 64.0f) {
@@ -2890,7 +2890,7 @@ s32 fn_1_B66C(Point3d *position) {
                 }
                 break;
             case 4:
-                Hu3DModelPosGet(
+                fn_800267CC(
                     lbl_1_bss_2E8.hazards[index].firstAnimation,
                     &modelPosition);
                 if (position->x <= modelPosition.x + 64.0f &&
@@ -2908,10 +2908,10 @@ s32 fn_1_B66C(Point3d *position) {
             if (lbl_1_bss_2E8.rolling[index].state != 2) {
                 continue;
             }
-            Hu3DModelRotGet(
+            fn_80026874(
                 lbl_1_bss_2E8.rolling[index].modelID,
                 &modelRotation);
-            Hu3DModelPosGet(
+            fn_800267CC(
                 lbl_1_bss_2E8.rolling[index].modelID,
                 &modelPosition);
             modelPosition.y -= 50.0f *
@@ -2951,7 +2951,7 @@ void fn_1_C004(void) {
 /* Hit processing in fn_1_13024 adds one damage point to the main vehicle during sequence mode 5. */
 void fn_1_C090(void) {
     void *unused;
-    if (MgSeqModeGet() == 5)
+    if (fn_80071A8C() == 5)
     {
         lbl_1_bss_10[lbl_1_bss_250.mainPlayer].models.main.damage += 1;
     }
@@ -2963,40 +2963,40 @@ void fn_1_C0E0(void) {
     s32 effectIndex;
 
     for (index = 0; index < 16; index++) {
-        Hu3DModelAttrSet(lbl_1_bss_2E8.fire[index].modelA, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2E8.fire[index].modelB, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_2E8.fire[index].modelA, (1 << 0));
+        fn_800269E8(lbl_1_bss_2E8.fire[index].modelB, (1 << 0));
     }
     for (index = 0; index < 6; index++) {
-        Hu3DModelAttrSet(lbl_1_bss_2E8.missiles[index].modelID, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2E8.missiles[index].collisionModelID, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_2E8.missiles[index].modelID, (1 << 0));
+        fn_800269E8(lbl_1_bss_2E8.missiles[index].collisionModelID, (1 << 0));
         lbl_1_bss_2E8.missiles[index].state = 0;
     }
     for (index = 0; index < 3; index++) {
-        Hu3DModelAttrSet(lbl_1_bss_2E8.killers[index].modelID, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_2E8.killers[index].modelID, (1 << 0));
         for (effectIndex = 0; effectIndex < 32; effectIndex++) {
-            Hu3DModelAttrSet(lbl_1_bss_2E8.killers[index].trail[effectIndex].modelID,
-                             HU3D_ATTR_DISPOFF);
+            fn_800269E8(lbl_1_bss_2E8.killers[index].trail[effectIndex].modelID,
+                             (1 << 0));
         }
         lbl_1_bss_2E8.killers[index].state = 0;
     }
     for (index = 0; index < 10; index++) {
-        Hu3DModelAttrSet(lbl_1_bss_2E8.rolling[index].modelID, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_2E8.rolling[index].modelID, (1 << 0));
         lbl_1_bss_2E8.rolling[index].state = 0;
     }
     for (index = 0; index < 2; index++) {
-        Hu3DModelAttrSet(lbl_1_bss_2E8.laser.modelIDs[index], HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_2E8.laser.modelIDs[index], (1 << 0));
     }
     for (index = 0; index < 7; index++) {
-        Hu3DModelAttrSet(lbl_1_bss_2E8.hazards[index].model, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2E8.hazards[index].firstAnimation, HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_2E8.hazards[index].secondAnimation, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_2E8.hazards[index].model, (1 << 0));
+        fn_800269E8(lbl_1_bss_2E8.hazards[index].firstAnimation, (1 << 0));
+        fn_800269E8(lbl_1_bss_2E8.hazards[index].secondAnimation, (1 << 0));
         lbl_1_bss_2E8.hazards[index].state = 0;
     }
     for (index = 0; index < 6; index++) {
-        Hu3DModelAttrSet(lbl_1_bss_2E8.bouncing[index].modelID, HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_2E8.bouncing[index].modelID, (1 << 0));
     }
-    Hu3DMotionTimeSet(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].vehicleModel, 0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].vehicleModel, 0.0f);
+    fn_8002D414(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].vehicleModel, 0.0f);
+    fn_8002D86C(lbl_1_bss_10[lbl_1_bss_250.mainPlayer].vehicleModel, 0.0f);
     lbl_1_bss_10[lbl_1_bss_250.mainPlayer].action = 0;
     lbl_1_bss_10[lbl_1_bss_250.mainPlayer].actionFrames = 0;
 }

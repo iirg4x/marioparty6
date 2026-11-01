@@ -76,14 +76,14 @@ typedef struct SingleGuideWork_s {
 } SINGLEGUIDEWORK;
 
 static int guideMotFileTbl[] = {
-    DATANUM(DATA_capsulechar4, 1),  DATANUM(DATA_capsulechar4, 2),  DATANUM(DATA_capsulechar4, 3),
-    DATANUM(DATA_capsulechar4, 4),  DATANUM(DATA_capsulechar4, 5),  DATANUM(DATA_capsulechar4, 6),
-    DATANUM(DATA_capsulechar4, 7),  DATANUM(DATA_capsulechar4, 8),  DATANUM(DATA_capsulechar4, 9),
-    DATANUM(DATA_capsulechar4, 10), DATANUM(DATA_capsulechar4, 11), DATANUM(DATA_capsulechar4, 12),
-    DATANUM(DATA_capsulechar4, 13), DATANUM(DATA_capsulechar4, 14), DATANUM(DATA_capsulechar4, 15),
-    DATANUM(DATA_capsulechar4, 16), DATANUM(DATA_capsulechar4, 17), DATANUM(DATA_capsulechar4, 18),
-    DATANUM(DATA_capsulechar4, 19), DATANUM(DATA_capsulechar4, 20), DATANUM(DATA_capsulechar4, 21),
-    DATANUM(DATA_capsulechar4, 22), DATANUM(DATA_capsulechar4, 23), -1
+    DATANUM(0x110000, 1),  DATANUM(0x110000, 2),  DATANUM(0x110000, 3),
+    DATANUM(0x110000, 4),  DATANUM(0x110000, 5),  DATANUM(0x110000, 6),
+    DATANUM(0x110000, 7),  DATANUM(0x110000, 8),  DATANUM(0x110000, 9),
+    DATANUM(0x110000, 10), DATANUM(0x110000, 11), DATANUM(0x110000, 12),
+    DATANUM(0x110000, 13), DATANUM(0x110000, 14), DATANUM(0x110000, 15),
+    DATANUM(0x110000, 16), DATANUM(0x110000, 17), DATANUM(0x110000, 18),
+    DATANUM(0x110000, 19), DATANUM(0x110000, 20), DATANUM(0x110000, 21),
+    DATANUM(0x110000, 22), DATANUM(0x110000, 23), -1
 };
 
 static u32 welcomeMesTbl[] = {
@@ -121,10 +121,10 @@ static HuVecF singleGuidePathOfsTbl[] = {
 };
 
 static int singleGuideMotFileTbl[] = {
-    DATANUM(DATA_capsulechar4, 1),  DATANUM(DATA_capsulechar4, 4),  DATANUM(DATA_capsulechar4, 5),
-    DATANUM(DATA_capsulechar4, 6),  DATANUM(DATA_capsulechar4, 7),  DATANUM(DATA_capsulechar4, 10),
-    DATANUM(DATA_capsulechar4, 12), DATANUM(DATA_capsulechar4, 15), DATANUM(DATA_capsulechar4, 17),
-    DATANUM(DATA_capsulechar4, 19), DATANUM(DATA_capsulechar4, 20), -1
+    DATANUM(0x110000, 1),  DATANUM(0x110000, 4),  DATANUM(0x110000, 5),
+    DATANUM(0x110000, 6),  DATANUM(0x110000, 7),  DATANUM(0x110000, 10),
+    DATANUM(0x110000, 12), DATANUM(0x110000, 15), DATANUM(0x110000, 17),
+    DATANUM(0x110000, 19), DATANUM(0x110000, 20), -1
 };
 
 static u32 singleWelcomeMesTbl[] = {
@@ -133,8 +133,8 @@ static u32 singleWelcomeMesTbl[] = {
 
 static HuVecF openingRot;
 static HuVecF openingPos;
-static int openingPadDelay[GW_PLAYER_MAX];
-static OPENINGCOINWORK openingCoinWork[GW_PLAYER_MAX * 10];
+static int openingPadDelay[4];
+static OPENINGCOINWORK openingCoinWork[4 * 10];
 static HuVecF guideCurPos;
 static HuVecF openingCameraRestoreRot = { -20.0f, 0.0f, 0.0f };
 /* Target-relative camera offset used when restoring the party opening view. */
@@ -297,7 +297,7 @@ static inline void OpeningCurveControlGet(HuVecF *path, int point, int count,
 // Called by the board process at board setup to start the introduction for the current mode.
 void mbev_Opening(void)
 {
-    BOOL partyF = GwSystem.partyF;
+    BOOL partyF = lbl_80265B70.partyF;
 
     if (!partyF) {
         mbev_OpeningSingle();
@@ -309,8 +309,8 @@ void mbev_Opening(void)
 // Called by mbev_Opening for party mode; waits for its child introduction process to finish.
 void mbev_OpeningParty(void)
 {
-    if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        openingProc = HuPrcChildCreate(ev_OpeningParty, OPENING_PROCESS_PRIORITY,
+    if (!fn_8006A124(65550)) {
+        openingProc = fn_8000DAC0(ev_OpeningParty, OPENING_PROCESS_PRIORITY,
                                        OPENING_PROCESS_STACK_SIZE, 0, mbMainProc);
     }
     HuPrcDestructorSet2(openingProc, ev_OpeningPartyKill);
@@ -330,7 +330,7 @@ static void ev_OpeningParty(void)
     HuVecF cameraPos;
     HuVecF playerRotDir;
     HuVecF cameraRot = { -20.0f, 0.0f, 0.0f };
-    int playerOrder[GW_PLAYER_MAX];
+    int playerOrder[4];
     int swapValue;
     s16 playerRotAngle;
     s16 masuId;
@@ -345,22 +345,22 @@ static void ev_OpeningParty(void)
     MBPLAYERWORK *playerWorkP;
 
     mbCameraNearFarSet(10.0f, 30000.0f);
-    HuDataDirRead(DATA_capsulechar4);
-    openingGuideObjId = mbObjCreate(DATA_capsulechar4, guideMotFileTbl, FALSE);
-    HuDataDirClose(DATA_capsulechar4);
+    fn_800078C8(0x110000);
+    openingGuideObjId = mbObjCreate(0x110000, guideMotFileTbl, FALSE);
+    fn_800097F4(0x110000);
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbObjDispSet(mbPlayerObjIDGet(i), FALSE);
     }
 
-    for (i = GW_PLAYER_MAX - 1, comNum = 0; i > -1; i--) {
-        if (GwPlayerConf[i].type != 0) {
+    for (i = 4 - 1, comNum = 0; i > -1; i--) {
+        if (lbl_80265728[i].type != 0) {
             comNum++;
         } else {
             manPlayerNo = i;
         }
     }
-    if (comNum >= GW_PLAYER_MAX) {
+    if (comNum >= 4) {
         allComF = TRUE;
     } else {
         allComF = FALSE;
@@ -376,12 +376,12 @@ static void ev_OpeningParty(void)
     guidePos.z -= 200.0f;
     mbObjPosSetV(openingGuideObjId, &guidePos);
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
 
     mbWipeFadeIn();
     mbMusPlay(0, 11, 127, 0);
     {
-        int boardNo = GwSystem.boardNo;
+        int boardNo = lbl_80265B70.boardNo;
 
         mbTelopCreate(-1, boardNo + 16, FALSE);
     }
@@ -398,12 +398,12 @@ static void ev_OpeningParty(void)
     playerPos.y = masuPos.y;
     playerPos.z = masuPos.z;
     PlayerDropExec(&playerPos);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerPosGet(i, &playerPos);
         VECSubtract(&guidePos, &playerPos, &playerRotDir);
         playerRotAngle = 90.0
             - (180.0
-                * (atan2(playerRotDir.z, playerRotDir.x) / M_PI));
+                * (atan2(playerRotDir.z, playerRotDir.x) / 3.141592653589793));
         mbPlayerRotateStart(i, playerRotAngle, 30);
     }
     while (!mbPlayerRotateCheckAll()) {
@@ -411,10 +411,10 @@ static void ev_OpeningParty(void)
     }
 
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
     mbAudGuidePlay(950);
     {
-        int boardNo = GwSystem.boardNo;
+        int boardNo = lbl_80265B70.boardNo;
 
         mbWinCreate(2, welcomeMesTbl[boardNo], 6);
     }
@@ -423,7 +423,7 @@ static void ev_OpeningParty(void)
     mbAudGuidePlay(952);
     mbWinCreateChoice(2, MESSNUM(MESS_BOARD_OPENING, 9), 6, 0);
     if (allComF) {
-        GwSystem.turnPlayerNo = 0;
+        lbl_80265B70.turnPlayerNo = 0;
         mbComChoiceDownSet();
     }
     mbWinTopWait();
@@ -432,14 +432,14 @@ static void ev_OpeningParty(void)
     }
 
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
     mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 10), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerRotateStart(i, 0, 30);
     }
     while (!mbPlayerRotateCheckAll()) {
@@ -457,9 +457,9 @@ static void ev_OpeningParty(void)
         orderTbl[randomOrderB] = swapValue;
     }
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbDiceExec(i, 0, NULL, orderTbl[i], FALSE, FALSE, NULL, 0);
-        if (GwPlayer[i].comF) {
+        if (lbl_80265750[i].comF) {
             openingPadDelay[i] = mbRandMod(30) + 30;
             mbDicePadBtnHookSet(i, OpeningPadBtn);
         }
@@ -474,11 +474,11 @@ static void ev_OpeningParty(void)
     memcpy(playerOrder, orderTbl, sizeof(playerOrder));
     PlayerOrderSet(playerOrder);
     mbStatusReset();
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbAudGuidePlay(952);
         mbWinCreateTime(2, MESSNUM(MESS_BOARD_OPENING, 11) + i, -1);
         mbWinTopInsertMesSet(mbPlayerNameMesGet(i), 0);
-        if (GwPlayer[i].comF || HuPadStatGet(GwPlayer[i].padNo) != PAD_ERR_NONE) {
+        if (lbl_80265750[i].comF || HuPadStatGet(lbl_80265750[i].padNo) != PAD_ERR_NONE) {
             mbWinTopPlayerDisable(-1);
         } else {
             mbWinTopPlayerDisable(i);
@@ -493,20 +493,20 @@ static void ev_OpeningParty(void)
         if (!GWTeamFGet()) {
             mbStatusDispSet(i, TRUE);
         }
-        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
+        mbPlayerWinLoseVoicePlay(i, 12, (573 + 6));
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
-            HU3D_MOTATTR_NONE);
-        omVibrate(i, 20, 20, 0);
+            0);
+        fn_8006A030(i, 20, 20, 0);
         HuPrcSleep(8);
         while (!mbPlayerMotionEndCheck(i)) {
             HuPrcVSleep();
         }
         mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f,
-            HU3D_MOTATTR_LOOP);
+            ((1 << 30) | (1 << 0)));
     }
 
     HuPrcSleep(30);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerMotIdleSet(i);
     }
     if (GWTeamFGet()) {
@@ -515,22 +515,22 @@ static void ev_OpeningParty(void)
     HuPrcSleep(30);
 
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
     mbAudGuidePlay(952);
     mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 15), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 6, 0.0f, 8.0f,
-        HU3D_MOTATTR_NONE);
+        0);
     HuPrcSleep(40);
     OpeningCoinExec();
     HuPrcSleep(30);
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
+    for (i = 0; i < 4; i++) {
+        mbPlayerWinLoseVoicePlay(i, 12, (573 + 6));
         mbPlayerMotionShiftSet(i, 7, 0.0f, 8.0f,
-            HU3D_MOTATTR_NONE);
+            0);
     }
     while (!mbPlayerMotionEndCheckAll()) {
         HuPrcVSleep();
@@ -546,16 +546,16 @@ static void ev_OpeningParty(void)
     }
 
     mbObjMotionShiftSet(openingGuideObjId, 12, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
+        ((1 << 30) | (1 << 0)));
     mbAudGuidePlay(950);
     mbWinCreate(2, MESSNUM(MESS_BOARD_OPENING, 16), 6);
     mbWinTopWait();
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f, 8.0f,
-        HU3D_MOTATTR_LOOP);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerWinLoseVoicePlay(i, 12, (MSM_SE_CHARVOICE_MARIO + 6));
+        ((1 << 30) | (1 << 0)));
+    for (i = 0; i < 4; i++) {
+        mbPlayerWinLoseVoicePlay(i, 12, (573 + 6));
         mbPlayerMotionShiftSet(i, 12, 0.0f, 8.0f,
-            HU3D_MOTATTR_NONE);
+            0);
     }
     while (!mbPlayerMotionEndCheckAll()) {
         HuPrcVSleep();
@@ -568,8 +568,8 @@ static void ev_OpeningParty(void)
     for (i = 0; i < 60 || WipeCheck(); i++) {
         HuPrcVSleep();
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        mbPlayerMotionSet(i, 1, HU3D_MOTATTR_LOOP);
+    for (i = 0; i < 4; i++) {
+        mbPlayerMotionSet(i, 1, ((1 << 30) | (1 << 0)));
     }
     mbCameraNearFarSet(100.0f, 20000.0f);
     mbObjKill(openingGuideObjId);
@@ -620,7 +620,7 @@ static void OpeningCoinExec(void)
 
     coinWork = openingCoinWork;
     coinNum = 0;
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerPosGet(i, &playerPos);
         for (j = 0; j < 10; j++, coinWork++) {
             coinWork->coinId = mbCoinCreate();
@@ -642,7 +642,7 @@ static void OpeningCoinExec(void)
 
     while (TRUE) {
         coinWork = openingCoinWork;
-        for (i = 0; i < GW_PLAYER_MAX * 10; i++, coinWork++) {
+        for (i = 0; i < 4 * 10; i++, coinWork++) {
             if (!coinWork->dispF) {
                 continue;
             }
@@ -654,7 +654,7 @@ static void OpeningCoinExec(void)
             mbCoinObjRotSetV(coinWork->coinId, &coinWork->rot);
             if (coinWork->pos.y <= playerPos.y + 150.0f) {
                 mbCoinObjKill(coinWork->coinId);
-                HuAudFXPlay(MSM_SE_CMN_08);
+                HuAudFXPlay(7);
                 mbPlayerCoinAdd(coinWork->playerNo, 1);
                 coinWork->dispF = FALSE;
                 coinNum--;
@@ -671,14 +671,14 @@ static void OpeningCoinExec(void)
 // Called by ev_OpeningParty to drop players onto the starting space in sequence and await landing.
 static void PlayerDropExec(HuVecF *center)
 {
-    int delay[GW_PLAYER_MAX] = { 0, 30, 60, 90 };
-    BOOL playerLanded[GW_PLAYER_MAX];
-    HuVecF playerPos[GW_PLAYER_MAX];
-    HuVecF fallVelocity[GW_PLAYER_MAX];
+    int delay[4] = { 0, 30, 60, 90 };
+    BOOL playerLanded[4];
+    HuVecF playerPos[4];
+    HuVecF fallVelocity[4];
     int finishedPlayerCount;
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbObjDispSet(mbPlayerObjIDGet(i), TRUE);
         mbPlayerRotYSet(i, 0.0f);
         playerPos[i].x = center->x + 100.0f * playerCenterDist[i];
@@ -689,16 +689,16 @@ static void PlayerDropExec(HuVecF *center)
         playerLanded[i] = FALSE;
         mbPlayerPosSetV(i, &playerPos[i]);
         mbPlayerMotionShiftSet(i, 4, 0.0f, 8.0f,
-            HU3D_MOTATTR_NONE);
+            0);
         mbPlayerMotionVoiceOnSet(i, 4, FALSE);
     }
 
     finishedPlayerCount = 0;
     while (TRUE) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        for (i = 0; i < 4; i++) {
             if (playerLanded[i] && mbPlayerMotionEndCheck(i)) {
                 mbPlayerMotionShiftSet(i, 1, 0.0f, 8.0f,
-                    HU3D_MOTATTR_LOOP);
+                    ((1 << 30) | (1 << 0)));
                 finishedPlayerCount++;
             }
             if (delay[i]-- <= 0 && !playerLanded[i]) {
@@ -708,18 +708,18 @@ static void PlayerDropExec(HuVecF *center)
                     playerPos[i].y = center->y;
                     playerLanded[i] = TRUE;
                     mbPlayerMotionShiftSet(i, 5, 0.0f, 8.0f,
-                        HU3D_MOTATTR_NONE);
+                        0);
                 }
                 mbPlayerPosSetV(i, &playerPos[i]);
             }
         }
-        if (finishedPlayerCount >= GW_PLAYER_MAX) {
+        if (finishedPlayerCount >= 4) {
             break;
         }
         HuPrcVSleep();
     }
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerMotionVoiceOnSet(i, 4, TRUE);
     }
 }
@@ -728,16 +728,16 @@ static void PlayerDropExec(HuVecF *center)
 // stars.
 static void PlayerOrderSet(int *order)
 {
-    int teamCoin[GW_PLAYER_MAX / 2];
-    int teamStar[GW_PLAYER_MAX / 2];
+    int teamCoin[4 / 2];
+    int teamStar[4 / 2];
     int teamNo;
     int swapValue;
     int i;
     int j;
 
     mbPlayerColSnapSet(FALSE);
-    for (i = 0; i < GW_PLAYER_MAX - 1; i++) {
-        for (j = i + 1; j < GW_PLAYER_MAX; j++) {
+    for (i = 0; i < 4 - 1; i++) {
+        for (j = i + 1; j < 4; j++) {
             if (order[i] < order[j]) {
                 swapValue = order[i];
                 order[i] = order[j];
@@ -748,18 +748,18 @@ static void PlayerOrderSet(int *order)
     }
 
     if (GWTeamFGet()) {
-        for (i = 0; i < GW_PLAYER_MAX / 2; i++) {
+        for (i = 0; i < 4 / 2; i++) {
             teamCoin[i] = 0;
             teamStar[i] = 0;
         }
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        for (i = 0; i < 4; i++) {
             teamNo = mbPlayerGrpGet(i);
-            teamCoin[teamNo] += GwPlayer[i].coin;
-            teamStar[teamNo] += GwPlayer[i].star;
-            GwPlayer[i].coin = 0;
-            GwPlayer[i].star = 0;
+            teamCoin[teamNo] += lbl_80265750[i].coin;
+            teamStar[teamNo] += lbl_80265750[i].star;
+            lbl_80265750[i].coin = 0;
+            lbl_80265750[i].star = 0;
         }
-        for (i = 0; i < GW_PLAYER_MAX / 2; i++) {
+        for (i = 0; i < 4 / 2; i++) {
             mbPlayerTeamCoinSet(i, teamCoin[i]);
             mbPlayerGrpStarSet(i, teamStar[i]);
         }
@@ -789,8 +789,8 @@ void mbev_OpeningSingle(void)
     singleEff1MdlId = -1;
     singleFXNo = -1;
     winId = -1;
-    if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-        openingSingleProc = HuPrcChildCreate(ev_OpeningSingle, OPENING_PROCESS_PRIORITY,
+    if (!fn_8006A124(65550)) {
+        openingSingleProc = fn_8000DAC0(ev_OpeningSingle, OPENING_PROCESS_PRIORITY,
             OPENING_PROCESS_STACK_SIZE, 0, mbMainProc);
     }
     HuPrcDestructorSet2(openingSingleProc, ev_OpeningSingleKill);
@@ -800,9 +800,9 @@ void mbev_OpeningSingle(void)
                 winId = mbWinCreateHelp(MESSNUM(MESS_BOARD_OPE, 12));
                 mbWinPosSet(winId, 228, 408);
             }
-            for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
-                if (!GwPlayer[playerNo].comF
-                    && (HuPadBtnDown[GwPlayer[playerNo].padNo]
+            for (playerNo = 0; playerNo < 4; playerNo++) {
+                if (!lbl_80265750[playerNo].comF
+                    && (lbl_802C0008[lbl_80265750[playerNo].padNo]
                         & PAD_BUTTON_START)) {
                     if (singleWinId != -1) {
                         mbWinKill(singleWinId);
@@ -839,7 +839,7 @@ void mbev_OpeningSingle(void)
     }
     if (singleEff1MdlId != -1) {
         mbParticleKill(singleEff1MdlId);
-        HuDataDirClose(DATA_effect);
+        fn_800097F4(0x210000);
     }
     if (singleFXNo != -1) {
         mbAudFXStop(singleFXNo);
@@ -849,7 +849,7 @@ void mbev_OpeningSingle(void)
 // Used by ev_OpeningSingle and OpeningBezierCalc for temporary single-player opening data.
 static inline void *OpeningAlloc(s32 size)
 {
-    return HuMemDirectMallocNum(HEAP_HEAP, size, HU_MEMNUM_OVL);
+    return HuMemDirectMallocNum(HEAP_HEAP, size, 0x10000000);
 }
 
 // Used by OpeningBezierCalc to release its temporary control-point copy.
@@ -923,7 +923,7 @@ static void ev_OpeningSingle(void)
     mbGuideMotionNextSet(singleGuideObj, 1);
     guideMdlId = mbGuideModelGet(singleGuideObj);
     mbObjDispSet(guideMdlId, FALSE);
-    mbObjMotionSet(guideMdlId, 5, HU3D_MOTATTR_NONE);
+    mbObjMotionSet(guideMdlId, 5, 0);
 
     startMasuId = mbMasuFind_AttrIdGet(-1, OPENING_MASU_FLAG_START);
     masuNum = mbMasuFind_TypeListGet2(startMasuId, 7, FALSE, FALSE,
@@ -1023,10 +1023,10 @@ static void ev_OpeningSingle(void)
         guidePath[i].z += singleGuidePathOfsTbl[i].z;
     }
     prevSegmentDir = guidePath[0];
-    animP = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_effect, 1), HU_MEMNUM_OVL));
+    animP = HuSprAnimRead(fn_80008634(DATANUM(0x210000, 1), 0x10000000));
     singleEff1MdlId = mbParticleCreate(animP, 128);
     mbParticleHookSet(singleEff1MdlId, OpeningSingleEffHook);
-    Hu3DModelLayerSet(singleEff1MdlId, 5);
+    fn_80026B8C(singleEff1MdlId, 5);
     singleGuideEffOnF = TRUE;
     mbCameraMovePlayer(playerNo, NULL, NULL, 1800.0f, -1.0f, 60);
     mbObjDispSet(guideMdlId, TRUE);
@@ -1037,10 +1037,10 @@ static void ev_OpeningSingle(void)
         mbObjPosSetV(guideMdlId, &guidePos);
         guideCurPos = guidePos;
         VECSubtract(&guidePos, &prevSegmentDir, &segmentDir);
-        angle = HuAtan(segmentDir.x, segmentDir.z);
+        angle = (180.0*(atan2(segmentDir.x, segmentDir.z) / 3.141592653589793));
         if (i == 150u) {
             mbObjMotionShiftSet(guideMdlId, 4, 0.0f, 16.0f,
-                HU3D_MOTATTR_LOOP);
+                ((1 << 30) | (1 << 0)));
         } else if (i > 150u) {
             t = (i - 150u) / 30.0f;
             angle = (1.0f - t) * angle;
@@ -1081,7 +1081,7 @@ static void ev_OpeningSingle(void)
     mbWinTopWait();
     singleWinId = -1;
 
-    mbObjMotionShiftSet(guideMdlId, 5, 0.0f, 8.0f, HU3D_MOTATTR_NONE);
+    mbObjMotionShiftSet(guideMdlId, 5, 0.0f, 8.0f, 0);
     fallVelocity.x = fallVelocity.y = fallVelocity.z = 0.0f;
     mbObjPosGet(guideMdlId, &guidePos);
     singleFXNo = mbAudFXPlay(1093);
@@ -1160,7 +1160,7 @@ void mbOpeningGuidePosRestore(void)
     pos.z -= 200.0f;
     mbObjPosSetV(openingGuideObjId, &pos);
     mbObjMotionShiftSet(openingGuideObjId, 1, 0.0f,
-        8.0f, HU3D_MOTATTR_LOOP);
+        8.0f, ((1 << 30) | (1 << 0)));
 }
 
 // Moves the camera back to the party opening's view of the starting space.

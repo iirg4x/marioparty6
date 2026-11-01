@@ -322,7 +322,7 @@ void hwLowPassFrqToCoef(u32 frq, u16* _a0, u16* _b1) {
   float c;  // f30
   float b1; // f31
 
-  c = 2.0f - sndCos(((float)(2 * M_PI) * frq) / 32000.0f);
+  c = 2.0f - sndCos(((float)(2 * 3.141592653589793) * frq) / 32000.0f);
   b1 = c > 1.0f ? (sndSqrt((c * c) - 1.0f) - c) : -1.0f;
   b1 = CLAMP(b1, -1.0f, 1.0f);
   *_a0 = 32768.0f * (1.0f + b1);

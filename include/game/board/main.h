@@ -16,7 +16,7 @@ extern HUPROCESS *mbMainProc;
 
 static inline int MBBoardNoGet(void)
 {
-    return GwSystem.boardNo;
+    return lbl_80265B70.boardNo;
 }
 
 BOOL mbExitCheck(void);

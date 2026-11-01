@@ -108,26 +108,26 @@ s32 fn_1_8B90(s32 playerIndex);
 s32 fn_1_8BD0(u32 key);
 
 u32 lbl_1_data_148[10] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 94),
-    DATANUM(DATA_mario, 142), DATANUM(DATA_mario, 143),
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 24),
-    DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 40)
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x930000, 94),
+    DATANUM(0x8e0000, 142), DATANUM(0x8e0000, 143),
+    DATANUM(0x930000, 0), DATANUM(0x930000, 24),
+    DATANUM(0x930000, 6), DATANUM(0x930000, 40)
 };
 
 M626CharacterMotionParam lbl_1_data_170[12] = {
-{0, -1, 0.200000003f, HU3D_MOTATTR_LOOP},
-{1, -1, 0.200000003f, HU3D_MOTATTR_LOOP},
-{2, -1, 0.200000003f, HU3D_MOTATTR_LOOP},
-{3, -1, 0.100000001f, HU3D_MOTATTR_NONE},
-{4, -1, 0.200000003f, HU3D_MOTATTR_NONE},
-{6, -1, 0.200000003f, HU3D_MOTATTR_NONE},
-{7, -1, 0.200000003f, HU3D_MOTATTR_NONE},
-{8, -1, 0.200000003f, HU3D_MOTATTR_NONE},
-{9, -1, 0.200000003f, HU3D_MOTATTR_NONE},
-{0, 5, 0.200000003f, HU3D_MOTATTR_LOOP},
-{1, 5, 0.200000003f, HU3D_MOTATTR_LOOP},
-{2, 5, 0.200000003f, HU3D_MOTATTR_LOOP}
+{0, -1, 0.200000003f, ((1 << 30) | (1 << 0))},
+{1, -1, 0.200000003f, ((1 << 30) | (1 << 0))},
+{2, -1, 0.200000003f, ((1 << 30) | (1 << 0))},
+{3, -1, 0.100000001f, 0},
+{4, -1, 0.200000003f, 0},
+{6, -1, 0.200000003f, 0},
+{7, -1, 0.200000003f, 0},
+{8, -1, 0.200000003f, 0},
+{9, -1, 0.200000003f, 0},
+{0, 5, 0.200000003f, ((1 << 30) | (1 << 0))},
+{1, 5, 0.200000003f, ((1 << 30) | (1 << 0))},
+{2, 5, 0.200000003f, ((1 << 30) | (1 << 0))}
 };
 
 Vec lbl_1_data_200[12] = {
@@ -193,7 +193,7 @@ s32 lbl_1_bss_2D0;
 /* Removes the character models and resets character animation state during cleanup. */
 void fn_1_44D4(void)
 {
-    CharModelKill(-1);
+    fn_8005BB8C(-1);
 }
 
 /* Clears the eight-player effect pool when the Snow Brawl object is initialized. */
@@ -304,7 +304,7 @@ void fn_1_48C4(M626ObjectWork *work)
                 work->effectComplete = 1;
                 if (work->flags != 0) {
                     playerWork = work;
-                    omVibrate(playerWork->actor.playerIndex, 20, 20, 0);
+                    fn_8006A030(playerWork->actor.playerIndex, 20, 20, 0);
                 }
             }
         }
@@ -325,13 +325,13 @@ void fn_1_48C4(M626ObjectWork *work)
         f32 xz = work->effectRise * work->config.heightFactor;
         f32 y = work->effectRise * work->config.depthFactor;
 
-        Hu3DModelAttrReset(work->effectModel, HU3D_ATTR_DISPOFF);
-        Hu3DModelRotSet(work->effectModel, work->tiltAngle, work->effectRotation,
+        fn_80026A44(work->effectModel, (1 << 0));
+        fn_80026808(work->effectModel, work->tiltAngle, work->effectRotation,
                         0.00000000f);
-        Hu3DModelPosSetV(work->effectModel, &work->position);
-        Hu3DModelScaleSet(work->effectModel, xz, y, xz);
+        fn_80026790(work->effectModel, &work->position);
+        fn_800268B0(work->effectModel, xz, y, xz);
     } else {
-        Hu3DModelAttrSet(work->effectModel, HU3D_ATTR_DISPOFF);
+        fn_800269E8(work->effectModel, (1 << 0));
     }
 }
 
@@ -350,10 +350,10 @@ void fn_1_4B90(M626ObjectWork *work)
     }
     if (work->pulseProgress > 0.0000000000000000) {
         f32 scale = (f32)(1.5000000000000000 * (f64)work->pulseProgress);
-        Hu3DModelAttrReset((s16)work->modelId, HU3D_ATTR_DISPOFF);
-        Hu3DModelScaleSet((s16)work->modelId, scale, scale, scale);
+        fn_80026A44((s16)work->modelId, (1 << 0));
+        fn_800268B0((s16)work->modelId, scale, scale, scale);
     } else {
-        Hu3DModelAttrSet((s16)work->modelId, HU3D_ATTR_DISPOFF);
+        fn_800269E8((s16)work->modelId, (1 << 0));
     }
 }
 
@@ -390,9 +390,9 @@ void fn_1_4CE4(M626ObjectWork *work)
             work->speedScale = 1.0f;
             work->settled = 0;
             work->effectModel = (s16)fn_1_3C94(fn_1_830(2));
-            Hu3DModelAttrSet(work->effectModel, HU3D_MOTATTR_LOOP);
-            Hu3DModelAttrSet(work->effectModel, HU3D_MOTATTR_PAUSE);
-            Hu3DModelLayerSet(work->effectModel, 6);
+            fn_800269E8(work->effectModel, ((1 << 30) | (1 << 0)));
+            fn_800269E8(work->effectModel, ((1 << 30) | (1 << 1)));
+            fn_80026B8C(work->effectModel, 6);
             work->status = 0;
             work->effectRise = 0.0f;
             return;
@@ -417,14 +417,14 @@ void fn_1_4EA8(OMOBJ *object)
     s32 motionId;
     s32 modelId;
 
-    allocatedWork = HuMemDirectMallocNum(HEAP_HEAP, 572, HU_MEMNUM_OVL);
+    allocatedWork = HuMemDirectMallocNum(HEAP_HEAP, 572, 0x10000000);
     object->data = allocatedWork;
     memset(allocatedWork, 0, 572);
     object->stat |= 0x100;
 
     work = allocatedWork;
     allocatedWork->actor.playerIndex = playerIndex = object->work[0];
-    character = GwPlayerConf[playerIndex].charNo;
+    character = lbl_80265728[playerIndex].charNo;
     allocatedWork->identity.character = character;
     work->key = objectType = object->work[1];
     work->variation = variation = object->work[2];
@@ -434,36 +434,36 @@ void fn_1_4EA8(OMOBJ *object)
         work->groupIndex = variation - 1;
     }
     work->flags = 1;
-    work->playerType = GwPlayerConf[playerIndex].type;
-    work->computerDifficulty = GwPlayerConf[playerIndex].comDif & 3;
+    work->playerType = lbl_80265728[playerIndex].type;
+    work->computerDifficulty = lbl_80265728[playerIndex].comDif & 3;
     work->controlPhase = 0;
 
-    modelId = CharModelCreate((s16)character, 4);
+    modelId = fn_80057068((s16)character, 4);
     *object->mdlId = (s16)modelId;
-    Hu3DModelPosSet((s16)modelId, 0.0f, 0.0f, 0.0f);
-    Hu3DModelRotSet((s16)modelId, 0.0f, 0.0f, 0.0f);
-    Hu3DModelLayerSet((s16)modelId, 5);
-    Hu3DModelShadowSet((s16)modelId);
-    CharEffectLayerSet(5);
+    fn_80026760((s16)modelId, 0.0f, 0.0f, 0.0f);
+    fn_80026808((s16)modelId, 0.0f, 0.0f, 0.0f);
+    fn_80026B8C((s16)modelId, 5);
+    fn_80026E44((s16)modelId);
+    fn_8005DDEC(5);
     work->modelId = fn_1_3C94(fn_1_830(9));
-    Hu3DModelLayerSet((s16)work->modelId, 5);
-    hookName = CharModelItemHookGet((s16)character, 4, 0);
-    Hu3DModelHookSet((s16)modelId, hookName, (s16)work->modelId);
+    fn_80026B8C((s16)work->modelId, 5);
+    hookName = fn_8005C0F0((s16)character, 4, 0);
+    fn_8002741C((s16)modelId, hookName, (s16)work->modelId);
     work->motionState = 0;
 
     for (index = 0; index < 10; index++) {
-        motionId = CharMotionCreate((s16)character, lbl_1_data_148[index]);
+        motionId = fn_8005B0B8((s16)character, lbl_1_data_148[index]);
         object->mtnId[index] = motionId;
     }
-    CharMotionDataClose((s16)character);
+    fn_8005B4BC((s16)character);
     work->motionIndex = -1;
     fn_1_61CC(object, 0);
-    CharModelStepSet((s16)character, 2);
+    fn_8005F77C((s16)character, 2);
 
     attachedWork = &work->config;
     *attachedWork = lbl_1_data_364;
     characterDimensions = &lbl_1_data_2E4[character];
-    attachedWork->modelHeight = CharModelHeightGet((s16)character);
+    attachedWork->modelHeight = fn_8005C4C8((s16)character);
     attachedWork->heightFactor = characterDimensions->horizontalScale;
     attachedWork->depthFactor = characterDimensions->verticalScale;
 
@@ -589,7 +589,7 @@ s32 fn_1_552C(M626ObjectWork *work)
             break;
         }
     case 6:
-        if (MgSeqModeGet() != 5) {
+        if (fn_80071A8C() != 5) {
             break;
         }
         work->statePhase++;
@@ -627,7 +627,7 @@ s32 fn_1_57A8(M626ObjectWork *work)
         work->stateTimer = 0;
         /* fall through */
     case 1:
-        if (MgSeqModeGet() == 6) {
+        if (fn_80071A8C() == 6) {
             work->statePhase++;
             work->stateTimer = 0;
             if (work->motionState != 0) {
@@ -638,11 +638,11 @@ s32 fn_1_57A8(M626ObjectWork *work)
                 fn_1_71AC(work);
             } else if (work->flags != 0) {
                 playerWork = work;
-                pad = GwPlayerConf[playerWork->actor.playerIndex].padNo;
-                stickX = (f32)(s8)HuPadStkX[pad];
-                stickY = (f32)-(s8)HuPadStkY[pad];
-                work->controlWord = HuPadBtn[pad];
-                work->modelAttributes = HuPadBtnDown[pad];
+                pad = lbl_80265728[playerWork->actor.playerIndex].padNo;
+                stickX = (f32)(s8)lbl_802BFFFC[pad];
+                stickY = (f32)-(s8)lbl_802BFFF8[pad];
+                work->controlWord = lbl_802C0010[pad];
+                work->modelAttributes = lbl_802C0008[pad];
                 work->targetDistance = (f32)(180.0 *
                     (atan2((f64)stickX, (f64)stickY) / 3.141592653589793));
                 work->movementSpeed = 0.017857144f *
@@ -650,7 +650,7 @@ s32 fn_1_57A8(M626ObjectWork *work)
                 if (work->movementSpeed > 1.0f) {
                     work->movementSpeed = 1.0f;
                 }
-                combinedAngle = work->targetDistance + CRotM[0].y;
+                combinedAngle = work->targetDistance + lbl_80266A58[0].y;
                 wrappedAngle = (f32)fmod((f64)combinedAngle, 360.0);
                 finalAngle = wrappedAngle;
                 work->targetDistance = finalAngle;
@@ -659,7 +659,7 @@ s32 fn_1_57A8(M626ObjectWork *work)
         }
         break;
     case 2:
-        if (MgSeqModeGet() == 5) {
+        if (fn_80071A8C() == 5) {
             work->velocity.x *= 0.98;
             work->velocity.z *= 0.98;
             break;
@@ -707,7 +707,7 @@ s32 fn_1_5C20(M626ObjectWork *work)
     case 1:
         work->velocity.x *= 0.98;
         work->velocity.z *= 0.98;
-        if (MgSeqModeGet() == 6) {
+        if (fn_80071A8C() == 6) {
             break;
         }
         work->statePhase++;
@@ -729,7 +729,7 @@ s32 fn_1_5C20(M626ObjectWork *work)
                 fn_1_998(timerWork->actor.playerIndex);
             }
         }
-        if (MgSeqModeGet() != 8) {
+        if (fn_80071A8C() != 8) {
             break;
         }
         if (fn_1_9B8() == 0) {
@@ -768,7 +768,7 @@ s32 fn_1_5E88(M626ObjectWork *state)
             if (state->flags != 0) {
                 work = state;
                 work->detail.player.volumeEnabled = 0;
-                CharModelVoiceVolSet((s16)work->identity.character, 127);
+                fn_80060F40((s16)work->identity.character, 127);
             }
         }
         state->statePhase++;
@@ -801,7 +801,7 @@ void fn_1_5FA4(OMOBJ *object)
     } else {
         owner->motionTimer = 0;
     }
-    CharModelVoicePanSet((s16)work->identity.character, fn_1_29BC(&owner->position));
+    fn_80060F14((s16)work->identity.character, fn_1_29BC(&owner->position));
 }
 
 /* Plays a character sound effect at the player's current volume and stereo pan. */
@@ -852,7 +852,7 @@ void fn_1_6148(OMOBJ *object)
     }
     if (work->requestedMotion != -1) {
         fn_1_61CC(object, work->requestedMotion);
-        Hu3DMotionSpeedSet(object->mdlId[0], work->motionSpeed);
+        fn_8002D86C(object->mdlId[0], work->motionSpeed);
     }
 }
 
@@ -879,25 +879,25 @@ void fn_1_61CC(OMOBJ *object, s32 index)
         state->motionFrame = 0;
         motion = object->mtnId[lbl_1_data_170[index].motionIndex];
         attr = lbl_1_data_170[index].motionAttributes;
-        Hu3DModelAttrReset(model, HU3D_MOTATTR | HU3D_MOTATTR_LOOP |
-                            HU3D_MOTATTR_REV | HU3D_MOTATTR_OVL_LOOP |
-                            HU3D_MOTATTR_OVL_REV);
+        fn_80026A44(model, (1 << 30) | ((1 << 30) | (1 << 0)) |
+                            ((1 << 30) | (1 << 2)) | ((1 << 30) | (1 << 9)) |
+                            ((1 << 30) | (1 << 11)));
         overlay = lbl_1_data_170[index].overlayIndex;
         if (overlay >= 0) {
-            CharMotionShiftSet(work->identity.character, motion, 0.00000000f, blend, attr);
-            Hu3DMotionOverlaySet(model, object->mtnId[overlay]);
-            if (attr & HU3D_MOTATTR_LOOP) {
-                overlayAttr |= HU3D_MOTATTR_OVL_LOOP;
+            fn_8005C2C8(work->identity.character, motion, 0.00000000f, blend, attr);
+            fn_8002CAA8(model, object->mtnId[overlay]);
+            if (attr & ((1 << 30) | (1 << 0))) {
+                overlayAttr |= ((1 << 30) | (1 << 9));
             }
-            if (attr & HU3D_MOTATTR_REV) {
-                overlayAttr |= HU3D_MOTATTR_OVL_REV;
+            if (attr & ((1 << 30) | (1 << 2))) {
+                overlayAttr |= ((1 << 30) | (1 << 11));
             }
-            Hu3DModelAttrSet(model, overlayAttr);
+            fn_800269E8(model, overlayAttr);
         } else {
-            Hu3DMotionOverlayReset(model);
-            CharMotionShiftSet(work->identity.character, motion, 0.00000000f, blend, attr);
+            fn_8002CAF0(model);
+            fn_8005C2C8(work->identity.character, motion, 0.00000000f, blend, attr);
         }
-        CharMotionSpeedSet(work->identity.character, 1.00000000f);
+        fn_8005C390(work->identity.character, 1.00000000f);
     }
 }
 
@@ -905,8 +905,8 @@ void fn_1_61CC(OMOBJ *object, s32 index)
 s32 fn_1_63A8(OMOBJ *object)
 {
     M626ObjectWork *work = object->data;
-    if (CharMotionEndCheck(work->identity.character) != 0 &&
-        CharMotionShiftIDGet(work->identity.character) < 0) {
+    if (fn_8005C240(work->identity.character) != 0 &&
+        fn_8005C284(work->identity.character) < 0) {
         return 1;
     }
     return 0;
@@ -918,7 +918,7 @@ s32 fn_1_6414(OMOBJ *object)
     M626ObjectWork *state = object->data;
     s32 result = 0;
 
-    if (CharMotionShiftIDGet((s16)state->identity.character) < 0) {
+    if (fn_8005C284((s16)state->identity.character) < 0) {
         result = 1;
     }
     return result;
@@ -990,7 +990,7 @@ void fn_1_6474(M626ObjectWork *work)
             work->motionState = 0;
             if (work->flags != 0) {
                 vibrationWork = work;
-                omVibrate((s16)vibrationWork->actor.playerIndex, 12, 4, 4);
+                fn_8006A030((s16)vibrationWork->actor.playerIndex, 12, 4, 4);
             }
             fn_1_3340(MSM_SE_SNOW_BRAWL_EFFECT_1804, (Vec *)&work->position);
         }
@@ -1259,10 +1259,10 @@ s32 fn_1_7050(M626Entry *trigger, M626Entry *contact)
                                               (f64)direction.z) /
                                         3.1415926535897931));
                 state->collisionMask &= ~M626_COLLISION_MASK_UPPER_BITS;
-                Hu3DModelAttrReset(state->effectModel, HU3D_MOTATTR_PAUSE);
+                fn_80026A44(state->effectModel, ((1 << 30) | (1 << 1)));
             }
             if (state->flags != 0) {
-                omVibrate((s16)work->actor.playerIndex, 12, 7, 3);
+                fn_8006A030((s16)work->actor.playerIndex, 12, 7, 3);
             }
             fn_1_3340(MSM_SE_SNOW_BRAWL_EFFECT_1806, &state->position);
         }
@@ -1686,13 +1686,13 @@ void fn_1_85A4(M626ObjectWork *state, s32 model)
         if (ambient < 0.0) {
             ambient = 0.0f;
         }
-        Hu3DModelAmbSet(model, ambient, ambient, 1.0f);
-        Hu3DModelAttrSet(model, HU3D_MOTATTR_PAUSE);
+        fn_800273EC(model, ambient, ambient, 1.0f);
+        fn_800269E8(model, ((1 << 30) | (1 << 1)));
     }
     PSQUATNormalize(&rotation, &rotation);
     PSMTXQuat(state->rotationMatrix, &rotation);
-    PSMTXCopy(state->rotationMatrix, Hu3DData[model].mtx);
-    Hu3DModelPosSetV(model, &state->position);
+    PSMTXCopy(state->rotationMatrix, lbl_802C01C8[model].mtx);
+    fn_80026790(model, &state->position);
     state->motionFrame++;
 }
 

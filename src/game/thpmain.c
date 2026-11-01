@@ -49,7 +49,7 @@ HUSPRID HuTHPSprCreateVol(char *moviePath, s16 loopMovie, s16 drawPriority, floa
         return HUSPR_NONE;
     }
     THPStart = 0;
-    THPProc = HuPrcCreate(THPTestProc, THP_PROCESS_PRIORITY, THP_PROCESS_STACK_BYTES, 0);
+    THPProc = fn_8000D818(THPTestProc, THP_PROCESS_PRIORITY, THP_PROCESS_STACK_BYTES, 0);
     if(!THPProc) {
         return HUSPR_NONE;
     }
@@ -84,12 +84,12 @@ HU3D_MODELID HuTHP3DCreateVol(char *moviePath, s16 loopMovie, float audioMixVolu
     HU3D_MODELID movieModelId;
 
     if(THPProc) {
-        return HU3D_MODELID_NONE;
+        return -1;
     }
     THPStart = 0;
-    THPProc = HuPrcCreate(THPTestProc, THP_PROCESS_PRIORITY, THP_PROCESS_STACK_BYTES, 0);
+    THPProc = fn_8000D818(THPTestProc, THP_PROCESS_PRIORITY, THP_PROCESS_STACK_BYTES, 0);
     if(!THPProc) {
-        return HU3D_MODELID_NONE;
+        return -1;
     }
     /* Decoder initialization's return value is ignored. */
     THPSimpleInit(THP_AUDIO_MIX_CURRENT_BUFFER);
@@ -97,7 +97,7 @@ HU3D_MODELID HuTHP3DCreateVol(char *moviePath, s16 loopMovie, float audioMixVolu
     SimpleControl.drawMode = THP_DRAW_MODEL;
     /* Model-slot exhaustion is unchecked; the invalid model ID is saved and passed
      * to model-attribute setup. */
-    movieModelId = Hu3DHookFuncCreate(THPViewFunc);
+    movieModelId = fn_800260F4(THPViewFunc);
     SimpleControl.drawObjectId = movieModelId;
     SimpleControl.currentVolume = audioMixVolume;
     strcpy(THPFileName, moviePath);
@@ -105,7 +105,7 @@ HU3D_MODELID HuTHP3DCreateVol(char *moviePath, s16 loopMovie, float audioMixVolu
     THPStat = THP_STATE_START;
     THPFrame = 0;
     /* Keep the model hidden until playback setup and preload finish. */
-    Hu3DModelAttrSet(SimpleControl.drawObjectId, HU3D_ATTR_DISPOFF);
+    fn_800269E8(SimpleControl.drawObjectId, (1 << 0));
     return movieModelId;
 }
 
@@ -199,7 +199,7 @@ static void THPTestProc(void) {
     THPSimpleGetVideoInfo(&videoInfo);
     requiredBufferBytes = THPSimpleCalcNeedMemory();
     OSReport("Size %x\n", requiredBufferBytes);
-    movieBuffer = HuMemDirectMalloc(HEAP_MODEL, requiredBufferBytes);
+    movieBuffer = HuMemDirectMalloc(2, requiredBufferBytes);
     /* Clear the movie workspace before the decoder uses it during preload. */
     memset(movieBuffer, 0, requiredBufferBytes);
     DCFlushRange(movieBuffer, requiredBufferBytes);
@@ -225,7 +225,7 @@ static void THPTestProc(void) {
     THPStart = 1;
     if(SimpleControl.drawMode == THP_DRAW_MODEL) {
         /* Reveal the model after video setup and preload finish. */
-        Hu3DModelAttrReset(SimpleControl.drawObjectId, HU3D_ATTR_DISPOFF);
+        fn_80026A44(SimpleControl.drawObjectId, (1 << 0));
     } else {
         HUSPRITE *sprite = &HuSprData[SimpleControl.drawObjectId];
         sprite->attr &= ~HUSPR_ATTR_DISPOFF;
@@ -264,7 +264,7 @@ static void THPTestProc(void) {
         HuPrcVSleep();
     }
     if(SimpleControl.drawMode == THP_DRAW_MODEL) {
-        Hu3DModelKill(SimpleControl.drawObjectId);
+        fn_800262D0(SimpleControl.drawObjectId);
     } else {
         HuSprKill(SimpleControl.drawObjectId);
     }
@@ -276,7 +276,7 @@ static void THPTestProc(void) {
     HuMemDirectFree(movieBuffer);
     THPSimpleQuit();
     THPProc = NULL;
-    HuPrcKill(HuPrcCurrentGet());
+    HuPrcKill(fn_8000DD9C());
     while(1) {
         HuPrcVSleep();
     }
@@ -355,9 +355,9 @@ void HuTHPMatHook(HU3D_DRAW_OBJ *drawObject, HSF_MATERIAL *material)
     /* Retain the ordinary material setup while no decoded frame is available. */
     if(!THPStart || SimpleControl.videoBuffers[0].frameIndex < 0) {
         if(material->attrNum == 0) {
-            Hu3DTevStageNoTexSet(drawObject, material);
+            fn_80019EA8(drawObject, material);
         } else {
-            Hu3DTevStageTexSet(drawObject, material);
+            fn_8001A7CC(drawObject, material);
         }
         return;
     } else {

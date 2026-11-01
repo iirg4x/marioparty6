@@ -54,9 +54,9 @@ void fn_1_BA34(HUPROCESS *process) {
     OMOBJ *manager;
     GXColor *weatherColor;
     lbl_1_bss_6CC = process;
-    manager = omAddObjEx(lbl_1_bss_6CC, 16, 6, 0, -1, fn_1_BAE0);
+    manager = fn_8003AB38(lbl_1_bss_6CC, 16, 6, 0, -1, fn_1_BAE0);
     lbl_1_bss_6C8 = manager;
-    weatherColor = HuMemDirectMallocNum(HEAP_HEAP, 4, HU_MEMNUM_OVL);
+    weatherColor = HuMemDirectMallocNum(HEAP_HEAP, 4, 0x10000000);
     manager->data = weatherColor;
     memset(weatherColor, 0, 4);
     fn_1_CB70(manager);
@@ -92,15 +92,15 @@ void fn_1_BB74(OMOBJ *object)
     HU3D_PARTICLE *particle;
     s32 index;
 
-    animation = HuSprAnimRead(HuDataSelHeapReadNum(fn_1_830(6), HU_MEMNUM_OVL,
-                                                    HEAP_MODEL));
-    modelId = Hu3DParticleCreate(animation, 256);
+    animation = HuSprAnimRead(fn_80008DD0(fn_1_830(6), 0x10000000,
+                                                    2));
+    modelId = fn_8003216C(animation, 256);
     object->mdlId[0] = modelId;
-    particle = (HU3D_PARTICLE *)Hu3DData[(s16)modelId].hookData;
-    Hu3DParticleBlendModeSet(modelId, 0);
-    Hu3DParticleHookSet(modelId, fn_1_BC80);
-    Hu3DModelLayerSet(modelId, 6);
-    Hu3DModelPosSet(modelId, 0.0f, 0.0f, 0.0f);
+    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    fn_8003269C(modelId, 0);
+    fn_800326D0(modelId, fn_1_BC80);
+    fn_80026B8C(modelId, 6);
+    fn_80026760(modelId, 0.0f, 0.0f, 0.0f);
     entry = particle->data;
     for (index = 0; index < particle->maxCnt; index++, entry++) {
         entry->time = -1;
@@ -162,15 +162,15 @@ void fn_1_BE74(OMOBJ *object)
     HU3D_PARTICLE *particle;
     s32 index;
 
-    animation = HuSprAnimRead(HuDataSelHeapReadNum(fn_1_830(6), HU_MEMNUM_OVL,
-                                                    HEAP_MODEL));
-    modelId = Hu3DParticleCreate(animation, 320);
+    animation = HuSprAnimRead(fn_80008DD0(fn_1_830(6), 0x10000000,
+                                                    2));
+    modelId = fn_8003216C(animation, 320);
     object->mdlId[1] = modelId;
-    particle = (HU3D_PARTICLE *)Hu3DData[(s16)modelId].hookData;
-    Hu3DParticleBlendModeSet(modelId, 0);
-    Hu3DParticleHookSet(modelId, fn_1_BF80);
-    Hu3DModelLayerSet(modelId, 6);
-    Hu3DModelPosSet(modelId, 0.0f, 0.0f, 0.0f);
+    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    fn_8003269C(modelId, 0);
+    fn_800326D0(modelId, fn_1_BF80);
+    fn_80026B8C(modelId, 6);
+    fn_80026760(modelId, 0.0f, 0.0f, 0.0f);
     entry = particle->data;
     for (index = 0; index < particle->maxCnt; index++, entry++) {
         entry->time = -1;
@@ -228,21 +228,21 @@ void fn_1_C0FC(OMOBJ *object)
     s32 index;
 
     configuration = object->data;
-    night = GwMgNightF;
+    night = lbl_802C0278;
     if (night != 1) {
         *configuration = lbl_1_data_8C0[0];
     } else {
         *configuration = lbl_1_data_8C0[1];
     }
     animation = HuSprAnimRead(
-        HuDataSelHeapReadNum(fn_1_830(7), HU_MEMNUM_OVL, HEAP_MODEL));
-    modelId = Hu3DParticleCreate(animation, 128);
+        fn_80008DD0(fn_1_830(7), 0x10000000, 2));
+    modelId = fn_8003216C(animation, 128);
     object->mdlId[2] = modelId;
-    particle = (HU3D_PARTICLE *)Hu3DData[(s16)modelId].hookData;
-    Hu3DParticleBlendModeSet(modelId, 0);
-    Hu3DParticleHookSet(modelId, fn_1_C278);
-    Hu3DModelLayerSet(modelId, 6);
-    Hu3DModelPosSet(modelId, 0.0f, 0.0f,
+    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    fn_8003269C(modelId, 0);
+    fn_800326D0(modelId, fn_1_C278);
+    fn_80026B8C(modelId, 6);
+    fn_80026760(modelId, 0.0f, 0.0f,
                     0.0f);
     entry = particle->data;
     for (index = 0; index < particle->maxCnt; index++, entry++) {
@@ -324,11 +324,11 @@ void fn_1_C5D0(OMOBJ *object)
     f32 angle;
     s32 i;
 
-    modelId = Hu3DHookFuncCreate(fn_1_C8B0);
+    modelId = fn_800260F4(fn_1_C8B0);
     object->mdlId[3] = modelId;
-    Hu3DModelLayerSet(modelId, 3);
-    modelData = &Hu3DData[modelId];
-    hookData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*hookData), HU_MEMNUM_OVL);
+    fn_80026B8C(modelId, 3);
+    modelData = &lbl_802C01C8[modelId];
+    hookData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*hookData), 0x10000000);
     modelData->hookData = hookData;
     memset(hookData, 0, sizeof(*hookData));
 
@@ -354,7 +354,7 @@ void fn_1_C70C(OMOBJ *object)
     s32 index;
 
     modelId = object->mdlId[3];
-    modelData = &Hu3DData[modelId];
+    modelData = &lbl_802C01C8[modelId];
     hookData = modelData->hookData;
     record = hookData->records;
     activeCount = 0;
@@ -458,11 +458,11 @@ void fn_1_CB70(OMOBJ *object)
     f32 angle;
     s32 i;
 
-    modelId = Hu3DHookFuncCreate(fn_1_CCAC);
+    modelId = fn_800260F4(fn_1_CCAC);
     object->mdlId[4] = modelId;
-    Hu3DModelLayerSet(modelId, 4);
-    modelData = &Hu3DData[modelId];
-    hookData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*hookData), HU_MEMNUM_OVL);
+    fn_80026B8C(modelId, 4);
+    modelData = &lbl_802C01C8[modelId];
+    hookData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*hookData), 0x10000000);
     modelData->hookData = hookData;
     memset(hookData, 0, sizeof(*hookData));
 
@@ -541,11 +541,11 @@ void fn_1_CF84(OMOBJ *object)
     Vec *position;
     Vec *velocity;
 
-    modelId = Hu3DHookFuncCreate(fn_1_D7AC);
+    modelId = fn_800260F4(fn_1_D7AC);
     object->mdlId[5] = modelId;
-    Hu3DModelLayerSet(modelId, 7);
-    modelData = &Hu3DData[modelId];
-    particles = HuMemDirectMallocNum(HEAP_HEAP, M626_SPARK_EFFECT_DATA_SIZE, HU_MEMNUM_OVL);
+    fn_80026B8C(modelId, 7);
+    modelData = &lbl_802C01C8[modelId];
+    particles = HuMemDirectMallocNum(HEAP_HEAP, M626_SPARK_EFFECT_DATA_SIZE, 0x10000000);
     modelData->hookData = particles;
     memset(particles, 0, M626_SPARK_EFFECT_DATA_SIZE);
     particle = particles;
@@ -587,7 +587,7 @@ void fn_1_D1D8(OMOBJ *object)
     f32 angle;
     f32 magnitude;
 
-    modelData = &Hu3DData[modelId];
+    modelData = &lbl_802C01C8[modelId];
     effects = modelData->hookData;
     particle = effects->particles;
     initialized = 0;
@@ -740,7 +740,7 @@ void fn_1_DBC0(Vec *position, Vec *velocity)
 
     object = lbl_1_bss_6C8;
     modelId = object->mdlId[0];
-    work = Hu3DData[modelId].hookData;
+    work = lbl_802C01C8[modelId].hookData;
     record = work->data;
     for (index = 0; index < work->maxCnt; index++, record++) {
         if (record->time < 0) {
@@ -763,7 +763,7 @@ void fn_1_DC84(Vec *position, Vec *velocity)
 
     object = lbl_1_bss_6C8;
     modelId = object->mdlId[1];
-    work = Hu3DData[modelId].hookData;
+    work = lbl_802C01C8[modelId].hookData;
     record = work->data;
     for (index = 0; index < work->maxCnt; index++, record++) {
         if (record->time < 0) {
@@ -805,7 +805,7 @@ void fn_1_DD48(s32 count, f32 radius, const Vec *position)
 
         manager = lbl_1_bss_6C8;
         modelIndex = manager->mdlId[1];
-        model = Hu3DData[modelIndex].hookData;
+        model = lbl_802C01C8[modelIndex].hookData;
         particle = model->data;
 
         for (slot = 0; slot < model->maxCnt; slot++, particle++) {
@@ -824,7 +824,7 @@ void fn_1_E068(const Vec *position)
 {
     OMOBJ *object = lbl_1_bss_6C8;
     s16 modelId = object->mdlId[2];
-    HU3D_PARTICLE *work = Hu3DData[modelId].hookData;
+    HU3D_PARTICLE *work = lbl_802C01C8[modelId].hookData;
     HU3D_PARTICLE_DATA *record = work->data;
     s32 index;
 
@@ -848,7 +848,7 @@ void fn_1_E114(const Vec *position, f32 fanRadius)
     s32 index;
 
     modelId = boardState->mdlId[3];
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     records = model->hookData;
     record = records;
 
@@ -869,7 +869,7 @@ void fn_1_E1D8(M626EffectRecord *effect)
 {
     OMOBJ *object = lbl_1_bss_6C8;
     s16 modelId = object->mdlId[4];
-    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
     M626EffectCollection *work = model->hookData;
     M626EffectRecord **entry = work->records;
     s32 i;

@@ -72,7 +72,7 @@ M676LightSettings lbl_1_data_50 = {
     {{0, 1, 0, 20.0f, 10000.0f, {192, 192, 192, 0}}, {-1, 0, 0, 0, 0, {0}}}
 };
 M676AudioConfig lbl_1_data_84[2] = {
-    {HU3D_CAM_ALL, 32, 96, 32, 64, 110, 2400.0f, 1900.0f, 1400.0f},
+    {((1 << 16) - 1), 32, 96, 32, 64, 110, 2400.0f, 1900.0f, 1400.0f},
     {0}
 };
 M676SequenceSettings lbl_1_data_CC = {
@@ -143,10 +143,10 @@ void fn_1_A0(void)
         lbl_1_bss_170[index] = 0;
         lbl_1_bss_150[index] = 0;
     }
-    lbl_1_bss_19C = omInitObjMan(120, 8192);
-    omGameSysInit(lbl_1_bss_19C);
-    MgSeqCreate(&lbl_1_data_CC.sequence);
-    MgSeqModeHookAdd(4, fn_1_5E8);
+    lbl_1_bss_19C = fn_8003A8BC(120, 8192);
+    fn_80069F1C(lbl_1_bss_19C);
+    fn_80070788(&lbl_1_data_CC.sequence);
+    fn_80071D20(4, fn_1_5E8);
     lbl_1_bss_0 = MgTimerCreate(0);
     MgTimerParamSet(lbl_1_bss_0, 600, 0, 0);
     fn_1_16A0(lbl_1_bss_19C);
@@ -156,7 +156,7 @@ void fn_1_A0(void)
     fn_1_1E50(lbl_1_bss_19C, 1, 45.0f, 20.0f, 4000.0f,
               2000.0f, lbl_1_data_0);
     resource = fn_1_1480(0);
-    fn_1_2EF8(1, HuDataSelHeapReadNum(resource, HU_MEMNUM_OVL, 2));
+    fn_1_2EF8(1, fn_80008DD0(resource, 0x10000000, 2));
     fn_1_2AAC(fn_1_BA8);
     fn_1_3A1C(lbl_1_bss_19C, lbl_1_data_84);
     fn_1_11F34(lbl_1_bss_19C);
@@ -167,7 +167,7 @@ void fn_1_A0(void)
 }
 
 void fn_1_348(short mode,short state) {
-    if(!fn_1_A4C(mode,state)) MgSeqModeNext();
+    if(!fn_1_A4C(mode,state)) fn_80071A9C();
 }
 
 /* Fade-in callback starts music, waits at least 60 frames and for the opening-route flag to clear
@@ -189,7 +189,7 @@ void fn_1_384(s16 sequenceMode, s16 frameNo)
     case 0:
         lbl_1_bss_198++;
         lbl_1_bss_194 = 0;
-        MgSeqModeChangeOff();
+        fn_80071B08();
         break;
     case 1:
         if (++lbl_1_bss_194 < 60 || fn_1_F7BC() != 0) {
@@ -212,7 +212,7 @@ void fn_1_384(s16 sequenceMode, s16 frameNo)
         /* fall through */
     case 3:
         if (++lbl_1_bss_194 >= 30) {
-            MgSeqModeNext();
+            fn_80071A9C();
         }
         break;
     }
@@ -255,11 +255,11 @@ void fn_1_648(s16 firstValue, s16 secondValue)
             }
         }
         if (fn_1_F8B4() != 0) {
-            MgSeqModeNext();
+            fn_80071A9C();
             return;
         }
         if (secondValue > 3600) {
-            MgSeqModeNext();
+            fn_80071A9C();
             return;
         }
     }
@@ -296,7 +296,7 @@ void fn_1_7DC(s16 sequenceMode, s16 frameNo)
             }
         }
         if (lbl_1_bss_180 == 0 && frameNo >= 120) {
-            MgSeqModeNext();
+            fn_80071A9C();
             return;
         }
     }
@@ -322,10 +322,10 @@ void fn_1_8D0(s16 sequenceMode, s16 frameNo)
             s16 updatedBonus;
             s32 bonus;
 
-            bonus = GwPlayer[index].mgCoinBonus;
+            bonus = lbl_80265750[index].mgCoinBonus;
             updatedBonus = bonus + fn_1_125E4(index);
-            if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                GwPlayer[index].mgCoinBonus = updatedBonus;
+            if (fn_8006A124(65551) == 0) {
+                lbl_80265750[index].mgCoinBonus = updatedBonus;
             }
         }
     }
@@ -458,7 +458,7 @@ void fn_1_BA8(OMOBJ *object, u32 slot, s32 index)
                         record->fade = 0.0f;
                         record->blend = 0.05f;
                     case 5:
-                        if (MgSeqModeGet() == 7) {
+                        if (fn_80071A8C() == 7) {
                             record->state++;
                             record->timer = 0;
                             *target = *current;
@@ -526,8 +526,8 @@ void fn_1_BA8(OMOBJ *object, u32 slot, s32 index)
     }
     fn_1_28BC(data->cameras, fn_1_2E90(), &current->center,
         data->shadowFov, 1200.0f);
-    Hu3DShadowColSet(0U, 0U, 64U);
-    Hu3DShadowMultiTPLvlSet(0.6f, (s16)slot);
+    fn_8002AAB4(0U, 0U, 64U);
+    fn_8002A7D8(0.6f, (s16)slot);
 }
 
 s32 fn_1_1480(s32 resource)

@@ -61,7 +61,7 @@ void BootTitleCreate(void);
 s32 BootTitleExec(s32 firstRun);
 void BootWarningExec(void);
 void *NintendoDataDecode(void);
-void CharInit(void);
+void fn_80056428(void);
 void GameMesInit(void);
 void OpeningCreate(void);
 void OpeningExec(s32 enablePrompt);
@@ -97,7 +97,7 @@ void ObjectSetup(void)
     OMOVLHIS *history;
 
     OSReport("******* Boot ObjectSetup *********\n");
-    BootObjMan = omInitObjMan(50, 8192);
+    BootObjMan = fn_8003A8BC(50, 8192);
     BootCameraRot[0].x = -5.0f;
     BootCameraRot[0].y = 0.0f;
     BootCameraRot[0].z = 0.0f;
@@ -108,9 +108,9 @@ void ObjectSetup(void)
     Hu3DCameraCreate(1);
     Hu3DCameraPerspectiveSet(1, 45.0f, 20.0f, 15000.0f, 1.2f);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
-    HuPrcCreate(BootExec, 100, 12288, 0);
-    OutViewObj = omAddObjEx(BootObjMan, CAMERA_OUT_VIEW_PRIORITY, 0, 0, OM_GRP_NONE, CameraOutView);
-    omAddObjEx(BootObjMan, 0, 32, 32, OM_GRP_NONE, CameraMove);
+    fn_8000D818(BootExec, 100, 12288, 0);
+    OutViewObj = fn_8003AB38(BootObjMan, CAMERA_OUT_VIEW_PRIORITY, 0, 0, -1, CameraOutView);
+    fn_8003AB38(BootObjMan, 0, 32, 32, -1, CameraMove);
     BootLightId[0] = Hu3DGLightCreate(0.0f, 10.0f, 1000.0f,
                                       0.0f, -0.01f, -1.0f,
                                       64, 64, 96);
@@ -122,8 +122,8 @@ void ObjectSetup(void)
     Hu3DBGColorSet(0, 0, 0);
     history = omOvlHisGet(0);
     omOvlHisChg(0, history->ovl, 1, history->stat);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        GwPlayerConf[i].charNo = GwPlayerConf[i].padNo = i;
+    for (i = 0; i < 4; i++) {
+        lbl_80265728[i].charNo = lbl_80265728[i].padNo = i;
     }
 }
 
@@ -143,14 +143,14 @@ void BootExec(void)
     void *buf;
 
     // The current-process pointer is fetched here but is not used by the startup sequence.
-    process = HuPrcCurrentGet();
+    process = fn_8000DD9C();
     firstRun = FALSE;
-    asyncStat = HU_DATA_STAT_NONE;
+    asyncStat = -1;
 
-    if (omovlevtno == 0 && VIGetTvFormat() != VI_MPAL) {
+    if (lbl_802C0248 == 0 && VIGetTvFormat() != VI_MPAL) {
         BootProgExec();
     }
-    if (omovlevtno == 0) {
+    if (lbl_802C0248 == 0) {
         BootWarningExec();
     }
 
@@ -161,17 +161,17 @@ void BootExec(void)
     HuSprPosSet(group, 0, 288.0f, 240.0f);
     HuSprAttrSet(group, 0, HUSPR_ATTR_DISPOFF);
 
-    if (omovlevtno != 0) {
+    if (lbl_802C0248 != 0) {
         HuAudSndGrpSetSet(MSM_GRP_MENU);
 
-        anim = HuSprAnimRead(HuDataSelHeapReadNum(NINTENDO_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+        anim = HuSprAnimRead(fn_80008DD0(NINTENDO_SPRITE_DATA, 0x10000000, 2));
         titleSprite = HuSprCreate(anim, 0, 0);
         HuSprGrpMemberSet(group, 1, titleSprite);
         HuSprPosSet(group, 1, 288.0f, 240.0f);
         HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
 
-        waitSprite = HuSprCreate(HuSprAnimRead(HuDataSelHeapReadNum(OPENING_WAIT_SPRITE_DATA,
-                                                                    HU_MEMNUM_OVL, HEAP_MODEL)),
+        waitSprite = HuSprCreate(HuSprAnimRead(fn_80008DD0(OPENING_WAIT_SPRITE_DATA,
+                                                                    0x10000000, 2)),
                                  0, 0);
         HuSprGrpMemberSet(group, 2, waitSprite);
         HuSprPosSet(group, 2, 288.0f, 206.0f);
@@ -184,8 +184,8 @@ void BootExec(void)
         firstRun = TRUE;
         goto title_exec;
     } else {
-        for (frame = 0; frame < GW_PLAYER_MAX; frame++) {
-            GwPlayerConf[frame].padNo = frame;
+        for (frame = 0; frame < 4; frame++) {
+            lbl_80265728[frame].padNo = frame;
         }
 
         HuSprAttrReset(group, 0, HUSPR_ATTR_DISPOFF);
@@ -197,18 +197,18 @@ void BootExec(void)
 
         if (NintendoDispF == FALSE) {
             start = OSGetTick();
-            CharInit();
+            fn_80056428();
             HuWindowInit();
             GameMesInit();
             HuWinInit(1);
-            asyncStat = HuDataDirReadAsync(DATA_title);
+            asyncStat = fn_80007F20(0xd50000);
             while (OSTicksToMilliseconds(OSGetTick() - start) < 1500) {
                 HuPrcVSleep();
             }
             OSReport("%dms\n", OSTicksToMilliseconds(OSGetTick() - start));
         } else {
             for (frame = 0; frame < 90; frame++) {
-                if (HuPadBtnDown[0] & BOOT_PAD_SKIP_MASK) {
+                if (lbl_802C0008[0] & BOOT_PAD_SKIP_MASK) {
                     break;
                 }
                 HuPrcVSleep();
@@ -222,20 +222,20 @@ void BootExec(void)
 
         if (NintendoDispF == FALSE) {
             start = OSGetTick();
-            while (!HuDataGetAsyncStat(asyncStat)) {
+            while (!fn_80008270(asyncStat)) {
                 HuPrcVSleep();
             }
             BootTitleCreate();
 
             anim = HuSprAnimRead(
-                HuDataSelHeapReadNum(NINTENDO_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+                fn_80008DD0(NINTENDO_SPRITE_DATA, 0x10000000, 2));
             titleSprite = HuSprCreate(anim, 0, 0);
             HuSprGrpMemberSet(group, 1, titleSprite);
             HuSprPosSet(group, 1, 288.0f, 240.0f);
             HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
 
-            waitSprite = HuSprCreate(HuSprAnimRead(HuDataSelHeapReadNum(OPENING_WAIT_SPRITE_DATA,
-                                                                        HU_MEMNUM_OVL, HEAP_MODEL)),
+            waitSprite = HuSprCreate(HuSprAnimRead(fn_80008DD0(OPENING_WAIT_SPRITE_DATA,
+                                                                        0x10000000, 2)),
                                      0, 0);
             HuSprGrpMemberSet(group, 2, waitSprite);
             HuSprPosSet(group, 2, 288.0f, 206.0f);
@@ -265,7 +265,7 @@ void BootExec(void)
             OSReport("%dms\n", OSTicksToMilliseconds(OSGetTick() - start));
         } else {
             for (frame = 0; frame < 90; frame++) {
-                if (HuPadBtnDown[0] & BOOT_PAD_SKIP_MASK) {
+                if (lbl_802C0008[0] & BOOT_PAD_SKIP_MASK) {
                     break;
                 }
                 HuPrcVSleep();
@@ -291,7 +291,7 @@ void BootExec(void)
             HuPrcSleep(60);
         } else {
             for (frame = 0; frame < 60; frame++) {
-                if (HuPadBtnDown[0] & BOOT_PAD_SKIP_MASK) {
+                if (lbl_802C0008[0] & BOOT_PAD_SKIP_MASK) {
                     break;
                 }
                 HuPrcVSleep();
@@ -305,8 +305,8 @@ void BootExec(void)
         HuSprAttrSet(group, 2, HUSPR_ATTR_DISPOFF);
 
         if (NintendoDispF == FALSE) {
-            HuDataDirClose(DATA_title);
-            buf = HuMemDirectMallocNum(HEAP_DVD, msmSysGetSampSize(FALSE), HU_MEMNUM_OVL);
+            fn_800097F4(0xd50000);
+            buf = HuMemDirectMallocNum(3, msmSysGetSampSize(FALSE), 0x10000000);
             msmSysLoadGroup(0, buf, FALSE);
             HuMemDirectFree(buf);
             msmSysSetGroupLoadMode(TRUE);
@@ -332,26 +332,26 @@ title_exec:
 
     HuPrcSleep(60);
     OpeningKill();
-    HuDataDirClose(DATA_title);
+    fn_800097F4(0xd50000);
     HuAudSStreamAllFadeOut(1000);
-    asyncStat = HuDataDirReadAsync(DATA_filesel);
+    asyncStat = fn_80007F20(0x230000);
     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, 60);
     while (WipeCheck()) {
         HuPrcVSleep();
     }
     HuPrcSleep(30);
-    while (!HuDataGetAsyncStat(asyncStat)) {
+    while (!fn_80008270(asyncStat)) {
         HuPrcVSleep();
     }
 
     if (omSysExitReq != 0) {
-        omOvlReturnEx(1, TRUE);
+        fn_8003A5E4(1, TRUE);
     } else {
-        omOvlCallEx(DLL_fileseldll, TRUE, 0, 0);
+        omOvlCallEx(3, TRUE, 0, 0);
     }
 
-    for (frame = 0; frame < GW_PLAYER_MAX; frame++) {
-        GwPlayerConf[frame].charNo = -1;
+    for (frame = 0; frame < 4; frame++) {
+        lbl_80265728[frame].charNo = -1;
     }
 
     HuPrcEnd();
@@ -384,7 +384,8 @@ void BootProgExec(void)
     }
 
     if (!OSGetProgressiveMode()) {
-        if (!((HuPadBtn[0] | HuPadBtn[1] | HuPadBtn[2] | HuPadBtn[3]) & PAD_BUTTON_B)) {
+        if (!((lbl_802C0010[0] | lbl_802C0010[1] | lbl_802C0010[2]
+            | lbl_802C0010[3]) & PAD_BUTTON_B)) {
             return;
         }
     }
@@ -398,19 +399,19 @@ void BootProgExec(void)
     group = HuSprGrpCreate(3);
 
     anim =
-        HuSprAnimRead(HuDataSelHeapReadNum(PROGRESSIVE_MSG_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(PROGRESSIVE_MSG_SPRITE_DATA, 0x10000000, 2));
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 0, sprite);
     HuSprPosSet(group, 0, 288.0f, 240.0f);
 
     anim = HuSprAnimRead(
-        HuDataSelHeapReadNum(PROGRESSIVE_CURSOR_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80008DD0(PROGRESSIVE_CURSOR_SPRITE_DATA, 0x10000000, 2));
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 1, sprite);
     HuSprPosSet(group, 1, posTbl[selection * 2], posTbl[selection * 2 + 1]);
 
     anim = HuSprAnimRead(
-        HuDataSelHeapReadNum(PROGRESSIVE_CURSOR_SEL_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80008DD0(PROGRESSIVE_CURSOR_SEL_SPRITE_DATA, 0x10000000, 2));
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 2, sprite);
     HuSprPosSet(group, 2, posTbl[selection * 2], posTbl[selection * 2 + 1]);
@@ -422,13 +423,13 @@ void BootProgExec(void)
     }
 
     for (frame = 0; frame < 600; frame++) {
-        if ((HuPadDStkRep[0] | HuPadDStkRep[1] | HuPadDStkRep[2] | HuPadDStkRep[3]) & 3) {
+        if ((lbl_802BFFE0[0] | lbl_802BFFE0[1] | lbl_802BFFE0[2] | lbl_802BFFE0[3]) & 3) {
             selection ^= 1;
             HuSprPosSet(group, 1, posTbl[selection * 2], posTbl[selection * 2 + 1]);
             frame = 0;
         }
 
-        if ((HuPadBtnDown[0] | HuPadBtnDown[1] | HuPadBtnDown[2] | HuPadBtnDown[3]) &
+        if ((lbl_802C0008[0] | lbl_802C0008[1] | lbl_802C0008[2] | lbl_802C0008[3]) &
             PAD_BUTTON_A) {
             HuSprAttrSet(group, 1, HUSPR_ATTR_DISPOFF);
             HuSprPosSet(group, 2, posTbl[selection * 2], posTbl[selection * 2 + 1]);
@@ -459,10 +460,10 @@ void BootProgExec(void)
     group = HuSprGrpCreate(1);
     if (selection == 0) {
         anim = HuSprAnimRead(
-            HuDataSelHeapReadNum(PROGRESSIVE_ON_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(PROGRESSIVE_ON_SPRITE_DATA, 0x10000000, 2));
     } else {
         anim = HuSprAnimRead(
-            HuDataSelHeapReadNum(PROGRESSIVE_OFF_SPRITE_DATA, HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(PROGRESSIVE_OFF_SPRITE_DATA, 0x10000000, 2));
     }
     sprite = HuSprCreate(anim, 0, 0);
     HuSprGrpMemberSet(group, 0, sprite);
@@ -475,7 +476,7 @@ void BootProgExec(void)
 
     HuPrcSleep(60);
     for (frame = 0; frame < 180; frame++) {
-        if ((HuPadBtnDown[0] | HuPadBtnDown[1] | HuPadBtnDown[2] | HuPadBtnDown[3]) &
+        if ((lbl_802C0008[0] | lbl_802C0008[1] | lbl_802C0008[2] | lbl_802C0008[3]) &
             PAD_BUTTON_A) {
             break;
         }
@@ -550,10 +551,10 @@ void CameraMove(OMOBJ *object)
         return;
     }
 
-    BootCameraRot[0].y += 0.1f * (float)HuPadStkX[0];
-    BootCameraRot[0].x += 0.1f * (float)HuPadStkY[0];
-    BootCameraZoom[0] += (float)(HuPadTrigL[0] / 2);
-    BootCameraZoom[0] -= (float)(HuPadTrigR[0] / 2);
+    BootCameraRot[0].y += 0.1f * (float)lbl_802BFFFC[0];
+    BootCameraRot[0].x += 0.1f * (float)lbl_802BFFF8[0];
+    BootCameraZoom[0] += (float)(lbl_802BFFEC[0] / 2);
+    BootCameraZoom[0] -= (float)(lbl_802BFFE8[0] / 2);
     if (BootCameraZoom[0] < 100.0f) {
         BootCameraZoom[0] = 100.0f;
     }
@@ -612,7 +613,7 @@ void CameraMove(OMOBJ *object)
     PSVECCrossProduct(&up, &delta, &delta);
     PSVECNormalize(&delta, &delta);
 
-    subStick = HuPadSubStkX[0] & SUBSTICK_INPUT_MASK;
+    subStick = lbl_802BFFF4[0] & SUBSTICK_INPUT_MASK;
     if (subStick != 0) {
         BootCameraCenter[0].x += (delta.x * (float)subStick) * 0.05f;
         BootCameraCenter[0].y += (delta.y * (float)subStick) * 0.05f;
@@ -621,7 +622,7 @@ void CameraMove(OMOBJ *object)
 
     PSVECNormalize(&roll, &delta);
 
-    subStick = -(HuPadSubStkY[0] & SUBSTICK_INPUT_MASK);
+    subStick = -(lbl_802BFFF0[0] & SUBSTICK_INPUT_MASK);
     if (subStick != 0) {
         BootCameraCenter[0].x += (delta.x * (float)subStick) * 0.05f;
         BootCameraCenter[0].y += (delta.y * (float)subStick) * 0.05f;
@@ -633,14 +634,14 @@ void CameraMove(OMOBJ *object)
 // models.
 void BootTitleCreate(void)
 {
-    TitleMdlId[0] = Hu3DModelCreateData(TITLE_HSF_PARTY);
-    TitleMdlId[1] = Hu3DModelCreateData(TITLE_HSF_SIX);
-    TitleMdlId[2] = Hu3DModelCreateData(TITLE_HSF_STAR);
+    TitleMdlId[0] = fn_80025A04(fn_80008DD0(TITLE_HSF_PARTY, 0x10000000, 2));
+    TitleMdlId[1] = fn_80025A04(fn_80008DD0(TITLE_HSF_SIX, 0x10000000, 2));
+    TitleMdlId[2] = fn_80025A04(fn_80008DD0(TITLE_HSF_STAR, 0x10000000, 2));
 
-    Hu3DModelDispOff(TitleMdlId[0]);
-    Hu3DModelDispOff(TitleMdlId[1]);
-    Hu3DModelDispOff(TitleMdlId[2]);
-    Hu3DModelLayerSet(TitleMdlId[0], 1);
+    fn_800269E8(TitleMdlId[0], (1 << 0));
+    fn_800269E8(TitleMdlId[1], (1 << 0));
+    fn_800269E8(TitleMdlId[2], (1 << 0));
+    fn_80026B8C(TitleMdlId[0], 1);
 }
 
 // BootExec calls this while the title screen is active; returns 1 on Start or 0 after the
@@ -661,42 +662,42 @@ s32 BootTitleExec(s32 firstRun)
     BootCameraCenter[0].z = 0.0f;
     BootCameraZoom[0] = 1000.0f;
 
-    Hu3DModelAttrReset(TitleMdlId[2], HU3D_ATTR_DISPOFF);
-    Hu3DMotionTimeSet(TitleMdlId[2], 0.0f);
-    Hu3DMotionStartEndSet(TitleMdlId[2], 0.0f, 71.0f);
-    Hu3DModelAttrReset(TitleMdlId[2], HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrReset(TitleMdlId[1], HU3D_ATTR_DISPOFF);
-    Hu3DMotionTimeSet(TitleMdlId[1], 0.0f);
-    Hu3DModelAttrSet(TitleMdlId[0], HU3D_MOTATTR_LOOP);
-    Hu3DMotionStartEndSet(TitleMdlId[0], 0.0f, 59.0f);
+    fn_80026A44(TitleMdlId[2], (1 << 0));
+    fn_8002D414(TitleMdlId[2], 0.0f);
+    fn_8002D730(TitleMdlId[2], 0.0f, 71.0f);
+    fn_80026A44(TitleMdlId[2], ((1 << 30) | (1 << 0)));
+    fn_80026A44(TitleMdlId[1], (1 << 0));
+    fn_8002D414(TitleMdlId[1], 0.0f);
+    fn_800269E8(TitleMdlId[0], ((1 << 30) | (1 << 0)));
+    fn_8002D730(TitleMdlId[0], 0.0f, 59.0f);
 
     if (!firstRun) {
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, TITLE_WIPE_FRAMES);
         HuPrcSleep(TITLE_STREAM_DELAY_FRAMES);
         HuAudSStreamPlay(MSM_STREAM_TEST);
         WipeWait();
-        while (Hu3DMotionTimeGet(TitleMdlId[2]) < 70.0f) {
+        while (fn_8002D4E0(TitleMdlId[2]) < 70.0f) {
             HuPrcVSleep();
         }
-        Hu3DMotionStartEndSet(TitleMdlId[2], 70.0f, 500.0f);
+        fn_8002D730(TitleMdlId[2], 70.0f, 500.0f);
     } else {
-        Hu3DMotionTimeSet(TitleMdlId[2], 71.0f);
-        Hu3DMotionStartEndSet(TitleMdlId[2], 70.0f, 500.0f);
-        Hu3DMotionTimeSet(TitleMdlId[1], 70.0f);
+        fn_8002D414(TitleMdlId[2], 71.0f);
+        fn_8002D730(TitleMdlId[2], 70.0f, 500.0f);
+        fn_8002D414(TitleMdlId[1], 70.0f);
         WipeCreate(WIPE_MODE_IN, WIPE_TYPE_NORMAL, TITLE_WIPE_FRAMES);
         HuPrcSleep(TITLE_STREAM_DELAY_FRAMES);
         HuAudSStreamPlay(MSM_STREAM_TEST);
         WipeWait();
     }
 
-    Hu3DModelAttrSet(TitleMdlId[2], HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrReset(TitleMdlId[0], HU3D_ATTR_DISPOFF);
+    fn_800269E8(TitleMdlId[2], ((1 << 30) | (1 << 0)));
+    fn_80026A44(TitleMdlId[0], (1 << 0));
     for (frame = 0; frame < TITLE_INPUT_WAIT_FRAMES; frame++) {
-        if (HuPadBtnDown[0] & PAD_BUTTON_START) {
+        if (lbl_802C0008[0] & PAD_BUTTON_START) {
             HuAudFXPlay(TITLE_CONFIRM_SE);
-            Hu3DMotionStartEndSet(TitleMdlId[0], 0.0f, 90.0f);
-            Hu3DModelAttrReset(TitleMdlId[0], HU3D_MOTATTR_LOOP);
-            Hu3DMotionTimeSet(TitleMdlId[0], 60.0f);
+            fn_8002D730(TitleMdlId[0], 0.0f, 90.0f);
+            fn_80026A44(TitleMdlId[0], ((1 << 30) | (1 << 0)));
+            fn_8002D414(TitleMdlId[0], 60.0f);
             HuPrcSleep(TITLE_CONFIRM_WAIT_FRAMES);
             return 1;
         }
@@ -706,8 +707,8 @@ s32 BootTitleExec(s32 firstRun)
     WipeColorSet(255, 255, 255);
     WipeCreate(WIPE_MODE_OUT, WIPE_TYPE_NORMAL, TITLE_WIPE_FRAMES);
     WipeWait();
-    Hu3DModelAttrSet(TitleMdlId[0], HU3D_ATTR_DISPOFF);
-    Hu3DModelAttrSet(TitleMdlId[2], HU3D_ATTR_DISPOFF);
+    fn_800269E8(TitleMdlId[0], (1 << 0));
+    fn_800269E8(TitleMdlId[2], (1 << 0));
     return 0;
 }
 
@@ -721,10 +722,10 @@ void *NintendoDataDecode(void)
 
     src = (u32 *)nintendoData;
     size = *src++;
-    dst = HuMemDirectMalloc(HEAP_MODEL, size);
+    dst = HuMemDirectMalloc(2, size);
     decodeType = *src++;
     if (dst) {
-        HuDecodeData(src, dst, size, decodeType);
+        fn_8000A384(src, dst, size, decodeType);
     }
 
     return dst;
@@ -738,10 +739,10 @@ void *WarningDataDecode(u32 *src)
     s32 decodeType;
 
     size = *src++;
-    dst = HuMemDirectMalloc(HEAP_MODEL, size);
+    dst = HuMemDirectMalloc(2, size);
     decodeType = *src++;
     if (dst) {
-        HuDecodeData(src, dst, size, decodeType);
+        fn_8000A384(src, dst, size, decodeType);
     }
 
     return dst;
@@ -778,10 +779,10 @@ void BootWarningExec(void)
 
     warningPacked = warningData;
     warningSize = *warningPacked++;
-    warningRawData = HuMemDirectMalloc(HEAP_MODEL, warningSize);
+    warningRawData = HuMemDirectMalloc(2, warningSize);
     warningDecodeType = *warningPacked++;
     if (warningRawData) {
-        HuDecodeData(warningPacked, warningRawData, warningSize, warningDecodeType);
+        fn_8000A384(warningPacked, warningRawData, warningSize, warningDecodeType);
     }
     warningAnimData = warningRawData;
     anim = HuSprAnimRead(warningAnimData);
@@ -792,10 +793,10 @@ void BootWarningExec(void)
 
     pressStartPacked = warningPressStartData;
     pressStartSize = *pressStartPacked++;
-    pressStartRawData = HuMemDirectMalloc(HEAP_MODEL, pressStartSize);
+    pressStartRawData = HuMemDirectMalloc(2, pressStartSize);
     pressStartDecodeType = *pressStartPacked++;
     if (pressStartRawData) {
-        HuDecodeData(pressStartPacked, pressStartRawData, pressStartSize, pressStartDecodeType);
+        fn_8000A384(pressStartPacked, pressStartRawData, pressStartSize, pressStartDecodeType);
     }
     pressStartAnimData = pressStartRawData;
     anim = HuSprAnimRead(pressStartAnimData);
@@ -815,7 +816,7 @@ void BootWarningExec(void)
     HuSprDispOn(group, PRESS_START_SPRITE_MEMBER);
     frame = 0;
     while (frame < MAX_INPUT_WAIT_FRAMES &&
-           !(HuPadBtnDown[0] | HuPadBtnDown[1] | HuPadBtnDown[2] | HuPadBtnDown[3])) {
+           !(lbl_802C0008[0] | lbl_802C0008[1] | lbl_802C0008[2] | lbl_802C0008[3])) {
         if (frame != 0 && (frame % BLINK_PERIOD_FRAMES) == 0) {
             phaseSign = -phaseSign;
         }

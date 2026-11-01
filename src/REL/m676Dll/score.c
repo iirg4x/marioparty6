@@ -31,9 +31,9 @@ void fn_1_11F34(HUPROCESS *process)
     OMOBJ *object;
     void *data;
 
-    object = omAddObjEx(process, 20, 0, 0, -1, fn_1_11FC0);
+    object = fn_8003AB38(process, 20, 0, 0, -1, fn_1_11FC0);
     lbl_1_bss_10B0 = object;
-    data = HuMemDirectMallocNum(HEAP_HEAP, 116, HU_MEMNUM_OVL);
+    data = HuMemDirectMallocNum(HEAP_HEAP, 116, 0x10000000);
     object->data = data;
     memset(data, 0, 116);
 }
@@ -63,19 +63,19 @@ void fn_1_12024(OMOBJ *object)
     s32 spriteIndex;
 
     scoreBoxAnimation =
-        HuSprAnimRead(HuDataSelHeapReadNum(fn_1_1480(12), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(fn_1_1480(12), 0x10000000, 2));
     scoreAnimation =
-        HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_mgconst, 48), HU_MEMNUM_OVL, HEAP_MODEL));
+        HuSprAnimRead(fn_80008DD0(DATANUM(0x9b0000, 48), 0x10000000, 2));
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         M676ScoreEntry *entry = &work->entries[playerIndex];
-        s16 scoreBox = MgScoreBoxCreateChar(120, 48, GwPlayerConf[playerIndex].charNo);
+        s16 scoreBox = MgScoreBoxCreateChar(120, 48, lbl_80265728[playerIndex].charNo);
         s16 spriteGroup;
         MGSCORE *score;
 
         entry->box = scoreBox;
         MgScoreBoxDispSet(scoreBox, 0);
         MgScoreBoxTPLvlSet(scoreBox, 0.0f);
-        score = MgScoreCreate(DATANUM(DATA_mgconst, 49), -1, 1);
+        score = MgScoreCreate(DATANUM(0x9b0000, 49), -1, 1);
         entry->score = score;
         MgScoreMaxDigitSet(score, 2);
         MgScoreDispOff(score);

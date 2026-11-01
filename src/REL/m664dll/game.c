@@ -57,10 +57,10 @@
 #define M664_SCENE_FRAME_4400 4400
 #define M664_SCENE_FRAME_4530 4530
 u32 lbl_1_data_28[7] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 21),
-    DATANUM(DATA_mario, 184), DATANUM(DATA_mariomot, 34),
-    DATANUM(DATA_mario, 120), DATANUM(DATA_mariomot, 38),
-    DATANUM(DATA_mariomot, 40)
+    DATANUM(0x930000, 0), DATANUM(0x930000, 21),
+    DATANUM(0x8e0000, 184), DATANUM(0x930000, 34),
+    DATANUM(0x8e0000, 120), DATANUM(0x930000, 38),
+    DATANUM(0x930000, 40)
 };
 const u8 lbl_1_rodata_60[2][3] = { {5, 4, 5}, {5, 4, 5} };
 const u8 lbl_1_rodata_66[2][3] = { {255, 255, 255}, {255, 255, 255} };
@@ -321,7 +321,7 @@ static inline void fn_1_14C4_inlined(void) {
 
     fn_1_640C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        Hu3DModelPosSet(lbl_1_bss_C8[playerIndex].modelId,
+        fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
                         (-300.0f) + (200.0f) * (f32)playerIndex,
                         (232.0f) + lbl_1_bss_41C[0].position.y,
                         0.0f);
@@ -397,7 +397,7 @@ static inline void moveCameraView(
     rotationPointer = &rotation;
     lbl_1_bss_8C8.rot = *rotationPointer;
     lbl_1_bss_8C8.zoom = *zoomSource;
-    omCameraViewMove(&lbl_1_bss_8C8, duration, 3);
+    fn_8003E7A0(&lbl_1_bss_8C8, duration, 3);
 }
 
 /* Unused camera helper: sets the saved center and rotation, then transitions with the saved
@@ -418,7 +418,7 @@ static inline void moveCameraViewWithoutZoom(
     rotation = *rotationSource;
     rotationPointer = &rotation;
     lbl_1_bss_8C8.rot = *rotationPointer;
-    omCameraViewMove(&lbl_1_bss_8C8, duration, 3);
+    fn_8003E7A0(&lbl_1_bss_8C8, duration, 3);
 }
 
 /* Unused camera helper: transitions to a new saved center, keeping the saved rotation and zoom. */
@@ -429,7 +429,7 @@ static inline void moveCameraCenter(const HuVecF *centerSource, s32 duration) {
     center = *centerSource;
     centerPointer = &center;
     lbl_1_bss_8C8.center = *centerPointer;
-    omCameraViewMove(&lbl_1_bss_8C8, duration, 3);
+    fn_8003E7A0(&lbl_1_bss_8C8, duration, 3);
 }
 
 /* Unused camera helper: transitions to a new saved rotation, keeping the saved center and zoom. */
@@ -440,7 +440,7 @@ static inline void moveCameraRotation(const HuVecF *rotationSource, s32 duration
     rotation = *rotationSource;
     rotationPointer = &rotation;
     lbl_1_bss_8C8.rot = *rotationPointer;
-    omCameraViewMove(&lbl_1_bss_8C8, duration, 3);
+    fn_8003E7A0(&lbl_1_bss_8C8, duration, 3);
 }
 
 #include "dolphin/mtx.h"
@@ -451,11 +451,11 @@ extern void fn_1_3868(s32 playerIndex);
 
 extern s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask);
 
-void MgPlayerDespawn(MGPLAYER *player);
+void fn_80086E3C(MGPLAYER *player);
 
 extern s32 frandmod(s32 limit);
 
-extern u32 MgSeqModeGet(void);
+extern u32 fn_80071A8C(void);
 
 s32 fn_1_420C(s16 *collisionMap);
 
@@ -530,10 +530,10 @@ void fn_1_318(s16 mode, s16 frameNo)
 {
     /* Sequence callback: hold this phase until the results transition is ready. */
     if (fn_1_B74() != 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
         return;
     }
-    MgSeqModeChangeOff();
+    fn_80071B08();
 }
 
 void fn_1_34C(s16 mode, s16 frameNo)
@@ -552,9 +552,9 @@ void fn_1_36C(s16 mode, s16 frameNo)
 void fn_1_38C(s16 mode, s16 frameNo)
 {
     HuAudAllStop();
-    Hu3DModelAllKill();
-    Hu3DLightAllKill();
-    omOvlReturnEx(1, 1);
+    fn_80026648();
+    fn_80028D70();
+    fn_8003A5E4(1, 1);
 }
 
 /* Called by setup.c when the opening scene begins; initializes its day or night scene and sequence
@@ -565,7 +565,7 @@ void fn_1_3C0(void)
     s32 nightFlag;
 
     /* Initializes the day or night scene and clears the sequence's running state. */
-    isNightMode = GwMgNightF;
+    isNightMode = lbl_802C0278;
     if (isNightMode == 0) {
         nightFlag = 0;
     } else {
@@ -581,7 +581,7 @@ void fn_1_3C0(void)
     lbl_1_bss_8AC[0] = lbl_1_bss_8AC[1] = lbl_1_bss_8AC[2] = lbl_1_bss_8AC[3] = 0;
     lbl_1_bss_10.soundHandle[0] = lbl_1_bss_10.soundHandle[1] = -1;
     lbl_1_bss_C = -1;
-    HuDataDirClose(DATA_m664);
+    fn_800097F4(0x7b0000);
 }
 
 /* Called each active-play frame by setup.c; updates players and the course, then reports when play
@@ -594,9 +594,9 @@ s32 fn_1_4C0(void) {
     fn_1_2E08();
     fn_1_4060();
     fn_1_2188();
-    MgActorExec();
+    fn_800856A8();
     fn_1_A428();
-    if (Hu3DMotionEndCheck(lbl_1_bss_86E) == 0) {
+    if (fn_8002D75C(lbl_1_bss_86E) == 0) {
         lbl_1_bss_8C0 += 1;
     }
     if (((s32) lbl_1_bss_8BC < 2) || ((s32) lbl_1_bss_8C0 > 4888)) {
@@ -625,21 +625,21 @@ void fn_1_560(void) {
             HuAudFXPlay(MSM_SE_M664_OPENING_TRANSITION);
         }
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            Hu3DMotionSpeedSet(lbl_1_bss_85C[playerIndex].modelId, (1.0f));
+            fn_8002D86C(lbl_1_bss_85C[playerIndex].modelId, (1.0f));
             Hu3DModelObjPosGet(lbl_1_bss_85C[playerIndex].modelId, "fook00",
                                &playerPosition);
-            Hu3DModelPosSetV(lbl_1_bss_85C[playerIndex].objectModelId, &playerPosition);
+            fn_80026790(lbl_1_bss_85C[playerIndex].objectModelId, &playerPosition);
             if (lbl_1_bss_8C4 == 65) {
-                Hu3DModelShadowMapSet(lbl_1_bss_85C[playerIndex].modelId);
+                fn_80026FFC(lbl_1_bss_85C[playerIndex].modelId);
             }
-            MgPlayerAttrSet(lbl_1_bss_C8[playerIndex].player, 1);
+            fn_80087158(lbl_1_bss_C8[playerIndex].player, 1);
             if (lbl_1_bss_8C4 >= 125) {
                 if (lbl_1_bss_8C4 == 125) {
-                    MgPlayerAttrReset(lbl_1_bss_C8[playerIndex].player, 1);
-                    MgPlayerPadSet(lbl_1_bss_C8[playerIndex].player, 0, 0, PAD_BUTTON_A, 0);
+                    fn_80087168(lbl_1_bss_C8[playerIndex].player, 1);
+                    fn_80080520(lbl_1_bss_C8[playerIndex].player, 0, 0, PAD_BUTTON_A, 0);
                 } else {
                     if ((lbl_1_bss_C8[playerIndex].player->actor->colGroundAttr & 0x407F) == 0) {
-                        MgPlayerAttrReset(lbl_1_bss_C8[playerIndex].player, 1);
+                        fn_80087168(lbl_1_bss_C8[playerIndex].player, 1);
                         if (playerIndex % 2 != 0) {
                             stickX = -50;
                         } else {
@@ -652,15 +652,15 @@ void fn_1_560(void) {
                             stickY = -50;
                         }
                         padStickY = stickY;
-                        MgPlayerPadSet(lbl_1_bss_C8[playerIndex].player, padStickX, padStickY, 0,
+                        fn_80080520(lbl_1_bss_C8[playerIndex].player, padStickX, padStickY, 0,
                                        PAD_BUTTON_A);
                     }
                     if (lbl_1_bss_8AC[playerIndex] == 185) {
-                        CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+                        fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                            lbl_1_bss_C8[playerIndex].motionIds[4],
                                            (0.0f),
                                            (8.0f), 0);
-                        Hu3DModelAttrSet(lbl_1_bss_85C[playerIndex].modelId, HU3D_MOTATTR_REV);
+                        fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, ((1 << 30) | (1 << 2)));
                         if (playerIndex == 0) {
                             HuAudFXPlay(MSM_SE_M664_PLAYER_ACTION);
                         }
@@ -675,7 +675,7 @@ void fn_1_560(void) {
     }
     lbl_1_bss_8A8 = 118;
     fn_1_640C();
-    MgActorExec();
+    fn_800856A8();
 }
 
 /* Called each Start-message frame by setup.c to settle the lineup and start the gameplay track. */
@@ -684,18 +684,18 @@ void fn_1_8DC(void) {
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         if (lbl_1_bss_8A8 == 90) {
-            CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+            fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                lbl_1_bss_C8[playerIndex].motionIds[0],
                                (0.0f), (8.0f), 0);
         } else if (lbl_1_bss_8A8 == 0) {
-            MgPlayerAttrReset(lbl_1_bss_C8[playerIndex].player, 1);
+            fn_80087168(lbl_1_bss_C8[playerIndex].player, 1);
         }
     }
     if ((lbl_1_bss_8A8 -= 1) < 0) {
         lbl_1_bss_8A8 = 0;
     }
     fn_1_640C();
-    MgActorExec();
+    fn_800856A8();
     if (lbl_1_bss_C == -1) {
         lbl_1_bss_C = HuAudBGMPlay(MSM_STREAM_MGMUS_26);
     }
@@ -709,16 +709,16 @@ void fn_1_A08(void) {
     /* Disable AI input and bypass pad-driven movement while the Finish scene continues. */
     playerIndex = 0;
     while (playerIndex < 4) {
-        MgPlayerAttrSet(lbl_1_bss_C8[playerIndex].player, 1U);
+        fn_80087158(lbl_1_bss_C8[playerIndex].player, 1U);
         lbl_1_bss_18[playerIndex].type = 0;
         playerIndex += 1;
     }
     fn_1_2E08();
     fn_1_4060();
     fn_1_2188();
-    MgActorExec();
+    fn_800856A8();
     fn_1_A428();
-    if (Hu3DMotionEndCheck(lbl_1_bss_86E) == 0) {
+    if (fn_8002D75C(lbl_1_bss_86E) == 0) {
         lbl_1_bss_8C0 += 1;
     }
     lbl_1_bss_8C4 = 0;
@@ -766,37 +766,37 @@ s32 fn_1_B74(void) {
             fn_1_A8F0();
             for (playerIndex = 0; playerIndex < 1; playerIndex++) {
             { Point3d scenePosition = {0.0f, 0.0f, 0.0f}; scenePositionPointer = &scenePosition; lbl_1_bss_41C[playerIndex].position = *scenePositionPointer; }
-            Hu3DModelPosSetV(lbl_1_bss_41C[playerIndex].modelId[0],
+            fn_80026790(lbl_1_bss_41C[playerIndex].modelId[0],
                              &lbl_1_bss_41C[playerIndex].position);
-            Hu3DModelPosSetV(lbl_1_bss_41C[playerIndex].modelId[1],
+            fn_80026790(lbl_1_bss_41C[playerIndex].modelId[1],
                              &lbl_1_bss_41C[playerIndex].position);
             { Point3d sceneRotation = {0.0f, 0.0f, 0.0f}; sceneRotationPointer = &sceneRotation; lbl_1_bss_41C[playerIndex].rotation = *sceneRotationPointer; }
-            Hu3DModelRotSetV(lbl_1_bss_41C[playerIndex].modelId[0],
+            fn_80026838(lbl_1_bss_41C[playerIndex].modelId[0],
                              &lbl_1_bss_41C[playerIndex].rotation);
-            Hu3DModelRotSetV(lbl_1_bss_41C[playerIndex].modelId[1],
+            fn_80026838(lbl_1_bss_41C[playerIndex].modelId[1],
                              &lbl_1_bss_41C[playerIndex].rotation);
             }
-            Hu3DModelPosSet(lbl_1_bss_418, 0.0f, (5.0f), 0.0f);
-            Hu3DModelRotSet(lbl_1_bss_418, 0.0f, 0.0f, 0.0f);
-            Hu3DModelAttrReset(lbl_1_bss_858, 1);
+            fn_80026760(lbl_1_bss_418, 0.0f, (5.0f), 0.0f);
+            fn_80026808(lbl_1_bss_418, 0.0f, 0.0f, 0.0f);
+            fn_80026A44(lbl_1_bss_858, 1);
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-                Hu3DModelShadowSet(lbl_1_bss_C8[playerIndex].modelId);
-                Hu3DModelPosSet(lbl_1_bss_C8[playerIndex].modelId,
+                fn_80026E44(lbl_1_bss_C8[playerIndex].modelId);
+                fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
                                 (-300.0f) + (200.0f) * playerIndex,
                                 (232.0f) + lbl_1_bss_41C[0].position.y,
                                 0.0f);
-                Hu3DModelRotSet(lbl_1_bss_C8[playerIndex].modelId, 0.0f,
+                fn_80026808(lbl_1_bss_C8[playerIndex].modelId, 0.0f,
                                 0.0f, 0.0f);
-                CharMotionSet(lbl_1_bss_C8[playerIndex].characterNo,
+                fn_8005BE80(lbl_1_bss_C8[playerIndex].characterNo,
                               lbl_1_bss_C8[playerIndex].motionIds[0]);
-                Hu3DModelAttrReset(lbl_1_bss_C8[playerIndex].modelId, 1);
-                Hu3DModelScaleSet(lbl_1_bss_C8[playerIndex].modelId, (1.0f),
+                fn_80026A44(lbl_1_bss_C8[playerIndex].modelId, 1);
+                fn_800268B0(lbl_1_bss_C8[playerIndex].modelId, (1.0f),
                                   (1.0f), (1.0f));
             }
             { Point3d cameraCenter = {0.0f, 100.0f, -100.0f}; cameraCenterPointer = &cameraCenter; lbl_1_bss_8C8.center = *cameraCenterPointer; }
             { Point3d cameraRotation = {-30.0f, 0.0f, 0.0f}; cameraRotationPointer = &cameraRotation; lbl_1_bss_8C8.rot = *cameraRotationPointer; }
             lbl_1_bss_8C8.zoom = (2250.0f);
-            omCameraViewSet(&lbl_1_bss_8C8);
+            fn_8003E5A4(&lbl_1_bss_8C8);
             Hu3DGLightColorSet(lbl_1_bss_94C, 255, 255, 255, 255);
             if (lbl_1_bss_8E4 == 0) {
                 Hu3DGLightColorSet(lbl_1_bss_920, 0, 0, 0, 255);
@@ -811,34 +811,34 @@ s32 fn_1_B74(void) {
         } else if (lbl_1_bss_8C4 == 2) {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 if (lbl_1_bss_C8[playerIndex].sequenceCount < 2) {
-                    CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+                    fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[5],
                                        0.0f, (8.0f), 0);
                     coinBonus = 0;
                 } else {
-                    CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+                    fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[6],
                                        0.0f, (8.0f), 0);
                     coinBonus = lbl_1_bss_C8[playerIndex].sequenceCount - 1;
                 }
-                if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                    GwPlayer[playerIndex].mgCoinBonus = coinBonus;
+                if (fn_8006A124(65551) == 0) {
+                    lbl_80265750[playerIndex].mgCoinBonus = coinBonus;
                 }
             }
             result = 1;
             lbl_1_bss_8C8.zoom = (1500.0f);
-            omCameraViewMove(&lbl_1_bss_8C8, 100, 0);
+            fn_8003E7A0(&lbl_1_bss_8C8, 100, 0);
         }
     } else if (lbl_1_bss_8C4 == 1) {
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            MgPlayerAttrSet(lbl_1_bss_C8[playerIndex].player, 1);
+            fn_80087158(lbl_1_bss_C8[playerIndex].player, 1);
         }
         fn_1_2E08();
         fn_1_4060();
         fn_1_2188();
-        MgActorExec();
+        fn_800856A8();
         fn_1_A428();
-        if (Hu3DMotionEndCheck(lbl_1_bss_86E) == 0) {
+        if (fn_8002D75C(lbl_1_bss_86E) == 0) {
             lbl_1_bss_8C0 += 1;
         }
     }
@@ -847,7 +847,7 @@ s32 fn_1_B74(void) {
     }
     fn_1_640C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        Hu3DModelPosSet(lbl_1_bss_C8[playerIndex].modelId,
+        fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
                         (-300.0f) + (200.0f) * (f32) playerIndex,
                         (232.0f) + lbl_1_bss_41C[0].position.y,
                         0.0f);
@@ -861,7 +861,7 @@ void fn_1_13DC(void) {
 
     fn_1_640C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        Hu3DModelPosSet(lbl_1_bss_C8[playerIndex].modelId,
+        fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
                         (-300.0f) + (200.0f) * (f32) playerIndex,
                         (232.0f) + lbl_1_bss_41C[0].position.y, (0.0f));
     }
@@ -876,7 +876,7 @@ void fn_1_14C4(void) {
 
     fn_1_640C();
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        Hu3DModelPosSet(lbl_1_bss_C8[playerIndex].modelId,
+        fn_80026760(lbl_1_bss_C8[playerIndex].modelId,
                         (-300.0f) + (200.0f) * (f32) playerIndex,
                         (232.0f) + lbl_1_bss_41C[0].position.y, (0.0f));
     }
@@ -904,7 +904,7 @@ void fn_1_1584(void) {
     lbl_1_bss_930.g = lbl_1_rodata_60[lbl_1_bss_8E4][1];
     lbl_1_bss_930.b = lbl_1_rodata_60[lbl_1_bss_8E4][2];
     lbl_1_bss_930.a = 255;
-    lbl_1_bss_94C = Hu3DGLightCreateV(&lbl_1_bss_940, &lbl_1_bss_934,
+    lbl_1_bss_94C = fn_800286D0(&lbl_1_bss_940, &lbl_1_bss_934,
                                       &lbl_1_bss_930);
     lbl_1_bss_924[0] = lbl_1_bss_930.r;
     lbl_1_bss_924[1] = lbl_1_bss_930.g;
@@ -918,7 +918,7 @@ void fn_1_1584(void) {
     lbl_1_bss_904.g = lbl_1_rodata_66[lbl_1_bss_8E4][1];
     lbl_1_bss_904.b = lbl_1_rodata_66[lbl_1_bss_8E4][2];
     lbl_1_bss_904.a = 255;
-    lbl_1_bss_920 = Hu3DGLightCreateV(&lbl_1_bss_914, &lbl_1_bss_908,
+    lbl_1_bss_920 = fn_800286D0(&lbl_1_bss_914, &lbl_1_bss_908,
                                       &lbl_1_bss_904);
     lbl_1_bss_8F8[0] = lbl_1_bss_904.r;
     lbl_1_bss_8F8[1] = lbl_1_bss_904.g;
@@ -1007,7 +1007,7 @@ void fn_1_20B0(void) {
 
     { HuVecF rotation = {-40.0f, 0.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; }
     lbl_1_bss_8C8.zoom = (2155.0f);
-    omCameraViewSet(&lbl_1_bss_8C8);
+    fn_8003E5A4(&lbl_1_bss_8C8);
 }
 
 /* Called by sequence updates to move the camera at the raft scene's timed beats. */
@@ -1015,43 +1015,77 @@ void fn_1_2188(void)
 {
     switch (lbl_1_bss_8C0) {
     case 148: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 550.0f, 0.0f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; } { HuVecF rotation = {-15.0f, 0.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } lbl_1_bss_8C8.zoom = 2000.0f; omCameraViewMove(&lbl_1_bss_8C8, 200, 3); }
+        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 550.0f,
+            0.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
+            *centerPointer; } { HuVecF rotation = {-15.0f, 0.0f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } lbl_1_bss_8C8.zoom = 2000.0f; fn_8003E7A0(&lbl_1_bss_8C8, 200, 3); }
         return;
     }
     case 538: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 0.0f, 0.0f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; } { HuVecF rotation = {-40.0f, 0.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } lbl_1_bss_8C8.zoom = 2500.0f; omCameraViewMove(&lbl_1_bss_8C8, 240, 3); }
+        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 0.0f,
+            0.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
+            *centerPointer; } { HuVecF rotation = {-40.0f, 0.0f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } lbl_1_bss_8C8.zoom = 2500.0f; fn_8003E7A0(&lbl_1_bss_8C8, 240, 3); }
         return;
     }
     case 950: {
-        { HuVecF *centerPointer; { HuVecF center = {0.0f, 100.0f, 0.0f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; } omCameraViewMove(&lbl_1_bss_8C8, 240, 3); }
+        { HuVecF *centerPointer; { HuVecF center = {0.0f, 100.0f,
+            0.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
+            *centerPointer; } fn_8003E7A0(&lbl_1_bss_8C8, 240, 3); }
         return;
     }
     case 1538: {
-        { HuVecF *rotationPointer; { HuVecF rotation = {-52.0f, -70.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } omCameraViewMove(&lbl_1_bss_8C8, 400, 3); }
+        { HuVecF *rotationPointer; { HuVecF rotation = {-52.0f, -70.0f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } fn_8003E7A0(&lbl_1_bss_8C8, 400, 3); }
         return;
     }
     case 2338: {
-        { HuVecF *rotationPointer; { HuVecF rotation = {-40.0f, 10.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } omCameraViewMove(&lbl_1_bss_8C8, 300, 3); }
+        { HuVecF *rotationPointer; { HuVecF rotation = {-40.0f, 10.0f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } fn_8003E7A0(&lbl_1_bss_8C8, 300, 3); }
         return;
     }
     case 2638: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {-496.5f, 300.0f, 112.5f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; } { HuVecF rotation = {-45.5f, -2.700000047683716f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } lbl_1_bss_8C8.zoom = 2545.5f; omCameraViewMove(&lbl_1_bss_8C8, 200, 3); }
+        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {-496.5f, 300.0f,
+            112.5f}; centerPointer = &center; lbl_1_bss_8C8.center =
+            *centerPointer; } { HuVecF rotation = {-45.5f, -2.700000047683716f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } lbl_1_bss_8C8.zoom = 2545.5f; fn_8003E7A0(&lbl_1_bss_8C8, 200, 3); }
         return;
     }
     case 2938: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 300.0f, 500.0f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; } { HuVecF rotation = {-30.0f, 0.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } omCameraViewMove(&lbl_1_bss_8C8, 200, 3); }
+        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 300.0f,
+            500.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
+            *centerPointer; } { HuVecF rotation = {-30.0f, 0.0f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } fn_8003E7A0(&lbl_1_bss_8C8, 200, 3); }
         return;
     }
     case 3100: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 500.0f, -200.0f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; } { HuVecF rotation = {-30.0f, 0.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } lbl_1_bss_8C8.zoom = 2200.0f; omCameraViewMove(&lbl_1_bss_8C8, 300, 3); }
+        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 500.0f,
+            -200.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
+            *centerPointer; } { HuVecF rotation = {-30.0f, 0.0f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } lbl_1_bss_8C8.zoom = 2200.0f; fn_8003E7A0(&lbl_1_bss_8C8, 300, 3); }
         return;
     }
     case 3638: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {635.0f, 200.0f, 17.5f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; } { HuVecF rotation = {-414.5f, -20.5f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } lbl_1_bss_8C8.zoom = 2772.0f; omCameraViewMove(&lbl_1_bss_8C8, 400, 3); }
+        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {635.0f, 200.0f,
+            17.5f}; centerPointer = &center; lbl_1_bss_8C8.center =
+            *centerPointer; } { HuVecF rotation = {-414.5f, -20.5f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } lbl_1_bss_8C8.zoom = 2772.0f; fn_8003E7A0(&lbl_1_bss_8C8, 400, 3); }
         return;
     }
     case 4638: {
-        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 100.0f, 0.0f}; centerPointer = &center; lbl_1_bss_8C8.center = *centerPointer; } { HuVecF rotation = {-40.0f, 0.0f, 0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot = *rotationPointer; } lbl_1_bss_8C8.zoom = 3000.0f; omCameraViewMove(&lbl_1_bss_8C8, 400, 3); }
+        { HuVecF *centerPointer; HuVecF *rotationPointer; { HuVecF center = {0.0f, 100.0f,
+            0.0f}; centerPointer = &center; lbl_1_bss_8C8.center =
+            *centerPointer; } { HuVecF rotation = {-40.0f, 0.0f,
+            0.0f}; rotationPointer = &rotation; lbl_1_bss_8C8.rot =
+            *rotationPointer; } lbl_1_bss_8C8.zoom = 3000.0f; fn_8003E7A0(&lbl_1_bss_8C8, 400, 3); }
         break;
     }
     }
@@ -1077,17 +1111,17 @@ void fn_1_2848(void) {
     actorParam.correctHook = NULL;
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        lbl_1_bss_C8[playerIndex].characterNo = GwPlayerConf[playerIndex].charNo;
-        lbl_1_bss_C8[playerIndex].padNo = GwPlayerConf[playerIndex].padNo;
-        lbl_1_bss_18[playerIndex].difficulty = GwPlayerConf[playerIndex].comDif;
-        lbl_1_bss_18[playerIndex].type = GwPlayerConf[playerIndex].type;
+        lbl_1_bss_C8[playerIndex].characterNo = lbl_80265728[playerIndex].charNo;
+        lbl_1_bss_C8[playerIndex].padNo = lbl_80265728[playerIndex].padNo;
+        lbl_1_bss_18[playerIndex].difficulty = lbl_80265728[playerIndex].comDif;
+        lbl_1_bss_18[playerIndex].type = lbl_80265728[playerIndex].type;
         lbl_1_bss_18[playerIndex].sessionState[0] = 0;
         lbl_1_bss_18[playerIndex].sessionState[1] = 0;
         lbl_1_bss_18[playerIndex].sessionState[2] = -1;
         lbl_1_bss_18[playerIndex].sessionState[3] = 0;
-        lbl_1_bss_C8[playerIndex].player = MgPlayerCreate(
+        lbl_1_bss_C8[playerIndex].player = fn_80080728(
             (s16) playerIndex, &actorParam, 8, 1, 47, NULL);
-        MgPlayerAttrSet(lbl_1_bss_C8[playerIndex].player, 1);
+        fn_80087158(lbl_1_bss_C8[playerIndex].player, 1);
         Hu3DModelObjPosGet(lbl_1_bss_85C[playerIndex].modelId,
                            "fook00",
                            &lbl_1_bss_C8[playerIndex].player->actor->pos);
@@ -1095,31 +1129,31 @@ void fn_1_2848(void) {
         lbl_1_bss_C8[playerIndex].player->actor->rotY = (0.0f);
         lbl_1_bss_C8[playerIndex].modelId =
             lbl_1_bss_C8[playerIndex].player->actor->mdlId;
-        Hu3DModelCameraSet(lbl_1_bss_C8[playerIndex].modelId, 1);
-        Hu3DModelShadowSet(lbl_1_bss_C8[playerIndex].modelId);
-        Hu3DModelLayerSet(lbl_1_bss_C8[playerIndex].modelId, 1);
-        CharEffectLayerSet(3);
+        fn_80026B64(lbl_1_bss_C8[playerIndex].modelId, 1);
+        fn_80026E44(lbl_1_bss_C8[playerIndex].modelId);
+        fn_80026B8C(lbl_1_bss_C8[playerIndex].modelId, 1);
+        fn_8005DDEC(3);
         for (motionIndex = 0; motionIndex < 7; motionIndex++) {
             lbl_1_bss_C8[playerIndex].motionIds[motionIndex] =
-                CharMotionCreate(lbl_1_bss_C8[playerIndex].characterNo,
+                fn_8005B0B8(lbl_1_bss_C8[playerIndex].characterNo,
                                  lbl_1_data_28[motionIndex]);
         }
-        CharMotionDataClose(lbl_1_bss_C8[playerIndex].characterNo);
+        fn_8005B4BC(lbl_1_bss_C8[playerIndex].characterNo);
         lbl_1_bss_C8[playerIndex].currentMotion = 0;
         lbl_1_bss_C8[playerIndex].actionState = 0;
         lbl_1_bss_C8[playerIndex].sequenceCount = 0;
         lbl_1_bss_C8[playerIndex].stunSoundLatched = 0;
-        lbl_1_bss_C8[playerIndex].fallEffectModelId = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 66), HU_MEMNUM_OVL, HEAP_DVD));
-        Hu3DModelCameraSet(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
-        Hu3DModelAttrSet(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
-        Hu3DModelScaleSet(lbl_1_bss_C8[playerIndex].fallEffectModelId,
+        lbl_1_bss_C8[playerIndex].fallEffectModelId = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7b0000, 66), 0x10000000, 3));
+        fn_80026B64(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
+        fn_800269E8(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
+        fn_800268B0(lbl_1_bss_C8[playerIndex].fallEffectModelId,
                           (1.5f), (1.5f), (1.5f));
-        Hu3DModelLayerSet(lbl_1_bss_C8[playerIndex].fallEffectModelId, 5);
-        lbl_1_bss_C8[playerIndex].fallEffectMotionId = Hu3DJointMotion(
+        fn_80026B8C(lbl_1_bss_C8[playerIndex].fallEffectModelId, 5);
+        lbl_1_bss_C8[playerIndex].fallEffectMotionId = fn_80030458(
             lbl_1_bss_C8[playerIndex].fallEffectModelId,
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 67), HU_MEMNUM_OVL, HEAP_DVD));
-        MgPlayerVibrateCreate(lbl_1_bss_C8[playerIndex].player);
+            fn_80008DD0(DATANUM(0x7b0000, 67), 0x10000000, 3));
+        fn_8007ED60(lbl_1_bss_C8[playerIndex].player);
     }
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
@@ -1131,7 +1165,7 @@ void fn_1_2848(void) {
             (atan2((f64) separation.x, (f64) separation.z) /
              (3.141592653589793));
     }
-    MgActorExec();
+    fn_800856A8();
 }
 
 /* Called by sequence updates to process player falls, AI input and temporary hit reactions. */
@@ -1159,15 +1193,15 @@ void fn_1_2E08(void) {
             lbl_1_bss_C8[playerIndex].player->actor->pos.y < (0.0f)) {
             actorPosition = lbl_1_bss_C8[playerIndex].player->actor->pos;
             actorPosition.y = (0.0f);
-            Hu3DModelPosSetV(lbl_1_bss_C8[playerIndex].fallEffectModelId, &actorPosition);
-            Hu3DModelRotSet(lbl_1_bss_C8[playerIndex].fallEffectModelId, (0.0f),
+            fn_80026790(lbl_1_bss_C8[playerIndex].fallEffectModelId, &actorPosition);
+            fn_80026808(lbl_1_bss_C8[playerIndex].fallEffectModelId, (0.0f),
                             lbl_1_bss_C8[playerIndex].player->actor->rotY, (0.0f));
-            Hu3DModelAttrReset(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
-            Hu3DMotionSet(lbl_1_bss_C8[playerIndex].fallEffectModelId,
+            fn_80026A44(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
+            fn_8002C95C(lbl_1_bss_C8[playerIndex].fallEffectModelId,
                           lbl_1_bss_C8[playerIndex].fallEffectMotionId);
-            Hu3DModelShadowReset(lbl_1_bss_C8[playerIndex].modelId);
-            omVibrate((s16) playerIndex, 20, 20, 0);
-            if (MgSeqModeGet() == 5) {
+            fn_80026EF0(lbl_1_bss_C8[playerIndex].modelId);
+            fn_8006A030((s16) playerIndex, 20, 20, 0);
+            if (fn_80071A8C() == 5) {
                 lbl_1_bss_C8[playerIndex].sequenceCount = lbl_1_bss_8BC;
                 lbl_1_bss_8BC--;
             }
@@ -1177,14 +1211,14 @@ void fn_1_2E08(void) {
 
         fn_1_3868(playerIndex);
         if (lbl_1_bss_C8[playerIndex].actionState != 0) {
-            MgPlayerAttrSet(lbl_1_bss_C8[playerIndex].player, 1);
+            fn_80087158(lbl_1_bss_C8[playerIndex].player, 1);
             switch (lbl_1_bss_C8[playerIndex].actionState) {
             case -1:
                 if (lbl_1_bss_C8[playerIndex].currentMotion == 0) {
-                    CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+                    fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[3],
                                        (0.0f), (8.0f),
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 3;
                     lbl_1_bss_C8[playerIndex].movementTimer = 0;
                     lbl_1_bss_C8[playerIndex].movementOrigin =
@@ -1219,49 +1253,49 @@ void fn_1_2E08(void) {
                                  &lbl_1_bss_C8[playerIndex].movementOrigin);
                         lbl_1_bss_C8[playerIndex].player->actor->pos =
                             lbl_1_bss_C8[playerIndex].movementOrigin;
-                        Hu3DModelPosSetV(lbl_1_bss_C8[playerIndex].modelId,
+                        fn_80026790(lbl_1_bss_C8[playerIndex].modelId,
                                          &lbl_1_bss_C8[playerIndex].movementOrigin);
                     } else {
-                        Hu3DModelAttrSet(lbl_1_bss_C8[playerIndex].modelId, 1);
+                        fn_800269E8(lbl_1_bss_C8[playerIndex].modelId, 1);
                     }
                 }
                 break;
             case 1:
                 if (lbl_1_bss_C8[playerIndex].currentMotion == 0) {
-                    CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+                    fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[2],
                                        (0.0f), (8.0f),
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 2;
                 }
                 if (lbl_1_bss_C8[playerIndex].actionTimer >= 90) {
-                    CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+                    fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[0],
                                        (0.0f), (8.0f),
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 0;
                     lbl_1_bss_C8[playerIndex].actionState = 0;
-                    MgPlayerAttrReset(lbl_1_bss_C8[playerIndex].player, 1);
+                    fn_80087168(lbl_1_bss_C8[playerIndex].player, 1);
                     lbl_1_bss_C8[playerIndex].player->omObj->mtnId[0] =
                         lbl_1_bss_C8[playerIndex].savedMotionId;
                 }
                 break;
             case 2:
                 if (lbl_1_bss_C8[playerIndex].currentMotion == 0) {
-                    CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+                    fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[1],
                                        (0.0f), (8.0f),
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 1;
                 }
                 if (lbl_1_bss_C8[playerIndex].actionTimer >= 90) {
-                    CharMotionShiftSet(lbl_1_bss_C8[playerIndex].characterNo,
+                    fn_8005C2C8(lbl_1_bss_C8[playerIndex].characterNo,
                                        lbl_1_bss_C8[playerIndex].motionIds[0],
                                        (0.0f), (8.0f),
-                                       HU3D_MOTATTR_LOOP);
+                                       ((1 << 30) | (1 << 0)));
                     lbl_1_bss_C8[playerIndex].currentMotion = 0;
                     lbl_1_bss_C8[playerIndex].actionState = 0;
-                    MgPlayerAttrReset(lbl_1_bss_C8[playerIndex].player, 1);
+                    fn_80087168(lbl_1_bss_C8[playerIndex].player, 1);
                     lbl_1_bss_C8[playerIndex].player->omObj->mtnId[0] =
                         lbl_1_bss_C8[playerIndex].savedMotionId;
                 }
@@ -1317,10 +1351,10 @@ void fn_1_3868(s32 playerIndex) {
                             lbl_1_bss_C8[playerIndex].flightDestination.z =
                                 playerPosition.z + randomOffset[1];
                         }
-                        MgPlayerDespawn(lbl_1_bss_C8[playerIndex].player);
-                        Hu3DModelAttrReset(lbl_1_bss_C8[playerIndex].modelId, 1);
-                        omVibrate(playerIndex, 20, 20, 0);
-                        if ((u32) MgSeqModeGet() == 5U) {
+                        fn_80086E3C(lbl_1_bss_C8[playerIndex].player);
+                        fn_80026A44(lbl_1_bss_C8[playerIndex].modelId, 1);
+                        fn_8006A030(playerIndex, 20, 20, 0);
+                        if ((u32) fn_80071A8C() == 5U) {
                             lbl_1_bss_C8[playerIndex].sequenceCount = lbl_1_bss_8BC;
                             lbl_1_bss_8BC -= 1;
                         }
@@ -1352,7 +1386,7 @@ void fn_1_3868(s32 playerIndex) {
                                 lbl_1_bss_C8[playerIndex].player->omObj->mtnId[0] =
                                     lbl_1_bss_C8[playerIndex].motionIds[1];
                             }
-                            omVibrate(playerIndex, 20, 7, 3);
+                            fn_8006A030(playerIndex, 20, 7, 3);
                         }
                         lbl_1_bss_6F4[tableIndex][modelIndex] = 1;
                     }
@@ -1374,15 +1408,15 @@ void fn_1_3E74(void) {
     s32 mapCount;
 
     mapCount = 0;
-    lbl_1_bss_86E = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m664, 20), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_86E, 1);
-    Hu3DModelPosSet(lbl_1_bss_86E, (0.0f),
+    lbl_1_bss_86E = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7b0000, 20), 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_86E, 1);
+    fn_80026760(lbl_1_bss_86E, (0.0f),
                     (0.0f), (0.0f));
     lbl_1_bss_850[0] = lbl_1_bss_850[1] = (0.0f);
-    Hu3DMotionSpeedSet(lbl_1_bss_86E, lbl_1_bss_850[0]);
-    Hu3DMotionCalc(lbl_1_bss_86E);
-    Hu3DModelScaleSet(lbl_1_bss_86E, (10.0f),
+    fn_8002D86C(lbl_1_bss_86E, lbl_1_bss_850[0]);
+    fn_80030644(lbl_1_bss_86E);
+    fn_800268B0(lbl_1_bss_86E, (10.0f),
                       (10.0f), (10.0f));
     Hu3DModelObjPosGet(lbl_1_bss_86E, "fk_ikada", &currentPosition);
     { Point3d targetPositionCopy = {0.0f, 0.0f, 0.0f}; targetCopyPointer = &targetPositionCopy; targetPosition = *targetCopyPointer; }
@@ -1395,7 +1429,7 @@ void fn_1_3E74(void) {
     fn_1_6704();
     fn_1_7E24();
     fn_1_8E44();
-    MgActorColMapInit(collisionMap, (s16) mapCount, 8);
+    fn_800804E8(collisionMap, (s16) mapCount, 8);
 }
 
 /* Runs during active play to update the raft motion and advance its scene animations. */
@@ -1407,14 +1441,14 @@ void fn_1_4060(void) {
 
     if (lbl_1_bss_8C0 == 0) {
         lbl_1_bss_850[0] = lbl_1_bss_850[1] = (0.02500000037252903f);
-        Hu3DMotionSpeedSet(lbl_1_bss_86E, lbl_1_bss_850[0]);
+        fn_8002D86C(lbl_1_bss_86E, lbl_1_bss_850[0]);
     }
     Hu3DModelObjPosGet(lbl_1_bss_86E, "fk_ikada", &currentPosition);
     { Point3d targetPositionCopy = {0.0f, 0.0f, 0.0f}; targetCopyPointer = &targetPositionCopy; targetPosition = *targetCopyPointer; }
     PSVECSubtract(&targetPosition, &currentPosition, &lbl_1_bss_40C);
     if ((lbl_1_bss_8C0 >= 2138) && (lbl_1_bss_8C0 <= 2438)) {
         lbl_1_bss_850[1] = lbl_1_bss_850[1] - (0.0013333333190530539f) * lbl_1_bss_850[0];
-        Hu3DMotionSpeedSet(lbl_1_bss_86E, lbl_1_bss_850[1]);
+        fn_8002D86C(lbl_1_bss_86E, lbl_1_bss_850[1]);
         if (lbl_1_bss_8C0 == 2438) {
             lbl_1_bss_850[0] = lbl_1_bss_850[1];
         }
@@ -1441,37 +1475,37 @@ s32 fn_1_420C(s16 *createdModelIds) {
 
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
         if (lbl_1_bss_8E4 == 0) {
-            lbl_1_bss_8A0[modelIndex] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(modelIndex + DATA_m664, HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_8A0[modelIndex] = fn_80025A04(
+                fn_80008DD0(modelIndex + 0x7b0000, 0x10000000, 2));
         } else {
             if (modelIndex == 0) {
                 alternateModelIndex = 0;
             } else {
                 alternateModelIndex = modelIndex + 3;
             }
-            lbl_1_bss_8A0[modelIndex] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(alternateModelIndex + DATA_m664,
-                                     HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_8A0[modelIndex] = fn_80025A04(
+                fn_80008DD0(alternateModelIndex + 0x7b0000,
+                                     0x10000000, 2));
         }
-        Hu3DModelCameraSet(lbl_1_bss_8A0[modelIndex], 1);
-        Hu3DModelPosSetV(lbl_1_bss_8A0[modelIndex], &lbl_1_bss_40C);
-        Hu3DModelScaleSet(lbl_1_bss_8A0[modelIndex], (10.0f),
+        fn_80026B64(lbl_1_bss_8A0[modelIndex], 1);
+        fn_80026790(lbl_1_bss_8A0[modelIndex], &lbl_1_bss_40C);
+        fn_800268B0(lbl_1_bss_8A0[modelIndex], (10.0f),
                           (10.0f), (10.0f));
         if (modelIndex == 0) {
-            Hu3DModelLayerSet(lbl_1_bss_8A0[modelIndex], 4);
+            fn_80026B8C(lbl_1_bss_8A0[modelIndex], 4);
         }
         if (modelIndex > 0) {
-            Hu3DModelAttrSet(lbl_1_bss_8A0[modelIndex], 1);
+            fn_800269E8(lbl_1_bss_8A0[modelIndex], 1);
         }
 
-        lbl_1_bss_894[modelIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(modelIndex + DATA_m664 + 7, HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(lbl_1_bss_894[modelIndex], 1);
-        Hu3DModelPosSetV(lbl_1_bss_894[modelIndex], &lbl_1_bss_40C);
-        Hu3DModelScaleSet(lbl_1_bss_894[modelIndex], (10.0f),
+        lbl_1_bss_894[modelIndex] = fn_80025A04(
+            fn_80008DD0(modelIndex + 0x7b0000 + 7, 0x10000000, 2));
+        fn_80026B64(lbl_1_bss_894[modelIndex], 1);
+        fn_80026790(lbl_1_bss_894[modelIndex], &lbl_1_bss_40C);
+        fn_800268B0(lbl_1_bss_894[modelIndex], (10.0f),
                           (10.0f), (10.0f));
         if (modelIndex > 0) {
-            Hu3DModelAttrSet(lbl_1_bss_894[modelIndex], 1);
+            fn_800269E8(lbl_1_bss_894[modelIndex], 1);
         }
         *createdModelIds = lbl_1_bss_894[modelIndex];
         createdModelIds++;
@@ -1483,46 +1517,46 @@ s32 fn_1_420C(s16 *createdModelIds) {
     } else {
         modelNumber = 12;
     }
-    lbl_1_bss_89E = Hu3DModelCreate(
-        HuDataSelHeapReadNum(modelNumber + DATA_m664, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_89E, 1);
-    Hu3DModelPosSetV(lbl_1_bss_89E, &lbl_1_bss_40C);
-    Hu3DModelScaleSet(lbl_1_bss_89E, (10.0f),
+    lbl_1_bss_89E = fn_80025A04(
+        fn_80008DD0(modelNumber + 0x7b0000, 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_89E, 1);
+    fn_80026790(lbl_1_bss_89E, &lbl_1_bss_40C);
+    fn_800268B0(lbl_1_bss_89E, (10.0f),
                       (10.0f), (10.0f));
-    Hu3DModelAttrSet(lbl_1_bss_89E, 1);
+    fn_800269E8(lbl_1_bss_89E, 1);
 
     for (modelIndex = 0; modelIndex < 2; modelIndex++) {
-        lbl_1_bss_870[modelIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(modelIndex + DATA_m664 + 18, HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(lbl_1_bss_870[modelIndex], 1);
-        Hu3DModelPosSetV(lbl_1_bss_870[modelIndex], &lbl_1_bss_40C);
-        Hu3DModelAttrSet(lbl_1_bss_870[modelIndex], HU3D_MOTATTR_LOOP);
+        lbl_1_bss_870[modelIndex] = fn_80025A04(
+            fn_80008DD0(modelIndex + 0x7b0000 + 18, 0x10000000, 2));
+        fn_80026B64(lbl_1_bss_870[modelIndex], 1);
+        fn_80026790(lbl_1_bss_870[modelIndex], &lbl_1_bss_40C);
+        fn_800269E8(lbl_1_bss_870[modelIndex], ((1 << 30) | (1 << 0)));
         if (modelIndex == 0) {
             motionSpeed = (0.20000000298023224f);
         } else {
             motionSpeed = (0.10000000149011612f);
         }
-        Hu3DMotionSpeedSet(lbl_1_bss_870[modelIndex], motionSpeed);
-        Hu3DMotionCalc(lbl_1_bss_870[modelIndex]);
-        Hu3DModelScaleSet(lbl_1_bss_870[modelIndex], (10.0f),
+        fn_8002D86C(lbl_1_bss_870[modelIndex], motionSpeed);
+        fn_80030644(lbl_1_bss_870[modelIndex]);
+        fn_800268B0(lbl_1_bss_870[modelIndex], (10.0f),
                           (10.0f), (10.0f));
         if (modelIndex == 0) {
             layer = 3;
         } else {
             layer = 2;
         }
-        Hu3DModelLayerSet(lbl_1_bss_870[modelIndex], layer);
+        fn_80026B8C(lbl_1_bss_870[modelIndex], layer);
     }
 
-    lbl_1_bss_86C = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m664, 21), HU_MEMNUM_OVL, HEAP_DVD));
-    Hu3DModelCameraSet(lbl_1_bss_86C, 1);
-    Hu3DModelPosSetV(lbl_1_bss_86C, &lbl_1_bss_40C);
-    Hu3DModelScaleSet(lbl_1_bss_86C, (10.0f),
+    lbl_1_bss_86C = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7b0000, 21), 0x10000000, 3));
+    fn_80026B64(lbl_1_bss_86C, 1);
+    fn_80026790(lbl_1_bss_86C, &lbl_1_bss_40C);
+    fn_800268B0(lbl_1_bss_86C, (10.0f),
                       (10.0f), (10.0f));
-    Hu3DModelAttrSet(lbl_1_bss_86C, HU3D_MOTATTR_LOOP);
-    Hu3DMotionSpeedSet(lbl_1_bss_86C, (0.33000001311302185f));
-    Hu3DModelLayerSet(lbl_1_bss_86C, 4);
+    fn_800269E8(lbl_1_bss_86C, ((1 << 30) | (1 << 0)));
+    fn_8002D86C(lbl_1_bss_86C, (0.33000001311302185f));
+    fn_80026B8C(lbl_1_bss_86C, 4);
     return modelCount;
 }
 
@@ -1534,18 +1568,18 @@ void fn_1_476C(void) {
     modelIndex = 0;
     while (modelIndex < 4)
     {
-        Hu3DModelPosSetV(* (s16 *)((u8 *) & lbl_1_bss_8A0 + (modelIndex * 2)), & lbl_1_bss_40C);
-        Hu3DModelPosSetV(* (s16 *)((u8 *) & lbl_1_bss_894 + (modelIndex * 2)), & lbl_1_bss_40C);
+        fn_80026790(* (s16 *)((u8 *) & lbl_1_bss_8A0 + (modelIndex * 2)), & lbl_1_bss_40C);
+        fn_80026790(* (s16 *)((u8 *) & lbl_1_bss_894 + (modelIndex * 2)), & lbl_1_bss_40C);
         modelIndex += 1;
     }
-    Hu3DModelPosSetV(lbl_1_bss_89E, & lbl_1_bss_40C);
+    fn_80026790(lbl_1_bss_89E, & lbl_1_bss_40C);
     modelIndex = 0;
     while (modelIndex < 2)
     {
-        Hu3DModelPosSetV(* (s16 *)((u8 *) & lbl_1_bss_870 + (modelIndex * 2)), & lbl_1_bss_40C);
+        fn_80026790(* (s16 *)((u8 *) & lbl_1_bss_870 + (modelIndex * 2)), & lbl_1_bss_40C);
         modelIndex += 1;
     }
-    Hu3DModelPosSetV(lbl_1_bss_86C, & lbl_1_bss_40C);
+    fn_80026790(lbl_1_bss_86C, & lbl_1_bss_40C);
 }
 
 Point3d lbl_1_data_80 = { -6000.0f, 0.0f, 22397.119140625f };
@@ -1563,13 +1597,13 @@ s32 fn_1_4848(s16 *objectModelOutput) {
 
     modelCount = 0;
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-        lbl_1_bss_85C[modelIndex].modelId = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 22), HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(lbl_1_bss_85C[modelIndex].modelId, 1);
+        lbl_1_bss_85C[modelIndex].modelId = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7b0000, 22), 0x10000000, 2));
+        fn_80026B64(lbl_1_bss_85C[modelIndex].modelId, 1);
 
         position = lbl_1_bss_40C;
         PSVECAdd(&position, &lbl_1_data_80, &position);
-        Hu3DModelPosSetV(lbl_1_bss_85C[modelIndex].modelId, &position);
+        fn_80026790(lbl_1_bss_85C[modelIndex].modelId, &position);
 
         rotation.x = rotation.z = (0.0f);
         if (modelIndex == 0) {
@@ -1588,28 +1622,28 @@ s32 fn_1_4848(s16 *objectModelOutput) {
             rotationY = selectedAngle;
         }
         rotation.y = rotationY;
-        Hu3DModelRotSetV(lbl_1_bss_85C[modelIndex].modelId, &rotation);
-        Hu3DModelScaleSet(lbl_1_bss_85C[modelIndex].modelId, (10.0f),
+        fn_80026838(lbl_1_bss_85C[modelIndex].modelId, &rotation);
+        fn_800268B0(lbl_1_bss_85C[modelIndex].modelId, (10.0f),
                           (10.0f), (10.0f));
-        Hu3DMotionSpeedSet(lbl_1_bss_85C[modelIndex].modelId, (0.0f));
-        Hu3DMotionCalc(lbl_1_bss_85C[modelIndex].modelId);
+        fn_8002D86C(lbl_1_bss_85C[modelIndex].modelId, (0.0f));
+        fn_80030644(lbl_1_bss_85C[modelIndex].modelId);
 
-        lbl_1_bss_85C[modelIndex].objectModelId = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 23), HU_MEMNUM_OVL, HEAP_MODEL));
+        lbl_1_bss_85C[modelIndex].objectModelId = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7b0000, 23), 0x10000000, 2));
         Hu3DModelObjPosGet(lbl_1_bss_85C[modelIndex].modelId, "fook00", &position);
-        Hu3DModelPosSetV(lbl_1_bss_85C[modelIndex].objectModelId, &position);
+        fn_80026790(lbl_1_bss_85C[modelIndex].objectModelId, &position);
         *objectModelOutput = lbl_1_bss_85C[modelIndex].objectModelId;
         objectModelOutput++;
         modelCount++;
     }
 
     lbl_1_bss_85A =
-        Hu3DModelCreate(HuDataSelHeapReadNum(DATANUM(DATA_m664, 24), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_85A, 1);
+        fn_80025A04(fn_80008DD0(DATANUM(0x7b0000, 24), 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_85A, 1);
     position = lbl_1_bss_40C;
     PSVECAdd(&position, &lbl_1_data_80, &position);
-    Hu3DModelPosSetV(lbl_1_bss_85A, &position);
-    Hu3DModelScaleSet(lbl_1_bss_85A, (10.0f),
+    fn_80026790(lbl_1_bss_85A, &position);
+    fn_800268B0(lbl_1_bss_85A, (10.0f),
                       (10.0f), (10.0f));
 
     if (lbl_1_bss_8E4 == 0) {
@@ -1617,17 +1651,17 @@ s32 fn_1_4848(s16 *objectModelOutput) {
     } else {
         modelNumber = 26;
     }
-    lbl_1_bss_858 = Hu3DModelCreate(HuDataSelHeapReadNum(modelNumber + DATA_m664,
-                                                         HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_858, 1);
-    Hu3DModelPosSet(lbl_1_bss_858, (0.0f), (0.0f),
+    lbl_1_bss_858 = fn_80025A04(fn_80008DD0(modelNumber + 0x7b0000,
+                                                         0x10000000, 2));
+    fn_80026B64(lbl_1_bss_858, 1);
+    fn_80026760(lbl_1_bss_858, (0.0f), (0.0f),
                     (0.0f));
-    Hu3DModelScaleSet(lbl_1_bss_858, (10.0f),
+    fn_800268B0(lbl_1_bss_858, (10.0f),
                       (10.0f), (10.0f));
-    Hu3DModelAttrSet(lbl_1_bss_858, 1);
-    Hu3DModelShadowMapSet(lbl_1_bss_858);
-        Hu3DModelAttrSet(lbl_1_bss_858, HU3D_MOTATTR_LOOP);
-    Hu3DMotionSpeedSet(lbl_1_bss_858, (0.20000000298023224f));
+    fn_800269E8(lbl_1_bss_858, 1);
+    fn_80026FFC(lbl_1_bss_858);
+        fn_800269E8(lbl_1_bss_858, ((1 << 30) | (1 << 0)));
+    fn_8002D86C(lbl_1_bss_858, (0.20000000298023224f));
     return modelCount;
 }
 
@@ -1639,14 +1673,14 @@ void fn_1_4CC8(void) {
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
         position = lbl_1_bss_40C;
         PSVECAdd(&position, &lbl_1_data_80, &position);
-        Hu3DModelPosSetV(lbl_1_bss_85C[playerIndex].modelId, &position);
+        fn_80026790(lbl_1_bss_85C[playerIndex].modelId, &position);
         Hu3DModelObjPosGet(lbl_1_bss_85C[playerIndex].modelId, "fook00",
                            &position);
-        Hu3DModelPosSetV(lbl_1_bss_85C[playerIndex].objectModelId, &position);
+        fn_80026790(lbl_1_bss_85C[playerIndex].objectModelId, &position);
     }
     position = lbl_1_bss_40C;
     PSVECAdd(&position, &lbl_1_data_80, &position);
-    Hu3DModelPosSetV(lbl_1_bss_85A, &position);
+    fn_80026790(lbl_1_bss_85A, &position);
 }
 
 /* Called by fn_1_3E74 to create diver models at the named diver objects on the course. */
@@ -1671,12 +1705,12 @@ void fn_1_4DD8(void) {
 
     for (modelIndex = 0; modelIndex < 16; modelIndex++) {
         if (modelIndex < 2) {
-            lbl_1_bss_874[modelIndex] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(modelIndex + DATA_m664 + 13, HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelPosSetV(lbl_1_bss_874[modelIndex], &lbl_1_bss_40C);
+            lbl_1_bss_874[modelIndex] = fn_80025A04(
+                fn_80008DD0(modelIndex + 0x7b0000 + 13, 0x10000000, 2));
+            fn_80026790(lbl_1_bss_874[modelIndex], &lbl_1_bss_40C);
         } else {
-            lbl_1_bss_874[modelIndex] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m664, 15), HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_874[modelIndex] = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7b0000, 15), 0x10000000, 2));
             if (modelIndex == 2) {
                 objectName14 = "drfook00";
             } else if (modelIndex == 3) {
@@ -1745,19 +1779,19 @@ objectName13From12:
 objectName14From13:
             objectName14 = objectName13;
 objectNameReady:
-            Hu3DModelObjMtxGet(lbl_1_bss_874[1], objectName14, objectMatrix);
+            fn_80023398(lbl_1_bss_874[1], objectName14, objectMatrix);
             Hu3DMtxTransGet(objectMatrix, &position);
             Hu3DMtxRotGet(objectMatrix, &rotation);
             rotation.y += (180.0f);
-            Hu3DModelPosSetV(lbl_1_bss_874[modelIndex], &position);
-            Hu3DModelRotSetV(lbl_1_bss_874[modelIndex], &rotation);
+            fn_80026790(lbl_1_bss_874[modelIndex], &position);
+            fn_80026838(lbl_1_bss_874[modelIndex], &rotation);
         }
-        Hu3DModelCameraSet(lbl_1_bss_874[modelIndex], 1);
-        Hu3DMotionSpeedSet(lbl_1_bss_874[modelIndex], (0.0f));
-        Hu3DMotionCalc(lbl_1_bss_874[modelIndex]);
-        Hu3DModelScaleSet(lbl_1_bss_874[modelIndex], (10.0f),
+        fn_80026B64(lbl_1_bss_874[modelIndex], 1);
+        fn_8002D86C(lbl_1_bss_874[modelIndex], (0.0f));
+        fn_80030644(lbl_1_bss_874[modelIndex]);
+        fn_800268B0(lbl_1_bss_874[modelIndex], (10.0f),
                           (10.0f), (10.0f));
-        Hu3DModelLayerSet(lbl_1_bss_874[modelIndex], 4);
+        fn_80026B8C(lbl_1_bss_874[modelIndex], 4);
     }
 }
 
@@ -1769,7 +1803,7 @@ void fn_1_5108(void) {
 
     for (index = 0; index < 16; index++) {
         if (index < 2) {
-            Hu3DModelPosSetV(lbl_1_bss_874[index], &lbl_1_bss_40C);
+            fn_80026790(lbl_1_bss_874[index], &lbl_1_bss_40C);
         } else {
             Hu3DModelObjPosGet(lbl_1_bss_874[1],
                                index == 2  ? "drfook00"
@@ -1787,52 +1821,52 @@ void fn_1_5108(void) {
                                : index == 14 ? "drfook12"
                                              : "drfook13",
                                &objectPosition);
-            Hu3DModelPosSetV(lbl_1_bss_874[index], &objectPosition);
+            fn_80026790(lbl_1_bss_874[index], &objectPosition);
         }
     }
 
     switch (lbl_1_bss_8C0) {
     case 288:
-        Hu3DMotionSpeedSet(lbl_1_bss_874[0], (0.03999999910593033f));
+        fn_8002D86C(lbl_1_bss_874[0], (0.03999999910593033f));
         break;
     case 585:
         index = frandmod(2);
-        Hu3DMotionSpeedSet(index != 0 ? lbl_1_bss_874[2] : lbl_1_bss_874[9], (0.6000000238418579f));
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[2] : lbl_1_bss_874[9], (0.6000000238418579f));
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 2 : 9], 1);
         break;
     case 630:
         index = frandmod(2);
-        Hu3DMotionSpeedSet(index != 0 ? lbl_1_bss_874[3] : lbl_1_bss_874[10],
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[3] : lbl_1_bss_874[10],
                            (0.6000000238418579f));
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 3 : 10], 1);
         break;
     case 670:
         index = frandmod(2);
-        Hu3DMotionSpeedSet(index != 0 ? lbl_1_bss_874[4] : lbl_1_bss_874[11],
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[4] : lbl_1_bss_874[11],
                            (0.6000000238418579f));
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 4 : 11], 1);
         break;
     case 720:
         index = frandmod(2);
-        Hu3DMotionSpeedSet(index != 0 ? lbl_1_bss_874[5] : lbl_1_bss_874[12],
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[5] : lbl_1_bss_874[12],
                            (0.6000000238418579f));
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 5 : 12], 1);
         break;
     case 765:
         index = frandmod(2);
-        Hu3DMotionSpeedSet(index != 0 ? lbl_1_bss_874[6] : lbl_1_bss_874[13],
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[6] : lbl_1_bss_874[13],
                            (0.6000000238418579f));
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 6 : 13], 1);
         break;
     case 830:
         index = frandmod(2);
-        Hu3DMotionSpeedSet(index != 0 ? lbl_1_bss_874[7] : lbl_1_bss_874[14],
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[7] : lbl_1_bss_874[14],
                            (0.6000000238418579f));
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 7 : 14], 1);
         break;
     case 890:
         index = frandmod(2);
-        Hu3DMotionSpeedSet(index != 0 ? lbl_1_bss_874[8] : lbl_1_bss_874[15],
+        fn_8002D86C(index != 0 ? lbl_1_bss_874[8] : lbl_1_bss_874[15],
                            (0.6000000238418579f));
         fn_1_B910(2128, lbl_1_bss_874[index == 0 ? 8 : 15], 1);
         break;
@@ -1852,13 +1886,13 @@ void fn_1_5770(void) {
     } else {
         modelAssetOffset = 17;
     }
-    lbl_1_bss_89C = Hu3DModelCreate(
-        HuDataSelHeapReadNum(modelAssetOffset + DATA_m664, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_89C, 1U);
-    Hu3DModelPosSetV(lbl_1_bss_89C, &lbl_1_bss_40C);
-    Hu3DModelScaleSet(lbl_1_bss_89C, (10.0f), (10.0f), (10.0f));
-    Hu3DMotionSpeedSet(lbl_1_bss_89C, (0.0f));
-    Hu3DMotionCalc(lbl_1_bss_89C);
+    lbl_1_bss_89C = fn_80025A04(
+        fn_80008DD0(modelAssetOffset + 0x7b0000, 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_89C, 1U);
+    fn_80026790(lbl_1_bss_89C, &lbl_1_bss_40C);
+    fn_800268B0(lbl_1_bss_89C, (10.0f), (10.0f), (10.0f));
+    fn_8002D86C(lbl_1_bss_89C, (0.0f));
+    fn_80030644(lbl_1_bss_89C);
 }
 
 /* Called by fn_1_4060 during scene updates to animate the course model and
@@ -1867,10 +1901,10 @@ void fn_1_5860(void) {
     if (lbl_1_bss_8C0 > 1370) {
         fn_1_1A70();
     }
-    Hu3DModelPosSetV(lbl_1_bss_89C, &lbl_1_bss_40C);
+    fn_80026790(lbl_1_bss_89C, &lbl_1_bss_40C);
     switch (lbl_1_bss_8C0) {
     case 1368:
-        Hu3DMotionSpeedSet(lbl_1_bss_89C, (1.0f));
+        fn_8002D86C(lbl_1_bss_89C, (1.0f));
         HuAudFXPlay(MSM_SE_M664_COURSE_REVEAL);
         break;
     }
@@ -1887,24 +1921,24 @@ s32 fn_1_58E8(s16 *createdModelIds) {
     s32 verticalDirection;
 
     for (modelIndex = 0; modelIndex < 1; modelIndex++) {
-        lbl_1_bss_41C[modelIndex].modelId[0] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 52), HU_MEMNUM_OVL, HEAP_DVD));
-        Hu3DModelCameraSet(lbl_1_bss_41C[modelIndex].modelId[0], 1);
+        lbl_1_bss_41C[modelIndex].modelId[0] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7b0000, 52), 0x10000000, 3));
+        fn_80026B64(lbl_1_bss_41C[modelIndex].modelId[0], 1);
         { Point3d startPosition = {0.0f, 0.0f, 0.0f}; startPositionPointer = &startPosition; lbl_1_bss_41C[modelIndex].position = *startPositionPointer; }
-        Hu3DModelPosSetV(lbl_1_bss_41C[modelIndex].modelId[0],
+        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[0],
                          &lbl_1_bss_41C[modelIndex].position);
         { Point3d startRotation = {0.0f, 0.0f, 0.0f}; startRotationPointer = &startRotation; lbl_1_bss_41C[modelIndex].rotation = *startRotationPointer; }
-        Hu3DModelRotSetV(lbl_1_bss_41C[modelIndex].modelId[0],
+        fn_80026838(lbl_1_bss_41C[modelIndex].modelId[0],
                          &lbl_1_bss_41C[modelIndex].rotation);
-    Hu3DModelShadowMapSet(lbl_1_bss_41C[modelIndex].modelId[0]);
-        lbl_1_bss_41C[modelIndex].modelId[1] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 53), HU_MEMNUM_OVL, HEAP_DVD));
-        Hu3DModelCameraSet(lbl_1_bss_41C[modelIndex].modelId[1], 1);
-        Hu3DModelPosSetV(lbl_1_bss_41C[modelIndex].modelId[1],
+    fn_80026FFC(lbl_1_bss_41C[modelIndex].modelId[0]);
+        lbl_1_bss_41C[modelIndex].modelId[1] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7b0000, 53), 0x10000000, 3));
+        fn_80026B64(lbl_1_bss_41C[modelIndex].modelId[1], 1);
+        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[1],
                          &lbl_1_bss_41C[modelIndex].position);
-        Hu3DModelRotSetV(lbl_1_bss_41C[modelIndex].modelId[1],
+        fn_80026838(lbl_1_bss_41C[modelIndex].modelId[1],
                          &lbl_1_bss_41C[modelIndex].rotation);
-        Hu3DModelAttrSet(lbl_1_bss_41C[modelIndex].modelId[1], 1);
+        fn_800269E8(lbl_1_bss_41C[modelIndex].modelId[1], 1);
         *createdModelIds = lbl_1_bss_41C[modelIndex].modelId[1];
         createdModelIds++;
         modelCount++;
@@ -1913,14 +1947,14 @@ s32 fn_1_58E8(s16 *createdModelIds) {
         lbl_1_bss_41C[modelIndex].yawIncreasing = 0;
         lbl_1_bss_41C[modelIndex].yawPhase = (90.0f);
     }
-    lbl_1_bss_418 = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m664, 54), HU_MEMNUM_OVL, HEAP_DVD));
-    Hu3DModelCameraSet(lbl_1_bss_418, 1);
-    Hu3DModelPosSet(lbl_1_bss_418, 0.0f, (5.0f), 0.0f);
-    Hu3DModelRotSet(lbl_1_bss_418, 0.0f, 0.0f, 0.0f);
-    Hu3DModelAttrSet(lbl_1_bss_418, HU3D_MOTATTR_LOOP);
-    Hu3DMotionSpeedSet(lbl_1_bss_418, (0.30000001192092896f));
-    Hu3DModelLayerSet(lbl_1_bss_418, 4);
+    lbl_1_bss_418 = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7b0000, 54), 0x10000000, 3));
+    fn_80026B64(lbl_1_bss_418, 1);
+    fn_80026760(lbl_1_bss_418, 0.0f, (5.0f), 0.0f);
+    fn_80026808(lbl_1_bss_418, 0.0f, 0.0f, 0.0f);
+    fn_800269E8(lbl_1_bss_418, ((1 << 30) | (1 << 0)));
+    fn_8002D86C(lbl_1_bss_418, (0.30000001192092896f));
+    fn_80026B8C(lbl_1_bss_418, 4);
     lbl_1_bss_404[0] = lbl_1_bss_404[1] = (0.0f);
     if (frandmod(2) != 0U) {
         horizontalDirection = 1;
@@ -2020,11 +2054,11 @@ void fn_1_5D90(void)
         lbl_1_bss_41C[modelIndex].rotation.y +=
             (phaseRange / motionRate) *
             sin((lbl_1_bss_41C[modelIndex].yawPhase * (3.141592653589793)) / (180.0));
-        Hu3DModelRotSetV(lbl_1_bss_41C[modelIndex].modelId[0], &lbl_1_bss_41C[modelIndex].rotation);
-        Hu3DModelRotSetV(lbl_1_bss_41C[modelIndex].modelId[1], &lbl_1_bss_41C[modelIndex].rotation);
+        fn_80026838(lbl_1_bss_41C[modelIndex].modelId[0], &lbl_1_bss_41C[modelIndex].rotation);
+        fn_80026838(lbl_1_bss_41C[modelIndex].modelId[1], &lbl_1_bss_41C[modelIndex].rotation);
     }
 
-    Hu3DModelRotSet(lbl_1_bss_418, (0.0f), lbl_1_bss_41C[0].rotation.y,
+    fn_80026808(lbl_1_bss_418, (0.0f), lbl_1_bss_41C[0].rotation.y,
                     (0.0f));
 }
 
@@ -2064,9 +2098,9 @@ void fn_1_640C(void) {
                 sin(((3.141592653589793) * lbl_1_bss_41C[modelIndex].heightPhase) /
                     (180.0));
         }
-        Hu3DModelPosSetV(lbl_1_bss_41C[modelIndex].modelId[0],
+        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[0],
                          &lbl_1_bss_41C[modelIndex].position);
-        Hu3DModelPosSetV(lbl_1_bss_41C[modelIndex].modelId[1],
+        fn_80026790(lbl_1_bss_41C[modelIndex].modelId[1],
                          &lbl_1_bss_41C[modelIndex].position);
     }
 }
@@ -2092,26 +2126,26 @@ void fn_1_6704(void)
         } else {
             modelAssetNumber = 30 + modelIndex;
         }
-        lbl_1_bss_69E[modelIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(modelAssetNumber + DATA_m664, HU_MEMNUM_OVL, HEAP_DVD));
-        Hu3DModelCameraSet(lbl_1_bss_69E[modelIndex], 1);
-        Hu3DModelPosSetV(lbl_1_bss_69E[modelIndex], &lbl_1_bss_40C);
-        Hu3DModelScaleSet(lbl_1_bss_69E[modelIndex], (10.0f),
+        lbl_1_bss_69E[modelIndex] = fn_80025A04(
+            fn_80008DD0(modelAssetNumber + 0x7b0000, 0x10000000, 3));
+        fn_80026B64(lbl_1_bss_69E[modelIndex], 1);
+        fn_80026790(lbl_1_bss_69E[modelIndex], &lbl_1_bss_40C);
+        fn_800268B0(lbl_1_bss_69E[modelIndex], (10.0f),
                           (10.0f), (10.0f));
-        Hu3DModelAttrSet(lbl_1_bss_69E[modelIndex], 1);
+        fn_800269E8(lbl_1_bss_69E[modelIndex], 1);
         if (modelIndex == 1) {
-            Hu3DMotionSpeedSet(lbl_1_bss_69E[1], (0.0f));
-            Hu3DMotionCalc(lbl_1_bss_69E[1]);
+            fn_8002D86C(lbl_1_bss_69E[1], (0.0f));
+            fn_80030644(lbl_1_bss_69E[1]);
         }
 
         for (motionIndex = 0; motionIndex < 7; motionIndex++) {
-            lbl_1_bss_674[modelIndex][motionIndex] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m664, 33) + modelIndex, HU_MEMNUM_OVL, HEAP_DVD));
-            Hu3DModelCameraSet(lbl_1_bss_674[modelIndex][motionIndex], 1);
-            Hu3DModelPosSetV(lbl_1_bss_674[modelIndex][motionIndex], &lbl_1_bss_40C);
-            Hu3DMotionSpeedSet(lbl_1_bss_674[modelIndex][motionIndex], (0.0f));
-            Hu3DMotionCalc(lbl_1_bss_674[modelIndex][motionIndex]);
-            Hu3DModelScaleSet(lbl_1_bss_674[modelIndex][motionIndex], (10.0f),
+            lbl_1_bss_674[modelIndex][motionIndex] = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7b0000, 33) + modelIndex, 0x10000000, 3));
+            fn_80026B64(lbl_1_bss_674[modelIndex][motionIndex], 1);
+            fn_80026790(lbl_1_bss_674[modelIndex][motionIndex], &lbl_1_bss_40C);
+            fn_8002D86C(lbl_1_bss_674[modelIndex][motionIndex], (0.0f));
+            fn_80030644(lbl_1_bss_674[modelIndex][motionIndex]);
+            fn_800268B0(lbl_1_bss_674[modelIndex][motionIndex], (10.0f),
                               (10.0f), (10.0f));
         }
     }
@@ -2122,37 +2156,37 @@ void fn_1_6704(void)
         } else {
             layerAssetNumber = 44 + modelIndex;
         }
-        lbl_1_bss_46C[modelIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(layerAssetNumber + DATA_m664, HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(lbl_1_bss_46C[modelIndex], 1);
-        Hu3DModelObjMtxGet(lbl_1_bss_674[0][modelIndex], "sl0", modelMatrix);
+        lbl_1_bss_46C[modelIndex] = fn_80025A04(
+            fn_80008DD0(layerAssetNumber + 0x7b0000, 0x10000000, 2));
+        fn_80026B64(lbl_1_bss_46C[modelIndex], 1);
+        fn_80023398(lbl_1_bss_674[0][modelIndex], "sl0", modelMatrix);
         Hu3DMtxTransGet(modelMatrix, &lbl_1_bss_578[0][modelIndex]);
         Hu3DMtxRotGet(modelMatrix, &lbl_1_bss_47C[0][modelIndex]);
-        Hu3DModelPosSetV(lbl_1_bss_46C[modelIndex], &lbl_1_bss_578[0][modelIndex]);
-        Hu3DModelRotSetV(lbl_1_bss_46C[modelIndex], &lbl_1_bss_47C[0][modelIndex]);
-        Hu3DModelAttrSet(lbl_1_bss_46C[modelIndex], HU3D_MOTATTR_LOOP);
-        Hu3DModelScaleSet(lbl_1_bss_46C[modelIndex], (8.5f),
+        fn_80026790(lbl_1_bss_46C[modelIndex], &lbl_1_bss_578[0][modelIndex]);
+        fn_80026838(lbl_1_bss_46C[modelIndex], &lbl_1_bss_47C[0][modelIndex]);
+        fn_800269E8(lbl_1_bss_46C[modelIndex], ((1 << 30) | (1 << 0)));
+        fn_800268B0(lbl_1_bss_46C[modelIndex], (8.5f),
                           (8.5f), (8.5f));
-        Hu3DModelAttrSet(lbl_1_bss_46C[modelIndex], 1);
-        Hu3DModelLayerSet(lbl_1_bss_46C[modelIndex], 5);
+        fn_800269E8(lbl_1_bss_46C[modelIndex], 1);
+        fn_80026B8C(lbl_1_bss_46C[modelIndex], 5);
         if (modelIndex >= 5) {
             if (lbl_1_bss_8E4 == 0) {
                 motionAssetNumber = 43;
             } else {
                 motionAssetNumber = 51;
             }
-            lbl_1_bss_468[modelIndex - 5] = Hu3DJointMotion(
+            lbl_1_bss_468[modelIndex - 5] = fn_80030458(
                 lbl_1_bss_46C[modelIndex],
-                HuDataSelHeapReadNum(motionAssetNumber + DATA_m664, HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DMotionSpeedSet(lbl_1_bss_46C[modelIndex], (0.0f));
+                fn_80008DD0(motionAssetNumber + 0x7b0000, 0x10000000, 2));
+            fn_8002D86C(lbl_1_bss_46C[modelIndex], (0.0f));
         }
     }
 
     lbl_1_bss_464 = 0;
     for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-        lbl_1_bss_458[modelIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 56), HU_MEMNUM_OVL, HEAP_DVD));
-        Hu3DModelCameraSet(lbl_1_bss_458[modelIndex], 1);
+        lbl_1_bss_458[modelIndex] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x7b0000, 56), 0x10000000, 3));
+        fn_80026B64(lbl_1_bss_458[modelIndex], 1);
         if (modelIndex == 0) {
             objectName = "he0";
         } else {
@@ -2169,18 +2203,18 @@ void fn_1_6704(void)
             objectIndex = positionIndex;
         }
         Hu3DModelObjPosGet(lbl_1_bss_46C[objectIndex], objectName, &position);
-        Hu3DModelPosSetV(lbl_1_bss_458[modelIndex], &position);
-        Hu3DModelAttrSet(lbl_1_bss_458[modelIndex], 1);
+        fn_80026790(lbl_1_bss_458[modelIndex], &position);
+        fn_800269E8(lbl_1_bss_458[modelIndex], 1);
         /* Each model overwrites the shared pair; later changes for models 1 and 2 reuse the final
          * pair loaded for model 2. */
-        lbl_1_bss_454[0] = Hu3DJointMotion(
+        lbl_1_bss_454[0] = fn_80030458(
             lbl_1_bss_458[modelIndex],
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 57), HU_MEMNUM_OVL, HEAP_DVD));
-        lbl_1_bss_454[1] = Hu3DJointMotion(
+            fn_80008DD0(DATANUM(0x7b0000, 57), 0x10000000, 3));
+        lbl_1_bss_454[1] = fn_80030458(
             lbl_1_bss_458[modelIndex],
-            HuDataSelHeapReadNum(DATANUM(DATA_m664, 58), HU_MEMNUM_OVL, HEAP_DVD));
-        Hu3DMotionSet(lbl_1_bss_458[modelIndex], lbl_1_bss_454[0]);
-        Hu3DModelAttrSet(lbl_1_bss_458[modelIndex], HU3D_MOTATTR_LOOP);
+            fn_80008DD0(DATANUM(0x7b0000, 58), 0x10000000, 3));
+        fn_8002C95C(lbl_1_bss_458[modelIndex], lbl_1_bss_454[0]);
+        fn_800269E8(lbl_1_bss_458[modelIndex], ((1 << 30) | (1 << 0)));
     }
 }
 
@@ -2202,9 +2236,9 @@ void fn_1_6D7C(void)
     Point3d *source;
 
     for (index = 0; index < 3; index++) {
-        Hu3DModelPosSetV(lbl_1_bss_69E[index], &lbl_1_bss_40C);
+        fn_80026790(lbl_1_bss_69E[index], &lbl_1_bss_40C);
         for (item = 0; item < 7; item++) {
-            Hu3DModelPosSetV(lbl_1_bss_674[index][item], &lbl_1_bss_40C);
+            fn_80026790(lbl_1_bss_674[index][item], &lbl_1_bss_40C);
         }
     }
     if (lbl_1_bss_8C0 == 3587 || lbl_1_bss_8C0 == 3837) {
@@ -2221,12 +2255,12 @@ void fn_1_6D7C(void)
             }
             jointName = alternateJointName;
         }
-        Hu3DModelObjMtxGet(lbl_1_bss_674[lbl_1_bss_464][index], jointName, matrix);
+        fn_80023398(lbl_1_bss_674[lbl_1_bss_464][index], jointName, matrix);
         Hu3DMtxTransGet(matrix, &((Point3d (*)[7])lbl_1_bss_578)[lbl_1_bss_464][index]);
         Hu3DMtxRotGet(matrix, &((Point3d (*)[7])lbl_1_bss_47C)[lbl_1_bss_464][index]);
-        Hu3DModelPosSetV(lbl_1_bss_46C[index],
+        fn_80026790(lbl_1_bss_46C[index],
                          &((Point3d(*)[7]) lbl_1_bss_578)[lbl_1_bss_464][index]);
-        Hu3DModelRotSetV(lbl_1_bss_46C[index],
+        fn_80026838(lbl_1_bss_46C[index],
                          &((Point3d(*)[7]) lbl_1_bss_47C)[lbl_1_bss_464][index]);
         /* During group 0's speed ramps, each of the seven parts changes the shared rate;
          * later parts can receive different speeds within the same update. */
@@ -2234,11 +2268,11 @@ void fn_1_6D7C(void)
             if (lbl_1_bss_8C0 >= 2958) {
                 lbl_1_bss_460 = (0.0010000000474974513f) + lbl_1_bss_460;
                 if (lbl_1_bss_460 > (0.20000000298023224f)) lbl_1_bss_460 = (0.20000000298023224f);
-                Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][index], lbl_1_bss_460);
+                fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][index], lbl_1_bss_460);
             } else if (lbl_1_bss_8C0 >= 2858) {
                 lbl_1_bss_460 -= (0.0010000000474974513f);
                 if (lbl_1_bss_460 < (0.11999999731779099f)) lbl_1_bss_460 = (0.11999999731779099f);
-                Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][index], lbl_1_bss_460);
+                fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][index], lbl_1_bss_460);
             } else {
                 lbl_1_bss_460 = (0.20000000298023224f);
             }
@@ -2251,29 +2285,29 @@ void fn_1_6D7C(void)
             lbl_1_bss_460 = motionSpeed;
         }
     }
-    if (lbl_1_bss_8C0 == 3338) Hu3DMotionSpeedSet(lbl_1_bss_69E[1], (1.0f));
-    if (lbl_1_bss_8C0 == 3353) Hu3DMotionSpeedSet(lbl_1_bss_69E[1], (0.0f));
-    if (lbl_1_bss_8C0 == 3618) Hu3DMotionSpeedSet(lbl_1_bss_69E[1], (1.0f));
+    if (lbl_1_bss_8C0 == 3338) fn_8002D86C(lbl_1_bss_69E[1], (1.0f));
+    if (lbl_1_bss_8C0 == 3353) fn_8002D86C(lbl_1_bss_69E[1], (0.0f));
+    if (lbl_1_bss_8C0 == 3618) fn_8002D86C(lbl_1_bss_69E[1], (1.0f));
     if (lbl_1_bss_8C0 == 3618) HuAudFXPlay(MSM_SE_M664_LATE_SCENE_CUE);
     if (lbl_1_bss_8C0 == 3633) HuAudFXPlay(MSM_SE_M664_LATE_SCENE_TRANSITION);
     switch (lbl_1_bss_8C0) {
     case 3838: case 3588: case 2638:
-        Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][0], lbl_1_bss_460);
+        fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][0], lbl_1_bss_460);
         fn_1_B910(2141, lbl_1_bss_46C[0], 1);
         break;
     case 3857: case 3595: case 2648:
-        Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][1], lbl_1_bss_460);
+        fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][1], lbl_1_bss_460);
         break;
     case 3602: case 3872: case 2657:
-        Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][2], lbl_1_bss_460);
-        Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][5], lbl_1_bss_460);
+        fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][2], lbl_1_bss_460);
+        fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][5], lbl_1_bss_460);
         break;
     case 3886: case 3609: case 2665:
-        Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][3], lbl_1_bss_460);
+        fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][3], lbl_1_bss_460);
         break;
     case 3902: case 3615: case 2674:
-        Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][4], lbl_1_bss_460);
-        Hu3DMotionSpeedSet(lbl_1_bss_674[lbl_1_bss_464][6], lbl_1_bss_460);
+        fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][4], lbl_1_bss_460);
+        fn_8002D86C(lbl_1_bss_674[lbl_1_bss_464][6], lbl_1_bss_460);
         break;
     }
     if (lbl_1_bss_8C0 >= 2638 && lbl_1_bss_8C0 < 4630 && lbl_1_bss_10.soundHandle[1] >= -1) {
@@ -2301,57 +2335,57 @@ void fn_1_6D7C(void)
                     : (180.0) * (atan2(-delta.z, delta.x) / (3.141592653589793)) <= (-180.0)
                           ? (360.0) + (180.0) * (atan2(-delta.z, delta.x) / (3.141592653589793))
                           : (180.0) * (atan2(-delta.z, delta.x) / (3.141592653589793));
-        Hu3DModelRotSet(lbl_1_bss_46C[index + 5], (0.0f), angle, (0.0f));
+        fn_80026808(lbl_1_bss_46C[index + 5], (0.0f), angle, (0.0f));
     }
     switch (lbl_1_bss_8C0) {
     case M664_SCENE_FRAME_2828:
-        Hu3DMotionShiftSet(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[1], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
+        fn_8002D86C(lbl_1_bss_458[1], (2.0f)); break;
     case M664_SCENE_FRAME_2853:
-        Hu3DMotionShiftSet(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[1], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[1], (1.0f)); break;
     case M664_SCENE_FRAME_2978:
-        Hu3DMotionShiftSet(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[2], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
+        fn_8002D86C(lbl_1_bss_458[2], (2.0f)); break;
     case M664_SCENE_FRAME_3003:
-        Hu3DMotionShiftSet(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[2], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[2], (1.0f)); break;
     case M664_SCENE_FRAME_3648:
-        Hu3DMotionShiftSet(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[1], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
+        fn_8002D86C(lbl_1_bss_458[1], (2.0f)); break;
     case M664_SCENE_FRAME_3673:
-        Hu3DMotionShiftSet(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[1], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[1], (1.0f)); break;
     case M664_SCENE_FRAME_3653:
-        Hu3DMotionShiftSet(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[2], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
+        fn_8002D86C(lbl_1_bss_458[2], (2.0f)); break;
     case M664_SCENE_FRAME_3678:
-        Hu3DMotionShiftSet(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[2], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[2], (1.0f)); break;
     case M664_SCENE_FRAME_4378:
-        Hu3DMotionShiftSet(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[1], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
+        fn_8002D86C(lbl_1_bss_458[1], (2.0f)); break;
     case M664_SCENE_FRAME_4403:
-        Hu3DMotionShiftSet(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[1], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[1], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[1], (1.0f)); break;
     case M664_SCENE_FRAME_4508:
-        Hu3DMotionShiftSet(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[2], (2.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[1], (0.0f), (8.0f), 0);
+        fn_8002D86C(lbl_1_bss_458[2], (2.0f)); break;
     case M664_SCENE_FRAME_4533:
         /* This event changes model 2's motion but resets model 1's playback speed. */
-        Hu3DMotionShiftSet(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(lbl_1_bss_458[1], (1.0f)); break;
+        fn_8002CCC0(lbl_1_bss_458[2], lbl_1_bss_454[0], (0.0f), (8.0f), ((1 << 30) | (1 << 0)));
+        fn_8002D86C(lbl_1_bss_458[1], (1.0f)); break;
     }
     /* Reuse the last side's heading, turned by 90 degrees, for both side companions. */
     angle += (90.0f);
     for (index = 0; index < 3; index++) {
         Hu3DModelObjPosGet(lbl_1_bss_46C[index == 0 ? 0 : index == 1 ? 5 : 6],
                            index == 0 ? "he0" : "he1", &finalPosition);
-        Hu3DModelPosSetV(lbl_1_bss_458[index], &finalPosition);
+        fn_80026790(lbl_1_bss_458[index], &finalPosition);
         if (index == 0)
-            Hu3DModelRotSet(lbl_1_bss_458[index], (0.0f),
+            fn_80026808(lbl_1_bss_458[index], (0.0f),
                             (90.0f) + ((Point3d(*)[7]) lbl_1_bss_47C)[lbl_1_bss_464][0].y, (0.0f));
-        else Hu3DModelRotSet(lbl_1_bss_458[index], (0.0f), angle, (0.0f));
+        else fn_80026808(lbl_1_bss_458[index], (0.0f), angle, (0.0f));
     }
 }
 
@@ -2361,15 +2395,15 @@ void fn_1_7E24(void) {
     s32 modelIndex;
     for (sideIndex = 0; sideIndex < 2; sideIndex++) {
         for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-            lbl_1_bss_248[sideIndex][modelIndex].modelId = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m664, 55), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelCameraSet(lbl_1_bss_248[sideIndex][modelIndex].modelId, 1);
-            Hu3DModelShadowSet(lbl_1_bss_248[sideIndex][modelIndex].modelId);
-            Hu3DModelPosSet(lbl_1_bss_248[sideIndex][modelIndex].modelId, (0.0f), (0.0f),
+            lbl_1_bss_248[sideIndex][modelIndex].modelId = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7b0000, 55), 0x10000000, 2));
+            fn_80026B64(lbl_1_bss_248[sideIndex][modelIndex].modelId, 1);
+            fn_80026E44(lbl_1_bss_248[sideIndex][modelIndex].modelId);
+            fn_80026760(lbl_1_bss_248[sideIndex][modelIndex].modelId, (0.0f), (0.0f),
                             (0.0f));
-            Hu3DModelScaleSet(lbl_1_bss_248[sideIndex][modelIndex].modelId, (8.0f), (8.0f),
+            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].modelId, (8.0f), (8.0f),
                               (8.0f));
-            Hu3DModelAttrSet(lbl_1_bss_248[sideIndex][modelIndex].modelId, 1);
+            fn_800269E8(lbl_1_bss_248[sideIndex][modelIndex].modelId, 1);
             lbl_1_bss_248[sideIndex][modelIndex].state38 = 0;
             lbl_1_bss_248[sideIndex][modelIndex].state40 = 0;
             lbl_1_bss_248[sideIndex][modelIndex].destinationX = (u32) frandmod(400);
@@ -2381,16 +2415,16 @@ void fn_1_7E24(void) {
             if (frandmod(2) != 0U) {
                 lbl_1_bss_248[sideIndex][modelIndex].destinationZ *= (-1.0f);
             }
-            lbl_1_bss_248[sideIndex][modelIndex].effectModelId = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m664, 68), HU_MEMNUM_OVL, HEAP_DVD));
-            Hu3DModelCameraSet(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 1);
-            Hu3DModelAttrSet(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 1);
-            Hu3DModelScaleSet(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, (3.5f),
+            lbl_1_bss_248[sideIndex][modelIndex].effectModelId = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7b0000, 68), 0x10000000, 3));
+            fn_80026B64(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 1);
+            fn_800269E8(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 1);
+            fn_800268B0(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, (3.5f),
                               (3.5f), (3.5f));
-            Hu3DModelLayerSet(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 5);
-            lbl_1_bss_248[sideIndex][modelIndex].effectMotionId = Hu3DJointMotion(
+            fn_80026B8C(lbl_1_bss_248[sideIndex][modelIndex].effectModelId, 5);
+            lbl_1_bss_248[sideIndex][modelIndex].effectMotionId = fn_80030458(
                 lbl_1_bss_248[sideIndex][modelIndex].effectModelId,
-                HuDataSelHeapReadNum(DATANUM(DATA_m664, 69), HU_MEMNUM_OVL, HEAP_DVD));
+                fn_80008DD0(DATANUM(0x7b0000, 69), 0x10000000, 3));
         }
     }
 }
@@ -2431,15 +2465,15 @@ void fn_1_8244(void) {
         lbl_1_bss_248[side][effectSet].state38 = 1;
         lbl_1_bss_248[side][effectSet].motionFrame = 0;
         motionIndex = side == 0 ? 5 : 6;
-        Hu3DMotionSet(lbl_1_bss_46C[motionIndex], lbl_1_bss_468[side]);
-        Hu3DMotionSpeedSet(lbl_1_bss_46C[motionIndex], (1.0f));
+        fn_8002C95C(lbl_1_bss_46C[motionIndex], lbl_1_bss_468[side]);
+        fn_8002D86C(lbl_1_bss_46C[motionIndex], (1.0f));
     }
 
     for (side = 0; side < 2; side++) {
         motionIndex = side == 0 ? 5 : 6;
         if (lbl_1_bss_248[side][effectSet].state38 == 1) {
             transitionFrame = lbl_1_bss_464 == 1 ? 33 : 20;
-            if (Hu3DMotionTimeGet(lbl_1_bss_46C[motionIndex]) < (f32) transitionFrame) {
+            if (fn_8002D4E0(lbl_1_bss_46C[motionIndex]) < (f32) transitionFrame) {
                 continue;
             }
             lbl_1_bss_248[side][effectSet].state38 = 2;
@@ -2461,9 +2495,9 @@ void fn_1_8244(void) {
             lbl_1_bss_248[side][effectSet].position.z =
                 blend * lbl_1_bss_248[side][effectSet].destinationZ +
                 ((1.0f) - blend) * lbl_1_bss_248[side][effectSet].startPosition.z;
-            Hu3DModelPosSetV(lbl_1_bss_248[side][effectSet].modelId,
+            fn_80026790(lbl_1_bss_248[side][effectSet].modelId,
                              &lbl_1_bss_248[side][effectSet].position);
-            Hu3DModelAttrReset(lbl_1_bss_248[side][effectSet].modelId, 1);
+            fn_80026A44(lbl_1_bss_248[side][effectSet].modelId, 1);
             if (lbl_1_bss_248[side][effectSet].position.y <
                     lbl_1_bss_248[side][effectSet].destinationY - (10.0f) &&
                 lbl_1_bss_248[side][effectSet].state40 == 0) {
@@ -2479,11 +2513,11 @@ void fn_1_8244(void) {
             }
             if (lbl_1_bss_248[side][effectSet].state40 != 0) {
                 effectPosition = lbl_1_bss_248[side][effectSet].position;
-                Hu3DModelPosSetV(lbl_1_bss_248[side][effectSet].effectModelId, &effectPosition);
-                Hu3DModelRotSet(lbl_1_bss_248[side][effectSet].effectModelId, (0.0f),
+                fn_80026790(lbl_1_bss_248[side][effectSet].effectModelId, &effectPosition);
+                fn_80026808(lbl_1_bss_248[side][effectSet].effectModelId, (0.0f),
                                 (f32) (u32) frandmod(360), (0.0f));
-                Hu3DModelAttrReset(lbl_1_bss_248[side][effectSet].effectModelId, 1);
-                Hu3DMotionSet(lbl_1_bss_248[side][effectSet].effectModelId,
+                fn_80026A44(lbl_1_bss_248[side][effectSet].effectModelId, 1);
+                fn_8002C95C(lbl_1_bss_248[side][effectSet].effectModelId,
                               lbl_1_bss_248[side][effectSet].effectMotionId);
                 if (lbl_1_bss_248[side][effectSet].state40 == 1) {
                     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
@@ -2498,15 +2532,15 @@ void fn_1_8244(void) {
                                     lbl_1_bss_C8[playerIndex].player->omObj->mtnId[0] =
                                         lbl_1_bss_C8[playerIndex].motionIds[2];
                                 }
-                                omVibrate((s16) playerIndex, 20, 7, 3);
+                                fn_8006A030((s16) playerIndex, 20, 7, 3);
                             }
                             lbl_1_bss_3F8 = 180;
                         }
                     }
                     lbl_1_bss_248[side][effectSet].state38 = 3;
                 } else if (lbl_1_bss_248[side][effectSet].state40 == -1) {
-                    Hu3DModelAttrSet(lbl_1_bss_248[side][effectSet].modelId, 1);
-                    Hu3DModelShadowReset(lbl_1_bss_248[side][effectSet].modelId);
+                    fn_800269E8(lbl_1_bss_248[side][effectSet].modelId, 1);
+                    fn_80026EF0(lbl_1_bss_248[side][effectSet].modelId);
                     lbl_1_bss_248[side][effectSet].state38 = 4;
                 } else {
                     lbl_1_bss_248[side][effectSet].state38 = 3;
@@ -2515,19 +2549,19 @@ void fn_1_8244(void) {
             }
         } else if (lbl_1_bss_248[side][effectSet].state38 == 3) {
             if (lbl_1_bss_248[side][effectSet].state40 % 2 != 0) {
-                Hu3DModelScaleSet(lbl_1_bss_248[side][effectSet].modelId, (10.0f), (10.0f),
+                fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, (10.0f), (10.0f),
                                   (10.0f));
             } else {
-                Hu3DModelScaleSet(lbl_1_bss_248[side][effectSet].modelId, (8.0f), (8.0f), (8.0f));
+                fn_800268B0(lbl_1_bss_248[side][effectSet].modelId, (8.0f), (8.0f), (8.0f));
             }
             if (++lbl_1_bss_248[side][effectSet].state40 == 5) {
-                Hu3DModelAttrSet(lbl_1_bss_248[side][effectSet].modelId, 1);
-                Hu3DModelShadowReset(lbl_1_bss_248[side][effectSet].modelId);
+                fn_800269E8(lbl_1_bss_248[side][effectSet].modelId, 1);
+                fn_80026EF0(lbl_1_bss_248[side][effectSet].modelId);
                 lbl_1_bss_248[side][effectSet].state38 = 4;
             }
         }
-        if ((79.0f) == Hu3DMotionTimeGet(lbl_1_bss_46C[motionIndex])) {
-            Hu3DMotionSpeedSet(lbl_1_bss_46C[motionIndex], (0.0f));
+        if ((79.0f) == fn_8002D4E0(lbl_1_bss_46C[motionIndex])) {
+            fn_8002D86C(lbl_1_bss_46C[motionIndex], (0.0f));
         }
     }
 }
@@ -2544,11 +2578,11 @@ void fn_1_8E44(void) {
     s32 modelNumber;
     s16 jointMotionId;
 
-    lbl_1_bss_84E = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m664, 62), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_84E, 1);
-    Hu3DModelPosSetV(lbl_1_bss_84E, &lbl_1_bss_40C);
-    Hu3DModelScaleSet(lbl_1_bss_84E, (10.0f),
+    lbl_1_bss_84E = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7b0000, 62), 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_84E, 1);
+    fn_80026790(lbl_1_bss_84E, &lbl_1_bss_40C);
+    fn_800268B0(lbl_1_bss_84E, (10.0f),
                       (10.0f), (10.0f));
 
     for (boardIndex = 0; boardIndex < 5; boardIndex++) {
@@ -2557,10 +2591,10 @@ void fn_1_8E44(void) {
         } else {
             modelNumber = 65;
         }
-        lbl_1_bss_844[boardIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(modelNumber + DATA_m664, HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DModelCameraSet(lbl_1_bss_844[boardIndex], 1);
-        Hu3DModelObjMtxGet(lbl_1_bss_84E,
+        lbl_1_bss_844[boardIndex] = fn_80025A04(
+            fn_80008DD0(modelNumber + 0x7b0000, 0x10000000, 2));
+        fn_80026B64(lbl_1_bss_844[boardIndex], 1);
+        fn_80023398(lbl_1_bss_84E,
                            boardIndex == 0 ? "ut_hook0" :
                            boardIndex == 1 ? "ut_hook1" :
                            boardIndex == 2 ? "ut_hook2" :
@@ -2568,55 +2602,55 @@ void fn_1_8E44(void) {
                            objectMatrix);
         Hu3DMtxTransGet(objectMatrix, &objectPosition);
         Hu3DMtxRotGet(objectMatrix, &objectRotation);
-        Hu3DModelPosSetV(lbl_1_bss_844[boardIndex], &objectPosition);
-        Hu3DModelRotSetV(lbl_1_bss_844[boardIndex], &objectRotation);
-        Hu3DModelAttrSet(lbl_1_bss_844[boardIndex], HU3D_MOTATTR_LOOP);
-        Hu3DMotionCalc(lbl_1_bss_844[boardIndex]);
-        Hu3DMotionSpeedSet(lbl_1_bss_844[boardIndex], (0.0f));
-        Hu3DModelScaleSet(lbl_1_bss_844[boardIndex], (10.0f),
+        fn_80026790(lbl_1_bss_844[boardIndex], &objectPosition);
+        fn_80026838(lbl_1_bss_844[boardIndex], &objectRotation);
+        fn_800269E8(lbl_1_bss_844[boardIndex], ((1 << 30) | (1 << 0)));
+        fn_80030644(lbl_1_bss_844[boardIndex]);
+        fn_8002D86C(lbl_1_bss_844[boardIndex], (0.0f));
+        fn_800268B0(lbl_1_bss_844[boardIndex], (10.0f),
                           (10.0f), (10.0f));
-        Hu3DModelAttrSet(lbl_1_bss_844[boardIndex], 1);
+        fn_800269E8(lbl_1_bss_844[boardIndex], 1);
 
         for (objectIndex = 0; objectIndex < 4; objectIndex++) {
-            lbl_1_bss_81C[boardIndex][objectIndex] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m664, 60), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelCameraSet(lbl_1_bss_81C[boardIndex][objectIndex], 1);
+            lbl_1_bss_81C[boardIndex][objectIndex] = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7b0000, 60), 0x10000000, 2));
+            fn_80026B64(lbl_1_bss_81C[boardIndex][objectIndex], 1);
             Hu3DModelObjPosGet(lbl_1_bss_844[boardIndex],
                                objectIndex == 0 ? "nuts_hook0" :
                                objectIndex == 1 ? "nuts_hook1" :
                                objectIndex == 2 ? "nuts_hook2" : "nuts_hook3",
                                &objectPosition);
-            Hu3DModelPosSetV(lbl_1_bss_81C[boardIndex][objectIndex],
+            fn_80026790(lbl_1_bss_81C[boardIndex][objectIndex],
                              &objectPosition);
-            Hu3DModelScaleSet(lbl_1_bss_81C[boardIndex][objectIndex],
+            fn_800268B0(lbl_1_bss_81C[boardIndex][objectIndex],
                               (2.0f), (2.0f),
                               (2.0f));
-            Hu3DModelAttrSet(lbl_1_bss_81C[boardIndex][objectIndex], 1);
-            Hu3DModelShadowSet(lbl_1_bss_81C[boardIndex][objectIndex]);
+            fn_800269E8(lbl_1_bss_81C[boardIndex][objectIndex], 1);
+            fn_80026E44(lbl_1_bss_81C[boardIndex][objectIndex]);
             lbl_1_bss_744[boardIndex][objectIndex] = frandmod(2);
             lbl_1_bss_744[boardIndex][objectIndex] *= frandmod(50);
             lbl_1_bss_6A4[boardIndex][objectIndex] = (0.0f);
             lbl_1_bss_6F4[boardIndex][objectIndex] = 0;
-            lbl_1_bss_7CC[boardIndex][objectIndex][0] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m664, 61), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelCameraSet(lbl_1_bss_7CC[boardIndex][objectIndex][0], 1);
-            Hu3DModelAttrSet(lbl_1_bss_7CC[boardIndex][objectIndex][0], 1);
-            Hu3DMotionSpeedSet(lbl_1_bss_7CC[boardIndex][objectIndex][0],
+            lbl_1_bss_7CC[boardIndex][objectIndex][0] = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7b0000, 61), 0x10000000, 2));
+            fn_80026B64(lbl_1_bss_7CC[boardIndex][objectIndex][0], 1);
+            fn_800269E8(lbl_1_bss_7CC[boardIndex][objectIndex][0], 1);
+            fn_8002D86C(lbl_1_bss_7CC[boardIndex][objectIndex][0],
                                (0.0f));
-            Hu3DModelScaleSet(lbl_1_bss_7CC[boardIndex][objectIndex][0],
+            fn_800268B0(lbl_1_bss_7CC[boardIndex][objectIndex][0],
                               (2.0f), (2.0f),
                               (2.0f));
-            Hu3DModelLayerSet(lbl_1_bss_7CC[boardIndex][objectIndex][0], 5);
-            lbl_1_bss_7CC[boardIndex][objectIndex][1] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(DATANUM(DATA_m664, 66), HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelCameraSet(lbl_1_bss_7CC[boardIndex][objectIndex][1], 1);
-            Hu3DModelAttrSet(lbl_1_bss_7CC[boardIndex][objectIndex][1], 1);
-            Hu3DMotionSpeedSet(lbl_1_bss_7CC[boardIndex][objectIndex][1],
+            fn_80026B8C(lbl_1_bss_7CC[boardIndex][objectIndex][0], 5);
+            lbl_1_bss_7CC[boardIndex][objectIndex][1] = fn_80025A04(
+                fn_80008DD0(DATANUM(0x7b0000, 66), 0x10000000, 2));
+            fn_80026B64(lbl_1_bss_7CC[boardIndex][objectIndex][1], 1);
+            fn_800269E8(lbl_1_bss_7CC[boardIndex][objectIndex][1], 1);
+            fn_8002D86C(lbl_1_bss_7CC[boardIndex][objectIndex][1],
                                (0.0f));
-            Hu3DModelScaleSet(lbl_1_bss_7CC[boardIndex][objectIndex][1],
+            fn_800268B0(lbl_1_bss_7CC[boardIndex][objectIndex][1],
                               (2.0f), (2.0f),
                               (2.0f));
-            Hu3DModelLayerSet(lbl_1_bss_7CC[boardIndex][objectIndex][1], 5);
+            fn_80026B8C(lbl_1_bss_7CC[boardIndex][objectIndex][1], 5);
         }
 
         nameIndex = frandmod(3);
@@ -2625,23 +2659,23 @@ void fn_1_8E44(void) {
                 nameIndex == 1 ? "uk_hook1" : "uk_hook2");
     }
 
-    lbl_1_bss_7CA = Hu3DModelCreate(
-        HuDataSelHeapReadNum(DATANUM(DATA_m664, 63), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(lbl_1_bss_7CA, 1);
-    Hu3DModelObjMtxGet(lbl_1_bss_844[0], lbl_1_bss_798[0], objectMatrix);
+    lbl_1_bss_7CA = fn_80025A04(
+        fn_80008DD0(DATANUM(0x7b0000, 63), 0x10000000, 2));
+    fn_80026B64(lbl_1_bss_7CA, 1);
+    fn_80023398(lbl_1_bss_844[0], lbl_1_bss_798[0], objectMatrix);
     Hu3DMtxTransGet(objectMatrix, &objectPosition);
     Hu3DMtxRotGet(objectMatrix, &objectRotation);
-    Hu3DModelPosSetV(lbl_1_bss_7CA, &objectPosition);
-    Hu3DModelRotSetV(lbl_1_bss_7CA, &objectRotation);
-    Hu3DModelScaleSet(lbl_1_bss_7CA, (1.5f),
+    fn_80026790(lbl_1_bss_7CA, &objectPosition);
+    fn_80026838(lbl_1_bss_7CA, &objectRotation);
+    fn_800268B0(lbl_1_bss_7CA, (1.5f),
                       (1.5f), (1.5f));
-    Hu3DModelAttrSet(lbl_1_bss_7CA, 1);
-    jointMotionId = Hu3DJointMotion(
+    fn_800269E8(lbl_1_bss_7CA, 1);
+    jointMotionId = fn_80030458(
         lbl_1_bss_7CA,
-        HuDataSelHeapReadNum(DATANUM(DATA_m664, 64), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(lbl_1_bss_7CA, jointMotionId);
-    Hu3DModelAttrSet(lbl_1_bss_7CA, HU3D_MOTATTR_LOOP);
-    Hu3DMotionSpeedSet(lbl_1_bss_7CA, (0.0f));
+        fn_80008DD0(DATANUM(0x7b0000, 64), 0x10000000, 2));
+    fn_8002C95C(lbl_1_bss_7CA, jointMotionId);
+    fn_800269E8(lbl_1_bss_7CA, ((1 << 30) | (1 << 0)));
+    fn_8002D86C(lbl_1_bss_7CA, (0.0f));
 }
 
 /* Called by fn_1_4060 each active frame to update hook and nut motion, collisions, and effects. */
@@ -2656,9 +2690,9 @@ void fn_1_9704(void) {
 
     if (lbl_1_bss_8C0 == 0) {
         for (boardIndex = 0; boardIndex < 5; boardIndex++) {
-            Hu3DMotionSpeedSet(lbl_1_bss_844[boardIndex], (1.0f));
+            fn_8002D86C(lbl_1_bss_844[boardIndex], (1.0f));
         }
-        Hu3DMotionSpeedSet(lbl_1_bss_7CA, (1.0f));
+        fn_8002D86C(lbl_1_bss_7CA, (1.0f));
         lbl_1_bss_794 = (0.0f);
     }
 
@@ -2715,7 +2749,7 @@ void fn_1_9704(void) {
         }
     }
 
-    Hu3DModelPosSetV(lbl_1_bss_84E, &lbl_1_bss_40C);
+    fn_80026790(lbl_1_bss_84E, &lbl_1_bss_40C);
     for (boardIndex = 0; boardIndex < 5; boardIndex++) {
         Hu3DModelObjPosGet(lbl_1_bss_84E,
             boardIndex == 0 ? "ut_hook0" :
@@ -2723,7 +2757,7 @@ void fn_1_9704(void) {
             boardIndex == 2 ? "ut_hook2" :
             boardIndex == 3 ? "ut_hook3" : "ut_hook4",
             &objectPosition);
-        Hu3DModelPosSetV(lbl_1_bss_844[boardIndex], &objectPosition);
+        fn_80026790(lbl_1_bss_844[boardIndex], &objectPosition);
 
         for (pieceIndex = 0; pieceIndex < 4; pieceIndex++) {
             Hu3DModelObjPosGet(lbl_1_bss_844[boardIndex],
@@ -2732,7 +2766,7 @@ void fn_1_9704(void) {
                 pieceIndex == 2 ? "nuts_hook2" : "nuts_hook3",
                 &objectPosition);
             objectPosition.y -= lbl_1_bss_6A4[boardIndex][pieceIndex];
-            Hu3DModelPosSetV(lbl_1_bss_81C[boardIndex][pieceIndex], &objectPosition);
+            fn_80026790(lbl_1_bss_81C[boardIndex][pieceIndex], &objectPosition);
 
             if (lbl_1_bss_6F4[boardIndex][pieceIndex] == 0) {
                 Point3d collisionStart;
@@ -2744,7 +2778,7 @@ void fn_1_9704(void) {
                 collisionEnd = objectPosition;
                 collisionEnd.y -= (44.0f);
                 if (collisionEnd.y > (50.0f) &&
-                    MgActorColMapPolyGet(&collisionStart, &collisionEnd,
+                    fn_80086910(&collisionStart, &collisionEnd,
                                          -1U, (MGACTOR_COLMAP_POLY *)&hitPolygon) != 0) {
                     lbl_1_bss_6F4[boardIndex][pieceIndex] = 1;
                     fn_1_B910(MSM_SE_M664_NUT_IMPACT,
@@ -2757,26 +2791,26 @@ void fn_1_9704(void) {
                 }
             }
             if (lbl_1_bss_6F4[boardIndex][pieceIndex] == 1) {
-                Hu3DMotionSpeedSet(lbl_1_bss_7CC[boardIndex][pieceIndex][0], (1.0f));
-                Hu3DModelAttrSet(lbl_1_bss_81C[boardIndex][pieceIndex], 1);
-                Hu3DModelAttrReset(lbl_1_bss_7CC[boardIndex][pieceIndex][0], 1);
-                Hu3DModelPosSetV(lbl_1_bss_7CC[boardIndex][pieceIndex][0], &objectPosition);
+                fn_8002D86C(lbl_1_bss_7CC[boardIndex][pieceIndex][0], (1.0f));
+                fn_800269E8(lbl_1_bss_81C[boardIndex][pieceIndex], 1);
+                fn_80026A44(lbl_1_bss_7CC[boardIndex][pieceIndex][0], 1);
+                fn_80026790(lbl_1_bss_7CC[boardIndex][pieceIndex][0], &objectPosition);
                 lbl_1_bss_6F4[boardIndex][pieceIndex] = 2;
-                Hu3DModelShadowReset(lbl_1_bss_81C[boardIndex][pieceIndex]);
+                fn_80026EF0(lbl_1_bss_81C[boardIndex][pieceIndex]);
             } else if (lbl_1_bss_6F4[boardIndex][pieceIndex] == 2 &&
-                       Hu3DMotionEndCheck(lbl_1_bss_7CC[boardIndex][pieceIndex][0]) != 0) {
-                Hu3DModelAttrSet(lbl_1_bss_7CC[boardIndex][pieceIndex][0], 1);
+                       fn_8002D75C(lbl_1_bss_7CC[boardIndex][pieceIndex][0]) != 0) {
+                fn_800269E8(lbl_1_bss_7CC[boardIndex][pieceIndex][0], 1);
             }
             if (lbl_1_bss_6F4[boardIndex][pieceIndex] == -1) {
-                Hu3DMotionSpeedSet(lbl_1_bss_7CC[boardIndex][pieceIndex][1], (1.0f));
-                Hu3DModelAttrReset(lbl_1_bss_7CC[boardIndex][pieceIndex][1], 1);
-                Hu3DModelPosSetV(lbl_1_bss_7CC[boardIndex][pieceIndex][1], &objectPosition);
+                fn_8002D86C(lbl_1_bss_7CC[boardIndex][pieceIndex][1], (1.0f));
+                fn_80026A44(lbl_1_bss_7CC[boardIndex][pieceIndex][1], 1);
+                fn_80026790(lbl_1_bss_7CC[boardIndex][pieceIndex][1], &objectPosition);
                 lbl_1_bss_6F4[boardIndex][pieceIndex] = -2;
-                Hu3DModelShadowReset(lbl_1_bss_81C[boardIndex][pieceIndex]);
+                fn_80026EF0(lbl_1_bss_81C[boardIndex][pieceIndex]);
             } else if (lbl_1_bss_6F4[boardIndex][pieceIndex] == -2 &&
-                       Hu3DMotionEndCheck(lbl_1_bss_7CC[boardIndex][pieceIndex][1]) != 0) {
-                Hu3DModelAttrSet(lbl_1_bss_7CC[boardIndex][pieceIndex][1], 1);
-                Hu3DModelAttrSet(lbl_1_bss_81C[boardIndex][pieceIndex], 1);
+                       fn_8002D75C(lbl_1_bss_7CC[boardIndex][pieceIndex][1]) != 0) {
+                fn_800269E8(lbl_1_bss_7CC[boardIndex][pieceIndex][1], 1);
+                fn_800269E8(lbl_1_bss_81C[boardIndex][pieceIndex], 1);
             }
         }
     }
@@ -2785,9 +2819,9 @@ void fn_1_9704(void) {
                   lbl_1_bss_8C0 < 1980 ? 1 :
                   lbl_1_bss_8C0 < 2120 ? 2 :
                   lbl_1_bss_8C0 < 2210 ? 3 : 4;
-    Hu3DModelObjMtxGet(lbl_1_bss_844[boardChoice], lbl_1_bss_798[boardChoice], objectMatrix);
+    fn_80023398(lbl_1_bss_844[boardChoice], lbl_1_bss_798[boardChoice], objectMatrix);
     Hu3DMtxTransGet(objectMatrix, &objectPosition);
-    eventFrame = (s32) Hu3DMotionTimeGet(lbl_1_bss_7CA);
+    eventFrame = (s32) fn_8002D4E0(lbl_1_bss_7CA);
     if (eventFrame >= 20 && eventFrame < 60) {
         lbl_1_bss_794 += (4.5f);
         objectPosition.y = (f32)((f64)objectPosition.y +
@@ -2796,8 +2830,8 @@ void fn_1_9704(void) {
         lbl_1_bss_794 = (0.0f);
     }
     Hu3DMtxRotGet(objectMatrix, &objectRotation);
-    Hu3DModelPosSetV(lbl_1_bss_7CA, &objectPosition);
-    Hu3DModelRotSetV(lbl_1_bss_7CA, &objectRotation);
+    fn_80026790(lbl_1_bss_7CA, &objectPosition);
+    fn_80026838(lbl_1_bss_7CA, &objectRotation);
     if (lbl_1_bss_8C0 >= 1700 && lbl_1_bss_8C0 <= 2380 && eventFrame == 20) {
         fn_1_B910(MSM_SE_M664_HOOK_IMPACT, lbl_1_bss_7CA, 1);
     }
@@ -2812,78 +2846,78 @@ void fn_1_A428(void) {
     switch (lbl_1_bss_8C0) {
     case M664_SCENE_FRAME_250:
         for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-            Hu3DModelAttrSet(lbl_1_bss_85C[playerIndex].modelId, 1);
-            Hu3DModelAttrSet(lbl_1_bss_85C[playerIndex].objectModelId, 1);
+            fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, 1);
+            fn_800269E8(lbl_1_bss_85C[playerIndex].objectModelId, 1);
         }
-        Hu3DModelAttrSet(lbl_1_bss_85A, 1);
+        fn_800269E8(lbl_1_bss_85A, 1);
         break;
     case M664_SCENE_FRAME_1000:
         for (playerIndex = 0; playerIndex < 16; playerIndex++) {
-            Hu3DModelAttrSet(lbl_1_bss_874[playerIndex], 1);
+            fn_800269E8(lbl_1_bss_874[playerIndex], 1);
         }
-        Hu3DModelAttrSet(lbl_1_bss_86C, 1);
+        fn_800269E8(lbl_1_bss_86C, 1);
         break;
     case M664_SCENE_FRAME_1350:
-        Hu3DModelAttrReset(lbl_1_bss_8A0[1], 1);
-        Hu3DModelAttrReset(lbl_1_bss_894[1], 1);
+        fn_80026A44(lbl_1_bss_8A0[1], 1);
+        fn_80026A44(lbl_1_bss_894[1], 1);
         break;
     case M664_SCENE_FRAME_1550:
-        Hu3DModelAttrSet(lbl_1_bss_8A0[0], 1);
-        Hu3DModelAttrSet(lbl_1_bss_894[0], 1);
-        Hu3DModelAttrSet(lbl_1_bss_89C, 1);
-        Hu3DModelAttrReset(lbl_1_bss_89E, 1);
+        fn_800269E8(lbl_1_bss_8A0[0], 1);
+        fn_800269E8(lbl_1_bss_894[0], 1);
+        fn_800269E8(lbl_1_bss_89C, 1);
+        fn_80026A44(lbl_1_bss_89E, 1);
         break;
     case M664_SCENE_FRAME_1700:
-        Hu3DModelAttrReset(lbl_1_bss_7CA, 1);
+        fn_80026A44(lbl_1_bss_7CA, 1);
         for (playerIndex = 0; playerIndex < 5; playerIndex++) {
-            Hu3DModelAttrReset(lbl_1_bss_844[playerIndex], 1);
+            fn_80026A44(lbl_1_bss_844[playerIndex], 1);
             for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-                Hu3DModelAttrReset(lbl_1_bss_81C[playerIndex][modelIndex], 1);
+                fn_80026A44(lbl_1_bss_81C[playerIndex][modelIndex], 1);
             }
         }
         break;
     case M664_SCENE_FRAME_2000:
-        Hu3DModelAttrReset(lbl_1_bss_8A0[2], 1);
-        Hu3DModelAttrReset(lbl_1_bss_894[2], 1);
+        fn_80026A44(lbl_1_bss_8A0[2], 1);
+        fn_80026A44(lbl_1_bss_894[2], 1);
         break;
     case M664_SCENE_FRAME_2500:
-        Hu3DModelAttrSet(lbl_1_bss_89E, 1);
+        fn_800269E8(lbl_1_bss_89E, 1);
         for (playerIndex = 0; playerIndex < 5; playerIndex++) {
-            Hu3DModelAttrSet(lbl_1_bss_844[playerIndex], 1);
+            fn_800269E8(lbl_1_bss_844[playerIndex], 1);
             for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-                Hu3DModelAttrSet(lbl_1_bss_81C[playerIndex][modelIndex], 1);
-                Hu3DModelAttrSet(lbl_1_bss_7CC[playerIndex][modelIndex][0], 1);
-                Hu3DModelAttrSet(lbl_1_bss_7CC[playerIndex][modelIndex][1], 1);
+                fn_800269E8(lbl_1_bss_81C[playerIndex][modelIndex], 1);
+                fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][0], 1);
+                fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][1], 1);
             }
         }
-        Hu3DModelAttrSet(lbl_1_bss_7CA, 1);
-        Hu3DModelAttrReset(lbl_1_bss_69E[0], 1);
+        fn_800269E8(lbl_1_bss_7CA, 1);
+        fn_80026A44(lbl_1_bss_69E[0], 1);
         for (playerIndex = 0; playerIndex < 7; playerIndex++) {
-            Hu3DModelAttrReset(lbl_1_bss_46C[playerIndex], 1);
+            fn_80026A44(lbl_1_bss_46C[playerIndex], 1);
         }
         for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-            Hu3DModelAttrReset(lbl_1_bss_458[playerIndex], 1);
+            fn_80026A44(lbl_1_bss_458[playerIndex], 1);
         }
         break;
     case M664_SCENE_FRAME_3200:
-        Hu3DModelAttrReset(lbl_1_bss_69E[1], 1);
+        fn_80026A44(lbl_1_bss_69E[1], 1);
         break;
     case M664_SCENE_FRAME_3300:
-        Hu3DModelAttrReset(lbl_1_bss_8A0[3], 1);
-        Hu3DModelAttrReset(lbl_1_bss_894[3], 1);
+        fn_80026A44(lbl_1_bss_8A0[3], 1);
+        fn_80026A44(lbl_1_bss_894[3], 1);
         break;
     case M664_SCENE_FRAME_3730:
-        Hu3DModelAttrSet(lbl_1_bss_8A0[1], 1);
-        Hu3DModelAttrSet(lbl_1_bss_894[1], 1);
-        Hu3DModelAttrReset(lbl_1_bss_69E[2], 1);
+        fn_800269E8(lbl_1_bss_8A0[1], 1);
+        fn_800269E8(lbl_1_bss_894[1], 1);
+        fn_80026A44(lbl_1_bss_69E[2], 1);
         break;
     case M664_SCENE_FRAME_4000:
-        Hu3DModelAttrSet(lbl_1_bss_8A0[2], 1);
-        Hu3DModelAttrSet(lbl_1_bss_894[2], 1);
-        Hu3DModelAttrSet(lbl_1_bss_69E[0], 1);
+        fn_800269E8(lbl_1_bss_8A0[2], 1);
+        fn_800269E8(lbl_1_bss_894[2], 1);
+        fn_800269E8(lbl_1_bss_69E[0], 1);
         break;
     case M664_SCENE_FRAME_3950:
-        Hu3DModelAttrSet(lbl_1_bss_69E[1], 1);
+        fn_800269E8(lbl_1_bss_69E[1], 1);
         break;
     }
 }
@@ -2895,50 +2929,50 @@ void fn_1_A8F0(void) {
     s32 modelIndex;
 
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
+        fn_800269E8(lbl_1_bss_C8[playerIndex].fallEffectModelId, 1);
     }
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_8A0[playerIndex], 1);
-        Hu3DModelAttrSet(lbl_1_bss_894[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_8A0[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_894[playerIndex], 1);
     }
-    Hu3DModelAttrSet(lbl_1_bss_89E, 1);
+    fn_800269E8(lbl_1_bss_89E, 1);
     for (playerIndex = 0; playerIndex < 16; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_874[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_874[playerIndex], 1);
     }
-    Hu3DModelAttrSet(lbl_1_bss_89C, 1);
+    fn_800269E8(lbl_1_bss_89C, 1);
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_870[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_870[playerIndex], 1);
     }
-    Hu3DModelAttrSet(lbl_1_bss_86C, 1);
+    fn_800269E8(lbl_1_bss_86C, 1);
     for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_85C[playerIndex].modelId, 1);
-        Hu3DModelAttrSet(lbl_1_bss_85C[playerIndex].objectModelId, 1);
+        fn_800269E8(lbl_1_bss_85C[playerIndex].modelId, 1);
+        fn_800269E8(lbl_1_bss_85C[playerIndex].objectModelId, 1);
     }
-    Hu3DModelAttrSet(lbl_1_bss_85A, 1);
+    fn_800269E8(lbl_1_bss_85A, 1);
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_69E[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_69E[playerIndex], 1);
     }
     for (playerIndex = 0; playerIndex < 7; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_46C[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_46C[playerIndex], 1);
     }
     for (playerIndex = 0; playerIndex < 3; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_458[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_458[playerIndex], 1);
     }
     for (playerIndex = 0; playerIndex < 2; playerIndex++) {
         for (modelIndex = 0; modelIndex < 3; modelIndex++) {
-            Hu3DModelAttrSet(lbl_1_bss_248[playerIndex][modelIndex].modelId, 1);
-            Hu3DModelAttrSet(lbl_1_bss_248[playerIndex][modelIndex].effectModelId, 1);
+            fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].modelId, 1);
+            fn_800269E8(lbl_1_bss_248[playerIndex][modelIndex].effectModelId, 1);
         }
     }
     for (playerIndex = 0; playerIndex < 5; playerIndex++) {
-        Hu3DModelAttrSet(lbl_1_bss_844[playerIndex], 1);
+        fn_800269E8(lbl_1_bss_844[playerIndex], 1);
         for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-            Hu3DModelAttrSet(lbl_1_bss_81C[playerIndex][modelIndex], 1);
-            Hu3DModelAttrSet(lbl_1_bss_7CC[playerIndex][modelIndex][0], 1);
-            Hu3DModelAttrSet(lbl_1_bss_7CC[playerIndex][modelIndex][1], 1);
+            fn_800269E8(lbl_1_bss_81C[playerIndex][modelIndex], 1);
+            fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][0], 1);
+            fn_800269E8(lbl_1_bss_7CC[playerIndex][modelIndex][1], 1);
         }
     }
-    Hu3DModelAttrSet(lbl_1_bss_7CA, 1);
+    fn_800269E8(lbl_1_bss_7CA, 1);
 }
 
 /* Called by fn_1_2E08 for an AI-controlled player; selects an opponent, steers toward them, and
@@ -2957,7 +2991,7 @@ void fn_1_AC58(s32 playerIndex) {
 
     if (lbl_1_bss_C8[playerIndex].sequenceCount != 0 ||
         lbl_1_bss_C8[playerIndex].actionState != 0) {
-        MgPlayerPadSet(lbl_1_bss_C8[playerIndex].player, 0, 0, 0, 0);
+        fn_80080520(lbl_1_bss_C8[playerIndex].player, 0, 0, 0, 0);
         return;
     }
     fn_1_B8FC(&lbl_1_bss_18[playerIndex], 0, 0, 0, 0);
@@ -2968,12 +3002,12 @@ void fn_1_AC58(s32 playerIndex) {
     if ((lbl_1_bss_C8[playerIndex].player->actor->colGroundAttr & 0x407F) != 0) {
         if (lbl_1_bss_18[playerIndex].sessionState[1] != 0) {
             lbl_1_bss_18[playerIndex].sessionState[1]--;
-            MgPlayerPadSet(lbl_1_bss_C8[playerIndex].player, 0, 0, 0, 0);
+            fn_80080520(lbl_1_bss_C8[playerIndex].player, 0, 0, 0, 0);
             return;
         }
         if (lbl_1_bss_C8[playerIndex].player->stunType != 0 &&
             lbl_1_bss_18[playerIndex].difficulty <= 1) {
-            MgPlayerPadSet(lbl_1_bss_C8[playerIndex].player, 0, 0, 0, 0);
+            fn_80080520(lbl_1_bss_C8[playerIndex].player, 0, 0, 0, 0);
             return;
         }
 
@@ -3018,14 +3052,14 @@ void fn_1_AC58(s32 playerIndex) {
                 lbl_1_bss_C8[lbl_1_bss_18[playerIndex].sessionState[2]].player->actor->pos;
             opponentPosition.y = (0.0f);
             skipPadUpdate = 1;
-            MgPlayerComStkOn(lbl_1_bss_C8[playerIndex].player);
+            fn_8007E818(lbl_1_bss_C8[playerIndex].player);
 
             chaseAmount = lbl_1_bss_18[playerIndex].difficulty == 3 ? (10.0f) :
                           lbl_1_bss_18[playerIndex].difficulty == 2 ? (8.0f) :
                           lbl_1_bss_18[playerIndex].difficulty == 1 ? (6.0f) : (5.0f);
-            if (MgPlayerVecChase(lbl_1_bss_C8[playerIndex].player, &opponentPosition, chaseAmount,
+            if (fn_8007E8B4(lbl_1_bss_C8[playerIndex].player, &opponentPosition, chaseAmount,
                                  (100.0f)) != 0) {
-                MgPlayerComStkOff(lbl_1_bss_C8[playerIndex].player);
+                fn_8007E888(lbl_1_bss_C8[playerIndex].player);
                 skipPadUpdate = 0;
                 if (lbl_1_bss_18[playerIndex].difficulty == 3) {
                     actionStyle = frandmod(2) != 0U ? 1 : 2;
@@ -3112,7 +3146,7 @@ void fn_1_AC58(s32 playerIndex) {
         }
     }
     if (skipPadUpdate == 0) {
-        MgPlayerPadSet(lbl_1_bss_C8[playerIndex].player, lbl_1_bss_18[playerIndex].sessionState[4],
+        fn_80080520(lbl_1_bss_C8[playerIndex].player, lbl_1_bss_18[playerIndex].sessionState[4],
                        lbl_1_bss_18[playerIndex].sessionState[5],
                        lbl_1_bss_18[playerIndex].sessionState[6],
                        lbl_1_bss_18[playerIndex].sessionState[7]);
@@ -3140,7 +3174,7 @@ s16 fn_1_B910(s16 soundEffect, s16 modelId, s16 cameraMask) {
     s32 panMaximum = M664_SOUND_PAN_MAX;
 
     panScale = (576.0f) / (f32)(panMaximum - panMinimum);
-    modelPosition = Hu3DData[modelId].pos;
+    modelPosition = lbl_802C01C8[modelId].pos;
     Hu3D3Dto2D(&modelPosition, cameraMask, &screenPosition);
 
     if (((soundEffect & 0x7FFF) == MSM_SE_M664_PROP_MISS) ||

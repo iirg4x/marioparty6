@@ -46,32 +46,32 @@ char lbl_1_data_188[24] = "633biribiri-nozzleNull";
 
 char lbl_1_data_1A0[24] = "hit!!!!!!!!(%f)\n";
 
-s32 lbl_1_data_1B8[6] = { DATANUM(DATA_m633, 12), DATANUM(DATA_m633, 13), DATANUM(DATA_m633, 14),
-                          DATANUM(DATA_m633, 15), DATANUM(DATA_m633, 20), DATANUM(DATA_m633, 21) };
+s32 lbl_1_data_1B8[6] = { DATANUM(0x5c0000, 12), DATANUM(0x5c0000, 13), DATANUM(0x5c0000, 14),
+                          DATANUM(0x5c0000, 15), DATANUM(0x5c0000, 20), DATANUM(0x5c0000, 21) };
 
-s32 lbl_1_data_1D0[4] = { DATANUM(DATA_m633, 25), DATANUM(DATA_m633, 27), DATANUM(DATA_m633, 26),
-                          DATANUM(DATA_m633, 24) };
+s32 lbl_1_data_1D0[4] = { DATANUM(0x5c0000, 25), DATANUM(0x5c0000, 27), DATANUM(0x5c0000, 26),
+                          DATANUM(0x5c0000, 24) };
 
 unsigned int lbl_1_data_1E0[16] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 6),
-    DATANUM(DATA_mariomot, 40), DATANUM(DATA_mariomot, 35),
-    DATANUM(DATA_mariomot, 10), DATANUM(DATA_mariomot, 9),
-    DATANUM(DATA_mariomot, 30), DATANUM(DATA_mariomot, 20),
-    DATANUM(DATA_mariomot, 61), DATANUM(DATA_mario, 86),
-    DATANUM(DATA_mariomot, 24), 0,
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x930000, 3),
+    DATANUM(0x930000, 4), DATANUM(0x930000, 6),
+    DATANUM(0x930000, 40), DATANUM(0x930000, 35),
+    DATANUM(0x930000, 10), DATANUM(0x930000, 9),
+    DATANUM(0x930000, 30), DATANUM(0x930000, 20),
+    DATANUM(0x930000, 61), DATANUM(0x8e0000, 86),
+    DATANUM(0x930000, 24), 0,
 };
 
 unsigned int lbl_1_data_220[16] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mariomot, 38),
-    DATANUM(DATA_mariomot, 40), DATANUM(DATA_mariomot, 35),
-    DATANUM(DATA_mariomot, 10), DATANUM(DATA_mariomot, 9),
-    DATANUM(DATA_mariomot, 30), DATANUM(DATA_mariomot, 20),
-    DATANUM(DATA_mariomot, 61), DATANUM(DATA_mario, 86),
-    DATANUM(DATA_mariomot, 24), 0,
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x930000, 3),
+    DATANUM(0x930000, 4), DATANUM(0x930000, 38),
+    DATANUM(0x930000, 40), DATANUM(0x930000, 35),
+    DATANUM(0x930000, 10), DATANUM(0x930000, 9),
+    DATANUM(0x930000, 30), DATANUM(0x930000, 20),
+    DATANUM(0x930000, 61), DATANUM(0x8e0000, 86),
+    DATANUM(0x930000, 24), 0,
 };
 
 u32 lbl_1_data_260[4] = { 100U, 70U, 30U, 0U };
@@ -89,7 +89,7 @@ s32 fn_1_A0(s32 streamHandle, s32 bgmId)
     s32 result;
 
     result = streamHandle;
-    if (result == -1 && (GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0) {
+    if (result == -1 && (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
         result = HuAudBGMPlay((s16) bgmId);
     }
     return result;
@@ -121,16 +121,16 @@ void fn_1_140(void)
         } else if (pan > 96) {
             pan = 96;
         }
-        CharModelVoicePanSet((s16) lbl_1_bss_0.characterNumbers[player], (s16) pan);
+        fn_80060F14((s16) lbl_1_bss_0.characterNumbers[player], (s16) pan);
     }
 }
 
 /* Sequence callback: updates actors and voice panning, then requests the next sequence mode. */
 void fn_1_224(s16 mode, s16 frameNo)
 {
-    MgActorExec();
+    fn_800856A8();
     fn_1_140();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* On entry, starts camera motion 0 and assigns slot callbacks; requests the next mode after the
@@ -147,7 +147,7 @@ void fn_1_310(s16 mode, s16 frameNo)
         HuAudFXPlay(M633_SEGMENT_WALL_REFLECTION_SE_ID);
     }
     lbl_1_bss_0.segmentReflectionSoundPending = 0;
-    MgActorExec();
+    fn_800856A8();
     fn_1_140();
     lbl_1_bss_0.preventArenaRestart = 1;
     if (frameNo == 0) {
@@ -173,7 +173,7 @@ void fn_1_310(s16 mode, s16 frameNo)
             playerNo += 1;
         }
         if (completedPlayerCount == 3) {
-            MgSeqModeNext();
+            fn_80071A9C();
         }
     }
 }
@@ -183,7 +183,7 @@ void fn_1_310(s16 mode, s16 frameNo)
 void fn_1_55C(s16 mode, s16 frameNo)
 {
     lbl_1_bss_0.bgmHandle = fn_1_A0(lbl_1_bss_0.bgmHandle, M633_GAMEPLAY_BGM_ID);
-    MgActorExec();
+    fn_800856A8();
     fn_1_140();
 }
 
@@ -206,10 +206,10 @@ void fn_1_690(s16 mode, s16 frameNo)
                 (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_28A4;
             } else {
                 model = (s16) lbl_1_bss_0.players[playerNo]->actor->mdlId;
-                Hu3DModelPosGet(model, &spawnPosition);
-                MgPlayerSpawn(lbl_1_bss_0.players[playerNo], &spawnPosition);
+                fn_800267CC(model, &spawnPosition);
+                fn_80086F00(lbl_1_bss_0.players[playerNo], &spawnPosition);
                 (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_34AC;
-                CharMotionShiftSet((lbl_1_bss_0.players[playerNo])->charNo,
+                fn_8005C2C8((lbl_1_bss_0.players[playerNo])->charNo,
                                    *((lbl_1_bss_0.players[playerNo])->omObj)->mtnId, 0.0f, 6.0f,
                                    0U);
             }
@@ -230,7 +230,7 @@ void fn_1_690(s16 mode, s16 frameNo)
     if (lbl_1_bss_0.segmentReflectionSoundPending != 0) {
         HuAudFXPlay(M633_SEGMENT_WALL_REFLECTION_SE_ID);
     }
-    MgActorExec();
+    fn_800856A8();
     fn_1_140();
     fn_1_6DE8();
     lbl_1_bss_0.segmentUpdateCountdown -= 1;
@@ -239,16 +239,16 @@ void fn_1_690(s16 mode, s16 frameNo)
         playerNo = 0;
         while (playerNo < 4) {
             player = lbl_1_bss_0.players[playerNo];
-            MgPlayerDespawn(player);
+            fn_80086E3C(player);
             if ((s32) lbl_1_bss_0.outsideGroupZero[playerNo] == 0) {
-                CharMotionShiftSet(player->charNo, *player->omObj->mtnId, 0.0f, 6.0f, 0U);
+                fn_8005C2C8(player->charNo, *player->omObj->mtnId, 0.0f, 6.0f, 0U);
                 (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_26B4;
             } else if ((s32) lbl_1_bss_0.playerRemoved[playerNo] == 0) {
-                CharMotionShiftSet(player->charNo, *player->omObj->mtnId, 0.0f, 6.0f, 0U);
+                fn_8005C2C8(player->charNo, *player->omObj->mtnId, 0.0f, 6.0f, 0U);
             }
             playerNo += 1;
         }
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -258,7 +258,7 @@ void fn_1_AB0(s16 mode, s16 frameNo)
 {
 
     lbl_1_bss_0.preventArenaRestart = 1;
-    MgActorExec();
+    fn_800856A8();
     fn_1_140();
     if (frameNo == 0) {
         fn_1_104(lbl_1_bss_0.bgmHandle);
@@ -324,22 +324,22 @@ void fn_1_C78(s16 mode, s16 frameNo)
             player = lbl_1_bss_0.players[playerNo];
             if (lbl_1_bss_0.outsideGroupZero[playerNo] == 0) {
                 (lbl_1_bss_0.playerObjects[playerNo])->objFunc = fn_1_26B4;
-                Hu3DModelRotSet(lbl_1_bss_0.rotatingStageModelId, 0.0f, 0.0f, 0.0f);
-                Hu3DModelRotSet(lbl_1_bss_0.secondRotatingModelId, 0.0f, 0.0f, 0.0f);
-                Hu3DMotionSet(lbl_1_bss_0.rotatingStageModelId, lbl_1_bss_0.stageIdleMotionId);
+                fn_80026808(lbl_1_bss_0.rotatingStageModelId, 0.0f, 0.0f, 0.0f);
+                fn_80026808(lbl_1_bss_0.secondRotatingModelId, 0.0f, 0.0f, 0.0f);
+                fn_8002C95C(lbl_1_bss_0.rotatingStageModelId, lbl_1_bss_0.stageIdleMotionId);
             } else if (lbl_1_bss_0.playerRemoved[playerNo] == 0) {
                 Hu3DModelObjPosGet(lbl_1_bss_0.placementModelId, results[resultCount], &pos);
-                Hu3DModelPosSetV((s16)player->actor->mdlId, &pos);
-                Hu3DModelAttrReset((s16)player->actor->mdlId, HU3D_ATTR_DISPOFF);
-                CharMotionSet((s16)lbl_1_bss_0.characterNumbers[playerNo],
+                fn_80026790((s16)player->actor->mdlId, &pos);
+                fn_80026A44((s16)player->actor->mdlId, (1 << 0));
+                fn_8005BE80((s16)lbl_1_bss_0.characterNumbers[playerNo],
                     *((player)->omObj)->mtnId);
-                Hu3DModelRotSet((s16)player->actor->mdlId, 0.0f, 0.0f, 0.0f);
+                fn_80026808((s16)player->actor->mdlId, 0.0f, 0.0f, 0.0f);
                 resultCount++;
             }
         }
 
-        Hu3DModelAttrSet(lbl_1_bss_0.nozzleModelIds[0], HU3D_ATTR_DISPOFF);
-        Hu3DModelAttrSet(lbl_1_bss_0.nozzleModelIds[1], HU3D_ATTR_DISPOFF);
+        fn_800269E8(lbl_1_bss_0.nozzleModelIds[0], (1 << 0));
+        fn_800269E8(lbl_1_bss_0.nozzleModelIds[1], (1 << 0));
         fn_1_70A8(3);
         if (lbl_1_bss_0.activePlayerCount == 0) {
             fn_1_7E70(2);
@@ -376,14 +376,14 @@ void fn_1_C78(s16 mode, s16 frameNo)
             }
         }
 
-        MgSeqWinnerSet(winners[0], winners[1], winners[2], winners[3]);
+        fn_80071C18(winners[0], winners[1], winners[2], winners[3]);
         for (playerNo = 0; playerNo < 4; playerNo++) {
             coinBonus = playerBonus[playerNo];
-            if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                GwPlayer[playerNo].mgCoinBonus = coinBonus;
+            if (fn_8006A124(65551) == 0) {
+                lbl_80265750[playerNo].mgCoinBonus = coinBonus;
             }
         }
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -403,7 +403,7 @@ void fn_1_118C(s16 mode, s16 frameNo)
                 } else {
                     motion = 6;
                 }
-                CharMotionShiftSet((s16)lbl_1_bss_0.characterNumbers[playerNo],
+                fn_8005C2C8((s16)lbl_1_bss_0.characterNumbers[playerNo],
                     player->omObj->mtnId[motion], 0.0f, 6.0f, 0);
             }
         }

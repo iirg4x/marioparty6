@@ -15,62 +15,61 @@ double cos(double);
 
 #include "dolphin/mtx.h"
 
-#define DATA_board (5 << 16)
 #define GUIDE_OBJECT_NAME 1296189252
 #define GUIDE_FADE_PARTICLE_CAPACITY 200
 #define GUIDE_EFFECT_ALPHA_VARIATION 70
 #define GUIDE_EFFECT_ALPHA_BASE 150
 
-#define GUIDE_DATA_SUN_MODEL DATANUM(DATA_capsulechar4, 0)
-#define GUIDE_DATA_MOON_MODEL DATANUM(DATA_capsulechar4, 27)
-#define GUIDE_DATA_ATTACHED_MODEL DATANUM(DATA_capsulechar4, 53)
-#define GUIDE_SOUND_FADE_IN MSM_SE_BRD00_116
-#define GUIDE_SOUND_FADE_OUT MSM_SE_BRD00_117
-#define GUIDE_DATA_FILE_01 DATANUM(DATA_capsulechar4, 1)
-#define GUIDE_DATA_FILE_02 DATANUM(DATA_capsulechar4, 2)
-#define GUIDE_DATA_FILE_03 DATANUM(DATA_capsulechar4, 3)
-#define GUIDE_DATA_FILE_04 DATANUM(DATA_capsulechar4, 4)
-#define GUIDE_DATA_FILE_05 DATANUM(DATA_capsulechar4, 5)
-#define GUIDE_DATA_FILE_06 DATANUM(DATA_capsulechar4, 6)
-#define GUIDE_DATA_FILE_07 DATANUM(DATA_capsulechar4, 7)
-#define GUIDE_DATA_FILE_08 DATANUM(DATA_capsulechar4, 8)
-#define GUIDE_DATA_FILE_09 DATANUM(DATA_capsulechar4, 9)
-#define GUIDE_DATA_FILE_0A DATANUM(DATA_capsulechar4, 10)
-#define GUIDE_DATA_FILE_0B DATANUM(DATA_capsulechar4, 11)
-#define GUIDE_DATA_FILE_0C DATANUM(DATA_capsulechar4, 12)
-#define GUIDE_DATA_FILE_0D DATANUM(DATA_capsulechar4, 13)
-#define GUIDE_DATA_FILE_0E DATANUM(DATA_capsulechar4, 14)
-#define GUIDE_DATA_FILE_0F DATANUM(DATA_capsulechar4, 15)
-#define GUIDE_DATA_FILE_10 DATANUM(DATA_capsulechar4, 16)
-#define GUIDE_DATA_FILE_11 DATANUM(DATA_capsulechar4, 17)
-#define GUIDE_DATA_FILE_12 DATANUM(DATA_capsulechar4, 18)
-#define GUIDE_DATA_FILE_13 DATANUM(DATA_capsulechar4, 19)
-#define GUIDE_DATA_FILE_14 DATANUM(DATA_capsulechar4, 20)
-#define GUIDE_DATA_FILE_15 DATANUM(DATA_capsulechar4, 21)
-#define GUIDE_DATA_FILE_16 DATANUM(DATA_capsulechar4, 22)
-#define GUIDE_DATA_FILE_17 DATANUM(DATA_capsulechar4, 23)
-#define GUIDE_DATA_FILE_1C DATANUM(DATA_capsulechar4, 28)
-#define GUIDE_DATA_FILE_1D DATANUM(DATA_capsulechar4, 29)
-#define GUIDE_DATA_FILE_1E DATANUM(DATA_capsulechar4, 30)
-#define GUIDE_DATA_FILE_1F DATANUM(DATA_capsulechar4, 31)
-#define GUIDE_DATA_FILE_20 DATANUM(DATA_capsulechar4, 32)
-#define GUIDE_DATA_FILE_21 DATANUM(DATA_capsulechar4, 33)
-#define GUIDE_DATA_FILE_22 DATANUM(DATA_capsulechar4, 34)
-#define GUIDE_DATA_FILE_23 DATANUM(DATA_capsulechar4, 35)
-#define GUIDE_DATA_FILE_24 DATANUM(DATA_capsulechar4, 36)
-#define GUIDE_DATA_FILE_25 DATANUM(DATA_capsulechar4, 37)
-#define GUIDE_DATA_FILE_26 DATANUM(DATA_capsulechar4, 38)
-#define GUIDE_DATA_FILE_27 DATANUM(DATA_capsulechar4, 39)
-#define GUIDE_DATA_FILE_28 DATANUM(DATA_capsulechar4, 40)
-#define GUIDE_DATA_FILE_29 DATANUM(DATA_capsulechar4, 41)
-#define GUIDE_DATA_FILE_2A DATANUM(DATA_capsulechar4, 42)
-#define GUIDE_DATA_FILE_2B DATANUM(DATA_capsulechar4, 43)
-#define GUIDE_DATA_FILE_2C DATANUM(DATA_capsulechar4, 44)
-#define GUIDE_DATA_FILE_2D DATANUM(DATA_capsulechar4, 45)
-#define GUIDE_DATA_FILE_2E DATANUM(DATA_capsulechar4, 46)
-#define GUIDE_DATA_FILE_2F DATANUM(DATA_capsulechar4, 47)
-#define GUIDE_DATA_FILE_30 DATANUM(DATA_capsulechar4, 48)
-#define GUIDE_DATA_FILE_31 DATANUM(DATA_capsulechar4, 49)
+#define GUIDE_DATA_SUN_MODEL DATANUM(0x110000, 0)
+#define GUIDE_DATA_MOON_MODEL DATANUM(0x110000, 27)
+#define GUIDE_DATA_ATTACHED_MODEL DATANUM(0x110000, 53)
+#define GUIDE_SOUND_FADE_IN 1120
+#define GUIDE_SOUND_FADE_OUT 1121
+#define GUIDE_DATA_FILE_01 DATANUM(0x110000, 1)
+#define GUIDE_DATA_FILE_02 DATANUM(0x110000, 2)
+#define GUIDE_DATA_FILE_03 DATANUM(0x110000, 3)
+#define GUIDE_DATA_FILE_04 DATANUM(0x110000, 4)
+#define GUIDE_DATA_FILE_05 DATANUM(0x110000, 5)
+#define GUIDE_DATA_FILE_06 DATANUM(0x110000, 6)
+#define GUIDE_DATA_FILE_07 DATANUM(0x110000, 7)
+#define GUIDE_DATA_FILE_08 DATANUM(0x110000, 8)
+#define GUIDE_DATA_FILE_09 DATANUM(0x110000, 9)
+#define GUIDE_DATA_FILE_0A DATANUM(0x110000, 10)
+#define GUIDE_DATA_FILE_0B DATANUM(0x110000, 11)
+#define GUIDE_DATA_FILE_0C DATANUM(0x110000, 12)
+#define GUIDE_DATA_FILE_0D DATANUM(0x110000, 13)
+#define GUIDE_DATA_FILE_0E DATANUM(0x110000, 14)
+#define GUIDE_DATA_FILE_0F DATANUM(0x110000, 15)
+#define GUIDE_DATA_FILE_10 DATANUM(0x110000, 16)
+#define GUIDE_DATA_FILE_11 DATANUM(0x110000, 17)
+#define GUIDE_DATA_FILE_12 DATANUM(0x110000, 18)
+#define GUIDE_DATA_FILE_13 DATANUM(0x110000, 19)
+#define GUIDE_DATA_FILE_14 DATANUM(0x110000, 20)
+#define GUIDE_DATA_FILE_15 DATANUM(0x110000, 21)
+#define GUIDE_DATA_FILE_16 DATANUM(0x110000, 22)
+#define GUIDE_DATA_FILE_17 DATANUM(0x110000, 23)
+#define GUIDE_DATA_FILE_1C DATANUM(0x110000, 28)
+#define GUIDE_DATA_FILE_1D DATANUM(0x110000, 29)
+#define GUIDE_DATA_FILE_1E DATANUM(0x110000, 30)
+#define GUIDE_DATA_FILE_1F DATANUM(0x110000, 31)
+#define GUIDE_DATA_FILE_20 DATANUM(0x110000, 32)
+#define GUIDE_DATA_FILE_21 DATANUM(0x110000, 33)
+#define GUIDE_DATA_FILE_22 DATANUM(0x110000, 34)
+#define GUIDE_DATA_FILE_23 DATANUM(0x110000, 35)
+#define GUIDE_DATA_FILE_24 DATANUM(0x110000, 36)
+#define GUIDE_DATA_FILE_25 DATANUM(0x110000, 37)
+#define GUIDE_DATA_FILE_26 DATANUM(0x110000, 38)
+#define GUIDE_DATA_FILE_27 DATANUM(0x110000, 39)
+#define GUIDE_DATA_FILE_28 DATANUM(0x110000, 40)
+#define GUIDE_DATA_FILE_29 DATANUM(0x110000, 41)
+#define GUIDE_DATA_FILE_2A DATANUM(0x110000, 42)
+#define GUIDE_DATA_FILE_2B DATANUM(0x110000, 43)
+#define GUIDE_DATA_FILE_2C DATANUM(0x110000, 44)
+#define GUIDE_DATA_FILE_2D DATANUM(0x110000, 45)
+#define GUIDE_DATA_FILE_2E DATANUM(0x110000, 46)
+#define GUIDE_DATA_FILE_2F DATANUM(0x110000, 47)
+#define GUIDE_DATA_FILE_30 DATANUM(0x110000, 48)
+#define GUIDE_DATA_FILE_31 DATANUM(0x110000, 49)
 
 static int guideSunMotTbl[24] = {
     GUIDE_DATA_FILE_01, GUIDE_DATA_FILE_01, GUIDE_DATA_FILE_02, GUIDE_DATA_FILE_03,
@@ -129,7 +128,7 @@ OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float sc
             motEnable[*motionEntry++] = 1;
         }
     }
-    obj = omAddObjEx(mbObjMan, 256, 4, 0, OM_GRP_NONE, GuideOMExec);
+    obj = fn_8003AB38(mbObjMan, 256, 4, 0, -1, GuideOMExec);
     for (i = 0; i < 4; i++) {
         obj->mdlId[i] = -1;
     }
@@ -154,13 +153,13 @@ OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float sc
             mbObjMotionNoCreate(modelId, guideMotTbl[guideNo][i], i);
             if (i == 11 || i == 16) {
                 motId = mbObjMotionIDGet(modelId, i);
-                Hu3DMotionAttrSet(motId, 1);
+                fn_8002DC74(motId, 1);
             }
         }
     }
     if (mbPauseProcCheck()) {
         omSetStatBit(obj, (1 << 7) | (1 << 5));
-        mbObjAttrSet(modelId, HU3D_ATTR_NOPAUSE);
+        mbObjAttrSet(modelId, (1 << 21));
     }
     if (attr & MB_GUIDE_ATTR_SCREEN) {
         guideWork->screenF = 1;
@@ -181,8 +180,8 @@ OMOBJ *mbGuideCreate(int guideNo, HuVecF *pos, HuVecF *rot, s8 *motTbl, float sc
     } else {
         motNo = 4;
     }
-    mbObjMotionSet(modelId, motNo, HU3D_MOTATTR_LOOP);
-    HuDataDirClose(GUIDE_DATA_SUN_MODEL);
+    mbObjMotionSet(modelId, motNo, ((1 << 30) | (1 << 0)));
+    fn_800097F4(GUIDE_DATA_SUN_MODEL);
     if (attr & MB_GUIDE_ATTR_ALTMTX) {
         guideWork->mode = 1;
         guideWork->phase = 0;
@@ -388,7 +387,7 @@ static void GuideOMExec(OMOBJ *obj)
         obj->mdlId[2] = -1;
         obj->mdlId[3] = -1;
         work->name = 0;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     switch (work->mode) {
@@ -466,7 +465,7 @@ static BOOL GuideFadeInUpdate(OMOBJ *obj)
                 mbObjFadeTexColorSet((s16)obj->mdlId[1], 128, 128, 128, 0.5f);
             }
             obj->mdlId[2] = GuideFadeInEffectCreate(obj);
-            Hu3DModelPosSetV(obj->mdlId[2], &pos);
+            fn_80026790(obj->mdlId[2], &pos);
             work->time = 0;
             work->timeMax = 60;
             work->phase++;
@@ -491,11 +490,11 @@ static BOOL GuideFadeInUpdate(OMOBJ *obj)
             }
             if (pos.y <= obj->trans.y) {
                 particleId = obj->mdlId[2];
-                effP2 = Hu3DData[particleId].hookData;
+                effP2 = lbl_802C01C8[particleId].hookData;
                 effP = effP2;
                 effP->stopF = 1;
             } else {
-                Hu3DModelPosSetV(obj->mdlId[2], &pos);
+                fn_80026790(obj->mdlId[2], &pos);
             }
             if (work->time >= work->timeMax) {
                 work->timeMax = 30;
@@ -553,7 +552,7 @@ static BOOL GuideFadeOutUpdate(OMOBJ *obj)
                 mbObjFadeTexColorSet((s16)obj->mdlId[1], 128, 128, 128, 0.5f);
             }
             obj->mdlId[2] = GuideFadeOutEffectCreate(obj);
-            Hu3DModelPosSetV(obj->mdlId[2], &obj->trans);
+            fn_80026790(obj->mdlId[2], &obj->trans);
             work->time = 0;
             work->timeMax = 60;
             work->phase++;
@@ -577,11 +576,11 @@ static BOOL GuideFadeOutUpdate(OMOBJ *obj)
                 mbObjFadeTexRotSet((s16)obj->mdlId[1], &pos, &rot);
             }
             if (pos.y >= obj->trans.y) {
-                Hu3DModelPosSetV(obj->mdlId[2], &pos);
+                fn_80026790(obj->mdlId[2], &pos);
             }
             if (pos.y >= obj->trans.y + 160.0f) {
                 particleId = obj->mdlId[2];
-                effP2 = Hu3DData[particleId].hookData;
+                effP2 = lbl_802C01C8[particleId].hookData;
                 effP = effP2;
                 effP->stopF = 1;
             }
@@ -621,10 +620,10 @@ static BOOL GuideFadeOutUpdate(OMOBJ *obj)
 int mbGuideNoGet(void)
 {
     int no = 0;
-    int party = GwSystem.partyF;
+    int party = lbl_80265B70.partyF;
     if (party == 0) {
         no = 0;
-    } else if (GwSystem.curTime == 0) {
+    } else if (lbl_80265B70.curTime == 0) {
         no = 0;
     } else {
         no = 1;
@@ -645,15 +644,15 @@ static MBMODELID GuideFadeInEffectCreate(OMOBJ *obj)
 {
     int particleId;
     Mtx mtx;
-    particleId = mbParticleCreate(HuSprAnimDataRead(mbBoardDataNumGet(DATANUM(DATA_board, 100))),
+    particleId = mbParticleCreate(HuSprAnimDataRead(mbBoardDataNumGet(DATANUM(0x50000, 100))),
                                   GUIDE_FADE_PARTICLE_CAPACITY);
     mbParticleHookSet(particleId, GuideFadeInEffectHook);
-    Hu3DModelCameraSet(particleId, mbObjGet(obj->mdlId[0])->cameraBit);
-    Hu3DModelLayerSet(particleId, mbObjGet(obj->mdlId[0])->layer + 1);
+    fn_80026B64(particleId, mbObjGet(obj->mdlId[0])->cameraBit);
+    fn_80026B8C(particleId, mbObjGet(obj->mdlId[0])->layer + 1);
     mbObjMtxGet(obj->mdlId[0], &mtx);
-    Hu3DModelMtxSet(particleId, &mtx);
+    fn_80026958(particleId, &mtx);
     if (mbPauseProcCheck()) {
-        Hu3DModelAttrSet(particleId, HU3D_ATTR_NOPAUSE);
+        fn_800269E8(particleId, (1 << 21));
     }
     return particleId;
 }
@@ -663,15 +662,15 @@ static MBMODELID GuideFadeOutEffectCreate(OMOBJ *obj)
 {
     int particleId;
     Mtx mtx;
-    particleId = mbParticleCreate(HuSprAnimDataRead(mbBoardDataNumGet(DATANUM(DATA_board, 100))),
+    particleId = mbParticleCreate(HuSprAnimDataRead(mbBoardDataNumGet(DATANUM(0x50000, 100))),
                                   GUIDE_FADE_PARTICLE_CAPACITY);
     mbParticleHookSet(particleId, GuideFadeOutEffectHook);
-    Hu3DModelCameraSet(particleId, mbObjGet(obj->mdlId[0])->cameraBit);
-    Hu3DModelLayerSet(particleId, mbObjGet(obj->mdlId[0])->layer + 1);
+    fn_80026B64(particleId, mbObjGet(obj->mdlId[0])->cameraBit);
+    fn_80026B8C(particleId, mbObjGet(obj->mdlId[0])->layer + 1);
     mbObjMtxGet(obj->mdlId[0], &mtx);
-    Hu3DModelMtxSet(particleId, &mtx);
+    fn_80026958(particleId, &mtx);
     if (mbPauseProcCheck()) {
-        Hu3DModelAttrSet(particleId, HU3D_ATTR_NOPAUSE);
+        fn_800269E8(particleId, (1 << 21));
     }
     return particleId;
 }

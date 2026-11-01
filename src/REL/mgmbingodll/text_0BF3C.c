@@ -39,14 +39,13 @@ void fn_1_D634(OMOBJ *object);
 #define BINGO_CHARACTER_RESULT_VOICE 579
 
 extern u8 MgModeWork[256];
-extern u16 HuPadBtnDown[];
-extern u8 HuPadDStkRep[];
+extern u16 lbl_802C0008[];
+extern u8 lbl_802BFFE0[];
 s16 fn_1_8FA8(s16 *scores);
 void fn_1_8BDC(s16 playerIndex, s16 requiredMarks, s16 *lineScores);
 s16 fn_1_901C(s16 *lineScores);
 
 void fn_1_AAC8(HuVecF *position);
-s32 _CharFXPlay(s16, s32, s32);
 
 #include "dolphin/math.h"
 
@@ -67,8 +66,8 @@ void fn_1_347C(void);
 void fn_1_54FC(s16 player);
 void fn_1_2114(void);
 
-extern u16 HuPadBtnDown[4];
-extern u8 HuPadDStkRep[4];
+extern u16 lbl_802C0008[4];
+extern u8 lbl_802BFFE0[4];
 void fn_1_1C14(void);
 void fn_1_1D1C(void);
 void fn_1_1D70(void);
@@ -101,9 +100,9 @@ static inline s16 PlayerIsReady(s16 playerNo)
 }
 
 u32 lbl_1_data_848[8] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 3), DATANUM(DATA_mariomot, 4),
-    DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 7), DATANUM(DATA_mariomot, 36),
-    DATANUM(DATA_mariomot, 37), DATANUM(DATA_mario, 126)
+    DATANUM(0x930000, 0), DATANUM(0x930000, 3), DATANUM(0x930000, 4),
+    DATANUM(0x930000, 6), DATANUM(0x930000, 7), DATANUM(0x930000, 36),
+    DATANUM(0x930000, 37), DATANUM(0x8e0000, 126)
 };
 
 Point3d lbl_1_data_868[4] = { { -430.0f, 1060.0f, 0.0f },
@@ -114,16 +113,16 @@ Point3d lbl_1_data_868[4] = { { -430.0f, 1060.0f, 0.0f },
 Point3d lbl_1_data_898[2] = {{0.0f, 1900.0f, -700.0f}, {0.0f, 2240.0f, 50.0f}};
 
 BingoMotionSetting lbl_1_data_8B0[10] = {
-    {0, 0.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {0, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {1, 0.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {2, 0.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {3, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {4, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {5, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {6, 8.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {7, 0.0f, HU3D_MOTATTR_LOOP, 1, 0},
-    {7, 8.0f, HU3D_MOTATTR_LOOP, 1, 0}
+    {0, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {0, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {1, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {2, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {3, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {4, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {5, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {6, 8.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {7, 0.0f, ((1 << 30) | (1 << 0)), 1, 0},
+    {7, 8.0f, ((1 << 30) | (1 << 0)), 1, 0}
 };
 
 // Applies a player's requested character animation and voice settings during state updates.
@@ -140,27 +139,27 @@ void fn_1_BF3C(OMOBJ *object, s16 motionSettingIndex) {
         motionIndex = lbl_1_data_8B0[motionSettingIndex].motionIndex;
         if (motionIndex != -1) {
             if (lbl_1_data_8B0[motionSettingIndex].duration <= 1.0f) {
-                CharMotionSet(motionData->characterNo, object->mtnId[motionIndex]);
-                Hu3DModelAttrReset(
+                fn_8005BE80(motionData->characterNo, object->mtnId[motionIndex]);
+                fn_80026A44(
                     object->mdlId[0],
-                    Hu3DModelMotionAttrGet(object->mdlId[0]) | HU3D_MOTATTR);
-                CharModelAttrSet(
+                    fn_80026AB8(object->mdlId[0]) | (1 << 30));
+                fn_8005C430(
                     motionData->characterNo,
                     lbl_1_data_8B0[motionSettingIndex].modelAttributes);
             } else {
-                CharModelAttrSet(motionData->characterNo, HU3D_MOTATTR_PAUSE);
-                CharMotionShiftSet(motionData->characterNo, object->mtnId[motionIndex],
+                fn_8005C430(motionData->characterNo, ((1 << 30) | (1 << 1)));
+                fn_8005C2C8(motionData->characterNo, object->mtnId[motionIndex],
                     0.0f,
                     lbl_1_data_8B0[motionSettingIndex].duration,
                     lbl_1_data_8B0[motionSettingIndex].modelAttributes);
             }
             // Both settings enable the same motion-record flag.
             if (lbl_1_data_8B0[motionSettingIndex].setMotionAttribute != 0) {
-                Hu3DMotionAttrSet(object->mtnId[motionIndex], 1U);
+                fn_8002DC74(object->mtnId[motionIndex], 1U);
             } else {
-                Hu3DMotionAttrSet(object->mtnId[motionIndex], 1U);
+                fn_8002DC74(object->mtnId[motionIndex], 1U);
             }
-            CharModelVoiceFlagSet(motionData->characterNo,
+            fn_8005DFC0(motionData->characterNo,
                                   lbl_1_data_8B0[motionSettingIndex].voiceFlag);
         }
         motionData->currentMotion = motionSettingIndex;
@@ -182,48 +181,48 @@ void fn_1_C168(void)
 
     player = 0;
     while (player < 4) {
-        playerObject = omAddObjEx(lbl_1_bss_B00, 4352, 1, 8, -1,
+        playerObject = fn_8003AB38(lbl_1_bss_B00, 4352, 1, 8, -1,
             fn_1_D634);
         lbl_1_bss_ACC[player] = playerObject;
         playerObject->stat |= 0x100;
         playerObject->work[0] = playerObject->work[1] =
             playerObject->work[2] = playerObject->work[3] = 0;
-        playerObject->data = HuMemDirectMallocNum(HEAP_HEAP, 72, HU_MEMNUM_OVL);
+        playerObject->data = HuMemDirectMallocNum(HEAP_HEAP, 72, 0x10000000);
         memset(playerObject->data, 0, 72);
         playerData = playerObject->data;
         playerData->playerIndex = player;
-        playerData->characterNo = GwPlayerConf[player].charNo;
-        playerData->padIndex = GwPlayerConf[player].padNo;
-        playerData->groupNo = GwPlayerConf[player].grpNo;
-        playerData->inputMode = GwPlayerConf[player].type;
-        playerData->difficulty = GwPlayerConf[player].comDif;
+        playerData->characterNo = lbl_80265728[player].charNo;
+        playerData->padIndex = lbl_80265728[player].padNo;
+        playerData->groupNo = lbl_80265728[player].grpNo;
+        playerData->inputMode = lbl_80265728[player].type;
+        playerData->difficulty = lbl_80265728[player].comDif;
         playerData->state = -1;
-        *playerObject->mdlId = CharModelCreate(playerData->characterNo, 4);
+        *playerObject->mdlId = fn_80057068(playerData->characterNo, 4);
         motionIndex = 0;
         while (motionIndex < 8) {
-            playerObject->mtnId[motionIndex] = CharMotionCreate(
+            playerObject->mtnId[motionIndex] = fn_8005B0B8(
                 playerData->characterNo, lbl_1_data_848[motionIndex]);
             motionIndex++;
         }
-        CharMotionDataClose(playerData->characterNo);
+        fn_8005B4BC(playerData->characterNo);
         playerData->currentMotion = -1;
         fn_1_BF3C(playerObject, 8);
-        CharModelAttrSet(playerData->characterNo, HU3D_MOTATTR_PAUSE);
-        Hu3DModelCameraSet(*playerObject->mdlId, 1);
-        Hu3DModelLayerSet(*playerObject->mdlId, 1);
-        Hu3DModelShadowSet(*playerObject->mdlId);
-        Hu3DModelAttrSet(*playerObject->mdlId, HU3D_ATTR_NOCULL);
+        fn_8005C430(playerData->characterNo, ((1 << 30) | (1 << 1)));
+        fn_80026B64(*playerObject->mdlId, 1);
+        fn_80026B8C(*playerObject->mdlId, 1);
+        fn_80026E44(*playerObject->mdlId);
+        fn_800269E8(*playerObject->mdlId, (1 << 14));
         playerData->position = lbl_1_data_868[player];
         playerData->position.y -= 70.0f;
-        Hu3DModelPosSetV(*playerObject->mdlId, &playerData->position);
+        fn_80026790(*playerObject->mdlId, &playerData->position);
         playerData->rotation.x = playerData->rotation.y =
             playerData->rotation.z = 0.0f;
-        Hu3DModelRotSetV(*playerObject->mdlId, &playerData->rotation);
-        CharMotionVoiceOnSet(playerData->characterNo,
+        fn_80026838(*playerObject->mdlId, &playerData->rotation);
+        fn_8005DEB0(playerData->characterNo,
             (s16)lbl_1_data_848[5], 0);
         player++;
     }
-    CharEffectLayerSet(2);
+    fn_8005DDEC(2);
 }
 
 // Resets player characters to their starting positions before a new board round.
@@ -242,10 +241,10 @@ void fn_1_C578(void) {
 
         playerData->position = lbl_1_data_868[playerIndex];
         playerData->position.z += 75.0f;
-        Hu3DModelPosSetV(object->mdlId[0], &playerData->position);
+        fn_80026790(object->mdlId[0], &playerData->position);
         playerData->rotation.x = playerData->rotation.z =
             playerData->rotation.y = 0.0f;
-        Hu3DModelRotSetV(object->mdlId[0], &playerData->rotation);
+        fn_80026838(object->mdlId[0], &playerData->rotation);
         playerIndex++;
     }
 
@@ -270,7 +269,7 @@ void fn_1_C848(void) {
     while (playerIndex < 4) {
         playerData = lbl_1_bss_ACC[playerIndex]->data;
         playerData->groupNo = playerIndex;
-        GwPlayerConf[playerIndex].grpNo = playerData->groupNo;
+        lbl_80265728[playerIndex].grpNo = playerData->groupNo;
         playerIndex += 1;
     }
 }
@@ -288,8 +287,8 @@ u16 fn_1_C8B8(s16 playerIndex, s16 targetCell) {
     buttons = 0;
     input = (MgmbingoPlayerData *)lbl_1_bss_ACC[playerIndex]->data;
     if (input->inputMode == 0) {
-        buttons = HuPadBtnDown[input->padIndex] & 0x320;
-        buttons |= HuPadDStkRep[input->padIndex];
+        buttons = lbl_802C0008[input->padIndex] & 0x320;
+        buttons |= lbl_802BFFE0[input->padIndex];
     } else {
         if (lbl_1_bss_A70 == 0) {
             eventIndex = 0;
@@ -579,8 +578,8 @@ void fn_1_D634(OMOBJ *object) {
         fn_1_BF3C(object, 1);
         break;
     case 1:
-        CharModelAttrReset(work->characterNo, HU3D_MOTATTR_PAUSE);
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
+        fn_8005C47C(work->characterNo, ((1 << 30) | (1 << 1)));
+        if (fn_8005C284(work->characterNo) < 0) {
             work->state = 2;
         }
         break;
@@ -597,19 +596,19 @@ void fn_1_D634(OMOBJ *object) {
             work->state = 3;
             work->position.y = lbl_1_data_868[work->playerIndex].y;
         }
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
-            motionEnd = CharMotionMaxTimeGet(work->characterNo);
-            if (Hu3DData[object->mdlId[0]].motWork.speed +
-                CharMotionTimeGet(work->characterNo) >= motionEnd) {
+        if (fn_8005C284(work->characterNo) < 0) {
+            motionEnd = fn_8005C1FC(work->characterNo);
+            if (lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                fn_8005C1B8(work->characterNo) >= motionEnd) {
                 fn_1_BF3C(object, 1);
             }
         }
         break;
     case 3:
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
-            motionEnd = CharMotionMaxTimeGet(work->characterNo);
-            if (Hu3DData[object->mdlId[0]].motWork.speed +
-                CharMotionTimeGet(work->characterNo) >= motionEnd) {
+        if (fn_8005C284(work->characterNo) < 0) {
+            motionEnd = fn_8005C1FC(work->characterNo);
+            if (lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                fn_8005C1B8(work->characterNo) >= motionEnd) {
                 fn_1_BF3C(object, 1);
                 work->state = 0;
             }
@@ -620,23 +619,23 @@ void fn_1_D634(OMOBJ *object) {
         work->state = 5;
         break;
     case 5:
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
+        if (fn_8005C284(work->characterNo) < 0) {
             work->state = 6;
         }
         break;
     case 6:
-        Hu3DModelAttrSet(object->mdlId[0], 1U);
+        fn_800269E8(object->mdlId[0], 1U);
         break;
     case 7:
         fn_1_BF3C(object, 4);
         work->state = 8;
         break;
     case 8:
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
-            motionEnd = CharMotionMaxTimeGet(work->characterNo);
-            if (Hu3DData[object->mdlId[0]].motWork.speed +
-                CharMotionTimeGet(work->characterNo) >= motionEnd) {
-                Hu3DModelAttrSet(object->mdlId[0], HU3D_MOTATTR_PAUSE);
+        if (fn_8005C284(work->characterNo) < 0) {
+            motionEnd = fn_8005C1FC(work->characterNo);
+            if (lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                fn_8005C1B8(work->characterNo) >= motionEnd) {
+                fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
                 work->state = 9;
             }
         }
@@ -646,26 +645,26 @@ void fn_1_D634(OMOBJ *object) {
         work->state = 11;
         break;
     case 11:
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
-            motionEnd = CharMotionMaxTimeGet(work->characterNo);
-            if (Hu3DData[object->mdlId[0]].motWork.speed +
-                CharMotionTimeGet(work->characterNo) >= motionEnd) {
-                Hu3DModelAttrSet(object->mdlId[0], HU3D_MOTATTR_PAUSE);
+        if (fn_8005C284(work->characterNo) < 0) {
+            motionEnd = fn_8005C1FC(work->characterNo);
+            if (lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                fn_8005C1B8(work->characterNo) >= motionEnd) {
+                fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
                 work->state = 12;
             }
         }
         break;
     case 13:
         fn_1_BF3C(object, 6);
-        _CharFXPlay(work->characterNo, BINGO_CHARACTER_RESULT_VOICE, 0);
+        fn_800591C8(work->characterNo, BINGO_CHARACTER_RESULT_VOICE, 0);
         work->state = 14;
         break;
     case 14:
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
-            motionEnd = CharMotionMaxTimeGet(work->characterNo);
-            if (Hu3DData[object->mdlId[0]].motWork.speed +
-                CharMotionTimeGet(work->characterNo) >= motionEnd) {
-                Hu3DModelAttrSet(object->mdlId[0], HU3D_MOTATTR_PAUSE);
+        if (fn_8005C284(work->characterNo) < 0) {
+            motionEnd = fn_8005C1FC(work->characterNo);
+            if (lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                fn_8005C1B8(work->characterNo) >= motionEnd) {
+                fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
                 work->state = 15;
             }
         }
@@ -675,11 +674,11 @@ void fn_1_D634(OMOBJ *object) {
         work->state = 17;
         break;
     case 17:
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
-            motionEnd = CharMotionMaxTimeGet(work->characterNo);
-            if (Hu3DData[object->mdlId[0]].motWork.speed +
-                CharMotionTimeGet(work->characterNo) >= motionEnd) {
-                Hu3DModelAttrSet(object->mdlId[0], HU3D_MOTATTR_PAUSE);
+        if (fn_8005C284(work->characterNo) < 0) {
+            motionEnd = fn_8005C1FC(work->characterNo);
+            if (lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                fn_8005C1B8(work->characterNo) >= motionEnd) {
+                fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
                 work->state = 18;
             }
         }
@@ -688,7 +687,7 @@ void fn_1_D634(OMOBJ *object) {
         Vec position;
         Vec target;
         HuVecF *targetPointer;
-        Hu3DModelAttrReset(object->mdlId[0], 1U);
+        fn_80026A44(object->mdlId[0], 1U);
         fn_1_BF3C(object, 2);
         work->velocityY = 20.0f;
         work->state = 20;
@@ -700,14 +699,14 @@ void fn_1_D634(OMOBJ *object) {
         break;
     }
     case 20:
-        if (work->currentMotion == 2 && CharMotionShiftIDGet(work->characterNo) < 0) {
-            motionEnd = CharMotionMaxTimeGet(work->characterNo);
-            if (Hu3DData[object->mdlId[0]].motWork.speed +
-                CharMotionTimeGet(work->characterNo) >= motionEnd) {
+        if (work->currentMotion == 2 && fn_8005C284(work->characterNo) < 0) {
+            motionEnd = fn_8005C1FC(work->characterNo);
+            if (lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                fn_8005C1B8(work->characterNo) >= motionEnd) {
                 // Hold every motion channel while the character finishes the jump.
-                Hu3DModelAttrSet(object->mdlId[0], HU3D_MOTATTR_PAUSE |
-                    HU3D_MOTATTR_SHIFT_PAUSE | HU3D_MOTATTR_SHAPE_PAUSE |
-                    HU3D_MOTATTR_OVL_PAUSE);
+                fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)) |
+                    ((1 << 30) | (1 << 4)) | ((1 << 30) | (1 << 7)) |
+                    ((1 << 30) | (1 << 10)));
             }
         }
         work->position.z += 10.0f;
@@ -719,18 +718,18 @@ void fn_1_D634(OMOBJ *object) {
         if (work->position.y < work->targetPosition.y && work->velocityY < 0.0f) {
             work->velocityY = 0.0f;
             work->position = work->targetPosition;
-            Hu3DModelAttrReset(object->mdlId[0], HU3D_MOTATTR_PAUSE |
-                HU3D_MOTATTR_SHIFT_PAUSE | HU3D_MOTATTR_SHAPE_PAUSE |
-                HU3D_MOTATTR_OVL_PAUSE);
+            fn_80026A44(object->mdlId[0], ((1 << 30) | (1 << 1)) |
+                ((1 << 30) | (1 << 4)) | ((1 << 30) | (1 << 7)) |
+                ((1 << 30) | (1 << 10)));
             fn_1_BF3C(object, 3);
             work->state = 21;
         }
         break;
     case 21:
-        if (CharMotionShiftIDGet(work->characterNo) < 0) {
-            motionEnd = CharMotionMaxTimeGet(work->characterNo);
-            if (Hu3DData[object->mdlId[0]].motWork.speed +
-                CharMotionTimeGet(work->characterNo) >= motionEnd) {
+        if (fn_8005C284(work->characterNo) < 0) {
+            motionEnd = fn_8005C1FC(work->characterNo);
+            if (lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                fn_8005C1B8(work->characterNo) >= motionEnd) {
                 work->state = 0;
                 fn_1_BF3C(object, 1);
             }
@@ -747,8 +746,8 @@ void fn_1_D634(OMOBJ *object) {
     } else {
         work->rotation.y = 0.0f;
     }
-    Hu3DModelRotSetV(object->mdlId[0], &work->rotation);
-    Hu3DModelPosSetV(object->mdlId[0], &work->position);
+    fn_80026838(object->mdlId[0], &work->rotation);
+    fn_80026790(object->mdlId[0], &work->position);
 }
 
 // Reads a sprite group's member position for the current board display.
@@ -762,9 +761,9 @@ void fn_1_EE18(s16 spriteGroup, s16 memberIndex, f32 *positionX,
 }
 
 s32 lbl_1_data_9D0[8] = {
-    DATANUM(DATA_mgmbingo, 20), DATANUM(DATA_mgmbingo, 21), DATANUM(DATA_mgmbingo, 19),
-    DATANUM(DATA_mgmbingo, 22), DATANUM(DATA_mgmbingo, 23), DATANUM(DATA_mgmbingo, 24),
-    DATANUM(DATA_mgmbingo, 25), DATANUM(DATA_mgmbingo, 26)
+    DATANUM(0x9d0000, 20), DATANUM(0x9d0000, 21), DATANUM(0x9d0000, 19),
+    DATANUM(0x9d0000, 22), DATANUM(0x9d0000, 23), DATANUM(0x9d0000, 24),
+    DATANUM(0x9d0000, 25), DATANUM(0x9d0000, 26)
 };
 
 Point3d lbl_1_data_9F0 = {288.0f, 122.0f, 0.0f};
@@ -781,7 +780,7 @@ void fn_1_EE74(void) {
     while (spriteIndex < 8)
     {
         lbl_1_bss_A84[spriteIndex] = HuSprAnimRead(
-            HuDataSelHeapReadNum(lbl_1_data_9D0[spriteIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+            fn_80008DD0(lbl_1_data_9D0[spriteIndex], 0x10000000, 2));
         spriteIndex += 1;
     }
     lbl_1_bss_A82 = HuSprGrpCreate(8);
@@ -854,8 +853,8 @@ restart_animation:
     while (loopActive != 0) {
         dpadRepeat = buttonDown = 0;
         if (selectedPlayer >= 0) {
-            dpadRepeat = HuPadDStkRep[controllerData->padIndex];
-            buttonDown = HuPadBtnDown[controllerData->padIndex];
+            dpadRepeat = lbl_802BFFE0[controllerData->padIndex];
+            buttonDown = lbl_802C0008[controllerData->padIndex];
         }
         if (previousGameNo != MgGameNo) {
             HuSprGrpScaleSet(lbl_1_bss_A82,
@@ -891,21 +890,21 @@ restart_animation:
             HuPrcVSleep();
             previousGameNo = MgGameNo;
         } else if ((buttonDown & 0x100) != 0) {
-            HuAudFXPlay(MSM_SE_BINGO_GAME_COUNT_CONFIRM);
+            HuAudFXPlay(1216);
             loopActive = 0;
             result = 0;
         } else if ((buttonDown & 0x200) != 0) {
-            HuAudFXPlay(MSM_SE_CMN_04);
+            HuAudFXPlay(3);
             loopActive = 0;
             result = 1;
         } else if ((dpadRepeat & 1) != 0) {
-            HuAudFXPlay(MSM_SE_BINGO_GAME_COUNT_CHANGE);
+            HuAudFXPlay(1211);
             MgGameNo--;
             if (MgGameNo < 1) {
                 MgGameNo = 5;
             }
         } else if ((dpadRepeat & 2) != 0) {
-            HuAudFXPlay(MSM_SE_BINGO_GAME_COUNT_CHANGE);
+            HuAudFXPlay(1211);
             MgGameNo++;
             if (MgGameNo > 5) {
                 MgGameNo = 1;
@@ -1057,10 +1056,10 @@ void fn_1_FD14(void) {
     fn_1_BDB4();
     HuPrcSleep(60);
     fn_1_10A64(6, 30);
-    HuAudFXPlay(MSM_SE_BINGO_RESULTS_CAMERA);
+    HuAudFXPlay(1266);
     fn_1_B498();
     HuAudSStreamFadeOut(lbl_1_data_AC8, 200);
-    HuAudFXPlay(MSM_SE_BINGO_FINAL_RESULTS);
+    HuAudFXPlay(1262);
 
     player = 0;
     placementIndex = 0;

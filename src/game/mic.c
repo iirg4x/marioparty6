@@ -16,8 +16,8 @@
 
 #define MIC_ALLOC_TAG 805306368
 #define MIC_SESSION_ALLOC_TAG 805306369
-#define MIC_STATUS_SPRITE_DATA_NUM DATANUM(DATA_win, 50)
-#define MIC_DEVICE_ALERT_SPRITE_DATA_NUM DATANUM(DATA_win, 51)
+#define MIC_STATUS_SPRITE_DATA_NUM DATANUM(0xf20000, 50)
+#define MIC_DEVICE_ALERT_SPRITE_DATA_NUM DATANUM(0xf20000, 51)
 #define MIC_RECOGNIZED_WORD_CONFIRM_MESSAGE MESSNUM(MESS_MICQUIZ, 57)
 #define MIC_WRONG_DEVICE_MESSAGE MESSNUM(MESS_SAF_TEST, 21)
 #define MIC_DEVICE_UNAVAILABLE_MESSAGE MESSNUM(MESS_SAF_TEST, 20)
@@ -53,7 +53,7 @@ char *strcat(char *, const char *);
 int strcmp(const char *, const char *);
 u32 strlen(const char *);
 double log10(double);
-void *HuMemDirectRealloc(HEAPID, void *, s32);
+void *fn_8000B630(HEAPID, void *, s32);
 s32 WipeCheckIn(void);
 void MICInit(void);
 void M2SInit(void);
@@ -420,8 +420,8 @@ s32 HuMCInit(s16 languageIndex)
   OSReport("HEAP HEAP Malloc Size %x\n",HuMemUsedMallocSizeGet(0));
   OSReport("OSAlloc Size Left %dkb(%x)\n",OSCheckHeap(currentHeapHandle) / 1024,
            OSCheckHeap(currentHeapHandle));
-  MCAnswerProc = HuPrcCreate(MCAnswerMain,65000,16384,0);
-  HuPrcSetStat(MCAnswerProc,HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+  MCAnswerProc = fn_8000D818(MCAnswerMain,65000,16384,0);
+  HuPrcSetStat(MCAnswerProc,0x4 | 0x8);
   MCMicValue = -1;
   return result;
 }
@@ -550,9 +550,9 @@ s16 HuMCContextCreate(char *path)
     OSReport("Error WRD %x\n",contextError);
   }
   gsapi_ContextSetParam(contextSlot->context,9,MCThreshold);
-  if ((omcurovl == DLL_m669dll) || (omcurovl == DLL_m670dll) || (omcurovl == DLL_m665dll) ||
-      (omcurovl == DLL_micquizdll) || (omcurovl == DLL_micquizishidll) ||
-      (omcurovl == DLL_micquizohdedll) || (omcurovl == DLL_micquizmyokodll)) {
+  if ((omcurovl == 74) || (omcurovl == 75) || (omcurovl == 70) ||
+      (omcurovl == 102) || (omcurovl == 103) ||
+      (omcurovl == 105) || (omcurovl == 104)) {
     gsapi_ContextSetParam(contextSlot->context,10,200);
   }
   else {
@@ -997,7 +997,7 @@ void HuMCMicSprCreate(f32 x,f32 y)
   HUSPRID statusSprite;
 
   if (HuMCMicSaveGet() == 1) {
-    spriteFile = HuAR_ARAMtoMRAMFileRead(MIC_STATUS_SPRITE_DATA_NUM,MIC_ALLOC_TAG,2);
+    spriteFile = fn_8005607C(MIC_STATUS_SPRITE_DATA_NUM,MIC_ALLOC_TAG,2);
     spriteAnimation = HuSprAnimRead(spriteFile);
     MCSprGrpId = HuSprGrpCreate(1);
     statusSprite = HuSprCreate(spriteAnimation,1,0);
@@ -1027,14 +1027,14 @@ s32 HuMCMicGet(void)
   if (MCMicValue != -1) {
     return MCMicValue;
   }
-  return GwCommon.mic;
+  return lbl_80265E30.mic;
 }
 
 /* Returns the saved microphone mode used by capture and pad-answer processes. */
 inline s32 HuMCMicSaveGet(void)
 
 {
-  return GwCommon.mic;
+  return lbl_80265E30.mic;
 }
 
 /* Updates the saved microphone mode when speech storage is absent;
@@ -1046,7 +1046,7 @@ void HuMCMicSet(s32 micChoice)
     MCMicValue = micChoice;
   }
   else {
-    GwCommon.mic = (u8)micChoice;
+    lbl_80265E30.mic = (u8)micChoice;
   }
 }
 
@@ -1066,7 +1066,7 @@ void HuMCSelWinCreate(f32 x,f32 y)
 {
   s32 micMode;
   MCSelWinWork.winId = MIC_ID_NONE_VALUE;
-  micMode = GwCommon.mic;
+  micMode = lbl_80265E30.mic;
   if (micMode == 2) {
     MCSelWinWork.winId = HuWinCreate((double)lbl_802C1E4C,(double)lbl_802C1E4C,32,32,0);
     MCSelWinWork.x = x;
@@ -1075,8 +1075,8 @@ void HuMCSelWinCreate(f32 x,f32 y)
     *MCSelWinWork.item = 0;
     MCSelWinWork.order = HuMemDirectMallocNum(0,64,MIC_ALLOC_TAG);
     MCSelWinWork.choice = 0;
-    MCSelWinWork.proc = HuPrcCreate(MCSelWinFunc,65000,MIC_CHOICE_PROCESS_STACK_SIZE,0);
-    HuPrcSetStat(MCSelWinWork.proc,HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+    MCSelWinWork.proc = fn_8000D818(MCSelWinFunc,65000,MIC_CHOICE_PROCESS_STACK_SIZE,0);
+    HuPrcSetStat(MCSelWinWork.proc,0x4 | 0x8);
   }
   return;
 }
@@ -1205,8 +1205,8 @@ s32 HuMCSelWinItemRandSet(s32 messageBase,s16 itemCount,s16 fixedItem,
   if (MCSelWinWork.proc != 0) {
     HuPrcKill(MCSelWinWork.proc);
   }
-  MCSelWinWork.proc = HuPrcCreate(MCSelWinFunc,65000,MIC_CHOICE_PROCESS_STACK_SIZE,0);
-  HuPrcSetStat(MCSelWinWork.proc,HU_PRC_STAT_PAUSE_ON | HU_PRC_STAT_UPAUSE_ON);
+  MCSelWinWork.proc = fn_8000D818(MCSelWinFunc,65000,MIC_CHOICE_PROCESS_STACK_SIZE,0);
+  HuPrcSetStat(MCSelWinWork.proc,0x4 | 0x8);
   return MCSelWinWork.winId;
 }
 
@@ -1280,7 +1280,7 @@ static void MCSelWinFunc(void)
         HuWinMesSet(MCSelWinWork.winId,(u32)MCSelWinWork.item);
         choiceWindow = &winData[MCSelWinWork.winId];
         while (choiceWindow->stat != 0) {
-          if (omUPauseFlag + omPauseChk() != 0) {
+          if (lbl_802C0234 + fn_8003B748() != 0) {
             HuWinDispOff(MCSelWinWork.winId);
           } else {
             HuWinDispOn(MCSelWinWork.winId);
@@ -1289,7 +1289,7 @@ static void MCSelWinFunc(void)
         }
         HuWinChoiceSet(MCSelWinWork.winId,0);
         while (choiceWindow->stat != 0) {
-          if (omUPauseFlag + omPauseChk() != 0) {
+          if (lbl_802C0234 + fn_8003B748() != 0) {
             HuWinDispOff(MCSelWinWork.winId);
           } else {
             HuWinDispOn(MCSelWinWork.winId);
@@ -1300,7 +1300,7 @@ static void MCSelWinFunc(void)
         if (selectedChoice >= 0) {
           responseWord = MCSelWinWork.order[selectedChoice];
           for (selectionDelay = 0; selectionDelay < 10; selectionDelay++) {
-            if (omUPauseFlag + omPauseChk() != 0) {
+            if (lbl_802C0234 + fn_8003B748() != 0) {
               HuWinDispOff(MCSelWinWork.winId);
             } else {
               HuWinDispOn(MCSelWinWork.winId);
@@ -1342,7 +1342,7 @@ void HuMCSelWinContextSet(s16 contextId, MCResponseCallback responseCallback,
     HuMCSelWinContextKill();
   }
   MCCallback = responseCallback;
-  MCListenerProc = HuPrcCreate(MCSelWinContextProc,65000,MIC_CHOICE_PROCESS_STACK_SIZE,0);
+  MCListenerProc = fn_8000D818(MCSelWinContextProc,65000,MIC_CHOICE_PROCESS_STACK_SIZE,0);
   MCListenerProc->property = (void *)(((u32)padNo << 16) | (u16)contextId);
   MCSelWinMaxTime = 0;
   return;
@@ -1427,14 +1427,14 @@ static void MCSelWinContextProc(void)
   s16 releaseWaitFrames;
   s16 *latestResponse;
 
-  listenerProcess = HuPrcCurrentGet();
+  listenerProcess = fn_8000DD9C();
   packedContext = (u32)listenerProcess->property;
   padNo = packedContext >> 16;
   contextId = (u16)packedContext;
   initialButton = HuMCButtonGet();
   for (;;) {
     if (((HuMCMicSaveGet() == 1) && (HuMCButtonDownGet() || initialButton)) ||
-        (HuMCSelWinCheck() && (HuPadBtnDown[padNo] & PAD_TRIGGER_R))) {
+        (HuMCSelWinCheck() && (lbl_802C0008[padNo] & PAD_TRIGGER_R))) {
       initialButton = 0;
       HuMCContextSet(contextId);
       MCContextCallback = MCCallback;
@@ -1522,13 +1522,13 @@ void HuMCListenerCreate(s16 contextId, MCResponseCallback responseCallback,
 {
   s32 micMode;
 
-  micMode = GwCommon.mic;
+  micMode = lbl_80265E30.mic;
   if (micMode != 0) {
     MCCallback = responseCallback;
     if (MCListenerProc != 0) {
       HuPrcKill(MCListenerProc);
     }
-    MCListenerProc = HuPrcCreate(MCListenerFunc,65000,MIC_CHOICE_PROCESS_STACK_SIZE,0);
+    MCListenerProc = fn_8000D818(MCListenerFunc,65000,MIC_CHOICE_PROCESS_STACK_SIZE,0);
     MCListenerProc->property = (void *)(((u32)padNo << 16) | (u16)contextId);
   }
   return;
@@ -1564,14 +1564,14 @@ static void MCListenerFunc(void)
   s16 queuedResponseCount;
   s16 releaseWaitFrames;
 
-  listenerProcess = HuPrcCurrentGet();
+  listenerProcess = fn_8000DD9C();
   packedContext = (u32)listenerProcess->property;
   padNo = packedContext >> 16;
   contextId = packedContext;
   queuedResponseCount = 100;
   for (;;) {
     if (((HuMCMicSaveGet() == 1) && HuMCButtonGet()) ||
-        (HuMCSelWinCheck() && (HuPadBtnDown[padNo] & PAD_TRIGGER_R))) {
+        (HuMCSelWinCheck() && (lbl_802C0008[padNo] & PAD_TRIGGER_R))) {
       MCResponseCallback contextCallback;
 
       contextCallback = MCCallback;
@@ -1623,12 +1623,12 @@ static void MCAnswerMain(void)
     } while (HuMCSelWinCheck() || (HuMCMicSaveGet() != 1));
 
     if ((MicOpenF != 0) && (HuMCMicSaveGet() == 1)) {
-      if ((omcurovl != DLL_mdseldll) && (omcurovl != DLL_s01dll) &&
-          (omcurovl != DLL_s02dll) && (omcurovl != DLL_s03dll)) {
+      if ((omcurovl != 93) && (omcurovl != 114) &&
+          (omcurovl != 115) && (omcurovl != 116)) {
         s32 mountResult;
 
         mountResult = -3;
-        while ((WipeCheckIn() != 0) || (Hu3DPauseF != 0)) {
+        while ((WipeCheckIn() != 0) || (lbl_802C019E != 0)) {
           if ((mountResult = MCMountSub(1)) == 0) {
             break;
           }
@@ -1680,7 +1680,7 @@ void HuMCSessionSet(short playerIndex)
 {
   s32 micMode;
 
-  micMode = GwCommon.mic;
+  micMode = lbl_80265E30.mic;
   if ((micMode == 1) && (playerIndex < 4)) {
     MCSessionCur = playerIndex;
   }
@@ -1714,7 +1714,7 @@ void HuMCSessionKill(short playerIndex)
 {
   s32 micMode;
 
-  micMode = GwCommon.mic;
+  micMode = lbl_80265E30.mic;
   if ((micMode != 1) || (MC_gsapiEngine == 0)) {
     return;
   }
@@ -1870,7 +1870,7 @@ void HuMCSessionExportReset(void)
   char *reportStrings;
 
   reportStrings = lbl_8023A988;
-  micMode = GwCommon.mic;
+  micMode = lbl_80265E30.mic;
   if ((micMode != 1) || (MCSessionCur == -1)) {
     return;
   }
@@ -1923,17 +1923,17 @@ static void MCDeviceMesExec(void)
   s32 mountStatus;
 
   pauseWasEnabled = omSysPauseEnableFlag;
-  wasPaused = omPauseChk();
+  wasPaused = fn_8003B748();
 
-  omUPauseFlag = 1;
+  lbl_802C0234 = 1;
   omSysPauseEnable(0);
-  omObjManPause(1);
+  fn_8003B674(1);
   HuPrcAllPause(1);
   Hu3DPauseSet(1);
   HuSprPauseSet(1);
-  HuPadRumbleAllStop();
+  fn_80006F3C();
 
-  alertFile = HuAR_ARAMtoMRAMFileRead(MIC_DEVICE_ALERT_SPRITE_DATA_NUM,MIC_ALLOC_TAG,2);
+  alertFile = fn_8005607C(MIC_DEVICE_ALERT_SPRITE_DATA_NUM,MIC_ALLOC_TAG,2);
   alertAnimation = HuSprAnimRead(alertFile);
   alertGroup = HuSprGrpCreate(1);
   alertSprite = HuSprCreate(alertAnimation,0,0);
@@ -1963,7 +1963,7 @@ static void MCDeviceMesExec(void)
     HuWinMesWait(warningWindow);
     for (;;) {
       for (padIndex = 0; padIndex < 4; padIndex++) {
-        if (HuPadBtnDown[padIndex] & PAD_BUTTON_A) {
+        if (lbl_802C0008[padIndex] & PAD_BUTTON_A) {
           break;
         }
       }
@@ -1984,9 +1984,9 @@ static void MCDeviceMesExec(void)
     MCStat = 0;
     HuMCContextCallbackSet(ContextCur,MCContextCallback);
   }
-  omUPauseFlag = 0;
+  lbl_802C0234 = 0;
   omSysPauseEnable(pauseWasEnabled);
-  omObjManPause(0);
+  fn_8003B674(0);
   if (!wasPaused) {
     HuPrcAllPause(0);
     Hu3DPauseSet(0);
@@ -2007,7 +2007,7 @@ static void *MCThreadFunc(void *threadArgument)
     if (OSReceiveMessage(&MCMessageQueue,&threadCommand,0)) {
       MCSprStat = (s32)threadCommand;
     }
-    if (HuMCSelWinCheck() || (micMode = GwCommon.mic, micMode != 1)) {
+    if (HuMCSelWinCheck() || (micMode = lbl_80265E30.mic, micMode != 1)) {
       OSSuspendThread(&MCThread);
       continue;
     }
@@ -2071,7 +2071,7 @@ void HuMCPeriodicProc(void)
   s32 micMode;
 
   if ((MCInitF == 0) || (MCResponseBuf == 0) ||
-      (micMode = GwCommon.mic, micMode != 1)) {
+      (micMode = lbl_80265E30.mic, micMode != 1)) {
     return;
   }
   OSCreateAlarm(&MCThreadAlarm);
@@ -2117,7 +2117,7 @@ static void MicNotifyCallBack(u32 callbackContext, s32 event,
     if (((value < 4000) && (MCSessionCur >= 0)) &&
        (MCSessionTimer[MCSessionCur]++ > 2)) {
       thresholdSession = MCSessionCur;
-      thresholdMicMode = GwCommon.mic;
+      thresholdMicMode = lbl_80265E30.mic;
       if (((thresholdMicMode == 1) && (MC_gsapiEngine != 0)) &&
          (PlayerSession[thresholdSession] != 0)) {
         gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
@@ -2134,7 +2134,7 @@ static void MicNotifyCallBack(u32 callbackContext, s32 event,
     else {
       if ((MCSessionCur >= 0) && (MCSessionTimer[MCSessionCur]++ > 2)) {
         abnormalSession = MCSessionCur;
-        abnormalMicMode = GwCommon.mic;
+        abnormalMicMode = lbl_80265E30.mic;
         if ((abnormalMicMode == 1) &&
            ((MC_gsapiEngine != 0 && (PlayerSession[abnormalSession] != 0)))) {
           gsapi_EngineSessionDataImport(MC_gsapiEngine,MCSessionP,0);
@@ -2318,9 +2318,9 @@ static void *MCDVDRead(const char *path)
   void *assetBuffer;
 
   discBuffer = (void *)HuDvdDataRead(path);
-  assetBuffer = (void *)HuMemDirectMallocNum(0,DirDataSize,MIC_ALLOC_TAG);
-  DCFlushRange(assetBuffer,DirDataSize + MIC_CACHE_LINE_LAST_BYTE & MIC_CACHE_LINE_ALIGN_MASK);
-  memcpy(assetBuffer,discBuffer,DirDataSize);
+  assetBuffer = (void *)HuMemDirectMallocNum(0,lbl_802C0028,MIC_ALLOC_TAG);
+  DCFlushRange(assetBuffer,lbl_802C0028 + MIC_CACHE_LINE_LAST_BYTE & MIC_CACHE_LINE_ALIGN_MASK);
+  memcpy(assetBuffer,discBuffer,lbl_802C0028);
   HuMemDirectFree(discBuffer);
   return assetBuffer;
 }
@@ -2363,7 +2363,7 @@ static s32 ActivateContext(s16 contextId)
     OSReport(reportStrings + 1038,activationResult);
   }
   activationResult = gsapi_ContextActivate(MC_gsapiEngine,MCContext[contextId].context);
-  micMode = GwCommon.mic;
+  micMode = lbl_80265E30.mic;
   if ((micMode == 1) && (MCSessionCur != -1)) {
     if ((MCSessionP == 0) &&
        (apiResult = gsapi_EngineSessionDataExport(MC_gsapiEngine,&MCSessionP), apiResult != 0)) {
@@ -2421,7 +2421,7 @@ void *heap_Alloc(void *heapHandle, u32 byteCount)
 
 {
   void *allocatedBlock;
-  allocatedBlock = HuMemDirectTailMallocNum(0,byteCount,HeapNum);
+  allocatedBlock = fn_8000B5C4(0,byteCount,HeapNum);
   return allocatedBlock;
 }
 
@@ -2435,7 +2435,7 @@ void *heap_Calloc(void *heapHandle, u32 elementCount, u32 elementSize)
   void *requestedBlock;
   void *block;
 
-  allocatedBlock = HuMemDirectTailMallocNum(0,elementCount * elementSize,HeapNum);
+  allocatedBlock = fn_8000B5C4(0,elementCount * elementSize,HeapNum);
   heapBlock = allocatedBlock;
   requestedBlock = heapBlock;
   block = requestedBlock;
@@ -2457,13 +2457,13 @@ void *heap_Realloc(void *heapHandle, void *existingBlock, u32 byteCount)
   void *block;
 
   if (existingBlock == 0) {
-    allocatedBlock = HuMemDirectTailMallocNum(0,byteCount,HeapNum);
+    allocatedBlock = fn_8000B5C4(0,byteCount,HeapNum);
     heapBlock = allocatedBlock;
     requestedBlock = heapBlock;
     block = requestedBlock;
   }
   else {
-    block = HuMemDirectRealloc(0,existingBlock,byteCount);
+    block = fn_8000B630(0,existingBlock,byteCount);
   }
   return block;
 }

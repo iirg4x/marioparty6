@@ -359,8 +359,8 @@ s16 fn_1_5DE8(void)
 
             playerWork->resultState = playerWork->character;
             characterIndex = playerWork->playerIndex;
-            if (_CheckFlag(FLAG_MG_PRACTICE) == 0) {
-                GwPlayer[characterIndex].mgCoinBonus = 10;
+            if (fn_8006A124(65551) == 0) {
+                lbl_80265750[characterIndex].mgCoinBonus = 10;
             }
             result = 1;
         }
@@ -387,7 +387,7 @@ s16 fn_1_5DE8(void)
     if ((result != 0) || (resultCue != 0)) {
         lbl_1_bss_AB0[0].motionState = 1;
         lbl_1_bss_AB0[1].motionState = 1;
-        MgSeqWinnerSet((s16)lbl_1_bss_AB0[0].resultState,
+        fn_80071C18((s16)lbl_1_bss_AB0[0].resultState,
                        (s16)lbl_1_bss_AB0[1].resultState, -1, -1);
         result = 1;
     }
@@ -475,7 +475,7 @@ void fn_1_5FC0(void) {
                 lbl_1_bss_DC0[player->participantIndex].speed = 1.0f;
                 lbl_1_bss_DC0[player->participantIndex].time = 0.0f;
                 lbl_1_bss_DC0[player->participantIndex].attributes = 0;
-                lbl_1_bss_DC0[player->participantIndex].attributesToReset = HU3D_MOTATTR_LOOP;
+                lbl_1_bss_DC0[player->participantIndex].attributesToReset = ((1 << 30) | (1 << 0));
                 player->completionState += 1;
             }
             break;
@@ -512,15 +512,15 @@ void fn_1_5FC0(void) {
                                 claimedThisFrame = 1;
                                 claimedItem = itemIndex;
                                 player->progress += 1;
-                                Hu3DModelAttrReset(lbl_1_bss_E88[playerIndex + 94].modelId,
-                                                  HU3D_ATTR_DISPOFF);
-                                Hu3DMotionTimeSet(lbl_1_bss_E88[playerIndex + 94].modelId, 0.0f);
-                                Hu3DMotionSpeedSet(lbl_1_bss_E88[playerIndex + 94].modelId, 1.0f);
+                                fn_80026A44(lbl_1_bss_E88[playerIndex + 94].modelId,
+                                                  (1 << 0));
+                                fn_8002D414(lbl_1_bss_E88[playerIndex + 94].modelId, 0.0f);
+                                fn_8002D86C(lbl_1_bss_E88[playerIndex + 94].modelId, 1.0f);
                                 lbl_1_bss_E88[playerIndex + 94].position.x = model->position.x;
                                 lbl_1_bss_E88[playerIndex + 94].position.y =
                                     100.0f + model->position.y;
                                 lbl_1_bss_E88[playerIndex + 94].position.z = model->position.z;
-                                omVibrate((s16) player->playerIndex, 12, 7, 3);
+                                fn_8006A030((s16) player->playerIndex, 12, 7, 3);
                                 fn_1_54B8(2, 0, &model->position);
                                 itemIndex = modelIndex + 37;
                                 lbl_1_bss_E88[itemIndex].motionState = 1;
@@ -556,7 +556,7 @@ void fn_1_5FC0(void) {
                 lbl_1_bss_DC0[player->participantIndex].mode = 3;
                 lbl_1_bss_DC0[player->participantIndex].speed = 1.0f;
                 lbl_1_bss_DC0[player->participantIndex].time = 0.0f;
-                lbl_1_bss_DC0[player->participantIndex].attributes = HU3D_MOTATTR_LOOP;
+                lbl_1_bss_DC0[player->participantIndex].attributes = ((1 << 30) | (1 << 0));
                 lbl_1_bss_DC0[player->participantIndex].attributesToReset = 0;
                 player->completionState += 1;
             }
@@ -570,8 +570,8 @@ void fn_1_5FC0(void) {
     }
     playerIndex = 94;
     while (playerIndex <= 95) {
-        if (Hu3DMotionTimeGet(lbl_1_bss_E88[playerIndex].modelId) >= 40.0f) {
-            Hu3DModelAttrSet(lbl_1_bss_E88[playerIndex].modelId, HU3D_ATTR_DISPOFF);
+        if (fn_8002D4E0(lbl_1_bss_E88[playerIndex].modelId) >= 40.0f) {
+            fn_800269E8(lbl_1_bss_E88[playerIndex].modelId, (1 << 0));
         }
         playerIndex += 1;
     }
@@ -591,12 +591,12 @@ void fn_1_6DEC(void)
             player = &lbl_1_bss_AB0[modelIndex - 81];
         }
 
-        Hu3DModelScaleGet(model->modelId, &scale);
+        fn_8002691C(model->modelId, &scale);
         switch (model->motionState) {
         case 0:
             break;
         case 1:
-            Hu3DModelAttrReset(lbl_1_bss_E88[modelIndex].modelId, HU3D_ATTR_DISPOFF);
+            fn_80026A44(lbl_1_bss_E88[modelIndex].modelId, (1 << 0));
             model->motionState++;
             /* The first visible frame also starts the scale increase. */
         case 2:
@@ -624,7 +624,7 @@ void fn_1_6DEC(void)
             scale.z += model->scaleStep;
             break;
         }
-        Hu3DModelScaleSetV(model->modelId, &scale);
+        fn_800268E0(model->modelId, &scale);
     }
 }
 
@@ -784,10 +784,10 @@ void fn_1_7048(void)
                     }
                 }
             }
-            Hu3DLLightPosSetV(light->modelId, light->lightId,
+            fn_80028F14(light->modelId, light->lightId,
                 (Point3d *)&light->position,
                 (Point3d *)&light->direction);
-            Hu3DLLightPointSet(light->modelId, light->lightId,
+            fn_80028C1C(light->modelId, light->lightId,
                 light->distance, light->intensity, GX_DA_STEEP);
         }
         lightIndex++;

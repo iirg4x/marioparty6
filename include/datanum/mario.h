@@ -4,7 +4,7 @@
 #include "datadir_enum.h"
 
 enum {
-    MARIO_HSF_c000m0 = DATANUM(DATA_mario, 0),
+    MARIO_HSF_c000m0 = DATANUM(0x8e0000, 0),
     MARIO_HSF_c000m1, //1
     MARIO_HSF_c000m2, //2
     MARIO_HSF_c000m3, //3

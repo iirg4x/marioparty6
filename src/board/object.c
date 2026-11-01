@@ -13,7 +13,7 @@ double cos(double);
 
 #include "string.h"
 
-extern void *mbMalloc(s32 size);
+extern void *fn_802137C0(s32 size);
 extern void mbPos3Dto2D(HuVecF *pos3D, HuVecF *pos2D);
 extern void mbObjCullInit(MBMODELID modelId);
 
@@ -36,7 +36,7 @@ int mbObjDataNumGet(int dataNum)
 {
     int result;
 
-    if (!GwSystem.curTime) {
+    if (!lbl_80265B70.curTime) {
         if (DIRNUM(dataNum) == dataDirNight) {
             result = dataDirDay | FILENUM(dataNum);
             goto done;
@@ -54,10 +54,10 @@ done:
 void mbObjInit(void)
 {
     objManNum = 0;
-    dataDirDay = dataDirNight = DIRNUM(HU_DATANUM_NONE);
-    objManData = mbMalloc(sizeof(MBOBJMODEL) * MB_OBJ_MAX);
-    objManOMObj = omAddObjEx(mbObjMan, 32259, 0, 0, OM_GRP_NONE, ObjManOMExec);
-    omSetStatBit(objManOMObj, OM_STAT_NOPAUSE | OM_STAT_SPRPAUSE);
+    dataDirDay = dataDirNight = DIRNUM(-1);
+    objManData = fn_802137C0(sizeof(MBOBJMODEL) * MB_OBJ_MAX);
+    objManOMObj = fn_8003AB38(mbObjMan, 32259, 0, 0, -1, ObjManOMExec);
+    omSetStatBit(objManOMObj, (1 << 5) | (1 << 7));
 }
 
 /* Called during board teardown to kill active models and release the model table. */
@@ -91,7 +91,7 @@ static void ObjManOMExec(OMOBJ *obj)
 
     if (mbExitCheck()) {
         objManOMObj = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
 
@@ -117,27 +117,27 @@ static void ObjManOMExec(OMOBJ *obj)
                 if (fadePos < 0.0f) {
                     fadePos = 0.0f;
                 }
-                fade = 1.0 - cos((M_PI * (90.0f * fadePos)) / 180.0);
+                fade = 1.0 - cos((3.141592653589793 * (90.0f * fadePos)) / 180.0);
             } else {
                 fade = 1.0f;
             }
-            Hu3DModelTPLvlSet(modelP->modelId, fade * ((float) modelP->alpha / 255.0f));
+            fn_80026CBC(modelP->modelId, fade * ((float) modelP->alpha / 255.0f));
         }
 
         /* Read the current model attribute mask, then ignore it before applying display state. */
-        attr = Hu3DModelAttrGet(modelP->modelId);
+        attr = fn_80026A90(modelP->modelId);
         if (!modelP->dispF) {
-            Hu3DModelAttrSet(modelP->modelId, HU3D_ATTR_DISPOFF);
+            fn_800269E8(modelP->modelId, (1 << 0));
         } else {
-            Hu3DModelAttrReset(modelP->modelId, HU3D_ATTR_DISPOFF);
+            fn_80026A44(modelP->modelId, (1 << 0));
             objManDispNum++;
         }
-        Hu3DModelPosSet(modelP->modelId,
+        fn_80026760(modelP->modelId,
             modelP->pos.x + modelP->offset.x,
             modelP->pos.y + modelP->offset.y,
             modelP->pos.z + modelP->offset.z);
-        Hu3DModelRotSetV(modelP->modelId, &modelP->rot);
-        Hu3DModelScaleSetV(modelP->modelId, &modelP->scale);
+        fn_80026838(modelP->modelId, &modelP->rot);
+        fn_800268E0(modelP->modelId, &modelP->scale);
     }
 }
 
@@ -173,18 +173,18 @@ static MBMODELID ObjManObjCreate(int charNo, int dataNum, const int *motDataNum,
         }
     }
     for (i = 0; i < MB_OBJ_MOT_MAX; i++) {
-        modelP->motId[i] = HU3D_MOTIONID_NONE;
+        modelP->motId[i] = -1;
     }
     result = ObjManMotionCreate(modelP, motNum, motDataNum);
 
     modelP->dispF = TRUE;
     modelP->dispOldF = modelP->dispF;
-    modelP->cameraBit = HU3D_CAM0;
+    modelP->cameraBit = (1 << 0);
     modelP->layer = 0;
     modelP->cullRadius = -1.0f;
     modelP->alpha = 255;
-    Hu3DModelCameraSet(modelP->modelId, modelP->cameraBit);
-    Hu3DModelLayerSet(modelP->modelId, modelP->layer);
+    fn_80026B64(modelP->modelId, modelP->cameraBit);
+    fn_80026B8C(modelP->modelId, modelP->layer);
     mbObjPosSet(modelP->id, 0.0f, 0.0f, 0.0f);
     mbObjRotSet(modelP->id, 0.0f, 0.0f, 0.0f);
     mbObjScaleSet(modelP->id, 1.0f, 1.0f, 1.0f);
@@ -192,7 +192,7 @@ static MBMODELID ObjManObjCreate(int charNo, int dataNum, const int *motDataNum,
     mbObjAmbSet(modelP->id, 1.0f, 1.0f, 1.0f);
     objManNum++;
 
-    model3DP = &Hu3DData[modelP->modelId];
+    model3DP = &lbl_802C01C8[modelP->modelId];
     if (model3DP->linkMdlId < 0) {
         mbObjCullInit(modelP->id);
     }
@@ -206,10 +206,10 @@ MBMODELID mbObjCreate(int dataNum, const int *motDataNum, BOOL linkF)
 
     /* Seed the shared source model hidden when this is the first linked instance. */
     if (linkF && !ObjManLinkSearch(dataNum)) {
-        modelId = ObjManObjCreate(CHARNO_NONE, dataNum, motDataNum, linkF);
+        modelId = ObjManObjCreate(-1, dataNum, motDataNum, linkF);
         mbObjDispSet(modelId, FALSE);
     }
-    return ObjManObjCreate(CHARNO_NONE, dataNum, motDataNum, linkF);
+    return ObjManObjCreate(-1, dataNum, motDataNum, linkF);
 }
 
 /* Called by board features to create a character model and place it on the character layer. */
@@ -230,10 +230,10 @@ static BOOL ObjManModelCreate(MBOBJMODEL *modelP, int dataNum, BOOL linkF)
     int readDataNum;
 
     modelP->linkNum = 0;
-    if (linkF && modelP->charNo == CHARNO_NONE) {
+    if (linkF && modelP->charNo == -1) {
         linkP = ObjManLinkSearch(dataNum);
         if (linkP) {
-            modelP->modelId = Hu3DModelLink(linkP->modelId);
+            modelP->modelId = fn_80025D4C(linkP->modelId);
             modelP->dataNum = 0;
             modelP->linkP = linkP;
             linkP->linkNum++;
@@ -242,8 +242,8 @@ static BOOL ObjManModelCreate(MBOBJMODEL *modelP, int dataNum, BOOL linkF)
     }
 
     modelP->linkP = NULL;
-    if (modelP->charNo == CHARNO_NONE) {
-        if (!GwSystem.curTime) {
+    if (modelP->charNo == -1) {
+        if (!lbl_80265B70.curTime) {
             if (DIRNUM(dataNum) == dataDirNight) {
                 readDataNum = dataDirDay | FILENUM(dataNum);
                 goto read_data;
@@ -254,20 +254,20 @@ static BOOL ObjManModelCreate(MBOBJMODEL *modelP, int dataNum, BOOL linkF)
         }
         readDataNum = dataNum;
 read_data:
-        data = HuDataSelHeapReadNum(readDataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+        data = fn_80008DD0(readDataNum, 0x10000000, 2);
         if (!data) {
             /* These remaining-memory values are read here but do not affect the load path. */
-            s32 modelRestMem = HuRestMemGet(HEAP_MODEL);
-            s32 dvdRestMem = HuRestMemGet(HEAP_DVD);
+            s32 modelRestMem = fn_8000B790(2)-HuMemUsedMallocSizeGet(2);
+            s32 dvdRestMem = fn_8000B790(3)-HuMemUsedMallocSizeGet(3);
         }
     } else {
         data = NULL;
     }
 
-    if (modelP->charNo == CHARNO_NONE) {
-        modelP->modelId = Hu3DModelCreate(data);
+    if (modelP->charNo == -1) {
+        modelP->modelId = fn_80025A04(data);
     } else {
-        modelP->modelId = CharModelCreate(modelP->charNo, CHAR_MODEL2);
+        modelP->modelId = fn_80057068(modelP->charNo, (1 << 2));
     }
     if (!linkF) {
         modelP->dataNum = 0;
@@ -285,7 +285,7 @@ static int ObjManMotionCreate(MBOBJMODEL *modelP, int motNum, const int *motData
     HU3D_MOTIONID motId;
     int i;
 
-    modelP->motId[0] = Hu3DData[modelP->modelId].motId;
+    modelP->motId[0] = lbl_802C01C8[modelP->modelId].motId;
     if (motDataNum == NULL) {
         modelP->motNum = 1;
         return TRUE;
@@ -293,14 +293,14 @@ static int ObjManMotionCreate(MBOBJMODEL *modelP, int motNum, const int *motData
 
     data = NULL;
     for (i = 0; i < motNum; i++) {
-        if (modelP->charNo == CHARNO_NONE) {
-            data = HuDataSelHeapReadNum(mbObjDataNumGet(motDataNum[i]), HU_MEMNUM_OVL, HEAP_MODEL);
+        if (modelP->charNo == -1) {
+            data = fn_80008DD0(mbObjDataNumGet(motDataNum[i]), 0x10000000, 2);
             if (data == NULL) {
                 return -1;
             }
-            motId = Hu3DJointMotion(modelP->modelId, data);
+            motId = fn_80030458(modelP->modelId, data);
         } else {
-            motId = CharMotionCreate(modelP->charNo, motDataNum[i]);
+            motId = fn_8005B0B8(modelP->charNo, motDataNum[i]);
         }
         if (motId < 0) {
             return -1;
@@ -336,7 +336,7 @@ void mbObjKill(MBMODELID modelId)
     MBOBJMODEL *searchP;
     int i;
 
-    if (modelP->charNo == CHARNO_NONE) {
+    if (modelP->charNo == -1) {
         if (modelP->linkNum != 0) {
             for (searchP = &objManData[1], i = 1; i < MB_OBJ_MAX; i++, searchP++) {
                 if (searchP->id != 0 && searchP->linkP == modelP) {
@@ -345,15 +345,15 @@ void mbObjKill(MBMODELID modelId)
             }
             return;
         }
-        modelP->motId[0] = HU3D_MOTIONID_NONE;
+        modelP->motId[0] = -1;
         if (modelP->modelId >= 0) {
-            Hu3DModelKill(modelP->modelId);
-            modelP->modelId = HU3D_MODELID_NONE;
+            fn_800262D0(modelP->modelId);
+            modelP->modelId = -1;
         }
         for (i = 1; i < MB_OBJ_MOT_MAX; i++) {
             if (modelP->motId[i] >= 0) {
-                Hu3DMotionKill(modelP->motId[i]);
-                modelP->motId[i] = HU3D_MOTIONID_NONE;
+                fn_8002C624(modelP->motId[i]);
+                modelP->motId[i] = -1;
             }
             modelP->motData[i] = NULL;
         }
@@ -365,14 +365,14 @@ void mbObjKill(MBMODELID modelId)
         }
     } else {
         for (i = 0; i < MB_OBJ_MOT_MAX; i++) {
-            modelP->motId[i] = HU3D_MOTIONID_NONE;
+            modelP->motId[i] = -1;
             modelP->motData[i] = NULL;
         }
         if (modelP->modelId >= 0) {
-            modelP->modelId = HU3D_MODELID_NONE;
+            modelP->modelId = -1;
         }
-        CharModelKill(modelP->charNo);
-        modelP->charNo = CHARNO_NONE;
+        fn_8005BB8C(modelP->charNo);
+        modelP->charNo = -1;
     }
     objManNum--;
     modelP->id = 0;
@@ -408,7 +408,7 @@ void mbObjCameraSet(MBMODELID modelId, u16 cameraBit)
     MBOBJMODEL *modelP = &objManData[modelId];
 
     modelP->cameraBit = cameraBit;
-    Hu3DModelCameraSet(modelP->modelId, cameraBit);
+    fn_80026B64(modelP->modelId, cameraBit);
 }
 
 int mbObjLayerGet(MBMODELID modelId)
@@ -422,7 +422,7 @@ void mbObjLayerSet(MBMODELID modelId, u8 layer)
     MBOBJMODEL *modelP = &objManData[modelId];
 
     modelP->layer = layer;
-    Hu3DModelLayerSet(modelP->modelId, layer);
+    fn_80026B8C(modelP->modelId, layer);
 }
 
 /* Board features can move all active engine models to one layer; stored layer fields are
@@ -434,7 +434,7 @@ void mbObjLayerSetAll(u8 layer)
 
     for (modelP = &objManData[1], i = 1; i < MB_OBJ_MAX; i++, modelP++) {
         if (modelP->id != 0) {
-            Hu3DModelLayerSet(modelP->modelId, layer);
+            fn_80026B8C(modelP->modelId, layer);
         }
     }
 }
@@ -462,7 +462,7 @@ void mbObjPosSet(MBMODELID modelId, float x, float y, float z)
     modelP->pos.x = x;
     modelP->pos.y = y;
     modelP->pos.z = z;
-    Hu3DModelPosSet(modelP->modelId,
+    fn_80026760(modelP->modelId,
         modelP->pos.x + modelP->offset.x,
         modelP->pos.y + modelP->offset.y,
         modelP->pos.z + modelP->offset.z);
@@ -509,7 +509,7 @@ void mbObjRotSet(MBMODELID modelId, float x, float y, float z)
     modelP->rot.x = x;
     modelP->rot.y = y;
     modelP->rot.z = z;
-    Hu3DModelRotSetV(modelP->modelId, &modelP->rot);
+    fn_80026838(modelP->modelId, &modelP->rot);
 }
 
 float mbObjRotYGet(MBMODELID modelId)
@@ -544,14 +544,14 @@ void mbObjScaleSet(MBMODELID modelId, float x, float y, float z)
     modelP->scale.x = x;
     modelP->scale.y = y;
     modelP->scale.z = z;
-    Hu3DModelScaleSetV(modelP->modelId, &modelP->scale);
+    fn_800268E0(modelP->modelId, &modelP->scale);
 }
 
 /* Board features read the current engine model matrix into mtx. */
 void mbObjMtxGet(MBMODELID modelId, Mtx *mtx)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
-    HU3D_MODEL *model3DP = &Hu3DData[modelP->modelId];
+    HU3D_MODEL *model3DP = &lbl_802C01C8[modelP->modelId];
 
     PSMTXCopy(model3DP->mtx, *mtx);
 }
@@ -560,7 +560,7 @@ void mbObjMtxGet(MBMODELID modelId, Mtx *mtx)
 void mbObjMtxSet(MBMODELID modelId, Mtx *mtx)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
-    HU3D_MODEL *model3DP = &Hu3DData[modelP->modelId];
+    HU3D_MODEL *model3DP = &lbl_802C01C8[modelP->modelId];
 
     PSMTXCopy(*mtx, model3DP->mtx);
 }
@@ -570,7 +570,7 @@ void mbObjAttrSet(MBMODELID modelId, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    Hu3DModelAttrSet(modelP->modelId, attr);
+    fn_800269E8(modelP->modelId, attr);
 }
 
 /* Board features clear supplied model or motion attribute bits through Hu3DModelAttrReset. */
@@ -578,12 +578,12 @@ void mbObjAttrReset(MBMODELID modelId, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    Hu3DModelAttrReset(modelP->modelId, attr);
+    fn_80026A44(modelP->modelId, attr);
 }
 
 void mbObjAmbSet(MBMODELID modelId, float r, float g, float b)
 {
-    Hu3DModelAmbSet(objManData[modelId].modelId, r, g, b);
+    fn_800273EC(objManData[modelId].modelId, r, g, b);
 }
 
 /* Board lighting updates use this to apply one ambient color to every active model. */
@@ -610,7 +610,7 @@ void mbObjAlphaSet(MBMODELID modelId, u8 alpha)
     MBOBJMODEL *modelP = &objManData[modelId];
 
     modelP->alpha = alpha;
-    Hu3DModelTPLvlSet(modelP->modelId, (float) alpha / 255.0f);
+    fn_80026CBC(modelP->modelId, (float) alpha / 255.0f);
 }
 
 void mbObjFadeSet(MBMODELID modelId, BOOL fadeF)
@@ -624,9 +624,9 @@ void mbObjZWriteOffSet(MBMODELID modelId, BOOL zWriteOffF)
     MBOBJMODEL *modelP = &objManData[modelId];
 
     if (zWriteOffF) {
-        Hu3DModelAttrSet(modelP->modelId, HU3D_ATTR_ZWRITE_OFF);
+        fn_800269E8(modelP->modelId, (1 << 1));
     } else {
-        Hu3DModelAttrReset(modelP->modelId, HU3D_ATTR_ZWRITE_OFF);
+        fn_80026A44(modelP->modelId, (1 << 1));
     }
 }
 
@@ -646,7 +646,7 @@ void mbObjHookSet(MBMODELID modelId, char *objName, MBMODELID hookModelId)
     MBOBJMODEL *modelP = &objManData[modelId];
     MBOBJMODEL *hookP = &objManData[hookModelId];
 
-    Hu3DModelHookSet(modelP->modelId, objName, hookP->modelId);
+    fn_8002741C(modelP->modelId, objName, hookP->modelId);
     mbObjPosSet(hookModelId, 0.0f, 0.0f, 0.0f);
 }
 
@@ -655,7 +655,7 @@ void mbObjHookReset(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    Hu3DModelHookReset(modelP->modelId);
+    fn_80027508(modelP->modelId);
 }
 
 /* Board features detach the named hooked object from this model. */
@@ -663,7 +663,7 @@ void mbObjHookObjReset(MBMODELID modelId, char *objName)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    Hu3DModelHookObjReset(modelP->modelId, objName);
+    fn_800275B4(modelP->modelId, objName);
 }
 
 /* Board features play a sound at the model's stored base position; its render offset is not
@@ -680,8 +680,8 @@ void mbObjMotionVoiceOnSet(MBMODELID modelId, int motNo, BOOL voiceOnF)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    if (modelP->charNo != CHARNO_NONE) {
-        CharMotionVoiceOnSet(modelP->charNo, modelP->motDataNum[motNo], voiceOnF);
+    if (modelP->charNo != -1) {
+        fn_8005DEB0(modelP->charNo, modelP->motDataNum[motNo], voiceOnF);
     }
 }
 
@@ -700,27 +700,27 @@ void mbObjMotionSet(MBMODELID modelId, int motNo, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    if (modelP->charNo == CHARNO_NONE) {
-        Hu3DMotionSet(modelP->modelId, modelP->motId[motNo]);
+    if (modelP->charNo == -1) {
+        fn_8002C95C(modelP->modelId, modelP->motId[motNo]);
     } else {
-        CharMotionSet(modelP->charNo, modelP->motId[motNo]);
+        fn_8005BE80(modelP->charNo, modelP->motId[motNo]);
     }
-    Hu3DMotionSpeedSet(modelP->modelId, 1.0f);
+    fn_8002D86C(modelP->modelId, 1.0f);
     modelP->motStart = 0.0f;
-    if (modelP->charNo == CHARNO_NONE) {
-        modelP->motEnd = Hu3DMotionMaxTimeGet(modelP->modelId);
+    if (modelP->charNo == -1) {
+        modelP->motEnd = fn_8002D530(modelP->modelId);
     } else {
-        modelP->motEnd = CharMotionMaxTimeGet(modelP->charNo);
+        modelP->motEnd = fn_8005C1FC(modelP->charNo);
     }
-    if (attr & (HU3D_MOTATTR_REV | HU3D_MOTATTR_SHIFT_REV)) {
-        if (modelP->charNo == CHARNO_NONE) {
-            Hu3DMotionTimeSet(modelP->modelId, modelP->motEnd);
+    if (attr & (((1 << 30) | (1 << 2)) | ((1 << 30) | (1 << 5)))) {
+        if (modelP->charNo == -1) {
+            fn_8002D414(modelP->modelId, modelP->motEnd);
         } else {
-            CharMotionTimeSet(modelP->charNo, modelP->motEnd);
+            fn_8005C16C(modelP->charNo, modelP->motEnd);
         }
     }
-    Hu3DModelAttrReset(modelP->modelId, HU3D_MOTATTR | HU3D_MOTATTR_LOOP | HU3D_MOTATTR_PAUSE);
-    Hu3DModelAttrSet(modelP->modelId, attr);
+    fn_80026A44(modelP->modelId, (1 << 30) | ((1 << 30) | (1 << 0)) | ((1 << 30) | (1 << 1)));
+    fn_800269E8(modelP->modelId, attr);
     modelP->motNo = motNo;
 }
 
@@ -744,15 +744,15 @@ void mbObjMotionShiftSet(MBMODELID modelId, int motNo, float start, float end, u
     MBOBJMODEL *modelP = &objManData[modelId];
 
     modelP->motStart = 0.0f;
-    if (modelP->charNo == CHARNO_NONE) {
-        modelP->motEnd = Hu3DMotionMaxTimeGet(modelP->modelId);
+    if (modelP->charNo == -1) {
+        modelP->motEnd = fn_8002D530(modelP->modelId);
     } else {
-        modelP->motEnd = CharMotionMaxTimeGet(modelP->charNo);
+        modelP->motEnd = fn_8005C1FC(modelP->charNo);
     }
-    if (modelP->charNo == CHARNO_NONE) {
-        Hu3DMotionShiftSet(modelP->modelId, modelP->motId[motNo], start, end, attr);
+    if (modelP->charNo == -1) {
+        fn_8002CCC0(modelP->modelId, modelP->motId[motNo], start, end, attr);
     } else {
-        CharMotionShiftSet(modelP->charNo, modelP->motId[motNo], start, end, attr);
+        fn_8005C2C8(modelP->charNo, modelP->motId[motNo], start, end, attr);
     }
     modelP->motNo = motNo;
 }
@@ -762,7 +762,7 @@ int mbObjMotionShiftIDGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    return Hu3DMotionShiftIDGet(modelP->modelId);
+    return fn_8002D3EC(modelP->modelId);
 }
 
 /* Board features load a motion into a specified slot. Character data closes immediately and
@@ -773,8 +773,8 @@ void mbObjMotionNoCreate(MBMODELID objectOrMotionId, int dataNum, int motNo)
     int readDataNum;
 
     /* The input object-table ID is reused below to hold the created motion ID. */
-    if (modelP->charNo == CHARNO_NONE) {
-        if (!GwSystem.curTime) {
+    if (modelP->charNo == -1) {
+        if (!lbl_80265B70.curTime) {
             if (DIRNUM(dataNum) == dataDirNight) {
                 readDataNum = dataDirDay | FILENUM(dataNum);
                 goto read_data;
@@ -785,11 +785,11 @@ void mbObjMotionNoCreate(MBMODELID objectOrMotionId, int dataNum, int motNo)
         }
         readDataNum = dataNum;
 read_data:
-        modelP->motData[motNo] = HuDataSelHeapReadNum(readDataNum, HU_MEMNUM_OVL, HEAP_MODEL);
-        objectOrMotionId = Hu3DJointMotion(modelP->modelId, modelP->motData[motNo]);
+        modelP->motData[motNo] = fn_80008DD0(readDataNum, 0x10000000, 2);
+        objectOrMotionId = fn_80030458(modelP->modelId, modelP->motData[motNo]);
     } else {
-        objectOrMotionId = CharMotionCreate(modelP->charNo, dataNum);
-        CharMotionDataClose(modelP->charNo);
+        objectOrMotionId = fn_8005B0B8(modelP->charNo, dataNum);
+        fn_8005B4BC(modelP->charNo);
     }
     modelP->motId[motNo] = objectOrMotionId;
     modelP->motNum++;
@@ -804,13 +804,13 @@ int mbObjMotionCreate(MBMODELID objectOrMotionId, int dataNum)
     int readDataNum;
 
     for (motNo = 1; motNo < MB_OBJ_MOT_MAX; motNo++) {
-        if (modelP->motId[motNo] == HU3D_MOTIONID_NONE) {
+        if (modelP->motId[motNo] == -1) {
             break;
         }
     }
     /* The input object-table ID is reused below to hold the created motion ID. */
-    if (modelP->charNo == CHARNO_NONE) {
-        if (!GwSystem.curTime) {
+    if (modelP->charNo == -1) {
+        if (!lbl_80265B70.curTime) {
             if (DIRNUM(dataNum) == dataDirNight) {
                 readDataNum = dataDirDay | FILENUM(dataNum);
                 goto read_data;
@@ -821,11 +821,11 @@ int mbObjMotionCreate(MBMODELID objectOrMotionId, int dataNum)
         }
         readDataNum = dataNum;
 read_data:
-        modelP->motData[motNo] = HuDataSelHeapReadNum(readDataNum, HU_MEMNUM_OVL, HEAP_MODEL);
-        objectOrMotionId = Hu3DJointMotion(modelP->modelId, modelP->motData[motNo]);
+        modelP->motData[motNo] = fn_80008DD0(readDataNum, 0x10000000, 2);
+        objectOrMotionId = fn_80030458(modelP->modelId, modelP->motData[motNo]);
     } else {
-        objectOrMotionId = CharMotionCreate(modelP->charNo, dataNum);
-        CharMotionDataClose(modelP->charNo);
+        objectOrMotionId = fn_8005B0B8(modelP->charNo, dataNum);
+        fn_8005B4BC(modelP->charNo);
     }
     modelP->motId[motNo] = objectOrMotionId;
     modelP->motNum++;
@@ -838,15 +838,15 @@ void mbObjMotionKill(MBMODELID modelId, int motNo)
     MBOBJMODEL *modelP = &objManData[modelId];
 
     if (motNo == modelP->motNo && modelP->motNo != 0) {
-        mbObjMotionSet(modelId, 0, HU3D_MOTATTR_NONE);
+        mbObjMotionSet(modelId, 0, 0);
     }
     if (modelP->motId[motNo] >= 0) {
-        if (modelP->charNo == CHARNO_NONE) {
-            Hu3DMotionKill(modelP->motId[motNo]);
+        if (modelP->charNo == -1) {
+            fn_8002C624(modelP->motId[motNo]);
         } else {
-            CharMotionKill(modelP->charNo, modelP->motId[motNo]);
+            fn_8005B420(modelP->charNo, modelP->motId[motNo]);
         }
-        modelP->motId[motNo] = HU3D_MOTIONID_NONE;
+        modelP->motId[motNo] = -1;
     }
     modelP->motData[motNo] = NULL;
     modelP->motNum--;
@@ -858,10 +858,10 @@ float mbObjMotionTimeGet(MBMODELID modelId)
     MBOBJMODEL *modelP = &objManData[modelId];
     float time;
 
-    if (modelP->charNo == CHARNO_NONE) {
-        time = Hu3DData[modelP->modelId].motWork.time;
+    if (modelP->charNo == -1) {
+        time = lbl_802C01C8[modelP->modelId].motWork.time;
     } else {
-        time = CharMotionTimeGet(modelP->charNo);
+        time = fn_8005C1B8(modelP->charNo);
     }
     return time;
 }
@@ -872,10 +872,10 @@ void mbObjMotionTimeSet(MBMODELID modelId, float time)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    if (modelP->charNo == CHARNO_NONE) {
-        Hu3DMotionTimeSet(modelP->modelId, time);
+    if (modelP->charNo == -1) {
+        fn_8002D414(modelP->modelId, time);
     } else {
-        CharMotionTimeSet(modelP->charNo, time);
+        fn_8005C16C(modelP->charNo, time);
     }
 }
 
@@ -885,10 +885,10 @@ float mbObjMotionMaxTimeGet(MBMODELID modelId)
     MBOBJMODEL *modelP = &objManData[modelId];
     float time;
 
-    if (modelP->charNo == CHARNO_NONE) {
-        time = Hu3DMotionMaxTimeGet(modelP->modelId);
+    if (modelP->charNo == -1) {
+        time = fn_8002D530(modelP->modelId);
     } else {
-        time = CharMotionMaxTimeGet(modelP->charNo);
+        time = fn_8005C1FC(modelP->charNo);
     }
     return time;
 }
@@ -899,7 +899,7 @@ float mbObjMotionSpeedGet(MBMODELID modelId)
     HU3D_MODEL *model3DP;
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    model3DP = &Hu3DData[modelP->modelId];
+    model3DP = &lbl_802C01C8[modelP->modelId];
 
     return model3DP->motWork.speed;
 }
@@ -910,12 +910,12 @@ void mbObjMotionSpeedSet(MBMODELID modelId, float speed)
     MBOBJMODEL *modelP = &objManData[modelId];
     HU3D_MODEL *model3DP;
 
-    if (modelP->charNo == CHARNO_NONE) {
-        Hu3DMotionSpeedSet(modelP->modelId, speed);
+    if (modelP->charNo == -1) {
+        fn_8002D86C(modelP->modelId, speed);
     } else {
-        CharMotionSpeedSet(modelP->charNo, speed);
+        fn_8005C390(modelP->charNo, speed);
     }
-    model3DP = &Hu3DData[modelP->modelId];
+    model3DP = &lbl_802C01C8[modelP->modelId];
     model3DP->motShiftWork.speed = speed;
 }
 
@@ -925,10 +925,10 @@ BOOL mbObjMotionEndCheck(MBMODELID modelId)
     MBOBJMODEL *modelP = &objManData[modelId];
     BOOL result;
 
-    if (modelP->charNo == CHARNO_NONE) {
-        result = Hu3DMotionEndCheck(modelP->modelId);
+    if (modelP->charNo == -1) {
+        result = fn_8002D75C(modelP->modelId);
     } else {
-        result = CharMotionEndCheck(modelP->charNo);
+        result = fn_8005C240(modelP->charNo);
     }
     return result;
 }
@@ -945,7 +945,7 @@ void mbObjMotionStartEndSet(MBMODELID modelId, s16 start, s16 end)
     if (end >= 0) {
         modelP->motEnd = end;
     }
-    Hu3DMotionStartEndSet(modelP->modelId, modelP->motStart, modelP->motEnd);
+    fn_8002D730(modelP->modelId, modelP->motStart, modelP->motEnd);
 }
 
 /* Board features enable or disable looping for the model's motion playback. */
@@ -954,9 +954,9 @@ void mbObjMotionLoopSet(MBMODELID modelId, BOOL loopF)
     MBOBJMODEL *modelP = &objManData[modelId];
 
     if (loopF) {
-        Hu3DModelAttrSet(modelP->modelId, HU3D_MOTATTR_LOOP);
+        fn_800269E8(modelP->modelId, ((1 << 30) | (1 << 0)));
     } else {
-        Hu3DModelAttrReset(modelP->modelId, HU3D_MOTATTR_LOOP);
+        fn_80026A44(modelP->modelId, ((1 << 30) | (1 << 0)));
     }
 }
 
@@ -964,7 +964,7 @@ void mbObjMotionLoopSet(MBMODELID modelId, BOOL loopF)
 float mbObjMotionShapeTimeGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
-    HU3D_MODEL *model3DP = &Hu3DData[modelP->modelId];
+    HU3D_MODEL *model3DP = &lbl_802C01C8[modelP->modelId];
 
     return model3DP->motShapeWork.time;
 }
@@ -974,14 +974,14 @@ float mbObjMotionShapeTimeGet(MBMODELID modelId)
 void mbObjMotionShapeSet(MBMODELID modelId, int motNo, u32 attr)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
-    HU3D_MODEL *model3DP = &Hu3DData[modelP->modelId];
+    HU3D_MODEL *model3DP = &lbl_802C01C8[modelP->modelId];
 
     model3DP->motShapeWork.speed = 1.0f;
-    Hu3DMotionShapeSet(modelP->modelId, modelP->motId[motNo]);
-    if (attr & HU3D_MOTATTR_SHAPE_REV) {
-        model3DP->motShapeWork.time = Hu3DMotionMaxTimeGet(modelP->modelId);
+    fn_8002CEB0(modelP->modelId, modelP->motId[motNo]);
+    if (attr & ((1 << 30) | (1 << 8))) {
+        model3DP->motShapeWork.time = fn_8002D530(modelP->modelId);
     }
-    Hu3DModelAttrSet(modelP->modelId, attr);
+    fn_800269E8(modelP->modelId, attr);
 }
 
 /* Board event callbacks such as fn_1_8860 write the shape frame directly; no range clamp or
@@ -989,7 +989,7 @@ void mbObjMotionShapeSet(MBMODELID modelId, int motNo, u32 attr)
 void mbObjMotionShapeTimeSet(MBMODELID modelId, float time)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
-    HU3D_MODEL *model3DP = &Hu3DData[modelP->modelId];
+    HU3D_MODEL *model3DP = &lbl_802C01C8[modelP->modelId];
 
     model3DP->motShapeWork.time = time;
 }
@@ -998,9 +998,9 @@ void mbObjMotionShapeTimeSet(MBMODELID modelId, float time)
 float mbObjMotionShapeMaxTimeGet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
-    HU3D_MODEL *model3DP = &Hu3DData[modelP->modelId];
+    HU3D_MODEL *model3DP = &lbl_802C01C8[modelP->modelId];
 
-    model3DP = &Hu3DData[modelP->modelId];
+    model3DP = &lbl_802C01C8[modelP->modelId];
     return model3DP->motShapeWork.end;
 }
 
@@ -1009,7 +1009,7 @@ float mbObjMotionShapeMaxTimeGet(MBMODELID modelId)
 void mbObjMotionShapeSpeedSet(MBMODELID modelId, float speed)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
-    HU3D_MODEL *model3DP = &Hu3DData[modelP->modelId];
+    HU3D_MODEL *model3DP = &lbl_802C01C8[modelP->modelId];
 
     model3DP->motShapeWork.speed = speed;
 }
@@ -1020,7 +1020,7 @@ float mbObjMotionShapeSpeedGet(MBMODELID modelId)
     HU3D_MODEL *model3DP;
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    model3DP = &Hu3DData[modelP->modelId];
+    model3DP = &lbl_802C01C8[modelP->modelId];
 
     return model3DP->motShapeWork.speed;
 }
@@ -1030,9 +1030,9 @@ float mbObjMotionShapeSpeedGet(MBMODELID modelId)
 BOOL mbObjMotionShapeEndCheck(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
-    HU3D_MODEL *model3DP = &Hu3DData[modelP->modelId];
+    HU3D_MODEL *model3DP = &lbl_802C01C8[modelP->modelId];
 
-    if (model3DP->attr & HU3D_MOTATTR_SHAPE_REV) {
+    if (model3DP->attr & ((1 << 30) | (1 << 8))) {
         return model3DP->motShapeWork.time <= 0.0f;
     }
     return mbObjMotionShapeMaxTimeGet(modelId) <= model3DP->motShapeWork.time;
@@ -1050,7 +1050,7 @@ void mbObjMotionShapeStartEndSet(MBMODELID modelId, s16 start, s16 end)
     if (end >= 0) {
         modelP->motEnd = end;
     }
-    Hu3DMotionShapeStartEndSet(modelP->modelId, modelP->motStart, modelP->motEnd);
+    fn_8002D024(modelP->modelId, modelP->motStart, modelP->motEnd);
 }
 
 /* Board and minigame model setup call this to enable the model's cast shadows. */
@@ -1058,7 +1058,7 @@ void mbObjShadowSet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    Hu3DModelShadowSet(modelP->modelId);
+    fn_80026E44(modelP->modelId);
 }
 
 /* Board and minigame cleanup call this to disable the model's cast shadows. */
@@ -1066,7 +1066,7 @@ void mbObjShadowReset(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    Hu3DModelShadowReset(modelP->modelId);
+    fn_80026EF0(modelP->modelId);
 }
 
 /* Board and minigame model setup call this to include the model in shadow-map rendering. */
@@ -1074,7 +1074,7 @@ void mbObjShadowMapSet(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    Hu3DModelShadowMapSet(modelP->modelId);
+    fn_80026FFC(modelP->modelId);
 }
 
 /* Board and minigame cleanup call this to remove the model from shadow-map rendering. */
@@ -1082,7 +1082,7 @@ void mbObjShadowMapReset(MBMODELID modelId)
 {
     MBOBJMODEL *modelP = &objManData[modelId];
 
-    Hu3DModelShadowMapReset(modelP->modelId);
+    fn_8002736C(modelP->modelId);
 }
 
 int mbObjStub0(void)

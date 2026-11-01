@@ -5,7 +5,7 @@
 #include "game/hu3d.h"
 
 #define MB_OBJ_MAX 512
-#define MB_OBJ_MOT_MAX CHAR_MOT_MAX
+#define MB_OBJ_MOT_MAX 32
 #define MB_MODEL_NONE -1
 
 typedef s16 MBMODELID;

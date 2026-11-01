@@ -38,7 +38,7 @@ s32 fn_1_A0(s32 streamNo, s32 bgmId)
     s32 activeStream = streamNo;
 
     if (activeStream == -1) {
-        if (GameMesFXPlayCheck(MgSeqGameMesIdGet()) != 0) {
+        if (GameMesFXPlayCheck(fn_80071DF4()) != 0) {
             activeStream = HuAudBGMPlay((s16)bgmId);
         }
     }
@@ -56,7 +56,7 @@ void fn_1_104(s32 streamNo)
 /* MGSEQ_PARAM initHook: advance from sequence initialization to the next mode. */
 void fn_1_140(s16 mode, s16 frameNo)
 {
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* MGSEQ_PARAM fadeInHook: on frame 0 start the opening animation, camera motion, and streamed
@@ -75,28 +75,28 @@ void fn_1_160(s16 mode, s16 frameNo)
         for (playerNo = 0; playerNo < 4; playerNo++) {
             fn_1_215C(playerNo, 5);
             if (playerNo != 0) {
-                Hu3DModelHookSet(lbl_1_bss_10.playerModels[playerNo], "P1st",
+                fn_8002741C(lbl_1_bss_10.playerModels[playerNo], "P1st",
                     lbl_1_bss_10.characterModels[playerNo]);
-                fn_1_22BC(playerNo, 0, HU3D_MOTATTR_LOOP);
+                fn_1_22BC(playerNo, 0, ((1 << 30) | (1 << 0)));
             } else {
-                fn_1_22BC(playerNo, 4, HU3D_MOTATTR_LOOP);
-                Hu3DMotionTimeSet(lbl_1_bss_10.openingMotionModel, 0.0f);
-                Hu3DMotionTimingHookSet(lbl_1_bss_10.openingMotionModel, fn_1_139C);
+                fn_1_22BC(playerNo, 4, ((1 << 30) | (1 << 0)));
+                fn_8002D414(lbl_1_bss_10.openingMotionModel, 0.0f);
+                fn_8002DB98(lbl_1_bss_10.openingMotionModel, fn_1_139C);
             }
         }
         fn_1_1FF4(0);
         lbl_1_bss_10.timingState = 0;
-        MgSeqModeChangeOff();
+        fn_80071B08();
         lbl_1_bss_10.streamNo = HuAudSStreamPlay(MSM_STREAM_MGMUS_25);
     }
     characterModel = lbl_1_bss_10.characterModels[0];
-    Hu3DModelObjMtxGet(lbl_1_bss_10.openingMotionModel, "P1stmov", matrix);
+    fn_80023398(lbl_1_bss_10.openingMotionModel, "P1stmov", matrix);
     Hu3DMtxTransGet(matrix, &pos);
     Hu3DMtxRotGet(matrix, &rot);
     Hu3DMtxScaleGet(matrix, &scale);
-    Hu3DModelPosSetV(characterModel, &pos);
-    Hu3DModelRotSetV(characterModel, &rot);
-    Hu3DModelScaleSetV(characterModel, &scale);
+    fn_80026790(characterModel, &pos);
+    fn_80026838(characterModel, &rot);
+    fn_800268E0(characterModel, &scale);
     OSReport("pos %f, %f, %f\n", pos.x, pos.y, pos.z);
     Hu3DModelObjPosGet(lbl_1_bss_10.openingMotionModel, "P1stmov", &lbl_1_bss_0);
     if (fn_1_20D8()) {
@@ -106,8 +106,8 @@ void fn_1_160(s16 mode, s16 frameNo)
         HuVecF unitScale;
 
         Hu3DMotionTimingHookReset(lbl_1_bss_10.openingMotionModel);
-        Hu3DModelHookReset(lbl_1_bss_10.openingMotionModel);
-        Hu3DModelHookSet(lbl_1_bss_10.playerModels[0], "P1st",
+        fn_80027508(lbl_1_bss_10.openingMotionModel);
+        fn_8002741C(lbl_1_bss_10.playerModels[0], "P1st",
             lbl_1_bss_10.characterModels[0]);
         characterModel = lbl_1_bss_10.characterModels[0];
         origin.x = 0.0f;
@@ -119,18 +119,18 @@ void fn_1_160(s16 mode, s16 frameNo)
         unitScale.x = 1.0f;
         unitScale.y = 1.0f;
         unitScale.z = 1.0f;
-        Hu3DModelPosSetV(characterModel, &origin);
-        Hu3DModelRotSetV(characterModel, &rotation);
-        Hu3DModelScaleSetV(characterModel, &unitScale);
+        fn_80026790(characterModel, &origin);
+        fn_80026838(characterModel, &rotation);
+        fn_800268E0(characterModel, &unitScale);
         fn_1_1FF4(1);
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            fn_1_22BC(playerNo, 0, HU3D_MOTATTR_LOOP);
+            fn_1_22BC(playerNo, 0, ((1 << 30) | (1 << 0)));
             lbl_1_bss_10.previousButtons[playerNo] = 0;
         }
         fn_1_23B0();
         lbl_1_bss_10.sequenceState = 1;
         lbl_1_bss_10.sequenceFrame = 0;
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -151,7 +151,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
     case 0:
         if (lbl_1_bss_10.sequenceFrame == 0) {
             for (playerNo = 0; playerNo < 4; playerNo++) {
-                fn_1_22BC(playerNo, 0, HU3D_MOTATTR_LOOP);
+                fn_1_22BC(playerNo, 0, ((1 << 30) | (1 << 0)));
                 lbl_1_bss_10.previousButtons[playerNo] = 0;
             }
             fn_1_23B0();
@@ -165,7 +165,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
         break;
     case 1:
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            fn_1_22BC(playerNo, 9, HU3D_MOTATTR_LOOP);
+            fn_1_22BC(playerNo, 9, ((1 << 30) | (1 << 0)));
             lbl_1_bss_10.choices[playerNo] = 0;
             fn_1_215C(playerNo, 5);
         }
@@ -182,7 +182,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
         }
         for (playerNo = 0; playerNo < 4; playerNo++) {
             choiceId = lbl_1_bss_10.choices[playerNo];
-            if (GwPlayerConf[playerNo].type == 1) {
+            if (lbl_80265728[playerNo].type == 1) {
                 if (lbl_1_bss_10.sequenceFrame >= lbl_1_bss_10.cpuInputFrames[playerNo]) {
                     choiceId = fn_1_2580(playerNo);
                 } else {
@@ -191,9 +191,9 @@ void fn_1_4C0(s16 mode, s16 frameNo)
             } else {
                 u16 buttons;
 
-                buttons = HuPadBtn[lbl_1_bss_10.padNos[playerNo]];
+                buttons = lbl_802C0010[lbl_1_bss_10.padNos[playerNo]];
                 buttons &=
-                    PAD_BUTTON_A | PAD_BUTTON_B | PAD_BUTTON_TRIGGER_L | PAD_BUTTON_TRIGGER_R;
+                    PAD_BUTTON_A | PAD_BUTTON_B | 0x4000 | 0x2000;
                 /* Only newly pressed choice buttons change the stored answer, which remains
                  * selected between presses; simultaneous new presses use A, B, L, then R
                  * priority. */
@@ -206,10 +206,10 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                 case PAD_BUTTON_B:
                     choiceId = 2;
                     break;
-                case PAD_BUTTON_TRIGGER_L:
+                case 0x4000:
                     choiceId = 3;
                     break;
-                case PAD_BUTTON_TRIGGER_R:
+                case 0x2000:
                     choiceId = 4;
                     break;
                 default:
@@ -219,10 +219,10 @@ void fn_1_4C0(s16 mode, s16 frameNo)
                     } else if (buttons & ~lbl_1_bss_10.previousButtons[playerNo] & PAD_BUTTON_B) {
                         choiceId = 2;
                     } else if (buttons & ~lbl_1_bss_10.previousButtons[playerNo] &
-                               PAD_BUTTON_TRIGGER_L) {
+                               0x4000) {
                         choiceId = 3;
                     } else if (buttons & ~lbl_1_bss_10.previousButtons[playerNo] &
-                               PAD_BUTTON_TRIGGER_R) {
+                               0x2000) {
                         choiceId = 4;
                     }
                     break;
@@ -231,15 +231,15 @@ void fn_1_4C0(s16 mode, s16 frameNo)
             }
             if (choiceId != lbl_1_bss_10.choices[playerNo]) {
                 fn_1_22BC(playerNo, 10, 0);
-                omVibrate(playerNo, 10, 7, 3);
+                fn_8006A030(playerNo, 10, 7, 3);
                 fn_1_215C(playerNo, 12);
                 HuAudFXPlay(M616_SFX_CHOICE_CHANGED);
             }
             lbl_1_bss_10.choices[playerNo] = choiceId;
             playerMotion = lbl_1_bss_10.characterMotions[playerNo][10];
             playerModel = lbl_1_bss_10.characterModels[playerNo];
-            if (Hu3DMotionShiftIDGet(playerModel) < 0 &&
-                playerMotion == Hu3DMotionIDGet(playerModel) && Hu3DMotionEndCheck(playerModel)) {
+            if (fn_8002D3EC(playerModel) < 0 &&
+                playerMotion == fn_8002D3C4(playerModel) && fn_8002D75C(playerModel)) {
                 fn_1_22BC(playerNo, 9, 0);
                 OSReport("push end\n");
             }
@@ -249,7 +249,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
     case 3:
         if (lbl_1_bss_10.sequenceFrame == 0) {
             for (playerNo = 0; playerNo < 4; playerNo++) {
-                fn_1_22BC(playerNo, 0, HU3D_MOTATTR_LOOP);
+                fn_1_22BC(playerNo, 0, ((1 << 30) | (1 << 0)));
                 {
                     /* Answers 1 to 4 map to base motions 0 to 3; the zero-answer slot is
                      * skipped. */
@@ -343,13 +343,13 @@ void fn_1_4C0(s16 mode, s16 frameNo)
         break;
     case 5:
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            if (Hu3DMotionEndCheck(lbl_1_bss_10.characterModels[playerNo])) {
-                fn_1_22BC(playerNo, 0, HU3D_MOTATTR_LOOP);
+            if (fn_8002D75C(lbl_1_bss_10.characterModels[playerNo])) {
+                fn_1_22BC(playerNo, 0, ((1 << 30) | (1 << 0)));
             }
         }
         {
             for (playerNo = 0; playerNo < 4; playerNo++) {
-                if (!Hu3DMotionEndCheck(lbl_1_bss_10.playerModels[playerNo])) {
+                if (!fn_8002D75C(lbl_1_bss_10.playerModels[playerNo])) {
                     break;
                 }
             }
@@ -375,7 +375,7 @@ void fn_1_4C0(s16 mode, s16 frameNo)
         }
         break;
     case 8:
-        MgSeqModeNext();
+        fn_80071A9C();
         break;
     }
 }
@@ -404,15 +404,15 @@ void fn_1_F78(s16 mode, s16 frameNo)
         for (playerNo = 0; playerNo < 4; playerNo++) {
             if (lbl_1_bss_10.scores[playerNo] == 3) {
                 winnerCharacterNos[winnerCount++] = lbl_1_bss_10.characterNos[playerNo];
-                if (!_CheckFlag(FLAG_MG_PRACTICE)) {
+                if (!fn_8006A124(65551)) {
                     /* Outside practice mode, reaching three points sets this player's minigame coin
                      * bonus to 10. */
-                    GwPlayer[playerNo].mgCoinBonus = 10;
+                    lbl_80265750[playerNo].mgCoinBonus = 10;
                 }
                 isDraw = FALSE;
             }
         }
-        MgSeqWinnerSet(winnerCharacterNos[0], winnerCharacterNos[1], winnerCharacterNos[2],
+        fn_80071C18(winnerCharacterNos[0], winnerCharacterNos[1], winnerCharacterNos[2],
                        winnerCharacterNos[3]);
         if (!isDraw) {
             for (playerNo = 0; playerNo < 4; playerNo++) {
@@ -454,14 +454,14 @@ void fn_1_F78(s16 mode, s16 frameNo)
         OSReport("enter sequence ... end\n");
     } else {
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            if (!Hu3DMotionEndCheck(lbl_1_bss_10.playerModels[playerNo])) {
+            if (!fn_8002D75C(lbl_1_bss_10.playerModels[playerNo])) {
                 break;
             }
         }
         if (playerNo == 4) {
             HuAudFXPlay(M616_SFX_MOTION_COMPLETE_FIRST);
             HuAudFXPlay(M616_SFX_MOTION_COMPLETE_SECOND);
-            MgSeqModeNext();
+            fn_80071A9C();
         }
     }
 }
@@ -476,8 +476,8 @@ void fn_1_1284(s16 mode, s16 frameNo)
         for (playerNo = 0; playerNo < 4; playerNo++) {
             if (lbl_1_bss_10.scores[playerNo] == 3) {
                 fn_1_22BC(playerNo, 2, 0);
-                Hu3DMotionTimeSet(lbl_1_bss_10.resultModels[playerNo], 0.0f);
-                Hu3DModelAttrReset(lbl_1_bss_10.resultModels[playerNo], HU3D_ATTR_DISPOFF);
+                fn_8002D414(lbl_1_bss_10.resultModels[playerNo], 0.0f);
+                fn_80026A44(lbl_1_bss_10.resultModels[playerNo], (1 << 0));
             } else {
                 fn_1_22BC(playerNo, 3, 0);
             }
@@ -498,7 +498,7 @@ void fn_1_1360(s16 mode, s16 frameNo)
  * model's motion time each update. */
 void fn_1_1364(OMOBJ *cameraObject)
 {
-    lbl_1_bss_10.cameraTime = Hu3DMotionTimeGet(lbl_1_bss_10.activeCameraModel);
+    lbl_1_bss_10.cameraTime = fn_8002D4E0(lbl_1_bss_10.activeCameraModel);
 }
 
 /* When the opening-motion timing callback reports timingLag, advance the lead character's motion
@@ -510,20 +510,20 @@ void fn_1_139C(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL timingLag)
         case 0:
             fn_1_22BC(0, 1, 0);
             lbl_1_bss_10.timingState++;
-            CharModelVoiceFlagSet(lbl_1_bss_10.characterNos[0], FALSE);
+            fn_8005DFC0(lbl_1_bss_10.characterNos[0], FALSE);
             break;
         case 1:
             fn_1_22BC(0, 6, 0);
             lbl_1_bss_10.timingState++;
             break;
         case 2:
-            fn_1_22BC(0, 4, HU3D_MOTATTR_LOOP);
-            CharModelLandDustCreate(lbl_1_bss_10.characterNos[0], &lbl_1_bss_0);
+            fn_1_22BC(0, 4, ((1 << 30) | (1 << 0)));
+            fn_8005F968(lbl_1_bss_10.characterNos[0], &lbl_1_bss_0);
             lbl_1_bss_10.timingState++;
-            CharModelVoiceFlagSet(lbl_1_bss_10.characterNos[0], TRUE);
+            fn_8005DFC0(lbl_1_bss_10.characterNos[0], TRUE);
             break;
         case 3:
-            CharModelVoiceFlagSet(lbl_1_bss_10.characterNos[0], FALSE);
+            fn_8005DFC0(lbl_1_bss_10.characterNos[0], FALSE);
             fn_1_22BC(0, 5, 0);
             lbl_1_bss_10.timingState++;
             break;
@@ -532,9 +532,9 @@ void fn_1_139C(HU3D_MODELID modelId, HU3D_MOTIONID motionId, BOOL timingLag)
             lbl_1_bss_10.timingState++;
             break;
         case 5:
-            CharModelVoiceFlagSet(lbl_1_bss_10.characterNos[0], TRUE);
+            fn_8005DFC0(lbl_1_bss_10.characterNos[0], TRUE);
             fn_1_22BC(0, 0, 0);
-            CharModelLandDustCreate(lbl_1_bss_10.characterNos[0], &lbl_1_bss_0);
+            fn_8005F968(lbl_1_bss_10.characterNos[0], &lbl_1_bss_0);
             lbl_1_bss_10.timingState++;
             break;
         }

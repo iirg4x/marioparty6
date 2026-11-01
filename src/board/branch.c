@@ -38,7 +38,7 @@ extern int mbTutorialCall(int mode);
 extern void mbConfigPadDisableSet(BOOL disableF);
 extern void mbev_Scroll(int playerNo, BOOL mapF);
 
-static OMOBJ *guideOMObj[GW_PLAYER_MAX];
+static OMOBJ *guideOMObj[4];
 static MBBRANCHCOMSTARHOOK branchComStarHook;
 static u32 branchMAttr;
 static u16 branchAttr;
@@ -50,7 +50,7 @@ void mbBranchInit(void)
 {
     int i;
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         guideOMObj[i] = NULL;
     }
     branchComStarHook = NULL;
@@ -87,17 +87,17 @@ static void BranchGuideCreate(int playerNo, int masuId, s16 *linkTbl, int linkNu
     if (guideOMObj[playerNo] || linkNum <= 1) {
         return;
     }
-    guideOMObj[playerNo] = obj = omAddObjEx(mbObjMan, 0x100, 0, 0, OM_GRP_NONE, BranchGuideOMExec);
-    omSetStatBit(obj, OM_STAT_MODELPAUSE);
+    guideOMObj[playerNo] = obj = fn_8003AB38(mbObjMan, 0x100, 0, 0, -1, BranchGuideOMExec);
+    omSetStatBit(obj, (1 << 8));
     obj->scale.x = obj->scale.y = obj->scale.z = 3.0f;
-    work = omObjGetWork(obj, BRANCHGUIDEWORK);
+    work = ((BRANCHGUIDEWORK *)(&(obj->work[0])));
     work->linkNum = linkNum;
     work->killF = FALSE;
     work->flag = FALSE;
     work->playerNo = playerNo;
     work->angle = 0;
     work->choice = choiceStart;
-    if (!CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (!fn_8006A124(65550)) {
         if (GWPartyGet() != FALSE) {
             mbWinCreateHelp(0x00260007);
         }
@@ -109,12 +109,12 @@ static void BranchGuideCreate(int playerNo, int masuId, s16 *linkTbl, int linkNu
         mbObjLayerSet(work->modelId[i], 4);
         mbMasuPosGet(linkTbl[i], &posLink);
         PSVECSubtract(&posLink, &pos, &dirLink);
-        angle = fmod(HuAtan(dirLink.x, dirLink.z), 360.0);
+        angle = fmod((180.0*(atan2(dirLink.x, dirLink.z) / 3.141592653589793)), 360.0);
         mbObjRotSet(work->modelId[i], 0.0f, angle, 0.0f);
         mbObjLayerSet(work->modelId[i], 4);
-        posLink.x = pos.x + (100.0 * HuSin(angle));
+        posLink.x = pos.x + (100.0 * sin(3.141592653589793*angle/180.0));
         posLink.y = pos.y;
-        posLink.z = pos.z + (100.0 * HuCos(angle));
+        posLink.z = pos.z + (100.0 * cos(3.141592653589793*angle/180.0));
         mbObjPosSetV(work->modelId[i], &posLink);
         mbObjScaleSet(work->modelId[i], obj->scale.x, obj->scale.y, obj->scale.z);
     }
@@ -122,7 +122,7 @@ static void BranchGuideCreate(int playerNo, int masuId, s16 *linkTbl, int linkNu
 
 static void BranchGuideOMExec(OMOBJ *obj)
 {
-    BRANCHGUIDEWORK *work = omObjGetWork(obj, BRANCHGUIDEWORK);
+    BRANCHGUIDEWORK *work = ((BRANCHGUIDEWORK *)(&(obj->work[0])));
 
     if (work->killF || mbExitCheck()) {
         int i;
@@ -130,13 +130,13 @@ static void BranchGuideOMExec(OMOBJ *obj)
         for (i = 0; i < work->linkNum; i++) {
             mbObjKill(work->modelId[i]);
         }
-        if (!CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        if (!fn_8006A124(65550)) {
             if (GWPartyGet() != FALSE) {
                 mbWinTopKill();
             }
         }
         guideOMObj[work->playerNo] = NULL;
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
     work->angle += 8;
@@ -144,14 +144,15 @@ static void BranchGuideOMExec(OMOBJ *obj)
         work->angle -= 180;
     }
     obj->scale.x = work->angle;
-    obj->scale.x = obj->scale.y = obj->scale.z = HuSin((float)work->angle) + 3.0;
+    obj->scale.x = obj->scale.y = obj->scale.z =
+        sin(3.141592653589793*((float)work->angle)/180.0) + 3.0;
     mbObjScaleSet(work->modelId[work->choice], obj->scale.x, obj->scale.y, obj->scale.z);
 }
 
 static inline void BranchGuideChoiceSet(int playerNo, int choice)
 {
     if (guideOMObj[playerNo]) {
-        BRANCHGUIDEWORK *work = omObjGetWork(guideOMObj[playerNo], BRANCHGUIDEWORK);
+        BRANCHGUIDEWORK *work = ((BRANCHGUIDEWORK *)(&(guideOMObj[playerNo]->work[0])));
         work->choice = choice;
     }
 }
@@ -159,7 +160,7 @@ static inline void BranchGuideChoiceSet(int playerNo, int choice)
 static inline void BranchGuideKill(int playerNo)
 {
     if (guideOMObj[playerNo]) {
-        BRANCHGUIDEWORK *work = omObjGetWork(guideOMObj[playerNo], BRANCHGUIDEWORK);
+        BRANCHGUIDEWORK *work = ((BRANCHGUIDEWORK *)(&(guideOMObj[playerNo]->work[0])));
         work->killF = TRUE;
         HuPrcSleep(10);
     }
@@ -189,7 +190,7 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
     int choiceAuto;
 
     choiceTime = -1;
-    masuPlayer = GwPlayer[playerNo].masuId;
+    masuPlayer = lbl_80265750[playerNo].masuId;
     linkNum = MasuGetBranchLink(masuPlayer, branchLinkTbl);
     if (!debugF && linkNum <= 1) {
         *masuId = branchLinkTbl[0];
@@ -209,18 +210,18 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
         mbMasuPosGet(branchLinkTbl[i], &posLink);
         mbPos3Dto2D(&posLink, &posLink2D);
         PSVECSubtract(&posLink2D, &pos2D, &dir2D);
-        anglePath[i] = fmod(HuAtan(-dir2D.y, dir2D.x), 360.0);
+        anglePath[i] = fmod((180.0*(atan2((-dir2D.y), dir2D.x) / 3.141592653589793)), 360.0);
     }
     if (!debugF) {
         mbPlayerMotIdleSet(playerNo);
         HuPrcSleep(10);
     }
     mbConfigPadDisableSet(FALSE);
-    padNo = GwPlayer[playerNo].padNo;
+    padNo = lbl_80265750[playerNo].padNo;
     while (TRUE) {
         u16 btnDown;
 
-        if (CheckFlag(FLAG_BOARD_TUTORIAL)) {
+        if (fn_8006A124(65550)) {
             if (choiceTime < 0) {
                 i = mbTutorialCall(13);
 
@@ -248,19 +249,19 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
                     btnDown = PAD_BUTTON_A;
                 }
             }
-        } else if (GwPlayer[playerNo].comF && !debugF) {
+        } else if (lbl_80265750[playerNo].comF && !debugF) {
             if (choiceTime < 0) {
                 static const s8 chanceTbl[] = { 30, 20, 10, 0 };
 
                 if (GWPartyGet() != FALSE) {
                     choiceAuto = BranchComChoiceGet(playerNo, linkNum, branchLinkTbl, FALSE);
-                } else if (mbRandMod(100) < chanceTbl[GwPlayer[playerNo].comDif]) {
+                } else if (mbRandMod(100) < chanceTbl[lbl_80265750[playerNo].comDif]) {
                     choiceAuto = mbRandMod(linkNum);
                 } else {
                     choiceAuto = choice;
                 }
-                dir.x = 64.0 * HuCos(anglePath[choiceAuto]);
-                dir.y = 64.0 * HuSin(anglePath[choiceAuto]);
+                dir.x = 64.0 * cos(3.141592653589793*anglePath[choiceAuto]/180.0);
+                dir.y = 64.0 * sin(3.141592653589793*anglePath[choiceAuto]/180.0);
                 btnDown = 0;
                 choiceTime = 6;
             } else {
@@ -271,9 +272,9 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
         } else {
             dir.x = mbPadStkXGet(padNo);
             dir.y = mbPadStkYGet(padNo);
-            btnDown = HuPadBtnDown[padNo];
+            btnDown = lbl_802C0008[padNo];
             if (debugF) {
-                btnDown = HuPadBtn[padNo];
+                btnDown = lbl_802C0010[padNo];
             }
         }
         if (btnDown == PAD_BUTTON_A) {
@@ -292,13 +293,13 @@ static BOOL ev_Branch(int playerNo, s16 *masuId, BOOL debugF)
             BranchGuideCreate(playerNo, masuPlayer, branchLinkTbl, linkNum, choice);
             continue;
         }
-        if (debugF && HuPadBtnDown[padNo] == PAD_BUTTON_B) {
+        if (debugF && lbl_802C0008[padNo] == PAD_BUTTON_B) {
             BranchGuideKill(playerNo);
             mbConfigPadDisableSet(TRUE);
             return TRUE;
         }
         if (dir.x != 0.0f || dir.y != 0.0f) {
-            float angle = HuAtan(dir.y, dir.x);
+            float angle = (180.0*(atan2(dir.y, dir.x) / 3.141592653589793));
             int branchDir = -1;
             float bestDiff = 9999.0f;
 
@@ -436,7 +437,7 @@ static int BranchComChoiceGet(int playerNo, int linkNum, s16 *linkTbl, BOOL debu
         }
         if (choice < 0
             || (bestLen > 20
-                && mbRandMod(100) < chanceTbl[GwPlayer[playerNo].comDif]
+                && mbRandMod(100) < chanceTbl[lbl_80265750[playerNo].comDif]
                 && !debugF)) {
             i = 0;
             while (TRUE) {

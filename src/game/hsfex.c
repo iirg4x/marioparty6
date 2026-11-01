@@ -22,7 +22,7 @@ void CamMotionEx2(HU3D_MODELID modelId, s16 cameraMask, float durationFrames, s1
 {
     s16 cameraIndex;
     HU3D_CAMERA *camera;
-    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+    for(cameraIndex=0; cameraIndex<16; cameraIndex++) {
         if(cameraMask & (1 << cameraIndex)) {
             break;
         }
@@ -39,8 +39,8 @@ void CamMotionEx2(HU3D_MODELID modelId, s16 cameraMask, float durationFrames, s1
 void CamMotionEx(HU3D_MODELID modelId, s16 cameraMask, HuVecF *initialPosition, HuVecF *initialUp,
                  HuVecF *initialTarget, float durationFrames, s16 easingMode)
 {
-    HU3D_MODEL *model = &Hu3DData[modelId];
-    HU3D_MOTION *motion = &Hu3DMotion[model->motId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
+    HU3D_MOTION *motion = &lbl_802624B8[model->motId];
     HSF_DATA *modelData = model->hsf;
     HSF_DATA  *motionData = motion->hsf;
     HSF_MOTION *motionTracks = motionData->motion;
@@ -63,7 +63,7 @@ void CamMotionEx(HU3D_MODELID modelId, s16 cameraMask, HuVecF *initialPosition, 
     CAM_MOTION_WORK *samples;
     CAM_MOTION_WORK *sample;
     HSF_OBJECT *cameraObject;
-    for(cameraIndex=0; cameraIndex<HU3D_CAM_MAX; cameraIndex++) {
+    for(cameraIndex=0; cameraIndex<16; cameraIndex++) {
         if(cameraMask & (1 << cameraIndex)) {
             break;
         }
@@ -73,7 +73,7 @@ void CamMotionEx(HU3D_MODELID modelId, s16 cameraMask, HuVecF *initialPosition, 
     sampleCapacity = 1+(motionEndFrame/6.0)+1;
 
     sample = samples = HuMemDirectMallocNum(
-        HEAP_HEAP, (sampleCapacity + 1) * sizeof(CAM_MOTION_WORK), HU_MEMNUM_OVL);
+        HEAP_HEAP, (sampleCapacity + 1) * sizeof(CAM_MOTION_WORK), 0x10000000);
     sample->time = 0;
     sample->pos = *initialPosition;
     sample->target = *initialTarget;
@@ -83,19 +83,19 @@ void CamMotionEx(HU3D_MODELID modelId, s16 cameraMask, HuVecF *initialPosition, 
         sample->time = frame;
         track = motionTracks->track;
         tracksEnd = &track[motionTracks->numTracks];
-        if(!(model->attr & HU3D_ATTR_CAMERA)) {
+        if(!(model->attr & (1 << 16))) {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
+                if(track->type == 2) {
                     cameraObject = &modelData->object[track->target];
-                    if(cameraObject->type == HSF_OBJ_CAMERA) {
+                    if(cameraObject->type == 7) {
                         SetObjCamMotion(modelId, track, GetCurve(track, frame), sample);
                     }
                 }
             }
         } else {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
-                   if(track->index ==  HSF_OBJ_CAMERA) {
+                if(track->type == 2) {
+                   if(track->index ==  7) {
                        SetObjCamMotion(modelId, track, GetCurve(track, frame), sample);
                    }
                 }
@@ -106,19 +106,19 @@ void CamMotionEx(HU3D_MODELID modelId, s16 cameraMask, HuVecF *initialPosition, 
         sample->time = motionEndFrame;
         track = motionTracks->track;
         tracksEnd = &track[motionTracks->numTracks];
-        if(!(model->attr & HU3D_ATTR_CAMERA)) {
+        if(!(model->attr & (1 << 16))) {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
+                if(track->type == 2) {
                     cameraObject = &modelData->object[track->target];
-                    if(cameraObject->type == HSF_OBJ_CAMERA) {
+                    if(cameraObject->type == 7) {
                         SetObjCamMotion(modelId, track, GetCurve(track, motionEndFrame), sample);
                     }
                 }
             }
         } else {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
-                   if(track->index ==  HSF_OBJ_CAMERA) {
+                if(track->type == 2) {
+                   if(track->index ==  7) {
                        SetObjCamMotion(modelId, track, GetCurve(track, motionEndFrame), sample);
                    }
                 }
@@ -148,11 +148,13 @@ void CamMotionEx(HU3D_MODELID modelId, s16 cameraMask, HuVecF *initialPosition, 
                 break;
 
             case CAM_PATH_EASE_OUT:
-                easedFrame = durationFrames*HuSin((frame/durationFrames)*90);
+                easedFrame =
+                    durationFrames*sin(3.141592653589793*((frame/durationFrames)*90)/180.0);
                 break;
 
             case CAM_PATH_EASE_IN:
-                easedFrame = durationFrames*(1-HuCos((frame/durationFrames)*90));
+                easedFrame =
+                    durationFrames*(1-cos(3.141592653589793*((frame/durationFrames)*90)/180.0));
                 break;
         }
         for(sample=samples, intervalIndex=0; intervalIndex<sampleCount; intervalIndex++, sample++) {
@@ -362,50 +364,54 @@ void CamMotionEx(HU3D_MODELID modelId, s16 cameraMask, HuVecF *initialPosition, 
 static void SetObjCamMotion(HU3D_MODELID modelId, HSF_TRACK *cameraTrack, float channelValue,
                             CAM_MOTION_WORK *sample)
 {
-    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
     Vec cameraUp;
     Vec viewDirection;
 
     // Position and target apply scale to the sum of the channel value and model translation.
     switch (cameraTrack->channel) {
-        case HSF_CHANNEL_POSX:
+        case 8:
             sample->pos.x = model->scale.x * (channelValue + model->pos.x);
             break;
 
-        case HSF_CHANNEL_POSY:
+        case 9:
             sample->pos.y = model->scale.y * (channelValue + model->pos.y);
             break;
 
-        case HSF_CHANNEL_POSZ:
+        case 10:
             sample->pos.z = model->scale.z * (channelValue + model->pos.z);
             break;
 
-        case HSF_CHANNEL_TARGETX:
+        case 11:
             sample->target.x = model->scale.x * (channelValue + model->pos.x);
             break;
 
-        case HSF_CHANNEL_TARGETY:
+        case 12:
             sample->target.y = model->scale.y * (channelValue + model->pos.y);
             break;
 
-        case HSF_CHANNEL_TARGETZ:
+        case 13:
             sample->target.z = model->scale.z * (channelValue + model->pos.z);
             break;
 
-        case HSF_CHANNEL_FOV:
+        case 15:
             sample->fov = channelValue;
             break;
 
-        case HSF_CHANNEL_UPROT:
+        case 14:
             // Rotate world-up around the direction from the target to the camera.
             VECSubtract(&sample->pos, &sample->target, &viewDirection);
             VECNormalize(&viewDirection, &viewDirection);
-            cameraUp.x = viewDirection.x * viewDirection.y * (1.0 - HuCos(channelValue)) -
-                         viewDirection.z * HuSin(channelValue);
+            cameraUp.x = viewDirection.x * viewDirection.y * (1.0
+                - cos(3.141592653589793*channelValue/180.0)) -
+                         viewDirection.z * sin(3.141592653589793*channelValue/180.0);
             cameraUp.y = viewDirection.y * viewDirection.y +
-                         (1.0f - viewDirection.y * viewDirection.y) * HuCos(channelValue);
-            cameraUp.z = viewDirection.y * viewDirection.z * (1.0 - HuCos(channelValue)) +
-                         viewDirection.x * HuSin(channelValue);
+                         (1.0f
+                             - viewDirection.y * viewDirection.y)
+                             * cos(3.141592653589793*channelValue/180.0);
+            cameraUp.z = viewDirection.y * viewDirection.z * (1.0
+                - cos(3.141592653589793*channelValue/180.0)) +
+                         viewDirection.x * sin(3.141592653589793*channelValue/180.0);
             VECNormalize(&cameraUp, &sample->up);
             break;
     }
@@ -416,8 +422,8 @@ static void SetObjCamMotion(HU3D_MODELID modelId, HSF_TRACK *cameraTrack, float 
 int CamMotionExPathGet(HU3D_MODELID modelId, s16 sampleFrameStep, float durationFrames,
                        s16 easingMode, CAM_MOTION_WORK **sampleBuffer, int *sampleCapacity)
 {
-    HU3D_MODEL *model = &Hu3DData[modelId];
-    HU3D_MOTION *motion = &Hu3DMotion[model->motId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
+    HU3D_MOTION *motion = &lbl_802624B8[model->motId];
     HSF_DATA *modelData = model->hsf;
     HSF_DATA  *motionData = motion->hsf;
     HSF_MOTION *motionTracks = motionData->motion;
@@ -443,7 +449,7 @@ int CamMotionExPathGet(HU3D_MODELID modelId, s16 sampleFrameStep, float duration
     // A null buffer handle enters a branch that then writes through the same pointer.
     if(!sampleBuffer) {
         *sampleBuffer = HuMemDirectMallocNum(
-            HEAP_HEAP, (requiredSampleCount + 1) * sizeof(CAM_MOTION_WORK), HU_MEMNUM_OVL);
+            HEAP_HEAP, (requiredSampleCount + 1) * sizeof(CAM_MOTION_WORK), 0x10000000);
         *sampleCapacity = requiredSampleCount+1;
     } else {
         if(*sampleCapacity < requiredSampleCount+1) {
@@ -455,19 +461,19 @@ int CamMotionExPathGet(HU3D_MODELID modelId, s16 sampleFrameStep, float duration
         sample->time = frame;
         track = motionTracks->track;
         tracksEnd = &track[motionTracks->numTracks];
-        if(!(model->attr & HU3D_ATTR_CAMERA)) {
+        if(!(model->attr & (1 << 16))) {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
+                if(track->type == 2) {
                     cameraObject = &modelData->object[track->target];
-                    if(cameraObject->type == HSF_OBJ_CAMERA) {
+                    if(cameraObject->type == 7) {
                         SetObjCamMotion(modelId, track, GetCurve(track, frame), sample);
                     }
                 }
             }
         } else {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
-                   if(track->index ==  HSF_OBJ_CAMERA) {
+                if(track->type == 2) {
+                   if(track->index ==  7) {
                        SetObjCamMotion(modelId, track, GetCurve(track, frame), sample);
                    }
                 }
@@ -479,19 +485,19 @@ int CamMotionExPathGet(HU3D_MODELID modelId, s16 sampleFrameStep, float duration
         sample->time = motionEndFrame;
         track = motionTracks->track;
         tracksEnd = &track[motionTracks->numTracks];
-        if(!(model->attr & HU3D_ATTR_CAMERA)) {
+        if(!(model->attr & (1 << 16))) {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
+                if(track->type == 2) {
                     cameraObject = &modelData->object[track->target];
-                    if(cameraObject->type == HSF_OBJ_CAMERA) {
+                    if(cameraObject->type == 7) {
                         SetObjCamMotion(modelId, track, GetCurve(track, motionEndFrame), sample);
                     }
                 }
             }
         } else {
             for(; track<tracksEnd; track++) {
-                if(track->type == HSF_TRACK_TRANSFORM) {
-                   if(track->index ==  HSF_OBJ_CAMERA) {
+                if(track->type == 2) {
+                   if(track->index ==  7) {
                        SetObjCamMotion(modelId, track, GetCurve(track, motionEndFrame), sample);
                    }
                 }
@@ -499,7 +505,7 @@ int CamMotionExPathGet(HU3D_MODELID modelId, s16 sampleFrameStep, float duration
         }
         sampleCount++;
     }
-    segmentLengths = HuMemDirectMallocNum(HEAP_HEAP, sampleCount*4, HU_MEMNUM_OVL);
+    segmentLengths = HuMemDirectMallocNum(HEAP_HEAP, sampleCount*4, 0x10000000);
     sample = *sampleBuffer;
     segmentLength = segmentLengths;
     segmentLength[0] = 0;
@@ -521,11 +527,15 @@ int CamMotionExPathGet(HU3D_MODELID modelId, s16 sampleFrameStep, float duration
                     break;
 
                 case CAM_PATH_EASE_OUT:
-                    sample->time = durationFrames*HuSin((sample->time/durationFrames)*90);
+                    sample->time =
+                        durationFrames*sin(3.141592653589793*((sample->time/durationFrames)*90)
+                        /180.0);
                     break;
 
                 case CAM_PATH_EASE_IN:
-                    sample->time = durationFrames*(1-HuCos((sample->time/durationFrames)*90));
+                    sample->time =
+                        durationFrames*(1-cos(3.141592653589793*((sample->time/durationFrames)*90)
+                        /180.0));
                     break;
             }
         }
@@ -551,7 +561,7 @@ void CamMotionExPath(s16 cameraMask, CAM_MOTION_WORK *samples, int sampleCount)
     float channelSampleValues[4];
     float surroundingSampleTimes[4];
 
-    for(selectedIndex=0; selectedIndex<HU3D_CAM_MAX; selectedIndex++) {
+    for(selectedIndex=0; selectedIndex<16; selectedIndex++) {
         if(cameraMask & (1 << selectedIndex)) {
             camera = &Hu3DCamera[selectedIndex];
             break;
@@ -736,13 +746,14 @@ void Hu3D2Dto3D(HuVecF *screenPosition, s16 cameraMask, HuVecF *worldPosition)
     s16 cameraIndex;
     Mtx viewMatrix;
 
-    for (cameraIndex = 0; cameraIndex < HU3D_CAM_MAX; cameraIndex++) {
+    for (cameraIndex = 0; cameraIndex < 16; cameraIndex++) {
         if (cameraMask & (1 << cameraIndex)) {
             break;
         }
     }
     camera = &Hu3DCamera[cameraIndex];
-    halfFovTangent = HuSin(camera->fov/2)/HuCos(camera->fov/2);
+    halfFovTangent =
+        sin(3.141592653589793*(camera->fov/2)/180.0)/cos(3.141592653589793*(camera->fov/2)/180.0);
     viewHeight = halfFovTangent * screenPosition->z * 2.0f;
     viewWidth = viewHeight * HU_DISP_ASPECT;
     screenFractionX = screenPosition->x / HU_DISP_WIDTH;
@@ -767,7 +778,7 @@ void Hu3D3Dto2D(HuVecF *worldPosition, s16 cameraMask, HuVecF *screenPosition)
     s16 cameraIndex;
     Mtx viewMatrix;
 
-    for (cameraIndex = 0; cameraIndex < HU3D_CAM_MAX; cameraIndex++) {
+    for (cameraIndex = 0; cameraIndex < 16; cameraIndex++) {
         if (cameraMask & (1 << cameraIndex)) {
             break;
         }
@@ -775,8 +786,10 @@ void Hu3D3Dto2D(HuVecF *worldPosition, s16 cameraMask, HuVecF *screenPosition)
     camera = &Hu3DCamera[cameraIndex];
     MTXLookAt(viewMatrix, &camera->pos, &camera->up, &camera->target);
     MTXMultVec(viewMatrix, worldPosition, &viewPosition);
-    halfViewWidth = (HuSin(camera->fov/2) / HuCos(camera->fov/2)) * viewPosition.z * HU_DISP_ASPECT;
-    halfViewHeight = (HuSin(camera->fov/2) / HuCos(camera->fov/2)) * viewPosition.z;
+    halfViewWidth = (sin(3.141592653589793*(camera->fov/2)/180.0)
+        / cos(3.141592653589793*(camera->fov/2)/180.0)) * viewPosition.z * HU_DISP_ASPECT;
+    halfViewHeight = (sin(3.141592653589793*(camera->fov/2)/180.0)
+        / cos(3.141592653589793*(camera->fov/2)/180.0)) * viewPosition.z;
     screenPosition->x = DISP_HALF_W + viewPosition.x * (DISP_HALF_W / -halfViewWidth);
     screenPosition->y = DISP_HALF_H + viewPosition.y * (DISP_HALF_H / halfViewHeight);
     screenPosition->z = 0.0f;
@@ -794,9 +807,9 @@ void Hu3DMtxTransGet(Mtx transform, HuVecF *translation)
 static inline float GetAngleXY(float x, float y) {
     if (y == 0.0f) {
         if (x >= 0.0f) {
-            return M_PI / 2;
+            return 3.141592653589793 / 2;
         } else {
-            return -(M_PI / 2);
+            return -(3.141592653589793 / 2);
         }
     } else {
         return atan2f(x, y);
@@ -832,9 +845,9 @@ void Hu3DMtxRotGet(Mtx transform, HuVecF *rotation)
             if (!(scaleZ < 0.00000001f)) {
                 sineY = -transform[2][0] / scaleX;
                 if (sineY >= 1.0f) {
-                    angleY = M_PI / 2;
+                    angleY = 3.141592653589793 / 2;
                 } else if (sineY <= -1.0f) {
-                    angleY = -(M_PI / 2);
+                    angleY = -(3.141592653589793 / 2);
                 } else {
                     angleY = asinf(sineY);
                 }

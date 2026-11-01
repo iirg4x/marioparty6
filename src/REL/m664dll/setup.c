@@ -59,8 +59,8 @@ void _epilog(void)
 /* Called at overlay startup to create the actor manager and register the phase callbacks. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_4 = MgActorObjectSetup();
-    MgSeqCreate(&lbl_1_data_0);
+    lbl_1_bss_4 = fn_80080418();
+    fn_80070788(&lbl_1_data_0);
 }
 
 /* The sequence's init callback prepares the camera, shadows and course before fade-in. */
@@ -76,14 +76,14 @@ void fn_1_D8(s16 mode, s16 frameNo)
     Hu3DCameraPerspectiveSet(1, (50.0f), (20.0f),
                              (30000.0f), (1.2000000476837158f));
     /* Apply the shared camera view during each object-manager update. */
-    omAddObjEx(lbl_1_bss_4, OM_OUTVIEW_PRIO, 0, 0, -1, omOutView);
+    fn_8003AB38(lbl_1_bss_4, 32730, 0, 0, -1, fn_8003D4FC);
     Hu3DShadowCreate((30.0f), (20.0f), (10000.0f));
-    Hu3DShadowColSet(0, 0, 0);
+    fn_8002AAB4(0, 0, 0);
     Hu3DShadowTPLvlSet((0.4000000059604645f));
     Hu3DShadowPosSet(&shadowCameraPosition, &shadowCameraUp, &shadowCameraTarget);
     fn_1_3C0();
     lbl_1_bss_0 = 0;
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* The fade-in callback advances the opening animation and guides players onto the raft. */
@@ -104,6 +104,6 @@ void fn_1_2BC(s16 mode, s16 frameNo)
 {
     if (fn_1_4C0()) {
         lbl_1_bss_0 = 0;
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }

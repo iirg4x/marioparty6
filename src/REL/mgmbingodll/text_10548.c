@@ -23,7 +23,7 @@ Point3d lbl_1_data_A60[7] = { { 0.0f, 700.0f, 400.0f },    { 3.0f, 700.0f, 400.0
 // Creates the board's moving item model and loads its motion clips during mode setup.
 void fn_1_10548(void)
 {
-    lbl_1_bss_AE4 = omAddObjEx(lbl_1_bss_B00, 4608, 2U, 4U, -1, fn_1_10B04);
+    lbl_1_bss_AE4 = fn_8003AB38(lbl_1_bss_B00, 4608, 2U, 4U, -1, fn_1_10B04);
     lbl_1_bss_AE4->data = NULL;
     // Work slots hold the one-shot request, loop state, destination, and travel frames.
     lbl_1_bss_AE4->work[0] = lbl_1_bss_AE4->work[1] = 0;
@@ -31,33 +31,33 @@ void fn_1_10548(void)
     lbl_1_bss_AE4->work[3] = 1;
     lbl_1_bss_AF4 = 1;
     lbl_1_bss_AE4->stat |= 0x100;
-    *lbl_1_bss_AE4->mdlId = Hu3DModelCreate(HuDataSelHeapReadNum(
-        DATANUM(DATA_mgmbingo, 43), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelCameraSet(*lbl_1_bss_AE4->mdlId, 1U);
-    Hu3DModelLayerSet(*lbl_1_bss_AE4->mdlId, 1);
-    Hu3DModelPosSetV(*lbl_1_bss_AE4->mdlId, &lbl_1_data_A60[lbl_1_bss_AE4->work[2]]);
+    *lbl_1_bss_AE4->mdlId = fn_80025A04(fn_80008DD0(
+        DATANUM(0x9d0000, 43), 0x10000000, 2));
+    fn_80026B64(*lbl_1_bss_AE4->mdlId, 1U);
+    fn_80026B8C(*lbl_1_bss_AE4->mdlId, 1);
+    fn_80026790(*lbl_1_bss_AE4->mdlId, &lbl_1_data_A60[lbl_1_bss_AE4->work[2]]);
     lbl_1_bss_AE8 = lbl_1_data_A60[lbl_1_bss_AE4->work[2]];
-    Hu3DModelAttrSet(*lbl_1_bss_AE4->mdlId, HU3D_MOTATTR_LOOP);
-    Hu3DModelScaleSet(*lbl_1_bss_AE4->mdlId, (1.0f), (1.0f), (1.0f));
+    fn_800269E8(*lbl_1_bss_AE4->mdlId, ((1 << 30) | (1 << 0)));
+    fn_800268B0(*lbl_1_bss_AE4->mdlId, (1.0f), (1.0f), (1.0f));
     Hu3DLLightCreate(*lbl_1_bss_AE4->mdlId, (0.0f), (1500.0f), (1500.0f), (0.0f), (-0.1f), (-1.0f),
                      204, 204, 204);
     lbl_1_bss_AE4->mdlId[1] =
-        Hu3DModelCreate(HuDataSelHeapReadNum(
-            DATANUM(DATA_mgmbingo, 48), HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelHookSet(*lbl_1_bss_AE4->mdlId, "f-itemhook_R", lbl_1_bss_AE4->mdlId[1]);
+        fn_80025A04(fn_80008DD0(
+            DATANUM(0x9d0000, 48), 0x10000000, 2));
+    fn_8002741C(*lbl_1_bss_AE4->mdlId, "f-itemhook_R", lbl_1_bss_AE4->mdlId[1]);
     *lbl_1_bss_AE4->mtnId =
-        Hu3DJointMotion(*lbl_1_bss_AE4->mdlId, HuDataSelHeapReadNum(DATANUM(DATA_mgmbingo, 44),
-                                                                    HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DMotionSet(*lbl_1_bss_AE4->mdlId, *lbl_1_bss_AE4->mtnId);
-    lbl_1_bss_AE4->mtnId[1] = Hu3DJointMotion(
+        fn_80030458(*lbl_1_bss_AE4->mdlId, fn_80008DD0(DATANUM(0x9d0000, 44),
+                                                                    0x10000000, 2));
+    fn_8002C95C(*lbl_1_bss_AE4->mdlId, *lbl_1_bss_AE4->mtnId);
+    lbl_1_bss_AE4->mtnId[1] = fn_80030458(
         *lbl_1_bss_AE4->mdlId,
-        HuDataSelHeapReadNum(DATANUM(DATA_mgmbingo, 45), HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_AE4->mtnId[2] = Hu3DJointMotion(
+        fn_80008DD0(DATANUM(0x9d0000, 45), 0x10000000, 2));
+    lbl_1_bss_AE4->mtnId[2] = fn_80030458(
         *lbl_1_bss_AE4->mdlId,
-        HuDataSelHeapReadNum(DATANUM(DATA_mgmbingo, 46), HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_AE4->mtnId[3] = Hu3DJointMotion(
+        fn_80008DD0(DATANUM(0x9d0000, 46), 0x10000000, 2));
+    lbl_1_bss_AE4->mtnId[3] = fn_80030458(
         *lbl_1_bss_AE4->mdlId,
-        HuDataSelHeapReadNum(DATANUM(DATA_mgmbingo, 47), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80008DD0(DATANUM(0x9d0000, 47), 0x10000000, 2));
 }
 
 // Requests the item model's movement animation when the board starts or stops it.
@@ -92,7 +92,7 @@ void fn_1_10A64(s16 positionIndex, s16 durationFrames) {
         lbl_1_bss_AE4->work[2] = (u32)positionIndex;
         lbl_1_bss_AE4->work[3] = (s32)durationFrames;
         lbl_1_bss_AF4 = 0;
-        Hu3DModelPosGet(lbl_1_bss_AE4->mdlId[0], &lbl_1_bss_AE8);
+        fn_800267CC(lbl_1_bss_AE4->mdlId[0], &lbl_1_bss_AE8);
     }
 }
 
@@ -106,14 +106,14 @@ void fn_1_10B04(OMOBJ *object)
     Vec endPoint;
     f32 motionMaxTime;
 
-    Hu3DModelPosGet(object->mdlId[0], &position);
+    fn_800267CC(object->mdlId[0], &position);
     basePoint = lbl_1_bss_AE8;
     targetPoint = lbl_1_data_A60[object->work[2]];
     startPoint = basePoint;
     endPoint = targetPoint;
     fn_1_11138(&position, &startPoint, &basePoint, &targetPoint, &endPoint,
                (f32)object->work[3], (f32)lbl_1_bss_AF4);
-    Hu3DModelPosSetV(object->mdlId[0], &position);
+    fn_80026790(object->mdlId[0], &position);
     lbl_1_bss_AF4++;
     if ((u32)lbl_1_bss_AF4 >= object->work[3]) {
         lbl_1_bss_AF4 = 1;
@@ -122,64 +122,64 @@ void fn_1_10B04(OMOBJ *object)
     if (lbl_1_bss_AE0 == 0) {
         if (object->work[1] != 0) {
             if (object->work[1] == 1) {
-                if ((Hu3DMotionShiftIDGet(object->mdlId[0]) < 0) &&
-                    (object->mtnId[2] != Hu3DMotionIDGet(object->mdlId[0]))) {
-                    Hu3DMotionShiftSet(object->mdlId[0], object->mtnId[2], (0.0f),
-                                       (8.0f), HU3D_MOTATTR_LOOP);
-                    Hu3DMotionSpeedSet(object->mdlId[0], (1.0f));
+                if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
+                    (object->mtnId[2] != fn_8002D3C4(object->mdlId[0]))) {
+                    fn_8002CCC0(object->mdlId[0], object->mtnId[2], (0.0f),
+                                       (8.0f), ((1 << 30) | (1 << 0)));
+                    fn_8002D86C(object->mdlId[0], (1.0f));
                     object->work[0] = 0;
                 }
-                if ((Hu3DMotionShiftIDGet(object->mdlId[0]) < 0) &&
-                    (object->mtnId[2] == Hu3DMotionIDGet(object->mdlId[0])) &&
-                    ((Hu3DMotionTimeGet(object->mdlId[0]) == (6.0f)) ||
-                     (Hu3DMotionTimeGet(object->mdlId[0]) == (22.0f)) ||
-                     (Hu3DMotionTimeGet(object->mdlId[0]) == (38.0f)) ||
-                     (Hu3DMotionTimeGet(object->mdlId[0]) == (54.0f)) ||
-                     (Hu3DMotionTimeGet(object->mdlId[0]) == (70.0f)))) {
-                    HuAudFXPlay(MSM_SE_GUIDE_16);
+                if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
+                    (object->mtnId[2] == fn_8002D3C4(object->mdlId[0])) &&
+                    ((fn_8002D4E0(object->mdlId[0]) == (6.0f)) ||
+                     (fn_8002D4E0(object->mdlId[0]) == (22.0f)) ||
+                     (fn_8002D4E0(object->mdlId[0]) == (38.0f)) ||
+                     (fn_8002D4E0(object->mdlId[0]) == (54.0f)) ||
+                     (fn_8002D4E0(object->mdlId[0]) == (70.0f)))) {
+                    HuAudFXPlay(940);
                     return;
                 }
-            } else if (Hu3DMotionShiftIDGet(object->mdlId[0]) < 0) {
-                Hu3DModelAttrSet(object->mdlId[0], HU3D_MOTATTR_PAUSE);
-                Hu3DMotionShiftSet(object->mdlId[0], object->mtnId[0], (0.0f),
-                                   (8.0f), HU3D_MOTATTR_LOOP);
-                Hu3DMotionSpeedSet(object->mdlId[0], (1.0f));
+            } else if (fn_8002D3EC(object->mdlId[0]) < 0) {
+                fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
+                fn_8002CCC0(object->mdlId[0], object->mtnId[0], (0.0f),
+                                   (8.0f), ((1 << 30) | (1 << 0)));
+                fn_8002D86C(object->mdlId[0], (1.0f));
                 object->work[1] = 0;
                 object->work[0] = 0;
                 return;
             }
         } else if (object->work[0] != 0) {
-            if ((Hu3DMotionShiftIDGet(object->mdlId[0]) < 0) &&
-                (object->mtnId[1] != Hu3DMotionIDGet(object->mdlId[0]))) {
-                Hu3DMotionShiftSet(object->mdlId[0], object->mtnId[1], (0.0f),
-                                   (8.0f), HU3D_MOTATTR_LOOP);
-                Hu3DMotionSpeedSet(object->mdlId[0], (2.0f));
+            if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
+                (object->mtnId[1] != fn_8002D3C4(object->mdlId[0]))) {
+                fn_8002CCC0(object->mdlId[0], object->mtnId[1], (0.0f),
+                                   (8.0f), ((1 << 30) | (1 << 0)));
+                fn_8002D86C(object->mdlId[0], (2.0f));
                 return;
             }
-            if ((Hu3DMotionShiftIDGet(object->mdlId[0]) < 0) &&
-                (object->mtnId[1] == Hu3DMotionIDGet(object->mdlId[0]))) {
-                motionMaxTime = Hu3DMotionMaxTimeGet(object->mdlId[0]);
-                if ((Hu3DData[object->mdlId[0]].motWork.speed +
-                     Hu3DMotionTimeGet(object->mdlId[0])) >= motionMaxTime) {
-                    Hu3DMotionShiftSet(object->mdlId[0], object->mtnId[0], (0.0f),
-                                       (8.0f), HU3D_MOTATTR_LOOP);
-                    Hu3DMotionSpeedSet(object->mdlId[0], (1.0f));
+            if ((fn_8002D3EC(object->mdlId[0]) < 0) &&
+                (object->mtnId[1] == fn_8002D3C4(object->mdlId[0]))) {
+                motionMaxTime = fn_8002D530(object->mdlId[0]);
+                if ((lbl_802C01C8[object->mdlId[0]].motWork.speed +
+                     fn_8002D4E0(object->mdlId[0])) >= motionMaxTime) {
+                    fn_8002CCC0(object->mdlId[0], object->mtnId[0], (0.0f),
+                                       (8.0f), ((1 << 30) | (1 << 0)));
+                    fn_8002D86C(object->mdlId[0], (1.0f));
                     object->work[0] = 0;
                 }
             }
         }
     } else if (lbl_1_bss_AE0 == 1) {
-        Hu3DMotionShiftSet(object->mdlId[0], object->mtnId[3], (0.0f),
-                           (8.0f), HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(object->mdlId[0], (1.0f));
-        Hu3DMotionAttrSet(object->mtnId[3], 1U);
+        fn_8002CCC0(object->mdlId[0], object->mtnId[3], (0.0f),
+                           (8.0f), ((1 << 30) | (1 << 0)));
+        fn_8002D86C(object->mdlId[0], (1.0f));
+        fn_8002DC74(object->mtnId[3], 1U);
         lbl_1_bss_AE0 = 2;
         return;
     } else if (lbl_1_bss_AE0 == 3) {
-        Hu3DMotionShiftSet(object->mdlId[0], object->mtnId[0], (0.0f),
-                           (8.0f), HU3D_MOTATTR_LOOP);
-        Hu3DMotionSpeedSet(object->mdlId[0], (1.0f));
-        Hu3DMotionAttrReset(object->mtnId[3], 1U);
+        fn_8002CCC0(object->mdlId[0], object->mtnId[0], (0.0f),
+                           (8.0f), ((1 << 30) | (1 << 0)));
+        fn_8002D86C(object->mdlId[0], (1.0f));
+        fn_8002DCA8(object->mtnId[3], 1U);
         lbl_1_bss_AE0 = 0;
         object->work[1] = 0;
         object->work[0] = 0;
@@ -228,10 +228,10 @@ void fn_1_11138(
 
 // Initializes the board object manager and starts the Treetop Bingo control process.
 void fn_1_112B8(void) {
-    lbl_1_bss_B00 = omInitObjMan(100, 8192);
+    lbl_1_bss_B00 = fn_8003A8BC(100, 8192);
     *(s16 *)&MgModeSubMode = 0;
     fn_1_E9C();
-    HuPrcChildCreate(fn_1_1217C, 100U, 12288U, 0, lbl_1_bss_B00);
+    fn_8000DAC0(fn_1_1217C, 100U, 12288U, 0, lbl_1_bss_B00);
 }
 
 // Creates Treetop Bingo's object manager and camera when the overlay loads.
@@ -242,10 +242,10 @@ s32 _prolog(void) {
         (*constructor)();
         ++constructor;
     }
-    lbl_1_bss_B00 = omInitObjMan(100, 8192);
+    lbl_1_bss_B00 = fn_8003A8BC(100, 8192);
     *(s16 *) &MgModeSubMode = 0;
     fn_1_E9C();
-    HuPrcChildCreate(fn_1_1217C, 100U, 12288U, 0, lbl_1_bss_B00);
+    fn_8000DAC0(fn_1_1217C, 100U, 12288U, 0, lbl_1_bss_B00);
     return 0;
 }
 

@@ -7,11 +7,11 @@
 #define M608_TEAM_MODE_FLAG 0x30002U
 
 s32 lbl_1_data_410[15] = {
-    DATANUM(DATA_mgconst, 0),  DATANUM(DATA_mgconst, 1),  DATANUM(DATA_mgconst, 2),
-    DATANUM(DATA_mgconst, 3),  DATANUM(DATA_mgconst, 4),  DATANUM(DATA_mgconst, 5),
-    DATANUM(DATA_mgconst, 6),  DATANUM(DATA_mgconst, 7),  DATANUM(DATA_mgconst, 8),
-    DATANUM(DATA_mgconst, 9),  DATANUM(DATA_mgconst, 10), DATANUM(DATA_mgconst, 11),
-    DATANUM(DATA_mgconst, 12), DATANUM(DATA_mgconst, 13), DATANUM(DATA_mgconst, 69)
+    DATANUM(0x9b0000, 0),  DATANUM(0x9b0000, 1),  DATANUM(0x9b0000, 2),
+    DATANUM(0x9b0000, 3),  DATANUM(0x9b0000, 4),  DATANUM(0x9b0000, 5),
+    DATANUM(0x9b0000, 6),  DATANUM(0x9b0000, 7),  DATANUM(0x9b0000, 8),
+    DATANUM(0x9b0000, 9),  DATANUM(0x9b0000, 10), DATANUM(0x9b0000, 11),
+    DATANUM(0x9b0000, 12), DATANUM(0x9b0000, 13), DATANUM(0x9b0000, 69)
 };
 
 struct _struct_lbl_1_data_44C_0x14 lbl_1_data_44C[5] = {
@@ -49,7 +49,7 @@ void fn_1_6150(void)
                          (f32) lbl_1_data_44C[panelIndex].screenY);
         MgScoreBoxColorSet(scoreBoxId, lbl_1_data_44C[panelIndex].boxRed,
                            lbl_1_data_44C[panelIndex].boxGreen, lbl_1_data_44C[panelIndex].boxBlue);
-        scoreDisplay = MgScoreCreate(DATANUM(DATA_mgconst, 48), DATANUM(DATA_mgconst, 48), 0);
+        scoreDisplay = MgScoreCreate(DATANUM(0x9b0000, 48), DATANUM(0x9b0000, 48), 0);
         lbl_1_bss_3DF0[panelIndex].scoreDisplay = scoreDisplay;
         MgScoreUnitBankSet(scoreDisplay, 17);
         MgScoreMaxDigitSet(scoreDisplay, 4);
@@ -60,8 +60,8 @@ void fn_1_6150(void)
                         lbl_1_data_44C[panelIndex].digitBlue);
         if (panelIndex >= 4) {
             recordSpriteDataIndex = 14;
-            lbl_1_bss_3DF0[panelIndex].recordSpriteAnimation = HuSprAnimRead(HuDataSelHeapReadNum(
-                lbl_1_data_410[recordSpriteDataIndex], HU_MEMNUM_OVL, HEAP_MODEL));
+            lbl_1_bss_3DF0[panelIndex].recordSpriteAnimation = HuSprAnimRead(fn_80008DD0(
+                lbl_1_data_410[recordSpriteDataIndex], 0x10000000, 2));
             spriteGroupId = HuSprGrpCreate(2);
             lbl_1_bss_3DF0[panelIndex].recordSpriteGroup = spriteGroupId;
             lbl_1_bss_3DF0[panelIndex].recordSpriteId =
@@ -110,7 +110,7 @@ void fn_1_6604(void)
         MgScoreDispOff(lbl_1_bss_3DF0[playerIndex].scoreDisplay);
         playerIndex += 1;
     }
-    if (_CheckFlag(M608_TEAM_MODE_FLAG) != 0) {
+    if (fn_8006A124(M608_TEAM_MODE_FLAG) != 0) {
         MgScoreBoxDispSet(lbl_1_bss_3DF0[4].scoreBoxId, 0);
         MgScoreDispOff(lbl_1_bss_3DF0[4].scoreDisplay);
         HuSprAttrSet(lbl_1_bss_3DF0[4].recordSpriteGroup, 0, HUSPR_ATTR_DISPOFF);
@@ -143,7 +143,7 @@ void fn_1_66C0(OMOBJ *recordObject)
         HuSprScaleSet(lbl_1_bss_3DF0[4].recordSpriteGroup, 0, recordScale, recordScale);
         if ((s32) elapsedFrames == 150) {
             /* The panel switches from its pulse to the saved record at this exact frame. */
-            GWRecordSet(GW_RECORD_M608, ((s32) lbl_1_bss_3E80.record) * 90);
+            fn_8003C80C(1, ((s32) lbl_1_bss_3E80.record) * 90);
             {
                 s16 score = ((s32) lbl_1_bss_3E80.record) * 90;
                 MgScoreValueSet(lbl_1_bss_3DF0[4].scoreDisplay, score);

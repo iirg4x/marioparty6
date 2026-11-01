@@ -558,39 +558,87 @@ static int capEffThrowMdlId = MB_MODEL_NONE;
 static BOOL capsuleMasuSelectComF[4] = { FALSE, FALSE, FALSE, FALSE };
 
 static CAPSULE_DATA capsuleData[] = {
-    { DATANUM(DATA_capsule, CAPSULE_DATA_KINOKO), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_0), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KINOKO), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_KINOKO), 0, 0, 5, 'A', 0, "KINOKO", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_S_KINOKO), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_0), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_S_KINOKO), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_S_KINOKO), 0, 0, 10, 'B', 0, "S KINOKO", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_P_KINOKO), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_0), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_P_KINOKO), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_P_KINOKO), 0, 0, 10, 'A', 0, "P KINOKO", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_M_KINOKO), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_0), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_M_KINOKO), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_M_KINOKO), 0, 0, 20, 'A', 0, "M KINOKO", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_KILLER), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_0), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KILLER), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_KILLER), 0, 0, 20, 'B', 0, "KILLER", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_DOKAN), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_0), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_DOKAN), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_DOKAN), 0, 0, 15, 'C', 0, "DOKAN", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_HANACHAN), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_0), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_HANACHAN), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_HANACHAN), 0, 0, 30, 'E', 0, "HANACHAN", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_N_KINOKO), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_0), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_N_KINOKO), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_N_KINOKO), 0, 0, 30, 'E', 0, "N KINOKO", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_KINOKO), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_0),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KINOKO), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_KINOKO), 0, 0, 5, 'A', 0, "KINOKO", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_S_KINOKO), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_0),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_S_KINOKO), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_S_KINOKO), 0, 0, 10, 'B', 0, "S KINOKO", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_P_KINOKO), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_0),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_P_KINOKO), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_P_KINOKO), 0, 0, 10, 'A', 0, "P KINOKO", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_M_KINOKO), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_0),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_M_KINOKO), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_M_KINOKO), 0, 0, 20, 'A', 0, "M KINOKO", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_KILLER), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_0),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KILLER), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_KILLER), 0, 0, 20, 'B', 0, "KILLER", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_DOKAN), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_0),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_DOKAN), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_DOKAN), 0, 0, 15, 'C', 0, "DOKAN", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_HANACHAN), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_0),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_HANACHAN), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_HANACHAN), 0, 0, 30, 'E', 0, "HANACHAN", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_N_KINOKO), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_0),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_N_KINOKO), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_N_KINOKO), 0, 0, 30, 'E', 0, "N KINOKO", 1 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "NULL", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "NASI", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_TOGEZO), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_1), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_TOGEZO), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_TOGEZO), 1, 1, 10, 'A', 1, "TOGEZO", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_KURIBO), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_1), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KURIBO), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_KURIBO), 1, 1, 15, 'A', 1, "KURIBO", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_PAKKUN), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_1), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_PAKKUN), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_PAKKUN), 1, 1, 20, 'B', 1, "PAKKUN", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_JANGO), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_1), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_JANGO), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_JANGO), 1, 1, 5, 'D', 1, "JANGO", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_TOGEZO), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_1),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_TOGEZO), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_TOGEZO), 1, 1, 10, 'A', 1, "TOGEZO", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_KURIBO), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_1),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KURIBO), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_KURIBO), 1, 1, 15, 'A', 1, "KURIBO", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_PAKKUN), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_1),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_PAKKUN), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_PAKKUN), 1, 1, 20, 'B', 1, "PAKKUN", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_JANGO), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_1),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_JANGO), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_JANGO), 1, 1, 5, 'D', 1, "JANGO", 1 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 0, "HANUKE", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_KOKAMEKKU), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_1), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KOKAMEKKU), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_KOKAMEKKU), 1, 1, 10, 'C', 1, "KOKAMEKKU", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_KAMEKKU), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_1), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KAMEKKU), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_KAMEKKU), 1, 1, 5, 'B', 1, "KAMEKKU", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_THROWMAN), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_1), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_THROWMAN), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_THROWMAN), 1, 1, 10, 'A', 1, "THROWMAN", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_KOKAMEKKU), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_1),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KOKAMEKKU), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_KOKAMEKKU), 1, 1, 10, 'C', 1, "KOKAMEKKU", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_KAMEKKU), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_1),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KAMEKKU), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_KAMEKKU), 1, 1, 5, 'B', 1, "KAMEKKU", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_THROWMAN), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_1),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_THROWMAN), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_THROWMAN), 1, 1, 10, 'A', 1, "THROWMAN", 1 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 0, "SUKA", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 0, "KARA", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_BOBLE), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_2), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_BOBLE), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_BOBLE), 2, 2, 10, 'B', 2, "BOBLE", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_BIRIQ), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_2), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_BIRIQ), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_BIRIQ), 2, 2, 15, 'C', 2, "BIRIQ", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_TUMUJIKUN), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_2), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_TUMUJIKUN), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_TUMUJIKUN), 2, 2, 15, 'B', 2, "TUMUJIKUN", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_DOSSUN), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_2), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_DOSSUN), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_DOSSUN), 2, 2, 15, 'C', 2, "DOSSUN", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_BOMUHEI), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_2), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_BOMUHEI), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_BOMUHEI), 2, 2, 10, 'C', 2, "BOMUHEI", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_PATAPATA), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_2), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_PATAPATA), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_PATAPATA), 2, 2, 10, 'E', 2, "PATAPATA", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_BOBLE), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_2),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_BOBLE), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_BOBLE), 2, 2, 10, 'B', 2, "BOBLE", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_BIRIQ), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_2),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_BIRIQ), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_BIRIQ), 2, 2, 15, 'C', 2, "BIRIQ", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_TUMUJIKUN), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_2),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_TUMUJIKUN), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_TUMUJIKUN), 2, 2, 15, 'B', 2, "TUMUJIKUN", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_DOSSUN), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_2),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_DOSSUN), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_DOSSUN), 2, 2, 15, 'C', 2, "DOSSUN", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_BOMUHEI), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_2),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_BOMUHEI), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_BOMUHEI), 2, 2, 10, 'C', 2, "BOMUHEI", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_PATAPATA), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_2),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_PATAPATA), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_PATAPATA), 2, 2, 10, 'E', 2, "PATAPATA", 1 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "NETA", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "GA  ", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "TUKI", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "TA  ", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_HONE), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_HONE), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_HONE), 3, 3, 20, 'D', 3, "HONE", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_LIGHT), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_LIGHT), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_LIGHT), 3, 3, 10, 'D', 3, "LIGHT", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_TARU), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_TARU), 3, 3, 15, 'D', 3, "TARU", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_HONE), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_HONE), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_HONE), 3, 3, 20, 'D', 3, "HONE", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_LIGHT), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_LIGHT), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_LIGHT), 3, 3, 10, 'D', 3, "LIGHT", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_TARU), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_TARU), 3, 3, 15, 'D', 3, "TARU", 1 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
@@ -598,19 +646,43 @@ static CAPSULE_DATA capsuleData[] = {
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KILLER_MOVE), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_KILLER_MOVE), 10, 3, 1, 'C', 3, "KILLER MOVE", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KETTOU), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_KETTOU), 10, 3, 1, 'C', 3, "KETTOU", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_4), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_MIRACLE), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_MIRACLE), 10, 3, 1, 'C', 3, "MIRACLE", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KOOPA), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_KOOPA), 9, 3, 1, 'E', 3, "KOOPA", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_DONKEY), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_DONKEY), 10, 3, 1, 'E', 3, "DONKEY", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_VS), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_VS), 10, 3, 1, 'Z', 3, "VS", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_R_TERESA), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_MESSAGE_R_TERESA), 10, 3, 1, 'Z', 3, "R_TERESA", 0 },
-    { DATANUM(DATA_board, BOARD_DATA_DICE), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DICE), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 0, "DICE", 1 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_YAMERU), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_YAMERU), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 0, "YAMERU", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KILLER_MOVE), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_KILLER_MOVE), 10, 3, 1, 'C', 3, "KILLER MOVE", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KETTOU), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_KETTOU), 10, 3, 1, 'C', 3, "KETTOU", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_4),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_MIRACLE), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_MIRACLE), 10, 3, 1, 'C', 3, "MIRACLE", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_KOOPA), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_KOOPA), 9, 3, 1, 'E', 3, "KOOPA", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_DONKEY), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_DONKEY), 10, 3, 1, 'E', 3, "DONKEY", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_VS), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_VS), 10, 3, 1, 'Z', 3, "VS", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_MESSAGE_R_TERESA), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_MESSAGE_R_TERESA), 10, 3, 1, 'Z', 3, "R_TERESA", 0 },
+    { DATANUM(0x50000, BOARD_DATA_DICE), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DICE), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 0, "DICE", 1 },
+    { DATANUM(0xc0000, CAPSULE_DATA_YAMERU), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_YAMERU), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 0, "YAMERU", 1 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DEBUG_CAM), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_DEBUG_CAM), 10, 0, 1, 'Z', 0, "DEBUG CAM TEST", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DEBUG_WARP), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_DEBUG_WARP), 10, 0, 1, 'Z', 0, "DEBUG WARP TEST", 0 },
-    { DATANUM(DATA_capsule, CAPSULE_DATA_ENTRY_33), DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_TYPE_3), MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DEBUG_SETPOS), MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_DEBUG_SETPOS), 10, 0, 1, 'Z', 0, "DEBUG SETPOS TEST", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DEBUG_CAM), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_EX98_MESSAGE_DEBUG_CAM), 10, 0, 1, 'Z', 0, "DEBUG CAM TEST", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DEBUG_WARP), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_EX98_MESSAGE_DEBUG_WARP), 10, 0, 1, 'Z', 0, "DEBUG WARP TEST", 0 },
+    { DATANUM(0xc0000, CAPSULE_DATA_ENTRY_33), DATANUM(0xc0000, CAPSULE_DATA_OBJ_TYPE_3),
+        MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DEBUG_SETPOS), MESSNUM(MESS_CAPSULE_EX98,
+        CAPSULE_EX98_MESSAGE_DEBUG_SETPOS), 10, 0, 1, 'Z', 0, "DEBUG SETPOS TEST", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
     { 0, 0, 0, MESSNUM(MESS_CAPSULE_EX98, CAPSULE_EX98_MESSAGE_NONE), 10, 0, 0, 'Z', 1, "0000", 0 },
@@ -713,17 +785,17 @@ static HuVecF capsuleMasuSelectRotTbl[2] = {
 };
 
 static CAPSULE_LIST_FILE capsuleListFileTbl[] = {
-    { 0, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_0) },
-    { 1, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_1) },
-    { 2, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_2) },
-    { 3, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_3) },
-    { 4, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_4) },
-    { 5, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_5) },
-    { 6, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_6) },
-    { 7, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_7) },
-    { 8, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_8) },
-    { 9, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_9) },
-    { 10, DATANUM(DATA_capsule, CAPSULE_DATA_LIST_10) },
+    { 0, DATANUM(0xc0000, CAPSULE_DATA_LIST_0) },
+    { 1, DATANUM(0xc0000, CAPSULE_DATA_LIST_1) },
+    { 2, DATANUM(0xc0000, CAPSULE_DATA_LIST_2) },
+    { 3, DATANUM(0xc0000, CAPSULE_DATA_LIST_3) },
+    { 4, DATANUM(0xc0000, CAPSULE_DATA_LIST_4) },
+    { 5, DATANUM(0xc0000, CAPSULE_DATA_LIST_5) },
+    { 6, DATANUM(0xc0000, CAPSULE_DATA_LIST_6) },
+    { 7, DATANUM(0xc0000, CAPSULE_DATA_LIST_7) },
+    { 8, DATANUM(0xc0000, CAPSULE_DATA_LIST_8) },
+    { 9, DATANUM(0xc0000, CAPSULE_DATA_LIST_9) },
+    { 10, DATANUM(0xc0000, CAPSULE_DATA_LIST_10) },
     { -1, -1 },
 };
 
@@ -1171,7 +1243,7 @@ int mbCapUse(int playerNo, int capsuleNo)
             MBWIN_TYPE_EVENT,
             MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_YAMERU_CHOICE),
             -1, TRUE);
-        if (GwPlayer[playerNo].comF) {
+        if (lbl_80265750[playerNo].comF) {
             CapComChoiceSet(0);
         }
         mbWinTopWait();
@@ -1200,7 +1272,7 @@ int mbCapUse(int playerNo, int capsuleNo)
         if (masuSelectionResult == -3) {
             if (CapUse(playerNo, capsuleNo)) {
                 mbev_CapCall(playerNo, capsuleNo, TRUE, FALSE);
-                isPartyMode = GwSystem.partyF;
+                isPartyMode = lbl_80265B70.partyF;
                 if (!isPartyMode) {
                     mbSingleCall(4, capsuleNo);
                 }
@@ -1209,7 +1281,7 @@ int mbCapUse(int playerNo, int capsuleNo)
             }
         } else {
             mbCapPlayerThrow(playerNo, masuSelectionResult, capsuleNo);
-            isPartyModeAfterThrow = GwSystem.partyF;
+            isPartyModeAfterThrow = lbl_80265B70.partyF;
             if (!isPartyModeAfterThrow) {
                 mbSingleCall(4, capsuleNo);
             }
@@ -1240,7 +1312,7 @@ static int CapUse(int playerNo, int capsuleNo)
 
     capsuleNo = mbCapValueTypeGet(capsuleNo);
     allocatedWork = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(CAP_USE_WORK), HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(CAP_USE_WORK), 0x10000000);
     useWork = allocatedWork;
     memset(useWork, 0, sizeof(CAP_USE_WORK));
     useWork->playerNo = playerNo;
@@ -1284,7 +1356,7 @@ static int CapUseSelect(CAP_USE_WORK *useWork)
     }
     mbObjPosSet(capsuleObjId, capsulePos.x, capsulePos.y, capsulePos.z);
     mbObjLayerSet(capsuleObjId, 4);
-    mbObjAttrSet(capsuleObjId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(capsuleObjId, ((1 << 30) | (1 << 0)));
     if (previousObjId == MB_MODEL_NONE) {
         mbObjDispSet(capsuleObjId, TRUE);
         animFrame = 0;
@@ -1296,16 +1368,16 @@ static int CapUseSelect(CAP_USE_WORK *useWork)
             }
             mbPlayerPosGet(useWork->playerNo, &playerAnimPos);
             playerAnimPos.y += 100.0 +
-                (150.0 * sin((M_PI * (90.0f * animProgress)) / 180.0));
+                (150.0 * sin((3.141592653589793 * (90.0f * animProgress)) / 180.0));
             mbObjPosSetV(capsuleObjId, &playerAnimPos);
             capsuleScale = (double)1.2f *
-                sin((M_PI * (90.0f * animProgress)) / 180.0);
+                sin((3.141592653589793 * (90.0f * animProgress)) / 180.0);
             mbObjScaleSet(capsuleObjId, capsuleScale, capsuleScale,
                 capsuleScale);
             HuPrcVSleep();
         } while (!mbCameraMoveCheck() || animProgress < 1.0f);
     }
-    if (!GwPlayer[useWork->playerNo].comF) {
+    if (!lbl_80265750[useWork->playerNo].comF) {
         // Later prompt calls use the top window, so this returned ID is unused.
         choiceWindowId = mbWinCreateChoice(
             MBWIN_TYPE_EVENT,
@@ -1313,7 +1385,7 @@ static int CapUseSelect(CAP_USE_WORK *useWork)
             0);
         mbWinTopInsertMesSet(mbCapUseMesGet(useWork->capsuleNo), 0);
         // This CPU-player check is unreachable after the outer non-CPU test.
-        if (GwPlayer[useWork->playerNo].comF) {
+        if (lbl_80265750[useWork->playerNo].comF) {
             CapComChoiceSet(0);
         }
         mbWinTopWait();
@@ -1326,10 +1398,10 @@ static int CapUseSelect(CAP_USE_WORK *useWork)
                     }
                     mbPlayerPosGet(useWork->playerNo, &playerAnimPos);
                     playerAnimPos.y += 100.0 + (150.0 *
-                        sin((M_PI * (90.0f * animProgress)) / 180.0));
+                        sin((3.141592653589793 * (90.0f * animProgress)) / 180.0));
                     mbObjPosSetV(capsuleObjId, &playerAnimPos);
                     capsuleScale = (double)1.2f *
-                        sin((M_PI * (90.0f * animProgress)) / 180.0);
+                        sin((3.141592653589793 * (90.0f * animProgress)) / 180.0);
                     mbObjScaleSet(capsuleObjId, capsuleScale, capsuleScale,
                         capsuleScale);
                     HuPrcVSleep();
@@ -1369,9 +1441,9 @@ BOOL mbCapEffUseCreate(int playerNo, int capsuleNo)
 
     capsuleNo = mbCapValueTypeGet(capsuleNo);
     capsuleUseEffProc[playerNo] =
-        HuPrcChildCreate(CapEffUse, 8196, 24576, 0, mbMainProc);
+        fn_8000DAC0(CapEffUse, 8196, 24576, 0, mbMainProc);
     allocatedWork = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(CAP_EFF_USE_WORK), HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(CAP_EFF_USE_WORK), 0x10000000);
     capsuleUseEffProc[playerNo]->property = effectWork = allocatedWork;
     memset(effectWork, 0, sizeof(CAP_EFF_USE_WORK));
     effectWork->playerNo = playerNo;
@@ -1411,9 +1483,9 @@ BOOL mbCapEffUseWanWanCreate(int playerNo, int capsuleValue, HuVecF *pos)
 
     capsuleValue = mbCapValueTypeGet(capsuleValue);
     capsuleUseEffProc[playerNo] =
-        HuPrcChildCreate(CapEffUse, 8196, 24576, 0, mbMainProc);
+        fn_8000DAC0(CapEffUse, 8196, 24576, 0, mbMainProc);
     allocatedWork = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(CAP_EFF_USE_WORK), HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(CAP_EFF_USE_WORK), 0x10000000);
     effectWork = allocatedWork;
     capsuleUseEffProc[playerNo]->property = effectWork;
     memset(effectWork, 0, sizeof(CAP_EFF_USE_WORK));
@@ -1434,7 +1506,7 @@ BOOL mbCapEffUseWanWanCreate(int playerNo, int capsuleValue, HuVecF *pos)
 // Raises a new capsule, bursts rays and sparkles, then hides and releases it.
 static void CapEffUse(void)
 {
-    CAP_EFF_USE_WORK *work = HuPrcCurrentGet()->property;
+    CAP_EFF_USE_WORK *work = fn_8000DD9C()->property;
     OMOBJ *rayObj;
     OMOBJ *masuHitObj;
     OMOBJ *glowObj;
@@ -1483,7 +1555,7 @@ static void CapEffUse(void)
     }
     mbObjPosSet(capObjId, capPos.x, capPos.y, capPos.z);
     mbObjLayerSet(capObjId, 4);
-    mbObjAttrSet(capObjId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(capObjId, ((1 << 30) | (1 << 0)));
     mbev_CapEffRayTransformSet(rayObj, &capPos, NULL, NULL);
     mbev_CapEffMasuHitTransformSet(masuHitObj, &capPos, NULL, NULL);
     if (oldObjId == MB_MODEL_NONE) {
@@ -1496,10 +1568,10 @@ static void CapEffUse(void)
                 t = 1.0f;
             }
             mbPlayerPosGet(work->playerNo, &tempPos);
-            tempPos.y += 100.0 + (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
+            tempPos.y += 100.0 + (150.0 * sin((3.141592653589793 * (90.0f * t)) / 180.0));
             mbObjPosSetV(capObjId, &tempPos);
             scale = (double)1.2f *
-                sin((M_PI * (90.0f * t)) / 180.0);
+                sin((3.141592653589793 * (90.0f * t)) / 180.0);
             mbObjScaleSet(capObjId, scale, scale, scale);
             HuPrcVSleep();
         } while (!mbCameraMoveCheck() || t < 1.0f);
@@ -1510,7 +1582,7 @@ static void CapEffUse(void)
     time = 0;
     while ((float)time < 30.0f) {
         t = (float)time / 30.0f;
-        scale = cos((M_PI * (90.0f * t)) / 180.0);
+        scale = cos((3.141592653589793 * (90.0f * t)) / 180.0);
         for (j = 0; j < 3; j++) {
             pos.x = pos.y = pos.z = 0.0f;
             rot.x = 360.0f * MBCapsuleEffRandF();
@@ -1541,7 +1613,7 @@ static void CapEffUse(void)
         HuPrcVSleep();
         time++;
     }
-    mtxRot(mtx, 0.0f, 0.0f, 20.0f);
+    fn_80022E38(mtx, 0.0f, 0.0f, 20.0f);
     for (time = 0; time < 256; time++) {
         pos.x =
             capPos.x + (75.0f * (-0.5f + MBCapsuleEffRandF()));
@@ -1550,9 +1622,9 @@ static void CapEffUse(void)
         pos.z = capPos.z + CAP_EFF_GLOW_Z_OFFSET;
         angle = 360.0f * MBCapsuleEffRandF();
         scale = 5.0f * (0.5f + MBCapsuleEffRandF());
-        vel.x = scale * sin((M_PI * angle) / 180.0);
+        vel.x = scale * sin((3.141592653589793 * angle) / 180.0);
         vel.y = scale * (0.3f * (-0.5f + MBCapsuleEffRandF()));
-        vel.z = scale * cos((M_PI * angle) / 180.0);
+        vel.z = scale * cos((3.141592653589793 * angle) / 180.0);
         PSMTXMultVec(mtx, &vel, &vel);
         mbev_CapEffColorSet(&color, mbRandMod(CAPSULE_EFF_COLOR_RANGE));
         glowColor = color;
@@ -1575,7 +1647,7 @@ static void CapEffUse(void)
     mbObjDispSet(capObjId, FALSE);
     for (time = 0; time < 20; time++) {
         t = (float)time / 20.0f;
-        scale = cos((M_PI * (90.0f * t)) / 180.0);
+        scale = cos((3.141592653589793 * (90.0f * t)) / 180.0);
         mbObjScaleSet(capObjId, scale, scale, scale);
         HuPrcVSleep();
     }
@@ -1596,7 +1668,7 @@ static void CapEffUse(void)
 // It also requests cleanup of the capsule removal and highlight effects.
 static void CapEffUseKill(void)
 {
-    CAP_EFF_USE_WORK *work = HuPrcCurrentGet()->property;
+    CAP_EFF_USE_WORK *work = fn_8000DD9C()->property;
 
     CapEffRemoveAddDestroy();
     CapEffHiliteKill();
@@ -1614,8 +1686,8 @@ void mbCapPlayerThrow(int playerNo, int masuId, int capsuleNo)
     CAP_PLAYER_THROW_WORK *workData;
 
     capsuleNo = mbCapValueTypeGet(capsuleNo);
-    capsulePlayerThrowProc = HuPrcChildCreate(CapPlayerThrow, 8196, 24576, 0, mbMainProc);
-    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAP_PLAYER_THROW_WORK), HU_MEMNUM_OVL);
+    capsulePlayerThrowProc = fn_8000DAC0(CapPlayerThrow, 8196, 24576, 0, mbMainProc);
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAP_PLAYER_THROW_WORK), 0x10000000);
     work = workData;
     capsulePlayerThrowProc->property = work;
     memset(work, 0, sizeof(CAP_PLAYER_THROW_WORK));
@@ -1713,7 +1785,7 @@ static void CapPlayerThrow(void)
     HuVecF *glowVelP;
     HuVecF *glowPosP;
 
-    work = HuPrcCurrentGet()->property;
+    work = fn_8000DD9C()->property;
     if (capsuleThrowHook) {
         capsuleThrowHook(TRUE);
     }
@@ -1745,21 +1817,21 @@ static void CapPlayerThrow(void)
     mbMasuPosGet(work->masuId, &work->masuPos);
     PSVECSubtract(&work->masuPos, &work->pos, &dir);
     mbPlayerRotSet(work->playerNo, 0.0f,
-        (float)((atan2(dir.x, dir.z) / M_PI) * 180.0), 0.0f);
+        (float)((atan2(dir.x, dir.z) / 3.141592653589793) * 180.0), 0.0f);
     // Sample the future release pose to find the hand position before starting the throw.
-    mbPlayerMotionSet(work->playerNo, work->jumpMotId, HU3D_MOTATTR_NONE);
+    mbPlayerMotionSet(work->playerNo, work->jumpMotId, 0);
     mbPlayerMotionTimeSet(
         work->playerNo, 0.35f * mbPlayerMotionMaxTimeGet(work->playerNo));
-    Hu3DMotionCalc(playerModelId);
-    Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
-        CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0), handMtx);
+    fn_80030644(playerModelId);
+    fn_80023398(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
+        fn_8005C0F0(lbl_80265750[work->playerNo].charNo, 4, 0), handMtx);
     work->pos.x = handMtx[0][3];
     work->pos.y = handMtx[1][3];
     work->pos.z = handMtx[2][3];
-    mbPlayerMotionSet(work->playerNo, 1, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionSet(work->playerNo, 1, ((1 << 30) | (1 << 0)));
     mbObjMotionTimeSet(playerObjId, (float)motionTime);
     mbPlayerRotSetV(work->playerNo, &playerRot);
-    Hu3DMotionCalc(playerModelId);
+    fn_80030644(playerModelId);
     HuPrcVSleep();
     mbMasuPosGet(work->masuId, &work->masuPos);
     work->masuPos.y += 20.0f;
@@ -1782,43 +1854,43 @@ static void CapPlayerThrow(void)
     z[2] = work->masuPos.z;
     CapEffThrowCreate(
         work->playerNo, x, y, z, work->yOfs, work->masuId);
-    if (!GwPlayer[work->playerNo].comF) {
+    if (!lbl_80265750[work->playerNo].comF) {
         mbWipeDissolveFadeInTime(15);
     }
     handTime = 45;
     mbObjPosGet(work->capObjId0, &capPos);
-    Hu3DMotionCalc(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
-    Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
-        CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0), handMtx);
+    fn_80030644(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
+    fn_80023398(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
+        fn_8005C0F0(lbl_80265750[work->playerNo].charNo, 4, 0), handMtx);
     handPos.x = handMtx[0][3];
     handPos.y = handMtx[1][3];
     handPos.z = handMtx[2][3];
     mbAudFXPlay(MSM_SE_BOARD_36);
     for (time = 0.0f; time < handTime; time++) {
-        Hu3DMotionCalc(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
-        Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
-            CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0),
+        fn_80030644(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
+        fn_80023398(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
+            fn_8005C0F0(lbl_80265750[work->playerNo].charNo, 4, 0),
             handMtx);
         handPos.x = handMtx[0][3];
         handPos.y = handMtx[1][3];
         handPos.z = handMtx[2][3];
-        t = sin((M_PI * (90.0f * (time / handTime))) / 180.0);
-        arc = 100.0f * sin((M_PI * (180.0f * t)) / 180.0);
+        t = sin((3.141592653589793 * (90.0f * (time / handTime))) / 180.0);
+        arc = 100.0f * sin((3.141592653589793 * (180.0f * t)) / 180.0);
         pos.x = capPos.x + (t * (handPos.x - capPos.x))
-            + (arc * sin((M_PI * (180.0f - (270.0f * t))) / 180.0));
+            + (arc * sin((3.141592653589793 * (180.0f - (270.0f * t))) / 180.0));
         pos.y = capPos.y + (t * (handPos.y - capPos.y));
         pos.z = capPos.z + (t * (handPos.z - capPos.z))
-            + (arc * cos((M_PI * (180.0f - (270.0f * t))) / 180.0));
-        scale = 0.35f + (0.85f * cos((M_PI * (90.0f * t)) / 180.0));
+            + (arc * cos((3.141592653589793 * (180.0f - (270.0f * t))) / 180.0));
+        scale = 0.35f + (0.85f * cos((3.141592653589793 * (90.0f * t)) / 180.0));
         mbObjPosSetV(work->capObjId0, &pos);
         mbObjScaleSet(work->capObjId0, scale, scale, scale);
         HuPrcVSleep();
     }
     mbObjHookSet(mbPlayerObjIDGet(work->playerNo),
-        CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0),
+        fn_8005C0F0(lbl_80265750[work->playerNo].charNo, 4, 0),
         work->capObjId0);
     mbPlayerRotateStart(work->playerNo,
-        (s16)((atan2(dir.x, dir.z) / M_PI) * 180.0), 15);
+        (s16)((atan2(dir.x, dir.z) / 3.141592653589793) * 180.0), 15);
     while (!mbPlayerRotateCheck(work->playerNo)) {
         HuPrcVSleep();
     }
@@ -1831,7 +1903,7 @@ static void CapPlayerThrow(void)
     z[1] = pos.z;
     work->time = 0;
     mbPlayerMotionShiftSet(work->playerNo, work->jumpMotId, 0.0f, 8.0f,
-        HU3D_MOTATTR_NONE);
+        0);
     mbAudFXPlay(MSM_SE_BOARD_25);
     while (mbObjMotionShiftIDGet(mbPlayerObjIDGet(work->playerNo))
         != MB_MODEL_NONE) {
@@ -1841,15 +1913,15 @@ static void CapPlayerThrow(void)
     while (mbPlayerMotionTimeGet(work->playerNo) <= (0.35f * time)) {
         HuPrcVSleep();
     }
-    Hu3DMotionCalc(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
-    Hu3DModelObjMtxGet(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
-        CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0), handMtx);
+    fn_80030644(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)));
+    fn_80023398(mbObjModelIDGet(mbPlayerObjIDGet(work->playerNo)),
+        fn_8005C0F0(lbl_80265750[work->playerNo].charNo, 4, 0), handMtx);
     x[0] = work->pos.x = handMtx[0][3];
     y[0] = work->pos.y = handMtx[1][3];
     z[0] = work->pos.z = handMtx[2][3];
     if (work->capObjId0 != MB_MODEL_NONE) {
         mbObjHookObjReset(mbPlayerObjIDGet(work->playerNo),
-            CharModelItemHookGet(GwPlayer[work->playerNo].charNo, 4, 0));
+            fn_8005C0F0(lbl_80265750[work->playerNo].charNo, 4, 0));
         mbObjDispSet(work->capObjId0, FALSE);
     }
     capsuleObjId = MB_MODEL_NONE;
@@ -1931,16 +2003,16 @@ static void CapPlayerThrow(void)
     mbObjDispSet(work->capObjId0, FALSE);
     mbObjDispSet(work->capObjId1, FALSE);
     mbCapObjColorDispSet(work->objColorId, FALSE);
-    omVibrate(work->playerNo, 20, 4, 4);
+    fn_8006A030(work->playerNo, 20, 4, 4);
     coinNum = CapEffThrowMasu(
         work->masuId, work->capsuleNo, work->playerNo, TRUE);
     CapEffThrowMasuWait(coinNum);
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         mbTutorialCall(18);
     }
     CapThrowEndWin(work->masuId, work->capsuleNo);
     mbev_CapPlayerMotShiftWait(
-        work->playerNo, 1, HU3D_MOTATTR_LOOP, TRUE);
+        work->playerNo, 1, ((1 << 30) | (1 << 0)), TRUE);
     mbPlayerRotateStart(work->playerNo, 0, 15);
     while (!mbPlayerRotateCheck(work->playerNo)) {
         HuPrcVSleep();
@@ -1972,7 +2044,7 @@ static void CapPlayerThrow(void)
 // The throw-process destructor releases its path search, capsule models, and work record.
 static void CapPlayerThrowKill(void)
 {
-    CAP_PLAYER_THROW_WORK *work = HuPrcCurrentGet()->property;
+    CAP_PLAYER_THROW_WORK *work = fn_8000DD9C()->property;
 
     CapEffThrowKill();
     mbCapObjKill(work->capObjId0);
@@ -1992,11 +2064,11 @@ static void CapEffThrowCreate(int playerNo, float *x, float *y, float *z,
     int boardNoTemp;
     int boardNo;
 
-    capEffThrowMdlId = Hu3DHookFuncCreate(CapEffThrowHook);
-    Hu3DModelCameraSet(capEffThrowMdlId, 1);
-    Hu3DModelLayerSet(capEffThrowMdlId, 7);
-    model = &Hu3DData[capEffThrowMdlId];
-    work = HuMemDirectMallocNum(HEAP_MODEL, sizeof(*work), model->mallocNo);
+    capEffThrowMdlId = fn_800260F4(CapEffThrowHook);
+    fn_80026B64(capEffThrowMdlId, 1);
+    fn_80026B8C(capEffThrowMdlId, 7);
+    model = &lbl_802C01C8[capEffThrowMdlId];
+    work = HuMemDirectMallocNum(2, sizeof(*work), model->mallocNo);
     model->hookData = work;
     memset(work, 0, sizeof(*work));
     work->modelId = capEffThrowMdlId;
@@ -2015,7 +2087,7 @@ static void CapEffThrowCreate(int playerNo, float *x, float *y, float *z,
     work->pos.x = work->pos.y = work->pos.z = 0.0f;
     work->yOfs = yOfs;
     work->tick = 0;
-    boardNoTemp = GwSystem.boardNo;
+    boardNoTemp = lbl_80265B70.boardNo;
     boardNo = boardNoTemp;
     if (boardNo < 0) {
         boardNo = 0;
@@ -2066,9 +2138,11 @@ static void CapEffThrowHook(HU3D_MODEL *modelP, Mtx *mtx)
             if (PSVECMag(&dir) > 0.0f) {
                 PSVECNormalize(&dir, &dir);
             }
-            angle = ((atan2(dir.x, dir.z) / M_PI) * 180) + 90;
-            dir.x = sin((M_PI * angle) / 180) * capsulePlayerThrowFrameTbl[work->no].radius;
-            dir.z = cos((M_PI * angle) / 180) * capsulePlayerThrowFrameTbl[work->no].radius;
+            angle = ((atan2(dir.x, dir.z) / 3.141592653589793) * 180) + 90;
+            dir.x = sin((3.141592653589793 * angle) / 180)
+                * capsulePlayerThrowFrameTbl[work->no].radius;
+            dir.z = cos((3.141592653589793 * angle) / 180)
+                * capsulePlayerThrowFrameTbl[work->no].radius;
             pos.x += dir.x;
             pos.z += dir.z;
         } else if (0.0f != capsulePlayerThrowFrameTbl[work->no].dir) {
@@ -2168,7 +2242,7 @@ static BOOL CapEffThrowCheck(HuVecF *pos, int *maxTime)
     if (capEffThrowMdlId == MB_MODEL_NONE) {
         return FALSE;
     }
-    model = &Hu3DData[capEffThrowMdlId];
+    model = &lbl_802C01C8[capEffThrowMdlId];
     work = model->hookData;
     if (work->endF == FALSE) {
         return FALSE;
@@ -2184,7 +2258,7 @@ static BOOL CapEffThrowCheck(HuVecF *pos, int *maxTime)
 static void CapEffThrowKill(void)
 {
     if (capEffThrowMdlId != MB_MODEL_NONE) {
-        Hu3DModelKill(capEffThrowMdlId);
+        fn_800262D0(capEffThrowMdlId);
     }
     capEffThrowMdlId = MB_MODEL_NONE;
 }
@@ -2302,9 +2376,9 @@ static int CapEffThrowMasu(int masuId, int capsuleNo, int playerNo, BOOL bonusF)
     HuVecF *ringBurstRotP;
     HuVecF *ringBurstPosP;
 
-    partyF = GwSystem.partyF;
+    partyF = lbl_80265B70.partyF;
     if (!partyF ||
-        _CheckFlag(FLAG_BOARD_TUTORIAL) ||
+        fn_8006A124(65550) ||
         !bonusF) {
         coinNum = -1;
     } else {
@@ -2386,7 +2460,7 @@ static int CapEffThrowMasu(int masuId, int capsuleNo, int playerNo, BOOL bonusF)
             mbev_CapEffMasuHitTransformSet(
                 capsuleThrowMasuHitOMObj, &pos, &rot, NULL);
         }
-        alpha = cos((M_PI * (90.0f * ((float)time / 60.0f))) / 180.0);
+        alpha = cos((3.141592653589793 * (90.0f * ((float)time / 60.0f))) / 180.0);
         for (i = 0; (float)i < (2.0f * alpha); i++) {
             pos = zeroPos;
             CAP_EFF_RAND_NEXT();
@@ -2561,7 +2635,7 @@ BOOL mbCapEffThrowCheck(HuVecF *pos, int *maxTime)
     if (capEffThrowMdlId == MB_MODEL_NONE) {
         paramSetF = FALSE;
     } else {
-        modelP = &Hu3DData[capEffThrowMdlId];
+        modelP = &lbl_802C01C8[capEffThrowMdlId];
         work = modelP->hookData;
         if (!work->endF) {
             paramSetF = FALSE;
@@ -2576,7 +2650,7 @@ BOOL mbCapEffThrowCheck(HuVecF *pos, int *maxTime)
     result = paramSetF;
     if (result) {
         if (capEffThrowMdlId != MB_MODEL_NONE) {
-            Hu3DModelKill(capEffThrowMdlId);
+            fn_800262D0(capEffThrowMdlId);
         }
         capEffThrowMdlId = MB_MODEL_NONE;
     }
@@ -2591,7 +2665,7 @@ void mbCapAutoThrow(HuVecF *startPos, HuVecF *endPos, HuVecF *masuPos, int playe
     CAP_AUTO_THROW_WORK *workData;
     CAP_AUTO_THROW_WORK *work;
 
-    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*workData), HU_MEMNUM_OVL);
+    workData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(*workData), 0x10000000);
     work = workData;
     memset(work, 0, sizeof(*work));
     work->playerNo = playerNo;
@@ -2734,7 +2808,7 @@ static void CapAutoThrow(CAP_AUTO_THROW_WORK *work)
     CapEffTrailPosSet(&effPos);
     mbCapObjColorKill(objColorId);
     if (work->startT < 1.0f) {
-        omVibrate(work->playerNo, 20, 7, 3);
+        fn_8006A030(work->playerNo, 20, 7, 3);
     }
     CapEffThrowMasu(work->masuId, work->capsuleNo, work->playerNo, FALSE);
     HuPrcSleep(18);
@@ -2797,12 +2871,12 @@ int mbCapSelectMasu(int playerNo, int capsuleNo)
     capsuleMasuSelectResult = -1;
     capsuleMasuSelectComF[playerNo] = FALSE;
     workData = HuMemDirectMallocNum(
-        HEAP_HEAP, 32, HU_MEMNUM_OVL);
+        HEAP_HEAP, 32, 0x10000000);
     work = workData;
     work->playerNo = playerNo;
     work->unusedResult = -1;
     work->capsuleNo = capsuleNo;
-    if (!GwPlayer[playerNo].comF) {
+    if (!lbl_80265750[playerNo].comF) {
         CapSelectMasuPlayer(work);
     } else {
         CapSelectMasuCom(work);
@@ -2823,7 +2897,7 @@ void mbCapSelectMasuInit(void)
     int num;
 
     masuFlagData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(s16) * 256, 0x10000000);
     masuFlag = masuFlagData;
     for (masuId = 1; masuId <= mbMasuRawNumGet(); masuId++) {
         memset(masuFlag, 0, sizeof(s16) * 256);
@@ -2892,14 +2966,14 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
     moveNum = -1;
     memset(candidateDir, 0, sizeof(candidateDir));
     memset(candidates, 0, sizeof(candidates));
-    padNo = GwPlayer[work->playerNo].padNo;
-    masuId = previousMasuId = GwPlayer[work->playerNo].masuId;
+    padNo = lbl_80265750[work->playerNo].padNo;
+    masuId = previousMasuId = lbl_80265750[work->playerNo].masuId;
     frontNum = 0;
     validParentNum = 0;
     direction = 1;
     hiliteDelay = 0;
     masuFlag = (CapEffHiliteCreate(), HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL));
+        HEAP_HEAP, sizeof(s16) * 256, 0x10000000));
     memset(masuFlag, 0, sizeof(s16) * 256);
     capsuleMasuSelectEndF = TRUE;
     CapSelectMasuListGet(masuFlag, masuId, 5, 5);
@@ -2922,7 +2996,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
         s16 objId;
 
         objId = work->capObjId;
-        mbObjAttrSet(objId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(objId, ((1 << 30) | (1 << 0)));
     }
     cameraZoom = mbCameraZoomGet();
     mbCameraOffsetGet(&cameraOffset);
@@ -2975,7 +3049,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
             }
         }
         if (!validF && frontNum == 1 && validParentNum == 1 &&
-            masuId != GwPlayer[work->playerNo].masuId) {
+            masuId != lbl_80265750[work->playerNo].masuId) {
             directF = TRUE;
         } else {
             directF = FALSE;
@@ -2983,7 +3057,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
 
         if (!directF) {
             // Both positions deliberately use the same destination prompt.
-            if (masuId == GwPlayer[work->playerNo].masuId) {
+            if (masuId == lbl_80265750[work->playerNo].masuId) {
                 capsuleMes = 0;
             } else {
                 capsuleMes = 0;
@@ -3007,7 +3081,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
             mbMasuPosGet(candidates[i], &targetPos);
             PSVECSubtract(&targetPos, &currentPos, &delta);
             angleEnd = (float)(90.0 -
-                ((atan2(delta.z, delta.x) / M_PI) * 180.0));
+                ((atan2(delta.z, delta.x) / 3.141592653589793) * 180.0));
             OSf32tos16(&angleEnd, &heading);
             if (heading < 0) {
                 heading += 360;
@@ -3028,7 +3102,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
             }
         }
         if (validF) {
-            mbAudFXPlay(MSM_SE_BRD00_23);
+            mbAudFXPlay(1027);
         }
         do {
         stickDir.x = (float)mbPadStkXGet(padNo);
@@ -3047,10 +3121,10 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
                     }
                     mbPlayerPosGet(work->playerNo, &playerPos);
                     playerPos.y += 100.0 +
-                        (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
+                        (150.0 * sin((3.141592653589793 * (90.0f * t)) / 180.0));
                     mbObjPosSetV(work->capObjId, &playerPos);
                     scale = (double)1.2f *
-                        sin((M_PI * (90.0f * t)) / 180.0);
+                        sin((3.141592653589793 * (90.0f * t)) / 180.0);
                     mbObjScaleSet(work->capObjId, scale, scale, scale);
                 } else {
                     t = 1.0f;
@@ -3060,7 +3134,7 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
             initialF = FALSE;
         }
 
-        if (GwPlayer[work->playerNo].comF) {
+        if (lbl_80265750[work->playerNo].comF) {
             capsuleMasuSelectResult = -1;
             goto cleanup;
         }
@@ -3098,19 +3172,19 @@ static int CapSelectMasuPlayer(CAP_SELECT_MASU_WORK *work)
                 }
             }
         } else {
-            if (HuPadBtnDown[padNo] & PAD_BUTTON_A) {
+            if (lbl_802C0008[padNo] & PAD_BUTTON_A) {
                 if (validF) {
-                    mbAudFXPlay(MSM_SE_BRD00_24);
+                    mbAudFXPlay(1028);
                     capsuleMasuSelectResult = masuId;
                     goto cleanup;
                 }
-            } else if (HuPadBtnDown[padNo] & PAD_BUTTON_B) {
+            } else if (lbl_802C0008[padNo] & PAD_BUTTON_B) {
                 capsuleMasuSelectResult = -1;
                 goto cleanup;
             } else if (fabs(stickDir.x) >= 8.0 ||
                 fabs(stickDir.z) >= 8.0) {
                 angle = (float)((atan2(mbPadStkXGet(padNo),
-                    -mbPadStkYGet(padNo)) / M_PI) * 180.0);
+                    -mbPadStkYGet(padNo)) / 3.141592653589793) * 180.0);
                 diffAngle = 180.0f;
                 bestAngle = 180.0f;
                 selectedId = -1;
@@ -3244,27 +3318,27 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
     (void)cameraP;
     {
         playerNo = work->playerNo;
-        playerData = &GwPlayer[playerNo];
+        playerData = &lbl_80265750[playerNo];
         playerBase = playerData;
         playerP = playerBase;
 
         maxMasu = mbMasuRawNumGet();
-        padNo = GwPlayer[work->playerNo].padNo;
+        padNo = lbl_80265750[work->playerNo].padNo;
         masuId = previousMasuId = playerP->masuId;
     }
     linkCount = 0;
     validLinkNum = 0;
     dir = 1;
     masuFlagData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(s16) * 256, 0x10000000);
     masuFlag = masuFlagData;
     memset(masuFlag, 0, sizeof(s16) * 256);
     masuListData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(s16) * 256, 0x10000000);
     masuList = masuListData;
     memset(masuList, 0, sizeof(s16) * 256);
     pathData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(s16) * 256, 0x10000000);
     path = pathData;
     memset(path, 0, sizeof(s16) * 256);
 
@@ -3330,7 +3404,7 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
         s16 objId;
 
         objId = work->capObjId;
-        mbObjAttrSet(objId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(objId, ((1 << 30) | (1 << 0)));
     }
     cameraZoom = mbCameraZoomGet();
     (void)t;
@@ -3373,12 +3447,12 @@ static int CapSelectMasuCom(CAP_SELECT_MASU_WORK *work)
         goto cleanup;
     }
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         targetId = mbTutorialCall(17);
     }
     capsuleMes = -1;
     (void)capsuleMes;
-    mbAudFXPlay(MSM_SE_BRD00_24);
+    mbAudFXPlay(1028);
     capsuleMasuSelectResult = (s16)targetId;
 
 cleanup:
@@ -3440,8 +3514,8 @@ static BOOL CapSelectMasuCheck(int masuId)
     if (masuType == 1 || masuType == 2) {
         if (mbCapMasuDispTypeGet(masuId) == 0 ||
             mbCapMasuDispTypeGet(masuId) == 1) {
-            for (i = 0; i < GW_PLAYER_MAX; i++) {
-                if (masuId == GwPlayer[i].masuId) {
+            for (i = 0; i < 4; i++) {
+                if (masuId == lbl_80265750[i].masuId) {
                     return FALSE;
                 }
             }
@@ -3842,7 +3916,7 @@ static int CapUseDelete(int playerNo, int capsuleNo)
 
     capsuleNo = mbCapValueTypeGet((s16)capsuleNo);
     workData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*work), 0x10000000);
     work = workData;
     memset(work, 0, sizeof(*work));
     work->playerNo = playerNo;
@@ -3885,7 +3959,7 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
     }
     mbObjLayerSet(work->capObjId, 4);
     modelId = work->capObjId;
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     work->auxModelId = MB_MODEL_NONE;
     work->primaryWinId = MB_MODEL_NONE;
     work->secondaryWinId = MB_MODEL_NONE;
@@ -3900,10 +3974,10 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
             }
             mbPlayerPosGet(work->playerNo, &playerPos);
             playerPos.y += 100.0 +
-                (150.0 * sin((M_PI * (90.0f * t)) / 180.0));
+                (150.0 * sin((3.141592653589793 * (90.0f * t)) / 180.0));
             mbObjPosSetV(work->capObjId, &playerPos);
             scale = (double)1.2f *
-                sin((M_PI * (90.0f * t)) / 180.0);
+                sin((3.141592653589793 * (90.0f * t)) / 180.0);
             mbObjScaleSet(work->capObjId, scale, scale, scale);
         } else {
             t = 1.0f;
@@ -3915,7 +3989,7 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
         MESSNUM(MESS_CAPSULE_EX99, CAPSULE_EX99_MESSAGE_DELETE_CHOICE),
         -1, TRUE);
     mbWinTopInsertMesSet(mbCapUseMesGet(work->capsuleNo), 0);
-    if (GwPlayer[work->playerNo].comF) {
+    if (lbl_80265750[work->playerNo].comF) {
         CapComChoiceSet(-1);
     }
     mbWinTopWait();
@@ -3923,13 +3997,13 @@ static int CapUseDeleteWin(CAP_USE_DELETE_WORK *work)
     if (choice == 0) {
         CapEffRemoveCreate();
         HuPrcVSleep();
-        mbAudFXPlay(MSM_SE_BRD00_17);
+        mbAudFXPlay(1021);
         mbObjDispSet(work->capObjId, FALSE);
         mbObjPosGet(work->capObjId, &playerPos);
         removePos = playerPos;
         removePosP = &removePos;
         CapEffRemoveAddAll(removePosP);
-        omVibrate(work->playerNo, 20, 4, 4);
+        fn_8006A030(work->playerNo, 20, 4, 4);
         // Some callers request the effect without removing an inventory capsule.
         if (!capsuleUseRemoveOnF) {
             mbPlayerCapsuleUseSet(work->capsuleNo);
@@ -4024,13 +4098,13 @@ void mbCapListRead(void)
     file = capsuleListFileTbl;
     i = 0;
     for (; file->boardNo >= 0; i++, file++) {
-        boardNo = GwSystem.boardNo;
+        boardNo = lbl_80265B70.boardNo;
         if (file->boardNo == boardNo) {
             break;
         }
     }
-    listBase = list = HuDataSelHeapReadNum(
-        file->dataNo, HU_MEMNUM_OVL, HEAP_MODEL);
+    listBase = list = fn_80008DD0(
+        file->dataNo, 0x10000000, 2);
     i = 0;
     num = 0;
     for (; i < 33; i++, list++) {
@@ -4094,7 +4168,7 @@ void mbCapListDebug(void)
     s8 *value;
 
     listData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*listBase) * 33, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*listBase) * 33, 0x10000000);
     listBase = listData;
     list = listBase;
     memset(listBase, 0, sizeof(*listBase) * 33);
@@ -4204,14 +4278,14 @@ void mbCapListDebug(void)
         }
         directionY = 0;
         directionX = directionY;
-        if (HuPadDStkRep[0] & PAD_BUTTON_RIGHT) {
+        if (lbl_802BFFE0[0] & PAD_BUTTON_RIGHT) {
             directionX = 1;
-        } else if (HuPadDStkRep[0] & PAD_BUTTON_LEFT) {
+        } else if (lbl_802BFFE0[0] & PAD_BUTTON_LEFT) {
             directionX = -1;
         }
-        if (HuPadDStkRep[0] & PAD_BUTTON_UP) {
+        if (lbl_802BFFE0[0] & PAD_BUTTON_UP) {
             directionY = -1;
-        } else if (HuPadDStkRep[0] & PAD_BUTTON_DOWN) {
+        } else if (lbl_802BFFE0[0] & PAD_BUTTON_DOWN) {
             directionY = 1;
         }
         switch (mode) {
@@ -4271,22 +4345,22 @@ void mbCapListDebug(void)
         }
         switch (mode) {
             case 0:
-                if (HuPadBtnDown[0] & PAD_BUTTON_A) {
+                if (lbl_802C0008[0] & PAD_BUTTON_A) {
                     memcpy(&listTemp, &listBase[row], sizeof(listTemp));
                     mode++;
                 }
                 break;
 
             case 1:
-                if (HuPadBtnDown[0] & PAD_BUTTON_A) {
+                if (lbl_802C0008[0] & PAD_BUTTON_A) {
                     mode = 0;
-                } else if (HuPadBtnDown[0] & PAD_BUTTON_B) {
+                } else if (lbl_802C0008[0] & PAD_BUTTON_B) {
                     memcpy(&listBase[row], &listTemp, sizeof(listTemp));
                     mode = 0;
                 }
                 break;
         }
-        if (HuPadBtnDown[0] & PAD_BUTTON_Y) {
+        if (lbl_802C0008[0] & PAD_BUTTON_Y) {
             OSReport("static CAPSULE_LIST capsuleList[] = { \n");
             i = 0;
             list = listBase;
@@ -4317,8 +4391,8 @@ void mbCapListDebug(void)
             OSReport("};\n");
         }
         HuPrcVSleep();
-    } while (!(HuPadBtn[0] & PAD_TRIGGER_R) ||
-        !(HuPadBtn[0] & PAD_TRIGGER_L));
+    } while (!(lbl_802C0010[0] & PAD_TRIGGER_R) ||
+        !(lbl_802C0010[0] & PAD_TRIGGER_L));
 
     {
         i = 0;
@@ -4392,8 +4466,8 @@ void mbCapNumDebug(void)
             y += 16.0f;
         }
         HuPrcVSleep();
-    } while (!(HuPadBtn[0] & PAD_TRIGGER_R) ||
-        !(HuPadBtn[0] & PAD_TRIGGER_L));
+    } while (!(lbl_802C0010[0] & PAD_TRIGGER_R) ||
+        !(lbl_802C0010[0] & PAD_TRIGGER_L));
 }
 
 s16 mbCapValueTypeGet(s16 value)
@@ -4462,10 +4536,10 @@ int mbCapBuyCostGet(s16 capsuleNo, s16 playerNo)
     int costNo;
 
     cost = -1;
-    if (!GwSystem.curTime) {
+    if (!lbl_80265B70.curTime) {
         costNo = 0;
     } else {
-        switch (GwPlayer[playerNo].rank) {
+        switch (lbl_80265750[playerNo].rank) {
             case 0:
                 costNo = 1;
                 break;
@@ -4502,7 +4576,7 @@ int mbCapSellCostGet(s16 capsuleNo, s16 playerNo)
     int i;
 
     cost = -1;
-    switch (GwPlayer[playerNo].rank) {
+    switch (lbl_80265750[playerNo].rank) {
         case 0:
             costNo = 2;
             break;
@@ -4559,8 +4633,8 @@ BOOL mbCapThrowMasuCheck(int masuId)
         mbCapMasuDispTypeGet(masuId) != 1) {
         goto result_false;
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
-        if (masuId == GwPlayer[i].masuId) {
+    for (i = 0; i < 4; i++) {
+        if (masuId == lbl_80265750[i].masuId) {
             result = FALSE;
             goto done;
         }
@@ -4601,13 +4675,13 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
     if (data->capsuleNo < 0) {
         return -1;
     }
-    rank = GwPlayer[playerNo].charNo;
+    rank = lbl_80265750[playerNo].charNo;
     if (rank > 10) {
         rank = 10;
     }
     chance = data->rank[rank].chance;
     code = data->rank[rank].code;
-    step = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 7);
+    step = mbMasuFind_TypeStepGet(lbl_80265750[playerNo].masuId, 7);
     switch (capsuleNo) {
         case 1:
             if (code == '*' && CapCheckComPath(playerNo, 15, 0)) {
@@ -4615,9 +4689,9 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             }
             break;
         case 2:
-            step2 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 3);
-            step3 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 5);
-            step4 = mbMasuFind_TypeStepGet(GwPlayer[playerNo].masuId, 4);
+            step2 = mbMasuFind_TypeStepGet(lbl_80265750[playerNo].masuId, 3);
+            step3 = mbMasuFind_TypeStepGet(lbl_80265750[playerNo].masuId, 5);
+            step4 = mbMasuFind_TypeStepGet(lbl_80265750[playerNo].masuId, 4);
             if ((step2 >= 1 && step2 <= 10) || (step3 >= 1 && step3 <= 10) ||
                 (step4 >= 1 && step4 <= 10)) {
                 if (code == 'a') {
@@ -4634,13 +4708,13 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             break;
         case 4:
             if (code == '*') {
-                for (i = 0; i < GW_PLAYER_MAX; i++) {
+                for (i = 0; i < 4; i++) {
                     if (i != playerNo &&
-                        GwPlayer[i].masuId == GwPlayer[playerNo].masuId) {
+                        lbl_80265750[i].masuId == lbl_80265750[playerNo].masuId) {
                         break;
                     }
                 }
-                if (i >= GW_PLAYER_MAX && !CapCheckComPath(playerNo, 10, 2)) {
+                if (i >= 4 && !CapCheckComPath(playerNo, 10, 2)) {
                     chance = 0;
                 }
             }
@@ -4650,15 +4724,15 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             break;
         case 5:
             if (code == '*') {
-                for (i = 0; i < GW_PLAYER_MAX; i++) {
+                for (i = 0; i < 4; i++) {
                     if (i != playerNo) {
-                        step2 = mbMasuFind_TypeStepGet(GwPlayer[i].masuId, 7);
+                        step2 = mbMasuFind_TypeStepGet(lbl_80265750[i].masuId, 7);
                         if (step2 >= 1 && step2 <= 10) {
                             break;
                         }
                     }
                 }
-                if (i < GW_PLAYER_MAX) {
+                if (i < 4) {
                     chance = 80;
                 }
             }
@@ -4675,14 +4749,14 @@ int mbCapComChanceGet(int capsuleNo, int playerNo, int mode)
             break;
         case 22:
             if (code == '*' && step >= 0 && step <= 5 &&
-                mbCapSelectMasuBackNum(GwPlayer[playerNo].masuId) > 0) {
+                mbCapSelectMasuBackNum(lbl_80265750[playerNo].masuId) > 0) {
                 chance = 80;
                 capsuleSelectComBack = TRUE;
             }
             break;
         case 23:
             if (code == '*' && step >= 0 && step <= 5 &&
-                mbCapSelectMasuBackNum(GwPlayer[playerNo].masuId) > 0) {
+                mbCapSelectMasuBackNum(lbl_80265750[playerNo].masuId) > 0) {
                 chance = 80;
                 capsuleSelectComBack = TRUE;
             }
@@ -4783,7 +4857,7 @@ static BOOL CapCheckComPath(int playerNo, int max, int mode)
     int i;
     BOOL endF;
 
-    masuId = startMasu = GwPlayer[playerNo].masuId;
+    masuId = startMasu = lbl_80265750[playerNo].masuId;
     maxWork = max;
     {
         int linkNum;
@@ -4820,12 +4894,12 @@ static BOOL CapCheckComPath(int playerNo, int max, int mode)
                     }
                     break;
                 case 2:
-                    for (i = 0; i < GW_PLAYER_MAX; i++) {
-                        if (i != playerNo && GwPlayer[i].masuId == masuId) {
+                    for (i = 0; i < 4; i++) {
+                        if (i != playerNo && lbl_80265750[i].masuId == masuId) {
                             break;
                         }
                     }
-                    if (i < GW_PLAYER_MAX) {
+                    if (i < 4) {
                         return TRUE;
                     }
                     break;
@@ -4887,14 +4961,14 @@ int mbCapSelectComGet(int playerNo, int *capsuleTbl, int capsuleNum)
     int i;
     int j;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         i = mbTutorialCall(15);
         return i;
     }
     if (capsuleNum <= 0) {
         return -1;
     }
-    if (GwSystem.turnNo >= GwSystem.turnMax && mbPlayerCoinGet(playerNo) >= 20) {
+    if (lbl_80265B70.turnNo >= lbl_80265B70.turnMax && mbPlayerCoinGet(playerNo) >= 20) {
         for (i = 0; i < capsuleNum; i++) {
             if (capsuleTbl[i] == 6) {
                 break;
@@ -4921,7 +4995,7 @@ int mbCapSelectComGet(int playerNo, int *capsuleTbl, int capsuleNum)
         }
         if ((CapUseModeGetInline(choiceP->capsuleNo) == 1 ||
                 CapUseModeGetInline(choiceP->capsuleNo) == 2) &&
-            mbCapSelectMasuNum(GwPlayer[playerNo].masuId) <= 0) {
+            mbCapSelectMasuNum(lbl_80265750[playerNo].masuId) <= 0) {
             choiceP->chance = 0;
         }
     }
@@ -5210,7 +5284,7 @@ int mbCapSelectMasuFrontNum(int masuId)
     s16 num;
 
     masuFlagData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(s16) * 256, 0x10000000);
     masuFlag = masuFlagData;
     memset(masuFlag, 0, sizeof(s16) * 256);
     capsuleMasuSelectEndF = TRUE;
@@ -5234,7 +5308,7 @@ int mbCapSelectMasuBackNum(int masuId)
     s16 num;
 
     masuFlagData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(s16) * 256, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(s16) * 256, 0x10000000);
     masuFlag = masuFlagData;
     memset(masuFlag, 0, sizeof(s16) * 256);
     capsuleMasuSelectEndF = TRUE;
@@ -5299,22 +5373,22 @@ int mbCapNextGet(int rank)
         return list[mbRandMod(num)];
     }
     for (i = 0; i < 8U; i++) {
-        if (GwSystem.turnMax <= capsuleMaxTurnTbl[i]) {
+        if (lbl_80265B70.turnMax <= capsuleMaxTurnTbl[i]) {
             break;
         }
     }
     if (i < 9U) {
         turnSeg = i;
         for (i = 0; i < 2; i++) {
-            if (GwSystem.turnNo <= capsuleTurnTbl[turnSeg][i]) {
+            if (lbl_80265B70.turnNo <= capsuleTurnTbl[turnSeg][i]) {
                 break;
             }
         }
         gamePart = i;
     } else {
-        if (GwSystem.turnNo <= GwSystem.turnMax / 3) {
+        if (lbl_80265B70.turnNo <= lbl_80265B70.turnMax / 3) {
             gamePart = 0;
-        } else if (GwSystem.turnNo <= (GwSystem.turnMax / 3) * 2) {
+        } else if (lbl_80265B70.turnNo <= (lbl_80265B70.turnMax / 3) * 2) {
             gamePart = 1;
         } else {
             gamePart = 2;
@@ -5381,13 +5455,13 @@ int mbCapMasuNextGet(int playerNo)
     int otherListNo;
     int total;
 
-    if (GwSystem.turnNo <= GwSystem.turnMax / 2) {
-        weightNo = GwPlayer[playerNo].rank;
+    if (lbl_80265B70.turnNo <= lbl_80265B70.turnMax / 2) {
+        weightNo = lbl_80265750[playerNo].rank;
     } else {
-        weightNo = GwPlayer[playerNo].rank + 4;
+        weightNo = lbl_80265750[playerNo].rank + 4;
     }
     list = HuMemDirectMallocNum(HEAP_HEAP,
-        sizeof(*listBase) * 33, HU_MEMNUM_OVL);
+        sizeof(*listBase) * 33, 0x10000000);
     listBase = list;
     listWork = listBase;
     i = 0;
@@ -5471,9 +5545,9 @@ static int CapShopNextGet(int playerNo, int firstExcludedCapsule, int secondExcl
     int otherListNo;
     int total;
 
-    rank = GwPlayer[playerNo].rank;
+    rank = lbl_80265750[playerNo].rank;
     list = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*listBase) * 33, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*listBase) * 33, 0x10000000);
     listBase = list;
     listWork = listBase;
     i = 0;
@@ -5592,7 +5666,7 @@ int mbCapRandomListGet(int *capsuleListOut, int maxNum)
     int num;
 
     list = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*listBase) * 33, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*listBase) * 33, 0x10000000);
     listBase = list;
     listWork = listBase;
     memset(listBase, 0, sizeof(*listBase) * 33);
@@ -5638,7 +5712,7 @@ int mbCapBonusCoinNumGet(int playerNo, int capsuleNo)
 
     rank = 0;
     bonus = 0;
-    switch (GwPlayer[playerNo].rank) {
+    switch (lbl_80265750[playerNo].rank) {
         case 0:
             rank = 0;
             break;
@@ -5713,7 +5787,7 @@ void mbCapInit(void)
         capsuleObjBorderId[i] = MB_MODEL_NONE;
     }
     capsuleBorderObjId = borderObjData = HuMemDirectMallocNum(
-        HEAP_HEAP, 768, HU_MEMNUM_OVL);
+        HEAP_HEAP, 768, 0x10000000);
     borderId = borderObjData;
     memset(capsuleBorderObjId, 0, 768);
     for (i = 0; i < 6; i++) {
@@ -5725,10 +5799,10 @@ void mbCapInit(void)
         capsuleObjData[i].objId = MB_MODEL_NONE;
     }
     objId = mbObjCreate(
-        DATANUM(DATA_capsule, CAPSULE_DATA_INIT_MODEL_0), NULL, TRUE);
+        DATANUM(0xc0000, CAPSULE_DATA_INIT_MODEL_0), NULL, TRUE);
     mbObjDispSet(objId, FALSE);
     objId = mbObjCreate(
-        DATANUM(DATA_capsule, CAPSULE_DATA_INIT_MODEL_1), NULL, TRUE);
+        DATANUM(0xc0000, CAPSULE_DATA_INIT_MODEL_1), NULL, TRUE);
     mbObjDispSet(objId, FALSE);
 }
 
@@ -5759,13 +5833,13 @@ int mbCapObjCreate(int capsuleNo, BOOL specialF)
         file = fileNo;
         objId = (s16)mbObjCreate(file, NULL, FALSE);
         capsuleObjData[i].objId = objId;
-        anim = capsuleObjData[i].anim = HuSprAnimRead(HuDataSelHeapReadNum(
-            DATANUM(DATA_capsule, CAPSULE_DATA_OBJ_ANIM),
-            HU_MEMNUM_OVL, HEAP_MODEL));
-        capsuleObjData[i].textureAnimId = Hu3DAnimCreate(
+        anim = capsuleObjData[i].anim = HuSprAnimRead(fn_80008DD0(
+            DATANUM(0xc0000, CAPSULE_DATA_OBJ_ANIM),
+            0x10000000, 2));
+        capsuleObjData[i].textureAnimId = fn_80030B2C(
             anim, mbObjModelIDGet(objId), "S3TCys77120");
         Hu3DAnmNoSet(capsuleObjData[i].textureAnimId, 0);
-        capsuleObjData[i].linkedTextureAnimId = Hu3DAnimLink(
+        capsuleObjData[i].linkedTextureAnimId = fn_80030DF0(
             capsuleObjData[i].textureAnimId, mbObjModelIDGet(objId),
             "S3TCys77121");
         Hu3DAnmNoSet(capsuleObjData[i].linkedTextureAnimId, 0);
@@ -5800,7 +5874,7 @@ int mbCapObjBorderCreate(int objId, int capsuleNo)
     HSF_DATA *hsf;
     HSF_OBJECT *object;
     HSF_OBJECT *objectP;
-    char name[HSF_OBJNAME_MAX_LEN];
+    char name[256];
     int i;
     int j;
     int groupNo;
@@ -5808,7 +5882,7 @@ int mbCapObjBorderCreate(int objId, int capsuleNo)
     s16 *borderId;
 
     modelId = mbObjModelIDGet(objId);
-    hsf = Hu3DData[modelId].hsf;
+    hsf = lbl_802C01C8[modelId].hsf;
     object = hsf->object;
     strcpy(name, MakeObjectName((s8 *)"center"));
     for (i = 0; i < hsf->objectNum; i++, object++) {
@@ -5849,8 +5923,8 @@ void mbCapObjKill(int objId)
         }
     }
     if (i < 8) {
-        Hu3DAnimKill(capsuleObjData[i].textureAnimId);
-        Hu3DAnimKill(capsuleObjData[i].linkedTextureAnimId);
+        fn_80031010(capsuleObjData[i].textureAnimId);
+        fn_80031010(capsuleObjData[i].linkedTextureAnimId);
         HuSprAnimKill(capsuleObjData[i].anim);
         mbObjKill(capsuleObjData[i].objId);
         capsuleObjData[i].objId = MB_MODEL_NONE;
@@ -6194,14 +6268,14 @@ static void CapGuideCreate(void)
     CAP_GUIDE_WORK *workBase;
     int i;
 
-    workBase = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAP_GUIDE_WORK) * 10, HU_MEMNUM_OVL);
+    workBase = HuMemDirectMallocNum(HEAP_HEAP, sizeof(CAP_GUIDE_WORK) * 10, 0x10000000);
     work = workBase;
     memset(work, 0, sizeof(CAP_GUIDE_WORK) * 10);
-    capsuleGuideOMObj = omAddObjEx(mbObjMan, -32768, 0, 0, -1, CapGuideOMExec);
+    capsuleGuideOMObj = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, CapGuideOMExec);
     capsuleGuideOMObj->work[0] = FALSE;
     capsuleGuideOMObj->data = work;
     for (i = 0; i < 10; i++, work++) {
-        work->objId = mbObjCreate(DATANUM(DATA_capsule, 35), NULL, TRUE);
+        work->objId = mbObjCreate(DATANUM(0xc0000, 35), NULL, TRUE);
         mbObjLayerSet(work->objId, 5);
         mbObjDispSet(work->objId, FALSE);
         work->state = 0;
@@ -6232,15 +6306,15 @@ static void CapGuideRotYSet(int masuId, float rotY)
                 zOfs = 0;
 
                 mbObjRotSet(work->objId, 0.0f, rotY, 0.0f);
-                pos.x = masuPos.x + 150.0f * HuSin(rotY);
+                pos.x = masuPos.x + 150.0f * sin(3.141592653589793*rotY/180.0);
                 pos.y = masuPos.y + 10.0f;
-                pos.z = masuPos.z + 150.0f * HuCos(rotY) + zOfs;
+                pos.z = masuPos.z + 150.0f * cos(3.141592653589793*rotY/180.0) + zOfs;
                 mbObjPosSetV(work->objId, &pos);
                 mbObjScaleSet(work->objId, 0.0f, 0.0f, 0.0f);
                 mbObjDispSet(work->objId, TRUE);
                 mbObjLayerSet(work->objId, 5);
                 objId = work->objId;
-                mbObjAttrSet(objId, HU3D_ATTR_ZCMP_OFF);
+                mbObjAttrSet(objId, (1 << 22));
                 work->state = 0;
                 work->rotY = 0;
                 work->scale = 0.0f;
@@ -6293,7 +6367,7 @@ static void CapGuideOMExec(OMOBJ *obj)
                 }
                 rotY = work->rotY;
             work->scale = (float)(1.0 +
-                (0.2f * sin((M_PI * rotY) / 180.0)));
+                (0.2f * sin((3.141592653589793 * rotY) / 180.0)));
                 break;
             }
         } else {
@@ -6329,18 +6403,18 @@ static void CapEffMasuOkCreate(void)
     CAP_EFF_MASU_OK_WORK *work;
     int i;
 
-    obj = capEffMasuOkOMObj = omAddObjEx(
+    obj = capEffMasuOkOMObj = fn_8003AB38(
         mbObjMan, -32768, 0, 0, -1, CapEffMasuOkOMExec);
     work = obj->data = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*work) * 33, HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*work) * 33, 0x10000000);
     memset(work, 0, sizeof(*work) * 33);
     for (i = 0; i < 32; i++, work++) {
-        work->modelId = mbObjCreate(DATANUM(DATA_capsule, 36), NULL, TRUE);
+        work->modelId = mbObjCreate(DATANUM(0xc0000, 36), NULL, TRUE);
         mbObjDispSet(work->modelId, FALSE);
         {
             MBMODELID modelId = work->modelId;
 
-            mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+            mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
         }
         mbObjLayerSet(work->modelId, 5);
         work->masuId = 0;
@@ -6348,12 +6422,12 @@ static void CapEffMasuOkCreate(void)
         work->unusedWord = 0;
         work->scale = 0.0f;
     }
-    work->modelId = mbObjCreate(DATANUM(DATA_capsule, 37), NULL, TRUE);
+    work->modelId = mbObjCreate(DATANUM(0xc0000, 37), NULL, TRUE);
     mbObjDispSet(work->modelId, FALSE);
     {
         MBMODELID modelId = work->modelId;
 
-        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     }
     mbObjLayerSet(work->modelId, 5);
     work->masuId = 0;
@@ -6510,22 +6584,22 @@ static void CapEffRemoveCreate(void)
     CAP_EFF_REMOVE_WORK *newWork;
     int modelId;
 
-    obj = capEffRemoveOMObj = omAddObjEx(
-        mbObjMan, -32768, 0, 0, OM_GRP_NONE, CapEffRemoveOMExec);
+    obj = capEffRemoveOMObj = fn_8003AB38(
+        mbObjMan, -32768, 0, 0, -1, CapEffRemoveOMExec);
     newWork = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*work), 0x10000000);
     obj->data = newWork;
     work = newWork;
     memset(work, 0, sizeof(*work));
-    anim = HuSprAnimRead(HuDataReadNum(
-        DATANUM(DATA_capsule, CAPSULE_DATA_REMOVE_ANIM), HU_MEMNUM_OVL));
+    anim = HuSprAnimRead(fn_80008634(
+        DATANUM(0xc0000, CAPSULE_DATA_REMOVE_ANIM), 0x10000000));
     work->anim = anim;
     work->modelId = modelId = CapEffCreate(anim, 64);
-    Hu3DModelLayerSet(work->modelId, 5);
+    fn_80026B8C(work->modelId, 5);
     work->activeCount = 0;
-    model = &Hu3DData[work->modelId];
+    model = &lbl_802C01C8[work->modelId];
     effect = model->hookData;
-    effect->blendMode = HU3D_PARTICLE_BLEND_NORMAL;
+    effect->blendMode = 0;
 }
 
 // Object-manager updates move removal particles until their sixteen-frame animation ends.
@@ -6539,7 +6613,7 @@ static void CapEffRemoveOMExec(OMOBJ *obj)
     int i;
 
     if (mbExitCheck() || capEffRemoveOMObj == NULL) {
-        Hu3DModelKill(work->modelId);
+        fn_800262D0(work->modelId);
         work->modelId = MB_MODEL_NONE;
         HuSprAnimKill(work->anim);
         work->anim = NULL;
@@ -6548,11 +6622,11 @@ static void CapEffRemoveOMExec(OMOBJ *obj)
         return;
     }
     if (work->activeCount <= 0) {
-        Hu3DModelAttrSet(work->modelId, HU3D_ATTR_DISPOFF);
+        fn_800269E8(work->modelId, (1 << 0));
         return;
     }
-    Hu3DModelAttrReset(work->modelId, HU3D_ATTR_DISPOFF);
-    model = &Hu3DData[work->modelId];
+    fn_80026A44(work->modelId, (1 << 0));
+    model = &lbl_802C01C8[work->modelId];
     effect = model->hookData;
     data = effect->data;
     effect->unusedByte = 0;
@@ -6611,7 +6685,7 @@ static inline int CapEffRemoveAddData(HuVecF pos, HuVecF vel, float scale,
 
     obj = capEffRemoveOMObj;
     work = obj->data;
-    model = &Hu3DData[work->modelId];
+    model = &lbl_802C01C8[work->modelId];
     effect = model->hookData;
     data = effect->data;
     for (i = 0; i < effect->num; i++, data++) {
@@ -6690,15 +6764,15 @@ static void CapEffRemoveAddAll(HuVecF *pos)
         angle = 11.25f * (float)i;
         dist = (100.0f * MBCapsuleEffRandF()) * 0.33f;
         effectPos.x = pos->x +
-            (dist * cos((M_PI * angle) / 180.0));
+            (dist * cos((3.141592653589793 * angle) / 180.0));
         effectPos.y = pos->y +
-            (dist * sin((M_PI * angle) / 180.0)) + 100.0f;
+            (dist * sin((3.141592653589793 * angle) / 180.0)) + 100.0f;
         effectPos.z = pos->z + 50.0f;
 
         dist = ((0.04f * MBCapsuleEffRandF()) + 0.005f)
             * 100.0f;
-        velocity.x = dist * cos((M_PI * angle) / 180.0);
-        velocity.y = dist * sin((M_PI * angle) / 180.0);
+        velocity.x = dist * cos((3.141592653589793 * angle) / 180.0);
+        velocity.y = dist * sin((3.141592653589793 * angle) / 180.0);
         velocity.z = 0.0f;
 
         dist = MBCapsuleEffRandF();
@@ -6722,18 +6796,18 @@ static void CapEffRemoveAddDestroy(void)
 }
 
 static int capsuleBorderFileTbl[6] = {
-    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_0),
-    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_1),
-    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_2),
-    DATANUM(DATA_capsule, CAPSULE_DATA_BORDER_3),
+    DATANUM(0xc0000, CAPSULE_DATA_BORDER_0),
+    DATANUM(0xc0000, CAPSULE_DATA_BORDER_1),
+    DATANUM(0xc0000, CAPSULE_DATA_BORDER_2),
+    DATANUM(0xc0000, CAPSULE_DATA_BORDER_3),
     0,
     0,
 };
 
 static int capsuleHiliteFileTbl[3] = {
-    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_0),
-    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_1),
-    DATANUM(DATA_capsule, CAPSULE_DATA_HILITE_2),
+    DATANUM(0xc0000, CAPSULE_DATA_HILITE_0),
+    DATANUM(0xc0000, CAPSULE_DATA_HILITE_1),
+    DATANUM(0xc0000, CAPSULE_DATA_HILITE_2),
 };
 
 static HuVecF capsuleCrackScaleTbl[2][3] = {
@@ -6781,23 +6855,23 @@ static void CapEffHiliteCreate(void)
     CAP_EFFECT *effect;
     int i;
 
-    obj = capEffHiliteOMObj = omAddObjEx(
+    obj = capEffHiliteOMObj = fn_8003AB38(
         mbObjMan, -32768, 0, 0, -1, CapEffHiliteOMExec);
     newWork = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*work), 0x10000000);
     obj->data = newWork;
     work = newWork;
     memset(work, 0, sizeof(*work));
     for (i = 0; i < 3; i++) {
-        anim = HuSprAnimRead(HuDataReadNum(
-            capsuleHiliteFileTbl[i], HU_MEMNUM_OVL));
+        anim = HuSprAnimRead(fn_80008634(
+            capsuleHiliteFileTbl[i], 0x10000000));
         work->anim[i] = anim;
         work->modelId[i] = modelId = CapEffCreate(anim, 32);
-        Hu3DModelLayerSet(modelId, 5);
+        fn_80026B8C(modelId, 5);
         work->activeCount = 0;
-        model = &Hu3DData[modelId];
+        model = &lbl_802C01C8[modelId];
         effect = model->hookData;
-        effect->blendMode = HU3D_PARTICLE_BLEND_ADDCOL;
+        effect->blendMode = 1;
         effect->dispAttr = CAP_EFF_DISPATTR_NOANIM |
             CAP_EFF_DISPATTR_CAMERA_ROT | CAP_EFF_DISPATTR_ROT3D;
     }
@@ -6818,7 +6892,7 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
     work = obj->data;
     if (mbExitCheck() || capEffHiliteOMObj == NULL) {
         for (modelNo = 0; modelNo < 3; modelNo++) {
-            Hu3DModelKill(work->modelId[modelNo]);
+            fn_800262D0(work->modelId[modelNo]);
             work->modelId[modelNo] = MB_MODEL_NONE;
         }
         for (modelNo = 0; modelNo < 3; modelNo++) {
@@ -6831,11 +6905,11 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
     }
     for (modelNo = 0; modelNo < 3; modelNo++) {
         if (work->activeCount <= 0) {
-            Hu3DModelAttrSet(work->modelId[modelNo], HU3D_ATTR_DISPOFF);
+            fn_800269E8(work->modelId[modelNo], (1 << 0));
             continue;
         }
-        Hu3DModelAttrReset(work->modelId[modelNo], HU3D_ATTR_DISPOFF);
-        model = &Hu3DData[work->modelId[modelNo]];
+        fn_80026A44(work->modelId[modelNo], (1 << 0));
+        model = &lbl_802C01C8[work->modelId[modelNo]];
         effect = model->hookData;
         data = effect->data;
         effect->unusedByte = 0;
@@ -6855,11 +6929,11 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
                     (void)t;
                     break;
                 case 1:
-                    t = (float)sin((M_PI * (90.0f * t)) / 180.0);
+                    t = (float)sin((3.141592653589793 * (90.0f * t)) / 180.0);
                     break;
                 case 2:
                     t = (float)cos(
-                        (M_PI * (90.0f * (1.0f - t))) / 180.0);
+                        (3.141592653589793 * (90.0f * (1.0f - t))) / 180.0);
                     break;
                 }
                 data->scale = data->vel.z *
@@ -6884,11 +6958,11 @@ static void CapEffHiliteOMExec(OMOBJ *obj)
                     (void)t;
                     break;
                 case 1:
-                    t = (float)sin((M_PI * (90.0f * t)) / 180.0);
+                    t = (float)sin((3.141592653589793 * (90.0f * t)) / 180.0);
                     break;
                 case 2:
                     t = (float)cos(
-                        (M_PI * (90.0f * (1.0f - t))) / 180.0);
+                        (3.141592653589793 * (90.0f * (1.0f - t))) / 180.0);
                     break;
                 }
                 data->scale = data->vel.z *
@@ -6927,7 +7001,7 @@ static int CapEffHiliteAdd(HuVecF pos, HuVecF rot, HuVecF scale,
     }
     obj = capEffHiliteOMObj;
     work = obj->data;
-    model = &Hu3DData[work->modelId[modelNo % 3]];
+    model = &lbl_802C01C8[work->modelId[modelNo % 3]];
     effect = model->hookData;
     data = effect->data;
     for (i = 0; i < effect->num; i++, data++) {
@@ -7051,16 +7125,16 @@ static void CapEffCrackCreate(void)
     HuVecF vtxPos;
     float scaleTbl[3];
 
-    obj = capEffCrackOMObj = omAddObjEx(mbObjMan, -32768, 0, 0,
-        OM_GRP_NONE, CapEffCrackOMExec);
+    obj = capEffCrackOMObj = fn_8003AB38(mbObjMan, -32768, 0, 0,
+        -1, CapEffCrackOMExec);
     workData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*work), HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*work), 0x10000000);
     work = obj->data = workData;
     memset(work, 0, sizeof(*work));
-    work->modelId = Hu3DHookFuncCreate(CapEffCrackDraw);
-    Hu3DModelCameraSet(work->modelId, 1);
-    Hu3DModelLayerSet(work->modelId, 3);
-    model = &Hu3DData[work->modelId];
+    work->modelId = fn_800260F4(CapEffCrackDraw);
+    fn_80026B64(work->modelId, 1);
+    fn_80026B8C(work->modelId, 3);
+    model = &lbl_802C01C8[work->modelId];
     model->hookData = work;
     work->state = 0;
     work->time = 0;
@@ -7068,24 +7142,24 @@ static void CapEffCrackCreate(void)
     work->vtxNum = work->num * 3;
     dataHeap = model->mallocNo;
     dataSize = work->num * sizeof(*work->data);
-    dataBuf = HuMemDirectMallocNum(HEAP_MODEL, dataSize, dataHeap);
+    dataBuf = HuMemDirectMallocNum(2, dataSize, dataHeap);
     dataP = dataBuf;
     data = work->data = dataP;
     memset(data, 0, work->num * sizeof(*work->data));
     vtxHeap = model->mallocNo;
     vtxSize = work->vtxNum * sizeof(*work->vtx);
-    vtxBuf = HuMemDirectMallocNum(HEAP_MODEL, vtxSize, vtxHeap);
+    vtxBuf = HuMemDirectMallocNum(2, vtxSize, vtxHeap);
     vtxP = vtxBuf;
     work->vtx = vtxP;
     memset(work->vtx, 0, work->vtxNum * sizeof(*work->vtx));
     stHeap = model->mallocNo;
     stSize = work->vtxNum * sizeof(*work->st);
-    stBuf = HuMemDirectMallocNum(HEAP_MODEL, stSize, stHeap);
+    stBuf = HuMemDirectMallocNum(2, stSize, stHeap);
     stP = stBuf;
     work->st = stP;
     memset(work->st, 0, work->vtxNum * sizeof(*work->st));
-    work->animP = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_capsule, 43),
-        HU_MEMNUM_OVL));
+    work->animP = HuSprAnimRead(fn_80008634(DATANUM(0xc0000, 43),
+        0x10000000));
     work->color.r = 0;
     work->color.g = 0;
     work->color.b = 0;
@@ -7168,7 +7242,7 @@ static void CapEffCrackCreate(void)
     }
 
     dlBufHeap = model->mallocNo;
-    dlBufData = HuMemDirectMallocNum(HEAP_MODEL, 65536, dlBufHeap);
+    dlBufData = HuMemDirectMallocNum(2, 65536, dlBufHeap);
     dlBeginData = dlBufData;
     dlBegin = dlBuf = dlBeginData;
     DCFlushRange(dlBuf, 65536);
@@ -7191,7 +7265,7 @@ static void CapEffCrackCreate(void)
     work->dlSize > 65536;
     dlDataHeap = model->mallocNo;
     dlSizeData = work->dlSize;
-    dlData = HuMemDirectMallocNum(HEAP_MODEL, dlSizeData, dlDataHeap);
+    dlData = HuMemDirectMallocNum(2, dlSizeData, dlDataHeap);
     dlP = dlData;
     work->dl = dlP;
     memcpy(work->dl, dlBuf, work->dlSize);
@@ -7214,7 +7288,7 @@ static void CapEffCrackOMExec(OMOBJ *obj)
 
     if (mbExitCheck() || capEffCrackOMObj == NULL) {
         HuSprAnimKill(work->animP);
-        Hu3DModelKill(work->modelId);
+        fn_800262D0(work->modelId);
         omDelObjEx(mbObjMan, obj);
         capEffCrackOMObj = NULL;
         return;
@@ -7232,7 +7306,7 @@ static void CapEffCrackOMExec(OMOBJ *obj)
                 data->pos[1].y = 0.0f;
                 data->pos[2].y = 0.0f;
             }
-            Hu3DModelScaleSet(work->modelId, 0.0f, 1.0f, 0.0f);
+            fn_800268B0(work->modelId, 0.0f, 1.0f, 0.0f);
             work->time = 0;
             work->state++;
             break;
@@ -7242,7 +7316,7 @@ static void CapEffCrackOMExec(OMOBJ *obj)
             if (scale >= 1.0f) {
                 scale = 1.0f;
             }
-            Hu3DModelScaleSet(work->modelId, scale, 1.0f, scale);
+            fn_800268B0(work->modelId, scale, 1.0f, scale);
             if ((float)work->time >= 6.0f) {
                 work->time = 0;
                 work->state++;
@@ -7336,9 +7410,9 @@ static void CapEffCrackAdd(HuVecF *pos, HuVecF *rot)
     } else {
         obj->rot.x = obj->rot.y = obj->rot.z = 0.0f;
     }
-    Hu3DModelPosSet(
+    fn_80026760(
         work->modelId, obj->trans.x, obj->trans.y, obj->trans.z);
-    Hu3DModelRotSet(work->modelId, obj->rot.x, obj->rot.y, obj->rot.z);
+    fn_80026808(work->modelId, obj->rot.x, obj->rot.y, obj->rot.z);
 }
 
 // The shell model's render hook rebuilds triangle vertices and draws them with additive blending.
@@ -7372,7 +7446,7 @@ static void CapEffCrackDraw(HU3D_MODEL *modelP, Mtx *mtx)
     GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY,
         GX_FALSE, GX_PTIDENTITY);
     GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-    if (shadowModelDrawF) {
+    if (lbl_802C01B0) {
         return;
     }
     GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
@@ -7471,22 +7545,22 @@ static void CapEffTrailCreate(int capsuleNo)
 
     value = (s16)capsuleNo & CAPSULE_VALUE_TYPE_MASK;
     capsuleNo = value;
-    obj = capEffTrailOMObj = omAddObjEx(mbObjMan, -32768, 13, 0,
-        OM_GRP_NONE,
+    obj = capEffTrailOMObj = fn_8003AB38(mbObjMan, -32768, 13, 0,
+        -1,
         CapEffTrailOMExec);
     workData = HuMemDirectMallocNum(
-        HEAP_HEAP, sizeof(*workData), HU_MEMNUM_OVL);
+        HEAP_HEAP, sizeof(*workData), 0x10000000);
     work = obj->data = workData;
     memset(work, 0, sizeof(*work));
     for (i = 0; i < 12; i++) {
         obj->mdlId[i] = MB_MODEL_NONE;
         work->prevPos[i].x = work->prevPos[i].y = work->prevPos[i].z = 0.0f;
     }
-    obj->mdlId[12] = mbParticleCreate(HuSprAnimRead(HuDataReadNum(
-        DATANUM(DATA_capsule, 42), HU_MEMNUM_OVL)), 24);
-    Hu3DModelCameraSet(obj->mdlId[12], 1);
-    Hu3DModelLayerSet(obj->mdlId[12], 5);
-    model = &Hu3DData[obj->mdlId[12]];
+    obj->mdlId[12] = mbParticleCreate(HuSprAnimRead(fn_80008634(
+        DATANUM(0xc0000, 42), 0x10000000)), 24);
+    fn_80026B64(obj->mdlId[12], 1);
+    fn_80026B8C(obj->mdlId[12], 5);
+    model = &lbl_802C01C8[obj->mdlId[12]];
     particle = model->hookData;
     particleData = particle->data;
     particle->blendMode = MB_PARTICLE_BLEND_ADDCOL;
@@ -7494,7 +7568,7 @@ static void CapEffTrailCreate(int capsuleNo)
         particleData->scale = 0.0f;
         particleData->pos.x = particleData->pos.y = particleData->pos.z = 0.0f;
     }
-    obj->stat |= OM_STAT_MODELPAUSE;
+    obj->stat |= (1 << 8);
     obj->work[0] = 0;
     obj->work[1] = 0;
 }
@@ -7592,7 +7666,7 @@ static void CapEffTrailOMExec(OMOBJ *obj)
             mbCapObjColorPosSetV(obj->mdlId[i], &pointHis[i]);
         }
     }
-    model = &Hu3DData[obj->mdlId[12]];
+    model = &lbl_802C01C8[obj->mdlId[12]];
     particle = model->hookData;
     particleData = particle->data;
     work = obj->data;
@@ -7639,7 +7713,7 @@ static void CapEffTrailAdd(HuVecF *pos, int capsuleNo)
     for (i = 0; i < 12; i++) {
         work->prevPos[i] = *pos;
     }
-    model = &Hu3DData[obj->mdlId[12]];
+    model = &lbl_802C01C8[obj->mdlId[12]];
     particle = model->hookData;
     data = particle->data;
     work = obj->data;
@@ -7717,17 +7791,17 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
     void *dlData;
     void *dlBase;
 
-    modelId = Hu3DHookFuncCreate(CapEffDraw);
-    Hu3DModelCameraSet(modelId, HU3D_CAM0);
-    modelP = &Hu3DData[modelId];
+    modelId = fn_800260F4(CapEffDraw);
+    fn_80026B64(modelId, (1 << 0));
+    modelP = &lbl_802C01C8[modelId];
     workHeap = modelP->mallocNo;
-    workData = HuMemDirectMallocNum(HEAP_MODEL,
+    workData = HuMemDirectMallocNum(2,
         sizeof(CAP_EFFECT), workHeap);
     workBase = workData;
     modelP->hookData = effP = workBase;
     effP->anim = anim;
     effP->num = num;
-    effP->blendMode = HU3D_PARTICLE_BLEND_NORMAL;
+    effP->blendMode = 0;
     effP->dispAttr = CAP_EFF_DISPATTR_NONE;
     effP->hook = NULL;
     effP->hookMdlP = NULL;
@@ -7737,7 +7811,7 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
     effP->prevCount = 0;
     effP->mode = effP->time = 0;
     particleHeap = modelP->mallocNo;
-    particleData = HuMemDirectMallocNum(HEAP_MODEL,
+    particleData = HuMemDirectMallocNum(2,
         num * sizeof(CAP_EFF_DATA), particleHeap);
     particleBase = particleData;
     effP->data = effDataP = particleBase;
@@ -7755,7 +7829,7 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
         effDataP->frameNo = 0;
     }
     vertexHeap = modelP->mallocNo;
-    vertexData = HuMemDirectMallocNum(HEAP_MODEL,
+    vertexData = HuMemDirectMallocNum(2,
         num * sizeof(HuVecF) * 4, vertexHeap);
     vertexBase = vertexData;
     effP->vertex = vtx = vertexBase;
@@ -7763,7 +7837,7 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
         vtx->x = vtx->y = vtx->z = 0;
     }
     stHeap = modelP->mallocNo;
-    stData = HuMemDirectMallocNum(HEAP_MODEL,
+    stData = HuMemDirectMallocNum(2,
         num * sizeof(HuVec2f) * 4, stHeap);
     stBase = stData;
     effP->st = st = stBase;
@@ -7785,7 +7859,7 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
         st++;
     }
     dlBufHeap = modelP->mallocNo;
-    dlBufData = HuMemDirectMallocNum(HEAP_MODEL, 65536, dlBufHeap);
+    dlBufData = HuMemDirectMallocNum(2, 65536, dlBufHeap);
     dlBufBase = dlBufData;
     dlBegin = dlBuf = dlBufBase;
     DCFlushRange(dlBuf, 65536);
@@ -7812,7 +7886,7 @@ static HU3D_MODELID CapEffCreate(ANIMDATA *anim, s16 num)
     effP->dlSize = GXEndDisplayList();
     dlDataHeap = modelP->mallocNo;
     dlSizeData = effP->dlSize;
-    dlData = HuMemDirectMallocNum(HEAP_MODEL, dlSizeData, dlDataHeap);
+    dlData = HuMemDirectMallocNum(2, dlSizeData, dlDataHeap);
     dlBase = dlData;
     effP->dl = dlBase;
     memcpy(effP->dl, dlBuf, effP->dlSize);
@@ -7859,7 +7933,7 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
     };
 
     effP = modelP->hookData;
-    if (effP->prevCounter != GlobalCounter || shadowModelDrawF) {
+    if (effP->prevCounter != GlobalCounter || lbl_802C01B0) {
         if (effP->hookMdlP && effP->hookMdlP != modelP) {
             CapEffDraw(effP->hookMdlP, mtx);
         }
@@ -7870,13 +7944,13 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
             GX_IDENTITY);
         GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0,
             GX_COLOR0A0);
-        if (shadowModelDrawF) {
+        if (lbl_802C01B0) {
             GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ONE, GX_CC_ZERO, GX_CC_ZERO,
                 GX_CC_ZERO);
             GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
         } else {
-            bmpFmt = effP->anim->bmp->dataFmt & ANIM_BMP_FMTMASK;
-            if (bmpFmt == ANIM_BMP_I8 || bmpFmt == ANIM_BMP_I4) {
+            bmpFmt = effP->anim->bmp->dataFmt & 0xF;
+            if (bmpFmt == 7 || bmpFmt == 8) {
                 GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ONE,
                     GX_CC_RASC, GX_CC_ZERO);
             } else {
@@ -7885,7 +7959,7 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
             }
             if (effP->dispAttr & CAP_EFF_DISPATTR_ZBUF_OFF) {
                 GXSetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
-            } else if (modelP->attr & HU3D_ATTR_ZWRITE_OFF) {
+            } else if (modelP->attr & (1 << 1)) {
                 GXSetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
             } else {
                 GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
@@ -7905,15 +7979,15 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
         GXSetAlphaCompare(GX_GEQUAL, 1, GX_AOP_AND, GX_GEQUAL, 1);
         GXSetZCompLoc(GX_FALSE);
         switch (effP->blendMode) {
-            case HU3D_PARTICLE_BLEND_NORMAL:
+            case 0:
                 GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA,
                     GX_BL_INVSRCALPHA, GX_LO_NOOP);
                 break;
-            case HU3D_PARTICLE_BLEND_ADDCOL:
+            case 1:
                 GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_ONE,
                     GX_LO_NOOP);
                 break;
-            case HU3D_PARTICLE_BLEND_INVCOL:
+            case 2:
                 GXSetBlendMode(GX_BM_BLEND, GX_BL_ZERO, GX_BL_INVDSTCLR,
                     GX_LO_NOOP);
                 break;
@@ -7954,7 +8028,7 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
                 VECScale(&posTbl[1], &scaleVtx[1], effDataP->scale);
                 VECScale(&posTbl[2], &scaleVtx[2], effDataP->scale);
                 VECScale(&posTbl[3], &scaleVtx[3], effDataP->scale);
-                mtxRot(mtxPos, effDataP->rot.x, effDataP->rot.y,
+                fn_80022E38(mtxPos, effDataP->rot.x, effDataP->rot.y,
                     effDataP->rot.z);
                 PSMTXMultVecArray(mtxPos, scaleVtx, finalVtx, 4);
                 VECAdd(&finalVtx[0], &effDataP->pos, vtx++);
@@ -8022,7 +8096,7 @@ static void CapEffDraw(HU3D_MODEL *modelP, Mtx *mtx)
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
         GXSetArray(GX_VA_TEX0, effP->st, sizeof(HuVec2f));
         GXCallDisplayList(effP->dl, effP->dlSize);
-        if (shadowModelDrawF == FALSE) {
+        if (lbl_802C01B0 == FALSE) {
             if (!(effP->attr & CAP_EFF_ATTR_COUNTER_UPDATE)) {
                 effP->count++;
             }
@@ -8069,12 +8143,12 @@ static float CapCameraXZAngleGet(float angle)
     Mtx cameraRotation;
     HuVecF heading;
 
-    mtxRot(cameraRotation, cameraP->rot.x, cameraP->rot.y, cameraP->rot.z);
-    heading.x = HuSin(angle);
+    fn_80022E38(cameraRotation, cameraP->rot.x, cameraP->rot.y, cameraP->rot.z);
+    heading.x = sin(3.141592653589793*angle/180.0);
     heading.y = 0.0f;
-    heading.z = HuCos(angle);
+    heading.z = cos(3.141592653589793*angle/180.0);
     PSMTXMultVec(cameraRotation, &heading, &heading);
-    return HuAtan(heading.x, heading.z);
+    return (180.0*(atan2(heading.x, heading.z) / 3.141592653589793));
 }
 
 // Computer capsule decisions attach a scripted left/right choice hook to the current board window.
@@ -8098,9 +8172,9 @@ static void CapComKeyHook(void)
     s32 keyValue;
 
     key[0] = key[1] = key[2] = key[3] = 0;
-    playerNo = GwSystem.turnPlayerNo;
-    padNo = GwPlayer[playerNo].padNo;
-    time = GWComKeyDelayGet();
+    playerNo = lbl_80265B70.turnPlayerNo;
+    padNo = lbl_80265750[playerNo].padNo;
+    time = fn_8003C7C0();
     if (capsuleComChoice >= 0) {
         keyValue = PAD_BUTTON_RIGHT;
     } else {
@@ -8303,10 +8377,10 @@ static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
 
     quadF = FALSE;
     temp = 0;
-    if (capsuleColMdlId == HU3D_MODELID_NONE) {
+    if (capsuleColMdlId == -1) {
         return FALSE;
     }
-    modelP = &Hu3DData[capsuleColMdlId];
+    modelP = &lbl_802C01C8[capsuleColMdlId];
     hsfP = modelP->hsf;
     faceBufP = hsfP->face;
     vtxBufP = hsfP->vertex;
@@ -8319,7 +8393,7 @@ static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
     for (i = 0; i < hsfP->faceNum; i++, faceBufP++) {
         faceP = faceBufP->data;
         for (j = 0; j < faceBufP->count; j++, faceP++) {
-            switch (faceP->type & HSF_FACE_MASK) {
+            switch (faceP->type & 0x7) {
             case 0:
                 quadF = TRUE;
                 break;
@@ -8328,7 +8402,7 @@ static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
                 quadF = TRUE;
                 break;
 
-            case HSF_FACE_TRI:
+            case 2:
                 quadF = FALSE;
                 faceVtx[0] =
                     *((HuVecF *)vtxBufP->data + faceP->index[0].vertex);
@@ -8338,7 +8412,7 @@ static BOOL CapColCheck(HuVecF *posA, HuVecF *posB, HuVecF *out)
                     *((HuVecF *)vtxBufP->data + faceP->index[2].vertex);
                 break;
 
-            case HSF_FACE_QUAD:
+            case 3:
                 quadF = TRUE;
                 break;
 
@@ -8484,7 +8558,7 @@ static BOOL CapColExec(int playerNo, HuVecF *posA, HuVecF *posB, HuVecF *out)
     PSVECNormalize(&dir, &dir);
     mag = PSVECMag(&dir);
     for (i = 0; i < 4; i++) {
-        partyF = GwSystem.partyF;
+        partyF = lbl_80265B70.partyF;
         if ((!partyF && i != 0) || i == playerNo ||
             !mbPlayerDispGet(i)) {
             continue;
@@ -8492,23 +8566,23 @@ static BOOL CapColExec(int playerNo, HuVecF *posA, HuVecF *posB, HuVecF *out)
         mbPlayerPosGet(i, &playerPos);
         for (j = 0; j < 6; j++) {
             faceVtx[0].x = colScaleTbl[j * 3].x *
-                charSizeTbl[GwPlayer[i].charNo].x;
+                charSizeTbl[lbl_80265750[i].charNo].x;
             faceVtx[0].y = colScaleTbl[j * 3].y *
-                charSizeTbl[GwPlayer[i].charNo].y;
+                charSizeTbl[lbl_80265750[i].charNo].y;
             faceVtx[0].z = colScaleTbl[j * 3].z *
-                charSizeTbl[GwPlayer[i].charNo].x;
+                charSizeTbl[lbl_80265750[i].charNo].x;
             faceVtx[1].x = colScaleTbl[j * 3 + 1].x *
-                charSizeTbl[GwPlayer[i].charNo].x;
+                charSizeTbl[lbl_80265750[i].charNo].x;
             faceVtx[1].y = colScaleTbl[j * 3 + 1].y *
-                charSizeTbl[GwPlayer[i].charNo].y;
+                charSizeTbl[lbl_80265750[i].charNo].y;
             faceVtx[1].z = colScaleTbl[j * 3 + 1].z *
-                charSizeTbl[GwPlayer[i].charNo].x;
+                charSizeTbl[lbl_80265750[i].charNo].x;
             faceVtx[2].x = colScaleTbl[j * 3 + 2].x *
-                charSizeTbl[GwPlayer[i].charNo].x;
+                charSizeTbl[lbl_80265750[i].charNo].x;
             faceVtx[2].y = colScaleTbl[j * 3 + 2].y *
-                charSizeTbl[GwPlayer[i].charNo].y;
+                charSizeTbl[lbl_80265750[i].charNo].y;
             faceVtx[2].z = colScaleTbl[j * 3 + 2].z *
-                charSizeTbl[GwPlayer[i].charNo].x;
+                charSizeTbl[lbl_80265750[i].charNo].x;
             PSVECAdd(&faceVtx[0], &playerPos, &faceVtx[0]);
             PSVECAdd(&faceVtx[1], &playerPos, &faceVtx[1]);
             PSVECAdd(&faceVtx[2], &playerPos, &faceVtx[2]);

@@ -59,8 +59,8 @@
 #define TOURNAMENT_CHARACTER_LIGHT_INTENSITY 192
 #define TOURNAMENT_ORDER_UNUSED 255
 #define TOURNAMENT_ALL_MOTION_PAUSE_FLAGS \
-    (HU3D_MOTATTR_PAUSE | HU3D_MOTATTR_SHIFT_PAUSE | \
-     HU3D_MOTATTR_SHAPE_PAUSE | HU3D_MOTATTR_OVL_PAUSE)
+    (((1 << 30) | (1 << 1)) | ((1 << 30) | (1 << 4)) | \
+     ((1 << 30) | (1 << 7)) | ((1 << 30) | (1 << 10)))
 
 #define MSM_SE_MGTOUR_PROP_REVEAL 1212
 #define MSM_SE_MGTOUR_PROP_LAND 1213
@@ -78,13 +78,13 @@ s16 lbl_1_bss_10A;
 s16 lbl_1_bss_108;
 
 u32 lbl_1_data_510[13] = {
-    DATANUM(DATA_mariomot, 0), DATANUM(DATA_mariomot, 1),
-    DATANUM(DATA_mariomot, 2), DATANUM(DATA_mariomot, 3),
-    DATANUM(DATA_mariomot, 4), DATANUM(DATA_mario, 120),
-    DATANUM(DATA_mariomot, 6), DATANUM(DATA_mariomot, 40),
-    DATANUM(DATA_mariomot, 36), DATANUM(DATA_mariomot, 37),
-    DATANUM(DATA_mariomot, 34), DATANUM(DATA_mariomot, 22),
-    DATANUM(DATA_mariomot, 119)
+    DATANUM(0x930000, 0), DATANUM(0x930000, 1),
+    DATANUM(0x930000, 2), DATANUM(0x930000, 3),
+    DATANUM(0x930000, 4), DATANUM(0x8e0000, 120),
+    DATANUM(0x930000, 6), DATANUM(0x930000, 40),
+    DATANUM(0x930000, 36), DATANUM(0x930000, 37),
+    DATANUM(0x930000, 34), DATANUM(0x930000, 22),
+    DATANUM(0x930000, 119)
 };
 
 f32 lbl_1_data_544 = 6.0f;
@@ -97,20 +97,20 @@ Vec lbl_1_data_548[4] = {
 };
 
 TournamentMotionData lbl_1_data_578[14] = {
-    {0, 0.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {0, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {1, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {2, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {3, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {4, 0.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {6, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {7, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {8, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {9, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {10, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {11, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {12, 8.0f, HU3D_MOTATTR_LOOP, 1U, 0},
-    {5, 8.0f, HU3D_MOTATTR_LOOP, 1U, 1}
+    {0, 0.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {0, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {1, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {2, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {3, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {4, 0.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {6, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {7, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {8, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {9, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {10, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {11, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {12, 8.0f, ((1 << 30) | (1 << 0)), 1U, 0},
+    {5, 8.0f, ((1 << 30) | (1 << 0)), 1U, 1}
 };
 
 char lbl_1_data_690[16] = "f-itemhook-r";
@@ -132,22 +132,22 @@ void fn_1_6278(OMOBJ *object, s16 modeNo)
         motionNo = lbl_1_data_578[modeNo].motionNo;
         if (motionNo != -1) {
             if (lbl_1_data_578[modeNo].transitionTime <= (1.0f)) {
-                CharMotionSet(work->characterNo, object->mtnId[motionNo]);
-                Hu3DModelAttrReset(object->mdlId[0],
-                                   Hu3DModelMotionAttrGet(object->mdlId[0]) | HU3D_MOTATTR);
-                CharModelAttrSet(work->characterNo, lbl_1_data_578[modeNo].modelAttributes);
+                fn_8005BE80(work->characterNo, object->mtnId[motionNo]);
+                fn_80026A44(object->mdlId[0],
+                                   fn_80026AB8(object->mdlId[0]) | (1 << 30));
+                fn_8005C430(work->characterNo, lbl_1_data_578[modeNo].modelAttributes);
             } else {
-                Hu3DModelAttrSet(object->mdlId[0], HU3D_MOTATTR_PAUSE);
-                CharMotionShiftSet(work->characterNo, object->mtnId[motionNo], (0.0f),
+                fn_800269E8(object->mdlId[0], ((1 << 30) | (1 << 1)));
+                fn_8005C2C8(work->characterNo, object->mtnId[motionNo], (0.0f),
                                    lbl_1_data_578[modeNo].transitionTime,
                                    lbl_1_data_578[modeNo].modelAttributes);
             }
             if (lbl_1_data_578[modeNo].motionAttributeTableFlag != 0) {
-                Hu3DMotionAttrSet(object->mtnId[motionNo], 1);
+                fn_8002DC74(object->mtnId[motionNo], 1);
             } else {
-                Hu3DMotionAttrSet(object->mtnId[motionNo], 1);
+                fn_8002DC74(object->mtnId[motionNo], 1);
             }
-            CharModelVoiceFlagSet(work->characterNo, lbl_1_data_578[modeNo].motionEffectsEnabled);
+            fn_8005DFC0(work->characterNo, lbl_1_data_578[modeNo].motionEffectsEnabled);
         }
         work->motionMode = modeNo;
         if (work->motionMode == 0) {
@@ -169,39 +169,39 @@ void fn_1_64A8(void)
     while (player < 4) {
         if (mode == 0) {
             if (MgModeWorkInt[player] == 0) {
-                GwPlayerConf[player].grpNo = 0;
+                lbl_80265728[player].grpNo = 0;
             } else if (MgModeWorkInt[player] == 1) {
-                GwPlayerConf[player].grpNo = 1;
+                lbl_80265728[player].grpNo = 1;
             } else {
-                GwPlayerConf[player].grpNo = 2;
+                lbl_80265728[player].grpNo = 2;
             }
         } else if (mode == 1) {
             if (MgModeWorkInt[player] == 2) {
-                GwPlayerConf[player].grpNo = 0;
+                lbl_80265728[player].grpNo = 0;
             } else if (MgModeWorkInt[player] == 3) {
-                GwPlayerConf[player].grpNo = 1;
+                lbl_80265728[player].grpNo = 1;
             } else {
-                GwPlayerConf[player].grpNo = 2;
+                lbl_80265728[player].grpNo = 2;
             }
         } else if (mode == 2) {
             if ((MgModeWorkInt[player + 4] == 2) &&
                 ((MgModeWorkInt[player] == 0) || (MgModeWorkInt[player] == 1))) {
-                GwPlayerConf[player].grpNo = 0;
+                lbl_80265728[player].grpNo = 0;
             } else if ((MgModeWorkInt[player + 4] == 2) &&
                        ((MgModeWorkInt[player] == 2) || (MgModeWorkInt[player] == 3))) {
-                GwPlayerConf[player].grpNo = 1;
+                lbl_80265728[player].grpNo = 1;
             } else {
-                GwPlayerConf[player].grpNo = 2;
+                lbl_80265728[player].grpNo = 2;
             }
         } else {
             if ((MgModeWorkInt[player + 4] == 1) &&
                 ((MgModeWorkInt[player] == 0) || (MgModeWorkInt[player] == 1))) {
-                GwPlayerConf[player].grpNo = 0;
+                lbl_80265728[player].grpNo = 0;
             } else if ((MgModeWorkInt[player + 4] == 1) &&
                        ((MgModeWorkInt[player] == 2) || (MgModeWorkInt[player] == 3))) {
-                GwPlayerConf[player].grpNo = 1;
+                lbl_80265728[player].grpNo = 1;
             } else {
-                GwPlayerConf[player].grpNo = 2;
+                lbl_80265728[player].grpNo = 2;
             }
         }
         player++;
@@ -357,8 +357,8 @@ void fn_1_6D78(void)
 
     player = 0;
     while (player < 4) {
-        if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-            GwPlayer[player].mgCoinBonus = 0;
+        if (!fn_8006A124(65551)) {
+            lbl_80265750[player].mgCoinBonus = 0;
         }
         player++;
     }
@@ -402,8 +402,8 @@ void fn_1_6D78(void)
             chance = secondPlayer;
         }
     }
-    if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-        GwPlayer[chance].mgCoinBonus = TOURNAMENT_ROUND_COIN_BONUS;
+    if (!fn_8006A124(65551)) {
+        lbl_80265750[chance].mgCoinBonus = TOURNAMENT_ROUND_COIN_BONUS;
     }
 }
 
@@ -471,23 +471,23 @@ static inline void tournamentPlayerMotionSet(OMOBJ *object, s16 modeNo)
         motionNo = lbl_1_data_578[modeNo].motionNo;
         if (motionNo != -1) {
             if (lbl_1_data_578[modeNo].transitionTime <= (1.0f)) {
-                CharMotionSet(work->characterNo, object->mtnId[motionNo]);
-                Hu3DModelAttrReset(*object->mdlId,
-                    Hu3DModelMotionAttrGet(*object->mdlId) | HU3D_MOTATTR);
-                CharModelAttrSet(work->characterNo,
+                fn_8005BE80(work->characterNo, object->mtnId[motionNo]);
+                fn_80026A44(*object->mdlId,
+                    fn_80026AB8(*object->mdlId) | (1 << 30));
+                fn_8005C430(work->characterNo,
                     lbl_1_data_578[modeNo].modelAttributes);
             } else {
-                Hu3DModelAttrSet(*object->mdlId, HU3D_MOTATTR_PAUSE);
-                CharMotionShiftSet(work->characterNo, object->mtnId[motionNo],
+                fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 1)));
+                fn_8005C2C8(work->characterNo, object->mtnId[motionNo],
                     (0.0f), lbl_1_data_578[modeNo].transitionTime,
                     lbl_1_data_578[modeNo].modelAttributes);
             }
             if (lbl_1_data_578[modeNo].motionAttributeTableFlag != 0) {
-                Hu3DMotionAttrSet(object->mtnId[motionNo], 1);
+                fn_8002DC74(object->mtnId[motionNo], 1);
             } else {
-                Hu3DMotionAttrSet(object->mtnId[motionNo], 1);
+                fn_8002DC74(object->mtnId[motionNo], 1);
             }
-            CharModelVoiceFlagSet(work->characterNo,
+            fn_8005DFC0(work->characterNo,
                 lbl_1_data_578[modeNo].motionEffectsEnabled);
         }
         work->motionMode = modeNo;
@@ -507,52 +507,52 @@ void fn_1_74BC(void)
 
     player = 0;
     while (player < 4) {
-        playerObject = omAddObjEx(lbl_1_bss_12C, TOURNAMENT_CHARACTER_PRIORITY, 1,
+        playerObject = fn_8003AB38(lbl_1_bss_12C, TOURNAMENT_CHARACTER_PRIORITY, 1,
                                   TOURNAMENT_CHARACTER_MOTION_COUNT, -1, fn_1_8238);
         lbl_1_bss_114[player] = playerObject;
-        playerObject->stat |= OM_STAT_MODELPAUSE;
+        playerObject->stat |= (1 << 8);
         playerObject->work[0] = playerObject->work[1] =
             playerObject->work[2] = playerObject->work[3] = 0;
-        playerObject->data = HuMemDirectMallocNum(HEAP_HEAP, 84, HU_MEMNUM_OVL);
+        playerObject->data = HuMemDirectMallocNum(HEAP_HEAP, 84, 0x10000000);
         memset(playerObject->data, 0, 84);
         playerData = playerObject->data;
         playerData->playerNo = player;
-        playerData->characterNo = GwPlayerConf[player].charNo;
-        playerData->padNo = GwPlayerConf[player].padNo;
-        playerData->groupNo = GwPlayerConf[player].grpNo;
-        playerData->playerType = GwPlayerConf[player].type;
-        playerData->difficulty = GwPlayerConf[player].comDif;
+        playerData->characterNo = lbl_80265728[player].charNo;
+        playerData->padNo = lbl_80265728[player].padNo;
+        playerData->groupNo = lbl_80265728[player].grpNo;
+        playerData->playerType = lbl_80265728[player].type;
+        playerData->difficulty = lbl_80265728[player].comDif;
         playerData->sceneState = 0;
-        *playerObject->mdlId = CharModelCreate(playerData->characterNo, 2);
+        *playerObject->mdlId = fn_80057068(playerData->characterNo, 2);
         motionIndex = 0;
         while (motionIndex < TOURNAMENT_CHARACTER_MOTION_COUNT) {
-            playerObject->mtnId[motionIndex] = CharMotionCreate(
+            playerObject->mtnId[motionIndex] = fn_8005B0B8(
                 playerData->characterNo, lbl_1_data_510[motionIndex]);
             motionIndex++;
         }
-        CharMotionDataClose(playerData->characterNo);
+        fn_8005B4BC(playerData->characterNo);
         playerData->motionMode = -1;
         tournamentPlayerMotionSet(playerObject, 0);
-        Hu3DModelCameraSet(*playerObject->mdlId, 1);
-        Hu3DModelLayerSet(*playerObject->mdlId, 1);
-        Hu3DModelShadowSet(*playerObject->mdlId);
-        playerData->modelHeight = CharModelHeightGet(playerData->characterNo);
+        fn_80026B64(*playerObject->mdlId, 1);
+        fn_80026B8C(*playerObject->mdlId, 1);
+        fn_80026E44(*playerObject->mdlId);
+        playerData->modelHeight = fn_8005C4C8(playerData->characterNo);
         playerData->position = lbl_1_data_548[player];
-        Hu3DModelPosSetV(*playerObject->mdlId, &playerData->position);
+        fn_80026790(*playerObject->mdlId, &playerData->position);
         playerData->rotation.x = playerData->rotation.y =
             playerData->rotation.z = (0.0f);
-        Hu3DModelRotSetV(*playerObject->mdlId, &playerData->rotation);
+        fn_80026838(*playerObject->mdlId, &playerData->rotation);
         Hu3DLLightCreate(*playerObject->mdlId, (0.0f), (1500.0f), (1500.0f), (0.0f),
                          (-0.699999988079071f), (-0.699999988079071f),
                          TOURNAMENT_CHARACTER_LIGHT_INTENSITY, TOURNAMENT_CHARACTER_LIGHT_INTENSITY,
                          TOURNAMENT_CHARACTER_LIGHT_INTENSITY);
-        CharMotionVoiceOnSet(playerData->characterNo,
+        fn_8005DEB0(playerData->characterNo,
             (s16)lbl_1_data_510[8], 0);
-        CharMotionVoiceOnSet(playerData->characterNo,
+        fn_8005DEB0(playerData->characterNo,
             (s16)lbl_1_data_510[3], 0);
         player++;
     }
-    CharEffectLayerSet(4);
+    fn_8005DDEC(4);
     fn_1_A1F4();
 }
 
@@ -570,14 +570,14 @@ void fn_1_7924(void)
     while (playerIndex < 4) {
         playerObject = lbl_1_bss_114[playerIndex];
         playerWork = playerObject->data;
-        Hu3DModelLayerSet(*playerObject->mdlId, 4);
+        fn_80026B8C(*playerObject->mdlId, 4);
         playerWork->position.x = MgModeWorkFloat[playerIndex];
         playerWork->position.y = MgModeWorkFloat[playerIndex + 4];
         playerWork->position.z = MgModeWorkFloat[playerIndex + 8];
-        Hu3DModelPosSetV(*playerObject->mdlId, &playerWork->position);
+        fn_80026790(*playerObject->mdlId, &playerWork->position);
         if (MgModeWorkInt[playerIndex + 4] == 3) {
             playerWork->sceneState = 9;
-            CharMotionVoiceOnSet(playerWork->characterNo,
+            fn_8005DEB0(playerWork->characterNo,
                 (s16)lbl_1_data_510[11], FALSE);
             fn_1_6278(playerObject, 11);
         }
@@ -784,7 +784,6 @@ void fn_1_818C(void) {
     }
 }
 
-s32 _CharFXPlay(s16, s32, s32);
 s16 fn_1_3F00(void);
 void fn_1_6278(OMOBJ *, s16);
 s32 fn_1_E378(Point3d *, Point3d *);
@@ -945,7 +944,7 @@ void fn_1_8238(OMOBJ *object) {
                     playerWork->rotation.y =
                         180.0 * (atan2(targetDirection.x, targetDirection.z) / 3.141592653589793);
                     fn_1_6278(object, 4);
-                    _CharFXPlay(playerWork->characterNo, CHARVOICEID(20), 0);
+                    fn_800591C8(playerWork->characterNo, (573+20), 0);
                     playerWork->sceneState = 5;
                     playerWork->velocity.x = playerWork->velocity.y = playerWork->velocity.z = 0.0f;
                     playerWork->velocity.y = 14.0f;
@@ -967,11 +966,11 @@ void fn_1_8238(OMOBJ *object) {
         }
         case 5:
             if ((playerWork->motionMode == 4) &&
-                (CharMotionShiftIDGet(playerWork->characterNo) < 0)) {
-                if ((Hu3DData[*object->mdlId].motWork.speed +
-                     CharMotionTimeGet(playerWork->characterNo)) >=
-                    CharMotionMaxTimeGet(playerWork->characterNo)) {
-                    Hu3DModelAttrSet(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
+                (fn_8005C284(playerWork->characterNo) < 0)) {
+                if ((lbl_802C01C8[*object->mdlId].motWork.speed +
+                     fn_8005C1B8(playerWork->characterNo)) >=
+                    fn_8005C1FC(playerWork->characterNo)) {
+                    fn_800269E8(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
                 }
             }
             PSVECSubtract(&playerWork->targetPosition, &playerWork->position, &direction);
@@ -1000,17 +999,17 @@ void fn_1_8238(OMOBJ *object) {
                 PSVECSubtract(&playerWork->targetPosition, &playerWork->position,
                               &playerWork->velocity);
                 PSVECScale(&playerWork->velocity, &playerWork->velocity, 0.1f);
-                Hu3DModelAttrReset(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
+                fn_80026A44(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
     fn_1_6278(object, 5);
                 playerWork->sceneState = 6;
             }
             break;
         case 6: {
             if (playerWork->motionMode != 2) {
-                if (CharMotionShiftIDGet(playerWork->characterNo) < 0) {
-                    if ((Hu3DData[*object->mdlId].motWork.speed +
-                         CharMotionTimeGet(playerWork->characterNo)) >=
-                        CharMotionMaxTimeGet(playerWork->characterNo)) {
+                if (fn_8005C284(playerWork->characterNo) < 0) {
+                    if ((lbl_802C01C8[*object->mdlId].motWork.speed +
+                         fn_8005C1B8(playerWork->characterNo)) >=
+                        fn_8005C1FC(playerWork->characterNo)) {
                         fn_1_6278(object, 2);
                     }
                 }
@@ -1072,7 +1071,7 @@ void fn_1_8238(OMOBJ *object) {
         }
         case 7:
     fn_1_6278(object, 10);
-            if (CharMotionShiftIDGet(playerWork->characterNo) < 0) {
+            if (fn_8005C284(playerWork->characterNo) < 0) {
                 playerWork->sceneState = 8;
                 playerWork->velocity.x = playerWork->velocity.z = 0.0f;
                 /* The elimination fall begins with an upward hop before gravity pulls the player
@@ -1099,11 +1098,11 @@ void fn_1_8238(OMOBJ *object) {
             playerWork->sceneState = 11;
             break;
         case 11:
-            if (CharMotionShiftIDGet(playerWork->characterNo) < 0) {
-                if ((Hu3DData[*object->mdlId].motWork.speed +
-                     CharMotionTimeGet(playerWork->characterNo)) >=
-                    CharMotionMaxTimeGet(playerWork->characterNo)) {
-                    Hu3DModelAttrSet(*object->mdlId, HU3D_MOTATTR_PAUSE);
+            if (fn_8005C284(playerWork->characterNo) < 0) {
+                if ((lbl_802C01C8[*object->mdlId].motWork.speed +
+                     fn_8005C1B8(playerWork->characterNo)) >=
+                    fn_8005C1FC(playerWork->characterNo)) {
+                    fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 1)));
                 }
             }
             break;
@@ -1116,11 +1115,11 @@ void fn_1_8238(OMOBJ *object) {
             playerWork->sceneState = 14;
             break;
         case 14:
-            if (CharMotionShiftIDGet(playerWork->characterNo) < 0) {
-                if ((Hu3DData[*object->mdlId].motWork.speed +
-                     CharMotionTimeGet(playerWork->characterNo)) >=
-                    CharMotionMaxTimeGet(playerWork->characterNo)) {
-                    Hu3DModelAttrSet(*object->mdlId, HU3D_MOTATTR_PAUSE);
+            if (fn_8005C284(playerWork->characterNo) < 0) {
+                if ((lbl_802C01C8[*object->mdlId].motWork.speed +
+                     fn_8005C1B8(playerWork->characterNo)) >=
+                    fn_8005C1FC(playerWork->characterNo)) {
+                    fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 1)));
                 }
             }
             break;
@@ -1130,15 +1129,15 @@ void fn_1_8238(OMOBJ *object) {
             break;
         case 16:
     fn_1_6278(object, 8);
-            _CharFXPlay(playerWork->characterNo, CHARVOICEID(6), 0);
+            fn_800591C8(playerWork->characterNo, (573+6), 0);
             playerWork->sceneState = 17;
             break;
         case 17:
-            if (CharMotionShiftIDGet(playerWork->characterNo) < 0) {
-                if ((Hu3DData[*object->mdlId].motWork.speed +
-                     CharMotionTimeGet(playerWork->characterNo)) >=
-                    CharMotionMaxTimeGet(playerWork->characterNo)) {
-                    Hu3DModelAttrSet(*object->mdlId, HU3D_MOTATTR_PAUSE);
+            if (fn_8005C284(playerWork->characterNo) < 0) {
+                if ((lbl_802C01C8[*object->mdlId].motWork.speed +
+                     fn_8005C1B8(playerWork->characterNo)) >=
+                    fn_8005C1FC(playerWork->characterNo)) {
+                    fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 1)));
                 }
             }
             break;
@@ -1151,11 +1150,11 @@ void fn_1_8238(OMOBJ *object) {
             playerWork->sceneState = 20;
             break;
         case 20:
-            if (CharMotionShiftIDGet(playerWork->characterNo) < 0) {
-                if ((Hu3DData[*object->mdlId].motWork.speed +
-                     CharMotionTimeGet(playerWork->characterNo)) >=
-                    CharMotionMaxTimeGet(playerWork->characterNo)) {
-                    Hu3DModelAttrSet(*object->mdlId, HU3D_MOTATTR_PAUSE);
+            if (fn_8005C284(playerWork->characterNo) < 0) {
+                if ((lbl_802C01C8[*object->mdlId].motWork.speed +
+                     fn_8005C1B8(playerWork->characterNo)) >=
+                    fn_8005C1FC(playerWork->characterNo)) {
+                    fn_800269E8(*object->mdlId, ((1 << 30) | (1 << 1)));
                 }
             }
             break;
@@ -1172,32 +1171,32 @@ void fn_1_8238(OMOBJ *object) {
                 if (180.0f <= playerWork->rotation.y) {
     fn_1_6278(object, 12);
                     playerWork->sceneState = 23;
-                    CharFXPlay(playerWork->characterNo, CHARVOICEID(4));
+                    CharFXPlay(playerWork->characterNo, (573+4));
                 }
             }
             break;
         case 23:
             /* Attach the center model at the frame-15 threshold. State 24 counts as ready while the
              * character animation and the attached model's movement continue. */
-            if ((CharMotionShiftIDGet(playerWork->characterNo) < 0) &&
-                ((0.1f + CharMotionTimeGet(playerWork->characterNo)) >= 15.0f)) {
+            if ((fn_8005C284(playerWork->characterNo) < 0) &&
+                ((0.1f + fn_8005C1B8(playerWork->characterNo)) >= 15.0f)) {
                 value = fn_1_3F00();
-                Hu3DModelPosSet(value, 0.0f, 0.0f, 0.0f);
-                Hu3DModelRotSet(value, 0.0f, 180.0f, 0.0f);
-                Hu3DModelHookSet(*object->mdlId, lbl_1_data_690, value);
+                fn_80026760(value, 0.0f, 0.0f, 0.0f);
+                fn_80026808(value, 0.0f, 180.0f, 0.0f);
+                fn_8002741C(*object->mdlId, lbl_1_data_690, value);
                 playerWork->sceneState = 24;
             }
             break;
         case 24:
-            if (CharMotionShiftIDGet(playerWork->characterNo) < 0) {
-                if ((1.0f + CharMotionTimeGet(playerWork->characterNo)) >=
-                    CharMotionMaxTimeGet(playerWork->characterNo)) {
-                    Hu3DModelAttrSet(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
+            if (fn_8005C284(playerWork->characterNo) < 0) {
+                if ((1.0f + fn_8005C1B8(playerWork->characterNo)) >=
+                    fn_8005C1FC(playerWork->characterNo)) {
+                    fn_800269E8(*object->mdlId, TOURNAMENT_ALL_MOTION_PAUSE_FLAGS);
                 }
             }
             value = fn_1_3F00();
-            Hu3DModelPosGet(value, &direction);
-            Hu3DModelRotGet(value, &targetDirection);
+            fn_800267CC(value, &direction);
+            fn_80026874(value, &targetDirection);
             if (direction.y < 50.0f) {
                 direction.y += 5.0f;
             }
@@ -1210,8 +1209,8 @@ void fn_1_8238(OMOBJ *object) {
             if (targetDirection.y >= 360.0f) {
                 targetDirection.y = 360.0f;
             }
-            Hu3DModelPosSetV(value, &direction);
-            Hu3DModelRotSetV(value, &targetDirection);
+            fn_80026790(value, &direction);
+            fn_80026838(value, &targetDirection);
             break;
         case 25:
     fn_1_6278(object, 13);
@@ -1225,7 +1224,7 @@ void fn_1_8238(OMOBJ *object) {
             if (value > 96) {
                 value = 96;
             }
-            CharFXPlayPan(playerWork->characterNo, CHARVOICEID(6), value);
+            CharFXPlayPan(playerWork->characterNo, (573+6), value);
             break;
         case 26:
             if (object->work[1] != 0) {
@@ -1286,8 +1285,8 @@ void fn_1_8238(OMOBJ *object) {
             playerWork->sceneState = 0;
             break;
         }
-    Hu3DModelRotSetV(*object->mdlId, &playerWork->rotation);
-    Hu3DModelPosSetV(*object->mdlId, &playerWork->position);
+    fn_80026838(*object->mdlId, &playerWork->rotation);
+    fn_80026790(*object->mdlId, &playerWork->position);
     fn_1_A35C(playerWork->playerNo, &playerWork->position);
 }
 
@@ -1348,17 +1347,17 @@ void fn_1_A1F4(void) {
 
     playerIndex = 0;
     while (playerIndex < 4) {
-        lbl_1_bss_10C[playerIndex] = Hu3DParManCreate(
-            HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_effect, 1), HU_MEMNUM_OVL, HEAP_MODEL)),
+        lbl_1_bss_10C[playerIndex] = fn_800334F4(
+            HuSprAnimRead(fn_80008DD0(DATANUM(0x210000, 1), 0x10000000, 2)),
             100, &lbl_1_data_710);
         Hu3DParManAttrSet(lbl_1_bss_10C[playerIndex],
-                          HU3D_PARMAN_ATTR_RANDSPEED70 | HU3D_PARMAN_ATTR_RANDSCALE70 |
-                              HU3D_PARMAN_ATTR_SCALEJITTER);
-        Hu3DParticleBlendModeSet(
+                          (1 << 2) | (1 << 5) |
+                              (1 << 6));
+        fn_8003269C(
             Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 1U);
-        Hu3DModelCameraSet(
+        fn_80026B64(
             Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 1U);
-        Hu3DModelLayerSet(
+        fn_80026B8C(
             Hu3DParManModelIDGet(lbl_1_bss_10C[playerIndex]), 4);
         Hu3DParManRotSet(lbl_1_bss_10C[playerIndex], (90.0f), (0.0f),
                          (0.0f));
@@ -1558,7 +1557,7 @@ void fn_1_AA04(void)
     }
 }
 
-void omVibrate(s16 player, s16 time, s16 on, s16 off);
+void fn_8006A030(s16 player, s16 time, s16 on, s16 off);
 
 /* Brings each player forward in turn and waits for its scene animation. */
 void fn_1_AB48(void)
@@ -1591,7 +1590,7 @@ void fn_1_AB48(void)
         motionState = lbl_1_bss_114[selectedPlayer]->data;
         playerType = motionState->playerType;
         if (playerType == 0) {
-            omVibrate(selectedPlayer, 20, 4, 4);
+            fn_8006A030(selectedPlayer, 20, 4, 4);
         }
         playerIndex = 1;
         while (playerIndex != 0) {
@@ -1851,7 +1850,7 @@ void fn_1_B57C(void) {
     position.z = (-2000.0f);
     gameNo = 0;
     lbl_1_bss_10A = fn_1_0(gameNo, 0, &position);
-    Hu3DModelScaleSet(lbl_1_bss_10A, (0.0f), (0.0f), (0.0f));
+    fn_800268B0(lbl_1_bss_10A, (0.0f), (0.0f), (0.0f));
     fn_1_B628();
 }
 
@@ -1945,22 +1944,22 @@ void fn_1_B850(void) {
     cameraRelativePosition.z = (-2000.0f);
     /* Place the prop just above and in front of the active camera. */
     PSVECAdd(&Hu3DCamera->pos, &cameraRelativePosition, &cameraRelativePosition);
-    Hu3DModelPosSetV(lbl_1_bss_10A, &cameraRelativePosition);
+    fn_80026790(lbl_1_bss_10A, &cameraRelativePosition);
     scale = (0.0f);
-    Hu3DModelScaleSet(lbl_1_bss_10A, scale, scale, scale);
+    fn_800268B0(lbl_1_bss_10A, scale, scale, scale);
     HuPrcVSleep();
     fn_1_43C();
     HuPrcVSleep();
     HuAudFXPlay(MSM_SE_MGTOUR_PROP_REVEAL);
     while (scale < (1.0f)) {
-        Hu3DModelScaleSet(lbl_1_bss_10A, scale, scale, scale);
+        fn_800268B0(lbl_1_bss_10A, scale, scale, scale);
         scale += (0.10000000149011612f);
         if (scale >= (1.0f)) {
             scale = (1.0f);
         }
         HuPrcVSleep();
     }
-    Hu3DModelScaleSet(lbl_1_bss_10A, (1.0f), (1.0f), (1.0f));
+    fn_800268B0(lbl_1_bss_10A, (1.0f), (1.0f), (1.0f));
     HuPrcVSleep();
     lbl_1_data_850 = HuAudFXPlay(MSM_SE_MGTOUR_PROP_LAND);
     /* Keep updating the prop for 25 four-tick waits after its entrance sound. */
@@ -1999,7 +1998,7 @@ void fn_1_3394(s16 model, s16 mode);
 void fn_1_34B0(s16 model);
 void fn_1_3F18(s16 mode);
 void fn_1_56B4(s16 mode);
-void omVibrate(s16 player, s16 time, s16 on, s16 off);
+void fn_8006A030(s16 player, s16 time, s16 on, s16 off);
 
 void fn_1_7DA8(s16 player, s16 flag);
 
@@ -2107,7 +2106,7 @@ static inline void tournamentPlayerVibrate(s16 player, s16 time, s16 on, s16 off
     playerData = lbl_1_bss_114[player]->data;
     playerType = playerData->playerType;
     if (playerType == 0) {
-        omVibrate(player, time, on, off);
+        fn_8006A030(player, time, on, off);
     }
 }
 
@@ -2160,7 +2159,7 @@ s16 fn_1_BAD4(void)
             fn_1_2728(winner);
             fn_1_143C(4, 30);
             HuPrcSleep(30);
-            HuAudFXPlay(MSM_SE_MGTOUR_ROUND_WIN);
+            HuAudFXPlay(1249);
             tournamentResultPositionSet(winner, lbl_1_data_820[0]);
             Hu3DParManAttrReset(lbl_1_bss_10C[winner], 1);
             HuPrcVSleep();
@@ -2224,7 +2223,7 @@ s16 fn_1_BAD4(void)
             fn_1_2728(winner);
             fn_1_143C(6, 30);
             HuPrcSleep(30);
-            HuAudFXPlay(MSM_SE_MGTOUR_ROUND_WIN);
+            HuAudFXPlay(1249);
             tournamentResultPositionSet(winner, lbl_1_data_820[1]);
             Hu3DParManAttrReset(lbl_1_bss_10C[winner], 1);
             HuPrcVSleep();
@@ -2293,7 +2292,7 @@ s16 fn_1_BAD4(void)
                 fn_1_34B0(2);
             }
             fn_1_2728(winner);
-            HuAudFXPlay(MSM_SE_MGTOUR_ROUND_LOSE);
+            HuAudFXPlay(1250);
             tournamentPlayerVibrate(loser, 20, 20, 0);
             tournamentResultSceneStart(loser);
             if (MgModeWorkInt[loser] < 2) {
@@ -2362,7 +2361,7 @@ s16 fn_1_BAD4(void)
             fn_1_2728(winner);
             fn_1_143C(10, 30);
             HuPrcSleep(30);
-            HuAudFXPlay(MSM_SE_MGTOUR_ROUND_WIN);
+            HuAudFXPlay(1249);
             tournamentResultPositionSet(winner, lbl_1_data_838);
             Hu3DParManAttrReset(lbl_1_bss_10C[winner], 1);
             HuPrcVSleep();
@@ -2472,7 +2471,7 @@ void fn_1_CF6C(void)
         }
         HuPrcVSleep();
     }
-    lbl_1_data_854 = HuAudFXPlay(MSM_SE_MGTOUR_CHAMPION);
+    lbl_1_data_854 = HuAudFXPlay(1252);
     HuPrcSleep(60);
     fn_1_56B4(0);
     if (0 <= lbl_1_data_858)
@@ -2551,10 +2550,10 @@ void fn_1_DC28(void);
 /* Starts the tournament menu's object manager and board process. */
 void fn_1_D544(void)
 {
-    lbl_1_bss_12C = omInitObjMan(100, 8192);
+    lbl_1_bss_12C = fn_8003A8BC(100, 8192);
     MgModeSubMode = 0;
     fn_1_E9C();
-    HuPrcChildCreate(fn_1_DC28, 100U, 12288U, 0, lbl_1_bss_12C);
+    fn_8000DAC0(fn_1_DC28, 100U, 12288U, 0, lbl_1_bss_12C);
 }
 
 /* Runs static constructors before starting the tournament board process. */
@@ -2567,10 +2566,10 @@ s32 _prolog(void)
         (*constructor)();
         constructor++;
     }
-    lbl_1_bss_12C = omInitObjMan(100, 8192);
+    lbl_1_bss_12C = fn_8003A8BC(100, 8192);
     *(s16 *)&MgModeSubMode = 0;
     fn_1_E9C();
-    HuPrcChildCreate(fn_1_DC28, 100U, 12288U, 0, lbl_1_bss_12C);
+    fn_8000DAC0(fn_1_DC28, 100U, 12288U, 0, lbl_1_bss_12C);
     return 0;
 }
 

@@ -54,7 +54,7 @@ s32 fn_1_E0C0(s16 mode)
             }
             break;
         case 2:
-            HuAudFXPlay(MSM_SE_CMN_03);
+            HuAudFXPlay(2);
             HuAudFXPlay(MGMFREE_SE_MODE_EXIT_SEQUENCE_FX_1);
             HuAudFXPlay(MGMFREE_SE_MODE_EXIT_SEQUENCE_FX_2);
             obj = (*(OMOBJ **)&lbl_1_bss_28[0]);

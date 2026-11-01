@@ -36,9 +36,9 @@ void fn_1_E0C4(HUPROCESS *process) {
         OMOBJ * object;
     void * work;
     lbl_1_bss_6C4 = process;
-    object = omAddObjEx(lbl_1_bss_6C4, 16, 3U, 0U, - 1, fn_1_E180);
+    object = fn_8003AB38(lbl_1_bss_6C4, 16, 3U, 0U, - 1, fn_1_E180);
     lbl_1_bss_6C0 = object;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M674EffectWork), HU_MEMNUM_OVL);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M674EffectWork), 0x10000000);
     object->data = work;
     memset(work, 0, sizeof(M674EffectWork));
     fn_1_E1C8(object);
@@ -74,14 +74,14 @@ void fn_1_E1C8(OMOBJ *object)
 
     configuration = (GXColor *)object->data;
     *configuration = lbl_1_data_678[0];
-    animation = HuSprAnimRead(HuDataSelHeapReadNum(fn_1_E18(15), HU_MEMNUM_OVL, HEAP_MODEL));
-    modelId = Hu3DParticleCreate(animation, 128);
+    animation = HuSprAnimRead(fn_80008DD0(fn_1_E18(15), 0x10000000, 2));
+    modelId = fn_8003216C(animation, 128);
     object->mdlId[0] = modelId;
-    particle = (HU3D_PARTICLE *)Hu3DData[(s16)modelId].hookData;
-    Hu3DParticleBlendModeSet(modelId, 0);
-    Hu3DParticleHookSet(modelId, fn_1_E300);
-    Hu3DModelLayerSet(modelId, 6);
-    Hu3DModelPosSet(modelId, 0.0f, 0.0f, 0.0f);
+    particle = (HU3D_PARTICLE *)lbl_802C01C8[(s16)modelId].hookData;
+    fn_8003269C(modelId, 0);
+    fn_800326D0(modelId, fn_1_E300);
+    fn_80026B8C(modelId, 6);
+    fn_80026760(modelId, 0.0f, 0.0f, 0.0f);
     entry = particle->data;
     for (index = 0; index < particle->maxCnt; index++, entry++) {
         entry->time = -1;
@@ -128,11 +128,11 @@ void fn_1_E300(HU3D_MODEL *model, HU3D_PARTICLE *effect, Mtx matrix)
 void fn_1_E460(OMOBJ *object)
 {
     M674EffectWork *work = object->data;
-    HU3D_MODELID hook = Hu3DHookFuncCreate(fn_1_E56C);
+    HU3D_MODELID hook = fn_800260F4(fn_1_E56C);
 
     object->mdlId[1] = hook;
-    Hu3DModelLayerSet(hook, 2);
-    work->animation = HuSprAnimRead(HuDataSelHeapReadNum(fn_1_E18(14), HU_MEMNUM_OVL, HEAP_MODEL));
+    fn_80026B8C(hook, 2);
+    work->animation = HuSprAnimRead(fn_80008DD0(fn_1_E18(14), 0x10000000, 2));
 }
 
 /* The effect object's update calls this each frame to grow and fade active ground quads. */
@@ -246,7 +246,7 @@ void fn_1_E8B8(OMOBJ *object)
 
     work = object->data;
     childWork = &work->texture;
-    hook = Hu3DHookFuncCreate((HU3D_MODEL_HOOK)fn_1_E980);
+    hook = fn_800260F4((HU3D_MODEL_HOOK)fn_1_E980);
     object->mdlId[2] = hook;
     fn_1_E9D8(object, childWork);
     work->enabled = 1;
@@ -280,15 +280,15 @@ void fn_1_E9D8(OMOBJ *object, M674TextureWork *work)
     u32 textureSize;
     s16 modelId = object->mdlId[2];
 
-    Hu3DModelLayerSet(modelId, 4);
+    fn_80026B8C(modelId, 4);
     if (work->textureBuffer != NULL) {
         return;
     }
     textureSize = GXGetTexBufferSize(320, 240, 4, 0, 0);
-    work->textureBuffer = HuMemDirectMallocNum(HEAP_HEAP, textureSize, HU_MEMNUM_OVL);
-    work->textureData = HuDataSelHeapReadNum(fn_1_E18(16), HU_MEMNUM_OVL, HEAP_MODEL);
+    work->textureBuffer = HuMemDirectMallocNum(HEAP_HEAP, textureSize, 0x10000000);
+    work->textureData = fn_80008DD0(fn_1_E18(16), 0x10000000, 2);
     work->animationData = HuSprAnimRead(
-        HuDataSelHeapReadNum(fn_1_E18(17), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80008DD0(fn_1_E18(17), 0x10000000, 2));
     work->scrollX = 0.0f;
     work->scrollY = 0.0f;
     PSMTXIdentity(work->textureMatrices[0]);
@@ -307,8 +307,8 @@ void fn_1_EB6C(Vec *position, f32 *farPlane)
     Vec unusedCameraVector;
     f32 unusedPerspective;
 
-    Hu3DCameraPosGet(1, position, &unusedCameraVector, &unusedCameraVector);
-    Hu3DCameraPerspectiveGet(1, &unusedPerspective, &unusedPerspective, farPlane);
+    fn_80027CD0(1, position, &unusedCameraVector, &unusedCameraVector);
+    fn_80027D8C(1, &unusedPerspective, &unusedPerspective, farPlane);
     *farPlane *= 1.8;
 }
 
@@ -320,8 +320,8 @@ void fn_1_EBDC(M674TextureWork *work) {
     f32 perspectiveScratch;
     f32 textureScale;
 
-    Hu3DCameraPosGet(1, &cameraPosition, &cameraScratch, &cameraScratch);
-    Hu3DCameraPerspectiveGet(1, &perspectiveScratch, &perspectiveScratch, &farPlane);
+    fn_80027CD0(1, &cameraPosition, &cameraScratch, &cameraScratch);
+    fn_80027D8C(1, &perspectiveScratch, &perspectiveScratch, &farPlane);
     farPlane *= 1.8;
     PSMTXScale(work->textureMatrices[0], farPlane, 1.0f, farPlane);
     PSMTXTransApply(work->textureMatrices[0], work->textureMatrices[0], cameraPosition.x, 0.0f,
@@ -353,7 +353,7 @@ void fn_1_EE3C(M674TextureWork *work, GXTexMapID map, u32 matrixId, Mtx inputMat
     GXCopyTex(work->textureBuffer, GX_FALSE);
     GXPixModeSync();
     GXLoadTexObj(&work->outputTexture, map);
-    Hu3DCameraPerspectiveGet(1, &fov, &nearFar, &nearFar);
+    fn_80027D8C(1, &fov, &nearFar, &nearFar);
     C_MTXLightPerspective(perspectiveMatrix, fov, 1.2f, 0.5f,
                           -0.5f, 0.5f, 0.5f);
     PSMTXConcat(perspectiveMatrix, inputMatrix, perspectiveMatrix);
@@ -583,7 +583,7 @@ void fn_1_F660(Vec *origin)
     OMOBJ *manager = lbl_1_bss_6C0;
     GXColor *color = manager->data;
     HU3D_MODELID modelId = manager->mdlId[0];
-    HU3D_PARTICLE *work = Hu3DData[modelId].hookData;
+    HU3D_PARTICLE *work = lbl_802C01C8[modelId].hookData;
     HU3D_PARTICLE_DATA *slot = work->data;
     s32 index = 0;
 

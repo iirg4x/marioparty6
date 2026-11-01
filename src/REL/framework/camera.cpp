@@ -185,5 +185,5 @@ void cameraApplyToHud(CameraFrame *camera, s32 cameraMask)
 // Minigame camera code calls this to read the first HUD camera selected by the mask.
 void cameraReadFromHud(CameraFrame *camera, s32 cameraMask)
 {
-    Hu3DCameraPosGet(cameraMask, &camera->eye, &camera->up, &camera->target);
+    fn_80027CD0(cameraMask, &camera->eye, &camera->up, &camera->target);
 }

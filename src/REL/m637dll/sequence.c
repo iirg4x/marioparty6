@@ -11,9 +11,9 @@ s32 lbl_1_bss_0;
 /* Creates the object manager and starts the Slot Trot sequence. */
 void fn_1_A0(void)
 {
-    lbl_1_bss_4 = omInitObjMan(200, 8192);
-    omGameSysInit(lbl_1_bss_4);
-    MgSeqCreate(&lbl_1_data_0);
+    lbl_1_bss_4 = fn_8003A8BC(200, 8192);
+    fn_80069F1C(lbl_1_bss_4);
+    fn_80070788(&lbl_1_data_0);
 }
 
 /* Sets up the scene camera, lighting, shadows, and initial play state. */
@@ -30,18 +30,18 @@ void fn_1_F0(s16 mode, s16 frameNo)
     Hu3DCameraCreate(1);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(1, 45.0f, 20.0f, 30000.0f, 1.2f);
-    omAddObjEx(lbl_1_bss_4, 32730, 0U, 0U, -1, omOutView);
+    fn_8003AB38(lbl_1_bss_4, 32730, 0U, 0U, -1, fn_8003D4FC);
     fn_1_1110(0);
-    lightId = Hu3DGLightCreateV(&lightPosition, &lightDirection, &lightColor);
+    lightId = fn_800286D0(&lightPosition, &lightDirection, &lightColor);
     Hu3DGLightStaticSet(lightId, 1);
     Hu3DGLightInfinitytSet(lightId);
     Hu3DShadowCreate(30.0f, 20.0f, 10000.0f);
-    Hu3DShadowColSet(0U, 0U, 0U);
+    fn_8002AAB4(0U, 0U, 0U);
     Hu3DShadowTPLvlSet(0.5f);
     Hu3DShadowPosSet(&shadowPosition, &shadowUp, &shadowTarget);
     fn_1_548();
     lbl_1_bss_0 = 0;
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* During fade-in, advances the scripted reel spin; update 140 starts the play-camera move
@@ -68,7 +68,7 @@ void fn_1_3DC(s16 mode, s16 frameNo)
 {
     if (fn_1_65C() != 0) {
         lbl_1_bss_0 = 0;
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -95,7 +95,7 @@ void fn_1_488(s16 mode, s16 frameNo)
     if (--lbl_1_bss_0 <= 0) {
         lbl_1_bss_0 = 0;
         fn_1_E4C();
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -113,7 +113,7 @@ void fn_1_510(s16 mode, s16 frameNo)
 void fn_1_514(s16 mode, s16 frameNo)
 {
     HuAudAllStop();
-    Hu3DModelAllKill();
-    Hu3DLightAllKill();
-    omOvlReturnEx(1, 1);
+    fn_80026648();
+    fn_80028D70();
+    fn_8003A5E4(1, 1);
 }

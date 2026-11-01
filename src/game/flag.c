@@ -11,16 +11,16 @@ static u8 *GetFlagPtr(u32 flagId)
 {
 	u8 *flagBytes;
 	u32 flagGroup = flagId >> 16;
-	if((flagId & FLAG_GROUP_MASK) == FLAG_GROUP_SYSTEM) {
+	if((flagId & FLAG_GROUP_MASK) == (3 << 16)) {
 		flagBytes = _Sys_Flag;
 	} else {
-		flagBytes = &GwSystem.flag[flagGroup][0];
+		flagBytes = &lbl_80265B70.flag[flagGroup][0];
 	}
 	return flagBytes;
 }
 
 // Returns zero when the flag is clear, or the selected bit mask when it is set.
-BOOL _CheckFlag(u32 flagId)
+BOOL fn_8006A124(u32 flagId)
 {
 	u8 *flagBytes = GetFlagPtr(flagId);
 	u16 flagIndex = flagId;
@@ -28,7 +28,7 @@ BOOL _CheckFlag(u32 flagId)
 }
 
 // Sets one flag bit when game code records board, minigame, or system state.
-void _SetFlag(u32 flagId)
+void fn_8006A1C4(u32 flagId)
 {
 	u8 *flagBytes = GetFlagPtr(flagId);
 	u16 flagIndex = flagId;
@@ -36,7 +36,7 @@ void _SetFlag(u32 flagId)
 }
 
 // Clears one flag bit when game code resets board, minigame, or system state.
-void _ClearFlag(u32 flagId)
+void fn_8006A268(u32 flagId)
 {
 	u8 *flagBytes = GetFlagPtr(flagId);
 	u16 flagIndex = flagId;

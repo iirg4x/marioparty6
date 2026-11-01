@@ -233,10 +233,10 @@ f64 fn_1_2968(Vec lhs, Vec rhs)
 /* Creates the collision manager and its model-contact slots during sequence setup. */
 void fn_1_2B50(OMOBJMAN *objMan)
 {
-    OMOBJ *obj = omAddObjEx(objMan, M646_COLLISION_PRIORITY, 0, 0, OM_GRP_NONE, fn_1_2BDC);
+    OMOBJ *obj = fn_8003AB38(objMan, M646_COLLISION_PRIORITY, 0, 0, -1, fn_1_2BDC);
     void *data;
     lbl_1_bss_60 = obj;
-    data = HuMemDirectMallocNum(HEAP_HEAP, M646_COLLISION_SLOT_BYTES, HU_MEMNUM_OVL);
+    data = HuMemDirectMallocNum(HEAP_HEAP, M646_COLLISION_SLOT_BYTES, 0x10000000);
     obj->data = data;
     memset(data, 0, M646_COLLISION_SLOT_BYTES);
 }
@@ -503,7 +503,8 @@ s32 fn_1_3894(M646BodyAnchor *first, M646ModelCollider *second)
     projectedX = position->x - edge->normal.x * radius;
     projectedY = position->y - edge->normal.y * radius;
     projectedZ = position->z - edge->normal.z * radius;
-    HuCopyVecF(&colliderPosition, &second->pose.pos);
+    (&colliderPosition)->x = (&second->pose.pos)->x;  (&colliderPosition)->y =
+        (&second->pose.pos)->y;  (&colliderPosition)->z = (&second->pose.pos)->z;
     zDistance = projectedZ - colliderPosition.z;
     if (zDistance < (0.0f)) {
         return 0;
@@ -633,11 +634,11 @@ void fn_1_4044(M646CollisionRecord *record, HSF_OBJECT *objects, s32 count)
     object = objects;
     objectsRemaining = count;
     while (objectsRemaining--) {
-        if (object->type == HSF_OBJ_MESH) {
+        if (object->type == 2) {
             face = object->mesh.face->data;
             length = object->mesh.face->count;
             while (length--) {
-                if (face->type == HSF_FACE_QUAD) {
+                if (face->type == 3) {
                     quadCount++;
                 }
                 face++;
@@ -647,21 +648,21 @@ void fn_1_4044(M646CollisionRecord *record, HSF_OBJECT *objects, s32 count)
     }
 
     length = quadCount * sizeof(M646MeshEdge);
-    edge = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    edge = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     record->original = edge;
     memset(edge, 0, length);
     length = quadCount * sizeof(M646WorldEdge);
-    record->current = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    record->current = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     memset(record->current, 0, length);
-    record->alternate = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    record->alternate = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     memset(record->alternate, 0, length);
     record->transformCount = count;
     length = record->transformCount * sizeof(HSF_TRANSFORM *);
-    transforms = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    transforms = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     record->transforms = transforms;
     memset(transforms, 0, length);
     length = record->transformCount * sizeof(Mtx);
-    matrix = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    matrix = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     record->matrices = matrix;
     memset(matrix, 0, length);
 
@@ -669,19 +670,21 @@ void fn_1_4044(M646CollisionRecord *record, HSF_OBJECT *objects, s32 count)
     objectsRemaining = count;
     record->edgeCount = 0;
     while (objectsRemaining--) {
-        if (object->type == HSF_OBJ_MESH) {
+        if (object->type == 2) {
             vertices = object->mesh.vertex->data;
             face = object->mesh.face->data;
             length = object->mesh.face->count;
             while (length--) {
-                if (face->type == HSF_FACE_QUAD) {
+                if (face->type == 3) {
                     for (corner = 0; corner < 4; corner++) {
                         nextCorner = (corner + 1) & 0x3;
                         first = &vertices[face->index[lbl_1_data_11C[corner]].vertex];
                         second = &vertices[face->index[lbl_1_data_11C[nextCorner]].vertex];
                         if ((first->y < (50.0)) && (second->y < (50.0))) {
-                            HuCopyVecF(&edge->first, first);
-                            HuCopyVecF(&edge->second, second);
+                            (&edge->first)->x = first->x;  (&edge->first)->y =
+                                first->y;  (&edge->first)->z = first->z;
+                            (&edge->second)->x = second->x;  (&edge->second)->y =
+                                second->y;  (&edge->second)->z = second->z;
                             edge->matrix = matrix;
                             edge++;
                             record->edgeCount++;
@@ -702,7 +705,7 @@ void fn_1_4044(M646CollisionRecord *record, HSF_OBJECT *objects, s32 count)
 /* Starts the stage edge build from every HSF object in a loaded model. */
 void fn_1_4314(M646CollisionRecord *record, HU3D_MODELID model)
 {
-    HSF_DATA *hsf = Hu3DData[model].hsf;
+    HSF_DATA *hsf = lbl_802C01C8[model].hsf;
     fn_1_4044(record, hsf->object, hsf->objectNum);
 }
 
@@ -822,11 +825,11 @@ s32 fn_1_48DC(M646ModelCollider *collider, HSF_OBJECT *objects, HU3D_MODELID mod
     collider->source = object;
     objectsRemaining = 1;
     while (objectsRemaining--) {
-        if (object->type == HSF_OBJ_MESH) {
+        if (object->type == 2) {
             face = object->mesh.face->data;
             length = object->mesh.face->count;
             while (length--) {
-                if (face->type == HSF_FACE_QUAD) {
+                if (face->type == 3) {
                     quadCount++;
                 }
                 face++;
@@ -835,19 +838,20 @@ s32 fn_1_48DC(M646ModelCollider *collider, HSF_OBJECT *objects, HU3D_MODELID mod
         object++;
     }
     length = quadCount * sizeof(M646WorldEdge);
-    collider->current = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    collider->current = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     memset(collider->current, 0, length);
-    collider->alternate = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+    collider->alternate = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
     memset(collider->alternate, 0, length);
     collider->transformCount = 1;
     length = collider->transformCount * sizeof(Mtx);
     {
         void *matrixBuffer;
-        collider->matrices = matrixBuffer = HuMemDirectMallocNum(HEAP_HEAP, length, HU_MEMNUM_OVL);
+        collider->matrices = matrixBuffer = HuMemDirectMallocNum(HEAP_HEAP, length, 0x10000000);
         memset(matrixBuffer, 0, length);
     }
     Hu3DModelObjPosGet(model, name, &position);
-    HuCopyVecF(&collider->pose.pos, &position);
+    (&collider->pose.pos)->x = (&position)->x;  (&collider->pose.pos)->y =
+        (&position)->y;  (&collider->pose.pos)->z = (&position)->z;
     collider->pose.scale.x = collider->pose.scale.y = collider->pose.scale.z = 1.0f;
     transform = collider->pose;
     matrix = collider->matrices;

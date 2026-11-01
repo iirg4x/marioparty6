@@ -73,71 +73,71 @@ s32 omPadErrChk(u8 playerIndex);
 
 /* Quiz resource lists, choices and initialized sprite handles. */
 s32 lbl_1_data_0[7] = {
-    DATANUM(DATA_micquizishi, 122), DATANUM(DATA_micquizishi, 123),
-    DATANUM(DATA_micquizishi, 124), DATANUM(DATA_micquizishi, 125),
-    DATANUM(DATA_micquizishi, 126), DATANUM(DATA_micquizishi, 127),
-    DATANUM(DATA_micquizishi, 128)
+    DATANUM(0xa40000, 122), DATANUM(0xa40000, 123),
+    DATANUM(0xa40000, 124), DATANUM(0xa40000, 125),
+    DATANUM(0xa40000, 126), DATANUM(0xa40000, 127),
+    DATANUM(0xa40000, 128)
 };
 s32 lbl_1_data_1C[11] = {
-    DATANUM(DATA_mgconst, 0), DATANUM(DATA_mgconst, 1),
-    DATANUM(DATA_mgconst, 2), DATANUM(DATA_mgconst, 3),
-    DATANUM(DATA_mgconst, 4), DATANUM(DATA_mgconst, 5),
-    DATANUM(DATA_mgconst, 6), DATANUM(DATA_mgconst, 7),
-    DATANUM(DATA_mgconst, 8), DATANUM(DATA_mgconst, 9),
-    DATANUM(DATA_mgconst, 10)
+    DATANUM(0x9b0000, 0), DATANUM(0x9b0000, 1),
+    DATANUM(0x9b0000, 2), DATANUM(0x9b0000, 3),
+    DATANUM(0x9b0000, 4), DATANUM(0x9b0000, 5),
+    DATANUM(0x9b0000, 6), DATANUM(0x9b0000, 7),
+    DATANUM(0x9b0000, 8), DATANUM(0x9b0000, 9),
+    DATANUM(0x9b0000, 10)
 };
 s32 lbl_1_data_48[5] = {10, 20, 30, 40, 50};
 u32 lbl_1_data_5C[17] = {
-    DATANUM(DATA_effect, 12), DATANUM(DATA_effect, 13),
-    DATANUM(DATA_effect, 14), DATANUM(DATA_effect, 15),
-    DATANUM(DATA_effect, 16), DATANUM(DATA_effect, 17),
+    DATANUM(0x210000, 12), DATANUM(0x210000, 13),
+    DATANUM(0x210000, 14), DATANUM(0x210000, 15),
+    DATANUM(0x210000, 16), DATANUM(0x210000, 17),
     0, 1, 2, 3, 4, 5, 6, 7, 9, 10,
-    DATANUM(DATA_m614, 22)
+    DATANUM(0x490000, 22)
 };
 u32 lbl_1_data_A0[18] = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-    DATANUM(DATA_effect, 12), DATANUM(DATA_effect, 13),
-    DATANUM(DATA_effect, 14), DATANUM(DATA_effect, 15),
-    DATANUM(DATA_effect, 16), DATANUM(DATA_effect, 17),
-    DATANUM(DATA_m614, 22)
+    DATANUM(0x210000, 12), DATANUM(0x210000, 13),
+    DATANUM(0x210000, 14), DATANUM(0x210000, 15),
+    DATANUM(0x210000, 16), DATANUM(0x210000, 17),
+    DATANUM(0x490000, 22)
 };
 u32 lbl_1_data_E8[17] = {
     0, 1, 2, 3, 4, 5, 6, 7, 9, 10,
-    DATANUM(DATA_effect, 12), DATANUM(DATA_effect, 13),
-    DATANUM(DATA_effect, 14), DATANUM(DATA_effect, 15),
-    DATANUM(DATA_effect, 16), DATANUM(DATA_effect, 17),
-    DATANUM(DATA_m614, 22)
+    DATANUM(0x210000, 12), DATANUM(0x210000, 13),
+    DATANUM(0x210000, 14), DATANUM(0x210000, 15),
+    DATANUM(0x210000, 16), DATANUM(0x210000, 17),
+    DATANUM(0x490000, 22)
 };
 u32 lbl_1_data_12C[] = {
-    DATANUM(DATA_effect, 34), DATANUM(DATA_effect, 35),
-    DATANUM(DATA_effect, 36), DATANUM(DATA_effect, 37),
-    DATANUM(DATA_effect, 38), DATANUM(DATA_effect, 39),
-    DATANUM(DATA_effect, 40), DATANUM(DATA_effect, 41),
-    DATANUM(DATA_effect, 42), DATANUM(DATA_effect, 43),
-    DATANUM(DATA_effect, 44), DATANUM(DATA_effect, 45),
-    DATANUM(DATA_effect, 46), DATANUM(DATA_effect, 47),
-    DATANUM(DATA_effect, 48), DATANUM(DATA_effect, 49),
-    DATANUM(DATA_effect, 50), DATANUM(DATA_effect, 51),
-    DATANUM(DATA_effect, 52), DATANUM(DATA_effect, 53)
+    DATANUM(0x210000, 34), DATANUM(0x210000, 35),
+    DATANUM(0x210000, 36), DATANUM(0x210000, 37),
+    DATANUM(0x210000, 38), DATANUM(0x210000, 39),
+    DATANUM(0x210000, 40), DATANUM(0x210000, 41),
+    DATANUM(0x210000, 42), DATANUM(0x210000, 43),
+    DATANUM(0x210000, 44), DATANUM(0x210000, 45),
+    DATANUM(0x210000, 46), DATANUM(0x210000, 47),
+    DATANUM(0x210000, 48), DATANUM(0x210000, 49),
+    DATANUM(0x210000, 50), DATANUM(0x210000, 51),
+    DATANUM(0x210000, 52), DATANUM(0x210000, 53)
 };
 u32 lbl_1_data_17C[] = {
-    DATANUM(DATA_effect, 58), DATANUM(DATA_effect, 59),
-    DATANUM(DATA_effect, 60), DATANUM(DATA_effect, 61),
-    DATANUM(DATA_effect, 62), DATANUM(DATA_effect, 63),
-    DATANUM(DATA_effect, 64), DATANUM(DATA_effect, 65),
-    DATANUM(DATA_effect, 66), DATANUM(DATA_effect, 67),
-    DATANUM(DATA_effect, 68), DATANUM(DATA_effect, 69),
-    DATANUM(DATA_effect, 70), DATANUM(DATA_effect, 71),
-    DATANUM(DATA_effect, 72), DATANUM(DATA_effect, 73),
-    DATANUM(DATA_effect, 74), DATANUM(DATA_effect, 75),
-    DATANUM(DATA_effect, 76), DATANUM(DATA_effect, 77)
+    DATANUM(0x210000, 58), DATANUM(0x210000, 59),
+    DATANUM(0x210000, 60), DATANUM(0x210000, 61),
+    DATANUM(0x210000, 62), DATANUM(0x210000, 63),
+    DATANUM(0x210000, 64), DATANUM(0x210000, 65),
+    DATANUM(0x210000, 66), DATANUM(0x210000, 67),
+    DATANUM(0x210000, 68), DATANUM(0x210000, 69),
+    DATANUM(0x210000, 70), DATANUM(0x210000, 71),
+    DATANUM(0x210000, 72), DATANUM(0x210000, 73),
+    DATANUM(0x210000, 74), DATANUM(0x210000, 75),
+    DATANUM(0x210000, 76), DATANUM(0x210000, 77)
 };
-u32 lbl_1_data_1CC[2] = {DATANUM(DATA_effect, 55), DATANUM(DATA_effect, 56)};
+u32 lbl_1_data_1CC[2] = {DATANUM(0x210000, 55), DATANUM(0x210000, 56)};
 u32 lbl_1_data_1D4[8] = {
-    DATANUM(DATA_effect, 25), DATANUM(DATA_effect, 26),
-    DATANUM(DATA_effect, 27), DATANUM(DATA_effect, 28),
-    DATANUM(DATA_effect, 29), DATANUM(DATA_effect, 30),
-    DATANUM(DATA_effect, 31), DATANUM(DATA_effect, 32)
+    DATANUM(0x210000, 25), DATANUM(0x210000, 26),
+    DATANUM(0x210000, 27), DATANUM(0x210000, 28),
+    DATANUM(0x210000, 29), DATANUM(0x210000, 30),
+    DATANUM(0x210000, 31), DATANUM(0x210000, 32)
 };
 s32 lbl_1_data_1F4 = {-1};
 s32 lbl_1_data_1F8 = {-1};
@@ -153,14 +153,14 @@ struct _struct_lbl_1_data_21C_0x8 lbl_1_data_21C[4] = {
     { 222.0f, 40.0f }, { 357.0f, 55.0f }, { 227.0f, 74.0f }, { 345.0f, 80.0f }
 };
 u32 lbl_1_data_23C[16] = {
-    DATANUM(DATA_donkeymdl1, 0), DATANUM(DATA_donkeymdl1, 1),
-    DATANUM(DATA_donkeymdl1, 2), DATANUM(DATA_donkeymdl1, 3),
-    DATANUM(DATA_donkeymdl1, 5), DATANUM(DATA_donkeymdl1, 6),
-    DATANUM(DATA_donkeymdl1, 7), DATANUM(DATA_donkeymdl1, 8),
-    DATANUM(DATA_donkeymdl1, 11), DATANUM(DATA_donkeymdl1, 12),
-    DATANUM(DATA_donkeymdl1, 13), DATANUM(DATA_donkeymdl1, 14),
-    DATANUM(DATA_donkeymdl1, 15), DATANUM(DATA_donkeymdl1, 16),
-    DATANUM(DATA_donkeymdl1, 17), DATANUM(DATA_donkeymdl1, 18)
+    DATANUM(0x1d0000, 0), DATANUM(0x1d0000, 1),
+    DATANUM(0x1d0000, 2), DATANUM(0x1d0000, 3),
+    DATANUM(0x1d0000, 5), DATANUM(0x1d0000, 6),
+    DATANUM(0x1d0000, 7), DATANUM(0x1d0000, 8),
+    DATANUM(0x1d0000, 11), DATANUM(0x1d0000, 12),
+    DATANUM(0x1d0000, 13), DATANUM(0x1d0000, 14),
+    DATANUM(0x1d0000, 15), DATANUM(0x1d0000, 16),
+    DATANUM(0x1d0000, 17), DATANUM(0x1d0000, 18)
 };
 
 int _prolog(void);
@@ -346,12 +346,12 @@ void fn_1_A0(void) {
 
     OSReport(lbl_1_data_4E4);
     overlayHistory = omOvlHisGet(0);
-    lbl_1_bss_20[0] = omInitObjMan(QUIZ_OBJECT_CAPACITY, QUIZ_OBJECT_HEAP_BYTES);
-    omGameSysInit(lbl_1_bss_20[0]);
+    lbl_1_bss_20[0] = fn_8003A8BC(QUIZ_OBJECT_CAPACITY, QUIZ_OBJECT_HEAP_BYTES);
+    fn_80069F1C(lbl_1_bss_20[0]);
     Hu3DCameraCreate(1);
     lbl_1_bss_1E4 = (MicquizWork *)MgModeWork;
-    if (omovlevtno == 0) {
-        omOvlHisChg(0, DLL_micquizseldll, 1, overlayHistory->stat);
+    if (lbl_802C0248 == 0) {
+        omOvlHisChg(0, 106, 1, overlayHistory->stat);
         lbl_1_bss_1E4->selectionMode = 0;
         lbl_1_bss_1E4->menuDifficultyIndex = 0;
         lbl_1_bss_1E4->mode0SelectionIndex = 0;
@@ -361,7 +361,7 @@ void fn_1_A0(void) {
         lbl_1_bss_1E4->mode4SelectionIndex = 0;
         lbl_1_bss_1E4->randomSelectionEnabled = 0;
     }
-    lbl_1_bss_1C = omAddObjEx(lbl_1_bss_20[0], QUIZ_MENU_OBJECT_PRIORITY, 0U, 0U, -1, fn_1_244);
+    lbl_1_bss_1C = fn_8003AB38(lbl_1_bss_20[0], QUIZ_MENU_OBJECT_PRIORITY, 0U, 0U, -1, fn_1_244);
     lbl_1_bss_1C->work[0] = 0;
     WipeCreate(1, 0, 20);
 }
@@ -407,12 +407,12 @@ void fn_1_244(OMOBJ *obj) {
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
                 lbl_1_bss_1E4->playerScores[playerIndex] = 0;
                 lbl_1_bss_1E4->playerCharacterNumbers[playerIndex] =
-                    (u8) GwPlayerConf[playerIndex].charNo;
+                    (u8) lbl_80265728[playerIndex].charNo;
                 lbl_1_bss_1E4->playerSetupFlags[playerIndex] = 1;
             }
             lbl_1_bss_1E4->humanPlayerCount = 0;
             for (playerIndex = 0; playerIndex < 4; playerIndex++) {
-                if (GwPlayerConf[playerIndex].type != 0) {
+                if (lbl_80265728[playerIndex].type != 0) {
                     lbl_1_bss_1E4->isHumanPlayer[playerIndex] = 0;
                 } else {
                     lbl_1_bss_1E4->isHumanPlayer[playerIndex] = 1;
@@ -420,7 +420,7 @@ void fn_1_244(OMOBJ *obj) {
                 }
             }
             GameMesPauseEnable(0);
-            _SetFlag(FLAG_MG_PAUSE_OFF);
+            fn_8006A1C4(65547);
             if (lbl_1_bss_1E4->selectionMode == 5) {
                 lbl_1_bss_1E4->useAlternatePrompt = 1;
             } else {
@@ -439,13 +439,13 @@ void fn_1_244(OMOBJ *obj) {
                     selectionChoice = lbl_1_bss_1E4->mode2SelectionIndex;
                 }
                 if (selectionChoice == 0) {
-                    omOvlCallEx(DLL_micquizmyokodll, 1, 0, 0);
+                    omOvlCallEx(104, 1, 0, 0);
                     return;
                 }
-                omOvlCallEx(DLL_micquizishidll, 1, 0, 0);
+                omOvlCallEx(103, 1, 0, 0);
                 return;
             }
-            omOvlCallEx((enum omOvl_e)lbl_1_data_388[lbl_1_bss_1E4->selectionMode], 1, 0, 0);
+            omOvlCallEx((OMOVL)lbl_1_data_388[lbl_1_bss_1E4->selectionMode], 1, 0, 0);
             return;
         }
         break;
@@ -455,7 +455,7 @@ void fn_1_244(OMOBJ *obj) {
         return;
     case 5:
         if (WipeCheck() == 0) {
-            omOvlReturnEx(1, 1);
+            fn_8003A5E4(1, 1);
         }
         break;
     }
@@ -464,39 +464,39 @@ void fn_1_244(OMOBJ *obj) {
 /* Returns to the preceding overlay after the exit wipe finishes; installed by fn_1_244. */
 void fn_1_680(void) {
     if (WipeCheck() == 0) {
-        omOvlReturnEx(1, 1);
+        fn_8003A5E4(1, 1);
     }
 }
 
 /* Reads controller 1's menu input and returns confirm or cancel state to fn_1_244. */
 s32 fn_1_6B8(void) {
-    if (HuPadDStkRep[0] & 8) {
+    if (lbl_802BFFE0[0] & 8) {
         lbl_1_bss_1E4->selectionMode--;
         if (lbl_1_bss_1E4->selectionMode < 0) {
             lbl_1_bss_1E4->selectionMode = 7;
         }
-    } else if (HuPadDStkRep[0] & 4) {
+    } else if (lbl_802BFFE0[0] & 4) {
         lbl_1_bss_1E4->selectionMode++;
         if (lbl_1_bss_1E4->selectionMode >= 8) {
             lbl_1_bss_1E4->selectionMode = 0;
         }
-    } else if (HuPadDStkRep[0] & 1) {
+    } else if (lbl_802BFFE0[0] & 1) {
         lbl_1_bss_1E4->menuDifficultyIndex--;
         if (lbl_1_bss_1E4->menuDifficultyIndex < 0) {
             lbl_1_bss_1E4->menuDifficultyIndex = 4;
         }
-    } else if (HuPadDStkRep[0] & 2) {
+    } else if (lbl_802BFFE0[0] & 2) {
         lbl_1_bss_1E4->menuDifficultyIndex++;
         if (lbl_1_bss_1E4->menuDifficultyIndex >= 5) {
             lbl_1_bss_1E4->menuDifficultyIndex = 0;
         }
-    } else if (HuPadBtnDown[0] & 0x1000) {
+    } else if (lbl_802C0008[0] & 0x1000) {
         lbl_1_bss_1E4->randomSelectionEnabled = 1;
         return 1;
-    } else if (HuPadBtnDown[0] & 0x100) {
+    } else if (lbl_802C0008[0] & 0x100) {
         lbl_1_bss_1E4->randomSelectionEnabled = 0;
         return 1;
-    } else if (HuPadBtnDown[0] & 0x200) {
+    } else if (lbl_802C0008[0] & 0x200) {
         return -1;
     } else {
         fn_1_8E8();
@@ -511,7 +511,7 @@ void fn_1_8E8(void) {
 
     maxOptionIndex = lbl_1_data_398[lbl_1_bss_1E4->selectionMode];
     if (maxOptionIndex != -1) {
-        if ((HuPadBtnDown[0] & 0x40) != 0) {
+        if ((lbl_802C0008[0] & 0x40) != 0) {
             if (lbl_1_bss_1E4->selectionMode == 0) {
                 lbl_1_bss_1E4->mode0SelectionIndex--;
                 if (lbl_1_bss_1E4->mode0SelectionIndex < 0) {
@@ -538,7 +538,7 @@ void fn_1_8E8(void) {
                     lbl_1_bss_1E4->mode4SelectionIndex = maxOptionIndex;
                 }
             }
-        } else if ((HuPadBtnDown[0] & 0x20) != 0) {
+        } else if ((lbl_802C0008[0] & 0x20) != 0) {
             if (lbl_1_bss_1E4->selectionMode == 0) {
                 lbl_1_bss_1E4->mode0SelectionIndex++;
                 if (lbl_1_bss_1E4->mode0SelectionIndex > maxOptionIndex) {

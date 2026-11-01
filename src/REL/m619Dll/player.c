@@ -7,10 +7,10 @@
 #define M619_IMPACT_MOTION_END 5.0f
 
 s32 lbl_1_data_118[8] = {
-    DATANUM(DATA_mario, 33), DATANUM(DATA_mariomot, 26),
-    DATANUM(DATA_mariomot, 34), DATANUM(DATA_mario, 159),
-    DATANUM(DATA_mariomot, 27), DATANUM(DATA_mariomot, 0),
-    DATANUM(DATA_mariomot, 34), DATANUM(DATA_mariomot, 23)
+    DATANUM(0x8e0000, 33), DATANUM(0x930000, 26),
+    DATANUM(0x930000, 34), DATANUM(0x8e0000, 159),
+    DATANUM(0x930000, 27), DATANUM(0x930000, 0),
+    DATANUM(0x930000, 34), DATANUM(0x930000, 23)
 };
 
 s32 fn_1_A1F4(void *motionData);
@@ -60,7 +60,7 @@ s32 fn_1_A1F4(void *motionData) {
     M619ModelMotion *motionState;
 
     motionState = motionData;
-    if (Hu3DMotionEndCheck(motionState->model) != 0) {
+    if (fn_8002D75C(motionState->model) != 0) {
         return 1;
     }
     return 0;
@@ -85,27 +85,27 @@ void fn_1_A23C(OMOBJ *object) {
     }
     player->object = object;
     player->playerNumber = object->work[0];
-    player->character = GwPlayerConf[player->playerNumber].charNo;
-    player->group = GwPlayerConf[player->playerNumber].grpNo;
-    player->pad = GwPlayerConf[player->playerNumber].padNo;
-    player->playerType = GwPlayerConf[player->playerNumber].type;
+    player->character = lbl_80265728[player->playerNumber].charNo;
+    player->group = lbl_80265728[player->playerNumber].grpNo;
+    player->pad = lbl_80265728[player->playerNumber].padNo;
+    player->playerType = lbl_80265728[player->playerNumber].type;
     player->difficulty =
-        GwPlayerConf[player->playerNumber].comDif;
-    *object->mdlId = CharModelCreate(player->character, 4);
+        lbl_80265728[player->playerNumber].comDif;
+    *object->mdlId = fn_80057068(player->character, 4);
     player->characterModel = *object->mdlId;
     for (index = 0; index < 8; index++) {
-        motion = CharMotionCreate(player->character,
+        motion = fn_8005B0B8(player->character,
                                   lbl_1_data_118[index]);
         player->motions[index] = motion;
         object->mtnId[index] = motion;
     }
-    CharMotionSet(player->character, object->mtnId[5]);
-    CharModelAttrReset(player->character, HU3D_MOTATTR_PAUSE);
-    CharModelAttrSet(player->character, HU3D_MOTATTR_LOOP);
-    CharModelAttrReset(player->character, HU3D_ATTR_DISPOFF);
-    CharMotionDataClose(player->character);
-    CharModelVoiceFlagSet(player->character, 0);
-    Hu3DModelLayerSet(player->characterModel, 3);
+    fn_8005BE80(player->character, object->mtnId[5]);
+    fn_8005C47C(player->character, ((1 << 30) | (1 << 1)));
+    fn_8005C430(player->character, ((1 << 30) | (1 << 0)));
+    fn_8005C47C(player->character, (1 << 0));
+    fn_8005B4BC(player->character);
+    fn_8005DFC0(player->character, 0);
+    fn_80026B8C(player->characterModel, 3);
     fn_1_B3C0((M619Sway *)&player->sway,
               player);
     player->phase = 4;
@@ -123,16 +123,16 @@ void fn_1_A23C(OMOBJ *object) {
     player->flashCounter = 0;
     player->excluded = 0;
     player->movementFinished = 0;
-    Hu3DModelPosSetV(player->characterModel, &player->position);
+    fn_80026790(player->characterModel, &player->position);
     omSetTra(player->object, player->position.x,
              player->position.y, player->position.z);
-    Hu3DModelRotSetV(player->characterModel, &player->rotation);
+    fn_80026838(player->characterModel, &player->rotation);
     omSetRot(player->object, player->rotation.x,
              player->rotation.y, player->rotation.z);
     player->hookNameA =
-        CharModelItemHookGet(player->character, 4, 0);
+        fn_8005C0F0(player->character, 4, 0);
     player->hookNameB =
-        CharModelItemHookGet(player->character, 4, 1);
+        fn_8005C0F0(player->character, 4, 1);
     player->positionA.x = 0.0f;
     player->positionA.y = 0.0f;
     player->positionA.z = 0.0f;
@@ -177,8 +177,8 @@ void fn_1_A674(M619Player *player) {
     f32 angle;
     f32 computedAngle;
 
-    stickX = (s8)HuPadStkX[player->pad];
-    stickY = -(s8)HuPadStkY[player->pad];
+    stickX = (s8)lbl_802BFFFC[player->pad];
+    stickY = -(s8)lbl_802BFFF8[player->pad];
     if (stickY < 0.0f) {
         absoluteStickY = -stickY;
     } else {
@@ -204,7 +204,7 @@ void fn_1_A674(M619Player *player) {
         player->targetAngle =
             (f32)((f64)(180.0f * angle) / 3.141592653589793);
     }
-    if ((HuPadBtnDown[player->pad] & 0x100) != 0) {
+    if ((lbl_802C0008[player->pad] & 0x100) != 0) {
         player->turnFrames = 60;
     }
 }
@@ -407,21 +407,21 @@ void fn_1_AEE4(M619Player *state) {
                 ((f64)(5.0f * pulse * pulse) *
                  cos((3.141592653589793 * (f64)state->rotation.y) /
                      180.0)));
-            if (state->motions[1] != Hu3DMotionIDGet(state->characterModel) &&
-                state->motions[1] != Hu3DMotionShiftIDGet(state->characterModel)) {
-                CharMotionShiftSet(state->character, state->motions[1],
+            if (state->motions[1] != fn_8002D3C4(state->characterModel) &&
+                state->motions[1] != fn_8002D3EC(state->characterModel)) {
+                fn_8005C2C8(state->character, state->motions[1],
                                    0.0f, 15.0f,
-                                   HU3D_MOTATTR_LOOP);
-                CharMotionSpeedSet(state->character, 1.0f);
+                                   ((1 << 30) | (1 << 0)));
+                fn_8005C390(state->character, 1.0f);
                 state->phase = 1;
             }
         } else {
-            if (state->motions[0] != Hu3DMotionIDGet(state->characterModel) &&
-                state->motions[0] != Hu3DMotionShiftIDGet(state->characterModel)) {
-                CharMotionShiftSet(state->character, state->motions[0],
+            if (state->motions[0] != fn_8002D3C4(state->characterModel) &&
+                state->motions[0] != fn_8002D3EC(state->characterModel)) {
+                fn_8005C2C8(state->character, state->motions[0],
                                    0.0f, 15.0f,
-                                   HU3D_MOTATTR_LOOP);
-                CharMotionSpeedSet(state->character, 1.0f);
+                                   ((1 << 30) | (1 << 0)));
+                fn_8005C390(state->character, 1.0f);
                 state->phase = 0;
             }
             if (state->movementActive != 0) {
@@ -431,14 +431,14 @@ void fn_1_AEE4(M619Player *state) {
         }
         break;
         case 2:
-        CharMotionSpeedSet(state->character, 0.3f);
+        fn_8005C390(state->character, 0.3f);
         state->phaseFrame++;
         if (state->phaseFrame >= 110) {
             fn_1_E5B8(fn_1_C324, state);
-            CharMotionShiftSet(state->character, state->motions[0],
+            fn_8005C2C8(state->character, state->motions[0],
                                0.0f, 15.0f,
-                               HU3D_MOTATTR_LOOP);
-            CharMotionSpeedSet(state->character, 1.0f);
+                               ((1 << 30) | (1 << 0)));
+            fn_8005C390(state->character, 1.0f);
             state->phase = 0;
             if (state->movementActive != 0) {
                 state->inputEnabled = 1;
@@ -508,7 +508,7 @@ void fn_1_B3FC(M619Sway *motion, s32 expand) {
     if (motion->rotationY < -180.0f) {
         motion->rotationY += 360.0f;
     }
-    Hu3DModelRotSet(motion->model, 0.0f, motion->rotationY,
+    fn_80026808(motion->model, 0.0f, motion->rotationY,
                     0.0f);
     if (expand != 0) {
         motion->amount += 1.0f;
@@ -523,9 +523,9 @@ void fn_1_B3FC(M619Sway *motion, s32 expand) {
     }
     strength = motion->amount / 15.0f;
     scale = 0.85f + (0.15f * strength);
-    Hu3DModelScaleSet(motion->model, scale, scale, scale);
+    fn_800268B0(motion->model, scale, scale, scale);
     scale = 0.5f + (0.5f * strength);
-    Hu3DMotionSpeedSet(motion->model, scale);
+    fn_8002D86C(motion->model, scale);
     scale = 15.0f * strength;
     horizontalOffset = (f32)((f64)scale *
                              sin((3.141592653589793 *
@@ -535,7 +535,7 @@ void fn_1_B3FC(M619Sway *motion, s32 expand) {
                         cos((3.141592653589793 *
                              (f64)motion->rotation->y) /
                             180.0));
-    Hu3DModelPosSet(motion->model, motion->position->x + horizontalOffset,
+    fn_80026760(motion->model, motion->position->x + horizontalOffset,
                     motion->position->y,
                     motion->position->z + depthOffset);
 }
@@ -559,10 +559,10 @@ s32 fn_1_BADC(void *player) {
     M619Player *playerState;
 
     playerState = player;
-    Hu3DModelPosSetV(playerState->characterModel, &playerState->position);
+    fn_80026790(playerState->characterModel, &playerState->position);
     omSetTra(playerState->object, playerState->position.x, playerState->position.y,
              playerState->position.z);
-    Hu3DModelRotSetV(playerState->characterModel, &playerState->rotation);
+    fn_80026838(playerState->characterModel, &playerState->rotation);
     omSetRot(playerState->object, playerState->rotation.x, playerState->rotation.y,
              playerState->rotation.z);
     return 0;
@@ -594,7 +594,7 @@ void fn_1_BB4C(M619MotionNode *object, M619MotionNode *event,
     case 4:
         break;
     case 1:
-        omVibrate(objectPlayer->playerNumber, 20, 7, 3);
+        fn_8006A030(objectPlayer->playerNumber, 20, 7, 3);
         eventKindOneDeltaZ = event->position->z - object->position->z;
         eventKindOneDeltaX = event->position->x - object->position->x;
         if (eventKindOneDeltaZ == 0.0f) {
@@ -661,7 +661,7 @@ void fn_1_BB4C(M619MotionNode *object, M619MotionNode *event,
         }
         break;
     case 3:
-        omVibrate(objectPlayer->playerNumber, 20, 7, 3);
+        fn_8006A030(objectPlayer->playerNumber, 20, 7, 3);
         eventKindThreeDeltaZ = event->position->z - object->position->z;
         eventKindThreeDeltaX = event->position->x - object->position->x;
         if (eventKindThreeDeltaZ == 0.0f) {
@@ -683,10 +683,10 @@ void fn_1_BB4C(M619MotionNode *object, M619MotionNode *event,
 
     if (((event->kind == 3) || (event->kind == 1)) &&
         (objectPlayer->phase != 2) && (objectPlayer->flashCounter == 0)) {
-        CharFXPlay(objectPlayer->character, MSM_SE_CHARVOICE_MARIO + 9);
-        CharMotionShiftSet(objectPlayer->character, objectPlayer->motions[3],
+        CharFXPlay(objectPlayer->character, 573 + 9);
+        fn_8005C2C8(objectPlayer->character, objectPlayer->motions[3],
                            M619_IMPACT_MOTION_START, M619_IMPACT_MOTION_END,
-                           HU3D_MOTATTR_LOOP);
+                           ((1 << 30) | (1 << 0)));
         objectPlayer->phase = 2;
         objectPlayer->inputEnabled = 0;
         objectPlayer->turnFrames = 0;
@@ -699,7 +699,7 @@ void fn_1_C194(M619Player *player) {
     player->inputEnabled = 0;
     player->excluded = 1;
     player->turnFrames = 0;
-    omVibrate(player->playerNumber, 60, 20, 0);
+    fn_8006A030(player->playerNumber, 60, 20, 0);
 }
 
 /* Scene transition phase 4 starts the impact sequence at its animation heading. */
@@ -707,9 +707,9 @@ void fn_1_C1E8(M619Player *player, f32 y) {
     player->enabled = 0;
     player->flashCounter = 30;
     fn_1_E4A4(&player->collision);
-        Hu3DModelAttrSet(player->sway.model, HU3D_ATTR_DISPOFF);
+        fn_800269E8(player->sway.model, (1 << 0));
     fn_1_5780(&player->modelQueue);
-    CharMotionShiftSet(player->character, player->motions[2], 0.0f, 10.0f, HU3D_MOTATTR_LOOP);
+    fn_8005C2C8(player->character, player->motions[2], 0.0f, 10.0f, ((1 << 30) | (1 << 0)));
     player->position.x = 0.0f;
     player->position.y = 0.0f;
     player->position.z = 0.0f;
@@ -719,9 +719,9 @@ void fn_1_C1E8(M619Player *player, f32 y) {
     player->targetAngle = y;
     player->movementActive = 0;
     player->phase = 3;
-    Hu3DModelPosSetV(player->characterModel, &player->position);
+    fn_80026790(player->characterModel, &player->position);
     omSetTra(player->object, player->position.x, player->position.y, player->position.z);
-    Hu3DModelRotSetV(player->characterModel, &player->rotation);
+    fn_80026838(player->characterModel, &player->rotation);
     omSetRot(player->object, player->rotation.x, player->rotation.y, player->rotation.z);
 }
 
@@ -732,13 +732,13 @@ s32 fn_1_C324(void *playerData) {
     playerState = playerData;
     playerState->flashCounter = (s32) (playerState->flashCounter + 1);
     if ((s32) (playerState->flashCounter & 1) != 0) {
-        Hu3DModelAttrSet(playerState->characterModel, HU3D_ATTR_DISPOFF);
+        fn_800269E8(playerState->characterModel, (1 << 0));
     } else {
-        Hu3DModelAttrReset(playerState->characterModel, HU3D_ATTR_DISPOFF);
+        fn_80026A44(playerState->characterModel, (1 << 0));
     }
     if ((s32) playerState->flashCounter >= 30) {
         playerState->flashCounter = 0;
-        Hu3DModelAttrReset(playerState->characterModel, HU3D_ATTR_DISPOFF);
+        fn_80026A44(playerState->characterModel, (1 << 0));
         return 1;
     }
     return 0;
@@ -749,9 +749,9 @@ s32 fn_1_C3B4(M619Player *player) {
     M619Player *state;
 
     state = player;
-    if ((Hu3DMotionEndCheck(state->characterModel) != 0) &&
-        (state->motions[4] == Hu3DMotionIDGet(state->characterModel))) {
-        Hu3DMotionTimeSet(state->characterModel, 35.0f);
+    if ((fn_8002D75C(state->characterModel) != 0) &&
+        (state->motions[4] == fn_8002D3C4(state->characterModel))) {
+        fn_8002D414(state->characterModel, 35.0f);
     }
     return 0;
 }
@@ -805,9 +805,9 @@ s32 fn_1_C420(M619Player *playerState) {
 
 /* Called by scene placement and drop updates to sync the character model and object transforms. */
 void fn_1_C628(M619Player *player) {
-    Hu3DModelPosSetV(player->characterModel, &player->position);
+    fn_80026790(player->characterModel, &player->position);
     omSetTra(player->object, player->position.x, player->position.y, player->position.z);
-    Hu3DModelRotSetV(player->characterModel, &player->rotation);
+    fn_80026838(player->characterModel, &player->rotation);
     omSetRot(player->object, player->rotation.x, player->rotation.y, player->rotation.z);
 }
 

@@ -40,9 +40,9 @@ void *fn_1_A0(s32 priority, u32 bytes, void (*update)(OMOBJ *))
 {
     OMOBJ *object;
 
-    object = omAddObjEx(lbl_1_bss_0.manager, priority, 0, 0, 0, update);
+    object = fn_8003AB38(lbl_1_bss_0.manager, priority, 0, 0, 0, update);
     if (bytes != 0) {
-        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, HU_MEMNUM_OVL);
+        object->data = HuMemDirectMallocNum(HEAP_HEAP, bytes, 0x10000000);
         memset(object->data, 0, bytes);
     } else {
         object->data = NULL;
@@ -61,9 +61,9 @@ void fn_1_19C(void);
 /* Creates the actor manager and starts the sequence process during REL startup. */
 void fn_1_148(void)
 {
-    lbl_1_bss_0.manager = MgActorObjectSetup();
-    MgActorColCylReset();
-    HuPrcChildCreate(fn_1_19C, 100, 12288, 0, lbl_1_bss_0.manager);
+    lbl_1_bss_0.manager = fn_80080418();
+    fn_80080E8C();
+    fn_8000DAC0(fn_1_19C, 100, 12288, 0, lbl_1_bss_0.manager);
 }
 
 /* MgSeqCreate consumes the sequence parameter at offset zero. */
@@ -103,9 +103,9 @@ extern s32 fn_1_698(void);
 /* Creates the minigame sequence, then runs actor updates once per process wake. */
 void fn_1_19C(void)
 {
-    MgSeqCreate(&lbl_1_data_0.param);
+    fn_80070788(&lbl_1_data_0.param);
     for (;;) {
-        MgActorExec();
+        fn_800856A8();
         HuPrcVSleep();
     }
 }
@@ -115,7 +115,7 @@ void fn_1_1C0(s16 mode, s16 frameNo)
 {
     lbl_1_data_28 = -1;
     fn_1_5CC();
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 void fn_1_1F4(void)
@@ -126,7 +126,7 @@ void fn_1_1F4(void)
 void fn_1_1F8(void)
 {
     if (lbl_1_data_28 == -1 &&
-        (GameMesStatGet(MgSeqGameMesIdGet()) & GAMEMES_STAT_FXPLAY) != 0) {
+        (GameMesStatGet(fn_80071DF4()) & GAMEMES_STAT_FXPLAY) != 0) {
         lbl_1_data_28 = HuAudSStreamPlay(MSM_STREAM_CAPSULE_WANWAN);
     }
 }
@@ -134,13 +134,13 @@ void fn_1_1F8(void)
 /* Advances the sequence when the current actor phase reports completion. */
 void fn_1_254(s16 mode, s16 frameNo)
 {
-    if (fn_1_64C() != 0) MgSeqModeNext();
+    if (fn_1_64C() != 0) fn_80071A9C();
 }
 
 /* Fades out the background stream when the sequence phase reaches its first frame. */
 void fn_1_280(void)
 {
-    if (MgSeqFrameNoGet() == 0 && lbl_1_data_28 != -1) {
+    if (fn_80071DE4() == 0 && lbl_1_data_28 != -1) {
         HuAudSStreamFadeOut(lbl_1_data_28, 100);
         lbl_1_data_28 = -1;
     }
@@ -149,7 +149,7 @@ void fn_1_280(void)
 /* Advances the sequence after the result phase reports completion. */
 void fn_1_2E0(s16 mode, s16 frameNo)
 {
-    if (fn_1_698() != 0) MgSeqModeNext();
+    if (fn_1_698() != 0) fn_80071A9C();
 }
 
 void fn_1_30C(void)

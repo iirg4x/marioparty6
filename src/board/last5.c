@@ -108,11 +108,11 @@ void mbObjHookReset(int modelId);
 #define LAST5_KOOPA_MODEL_ROT_Y -5.0f
 #define LAST5_KOOPA_MODEL_MOTION_TIME 45.0f
 
-#define LAST5_KOOPA_DATA_MODEL DATANUM(DATA_capsulechar1, 0)
-#define LAST5_KOOPA_DATA_MOTION_IDLE DATANUM(DATA_capsulechar1, 1)
-#define LAST5_KOOPA_DATA_MOTION_APPEAR DATANUM(DATA_capsulechar1, 3)
-#define LAST5_KOOPA_DATA_MOTION_TALK DATANUM(DATA_capsulechar1, 4)
-#define LAST5_KOOPA_DATA_MOTION_EXIT DATANUM(DATA_capsulechar1, 5)
+#define LAST5_KOOPA_DATA_MODEL DATANUM(0xe0000, 0)
+#define LAST5_KOOPA_DATA_MOTION_IDLE DATANUM(0xe0000, 1)
+#define LAST5_KOOPA_DATA_MOTION_APPEAR DATANUM(0xe0000, 3)
+#define LAST5_KOOPA_DATA_MOTION_TALK DATANUM(0xe0000, 4)
+#define LAST5_KOOPA_DATA_MOTION_EXIT DATANUM(0xe0000, 5)
 
 #define LAST5_MESS_INTRO LAST5_MESS_ID(0)
 #define LAST5_MESS_RANK_FIRST LAST5_MESS_ID(2)
@@ -190,7 +190,7 @@ static void ev_Last5Koopa();
 // Draws one weighted effect and removes it from the current shuffle cycle.
 static inline void Last5RouletteResultSet(OMOBJ *obj)
 {
-    LAST5ROULETTEWORK *work = omObjGetWork(obj, LAST5ROULETTEWORK);
+    LAST5ROULETTEWORK *work = ((LAST5ROULETTEWORK *)(&(obj->work[0])));
     s8 *resultTable = obj->data;
     int i;
     int index;
@@ -218,7 +218,7 @@ static int koopaMotTbl[4] = {
     LAST5_KOOPA_DATA_MOTION_EXIT,
 };
 
-static HuVec2f statusPosTbl[GW_PLAYER_MAX][2] = {
+static HuVec2f statusPosTbl[4][2] = {
     { { -98.0f, 72.0f }, { 114.0f, 72.0f } },
     { { -98.0f, 152.0f }, { 114.0f, 152.0f } },
     { { -98.0f, 232.0f }, { 114.0f, 232.0f } },
@@ -259,9 +259,9 @@ static int last5EffMes2Tbl[4] = {
 };
 
 static int rouletteFileTbl[LAST5_ROULETTE_MODEL_NUM] = {
-    DATANUM(DATA_blast5, 0),
-    DATANUM(DATA_blast5, 1),
-    DATANUM(DATA_blast5, 2),
+    DATANUM(0x30000, 0),
+    DATANUM(0x30000, 1),
+    DATANUM(0x30000, 2),
 };
 
 static int rouletteChanceTbl[LAST5_ROULETTE_CHANCE_TBL_NUM] = {
@@ -287,8 +287,8 @@ void mbev_Last5(void)
 {
     HuVecF pos;
     HuVecF target;
-    int playerOrder[GW_PLAYER_MAX];
-    int teamPlayers[GW_PLAYER_MAX];
+    int playerOrder[4];
+    int teamPlayers[4];
     int teamOrder[2];
     int masuId;
     OMOBJ *rouletteObj;
@@ -307,7 +307,7 @@ void mbev_Last5(void)
     MBMODELID guideModelId;
 
     masuId = mbMasuFind_AttrIdGet(MASU_NULL, MASU_FLAG_START);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerDispSet(i, FALSE);
     }
     mbSNpcDispSet(FALSE);
@@ -321,7 +321,7 @@ void mbev_Last5(void)
     mbCameraZoomSet(mbCameraPlayerViewZoomGet(0) - 200.0f);
     mbCameraMoveOnSet(FALSE);
     mbMusPlay(MB_MUS_CHAN_BG, LAST5_MUSIC, MSM_VOL_MAX, 0);
-    HuDataDirClose(DATANUM(DATA_blast5, 0));
+    fn_800097F4(DATANUM(0x30000, 0));
     mbWipeFadeIn();
 
     mbMasuPosGet(masuId, &pos);
@@ -331,7 +331,7 @@ void mbev_Last5(void)
     mbGuideMotionNextSet(guideObj, 1);
     guideModelId = mbGuideModelGet(guideObj);
     messageOffset = 0;
-    if (GwSystem.curTime) {
+    if (lbl_80265B70.curTime) {
         messageOffset++;
     }
 
@@ -341,18 +341,18 @@ void mbev_Last5(void)
         mbGuideSpeakerNoGet());
     mbWinPlayerDisable(winId, -1);
     mbWinWait(winId);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbStatusCapsuleDispSet(i, FALSE);
     }
 
     if (!GWTeamFGet()) {
-        Last5PlayerOrderGet(playerOrder, GW_PLAYER_MAX);
+        Last5PlayerOrderGet(playerOrder, 4);
         otherPlayerNo = playerOrder[0];
-        playerNo = playerOrder[GW_PLAYER_MAX - 1];
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        playerNo = playerOrder[4 - 1];
+        for (i = 0; i < 4; i++) {
             mbGuideMotionShiftSet(guideObj, 12, TRUE);
             winId = mbWinCreate(2,
-                rankMesTbl[GwPlayer[playerOrder[i]].rank] + messageOffset,
+                rankMesTbl[lbl_80265750[playerOrder[i]].rank] + messageOffset,
                 mbGuideSpeakerNoGet());
             mbWinInsertMesSet(winId, mbPlayerNameMesGet(playerOrder[i]), 0);
             mbWinPlayerDisable(winId, -1);
@@ -374,7 +374,7 @@ void mbev_Last5(void)
             }
             if (i == 1) {
                 playerNo = teamPlayers[mbRandMod(2)];
-                if (GwPlayer[playerNo].comF) {
+                if (lbl_80265750[playerNo].comF) {
                     playerNo = mbPlayerTeamFind(playerNo);
                 }
             } else if (i == 0) {
@@ -407,7 +407,7 @@ void mbev_Last5(void)
     mbWinWait(winId);
 
     if (!GWTeamFGet()) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        for (i = 0; i < 4; i++) {
             mbStatusPosGet(i, &pos);
             Last5VecCopy(&pos, &target);
             target.x = statusPosTbl[0][0].x;
@@ -424,7 +424,7 @@ void mbev_Last5(void)
     while (!mbStatusOffCheckAll()) {
         HuPrcVSleep();
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbStatusCapsuleDispSet(i, TRUE);
     }
 
@@ -442,7 +442,7 @@ void mbev_Last5(void)
         Last5VecCopy(&pos, &target);
         mbPlayerColSnapPlayerSet(playerNo, FALSE);
         mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
-        mbPlayerMotionSet(playerNo, 6, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionSet(playerNo, 6, ((1 << 30) | (1 << 0)));
         HuPrcVSleep();
         mbPlayerDispSet(playerNo, TRUE);
         j = 30;
@@ -458,7 +458,7 @@ void mbev_Last5(void)
             HuPrcVSleep();
         }
     }
-    omVibrate(playerNo, 20, 7, 3);
+    fn_8006A030(playerNo, 20, 7, 3);
     for (i = 0; i < 60; i++) {
         HuPrcVSleep();
     }
@@ -476,7 +476,7 @@ void mbev_Last5(void)
     }
 
     ev_Last5Dice(playerNo);
-    result = omObjGetWork(rouletteObj, LAST5ROULETTEWORK)->result;
+    result = ((LAST5ROULETTEWORK *)(&(rouletteObj->work[0])))->result;
     if (result != 3) {
         mbGuideMotionShiftSet(guideObj, 12, TRUE);
         winId = mbWinCreate(2, last5EffMesTbl[result] + messageOffset,
@@ -503,7 +503,7 @@ void mbev_Last5(void)
                 mbGuideSpeakerNoGet());
             mbWinPlayerDisable(winId, playerNo);
             mbWinWait(winId);
-            GwSystem.last5Effect = 1;
+            lbl_80265B70.last5Effect = 1;
             break;
         case 1:
             ev_Last5Coin40(playerNo, guideObj);
@@ -558,7 +558,7 @@ void mbev_Last5(void)
         mbWinPlayerDisable(winId, -1);
         mbWinWait(winId);
         mbObjMotionShiftSet((MBMODELID)koopaModelId, 2, 0.0f, 12.0f,
-            HU3D_MOTATTR_NONE);
+            0);
         mbAudFXPlay(LAST5_KOOPA_EXIT_SFX);
         winId = mbWinCreate(2, LAST5_MESS_KOOPA_EXIT, 13);
         mbWinPlayerDisable(winId, -1);
@@ -571,7 +571,7 @@ void mbev_Last5(void)
         HuPrcVSleep();
     }
     mbPlayerPosReset(playerNo);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerDispSet(i, TRUE);
     }
     mbSNpcDispSet(TRUE);
@@ -602,10 +602,10 @@ static OMOBJ *Last5RouletteCreate(int masuId)
     int num;
     int j;
 
-    obj = omAddObjEx(mbObjMan, LAST5_ROULETTE_PRIORITY,
-        LAST5_ROULETTE_MODEL_NUM, 0, OM_GRP_NONE, Last5RouletteOMExec);
-    omSetStatBit(obj, OM_STAT_MODELPAUSE);
-    work = omObjGetWork(obj, LAST5ROULETTEWORK);
+    obj = fn_8003AB38(mbObjMan, LAST5_ROULETTE_PRIORITY,
+        LAST5_ROULETTE_MODEL_NUM, 0, -1, Last5RouletteOMExec);
+    omSetStatBit(obj, (1 << 8));
+    work = ((LAST5ROULETTEWORK *)(&(obj->work[0])));
     memset(work, 0, sizeof(*work));
 
     for (i = 0; i < LAST5_ROULETTE_MODEL_NUM; i++) {
@@ -614,7 +614,7 @@ static OMOBJ *Last5RouletteCreate(int masuId)
         obj->mdlId[i] = modelId =
             mbObjCreate(rouletteFileTbl[i], NULL, FALSE);
         mbObjLayerSet((MBMODELID)modelId, LAST5_ROULETTE_MODEL_LAYER);
-        mbObjAttrSet((MBMODELID)modelId, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet((MBMODELID)modelId, ((1 << 30) | (1 << 0)));
     }
 
     mbMasuPosGet(masuId, &pos);
@@ -632,7 +632,7 @@ static OMOBJ *Last5RouletteCreate(int masuId)
     }
     work->chanceCount = work->remainingChanceCount = num;
     chanceCount = work->chanceCount;
-    tableAllocation = HuMemDirectMallocNum(HEAP_HEAP, chanceCount, HU_MEMNUM_OVL);
+    tableAllocation = HuMemDirectMallocNum(HEAP_HEAP, chanceCount, 0x10000000);
     allocationAsBytes = tableAllocation;
     resultTable = allocationAsBytes;
     obj->data = resultTable;
@@ -652,7 +652,7 @@ static OMOBJ *Last5RouletteCreate(int masuId)
 // Called by mbev_Last5 to request cleanup from the roulette object's next process callback.
 static void Last5RouletteKill(OMOBJ *obj)
 {
-    LAST5ROULETTEWORK *work = omObjGetWork(obj, LAST5ROULETTEWORK);
+    LAST5ROULETTEWORK *work = ((LAST5ROULETTEWORK *)(&(obj->work[0])));
 
     work->killF = TRUE;
 }
@@ -660,7 +660,7 @@ static void Last5RouletteKill(OMOBJ *obj)
 // Object-manager callback installed by Last5RouletteCreate; animates results and frees the object.
 static void Last5RouletteOMExec(OMOBJ *obj)
 {
-    LAST5ROULETTEWORK *work = omObjGetWork(obj, LAST5ROULETTEWORK);
+    LAST5ROULETTEWORK *work = ((LAST5ROULETTEWORK *)(&(obj->work[0])));
     int i;
 
     if (mbExitCheck() || work->killF) {
@@ -676,7 +676,7 @@ static void Last5RouletteOMExec(OMOBJ *obj)
             HuMemDirectFree(data);
             obj->data = NULL;
         }
-        omDelObjEx(HuPrcCurrentGet(), obj);
+        omDelObjEx(fn_8000DD9C(), obj);
         return;
     }
 
@@ -693,7 +693,7 @@ static void Last5RouletteOMExec(OMOBJ *obj)
 // Called by mbev_Last5 to randomize the display order, then sort by current player or team rank.
 static void Last5PlayerOrderGet(int *playerOrder, int playerNum)
 {
-    int rank[GW_PLAYER_MAX];
+    int rank[4];
     int i;
     int j;
     int swap;
@@ -709,9 +709,9 @@ static void Last5PlayerOrderGet(int *playerOrder, int playerNum)
     }
 
     if (!GWTeamFGet()) {
-        if (GwPlayer[playerOrder[playerNum - 1]].comF) {
+        if (lbl_80265750[playerOrder[playerNum - 1]].comF) {
             for (i = playerNum - 1; i >= 0; i--) {
-                if (!GwPlayer[playerOrder[i]].comF) {
+                if (!lbl_80265750[playerOrder[i]].comF) {
                     swap = playerOrder[playerNum - 1];
                     playerOrder[playerNum - 1] = playerOrder[i];
                     playerOrder[i] = swap;
@@ -719,11 +719,11 @@ static void Last5PlayerOrderGet(int *playerOrder, int playerNum)
                 }
             }
         }
-    } else if (GwPlayer[mbPlayerTeamFindPlayer(playerOrder[playerNum - 1], 0)].comF
-        && GwPlayer[mbPlayerTeamFindPlayer(playerOrder[playerNum - 1], 1)].comF) {
+    } else if (lbl_80265750[mbPlayerTeamFindPlayer(playerOrder[playerNum - 1], 0)].comF
+        && lbl_80265750[mbPlayerTeamFindPlayer(playerOrder[playerNum - 1], 1)].comF) {
         for (i = playerNum - 1; i >= 0; i--) {
-            if (!GwPlayer[mbPlayerTeamFindPlayer(playerOrder[i], 0)].comF
-                || !GwPlayer[mbPlayerTeamFindPlayer(playerOrder[i], 1)].comF) {
+            if (!lbl_80265750[mbPlayerTeamFindPlayer(playerOrder[i], 0)].comF
+                || !lbl_80265750[mbPlayerTeamFindPlayer(playerOrder[i], 1)].comF) {
                 swap = playerOrder[playerNum - 1];
                 playerOrder[playerNum - 1] = playerOrder[i];
                 playerOrder[i] = swap;
@@ -733,8 +733,8 @@ static void Last5PlayerOrderGet(int *playerOrder, int playerNum)
     }
 
     for (i = 0; i < playerNum; i++) {
-        if (playerNum == GW_PLAYER_MAX) {
-            rank[i] = GwPlayer[playerOrder[i]].rank;
+        if (playerNum == 4) {
+            rank[i] = lbl_80265750[playerOrder[i]].rank;
         } else {
             rank[i] = mbPlayerTeamRankGet(playerOrder[i]);
         }
@@ -762,8 +762,8 @@ static void ev_Last5Dice(int playerNo)
     mbObjDispSet(obj->mdlId[1], FALSE);
     mbObjDispSet(obj->mdlId[2], TRUE);
     mbObjHookSet(obj->mdlId[0], "target", obj->mdlId[2]);
-    omObjGetWork(obj, LAST5ROULETTEWORK)->rouletteF = TRUE;
-    omObjGetWork(obj, LAST5ROULETTEWORK)->diceF = TRUE;
+    ((LAST5ROULETTEWORK *)(&(obj->work[0])))->rouletteF = TRUE;
+    ((LAST5ROULETTEWORK *)(&(obj->work[0])))->diceF = TRUE;
     mbDiceProcExec(playerNo, 6, NULL, NULL, TRUE, FALSE, NULL, 0);
     mbDiceMotHookSet(playerNo, ev_Last5SDiceMotHook);
     while (!mbDiceKillCheck(playerNo)) {
@@ -778,11 +778,11 @@ static void ev_Last5SDiceMotHook(int playerNo)
 {
     int i;
 
-    mbPlayerMotionSet(playerNo, 11, HU3D_MOTATTR_NONE);
+    mbPlayerMotionSet(playerNo, 11, 0);
     i = 0;
     do {
         if (i++ == 27) {
-            omObjGetWork(last5RouletteOMObj, LAST5ROULETTEWORK)->diceHitF = TRUE;
+            ((LAST5ROULETTEWORK *)(&(last5RouletteOMObj->work[0])))->diceHitF = TRUE;
             mbDiceObjHit(playerNo);
         }
         HuPrcVSleep();
@@ -850,8 +850,8 @@ static void ev_Last5Coin40(int playerNo, OMOBJ *guideObj)
     }
 
     mbGuideMotionShiftSet(guideObj, 1, TRUE);
-    mbPlayerWinLoseVoicePlay(playerNo, 12, CHARVOICEID(6));
-    mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 12.0f, HU3D_MOTATTR_NONE);
+    mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
+    mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 12.0f, 0);
     mbCoinAddProcExec(playerNo, coinCount, TRUE, TRUE);
     mbPlayerMotionEndWait(playerNo);
     mbPlayerMotIdleSet(playerNo);
@@ -886,7 +886,7 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     mbPlayerDispSet(playerNo, FALSE);
     {
         LAST5ROULETTEWORK *rouletteWork =
-            omObjGetWork(rouletteObj, LAST5ROULETTEWORK);
+            ((LAST5ROULETTEWORK *)(&(rouletteObj->work[0])));
 
         mbObjDispSet(rouletteObj->mdlId[0], FALSE);
         if (rouletteWork->diceF) {
@@ -920,7 +920,7 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
         s16 *masuP;
 
         masuP = HuMemDirectMallocNum(HEAP_HEAP,
-            LAST5_CAPSULE_MASU_LIST_MAX * sizeof(s16), HU_MEMNUM_OVL);
+            LAST5_CAPSULE_MASU_LIST_MAX * sizeof(s16), 0x10000000);
         masuList[listNo] = masuP;
         masuNum[listNo] = 0;
     }
@@ -982,7 +982,7 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     }
     mbPlayerDispSet(playerNo, TRUE);
     {
-        finalRouletteWork = omObjGetWork(rouletteObj, LAST5ROULETTEWORK);
+        finalRouletteWork = ((LAST5ROULETTEWORK *)(&(rouletteObj->work[0])));
 
         mbObjDispSet(rouletteObj->mdlId[0], TRUE);
         if (finalRouletteWork->diceF) {
@@ -997,9 +997,9 @@ static void ev_Last5CapsuleAdd5(int playerNo, OMOBJ *rouletteObj,
     mbCameraStackPop(0);
     HuPrcVSleep();
     mbWipeDissolveFadeIn();
-    mbPlayerWinLoseVoicePlay(playerNo, 12, CHARVOICEID(6));
+    mbPlayerWinLoseVoicePlay(playerNo, 12, (573+6));
     mbPlayerMotionShiftSet(playerNo, 12, 0.0f, 12.0f,
-        HU3D_MOTATTR_NONE);
+        0);
     mbPlayerMotionEndWait(playerNo);
     mbPlayerMotIdleSet(playerNo);
 }
@@ -1012,7 +1012,7 @@ MBMODELID modelId;
 {
     HuVecF modelPos;
     HuVecF playerPos;
-    int playerTbl[GW_PLAYER_MAX + 1];
+    int playerTbl[4 + 1];
     int coinAverage;
     int playerOrCoinDelta;
     LAST5ROULETTEWORK *hideWork;
@@ -1024,7 +1024,7 @@ MBMODELID modelId;
 
     mbObjPosGet(modelId, &modelPos);
     mbObjRotSet(modelId, 0.0f, LAST5_KOOPA_MODEL_ROT_Y, 0.0f);
-    mbObjMotionSet(modelId, 4, HU3D_MOTATTR_NONE);
+    mbObjMotionSet(modelId, 4, 0);
     mbObjMotionTimeSet(modelId, LAST5_KOOPA_MODEL_MOTION_TIME);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjDispSet(modelId, TRUE);
@@ -1034,7 +1034,7 @@ MBMODELID modelId;
             mbObjMotionSpeedSet(modelId, 1.0f);
             mbAudFXPlay(LAST5_KOOPA_APPEAR_SFX);
             mbPlayerMotionShiftSet(playerNo, 9, 0.0f, 6.0f,
-                HU3D_MOTATTR_NONE);
+                0);
             playerOrCoinDelta = FALSE;
         }
         riseProgress =
@@ -1052,7 +1052,7 @@ MBMODELID modelId;
         HuPrcVSleep();
     }
     mbPlayerMotIdleSet(playerNo);
-    mbObjMotionShiftSet(modelId, 2, 0.0f, 12.0f, HU3D_MOTATTR_NONE);
+    mbObjMotionShiftSet(modelId, 2, 0.0f, 12.0f, 0);
     mbAudFXPlay(LAST5_KOOPA_TALK_SFX);
     winId = mbWinCreate(2, LAST5_MESS_EFFECT_KOOPA_EXPLAIN, 13);
     mbWinPlayerDisable(winId, playerNo);
@@ -1060,28 +1060,28 @@ MBMODELID modelId;
     while (!mbObjMotionEndCheck(modelId)) {
         HuPrcVSleep();
     }
-    mbObjMotionShiftSet(modelId, 1, 0.0f, 12.0f, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet(modelId, 1, 0.0f, 12.0f, ((1 << 30) | (1 << 0)));
     winId = mbWinCreate(2, LAST5_MESS_KOOPA_EQUALIZE, 13);
     mbWinPlayerDisable(winId, playerNo);
     mbWinWait(winId);
     mbAudFXPlay(LAST5_KOOPA_REACT_SFX);
-    mbObjMotionShiftSet(modelId, 3, 0.0f, 12.0f, HU3D_MOTATTR_NONE);
+    mbObjMotionShiftSet(modelId, 3, 0.0f, 12.0f, 0);
     while (!mbObjMotionEndCheck(modelId)) {
         HuPrcVSleep();
     }
 
     mbCameraStackPush();
     mbWipeDissolveFadeOut();
-    mbObjMotionSet(modelId, 1, HU3D_MOTATTR_LOOP);
+    mbObjMotionSet(modelId, 1, ((1 << 30) | (1 << 0)));
     mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
     mbPlayerPosGet(playerNo, &playerPos);
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerDispSet(i, TRUE);
     }
     mbPlayerPosResetAll();
     mbObjDispSet(modelId, FALSE);
     {
-        hideWork = omObjGetWork(rouletteObj, LAST5ROULETTEWORK);
+        hideWork = ((LAST5ROULETTEWORK *)(&(rouletteObj->work[0])));
 
         mbObjDispSet(rouletteObj->mdlId[0], FALSE);
         if (hideWork->diceF) {
@@ -1091,27 +1091,27 @@ MBMODELID modelId;
         }
     }
 
-    for (i = 0; i <= GW_PLAYER_MAX; i++) {
+    for (i = 0; i <= 4; i++) {
         playerTbl[i] = -1;
     }
     coinAverage = 0;
     if (!GWTeamFGet()) {
-        for (i = 0; i < GW_PLAYER_MAX; i++) {
+        for (i = 0; i < 4; i++) {
             coinAverage += mbPlayerCoinGet(i);
             playerTbl[i] = i;
         }
-        coinAverage /= GW_PLAYER_MAX;
+        coinAverage /= 4;
     } else {
         for (i = 0; i < 2; i++) {
             coinAverage += mbPlayerTeamCoinGet(i);
             playerTbl[i] = mbPlayerTeamFindPlayer(i, 0);
-            if (GwPlayer[playerTbl[i]].comF) {
+            if (lbl_80265750[playerTbl[i]].comF) {
                 playerOrCoinDelta = mbPlayerTeamFindPlayer(i, 1);
-                if (!GwPlayer[playerOrCoinDelta].comF) {
+                if (!lbl_80265750[playerOrCoinDelta].comF) {
                     playerTbl[i] = playerOrCoinDelta;
                 }
             }
-            teamNo = GwPlayer[playerNo].team;
+            teamNo = lbl_80265750[playerNo].team;
             if (i == teamNo) {
                 playerTbl[i] = playerNo;
             }
@@ -1125,30 +1125,30 @@ MBMODELID modelId;
         mbWipeDissolveFadeIn();
         playerOrCoinDelta = coinAverage - mbPlayerCoinGet(playerTbl[i]);
         if (playerOrCoinDelta > 0) {
-            mbPlayerWinLoseVoicePlay(playerTbl[i], 12, CHARVOICEID(6));
+            mbPlayerWinLoseVoicePlay(playerTbl[i], 12, (573+6));
             mbPlayerMotionShiftSet(playerTbl[i], 12, 0.0f, 12.0f,
-                HU3D_MOTATTR_NONE);
+                0);
         } else if (playerOrCoinDelta < 0) {
-            mbPlayerWinLoseVoicePlay(playerTbl[i], 13, CHARVOICEID(12));
+            mbPlayerWinLoseVoicePlay(playerTbl[i], 13, (573+12));
             mbPlayerMotionShiftSet(playerTbl[i], 13, 0.0f, 12.0f,
-                HU3D_MOTATTR_NONE);
+                0);
         }
         // The second flag is deliberately derived from the coin delta.
         mbCoinAddProcExec(playerTbl[i], playerOrCoinDelta,
             playerOrCoinDelta - 1, TRUE);
         mbWipeDissolveFadeOut();
-        mbPlayerMotionSet(playerTbl[i], 1, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionSet(playerTbl[i], 1, ((1 << 30) | (1 << 0)));
         mbStatusDispForceSet(playerTbl[i], FALSE);
     }
 
-    for (i = 0; i < GW_PLAYER_MAX; i++) {
+    for (i = 0; i < 4; i++) {
         mbPlayerDispSet(i, FALSE);
     }
     mbPlayerDispSet(playerNo, TRUE);
     mbPlayerPosSetV(playerNo, &playerPos);
     mbObjDispSet(modelId, TRUE);
     {
-        showWork = omObjGetWork(rouletteObj, LAST5ROULETTEWORK);
+        showWork = ((LAST5ROULETTEWORK *)(&(rouletteObj->work[0])));
 
         mbObjDispSet(rouletteObj->mdlId[0], TRUE);
         if (showWork->diceF) {

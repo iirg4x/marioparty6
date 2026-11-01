@@ -1,6 +1,6 @@
 /* Camera, sequence, lighting, and player-startup logic for Asteroad Rage. */
 #define M659_STREAM_COURSE 87
-#define M659_DATA_FINISH_GRID_MODEL DATANUM(DATA_m659, 20)
+#define M659_DATA_FINISH_GRID_MODEL DATANUM(0x760000, 20)
 #define M659_OBJECT_CAPACITY 200
 #define M659_OBJECT_MANAGER_PRIORITY 131072
 #include "game/object.h"
@@ -37,7 +37,7 @@ void fn_1_1408(s16 mode, s16 frameNo);
 void fn_1_144C(s16 mode, s16 frameNo);
 void fn_1_1450(s16 mode, s16 frameNo);
 MGSEQ_PARAM lbl_1_data_2C = {
-    30, MGSEQ_TIMER_TOP,
+    30, 0,
     fn_1_B2C, fn_1_BF0, fn_1_C40, fn_1_C44, fn_1_D4C,
     fn_1_EF8, fn_1_1408, fn_1_144C, fn_1_1450
 };
@@ -70,8 +70,8 @@ void fn_1_58(void)
 /* Creates the minigame object manager and initializes its game-system objects. */
 void fn_1_5C(void)
 {
-    lbl_1_data_0->objman = omInitObjMan(M659_OBJECT_CAPACITY, M659_OBJECT_MANAGER_PRIORITY);
-    omGameSysInit(lbl_1_data_0->objman);
+    lbl_1_data_0->objman = fn_8003A8BC(M659_OBJECT_CAPACITY, M659_OBJECT_MANAGER_PRIORITY);
+    fn_80069F1C(lbl_1_data_0->objman);
 }
 
 /* Sets the result camera position and target when the results sequence enters its camera phase. */
@@ -105,8 +105,8 @@ void fn_1_254(OMOBJMAN *manager)
     int i = 0;
     for (i = 0; i < 2; i++) {
         viewport = &lbl_1_data_C[i];
-        obj = lbl_1_data_0->cameraObj[i] = omAddObjEx(manager, 32730, 0, 0, -1, fn_1_408);
-        camera = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659Camera), HU_MEMNUM_OVL);
+        obj = lbl_1_data_0->cameraObj[i] = fn_8003AB38(manager, 32730, 0, 0, -1, fn_1_408);
+        camera = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659Camera), 0x10000000);
         obj->data = camera;
         memset(camera, 0, sizeof(M659Camera));
         camera->cameraMask = lbl_1_data_4[i];
@@ -169,7 +169,7 @@ void fn_1_55C(void)
     HuVecF dir = {0.3f, -0.8f, 0.3f};
     HuVecF courseLightParameters = {20, 45, 1000};
 
-    light = lbl_1_data_0->light = Hu3DGLightCreateV(&pos, &dir, &color);
+    light = lbl_1_data_0->light = fn_800286D0(&pos, &dir, &color);
     Hu3DGLightPointSet(light, 6000, 0.5f, GX_DA_MEDIUM);
     Hu3DGLightStaticSet(light, TRUE);
 }
@@ -181,12 +181,12 @@ void fn_1_65C(void)
 /* Replaces the scene lighting for the result presentation. */
 void fn_1_660(void)
 {
-    Hu3DLightAllKill();
+    fn_80028D70();
     {
         GXColor color = {255, 255, 255, 255};
         HuVecF pos = {0, 1000, -500};
         HuVecF dir = {0, -0.8f, 0};
-        lbl_1_bss_0 = Hu3DGLightCreateV(&pos, &dir, &color);
+        lbl_1_bss_0 = fn_800286D0(&pos, &dir, &color);
         Hu3DGLightPointSet(lbl_1_bss_0, 1000, 1.0f, GX_DA_MEDIUM);
         Hu3DGLightStaticSet(lbl_1_bss_0, TRUE);
         Hu3DGLightColorSet(lbl_1_bss_0, color.r, color.g, color.b, color.a);
@@ -226,7 +226,7 @@ void fn_1_804(void)
     fn_1_41F4(lbl_1_data_0->objman);
     fn_1_4E68(lbl_1_data_0->objman);
     fn_1_5944(lbl_1_data_0->objman);
-    MgSeqCreate(&lbl_1_data_2C);
+    fn_80070788(&lbl_1_data_2C);
 }
 
 /* Sequence callback that assigns each active side its player object before play. */
@@ -235,22 +235,22 @@ void fn_1_B2C(s16 mode, s16 frameNo)
     s16 player;
     s16 side;
     for (player = 0; player < 4; player++) {
-        side = GwPlayerConf[player].grpNo;
+        side = lbl_80265728[player].grpNo;
         if (side == 0 || side == 1) {
             fn_1_3D0(side, lbl_1_bss_2C[side]);
         }
     }
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 /* Sequence callback that starts the course music and advances after 80 frames. */
 void fn_1_BF0(s16 mode, s16 frameNo)
 {
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         lbl_1_data_0->streamHandle = HuAudSStreamPlay(M659_STREAM_COURSE);
     }
-    if (MgSeqFrameNoGet() == 80) {
-        MgSeqModeNext();
+    if (fn_80071DE4() == 80) {
+        fn_80071A9C();
     }
 }
 
@@ -267,8 +267,8 @@ void fn_1_C44(s16 mode, s16 frameNo)
     lbl_1_data_0->winners[0] = -1;
     lbl_1_data_0->winners[1] = -1;
     lbl_1_data_0->winnerCount = 0;
-    if (MgSeqTimerValueGet() == 0U) {
-        MgSeqModeNext();
+    if (fn_80071B58() == 0U) {
+        fn_80071A9C();
         return;
     }
     for (side = 0; side < 2; side++) {
@@ -280,7 +280,7 @@ void fn_1_C44(s16 mode, s16 frameNo)
         }
     }
     if (done > 0) {
-        MgSeqModeNext();
+        fn_80071A9C();
         return;
     }
 }
@@ -290,7 +290,7 @@ void fn_1_D4C(s16 mode, s16 frameNo)
 {
     s16 side;
     u16 sequenceResult;
-    if (MgSeqFrameNoGet() == 0) {
+    if (fn_80071DE4() == 0) {
         if (lbl_1_data_0->streamHandle != -1) {
             HuAudSStreamFadeOut(lbl_1_data_0->streamHandle, 100);
             lbl_1_data_0->streamHandle = -1;
@@ -308,17 +308,17 @@ void fn_1_D4C(s16 mode, s16 frameNo)
         case 0:
         case 2:
             /* The returned status is not used here. */
-            sequenceResult = MgSeqWinnerSet(-1, -1, -1, -1);
+            sequenceResult = fn_80071C18(-1, -1, -1, -1);
             break;
         case 1:
             {
                 M659Player *playerData = lbl_1_bss_2C[lbl_1_data_0->winners[0]]->data;
                 int playerNo;
                 /* The returned status is not used here. */
-                sequenceResult = MgSeqWinnerSet(playerData->info.charNo, -1, -1, -1);
+                sequenceResult = fn_80071C18(playerData->info.charNo, -1, -1, -1);
                 playerNo = playerData->info.playerNo;
-                if (!_CheckFlag(FLAG_MG_PRACTICE)) {
-                    GwPlayer[playerNo].mgCoinBonus = 10;
+                if (!fn_8006A124(65551)) {
+                    lbl_80265750[playerNo].mgCoinBonus = 10;
                 }
             }
             break;
@@ -380,7 +380,7 @@ void fn_1_EF8(s16 mode, s16 frameNo)
         lbl_1_data_0->resultTimer++;
         break;
     case 6:
-        MgSeqModeNext();
+        fn_80071A9C();
         break;
     }
 }
@@ -388,7 +388,7 @@ void fn_1_EF8(s16 mode, s16 frameNo)
 /* Sequence callback that starts the winner animation at the beginning of its result mode. */
 void fn_1_1408(s16 mode, s16 frameNo)
 {
-    if (MgSeqFrameNoGet() == 0 && lbl_1_data_0->winnerCount != 0) {
+    if (fn_80071DE4() == 0 && lbl_1_data_0->winnerCount != 0) {
         fn_1_16E4();
     }
 }
@@ -408,32 +408,32 @@ void fn_1_1454(OMOBJMAN *manager)
     M659Player *playerData = NULL;
     int player = 0, side = 0;
     for (player = 0; player < 4; player++) {
-        side = GwPlayerConf[player].grpNo;
+        side = lbl_80265728[player].grpNo;
         if (side == 0 || side == 1) {
-            obj = lbl_1_bss_2C[side] = omAddObjEx(manager, 110, 5, 10, -1, fn_1_2648);
-    playerData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659Player), HU_MEMNUM_OVL);
+            obj = lbl_1_bss_2C[side] = fn_8003AB38(manager, 110, 5, 10, -1, fn_1_2648);
+    playerData = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659Player), 0x10000000);
             obj->data = playerData;
             memset(playerData, 0, sizeof(M659Player));
             playerData->info.playerNo = player;
             playerData->info.side = side;
             playerData->info.engineSoundHandle = -1;
-            playerData->com.isCom = GwPlayerConf[player].type;
+            playerData->com.isCom = lbl_80265728[player].type;
             playerData->com.difficulty = -1;
             if (playerData->com.isCom) {
-                playerData->com.difficulty = GwPlayerConf[player].comDif;
+                playerData->com.difficulty = lbl_80265728[player].comDif;
             }
         }
     }
-    lbl_1_bss_28 = Hu3DModelCreate(
-        HuDataSelHeapReadNum(M659_DATA_FINISH_GRID_MODEL, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelAttrSet(lbl_1_bss_28, HU3D_MOTATTR_PAUSE);
-    Hu3DModelAttrReset(lbl_1_bss_28, HU3D_MOTATTR_LOOP);
+    lbl_1_bss_28 = fn_80025A04(
+        fn_80008DD0(M659_DATA_FINISH_GRID_MODEL, 0x10000000, 2));
+    fn_800269E8(lbl_1_bss_28, ((1 << 30) | (1 << 1)));
+    fn_80026A44(lbl_1_bss_28, ((1 << 30) | (1 << 0)));
 }
 
 /* Removes character models when the minigame character resources are no longer needed. */
 void fn_1_15EC(void)
 {
-    CharModelKill(-1);
+    fn_8005BB8C(-1);
 }
 
 /* Moves one side player model set onto the requested camera bit. */
@@ -446,6 +446,6 @@ void fn_1_1610(s16 side, u16 camera)
     info->cameraBit = camera;
     for (i = 0; i < 5; i++) {
         HU3D_MODELID model = obj->mdlId[i];
-        Hu3DModelCameraSet(model, info->cameraBit);
+        fn_80026B64(model, info->cameraBit);
     }
 }

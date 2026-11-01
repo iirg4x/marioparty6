@@ -43,7 +43,7 @@
 #include "types.h"
 #include <types.h>
 
-#define W02_RANDOM_MODULUS 268435456
+#define W02_RANDOM_MODULUS 0x10000000
 #define W02_RANDOM_MODULUS_U 268435456U
 #define W02_RANDOM_FRACTION_SCALE 3.7252903e-09f
 #define W02_STAR_SPACE_GROUP_MASK 0x1C0000
@@ -1482,32 +1482,32 @@ void fn_1_8738(void);
 /* Selects the day or night archive while retaining the asset's file number. */
 static inline int BoardResourceGet(int dataNum) {
     dataNum = FILENUM(dataNum);
-    if (!GwSystem.curTime) {
-        dataNum |= DATA_w02;
+    if (!lbl_80265B70.curTime) {
+        dataNum |= 0xd90000;
     } else {
-        dataNum |= DATA_w02n;
+        dataNum |= 0xda0000;
     }
     return dataNum;
 }
 
 /* Reserves the board's work record before its models are initialized. */
 static inline void *BoardWorkAllocate(void) {
-    return HuMemDirectMallocNum(HEAP_HEAP, sizeof(PositionModel), HU_MEMNUM_OVL);
+    return HuMemDirectMallocNum(HEAP_HEAP, sizeof(PositionModel), 0x10000000);
 }
 
 /* Selects the Garage day or night archive for model data requested by board setup. */
 static inline int BoardModelDataNum(int dataNum) {
     dataNum = FILENUM(dataNum);
-    if (!GwSystem.curTime) {
-        dataNum |= DATA_w02;
+    if (!lbl_80265B70.curTime) {
+        dataNum |= 0xd90000;
     } else {
-        dataNum |= DATA_w02n;
+        dataNum |= 0xda0000;
     }
     return dataNum;
 }
 
 static inline void *SpriteAllocate(s32 size, u32 allocationNo) {
-    return HuMemDirectMallocNum(HEAP_MODEL, size, allocationNo);
+    return HuMemDirectMallocNum(2, size, allocationNo);
 }
 
 /* Copies a sprite particle's position or rotation vector while advancing its trail. */
@@ -1535,7 +1535,7 @@ static inline s32 EmitSpriteParticle(HuVecF *position, HuVecF *velocity, float a
 
     object = lbl_1_bss_C;
     work = object->data;
-    model = &Hu3DData[work->modelId];
+    model = &lbl_802C01C8[work->modelId];
     hook = model->hookData;
     particle = hook->particles;
     for (index = 0; index < hook->particleCount; index++, particle++) {
@@ -1677,8 +1677,8 @@ void fn_1_F4(void) {
     /* The board number is fetched but is not used by this setup routine. */
     boardNo = MBBoardNoGet();
     HuAudSndGrpSetSet(23);
-    mbMasuInit(BoardResourceGet(DATANUM(DATA_w02, 0)));
-    lbl_1_bss_4 = (StarOrder *) GwSystem.boardWork;
+    mbMasuInit(BoardResourceGet(DATANUM(0xd90000, 0)));
+    lbl_1_bss_4 = (StarOrder *) lbl_80265B70.boardWork;
     if (mbSaveNewF) {
         lbl_1_bss_4->configuration = 0;
         lbl_1_bss_4->priorState[0] = lbl_1_bss_4->priorState[1] = lbl_1_bss_4->priorState[2] = 0;
@@ -1701,99 +1701,99 @@ void fn_1_F4(void) {
     work->effectObject = NULL;
     work->effects = NULL;
     work->effectModel = -1;
-    work->effectAnimation = HuSprAnimRead(HuDataSelHeapReadNum(
-        BoardResourceGet(DATANUM(DATA_w02, 57)), HU_MEMNUM_OVL, HEAP_MODEL));
-    lbl_1_bss_5C = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 3)), NULL, FALSE);
+    work->effectAnimation = HuSprAnimRead(fn_80008DD0(
+        BoardResourceGet(DATANUM(0xd90000, 57)), 0x10000000, 2));
+    lbl_1_bss_5C = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 3)), NULL, FALSE);
     mbObjPosSet(lbl_1_bss_5C, 0.0f, 0.0f, 0.0f);
     backgroundModel = lbl_1_bss_5C;
-    mbObjAttrSet(backgroundModel, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(backgroundModel, ((1 << 30) | (1 << 0)));
     mbObjCullRadiusSet(lbl_1_bss_5C, -1.0f);
-    mbScrollInit(BoardResourceGet(DATANUM(DATA_w02, 1)));
-    mbCapThrowColCreate(BoardResourceGet(DATANUM(DATA_w02, 2)));
+    mbScrollInit(BoardResourceGet(DATANUM(0xd90000, 1)));
+    mbCapThrowColCreate(BoardResourceGet(DATANUM(0xd90000, 2)));
     fn_1_3CC8();
     fn_1_89A8();
     fn_1_DD5C();
     fn_1_AD84();
     fn_1_471C();
     fn_1_135B0();
-    mbev_ShopExInit(BoardResourceGet(DATANUM(DATA_w02, 4)),
+    mbev_ShopExInit(BoardResourceGet(DATANUM(0xd90000, 4)),
         (void (*)(int, int)) fn_1_312C);
     mbev_NextTimeSet(fn_1_31D8);
     work->mapView = FALSE;
     work->transitionActive = FALSE;
     mbLightFuncSet(fn_1_37C0, fn_1_3878);
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 5)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 5)), NULL, FALSE);
     for (index = 0; index < 16; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_1C0[index], modelId);
     }
-    work->eventModel = modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 6)), NULL, FALSE);
+    work->eventModel = modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 6)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 9)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 9)), NULL, FALSE);
     for (index = 0; index < 5; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_234[index], modelId);
     }
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 11)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 11)), NULL, FALSE);
     for (index = 0; index < 6; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_284[index], modelId);
     }
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 12)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 12)), NULL, FALSE);
     for (index = 0; index < 9; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_2F0[index], modelId);
     }
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 13)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 13)), NULL, FALSE);
     for (index = 0; index < 2; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_32C[index], modelId);
     }
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 14)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 14)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     for (index = 0; index < 2; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_348[index], modelId);
     }
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 15)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 15)), NULL, FALSE);
     for (index = 0; index < 19; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_418[index], modelId);
     }
     for (index = 0; index < 3; index++) {
         work->spaceModels[index] = modelId =
-            mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 8)), NULL, TRUE);
+            mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 8)), NULL, TRUE);
         mbObjMotionSpeedSet(modelId, 0.0f);
         mbObjPosSetV(modelId, &lbl_1_data_0[index]);
         mbObjRotSetV(modelId, &lbl_1_data_24[index]);
     }
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 10)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 10)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     for (index = 0; index < 2; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_4B8[index], modelId);
     }
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 18)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 18)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     for (index = 0; index < 2; index++) {
         mbObjHookSet(lbl_1_bss_5C, lbl_1_data_4D4[index], modelId);
     }
     for (index = 0; index < 6; index++) {
-        modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 7)), NULL, TRUE);
+        modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 7)), NULL, TRUE);
         mbObjPosSetV(modelId, &lbl_1_data_78[index]);
         mbObjRotSetV(modelId, &lbl_1_data_C0[index]);
     }
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 16)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 16)), NULL, FALSE);
     mbObjLayerSet(modelId, 1);
     work->mapDisplayModel = modelId =
-        mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 48)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 48)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjDispSet(modelId, FALSE);
-    modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 49)), NULL, FALSE);
+    modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 49)), NULL, FALSE);
     mbObjLayerSet(modelId, 3);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjHookSet(modelId, "dronehook1", work->mapDisplayModel);
     mbObjHookSet(modelId, "dronehook2", work->mapDisplayModel);
     mbObjHookSet(modelId, "dronehook3", work->mapDisplayModel);
-    work->starModel = modelId = mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 19)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    work->starModel = modelId = mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 19)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjDispSet(modelId, FALSE);
     for (index = 0; index < 5; index++) {
         work->mapModels[index] = modelId =
-            mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 22)), NULL, TRUE);
-        mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+            mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 22)), NULL, TRUE);
+        mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
         mbObjMotionTimeSet(modelId,
             mbObjMotionMaxTimeGet(modelId) * MBCapsuleEffRandF());
         mbObjMotionSpeedSet(modelId, 0.8f + (4.0f * (-0.5f + MBCapsuleEffRandF())));
@@ -1806,7 +1806,7 @@ void fn_1_F4(void) {
             work->orbitAngles[index] = 20.0f + work->orbitAngles[index - 1] +
                 (5.0f * MBCapsuleEffRandF());
         }
-        if (GwSystem.curTime) {
+        if (lbl_80265B70.curTime) {
             scale = (0.1f * (float) index) +
                 (0.3f + (0.05f * MBCapsuleEffRandF()));
             mbObjScaleSet(modelId, scale, scale, scale);
@@ -1815,18 +1815,18 @@ void fn_1_F4(void) {
         work->bobAngles[index] = 0.0f;
     }
     work->orbitSpeed = -0.3f;
-    Hu3DMotionCalc(mbObjModelIDGet(lbl_1_bss_5C));
+    fn_80030644(mbObjModelIDGet(lbl_1_bss_5C));
     for (index = 0; index < 4; index++) {
-        Hu3DModelObjMtxGet(mbObjModelIDGet(lbl_1_bss_5C), lbl_1_data_490[index], hookMatrix);
+        fn_80023398(mbObjModelIDGet(lbl_1_bss_5C), lbl_1_data_490[index], hookMatrix);
         work->particleOrigins[index].x = hookMatrix[0][3];
         work->particleOrigins[index].y = hookMatrix[1][3];
         work->particleOrigins[index].z = hookMatrix[2][3];
-        if (!GwSystem.curTime) {
+        if (!lbl_80265B70.curTime) {
             work->emissionDelays[index] = 60.0f * (1.0f + (0.5f * MBCapsuleEffRandF()));
         } else {
             work->emissionDelays[index] = 60.0f * (2.0f + MBCapsuleEffRandF());
         }
-        if (!GwSystem.curTime) {
+        if (!lbl_80265B70.curTime) {
             work->burstFrames[index] = 60.0f * (0.5f + (0.2f * MBCapsuleEffRandF()));
         } else {
             work->burstFrames[index] = 60.0f * (0.2f + (0.1f * MBCapsuleEffRandF()));
@@ -1835,41 +1835,41 @@ void fn_1_F4(void) {
     work->particlesDisabled = TRUE;
     fn_1_A914();
     work->transitionModel = modelId =
-        mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 40)), NULL, FALSE);
-    if (!GwSystem.curTime) {
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 40)), NULL, FALSE);
+    if (!lbl_80265B70.curTime) {
         mbObjMotionTimeSet(modelId, 0.0f);
     } else {
         mbObjMotionTimeSet(modelId, mbObjMotionMaxTimeGet(modelId) / 2.0f);
     }
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->stationLiftBaseModel = modelId =
-        mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 50)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 50)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
     work->motionReferenceModel = modelId =
-        mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 51)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 51)), NULL, FALSE);
     mbObjHookSet(work->stationLiftBaseModel, "leverhook", modelId);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjLayerSet(modelId, 3);
     work->leverObjectId = modelId =
-        mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 52)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 52)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
     work->liftObjectId = modelId =
-        mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 53)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 53)), NULL, FALSE);
     mbObjHookSet(work->leverObjectId, "lever2hook", modelId);
     mbObjLayerSet(modelId, 3);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     work->characterObjectId = modelId =
-        mbObjCreate(BoardResourceGet(DATANUM(DATA_w02, 54)), NULL, FALSE);
+        mbObjCreate(BoardResourceGet(DATANUM(0xd90000, 54)), NULL, FALSE);
     mbObjHookSet(work->liftObjectId, "lifthook", modelId);
     mbObjLayerSet(modelId, 3);
     mbObjMotionSpeedSet(modelId, 0.0f);
     fn_1_1735C();
     mbBranchMAttrSet(W02_BRANCH_MATTR_MASK);
-    HuDataDirClose(BoardResourceGet(DATANUM(DATA_w02, 0)));
+    fn_800097F4(BoardResourceGet(DATANUM(0xd90000, 0)));
     mbev_MasuMoveStartSet((MASUEVENTHOOK) fn_1_39EC);
     mbev_MasuMoveEndSet((MASUEVENTHOOK) fn_1_39F4);
     mbev_MasuHatenaSet((MASUEVENTHOOK) fn_1_387C);
@@ -1880,7 +1880,7 @@ void fn_1_F4(void) {
     mbOpeningStarInstHookSet(NULL);
     mbStarMoveHookSet(fn_1_15794);
     fn_1_1557C();
-    lbl_1_bss_0 = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_1BD8);
+    lbl_1_bss_0 = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_1BD8);
     mbOpeningViewSet(&lbl_1_data_4DC, &lbl_1_data_4E8, lbl_1_data_4F4);
     mbMapCameraSet(NULL, &lbl_1_data_504, lbl_1_data_510);
 }
@@ -1937,7 +1937,7 @@ void fn_1_1BD8(OMOBJ *object) {
     for (index = 1; index < mbMasuNumGet(); index++) {
         if (mbMasuMAttrGet(index) & 0xC000) {
             group = (mbMasuMAttrGet(index) & 0xC000) >> 14;
-            Hu3DModelObjMtxGet(mbObjModelIDGet(work->spaceModels[group - 1]),
+            fn_80023398(mbObjModelIDGet(work->spaceModels[group - 1]),
                 "pistonhook", motionMatrix);
             motionMatrix[1][3] += 10.0f;
             PSMTXIdentity(spaceMatrix);
@@ -1950,7 +1950,7 @@ void fn_1_1BD8(OMOBJ *object) {
                 if (1.0f == mbObjMotionTimeGet(work->spaceModels[group - 1])) {
                     mbAudFXPlay(W02_MECHANISM_SOUND_ID);
                 }
-                Hu3DModelObjMtxGet(mbObjModelIDGet(work->spaceModels[group - 1]),
+                fn_80023398(mbObjModelIDGet(work->spaceModels[group - 1]),
                     "steamhook", motionMatrix);
                 for (particleIndex = 0; particleIndex < 2; particleIndex++) {
                     position.x = motionMatrix[0][3];
@@ -2027,7 +2027,7 @@ void fn_1_1BD8(OMOBJ *object) {
                             (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(W02_RANDOM_MODULUS)));
                         break;
                     }
-                    if (GwSystem.curTime) {
+                    if (lbl_80265B70.curTime) {
                         velocity.x *= 0.5f + 0.1f *
                             (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(W02_RANDOM_MODULUS));
                         velocity.y *= 0.5f + 0.1f *
@@ -2057,14 +2057,14 @@ void fn_1_1BD8(OMOBJ *object) {
                                emitterColorPtr);
                 }
                 if (--work->burstFrames[index] <= 0) {
-                    if (!GwSystem.curTime) {
+                    if (!lbl_80265B70.curTime) {
                         work->emissionDelays[index] = 60.0f * (1.0f + 0.5f *
                             (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(W02_RANDOM_MODULUS)));
                     } else {
                         work->emissionDelays[index] = 60.0f * (2.0f +
                             W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(W02_RANDOM_MODULUS));
                     }
-                    if (!GwSystem.curTime) {
+                    if (!lbl_80265B70.curTime) {
                         work->burstFrames[index] = 60.0f * (0.5f + 0.2f *
                             (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(W02_RANDOM_MODULUS)));
                     } else {
@@ -2086,17 +2086,17 @@ void fn_1_1BD8(OMOBJ *object) {
         work->bobAngles[index] += 3.0f *
             (W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(W02_RANDOM_MODULUS));
         position.x = lbl_1_data_594.x + work->orbitRadii[index] *
-            sin((M_PI * work->orbitAngles[index]) / 180.0);
+            sin((3.141592653589793 * work->orbitAngles[index]) / 180.0);
         position.z = lbl_1_data_594.z + work->orbitRadii[index] *
-            cos((M_PI * work->orbitAngles[index]) / 180.0);
+            cos((3.141592653589793 * work->orbitAngles[index]) / 180.0);
         position.y = lbl_1_data_594.y + 0.2f * (100.0 *
-            (sin((M_PI * work->bobAngles[index]) / 180.0) - 0.5));
+            (sin((3.141592653589793 * work->bobAngles[index]) / 180.0) - 0.5));
         mbObjPosSetV(work->mapModels[index], &position);
         mbObjRotSet(work->mapModels[index], 0.0f, work->orbitAngles[index] - 90.0f, 0.0f);
     }
     if (work->transitionActive && !work->mapView) {
         for (index = 0; index < 4; index++) {
-            if (HuPadBtnDown[index] & PAD_BUTTON_START) {
+            if (lbl_802C0008[index] & PAD_BUTTON_START) {
                 work->mapView = TRUE;
             }
         }
@@ -2116,16 +2116,16 @@ void fn_1_312C(s32 parentModel) {
     int model;
     int resource;
 
-    dataNum = DATANUM(DATA_w02, 17);
+    dataNum = DATANUM(0xd90000, 17);
     dataNum = FILENUM(dataNum);
-    if (!GwSystem.curTime) {
-        dataNum |= DATA_w02;
+    if (!lbl_80265B70.curTime) {
+        dataNum |= 0xd90000;
     } else {
-        dataNum |= DATA_w02n;
+        dataNum |= 0xda0000;
     }
     resource = dataNum;
     model = mbObjCreate(resource, NULL, TRUE);
-    mbObjAttrSet(model, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(model, ((1 << 30) | (1 << 0)));
     mbObjHookSet(parentModel, "plhook", model);
 }
 HuVecF lbl_1_data_5BC = { 0.0f, 1652.0f, -2010.0f };
@@ -2295,7 +2295,7 @@ void fn_1_31D8(void) {
     mbCameraCenterSetV(&lbl_1_data_5F4);
     mbCameraRotSetV(&lbl_1_data_600);
     mbCameraZoomSet(lbl_1_data_60C);
-    if (!GwSystem.curTime) {
+    if (!lbl_80265B70.curTime) {
         mbObjMotionTimeSet(work->transitionModel,
             mbObjMotionMaxTimeGet(work->transitionModel) / 2.0f);
     } else {
@@ -2311,7 +2311,7 @@ void fn_1_31D8(void) {
         mbAudFXPlay(W02_PATH_TRANSITION_SOUND_ID);
     }
     mbObjMotionSpeedSet(work->transitionModel, 1.0f);
-    if (!GwSystem.curTime) {
+    if (!lbl_80265B70.curTime) {
         while (mbObjMotionTimeGet(work->transitionModel) <
                mbObjMotionMaxTimeGet(work->transitionModel) && !work->mapView) {
             fn_1_3754();
@@ -2334,7 +2334,7 @@ void fn_1_31D8(void) {
     for (index = 0; index < 4; index++) {
         mbPlayerDispSet(index, FALSE);
     }
-    if (!GwSystem.curTime) {
+    if (!lbl_80265B70.curTime) {
         mbObjMotionTimeSet(work->transitionModel, 0.0f);
     } else {
         mbObjMotionTimeSet(work->transitionModel,
@@ -2376,7 +2376,7 @@ void fn_1_37C0(void) {
     const GXColor *shadow;
 
     Hu3DBGColorSet(0, 0, 0);
-    Hu3DModelLightInfoSet(mbObjModelIDGet(lbl_1_bss_5C), 1);
+    fn_80029850(mbObjModelIDGet(lbl_1_bss_5C), 1);
     hiliteColor = lbl_1_data_64C;
     hilite = &hiliteColor;
     shadowColor = lbl_1_data_648;
@@ -2407,7 +2407,7 @@ s32 fn_1_387C(s32 playerNo, s16 spaceId) {
     } else if (mbMasuMAttrGet(spaceId) & 1) {
         fn_1_8C9C(playerNo, spaceId);
     } else if (mbMasuMAttrGet(spaceId) & 0x800) {
-        if (!GwSystem.curTime) {
+        if (!lbl_80265B70.curTime) {
             fn_1_B11C(playerNo);
         } else {
             fn_1_B334(playerNo);
@@ -2505,11 +2505,11 @@ void fn_1_3CC8(void) {
 
     work = lbl_1_bss_8;
     work->primaryModel = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 20)), NULL, FALSE);
+        BoardModelDataNum(DATANUM(0xd90000, 20)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    Hu3DMotionCalc(mbObjModelIDGet(modelId));
+    fn_80030644(mbObjModelIDGet(modelId));
     work->spaceState = 0;
-    work->secondaryModel = mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 21)), NULL, FALSE);
+    work->secondaryModel = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 21)), NULL, FALSE);
     mbObjMotionSpeedSet(work->secondaryModel, 0.0f);
     mbObjLayerSet(work->secondaryModel, 3);
     /* This pass reads marked-space attributes without changing any board state. */
@@ -2518,7 +2518,7 @@ void fn_1_3CC8(void) {
     }
     transform = work->transforms;
     for (spaceId = 0; spaceId < 14; spaceId++, transform++) {
-        Hu3DModelObjMtxGet(mbObjModelIDGet(modelId), lbl_1_data_6C0[spaceId], transform->matrix);
+        fn_80023398(mbObjModelIDGet(modelId), lbl_1_data_6C0[spaceId], transform->matrix);
         transform->position.x = transform->matrix[0][3];
         transform->position.y = transform->matrix[1][3];
         transform->position.z = transform->matrix[2][3];
@@ -2547,7 +2547,7 @@ void fn_1_3CC8(void) {
     }
     mbObjMotionTimeSet(modelId, lbl_1_bss_4->configuration *
         (0.25f * mbObjMotionMaxTimeGet(modelId)));
-    Hu3DMotionCalc(mbObjModelIDGet(modelId));
+    fn_80030644(mbObjModelIDGet(modelId));
     fn_1_4494();
     fn_1_45A4();
 }
@@ -2557,7 +2557,7 @@ void fn_1_3FB8(void) {
     PositionModel *work = lbl_1_bss_8;
 
     if (fn_1_4470() == 0) {
-        HuPrcChildCreate(fn_1_4020, W02_ROTATION_PROCESS_PRIORITY,
+        fn_8000DAC0(fn_1_4020, W02_ROTATION_PROCESS_PRIORITY,
                          W02_ROTATION_PROCESS_STACK_SIZE, 0, mbMainProc);
         work->spaceState = 1;
     }
@@ -2583,7 +2583,7 @@ void fn_1_4020(void) {
 
     work = lbl_1_bss_8;
     for (playerNo = 0; playerNo < 4; playerNo++) {
-        mbMasuPosGet(GwPlayer[playerNo].masuId, &position);
+        mbMasuPosGet(lbl_80265750[playerNo].masuId, &position);
         mbPlayerPosGet(playerNo, &playerOffset[playerNo]);
         PSVECSubtract(&playerOffset[playerNo], &position, &playerOffset[playerNo]);
         mbPlayerRotGet(playerNo, &playerRotation[playerNo]);
@@ -2613,10 +2613,10 @@ void fn_1_4020(void) {
         fn_1_4494();
         mbObjMotionTimeSet(work->secondaryModel,
             progress * mbObjMotionMaxTimeGet(work->secondaryModel));
-        mtxRot(rotation, 0.0f, 90.0f * -progress, 0.0f);
+        fn_80022E38(rotation, 0.0f, 90.0f * -progress, 0.0f);
         for (playerNo = 0; playerNo < 4; playerNo++) {
-            if (fn_1_46D0(GwPlayer[playerNo].masuId) > 4) {
-                mbMasuPosGet(GwPlayer[playerNo].masuId, &spacePosition);
+            if (fn_1_46D0(lbl_80265750[playerNo].masuId) > 4) {
+                mbMasuPosGet(lbl_80265750[playerNo].masuId, &spacePosition);
                 PSMTXMultVec(rotation, &playerOffset[playerNo], &position);
                 PSVECAdd(&spacePosition, &position, &position);
                 mbPlayerPosSetV(playerNo, &position);
@@ -2656,10 +2656,10 @@ void fn_1_4494(void) {
 
     work = lbl_1_bss_8;
     modelId = work->primaryModel;
-    Hu3DMotionCalc(mbObjModelIDGet(modelId));
+    fn_80030644(mbObjModelIDGet(modelId));
     transform = work->transforms;
     for (index = 0; index < 14; index++, transform++) {
-        Hu3DModelObjMtxGet(mbObjModelIDGet(modelId), lbl_1_data_6C0[index], transform->matrix);
+        fn_80023398(mbObjModelIDGet(modelId), lbl_1_data_6C0[index], transform->matrix);
         transform->position.x = transform->matrix[0][3];
         transform->position.y = transform->matrix[1][3] += 3.0f;
         transform->position.z = transform->matrix[2][3];
@@ -2736,27 +2736,27 @@ void fn_1_471C(void) {
 
     work = lbl_1_bss_8;
     work->paths[0].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 42)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 42)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->paths[1].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 43)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 43)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->paths[2].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 44)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 44)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->paths[3].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 45)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 45)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->paths[4].boardModelId = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 47)), NULL, FALSE);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 47)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->pathEffectModel = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 46)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 46)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 3.0f);
 
     path = &work->paths[0];
@@ -2784,7 +2784,7 @@ void fn_1_471C(void) {
     path->modelSpaceCount = spaceCount * 2;
     fn_1_6E28(0, spaceIds, TRUE);
     fn_1_7280(0);
-    object = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_7418);
+    object = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_7418);
     object->work[0] = 0;
 
     path = &work->paths[1];
@@ -2812,7 +2812,7 @@ void fn_1_471C(void) {
     path->modelSpaceCount = spaceCount * 2;
     fn_1_6E28(1, spaceIds, TRUE);
     fn_1_7280(1);
-    object = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_7418);
+    object = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_7418);
     object->work[0] = 1;
 
     path = &work->paths[2];
@@ -2840,7 +2840,7 @@ void fn_1_471C(void) {
     path->modelSpaceCount = spaceCount * 2;
     fn_1_6E28(2, spaceIds, TRUE);
     fn_1_7280(2);
-    object = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_7418);
+    object = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_7418);
     object->work[0] = 2;
 
     path = &work->paths[3];
@@ -2908,7 +2908,7 @@ void fn_1_471C(void) {
         fn_1_7280(2);
     }
     fn_1_762C();
-    HuDataDirClose(DATA_bmasu);
+    fn_800097F4(0x40000);
     fn_1_6CA0();
 }
 
@@ -2953,7 +2953,7 @@ void fn_1_4FB0(void) {
                 position.x += 10.0f;
                 mbPlayerPosSetV(players[index], &position);
                 if (frame % 20 == 1) {
-                    omVibrate(players[index], 20, 4, 4);
+                    fn_8006A030(players[index], 20, 4, 4);
                 }
                 if (position.x >= path->markerStart.x) {
                     fn_1_7A4C(players[index], destinationSpace);
@@ -2970,7 +2970,7 @@ void fn_1_4FB0(void) {
             fn_1_6CFC(3);
             eventStarted = 1;
         }
-        model = &Hu3DData[path->modelId];
+        model = &lbl_802C01C8[path->modelId];
         effect = model->hookData;
         element = effect->elements;
         for (index = 0; index < path->modelSpaceCount; index++, element++) {
@@ -3010,7 +3010,7 @@ void fn_1_4FB0(void) {
     fn_1_7280(0);
     lbl_1_bss_4->priorState[0] ^= 1;
     path->travelDistance = 0.0f;
-    model = &Hu3DData[path->modelId];
+    model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
     element = effect->elements;
     for (index = 0; index < path->modelSpaceCount; index++, element++) {
@@ -3071,7 +3071,7 @@ void fn_1_544C(void) {
                 position.z += 10.0f;
                 mbPlayerPosSetV(players[index], &position);
                 if (frame % 20 == 1) {
-                    omVibrate(players[index], 20, 4, 4);
+                    fn_8006A030(players[index], 20, 4, 4);
                 }
                 if (position.z >= path->markerStart.z) {
                     fn_1_7A4C(players[index], destinationSpace);
@@ -3088,7 +3088,7 @@ void fn_1_544C(void) {
             fn_1_6CFC(0);
             eventStarted = 1;
         }
-        model = &Hu3DData[path->modelId];
+        model = &lbl_802C01C8[path->modelId];
         effect = model->hookData;
         element = effect->elements;
         for (index = 0; index < path->modelSpaceCount; index++, element++) {
@@ -3128,7 +3128,7 @@ void fn_1_544C(void) {
     fn_1_7280(1);
     lbl_1_bss_4->priorState[1] ^= 1;
     path->travelDistance = 0.0f;
-    model = &Hu3DData[path->modelId];
+    model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
     element = effect->elements;
     for (index = 0; index < path->modelSpaceCount; index++, element++) {
@@ -3186,7 +3186,7 @@ void fn_1_58E8(void) {
                 position.x -= 10.0f;
                 mbPlayerPosSetV(players[index], &position);
                 if (frame % 20 == 1) {
-                    omVibrate(players[index], 20, 4, 4);
+                    fn_8006A030(players[index], 20, 4, 4);
                 }
                 if (position.x <= path->markerStart.x) {
                     fn_1_7A4C(players[index], destinationSpace);
@@ -3203,7 +3203,7 @@ void fn_1_58E8(void) {
             fn_1_6CFC(4);
             eventStarted = 1;
         }
-        model = &Hu3DData[path->modelId];
+        model = &lbl_802C01C8[path->modelId];
         effect = model->hookData;
         element = effect->elements;
         for (index = 0; index < path->modelSpaceCount; index++, element++) {
@@ -3243,7 +3243,7 @@ void fn_1_58E8(void) {
     fn_1_7280(2);
     lbl_1_bss_4->priorState[2] ^= 1;
     path->travelDistance = 0.0f;
-    model = &Hu3DData[path->modelId];
+    model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
     element = effect->elements;
     for (index = 0; index < path->modelSpaceCount; index++, element++) {
@@ -3295,7 +3295,7 @@ void fn_1_5D6C(void) {
         coinCounts[index] = 0;
     }
     destinationSpace = mbev_CapMasuLinkNextGet(path->spaceIds[0], FALSE);
-    mbev_PlayerColMasuSet(GwSystem.turnPlayerNo, destinationSpace, FALSE);
+    mbev_PlayerColMasuSet(lbl_80265B70.turnPlayerNo, destinationSpace, FALSE);
     mbMasuNextDispSet(FALSE);
     fn_1_838C();
     sound = mbAudFXPlay(W02_PATH_TRAVEL_SOUND_ID);
@@ -3314,7 +3314,7 @@ void fn_1_5D6C(void) {
                 mbPlayerPosSetV(players[index], &position);
                 anchor = position;
                 if (frame % 20 == 1) {
-                    omVibrate(players[index], 20, 4, 4);
+                    fn_8006A030(players[index], 20, 4, 4);
                 }
                 if (position.z >= path->markerStart.z) {
                     fn_1_7A4C(players[index], destinationSpace);
@@ -3442,7 +3442,7 @@ void fn_1_6378(void) {
                 PSVECAdd(&position, &step, &position);
                 mbPlayerPosSetV(players[index], &position);
                 if (frame % 20 == 1) {
-                    omVibrate(players[index], 20, 4, 4);
+                    fn_8006A030(players[index], 20, 4, 4);
                 }
                 if (position.z >= path->markerStart.z) {
                     mbPlayerDispSet(players[index], TRUE);
@@ -3536,7 +3536,7 @@ void fn_1_6CA0(void) {
 /* Starts the Garage event routine assigned to a slot when its dispatcher requests it. */
 void fn_1_6CFC(s32 processSlot) {
     *(HUPROCESS **) ((u8 *) &lbl_1_bss_18 + (processSlot * 4)) =
-        HuPrcChildCreate(*(void (**)(void))((u8 *) &lbl_1_data_874 + (processSlot * 4)), 8196U,
+        fn_8000DAC0(*(void (**)(void))((u8 *) &lbl_1_data_874 + (processSlot * 4)), 8196U,
                          24576U, 0, mbMainProc);
 }
 
@@ -3612,10 +3612,10 @@ void fn_1_6E28(s32 pathIndex, s32 *spaceIds, BOOL createMarkers) {
         path->modelId = -1;
         return;
     }
-    path->modelId = fn_1_15E30(HuSprAnimRead(HuDataSelHeapReadNum(DATA_bmasu,
-                              HU_MEMNUM_OVL, HEAP_MODEL)), path->modelSpaceCount);
+    path->modelId = fn_1_15E30(HuSprAnimRead(fn_80008DD0(0x40000,
+                              0x10000000, 2)), path->modelSpaceCount);
     fn_1_16E44(path->modelId, lbl_1_data_900, lbl_1_data_7F4);
-    model = &Hu3DData[path->modelId];
+    model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
     effect->flags |= 0xC;
     element = effect->elements;
@@ -3664,7 +3664,7 @@ void fn_1_7280(s32 pathIndex) {
 
     work = lbl_1_bss_8;
     path = &work->paths[pathIndex];
-    model = &Hu3DData[path->modelId];
+    model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
     element = effect->elements;
     for (spaceIndex = 0; spaceIndex < path->modelSpaceCount; spaceIndex++, element++) {
@@ -3731,7 +3731,7 @@ void fn_1_7418(OMOBJ *object) {
         refresh = TRUE;
     }
     if (refresh) {
-        model = &Hu3DData[group->modelId];
+        model = &lbl_802C01C8[group->modelId];
         hook = model->hookData;
         particle = hook->particles;
         for (particleIndex = 0; particleIndex < group->spaceCount; particleIndex++, particle++) {
@@ -3758,7 +3758,7 @@ void fn_1_7548(s32 pathIndex) {
     work = lbl_1_bss_8;
     path = &work->paths[pathIndex];
     PSMTXIdentity(matrix);
-    model = &Hu3DData[path->modelId];
+    model = &lbl_802C01C8[path->modelId];
     effect = model->hookData;
     element = effect->elements;
     for (spaceIndex = 0; spaceIndex < path->spaceCount; spaceIndex++, element++) {
@@ -3782,15 +3782,15 @@ void fn_1_762C(void) {
     work = lbl_1_bss_8;
     for (index = 0; index < 4; index++) {
         work->models[index] = fn_1_15E30(
-            HuSprAnimRead(HuDataSelHeapReadNum(DATANUM(DATA_bmasu, 0), HU_MEMNUM_OVL, HEAP_MODEL)),
+            HuSprAnimRead(fn_80008DD0(DATANUM(0x40000, 0), 0x10000000, 2)),
             16);
         fn_1_16E44(work->models[index], lbl_1_data_930, lbl_1_data_960);
-        Hu3DModelLayerSet(work->models[index], 2);
-        model = &Hu3DData[work->models[index]];
+        fn_80026B8C(work->models[index], 2);
+        model = &lbl_802C01C8[work->models[index]];
         hook = model->hookData;
         hook->flags |= 0xC;
     }
-    omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_774C);
+    fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_774C);
 }
 
 /* Clears every particle's render size in the four path sprite models until board exit. */
@@ -3808,7 +3808,7 @@ void fn_1_774C(OMOBJ *object) {
         return;
     }
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
-        model = &Hu3DData[work->particleModels[modelIndex]];
+        model = &lbl_802C01C8[work->particleModels[modelIndex]];
         effect = model->hookData;
         element = effect->elements;
         for (elementIndex = 0; elementIndex < effect->elementCount; elementIndex++, element++) {
@@ -3838,25 +3838,25 @@ s32 fn_1_786C(s32 *playerList, s32 attributeMask) {
     playerIndex = 0;
     playerCount = 0;
     while (playerIndex < 4) {
-        if ((u32)(attributeMask & mbMasuMAttrGet(GwPlayer[playerIndex].masuId)) != 0) {
+        if ((u32)(attributeMask & mbMasuMAttrGet(lbl_80265750[playerIndex].masuId)) != 0) {
             mbPlayerColSnapPlayerSet(playerIndex, 0);
             playerList[playerCount] = playerIndex;
             playerCount++;
             if (mbPlayerMotionGet(playerIndex) != 6) {
-                if (playerIndex != (s8)GwSystem.turnPlayerNo ||
-                    ((u32)(mbMasuMAttrGet(GwPlayer[playerIndex].masuId) & 0x40) != 0)) {
+                if (playerIndex != (s8)lbl_80265B70.turnPlayerNo ||
+                    ((u32)(mbMasuMAttrGet(lbl_80265750[playerIndex].masuId) & 0x40) != 0)) {
                     lbl_1_bss_3C[playerIndex] =
-                        mbPlayerMotionCreate(playerIndex, DATANUM(DATA_mariomot, 34));
+                        mbPlayerMotionCreate(playerIndex, DATANUM(0x930000, 34));
                     mbPlayerMotionShiftSet(playerIndex, lbl_1_bss_3C[playerIndex],
                                            0.0f, 8.0f,
-                                           HU3D_MOTATTR_LOOP);
+                                           ((1 << 30) | (1 << 0)));
                 } else {
                     lbl_1_bss_3C[playerIndex] =
-                        mbPlayerMotionCreate(playerIndex, DATANUM(DATA_mariomot, 18));
+                        mbPlayerMotionCreate(playerIndex, DATANUM(0x930000, 18));
                     mbPlayerMotionShiftSet(playerIndex, lbl_1_bss_3C[playerIndex],
                                            0.0f, 8.0f, 0);
                 }
-                model = &Hu3DData[mbObjModelIDGet(mbPlayerObjIDGet(playerIndex))];
+                model = &lbl_802C01C8[mbObjModelIDGet(mbPlayerObjIDGet(playerIndex))];
                 model->motShiftWork.speed = 2.0f;
             }
         }
@@ -3876,17 +3876,17 @@ void fn_1_7A4C(s32 playerNo, s32 destinationSpace) {
     s32 otherPlayer;
     float distance;
 
-    object = lbl_1_bss_4C[playerNo] = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_7FD4);
-    object->data = travel = HuMemDirectMallocNum(HEAP_HEAP, sizeof(PlayerTravel), HU_MEMNUM_OVL);
+    object = lbl_1_bss_4C[playerNo] = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_7FD4);
+    object->data = travel = HuMemDirectMallocNum(HEAP_HEAP, sizeof(PlayerTravel), 0x10000000);
     memset(travel, 0, sizeof(PlayerTravel));
     travel->playerNo = playerNo;
     travel->destinationSpace = destinationSpace;
     travel->elapsedFrames = 0;
     travel->travelFrames = 0;
     travel->jumpHeight = 150.0f;
-    if (mbMasuMAttrGet(GwPlayer[playerNo].masuId) & 0x400) {
+    if (mbMasuMAttrGet(lbl_80265750[playerNo].masuId) & 0x400) {
         travel->jumpHeight = 0.0f;
-    } else if (mbMasuMAttrGet(GwPlayer[playerNo].masuId) & 0x200) {
+    } else if (mbMasuMAttrGet(lbl_80265750[playerNo].masuId) & 0x200) {
         travel->jumpHeight *= 2.0f;
     }
     mbPlayerPosGet(playerNo, &travel->start);
@@ -3895,7 +3895,7 @@ void fn_1_7A4C(s32 playerNo, s32 destinationSpace) {
     for (offsetIndex = 0; offsetIndex < 9; offsetIndex++) {
         for (otherPlayer = 0; otherPlayer < 4; otherPlayer++) {
             if (otherPlayer == playerNo ||
-                GwPlayer[otherPlayer].masuId != GwPlayer[playerNo].masuId ||
+                lbl_80265750[otherPlayer].masuId != lbl_80265750[playerNo].masuId ||
                 offsetIndex != lbl_1_bss_2C[otherPlayer]) {
                 continue;
             }
@@ -3905,7 +3905,7 @@ void fn_1_7A4C(s32 playerNo, s32 destinationSpace) {
             continue;
         }
         for (otherPlayer = 0; otherPlayer < 4; otherPlayer++) {
-            if (otherPlayer == playerNo || destinationSpace != GwPlayer[otherPlayer].masuId) {
+            if (otherPlayer == playerNo || destinationSpace != lbl_80265750[otherPlayer].masuId) {
                 continue;
             }
             mbPlayerPosGet(otherPlayer, &otherPosition);
@@ -3921,13 +3921,13 @@ void fn_1_7A4C(s32 playerNo, s32 destinationSpace) {
         break;
     }
     /* For other paths, a failed search still indexes the nine-entry offset table at 9. */
-    if (!(mbMasuMAttrGet(GwPlayer[playerNo].masuId) & 0x200)) {
+    if (!(mbMasuMAttrGet(lbl_80265750[playerNo].masuId) & 0x200)) {
         lbl_1_bss_2C[playerNo] = offsetIndex;
         PSVECAdd(&travel->destination, &lbl_1_data_9E0[offsetIndex], &travel->destination);
     }
     if (fabs(travel->start.y - travel->destination.y) < 100.0 ||
-        (mbMasuMAttrGet(GwPlayer[playerNo].masuId) & 0x400) ||
-        (mbMasuMAttrGet(GwPlayer[playerNo].masuId) & 0x200)) {
+        (mbMasuMAttrGet(lbl_80265750[playerNo].masuId) & 0x400) ||
+        (mbMasuMAttrGet(lbl_80265750[playerNo].masuId) & 0x200)) {
         travel->upright = TRUE;
     } else {
         travel->upright = FALSE;
@@ -3942,15 +3942,15 @@ void fn_1_7A4C(s32 playerNo, s32 destinationSpace) {
         travel->travelFrames = 24;
     }
     travel->travelFrames = (float) travel->travelFrames +
-        6.0f * lbl_1_data_A4C[GwPlayer[playerNo].charNo];
+        6.0f * lbl_1_data_A4C[lbl_80265750[playerNo].charNo];
     if (mbMasuMAttrGet(destinationSpace) & 0x400) {
-        CharMotionUpdateSet(GwPlayer[playerNo].charNo, DATANUM(DATA_mariomot, 22), FALSE);
+        fn_8005E070(lbl_80265750[playerNo].charNo, DATANUM(0x930000, 22), FALSE);
     } else {
-        CharMotionUpdateSet(GwPlayer[playerNo].charNo, DATANUM(DATA_mariomot, 22), TRUE);
+        fn_8005E070(lbl_80265750[playerNo].charNo, DATANUM(0x930000, 22), TRUE);
     }
-    mbPlayerMotionShiftSet(playerNo, 6, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 6, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     PSVECSubtract(&travel->destination, &travel->start, &direction);
-    travel->facingAngle = 180.0 * (atan2(direction.x, direction.z) / M_PI);
+    travel->facingAngle = 180.0 * (atan2(direction.x, direction.z) / 3.141592653589793);
 }
 
 /* Carries a player between spaces with a jump arc. Arrival restores player snapping, frees the
@@ -3993,7 +3993,7 @@ void fn_1_7FD4(OMOBJ *object) {
     rotation.z = 0.0f;
     mbPlayerRotSetV(travel->playerNo, &rotation);
     if (progress >= 1.0f) {
-        GwPlayer[travel->playerNo].masuId = travel->destinationSpace;
+        lbl_80265750[travel->playerNo].masuId = travel->destinationSpace;
         mbPlayerColSnapPlayerSet(travel->playerNo, TRUE);
         if (mbMasuMAttrGet(travel->destinationSpace) & 0x400) {
             mbPlayerDispSet(travel->playerNo, FALSE);
@@ -4026,9 +4026,9 @@ void fn_1_838C(void) {
     s32 index;
     OMOBJ *object;
 
-    object = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_8440);
+    object = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_8440);
     lbl_1_bss_10 = object;
-    entry = object->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(BoardEntry) * 64, HU_MEMNUM_OVL);
+    entry = object->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(BoardEntry) * 64, 0x10000000);
     memset(entry, 0, sizeof(BoardEntry) * 64);
     for (index = 0; index < 64; index++, entry++) {
         entry->objectId = -1;
@@ -4175,8 +4175,8 @@ void fn_1_89A8(void) {
     for (; spaceId < mbMasuNumGet(); spaceId++) {
         if (mbMasuMAttrGet(spaceId) & 2) {
             marker->modelId = modelId =
-                mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 23)), NULL, TRUE);
-            mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+                mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 23)), NULL, TRUE);
+            mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
             mbMasuPosGet(spaceId, &position);
             mbObjPosSetV(modelId, &position);
             marker->spaceId = spaceId;
@@ -4192,19 +4192,19 @@ void fn_1_89A8(void) {
     }
     work->markerCount = markerCount;
     work->markerEffectModels[0] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 24)), NULL, FALSE);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 24)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     work->markerEffectModels[1] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 25)), NULL, FALSE);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 25)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     work->markerEffectModels[2] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 26)), NULL, FALSE);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 26)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     work->markerEffectModels[3] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 27)), NULL, FALSE);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 27)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
     work->markerEffectModels[4] = modelId =
-        mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 28)), NULL, FALSE);
+        mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 28)), NULL, FALSE);
     mbObjDispSet(modelId, FALSE);
 }
 
@@ -4248,9 +4248,9 @@ void fn_1_8C9C(int playerNo, int spaceId) {
         HuPrcVSleep();
     }
     fn_1_AA04(lbl_1_data_A90[stationIndex]);
-    mbObjMotionShiftSet(work->attachedModel, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet(work->attachedModel, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     do {
-        if (GwPlayer[playerNo].charNo == 1 && lbl_1_bss_4->priorState[3] == 0) {
+        if (lbl_80265750[playerNo].charNo == 1 && lbl_1_bss_4->priorState[3] == 0) {
             mbAudFXPlay(W02_STATION_CHOICE_SOUND_ID);
             mbWinCreateChoice(1, MESSNUM(MESS_BOARD_W02, 1), 14, 0);
             lbl_1_bss_4->priorState[3] = 1;
@@ -4259,8 +4259,8 @@ void fn_1_8C9C(int playerNo, int spaceId) {
             mbWinCreateChoice(1, MESSNUM(MESS_BOARD_W02, 0), 14, 0);
         }
         mbWinTopInsertMesSet(mbPlayerNameMesGet(playerNo), 0);
-        if (GwPlayer[playerNo].comF) {
-            if (GwPlayer[playerNo].comDif < 2) {
+        if (lbl_80265750[playerNo].comF) {
+            if (lbl_80265750[playerNo].comDif < 2) {
                 currentStarDistance = mbMasuFind_TypeStepGet(spaceId, 7);
                 if (currentStarDistance > 10 &&
                     W02_RANDOM_FRACTION_SCALE * (float) mbRandMod(W02_RANDOM_MODULUS) > 0.3f) {
@@ -4288,7 +4288,7 @@ void fn_1_8C9C(int playerNo, int spaceId) {
         mbAudFXPlay(W02_STATION_EXIT_SOUND_ID);
         mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 3), 14);
         mbWinTopWait();
-        mbObjMotionShiftSet(work->attachedModel, 4, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbObjMotionShiftSet(work->attachedModel, 4, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         fn_1_AC34(lbl_1_data_A90[stationIndex]);
         mbPlayerRotateStart(playerNo, 0, 15);
         while (!mbPlayerRotateCheck(playerNo)) {
@@ -4299,18 +4299,18 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     mbAudFXPlay(W02_STATION_ACCEPT_SOUND_ID);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 2), 14);
     mbWinTopWait();
-    mbObjMotionShiftSet(work->attachedModel, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet(work->attachedModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbPlayerPosGet(playerNo, &start);
     mbMasuPosGet(sourceSpace, &end);
     PSVECSubtract(&end, &start, &position);
-    mbPlayerRotateStart(playerNo, 180.0 * (atan2(position.x, position.z) / M_PI), 15);
+    mbPlayerRotateStart(playerNo, 180.0 * (atan2(position.x, position.z) / 3.141592653589793), 15);
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
     mbPlayerPosGet(playerNo, &start);
     mbMasuPosGet(sourceSpace, &end);
     mbPlayerColSnapPlayerSet(playerNo, 0);
-    mbPlayerMotionShiftSet(playerNo, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     for (frame = 0; frame <= 30.0f; frame++) {
         progress = (float) frame / 30.0f;
         position.x = start.x + progress * (end.x - start.x);
@@ -4319,15 +4319,15 @@ void fn_1_8C9C(int playerNo, int spaceId) {
         mbPlayerPosSetV(playerNo, &position);
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbPlayerRotateStart(playerNo, 0, 15);
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
     HuPrcSleep(2);
-    departureMotion[0] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mario, 33));
+    departureMotion[0] = mbPlayerMotionCreate(playerNo, DATANUM(0x8e0000, 33));
     HuPrcSleep(2);
-    travelMotion[0] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 26));
+    travelMotion[0] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 26));
     HuPrcSleep(2);
     fn_1_AB78(lbl_1_data_A90[stationIndex]);
     mbMasuPosGet(sourceSpace, &start);
@@ -4336,7 +4336,7 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     mbObjPosSetV(work->markerEffectModels[0], &start);
     mbObjMotionTimeSet(work->markerEffectModels[0], 0.0f);
     effectModel = work->markerEffectModels[0];
-    mbObjAttrSet(effectModel, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(effectModel, ((1 << 30) | (1 << 0)));
     mbObjLayerSet(work->markerEffectModels[0], 4);
     mbObjDispSet(work->markerEffectModels[0], 1);
     for (frame = 1; frame < 30.0f; frame++) {
@@ -4345,11 +4345,11 @@ void fn_1_8C9C(int playerNo, int spaceId) {
         HuPrcVSleep();
     }
     mbAudFXPlay(W02_PATH_TRANSFER_SOUND_ID);
-    omVibrate(playerNo, 20, 7, 3);
+    fn_8006A030(playerNo, 20, 7, 3);
     mbObjPosSetV(work->markerEffectModels[1], &start);
     mbObjMotionTimeSet(work->markerEffectModels[1], 0.0f);
     departureShell[0] = work->markerEffectModels[1];
-    mbObjAttrSet(departureShell[0], HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(departureShell[0], ((1 << 30) | (1 << 0)));
     mbObjLayerSet(work->markerEffectModels[1], 3);
     mbObjDispSet(work->markerEffectModels[1], 1);
     for (frame = 1; frame < 30.0f; frame++) {
@@ -4368,7 +4368,7 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     mbObjPosSetV(work->markerEffectModels[2], &start);
     mbObjMotionTimeSet(work->markerEffectModels[2], 0.0f);
     departureBeam[0] = work->markerEffectModels[2];
-    mbObjAttrReset(departureBeam[0], HU3D_MOTATTR_REV);
+    mbObjAttrReset(departureBeam[0], ((1 << 30) | (1 << 2)));
     mbObjLayerSet(work->markerEffectModels[2], 5);
     mbObjMotionSpeedSet(work->markerEffectModels[2], 2.0f);
     mbObjDispSet(work->markerEffectModels[2], 1);
@@ -4386,10 +4386,10 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     mbObjScaleSet(work->markerEffectModels[3], 2.0f, 2.0f, 2.0f);
     mbObjMotionTimeSet(work->markerEffectModels[3], 0.0f);
     outerTrail[0] = work->markerEffectModels[3];
-    mbObjAttrSet(outerTrail[0], HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(outerTrail[0], ((1 << 30) | (1 << 0)));
     mbObjLayerSet(work->markerEffectModels[3], 4);
     mbObjDispSet(work->markerEffectModels[3], 1);
-    if (GwPlayer[playerNo].charNo != 5) {
+    if (lbl_80265750[playerNo].charNo != 5) {
         mbObjAlphaSet(work->markerEffectModels[3], 127);
     } else {
         mbObjAlphaSet(work->markerEffectModels[3], 96);
@@ -4399,12 +4399,13 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     mbObjScaleSet(work->markerEffectModels[4], 2.0f, 2.0f, 2.0f);
     mbObjMotionTimeSet(work->markerEffectModels[4], 0.0f);
     innerTrail[0] = work->markerEffectModels[4];
-    mbObjAttrSet(innerTrail[0], HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(innerTrail[0], ((1 << 30) | (1 << 0)));
     mbObjLayerSet(work->markerEffectModels[4], 3);
     mbObjDispSet(work->markerEffectModels[4], 1);
-    mbPlayerMotionSet(playerNo, departureMotion[0], HU3D_MOTATTR_LOOP);
+    mbPlayerMotionSet(playerNo, departureMotion[0], ((1 << 30) | (1 << 0)));
     PSVECSubtract(&end, &start, &position);
-    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(position.x, position.z) / M_PI), 0.0f);
+    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(position.x, position.z) / 3.141592653589793),
+        0.0f);
     mbPlayerDispSet(playerNo, 1);
     while (!mbObjMotionEndCheck(work->markerEffectModels[2])) {
         motionDuration = mbObjMotionMaxTimeGet(work->markerEffectModels[2]);
@@ -4425,7 +4426,7 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     mbPlayerScaleSet(playerNo, 1.0f, 1.0f, 1.0f);
     mbObjScaleSet(work->markerEffectModels[3], 2.0f, 2.0f, 2.0f);
     mbObjScaleSet(work->markerEffectModels[4], 2.0f, 2.0f, 2.0f);
-    mbPlayerMotionShiftSet(playerNo, travelMotion[0], 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, travelMotion[0], 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbPlayerMotionSpeedSet(playerNo, 2.0f);
     travelSound = mbAudFXPlay(W02_PATH_FLIGHT_SOUND_ID);
     frame = 0;
@@ -4452,7 +4453,7 @@ void fn_1_8C9C(int playerNo, int spaceId) {
                       mbObjMotionMaxTimeGet(work->markerEffectModels[2]));
     mbObjLayerSet(work->markerEffectModels[2], 5);
     arrivalBeam[0] = work->markerEffectModels[2];
-    mbObjAttrSet(arrivalBeam[0], HU3D_MOTATTR_REV);
+    mbObjAttrSet(arrivalBeam[0], ((1 << 30) | (1 << 2)));
     mbObjMotionSpeedSet(work->markerEffectModels[2], 2.0f);
     mbObjDispSet(work->markerEffectModels[2], 1);
     for (frame = 0; frame < 15.0; frame++) {
@@ -4467,7 +4468,7 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     mbPlayerDispSet(playerNo, 0);
     mbObjDispSet(work->markerEffectModels[3], 0);
     mbObjDispSet(work->markerEffectModels[4], 0);
-    mbPlayerMotionSet(playerNo, 1, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionSet(playerNo, 1, ((1 << 30) | (1 << 0)));
     mbPlayerMotionKill(playerNo, departureMotion[0]);
     mbPlayerMotionKill(playerNo, travelMotion[0]);
     mbPlayerRotSet(playerNo, 0.0f, 0.0f, 0.0f);
@@ -4484,11 +4485,11 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     mbPlayerDispSet(playerNo, 1);
     fn_1_A7BC(playerNo);
     mbAudFXPlay(W02_PATH_TRANSFER_SOUND_ID);
-    omVibrate(playerNo, 20, 7, 3);
+    fn_8006A030(playerNo, 20, 7, 3);
     mbObjPosSetV(work->markerEffectModels[1], &end);
     mbObjMotionTimeSet(work->markerEffectModels[1], 0.0f);
     arrivalShell[0] = work->markerEffectModels[1];
-    mbObjAttrSet(arrivalShell[0], HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(arrivalShell[0], ((1 << 30) | (1 << 0)));
     mbObjLayerSet(work->markerEffectModels[1], 3);
     mbObjDispSet(work->markerEffectModels[1], 1);
     for (frame = 1; frame < 30.0f; frame++) {
@@ -4516,10 +4517,11 @@ void fn_1_8C9C(int playerNo, int spaceId) {
     marker = &work->markers[markerIndex];
     mbMasuPosGet(destinationSpace, &start);
     mbMasuPosGet(marker->linkedSpace, &end);
-    GwPlayer[playerNo].masuIdNext = marker->linkedSpace;
+    lbl_80265750[playerNo].masuIdNext = marker->linkedSpace;
     PSVECSubtract(&end, &start, &position);
-    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(position.x, position.z) / M_PI), 0.0f);
-    mbPlayerMotionShiftSet(playerNo, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerRotSet(playerNo, 0.0f, 180.0 * (atan2(position.x, position.z) / 3.141592653589793),
+        0.0f);
+    mbPlayerMotionShiftSet(playerNo, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     for (frame = 0; frame < 30.0f; frame++) {
         progress = (float) frame / 30.0f;
         position.x = start.x + progress * (end.x - start.x);
@@ -4528,14 +4530,14 @@ void fn_1_8C9C(int playerNo, int spaceId) {
         mbPlayerPosSetV(playerNo, &position);
         HuPrcVSleep();
     }
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbPlayerRotateStart(playerNo, 0, 15);
     while (!mbPlayerRotateCheck(playerNo)) {
         HuPrcVSleep();
     }
     /* This transfer completes without re-enabling the player's collision snapping disabled
      * earlier. */
-    GwPlayer[playerNo].masuId = marker->linkedSpace;
+    lbl_80265750[playerNo].masuId = marker->linkedSpace;
 }
 
 /* Finds the index of a stored Garage space entry by its space ID, or returns -1 when absent. */
@@ -4587,7 +4589,7 @@ void fn_1_A554(s32 playerNo) {
 
     work = lbl_1_bss_8;
     modelObject = mbPlayerObjIDGet(playerNo);
-    model = &Hu3DData[mbObjModelIDGet(modelObject)];
+    model = &lbl_802C01C8[mbObjModelIDGet(modelObject)];
     modelData = model->hsf;
     material = modelData->material;
     /* The color-buffer pointer is fetched but is not used by this material effect. */
@@ -4596,7 +4598,7 @@ void fn_1_A554(s32 playerNo) {
     work->restorePlayer = playerNo;
     if (modelData->materialNum != 0) {
         materialSize = modelData->materialNum * sizeof(HSF_MATERIAL);
-        materialAllocation = HuMemDirectMallocNum(HEAP_HEAP, materialSize, HU_MEMNUM_OVL);
+        materialAllocation = HuMemDirectMallocNum(HEAP_HEAP, materialSize, 0x10000000);
         materialBackup = materialAllocation;
         work->materialBackup = materialBackup;
         memcpy(work->materialBackup, modelData->material,
@@ -4604,7 +4606,7 @@ void fn_1_A554(s32 playerNo) {
     }
     if (modelData->paletteNum != 0) {
         paletteSize = modelData->paletteNum * sizeof(HSF_PALETTE);
-        paletteAllocation = HuMemDirectMallocNum(HEAP_HEAP, paletteSize, HU_MEMNUM_OVL);
+        paletteAllocation = HuMemDirectMallocNum(HEAP_HEAP, paletteSize, 0x10000000);
         paletteBackup = paletteAllocation;
         work->paletteBackup = paletteBackup;
         memcpy(work->paletteBackup, modelData->palette,
@@ -4612,7 +4614,7 @@ void fn_1_A554(s32 playerNo) {
     }
     if (modelData->objectNum != 0) {
         objectSize = modelData->objectNum * sizeof(s32);
-        objectAllocation = HuMemDirectMallocNum(HEAP_HEAP, objectSize, HU_MEMNUM_OVL);
+        objectAllocation = HuMemDirectMallocNum(HEAP_HEAP, objectSize, 0x10000000);
         objectBackup = objectAllocation;
         work->objectData = objectBackup;
         cursor = modelData->object;
@@ -4625,7 +4627,7 @@ void fn_1_A554(s32 playerNo) {
             }
         }
     }
-    if (GwPlayer[playerNo].charNo != 5) {
+    if (lbl_80265750[playerNo].charNo != 5) {
         mbObjAlphaSet(modelObject, 127);
     } else {
         mbObjAlphaSet(modelObject, 192);
@@ -4662,7 +4664,7 @@ void fn_1_A7BC(s32 playerNo) {
 
     work = lbl_1_bss_8;
     modelObject = mbPlayerObjIDGet(playerNo);
-    model = &Hu3DData[mbObjModelIDGet(modelObject)];
+    model = &lbl_802C01C8[mbObjModelIDGet(modelObject)];
     modelData = model->hsf;
     if (work->restorePlayer == playerNo) {
         if (modelData->materialNum != 0) {
@@ -4691,7 +4693,7 @@ void fn_1_A7BC(s32 playerNo) {
             HuMemDirectFree(objectData);
         }
         mbObjAttrSet(modelObject, 2);
-        mbObjAttrReset(modelObject, HU3D_ATTR_TPLVL_SET | HU3D_ATTR_MOT_EXEC);
+        mbObjAttrReset(modelObject, (1 << 18) | (1 << 11));
         work->restorePlayer = -1;
     }
 }
@@ -4706,12 +4708,12 @@ void fn_1_A914(void) {
 
     work = lbl_1_bss_8;
     for (index = 0; index < 3; index++) {
-        dataNum = DATANUM(DATA_w02, 29);
+        dataNum = DATANUM(0xd90000, 29);
         dataNum = FILENUM(dataNum);
-        if (!GwSystem.curTime) {
-            dataNum |= DATA_w02;
+        if (!lbl_80265B70.curTime) {
+            dataNum |= 0xd90000;
         } else {
-            dataNum |= DATA_w02n;
+            dataNum |= 0xda0000;
         }
         resource = dataNum;
         model = mbObjCreate(resource, NULL, TRUE);
@@ -4732,19 +4734,19 @@ void fn_1_AA04(s32 index) {
 
     work = lbl_1_bss_8;
     modelId = work->models[index];
-    readStatus = mbBGRead(DATA_capsulechar3);
+    readStatus = mbBGRead(0x100000);
     if (readStatus != -1) {
         mbBGReadWait(readStatus);
     }
-    motionData[0] = DATANUM(DATA_capsulechar3, 1);
-    motionData[1] = DATANUM(DATA_capsulechar3, 2);
-    motionData[2] = DATANUM(DATA_capsulechar3, 4);
-    motionData[3] = DATANUM(DATA_capsulechar3, 5);
+    motionData[0] = DATANUM(0x100000, 1);
+    motionData[1] = DATANUM(0x100000, 2);
+    motionData[2] = DATANUM(0x100000, 4);
+    motionData[3] = DATANUM(0x100000, 5);
     motionData[4] = -1;
-    work->attachedModel = mbObjCreate(DATANUM(DATA_capsulechar3, 0), motionData, FALSE);
-    mbObjMotionSet(work->attachedModel, 1, HU3D_MOTATTR_LOOP);
+    work->attachedModel = mbObjCreate(DATANUM(0x100000, 0), motionData, FALSE);
+    mbObjMotionSet(work->attachedModel, 1, ((1 << 30) | (1 << 0)));
     mbObjLayerSet(work->attachedModel, 3);
-    HuDataDirClose(DATA_capsulechar3);
+    fn_800097F4(0x100000);
     mbObjHookSet(modelId, "oyhook", work->attachedModel);
     mbObjMotionTimeSet(modelId, 0.0f);
     mbObjMotionSpeedSet(modelId, 1.0f);
@@ -4769,7 +4771,7 @@ void fn_1_AB78(s32 index) {
     do {
         HuPrcVSleep();
     } while (!mbObjMotionEndCheck(work->attachedModel));
-    mbObjMotionShiftSet(work->attachedModel, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet(work->attachedModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
 }
 
 /* Reverses the indexed Garage effect model, then removes its hooked attachment when it reaches the
@@ -4831,13 +4833,13 @@ void fn_1_AD84(void) {
     mbMasuPosGet(secondSpace, &secondPosition);
     PSVECSubtract(&firstPosition, &secondPosition, &delta);
     work->linkedSpaceBaseModel = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 36)), NULL, FALSE);
+        BoardModelDataNum(DATANUM(0xd90000, 36)), NULL, FALSE);
     mbObjPosSetV(modelId, &secondPosition);
     mbObjRotSet(modelId, 0.0f,
                 180.0 * (atan2(delta.x, delta.z) / 3.141592653589793),
                 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    modelId = bodyModel = mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 37)), NULL, FALSE);
+    modelId = bodyModel = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 37)), NULL, FALSE);
     work->linkedSpaceBodyModel = modelId;
     mbObjPosSetV(modelId, &secondPosition);
     mbObjRotSet(modelId, 0.0f,
@@ -4845,16 +4847,16 @@ void fn_1_AD84(void) {
                 0.0f);
     mbObjMotionSpeedSet(modelId, 0.0f);
     work->eyeModel = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 38)), NULL, FALSE);
+        BoardModelDataNum(DATANUM(0xd90000, 38)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjHookSet(bodyModel, "OYeyehook", modelId);
     work->attachmentModel = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 39)), NULL, FALSE);
+        BoardModelDataNum(DATANUM(0xd90000, 39)), NULL, FALSE);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjHookSet(bodyModel, "OYhook", modelId);
     work->subAttachmentModel = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 41)), NULL, FALSE);
-            mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        BoardModelDataNum(DATANUM(0xd90000, 41)), NULL, FALSE);
+            mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjHookSet(work->attachmentModel, "tosakahook", modelId);
 }
 
@@ -4877,7 +4879,7 @@ void fn_1_B11C(s32 playerNo) {
         do {
             mbAudFXPlay(W02_STATION_CHOICE_SOUND_ID);
             mbWinCreateChoice(1, MESSNUM(MESS_BOARD_W02, 4), 14, 0);
-            if (GwPlayer[playerNo].comF) {
+            if (lbl_80265750[playerNo].comF) {
                 mbComChoiceLeftSet();
             }
             mbWinTopWait();
@@ -4889,7 +4891,7 @@ void fn_1_B11C(s32 playerNo) {
         if (choice == 1 || choice == -1) {
             mbAudFXPlay(W02_CAPSULE_CONFIRM_SOUND_ID);
             mbObjMotionShiftSet(work->attachedModel, 3, 0.0f,
-                                8.0f, HU3D_MOTATTR_LOOP);
+                                8.0f, ((1 << 30) | (1 << 0)));
             mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 7), 14);
             mbWinTopWait();
             fn_1_B570(playerNo, 16, 0);
@@ -4898,7 +4900,7 @@ void fn_1_B11C(s32 playerNo) {
             fn_1_B570(playerNo, 3, capsuleCount);
             mbAudFXPlay(W02_STATION_SELECTION_SOUND_ID);
             mbObjMotionShiftSet(work->attachedModel, 3, 0.0f,
-                                8.0f, HU3D_MOTATTR_LOOP);
+                                8.0f, ((1 << 30) | (1 << 0)));
             mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 6), 14);
             mbWinTopWait();
             fn_1_B570(playerNo, 16, 0);
@@ -4932,7 +4934,7 @@ void fn_1_B334(s32 playerNo) {
         do {
             mbAudFXPlay(W02_STATION_CHOICE_SOUND_ID);
         mbWinCreateChoice(1, MESSNUM(MESS_BOARD_W02, 9), 14, 0);
-            if (GwPlayer[playerNo].comF) {
+            if (lbl_80265750[playerNo].comF) {
                 mbComChoiceLeftSet();
             }
             mbWinTopWait();
@@ -4944,7 +4946,7 @@ void fn_1_B334(s32 playerNo) {
         if (choice == 1 || choice == -1) {
             mbAudFXPlay(W02_CAPSULE_CONFIRM_SOUND_ID);
             mbObjMotionShiftSet(work->attachedModel, 3, 0.0f,
-                            8.0f, HU3D_MOTATTR_LOOP);
+                            8.0f, ((1 << 30) | (1 << 0)));
             mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 12), 14);
             mbWinTopWait();
             fn_1_B570(playerNo, 16, 0);
@@ -4953,7 +4955,7 @@ void fn_1_B334(s32 playerNo) {
             fn_1_B570(playerNo, 4, totalPrice);
             mbAudFXPlay(W02_STATION_SELECTION_SOUND_ID);
             mbObjMotionShiftSet(work->attachedModel, 3, 0.0f,
-                            8.0f, HU3D_MOTATTR_LOOP);
+                            8.0f, ((1 << 30) | (1 << 0)));
             mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 11), 14);
             mbWinTopWait();
             fn_1_B570(playerNo, 16, 0);
@@ -5011,7 +5013,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
 
     work = lbl_1_bss_8;
     list = NULL;
-    playerSpace = GwPlayer[playerNo].masuId;
+    playerSpace = lbl_80265750[playerNo].masuId;
     stationSpace = mbMasuAttrFindLink((s16) playerSpace, W02_STATION_LINK_ATTR_FLAG);
     exitSpace = mbMasuAttrFindLink(stationSpace, W02_STATION_LINK_ATTR_FLAG);
     mbMasuPosGet((s16) playerSpace, &playerStart);
@@ -5035,24 +5037,26 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         mbPlayerColSnapPlayerSet(playerNo, 0);
         mbPlayerPosSetV(playerNo, &stationPosition);
         mbPlayerRotSet(playerNo, 0.0f,
-                       (f32) (180.0 * (atan2((f64) direction.x, (f64) direction.z) / M_PI)), 0.0f);
+                       (f32) (180.0 * (atan2((f64) direction.x,
+                           (f64) direction.z) / 3.141592653589793)), 0.0f);
         position.x = -30.0f;
-        position.y = (f32) (180.0 + (180.0 * (atan2((f64) direction.x, (f64) direction.z) / M_PI)));
+        position.y = (f32) (180.0 + (180.0 * (atan2((f64) direction.x,
+            (f64) direction.z) / 3.141592653589793)));
         if (position.y > 180.0f) {
             position.y -= 360.0f;
         }
         position.z = 0.0f;
         mbCameraMovePlayer(playerNo, &position, &lbl_1_data_B08, 1900.0f, -1.0f, -1);
         mbCameraMoveWait();
-        motionData[0] = DATANUM(DATA_capsulechar3, 1);
-        motionData[1] = DATANUM(DATA_capsulechar3, 3);
-        motionData[2] = DATANUM(DATA_capsulechar3, 4);
-        motionData[3] = DATANUM(DATA_capsulechar3, 5);
+        motionData[0] = DATANUM(0x100000, 1);
+        motionData[1] = DATANUM(0x100000, 3);
+        motionData[2] = DATANUM(0x100000, 4);
+        motionData[3] = DATANUM(0x100000, 5);
         motionData[4] = -1;
-        work->stationModel = mbObjCreate(DATANUM(DATA_capsulechar3, 0), motionData, 0);
-        mbObjMotionSet((s16) work->stationModel, 2, HU3D_MOTATTR_LOOP);
+        work->stationModel = mbObjCreate(DATANUM(0x100000, 0), motionData, 0);
+        mbObjMotionSet((s16) work->stationModel, 2, ((1 << 30) | (1 << 0)));
         mbObjLayerSet((s16) work->stationModel, 3U);
-        HuDataDirClose(DATA_capsulechar3);
+        fn_800097F4(0x100000);
         mbObjHookSet((s16) work->liftBodyModel, "oyamahook", (s16) work->stationModel);
         mbObjMotionTimeSet((s16) work->liftBodyModel, 0.0f);
         mbObjDispSet((s16) work->liftBaseModel, 1);
@@ -5068,12 +5072,14 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
             mbPlayerPosGet(playerNo, &position);
             PSVECAdd(&position, &lbl_1_data_B14, &position);
             position.y = (f32) ((f64) position.y +
-                                (900.0 - (900.0 * sin((M_PI * (f64) (90.0f * progress)) / 180.0))));
+                                (900.0
+                                    - (900.0 * sin((3.141592653589793 * (f64) (90.0f
+                                    * progress)) / 180.0))));
             mbObjPosSetV((s16) work->liftBaseModel, &position);
             HuPrcVSleep();
         }
         mbObjMotionSpeedSet((s16) work->liftBodyModel, 0.0f);
-        mbObjMotionShiftSet((s16) work->stationModel, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbObjMotionShiftSet((s16) work->stationModel, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         return;
     case 1:
         model = work->machineModels[0];
@@ -5084,7 +5090,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         mbObjMotionSpeedSet((s16) model, 1.0f);
         return;
     case 2:
-        mbObjMotionShiftSet((s16) work->stationModel, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbObjMotionShiftSet((s16) work->stationModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         model = work->capsuleGateModel;
         mbObjMotionTimeSet((s16) model, 0.0f);
         mbObjMotionSpeedSet((s16) model, 1.0f);
@@ -5106,13 +5112,14 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
                 position.y =
                     (f32) ((f64) (stationPosition.y +
                                   (progress * (exitPosition.y - stationPosition.y))) +
-                           4.0 * (100.0 * sin((M_PI * (f64) (180.0f * progress)) / 180.0)));
+                           4.0 * (100.0 * sin((3.141592653589793 * (f64) (180.0f
+                               * progress)) / 180.0)));
                 mbCapObjColorPosSetV(capsuleModel, &position);
                 HuPrcVSleep();
             }
             mbCapObjColorKill(capsuleModel);
             mbAudFXPlay(W02_CAPSULE_DROP_SOUND_ID);
-            omVibrate((s16) playerNo, 20, 4, 4);
+            fn_8006A030((s16) playerNo, 20, 4, 4);
         }
         model = work->capsuleGateModel;
         mbObjMotionSpeedSet((s16) model, 1.0f);
@@ -5123,17 +5130,19 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         mbAudFXPlay(W02_MECHANISM_SOUND_ID);
         for (index = 0; (f32) index < 60.0f; index++) {
             for (step = 0; step < 2; step++) {
-                Hu3DModelObjMtxGet(mbObjModelIDGet((s16) work->machineModels[1]),
+                fn_80023398(mbObjModelIDGet((s16) work->machineModels[1]),
                                    lbl_1_data_B34[step], matrix);
                 effectPosition.x = matrix[0][3];
                 effectPosition.y = matrix[1][3];
                 effectPosition.z = matrix[2][3];
                 effectVelocity.x =
-                    (f32) ((100.0 * (0.1f * sin((M_PI * (f64) lbl_1_data_B3C[step]) / 180.0))) +
+                    (f32) ((100.0 * (0.1f * sin((3.141592653589793
+                        * (f64) lbl_1_data_B3C[step]) / 180.0))) +
                            (0.01f + (0.05f * (-0.5f + (3.7252903e-9f *
                                                        (f32) mbRandMod(W02_RANDOM_MODULUS_U))))));
                 effectVelocity.z =
-                    (f32) ((100.0 * (0.1f * cos((M_PI * (f64) lbl_1_data_B3C[step]) / 180.0))) +
+                    (f32) ((100.0 * (0.1f * cos((3.141592653589793
+                        * (f64) lbl_1_data_B3C[step]) / 180.0))) +
                            (0.01f + (0.05f * (-0.5f + (3.7252903e-9f *
                                                        (f32) mbRandMod(W02_RANDOM_MODULUS_U))))));
                 effectVelocity.y =
@@ -5165,7 +5174,8 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
             HuPrcVSleep();
         }
         mbObjMotionShiftSet((s16) work->stationModel, 2,
-                            mbObjMotionTimeGet((s16) work->liftBodyModel), 8.0f, HU3D_MOTATTR_LOOP);
+                            mbObjMotionTimeGet((s16) work->liftBodyModel), 8.0f,
+                                ((1 << 30) | (1 << 0)));
         while (mbObjMotionShiftIDGet((s16) work->stationModel) != -1) {
             HuPrcVSleep();
         }
@@ -5184,7 +5194,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         motionLoops[0] = 2;
         motionLoops[1] = 1;
         motionLoops[2] = 8;
-        omVibrate((s16) playerNo, 300, 4, 4);
+        fn_8006A030((s16) playerNo, 300, 4, 4);
         do {
             for (index = 0; index < 3; index++) {
                 model = work->machineModels[index];
@@ -5210,21 +5220,23 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
             mbAudFXStop(sound);
         }
         mbObjMotionSpeedSet((s16) work->liftBodyModel, 0.0f);
-        mbObjMotionShiftSet((s16) work->stationModel, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbObjMotionShiftSet((s16) work->stationModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbAudFXPlay(W02_MECHANISM_SOUND_ID);
         for (index = 0; (f32) index < 60.0f; index++) {
             for (step = 0; step < 2; step++) {
-                Hu3DModelObjMtxGet(mbObjModelIDGet((s16) work->machineModels[1]),
+                fn_80023398(mbObjModelIDGet((s16) work->machineModels[1]),
                                    lbl_1_data_B34[step], matrix);
                 effectPosition.x = matrix[0][3];
                 effectPosition.y = matrix[1][3];
                 effectPosition.z = matrix[2][3];
                 effectVelocity.x =
-                    (f32) ((100.0 * (0.1f * sin((M_PI * (f64) lbl_1_data_B3C[step]) / 180.0))) +
+                    (f32) ((100.0 * (0.1f * sin((3.141592653589793
+                        * (f64) lbl_1_data_B3C[step]) / 180.0))) +
                            (0.01f + (0.05f * (-0.5f + (3.7252903e-9f *
                                                        (f32) mbRandMod(W02_RANDOM_MODULUS_U))))));
                 effectVelocity.z =
-                    (f32) ((100.0 * (0.1f * cos((M_PI * (f64) lbl_1_data_B3C[step]) / 180.0))) +
+                    (f32) ((100.0 * (0.1f * cos((3.141592653589793
+                        * (f64) lbl_1_data_B3C[step]) / 180.0))) +
                            (0.01f + (0.05f * (-0.5f + (3.7252903e-9f *
                                                        (f32) mbRandMod(W02_RANDOM_MODULUS_U))))));
                 effectVelocity.y =
@@ -5258,7 +5270,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         return;
     case 3:
         exitPosition.y += 50.0f;
-        allocation = HuMemDirectMallocNum(HEAP_HEAP, 528, HU_MEMNUM_OVL);
+        allocation = HuMemDirectMallocNum(HEAP_HEAP, 528, 0x10000000);
         list = allocation;
         capsuleCount = mbCapListCopy(list);
         for (index = 0; index < rewardCount; index++) {
@@ -5278,7 +5290,8 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
                 position.x = exitPosition.x + (progress * (bend.x - exitPosition.x));
                 position.y =
                     (f32) ((f64) (exitPosition.y + (progress * (bend.y - exitPosition.y))) +
-                           1.5 * (100.0 * sin((M_PI * (f64) (180.0f * progress)) / 180.0)));
+                           1.5 * (100.0 * sin((3.141592653589793 * (f64) (180.0f
+                               * progress)) / 180.0)));
                 position.z = exitPosition.z + (progress * (bend.z - exitPosition.z));
                 mbCapObjColorPosSetV(capsuleModel, &position);
                 HuPrcVSleep();
@@ -5287,7 +5300,8 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
                 progress = (f32) step / 30.0f;
                 position.x = bend.x + (progress * (stationPosition.x - bend.x));
                 position.y = (f32) ((f64) (bend.y + (progress * (stationPosition.y - bend.y))) +
-                                    100.0 * sin((M_PI * (f64) (180.0f * progress)) / 180.0));
+                                    100.0 * sin((3.141592653589793 * (f64) (180.0f
+                                        * progress)) / 180.0));
                 position.z = bend.z + (progress * (stationPosition.z - bend.z));
                 mbCapObjColorPosSetV(capsuleModel, &position);
                 HuPrcVSleep();
@@ -5297,7 +5311,8 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         HuMemDirectFree(list);
         mbPlayerRotateStart(
             playerNo,
-            (s16) (180.0 + (180.0 * (atan2((f64) direction.x, (f64) direction.z) / M_PI))), 15);
+            (s16) (180.0 + (180.0 * (atan2((f64) direction.x,
+                (f64) direction.z) / 3.141592653589793))), 15);
         while (mbPlayerRotateCheck(playerNo) == 0) {
             HuPrcVSleep();
         }
@@ -5310,7 +5325,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
             mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 5), -1);
             mbWinTopInsertMesSet(mbCapUseMesGet(capsules[index]), 0);
             mbWinTopWait();
-            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         }
         return;
     case 4:
@@ -5327,7 +5342,8 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         fn_1_DCF0();
         mbPlayerRotateStart(
             playerNo,
-            (s16) (180.0 + (180.0 * (atan2((f64) direction.x, (f64) direction.z) / M_PI))), 15);
+            (s16) (180.0 + (180.0 * (atan2((f64) direction.x,
+                (f64) direction.z) / 3.141592653589793))), 15);
         while (mbPlayerRotateCheck(playerNo) == 0) {
             HuPrcVSleep();
         }
@@ -5335,7 +5351,7 @@ void fn_1_B570(s32 playerNo, s32 action, s32 rewardCount) {
         mbev_CapCoinDisp(playerNo, rewardCount, 1, 1);
         return;
     case 16:
-        mbObjMotionShiftSet((s16) work->stationModel, 4, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbObjMotionShiftSet((s16) work->stationModel, 4, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbAudFXPlay(W02_LIFT_MOVE_SOUND_ID);
         for (index = 1; (f32) index <= 60.0f; index++) {
             progress = (f32) index / 60.0f;
@@ -5374,8 +5390,8 @@ void fn_1_D410(void) {
     EventModelEntry *allocation;
 
     work = lbl_1_bss_8;
-    work->entryObject = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_D8EC);
-    allocation = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventModelEntry) * 64, HU_MEMNUM_OVL);
+    work->entryObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_D8EC);
+    allocation = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventModelEntry) * 64, 0x10000000);
     work->entryData = allocation;
     entry = allocation;
     memset(work->entryData, 0, sizeof(EventModelEntry) * 64);
@@ -5404,7 +5420,7 @@ s32 fn_1_D4D0(HuVecF *start, HuVecF *end) {
     if (index >= 64) {
         return -1;
     }
-    modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_board, 4)), NULL, TRUE);
+    modelId = mbObjCreate(mbBoardDataNumGet(DATANUM(0x50000, 4)), NULL, TRUE);
     entry->modelId = modelId;
     entry->entryIndex = index;
     entry->flightStage = 0;
@@ -5551,37 +5567,37 @@ void fn_1_DD5C(void) {
     s32 primaryModel;
 
     work = lbl_1_bss_8;
-    primaryModel = mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 30)), NULL, FALSE);
+    primaryModel = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 30)), NULL, FALSE);
     work->positionModel = primaryModel;
     modelId = primaryModel;
-            mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+            mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjPosSetV(modelId, &lbl_1_data_B94);
     work->hookedModel = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 31)), NULL, FALSE);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+        BoardModelDataNum(DATANUM(0xd90000, 31)), NULL, FALSE);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjMotionSpeedSet(modelId, 0.5f);
     mbObjHookSet(primaryModel, "fanhook", modelId);
     work->displayModels[0] = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 32)), NULL, TRUE);
+        BoardModelDataNum(DATANUM(0xd90000, 32)), NULL, TRUE);
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
     work->displayModels[1] = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 33)), NULL, TRUE);
+        BoardModelDataNum(DATANUM(0xd90000, 33)), NULL, TRUE);
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
     work->displayModels[2] = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 34)), NULL, TRUE);
+        BoardModelDataNum(DATANUM(0xd90000, 34)), NULL, TRUE);
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
     work->displayModels[3] = modelId = mbObjCreate(
-        BoardModelDataNum(DATANUM(DATA_w02, 35)), NULL, TRUE);
+        BoardModelDataNum(DATANUM(0xd90000, 35)), NULL, TRUE);
     mbObjLayerSet(modelId, 3);
     mbObjDispSet(modelId, FALSE);
     {
         s16 commonModel[1];
 
-        commonModel[0] = mbObjCreate(mbBoardDataNumGet(DATANUM(DATA_board, 4)), NULL, TRUE);
+        commonModel[0] = mbObjCreate(mbBoardDataNumGet(DATANUM(0x50000, 4)), NULL, TRUE);
         work->hiddenModel = modelId = commonModel[0];
         mbObjDispSet(modelId, FALSE);
     }
@@ -5625,7 +5641,7 @@ void fn_1_E074(s32 playerNo) {
 
     work = lbl_1_bss_8;
     finished = 0;
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     fn_1_10954();
     HuPrcSleep(2);
     fn_1_11904();
@@ -5635,9 +5651,9 @@ void fn_1_E074(s32 playerNo) {
     mbPlayerColSnapPlayerSet(playerNo, 0);
     /* This model lookup is retained even though its stored result is never read. */
     modelId = (int) mbObjModelIDGet((s16) work->modelId);
-    motionId = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mario, 217));
+    motionId = mbPlayerMotionCreate(playerNo, DATANUM(0x8e0000, 217));
     HuPrcSleep(2);
-    cameraModel = mbObjCreate(DATANUM(DATA_capsule, 33), NULL, 0);
+    cameraModel = mbObjCreate(DATANUM(0xc0000, 33), NULL, 0);
     mbObjDispSet(cameraModel, 0);
     mbPlayerPosGet(playerNo, &start);
     start.x -= 400.0f;
@@ -5648,16 +5664,16 @@ void fn_1_E074(s32 playerNo) {
     while (mbPlayerRotateCheck(playerNo) == 0) {
         HuPrcVSleep();
     }
-    if ((readStatus = mbBGRead(DATA_capsulechar3)) != -1) {
+    if ((readStatus = mbBGRead(0x100000)) != -1) {
         mbBGReadWait(readStatus);
     }
     HuPrcSleep(2);
-    motionData[0] = DATANUM(DATA_capsulechar3, 1);
-    motionData[1] = DATANUM(DATA_capsulechar3, 3);
-    motionData[2] = DATANUM(DATA_capsulechar3, 4);
-    motionData[3] = DATANUM(DATA_capsulechar3, 5);
+    motionData[0] = DATANUM(0x100000, 1);
+    motionData[1] = DATANUM(0x100000, 3);
+    motionData[2] = DATANUM(0x100000, 4);
+    motionData[3] = DATANUM(0x100000, 5);
     motionData[4] = -1;
-    work->attachedModel = (int) mbObjCreate(DATANUM(DATA_capsulechar3, 0), NULL, 0);
+    work->attachedModel = (int) mbObjCreate(DATANUM(0x100000, 0), NULL, 0);
     mbObjLayerSet((s16) work->attachedModel, 3U);
     mbObjDispSet((s16) work->attachedModel, 0);
     HuPrcSleep(2);
@@ -5666,8 +5682,8 @@ void fn_1_E074(s32 playerNo) {
         HuPrcSleep(2);
     }
     mbObjDispSet((s16) work->attachedModel, 1);
-    mbObjMotionSet((s16) work->attachedModel, 2, HU3D_MOTATTR_LOOP);
-    HuDataDirClose(DATA_capsulechar3);
+    mbObjMotionSet((s16) work->attachedModel, 2, ((1 << 30) | (1 << 0)));
+    fn_800097F4(0x100000);
     mbObjHookSet((s16) work->liftObjectId, "oyama2hook", (s16) work->attachedModel);
     mbObjMotionTimeSet((s16) work->liftObjectId, 0.0f);
     mbObjDispSet((s16) work->leverObjectId, 1);
@@ -5681,16 +5697,16 @@ void fn_1_E074(s32 playerNo) {
         progress = index / 60.0f;
         mbPlayerPosGet(playerNo, &position);
         PSVECAdd(&position, &lbl_1_data_BA8, &position);
-        position.y += (600.0 - (600.0 * HuSin(90.0f * progress)));
+        position.y += (600.0 - (600.0 * sin(3.141592653589793*(90.0f * progress)/180.0)));
         mbObjPosSetV((s16) work->leverObjectId, &position);
         HuPrcVSleep();
     }
     mbObjMotionSpeedSet((s16) work->liftObjectId, 0.0f);
-    mbObjMotionShiftSet((s16) work->attachedModel, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet((s16) work->attachedModel, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     do {
         mbAudFXPlay(W02_STATION_CHOICE_SOUND_ID);
         mbWinCreateChoice(1, MESSNUM(MESS_BOARD_W02, 15), 14, 0);
-        if (GwPlayer[playerNo].comF != 0) {
+        if (lbl_80265750[playerNo].comF != 0) {
             mbComChoiceRightSet();
         }
         mbWinTopWait();
@@ -5716,7 +5732,7 @@ void fn_1_E074(s32 playerNo) {
         position.y = 0.0f;
         position.z = 0.0f;
         mbCameraMoveObj(cameraModel, &cameraRotation, &position, 2700.0f, -1.0f, 21);
-        mbObjMotionShiftSet((s16) work->attachedModel, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbObjMotionShiftSet((s16) work->attachedModel, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbPlayerPosGet(playerNo, &start);
         mbObjMotionSpeedSet((s16) work->characterObjectId, 1.0f);
         while (mbObjMotionEndCheck((s16) work->characterObjectId) == 0) {
@@ -5725,21 +5741,22 @@ void fn_1_E074(s32 playerNo) {
         fn_1_FF6C(&destination);
         PSVECSubtract(&destination, &start, &direction);
         mbPlayerMotionSet(playerNo, 4, 0U);
-        mbPlayerRotSet(playerNo, 0.0f, HuAtan(direction.x, direction.z), 0.0f);
+        mbPlayerRotSet(playerNo, 0.0f, (180.0*(atan2(direction.x,
+            direction.z) / 3.141592653589793)), 0.0f);
         for (index = 1; (f32) index <= 30.0f; index++) {
             progress = index / 30.0f;
             fn_1_FF6C(&destination);
             position.x = start.x + (progress * (destination.x - start.x));
             position.y = (f32) ((f64) (start.y + (progress * (destination.y - start.y))) +
-                                (2.0 * (100.0 * HuSin(180.0f * progress))));
+                                (2.0 * (100.0 * sin(3.141592653589793*(180.0f * progress)/180.0))));
             position.z = start.z + (progress * (destination.z - start.z));
             mbPlayerPosSetV(playerNo, &position);
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbObjMotionShiftSet((s16) work->attachedModel, 2,
                             mbObjMotionTimeGet((s16) work->motionReferenceModel), 8.0f,
-                            HU3D_MOTATTR_LOOP);
+                            ((1 << 30) | (1 << 0)));
         while (mbObjMotionShiftIDGet((s16) work->attachedModel) != -1) {
             HuPrcVSleep();
         }
@@ -5748,9 +5765,9 @@ void fn_1_E074(s32 playerNo) {
         mbAudFXPlay(W02_LIFT_MOVE_SOUND_ID);
         for (index = 1; (f32) index <= 60.0f; index++) {
             progress = index / 60.0f;
-            mbMasuPosGet(GwPlayer[playerNo].masuId, &position);
+            mbMasuPosGet(lbl_80265750[playerNo].masuId, &position);
             PSVECAdd(&position, &lbl_1_data_BA8, &position);
-            position.y += (600.0 * HuSin(90.0f * (progress * progress)));
+            position.y += (600.0 * sin(3.141592653589793*(90.0f * (progress * progress))/180.0));
             mbObjPosSetV((s16) work->leverObjectId, &position);
             fn_1_FF6C(&position);
             mbPlayerPosSetV(playerNo, &position);
@@ -5760,28 +5777,31 @@ void fn_1_E074(s32 playerNo) {
         fn_1_FEB4(&firstHook, &secondHook);
         PSVECSubtract(&secondHook, &firstHook, &direction);
         PSVECSubtract(&firstHook, &start, &approach);
-        mbPlayerRotSet(playerNo, 0.0f, HuAtan(approach.x, approach.z), 0.0f);
+        mbPlayerRotSet(playerNo, 0.0f, (180.0*(atan2(approach.x, approach.z) / 3.141592653589793)),
+            0.0f);
         mbPlayerMotionSet(playerNo, 4, 0U);
         for (index = 1; (f32) index <= 30.0f; index++) {
             progress = index / 30.0f;
             position.x = start.x + (progress * (firstHook.x - start.x));
             position.y = (f32) ((f64) (start.y + (progress * (firstHook.y - start.y))) +
-                                (2.0 * (100.0 * HuSin(180.0f * progress))));
+                                (2.0 * (100.0 * sin(3.141592653589793*(180.0f * progress)/180.0))));
             position.z = start.z + (progress * (firstHook.z - start.z));
             mbPlayerPosSetV(playerNo, &position);
             HuPrcVSleep();
         }
-        mbPlayerRotateStart(playerNo, (s16) (HuAtan(direction.x, direction.z)), 15);
+        mbPlayerRotateStart(playerNo, (s16) ((180.0*(atan2(direction.x,
+            direction.z) / 3.141592653589793))), 15);
         while (mbPlayerRotateCheck(playerNo) == 0) {
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionShiftSet(playerNo, motionId, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbAudFXPlay(W02_LIFT_MOVE_SOUND_ID);
         for (index = 1; (f32) index <= 30.0f; index++) {
             progress = index / 30.0f;
-            mbMasuPosGet(GwPlayer[playerNo].masuId, &position);
+            mbMasuPosGet(lbl_80265750[playerNo].masuId, &position);
             PSVECAdd(&position, &lbl_1_data_BA8, &position);
-            position.y += (600.0 + (600.0 * HuSin(90.0f * (progress * progress))));
+            position.y += (600.0
+                + (600.0 * sin(3.141592653589793*(90.0f * (progress * progress))/180.0)));
             mbObjPosSetV((s16) work->leverObjectId, &position);
             HuPrcVSleep();
         }
@@ -5793,25 +5813,25 @@ void fn_1_E074(s32 playerNo) {
         machineSound = mbAudFXPlay(W02_MACHINE_STOP_SOUND_ID);
         mbObjMotionSpeedSet((s16) work->modelId, 1.0f);
         activeModel = (s16) work->modelId;
-        mbObjAttrSet(activeModel, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(activeModel, ((1 << 30) | (1 << 0)));
         mbObjMotionSpeedSet((s16) work->hookedModel, 2.0f);
         activeHookedModel = (s16) work->hookedModel;
-        mbObjAttrSet(activeHookedModel, HU3D_MOTATTR_LOOP);
+        mbObjAttrSet(activeHookedModel, ((1 << 30) | (1 << 0)));
         work->eventPlayerNo = playerNo;
         work->emissionFrame = 0;
         work->eventTimer = 1;
         work->opponentPlayerNo = -1;
         work->eventStage = 0;
-        omAddObjEx(mbObjMan, -32768, 0U, 0U, -1, fn_1_10034);
+        fn_8003AB38(mbObjMan, -32768, 0U, 0U, -1, fn_1_10034);
         for (index = 0; index < 4; index++) {
             if (index != playerNo) {
                 fn_1_12AC8(index, &firstHook);
                 HuPrcVSleep();
             }
         }
-        omVibrate((s16) playerNo, 120, 4, 4);
+        fn_8006A030((s16) playerNo, 120, 4, 4);
         HuPrcSleep(120);
-        omVibrate((s16) playerNo, 180, 7, 3);
+        fn_8006A030((s16) playerNo, 180, 7, 3);
         HuPrcSleep(60);
         mbWipeDissolveFadeOutTime(1);
         for (index = 0; index < 4; index++) {
@@ -5825,13 +5845,13 @@ void fn_1_E074(s32 playerNo) {
                 mbCameraMoveWait();
                 work->opponentPlayerNo = index;
                 /* Later turn intervals increase the number of coin attempts. */
-                if (GwSystem.turnNo <= 10U) {
+                if (lbl_80265B70.turnNo <= 10U) {
                     remainingAttempts = mbRandMod(6U) + 5;
-                } else if (GwSystem.turnNo <= 20U) {
+                } else if (lbl_80265B70.turnNo <= 20U) {
                     remainingAttempts = mbRandMod(6U) + 10;
-                } else if (GwSystem.turnNo <= 30U) {
+                } else if (lbl_80265B70.turnNo <= 30U) {
                     remainingAttempts = mbRandMod(6U) + 15;
-                } else if (GwSystem.turnNo <= 40U) {
+                } else if (lbl_80265B70.turnNo <= 40U) {
                     remainingAttempts = mbRandMod(6U) + 20;
                 } else {
                     remainingAttempts = mbRandMod(6U) + 25;
@@ -5840,23 +5860,23 @@ void fn_1_E074(s32 playerNo) {
                     remainingAttempts = mbPlayerCoinGet(index);
                 }
                 mbWipeDissolveFadeIn();
-                omVibrate((s16) playerNo, 360, 7, 3);
-                omVibrate((s16) index, 360, 7, 3);
+                fn_8006A030((s16) playerNo, 360, 7, 3);
+                fn_8006A030((s16) index, 360, 7, 3);
                 HuPrcSleep(30);
-                CharFXPlay((s16) GwPlayer[index].charNo, W02_COIN_LOSS_EFFECT_ID);
+                CharFXPlay((s16) lbl_80265750[index].charNo, W02_COIN_LOSS_EFFECT_ID);
                 emptySoundPlayed = 0;
                 for (elapsed = 0; (f32) elapsed < 180.0f || remainingAttempts > 0; elapsed++) {
                     if (((elapsed & 3) == 0) && (remainingAttempts > 0)) {
                         resisted = 0;
-                        if (!GwPlayer[index].comF) {
-                            if (HuPadBtnDown[GwPlayer[index].padNo] & 0x100) {
+                        if (!lbl_80265750[index].comF) {
+                            if (lbl_802C0008[lbl_80265750[index].padNo] & 0x100) {
                                 resisted = 1;
                             } else {
                                 resisted = 0;
                             }
                         } else {
                             if ((100.0f * MBCapsuleEffRandF()) <
-                                (10.0f * (f32) ((GwPlayer[index].comDif * 2) + 1))) {
+                                (10.0f * (f32) ((lbl_80265750[index].comDif * 2) + 1))) {
                                 resisted = 1;
                             } else {
                                 resisted = 0;
@@ -5870,20 +5890,20 @@ void fn_1_E074(s32 playerNo) {
                             position.z += 0.5f * (100.0f * (-0.5f + MBCapsuleEffRandF()));
                             fn_1_126AC(&position, 1);
                             mbPlayerCoinAdd(index, -1);
-                            mbAudFXPlay(MSM_SE_CMN_15);
+                            mbAudFXPlay(14);
                             lostCoins[index]++;
                         }
                         /* A successful defense still consumes one attempt. */
                         remainingAttempts--;
                     }
                     if ((emptySoundPlayed == 0) && (remainingAttempts <= 0)) {
-                        mbAudFXPlay(MSM_SE_CMN_16);
+                        mbAudFXPlay(15);
                         emptySoundPlayed = 1;
                     }
                     HuPrcVSleep();
                 }
                 if (emptySoundPlayed == 0) {
-                    mbAudFXPlay(MSM_SE_CMN_16);
+                    mbAudFXPlay(15);
                     emptySoundPlayed = 1;
                 }
                 mbPlayerPosGet(index, &position);
@@ -5895,8 +5915,8 @@ void fn_1_E074(s32 playerNo) {
                     }
                 }
                 mbWipeDissolveFadeOutTime(1);
-                if (!GwPlayer[index].comF) {
-                    HuPadRumbleStop(GwPlayer[index].padNo);
+                if (!lbl_80265750[index].comF) {
+                    fn_80006ECC(lbl_80265750[index].padNo);
                 }
                 work->opponentPlayerNo = -1;
             }
@@ -5921,12 +5941,12 @@ void fn_1_E074(s32 playerNo) {
             fn_1_126AC(&position, 0);
         }
         mbWipeDissolveFadeIn();
-        omVibrate((s16) playerNo, 120, 7, 3);
+        fn_8006A030((s16) playerNo, 120, 7, 3);
         timer = 120;
         do {
             work->eventTimer = timer;
             if (timer == 0) {
-                omVibrate((s16) playerNo, 180, 4, 4);
+                fn_8006A030((s16) playerNo, 180, 4, 4);
             }
             if (timer < 0) {
                 work->eventStage = 1;
@@ -5939,7 +5959,7 @@ void fn_1_E074(s32 playerNo) {
             timer--;
             if ((timer <= 0) && (fn_1_117E8() <= 0) && (fn_1_129C0() <= 0)) {
                 endingModel = (s16) work->modelId;
-                mbObjAttrReset(endingModel, HU3D_MOTATTR_LOOP);
+                mbObjAttrReset(endingModel, ((1 << 30) | (1 << 0)));
                 mbObjMotionSpeedSet((s16) work->hookedModel, 1.0f);
                 if (mbObjMotionEndCheck((s16) work->modelId) != 0) {
                     mbObjMotionSpeedSet((s16) work->modelId, 0.0f);
@@ -5954,25 +5974,26 @@ void fn_1_E074(s32 playerNo) {
         }
         work->eventStage = 2;
         work->eventPlayerNo = -1;
-        mbMasuPosGet(GwPlayer[playerNo].masuId, &start);
+        mbMasuPosGet(lbl_80265750[playerNo].masuId, &start);
         fn_1_FEB4(&firstHook, &secondHook);
         /* The direction between the hooks is computed but is not used by the return sequence. */
         PSVECSubtract(&secondHook, &firstHook, &direction);
         PSVECSubtract(&firstHook, &start, &approach);
         mbPlayerMotionSet(playerNo, 4, 0U);
-        mbPlayerRotSet(playerNo, 0.0f, (f32) (HuAtan(-approach.x, -approach.z)), 0.0f);
+        mbPlayerRotSet(playerNo, 0.0f, (f32) ((180.0*(atan2((-approach.x),
+            (-approach.z)) / 3.141592653589793))), 0.0f);
         for (index = 1; (f32) index <= 30.0f; index++) {
             progress = index / 30.0f;
             position.x = firstHook.x + (progress * (start.x - firstHook.x));
             position.y = (f32) ((f64) (firstHook.y + (progress * (start.y - firstHook.y))) +
-                                (4.5 * (100.0 * HuSin(180.0f * progress))));
+                                (4.5 * (100.0 * sin(3.141592653589793*(180.0f * progress)/180.0))));
             position.z = firstHook.z + (progress * (start.z - firstHook.z));
             /* The player rotation is fetched here, but the returned vector is not used. */
             mbPlayerRotGet(playerNo, &cameraRotation);
             mbPlayerPosSetV(playerNo, &position);
             HuPrcVSleep();
         }
-        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbPlayerRotateStart(playerNo, 0, 15);
         while (mbPlayerRotateCheck(playerNo) == 0) {
             HuPrcVSleep();
@@ -5988,19 +6009,19 @@ void fn_1_E074(s32 playerNo) {
         mbAudFXPlay(W02_LIFT_SOUND_ID);
         for (index = 1; (f32) index <= 60.0f; index++) {
             progress = index / 60.0f;
-            mbMasuPosGet(GwPlayer[playerNo].masuId, &position);
+            mbMasuPosGet(lbl_80265750[playerNo].masuId, &position);
             PSVECAdd(&position, &lbl_1_data_BA8, &position);
-            position.y += (600.0 - (600.0 * HuSin(90.0f * progress)));
+            position.y += (600.0 - (600.0 * sin(3.141592653589793*(90.0f * progress)/180.0)));
             mbObjPosSetV((s16) work->leverObjectId, &position);
             HuPrcVSleep();
         }
         mbObjMotionSpeedSet((s16) work->liftObjectId, 0.0f);
-        mbObjMotionShiftSet((s16) work->attachedModel, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+        mbObjMotionShiftSet((s16) work->attachedModel, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
         mbAudFXPlay(W02_STATION_SELECTION_SOUND_ID);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 18), 14);
         mbWinTopWait();
     }
-    mbObjMotionShiftSet((s16) work->attachedModel, 4, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbObjMotionShiftSet((s16) work->attachedModel, 4, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     mbAudFXPlay(W02_LIFT_MOVE_SOUND_ID);
     for (index = 1; (f32) index <= 60.0f; index++) {
         progress = index / 60.0f;
@@ -6031,8 +6052,8 @@ void fn_1_FEB4(HuVecF *firstPosition, HuVecF *secondPosition) {
 
     work = lbl_1_bss_8;
     model = mbObjModelIDGet(work->modelId);
-    Hu3DModelObjMtxGet(model, "char1hook", firstMatrix);
-    Hu3DModelObjMtxGet(model, "char2hook", secondMatrix);
+    fn_80023398(model, "char1hook", firstMatrix);
+    fn_80023398(model, "char2hook", secondMatrix);
     firstPosition->x = firstMatrix[0][3];
     firstPosition->y = firstMatrix[1][3];
     firstPosition->z = firstMatrix[2][3];
@@ -6049,9 +6070,9 @@ void fn_1_FF6C(HuVecF *position) {
     BoardModels *work;
 
     work = lbl_1_bss_8;
-    Hu3DModelObjMtxGet(mbObjModelIDGet(work->leverObjectId), "lever2hook", leverMatrix);
-    Hu3DModelObjMtxGet(mbObjModelIDGet(work->liftObjectId), "lifthook", liftMatrix);
-    Hu3DModelObjMtxGet(mbObjModelIDGet(work->characterObjectId), "fanchrhook", characterMatrix);
+    fn_80023398(mbObjModelIDGet(work->leverObjectId), "lever2hook", leverMatrix);
+    fn_80023398(mbObjModelIDGet(work->liftObjectId), "lifthook", liftMatrix);
+    fn_80023398(mbObjModelIDGet(work->characterObjectId), "fanchrhook", characterMatrix);
     PSMTXConcat(leverMatrix, liftMatrix, leverMatrix);
     PSMTXConcat(leverMatrix, characterMatrix, leverMatrix);
     position->x = leverMatrix[0][3];
@@ -6092,8 +6113,8 @@ void fn_1_100A8(s32 playerNo, s32 emissionState, s32 targetPlayer) {
     frame = work->emissionFrame;
     modelWork = lbl_1_bss_8;
     modelId = mbObjModelIDGet(modelWork->positionModel);
-    Hu3DModelObjMtxGet(modelId, "char1hook", startMatrix);
-    Hu3DModelObjMtxGet(modelId, "char2hook", endMatrix);
+    fn_80023398(modelId, "char1hook", startMatrix);
+    fn_80023398(modelId, "char2hook", endMatrix);
     start.x = startMatrix[0][3];
     start.y = startMatrix[1][3];
     start.z = startMatrix[2][3];
@@ -6103,8 +6124,8 @@ void fn_1_100A8(s32 playerNo, s32 emissionState, s32 targetPlayer) {
     PSVECSubtract(&end, &start, &direction);
     horizontalLength = sqrtf(direction.x * direction.x + direction.z * direction.z);
     mbPlayerPosSetV(playerNo, &start);
-    mbPlayerRotSet(playerNo, 180.0 * (atan2(-direction.y, horizontalLength) / M_PI),
-        180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+    mbPlayerRotSet(playerNo, 180.0 * (atan2(-direction.y, horizontalLength) / 3.141592653589793),
+        180.0 * (atan2(direction.x, direction.z) / 3.141592653589793), 0.0f);
     work->flightOrigin = start;
     work->flightOrigin.y -= 300.0f;
     work->flightDestination = end;
@@ -6157,10 +6178,10 @@ void fn_1_100A8(s32 playerNo, s32 emissionState, s32 targetPlayer) {
     work->emissionFrame++;
 }
 s32 lbl_1_data_BE0[12] = {
-    DATANUM(DATA_w02, 35), DATANUM(DATA_w02, 32), DATANUM(DATA_w02, 35),
-    DATANUM(DATA_w02, 32), DATANUM(DATA_w02, 35), DATANUM(DATA_w02, 33),
-    DATANUM(DATA_w02, 35), DATANUM(DATA_w02, 34), DATANUM(DATA_w02, 35),
-    DATANUM(DATA_w02, 35), DATANUM(DATA_w02, 32), DATANUM(DATA_w02, 33)
+    DATANUM(0xd90000, 35), DATANUM(0xd90000, 32), DATANUM(0xd90000, 35),
+    DATANUM(0xd90000, 32), DATANUM(0xd90000, 35), DATANUM(0xd90000, 33),
+    DATANUM(0xd90000, 35), DATANUM(0xd90000, 34), DATANUM(0xd90000, 35),
+    DATANUM(0xd90000, 35), DATANUM(0xd90000, 32), DATANUM(0xd90000, 33)
 };
 
 /* Builds 32 hidden flight models, yielding after each pair before enabling updates. */
@@ -6173,19 +6194,19 @@ void fn_1_10954(void) {
     EventFlyingEffect *models;
 
     work = lbl_1_bss_8;
-    work->modelObject = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_1119C);
+    work->modelObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_1119C);
     work->models = models = HuMemDirectMallocNum(HEAP_HEAP,
-                                                sizeof(EventFlyingEffect) * 32, HU_MEMNUM_OVL);
+                                                sizeof(EventFlyingEffect) * 32, 0x10000000);
     effect = models;
     memset(work->models, 0, sizeof(EventFlyingEffect) * 32);
     work->modelsEnabled = FALSE;
     for (index = 0; index < 32; index++, effect++) {
         dataNum = lbl_1_data_BE0[index % 12];
         dataNum = FILENUM(dataNum);
-        if (!GwSystem.curTime) {
-            dataNum |= DATA_w02;
+        if (!lbl_80265B70.curTime) {
+            dataNum |= 0xd90000;
         } else {
-            dataNum |= DATA_w02n;
+            dataNum |= 0xda0000;
         }
         resource = dataNum;
         effect->objectId = mbObjCreate(resource, NULL, TRUE);
@@ -6236,7 +6257,7 @@ s32 fn_1_10AC0(HuVecF *position, s32 shortFlight) {
     mbObjDispSet(effect->objectId, TRUE);
     effect->active = TRUE;
     modelId = effect->objectId;
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     effect->state = index;
     effect->rotation.x = 180.0f *
         (W02_RANDOM_FRACTION_SCALE * (f32) (u32) mbRandMod(W02_RANDOM_MODULUS));
@@ -6364,7 +6385,7 @@ void fn_1_112B4(EventFlyingEffect *effect) {
         effect->spinAngle -= 360.0f;
     }
     PSVECSubtract(&destination, &origin, &direction);
-    mtxRot(rotation, 0.0f,
+    fn_80022E38(rotation, 0.0f,
            180.0 * (atan2(direction.x, direction.z) / 3.141592653589793),
            0.0f);
     offset.x = (1.0f - 0.9f * progress) *
@@ -6453,8 +6474,8 @@ void fn_1_11904(void) {
     void *data;
 
     work = lbl_1_bss_8;
-    work->effectObject = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_11A54);
-    data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventSpriteEffect) * 256, HU_MEMNUM_OVL);
+    work->effectObject = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_11A54);
+    data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventSpriteEffect) * 256, 0x10000000);
     work->effects = data;
     effect = data;
     memset(work->effects, 0, sizeof(EventSpriteEffect) * 256);
@@ -6466,8 +6487,8 @@ void fn_1_11904(void) {
     work->effectModel = fn_1_15E30(work->effectAnimation, 768);
     fn_1_16E44(work->effectModel, lbl_1_data_C10, NULL);
     fn_1_16E84(work->effectModel, 3, 3, 1);
-    Hu3DModelLayerSet(work->effectModel, 5);
-    model = &Hu3DData[work->effectModel];
+    fn_80026B8C(work->effectModel, 5);
+    model = &lbl_802C01C8[work->effectModel];
     hook = model->hookData;
     hook->flags |= 0x2C;
 }
@@ -6498,7 +6519,7 @@ void fn_1_11A54(OMOBJ *object) {
         return;
     }
     flight = work->effects;
-    model = &Hu3DData[work->effectModel];
+    model = &lbl_802C01C8[work->effectModel];
     hook = model->hookData;
     particle = hook->particles;
     previousPosition.x = previousPosition.y = previousPosition.z = 0.0f;
@@ -6534,8 +6555,10 @@ void fn_1_11A54(OMOBJ *object) {
                             &particle->position);
                         particle->value = length;
                         length = sqrtf(direction.x * direction.x + direction.z * direction.z);
-                        particle->rotation.x = 180.0 * (atan2(-direction.y, length) / M_PI);
-                        particle->rotation.y = 180.0 * (atan2(direction.x, direction.z) / M_PI);
+                        particle->rotation.x = 180.0 * (atan2(-direction.y,
+                            length) / 3.141592653589793);
+                        particle->rotation.y = 180.0 * (atan2(direction.x,
+                            direction.z) / 3.141592653589793);
                         particle->rotation.z = 0.0f;
                         particle->color.a = (float) alpha * work->effectScale;
                     } else {
@@ -6558,7 +6581,7 @@ void fn_1_11A54(OMOBJ *object) {
 void fn_1_12030(void) {
     BoardModels *work = lbl_1_bss_8;
     if (work->effectModel >= 0) {
-        Hu3DModelKill((s16)work->effectModel);
+        fn_800262D0((s16)work->effectModel);
     }
     work->effectModel = -1;
     if (work->effects != NULL) {
@@ -6584,7 +6607,7 @@ void fn_1_120B4(HuVecF *position, s32 shortFlight) {
 
     work = lbl_1_bss_8;
     flight = work->effects;
-    model = &Hu3DData[work->effectModel];
+    model = &lbl_802C01C8[work->effectModel];
     hook = model->hookData;
     particle = hook->particles;
     for (effectIndex = 0; effectIndex < 256; effectIndex++, flight++, particle += 3) {
@@ -6613,8 +6636,8 @@ void fn_1_120B4(HuVecF *position, s32 shortFlight) {
         particle->alphaStep = 8;
         PSVECSubtract(&work->origin, position, &direction);
         horizontalLength = sqrtf(direction.x * direction.x + direction.z * direction.z);
-        particle->rotation.x = 180.0 * (atan2(-direction.y, horizontalLength) / M_PI);
-        particle->rotation.y = 180.0 * (atan2(direction.x, direction.z) / M_PI);
+        particle->rotation.x = 180.0 * (atan2(-direction.y, horizontalLength) / 3.141592653589793);
+        particle->rotation.y = 180.0 * (atan2(direction.x, direction.z) / 3.141592653589793);
         particle->rotation.z = 0.0f;
         copy = particle + 1;
         for (copyIndex = 1; copyIndex < 3; copyIndex++, copy++) {
@@ -6637,8 +6660,8 @@ void fn_1_125C0(void) {
 
     work = lbl_1_bss_8;
     work->coinObject =
-        omAddObjEx(mbObjMan, -32768, 0U, 0U, -1, fn_1_128A8);
-    coinAllocation = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventFlyingEffect) * 32, HU_MEMNUM_OVL);
+        fn_8003AB38(mbObjMan, -32768, 0U, 0U, -1, fn_1_128A8);
+    coinAllocation = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventFlyingEffect) * 32, 0x10000000);
     work->coins = coinAllocation;
     coinEntry = coinAllocation;
     memset(work->coins, 0, sizeof(EventFlyingEffect) * 32);
@@ -6765,12 +6788,12 @@ OMOBJ *fn_1_12AC8(s32 playerNo, HuVecF *eventPosition) {
     PlayerMove *work;
     OMOBJ *object;
 
-    object = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_12CB8);
-    work = object->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(PlayerMove), HU_MEMNUM_OVL);
+    object = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_12CB8);
+    work = object->data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(PlayerMove), 0x10000000);
     memset(work, 0, sizeof(PlayerMove));
     work->playerNo = playerNo;
     /* The original space is saved here, but this movement's updater never reads it. */
-    work->spaceId = GwPlayer[playerNo].masuId;
+    work->spaceId = lbl_80265750[playerNo].masuId;
     work->state = 0;
     work->timer = 0;
     work->returnFrames = 0;
@@ -6784,9 +6807,9 @@ OMOBJ *fn_1_12AC8(s32 playerNo, HuVecF *eventPosition) {
     }
     PSVECScale(&direction, &direction, work->moveDistance);
     PSVECAdd(&work->start, &direction, &work->destination);
-    work->motions[0] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 35));
-    work->motions[1] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 18));
-    work->motions[2] = mbPlayerMotionCreate(playerNo, DATANUM(DATA_mariomot, 19));
+    work->motions[0] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 35));
+    work->motions[1] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 18));
+    work->motions[2] = mbPlayerMotionCreate(playerNo, DATANUM(0x930000, 19));
     mbPlayerColSnapPlayerSet(work->playerNo, 0);
     return object;
 }
@@ -6816,7 +6839,7 @@ void fn_1_12CB8(OMOBJ *object) {
         position.z = move->start.z + progress * (move->destination.z - move->start.z);
         mbPlayerPosSetV(move->playerNo, &position);
         if (move->timer >= 90) {
-            mbPlayerMotionShiftSet(move->playerNo, 3, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            mbPlayerMotionShiftSet(move->playerNo, 3, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             move->state++;
             move->returnFrames = 0;
         }
@@ -6831,12 +6854,12 @@ void fn_1_12CB8(OMOBJ *object) {
         mbPlayerPosSetV(move->playerNo, &position);
         mbPlayerRotGet(move->playerNo, &rotation);
         PSVECSubtract(&move->start, &move->destination, &position);
-        rotation.y = mbev_CapAngleLerp(180.0 * (atan2(position.x, position.z) / M_PI),
+        rotation.y = mbev_CapAngleLerp(180.0 * (atan2(position.x, position.z) / 3.141592653589793),
             rotation.y, 5.0f);
         mbPlayerRotSetV(move->playerNo, &rotation);
         if (move->timer >= 180) {
             mbPlayerMotionShiftSet(move->playerNo, move->motions[0], 0.0f, 8.0f,
-                HU3D_MOTATTR_LOOP);
+                ((1 << 30) | (1 << 0)));
             move->state++;
             move->returnFrames = 0;
         }
@@ -6885,7 +6908,7 @@ void fn_1_12CB8(OMOBJ *object) {
     case 5:
         if (mbPlayerMotionEndCheck(move->playerNo)) {
             mbPlayerRotateStart(move->playerNo, 0, 15);
-            mbPlayerMotionShiftSet(move->playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+            mbPlayerMotionShiftSet(move->playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
             move->state++;
             move->timer = 0;
             move->returnFrames = 0;
@@ -6913,16 +6936,16 @@ void fn_1_135B0(void) {
     BoardModels *work;
 
     work = lbl_1_bss_8;
-    modelId = mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 55)), NULL, FALSE);
+    modelId = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 55)), NULL, FALSE);
     work->parentModel = modelId;
     mbObjLayerSet(modelId, 3);
     mbObjMotionSpeedSet(modelId, 0.0f);
     mbObjLayerSet(modelId, 3);
-    modelId = mbObjCreate(BoardModelDataNum(DATANUM(DATA_w02, 56)), NULL, FALSE);
+    modelId = mbObjCreate(BoardModelDataNum(DATANUM(0xd90000, 56)), NULL, FALSE);
     work->pairedModel = modelId;
     mbObjLayerSet(modelId, 3);
     mbObjMotionSpeedSet(modelId, 0.0f);
-    mbObjAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    mbObjAttrSet(modelId, ((1 << 30) | (1 << 0)));
     mbObjHookSet(work->parentModel, "cpmac", modelId);
     mbObjDispSet(modelId, FALSE);
 }
@@ -6990,45 +7013,45 @@ void fn_1_13708(int playerNo, int spaceId) {
     float turnAngle;
 
     work = lbl_1_bss_8;
-    allocatedShots = HuMemDirectMallocNum(HEAP_HEAP, 380, HU_MEMNUM_OVL);
+    allocatedShots = HuMemDirectMallocNum(HEAP_HEAP, 380, 0x10000000);
     shot = work->shots = allocatedShots;
     memset(shot, 0, 380);
     work->shotIndex = work->shotCount = 0;
-    costs = lbl_1_data_C64[GwPlayer[playerNo].rank];
+    costs = lbl_1_data_C64[lbl_80265750[playerNo].rank];
     originalSpace = spaceId;
     nextSpace = mbMasuAttrFindLink(originalSpace, W02_STATION_LINK_ATTR_FLAG);
     exitSpace = mbMasuAttrFindLink(nextSpace, W02_STATION_LINK_ATTR_FLAG);
     mbMasuPosGet(originalSpace, &playerStart);
     mbMasuPosGet(nextSpace, &stationPosition);
-    if ((readStatus = mbBGRead(DATA_capsulechar3)) != -1) {
+    if ((readStatus = mbBGRead(0x100000)) != -1) {
         mbBGReadWait(readStatus);
     }
-    motionData[0] = DATANUM(DATA_capsulechar3, 1);
-    motionData[1] = DATANUM(DATA_capsulechar3, 3);
-    motionData[2] = DATANUM(DATA_capsulechar3, 4);
-    motionData[3] = DATANUM(DATA_capsulechar3, 5);
+    motionData[0] = DATANUM(0x100000, 1);
+    motionData[1] = DATANUM(0x100000, 3);
+    motionData[2] = DATANUM(0x100000, 4);
+    motionData[3] = DATANUM(0x100000, 5);
     motionData[4] = -1;
-    work->stationModel = mbObjCreate(DATANUM(DATA_capsulechar3, 0), motionData, 0);
+    work->stationModel = mbObjCreate(DATANUM(0x100000, 0), motionData, 0);
     mbObjLayerSet(work->stationModel, 3);
     HuPrcVSleep();
-    mbObjMotionSet(work->stationModel, 1, HU3D_MOTATTR_LOOP);
+    mbObjMotionSet(work->stationModel, 1, ((1 << 30) | (1 << 0)));
     mbMasuPosGet(exitSpace, &position);
     mbObjPosSetV(work->stationModel, &position);
     mbObjRotSet(work->stationModel, 0.0f, -180.0f, 0.0f);
-    HuDataDirClose(DATA_capsulechar3);
+    fn_800097F4(0x100000);
     PSVECSubtract(&stationPosition, &playerStart, &direction);
     mbPlayerMotionSet(playerNo, 4, 0);
     mbPlayerRotSet(playerNo, 0.0f,
-        180.0 * (atan2(direction.x, direction.z) / M_PI), 0.0f);
+        180.0 * (atan2(direction.x, direction.z) / 3.141592653589793), 0.0f);
     for (index = 1; (float) index <= 30.0f; index++) {
         progress = (float) index / 30.0f;
         mbev_CapVecChase(progress, &playerStart, &stationPosition, &position);
-        position.y += 2.0 * (100.0 * sin((M_PI * (180.0f * progress)) / 180.0));
+        position.y += 2.0 * (100.0 * sin((3.141592653589793 * (180.0f * progress)) / 180.0));
         mbPlayerPosSetV(playerNo, &position);
         HuPrcVSleep();
     }
     mbPlayerPosSetV(playerNo, &stationPosition);
-    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, HU3D_MOTATTR_LOOP);
+    mbPlayerMotionShiftSet(playerNo, 1, 0.0f, 8.0f, ((1 << 30) | (1 << 0)));
     position.x = 0.0f;
     position.y = 100.0f;
     position.z = -300.0f;
@@ -7087,7 +7110,7 @@ void fn_1_13708(int playerNo, int spaceId) {
                 sprintf(costText[4], "%2d", costs[4]);
                 mbWinTopInsertMesSet((u32) costText[4], 5);
             }
-            if (GwPlayer[playerNo].comF) {
+            if (lbl_80265750[playerNo].comF) {
                 budget.coins = mbPlayerCoinGet(playerNo);
                 if (mbMasuFind_TypeStepGet(spaceId, 7) <= 10) {
                     budget.coins -= 20;
@@ -7121,9 +7144,9 @@ void fn_1_13708(int playerNo, int spaceId) {
             mbWinTopWait();
         } else {
             mbCoinAddDispExec(playerNo, -costs[choice], 1, 1);
-            allocatedDestinations = HuMemDirectMallocNum(HEAP_HEAP, 512, HU_MEMNUM_OVL);
+            allocatedDestinations = HuMemDirectMallocNum(HEAP_HEAP, 512, 0x10000000);
             destinations = allocatedDestinations;
-            allocatedOccupiedSpaces = HuMemDirectMallocNum(HEAP_HEAP, 512, HU_MEMNUM_OVL);
+            allocatedOccupiedSpaces = HuMemDirectMallocNum(HEAP_HEAP, 512, 0x10000000);
             occupiedSpaces = allocatedOccupiedSpaces;
             memset(destinations, 0, 512);
             memset(occupiedSpaces, 0, 512);
@@ -7211,7 +7234,7 @@ void fn_1_13708(int playerNo, int spaceId) {
                 capsules[firstIndex] = capsules[randomIndex];
                 capsules[randomIndex] = selectionValue;
             }
-            object = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_14F9C);
+            object = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_14F9C);
             object->work[0] = object->work[1] = object->work[2] = object->work[3] = 0;
             mbAudFXPlay(W02_STATION_EXIT_SOUND_ID);
     mbWinCreate(2, MESSNUM(MESS_BOARD_W02, 23), 14);
@@ -7225,19 +7248,19 @@ void fn_1_13708(int playerNo, int spaceId) {
             mbObjMotionSpeedSet(work->cannonModel, 1.0f);
             mbObjHookSet(work->cannonModel, "cpoyhook", work->stationModel);
             mbObjMotionTimeSet(work->cannonModel, 0.0f);
-            mbObjMotionSet(work->stationModel, 2, HU3D_MOTATTR_LOOP);
+            mbObjMotionSet(work->stationModel, 2, ((1 << 30) | (1 << 0)));
             mbObjMotionTimeSet(work->stationModel, 0.0f);
             mbObjPosSet(work->stationModel, 0.0f, 0.0f, 0.0f);
             mbObjRotSet(work->stationModel, 0.0f, 0.0f, 0.0f);
             /* The camera is saved on the stack, but the returned stack index is not used here. */
             cameraStack = mbCameraStackPush();
-    cameraModel = mbObjCreate(DATANUM(DATA_capsule, 68), NULL, 0);
+    cameraModel = mbObjCreate(DATANUM(0xc0000, 68), NULL, 0);
             mbObjDispSet(cameraModel, 0);
             mbObjPosSetV(cameraModel, &lbl_1_data_CB4);
             mbCameraMoveObj(cameraModel, &lbl_1_data_CC0, NULL, 3145.0f, -1.0f, -1);
             mbCameraMoveWait();
             mbWipeSpecialFadeOutCreate(1, 60);
-            omVibrate(playerNo, 90, 4, 4);
+            fn_8006A030(playerNo, 90, 4, 4);
             mbAudFXPlay(W02_CANNON_READY_SOUND_ID);
             mbObjMotionTimeSet(work->launchBaseModel, 0.0f);
             mbObjMotionSpeedSet(work->launchBaseModel, 1.0f);
@@ -7252,7 +7275,7 @@ void fn_1_13708(int playerNo, int spaceId) {
             work->shotsStopped = FALSE;
             for (index = 0, shot = work->shots; index < work->shotCount; index++, shot++) {
                 PSVECSubtract(&shot->end, &shot->start, &position);
-                targetAngle = 180.0 * (atan2(position.x, position.z) / M_PI);
+                targetAngle = 180.0 * (atan2(position.x, position.z) / 3.141592653589793);
                 turnAngle = fabs(mbev_CapAngleWrap(currentAngle, targetAngle));
                 turnFrames = turnAngle / 2.0f;
                 /* A cannon turn lasts at least 20 frames, even when the target angle is
@@ -7265,7 +7288,7 @@ void fn_1_13708(int playerNo, int spaceId) {
                 }
                 for (selectionValue = 1; selectionValue <= turnFrames; selectionValue++) {
                     progress = (float) selectionValue / (float) turnFrames;
-                    progress = (float) sin((M_PI * (90.0f * progress)) / 180.0);
+                    progress = (float) sin((3.141592653589793 * (90.0f * progress)) / 180.0);
                     turnAngle = mbev_CapAngleSumLerp(progress, currentAngle, targetAngle);
                     mbObjRotSet(work->cannonModel, 0.0f, turnAngle, 0.0f);
                     HuPrcVSleep();
@@ -7275,11 +7298,11 @@ void fn_1_13708(int playerNo, int spaceId) {
                 if (turnFrames > 1) {
                     mbAudFXPlay(W02_CANNON_TURN_END_SOUND_ID);
                 }
-                Hu3DModelObjMtxGet(mbObjModelIDGet(work->launchBaseModel), "cpmac",
+                fn_80023398(mbObjModelIDGet(work->launchBaseModel), "cpmac",
                     parentMatrix);
-                Hu3DModelObjMtxGet(mbObjModelIDGet(work->cannonModel), "cpcphook",
+                fn_80023398(mbObjModelIDGet(work->cannonModel), "cpcphook",
                     barrelStartMatrix);
-                Hu3DModelObjMtxGet(mbObjModelIDGet(work->cannonModel), "cp2hook",
+                fn_80023398(mbObjModelIDGet(work->cannonModel), "cp2hook",
                     barrelEndMatrix);
                 PSMTXConcat(parentMatrix, barrelStartMatrix, barrelStartMatrix);
                 PSMTXConcat(parentMatrix, barrelEndMatrix, barrelEndMatrix);
@@ -7302,12 +7325,12 @@ void fn_1_13708(int playerNo, int spaceId) {
                 fn_1_17894(origin, angles, 16);
                 mbCameraShakeSet(30, 100.0f);
                 mbAudFXPlay(W02_CANNON_FIRE_SOUND_ID);
-                omVibrate(playerNo, 20, 7, 3);
+                fn_8006A030(playerNo, 20, 7, 3);
                 shot->trailStart = position;
                 shot->trailEnd = position;
                 PSVECScale(&direction, &direction, 1000.0f);
                 PSVECAdd(&shot->trailEnd, &direction, &shot->trailEnd);
-                object = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_150F0);
+                object = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_150F0);
                 object->work[0] = object->work[2] = object->work[3] = 0;
                 object->work[1] = index;
                 HuPrcSleep(30);
@@ -7355,7 +7378,7 @@ void fn_1_13708(int playerNo, int spaceId) {
             mbMasuPosGet(exitSpace, &position);
             mbObjPosSetV(work->stationModel, &position);
             mbObjRotSet(work->stationModel, 0.0f, -180.0f, 0.0f);
-            mbObjMotionSet(work->stationModel, 3, HU3D_MOTATTR_LOOP);
+            mbObjMotionSet(work->stationModel, 3, ((1 << 30) | (1 << 0)));
             position.x = 0.0f;
             position.y = 100.0f;
             position.z = -300.0f;
@@ -7670,7 +7693,7 @@ s32 fn_1_15DE4(s32 spaceId) {
 
 /* Creates an initially inactive quad sprite pool and its indexed display list. */
 s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
-    HU3D_MODELID modelId = Hu3DHookFuncCreate(fn_1_16300);
+    HU3D_MODELID modelId = fn_800260F4(fn_1_16300);
     HuVecF *vertex;
     EventSpriteHook *hook;
     EventSpriteParticle *particle;
@@ -7680,8 +7703,8 @@ s16 fn_1_15E30(ANIMDATA *animation, s16 capacity) {
     u8 *buffer;
     u8 *displayList;
 
-    Hu3DModelCameraSet(modelId, HU3D_CAM0);
-    model = &Hu3DData[modelId];
+    fn_80026B64(modelId, (1 << 0));
+    model = &lbl_802C01C8[modelId];
     hook = SpriteAllocate(sizeof(EventSpriteHook), model->mallocNo);
     model->hookData = hook;
     hook->animation = animation;
@@ -7787,7 +7810,7 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
     void (*callback)(HU3D_MODEL *, SpriteRenderHook *, Mtx *);
 
     hook = model->hookData;
-    if (hook->lastDraw != GlobalCounter || shadowModelDrawF) {
+    if (hook->lastDraw != GlobalCounter || lbl_802C01B0) {
         if (hook->linkedModel && hook->linkedModel != model) {
             fn_1_16300(hook->linkedModel, matrix);
         }
@@ -7797,19 +7820,19 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
         GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, FALSE,
             GX_PTIDENTITY);
         GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
-        if (shadowModelDrawF) {
+        if (lbl_802C01B0) {
             GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ONE, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO);
             GXSetZMode(FALSE, GX_LEQUAL, FALSE);
         } else {
-            bitmapFormat = hook->animation->bmp->dataFmt & ANIM_BMP_FMTMASK;
-            if (bitmapFormat == ANIM_BMP_I8 || bitmapFormat == ANIM_BMP_I4) {
+            bitmapFormat = hook->animation->bmp->dataFmt & 0xF;
+            if (bitmapFormat == 7 || bitmapFormat == 8) {
                 GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ONE, GX_CC_RASC, GX_CC_ZERO);
             } else {
                 GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO);
             }
             if (hook->flags & 1) {
                 GXSetZMode(FALSE, GX_LEQUAL, FALSE);
-            } else if (model->attr & HU3D_ATTR_ZWRITE_OFF) {
+            } else if (model->attr & (1 << 1)) {
                 /* This renderer enables depth writes when the model carries this flag. */
                 GXSetZMode(TRUE, GX_LEQUAL, TRUE);
             } else {
@@ -7884,7 +7907,8 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
                 PSVECScale(&corners[1], &scaled[1], particle->size);
                 PSVECScale(&corners[2], &scaled[2], particle->size);
                 PSVECScale(&corners[3], &scaled[3], particle->size);
-                mtxRot(transform, particle->rotation.x, particle->rotation.y, particle->rotation.z);
+                fn_80022E38(transform, particle->rotation.x, particle->rotation.y,
+                    particle->rotation.z);
                 PSMTXMultVecArray(transform, scaled, rotated, 4);
                 PSVECAdd(&rotated[0], &particle->position, vertex++);
                 PSVECAdd(&rotated[1], &particle->position, vertex++);
@@ -7970,7 +7994,7 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
         GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
         GXSetArray(GX_VA_TEX0, hook->textureCoordinates, sizeof(HuVec2f));
         GXCallDisplayList(hook->displayList, hook->displayListSize);
-        if (!shadowModelDrawF) {
+        if (!lbl_802C01B0) {
             if (!(hook->animationFlags & 2)) {
                 hook->frame++;
             }
@@ -7988,7 +8012,7 @@ void fn_1_16300(HU3D_MODEL *model, Mtx *matrix) {
 
 /* Sets the quad corners and optional tile coordinates used by this sprite model. */
 void fn_1_16E44(s16 modelId, void *corners, void *tileCoordinates) {
-    HU3D_MODEL *model = &Hu3DData[modelId];
+    HU3D_MODEL *model = &lbl_802C01C8[modelId];
     SpriteRenderHook *hookData = model->hookData;
     hookData->corners = corners;
     hookData->tileCoordinates = tileCoordinates;
@@ -8015,9 +8039,9 @@ void fn_1_16E84(s16 modelId, s32 columns, s32 rows, s32 alternate) {
     tileCount = columns * rows;
     width = 1.0f / (float) columns;
     height = 1.0f / (float) rows;
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     hook = model->hookData;
-    coordinate = HuMemDirectMallocNum(HEAP_MODEL, sizeof(float) * (tileCount * 8),
+    coordinate = HuMemDirectMallocNum(2, sizeof(float) * (tileCount * 8),
                                       model->mallocNo);
     hook->tileCoordinates = coordinate;
     memset(coordinate, 0, sizeof(float) * (tileCount * 8));
@@ -8059,12 +8083,12 @@ void fn_1_172E8(s16 modelId) {
     SpriteRenderHook *hookData;
     HU3D_MODEL *model;
 
-    model = &Hu3DData[modelId];
+    model = &lbl_802C01C8[modelId];
     hookData = model->hookData;
     if (hookData->animation != NULL) {
         HuSprAnimKill(hookData->animation);
     }
-    Hu3DModelKill(modelId);
+    fn_800262D0(modelId);
 }
 
 /* Creates the layer-five sprite object with a four-by-four animation grid. */
@@ -8077,18 +8101,18 @@ void fn_1_1735C(void) {
     ANIMDATA *animation;
     void *data;
 
-    object = lbl_1_bss_C = omAddObjEx(mbObjMan, -32768, 0, 0, -1, fn_1_17474);
-    data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventSpriteObject), HU_MEMNUM_OVL);
+    object = lbl_1_bss_C = fn_8003AB38(mbObjMan, -32768, 0, 0, -1, fn_1_17474);
+    data = HuMemDirectMallocNum(HEAP_HEAP, sizeof(EventSpriteObject), 0x10000000);
     object->data = data;
     work = data;
     memset(work, 0, sizeof(EventSpriteObject));
-    animation = HuSprAnimRead(HuDataReadNum(DATANUM(DATA_capsule, 40), HU_MEMNUM_OVL));
+    animation = HuSprAnimRead(fn_80008634(DATANUM(0xc0000, 40), 0x10000000));
     work->animation = animation;
     work->modelId = modelId[0] = fn_1_15E30(animation, 512);
     fn_1_16E84(work->modelId, 4, 4, 0);
-    Hu3DModelLayerSet(work->modelId, 5);
+    fn_80026B8C(work->modelId, 5);
     work->state = 0;
-    model = &Hu3DData[work->modelId];
+    model = &lbl_802C01C8[work->modelId];
     hook = model->hookData;
     hook->blendMode = 0;
 }
@@ -8103,7 +8127,7 @@ void fn_1_17474(OMOBJ *object) {
 
     work = object->data;
     if (mbExitCheck() || lbl_1_bss_C == NULL) {
-        Hu3DModelKill(work->modelId);
+        fn_800262D0(work->modelId);
         work->modelId = -1;
         HuSprAnimKill(work->animation);
         work->animation = NULL;
@@ -8112,11 +8136,11 @@ void fn_1_17474(OMOBJ *object) {
         return;
     }
     if (work->state <= 0) {
-        Hu3DModelAttrSet(work->modelId, HU3D_ATTR_DISPOFF);
+        fn_800269E8(work->modelId, (1 << 0));
         return;
     }
-    Hu3DModelAttrReset(work->modelId, HU3D_ATTR_DISPOFF);
-    model = &Hu3DData[work->modelId];
+    fn_80026A44(work->modelId, (1 << 0));
+    model = &lbl_802C01C8[work->modelId];
     hook = model->hookData;
     particle = hook->particles;
     hook->updateFlags = 0;
@@ -8172,7 +8196,7 @@ s32 fn_1_176E4(HuVecF *position, HuVecF *velocity, float activityValue,
 
     object = lbl_1_bss_C;
     work = object->data;
-    model = &Hu3DData[work->modelId];
+    model = &lbl_802C01C8[work->modelId];
     hook = model->hookData;
     particle = hook->particles;
     for (index = 0; index < hook->particleCount; index++, particle++) {
@@ -8218,7 +8242,7 @@ void fn_1_17894(HuVecF *origin, HuVecF *angles, s32 count) {
     float sine;
     float cosine;
 
-    mtxRot(matrix, angles->x, angles->y, angles->z);
+    fn_80022E38(matrix, angles->x, angles->y, angles->z);
     for (particleIndex = 0; particleIndex < count; particleIndex++) {
         position.x = origin->x;
         position.y = origin->y;

@@ -139,7 +139,7 @@ s16 fn_1_7104(OMOBJ *poolItem, s16 cameraMask,
         return -1;
     }
 
-    model = &Hu3DData[modelIndex];
+    model = &lbl_802C01C8[modelIndex];
     particle = (HU3D_PARTICLE *) model->hookData;
     configWork = (M667ParticleConfigView *) particle->work;
     particleData = particle->data + particle->emitCnt;
@@ -179,7 +179,7 @@ s16 fn_1_7104(OMOBJ *poolItem, s16 cameraMask,
     }
 
     /* The model is raised to layer 1 even when no particle slot was available. */
-    Hu3DModelLayerSet(modelIndex, 1);
+    fn_80026B8C(modelIndex, 1);
     return result;
 }
 
@@ -247,7 +247,7 @@ void fn_1_7424(OMOBJ *object, M667ModelDescription *description)
             break;
         }
         if (entry->dataId >= 0) {
-            data = HuDataSelHeapReadNum(entry->dataId, HU_MEMNUM_OVL, HEAP_MODEL);
+            data = fn_80008DD0(entry->dataId, 0x10000000, 2);
             if (data == NULL) {
                 break;
             }
@@ -255,38 +255,38 @@ void fn_1_7424(OMOBJ *object, M667ModelDescription *description)
         switch (entry->kind) {
         case 0:
         case 2:
-            baseModelId = Hu3DModelCreate(data);
+            baseModelId = fn_80025A04(data);
             modelId = baseModelId;
             object->mdlId[modelCount++] = modelId;
             if (entry->kind == 2) {
-                Hu3DModelAttrSet(modelId, HU3D_ATTR_DISPOFF);
+                fn_800269E8(modelId, (1 << 0));
             }
             if (entry->count > 0) {
                 for (linkIndex = 0; linkIndex < entry->count - 1; linkIndex++) {
-                    modelId = Hu3DModelLink(baseModelId);
+                    modelId = fn_80025D4C(baseModelId);
                     object->mdlId[modelCount++] = modelId;
                     if (entry->kind == 2) {
-                        Hu3DModelAttrSet(modelId, HU3D_ATTR_DISPOFF);
+                        fn_800269E8(modelId, (1 << 0));
                     }
                 }
             }
             break;
         case 3:
-            motionId = Hu3DMotionCreate(data);
+            motionId = fn_8002C4C0(data);
             object->mtnId[motionCount++] = motionId;
-            modelId = Hu3DModelCameraCreate(motionId, 1);
+            modelId = fn_800283F4(motionId, 1);
             object->mdlId[modelCount++] = modelId;
-            Hu3DCameraMotionOff(modelId);
+            fn_8002858C(modelId);
             break;
         case 1:
             if (entry->modelIndex >= 0) {
                 modelId = object->mdlId[entry->modelIndex];
-                motionId = Hu3DJointMotion(modelId, data);
-                if (Hu3DData[modelId].motId < 0) {
-                    Hu3DMotionSet(modelId, motionId);
+                motionId = fn_80030458(modelId, data);
+                if (lbl_802C01C8[modelId].motId < 0) {
+                    fn_8002C95C(modelId, motionId);
                 }
                 if (entry->attr != 0) {
-                    Hu3DModelAttrSet(modelId, entry->attr);
+                    fn_800269E8(modelId, entry->attr);
                 }
                 object->mtnId[motionCount++] = motionId;
             }
@@ -336,19 +336,19 @@ void fn_1_7664(void *work)
         /* Readiness flags skip assignments to local creation values; later creation still uses
          * those locals without loading a saved alternative. */
         if ((description->flags & PARTICLE_DESCRIPTOR_ANIMATION_READY_FLAG) == 0) {
-            resource = HuDataSelHeapReadNum(description->resourceId, HU_MEMNUM_OVL, HEAP_MODEL);
+            resource = fn_80008DD0(description->resourceId, 0x10000000, 2);
             animation = (description->animation = HuSprAnimRead(resource));
             count = description->count;
             blendMode = description->blendMode;
         }
         if ((description->flags & PARTICLE_DESCRIPTOR_WORK_READY_FLAG) == 0) {
-            parameters = HuMemDirectMallocNum(HEAP_HEAP, count * 56, HU_MEMNUM_OVL);
+            parameters = HuMemDirectMallocNum(HEAP_HEAP, count * 56, 0x10000000);
             memset(parameters, 0, count * 56);
         }
-        description->modelId = Hu3DParticleCreate(animation, (s16)count);
-        Hu3DParticleBlendModeSet((s16)description->modelId, (u8)blendMode);
-        Hu3DParticleHookSet((s16)description->modelId, fn_1_6C88);
-        particle = Hu3DData[description->modelId].hookData;
+        description->modelId = fn_8003216C(animation, (s16)count);
+        fn_8003269C((s16)description->modelId, (u8)blendMode);
+        fn_800326D0((s16)description->modelId, fn_1_6C88);
+        particle = lbl_802C01C8[description->modelId].hookData;
         particle->emitCnt = 0;
         particle->work = parameters;
         particle->count = 1;
@@ -376,7 +376,7 @@ void fn_1_77D0(M667ParticleAnimEntry *entries)
         if (entry->resourceId < 0) {
             break;
         }
-        resourceData = HuDataSelHeapReadNum(entry->resourceId, HU_MEMNUM_OVL, HEAP_MODEL);
+        resourceData = fn_80008DD0(entry->resourceId, 0x10000000, 2);
         anim = entry->anim = HuSprAnimRead(resourceData);
         entry->anim = anim;
         index += 1;
@@ -393,8 +393,8 @@ OMOBJ *fn_1_7868(void *description)
     OMOBJ *object;
 
     fn_1_7350(description, &modelCount, &motionCount);
-    object = omAddObjEx(lbl_1_bss_0, 32730, modelCount, motionCount, -1, NULL);
-    object->stat |= OM_STAT_MODELPAUSE;
+    object = fn_8003AB38(lbl_1_bss_0, 32730, modelCount, motionCount, -1, NULL);
+    object->stat |= (1 << 8);
     fn_1_7424(object, description);
     return object;
 }
@@ -407,12 +407,12 @@ void fn_1_78F8(OMOBJ *object)
     if (object != NULL) {
         index = object->mdlcnt - 1;
         while (index >= 0) {
-            Hu3DModelKill(object->mdlId[index]);
+            fn_800262D0(object->mdlId[index]);
             index--;
         }
         index = 0;
         while (index < object->mtncnt) {
-            Hu3DMotionKill(object->mtnId[index]);
+            fn_8002C624(object->mtnId[index]);
             index++;
         }
         omDelObjEx(lbl_1_bss_0, object);
@@ -457,9 +457,9 @@ void fn_1_7A44(OMOBJ *object, s32 visible)
     index = 0;
     while (index < object->mdlcnt) {
         if (visible == 0) {
-            Hu3DModelAttrSet(object->mdlId[index], HU3D_ATTR_DISPOFF);
+            fn_800269E8(object->mdlId[index], (1 << 0));
         } else {
-            Hu3DModelAttrReset(object->mdlId[index], HU3D_ATTR_DISPOFF);
+            fn_80026A44(object->mdlId[index], (1 << 0));
         }
         index++;
     }
@@ -832,7 +832,7 @@ void fn_1_869C(Mtx output, s32 cameraMask)
     HuVecF cameraTarget;
     HuVecF cameraUp;
 
-    Hu3DCameraPosGet(cameraMask, &cameraPosition, &cameraUp, &cameraTarget);
+    fn_80027CD0(cameraMask, &cameraPosition, &cameraUp, &cameraTarget);
     position.x = cameraPosition.x;
     position.y = cameraPosition.y;
     position.z = cameraPosition.z;
@@ -899,8 +899,8 @@ s8 *fn_1_895C(s32 model)
     s16 materialIndex;
     HSF_MATERIAL *material;
 
-    modelData = &Hu3DData[model];
-    savedColors = HuMemDirectMallocNum(HEAP_HEAP, modelData->hsf->materialNum * 3, HU_MEMNUM_OVL);
+    modelData = &lbl_802C01C8[model];
+    savedColors = HuMemDirectMallocNum(HEAP_HEAP, modelData->hsf->materialNum * 3, 0x10000000);
     writeColor = savedColors;
     for (materialIndex = 0, material = modelData->hsf->material;
          materialIndex < modelData->hsf->materialNum; materialIndex++, material++) {
@@ -923,7 +923,7 @@ void fn_1_8A34(s32 model, s8 *colors)
     s16 materialIndex;
     HSF_MATERIAL *material;
 
-    modelData = &Hu3DData[model];
+    modelData = &lbl_802C01C8[model];
     readColor = colors;
     for (materialIndex = 0, material = modelData->hsf->material;
          materialIndex < modelData->hsf->materialNum; materialIndex++, material++) {
@@ -946,7 +946,7 @@ void fn_1_8AE4(s32 model, const s8 *colors, f32 redScale, f32 greenScale, f32 bl
     s16 materialIndex;
     HSF_MATERIAL *material;
 
-    modelData = &Hu3DData[model];
+    modelData = &lbl_802C01C8[model];
     savedColor = colors;
     for (materialIndex = 0, material = modelData->hsf->material;
          materialIndex < modelData->hsf->materialNum; materialIndex++, material++) {
@@ -968,13 +968,13 @@ void fn_1_8C30(s32 modelId, char *objectName, s32 targetModelId)
     HuVecF rotation;
     HuVecF scale;
 
-    Hu3DModelObjMtxGet(modelId, objectName, objectMtx);
+    fn_80023398(modelId, objectName, objectMtx);
     Hu3DMtxTransGet(objectMtx, &translation);
     Hu3DMtxRotGet(objectMtx, &rotation);
     Hu3DMtxScaleGet(objectMtx, &scale);
-    Hu3DModelPosSetV(targetModelId, &translation);
-    Hu3DModelRotSetV(targetModelId, &rotation);
-    Hu3DModelScaleSetV(targetModelId, &scale);
+    fn_80026790(targetModelId, &translation);
+    fn_80026838(targetModelId, &rotation);
+    fn_800268E0(targetModelId, &scale);
 }
 
 /* Entry landing, throwing, and impact sounds use screen X for pan and world Z for volume.

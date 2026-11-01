@@ -38,7 +38,7 @@ extern s32 fn_1_28C(Point3d firstPosition, Point3d *firstDirection,
 extern void fn_1_DBDC(s16 playerIndex);
 extern f32 fn_1_99A4(Point3d movingPosition, Point3d displacement,
                      f32 radius, u8 side);
-extern void omVibrate(s16 playerIndex, s16 duration, s16 strength, s16 count);
+extern void fn_8006A030(s16 playerIndex, s16 duration, s16 strength, s16 count);
 extern s32 HuAudFXPlay(s32 soundId);
 extern void fn_1_B4A8(void);
 extern s16 lbl_1_bss_0;
@@ -126,21 +126,21 @@ M613LightingData lbl_1_data_0 = {
 /* Called by the opening sequence to set lighting, board models, and glass bitmap state. */
 void fn_1_11F8(void) {
     s32 initialReferenceCount;
-    s16 lightMode = GwMgNightF;
+    s16 lightMode = lbl_802C0278;
     s16 nightMode = lightMode;
     HSF_DATA *modelData;
     s16 x;
     s16 y;
 
     if (nightMode == 0) {
-        lbl_1_data_0.dayLight = Hu3DGLightCreateV(&lbl_1_data_0.dayPosition,
+        lbl_1_data_0.dayLight = fn_800286D0(&lbl_1_data_0.dayPosition,
                                                   &lbl_1_data_0.dayDirection,
                                                   &lbl_1_data_0.dayColor);
         Hu3DGLightStaticSet(lbl_1_data_0.dayLight, 1);
         Hu3DGLightInfinitytSet(lbl_1_data_0.dayLight);
         lbl_1_data_0.nightLight = lbl_1_data_0.dayLight;
     } else {
-        lbl_1_data_0.nightLight = Hu3DGLightCreateV(&lbl_1_data_0.nightPosition,
+        lbl_1_data_0.nightLight = fn_800286D0(&lbl_1_data_0.nightPosition,
                                                     &lbl_1_data_0.nightDirection,
                                                     &lbl_1_data_0.nightColor);
         Hu3DGLightStaticSet(lbl_1_data_0.nightLight, 1);
@@ -149,32 +149,32 @@ void fn_1_11F8(void) {
     }
 
     if (nightMode == 0) {
-        lbl_1_bss_1C.modelIds[1] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 0), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-        lbl_1_bss_1C.modelIds[0] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 2), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-        lbl_1_bss_1C.modelIds[2] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 4), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
+        lbl_1_bss_1C.modelIds[1] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 0), M613_MODEL_DATA_GROUP_FLAG, 2));
+        lbl_1_bss_1C.modelIds[0] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 2), M613_MODEL_DATA_GROUP_FLAG, 2));
+        lbl_1_bss_1C.modelIds[2] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 4), M613_MODEL_DATA_GROUP_FLAG, 2));
     } else {
-        lbl_1_bss_1C.modelIds[1] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 1), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-        lbl_1_bss_1C.modelIds[0] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 3), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-        lbl_1_bss_1C.modelIds[2] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 5), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
+        lbl_1_bss_1C.modelIds[1] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 1), M613_MODEL_DATA_GROUP_FLAG, 2));
+        lbl_1_bss_1C.modelIds[0] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 3), M613_MODEL_DATA_GROUP_FLAG, 2));
+        lbl_1_bss_1C.modelIds[2] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 5), M613_MODEL_DATA_GROUP_FLAG, 2));
     }
 
-    Hu3DModelAttrSet(lbl_1_bss_1C.modelIds[0], HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(lbl_1_bss_1C.modelIds[1], HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(lbl_1_bss_1C.modelIds[2], HU3D_MOTATTR_LOOP);
-    Hu3DModelCameraSet(lbl_1_bss_1C.modelIds[0], 1);
-    Hu3DModelCameraSet(lbl_1_bss_1C.modelIds[1], 1);
-    Hu3DModelCameraSet(lbl_1_bss_1C.modelIds[2], 1);
-    Hu3DModelLayerSet(lbl_1_bss_1C.modelIds[0], 0);
-    Hu3DModelLayerSet(lbl_1_bss_1C.modelIds[1], 2);
-    Hu3DModelLayerSet(lbl_1_bss_1C.modelIds[2], 4);
+    fn_800269E8(lbl_1_bss_1C.modelIds[0], ((1 << 30) | (1 << 0)));
+    fn_800269E8(lbl_1_bss_1C.modelIds[1], ((1 << 30) | (1 << 0)));
+    fn_800269E8(lbl_1_bss_1C.modelIds[2], ((1 << 30) | (1 << 0)));
+    fn_80026B64(lbl_1_bss_1C.modelIds[0], 1);
+    fn_80026B64(lbl_1_bss_1C.modelIds[1], 1);
+    fn_80026B64(lbl_1_bss_1C.modelIds[2], 1);
+    fn_80026B8C(lbl_1_bss_1C.modelIds[0], 0);
+    fn_80026B8C(lbl_1_bss_1C.modelIds[1], 2);
+    fn_80026B8C(lbl_1_bss_1C.modelIds[2], 4);
     lbl_1_bss_1C.state = 0;
-    Hu3DModelShadowMapSet(lbl_1_bss_1C.modelIds[0]);
+    fn_80026FFC(lbl_1_bss_1C.modelIds[0]);
 
     initialReferenceCount = 655;
     for (x = 0; x < 10; x++) {
@@ -186,7 +186,7 @@ void fn_1_11F8(void) {
     lbl_1_bss_18 = NULL;
     lbl_1_bss_14 = NULL;
     lbl_1_bss_10 = NULL;
-    modelData = Hu3DData[lbl_1_bss_1C.modelIds[1]].hsf;
+    modelData = lbl_802C01C8[lbl_1_bss_1C.modelIds[1]].hsf;
     for (x = 0; x < modelData->attributeNum; x++) {
         HSF_BITMAP *bitmap = modelData->attribute[x].bitmap;
         if (nightMode == 0) {
@@ -261,30 +261,30 @@ void fn_1_1A7C(void) {
     s16 selectedNight;
     s16 nightFlag;
 
-    nightFlag = GwMgNightF;
+    nightFlag = lbl_802C0278;
     selectedNight = nightFlag;
 
-    Hu3DModelAttrSet(lbl_1_bss_1C.modelIds[0], 1);
-    Hu3DModelAttrSet(lbl_1_bss_1C.modelIds[2], 1);
-    Hu3DModelAttrSet(lbl_1_bss_1C.modelIds[1], 1);
+    fn_800269E8(lbl_1_bss_1C.modelIds[0], 1);
+    fn_800269E8(lbl_1_bss_1C.modelIds[2], 1);
+    fn_800269E8(lbl_1_bss_1C.modelIds[1], 1);
     if (selectedNight == 0) {
-        lbl_1_bss_1C.modelIds[3] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 6), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-        lbl_1_bss_1C.modelIds[4] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 8), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
+        lbl_1_bss_1C.modelIds[3] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 6), M613_MODEL_DATA_GROUP_FLAG, 2));
+        lbl_1_bss_1C.modelIds[4] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 8), M613_MODEL_DATA_GROUP_FLAG, 2));
     } else {
-        lbl_1_bss_1C.modelIds[3] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 7), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
-        lbl_1_bss_1C.modelIds[4] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(DATANUM(DATA_m613, 9), M613_MODEL_DATA_GROUP_FLAG, HEAP_MODEL));
+        lbl_1_bss_1C.modelIds[3] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 7), M613_MODEL_DATA_GROUP_FLAG, 2));
+        lbl_1_bss_1C.modelIds[4] = fn_80025A04(
+            fn_80008DD0(DATANUM(0x480000, 9), M613_MODEL_DATA_GROUP_FLAG, 2));
     }
-    Hu3DModelAttrSet(lbl_1_bss_1C.modelIds[3], HU3D_MOTATTR_LOOP);
-    Hu3DModelAttrSet(lbl_1_bss_1C.modelIds[4], HU3D_MOTATTR_LOOP);
-    Hu3DModelCameraSet(lbl_1_bss_1C.modelIds[3], 1);
-    Hu3DModelCameraSet(lbl_1_bss_1C.modelIds[4], 1);
-    Hu3DModelLayerSet(lbl_1_bss_1C.modelIds[3], 0);
-    Hu3DModelLayerSet(lbl_1_bss_1C.modelIds[4], 2);
-    Hu3DModelShadowMapSet(lbl_1_bss_1C.modelIds[3]);
+    fn_800269E8(lbl_1_bss_1C.modelIds[3], ((1 << 30) | (1 << 0)));
+    fn_800269E8(lbl_1_bss_1C.modelIds[4], ((1 << 30) | (1 << 0)));
+    fn_80026B64(lbl_1_bss_1C.modelIds[3], 1);
+    fn_80026B64(lbl_1_bss_1C.modelIds[4], 1);
+    fn_80026B8C(lbl_1_bss_1C.modelIds[3], 0);
+    fn_80026B8C(lbl_1_bss_1C.modelIds[4], 2);
+    fn_80026FFC(lbl_1_bss_1C.modelIds[3]);
 }
 
 /* A cleared green-glass pixel uses mirrored coordinates to decrement its board cell, clamped at
@@ -533,7 +533,7 @@ s32 fn_1_3894(HSF_BITMAP *board, s16 pixelFormat)
 
 /* Called during glass setup to allocate space for recorded outline pixels. */
 void fn_1_3948(void) {
-    lbl_1_bss_C = HuMemDirectMallocNum(0, 1200, HU_MEMNUM_OVL);
+    lbl_1_bss_C = HuMemDirectMallocNum(0, 1200, 0x10000000);
     fn_1_3984();
 }
 

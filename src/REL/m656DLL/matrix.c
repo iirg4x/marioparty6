@@ -1,4 +1,5 @@
 /* Provides vector, angle, and matrix helpers used by Mass Meteor. */
+#include <math.h>
 #include "REL/m656/m656.h"
 
 /* Converts a dot-product cosine to radians for the stage's orientation calculations. */
@@ -139,8 +140,8 @@ s32 fn_1_7C4(Mtx out, HuVecF *start, HuVecF *end, HuVecF *up)
 static inline float M656GetAngleXY(float x, float y)
 {
     if (y == 0.0f) {
-        if (x >= 0.0f) return M_PI / 2;
-        else return -(M_PI / 2);
+        if (x >= 0.0f) return 3.141592653589793 / 2;
+        else return -(3.141592653589793 / 2);
     }
     return atan2f(x, y);
 }
@@ -165,8 +166,8 @@ s32 fn_1_EBC(HuVecF *out, Mtx matrix)
             scaleZ = sqrtf(scaleZ2);
             if (!(scaleZ < 0.00000001f)) {
                 dot = -matrix[2][0] / scaleX;
-                if (dot >= 1.0f) angleY = M_PI / 2;
-                else if (dot <= -1.0f) angleY = -(M_PI / 2);
+                if (dot >= 1.0f) angleY = 3.141592653589793 / 2;
+                else if (dot <= -1.0f) angleY = -(3.141592653589793 / 2);
                 else angleY = asinf(dot);
                 out->y = -angleY;
                 cosY = cos(out->y);
@@ -175,7 +176,7 @@ s32 fn_1_EBC(HuVecF *out, Mtx matrix)
                     out->z = -M656GetAngleXY(matrix[1][0], matrix[0][0]);
                 } else {
                     out->x = -M656GetAngleXY(matrix[0][1], matrix[1][1]);
-                    out->z = M_PI;
+                    out->z = 3.141592653589793;
                 }
                 return 1;
             }

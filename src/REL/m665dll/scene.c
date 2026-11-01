@@ -57,13 +57,13 @@ typedef struct LightMapLevels {
 #define M665_MEMORY_TAG (1 << 28)
 
 u32 lbl_1_data_68[7][2] = {
-    {DATANUM(DATA_mariomot, 0), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_mariomot, 55), HU3D_MOTATTR_LOOP},
-    {DATANUM(DATA_mariomot, 94), 0},
-    {DATANUM(DATA_mariomot, 64), 0},
-    {DATANUM(DATA_mariomot, 6), 0},
-    {DATANUM(DATA_mariomot, 7), 0},
-    {DATANUM(DATA_mariomot, 34), HU3D_MOTATTR_LOOP},
+    {DATANUM(0x930000, 0), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x930000, 55), ((1 << 30) | (1 << 0))},
+    {DATANUM(0x930000, 94), 0},
+    {DATANUM(0x930000, 64), 0},
+    {DATANUM(0x930000, 6), 0},
+    {DATANUM(0x930000, 7), 0},
+    {DATANUM(0x930000, 34), ((1 << 30) | (1 << 0))},
 };
 
 HuVecF lbl_1_data_A0 = {-2000.0f, 10000.0f, -400.0f};
@@ -75,9 +75,9 @@ GXColor lbl_1_data_B8[2] = {
     {192, 192, 192, 192},
 };
 
-s32 lbl_1_data_C0[2] = {DATANUM(DATA_m665, 2), DATANUM(DATA_m665, 3)};
+s32 lbl_1_data_C0[2] = {DATANUM(0x7c0000, 2), DATANUM(0x7c0000, 3)};
 
-s32 lbl_1_data_C8[2] = {DATANUM(DATA_m665, 4), DATANUM(DATA_m665, 5)};
+s32 lbl_1_data_C8[2] = {DATANUM(0x7c0000, 4), DATANUM(0x7c0000, 5)};
 
 /* The main sequence callback selects the surviving team or records a draw. */
 s16 fn_1_C64(void) {
@@ -113,15 +113,15 @@ s16 fn_1_C64(void) {
     if (result != 0) {
         switch (lbl_1_bss_250.winningTeam) {
         case -1:
-            MgSeqDrawSet();
+            fn_80071C70();
             break;
         case 0:
-            MgSeqWinnerSet(
+            fn_80071C18(
                 lbl_1_bss_10[lbl_1_bss_250.mainPlayer].character,
                 -1, -1, -1);
             break;
         case 1:
-            MgSeqWinnerSet(
+            fn_80071C18(
                            lbl_1_bss_10[lbl_1_bss_250.otherPlayers[0]].character,
                            lbl_1_bss_10[lbl_1_bss_250.otherPlayers[1]].character,
                            lbl_1_bss_10[lbl_1_bss_250.otherPlayers[2]].character, -1);
@@ -135,7 +135,7 @@ s16 fn_1_C64(void) {
 
 #include <types.h>
 
-extern s16 GwMgNightF;
+extern s16 lbl_802C0278;
 
 extern void fn_1_EA8(void);
 
@@ -148,7 +148,7 @@ void fn_1_E3C(void) {
     s16 night;
 
     memset(&lbl_1_bss_250, 0, 36);
-    night = GwMgNightF;
+    night = lbl_802C0278;
     lbl_1_bss_250.nightMode = night;
     lbl_1_bss_250.winningTeam = -1;
     fn_1_EA8();
@@ -165,14 +165,14 @@ void fn_1_EA8(void) {
     Hu3DCameraCreate(1);
     Hu3DCameraViewportSet(1, 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 1.0f);
     Hu3DCameraPerspectiveSet(1, 20.0f, 60.0f, 25000.0f, 1.2f);
-    outViewObject = omAddObjEx(lbl_1_bss_8, 32730, 0U, 0U, -1, omOutView);
-    Center.x = 0.0f;
-    Center.y = 250.0f;
-    Center.z = -2000.0f;
-    CRot.x = -14.0f;
-    CRot.y = 0.0f;
-    CRot.z = 0.0f;
-    CZoom = 2800.0f;
+    outViewObject = fn_8003AB38(lbl_1_bss_8, 32730, 0U, 0U, -1, fn_8003D4FC);
+    lbl_80266A4C.x = 0.0f;
+    lbl_80266A4C.y = 250.0f;
+    lbl_80266A4C.z = -2000.0f;
+    lbl_80266A40.x = -14.0f;
+    lbl_80266A40.y = 0.0f;
+    lbl_80266A40.z = 0.0f;
+    lbl_802C028C = 2800.0f;
 }
 
 void fn_1_13B4(OMOBJ *obj);
@@ -191,7 +191,7 @@ void fn_1_1028(void) {
     s16 modelId;
     s32 modelIndex;
 
-    lightId = Hu3DGLightCreateV(&lbl_1_data_A0,
+    lightId = fn_800286D0(&lbl_1_data_A0,
                                 &lbl_1_data_AC,
                                 &lbl_1_data_B8[lbl_1_bss_250.nightMode]);
     Hu3DGLightStaticSet(lightId, TRUE);
@@ -206,32 +206,32 @@ void fn_1_1028(void) {
         characterLightDirection.z = -1.0f;
         characterLightColor.r = characterLightColor.g =
             characterLightColor.b = characterLightColor.a = 255;
-        CharLightCreateV(&characterLightPosition, &characterLightDirection,
+        fn_800614AC(&characterLightPosition, &characterLightDirection,
                          &characterLightColor);
-        CharLightInfinitytSet();
+        fn_80061814();
     }
     Hu3DShadowCreate(30.0f, 20.0f, 20000.0f);
     Hu3DShadowPosSet(&shadowPosition, &shadowUp, &shadowTarget);
     for (modelIndex = 0; modelIndex < 4; modelIndex++) {
         if (modelIndex == 0) {
-            modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
-                lbl_1_data_C0[lbl_1_bss_250.nightMode], M665_MEMORY_TAG, HEAP_MODEL));
+            modelId = fn_80025A04(fn_80008DD0(
+                lbl_1_data_C0[lbl_1_bss_250.nightMode], M665_MEMORY_TAG, 2));
             baseModelId = modelId;
         } else {
-            modelId = Hu3DModelLink(baseModelId);
+            modelId = fn_80025D4C(baseModelId);
         }
-        Hu3DModelShadowMapSet(modelId);
-        Hu3DModelShadowMapTPLvlSet(modelId,
+        fn_80026FFC(modelId);
+        fn_800271F0(modelId,
                                    shadowMapLevels.level[lbl_1_bss_250.nightMode]);
-        Hu3DModelPosSet(modelId, 0.0f, 0.0f,
+        fn_80026760(modelId, 0.0f, 0.0f,
                         -(5000.0f * (f32) modelIndex));
         lbl_1_bss_250.backgroundModels[modelIndex] = modelId;
     }
-    modelId = Hu3DModelCreate(HuDataSelHeapReadNum(
-                lbl_1_data_C8[lbl_1_bss_250.nightMode], M665_MEMORY_TAG, HEAP_MODEL));
-    Hu3DModelAttrSet(modelId, HU3D_MOTATTR_LOOP);
+    modelId = fn_80025A04(fn_80008DD0(
+                lbl_1_data_C8[lbl_1_bss_250.nightMode], M665_MEMORY_TAG, 2));
+    fn_800269E8(modelId, ((1 << 30) | (1 << 0)));
     lbl_1_bss_250.modelID = modelId;
-    lbl_1_bss_278 = omAddObjEx(lbl_1_bss_8, 80, 0U, 0U, -1, fn_1_13B4);
+    lbl_1_bss_278 = fn_8003AB38(lbl_1_bss_8, 80, 0U, 0U, -1, fn_1_13B4);
     lbl_1_bss_250.scrollSpeed = 15.0f;
 }
 
@@ -242,13 +242,13 @@ void fn_1_13B4(OMOBJ *obj) {
 
     backgroundIndex = 0;
     while (backgroundIndex < 4) {
-        Hu3DModelPosGet(lbl_1_bss_250.backgroundModels[backgroundIndex],
+        fn_800267CC(lbl_1_bss_250.backgroundModels[backgroundIndex],
                         &backgroundPosition);
         backgroundPosition.z += lbl_1_bss_250.scrollSpeed;
         if (backgroundPosition.z >= 500.0f) {
             backgroundPosition.z -= 20000.0f;
         }
-        Hu3DModelPosSetV(lbl_1_bss_250.backgroundModels[backgroundIndex],
+        fn_80026790(lbl_1_bss_250.backgroundModels[backgroundIndex],
                          &backgroundPosition);
         backgroundIndex += 1;
     }
@@ -299,17 +299,17 @@ void fn_1_1470(void) {
     groupCount = 0;
     while (playerIndex < 4) {
         lbl_1_bss_10[playerIndex].playerIndex = playerIndex;
-        character = GwPlayerConf[playerIndex].charNo;
+        character = lbl_80265728[playerIndex].charNo;
         lbl_1_bss_10[playerIndex].character = character;
         lbl_1_bss_10[playerIndex].controller =
-            GwPlayerConf[playerIndex].padNo;
+            lbl_80265728[playerIndex].padNo;
         lbl_1_bss_10[playerIndex].team =
-            GwPlayerConf[playerIndex].grpNo;
-        if (GwPlayerConf[playerIndex].type == 0) {
+            lbl_80265728[playerIndex].grpNo;
+        if (lbl_80265728[playerIndex].type == 0) {
             lbl_1_bss_10[playerIndex].difficulty = -1;
         } else {
             lbl_1_bss_10[playerIndex].difficulty =
-                GwPlayerConf[playerIndex].comDif;
+                lbl_80265728[playerIndex].comDif;
         }
         if (lbl_1_bss_10[playerIndex].team == 0) {
             lbl_1_bss_250.mainPlayer = playerIndex;
@@ -319,20 +319,20 @@ void fn_1_1470(void) {
                 groupCount;
             groupCount += 1;
         }
-        modelID = CharModelCreate(character, 4);
-        Hu3DModelScaleSet(modelID, 1.2f, 1.2f,
+        modelID = fn_80057068(character, 4);
+        fn_800268B0(modelID, 1.2f, 1.2f,
                           1.2f);
         lbl_1_bss_10[playerIndex].characterModel = modelID;
         for (motionIndex = 0; motionIndex < 7; motionIndex++) {
             lbl_1_bss_10[playerIndex].characterMotions[motionIndex] =
-                CharMotionCreate(character, lbl_1_data_68[motionIndex][0]);
+                fn_8005B0B8(character, lbl_1_data_68[motionIndex][0]);
         }
         fn_1_170C(playerIndex, 0, 0.0f);
         playerIndex += 1;
     }
     fn_1_1C60();
     fn_1_C40C();
-    lbl_1_bss_274 = omAddObjEx(lbl_1_bss_8, 70, 0U, 0U, -1, fn_1_17E0);
+    lbl_1_bss_274 = fn_8003AB38(lbl_1_bss_8, 70, 0U, 0U, -1, fn_1_17E0);
 }
 
 typedef void (*VoidFunc)(void);
@@ -489,7 +489,7 @@ void fn_1_170C(s16 player, s16 motion, f32 blendDuration)
     if (blendDuration <= 0.0f) {
         blendDuration = 0.0f;
     }
-    CharMotionShiftSet(lbl_1_bss_10[player].character,
+    fn_8005C2C8(lbl_1_bss_10[player].character,
                        lbl_1_bss_10[player].characterMotions[motion],
                        0.0f, blendDuration, lbl_1_data_68[motion][1]);
 }
@@ -506,44 +506,44 @@ void fn_1_17E0(OMOBJ *object) {
 
 /* Debug camera controls adjust and print the view while the modifier is held. */
 void fn_1_1804(void) {
-    if ((HuPadBtn[0] & 0x4000) != 0) {
-        if ((HuPadBtn[0] & 0x400) != 0) {
-            CZoom += 5.0f;
+    if ((lbl_802C0010[0] & 0x4000) != 0) {
+        if ((lbl_802C0010[0] & 0x400) != 0) {
+            lbl_802C028C += 5.0f;
         }
-        if ((HuPadBtn[0] & 0x800) != 0) {
-            CZoom -= 5.0f;
+        if ((lbl_802C0010[0] & 0x800) != 0) {
+            lbl_802C028C -= 5.0f;
         }
-        if (HuPadSubStkY[0] > 32) {
-            CRot.x += 1.0f;
+        if (lbl_802BFFF0[0] > 32) {
+            lbl_80266A40.x += 1.0f;
         }
-        if (HuPadSubStkY[0] < -32) {
-            CRot.x -= 1.0f;
+        if (lbl_802BFFF0[0] < -32) {
+            lbl_80266A40.x -= 1.0f;
         }
-        if (HuPadSubStkX[0] > 32) {
-            CRot.y += 1.0f;
+        if (lbl_802BFFF4[0] > 32) {
+            lbl_80266A40.y += 1.0f;
         }
-        if (HuPadSubStkX[0] < -32) {
-            CRot.y -= 1.0f;
+        if (lbl_802BFFF4[0] < -32) {
+            lbl_80266A40.y -= 1.0f;
         }
-        if ((HuPadStkX[0] > 5) || (HuPadStkX[0] < -5)) {
-            Center.x += HuPadStkX[0];
+        if ((lbl_802BFFFC[0] > 5) || (lbl_802BFFFC[0] < -5)) {
+            lbl_80266A4C.x += lbl_802BFFFC[0];
         }
-        if ((HuPadStkY[0] > 5) || (HuPadStkY[0] < -5)) {
-            Center.z -= HuPadStkY[0];
+        if ((lbl_802BFFF8[0] > 5) || (lbl_802BFFF8[0] < -5)) {
+            lbl_80266A4C.z -= lbl_802BFFF8[0];
         }
-        if ((HuPadBtn[0] & 8) != 0) {
-            Center.y += 5.0f;
+        if ((lbl_802C0010[0] & 8) != 0) {
+            lbl_80266A4C.y += 5.0f;
         }
-        if ((HuPadBtn[0] & 4) != 0) {
-            Center.y -= 5.0f;
+        if ((lbl_802C0010[0] & 4) != 0) {
+            lbl_80266A4C.y -= 5.0f;
         }
-        print8(100, 300, 1.8f, "CnrX:%f", Center.x);
-        print8(100, 316, 1.8f, "CnrY:%f", Center.y);
-        print8(100, 332, 1.8f, "CnrZ:%f", Center.z);
-        print8(100, 348, 1.8f, "RotZ:%f", CRot.x);
-        print8(100, 364, 1.8f, "RotY:%f", CRot.y);
-        print8(100, 380, 1.8f, "RotZ:%f", CRot.z);
-        print8(100, 396, 1.8f, "Zoom:%f", CZoom);
+        print8(100, 300, 1.8f, "CnrX:%f", lbl_80266A4C.x);
+        print8(100, 316, 1.8f, "CnrY:%f", lbl_80266A4C.y);
+        print8(100, 332, 1.8f, "CnrZ:%f", lbl_80266A4C.z);
+        print8(100, 348, 1.8f, "RotZ:%f", lbl_80266A40.x);
+        print8(100, 364, 1.8f, "RotY:%f", lbl_80266A40.y);
+        print8(100, 380, 1.8f, "RotZ:%f", lbl_80266A40.z);
+        print8(100, 396, 1.8f, "Zoom:%f", lbl_802C028C);
     }
 }
 

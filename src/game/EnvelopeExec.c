@@ -39,7 +39,7 @@ void InitEnvelope(HSF_DATA *model) {
     if (model->cenvNum != 0) {
         object = model->object;
         for (Meshcnt = objectIndex = 0; objectIndex < model->objectNum; objectIndex++, object++) {
-            if (object->type == HSF_OBJ_MESH) {
+            if (object->type == 2) {
                 if (object->mesh.vtxtop) {
                     /* These buffer pointers are captured but not read later in this function. */
                     vertexBuffer = object->mesh.vertex;
@@ -153,7 +153,7 @@ void InitVtxParm(HSF_DATA *model) {
 
     object = model->object;
     for (objectIndex = 0; objectIndex < model->objectNum; objectIndex++, object++) {
-        if (object->type == HSF_OBJ_MESH) {
+        if (object->type == 2) {
             object->mesh.writeNum = 0;
         }
     }
@@ -174,7 +174,7 @@ static void SetEnvelopMain(HSF_DATA *model) {
 
     object = model->object;
     for (Meshno = objectIndex = 0; objectIndex < model->objectNum; objectIndex++, object++) {
-        if (object->type == HSF_OBJ_MESH) {
+        if (object->type == 2) {
             PSMTXInverse(MtxTop[&object[nMesh] - model->object], MtxTop[Meshno]);
             vertexBuffer = object->mesh.vertex;
             normalBuffer = object->mesh.normal;
@@ -480,7 +480,7 @@ static void SetRevMtx(void) {
 
     object = CurHsf->object;
     for (meshIndex = objectIndex = 0; objectIndex < CurHsf->objectNum; objectIndex++, object++) {
-        if (object->type == HSF_OBJ_MESH) {
+        if (object->type == 2) {
             PSMTXCopy(MtxTop[nMesh + objectIndex], meshMtx);
             for (targetIndex = 0; targetIndex < CurHsf->objectNum; targetIndex++) {
                 PSMTXInverse(MtxTop[nMesh + targetIndex], inverseMtx);

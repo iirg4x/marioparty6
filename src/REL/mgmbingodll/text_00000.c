@@ -46,23 +46,23 @@ HU3D_MODELID fn_1_0(s16 modeNo, s16 timeNo, Point3d *position) {
     HUSPRID movieSprite;
 
     lbl_1_bss_A0 = timeNo;
-    lbl_1_bss_A4 = Hu3DHookFuncCreate(fn_1_898);
-    Hu3DModelCameraSet(lbl_1_bss_A4, 1);
-    Hu3DModelLayerSet(lbl_1_bss_A4, 7);
-    Hu3DModelPosSetV(lbl_1_bss_A4, position);
-    Hu3DModelScaleSet(
+    lbl_1_bss_A4 = fn_800260F4(fn_1_898);
+    fn_80026B64(lbl_1_bss_A4, 1);
+    fn_80026B8C(lbl_1_bss_A4, 7);
+    fn_80026790(lbl_1_bss_A4, position);
+    fn_800268B0(
         lbl_1_bss_A4,
         (1.0f),
         (1.0f),
         (1.0f));
     lbl_1_bss_9C = HuSprAnimRead(
-        HuDataSelHeapReadNum(DATANUM(DATA_mgmbingo, 42), HU_MEMNUM_OVL, HEAP_MODEL));
+        fn_80008DD0(DATANUM(0x9d0000, 42), 0x10000000, 2));
     lbl_1_bss_A2 = HuSprGrpCreate(1);
 
     if (modeNo != -1) {
         lbl_1_bss_90 = &MgDataTbl[modeNo];
-        spriteData = HuDataReadNumHeapShortForce(
-            lbl_1_bss_90->instPic[timeNo][0], HU_MEMNUM_OVL, HEAP_MODEL);
+        spriteData = fn_80009B04(
+            lbl_1_bss_90->instPic[timeNo][0], 0x10000000, 2);
         lbl_1_bss_98 = HuSprAnimRead(spriteData);
         movieSprite = HuTHPSprCreateVol(
             lbl_1_bss_90->movie[timeNo][0], 1, 100, (0.0f));
@@ -71,14 +71,14 @@ HU3D_MODELID fn_1_0(s16 modeNo, s16 timeNo, Point3d *position) {
         HuSprPosSet(lbl_1_bss_A2, 0, (128.0f), (128.0f));
     } else {
         lbl_1_bss_90 = NULL;
-        spriteData = HuDataReadNumHeapShortForce(
-            DATANUM(DATA_mgmbingo, 42), HU_MEMNUM_OVL, HEAP_MODEL);
+        spriteData = fn_80009B04(
+            DATANUM(0x9d0000, 42), 0x10000000, 2);
         lbl_1_bss_98 = HuSprAnimRead(spriteData);
     }
 
     lbl_1_bss_94 = HuMemDirectMallocNum(
-        0, GXGetTexBufferSize(284, 256, GX_TF_RGB565, 0, 0), HU_MEMNUM_OVL);
-    Hu3DCameraLayerHookSet(1, 0, fn_1_854);
+        0, GXGetTexBufferSize(284, 256, GX_TF_RGB565, 0, 0), 0x10000000);
+    fn_8002583C(1, 0, fn_1_854);
     return lbl_1_bss_A4;
 }
 
@@ -89,19 +89,19 @@ void fn_1_2A4(s16 minigameCount, u8 *minigameOrder) {
     lbl_1_bss_88 = 0;
     lbl_1_bss_0 = minigameCount;
     lbl_1_bss_8C = HuMemDirectMallocNum(
-        0, minigameCount * sizeof(ANIMDATA *) * 2, HU_MEMNUM_OVL);
+        0, minigameCount * sizeof(ANIMDATA *) * 2, 0x10000000);
     for (minigameIndex = 0; minigameIndex < lbl_1_bss_0; minigameIndex++) {
         lbl_1_bss_2[minigameIndex] = minigameOrder[minigameIndex];
         lbl_1_bss_8C[minigameIndex * 2] = HuSprAnimRead(
-            HuDataReadNumHeapShortForce(
+            fn_80009B04(
                 MgDataTbl[lbl_1_bss_2[minigameIndex]].instPic[0][0],
-                HU_MEMNUM_OVL,
-                HEAP_MODEL));
+                0x10000000,
+                2));
         lbl_1_bss_8C[minigameIndex * 2 + 1] = HuSprAnimRead(
-            HuDataReadNumHeapShortForce(
+            fn_80009B04(
                 MgDataTbl[lbl_1_bss_2[minigameIndex]].instPic[1][0],
-                HU_MEMNUM_OVL,
-                HEAP_MODEL));
+                0x10000000,
+                2));
     }
     lbl_1_bss_2[minigameIndex] = 255;
     lbl_1_bss_84 = lbl_1_bss_98;
@@ -150,12 +150,12 @@ void fn_1_5E0(s16 modeNo, s16 timeNo) {
         lbl_1_bss_A0 = timeNo;
         lbl_1_bss_90 = &MgDataTbl[modeNo];
         spriteData =
-            HuDataReadNumHeapShortForce(
-                lbl_1_bss_90->instPic[timeNo][0], HU_MEMNUM_OVL, HEAP_MODEL);
+            fn_80009B04(
+                lbl_1_bss_90->instPic[timeNo][0], 0x10000000, 2);
     } else {
         lbl_1_bss_90 = NULL;
-        spriteData = HuDataReadNumHeapShortForce(
-            DATANUM(DATA_mgmbingo, 42), HU_MEMNUM_OVL, HEAP_MODEL);
+        spriteData = fn_80009B04(
+            DATANUM(0x9d0000, 42), 0x10000000, 2);
     }
     lbl_1_bss_98 = HuSprAnimRead(spriteData);
     HuSprAnimKill(previousAnim);
@@ -193,7 +193,7 @@ void fn_1_824(void) {
 
 // Copies the rendered frame into the texture used by the bingo movie quad.
 void fn_1_854(s16 layerNo) {
-    Hu3DFbCopyExec(0, 0, 284, 256, GX_TF_RGB565, 0, lbl_1_bss_94);
+    fn_8002BCDC(0, 0, 284, 256, GX_TF_RGB565, 0, lbl_1_bss_94);
 }
 
 // Draws the movie or card texture on the two quads of the bingo screen overlay.
@@ -213,7 +213,7 @@ void fn_1_898(HU3D_MODEL *model, Mtx *matrix)
     GXSetNumChans(0);
     GXLoadPosMtxImm(*matrix, 0);
     if (HuTHPStartCheck() != 0) {
-        Hu3DTexLoad(lbl_1_bss_94, 284, 256, 4, GX_CLAMP, GX_CLAMP, GX_TRUE,
+        fn_800360D8(lbl_1_bss_94, 284, 256, 4, GX_CLAMP, GX_CLAMP, GX_TRUE,
                     GX_TEXMAP0);
     } else {
         HuSprTexLoad(lbl_1_bss_98, 0, 0, 0, 0, 1);

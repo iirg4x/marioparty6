@@ -1,4 +1,5 @@
 /* Builds bounds and tests sphere, capsule, triangle, and segment collisions. */
+#include <math.h>
 #include "REL/m656/m656.h"
 
 /* Sets a stage-space sphere when gameplay creates a collision shape. */

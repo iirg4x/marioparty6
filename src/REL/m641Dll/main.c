@@ -87,13 +87,13 @@ void fn_1_144B8(s16 mode, s16 frameNo);
 
 /* _prolog calls this to configure the object manager and minigame sequence phases. */
 void fn_1_142C0(void) {
-    lbl_1_bss_7D8 = omInitObjMan(300, 4096);
-    omGameSysInit(lbl_1_bss_7D8);
-    MgSeqCreatePrio(&lbl_1_data_4B0, 2000);
-    MgSeqModeHookAdd(4, fn_1_144B8);
+    lbl_1_bss_7D8 = fn_8003A8BC(300, 4096);
+    fn_80069F1C(lbl_1_bss_7D8);
+    fn_800707B4(&lbl_1_data_4B0, 2000);
+    fn_80071D20(4, fn_1_144B8);
     /* These phases wait for an explicit sequence advance. */
-    MgSeqModeDelaySet(2, -1);
-    MgSeqModeDelaySet(7, -1);
+    fn_80071CE8(2, -1);
+    fn_80071CE8(7, -1);
 }
 
 /* Init callback saves the night-mode setting and initializes the board and score UI. */
@@ -102,13 +102,13 @@ void fn_1_1433C(void) {
     s16 displayNightMode;
 
     lbl_1_bss_7E0 = 0;
-    initialNightMode = GwMgNightF;
+    initialNightMode = lbl_802C0278;
     lbl_1_bss_7DC = initialNightMode;
     fn_1_126C();
     fn_1_1798();
     fn_1_A220();
     fn_1_13D10();
-    displayNightMode = GwMgNightF;
+    displayNightMode = lbl_802C0278;
     /* The 3D clear remains black in either night-mode state. */
     if (displayNightMode == 0) {
         Hu3DBGColorSet(0, 0, 0);
@@ -116,7 +116,7 @@ void fn_1_1433C(void) {
         Hu3DBGColorSet(0, 0, 0);
     }
     lbl_1_bss_7E4 = HuAudBGMPlay(73);
-    MgSeqModeNext();
+    fn_80071A9C();
 }
 
 extern void fn_1_B0C0();
@@ -158,7 +158,7 @@ void fn_1_143F4(s32 unusedMode, s32 frameNo) {
     firstCheck = fn_1_820C(frameNo);
     secondCheck = fn_1_ACE0(frameNo);
     if (secondCheck && firstCheck) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
     fn_1_1D7C();
 }
@@ -210,7 +210,7 @@ void fn_1_14598(s32 unusedMode, s16 frameNo) {
     fn_1_8A7C();
     shouldAdvance = fn_1_10844(frameNo);
     if (shouldAdvance) {
-        MgSeqModeNext();
+        fn_80071A9C();
     }
 }
 
@@ -234,7 +234,7 @@ void fn_1_146A4(void) {
 }
 
 MGSEQ_PARAM lbl_1_data_4B0 = {
-    30, MGSEQ_TIMER_RIGHT, (MGSEQ_FUNC)fn_1_1433C, (MGSEQ_FUNC)fn_1_143F4,
+    30, 2, (MGSEQ_FUNC)fn_1_1433C, (MGSEQ_FUNC)fn_1_143F4,
     (MGSEQ_FUNC)fn_1_14474, (MGSEQ_FUNC)fn_1_144F8, (MGSEQ_FUNC)fn_1_1453C, (MGSEQ_FUNC)fn_1_14598,
     (MGSEQ_FUNC)fn_1_14624, (MGSEQ_FUNC)fn_1_14664, (MGSEQ_FUNC)fn_1_146A4,
 };

@@ -42,12 +42,12 @@ typedef struct MbPlayerWork_s {
 
 static inline int mbPlayerGrpGet(int playerNo)
 {
-    return GwPlayer[playerNo].team;
+    return lbl_80265750[playerNo].team;
 }
 
 static inline int mbPlayerHandicapGet(int playerNo)
 {
-    return GwPlayer[playerNo].handicap;
+    return lbl_80265750[playerNo].handicap;
 }
 
 void mbPlayerTurnInitHookSet(void (*hook)(int playerNo));

@@ -76,10 +76,10 @@ void fn_1_EEBC(void);
 /* Called by _prolog during overlay startup; creates the manager and round process. */
 void fn_1_DC60(void)
 {
-    lbl_1_bss_158 = omInitObjMan(100, 8192);
+    lbl_1_bss_158 = fn_8003A8BC(100, 8192);
     MgModeSubMode = 0;
     fn_1_E9C();
-    HuPrcChildCreate(fn_1_EEBC, 100U, 12288U, 0, lbl_1_bss_158);
+    fn_8000DAC0(fn_1_EEBC, 100U, 12288U, 0, lbl_1_bss_158);
 }
 
 /* Runs overlay constructors, then starts Endurance Alley's round manager. */
@@ -138,8 +138,8 @@ void fn_1_DDB8(void)
         i = 0;
         j = 0;
         while (MgDataTbl[i].ovl != 65535) {
-            work = i + GW_MGNO_BASE;
-            if ((GWMgUnlockGet(work) != 0) &&
+            work = i + 601;
+            if ((fn_8003CC40(work) != 0) &&
                 ((MgDataTbl[i].type == 0) || (MgDataTbl[i].type == 1))) {
                 work = 1;
                 if ((MgDataTbl[i].flag & MG_FLAG_MIC) != 0) {
@@ -163,8 +163,8 @@ void fn_1_DDB8(void)
         k = 0;
         i = 0;
         while (MgDataTbl[i].ovl != 65535) {
-            work = i + GW_MGNO_BASE;
-            if ((GWMgUnlockGet(work) != 0) && (MgDataTbl[i].type == 6)) {
+            work = i + 601;
+            if ((fn_8003CC40(work) != 0) && (MgDataTbl[i].type == 6)) {
                 work = 1;
                 if ((MgDataTbl[i].flag & MG_FLAG_MIC) != 0) {
                     work = 0;
@@ -187,8 +187,8 @@ void fn_1_DDB8(void)
         }
         i = 0;
         while ((MgDataTbl[i].ovl != 65535) && (count > 0)) {
-            work = i + GW_MGNO_BASE;
-            if ((GWMgUnlockGet(work) != 0) && (MgDataTbl[i].type == 6)) {
+            work = i + 601;
+            if ((fn_8003CC40(work) != 0) && (MgDataTbl[i].type == 6)) {
                 work = 1;
                 if ((MgDataTbl[i].flag & MG_FLAG_MIC) != 0) {
                     work = 0;
@@ -257,7 +257,7 @@ void fn_1_DDB8(void)
         MgModeSubMode = overlayHistory->evtno;
     }
 
-    _SetFlag(FLAG_INST_MG_MODE);
+    fn_8006A1C4(196609);
     Hu3DBGColorSet(0U, 0U, 0U);
     {
         i = Hu3DGLightCreate(
@@ -286,7 +286,7 @@ void fn_1_DDB8(void)
     if (overlayHistory->evtno != 0) {
         i = 0;
         while (i < 4) {
-            coin = GwPlayer[i].mgCoinBonus;
+            coin = lbl_80265750[i].mgCoinBonus;
             MgModeScore[i] = coin;
             i++;
         }
@@ -306,7 +306,7 @@ void fn_1_DDB8(void)
         fn_1_106C(2);
     }
     fn_1_E80C();
-    HuDataDirClose(DATANUM(DATA_mgmrensho, 0));
+    fn_800097F4(DATANUM(0xa00000, 0));
     fn_1_9A70();
     if (MgModePlayNum == 0) {
         MgModeWorkInt[0] = 1;
@@ -352,7 +352,7 @@ void fn_1_E80C(void) {
     /* The calculated minigame index is unused; setup always creates the preview with
      * minigame 0 and still 0. */
     lbl_1_bss_152 = fn_1_0(0, 0, &initialPosition);
-    Hu3DModelScaleSet(lbl_1_bss_152, 0.0f, 0.0f, 0.0f);
+    fn_800268B0(lbl_1_bss_152, 0.0f, 0.0f, 0.0f);
     fn_1_E908();
 }
 
@@ -418,34 +418,34 @@ void fn_1_EAD8(void) {
     position.y = -63.0f;
     position.z = -200.0f;
     PSVECAdd(&Hu3DCamera[0].pos, &position, &position);
-    Hu3DModelPosSetV(lbl_1_bss_152, &position);
+    fn_80026790(lbl_1_bss_152, &position);
 
     PSVECSubtract(&Hu3DCamera[0].pos, &Hu3DCamera[0].target, &position);
     pitchOrScale = (f32)(atan2(-position.y, position.z) / 3.141592653589793 * 180.0);
     position.y = (f32)(atan2(position.x, position.z) / 3.141592653589793 * 180.0);
     position.x = pitchOrScale;
     position.z = 0.0f;
-    Hu3DModelRotSetV(lbl_1_bss_152, &position);
+    fn_80026838(lbl_1_bss_152, &position);
 
     pitchOrScale = 0.0f;
-    Hu3DModelScaleSet(lbl_1_bss_152, pitchOrScale, pitchOrScale, pitchOrScale);
+    fn_800268B0(lbl_1_bss_152, pitchOrScale, pitchOrScale, pitchOrScale);
     HuPrcVSleep();
     fn_1_43C();
     HuPrcVSleep();
-    HuAudFXPlay(MSM_SE_RENSHO_PREVIEW_ENTER);
+    HuAudFXPlay(1212);
 
     while (pitchOrScale < 0.18f) {
-        Hu3DModelScaleSet(lbl_1_bss_152, pitchOrScale, pitchOrScale, pitchOrScale);
+        fn_800268B0(lbl_1_bss_152, pitchOrScale, pitchOrScale, pitchOrScale);
         pitchOrScale += 0.018000001f;
         if (pitchOrScale >= 0.18f) {
             pitchOrScale = 0.18f;
         }
         HuPrcVSleep();
     }
-    Hu3DModelScaleSet(lbl_1_bss_152, 0.18f,
+    fn_800268B0(lbl_1_bss_152, 0.18f,
                       0.18f, 0.18f);
     HuPrcVSleep();
-    lbl_1_data_51C = HuAudFXPlay(MSM_SE_RENSHO_PREVIEW_HOLD);
+    lbl_1_data_51C = HuAudFXPlay(1213);
 
     frame = 1;
     /* stop is read without initialization; the 25-step limit applies only if this loop is
@@ -466,7 +466,7 @@ void fn_1_EAD8(void) {
         HuAudFXStop(lbl_1_data_51C);
     }
     lbl_1_data_51C = -1;
-    HuAudFXPlay(MSM_SE_RENSHO_PREVIEW_EXIT);
+    HuAudFXPlay(1214);
     if (frandmod(2) != 0) {
         lbl_1_bss_154 = 1;
     } else {
@@ -489,9 +489,9 @@ void fn_1_EE24(void)
     fn_1_824();
     fn_1_15CC();
     fn_1_1028();
-    _ClearFlag(FLAG_INST_MG_MODE);
+    fn_8006A268(196609);
     SLSaveModeExec(0);
-    omOvlReturnEx(1, 1);
+    fn_8003A5E4(1, 1);
     HuPrcEnd();
     while (1) {
         HuPrcVSleep();
@@ -557,14 +557,14 @@ void fn_1_EEBC(void)
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        GwSystem.mgInstDispF = 0;
-        unlockNo = GW_MGNO_BASE + MgModeWork[MgModePlayNum];
-        GWMgUnlockSet(unlockNo);
-        GwSystem.mgNo = unlockNo - GW_MGNO_BASE;
+        lbl_80265B70.mgInstDispF = 0;
+        unlockNo = 601 + MgModeWork[MgModePlayNum];
+        fn_8003CCAC(unlockNo);
+        lbl_80265B70.mgNo = unlockNo - 601;
         if (lbl_1_bss_154 != 0) {
-            GwMgNightF = 1;
+            lbl_802C0278 = 1;
         } else {
-            GwMgNightF = 0;
+            lbl_802C0278 = 0;
         }
         fn_1_EA94();
         fn_1_824();
@@ -584,14 +584,14 @@ void fn_1_EEBC(void)
         while (WipeCheck() != 0) {
             HuPrcVSleep();
         }
-        GwSystem.mgInstDispF = 1;
-        unlockNo = GW_MGNO_BASE + MgModeWork[MgModePlayNum];
-        GWMgUnlockSet(unlockNo);
-        GwSystem.mgNo = unlockNo - GW_MGNO_BASE;
+        lbl_80265B70.mgInstDispF = 1;
+        unlockNo = 601 + MgModeWork[MgModePlayNum];
+        fn_8003CCAC(unlockNo);
+        lbl_80265B70.mgNo = unlockNo - 601;
         if (lbl_1_bss_154 != 0) {
-            GwMgNightF = 1;
+            lbl_802C0278 = 1;
         } else {
-            GwMgNightF = 0;
+            lbl_802C0278 = 0;
         }
         fn_1_EA94();
         fn_1_824();
@@ -645,10 +645,10 @@ void fn_1_EEBC(void)
             }
             fn_1_EA94();
             fn_1_824();
-            _ClearFlag(FLAG_INST_MG_MODE);
+            fn_8006A268(196609);
             SLSaveModeExec(0);
             omOvlHisChg(0, history->ovl, 0, 0);
-            omOvlReturnEx(0, 1);
+            fn_8003A5E4(0, 1);
             while (1) {
                 HuPrcVSleep();
             }
@@ -668,11 +668,11 @@ void fn_1_F54C(void) {
     if (MgModeWorkInt[0] == 0) {
         completedGames -= 1;
     }
-    if (GwCommon.renshoMgRecordNum < completedGames) {
-        GwCommon.renshoMgRecordNum = completedGames;
+    if (lbl_80265E30.renshoMgRecordNum < completedGames) {
+        lbl_80265E30.renshoMgRecordNum = completedGames;
         gameIndex = 0;
         while (gameIndex < completedGames) {
-            GwCommon.renshoMgRecord[gameIndex] = MgModeWork[gameIndex];
+            lbl_80265E30.renshoMgRecord[gameIndex] = MgModeWork[gameIndex];
             gameIndex += 1;
         }
     }

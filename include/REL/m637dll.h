@@ -79,7 +79,7 @@ typedef struct M637RecordB8 {
     s16 earnedPointSprites[3]; /* Marker sprite handles shown for earned points. */
 } M637RecordB8;
 
-u32 MgSeqModeNext(void);
+u32 fn_80071A9C(void);
 
 /* Input plan for one computer player, indexed in team order. */
 typedef struct M637Record08 {

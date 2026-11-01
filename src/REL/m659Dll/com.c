@@ -1,4 +1,5 @@
 /* Computer-player route planning and lane control for Asteroad Rage. */
+#include <math.h>
 #include "REL/m659/com.h"
 #include "game/memory.h"
 #include "game/mg/seqman.h"
@@ -34,10 +35,10 @@ void fn_1_5944(OMOBJMAN *manager)
 {
     M659ComManager *managerData;
     OMOBJ *obj;
-    obj = lbl_1_bss_60 = omAddObjEx(manager, 70, 0, 0, -1, fn_1_59E0);
+    obj = lbl_1_bss_60 = fn_8003AB38(manager, 70, 0, 0, -1, fn_1_59E0);
     obj->stat |= 0x100;
     managerData = obj->data =
-        HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659ComManager), HU_MEMNUM_OVL);
+        HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659ComManager), 0x10000000);
     memset(managerData, 0, sizeof(M659ComManager));
 }
 
@@ -62,7 +63,7 @@ void fn_1_5A14(OMOBJ *obj)
     int i;
     switch (managerData->state) {
     case 0:
-        if (MgSeqModeGet() >= 2) {
+        if (fn_80071A8C() >= 2) {
             managerData->ready = 0;
             managerData->state++;
         }
@@ -107,7 +108,7 @@ void fn_1_5B58(OMOBJ *obj)
     int i = 0;
     switch (managerData->state) {
     case 0:
-        if (MgSeqModeGet() == 5) {
+        if (fn_80071A8C() == 5) {
             managerData->state++;
         }
         managerData->frame = 0;
@@ -157,7 +158,7 @@ void fn_1_5CB0(OMOBJ *obj)
             /* A second registration logs an error, then replaces the existing player slot. */
             OSReport("Error: M659ComPlayerSet() - !*com != NULL\n");
         }
-        *playerSlot = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659Com), HU_MEMNUM_OVL);
+        *playerSlot = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M659Com), 0x10000000);
         playerData->com.routeIndex = -1;
         if (*playerSlot) {
             (*playerSlot)->obj = obj;

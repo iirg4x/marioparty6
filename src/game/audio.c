@@ -19,7 +19,7 @@
 static int HuSePlay(int seId, MSM_SEPARAM *param);
 static BOOL HuSeExitCheck(void);
 
-static BOOL CharSeLoadF[GW_CHARA_MAX];
+static BOOL CharSeLoadF[14];
 static s32 sndFxBuf[64][2];
 
 static s16 Hu3DAudVol;
@@ -44,7 +44,7 @@ void HuAudInit(void)
     MSM_ARAM aramConfig;
     s32 initResult;
     s16 index;
-    msmConfig.heap = HuMemDirectMalloc(HEAP_SOUND, HUMSMHEAP_SIZE);
+    msmConfig.heap = HuMemDirectMalloc(1, HUMSMHEAP_SIZE);
     msmConfig.heapSize = HUMSMHEAP_SIZE;
     msmConfig.msmPath = MSM_FILE_PATH;
     msmConfig.pdtPath = PDT_FILE_PATH;
@@ -52,7 +52,7 @@ void HuAudInit(void)
     msmConfig.read = NULL;
     msmConfig.close = NULL;
     aramConfig.skipARInit = TRUE;
-    aramConfig.aramEnd = HU_AMEM_BASE;
+    aramConfig.aramEnd = 0x808000;
     initResult = msmSysInit(&msmConfig, &aramConfig);
     if(initResult < 0) {
         OSReport("MSM(Sound Manager) Error:Error Code %d\n", initResult);
@@ -66,7 +66,7 @@ void HuAudInit(void)
     for(index=0; index<64; index++) {
         sndFxBuf[index][0] = -1;
     }
-    for(index=0; index<GW_CHARA_MAX; index++) {
+    for(index=0; index<14; index++) {
         CharSeLoadF[index] = FALSE;
     }
     sndGroupBak = MSM_GRP_NONE;
@@ -213,7 +213,7 @@ void HuAudFXPlayDelayVolPan(int seId, u8 vol, u8 pan, u16 delay)
         HuAudFXPlayVolPan(seId, vol, pan);
         return;
     } else {
-        HUPROCESS *delayProcess = HuPrcCreate(AudFXPlayDelay, 1, 2304, 0);
+        HUPROCESS *delayProcess = fn_8000D818(AudFXPlayDelay, 1, 2304, 0);
         HUAUD_FX_DELAY *delayWork = HuMemDirectMalloc(HEAP_HEAP, sizeof(HUAUD_FX_DELAY));
         delayProcess->property = delayWork;
         delayWork->param.flag = MSM_SEPARAM_VOL|MSM_SEPARAM_PAN;
@@ -227,7 +227,7 @@ void HuAudFXPlayDelayVolPan(int seId, u8 vol, u8 pan, u16 delay)
 // Sound-effect delay process callback; waits one frame at a time and skips playback on exit.
 static void AudFXPlayDelay(void)
 {
-    HUPROCESS *process = HuPrcCurrentGet();
+    HUPROCESS *process = fn_8000DD9C();
     HUAUD_FX_DELAY *delayWork = process->property;
     int waitedFrames;
     for(waitedFrames=0; waitedFrames<delayWork->delay; waitedFrames++) {
@@ -476,7 +476,7 @@ int HuAudSStreamChanPlay(s16 streamId, s16 channelNo)
         HUPROCESS *process;
         SSTREAM_WORK *streamWork;
         msmStreamStop(channelNo, 0);
-        process = HuPrcCreate(SStreamPlay, 1, 2304, 0);
+        process = fn_8000D818(SStreamPlay, 1, 2304, 0);
         process->property = streamWork = HuMemDirectMalloc(HEAP_HEAP, sizeof(SSTREAM_WORK));
         streamWork->channelNo = channelNo;
         streamWork->streamId = streamId;
@@ -495,7 +495,7 @@ int HuAudSStreamChanPlay(s16 streamId, s16 channelNo)
 // Stream-start process callback; waits up to one second for the channel to stop, then starts it.
 static void SStreamPlay(void)
 {
-    HUPROCESS *process = HuPrcCurrentGet();
+    HUPROCESS *process = fn_8000DD9C();
     SSTREAM_WORK *streamWork = process->property;
     OSTick startTick = OSGetTick();
     MSM_STREAMPARAM param;
@@ -611,7 +611,7 @@ void HuAudSStreamParamSet(int streamNo, u8 vol, u32 speed)
         msmStreamSetParam(streamNo, &param);
         streamVol[streamNo] = vol;
     } else {
-        HUPROCESS *process = HuPrcCreate(SStreamFade, 1, 2304, 0);
+        HUPROCESS *process = fn_8000D818(SStreamFade, 1, 2304, 0);
         SSTREAMFADEWORK *fadeWork = HuMemDirectMalloc(HEAP_HEAP, sizeof(SSTREAMFADEWORK));
         process->property = fadeWork;
         fadeWork->speed =  speed;
@@ -624,7 +624,7 @@ void HuAudSStreamParamSet(int streamNo, u8 vol, u32 speed)
 // Stream-volume fade process callback; interpolates volume over the requested duration.
 static void SStreamFade(void)
 {
-    HUPROCESS *process = HuPrcCurrentGet();
+    HUPROCESS *process = fn_8000DD9C();
     SSTREAMFADEWORK *fadeWork = process->property;
     MSM_STREAMPARAM param;
     float fadeSteps;
@@ -650,128 +650,128 @@ static void SStreamFade(void)
 }
 
 SNDGRPTBL sndGrpTable[] = {
-    { DLL_m601dll, MSM_GRP_MG601, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m602dll, MSM_GRP_MG602, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m603dll, MSM_GRP_MG603, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m604dll, MSM_GRP_MG604, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m605dll, MSM_GRP_MG605, MSM_GRP_NONE, MSM_AUX_1, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m606dll, MSM_GRP_MG606, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m607dll, MSM_GRP_MG607, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m608dll, MSM_GRP_MG608, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m609dll, MSM_GRP_MG609, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m610dll, MSM_GRP_MG610, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m611dll, MSM_GRP_MG611, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m612dll, MSM_GRP_MG612, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m613dll, MSM_GRP_MG613, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m614dll, MSM_GRP_MG614, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m615dll, MSM_GRP_MG615, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m616dll, MSM_GRP_MG616, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m617dll, MSM_GRP_MG617, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m618dll, MSM_GRP_MG618, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m619dll, MSM_GRP_MG619, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m620dll, MSM_GRP_MG620, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m621dll, MSM_GRP_MG621, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m622dll, MSM_GRP_MG622, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m623dll, MSM_GRP_MG623, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m624dll, MSM_GRP_MG624, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m625dll, MSM_GRP_MG625, MSM_GRP_NONE, MSM_AUX_5, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m626dll, MSM_GRP_MG626, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m627dll, MSM_GRP_MG627, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m628dll, MSM_GRP_MG628, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m629dll, MSM_GRP_MG629, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m630dll, MSM_GRP_MG630, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m631dll, MSM_GRP_MG631, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m632dll, MSM_GRP_MG632, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m633dll, MSM_GRP_MG633, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m634dll, MSM_GRP_MG634, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m635dll, MSM_GRP_MG635, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m636dll, MSM_GRP_MG636, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m637dll, MSM_GRP_MG637, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m638dll, MSM_GRP_MG638, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m639dll, MSM_GRP_MG639, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m640dll, MSM_GRP_MG640, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m641dll, MSM_GRP_MG641, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m642dll, MSM_GRP_MG642, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m643dll, MSM_GRP_MG643, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m644dll, MSM_GRP_MG644, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m645dll, MSM_GRP_MG645, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m646dll, MSM_GRP_MG646, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m647dll, MSM_GRP_MG647, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m648dll, MSM_GRP_MG648, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m649dll, MSM_GRP_MG649, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m650dll, MSM_GRP_MG650, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m651dll, MSM_GRP_MG651, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m652dll, MSM_GRP_MG652, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m653dll, MSM_GRP_MG653, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m654dll, MSM_GRP_MG654, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m655dll, MSM_GRP_MG655, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m656dll, MSM_GRP_MG656, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m657dll, MSM_GRP_MG657, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m658dll, MSM_GRP_MG658, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m659dll, MSM_GRP_MG659, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m660dll, MSM_GRP_MG660, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m661dll, MSM_GRP_MG661, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m662dll, MSM_GRP_MG662, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m663dll, MSM_GRP_MG663, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m664dll, MSM_GRP_MG664, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m665dll, MSM_GRP_MG665, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m666dll, MSM_GRP_MG666, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m667dll, MSM_GRP_MG667, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m668dll, MSM_GRP_MG668, MSM_GRP_NONE, MSM_AUX_1, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m669dll, MSM_GRP_MG669, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m670dll, MSM_GRP_MG670, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m671dll, MSM_GRP_MG671, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m672dll, MSM_GRP_MG672, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m673dll, MSM_GRP_MG673, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m674dll, MSM_GRP_MG674, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m675dll, MSM_GRP_MG675, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m676dll, MSM_GRP_MG676, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m677dll, MSM_GRP_MG677, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m678dll, MSM_GRP_MG678, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m679dll, MSM_GRP_MG679, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m680dll, MSM_GRP_MG680, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m681dll, MSM_GRP_MG681, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_m699dll, MSM_GRP_MG699, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_bootdll, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_openingdll, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_fileseldll, MSM_GRP_FILESEL, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mdseldll, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mdminidll, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mdmicdll, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mdpartydll, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mdsingdll, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mdbankdll, MSM_GRP_BANK, MSM_GRP_FILESEL, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_miraclebookdll, MSM_GRP_BANK, MSM_GRP_FILESEL, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mdpresultdll, MSM_GRP_MENU, MSM_GRP_PRESULT, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_optiondll, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_endingdll, MSM_GRP_BANK, MSM_GRP_ENDING, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_staffdll, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mgmfreedll, MSM_GRP_MGM00, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mgmdecathlondll, MSM_GRP_MGM00, MSM_GRP_MGM02, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mgmbattledll, MSM_GRP_MGM00, MSM_GRP_MGM01, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mgmtournamentdll, MSM_GRP_MGM00, MSM_GRP_MGM03, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mgmbingodll, MSM_GRP_MGM00, MSM_GRP_MGM05, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mgmrenshodll, MSM_GRP_MGM00, MSM_GRP_MGM04, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_micquizdll, MSM_GRP_MICQUIZ, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_micquizishidll, MSM_GRP_MICQUIZ, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_micquizmyokodll, MSM_GRP_MICQUIZ, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_micquizohdedll, MSM_GRP_MICQUIZ, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mikeactdll, MSM_GRP_MIKEACT, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_instdll, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_resultdll, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_w01dll, MSM_GRP_BRD01, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_w02dll, MSM_GRP_BRD02, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_w03dll, MSM_GRP_BRD03, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_w04dll, MSM_GRP_BRD04, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_w05dll, MSM_GRP_BRD05, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_w06dll, MSM_GRP_BRD06, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_w10dll, MSM_GRP_BRDTT, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_mdpresultdll, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_s01dll, MSM_GRP_SBRD, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_s02dll, MSM_GRP_SBRD, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_s03dll, MSM_GRP_SBRD, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_w11dll, MSM_GRP_BRDTT, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
-    { DLL_NONE, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, 0, 0 }
+    { 6, MSM_GRP_MG601, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 7, MSM_GRP_MG602, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 8, MSM_GRP_MG603, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 9, MSM_GRP_MG604, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 10, MSM_GRP_MG605, MSM_GRP_NONE, MSM_AUX_1, MSM_AUX_DEFAULT, -1, -1 },
+    { 11, MSM_GRP_MG606, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 12, MSM_GRP_MG607, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 13, MSM_GRP_MG608, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 14, MSM_GRP_MG609, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 15, MSM_GRP_MG610, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 16, MSM_GRP_MG611, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 17, MSM_GRP_MG612, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 18, MSM_GRP_MG613, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 19, MSM_GRP_MG614, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 20, MSM_GRP_MG615, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 21, MSM_GRP_MG616, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 22, MSM_GRP_MG617, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 23, MSM_GRP_MG618, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 24, MSM_GRP_MG619, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 25, MSM_GRP_MG620, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 26, MSM_GRP_MG621, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 27, MSM_GRP_MG622, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 28, MSM_GRP_MG623, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 29, MSM_GRP_MG624, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 30, MSM_GRP_MG625, MSM_GRP_NONE, MSM_AUX_5, MSM_AUX_DEFAULT, -1, -1 },
+    { 31, MSM_GRP_MG626, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 32, MSM_GRP_MG627, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 33, MSM_GRP_MG628, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 34, MSM_GRP_MG629, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 35, MSM_GRP_MG630, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 36, MSM_GRP_MG631, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 37, MSM_GRP_MG632, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 38, MSM_GRP_MG633, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 39, MSM_GRP_MG634, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 40, MSM_GRP_MG635, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 41, MSM_GRP_MG636, MSM_GRP_NONE, MSM_AUX_6, MSM_AUX_DEFAULT, -1, -1 },
+    { 42, MSM_GRP_MG637, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 43, MSM_GRP_MG638, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 44, MSM_GRP_MG639, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 45, MSM_GRP_MG640, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 46, MSM_GRP_MG641, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 47, MSM_GRP_MG642, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 48, MSM_GRP_MG643, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 49, MSM_GRP_MG644, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 50, MSM_GRP_MG645, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 51, MSM_GRP_MG646, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 52, MSM_GRP_MG647, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 53, MSM_GRP_MG648, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 54, MSM_GRP_MG649, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 55, MSM_GRP_MG650, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 56, MSM_GRP_MG651, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
+    { 57, MSM_GRP_MG652, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 58, MSM_GRP_MG653, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 59, MSM_GRP_MG654, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 60, MSM_GRP_MG655, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 61, MSM_GRP_MG656, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
+    { 62, MSM_GRP_MG657, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
+    { 63, MSM_GRP_MG658, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
+    { 64, MSM_GRP_MG659, MSM_GRP_NONE, MSM_AUX_4, MSM_AUX_DEFAULT, -1, -1 },
+    { 65, MSM_GRP_MG660, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 66, MSM_GRP_MG661, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 67, MSM_GRP_MG662, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 68, MSM_GRP_MG663, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 69, MSM_GRP_MG664, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 70, MSM_GRP_MG665, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 71, MSM_GRP_MG666, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 72, MSM_GRP_MG667, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 73, MSM_GRP_MG668, MSM_GRP_NONE, MSM_AUX_1, MSM_AUX_DEFAULT, -1, -1 },
+    { 74, MSM_GRP_MG669, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 75, MSM_GRP_MG670, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 76, MSM_GRP_MG671, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 77, MSM_GRP_MG672, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 78, MSM_GRP_MG673, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 79, MSM_GRP_MG674, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 80, MSM_GRP_MG675, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 81, MSM_GRP_MG676, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 82, MSM_GRP_MG677, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 83, MSM_GRP_MG678, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 84, MSM_GRP_MG679, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 85, MSM_GRP_MG680, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 86, MSM_GRP_MG681, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 87, MSM_GRP_MG699, MSM_GRP_NONE, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 1, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 110, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 3, MSM_GRP_FILESEL, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 93, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 90, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 89, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 91, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 94, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 88, MSM_GRP_BANK, MSM_GRP_FILESEL, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 108, MSM_GRP_BANK, MSM_GRP_FILESEL, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 92, MSM_GRP_MENU, MSM_GRP_PRESULT, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 111, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 2, MSM_GRP_BANK, MSM_GRP_ENDING, MSM_AUX_2, MSM_AUX_DEFAULT, -1, -1 },
+    { 120, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 99, MSM_GRP_MGM00, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 98, MSM_GRP_MGM00, MSM_GRP_MGM02, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 96, MSM_GRP_MGM00, MSM_GRP_MGM01, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 101, MSM_GRP_MGM00, MSM_GRP_MGM03, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 97, MSM_GRP_MGM00, MSM_GRP_MGM05, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 100, MSM_GRP_MGM00, MSM_GRP_MGM04, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 102, MSM_GRP_MICQUIZ, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 103, MSM_GRP_MICQUIZ, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 104, MSM_GRP_MICQUIZ, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 105, MSM_GRP_MICQUIZ, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 107, MSM_GRP_MIKEACT, MSM_GRP_CHARMIC, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 4, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 113, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 123, MSM_GRP_BRD01, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 124, MSM_GRP_BRD02, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 125, MSM_GRP_BRD03, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 126, MSM_GRP_BRD04, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 127, MSM_GRP_BRD05, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 128, MSM_GRP_BRD06, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 129, MSM_GRP_BRDTT, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 92, MSM_GRP_MENU, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 114, MSM_GRP_SBRD, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 115, MSM_GRP_SBRD, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 116, MSM_GRP_SBRD, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { 130, MSM_GRP_BRDTT, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, -1, -1 },
+    { -1, MSM_GRP_NONE, MSM_GRP_NONE, MSM_AUX_DEFAULT, MSM_AUX_DEFAULT, 0, 0 }
 };
 
 // Selects the overlay sound groups and auxiliary levels; boot is ignored and unlisted overlays fall
@@ -780,7 +780,7 @@ void HuAudDllSndGrpSet(u16 overlayId)
 {
     SNDGRPTBL *soundGroupEntry;
     s16 soundGroupId;
-    if(overlayId == DLL_bootdll) {
+    if(overlayId == 1) {
         return;
     }
     soundGroupEntry=&sndGrpTable[0];
@@ -789,7 +789,7 @@ void HuAudDllSndGrpSet(u16 overlayId)
             soundGroupId = soundGroupEntry->grpSet;
             break;
         }
-        if(soundGroupEntry->ovl == DLL_NONE) {
+        if(soundGroupEntry->ovl == -1) {
             soundGroupId = MSM_GRP_MG601;
             break;
         }
@@ -842,12 +842,12 @@ void HuAudSndGrpSetSet(s16 grpSet)
         sndGroupBak = grpSet;
         groupLoadResult = msmSysDelGroupAll(); // Replaced by the following load result.
         sampleSize = msmSysGetSampSize(grpSet);
-        if(HuMemMaxMemorySizeGet(HuMemHeapPtrGet(HEAP_MODEL)) > sampleSize) {
-            sampleBuffer = HuMemDirectMalloc(HEAP_MODEL, sampleSize);
-        } else if(HuMemMaxMemorySizeGet(HuMemHeapPtrGet(HEAP_HEAP)) > sampleSize) {
+        if(fn_8000BF58(fn_8000B7A8(2)) > sampleSize) {
+            sampleBuffer = HuMemDirectMalloc(2, sampleSize);
+        } else if(fn_8000BF58(fn_8000B7A8(HEAP_HEAP)) > sampleSize) {
             sampleBuffer = HuMemDirectMalloc(HEAP_HEAP, sampleSize);
-        } else if(HuMemMaxMemorySizeGet(HuMemHeapPtrGet(HEAP_DVD)) > sampleSize) {
-            sampleBuffer = HuMemDirectMalloc(HEAP_DVD, sampleSize);
+        } else if(fn_8000BF58(fn_8000B7A8(3)) > sampleSize) {
+            sampleBuffer = HuMemDirectMalloc(3, sampleSize);
         } else {
             OSReport("Error: Sound GroupSet Error!!\n");
             return;
@@ -864,7 +864,7 @@ void HuAudSndGrpSetSet(s16 grpSet)
 // Loads one sound group into temporary model-heap storage.
 void HuAudSndGrpSet(s16 grp)
 {
-    void *sampleBuffer = HuMemDirectMalloc(HEAP_MODEL, msmSysGetSampSize(grp));
+    void *sampleBuffer = HuMemDirectMalloc(2, msmSysGetSampSize(grp));
     msmSysLoadGroup(grp, sampleBuffer, FALSE);
     HuMemDirectFree(sampleBuffer);
 }
@@ -878,7 +878,7 @@ void HuAudSndCommonGrpSet(s16 grp, BOOL delGrpF)
     void *sampleBuffer;
     s16 characterIndex;
     
-    for(characterIndex=0; characterIndex<GW_CHARA_MAX; characterIndex++) {
+    for(characterIndex=0; characterIndex<14; characterIndex++) {
         CharSeLoadF[characterIndex] = 0;
     }
     msmMusStopAll(TRUE, 0);
@@ -892,7 +892,7 @@ void HuAudSndCommonGrpSet(s16 grp, BOOL delGrpF)
             OSReport("Del Group Error %d\n", deleteResult);
         }
     }
-    sampleBuffer = HuMemDirectMalloc(HEAP_MODEL, msmSysGetSampSize(grp));
+    sampleBuffer = HuMemDirectMalloc(2, msmSysGetSampSize(grp));
     msmSysLoadGroupBase(grp, sampleBuffer);
     HuMemDirectFree(sampleBuffer);
     sndGroupBak = MSM_GRP_NONE;
@@ -922,73 +922,73 @@ void HuAudAUXVolSet(s8 volA, s8 volB)
 // Plays a character sound using the character selected for this player.
 s32 PlayerFXPlay(s16 playerNo, s16 seId)
 {
-    s16 characterNo = GwPlayerConf[playerNo].charNo;
+    s16 characterNo = lbl_80265728[playerNo].charNo;
     return CharFXPlay(characterNo, seId);
 }
 
 // Plays a character sound at a world position using this player's selected character.
 s32 PlayerFXPlayPos(s16 playerNo, s16 seId, Vec *pos)
 {
-    s16 characterNo = GwPlayerConf[playerNo].charNo;
+    s16 characterNo = lbl_80265728[playerNo].charNo;
     return CharFXPlayPos(characterNo, seId, pos);
 }
 
 // Stops all active instances of this sound for the player's character when a REL requests it.
 void PlayerFXStop(s16 playerNo, s16 seId)
 {
-    s16 characterNo = GwPlayerConf[playerNo].charNo;
+    s16 characterNo = lbl_80265728[playerNo].charNo;
     CharFXStop(characterNo, seId);
 }
 
-unsigned int CharSeTable[GW_CHARA_MAX] = {
-    MSM_SE_CHAR_MARIO, //GW_CHARA_MARIO
-    MSM_SE_CHAR_LUIGI, //GW_CHARA_LUIGI
-    MSM_SE_CHAR_PEACH, //GW_CHARA_PEACH
-    MSM_SE_CHAR_YOSHI, //GW_CHARA_YOSHI
-    MSM_SE_CHAR_WARIO, //GW_CHARA_WARIO
-    MSM_SE_CHAR_DAISY, //GW_CHARA_DAISY
-    MSM_SE_CHAR_WALUIGI, //GW_CHARA_WALUIGI
-    MSM_SE_CHAR_KINOPIO, //GW_CHARA_KINOPIO
-    MSM_SE_CHAR_TERESA, //GW_CHARA_TERESA
-    MSM_SE_CHAR_MINIKOOPAR, //GW_CHARA_MINIKOOPA
-    MSM_SE_CHAR_KINOPIKO, //GW_CHARA_KINOPIKO
-    MSM_SE_CHAR_MINIKOOPAR, //GW_CHARA_MINIKOOPAR
-    MSM_SE_CHAR_MINIKOOPAG, //GW_CHARA_MINIKOOPAG
-    MSM_SE_CHAR_MINIKOOPAB, //GW_CHARA_MINIKOOPAB
+unsigned int CharSeTable[14] = {
+    177, //GW_CHARA_MARIO
+    147, //GW_CHARA_LUIGI
+    327, //GW_CHARA_PEACH
+    447, //GW_CHARA_YOSHI
+    387, //GW_CHARA_WARIO
+    57, //GW_CHARA_DAISY
+    417, //GW_CHARA_WALUIGI
+    87, //GW_CHARA_KINOPIO
+    357, //GW_CHARA_TERESA
+    297, //GW_CHARA_MINIKOOPA
+    117, //GW_CHARA_KINOPIKO
+    297, //GW_CHARA_MINIKOOPAR
+    237, //GW_CHARA_MINIKOOPAG
+    207, //GW_CHARA_MINIKOOPAB
 };
 
-unsigned int CharVoiceSeTable[GW_CHARA_MAX] = {
-    MSM_SE_CHARVOICE_MARIO, //GW_CHARA_MARIO
-    MSM_SE_CHARVOICE_LUIGI, //GW_CHARA_LUIGI
-    MSM_SE_CHARVOICE_PEACH, //GW_CHARA_PEACH
-    MSM_SE_CHARVOICE_YOSHI, //GW_CHARA_YOSHI
-    MSM_SE_CHARVOICE_WARIO, //GW_CHARA_WARIO
-    MSM_SE_CHARVOICE_DAISY, //GW_CHARA_DAISY
-    MSM_SE_CHARVOICE_WALUIGI, //GW_CHARA_WALUIGI
-    MSM_SE_CHARVOICE_KINOPIO, //GW_CHARA_KINOPIO
-    MSM_SE_CHARVOICE_TERESA, //GW_CHARA_TERESA
-    MSM_SE_CHARVOICE_MINIKOOPAR, //GW_CHARA_MINIKOOPA
-    MSM_SE_CHARVOICE_KINOPIKO, //GW_CHARA_KINOPIKO
-    MSM_SE_CHARVOICE_MINIKOOPAR, //GW_CHARA_MINIKOOPAR
-    MSM_SE_CHARVOICE_MINIKOOPAG, //GW_CHARA_MINIKOOPAG
-    MSM_SE_CHARVOICE_MINIKOOPAB, //GW_CHARA_MINIKOOPAB
+unsigned int CharVoiceSeTable[14] = {
+    573, //GW_CHARA_MARIO
+    549, //GW_CHARA_LUIGI
+    693, //GW_CHARA_PEACH
+    789, //GW_CHARA_YOSHI
+    741, //GW_CHARA_WARIO
+    477, //GW_CHARA_DAISY
+    765, //GW_CHARA_WALUIGI
+    501, //GW_CHARA_KINOPIO
+    717, //GW_CHARA_TERESA
+    669, //GW_CHARA_MINIKOOPA
+    525, //GW_CHARA_KINOPIKO
+    669, //GW_CHARA_MINIKOOPAR
+    621, //GW_CHARA_MINIKOOPAG
+    597, //GW_CHARA_MINIKOOPAB
 };
 
-unsigned int CharMicSeTable[GW_CHARA_MAX] = {
-    MSM_SE_CHARMIC_MARIO, //GW_CHARA_MARIO
-    MSM_SE_CHARMIC_LUIGI, //GW_CHARA_LUIGI
-    MSM_SE_CHARMIC_PEACH, //GW_CHARA_PEACH
-    MSM_SE_CHARMIC_YOSHI, //GW_CHARA_YOSHI
-    MSM_SE_CHARMIC_WARIO, //GW_CHARA_WARIO
-    MSM_SE_CHARMIC_DAISY, //GW_CHARA_DAISY
-    MSM_SE_CHARMIC_WALUIGI, //GW_CHARA_WALUIGI
-    MSM_SE_CHARMIC_KINOPIO, //GW_CHARA_KINOPIO
-    MSM_SE_CHARMIC_TERESA, //GW_CHARA_TERESA
-    MSM_SE_CHARMIC_MINIKOOPAR, //GW_CHARA_MINIKOOPA
-    MSM_SE_CHARMIC_KINOPIKO, //GW_CHARA_KINOPIKO
-    MSM_SE_CHARMIC_MINIKOOPAR, //GW_CHARA_MINIKOOPAR
-    MSM_SE_CHARMIC_MINIKOOPAG, //GW_CHARA_MINIKOOPAG
-    MSM_SE_CHARMIC_MINIKOOPAB, //GW_CHARA_MINIKOOPAB
+unsigned int CharMicSeTable[14] = {
+    837, //GW_CHARA_MARIO
+    831, //GW_CHARA_LUIGI
+    867, //GW_CHARA_PEACH
+    891, //GW_CHARA_YOSHI
+    879, //GW_CHARA_WARIO
+    813, //GW_CHARA_DAISY
+    885, //GW_CHARA_WALUIGI
+    819, //GW_CHARA_KINOPIO
+    873, //GW_CHARA_TERESA
+    861, //GW_CHARA_MINIKOOPA
+    825, //GW_CHARA_KINOPIKO
+    861, //GW_CHARA_MINIKOOPAR
+    849, //GW_CHARA_MINIKOOPAG
+    843, //GW_CHARA_MINIKOOPAB
 };
 
 static unsigned int *CharSoundList[] = { CharSeTable, CharVoiceSeTable, CharMicSeTable, NULL };
@@ -1005,7 +1005,7 @@ s32 CharFXPlayVolPan(s16 charNo, s16 seId, s16 vol, s16 pan)
     }
     for(soundTableIndex=0; CharSoundList[soundTableIndex]; soundTableIndex++) {
         characterSoundTable = CharSoundList[soundTableIndex];
-        if(seId < characterSoundTable[GW_CHARA_MARIO]) {
+        if(seId < characterSoundTable[0]) {
             break;
         }
     }
@@ -1013,7 +1013,7 @@ s32 CharFXPlayVolPan(s16 charNo, s16 seId, s16 vol, s16 pan)
         return -1;
     }
     characterSoundTable = CharSoundList[soundTableIndex-1];
-    seId -= characterSoundTable[GW_CHARA_MARIO];
+    seId -= characterSoundTable[0];
     seId += characterSoundTable[charNo];
     param.flag = MSM_SEPARAM_NONE;
     if(HuAuxAVol != -1) {
@@ -1056,11 +1056,11 @@ void CharFXPlayDelayVolPan(s16 charNo, s16 seId, u8 vol, u8 pan, u16 delay)
     if(HuSeExitCheck()) {
         return;
     }
-    if(seId < MSM_SE_CHARVOICE_MARIO) {
-        seId -= MSM_SE_CHAR_MARIO;
+    if(seId < 573) {
+        seId -= 177;
         seId += CharSeTable[charNo];
     } else {
-        seId -= MSM_SE_CHARVOICE_MARIO;
+        seId -= 573;
         seId += CharVoiceSeTable[charNo];
     }
     param.flag = MSM_SEPARAM_NONE;
@@ -1079,7 +1079,7 @@ void CharFXPlayDelayVolPan(s16 charNo, s16 seId, u8 vol, u8 pan, u16 delay)
         HuSePlay(seId, &param);
         return;
     } else {
-        HUPROCESS *delayProcess = HuPrcCreate(AudFXPlayDelay, 1, 2304, 0);
+        HUPROCESS *delayProcess = fn_8000D818(AudFXPlayDelay, 1, 2304, 0);
         HUAUD_FX_DELAY *delayWork = HuMemDirectMalloc(HEAP_HEAP, sizeof(HUAUD_FX_DELAY));
         delayProcess->property = delayWork;
         delayWork->param = param;
@@ -1114,7 +1114,7 @@ s32 CharFXPlayPos(s16 charNo, s16 seId, Vec *pos)
     if(omSysExitReq) {
         return 0;
     }
-    seId -= MSM_SE_CHAR_MARIO;
+    seId -= 177;
     seId += CharSeTable[charNo];
     param.flag = MSM_SEPARAM_POS;
     if(HuAuxAVol != -1) {
@@ -1137,7 +1137,7 @@ void CharFXStop(s16 charNo, s16 seId)
     int activeSeNos[MSM_ENTRY_SENO_MAX];
     u16 activeSeCount;
     u16 entryIndex;
-    seId -= MSM_SE_CHAR_MARIO;
+    seId -= 177;
     seId += CharSeTable[charNo];
     activeSeCount = msmSeGetEntryID(seId, activeSeNos);
     for(entryIndex=0; entryIndex<activeSeCount; entryIndex++) {

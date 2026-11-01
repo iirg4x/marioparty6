@@ -78,7 +78,7 @@ static s16 masuFindStep;
 static s16 masuFindId;
 static s16 masuFindResultNum;
 
-extern void *mbMalloc(s32 size);
+extern void *fn_802137C0(s32 size);
 extern float mbCosDeg(float angle);
 extern float mbSinDeg(float angle);
 extern s16 mbCapMasuPlayerGet(s16 id);
@@ -114,13 +114,13 @@ typedef struct MasuDisp_s {
 } MASUDISP;
 
 static int masuFileTbl[] = {
-    DATANUM(DATA_bmasu, 0),
-    DATANUM(DATA_bmasu, 3),
+    DATANUM(0x40000, 0),
+    DATANUM(0x40000, 3),
 };
 
 static int masuSingleFileTbl[] = {
-    DATANUM(DATA_bmasu, 1),
-    DATANUM(DATA_bmasu, 3),
+    DATANUM(0x40000, 1),
+    DATANUM(0x40000, 3),
 };
 
 static s16 masuPatTbl[] = {
@@ -162,7 +162,7 @@ void mbMasuInit(int dataNum)
     int i;
 
     for (i = 0; i < MASU_LAYER_MAX; i++) {
-        masuData[i] = mbMalloc(sizeof(MASU) * MASU_MAX);
+        masuData[i] = fn_802137C0(sizeof(MASU) * MASU_MAX);
     }
     mbMasuLayerSet(MASU_LAYER_DEFAULT);
     for (i = 0; i < MASU_LAYER_MAX; i++) {
@@ -180,7 +180,7 @@ void mbMasuInit(int dataNum)
     MasuDispInit();
     mbGateCreate();
     MasuNextCreate();
-    HuDataDirClose(DATA_bmasu);
+    fn_800097F4(0x40000);
 }
 
 /* Releases board-space graphics and storage during board shutdown. */
@@ -209,7 +209,7 @@ BOOL mbMasuDataRead(int dataNum)
     int *data;
 
     starNum = 0;
-    data = HuDataSelHeapReadNum(dataNum, HU_MEMNUM_OVL, HEAP_MODEL);
+    data = fn_80008DD0(dataNum, 0x10000000, 2);
     DATA_READCOUNT(data, ptr, masuNum[masuLayer]);
 
     masuP = &masuData[masuLayer][0];
@@ -230,13 +230,13 @@ BOOL mbMasuDataRead(int dataNum)
         DATA_READ16(ptr, masuP->flag);
         DATA_READ32(ptr, masuP->mAttr);
         DATA_READ16(ptr, masuP->type);
-        masuP->capsuleNo = GwSystem.masuCapsule[masuP->id];
+        masuP->capsuleNo = lbl_80265B70.masuCapsule[masuP->id];
         DATA_READ16(ptr, masuP->linkNum);
         for (j = 0; j < masuP->linkNum; j++) {
             DATA_READLINK(ptr, masuP->linkTbl[j]);
         }
     }
-    HuDataClose(data);
+    fn_80009740(data);
     return TRUE;
 }
 
@@ -244,7 +244,7 @@ BOOL mbMasuDataRead(int dataNum)
 static void MasuDispInit(void)
 {
     int i;
-    BOOL partyF = GwSystem.partyF;
+    BOOL partyF = lbl_80265B70.partyF;
 
     if (partyF) {
         for (i = 0; i < 2; i++) {
@@ -259,9 +259,9 @@ static void MasuDispInit(void)
     }
     masuDisplayListLen = MasuDisplayListMake(&masuDisplayList);
     masuDisplayListKaoLen = MasuDisplayListKaoMake(&masuDisplayListKao);
-    masuMdlId = Hu3DHookFuncCreate(MasuDraw);
-    Hu3DModelCameraSet(masuMdlId, HU3D_CAM0);
-    Hu3DModelLayerSet(masuMdlId, 2);
+    masuMdlId = fn_800260F4(MasuDraw);
+    fn_80026B64(masuMdlId, (1 << 0));
+    fn_80026B8C(masuMdlId, 2);
 }
 
 /* Releases the space textures, display list, and drawing hook during shutdown. */
@@ -282,8 +282,8 @@ static void MasuDispClose(void)
         masuDisplayList = NULL;
     }
     if (masuMdlId >= 0) {
-        Hu3DModelKill(masuMdlId);
-        masuMdlId = HU3D_MODELID_NONE;
+        fn_800262D0(masuMdlId);
+        masuMdlId = -1;
     }
 }
 
@@ -292,7 +292,7 @@ static void MasuDispClose(void)
 /* Builds the flat textured quad used for each board-space marker. */
 static u32 MasuDisplayListMake(void **displayList)
 {
-    u8 *dlBufRaw = HuMemDirectMallocNum(HEAP_HEAP, MASU_DL_BUF_SIZE, HU_MEMNUM_OVL);
+    u8 *dlBufRaw = HuMemDirectMallocNum(HEAP_HEAP, MASU_DL_BUF_SIZE, 0x10000000);
     void *dlBuf = dlBufRaw;
     u8 *displayListP;
     u32 dlSize;
@@ -310,7 +310,7 @@ static u32 MasuDisplayListMake(void **displayList)
     GXTexCoord2f32(0.0f, 1.0f);
     GXEnd();
     dlSize = GXEndDisplayList();
-    displayListP = HuMemDirectMallocNum(HEAP_HEAP, dlSize, HU_MEMNUM_OVL);
+    displayListP = HuMemDirectMallocNum(HEAP_HEAP, dlSize, 0x10000000);
     *displayList = displayListP;
     memcpy(*displayList, dlBuf, dlSize);
     DCFlushRange(*displayList, dlSize);
@@ -321,7 +321,7 @@ static u32 MasuDisplayListMake(void **displayList)
 /* Builds the upright quad used to show a capsule owner's face over a space. */
 static u32 MasuDisplayListKaoMake(void **displayList)
 {
-    u8 *dlBufRaw = HuMemDirectMallocNum(HEAP_HEAP, MASU_DL_BUF_SIZE, HU_MEMNUM_OVL);
+    u8 *dlBufRaw = HuMemDirectMallocNum(HEAP_HEAP, MASU_DL_BUF_SIZE, 0x10000000);
     void *dlBuf = dlBufRaw;
     u8 *displayListP;
     u32 dlSize;
@@ -339,7 +339,7 @@ static u32 MasuDisplayListKaoMake(void **displayList)
     GXTexCoord2f32(0.0f, 1.0f);
     GXEnd();
     dlSize = GXEndDisplayList();
-    displayListP = HuMemDirectMallocNum(HEAP_HEAP, dlSize, HU_MEMNUM_OVL);
+    displayListP = HuMemDirectMallocNum(HEAP_HEAP, dlSize, 0x10000000);
     *displayList = displayListP;
     memcpy(*displayList, dlBuf, dlSize);
     DCFlushRange(*displayList, dlSize);
@@ -352,7 +352,7 @@ static u32 MasuDisplayListKaoMake(void **displayList)
 /* Returns whether the board is in its first, daytime turn. */
 static inline BOOL MasuDayCheck(void)
 {
-    return !GwSystem.curTime;
+    return !lbl_80265B70.curTime;
 }
 
 /* HU3D hook installed by MasuDispInit; draws visible spaces and capsule markers. */
@@ -439,7 +439,7 @@ void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
             GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
 
         if (!masuP->useMtxF) {
-            mtxRot(rot, masuP->rot.x, masuP->rot.y, masuP->rot.z);
+            fn_80022E38(rot, masuP->rot.x, masuP->rot.y, masuP->rot.z);
             PSMTXTrans(trans, masuP->pos.x, masuP->pos.y + 3.0f,
                 masuP->pos.z);
             PSMTXConcat(trans, rot, model);
@@ -455,7 +455,7 @@ void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
             PSMTXScale(texMtx, 1.0f, 1.0f / 13.0f, 0.0f);
             if (!GWTeamFGet()) {
                 mtxTransCat(texMtx, 0.0f,
-                    (float)GwPlayer[capPlayerNo].charNo / 13.0f, 0.0f);
+                    (float)lbl_80265750[capPlayerNo].charNo / 13.0f, 0.0f);
             } else {
                 mtxTransCat(texMtx, 0.0f, (float)(mbPlayerGrpGet(capPlayerNo) + 11) / 13.0f,
                     0.0f);
@@ -508,14 +508,14 @@ void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
         PSMTXScale(texMtx, 1.0f, 1.0f / 13.0f, 0.0f);
         if (!GWTeamFGet()) {
             mtxTransCat(texMtx, 0.0f,
-                (float)GwPlayer[capPlayerNo].charNo / 13.0f, 0.0f);
+                (float)lbl_80265750[capPlayerNo].charNo / 13.0f, 0.0f);
         } else {
             mtxTransCat(texMtx, 0.0f, (float)(mbPlayerGrpGet(capPlayerNo) + 11) / 13.0f, 0.0f);
         }
         GXLoadTexMtxImm(texMtx, GX_TEXMTX0, GX_MTX2x4);
 
         if (!masuP->useMtxF) {
-            mtxRot(rot, masuP->rot.x, masuP->rot.y, masuP->rot.z);
+            fn_80022E38(rot, masuP->rot.x, masuP->rot.y, masuP->rot.z);
             PSMTXTrans(trans, masuP->pos.x, masuP->pos.y, masuP->pos.z);
             PSMTXConcat(trans, rot, model);
         } else {
@@ -527,7 +527,7 @@ void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
             float minDist = 100000.0f;
             int nearestPlayer = -1;
 
-            for (playerNo = 0; playerNo < GW_PLAYER_MAX; playerNo++) {
+            for (playerNo = 0; playerNo < 4; playerNo++) {
                 mbPlayerPosGet(playerNo, &pos);
                 pos.x = abs((int)(pos.x - model[0][3]));
                 pos.y = abs((int)(pos.y - model[1][3]));
@@ -577,12 +577,12 @@ void MasuDraw(HU3D_MODEL *modelP, Mtx *mtx)
 /* Starts the marker update process and installs its HU3D drawing hook. */
 static void MasuNextCreate(void)
 {
-    masuNextProc = HuPrcChildCreate(MasuNextMain, 8195, 8192, 0, mbMainProc);
-    masuNextWork = mbMalloc(sizeof(MASUNEXTWORK) * GW_PLAYER_MAX);
-    masuNextMdlId = Hu3DHookFuncCreate(MasuNextDraw);
-    Hu3DModelCameraSet(masuNextMdlId, HU3D_CAM0);
-    Hu3DModelLayerSet(masuNextMdlId, 2);
-    masuNextAnim = HuSprAnimDataRead(DATANUM(DATA_bmasu, 5));
+    masuNextProc = fn_8000DAC0(MasuNextMain, 8195, 8192, 0, mbMainProc);
+    masuNextWork = fn_802137C0(sizeof(MASUNEXTWORK) * 4);
+    masuNextMdlId = fn_800260F4(MasuNextDraw);
+    fn_80026B64(masuNextMdlId, (1 << 0));
+    fn_80026B8C(masuNextMdlId, 2);
+    masuNextAnim = HuSprAnimDataRead(DATANUM(0x40000, 5));
     masuNextDispF = TRUE;
 }
 
@@ -594,9 +594,9 @@ static void MasuNextMain(void)
     int i;
 
     for (;;) {
-        playerNo = GwSystem.turnPlayerNo;
+        playerNo = lbl_80265B70.turnPlayerNo;
         work = masuNextWork;
-        for (i = 0; i < GW_PLAYER_MAX; i++, work++) {
+        for (i = 0; i < 4; i++, work++) {
             float time;
 
             if (work->masuId == 0) {
@@ -647,8 +647,8 @@ static void MasuNextKill(void)
         masuNextWork = NULL;
     }
     if (masuNextMdlId >= 0) {
-        Hu3DModelKill(masuNextMdlId);
-        masuNextMdlId = HU3D_MODELID_NONE;
+        fn_800262D0(masuNextMdlId);
+        masuNextMdlId = -1;
     }
     if (masuNextAnim != NULL) {
         HuSprAnimKill(masuNextAnim);
@@ -703,7 +703,7 @@ void MasuNextDraw(HU3D_MODEL *modelP, Mtx *mtx)
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
     work = masuNextWork;
-    for (i = 0; i < GW_PLAYER_MAX; i++, work++) {
+    for (i = 0; i < 4; i++, work++) {
         int j;
 
         if (work->masuId == 0) {
@@ -748,7 +748,7 @@ void mbMasuNextSet(s16 id)
     if (!mbMasuDispCheck(id)) {
         return;
     }
-    for (i = 0; i < GW_PLAYER_MAX; i++, work++) {
+    for (i = 0; i < 4; i++, work++) {
         if (work->masuId == 0) {
             break;
         }
@@ -758,7 +758,7 @@ void mbMasuNextSet(s16 id)
     work->time = 0;
     work->duration = 12;
     work->angle = 0.0f; /* The marker starts without rotation. */
-    work->playerNo = GwSystem.turnPlayerNo;
+    work->playerNo = lbl_80265B70.turnPlayerNo;
     work->delay = 6;
     work->alpha = 0;
 }
@@ -772,7 +772,7 @@ void mbMasuNextDispSet(BOOL dispF)
 /* Called by the player movement loop on arrival; starts the destination space event. */
 int mbev_MasuMove(int playerNo, s16 id)
 {
-    BOOL partyF = GwSystem.partyF;
+    BOOL partyF = lbl_80265B70.partyF;
 
     if (partyF) {
         switch (mbMasuTypeGet(id)) {
@@ -806,55 +806,55 @@ int mbev_MasuCapStop(int playerNo, s16 id)
     BOOL result = TRUE;
     BOOL partyF;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         mbTutorialCall(10);
     }
-    partyF = GwSystem.partyF;
+    partyF = lbl_80265B70.partyF;
     if (partyF) {
         if (mbMasuPlayerCapStopCheck(playerNo, id) == 0) {
             switch (mbMasuTypeGet(id)) {
                 case 0:
                 case 1:
-                    GwPlayer[playerNo].plusMasuNum++;
-                    if (GwPlayer[playerNo].plusMasuNum > 99) {
-                        GwPlayer[playerNo].plusMasuNum = 99;
+                    lbl_80265750[playerNo].plusMasuNum++;
+                    if (lbl_80265750[playerNo].plusMasuNum > 99) {
+                        lbl_80265750[playerNo].plusMasuNum = 99;
                     }
                     break;
                 case 2:
-                    GwPlayer[playerNo].minusMasuNum++;
-                    if (GwPlayer[playerNo].minusMasuNum > 99) {
-                        GwPlayer[playerNo].minusMasuNum = 99;
+                    lbl_80265750[playerNo].minusMasuNum++;
+                    if (lbl_80265750[playerNo].minusMasuNum > 99) {
+                        lbl_80265750[playerNo].minusMasuNum = 99;
                     }
                     break;
                 case 6:
-                    if (!GwSystem.curTime) {
-                        GwPlayer[playerNo].donkeyMasuNum++;
-                        if (GwPlayer[playerNo].donkeyMasuNum > 99) {
-                            GwPlayer[playerNo].donkeyMasuNum = 99;
+                    if (!lbl_80265B70.curTime) {
+                        lbl_80265750[playerNo].donkeyMasuNum++;
+                        if (lbl_80265750[playerNo].donkeyMasuNum > 99) {
+                            lbl_80265750[playerNo].donkeyMasuNum = 99;
                         }
                     } else {
-                        GwPlayer[playerNo].koopaMasuNum++;
-                        if (GwPlayer[playerNo].koopaMasuNum > 99) {
-                            GwPlayer[playerNo].koopaMasuNum = 99;
+                        lbl_80265750[playerNo].koopaMasuNum++;
+                        if (lbl_80265750[playerNo].koopaMasuNum > 99) {
+                            lbl_80265750[playerNo].koopaMasuNum = 99;
                         }
                     }
                     break;
                 case 3:
-                    GwPlayer[playerNo].hatenaMasuNum++;
-                    if (GwPlayer[playerNo].hatenaMasuNum > 99) {
-                        GwPlayer[playerNo].hatenaMasuNum = 99;
+                    lbl_80265750[playerNo].hatenaMasuNum++;
+                    if (lbl_80265750[playerNo].hatenaMasuNum > 99) {
+                        lbl_80265750[playerNo].hatenaMasuNum = 99;
                     }
                     break;
                 case 4:
-                    GwPlayer[playerNo].miracleMasuNum++;
-                    if (GwPlayer[playerNo].miracleMasuNum > 99) {
-                        GwPlayer[playerNo].miracleMasuNum = 99;
+                    lbl_80265750[playerNo].miracleMasuNum++;
+                    if (lbl_80265750[playerNo].miracleMasuNum > 99) {
+                        lbl_80265750[playerNo].miracleMasuNum = 99;
                     }
                     break;
                 case 5:
-                    GwPlayer[playerNo].kettouMasuNum++;
-                    if (GwPlayer[playerNo].kettouMasuNum > 99) {
-                        GwPlayer[playerNo].kettouMasuNum = 99;
+                    lbl_80265750[playerNo].kettouMasuNum++;
+                    if (lbl_80265750[playerNo].kettouMasuNum > 99) {
+                        lbl_80265750[playerNo].kettouMasuNum = 99;
                     }
                     break;
             }
@@ -865,20 +865,20 @@ int mbev_MasuCapStop(int playerNo, s16 id)
     } else {
         switch (mbMasuTypeGet(id)) {
             case 6:
-                GwPlayer[playerNo].koopaMasuNum++;
-                if (GwPlayer[playerNo].koopaMasuNum > 99) {
-                    GwPlayer[playerNo].koopaMasuNum = 99;
+                lbl_80265750[playerNo].koopaMasuNum++;
+                if (lbl_80265750[playerNo].koopaMasuNum > 99) {
+                    lbl_80265750[playerNo].koopaMasuNum = 99;
                 }
                 break;
             case 3:
-                GwPlayer[playerNo].hatenaMasuNum++;
-                if (GwPlayer[playerNo].hatenaMasuNum > 99) {
-                    GwPlayer[playerNo].hatenaMasuNum = 99;
+                lbl_80265750[playerNo].hatenaMasuNum++;
+                if (lbl_80265750[playerNo].hatenaMasuNum > 99) {
+                    lbl_80265750[playerNo].hatenaMasuNum = 99;
                 }
                 break;
         }
     }
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         mbTutorialCall(11);
     }
     return result;
@@ -890,10 +890,10 @@ int mbev_MasuStop(int playerNo, s16 id)
     BOOL result = TRUE;
     BOOL partyF;
 
-    if (_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+    if (fn_8006A124(65550)) {
         mbTutorialCall(12);
     }
-    partyF = GwSystem.partyF;
+    partyF = lbl_80265B70.partyF;
     if (partyF) {
         if (mbMasuPlayerCapStopCheck(playerNo, id) > 0) {
             mbPlayerCapCoinMasuExec(playerNo);
@@ -907,8 +907,8 @@ int mbev_MasuStop(int playerNo, s16 id)
                 mbPlayerMinusMasuExec(playerNo);
                 break;
             case 6:
-                if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
-                    if (!GwSystem.curTime) {
+                if (!fn_8006A124(65550)) {
+                    if (!lbl_80265B70.curTime) {
                         mbev_CapCallDonkey(playerNo);
                     } else {
                         mbev_CapCallKoopa(playerNo);
@@ -922,13 +922,13 @@ int mbev_MasuStop(int playerNo, s16 id)
                 mbev_StarMasu(playerNo, id);
                 break;
             case 5:
-                if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+                if (!fn_8006A124(65550)) {
                     mbev_CapCallKettou(playerNo,
-                        GwPlayer[playerNo].masuId, TRUE);
+                        lbl_80265750[playerNo].masuId, TRUE);
                 }
                 break;
             case 4:
-                if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+                if (!fn_8006A124(65550)) {
                     mbev_CapCallMiracle(playerNo, id);
                 }
                 break;
@@ -945,12 +945,12 @@ int mbev_MasuStop(int playerNo, s16 id)
             case 9:
             case 10:
             case 11:
-                if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+                if (!fn_8006A124(65550)) {
                     mbev_SingleMg(playerNo, id);
                 }
                 break;
             case 3:
-                if (!_CheckFlag(FLAG_BOARD_TUTORIAL)) {
+                if (!fn_8006A124(65550)) {
                     result = ev_MasuHatena(playerNo, id);
                 }
                 break;
@@ -998,17 +998,17 @@ int mbev_MasuMasuStart(int playerNo)
 
     if (masuev_MasuEnd) {
         mbPlayerColSnapPlayerSet(playerNo, FALSE);
-        result = masuev_MasuEnd(playerNo, GwPlayer[playerNo].masuId);
+        result = masuev_MasuEnd(playerNo, lbl_80265750[playerNo].masuId);
         mbPlayerColSnapPlayerSet(playerNo, TRUE);
     } else {
         result = 0;
     }
-    id = GwPlayer[playerNo].masuId;
+    id = lbl_80265750[playerNo].masuId;
     work = masuNextWork;
     if (masuNextId != id) {
         masuNextId = id;
         if (mbMasuDispCheck(id)) {
-            for (i = 0; i < GW_PLAYER_MAX; i++, work++) {
+            for (i = 0; i < 4; i++, work++) {
                 if (work->masuId == 0) {
                     break;
                 }
@@ -1018,7 +1018,7 @@ int mbev_MasuMasuStart(int playerNo)
             work->time = 0;
             work->duration = 12;
             work->angle = 0.0f;
-            work->playerNo = GwSystem.turnPlayerNo;
+            work->playerNo = lbl_80265B70.turnPlayerNo;
             work->delay = 6;
             work->alpha = 0;
         }
@@ -1029,7 +1029,7 @@ int mbev_MasuMasuStart(int playerNo)
 /* Called as a player reaches a space; runs its start hook and queues that space's marker. */
 int mbev_MasuMasuEnd(int id)
 {
-    int playerNo = GwSystem.turnPlayerNo;
+    int playerNo = lbl_80265B70.turnPlayerNo;
     int result;
     MASUNEXTWORK *work;
     int i;
@@ -1045,7 +1045,7 @@ int mbev_MasuMasuEnd(int id)
     if ((s16)masuNextId != (s16)id) {
         masuNextId = id;
         if (mbMasuDispCheck(id)) {
-            for (i = 0; i < GW_PLAYER_MAX; i++, work++) {
+            for (i = 0; i < 4; i++, work++) {
                 if (work->masuId == 0) {
                     break;
                 }
@@ -1055,7 +1055,7 @@ int mbev_MasuMasuEnd(int id)
             work->time = 0;
             work->duration = 12;
             work->angle = 0.0f;
-            work->playerNo = GwSystem.turnPlayerNo;
+            work->playerNo = lbl_80265B70.turnPlayerNo;
             work->delay = 6;
             work->alpha = 0;
         }
@@ -1069,8 +1069,8 @@ static int ev_MasuHatena(int playerNo, s16 id)
     int result = TRUE;
 
     if (masuev_HatenaHook) {
-        mbAudFXPlay(MSM_SE_BRD00_100);
-        omVibrate(playerNo, 20, 7, 3);
+        mbAudFXPlay(1104);
+        fn_8006A030(playerNo, 20, 7, 3);
         mbPlayerColSnapPlayerSet(playerNo, FALSE);
         result = masuev_HatenaHook(playerNo, id);
     }
@@ -1225,7 +1225,7 @@ void mbMasuCapsuleReset(void)
     int i;
 
     for (i = 0; i < MASU_MAX; i++) {
-        GwSystem.masuCapsule[i] = MASU_NULL;
+        lbl_80265B70.masuCapsule[i] = MASU_NULL;
     }
 }
 
@@ -1237,7 +1237,7 @@ int mbMasuCapsuleGet(s16 id)
 /* Updates a space's capsule assignment in the system table and the active layer. */
 void mbMasuCapsuleSet(s16 id, int capsuleNo)
 {
-    GwSystem.masuCapsule[id] = capsuleNo;
+    lbl_80265B70.masuCapsule[id] = capsuleNo;
     masuData[masuLayer][id].capsuleNo = capsuleNo;
 }
 
@@ -1358,7 +1358,7 @@ void mbMasuCornerPosGet(s16 id, int cornerNo, HuVecF *pos)
             posLink.z = linkP->matrix[2][3];
         }
         VECSubtract(&posLink, &posMasu, &linkDir);
-        linkAngle = HuAtan(-linkDir.z, linkDir.x);
+        linkAngle = (180.0*(atan2((-linkDir.z), linkDir.x) / 3.141592653589793));
         if (linkAngle < 0.0f) {
             linkAngle += 360.0f;
         }
@@ -1424,7 +1424,7 @@ void mbMasuMtxGet(s16 id, Mtx matrix)
         Mtx rot;
         Mtx trans;
 
-        mtxRot(rot, masuP->rot.x, masuP->rot.y, masuP->rot.z);
+        fn_80022E38(rot, masuP->rot.x, masuP->rot.y, masuP->rot.z);
         PSMTXTrans(trans, masuP->pos.x, masuP->pos.y, masuP->pos.z);
         PSMTXConcat(trans, rot, matrix);
     }
@@ -1487,9 +1487,9 @@ u32 mbMasuDispMAttrGet(void)
 void mbMasuModelDispSet(BOOL dispF)
 {
     if (dispF) {
-        Hu3DModelDispOn(masuMdlId);
+        fn_80026A44(masuMdlId, (1 << 0));
     } else {
-        Hu3DModelDispOff(masuMdlId);
+        fn_800269E8(masuMdlId, (1 << 0));
     }
 }
 
@@ -2185,11 +2185,11 @@ void mbMasuPlayerColorSet(int playerNo)
     int i;
     int color;
 
-    partyF = GwSystem.partyF;
+    partyF = lbl_80265B70.partyF;
     if (!partyF) {
         return;
     }
-    id = GwPlayer[playerNo].masuId;
+    id = lbl_80265750[playerNo].masuId;
     capResult = mbMasuPlayerCapStopCheck(playerNo, id);
     if (capResult == 0) {
         type = mbMasuTypeGet(id);
@@ -2230,14 +2230,14 @@ void mbMasuPlayerFadeSet(BOOL fadeF)
 /* Board initialization clears the player's accumulated counts for every prize space type. */
 void mbMasuPlayerPrizeReset(int playerNo)
 {
-    GwPlayer[playerNo].plusMasuNum = 0;
-    GwPlayer[playerNo].minusMasuNum = 0;
-    GwPlayer[playerNo].capsuleMasuNum = 0;
-    GwPlayer[playerNo].hatenaMasuNum = 0;
-    GwPlayer[playerNo].koopaMasuNum = 0;
-    GwPlayer[playerNo].miracleMasuNum = 0;
-    GwPlayer[playerNo].kettouMasuNum = 0;
-    GwPlayer[playerNo].donkeyMasuNum = 0;
+    lbl_80265750[playerNo].plusMasuNum = 0;
+    lbl_80265750[playerNo].minusMasuNum = 0;
+    lbl_80265750[playerNo].capsuleMasuNum = 0;
+    lbl_80265750[playerNo].hatenaMasuNum = 0;
+    lbl_80265750[playerNo].koopaMasuNum = 0;
+    lbl_80265750[playerNo].miracleMasuNum = 0;
+    lbl_80265750[playerNo].kettouMasuNum = 0;
+    lbl_80265750[playerNo].donkeyMasuNum = 0;
 }
 
 static inline void MasuPlayerNextSet(int playerNo, int id)
@@ -2336,7 +2336,7 @@ int mbMasuPKinokoValueGet(int playerNo, s16 id)
     for (i = 0; i < resultNum; i++) {
         type = mbMasuTypeGet(resultTbl[i].id);
         if (type == 3 || type == 4 || type == 5
-            || (!GwSystem.curTime && type == 6)) {
+            || (!lbl_80265B70.curTime && type == 6)) {
             candidateTbl[candidateNum++] = i;
         }
     }

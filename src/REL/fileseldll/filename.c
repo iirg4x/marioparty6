@@ -166,7 +166,7 @@ void NameEnterInit(void)
     lbl_1_bss_42E = grp;
     for (i = 0; i < NAME_SPRITE_COUNT; i++) {
         config = &nameSpriteConfig[i];
-        anim = HuSprAnimRead(HuDataSelHeapReadNum(config->dataNum, HU_MEMNUM_OVL, HEAP_MODEL));
+        anim = HuSprAnimRead(fn_80008DD0(config->dataNum, 0x10000000, 2));
         spr = HuSprCreate(anim, config->priority, config->bank);
         HuSprGrpMemberSet(grp, i, spr);
         HuSprPosSet(grp, i, config->x, config->y);
@@ -178,7 +178,7 @@ void NameEnterInit(void)
         lbl_1_bss_3AC[i] = HuWinCreate(40.0f, 110.0f, 500, 250, 0);
         w = &winData[lbl_1_bss_3AC[i]];
         HuWinBGTPLvlSet(lbl_1_bss_3AC[i], 0.0f);
-        anim = HuSprAnimRead(HuDataSelHeapReadNum(FILESEL_DATA_31 + i, HU_MEMNUM_OVL, HEAP_MODEL));
+        anim = HuSprAnimRead(fn_80008DD0(FILESEL_DATA_31 + i, 0x10000000, 2));
         if (i == 0) {
             HuWinAnimSet(lbl_1_bss_3AC[i], anim, 0, 250.0f, 90.0f);
         } else {
@@ -273,7 +273,7 @@ s32 NameEnterMain(s16 selectedBoxNo)
     HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_JAPANESE, 8);
     HuSprBankSet(lbl_1_bss_42E, NAME_SPR_DELETE_ICON, 2);
     HuSprBankSet(lbl_1_bss_42E, NAME_SPR_CONFIRM_ICON, 4);
-    HuAudFXPlay(MSM_SE_CMN_01);
+    HuAudFXPlay(0);
     NameEnterClose();
     HuWinMesSet(lbl_1_bss_2E0, FILE_SELECT_ENTER_NAME);
     HuWinMesSet(lbl_1_bss_2DE, MESSNUM(MESS_SYS_GUIDE, 2));
@@ -291,14 +291,14 @@ s32 NameEnterMain(s16 selectedBoxNo)
 
 L_95A8:
     dirX = dirY = 0.0f;
-    if (HuPadDStkRep[0] & PAD_BUTTON_LEFT) {
+    if (lbl_802BFFE0[0] & PAD_BUTTON_LEFT) {
         dirX = -1.0f;
-    } else if (HuPadDStkRep[0] & PAD_BUTTON_RIGHT) {
+    } else if (lbl_802BFFE0[0] & PAD_BUTTON_RIGHT) {
         dirX = 1.0f;
     }
-    if (HuPadDStkRep[0] & PAD_BUTTON_UP) {
+    if (lbl_802BFFE0[0] & PAD_BUTTON_UP) {
         dirY = -1.0f;
-    } else if (HuPadDStkRep[0] & PAD_BUTTON_DOWN) {
+    } else if (lbl_802BFFE0[0] & PAD_BUTTON_DOWN) {
         dirY = 1.0f;
     }
     if (!dirX && !dirY) {
@@ -328,7 +328,7 @@ L_95A8:
     if (nextKeyNo == -1) {
         goto L_99B4;
     }
-    HuAudFXPlay(MSM_SE_CMN_01);
+    HuAudFXPlay(0);
     keyNo = nextKeyNo;
     movedKeyValue = keyboard[keyNo].val;
     HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_ALPHA, 8);
@@ -363,7 +363,7 @@ L_99B4:
     /* Start moves focus to Confirm without finishing entry. An existing cursor byte counts
     * as content; at the character limit there is no cursor, so an all-space name can be
     * replaced with a suggestion. */
-    if (HuPadBtnDown[0] & PAD_BUTTON_START) {
+    if (lbl_802C0008[0] & PAD_BUTTON_START) {
         for (keyNo = 0; keyboard[keyNo].val != 0 && keyboard[keyNo].val != NAMEKEYBOARD_CONFIRM;
              keyNo++) {
         }
@@ -390,7 +390,7 @@ L_99B4:
         }
         goto L_A3D8;
     }
-    if (HuPadBtnDown[0] & PAD_BUTTON_A) {
+    if (lbl_802C0008[0] & PAD_BUTTON_A) {
         if (keyboard[keyNo].val >= NAMEKEYBOARD_PAGE_ALPHA &&
             keyboard[keyNo].val <= NAMEKEYBOARD_CONFIRM) {
             goto L_E84;
@@ -448,7 +448,7 @@ L_99B4:
                 nameMes[j] = 0;
             }
         }
-        HuAudFXPlay(MSM_SE_CMN_03);
+        HuAudFXPlay(2);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_CONFIRM, 3);
         HuPrcSleep(10);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_CONFIRM, 2);
@@ -456,7 +456,7 @@ L_99B4:
             HuPrcSleep(30);
         }
         for (j = 0;; j++) {
-            *((s8 *)&GwCommon.name[j]) = lbl_1_bss_D8[selectedBoxNo].fileName[j] = nameMes[j];
+            *((s8 *)&lbl_80265E30.name[j]) = lbl_1_bss_D8[selectedBoxNo].fileName[j] = nameMes[j];
             if (nameMes[j] == 0) {
                 break;
             }
@@ -464,17 +464,17 @@ L_99B4:
         result = 0;
         goto L_AA78;
     L_A088:
-        HuAudFXPlay(MSM_SE_CMN_02);
+        HuAudFXPlay(1);
         goto L_A3D8;
     }
-    if (HuPadBtnDown[0] & PAD_BUTTON_B) {
+    if (lbl_802C0008[0] & PAD_BUTTON_B) {
     L_A0B0:
         nameCharNo--;
         if (nameCharNo < 0) {
             result = FILESEL_RESULT_CANCEL;
             goto L_AA78;
         }
-        HuAudFXPlay(MSM_SE_CMN_04);
+        HuAudFXPlay(3);
         for (j = k = 0; j < nameCharNo; j++) {
             if (nameMesTemp[j] > 255) {
                 nameMes[k++] = (u8)(nameMesTemp[j] >> 8);
@@ -491,7 +491,7 @@ L_99B4:
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_DELETE, 0);
         goto L_A3D8;
     }
-    if (HuPadBtnDown[0] & PAD_TRIGGER_R) {
+    if (lbl_802C0008[0] & PAD_TRIGGER_R) {
         keyboardNo++;
         if (keyboardNo >= nameKeyboardNum) {
             keyboardNo = 0;
@@ -505,7 +505,7 @@ L_99B4:
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_PAGE_RIGHT, 3);
         goto L_A3D8;
     }
-    if (HuPadBtnDown[0] & PAD_TRIGGER_L) {
+    if (lbl_802C0008[0] & PAD_TRIGGER_L) {
         keyboardNo--;
         if (keyboardNo < 0) {
             keyboardNo = nameKeyboardNum - 1;
@@ -521,7 +521,7 @@ L_99B4:
 
 L_A3D8:
     if (keyboardNo != prevKeyboard) {
-        HuAudFXPlay(MSM_SE_FILESEL_12);
+        HuAudFXPlay(1162);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_ALPHA, 8);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_SYMBOL, 8);
         HuSprBankSet(lbl_1_bss_42E, NAME_SPR_KEYBOARD_JAPANESE, 8);
@@ -583,7 +583,7 @@ L_AA78:
     HuWinHomeClear(lbl_1_bss_2DE);
     HuWinHomeClear(lbl_1_bss_2E0);
     HuWinKill(nameWinId);
-    HuAudFXPlay(MSM_SE_CMN_01);
+    HuAudFXPlay(0);
     FileCommonInit();
     HuPrcVSleep();
     return result;

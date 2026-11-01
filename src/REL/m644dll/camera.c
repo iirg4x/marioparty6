@@ -5,8 +5,8 @@
 
 /* Invisible models carrying the animated CAMgrid and CAMintgrid hooks. */
 s32 lbl_1_data_40[7] = {
-    DATANUM(DATA_m644, 0), DATANUM(DATA_m644, 1), DATANUM(DATA_m644, 2), DATANUM(DATA_m644, 3),
-    DATANUM(DATA_m644, 4), DATANUM(DATA_m644, 5), DATANUM(DATA_m644, 6)
+    DATANUM(0x670000, 0), DATANUM(0x670000, 1), DATANUM(0x670000, 2), DATANUM(0x670000, 3),
+    DATANUM(0x670000, 4), DATANUM(0x670000, 5), DATANUM(0x670000, 6)
 };
 
 void fn_1_1124(s32);
@@ -82,11 +82,11 @@ void fn_1_5A8(void)
     s32 model_index;
     for (group_index = 0; group_index < 2; group_index++) {
         for (model_index = 0; model_index < 7; model_index++) {
-            lbl_1_bss_8.camera_models[group_index][model_index] = Hu3DModelCreate(
-                HuDataSelHeapReadNum(lbl_1_data_40[model_index], HU_MEMNUM_OVL, HEAP_MODEL));
-            Hu3DModelAttrSet(lbl_1_bss_8.camera_models[group_index][model_index],
-                             HU3D_MOTATTR_PAUSE);
-            Hu3DModelTPLvlSet(lbl_1_bss_8.camera_models[group_index][model_index], 0.0f);
+            lbl_1_bss_8.camera_models[group_index][model_index] = fn_80025A04(
+                fn_80008DD0(lbl_1_data_40[model_index], 0x10000000, 2));
+            fn_800269E8(lbl_1_bss_8.camera_models[group_index][model_index],
+                             ((1 << 30) | (1 << 1)));
+            fn_80026CBC(lbl_1_bss_8.camera_models[group_index][model_index], 0.0f);
         }
     }
 }
@@ -108,7 +108,7 @@ void fn_1_690(s32 index, s32 selector)
 /* Reports whether the selected camera rail has reached the end of its motion. */
 BOOL fn_1_6F8(s32 team_index) {
     s16 selector = lbl_1_bss_8.selector[team_index];
-    return Hu3DMotionEndCheck(lbl_1_bss_8.camera_models[team_index][selector]);
+    return fn_8002D75C(lbl_1_bss_8.camera_models[team_index][selector]);
 }
 
 /* Returns the selected camera rail's motion frame for the requested team. */
@@ -116,7 +116,7 @@ float fn_1_760(s32 index)
 {
     s16 selector;
     selector = lbl_1_bss_8.selector[index];
-    return Hu3DMotionTimeGet(lbl_1_bss_8.camera_models[index][selector]);
+    return fn_8002D4E0(lbl_1_bss_8.camera_models[index][selector]);
 }
 
 /* Maps route travel and boarding motions to camera rails; boarding entries return -1. */
@@ -166,7 +166,7 @@ void fn_1_848(void)
             top.per_team[camera_index], width.per_team[camera_index],
             height.per_team[camera_index]);
     }
-    object = omAddObjEx(fn_1_A0(), 272, 0, 0, 0, fn_1_C0C);
+    object = fn_8003AB38(fn_1_A0(), 272, 0, 0, 0, fn_1_C0C);
     object->data = &lbl_1_bss_8;
     memset(object->data, 0, 52);
     camera_state = object->data;
@@ -194,9 +194,9 @@ void fn_1_C44(OMOBJ *object)
 
     camera_data = object->data;
     fn_1_11F0();
-    if ((u32)MgSeqFrameNoGet() > 139) {
+    if ((u32)fn_80071DE4() > 139) {
         M644CameraIdPair camera_ids = {{1, 2}};
-        camera_data->split_transition = (f32)(MgSeqFrameNoGet() - 139) / 60.0f;
+        camera_data->split_transition = (f32)(fn_80071DE4() - 139) / 60.0f;
         transition = camera_data->split_transition;
 
         Hu3DCameraPerspectiveSet(
@@ -226,7 +226,7 @@ void fn_1_C44(OMOBJ *object)
                 0, right_edge, 480);
         }
     }
-    if (MgSeqModeGet() == MGSEQ_MODE_START) {
+    if (fn_80071A8C() == 3) {
         fn_1_9664();
         camera_data->split_transition = 0;
         object->objFunc = fn_1_EE0;
@@ -256,7 +256,7 @@ void fn_1_EE0(OMOBJ *object)
         {
             selector = lbl_1_bss_8.selector[entry_index];
             motion_speed = fn_1_9178(entry_index);
-            Hu3DMotionSpeedSet(lbl_1_bss_8.camera_models[entry_index][selector], motion_speed);
+            fn_8002D86C(lbl_1_bss_8.camera_models[entry_index][selector], motion_speed);
         }
     }
     if (fn_1_9114() != 0)
@@ -277,7 +277,7 @@ void fn_1_1060(OMOBJ *object)
             s16 selector = lbl_1_bss_8.selector[entry_index];
             f32 motion_speed = fn_1_9178(entry_index);
 
-            Hu3DMotionSpeedSet(lbl_1_bss_8.camera_models[entry_index][selector], motion_speed);
+            fn_8002D86C(lbl_1_bss_8.camera_models[entry_index][selector], motion_speed);
         }
     }
 }
@@ -296,7 +296,7 @@ void fn_1_1180(s32 index)
 {
     s16 selector;
     selector = lbl_1_bss_8.selector[index];
-    Hu3DModelAttrReset(lbl_1_bss_8.camera_models[index][selector], HU3D_MOTATTR_PAUSE);
+    fn_80026A44(lbl_1_bss_8.camera_models[index][selector], ((1 << 30) | (1 << 1)));
 }
 
 /* Reads the active rail's camera and target hooks each frame to position the team views. */
@@ -312,7 +312,7 @@ void fn_1_11F0(void)
         M644CameraIds camera_ids = {{1, 2}};
         selector = lbl_1_bss_8.selector[team_index];
         model_id = lbl_1_bss_8.camera_models[team_index][selector];
-        if (Hu3DMotionEndCheck(
+        if (fn_8002D75C(
                 lbl_1_bss_8.camera_models[team_index][selector]) != 1) {
             Hu3DModelObjPosGet(
                 lbl_1_bss_8.camera_models[team_index][selector], "CAMgrid",

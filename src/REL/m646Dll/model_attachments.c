@@ -183,36 +183,36 @@ M646PositionTable lbl_1_bss_84;
 
 /* Model resources for the four opening targets, in player order. */
 s32 lbl_1_data_2C0[4] = {
-    DATANUM(DATA_m646, M646_OPENING_TARGET_P1_MODEL_FILE),
-    DATANUM(DATA_m646, M646_OPENING_TARGET_P2_MODEL_FILE),
-    DATANUM(DATA_m646, M646_OPENING_TARGET_P3_MODEL_FILE),
-    DATANUM(DATA_m646, M646_OPENING_TARGET_P4_MODEL_FILE)
+    DATANUM(0x690000, M646_OPENING_TARGET_P1_MODEL_FILE),
+    DATANUM(0x690000, M646_OPENING_TARGET_P2_MODEL_FILE),
+    DATANUM(0x690000, M646_OPENING_TARGET_P3_MODEL_FILE),
+    DATANUM(0x690000, M646_OPENING_TARGET_P4_MODEL_FILE)
 };
 
 /* Hit-motion resources for the four opening targets. */
 s32 lbl_1_data_2D0[4] = {
-    DATANUM(DATA_m646, M646_OPENING_TARGET_P1_MOTION_FILE),
-    DATANUM(DATA_m646, M646_OPENING_TARGET_P2_MOTION_FILE),
-    DATANUM(DATA_m646, M646_OPENING_TARGET_P3_MOTION_FILE),
-    DATANUM(DATA_m646, M646_OPENING_TARGET_P4_MOTION_FILE)
+    DATANUM(0x690000, M646_OPENING_TARGET_P1_MOTION_FILE),
+    DATANUM(0x690000, M646_OPENING_TARGET_P2_MOTION_FILE),
+    DATANUM(0x690000, M646_OPENING_TARGET_P3_MOTION_FILE),
+    DATANUM(0x690000, M646_OPENING_TARGET_P4_MOTION_FILE)
 };
 
 /* Target models for the 10-, 30-, 50-, 100-point, and score-reset categories. */
 s32 lbl_1_data_2E0[5] = {
-    DATANUM(DATA_m646, M646_TARGET_TEN_POINT_MODEL_FILE),
-    DATANUM(DATA_m646, M646_TARGET_THIRTY_POINT_MODEL_FILE),
-    DATANUM(DATA_m646, M646_TARGET_FIFTY_POINT_MODEL_FILE),
-    DATANUM(DATA_m646, M646_TARGET_HUNDRED_POINT_MODEL_FILE),
-    DATANUM(DATA_m646, M646_TARGET_SCORE_RESET_MODEL_FILE)
+    DATANUM(0x690000, M646_TARGET_TEN_POINT_MODEL_FILE),
+    DATANUM(0x690000, M646_TARGET_THIRTY_POINT_MODEL_FILE),
+    DATANUM(0x690000, M646_TARGET_FIFTY_POINT_MODEL_FILE),
+    DATANUM(0x690000, M646_TARGET_HUNDRED_POINT_MODEL_FILE),
+    DATANUM(0x690000, M646_TARGET_SCORE_RESET_MODEL_FILE)
 };
 
 /* Hit motions corresponding to the five target categories above. */
 s32 lbl_1_data_2F4[5] = {
-    DATANUM(DATA_m646, M646_TARGET_TEN_POINT_MOTION_FILE),
-    DATANUM(DATA_m646, M646_TARGET_THIRTY_POINT_MOTION_FILE),
-    DATANUM(DATA_m646, M646_TARGET_FIFTY_POINT_MOTION_FILE),
-    DATANUM(DATA_m646, M646_TARGET_HUNDRED_POINT_MOTION_FILE),
-    DATANUM(DATA_m646, M646_TARGET_SCORE_RESET_MOTION_FILE)
+    DATANUM(0x690000, M646_TARGET_TEN_POINT_MOTION_FILE),
+    DATANUM(0x690000, M646_TARGET_THIRTY_POINT_MOTION_FILE),
+    DATANUM(0x690000, M646_TARGET_FIFTY_POINT_MOTION_FILE),
+    DATANUM(0x690000, M646_TARGET_HUNDRED_POINT_MOTION_FILE),
+    DATANUM(0x690000, M646_TARGET_SCORE_RESET_MOTION_FILE)
 };
 
 /* Stage-surface collision mesh names for each layout descriptor. */
@@ -802,56 +802,56 @@ char *lbl_1_data_1AA0[5] = { lbl_1_data_1A30, lbl_1_data_1A46, lbl_1_data_1A5C, 
                              lbl_1_data_1A88 };
 
 M646MovingStageDescriptor lbl_1_data_1AB4[7] = {
-    { DATANUM(DATA_m646, M646_LAYOUT_A_MODEL_FILE),
-      DATANUM(DATA_m646, M646_LAYOUT_A_COLLISION_FILE),
+    { DATANUM(0x690000, M646_LAYOUT_A_MODEL_FILE),
+      DATANUM(0x690000, M646_LAYOUT_A_COLLISION_FILE),
       lbl_1_data_480,
       { { lbl_1_data_4F0, lbl_1_data_554, 4, 3 },
         { lbl_1_data_5A8, lbl_1_data_5F4, 3, 4 },
         { lbl_1_data_644, lbl_1_data_690, 3, 5 },
         { lbl_1_data_6F4, lbl_1_data_758, 4, 6 },
         { lbl_1_data_7AC, lbl_1_data_7F8, 3, 7 } } },
-    { DATANUM(DATA_m646, M646_LAYOUT_B_MODEL_FILE),
-      DATANUM(DATA_m646, M646_LAYOUT_B_COLLISION_FILE),
+    { DATANUM(0x690000, M646_LAYOUT_B_MODEL_FILE),
+      DATANUM(0x690000, M646_LAYOUT_B_COLLISION_FILE),
       lbl_1_data_804,
       { { lbl_1_data_874, lbl_1_data_8D8, 4, 3 },
         { lbl_1_data_92C, lbl_1_data_978, 3, 4 },
         { lbl_1_data_9C8, lbl_1_data_A14, 3, 5 },
         { lbl_1_data_A78, lbl_1_data_ADC, 4, 6 },
         { lbl_1_data_B30, lbl_1_data_B7C, 3, 7 } } },
-    { DATANUM(DATA_m646, M646_LAYOUT_C_MODEL_FILE),
-      DATANUM(DATA_m646, M646_LAYOUT_C_COLLISION_FILE),
+    { DATANUM(0x690000, M646_LAYOUT_C_MODEL_FILE),
+      DATANUM(0x690000, M646_LAYOUT_C_COLLISION_FILE),
       lbl_1_data_B88,
       { { lbl_1_data_BF8, lbl_1_data_C5C, 4, 3 },
         { lbl_1_data_CB0, lbl_1_data_CFC, 3, 4 },
         { lbl_1_data_D4C, lbl_1_data_D98, 3, 5 },
         { lbl_1_data_DFC, lbl_1_data_E60, 4, 6 },
         { lbl_1_data_EB4, lbl_1_data_F00, 3, 7 } } },
-    { DATANUM(DATA_m646, M646_LAYOUT_D_MODEL_FILE),
-      DATANUM(DATA_m646, M646_LAYOUT_D_COLLISION_FILE),
+    { DATANUM(0x690000, M646_LAYOUT_D_MODEL_FILE),
+      DATANUM(0x690000, M646_LAYOUT_D_COLLISION_FILE),
       lbl_1_data_F0C,
       { { lbl_1_data_F7C, lbl_1_data_FE0, 4, 3 },
         { lbl_1_data_1034, lbl_1_data_1080, 3, 4 },
         { lbl_1_data_10D0, lbl_1_data_111C, 3, 5 },
         { lbl_1_data_1180, lbl_1_data_11E4, 4, 6 },
         { lbl_1_data_1238, lbl_1_data_1284, 3, 7 } } },
-    { DATANUM(DATA_m646, M646_LAYOUT_E_MODEL_FILE),
-      DATANUM(DATA_m646, M646_LAYOUT_E_COLLISION_FILE),
+    { DATANUM(0x690000, M646_LAYOUT_E_MODEL_FILE),
+      DATANUM(0x690000, M646_LAYOUT_E_COLLISION_FILE),
       lbl_1_data_1290,
       { { lbl_1_data_1300, lbl_1_data_1364, 4, 3 },
         { lbl_1_data_13B8, lbl_1_data_1404, 3, 4 },
         { lbl_1_data_1454, lbl_1_data_14A0, 3, 5 },
         { lbl_1_data_1504, lbl_1_data_1568, 4, 6 },
         { lbl_1_data_15BC, lbl_1_data_1608, 3, 7 } } },
-    { DATANUM(DATA_m646, M646_LAYOUT_OPENING_MODEL_FILE),
-      DATANUM(DATA_m646, M646_LAYOUT_OPENING_COLLISION_FILE),
+    { DATANUM(0x690000, M646_LAYOUT_OPENING_MODEL_FILE),
+      DATANUM(0x690000, M646_LAYOUT_OPENING_COLLISION_FILE),
       lbl_1_data_1614,
       { { lbl_1_data_1694, lbl_1_data_1704, 4, 8 },
         { NULL, NULL, 0, -1 },
         { NULL, NULL, 0, -1 },
         { NULL, NULL, 0, -1 },
         { NULL, NULL, 0, -1 } } },
-    { DATANUM(DATA_m646, M646_LAYOUT_SPECIAL_MODEL_FILE),
-      DATANUM(DATA_m646, M646_LAYOUT_SPECIAL_COLLISION_FILE),
+    { DATANUM(0x690000, M646_LAYOUT_SPECIAL_MODEL_FILE),
+      DATANUM(0x690000, M646_LAYOUT_SPECIAL_COLLISION_FILE),
       lbl_1_data_1714,
       { { NULL, NULL, 0, -1 },
         { NULL, NULL, 0, -1 },
@@ -862,22 +862,22 @@ M646MovingStageDescriptor lbl_1_data_1AB4[7] = {
 
 /* Carrier models in the same order as the scene's opening and A-E hook names. */
 s32 lbl_1_data_1D38[6] = {
-    DATANUM(DATA_m646, M646_CARRIER_OPENING_MODEL_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_A_MODEL_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_B_MODEL_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_C_MODEL_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_D_MODEL_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_E_MODEL_FILE)
+    DATANUM(0x690000, M646_CARRIER_OPENING_MODEL_FILE),
+    DATANUM(0x690000, M646_CARRIER_A_MODEL_FILE),
+    DATANUM(0x690000, M646_CARRIER_B_MODEL_FILE),
+    DATANUM(0x690000, M646_CARRIER_C_MODEL_FILE),
+    DATANUM(0x690000, M646_CARRIER_D_MODEL_FILE),
+    DATANUM(0x690000, M646_CARRIER_E_MODEL_FILE)
 };
 
 /* Carrier motions start together when the scene reaches the start sequence. */
 s32 lbl_1_data_1D50[6] = {
-    DATANUM(DATA_m646, M646_CARRIER_OPENING_MOTION_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_A_MOTION_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_B_MOTION_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_C_MOTION_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_D_MOTION_FILE),
-    DATANUM(DATA_m646, M646_CARRIER_E_MOTION_FILE)
+    DATANUM(0x690000, M646_CARRIER_OPENING_MOTION_FILE),
+    DATANUM(0x690000, M646_CARRIER_A_MOTION_FILE),
+    DATANUM(0x690000, M646_CARRIER_B_MOTION_FILE),
+    DATANUM(0x690000, M646_CARRIER_C_MOTION_FILE),
+    DATANUM(0x690000, M646_CARRIER_D_MOTION_FILE),
+    DATANUM(0x690000, M646_CARRIER_E_MOTION_FILE)
 };
 
 OMOBJ *lbl_1_bss_80;
@@ -887,10 +887,10 @@ void fn_1_8158(OMOBJMAN *objman)
 {
     OMOBJ *obj;
     M646MovingStageWork *work;
-    obj = omAddObjEx(objman, 30, 6, 6, OM_GRP_NONE, fn_1_8ACC);
+    obj = fn_8003AB38(objman, 30, 6, 6, -1, fn_1_8ACC);
     lbl_1_bss_80 = obj;
-    obj->stat |= OM_STAT_MODELPAUSE;
-    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M646MovingStageWork), HU_MEMNUM_OVL);
+    obj->stat |= (1 << 8);
+    work = HuMemDirectMallocNum(HEAP_HEAP, sizeof(M646MovingStageWork), 0x10000000);
     obj->data = work;
     memset(work, 0, sizeof(M646MovingStageWork));
 }
@@ -919,14 +919,14 @@ void fn_1_8270(OMOBJ *obj)
 
     fn_1_89EC(obj);
     for (carrierIndex = 0; carrierIndex < 6; carrierIndex++) {
-        model = obj->mdlId[carrierIndex] = Hu3DModelCreate(
-            HuDataSelHeapReadNum(lbl_1_data_1D38[carrierIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-        motion = obj->mtnId[carrierIndex] = Hu3DJointMotion(
-            model, HuDataSelHeapReadNum(lbl_1_data_1D50[carrierIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-        Hu3DMotionSet(model, motion);
+        model = obj->mdlId[carrierIndex] = fn_80025A04(
+            fn_80008DD0(lbl_1_data_1D38[carrierIndex], 0x10000000, 2));
+        motion = obj->mtnId[carrierIndex] = fn_80030458(
+            model, fn_80008DD0(lbl_1_data_1D50[carrierIndex], 0x10000000, 2));
+        fn_8002C95C(model, motion);
         /* Carrier motion waits for the scene to reach the start sequence. */
-        Hu3DMotionSpeedSet(model, (0.0f));
-        Hu3DModelLayerSet(model, 6);
+        fn_8002D86C(model, (0.0f));
+        fn_80026B8C(model, 6);
         fn_1_8380(obj, carrierIndex);
     }
 }
@@ -958,43 +958,43 @@ void fn_1_8380(OMOBJ *obj, s32 index)
     stage->stageKind = kind;
     descriptor = &lbl_1_data_1AB4[kind];
     model = stage->model =
-        Hu3DModelCreate(HuDataSelHeapReadNum(descriptor->modelFile, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelLayerSet(model, 4);
+        fn_80025A04(fn_80008DD0(descriptor->modelFile, 0x10000000, 2));
+    fn_80026B8C(model, 4);
     parent = obj->mdlId[index];
-    Hu3DModelHookSet(parent, lbl_1_data_468[index], model);
+    fn_8002741C(parent, lbl_1_data_468[index], model);
     stage->parentModel = parent;
-    hidden = stage->hiddenModel = Hu3DModelCreate(
-        HuDataSelHeapReadNum(descriptor->hiddenModelFile, HU_MEMNUM_OVL, HEAP_MODEL));
-    Hu3DModelHookSet(model, descriptor->hiddenHook, hidden);
-    Hu3DModelLayerSet(hidden, 4);
-    Hu3DModelAttrSet(hidden, HU3D_ATTR_DISPOFF);
+    hidden = stage->hiddenModel = fn_80025A04(
+        fn_80008DD0(descriptor->hiddenModelFile, 0x10000000, 2));
+    fn_8002741C(model, descriptor->hiddenHook, hidden);
+    fn_80026B8C(hidden, 4);
+    fn_800269E8(hidden, (1 << 0));
     for (groupIndex = 0; groupIndex < 5; groupIndex++) {
         group = &descriptor->groups[groupIndex];
         for (attachmentIndex = 0; attachmentIndex < group->attachmentCount; attachmentIndex++) {
             attachment = &stage->attachments[groupIndex][attachmentIndex];
             if (kind == 5 && groupIndex == 0) {
-                attachmentModel = Hu3DModelCreate(HuDataSelHeapReadNum(
-                    lbl_1_data_2C0[attachmentIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-                motion = attachment->motion = Hu3DJointMotion(
-                    attachmentModel, HuDataSelHeapReadNum(lbl_1_data_2D0[attachmentIndex],
-                                                          HU_MEMNUM_OVL, HEAP_MODEL));
-                Hu3DMotionSet(attachmentModel, motion);
-                Hu3DMotionSpeedSet(attachmentModel, (0.0f));
+                attachmentModel = fn_80025A04(fn_80008DD0(
+                    lbl_1_data_2C0[attachmentIndex], 0x10000000, 2));
+                motion = attachment->motion = fn_80030458(
+                    attachmentModel, fn_80008DD0(lbl_1_data_2D0[attachmentIndex],
+                                                          0x10000000, 2));
+                fn_8002C95C(attachmentModel, motion);
+                fn_8002D86C(attachmentModel, (0.0f));
             } else {
-                attachmentModel = Hu3DModelCreate(
-                    HuDataSelHeapReadNum(lbl_1_data_2E0[groupIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-                motion = attachment->motion = Hu3DJointMotion(
+                attachmentModel = fn_80025A04(
+                    fn_80008DD0(lbl_1_data_2E0[groupIndex], 0x10000000, 2));
+                motion = attachment->motion = fn_80030458(
                     attachmentModel,
-                    HuDataSelHeapReadNum(lbl_1_data_2F4[groupIndex], HU_MEMNUM_OVL, HEAP_MODEL));
-                Hu3DMotionSet(attachmentModel, motion);
-                Hu3DMotionSpeedSet(attachmentModel, (0.0f));
+                    fn_80008DD0(lbl_1_data_2F4[groupIndex], 0x10000000, 2));
+                fn_8002C95C(attachmentModel, motion);
+                fn_8002D86C(attachmentModel, (0.0f));
             }
             attachment->model = attachmentModel;
             attachment->state = 0;
-            Hu3DModelHookSet(model, group->attachmentNames[attachmentIndex], attachmentModel);
+            fn_8002741C(model, group->attachmentNames[attachmentIndex], attachmentModel);
             attachment->parentModel = model;
-            Hu3DModelLayerSet(attachmentModel, 5);
-            mesh = Hu3DModelObjPtrGet(hidden, group->colliderNames[stage->jointIndex[groupIndex]]);
+            fn_80026B8C(attachmentModel, 5);
+            mesh = fn_80026BF4(hidden, group->colliderNames[stage->jointIndex[groupIndex]]);
             if (mesh != NULL) {
                 collider = &stage->attachments[groupIndex][attachmentIndex].collider;
                 collider->owner = &stage->attachments[groupIndex][attachmentIndex];
@@ -1018,7 +1018,7 @@ void fn_1_8380(OMOBJ *obj, s32 index)
             stage->jointIndex[groupIndex]++;
         }
     }
-    worldMesh = Hu3DModelObjPtrGet(hidden, lbl_1_data_308[kind]);
+    worldMesh = fn_80026BF4(hidden, lbl_1_data_308[kind]);
     if (worldMesh != NULL) {
         anchor = (M646AnchorRecord *)&stage->collision;
         anchor->kind = 1;
@@ -1050,7 +1050,7 @@ void fn_1_8800(OMOBJ *obj)
     for (model = 0; model < 6; model++) {
         stage = &work->stages[model];
         descriptor = &lbl_1_data_1AB4[stage->stageKind];
-        Hu3DModelPosGet(obj->mdlId[model], &position);
+        fn_800267CC(obj->mdlId[model], &position);
         stage->collision.transforms[0]->pos.x = position.x;
         stage->collision.transforms[0]->pos.y = position.y;
         stage->collision.transforms[0]->pos.z = position.z;
@@ -1071,7 +1071,7 @@ void fn_1_8914(void)
     index = 0;
     while (index < 6) {
         model = lbl_1_bss_80->mdlId[index];
-        Hu3DMotionSpeedSet(model, (0.0f));
+        fn_8002D86C(model, (0.0f));
         index++;
     }
 }
@@ -1084,7 +1084,7 @@ void fn_1_8980(void)
     index = 0;
     while (index < 6) {
         model = lbl_1_bss_80->mdlId[index];
-        Hu3DMotionSpeedSet(model, (1.0f));
+        fn_8002D86C(model, (1.0f));
         index++;
     }
 }
@@ -1142,9 +1142,9 @@ s32 fn_1_8DAC(M646ModelCollider *collider, M646ActorAnchor *actor)
         attachment->position.x = collider->pose.pos.x;
         attachment->position.y = collider->pose.pos.y;
         attachment->position.z = collider->pose.pos.z;
-        Hu3DModelHookObjReset(attachment->parentModel, collider->jointName);
+        fn_800275B4(attachment->parentModel, collider->jointName);
         attachment->parentModel = -1;
-        Hu3DModelPosSetV(attachment->model, &attachment->position);
+        fn_80026790(attachment->model, &attachment->position);
         switch (collider->callbackType) {
             case 3:
             case 4:
@@ -1155,7 +1155,7 @@ s32 fn_1_8DAC(M646ModelCollider *collider, M646ActorAnchor *actor)
             case 9:
             case 10:
             case 11:
-                Hu3DMotionSpeedSet(attachment->model, (1.0f));
+                fn_8002D86C(attachment->model, (1.0f));
                 break;
         }
     }

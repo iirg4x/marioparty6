@@ -47,9 +47,9 @@ void mbMathInit(void)
 {
     s32 i;
 
-    cosTab = HuMemDirectMallocNum(HEAP_HEAP, MB_TRIG_TABLE_BYTES, HU_MEMNUM_OVL);
+    cosTab = HuMemDirectMallocNum(HEAP_HEAP, MB_TRIG_TABLE_BYTES, 0x10000000);
     for (i = 0; i < MB_TRIG_TABLE_COUNT;) {
-        cosTab[i] = HuCos((360.0f / MB_TRIG_TABLE_COUNT) * i);
+        cosTab[i] = cos(3.141592653589793*((360.0f / MB_TRIG_TABLE_COUNT) * i)/180.0);
         i++;
     }
 }
@@ -547,7 +547,7 @@ float mbVecMagXZ(HuVecF *positionA, HuVecF *positionB)
     float dx = positionA->x - positionB->x;
     float dz = positionA->z - positionB->z;
 
-    return HuMagPoint2D(dx, dz);
+    return sqrtf((dx*dx)+(dz*dz));
 }
 
 /* Board checks use this for an inclusive horizontal-distance threshold. */
@@ -718,7 +718,7 @@ void mbPos3DtoNorm(HuVecF *worldPos, s16 cameraMask, HuVecF *normPos)
     HuVecF pos;
     s32 cameraNo;
 
-    for (cameraNo = 0; cameraNo < HU3D_CAM_MAX; cameraNo++) {
+    for (cameraNo = 0; cameraNo < 16; cameraNo++) {
         if (cameraMask & (1 << cameraNo)) {
             break;
         }
@@ -765,7 +765,7 @@ void mbNormPosto3D(HuVecF *normPos, s16 cameraMask, HuVecF *worldPos)
     Mtx lookAtInv;
     s32 cameraNo;
 
-    for (cameraNo = 0; cameraNo < HU3D_CAM_MAX; cameraNo++) {
+    for (cameraNo = 0; cameraNo < 16; cameraNo++) {
         if (cameraMask & (1 << cameraNo)) {
             break;
         }
@@ -887,13 +887,13 @@ float mbAngleLerp(float startAngle, float endAngle, float t)
 /* Starts angle interpolation quickly, then eases toward the end angle. */
 float mbAngleEaseOut(float startAngle, float endAngle, float t)
 {
-    return mbAngleLerp(startAngle, endAngle, HuSin(t * 90.0f));
+    return mbAngleLerp(startAngle, endAngle, sin(3.141592653589793*(t * 90.0f)/180.0));
 }
 
 /* Starts angle interpolation slowly, then eases toward the end angle. */
 float mbAngleEaseIn(float startAngle, float endAngle, float t)
 {
-    return mbAngleLerp(startAngle, endAngle, 1.0f - HuCos(t * 90.0f));
+    return mbAngleLerp(startAngle, endAngle, 1.0f - cos(3.141592653589793*(t * 90.0f)/180.0));
 }
 
 /* Moves a projected board position along camera depth by the requested scale. */
@@ -906,7 +906,8 @@ float mbMathDistScale(HuVecF *worldPos, float scale, HuVecF *scaledWorldPos)
     float z;
 
     mbPos3Dto2D(worldPos, &pos);
-    tanFov = HuSin(cameraP->fov * 0.5f) / HuCos(cameraP->fov * 0.5f);
+    tanFov = sin(3.141592653589793*(cameraP->fov
+        * 0.5f)/180.0) / cos(3.141592653589793*(cameraP->fov * 0.5f)/180.0);
     depth = pos.z * tanFov;
     z = (depth / scale) / tanFov;
     pos.z = z;
@@ -933,15 +934,15 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     BOOL horizontalCullF;
     BOOL verticalCullF;
 
-    object->flags &= ~HSF_MATERIAL_DISPOFF;
-    if (shadowModelDrawF == FALSE) {
-        cameraP = &Hu3DCamera[Hu3DCameraNo];
+    object->flags &= ~(1 << 10);
+    if (lbl_802C01B0 == FALSE) {
+        cameraP = &Hu3DCamera[lbl_802C01A6];
         fov = cameraP->fov;
         nearPlaneDistance = cameraP->near;
         aspect = cameraP->aspect;
     } else {
-        fov = Hu3DShadow->fov;
-        nearPlaneDistance = Hu3DShadow->near;
+        fov = lbl_802C01AC->fov;
+        nearPlaneDistance = lbl_802C01AC->near;
         aspect = 1.0f;
     }
     negativeFovTan = -1.0f * (mbSinDeg(fov * 0.5f) / mbCosDeg(fov * 0.5f));
@@ -1001,7 +1002,7 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     }
     if (i >= 8) {
         /* No corner lies beyond the near plane, so the box is wholly behind it. */
-        object->flags |= HSF_MATERIAL_DISPOFF;
+        object->flags |= (1 << 10);
         return;
     }
 
@@ -1027,7 +1028,7 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     }
     if (horizontalCullF) {
         /* All corners fall outside the same horizontal side of the view. */
-        object->flags |= HSF_MATERIAL_DISPOFF;
+        object->flags |= (1 << 10);
         return;
     }
 
@@ -1053,7 +1054,7 @@ static void ObjectCullUpdate(HSF_OBJECT *object, Mtx mtx)
     }
     if (verticalCullF) {
         /* All corners fall outside the same vertical side of the view. */
-        object->flags |= HSF_MATERIAL_DISPOFF;
+        object->flags |= (1 << 10);
     }
 }
 
@@ -1255,7 +1256,7 @@ void mbObjCullInit(MBMODELID modelId)
     HSF_OBJECT *object;
     BOOL cullF = FALSE;
 
-    hsf = Hu3DData[mbObjModelIDGet(modelId)].hsf;
+    hsf = lbl_802C01C8[mbObjModelIDGet(modelId)].hsf;
     mbObjModelIDGet(modelId);
     object = hsf->object;
     for (i = 0; i < hsf->objectNum; i++, object++) {
@@ -1266,6 +1267,6 @@ void mbObjCullInit(MBMODELID modelId)
         }
     }
     if (cullF == FALSE) {
-        Hu3DModelAttrSet(mbObjModelIDGet(modelId), HU3D_ATTR_NOCULL);
+        fn_800269E8(mbObjModelIDGet(modelId), (1 << 14));
     }
 }

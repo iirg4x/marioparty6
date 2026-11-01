@@ -115,8 +115,8 @@ void fn_1_796C(int winner);
 void fn_1_8180(int playerNo);
 void fn_1_C450(M618Input *input, int stickX, int stickY, int buttonDown, int buttonHeld);
 
-u32 MgSeqModeNext(void);
-u16 MgSeqModeChangeOff(void);
-u16 MgSeqModeChangeOn(void);
+u32 fn_80071A9C(void);
+u16 fn_80071B08(void);
+u16 fn_80071B30(void);
 
 #endif
