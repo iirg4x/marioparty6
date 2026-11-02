@@ -259,17 +259,31 @@ def parse_modules(source: str) -> List[dict]:
     return records
 
 
-def minigame_registry(source: str) -> Set[str]:
+def overlay_names(source: str) -> List[str]:
+    """The overlays of include/ovl_table.h in table order: an overlay's number is its index."""
+    return [match.lower() for match in re.findall(r"^\s*DLL\((\w+)\)", source, re.M)]
+
+
+def minigame_registry(source: str, overlays: Optional[List[str]] = None) -> Set[str]:
+    """The minigame modules mgdata.inc registers. An entry names its overlay as DLL_<module> or, since main
+    writes unsupported names as numbers, by its overlay number, read through include/ovl_table.h."""
     cleaned = re.sub(
         r'"(?:\\.|[^"\\])*"|/\*.*?\*/|//[^\n]*',
         lambda match: match[0] if match[0].startswith('"') else " ",
         source,
         flags=re.S,
     )
-    return {
-        match.lower()
-        for match in re.findall(r"\bDLL_(m\d+dll)\s*,\s*MG_TYPE_\w+", cleaned, re.I)
-    }
+    registered = set()
+    for name, number in re.findall(r"(?:\bDLL_(m\d+dll)|\{\s*(\d+))\s*,\s*MG_TYPE_\w+", cleaned, re.I):
+        if name:
+            registered.add(name.lower())
+            continue
+        index = int(number)
+        if not overlays or index >= len(overlays):
+            raise SnapshotBuildError("minigame overlay number {} has no entry in include/ovl_table.h".format(index))
+        if re.fullmatch(r"m\d+dll", overlays[index]):
+            registered.add(overlays[index])
+    return registered
 
 
 def parse_splits(source: str) -> Dict[str, dict]:
@@ -739,7 +753,8 @@ def build_snapshot(
                 assert value is not None
                 files[path] = value
     selections = configured_objects(files["configure.py"])
-    registered = minigame_registry(files["include/mgdata.inc"])
+    overlays = overlay_names(_show_text(repo, commit, "include/ovl_table.h", required=False) or "")
+    registered = minigame_registry(files["include/mgdata.inc"], overlays)
     if not registered:
         raise SnapshotBuildError("registered minigame census could not be read")
 

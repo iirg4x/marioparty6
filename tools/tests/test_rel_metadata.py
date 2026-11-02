@@ -207,6 +207,19 @@ config.libs = [
         return path
 
 
+class MinigameRegistryTests(unittest.TestCase):
+    def test_registry_reads_overlay_names_and_numbers(self) -> None:
+        builder = _load_builder()
+        overlays = builder.overlay_names("DLL(actmanDLL)\nDLL(bootdll)\nDLL(m601dll)\nDLL(m602dll)\n")
+        self.assertEqual(overlays, ["actmandll", "bootdll", "m601dll", "m602dll"])
+        named = "{\n    DLL_m601dll,\n    MG_TYPE_4P,\n}"
+        numbered = "{\n    2,\n    MG_TYPE_4P,\n},\n{\n    3, // m602\n    MG_TYPE_1VS3,\n}"
+        self.assertEqual(builder.minigame_registry(named), {"m601dll"})
+        self.assertEqual(builder.minigame_registry(numbered, overlays), {"m601dll", "m602dll"})
+        with self.assertRaises(builder.SnapshotBuildError):
+            builder.minigame_registry("{ 9, MG_TYPE_4P }", overlays)
+
+
 class RelMetadataTests(unittest.TestCase):
     def test_inspector_and_helper_accept_arbitrary_empty_rel(self) -> None:
         target = inspected_target()
