@@ -4,7 +4,7 @@
 
 extern "C" {
 #include "game/data.h"
-#include "string.h"
+#include <string.h>
 #include "REL/framework/assertion.h"
 }
 

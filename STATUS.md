@@ -18,7 +18,7 @@ Byte percentages were generated from a verified full-project retail build with `
 
 Names with no original evidence behind them are now written as numbers and address names across the shared headers and their consumers; the linked game still matches retail.
 
-Shared C++ framework (`framework:minigame_core.cpp`): **30 complete source files** compile once; all **21 consumer RELs** match retail. This publishes already exact code.
+Shared C++ framework (`framework:minigame_core.cpp`): **34 complete source files** compile once against the original CodeWarrior MSL C++ library headers (`std::vector`, `std::map`, `std::multimap`, `std::set`, `std::priority_queue`); all **21 consumer RELs** match retail.
 
 Mole-it! (`m641Dll`) selects all **92 functions** from **8 complete translation units**; its linked REL matches retail.
 

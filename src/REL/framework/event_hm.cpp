@@ -1,11 +1,16 @@
 /* Dispatches channel events to the minigame callbacks registered for each event type. */
-extern "C" {
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/stdio.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/abort_exit.h"
-}
+#include <map>
+
 #include "REL/framework/event_hm.h"
 
 static const char rcsid[] = "$Id: event_hm.cpp,v 1.21 2004/09/09 12:24:38 saf Exp $";
+
+struct HandlerMap : std::multimap<int, EventCallback *> {
+    HandlerMap() {}
+    ~HandlerMap() {}
+};
+
+inline HandlerMapOwner::~HandlerMapOwner() { delete map; }
 
 /* Create the callback map and register its channel after the event manager is active. */
 EventHandlerManager::EventHandlerManager(int channel) : handlers(new HandlerMap)
@@ -17,10 +22,10 @@ EventHandlerManager::EventHandlerManager(int channel) : handlers(new HandlerMap)
 EventHandlerManager::~EventHandlerManager()
 {
     HandlerMap& handlerMap = *handlers;
-    HandlerIterator currentHandler = handlerMap.begin();
-    HandlerIterator endHandler = handlerMap.end();
+    HandlerMap::iterator currentHandler = handlerMap.begin();
+    HandlerMap::iterator endHandler = handlerMap.end();
     while (currentHandler != endHandler) {
-        delete (*currentHandler).callback;
+        delete currentHandler->second;
         ++currentHandler;
     }
 }
@@ -28,111 +33,19 @@ EventHandlerManager::~EventHandlerManager()
 /* When a caller registers a callback, retain it under its type, including duplicate types. */
 void EventHandlerManager::addHandler(EventCallback *handler, int eventType)
 {
-    HandlerValue entry(eventType, handler);
+    HandlerMap::value_type entry(eventType, handler);
     HandlerMap& handlerMap = *handlers;
     handlerMap.insert(entry);
 }
 
 /* Channel dispatch calls this to forward the same message to every matching registration. */
-void EventHandlerManager::receive(EventMessage *message)
+void EventHandlerManager::receive(const EventPacket *message)
 {
     HandlerMap& handlerMap = *handlers;
-    HandlerIterator currentHandler = handlerMap.lowerBound(message->type);
-    HandlerIterator pastTypeHandlers = handlerMap.upperBound(message->type);
+    HandlerMap::iterator currentHandler = handlerMap.lower_bound(message->type);
+    HandlerMap::iterator pastTypeHandlers = handlerMap.upper_bound(message->type);
     while (currentHandler != pastTypeHandlers) {
-        (*currentHandler).callback->receive(message);
+        currentHandler->second->receive(message);
         ++currentHandler;
     }
-}
-
-/* receive uses this to find the first callback at or after the requested event type. */
-HandlerIterator HandlerTree::lowerBound(const int& eventType)
-{
-    HandlerNode *currentNode = root();
-    HandlerNode *bound = (HandlerNode*)&nodeStorage.second();
-    // The anchor is the end iterator when no callback meets the bound.
-    while (currentNode != 0) {
-        if (!ordering.first()(currentNode->entry.eventType, eventType)) {
-            bound = currentNode;
-            currentNode = (HandlerNode*)currentNode->left;
-        } else {
-            currentNode = static_cast<HandlerNode *>(currentNode->right);
-        }
-    }
-    return bound;
-}
-
-/* receive uses this to find the first registration strictly after the requested event type. */
-HandlerIterator HandlerTree::upperBound(const int& eventType)
-{
-    HandlerNode *currentNode = root();
-    HandlerNode *bound = (HandlerNode*)&nodeStorage.second();
-    while (currentNode != 0) {
-        if (ordering.first()(eventType, currentNode->entry.eventType)) {
-            bound = currentNode;
-            currentNode = (HandlerNode*)currentNode->left;
-        } else {
-            currentNode = static_cast<HandlerNode *>(currentNode->right);
-        }
-    }
-    return bound;
-}
-
-/* Tree destruction frees descendants before their node; the manager already deleted callbacks. */
-void HandlerTree::erase(HandlerNode *node)
-{
-    if (node->left) erase((HandlerNode*)node->left);
-    if (node->right) erase(static_cast<HandlerNode *>(node->right));
-    valueAllocator().destroy(&node->entry);
-    nodeAllocator().deallocate(node, 1);
-}
-
-/* addHandler inserts here, placing another callback after entries with the same event type. */
-HandlerIterator HandlerTree::insert(const HandlerValue& entry)
-{
-    HandlerNode *insertionParent = (HandlerNode*)&nodeStorage.second();
-    HandlerNode *searchNode = root();
-    bool insertLeft = true;
-    bool becomesFirst = true;
-    while (searchNode != 0) {
-        insertionParent = searchNode;
-        if (ordering.first()(entry.eventType, searchNode->entry.eventType)) {
-            searchNode = (HandlerNode*)searchNode->left;
-            insertLeft = true;
-        } else {
-            searchNode = static_cast<HandlerNode *>(searchNode->right);
-            insertLeft = false;
-            becomesFirst = false;
-        }
-    }
-    return insertNode(insertionParent, insertLeft, becomesFirst, entry);
-}
-
-/* Map construction sets the first iterator to the empty tree's end anchor. */
-HandlerTree::HandlerTree(const HandlerValueCompare& compare, const HandlerAllocator& allocator)
-    : entryStorage(allocator), nodeStorage(allocator), ordering(compare)
-{
-    beginNode() = (HandlerNode*)&nodeStorage.second();
-}
-
-/* insert calls this after choosing a parent, to allocate, link and rebalance the new entry. */
-template <class Value>
-HandlerNode *HandlerTree::insertNode(HandlerNode *insertionParent, bool insertLeft,
-                                     bool becomesFirst, const Value &entry)
-{
-    if (size() > maxSize() - 1) {
-        fprintf(stderr, "tree::insert length error\n");
-        abort();
-    }
-    HandlerNode *newNode = nodeAllocator().allocate(1);
-    entryStorage.construct(&newNode->entry, entry);
-    newNode->left = newNode->right = 0;
-    newNode->parent = insertionParent;
-    if (insertLeft) insertionParent->left = newNode;
-    else insertionParent->right = newNode;
-    ++entryStorage.second();
-    rebalanceTreeAfterInsert(newNode, root());
-    // A path containing only left branches makes this the new first entry.
-    if (becomesFirst) beginNode() = newNode;
-    return newNode;
 }

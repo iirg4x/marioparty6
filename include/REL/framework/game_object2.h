@@ -10,7 +10,6 @@ struct RenderObject : GameObject, OwnedModel {
     explicit RenderObject(int category);
     virtual ~RenderObject();
     virtual void draw(Mtx *matrix) = 0;
-    virtual void drawPass() = 0;
     static void drawCallback(HU3D_MODEL *model, Mtx *matrix);
 };
 

@@ -3,7 +3,7 @@
 #define REL_FRAMEWORK_MISC_ROTARC_H
 
 extern "C" {
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/mtx.h"
 }
 

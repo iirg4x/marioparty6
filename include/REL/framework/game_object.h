@@ -13,6 +13,10 @@ struct GameObject : GameObjectNode {
     virtual void update() = 0;
     int category; // Selects the manager's collection for this object.
     explicit GameObject(int category);
+    // The category the manager files this object under.
+    int getCategory() const { return category; }
+    // The object after this one in its group; the group's head at the end.
+    GameObject *next() { return static_cast<GameObject *>(link0); }
 };
 
 #endif

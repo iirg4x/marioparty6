@@ -1,7 +1,7 @@
 /* Quaternion arcs align directions for orientation updates and segment rendering. */
-static const char rcsid[] = "$Id: misc_rotarc.cpp,v 1.23 2004/09/09 12:24:38 saf Exp $";
-
 #include "REL/framework/misc_rotarc.h"
+
+static const char rcsid[] = "$Id: misc_rotarc.cpp,v 1.23 2004/09/09 12:24:38 saf Exp $";
 
 /* Called by orientation updates and segment-matrix helpers to rotate start onto end.
  * Input lengths are discarded; zero-length vectors have no special handling. */

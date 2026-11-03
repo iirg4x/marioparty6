@@ -73,7 +73,7 @@ def objdiff_cli_url(tag: str) -> str:
 
 
 def sjiswrap_url(tag: str) -> str:
-    repo = "https://github.com/encounter/sjiswrap"
+    repo = "https://github.com/iirg4x/sjiswrap"
     return f"{repo}/releases/download/{tag}/sjiswrap-windows-x86.exe"
 
 
