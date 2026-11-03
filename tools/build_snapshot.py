@@ -233,6 +233,27 @@ def configured_objects(source: str) -> Dict[str, str]:
     return result
 
 
+def configured_sources(source: str) -> Dict[str, str]:
+    """The source file each Object builds from, where it names one with a literal source= other than its own path.
+
+    A unit such as REL/<module>/runtime.c compiles the shared Runtime.PPCEABI.H/runtime.c: the unit is the module's
+    own, but its source file is the shared one, so the source check must look for that file."""
+
+    result: Dict[str, str] = {}
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name) or node.func.id != "Object":
+            continue
+        if len(node.args) < 2 or not isinstance(node.args[1], ast.Constant) or not isinstance(node.args[1].value, str):
+            continue
+        for keyword in node.keywords:
+            if keyword.arg != "source":
+                continue
+            if not isinstance(keyword.value, ast.Constant) or not isinstance(keyword.value.value, str):
+                raise SnapshotBuildError("unsupported Object source in committed configure.py")
+            result[node.args[1].value] = keyword.value.value
+    return result
+
+
 def parse_modules(source: str) -> List[dict]:
     records: List[dict] = []
     current: Optional[dict] = None
@@ -567,8 +588,10 @@ def _assemble_module(
     metadata: Mapping[str, dict],
     registered: Set[str],
     pinned_dtk: str,
+    sources: Optional[Mapping[str, str]] = None,
 ) -> dict:
     module_id = record["id"]
+    sources = sources or {}
     lookup = module_id.lower()
     entry = metadata.get(lookup)
     hash_matches = entry is not None and entry["originalHash"] == record["hash"].lower()
@@ -581,7 +604,7 @@ def _assemble_module(
     for path in dict.fromkeys([*ranges, *selected_paths]):
         selection = selections.get(path, "unowned")
         detail = ranges.get(path)
-        if selection == "matching" and (not _source_name_exists(path, source_paths) or detail is None):
+        if selection == "matching" and (not _source_name_exists(sources.get(path, path), source_paths) or detail is None):
             selection = "unknown"
         owners[path] = {
             "path": path,
@@ -753,6 +776,7 @@ def build_snapshot(
                 assert value is not None
                 files[path] = value
     selections = configured_objects(files["configure.py"])
+    sources = configured_sources(files["configure.py"])
     overlays = overlay_names(_show_text(repo, commit, "include/ovl_table.h", required=False) or "")
     registered = minigame_registry(files["include/mgdata.inc"], overlays)
     if not registered:
@@ -767,6 +791,7 @@ def build_snapshot(
             metadata_document["modules"],
             registered,
             pinned_dtk,
+            sources,
         )
         for record in records
     ]
