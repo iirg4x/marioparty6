@@ -21,6 +21,11 @@ REL/framework/camera.cpp:
 	.text       start:0x00011018 end:0x000117EC
 	.rodata     start:0x00000698 end:0x00000708
 
+REL/framework/camera_ut0.cpp:
+	.text       start:0x00011824 end:0x00013780
+	.rodata     start:0x00000708 end:0x00000768
+	.data       start:0x000007F8 end:0x00000850
+
 REL/framework/camera_ut1.cpp:
 	.text       start:0x00013780 end:0x00013B04
 	.rodata     start:0x00000768 end:0x000007B0
@@ -39,9 +44,9 @@ REL/framework/debug.cpp:
 	.rodata     start:0x00000858 end:0x000008B0
 
 REL/framework/event.cpp:
-	.text       start:0x0001996C end:0x0001C438
+	.text       start:0x0001996C end:0x0001F604
 	.rodata     start:0x000008B0 end:0x00000910
-	.data       start:0x00001638 end:0x000016C0
+	.data       start:0x00001638 end:0x00001728
 	.bss        start:0x000007B0 end:0x000007B8
 
 REL/framework/game_object.cpp:
@@ -50,8 +55,9 @@ REL/framework/game_object.cpp:
 	.data       start:0x00001728 end:0x00001750
 
 REL/framework/game_object_man.cpp:
-	.text       start:0x00020930 end:0x00020A74
+	.text       start:0x0001F77C end:0x00021BF4
 	.rodata     start:0x00000950 end:0x00000990
+	.data       start:0x00001750 end:0x000017D8
 
 REL/framework/gxdl.cpp:
 	.text       start:0x00021BF4 end:0x00022838
@@ -64,7 +70,7 @@ REL/framework/hu_archive.cpp:
 	.data       start:0x00001848 end:0x00001890
 
 REL/framework/linknode.cpp:
-	.text       start:0x0002320C end:0x00023300
+	.text       start:0x0002320C end:0x00023388
 	.rodata     start:0x00000A08 end:0x00000A48
 
 REL/framework/minigame_core.cpp:
@@ -96,6 +102,11 @@ REL/framework/octtree_debug.cpp:
 	.rodata     start:0x00000C20 end:0x00000CA8
 	.data       start:0x00001920 end:0x00001968
 
+REL/framework/octtree_man.cpp:
+	.text       start:0x00028848 end:0x00028B74
+	.rodata     start:0x00000CA8 end:0x00000CE8
+	.data       start:0x00001968 end:0x000019D0
+
 REL/framework/particle.cpp:
 	.text       start:0x00028B74 end:0x00028E58
 	.rodata     start:0x00000CE8 end:0x00000D20
@@ -109,6 +120,12 @@ REL/framework/random.cpp:
 	.ctors      start:0x00000020 end:0x00000024
 	.rodata     start:0x00000D70 end:0x00000DB0
 	.bss        start:0x000007E8 end:0x000011B0
+
+REL/framework/scene_shadow.cpp:
+	.text       start:0x0002B03C end:0x0002CE74
+	.rodata     start:0x00000DC8 end:0x00000E48
+	.data       start:0x00001A58 end:0x00001AC0
+	.bss        start:0x000011B0 end:0x000011B8
 
 REL/framework/sphere.cpp:
 	.text       start:0x0002CE74 end:0x0002D39C
@@ -127,3 +144,9 @@ REL/framework/thread.cpp:
 	.text       start:0x0002D730 end:0x0002DBA8
 	.rodata     start:0x00000F30 end:0x00000F80
 	.data       start:0x00001B20 end:0x00001BD0
+
+REL/framework/tri_colli.cpp:
+	.text       start:0x0002DBA8 end:0x00030CEC
+	.rodata     start:0x00000F80 end:0x00000FD8
+	.data       start:0x00001BD0 end:0x00001C3D
+	.bss        start:0x000011C0 end:0x000011D1

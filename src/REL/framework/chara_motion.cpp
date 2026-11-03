@@ -1,20 +1,15 @@
 // Loads character motions on demand and manages their playback and transitions.
-static const char rcsid[] = "$Id: chara_motion.cpp,v 1.19 2004/09/09 12:24:38 saf Exp $";
+#include <algorithm>
+#include <cstdio>
+#include <functional>
 
-extern "C" {
-#include <stdio.h>
-}
 #include "REL/framework/chara_motion.h"
 
-void operator delete(void *);
-void setMotionOwnerTime(CharacterMotion *, float);
-float getMotionOwnerTime(s32 *);
-float getMotionOwnerMaximumTime(s32 *);
-float getMotionOwnerTransitionTime(s32 *);
+static const char rcsid[] = "$Id: chara_motion.cpp,v 1.19 2004/09/09 12:24:38 saf Exp $";
+
 HU3D_MOTIONID getCharacterMotion(CharacterMotion *, unsigned int);
-template<class T>
-void insertMotionRecords(Sequence<T> *, T *, unsigned int, const T *);
-void applyMotionCleanup(MotionRecord *, MotionRecord *, MotionCleanup);
+template <class Function>
+void applyMotionCleanup(MotionRecord *first, MotionRecord *last, Function cleanup);
 
 // Character construction starts an empty motion list and closes motion and shared effect data.
 MotionOwner::MotionOwner(unsigned int characterNo)
@@ -29,7 +24,7 @@ MotionOwner::MotionOwner(unsigned int characterNo)
 MotionOwner::~MotionOwner()
 {
     applyMotionCleanup(motions.begin(), motions.end(),
-                       bindMotionCleanup(makeMotionFunction(fn_8005B420), charNo));
+                       std::bind1st(std::ptr_fun(fn_8005B420), charNo));
     fn_8005B4BC((s16)charNo);
 }
 
@@ -38,7 +33,7 @@ MotionOwner::~MotionOwner()
 void createCharacterMotion(CharacterMotion *character, unsigned int dataNum)
 {
     s16 motionId = fn_8005B0B8((s16)character->charNo, dataNum);
-    appendMotionRecord(character->motions, makeMotionRecord(dataNum, s16(motionId)));
+    character->motions.push_back(std::make_pair(dataNum, s16(motionId)));
     fn_8005B4BC((s16)character->charNo);
 }
 
@@ -49,7 +44,7 @@ void createCharacterMotions(CharacterMotion *character, unsigned int *dataNums, 
     for (unsigned int *cursor = dataNums; cursor != last; ++cursor) {
         unsigned int dataNum = *cursor;
         s16 motionId = fn_8005B0B8((s16)character->charNo, dataNum);
-        appendMotionRecord(character->motions, makeMotionRecord(dataNum, s16(motionId)));
+        character->motions.push_back(std::make_pair(dataNum, s16(motionId)));
         fn_8005B4BC((s16)character->charNo);
     }
 }
@@ -130,7 +125,7 @@ void setCharacterMotionOverlay(CharacterMotion *character, HU3D_MODELID modelId,
 // getCharacterMotion uses this predicate to find a record by its requested resource number.
 bool motionRecordMatches(const MotionRecord &record, unsigned int dataNum)
 {
-    return record.dataNum == dataNum;
+    return record.first == dataNum;
 }
 
 // Motion selection, attributes and overlays look up a cached handle, loading it if absent.
@@ -139,149 +134,22 @@ HU3D_MOTIONID getCharacterMotion(CharacterMotion *character, unsigned int dataNu
 {
     MotionRecord *record = character->motions.begin();
     MotionRecord *last = character->motions.end();
-    record = findMatchingMotion(record, last,
-        bindMotionMatcher(makeMotionMatchFunction(motionRecordMatches), dataNum));
+    record = std::find_if(record, last, std::bind2nd(std::ptr_fun(motionRecordMatches), dataNum));
     if (record == last) {
         // A missed preload emits a warning but still loads and records the motion on demand.
-        printf("****** Requested %s is not registered.\n", characterMotionNames[(u16)dataNum]);
+        std::printf("****** Requested %s is not registered.\n", characterMotionNames[(u16)dataNum]);
         createCharacterMotion(character, dataNum);
-        return character->motions.back().motionId;
+        return character->motions.back().second;
     }
-    return s16(record->motionId);
+    return s16(record->second);
 }
 
 // MotionOwner destruction invokes the bound character cleanup for every stored motion handle.
-void applyMotionCleanup(MotionRecord *first, MotionRecord *last,
-                        MotionCleanup cleanup)
+// Retail places this after the strong functions, with the instantiated vector members.
+template <class Function>
+void applyMotionCleanup(MotionRecord *first, MotionRecord *last, Function cleanup)
 {
     for (; first != last; ++first) {
-        cleanup(first->motionId);
+        cleanup(first->second);
     }
-}
-
-// insertMotionRecords copies from the end so overlapping record moves preserve their values.
-template<class T>
-inline T *copyMotionRecordsBackwardRange(T *first, T *last, T *destination)
-{
-    while (last > first) *--destination = *--last;
-    return destination;
-}
-
-// insertMotionRecords moves the existing tail toward the list's end before filling new slots.
-template<class T>
-inline T *copyMotionRecordsBackward(T *first, T *last, T *destination)
-{
-    return copyMotionRecordsBackwardRange(first, last, destination);
-}
-
-// appendMotionRecord inserts copies into the motion list, growing its allocation when needed.
-template<class T>
-void insertMotionRecords(Sequence<T> *sequence, T *position, unsigned int count,
-                         const T *source)
-{
-    if (count != 0) {
-        unsigned long maximumRecords = sequence->maximumCount();
-        if (count > maximumRecords || sequence->count > maximumRecords - count) {
-            fprintf(stderr, "vector::insert length error\n");
-            abort();
-        }
-        if (sequence->count + count <= sequence->availableCapacity()) {
-            T *last = sequence->end();
-            int trailingRecords = last - position;
-            const T *insertedRecord = source;
-            if (count > trailingRecords) {
-                T *destination = last;
-                // Construct the new tail before assigning into the existing live slots.
-                while (count > trailingRecords) {
-                    sequence->construct(destination, *source);
-                    ++destination;
-                    --count;
-                    ++sequence->count;
-                }
-                T *cursor = position;
-                while (cursor < last) {
-                    sequence->construct(destination, *cursor);
-                    ++cursor;
-                    ++destination;
-                    ++sequence->count;
-                }
-            } else {
-                T *cursor = last - count;
-                T *destination = last;
-                while (cursor < last) {
-                    sequence->construct(destination, *cursor);
-                    ++cursor;
-                    ++destination;
-                    ++sequence->count;
-                }
-                if (last - (trailingRecords - count) <= insertedRecord && insertedRecord < last) {
-                    // An insertion value inside the moved tail now resides count slots later.
-                    insertedRecord += count;
-                }
-                copyMotionRecordsBackward<T>(position, position + (trailingRecords - count), last);
-            }
-            fillMotionRecords(position, count, *insertedRecord);
-            return;
-        }
-        SequenceStorage<T> replacement(sequence->allocator());
-        unsigned long requiredRecords = sequence->count + count;
-        unsigned long capacity = sequence->capacityValue() ? sequence->capacityValue() : 1;
-        // Grow geometrically, stopping at the allocator's element limit before overflow.
-        while (requiredRecords > capacity) {
-            if (capacity < maximumRecords / 2) capacity *= 2;
-            else capacity = maximumRecords;
-        }
-        replacement.storage = replacement.allocator().allocate(capacity);
-        replacement.capacityValue() = capacity;
-        T *destination = replacement.storage;
-        T *cursor = sequence->begin();
-        T *last = sequence->end();
-        while (cursor < position) {
-            replacement.construct(destination, *cursor);
-            ++cursor;
-            ++destination;
-            ++replacement.count;
-        }
-        while (count != 0) {
-            replacement.construct(destination, *source);
-            ++destination;
-            --count;
-            ++replacement.count;
-        }
-        while (cursor < last) {
-            replacement.construct(destination, *cursor);
-            ++cursor;
-            ++destination;
-            ++replacement.count;
-        }
-        exchangeMotionStorage(replacement, static_cast<SequenceStorage<T> &>(*sequence));
-        // replacement now owns the previous allocation and releases it on leaving this scope.
-    }
-}
-
-// Motion list destruction and insertion's replaced allocation destroy records and free storage.
-template<class T>
-inline SequenceStorage<T>::~SequenceStorage()
-{
-    clear();
-    if (storagePointer()) deallocate(storagePointer());
-}
-
-// Allocation replacement swaps each stored count or pointer through this helper.
-template<class T>
-inline void exchangeMotionValue(T &left, T &right)
-{
-    T savedValue = left;
-    left = right;
-    right = savedValue;
-}
-
-// SequenceStorage destruction destroys records from the end while keeping the reserved allocation.
-template<class T>
-void SequenceStorage<T>::clear()
-{
-    T *first = storagePointer();
-    T *last = first + count;
-    while (last > first) destroy(--last);
-    count = 0;
 }

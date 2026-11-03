@@ -4,7 +4,6 @@
 
 extern "C" {
 #include "dolphin/mtx.h"
-#include "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/stdio.h"
 }
 
 void operator delete(void *);

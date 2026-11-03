@@ -30,7 +30,7 @@ REL/framework/debug.cpp:
 	.rodata     start:0x00000508 end:0x00000560
 
 REL/framework/linknode.cpp:
-	.text       start:0x0000D96C end:0x0000DA60
+	.text       start:0x0000D96C end:0x0000DAE8
 	.rodata     start:0x00000560 end:0x000005A0
 
 REL/framework/minigame_core.cpp:

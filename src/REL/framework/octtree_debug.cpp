@@ -32,69 +32,6 @@ void Octree::select(const Vec &position)
     select(nodeAt(position));
 }
 
-// Argument traits used by the member-call adapter in the debug drawing traversal.
-template<class First, class Second, class Result> struct OctreeBinaryFunction {
-    typedef First first_argument_type;
-    typedef Second second_argument_type;
-    typedef Result result_type;
-};
-// Argument traits for a drawing operation with its owning octree already bound.
-template<class Argument, class Result> struct OctreeUnaryFunction {
-    typedef Argument argument_type;
-    typedef Result result_type;
-};
-// Wraps an octree member so the selected-node traversal can invoke it.
-struct OctreeMemberFunction : OctreeBinaryFunction<Octree *, OctreeDebugNode *, void> {
-    void (Octree::*method)(OctreeDebugNode *); // Member invoked for each selected leaf.
-    explicit OctreeMemberFunction(void (Octree::*memberMethod)(OctreeDebugNode *))
-        : method(memberMethod)
-    {
-    }
-    void operator()(Octree *tree, OctreeDebugNode *node) const { (tree->*method)(node); }
-};
-inline OctreeMemberFunction octreeMemFun(void (Octree::*method)(OctreeDebugNode *))
-{
-    return OctreeMemberFunction(method);
-}
-// Stores the octree and drawing operation passed to the selected-node traversal.
-template<class Operation>
-struct OctreeFirstBinder : OctreeUnaryFunction<typename Operation::second_argument_type,
-                                              typename Operation::result_type> {
-    Operation operation; // Drawing operation invoked for a leaf.
-    typename Operation::first_argument_type tree; // Octree that owns the selected leaves.
-    // Before selection traversal, retain the drawing operation and its owning octree.
-    OctreeFirstBinder(const Operation &boundOperation,
-                      typename Operation::first_argument_type boundTree)
-        : operation(boundOperation), tree(boundTree)
-    {
-    }
-    // Each selected-leaf visit invokes the stored drawing operation with the bound octree.
-    typename Operation::result_type
-    operator()(const typename Operation::second_argument_type &node) const
-    {
-        operation(tree, node);
-    }
-};
-// The render callback binds drawNode to its octree before traversing the selection.
-template<class Operation, class Argument>
-inline OctreeFirstBinder<Operation> octreeBindFirst(const Operation &function, const Argument &tree)
-{
-    typedef typename Operation::first_argument_type FirstArgument;
-    return OctreeFirstBinder<Operation>(function, FirstArgument(tree));
-}
-
-// The render callback visits each selected leaf in set order with the bound drawing operation.
-template<class Iterator, class Function>
-inline
-Function octreeForEach(Iterator current, Iterator end, Function operation)
-{
-    while (current != end) {
-        operation(*current);
-        ++current;
-    }
-    return operation;
-}
-
 // Hu3D calls this model hook to draw the selected leaves using its supplied matrix.
 // The selection is consumed by this callback and must be submitted again for later draws.
 void Octree::render(void *hookModel, Mtx transform)
@@ -127,8 +64,8 @@ void Octree::render(void *hookModel, Mtx transform)
     // Hu3D passes its model to this hook; its hook data holds the octree from enableDebug.
     Octree *tree = static_cast<Octree *>(static_cast<HU3D_MODEL *>(hookModel)->hookData);
     OctreeNodeSet &selectedNodes = *tree->selected;
-    octreeForEach(selectedNodes.begin(), selectedNodes.end(),
-                  octreeBindFirst(octreeMemFun(&Octree::drawNode), tree));
+    std::for_each(selectedNodes.begin(), selectedNodes.end(),
+                  std::bind1st(std::mem_fun(&Octree::drawNode), tree));
     selectedNodes.clear();
 }
 
@@ -155,83 +92,4 @@ void Octree::drawNode(OctreeDebugNode *node)
             octreeVertex(triangleIterator.firstVertex(), paletteIndex);
         }
     }
-}
-
-// Selection clearing and tree destruction free child set nodes before their parent.
-// The stored pointers are discarded; the octree's geometry remains owned by its archive.
-void OctreeNodeTree::erase(OctreeSetNode *node)
-{
-    if (node->left) erase((OctreeSetNode *)node->left);
-    if (node->right) erase(static_cast<OctreeSetNode *>(node->right));
-    value_allocator().destroy(&node->value);
-    node_allocator().deallocate(node, 1);
-}
-
-// After debug drawing, discard the set entries and restore the empty-tree sentinel links.
-void OctreeNodeTree::clear()
-{
-    if (root()) {
-        erase(root());
-        size.second() = 0;
-        root() = 0;
-        begin_node() = end_node();
-    }
-}
-
-// select inserts one leaf by pointer order, returning the existing entry for repeated requests.
-OctreeSetResult OctreeNodeTree::insert(OctreeDebugNode *const &leaf)
-{
-    OctreeSetNode *predecessor = 0;
-    OctreeSetNode *parent = (OctreeSetNode *)end_node();
-    OctreeSetNode *node = root();
-    bool insertLeft = true;
-    bool becomesFirst = true;
-    while (node) {
-        parent = node;
-        if (first(leaf, node->value)) {
-            node = (OctreeSetNode *)node->left;
-            insertLeft = true;
-        } else {
-            predecessor = parent;
-            node = static_cast<OctreeSetNode *>(node->right);
-            insertLeft = false;
-            becomesFirst = false;
-        }
-    }
-    // The predecessor detects equality after the search reaches an empty child link.
-    if (!predecessor || first(predecessor->value, leaf)) {
-        node = insert_node(parent, insertLeft, becomesFirst, leaf);
-        OctreeSetIterator iterator(node);
-        return OctreeSetResult(iterator, true);
-    }
-    OctreeSetIterator iterator(predecessor);
-    return OctreeSetResult(iterator, false);
-}
-
-// Creating a debug selection starts its traversal at the empty-tree sentinel.
-OctreeNodeTree::OctreeNodeTree(const OctreePointerLess &less, const OctreeSetAllocator &allocator)
-    : size(allocator), nodes(allocator), first(less)
-{
-    begin_node() = end_node();
-}
-
-// Insert allocates a set entry, links it at the search position, and balances the tree.
-// Allocation or size exhaustion aborts rather than dropping a requested leaf.
-OctreeSetNode *OctreeNodeTree::insert_node(OctreeSetNode *parent, bool insertLeft,
-                                           bool becomesFirst, OctreeDebugNode *const &leaf)
-{
-    if (sizeCount() > maxSize() - 1) {
-        fprintf(stderr, "tree::insert length error\n");
-        abort();
-    }
-    OctreeSetNode *node = node_allocator().allocate(1);
-    value_allocator().construct(&node->value, leaf);
-    node->left = node->right = 0;
-    node->parent = parent;
-    if (insertLeft) parent->left = node;
-    else parent->right = node;
-    ++size.second();
-    rebalanceTreeAfterInsert(node, root());
-    if (becomesFirst) begin_node() = node;
-    return node;
 }

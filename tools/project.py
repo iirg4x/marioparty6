@@ -452,6 +452,10 @@ def generate_build_ninja(
     # MWCC with UTF-8 to Shift JIS wrapper
     mwcc_sjis_cmd = f"{wrapper_cmd}{sjiswrap} {mwcc} $cflags -MMD -c $in -o $basedir"
     mwcc_sjis_implicit: List[Optional[Path]] = [*mwcc_implicit, sjiswrap]
+    if os.name == "nt":
+        vendor_launcher = config.tools_dir / "sjiswrap_vendor.py"
+        mwcc_sjis_cmd = f"cmd /c call $python {vendor_launcher} {mwcc_sjis_cmd}"
+        mwcc_sjis_implicit.append(vendor_launcher)
 
     # MWLD
     mwld = compiler_path / "mwldeppc.exe"

@@ -145,7 +145,7 @@ config.compilers_tag = "20240706"
 config.dtk_tag = "v0.9.2"
 config.dtk_extab_tag = "v1.6.1"
 config.objdiff_tag = "v3.8.2"
-config.sjiswrap_tag = "v1.1.1"
+config.sjiswrap_tag = "v1.1.1-mp6.3"
 config.wibo_tag = "0.6.11"
 
 # Project
@@ -1076,7 +1076,13 @@ config.libs = [
     {
         "lib": "framework",
         "mw_version": "GC/1.3.2",
-        "cflags": cflags_rel,
+        "cflags": [
+            *cflags_rel[:cflags_rel.index("-i include")],
+            "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common/Include",
+            "-i include/PowerPC_EABI_Support/Msl/MSL_C/PPC_EABI/Include",
+            "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/Include",
+            *cflags_rel[cflags_rel.index("-i include"):],
+        ],
         "host": False,
         "objects": [
             Object(Matching, "REL/framework/new.cpp", extra_cflags=["-pooldata off"]),
@@ -1109,6 +1115,10 @@ config.libs = [
             Object(Matching, "REL/framework/timer.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/event.cpp", extra_cflags=["-pooldata off"]),
             Object(Matching, "REL/framework/octtree_debug.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/tri_colli.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/camera_ut0.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/scene_shadow.cpp", extra_cflags=["-pooldata off"]),
+            Object(Matching, "REL/framework/octtree_man.cpp", extra_cflags=["-pooldata off"]),
         ],
     },
     Rel(

@@ -21,6 +21,11 @@ REL/framework/camera.cpp:
 	.text       start:0x0000CFA4 end:0x0000D778
 	.rodata     start:0x00000558 end:0x000005C8
 
+REL/framework/camera_ut0.cpp:
+	.text       start:0x0000D7B0 end:0x0000EBA8
+	.rodata     start:0x000005C8 end:0x00000628
+	.data       start:0x00000A20 end:0x00000A78
+
 REL/framework/camera_ut1.cpp:
 	.text       start:0x0000EBA8 end:0x0000EF2C
 	.rodata     start:0x00000628 end:0x00000670
@@ -30,19 +35,21 @@ REL/framework/debug.cpp:
 	.rodata     start:0x00000678 end:0x000006D0
 
 REL/framework/event.cpp:
-	.text       start:0x0000F6B0 end:0x0001217C
+	.text       start:0x0000F6B0 end:0x00015348
 	.rodata     start:0x000006D0 end:0x00000730
-	.data       start:0x00000AB0 end:0x00000B38
+	.data       start:0x00000AB0 end:0x00000BA0
 	.bss        start:0x000000E0 end:0x000000E8
 
 REL/framework/game_object.cpp:
 	.text       start:0x00015348 end:0x000154C0
 	.rodata     start:0x00000730 end:0x00000770
 	.data       start:0x00000BA0 end:0x00000BC8
+	.bss        start:0x000000E8 end:0x000000F0
 
 REL/framework/game_object_man.cpp:
-	.text       start:0x00016674 end:0x000167B8
+	.text       start:0x000154C0 end:0x00017938
 	.rodata     start:0x00000770 end:0x000007B0
+	.data       start:0x00000BC8 end:0x00000C50
 
 REL/framework/handle.cpp:
 	.text       start:0x00017938 end:0x00017D9C
@@ -50,7 +57,7 @@ REL/framework/handle.cpp:
 	.data       start:0x00000C50 end:0x00000C70
 
 REL/framework/linknode.cpp:
-	.text       start:0x00018144 end:0x00018238
+	.text       start:0x00018144 end:0x000182C0
 	.rodata     start:0x000007F0 end:0x00000830
 
 REL/framework/minigame_core.cpp:
@@ -69,6 +76,12 @@ REL/framework/random.cpp:
 	.ctors      start:0x00000030 end:0x00000034
 	.rodata     start:0x00000900 end:0x00000940
 	.bss        start:0x00000120 end:0x00000AE8
+
+REL/framework/scene_shadow.cpp:
+	.text       start:0x0001CA1C end:0x0001EA94
+	.rodata     start:0x00000958 end:0x000009D8
+	.data       start:0x00000CE8 end:0x00000D50
+	.bss        start:0x00000AE8 end:0x00000AF0
 
 REL/framework/startup.cpp:
 	.text       start:0x0001EA94 end:0x0001EB38

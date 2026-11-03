@@ -48,3 +48,25 @@ void Node::insert4(Node *anchor)
     neighbor->link4->link0 = this;
     neighbor->link4 = this;
 }
+
+// Moves every node of this list to the end of the anchor's list and leaves this head empty.
+// A collection owner calls this to walk its nodes while they may add to or leave the list.
+void Node::moveAllTo(Node *anchor)
+{
+    bool isolated = false;
+    if (link0 == this) {
+        if (link0 == link4)
+            isolated = true;
+    }
+    if (!isolated) {
+        Node *neighbor = anchor;
+        Node *first = link0;
+        Node *last = link4;
+        link0 = this;
+        link4 = this;
+        first->link4 = neighbor->link4;
+        last->link0 = neighbor;
+        neighbor->link4->link0 = first;
+        neighbor->link4 = last;
+    }
+}

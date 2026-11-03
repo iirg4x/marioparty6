@@ -12,6 +12,7 @@ struct Node {
     void unlink();
     void insert0(Node *other);
     void insert4(Node *other);
+    void moveAllTo(Node *other);
 };
 
 #endif

@@ -30,9 +30,9 @@ REL/framework/debug.cpp:
 	.rodata     start:0x00000900 end:0x00000958
 
 REL/framework/event.cpp:
-	.text       start:0x00015A24 end:0x00018498
+	.text       start:0x00015A24 end:0x0001B664
 	.rodata     start:0x00000958 end:0x000009B8
-	.data       start:0x00000A08 end:0x00000A80
+	.data       start:0x00000A08 end:0x00000AE8
 	.bss        start:0x000000C0 end:0x000000C8
 
 REL/framework/event_hm.cpp:
@@ -51,11 +51,12 @@ REL/framework/game_object2.cpp:
 	.data       start:0x00000B58 end:0x00000B70
 
 REL/framework/game_object_man.cpp:
-	.text       start:0x0001D790 end:0x0001D8D4
+	.text       start:0x0001C5DC end:0x0001EA54
 	.rodata     start:0x00000A70 end:0x00000AB0
+	.data       start:0x00000B70 end:0x00000BF8
 
 REL/framework/linknode.cpp:
-	.text       start:0x0001EDFC end:0x0001EEF0
+	.text       start:0x0001EDFC end:0x0001EF78
 	.rodata     start:0x00000AB0 end:0x00000AF0
 
 REL/framework/minigame_core.cpp:

@@ -21,6 +21,11 @@ REL/framework/camera.cpp:
 	.text       start:0x0000E694 end:0x0000EE68
 	.rodata     start:0x00000528 end:0x00000598
 
+REL/framework/camera_ut0.cpp:
+	.text       start:0x0000EEA0 end:0x00010298
+	.rodata     start:0x00000598 end:0x000005F8
+	.data       start:0x00000450 end:0x000004A8
+
 REL/framework/camera_ut1.cpp:
 	.text       start:0x00010298 end:0x0001061C
 	.rodata     start:0x000005F8 end:0x00000640
@@ -39,9 +44,9 @@ REL/framework/debug.cpp:
 	.rodata     start:0x000006C0 end:0x00000718
 
 REL/framework/event.cpp:
-	.text       start:0x00011ED4 end:0x00014948
+	.text       start:0x00011ED4 end:0x00017544
 	.rodata     start:0x00000718 end:0x00000778
-	.data       start:0x000011E8 end:0x00001260
+	.data       start:0x000011E8 end:0x000012C8
 	.bss        start:0x000000D8 end:0x000000E0
 
 REL/framework/event_hm.cpp:
@@ -55,11 +60,12 @@ REL/framework/game_object.cpp:
 	.data       start:0x00001310 end:0x00001338
 
 REL/framework/game_object_man.cpp:
-	.text       start:0x00019540 end:0x00019684
+	.text       start:0x0001838C end:0x0001A804
 	.rodata     start:0x000007F0 end:0x00000830
+	.data       start:0x00001338 end:0x000013C0
 
 REL/framework/linknode.cpp:
-	.text       start:0x0001ABAC end:0x0001ACA0
+	.text       start:0x0001ABAC end:0x0001AD28
 	.rodata     start:0x00000830 end:0x00000870
 
 REL/framework/minigame_core.cpp:
@@ -86,6 +92,12 @@ REL/framework/random.cpp:
 	.ctors      start:0x00000014 end:0x00000018
 	.rodata     start:0x000009C8 end:0x00000A08
 	.bss        start:0x000000F8 end:0x00000AC0
+
+REL/framework/scene_shadow.cpp:
+	.text       start:0x00020A5C end:0x00022AD4
+	.rodata     start:0x00000A20 end:0x00000AA0
+	.data       start:0x000014C0 end:0x00001528
+	.bss        start:0x00000AC0 end:0x00000AC8
 
 REL/framework/sphere.cpp:
 	.text       start:0x00022AD4 end:0x00022FFC

@@ -21,6 +21,11 @@ REL/framework/camera.cpp:
 	.text       start:0x0001655C end:0x00016D30
 	.rodata     start:0x000007A0 end:0x00000810
 
+REL/framework/camera_ut0.cpp:
+	.text       start:0x00016D68 end:0x0001890C
+	.rodata     start:0x00000810 end:0x00000870
+	.data       start:0x000005E0 end:0x00000638
+
 REL/framework/camera_ut1.cpp:
 	.text       start:0x0001890C end:0x00018C90
 	.rodata     start:0x00000870 end:0x000008B8
@@ -39,9 +44,9 @@ REL/framework/debug.cpp:
 	.rodata     start:0x00000960 end:0x000009B8
 
 REL/framework/event.cpp:
-	.text       start:0x0001EAF8 end:0x0002156C
+	.text       start:0x0001EAF8 end:0x00024168
 	.rodata     start:0x000009B8 end:0x00000A18
-	.data       start:0x00001420 end:0x00001498
+	.data       start:0x00001420 end:0x00001500
 	.bss        start:0x00000098 end:0x000000A0
 
 REL/framework/event_hm.cpp:
@@ -55,8 +60,9 @@ REL/framework/game_object.cpp:
 	.data       start:0x00001548 end:0x00001570
 
 REL/framework/game_object_man.cpp:
-	.text       start:0x00026164 end:0x000262A8
+	.text       start:0x00024FB0 end:0x00027428
 	.rodata     start:0x00000A90 end:0x00000AD0
+	.data       start:0x00001570 end:0x000015F8
 
 REL/framework/gxdl.cpp:
 	.text       start:0x00027428 end:0x0002806C
@@ -69,7 +75,7 @@ REL/framework/hu_archive.cpp:
 	.data       start:0x00001668 end:0x000016B0
 
 REL/framework/linknode.cpp:
-	.text       start:0x00028A40 end:0x00028B34
+	.text       start:0x00028A40 end:0x00028BBC
 	.rodata     start:0x00000B48 end:0x00000B88
 
 REL/framework/minigame_core.cpp:
@@ -96,6 +102,11 @@ REL/framework/octtree_debug.cpp:
 	.text       start:0x0002CA88 end:0x0002DB44
 	.rodata     start:0x00000D00 end:0x00000D88
 	.data       start:0x00001740 end:0x00001788
+
+REL/framework/octtree_man.cpp:
+	.text       start:0x0002DB44 end:0x0002DE70
+	.rodata     start:0x00000D88 end:0x00000DC8
+	.data       start:0x00001788 end:0x000017F0
 
 REL/framework/particle.cpp:
 	.text       start:0x0002DE70 end:0x0002E154
@@ -133,3 +144,9 @@ REL/framework/timer.cpp:
 	.text       start:0x0003106C end:0x000314B8
 	.rodata     start:0x00000FE0 end:0x00001020
 	.data       start:0x00001988 end:0x000019A8
+
+REL/framework/tri_colli.cpp:
+	.text       start:0x000314B8 end:0x000345FC
+	.rodata     start:0x00001020 end:0x00001078
+	.data       start:0x000019A8 end:0x00001A15
+	.bss        start:0x00000A88 end:0x00000A99

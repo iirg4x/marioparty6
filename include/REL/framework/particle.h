@@ -2,21 +2,13 @@
 #ifndef REL_FRAMEWORK_PARTICLE_H
 #define REL_FRAMEWORK_PARTICLE_H
 
+#include "REL/framework/model.h"
+
 extern "C" {
-#include "dolphin/math.h"
+#include <math.h>
 #include "dolphin/os/OSCache.h"
 #include "game/hu3d.h"
 }
-
-// Holds an engine model ID and uses Replace for model replacement and destruction.
-class Model {
-public:
-    short modelId; // Engine model ID, or -1 after the handle is released.
-
-    inline ~Model() { Replace(-1); }
-    operator short() const { return modelId; }
-    short Replace(short replacement);
-};
 
 // Owns a fixed-capacity engine particle model with an effect's update callback.
 class Particle : public Model {
